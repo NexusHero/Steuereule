@@ -312,6 +312,9 @@ const SICK_PAY_RULE_READS: readonly (readonly [Screen, string])[] = [
   ['chLohnausweis', 'familienzulagenImBruttolohn'],
 ]
 
+const PERSON_B_IDENTITY: readonly (readonly [Screen, string])[] = [['profil', 'firstName'], ['profil', 'lastName'], ['stammdaten', 'geburtsdatum']]
+const PERSON_B_IDENTITY_READS: readonly (readonly [Screen, string])[] = [['chLohnausweis', 'bruttolohn-total'], ['lstb', 'bruttoarbeitslohn'], ...PERSON_B_IDENTITY]
+
 /** What each fixed rule (ADR-0093) reads to decide whether it is still open. */
 const RULE_READS: Readonly<Record<string, readonly (readonly [Screen, string])[]>> = {
   regelLstb: LSTB_RULE_READS,
@@ -324,6 +327,7 @@ const RULE_READS: Readonly<Record<string, readonly (readonly [Screen, string])[]
   regelKrankentaggeldPersonB: SICK_PAY_RULE_READS,
   regelKapital: [['interview', 'einkuenfte'], ['kapital', 'kapitalertraege']],
   regelVorauszahlungen: [['interview', 'vorauszahlungen-gate'], ['interview', 'vorauszahlungen-betrag']],
+  regelStammdatenPersonB: PERSON_B_IDENTITY_READS,
 }
 
 /** The fields a fixed rule still needs, from the values read for it; a third element is added to the question. */
@@ -364,6 +368,10 @@ function ruleGaps(code: string, read: (screen: Screen, field: string) => string 
     const allowances = read('chLohnausweis', 'familienzulagenImBruttolohn') === 'true' ? (amount('chLohnausweis', 'familienzulagenChf') ?? 0) : 0
     const hint = taxYear === undefined ? null : dailyBenefitHint(sickness, { taxYear, grossWageChf: gross, ahvContributionsChf: amount('chLohnausweis', 'ahv-beitraege'), familyAllowancesChf: allowances })
     out.push(hint === null ? ['chLohnausweis', 'taggeldQuelle'] : ['chLohnausweis', 'taggeldQuelle', hint])
+  } else if (code === 'regelStammdatenPersonB') {
+    // Real-data run: both wages recorded, Person B never named, the N-Gre printed for A only.
+    const wage = (amount('chLohnausweis', 'bruttolohn-total') ?? 0) > 0 || (amount('lstb', 'bruttoarbeitslohn') ?? 0) > 0
+    if (wage) for (const [screen, field] of PERSON_B_IDENTITY) if (empty(read(screen, field))) out.push([screen, field])
   } else if (code === 'regelKapital') {
     const answer = read('interview', 'einkuenfte')
     if (empty(answer)) out.push(['interview', 'einkuenfte'])

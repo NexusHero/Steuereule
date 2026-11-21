@@ -314,5 +314,7 @@ export const ENTRY_RULE_CODES = [
   'regelKapital',
   'regelVorauszahlungen',
   'regelKindergeld',
+  /** A joint return with a wage of Person B: B needs a name and a birth date, or B's forms do not print. */
+  'regelStammdatenPersonB',
 ] as const
 export type EntryRuleCode = (typeof ENTRY_RULE_CODES)[number]

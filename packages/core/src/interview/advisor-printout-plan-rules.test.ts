@@ -5,7 +5,7 @@ import { planPrintoutGaps, printoutGapKey, printoutGapReads, type PrintoutGapCon
 const SINGLE: PrintoutGapContext = { joint: false, personB: null, children: [], rentals: [], personalDataConsent: false }
 const JOINT: PrintoutGapContext = { ...SINGLE, joint: true, personB: { recordable: true } }
 
-const key = (person: 'A' | 'B', screen: 'lstb' | 'commute' | 'chLohnausweis' | 'interview' | 'kapital', field: string) => printoutGapKey({ person, screen, field })
+const key = (person: 'A' | 'B', screen: 'lstb' | 'commute' | 'chLohnausweis' | 'interview' | 'kapital' | 'profil' | 'stammdaten', field: string) => printoutGapKey({ person, screen, field })
 const ANSWERED = { [key('A', 'interview', 'einkuenfte')]: 'Nein', [key('A', 'interview', 'vorauszahlungen-gate')]: 'Nein' }
 const asked = (ctx: PrintoutGapContext, values: Record<string, string | null>) => planPrintoutGaps(ENTRY_RULE_CODES, ctx, values).questions.map((q) => q.key)
 
@@ -63,7 +63,8 @@ describe('checklist of the fixed rules (ADR-0093)', () => {
   it('asks once per Swiss wage statement where a daily benefit in the wage came from', () => {
     const source = key('A', 'chLohnausweis', 'taggeldQuelle')
     const paid = key('A', 'chLohnausweis', 'steuerfreiesKrankentaggeldChf')
-    const values = { ...ANSWERED, [key('A', 'chLohnausweis', 'bruttolohn-total')]: '98000', [key('B', 'chLohnausweis', 'bruttolohn-total')]: '87000' }
+    const namedB = { [key('B', 'profil', 'firstName')]: 'Anna', [key('B', 'profil', 'lastName')]: 'Muster', [key('B', 'stammdaten', 'geburtsdatum')]: '1988-03-02' }
+    const values = { ...ANSWERED, ...namedB, [key('A', 'chLohnausweis', 'bruttolohn-total')]: '98000', [key('B', 'chLohnausweis', 'bruttolohn-total')]: '87000' }
     expect(asked(JOINT, values)).toEqual([source, key('B', 'chLohnausweis', 'taggeldQuelle')])
     expect(asked(SINGLE, values)).toEqual([source])
     // An answer closes it, „0“ recorded before the question existed too; without a wage statement there is nothing to ask.
@@ -140,3 +141,22 @@ describe('checklist of the fixed rules (ADR-0093)', () => {
     expect(planPrintoutGaps(['grenzgaenger'], SINGLE, {}).questions.find((q) => q.field === 'ch-wohnsitz')!.question).not.toMatch(/20\d\d/)
   })
 })
+
+// Real-data run: both wage statements were recorded, Person B was never given a name and birth date, and
+// the N-Gre printed for A only.
+describe('Person B with a wage of her own', () => {
+  const wageB = { ...ANSWERED, [key('B', 'chLohnausweis', 'bruttolohn-total')]: '87000', [key('B', 'chLohnausweis', 'taggeldQuelle')]: 'kein' }
+
+  it('asks for B’s name and birth date in a joint return once B’s wage is recorded', () => {
+    expect(asked(JOINT, wageB)).toEqual([key('B', 'profil', 'firstName'), key('B', 'profil', 'lastName'), key('B', 'stammdaten', 'geburtsdatum')])
+    const named = { ...wageB, [key('B', 'profil', 'firstName')]: 'Anna', [key('B', 'profil', 'lastName')]: 'Muster', [key('B', 'stammdaten', 'geburtsdatum')]: '1988-03-02' }
+    expect(asked(JOINT, named)).toEqual([])
+  })
+
+  it('asks it for a German wage of B too, and not without a wage or without a Person B', () => {
+    expect(asked(JOINT, { ...ANSWERED, [key('B', 'lstb', 'bruttoarbeitslohn')]: '21000' })).toContain(key('B', 'profil', 'firstName'))
+    expect(asked(JOINT, ANSWERED)).toEqual([])
+    expect(asked(SINGLE, wageB)).toEqual([])
+  })
+})
+
