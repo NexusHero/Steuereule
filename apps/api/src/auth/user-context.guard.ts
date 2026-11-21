@@ -109,7 +109,7 @@ export class UserContextGuard implements CanActivate {
       const tokenHash = createHash('sha256').update(rawToken).digest('base64url')
       const tokenRecord = await this.prisma.oauthAccessToken.findUnique({
         where: { token: tokenHash },
-        include: { client: true },
+        include: { client: { select: { name: true, disabled: true } } },
       })
       if (!tokenRecord || !tokenRecord.userId) {
         throw new UnauthorizedException('Invalid bearer token.')

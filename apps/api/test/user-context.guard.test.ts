@@ -208,7 +208,7 @@ describe('UserContextGuard', () => {
       expect(setCookie).not.toHaveBeenCalled()
       expect(fakePrisma.oauthAccessToken.findUnique).toHaveBeenCalledWith({
         where: { token: hashed },
-        include: { client: true },
+        include: { client: { select: { name: true, disabled: true } } },
       })
     })
 

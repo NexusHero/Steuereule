@@ -9,27 +9,23 @@ export class PrismaAssistantsRepository implements AssistantRepository {
   async findConnectedForUser(userId: string): Promise<ConnectedAssistant[]> {
     const consents = await this.prisma.oauthConsent.findMany({
       where: { userId },
-      include: { client: true },
+      include: { client: { select: { name: true } } },
       orderBy: { createdAt: 'desc' },
     })
+    // One grouped query for every client instead of one lookup per consent.
+    const latestTokens = await this.prisma.oauthAccessToken.groupBy({
+      by: ['clientId'],
+      where: { userId, clientId: { in: consents.map((consent) => consent.clientId) } },
+      _max: { createdAt: true },
+    })
+    const lastUsedByClient = new Map(latestTokens.map((row) => [row.clientId, row._max.createdAt]))
 
-    const results: ConnectedAssistant[] = []
-    for (const consent of consents) {
-      const latestToken = await this.prisma.oauthAccessToken.findFirst({
-        where: { userId, clientId: consent.clientId },
-        orderBy: { createdAt: 'desc' },
-        select: { createdAt: true },
-      })
-
-      results.push({
-        clientId: consent.clientId,
-        name: consent.client?.name ?? 'Unbekannter Assistent',
-        linkedSince: consent.createdAt ?? new Date(),
-        lastUsed: latestToken?.createdAt ?? null,
-      })
-    }
-
-    return results
+    return consents.map((consent) => ({
+      clientId: consent.clientId,
+      name: consent.client?.name ?? 'Unbekannter Assistent',
+      linkedSince: consent.createdAt ?? new Date(),
+      lastUsed: lastUsedByClient.get(consent.clientId) ?? null,
+    }))
   }
 
   async revokeForUser(userId: string, clientId: string): Promise<void> {
