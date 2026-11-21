@@ -61,8 +61,9 @@ function serveFullReturn() {
     http.get(`${BASE}/kinder`, () =>
       HttpResponse.json({
         kinder: [
-          { id: 'k1', sequenceNumber: 1, firstName: 'Lina', lastName: 'Brenner', geburtsdatum: '2016-05-12', childBenefitClaimEur: '3000', childcareEur: '700' },
+          { id: 'k1', sequenceNumber: 1, firstName: 'Lina', lastName: 'Brenner', geburtsdatum: '2016-05-12', childBenefitClaimEur: '3000', childcareEur: '700', healthBasicEur: '480', careEur: '96' },
           { id: 'k2', sequenceNumber: 2, firstName: '', lastName: '', geburtsdatum: '', childBenefitClaimEur: 'x', childcareEur: null },
+          { id: 'k3', sequenceNumber: 3, firstName: 'Mia', lastName: 'Brenner', geburtsdatum: '2019-02-01', childBenefitClaimEur: '3000', healthBasicEur: '1200', careEur: '0', healthInsuranceAbroad: true },
         ],
         count: 2,
         childBenefitSum: 0,
@@ -177,6 +178,20 @@ describe('Glas-Erklärung — a full joint return', () => {
     expect(second.textContent).toContain('Kind 2')
     expect(second.textContent).toMatch(/Kindergeld: 0\s*€/)
     expect(screen.queryByTestId('glass-row-kind-k2-betreuung')).toBeNull()
+  })
+
+  // Real-data run: the child's recorded health insurance was printed but not shown in the structured preview.
+  it('shows the child’s health and care insurance where the Anlage Kind prints it', async () => {
+    serveFullReturn()
+    renderPreview()
+    const health = await row('kind-k1-kv')
+    expect(health.textContent).toContain('Z. 27 (Kz 66)')
+    expect(health.textContent).toMatch(/480\s*€/)
+    expect((await row('kind-k1-pv')).textContent).toMatch(/96\s*€/)
+    // A foreign insurer: KV and PV together in Kz 89.
+    expect((await row('kind-k3-ausland')).textContent).toMatch(/1\.200\s*€/)
+    expect(screen.queryByTestId('glass-row-kind-k3-kv')).toBeNull()
+    expect(screen.queryByTestId('glass-row-kind-k2-kv')).toBeNull()
   })
 
   it('lists capital income, rental properties and pensions', async () => {
