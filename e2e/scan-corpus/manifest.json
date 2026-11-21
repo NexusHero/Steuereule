@@ -8,7 +8,7 @@
     "expected": {
       "bruttoarbeitslohn": 54320,
       "lohnsteuer": 9810,
-      "sozialversicherung": 10918.32
+      "sozialversicherung": 10919
     }
   },
   {
@@ -20,7 +20,7 @@
     "expected": {
       "bruttoarbeitslohn": 54320,
       "lohnsteuer": 9810,
-      "sozialversicherung": 10918.32
+      "sozialversicherung": 10919
     }
   },
   {
@@ -32,7 +32,7 @@
     "expected": {
       "bruttoarbeitslohn": 54320,
       "lohnsteuer": 9810,
-      "sozialversicherung": 10918.32
+      "sozialversicherung": 10919
     },
     "absent": []
   },
@@ -45,7 +45,7 @@
     "expected": {
       "bruttoarbeitslohn": 54320,
       "lohnsteuer": 9810,
-      "sozialversicherung": 10918.32
+      "sozialversicherung": 10919
     },
     "absent": []
   },
@@ -58,7 +58,7 @@
     "expected": {
       "bruttoarbeitslohn": 54320,
       "lohnsteuer": 9810,
-      "sozialversicherung": 10918.32
+      "sozialversicherung": 10919
     },
     "absent": []
   },
@@ -71,7 +71,7 @@
     "expected": {
       "bruttoarbeitslohn": 54320,
       "lohnsteuer": 9810,
-      "sozialversicherung": 10918.32
+      "sozialversicherung": 10919
     },
     "absent": []
   },
@@ -84,7 +84,7 @@
     "expected": {
       "bruttoarbeitslohn": 54320,
       "lohnsteuer": 9810,
-      "sozialversicherung": 10918.32
+      "sozialversicherung": 10919
     },
     "absent": []
   },
@@ -111,7 +111,7 @@
     "expected": {
       "bruttoarbeitslohn": 38760,
       "lohnsteuer": 5214,
-      "sozialversicherung": 7887.66
+      "sozialversicherung": 7888
     }
   },
   {
@@ -123,7 +123,7 @@
     "expected": {
       "bruttoarbeitslohn": 38760,
       "lohnsteuer": 5214,
-      "sozialversicherung": 7887.66
+      "sozialversicherung": 7888
     }
   },
   {
@@ -135,7 +135,7 @@
     "expected": {
       "bruttoarbeitslohn": 38760,
       "lohnsteuer": 5214,
-      "sozialversicherung": 7887.66
+      "sozialversicherung": 7888
     },
     "absent": []
   },
@@ -148,7 +148,7 @@
     "expected": {
       "bruttoarbeitslohn": 38760,
       "lohnsteuer": 5214,
-      "sozialversicherung": 7887.66
+      "sozialversicherung": 7888
     },
     "absent": []
   },
@@ -161,7 +161,7 @@
     "expected": {
       "bruttoarbeitslohn": 38760,
       "lohnsteuer": 5214,
-      "sozialversicherung": 7887.66
+      "sozialversicherung": 7888
     },
     "absent": []
   },
@@ -174,7 +174,7 @@
     "expected": {
       "bruttoarbeitslohn": 38760,
       "lohnsteuer": 5214,
-      "sozialversicherung": 7887.66
+      "sozialversicherung": 7888
     },
     "absent": []
   },
@@ -187,7 +187,7 @@
     "expected": {
       "bruttoarbeitslohn": 38760,
       "lohnsteuer": 5214,
-      "sozialversicherung": 7887.66
+      "sozialversicherung": 7888
     },
     "absent": []
   },
@@ -214,7 +214,7 @@
     "expected": {
       "bruttoarbeitslohn": 71900,
       "lohnsteuer": 15377,
-      "sozialversicherung": 14391.7
+      "sozialversicherung": 14392
     }
   },
   {
@@ -226,7 +226,7 @@
     "expected": {
       "bruttoarbeitslohn": 71900,
       "lohnsteuer": 15377,
-      "sozialversicherung": 14391.7
+      "sozialversicherung": 14392
     }
   },
   {
@@ -238,7 +238,7 @@
     "expected": {
       "bruttoarbeitslohn": 71900,
       "lohnsteuer": 15377,
-      "sozialversicherung": 14391.7
+      "sozialversicherung": 14392
     },
     "absent": []
   },
@@ -251,7 +251,7 @@
     "expected": {
       "bruttoarbeitslohn": 71900,
       "lohnsteuer": 15377,
-      "sozialversicherung": 14391.7
+      "sozialversicherung": 14392
     },
     "absent": []
   },
@@ -264,7 +264,7 @@
     "expected": {
       "bruttoarbeitslohn": 71900,
       "lohnsteuer": 15377,
-      "sozialversicherung": 14391.7
+      "sozialversicherung": 14392
     },
     "absent": []
   },
@@ -277,7 +277,7 @@
     "expected": {
       "bruttoarbeitslohn": 71900,
       "lohnsteuer": 15377,
-      "sozialversicherung": 14391.7
+      "sozialversicherung": 14392
     },
     "absent": []
   },
@@ -290,7 +290,7 @@
     "expected": {
       "bruttoarbeitslohn": 71900,
       "lohnsteuer": 15377,
-      "sozialversicherung": 14391.7
+      "sozialversicherung": 14392
     },
     "absent": []
   },
@@ -317,7 +317,7 @@
     "expected": {
       "bruttoarbeitslohn": 54320,
       "lohnsteuer": 9810,
-      "sozialversicherung": 10918.32
+      "sozialversicherung": 10919
     }
   },
   {
@@ -358,7 +358,7 @@
     "expected": {
       "bruttoarbeitslohn": 38760,
       "lohnsteuer": 5214,
-      "sozialversicherung": 7887.66
+      "sozialversicherung": 7888
     }
   }
 ]
