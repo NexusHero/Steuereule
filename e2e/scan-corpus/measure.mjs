@@ -80,7 +80,7 @@ export function score(entry, outcome) {
     }
     result.total += 1
     // The LStB mask stores whole euros (amounts are integers end to end), so the document's cents are
-    // compared after rounding to the euro: 10.918,32 → 10.918.
+    // compared after rounding to the euro; the manifest holds the sum of the rounded lines (ADR-0093).
     const ok = got.value !== null && Math.round(got.value) === Math.round(want)
     if (ok) result.correct += 1
     else if (got.sure) {

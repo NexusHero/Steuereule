@@ -24,7 +24,8 @@ const PEOPLE = {
   sap: { year: 2025, gross: 38_760, wageTax: 5_214, rv: 3_604.68, kv: 3_100.8, pv: 678.3, av: 503.88, employer: 'Fiktiva Logistik AG' },
   personio: { year: 2025, gross: 71_900, wageTax: 15_377, rv: 6_686.7, kv: 5_512.05, pv: 1_258.25, av: 934.7, employer: 'Erfundene Software SE' },
 }
-const sv = (p) => Math.round((p.rv + p.kv + p.pv + p.av) * 100) / 100
+// ADR-0093: each line in whole euros as the mask holds it (half up), then added — datev 10.919, not 10.918,32.
+const sv = (p) => [p.rv, p.kv, p.pv, p.av].reduce((sum, amount) => sum + Math.floor((Math.round(amount * 100) + 50) / 100), 0)
 const expected = (p) => ({ bruttoarbeitslohn: p.gross, lohnsteuer: p.wageTax, sozialversicherung: sv(p) })
 
 const ROWS = (p) => [
