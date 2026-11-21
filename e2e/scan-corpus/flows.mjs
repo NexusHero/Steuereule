@@ -95,6 +95,13 @@ async function main() {
       await confirms.first().click()
       await page.waitForFunction((n) => document.querySelectorAll('[data-testid^="lstb-confirm-field-"]').length < n, left, { timeout: 10_000 })
     }
+    // Further lines the photo staged (Zeile 22a, 23a, …) ask for their own check before the values can be taken over.
+    const lineConfirms = page.locator('[data-testid^="lstb-confirm-line-"]')
+    for (let guard = 0; guard < 20 && (await lineConfirms.count()) > 0; guard++) {
+      const before = await lineConfirms.count()
+      await lineConfirms.first().click()
+      await page.waitForFunction((n) => document.querySelectorAll('[data-testid^="lstb-confirm-line-"]').length < n, before, { timeout: 10_000 })
+    }
     if (await apply.isDisabled()) fail('"Werte übernehmen" must unlock once every field is confirmed')
     console.log(`[${TAG}] ✅ OCR photo — three fields to confirm one by one, apply unlocks only after the last`)
 

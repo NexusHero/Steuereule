@@ -16,7 +16,7 @@ import {
   downloadAndVerifyPdf,
   runStandaloneScenario,
 } from './helpers/scenario-harness.mjs'
-import { startPersona, completeLstb, completeCommute, assertPrintoutWaitsForComparison } from './helpers/persona-steps.mjs'
+import { startPersona, completeLstb, completeCommute, assertComparisonIsOptional } from './helpers/persona-steps.mjs'
 import { openCockpitTopic } from '../harness/flows.mjs'
 
 export async function runScenario04(browser, webOrigin, sql) {
@@ -49,7 +49,7 @@ export async function runScenario04(browser, webOrigin, sql) {
   await leaveStrom(page)
 
   await page.locator('[data-testid="cockpit-kacheln"]').waitFor({ state: 'visible', timeout: 10_000 })
-  await assertPrintoutWaitsForComparison(page, 'Scenario 04')
+  await assertComparisonIsOptional(page, 'Scenario 04')
 
   await page.locator('[data-testid="cockpit-stammdaten"]').waitFor({ state: 'visible', timeout: 10_000 })
   await page.locator('[data-testid="cockpit-stammdaten"]').click()
@@ -162,9 +162,7 @@ export async function runScenario04(browser, webOrigin, sql) {
   unlockTaxYearInDb(sql, s.email, s.year)
 
   await page.locator('[data-testid="cockpit-ausdruck"]').click()
-  await page.locator('[data-testid="verheiratet-ja"]').waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator('[data-testid="verheiratet-ja"]').click()
-  await page.locator('[data-testid="abgabe-vergleich-ueberspringen"]').click()
+  // The comparison is optional (Echtdatenlauf 4): the printout opens without it.
   await page.locator('[data-testid="abgabe-zum-ausdruck"]').waitFor({ state: 'visible', timeout: 10_000 })
   await page.locator('[data-testid="abgabe-zum-ausdruck"]').click()
   await page.locator('[data-testid="ausdruck-zurueck"]').waitFor({ state: 'visible', timeout: 10_000 })

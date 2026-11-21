@@ -54,13 +54,14 @@ async function main() {
       await page.goto(`${webOrigin}/app/steuerjahr/${year}/lstb`, { waitUntil: 'networkidle' })
       await page.locator('[data-testid="lstb-scan-card"]').waitFor({ state: 'visible', timeout: 15_000 })
     }
-    // Fields that still need a check each carry their own confirm button; confirm one after the other.
+    // Fields and further lines that still need a check each carry their own confirm button; confirm one after the other.
+    const PENDING = '[data-testid^="lstb-confirm-field-"], [data-testid^="lstb-confirm-line-"]'
     const confirmAllFields = async () => {
-      const buttons = page.locator('[data-testid^="lstb-confirm-field-"]')
-      for (let guard = 0; guard < 10 && (await buttons.count()) > 0; guard++) {
+      const buttons = page.locator(PENDING)
+      for (let guard = 0; guard < 25 && (await buttons.count()) > 0; guard++) {
         const before = await buttons.count()
         await buttons.first().click()
-        await page.waitForFunction((n) => document.querySelectorAll('[data-testid^="lstb-confirm-field-"]').length < n, before, { timeout: 10_000 })
+        await page.waitForFunction(([sel, n]) => document.querySelectorAll(sel).length < n, [PENDING, before], { timeout: 10_000 })
       }
     }
     const scan = async (file) => page.locator('[data-testid="lstb-scan-file-input"]').setInputFiles(await file)
