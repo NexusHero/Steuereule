@@ -2001,6 +2001,10 @@
       "retry": "Try again"
     },
     "offen_one": "{{count}} open",
+    "mehrLaden": {
+      "cta": "Load more",
+      "laedt": "Loading …"
+    },
     "offen_other": "{{count}} open",
     "empty": {
       "heading": "No receipts yet.",

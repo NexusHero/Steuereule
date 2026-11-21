@@ -1,6 +1,7 @@
 import '@fastify/multipart'
 import { Body, Controller, Delete, Get, HttpCode, Inject, Param, Post, Query, Req, Res, UseGuards } from '@nestjs/common'
 import type { FastifyReply, FastifyRequest } from 'fastify'
+import { RECEIPT_FOLDERS, isReceiptFolder, type ReceiptFolder } from '@steuereule/core'
 import {
   ApiBody,
   ApiConsumes,
@@ -8,6 +9,7 @@ import {
   ApiExcludeEndpoint,
   ApiNotFoundResponse,
   ApiOkResponse,
+  ApiOperation,
   ApiParam,
   ApiQuery,
   ApiTags,
@@ -16,7 +18,7 @@ import { CurrentUser } from '../auth/current-user.decorator.js'
 import { UserContextGuard } from '../auth/user-context.guard.js'
 import { InvalidInputError } from '../common/domain-error.js'
 import { ReceiptService } from './receipt.service.js'
-import { DeleteReceiptResponseDto, ReceiptResponseDto } from './dto/receipt-response.dto.js'
+import { DeleteReceiptResponseDto, ReceiptPageResponseDto, ReceiptResponseDto } from './dto/receipt-response.dto.js'
 import { CreateReceiptDto } from './dto/create-receipt.dto.js'
 import { SetAssignmentDto } from './dto/set-assignment.dto.js'
 
@@ -39,6 +41,24 @@ function parseBooleanQuery(raw: string | undefined, name: string): boolean {
   throw new InvalidInputError('QUERY_BOOLEAN_INVALID', `"${name}" must be true or false.`)
 }
 
+const DEFAULT_PAGE_SIZE = 30
+const MAX_PAGE_SIZE = 100
+
+function parsePageSize(raw: string | undefined): number {
+  if (raw === undefined || raw === '') return DEFAULT_PAGE_SIZE
+  const value = Number(raw)
+  if (!Number.isInteger(value) || value < 1 || value > MAX_PAGE_SIZE) {
+    throw new InvalidInputError('QUERY_LIMIT_INVALID', `"limit" must be a whole number from 1 to ${MAX_PAGE_SIZE}.`)
+  }
+  return value
+}
+
+function parseFolder(raw: string | undefined): ReceiptFolder | undefined {
+  if (raw === undefined || raw === '') return undefined
+  if (!isReceiptFolder(raw)) throw new InvalidInputError('QUERY_FOLDER_INVALID', `"ordner" must be one of ${RECEIPT_FOLDERS.join(', ')}.`)
+  return raw
+}
+
 function isFileTooLargeError(error: unknown): boolean {
   if (!error || typeof error !== 'object') return false
   const code = 'code' in error ? (error as { code?: unknown }).code : undefined
@@ -52,9 +72,18 @@ export class ReceiptController {
   constructor(@Inject(ReceiptService) private readonly receiptService: ReceiptService) {}
 
   @Get()
-  @ApiOkResponse({ type: ReceiptResponseDto, isArray: true, description: 'The caller’s Beleg inbox, newest first.' })
-  list(@CurrentUser() userId: string): Promise<ReceiptResponseDto[]> {
-    return this.receiptService.list(userId)
+  @ApiOperation({ summary: 'One page of the Beleg inbox, newest first, with the counts the inbox shows over all Belege' })
+  @ApiQuery({ name: 'limit', required: false, type: Number, description: `Belege per page, 1 to ${MAX_PAGE_SIZE}; ${DEFAULT_PAGE_SIZE} without it.` })
+  @ApiQuery({ name: 'cursor', required: false, type: String, description: '`nextCursor` of the page before.' })
+  @ApiQuery({ name: 'ordner', required: false, type: String, enum: RECEIPT_FOLDERS, description: 'Only the Belege of this folder; the counts still cover all of them.' })
+  @ApiOkResponse({ type: ReceiptPageResponseDto })
+  list(
+    @CurrentUser() userId: string,
+    @Query('limit') limit?: string,
+    @Query('cursor') cursor?: string,
+    @Query('ordner') folder?: string,
+  ): Promise<ReceiptPageResponseDto> {
+    return this.receiptService.listPage(userId, { limit: parsePageSize(limit), cursor: cursor || undefined, folder: parseFolder(folder) })
   }
 
   @Post()

@@ -6505,22 +6505,54 @@
     "/v1/belege": {
       "get": {
         "operationId": "ReceiptController_list",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "ordner",
+            "required": false,
+            "in": "query",
+            "description": "Only the Belege of this folder; the counts still cover all of them.",
+            "schema": {
+              "enum": [
+                "einkuenfte",
+                "vorsorge",
+                "bescheide",
+                "weitere"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "description": "`nextCursor` of the page before.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "Belege per page, 1 to 100; 30 without it.",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
         "responses": {
           "200": {
-            "description": "The caller’s Beleg inbox, newest first.",
+            "description": "",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/ReceiptResponseDto"
-                  }
+                  "$ref": "#/components/schemas/ReceiptPageResponseDto"
                 }
               }
             }
           }
         },
+        "summary": "One page of the Beleg inbox, newest first, with the counts the inbox shows over all Belege",
         "tags": [
           "belege"
         ]
@@ -17578,6 +17610,123 @@
           "processing",
           "filledFields",
           "duplicateOf"
+        ]
+      },
+      "ReceiptFolderCountsDto": {
+        "type": "object",
+        "properties": {
+          "einkuenfte": {
+            "type": "number",
+            "example": 3,
+            "description": "Belege in the folder Einkünfte (Lohnausweis, Quellensteuer, Rentenbezugsmitteilung, Familienzulage)."
+          },
+          "vorsorge": {
+            "type": "number",
+            "example": 1,
+            "description": "Belege in the folder Vorsorge (Pensionskasse, Säule 3a, Krankenkasse)."
+          },
+          "bescheide": {
+            "type": "number",
+            "example": 0,
+            "description": "Belege in the folder Bescheide (Steuerbescheid, Steuerbescheinigung)."
+          },
+          "weitere": {
+            "type": "number",
+            "example": 5,
+            "description": "Every other Beleg, one without a kind included."
+          }
+        },
+        "required": [
+          "einkuenfte",
+          "vorsorge",
+          "bescheide",
+          "weitere"
+        ]
+      },
+      "ReceiptProposalDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "b1f6c9a0-0f5e-4a52-9a43-7d0c4d3b2e10"
+          },
+          "taxYear": {
+            "type": "number",
+            "example": 2025,
+            "description": "The tax year the Beleg is proposed for."
+          }
+        },
+        "required": [
+          "id",
+          "taxYear"
+        ]
+      },
+      "ReceiptCountsDto": {
+        "type": "object",
+        "properties": {
+          "total": {
+            "type": "number",
+            "example": 9,
+            "description": "Every Beleg of the caller, whatever page or folder is shown."
+          },
+          "open": {
+            "type": "number",
+            "example": 2,
+            "description": "Belege not fully processed yet (`processing.open`), over all of them."
+          },
+          "unassigned": {
+            "type": "number",
+            "example": 4,
+            "description": "Belege whose tax year is not confirmed yet: no year, only proposed, or in conflict."
+          },
+          "folders": {
+            "$ref": "#/components/schemas/ReceiptFolderCountsDto"
+          },
+          "proposals": {
+            "description": "Every Beleg whose year is only proposed and waits for a yes, over all of them: what one tap on „alle zuordnen“ takes.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReceiptProposalDto"
+            }
+          }
+        },
+        "required": [
+          "total",
+          "open",
+          "unassigned",
+          "folders",
+          "proposals"
+        ]
+      },
+      "ReceiptPageResponseDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "description": "One page of the Beleg inbox, newest first.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReceiptResponseDto"
+            }
+          },
+          "nextCursor": {
+            "type": "string",
+            "nullable": true,
+            "example": "eyJ0IjoiMjAyNi0wMS0wMVQwMDowMDowMC4wMDBaIiwiaSI6ImFiYyJ9",
+            "description": "Pass it as `cursor` for the next page; null on the last one. Opaque: do not build or read it."
+          },
+          "counts": {
+            "description": "The numbers the inbox shows, counted over all Belege and not just this page.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ReceiptCountsDto"
+              }
+            ]
+          }
+        },
+        "required": [
+          "items",
+          "nextCursor",
+          "counts"
         ]
       },
       "CreateReceiptDto": {

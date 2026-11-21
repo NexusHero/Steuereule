@@ -12,6 +12,7 @@ import { ReceiptsScreen } from './ReceiptsScreen'
 import { server } from '../../test-msw-server'
 import { ShellStateProvider, useShellState } from '../../navigation/ShellState'
 import type { AssignmentQuestionDto, ReceiptResponseDto } from '@steuereule/api-client'
+import { receiptInboxHandler, receiptPage } from '../../test-receipt-inbox'
 
 const { mockExtract } = vi.hoisted(() => ({ mockExtract: vi.fn() }))
 vi.mock('../../lib/documentOcr', async (importOriginal) => ({ ...(await importOriginal<typeof import('../../lib/documentOcr')>()), extractDocumentTextOnDevice: mockExtract }))
@@ -78,7 +79,7 @@ describe('reading a stored Beleg again', () => {
   it('fetches the stored original and reads it on the device, then asks the server about it', async () => {
     const parseBodies: unknown[] = []
     server.use(
-      http.get(RECEIPTS_URL, () => HttpResponse.json([receipt()])),
+      receiptInboxHandler([receipt()]),
       http.get('*/v1/belege/b1/datei', () => new HttpResponse('%PDF-1.4', { headers: { 'content-type': 'application/pdf' } })),
       http.post('*/v1/belege/parse', async ({ request }) => {
         parseBodies.push(await request.json())
@@ -96,7 +97,7 @@ describe('reading a stored Beleg again', () => {
 
   it('says the original could not be read when it is gone', async () => {
     server.use(
-      http.get(RECEIPTS_URL, () => HttpResponse.json([receipt()])),
+      receiptInboxHandler([receipt()]),
       http.get('*/v1/belege/b1/datei', () => HttpResponse.json({ message: 'gone' }, { status: 404 })),
     )
     renderReceipts()
@@ -112,7 +113,7 @@ describe('leading to the drafts', () => {
   it('switches to the year of the drafts when the user opens them', async () => {
     server.use(
       http.get(RECEIPTS_URL, () =>
-        HttpResponse.json([receipt({ hasFile: false, processing: { state: 'vorschlaege', reason: null, pending: 1, applied: 0, dismissed: 0, draftsTaxYear: 2020, open: true } })]),
+        HttpResponse.json(receiptPage([receipt({ hasFile: false, processing: { state: 'vorschlaege', reason: null, pending: 1, applied: 0, dismissed: 0, draftsTaxYear: 2020, open: true } })])),
       ),
     )
     renderReceipts(true)
@@ -125,7 +126,7 @@ describe('leading to the drafts', () => {
   it('opens the drafts of the open year without changing it', async () => {
     server.use(
       http.get(RECEIPTS_URL, () =>
-        HttpResponse.json([receipt({ hasFile: false, processing: { state: 'vorschlaege', reason: null, pending: 1, applied: 0, dismissed: 0, draftsTaxYear: null, open: true } })]),
+        HttpResponse.json(receiptPage([receipt({ hasFile: false, processing: { state: 'vorschlaege', reason: null, pending: 1, applied: 0, dismissed: 0, draftsTaxYear: null, open: true } })])),
       ),
     )
     renderReceipts(true)
@@ -139,7 +140,7 @@ describe('"Für wen?" on a Beleg card', () => {
   const upload = (question: AssignmentQuestionDto, onParse: (body: { holder?: string }) => void) => {
     let list: ReceiptResponseDto[] = []
     server.use(
-      http.get(RECEIPTS_URL, () => HttpResponse.json(list)),
+      receiptInboxHandler(() => list),
       http.post('*/v1/belege/upload', () => {
         list = [receipt()]
         return HttpResponse.json(receipt(), { status: 201 })

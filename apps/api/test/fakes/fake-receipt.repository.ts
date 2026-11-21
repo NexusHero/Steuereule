@@ -8,9 +8,11 @@ import type {
   ReceiptFileMetaRecord,
   CreateReceiptData,
   RecordReadData,
+  ReceiptFacts,
+  ReceiptPageQuery,
   SetAssignmentData,
 } from '../../src/receipt/receipt.repository.js'
-import type { HolderRef, ReceiptType } from '@steuereule/core'
+import { receiptFolderOfKind, type HolderRef, type ReceiptType } from '@steuereule/core'
 
 export class FakeReceiptRepository implements ReceiptRepository {
   private readonly rows: ReceiptRecord[] = []
@@ -22,6 +24,26 @@ export class FakeReceiptRepository implements ReceiptRepository {
         .filter((row) => row.userId === userId)
         .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime()),
     )
+  }
+
+  async listFactsForUser(userId: string): Promise<ReceiptFacts[]> {
+    return (await this.findAllForUser(userId)).map((row) => {
+      const { userId: _user, fileName: _name, updatedAt: _updated, holders: _holders, holderTaxYear: _holderYear, fileMeta: _meta, direction: _direction, ...facts } = row
+      return facts
+    })
+  }
+
+  async findPageForUser(userId: string, query: ReceiptPageQuery): Promise<ReceiptRecord[]> {
+    const { after, folder } = query
+    return (await this.findAllForUser(userId))
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime() || (a.id < b.id ? 1 : -1))
+      .filter((row) => folder === undefined || receiptFolderOfKind(row.kind) === folder)
+      .filter((row) => after === undefined || row.createdAt < after.createdAt || (row.createdAt.getTime() === after.createdAt.getTime() && row.id < after.id))
+      .slice(0, query.limit)
+  }
+
+  async findManyByIdsForUser(userId: string, ids: readonly string[]): Promise<ReceiptRecord[]> {
+    return (await this.findAllForUser(userId)).filter((row) => ids.includes(row.id))
   }
 
   findByIdForUser(userId: string, id: string): Promise<ReceiptRecord | null> {

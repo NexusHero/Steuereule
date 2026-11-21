@@ -5,6 +5,7 @@ import { http, HttpResponse } from 'msw'
 import { server } from '../../../test-msw-server'
 import { renderInApp } from '../../../test-render'
 import { StoredReceiptPicker } from './StoredReceiptPicker'
+import { receiptInboxHandler } from '../../../test-receipt-inbox'
 
 const receipt = (id: string, fileName: string, hasFile = true) => ({ id, fileName, hasFile })
 
@@ -19,7 +20,7 @@ function renderPicker(props: Partial<Parameters<typeof StoredReceiptPicker>[0]> 
 }
 
 function listReceipts(...items: ReturnType<typeof receipt>[]) {
-  server.use(http.get('*/v1/belege', () => HttpResponse.json(items, { status: 200 })))
+  server.use(receiptInboxHandler(items))
 }
 
 describe('StoredReceiptPicker', () => {
