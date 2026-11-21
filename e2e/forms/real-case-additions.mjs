@@ -363,8 +363,13 @@ async function main() {
     const { storedId: receiptId } = await upload('Row K', 'lstb-anna.pdf', lstbAnna)
     const wrong = await choose('Row K', 'A')
     if (wrong.lstb?.receiptId !== receiptId) fail(`Row K: the LStB should be read for Kemal from its Beleg, got ${JSON.stringify(wrong).slice(0, 300)}`)
-    for (const d of (await drafts()).filter((x) => x.status === 'pending' && x.screen === 'lstb' && x.receiptId === receiptId)) {
-      await call(api, 'POST', `/v1/steuerjahre/${YEAR}/advisor/actions/${d.actionId}/apply`, {})
+    // A value Kemal already holds comes as „zusätzlich“ and „ersetzen“ (N2, Echtdatenlauf 4); taking one answers the
+    // other. So the pending drafts are read again before each step, and of a pair „ersetzen“ is taken.
+    for (let step = 0; step < 30; step++) {
+      const pending = (await drafts()).filter((x) => x.status === 'pending' && x.screen === 'lstb' && x.receiptId === receiptId)
+      const next = pending.find((x) => x.combination == null || x.combination === 'replace')
+      if (next === undefined) break
+      await call(api, 'POST', `/v1/steuerjahre/${YEAR}/advisor/actions/${next.actionId}/apply`, {})
     }
     if ((await call(api, 'GET', `/v1/steuerjahre/${YEAR}/lstb`)).state?.bruttoarbeitslohn !== 21000) fail('Row K: the LStB should first be at Kemal')
     await page.goto(`${webOrigin}/app/belege`, { waitUntil: 'networkidle' })
