@@ -8,6 +8,7 @@ import { toIsoDate } from '../common/dates'
 import { MARITAL_STATUSES, RELIGION_KEYS, isValidIban, normalizeIban } from '../common/master-data'
 import { CHILD_RELATIONSHIPS, OTHER_CHILD_RELATIONSHIPS, OTHER_PARENT_STATUSES } from '../domains/children'
 import { SALARY_CERTIFICATE_AMOUNT_FIELDS, SALARY_CERTIFICATE_SIGNED_FIELD } from '../domains/cross-border'
+import { DAILY_BENEFIT_SOURCES } from '../domains/daily-benefit'
 import { LSTB_OPTIONAL_LINES, LSTB_SOCIAL_LINES, LSTB_SOLI_LINE, WAGE_TAX_CERTIFICATE_FIELDS } from '../domains/lstb'
 import { PENSION_TYPES } from '../domains/pension'
 import { ASSESSMENT_FIELDS, ASSESSMENT_POSITIONS } from '../engine/assessment'
@@ -244,6 +245,8 @@ const DECLARED: Readonly<Record<Screen, { readonly perInstance: boolean; readonl
       pkArbeitgeberGesamtChf: amount,
       steuerfreiesKrankentaggeldChf: amount,
       steuerfreiesUnfalltaggeldChf: amount,
+      /** Where a daily benefit in Ziffer 8 came from: decides which amount field it goes to, if any (ADR-0072, Punkt 5). */
+      taggeldQuelle: oneOf(DAILY_BENEFIT_SOURCES),
       krankentaggeldArbeitgeberProzent: percent,
       krankentaggeldArbeitgeberChf: amount,
       nbuvArbeitgeberProzent: percent,
@@ -391,7 +394,8 @@ const HINTS: Readonly<Partial<Record<Screen, Readonly<Record<string, string>>>>>
     pkArbeitgeberChf: 'nur der obligatorische BVG-Teil (Säule 2a) der Arbeitgeberbeiträge, N-Gre Zeile 87',
     pkArbeitgeberGesamtChf: 'alle Arbeitgeberbeiträge an die Pensionskasse, obligatorisch und überobligatorisch zusammen; den überobligatorischen Teil (Zeile 20) rechnet die App',
     krankentaggeldChf: 'Prämie des Arbeitnehmers zur Krankentaggeldversicherung, N-Gre Zeile 80, nicht das ausgezahlte Taggeld',
-    steuerfreiesKrankentaggeldChf: 'ausgezahltes steuerfreies Krankentaggeld, NUR wenn es im Bruttolohn Ziffer 8 enthalten ist (N-Gre Zeile 9); der Lohnausweis sagt das nicht eindeutig: immer nachfragen und nur über `propose_two_paths` vorschlagen (ein Weg 0 = nicht abziehen, ein Weg der Betrag)',
+    steuerfreiesKrankentaggeldChf: 'ausgezahltes steuerfreies Krankentaggeld einer Versicherung, NUR wenn es im Bruttolohn Ziffer 8 enthalten ist (N-Gre Zeile 9); erst taggeldQuelle fragen; bei „beides“ nur der Teil der Versicherung (die Aufstockung des Arbeitgebers bleibt Lohn); Lohnfortzahlung des Arbeitgebers ohne Versicherung: 0; der Lohnausweis sagt das nicht eindeutig: immer nachfragen und nur über `propose_two_paths` vorschlagen (ein Weg 0 = nicht abziehen, ein Weg der Betrag)',
+    taggeldQuelle: 'woher ein Taggeld im Bruttolohn Ziffer 8 kam, eine Antwort je Lohnausweis, vom Nutzer: „krankentaggeldversicherung“ (Kollektiv-Krankentaggeldversicherung, mit dem Lohn verrechnet) und „mutterschaftIv“ → Betrag in steuerfreiesKrankentaggeldChf; „beides“ → nur der Teil der Versicherung in steuerfreiesKrankentaggeldChf; „unfallversicherung“ (UVG/SUVA) → steuerfreiesUnfalltaggeldChf; „lohnfortzahlung“ (Lohnfortzahlung des Arbeitgebers ohne Versicherung, ist Lohn) und „kein“ → nichts abziehen, steuerfreiesKrankentaggeldChf = 0',
     steuerfreiesUnfalltaggeldChf: 'NUR das ausgezahlte Taggeld der Unfallversicherung (UVG/SUVA), und nur, wenn es im Bruttolohn Ziffer 8 enthalten ist (N-Gre Zeile „SUVA – Geld“); Krankentaggeld gehört in steuerfreiesKrankentaggeldChf; es ist steuerfrei, erhöht aber den Steuersatz (Progressionsvorbehalt, § 32b EStG); der Lohnausweis sagt nicht eindeutig, ob es in Ziffer 8 steckt: immer nachfragen und nur über `propose_two_paths` vorschlagen (ein Weg 0 = nicht abziehen, ein Weg der Betrag)',
     'andere-leistungen': 'Lohnausweis Ziffer 7; kann negativ sein (z. B. -75)',
     krankenkasseChf: 'nur die Grundversicherung nach KVG (Basisabsicherung), ohne Zusatzversicherungen; zeigt der Beleg die Aufteilung nicht, frag nach',

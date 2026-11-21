@@ -5,6 +5,8 @@
 // Deterministic: the model gets it as a checklist, and the app asks it itself when the model does not.
 import { mandatoryCapitalFields, classifyCapitalDepot } from '../domains/capital'
 import { lstbSubsidyQuestionOpen } from '../domains/lstb'
+import { dailyBenefitAmountField, isDailyBenefitSource } from '../domains/daily-benefit'
+import { DAILY_BENEFIT_GAP_QUESTION, dailyBenefitHint } from './entry-rules'
 import { AMOUNT_LATER } from './interview'
 import { PERSON_B_HANDLE, PERSON_B_SCREENS, PERSON_B_INTERVIEW_FIELDS, type AdvisorPerson } from './advisor-household'
 import { isAiWritableField } from './field-catalog'
@@ -142,10 +144,18 @@ const TEXTS: Readonly<Record<string, FieldText>> = {
   'commute.shortestRouteConfirmed': { question: 'Es zählt die kürzeste Straßenverbindung (§ 9 Abs. 1 Nr. 4 EStG): Sind die erfassten Kilometer die kürzeste Strecke zur Arbeit?', keywords: ['kürzeste'] },
   'commute.secondShortestRouteConfirmed': { question: 'Sind auch die Kilometer des zweiten Arbeitswegs die kürzeste Straßenverbindung?', keywords: ['kürzeste'] },
   'commute.periodFrom': { question: 'Es gab im Jahr zwei Arbeitgeber: Für welchen Zeitraum gilt der erfasste Arbeitsweg (von/bis), und gibt es für den anderen Arbeitgeber einen eigenen Weg (Kilometer, Fahrtage) oder keinen?', keywords: ['zeitraum', 'arbeitgeberwechsel', 'anderen arbeitgeber'] },
+  'chLohnausweis.taggeldQuelle': {
+    question: DAILY_BENEFIT_GAP_QUESTION,
+    keywords: ['woher kam das taggeld', 'taggeld im bruttolohn', 'ausgezahltes taggeld', 'ausgezahltes krankentaggeld', 'ausgezahlte krankentaggeld', 'lohnfortzahlung'],
+  },
   'chLohnausweis.steuerfreiesKrankentaggeldChf': {
     question:
-      'Wurde im Jahr Krankentaggeld (auch Mutterschaftstaggeld) oder Unfalltaggeld der Unfallversicherung (UVG/SUVA) ausgezahlt, und ist es im Bruttolohn Ziffer 8 des Lohnausweises enthalten (Hinweis z. B. eine Bemerkung wie „KK-Taggeld Verrechnung“)? Wenn ja: welcher Betrag in CHF laut Taggeld-Abrechnung? Krankentaggeld gehört in dieses Feld, Unfalltaggeld in chLohnausweis.steuerfreiesUnfalltaggeldChf (steuerfrei, erhöht aber den Steuersatz). Ohne Taggeld: 0.',
-    keywords: ['taggeld ausgezahlt', 'ausgezahltes krankentaggeld', 'ausgezahlte krankentaggeld', 'ausgezahltes taggeld', 'ausgezahlte taggeld', 'ausgezahltes unfalltaggeld', 'ausgezahlte unfalltaggeld'],
+      'Welchen Betrag in CHF hat die Versicherung laut Taggeld-Abrechnung gezahlt, der im Bruttolohn Ziffer 8 des Lohnausweises enthalten ist? Bei „beides“ nur den Teil der Versicherung; die Aufstockung des Arbeitgebers bleibt Lohn und wird nicht abgezogen.',
+    keywords: ['betrag laut taggeld', 'teil der versicherung', 'ausgezahltes krankentaggeld', 'ausgezahlte krankentaggeld'],
+  },
+  'chLohnausweis.steuerfreiesUnfalltaggeldChf': {
+    question: 'Welchen Betrag in CHF hat die Unfallversicherung (UVG/SUVA) laut Taggeld-Abrechnung gezahlt, der im Bruttolohn Ziffer 8 des Lohnausweises enthalten ist? Steuerfrei, erhöht aber den Steuersatz (Progressionsvorbehalt).',
+    keywords: ['unfalltaggeld'],
   },
   'kapital.kapitalertraege': { question: 'Wie hoch waren die Kapitalerträge im Jahr laut Steuerbescheinigung der Bank (auch wenn der Freistellungsauftrag sie abdeckt)?', keywords: ['höhe der kapitalertr', 'steuerbescheinigung'] },
   'kind.childBenefitClaimEur': { question: 'Kindergeld: Für wie viele Monate bestand im Jahr Anspruch auf deutsches Kindergeld (auch wenn eine Schweizer Kinderzulage es kürzt)? Der Anspruch im Jahr gehört in die Anlage Kind, auch 0.', keywords: ['kindergeld'] },
@@ -291,7 +301,16 @@ const COMMUTE_RULE_READS: readonly (readonly [Screen, string])[] = [
   ['chLohnausweis', 'bruttolohn-total'],
 ]
 const HEALTH_RULE_READS: readonly (readonly [Screen, string])[] = [['chLohnausweis', 'krankenkasseChf'], ['chLohnausweis', 'krankenkasseZusatzChf']]
-const SICK_PAY_RULE_READS: readonly (readonly [Screen, string])[] = [['chLohnausweis', 'bruttolohn-total'], ['chLohnausweis', 'steuerfreiesKrankentaggeldChf'], ['chLohnausweis', 'steuerfreiesUnfalltaggeldChf']]
+const SICK_PAY_RULE_READS: readonly (readonly [Screen, string])[] = [
+  ['chLohnausweis', 'bruttolohn-total'],
+  ['chLohnausweis', 'taggeldQuelle'],
+  ['chLohnausweis', 'steuerfreiesKrankentaggeldChf'],
+  ['chLohnausweis', 'steuerfreiesUnfalltaggeldChf'],
+  // For the AHV hint under the question (never the decision).
+  ['chLohnausweis', 'ahv-beitraege'],
+  ['chLohnausweis', 'familienzulagenChf'],
+  ['chLohnausweis', 'familienzulagenImBruttolohn'],
+]
 
 /** What each fixed rule (ADR-0093) reads to decide whether it is still open. */
 const RULE_READS: Readonly<Record<string, readonly (readonly [Screen, string])[]>> = {
@@ -307,10 +326,10 @@ const RULE_READS: Readonly<Record<string, readonly (readonly [Screen, string])[]
   regelVorauszahlungen: [['interview', 'vorauszahlungen-gate'], ['interview', 'vorauszahlungen-betrag']],
 }
 
-/** The fields a fixed rule still needs, from the values read for it. */
-function ruleGaps(code: string, read: (screen: Screen, field: string) => string | null | undefined): [Screen, string][] {
+/** The fields a fixed rule still needs, from the values read for it; a third element is added to the question. */
+function ruleGaps(code: string, read: (screen: Screen, field: string) => string | null | undefined, taxYear: number | undefined): [Screen, string, string?][] {
   const amount = (screen: Screen, field: string): number | null => (isInteger(read(screen, field)) ? Number(read(screen, field)) : null)
-  const out: [Screen, string][] = []
+  const out: [Screen, string, string?][] = []
   if (code.startsWith('regelLstb')) {
     if (lstbSubsidyQuestionOpen({ kvArbeitnehmer: amount('lstb', 'kvArbeitnehmer'), pvArbeitnehmer: amount('lstb', 'pvArbeitnehmer'), zuschuesseKvPv: amount('lstb', 'zuschuesseKvPv') })) {
       out.push(['lstb', 'zuschuesseKvPv'])
@@ -328,9 +347,23 @@ function ruleGaps(code: string, read: (screen: Screen, field: string) => string 
     if ((amount('chLohnausweis', 'krankenkasseChf') ?? 0) > 0 && amount('chLohnausweis', 'krankenkasseZusatzChf') === null) out.push(['chLohnausweis', 'krankenkasseZusatzChf'])
   } else if (code.startsWith('regelKrankentaggeld')) {
     // A recorded Swiss wage statement without the answer: a tax-free benefit may still sit in the wage (real-data run).
-    // An accident benefit (UVG/SUVA) on its own field answers the same question.
-    const answered = amount('chLohnausweis', 'steuerfreiesKrankentaggeldChf') !== null || amount('chLohnausweis', 'steuerfreiesUnfalltaggeldChf') !== null
-    if ((amount('chLohnausweis', 'bruttolohn-total') ?? 0) > 0 && !answered) out.push(['chLohnausweis', 'steuerfreiesKrankentaggeldChf'])
+    // Where the money came from decides the field (ADR-0072, Punkt 5): first the source, then the amount it needs.
+    const gross = amount('chLohnausweis', 'bruttolohn-total')
+    if ((gross ?? 0) <= 0) return out
+    const source = read('chLohnausweis', 'taggeldQuelle')
+    if (isDailyBenefitSource(source)) {
+      const field = dailyBenefitAmountField(source)
+      if (field !== null && amount('chLohnausweis', field) === null) out.push(['chLohnausweis', field])
+      return out
+    }
+    // Recorded before the question existed: 0 deducts nothing, an accident benefit names its source. A sickness
+    // amount may be the employer's continued pay, which is wage: asked again, with the AHV hint.
+    const sickness = amount('chLohnausweis', 'steuerfreiesKrankentaggeldChf')
+    const accident = amount('chLohnausweis', 'steuerfreiesUnfalltaggeldChf')
+    if (sickness === 0 || (sickness === null && accident !== null)) return out
+    const allowances = read('chLohnausweis', 'familienzulagenImBruttolohn') === 'true' ? (amount('chLohnausweis', 'familienzulagenChf') ?? 0) : 0
+    const hint = taxYear === undefined ? null : dailyBenefitHint(sickness, { taxYear, grossWageChf: gross, ahvContributionsChf: amount('chLohnausweis', 'ahv-beitraege'), familyAllowancesChf: allowances })
+    out.push(hint === null ? ['chLohnausweis', 'taggeldQuelle'] : ['chLohnausweis', 'taggeldQuelle', hint])
   } else if (code === 'regelKapital') {
     const answer = read('interview', 'einkuenfte')
     if (empty(answer)) out.push(['interview', 'einkuenfte'])
@@ -362,9 +395,10 @@ function subjectOf(target: PrintoutGapTarget): string {
   return target.person === 'B' ? PERSON_B_HANDLE : 'Du'
 }
 
-function questionFor(ctx: PrintoutGapContext, target: PrintoutGapTarget, required: boolean): PrintoutGapQuestion {
+function questionFor(ctx: PrintoutGapContext, target: PrintoutGapTarget, required: boolean, extra?: string): PrintoutGapQuestion {
   const known = TEXTS[`${target.screen}.${target.field}`] ?? { question: `${target.field}?`, keywords: [target.field.toLowerCase()] }
-  const text = { ...known, question: known.question.replace('{jahr}', ctx.taxYear === undefined ? '' : ` ${ctx.taxYear}`) }
+  const question = known.question.replace('{jahr}', ctx.taxYear === undefined ? '' : ` ${ctx.taxYear}`)
+  const text = { ...known, question: extra === undefined ? question : `${question} ${extra}` }
   const mask = maskOf(target.screen, target.field)
   return {
     ...target,
@@ -438,8 +472,8 @@ function rentalGaps(read: (field: string) => string | null | undefined): string[
 export function planPrintoutGaps(missing: readonly string[], ctx: PrintoutGapContext, values: PrintoutGapValues): PrintoutGapPlan {
   const questions = new Map<string, PrintoutGapQuestion>()
   const unplanned: string[] = []
-  const ask = (target: PrintoutGapTarget, required = true) => {
-    const question = questionFor(ctx, target, required)
+  const ask = (target: PrintoutGapTarget, required = true, extra?: string) => {
+    const question = questionFor(ctx, target, required, extra)
     if (!questions.has(question.key)) questions.set(question.key, question)
   }
   const valueOf = (person: AdvisorPerson, screen: Screen, field: string, record?: string) => values[printoutGapKey({ person, screen, field, record })]
@@ -490,7 +524,7 @@ export function planPrintoutGaps(missing: readonly string[], ctx: PrintoutGapCon
     } else if (code in RULE_READS) {
       const person = rulePerson(code)
       if (person === 'B' && ctx.personB === null) continue
-      for (const [screen, field] of ruleGaps(code, (onScreen, name) => valueOf(person, onScreen, name))) ask({ code, person, screen, field })
+      for (const [screen, field, extra] of ruleGaps(code, (onScreen, name) => valueOf(person, onScreen, name), ctx.taxYear)) ask({ code, person, screen, field }, true, extra)
     } else if (!unplanned.includes(code)) {
       unplanned.push(code)
     }

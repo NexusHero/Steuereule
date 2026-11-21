@@ -39,12 +39,19 @@ describe('fixed rules for drafts (ADR-0093)', () => {
     expect(stage('chLohnausweis', { steuerfreiesUnfalltaggeldChf: '0' }).ok).toBe(true)
   })
 
-  it('tells the model which daily benefit lands in which field', () => {
+  it('asks where the daily benefit came from, with the six answers, before any amount', () => {
     const asks = draftFollowUps('chLohnausweis', { 'bruttolohn-total': '98000' }).join(' ')
-    expect(asks).toContain('Krankentaggeld gehört in chLohnausweis.steuerfreiesKrankentaggeldChf')
-    expect(asks).toContain('Unfalltaggeld (UVG/SUVA) in chLohnausweis.steuerfreiesUnfalltaggeldChf')
-    // An answer in either field is an answer to the one question.
+    expect(asks).toContain('woher das Taggeld')
+    for (const answer of ['Krankentaggeldversicherung (mit dem Lohn verrechnet)', 'Lohnfortzahlung des Arbeitgebers ohne Versicherung', 'beides (Versicherung zahlt einen Teil, der Arbeitgeber stockt auf)', 'Unfallversicherung (UVG/SUVA)', 'Mutterschaft / IV', 'kein Taggeld']) {
+      expect(asks).toContain(answer)
+    }
+    expect(asks).toContain('chLohnausweis.taggeldQuelle')
+    expect(asks).toContain('steuerfreiesKrankentaggeldChf')
+    expect(asks).toContain('steuerfreiesUnfalltaggeldChf')
+    expect(asks).toContain('propose_two_paths')
+    // An answer, or an amount in either field, is an answer to the one question.
     expect(draftFollowUps('chLohnausweis', { 'bruttolohn-total': '98000', steuerfreiesUnfalltaggeldChf: '2250' }).join(' ')).not.toContain('Taggeld')
+    expect(draftFollowUps('chLohnausweis', { 'bruttolohn-total': '98000', taggeldQuelle: 'kein' }).join(' ')).not.toContain('Taggeld')
   })
 
   it('names both paths for an accident benefit a remark carries with its amount, and asks for a missing amount', () => {
@@ -148,5 +155,73 @@ describe('fixed rules for drafts (ADR-0093)', () => {
     expect(asks).toContain('gezahlt')
     expect(asks).toContain('Zuwendungsbestätigung')
     expect(draftFollowUps('interview', { spenden: 'Ja' })).toEqual([])
+  })
+})
+
+describe('the source of a daily benefit decides its field (ADR-0072, Punkt 5)', () => {
+  const sourced = (taggeldQuelle: string, amounts: Record<string, string> = {}, tool: 'stage' | 'two-paths' = 'two-paths') =>
+    checkDraftRules({ screen: 'chLohnausweis', values: { taggeldQuelle, ...amounts }, tool, others: [] })
+
+  it('stores an answer without an amount as a plain draft', () => {
+    for (const source of ['krankentaggeldversicherung', 'lohnfortzahlung', 'beides', 'unfallversicherung', 'mutterschaftIv', 'kein']) expect(sourced(source, {}, 'stage').ok, source).toBe(true)
+  })
+
+  it('writes 0 into the sickness field for continued pay and for no benefit: nothing is deducted', () => {
+    expect(impliedCompanions('chLohnausweis', { taggeldQuelle: 'lohnfortzahlung' })).toEqual({ steuerfreiesKrankentaggeldChf: '0' })
+    expect(impliedCompanions('chLohnausweis', { taggeldQuelle: 'kein' })).toEqual({ steuerfreiesKrankentaggeldChf: '0' })
+    expect(impliedCompanions('chLohnausweis', { taggeldQuelle: 'krankentaggeldversicherung' })).toEqual({})
+    expect(impliedCompanions('chLohnausweis', { taggeldQuelle: 'unfallversicherung' })).toEqual({})
+  })
+
+  it('refuses an amount to deduct for continued pay of the employer: it is wage', () => {
+    const refused = sourced('lohnfortzahlung', { steuerfreiesKrankentaggeldChf: '4200' })
+    expect(refused).toMatchObject({ ok: false, code: 'SOURCE_MISMATCH' })
+    expect(refused.ok === false && refused.reason).toContain('Lohn')
+    expect(sourced('kein', { steuerfreiesUnfalltaggeldChf: '900' })).toMatchObject({ ok: false, code: 'SOURCE_MISMATCH' })
+    expect(sourced('lohnfortzahlung', { steuerfreiesKrankentaggeldChf: '0' }).ok).toBe(true)
+  })
+
+  it('keeps an accident benefit out of the sickness field and a sickness benefit out of the accident field', () => {
+    expect(sourced('unfallversicherung', { steuerfreiesKrankentaggeldChf: '2250' })).toMatchObject({ ok: false, code: 'SOURCE_MISMATCH' })
+    expect(sourced('unfallversicherung', { steuerfreiesUnfalltaggeldChf: '2250' }).ok).toBe(true)
+    expect(sourced('krankentaggeldversicherung', { steuerfreiesUnfalltaggeldChf: '2250' })).toMatchObject({ ok: false, code: 'SOURCE_MISMATCH' })
+    expect(sourced('krankentaggeldversicherung', { steuerfreiesKrankentaggeldChf: '4200' }).ok).toBe(true)
+  })
+
+  it('checks a path against the answer drafted in the same turn', () => {
+    const others = [{ screen: 'chLohnausweis' as const, values: { taggeldQuelle: 'lohnfortzahlung' } }]
+    expect(checkDraftRules({ screen: 'chLohnausweis', values: { steuerfreiesKrankentaggeldChf: '4200' }, tool: 'two-paths', others })).toMatchObject({ ok: false, code: 'SOURCE_MISMATCH' })
+  })
+
+  it('still takes a positive amount only as two paths', () => {
+    expect(sourced('krankentaggeldversicherung', { steuerfreiesKrankentaggeldChf: '4200' }, 'stage')).toMatchObject({ ok: false, code: 'TWO_PATHS_REQUIRED' })
+  })
+
+  it('asks for the amount that fits the answer, for „beides“ the insurer’s part only', () => {
+    const insurance = draftFollowUps('chLohnausweis', { taggeldQuelle: 'krankentaggeldversicherung' }).join(' ')
+    expect(insurance).toContain('steuerfreiesKrankentaggeldChf')
+    expect(insurance).toContain('propose_two_paths')
+    const both = draftFollowUps('chLohnausweis', { taggeldQuelle: 'beides' }).join(' ')
+    expect(both).toContain('nur den Teil der Versicherung')
+    expect(both).toContain('Aufstockung')
+    expect(both).toContain('bleibt Lohn')
+    const accident = draftFollowUps('chLohnausweis', { taggeldQuelle: 'unfallversicherung' }).join(' ')
+    expect(accident).toContain('steuerfreiesUnfalltaggeldChf')
+    expect(accident).toContain('Progressionsvorbehalt')
+    expect(draftFollowUps('chLohnausweis', { taggeldQuelle: 'lohnfortzahlung' })).toEqual([])
+    expect(draftFollowUps('chLohnausweis', { taggeldQuelle: 'beides', steuerfreiesKrankentaggeldChf: '3360' })).toEqual([])
+  })
+
+  it('asks the user the same question under a wage statement, with the AHV hint when Ziffer 8 and 9 are known', () => {
+    const plain = sickPayQuestionForUser(null)
+    expect(plain).toContain('Woher kam')
+    expect(plain).toContain('Lohnfortzahlung des Arbeitgebers ohne Versicherung')
+    expect(plain).toContain('kein Taggeld')
+    const remark = { kind: 'sickness' as const, amountChf: 6000 }
+    const withHint = sickPayQuestionForUser(remark, { taxYear: 2025, grossWageChf: 90000, ahvContributionsChf: 5380 })
+    expect(withHint).toContain('beide Wege')
+    expect(withHint).toContain('Hinweis zur Plausibilität (keine Entscheidung)')
+    expect(withHint).toContain('ohne das Taggeld')
+    expect(sickPayQuestionForUser(remark)).not.toContain('Plausibilität')
   })
 })

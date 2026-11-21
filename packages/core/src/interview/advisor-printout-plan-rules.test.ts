@@ -60,19 +60,48 @@ describe('checklist of the fixed rules (ADR-0093)', () => {
     expect(planPrintoutGaps(ENTRY_RULE_CODES, SINGLE, {}).questions.every((q) => q.owlMayDraft && q.required)).toBe(true)
   })
 
-  it('asks once per Swiss wage statement whether a daily sickness benefit was paid out with the wage', () => {
+  it('asks once per Swiss wage statement where a daily benefit in the wage came from', () => {
+    const source = key('A', 'chLohnausweis', 'taggeldQuelle')
     const paid = key('A', 'chLohnausweis', 'steuerfreiesKrankentaggeldChf')
     const values = { ...ANSWERED, [key('A', 'chLohnausweis', 'bruttolohn-total')]: '98000', [key('B', 'chLohnausweis', 'bruttolohn-total')]: '87000' }
-    expect(asked(JOINT, values)).toEqual([paid, key('B', 'chLohnausweis', 'steuerfreiesKrankentaggeldChf')])
-    expect(asked(SINGLE, values)).toEqual([paid])
-    // An answer, also „0“, closes it; without a wage statement there is nothing to ask.
+    expect(asked(JOINT, values)).toEqual([source, key('B', 'chLohnausweis', 'taggeldQuelle')])
+    expect(asked(SINGLE, values)).toEqual([source])
+    // An answer closes it, „0“ recorded before the question existed too; without a wage statement there is nothing to ask.
+    expect(asked(SINGLE, { ...values, [source]: 'lohnfortzahlung', [paid]: '0' })).toEqual([])
+    expect(asked(SINGLE, { ...values, [source]: 'kein' })).toEqual([])
     expect(asked(SINGLE, { ...values, [paid]: '0' })).toEqual([])
-    expect(asked(SINGLE, { ...values, [paid]: '9400' })).toEqual([])
     expect(asked(SINGLE, ANSWERED)).toEqual([])
     const question = planPrintoutGaps(ENTRY_RULE_CODES, SINGLE, values).questions[0]!
     expect(question.owlMayDraft).toBe(true)
     expect(question.question).toContain('Ziffer 8')
-    expect(question.question).toContain('Taggeld')
+    expect(question.question).toContain('Woher kam das Taggeld')
+    expect(question.question).toContain('Lohnfortzahlung des Arbeitgebers ohne Versicherung')
+  })
+
+  it('asks again where an amount recorded before the question came from, with the AHV hint', () => {
+    const values = {
+      ...ANSWERED,
+      [key('A', 'chLohnausweis', 'bruttolohn-total')]: '90000',
+      [key('A', 'chLohnausweis', 'ahv-beitraege')]: '5380',
+      [key('A', 'chLohnausweis', 'steuerfreiesKrankentaggeldChf')]: '6000',
+    }
+    const plan = planPrintoutGaps(ENTRY_RULE_CODES, { ...SINGLE, taxYear: 2025 }, values)
+    expect(plan.questions.map((q) => q.key)).toEqual([key('A', 'chLohnausweis', 'taggeldQuelle')])
+    expect(plan.questions[0]!.question).toContain('Hinweis zur Plausibilität (keine Entscheidung)')
+    expect(plan.questions[0]!.question).toContain('ohne das Taggeld')
+    expect(printoutGapReads(ENTRY_RULE_CODES, SINGLE).map((read) => read.field)).toEqual(expect.arrayContaining(['taggeldQuelle', 'ahv-beitraege']))
+  })
+
+  it('asks for the amount that fits the answer once the source is known', () => {
+    const values = { ...ANSWERED, [key('A', 'chLohnausweis', 'bruttolohn-total')]: '98000' }
+    const withSource = (source: string) => ({ ...values, [key('A', 'chLohnausweis', 'taggeldQuelle')]: source })
+    expect(asked(SINGLE, withSource('krankentaggeldversicherung'))).toEqual([key('A', 'chLohnausweis', 'steuerfreiesKrankentaggeldChf')])
+    expect(asked(SINGLE, withSource('unfallversicherung'))).toEqual([key('A', 'chLohnausweis', 'steuerfreiesUnfalltaggeldChf')])
+    const both = planPrintoutGaps(ENTRY_RULE_CODES, SINGLE, withSource('beides')).questions[0]!
+    expect(both.key).toBe(key('A', 'chLohnausweis', 'steuerfreiesKrankentaggeldChf'))
+    expect(both.question).toContain('nur den Teil der Versicherung')
+    expect(asked(SINGLE, { ...withSource('beides'), [key('A', 'chLohnausweis', 'steuerfreiesKrankentaggeldChf')]: '3360' })).toEqual([])
+    expect(asked(SINGLE, withSource('lohnfortzahlung'))).toEqual([])
   })
 
   it('takes an accident benefit (UVG/SUVA) on its own field as the answer to the daily-benefit question', () => {
@@ -80,7 +109,7 @@ describe('checklist of the fixed rules (ADR-0093)', () => {
     const values = { ...ANSWERED, [key('A', 'chLohnausweis', 'bruttolohn-total')]: '98000' }
     expect(asked(SINGLE, { ...values, [accident]: '2250' })).toEqual([])
     const question = planPrintoutGaps(ENTRY_RULE_CODES, SINGLE, values).questions[0]!
-    expect(question.question).toContain('Unfalltaggeld')
+    expect(question.question).toContain('Unfallversicherung (UVG/SUVA)')
     expect(question.question).toContain('steuerfreiesUnfalltaggeldChf')
   })
 

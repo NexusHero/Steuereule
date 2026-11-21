@@ -4,6 +4,15 @@
 // is filled in, and what has to be asked next is told to the model with the tool's answer.
 import { formatChf } from '../common/format'
 import type { ChDailyBenefitRemark } from '../domains/ch-salary-certificate-parser'
+import {
+  DAILY_BENEFIT_SOURCES,
+  DAILY_BENEFIT_SOURCE_LABELS,
+  ahvContributionFit,
+  ahvContributionFitHint,
+  dailyBenefitAmountField,
+  isDailyBenefitSource,
+  type DailyBenefitSource,
+} from '../domains/daily-benefit'
 import { fieldSpec } from './field-catalog'
 import type { Screen } from './marking'
 
@@ -54,30 +63,107 @@ export function namesCapitalIncome(said: string): boolean {
   return said.split(/(?<!\d)\.|\.(?!\d)|[;\n!?]/).some((part) => CAPITAL_WORDS.test(part) && !NEGATION.test(part))
 }
 
-/** Asked once per Swiss wage statement: the certificate does not say whether paid-out benefits are part of the gross wage. */
-export const SICK_PAY_QUESTION =
-  'Frag, falls noch nicht beantwortet, ob im Jahr ein Taggeld ausgezahlt wurde, Krankentaggeld (auch Mutterschaftstaggeld) oder Unfalltaggeld der Unfallversicherung (UVG/SUVA), und ob es im Bruttolohn Ziffer 8 des Lohnausweises enthalten ist (Hinweis: eine Bemerkung wie „KK-Taggeld Verrechnung“ auf dem Lohnausweis). Ohne Taggeld legst du chLohnausweis.steuerfreiesKrankentaggeldChf = 0 an. Krankentaggeld gehört in chLohnausweis.steuerfreiesKrankentaggeldChf, Unfalltaggeld (UVG/SUVA) in chLohnausweis.steuerfreiesUnfalltaggeldChf (steuerfrei, erhöht aber den Steuersatz); mit Taggeld gilt für beide Felder der Zwei-Wege-Vorschlag (`propose_two_paths`).'
+/** The six answers as the user reads them: „…“, „…“ oder „…“. */
+const SOURCE_ANSWERS = (() => {
+  const labels = DAILY_BENEFIT_SOURCES.map((source) => `„${DAILY_BENEFIT_SOURCE_LABELS[source]}“`)
+  return `${labels.slice(0, -1).join(', ')} oder ${labels[labels.length - 1]}`
+})()
+
+/** The stored values with their meaning, for the model. */
+const SOURCE_VALUES = DAILY_BENEFIT_SOURCES.map((source) => `„${source}“ = ${DAILY_BENEFIT_SOURCE_LABELS[source]}`).join('; ')
+
+/** The fixed question, the same in the mask, the owl and the MCP assistant (ADR-0072, Punkt 5). */
+export const DAILY_BENEFIT_QUESTION = 'Woher kam das Taggeld im Bruttolohn (Ziffer 8) des Lohnausweises?'
+
+/** What each answer does, in the words of the question. */
+const SOURCE_EFFECT =
+  'Nur das Taggeld einer Versicherung ist steuerfrei und wird abgezogen: bei „beides“ nur der Teil der Versicherung, die Aufstockung des Arbeitgebers bleibt Lohn; Unfalltaggeld (UVG/SUVA) erhöht außerdem den Steuersatz (Progressionsvorbehalt). Die Lohnfortzahlung des Arbeitgebers ohne Versicherung ist Lohn: Es wird nichts abgezogen. Ein Hinweis auf die Versicherung ist eine Bemerkung wie „KK-Taggeld Verrechnung“.'
+
+/** Asked once per Swiss wage statement: the certificate does not say where a daily benefit in the gross wage came from. */
+export const SICK_PAY_QUESTION = `Frag, falls noch nicht beantwortet, woher das Taggeld im Bruttolohn Ziffer 8 des Lohnausweises kam, mit genau diesen Antworten: ${SOURCE_ANSWERS}. Lege die Antwort als chLohnausweis.taggeldQuelle an (${SOURCE_VALUES}). Erst danach der Betrag laut Taggeld-Abrechnung: Krankentaggeldversicherung und Mutterschaft / IV in chLohnausweis.steuerfreiesKrankentaggeldChf, bei „beides“ nur den Teil der Versicherung in chLohnausweis.steuerfreiesKrankentaggeldChf (die Aufstockung des Arbeitgebers bleibt Lohn), Unfallversicherung in chLohnausweis.steuerfreiesUnfalltaggeldChf (steuerfrei, erhöht aber den Steuersatz); jeden Betrag über den Zwei-Wege-Vorschlag (\`propose_two_paths\`). Bei Lohnfortzahlung und ohne Taggeld wird nichts abgezogen (die App setzt steuerfreiesKrankentaggeldChf = 0). Eine Bemerkung wie „KK-Taggeld Verrechnung“ spricht für die Versicherung; ob die AHV/IV/EO- und ALV-Beiträge in Ziffer 9 zum Bruttolohn mit oder ohne das Taggeld passen, ist nur ein Hinweis (Ziffer 9 kann die NBU-Prämie enthalten), nie die Entscheidung.`
 
 /** The same question as the app asks it itself, under a wage statement it has just read. */
-export const SICK_PAY_QUESTION_FOR_USER =
-  'Eine Frage zu diesem Lohnausweis: Wurde im Jahr Krankentaggeld (auch Mutterschaftstaggeld) oder Unfalltaggeld (UVG/SUVA) ausgezahlt, und ist es im Bruttolohn (Ziffer 8) enthalten? Ein Hinweis darauf ist eine Bemerkung wie „KK-Taggeld Verrechnung“. Steuerfreies Taggeld im Bruttolohn wird abgezogen; Unfalltaggeld erhöht außerdem den Steuersatz. Nenn mir die Art und den Betrag laut Taggeld-Abrechnung, oder sag, dass es keines gab.'
+export const SICK_PAY_QUESTION_FOR_USER = `Eine Frage zu diesem Lohnausweis: ${DAILY_BENEFIT_QUESTION} Zur Wahl: ${SOURCE_ANSWERS}. ${SOURCE_EFFECT} Nenn mir die Herkunft und den Betrag laut Taggeld-Abrechnung, oder sag, dass es keines gab.`
+
+/** The question of the checklist (printout plan, MCP `pruefen`): the answer first, then the amount it needs. */
+export const DAILY_BENEFIT_GAP_QUESTION = `${DAILY_BENEFIT_QUESTION} Zur Wahl: ${SOURCE_ANSWERS}; gespeichert als chLohnausweis.taggeldQuelle (${SOURCE_VALUES}). Danach der Betrag laut Taggeld-Abrechnung: Krankentaggeldversicherung und Mutterschaft / IV in chLohnausweis.steuerfreiesKrankentaggeldChf, bei „beides“ nur den Teil der Versicherung (die Aufstockung des Arbeitgebers bleibt Lohn), Unfallversicherung in chLohnausweis.steuerfreiesUnfalltaggeldChf (steuerfrei, erhöht aber den Steuersatz). Bei Lohnfortzahlung und ohne Taggeld wird nichts abgezogen.`
+
+/** Ziffer 8 and 9 of the statement just read, for the AHV hint under the question. */
+export interface DailyBenefitHintContext {
+  readonly taxYear: number
+  readonly grossWageChf: number | null
+  readonly ahvContributionsChf: number | null
+  readonly familyAllowancesChf?: number | undefined
+}
+
+/** The AHV plausibility hint for a candidate amount, or null when a figure is missing. */
+export function dailyBenefitHint(candidateChf: number | null, context: DailyBenefitHintContext | undefined): string | null {
+  if (candidateChf === null || candidateChf <= 0 || !context || context.grossWageChf === null || context.ahvContributionsChf === null) return null
+  const fit = ahvContributionFit({ taxYear: context.taxYear, grossWageChf: context.grossWageChf, ahvContributionsChf: context.ahvContributionsChf, candidateChf, familyAllowancesChf: context.familyAllowancesChf })
+  return fit === null ? null : ahvContributionFitHint(fit)
+}
 
 /**
  * The question under a wage statement just read, with what its remarks say about a paid-out daily
  * benefit: the amount is named as the proposal, for a sickness benefit and for an accident benefit
- * (UVG/SUVA), which is tax-free as well but raises the tax rate.
+ * (UVG/SUVA), which is tax-free as well but raises the tax rate. With Ziffer 8 and 9 known, the AHV
+ * hint follows, never as the decision.
  */
-export function sickPayQuestionForUser(remark: ChDailyBenefitRemark | null | undefined): string {
+export function sickPayQuestionForUser(remark: ChDailyBenefitRemark | null | undefined, context?: DailyBenefitHintContext): string {
   if (!remark) return SICK_PAY_QUESTION_FOR_USER
   const amount = remark.amountChf === null ? null : formatChf(remark.amountChf)
+  const hint = dailyBenefitHint(remark.amountChf, context)
+  const withHint = (text: string): string => (hint === null ? text : `${text} ${hint}`)
   if (remark.kind === 'accident') {
-    return amount
-      ? `Eine Frage zu diesem Lohnausweis: In den Bemerkungen steht ausgezahltes Unfalltaggeld (UVG/SUVA) über ${amount}. Ist es im Bruttolohn (Ziffer 8) enthalten? Nur dann wird es abgezogen. Unfalltaggeld wird anders behandelt als Krankentaggeld: Es ist steuerfrei, erhöht aber den Steuersatz (Progressionsvorbehalt). Unter dieser Nachricht stehen beide Wege zur Wahl: nicht abziehen, oder ${amount} abziehen (Nachweis: ergänzende Bescheinigung des Arbeitgebers oder Taggeld-Abrechnung der Unfallversicherung).`
-      : 'Eine Frage zu diesem Lohnausweis: In den Bemerkungen steht ausgezahltes Unfalltaggeld (UVG/SUVA), aber kein Betrag. Ist es im Bruttolohn (Ziffer 8) enthalten, und welchen Betrag nennt die Taggeld-Abrechnung? Unfalltaggeld wird anders behandelt als Krankentaggeld: Es ist steuerfrei und wird vom Bruttolohn abgezogen, erhöht aber den Steuersatz (Progressionsvorbehalt).'
+    return withHint(
+      amount
+        ? `Eine Frage zu diesem Lohnausweis: In den Bemerkungen steht ausgezahltes Unfalltaggeld (UVG/SUVA) über ${amount}. Ist es im Bruttolohn (Ziffer 8) enthalten? Nur dann wird es abgezogen. Unfalltaggeld wird anders behandelt als Krankentaggeld: Es ist steuerfrei, erhöht aber den Steuersatz (Progressionsvorbehalt). Unter dieser Nachricht stehen beide Wege zur Wahl: nicht abziehen, oder ${amount} abziehen (Nachweis: ergänzende Bescheinigung des Arbeitgebers oder Taggeld-Abrechnung der Unfallversicherung).`
+        : 'Eine Frage zu diesem Lohnausweis: In den Bemerkungen steht ausgezahltes Unfalltaggeld (UVG/SUVA), aber kein Betrag. Ist es im Bruttolohn (Ziffer 8) enthalten, und welchen Betrag nennt die Taggeld-Abrechnung? Unfalltaggeld wird anders behandelt als Krankentaggeld: Es ist steuerfrei und wird vom Bruttolohn abgezogen, erhöht aber den Steuersatz (Progressionsvorbehalt).',
+    )
   }
-  return amount
-    ? `Eine Frage zu diesem Lohnausweis: In den Bemerkungen steht ausgezahltes Krankentaggeld über ${amount}. Ist es im Bruttolohn (Ziffer 8) enthalten? Nur dann wird es abgezogen. Unter dieser Nachricht stehen beide Wege zur Wahl: nicht abziehen, oder ${amount} abziehen (Nachweis: Taggeld-Abrechnung des Versicherers).`
-    : 'Eine Frage zu diesem Lohnausweis: In den Bemerkungen steht ausgezahltes Krankentaggeld, aber kein Betrag. Ist es im Bruttolohn (Ziffer 8) enthalten, und welchen Betrag nennt die Taggeld-Abrechnung? Steuerfreies Taggeld im Bruttolohn wird abgezogen.'
+  return withHint(
+    amount
+      ? `Eine Frage zu diesem Lohnausweis: In den Bemerkungen steht ausgezahltes Krankentaggeld über ${amount}. ${DAILY_BENEFIT_QUESTION} Nur das Taggeld der Krankentaggeldversicherung wird abgezogen; die Lohnfortzahlung des Arbeitgebers ohne Versicherung ist Lohn. Zahlt die Versicherung einen Teil und der Arbeitgeber stockt auf, wird nur der Teil der Versicherung abgezogen. Unter dieser Nachricht stehen beide Wege zur Wahl: nicht abziehen (Lohnfortzahlung, oder das Taggeld ist nicht in Ziffer 8), oder ${amount} abziehen (Krankentaggeldversicherung; Nachweis: Taggeld-Abrechnung des Versicherers).`
+      : `Eine Frage zu diesem Lohnausweis: In den Bemerkungen steht ausgezahltes Krankentaggeld, aber kein Betrag. ${DAILY_BENEFIT_QUESTION} Zur Wahl: ${SOURCE_ANSWERS}. Nur das Taggeld einer Versicherung wird abgezogen (bei „beides“ nur ihr Teil); nenn mir dafür den Betrag laut Taggeld-Abrechnung.`,
+  )
+}
+
+/** The answer to the source question in this draft or in another draft of the same answer. */
+function draftedSource(input: DraftRuleInput): DailyBenefitSource | null {
+  const own = input.values.taggeldQuelle
+  if (isDailyBenefitSource(own)) return own
+  const other = input.others.find((draft) => draft.screen === 'chLohnausweis' && isDailyBenefitSource(draft.values.taggeldQuelle))
+  return other ? (other.values.taggeldQuelle as DailyBenefitSource) : null
+}
+
+/** An amount that does not fit the answer: continued pay is wage, an accident benefit has its own field. */
+function sourceMismatch(source: DailyBenefitSource, values: DraftValues): string | null {
+  const field = dailyBenefitAmountField(source)
+  const sickness = positive(values.steuerfreiesKrankentaggeldChf)
+  const accident = positive(values.steuerfreiesUnfalltaggeldChf)
+  if (field === null && (sickness || accident)) {
+    return `Die Antwort „${DAILY_BENEFIT_SOURCE_LABELS[source]}“ heißt: Das Geld in Ziffer 8 ist Lohn (oder es gab kein Taggeld), es wird nichts abgezogen. Lege steuerfreiesKrankentaggeldChf = 0 an und keinen Betrag zum Abziehen. Hat der Nutzer etwas anderes gemeint, frag ihn noch einmal nach der Herkunft.`
+  }
+  if (field === 'steuerfreiesUnfalltaggeldChf' && sickness) {
+    return 'Unfalltaggeld der Unfallversicherung (UVG/SUVA) gehört in chLohnausweis.steuerfreiesUnfalltaggeldChf, nicht in steuerfreiesKrankentaggeldChf: Es erhöht den Steuersatz (Progressionsvorbehalt).'
+  }
+  if (field === 'steuerfreiesKrankentaggeldChf' && accident) {
+    return `Zur Antwort „${DAILY_BENEFIT_SOURCE_LABELS[source]}“ gehört der Betrag in chLohnausweis.steuerfreiesKrankentaggeldChf; steuerfreiesUnfalltaggeldChf ist nur für Unfalltaggeld (UVG/SUVA).`
+  }
+  return null
+}
+
+/** What to ask once the source is drafted and its amount is not. */
+function amountFollowUp(source: DailyBenefitSource): string | null {
+  const field = dailyBenefitAmountField(source)
+  if (field === null) return null
+  if (source === 'unfallversicherung') {
+    return 'Frag nach dem Betrag des Unfalltaggelds (UVG/SUVA) laut Taggeld-Abrechnung, der im Bruttolohn Ziffer 8 enthalten ist, und schlage ihn mit `propose_two_paths` für chLohnausweis.steuerfreiesUnfalltaggeldChf vor (ein Weg 0, ein Weg der Betrag). Es ist steuerfrei, erhöht aber den Steuersatz (Progressionsvorbehalt, § 32b EStG).'
+  }
+  if (source === 'beides') {
+    return 'Frag nach dem Betrag, den die Versicherung laut Taggeld-Abrechnung gezahlt hat: nur den Teil der Versicherung (z. B. 80 %), nicht die Aufstockung des Arbeitgebers, denn die Aufstockung bleibt Lohn. Schlage ihn mit `propose_two_paths` für chLohnausweis.steuerfreiesKrankentaggeldChf vor (ein Weg 0, ein Weg der Teil der Versicherung).'
+  }
+  return 'Frag nach dem Betrag laut Taggeld-Abrechnung, der im Bruttolohn Ziffer 8 enthalten ist, und schlage ihn mit `propose_two_paths` für chLohnausweis.steuerfreiesKrankentaggeldChf vor (ein Weg 0, ein Weg der Betrag; Nachweis: Taggeld-Abrechnung des Versicherers).'
 }
 
 /** Whether a draft may be made, by the fixed rules; the reason goes back to the model and, through it, to the user. */
@@ -90,6 +176,9 @@ export function checkDraftRules(input: DraftRuleInput): DraftRuleCheck {
     if (positive(values.familienzulagenChf) && input.others.some((other) => other.screen === 'kind' && positive(other.values.swissFamilyAllowanceEur))) {
       return { ok: false, code: 'DOUBLE_ENTRY', reason: ALLOWANCE_TWICE }
     }
+    const source = draftedSource(input)
+    const mismatch = source === null ? null : sourceMismatch(source, values)
+    if (mismatch !== null) return { ok: false, code: 'SOURCE_MISMATCH', reason: mismatch }
     if (input.tool === 'stage' && positive(values.steuerfreiesKrankentaggeldChf)) {
       return { ok: false, code: 'TWO_PATHS_REQUIRED', reason: SICK_PAY_NEEDS_TWO_PATHS }
     }
@@ -115,6 +204,10 @@ export function checkDraftRules(input: DraftRuleInput): DraftRuleCheck {
 export function impliedCompanions(screen: Screen, values: DraftValues): DraftValues {
   if (screen === 'interview' && values['vorauszahlungen-betrag'] !== undefined && values['vorauszahlungen-gate'] === undefined) {
     return { 'vorauszahlungen-gate': 'Ja' }
+  }
+  // Continued pay of the employer is wage, and without a benefit there is nothing: the sickness field holds 0.
+  if (screen === 'chLohnausweis' && isDailyBenefitSource(values.taggeldQuelle) && dailyBenefitAmountField(values.taggeldQuelle) === null && values.steuerfreiesKrankentaggeldChf === undefined) {
+    return { steuerfreiesKrankentaggeldChf: '0' }
   }
   return {}
 }
@@ -149,9 +242,15 @@ export function draftFollowUps(screen: Screen, values: DraftValues): string[] {
     if (positive(values.krankenkasseChf) && !has('krankenkasseZusatzChf')) {
       asks.push('Frag, ob im Krankenkassen-Betrag Zusatzversicherungen (VVG) stecken. krankenkasseChf ist nur die Grundversicherung nach KVG; den Zusatz legst du als chLohnausweis.krankenkasseZusatzChf an (0, wenn es keinen gibt).')
     }
-    // An answer in either daily-benefit field answers the one question.
-    if (positive(values['bruttolohn-total']) && !has('steuerfreiesKrankentaggeldChf') && !has('steuerfreiesUnfalltaggeldChf')) {
+    // The source, or an amount in either daily-benefit field, answers the one question.
+    if (positive(values['bruttolohn-total']) && !has('taggeldQuelle') && !has('steuerfreiesKrankentaggeldChf') && !has('steuerfreiesUnfalltaggeldChf')) {
       asks.push(SICK_PAY_QUESTION)
+    }
+    const source = values.taggeldQuelle
+    if (isDailyBenefitSource(source)) {
+      const field = dailyBenefitAmountField(source)
+      const ask = amountFollowUp(source)
+      if (field !== null && !has(field) && ask !== null) asks.push(ask)
     }
   }
   if (screen === 'interview') {
