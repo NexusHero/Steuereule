@@ -5,6 +5,7 @@ import { oauthProvider } from '@better-auth/oauth-provider'
 import { createAuthMiddleware } from 'better-auth/api'
 import { authIssuer, mcpResourceUrl } from './mcp-oauth.js'
 import { ensureMcpResource, type ResourceAdapter } from './mcp-resource-seed.js'
+import { sweepUnusedClients, type SweepAdapter } from './oauth-client-sweep.js'
 import { betterAuth, type Auth, type BetterAuthOptions } from 'better-auth'
 import { getCookies } from 'better-auth/cookies'
 import { deviceAuthorization, haveIBeenPwned, jwt, twoFactor } from 'better-auth/plugins'
@@ -93,6 +94,7 @@ function buildOptions(options: CreateBetterAuthOptions & { rateLimitStorage: Res
   assertDeviceAuthorizationDisabledPathsComplete(deviceAuthorizationPlugin)
 
   const ensureResource = ensureMcpResource(mcpResourceUrl(baseUrl), OAUTH_SCOPES)
+  const sweepClients = sweepUnusedClients()
 
   return {
     baseURL: baseUrl,
@@ -136,9 +138,10 @@ function buildOptions(options: CreateBetterAuthOptions & { rateLimitStorage: Res
         accessTokenExpiresIn: 15 * 60,
         requirePKCE: true,
         allowDynamicClientRegistration: true,
-        // Only a signed-in user registers a client (ADR-0052 amendment 4): nobody fills the client table
-        // from outside, and every client belongs to the account that created it.
-        allowUnauthenticatedClientRegistration: false,
+        // An MCP client registers itself before the user signs in (RFC 7591), as assistants do: the user
+        // pastes the server address and nothing else. Registration grants nothing; it is rate-limited per
+        // address, and a client nobody approved is swept after a week (ADR-0052 amendment 5).
+        allowUnauthenticatedClientRegistration: true,
         // MCP clients on the user's machine register a loopback redirect without `application_type`:
         // such a client is native (RFC 8252), one with an https redirect stays a web client.
         clientRegistrationDefaultApplicationType: 'infer',
@@ -156,6 +159,7 @@ function buildOptions(options: CreateBetterAuthOptions & { rateLimitStorage: Res
       customRules: {
         '/verify-password': { window: 10, max: 3 },
         '/device': { window: 60, max: 10 },
+        '/oauth2/register': { window: 60 * 60, max: 10 },
       },
     },
     advanced: {
@@ -174,6 +178,7 @@ function buildOptions(options: CreateBetterAuthOptions & { rateLimitStorage: Res
       // first OAuth request, not via the plugin's `resources` option, which seeds while the app boots.
       before: createAuthMiddleware(async (ctx) => {
         if (ctx.path.startsWith('/oauth2/')) await ensureResource(ctx.context.adapter as unknown as ResourceAdapter)
+        if (ctx.path === '/oauth2/register') await sweepClients(ctx.context.adapter as unknown as SweepAdapter)
       }),
     },
     databaseHooks: {

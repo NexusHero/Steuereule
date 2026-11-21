@@ -283,3 +283,22 @@ API ließen sich damit die Lesesicht (Amendment 3), die Scopes und „nur der Nu
 Bewusst nicht in diesem Schnitt: Obergrenze für Werkzeugaufrufe und gleichzeitige Sitzungen; Aufgaben
 nur aus Textbausteinen. Buchungsentwürfe über MCP bleiben offen (eine Buchung ist kein Feldwert und
 braucht einen eigenen Entwurfsweg).
+
+## Amendment 5 (2026-11-21) — Der Assistent registriert sich wieder selbst
+
+Amendment 4 Nr. 2 ist zurückgenommen. Üblich ist bei MCP, dass der Nutzer im Assistenten nur die
+Server-Adresse einträgt; der Assistent liest die Metadaten (RFC 9728, RFC 8414), registriert sich selbst
+(RFC 7591) und schickt den Nutzer zur Anmeldung und Freigabe. Ein Client-Secret gibt es nicht (öffentlicher
+Client, PKCE). Eine Client-ID von Hand zu kopieren ist ein Schritt mehr als bei anderen Diensten.
+
+1. `allowUnauthenticatedClientRegistration` ist wieder an. Eine Registrierung gewährt nichts: Ein Token
+   entsteht erst nach Anmeldung und Freigabe des Nutzers und gilt nur am MCP-Endpunkt (Amendment 4 Nr. 1).
+2. **Limit:** höchstens 10 Registrierungen je Stunde und Adresse (`/oauth2/register`).
+3. **Aufräumen:** Ein selbst registrierter Client, den nach 7 Tagen kein Nutzer freigegeben hat, wird
+   gelöscht (`oauth-client-sweep.ts`; läuft mit einer Registrierung, höchstens stündlich je Prozess).
+4. „Assistent verbinden“ im Profil bleibt als zweiter Weg für Assistenten ohne eigene Registrierung;
+   ein dort angelegter Client gehört dem Konto und wird nicht aufgeräumt.
+
+Nicht geprüft: Client ID Metadata Documents (die Client-ID ist eine Adresse des Assistenten, nichts
+wird gespeichert) als späterer Ersatz für die Registrierung.
+
