@@ -218,9 +218,13 @@ export async function runScenario09b(browser, webOrigin) {
   await page.locator('[data-testid^="bank-zeile-"]').first().waitFor({ state: 'visible', timeout: 10_000 })
   // A row with a suggestion shows it; one without asks for an account first.
   if (await page.locator('[data-testid^="bank-vorschlag-"]').count()) console.log('[09b] a bank row came with a suggestion')
-  if (await page.locator('[data-testid^="bank-konto-"]').count()) await page.locator('[data-testid^="bank-konto-"]').first().fill('4930')
-  await page.locator('[data-testid^="bank-merken-"]').first().click()
-  await page.locator('[data-testid^="bank-buchen-"]').first().click()
+  // The office-supplies debit goes to 4930, never the Gutschrift: both rows are imported at once, so their order is not
+  // fixed, and 1.190 € income on an expense account leaves „sonstige Ausgaben“ negative for the closing below.
+  const officeRow = page.locator('[data-testid^="bank-zeile-"]').filter({ hasText: 'Buero GmbH' })
+  if (await officeRow.locator('[data-testid^="bank-konto-"]').count()) await officeRow.locator('[data-testid^="bank-konto-"]').fill('4930')
+  await officeRow.locator('[data-testid^="bank-merken-"]').click()
+  await officeRow.locator('[data-testid^="bank-buchen-"]').click()
+  await officeRow.waitFor({ state: 'detached', timeout: 10_000 })
   await page.locator('[data-testid^="bank-ignorieren-"]').first().click()
   await page.route(`${API}/bank`, (route) => route.fulfill(json([])))
   await go('bank')
