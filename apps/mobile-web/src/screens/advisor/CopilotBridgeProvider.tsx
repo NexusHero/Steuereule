@@ -886,6 +886,8 @@ export function CopilotBridgeProvider({
       try {
         const result = await captureReceipt(file, {
           taxYear,
+          // The chat of a year is the entry context: what is uploaded here is filed in that year.
+          inChat: true,
           onPhase: setReceiptPhase,
           ...(again ? { kind: again.kind, holder: again.holder, receiptId: again.receiptId, alsoFor: again.alsoFor === true } : {}),
           ...(!again && storedReceiptId !== undefined ? { receiptId: storedReceiptId } : {}),

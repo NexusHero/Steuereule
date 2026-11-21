@@ -182,3 +182,28 @@ describe('edge branches of the new estimate paths', () => {
     expect(homeOfficeAllowance(2019, 80)).toBe(0)
   })
 })
+
+describe('the progression income in the breakdown (for the Günstigerprüfung of the capital mask)', () => {
+  it('names what the single estimate put under § 32b, and nothing without benefits', () => {
+    const withBenefit = taxEstimateEmployee({ ...EMPLOYED, wageReplacementEur: 3000 })
+    const without = taxEstimateEmployee(EMPLOYED)
+    if (withBenefit.kind !== 'spanne' || without.kind !== 'spanne') throw new Error('expected ranges')
+    expect(withBenefit.breakdown?.progressionIncomeEur).toBe(3000)
+    expect(without.breakdown?.progressionIncomeEur).toBeUndefined()
+  })
+
+  it('names what the couple estimate put under § 32b', () => {
+    const couple = estimateMarriedCouple({
+      year: 2025,
+      a: { kind: 'employee', grossWage: 48000, wageTax: 7100, socialSecurity: 9850, commuteAllowance: 0, selfPaidHealthCare: 0 },
+      b: null,
+      children: 0,
+      childBenefit: 0,
+      rentalSurplus: 0,
+      donations: 0,
+      wageReplacementEur: 2500,
+    })
+    if (couple.kind !== 'spanne') throw new Error('expected a range')
+    expect(couple.breakdown?.progressionIncomeEur).toBe(2500)
+  })
+})

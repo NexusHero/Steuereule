@@ -90,6 +90,8 @@ anlNGre.z8Chf                  S1 Z8    ↑                              ← −
 anlNGre.z8Eur                  S1 Z8    ↑                              ← ,– ,– − − Kinder- und Ausbildungszulage
 anlNGre.z9Chf                  S1 Z9    ↑                              ← − Steuerfreies Krankentaggeld
 anlNGre.z9Eur                  S1 Z9    ↑                              ← ,– ,– − − Steuerfreies Krankentaggeld
+anlNGre.z10Chf                 S1 Z10   ↑                              ← SUVA – Geld − (laut ergänzender Bescheinigung des Arbeitgebers)
+anlNGre.z10Eur                 S1 Z10   ↑                              ← SUVA – Geld ,– − − (laut ergänzender Bescheinigung des Arbeitgebers)
 anlNGre.z15Chf                 S1 Z15   ↑                              ← = Verbleiben
 anlNGre.z15Eur                 S1 Z15   ↑                              ← ,– = = Verbleiben
 anlNGre.z18Chf                 S1 Z18   ↑                              ← Arbeitgeberbeiträge zur Kollektivkrankentag- + geldversicherung (vgl. Zeile 80)
@@ -205,6 +207,8 @@ anlN.kz330                     S3 Z60   ↑ EUR                          ← 330
 anlNGre.kz330                  S3 Z55   ↑ EUR                          ← 330
 est1a.kz120                    S2 Z35   ↑ EUR                          ← halt unterliegen, z. B. Arbeitslosengeld, Elterngeld, Insolvenz- geld, Krankengeld, Mutte…
 est1a.kz121                    S2 Z35   ↑ EUR                          ← EUR halt unterliegen, z. B. Arbeitslosengeld, Elterngeld, Insolvenz- geld, Krankengeld, M…
+est1a.kz136                    S2 Z36   ↑ EUR                          ← Leistungen aus einem EU- / EWR-Staat oder der Schweiz, die mit Einkommensersatzleistungen…
+est1a.kz137                    S2 Z36   ↑ EUR                          ← Leistungen aus einem EU- / EWR-Staat oder der Schweiz, die mit Einkommensersatzleistungen…
 anlKind.inlandVon              S1 Z8    ↑ vom                          ← 00
 anlKind.inlandBis              S1 Z8    ↑ bis                          ← vom 00
 anlKind.kz02                   S1 Z10   ↑                              ← Kindschaftsverhältnis zur steuerpflichtigen Person / 02 Ehemann / Person A

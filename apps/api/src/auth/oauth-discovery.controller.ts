@@ -5,7 +5,7 @@ import type { FastifyReply, FastifyRequest } from 'fastify'
 import { BETTER_AUTH_BUNDLE } from './auth.tokens.js'
 import type { BetterAuthBundle } from './better-auth.js'
 import { OAUTH_SCOPES } from './better-auth.js'
-import { authIssuer, mcpResourceUrl } from './mcp-oauth.js'
+import { authIssuer, mcpResourceUrl, mcpStreamableResourceUrl } from './mcp-oauth.js'
 
 /**
  * The discovery an MCP client walks before it signs in (ADR-0052 §2): the protected-resource
@@ -23,8 +23,18 @@ export class OAuthDiscoveryController {
 
   @Get(['oauth-protected-resource', 'oauth-protected-resource/mcp/sse'])
   protectedResource() {
+    return this.describe(mcpResourceUrl(this.baseUrl))
+  }
+
+  /** The Streamable HTTP endpoint (ADR-0052 amendment 6): a client checks that the resource is its server's URL. */
+  @Get('oauth-protected-resource/mcp')
+  streamableResource() {
+    return this.describe(mcpStreamableResourceUrl(this.baseUrl))
+  }
+
+  private describe(resource: string) {
     return {
-      resource: mcpResourceUrl(this.baseUrl),
+      resource,
       authorization_servers: [authIssuer(this.baseUrl)],
       scopes_supported: [...OAUTH_SCOPES],
       bearer_methods_supported: ['header'],

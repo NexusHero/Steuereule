@@ -35,6 +35,9 @@ const ALLOWANCE_TWICE =
 const SICK_PAY_NEEDS_TWO_PATHS =
   'Ausgezahltes Krankentaggeld wird nur abgezogen, wenn es im Bruttolohn Ziffer 8 enthalten ist; der Lohnausweis sagt das nicht eindeutig. Frag den Nutzer, ob das ausgezahlte Taggeld in Ziffer 8 enthalten ist, und schlage es mit `propose_two_paths` vor: ein Weg steuerfreiesKrankentaggeldChf = 0 (nicht abziehen), der andere der ausgezahlte Betrag (abziehen, Nachweis: Taggeld-Abrechnung des Versicherers). Nenne beide Eurowirkungen.'
 
+const ACCIDENT_PAY_NEEDS_TWO_PATHS =
+  'Ausgezahltes Unfalltaggeld (UVG/SUVA) wird nur abgezogen, wenn es im Bruttolohn Ziffer 8 enthalten ist; der Lohnausweis sagt das nicht eindeutig. Frag den Nutzer, ob das ausgezahlte Unfalltaggeld in Ziffer 8 enthalten ist, und schlage es mit `propose_two_paths` vor: ein Weg steuerfreiesUnfalltaggeldChf = 0 (nicht abziehen), der andere der ausgezahlte Betrag (abziehen, Nachweis: ergänzende Bescheinigung des Arbeitgebers oder Taggeld-Abrechnung der Unfallversicherung). Sag dazu, dass es steuerfrei ist, aber den Steuersatz erhöht (Progressionsvorbehalt, § 32b EStG). Nenne beide Eurowirkungen.'
+
 const CAPITAL_NEEDS_AMOUNT =
   'Ein Depot, ein Konto mit Zinsen oder ein Freistellungsauftrag heißt: Es gibt Kapitalerträge, auch wenn der Freistellungsauftrag sie abdeckt. „Nein“ gilt nur, wenn der Nutzer ausdrücklich sagt, dass es keine Kapitalerträge gab. Lege stattdessen interview.einkuenfte = „Kapitalerträge“ an (mit Mieteinnahmen „Beides“) und frag nach der Steuerbescheinigung der Bank: Höhe der Kapitalerträge im Jahr (kapital.kapitalertraege), genutzter Sparer-Pauschbetrag (kapital.sparerPauschbetrag), einbehaltene Kapitalertragsteuer und Solidaritätszuschlag (auch 0).'
 
@@ -53,21 +56,24 @@ export function namesCapitalIncome(said: string): boolean {
 
 /** Asked once per Swiss wage statement: the certificate does not say whether paid-out benefits are part of the gross wage. */
 export const SICK_PAY_QUESTION =
-  'Frag, falls noch nicht beantwortet, ob im Jahr Krankentaggeld (auch Unfall- oder Mutterschaftstaggeld) ausgezahlt wurde und ob es im Bruttolohn Ziffer 8 des Lohnausweises enthalten ist (Hinweis: eine Bemerkung wie „KK-Taggeld Verrechnung“ auf dem Lohnausweis). Ohne Taggeld legst du chLohnausweis.steuerfreiesKrankentaggeldChf = 0 an; mit Taggeld gilt der Zwei-Wege-Vorschlag (`propose_two_paths`).'
+  'Frag, falls noch nicht beantwortet, ob im Jahr ein Taggeld ausgezahlt wurde, Krankentaggeld (auch Mutterschaftstaggeld) oder Unfalltaggeld der Unfallversicherung (UVG/SUVA), und ob es im Bruttolohn Ziffer 8 des Lohnausweises enthalten ist (Hinweis: eine Bemerkung wie „KK-Taggeld Verrechnung“ auf dem Lohnausweis). Ohne Taggeld legst du chLohnausweis.steuerfreiesKrankentaggeldChf = 0 an. Krankentaggeld gehört in chLohnausweis.steuerfreiesKrankentaggeldChf, Unfalltaggeld (UVG/SUVA) in chLohnausweis.steuerfreiesUnfalltaggeldChf (steuerfrei, erhöht aber den Steuersatz); mit Taggeld gilt für beide Felder der Zwei-Wege-Vorschlag (`propose_two_paths`).'
 
 /** The same question as the app asks it itself, under a wage statement it has just read. */
 export const SICK_PAY_QUESTION_FOR_USER =
-  'Eine Frage zu diesem Lohnausweis: Wurde im Jahr Krankentaggeld (auch Unfall- oder Mutterschaftstaggeld) ausgezahlt, und ist es im Bruttolohn (Ziffer 8) enthalten? Ein Hinweis darauf ist eine Bemerkung wie „KK-Taggeld Verrechnung“. Steuerfreies Taggeld im Bruttolohn wird abgezogen: Nenn mir den Betrag laut Taggeld-Abrechnung, oder sag, dass es keines gab.'
+  'Eine Frage zu diesem Lohnausweis: Wurde im Jahr Krankentaggeld (auch Mutterschaftstaggeld) oder Unfalltaggeld (UVG/SUVA) ausgezahlt, und ist es im Bruttolohn (Ziffer 8) enthalten? Ein Hinweis darauf ist eine Bemerkung wie „KK-Taggeld Verrechnung“. Steuerfreies Taggeld im Bruttolohn wird abgezogen; Unfalltaggeld erhöht außerdem den Steuersatz. Nenn mir die Art und den Betrag laut Taggeld-Abrechnung, oder sag, dass es keines gab.'
 
 /**
  * The question under a wage statement just read, with what its remarks say about a paid-out daily
- * benefit: the amount is named as the proposal, an accident benefit as something treated differently.
+ * benefit: the amount is named as the proposal, for a sickness benefit and for an accident benefit
+ * (UVG/SUVA), which is tax-free as well but raises the tax rate.
  */
 export function sickPayQuestionForUser(remark: ChDailyBenefitRemark | null | undefined): string {
   if (!remark) return SICK_PAY_QUESTION_FOR_USER
   const amount = remark.amountChf === null ? null : formatChf(remark.amountChf)
   if (remark.kind === 'accident') {
-    return `Eine Frage zu diesem Lohnausweis: In den Bemerkungen steht ein Unfalltaggeld${amount ? ` über ${amount}` : ''}. Unfalltaggeld wird steuerlich anders behandelt als Krankentaggeld, deshalb habe ich dafür nichts vorbereitet. Ist es im Bruttolohn (Ziffer 8) enthalten${amount ? '' : ', und wie hoch war der Betrag'}?`
+    return amount
+      ? `Eine Frage zu diesem Lohnausweis: In den Bemerkungen steht ausgezahltes Unfalltaggeld (UVG/SUVA) über ${amount}. Ist es im Bruttolohn (Ziffer 8) enthalten? Nur dann wird es abgezogen. Unfalltaggeld wird anders behandelt als Krankentaggeld: Es ist steuerfrei, erhöht aber den Steuersatz (Progressionsvorbehalt). Unter dieser Nachricht stehen beide Wege zur Wahl: nicht abziehen, oder ${amount} abziehen (Nachweis: ergänzende Bescheinigung des Arbeitgebers oder Taggeld-Abrechnung der Unfallversicherung).`
+      : 'Eine Frage zu diesem Lohnausweis: In den Bemerkungen steht ausgezahltes Unfalltaggeld (UVG/SUVA), aber kein Betrag. Ist es im Bruttolohn (Ziffer 8) enthalten, und welchen Betrag nennt die Taggeld-Abrechnung? Unfalltaggeld wird anders behandelt als Krankentaggeld: Es ist steuerfrei und wird vom Bruttolohn abgezogen, erhöht aber den Steuersatz (Progressionsvorbehalt).'
   }
   return amount
     ? `Eine Frage zu diesem Lohnausweis: In den Bemerkungen steht ausgezahltes Krankentaggeld über ${amount}. Ist es im Bruttolohn (Ziffer 8) enthalten? Nur dann wird es abgezogen. Unter dieser Nachricht stehen beide Wege zur Wahl: nicht abziehen, oder ${amount} abziehen (Nachweis: Taggeld-Abrechnung des Versicherers).`
@@ -86,6 +92,9 @@ export function checkDraftRules(input: DraftRuleInput): DraftRuleCheck {
     }
     if (input.tool === 'stage' && positive(values.steuerfreiesKrankentaggeldChf)) {
       return { ok: false, code: 'TWO_PATHS_REQUIRED', reason: SICK_PAY_NEEDS_TWO_PATHS }
+    }
+    if (input.tool === 'stage' && positive(values.steuerfreiesUnfalltaggeldChf)) {
+      return { ok: false, code: 'TWO_PATHS_REQUIRED', reason: ACCIDENT_PAY_NEEDS_TWO_PATHS }
     }
   }
   // „Weitere Einkünfte → Nein“ was concluded from „Depot mit Freistellungsaufträgen“ (real-data run): the
@@ -140,7 +149,8 @@ export function draftFollowUps(screen: Screen, values: DraftValues): string[] {
     if (positive(values.krankenkasseChf) && !has('krankenkasseZusatzChf')) {
       asks.push('Frag, ob im Krankenkassen-Betrag Zusatzversicherungen (VVG) stecken. krankenkasseChf ist nur die Grundversicherung nach KVG; den Zusatz legst du als chLohnausweis.krankenkasseZusatzChf an (0, wenn es keinen gibt).')
     }
-    if (positive(values['bruttolohn-total']) && !has('steuerfreiesKrankentaggeldChf')) {
+    // An answer in either daily-benefit field answers the one question.
+    if (positive(values['bruttolohn-total']) && !has('steuerfreiesKrankentaggeldChf') && !has('steuerfreiesUnfalltaggeldChf')) {
       asks.push(SICK_PAY_QUESTION)
     }
   }

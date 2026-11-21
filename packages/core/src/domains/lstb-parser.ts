@@ -18,6 +18,8 @@ export type LstbFieldReason =
   | 'llm_suggested'
   /** Read from a photo or scanned page via OCR, which confuses digits (8/3, 1/7) — never green. */
   | 'ocr_source'
+  /** The row is empty on the certificate and proposed as 0 where the mask needs an answer (Zeile 24, ADR-0093). */
+  | 'empty_line'
 
 /** One summand of a field's calculation, e.g. line 23a with its printed amount. Formatting is the UI's job. */
 export interface LstbCalculationTerm {
@@ -43,6 +45,29 @@ export interface LstbSvBreakdown {
   readonly line27: number | null
 }
 
+/**
+ * The further lines of the certificate the LStB mask has a field for (catalogue screen `lstb`): Soli (Zeile 5,
+ * euros with cents), church tax (6, 7), the pension shares (22 a/b, 23 a/b), the tax-free subsidies (24 a–c and
+ * 24c alone) and the employee's insurance contributions (25–27). Whole euros, rounded as the mask rounds.
+ */
+export const LSTB_SCAN_LINES = [
+  'solidaritaetszuschlag',
+  'kirchensteuer',
+  'kirchensteuerEhegatte',
+  'rvArbeitgeber',
+  'rvArbeitnehmer',
+  'zuschuesseKvPv',
+  'zuschussPv',
+  'kvArbeitnehmer',
+  'pvArbeitnehmer',
+  'avArbeitnehmer',
+] as const
+export type LstbScanLine = (typeof LSTB_SCAN_LINES)[number]
+
+/** Printed amounts of the rows beside 3, 4 and 23–27, by their number on the form. */
+export type LstbExtraRow = '5' | '6' | '7' | '22a' | '22b' | '24a' | '24b' | '24c'
+export type LstbExtraRowAmounts = Readonly<Partial<Record<LstbExtraRow, number | null>>>
+
 export interface LstbExtractionResult {
   readonly taxYear: number | null
   readonly fields: {
@@ -51,6 +76,8 @@ export interface LstbExtractionResult {
     readonly sozialversicherung: LstbExtractedField
   }
   readonly svBreakdown: LstbSvBreakdown
+  /** Every further line of the mask; `value: null` with reason `missing` where the certificate prints none. */
+  readonly lines: Readonly<Record<LstbScanLine, LstbExtractedField>>
   /** Fields that are missing or need a check (`pruefen`); empty when the certificate read cleanly. */
   readonly unresolvedFields: readonly WageTaxCertificateFieldId[]
 }
@@ -62,6 +89,10 @@ export interface LstbExtractionInput {
   readonly svBreakdown: LstbSvBreakdown
   readonly unreadableFields?: readonly WageTaxCertificateFieldId[] | undefined
   readonly hasAmbiguity?: readonly WageTaxCertificateFieldId[] | undefined
+  /** Rows 5–7, 22 and 24 as printed; absent ones are not on the certificate. */
+  readonly extraRows?: LstbExtraRowAmounts | undefined
+  /** Lines read twice with different amounts, or whose row is not certain. */
+  readonly ambiguousLines?: readonly LstbScanLine[] | undefined
 }
 
 const MIN_LSTB_YEAR = 2020
@@ -197,8 +228,15 @@ export function evaluateLstbExtraction(input: LstbExtractionInput): LstbExtracti
   if (sv27 !== null) svEntries.push({ line: '27', amount: sv27, category: 'alv' })
 
   const svCategoriesPresent = new Set(svEntries.map((e) => e.category))
-  const svRawSum = svEntries.reduce((acc, item) => acc + item.amount, 0)
-  const svRounded = svEntries.length > 0 ? Math.round(svRawSum) : null
+  // The app's sum (ADR-0093): each line in whole euros as the mask holds it, then added. The lines are
+  // drafted beside the sum, and taking them over stores exactly this sum.
+  const svRounded =
+    svEntries.length > 0
+      ? (['rv', 'kv', 'pv', 'alv'] as const).reduce((acc, category) => {
+          const amounts = svEntries.filter((e) => e.category === category).map((e) => e.amount)
+          return acc + (amounts.length > 0 ? wholeEurosOf(amounts) : 0)
+        }, 0)
+      : null
   const bruttoRounded = line3 !== null ? Math.round(line3) : null
   const lohnsteuerRounded = line4 !== null ? Math.round(line4) : null
 
@@ -350,6 +388,25 @@ export function evaluateLstbExtraction(input: LstbExtractionInput): LstbExtracti
     .filter(([, field]) => field.status === 'pruefen')
     .map(([id]) => id)
 
+  const extra = (row: LstbExtraRow): number | null => normalizeNonNegNum(input.extraRows?.[row])
+  const rows = (...pairs: readonly (readonly [string, number | null])[]) => pairs.filter((pair): pair is readonly [string, number] => pair[1] !== null)
+  const rvEmployee = svEntries.filter((e) => e.category === 'rv').map((e) => [e.line, e.amount] as const)
+  const ambiguousLines = new Set(input.ambiguousLines ?? [])
+  const lineOf = (line: LstbScanLine, printed: readonly (readonly [string, number])[]): LstbExtractedField =>
+    lineField(printed, line === 'solidaritaetszuschlag', ambiguousLines.has(line))
+  const lines: Record<LstbScanLine, LstbExtractedField> = {
+    solidaritaetszuschlag: lineOf('solidaritaetszuschlag', rows(['5', extra('5')])),
+    kirchensteuer: lineOf('kirchensteuer', rows(['6', extra('6')])),
+    kirchensteuerEhegatte: lineOf('kirchensteuerEhegatte', rows(['7', extra('7')])),
+    rvArbeitgeber: lineOf('rvArbeitgeber', rows(['22a', extra('22a')], ['22b', extra('22b')])),
+    rvArbeitnehmer: lineOf('rvArbeitnehmer', rvEmployee),
+    zuschuesseKvPv: subsidiesField(lineOf('zuschuesseKvPv', rows(['24a', extra('24a')], ['24b', extra('24b')], ['24c', extra('24c')])), sv25 !== null || sv26 !== null),
+    zuschussPv: lineOf('zuschussPv', rows(['24c', extra('24c')])),
+    kvArbeitnehmer: lineOf('kvArbeitnehmer', rows(['25', sv25])),
+    pvArbeitnehmer: lineOf('pvArbeitnehmer', rows(['26', sv26])),
+    avArbeitnehmer: lineOf('avArbeitnehmer', rows(['27', sv27])),
+  }
+
   return {
     taxYear,
     fields: {
@@ -358,12 +415,65 @@ export function evaluateLstbExtraction(input: LstbExtractionInput): LstbExtracti
       sozialversicherung: svField,
     },
     svBreakdown,
+    lines,
     unresolvedFields,
   }
 }
 
-type TargetRowKey = '3' | '4' | '23a' | '23b' | '23' | '25' | '26' | '27'
+/** Whole euros of printed amounts added in cents, half up — the rounding of the mask (`wholeEurosFrom`). */
+function wholeEurosOf(amounts: readonly number[]): number {
+  const cents = amounts.reduce((acc, amount) => acc + Math.round(amount * 100), 0)
+  return Math.floor((cents + 50) / 100)
+}
+
+/**
+ * Zeile 24 has to be answered once 25 or 26 holds a contribution, „0, wenn die Zeile leer ist“ (ADR-0093):
+ * a certificate that prints them without a row 24 proposes that 0, to be checked (OCR may have lost the row).
+ */
+function subsidiesField(read: LstbExtractedField, healthOrCareRead: boolean): LstbExtractedField {
+  if (read.value !== null || !healthOrCareRead) return read
+  return { value: 0, status: 'pruefen', sourceLines: ['24'], calculation: [], reason: 'empty_line' }
+}
+
+/** One further line of the mask from its printed rows: whole euros (Soli: euros with cents). */
+function lineField(printed: readonly (readonly [string, number])[], withCents: boolean, ambiguous: boolean): LstbExtractedField {
+  const sourceLines = printed.map(([line]) => line)
+  if (printed.length === 0) return { value: null, status: 'pruefen', sourceLines, calculation: [], reason: 'missing' }
+  const amounts = printed.map(([, amount]) => amount)
+  const value = withCents ? amounts.reduce((acc, amount) => acc + Math.round(amount * 100), 0) / 100 : wholeEurosOf(amounts)
+  return {
+    value,
+    status: ambiguous ? 'pruefen' : 'ok',
+    sourceLines,
+    calculation: printed.map(([line, amount]) => ({ line, amount })),
+    reason: ambiguous ? 'unreadable' : null,
+  }
+}
+
+type SocialRowKey = '23a' | '23b' | '23' | '25' | '26' | '27'
+type TargetRowKey = '3' | '4' | SocialRowKey | LstbExtraRow
 type MatchedRowKey = TargetRowKey | 'other'
+
+/** The rows the text fallback may see (ADR-0058): 3, 4 and 23–27 only, as before the further lines were read. */
+const FALLBACK_ROWS: ReadonlySet<MatchedRowKey> = new Set(['3', '4', '23a', '23b', '23', '25', '26', '27'])
+
+/** The line of the mask each further row goes to (24c counts in both subsidy fields). */
+const LINES_OF_ROW: Readonly<Record<Exclude<TargetRowKey, '3' | '4'>, readonly LstbScanLine[]>> = {
+  '5': ['solidaritaetszuschlag'],
+  '6': ['kirchensteuer'],
+  '7': ['kirchensteuerEhegatte'],
+  '22a': ['rvArbeitgeber'],
+  '22b': ['rvArbeitgeber'],
+  '23': ['rvArbeitnehmer'],
+  '23a': ['rvArbeitnehmer'],
+  '23b': ['rvArbeitnehmer'],
+  '24a': ['zuschuesseKvPv'],
+  '24b': ['zuschuesseKvPv'],
+  '24c': ['zuschuesseKvPv', 'zuschussPv'],
+  '25': ['kvArbeitnehmer'],
+  '26': ['pvArbeitnehmer'],
+  '27': ['avArbeitnehmer'],
+}
 
 /** Lower case without umlauts or "ß", so OCR's "Arbeitnehmerbeitrage" still matches. */
 function foldOcr(text: string): string {
@@ -374,6 +484,8 @@ function foldOcr(text: string): string {
 const ROW_HEADINGS: readonly (readonly [RegExp, RegExp])[] = [
   [/^0?3$/, /^brutto\s*arbeits/],
   [/^0?4$/, /^einbe\S*\s+lohnst/],
+  [/^0?5$/, /^einbe\S*\s+solidar/],
+  [/^0?[67]$/, /^einbe\S*\s+kirchen/],
   [/^23\s*[ab]?$/, /^(?:arbeitnehmer|[ab]\)\s*zur)/],
   [/^25$/, /^arbeitnehmer\S*\s+zur\s+gesetzlichen\s+kranken/],
   [/^26$/, /^arbeitnehmer\S*\s+zur\s+sozialen\s+pflege/],
@@ -404,8 +516,17 @@ function classifyLine(rawLine: string): MatchedRowKey | null {
   if (/^\d+[,.]\d{1,2}(?:\s*(?:€|EUR|Euro))?(?:\s|$)/i.test(line)) return null
 
   // Employer/non-AN lines checked first so they never alias to AN lines
-  if (/^(?:Zeile\s+)?22\s*[ab](?:\b|[.)])/i.test(line)) return 'other'
+  const employerShare = /^(?:Zeile\s+)?22(?:\s*([ab])(?:\b|[.)])|\.\s*([ab])\))/i.exec(line)
+  if (employerShare) return (employerShare[1] ?? employerShare[2])!.toLowerCase() === 'a' ? '22a' : '22b'
+  if (/^(?:Zeile\s+)?22(?![\d,]|\.\d)(?:\b|[.)])/i.test(line)) return 'other'
+  const subsidy = /^(?:Zeile\s+)?24(?:\s*([abc])(?![\d])(?:\b|[.)])|\.\s*([abc])\))/i.exec(line)
+  if (subsidy) return `24${(subsidy[1] ?? subsidy[2])!.toLowerCase() as 'a' | 'b' | 'c'}`
   if (/^(?:Zeile\s+)?24(?![\d,]|\.\d)(?:\b|[a-c.)])/i.test(line)) return 'other'
+  // Soli and church tax only with their heading: a bare "5." or "6." may be anything of the left column.
+  const foldedRow = foldOcr(line)
+  if (/^(?:zeile\s+)?0?5(?![\d,]|\.\d)(?:\b|[.)])/.test(foldedRow) && /solidar/.test(foldedRow)) return '5'
+  if (/^(?:zeile\s+)?0?6(?![\d,]|\.\d)(?:\b|[.)])/.test(foldedRow) && /kirchen/.test(foldedRow)) return '6'
+  if (/^(?:zeile\s+)?0?7(?![\d,]|\.\d)(?:\b|[.)])/.test(foldedRow) && /kirchen/.test(foldedRow)) return '7'
 
   if (/^(?:Zeile\s+)?23\s*a(?![\d])(?:\b|[.)])/i.test(line) || /^23\.\s*a\)/i.test(line)) return '23a'
   if (/^(?:Zeile\s+)?23\s*b(?![\d])(?:\b|[.)])/i.test(line) || /^23\.\s*b\)/i.test(line)) return '23b'
@@ -432,11 +553,13 @@ function classifyLine(rawLine: string): MatchedRowKey | null {
   if (/arbeitnehmerbeitr.*gesetzlichen\s+krankenvers/.test(folded)) return '25'
   if (/arbeitnehmerbeitr.*sozialen\s+pflegevers/.test(folded)) return '26'
   if (/arbeitnehmerbeitr.*arbeits.{0,2}osenvers/.test(folded)) return '27'
+  if (/einbehalten\S*\s+solidaritatszuschlag/.test(folded)) return '5'
+  if (/einbehalten\S*\s+kirchensteuer/.test(folded)) return /ehegatte|lebenspartner/.test(folded) ? '7' : '6'
 
   return null
 }
 
-type SubRowKey = '23a' | '23b' | 'other'
+type SubRowKey = '22a' | '22b' | '23a' | '23b' | '24a' | '24b' | '24c'
 
 /** A sub-row of the blocks 22 (employer's share), 23 (employee's share) and 24 (tax-free subsidies), on folded text. */
 const SUB_ROW = /(?:^|[\s|:;])([abc2])\)\s*(zur\s+gesetzlichen\s+renten|an\s+berufsst|zur\s+gesetzlichen\s+kranken|zur\s+privaten\s+kranken|zur\s+gesetzlichen\s+pflege)/
@@ -460,7 +583,8 @@ function classifySubRows(lines: readonly string[]): { readonly keys: ReadonlyMap
     if (!sub) return
     const topic = sub[2]!
     if (!/renten|berufsst/.test(topic)) {
-      keys.set(index, 'other')
+      // Block 24: a) statutory health, b) private health, c) statutory care insurance.
+      keys.set(index, topic.includes('privaten') ? '24b' : topic.includes('pflege') ? '24c' : '24a')
       return
     }
     const number = BLOCK_NUMBER.exec(line.slice(0, sub.index + 1))
@@ -474,10 +598,10 @@ function classifySubRows(lines: readonly string[]): { readonly keys: ReadonlyMap
     unnumbered.forEach((row, i) => {
       // Employer first: the unnumbered row is the employee's when the employer's is known or stands before it.
       const employee = has('22') || (!has('23') && (unnumbered.length === 1 || i > 0))
-      keys.set(row.index, employee ? `23${letter}` : 'other')
+      keys.set(row.index, employee ? `23${letter}` : `22${letter}`)
       if (unnumbered.length === 1 && !has('22') && !has('23') && extractTrailingAmount(lines[row.index]!, false) !== null) ambiguous = true
     })
-    for (const row of rows) if (row.block !== null) keys.set(row.index, row.block === '23' ? `23${letter}` : 'other')
+    for (const row of rows) if (row.block !== null) keys.set(row.index, row.block === '23' ? `23${letter}` : `22${letter}`)
   }
   return { keys, ambiguous }
 }
@@ -523,63 +647,25 @@ function extractTrailingAmount(line: string, isRowHeader: boolean): number | nul
 }
 
 /**
- * Stage 1 deterministic parser for German Lohnsteuerbescheinigungen.
- * Never extracts PII (Steuer-ID, eTIN, employer, Steuerklasse).
+ * Stage 1 deterministic parser for German Lohnsteuerbescheinigungen: lines 3 and 4, the employee's
+ * social security and every further line the mask has a field for (`lines`).
+ * Never extracts PII (Steuer-ID, eTIN, Steuerklasse); the employer is read by `extractLstbEmployer`.
  */
 export function parseLstbTextDeterministically(rawText: string): LstbExtractionResult {
   const taxYear = extractLstbTaxYear(rawText)
   const lines = rawText.split(/\r?\n/)
 
-  let line3: number | null = null
-  let line4: number | null = null
-  let line23: number | null = null
-  let line23a: number | null = null
-  let line23b: number | null = null
-  let line25: number | null = null
-  let line26: number | null = null
-  let line27: number | null = null
-
-  const ambiguous = new Set<WageTaxCertificateFieldId>()
-
+  const printed = new Map<TargetRowKey, number>()
+  const conflicting = new Set<TargetRowKey>()
+  // A row printed twice with different amounts keeps the first and is marked; Soli is compared in cents.
   const assignLine = (key: TargetRowKey, value: number) => {
-    switch (key) {
-      case '3':
-        if (line3 !== null && Math.round(line3) !== Math.round(value)) ambiguous.add('bruttoarbeitslohn')
-        else line3 = value
-        break
-      case '4':
-        if (line4 !== null && Math.round(line4) !== Math.round(value)) ambiguous.add('lohnsteuer')
-        else line4 = value
-        break
-      case '23a':
-        if (line23a !== null && Math.round(line23a) !== Math.round(value)) ambiguous.add('sozialversicherung')
-        else line23a = value
-        break
-      case '23b':
-        if (line23b !== null && Math.round(line23b) !== Math.round(value)) ambiguous.add('sozialversicherung')
-        else line23b = value
-        break
-      case '23':
-        if (line23 !== null && Math.round(line23) !== Math.round(value)) ambiguous.add('sozialversicherung')
-        else line23 = value
-        break
-      case '25':
-        if (line25 !== null && Math.round(line25) !== Math.round(value)) ambiguous.add('sozialversicherung')
-        else line25 = value
-        break
-      case '26':
-        if (line26 !== null && Math.round(line26) !== Math.round(value)) ambiguous.add('sozialversicherung')
-        else line26 = value
-        break
-      case '27':
-        if (line27 !== null && Math.round(line27) !== Math.round(value)) ambiguous.add('sozialversicherung')
-        else line27 = value
-        break
-    }
+    const before = printed.get(key)
+    const same = (a: number, b: number) => (key === '5' ? Math.round(a * 100) === Math.round(b * 100) : Math.round(a) === Math.round(b))
+    if (before === undefined) printed.set(key, value)
+    else if (!same(before, value)) conflicting.add(key)
   }
 
   const subRows = classifySubRows(lines)
-  if (subRows.ambiguous) ambiguous.add('sozialversicherung')
 
   for (let i = 0; i < lines.length; i += 1) {
     const line = lines[i]!
@@ -609,20 +695,74 @@ export function parseLstbTextDeterministically(rawText: string): LstbExtractionR
     }
   }
 
+  const ambiguous = new Set<WageTaxCertificateFieldId>()
+  if (conflicting.has('3')) ambiguous.add('bruttoarbeitslohn')
+  if (conflicting.has('4')) ambiguous.add('lohnsteuer')
+  const socialRows: readonly SocialRowKey[] = ['23a', '23b', '23', '25', '26', '27']
+  if (subRows.ambiguous || socialRows.some((row) => conflicting.has(row))) ambiguous.add('sozialversicherung')
+
+  const ambiguousLines = new Set<LstbScanLine>()
+  for (const row of conflicting) if (row !== '3' && row !== '4') for (const line of LINES_OF_ROW[row]) ambiguousLines.add(line)
+  // A single pension row without its block number may be the employer's.
+  if (subRows.ambiguous) ambiguousLines.add('rvArbeitnehmer')
+
+  const row = (key: TargetRowKey): number | null => printed.get(key) ?? null
   return evaluateLstbExtraction({
     taxYear,
-    line3Brutto: line3,
-    line4Lohnsteuer: line4,
+    line3Brutto: row('3'),
+    line4Lohnsteuer: row('4'),
     svBreakdown: {
-      line23,
-      line23a,
-      line23b,
-      line25,
-      line26,
-      line27,
+      line23: row('23'),
+      line23a: row('23a'),
+      line23b: row('23b'),
+      line25: row('25'),
+      line26: row('26'),
+      line27: row('27'),
+    },
+    extraRows: {
+      '5': row('5'),
+      '6': row('6'),
+      '7': row('7'),
+      '22a': row('22a'),
+      '22b': row('22b'),
+      '24a': row('24a'),
+      '24b': row('24b'),
+      '24c': row('24c'),
     },
     hasAmbiguity: [...ambiguous],
+    ambiguousLines: [...ambiguousLines],
   })
+}
+
+const EMPLOYER_LABEL = /^(?:(?:name\s+(?:und\s+anschrift\s+)?|anschrift\s+(?:und\s+steuernummer\s+)?)des\s+arbeitgebers\s*:?|arbeitgeber\s*:)\s*(.*)$/i
+
+/**
+ * The employer as the certificate names it (ADR-0099 §8): the text after „Arbeitgeber:“ or „Anschrift (und
+ * Steuernummer) des Arbeitgebers“, or the next line when the label stands alone. Only the name, up to the
+ * first comma; never a certificate row or an amount. A photo's OCR is never green (`capOcrSourcedEmployer`).
+ */
+export function extractLstbEmployer(rawText: string): LstbExtractedEmployer {
+  const lines = (rawText ?? '').split(/\r?\n/).map((line) => line.trim())
+  for (let i = 0; i < lines.length; i += 1) {
+    const label = EMPLOYER_LABEL.exec(lines[i]!)
+    if (!label) continue
+    const candidate = label[1]!.trim() !== '' ? label[1]! : (lines.slice(i + 1, i + 3).find((line) => line !== '') ?? '')
+    const name = candidate.split(/,|\s{2,}|\s\/\s|\s\|\s/)[0]!.trim().slice(0, 100)
+    if (name === '' || classifyLine(name) !== null || isAmountOnlyLine(name) || !/[A-Za-zÄÖÜäöüß]{2}/.test(name)) continue
+    return { value: name, status: 'ok', reason: null }
+  }
+  return { value: null, status: 'pruefen', reason: 'missing' }
+}
+
+export interface LstbExtractedEmployer {
+  readonly value: string | null
+  readonly status: LstbExtractedFieldStatus
+  readonly reason: 'missing' | 'ocr_source' | null
+}
+
+/** An employer read by OCR is never green, like every other value of a photo (ADR-0060). */
+export function capOcrSourcedEmployer(employer: LstbExtractedEmployer): LstbExtractedEmployer {
+  return employer.status === 'ok' ? { ...employer, status: 'pruefen', reason: 'ocr_source' } : employer
 }
 
 const BARE_AMOUNT = /^\d{1,3}(?:[.\s]\d{3})*(?:[,.]\d{1,2})?$/
@@ -652,7 +792,7 @@ export function selectLstbRelevantLines(rawText: string): string {
   for (let i = 0; i < lines.length; i += 1) {
     const line = lines[i]!.trim()
     const row = classifyLine(line)
-    if (row === null || row === 'other') continue
+    if (row === null || !FALLBACK_ROWS.has(row)) continue
     // Only from the row number on: a scan's left column (name, street) never leaves the server.
     kept.push(rowSegment(line))
     // Same look-ahead as the deterministic parser: up to 2 lines, blank lines skipped,
@@ -757,6 +897,8 @@ export function applyLstbTextFallback(
     taxYear: stage1.taxYear,
     fields,
     svBreakdown: svFromFallback ? merged.svBreakdown : stage1.svBreakdown,
+    // The fallback reads only the three fields; the further lines stay as the deterministic parser read them.
+    lines: stage1.lines,
     unresolvedFields: (Object.keys(fields) as WageTaxCertificateFieldId[]).filter((id) => fields[id].status === 'pruefen'),
   }
 }
@@ -773,9 +915,11 @@ export function capOcrSourcedExtraction(result: LstbExtractionResult): LstbExtra
     lohnsteuer: cap(result.fields.lohnsteuer),
     sozialversicherung: cap(result.fields.sozialversicherung),
   }
+  const lines = Object.fromEntries(LSTB_SCAN_LINES.map((line) => [line, cap(result.lines[line])])) as Record<LstbScanLine, LstbExtractedField>
   return {
     ...result,
     fields,
+    lines,
     unresolvedFields: (Object.keys(fields) as WageTaxCertificateFieldId[]).filter((id) => fields[id].status === 'pruefen'),
   }
 }

@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { Fragment, useState, useRef } from 'react'
 import { ScrollView, View, Text, Pressable, type ViewStyle, type TextStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
@@ -662,11 +662,16 @@ const N_GRE_TEXT_FIELDS = ['arbeitgeberName', 'arbeitgeberStrasse', 'arbeitgeber
 const N_GRE_AMOUNT_FIELDS = [
   'familienzulagenChf',
   'steuerfreiesKrankentaggeldChf',
+  'steuerfreiesUnfalltaggeldChf',
   'krankentaggeldChf',
   'pkArbeitnehmerChf',
   'pkArbeitgeberGesamtChf',
   'pkArbeitgeberChf',
 ] as const
+/** Amount fields with a line of help under the input. */
+const N_GRE_AMOUNT_HELP: Partial<Record<(typeof N_GRE_AMOUNT_FIELDS)[number], string>> = {
+  steuerfreiesUnfalltaggeldChf: 'grenzgaenger.nGre.felder.steuerfreiesUnfalltaggeldChfHilfe',
+}
 /** Who pays the premium (N-Gre Zeilen 18/19, 95–98); the CHF field only matters when the employer pays it all. */
 const PREMIUMS = [
   { prozent: 'krankentaggeldArbeitgeberProzent', chf: 'krankentaggeldArbeitgeberChf' },
@@ -755,19 +760,24 @@ function NGreSection({ nGre, onSet }: { readonly nGre: NGreDetailsDto; readonly 
         />
       ))}
 
-      {N_GRE_AMOUNT_FIELDS.map((field) => (
-        <NGreInput
-          key={field}
-          label={tr(`grenzgaenger.nGre.felder.${field}`)}
-          initial={nGre[field] === null ? '' : String(nGre[field])}
-          numeric
-          testID={`ch-ngre-${field}`}
-          onCommit={(text) => {
-            if (text === '') onSet({ [field]: null })
-            else onSet({ [field]: Number(text) })
-          }}
-        />
-      ))}
+      {N_GRE_AMOUNT_FIELDS.map((field) => {
+        const help = N_GRE_AMOUNT_HELP[field]
+        return (
+          <Fragment key={field}>
+            <NGreInput
+              label={tr(`grenzgaenger.nGre.felder.${field}`)}
+              initial={nGre[field] === null || nGre[field] === undefined ? '' : String(nGre[field])}
+              numeric
+              testID={`ch-ngre-${field}`}
+              onCommit={(text) => {
+                if (text === '') onSet({ [field]: null })
+                else onSet({ [field]: Number(text) })
+              }}
+            />
+            {help ? <Text style={styles.help}>{tr(help)}</Text> : null}
+          </Fragment>
+        )
+      })}
       <YesNo
         label={tr('grenzgaenger.nGre.felder.familienzulagenImBruttolohn')}
         help={tr('grenzgaenger.nGre.felder.familienzulagenImBruttolohnHilfe')}

@@ -1,6 +1,7 @@
 import {
   classifyDocumentKind,
   decideDocumentHolder,
+  extractLstbTaxYear,
   holderPerson,
   holderScopeOf,
   isHolderRef,
@@ -71,7 +72,7 @@ export class ReceiptParseService implements OnModuleInit {
     if (dto.receiptId && owned === null) {
       throw new NotFoundError('BELEG_NOT_FOUND', `Beleg "${dto.receiptId}" does not exist for this account.`)
     }
-    if (dto.deviceReadFailure !== undefined) return this.recordDeviceFailure(userId, owned, dto.deviceReadFailure)
+    if (dto.deviceReadFailure !== undefined) return this.recordDeviceFailure(userId, owned, dto.deviceReadFailure, dto.inChat === true ? dto.taxYear : null)
 
     // The same file again (ADR-0097 §7): read, so it is filed, but its drafts stay with the first upload.
     // Only an upload that was read to a result holds drafts to stay with: a first upload whose „Für wen?“
@@ -94,15 +95,22 @@ export class ReceiptParseService implements OnModuleInit {
     const filedInTaxYear = draftsTaxYear !== null && draftsTaxYear !== dto.taxYear ? draftsTaxYear : null
     const done: ParseReceiptResponseDto = { ...response, draftsTaxYear, filedInTaxYear, noValuesReason: response.noValuesReason ?? null, duplicateOf: duplicateDto(original ?? undefined) }
     if (owned === null) return { ...done, processing: null }
-    const facts = readFactsOf(owned, dto, done, original !== null)
-    const recorded = facts === null ? owned : ((await this.receiptRepository.recordRead(userId, owned.id, facts)) ?? owned)
+    const read = readFactsOf(owned, dto, done, original !== null)
+    // An upload in the chat of a year belongs to that year (real-data run 4), whatever the read found.
+    const chatYear = chatYearOf(owned, dto, done)
+    const facts = read !== null && chatYear !== null && read.taxYear === undefined ? { ...read, taxYear: chatYear } : read
+    let recorded = facts === null ? owned : ((await this.receiptRepository.recordRead(userId, owned.id, facts)) ?? owned)
+    // Nothing was read yet („Für wen?“): the read is not recorded, the year is.
+    if (facts === null && chatYear !== null) recorded = (await this.receiptRepository.setAssignment(userId, owned.id, { taxYear: chatYear, proposalDismissed: false })) ?? recorded
     return { ...done, processing: await this.processingNow(userId, recorded) }
   }
 
   /** The device could not produce text: nothing to read, and the Beleg says so instead of staying „neu“. */
-  private async recordDeviceFailure(userId: string, owned: ReceiptRecord | null, failure: DeviceReadFailure): Promise<ParseReceiptResponseDto> {
+  private async recordDeviceFailure(userId: string, owned: ReceiptRecord | null, failure: DeviceReadFailure, chatYear: number | null): Promise<ParseReceiptResponseDto> {
     if (owned === null) throw new InvalidInputError('RECEIPT_ID_REQUIRED', '"deviceReadFailure" needs the "receiptId" of the stored Beleg.')
-    const recorded = (await this.receiptRepository.recordRead(userId, owned.id, { outcome: 'fehler', reason: DEVICE_FAILURE_REASON[failure], draftsTaxYear: null })) ?? owned
+    // Uploaded in the chat of a year: nothing could be read to name another one, so it is that year's.
+    const year = chatYear !== null && owned.taxYear == null ? { taxYear: chatYear } : {}
+    const recorded = (await this.receiptRepository.recordRead(userId, owned.id, { outcome: 'fehler', reason: DEVICE_FAILURE_REASON[failure], draftsTaxYear: null, ...year })) ?? owned
     return {
       mode: 'deterministic_fallback',
       securityBlocked: false,
@@ -214,6 +222,24 @@ export class ReceiptParseService implements OnModuleInit {
       throw new InvalidInputError('RECEIPT_EMPTY', 'Bitte gib einen Belegtext an.')
     }
   }
+}
+
+/**
+ * The chat's tax year for a Beleg uploaded there (`inChat`), or null: when the Beleg has a year already
+ * (the user's, or the one its drafts went to), or when the document itself names another year — then the
+ * Belege tab asks as before. The year a reader found on the document, or for a question asked before any
+ * read, the year an LStB prints in its header.
+ */
+function chatYearOf(owned: ReceiptRecord, dto: ParseReceiptDto, response: ParseReceiptResponseDto): number | null {
+  if (dto.inChat !== true || owned.taxYear != null || response.draftsTaxYear != null) return null
+  const named =
+    response.lstb?.taxYearOnDocument ??
+    response.chLohnausweis?.taxYearOnDocument ??
+    response.chLetter?.taxYearOnDocument ??
+    response.assessmentNotice?.taxYearOnDocument ??
+    response.parsed.taxYear ??
+    (askedWhose(response) ? extractLstbTaxYear(dto.rawText ?? '') : null)
+  return named === null || named === dto.taxYear ? dto.taxYear : null
 }
 
 /** Whether the read staged any draft (the drafts of a document come as one owl message). */

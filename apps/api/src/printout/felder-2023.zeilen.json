@@ -839,6 +839,24 @@
       "spalte": null
     },
     {
+      "id": "anlNGre.z10Chf",
+      "formular": "anlage-n-gre",
+      "seite": 1,
+      "zeile": "9",
+      "kennzahlen": [],
+      "label": "SUVA – Geld (laut ergänzender Bescheinigung des Arbeitgebers)",
+      "spalte": null
+    },
+    {
+      "id": "anlNGre.z10Eur",
+      "formular": "anlage-n-gre",
+      "seite": 1,
+      "zeile": "9",
+      "kennzahlen": [],
+      "label": "SUVA – Geld (laut ergänzender Bescheinigung des Arbeitgebers)",
+      "spalte": null
+    },
+    {
       "id": "anlNGre.z15Chf",
       "formular": "anlage-n-gre",
       "seite": 1,
@@ -1917,6 +1935,28 @@
         "121"
       ],
       "label": "Einkommensersatzleistungen, die dem Progressionsvorbehalt unterliegen, z. B. Arbeitslosengeld, Elterngeld, Insolvenzgeld, Krankengeld, Mutterschaftsgeld, Verdienstausfallentschädigung (Infektionsschutzgesetz)",
+      "spalte": "EUR"
+    },
+    {
+      "id": "est1a.kz136",
+      "formular": "est-1-a",
+      "seite": 2,
+      "zeile": "36",
+      "kennzahlen": [
+        "136"
+      ],
+      "label": "Leistungen aus einem EU- / EWR-Staat oder der Schweiz, die mit Einkommensersatzleistungen i. S. d. Zeile 35 vergleichbar sind",
+      "spalte": "EUR"
+    },
+    {
+      "id": "est1a.kz137",
+      "formular": "est-1-a",
+      "seite": 2,
+      "zeile": "36",
+      "kennzahlen": [
+        "137"
+      ],
+      "label": "Leistungen aus einem EU- / EWR-Staat oder der Schweiz, die mit Einkommensersatzleistungen i. S. d. Zeile 35 vergleichbar sind",
       "spalte": "EUR"
     },
     {

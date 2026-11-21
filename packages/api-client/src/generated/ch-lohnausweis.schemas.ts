@@ -154,6 +154,8 @@ export interface NGreDetailsDto {
   /** @nullable */
   steuerfreiesKrankentaggeldChf: number | null;
   /** @nullable */
+  steuerfreiesUnfalltaggeldChf: number | null;
+  /** @nullable */
   krankentaggeldArbeitgeberProzent: number | null;
   /** @nullable */
   krankentaggeldArbeitgeberChf: number | null;
@@ -286,6 +288,11 @@ export interface PutNGreDto {
      * @nullable
      */
   steuerfreiesKrankentaggeldChf?: number | null;
+  /**
+     * Whole CHF — daily benefit of the Swiss accident insurance (UVG/SUVA) paid out and contained in Ziffer 8 (line „SUVA – Geld“). Tax-free, but it raises the tax rate (§ 32b EStG).
+     * @nullable
+     */
+  steuerfreiesUnfalltaggeldChf?: number | null;
   /**
      * Employer share of the Krankentaggeld premium in percent, 0–100 (Zeilen 18, 95, 96).
      * @nullable

@@ -175,7 +175,8 @@ describe('HTTP E2E (no-DB): Beleg upload/download/delete, LStB parse & atomic LS
     expect(parsedBody.lstb.fields.bruttoarbeitslohn.value).toBe(54320)
     expect(parsedBody.lstb.fields.lohnsteuer.value).toBe(9840)
     expect(parsedBody.lstb.fields.sozialversicherung.value).toBe(10912)
-    expect(parsedBody.lstb.stagedActionIds).toHaveLength(3)
+    // The three values and the lines 23a, 25–27 and 24 (empty: 0).
+    expect(parsedBody.lstb.stagedActionIds).toHaveLength(8)
 
     // LStB table still empty before confirmation!
     const beforeConfirm = await app.inject({

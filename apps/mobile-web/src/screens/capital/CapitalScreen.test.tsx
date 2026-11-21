@@ -191,8 +191,9 @@ describe('KapitalScreen', () => {
 
     expect(await screen.findByTestId('guenstigerpruefung-aussage')).toBeTruthy()
     expect(screen.getByText('Die Abgeltungsteuer ist günstiger.')).toBeTruthy()
-    expect(screen.getByText('4750 €')).toBeTruthy()
-    expect(screen.getByText('8482 €')).toBeTruthy()
+    // Grouped like every amount of the app (formatEuro), so a sum with cents reads 5.011,25 €.
+    expect(screen.getByTestId('guenstigerpruefung-abgeltung').textContent).toBe('4.750\u00a0€')
+    expect(screen.getByTestId('guenstigerpruefung-persoenlich').textContent).toBe('8.482\u00a0€')
   })
 
   it('renders the honest no-verdict states and the foreign-broker KAP-Pflicht notice', async () => {

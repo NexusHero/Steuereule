@@ -65,8 +65,8 @@ describe('REQ-025 — the Kapital vertical (Anlage KAP), against the real server
     })
   }
 
-  function putLstb(cookie: string, value: number) {
-    return fetch(`${baseUrl}/v1/steuerjahre/${TAX_YEAR}/lstb/bruttoarbeitslohn`, {
+  function putLstb(cookie: string, value: number, field: 'bruttoarbeitslohn' | 'lohnsteuer' | 'sozialversicherung' = 'bruttoarbeitslohn') {
+    return fetch(`${baseUrl}/v1/steuerjahre/${TAX_YEAR}/lstb/${field}`, {
       method: 'PUT',
       headers: { 'content-type': 'application/json', cookie },
       body: JSON.stringify({ kind: 'erfasst', value }),
@@ -159,30 +159,32 @@ describe('REQ-025 — the Kapital vertical (Anlage KAP), against the real server
     expect(await gp.json()).toEqual({ kind: 'nicht-anwendbar', reason: 'krypto-gegated' })
   })
 
-  it('GWT — the § 32d Abs. 6 Günstigerprüfung over a real zvE path: bounded, never a bare verdict', async () => {
+  it('GWT — the § 32d Abs. 6 Günstigerprüfung on the Cockpit estimate: its taxable income, its tariff', async () => {
     const { cookie, userId } = await signUp('gp-eindeutig@example.com')
     for (const [q, v] of [['job', 'Angestellt'], ['ausland', 'Nein'], ['kinder', 'Nein']] as const) {
       expect((await postAnswer(cookie, q, v)).status).toBe(200)
     }
-    // lohnersatz answered → Progressionsvorbehalt bound (0), so eindeutig is reachable.
     for (const [q, v] of [['dhf', 'Nein'], ['umzug', 'Nein'], ['abfindung', 'Nein'], ['lohnersatz', 'Nein']] as const) {
       expect((await postAnswer(cookie, q, v)).status).toBe(200)
     }
     await seedAnswer(userId, 'kap-depot', 'Deutscher Broker')
     expect((await putField(cookie, { kind: 'erfasst', value: 20000 })).status).toBe(200)
     expect((await putLstb(cookie, 60000)).status).toBe(200)
+    expect((await putLstb(cookie, 9500, 'lohnsteuer')).status).toBe(200)
+    expect((await putLstb(cookie, 12000, 'sozialversicherung')).status).toBe(200)
 
+    const estimate = (await (await fetch(`${baseUrl}/v1/steuerjahre/${TAX_YEAR}/steuerschaetzung`, { headers: { cookie } })).json()) as { taxableIncome: { from: number; to: number } }
     const gp = await getMostFavourableCheck(cookie)
-    expect(await gp.json()).toEqual({
+    expect(await gp.json()).toMatchObject({
       kind: 'eindeutig',
       recommendation: 'abgeltung',
-      flatRateTax: 4750,
-      personal: 8012,
-      delta: 3262,
-      uncertainty: { kind: 'bestimmt', upperLimit: 0 },
+      // 19.000 € × 25 % plus 5,5 % Soli.
+      flatRateTax: 5011.25,
+      estimateTreatment: 'quelle',
       provenance: {
         kapitalertraege: 20000,
-        remainingZvE: 60000,
+        remainingZvE: estimate.taxableIncome.to,
+        remainingZvEFrom: estimate.taxableIncome.from,
         saversAllowance: 1000,
         assessmentType: 'einzel',
         components: ['einkommensteuer', 'solidaritaetszuschlag'],
@@ -190,7 +192,7 @@ describe('REQ-025 — the Kapital vertical (Anlage KAP), against the real server
     })
   })
 
-  it('without the Progressionsvorbehalt input the Günstigerprüfung is honest unbestimmt', async () => {
+  it('without a complete estimate the Günstigerprüfung names what the estimate lacks', async () => {
     const { cookie, userId } = await signUp('gp-unbestimmt@example.com')
     for (const [q, v] of [['job', 'Angestellt'], ['ausland', 'Nein'], ['kinder', 'Nein']] as const) {
       expect((await postAnswer(cookie, q, v)).status).toBe(200)
@@ -198,11 +200,9 @@ describe('REQ-025 — the Kapital vertical (Anlage KAP), against the real server
     await seedAnswer(userId, 'kap-depot', 'Deutscher Broker')
     await putField(cookie, { kind: 'erfasst', value: 20000 })
 
-    const gp = await getMostFavourableCheck(cookie)
-    expect(await gp.json()).toMatchObject({
-      kind: 'unbestimmt',
-      uncertainty: { kind: 'unbestimmt', reason: 'progressionsvorbehalt-nicht-eingegeben' },
-    })
+    const gp = (await (await getMostFavourableCheck(cookie)).json()) as { kind: string; reason: string; missing: string[] }
+    expect(gp).toMatchObject({ kind: 'nicht-anwendbar', reason: 'schaetzung-offen' })
+    expect(gp.missing).toContain('bruttoarbeitslohn')
   })
 
   it('the endpoints require a real account session — a guest gets 401', async () => {

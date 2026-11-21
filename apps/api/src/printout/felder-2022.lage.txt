@@ -86,6 +86,8 @@ anlNGre.z8Chf                  S1 Z7    ↑                              ← –
 anlNGre.z8Eur                  S1 Z7    ↑                              ← , – ––– – Kinder- und Ausbildungszulage
 anlNGre.z9Chf                  S1 Z8    ↑                              ← – Steuerfreies Krankentaggeld
 anlNGre.z9Eur                  S1 Z8    ↑                              ← , – ––– – Steuerfreies Krankentaggeld
+anlNGre.z10Chf                 S1 Z9    ↑                              ← SUVA-Geld – (lt. ergänzender Bescheinigung des Arbeitgebers)
+anlNGre.z10Eur                 S1 Z9    ↑                              ← SUVA-Geld , – ––– – (lt. ergänzender Bescheinigung des Arbeitgebers)
 anlNGre.z15Chf                 S1 Z14   ↑                              ← Verbleiben Zuzüglich steuerpflichtige Bezüge
 anlNGre.z15Eur                 S1 Z14   ↑                              ← , ––– Verbleiben Zuzüglich steuerpflichtige Bezüge
 anlNGre.z18Chf                 S1 Z16   ↑                              ← Arbeitgeberbeiträge zur Kollektivkranken- + taggeldversicherung (vgl. Zeile 96)
@@ -194,6 +196,8 @@ anlN.kz330                     S2 Z46   ↑ Anzahl der                   ← For
 anlNGre.kz330                  S2 Z42   ↑ Anzahl der                   ← Fortbildungskosten – soweit nicht steuerfrei ersetzt – 330
 est1a.kz120                    S2 Z43   ↑ EUR                          ← – die dem Progressionsvorbehalt unterliegen, z. B. Arbeits- losengeld, Elterngeld, Insolv…
 est1a.kz121                    S2 Z43   ↑ EUR                          ← – die dem Progressionsvorbehalt unterliegen, z. B. Arbeits- losengeld, Elterngeld, Insolv…
+est1a.kz136                    S2 Z44   ↑                              ← – vergleichbare Leistungen i. S. d. Zeile 43 aus einem 136 EU- / EWR-Staat oder der Schwe…
+est1a.kz137                    S2 Z44   ↑                              ← – vergleichbare Leistungen i. S. d. Zeile 43 aus einem ,– 136 137 EU- / EWR-Staat oder de…
 anlKind.inlandVon              S1 Z8    ↑ vom                          ← Wohnsitz 00 im Inland
 anlKind.inlandBis              S1 Z8    ↑ bis                          ← vom Wohnsitz 00 im Inland
 anlKind.kz02                   S1 Z10   ↑ Ausland                      ← 02

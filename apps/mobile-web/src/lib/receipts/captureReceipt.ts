@@ -64,6 +64,8 @@ export interface CaptureReceiptOptions {
    * staging drafts — the Belege inbox files a fresh upload, the user decides when the owl takes its values.
    */
   readonly stageDraft?: boolean | undefined
+  /** Uploaded in the chat of `taxYear`: the Beleg is filed in that year unless the document names another. */
+  readonly inChat?: boolean | undefined
   readonly onPhase?: ((phase: CapturePhase) => void) | undefined
   readonly deps?: Partial<CaptureReceiptDeps> | undefined
 }
@@ -139,6 +141,7 @@ export async function captureReceipt(file: File, options: CaptureReceiptOptions)
     ...(options.area !== undefined ? { area: options.area } : {}),
     ...(options.holder !== undefined ? { holder: options.holder } : {}),
     ...(options.alsoFor === true ? { alsoFor: true } : {}),
+    ...(options.inChat === true ? { inChat: true } : {}),
     ...(options.direction !== undefined ? { direction: options.direction } : {}),
     ...(options.business !== undefined && options.business > 1 ? { business: options.business } : {}),
   }
@@ -168,6 +171,7 @@ async function deviceFailure(
       fileName: fileName.trim() === '' ? 'beleg' : fileName,
       receiptId,
       deviceReadFailure: DEVICE_READ_FAILURES[failure],
+      ...(options.inChat === true ? { inChat: true } : {}),
     })
     return { ok: false, failure, receiptId, processing: recorded.status === 200 ? (recorded.data.processing ?? null) : null }
   } catch {

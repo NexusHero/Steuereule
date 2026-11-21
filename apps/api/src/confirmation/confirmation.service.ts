@@ -341,6 +341,20 @@ export class ConfirmationService {
     }
   }
 
+  /**
+   * A value a non-user offers that must not be written before the user takes it (a booking draft of the
+   * user's assistant, ADR-0052 amendment 6): an open proposal on an empty field, decided with
+   * `decideProposal`. Only for a field no one has marked yet.
+   */
+  async fileProposal(userId: string, taxYear: number, key: string, value: string, provenance: Provenance): Promise<void> {
+    if (provenance.kind === 'nutzer') throw new Error('fileProposal is for non-user proposals.')
+    const a = this.address(key, taxYear)
+    if ((await this.repository.find(userId, a.taxYear, key)) !== null || (await this.currentValue(userId, a)) !== null) {
+      throw new ConflictError('PROPOSAL_TARGET_TAKEN', `"${key}" already holds a value or a marking.`)
+    }
+    await this.repository.save(userId, a.taxYear, { key, provenance: { kind: 'nutzer' }, confirmed: true, proposal: { value, provenance } })
+  }
+
   async decideProposal(userId: string, taxYear: number, key: string, decision: 'annehmen' | 'verwerfen', person: 'A' | 'B' = 'A'): Promise<ConfirmationResponseDto> {
     const dataUserId = await this.dataUserFor(userId, taxYear, person)
     const a = this.address(key, taxYear)

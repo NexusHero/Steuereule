@@ -423,6 +423,12 @@
     "einzelnAendern": "Change individually",
     "vorschlag": "{{herkunft}} suggests {{neu}} instead of {{alt}}.",
     "personB": "Person B",
+    "buchung": {
+      "label": "Booking",
+      "zeile": "{{datum}} · {{text}} · document {{beleg}} · {{summe}}",
+      "vorschlag": "{{herkunft}} proposes this booking: {{buchung}}. Nothing is booked until you accept it.",
+      "unlesbar": "Booking draft not readable"
+    },
     "vorschlagAnnehmen": "Accept",
     "vorschlagVerwerfen": "Discard",
     "leererWert": "empty",
@@ -601,6 +607,7 @@
           "z6": "Gross wage as per Lohnausweis",
           "z8": "Child and education allowances",
           "z9": "Tax-free daily sickness benefit",
+          "z10": "SUVA benefit (daily accident benefit)",
           "z18": "Employer contributions to daily sickness insurance",
           "z19": "Employer contributions to non-occupational accident insurance",
           "z20": "Employer contributions above the mandatory pension (pillar 2b)",
@@ -1083,6 +1090,10 @@
         "image_ocr": "Running local OCR on photo …",
         "parsing": "Checking lines 3, 4 and social insurance (23, 25–27) …"
       },
+      "lines": {
+        "heading": "Further lines of the certificate",
+        "help": "These values were read too and are not saved yet. “Apply values” writes them to their fields further down; lines left empty are not applied."
+      },
       "draftBanner": {
         "title": "Draft from wage tax statement — not saved yet",
         "subtitle": "Review the extracted figures and apply them only when you click confirm.",
@@ -1107,7 +1118,8 @@
           "plausibility_conflict": "Value does not reconcile with gross pay — please verify.",
           "partial_sv_lines": "Only some social-insurance lines (23, 25, 26, 27) detected — please check sum.",
           "llm_suggested": "Suggested by text recognition — please compare with your certificate.",
-          "ocr_source": "Read from a photo or scan — please compare every digit with your certificate."
+          "ocr_source": "Read from a photo or scan — please compare every digit with your certificate.",
+          "empty_line": "Line empty on the certificate — proposed as 0, please check."
         }
       },
       "yearConflict": {
@@ -1230,7 +1242,13 @@
       "kryptoGegated": "Crypto stays 2.0 — no comparison for crypto.",
       "kapDepotNichtBeantwortet": "Answer the brokerage question in the interview first — then we know whether the comparison applies.",
       "keineKapitalertraege": "Enter your capital income first — then we compute the comparison.",
-      "uebrigesEinkommenUnbekannt": "Whether your personal rate is lower depends on the whole income (Swiss wage, pension, for couples the partner's too). The estimate in the cockpit takes that into account; so we show no separate figure here."
+      "unterschied": "Difference",
+      "schaetzungAbgeltung": "The estimate in the cockpit counts your capital income at the flat withholding rate, not at the cheaper tariff.",
+      "schaetzungQuelle": "The estimate in the cockpit leaves it at the withholding tax already deducted; it does not apply the cheaper tariff.",
+      "schaetzungOffen": "We compare on the estimate in the cockpit. It still lacks: {{liste}}",
+      "schaetzungNichtMoeglich": "We compare on the estimate in the cockpit, and it cannot be made here yet: {{grund}}",
+      "fehltPartner": "Person B: {{was}}",
+      "fehltVeranlagungsart": "How you are assessed (set up the joint assessment in “Details for the return”)"
     },
     "weiter": "Continue"
   },
@@ -1994,6 +2012,10 @@
   },
   "belege": {
     "appbarTitle": "Receipts",
+    "mehrLaden": {
+      "cta": "Load more",
+      "laedt": "Loading …"
+    },
     "loading": "Loading your receipts …",
     "loadError": {
       "heading": "That didn't work.",
@@ -2001,10 +2023,6 @@
       "retry": "Try again"
     },
     "offen_one": "{{count}} open",
-    "mehrLaden": {
-      "cta": "Load more",
-      "laedt": "Loading …"
-    },
     "offen_other": "{{count}} open",
     "empty": {
       "heading": "No receipts yet.",
@@ -2250,6 +2268,8 @@
         "familienzulagenChf": "Child and education allowances in the gross wage (CHF, 0 if none)",
         "krankentaggeldChf": "Your daily sickness insurance contributions (CHF, 0 if none)",
         "steuerfreiesKrankentaggeldChf": "Tax-free daily sickness benefit paid out within the gross wage, e.g. “KK-Taggeld” on the supplement (CHF, 0 if none)",
+        "steuerfreiesUnfalltaggeldChf": "Daily accident benefit (UVG/SUVA) within the gross wage",
+        "steuerfreiesUnfalltaggeldChfHilfe": "Tax-free, but it raises the tax rate (progression clause). A daily sickness benefit belongs in the field above.",
         "pkArbeitnehmerChf": "Pension fund – mandatory part (BVG): your contribution (CHF)",
         "pkArbeitgeberGesamtChf": "Pension fund – all employer contributions, mandatory and supplementary (CHF)",
         "pkArbeitgeberChf": "Pension fund – mandatory part (BVG): employer contribution (CHF)",
@@ -2261,7 +2281,7 @@
         "familienzulagenImBruttolohnHilfe": "Only then is the allowance deducted from the gross salary (Anlage N-Gre line 8). Otherwise it belongs to the child (Children mask).",
         "kvZuschussAnspruch": "Entitled to tax-free subsidies or employer contributions to health insurance? (Anlage Vorsorgeaufwand line 49)"
       },
-      "sonderfaelle": "Were there unemployment or SUVA benefits, maternity or disability daily allowances, tax-free supplements, direct insurance, options, travel reimbursement, flat expenses, or a company car?",
+      "sonderfaelle": "Were there unemployment benefits, maternity or disability daily allowances, tax-free supplements, direct insurance, options, travel reimbursement, flat expenses, or a company car?",
       "ja": "Yes",
       "nein": "No"
     },

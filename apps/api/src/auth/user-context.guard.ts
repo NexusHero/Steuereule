@@ -7,7 +7,7 @@ import { BETTER_AUTH_BUNDLE, type BetterAuthBundle } from './auth.tokens.js'
 import { newGuestUserId, resolveGuestSessionSecret, signGuestSession, verifyGuestSession } from './guest-session.js'
 import { PrismaService } from '../prisma/prisma.service.js'
 import { verifyJwsAccessToken } from 'better-auth/oauth2'
-import { authIssuer, mcpResourceUrl } from './mcp-oauth.js'
+import { authIssuer, mcpResourceUrls } from './mcp-oauth.js'
 
 type JwksFetch = Extract<Parameters<typeof verifyJwsAccessToken>[1]['jwksFetch'], () => unknown>
 
@@ -62,7 +62,7 @@ export class UserContextGuard implements CanActivate {
     try {
       claims = await verifyJwsAccessToken(rawToken, {
         jwksFetch: () => auth.api.getJwks(),
-        verifyOptions: { issuer: authIssuer(baseUrl), audience: mcpResourceUrl(baseUrl) },
+        verifyOptions: { issuer: authIssuer(baseUrl), audience: mcpResourceUrls(baseUrl) },
       })
     } catch {
       throw new UnauthorizedException('Invalid bearer token.')

@@ -385,6 +385,7 @@ function chSalaryCertificateFacts(ch: CrossBorderSalaryStatementRecord | null, a
     pkArbeitnehmerGesamtChf: ch.fields['berufliche-vorsorge'],
     pkArbeitgeberGesamtChf: ch.nGre.pkArbeitgeberGesamtChf,
     steuerfreiesKrankentaggeldChf: ch.nGre.steuerfreiesKrankentaggeldChf,
+    steuerfreiesUnfalltaggeldChf: ch.nGre.steuerfreiesUnfalltaggeldChf,
     krankentaggeldArbeitgeberProzent: ch.nGre.krankentaggeldArbeitgeberProzent,
     krankentaggeldArbeitgeberChf: ch.nGre.krankentaggeldArbeitgeberChf,
     nbuvArbeitgeberProzent: ch.nGre.nbuvArbeitgeberProzent,

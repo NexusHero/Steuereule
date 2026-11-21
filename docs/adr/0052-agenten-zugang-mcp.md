@@ -302,3 +302,42 @@ Client, PKCE). Eine Client-ID von Hand zu kopieren ist ein Schritt mehr als bei 
 Nicht geprüft: Client ID Metadata Documents (die Client-ID ist eine Adresse des Assistenten, nichts
 wird gespeichert) als späterer Ersatz für die Registrierung.
 
+
+## Amendment 6 (2026-11-21) — Buchungsentwürfe, Vergleiche, Limit und Streamable HTTP
+
+Schließt #548 und #549 und nimmt die in Amendment 4 offen gelassenen Punkte (Buchungsentwürfe, Obergrenze)
+auf. Unverändert: Der Assistent schreibt nur Unbestätigtes oder Vorschläge, der Nutzer entscheidet in der App.
+
+1. **Buchungsentwürfe sind Vorschläge.** `buchung_entwerfen(taxYear, …)` nimmt dieselben Angaben wie
+   `stage_booking_draft` des In-App-Beraters und prüft sie gleich (`parseBookingDraft`, `checkBookingDraft`:
+   Kontenrahmen, Steuerschlüssel, Ausgleich, Festschreibung, Jahr; ohne Buch `NO_BOOK`). Weil es über MCP keine
+   Karte im Chat gibt, liegt der Entwurf als offener Vorschlag auf `buchung:<entwurf-id>.entry` mit der Herkunft
+   des Assistenten (`fileProposal`); er erscheint unter „Prüfen & bestätigen“ (Anlage EÜR) als lesbare Buchung
+   (Datum, Text, Beleg, Summe) und wird erst mit „Übernehmen“ über den bestehenden Buchungsweg gebucht
+   (`decideProposal` → `applyDraft`), „Verwerfen“ lässt nichts zurück. `buchungsentwuerfe_auflisten` zeigt nur
+   die eigenen offenen Entwürfe; den Buchungstext gibt es zurück, er ist Angabe des Nutzers, keine Kennung.
+   Zurücknehmen geht mit `eintrag_zuruecknehmen` (Maske `buchung`, Feld `entry`); eine übernommene Buchung
+   storniert nur der Nutzer. Höchstens 25 offene Entwürfe je Assistent und Jahr; nur das erste Unternehmen.
+2. **Vergleiche aus den Falldaten.** `veranlagung_vergleichen` rechnet Zusammen- gegen Einzelveranlagung mit
+   dem Kern (`filingTypeComparison`) aus dem zu versteuernden Einkommen der App-Schätzung, im Verhältnis der
+   Einkünfte auf beide Personen aufgeteilt (eine Näherung, das sagt die Antwort; ohne Kirchensteuer); ohne
+   Person B oder Schätzung nennt es den Grund. `vorjahr_vergleichen` legt `schaetzung_aufschluesseln` beider
+   Jahre nebeneinander, mit Veränderung der Hauptzahlen, den Feldern mit Vorjahreswert, die jetzt leer sind
+   (nur Masken- und Feldnamen, nur die eigenen des Nutzers), und der Zahl der Kinder und Vermietungsobjekte.
+3. **Limit:** höchstens 120 Werkzeugaufrufe je Nutzer und Minute (gleitendes Fenster, über alle Sitzungen und
+   Clients des Nutzers) und höchstens 3 offene SSE-Sitzungen je Nutzer (`MCP_LIMITS` in `mcp-rate-limit.ts`).
+   Darüber antwortet ein Werkzeug mit `RATE_LIMITED: … in X Sekunden wieder`, eine weitere SSE-Sitzung mit 429.
+   Der erste abgelehnte Aufruf einer Sperre und jede abgelehnte Sitzung kommen ins Audit-Log. Der Zähler liegt
+   im Speicher des Prozesses, ohne Datenbank: **Er gilt je Instanz**; bei mehreren Instanzen (ADR-0053) kann
+   ein Nutzer entsprechend mehr. Ein gemeinsamer Zähler (z. B. Redis) wäre der nächste Schritt.
+4. **Streamable HTTP.** Neben dem alten SSE-Transport (`GET /mcp/sse`, `POST /mcp/messages`) gibt es
+   `POST /mcp` (MCP Streamable HTTP, zustandslos: je Anfrage ein neuer Server, JSON-Antworten, `GET`/`DELETE`
+   mit 405). Gleicher Guard, `@AcceptsAssistantToken()`, 401 mit `WWW-Authenticate` und dasselbe Limit. Da
+   nichts zwischen Anfragen gehalten wird, beantwortet jede Instanz jede Anfrage. Die **SSE-Sitzungen bleiben
+   im Speicher einer Instanz**: Ein `POST /mcp/messages`, der auf einer anderen landet, findet seine Sitzung
+   nicht (404); Clients sollen `/mcp` nutzen.
+5. **Zwei Ressourcen, ein Endpunkt.** `/mcp` ist eine eigene OAuth-Ressource (Metadaten unter
+   `/.well-known/oauth-protected-resource/mcp` mit `resource …/mcp`), weil ein Client prüft, dass die Ressource
+   zu seiner Server-Adresse passt (`/mcp/sse` passt nicht zu `/mcp`). Beide Ressourcen werden beim ersten
+   OAuth-Aufruf angelegt; der Guard nimmt Tokens mit Zielgruppe `…/mcp/sse` (alle bisher ausgestellten) und
+   `…/mcp` an beiden Transporten an. Die Metadaten von `/mcp/sse` bleiben unverändert.

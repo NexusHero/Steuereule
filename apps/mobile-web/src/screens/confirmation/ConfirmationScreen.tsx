@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { Button, Card, useBreakpoint, useTheme } from '@steuereule/ui'
-import { formatEuro } from '@steuereule/core'
+import { formatEuro, formatEuroCents, parseBookingDraft, toGermanDate } from '@steuereule/core'
 import {
   useConfirmationControllerConfirmAnnex,
   useConfirmationControllerDecideProposal,
@@ -45,6 +45,7 @@ function provenanceText(tr: Tr, h: ProvenanceDto): string {
 }
 
 function fieldLabel(tr: Tr, w: FieldProvenanceDto): string {
+  if (w.screen === 'buchung') return tr('bestaetigung.buchung.label')
   if (w.screen === 'kapital' && w.field === 'kapitalertraege') return tr('kapital.feld.label')
   if (w.screen === 'rente' && w.field === 'rentenart') return tr('bestaetigung.felder.rentenart')
   if (w.screen === 'lstb' || w.screen === 'rente' || w.screen === 'kapital' || w.screen === 'vermietung') {
@@ -53,8 +54,18 @@ function fieldLabel(tr: Tr, w: FieldProvenanceDto): string {
   return w.field
 }
 
+/** A booking draft (#549) as one line: date, text, document number and the booked sum, never its JSON. */
+function bookingText(tr: Tr, value: string): string {
+  const parsed = parseBookingDraft(value)
+  if (!parsed.ok) return tr('bestaetigung.buchung.unlesbar')
+  const { date, text, documentNumber, lines } = parsed.draft
+  const sumCents = lines.filter((line) => line.side === 'debit').reduce((sum, line) => sum + line.amount, 0)
+  return tr('bestaetigung.buchung.zeile', { datum: toGermanDate(date) ?? date, text, beleg: documentNumber, summe: formatEuroCents(sumCents / 100) })
+}
+
 function valueText(tr: Tr, w: FieldProvenanceDto, value: string | null): string {
   if (value === null) return tr('bestaetigung.leererWert')
+  if (w.screen === 'buchung') return bookingText(tr, value)
   if (value === 'unklar') return tr('bestaetigung.unklar')
   if (w.screen === 'rente' && w.field === 'rentenart') return tr(`rente.arten.${value}`, { defaultValue: value })
   const amount = Number(value)
@@ -171,20 +182,28 @@ export function ConfirmationScreen({ year, onBack, onOpenScreen }: ConfirmationS
               // A field can be the user's and Person B's at once (ADR-0054): the person is part of its identity.
               const id = w.person === 'B' ? `B-${w.key}` : w.key
               const decision = (d: 'annehmen' | 'verwerfen') => ({ decision: d, ...(w.person === 'B' ? { person: 'B' as const } : {}) })
+              // A booking draft waits in an empty place: there is no value of the user to show beside it.
+              const draftOnly = w.screen === 'buchung' && w.value === null && w.proposal !== null
               return (
               <View key={id} style={{ gap: theme.space.s1, marginTop: theme.space.s3 }}>
                 {w.person === 'B' ? <Text style={styles.hint}>{t('bestaetigung.personB')}</Text> : null}
                 <Text style={styles.sectionBody}>{fieldLabel(t, w)}</Text>
-                <Text style={styles.sectionTitle}>{valueText(t, w, w.value)}</Text>
-                <Text style={styles.hint}>{provenanceText(t, w.provenance)}</Text>
+                {draftOnly ? null : (
+                  <>
+                    <Text style={styles.sectionTitle}>{valueText(t, w, w.value)}</Text>
+                    <Text style={styles.hint}>{provenanceText(t, w.provenance)}</Text>
+                  </>
+                )}
                 {w.proposal ? (
                   <View style={{ gap: theme.space.s2 }}>
                     <Text style={styles.sectionBody}>
-                      {t('bestaetigung.vorschlag', {
-                        herkunft: provenanceText(t, w.proposal.provenance),
-                        neu: valueText(t, w, w.proposal.value),
-                        alt: valueText(t, w, w.value),
-                      })}
+                      {draftOnly
+                        ? t('bestaetigung.buchung.vorschlag', { herkunft: provenanceText(t, w.proposal.provenance), buchung: valueText(t, w, w.proposal.value) })
+                        : t('bestaetigung.vorschlag', {
+                            herkunft: provenanceText(t, w.proposal.provenance),
+                            neu: valueText(t, w, w.proposal.value),
+                            alt: valueText(t, w, w.value),
+                          })}
                     </Text>
                     <View style={{ flexDirection: 'row', gap: theme.space.s2 }}>
                       <Button
@@ -219,7 +238,8 @@ export function ConfirmationScreen({ year, onBack, onOpenScreen }: ConfirmationS
                   {t('bestaetigung.anlageBestaetigen', { anlage: annexName })}
                 </Button>
               ) : null}
-              {firstScreen ? (
+              {/* A booking is changed by taking or dropping its draft here; there is no mask to open for it. */}
+              {firstScreen && firstScreen !== 'buchung' ? (
                 <Button variant="ghost" testID={`aendern-${annex.annex}`} onPress={() => onOpenScreen(firstScreen)}>
                   {t('bestaetigung.einzelnAendern')}
                 </Button>

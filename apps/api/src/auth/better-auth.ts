@@ -3,7 +3,7 @@ import { prismaAdapter } from '@better-auth/prisma-adapter'
 import { passkey } from '@better-auth/passkey'
 import { oauthProvider } from '@better-auth/oauth-provider'
 import { createAuthMiddleware } from 'better-auth/api'
-import { authIssuer, mcpResourceUrl } from './mcp-oauth.js'
+import { authIssuer, mcpResourceUrls } from './mcp-oauth.js'
 import { ensureMcpResource, type ResourceAdapter } from './mcp-resource-seed.js'
 import { sweepUnusedClients, type SweepAdapter } from './oauth-client-sweep.js'
 import { betterAuth, type Auth, type BetterAuthOptions } from 'better-auth'
@@ -93,7 +93,8 @@ function buildOptions(options: CreateBetterAuthOptions & { rateLimitStorage: Res
   const deviceAuthorizationPlugin = deviceAuthorization({ expiresIn: '2m', verificationUri: `${webAppUrl}/device` })
   assertDeviceAuthorizationDisabledPathsComplete(deviceAuthorizationPlugin)
 
-  const ensureResource = ensureMcpResource(mcpResourceUrl(baseUrl), OAUTH_SCOPES)
+  // Both transports of the MCP endpoint are resources a client may ask a token for (ADR-0052 amendment 6).
+  const ensureResources = mcpResourceUrls(baseUrl).map((identifier) => ensureMcpResource(identifier, OAUTH_SCOPES))
   const sweepClients = sweepUnusedClients()
 
   return {
@@ -177,7 +178,7 @@ function buildOptions(options: CreateBetterAuthOptions & { rateLimitStorage: Res
       // The MCP endpoint is the protected resource a client asks a token for (RFC 8707). Created on the
       // first OAuth request, not via the plugin's `resources` option, which seeds while the app boots.
       before: createAuthMiddleware(async (ctx) => {
-        if (ctx.path.startsWith('/oauth2/')) await ensureResource(ctx.context.adapter as unknown as ResourceAdapter)
+        if (ctx.path.startsWith('/oauth2/')) await Promise.all(ensureResources.map((ensure) => ensure(ctx.context.adapter as unknown as ResourceAdapter)))
         if (ctx.path === '/oauth2/register') await sweepClients(ctx.context.adapter as unknown as SweepAdapter)
       }),
     },

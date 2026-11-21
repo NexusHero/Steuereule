@@ -113,6 +113,7 @@ const FOLDED_CH: ChSalaryCertificateResponseDto = {
     pkArbeitgeberChf: null,
     pkArbeitgeberGesamtChf: null,
     steuerfreiesKrankentaggeldChf: null,
+    steuerfreiesUnfalltaggeldChf: null,
     krankentaggeldArbeitgeberProzent: null,
     krankentaggeldArbeitgeberChf: null,
     nbuvArbeitgeberProzent: null,
@@ -257,6 +258,32 @@ describe('GrenzgaengerScreen — Anlage N-Gre facts', () => {
     await waitFor(() =>
       expect(bodies).toEqual([{ pkArbeitgeberGesamtChf: 7186 }, { pkArbeitgeberChf: 2892 }, { steuerfreiesKrankentaggeldChf: 3853 }]),
     )
+  })
+
+  it('has the accident benefit (UVG/SUVA) directly under the sickness benefit, with its help, and saves the rounded amount', async () => {
+    const bodies: unknown[] = []
+    server.use(http.get(INTERVIEW_URL, () => HttpResponse.json(DONE_CH_INTERVIEW, { status: 200 })))
+    server.use(
+      http.put(`${CH_URL}/n-gre`, async ({ request }) => {
+        bodies.push(await request.json())
+        return HttpResponse.json(EMPTY_CH, { status: 200 })
+      }),
+    )
+    renderScreen()
+    const accident = await screen.findByTestId('ch-ngre-steuerfreiesUnfalltaggeldChf')
+    expect(screen.getByText('Unfalltaggeld (UVG/SUVA) im Bruttolohn')).toBeTruthy()
+    expect(screen.getByText('Steuerfrei, erhöht aber den Steuersatz (Progressionsvorbehalt). Krankentaggeld gehört ins Feld darüber.')).toBeTruthy()
+    // Directly under the sickness benefit: the next amount input of the section.
+    const inputs = screen.getAllByTestId(/^ch-ngre-.*Chf$/).map((input) => input.getAttribute('data-testid'))
+    expect(inputs.indexOf('ch-ngre-steuerfreiesUnfalltaggeldChf')).toBe(inputs.indexOf('ch-ngre-steuerfreiesKrankentaggeldChf') + 1)
+
+    // Typed as on the benefit statement, with cents: rounded to whole CHF, shown as stored.
+    fireEvent.change(accident, { target: { value: '2249,60' } })
+    fireEvent.blur(accident)
+    await waitFor(() => expect(bodies).toEqual([{ steuerfreiesUnfalltaggeldChf: 2250 }]))
+    expect((accident as HTMLInputElement).value).toBe('2250')
+    // The sickness field is left alone.
+    expect((screen.getByTestId('ch-ngre-steuerfreiesKrankentaggeldChf') as HTMLInputElement).value).toBe('')
   })
 
   it('asks who pays the Krankentaggeld premium and the employer amount while the share is open or 100 %', async () => {

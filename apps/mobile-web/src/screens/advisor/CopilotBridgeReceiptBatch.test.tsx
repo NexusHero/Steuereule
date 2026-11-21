@@ -82,7 +82,7 @@ function Harness({ files, onSwitchYear }: { readonly files: readonly File[]; rea
 
 describe('chat batch upload (ADR-0097 §3)', () => {
   it('keeps one line per file from the server state, records what the device could not read, and switches to the year of a draft', async () => {
-    const parseBodies: { fileName: string; receiptId?: string; deviceReadFailure?: string }[] = []
+    const parseBodies: { fileName: string; receiptId?: string; deviceReadFailure?: string; inChat?: boolean }[] = []
     let uploads = 0
     mockExtractDocumentText.mockReset()
     mockExtractDocumentText.mockImplementation(async (file: File) => {
@@ -93,7 +93,7 @@ describe('chat batch upload (ADR-0097 §3)', () => {
       // The files are uploaded one after another, in the order they were picked.
       http.post('*/v1/belege/upload', () => HttpResponse.json({ id: `id-${uploads++}` } as Partial<ReceiptResponseDto>, { status: 201 })),
       http.post('*/v1/belege/parse', async ({ request }) => {
-        const body = (await request.json()) as { fileName: string; receiptId?: string; deviceReadFailure?: string }
+        const body = (await request.json()) as { fileName: string; receiptId?: string; deviceReadFailure?: string; inChat?: boolean }
         parseBodies.push(body)
         return HttpResponse.json(parseResponse(body.fileName), { status: 200 })
       }),
@@ -112,6 +112,8 @@ describe('chat batch upload (ADR-0097 §3)', () => {
     expect(screen.getByTestId('advisor-receipt-result-3-stand').textContent).toBe('kaputt.pdf: Nicht lesbar (Datei nicht lesbar)')
     // The unreadable file sent no text, only the failure, so its Beleg does not stay „neu“.
     expect(parseBodies.find((b) => b.fileName === 'kaputt.pdf')).toMatchObject({ receiptId: 'id-3', deviceReadFailure: 'read_failed' })
+    // Uploaded in the chat of a year: the Beleg is filed in that year, also when it yields nothing (real-data run 4).
+    expect(parseBodies.find((b) => b.fileName === 'handwerker-2025.pdf')).toMatchObject({ inChat: true })
 
     fireEvent.click(screen.getByTestId('advisor-receipt-result-0-jahr-wechseln'))
     expect(onSwitchYear).toHaveBeenCalledWith(2024)

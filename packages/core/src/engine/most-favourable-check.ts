@@ -1,14 +1,19 @@
 import { flatRateTaxWithChurchTax } from '../domains/church-tax'
 import {
+  capitalFlatTax,
   incomeTax,
   isSupportedIncomeTaxYear,
   kirchensteuer,
+  progressionClauseTax,
   solidaritaetszuschlag,
+  solidaritaetszuschlagInCents,
   soliExemptionLimits,
+  soliOnFlatTax,
   splittingTariff,
   type IncomeTaxYear,
   type ChurchTaxFactor,
 } from '../math/tarif'
+import type { Range } from './tax-estimate'
 import { getTaxYearParameters } from '../math/tax-parameters'
 import {
   progressionClauseLimit,
@@ -33,6 +38,8 @@ export interface MostFavourableCheckSource {
   readonly saversAllowance: number
   readonly assessmentType: 'einzel' | 'zusammen'
   readonly components: readonly TariffComponent[]
+  /** On the estimate's figures: the lower end of its taxable income (`remainingZvE` is the upper end). */
+  readonly remainingZvEFrom?: number
 }
 
 export type MostFavourableCheck =
@@ -86,7 +93,8 @@ function tariffOnBasis(basis: number, assessmentType: 'einzel' | 'zusammen', yea
  */
 function personalTax(input: MostFavourableCheckInput, assessmentBase: number, year: IncomeTaxYear, factor: ChurchTaxFactor): number {
   const { remainingZvE, assessmentType } = input
-  const exemptionLimit = assessmentType === 'einzel' ? soliExemptionLimits(year).single : soliExemptionLimits(year).joint
+  const soliLimits = getTaxYearParameters(year).soliLimits
+  const exemptionLimit = assessmentType === 'einzel' ? soliLimits.single : soliLimits.joint
 
   const incomeTaxWith = tariffOnBasis(remainingZvE + assessmentBase, assessmentType, year)
   const incomeTaxWithout = tariffOnBasis(remainingZvE, assessmentType, year)
@@ -115,10 +123,9 @@ export function mostFavourableCheck(input: MostFavourableCheckInput): MostFavour
   const flatRate = flatRateTaxWithChurchTax(assessmentBase, factor)
   const flatRateTaxAmount = factor === 0 ? Math.floor(params.capital.flatRateTaxRate * assessmentBase) : flatRate.incomeTax
 
-  const soliExemptionLimit = assessmentType === 'einzel' ? params.soliLimits.single : params.soliLimits.joint
-  const soliFlatRate = solidaritaetszuschlag(flatRateTaxAmount, soliExemptionLimit)
-
-  const flatRateTax = flatRateTaxAmount + flatRate.churchTax + soliFlatRate
+  // § 3 Abs. 3 Satz 2 SolZG: the tax under § 32d Abs. 1 is left out of the exemption limit, so its Soli is
+  // 5,5 % from the first euro (as the estimate charges it); the limit applies on the tariff side only.
+  const flatRateTax = cents(flatRateTaxAmount + flatRate.churchTax + soliOnFlatTax(flatRateTaxAmount) / 100)
 
   const personal = personalTax(input, assessmentBase, year, factor)
 
@@ -149,6 +156,72 @@ export function mostFavourableCheck(input: MostFavourableCheckInput): MostFavour
       uncertainty,
       provenance,
     }
+  }
+  return { statement: 'zu-knapp', flatRateTax, personal, delta, uncertainty, provenance }
+}
+
+export interface EstimateCapitalCheckInput {
+  readonly kapitalertraege: number
+  readonly year: number
+  /** The estimate's assessment: `zusammen` for a joint return (splitting tariff, 2.000 € allowance). */
+  readonly assessmentType: 'einzel' | 'zusammen'
+  /** The estimate's taxable income without the capital income (after the child allowance where it wins). */
+  readonly taxableIncome: Range
+  /** What the estimate put under the progression clause (§ 32b EStG); 0 = the plain tariff. */
+  readonly progressionIncomeEur: number
+  readonly churchTaxFactor?: ChurchTaxFactor
+}
+
+/** Keeps a sum of euro amounts with cents free of float noise. */
+const cents = (value: number) => Math.round(value * 100) / 100
+
+/**
+ * § 32d Abs. 6 EStG on the figures of the Cockpit estimate: the tariff tax the capital income adds to
+ * the estimate's taxable income (with it minus without it, on the estimate's tariff and § 32b income)
+ * against the flat tax as the estimate charges it — 25 % plus 5,5 % Soli from the first euro (§ 3
+ * Abs. 3 SolZG leaves the tax under § 32d out of the exemption limit). The Soli on the tariff side is
+ * rounded as the estimate rounds it: to the cent for a couple, to the euro for a single person. Where
+ * the estimate is a range, the figures are those of its upper end and the spread is the margin.
+ */
+export function mostFavourableCheckOnEstimate(input: EstimateCapitalCheckInput): MostFavourableCheck {
+  const { kapitalertraege, assessmentType, taxableIncome } = input
+  if (!Number.isInteger(kapitalertraege) || kapitalertraege < 0) throw new RangeError('kapitalertraege must be a non-negative whole euro amount')
+  if (!isSupportedIncomeTaxYear(input.year)) throw new RangeError(`Unsupported tax year for §32a EStG: ${input.year}`)
+  const year: IncomeTaxYear = input.year
+  const factor = input.churchTaxFactor ?? 0
+  const params = getTaxYearParameters(year)
+  const joint = assessmentType === 'zusammen'
+  const saversAllowance = joint ? params.lumpSums.saverJoint : params.lumpSums.saverSingle
+  const base = Math.max(0, kapitalertraege - saversAllowance)
+
+  const flat = factor === 0 ? { incomeTax: capitalFlatTax(base, year), churchTax: 0 } : flatRateTaxWithChurchTax(base, factor)
+  const flatRateTax = cents(flat.incomeTax + flat.churchTax + soliOnFlatTax(flat.incomeTax) / 100)
+
+  const progression = Math.max(0, input.progressionIncomeEur)
+  const tariff = (z: number) =>
+    progression > 0 ? progressionClauseTax(z, progression, year, joint) : joint ? splittingTariff(z, 0, year) : incomeTax(z, year)
+  const limits = soliExemptionLimits(year)
+  const soliInCents = (tax: number) => (joint ? solidaritaetszuschlagInCents(tax, limits.joint) : solidaritaetszuschlag(tax, limits.single) * 100)
+  const personalAt = (z: number) => {
+    const zvE = Math.max(0, z)
+    const withCapital = tariff(zvE + base)
+    const without = tariff(zvE)
+    const difference = withCapital - without
+    return cents(difference + (soliInCents(withCapital) - soliInCents(without)) / 100 + kirchensteuer(difference, factor))
+  }
+  const personal = personalAt(taxableIncome.to)
+  const delta = cents(personal - flatRateTax)
+  const uncertainty: Uncertainty = { kind: 'bestimmt', upperLimit: Math.ceil(Math.abs(personal - personalAt(taxableIncome.from))) }
+  const provenance: MostFavourableCheckSource = {
+    kapitalertraege,
+    remainingZvE: taxableIncome.to,
+    remainingZvEFrom: taxableIncome.from,
+    saversAllowance,
+    assessmentType,
+    components: factor === 0 ? ['einkommensteuer', 'solidaritaetszuschlag'] : ['einkommensteuer', 'solidaritaetszuschlag', 'kirchensteuer'],
+  }
+  if (Math.abs(delta) > uncertainty.upperLimit) {
+    return { statement: 'eindeutig', recommendation: delta < 0 ? 'persoenlich' : 'abgeltung', flatRateTax, personal, delta, uncertainty, provenance }
   }
   return { statement: 'zu-knapp', flatRateTax, personal, delta, uncertainty, provenance }
 }

@@ -173,6 +173,8 @@ export interface ChSalaryCertificateFacts {
   pkArbeitgeberGesamtChf: string | null
   /** Tax-free Krankentaggeld contained in Ziffer 8 (Zeilen 9/76). */
   steuerfreiesKrankentaggeldChf: string | null
+  /** Daily benefit of the accident insurance (UVG/SUVA) contained in Ziffer 8 (Zeile 10 „SUVA – Geld“, also Zeile 76). */
+  steuerfreiesUnfalltaggeldChf: string | null
   krankentaggeldArbeitgeberProzent: string | null
   krankentaggeldArbeitgeberChf: string | null
   nbuvArbeitgeberProzent: string | null
@@ -204,6 +206,7 @@ function nbuvEmployeeChf(ch: ChSalaryCertificateFacts): number | null {
     pkArbeitnehmerChf: 0,
     pkArbeitgeberChf: 0,
     steuerfreiesKrankentaggeldChf: optionalNumber(ch.steuerfreiesKrankentaggeldChf),
+    steuerfreiesUnfalltaggeldChf: optionalNumber(ch.steuerfreiesUnfalltaggeldChf),
     nbuvArbeitgeberProzent: optionalNumber(ch.nbuvArbeitgeberProzent),
     rate: ch.rate,
   }).split.nbuv.employeeChf
@@ -262,6 +265,8 @@ function kapValues(
 interface NGreResult {
   readonly values: Record<string, string | true>
   readonly gap: string | null
+  /** The daily accident benefit of Zeile 10 in EUR: also declared for the progression clause (Hauptvordruck Zeile 36). */
+  readonly accidentBenefitEur?: number
 }
 
 /** One Anlage N-Gre for Person A or B, or null when that person has no Swiss wage. */
@@ -296,6 +301,7 @@ function nGreValues(
     pkArbeitnehmerGesamtChf: optionalNumber(ch.pkArbeitnehmerGesamtChf),
     pkArbeitgeberGesamtChf: optionalNumber(ch.pkArbeitgeberGesamtChf),
     steuerfreiesKrankentaggeldChf: optionalNumber(ch.steuerfreiesKrankentaggeldChf),
+    steuerfreiesUnfalltaggeldChf: optionalNumber(ch.steuerfreiesUnfalltaggeldChf),
     rate: ch.rate!,
     krankentaggeldArbeitgeberProzent: optionalNumber(ch.krankentaggeldArbeitgeberProzent),
     krankentaggeldArbeitgeberChf: optionalNumber(ch.krankentaggeldArbeitgeberChf),
@@ -303,8 +309,8 @@ function nGreValues(
     nbuvArbeitgeberChf: optionalNumber(ch.nbuvArbeitgeberChf),
   })
   for (const row of Object.keys(chf) as NGreRow[]) {
-    // Z. 9 and 18–20 only apply when there is such an amount; an empty line stays empty.
-    if ((row === 'z9' || row === 'z18' || row === 'z19' || row === 'z20') && chf[row] === 0) continue
+    // Z. 9, 10 and 18–20 only apply when there is such an amount; an empty line stays empty.
+    if ((row === 'z9' || row === 'z10' || row === 'z18' || row === 'z19' || row === 'z20') && chf[row] === 0) continue
     values[`anlNGre.${row}Chf`] = String(chf[row])
     values[`anlNGre.${row}Eur`] = String(eur[row])
   }
@@ -323,7 +329,7 @@ function nGreValues(
   set('anlNGre.arbeitgeberName', ch.arbeitgeberName)
   set('anlNGre.arbeitgeberStrasse', ch.arbeitgeberStrasse)
   set('anlNGre.arbeitgeberPlzOrt', ch.arbeitgeberPlzOrt)
-  return { values, gap: null }
+  return { values, gap: null, accidentBenefitEur: eur.z10 }
 }
 
 export interface SpecialExpensesFacts {
@@ -834,6 +840,10 @@ export function printoutValues(facts: PrintoutFacts): PrintoutValues {
   const lifeB = facts.link?.filingType === 'zusammen' ? personB?.lifeSituations : null
   if (facts.lifeSituations?.wageReplacementEur) values['est1a.kz120'] = String(facts.lifeSituations.wageReplacementEur)
   if (lifeB?.wageReplacementEur) values['est1a.kz121'] = String(lifeB.wageReplacementEur)
+  // The Swiss accident insurance's daily benefit left the wage in the Anlage N-Gre (Zeile 10); it is a benefit
+  // from Switzerland comparable to those of Zeile 35 and declared in Zeile 36, Kz 136 (A) / 137 (B) (§ 32b EStG).
+  if (nGreA?.accidentBenefitEur) values['est1a.kz136'] = String(nGreA.accidentBenefitEur)
+  if (nGreB?.accidentBenefitEur) values['est1a.kz137'] = String(nGreB.accidentBenefitEur)
   for (const ls of [facts.lifeSituations, lifeB]) {
     if (ls?.severance && !missing.includes('anlageNEntschaedigung')) missing.push('anlageNEntschaedigung')
     if (ls?.secondHousehold && !missing.includes('anlageNDhf')) missing.push('anlageNDhf')

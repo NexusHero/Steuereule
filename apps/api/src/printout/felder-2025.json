@@ -1098,6 +1098,30 @@
       }
     },
     {
+      "id": "anlNGre.z10Chf",
+      "formular": "anlage-n-gre",
+      "seite": 1,
+      "art": "euro",
+      "kasten": {
+        "x": 266.9,
+        "y": 426.8,
+        "breite": 101.7,
+        "hoehe": 15.9
+      }
+    },
+    {
+      "id": "anlNGre.z10Eur",
+      "formular": "anlage-n-gre",
+      "seite": 1,
+      "art": "euro",
+      "kasten": {
+        "x": 425,
+        "y": 426.8,
+        "breite": 101.7,
+        "hoehe": 15.9
+      }
+    },
+    {
       "id": "anlNGre.z15Chf",
       "formular": "anlage-n-gre",
       "seite": 1,
@@ -2475,6 +2499,30 @@
         "y": 378.8,
         "breite": 85.2,
         "hoehe": 15.9
+      }
+    },
+    {
+      "id": "est1a.kz136",
+      "formular": "est-1-a",
+      "seite": 2,
+      "art": "euro",
+      "kasten": {
+        "x": 296.9,
+        "y": 349.7,
+        "breite": 85.8,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "est1a.kz137",
+      "formular": "est-1-a",
+      "seite": 2,
+      "art": "euro",
+      "kasten": {
+        "x": 431,
+        "y": 349.7,
+        "breite": 85.6,
+        "hoehe": 15.8
       }
     },
     {

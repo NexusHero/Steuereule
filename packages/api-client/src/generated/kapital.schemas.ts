@@ -190,7 +190,19 @@ export const MostFavourableCheckDtoReason = {
   'krypto-gegated': 'krypto-gegated',
   'kap-depot-nicht-beantwortet': 'kap-depot-nicht-beantwortet',
   'keine-kapitalertraege': 'keine-kapitalertraege',
-  'uebriges-einkommen-unbekannt': 'uebriges-einkommen-unbekannt',
+  'schaetzung-offen': 'schaetzung-offen',
+  'schaetzung-nicht-moeglich': 'schaetzung-nicht-moeglich',
+} as const;
+
+/**
+ * How the Cockpit estimate counts the capital income (only when kind !== "nicht-anwendbar"): "abgeltung" = at the flat rate in the joint estimate, "quelle" = left with the flat tax withheld at source. It never applies the cheaper tariff itself.
+ */
+export type MostFavourableCheckDtoEstimateTreatment = typeof MostFavourableCheckDtoEstimateTreatment[keyof typeof MostFavourableCheckDtoEstimateTreatment];
+
+
+export const MostFavourableCheckDtoEstimateTreatment = {
+  abgeltung: 'abgeltung',
+  quelle: 'quelle',
 } as const;
 
 export type UncertaintyDtoKind = typeof UncertaintyDtoKind[keyof typeof UncertaintyDtoKind];
@@ -233,8 +245,10 @@ export const MostFavourableCheckSourceDtoAssessmentType = {
 export interface MostFavourableCheckSourceDto {
   /** The Kapitalerträge (whole euros) — the basis of both amounts. */
   kapitalertraege: number;
-  /** The übrige zvE-basis (Einnahmen-Basis from @steuereule/core — layer 3 open, no real zvE yet). */
+  /** The taxable income of the Cockpit estimate without the capital income (the upper end of its range). */
   remainingZvE: number;
+  /** The lower end of the estimate’s taxable income; the figures are those of the upper end. */
+  remainingZvEFrom?: number;
   /** The applied Sparerpauschbetrag (§ 20 Abs. 9 EStG). */
   saversAllowance: number;
   /** Which Veranlagungsart both amounts compute. */
@@ -247,9 +261,9 @@ export interface MostFavourableCheckDto {
   kind: MostFavourableCheckDtoKind;
   /** The recommendation (only when kind === "eindeutig"). */
   recommendation?: MostFavourableCheckDtoRecommendation;
-  /** Abgeltungsteuer + Soli + KiSt-Ermäßigung (only when kind !== "nicht-anwendbar"). */
+  /** Abgeltungsteuer + Soli (5,5 % without exemption limit) + KiSt, in euros with cents (only when kind !== "nicht-anwendbar"). */
   flatRateTax?: number;
-  /** The personal (tariff) tax on the capital income (only when kind !== "nicht-anwendbar"). */
+  /** The tariff tax the capital income adds to the estimate (tariff with minus tariff without, plus Soli and KiSt; only when kind !== "nicht-anwendbar"). */
   personal?: number;
   /** persoenlich − abgeltung (only when kind !== "nicht-anwendbar"). */
   delta?: number;
@@ -259,6 +273,12 @@ export interface MostFavourableCheckDto {
   provenance?: MostFavourableCheckSourceDto;
   /** Why the Günstigerprüfung does not apply (only when kind === "nicht-anwendbar"). */
   reason?: MostFavourableCheckDtoReason;
+  /** What the Cockpit estimate still lacks, as its own missing list (only when reason === "schaetzung-offen"). */
+  missing?: string[];
+  /** Why the Cockpit estimate cannot be computed (only when reason === "schaetzung-nicht-moeglich"). */
+  estimateReason?: string;
+  /** How the Cockpit estimate counts the capital income (only when kind !== "nicht-anwendbar"): "abgeltung" = at the flat rate in the joint estimate, "quelle" = left with the flat tax withheld at source. It never applies the cheaper tariff itself. */
+  estimateTreatment?: MostFavourableCheckDtoEstimateTreatment;
 }
 
 export type CapitalControllerGetMostFavourableCheckParams = {

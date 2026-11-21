@@ -747,6 +747,13 @@ describe('AdvisorService (In-App Steuerberater Agent "Deine Eule")', () => {
     expect(after).not.toContain('A|chLohnausweis.steuerfreiesKrankentaggeldChf')
   })
 
+  it('writes an accident benefit (UVG/SUVA) through the confirmed write path, and it answers the daily-benefit question', async () => {
+    await confirmationService.writeConfirmedByAdvisor(USER, YEAR, 'chLohnausweis.bruttolohn-total', '98000')
+    await confirmationService.writeConfirmedByAdvisor(USER, YEAR, 'chLohnausweis.steuerfreiesUnfalltaggeldChf', '2250')
+    expect((await chRepo.findForUserAndYear(USER, YEAR))?.nGre).toMatchObject({ steuerfreiesUnfalltaggeldChf: '2250', steuerfreiesKrankentaggeldChf: null })
+    expect(await confirmationService.readRawValue(USER, YEAR, 'chLohnausweis.steuerfreiesUnfalltaggeldChf')).toBe('2250')
+  })
+
   it('asks what still blocks the printout when the user asks „Fehlt noch etwas?“, without a model too (ADR-0091, Nachtrag)', async () => {
     const printout = { check: async () => ({ missing: ['kinder'] }) }
     const withPrintout = new AdvisorService(advisorRepo, owlModeService, confirmationService, new AuditService(auditRepo), interviewRepo, lstbRepo, chRepo, commuteRepo, childRepo, new FakeRentalRepository(), new FakeCapitalRepository(), profileRepo, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, printout as never)

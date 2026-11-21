@@ -85,6 +85,28 @@ describe('a Swiss wage statement read from a document', () => {
     expect(assistantMessage.content).toBe('Lohnausweis gelesen.')
   })
 
+  it('does not ask again once an accident benefit (UVG/SUVA) is recorded on its own field', async () => {
+    const kit = buildAdvisorTestKit()
+    await kit.chRepo.setNGre(USER, YEAR, { steuerfreiesUnfalltaggeldChf: '2250' })
+    const { assistantMessage } = await wage(kit)
+    expect(assistantMessage.content).toBe('Lohnausweis gelesen.')
+  })
+
+  it('offers an accident benefit a remark carries as two paths on the accident field', async () => {
+    const kit = buildAdvisorTestKit()
+    const { assistantMessage } = await kit.service.stageDocumentDrafts(USER, YEAR, {
+      screen: 'chLohnausweis', person: 'A', digestUserId: USER, receiptId: null, engine: RULES, summaryText: 'Lohnausweis gelesen.', sourceId: 'estg-10-1-3',
+      fields: [{ field: 'bruttolohn-total', label: 'Bruttolohn', value: 98000, status: 'ok', reason: null }],
+      dailyBenefit: { kind: 'accident', amountChf: 2250 },
+    })
+    expect(assistantMessage.meta?.twoPaths).toMatchObject({
+      safePath: { field: 'steuerfreiesUnfalltaggeldChf', newValue: '0', label: 'Unfalltaggeld nicht abziehen' },
+      maxPath: { field: 'steuerfreiesUnfalltaggeldChf', newValue: '2250' },
+    })
+    expect(assistantMessage.meta?.twoPaths?.maxPath.evidenceHint).toContain('Bescheinigung des Arbeitgebers')
+    expect(assistantMessage.content).toContain('beide Wege')
+  })
+
   it('asks nothing of the kind for another document', async () => {
     const kit = buildAdvisorTestKit()
     const { assistantMessage } = await kit.service.stageDocumentDrafts(USER, YEAR, {

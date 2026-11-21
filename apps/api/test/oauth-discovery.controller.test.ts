@@ -18,6 +18,10 @@ describe('OAuth discovery for MCP clients (ADR-0052 §2, RFC 9728, RFC 8414)', (
     })
   })
 
+  it('describes the Streamable HTTP endpoint /mcp as a resource of its own, so a client of /mcp accepts it (RFC 9728 §3.3)', () => {
+    expect(controller().streamableResource()).toMatchObject({ resource: 'http://localhost:3501/mcp', authorization_servers: ['http://localhost:3501/api/auth'] })
+  })
+
   it('serves the authorization-server metadata at the root, where clients look for it', async () => {
     const reply = { status: vi.fn().mockReturnThis(), header: vi.fn().mockReturnThis(), send: vi.fn() }
     await controller().authorizationServer({ url: '/.well-known/oauth-authorization-server/api/auth' } as never, reply as never)

@@ -144,8 +144,8 @@ const TEXTS: Readonly<Record<string, FieldText>> = {
   'commute.periodFrom': { question: 'Es gab im Jahr zwei Arbeitgeber: Für welchen Zeitraum gilt der erfasste Arbeitsweg (von/bis), und gibt es für den anderen Arbeitgeber einen eigenen Weg (Kilometer, Fahrtage) oder keinen?', keywords: ['zeitraum', 'arbeitgeberwechsel', 'anderen arbeitgeber'] },
   'chLohnausweis.steuerfreiesKrankentaggeldChf': {
     question:
-      'Wurde im Jahr Krankentaggeld (auch Unfall- oder Mutterschaftstaggeld) ausgezahlt, und ist es im Bruttolohn Ziffer 8 des Lohnausweises enthalten (Hinweis z. B. eine Bemerkung wie „KK-Taggeld Verrechnung“)? Wenn ja: welcher Betrag in CHF laut Taggeld-Abrechnung? Ohne Taggeld: 0.',
-    keywords: ['taggeld ausgezahlt', 'ausgezahltes krankentaggeld', 'ausgezahlte krankentaggeld', 'ausgezahltes taggeld', 'ausgezahlte taggeld'],
+      'Wurde im Jahr Krankentaggeld (auch Mutterschaftstaggeld) oder Unfalltaggeld der Unfallversicherung (UVG/SUVA) ausgezahlt, und ist es im Bruttolohn Ziffer 8 des Lohnausweises enthalten (Hinweis z. B. eine Bemerkung wie „KK-Taggeld Verrechnung“)? Wenn ja: welcher Betrag in CHF laut Taggeld-Abrechnung? Krankentaggeld gehört in dieses Feld, Unfalltaggeld in chLohnausweis.steuerfreiesUnfalltaggeldChf (steuerfrei, erhöht aber den Steuersatz). Ohne Taggeld: 0.',
+    keywords: ['taggeld ausgezahlt', 'ausgezahltes krankentaggeld', 'ausgezahlte krankentaggeld', 'ausgezahltes taggeld', 'ausgezahlte taggeld', 'ausgezahltes unfalltaggeld', 'ausgezahlte unfalltaggeld'],
   },
   'kapital.kapitalertraege': { question: 'Wie hoch waren die Kapitalerträge im Jahr laut Steuerbescheinigung der Bank (auch wenn der Freistellungsauftrag sie abdeckt)?', keywords: ['höhe der kapitalertr', 'steuerbescheinigung'] },
   'kind.childBenefitClaimEur': { question: 'Kindergeld: Für wie viele Monate bestand im Jahr Anspruch auf deutsches Kindergeld (auch wenn eine Schweizer Kinderzulage es kürzt)? Der Anspruch im Jahr gehört in die Anlage Kind, auch 0.', keywords: ['kindergeld'] },
@@ -291,7 +291,7 @@ const COMMUTE_RULE_READS: readonly (readonly [Screen, string])[] = [
   ['chLohnausweis', 'bruttolohn-total'],
 ]
 const HEALTH_RULE_READS: readonly (readonly [Screen, string])[] = [['chLohnausweis', 'krankenkasseChf'], ['chLohnausweis', 'krankenkasseZusatzChf']]
-const SICK_PAY_RULE_READS: readonly (readonly [Screen, string])[] = [['chLohnausweis', 'bruttolohn-total'], ['chLohnausweis', 'steuerfreiesKrankentaggeldChf']]
+const SICK_PAY_RULE_READS: readonly (readonly [Screen, string])[] = [['chLohnausweis', 'bruttolohn-total'], ['chLohnausweis', 'steuerfreiesKrankentaggeldChf'], ['chLohnausweis', 'steuerfreiesUnfalltaggeldChf']]
 
 /** What each fixed rule (ADR-0093) reads to decide whether it is still open. */
 const RULE_READS: Readonly<Record<string, readonly (readonly [Screen, string])[]>> = {
@@ -328,7 +328,9 @@ function ruleGaps(code: string, read: (screen: Screen, field: string) => string 
     if ((amount('chLohnausweis', 'krankenkasseChf') ?? 0) > 0 && amount('chLohnausweis', 'krankenkasseZusatzChf') === null) out.push(['chLohnausweis', 'krankenkasseZusatzChf'])
   } else if (code.startsWith('regelKrankentaggeld')) {
     // A recorded Swiss wage statement without the answer: a tax-free benefit may still sit in the wage (real-data run).
-    if ((amount('chLohnausweis', 'bruttolohn-total') ?? 0) > 0 && amount('chLohnausweis', 'steuerfreiesKrankentaggeldChf') === null) out.push(['chLohnausweis', 'steuerfreiesKrankentaggeldChf'])
+    // An accident benefit (UVG/SUVA) on its own field answers the same question.
+    const answered = amount('chLohnausweis', 'steuerfreiesKrankentaggeldChf') !== null || amount('chLohnausweis', 'steuerfreiesUnfalltaggeldChf') !== null
+    if ((amount('chLohnausweis', 'bruttolohn-total') ?? 0) > 0 && !answered) out.push(['chLohnausweis', 'steuerfreiesKrankentaggeldChf'])
   } else if (code === 'regelKapital') {
     const answer = read('interview', 'einkuenfte')
     if (empty(answer)) out.push(['interview', 'einkuenfte'])

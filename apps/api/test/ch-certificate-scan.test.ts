@@ -196,15 +196,33 @@ describe('a paid-out daily benefit named in the remarks (ADR-0093, real-data run
     expect(res.assistantMessage?.content).toContain('Betrag')
   })
 
-  it('carries an accident benefit, says it is treated differently and proposes nothing', async () => {
-    const { strategy } = await setUp()
+  it('carries an accident benefit with its amount and proposes it as two paths on its own field, never on the sickness field', async () => {
+    const { kit, strategy } = await setUp()
     const res = await parse(strategy, withRemark("Unfalltaggeld SUVA 2'250.00"))
     expect(res.chLohnausweis?.dailyBenefit).toEqual({ kind: 'accident', amountChf: 2250 })
-    expect(res.assistantMessage?.meta?.twoPaths).toBeUndefined()
-    expect((res.assistantMessage?.meta?.actions ?? []).some((d) => d.field === 'steuerfreiesKrankentaggeldChf')).toBe(false)
+    const meta = res.assistantMessage?.meta
+    expect(meta?.twoPaths).toMatchObject({
+      safePath: { screen: 'chLohnausweis', field: 'steuerfreiesUnfalltaggeldChf', newValue: '0', status: 'pending' },
+      maxPath: { screen: 'chLohnausweis', field: 'steuerfreiesUnfalltaggeldChf', newValue: '2250', status: 'pending' },
+    })
+    expect(meta!.twoPaths!.safePath.alternativeGroup).toBe(meta!.twoPaths!.maxPath.alternativeGroup)
+    expect(meta!.twoPaths!.title).toContain('Unfalltaggeld')
+    // The path that deducts it says what the sickness benefit does not have: the higher tax rate.
+    expect(meta!.twoPaths!.maxPath.reason).toContain('Progressionsvorbehalt')
+    expect((meta?.actions ?? []).some((d) => d.field === 'steuerfreiesKrankentaggeldChf' || d.field === 'steuerfreiesUnfalltaggeldChf')).toBe(false)
     expect(res.assistantMessage?.content).toContain('Unfalltaggeld')
     expect(res.assistantMessage?.content).toMatch(/2\.250(?:,00)?\sCHF/)
     expect(res.assistantMessage?.content).toContain('anders')
+    expect(await kit.chRepo.findForUserAndYear(USER, YEAR)).toBeNull()
+  })
+
+  it('asks for the amount of an accident benefit a remark names without one, and proposes nothing', async () => {
+    const { strategy } = await setUp()
+    const res = await parse(strategy, withRemark('Unfalltaggeld SUVA im Lohn verrechnet'))
+    expect(res.chLohnausweis?.dailyBenefit).toEqual({ kind: 'accident', amountChf: null })
+    expect(res.assistantMessage?.meta?.twoPaths).toBeUndefined()
+    expect(res.assistantMessage?.content).toContain('Unfalltaggeld')
+    expect(res.assistantMessage?.content).toContain('Betrag')
   })
 
   it('proposes it for Person B on B’s certificate', async () => {

@@ -1,5 +1,5 @@
 import { Inject, Injectable, Logger, Optional } from '@nestjs/common'
-import { appealDeadline, ASSESSMENT_POSITIONS, buildRecordHandles, ENTRY_RULE_CODES, provenanceKey, QUESTIONS, type AdvisorEstimateReading, type EntryStepId, type Screen } from '@steuereule/core'
+import { appealDeadline, ASSESSMENT_POSITIONS, buildRecordHandles, ENTRY_RULE_CODES, fieldsOfScreen, filingTypeComparison, progressionClauseFrom, provenanceKey, QUESTIONS, SCREENS, type AdvisorEstimateReading, type Answers, type EntryStepId, type Screen } from '@steuereule/core'
 import { estimateReadingFrom } from '../advisor/advisor-case-digest.js'
 import { describePrintoutGap } from '../advisor/advisor-printout-gaps.js'
 import { buildPrintoutPlan } from '../advisor/advisor-printout-plan.js'
@@ -45,6 +45,22 @@ export type SimulationResult =
   | { readonly ok: false; readonly reason: string }
 
 const NOT_COMPUTABLE = 'Die Wirkung lässt sich gerade nicht berechnen.'
+
+/**
+ * The masks a year-to-year comparison looks at: those whose values belong to one year and one record. Master
+ * data holds across years, a notice and a booking are of their year, children and rental objects are records
+ * with ids of their own year (counted apart).
+ */
+const YEARLY_SCREENS: readonly Screen[] = SCREENS.filter((screen) => !['profil', 'stammdaten', 'assessment', 'buchung'].includes(screen))
+const YEARLY_KEYS: readonly { readonly screen: Screen; readonly field: string; readonly key: string }[] = YEARLY_SCREENS.flatMap((screen) =>
+  fieldsOfScreen(screen)
+    .filter((spec) => !spec.perInstance)
+    .map((spec) => ({ screen, field: spec.field, key: provenanceKey(screen, spec.field) })),
+)
+const isFilled = (value: string | null | undefined): boolean => value !== null && value !== undefined && value.trim() !== ''
+
+/** The figures of the breakdown compared year to year, when both years have them. */
+const COMPARED_FIGURES = ['summeDerEinkuenfteEur', 'vorsorgeAbzugEur', 'sonderausgabenEur', 'zuVersteuerndesEinkommenEur', 'einkommensteuerEur', 'angerechnetEur', 'ergebnisEur'] as const
 
 const midpoint = (range: { readonly fromEur: number; readonly toEur: number }): number => Math.round((range.fromEur + range.toEur) / 2)
 
@@ -156,6 +172,84 @@ export class McpReportService {
       vorauszahlungenEur: status.prepayments ?? 0,
       ergebnisEur: figure(status.result),
       lesehilfe: 'einkommensteuerEur = tarifliche Steuer − § 35a + hinzugerechnetes Kindergeld + Abgeltungsteuer. ergebnisEur: positiv = Erstattung, negativ = Nachzahlung, nach Anrechnung und Vorauszahlungen.',
+    }
+  }
+
+  /**
+   * Joint against separate assessment (#548) from the case itself: the zvE of the app's own estimate, split
+   * between the persons by their Einkünfte, through the core comparison. A typed partner income is not needed
+   * and not taken. The split is an approximation (the deductions of each person are not kept apart).
+   */
+  async compareFilingTypes(userId: string, taxYear: number): Promise<Record<string, unknown>> {
+    const [status, interview] = await Promise.all([this.estimate.getState(userId, taxYear), this.interview.getState(userId, taxYear)])
+    if (status.kind === 'offen') return { ok: false, grund: 'Die Schätzung ist noch nicht möglich; ohne sie gibt es nichts zu vergleichen.', fehlt: [...status.missing] }
+    if (status.kind !== 'spanne') return { ok: false, grund: 'Die Schätzung ist für dieses Jahr nicht möglich; ohne sie gibt es nichts zu vergleichen.' }
+    const persons = status.breakdown?.persons ?? []
+    if (persons.length !== 2) return { ok: false, grund: 'Es gibt keine Person B mit erfassten Angaben: Ein Vergleich der Veranlagungsarten setzt Ehe oder Lebenspartnerschaft und die Zahlen beider voraus.' }
+    const [a, b] = persons as [(typeof persons)[number], (typeof persons)[number]]
+    const zve = Math.max(0, Math.round(status.taxableIncome.to))
+    const incomeA = Math.max(0, a.incomeEur)
+    const incomeB = Math.max(0, b.incomeEur)
+    const shareA = incomeA + incomeB === 0 ? 0.5 : incomeA / (incomeA + incomeB)
+    const zveA = Math.round(zve * shareA)
+    const zveB = zve - zveA
+    let comparison: ReturnType<typeof filingTypeComparison>
+    try {
+      comparison = filingTypeComparison({ zveA, zveB, year: taxYear, progressionClause: progressionClauseFrom(interview.answers as Answers) })
+    } catch {
+      return { ok: false, grund: `Für ${taxYear} kennt die App den Tarif nicht.` }
+    }
+    return {
+      ok: true,
+      taxYear,
+      aktuell: status.jointAssessment === true ? 'zusammen' : 'einzeln',
+      zuVersteuerndesEinkommen: { personA: zveA, personB: zveB },
+      einzelveranlagungEur: comparison.single,
+      zusammenveranlagungEur: comparison.joint,
+      differenzEur: comparison.delta,
+      aussage: comparison.statement,
+      ...(comparison.statement === 'eindeutig' ? { empfehlung: comparison.recommendation } : {}),
+      ...(comparison.uncertainty.kind === 'unbestimmt' ? { offen: 'Lohnersatzleistungen (Progressionsvorbehalt) sind im Interview nicht beantwortet; frage den Nutzer (Frage "lohnersatz").' } : {}),
+      lesehilfe: 'Beträge = Einkommensteuer + Solidaritätszuschlag, ohne Kirchensteuer. differenzEur = zusammen minus einzeln; negativ heißt, die Zusammenveranlagung spart. Näherung: Das zu versteuernde Einkommen der App ist im Verhältnis der Einkünfte auf beide aufgeteilt; Abzüge, die nur einer Person zustehen, verschieben das Ergebnis. „zu-knapp“: der Unterschied liegt innerhalb der Unsicherheit durch den Progressionsvorbehalt.',
+    }
+  }
+
+  /**
+   * This year beside the year before (#548): the breakdown of both, the change of the main figures, and the
+   * fields that held a value last year and are empty now (names only, no values). The user's own fields; Person B's
+   * and records with their own ids (children, rental objects) are not walked here.
+   */
+  async compareYears(userId: string, taxYear: number): Promise<Record<string, unknown>> {
+    const prior = taxYear - 1
+    const keys = YEARLY_KEYS.map((entry) => entry.key)
+    const [now, before, valuesNow, valuesBefore] = await Promise.all([
+      this.breakdown(userId, taxYear).catch(() => ({ ok: false })),
+      this.breakdown(userId, prior).catch(() => ({ ok: false })),
+      this.confirmation.readRawValues(userId, taxYear, keys),
+      this.confirmation.readRawValues(userId, prior, keys),
+    ])
+    const filledBefore = YEARLY_KEYS.filter((entry) => isFilled(valuesBefore[entry.key]))
+    if (before.ok !== true && filledBefore.length === 0) return { ok: false, grund: `Für ${prior} sind in diesem Konto keine Angaben erfasst; es gibt kein Vorjahr zum Vergleich.` }
+    const emptyNow = new Map<Screen, string[]>()
+    for (const entry of filledBefore) {
+      if (isFilled(valuesNow[entry.key])) continue
+      emptyNow.set(entry.screen, [...(emptyNow.get(entry.screen) ?? []), entry.field])
+    }
+    const change: Record<string, number> = {}
+    for (const figure of COMPARED_FIGURES) {
+      const a = (now as Record<string, unknown>)[figure]
+      const b = (before as Record<string, unknown>)[figure]
+      if (typeof a === 'number' && typeof b === 'number') change[figure] = Math.round((a - b) * 100) / 100
+    }
+    return {
+      ok: true,
+      taxYear,
+      vorjahr: prior,
+      diesesJahr: now,
+      vorjahrZahlen: before,
+      veraenderung: change,
+      imVorjahrGefuelltJetztLeer: [...emptyNow].map(([screen, felder]) => ({ screen, felder })),
+      lesehilfe: 'veraenderung = dieses Jahr minus Vorjahr (nur wo beide Jahre eine Zahl haben). imVorjahrGefuelltJetztLeer: Felder, die im Vorjahr einen Wert hatten und jetzt leer sind; frag den Nutzer, ob sie dieses Jahr wieder zutreffen, statt Werte zu übernehmen.',
     }
   }
 

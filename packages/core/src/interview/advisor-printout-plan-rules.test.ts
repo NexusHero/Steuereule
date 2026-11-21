@@ -75,6 +75,15 @@ describe('checklist of the fixed rules (ADR-0093)', () => {
     expect(question.question).toContain('Taggeld')
   })
 
+  it('takes an accident benefit (UVG/SUVA) on its own field as the answer to the daily-benefit question', () => {
+    const accident = key('A', 'chLohnausweis', 'steuerfreiesUnfalltaggeldChf')
+    const values = { ...ANSWERED, [key('A', 'chLohnausweis', 'bruttolohn-total')]: '98000' }
+    expect(asked(SINGLE, { ...values, [accident]: '2250' })).toEqual([])
+    const question = planPrintoutGaps(ENTRY_RULE_CODES, SINGLE, values).questions[0]!
+    expect(question.question).toContain('Unfalltaggeld')
+    expect(question.question).toContain('steuerfreiesUnfalltaggeldChf')
+  })
+
   it('asks for the amount of capital income once the gate says there is some', () => {
     const amount = key('A', 'kapital', 'kapitalertraege')
     const values = { ...ANSWERED, [key('A', 'interview', 'einkuenfte')]: 'Kapitalerträge' }

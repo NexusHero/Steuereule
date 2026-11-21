@@ -5,7 +5,11 @@ import {
   getAdvisorControllerGetSessionQueryKey,
   getCockpitControllerGetCockpitSummaryQueryKey,
   getConfirmationControllerGetQueryKey,
+  getLstbControllerGetChurchTaxQueryKey,
+  getLstbControllerGetEmployerQueryKey,
+  getLstbControllerGetLinesQueryKey,
   getLstbControllerGetLstbQueryKey,
+  getLstbControllerGetSubsidiesQueryKey,
   getReceiptControllerListQueryKey,
   getTaxEstimateControllerGetQueryKey,
   useAdvisorControllerDismissAction,
@@ -19,10 +23,13 @@ import { captureReceipt, type CapturePhase } from '../../../lib/receipts/capture
 import { createHolderFromDocument, detailsFromDocument, takeNameIntoProfile, type NewHolderDetails } from '../../../lib/receipts/documentAssignment'
 import { wholeEurosFrom } from '../../shared/wholeEuros'
 import {
+  buildEmployerDraft,
   buildFieldDraft,
+  buildLineDrafts,
   evaluateStagedDraft,
   rehydrateDraftFromAdvisorMessages,
   type FieldId,
+  type LineId,
   type StagedDraftEvaluation,
   type StagedLstbScanDraft,
 } from './lstbScanDraft'
@@ -50,6 +57,11 @@ export interface LstbScanState {
   readonly scanFile: (file: File) => Promise<void>
   readonly updateFieldText: (fieldId: FieldId, nextText: string) => void
   readonly confirmField: (fieldId: FieldId) => void
+  /** A further line of the draft (Soli, church tax, Zeilen 22–27, Zeile 24). */
+  readonly updateLineText: (line: LineId, nextText: string) => void
+  readonly confirmLine: (line: LineId) => void
+  readonly updateEmployerText: (nextText: string) => void
+  readonly confirmEmployer: () => void
   readonly discardDraft: () => Promise<void>
   readonly applyDraft: (overwriteExisting: boolean, addToExisting?: boolean) => Promise<void>
   /** The scanned certificate is the one already saved for the year. */
@@ -189,6 +201,8 @@ export function useLstbScan({ taxYear, person }: { readonly taxYear: number; rea
           lohnsteuer: buildFieldDraft(lstbScan.fields.lohnsteuer),
           sozialversicherung: buildFieldDraft(lstbScan.fields.sozialversicherung),
         },
+        lines: buildLineDrafts(lstbScan.lines),
+        employer: buildEmployerDraft(lstbScan.employer),
       })
       void queryClient.invalidateQueries({ queryKey: getAdvisorControllerGetSessionQueryKey(taxYear) })
     } catch {
@@ -218,6 +232,31 @@ export function useLstbScan({ taxYear, person }: { readonly taxYear: number; rea
     )
   }
 
+  function updateLineText(line: LineId, nextText: string) {
+    setStagedScan((prev) => {
+      const current = prev?.lines[line]
+      if (prev === null || current === undefined) return prev
+      // Typing a value is confirming it, as for the three fields.
+      return { ...prev, lines: { ...prev.lines, [line]: { ...current, text: nextText, confirmed: nextText.trim() !== '' } } }
+    })
+  }
+
+  function confirmLine(line: LineId) {
+    setStagedScan((prev) => {
+      const current = prev?.lines[line]
+      if (prev === null || current === undefined) return prev
+      return { ...prev, lines: { ...prev.lines, [line]: { ...current, confirmed: true } } }
+    })
+  }
+
+  function updateEmployerText(nextText: string) {
+    setStagedScan((prev) => (prev === null || prev.employer === null ? prev : { ...prev, employer: { ...prev.employer, text: nextText, confirmed: true } }))
+  }
+
+  function confirmEmployer() {
+    setStagedScan((prev) => (prev === null || prev.employer === null ? prev : { ...prev, employer: { ...prev.employer, confirmed: true } }))
+  }
+
   async function discardDraft() {
     if (stagedScan === null) return
     const actionIds = [...stagedScan.actionIds]
@@ -232,8 +271,11 @@ export function useLstbScan({ taxYear, person }: { readonly taxYear: number; rea
 
   async function applyDraft(overwriteExisting: boolean, addToExisting = false) {
     if (stagedScan === null) return
-    const { bruttoarbeitslohn, lohnsteuer, sozialversicherung } = evaluateStagedDraft(stagedScan).values
-    if (bruttoarbeitslohn === null || lohnsteuer === null || !evaluateStagedDraft(stagedScan).readyToApply) return
+    const draftEvaluation = evaluateStagedDraft(stagedScan)
+    const { bruttoarbeitslohn, lohnsteuer, sozialversicherung } = draftEvaluation.values
+    if (bruttoarbeitslohn === null || lohnsteuer === null || !draftEvaluation.readyToApply) return
+    const lines = draftEvaluation.lineValues
+    const employer = stagedScan.employer?.text.trim() ?? ''
 
     setError(null)
     try {
@@ -246,6 +288,8 @@ export function useLstbScan({ taxYear, person }: { readonly taxYear: number; rea
           ...(sozialversicherung !== null ? { sozialversicherung } : {}),
           ...(stagedScan.receiptId !== null ? { receiptId: stagedScan.receiptId } : {}),
           ...(stagedScan.actionIds.length > 0 ? { actionIds: [...stagedScan.actionIds] } : {}),
+          ...(Object.keys(lines).length > 0 ? { lines } : {}),
+          ...(employer !== '' ? { arbeitgeber: employer } : {}),
           ...(overwriteExisting ? { overwriteExisting: true } : {}),
           ...(addToExisting ? { addToExisting: true } : {}),
         },
@@ -257,6 +301,11 @@ export function useLstbScan({ taxYear, person }: { readonly taxYear: number; rea
         setSameCertificate(false)
         await Promise.all([
           queryClient.invalidateQueries({ queryKey: getLstbControllerGetLstbQueryKey(taxYear, params) }),
+          // The further lines were written with the three values: the mask's sections show them.
+          queryClient.invalidateQueries({ queryKey: getLstbControllerGetLinesQueryKey(taxYear, params) }),
+          queryClient.invalidateQueries({ queryKey: getLstbControllerGetChurchTaxQueryKey(taxYear, params) }),
+          queryClient.invalidateQueries({ queryKey: getLstbControllerGetSubsidiesQueryKey(taxYear, params) }),
+          queryClient.invalidateQueries({ queryKey: getLstbControllerGetEmployerQueryKey(taxYear, params) }),
           queryClient.invalidateQueries({ queryKey: getCockpitControllerGetCockpitSummaryQueryKey(taxYear) }),
           queryClient.invalidateQueries({ queryKey: getTaxEstimateControllerGetQueryKey(taxYear) }),
           queryClient.invalidateQueries({ queryKey: getConfirmationControllerGetQueryKey(taxYear) }),
@@ -328,6 +377,10 @@ export function useLstbScan({ taxYear, person }: { readonly taxYear: number; rea
     scanFile,
     updateFieldText,
     confirmField,
+    updateLineText,
+    confirmLine,
+    updateEmployerText,
+    confirmEmployer,
     discardDraft,
     applyDraft,
     dismissYearConflict: () => setYearConflict(null),
