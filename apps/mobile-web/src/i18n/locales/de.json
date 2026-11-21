@@ -720,7 +720,8 @@
       "IW": "Israelit. Religionsgem. Württemberg",
       "JD": "Jüdische Kultussteuer NRW",
       "JH": "Jüdische Kultussteuer Hamburg"
-    }
+    },
+    "ohneReligion": "Gespeichert – nur die Religion nicht: Dafür fehlt noch deine Einwilligung."
   },
   "rechtliches": {
     "back": "Zurück",

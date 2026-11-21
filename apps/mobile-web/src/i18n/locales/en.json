@@ -720,7 +720,8 @@
       "IW": "Jewish Comm. Württemberg",
       "JD": "Jewish cult tax NRW",
       "JH": "Jewish cult tax Hamburg"
-    }
+    },
+    "ohneReligion": "Saved – except the religion: your consent is still missing for it."
   },
   "rechtliches": {
     "back": "Back",

@@ -53,21 +53,27 @@ describe('StammdatenScreen (ADR-0050)', () => {
     expect(await screen.findByText('Für den Ausdruck fehlen noch 9 Angaben.')).toBeTruthy()
   })
 
-  it('does not send a religion without the Art. 9 consent tick', async () => {
-    let puts = 0
+  // Real-data run: without the consent nothing was saved, and leaving lost all input. Only the religion waits for it.
+  it('saves the other fields without the Art. 9 consent tick and keeps only the religion back', async () => {
+    const bodies: Record<string, unknown>[] = []
     server.use(
       http.get('*/v1/stammdaten', () => HttpResponse.json(LEER)),
-      http.put('*/v1/stammdaten', () => {
-        puts += 1
-        return HttpResponse.json(LEER)
+      http.put('*/v1/stammdaten', async ({ request }) => {
+        const body = (await request.json()) as Record<string, unknown>
+        bodies.push(body)
+        return HttpResponse.json({ ...LEER, plz: body.plz })
       }),
     )
     renderScreen()
     fireEvent.click(await screen.findByText('evangelisch'))
+    input('stammdaten-plz', '01067')
     fireEvent.click(screen.getByTestId('stammdaten-speichern'))
 
-    expect(await screen.findByText('Ohne deine Einwilligung können wir die Religion nicht speichern.')).toBeTruthy()
-    expect(puts).toBe(0)
+    expect(await screen.findByText('Gespeichert – nur die Religion nicht: Dafür fehlt noch deine Einwilligung.')).toBeTruthy()
+    expect(bodies).toHaveLength(1)
+    expect(bodies[0]).toMatchObject({ plz: '01067', religion: null, religionConsent: false })
+    // The pick stays in the form, to be saved once the consent is ticked.
+    expect((screen.getByTestId('stammdaten-plz') as HTMLInputElement).value).toBe('01067')
   })
 
   it('sends German dates as ISO, with consent, and shows the saved state', async () => {
