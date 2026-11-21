@@ -65,6 +65,7 @@ const N_GRE_B: Values = {
   'anlNGre.personB': true,
   ...pair('z6', 50000, 52500),
   ...pair('z9', 1000, 1050),
+  ...pair('z10', 2000, 2100),
   ...pair('z23', 49000, 51450),
   ...pair('z25', 2250, 2363),
   ...pair('z83', 2475, 2599),
@@ -174,6 +175,11 @@ describe('Glas-Erklärung — the Anlage N-Gre as the printout fills it', () => 
     expect((await row('ngre-z9-b')).textContent).toContain('1.000 CHF')
     // A line the form leaves empty is no row.
     expect(screen.queryByTestId('glass-row-ngre-z9-a')).toBeNull()
+    // The „SUVA – Geld“ line is its own row, right after the sickness benefit.
+    const accident = await row('ngre-z10-b')
+    expect(accident.textContent).toContain('2.000 CHF')
+    expect(accident.textContent).toContain('SUVA-Geld')
+    expect(screen.queryByTestId('glass-row-ngre-z10-a')).toBeNull()
     expect(screen.queryByTestId('glass-row-ngre-z8-b')).toBeNull()
   })
 

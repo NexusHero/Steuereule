@@ -105,6 +105,12 @@ export class PutNGreDto {
   @Min(0)
   steuerfreiesKrankentaggeldChf?: number | null
 
+  @ApiPropertyOptional({ type: Number, nullable: true, description: 'Whole CHF — daily benefit of the Swiss accident insurance (UVG/SUVA) paid out and contained in Ziffer 8 (line „SUVA – Geld“). Tax-free, but it raises the tax rate (§ 32b EStG).' })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  steuerfreiesUnfalltaggeldChf?: number | null
+
   @ApiPropertyOptional({ type: Number, nullable: true, description: 'Employer share of the Krankentaggeld premium in percent, 0–100 (Zeilen 18, 95, 96).' })
   @IsOptional()
   @IsInt()
@@ -181,6 +187,9 @@ export class NGreDetailsDto {
 
   @ApiProperty({ type: Number, nullable: true })
   steuerfreiesKrankentaggeldChf!: number | null
+
+  @ApiProperty({ type: Number, nullable: true })
+  steuerfreiesUnfalltaggeldChf!: number | null
 
   @ApiProperty({ type: Number, nullable: true })
   krankentaggeldArbeitgeberProzent!: number | null

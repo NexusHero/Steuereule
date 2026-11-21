@@ -252,7 +252,8 @@ export class TaxEstimateService {
           singleParentChildren,
           childrenBracket,
           churchTax,
-          wageReplacementEur: wageReplacement,
+          // The daily benefit of the accident insurance (UVG/SUVA) left the wage (Zeile 10) and raises the tax rate (§ 32b EStG).
+          wageReplacementEur: wageReplacement + rows.z10,
         }),
         laterCount,
       ))
@@ -415,7 +416,9 @@ export class TaxEstimateService {
       householdReductionEur,
       healthExpensesEur,
       childrenBracket: burdenChildrenBracket(a.answers.kinder ?? bAnswers.kinder, kinder.length),
-      wageReplacementEur: (wageReplacementFrom(a.answers) ?? 0) + (wageReplacementFrom(bAnswers) ?? 0),
+      // Each spouse's benefits, and what a Swiss accident insurance paid with the wage (N-Gre Zeile 10).
+      wageReplacementEur:
+        (wageReplacementFrom(a.answers) ?? 0) + (wageReplacementFrom(bAnswers) ?? 0) + (a.accidentBenefitEur ?? 0) + (b?.kind === 'ok' ? (b.accidentBenefitEur ?? 0) : 0),
     })
     if (estimate.kind !== 'spanne') return { kind: 'nicht-moeglich', reason: estimate.reason }
     const { childAllowanceUsed: _k, churchTax, ...range } = estimate
@@ -436,7 +439,15 @@ export class TaxEstimateService {
     year: number,
     boostersEnabled: boolean,
   ): Promise<
-    | { kind: 'ok'; spouse: SpouseIncome; donations: number; laterCount: number; answers: Answers }
+    | {
+        kind: 'ok'
+        spouse: SpouseIncome
+        donations: number
+        laterCount: number
+        answers: Answers
+        /** Daily benefit of the Swiss accident insurance taken out of the wage: under the progression clause (§ 32b EStG). */
+        accidentBenefitEur?: number
+      }
     | { kind: 'offen'; missing: string[] }
     | { kind: 'none'; laterCount: number; answers: Answers }
     | { kind: 'exempt' }
@@ -490,6 +501,7 @@ export class TaxEstimateService {
           donations: numbers.donations,
           laterCount,
           answers,
+          accidentBenefitEur: rows.z10,
           spouse: {
             kind: 'mixed',
             grossWage: germanWage.bruttoarbeitslohn,
@@ -507,6 +519,7 @@ export class TaxEstimateService {
         donations: numbers.donations,
         laterCount,
         answers,
+        accidentBenefitEur: rows.z10,
         // The same figures as a change-of-job year, so both get the NBUV half and count the Swiss KV once (ADR-0090).
         spouse: { kind: 'crossBorder', ...crossBorder, provision: swissProvision },
       }

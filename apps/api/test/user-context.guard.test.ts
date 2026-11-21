@@ -347,6 +347,13 @@ describe('UserContextGuard', () => {
       expect(request[AUTH_CONTEXT_REQUEST_KEY]).toEqual({ source: 'assistent', clientId: 'client-1', clientName: 'Claude', scopes: ['steuerdaten:read', 'steuerdaten:write'] })
     })
 
+    it('accepts a JWT for the Streamable HTTP endpoint /mcp as well as one for /mcp/sse (ADR-0052 amendment 6)', async () => {
+      const guard = new UserContextGuard(bundle(), prisma())
+      const { context, request } = makeContext({}, { authorization: `Bearer ${jwt({ ...valid, aud: `${BASE}/mcp` })}` })
+      await expect(guard.canActivate(context)).resolves.toBe(true)
+      expect(request[USER_ID_REQUEST_KEY]).toBe('oauth-user-id')
+    })
+
     it('refuses a JWT for another audience, another issuer or a forged signature', async () => {
       for (const token of [jwt({ ...valid, aud: 'https://elsewhere.example/api' }), jwt({ ...valid, iss: 'https://evil.example' }), `${jwt(valid).slice(0, -4)}AAAA`]) {
         const guard = new UserContextGuard(bundle(), prisma())

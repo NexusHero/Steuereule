@@ -4,6 +4,14 @@ import { newActionId } from '../src/common/action-id.js'
 import { checkPiiFree } from '../src/ki/ki.adapter.js'
 
 describe('newActionId', () => {
+  it('never looks like an IBAN either, also with the suffix a two-path proposal adds', () => {
+    // `act-ab12cdef3456-safe`: two letters, two digits and twelve more characters have the IBAN shape.
+    for (let i = 0; i < 50_000; i++) {
+      const actionId = newActionId()
+      expect(() => checkPiiFree({ actions: [{ actionId }, { actionId: `${actionId}-safe` }, { actionId: `${actionId}-max` }] })).not.toThrow()
+    }
+  })
+
   it('never looks like a Steuer-ID to the PII boundary', () => {
     for (let i = 0; i < 20_000; i++) {
       const actionId = newActionId()

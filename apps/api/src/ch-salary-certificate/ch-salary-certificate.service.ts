@@ -115,6 +115,7 @@ function nGreToDto(n: NGreDetails): NGreDetailsDto {
     pkArbeitgeberChf: number(n.pkArbeitgeberChf),
     pkArbeitgeberGesamtChf: number(n.pkArbeitgeberGesamtChf),
     steuerfreiesKrankentaggeldChf: number(n.steuerfreiesKrankentaggeldChf),
+    steuerfreiesUnfalltaggeldChf: number(n.steuerfreiesUnfalltaggeldChf),
     krankentaggeldArbeitgeberProzent: number(n.krankentaggeldArbeitgeberProzent),
     krankentaggeldArbeitgeberChf: number(n.krankentaggeldArbeitgeberChf),
     nbuvArbeitgeberProzent: number(n.nbuvArbeitgeberProzent),

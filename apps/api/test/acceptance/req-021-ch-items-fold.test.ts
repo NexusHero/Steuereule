@@ -159,6 +159,7 @@ describe('REQ-021 — the CH-Posten folding (Vorsorge + Quellensteuer-Anrechnung
       pkArbeitgeberChf: 6000,
       pkArbeitgeberGesamtChf: 14000,
       steuerfreiesKrankentaggeldChf: 3853,
+      steuerfreiesUnfalltaggeldChf: 2250,
       krankentaggeldArbeitgeberProzent: 10,
       specialCases: false,
     })
@@ -174,6 +175,7 @@ describe('REQ-021 — the CH-Posten folding (Vorsorge + Quellensteuer-Anrechnung
       pkArbeitgeberChf: 6000,
       pkArbeitgeberGesamtChf: 14000,
       steuerfreiesKrankentaggeldChf: 3853,
+      steuerfreiesUnfalltaggeldChf: 2250,
       krankentaggeldArbeitgeberProzent: 10,
       krankentaggeldArbeitgeberChf: null,
       nbuvArbeitgeberProzent: null,

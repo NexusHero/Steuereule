@@ -23,6 +23,7 @@ import { UnclearableNumberField } from '../shared/UnclearableNumberField'
 import { screenHeaderStyles } from '../shared/screenStyles'
 import { ItemNotice } from '../shared/ItemNotice'
 import { CURRENT_TAX_YEAR } from '../../config/taxYear'
+import { missingItems } from '../cockpit/estimateMissing'
 import { CatalogScreen } from '../catalog/CatalogScreen'
 import { LoadingState, ErrorState } from '../shared/ScreenState'
 import { BackButton, BackButtonSpacer } from '../shared/BackButton'
@@ -233,9 +234,11 @@ function Result({ dto }: { readonly dto: GuenstigerpruefungDto }) {
           ? tr('kapital.guenstigerpruefung.kryptoGegated')
           : dto.reason === 'keine-kapitalertraege'
             ? tr('kapital.guenstigerpruefung.keineKapitalertraege')
-            : dto.reason === 'uebriges-einkommen-unbekannt'
-              ? tr('kapital.guenstigerpruefung.uebrigesEinkommenUnbekannt')
-            : tr('kapital.guenstigerpruefung.kapDepotNichtBeantwortet')
+            : dto.reason === 'schaetzung-offen'
+              ? tr('kapital.guenstigerpruefung.schaetzungOffen', { liste: missingList(dto.missing ?? [], tr) })
+              : dto.reason === 'schaetzung-nicht-moeglich'
+                ? tr('kapital.guenstigerpruefung.schaetzungNichtMoeglich', { grund: tr(`cockpit.erstattung.grund.${dto.estimateReason ?? 'unbekannt'}`) })
+                : tr('kapital.guenstigerpruefung.kapDepotNichtBeantwortet')
     return <Text style={s.aussage}>{text}</Text>
   }
 
@@ -256,19 +259,43 @@ function Result({ dto }: { readonly dto: GuenstigerpruefungDto }) {
 
       <Card>
         <Text style={s.zahlLabel}>{tr('kapital.guenstigerpruefung.abgeltung')}</Text>
-        <Text style={s.zahl}>{`${dto.flatRateTax ?? 0} €`}</Text>
+        <Text style={s.zahl} testID="guenstigerpruefung-abgeltung">{formatEuro(dto.flatRateTax ?? 0)}</Text>
       </Card>
 
       <Card>
         <Text style={s.zahlLabel}>{tr('kapital.guenstigerpruefung.persoenlich')}</Text>
-        <Text style={s.zahl}>{`${dto.personal ?? 0} €`}</Text>
+        <Text style={s.zahl} testID="guenstigerpruefung-persoenlich">{formatEuro(dto.personal ?? 0)}</Text>
       </Card>
+
+      <Card>
+        <Text style={s.zahlLabel}>{tr('kapital.guenstigerpruefung.unterschied')}</Text>
+        <Text style={s.zahl} testID="guenstigerpruefung-unterschied">{formatEuro(Math.abs(dto.delta ?? 0))}</Text>
+      </Card>
+
+      {dto.estimateTreatment ? (
+        <Text style={s.hinweis}>
+          {tr(dto.estimateTreatment === 'abgeltung' ? 'kapital.guenstigerpruefung.schaetzungAbgeltung' : 'kapital.guenstigerpruefung.schaetzungQuelle')}
+        </Text>
+      ) : null}
 
       {dto.uncertainty?.kind === 'unbestimmt' ? (
         <Text style={s.hinweis}>{tr('kapital.guenstigerpruefung.progressionsvorbehaltHinweis')}</Text>
       ) : null}
     </View>
   )
+}
+
+/** The estimate's missing ids in the Cockpit's own words; Person B's with a prefix. */
+function missingList(ids: readonly string[], tr: ReturnType<typeof useTranslation<typeof APP_NS>>['t']): string {
+  return missingItems(ids)
+    .map((item) => {
+      const was =
+        item.id === 'veranlagungsart'
+          ? tr('kapital.guenstigerpruefung.fehltVeranlagungsart')
+          : tr(item.known ? `cockpit.erstattung.fehlt.${item.id}` : 'cockpit.erstattung.fehlt.sonstiges')
+      return item.person === 'B' ? tr('kapital.guenstigerpruefung.fehltPartner', { was }) : was
+    })
+    .join(', ')
 }
 
 function makeStyles(t: UiTheme) {

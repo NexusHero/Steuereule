@@ -66,7 +66,7 @@ function maskOf(fieldId: string): MaskTarget {
 const suffix = (person: Person): string => person.toLowerCase()
 
 /** The wage lines (Z. 6–25) and the provision lines (Z. 78–88) of the Anlage N-Gre; an empty or zero line is no row. */
-const N_GRE_WAGE_ROWS = ['z6', 'z8', 'z9', 'z18', 'z19', 'z20', 'z23', 'z25'] as const
+const N_GRE_WAGE_ROWS = ['z6', 'z8', 'z9', 'z10', 'z18', 'z19', 'z20', 'z23', 'z25'] as const
 const N_GRE_PROVISION_ROWS = ['z78', 'z79', 'z80', 'z81', 'z82', 'z83', 'z84', 'z85', 'z87', 'z88'] as const
 const N_GRE_FORM = 'Anlage N-Gre'
 

@@ -46,7 +46,7 @@ der App wich an fünf Stellen ab:
 
    Die Referenz `grenzgaenger-ausland.md` des Skills `steuerberater` erklärt die Aufteilung mit dem
    Beispiel. Neue, von der Eule schreibbare Felder: `pkArbeitgeberGesamtChf` und
-   `steuerfreiesKrankentaggeldChf`.
+   `steuerfreiesKrankentaggeldChf`; später dazu `steuerfreiesUnfalltaggeldChf` (Zeile 10, Punkt 5).
 3. **NBUV und Krankentaggeld zu 100 % beim Arbeitgeber: Der Arbeitnehmeranteil ist 0.** Ursache
    der 269 CHF: Der Arbeitnehmeranteil NBUV wird als Rest von Ziffer 9 nach AHV/IV, EO und ALV
    hergeleitet. Zahlt der Arbeitgeber alles, ist dieser Rest keine NBUV (Rundung oder andere
@@ -84,16 +84,23 @@ der App wich an fünf Stellen ab:
        Kollektivkrankentaggeldversicherung nach VVG (Privatversicherung) unterliegt nicht § 32b.
        Eine BFH-Entscheidung zur zugelassenen Revision haben wir nicht gefunden.
      - Wir wenden deshalb keinen Progressionsvorbehalt an.
+     - Das Taggeld der Unfallversicherung (UVG/SUVA) hat ein eigenes Feld,
+       `steuerfreiesUnfalltaggeldChf` (Zeile 10 „SUVA – Geld“, auch Zeile 76): Es mindert Lohn und
+       Bemessungsgrundlage wie das Krankentaggeld, die Schätzung zählt den Euro-Betrag aber zu den
+       Lohnersatzleistungen (§ 32b EStG, BFH VI R 26/24). Der Ausdruck füllt Zeile 10 und trägt den
+       Euro-Betrag zusätzlich in den Hauptvordruck ein (Zeile 36, Kz 136/137).
      - **Offen:** Taggeld nach KVG (soziale Krankenversicherung). BFH VI R 26/24 hat für das
        gesetzliche UVG-Taggeld Buchst. k bejaht; dieselbe Begründung könnte auf KVG-Taggeld
        übertragen werden. Die Eule nennt das als unsicher.
 6. **„Sonderfälle“ sind nur noch die Zeilen 7, 10–14, 16, 17, 21, 22.** Zeilen 9 und 20 druckt die
-   App jetzt; die Frage in der Maske nennt Krankentaggeld und Überobligatorium nicht mehr.
+   App jetzt; die Frage in der Maske nennt Krankentaggeld und Überobligatorium nicht mehr. Zeile 10
+   (SUVA-Geld) druckt die App inzwischen ebenfalls; die Frage nennt SUVA-Gelder nicht mehr.
 
 ## Folgen
 
 - Neue verschlüsselte Spalten `pkArbeitgeberGesamtChf` und `steuerfreiesKrankentaggeldChf`
-  (Migration `20261113180000_n_gre_pk_split_krankentaggeld`). Neue Kästen `anlNGre.z9*` und
+  (Migration `20261113180000_n_gre_pk_split_krankentaggeld`), später `steuerfreiesUnfalltaggeldChf`
+  (Migration `20261125100000_n_gre_unfalltaggeld`, Kästen `anlNGre.z10*`). Neue Kästen `anlNGre.z9*` und
   `anlNGre.z20*` sind aus dem Vordruck vermessen (`scripts/vordrucke/vermessen.mjs`).
 - **Bestandsdaten:** Wer in `pkArbeitnehmerChf`/`pkArbeitgeberChf` den Gesamtbetrag eingetragen
   hat, behält ihn, bis er die Felder korrigiert. Eine automatische Umdeutung ist nicht möglich:

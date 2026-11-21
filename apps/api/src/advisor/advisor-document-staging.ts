@@ -21,6 +21,7 @@ import {
   type ExistingValueSource,
   type LstbCalculationTerm,
   type LstbExtractedField,
+  type LstbScanLine,
   type OwlSourceId,
   type ReceiptMark,
   type Screen,
@@ -116,7 +117,8 @@ export interface LstbScanBatchInput {
   readonly engine: AdvisorEngineInfo
   readonly summaryText: string
   readonly fields: ReadonlyArray<{
-    readonly field: WageTaxCertificateFieldId
+    /** One of the three fields, or a further line of the mask (`LstbScanLine`). */
+    readonly field: WageTaxCertificateFieldId | LstbScanLine
     readonly label: string
     readonly extracted: LstbExtractedField
   }>
@@ -385,8 +387,9 @@ export class AdvisorDocumentStaging {
         }
       }
       // The mask asks „hinzufügen oder ersetzen“ itself; the chat gets both ways as drafts (ADR-0092 §6).
+      // Soli has cents: no „zusätzlich“ sum of whole amounts for it, a plain draft.
       const existing =
-        input.askCombination === true && item.extracted.value !== null
+        input.askCombination === true && item.extracted.value !== null && /^\d+$/.test(valueStr)
           ? await this.existingAmount(userId, taxYear, input.digestUserId ?? userId, { screen: 'lstb', field: item.field, person: input.person ?? 'A' }, input.receiptId)
           : null
       if (existing === null || amountCombination(existing.value, valueStr, existing.source) === 'write') {
@@ -527,13 +530,14 @@ export class AdvisorDocumentStaging {
       rawActions.push(...combinationDrafts(draft, item.label, existing!, incoming, item.countedItems))
     }
     const question = await this.sickPayQuestion(taxYear, input)
-    // A sickness benefit with a printed amount is proposed the only way the rules allow it (ADR-0093):
-    // as two paths the user chooses between, never as a value that is simply taken over.
-    const benefit = question !== null && input.dailyBenefit?.kind === 'sickness' ? input.dailyBenefit.amountChf : null
+    // A daily benefit with a printed amount is proposed the only way the rules allow it (ADR-0093): as
+    // two paths the user chooses between, never as a value that is simply taken over. A sickness benefit
+    // and an accident benefit (UVG/SUVA) each go to their own field.
+    const benefit = question !== null && input.dailyBenefit && input.dailyBenefit.amountChf !== null ? { kind: input.dailyBenefit.kind, amountChf: input.dailyBenefit.amountChf } : null
     const initialMeta: AdvisorMessageMeta = {
       sources: [input.sourceId],
       actions: rawActions,
-      ...(benefit !== null ? { twoPaths: sickPayPaths(benefit, input) } : {}),
+      ...(benefit !== null ? { twoPaths: dailyBenefitPaths(benefit.kind, benefit.amountChf, input) } : {}),
     }
     const enrichedMeta = await this.withEstimateEffects(userId, taxYear, await this.drafts.enrichDraftsWithRawBaseline(userId, taxYear, initialMeta))
     checkPiiFree(enrichedMeta)
@@ -559,14 +563,16 @@ export class AdvisorDocumentStaging {
   }
 
   /**
-   * A Swiss wage statement does not say whether a paid-out daily sickness benefit is part of the gross
-   * wage (ADR-0093): asked once, under the statement just read, while the answer is not recorded.
+   * A Swiss wage statement does not say whether a paid-out daily benefit is part of the gross wage
+   * (ADR-0093): asked once, under the statement just read, while the answer is not recorded in the
+   * sickness field or in the accident field.
    */
   private async sickPayQuestion(taxYear: number, input: DocumentDraftsInput): Promise<string | null> {
     const wageStatement = input.fields.some((item) => (item.screen ?? input.screen) === 'chLohnausweis' && item.field === 'bruttolohn-total')
     if (!wageStatement && !input.dailyBenefit) return null
-    const recorded = await this.confirmationService.readRawValue(input.digestUserId, taxYear, 'chLohnausweis.steuerfreiesKrankentaggeldChf').catch(() => null)
-    return recorded === null ? sickPayQuestionForUser(input.dailyBenefit) : null
+    const read = (field: string) => this.confirmationService.readRawValue(input.digestUserId, taxYear, `chLohnausweis.${field}`).catch(() => null)
+    const [sickness, accident] = await Promise.all([read('steuerfreiesKrankentaggeldChf'), read('steuerfreiesUnfalltaggeldChf')])
+    return sickness === null && accident === null ? sickPayQuestionForUser(input.dailyBenefit) : null
   }
 
   /**
@@ -732,17 +738,20 @@ export class AdvisorDocumentStaging {
 }
 
 /**
- * The two treatments of a daily sickness benefit a wage statement names (ADR-0093): not deducted, or
- * deducted with the benefit statement as proof. Alternatives of one group; the user picks one.
+ * The two treatments of a daily benefit a wage statement names (ADR-0093): not deducted, or deducted
+ * with the benefit statement as proof. Alternatives of one group; the user picks one. A sickness benefit
+ * goes to its field, a benefit of the accident insurance (UVG/SUVA) to the other: both leave the wage,
+ * only the accident benefit raises the tax rate (§ 32b EStG).
  */
-function sickPayPaths(amountChf: number, input: DocumentDraftsInput): NonNullable<AdvisorMessageMeta['twoPaths']> {
+function dailyBenefitPaths(kind: ChDailyBenefitRemark['kind'], amountChf: number, input: DocumentDraftsInput): NonNullable<AdvisorMessageMeta['twoPaths']> {
+  const accident = kind === 'accident'
   const group = newActionId()
   const path = (suffix: 'safe' | 'max', value: number, label: string, reason: string): AdvisorActionProposal => ({
     actionId: `${group}-${suffix}`,
     alternativeGroup: group,
     status: 'pending',
     screen: 'chLohnausweis',
-    field: 'steuerfreiesKrankentaggeldChf',
+    field: accident ? 'steuerfreiesUnfalltaggeldChf' : 'steuerfreiesKrankentaggeldChf',
     instance: null,
     ...(input.person === 'B' ? { person: 'B' as const } : {}),
     label,
@@ -759,6 +768,22 @@ function sickPayPaths(amountChf: number, input: DocumentDraftsInput): NonNullabl
     paragraph: ADVISOR_LEGAL_SOURCES[input.sourceId].paragraph,
     ...(input.receiptId ? { receiptId: input.receiptId } : {}),
   })
+  if (accident) {
+    return {
+      title: 'Ausgezahltes Unfalltaggeld (UVG/SUVA): im Bruttolohn (Ziffer 8) enthalten?',
+      sourceId: input.sourceId,
+      safePath: path('safe', 0, 'Unfalltaggeld nicht abziehen', 'Das Unfalltaggeld ist nicht im Bruttolohn Ziffer 8 enthalten (oder du bist nicht sicher): Der Lohn bleibt, wie er auf dem Ausweis steht.'),
+      maxPath: {
+        ...path(
+          'max',
+          amountChf,
+          `Unfalltaggeld ${formatChf(amountChf)} abziehen`,
+          'Das Unfalltaggeld ist im Bruttolohn Ziffer 8 enthalten: Es ist steuerfrei und wird vom Lohn abgezogen (Anlage N-Gre, Zeile „SUVA – Geld“), erhöht aber den Steuersatz (Progressionsvorbehalt, § 32b EStG).',
+        ),
+        evidenceHint: 'Bitte die ergänzende Bescheinigung des Arbeitgebers oder die Taggeld-Abrechnung der Unfallversicherung aufbewahren.',
+      },
+    }
+  }
   return {
     title: 'Ausgezahltes Krankentaggeld: im Bruttolohn (Ziffer 8) enthalten?',
     sourceId: input.sourceId,

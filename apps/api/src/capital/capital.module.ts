@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common'
+import { ModuleRef } from '@nestjs/core'
 import { MarkingModule } from '../marking/marking.module.js'
 import { AuditModule } from '../audit/audit.module.js'
 import { InterviewModule } from '../interview/interview.module.js'
@@ -9,7 +10,8 @@ import { PrismaTaxYearRepository } from '../cockpit/tax-year.repository.prisma.j
 import { CapitalController } from './capital.controller.js'
 import { CAPITAL_REPOSITORY } from './capital.repository.js'
 import { PrismaCapitalRepository } from './capital.repository.prisma.js'
-import { CapitalService } from './capital.service.js'
+import { CapitalService, HOUSEHOLD_ESTIMATE, type HouseholdEstimate } from './capital.service.js'
+import { TaxEstimateService } from '../tax-estimate/tax-estimate.service.js'
 
 @Module({
   imports: [MarkingModule, PrismaModule, AuditModule, InterviewModule, LstbModule],
@@ -18,6 +20,14 @@ import { CapitalService } from './capital.service.js'
     CapitalService,
     { provide: CAPITAL_REPOSITORY, useClass: PrismaCapitalRepository },
     { provide: TAX_YEAR_REPOSITORY, useClass: PrismaTaxYearRepository },
+    {
+      // TaxEstimateModule imports this module (for the capital records), so the estimate is looked up when asked for.
+      provide: HOUSEHOLD_ESTIMATE,
+      inject: [ModuleRef],
+      useFactory: (moduleRef: ModuleRef): HouseholdEstimate => ({
+        getState: (userId, taxYear) => moduleRef.get(TaxEstimateService, { strict: false }).getState(userId, taxYear),
+      }),
+    },
   ],
   exports: [CAPITAL_REPOSITORY],
 })

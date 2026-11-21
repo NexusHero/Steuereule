@@ -152,6 +152,8 @@ export interface ParseReceiptDto {
      * @maximum 99
      */
   business?: number;
+  /** Uploaded in the chat of `taxYear` (entry context, ADR-0097 §4): the Beleg is filed in that year — also when it asks „Für wen?“ or yields nothing — unless the document itself names another year; a year the user chose stays. */
+  inChat?: boolean;
   /** Stages an unconfirmed pending draft in Eulen-Modus when true (default true). */
   stageDraft?: boolean;
 }
@@ -347,6 +349,7 @@ export const AdvisorActionProposalDtoFieldReason = {
   partial_sv_lines: 'partial_sv_lines',
   llm_suggested: 'llm_suggested',
   ocr_source: 'ocr_source',
+  empty_line: 'empty_line',
 } as const;
 
 export type AdvisorActionProposalDtoCompanionFields = {[key: string]: string};
@@ -661,6 +664,7 @@ export const AdvisorMaxPathProposalDtoFieldReason = {
   partial_sv_lines: 'partial_sv_lines',
   llm_suggested: 'llm_suggested',
   ocr_source: 'ocr_source',
+  empty_line: 'empty_line',
 } as const;
 
 export type AdvisorMaxPathProposalDtoCompanionFields = {[key: string]: string};
@@ -891,6 +895,7 @@ export const LstbExtractedFieldDtoReason = {
   partial_sv_lines: 'partial_sv_lines',
   llm_suggested: 'llm_suggested',
   ocr_source: 'ocr_source',
+  empty_line: 'empty_line',
 } as const;
 
 export interface LstbExtractedFieldDto {
@@ -908,6 +913,56 @@ export interface LstbExtractedFieldsDto {
   bruttoarbeitslohn: LstbExtractedFieldDto;
   lohnsteuer: LstbExtractedFieldDto;
   sozialversicherung: LstbExtractedFieldDto;
+}
+
+export interface LstbExtractedLinesDto {
+  /** Zeile 5, Euro mit Cent. */
+  solidaritaetszuschlag: LstbExtractedFieldDto;
+  /** Zeile 6. */
+  kirchensteuer: LstbExtractedFieldDto;
+  /** Zeile 7. */
+  kirchensteuerEhegatte: LstbExtractedFieldDto;
+  /** Zeile 22 a + b. */
+  rvArbeitgeber: LstbExtractedFieldDto;
+  /** Zeile 23 a + b. */
+  rvArbeitnehmer: LstbExtractedFieldDto;
+  /** Zeile 24 a + b + c. */
+  zuschuesseKvPv: LstbExtractedFieldDto;
+  /** Zeile 24c allein. */
+  zuschussPv: LstbExtractedFieldDto;
+  /** Zeile 25. */
+  kvArbeitnehmer: LstbExtractedFieldDto;
+  /** Zeile 26. */
+  pvArbeitnehmer: LstbExtractedFieldDto;
+  /** Zeile 27. */
+  avArbeitnehmer: LstbExtractedFieldDto;
+}
+
+export type LstbExtractedEmployerDtoStatus = typeof LstbExtractedEmployerDtoStatus[keyof typeof LstbExtractedEmployerDtoStatus];
+
+
+export const LstbExtractedEmployerDtoStatus = {
+  ok: 'ok',
+  pruefen: 'pruefen',
+} as const;
+
+/**
+ * @nullable
+ */
+export type LstbExtractedEmployerDtoReason = typeof LstbExtractedEmployerDtoReason[keyof typeof LstbExtractedEmployerDtoReason] | null;
+
+
+export const LstbExtractedEmployerDtoReason = {
+  missing: 'missing',
+  ocr_source: 'ocr_source',
+} as const;
+
+export interface LstbExtractedEmployerDto {
+  /** @nullable */
+  value: string | null;
+  status: LstbExtractedEmployerDtoStatus;
+  /** @nullable */
+  reason: LstbExtractedEmployerDtoReason;
 }
 
 /**
@@ -932,6 +987,9 @@ export interface ParsedLstbResponseDto {
   yearConflict: LstbYearConflictDto | null;
   existingLstbConflict: LstbExistingConflictDto;
   fields: LstbExtractedFieldsDto;
+  /** Every further line of the mask: Soli, church tax, Zeilen 22–27 and the subsidies (Zeile 24). */
+  lines: LstbExtractedLinesDto;
+  employer: LstbExtractedEmployerDto;
   stagedActionIds: string[];
   securityBlocked: boolean;
   /**

@@ -187,3 +187,35 @@ describe('ConfirmationScreen Person B (ADR-0054)', () => {
     await waitFor(() => expect(decided).toEqual({ decision: 'annehmen', person: 'B' }))
   })
 })
+
+describe('ConfirmationScreen booking drafts of the assistant (#549)', () => {
+  const booking = JSON.stringify({ date: '2025-05-02', documentNumber: 'Q-17', text: 'Büromaterial', lines: [{ account: '4930', side: 'debit', amount: 11900, taxKey: 'vst19' }, { account: '1200', side: 'credit', amount: 11900 }] })
+
+  it('shows the draft as a booking, says nothing is booked yet, and posts it only on Übernehmen', async () => {
+    let decided: unknown = null
+    serve({
+      annexes: [
+        {
+          annex: 'anlageEuer',
+          unconfirmed: 0,
+          values: [value({ key: 'buchung:entwurf-1.entry', screen: 'buchung', instance: 'entwurf-1', field: 'entry', value: null, confirmed: true, proposal: { value: booking, provenance: { kind: 'assistent', name: 'Claude' } } })],
+        },
+      ],
+    } as ConfirmationResponseDto)
+    server.use(
+      http.put('*/v1/steuerjahre/2025/bestaetigung/vorschlaege/:key', async ({ request }) => {
+        decided = await request.json()
+        return HttpResponse.json({ annexes: [] })
+      }),
+    )
+    renderScreen()
+    expect(await screen.findByText('Buchung')).toBeTruthy()
+    expect(screen.getByText('Assistent: Claude schlägt diese Buchung vor: 02.05.2025 · Büromaterial · Beleg Q-17 · 119,00 €. Gebucht wird erst, wenn du sie übernimmst.')).toBeTruthy()
+    // No raw JSON and no "Selbst eingetragen" for the empty place the draft waits in.
+    expect(screen.queryByText(/"documentNumber"/)).toBeNull()
+    expect(screen.queryByText('Selbst eingetragen')).toBeNull()
+    expect(screen.queryByTestId('aendern-anlageEuer')).toBeNull()
+    fireEvent.click(screen.getByTestId('vorschlag-annehmen-buchung:entwurf-1.entry'))
+    await waitFor(() => expect(decided).toEqual({ decision: 'annehmen' }))
+  })
+})

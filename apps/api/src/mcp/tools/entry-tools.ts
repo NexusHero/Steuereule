@@ -22,6 +22,11 @@ const isUserOnly = (screen: Screen, field: string): boolean => screen === 'stamm
 export function registerEntryTools(session: McpSession, deps: McpDeps): void {
   const { server, userId, assistant } = session
 
+  // A booking is no field value: it goes its own way as a draft the user takes in the app (#549).
+  const bookingRefusal = deps.business
+    ? 'USE_BOOKING_TOOL: Eine Buchung ist kein Feldwert. Lege sie mit buchung_entwerfen als Entwurf an; der Nutzer übernimmt sie in der App.'
+    : 'USE_BOOKING_TOOL: Buchungen sind über diesen Zugang noch nicht möglich; der Nutzer bucht in der App.'
+
   const PERSON_HINT = 'Bei Zusammenveranlagung: A der Nutzer, B Ehegatte oder Ehegattin. Pflicht in den Masken lstb, chLohnausweis, commute, rente, profil, stammdaten, sobald es Person B gibt.'
 
   /**
@@ -34,7 +39,7 @@ export function registerEntryTools(session: McpSession, deps: McpDeps): void {
     // Art. 9 DSGVO: the confession is the user's to enter, with the consent in the app (amendment 3, 7).
     if (isUserOnly(screen, entry.field)) return { ok: false, error: 'USER_ONLY: Die Konfession trägt der Nutzer selbst in der App ein. Trage stattdessen stammdaten.kirchensteuerpflichtig („true“ oder „false“) ein.' }
     const target = validateStageTarget(screen, entry.field, true)
-    if (!target.ok) return { ok: false, error: target.error.startsWith('USE_BOOKING_TOOL') ? 'USE_BOOKING_TOOL: Buchungen sind über diesen Zugang noch nicht möglich; der Nutzer bucht in der App.' : target.error }
+    if (!target.ok) return { ok: false, error: target.error.startsWith('USE_BOOKING_TOOL') ? bookingRefusal : target.error }
     const field = entry.field.trim()
     let cleanValue: string | null = null
     if (value !== null) {
@@ -117,7 +122,7 @@ export function registerEntryTools(session: McpSession, deps: McpDeps): void {
     async ({ screen }) => {
       assertScope(assistant, 'steuerdaten:read')
       await deps.audit.append({ userId, action: 'READ', resource: 'maske_felder' })
-      if (OWN_TOOL_SCREENS.has(screen)) return json({ ok: false, error: 'Buchungen sind über diesen Zugang noch nicht möglich; der Nutzer bucht in der App.' })
+      if (OWN_TOOL_SCREENS.has(screen)) return json({ ok: false, error: bookingRefusal.replace('USE_BOOKING_TOOL: ', '') })
       const specs = fieldsOfScreen(screen).filter((spec) => isAiWritable(screen, spec.field, true) && !isUserOnly(screen, spec.field))
       return json({
         screen,

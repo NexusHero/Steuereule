@@ -320,6 +320,7 @@ export function estimateMarriedCouple(input: MarriedEstimateInput): MarriedEstim
       tariffTax: { from: tariffAt(zve.from), to: tariffAt(zve.to) },
       householdReductionEur: afterCredit(tariffAt(zve.to)).taxEur - reducedTariffTaxFor(zve.to),
       ...(flatTax > 0 ? { capitalFlatTaxEur: flatTax } : {}),
+      ...(progression > 0 ? { progressionIncomeEur: progression } : {}),
     },
     ...(withBusiness
       ? {

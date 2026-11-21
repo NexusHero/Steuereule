@@ -60,11 +60,16 @@ beim Menschen.
       Plan „was schließt welche Lücke, wer tut es“ wie beim In-App-Berater; der Assistent legt Aufgaben
       in die App, die nur der Nutzer erledigen kann (Konfession, Einwilligung, Bestätigen), sichtbar im
       Cockpit. Tier T2.
-- [ ] #548 **17.12 Komfort-Werkzeuge** — Veranlagungsvergleich aus den Falldaten; Szenario über mehrere
+- [x] #548 **17.12 Komfort-Werkzeuge** — Veranlagungsvergleich aus den Falldaten; Szenario über mehrere
       Felder; amtliche Wechselkurse (Monat/Jahr); Vordruck-Zeilen je Wert; Feld finden per Stichwort;
-      Vorjahreswerte (Jahresübernahme) und Fristen. Tier T3.
-- [ ] #549 **17.13 Vermietung und Buchungen** — Vermietungsobjekte anlegen/entfernen (wie Kinder); Buchungen
+      Vorjahreswerte (Jahresübernahme) und Fristen. Tier T3. Umgesetzt (Amendment 6): `veranlagung_vergleichen`,
+      `vorjahr_vergleichen`, `szenario_simulieren`, `wechselkurs` (Jahresdurchschnitt; Monatskurse offen),
+      `vordruck_zeilen`, `feld_finden`, `fristen`.
+- [x] #549 **17.13 Vermietung und Buchungen** — Vermietungsobjekte anlegen/entfernen (wie Kinder); Buchungen
       und Anlagegüter für Selbstständige als Entwurf wie `stage_booking_draft` (ADR-0101 §18). Tier T1.
+      Umgesetzt (Amendment 6): `vermietung_anlegen`/`vermietungen_auflisten`/`vermietung_entfernen`,
+      `buchung_entwerfen` (offener Vorschlag auf „Prüfen & bestätigen“, gebucht erst bei Übernahme),
+      `buchungsentwuerfe_auflisten`, Rücknahme mit `eintrag_zuruecknehmen`.
 
 ## Nicht Teil davon
 

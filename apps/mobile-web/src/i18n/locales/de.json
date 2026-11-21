@@ -423,6 +423,12 @@
     "einzelnAendern": "Einzeln ändern",
     "vorschlag": "{{herkunft}} schlägt {{neu}} statt {{alt}} vor.",
     "personB": "Person B",
+    "buchung": {
+      "label": "Buchung",
+      "zeile": "{{datum}} · {{text}} · Beleg {{beleg}} · {{summe}}",
+      "vorschlag": "{{herkunft}} schlägt diese Buchung vor: {{buchung}}. Gebucht wird erst, wenn du sie übernimmst.",
+      "unlesbar": "Buchungsentwurf nicht lesbar"
+    },
     "vorschlagAnnehmen": "Übernehmen",
     "vorschlagVerwerfen": "Verwerfen",
     "leererWert": "leer",
@@ -601,6 +607,7 @@
           "z6": "Bruttoarbeitslohn laut Lohnausweis",
           "z8": "Kinder- und Ausbildungszulagen",
           "z9": "Steuerfreies Krankentaggeld",
+          "z10": "SUVA-Geld (Unfalltaggeld)",
           "z18": "Arbeitgeberbeiträge zur Krankentaggeldversicherung",
           "z19": "Arbeitgeberbeiträge zur Nichtberufsunfallversicherung",
           "z20": "Arbeitgeberbeiträge ins Überobligatorium (Säule 2b)",
@@ -1083,6 +1090,10 @@
         "image_ocr": "Foto wird lokal per OCR gelesen …",
         "parsing": "Zeilen 3, 4 und SV-Beiträge (23, 25–27) werden geprüft …"
       },
+      "lines": {
+        "heading": "Weitere Zeilen der Bescheinigung",
+        "help": "Auch diese Werte sind erkannt und noch nicht gespeichert. „Werte übernehmen“ schreibt sie in ihre Felder weiter unten; leer gelassene Zeilen werden nicht übernommen."
+      },
       "draftBanner": {
         "title": "Entwurf aus Lohnsteuerbescheinigung — noch nicht gespeichert",
         "subtitle": "Prüfe die erkannten Werte und übernimm sie erst mit deinem Klick.",
@@ -1107,7 +1118,8 @@
           "plausibility_conflict": "Wert passt rechnerisch nicht zum Bruttoarbeitslohn — bitte prüfen.",
           "partial_sv_lines": "Nur ein Teil der SV-Zeilen (23, 25, 26, 27) erkannt — Summe bitte prüfen.",
           "llm_suggested": "Vorschlag der Texterkennung — bitte mit deinem Beleg vergleichen.",
-          "ocr_source": "Aus Foto oder Scan gelesen — bitte jede Ziffer mit deinem Beleg vergleichen."
+          "ocr_source": "Aus Foto oder Scan gelesen — bitte jede Ziffer mit deinem Beleg vergleichen.",
+          "empty_line": "Zeile auf dem Beleg leer — als 0 vorgeschlagen, bitte prüfen."
         }
       },
       "yearConflict": {
@@ -1230,7 +1242,13 @@
       "kryptoGegated": "Krypto bleibt 2.0 — keine Günstigerprüfung für Krypto.",
       "kapDepotNichtBeantwortet": "Erst die Depot-Frage im Interview beantworten — dann wissen wir, ob die Günstigerprüfung anwendbar ist.",
       "keineKapitalertraege": "Trag zuerst deine Kapitalerträge ein — dann rechnen wir den Vergleich.",
-      "uebrigesEinkommenUnbekannt": "Ob der persönliche Steuersatz günstiger ist, hängt vom gesamten Einkommen ab (Schweizer Lohn, Rente, bei Ehepaaren auch das des Partners). Das rechnet die Schätzung im Cockpit mit; eine eigene Zahl zeigen wir hier deshalb nicht."
+      "unterschied": "Unterschied",
+      "schaetzungAbgeltung": "Die Schätzung im Cockpit rechnet deine Kapitalerträge mit der Abgeltungsteuer, nicht mit dem günstigeren Tarif.",
+      "schaetzungQuelle": "Die Schätzung im Cockpit lässt es bei der einbehaltenen Abgeltungsteuer; den günstigeren Tarif rechnet sie nicht ein.",
+      "schaetzungOffen": "Den Vergleich rechnen wir auf der Schätzung im Cockpit. Ihr fehlt noch: {{liste}}",
+      "schaetzungNichtMoeglich": "Den Vergleich rechnen wir auf der Schätzung im Cockpit, und die geht hier noch nicht: {{grund}}",
+      "fehltPartner": "Person B: {{was}}",
+      "fehltVeranlagungsart": "Wie ihr veranlagt werdet (Zusammenveranlagung in „Angaben für die Erklärung“ anlegen)"
     },
     "weiter": "Weiter"
   },
@@ -1994,6 +2012,10 @@
   },
   "belege": {
     "appbarTitle": "Belege",
+    "mehrLaden": {
+      "cta": "Mehr laden",
+      "laedt": "Lädt …"
+    },
     "loading": "Deine Belege werden geladen …",
     "loadError": {
       "heading": "Das hat nicht geklappt.",
@@ -2001,10 +2023,6 @@
       "retry": "Noch mal versuchen"
     },
     "offen_one": "{{count}} offen",
-    "mehrLaden": {
-      "cta": "Mehr laden",
-      "laedt": "Lädt …"
-    },
     "offen_other": "{{count}} offen",
     "empty": {
       "heading": "Noch keine Belege.",
@@ -2250,6 +2268,8 @@
         "familienzulagenChf": "Kinder- und Ausbildungszulagen im Bruttolohn (CHF, ggf. 0)",
         "krankentaggeldChf": "Deine Beiträge zur Krankentaggeldversicherung (CHF, ggf. 0)",
         "steuerfreiesKrankentaggeldChf": "Ausgezahltes steuerfreies Krankentaggeld im Bruttolohn, z. B. „KK-Taggeld“ im Zusatzblatt (CHF, ggf. 0)",
+        "steuerfreiesUnfalltaggeldChf": "Unfalltaggeld (UVG/SUVA) im Bruttolohn",
+        "steuerfreiesUnfalltaggeldChfHilfe": "Steuerfrei, erhöht aber den Steuersatz (Progressionsvorbehalt). Krankentaggeld gehört ins Feld darüber.",
         "pkArbeitnehmerChf": "Pensionskasse – davon obligatorisch (BVG): dein Beitrag (CHF)",
         "pkArbeitgeberGesamtChf": "Pensionskasse – alle Beiträge des Arbeitgebers, obligatorisch und überobligatorisch (CHF)",
         "pkArbeitgeberChf": "Pensionskasse – davon obligatorisch (BVG): Beitrag des Arbeitgebers (CHF)",
@@ -2261,7 +2281,7 @@
         "familienzulagenImBruttolohnHilfe": "Nur dann wird die Zulage vom Bruttolohn abgezogen (Anlage N-Gre Zeile 8). Sonst gehört sie zum Kind (Maske Kinder).",
         "kvZuschussAnspruch": "Anspruch auf steuerfreie Zuschüsse oder Arbeitgeberbeiträge zur Krankenversicherung? (Anlage Vorsorgeaufwand Zeile 49)"
       },
-      "sonderfaelle": "Gab es Arbeitslosen- oder SUVA-Gelder, Mutterschafts- oder IV-Taggelder, steuerfreie Zuschläge, Direktversicherung, Optionsrechte, Fahrtkostenersatz, Spesenpauschalen oder einen Firmenwagen?",
+      "sonderfaelle": "Gab es Arbeitslosengeld, Mutterschafts- oder IV-Taggelder, steuerfreie Zuschläge, Direktversicherung, Optionsrechte, Fahrtkostenersatz, Spesenpauschalen oder einen Firmenwagen?",
       "ja": "Ja",
       "nein": "Nein"
     },

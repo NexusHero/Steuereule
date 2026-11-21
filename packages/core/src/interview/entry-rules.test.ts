@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { checkDraftRules, draftFollowUps, impliedCompanions, transportFollowUps } from './entry-rules'
+import { checkDraftRules, draftFollowUps, impliedCompanions, sickPayQuestionForUser, transportFollowUps } from './entry-rules'
 
 const stage = (screen: 'chLohnausweis' | 'kind' | 'lstb', values: Record<string, string>, others: { screen: 'chLohnausweis' | 'kind'; values: Record<string, string> }[] = []) =>
   checkDraftRules({ screen, values, tool: 'stage', others })
@@ -28,6 +28,36 @@ describe('fixed rules for drafts (ADR-0093)', () => {
     expect(stage('chLohnausweis', { steuerfreiesKrankentaggeldChf: '2900' })).toMatchObject({ ok: false, code: 'TWO_PATHS_REQUIRED' })
     expect(checkDraftRules({ screen: 'chLohnausweis', values: { steuerfreiesKrankentaggeldChf: '2900' }, tool: 'two-paths', others: [] }).ok).toBe(true)
     expect(stage('chLohnausweis', { steuerfreiesKrankentaggeldChf: '0' }).ok).toBe(true)
+  })
+
+  it('takes a paid-out accident benefit (UVG/SUVA) only as two paths too, on its own field', () => {
+    const refused = stage('chLohnausweis', { steuerfreiesUnfalltaggeldChf: '2250' })
+    expect(refused).toMatchObject({ ok: false, code: 'TWO_PATHS_REQUIRED' })
+    expect(refused.ok === false && refused.reason).toContain('steuerfreiesUnfalltaggeldChf')
+    expect(refused.ok === false && refused.reason).toContain('Progressionsvorbehalt')
+    expect(checkDraftRules({ screen: 'chLohnausweis', values: { steuerfreiesUnfalltaggeldChf: '2250' }, tool: 'two-paths', others: [] }).ok).toBe(true)
+    expect(stage('chLohnausweis', { steuerfreiesUnfalltaggeldChf: '0' }).ok).toBe(true)
+  })
+
+  it('tells the model which daily benefit lands in which field', () => {
+    const asks = draftFollowUps('chLohnausweis', { 'bruttolohn-total': '98000' }).join(' ')
+    expect(asks).toContain('Krankentaggeld gehört in chLohnausweis.steuerfreiesKrankentaggeldChf')
+    expect(asks).toContain('Unfalltaggeld (UVG/SUVA) in chLohnausweis.steuerfreiesUnfalltaggeldChf')
+    // An answer in either field is an answer to the one question.
+    expect(draftFollowUps('chLohnausweis', { 'bruttolohn-total': '98000', steuerfreiesUnfalltaggeldChf: '2250' }).join(' ')).not.toContain('Taggeld')
+  })
+
+  it('names both paths for an accident benefit a remark carries with its amount, and asks for a missing amount', () => {
+    const withAmount = sickPayQuestionForUser({ kind: 'accident', amountChf: 2250 })
+    expect(withAmount).toContain('Unfalltaggeld')
+    expect(withAmount).toContain('Ziffer 8')
+    expect(withAmount).toContain('beide Wege')
+    expect(withAmount).toContain('Progressionsvorbehalt')
+    expect(withAmount).not.toContain('nichts vorbereitet')
+    const withoutAmount = sickPayQuestionForUser({ kind: 'accident', amountChf: null })
+    expect(withoutAmount).toContain('Unfalltaggeld')
+    expect(withoutAmount).toContain('Betrag')
+    expect(withoutAmount).not.toContain('beide Wege')
   })
 
   it('sets the gate of the prepayments itself', () => {

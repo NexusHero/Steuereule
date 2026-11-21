@@ -5,6 +5,7 @@ import { APP_NS } from '../../../i18n/resources'
 import { DocumentAssignmentCard } from '../../receipts/DocumentAssignmentCard'
 import { ReceiptFileModal } from '../../receipts/ReceiptFileModal'
 import { ReceiptPickerButton } from '../../shared/ReceiptPickerButton'
+import { StagedLines } from './StagedLines'
 import type { LstbScanState } from './useLstbScan'
 
 export interface LstbScanPanelProps {
@@ -167,6 +168,8 @@ export function LstbScanPanel({ scan, taxYear, onSwitchTaxYear }: LstbScanPanelP
             ))}
           </View>
         )}
+
+        <StagedLines scan={scan} draft={stagedScan} />
 
         <View style={styles.draftActions}>
           <Button

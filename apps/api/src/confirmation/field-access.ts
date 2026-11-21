@@ -130,6 +130,7 @@ const NGRE_FIELDS: readonly (keyof NGreDetails)[] = [
   'pkArbeitgeberChf',
   'pkArbeitgeberGesamtChf',
   'steuerfreiesKrankentaggeldChf',
+  'steuerfreiesUnfalltaggeldChf',
   'krankentaggeldArbeitgeberProzent',
   'krankentaggeldArbeitgeberChf',
   'nbuvArbeitgeberProzent',

@@ -631,6 +631,9 @@ model ChSalaryCertificate {
   pkArbeitgeberGesamtChf           String? /// @encrypted?mode=strict
   /// Tax-free Krankentaggeld paid out and contained in Ziffer 8 (N-Gre Zeilen 9/76). Whole CHF.
   steuerfreiesKrankentaggeldChf    String? /// @encrypted?mode=strict
+  /// Daily benefit of the Swiss accident insurance (UVG/SUVA) paid out and contained in Ziffer 8 (N-Gre
+  /// line „SUVA – Geld“). Tax-free, but under the progression clause (§ 32b EStG). Whole CHF.
+  steuerfreiesUnfalltaggeldChf     String? /// @encrypted?mode=strict
   /// Who pays the Kollektivkrankentaggeld / NBUV premium (N-Gre Zeilen 18/19, 95–98): employer share in
   /// percent (0–100), plus the employer CHF only when it pays everything; null = not entered.
   krankentaggeldArbeitgeberProzent String? /// @encrypted?mode=strict

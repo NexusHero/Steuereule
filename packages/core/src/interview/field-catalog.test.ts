@@ -157,6 +157,19 @@ describe('the Swiss pension split and the tax-free Krankentaggeld in the catalog
   })
 })
 
+describe('the daily accident benefit (UVG/SUVA) in the catalogue', () => {
+  it('is a whole amount the owl may write, with a hint that keeps it apart from the sickness benefit', () => {
+    expect(fieldSpec('chLohnausweis', 'steuerfreiesUnfalltaggeldChf')?.aiWritable).toBe(true)
+    expect(validateFieldValue('chLohnausweis', 'steuerfreiesUnfalltaggeldChf', "2'250 CHF")).toEqual(ok('2250'))
+    const hint = describeFieldForPrompt(fieldSpec('chLohnausweis', 'steuerfreiesUnfalltaggeldChf')!)
+    expect(hint).toContain('Unfallversicherung (UVG/SUVA)')
+    expect(hint).toContain('Ziffer 8')
+    expect(hint).toContain('steuerfreiesKrankentaggeldChf')
+    expect(hint).toContain('erhöht aber den Steuersatz')
+    expect(hint).toContain('propose_two_paths')
+  })
+})
+
 describe('personal data with the owl (ADR-0091)', () => {
   it('marks every identifying field as personal: closed without consent, open with it', () => {
     for (const spec of FIELD_CATALOG) {

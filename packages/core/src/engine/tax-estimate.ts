@@ -64,6 +64,8 @@ export interface EstimateBreakdown {
   readonly householdReductionEur: number
   /** § 32d Abs. 1 EStG: flat tax on capital income not taxed at source, part of the income tax. */
   readonly capitalFlatTaxEur?: number
+  /** § 32b EStG: the tax-free income that raised the rate of the tariff above; absent when none. */
+  readonly progressionIncomeEur?: number
 }
 
 export type TaxEstimate =
@@ -487,6 +489,7 @@ function estimate(input: {
       extraordinaryBurdenEur: deductibleBurdenEur,
       tariffTax: { from: credited.from.taxEur, to: credited.to.taxEur },
       householdReductionEur: credited.to.taxEur - incomeTaxOwed.to,
+      ...(progression > 0 ? { progressionIncomeEur: progression } : {}),
     },
     ...(withBusiness
       ? {

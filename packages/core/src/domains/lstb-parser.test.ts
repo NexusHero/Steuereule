@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import {
+  capOcrSourcedExtraction,
   evaluateLstbExtraction,
+  extractLstbEmployer,
   extractLstbTaxYear,
   parseGermanOcrAmount,
   parseLstbTextDeterministically,
@@ -64,7 +66,8 @@ describe('parseLstbTextDeterministically', () => {
       { line: '26', amount: 977.76 },
       { line: '27', amount: 706.16 },
     ])
-    expect(res.fields.sozialversicherung.value).toBe(10918)
+    // The app's sum of the whole-euro lines (ADR-0093): 5.052 + 4.183 + 978 + 706.
+    expect(res.fields.sozialversicherung.value).toBe(10919)
   })
 
   it('extracts a clean official German LStB deterministically without needing LLM fallback', () => {
@@ -99,9 +102,10 @@ describe('parseLstbTextDeterministically', () => {
       calculation: [{ line: '4', amount: 9810 }],
       reason: null,
     })
-    // Sum: 5051.76 + 4182.64 + 977.76 + 706.16 = 10918.32 -> 10918 €
+    // Sum of the lines in whole euros, as the mask stores it (ADR-0093): 5.052 + 4.183 + 978 + 706 = 10.919 €
+    // (the raw 10.918,32 would round to 10.918, a euro off what taking the lines over stores).
     // Does NOT add line 22a (employer share)!
-    expect(res.fields.sozialversicherung.value).toBe(10918)
+    expect(res.fields.sozialversicherung.value).toBe(10919)
     expect(res.fields.sozialversicherung.status).toBe('ok')
     expect(res.fields.sozialversicherung.sourceLines).toEqual(['23a', '25', '26', '27'])
     expect(res.fields.sozialversicherung.reason).toBeNull()
@@ -415,5 +419,180 @@ describe('parseLstbTextDeterministically – lines 22 to 27 of a form read by po
     expect(res.svBreakdown.line26).toBeNull()
     expect(res.fields.sozialversicherung).toMatchObject({ status: 'pruefen', reason: 'partial_sv_lines' })
     expect(res.unresolvedFields).toContain('sozialversicherung')
+  })
+})
+
+// Real-data run 4: a certificate read from a PDF or a photo gave the mask only lines 3, 4 and the sum;
+// the user typed Soli, church tax, the insurance lines, the subsidies and the employer. Every line the
+// mask has a field for is read now, rounded to whole euros as the mask rounds (Soli keeps its cents).
+// Invented figures and names, numbered as on the printed form.
+describe('parseLstbTextDeterministically – every line of the mask', () => {
+  const official = [
+    'Ausdruck der elektronischen Lohnsteuerbescheinigung für 2025',
+    'Anschrift und Steuernummer des Arbeitgebers:',
+    'Beispielwerke GmbH',
+    'Industriestraße 7, 12345 Musterstadt',
+    '3. Bruttoarbeitslohn einschl. Sachbezüge ohne 9. und 10.    48.000,00',
+    '4. Einbehaltene Lohnsteuer von 3.                           7.200,00',
+    '5. Einbehaltener Solidaritätszuschlag von 3.                   12,34',
+    '6. Einbehaltene Kirchensteuer des Arbeitnehmers von 3.        576,40',
+    '7. Einbehaltene Kirchensteuer des Ehegatten/Lebenspartners von 3. (nur bei konfessionsverschiedener Ehe) 120,50',
+    '22a Arbeitgeberanteil zur gesetzlichen Rentenversicherung   4.464,00',
+    '22b Arbeitgeberanteil an berufsständische Versorgungseinrichtungen 10,40',
+    '23a Arbeitnehmeranteil zur gesetzlichen Rentenversicherung  4.464,49',
+    '24a Steuerfreie Arbeitgeberzuschüsse zur gesetzlichen Krankenversicherung 1.800,30',
+    '24b Steuerfreie Arbeitgeberzuschüsse zur privaten Krankenversicherung 0,00',
+    '24c Steuerfreie Arbeitgeberzuschüsse zur gesetzlichen Pflegeversicherung 450,60',
+    '25. Arbeitnehmerbeiträge zur gesetzlichen Krankenversicherung 3.650,50',
+    '26. Arbeitnehmerbeiträge zur sozialen Pflegeversicherung       816,20',
+    '27. Arbeitnehmerbeiträge zur Arbeitslosenversicherung          624,00',
+  ].join('\n')
+
+  // The same certificate as a text layer that puts each amount on the line below its label.
+  const separate = [
+    'Ausdruck der elektronischen Lohnsteuerbescheinigung für 2025',
+    'Arbeitgeber:',
+    'Beispielwerke GmbH',
+    '3. Bruttoarbeitslohn einschl. Sachbezüge ohne 9. und 10.',
+    '48.000,00',
+    '4. Einbehaltene Lohnsteuer von 3.',
+    '7.200,00',
+    '5. Einbehaltener Solidaritätszuschlag von 3.',
+    '12,34',
+    '6. Einbehaltene Kirchensteuer des Arbeitnehmers von 3.',
+    '576,40',
+    '7. Einbehaltene Kirchensteuer des Ehegatten/Lebenspartners von 3.',
+    '(nur bei konfessionsverschiedener Ehe)',
+    '120,50',
+    '22a Arbeitgeberanteil zur gesetzlichen Rentenversicherung',
+    '4.464,00',
+    '22b Arbeitgeberanteil an berufsständische Versorgungseinrichtungen',
+    '10,40',
+    '23a Arbeitnehmeranteil zur gesetzlichen Rentenversicherung',
+    '4.464,49',
+    '24a Steuerfreie Arbeitgeberzuschüsse zur gesetzlichen Krankenversicherung',
+    '1.800,30',
+    '24b Steuerfreie Arbeitgeberzuschüsse zur privaten Krankenversicherung',
+    '0,00',
+    '24c Steuerfreie Arbeitgeberzuschüsse zur gesetzlichen Pflegeversicherung',
+    '450,60',
+    '25. Arbeitnehmerbeiträge zur gesetzlichen Krankenversicherung',
+    '3.650,50',
+    '26. Arbeitnehmerbeiträge zur sozialen Pflegeversicherung',
+    '816,20',
+    '27. Arbeitnehmerbeiträge zur Arbeitslosenversicherung',
+    '624,00',
+  ].join('\n')
+
+  const expected = {
+    solidaritaetszuschlag: 12.34,
+    kirchensteuer: 576,
+    kirchensteuerEhegatte: 121,
+    rvArbeitgeber: 4474,
+    rvArbeitnehmer: 4464,
+    zuschuesseKvPv: 2251,
+    zuschussPv: 451,
+    kvArbeitnehmer: 3651,
+    pvArbeitnehmer: 816,
+    avArbeitnehmer: 624,
+  }
+
+  for (const [layout, text] of [
+    ['the official layout', official],
+    ['a layout with label and amount on separate lines', separate],
+  ] as const) {
+    it(`reads Soli, church tax, lines 22 to 27 and the subsidies from ${layout}`, () => {
+      const res = parseLstbTextDeterministically(text)
+      const values = Object.fromEntries(Object.entries(res.lines).map(([line, field]) => [line, field.value]))
+      expect(values).toEqual(expected)
+      for (const field of Object.values(res.lines)) expect(field).toMatchObject({ status: 'ok', reason: null })
+      expect(res.lines.rvArbeitgeber.calculation).toEqual([
+        { line: '22a', amount: 4464 },
+        { line: '22b', amount: 10.4 },
+      ])
+      expect(res.lines.zuschussPv.sourceLines).toEqual(['24c'])
+      // The three fields of today stay as they were; the sum is the app's sum of the whole-euro lines.
+      expect(res.fields.bruttoarbeitslohn.value).toBe(48000)
+      expect(res.fields.lohnsteuer.value).toBe(7200)
+      expect(res.fields.sozialversicherung).toMatchObject({ value: 4464 + 3651 + 816 + 624, status: 'ok' })
+    })
+
+    it(`reads the employer’s name from ${layout}`, () => {
+      expect(extractLstbEmployer(text)).toEqual({ value: 'Beispielwerke GmbH', status: 'ok', reason: null })
+    })
+  }
+
+  it('leaves a line the certificate does not print empty, never 0', () => {
+    const res = parseLstbTextDeterministically(official.split('\n').filter((line) => !/^(5|6|7|22b|24[abc])\b/.test(line)).join('\n'))
+    expect(res.lines.solidaritaetszuschlag).toMatchObject({ value: null, reason: 'missing' })
+    expect(res.lines.kirchensteuer.value).toBeNull()
+    expect(res.lines.zuschussPv.value).toBeNull()
+    expect(res.lines.rvArbeitgeber.value).toBe(4464)
+  })
+
+  // ADR-0093: once line 25 or 26 holds a contribution, line 24 has to be answered, „0, wenn die Zeile leer
+  // ist“. A certificate that prints 25 and 26 but no 24 proposes that 0, to be confirmed: OCR may have lost it.
+  it('proposes 0 for an empty line 24 beside lines 25 and 26, to be checked', () => {
+    const res = parseLstbTextDeterministically(official.split('\n').filter((line) => !/^24[abc]\b/.test(line)).join('\n'))
+    expect(res.lines.zuschuesseKvPv).toMatchObject({ value: 0, status: 'pruefen', reason: 'empty_line', sourceLines: ['24'] })
+    expect(parseLstbTextDeterministically('3. Bruttoarbeitslohn 48.000,00').lines.zuschuesseKvPv.value).toBeNull()
+  })
+
+  it('marks a line printed twice with different amounts „bitte prüfen“', () => {
+    const res = parseLstbTextDeterministically(`${official}\n6. Einbehaltene Kirchensteuer des Arbeitnehmers von 3. 600,00`)
+    expect(res.lines.kirchensteuer).toMatchObject({ status: 'pruefen', reason: 'unreadable' })
+    expect(res.lines.solidaritaetszuschlag.status).toBe('ok')
+  })
+
+  it('never takes a line read by OCR as green', () => {
+    const res = capOcrSourcedExtraction(parseLstbTextDeterministically(official))
+    for (const field of Object.values(res.lines)) {
+      if (field.value !== null) expect(field).toMatchObject({ status: 'pruefen', reason: 'ocr_source' })
+    }
+  })
+
+  it('reads the employer’s share and the subsidies of a form read by position', () => {
+    const text = [
+      'Ausdruck der elektronischen Lohnsteuerbescheinigung für 2024',
+      '22. Arbeitgeber-',
+      'a) zur gesetzlichen Rentenversicherung 5.700,00',
+      '23. Arbeitnehmer-',
+      'a) zur gesetzlichen Rentenversicherung 5.678,90',
+      'a) zur gesetzlichen Krankenversicherung 2.160,50',
+      '24. Steuerfreie',
+      'c) zur gesetzlichen Pflegeversicherung 493,80',
+    ].join('\n')
+    const res = parseLstbTextDeterministically(text)
+    expect(res.lines.rvArbeitgeber.value).toBe(5700)
+    expect(res.lines.rvArbeitnehmer.value).toBe(5679)
+    expect(res.lines.zuschuesseKvPv.value).toBe(2654)
+    expect(res.lines.zuschussPv.value).toBe(494)
+  })
+
+  it('still hands the text fallback only rows 3, 4 and 23–27', () => {
+    const kept = selectLstbRelevantLines(official)
+    for (const row of ['Solidarit', 'Kirchensteuer', '22a', '24a', '24c', 'Beispielwerke']) expect(kept).not.toContain(row)
+    expect(kept).toContain('23a Arbeitnehmeranteil')
+  })
+
+  it('reads no employer from a certificate that names none, and no row as one', () => {
+    expect(extractLstbEmployer('3. Bruttoarbeitslohn 48.000,00')).toEqual({ value: null, status: 'pruefen', reason: 'missing' })
+    expect(extractLstbEmployer('Arbeitgeber:\n3. Bruttoarbeitslohn 48.000,00').value).toBeNull()
+    expect(extractLstbEmployer('22. Arbeitgeber-\na) zur gesetzlichen Rentenversicherung 5.700,00').value).toBeNull()
+  })
+})
+
+describe('parseLstbTextDeterministically – rows written „22. a)“', () => {
+  it('reads the employer’s share and a subsidy numbered with a point and a parenthesis', () => {
+    const res = parseLstbTextDeterministically(
+      [
+        '22. a) Arbeitgeberanteil zur gesetzlichen Rentenversicherung 5.051,76',
+        '23. a) Arbeitnehmeranteil zur gesetzlichen Rentenversicherung 5.051,76',
+        '24. c) Steuerfreie Arbeitgeberzuschüsse zur gesetzlichen Pflegeversicherung 300,00',
+      ].join('\n'),
+    )
+    expect(res.lines.rvArbeitgeber.value).toBe(5052)
+    expect(res.lines.rvArbeitnehmer.value).toBe(5052)
+    expect(res.lines.zuschussPv.value).toBe(300)
   })
 })

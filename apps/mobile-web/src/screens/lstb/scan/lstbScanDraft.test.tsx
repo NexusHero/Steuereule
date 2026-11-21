@@ -6,7 +6,7 @@ function field(text: string, status: 'ok' | 'pruefen', confirmed = status === 'o
 }
 
 function draft(fields: StagedLstbScanDraft['fields']): StagedLstbScanDraft {
-  return { stage: 'deterministic', receiptId: null, fileName: 'lstb.pdf', taxYearOnDocument: 2025, actionIds: [], fields }
+  return { stage: 'deterministic', receiptId: null, fileName: 'lstb.pdf', taxYearOnDocument: 2025, actionIds: [], fields, lines: {}, employer: null }
 }
 
 describe('evaluateStagedDraft — „Werte übernehmen“ stays blocked until the draft is clean (AC 6)', () => {
@@ -52,3 +52,25 @@ describe('evaluateStagedDraft — „Werte übernehmen“ stays blocked until th
     expect(evaluateStagedDraft(draft({ bruttoarbeitslohn: field('', 'pruefen'), lohnsteuer: field('300', 'ok'), sozialversicherung: field('', 'pruefen') })).readyToApply).toBe(false)
   })
 })
+
+describe('evaluateStagedDraft — the further lines', () => {
+  const three = { bruttoarbeitslohn: field('48000', 'ok'), lohnsteuer: field('7200', 'ok'), sozialversicherung: field('9555', 'ok') }
+
+  it('rounds whole-euro lines as the mask does and keeps the cents of the Soli', () => {
+    const result = evaluateStagedDraft({ ...draft(three), lines: { kirchensteuer: field('576,40', 'ok'), solidaritaetszuschlag: field('12,34', 'ok'), kvArbeitnehmer: field('', 'ok') } })
+    expect(result.lineValues).toEqual({ kirchensteuer: 576, solidaritaetszuschlag: 12.34 })
+    expect(result.readyToApply).toBe(true)
+  })
+
+  it('blocks on an unconfirmed yellow line and on a line that is no amount', () => {
+    expect(evaluateStagedDraft({ ...draft(three), lines: { rvArbeitgeber: field('4474', 'pruefen') } }).hasUnconfirmedYellow).toBe(true)
+    expect(evaluateStagedDraft({ ...draft(three), lines: { rvArbeitgeber: field('viel', 'ok') } }).readyToApply).toBe(false)
+  })
+
+  it('blocks on a yellow employer until it is confirmed', () => {
+    const employer = { text: 'Beispielwerke GmbH', status: 'pruefen' as const, confirmed: false, reason: 'ocr_source' as const }
+    expect(evaluateStagedDraft({ ...draft(three), employer }).hasUnconfirmedYellow).toBe(true)
+    expect(evaluateStagedDraft({ ...draft(three), employer: { ...employer, confirmed: true } }).hasUnconfirmedYellow).toBe(false)
+  })
+})
+

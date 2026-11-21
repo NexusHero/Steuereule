@@ -431,6 +431,9 @@ describe('McpService (ADR-0052 §3 / §5 / §8 / §12)', () => {
     expect(text).not.toContain('propose_two_paths')
     const field = JSON.parse(text).felder.find((f: { feld: string }) => f.feld === 'steuerfreiesKrankentaggeldChf')
     expect(field.beschreibung).toContain('beide Wege')
+    const accident = JSON.parse(text).felder.find((f: { feld: string }) => f.feld === 'steuerfreiesUnfalltaggeldChf')
+    expect(accident.beschreibung).toContain('Unfallversicherung (UVG/SUVA)')
+    expect(accident.beschreibung).toContain('beide Wege')
   })
 
   it('maske_felder leaves out the fields an assistant never writes and the booking mask', async () => {

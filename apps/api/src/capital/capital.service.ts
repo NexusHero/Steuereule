@@ -2,15 +2,13 @@ import { Inject, Injectable } from '@nestjs/common'
 import { InvalidInputError } from '../common/domain-error.js'
 import {
   EMPTY_CAPITAL,
-  employeeFromData,
   deserializeCapitalField,
   gatedIncomeTypes,
-  mostFavourableCheck,
+  mostFavourableCheckOnEstimate,
   isValidCapitalAmount,
   capitalAsCoreLineItem,
   capitalStatus,
   classifyCapitalDepot,
-  progressionClauseFrom,
   serializeCapitalField,
   setCapitalField,
   type Answers,
@@ -31,7 +29,6 @@ import {
   INTERVIEW_ANSWER_REPOSITORY,
   type InterviewAnswerRepository,
 } from '../interview/interview-answer.repository.js'
-import { WAGE_TAX_CERTIFICATE_REPOSITORY, type WageTaxCertificateRepository } from '../lstb/lstb.repository.js'
 import { TAX_YEAR_REPOSITORY, type TaxYearRepository } from '../cockpit/tax-year.repository.js'
 import { CAPITAL_REPOSITORY, type CapitalRecord, type CapitalRepository } from './capital.repository.js'
 import type { PutCapitalFieldDto, CapitalFieldDto } from './dto/capital-field.dto.js'
@@ -39,8 +36,17 @@ import type { DepotClassificationDto, CapitalItemDto, CapitalResponseDto, Capita
 import type { MostFavourableCheckDto, MostFavourableCheckSourceDto } from './dto/most-favourable-check-response.dto.js'
 import type { UncertaintyDto } from '../filing-type-comparison/dto/filing-type-comparison-response.dto.js'
 import { answersFrom } from '../interview/answers.js'
-import { wageTaxCertificateDataFrom } from '../lstb/lstb-data.js'
 import { interviewOptions } from '../config/self-employment.js'
+import type { TaxEstimateStatus } from '../tax-estimate/tax-estimate.service.js'
+
+/**
+ * The Cockpit estimate of the household (`TaxEstimateService.getState`). A token, because the estimate's
+ * module imports this one for the capital records: CapitalModule resolves it lazily.
+ */
+export const HOUSEHOLD_ESTIMATE = Symbol('HOUSEHOLD_ESTIMATE')
+export interface HouseholdEstimate {
+  getState(userId: string, taxYear: number): Promise<TaxEstimateStatus>
+}
 
 function dataFromRecord(record: CapitalRecord | null): CapitalData {
   if (record === null) return EMPTY_CAPITAL
@@ -110,7 +116,7 @@ function statusToDto(status: CalculationStatus): CapitalStatusDto {
   }
 }
 
-function mostFavourableCheckToDto(result: GuenstigerpruefungKern): MostFavourableCheckDto {
+function mostFavourableCheckToDto(result: GuenstigerpruefungKern, estimateTreatment: 'abgeltung' | 'quelle'): MostFavourableCheckDto {
   const uncertainty: UncertaintyDto =
     result.uncertainty.kind === 'bestimmt'
       ? { kind: 'bestimmt', upperLimit: result.uncertainty.upperLimit }
@@ -121,6 +127,7 @@ function mostFavourableCheckToDto(result: GuenstigerpruefungKern): MostFavourabl
     saversAllowance: result.provenance.saversAllowance,
     assessmentType: result.provenance.assessmentType,
     components: [...result.provenance.components],
+    ...(result.provenance.remainingZvEFrom === undefined ? {} : { remainingZvEFrom: result.provenance.remainingZvEFrom }),
   }
   switch (result.statement) {
     case 'eindeutig':
@@ -132,11 +139,12 @@ function mostFavourableCheckToDto(result: GuenstigerpruefungKern): MostFavourabl
         delta: result.delta,
         uncertainty,
         provenance,
+        estimateTreatment,
       }
     case 'zu-knapp':
-      return { kind: 'zu-knapp', flatRateTax: result.flatRateTax, personal: result.personal, delta: result.delta, uncertainty, provenance }
+      return { kind: 'zu-knapp', flatRateTax: result.flatRateTax, personal: result.personal, delta: result.delta, uncertainty, provenance, estimateTreatment }
     case 'unbestimmt':
-      return { kind: 'unbestimmt', flatRateTax: result.flatRateTax, personal: result.personal, delta: result.delta, uncertainty, provenance }
+      return { kind: 'unbestimmt', flatRateTax: result.flatRateTax, personal: result.personal, delta: result.delta, uncertainty, provenance, estimateTreatment }
   }
 }
 
@@ -146,10 +154,10 @@ export class CapitalService {
   constructor(
     @Inject(CAPITAL_REPOSITORY) private readonly repository: CapitalRepository,
     @Inject(INTERVIEW_ANSWER_REPOSITORY) private readonly interviewRepository: InterviewAnswerRepository,
-    @Inject(WAGE_TAX_CERTIFICATE_REPOSITORY) private readonly lstbRepository: WageTaxCertificateRepository,
     @Inject(TAX_YEAR_REPOSITORY) private readonly taxYearRepository: TaxYearRepository,
     @Inject(AuditService) private readonly auditService: AuditService,
     @Inject(PROVENANCE_REPOSITORY) private readonly markings: ProvenanceRepository,
+    @Inject(HOUSEHOLD_ESTIMATE) private readonly estimates: HouseholdEstimate,
   ) {}
 
   private async answers(userId: string, taxYear: number): Promise<Answers> {
@@ -212,9 +220,8 @@ export class CapitalService {
     const record = await this.taxYearRepository.findByUserAndYear(userId, taxYear)
     if (!record) return null
 
-    const [capitalRecord, lstbRecord, interviewRows] = await Promise.all([
+    const [capitalRecord, interviewRows] = await Promise.all([
       this.repository.findForUserAndYear(userId, taxYear),
-      this.lstbRepository.findForUserAndYear(userId, taxYear),
       this.interviewRepository.findAllForUserAndYear(userId, taxYear),
     ])
 
@@ -235,24 +242,23 @@ export class CapitalService {
       return { kind: 'nicht-anwendbar', reason: 'keine-kapitalertraege' }
     }
 
-    // This check knows one person's German wage and the single tariff. A couple's return, a Swiss wage
-    // (Lohnausweis) or a pension is other income it does not read: no number instead of a wrong one
-    // („Tarif 0 €“, real-data run 4). The estimate does that comparison with the whole household.
-    if (answers.familienstand === 'Verheiratet' || answers.ausland === 'Ja, in die Schweiz' || answers.job === 'Rente') {
-      return { kind: 'nicht-anwendbar', reason: 'uebriges-einkommen-unbekannt' }
-    }
+    // The other income is the household's as the Cockpit estimates it: a couple's joint taxable income,
+    // a Swiss wage, a pension — with its tariff and its § 32b income. Without an estimate, no number.
+    const estimate = await this.estimates.getState(userId, taxYear)
+    if (estimate.kind === 'offen') return { kind: 'nicht-anwendbar', reason: 'schaetzung-offen', missing: [...estimate.missing] }
+    if (estimate.kind === 'nicht-moeglich') return { kind: 'nicht-anwendbar', reason: 'schaetzung-nicht-moeglich', estimateReason: estimate.reason }
 
-    const remainingZvE = employeeFromData(wageTaxCertificateDataFrom(lstbRecord), answers).einnahmen
-    const assessmentType = 'einzel' as const
-
-    const result = mostFavourableCheck({
+    const joint = estimate.jointAssessment === true
+    const result = mostFavourableCheckOnEstimate({
       kapitalertraege: data.kapitalertraege.value,
-      remainingZvE,
       year: taxYear,
-      assessmentType,
-      progressionClause: progressionClauseFrom(answers),
+      assessmentType: joint ? 'zusammen' : 'einzel',
+      taxableIncome: estimate.taxableIncome,
+      progressionIncomeEur: estimate.breakdown?.progressionIncomeEur ?? 0,
       churchTaxFactor,
     })
-    return mostFavourableCheckToDto(result)
+    // The couple's estimate taxes the capital income at the flat rate; a single person's leaves the
+    // withheld flat tax as final. Neither applies the cheaper tariff (§ 32d Abs. 6 is on application).
+    return mostFavourableCheckToDto(result, joint ? 'abgeltung' : 'quelle')
   }
 }

@@ -21,6 +21,11 @@ export interface NGreInput {
   readonly pkArbeitgeberGesamtChf?: number | undefined
   /** Tax-free Krankentaggeld contained in Ziffer 8 (Zeile 9, also Zeile 76). */
   readonly steuerfreiesKrankentaggeldChf?: number | undefined
+  /**
+   * Daily benefit of the Swiss accident insurance (UVG/SUVA) contained in Ziffer 8 (Zeile 10 „SUVA – Geld“,
+   * also Zeile 76). Tax-free like the sickness benefit, but under the progression clause (§ 32b EStG).
+   */
+  readonly steuerfreiesUnfalltaggeldChf?: number | undefined
   readonly rate: number
   /** Employer share of the Kollektivkrankentaggeld premium in percent (0–100); absent = 0. */
   readonly krankentaggeldArbeitgeberProzent?: number | undefined
@@ -32,7 +37,7 @@ export interface NGreInput {
 }
 
 export type NGreRow =
-  | 'z6' | 'z8' | 'z9' | 'z15' | 'z18' | 'z19' | 'z20' | 'z23' | 'z25'
+  | 'z6' | 'z8' | 'z9' | 'z10' | 'z15' | 'z18' | 'z19' | 'z20' | 'z23' | 'z25'
   | 'z75' | 'z76' | 'z77' | 'z78' | 'z79' | 'z80' | 'z81' | 'z82'
   | 'z83' | 'z84' | 'z85' | 'z86' | 'z87' | 'z88'
 
@@ -99,7 +104,8 @@ function split(employeeChf: number, percent: number | undefined, employerChfGive
 
 export function annexNGreAmounts(e: NGreInput): NGreAmounts {
   const sickPay = e.steuerfreiesKrankentaggeldChf ?? 0
-  const basis = e.grossWageChf - e.familienzulagenChf - sickPay
+  const accidentPay = e.steuerfreiesUnfalltaggeldChf ?? 0
+  const basis = e.grossWageChf - e.familienzulagenChf - sickPay - accidentPay
   const ahv = Math.round(basis * AHV_IV)
   const eo = Math.round(basis * EO)
   const alv = Math.round(Math.min(basis, ALV_MAX_AMOUNT_CHF) * ALV)
@@ -113,6 +119,7 @@ export function annexNGreAmounts(e: NGreInput): NGreAmounts {
     z6: e.grossWageChf,
     z8: e.familienzulagenChf,
     z9: sickPay,
+    z10: accidentPay,
     // The employer's premiums are taxable wage (Z. 18/19, "vgl. Zeile 80/81") and therefore also count
     // as the employee's contributions in Z. 80/81.
     z18: dailySicknessAllowance.employerChf,
@@ -131,11 +138,11 @@ export function annexNGreAmounts(e: NGreInput): NGreAmounts {
   }
   const sums = (t: typeof parts): Record<NGreRow, number> => ({
     ...t,
-    z15: t.z6 - t.z8 - t.z9,
-    z23: t.z6 - t.z8 - t.z9 + t.z18 + t.z19 + t.z20,
+    z15: t.z6 - t.z8 - t.z9 - t.z10,
+    z23: t.z6 - t.z8 - t.z9 - t.z10 + t.z18 + t.z19 + t.z20,
     z75: t.z6,
-    z76: t.z8 + t.z9,
-    z77: t.z6 - t.z8 - t.z9,
+    z76: t.z8 + t.z9 + t.z10,
+    z77: t.z6 - t.z8 - t.z9 - t.z10,
     z82: t.z78 + t.z79 + t.z80 + t.z81,
     z85: t.z83 + t.z84,
     z86: t.z83,
