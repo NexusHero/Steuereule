@@ -20,12 +20,13 @@ describe('REQ-034 — the self-employment switch on the interview (the Gewerbe-G
     else process.env.SELBSTSTAENDIGE_ENABLED = previous
   })
 
-  it.each([[undefined, false], ['', false], ['false', false], ['nein', false], ['true', true], ['1', true], ['ON', true]])('SELBSTSTAENDIGE_ENABLED=%s → %s', (raw, expected) => {
+  // On by default since 20.11.2026 (ADR-0101 §20); only an explicit off brings back the gate.
+  it.each([[undefined, true], ['', true], ['false', false], ['nein', false], ['OFF', false], ['0', false], ['true', true], ['1', true], ['ON', true]])('SELBSTSTAENDIGE_ENABLED=%s → %s', (raw, expected) => {
     expect(selfEmploymentEnabled(raw === undefined ? {} : { SELBSTSTAENDIGE_ENABLED: raw })).toBe(expected)
   })
 
   it('off: Selbstständig ends at the gate, as before', async () => {
-    delete process.env.SELBSTSTAENDIGE_ENABLED
+    process.env.SELBSTSTAENDIGE_ENABLED = 'false'
     const { service } = setup()
     const after = await service.postAnswer('u', 2026, { questionId: 'job', value: 'Selbstständig' })
     expect(after).toEqual({ nextStep: { kind: 'gate', id: 'gewerbe' }, openItems: 0 })

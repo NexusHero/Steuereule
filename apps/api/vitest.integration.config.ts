@@ -34,6 +34,9 @@ export default defineConfig({
       BETTER_AUTH_URL: 'http://localhost:3000',
       NODE_ENV: 'test',
       VITEST: 'true',
+      // The self-employment switch is on by default in the app (ADR-0101 §20); the suites that are not about it
+      // keep the Gewerbe-Gate path they were written for. Tests of the switch set it themselves.
+      SELBSTSTAENDIGE_ENABLED: 'false',
     },
   },
 })

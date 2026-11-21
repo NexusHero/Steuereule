@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { ENTRIES, nextStepFor, type Answers } from '../interview/interview'
+import { ENTRIES, isReachableFor, nextStepFor, type Answers } from '../interview/interview'
 import { deductibleProvision } from './provision'
 import { declaresBusiness, paysOwnProvision, selfPaidProvisionFromAnswers } from './self-paid-provision'
 
@@ -111,6 +111,13 @@ describe('the interview asks for it', () => {
     const answers: Answers = { job: 'Selbstständig', spenden: 'Nein', 'kv-pv': 'Nein', riester: 'Nein' }
     expect(nextStepFor(SPECIAL_EXPENSES, answers)).toEqual({ kind: 'question', id: 'altersvorsorge' })
     expect(nextStepFor(SPECIAL_EXPENSES, { ...answers, altersvorsorge: 'Ja' })).toEqual({ kind: 'question', id: 'av-rv-betrag' })
+  })
+
+  it('admits the answers on the server, which reads the basis from the stored answers (09b in CI, 21.11.2026)', () => {
+    const stored: Answers = { job: 'Selbstständig', ausland: 'Nein', kinder: 'Nein', familienstand: 'Ledig', spenden: 'Nein', 'kv-pv': 'Nein', riester: 'Nein' }
+    expect(isReachableFor(SPECIAL_EXPENSES, stored, 'altersvorsorge', SWITCH_ON)).toBe(true)
+    expect(isReachableFor(SPECIAL_EXPENSES, { ...stored, altersvorsorge: 'Nein' }, 'versicherungen', SWITCH_ON)).toBe(true)
+    expect(isReachableFor(SPECIAL_EXPENSES, { ...stored, job: 'Angestellt', altersvorsorge: 'Nein' }, 'versicherungen', SWITCH_ON)).toBe(false)
   })
 
   it('does not ask an employee, whose pension stands on the wage tax certificate', () => {

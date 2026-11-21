@@ -55,6 +55,28 @@ export function checkSmallBusiness(input: SmallBusinessInput): SmallBusinessResu
   return { eligible: crossed === null, priorYearLimitEur, currentYearLimitEur, crossed }
 }
 
+/**
+ * From 2025 the rule ends with the very turnover that passes the running year's limit (§ 19 Abs. 1 Satz 1 UStG:
+ * „im laufenden Kalenderjahr 100 000 Euro nicht überschreitet“; in the founding year 25.000 €): the supplies before
+ * it stay tax-free, that one and all after it are taxed (Abschn. 19.1 UStAE, BMF 18.03.2025). Returns the date of
+ * the first taxed supply, or null. Up to 2024 the limit was a forecast at the start of the year: no cut.
+ */
+export function smallBusinessCutoff(input: { readonly year: number; readonly founding: boolean; readonly supplies: readonly { readonly date: string; readonly netEur: number }[] }): string | null {
+  if (input.year < 2025) return null
+  const limit = input.founding ? 25_000 : 100_000
+  let sum = 0
+  for (const s of [...input.supplies].sort((a, b) => a.date.localeCompare(b.date))) {
+    sum += s.netEur
+    if (sum > limit) return s.date
+  }
+  return null
+}
+
+/** § 16 Abs. 4 Satz 2 GewStG: 200 %, 280 % from EZ 2027 (§ 36 Abs. 5b GewStG, BGBl. 2026 I Nr. 197; statute read). */
+export function minimumMultiplierPercent(year: number): number {
+  return year >= 2027 ? 280 : 200
+}
+
 export const TRADE_TAX_ALLOWANCE_EUR = 24_500
 export const TRADE_TAX_BASE_RATE = 0.035
 export const TRADE_TAX_CREDIT_FACTOR = 4
@@ -64,8 +86,10 @@ export interface TradeTaxInput {
   /** Additions (§ 8 GewStG) and deductions (§ 9) when known; 0 otherwise. */
   readonly additionsEur?: number | undefined
   readonly deductionsEur?: number | undefined
-  /** The municipality's multiplier in percent (at least 200 %). */
+  /** The municipality's multiplier in percent (at least 200 %, 280 % from 2027). */
   readonly multiplierPercent: number
+  /** The Erhebungszeitraum; without it the minimum of 2022–2026 applies. */
+  readonly year?: number | undefined
   /** Sole traders and partnerships get the 24.500 € allowance, corporations not. */
   readonly personalCompany: boolean
 }
@@ -84,7 +108,8 @@ export interface TradeTaxResult {
  * 3,5 % gives the base amount (§ 11 Abs. 2), times the multiplier the tax (§ 16).
  */
 export function estimateTradeTax(input: TradeTaxInput): TradeTaxResult {
-  if (!(input.multiplierPercent >= 200)) throw new RangeError('the multiplier is at least 200 % (§ 16 Abs. 4 GewStG)')
+  const minimum = minimumMultiplierPercent(input.year ?? 2026)
+  if (!(input.multiplierPercent >= minimum)) throw new RangeError(`the multiplier is at least ${minimum} % (§ 16 Abs. 4 GewStG)`)
   const raw = input.profitEur + (input.additionsEur ?? 0) - (input.deductionsEur ?? 0)
   const tradeIncomeEur = Math.max(0, Math.floor(raw / 100) * 100)
   const afterAllowance = Math.max(0, tradeIncomeEur - (input.personalCompany ? TRADE_TAX_ALLOWANCE_EUR : 0))

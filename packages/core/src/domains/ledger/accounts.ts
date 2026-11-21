@@ -46,6 +46,9 @@ export type BookingTaxKey =
   | 'rc13b19'
   /** § 13b Abs. 1 UStG: a service of an EU business (Kz 46/47 of the Voranmeldung). */
   | 'rcEu19'
+  /** § 13b at 7 % (Abs. 2 or, for an EU service, Abs. 1): DATEV books it on the rate-less § 13b accounts. */
+  | 'rc13b7'
+  | 'rcEu7'
   /** A B2B service to an EU business, the recipient owes the VAT there (§ 3a Abs. 2, § 18a Abs. 2 UStG; Kz 21). */
   | 'euLeistung'
   | 'igErwerb19'
@@ -202,11 +205,13 @@ const CONCEPTS: Readonly<Record<AccountConceptId, ConceptDef>> = {
   input_vat_ig_7: inputVat('Vorsteuer aus EU-Erwerb 7 %', null),
   input_vat_ig_19: inputVat('Vorsteuer aus EU-Erwerb 19 %', null),
   input_vat_13b_19: inputVat('Vorsteuer aus § 13b UStG 19 %', null),
+  input_vat_13b: inputVat('Abziehbare Vorsteuer nach § 13b UStG', null),
   vat_7: outputVat('Umsatzsteuer 7 %', 'einnahmen_umsatzsteuer_vereinnahmt'),
   vat_19: outputVat('Umsatzsteuer 19 %', 'einnahmen_umsatzsteuer_vereinnahmt'),
   vat_ig_7: outputVat('Umsatzsteuer auf EU-Erwerb 7 %', null),
   vat_ig_19: outputVat('Umsatzsteuer auf EU-Erwerb 19 %', null),
   vat_13b_19: outputVat('Umsatzsteuer nach § 13b UStG 19 %', null),
+  vat_13b: outputVat('Umsatzsteuer nach § 13b UStG', null),
   vat_prepayments: vatSettlement('Umsatzsteuer-Vorauszahlungen'),
   vat_current_year: vatSettlement('Umsatzsteuer dieses Jahres'),
   vat_prior_year: vatSettlement('Umsatzsteuer früherer Jahre'),
@@ -276,6 +281,7 @@ const CONCEPTS: Readonly<Record<AccountConceptId, ConceptDef>> = {
   salaries: expense('Gehälter', 'ausgaben_personal', 'GuV.6', 'none'),
   social_security: expense('Sozialabgaben des Arbeitgebers', 'ausgaben_personal', 'GuV.6', 'none'),
   temp_wages: expense('Löhne für Aushilfen', 'ausgaben_personal', 'GuV.6', 'none'),
+  flat_wage_tax: expense('Pauschale Steuer für Arbeitnehmer', 'ausgaben_personal', 'GuV.6', 'none'),
   // Räume
   rent: expense('Miete für Geschäftsräume', 'ausgaben_raumkosten', 'GuV.8'),
   heating: expense('Heizkosten', 'ausgaben_raumkosten', 'GuV.8'),

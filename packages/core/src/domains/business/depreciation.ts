@@ -132,22 +132,36 @@ export function degressiveRate(acquired: string, usefulLifeYears: number): Degre
 export type BuildingUse = 'betrieb' | 'wohnen'
 
 /**
- * § 7 Abs. 4 Satz 1 EStG: 3 % for a building in business assets not used for living (Nr. 1), 3 % for
- * a residential building completed after 31.12.2022 (Nr. 2 a, Jahressteuergesetz 2022), 2 % for one
- * completed 1925–2022 (Nr. 2 b) and 2,5 % before 1925 (Nr. 2 c).
+ * § 7 Abs. 4 Satz 1 EStG: 3 % for a building in business assets not used for living whose Bauantrag was filed
+ * after 31.3.1985 (Nr. 1); otherwise 3 % when completed after 31.12.2022 (Nr. 2 a, Jahressteuergesetz 2022),
+ * 2 % when completed 1925–2022 (Nr. 2 b) and 2,5 % before 1925 (Nr. 2 c). Without a filing date Nr. 1 is assumed.
  */
-export function buildingRate(use: BuildingUse, completed: string): number {
-  if (use === 'betrieb') return 0.03
+export function buildingRate(use: BuildingUse, completed: string, applicationFiled?: string): number {
+  if (use === 'betrieb' && (applicationFiled === undefined || applicationFiled > '1985-03-31')) return 0.03
   if (completed > '2022-12-31') return 0.03
   return completed < '1925-01-01' ? 0.025 : 0.02
 }
 
-/** § 7 Abs. 5a EStG: 5 % of the book value for residential buildings begun 1.10.2023–30.9.2029. */
-export function buildingDegressiveAllowed(constructionStarted: string): boolean {
-  return constructionStarted >= '2023-10-01' && constructionStarted <= '2029-09-30'
+const IN_DEGRESSIVE_WINDOW = (date: string | undefined) => date !== undefined && date >= '2023-10-01' && date <= '2029-09-30'
+
+/**
+ * § 7 Abs. 5a EStG: 5 % of the book value for a building, as far as it serves living, made by the taxpayer with
+ * the construction begun 1.10.2023–30.9.2029, or bought by the end of its completion year under a contract
+ * signed in that window. A business building used otherwise takes Abs. 4 only.
+ */
+export function buildingDegressiveAllowed(facts: { readonly use?: BuildingUse | undefined; readonly constructionStarted?: string | undefined; readonly contractSigned?: string | undefined }): boolean {
+  if (facts.use === 'betrieb') return false
+  return IN_DEGRESSIVE_WINDOW(facts.constructionStarted) || IN_DEGRESSIVE_WINDOW(facts.contractSigned)
 }
 
-export type DepreciationMethod = 'linear' | 'degressive' | 'building' | 'building_degressive' | 'gwg' | 'sofort'
+/** § 7 Abs. 2a EStG: an electric vehicle bought 1.7.2025–31.12.2027, by year from the acquisition. */
+export const ELECTRIC_VEHICLE_RATES = [0.75, 0.1, 0.05, 0.05, 0.03, 0.02] as const
+
+export function electricVehicleAllowed(acquired: string): boolean {
+  return acquired >= '2025-07-01' && acquired <= '2027-12-31'
+}
+
+export type DepreciationMethod = 'linear' | 'degressive' | 'elektrofahrzeug' | 'building' | 'building_degressive' | 'gwg' | 'sofort'
 
 export interface SpecialDepreciation {
   readonly year: number
@@ -165,6 +179,12 @@ export interface DepreciableAsset {
   readonly buildingRate?: number | undefined
   /** For 'building_degressive': when construction began (§ 7 Abs. 5a EStG). */
   readonly constructionStarted?: string | undefined
+  /** For 'building_degressive': the purchase contract of a building bought by the end of its completion year. */
+  readonly contractSigned?: string | undefined
+  /** For 'building_degressive': a business building not used for living does not qualify. */
+  readonly buildingUse?: BuildingUse | undefined
+  /** § 7g Abs. 6 Nr. 1 EStG: the profit of the business year before the acquisition, for the Sonder-AfA. */
+  readonly priorYearProfitEur?: number | undefined
   /**
    * BMF 22.02.2022 Tz. 1.4: for a one-year useful life the office does not object to the full AfA in
    * the year of acquisition instead of by months. Default true for a one-year life.
@@ -261,6 +281,10 @@ export function assetSchedule(asset: DepreciableAsset, lastYear: number): AssetY
         elapsedMonths += usedMonths
         break
       }
+      case 'elektrofahrzeug':
+        // Abs. 2a Satz 3: no months; the rate of each year counts in full.
+        regular = base * (ELECTRIC_VEHICLE_RATES[year - startYear] ?? 0)
+        break
       case 'building':
         regular = (base * (asset.buildingRate ?? 0) * months) / 12
         break
@@ -298,14 +322,19 @@ function validate(asset: DepreciableAsset): void {
   if (asset.method === 'degressive' && degressiveRate(asset.acquired, asset.usefulLifeYears ?? 0) === null) {
     throw new RangeError(`no degressive AfA for an acquisition on ${asset.acquired} (§ 7 Abs. 2 EStG)`)
   }
-  if (asset.method === 'building_degressive' && !buildingDegressiveAllowed(asset.constructionStarted ?? '')) {
-    throw new RangeError('the 5 % building AfA needs a construction start 1.10.2023–30.9.2029 (§ 7 Abs. 5a EStG)')
+  if (asset.method === 'building_degressive' && !buildingDegressiveAllowed({ use: asset.buildingUse, constructionStarted: asset.constructionStarted, contractSigned: asset.contractSigned })) {
+    throw new RangeError('the 5 % building AfA needs a residential building begun or bought under a contract 1.10.2023–30.9.2029 (§ 7 Abs. 5a EStG)')
+  }
+  if (asset.method === 'elektrofahrzeug') {
+    if (!electricVehicleAllowed(asset.acquired)) throw new RangeError('the 75 % AfA needs an electric vehicle bought 1.7.2025–31.12.2027 (§ 7 Abs. 2a EStG)')
+    if ((asset.specialDepreciation ?? []).length > 0) throw new RangeError('the 75 % AfA excludes a Sonder-AfA (§ 7 Abs. 2a Satz 2 EStG)')
   }
   const reduction = asset.iabCostReductionEur ?? 0
   if (reduction < 0 || reduction > asset.netCostEur * 0.5) throw new RangeError('the § 7g cost reduction is at most 50 % of the costs')
   const special = asset.specialDepreciation ?? []
   if (special.length > 0) {
     if (asset.method !== 'linear' && asset.method !== 'degressive') throw new RangeError('the § 7g Sonder-AfA applies to movable assets with regular AfA only')
+    if ((asset.priorYearProfitEur ?? 0) > IAB_PROFIT_LIMIT_EUR) throw new RangeError('the § 7g Sonder-AfA needs a profit of at most 200.000 € in the year before the acquisition (§ 7g Abs. 6 Nr. 1 EStG)')
     const start = yearOf(asset.acquired)
     if (special.some((s) => s.year < start || s.year > start + 4)) throw new RangeError('the § 7g Sonder-AfA runs in the acquisition year and the four after it')
     const total = special.reduce((sum, s) => sum + s.amountEur, 0)

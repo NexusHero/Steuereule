@@ -78,7 +78,7 @@ export function usePlausibility(
   const lstbQuery = useLstbControllerGetLstb(taxYear, undefined, { query: { enabled } })
   const interviewQuery = useInterviewControllerGetInterview(taxYear, undefined, { query: { enabled } })
   const masterDataQuery = useMasterDataControllerRead({ query: { enabled } })
-  const capability = useSelfEmploymentCapability(taxYear)
+  const capability = useSelfEmploymentCapability()
 
   const retry = () => {
     void lstbQuery.refetch()

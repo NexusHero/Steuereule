@@ -111,6 +111,8 @@ function toAsset(row: {
   usefulLifeYears: number | null
   specialDepreciation: string | null
   disposal: string | null
+  buildingFacts: string | null
+  vatCorrection: string | null
 }): FixedAssetRecord {
   return {
     id: row.id,
@@ -126,6 +128,8 @@ function toAsset(row: {
     usefulLifeYears: row.usefulLifeYears,
     specialDepreciation: row.specialDepreciation,
     disposal: row.disposal,
+    buildingFacts: row.buildingFacts,
+    vatCorrection: row.vatCorrection,
   }
 }
 
@@ -296,6 +300,13 @@ export class PrismaBusinessRepository implements BusinessRepository {
   async createAsset(userId: string, asset: NewFixedAsset): Promise<FixedAssetRecord> {
     const row = await this.prisma.fixedAsset.create({ data: { userId, ...asset, acquisitionCost: String(asset.acquisitionCost) } })
     return toAsset(row)
+  }
+
+  async setAssetFacts(userId: string, assetId: string, facts: { readonly specialDepreciation?: string | null; readonly vatCorrection?: string | null }): Promise<FixedAssetRecord | null> {
+    const { count } = await this.prisma.fixedAsset.updateMany({ where: { id: assetId, userId }, data: facts })
+    if (count === 0) return null
+    const row = await this.prisma.fixedAsset.findFirst({ where: { id: assetId, userId } })
+    return row ? toAsset(row) : null
   }
 
   async setAssetDisposal(userId: string, assetId: string, disposal: string): Promise<FixedAssetRecord | null> {

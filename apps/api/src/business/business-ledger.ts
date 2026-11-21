@@ -3,6 +3,9 @@
 import {
   accountFor,
   assetSchedule,
+  buildingRate,
+  inputVatCorrection,
+  type InputVatCorrectionYear,
   chartAccounts,
   checkNumbering,
   entriesDifferingFromLog,
@@ -83,6 +86,8 @@ export interface VatFigures {
   readonly intraEuAcquisitionNetEur: NetByRate
   readonly reverseChargeEuServicesNetEur: number
   readonly reverseChargeOtherNetEur: number
+  readonly reverseChargeEuServicesReducedNetEur: number
+  readonly reverseChargeOtherReducedNetEur: number
   /** B2B services to EU businesses, taxable there (§ 3a Abs. 2 UStG; Kz 21, Zusammenfassende Meldung). */
   readonly euServicesNetEur: number
 }
@@ -99,6 +104,8 @@ export function vatFiguresOf(entries: readonly JournalEntry[], year: number, per
   let igReduced = 0
   let rcEu = 0
   let rcOther = 0
+  let rcEu7 = 0
+  let rcOther7 = 0
   let withDeduction = 0
   let withoutDeduction = 0
   let small = 0
@@ -119,6 +126,8 @@ export function vatFiguresOf(entries: readonly JournalEntry[], year: number, per
         else if (line.taxKey === 'euLeistung') euServices += signed
         else if (line.taxKey === 'rc13b19') rcOther -= signed
         else if (line.taxKey === 'rcEu19') rcEu -= signed
+        else if (line.taxKey === 'rc13b7') rcOther7 -= signed
+        else if (line.taxKey === 'rcEu7') rcEu7 -= signed
         else if (line.taxKey === 'igErwerb19') igStandard -= signed
         else if (line.taxKey === 'igErwerb7') igReduced -= signed
       } else if (line.taxPart === 'tax' && line.side === 'debit' && (line.taxKey === 'vst19' || line.taxKey === 'vst7')) {
@@ -130,14 +139,17 @@ export function vatFiguresOf(entries: readonly JournalEntry[], year: number, per
   }
   return {
     taxableNetEur: { standard: eur(standard), reduced: eur(reduced), zero: eur(zero) },
-    reverseChargeNetEur: { standard: eur(rcEu + rcOther + igStandard), reduced: eur(igReduced) },
+    reverseChargeNetEur: { standard: eur(rcEu + rcOther + igStandard), reduced: eur(igReduced + rcEu7 + rcOther7) },
     taxFreeWithDeductionEur: eur(withDeduction),
     taxFreeWithoutDeductionEur: eur(withoutDeduction),
     smallBusinessTurnoverEur: eur(small),
     inputVatEur: eur(input),
     intraEuAcquisitionNetEur: { standard: eur(igStandard), reduced: eur(igReduced) },
-    reverseChargeEuServicesNetEur: eur(rcEu),
-    reverseChargeOtherNetEur: eur(rcOther),
+    // The Voranmeldung lists each § 13b base once (Kz 46, 84) and taxes its 7 % part at 7 %.
+    reverseChargeEuServicesNetEur: eur(rcEu + rcEu7),
+    reverseChargeOtherNetEur: eur(rcOther + rcOther7),
+    reverseChargeEuServicesReducedNetEur: eur(rcEu7),
+    reverseChargeOtherReducedNetEur: eur(rcOther7),
     euServicesNetEur: eur(euServices),
   }
 }
@@ -166,6 +178,22 @@ export function ecSalesListOf(entries: readonly JournalEntry[], period: { readon
 interface SpecialDepreciationFacts {
   readonly byYear?: Readonly<Record<string, number>>
   readonly costReduction?: number
+  readonly priorYearProfitEur?: number
+}
+
+interface BuildingFacts {
+  readonly use: 'betrieb' | 'wohnen'
+  readonly completed: string
+  readonly applicationFiled?: string
+  readonly constructionStarted?: string
+  readonly contractSigned?: string
+}
+
+interface VatCorrectionFacts {
+  readonly inputVatCents: number
+  readonly originalShare: number
+  readonly shareByYear: Readonly<Record<string, number>>
+  readonly disposalShare?: number
 }
 
 interface DisposalFacts {
@@ -186,7 +214,8 @@ function parse<T>(value: string | null): T | null {
 export function depreciableOf(record: FixedAssetRecord): DepreciableAsset {
   const special = parse<SpecialDepreciationFacts>(record.specialDepreciation)
   const disposal = parse<DisposalFacts>(record.disposal)
-  const method = (['linear', 'degressive', 'gwg', 'sofort', 'building'].includes(record.method) ? record.method : 'linear') as DepreciableAsset['method']
+  const method = (['linear', 'degressive', 'elektrofahrzeug', 'gwg', 'sofort', 'building', 'building_degressive'].includes(record.method) ? record.method : 'linear') as DepreciableAsset['method']
+  const building = parse<BuildingFacts>(record.buildingFacts)
   return {
     id: record.id,
     acquired: record.acquisitionDate,
@@ -194,6 +223,9 @@ export function depreciableOf(record: FixedAssetRecord): DepreciableAsset {
     method,
     ...(record.usefulLifeYears !== null ? { usefulLifeYears: record.usefulLifeYears } : {}),
     ...(special?.costReduction ? { iabCostReductionEur: eur(special.costReduction) } : {}),
+    ...(special?.priorYearProfitEur !== undefined ? { priorYearProfitEur: special.priorYearProfitEur } : {}),
+    // § 7 Abs. 4 EStG: the rate from the building's facts; Abs. 5a needs living use and the start or contract date.
+    ...(building ? { buildingRate: buildingRate(building.use, building.completed, building.applicationFiled), buildingUse: building.use, constructionStarted: building.constructionStarted, contractSigned: building.contractSigned } : {}),
     ...(special?.byYear ? { specialDepreciation: Object.entries(special.byYear).map(([year, amount]) => ({ year: Number(year), amountEur: eur(amount) })) } : {}),
     ...(disposal ? { disposal: { date: disposal.date, proceedsEur: eur(disposal.proceedsCents ?? 0) } } : {}),
   }
@@ -228,4 +260,22 @@ export function vatEntriesOf(chart: ChartOfAccounts, entries: readonly JournalEn
       ? { ...entry, lines: entry.lines.map((l) => (l.account === euRevenue && l.taxKey === 'ust0' ? { ...l, taxKey: 'euLeistung' as const } : l.taxKey === 'rc13b19' && entry.lines.some((x) => x.account === euServices) ? { ...l, taxKey: 'rcEu19' as const } : l)) }
       : entry,
   )
+}
+
+/**
+ * The Vorsteuerberichtigung of an asset by year (§ 15a UStG, §§ 44, 45 UStDV): ten years for a building, five
+ * otherwise, from the acquisition date as the first use; a disposal within the period at its share.
+ */
+export function vatCorrectionOf(record: FixedAssetRecord): readonly InputVatCorrectionYear[] {
+  const facts = parse<VatCorrectionFacts>(record.vatCorrection)
+  if (facts === null) return []
+  const disposal = parse<DisposalFacts>(record.disposal)
+  return inputVatCorrection({
+    inputVatEur: eur(facts.inputVatCents),
+    firstUse: record.acquisitionDate,
+    realEstate: record.method === 'building' || record.method === 'building_degressive',
+    originalShare: facts.originalShare,
+    shareByYear: Object.fromEntries(Object.entries(facts.shareByYear).map(([y, v]) => [Number(y), v])),
+    ...(disposal && facts.disposalShare !== undefined ? { disposal: { date: disposal.date, share: facts.disposalShare } } : {}),
+  })
 }

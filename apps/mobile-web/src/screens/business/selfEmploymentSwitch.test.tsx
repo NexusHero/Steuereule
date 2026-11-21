@@ -42,7 +42,7 @@ function mount(node: React.ReactNode) {
 
 describe('the self-employment switch in the interview', () => {
   it('walks on from „Selbstständig“ to the next question when the switch is on', async () => {
-    server.use(http.get(`*/v1/steuerjahre/${YEAR}/cockpit`, () => HttpResponse.json(summary(true))))
+    server.use(http.get(`*/v1/steuerjahre/${YEAR}/cockpit`, () => HttpResponse.json(summary(true))), http.get('*/v1/capabilities', () => HttpResponse.json({ selbststaendig: true })))
     mount(<InterviewScreen taxYear={YEAR} onDone={() => {}} />)
     await screen.findByText('Mehrfachjobs? Nimm die Hauptquelle — der Rest kommt später.')
     fireEvent.click(screen.getByText('Selbstständig'))
@@ -51,7 +51,7 @@ describe('the self-employment switch in the interview', () => {
   })
 
   it('„Beides“ leads on into the employee part without the gate when the switch is on', async () => {
-    server.use(http.get(`*/v1/steuerjahre/${YEAR}/cockpit`, () => HttpResponse.json(summary(true))))
+    server.use(http.get(`*/v1/steuerjahre/${YEAR}/cockpit`, () => HttpResponse.json(summary(true))), http.get('*/v1/capabilities', () => HttpResponse.json({ selbststaendig: true })))
     mount(<InterviewScreen taxYear={YEAR} onDone={() => {}} />)
     await screen.findByText('Mehrfachjobs? Nimm die Hauptquelle — der Rest kommt später.')
     fireEvent.click(screen.getByText('Beides'))
@@ -60,7 +60,7 @@ describe('the self-employment switch in the interview', () => {
   })
 
   it('still stops at the gate when the switch is off', async () => {
-    server.use(http.get(`*/v1/steuerjahre/${YEAR}/cockpit`, () => HttpResponse.json(summary(false))))
+    server.use(http.get(`*/v1/steuerjahre/${YEAR}/cockpit`, () => HttpResponse.json(summary(false))), http.get('*/v1/capabilities', () => HttpResponse.json({ selbststaendig: false })))
     mount(<InterviewScreen taxYear={YEAR} onDone={() => {}} />)
     await screen.findByText('Mehrfachjobs? Nimm die Hauptquelle — der Rest kommt später.')
     fireEvent.click(screen.getByText('Selbstständig'))
@@ -87,6 +87,7 @@ describe('the self-employment tile', () => {
     const render1 = (on: boolean) => {
       server.use(
         http.get(`*/v1/steuerjahre/${YEAR}/cockpit`, () => HttpResponse.json(summary(on))),
+        http.get('*/v1/capabilities', () => HttpResponse.json({ selbststaendig: on })),
         http.get(`*/v1/steuerjahre/${YEAR}/interview`, () => HttpResponse.json({ answers: { job: 'Selbstständig', ausland: 'Nein', kinder: 'Nein', familienstand: 'Ledig' }, nextStep: { kind: 'done' }, openItems: 0 })),
         http.get(`*/v1/steuerjahre/${YEAR}/selbststaendig`, () => HttpResponse.json(BASE_PROFILE)),
       )

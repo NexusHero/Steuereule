@@ -20,6 +20,11 @@ export {
   getSteuerEuleAPIMock as getAuthApiMock,
 } from './generated/auth.msw'
 export {
+  getCapabilitiesControllerGetCapabilitiesResponseMock,
+  getCapabilitiesControllerGetCapabilitiesMockHandler,
+  getSteuerEuleAPIMock as getCapabilitiesApiMock,
+} from './generated/capabilities.msw'
+export {
   getAccountDeletionControllerDeleteAccountResponseMock,
   getAccountDeletionControllerDeleteAccountMockHandler,
   getAccountExportControllerExportAccountResponseMock,

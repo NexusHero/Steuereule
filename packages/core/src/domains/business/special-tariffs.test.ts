@@ -47,8 +47,8 @@ describe('two § 16 gains: the reduced rate for one, the Fünftelregelung for th
 describe('Thesaurierung (§ 34a EStG)', () => {
   it('the retained profit at 28,25 % instead of the tariff, the rest by the tariff (Abs. 1)', () => {
     const r = retainedProfitTax({ year: 2025, profitEur: 300_000, withdrawalsEur: 100_000, depositsEur: 0, tradeTaxEur: 20_000, requestedEur: 150_000, carriedForwardEur: 0 })
-    // Nicht entnommen: 300.000 − 100.000 + 20.000 = 220.000; requested 150.000.
-    expect(r).toMatchObject({ nonWithdrawnEur: 220_000, favouredEur: 150_000, rate: 0.2825, taxEur: 42_375, recaptureEur: 0 })
+    // Nicht entnommen: 300.000 − (100.000 − 44.705,63 deemed paid for the § 34a tax and Soli, Abs. 2 Satz 3) + 20.000; requested 150.000.
+    expect(r).toMatchObject({ nonWithdrawnEur: 264_705.63, favouredEur: 150_000, rate: 0.2825, taxEur: 42_375, recaptureEur: 0 })
     // Next year's nachversteuerungspflichtiger Betrag: 150.000 − 42.375 − Soli 2.330,62.
     expect(r.nextCarriedForwardEur).toBe(105_294.38)
     const tax = withSpecialTariffs(T, { retained: r })
@@ -63,7 +63,24 @@ describe('Thesaurierung (§ 34a EStG)', () => {
   it('adds the Gewerbesteuer back only from VZ 2024; before, the profit after it is what is not withdrawn (verified)', () => {
     const base = { profitEur: 300_000, withdrawalsEur: 100_000, depositsEur: 0, tradeTaxEur: 20_000, requestedEur: 1_000_000, carriedForwardEur: 0 }
     expect(retainedProfitTax({ ...base, year: 2023 }).nonWithdrawnEur).toBe(200_000)
-    expect(retainedProfitTax({ ...base, year: 2024 }).nonWithdrawnEur).toBe(220_000)
+    // 2024: also the withdrawals deemed paid for the § 34a tax of the 300.000 € favoured (89.411,25 €) stay out.
+    expect(retainedProfitTax({ ...base, year: 2024 }).nonWithdrawnEur).toBe(309_411.25)
+  })
+
+  it('counts withdrawals first as paying this year’s § 34a tax and Soli, from VZ 2024 only (Abs. 2 Satz 3, statute read)', () => {
+    const base = { profitEur: 100_000, withdrawalsEur: 60_000, depositsEur: 0, tradeTaxEur: 0, requestedEur: 40_000, carriedForwardEur: 0 }
+    // 2024: 40.000 × 28,25 % × 1,055 = 11.921,50 € of the withdrawals are deemed paid for the tax.
+    expect(retainedProfitTax({ ...base, year: 2024 }).nonWithdrawnEur).toBe(51_921.5)
+    expect(retainedProfitTax({ ...base, year: 2023 }).nonWithdrawnEur).toBe(40_000)
+    // Never more than was withdrawn; the § 34a tax of earlier years paid this year comes on top.
+    expect(retainedProfitTax({ ...base, year: 2024, withdrawalsEur: 5_000 }).nonWithdrawnEur).toBe(100_000)
+    expect(retainedProfitTax({ ...base, year: 2024, withdrawalsForRetainedTaxEur: 3_000 }).nonWithdrawnEur).toBe(54_921.5)
+  })
+
+  it('recaptures the whole carried amount in the year the business is sold or given up (Abs. 6 Nr. 1, statute read)', () => {
+    const r = retainedProfitTax({ year: 2025, profitEur: 50_000, withdrawalsEur: 10_000, depositsEur: 0, tradeTaxEur: 0, requestedEur: 0, carriedForwardEur: 80_000, disposal: true })
+    expect(r).toMatchObject({ recaptureBaseEur: 80_000, recaptureEur: 20_000, nextCarriedForwardEur: 0 })
+    expect(retainedProfitTax({ year: 2025, profitEur: 50_000, withdrawalsEur: 10_000, depositsEur: 0, tradeTaxEur: 0, requestedEur: 0, carriedForwardEur: 80_000 }).recaptureEur).toBe(0)
   })
 
   it('the rate falls from 2028 (27 %, 26 % from 2030, 25 % from 2032)', () => {

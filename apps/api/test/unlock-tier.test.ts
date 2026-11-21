@@ -51,7 +51,7 @@ describe('unlock tiers (ADR-0101 §21)', () => {
   })
 
   it('switch off: a self-employed answer changes nothing, the standard tier is asked for', async () => {
-    delete process.env.SELBSTSTAENDIGE_ENABLED
+    process.env.SELBSTSTAENDIGE_ENABLED = 'false'
     const service = new UnlockService(repository, provider, 'https://app', interviewWith('Selbstständig'))
     await expect(service.requiredTier('u1', 2025)).resolves.toBe('standard')
     await service.startCheckout('u1', 2025)

@@ -44,7 +44,7 @@ describe('tax estimate of the self-employed (ADR-0101)', () => {
   })
 
   it('switch off: unchanged, the self-employed get no estimate', async () => {
-    delete process.env.SELBSTSTAENDIGE_ENABLED
+    process.env.SELBSTSTAENDIGE_ENABLED = 'false'
     const { interview, service } = setup()
     interview.seed('u', 2025, SELF_EMPLOYED)
     await expect(service.getState('u', 2025)).resolves.toEqual({ kind: 'nicht-moeglich', reason: 'nur-angestellte' })

@@ -4,7 +4,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger'
 import { Type } from 'class-transformer'
 import { IsBoolean, IsIn, IsInt, IsNumber, IsOptional, IsString, Matches, Max, MaxLength, Min, ValidateNested, IsArray } from 'class-validator'
-import { BANK_CSV_PRESETS, CATALOG_PROFESSIONS, FREE_ACTIVITIES, USEFUL_LIVES } from '@steuereule/core'
+import { BANK_CSV_PRESETS, CATALOG_PROFESSIONS, CHURCH_CODES, FREE_ACTIVITIES, USEFUL_LIVES, type ChurchCode } from '@steuereule/core'
 
 export const ASSET_CATEGORIES = Object.keys(USEFUL_LIVES) as (keyof typeof USEFUL_LIVES)[]
 const EUR = { type: Number, description: 'Euros.' } as const
@@ -261,6 +261,7 @@ export class VatResultDto {
   @ApiProperty({ type: OutputVatDto, description: 'Output VAT per rate, euros.' }) outputVat!: OutputVatDto
   @ApiProperty(EUR) reverseChargeVatEur!: number
   @ApiProperty(EUR) inputVatDeductibleEur!: number
+  @ApiProperty({ ...EUR, description: 'The Vorsteuerberichtigung of the year inside the VAT (§ 15a UStG): positive more input tax, negative to pay back.' }) inputVatCorrectionEur!: number
   @ApiProperty({ ...EUR, description: 'Umsatzsteuer of the year before the prepayments, euros.' }) vatOfYearEur!: number
   @ApiProperty(EUR) prepaymentsEur!: number
   @ApiProperty({ ...EUR, description: 'Positive = Abschlusszahlung, negative = Erstattung, euros.' }) balanceEur!: number
@@ -275,6 +276,14 @@ export class SmallBusinessCheckDto {
   @ApiProperty({ type: Boolean, description: 'The turnover of the year before is known from its book.' }) priorYearKnown!: boolean
   @ApiProperty(EUR) turnoverEur!: number
   @ApiProperty({ type: Boolean, description: 'False when the profile claims the rule although a limit is crossed.' }) matchesProfile!: boolean
+  @ApiProperty({ type: String, nullable: true, description: 'From 2025: the date of the supply that passed the running year’s limit; it and every later one are taxed (§ 19 Abs. 1 Satz 1 UStG).' }) taxedFrom!: string | null
+}
+
+export class InputVatCorrectionLineDto {
+  @ApiProperty({ type: String }) assetId!: string
+  @ApiProperty({ type: String }) label!: string
+  @ApiProperty(EUR) correctionEur!: number
+  @ApiProperty({ type: Boolean, description: 'Above 6.000 € or in the year of a sale: already in the Voranmeldung (§ 44 Abs. 3 UStDV).' }) inPrepayment!: boolean
 }
 
 export class VatReturnDto {
@@ -282,6 +291,7 @@ export class VatReturnDto {
   @ApiProperty({ type: VatResultDto }) result!: VatResultDto
   @ApiProperty({ type: Boolean, description: 'Ist-Versteuerung allowed by the turnover of the year before (§ 20 UStG).' }) cashAccountingAllowed!: boolean
   @ApiProperty({ type: SmallBusinessCheckDto }) smallBusiness!: SmallBusinessCheckDto
+  @ApiProperty({ type: [InputVatCorrectionLineDto], description: 'The § 15a corrections of the year per asset.' }) inputVatCorrections!: InputVatCorrectionLineDto[]
 }
 
 // ---------------------------------------------------------------------------------------------------
@@ -380,11 +390,13 @@ export class FixedAssetDto {
   @ApiProperty({ type: String }) account!: string
   @ApiProperty({ type: String }) acquisitionDate!: string
   @ApiProperty({ ...CENTS, description: 'Net acquisition cost, integer cents.' }) acquisitionCost!: number
-  @ApiProperty({ enum: ['linear', 'degressive', 'gwg', 'sofort', 'building'] }) method!: string
+  @ApiProperty({ enum: ['linear', 'degressive', 'elektrofahrzeug', 'gwg', 'sofort', 'building', 'building_degressive'] }) method!: string
   @ApiProperty({ enum: ASSET_CATEGORIES, nullable: true }) category!: string | null
   @ApiProperty({ type: Number, nullable: true }) usefulLifeYears!: number | null
   @ApiProperty({ type: String, nullable: true, description: 'JSON: { byYear: { [year]: cents }, costReduction: cents }.' }) specialDepreciation!: string | null
   @ApiProperty({ type: String, nullable: true, description: 'JSON: { date, proceedsCents }.' }) disposal!: string | null
+  @ApiProperty({ type: String, nullable: true, description: 'JSON: { use, completed, applicationFiled?, constructionStarted?, contractSigned? } (§ 7 Abs. 4, 5a EStG).' }) buildingFacts!: string | null
+  @ApiProperty({ type: String, nullable: true, description: 'JSON: { inputVatCents, originalShare, shareByYear, disposalShare? } (§ 15a UStG).' }) vatCorrection!: string | null
 }
 
 export class AssetsResponseDto {
@@ -429,6 +441,7 @@ export class VatPeriodFactsDto {
   @ApiPropertyOptional({ type: Boolean, description: 'Dauerfristverlängerung (§ 46 UStDV).' }) @IsOptional() @IsBoolean() extension?: boolean
   @ApiPropertyOptional({ ...EUR, description: 'The Sondervorauszahlung as paid; absent = 1/11 of last year (§ 47 UStDV).' }) @IsOptional() @IsNumber() @Min(0) specialPrepaymentEur?: number
   @ApiPropertyOptional({ type: Boolean, description: 'Monthly by choice after a refund above the limit (§ 18 Abs. 2a UStG).' }) @IsOptional() @IsBoolean() chooseMonthly?: boolean
+  @ApiPropertyOptional({ type: Boolean, description: 'Freed from keeping books by the office (§ 148 AO): Istversteuerung whatever the turnover (§ 20 Satz 1 Nr. 2 UStG).' }) @IsOptional() @IsBoolean() exemptFromBookkeeping?: boolean
 }
 
 export class VatPeriodDto {
@@ -483,7 +496,7 @@ export class DisposalFactsDto {
 export class RetainedFactsDto {
   @ApiProperty({ ...EUR, description: 'The amount applied for under § 34a.' }) @IsNumber() @Min(0) requestedEur!: number
   @ApiPropertyOptional({ ...EUR, description: 'Nachversteuerungspflichtiger Betrag of the last Feststellung.' }) @IsOptional() @IsNumber() @Min(0) carriedForwardEur?: number
-  @ApiPropertyOptional({ ...EUR, description: 'From 2024: withdrawals to pay the § 34a tax (Abs. 2 Satz 2).' }) @IsOptional() @IsNumber() @Min(0) withdrawalsForRetainedTaxEur?: number
+  @ApiPropertyOptional({ ...EUR, description: 'From 2024: withdrawals this year to pay the § 34a tax of earlier years (Abs. 2 Satz 2); this year\'s tax the app deems paid from the withdrawals itself (Satz 3).' }) @IsOptional() @IsNumber() @Min(0) withdrawalsForRetainedTaxEur?: number
 }
 
 export class DisposalResultDto {
@@ -520,11 +533,19 @@ export class PayrollRunInputDto {
   @ApiPropertyOptional(EUR) @IsOptional() @IsNumber() @Min(0) wageTaxEur?: number
   @ApiPropertyOptional(EUR) @IsOptional() @IsNumber() @Min(0) soliEur?: number
   @ApiPropertyOptional(EUR) @IsOptional() @IsNumber() @Min(0) churchTaxEur?: number
-  @ApiPropertyOptional({ enum: ['ev', 'rk'], nullable: true }) @IsOptional() @IsIn(['ev', 'rk', null]) church?: 'ev' | 'rk' | null
+  @ApiPropertyOptional({ enum: [...CHURCH_CODES], nullable: true, description: 'Church-tax code of the ELStAM; ev and rk go to Kz 61/62, the others to the line of the Betriebsstätte’s Land.' })
+  @IsOptional()
+  @IsIn([...CHURCH_CODES, null])
+  church?: ChurchCode | null
+  @ApiPropertyOptional({ ...EUR, description: 'Pauschale Lohnsteuer the employer takes over (§§ 40, 40a Abs. 1, 3, 40b EStG), Kz 41.' }) @IsOptional() @IsNumber() @Min(0) flatWageTaxEur?: number
+  @ApiPropertyOptional({ ...EUR, description: 'Pauschale Lohnsteuer under § 37b EStG, Kz 44.' }) @IsOptional() @IsNumber() @Min(0) flat37bTaxEur?: number
+  @ApiPropertyOptional({ ...EUR, description: 'Pauschale Kirchensteuer in the simplified procedure, Kz 47.' }) @IsOptional() @IsNumber() @Min(0) flatChurchTaxEur?: number
+  @ApiPropertyOptional({ ...EUR, description: 'BAV-Förderbetrag taken off the wage tax (§ 100 EStG), Kz 45; at most 288 € a year per employee.' }) @IsOptional() @IsNumber() @Min(0) @Max(288) bavSupportEur?: number
   @ApiPropertyOptional({ ...EUR, description: 'The employee’s share of social security.' }) @IsOptional() @IsNumber() @Min(0) employeeSocialEur?: number
   @ApiPropertyOptional({ ...EUR, description: 'The employer’s share and the levies.' }) @IsOptional() @IsNumber() @Min(0) employerSocialEur?: number
   @ApiPropertyOptional({ type: Boolean, description: 'Minijob: in the statutory health insurance (flat 13 % KV).' }) @IsOptional() @IsBoolean() statutoryHealthInsured?: boolean
   @ApiPropertyOptional({ type: Boolean, description: 'Minijob: exempt from the pension insurance.' }) @IsOptional() @IsBoolean() rvExempt?: boolean
+  @ApiPropertyOptional({ type: Boolean, description: 'Minijob: false for an employer with more than 30 employees, who pays no U1 (§ 1 Abs. 1 AAG).' }) @IsOptional() @IsBoolean() u1Applies?: boolean
 }
 
 export class PayrollRunDto {
@@ -555,4 +576,5 @@ export class PayrollOverviewDto {
   @ApiProperty({ enum: ['monat', 'quartal', 'jahr'] }) wageTaxPeriod!: 'monat' | 'quartal' | 'jahr'
   @ApiProperty({ type: [WageTaxReturnDto] }) wageTaxReturns!: WageTaxReturnDto[]
   @ApiProperty({ type: [MinijobMonthDto] }) minijobCharges!: MinijobMonthDto[]
+  @ApiProperty({ type: [String], description: 'Church-tax codes the Anmeldung of the Betriebsstätte’s Land has no line for: their tax is in Kz 83 only.' }) unassignedChurchCodes!: string[]
 }

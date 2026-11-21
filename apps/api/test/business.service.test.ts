@@ -64,7 +64,7 @@ describe('BusinessService (ADR-0101)', () => {
   })
 
   it('switch off: the whole path answers 403, nothing is stored', async () => {
-    delete process.env.SELBSTSTAENDIGE_ENABLED
+    process.env.SELBSTSTAENDIGE_ENABLED = 'false'
     const { service, repository } = setup()
     await expect(service.getProfile('u', YEAR, A1)).rejects.toMatchObject({ code: 'SELF_EMPLOYMENT_DISABLED' })
     await expect(service.post('u', YEAR, A1, sale)).rejects.toMatchObject({ code: 'SELF_EMPLOYMENT_DISABLED' })
@@ -222,6 +222,8 @@ describe('BusinessService (ADR-0101)', () => {
     await service.quickEntry('u', 2025, A1, [{ key: 'einnahmen_kleinunternehmer', amountCents: 2_600_000, date: '2025-12-01' }])
     expect((await service.vatReturn('u', 2025, A1)).smallBusiness).toEqual({
       eligible: false, priorYearLimitEur: 25_000, currentYearLimitEur: 25_000, crossed: 'current_year', foundingYear: true, priorYearKnown: true, turnoverEur: 26_000, matchesProfile: false,
+      // The one quick entry passed the founding year's 25.000 €: taxed from its date (§ 19 Abs. 1 Satz 1 UStG).
+      taxedFrom: '2025-12-01',
     })
 
     await service.saveProfile('u', YEAR, A1, { smallBusiness: true, startDate: '2020-01-01' })
@@ -461,7 +463,7 @@ describe('BusinessService (ADR-0101)', () => {
     const p = await service.payroll('u', 2026, A1)
     // First year: January's 450 € × 12 = 5.400 € → monthly.
     expect(p.wageTaxPeriod).toBe('monat')
-    expect(p.wageTaxReturns).toEqual([{ label: '01/2026', due: '2026-02-10', kennzahlen: { '86': 1, '42': 450, '61': 36, '83': 486 } }])
+    expect(p.wageTaxReturns).toEqual([{ label: '01/2026', due: '2026-02-10', kennzahlen: { '86': 2, '42': 450, '61': 36, '83': 486 } }])
     expect(p.minijobCharges).toEqual([{ month: 1, totalEur: 208.62 }])
     expect(p.runs.map((r) => [r.employee, r.netEur])).toEqual([['Anna', 1_894], ['Ben', 578.4]])
     // The book: wages, Minijob, employer charges as Personalaufwand.
@@ -506,6 +508,103 @@ describe('BusinessService (ADR-0101)', () => {
     const q1 = va.periods.find((p) => p.kennzahlen['21'] !== undefined)
     expect(q1?.kennzahlen['21']).toBe(1_000)
     expect(va.ecSalesList.reports[0]?.rows).toEqual([{ vatId: 'ATU12345678', goodsEur: 0, servicesEur: 1_000 }])
+  })
+
+  it('in the quarter the goods pass 50.000 €: one ZM up to that month, monthly after it (§ 18a Abs. 1 Satz 3 UStG)', async () => {
+    const { service } = setup()
+    const ig = (date: string, cents: number, n: string) => ({ date, documentNumber: n, text: 'Lieferung Wien', counterpartyVatId: 'ATU12345678', lines: [{ account: '1200', side: 'debit' as const, amount: cents }, { account: '8125', side: 'credit' as const, amount: cents, taxKey: 'igLieferung' as const }] })
+    await service.post('u', 2025, A1, ig('2025-04-03', 3_000_000, 'R-1'))
+    await service.post('u', 2025, A1, ig('2025-05-06', 3_000_000, 'R-2'))
+    await service.post('u', 2025, A1, ig('2025-06-09', 1_000_000, 'R-3'))
+    const va = await service.vatPrepayments('u', 2025, A1)
+    expect(va.ecSalesList.period).toBe('monat')
+    expect(va.ecSalesList.reports.map((r) => [r.label, r.due, r.rows[0]?.goodsEur])).toEqual([
+      ['04–05/2025', '2025-06-25', 60_000],
+      ['06/2025', '2025-07-25', 10_000],
+    ])
+  })
+
+  it('books the pauschale Lohnsteuer, puts another community on its Land line and says when a Land has none (Vordruck 2026)', async () => {
+    const { service } = setup()
+    await service.saveProfile('u', 2026, A1, { municipalityAgs: '08111000' })
+    await service.addPayrollRun('u', 2026, A1, { month: 1, kind: 'regulaer', employee: 'Anna', grossEur: 3_000, wageTaxEur: 300, churchTaxEur: 24, church: 'iw', flatWageTaxEur: 50, employeeSocialEur: 600, employerSocialEur: 620 })
+    await service.addPayrollRun('u', 2026, A1, { month: 1, kind: 'regulaer', employee: 'Cem', grossEur: 2_000, wageTaxEur: 100, churchTaxEur: 8, church: 'jh' })
+    const { entry } = await service.addPayrollRun('u', 2026, A1, { month: 1, kind: 'minijob', employee: 'Ben', grossEur: 600, statutoryHealthInsured: true, u1Applies: false })
+    expect(entry).not.toBeNull()
+    const p = await service.payroll('u', 2026, A1)
+    // Baden-Württemberg: iw on line 73; jh has no line there and stays in Kz 83 only.
+    expect(p.wageTaxReturns[0]!.kennzahlen).toEqual({ '86': 3, '42': 400, '41': 50, '48': 450, '73': 24, '83': 482 })
+    expect(p.unassignedChurchCodes).toEqual(['jh'])
+    // The Minijob without U1: 13 % + 15 % + 2 % + 0,22 % + 0,15 % of 600 € plus the RV share of 21,60 €.
+    expect(p.minijobCharges).toEqual([{ month: 1, totalEur: 203.82 }])
+  })
+
+  it('lists the charges of a privately insured, RV-exempt Minijob without U1 (09b in CI, 21.11.2026)', async () => {
+    const { service } = setup()
+    await service.addPayrollRun('u', 2025, A1, { month: 1, kind: 'minijob', employee: 'Ben', grossEur: 520, statutoryHealthInsured: true, rvExempt: true, u1Applies: false })
+    expect((await service.payroll('u', 2025, A1)).minijobCharges).toHaveLength(1)
+  })
+
+  it('adds a computer by its category, without a useful life of its own (09b in CI, 21.11.2026)', async () => {
+    const { service, repository } = setup()
+    await service.createAsset('u', 2025, A1, { label: 'Laptop', account: '0410', acquisitionDate: '2025-02-15', acquisitionCostCents: 150_000, method: 'linear', category: 'computer' })
+    const [laptop] = await repository.listAssets('u', A1, 2025)
+    expect([laptop?.label, laptop?.usefulLifeYears]).toEqual(['Laptop', 1])
+  })
+
+  it('adds an electric vehicle with the 75 % AfA, and stores nothing it cannot depreciate (§ 7 Abs. 2a EStG)', async () => {
+    const { service, repository } = setup()
+    const base = { label: 'E-Transporter', account: '0350', acquisitionCostCents: 4_000_000, method: 'elektrofahrzeug' }
+    await service.createAsset('u', 2025, A1, { ...base, acquisitionDate: '2025-08-01' })
+    await expect(service.createAsset('u', 2025, A1, { ...base, label: 'zu früh', acquisitionDate: '2025-06-30' })).rejects.toBeDefined()
+    const stored = await repository.listAssets('u', A1, 2025)
+    expect(stored.map((a) => a.label)).toEqual(['E-Transporter'])
+  })
+
+  it('books § 13b at 7 % on the rate-less § 13b accounts (DATEV 1785/1578) and taxes it at 7 % in the Voranmeldung', async () => {
+    const { service } = setup()
+    await service.saveProfile('u', 2025, A1, { vatPeriodFacts: { period: 'monat' } })
+    const entry = await service.post('u', 2025, A1, { date: '2025-02-03', documentNumber: 'B-7', text: 'Bauleistung 7 %', lines: [{ account: '3120', side: 'debit', amount: 100_000, taxKey: 'rc13b7' }, { account: '1200', side: 'credit', amount: 100_000 }] })
+    expect(entry.lines.map((l) => [l.account, l.side, l.amount])).toEqual(expect.arrayContaining([['1785', 'credit', 7_000], ['1578', 'debit', 7_000]]))
+    const feb = (await service.vatPrepayments('u', 2025, A1)).periods.find((p) => p.from <= '2025-02-03' && p.to >= '2025-02-03')!
+    expect(feb.kennzahlen).toMatchObject({ '84': 1_000, '85': 70, '67': 70 })
+  })
+
+  it('books the pauschale Lohnsteuer on „Pauschale Steuer für Arbeitnehmer“ (DATEV 4198) and caps the BAV-Förderbetrag at 288 € (§ 100 EStG)', async () => {
+    const { service } = setup()
+    const { entry } = await service.addPayrollRun('u', 2026, A1, { month: 1, kind: 'regulaer', employee: 'Anna', grossEur: 3_000, wageTaxEur: 300, flatWageTaxEur: 50, bavSupportEur: 200 })
+    expect(entry!.lines.find((l) => l.account === '4198')).toMatchObject({ side: 'debit', amount: 5_000 })
+    await expect(service.addPayrollRun('u', 2026, A1, { month: 2, kind: 'regulaer', employee: 'Anna', grossEur: 3_000, wageTaxEur: 300, bavSupportEur: 100 })).rejects.toMatchObject({ code: 'PAYROLL_BAV_SUPPORT' })
+    const p = await service.payroll('u', 2026, A1)
+    expect(p.wageTaxReturns[0]!.kennzahlen).toMatchObject({ '90': 1, '45': 200, '48': 150 })
+  })
+
+  it('takes a building with its facts, refuses the Sonder-AfA above the profit limit, and lets § 20 Nr. 2 allow the Istversteuerung', async () => {
+    const { service } = setup()
+    const hall = await service.createAsset('u', 2025, A1, { label: 'Halle', account: '0090', acquisitionDate: '2025-01-10', acquisitionCostCents: 30_000_000, method: 'building', building: { use: 'betrieb', completed: '1984-06-01', applicationFiled: '1983-02-01' } })
+    // Bauantrag before 1.4.1985: not Nr. 1 but Nr. 2 b, 2 % of 300.000 € = 6.000 € a year.
+    const register = (await service.assets('u', 2025, A1)).register.rows.find((r) => r.id === hall.id)!
+    expect(register.depreciation).toBe(600_000)
+    await expect(
+      service.createAsset('u', 2025, A1, { label: 'Maschine', account: '0440', acquisitionDate: '2025-03-01', acquisitionCostCents: 1_000_000, method: 'linear', usefulLifeYears: 5, specialDepreciation: { byYear: { '2025': 200_000 }, priorYearProfitEur: 250_000 } }),
+    ).rejects.toBeDefined()
+    await service.saveProfile('u', 2025, A1, { vatPeriodFacts: { exemptFromBookkeeping: true } })
+    await service.post('u', 2024, A1, { ...sale, lines: [{ account: '1200', side: 'debit', amount: 119_000_000 }, { account: '8400', side: 'credit', amount: 119_000_000, taxKey: 'ust19' }] })
+    expect((await service.vatReturn('u', 2025, A1)).cashAccountingAllowed).toBe(true)
+  })
+
+  it('corrects the input VAT of an asset whose use changed (§ 15a UStG) in the annual VAT', async () => {
+    const { service } = setup()
+    await service.post('u', 2025, A1, { ...sale, date: '2025-03-01', documentNumber: 'R-25' })
+    const car = await service.createAsset('u', 2025, A1, { label: 'Lieferwagen', account: '0350', acquisitionDate: '2024-01-05', acquisitionCostCents: 3_000_000, method: 'linear', usefulLifeYears: 6 })
+    // 5.700 € input VAT, deducted in full; 2025 used half for tax-free turnover: 5.700 / 5 × 50 % = 570 € back.
+    await service.setAssetFacts('u', 2025, A1, car.id, { vatCorrection: { inputVatCents: 570_000, originalShare: 1, shareByYear: { '2025': 0.5 } } })
+    const vat = await service.vatReturn('u', 2025, A1)
+    expect(vat.result.inputVatCorrectionEur).toBe(-570)
+    expect(vat.inputVatCorrections).toEqual([{ assetId: car.id, label: 'Lieferwagen', correctionEur: -570, inPrepayment: false }])
+    // 190 € output VAT on the sale plus the 570 € paid back.
+    expect(vat.result.vatOfYearEur).toBe(760)
+    await expect(service.setAssetFacts('u', 2025, A1, 'nope', { vatCorrection: null })).rejects.toMatchObject({ code: 'ASSET_NOT_FOUND' })
   })
 
   it('sends the E-Bilanz once, under the book’s lock, and keeps the ticket in the log (review)', async () => {

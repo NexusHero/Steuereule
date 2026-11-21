@@ -30,6 +30,9 @@ export default defineConfig({
       PRISMA_FIELD_ENCRYPTION_KEY: 'k1.aesgcm256.MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=',
       NODE_ENV: 'test',
       VITEST: 'true',
+      // The self-employment switch is on by default in the app (ADR-0101 §20); the suites that are not about it
+      // keep the Gewerbe-Gate path they were written for. Tests of the switch set it themselves.
+      SELBSTSTAENDIGE_ENABLED: 'false',
     },
     // Measured for SonarQube Cloud only, no threshold: the unit tier alone does not exercise the
     // DB-backed code, which the integration tier covers.

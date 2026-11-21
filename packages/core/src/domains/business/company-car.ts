@@ -18,6 +18,22 @@ export interface CarFacts {
   /** From the Übereinstimmungsbescheinigung, for a plug-in hybrid. */
   readonly co2GPerKm?: number | undefined
   readonly electricRangeKm?: number | undefined
+  /** Battery capacity in kWh, for the battery deduction of a car bought before 2023 without a fraction (Satz 2 Nr. 1). */
+  readonly batteryKwh?: number | undefined
+}
+
+/**
+ * § 6 Abs. 1 Nr. 4 Satz 2 Nr. 1 EStG: an electric or plug-in hybrid car bought before 1.1.2023 that takes no
+ * fraction (Nr. 2–4) has its list price cut by the battery: 500 € per kWh for one bought up to 2013, 50 € less for
+ * each later year; at most 10.000 €, 500 € less each later year (2022: 50 €/kWh, at most 5.500 €).
+ */
+export function batteryDeductionEur(car: CarFacts): number {
+  if (car.drive === 'verbrenner' || car.acquired >= '2023-01-01' || !(car.batteryKwh && car.batteryKwh > 0)) return 0
+  if (listPriceFactor(car) !== 1) return 0
+  const later = Math.max(0, Number(car.acquired.slice(0, 4)) - 2013)
+  const perKwh = Math.max(0, 500 - 50 * later)
+  const cap = Math.max(0, 10_000 - 500 * later)
+  return Math.min(cap, perKwh * car.batteryKwh, car.listPriceGrossEur)
 }
 
 /** The electric car's list-price cap by acquisition date (§ 6 Abs. 1 Nr. 4 Satz 2 Nr. 3, § 52 Abs. 12 Satz 5, 6 EStG). */
@@ -57,8 +73,10 @@ export interface CompanyCarInput extends CarFacts {
   readonly method: 'pauschal' | 'fahrtenbuch'
   /** Gesamtkosten of the car in the year, AfA included: the cap, and the basis of the logbook method. */
   readonly totalCostsEur?: number | undefined
-  /** The AfA inside `totalCostsEur`: by logbook an electric or hybrid car counts it at its fraction. */
+  /** The AfA inside `totalCostsEur`: an electric or hybrid car counts it at its fraction, by logbook and in the Kostendeckelung (BMF 05.11.2021 Rn. 13). */
   readonly depreciationEur?: number | undefined
+  /** Leasing rates inside `totalCostsEur`: by logbook an electric or hybrid car counts them at its fraction (Satz 3 Nr. 2–5). */
+  readonly leasingEur?: number | undefined
   /** By logbook: the private share of the kilometres (0–1). */
   readonly privateShare?: number | undefined
   /** By logbook: the kilometres of the year, for the actual cost of the trips home–business. */
@@ -97,7 +115,10 @@ const NO_INPUT_VAT_SHARE = 0.2
 export function companyCarUse(input: CompanyCarInput): CompanyCarResult {
   const months = Math.min(12, Math.max(0, Math.floor(input.monthsInBusiness)))
   const factor = listPriceFactor(input)
-  const assessedListPriceEur = Math.floor((input.listPriceGrossEur * factor) / 100) * 100
+  const battery = batteryDeductionEur(input)
+  const assessedListPriceEur = Math.floor(((input.listPriceGrossEur - battery) * factor) / 100) * 100
+  // The share of the AfA (and by logbook the leasing) the income tax takes: the fraction, or the list price less the battery.
+  const costShare = input.listPriceGrossEur > 0 ? (factor * (input.listPriceGrossEur - battery)) / input.listPriceGrossEur : factor
   const vatDeductible = input.vatDeductible !== false
 
   if (input.method === 'pauschal') {
@@ -105,24 +126,28 @@ export function companyCarUse(input: CompanyCarInput): CompanyCarResult {
     let privateUseEur = cents(assessedListPriceEur * 0.01 * months)
     let commute = input.commute ? commuteOf(input.year, assessedListPriceEur * 0.0003 * input.commute.distanceKm * months, input.commute) : null
     let capped = false
-    if (input.totalCostsEur !== undefined && privateUseEur + (commute?.nonDeductibleEur ?? 0) > input.totalCostsEur) {
+    // BMF 05.11.2021 Rn. 13: for the comparison the AfA inside the total costs counts at the same fraction as the list price.
+    const capCostsEur = input.totalCostsEur === undefined ? undefined : input.totalCostsEur - (input.depreciationEur ?? 0) * (1 - costShare)
+    if (capCostsEur !== undefined && privateUseEur + (commute?.nonDeductibleEur ?? 0) > capCostsEur) {
       capped = true
-      const total = Math.max(0, input.totalCostsEur)
+      const total = Math.max(0, capCostsEur)
       const commuteNon = Math.min(commute?.nonDeductibleEur ?? 0, total)
       if (commute) commute = { ...commute, nonDeductibleEur: cents(commuteNon) }
       privateUseEur = cents(total - commuteNon)
     }
     // The VAT takes the full list price, the fractions are income tax only (Abschn. 15.23 Abs. 5 UStAE).
     const fullValue = Math.floor(input.listPriceGrossEur / 100) * 100 * 0.01 * months
-    // Under the Kostendeckelung the Wertabgabe cannot exceed the car's total costs either.
-    const vat = vatDeductible ? wertabgabe(capped ? Math.min(fullValue, Math.max(0, input.totalCostsEur ?? fullValue)) : fullValue) : null
+    // The Wertabgabe cannot exceed the car's total costs either; the VAT compares them unreduced.
+    const vat = vatDeductible ? wertabgabe(Math.min(fullValue, Math.max(0, input.totalCostsEur ?? fullValue))) : null
     return { kind: 'berechnet', method: 'pauschal', factor, assessedListPriceEur, privateUseEur, commute, capped, vat }
   }
 
   const missing = [...(input.totalCostsEur === undefined ? (['gesamtkosten'] as const) : []), ...(input.privateShare === undefined ? (['privatanteil'] as const) : [])]
   if (missing.length > 0) return { kind: 'offen', missing }
-  // By logbook an electric or hybrid car counts its AfA at the fraction (Satz 3 Nr. 2–5).
-  const costs = Math.max(0, input.totalCostsEur! - (input.depreciationEur ?? 0) * (1 - factor))
+  // By logbook an electric or hybrid car counts its AfA and leasing at the fraction (Satz 3 Nr. 2–5), one with the
+  // battery deduction its AfA without the battery (Satz 3 Nr. 1).
+  const leasing = battery > 0 ? 0 : (input.leasingEur ?? 0)
+  const costs = Math.max(0, input.totalCostsEur! - ((input.depreciationEur ?? 0) + leasing) * (1 - costShare))
   const share = Math.min(1, Math.max(0, input.privateShare!))
   const privateUseEur = cents(costs * share)
   // By logbook the trips cost what they cost: per km of the year, both ways (§ 4 Abs. 5 Satz 1 Nr. 6 Satz 3 EStG).

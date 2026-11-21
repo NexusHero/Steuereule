@@ -3623,7 +3623,8 @@
       "hebesatzNehmen": "Use this",
       "hebesatzKorrektur": "Enter the multiplier yourself (%)",
       "berufGenauer": "Describe the profession",
-      "beginn": "Start of the activity"
+      "beginn": "Start of the activity",
+      "buchfuehrungBefreit": "Freed from keeping books by the tax office (§ 148 AO)? Then you may account for VAT on payments received, whatever your turnover (§ 20 Nr. 2 UStG)."
     },
     "buch": {
       "kette": "The chain of the book is broken. Nothing is booked or exported until this is cleared up.",
@@ -3661,6 +3662,8 @@
       "igErwerb19": "EU acquisition 19 %",
       "igErwerb7": "EU acquisition 7 %",
       "rcEu19": "§ 13b Abs. 1 (EU) 19 %",
+      "rc13b7": "§ 13b 7 %",
+      "rcEu7": "§ 13b Abs. 1 (EU) 7 %",
       "euLeistung": "EU service (recipient owes)"
     },
     "erfassung": {
@@ -3750,15 +3753,37 @@
       "methodeArt": {
         "linear": "straight-line",
         "degressive": "declining",
+        "elektrofahrzeug": "electric vehicle 75 %",
         "gwg": "low-value",
-        "sofort": "immediate"
+        "sofort": "immediate",
+        "building": "building",
+        "building_degressive": "building 5 % declining"
       },
       "nutzungsdauer": "Useful life (years)",
       "speichern": "Save",
       "afaBuchen": "Book the year's depreciation",
       "art": "Kind per AfA table",
       "jahre_one": "{{count}} year",
-      "jahre_other": "{{count}} years"
+      "jahre_other": "{{count}} years",
+      "nutzung": "Use",
+      "nutzungArt": {
+        "betrieb": "business, not living",
+        "wohnen": "living"
+      },
+      "gebaeudeDatum": {
+        "completed": "Completion",
+        "applicationFiled": "Building application filed (optional)",
+        "constructionStarted": "Construction start (notice)",
+        "contractSigned": "Purchase contract (when bought by the end of the completion year)"
+      },
+      "sonderAfa": "Special depreciation § 7g in the acquisition year (€, optional)",
+      "gewinnVorjahr": "Profit of the business year before the acquisition (€, at most 200,000 €)",
+      "berichtigung": "Correct input VAT (§ 15a)",
+      "berichtigungHinweis": "If the share for which you may deduct input VAT changes within five years (buildings: ten), the deduction is corrected each year in part. A move into or out of the small business rule counts too. Up to 1,000 € of input VAT there is no correction.",
+      "vorsteuer": "Input VAT on the acquisition cost (€)",
+      "anteilUrspruenglich": "Deducted then (%)",
+      "anteilJahr": "Deductible in {{jahr}} (%)",
+      "berichtigungSpeichern": "Save correction"
     },
     "abschluss": {
       "euer": "Cash-basis statement",
@@ -3786,7 +3811,12 @@
       "kleinGrenzeGruendung": "In the founding year the small business rule only holds up to {{grenze}} turnover. Your book shows {{umsatz}}: check in the profile whether you have to charge VAT.",
       "kleinGrenzeVorjahr": "Your turnover last year was above {{grenze}}. The small business rule does not apply this year: check this in the profile.",
       "kleinGrenzeJahr": "Your turnover this year, {{umsatz}}, is above {{grenze}}. The small business rule ends: check this in the profile.",
-      "kleinVorjahrUnbekannt": "There is no book for last year here. The small business rule only applies if last year's turnover was at most {{grenze}}."
+      "kleinVorjahrUnbekannt": "There is no book for last year here. The small business rule only applies if last year's turnover was at most {{grenze}}.",
+      "kleinAb": "From the supply of {{datum}} the small business rule no longer applies: that supply and all later ones are subject to VAT, the earlier ones stay exempt (§ 19 Abs. 1 UStG). Book them with VAT from that day and invoice with VAT.",
+      "berichtigung15a": "Input VAT correction (§ 15a UStG)",
+      "berichtigung15aTitel": "Input VAT correction per asset",
+      "berichtigung15aHinweis": "Positive: more input VAT, negative: to pay back. In Mein ELSTER enter the total in the line „Berichtigung des Vorsteuerabzugs (§ 15a UStG)“.",
+      "berichtigung15aVa": "already in the prepayment return (above 6,000 € or a sale, § 44 Abs. 3 UStDV)"
     },
     "gewst": {
       "entfaellt": "As a freelancer you pay no trade tax.",
@@ -4005,9 +4035,11 @@
         "acquired": "Acquired on",
         "co2GPerKm": "CO₂ emissions (g/km)",
         "electricRangeKm": "Electric range (km)",
+        "batteryKwh": "Battery capacity (kWh, bought before 2023)",
         "monthsInBusiness": "Months in the business this year",
         "totalCostsEur": "Total costs of the vehicle in the year, with depreciation (€)",
         "depreciationEur": "Of which depreciation (€)",
+        "leasingEur": "Of which leasing rates (€)",
         "privatePercent": "Private share per logbook (%)",
         "totalKm": "Kilometres driven in the year",
         "costsWithInputVatEur": "Costs with input VAT (€)",
@@ -4089,7 +4121,7 @@
         "capitalAccountEur": "Value of the business assets (capital account) at that date (€)",
         "requestedEur": "Amount applied for (€)",
         "carriedForwardEur": "Amount subject to recapture per last notice (€)",
-        "withdrawalsForRetainedTaxEur": "Withdrawals for the retained-profit tax (€, from 2024)"
+        "withdrawalsForRetainedTaxEur": "Withdrawals for the retained-profit tax of earlier years (€, from 2024)"
       },
       "freibetrag": "Apply for the allowance (55 or permanently disabled, once in a life)",
       "methode": {
@@ -4126,11 +4158,16 @@
         "soliEur": "Solidarity surcharge (€)",
         "churchTaxEur": "Church tax (€)",
         "employeeSocialEur": "Social security, employee share (€)",
-        "employerSocialEur": "Social security, employer share and levies (€)"
+        "employerSocialEur": "Social security, employer share and levies (€)",
+        "flatWageTaxEur": "Flat-rate wage tax (€, Kz 41)",
+        "flat37bTaxEur": "Flat-rate wage tax § 37b EStG (€, Kz 44)",
+        "flatChurchTaxEur": "Flat-rate church tax (€, Kz 47)",
+        "bavSupportEur": "Occupational pension support § 100 EStG (€, Kz 45)"
       },
       "kirche": {
         "ev": "Protestant",
-        "rk": "Roman Catholic"
+        "rk": "Roman Catholic",
+        "andere": "Other (code from the payslip)"
       },
       "privatVersichert": "Privately health insured",
       "rvBefreit": "Exempt from pension insurance",
@@ -4150,10 +4187,19 @@
         "49": "Solidarity surcharge",
         "61": "Church tax Protestant",
         "62": "Church tax Roman Catholic",
-        "83": "Total"
+        "83": "Total",
+        "41": "Flat-rate wage tax",
+        "44": "Flat-rate wage tax § 37b",
+        "48": "Remaining",
+        "47": "Flat-rate church tax",
+        "land": "Church tax (line of your federal state)",
+        "90": "Employees with pension support",
+        "45": "Pension support (§ 100 EStG)"
       },
       "minijobAbgaben": "Minijob charges to the Minijob-Zentrale",
-      "minijobHinweis": "Due on the third last bank day of the month; the 2 % flat tax is included."
+      "minijobHinweis": "Due on the third last bank day of the month; the 2 % flat tax is included.",
+      "ueber30": "More than 30 employees (no U1 levy)",
+      "kircheOhneZeile": "The wage tax return of your federal state has no line of its own for {{kuerzel}}, or the municipality key in the profile is missing. The church tax is only in the total (Kz 83); ask your tax office where it belongs."
     }
   },
   "betrag": {

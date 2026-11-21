@@ -183,29 +183,36 @@ describe('the self-employment switch of the server', () => {
     )
   }
   function Capability() {
-    const c = useSelfEmploymentCapability(2025)
+    const c = useSelfEmploymentCapability()
     return <span data-testid="cap">{c.pending ? 'pending' : c.enabled ? 'on' : 'off'}</span>
   }
-  const summary = (body: unknown, status = 200) => server.use(http.get('*/v1/steuerjahre/2025/cockpit', () => HttpResponse.json(body as object, { status })))
+  const capabilities = (body: unknown, status = 200) => server.use(http.get('*/v1/capabilities', () => HttpResponse.json(body as object, { status })))
   const freshClient = () => new QueryClient({ defaultOptions: { queries: { retry: false } } })
 
-  it('is on when the cockpit summary says so, and off while the read fails', async () => {
-    summary({ capabilities: { selbststaendig: true } })
+  it('is on when the server says so, pending until it answered', async () => {
+    capabilities({ selbststaendig: true })
     render(<Probe client={freshClient()} />)
     expect(screen.getByTestId('cap').textContent).toBe('pending')
     await waitFor(() => expect(screen.getByTestId('cap').textContent).toBe('on'))
   })
 
-  it('is off when the summary answers with an error', async () => {
-    summary({ statusCode: 500, message: 'x' }, 500)
+  it('is on for a new user whose year has no cockpit summary yet (09b in CI, 21.11.2026)', async () => {
+    server.use(http.get('*/v1/steuerjahre/2025/cockpit', () => HttpResponse.json(null)))
+    capabilities({ selbststaendig: true })
+    render(<Probe client={freshClient()} />)
+    await waitFor(() => expect(screen.getByTestId('cap').textContent).toBe('on'))
+  })
+
+  it('is off when the read answers with an error', async () => {
+    capabilities({ statusCode: 500, message: 'x' }, 500)
     render(<Probe client={freshClient()} />)
     await waitFor(() => expect(screen.getByTestId('cap').textContent).toBe('off'))
   })
 
-  it('reads the switch from the cache at once when the summary is already there', async () => {
+  it('reads the switch from the cache at once when it is already there', async () => {
     const client = freshClient()
-    const { getCockpitControllerGetCockpitSummaryQueryKey } = await import('@steuereule/api-client')
-    client.setQueryData(getCockpitControllerGetCockpitSummaryQueryKey(2025), { status: 200, data: { capabilities: { selbststaendig: true } } })
+    const { getCapabilitiesControllerGetCapabilitiesQueryKey } = await import('@steuereule/api-client')
+    client.setQueryData(getCapabilitiesControllerGetCapabilitiesQueryKey(), { status: 200, data: { selbststaendig: true } })
     render(<Probe client={client} />)
     expect(screen.getByTestId('cap').textContent).toBe('on')
     await act(async () => {})

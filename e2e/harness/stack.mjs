@@ -180,6 +180,9 @@ function commandExists(binary) {
 /** BOOT MODE step 2 — migrate + build + boot the compiled API. Returns a teardown fn. */
 async function startApi({ apiOrigin, apiPort, webOrigin, databaseUrl, env }) {
   const apiEnv = {
+    // ADR-0101 §20: the self-employment switch is on by default; the booted stack pins the Gewerbe-Gate path
+    // the scenarios were written for (scenario 09). A caller's env or `apiEnv` can still turn it on (09b).
+    SELBSTSTAENDIGE_ENABLED: 'false',
     ...process.env,
     ...env,
     DATABASE_URL: databaseUrl,

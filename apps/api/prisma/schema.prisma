@@ -1735,6 +1735,10 @@ model FixedAsset {
   specialDepreciation String?  @map("sonderAfa") /// @encrypted?mode=strict
   /// Disposal as JSON: date and proceeds in cents.
   disposal            String?  @map("abgang") /// @encrypted?mode=strict
+  /// A building's facts as JSON (§ 7 Abs. 4, 5a EStG): use, completion, Bauantrag, construction start, contract.
+  buildingFacts       String?  @map("gebaeude") /// @encrypted?mode=strict
+  /// The Vorsteuerberichtigung as JSON (§ 15a UStG): input VAT in cents, original share, share by year.
+  vatCorrection       String?  @map("vorsteuerberichtigung") /// @encrypted?mode=strict
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
 

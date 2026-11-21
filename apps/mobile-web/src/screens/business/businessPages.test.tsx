@@ -319,7 +319,7 @@ describe('the assets and the closing', () => {
 describe('Umsatzsteuer, Gewerbesteuer and Verluste', () => {
   it('shows the VAT result as Nachzahlung or Erstattung, with plain amounts and no sign', async () => {
     useBusinessDefaults()
-    server.use(http.get(`${BASE_URL}/umsatzsteuer`, () => HttpResponse.json({ figures: {}, result: { outputVat: { standard: 1900, reduced: 0, zero: 0 }, inputVatDeductibleEur: 400, vatOfYearEur: 1500, prepaymentsEur: 1000, balanceEur: 500 }, cashAccountingAllowed: true, smallBusiness: SMALL_OK })))
+    server.use(http.get(`${BASE_URL}/umsatzsteuer`, () => HttpResponse.json({ figures: {}, result: { outputVat: { standard: 1900, reduced: 0, zero: 0 }, inputVatDeductibleEur: 400, inputVatCorrectionEur: 0, vatOfYearEur: 1500, prepaymentsEur: 1000, balanceEur: 500 }, cashAccountingAllowed: true, smallBusiness: SMALL_OK, inputVatCorrections: [] })))
     renderBusiness('umsatzsteuer')
     expect((await screen.findByTestId('ust-saldo')).textContent).toBe('500,00\u00a0€')
     expect(screen.getByText('Nachzahlung')).toBeTruthy()

@@ -33,6 +33,7 @@ import {
   ElsterFormListDto,
   ElsterHelpDto,
   FixedAssetInputDto,
+  AssetFactsDto,
   HebesatzLookupDto,
   JournalEntryDto,
   LockDto,
@@ -280,6 +281,17 @@ export class BusinessController {
   @ApiOkResponse({ type: FixedAssetDto })
   createAsset(@CurrentUser() userId: string, @Param('jahr', ParseTaxYearPipe) year: number, @Body() dto: FixedAssetInputDto, @Query('person') person?: string, @Query('betrieb') business?: string): Promise<FixedAssetDto> {
     return this.service.createAsset(userId, year, refOf(person, business), dto) as unknown as Promise<FixedAssetDto>
+  }
+
+  @Put(':jahr/selbststaendig/anlagen/:anlageId/angaben')
+  @HttpCode(200)
+  @RequiresAccount()
+  @ApiParam({ name: 'anlageId', type: String })
+  @ApiBody({ type: AssetFactsDto })
+  @ApiOkResponse({ type: FixedAssetDto, description: 'The § 7g Sonder-AfA and the § 15a Vorsteuerberichtigung of the asset; null clears one.' })
+  @Errors(400, 404)
+  setAssetFacts(@CurrentUser() userId: string, @Param('jahr', ParseTaxYearPipe) year: number, @Param('anlageId') id: string, @Body() dto: AssetFactsDto, @Query('person') person?: string, @Query('betrieb') business?: string): Promise<FixedAssetDto> {
+    return this.service.setAssetFacts(userId, year, refOf(person, business), id, dto) as unknown as Promise<FixedAssetDto>
   }
 
   @Post(':jahr/selbststaendig/anlagen/:anlageId/abgang')

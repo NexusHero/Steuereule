@@ -68,6 +68,8 @@ export async function runScenario09b(browser, webOrigin) {
   await expectStored({ versicherungen: 'Nein', altersvorsorge: 'Ja' }, 'second selection')
   await page.locator('[data-testid="katalog-option-av-ksk-Nein"]').click()
   await fillTopic(page, 'altersvorsorge', { 'av-rv-betrag': 0, 'av-versorgungswerk-betrag': 8000, 'av-basisrente-betrag': 0, 'av-ksk': 'Ja' })
+  // Weiter saves first: read the stored answers once the page has moved on, not while the save is still out.
+  await byId('strom-schritt-altersvorsorge').waitFor({ state: 'detached', timeout: 15_000 }).catch(async () => fail(`[09b] the pension page did not move on:\n${(await page.locator('body').innerText().catch(() => '')).slice(0, 600)}`))
   await expectStored({ 'av-versorgungswerk-betrag': '8000', 'av-ksk': 'Ja' }, 'pension amounts')
   await leaveStrom(page)
 
@@ -247,7 +249,40 @@ export async function runScenario09b(browser, webOrigin) {
   await see('anlage-abgang-datum')
   await see('anlage-abgang-erloes')
   await see('anlage-abgang-buchen')
-  console.log('[09b] PASS: asset registered, depreciation booked, disposal form')
+  // § 15a UStG: the input VAT of the laptop, deducted in full, half deductible this year (below 1.000 €: no correction).
+  await byPrefix('anlage-15a-').first().click()
+  await see('anlage-15a')
+  await byId('anlage-15a-vorsteuer').fill('285,00')
+  await byId('anlage-15a-ursprung').fill('100')
+  await byId('anlage-15a-jahr').fill('50')
+  await byId('anlage-15a-speichern').click()
+  await byId('anlage-15a').waitFor({ state: 'detached', timeout: 10_000 })
+  // A building (§ 7 Abs. 4 EStG) with its use and completion, and a printer with the § 7g Sonder-AfA.
+  await byId('anlage-neu').click()
+  await byId('anlage-bezeichnung').fill('Lager')
+  await byId('anlage-konto').fill('0090')
+  await byId('anlage-datum').fill('01.03.2025')
+  await byId('anlage-kosten').fill('200.000,00')
+  await byId('anlage-methode-building').click()
+  await see('anlage-gebaeude')
+  await byId('anlage-nutzung-wohnen').click()
+  await byId('anlage-nutzung-betrieb').click()
+  await byId('anlage-gebaeude-completed').fill('01.01.2000')
+  await byId('anlage-speichern').click()
+  await byId('anlage-formular').waitFor({ state: 'detached', timeout: 10_000 })
+  await byId('anlage-neu').click()
+  await byId('anlage-bezeichnung').fill('Drucker')
+  await byId('anlage-konto').fill('0410')
+  await byId('anlage-datum').fill('01.04.2025')
+  await byId('anlage-kosten').fill('1.000,00')
+  await byId('anlage-methode-linear').click()
+  await page.selectOption('[data-testid="anlage-kategorie"]', 'computer')
+  await byId('anlage-sonder-afa').fill('200,00')
+  await see('anlage-gewinn-vorjahr')
+  await byId('anlage-gewinn-vorjahr').fill('50.000,00')
+  await byId('anlage-speichern').click()
+  await byId('anlage-formular').waitFor({ state: 'detached', timeout: 10_000 })
+  console.log('[09b] PASS: asset registered, depreciation booked, disposal form, § 15a, building and § 7g')
 
   // --- Closing -------------------------------------------------------------------------------------------------------------------
   await go('abschluss')
@@ -269,10 +304,16 @@ export async function runScenario09b(browser, webOrigin) {
   await see('ust-saldo')
   await byId('ust-vorauszahlungen').fill('1000')
   await byId('ust-vorauszahlungen').blur()
+  // The real server computes: the Hebesatz was corrected to 410 on the profile.
   await go('gewerbesteuer')
   await see('gewerbesteuer-seite')
+  await see('gewst-steuer')
+  // Without a Hebesatz the trade tax stays open and leads to the profile.
+  await page.route(`${API}/gewerbesteuer`, (route) => route.fulfill(json({ status: 'offen', missing: ['hebesatz'] })))
+  await go('gewerbesteuer')
   await see('gewst-offen')
   await see('gewst-zum-profil')
+  await page.unroute(`${API}/gewerbesteuer`)
   await page.route(`${API}/gewerbesteuer`, (route) => route.fulfill(json({ status: 'berechnet', profitEur: 50000, result: { additionsEur: 0, deductionsEur: 0, tradeIncomeBeforeLossEur: 50000, lossUsedEur: 10000, lossRemainingEur: 2000, roundedTradeIncomeEur: 40000, allowanceEur: 24500, baseAmountEur: 525, multiplierPercent: 400, tradeTaxEur: 2100 }, multiplier: { percent: 400, source: 'tabelle', tableYear: YEAR, note: null } })))
   await go('gewerbesteuer')
   await see('gewst-steuer')
@@ -450,14 +491,21 @@ export async function runScenario09b(browser, webOrigin) {
   await byId('va-periode-quartal').click()
   await page.unroute(`${API}/umsatzsteuer/voranmeldungen`)
   // The Kleinunternehmer limits: crossed in the founding year, and a year before without a book.
-  const vat = { figures: {}, result: { outputVat: { standard: 0, reduced: 0, zero: 0 }, inputVatDeductibleEur: 0, vatOfYearEur: 0, prepaymentsEur: 0, balanceEur: 0 }, cashAccountingAllowed: true }
-  const small = { eligible: false, priorYearLimitEur: 25000, currentYearLimitEur: 25000, crossed: 'current_year', foundingYear: true, priorYearKnown: true, turnoverEur: 26000, matchesProfile: false }
+  const vat = { figures: {}, result: { outputVat: { standard: 0, reduced: 0, zero: 0 }, inputVatDeductibleEur: 0, inputVatCorrectionEur: 0, vatOfYearEur: 0, prepaymentsEur: 0, balanceEur: 0 }, cashAccountingAllowed: true, inputVatCorrections: [] }
+  const small = { eligible: false, priorYearLimitEur: 25000, currentYearLimitEur: 25000, crossed: 'current_year', foundingYear: true, priorYearKnown: true, turnoverEur: 26000, matchesProfile: false, taxedFrom: '2025-12-01' }
   await page.route(`${API}`, (route) => (route.request().method() === 'GET' ? route.fetch().then(async (r) => route.fulfill(json({ ...(await r.json()), smallBusiness: true }))) : route.fallback()))
-  await page.route(`${API}/umsatzsteuer`, (route) => route.fulfill(json({ ...vat, smallBusiness: small })))
+  await page.route(`${API}/umsatzsteuer`, (route) =>
+    route.fulfill(json({ ...vat, result: { ...vat.result, inputVatCorrectionEur: -570 }, smallBusiness: small, inputVatCorrections: [{ assetId: 'a1', label: 'Lager', correctionEur: -570, inPrepayment: false }] })),
+  )
   await go('umsatzsteuer')
   await see('ust-klein-grenze')
+  // § 15a UStG: the year's correction and the line per asset.
+  await see('ust-15a')
+  await see('ust-15a-liste')
+  // From 2025 the rule ends with the supply that passed the limit (§ 19 Abs. 1 Satz 1 UStG).
+  await see('ust-klein-ab')
   await page.unroute(`${API}/umsatzsteuer`)
-  await page.route(`${API}/umsatzsteuer`, (route) => route.fulfill(json({ ...vat, smallBusiness: { ...small, eligible: true, crossed: null, foundingYear: false, priorYearKnown: false, matchesProfile: true } })))
+  await page.route(`${API}/umsatzsteuer`, (route) => route.fulfill(json({ ...vat, smallBusiness: { ...small, eligible: true, crossed: null, foundingYear: false, priorYearKnown: false, matchesProfile: true, taxedFrom: null }, inputVatCorrections: [] })))
   await go('umsatzsteuer')
   await see('ust-klein-vorjahr')
   await page.unroute(`${API}/umsatzsteuer`)
@@ -490,28 +538,39 @@ export async function runScenario09b(browser, webOrigin) {
   await go('lohn')
   await see('lohn-seite')
   await byId('lohn-art-minijob').click()
+  // February: the book is festgeschrieben through 31.01. above, and January takes no new entry (GoBD).
   await byId('lohn-employee').fill('Ben')
-  await byId('lohn-month').fill('1')
+  await byId('lohn-month').fill('2')
   await byId('lohn-grossEur').fill('520')
   await byId('lohn-privat-versichert').click()
   await byId('lohn-privat-versichert').click()
   await byId('lohn-rv-befreit').click()
+  // An employer with more than 30 employees pays no U1 (§ 1 Abs. 1 AAG).
+  await byId('lohn-ueber-30').click()
   await byId('lohn-buchen').click()
   await see('lohn-minijob')
   await byId('lohn-art-regulaer').click()
   await byId('lohn-employee').fill('Anna')
-  await byId('lohn-month').fill('1')
+  await byId('lohn-month').fill('2')
   await byId('lohn-grossEur').fill('3000')
   await byId('lohn-wageTaxEur').fill('300')
   await byId('lohn-churchTaxEur').fill('24')
   await byId('lohn-employeeSocialEur').fill('600')
   await byId('lohn-employerSocialEur').fill('620')
+  // The other communities open on „Andere“; choosing ev closes them again.
+  await byId('lohn-kirche-andere').click()
+  await see('lohn-kirche-iw')
   await byId('lohn-kirche-ev').click()
   await byId('lohn-buchen').click()
   await see('lohn-laeufe')
   await see('lohn-anmeldungen')
   // January's 300 € × 12 = 3.600 €: quarterly (§ 41a Abs. 2 EStG).
   await see('lohn-lsta-Q1/2025')
+  // A community the Land's Anmeldung has no line for is said so (served by a route mock).
+  await page.route(`${API}/lohn`, (route) => (route.request().method() === 'GET' ? route.fetch().then(async (r) => route.fulfill(json({ ...(await r.json()), unassignedChurchCodes: ['iw'] }))) : route.fallback()))
+  await go('lohn')
+  await see('lohn-kirche-ohne-zeile')
+  await page.unroute(`${API}/lohn`)
   console.log('[09b] PASS: Minijob and employee booked, Lohnsteuer-Anmeldung per quarter')
 
   // --- E-Bilanz: sent only where the operator set up ERiC; ERiC's refusal shown --------------------------------------------
@@ -534,7 +593,9 @@ export async function runScenario09b(browser, webOrigin) {
     newValue: JSON.stringify({ date: `${YEAR}-03-01`, documentNumber: 'RE-17', text: 'Druckerpapier', lines: [{ account: '4930', side: 'debit', amount: 11900, taxKey: 'vst19' }, { account: '1200', side: 'credit', amount: 11900 }] }),
     beforeRefundEur: 0, afterRefundEur: 0, deltaEur: 0, reason: 'Aus der Rechnung gelesen.', sourceId: 'estg-4-3', paragraph: '§ 4 Abs. 3 EStG',
   })
-  await page.route('**/advisor/session', async (route) => {
+  // The session is read with `?conversationId=…`: the pattern must take the query too (as chat-first-layout does).
+  await page.route('**/advisor/session*', async (route) => {
+    if (route.request().method() !== 'GET') return route.fallback()
     const res = await route.fetch().catch(() => null)
     if (res === null) return
     const body = await res.json()
@@ -549,7 +610,7 @@ export async function runScenario09b(browser, webOrigin) {
   await see('buchung-entwurf-verwerfen')
   await see('buchung-entwurf-gebucht')
   await see('buchung-entwurf-rueckgaengig')
-  await page.unroute('**/advisor/session', { behavior: 'ignoreErrors' })
+  await page.unroute('**/advisor/session*', { behavior: 'ignoreErrors' })
 
   // --- Checkout at the self-employment price; an unconfigured tier says so --------------------------------------------------------
   await page.route(`${API}/checkout`, (route) => route.fulfill(json({ statusCode: 503, code: 'PAYMENT_TIER_NOT_CONFIGURED', message: 'x' }, 503)))

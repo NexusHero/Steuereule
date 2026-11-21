@@ -47,7 +47,7 @@ describe('Cockpit sum with the business profit (ADR-0101)', () => {
   })
 
   it('switch off: the self-employed stay gated, no profit is read', async () => {
-    delete process.env.SELBSTSTAENDIGE_ENABLED
+    process.env.SELBSTSTAENDIGE_ENABLED = 'false'
     const { service } = await setup()
     const summary = await service.getSummary('u', 2025)
     expect(summary?.status).toMatchObject({ kind: 'gated', gated: ['Gewerbe'] })

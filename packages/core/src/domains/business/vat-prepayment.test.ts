@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { ecSalesListPeriod, specialPrepayment, vatFilingPeriod, vatPeriodReturn, vatPeriodsOf } from './vat-prepayment'
+import { ecSalesListInQuarter, ecSalesListPeriod, specialPrepayment, vatFilingPeriod, vatPeriodReturn, vatPeriodsOf } from './vat-prepayment'
 
 describe('the Voranmeldungszeitraum (§ 18 Abs. 2, 2a UStG)', () => {
   it('is monthly above 7.500 € of last year’s VAT until 2024, above 9.000 € from 2025; no Voranmeldung up to 1.000 € / 2.000 €', () => {
@@ -17,6 +17,8 @@ describe('the Voranmeldungszeitraum (§ 18 Abs. 2, 2a UStG)', () => {
 
   it('for a founder 2021–2026: the expected VAT of the year, last year annualised (Abs. 2 Satz 6)', () => {
     expect(vatFilingPeriod({ year: 2025, founding: { expectedVatEur: 12_000 } })).toEqual({ period: 'monat', reason: 'gruendung_schaetzung' })
+    // Satz 3 frees a small tax owed, not an expected refund (statute read).
+    expect(vatFilingPeriod({ year: 2025, founding: { expectedVatEur: -1_500 } })).toEqual({ period: 'quartal', reason: 'gruendung_schaetzung' })
     // 3.000 € in three months of the year before are 12.000 € a year.
     expect(vatFilingPeriod({ year: 2026, priorYearVatEur: 3_000, priorYearMonthsActive: 3 })).toEqual({ period: 'monat', reason: 'vorjahressteuer' })
   })
@@ -81,6 +83,13 @@ describe('one Voranmeldung (USt 1 A)', () => {
     expect(r.vatDueEur).toBe(670)
   })
 
+  it('taxes the 7 % part of a § 13b base at 7 % and deducts it again', () => {
+    const r = vatPeriodReturn({ figures: { ...figures, reverseChargeOtherNetEur: 1_000, reverseChargeOtherReducedNetEur: 400 }, regime: 'regel' })
+    // 600 × 19 % + 400 × 7 % = 142 €.
+    expect(r.kennzahlen).toMatchObject({ '84': 1_000, '85': 142 })
+    expect(r.vatDueEur).toBe(1_070)
+  })
+
   it('a Kleinunternehmer owes only the § 13b and acquisition tax, without deduction', () => {
     const r = vatPeriodReturn({ figures, regime: 'klein' })
     expect(r.kennzahlen['81']).toBeUndefined()
@@ -93,5 +102,11 @@ describe('the Zusammenfassende Meldung (§ 18a UStG)', () => {
     expect(ecSalesListPeriod({ goodsByQuarterEur: [10_000, 20_000, 0, 0, 0] })).toBe('quartal')
     expect(ecSalesListPeriod({ goodsByQuarterEur: [10_000, 60_000, 0, 0, 0] })).toBe('monat')
     expect(ecSalesListPeriod({ goodsByQuarterEur: [0, 0, 0, 0, 0] })).toBe('quartal')
+  })
+
+  it('passing 50.000 € in the course of the quarter: a ZM for that month and the ones before it, monthly from then (Satz 3, statute read)', () => {
+    expect(ecSalesListInQuarter({ goodsByMonthEur: [20_000, 31_000], fourQuartersBeforeEur: [0, 0, 0, 0] })).toEqual({ period: 'monat', reason: 'im_quartal', monthOfQuarter: 2 })
+    expect(ecSalesListInQuarter({ goodsByMonthEur: [20_000, 30_000], fourQuartersBeforeEur: [0, 0, 0, 0] })).toEqual({ period: 'quartal' })
+    expect(ecSalesListInQuarter({ goodsByMonthEur: [0], fourQuartersBeforeEur: [0, 60_000, 0, 0] })).toEqual({ period: 'monat', reason: 'vorquartale' })
   })
 })

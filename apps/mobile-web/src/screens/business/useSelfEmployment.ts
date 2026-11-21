@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { declaresBusiness, type Answers, type InterviewOptions } from '@steuereule/core'
-import { cockpitControllerGetCockpitSummary, getCockpitControllerGetCockpitSummaryQueryKey } from '@steuereule/api-client'
+import { capabilitiesControllerGetCapabilities, getCapabilitiesControllerGetCapabilitiesQueryKey } from '@steuereule/api-client'
 
 /** The interview declares self-employment: „Selbstständig“, „Beides“ or a pensioner with a business (ADR-0101 §22). */
 export function declaresSelfEmployment(answers: Answers): boolean {
@@ -18,18 +18,18 @@ export interface SelfEmploymentCapability {
 }
 
 function enabledIn(data: unknown): boolean {
-  const body = data as { readonly status?: number; readonly data?: { readonly capabilities?: { readonly selbststaendig?: boolean } | null } | null } | null | undefined
-  return body?.status === 200 && body.data?.capabilities?.selbststaendig === true
+  const body = data as { readonly status?: number; readonly data?: { readonly selbststaendig?: boolean } | null } | null | undefined
+  return body?.status === 200 && body.data?.selbststaendig === true
 }
 
 /**
- * The server's self-employment switch (ADR-0101 §20), read from the cockpit summary that always carries
- * it. It is read once through the query cache and not observed: a standing observer would refetch the
- * summary on every invalidation, which the screens that only need the switch must not cause.
+ * The server's self-employment switch (ADR-0101 §20), read from `GET /v1/capabilities`. Not from the cockpit
+ * summary: that is null for a year nothing was entered for yet, so a new user would see the switch off right
+ * where the interview first needs it (09b in CI, 21.11.2026). Read once through the query cache.
  */
-export function useSelfEmploymentCapability(taxYear: number): SelfEmploymentCapability {
+export function useSelfEmploymentCapability(): SelfEmploymentCapability {
   const queryClient = useQueryClient()
-  const queryKey = getCockpitControllerGetCockpitSummaryQueryKey(taxYear)
+  const queryKey = getCapabilitiesControllerGetCapabilitiesQueryKey()
   const [state, setState] = useState(() => {
     const cached = queryClient.getQueryData(queryKey)
     return cached === undefined ? { enabled: false, pending: true } : { enabled: enabledIn(cached), pending: false }
@@ -38,14 +38,14 @@ export function useSelfEmploymentCapability(taxYear: number): SelfEmploymentCapa
   useEffect(() => {
     let alive = true
     queryClient
-      .ensureQueryData({ queryKey, queryFn: ({ signal }) => cockpitControllerGetCockpitSummary(taxYear, { signal }) })
+      .ensureQueryData({ queryKey, queryFn: ({ signal }) => capabilitiesControllerGetCapabilities({ signal }) })
       .then((data) => alive && setState({ enabled: enabledIn(data), pending: false }))
       .catch(() => alive && setState({ enabled: false, pending: false }))
     return () => {
       alive = false
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [queryClient, taxYear])
+  }, [queryClient])
 
   return useMemo(() => ({ ...state, options: { selfEmployment: state.enabled } }), [state])
 }
