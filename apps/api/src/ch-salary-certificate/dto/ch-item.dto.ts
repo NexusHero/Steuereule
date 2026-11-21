@@ -1,5 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger'
-import { IsBoolean, IsInt, IsOptional, IsString, Max, MaxLength, Min } from 'class-validator'
+import { IsBoolean, IsIn, IsInt, IsOptional, IsString, Max, MaxLength, Min } from 'class-validator'
+import { DAILY_BENEFIT_SOURCES, type DailyBenefitSource } from '@steuereule/core'
 import { ExchangeRateDto } from './exchange-rate.dto.js'
 
 /** One CH line item with full provenance. */
@@ -111,6 +112,17 @@ export class PutNGreDto {
   @Min(0)
   steuerfreiesUnfalltaggeldChf?: number | null
 
+  @ApiPropertyOptional({
+    type: String,
+    enum: DAILY_BENEFIT_SOURCES,
+    nullable: true,
+    description:
+      'Where a daily benefit in Ziffer 8 came from: the collective sickness insurance (deducted in steuerfreiesKrankentaggeldChf), the employer’s continued pay (wage, nothing deducted), both (only the insurer’s part deducted), the accident insurance (steuerfreiesUnfalltaggeldChf), maternity / IV, or none.',
+  })
+  @IsOptional()
+  @IsIn(DAILY_BENEFIT_SOURCES)
+  taggeldQuelle?: DailyBenefitSource | null
+
   @ApiPropertyOptional({ type: Number, nullable: true, description: 'Employer share of the Krankentaggeld premium in percent, 0–100 (Zeilen 18, 95, 96).' })
   @IsOptional()
   @IsInt()
@@ -190,6 +202,9 @@ export class NGreDetailsDto {
 
   @ApiProperty({ type: Number, nullable: true })
   steuerfreiesUnfalltaggeldChf!: number | null
+
+  @ApiProperty({ type: String, enum: DAILY_BENEFIT_SOURCES, nullable: true, description: 'Where a daily benefit in Ziffer 8 came from; null = not answered.' })
+  taggeldQuelle!: DailyBenefitSource | null
 
   @ApiProperty({ type: Number, nullable: true })
   krankentaggeldArbeitgeberProzent!: number | null

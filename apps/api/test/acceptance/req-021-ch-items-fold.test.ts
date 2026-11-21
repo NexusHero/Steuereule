@@ -160,6 +160,7 @@ describe('REQ-021 — the CH-Posten folding (Vorsorge + Quellensteuer-Anrechnung
       pkArbeitgeberGesamtChf: 14000,
       steuerfreiesKrankentaggeldChf: 3853,
       steuerfreiesUnfalltaggeldChf: 2250,
+      taggeldQuelle: 'beides',
       krankentaggeldArbeitgeberProzent: 10,
       specialCases: false,
     })
@@ -176,6 +177,7 @@ describe('REQ-021 — the CH-Posten folding (Vorsorge + Quellensteuer-Anrechnung
       pkArbeitgeberGesamtChf: 14000,
       steuerfreiesKrankentaggeldChf: 3853,
       steuerfreiesUnfalltaggeldChf: 2250,
+      taggeldQuelle: 'beides',
       krankentaggeldArbeitgeberProzent: 10,
       krankentaggeldArbeitgeberChf: null,
       nbuvArbeitgeberProzent: null,
@@ -188,6 +190,8 @@ describe('REQ-021 — the CH-Posten folding (Vorsorge + Quellensteuer-Anrechnung
     })
     expect((await putField(cookie, 'n-gre', { krankentaggeldArbeitgeberProzent: 101 })).status).toBe(400)
     expect((await putField(cookie, 'n-gre', { familienzulagenChf: -1 })).status).toBe(400)
+    // Where the daily benefit came from is one of the six answers of the question (ADR-0072, Punkt 5).
+    expect((await putField(cookie, 'n-gre', { taggeldQuelle: 'arbeitgeber' })).status).toBe(400)
   })
 
   it('takes the Jahresdurchschnittskurs (yyyy) and keeps its mode, but refuses a month in that mode', async () => {

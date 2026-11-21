@@ -634,6 +634,10 @@ model ChSalaryCertificate {
   /// Daily benefit of the Swiss accident insurance (UVG/SUVA) paid out and contained in Ziffer 8 (N-Gre
   /// line „SUVA – Geld“). Tax-free, but under the progression clause (§ 32b EStG). Whole CHF.
   steuerfreiesUnfalltaggeldChf     String? /// @encrypted?mode=strict
+  /// Where a daily benefit in Ziffer 8 came from (core DAILY_BENEFIT_SOURCES): the insurance (deducted, sickness
+  /// field), the employer's continued pay (wage, nothing deducted), both (only the insurer's part deducted), the
+  /// accident insurance (accident field), maternity / IV, or none (ADR-0072, Punkt 5). Health data: encrypted.
+  taggeldQuelle                    String? /// @encrypted?mode=strict
   /// Who pays the Kollektivkrankentaggeld / NBUV premium (N-Gre Zeilen 18/19, 95–98): employer share in
   /// percent (0–100), plus the employer CHF only when it pays everything; null = not entered.
   krankentaggeldArbeitgeberProzent String? /// @encrypted?mode=strict

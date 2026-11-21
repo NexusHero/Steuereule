@@ -740,10 +740,14 @@ describe('AdvisorService (In-App Steuerberater Agent "Deine Eule")', () => {
     const withPrintout = new AdvisorService(advisorRepo, owlModeService, confirmationService, new AuditService(auditRepo), interviewRepo, lstbRepo, chRepo, commuteRepo, childRepo, new FakeRentalRepository(), new FakeCapitalRepository(), profileRepo, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, printout as never)
     await confirmationService.writeConfirmedByAdvisor(USER, YEAR, 'chLohnausweis.bruttolohn-total', '98000')
     const keys = (await withPrintout.buildCaseDigest(USER, YEAR)).furtherFacts?.printoutPlan?.questions.map((q) => q.key) ?? []
-    // A recorded Swiss wage statement asks once whether a paid-out sickness benefit sits in the gross wage.
-    expect(keys).toContain('A|chLohnausweis.steuerfreiesKrankentaggeldChf')
+    // A recorded Swiss wage statement asks once where a daily benefit in the gross wage came from.
+    expect(keys).toContain('A|chLohnausweis.taggeldQuelle')
+    // The answer goes through the confirmed write path like any field; „Lohnfortzahlung“ deducts nothing.
+    await confirmationService.writeConfirmedByAdvisor(USER, YEAR, 'chLohnausweis.taggeldQuelle', 'lohnfortzahlung')
     await confirmationService.writeConfirmedByAdvisor(USER, YEAR, 'chLohnausweis.steuerfreiesKrankentaggeldChf', '0')
+    expect(await confirmationService.readRawValue(USER, YEAR, 'chLohnausweis.taggeldQuelle')).toBe('lohnfortzahlung')
     const after = (await withPrintout.buildCaseDigest(USER, YEAR)).furtherFacts?.printoutPlan?.questions.map((q) => q.key) ?? []
+    expect(after).not.toContain('A|chLohnausweis.taggeldQuelle')
     expect(after).not.toContain('A|chLohnausweis.steuerfreiesKrankentaggeldChf')
   })
 
