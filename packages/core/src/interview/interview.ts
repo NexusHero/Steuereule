@@ -675,7 +675,9 @@ export function nextStepFor(entry: CatalogueEntry, answers: Answers, options: In
 export function isReachableFor(entry: CatalogueEntry, answers: Answers, target: EntryStepId, options: InterviewOptions = NO_OPTIONS): boolean {
   if (entry.orderFree === true) return entry.steps.some((top) => isReachableFor({ id: entry.id, steps: [top] }, answers, target, options))
   const seen = new Set<EntryStepId>()
-  let reached: Answers = {}
+  // The answers of other entries stay in view: a question asked only for some (the provision of the self-employed
+  // reads the basis's `job`) must see them, or the server refuses what the client offered (09b in CI, 21.11.2026).
+  let reached: Answers = Object.fromEntries(Object.entries(answers).filter(([id]) => entryForStep(id as EntryStepId) !== entry.id))
 
   for (;;) {
     const step = nextStepFor(entry, reached, options)
