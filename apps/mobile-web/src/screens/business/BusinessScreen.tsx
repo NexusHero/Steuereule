@@ -27,6 +27,14 @@ export function isBusinessPage(value: string | undefined): value is BusinessPage
   return value !== undefined && (BUSINESS_PAGES as readonly string[]).includes(value)
 }
 
+/** The pages opened from another page: back leads there, not to the overview (09b in CI, 21.11.2026). */
+const PARENT_PAGE: Partial<Record<BusinessPage, BusinessPage>> = { beruf: 'profil', gewerbedaten: 'profil', beteiligungen: 'profil' }
+
+/** Where back leads from a page of the area: its parent page, else the overview (undefined). */
+export function parentPage(page: BusinessPage): BusinessPage | undefined {
+  return PARENT_PAGE[page]
+}
+
 export interface BusinessPageProps {
   readonly taxYear: number
   readonly person: Person

@@ -21,6 +21,7 @@ const ANSWERS = { job: 'Selbstständig', ausland: 'Nein', kinder: 'Nein', famili
 function mockYear(selbststaendig: boolean, filingPath: 'papier' | 'elster-ausfuellhilfe', answers: Record<string, string> = ANSWERS) {
   server.use(
     http.get(`*/v1/steuerjahre/${YEAR}/cockpit`, () => HttpResponse.json({ taxYear: YEAR, status: { kind: 'spanne', from: 0, to: 0, openItems: 0, conflicts: 0 }, openItems: 0, submission: null, capabilities: { selbststaendig }, filingPath })),
+    http.get('*/v1/capabilities', () => HttpResponse.json({ selbststaendig })),
     http.get(`*/v1/steuerjahre/${YEAR}/interview`, () => HttpResponse.json({ answers, nextStep: { kind: 'done' }, openItems: 0 })),
     http.get(`*/v1/steuerjahre/${YEAR}/freischaltung`, () => HttpResponse.json({ status: 'offen', tier: 'selbststaendig', filingPath })),
   )

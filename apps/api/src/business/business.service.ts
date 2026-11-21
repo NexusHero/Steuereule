@@ -3,6 +3,9 @@ import {
   accountFor,
   euerYearOf,
   companyCarUse,
+  BAV_SUPPORT_MAX_EUR,
+  churchKennzahl,
+  federalStateOfAgs,
   minijobCharges,
   minijobLimitEur,
   payrollEntryLines,
@@ -11,7 +14,7 @@ import {
   disposalGain,
   retainedProfitTax,
   type RetainedProfit,
-  ecSalesListPeriod,
+  ecSalesListInQuarter,
   specialPrepayment,
   vatFilingPeriod,
   vatPeriodReturn,
@@ -20,6 +23,7 @@ import {
   type CompanyCarInput,
   type CompanyCarResult,
   checkSmallBusiness,
+  smallBusinessCutoff,
   type SmallBusinessResult,
   AssetError,
   ClosingError,
@@ -28,6 +32,7 @@ import {
   chartAccounts,
   BANK_CSV_PRESETS,
   USEFUL_LIVES,
+  type AssetCategory,
   appendLogRecord,
   applyLosses,
   balanceSheet,
@@ -81,6 +86,7 @@ import {
   type EntryDraft,
   type EuerKey,
   type FinancingComponents,
+  type ChurchCode,
   type JournalEntry,
   type Ledger,
   type LogRecord,
@@ -111,7 +117,7 @@ import {
   type NewFixedAsset,
   type LoadedBook,
 } from './business.repository.js'
-import { accountForEuerKey, bankAccountOf, bookIntegrity, deductibleByKeyInEuros, ecSalesListOf, vatEntriesOf, eur, registerAssetOf, vatFiguresOf, type BookIntegrity, type VatFigures } from './business-ledger.js'
+import { accountForEuerKey, bankAccountOf, bookIntegrity, deductibleByKeyInEuros, ecSalesListOf, vatEntriesOf, eur, registerAssetOf, vatCorrectionOf, vatFiguresOf, type BookIntegrity, type VatFigures } from './business-ledger.js'
 import { HebesatzDirectory, type HebesatzLookup } from './hebesatz.js'
 import { zipStored } from './zip.js'
 
@@ -136,6 +142,8 @@ export interface VatPeriodFacts {
   readonly extension?: boolean | undefined
   readonly specialPrepaymentEur?: number | undefined
   readonly chooseMonthly?: boolean | undefined
+  /** Freed by the office from keeping books (§ 148 AO): Istversteuerung whatever the turnover (§ 20 Satz 1 Nr. 2 UStG). */
+  readonly exemptFromBookkeeping?: boolean | undefined
 }
 
 export interface VatPrepaymentOverview {
@@ -151,6 +159,39 @@ export interface VatPrepaymentOverview {
 }
 
 /** One payroll run as entered (ADR-0101 §22): the outside payroll's amounts, or a Minijob's gross. */
+/** One asset's § 15a correction of the year; `inPrepayment`: above 6.000 € or a sale, already in the Voranmeldung (§ 44 Abs. 3 UStDV). */
+export interface InputVatCorrectionLine {
+  readonly assetId: string
+  readonly label: string
+  readonly correctionEur: number
+  readonly inPrepayment: boolean
+}
+
+/** A building's facts (§ 7 Abs. 4, 5a EStG). */
+export interface BuildingFactsInput {
+  readonly use: 'betrieb' | 'wohnen'
+  readonly completed: string
+  readonly applicationFiled?: string | undefined
+  readonly constructionStarted?: string | undefined
+  readonly contractSigned?: string | undefined
+}
+
+/** The § 7g Sonder-AfA per year in cents, the cut of the cost in cents and the profit of the year before (Abs. 6 Nr. 1). */
+export interface SpecialDepreciationInput {
+  readonly byYear: Readonly<Record<string, number>>
+  readonly costReduction?: number | undefined
+  readonly priorYearProfitEur?: number | undefined
+}
+
+/** The Vorsteuerberichtigung of an asset (§ 15a UStG): input VAT in cents, the shares (0–1). */
+export interface VatCorrectionInput {
+  readonly inputVatCents: number
+  readonly originalShare: number
+  readonly shareByYear: Readonly<Record<string, number>>
+  /** The share the asset's sale or Entnahme would allow (1 taxable, 0 tax-free); dated by its disposal. */
+  readonly disposalShare?: number | undefined
+}
+
 export interface PayrollRunInput {
   readonly month: number
   readonly kind: 'regulaer' | 'minijob'
@@ -159,13 +200,21 @@ export interface PayrollRunInput {
   readonly wageTaxEur?: number | undefined
   readonly soliEur?: number | undefined
   readonly churchTaxEur?: number | undefined
-  readonly church?: 'ev' | 'rk' | null | undefined
+  readonly church?: ChurchCode | null | undefined
   readonly employeeSocialEur?: number | undefined
   readonly employerSocialEur?: number | undefined
+  /** Pauschale Lohnsteuer the employer takes over (Kz 41), for gifts under § 37b (Kz 44), pauschale Kirchensteuer (Kz 47). */
+  readonly flatWageTaxEur?: number | undefined
+  readonly flat37bTaxEur?: number | undefined
+  readonly flatChurchTaxEur?: number | undefined
+  /** BAV-Förderbetrag taken off the wage tax (§ 100 EStG, Kz 45), at most 288 € a year per employee. */
+  readonly bavSupportEur?: number | undefined
   /** Minijob: the flat KV only for a Minijobber in the statutory insurance. */
   readonly statutoryHealthInsured?: boolean | undefined
   /** Minijob: exempt from the RV on application. */
   readonly rvExempt?: boolean | undefined
+  /** Minijob: false for an employer with more than 30 employees, who pays no U1 (§ 1 Abs. 1 AAG). */
+  readonly u1Applies?: boolean | undefined
 }
 
 export interface PayrollOverview {
@@ -174,6 +223,8 @@ export interface PayrollOverview {
   readonly wageTaxReturns: readonly { readonly label: string; readonly due: string; readonly kennzahlen: Readonly<Record<string, number>> }[]
   /** The Minijob charges per month, to the Minijob-Zentrale (Beitragsnachweis), due on the third last bank day. */
   readonly minijobCharges: readonly { readonly month: number; readonly totalEur: number }[]
+  /** Church-tax codes the Anmeldung of the Betriebsstätte's Land has no line for: their tax is in Kz 83 only. */
+  readonly unassignedChurchCodes: readonly string[]
 }
 
 /** The sale or giving up of the business in the year (§ 16 EStG) and how its gain is taxed (§ 34 EStG). */
@@ -573,6 +624,8 @@ export class BusinessService {
       usefulLifeYears: draft.asset.usefulLifeYears ?? (category ? USEFUL_LIVES[category].years : null),
       specialDepreciation: null,
       disposal: null,
+      buildingFacts: null,
+      vatCorrection: null,
     }
     ledgerCall(() => registerAssetOf({ ...asset, id: 'neu' }, year))
     return asset
@@ -739,11 +792,21 @@ export class BusinessService {
     userId: string,
     year: number,
     ref: BusinessRef,
-    input: { label: string; account: string; acquisitionDate: string; acquisitionCostCents: number; method: string; category?: string | undefined; usefulLifeYears?: number | undefined },
+    input: {
+      label: string
+      account: string
+      acquisitionDate: string
+      acquisitionCostCents: number
+      method: string
+      category?: string | undefined
+      usefulLifeYears?: number | undefined
+      building?: BuildingFactsInput | undefined
+      specialDepreciation?: SpecialDepreciationInput | undefined
+    },
   ): Promise<FixedAssetRecord> {
     await this.assertOpen(userId, year)
     if (Number(input.acquisitionDate.slice(0, 4)) > year) throw new InvalidInputError('ASSET_FUTURE', 'Das Anschaffungsdatum liegt nach diesem Jahr.')
-    const record = await this.repository.createAsset(userId, {
+    const asset: NewFixedAsset = {
       taxYear: Number(input.acquisitionDate.slice(0, 4)),
       person: ref.person,
       business: ref.business,
@@ -753,14 +816,39 @@ export class BusinessService {
       acquisitionCost: input.acquisitionCostCents,
       method: input.method,
       category: input.category ?? null,
-      usefulLifeYears: input.usefulLifeYears ?? null,
-      specialDepreciation: null,
+      // The category sets the useful life when none is given (the DTO's contract), as on the booking path.
+      usefulLifeYears: input.usefulLifeYears ?? (input.category && Object.hasOwn(USEFUL_LIVES, input.category) ? USEFUL_LIVES[input.category as AssetCategory].years : null),
+      specialDepreciation: input.specialDepreciation ? JSON.stringify(input.specialDepreciation) : null,
       disposal: null,
-    })
-    // The schedule must be computable now, not only at the year's end.
-    ledgerCall(() => registerAssetOf(record, year))
+      buildingFacts: input.building ? JSON.stringify(input.building) : null,
+      vatCorrection: null,
+    }
+    // The schedule must be computable now, not only at the year's end, and before anything is stored.
+    ledgerCall(() => registerAssetOf({ ...asset, id: 'neu' }, year))
+    const record = await this.repository.createAsset(userId, asset)
     await this.audit.append({ userId, action: 'WRITE', resource: 'selbststaendig' })
     return record
+  }
+
+  /**
+   * The Sonder-AfA (§ 7g Abs. 5 EStG), chosen per year in the acquisition year and the four after it, and the
+   * Vorsteuerberichtigung (§ 15a UStG) of an asset. `null` clears one; the schedule must stay computable.
+   */
+  async setAssetFacts(userId: string, year: number, ref: BusinessRef, assetId: string, facts: { specialDepreciation?: SpecialDepreciationInput | null | undefined; vatCorrection?: VatCorrectionInput | null | undefined }): Promise<FixedAssetRecord> {
+    await this.assertOpen(userId, year)
+    const current = (await this.repository.listAssets(userId, ref, year)).find((a) => a.id === assetId)
+    if (!current) throw new NotFoundError('ASSET_NOT_FOUND', 'Dieses Anlagegut gibt es nicht.')
+    const patch = {
+      ...(facts.specialDepreciation !== undefined ? { specialDepreciation: facts.specialDepreciation === null ? null : JSON.stringify(facts.specialDepreciation) } : {}),
+      ...(facts.vatCorrection !== undefined ? { vatCorrection: facts.vatCorrection === null ? null : JSON.stringify(facts.vatCorrection) } : {}),
+    }
+    const next = { ...current, ...patch }
+    ledgerCall(() => registerAssetOf(next, year))
+    ledgerCall(() => vatCorrectionOf(next))
+    const updated = await this.repository.setAssetFacts(userId, assetId, patch)
+    if (!updated) throw new NotFoundError('ASSET_NOT_FOUND', 'Dieses Anlagegut gibt es nicht.')
+    await this.audit.append({ userId, action: 'WRITE', resource: 'selbststaendig' })
+    return updated
   }
 
   async disposeAsset(userId: string, year: number, ref: BusinessRef, assetId: string, disposal: { date: string; proceedsCents?: number | undefined }): Promise<FixedAssetRecord> {
@@ -919,17 +1007,20 @@ export class BusinessService {
     userId: string,
     year: number,
     ref: BusinessRef,
-  ): Promise<{ readonly figures: VatFigures; readonly result: VatAnnualResult; readonly cashAccountingAllowed: boolean; readonly smallBusiness: SmallBusinessCheck }> {
+  ): Promise<{ readonly figures: VatFigures; readonly result: VatAnnualResult; readonly cashAccountingAllowed: boolean; readonly smallBusiness: SmallBusinessCheck; readonly inputVatCorrections: readonly InputVatCorrectionLine[] }> {
     await this.assertOpen(userId, year)
     const [vat, prior] = await Promise.all([this.personVat(userId, year, ref.person), this.businessesOf(userId, year - 1, ref.person)])
     const { profile, startDate, freelanceOnly } = vat
     await this.audit.append({ userId, action: 'READ', resource: 'selbststaendig' })
     const priorBooks = prior.filter((b) => b.book !== null)
     const priorTurnoverEur = priorBooks.length === 0 ? null : turnoverOf(vatFiguresOf(priorBooks.flatMap((b) => b.vatEntries), year - 1))
-    const smallBusiness = smallBusinessCheckOf(year, profile === null ? null : { ...profile, startDate }, turnoverOf(vat.figures), priorTurnoverEur)
+    // From 2025 the rule ends with the supply that passes the limit; the book's turnover per entry dates it.
+    const supplies = vat.entries.filter((e) => Number(e.date.slice(0, 4)) === year).map((e) => ({ date: e.date, netEur: turnoverOf(vatFiguresOf([e], year)) }))
+    const smallBusiness = smallBusinessCheckOf(year, profile === null ? null : { ...profile, startDate }, turnoverOf(vat.figures), priorTurnoverEur, supplies)
     // § 20 Satz 1 Nr. 1 UStG: the Gesamtumsatz of the year before; in the founding year the running one.
     const basis = priorTurnoverEur ?? turnoverOf(vat.figures)
-    return { figures: vat.figures, result: vat.result, cashAccountingAllowed: cashAccountingAllowed(year, basis, freelanceOnly), smallBusiness }
+    const facts = parseJson<VatPeriodFacts>(profile?.vatPeriodFacts ?? null, {})
+    return { figures: vat.figures, result: vat.result, cashAccountingAllowed: cashAccountingAllowed(year, basis, freelanceOnly, facts.exemptFromBookkeeping === true), smallBusiness, inputVatCorrections: vat.corrections }
   }
 
   /**
@@ -995,8 +1086,9 @@ export class BusinessService {
   }
 
   /**
-   * The Zusammenfassende Meldungen of the year (§ 18a UStG): per quarter, and per month from the quarter
-   * in which the goods passed 50.000 € in it or one of the four before (Abs. 1 Satz 2, 3). Due on the 25th.
+   * The Zusammenfassende Meldungen of the year (§ 18a UStG): per quarter; per month once the goods passed
+   * 50.000 € in one of the four quarters before (Abs. 1 Satz 2). In the quarter they pass it, one ZM covers the
+   * months up to that one, monthly after it (Satz 3). Due on the 25th.
    */
   private ecSalesListsOf(year: number, entries: readonly JournalEntry[], priorEntries: readonly JournalEntry[]): VatPrepaymentOverview['ecSalesList'] {
     const all = [...priorEntries, ...entries]
@@ -1004,15 +1096,24 @@ export class BusinessService {
     const months = vatPeriodsOf(year, 'monat', false)
     const goodsOf = (p: { from: string; to: string }) => ecSalesListOf(all, p).reduce((sum, r) => sum + r.goodsEur, 0)
     const byQuarter = [...vatPeriodsOf(year - 1, 'quartal', false), ...quarters].map(goodsOf)
-    const firstMonthly = quarters.findIndex((_, i) => ecSalesListPeriod({ goodsByQuarterEur: byQuarter.slice(i, i + 5) }) === 'monat')
     const due25 = (to: string) => {
       const y = Number(to.slice(0, 4))
       const m = Number(to.slice(5, 7))
       return m === 12 ? `${y + 1}-01-25` : `${y}-${String(m + 1).padStart(2, '0')}-25`
     }
-    const periods = quarters.flatMap((q, i) => (firstMonthly !== -1 && i >= firstMonthly ? months.slice(i * 3, i * 3 + 3) : [q]))
+    let monthly = false
+    const periods = quarters.flatMap((q, i) => {
+      const inQuarter = months.slice(i * 3, i * 3 + 3)
+      const r = ecSalesListInQuarter({ goodsByMonthEur: inQuarter.map(goodsOf), fourQuartersBeforeEur: byQuarter.slice(i, i + 4) })
+      if (r.period === 'quartal') return [q]
+      monthly = true
+      if (r.reason === 'vorquartale') return inQuarter
+      const upTo = inQuarter[r.monthOfQuarter - 1]!
+      const first = r.monthOfQuarter === 1 ? upTo : { ...upTo, label: `${inQuarter[0]!.label.slice(0, 2)}–${upTo.label}`, from: q.from }
+      return [first, ...inQuarter.slice(r.monthOfQuarter)]
+    })
     const reports = periods.map((p) => ({ label: p.label, due: due25(p.to), rows: ecSalesListOf(entries, p) })).filter((r) => r.rows.length > 0)
-    return { period: firstMonthly === -1 ? 'quartal' : 'monat', reports }
+    return { period: monthly ? 'monat' : 'quartal', reports }
   }
 
   /**
@@ -1020,20 +1121,39 @@ export class BusinessService {
    * businesses' journals together, with the person-wide facts of the first business. The business began
    * with the earliest start date of them; § 20 Nr. 3 holds when all are freelance.
    */
-  private async personVat(userId: string, year: number, person: BusinessPerson): Promise<{ figures: VatFigures; result: VatAnnualResult; profile: BusinessProfileRecord | null; startDate: string | null; freelanceOnly: boolean }> {
+  private async personVat(
+    userId: string,
+    year: number,
+    person: BusinessPerson,
+  ): Promise<{
+    figures: VatFigures
+    result: VatAnnualResult
+    profile: BusinessProfileRecord | null
+    startDate: string | null
+    freelanceOnly: boolean
+    entries: readonly JournalEntry[]
+    corrections: readonly InputVatCorrectionLine[]
+  }> {
     const businesses = await this.businessesOf(userId, year, person)
     const profile = businesses.find((b) => b.ref.business === FIRST_BUSINESS)?.profile ?? businesses[0]?.profile ?? null
     const entries = businesses.flatMap((b) => b.vatEntries)
     const chart = businesses[0]?.ledger.chart ?? 'SKR03'
     const derivedPrepayments = profile?.vatPrepayments ? null : (await this.prepaymentsOf(userId, year, person)).totalEur
-    const { figures, result } = this.vatOf({ chart, mode: 'euer', entries, lockedThrough: null }, profile, year, derivedPrepayments)
+    // § 15a UStG: the corrections of the year over all assets of the person's businesses.
+    const assets = (await Promise.all(businesses.map((b) => this.repository.listAssets(userId, b.ref, year)))).flat()
+    const corrections = assets.flatMap((a) => {
+      const row = vatCorrectionOf(a).find((r) => r.year === year)
+      return row && row.correctionEur !== 0 ? [{ assetId: a.id, label: a.label, correctionEur: row.correctionEur, inPrepayment: row.inPrepayment }] : []
+    })
+    const correctionEur = round2(corrections.reduce((s, c) => s + c.correctionEur, 0))
+    const { figures, result } = this.vatOf({ chart, mode: 'euer', entries, lockedThrough: null }, profile, year, derivedPrepayments, correctionEur)
     const starts = businesses.map((b) => b.profile?.startDate ?? null).filter((d): d is string => d !== null).sort((a, b) => a.localeCompare(b))
     const freelanceOnly = businesses.length > 0 && businesses.every((b) => b.profile?.kind === 'freiberuf')
-    return { figures, result, profile, startDate: starts[0] ?? null, freelanceOnly }
+    return { figures, result, profile, startDate: starts[0] ?? null, freelanceOnly, entries, corrections }
   }
 
   /** `derivedPrepaymentsEur`: the Voranmeldungen's total, used when the user entered no sum of his own. */
-  private vatOf(ledger: Ledger, profile: BusinessProfileRecord | null, year: number, derivedPrepaymentsEur: number | null = null): { figures: VatFigures; result: VatAnnualResult } {
+  private vatOf(ledger: Ledger, profile: BusinessProfileRecord | null, year: number, derivedPrepaymentsEur: number | null = null, inputVatCorrectionEur = 0): { figures: VatFigures; result: VatAnnualResult } {
     const figures = vatFiguresOf(ledger.entries, year)
     const result = vatAnnualReturn({
       year,
@@ -1045,6 +1165,7 @@ export class BusinessService {
       reverseChargeNetEur: figures.reverseChargeNetEur,
       inputVatEur: figures.inputVatEur,
       prepaymentsEur: profile?.vatPrepayments ? eur(Number(profile.vatPrepayments)) : (derivedPrepaymentsEur ?? 0),
+      inputVatCorrectionEur,
     })
     return { figures, result }
   }
@@ -1198,7 +1319,15 @@ export class BusinessService {
   async addPayrollRun(userId: string, year: number, ref: BusinessRef, input: PayrollRunInput) {
     await this.assertOpen(userId, year)
     if (!(input.month >= 1 && input.month <= 12)) throw new InvalidInputError('PAYROLL_MONTH', 'Der Monat ist 1 bis 12.')
-    const mini = input.kind === 'minijob' ? minijobCharges({ year, month: input.month, grossEur: input.grossEur, statutoryHealthInsured: input.statutoryHealthInsured !== false, rvExempt: input.rvExempt === true }) : null
+    const mini = input.kind === 'minijob' ? minijobCharges({ year, month: input.month, grossEur: input.grossEur, statutoryHealthInsured: input.statutoryHealthInsured !== false, rvExempt: input.rvExempt === true, u1Applies: input.u1Applies !== false }) : null
+    const flat = mini ? { flatWageTaxEur: 0, flat37bTaxEur: 0, flatChurchTaxEur: 0 } : { flatWageTaxEur: input.flatWageTaxEur ?? 0, flat37bTaxEur: input.flat37bTaxEur ?? 0, flatChurchTaxEur: input.flatChurchTaxEur ?? 0 }
+    const bavSupportEur = mini ? 0 : (input.bavSupportEur ?? 0)
+    if (bavSupportEur > 0) {
+      const earlier = (await this.repository.listPayrollRuns(userId, year, ref))
+        .filter((r) => r.employee === input.employee)
+        .reduce((s, r) => s + (parseJson<{ bavSupportEur?: number }>(r.amounts, {}).bavSupportEur ?? 0), 0)
+      if (earlier + bavSupportEur > BAV_SUPPORT_MAX_EUR) throw new InvalidInputError('PAYROLL_BAV_SUPPORT', `Der Förderbetrag ist höchstens ${BAV_SUPPORT_MAX_EUR} € im Jahr je Arbeitnehmer (§ 100 Abs. 2 EStG).`)
+    }
     if (mini?.overLimit) throw new InvalidInputError('PAYROLL_MINIJOB_OVER_LIMIT', `Über ${minijobLimitEur(year, input.month)} € im Monat ist es kein Minijob; trag die Werte aus der Lohnabrechnung ein.`)
     const amounts = {
       kind: input.kind,
@@ -1208,6 +1337,7 @@ export class BusinessService {
       churchTaxEur: mini ? 0 : (input.churchTaxEur ?? 0),
       employeeSocialEur: mini ? mini.employeeRvEur : (input.employeeSocialEur ?? 0),
       employerSocialEur: mini ? mini.employerTotalEur : (input.employerSocialEur ?? 0),
+      employerFlatTaxEur: round2(flat.flatWageTaxEur + flat.flat37bTaxEur + flat.flatChurchTaxEur),
     }
     const lines = payrollEntryLines(amounts)
     if (!lines.ok) throw new InvalidInputError('PAYROLL_AMOUNTS', lines.reason)
@@ -1223,6 +1353,8 @@ export class BusinessService {
       lines: [
         { account: n(input.kind === 'minijob' ? 'temp_wages' : 'wages'), side: 'debit', amount: c(l.wagesEur) },
         ...(l.employerSocialEur > 0 ? [{ account: n('social_security'), side: 'debit' as const, amount: c(l.employerSocialEur) }] : []),
+        // The pauschale Lohn- and Kirchensteuer is the employer's own Personalaufwand (DATEV 4198 / 6039).
+        ...(l.employerFlatTaxEur > 0 ? [{ account: n('flat_wage_tax'), side: 'debit' as const, amount: c(l.employerFlatTaxEur) }] : []),
         ...(l.netEur > 0 ? [{ account: n('bank'), side: 'credit' as const, amount: c(l.netEur) }] : []),
         ...(l.taxesEur > 0 ? [{ account: n('wage_tax_payables'), side: 'credit' as const, amount: c(l.taxesEur) }] : []),
         ...(l.socialPayableEur > 0 ? [{ account: n('social_security_payables'), side: 'credit' as const, amount: c(l.socialPayableEur) }] : []),
@@ -1239,7 +1371,7 @@ export class BusinessService {
       month: input.month,
       kind: input.kind,
       employee: input.employee,
-      amounts: JSON.stringify({ ...amounts, church: input.church ?? null, netEur: l.netEur }),
+      amounts: JSON.stringify({ ...amounts, ...flat, bavSupportEur, church: input.church ?? null, netEur: l.netEur }),
       entryNumber: entry?.number ?? null,
     })
     await this.audit.append({ userId, action: 'WRITE', resource: 'selbststaendig' })
@@ -1249,11 +1381,26 @@ export class BusinessService {
   /** The runs of the year, the Lohnsteuer-Anmeldungen (§ 41a EStG) and the Minijob charges per month. */
   async payroll(userId: string, year: number, ref: BusinessRef): Promise<PayrollOverview> {
     await this.assertOpen(userId, year)
-    const [records, prior] = await Promise.all([this.repository.listPayrollRuns(userId, year, ref), this.repository.listPayrollRuns(userId, year - 1, ref)])
-    type Stored = { kind: 'regulaer' | 'minijob'; grossEur: number; wageTaxEur: number; soliEur: number; churchTaxEur: number; employerSocialEur: number; church: 'ev' | 'rk' | null; netEur: number }
+    const [records, prior, profile] = await Promise.all([this.repository.listPayrollRuns(userId, year, ref), this.repository.listPayrollRuns(userId, year - 1, ref), this.personRecord(userId, year, ref)])
+    const state = federalStateOfAgs(profile?.municipalityAgs)
+    type Stored = {
+      kind: 'regulaer' | 'minijob'
+      grossEur: number
+      wageTaxEur: number
+      soliEur: number
+      churchTaxEur: number
+      employerSocialEur: number
+      church: ChurchCode | null
+      netEur: number
+      flatWageTaxEur?: number
+      flat37bTaxEur?: number
+      flatChurchTaxEur?: number
+      bavSupportEur?: number
+    }
     const parse = (r: { amounts: string }) => parseJson<Stored>(r.amounts, { kind: 'regulaer', grossEur: 0, wageTaxEur: 0, soliEur: 0, churchTaxEur: 0, employerSocialEur: 0, church: null, netEur: 0 })
     const runs = records.map((r) => ({ record: r, a: parse(r) }))
-    // § 41a Abs. 2: by last year's wage tax; a new employer annualises its first month (Satz 3).
+    // § 41a Abs. 2: by last year's wage tax (a part year annualised, Satz 3); a Betriebsstätte without runs last
+    // year takes its first booked month as the first full month × 12 (Satz 4).
     const priorTax = prior.reduce((s, r) => s + parse(r).wageTaxEur, 0)
     const firstMonth = runs.filter((r) => r.a.kind === 'regulaer').map((r) => r.record.month).sort((a, b) => a - b)[0]
     const wageTaxPeriod =
@@ -1261,14 +1408,28 @@ export class BusinessService {
         ? wageTaxFilingPeriod({ priorYearWageTaxEur: priorTax, priorYearMonthsActive: 12 - Math.min(...prior.map((r) => r.month)) + 1 })
         : firstMonth === undefined
           ? 'jahr'
-          : wageTaxFilingPeriod({ priorYearWageTaxEur: runs.filter((r) => r.record.month === firstMonth).reduce((s, r) => s + r.a.wageTaxEur, 0), priorYearMonthsActive: 1 })
+          : wageTaxFilingPeriod({ priorYearWageTaxEur: 0, newEstablishment: { firstFullMonthWageTaxEur: runs.filter((r) => r.record.month === firstMonth).reduce((s, r) => s + r.a.wageTaxEur, 0) } })
     const step = wageTaxPeriod === 'monat' ? 1 : wageTaxPeriod === 'quartal' ? 3 : 12
     const wageTaxReturns = []
     for (let start = 1; start <= 12; start += step) {
       const end = start + step - 1
       const inPeriod = runs.filter((r) => r.record.month >= start && r.record.month <= end)
       if (inPeriod.length === 0) continue
-      const kennzahlen = wageTaxReturn(inPeriod.map((r) => ({ kind: r.a.kind, employee: r.record.employee, wageTaxEur: r.a.wageTaxEur, soliEur: r.a.soliEur, churchTaxEur: r.a.churchTaxEur, church: r.a.church })))
+      const kennzahlen = wageTaxReturn(
+        inPeriod.map((r) => ({
+          kind: r.a.kind,
+          employee: r.record.employee,
+          wageTaxEur: r.a.wageTaxEur,
+          soliEur: r.a.soliEur,
+          churchTaxEur: r.a.churchTaxEur,
+          church: r.a.church,
+          flatWageTaxEur: r.a.flatWageTaxEur,
+          flat37bTaxEur: r.a.flat37bTaxEur,
+          flatChurchTaxEur: r.a.flatChurchTaxEur,
+          bavSupportEur: r.a.bavSupportEur,
+        })),
+        state,
+      )
       if (Object.keys(kennzahlen).length === 0) continue
       const label = step === 1 ? `${String(start).padStart(2, '0')}/${year}` : step === 3 ? `Q${(start + 2) / 3}/${year}` : String(year)
       const dueMonth = end + 1
@@ -1283,6 +1444,7 @@ export class BusinessService {
       wageTaxPeriod,
       wageTaxReturns,
       minijobCharges: [...minijob.entries()].sort((a, b) => a[0] - b[0]).map(([month, totalEur]) => ({ month, totalEur })),
+      unassignedChurchCodes: [...new Set(runs.flatMap((r) => (r.a.kind === 'regulaer' && r.a.church && churchKennzahl(state, r.a.church) === null ? [r.a.church] : [])))].sort((a, b) => a.localeCompare(b)),
     }
   }
 
@@ -1315,9 +1477,11 @@ export class BusinessService {
           requestedEur: retainedFacts.requestedEur,
           carriedForwardEur: retainedFacts.carriedForwardEur ?? 0,
           withdrawalsForRetainedTaxEur: retainedFacts.withdrawalsForRetainedTaxEur,
+          disposal: disposal !== null,
         })
-        // § 34a Abs. 1 Satz 1: not in a year whose disposal gain uses § 16 Abs. 4 or § 34 Abs. 3.
-        if (disposal !== null && (disposal.allowanceEur > 0 || disposal.method === 'ermaessigt')) retained = null
+        // § 34a Abs. 1 Satz 1 excludes only the disposal gain that uses § 16 Abs. 4 or § 34 Abs. 3 ("soweit"); it is
+        // taxed apart from the book's profit, so the running profit may still be retained. The sale recaptures the
+        // carried amount (Abs. 6 Nr. 1).
       }
     }
     return { disposal, retained }
@@ -1448,14 +1612,21 @@ export class BusinessService {
       }
       case 'ust-2-a': {
         const { figures, result } = this.vatOf(ledger, profile, year)
+        // Each kind of input tax on its own line: invoices, EU acquisitions, § 13b (§ 15 Abs. 1 Satz 1 Nr. 1, 3, 4 UStG).
+        const deducts = !profile?.smallBusiness
+        const igTax = round2((figures.intraEuAcquisitionNetEur.standard ?? 0) * 0.19 + (figures.intraEuAcquisitionNetEur.reduced ?? 0) * 0.07)
+        const rc13bTax = round2(result.reverseChargeVatEur - igTax)
         const byId: Record<string, number | null> = {
           'ust.umsatz-19': figures.taxableNetEur.standard ?? 0,
           'ust.umsatz-7': figures.taxableNetEur.reduced ?? 0,
           'ust.steuerfrei-ig-lieferung': figures.taxFreeWithDeductionEur || null,
           'ust.steuerfrei-ohne-vorsteuerabzug-4': figures.taxFreeWithoutDeductionEur || null,
-          'ust.13b-andere-leistungen': figures.reverseChargeNetEur.standard || null,
-          'ust.berechnung-steuer-13b': result.reverseChargeVatEur || null,
-          'ust.vorsteuer-rechnungen': result.inputVatDeductibleEur,
+          'ust.13b-leistungen-eu': figures.reverseChargeEuServicesNetEur || null,
+          'ust.13b-andere-leistungen': figures.reverseChargeOtherNetEur || null,
+          'ust.berechnung-steuer-13b': rc13bTax || null,
+          'ust.vorsteuer-rechnungen': deducts ? figures.inputVatEur : 0,
+          'ust.vorsteuer-ig-erwerb': deducts && igTax !== 0 ? igTax : null,
+          'ust.vorsteuer-13b': deducts && rc13bTax !== 0 ? rc13bTax : null,
           'ust.verbleibende-umsatzsteuer': result.vatOfYearEur,
           'ust.vorauszahlungssoll': result.prepaymentsEur,
           'ust.abschlusszahlung': result.balanceEur,
@@ -1691,6 +1862,11 @@ export interface SmallBusinessCheck extends SmallBusinessResult {
    * without the flag is fine: the user may waive the rule (§ 19 Abs. 2 aF, Abs. 3 nF UStG).
    */
   readonly matchesProfile: boolean
+  /**
+   * From 2025: the date of the supply that passed the running year's limit. It and every later one are taxed, the
+   * ones before stay tax-free (§ 19 Abs. 1 Satz 1 UStG). Null when no limit was passed in the year or before 2025.
+   */
+  readonly taxedFrom: string | null
 }
 
 /** Gesamtumsatz as § 19 Abs. 3 UStG counts it, read off the book: taxable, tax-free and Kleinunternehmer turnover. */
@@ -1698,7 +1874,13 @@ export function turnoverOf(f: VatFigures): number {
   return round2((f.taxableNetEur.standard ?? 0) + (f.taxableNetEur.reduced ?? 0) + f.smallBusinessTurnoverEur + f.taxFreeWithDeductionEur + f.taxFreeWithoutDeductionEur)
 }
 
-export function smallBusinessCheckOf(year: number, profile: BusinessProfileRecord | null, turnoverEur: number, priorYearTurnoverEur: number | null): SmallBusinessCheck {
+export function smallBusinessCheckOf(
+  year: number,
+  profile: BusinessProfileRecord | null,
+  turnoverEur: number,
+  priorYearTurnoverEur: number | null,
+  supplies: readonly { readonly date: string; readonly netEur: number }[] = [],
+): SmallBusinessCheck {
   const start = profile?.startDate ?? null
   const foundingYear = start !== null && Number(start.slice(0, 4)) === year
   const monthsActive = foundingYear ? 12 - Number(start.slice(5, 7)) + 1 : 12
@@ -1711,7 +1893,8 @@ export function smallBusinessCheckOf(year: number, profile: BusinessProfileRecor
     ...(foundingYear ? { founding: { monthsActive } } : {}),
     ...(startedYearBefore ? { priorYearMonthsActive: 12 - Number(start.slice(5, 7)) + 1 } : {}),
   })
-  return { ...result, foundingYear, priorYearKnown: foundingYear || priorYearTurnoverEur !== null, turnoverEur, matchesProfile: !(profile?.smallBusiness === true && !result.eligible) }
+  const taxedFrom = result.crossed === 'current_year' ? smallBusinessCutoff({ year, founding: foundingYear, supplies }) : null
+  return { ...result, foundingYear, priorYearKnown: foundingYear || priorYearTurnoverEur !== null, turnoverEur, matchesProfile: !(profile?.smallBusiness === true && !result.eligible), taxedFrom }
 }
 
 /** Tax keys that carry no VAT amount: they only say what kind of turnover a line is. */

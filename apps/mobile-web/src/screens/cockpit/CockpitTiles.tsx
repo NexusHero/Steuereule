@@ -45,7 +45,7 @@ export function useCockpitTileFacts(
   const children = useChildrenControllerList(year, { query: { enabled: active && hasChildren } })
   const partner = usePartnerFacts(year, active && answers.familienstand === 'Verheiratet', answers)
   // The self-employment tile exists only with the server's switch on and a declared self-employment.
-  const capability = useSelfEmploymentCapability(year)
+  const capability = useSelfEmploymentCapability()
   const selfEmployment = capability.enabled && declaresSelfEmployment(answers)
   const business = useBusinessControllerProfile(year, undefined, { query: { enabled: active && selfEmployment, retry: false } })
 

@@ -834,6 +834,9 @@ jobs:
       # Production data is fetched with `streets:fetch`; this fixture never leaves the test jobs.
       STREET_DATA_PATH: ${{ github.workspace }}/e2e/fixtures/streets.sample.csv
       EXPO_PUBLIC_API_BASE_URL: http://localhost:3301
+      # ADR-0101 §20: the self-employment switch is on by default; these scenarios pin the Gewerbe-Gate path
+      # (scenario 09 and the dialog matrices). Scenario 09b needs a switch-on stack of its own.
+      SELBSTSTAENDIGE_ENABLED: 'false'
     steps:
       # Built here rather than written out in the job env, so no connection string with
       # credentials sits in the workflow; every later step reads it from the environment.
@@ -1190,6 +1193,8 @@ jobs:
       TRUSTED_PROXIES: none
       WEB_APP_URL: http://localhost:4173
       EXPO_PUBLIC_API_BASE_URL: http://localhost:3301
+      # ADR-0101 §20: the switch is on by default; the shards pin the Gewerbe-Gate path of scenario 09.
+      SELBSTSTAENDIGE_ENABLED: 'false'
     steps:
       # Built here rather than written out in the job env, so no connection string with
       # credentials sits in the workflow; every later step reads it from the environment.
@@ -1253,6 +1258,108 @@ jobs:
           fi
           if [ -f /tmp/steuereule-web-shard.pid ]; then
             kill "$(cat /tmp/steuereule-web-shard.pid)" 2>/dev/null || true
+          fi
+
+  # Scenario 09b (ADR-0101): the self-employment area with the switch on, as the app runs by default since
+  # 20.11.2026 — profile, quick entry, book, bank import, assets, closing, VAT, trade tax, ELSTER fill-in help,
+  # export, checkout and the §22 additions. Its own stack, because the shards pin the switch off.
+  e2e-self-employed:
+    name: E2E Scenario 09b — self-employment switch on
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: steuereule
+          POSTGRES_PASSWORD: steuereule
+          POSTGRES_DB: steuereule
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U steuereule -d steuereule"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=10
+    env:
+      GUEST_SESSION_SECRET: ci-e2e-09b-secret
+      PRISMA_FIELD_ENCRYPTION_KEY: k1.aesgcm256.MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=
+      BETTER_AUTH_SECRET: ci-e2e-09b-better-auth-secret-0123456789
+      API_ORIGIN: http://localhost:3301
+      WEB_ORIGIN: http://localhost:4173
+      BETTER_AUTH_URL: http://localhost:3301
+      PORT: '3301'
+      CORS_ALLOWED_ORIGINS: http://localhost:4173
+      TRUSTED_PROXIES: none
+      WEB_APP_URL: http://localhost:4173
+      EXPO_PUBLIC_API_BASE_URL: http://localhost:3301
+      # ADR-0101 §20: the default of the app. Scenario 09b walks the self-employment area end to end; the
+      # shards above pin the switch off for scenario 09, so 09b gets this stack of its own (ATTACH mode).
+      SELBSTSTAENDIGE_ENABLED: 'true'
+    steps:
+      # Built here rather than written out in the job env, so no connection string with
+      # credentials sits in the workflow; every later step reads it from the environment.
+      - name: Database URL of the Postgres service container
+        run: echo "DATABASE_URL=postgres://${DB_USER}:${DB_PASSWORD}@localhost:5432/${DB_NAME}" >> "$GITHUB_ENV"
+        env:
+          DB_USER: steuereule
+          DB_PASSWORD: steuereule
+          DB_NAME: steuereule
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - name: Set up pnpm
+        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+      - name: Set up Node
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: 24
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Generate Prisma Client
+        run: pnpm --filter @steuereule/api prisma:generate
+      - name: Apply migrations (migrate deploy, never migrate dev)
+        run: pnpm --filter @steuereule/api migrate:deploy
+      - name: Build the API
+        run: pnpm --filter @steuereule/api build
+      - name: Export the web bundle
+        run: pnpm --filter @steuereule/mobile-web exec expo export --platform web
+      - name: Cache Playwright browsers
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-chromium-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+      - name: Install Playwright's Chromium
+        run: pnpm --filter @steuereule/e2e exec playwright-core install chromium --with-deps
+      - name: Boot the real API server
+        working-directory: apps/api
+        run: |
+          node --import tsx dist/main.js > /tmp/steuereule-api-09b.log 2>&1 &
+          echo $! > /tmp/steuereule-api-09b.pid
+      - name: Serve the exported web bundle
+        run: |
+          node e2e/cross-origin/static-server.mjs --root apps/mobile-web/dist --port 4173 --host localhost \
+            > /tmp/steuereule-web-09b.log 2>&1 &
+          echo $! > /tmp/steuereule-web-09b.pid
+      - name: Wait for both origins to answer
+        run: |
+          curl --fail --silent --show-error --retry 30 --retry-delay 1 --retry-all-errors --retry-connrefused \
+            "${API_ORIGIN}/v1/profile"
+          curl --fail --silent --show-error --retry 30 --retry-delay 1 --retry-all-errors --retry-connrefused \
+            "${WEB_ORIGIN}/"
+      - name: Run scenario 09b
+        run: node e2e/scenarios/09b-maximiliane-koch-selbststaendig.mjs
+      - name: API log (on failure)
+        if: failure()
+        run: cat /tmp/steuereule-api-09b.log || true
+      - name: Stop servers
+        if: always()
+        run: |
+          if [ -f /tmp/steuereule-api-09b.pid ]; then
+            kill "$(cat /tmp/steuereule-api-09b.pid)" 2>/dev/null || true
+          fi
+          if [ -f /tmp/steuereule-web-09b.pid ]; then
+            kill "$(cat /tmp/steuereule-web-09b.pid)" 2>/dev/null || true
           fi
 
   # Real gate (#76) — the stakeholder's own bug report, automated: builds and boots the ACTUAL

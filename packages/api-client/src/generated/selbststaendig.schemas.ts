@@ -226,6 +226,8 @@ export interface VatPeriodFactsDto {
   specialPrepaymentEur?: number;
   /** Monthly by choice after a refund above the limit (§ 18 Abs. 2a UStG). */
   chooseMonthly?: boolean;
+  /** Freed from keeping books by the office (§ 148 AO): Istversteuerung whatever the turnover (§ 20 Satz 1 Nr. 2 UStG). */
+  exemptFromBookkeeping?: boolean;
 }
 
 export type DisposalFactsDtoKind = typeof DisposalFactsDtoKind[keyof typeof DisposalFactsDtoKind];
@@ -264,7 +266,7 @@ export interface RetainedFactsDto {
   requestedEur: number;
   /** Nachversteuerungspflichtiger Betrag of the last Feststellung. */
   carriedForwardEur?: number;
-  /** From 2024: withdrawals to pay the § 34a tax (Abs. 2 Satz 2). */
+  /** From 2024: withdrawals this year to pay the § 34a tax of earlier years (Abs. 2 Satz 2); this year's tax the app deems paid from the withdrawals itself (Satz 3). */
   withdrawalsForRetainedTaxEur?: number;
 }
 
@@ -929,9 +931,11 @@ export type FixedAssetDtoMethod = typeof FixedAssetDtoMethod[keyof typeof FixedA
 export const FixedAssetDtoMethod = {
   linear: 'linear',
   degressive: 'degressive',
+  elektrofahrzeug: 'elektrofahrzeug',
   gwg: 'gwg',
   sofort: 'sofort',
   building: 'building',
+  building_degressive: 'building_degressive',
 } as const;
 
 /**
@@ -1011,6 +1015,16 @@ export interface FixedAssetDto {
      * @nullable
      */
   disposal: string | null;
+  /**
+     * JSON: { use, completed, applicationFiled?, constructionStarted?, contractSigned? } (§ 7 Abs. 4, 5a EStG).
+     * @nullable
+     */
+  buildingFacts: string | null;
+  /**
+     * JSON: { inputVatCents, originalShare, shareByYear, disposalShare? } (§ 15a UStG).
+     * @nullable
+     */
+  vatCorrection: string | null;
 }
 
 export interface AssetsResponseDto {
@@ -1018,14 +1032,20 @@ export interface AssetsResponseDto {
   records: FixedAssetDto[];
 }
 
+/**
+ * 'elektrofahrzeug': § 7 Abs. 2a EStG, 75/10/5/5/3/2 % for an electric vehicle bought 1.7.2025–31.12.2027; 'building' and 'building_degressive' need `building`.
+ */
 export type FixedAssetInputDtoMethod = typeof FixedAssetInputDtoMethod[keyof typeof FixedAssetInputDtoMethod];
 
 
 export const FixedAssetInputDtoMethod = {
   linear: 'linear',
   degressive: 'degressive',
+  elektrofahrzeug: 'elektrofahrzeug',
   gwg: 'gwg',
   sofort: 'sofort',
+  building: 'building',
+  building_degressive: 'building_degressive',
 } as const;
 
 /**
@@ -1079,16 +1099,80 @@ export const FixedAssetInputDtoCategory = {
   vending_machine: 'vending_machine',
 } as const;
 
+/**
+ * 'betrieb': not used for living (Abs. 4 Nr. 1); 'wohnen': living (Nr. 2, Abs. 5a).
+ */
+export type BuildingFactsDtoUse = typeof BuildingFactsDtoUse[keyof typeof BuildingFactsDtoUse];
+
+
+export const BuildingFactsDtoUse = {
+  betrieb: 'betrieb',
+  wohnen: 'wohnen',
+} as const;
+
+export interface BuildingFactsDto {
+  /** 'betrieb': not used for living (Abs. 4 Nr. 1); 'wohnen': living (Nr. 2, Abs. 5a). */
+  use: BuildingFactsDtoUse;
+  /** Completion (Fertigstellung). */
+  completed: string;
+  /** Bauantrag: 3 % for a business building only when filed after 31.3.1985. */
+  applicationFiled?: string;
+  /** Baubeginn (Abs. 5a). */
+  constructionStarted?: string;
+  /** Purchase contract of a building bought by the end of its completion year (Abs. 5a). */
+  contractSigned?: string;
+}
+
+/**
+ * Year → Sonder-AfA in cents, the acquisition year and the four after it.
+ */
+export type SpecialDepreciationDtoByYear = {[key: string]: number};
+
+export interface SpecialDepreciationDto {
+  /** Year → Sonder-AfA in cents, the acquisition year and the four after it. */
+  byYear: SpecialDepreciationDtoByYear;
+  /** Cut of the cost by the IAB added back, cents (§ 7g Abs. 2). */
+  costReduction?: number;
+  /** Profit of the business year before the acquisition, euros (§ 7g Abs. 6 Nr. 1: at most 200.000 €). */
+  priorYearProfitEur?: number;
+}
+
 export interface FixedAssetInputDto {
   label: string;
   account: string;
   acquisitionDate: string;
   /** Net cost in cents. */
   acquisitionCostCents: number;
+  /** 'elektrofahrzeug': § 7 Abs. 2a EStG, 75/10/5/5/3/2 % for an electric vehicle bought 1.7.2025–31.12.2027; 'building' and 'building_degressive' need `building`. */
   method: FixedAssetInputDtoMethod;
   /** AfA-table category (GET …/selbststaendig/kataloge); sets the useful life when none is given. */
   category?: FixedAssetInputDtoCategory;
   usefulLifeYears?: number;
+  building?: BuildingFactsDto;
+  specialDepreciation?: SpecialDepreciationDto;
+}
+
+/**
+ * Year → deductible share as it turned out, 0–1.
+ */
+export type VatCorrectionDtoShareByYear = {[key: string]: number};
+
+export interface VatCorrectionDto {
+  /** Input VAT on the acquisition cost, cents. */
+  inputVatCents: number;
+  /** Share originally deducted, 0–1. */
+  originalShare: number;
+  /** Year → deductible share as it turned out, 0–1. */
+  shareByYear: VatCorrectionDtoShareByYear;
+  /** The share the sale or Entnahme allows (1 taxable, 0 tax-free); dated by the disposal. */
+  disposalShare?: number;
+}
+
+export interface AssetFactsDto {
+  /** @nullable */
+  specialDepreciation?: SpecialDepreciationDto | null;
+  /** @nullable */
+  vatCorrection?: VatCorrectionDto | null;
 }
 
 export interface AssetDisposalDto {
@@ -1305,6 +1389,8 @@ export interface CompanyCarInputDto {
   listPriceGrossEur: number;
   co2GPerKm?: number;
   electricRangeKm?: number;
+  /** Battery capacity in kWh: the battery deduction of a car bought before 2023 without a fraction (§ 6 Abs. 1 Nr. 4 Satz 2 Nr. 1 EStG). */
+  batteryKwh?: number;
   /** More than half of the use is business. */
   businessShareOver50: boolean;
   /** Months in the business assets this year. */
@@ -1312,8 +1398,10 @@ export interface CompanyCarInputDto {
   method: CompanyCarInputDtoMethod;
   /** Total costs of the car in the year with the AfA, euros. */
   totalCostsEur?: number;
-  /** The AfA inside the total costs, euros. */
+  /** The AfA inside the total costs, euros; an electric or hybrid car counts it at its fraction. */
   depreciationEur?: number;
+  /** Logbook: leasing rates inside the total costs, euros; an electric or hybrid car counts them at its fraction. */
+  leasingEur?: number;
   /** Logbook: private share of the km, 0–1. */
   privateShare?: number;
   /** Logbook: km of the year. */
@@ -1440,6 +1528,8 @@ export interface PayrollOverviewDto {
   wageTaxPeriod: PayrollOverviewDtoWageTaxPeriod;
   wageTaxReturns: WageTaxReturnDto[];
   minijobCharges: MinijobMonthDto[];
+  /** Church-tax codes the Anmeldung of the Betriebsstätte’s Land has no line for: their tax is in Kz 83 only. */
+  unassignedChurchCodes: string[];
 }
 
 export type PayrollRunInputDtoKind = typeof PayrollRunInputDtoKind[keyof typeof PayrollRunInputDtoKind];
@@ -1451,6 +1541,7 @@ export const PayrollRunInputDtoKind = {
 } as const;
 
 /**
+ * Church-tax code of the ELStAM; ev and rk go to Kz 61/62, the others to the line of the Betriebsstätte’s Land.
  * @nullable
  */
 export type PayrollRunInputDtoChurch = typeof PayrollRunInputDtoChurch[keyof typeof PayrollRunInputDtoChurch] | null;
@@ -1459,6 +1550,19 @@ export type PayrollRunInputDtoChurch = typeof PayrollRunInputDtoChurch[keyof typ
 export const PayrollRunInputDtoChurch = {
   ev: 'ev',
   rk: 'rk',
+  ak: 'ak',
+  ib: 'ib',
+  fb: 'fb',
+  iw: 'iw',
+  is: 'is',
+  jh: 'jh',
+  jd: 'jd',
+  fm: 'fm',
+  il: 'il',
+  fs: 'fs',
+  fg: 'fg',
+  fa: 'fa',
+  ih: 'ih',
 } as const;
 
 export interface PayrollRunInputDto {
@@ -1481,8 +1585,19 @@ export interface PayrollRunInputDto {
   soliEur?: number;
   /** Euros. */
   churchTaxEur?: number;
-  /** @nullable */
+  /**
+     * Church-tax code of the ELStAM; ev and rk go to Kz 61/62, the others to the line of the Betriebsstätte’s Land.
+     * @nullable
+     */
   church?: PayrollRunInputDtoChurch;
+  /** Pauschale Lohnsteuer the employer takes over (§§ 40, 40a Abs. 1, 3, 40b EStG), Kz 41. */
+  flatWageTaxEur?: number;
+  /** Pauschale Lohnsteuer under § 37b EStG, Kz 44. */
+  flat37bTaxEur?: number;
+  /** Pauschale Kirchensteuer in the simplified procedure, Kz 47. */
+  flatChurchTaxEur?: number;
+  /** BAV-Förderbetrag taken off the wage tax (§ 100 EStG), Kz 45; at most 288 € a year per employee. */
+  bavSupportEur?: number;
   /** The employee’s share of social security. */
   employeeSocialEur?: number;
   /** The employer’s share and the levies. */
@@ -1491,6 +1606,8 @@ export interface PayrollRunInputDto {
   statutoryHealthInsured?: boolean;
   /** Minijob: exempt from the pension insurance. */
   rvExempt?: boolean;
+  /** Minijob: false for an employer with more than 30 employees, who pays no U1 (§ 1 Abs. 1 AAG). */
+  u1Applies?: boolean;
 }
 
 export type DisposalResultDtoMethod = typeof DisposalResultDtoMethod[keyof typeof DisposalResultDtoMethod];
@@ -1662,6 +1779,8 @@ export interface VatResultDto {
   reverseChargeVatEur: number;
   /** Euros. */
   inputVatDeductibleEur: number;
+  /** The Vorsteuerberichtigung of the year inside the VAT (§ 15a UStG): positive more input tax, negative to pay back. */
+  inputVatCorrectionEur: number;
   /** Umsatzsteuer of the year before the prepayments, euros. */
   vatOfYearEur: number;
   /** Euros. */
@@ -1702,6 +1821,20 @@ export interface SmallBusinessCheckDto {
   turnoverEur: number;
   /** False when the profile claims the rule although a limit is crossed. */
   matchesProfile: boolean;
+  /**
+     * From 2025: the date of the supply that passed the running year’s limit; it and every later one are taxed (§ 19 Abs. 1 Satz 1 UStG).
+     * @nullable
+     */
+  taxedFrom: string | null;
+}
+
+export interface InputVatCorrectionLineDto {
+  assetId: string;
+  label: string;
+  /** Euros. */
+  correctionEur: number;
+  /** Above 6.000 € or in the year of a sale: already in the Voranmeldung (§ 44 Abs. 3 UStDV). */
+  inPrepayment: boolean;
 }
 
 export interface VatReturnDto {
@@ -1710,6 +1843,8 @@ export interface VatReturnDto {
   /** Ist-Versteuerung allowed by the turnover of the year before (§ 20 UStG). */
   cashAccountingAllowed: boolean;
   smallBusiness: SmallBusinessCheckDto;
+  /** The § 15a corrections of the year per asset. */
+  inputVatCorrections: InputVatCorrectionLineDto[];
 }
 
 export type TradeTaxDtoStatus = typeof TradeTaxDtoStatus[keyof typeof TradeTaxDtoStatus];
@@ -2354,6 +2489,25 @@ export type BusinessControllerCreateAssetPerson = typeof BusinessControllerCreat
 
 
 export const BusinessControllerCreateAssetPerson = {
+  A: 'A',
+  B: 'B',
+} as const;
+
+export type BusinessControllerSetAssetFactsParams = {
+/**
+ * Which business of the person, from 1 (default); ADR-0101 §22.
+ */
+betrieb?: number;
+/**
+ * Whose business: A (default) or B of a joint return.
+ */
+person?: BusinessControllerSetAssetFactsPerson;
+};
+
+export type BusinessControllerSetAssetFactsPerson = typeof BusinessControllerSetAssetFactsPerson[keyof typeof BusinessControllerSetAssetFactsPerson];
+
+
+export const BusinessControllerSetAssetFactsPerson = {
   A: 'A',
   B: 'B',
 } as const;

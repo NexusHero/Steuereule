@@ -76,6 +76,14 @@ describe('the profile', () => {
     expect(puts).toEqual([{ mode: 'bilanz' }, { chart: 'SKR04' }, { smallBusiness: true }, { vatMethod: 'soll' }, { confirmedKind: 'gewerbe' }])
   })
 
+  it('asks the § 148 AO exemption only with the Istversteuerung and keeps the other VAT facts (§ 20 Nr. 2 UStG)', async () => {
+    useBusinessDefaults({ ...BASE_PROFILE, vatPeriodFacts: { extension: true } })
+    const puts = recordPuts()
+    renderBusiness('profil')
+    fireEvent.click(await screen.findByTestId('profil-148-ja'))
+    await waitFor(() => expect(puts).toEqual([{ vatPeriodFacts: { extension: true, exemptFromBookkeeping: true } }]))
+  })
+
   it('saves the start date once it is a full date, and clears it when emptied', async () => {
     useBusinessDefaults({ ...BASE_PROFILE, startDate: '2024-05-01' })
     const puts = recordPuts()
@@ -204,7 +212,13 @@ describe('the profile', () => {
 })
 
 describe('Umsatzsteuer', () => {
-  const VAT = (balanceEur: number) => ({ figures: {}, result: { outputVat: { standard: 0, reduced: 0, zero: 0 }, inputVatDeductibleEur: 0, vatOfYearEur: 0, prepaymentsEur: 0, balanceEur }, cashAccountingAllowed: true, smallBusiness: SMALL_OK })
+  const VAT = (balanceEur: number) => ({
+    figures: {},
+    result: { outputVat: { standard: 0, reduced: 0, zero: 0 }, inputVatDeductibleEur: 0, inputVatCorrectionEur: 0, vatOfYearEur: 0, prepaymentsEur: 0, balanceEur },
+    cashAccountingAllowed: true,
+    smallBusiness: SMALL_OK,
+    inputVatCorrections: [],
+  })
   const useVat = (balanceEur = 100) => server.use(http.get(`${BASE_URL}/umsatzsteuer`, () => HttpResponse.json(VAT(balanceEur))))
 
   it('retries a failed first read', async () => {
@@ -235,6 +249,31 @@ describe('Umsatzsteuer', () => {
     expect(note).toContain('Gründungsjahr')
     expect(note).toContain('26.000,00 €')
     expect(note).toContain('25.000,00 €')
+  })
+
+  it('shows the § 15a correction of the year and the line per asset', async () => {
+    useBusinessDefaults()
+    server.use(
+      http.get(`${BASE_URL}/umsatzsteuer`, () =>
+        HttpResponse.json({ ...VAT(0), result: { ...VAT(0).result, inputVatCorrectionEur: -570 }, inputVatCorrections: [{ assetId: 'a1', label: 'Lieferwagen', correctionEur: -570, inPrepayment: true }] }),
+      ),
+    )
+    renderBusiness('umsatzsteuer')
+    expect((await screen.findByTestId('ust-15a')).textContent?.replace(/\s/g, ' ')).toContain('570,00 €')
+    const list = screen.getByTestId('ust-15a-liste').textContent ?? ''
+    expect(list).toContain('Lieferwagen')
+    expect(list).toContain('Voranmeldung')
+  })
+
+  it('says from which supply the turnover is taxed once the limit was passed in the year (§ 19 Abs. 1 Satz 1 UStG)', async () => {
+    useBusinessDefaults({ ...BASE_PROFILE, smallBusiness: true })
+    server.use(
+      http.get(`${BASE_URL}/umsatzsteuer`, () =>
+        HttpResponse.json({ ...VAT(0), smallBusiness: { ...SMALL_OK, eligible: false, crossed: 'current_year', turnoverEur: 101_000, matchesProfile: false, taxedFrom: '2025-11-02' } }),
+      ),
+    )
+    renderBusiness('umsatzsteuer')
+    expect((await screen.findByTestId('ust-klein-ab')).textContent).toContain('02.11.2025')
   })
 
   it('says the year before is unknown when there is no book for it', async () => {

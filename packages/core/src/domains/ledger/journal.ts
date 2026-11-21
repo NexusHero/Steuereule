@@ -115,6 +115,8 @@ export const TAX_KEYS: Readonly<Record<BookingTaxKey, TaxKeySpec>> = {
   // Reverse charge: the recipient owes the tax and deducts it at once, so both lines arise together.
   rc13b19: { rate: 19, output: 'vat_13b_19', input: 'input_vat_13b_19' },
   rcEu19: { rate: 19, output: 'vat_13b_19', input: 'input_vat_13b_19' },
+  rc13b7: { rate: 7, output: 'vat_13b', input: 'input_vat_13b' },
+  rcEu7: { rate: 7, output: 'vat_13b', input: 'input_vat_13b' },
   euLeistung: { rate: 0, output: null, input: null },
   igErwerb19: { rate: 19, output: 'vat_ig_19', input: 'input_vat_ig_19' },
   igErwerb7: { rate: 7, output: 'vat_ig_7', input: 'input_vat_ig_7' },

@@ -62,15 +62,29 @@ export function VatPage({ taxYear, person, business = 1, onBack }: BusinessPageP
           })}
         </Note>
       ) : null}
+      {vat.smallBusiness.taxedFrom ? (
+        <Note tone="error" testID="ust-klein-ab">
+          {tr('business.ust.kleinAb', { datum: `${vat.smallBusiness.taxedFrom.slice(8, 10)}.${vat.smallBusiness.taxedFrom.slice(5, 7)}.${vat.smallBusiness.taxedFrom.slice(0, 4)}` })}
+        </Note>
+      ) : null}
       {small && vat.smallBusiness.matchesProfile && !vat.smallBusiness.priorYearKnown ? <Note testID="ust-klein-vorjahr">{tr('business.ust.kleinVorjahrUnbekannt', { grenze: plainEuro(vat.smallBusiness.priorYearLimitEur) })}</Note> : null}
       <Section>
         <Figure label={tr('business.ust.umsatzsteuer')} value={plainEuro(vat.result.outputVat.standard)} />
         <Figure label={tr('business.ust.umsatzsteuerErmaessigt')} value={plainEuro(vat.result.outputVat.reduced)} />
         <Figure label={tr('business.ust.vorsteuer')} value={plainEuro(vat.result.inputVatDeductibleEur)} />
         <Figure label={tr('business.ust.jahr')} value={plainEuro(vat.result.vatOfYearEur)} />
+        {vat.result.inputVatCorrectionEur !== 0 ? <Figure label={tr('business.ust.berichtigung15a')} value={plainEuro(vat.result.inputVatCorrectionEur)} testID="ust-15a" /> : null}
         <Figure label={tr('business.ust.vorauszahlungen')} value={plainEuro(vat.result.prepaymentsEur)} />
         <Figure strong label={vat.result.balanceEur < 0 ? tr('business.ust.erstattung') : tr('business.ust.nachzahlung')} value={plainEuro(Math.abs(vat.result.balanceEur))} testID="ust-saldo" />
       </Section>
+      {vat.inputVatCorrections.length > 0 ? (
+        <Section title={tr('business.ust.berichtigung15aTitel')} testID="ust-15a-liste">
+          <Note>{tr('business.ust.berichtigung15aHinweis')}</Note>
+          {vat.inputVatCorrections.map((c) => (
+            <Figure key={c.assetId} label={c.inPrepayment ? `${c.label} · ${tr('business.ust.berichtigung15aVa')}` : c.label} value={plainEuro(c.correctionEur)} />
+          ))}
+        </Section>
+      ) : null}
       <Section title={tr('business.ust.vorauszahlungenTitel')}>
         <Feld label={tr('business.ust.vorauszahlungenFeld')}>
           <Input

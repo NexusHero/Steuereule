@@ -27,6 +27,7 @@ import type {
 import type {
   AcceptBankTransactionDto,
   AssetDisposalDto,
+  AssetFactsDto,
   AssetsResponseDto,
   BankImportDto,
   BankImportResultDto,
@@ -70,6 +71,7 @@ import type {
   BusinessControllerReverseParams,
   BusinessControllerSaveProcedureDocParams,
   BusinessControllerSaveProfileParams,
+  BusinessControllerSetAssetFactsParams,
   BusinessControllerSpecialTariffsParams,
   BusinessControllerTradeTaxParams,
   BusinessControllerTransmitEBilanzParams,
@@ -2146,6 +2148,117 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
         TContext
       > => {
       return useMutation(getBusinessControllerCreateAssetMutationOptions(options), queryClient);
+    }
+
+export type businessControllerSetAssetFactsResponse200 = {
+  data: FixedAssetDto
+  status: 200
+}
+
+export type businessControllerSetAssetFactsResponse400 = {
+  data: BusinessErrorDto
+  status: 400
+}
+
+export type businessControllerSetAssetFactsResponse401 = {
+  data: void
+  status: 401
+}
+
+export type businessControllerSetAssetFactsResponse403 = {
+  data: BusinessErrorDto
+  status: 403
+}
+
+export type businessControllerSetAssetFactsResponse404 = {
+  data: BusinessErrorDto
+  status: 404
+}
+
+export type businessControllerSetAssetFactsResponseSuccess = (businessControllerSetAssetFactsResponse200) & {
+  headers: Headers;
+};
+export type businessControllerSetAssetFactsResponseError = (businessControllerSetAssetFactsResponse400 | businessControllerSetAssetFactsResponse401 | businessControllerSetAssetFactsResponse403 | businessControllerSetAssetFactsResponse404) & {
+  headers: Headers;
+};
+
+export type businessControllerSetAssetFactsResponse = (businessControllerSetAssetFactsResponseSuccess | businessControllerSetAssetFactsResponseError)
+
+export const getBusinessControllerSetAssetFactsUrl = (jahr: number,
+    anlageId: string,
+    params?: BusinessControllerSetAssetFactsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/v1/steuerjahre/${jahr}/selbststaendig/anlagen/${anlageId}/angaben?${stringifiedParams}` : `/v1/steuerjahre/${jahr}/selbststaendig/anlagen/${anlageId}/angaben`
+}
+
+export const businessControllerSetAssetFacts = async (jahr: number,
+    anlageId: string,
+    assetFactsDto: AssetFactsDto,
+    params?: BusinessControllerSetAssetFactsParams, options?: RequestInit): Promise<businessControllerSetAssetFactsResponse> => {
+
+  return httpClient<businessControllerSetAssetFactsResponse>(getBusinessControllerSetAssetFactsUrl(jahr,anlageId,params),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(assetFactsDto)
+  }
+);}
+
+
+
+
+
+export const getBusinessControllerSetAssetFactsMutationOptions = <TError = BusinessErrorDto | void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof businessControllerSetAssetFacts>>, TError,{jahr: number;anlageId: string;data: AssetFactsDto;params?: BusinessControllerSetAssetFactsParams}, TContext>, request?: SecondParameter<typeof httpClient>}
+): UseMutationOptions<Awaited<ReturnType<typeof businessControllerSetAssetFacts>>, TError,{jahr: number;anlageId: string;data: AssetFactsDto;params?: BusinessControllerSetAssetFactsParams}, TContext> => {
+
+const mutationKey = ['businessControllerSetAssetFacts'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof businessControllerSetAssetFacts>>, {jahr: number;anlageId: string;data: AssetFactsDto;params?: BusinessControllerSetAssetFactsParams}> = (props) => {
+          const {jahr,anlageId,data,params} = props ?? {};
+
+          return  businessControllerSetAssetFacts(jahr,anlageId,data,params,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type BusinessControllerSetAssetFactsMutationResult = NonNullable<Awaited<ReturnType<typeof businessControllerSetAssetFacts>>>
+    export type BusinessControllerSetAssetFactsMutationBody = AssetFactsDto
+    export type BusinessControllerSetAssetFactsMutationError = BusinessErrorDto | void
+
+    export const useBusinessControllerSetAssetFacts = <TError = BusinessErrorDto | void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof businessControllerSetAssetFacts>>, TError,{jahr: number;anlageId: string;data: AssetFactsDto;params?: BusinessControllerSetAssetFactsParams}, TContext>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof businessControllerSetAssetFacts>>,
+        TError,
+        {jahr: number;anlageId: string;data: AssetFactsDto;params?: BusinessControllerSetAssetFactsParams},
+        TContext
+      > => {
+      return useMutation(getBusinessControllerSetAssetFactsMutationOptions(options), queryClient);
     }
 
 export type businessControllerDisposeAssetResponse200 = {

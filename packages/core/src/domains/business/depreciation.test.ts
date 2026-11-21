@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   assetSchedule,
+  buildingDegressiveAllowed,
   buildingRate,
   degressiveRate,
   depreciationForYear,
@@ -96,6 +97,39 @@ describe('buildings (§ 7 Abs. 4 EStG)', () => {
     // 300.000 € × 3 % = 9.000 € a year; bought 1.7.2024: 6/12 = 4.500 €.
     const rows = assetSchedule({ id: 'b', acquired: '2024-07-01', netCostEur: 300_000, method: 'building', buildingRate: 0.03 }, 2025)
     expect(rows.map((r) => r.depreciationEur)).toEqual([4500, 9000])
+  })
+
+  it('gives a business building 3 % only with a Bauantrag after 31.3.1985, else the completion decides (Abs. 4 Nr. 1, 2, statute read)', () => {
+    expect(buildingRate('betrieb', '1984-01-01', '1985-03-31')).toBe(0.02)
+    expect(buildingRate('betrieb', '1920-01-01', '1919-05-01')).toBe(0.025)
+    expect(buildingRate('betrieb', '1987-01-01', '1985-04-01')).toBe(0.03)
+  })
+
+  it('allows the 5 % of Abs. 5a for living only, begun or bought under a contract 1.10.2023–30.9.2029 (statute read)', () => {
+    expect(buildingDegressiveAllowed({ use: 'wohnen', constructionStarted: '2023-10-01' })).toBe(true)
+    expect(buildingDegressiveAllowed({ use: 'wohnen', contractSigned: '2029-09-30' })).toBe(true)
+    expect(buildingDegressiveAllowed({ use: 'wohnen', constructionStarted: '2023-09-30' })).toBe(false)
+    expect(buildingDegressiveAllowed({ use: 'betrieb', constructionStarted: '2024-01-01' })).toBe(false)
+  })
+})
+
+describe('electric vehicles (§ 7 Abs. 2a EStG, statute read)', () => {
+  it('writes off 75/10/5/5/3/2 % from the acquisition year, without months', () => {
+    const rows = assetSchedule({ id: 'e', acquired: '2025-11-15', netCostEur: 40_000, method: 'elektrofahrzeug' }, 2031)
+    expect(rows.map((r) => r.depreciationEur)).toEqual([30_000, 4_000, 2_000, 2_000, 1_200, 800, 0])
+  })
+
+  it('needs an acquisition 1.7.2025–31.12.2027 and excludes a Sonder-AfA', () => {
+    expect(() => assetSchedule({ id: 'e', acquired: '2025-06-30', netCostEur: 40_000, method: 'elektrofahrzeug' }, 2026)).toThrow(RangeError)
+    expect(() => assetSchedule({ id: 'e', acquired: '2026-03-01', netCostEur: 40_000, method: 'elektrofahrzeug', specialDepreciation: [{ year: 2026, amountEur: 1_000 }] }, 2026)).toThrow(RangeError)
+  })
+})
+
+describe('the § 7g Sonder-AfA needs the profit limit of the year before (Abs. 6 Nr. 1, statute read)', () => {
+  it('refuses it above 200.000 €', () => {
+    const asset = { id: 's', acquired: '2025-02-01', netCostEur: 10_000, method: 'linear' as const, usefulLifeYears: 5, specialDepreciation: [{ year: 2025, amountEur: 4_000 }] }
+    expect(() => assetSchedule({ ...asset, priorYearProfitEur: 200_001 }, 2025)).toThrow(RangeError)
+    expect(assetSchedule({ ...asset, priorYearProfitEur: 200_000 }, 2025)[0]!.specialDepreciationEur).toBe(4_000)
   })
 })
 

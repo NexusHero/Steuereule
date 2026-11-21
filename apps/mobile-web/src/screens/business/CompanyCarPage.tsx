@@ -44,7 +44,7 @@ export function CompanyCarPage({ taxYear, person, business = 1, onBack }: Busine
 
   function input(): CompanyCarInputDto | null {
     const n = (key: string) => whole(values[key])
-    const numbers = ['listPriceGrossEur', 'monthsInBusiness', 'co2GPerKm', 'electricRangeKm', 'totalCostsEur', 'depreciationEur', 'totalKm', 'costsWithInputVatEur', 'distanceKm', 'days', 'privatePercent'].map((k) => [k, n(k)] as const)
+    const numbers = ['listPriceGrossEur', 'monthsInBusiness', 'co2GPerKm', 'electricRangeKm', 'batteryKwh', 'totalCostsEur', 'depreciationEur', 'leasingEur', 'totalKm', 'costsWithInputVatEur', 'distanceKm', 'days', 'privatePercent'].map((k) => [k, n(k)] as const)
     if (numbers.some(([, v]) => v === null)) return null
     const get = (k: string) => numbers.find(([key]) => key === k)?.[1] ?? undefined
     const listPrice = get('listPriceGrossEur')
@@ -63,8 +63,11 @@ export function CompanyCarPage({ taxYear, person, business = 1, onBack }: Busine
       method,
       ...optional('co2GPerKm', get('co2GPerKm')),
       ...optional('electricRangeKm', get('electricRangeKm')),
+      // Only what the page shows: the battery for a car bought before 2023, the leasing by logbook.
+      ...(drive !== 'verbrenner' && acquired < '2023-01-01' ? optional('batteryKwh', get('batteryKwh')) : {}),
       ...optional('totalCostsEur', get('totalCostsEur')),
       ...optional('depreciationEur', get('depreciationEur')),
+      ...(method === 'fahrtenbuch' ? optional('leasingEur', get('leasingEur')) : {}),
       ...optional('totalKm', get('totalKm')),
       ...optional('costsWithInputVatEur', get('costsWithInputVatEur')),
       ...(percent !== undefined ? { privateShare: Math.min(100, percent) / 100 } : {}),
@@ -105,6 +108,8 @@ export function CompanyCarPage({ taxYear, person, business = 1, onBack }: Busine
       />
     </Feld>
   )
+  // § 6 Abs. 1 Nr. 4 Satz 2 Nr. 1 EStG: the battery deduction is only for cars bought before 2023.
+  const acquiredBefore2023 = (values.acquired ?? '') < '2023-01-01'
   const row = { flexDirection: 'row' as const, flexWrap: 'wrap' as const, gap: t.space.s2, marginBottom: t.space.s3 }
 
   return (
@@ -121,6 +126,7 @@ export function CompanyCarPage({ taxYear, person, business = 1, onBack }: Busine
         {field('listPriceGrossEur')}
         {field('acquired', { placeholder: 'JJJJ-MM-TT' })}
         {drive === 'hybrid' ? [field('co2GPerKm'), field('electricRangeKm')] : null}
+        {drive !== 'verbrenner' && acquiredBefore2023 ? field('batteryKwh') : null}
         {field('monthsInBusiness', { placeholder: '12' })}
       </Section>
       <Section title={tr('business.kfz.methode')}>
@@ -140,7 +146,7 @@ export function CompanyCarPage({ taxYear, person, business = 1, onBack }: Busine
           </Choice>
         </View>
         {field('totalCostsEur')}
-        {method === 'fahrtenbuch' ? [field('depreciationEur'), field('privatePercent'), field('totalKm'), field('costsWithInputVatEur')] : null}
+        {method === 'fahrtenbuch' ? [field('depreciationEur'), field('leasingEur'), field('privatePercent'), field('totalKm'), field('costsWithInputVatEur')] : drive !== 'verbrenner' ? field('depreciationEur') : null}
       </Section>
       <Section title={tr('business.kfz.wege')}>
         {field('distanceKm')}

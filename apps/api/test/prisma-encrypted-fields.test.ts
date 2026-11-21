@@ -91,6 +91,8 @@ const EXPECTED_ENCRYPTED_FIELDS: ExpectedEncryptedField[] = [
   { model: 'FixedAsset', field: 'acquisitionCost', encrypt: true, strictDecryption: true },
   { model: 'FixedAsset', field: 'specialDepreciation', encrypt: true, strictDecryption: true },
   { model: 'FixedAsset', field: 'disposal', encrypt: true, strictDecryption: true },
+  { model: 'FixedAsset', field: 'buildingFacts', encrypt: true, strictDecryption: true },
+  { model: 'FixedAsset', field: 'vatCorrection', encrypt: true, strictDecryption: true },
   { model: 'BankTransaction', field: 'amount', encrypt: true, strictDecryption: true },
   { model: 'BankTransaction', field: 'details', encrypt: true, strictDecryption: true },
   { model: 'BookingRule', field: 'criteria', encrypt: true, strictDecryption: true },

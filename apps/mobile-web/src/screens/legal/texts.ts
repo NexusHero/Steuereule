@@ -3,7 +3,7 @@ export type LegalPage = 'impressum' | 'datenschutz' | 'agb' | 'hinweise'
 
 export const LEGAL_PAGES: readonly LegalPage[] = ['impressum', 'datenschutz', 'agb', 'hinweise']
 
-export const STATUS = 'Stand: Oktober 2026'
+export const STATUS = 'Stand: November 2026'
 
 export interface Section {
   readonly title: string
@@ -79,7 +79,8 @@ export function privacy(operator: Operator | null): readonly Section[] {
         'KI-Assistenten (optional): Verbindest du einen eigenen KI-Assistenten über unsere Schnittstelle (Model Context Protocol / OAuth 2.1), erteilst du diesem Zugriff auf ausgewählte Datenbereiche. Beim Auslesen sensibler Daten (Steuer-ID, IBAN, Name, Adresse, Telefon) werden diese automatisch pseudonymisiert bzw. maskiert, bevor sie an den Assistenten übertragen werden.',
         'Eule (Chat in der App): Was du der Eule schreibst, die Steuerdaten, die sie für ihre Antwort braucht, und der Text von Belegen, die du ihr gibst, werden an ein Sprachmodell übermittelt. Ohne deine Einwilligung entfernen wir vorher Namen, Steuer-ID, Geburtsdaten, Anschriften, IBAN und ähnliche Kennungen. Willigst du ein („Eule und persönliche Daten“), übermitteln wir auch diese Angaben, damit die Eule sie für dich eintragen kann – einschließlich deiner Religionszugehörigkeit als besonderer Kategorie nach Art. 9 DSGVO. Deine Gespräche speichern wir verschlüsselt in deinem Konto.',
         'Zugriffsprotokoll: Jeder Lese- und Schreibzugriff auf deine Steuerdaten wird protokolliert (wer, was, wann – ohne die Werte selbst, inklusive verbundener KI-Assistenten). Du siehst dieses Protokoll in deinem Datenexport.',
-        'Zahlungen: Für die Freischaltung des Formular-Ausdrucks speichern wir Steuerjahr, Betrag, Zahlungsstatus und die Kennung des Zahlungsvorgangs. Zahlungsdaten (Karte, Konto) erhält ausschließlich unser Zahlungsdienstleister.',
+        'Selbstständige (Buchhaltung in der App): Führst du im Bereich „Selbstständig“ ein Buch, speichern wir deine Buchungen, Belege und E-Rechnungen (auch als XML-Datei), importierte Kontoumsätze, Anlagen, Abschlüsse, Umsatzsteuer- und Gewerbesteuerangaben sowie Lohnläufe. Darin stehen auch Daten Dritter: Namen und IBAN deiner Geschäftspartner aus den Kontoumsätzen, Anschriften und Umsatzsteuer-Identifikationsnummern deiner Kunden und Lieferanten auf Belegen und die Lohndaten deiner Beschäftigten, einschließlich ihrer Kirchensteuer (Religionszugehörigkeit, Art. 9 DSGVO). Auch diese Werte speichern wir feldweise verschlüsselt; Buchungen und ihr Protokoll lassen sich nach GoBD nicht nachträglich ändern.',
+        'Zahlungen: Für die Freischaltung des Formular-Ausdrucks bzw. der Funktionen für Selbstständige (Ausfüllhilfe, Exporte) speichern wir Steuerjahr, Stufe, Betrag, Zahlungsstatus und die Kennung des Zahlungsvorgangs. Zahlungsdaten (Karte, Konto) erhält ausschließlich unser Zahlungsdienstleister.',
       ],
     },
     {
@@ -90,6 +91,7 @@ export function privacy(operator: Operator | null): readonly Section[] {
         'Antworten der Eule ohne persönliche Kennungen: Art. 6 Abs. 1 lit. b DSGVO (Vertrag). Übermittlung persönlicher Daten an das Sprachmodell: Art. 6 Abs. 1 lit. a DSGVO, für die Religionszugehörigkeit Art. 9 Abs. 2 lit. a DSGVO (ausdrückliche Einwilligung). Du kannst die Einwilligung jederzeit mit Wirkung für die Zukunft unter „Profil → Datenschutz → Eule und persönliche Daten“ widerrufen; danach entfernen wir diese Angaben wieder, bevor etwas an das Sprachmodell geht.',
         'Absicherung deines Kontos (Sitzungen, Anmeldeschutz, Prüfung auf bekannte geleakte Passwörter): Art. 6 Abs. 1 lit. f DSGVO (berechtigtes Interesse an einem sicheren Dienst).',
         'Rechnungen und Aufbewahrung von Geschäftsunterlagen: Art. 6 Abs. 1 lit. c DSGVO i. V. m. § 147 AO und § 257 HGB.',
+        'Daten Dritter in deiner Buchhaltung: Für die Daten deiner Geschäftspartner, Kunden und Beschäftigten bist du als Selbstständiger selbst verantwortlich (Art. 4 Nr. 7 DSGVO); wir verarbeiten sie nur in deinem Auftrag und nach deiner Weisung als Auftragsverarbeiter (Art. 28 DSGVO). Die Vereinbarung dazu steht in den AGB (§ 7). Die Kirchensteuer deiner Beschäftigten verarbeitest du für die Lohnsteuer (Art. 9 Abs. 2 lit. b DSGVO).',
         'Es gibt kein Tracking, keine Analyse- oder Werbe-Cookies und keine Weitergabe zu Werbezwecken.',
       ],
     },
@@ -100,17 +102,19 @@ export function privacy(operator: Operator | null): readonly Section[] {
         'E-Mail-Versand: Bestätigungs- und Passwort-Links versenden wir über Brevo (Sendinblue SAS, Frankreich) als Auftragsverarbeiter.',
         'Zahlungen: Stripe Payments Europe Ltd. (Irland) wickelt Zahlungen ab und ist dafür eigenständig verantwortlich.',
         'Anmeldung mit Google (nur wenn du sie wählst): Google Ireland Ltd. erhält die für die Anmeldung nötigen Daten.',
-        'Sprachmodell der Eule: Die Antworten der Eule erzeugt Google (Gemini-Schnittstelle) als Auftragsverarbeiter. Google erhält dafür die oben unter „Eule“ genannten Daten und darf sie nicht für eigene Zwecke verwenden. Findet eine Verarbeitung außerhalb der EU statt, erfolgt die Übermittlung auf Grundlage des EU-US Data Privacy Framework bzw. der Standardvertragsklauseln.',
+        'Sprachmodell der Eule: Die Antworten der Eule erzeugt in der Regel Google (Gemini-Schnittstelle). Fällt dieser Anbieter aus oder wählst du im Chat ein anderes Modell, erzeugt sie Anthropic (Claude) bzw. OpenAI. Alle drei sind dafür unsere Auftragsverarbeiter, erhalten die oben unter „Eule“ genannten Daten und dürfen sie nicht für eigene Zwecke verwenden. Anthropic und OpenAI sitzen in den USA, auch Google kann außerhalb der EU verarbeiten; die Übermittlung erfolgt dann auf Grundlage des EU-US Data Privacy Framework bzw. der Standardvertragsklauseln.',
         'Eigener KI-Assistent (nur wenn du ihn verbindest): Verknüpfst du einen externen Assistenten (z. B. Anthropic Claude, OpenAI), werden Daten auf deine Weisung an den jeweiligen Anbieter übertragen. Bei Anbietern in Drittländern (z. B. USA) erfolgt die Übermittlung auf Grundlage deiner ausdrücklichen Einwilligung (Art. 49 Abs. 1 lit. a DSGVO) bzw. von Angemessenheitsbeschlüssen. Du kannst die Verknüpfung jederzeit mit sofortiger Wirkung unter „Profil → Verbundene Assistenten“ widerrufen.',
         'Sprachmodell für das Diktieren (nur wenn du zustimmst): Für das Diktieren im Chat lädt die App einmalig ein Sprachmodell von Hugging Face, Inc. (USA) bzw. dessen Download-Servern (hf.co). Dabei erhält Hugging Face deine IP-Adresse und den Zeitpunkt des Abrufs, sonst nichts: Dein Ton und der erkannte Text bleiben auf deinem Gerät. Die Übermittlung in die USA erfolgt auf Grundlage deiner ausdrücklichen Einwilligung (Art. 6 Abs. 1 lit. a und Art. 49 Abs. 1 lit. a DSGVO), die du im Dialog vor dem Download gibst. Das Modell bleibt im Speicher deines Browsers, enthält keine Daten von dir und lässt sich unter „Profil → Sprachmodell löschen“ entfernen.',
         'Passwortprüfung: Bei der Registrierung prüfen wir dein Passwort gegen die Datenbank „Have I Been Pwned“. Dabei verlassen nur die ersten fünf Zeichen eines Hash-Werts unseren Server, nie dein Passwort.',
-        'An das Finanzamt übermitteln wir nichts. Du druckst die Formulare aus und reichst sie selbst ein.',
+        'Deine Einkommensteuererklärung übermitteln wir nicht an das Finanzamt. Du druckst die Formulare aus und reichst sie selbst ein; die Ausfüllhilfe für Selbstständige tippst du selbst in Mein ELSTER ab.',
+        'E-Bilanz (nur Selbstständige mit Bilanz, nur wenn du sie ausdrücklich absendest und der Betreiber die Übermittlung eingerichtet hat): Die Bilanz und Gewinn- und Verlustrechnung samt deiner Steuernummer und deinem Namen gehen über die ELSTER-Schnittstelle an die Finanzverwaltung (§ 5b EStG, Art. 6 Abs. 1 lit. c DSGVO). Wir behalten das Übertragungsprotokoll in deinem Buch.',
       ],
     },
     {
       title: '5. Speicherdauer',
       paragraphs: [
         'Deine Daten speichern wir, solange du dein Konto nutzt. Löschst du dein Konto, entfernen wir Konto, Profil und alle Steuerdaten sofort; das Zugriffsprotokoll wird anonymisiert. Daten, die wir aus gesetzlichen Gründen aufbewahren müssen, sperren wir bis zum Fristablauf.',
+        'Selbstständige: Bücher, Belege und Buchungsprotokolle musst du selbst zehn Jahre aufbewahren (§ 147 AO, GoBD). Löschst du dein Konto, löschen wir auch dein Buch. Lade dir vorher den GoBD-Export und die Verfahrensdokumentation herunter; danach können wir sie nicht wiederherstellen.',
       ],
     },
     {
@@ -137,7 +141,8 @@ export function terms(operator: Operator | null): readonly Section[] {
       title: '§ 2 Leistung',
       paragraphs: [
         'SteuerEule ist eine Software, mit der du die Angaben für deine Einkommensteuererklärung erfasst, prüfst und als ausgefüllte Formulare zum Ausdrucken erhältst.',
-        'SteuerEule übermittelt keine Daten an das Finanzamt. Du prüfst die Ausdrucke, unterschreibst sie und reichst sie selbst ein. Für die Richtigkeit und Vollständigkeit deiner Angaben bist du verantwortlich.',
+        'SteuerEule übermittelt keine Daten an das Finanzamt. Du prüfst die Ausdrucke, unterschreibst sie und reichst sie selbst ein. Für die Richtigkeit und Vollständigkeit deiner Angaben bist du verantwortlich. Einzige Ausnahme: Die E-Bilanz eines bilanzierenden Selbstständigen sendet SteuerEule auf deinen ausdrücklichen Auftrag über ELSTER, sofern der Betreiber das eingerichtet hat.',
+        'Für Selbstständige führt SteuerEule ein Buch nach GoBD (EÜR oder Bilanz) und berechnet Umsatz-, Gewerbe- und Lohnsteuerwerte als Ausfüllhilfe. Meldungen zur Sozialversicherung erstellt SteuerEule nicht.',
         'SteuerEule ist keine Steuerberatung und keine Hilfeleistung in Steuersachen im Sinne des Steuerberatungsgesetzes. Schätzungen und Hinweise in der App sind unverbindlich.',
         'Anbindung eigener KI-Assistenten: Du kannst eigene KI-Assistenten über das Model Context Protocol (MCP) anbinden. Der Assistent agiert als dein persönliches Werkzeug. Werte, die ein Assistent einträgt, gelten als unbestätigt und sperren die Formularerstellung bis zu deiner Bestätigung je Anlage. Bestehende, von dir erfasste Werte werden niemals überschrieben, sondern als Vorschlag abgelegt („Der Nutzer gewinnt“). Du bist verpflichtet, alle durch einen Assistenten generierten oder vorgeschlagenen Werte vor dem Ausdruck eigenständig zu prüfen und zu bestätigen.',
       ],
@@ -151,7 +156,7 @@ export function terms(operator: Operator | null): readonly Section[] {
     {
       title: '§ 4 Preise und Zahlung',
       paragraphs: [
-        'Das Erfassen und Prüfen ist kostenlos. Kostenpflichtig ist die Freischaltung des Formular-Ausdrucks für ein Steuerjahr; der Preis wird vor der Zahlung angezeigt und enthält die gesetzliche Umsatzsteuer.',
+        'Das Erfassen und Prüfen ist kostenlos. Kostenpflichtig ist die Freischaltung des Formular-Ausdrucks für ein Steuerjahr und, für Selbstständige, die Freischaltung von Ausfüllhilfe und Exporten; der Preis wird vor der Zahlung angezeigt und enthält die gesetzliche Umsatzsteuer.',
         'Die Zahlung wickelt Stripe ab. Du erhältst eine Rechnung per E-Mail.',
       ],
     },
@@ -174,7 +179,10 @@ export function terms(operator: Operator | null): readonly Section[] {
     },
     {
       title: '§ 7 Datenschutz',
-      paragraphs: ['Wie wir mit deinen Daten umgehen, steht in der Datenschutzerklärung.'],
+      paragraphs: [
+        'Wie wir mit deinen Daten umgehen, steht in der Datenschutzerklärung.',
+        'Auftragsverarbeitung (Art. 28 DSGVO): Speicherst du als Selbstständiger Daten Dritter (Geschäftspartner, Kunden, Beschäftigte), verarbeiten wir sie nur auf deine dokumentierte Weisung und nur, um dir die Buchhaltung bereitzustellen. Unsere Beschäftigten sind zur Vertraulichkeit verpflichtet. Wir schützen die Daten durch Verschlüsselung und Zugriffsprotokolle (Art. 32 DSGVO), setzen nur die in der Datenschutzerklärung genannten Unterauftragsverarbeiter ein und informieren dich vor einem Wechsel. Wir unterstützen dich bei Anfragen Betroffener und bei Datenpannen, löschen die Daten mit deinem Konto und weisen dir die Einhaltung auf Anfrage nach.',
+      ],
     },
     {
       title: '§ 8 Schlussbestimmungen',
@@ -203,7 +211,8 @@ export const NOTICES: readonly Section[] = [
   {
     title: 'Abgabe auf Papier',
     paragraphs: [
-      'SteuerEule übermittelt nichts elektronisch an das Finanzamt. Du druckst die ausgefüllten Formulare aus, prüfst sie, unterschreibst den Hauptvordruck und reichst alles bei deinem Finanzamt ein. Wer Gewinneinkünfte hat (z. B. aus Gewerbe oder Selbstständigkeit), muss elektronisch abgeben – diese Fälle unterstützt SteuerEule nicht.',
+      'SteuerEule übermittelt deine Einkommensteuererklärung nicht an das Finanzamt. Du druckst die ausgefüllten Formulare aus, prüfst sie, unterschreibst den Hauptvordruck und reichst alles bei deinem Finanzamt ein.',
+      'Wer Gewinneinkünfte hat (z. B. aus Gewerbe oder Selbstständigkeit), muss elektronisch abgeben. Dafür gibt SteuerEule dir im Bereich „Selbstständig“ die Werte Zeile für Zeile zum Abtippen in Mein ELSTER.',
     ],
   },
   {

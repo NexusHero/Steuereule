@@ -141,11 +141,13 @@ export class CompanyCarInputDto {
   @ApiProperty({ type: Number, description: 'Bruttolistenpreis with the extras, euros.' }) @IsInt() @Min(1) @Max(10_000_000) listPriceGrossEur!: number
   @ApiPropertyOptional({ type: Number }) @IsOptional() @IsInt() @Min(0) @Max(1000) co2GPerKm?: number
   @ApiPropertyOptional({ type: Number }) @IsOptional() @IsInt() @Min(0) @Max(2000) electricRangeKm?: number
+  @ApiPropertyOptional({ type: Number, description: 'Battery capacity in kWh: the battery deduction of a car bought before 2023 without a fraction (§ 6 Abs. 1 Nr. 4 Satz 2 Nr. 1 EStG).' }) @IsOptional() @Min(0) @Max(500) batteryKwh?: number
   @ApiProperty({ type: Boolean, description: 'More than half of the use is business.' }) @IsBoolean() businessShareOver50!: boolean
   @ApiProperty({ type: Number, description: 'Months in the business assets this year.' }) @IsInt() @Min(1) @Max(12) monthsInBusiness!: number
   @ApiProperty({ enum: ['pauschal', 'fahrtenbuch'] }) @IsIn(['pauschal', 'fahrtenbuch']) method!: 'pauschal' | 'fahrtenbuch'
   @ApiPropertyOptional({ type: Number, description: 'Total costs of the car in the year with the AfA, euros.' }) @IsOptional() @IsInt() @Min(0) totalCostsEur?: number
-  @ApiPropertyOptional({ type: Number, description: 'The AfA inside the total costs, euros.' }) @IsOptional() @IsInt() @Min(0) depreciationEur?: number
+  @ApiPropertyOptional({ type: Number, description: 'The AfA inside the total costs, euros; an electric or hybrid car counts it at its fraction.' }) @IsOptional() @IsInt() @Min(0) depreciationEur?: number
+  @ApiPropertyOptional({ type: Number, description: 'Logbook: leasing rates inside the total costs, euros; an electric or hybrid car counts them at its fraction.' }) @IsOptional() @IsInt() @Min(0) leasingEur?: number
   @ApiPropertyOptional({ type: Number, description: 'Logbook: private share of the km, 0–1.' }) @IsOptional() @Min(0) @Max(1) privateShare?: number
   @ApiPropertyOptional({ type: Number, description: 'Logbook: km of the year.' }) @IsOptional() @IsInt() @Min(0) totalKm?: number
   @ApiPropertyOptional({ type: Number, description: 'Logbook: costs that carried input VAT, euros.' }) @IsOptional() @IsInt() @Min(0) costsWithInputVatEur?: number
@@ -463,17 +465,55 @@ export class AcceptBankTransactionDto {
   remember?: boolean
 }
 
+const DATE_OPT = { type: String, example: '2024-05-01' }
+
+/** A building in the business assets (§ 7 Abs. 4, 5a EStG). */
+export class BuildingFactsDto {
+  @ApiProperty({ enum: ['betrieb', 'wohnen'], description: "'betrieb': not used for living (Abs. 4 Nr. 1); 'wohnen': living (Nr. 2, Abs. 5a)." }) @IsIn(['betrieb', 'wohnen']) use!: 'betrieb' | 'wohnen'
+  @ApiProperty({ ...DATE_OPT, description: 'Completion (Fertigstellung).' }) @Matches(ISO_DATE) completed!: string
+  @ApiPropertyOptional({ ...DATE_OPT, description: 'Bauantrag: 3 % for a business building only when filed after 31.3.1985.' }) @IsOptional() @Matches(ISO_DATE) applicationFiled?: string
+  @ApiPropertyOptional({ ...DATE_OPT, description: 'Baubeginn (Abs. 5a).' }) @IsOptional() @Matches(ISO_DATE) constructionStarted?: string
+  @ApiPropertyOptional({ ...DATE_OPT, description: 'Purchase contract of a building bought by the end of its completion year (Abs. 5a).' }) @IsOptional() @Matches(ISO_DATE) contractSigned?: string
+}
+
+/** The § 7g EStG Sonder-AfA (Abs. 5) and cut of the cost (Abs. 2). */
+export class SpecialDepreciationDto {
+  @ApiProperty({ type: 'object', additionalProperties: { type: 'integer' }, description: 'Year → Sonder-AfA in cents, the acquisition year and the four after it.' }) @IsObject() byYear!: Record<string, number>
+  @ApiPropertyOptional({ type: Number, description: 'Cut of the cost by the IAB added back, cents (§ 7g Abs. 2).' }) @IsOptional() @IsInt() @Min(0) costReduction?: number
+  @ApiPropertyOptional({ type: Number, description: 'Profit of the business year before the acquisition, euros (§ 7g Abs. 6 Nr. 1: at most 200.000 €).' }) @IsOptional() @Min(-100_000_000) @Max(100_000_000) priorYearProfitEur?: number
+}
+
+/** The Vorsteuerberichtigung of an asset (§ 15a UStG). */
+export class VatCorrectionDto {
+  @ApiProperty({ type: Number, description: 'Input VAT on the acquisition cost, cents.' }) @IsInt() @Min(0) inputVatCents!: number
+  @ApiProperty({ type: Number, description: 'Share originally deducted, 0–1.' }) @Min(0) @Max(1) originalShare!: number
+  @ApiProperty({ type: 'object', additionalProperties: { type: 'number' }, description: 'Year → deductible share as it turned out, 0–1.' }) @IsObject() shareByYear!: Record<string, number>
+  @ApiPropertyOptional({ type: Number, description: 'The share the sale or Entnahme allows (1 taxable, 0 tax-free); dated by the disposal.' }) @IsOptional() @Min(0) @Max(1) disposalShare?: number
+}
+
+export class AssetFactsDto {
+  @ApiPropertyOptional({ type: SpecialDepreciationDto, nullable: true }) @IsOptional() @ValidateNested() @Type(() => SpecialDepreciationDto) specialDepreciation?: SpecialDepreciationDto | null
+  @ApiPropertyOptional({ type: VatCorrectionDto, nullable: true }) @IsOptional() @ValidateNested() @Type(() => VatCorrectionDto) vatCorrection?: VatCorrectionDto | null
+}
+
 export class FixedAssetInputDto {
   @ApiProperty({ type: String }) @IsString() @MaxLength(200) label!: string
   @ApiProperty({ type: String, example: '0420' }) @Matches(/^\d{4,8}$/) account!: string
   @ApiProperty({ type: String, example: '2025-03-14' }) @Matches(ISO_DATE) acquisitionDate!: string
   @ApiProperty({ type: Number, description: 'Net cost in cents.' }) @IsInt() @Min(1) acquisitionCostCents!: number
-  @ApiProperty({ enum: ['linear', 'degressive', 'gwg', 'sofort'] }) @IsIn(['linear', 'degressive', 'gwg', 'sofort']) method!: string
+  @ApiProperty({
+    enum: ['linear', 'degressive', 'elektrofahrzeug', 'gwg', 'sofort', 'building', 'building_degressive'],
+    description: "'elektrofahrzeug': § 7 Abs. 2a EStG, 75/10/5/5/3/2 % for an electric vehicle bought 1.7.2025–31.12.2027; 'building' and 'building_degressive' need `building`.",
+  })
+  @IsIn(['linear', 'degressive', 'elektrofahrzeug', 'gwg', 'sofort', 'building', 'building_degressive'])
+  method!: string
   @ApiPropertyOptional({ enum: Object.keys(USEFUL_LIVES), description: 'AfA-table category (GET …/selbststaendig/kataloge); sets the useful life when none is given.' })
   @IsOptional()
   @IsIn(Object.keys(USEFUL_LIVES))
   category?: string
   @ApiPropertyOptional({ type: Number }) @IsOptional() @IsInt() @Min(1) @Max(50) usefulLifeYears?: number
+  @ApiPropertyOptional({ type: BuildingFactsDto }) @IsOptional() @ValidateNested() @Type(() => BuildingFactsDto) building?: BuildingFactsDto
+  @ApiPropertyOptional({ type: SpecialDepreciationDto }) @IsOptional() @ValidateNested() @Type(() => SpecialDepreciationDto) specialDepreciation?: SpecialDepreciationDto
 }
 
 export class AssetDisposalDto {

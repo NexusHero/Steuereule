@@ -184,6 +184,12 @@ export async function answerBasis(page, answers) {
   await waitForStromStep(page, 'basis')
   const pick = (id, value) => page.locator(`[data-testid="interview-option-${id}-${value}"]`).click()
   await pick('job', answers.job)
+  // With the self-employment switch on (ADR-0101 §22), a pensioner is asked about a business on the side; unless the
+  // scenario says so, there is none.
+  if (answers.job === 'Rente') {
+    const sideBusiness = page.locator('[data-testid="strom-feld-rente-selbststaendig"]')
+    if (await sideBusiness.waitFor({ state: 'visible', timeout: 2_000 }).then(() => true, () => false)) await pick('rente-selbststaendig', answers['rente-selbststaendig'] ?? 'Nein')
+  }
   if (await page.locator('[data-testid="strom-feld-ausland"]').isVisible()) await pick('ausland', answers.ausland)
   // A Grenzgänger is asked whether there was a German job too; unless the scenario says so, there was not.
   if (await page.locator('[data-testid="strom-feld-de-job"]').isVisible()) await pick('de-job', answers['de-job'] ?? 'Nur in der Schweiz')

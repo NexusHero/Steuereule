@@ -163,6 +163,11 @@ export function ProfilePage({ taxYear, person, business = 1, onBack, onOpenPage 
             ))}
           </View>
         </Feld>
+        {profile.vatMethod === 'ist' ? (
+          <Feld label={tr('business.profil.buchfuehrungBefreit')}>
+            {yesNo(profile.vatPeriodFacts.exemptFromBookkeeping === true, (v) => void save({ vatPeriodFacts: { ...profile.vatPeriodFacts, exemptFromBookkeeping: v } }), 'profil-148')}
+          </Feld>
+        ) : null}
       </Section>
 
       {profile.confirmedKind !== 'freiberuf' ? (

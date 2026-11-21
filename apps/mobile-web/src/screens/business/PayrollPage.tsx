@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Text, View } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { Button, Feld, Input, useTheme } from '@steuereule/ui'
-import { useBusinessControllerAddPayrollRun, useBusinessControllerPayroll, type PayrollRunInputDto } from '@steuereule/api-client'
+import { PayrollRunInputDtoChurch, useBusinessControllerAddPayrollRun, useBusinessControllerPayroll, type PayrollRunInputDto } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
 import { BusinessFrame, BusinessQueryState, Figure, Note, Section } from './BusinessFrame'
 import { Choice } from './Choice'
@@ -10,8 +10,17 @@ import { personParams, plainEuro, type ApiProblem } from './businessKit'
 import { attempt, queryProblem, useRefreshBusiness } from './useBusiness'
 import type { BusinessPageProps } from './BusinessScreen'
 
-const KZ_ORDER = ['86', '42', '49', '61', '62', '83'] as const
-const AMOUNTS = ['wageTaxEur', 'soliEur', 'churchTaxEur', 'employeeSocialEur', 'employerSocialEur'] as const
+const KZ_FIRST = ['86', '90', '42', '41', '44', '45', '48', '49', '47', '61', '62'] as const
+/** The Anmeldung's lines in form order; the Land lines for other communities (63–78) after 62, 83 last. */
+const kzOrder = (kennzahlen: Readonly<Record<string, number>>) => [
+  ...KZ_FIRST.filter((kz) => kennzahlen[kz] !== undefined),
+  ...Object.keys(kennzahlen).filter((kz) => !(KZ_FIRST as readonly string[]).includes(kz) && kz !== '83').sort((a, b) => a.localeCompare(b)),
+  ...(kennzahlen['83'] !== undefined ? ['83'] : []),
+]
+const KNOWN_KZ: ReadonlySet<string> = new Set([...KZ_FIRST, '83'])
+const AMOUNTS = ['wageTaxEur', 'soliEur', 'churchTaxEur', 'employeeSocialEur', 'employerSocialEur', 'flatWageTaxEur', 'flat37bTaxEur', 'flatChurchTaxEur', 'bavSupportEur'] as const
+type Church = NonNullable<PayrollRunInputDto['church']>
+const OTHER_CHURCHES = Object.values(PayrollRunInputDtoChurch).filter((c) => c !== 'ev' && c !== 'rk')
 const dateDe = (iso: string) => `${iso.slice(8, 10)}.${iso.slice(5, 7)}.${iso.slice(0, 4)}`
 const euro = (raw: string | undefined): number | undefined | null => {
   if (raw === undefined || raw.trim() === '') return undefined
@@ -31,9 +40,11 @@ export function PayrollPage({ taxYear, person, business = 1, onBack }: BusinessP
   const add = useBusinessControllerAddPayrollRun()
   const refresh = useRefreshBusiness(taxYear)
   const [kind, setKind] = useState<'regulaer' | 'minijob'>('regulaer')
-  const [church, setChurch] = useState<'ev' | 'rk' | null>(null)
+  const [church, setChurch] = useState<Church | null>(null)
+  const [otherChurch, setOtherChurch] = useState(false)
   const [privatelyInsured, setPrivatelyInsured] = useState(false)
   const [rvExempt, setRvExempt] = useState(false)
+  const [over30, setOver30] = useState(false)
   const [values, setValues] = useState<Readonly<Record<string, string>>>({})
   const [invalid, setInvalid] = useState(false)
   const [problem, setProblem] = useState<ApiProblem | null>(null)
@@ -61,7 +72,7 @@ export function PayrollPage({ taxYear, person, business = 1, onBack }: BusinessP
       kind,
       employee,
       grossEur: gross,
-      ...(kind === 'regulaer' ? { ...Object.fromEntries(extra.filter(([, v]) => v !== undefined)), church } : { statutoryHealthInsured: !privatelyInsured, rvExempt }),
+      ...(kind === 'regulaer' ? { ...Object.fromEntries(extra.filter(([, v]) => v !== undefined)), church } : { statutoryHealthInsured: !privatelyInsured, rvExempt, u1Applies: !over30 }),
     }
     const outcome = await attempt(() => add.mutateAsync({ jahr: taxYear, data: body, ...(params ? { params } : {}) }))
     if (!outcome.ok) return setProblem(outcome.problem)
@@ -96,11 +107,38 @@ export function PayrollPage({ taxYear, person, business = 1, onBack }: BusinessP
             {AMOUNTS.map((k) => field(k))}
             <View style={row}>
               {(['ev', 'rk'] as const).map((c) => (
-                <Choice key={c} selected={church === c} onPress={() => setChurch(church === c ? null : c)} testID={`lohn-kirche-${c}`}>
+                <Choice
+                  key={c}
+                  selected={church === c}
+                  onPress={() => {
+                    setOtherChurch(false)
+                    setChurch(church === c ? null : c)
+                  }}
+                  testID={`lohn-kirche-${c}`}
+                >
                   {tr(`business.lohn.kirche.${c}`)}
                 </Choice>
               ))}
+              <Choice
+                selected={otherChurch}
+                onPress={() => {
+                  setOtherChurch(!otherChurch)
+                  setChurch(null)
+                }}
+                testID="lohn-kirche-andere"
+              >
+                {tr('business.lohn.kirche.andere')}
+              </Choice>
             </View>
+            {otherChurch ? (
+              <View style={row}>
+                {OTHER_CHURCHES.map((c) => (
+                  <Choice key={c} selected={church === c} onPress={() => setChurch(church === c ? null : c)} testID={`lohn-kirche-${c}`}>
+                    {c.toUpperCase()}
+                  </Choice>
+                ))}
+              </View>
+            ) : null}
           </>
         ) : (
           <View style={row}>
@@ -109,6 +147,9 @@ export function PayrollPage({ taxYear, person, business = 1, onBack }: BusinessP
             </Choice>
             <Choice selected={rvExempt} onPress={() => setRvExempt(!rvExempt)} testID="lohn-rv-befreit">
               {tr('business.lohn.rvBefreit')}
+            </Choice>
+            <Choice selected={over30} onPress={() => setOver30(!over30)} testID="lohn-ueber-30">
+              {tr('business.lohn.ueber30')}
             </Choice>
           </View>
         )}
@@ -130,11 +171,16 @@ export function PayrollPage({ taxYear, person, business = 1, onBack }: BusinessP
         {data.wageTaxReturns.map((w) => (
           <View key={w.label} style={{ marginBottom: t.space.s3 }} testID={`lohn-lsta-${w.label}`}>
             <Text style={{ ...t.type.bodyStrong, color: t.color.tinte }}>{`${w.label} · ${tr('business.va.faellig', { datum: dateDe(w.due) })}`}</Text>
-            {KZ_ORDER.filter((kz) => w.kennzahlen[kz] !== undefined).map((kz) => (
-              <Figure key={kz} label={`Kz ${kz} · ${tr(`business.lohn.kz.${kz}`)}`} value={kz === '86' ? String(w.kennzahlen[kz]) : plainEuro(w.kennzahlen[kz]!)} />
+            {kzOrder(w.kennzahlen).map((kz) => (
+              <Figure key={kz} label={`Kz ${kz} · ${tr(KNOWN_KZ.has(kz) ? `business.lohn.kz.${kz}` : 'business.lohn.kz.land')}`} value={kz === '86' || kz === '90' ? String(w.kennzahlen[kz]) : plainEuro(w.kennzahlen[kz]!)} />
             ))}
           </View>
         ))}
+        {data.unassignedChurchCodes.length > 0 ? (
+          <Note tone="error" testID="lohn-kirche-ohne-zeile">
+            {tr('business.lohn.kircheOhneZeile', { kuerzel: data.unassignedChurchCodes.map((c) => c.toUpperCase()).join(', ') })}
+          </Note>
+        ) : null}
       </Section>
 
       {data.minijobCharges.length > 0 ? (

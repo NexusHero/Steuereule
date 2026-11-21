@@ -213,3 +213,85 @@ Der Gesetzestext ([§ 19 Abs. 1 UStG](https://www.gesetze-im-internet.de/ustg_19
 | § 19 Teiljahr im Vorjahr | Bis 2024 wird hochgerechnet (§ 19 Abs. 3 Satz 3 a. F., Abschnitt 19.3 Abs. 3 UStAE a. F.). Ab 2025 zählt der tatsächliche Umsatz; der Satz zur Umrechnung ist entfallen. | gesetze-im-internet.de (Wayback 2024 und aktuell); BMF 18.03.2025. Geprüft |
 | § 34a Gewerbesteuer | Vor VZ 2024 nicht hinzugerechnet; die Gewerbesteuer minderte als nicht abziehbare Betriebsausgabe den begünstigungsfähigen Gewinn (BMF 11.08.2008 Rz. 16). Erst die geltende Fassung rechnet sie hinzu. | § 34a (Wayback 2023, aktuell); EStH 2023 Anhang 27c. Geprüft; die BGBl-Fundstelle der Änderung nicht gelesen |
 | § 47 UStDV | 1/11 der **Summe der Vorauszahlungen** des Vorjahres, nicht der Jahressteuer. | § 47 Abs. 1 Satz 2 UStDV; USt 1 H 2026 Zeile 8. Geprüft |
+
+## 13. Gesetzesprüfung vom 20.11.2026
+
+Die Regeln in `packages/core/src/domains/business` und die Vorsorge wurden gegen die amtlichen Texte geprüft: gesetze-im-internet.de, BGBl, BMF-Schreiben, Vordruck der Lohnsteuer-Anmeldung 2026 und Minijob-Zentrale.
+
+**Behoben:**
+- **§ 34a Abs. 2 Satz 3 EStG (ab VZ 2024):** Entnahmen gelten vorrangig als Zahlung der Thesaurierungssteuer und ihres Solis. Die App setzt das selbst an, als Fixpunkt, weil die Steuer vom freigestellten Betrag abhängt. Das Eingabefeld gilt nur noch für Steuer früherer Jahre.
+- **§ 34a Abs. 6 Nr. 1 EStG:** Eine Veräußerung oder Aufgabe versteuert den ganzen nachversteuerungspflichtigen Betrag mit 25 % nach. Bisher entfiel § 34a im Jahr der Veräußerung ganz. Abs. 1 schließt aber nur den begünstigten Veräußerungsgewinn aus („soweit“).
+- **BMF 05.11.2021 Rn. 13:** Bei der Kostendeckelung von E- und Hybridautos zählt die AfA in den Gesamtkosten mit demselben Bruchteil wie der Listenpreis.
+- **Lohnsteuer-Anmeldung 2026, Kz 86:** Sie zählt alle Arbeitnehmer, Aushilfen und Minijobber eingeschlossen (Hinweis Nr. 11).
+- **§ 18 Abs. 2 Satz 3 UStG:** Ein Gründer, der eine Erstattung erwartet, ist nicht befreit.
+- **Zitate korrigiert:** § 34 Abs. 3 Satz 5 statt Satz 4; § 19 Abs. 1 Satz 4 UStG gilt nur bis 2024, ab 2025 schließt § 15 Abs. 2 Satz 1 Nr. 1 den Vorsteuerabzug aus.
+
+**Geprüft und richtig:**
+- Gewerbesteuer: §§ 8 Nr. 1, 9 Nr. 1 (ab 2025 Grundsteuer), 10a, 11 GewStG
+- § 35 EStG
+- §§ 16 Abs. 4, 34 Abs. 1 und 3, 34a-Sätze EStG
+- Katalogberufe nach § 18 EStG
+- Vorsorge-Höchstbeträge 2022–2026
+- Degressive AfA: alle drei Fenster
+- GWG und Sammelposten
+- § 7g EStG
+- § 10d EStG
+- § 4 Abs. 5 EStG: Bewirtung, Geschenke, Verpflegung, Homeoffice
+- Preisgrenzen und Hybrid-Reichweiten beim Firmenwagen
+- § 18 Abs. 2/2a UStG und § 47 UStDV
+- Kennzahlen der USt 1 A
+- Grenzen nach § 19 und § 20 UStG
+- Minijob-Grenzen, -Sätze und -Umlagen 2022–2026, RV-Mindestbemessungsgrundlage 175 €
+- Zeiträume nach § 41a EStG
+- **Nicht falsch, aber anders als zunächst gemeldet:** Kleinunternehmer und Erwerbsschwelle (§ 1a Abs. 3 UStG). Wer mit Erwerbs-Schlüssel bucht, hat seine USt-IdNr verwendet; das gilt als Verzicht nach Abs. 4.
+
+**Nachgebaut am 20.11.2026:**
+- **Firmenwagen:**
+  - Batterieabzug für Autos, die vor 2023 ohne Bruchteil angeschafft wurden (§ 6 Abs. 1 Nr. 4 Satz 2 Nr. 1 EStG; 500 €/kWh bis 2013, jährlich 50 € weniger, höchstens 10.000 €, jährlich 500 € weniger)
+  - beim Fahrtenbuch die Leasingraten mit Bruchteil; Feld „Batteriekapazität“ und „Leasingraten“ auf der Seite
+- **AfA:**
+  - § 7 Abs. 2a EStG als Methode „E-Fahrzeug 75 %“ (75/10/5/5/3/2 %, ohne Monate, ohne Sonder-AfA)
+  - Gebäude: 3 % nach Abs. 4 Nr. 1 nur mit Bauantrag nach 31.3.1985; Abs. 5a nur für Wohnzwecke, auch beim Kauf mit Vertrag im Fenster
+  - § 7g Abs. 6 Nr. 1: Gewinngrenze des Vorjahres
+  - Ein Anlagegut, dessen Plan sich nicht rechnen lässt, wird nicht mehr gespeichert (vorher erst gespeichert, dann geprüft).
+- **Lohn:**
+  - § 41a Abs. 2 Satz 4 EStG (neue Betriebsstätte: erster Monat × 12)
+  - U1 abschaltbar (§ 1 Abs. 1 AAG)
+  - pauschale Lohnsteuer (Kz 41, 44), Verbleiben (Kz 48), pauschale Kirchensteuer (Kz 47); Buchung als Personalaufwand
+  - Kirchensteuer anderer Gemeinschaften auf der Zeile des Landes (Vordruck 2026, Seite 3); das Land kommt aus dem Gemeindeschlüssel. Ohne Zeile steht sie nur in Kz 83, und die Seite sagt es.
+- **Umsatzsteuer:**
+  - Zusammenfassende Meldung: Wechsel im Quartal (§ 18a Abs. 1 Satz 3 UStG)
+  - § 19 ab 2025: Datum des Umsatzes, der die Grenze überschreitet, auf der Umsatzsteuer-Seite
+  - § 20 Satz 1 Nr. 2 UStG im Kern
+  - Vorsteuerberichtigung nach § 15a UStG mit §§ 44, 45 UStDV im Kern (`inputVatCorrection`)
+  - § 13b mit 7 % in der Rechnung der Voranmeldung
+- **Gewerbesteuer:** Mindesthebesatz 280 % ab 2027.
+
+**Geschlossen am 20.11.2026 (zweiter Teil):**
+- **§ 13b mit 7 % buchbar:** Steuerschlüssel `rc13b7` und `rcEu7` auf den Konten ohne Steuersatz. Laut DATEV-Kontenrahmen 2026 (Art.-Nr. 11174 / 11175, gelesen) gibt es kein eigenes 7-%-Konto für § 13b:
+  - Umsatzsteuer nach § 13b UStG: SKR03 1785, SKR04 3835
+  - Abziehbare Vorsteuer nach § 13b UStG: SKR03 1578, SKR04 1408
+  - Die Voranmeldung versteuert den 7-%-Teil mit 7 %.
+- **Pauschale Lohnsteuer:** gebucht auf „Pauschale Steuer für Arbeitnehmer“ (SKR03 4198, SKR04 6039, DATEV 2026).
+- **§ 20 Satz 1 Nr. 2 UStG:** Die Befreiung nach § 148 AO steht im Profil, sobald man „Ist“ wählt.
+- **Gebäude über API und Seite:**
+  - Nutzung, Fertigstellung, Bauantrag
+  - bei 5 % degressiv Baubeginn oder Kaufvertrag
+  - neue Spalte `Anlagegut.gebaeude`, verschlüsselt
+- **§ 7g-Sonder-AfA** mit Gewinn des Vorjahres beim Anlegen.
+- **§ 15a UStG je Anlagegut:**
+  - Eingaben: Vorsteuer, ursprünglicher Anteil, Anteil je Jahr
+  - neue Spalte `Anlagegut.vorsteuerberichtigung`, verschlüsselt
+  - Die Berichtigung des Jahres fließt in die Jahres-Umsatzsteuer; die Seite listet sie je Anlagegut.
+  - Die Kennzahl der Zeile „Berichtigung des Vorsteuerabzugs (§ 15a UStG)“ in USt 2 A steht nicht im erzeugten Formularkatalog. Die App nennt deshalb die Zeile mit Namen statt mit einer ungeprüften Kennzahl.
+- **Lohnsteuer-Anmeldung:**
+  - Kz 45 BAV-Förderbetrag (§ 100 EStG, höchstens 288 € je Arbeitnehmer und Jahr)
+  - Kz 90 Zahl der Arbeitnehmer mit Förderbetrag
+  - Kz 48 = 42 + 41 + 44 − 45
+  - Kz 33 (Handelsschiffe, § 41a Abs. 4) kommt in der App nicht vor.
+- **Ausfüllhilfe USt 2 A:** EU-Leistungen (§ 13b Abs. 1) und andere § 13b-Leistungen haben je eine eigene Zeile. Die Vorsteuer steht getrennt nach Rechnungen, EU-Erwerb und § 13b; vorher stand alles in „Vorsteuer aus Rechnungen“.
+
+**Bleibt offen (Auslegung, ohne BMF-Schreiben nicht zu entscheiden):**
+- Gilt die Ausnahme nach Abs. 2 Satz 2 auch für den Entnahmeüberschuss nach § 34a Abs. 4?
+- Ist der Höchstbetrag für den Verlustrücktrag (§ 10d Abs. 1 Satz 2) für beide Jahre gemeinsam?
+- Der BAV-Förderbetrag mindert die abzuführende Lohnsteuer, wird aber nicht gesondert gebucht. Die Zahlung an das Finanzamt bucht der Nutzer in der gezahlten Höhe.

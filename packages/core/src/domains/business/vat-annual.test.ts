@@ -19,6 +19,8 @@ describe('VAT rates per year (§ 12, § 28 UStG)', () => {
   it('allows Istversteuerung up to 600.000 € before 2024, 800.000 € from 2024, always for a freelancer', () => {
     expect(cashAccountingAllowed(2023, 700_000, false)).toBe(false)
     expect(cashAccountingAllowed(2024, 700_000, false)).toBe(true)
+    // Nr. 2: freed from keeping books under § 148 AO, whatever the turnover (statute read).
+    expect(cashAccountingAllowed(2025, 2_000_000, false, true)).toBe(true)
     expect(cashAccountingAllowed(2025, 2_000_000, true)).toBe(true)
   })
 })
@@ -40,10 +42,18 @@ describe('annual VAT return (§ 18 Abs. 3 UStG)', () => {
       outputVat: { standard: 15_200, reduced: 350, zero: 0 },
       reverseChargeVatEur: 380,
       inputVatDeductibleEur: 3_480,
+      inputVatCorrectionEur: 0,
       vatOfYearEur: 12_450,
       prepaymentsEur: 12_000,
       balanceEur: 450,
     })
+  })
+
+  it('takes the § 15a correction of the year into the VAT, for a Kleinunternehmer too', () => {
+    const base = { year: 2025, method: 'ist', taxableNetEur: { standard: 10_000 }, inputVatEur: 500, prepaymentsEur: 0 } as const
+    expect(vatAnnualReturn({ ...base, regime: 'regel', inputVatCorrectionEur: -570 }).vatOfYearEur).toBe(1_970)
+    // A Kleinunternehmer who now uses the asset for taxed turnover gets input VAT back (§ 15a, a change of the share).
+    expect(vatAnnualReturn({ ...base, regime: 'klein', inputVatCorrectionEur: 300 }).vatOfYearEur).toBe(-300)
   })
 
   it('gives a refund when the prepayments were higher', () => {

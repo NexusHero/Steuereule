@@ -48,7 +48,7 @@ export function InterviewScreen({ onDone, taxYear = CURRENT_TAX_YEAR, onChangeYe
   const queryClient = useQueryClient()
   const interviewQuery = useInterviewControllerGetInterview(taxYear)
   // The server's switch decides whether the Gewerbe gate stops the self-employed (ADR-0101 §20).
-  const capability = useSelfEmploymentCapability(taxYear)
+  const capability = useSelfEmploymentCapability()
   const options = capability.options
   const postAnswer = useInterviewControllerPostAnswer({
     mutation: {

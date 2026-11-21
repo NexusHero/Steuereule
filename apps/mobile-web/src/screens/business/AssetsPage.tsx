@@ -9,6 +9,8 @@ import {
   useBusinessControllerBookDepreciation,
   useBusinessControllerCreateAsset,
   useBusinessControllerDisposeAsset,
+  useBusinessControllerSetAssetFacts,
+  type FixedAssetInputDto,
   type FixedAssetInputDtoMethod,
 } from '@steuereule/api-client'
 import { Choice } from './Choice'
@@ -19,7 +21,37 @@ import { CatalogPicker } from './CatalogPicker'
 import { attempt, queryProblem, useRefreshBusiness } from './useBusiness'
 import type { BusinessPageProps } from './BusinessScreen'
 
-const METHODS: readonly FixedAssetInputDtoMethod[] = ['linear', 'degressive', 'gwg', 'sofort']
+const METHODS: readonly FixedAssetInputDtoMethod[] = ['linear', 'degressive', 'elektrofahrzeug', 'gwg', 'sofort', 'building', 'building_degressive']
+const isBuilding = (m: FixedAssetInputDtoMethod) => m === 'building' || m === 'building_degressive'
+const EMPTY_FORM = {
+  label: '',
+  account: '',
+  date: '',
+  cost: '',
+  method: 'linear' as FixedAssetInputDtoMethod,
+  years: '',
+  category: null as FixedAssetInputDtoCategory | null,
+  use: 'betrieb' as 'betrieb' | 'wohnen',
+  completed: '',
+  applicationFiled: '',
+  constructionStarted: '',
+  contractSigned: '',
+  special: '',
+  priorProfit: '',
+}
+/** A percentage typed by the user as a share 0–1; null when it is no number in 0–100. */
+const share = (raw: string): number | null => {
+  const n = Number(raw.replace(',', '.'))
+  return raw.trim() !== '' && Number.isFinite(n) && n >= 0 && n <= 100 ? n / 100 : null
+}
+const parseJson = <T,>(raw: string | null | undefined): T | null => {
+  if (!raw) return null
+  try {
+    return JSON.parse(raw) as T
+  } catch {
+    return null
+  }
+}
 
 /** Anlagevermögen: the register of the year, a new asset, its disposal, and booking the year's AfA. */
 export function AssetsPage({ taxYear, person, business = 1, onBack }: BusinessPageProps) {
@@ -31,12 +63,15 @@ export function AssetsPage({ taxYear, person, business = 1, onBack }: BusinessPa
   const categories = catalogues.data?.status === 200 ? catalogues.data.data.assetCategories : []
   const create = useBusinessControllerCreateAsset()
   const dispose = useBusinessControllerDisposeAsset()
+  const setFacts = useBusinessControllerSetAssetFacts()
   const depreciate = useBusinessControllerBookDepreciation()
   const refresh = useRefreshBusiness(taxYear)
   const [problem, setProblem] = useState<ApiProblem | null>(null)
   const [adding, setAdding] = useState(false)
   const [invalid, setInvalid] = useState(false)
-  const [form, setForm] = useState({ label: '', account: '', date: '', cost: '', method: 'linear' as FixedAssetInputDtoMethod, years: '', category: null as FixedAssetInputDtoCategory | null })
+  const [form, setForm] = useState(EMPTY_FORM)
+  const [correcting, setCorrecting] = useState<string | null>(null)
+  const [correction, setCorrection] = useState({ vat: '', original: '100', thisYear: '' })
   const [disposing, setDisposing] = useState<string | null>(null)
   const [disposalDate, setDisposalDate] = useState('')
   const [proceeds, setProceeds] = useState('')
@@ -50,6 +85,7 @@ export function AssetsPage({ taxYear, person, business = 1, onBack }: BusinessPa
     )
   }
   const rows = query.data.data.register.rows
+  const records = query.data.data.records
   const totalBook = rows.reduce((sum, r) => sum + r.closingBookValue, 0)
 
   async function run(action: () => Promise<{ readonly status: number; readonly data?: unknown }>, after?: () => void) {
@@ -64,19 +100,69 @@ export function AssetsPage({ taxYear, person, business = 1, onBack }: BusinessPa
   function submitAsset() {
     const cents = eurosToCents(form.cost)
     const date = germanDateToIso(form.date)
-    const years = form.category !== null || form.years.trim() === '' ? undefined : Number(form.years)
-    if (cents === null || date === null || form.label.trim() === '' || form.account.trim() === '' || (years !== undefined && !Number.isInteger(years))) return setInvalid(true)
+    const years = form.category !== null || form.years.trim() === '' || isBuilding(form.method) ? undefined : Number(form.years)
+    const optionalDate = (raw: string) => (raw.trim() === '' ? undefined : (germanDateToIso(raw) ?? null))
+    const completed = optionalDate(form.completed)
+    const applicationFiled = optionalDate(form.applicationFiled)
+    const constructionStarted = optionalDate(form.constructionStarted)
+    const contractSigned = optionalDate(form.contractSigned)
+    const special = form.special.trim() === '' ? undefined : eurosToCents(form.special)
+    const priorProfit = form.priorProfit.trim() === '' ? undefined : eurosToCents(form.priorProfit)
+    const badBuilding = isBuilding(form.method) && (completed === undefined || [completed, applicationFiled, constructionStarted, contractSigned].includes(null))
+    if (cents === null || date === null || form.label.trim() === '' || form.account.trim() === '' || (years !== undefined && !Number.isInteger(years)) || badBuilding || special === null || priorProfit === null) return setInvalid(true)
     setInvalid(false)
+    const data: FixedAssetInputDto = {
+      label: form.label.trim(),
+      account: form.account.trim(),
+      acquisitionDate: date,
+      acquisitionCostCents: cents,
+      method: form.method,
+      ...(form.category !== null && !isBuilding(form.method) ? { category: form.category } : {}),
+      ...(years !== undefined ? { usefulLifeYears: years } : {}),
+      ...(isBuilding(form.method)
+        ? {
+            building: {
+              use: form.use,
+              completed: completed!,
+              ...(applicationFiled ? { applicationFiled } : {}),
+              ...(constructionStarted ? { constructionStarted } : {}),
+              ...(contractSigned ? { contractSigned } : {}),
+            },
+          }
+        : {}),
+      // § 7g Abs. 5 EStG: the Sonder-AfA of the acquisition year; later years on the asset's own line.
+      ...(special !== undefined && special > 0
+        ? { specialDepreciation: { byYear: { [date.slice(0, 4)]: special }, ...(priorProfit !== undefined ? { priorYearProfitEur: priorProfit / 100 } : {}) } }
+        : {}),
+    }
+    void run(
+      () => create.mutateAsync({ jahr: taxYear, data, ...(params ? { params } : {}) }),
+      () => {
+        setAdding(false)
+        setForm(EMPTY_FORM)
+      },
+    )
+  }
+
+  /** § 15a UStG: the input VAT of the asset, the share deducted then and the one of this year. */
+  function submitCorrection(id: string) {
+    const vat = eurosToCents(correction.vat)
+    const original = share(correction.original)
+    const thisYear = share(correction.thisYear)
+    if (vat === null || original === null || thisYear === null) return setInvalid(true)
+    setInvalid(false)
+    const known = parseJson<{ shareByYear?: Record<string, number> }>(records.find((r) => r.id === id)?.vatCorrection)
     void run(
       () =>
-        create.mutateAsync({
+        setFacts.mutateAsync({
           jahr: taxYear,
-          data: { label: form.label.trim(), account: form.account.trim(), acquisitionDate: date, acquisitionCostCents: cents, method: form.method, ...(form.category !== null ? { category: form.category } : {}), ...(years !== undefined ? { usefulLifeYears: years } : {}) },
+          anlageId: id,
+          data: { vatCorrection: { inputVatCents: vat, originalShare: original, shareByYear: { ...known?.shareByYear, [String(taxYear)]: thisYear } } },
           ...(params ? { params } : {}),
         }),
       () => {
-        setAdding(false)
-        setForm({ label: '', account: '', date: '', cost: '', method: 'linear', years: '', category: null })
+        setCorrecting(null)
+        setCorrection({ vat: '', original: '100', thisYear: '' })
       },
     )
   }
@@ -122,6 +208,27 @@ export function AssetsPage({ taxYear, person, business = 1, onBack }: BusinessPa
                 {tr('business.anlagen.abgang')}
               </Button>
             )}
+            {correcting === row.id ? (
+              <View testID="anlage-15a">
+                <Note>{tr('business.anlagen.berichtigungHinweis')}</Note>
+                <Feld label={tr('business.anlagen.vorsteuer')}>
+                  <Input type="numeric" mono value={correction.vat} onChange={(vat) => setCorrection((c) => ({ ...c, vat }))} placeholder="0,00" accessibilityLabel={tr('business.anlagen.vorsteuer')} testID="anlage-15a-vorsteuer" />
+                </Feld>
+                <Feld label={tr('business.anlagen.anteilUrspruenglich')}>
+                  <Input type="numeric" mono value={correction.original} onChange={(original) => setCorrection((c) => ({ ...c, original }))} placeholder="100" accessibilityLabel={tr('business.anlagen.anteilUrspruenglich')} testID="anlage-15a-ursprung" />
+                </Feld>
+                <Feld label={tr('business.anlagen.anteilJahr', { jahr: taxYear })}>
+                  <Input type="numeric" mono value={correction.thisYear} onChange={(thisYear) => setCorrection((c) => ({ ...c, thisYear }))} placeholder="100" accessibilityLabel={tr('business.anlagen.anteilJahr', { jahr: taxYear })} testID="anlage-15a-jahr" />
+                </Feld>
+                <Button onPress={() => submitCorrection(row.id)} testID="anlage-15a-speichern">
+                  {tr('business.anlagen.berichtigungSpeichern')}
+                </Button>
+              </View>
+            ) : (
+              <Button variant="ghost" onPress={() => setCorrecting(row.id)} testID={`anlage-15a-${row.id}`}>
+                {tr('business.anlagen.berichtigung')}
+              </Button>
+            )}
           </View>
         ))}
         {rows.length > 0 ? <Figure strong label={tr('business.anlagen.summe')} value={plainCents(totalBook)} /> : null}
@@ -151,6 +258,36 @@ export function AssetsPage({ taxYear, person, business = 1, onBack }: BusinessPa
               ))}
             </View>
           </Feld>
+          {isBuilding(form.method) ? (
+            <View testID="anlage-gebaeude">
+              <Feld label={tr('business.anlagen.nutzung')}>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.space.s2 }}>
+                  {(['betrieb', 'wohnen'] as const).map((use) => (
+                    <Choice key={use} selected={form.use === use} onPress={() => setForm((f) => ({ ...f, use }))} testID={`anlage-nutzung-${use}`}>
+                      {tr(`business.anlagen.nutzungArt.${use}`)}
+                    </Choice>
+                  ))}
+                </View>
+              </Feld>
+              {(['completed', 'applicationFiled', ...(form.method === 'building_degressive' ? (['constructionStarted', 'contractSigned'] as const) : [])] as const).map((key) => (
+                <Feld key={key} label={tr(`business.anlagen.gebaeudeDatum.${key}`)}>
+                  <DateInput value={form[key]} onChange={(v) => setForm((f) => ({ ...f, [key]: v }))} calendarLabel={tr('datum.kalender')} accessibilityLabel={tr(`business.anlagen.gebaeudeDatum.${key}`)} testID={`anlage-gebaeude-${key}`} />
+                </Feld>
+              ))}
+            </View>
+          ) : null}
+          {form.method === 'linear' || form.method === 'degressive' ? (
+            <View>
+              <Feld label={tr('business.anlagen.sonderAfa')}>
+                <Input type="numeric" mono value={form.special} onChange={(special) => setForm((f) => ({ ...f, special }))} placeholder="0,00" accessibilityLabel={tr('business.anlagen.sonderAfa')} testID="anlage-sonder-afa" />
+              </Feld>
+              {form.special.trim() !== '' ? (
+                <Feld label={tr('business.anlagen.gewinnVorjahr')}>
+                  <Input type="numeric" mono value={form.priorProfit} onChange={(priorProfit) => setForm((f) => ({ ...f, priorProfit }))} placeholder="0,00" accessibilityLabel={tr('business.anlagen.gewinnVorjahr')} testID="anlage-gewinn-vorjahr" />
+                </Feld>
+              ) : null}
+            </View>
+          ) : null}
           {form.method === 'linear' || form.method === 'degressive' ? (
             <Feld label={tr('business.anlagen.art')}>
               <CatalogPicker

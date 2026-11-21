@@ -1,4 +1,4 @@
-import { TRADE_TAX_ALLOWANCE_EUR, TRADE_TAX_BASE_RATE, TRADE_TAX_CREDIT_FACTOR } from '../business-taxes'
+import { minimumMultiplierPercent, TRADE_TAX_ALLOWANCE_EUR, TRADE_TAX_BASE_RATE, TRADE_TAX_CREDIT_FACTOR } from '../business-taxes'
 
 /**
  * Gewerbesteuer of a sole trader for one Erhebungszeitraum, as the Gewerbesteuererklärung and the
@@ -74,7 +74,7 @@ export interface TradeTaxReturnInput {
   readonly otherDeductionsEur?: number | undefined
   /** Vortragsfähiger Gewerbeverlust from the last Feststellungsbescheid (§ 10a GewStG). */
   readonly lossCarriedForwardEur?: number | undefined
-  /** The municipality's Hebesatz in percent (at least 200, § 16 Abs. 4 GewStG). */
+  /** The municipality's Hebesatz in percent (at least `minimumMultiplierPercent`, § 16 Abs. 4 Satz 2 GewStG). */
   readonly multiplierPercent: number
 }
 
@@ -105,7 +105,8 @@ export const TRADE_LOSS_RATE = 0.6
  * euros (R 14.1 Satz 3 GewStR); times the Hebesatz = Gewerbesteuer (§ 16 Abs. 1 GewStG), to the cent.
  */
 export function tradeTaxReturn(input: TradeTaxReturnInput): TradeTaxReturn {
-  if (!(input.multiplierPercent >= 200)) throw new RangeError('the multiplier is at least 200 % (§ 16 Abs. 4 GewStG)')
+  const minimum = minimumMultiplierPercent(input.year)
+  if (!(input.multiplierPercent >= minimum)) throw new RangeError(`the multiplier is at least ${minimum} % (§ 16 Abs. 4 GewStG)`)
   const additionsEur = cents(financingAddition(input.financing ?? {}).additionEur + Math.max(0, input.otherAdditionsEur ?? 0))
   const deductionsEur = cents(Math.max(0, input.landDeductionEur ?? 0) + Math.max(0, input.otherDeductionsEur ?? 0))
   const tradeIncomeBeforeLossEur = cents(input.profitEur + additionsEur - deductionsEur)

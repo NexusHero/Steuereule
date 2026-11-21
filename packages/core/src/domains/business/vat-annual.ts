@@ -35,11 +35,12 @@ export type VatMethod = 'soll' | 'ist'
 
 /**
  * § 20 Satz 1 UStG: Istversteuerung on application up to a Gesamtumsatz of the year before of
- * 800.000 € from 2024 (Wachstumschancengesetz), 600.000 € before; for a freelance activity
- * regardless of turnover (Nr. 3). Returns whether the office may grant it.
+ * 800.000 € from 2024 (Wachstumschancengesetz), 600.000 € before (Nr. 1); for a business freed from keeping books
+ * under § 148 AO (Nr. 2); for a freelance activity regardless of turnover (Nr. 3). Nr. 4 is for public bodies,
+ * never a person using the app. Returns whether the office may grant it.
  */
-export function cashAccountingAllowed(year: number, priorYearTotalTurnoverEur: number, freelance: boolean): boolean {
-  if (freelance) return true
+export function cashAccountingAllowed(year: number, priorYearTotalTurnoverEur: number, freelance: boolean, exemptFromBookkeeping = false): boolean {
+  if (freelance || exemptFromBookkeeping) return true
   return priorYearTotalTurnoverEur <= (year >= 2024 ? 800_000 : 600_000)
 }
 
@@ -49,7 +50,7 @@ export interface VatAnnualInput {
   readonly year: number
   /** Soll: by agreed fees; Ist: by fees received (§ 13 Abs. 1 Nr. 1 a and b UStG). The amounts below follow it. */
   readonly method: VatMethod
-  /** 'klein': § 19 UStG applies; only § 13b tax is owed and nothing is deducted (§ 19 Abs. 1 Satz 4 UStG). */
+  /** 'klein': § 19 UStG applies; only § 13b tax is owed and nothing is deducted (§ 19 Abs. 1 Satz 4 UStG until 2024, § 15 Abs. 2 Satz 1 Nr. 1 UStG from 2025). */
   readonly regime: 'regel' | 'klein'
   /** Taxable net turnover by rate, including unentgeltliche Wertabgaben (§ 3 Abs. 1b, 9a UStG). */
   readonly taxableNetEur: NetByRate
@@ -63,12 +64,16 @@ export interface VatAnnualInput {
   readonly inputVatEur: number
   /** The prepayments of the year as the user paid them (sum of the Voranmeldungen and Sondervorauszahlung). */
   readonly prepaymentsEur: number
+  /** The Vorsteuerberichtigung of the year (§ 15a UStG): positive more input tax, negative to pay back. */
+  readonly inputVatCorrectionEur?: number | undefined
 }
 
 export interface VatAnnualResult {
   readonly outputVat: Readonly<Record<VatRateKind, number>>
   readonly reverseChargeVatEur: number
   readonly inputVatDeductibleEur: number
+  /** The § 15a correction inside `vatOfYearEur`. */
+  readonly inputVatCorrectionEur: number
   /** Umsatzsteuer of the year (verbleibende Umsatzsteuer before the prepayments). */
   readonly vatOfYearEur: number
   readonly prepaymentsEur: number
@@ -89,7 +94,7 @@ function taxByRate(net: NetByRate | undefined): Record<VatRateKind, number> {
 /**
  * The annual return: output tax by rate on the net turnover, plus the § 13b tax as recipient, less
  * the input tax. The § 13b tax is deductible again as input tax (§ 15 Abs. 1 Satz 1 Nr. 4 UStG) when
- * the business may deduct at all; a Kleinunternehmer may not (§ 19 Abs. 1 Satz 4 UStG).
+ * the business may deduct at all; a Kleinunternehmer may not (§ 19 Abs. 1 Satz 4 UStG until 2024, § 15 Abs. 2 Satz 1 Nr. 1 UStG from 2025).
  * Turnover without deduction does not cut input tax here: the caller enters only deductible input
  * tax (§ 15 Abs. 2 and 4 UStG need the split per invoice, which the bookkeeping holds).
  */
@@ -100,11 +105,14 @@ export function vatAnnualReturn(input: VatAnnualInput): VatAnnualResult {
   const reverse = taxByRate(input.reverseChargeNetEur)
   const reverseChargeVatEur = cents(reverse.standard + reverse.reduced)
   const inputVatDeductibleEur = small ? 0 : cents(input.inputVatEur + reverseChargeVatEur)
-  const vatOfYearEur = cents(outputVat.standard + outputVat.reduced + reverseChargeVatEur - inputVatDeductibleEur)
+  // § 15a also binds a Kleinunternehmer: a move to or from § 19 is a change of the deductible share.
+  const inputVatCorrectionEur = cents(input.inputVatCorrectionEur ?? 0)
+  const vatOfYearEur = cents(outputVat.standard + outputVat.reduced + reverseChargeVatEur - inputVatDeductibleEur - inputVatCorrectionEur)
   return {
     outputVat,
     reverseChargeVatEur,
     inputVatDeductibleEur,
+    inputVatCorrectionEur,
     vatOfYearEur,
     prepaymentsEur: input.prepaymentsEur,
     balanceEur: cents(vatOfYearEur - input.prepaymentsEur),

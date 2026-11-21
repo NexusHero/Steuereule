@@ -224,10 +224,15 @@ async function main() {
     await byId('advisor-stored-receipts-toggle').click()
     await see(`advisor-stored-receipt-${first}`)
     if ((await page.locator('[data-testid^="advisor-stored-receipt-"]').count()) < 2) fail('the chat should offer the stored documents')
-    // Its original disappears while the list is open: picking it says so.
+    // Its original disappears while the list is open: picking it says so. The open list keeps showing what
+    // it loaded (a background refetch after the delete would otherwise drop the row before the click).
+    const shown = await call(api, 'GET', '/v1/belege?limit=30')
+    const isList = (url) => url.pathname === '/v1/belege'
+    await page.route(isList, (route) => (route.request().method() === 'GET' ? route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(shown) }) : route.fallback()))
     await call(api, 'DELETE', `/v1/belege/${first}`)
     await byId(`advisor-stored-receipt-${first}`).click()
     await see('advisor-stored-receipt-failed', 30_000)
+    await page.unroute(isList)
     await byId('advisor-stored-receipts-all').click()
     await page.waitForURL((u) => u.pathname === '/app/belege', { timeout: 10_000 })
     console.log(`[${TAG}] ✅ Eule — the chat offers the stored documents, says when one is gone, and leads to all of them`)

@@ -53,6 +53,7 @@ Alles in einem Pull Request, ohne Mock, in den Mustern der App.
 
 19. **Prüfung:** Golden-Testfälle aus amtlichen Beispielen und durchgerechneten Fällen, je Steuerjahr. Keine externe Prüfung.
 20. **Schalter:** Das Gewerbe-Gate bleibt für Nutzer an, bis der Product Owner die Ergebnisse gesichtet und den Schalter umgelegt hat. Der Code ist ab dem Merge da.
+    - **Umgelegt am 20.11.2026:** Der Product Owner hat entschieden, dass der Bereich Selbstständige standardmäßig an ist. `SELBSTSTAENDIGE_ENABLED` ungesetzt heißt jetzt an; nur ein ausdrückliches Aus (`false`, `0`, `no`, `nein`, `off`) bringt das Gewerbe-Gate von REQ-015 zurück. Die Testsuiten und die E2E-Stacks, die den Pfad mit Gate prüfen (Szenario 09), setzen das Aus selbst; Szenario 09b braucht einen Stack mit an.
 21. **Preis:** eine eigene, höhere Stufe je Steuerjahr für Jahre mit Selbstständigkeit, über eine zweite Stripe-Preis-ID. Den Betrag legt der Product Owner in Stripe fest; Buchhaltung, Umsatz- und Gewerbesteuer sind darin enthalten.
 
 ### Nachtrag vom 21.11.2026: die Lücken nach der ersten Fassung

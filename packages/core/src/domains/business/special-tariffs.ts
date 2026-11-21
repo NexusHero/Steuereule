@@ -38,8 +38,14 @@ export interface RetainedProfitInput {
   readonly depositsEur: number
   /** The Gewerbesteuer is added back to the nicht entnommene Gewinn from VZ 2024 (Abs. 2 Satz 1 n. F.; before, it stayed off, BMF 11.08.2008 Rz. 16). */
   readonly tradeTaxEur: number
-  /** From VZ 2024: withdrawals to pay the § 34a tax and its Soli stay out (Abs. 2 Satz 2). */
+  /**
+   * From VZ 2024 withdrawals to pay the § 34a tax and its Soli stay out (Abs. 2 Satz 2), and withdrawals count
+   * first as paying them (Satz 3): the app takes this year's § 34a tax itself. This field adds what was withdrawn
+   * this year for the § 34a tax of earlier years.
+   */
   readonly withdrawalsForRetainedTaxEur?: number | undefined
+  /** The business is sold or given up this year (§ 16 Abs. 1, 3, § 18 Abs. 3): the whole carried amount is recaptured (Abs. 6 Nr. 1). */
+  readonly disposal?: boolean | undefined
   /** The amount applied for; at most the nicht entnommene Gewinn. */
   readonly requestedEur: number
   /** Nachversteuerungspflichtiger Betrag of the last Feststellung (Abs. 3). */
@@ -73,16 +79,37 @@ const SOLI_RATE = 0.055
 const c2 = (v: number) => Math.round(v * 100) / 100
 
 export function retainedProfitTax(input: RetainedProfitInput): RetainedProfit {
-  const excluded = input.year >= 2024 ? Math.max(0, input.withdrawalsForRetainedTaxEur ?? 0) : 0
-  const balance = input.withdrawalsEur - excluded - input.depositsEur
-  const tradeTaxBack = input.year >= 2024 ? Math.max(0, input.tradeTaxEur) : 0
-  const nonWithdrawnEur = c2(Math.max(0, input.profitEur - Math.max(0, balance) + tradeTaxBack))
-  const favouredEur = c2(Math.min(Math.max(0, input.requestedEur), nonWithdrawnEur, Math.max(0, input.profitEur)))
   const rate = retainedProfitRate(input.year)
+  const withdrawals = Math.max(0, input.withdrawalsEur)
+  const earlier = input.year >= 2024 ? Math.max(0, input.withdrawalsForRetainedTaxEur ?? 0) : 0
+  const tradeTaxBack = input.year >= 2024 ? Math.max(0, input.tradeTaxEur) : 0
+  const favouredFor = (excluded: number) => {
+    const balance = withdrawals - excluded - input.depositsEur
+    const nonWithdrawn = Math.max(0, input.profitEur - Math.max(0, balance) + tradeTaxBack)
+    return { balance, nonWithdrawn, favoured: Math.min(Math.max(0, input.requestedEur), nonWithdrawn, Math.max(0, input.profitEur)) }
+  }
+  // Abs. 2 Satz 3 (from VZ 2024): withdrawals count first as paying this year's § 34a tax and its Soli. The tax
+  // depends on the amount it frees, so the excluded part is the fixed point; each step moves by under a third.
+  let excluded = Math.min(withdrawals, earlier)
+  if (input.year >= 2024) {
+    for (let i = 0; i < 100; i++) {
+      const next = Math.min(withdrawals, earlier + favouredFor(excluded).favoured * rate * (1 + SOLI_RATE))
+      if (Math.abs(next - excluded) < 0.001) {
+        excluded = next
+        break
+      }
+      excluded = next
+    }
+  }
+  const { balance, nonWithdrawn, favoured } = favouredFor(excluded)
+  const nonWithdrawnEur = c2(nonWithdrawn)
+  const favouredEur = c2(favoured)
   const taxEur = c2(favouredEur * rate)
-  // Abs. 4: a withdrawal surplus above the profit recaptures the carried amount, 25 %.
+  // Abs. 4: a withdrawal surplus above the profit recaptures the carried amount, 25 %; a sale or Aufgabe of the
+  // business recaptures all of it (Abs. 6 Nr. 1).
   const surplus = Math.max(0, balance - Math.max(0, input.profitEur))
-  const recaptureBaseEur = c2(Math.min(surplus, Math.max(0, input.carriedForwardEur)))
+  const carried = Math.max(0, input.carriedForwardEur)
+  const recaptureBaseEur = c2(input.disposal ? carried : Math.min(surplus, carried))
   const recaptureEur = c2(recaptureBaseEur * RECAPTURE_RATE)
   const nextCarriedForwardEur = c2(favouredEur - taxEur - taxEur * SOLI_RATE + Math.max(0, input.carriedForwardEur) - recaptureBaseEur)
   return { nonWithdrawnEur, favouredEur, rate, taxEur, recaptureBaseEur, recaptureEur, nextCarriedForwardEur }
@@ -95,7 +122,7 @@ export interface SpecialTariffFacts {
         readonly gainEur: number
         readonly method: 'fuenftel' | 'ermaessigt'
         /**
-         * Further § 16 gains beside the one taxed at the reduced rate: § 34 Abs. 3 Satz 4 allows it for one
+         * Further § 16 gains beside the one taxed at the reduced rate: § 34 Abs. 3 Satz 5 allows it for one
          * gain only, the others take the Fünftelregelung (Abs. 1).
          */
         readonly fifthGainEur?: number | undefined

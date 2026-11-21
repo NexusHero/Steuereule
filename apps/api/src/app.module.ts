@@ -21,6 +21,7 @@ import { CockpitModule } from './cockpit/cockpit.module.js'
 import { AddressModule } from './address/address.module.js'
 import { DeviceModule } from './device/device.module.js'
 import { HealthModule } from './health/health.module.js'
+import { CapabilitiesModule } from './capabilities/capabilities.module.js'
 import { InterviewModule } from './interview/interview.module.js'
 import { CapitalModule } from './capital/capital.module.js'
 import { CommuteModule } from './commute/commute.module.js'
@@ -66,6 +67,7 @@ import { DomainErrorFilter } from './common/domain-error.filter.js'
     AddressModule,
     DeviceModule,
     HealthModule,
+    CapabilitiesModule,
     FilingTypeComparisonModule,
     RentalModule,
     BusinessModule,

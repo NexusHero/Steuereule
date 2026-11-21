@@ -54,7 +54,7 @@ export interface StromScreenProps {
 
 /** The Strom (ADR-0089): one continuous flow through the return, one address per step. */
 export function StromScreen(props: StromScreenProps) {
-  const capability = useSelfEmploymentCapability(props.taxYear)
+  const capability = useSelfEmploymentCapability()
   return (
     <StromOptionsContext.Provider value={capability.options}>
       <StromScreenBody {...props} />
@@ -69,7 +69,7 @@ function StromScreenBody({ taxYear, slug, isSignedIn, onGo, onExit, onOpenSubmis
   const { t: tr } = useTranslation(APP_NS)
   const interviewQuery = useInterviewControllerGetInterview(taxYear)
   // The server's self-employment switch: with it on the Gewerbe gate is no step (ADR-0101 §20).
-  const capability = useSelfEmploymentCapability(taxYear)
+  const capability = useSelfEmploymentCapability()
   const options = capability.options
   const priorQuery = useInterviewControllerGetInterview(taxYear - 1, undefined, { query: { retry: false, enabled: isSignedIn } })
   const masterDataQuery = useMasterDataControllerRead({ query: { enabled: isSignedIn } })

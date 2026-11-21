@@ -9,7 +9,7 @@ import { LstbScreen } from '../screens/lstb/LstbScreen'
 import { WorkdaysScreen } from '../screens/workdays/WorkdaysScreen'
 import { CrossBorderScreen } from '../screens/cross-border/CrossBorderScreen'
 import { PensionerScreen } from '../screens/pension/PensionerScreen'
-import { BusinessScreen } from '../screens/business/BusinessScreen'
+import { BusinessScreen, isBusinessPage, parentPage } from '../screens/business/BusinessScreen'
 import { OfficialFormScreen } from '../screens/printout/OfficialFormScreen'
 import type { Screen } from '@steuereule/core'
 import { useShellState } from './ShellState'
@@ -203,7 +203,11 @@ export function BusinessRoute({ navigation, route }: Props<'Business'>) {
         page={page}
         payment={route.params?.zahlung}
         onOpenPage={(next) => navigation.navigate('Business', { year, ...(next ? { page: next } : {}), ...own })}
-        onBack={() => (page ? navigation.navigate('Business', { year, ...own }, { pop: true }) : home())}
+        onBack={() => {
+          if (!page) return home()
+          const parent = isBusinessPage(page) ? parentPage(page) : undefined
+          navigation.navigate('Business', { year, ...(parent ? { page: parent } : {}), ...own }, { pop: true })
+        }}
         onChangePerson={(next) => navigation.navigate('Business', { year, ...(next === 'B' ? { person: next } : {}) })}
         onChangeBusiness={(next) => navigation.navigate('Business', { year, ...(person === 'B' ? { person } : {}), ...(next > 1 ? { betrieb: String(next) } : {}) })}
       />
