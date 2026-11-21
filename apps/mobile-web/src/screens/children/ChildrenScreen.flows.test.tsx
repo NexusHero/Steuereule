@@ -239,13 +239,13 @@ describe('KinderScreen — married household and form details', () => {
     expect(field.placeholder).toBe('2748 (aus dem Lohnausweis)')
   })
 
-  it('ignores a non-numeric insurance amount instead of sending it', async () => {
+  it('rounds an insurance amount with cents and ignores a non-numeric one instead of sending it', async () => {
     const onSave = vi.fn().mockResolvedValue(undefined)
     renderView({ onSaveChild: onSave })
     fireEvent.click(screen.getByLabelText('Kind Lina bearbeiten'))
     // Lina already has a Kindergeld amount, so the further details are open.
     fireEvent.change(screen.getByLabelText('Krankenversicherung des Kindes'), { target: { value: '12,5' } })
-    fireEvent.change(screen.getByLabelText('Pflegeversicherung des Kindes'), { target: { value: '40' } })
+    fireEvent.change(screen.getByLabelText('Pflegeversicherung des Kindes'), { target: { value: 'viel' } })
     fireEvent.click(screen.getByTestId('kind-kv-ausland'))
     fireEvent.click(screen.getByTestId('kind-kv-ausland'))
     fireEvent.change(screen.getByTestId('kind-betreuung-von'), { target: { value: '01.01.2025' } })
@@ -254,7 +254,7 @@ describe('KinderScreen — married household and form details', () => {
     await waitFor(() =>
       expect(onSave).toHaveBeenCalledWith(
         'kind-1',
-        expect.objectContaining({ healthBasicEur: null, careEur: '40', healthInsuranceAbroad: false, childcareFrom: '01.01.2025', childcareTo: null }),
+        expect.objectContaining({ healthBasicEur: '13', careEur: null, healthInsuranceAbroad: false, childcareFrom: '01.01.2025', childcareTo: null }),
       ),
     )
   })

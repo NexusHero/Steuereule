@@ -4026,5 +4026,8 @@
       "minijobAbgaben": "Minijob-Abgaben an die Minijob-Zentrale",
       "minijobHinweis": "Fällig am drittletzten Bankarbeitstag des Monats; die Pauschsteuer von 2 % ist darin enthalten."
     }
+  },
+  "betrag": {
+    "unlesbar": "Das ist kein Betrag. Bitte so eingeben: 948 oder 948,60."
   }
 }

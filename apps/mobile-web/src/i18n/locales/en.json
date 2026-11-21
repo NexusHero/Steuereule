@@ -4026,5 +4026,8 @@
       "minijobAbgaben": "Minijob charges to the Minijob-Zentrale",
       "minijobHinweis": "Due on the third last bank day of the month; the 2 % flat tax is included."
     }
+  },
+  "betrag": {
+    "unlesbar": "That is not an amount. Please enter it like 948 or 948,60."
   }
 }

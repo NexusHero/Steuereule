@@ -1,3 +1,4 @@
+import { signedWholeAmountFrom, wholeEurosFrom } from '../shared/wholeEuros'
 import { useState } from 'react'
 import { ScrollView, View, Text, Pressable, type ViewStyle, type TextStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
@@ -193,10 +194,10 @@ function AssessmentFieldEditor({
   const [text, setText] = useState(kind === 'erfasst' ? String(state?.value) : '')
 
   function commit() {
-    const trimmed = text.trim()
-    const muster = fieldId === 'erstattung' ? /^-?(0|[1-9]\d*)$/ : /^(0|[1-9]\d*)$/
-    if (!muster.test(trimmed)) return
-    const value = Number(trimmed)
+    // The notice prints cents; the mask keeps whole euros, rounded.
+    const value = fieldId === 'erstattung' ? signedWholeAmountFrom(text) : wholeEurosFrom(text)
+    if (value === null) return
+    if (String(value) !== text.trim()) setText(String(value))
     if (state?.kind === 'erfasst' && state.value === value) return
     onRecorded(value)
   }

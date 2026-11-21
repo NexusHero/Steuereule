@@ -56,8 +56,14 @@ describe('validateFieldValue', () => {
     expect(validateFieldValue('lstb', 'bruttoarbeitslohn', '1.234.567')).toEqual(ok('1234567'))
   })
 
-  it('refuses what is not a whole amount instead of guessing', () => {
-    for (const written of ['xyz-unsinn', '5000,50', '-200', 'ca. 5000', '5k', '1.23']) {
+  it('rounds cents and rappen to the whole amount the forms take, half up', () => {
+    const cases: [string, string][] = [['5000,50', '5001'], ['948,60', '949'], ["3'592.80 CHF", '3593'], ['7.021,48 €', '7021'], ['2938.17', '2938'], ['0,49', '0']]
+    for (const [written, stored] of cases) expect(validateFieldValue('lstb', 'bruttoarbeitslohn', written), written).toEqual(ok(stored))
+    expect(validateFieldValue('chLohnausweis', 'andere-leistungen', '-118,40')).toEqual(ok('-118'))
+  })
+
+  it('refuses what is not an amount instead of guessing', () => {
+    for (const written of ['xyz-unsinn', '-200', 'ca. 5000', '5k', '12,345', '1.2.3']) {
       expect(validateFieldValue('lstb', 'bruttoarbeitslohn', written).ok, written).toBe(false)
     }
   })
