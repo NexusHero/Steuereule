@@ -607,9 +607,13 @@ export async function runScenario09b(browser, webOrigin) {
     await route.fulfill({ response: res, json: body })
   })
   await page.goto(`${webOrigin}/app/eule`, { waitUntil: 'networkidle' })
-  await see('buchung-entwurf-karte')
-  await byPrefix('buchung-entwurf').first().waitFor({ state: 'visible', timeout: 10_000 })
-  await see('buchung-entwurf-kopf')
+  // Two cards (the pending and the booked draft) carry the card and head ids: a strict locator would fail on both.
+  const seeEach = async (id) => {
+    await byId(id).first().waitFor({ state: 'visible', timeout: 15_000 }).catch(() => fail(`[09b] ${id} should be visible`))
+    if ((await byId(id).count()) !== 2) fail(`[09b] ${id} should be on both booking cards, found ${await byId(id).count()}`)
+  }
+  await seeEach('buchung-entwurf-karte')
+  await seeEach('buchung-entwurf-kopf')
   await see('buchung-entwurf-uebernehmen')
   await see('buchung-entwurf-verwerfen')
   await see('buchung-entwurf-gebucht')
