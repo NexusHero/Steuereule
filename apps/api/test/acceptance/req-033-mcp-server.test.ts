@@ -141,17 +141,17 @@ describe('REQ-033 — MCP-Server mit fachlichen Werkzeugen (ADR-0052 §3 / §5 /
       const { value } = await reader.read()
       messageChunk += decoder.decode(value, { stream: true })
     }
-    expect(messageChunk).toContain('steuerjahr_stand')
+    expect(messageChunk).toContain('haushalt_ueberblick')
     expect(messageChunk).toContain('maske_eintragen')
     expect(messageChunk).toContain('ausdruck_vorpruefung')
 
-    // 3. Call steuerjahr_stand via JSON-RPC
+    // 3. Call haushalt_ueberblick via JSON-RPC
     const standRpc = {
       jsonrpc: '2.0',
       id: 2,
       method: 'tools/call',
       params: {
-        name: 'steuerjahr_stand',
+        name: 'haushalt_ueberblick',
         arguments: { taxYear: YEAR },
       },
     }
@@ -169,13 +169,11 @@ describe('REQ-033 — MCP-Server mit fachlichen Werkzeugen (ADR-0052 §3 / §5 /
       const { value } = await reader.read()
       standChunk += decoder.decode(value, { stream: true })
     }
-    // Verify PII is masked
-    expect(standChunk).toContain('12*******01')
-    expect(standChunk).toContain('M***')
-    expect(standChunk).toContain('B***')
-    expect(standChunk).toContain('G***')
-    expect(standChunk).not.toContain('Grenzacherstrasse')
-    expect(standChunk).not.toContain('12345678901')
+    // The read view (ADR-0052 amendment 3): no names, identifiers or street, not even masked.
+    expect(standChunk).toContain('"result"')
+    for (const personal of ['Markus', 'Brenner', '12345678901', '12*******01', 'Grenzacherstrasse', 'M***']) {
+      expect(standChunk).not.toContain(personal)
+    }
 
     // 4. Call maske_eintragen via JSON-RPC (writing unconfirmed value)
     const writeRpc = {

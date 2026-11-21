@@ -168,11 +168,13 @@ describe('POST/GET /v1/belege — real Postgres (ADR-007/008)', () => {
 
     const userB = await app.inject({ method: 'GET', url: '/v1/belege' })
     const cookieB = extractSessionCookie(userB.headers['set-cookie'])!
-    expect(userB.json()).toEqual([])
+    // The inbox answers one page with its counts (e52771f4).
+    expect(userB.json().items).toEqual([])
+    expect(userB.json().counts.total).toBe(0)
 
     // Reassigning user A's id as user B → 404, never a leak.
     const created = await app.inject({ method: 'GET', url: '/v1/belege', headers: { cookie: cookieA } })
-    const idA = created.json()[0].id as string
+    const idA = created.json().items[0].id as string
     const foreign = await app.inject({
       method: 'POST',
       url: `/v1/belege/${idA}/zuordnung`,
