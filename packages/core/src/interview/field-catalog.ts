@@ -464,7 +464,10 @@ function withoutTrailingUnit(raw: string): string {
   return unit === undefined ? raw : trimmed.slice(0, -unit.length)
 }
 
-/** `"5.000 €"`, `"5 000"`, `"5'000 CHF"`, `"5000,00"` → `"5000"`; anything with real decimals is refused. */
+/**
+ * `"5.000 €"`, `"5 000"`, `"5'000 CHF"`, `"5000,00"` → `"5000"`. Cents and rappen are rounded half up
+ * (`"948,60"` → `"949"`): receipts print them, the forms take whole amounts.
+ */
 function tidyAmount(raw: string, signed = false): string | null {
   const unsigned = withoutTrailingUnit(raw).trim()
   // A typed minus, the typographic one, or the Swiss „–“ in front of the figure.
@@ -475,9 +478,12 @@ function tidyAmount(raw: string, signed = false): string | null {
 }
 
 function tidyUnsignedAmount(bare: string): string | null {
-  const withoutZeroCents = bare.replace(/[.,]0{1,2}$/, '')
-  const withoutGrouping = /^\d{1,3}([.\s'’]\d{3})+$/.test(withoutZeroCents) ? withoutZeroCents.replace(/[.\s'’]/g, '') : withoutZeroCents
-  return /^\d+$/.test(withoutGrouping) ? String(Number(withoutGrouping)) : null
+  // One or two digits after the last separator are cents; three are a thousands group.
+  const [, wholePart = bare, cents] = /^(.*\d)[.,](\d{1,2})$/.exec(bare) ?? []
+  const withoutGrouping = /^\d{1,3}([.\s'’]\d{3})+$/.test(wholePart) ? wholePart.replace(/[.\s'’]/g, '') : wholePart
+  if (!/^\d+$/.test(withoutGrouping)) return null
+  const roundsUp = cents !== undefined && Number(cents.padEnd(2, '0')) >= 50
+  return String(Number(withoutGrouping) + (roundsUp ? 1 : 0))
 }
 
 const fold = (input: string): string =>

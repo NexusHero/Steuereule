@@ -28,6 +28,7 @@ import {
 } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
 import { integerFrom } from '../shared/integer'
+import { signedWholeAmountFrom, wholeEurosFrom } from '../shared/wholeEuros'
 import { CURRENT_TAX_YEAR } from '../../config/taxYear'
 import { LoadingState, ErrorState } from '../shared/ScreenState'
 import { BackButton, BackButtonSpacer } from '../shared/BackButton'
@@ -72,9 +73,8 @@ const GROSS_COMPONENT_IDS = [
 
 /** Whole CHF of one Lohnausweis Ziffer; only Ziffer 7 may be negative (ADR-0093). Empty or unreadable is null. */
 function salaryAmountFrom(text: string, fieldId: string): number | null {
-  const trimmed = text.trim().replace('\u2212', '-')
-  if (!/^-?(0|[1-9]\d*)$/.test(trimmed)) return null
-  const value = Number(trimmed)
+  const value = signedWholeAmountFrom(text)
+  if (value === null) return null
   return isValidSalaryCertificateAmount(value, fieldId === SALARY_CERTIFICATE_SIGNED_FIELD ? SALARY_CERTIFICATE_SIGNED_FIELD : undefined) ? value : null
 }
 
@@ -764,7 +764,7 @@ function NGreSection({ nGre, onSet }: { readonly nGre: NGreDetailsDto; readonly 
           testID={`ch-ngre-${field}`}
           onCommit={(text) => {
             if (text === '') onSet({ [field]: null })
-            else if (/^(0|[1-9]\d*)$/.test(text)) onSet({ [field]: Number(text) })
+            else onSet({ [field]: Number(text) })
           }}
         />
       ))}
@@ -801,7 +801,7 @@ function NGreSection({ nGre, onSet }: { readonly nGre: NGreDetailsDto; readonly 
               testID={`ch-ngre-${chf}`}
               onCommit={(text) => {
                 if (text === '') onSet({ [chf]: null })
-                else if (/^(0|[1-9]\d*)$/.test(text)) onSet({ [chf]: Number(text) })
+                else onSet({ [chf]: Number(text) })
               }}
             />
           ) : null}
@@ -887,7 +887,7 @@ function ProvisionSection({
             testID={`ch-vorsorge-${field}`}
             onCommit={(text) => {
               if (text === '') onSet({ [field]: null })
-              else if (/^(0|[1-9]\d*)$/.test(text)) onSet({ [field]: Number(text) })
+              else onSet({ [field]: Number(text) })
             }}
           />
         )
@@ -900,7 +900,7 @@ function ProvisionSection({
         testID="ch-vorsorge-krankenkasseZusatzChf"
         onCommit={(text) => {
           if (text === '') onSetNGre({ krankenkasseZusatzChf: null })
-          else if (/^(0|[1-9]\d*)$/.test(text)) onSetNGre({ krankenkasseZusatzChf: Number(text) })
+          else onSetNGre({ krankenkasseZusatzChf: Number(text) })
         }}
       />
       <Text style={styles.help}>{tr('grenzgaenger.vorsorge.krankenkasseZusatzHilfe')}</Text>
@@ -931,12 +931,25 @@ function NGreInput({
     if (onControlledChange) onControlledChange(next)
     else setInternalText(next)
   }
+  const { t: tr } = useTranslation(APP_NS)
+  const [unreadable, setUnreadable] = useState(false)
   function commit() {
     const trimmed = text.trim()
-    if (trimmed !== initial) onCommit(trimmed)
+    if (!numeric || trimmed === '') {
+      setUnreadable(false)
+      if (trimmed !== initial) onCommit(trimmed)
+      return
+    }
+    // An amount typed as printed („948,60“) is rounded to the whole amount the form takes, and shown as stored.
+    const amount = wholeEurosFrom(trimmed)
+    setUnreadable(amount === null)
+    if (amount === null) return
+    const stored = String(amount)
+    if (stored !== trimmed) setText(stored)
+    if (stored !== initial) onCommit(stored)
   }
   return (
-    <Feld label={label}>
+    <Feld label={label} {...(unreadable ? { error: tr('betrag.unlesbar') } : {})}>
       <Input
         type={numeric ? 'numeric' : 'text'}
         value={text}

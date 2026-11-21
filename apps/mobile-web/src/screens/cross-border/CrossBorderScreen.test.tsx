@@ -433,6 +433,34 @@ describe('GrenzgaengerScreen — Vorsorge außerhalb des Lohns', () => {
   })
 })
 
+describe('GrenzgaengerScreen: amounts typed as they are printed', () => {
+  it('rounds a rappen amount to whole francs instead of dropping it, and shows what it stored', async () => {
+    const bodies: unknown[] = []
+    server.use(http.get(INTERVIEW_URL, () => HttpResponse.json(DONE_CH_INTERVIEW, { status: 200 })))
+    server.use(
+      http.put(`${CH_URL}/vorsorge`, async ({ request }) => {
+        bodies.push(await request.json())
+        return HttpResponse.json(EMPTY_CH, { status: 200 })
+      }),
+    )
+    renderScreen()
+    const healthInsurer = (await screen.findByTestId('ch-vorsorge-krankenkasseChf')) as HTMLInputElement
+    fireEvent.change(healthInsurer, { target: { value: '948,60' } })
+    fireEvent.blur(healthInsurer)
+    await waitFor(() => expect(bodies).toEqual([{ krankenkasseChf: 949 }]))
+    expect(healthInsurer.value).toBe('949')
+  })
+
+  it('says so when an amount cannot be read, instead of keeping silent', async () => {
+    server.use(http.get(INTERVIEW_URL, () => HttpResponse.json(DONE_CH_INTERVIEW, { status: 200 })))
+    renderScreen()
+    const healthInsurer = await screen.findByTestId('ch-vorsorge-krankenkasseChf')
+    fireEvent.change(healthInsurer, { target: { value: 'viel' } })
+    fireEvent.blur(healthInsurer)
+    expect(await screen.findByText('Das ist kein Betrag. Bitte so eingeben: 948 oder 948,60.')).toBeTruthy()
+  })
+})
+
 describe('GrenzgaengerScreen accessibility', () => {
   it('gives every Lohnausweis Ziffer a name screen readers can announce, not just the placeholder', async () => {
     server.use(http.get(INTERVIEW_URL, () => HttpResponse.json(DONE_CH_INTERVIEW, { status: 200 })))

@@ -1,10 +1,11 @@
+import { useState } from 'react'
 import { View, Text, type TextStyle, type ViewStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { Button, Input, Option, useTheme, type UiTheme } from '@steuereule/ui'
 import { QUESTIONS, formatEuro, type Answers, type EntryStepId } from '@steuereule/core'
 import { APP_NS } from '../../i18n/resources'
 import { GlossaryHint } from '../shared/GlossaryHint'
-import { integerFrom } from '../shared/integer'
+import { wholeEurosFrom } from '../shared/wholeEuros'
 import { MaskLessonHint } from '../history/MaskLessonHint'
 
 export interface FieldCopy {
@@ -100,6 +101,7 @@ function AmountField({
   const { t: tr } = useTranslation(APP_NS)
   const styles = makeStyles(t)
   const later = value === 'spaeter'
+  const [typed, setTyped] = useState<string | null>(null)
   const priorRaw = prior?.steps.has(id) === true ? prior.answers[id] : undefined
   const priorValue = priorRaw !== undefined && /^\d+$/.test(priorRaw) && Number(priorRaw) > 0 ? Number(priorRaw) : null
   return (
@@ -112,12 +114,15 @@ function AmountField({
       <Input
         type="numeric"
         mono
-        value={later || value === undefined ? '' : value}
+        value={later ? '' : (typed ?? value ?? '')}
         onChange={(next) => {
-          const n = integerFrom(next)
+          // What is typed stays visible („2938,17“); what is kept is the whole amount, rounded.
+          setTyped(next)
+          const n = wholeEurosFrom(next)
           if (next.trim() === '') onChange('')
           else if (n !== null) onChange(String(n))
         }}
+        onBlur={() => setTyped(null)}
         placeholder={later ? tr('strom.spaeterMarkiert') : tr('katalog.amountPlaceholder')}
         accessibilityLabel={`${label} (${tr('katalog.amountPlaceholder')})`}
         testID={`${idPrefix}-input-${id}`}

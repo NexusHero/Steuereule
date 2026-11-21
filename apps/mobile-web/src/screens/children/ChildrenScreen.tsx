@@ -1,3 +1,4 @@
+import { wholeEurosFrom } from '../shared/wholeEuros'
 import { useEffect, useState, type ReactNode } from 'react'
 import { HouseholdChildrenSection } from './HouseholdChildrenSection'
 import { AddressSearch } from '../shared/AddressSearch'
@@ -47,6 +48,12 @@ import { usePendingMutations } from '../shared/usePendingMutations'
 import { SaveFailedNotice } from '../shared/SaveFailedNotice'
 import { watchSaveResult } from '../shared/saveFeedback'
 import { makeStyles } from './ChildrenScreen.styles'
+
+/** A typed amount as the whole euros the record keeps („266,48“ → „266“); unreadable or empty is not entered. */
+const wholeText = (text: string): string | null => {
+  const amount = wholeEurosFrom(text)
+  return amount === null ? null : String(amount)
+}
 
 export interface ChildItem {
   id: string
@@ -424,7 +431,7 @@ function KinderScreenView({
       lastName: lastName.trim(),
       geburtsdatum: germanToIso(geburtsdatum) ?? '',
       ...(taxId.trim() && { taxId: taxId.trim() }),
-      ...(childBenefit.trim() && { childBenefitClaimEur: childBenefit.trim() }),
+      ...(wholeEurosFrom(childBenefit) !== null && { childBenefitClaimEur: String(wholeEurosFrom(childBenefit)) }),
       kinship: relationship,
       kinshipB: relationshipB,
       familyBenefitsOffice: familyBenefitsOffice.trim() || null,
@@ -437,12 +444,12 @@ function KinderScreenView({
       otherParentDiedOn: ae === 'Verstorben' ? germanToIso(opDiedOn) : null,
       registeredWithMeAllYear: registered,
       childBenefitToMeAllYear: childBenefitToMe,
-      healthBasicEur: /^\d+$/.test(kvBasis.trim()) ? kvBasis.trim() : null,
-      careEur: /^\d+$/.test(pv.trim()) ? pv.trim() : null,
+      healthBasicEur: wholeText(kvBasis),
+      careEur: wholeText(pv),
       healthInsuranceAbroad: healthAbroad,
-      swissFamilyAllowanceEur: /^\d+$/.test(swissAllowance.trim()) ? swissAllowance.trim() : null,
+      swissFamilyAllowanceEur: wholeText(swissAllowance),
       swissFamilyAllowancePayer: swissPayer,
-      childcareEur: /^\d+$/.test(childcare.trim()) ? childcare.trim() : null,
+      childcareEur: wholeText(childcare),
       childcareProvider: childcareProvider.trim().slice(0, 120) || null,
       childcareFrom: GERMAN_DATE_PATTERN.test(childcareFrom.trim()) ? childcareFrom.trim() : null,
       childcareTo: GERMAN_DATE_PATTERN.test(childcareTo.trim()) ? childcareTo.trim() : null,
