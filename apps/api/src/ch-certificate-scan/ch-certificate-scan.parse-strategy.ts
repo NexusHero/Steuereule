@@ -181,6 +181,8 @@ export class ChCertificateScanParseStrategy implements DocumentParseStrategy, On
             reason: f.reason === 'negative' ? null : f.reason,
           })),
           // The family allowances the remarks name: Anlage N-Gre Z. 8, kept out of the taxed wage (ADR-0088).
+          // Premiums the employer took over, as the remarks name them: 100 % and the amount, to be checked (wage, N-Gre 18/19).
+          ...employerPremiumDrafts(read.employerPremiums),
           ...(read.familyAllowancesChf !== null
             ? [{ field: 'familienzulagenChf', label: 'Familienzulagen (CHF, Anlage N-Gre Zeile 8)', value: read.familyAllowancesChf, status: fromOcr ? ('pruefen' as const) : ('ok' as const), reason: fromOcr ? ('ocr_source' as const) : null }]
             : []),
@@ -252,3 +254,17 @@ function summaryOf(read: ChCertificateRead, person: 'A' | 'B', fields: readonly 
   ]
   return lines.join('\n')
 }
+
+/** The employer's premiums of a remark as drafts: the share (100 %, „übernommen“) and the amount, both to be checked. */
+function employerPremiumDrafts(premiums: ChCertificateRead['employerPremiums']) {
+  const drafts: { field: string; label: string; value: number; status: 'pruefen'; reason: null }[] = []
+  const add = (percent: string, chf: string, amount: number | null, what: string) => {
+    if (amount === null) return
+    drafts.push({ field: percent, label: `${what}: Anteil des Arbeitgebers (%)`, value: 100, status: 'pruefen', reason: null })
+    drafts.push({ field: chf, label: `${what}: Beitrag des Arbeitgebers (CHF)`, value: amount, status: 'pruefen', reason: null })
+  }
+  add('krankentaggeldArbeitgeberProzent', 'krankentaggeldArbeitgeberChf', premiums.krankentaggeldArbeitgeberChf, 'Krankentaggeldversicherung')
+  add('nbuvArbeitgeberProzent', 'nbuvArbeitgeberChf', premiums.nbuvArbeitgeberChf, 'Nichtberufsunfallversicherung')
+  return drafts
+}
+

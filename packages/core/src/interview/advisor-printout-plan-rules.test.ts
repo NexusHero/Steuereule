@@ -6,7 +6,11 @@ const SINGLE: PrintoutGapContext = { joint: false, personB: null, children: [], 
 const JOINT: PrintoutGapContext = { ...SINGLE, joint: true, personB: { recordable: true } }
 
 const key = (person: 'A' | 'B', screen: 'lstb' | 'commute' | 'chLohnausweis' | 'interview' | 'kapital' | 'profil' | 'stammdaten', field: string) => printoutGapKey({ person, screen, field })
-const ANSWERED = { [key('A', 'interview', 'einkuenfte')]: 'Nein', [key('A', 'interview', 'vorauszahlungen-gate')]: 'Nein' }
+// The employer's share of the Swiss premiums is answered for both persons; only the tests about it leave it open.
+const PREMIUMS_ANSWERED = Object.fromEntries(
+  (['A', 'B'] as const).flatMap((person) => [[key(person, 'chLohnausweis', 'krankentaggeldArbeitgeberProzent'), '0'], [key(person, 'chLohnausweis', 'nbuvArbeitgeberProzent'), '0']]),
+)
+const ANSWERED = { [key('A', 'interview', 'einkuenfte')]: 'Nein', [key('A', 'interview', 'vorauszahlungen-gate')]: 'Nein', ...PREMIUMS_ANSWERED }
 const asked = (ctx: PrintoutGapContext, values: Record<string, string | null>) => planPrintoutGaps(ENTRY_RULE_CODES, ctx, values).questions.map((q) => q.key)
 
 describe('checklist of the fixed rules (ADR-0093)', () => {
@@ -157,6 +161,17 @@ describe('Person B with a wage of her own', () => {
     expect(asked(JOINT, { ...ANSWERED, [key('B', 'lstb', 'bruttoarbeitslohn')]: '21000' })).toContain(key('B', 'profil', 'firstName'))
     expect(asked(JOINT, ANSWERED)).toEqual([])
     expect(asked(SINGLE, wageB)).toEqual([])
+  })
+})
+
+describe('premiums the employer paid, for a recorded Swiss wage statement', () => {
+  const wage = { ...ANSWERED, [key('A', 'chLohnausweis', 'krankentaggeldArbeitgeberProzent')]: null, [key('A', 'chLohnausweis', 'nbuvArbeitgeberProzent')]: null, [key('A', 'chLohnausweis', 'bruttolohn-total')]: '98000', [key('A', 'chLohnausweis', 'taggeldQuelle')]: 'kein' }
+
+  it('asks the employer’s share of the sickness and the NBU premium while it is empty', () => {
+    expect(asked(SINGLE, wage)).toEqual([key('A', 'chLohnausweis', 'krankentaggeldArbeitgeberProzent'), key('A', 'chLohnausweis', 'nbuvArbeitgeberProzent')])
+    const question = planPrintoutGaps(ENTRY_RULE_CODES, SINGLE, wage).questions[0]!
+    expect(question.question).toContain('vom Arbeitgeber übernommen')
+    expect(asked(SINGLE, { ...wage, [key('A', 'chLohnausweis', 'krankentaggeldArbeitgeberProzent')]: '0', [key('A', 'chLohnausweis', 'nbuvArbeitgeberProzent')]: '100', [key('A', 'chLohnausweis', 'nbuvArbeitgeberChf')]: '608' })).toEqual([])
   })
 })
 

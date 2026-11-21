@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   dailyBenefitIn,
+  employerPremiumsIn,
   familyAllowancesIn,
   applyChCertificateTextFallback,
   certificateHolderPerson,
@@ -374,6 +375,23 @@ describe('dailyBenefitIn: a paid-out daily benefit named in the remarks (real-da
   it('is part of what the parser reads', () => {
     expect(parseChSalaryCertificateText("15. Bemerkungen\nKK-Taggeld Verrechnung: 12'345 CHF").dailyBenefit).toEqual({ kind: 'sickness', amountChf: 12345 })
     expect(parseChSalaryCertificateText('15. Bemerkungen').dailyBenefit).toBeNull()
+  })
+})
+
+// Real-data run: „Krankentaggeld 6.382,35 vom Arbeitgeber übernommen“ and „NBU 608,40 vom Arbeitgeber
+// übernommen“ were not read. The employer's premiums are wage to add back (N-Gre Zeilen 18/19).
+describe('employerPremiumsIn: premiums the employer paid for the employee, named in the remarks', () => {
+  it('reads the daily sickness insurance and the NBU premium the employer took over', () => {
+    expect(employerPremiumsIn(['15. Bemerkungen', 'Krankentaggeld 6.382,35 vom Arbeitgeber übernommen', 'NBU 608,40 vom Arbeitgeber übernommen'])).toEqual({ krankentaggeldArbeitgeberChf: 6382, nbuvArbeitgeberChf: 608 })
+    expect(employerPremiumsIn(["Prämie Nichtberufsunfallversicherung CHF 1'204.00 durch Arbeitgeber bezahlt"])).toEqual({ krankentaggeldArbeitgeberChf: null, nbuvArbeitgeberChf: 1204 })
+  })
+
+  it('reads nothing from a remark without the employer, or from a paid-out benefit', () => {
+    expect(employerPremiumsIn(['NBU 608,40', "KK-Taggeld Verrechnung: 12'345.00 CHF"])).toEqual({ krankentaggeldArbeitgeberChf: null, nbuvArbeitgeberChf: null })
+  })
+
+  it('is no paid-out daily benefit either', () => {
+    expect(dailyBenefitIn(['Krankentaggeld 6.382,35 vom Arbeitgeber übernommen'])).toBeNull()
   })
 })
 

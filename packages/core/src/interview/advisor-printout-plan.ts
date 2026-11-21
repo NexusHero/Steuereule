@@ -105,9 +105,9 @@ const TEXTS: Readonly<Record<string, FieldText>> = {
   'chLohnausweis.quellensteuer': { question: 'Quellensteuer (Ziffer 12, auch 0)?', keywords: ['quellensteuer', 'lohnausweis'] },
   'chLohnausweis.familienzulagenChf': { question: 'Im Lohn enthaltene Familien- oder Kinderzulagen in CHF (auch 0)?', keywords: ['zulage'] },
   'chLohnausweis.krankentaggeldChf': { question: 'Selbst gezahlte Prämie zur Krankentaggeldversicherung in CHF (0, wenn der Arbeitgeber sie ganz trägt)?', keywords: ['krankentaggeld'] },
-  'chLohnausweis.krankentaggeldArbeitgeberProzent': { question: 'Welchen Anteil der Krankentaggeld-Prämie trägt der Arbeitgeber (in %)?', keywords: ['krankentaggeld'] },
+  'chLohnausweis.krankentaggeldArbeitgeberProzent': { question: 'Welchen Anteil der Krankentaggeld-Prämie trägt der Arbeitgeber (in %, 0 wenn du sie selbst zahlst)? Eine Bemerkung wie „Krankentaggeld … vom Arbeitgeber übernommen“ heißt 100 %, mit dem Betrag; das ist Lohn (Anlage N-Gre Zeile 18).', keywords: ['krankentaggeld'] },
   'chLohnausweis.krankentaggeldArbeitgeberChf': { question: 'Arbeitgeberanteil der Krankentaggeld-Prämie in CHF?', keywords: ['krankentaggeld'] },
-  'chLohnausweis.nbuvArbeitgeberProzent': { question: 'Welchen Anteil der Nichtberufsunfall-Prämie (NBUV) trägt der Arbeitgeber (in %)?', keywords: ['nbu', 'nichtberufsunfall'] },
+  'chLohnausweis.nbuvArbeitgeberProzent': { question: 'Welchen Anteil der Nichtberufsunfall-Prämie (NBUV) trägt der Arbeitgeber (in %, 0 wenn du sie selbst zahlst)? Eine Bemerkung wie „NBU … vom Arbeitgeber übernommen“ heißt 100 %, mit dem Betrag; das ist Lohn (Anlage N-Gre Zeile 19).', keywords: ['nbu', 'nichtberufsunfall'] },
   'chLohnausweis.nbuvArbeitgeberChf': { question: 'Arbeitgeberanteil der NBUV-Prämie in CHF?', keywords: ['nbu', 'nichtberufsunfall'] },
   'chLohnausweis.pkArbeitnehmerChf': { question: 'Obligatorischer Pensionskassenbeitrag (BVG) des Arbeitnehmers in CHF?', keywords: ['pensionskasse', 'bvg'] },
   'chLohnausweis.pkArbeitgeberChf': { question: 'Obligatorischer Pensionskassenbeitrag (BVG) des Arbeitgebers in CHF?', keywords: ['pensionskasse', 'bvg'] },
@@ -315,6 +315,14 @@ const SICK_PAY_RULE_READS: readonly (readonly [Screen, string])[] = [
 const PERSON_B_IDENTITY: readonly (readonly [Screen, string])[] = [['profil', 'firstName'], ['profil', 'lastName'], ['stammdaten', 'geburtsdatum']]
 const PERSON_B_IDENTITY_READS: readonly (readonly [Screen, string])[] = [['chLohnausweis', 'bruttolohn-total'], ['lstb', 'bruttoarbeitslohn'], ...PERSON_B_IDENTITY]
 
+const EMPLOYER_PREMIUM_READS: readonly (readonly [Screen, string])[] = [
+  ['chLohnausweis', 'bruttolohn-total'],
+  ['chLohnausweis', 'krankentaggeldArbeitgeberProzent'],
+  ['chLohnausweis', 'krankentaggeldArbeitgeberChf'],
+  ['chLohnausweis', 'nbuvArbeitgeberProzent'],
+  ['chLohnausweis', 'nbuvArbeitgeberChf'],
+]
+
 /** What each fixed rule (ADR-0093) reads to decide whether it is still open. */
 const RULE_READS: Readonly<Record<string, readonly (readonly [Screen, string])[]>> = {
   regelLstb: LSTB_RULE_READS,
@@ -328,6 +336,8 @@ const RULE_READS: Readonly<Record<string, readonly (readonly [Screen, string])[]
   regelKapital: [['interview', 'einkuenfte'], ['kapital', 'kapitalertraege']],
   regelVorauszahlungen: [['interview', 'vorauszahlungen-gate'], ['interview', 'vorauszahlungen-betrag']],
   regelStammdatenPersonB: PERSON_B_IDENTITY_READS,
+  regelArbeitgeberPraemien: EMPLOYER_PREMIUM_READS,
+  regelArbeitgeberPraemienPersonB: EMPLOYER_PREMIUM_READS,
 }
 
 /** The fields a fixed rule still needs, from the values read for it; a third element is added to the question. */
@@ -368,6 +378,15 @@ function ruleGaps(code: string, read: (screen: Screen, field: string) => string 
     const allowances = read('chLohnausweis', 'familienzulagenImBruttolohn') === 'true' ? (amount('chLohnausweis', 'familienzulagenChf') ?? 0) : 0
     const hint = taxYear === undefined ? null : dailyBenefitHint(sickness, { taxYear, grossWageChf: gross, ahvContributionsChf: amount('chLohnausweis', 'ahv-beitraege'), familyAllowancesChf: allowances })
     out.push(hint === null ? ['chLohnausweis', 'taggeldQuelle'] : ['chLohnausweis', 'taggeldQuelle', hint])
+  } else if (code.startsWith('regelArbeitgeberPraemien')) {
+    // Real-data run: „Krankentaggeld … vom Arbeitgeber übernommen“ was never read nor asked; it is wage.
+    if ((amount('chLohnausweis', 'bruttolohn-total') ?? 0) > 0) {
+      for (const [percent, chf] of [['krankentaggeldArbeitgeberProzent', 'krankentaggeldArbeitgeberChf'], ['nbuvArbeitgeberProzent', 'nbuvArbeitgeberChf']] as const) {
+        const share = read('chLohnausweis', percent)
+        if (empty(share)) out.push(['chLohnausweis', percent])
+        else if (share === '100' && !isInteger(read('chLohnausweis', chf))) out.push(['chLohnausweis', chf])
+      }
+    }
   } else if (code === 'regelStammdatenPersonB') {
     // Real-data run: both wages recorded, Person B never named, the N-Gre printed for A only.
     const wage = (amount('chLohnausweis', 'bruttolohn-total') ?? 0) > 0 || (amount('lstb', 'bruttoarbeitslohn') ?? 0) > 0

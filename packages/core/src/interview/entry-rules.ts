@@ -320,5 +320,8 @@ export const ENTRY_RULE_CODES = [
   'regelKindergeld',
   /** A joint return with a wage of Person B: B needs a name and a birth date, or B's forms do not print. */
   'regelStammdatenPersonB',
+  /** A recorded Swiss wage: whether the employer took over the daily sickness or the NBU premium (wage, N-Gre 18/19). */
+  'regelArbeitgeberPraemien',
+  'regelArbeitgeberPraemienPersonB',
 ] as const
 export type EntryRuleCode = (typeof ENTRY_RULE_CODES)[number]
