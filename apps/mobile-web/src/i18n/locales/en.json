@@ -1248,7 +1248,11 @@
       "schaetzungOffen": "We compare on the estimate in the cockpit. It still lacks: {{liste}}",
       "schaetzungNichtMoeglich": "We compare on the estimate in the cockpit, and it cannot be made here yet: {{grund}}",
       "fehltPartner": "Person B: {{was}}",
-      "fehltVeranlagungsart": "How you are assessed (set up the joint assessment in “Details for the return”)"
+      "fehltVeranlagungsart": "How you are assessed (set up the joint assessment in “Details for the return”)",
+      "schaetzungAbgeltungGuenstiger": "The Cockpit estimate counts your capital income with the flat-rate tax, which is also the cheaper side here.",
+      "schaetzungAbgeltungNeutral": "The Cockpit estimate counts your capital income with the flat-rate tax.",
+      "schaetzungQuelleGuenstiger": "The Cockpit estimate keeps the flat-rate tax withheld at source, which is also the cheaper side here.",
+      "schaetzungQuelleNeutral": "The Cockpit estimate keeps the flat-rate tax withheld at source."
     },
     "weiter": "Continue"
   },

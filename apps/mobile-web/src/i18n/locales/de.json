@@ -1248,7 +1248,11 @@
       "schaetzungOffen": "Den Vergleich rechnen wir auf der Schätzung im Cockpit. Ihr fehlt noch: {{liste}}",
       "schaetzungNichtMoeglich": "Den Vergleich rechnen wir auf der Schätzung im Cockpit, und die geht hier noch nicht: {{grund}}",
       "fehltPartner": "Person B: {{was}}",
-      "fehltVeranlagungsart": "Wie ihr veranlagt werdet (Zusammenveranlagung in „Angaben für die Erklärung“ anlegen)"
+      "fehltVeranlagungsart": "Wie ihr veranlagt werdet (Zusammenveranlagung in „Angaben für die Erklärung“ anlegen)",
+      "schaetzungAbgeltungGuenstiger": "Die Schätzung im Cockpit rechnet deine Kapitalerträge mit der Abgeltungsteuer, und das ist hier auch die günstigere Seite.",
+      "schaetzungAbgeltungNeutral": "Die Schätzung im Cockpit rechnet deine Kapitalerträge mit der Abgeltungsteuer.",
+      "schaetzungQuelleGuenstiger": "Die Schätzung im Cockpit lässt es bei der einbehaltenen Abgeltungsteuer, und das ist hier auch die günstigere Seite.",
+      "schaetzungQuelleNeutral": "Die Schätzung im Cockpit lässt es bei der einbehaltenen Abgeltungsteuer."
     },
     "weiter": "Weiter"
   },

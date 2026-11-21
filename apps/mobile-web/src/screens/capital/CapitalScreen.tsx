@@ -274,7 +274,7 @@ function Result({ dto }: { readonly dto: GuenstigerpruefungDto }) {
 
       {dto.estimateTreatment ? (
         <Text style={s.hinweis}>
-          {tr(dto.estimateTreatment === 'abgeltung' ? 'kapital.guenstigerpruefung.schaetzungAbgeltung' : 'kapital.guenstigerpruefung.schaetzungQuelle')}
+          {tr(`kapital.guenstigerpruefung.${dto.estimateTreatment === 'abgeltung' ? 'schaetzungAbgeltung' : 'schaetzungQuelle'}${estimateSide(dto)}`)}
         </Text>
       ) : null}
 
@@ -322,4 +322,14 @@ function makeStyles(t: UiTheme) {
     hinweis: notice,
     cta,
   }
+}
+
+/**
+ * Whether the estimate's treatment is the cheaper side: the line about the estimate names the tariff as the
+ * cheaper one only when it is (real-data run: „Die Abgeltungsteuer ist günstiger“ beside „… nicht mit dem
+ * günstigeren Tarif“). '' keeps the line that says the cheaper tariff is left out.
+ */
+function estimateSide(dto: { readonly kind: string; readonly recommendation?: string | undefined }): '' | 'Guenstiger' | 'Neutral' {
+  if (dto.kind !== 'eindeutig') return 'Neutral'
+  return dto.recommendation === 'persoenlich' ? '' : 'Guenstiger'
 }
