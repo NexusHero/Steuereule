@@ -228,15 +228,9 @@ export function evaluateLstbExtraction(input: LstbExtractionInput): LstbExtracti
   if (sv27 !== null) svEntries.push({ line: '27', amount: sv27, category: 'alv' })
 
   const svCategoriesPresent = new Set(svEntries.map((e) => e.category))
-  // The app's sum (ADR-0093): each line in whole euros as the mask holds it, then added. The lines are
-  // drafted beside the sum, and taking them over stores exactly this sum.
-  const svRounded =
-    svEntries.length > 0
-      ? (['rv', 'kv', 'pv', 'alv'] as const).reduce((acc, category) => {
-          const amounts = svEntries.filter((e) => e.category === category).map((e) => e.amount)
-          return acc + (amounts.length > 0 ? wholeEurosOf(amounts) : 0)
-        }, 0)
-      : null
+  // The printed lines added in cents and rounded once, so the sum matches the certificate (real-data run:
+  // the rounded lines gave 18.147 € against 18.145,99 €). The single lines stay rounded as the mask holds them.
+  const svRounded = svEntries.length > 0 ? wholeEurosOf(svEntries.map((e) => e.amount)) : null
   const bruttoRounded = line3 !== null ? Math.round(line3) : null
   const lohnsteuerRounded = line4 !== null ? Math.round(line4) : null
 
