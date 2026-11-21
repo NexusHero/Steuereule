@@ -67,8 +67,14 @@ export class ChHealthStatementParseStrategy implements DocumentParseStrategy, On
     const countedHealth = await this.advisorService.countedReceiptItems(userId, year, { screen: 'interview', field: 'gesundheit-betrag' })
     // Read for one person of the household (ADR-0092 §5): only their lines; the others are offered apart.
     const only = dto.holder
+    // A Person B without a name on record matches nobody; the one insured person no one matches is then B
+    // (real-data run: the spouse of a family statement was not assigned). Said, to be checked.
+    const unmatchedInsured = read.insured.filter((person) => insuredMember(person.name, members) === null)
+    const bUnnamed = household.B !== null && !household.B.firstName && !household.B.lastName
+    const spouseByElimination = bUnnamed && unmatchedInsured.length === 1 ? unmatchedInsured[0] : undefined
+    if (spouseByElimination) notes.push('Eine versicherte Person habe ich Person B zugeordnet, weil für Person B noch kein Name eingetragen ist. Bitte prüfe das.')
     for (const person of read.insured) {
-      const matched = insuredMember(person.name, members)
+      const matched = person === spouseByElimination ? 'B' : insuredMember(person.name, members)
       // The user said whose statement it is („Für wen?“): a statement for one person is theirs, also when
       // the printed name fits nobody on record (real-data run: „Nichts erkannt“ beside the amount read).
       const key = matched === null && only !== undefined && read.insured.length === 1 && members.some((m) => m.key === only) ? only : matched
@@ -201,5 +207,5 @@ function selfBorneItemOf(insurer: string, year: number, person: InsuredPremium):
 function countedItemsOf(insurer: string, year: number, person: InsuredPremium): AdvisorCountedItem[] {
   const hash = (value: string) => `0${createHash('sha256').update(`health:${value}`).digest('hex').slice(0, 24)}`
   const who = person.insuredNo ?? person.name.toLowerCase()
-  return [{ ref: hash(`${insurer}|${who}|${year}|${person.period ?? ''}|${person.premiumCents}`), amountKey: hash(`${insurer}|${who}|${year}`) }]
+  return [{ ref: hash(`${insurer}|${who}|${year}|${person.period ?? ''}|${person.premiumCents}`), amountKey: hash(`${insurer}|${who}|${year}`), ...(person.period ? { period: person.period } : {}) }]
 }

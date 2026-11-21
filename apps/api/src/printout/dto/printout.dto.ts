@@ -17,6 +17,13 @@ export class PrintoutCheckDto {
       'Which details of the children are behind `kinder` in `missing`, so the hint names them: `child` = children were named but none is recorded, `residence` = whether the child lived in Germany all year, `otherParent` = the other parent. Empty without `kinder`.',
   })
   missingChildFields!: ('child' | 'taxId' | 'kinship' | 'familyBenefitsOffice' | 'residence' | 'otherParent')[]
+
+  @ApiProperty({
+    type: [String],
+    example: ['iban'],
+    description: 'Missing, but not stopping this printout: `iban` while the estimate is a payment over its whole range (an IBAN is only needed for a refund).',
+  })
+  hints!: string[]
 }
 
 export type PrintoutJobStatus = 'queued' | 'processing' | 'completed' | 'failed'

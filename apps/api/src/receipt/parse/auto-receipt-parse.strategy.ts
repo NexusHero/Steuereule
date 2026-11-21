@@ -215,7 +215,11 @@ function craftsmanProposal(invoice: CraftsmanInvoiceRead) {
   }
 }
 
-function proposalDetailsFor(parsed: ParsedReceiptDataDto): {
+/** Asked under a donation certificate that names no date of the donation, only its own (§ 11 Abs. 2 EStG). */
+const DONATION_PAYMENT_YEAR =
+  'Die Bestätigung nennt nur ihr eigenes Datum, nicht den Tag der Zuwendung. Wann wurde die Spende gezahlt? Es zählt das Jahr der Zahlung (§ 11 Abs. 2 EStG), nicht das Datum der Bestätigung.'
+
+function proposalDetailsFor(parsed: ParsedReceiptDataDto, donationUndated = false): {
   readonly label: string
   readonly reason: string
   readonly sourceId: OwlSourceId
@@ -229,7 +233,7 @@ function proposalDetailsFor(parsed: ParsedReceiptDataDto): {
       reason: 'Sonderausgabenabzug für gemeinnützige Zuwendungen nach § 10b EStG aus geprüftem Beleg.',
       sourceId: 'estg-10b',
       companionFields: { spenden: 'Ja' },
-      summaryText: `${summary} Nach [estg-10b] habe ich dir den Sonderausgaben-Entwurf bereitgestellt:`,
+      summaryText: `${summary}${donationUndated ? ` ${DONATION_PAYMENT_YEAR}` : ''} Nach [estg-10b] habe ich dir den Sonderausgaben-Entwurf bereitgestellt:`,
     }
   }
   if (parsed.suggestedScreen === 'interview' && parsed.suggestedField === 'gesundheit-betrag') {
@@ -441,12 +445,15 @@ export class AutoReceiptParseStrategy implements DocumentParseStrategy {
     // A Zuwendungsbestätigung: the donations it lists that are not counted yet (ADR-0080). A partner's own
     // receipt repeating a joint booking, or a copy („Doppel“), adds nothing; the year is the year donated.
     let countedItems: AdvisorCountedItem[] | undefined
+    // A certificate without the donation's date or period: the year it was paid is asked (real-data run).
+    let donationUndated = false
     // Why nothing is proposed, when a rule below knows (ADR-0097): the Beleg says it instead of „nichts erkannt“.
     let noValuesReason: ReceiptReadReason | null = invoice?.notAnInvoice ? 'keine_rechnung' : null
     const donation = !securityBlocked && !invoice && dto.rawText && looksLikeDonationReceipt(dto.rawText) ? parseDonationReceipt(dto.rawText) : null
     // Without a readable amount the model's reading stands.
     if (donation && donation.items.length > 0) {
       const read = donation
+      donationUndated = read.taxYear === null
       const year = read.taxYear ?? parsed.taxYear ?? dto.taxYear
       const hashed = read.items.map(hashDonation)
       const counted = await this.advisorService.countedReceiptItems(userId, year, { screen: 'interview', field: 'spenden-betrag' })
@@ -588,7 +595,7 @@ export class AutoReceiptParseStrategy implements DocumentParseStrategy {
       }
     }
 
-    const proposalMeta = invoice?.labourEur ? craftsmanProposal(invoice) : proposalDetailsFor(parsed)
+    const proposalMeta = invoice?.labourEur ? craftsmanProposal(invoice) : proposalDetailsFor(parsed, donationUndated)
     const staged = await this.advisorService.stageReceiptProposal(userId, targetTaxYear, {
       screen: parsed.suggestedScreen,
       field: parsed.suggestedField,

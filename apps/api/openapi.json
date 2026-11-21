@@ -11480,6 +11480,19 @@
             "type": "number",
             "nullable": true
           },
+          "taggeldQuelle": {
+            "type": "string",
+            "enum": [
+              "krankentaggeldversicherung",
+              "lohnfortzahlung",
+              "beides",
+              "unfallversicherung",
+              "mutterschaftIv",
+              "kein"
+            ],
+            "nullable": true,
+            "description": "Where a daily benefit in Ziffer 8 came from; null = not answered."
+          },
           "krankentaggeldArbeitgeberProzent": {
             "type": "number",
             "nullable": true
@@ -11524,6 +11537,7 @@
           "pkArbeitgeberGesamtChf",
           "steuerfreiesKrankentaggeldChf",
           "steuerfreiesUnfalltaggeldChf",
+          "taggeldQuelle",
           "krankentaggeldArbeitgeberProzent",
           "krankentaggeldArbeitgeberChf",
           "nbuvArbeitgeberProzent",
@@ -11703,6 +11717,19 @@
             "type": "number",
             "nullable": true,
             "description": "Whole CHF — daily benefit of the Swiss accident insurance (UVG/SUVA) paid out and contained in Ziffer 8 (line „SUVA – Geld“). Tax-free, but it raises the tax rate (§ 32b EStG)."
+          },
+          "taggeldQuelle": {
+            "type": "string",
+            "enum": [
+              "krankentaggeldversicherung",
+              "lohnfortzahlung",
+              "beides",
+              "unfallversicherung",
+              "mutterschaftIv",
+              "kein"
+            ],
+            "nullable": true,
+            "description": "Where a daily benefit in Ziffer 8 came from: the collective sickness insurance (deducted in steuerfreiesKrankentaggeldChf), the employer’s continued pay (wage, nothing deducted), both (only the insurer’s part deducted), the accident insurance (steuerfreiesUnfalltaggeldChf), maternity / IV, or none."
           },
           "krankentaggeldArbeitgeberProzent": {
             "type": "number",
@@ -17170,11 +17197,22 @@
                 "otherParent"
               ]
             }
+          },
+          "hints": {
+            "example": [
+              "iban"
+            ],
+            "description": "Missing, but not stopping this printout: `iban` while the estimate is a payment over its whole range (an IBAN is only needed for a refund).",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           }
         },
         "required": [
           "missing",
-          "missingChildFields"
+          "missingChildFields",
+          "hints"
         ]
       },
       "LiveFormInstanceDto": {

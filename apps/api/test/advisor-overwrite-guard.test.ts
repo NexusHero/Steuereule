@@ -1,7 +1,7 @@
 // The owl fills empty fields but does not change recorded ones on its own (ADR-0082): in the real case it
 // proposed a premium ten times the one already read from a letter, though the user had not mentioned it.
 import { describe, expect, it } from 'vitest'
-import type { AdvisorActionProposal, AdvisorEnginePort } from '@steuereule/core'
+import { preparedDraftsSentence, type AdvisorActionProposal, type AdvisorEnginePort } from '@steuereule/core'
 import { buildAdvisorTestKit } from './fakes/advisor-test-kit.js'
 
 const USER = 'user-ow'
@@ -63,17 +63,17 @@ describe('the owl and recorded values (ADR-0082)', () => {
 })
 
 describe('the number of drafts an answer names (ADR-0066 Zero-Write)', () => {
-  const STOCK = 'Ich habe 2 Entwürfe als unverbindliche Vorschläge vorbereitet.'
+  const stock = (...labels: string[]) => preparedDraftsSentence(labels)
 
   it('counts in the stock sentence only the drafts that are shown', async () => {
-    const reply = await turn('Danke, sonst nichts.', [proposal('spenden-betrag', '3000'), proposal('umzug-kosten', '800')], STOCK)
+    const reply = await turn('Danke, sonst nichts.', [proposal('spenden-betrag', '3000'), proposal('umzug-kosten', '800')], stock('Spenden', 'umzug-kosten'))
     expect(reply.content).not.toContain('2 Entwürfe')
     expect(reply.content.startsWith('Ich habe den Entwurf „umzug-kosten“ als unverbindlichen Vorschlag vorbereitet.')).toBe(true)
   })
 
   it('keeps the stock sentence when every draft is shown', async () => {
-    const reply = await turn('Umzug 800 €, Fortbildung 400 €.', [proposal('umzug-kosten', '800'), proposal('fortbildung-kosten', '400')], STOCK)
-    expect(reply.content.startsWith(STOCK)).toBe(true)
+    const reply = await turn('Umzug 800 €, Fortbildung 400 €.', [proposal('umzug-kosten', '800'), proposal('fortbildung-kosten', '400')], stock('umzug-kosten', 'fortbildung-kosten'))
+    expect(reply.content.startsWith(stock('umzug-kosten', 'fortbildung-kosten'))).toBe(true)
     expect(reply.content).not.toContain('Hinweis der App')
   })
 

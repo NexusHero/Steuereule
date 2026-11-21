@@ -818,6 +818,17 @@ describe('donation receipts add up, never twice (§ 10b, ADR-0080)', () => {
     expect(res.stagedAction).not.toHaveProperty('countedItems')
   })
 
+  // Real-data run: a certificate dated in the following year, and the owl never asked when the donation was paid.
+  it('asks when the donation was paid when the certificate names only its own date', async () => {
+    const h = buildTestHarness([], false)
+    const undated = ['Aussteller: Andere Hilfe e.V.', 'Bestätigung über Geldzuwendungen im Sinne des § 10b EStG', 'Betrag der Zuwendung - in Ziffern -', '50,00 €', 'Köln, den 10.01.2026'].join('\n')
+    const res = await h.parseService.parseReceipt('user-d0', { taxYear: 2025, fileName: 'spende.pdf', rawText: undated })
+    expect(res.assistantMessage?.content).toContain('Wann wurde die Spende gezahlt?')
+    expect(res.assistantMessage?.content).toContain('§ 11 Abs. 2 EStG')
+    const dated = await h.parseService.parseReceipt('user-d0b', { taxYear: 2024, fileName: 'spende.pdf', rawText: other })
+    expect(dated.assistantMessage?.content ?? '').not.toContain('Wann wurde die Spende gezahlt?')
+  })
+
   it('counts a partner’s own receipt and a copy of a donation already counted only once', async () => {
     const h = buildTestHarness([], false)
     await h.parseService.parseReceipt('user-d2', { taxYear: 2024, fileName: 'a.pdf', rawText: copy })
@@ -993,6 +1004,29 @@ describe('ReceiptParseService — every line of the LStB mask', () => {
     expect(res.lstb?.stagedActionIds).toHaveLength(11)
     // Zero-Write: nothing is stored before the user takes the drafts over.
     expect(await h.lstbRepo.findForUserAndYear('user-lines', 2025)).toBeNull()
+  })
+
+  // Real-data run 5: a photographed LStB in the chat gave lines 3, 4, 24, 25 and 27 only, and a social
+  // insurance total of about half. The message names the lines it could not read and asks for them.
+  it('names the lines a photo did not give and asks for them', async () => {
+    const h = buildTestHarness([], false)
+    const partial = [
+      'Ausdruck der elektronischen Lohnsteuerbescheinigung für 2025',
+      '3. Bruttoarbeitslohn einschl. Sachbezüge ohne 9. und 10.   48.000,00',
+      '4. Einbehaltene Lohnsteuer von 3.                         7.200,00',
+      '24a Steuerfreie Arbeitgeberzuschüsse zur gesetzlichen Krankenversicherung 1.800,30',
+      '25. Arbeitnehmerbeiträge zur gesetzlichen Krankenversicherung 3.650,50',
+      '27. Arbeitnehmerbeiträge zur Arbeitslosenversicherung 624,00',
+    ].join('\n')
+    const res = await h.parseService.parseReceipt('user-lines-partial', { taxYear: 2025, kind: 'lstb', fileName: 'foto.jpg', rawText: partial, textSource: 'ocr' })
+    const text = res.assistantMessage?.content ?? ''
+    expect(text).toContain('Zeile 23')
+    expect(text).toContain('Zeile 26')
+    expect(text).toContain('unvollständig')
+    expect(text).toContain('Zeile 5')
+    expect(text).toContain('Arbeitgeber')
+    const full = await h.parseService.parseReceipt('user-lines-full', { taxYear: 2025, kind: 'lstb', fileName: 'lstb.pdf', rawText: FULL_LSTB, textSource: 'pdf_text' })
+    expect(full.assistantMessage?.content ?? '').not.toContain('Nicht lesen konnte ich')
   })
 
   it('marks every line of a photo „bitte prüfen“ and the employer too', async () => {

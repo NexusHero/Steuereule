@@ -54,7 +54,26 @@ export function estimateReadingFrom(status: TaxEstimateStatus): AdvisorEstimateR
     churchTaxOpen: status.churchTaxOpen,
     jointAssessment: status.jointAssessment === true,
     breakdown: estimateLines(status),
+    rangeCauses: rangeCausesOf(status),
   }
+}
+
+const EUR = new Intl.NumberFormat('de-DE', { maximumFractionDigits: 0 })
+
+/** Why the estimate's result is a range, from what the estimate itself holds; nothing for a point value. */
+function rangeCausesOf(status: Extract<TaxEstimateStatus, { kind: 'spanne' }>): string[] {
+  if (status.result.from === status.result.to) return []
+  const causes: string[] = []
+  if (status.provision.from !== status.provision.to) {
+    causes.push(
+      `Die abziehbaren Vorsorgeaufwendungen sind eine Spanne von ${EUR.format(status.provision.from)} bis ${EUR.format(status.provision.to)} €: Die App kennt den genauen abziehbaren Anteil der Beiträge noch nicht (z. B. Zusatzbeitrag, Kinderlosenzuschlag oder Höchstbetrag der sonstigen Vorsorge).`,
+    )
+  }
+  if (status.laterAmounts) causes.push(`${status.laterAmounts} ${status.laterAmounts === 1 ? 'Betrag ist' : 'Beträge sind'} mit „Später eintragen“ markiert und noch nicht gerechnet.`)
+  if (status.churchTax && 'due' in status.churchTax && status.churchTax.due.from !== status.churchTax.due.to) causes.push('Die Kirchensteuer ist eine Spanne (Hebesatz oder Kappung noch offen).')
+  if (status.churchTaxOpen) causes.push('Die Kirchensteuer ist noch nicht gerechnet, weil ihre Angaben fehlen.')
+  if (status.incomeTax.from !== status.incomeTax.to && causes.length === 0) causes.push('Die Einkommensteuer ist eine Spanne, weil das zu versteuernde Einkommen noch eine Spanne ist.')
+  return causes
 }
 
 /**

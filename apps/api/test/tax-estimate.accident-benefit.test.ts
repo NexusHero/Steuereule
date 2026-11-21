@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { dailyBenefitEntry, type DailyBenefitSource } from '@steuereule/core'
 import type { CommuteRepository } from '../src/commute/commute.repository.js'
 import type { CrossBorderSalaryStatementRecord } from '../src/ch-salary-certificate/ch-salary-certificate.repository.js'
 import type { MasterDataRecord } from '../src/master-data/master-data.repository.js'
@@ -93,6 +94,55 @@ describe('daily accident benefit (UVG/SUVA) in the estimate of a single cross-bo
     const both = await single({ steuerfreiesUnfalltaggeldChf: BENEFIT_CHF }, benefits)
     expect(both.incomeTax.to).toBeGreaterThan((await single({ steuerfreiesUnfalltaggeldChf: BENEFIT_CHF })).incomeTax.to)
     expect(both.incomeTax.to).toBeGreaterThan((await single({ steuerfreiesKrankentaggeldChf: BENEFIT_CHF }, benefits)).incomeTax.to)
+  })
+})
+
+// The answer to „Woher kam das Taggeld?“ decides the field (ADR-0072, Punkt 5): stored as the mask and the
+// owl store it, then estimated.
+describe('the source of a daily benefit in the estimate', () => {
+  const answered = (source: DailyBenefitSource, amountChf: number | null): Benefit => {
+    const entry = dailyBenefitEntry(source, amountChf)
+    const text = (value: number | null) => (value === null ? undefined : String(value))
+    return Object.fromEntries(
+      Object.entries({ steuerfreiesKrankentaggeldChf: text(entry.steuerfreiesKrankentaggeldChf), steuerfreiesUnfalltaggeldChf: text(entry.steuerfreiesUnfalltaggeldChf) }).filter(([, value]) => value !== undefined),
+    ) as Benefit
+  }
+  const single = async (benefit: Benefit) => {
+    const env = setup()
+    env.interview.seed('u', 2025, { job: 'Angestellt', kinder: 'Nein', ausland: 'Ja, in die Schweiz', ...CROSS_BORDER })
+    env.ch.seed(certificate('u', benefit))
+    return range(await env.service.getState('u', 2025))
+  }
+
+  it('deducts nothing for the employer’s continued pay, even with an amount typed', async () => {
+    const without = await single({})
+    const continued = await single(answered('lohnfortzahlung', 6000))
+    expect(continued.taxableIncome).toEqual(without.taxableIncome)
+    expect(continued.incomeTax).toEqual(without.incomeTax)
+    expect(await single(answered('kein', null))).toEqual(continued)
+  })
+
+  it('deducts an insurance benefit without the progression clause', async () => {
+    const insurance = await single(answered('krankentaggeldversicherung', 6000))
+    expect(insurance).toEqual(await single({ steuerfreiesKrankentaggeldChf: BENEFIT_CHF }))
+    expect(insurance.breakdown?.progressionIncomeEur).toBeUndefined()
+    expect(insurance.taxableIncome.to).toBeLessThan((await single({})).taxableIncome.to)
+  })
+
+  it('deducts only the insurer’s part for „beides“: the top-up stays wage', async () => {
+    const insurerPart = await single(answered('beides', 4800))
+    const whole = await single(answered('krankentaggeldversicherung', 6000))
+    expect(insurerPart.taxableIncome.to).toBeGreaterThan(whole.taxableIncome.to)
+    expect(insurerPart.taxableIncome.to).toBeLessThan((await single({})).taxableIncome.to)
+  })
+
+  it('deducts an accident benefit with the progression clause', async () => {
+    const accident = await single(answered('unfallversicherung', 6000))
+    const insurance = await single(answered('krankentaggeldversicherung', 6000))
+    expect(accident.taxableIncome).toEqual(insurance.taxableIncome)
+    // 6.000 CHF at 1,07.
+    expect(accident.breakdown?.progressionIncomeEur).toBe(6420)
+    expect(accident.incomeTax.to).toBeGreaterThan(insurance.incomeTax.to)
   })
 })
 

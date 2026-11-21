@@ -18,6 +18,7 @@ import {
   type AdvisorMessageMeta,
   type AssignmentMember,
   type ChDailyBenefitRemark,
+  type DailyBenefitSource,
   type ExistingValueSource,
   type LstbCalculationTerm,
   type LstbExtractedField,
@@ -522,6 +523,19 @@ export class AdvisorDocumentStaging {
         rawActions.push(draft(incoming))
         continue
       }
+      // A second insurer's statement for another part of the year adds up; „ersetzen“ would delete the first
+      // insurer's premium (real-data run). Both ways stay where the periods overlap, a period is unknown (a
+      // correction of the same statement, N2) or the value was typed.
+      if (how === 'ask' && item.accumulate === true && existing!.fromDocument && periodsApart(existing!.counted, item.countedItems)) {
+        const sum = addAmounts(existing!.value!, incoming)
+        rawActions.push(
+          draft(sum, {
+            reason: `Schon eingetragen: ${existing!.value} aus einem anderen Beleg. Dieser Beleg gilt für einen anderen Zeitraum des Jahres (etwa eine zweite Kasse nach einem Wechsel): zusammen ${sum}.`,
+            ...(item.countedItems ? { countedItems: [...existing!.counted, ...item.countedItems] } : {}),
+          }),
+        )
+        continue
+      }
       if (how === 'add') {
         const sum = addAmounts(existing!.value!, incoming)
         rawActions.push(draft(sum, { reason: `Vom Beleg gelesen: bisher ${existing!.value}, dazu ${incoming}.`, ...(item.countedItems ? { countedItems: [...existing!.counted, ...item.countedItems] } : {}) }))
@@ -563,16 +577,21 @@ export class AdvisorDocumentStaging {
   }
 
   /**
-   * A Swiss wage statement does not say whether a paid-out daily benefit is part of the gross wage
-   * (ADR-0093): asked once, under the statement just read, while the answer is not recorded in the
-   * sickness field or in the accident field.
+   * A Swiss wage statement does not say where a daily benefit in the gross wage came from (ADR-0093,
+   * ADR-0072 Punkt 5): asked once, under the statement just read, while neither the source nor an amount
+   * in the sickness or the accident field is recorded. Ziffer 8 and 9 of the statement give the AHV hint.
    */
   private async sickPayQuestion(taxYear: number, input: DocumentDraftsInput): Promise<string | null> {
     const wageStatement = input.fields.some((item) => (item.screen ?? input.screen) === 'chLohnausweis' && item.field === 'bruttolohn-total')
     if (!wageStatement && !input.dailyBenefit) return null
     const read = (field: string) => this.confirmationService.readRawValue(input.digestUserId, taxYear, `chLohnausweis.${field}`).catch(() => null)
-    const [sickness, accident] = await Promise.all([read('steuerfreiesKrankentaggeldChf'), read('steuerfreiesUnfalltaggeldChf')])
-    return sickness === null && accident === null ? sickPayQuestionForUser(input.dailyBenefit) : null
+    const [source, sickness, accident] = await Promise.all([read('taggeldQuelle'), read('steuerfreiesKrankentaggeldChf'), read('steuerfreiesUnfalltaggeldChf')])
+    if (source !== null || sickness !== null || accident !== null) return null
+    const amountOf = (field: string): number | null => {
+      const value = input.fields.find((item) => (item.screen ?? input.screen) === 'chLohnausweis' && item.field === field)?.value
+      return typeof value === 'number' ? value : null
+    }
+    return sickPayQuestionForUser(input.dailyBenefit, { taxYear, grossWageChf: amountOf('bruttolohn-total'), ahvContributionsChf: amountOf('ahv-beitraege') })
   }
 
   /**
@@ -608,7 +627,9 @@ export class AdvisorDocumentStaging {
     const stored = await this.confirmationService.valueWithSource(dataUserId, taxYear, key).catch(() => ({ value: null, receiptId: null }))
     if (stored.value === null) return { value: null, source: 'none', fromDocument: false, counted: [], marks }
     const own = receiptId !== null && stored.receiptId === receiptId
-    return { value: stored.value, source: own ? 'thisDocument' : 'other', fromDocument: stored.receiptId !== null, counted: [], marks }
+    // What the applied draft counted (a statement, its period): a later document is compared with it.
+    const counted = drafts.filter((a) => a.status === 'applied').at(-1)?.countedItems ?? []
+    return { value: stored.value, source: own ? 'thisDocument' : 'other', fromDocument: stored.receiptId !== null || counted.length > 0, counted, marks }
   }
 
   private async pendingCountedItems(userId: string, taxYear: number, target: CountTarget): Promise<AdvisorCountedItem[]> {
@@ -746,6 +767,9 @@ export class AdvisorDocumentStaging {
 function dailyBenefitPaths(kind: ChDailyBenefitRemark['kind'], amountChf: number, input: DocumentDraftsInput): NonNullable<AdvisorMessageMeta['twoPaths']> {
   const accident = kind === 'accident'
   const group = newActionId()
+  // Taking the deduction answers where the money came from too (ADR-0072, Punkt 5). Not deducting leaves the
+  // source open (continued pay, or a benefit outside Ziffer 8): the 0 answers the question either way.
+  const deducted: DailyBenefitSource = accident ? 'unfallversicherung' : 'krankentaggeldversicherung'
   const path = (suffix: 'safe' | 'max', value: number, label: string, reason: string): AdvisorActionProposal => ({
     actionId: `${group}-${suffix}`,
     alternativeGroup: group,
@@ -767,6 +791,7 @@ function dailyBenefitPaths(kind: ChDailyBenefitRemark['kind'], amountChf: number
     sourceId: input.sourceId,
     paragraph: ADVISOR_LEGAL_SOURCES[input.sourceId].paragraph,
     ...(input.receiptId ? { receiptId: input.receiptId } : {}),
+    ...(suffix === 'max' ? { companionFields: { taggeldQuelle: deducted }, companionExpectedValues: { taggeldQuelle: null } } : {}),
   })
   if (accident) {
     return {
@@ -787,9 +812,9 @@ function dailyBenefitPaths(kind: ChDailyBenefitRemark['kind'], amountChf: number
   return {
     title: 'Ausgezahltes Krankentaggeld: im Bruttolohn (Ziffer 8) enthalten?',
     sourceId: input.sourceId,
-    safePath: path('safe', 0, 'Krankentaggeld nicht abziehen', 'Das Taggeld ist nicht im Bruttolohn Ziffer 8 enthalten (oder du bist nicht sicher): Der Lohn bleibt, wie er auf dem Ausweis steht.'),
+    safePath: path('safe', 0, 'Krankentaggeld nicht abziehen', 'Lohnfortzahlung des Arbeitgebers ohne Versicherung, oder das Taggeld ist nicht im Bruttolohn Ziffer 8 enthalten (oder du bist nicht sicher): Der Lohn bleibt, wie er auf dem Ausweis steht.'),
     maxPath: {
-      ...path('max', amountChf, `Krankentaggeld ${formatChf(amountChf)} abziehen`, 'Das Taggeld ist im Bruttolohn Ziffer 8 enthalten: Es ist steuerfrei und wird vom Lohn abgezogen (Anlage N-Gre Zeile 9).'),
+      ...path('max', amountChf, `Krankentaggeld ${formatChf(amountChf)} abziehen`, 'Das Taggeld kam von der Krankentaggeldversicherung und ist im Bruttolohn Ziffer 8 enthalten: Es ist steuerfrei und wird vom Lohn abgezogen (Anlage N-Gre Zeile 9). Stockt der Arbeitgeber auf, wird nur der Teil der Versicherung abgezogen.'),
       evidenceHint: 'Bitte die Taggeld-Abrechnung des Versicherers aufbewahren.',
     },
   }
@@ -837,3 +862,19 @@ export function combinationDrafts(
   })
   return [{ ...add, alternativeGroup: `combine:${add.actionId}` }, replace]
 }
+
+/** „01.01.2025 - 30.06.2025“ as two ISO dates, or null. */
+function periodRange(period: string | undefined): readonly [string, string] | null {
+  const m = /(\d{2})\.(\d{2})\.(\d{4})\s*-\s*(\d{2})\.(\d{2})\.(\d{4})/.exec(period ?? '')
+  return m ? [`${m[3]}-${m[2]}-${m[1]}`, `${m[6]}-${m[5]}-${m[4]}`] : null
+}
+
+/** Whether a document covers another part of the year than the one already counted: both periods known, none overlapping. */
+function periodsApart(counted: readonly AdvisorCountedItem[], incoming: readonly AdvisorCountedItem[] | undefined): boolean {
+  const ranges = (items: readonly AdvisorCountedItem[]) => items.map((item) => periodRange(item.period)).filter((range): range is readonly [string, string] => range !== null)
+  const before = ranges(counted)
+  const now = ranges(incoming ?? [])
+  if (before.length === 0 || before.length !== counted.length || now.length === 0 || now.length !== (incoming ?? []).length) return false
+  return !before.some(([from, to]) => now.some(([nowFrom, nowTo]) => nowFrom <= to && from <= nowTo))
+}
+

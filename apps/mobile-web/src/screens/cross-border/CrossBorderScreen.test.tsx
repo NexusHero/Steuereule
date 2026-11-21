@@ -114,6 +114,7 @@ const FOLDED_CH: ChSalaryCertificateResponseDto = {
     pkArbeitgeberGesamtChf: null,
     steuerfreiesKrankentaggeldChf: null,
     steuerfreiesUnfalltaggeldChf: null,
+    taggeldQuelle: null,
     krankentaggeldArbeitgeberProzent: null,
     krankentaggeldArbeitgeberChf: null,
     nbuvArbeitgeberProzent: null,
@@ -246,44 +247,127 @@ describe('GrenzgaengerScreen — Anlage N-Gre facts', () => {
     )
     renderScreen()
     expect(await screen.findByText('Pensionskasse – alle Beiträge des Arbeitgebers, obligatorisch und überobligatorisch (CHF)')).toBeTruthy()
+    fireEvent.click(screen.getByTestId('ch-ngre-taggeldQuelle-krankentaggeldversicherung'))
     for (const [id, value] of [
       ['ch-ngre-pkArbeitgeberGesamtChf', '7186'],
       ['ch-ngre-pkArbeitgeberChf', '2892'],
       ['ch-ngre-steuerfreiesKrankentaggeldChf', '3853'],
     ] as const) {
-      const input = screen.getByTestId(id)
+      const input = await screen.findByTestId(id)
       fireEvent.change(input, { target: { value } })
       fireEvent.keyDown(input, { key: 'Enter' })
     }
     await waitFor(() =>
-      expect(bodies).toEqual([{ pkArbeitgeberGesamtChf: 7186 }, { pkArbeitgeberChf: 2892 }, { steuerfreiesKrankentaggeldChf: 3853 }]),
+      expect(bodies).toEqual([
+        { taggeldQuelle: 'krankentaggeldversicherung', steuerfreiesKrankentaggeldChf: null, steuerfreiesUnfalltaggeldChf: null },
+        { pkArbeitgeberGesamtChf: 7186 },
+        { pkArbeitgeberChf: 2892 },
+        { steuerfreiesKrankentaggeldChf: 3853 },
+      ]),
     )
   })
 
-  it('has the accident benefit (UVG/SUVA) directly under the sickness benefit, with its help, and saves the rounded amount', async () => {
-    const bodies: unknown[] = []
-    server.use(http.get(INTERVIEW_URL, () => HttpResponse.json(DONE_CH_INTERVIEW, { status: 200 })))
-    server.use(
-      http.put(`${CH_URL}/n-gre`, async ({ request }) => {
-        bodies.push(await request.json())
-        return HttpResponse.json(EMPTY_CH, { status: 200 })
-      }),
-    )
-    renderScreen()
-    const accident = await screen.findByTestId('ch-ngre-steuerfreiesUnfalltaggeldChf')
-    expect(screen.getByText('Unfalltaggeld (UVG/SUVA) im Bruttolohn')).toBeTruthy()
-    expect(screen.getByText('Steuerfrei, erhöht aber den Steuersatz (Progressionsvorbehalt). Krankentaggeld gehört ins Feld darüber.')).toBeTruthy()
-    // Directly under the sickness benefit: the next amount input of the section.
-    const inputs = screen.getAllByTestId(/^ch-ngre-.*Chf$/).map((input) => input.getAttribute('data-testid'))
-    expect(inputs.indexOf('ch-ngre-steuerfreiesUnfalltaggeldChf')).toBe(inputs.indexOf('ch-ngre-steuerfreiesKrankentaggeldChf') + 1)
+  // ADR-0072, Punkt 5: where the money came from decides whether and where it is deducted.
+  describe('the daily benefit in the gross wage: first where it came from, then the amount that fits', () => {
+    const recordNGre = (stored: ChSalaryCertificateResponseDto = EMPTY_CH) => {
+      const bodies: unknown[] = []
+      server.use(http.get(INTERVIEW_URL, () => HttpResponse.json(DONE_CH_INTERVIEW, { status: 200 })))
+      server.use(http.get(CH_URL, () => HttpResponse.json(stored, { status: 200 })))
+      server.use(
+        http.put(`${CH_URL}/n-gre`, async ({ request }) => {
+          bodies.push(await request.json())
+          return HttpResponse.json(stored, { status: 200 })
+        }),
+      )
+      return bodies
+    }
 
-    // Typed as on the benefit statement, with cents: rounded to whole CHF, shown as stored.
-    fireEvent.change(accident, { target: { value: '2249,60' } })
-    fireEvent.blur(accident)
-    await waitFor(() => expect(bodies).toEqual([{ steuerfreiesUnfalltaggeldChf: 2250 }]))
-    expect((accident as HTMLInputElement).value).toBe('2250')
-    // The sickness field is left alone.
-    expect((screen.getByTestId('ch-ngre-steuerfreiesKrankentaggeldChf') as HTMLInputElement).value).toBe('')
+    it('asks the question with the six answers, above the amount fields, and shows no amount before the answer', async () => {
+      recordNGre()
+      renderScreen()
+      expect(await screen.findByText('Woher kam das Taggeld im Bruttolohn (Ziffer 8)?')).toBeTruthy()
+      for (const label of [
+        'Krankentaggeldversicherung (mit dem Lohn verrechnet)',
+        'Lohnfortzahlung des Arbeitgebers ohne Versicherung',
+        'beides (Versicherung zahlt einen Teil, der Arbeitgeber stockt auf)',
+        'Unfallversicherung (UVG/SUVA)',
+        'Mutterschaft / IV',
+        'kein Taggeld',
+      ]) {
+        expect(screen.getByText(label)).toBeTruthy()
+      }
+      expect(screen.queryByTestId('ch-ngre-steuerfreiesKrankentaggeldChf')).toBeNull()
+      expect(screen.queryByTestId('ch-ngre-steuerfreiesUnfalltaggeldChf')).toBeNull()
+    })
+
+    it('shows only the accident field for the accident insurance, with its help, and saves the rounded amount', async () => {
+      const bodies = recordNGre()
+      renderScreen()
+      fireEvent.click(await screen.findByTestId('ch-ngre-taggeldQuelle-unfallversicherung'))
+      const accident = await screen.findByTestId('ch-ngre-steuerfreiesUnfalltaggeldChf')
+      expect(screen.getByText('Unfalltaggeld (UVG/SUVA) im Bruttolohn (CHF)')).toBeTruthy()
+      expect(screen.getByText('Steuerfrei, erhöht aber den Steuersatz (Progressionsvorbehalt).')).toBeTruthy()
+      expect(screen.queryByTestId('ch-ngre-steuerfreiesKrankentaggeldChf')).toBeNull()
+
+      // Typed as on the benefit statement, with cents: rounded to whole CHF, shown as stored.
+      fireEvent.change(accident, { target: { value: '2249,60' } })
+      fireEvent.blur(accident)
+      await waitFor(() =>
+        expect(bodies).toEqual([
+          { taggeldQuelle: 'unfallversicherung', steuerfreiesKrankentaggeldChf: null, steuerfreiesUnfalltaggeldChf: null },
+          { steuerfreiesUnfalltaggeldChf: 2250 },
+        ]),
+      )
+      expect((accident as HTMLInputElement).value).toBe('2250')
+    })
+
+    it('asks only for the insurer’s part for „beides“ and says the top-up stays wage', async () => {
+      const bodies = recordNGre()
+      renderScreen()
+      fireEvent.click(await screen.findByTestId('ch-ngre-taggeldQuelle-beides'))
+      const part = await screen.findByTestId('ch-ngre-steuerfreiesKrankentaggeldChf')
+      expect(screen.getByText('Davon von der Versicherung gezahlt (CHF)')).toBeTruthy()
+      expect(screen.getByText('Nur den Teil der Versicherung laut Taggeld-Abrechnung. Die Aufstockung des Arbeitgebers bleibt Lohn und wird nicht abgezogen.')).toBeTruthy()
+      fireEvent.change(part, { target: { value: '3360' } })
+      fireEvent.keyDown(part, { key: 'Enter' })
+      await waitFor(() => expect(bodies).toEqual([{ taggeldQuelle: 'beides', steuerfreiesKrankentaggeldChf: null, steuerfreiesUnfalltaggeldChf: null }, { steuerfreiesKrankentaggeldChf: 3360 }]))
+    })
+
+    it('stores 0 for the employer’s continued pay and shows no amount to deduct', async () => {
+      const bodies = recordNGre()
+      renderScreen()
+      fireEvent.click(await screen.findByTestId('ch-ngre-taggeldQuelle-lohnfortzahlung'))
+      await waitFor(() => expect(bodies).toEqual([{ taggeldQuelle: 'lohnfortzahlung', steuerfreiesKrankentaggeldChf: 0, steuerfreiesUnfalltaggeldChf: null }]))
+      expect(screen.getByText('Die Lohnfortzahlung des Arbeitgebers ist Lohn: Es wird nichts abgezogen.')).toBeTruthy()
+      expect(screen.queryByTestId('ch-ngre-steuerfreiesKrankentaggeldChf')).toBeNull()
+      expect(screen.queryByTestId('ch-ngre-steuerfreiesUnfalltaggeldChf')).toBeNull()
+    })
+
+    it('shows the AHV hint beside the question once Ziffer 8, Ziffer 9 and the amount are known, as a hint only', async () => {
+      const figures: Record<string, number> = { 'bruttolohn-total': 90000, 'ahv-beitraege': 5380 }
+      recordNGre({
+        ...EMPTY_CH,
+        fields: EMPTY_CH.fields.map((f) => {
+          const value = figures[f.id]
+          return value === undefined ? f : { ...f, kind: 'erfasst' as const, value }
+        }),
+        nGre: { ...EMPTY_CH.nGre, taggeldQuelle: 'krankentaggeldversicherung', steuerfreiesKrankentaggeldChf: 6000 },
+      })
+      renderScreen()
+      const hint = await screen.findByTestId('ch-ngre-taggeld-ahv-hinweis')
+      expect(hint.textContent).toContain('keine Entscheidung')
+      expect(hint.textContent).toContain('ohne das Taggeld')
+      expect(hint.textContent).toContain('Versicherungsleistung')
+      // Only the field of the answer is shown, with the stored amount.
+      expect((screen.getByTestId('ch-ngre-steuerfreiesKrankentaggeldChf') as HTMLInputElement).value).toBe('6000')
+      expect(screen.queryByTestId('ch-ngre-steuerfreiesUnfalltaggeldChf')).toBeNull()
+    })
+
+    it('still shows an amount recorded before the question, until the answer is given', async () => {
+      recordNGre({ ...EMPTY_CH, nGre: { ...EMPTY_CH.nGre, steuerfreiesKrankentaggeldChf: 3853 } })
+      renderScreen()
+      expect(((await screen.findByTestId('ch-ngre-steuerfreiesKrankentaggeldChf')) as HTMLInputElement).value).toBe('3853')
+    })
   })
 
   it('asks who pays the Krankentaggeld premium and the employer amount while the share is open or 100 %', async () => {

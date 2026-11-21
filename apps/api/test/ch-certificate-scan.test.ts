@@ -108,6 +108,20 @@ describe('the Swiss salary certificate from an upload', () => {
     expect((await kit.chRepo.findForUserAndYear(spouse, YEAR))?.nGre.familienzulagenChf).toBe('2580')
   })
 
+  // Real-data run: the employer's premiums in the remarks were not read; they are wage (N-Gre Zeilen 18/19).
+  it('drafts the premiums the employer took over, as the remarks name them', async () => {
+    const { strategy } = await setUp()
+    const remarks = certificate('Muster Kemal').replace('15. Bemerkungen', '15. Bemerkungen   Krankentaggeld 6.382,35 vom Arbeitgeber übernommen; NBU 608,40 vom Arbeitgeber übernommen')
+    const res = await parse(strategy, remarks.replace('; NBU', '\nNBU'))
+    const drafts = res.assistantMessage?.meta?.actions ?? []
+    const value = (field: string) => drafts.find((d) => d.field === field)?.newValue
+    expect([value('krankentaggeldArbeitgeberProzent'), value('krankentaggeldArbeitgeberChf'), value('nbuvArbeitgeberProzent'), value('nbuvArbeitgeberChf')]).toEqual(['100', '6382', '100', '608'])
+    // Read from a remark: to be checked, never taken over as read.
+    expect(drafts.find((d) => d.field === 'krankentaggeldArbeitgeberChf')?.confidenceStatus).toBe('pruefen')
+    // Not a paid-out daily benefit: no two paths for it.
+    expect(res.assistantMessage?.meta?.twoPaths).toBeUndefined()
+  })
+
   it('puts the spouse’s certificate into Person B’s mask, by the name on it', async () => {
     const { kit, strategy } = await setUp({ spouse: true })
     const res = await parse(strategy, certificate('Muster Juergen'))

@@ -22,6 +22,7 @@ import {
   scrubUserMessagePii,
   unchangedDraftsNote,
   withoutInternalNames,
+  metaWithoutInternalNames,
   withPreviewedEffects,
   type AdvisorActionProposal,
   type AdvisorAssessmentBrief,
@@ -179,7 +180,9 @@ export class AdvisorTurn {
       taxYear,
       conversationId: conversation.id,
       role: 'user',
-      content: scrubbedUserText,
+      // Stored and shown as the user wrote it (encrypted at rest); the model reads the history masked again
+      // on every read while the consent is missing (`historySources`). Real-data run: „[MANDANT]“ in the user's own text.
+      content: isOpening ? scrubbedUserText : dto.message.trim(),
       meta: opening ? { opening: opening.marker } : null,
     })
     const assistantMessage = await this.advisorRepo.createMessage({
@@ -437,7 +440,12 @@ export class AdvisorTurn {
           const turnResult = ev.data as AdvisorTurnResult
           // What the model did this turn is the best news about the connection there is.
           if (turnResult.mode === 'langgraph' || turnResult.meta.modelFailure) this.modelConnection?.recordTurn(turnResult.primaryFailure ?? turnResult.meta.modelFailure ?? null)
-          const { meta: enrichedMeta, reply: guardedReply, note: heldNote } = guardModelDrafts(await this.drafts.enrichDraftsWithRawBaseline(userId, taxYear, turnResult.meta), scrubbedUserText, turnResult.replyText)
+          // The workbench shows the model's draft labels, reasons and plan steps as written: cleaned like the reply.
+          const { meta: enrichedMeta, reply: guardedReply, note: heldNote } = guardModelDrafts(
+            metaWithoutInternalNames(await this.drafts.enrichDraftsWithRawBaseline(userId, taxYear, turnResult.meta)),
+            scrubbedUserText,
+            turnResult.replyText,
+          )
           await this.drafts.supersedePendingDraftsForSameTargets(userId, taxYear, this.drafts.collectPendingTargetKeys(enrichedMeta))
 
           const engine: AdvisorEngineInfo = {

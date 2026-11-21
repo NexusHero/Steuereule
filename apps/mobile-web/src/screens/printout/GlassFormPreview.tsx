@@ -680,6 +680,26 @@ function GlassFormPreviewBody({
           field: 'firstName',
         },
       ]
+      // Z. 27/28 (Kz 66/67) as the printout fills them; a foreign insurer goes into Kz 89, KV and PV together.
+      const amountOf = (value: string | null | undefined): number => (Number.isFinite(Number(value ?? 0)) ? Number(value ?? 0) : 0)
+      const healthRow = (suffix: string, line: string, label: string, value: number): GlassFormRow => ({
+        id: `kind-${k.id}-${suffix}`,
+        line: `Kind ${idx + 1} · ${line}`,
+        label: `${label} (${name})`,
+        value: formatEuro(value),
+        person: isJoint ? 'gemeinsam' : 'A',
+        provenanceLabel: prov('kind', 'healthBasicEur'),
+        screen: 'kind',
+        field: 'healthBasicEur',
+      })
+      const healthNum = amountOf(k.healthBasicEur)
+      const careNum = amountOf(k.careEur)
+      if (k.healthInsuranceAbroad === true) {
+        if (healthNum + careNum > 0) rows.push(healthRow('ausland', 'Z. 37 (Kz 89)', 'Kranken- und Pflegeversicherung im Ausland', healthNum + careNum))
+      } else {
+        if (healthNum > 0) rows.push(healthRow('kv', 'Z. 27 (Kz 66)', 'Krankenversicherung (Basis)', healthNum))
+        if (careNum > 0) rows.push(healthRow('pv', 'Z. 28 (Kz 67)', 'Pflegeversicherung', careNum))
+      }
       if (Number.isFinite(childcareNum) && childcareNum > 0) {
         rows.push({
           id: `kind-${k.id}-betreuung`,

@@ -119,3 +119,42 @@ describe('PrintoutService check before payment (ADR-0085)', () => {
     expect((await service.check('u2', 2024)).missing.filter((m) => m.startsWith('zuLang.'))).toEqual([])
   })
 })
+
+// Real-data run: the printout was blocked while the IBAN was missing, also for a return with a payment.
+describe('PrintoutService check: the IBAN is only needed for a refund', () => {
+  async function serviceWithout(result: { from: number; to: number } | null) {
+    const profileRepo = new FakeProfileRepository()
+    const masterDataRepo = new FakeMasterDataRepository()
+    const lstbRepo = new FakeLstbRepository()
+    await profileRepo.upsert('u3', { firstName: 'Anna', lastName: 'Beispiel', steuerId: '02476291358', steuernummer: '2010304050' })
+    await masterDataRepo.save('u3', {
+      geburtsdatum: '1990-04-12', strasse: 'Musterstraße', hausnummer: '12', plz: '01067', wohnort: 'Dresden',
+      religion: 'VD', familienstand: 'ledig', iban: null, finanzamt: 'Dresden-Nord',
+    } as never)
+    lstbRepo.seed({ userId: 'u3', taxYear: 2025, bruttoarbeitslohn: '42000', lohnsteuer: '6000', sozialversicherung: '8000' })
+    const commuteRepo: CommuteRepository = { findForUserAndYear: async () => null, save: async (_u, _y, e) => e }
+    const unlockRepo: UnlockRepository = { isPaid: async () => false, createOpenOnes: async () => {}, markPaid: async () => {} }
+    const paymentProvider: PaymentProvider = { createCheckout: async () => ({ id: 'cs_3', url: 'https://example.test' }), verifyEvent: () => ({ kind: 'bezahlt', sessionId: 'cs_3', amountCents: 3900 }) }
+    const estimate = { getState: async () => (result === null ? { kind: 'offen' as const } : { kind: 'spanne' as const, result }) }
+    return new PrintoutService(
+      profileRepo, masterDataRepo, lstbRepo, new FakePensionRepository(), new FakeCapitalRepository(), new FakeRentalRepository(),
+      new FakeChSalaryCertificateRepository(), new FakeChildRepository(), new FakeLinkRepository(), new FakeInterviewAnswerRepository(),
+      new FakeMarkingRepository(), commuteRepo, new UnlockService(unlockRepo, paymentProvider, 'http://localhost:8081'),
+      new AuditService(new FakeAuditRepository()), TEMPLATES_BASE, undefined, estimate as never,
+    )
+  }
+
+  it('names a missing IBAN as a hint, not a block, when the estimate is a payment', async () => {
+    const check = await (await serviceWithout({ from: -900, to: -400 })).check('u3', 2025)
+    expect(check.missing).not.toContain('iban')
+    expect(check.hints).toEqual(['iban'])
+  })
+
+  it('keeps it a block while a refund is possible, or the estimate is open', async () => {
+    for (const result of [{ from: -200, to: 300 }, { from: 400, to: 900 }, null]) {
+      const check = await (await serviceWithout(result)).check('u3', 2025)
+      expect(check.missing).toContain('iban')
+      expect(check.hints).toEqual([])
+    }
+  })
+})

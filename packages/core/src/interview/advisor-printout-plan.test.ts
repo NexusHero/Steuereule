@@ -294,6 +294,8 @@ describe('asksWhatIsMissing', () => {
     'Is anything missing?',
     "What's still missing?",
     'Kann ich jetzt drucken?',
+    'Was hab ich vergessen?',
+    'Was habe ich vergessen?',
   ])('recognises „%s“', (message) => expect(asksWhatIsMissing(message)).toBe(true))
 
   it.each(['Ich fahre 15 km zur Arbeit.', 'Meine Frau heißt Sabine.'])('ignores „%s“', (message) => expect(asksWhatIsMissing(message)).toBe(false))
@@ -309,6 +311,18 @@ describe('printoutGapFollowUp — the deterministic question when the model leav
     expect(result.text).toMatch(/Damit der Ausdruck vollständig ist/)
     expect(result.text).toMatch(/Broker/)
     expect(result.text).toMatch(/bereite ich die Einträge vor/)
+  })
+
+  // Real-data run: „Was habe ich vergessen?“ was answered empty once; the checklist answers it, model or not.
+  it('answers „Was habe ich vergessen?“ from the checklist, also with an empty reply', () => {
+    const result = printoutGapFollowUp({ ...asked, message: 'Was habe ich vergessen?', reply: '' })!
+    expect(result.text).toMatch(/Damit der Ausdruck vollständig ist, fehlt noch/)
+  })
+
+  it('says so when the checklist has nothing open and the user asks', () => {
+    const empty = { questions: [], unplanned: [] }
+    expect(printoutGapFollowUp({ ...asked, plan: empty, message: 'Was hab ich vergessen?', reply: '' })!.text).toMatch(/Nach der Checkliste der App fehlt für den Ausdruck nichts mehr/)
+    expect(printoutGapFollowUp({ ...asked, plan: empty, message: 'Danke!', reply: '' })).toBeNull()
   })
 
   it('adds nothing for questions the model asked itself, but still records them', () => {
@@ -343,7 +357,7 @@ describe('printoutGapFollowUp — the deterministic question when the model leav
     expect(result.text).toMatch(/Kind 1 \(Felix\)/)
   })
 
-  it('has nothing to say for an empty plan', () => {
-    expect(printoutGapFollowUp({ ...asked, plan: { questions: [], unplanned: [] } })).toBeNull()
+  it('has nothing to say for an empty plan unless asked', () => {
+    expect(printoutGapFollowUp({ ...asked, message: 'Danke!', plan: { questions: [], unplanned: [] } })).toBeNull()
   })
 })

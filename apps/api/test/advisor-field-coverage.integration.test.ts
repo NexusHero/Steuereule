@@ -28,6 +28,9 @@ function candidatesFor(screen: Screen, field: string): string[] {
     if (form?.kind === 'enum' && form.values) return [...form.values]
     if (form?.kind === 'integer') return ['100']
   }
+  // A field with a fixed set of answers (e.g. chLohnausweis.taggeldQuelle) is tried with its own answers first.
+  const spec = fieldSpec(screen, field)?.value
+  if (spec?.kind === 'enum') return [...spec.values, ...GENERIC_CANDIDATES]
   return GENERIC_CANDIDATES
 }
 

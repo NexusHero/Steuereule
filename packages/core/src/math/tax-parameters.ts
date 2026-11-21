@@ -117,6 +117,25 @@ export interface ReasonableBurdenParameters {
 }
 
 /**
+ * Employee contributions to the Swiss social insurances, withheld from the AHV wage (Lohnausweis Ziffer 9).
+ * Used for a cross-border commuter's plausibility hint only (`ahvContributionFit`), never for a tax figure.
+ */
+export interface SwissSocialSecurityParameters {
+  /**
+   * AHV 4,35 % + IV 0,7 % + EO 0,25 % = 5,3 % (employee half). Source: BSV/Informationsstelle AHV/IV,
+   * Merkblatt 2.01 „Beiträge an die AHV, IV und EO“, Stand 1.1.2024 and 1.1.2025 (Art. 5 AHVG, Art. 3 IVG,
+   * Art. 27 EOG with the rates of Art. 36 EOV); unchanged since the EO rate of 0,5 % from 2021.
+   */
+  readonly ahvIvEoEmployeeRate: number
+  /** ALV 1,1 % (employee half of 2,2 %), Art. 3 AVIG with Art. 3 AVIV; Merkblatt 2.08 „Beiträge an die ALV“ 2024/2025. */
+  readonly alvEmployeeRate: number
+  /** Highest insured wage of the ALV per year, 148.200 CHF since 2016 (Art. 3 Abs. 1 AVIG, Art. 22 Abs. 1 UVV). */
+  readonly alvMaxWageChf: number
+  /** Solidarity contribution of 0,5 % on the wage above the ALV maximum, abolished from 1.1.2023 (Art. 3 Abs. 2 AVIG a. F.). */
+  readonly alvSolidarityRate: number
+}
+
+/**
  * Vollständiges, typisiertes Parameterset aller steuerlichen Kennzahlen, Tarife
  * und Freibeträge für ein bestimmtes Veranlagungsjahr.
  *
@@ -151,6 +170,8 @@ export interface TaxYearParameters {
   readonly householdServices: HouseholdServicesParameters
   /** § 33 Abs. 3 EStG: Zumutbare Belastung (BFH VI R 75/14). */
   readonly reasonableBurden: ReasonableBurdenParameters
+  /** Swiss employee social contributions of the year (cross-border commuters, Lohnausweis Ziffer 9). */
+  readonly swissSocialSecurity: SwissSocialSecurityParameters
 }
 
 const STATIC_BEA_EUR = 2928
@@ -263,6 +284,12 @@ function buildParametersForYear(year: IncomeTaxYear): TaxYearParameters {
         oneOrTwoChildren: [0.02, 0.03, 0.04],
         threeOrMoreChildren: [0.01, 0.01, 0.02],
       },
+    },
+    swissSocialSecurity: {
+      ahvIvEoEmployeeRate: 0.053,
+      alvEmployeeRate: 0.011,
+      alvMaxWageChf: 148200,
+      alvSolidarityRate: year === 2022 ? 0.005 : 0,
     },
   }
 }

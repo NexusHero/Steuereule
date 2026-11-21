@@ -13,6 +13,7 @@ import {
   LEGAL_STATUS_DATE,
   conflictingAlternatives,
   withoutAlternativesOf,
+  withoutInternalNames,
   type AdvisorChatMessageView,
   type AdvisorFeedbackRating,
   type AdvisorFeedbackReason,
@@ -655,8 +656,9 @@ export function OwlModeScreenView({
           <Card variant="ai" style={styles.receiptResultCard} testID="eule-receipt-result">
             <Text style={styles.draftSectionTitle}>
               {tr('eule.workspace.receiptResultTitle', {
-                fileName: bridge.lastParsedReceipt.parsed.suggestedField ?? bridge.lastParsedReceipt.parsed.vendorCategory,
-                defaultValue: `Beleg geprüft: ${bridge.lastParsedReceipt.parsed.vendorCategory}`,
+                // A field id („krankenkasseChf“) is no file name the user knows: its label, as on the mask.
+                fileName: withoutInternalNames(bridge.lastParsedReceipt.parsed.suggestedField ?? bridge.lastParsedReceipt.parsed.vendorCategory),
+                defaultValue: `Beleg geprüft: ${withoutInternalNames(bridge.lastParsedReceipt.parsed.vendorCategory)}`,
               })}
             </Text>
             <Text style={styles.help}>{bridge.lastParsedReceipt.parsed.summary}</Text>

@@ -47,6 +47,8 @@ export interface ChCertificateRead {
   readonly familyAllowancesChf: number | null
   /** A paid-out daily benefit the remarks name („KK-Taggeld Verrechnung“); null when they name none. */
   readonly dailyBenefit: ChDailyBenefitRemark | null
+  /** Premiums the employer paid for the employee, named in the remarks: wage to add back (N-Gre Zeilen 18/19). */
+  readonly employerPremiums: ChEmployerPremiums
   /** Ziffer 10.1 and 10.2; `berufliche-vorsorge` is their sum. */
   readonly pension: { readonly ordinary: number | null; readonly buyIn: number | null }
   readonly checks: { readonly gross: ChCertificateCheck; readonly net: ChCertificateCheck }
@@ -333,6 +335,7 @@ export function parseChSalaryCertificateText(rawText: string): ChCertificateRead
     checks,
     familyAllowancesChf: familyAllowancesIn(lines),
     dailyBenefit: dailyBenefitIn(lines),
+    employerPremiums: employerPremiumsIn(lines),
     missing: EXPECTED.filter((id) => amounts[id] === undefined),
   }
 }
@@ -359,10 +362,51 @@ export function familyAllowancesIn(lines: readonly string[]): number | null {
   return found ? sum : null
 }
 
+/** The premiums the employer took over for the employee (Kollektivkrankentaggeld, NBUV), whole CHF; null = not named. */
+export interface ChEmployerPremiums {
+  readonly krankentaggeldArbeitgeberChf: number | null
+  readonly nbuvArbeitgeberChf: number | null
+}
+
+const BY_EMPLOYER = /(?:arbeitgeber|\bag\b)[^.]*?(?:übernommen|uebernommen|bezahlt|getragen)|(?:übernommen|uebernommen|bezahlt|getragen)[^.]*?(?:arbeitgeber|\bag\b)|vom arbeitgeber/i
+const NBU = /\bnbuv?\b|nichtberufsunfall/i
+const SICKNESS_PREMIUM = /kranken(?:tagg?eld)?|\bktg\b|tagg?eld/i
+const CHF_AMOUNT = /(\d{1,3}(?:['’.\s]\d{3})+|\d+)(?:[.,](\d{2}))?(?!\s*%)/
+
+function chfIn(line: string): number | null {
+  const m = CHF_AMOUNT.exec(line)
+  if (!m) return null
+  const chf = Math.round(Number(`${m[1]!.replace(/['’.\s]/g, '')}.${m[2] ?? '0'}`))
+  return Number.isFinite(chf) && chf > 0 ? chf : null
+}
+
+/**
+ * The premiums an employer paid for the employee, as a remark names them: „Krankentaggeld 6.382,35 vom
+ * Arbeitgeber übernommen“, „NBU 608,40 vom Arbeitgeber übernommen“. Only a line that says the employer
+ * paid counts; a bare „NBU 608,40“ may be the employee's own premium.
+ */
+export function employerPremiumsIn(lines: readonly string[]): ChEmployerPremiums {
+  let sickness: number | null = null
+  let nbu: number | null = null
+  for (const line of lines) {
+    if (!BY_EMPLOYER.test(line)) continue
+    // The amount after the premium's name: „15. Bemerkungen   Krankentaggeld 6.382,35 …“ is not 15 CHF.
+    const nbuAt = NBU.exec(line)
+    const sicknessAt = nbuAt ? null : SICKNESS_PREMIUM.exec(line)
+    const at = nbuAt ?? sicknessAt
+    if (!at) continue
+    const amount = chfIn(line.slice(at.index + at[0].length))
+    if (amount === null) continue
+    if (nbuAt) nbu ??= amount
+    else sickness ??= amount
+  }
+  return { krankentaggeldArbeitgeberChf: sickness, nbuvArbeitgeberChf: nbu }
+}
+
 const DAILY_BENEFIT = /tagg?eld(?:er|es)?/i
 const ACCIDENT = /unfall|\buvg\b|\bsuva\b|\bnbuv?\b/i
 /** A premium or an insurance for a daily benefit is not a benefit paid out. */
-const NOT_PAID_OUT = /versicherung|pr(?:ä|ae)mie|beitr(?:a|ä|ae)g/i
+const NOT_PAID_OUT = /versicherung|pr(?:ä|ae)mie|beitr(?:a|ä|ae)g|(?:arbeitgeber|\bag\b)[^.]*(?:übernommen|uebernommen|bezahlt|getragen)|(?:übernommen|uebernommen)/i
 
 /**
  * A paid-out daily benefit the certificate names in a remark: „KK-Taggeld Verrechnung: 12'345 CHF“,

@@ -118,6 +118,11 @@ export type AdvisorEstimateReading =
        * nothing in them is to be added up or subtracted again (a model took § 35a off twice).
        */
       readonly breakdown?: readonly AdvisorEstimateLine[]
+      /**
+       * Why the result is a range, in German, from the estimate's own figures; empty for a point value.
+       * The owl names only these causes (real-data run: an invented reason).
+       */
+      readonly rangeCauses?: readonly string[] | undefined
     }
   /** Values are missing; `missing` names them. */
   | { readonly kind: 'open'; readonly missing: readonly string[] }

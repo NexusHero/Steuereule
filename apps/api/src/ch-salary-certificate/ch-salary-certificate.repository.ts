@@ -15,6 +15,8 @@ export interface NGreDetails {
   steuerfreiesKrankentaggeldChf: string | null
   /** Daily benefit of the accident insurance (UVG/SUVA) contained in Ziffer 8; raises the tax rate (§ 32b EStG). */
   steuerfreiesUnfalltaggeldChf: string | null
+  /** Where a daily benefit in Ziffer 8 came from (core `DailyBenefitSource`); decides the field of the amount. */
+  taggeldQuelle: string | null
   krankentaggeldArbeitgeberProzent: string | null
   krankentaggeldArbeitgeberChf: string | null
   nbuvArbeitgeberProzent: string | null
@@ -42,6 +44,7 @@ export const EMPTY_N_GRE: NGreDetails = {
   pkArbeitgeberGesamtChf: null,
   steuerfreiesKrankentaggeldChf: null,
   steuerfreiesUnfalltaggeldChf: null,
+  taggeldQuelle: null,
   krankentaggeldArbeitgeberProzent: null,
   krankentaggeldArbeitgeberChf: null,
   nbuvArbeitgeberProzent: null,

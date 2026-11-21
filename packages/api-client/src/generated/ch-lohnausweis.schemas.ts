@@ -134,6 +134,22 @@ export interface CalculationStatusDto {
   gated?: string[];
 }
 
+/**
+ * Where a daily benefit in Ziffer 8 came from; null = not answered.
+ * @nullable
+ */
+export type NGreDetailsDtoTaggeldQuelle = typeof NGreDetailsDtoTaggeldQuelle[keyof typeof NGreDetailsDtoTaggeldQuelle] | null;
+
+
+export const NGreDetailsDtoTaggeldQuelle = {
+  krankentaggeldversicherung: 'krankentaggeldversicherung',
+  lohnfortzahlung: 'lohnfortzahlung',
+  beides: 'beides',
+  unfallversicherung: 'unfallversicherung',
+  mutterschaftIv: 'mutterschaftIv',
+  kein: 'kein',
+} as const;
+
 export interface NGreDetailsDto {
   /** @nullable */
   arbeitgeberName: string | null;
@@ -155,6 +171,11 @@ export interface NGreDetailsDto {
   steuerfreiesKrankentaggeldChf: number | null;
   /** @nullable */
   steuerfreiesUnfalltaggeldChf: number | null;
+  /**
+     * Where a daily benefit in Ziffer 8 came from; null = not answered.
+     * @nullable
+     */
+  taggeldQuelle: NGreDetailsDtoTaggeldQuelle;
   /** @nullable */
   krankentaggeldArbeitgeberProzent: number | null;
   /** @nullable */
@@ -242,6 +263,22 @@ export interface PutProvisionDto {
   krankenkasseChf?: number | null;
 }
 
+/**
+ * Where a daily benefit in Ziffer 8 came from: the collective sickness insurance (deducted in steuerfreiesKrankentaggeldChf), the employer’s continued pay (wage, nothing deducted), both (only the insurer’s part deducted), the accident insurance (steuerfreiesUnfalltaggeldChf), maternity / IV, or none.
+ * @nullable
+ */
+export type PutNGreDtoTaggeldQuelle = typeof PutNGreDtoTaggeldQuelle[keyof typeof PutNGreDtoTaggeldQuelle] | null;
+
+
+export const PutNGreDtoTaggeldQuelle = {
+  krankentaggeldversicherung: 'krankentaggeldversicherung',
+  lohnfortzahlung: 'lohnfortzahlung',
+  beides: 'beides',
+  unfallversicherung: 'unfallversicherung',
+  mutterschaftIv: 'mutterschaftIv',
+  kein: 'kein',
+} as const;
+
 export interface PutNGreDto {
   /**
      * Arbeitgeber, Zeile 89.
@@ -293,6 +330,11 @@ export interface PutNGreDto {
      * @nullable
      */
   steuerfreiesUnfalltaggeldChf?: number | null;
+  /**
+     * Where a daily benefit in Ziffer 8 came from: the collective sickness insurance (deducted in steuerfreiesKrankentaggeldChf), the employer’s continued pay (wage, nothing deducted), both (only the insurer’s part deducted), the accident insurance (steuerfreiesUnfalltaggeldChf), maternity / IV, or none.
+     * @nullable
+     */
+  taggeldQuelle?: PutNGreDtoTaggeldQuelle;
   /**
      * Employer share of the Krankentaggeld premium in percent, 0–100 (Zeilen 18, 95, 96).
      * @nullable
