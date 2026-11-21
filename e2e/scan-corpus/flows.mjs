@@ -89,6 +89,8 @@ async function main() {
     await banner.waitFor({ state: 'visible', timeout: 90_000 })
     const apply = page.locator('[data-testid="lstb-scan-apply"]')
     const confirms = page.locator('[data-testid^="lstb-confirm-field-"]')
+    // The banner can show before the staged fields render their check buttons.
+    await page.waitForFunction(() => document.querySelectorAll('[data-testid^="lstb-confirm-field-"]').length >= 3, null, { timeout: 15_000 }).catch(() => {})
     if ((await confirms.count()) !== 3) fail(`OCR values are never green: all three fields must ask for a check, ${await confirms.count()} do`)
     for (let left = 3; left > 0; left--) {
       if (!(await apply.isDisabled())) fail(`"Werte übernehmen" must stay locked while ${left} field(s) are unconfirmed`)
@@ -96,12 +98,16 @@ async function main() {
       await page.waitForFunction((n) => document.querySelectorAll('[data-testid^="lstb-confirm-field-"]').length < n, left, { timeout: 10_000 })
     }
     // Further lines the photo staged (Zeile 22a, 23a, …) ask for their own check before the values can be taken over.
-    const lineConfirms = page.locator('[data-testid^="lstb-confirm-line-"]')
-    for (let guard = 0; guard < 20 && (await lineConfirms.count()) > 0; guard++) {
-      const before = await lineConfirms.count()
-      await lineConfirms.first().click()
-      await page.waitForFunction((n) => document.querySelectorAll('[data-testid^="lstb-confirm-line-"]').length < n, before, { timeout: 10_000 })
+    const PENDING = '[data-testid^="lstb-confirm-field-"], [data-testid^="lstb-confirm-line-"]'
+    const confirmPending = async () => {
+      const pending = page.locator(PENDING)
+      for (let guard = 0; guard < 25 && (await pending.count()) > 0; guard++) {
+        const before = await pending.count()
+        await pending.first().click()
+        await page.waitForFunction(([sel, n]) => document.querySelectorAll(sel).length < n, [PENDING, before], { timeout: 10_000 })
+      }
     }
+    await confirmPending()
     if (await apply.isDisabled()) fail('"Werte übernehmen" must unlock once every field is confirmed')
     console.log(`[${TAG}] ✅ OCR photo — three fields to confirm one by one, apply unlocks only after the last`)
 
@@ -122,7 +128,8 @@ async function main() {
     console.log(`[${TAG}] ✅ reload — the draft is restored from the advisor messages (#444) and still not written`)
 
     // Take it over, then delete the receipt behind it.
-    for (let guard = 0; guard < 5 && (await confirms.count()) > 0; guard++) await confirms.first().click()
+    // The restored draft asks for its checks again, the further lines included.
+    await confirmPending()
     await apply.click()
     await until(async () => (await lstb()).bruttoarbeitslohn?.value, 54_320, 'the confirmed draft must be stored', 20_000)
     const receiptId = sql(`SELECT id FROM "Beleg" WHERE "userId" = (SELECT id FROM "User" WHERE email = '${user.email}') ORDER BY "createdAt" DESC LIMIT 1`).trim()

@@ -26,7 +26,7 @@ Ausgedachte Lohnsteuerbescheinigungen und Gegenbeispiele, um den LStB-Scan zu me
 | Request an fremde Hosts | 0 | hart |
 | Zeit bis zum Entwurf | Text-PDF ≤ 2 s, Scan/Foto ≤ 20 s | hart |
 
-Beträge werden in Euro verglichen, weil die LStB-Maske ganze Euro speichert (10.918,32 → 10.918).
+Beträge werden in Euro verglichen, weil die LStB-Maske ganze Euro speichert; die Sozialversicherung ist die Summe der einzeln gerundeten Zeilen (ADR-0093: 5.052 + 4.183 + 978 + 706 = 10.919, nicht 10.918,32).
 
 ## Fotos: Vorverarbeitung auf dem Gerät
 
