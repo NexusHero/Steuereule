@@ -68,6 +68,8 @@ export async function runScenario09b(browser, webOrigin) {
   await expectStored({ versicherungen: 'Nein', altersvorsorge: 'Ja' }, 'second selection')
   await page.locator('[data-testid="katalog-option-av-ksk-Nein"]').click()
   await fillTopic(page, 'altersvorsorge', { 'av-rv-betrag': 0, 'av-versorgungswerk-betrag': 8000, 'av-basisrente-betrag': 0, 'av-ksk': 'Ja' })
+  // Weiter saves first: read the stored answers once the page has moved on, not while the save is still out.
+  await byId('strom-schritt-altersvorsorge').waitFor({ state: 'detached', timeout: 15_000 }).catch(async () => fail(`[09b] the pension page did not move on:\n${(await page.locator('body').innerText().catch(() => '')).slice(0, 600)}`))
   await expectStored({ 'av-versorgungswerk-betrag': '8000', 'av-ksk': 'Ja' }, 'pension amounts')
   await leaveStrom(page)
 
