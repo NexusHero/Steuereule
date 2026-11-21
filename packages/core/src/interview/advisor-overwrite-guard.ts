@@ -82,7 +82,10 @@ export function unchangedDraftsNote(unchanged: readonly Pick<GuardedDraft, 'labe
 /** The stock sentence of an answer that only prepared drafts: it counts the drafts that are shown. */
 export function preparedDraftsSentence(labels: readonly string[]): string {
   if (labels.length === 0) return ''
-  return labels.length === 1 ? `Ich habe den Entwurf „${labels[0]}“ als unverbindlichen Vorschlag vorbereitet.` : `Ich habe ${labels.length} Entwürfe als unverbindliche Vorschläge vorbereitet.`
+  if (labels.length === 1) return `Ich habe den Entwurf „${labels[0]}“ als unverbindlichen Vorschlag vorbereitet.`
+  // Named, not only counted: a late answer of only „N Entwürfe“ said nothing (real-data run).
+  const named = labels.map((label) => `„${label}“`)
+  return `Ich habe ${labels.length} Entwürfe als unverbindliche Vorschläge vorbereitet: ${named.slice(0, -1).join(', ')} und ${named[named.length - 1]}.`
 }
 
 const COUNT_WORDS: Readonly<Record<string, number>> = { zwei: 2, beiden: 2, drei: 3, vier: 4, fünf: 5, sechs: 6, sieben: 7, acht: 8 }

@@ -79,7 +79,9 @@ describe('printoutFollowUp', () => {
   const plan = { questions: [], unplanned: [] }
   it('says nothing without a plan or a trigger', () => {
     expect(printoutFollowUp({ plan: undefined, message: 'Fehlt noch etwas?', reply: '', meta: {}, records, previous: undefined })).toEqual({ text: '', meta: {} })
-    expect(printoutFollowUp({ plan, message: 'Fehlt noch etwas?', reply: '', meta: {}, records, previous: undefined })).toEqual({ text: '', meta: {} })
+    expect(printoutFollowUp({ plan, message: 'Danke!', reply: '', meta: {}, records, previous: undefined })).toEqual({ text: '', meta: {} })
+    // Asked, with nothing open: the app says so, the answer is never empty.
+    expect(printoutFollowUp({ plan, message: 'Fehlt noch etwas?', reply: '', meta: {}, records, previous: undefined }).text).toContain('fehlt für den Ausdruck nichts mehr')
   })
 })
 

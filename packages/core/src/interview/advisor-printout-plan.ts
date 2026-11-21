@@ -571,12 +571,14 @@ export function describePrintoutPlanForPrompt(plan: PrintoutGapPlan): string[] {
 }
 
 const MISSING_QUESTION =
-  /\b(fehlt|fehlen)\b[^.?!]*\b(noch|jetzt|etwas|was)\b|\bnoch\b[^.?!]*\b(offen|fehlt)\b|\bvollständig\b|\bausdruck(en)?\b|\bdrucken\b|\bmissing\b|\banything (else )?(left|open)\b|\bcomplete\b/iu
+  /\b(fehlt|fehlen)\b[^.?!]*\b(noch|jetzt|etwas|was)\b|\bnoch\b[^.?!]*\b(offen|fehlt)\b|\bvollständig\b|\bausdruck(en)?\b|\bdrucken\b|\bvergessen\b|\bmissing\b|\banything (else )?(left|open)\b|\bcomplete\b/iu
 
 /** Whether the user asks what is still missing for the return or its printout. */
 export function asksWhatIsMissing(message: string): boolean {
   return MISSING_QUESTION.test(message)
 }
+
+const NOTHING_OPEN = 'Nach der Checkliste der App fehlt für den Ausdruck nichts mehr. Was sie nicht kennt (ein Beleg, den du noch nicht hochgeladen hast), kann sie nicht prüfen.'
 
 export interface PrintoutGapFollowUpInput {
   readonly plan: PrintoutGapPlan
@@ -602,8 +604,9 @@ export interface PrintoutGapFollowUpInput {
 export function printoutGapFollowUp(input: PrintoutGapFollowUpInput): { readonly text: string; readonly asked: readonly string[] } | null {
   const staged = new Set(input.stagedKeys)
   const open = input.plan.questions.filter((q) => !staged.has(q.key))
-  if (open.length === 0) return null
   const asks = asksWhatIsMissing(input.message)
+  // Asked, and the checklist has nothing open: said by the app, so the answer is never empty (real-data run).
+  if (open.length === 0) return asks && staged.size === 0 ? { text: `\n\n${NOTHING_OPEN}`, asked: [] } : null
   const quiet = input.previousDraftsApplied && staged.size === 0 && !input.reply.includes('?')
   if (!asks && !quiet) return null
   const next = nextPrintoutGapQuestions({ questions: open, unplanned: [] })
