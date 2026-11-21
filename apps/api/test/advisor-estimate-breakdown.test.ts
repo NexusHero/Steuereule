@@ -97,7 +97,7 @@ describe('why the estimate is a range', () => {
   it('names the provision range, amounts marked for later and open church tax, and the prompt says to quote only these', () => {
     const ranged: TaxEstimateStatus = { ...status, provision: { from: 20500, to: 21000 }, result: { from: -2500, to: -2300 }, laterAmounts: 2, churchTaxOpen: true }
     const reading = estimateReadingFrom(ranged)
-    const causes = reading.kind === 'computed' ? reading.rangeCauses : []
+    const causes = (reading.kind === 'computed' ? reading.rangeCauses : undefined) ?? []
     expect(causes.join(' ')).toContain('Vorsorgeaufwendungen')
     expect(causes.join(' ')).toContain('20.500')
     expect(causes.join(' ')).toContain('2 Beträge')

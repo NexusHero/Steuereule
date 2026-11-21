@@ -122,7 +122,7 @@ export type AdvisorEstimateReading =
        * Why the result is a range, in German, from the estimate's own figures; empty for a point value.
        * The owl names only these causes (real-data run: an invented reason).
        */
-      readonly rangeCauses: readonly string[]
+      readonly rangeCauses?: readonly string[] | undefined
     }
   /** Values are missing; `missing` names them. */
   | { readonly kind: 'open'; readonly missing: readonly string[] }
