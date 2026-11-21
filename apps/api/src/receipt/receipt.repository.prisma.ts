@@ -69,6 +69,17 @@ function folderFilter(folder: ReceiptFolder): Prisma.ReceiptWhereInput {
   return { kind: { in: [...RECEIPT_FOLDER_KINDS[folder]] } }
 }
 
+/**
+ * The where clause of one inbox page. Folder and cursor are each an OR of their own, so they are
+ * combined with AND: spread into one object, the cursor's OR would replace the folder's.
+ */
+export function receiptPageWhere(userId: string, query: ReceiptPageQuery): Prisma.ReceiptWhereInput {
+  const and: Prisma.ReceiptWhereInput[] = []
+  if (query.folder !== undefined) and.push(folderFilter(query.folder))
+  if (query.after !== undefined) and.push({ OR: [{ createdAt: { lt: query.after.createdAt } }, { createdAt: query.after.createdAt, id: { lt: query.after.id } }] })
+  return { userId, AND: and }
+}
+
 function toFacts(row: {
   id: string
   kind: string | null
@@ -128,13 +139,7 @@ export class PrismaReceiptRepository implements ReceiptRepository {
 
   async findPageForUser(userId: string, query: ReceiptPageQuery): Promise<ReceiptRecord[]> {
     const rows = await this.prisma.receipt.findMany({
-      where: {
-        userId,
-        ...(query.folder !== undefined ? folderFilter(query.folder) : {}),
-        ...(query.after !== undefined
-          ? { OR: [{ createdAt: { lt: query.after.createdAt } }, { createdAt: query.after.createdAt, id: { lt: query.after.id } }] }
-          : {}),
-      },
+      where: receiptPageWhere(userId, query),
       include: FILE_META_INCLUDE,
       orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
       take: query.limit,
