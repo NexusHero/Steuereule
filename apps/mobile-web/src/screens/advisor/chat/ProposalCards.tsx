@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { Pressable, Text, View } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@steuereule/ui'
-import { ADVISOR_LEGAL_SOURCES, PERSON_B_SCREENS, formatDraftValue, formatEuro, isWithinEmployeeAllowance, type AdvisorActionProposal, type AdvisorLegalSource, type AdvisorTwoPathsProposal, type Screen } from '@steuereule/core'
+import { ADVISOR_LEGAL_SOURCES, PERSON_B_SCREENS, fieldLabel, formatDraftValue, formatEuro, isWithinEmployeeAllowance, type AdvisorActionProposal, type AdvisorLegalSource, type AdvisorTwoPathsProposal, type Screen } from '@steuereule/core'
 import { APP_NS } from '../../../i18n/resources'
 import { formLineForField } from '../../shared/formLineMapping'
 import { makeStyles } from '../AdvisorChatPanel'
@@ -178,7 +178,7 @@ function FieldProposalCard({
           <Text style={styles.diffCaption}>{tr('advisor.chat.companionsLabel', 'Wird mit eingetragen:')}</Text>
           {companions.map(([field, value]) => (
             <Text key={field} style={styles.diffValues} testID={`${testIDPrefix}-companion-${field}`}>
-              {`${formLineForField(action.screen, field).label}: `}
+              {`${companionLabel(action.screen, field)}: `}
               <Text style={styles.diffNewValue}>{value === 'true' ? tr('advisor.chat.companionYes', 'Ja') : value === 'false' ? tr('advisor.chat.companionNo', 'Nein') : formatDraftValue(action.screen, field, value)}</Text>
             </Text>
           ))}
@@ -383,3 +383,11 @@ export function TwoPathsCardView({
     </View>
   )
 }
+
+/** The field's own name from the catalogue, with the form line it lands on; the form line alone when there is no name. */
+function companionLabel(screen: Screen, field: string): string {
+  const line = formLineForField(screen, field).label
+  const label = fieldLabel(screen, field)
+  return label === null ? line : `${label} (${line})`
+}
+
