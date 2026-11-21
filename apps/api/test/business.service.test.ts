@@ -539,6 +539,12 @@ describe('BusinessService (ADR-0101)', () => {
     expect(p.minijobCharges).toEqual([{ month: 1, totalEur: 203.82 }])
   })
 
+  it('lists the charges of a privately insured, RV-exempt Minijob without U1 (09b in CI, 21.11.2026)', async () => {
+    const { service } = setup()
+    await service.addPayrollRun('u', 2025, A1, { month: 1, kind: 'minijob', employee: 'Ben', grossEur: 520, statutoryHealthInsured: true, rvExempt: true, u1Applies: false })
+    expect((await service.payroll('u', 2025, A1)).minijobCharges).toHaveLength(1)
+  })
+
   it('adds a computer by its category, without a useful life of its own (09b in CI, 21.11.2026)', async () => {
     const { service, repository } = setup()
     await service.createAsset('u', 2025, A1, { label: 'Laptop', account: '0410', acquisitionDate: '2025-02-15', acquisitionCostCents: 150_000, method: 'linear', category: 'computer' })
