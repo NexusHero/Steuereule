@@ -63,6 +63,7 @@ function emptyCh(): ChSalaryCertificateResponseDto {
       pkArbeitgeberGesamtChf: null,
       steuerfreiesKrankentaggeldChf: null,
       steuerfreiesUnfalltaggeldChf: null,
+      taggeldQuelle: null,
       krankentaggeldArbeitgeberProzent: null,
       krankentaggeldArbeitgeberChf: null,
       nbuvArbeitgeberProzent: null,

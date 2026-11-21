@@ -1,4 +1,4 @@
-import { Fragment, useState, useRef } from 'react'
+import { useState, useRef } from 'react'
 import { ScrollView, View, Text, Pressable, type ViewStyle, type TextStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
@@ -43,6 +43,8 @@ import { ReceiptOutcomeLines } from '../receipts/ReceiptOutcomeLines'
 import { useReceiptReader } from '../../lib/receipts/useReceiptReader'
 import { useOptionalSetTaxYear, useOptionalSwitchToTab } from '../../navigation/ShellState'
 import { useKnownEmployers } from '../master-data/employersStore'
+import { NGreInput } from './NGreInput'
+import { DailyBenefitQuestion } from './DailyBenefitQuestion'
 
 export interface CrossBorderScreenProps {
   readonly onDone: () => void
@@ -622,7 +624,7 @@ function SalaryCertificateStep({
 
       <ProvisionSection salaryCertificate={salaryCertificate} nGre={salaryCertificate.nGre} onSet={onSetProvision} onSetNGre={onSetNGre} />
 
-      <NGreSection nGre={salaryCertificate.nGre} onSet={onSetNGre} />
+      <NGreSection nGre={salaryCertificate.nGre} salaryCertificate={salaryCertificate} taxYear={taxYear} onSet={onSetNGre} />
 
       {status !== null ? (
         <Card variant="default" style={styles.statusCard}>
@@ -659,26 +661,47 @@ function SalaryCertificateStep({
 }
 
 const N_GRE_TEXT_FIELDS = ['arbeitgeberName', 'arbeitgeberStrasse', 'arbeitgeberPlzOrt'] as const
-const N_GRE_AMOUNT_FIELDS = [
-  'familienzulagenChf',
-  'steuerfreiesKrankentaggeldChf',
-  'steuerfreiesUnfalltaggeldChf',
-  'krankentaggeldChf',
-  'pkArbeitnehmerChf',
-  'pkArbeitgeberGesamtChf',
-  'pkArbeitgeberChf',
-] as const
-/** Amount fields with a line of help under the input. */
-const N_GRE_AMOUNT_HELP: Partial<Record<(typeof N_GRE_AMOUNT_FIELDS)[number], string>> = {
-  steuerfreiesUnfalltaggeldChf: 'grenzgaenger.nGre.felder.steuerfreiesUnfalltaggeldChfHilfe',
+/** The amounts before and after the daily-benefit question, which sits right under the family allowance. */
+const N_GRE_AMOUNTS_BEFORE_DAILY_BENEFIT = ['familienzulagenChf'] as const
+const N_GRE_AMOUNTS_AFTER_DAILY_BENEFIT = ['krankentaggeldChf', 'pkArbeitnehmerChf', 'pkArbeitgeberGesamtChf', 'pkArbeitgeberChf'] as const
+/** A Ziffer of the Lohnausweis as recorded, or null while it is open. */
+function wageFieldValue(salaryCertificate: ChSalaryCertificateResponseDto, id: string): number | null {
+  const field = salaryCertificate.fields.find((f) => f.id === id)
+  return field?.kind === 'erfasst' && field.value !== undefined ? field.value : null
 }
+
+type NGreAmountField = (typeof N_GRE_AMOUNTS_BEFORE_DAILY_BENEFIT)[number] | (typeof N_GRE_AMOUNTS_AFTER_DAILY_BENEFIT)[number]
+
+function NGreAmount({ field, nGre, onSet }: { readonly field: NGreAmountField; readonly nGre: NGreDetailsDto; readonly onSet: (data: PutNGreDto) => void }) {
+  const { t: tr } = useTranslation(APP_NS)
+  return (
+    <NGreInput
+      label={tr(`grenzgaenger.nGre.felder.${field}`)}
+      initial={nGre[field] === null || nGre[field] === undefined ? '' : String(nGre[field])}
+      numeric
+      testID={`ch-ngre-${field}`}
+      onCommit={(text) => onSet({ [field]: text === '' ? null : Number(text) })}
+    />
+  )
+}
+
 /** Who pays the premium (N-Gre Zeilen 18/19, 95–98); the CHF field only matters when the employer pays it all. */
 const PREMIUMS = [
   { prozent: 'krankentaggeldArbeitgeberProzent', chf: 'krankentaggeldArbeitgeberChf' },
   { prozent: 'nbuvArbeitgeberProzent', chf: 'nbuvArbeitgeberChf' },
 ] as const
 
-function NGreSection({ nGre, onSet }: { readonly nGre: NGreDetailsDto; readonly onSet: (data: PutNGreDto) => void }) {
+function NGreSection({
+  nGre,
+  salaryCertificate,
+  taxYear,
+  onSet,
+}: {
+  readonly nGre: NGreDetailsDto
+  readonly salaryCertificate: ChSalaryCertificateResponseDto
+  readonly taxYear: number
+  readonly onSet: (data: PutNGreDto) => void
+}) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const styles = makeStyles(t)
@@ -760,24 +783,19 @@ function NGreSection({ nGre, onSet }: { readonly nGre: NGreDetailsDto; readonly 
         />
       ))}
 
-      {N_GRE_AMOUNT_FIELDS.map((field) => {
-        const help = N_GRE_AMOUNT_HELP[field]
-        return (
-          <Fragment key={field}>
-            <NGreInput
-              label={tr(`grenzgaenger.nGre.felder.${field}`)}
-              initial={nGre[field] === null || nGre[field] === undefined ? '' : String(nGre[field])}
-              numeric
-              testID={`ch-ngre-${field}`}
-              onCommit={(text) => {
-                if (text === '') onSet({ [field]: null })
-                else onSet({ [field]: Number(text) })
-              }}
-            />
-            {help ? <Text style={styles.help}>{tr(help)}</Text> : null}
-          </Fragment>
-        )
-      })}
+      {N_GRE_AMOUNTS_BEFORE_DAILY_BENEFIT.map((field) => (
+        <NGreAmount key={field} field={field} nGre={nGre} onSet={onSet} />
+      ))}
+      <DailyBenefitQuestion
+        nGre={nGre}
+        grossWageChf={wageFieldValue(salaryCertificate, 'bruttolohn-total')}
+        ahvContributionsChf={wageFieldValue(salaryCertificate, 'ahv-beitraege')}
+        taxYear={taxYear}
+        onSet={onSet}
+      />
+      {N_GRE_AMOUNTS_AFTER_DAILY_BENEFIT.map((field) => (
+        <NGreAmount key={field} field={field} nGre={nGre} onSet={onSet} />
+      ))}
       <YesNo
         label={tr('grenzgaenger.nGre.felder.familienzulagenImBruttolohn')}
         help={tr('grenzgaenger.nGre.felder.familienzulagenImBruttolohnHilfe')}
@@ -915,61 +933,6 @@ function ProvisionSection({
       />
       <Text style={styles.help}>{tr('grenzgaenger.vorsorge.krankenkasseZusatzHilfe')}</Text>
     </>
-  )
-}
-
-function NGreInput({
-  label,
-  initial,
-  controlledValue,
-  onControlledChange,
-  numeric = false,
-  testID,
-  onCommit,
-}: {
-  readonly label: string
-  readonly initial: string
-  readonly controlledValue?: string
-  readonly onControlledChange?: (text: string) => void
-  readonly numeric?: boolean
-  readonly testID: string
-  readonly onCommit: (text: string) => void
-}) {
-  const [internalText, setInternalText] = useState(initial)
-  const text = controlledValue !== undefined ? controlledValue : internalText
-  function setText(next: string) {
-    if (onControlledChange) onControlledChange(next)
-    else setInternalText(next)
-  }
-  const { t: tr } = useTranslation(APP_NS)
-  const [unreadable, setUnreadable] = useState(false)
-  function commit() {
-    const trimmed = text.trim()
-    if (!numeric || trimmed === '') {
-      setUnreadable(false)
-      if (trimmed !== initial) onCommit(trimmed)
-      return
-    }
-    // An amount typed as printed („948,60“) is rounded to the whole amount the form takes, and shown as stored.
-    const amount = wholeEurosFrom(trimmed)
-    setUnreadable(amount === null)
-    if (amount === null) return
-    const stored = String(amount)
-    if (stored !== trimmed) setText(stored)
-    if (stored !== initial) onCommit(stored)
-  }
-  return (
-    <Feld label={label} {...(unreadable ? { error: tr('betrag.unlesbar') } : {})}>
-      <Input
-        type={numeric ? 'numeric' : 'text'}
-        value={text}
-        onChange={setText}
-        onSubmit={commit}
-        onBlur={commit}
-        accessibilityLabel={label}
-        testID={testID}
-      />
-    </Feld>
   )
 }
 

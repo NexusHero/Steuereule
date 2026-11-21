@@ -117,6 +117,7 @@ export const EMPTY_CH_SALARY_CERTIFICATE_RESPONSE: ChSalaryCertificateResponseDt
     pkArbeitgeberGesamtChf: null,
     steuerfreiesKrankentaggeldChf: null,
     steuerfreiesUnfalltaggeldChf: null,
+    taggeldQuelle: null,
     krankentaggeldArbeitgeberProzent: null,
     krankentaggeldArbeitgeberChf: null,
     nbuvArbeitgeberProzent: null,
