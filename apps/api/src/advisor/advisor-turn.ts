@@ -179,7 +179,9 @@ export class AdvisorTurn {
       taxYear,
       conversationId: conversation.id,
       role: 'user',
-      content: scrubbedUserText,
+      // Stored and shown as the user wrote it (encrypted at rest); the model reads the history masked again
+      // on every read while the consent is missing (`historySources`). Real-data run: „[MANDANT]“ in the user's own text.
+      content: isOpening ? scrubbedUserText : dto.message.trim(),
       meta: opening ? { opening: opening.marker } : null,
     })
     const assistantMessage = await this.advisorRepo.createMessage({
