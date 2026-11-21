@@ -304,10 +304,16 @@ export async function runScenario09b(browser, webOrigin) {
   await see('ust-saldo')
   await byId('ust-vorauszahlungen').fill('1000')
   await byId('ust-vorauszahlungen').blur()
+  // The real server computes: the Hebesatz was corrected to 410 on the profile.
   await go('gewerbesteuer')
   await see('gewerbesteuer-seite')
+  await see('gewst-steuer')
+  // Without a Hebesatz the trade tax stays open and leads to the profile.
+  await page.route(`${API}/gewerbesteuer`, (route) => route.fulfill(json({ status: 'offen', missing: ['hebesatz'] })))
+  await go('gewerbesteuer')
   await see('gewst-offen')
   await see('gewst-zum-profil')
+  await page.unroute(`${API}/gewerbesteuer`)
   await page.route(`${API}/gewerbesteuer`, (route) => route.fulfill(json({ status: 'berechnet', profitEur: 50000, result: { additionsEur: 0, deductionsEur: 0, tradeIncomeBeforeLossEur: 50000, lossUsedEur: 10000, lossRemainingEur: 2000, roundedTradeIncomeEur: 40000, allowanceEur: 24500, baseAmountEur: 525, multiplierPercent: 400, tradeTaxEur: 2100 }, multiplier: { percent: 400, source: 'tabelle', tableYear: YEAR, note: null } })))
   await go('gewerbesteuer')
   await see('gewst-steuer')
