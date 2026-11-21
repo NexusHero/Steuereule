@@ -613,6 +613,7 @@ export async function runScenario09b(browser, webOrigin) {
     if ((await byId(id).count()) !== 2) fail(`[09b] ${id} should be on both booking cards, found ${await byId(id).count()}`)
   }
   await seeEach('buchung-entwurf-karte')
+  await byPrefix('buchung-entwurf').first().waitFor({ state: 'visible', timeout: 10_000 })
   await seeEach('buchung-entwurf-kopf')
   await see('buchung-entwurf-uebernehmen')
   await see('buchung-entwurf-verwerfen')
