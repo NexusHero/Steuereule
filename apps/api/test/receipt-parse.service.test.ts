@@ -1006,6 +1006,29 @@ describe('ReceiptParseService — every line of the LStB mask', () => {
     expect(await h.lstbRepo.findForUserAndYear('user-lines', 2025)).toBeNull()
   })
 
+  // Real-data run 5: a photographed LStB in the chat gave lines 3, 4, 24, 25 and 27 only, and a social
+  // insurance total of about half. The message names the lines it could not read and asks for them.
+  it('names the lines a photo did not give and asks for them', async () => {
+    const h = buildTestHarness([], false)
+    const partial = [
+      'Ausdruck der elektronischen Lohnsteuerbescheinigung für 2025',
+      '3. Bruttoarbeitslohn einschl. Sachbezüge ohne 9. und 10.   48.000,00',
+      '4. Einbehaltene Lohnsteuer von 3.                         7.200,00',
+      '24a Steuerfreie Arbeitgeberzuschüsse zur gesetzlichen Krankenversicherung 1.800,30',
+      '25. Arbeitnehmerbeiträge zur gesetzlichen Krankenversicherung 3.650,50',
+      '27. Arbeitnehmerbeiträge zur Arbeitslosenversicherung 624,00',
+    ].join('\n')
+    const res = await h.parseService.parseReceipt('user-lines-partial', { taxYear: 2025, kind: 'lstb', fileName: 'foto.jpg', rawText: partial, textSource: 'ocr' })
+    const text = res.assistantMessage?.content ?? ''
+    expect(text).toContain('Zeile 23')
+    expect(text).toContain('Zeile 26')
+    expect(text).toContain('unvollständig')
+    expect(text).toContain('Zeile 5')
+    expect(text).toContain('Arbeitgeber')
+    const full = await h.parseService.parseReceipt('user-lines-full', { taxYear: 2025, kind: 'lstb', fileName: 'lstb.pdf', rawText: FULL_LSTB, textSource: 'pdf_text' })
+    expect(full.assistantMessage?.content ?? '').not.toContain('Nicht lesen konnte ich')
+  })
+
   it('marks every line of a photo „bitte prüfen“ and the employer too', async () => {
     const h = buildTestHarness([], false)
     const res = await h.parseService.parseReceipt('user-lines-ocr', { taxYear: 2025, kind: 'lstb', fileName: 'foto.jpg', rawText: FULL_LSTB, textSource: 'ocr' })

@@ -275,7 +275,7 @@ export class LstbScanParseStrategy implements DocumentParseStrategy, OnModuleIni
           mode === 'vision_ocr' && visionSlot
             ? { mode: 'langgraph', provider: visionSlot.provider, model: visionSlot.model }
             : { mode: 'deterministic_fallback', provider: 'deterministic' },
-        summaryText: parsedSummary.summary,
+        summaryText: [parsedSummary.summary, unreadLinesQuestion(extraction, employer.value !== null, dto.textSource !== 'pdf_text')].filter(Boolean).join('\n\n'),
         fields: [
           {
             field: 'bruttoarbeitslohn',
@@ -334,3 +334,35 @@ export class LstbScanParseStrategy implements DocumentParseStrategy, OnModuleIni
     }
   }
 }
+
+/** The social insurance lines the sum needs, with what the user reads for them. */
+const SV_LINES = [
+  ['rvArbeitnehmer', 'Zeile 23 (Rentenversicherung)'],
+  ['kvArbeitnehmer', 'Zeile 25 (Krankenversicherung)'],
+  ['pvArbeitnehmer', 'Zeile 26 (Pflegeversicherung)'],
+  ['avArbeitnehmer', 'Zeile 27 (Arbeitslosenversicherung)'],
+] as const
+/** Lines a photo may lose that the mask still has a field for; on a PDF an empty one is simply empty. */
+const OCR_LINES = [
+  ['solidaritaetszuschlag', 'Zeile 5 (Solidaritätszuschlag)'],
+  ['kirchensteuer', 'Zeile 6 (Kirchensteuer)'],
+  ['rvArbeitgeber', 'Zeile 22 (Arbeitgeberanteil Rentenversicherung)'],
+] as const
+
+/**
+ * What the certificate did not give, said under it (real-data run: lines 3, 4, 24, 25, 27 of a photo and
+ * a social insurance total of half). A social insurance line beside others is missing on any source; the
+ * further lines and the employer only on a photo or scan, where OCR loses rows.
+ */
+function unreadLinesQuestion(extraction: LstbExtractionResult, employerRead: boolean, fromOcr: boolean): string | null {
+  const read = (line: (typeof SV_LINES)[number][0] | (typeof OCR_LINES)[number][0]) => extraction.lines[line].value !== null
+  const svRead = SV_LINES.filter(([line]) => read(line))
+  const missingSv = svRead.length > 0 ? SV_LINES.filter(([line]) => !read(line)).map(([, label]) => label) : []
+  const missingOther = fromOcr ? [...OCR_LINES.filter(([line]) => !read(line)).map(([, label]) => label), ...(employerRead ? [] : ['den Arbeitgeber'])] : []
+  const missing = [...missingSv, ...missingOther]
+  if (missing.length === 0) return null
+  const list = missing.length === 1 ? missing[0]! : `${missing.slice(0, -1).join(', ')} und ${missing[missing.length - 1]}`
+  const sum = missingSv.length > 0 ? ' Ohne diese Zeilen ist die Summe der Sozialversicherung unvollständig.' : ''
+  return `Nicht lesen konnte ich: ${list}.${sum} Bitte nenn mir die Beträge, oder sag mir, welche Zeilen leer sind.`
+}
+
