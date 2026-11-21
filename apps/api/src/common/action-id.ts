@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto'
+import { randomInt, randomUUID } from 'node:crypto'
 
 /**
  * Id of a staged advisor action. The meta carrying it passes checkPiiFree, so the id must never look
@@ -11,5 +11,5 @@ import { randomUUID } from 'node:crypto'
  */
 export function newActionId(): string {
   const hex = randomUUID().replaceAll('-', '').slice(0, 11)
-  return `act-${String(Math.floor(Math.random() * 10))}${hex}`
+  return `act-${String(randomInt(10))}${hex}`
 }
