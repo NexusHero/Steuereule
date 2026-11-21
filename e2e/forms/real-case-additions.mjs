@@ -365,11 +365,13 @@ async function main() {
     if (wrong.lstb?.receiptId !== receiptId) fail(`Row K: the LStB should be read for Kemal from its Beleg, got ${JSON.stringify(wrong).slice(0, 300)}`)
     // A value Kemal already holds comes as „zusätzlich“ and „ersetzen“ (N2, Echtdatenlauf 4); taking one answers the
     // other. So the pending drafts are read again before each step, and of a pair „ersetzen“ is taken.
+    let appliedDrafts = 0
     for (let step = 0; step < 30; step++) {
       const pending = (await drafts()).filter((x) => x.status === 'pending' && x.screen === 'lstb' && x.receiptId === receiptId)
       const next = pending.find((x) => x.combination == null || x.combination === 'replace')
       if (next === undefined) break
       await call(api, 'POST', `/v1/steuerjahre/${YEAR}/advisor/actions/${next.actionId}/apply`, {})
+      appliedDrafts += 1
     }
     if ((await call(api, 'GET', `/v1/steuerjahre/${YEAR}/lstb`)).state?.bruttoarbeitslohn !== 21000) fail('Row K: the LStB should first be at Kemal')
     await page.goto(`${webOrigin}/app/belege`, { waitUntil: 'networkidle' })
@@ -380,7 +382,11 @@ async function main() {
     await page.locator(tid(`beleg-inhaber-wahl-${receiptId}-B`)).click()
     const movedBody = await (await moved).json()
     await visible(page, `beleg-inhaber-ergebnis-${receiptId}`, 'Row K')
-    if (movedBody.takenBack !== 3 || movedBody.applied !== 3) fail(`Row K: three values should move, got ${JSON.stringify({ ...movedBody, parse: undefined })}`)
+    // Every value taken back at Kemal is written for Anna, none waits; a draft writes one value or more (its card
+    // lists them all since Echtdatenlauf 4), so at least as many values move as drafts were taken.
+    if (movedBody.takenBack !== movedBody.applied || movedBody.waiting !== 0 || movedBody.applied < Math.max(1, appliedDrafts)) {
+      fail(`Row K: every value taken over (${appliedDrafts} drafts) should move to Anna, got ${JSON.stringify({ ...movedBody, parse: undefined })}`)
+    }
     const afterA = (await call(api, 'GET', `/v1/steuerjahre/${YEAR}/lstb`)).state?.bruttoarbeitslohn ?? null
     const afterB = (await call(api, 'GET', `/v1/steuerjahre/${YEAR}/lstb?person=B`)).state?.bruttoarbeitslohn ?? null
     if (afterB !== 21000 || afterA === 21000) fail(`Row K: the gross wage should be Anna's now, got A ${afterA} B ${afterB}`)
