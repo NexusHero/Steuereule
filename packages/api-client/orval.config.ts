@@ -41,6 +41,20 @@ export default defineConfig({
       },
     },
   },
+  // ADR-0101 §20 — the server switches the client needs before any year exists.
+  capabilities: {
+    input: { target: '../../apps/api/openapi.json', filters: { tags: ['capabilities'] } },
+    output: {
+      target: './src/generated/capabilities.ts',
+      mode: 'split',
+      client: 'react-query',
+      httpClient: 'fetch',
+      mock: true,
+      override: {
+        mutator: { path: './src/http-client.ts', name: 'httpClient' },
+      },
+    },
+  },
   cockpit: {
     input: { target: '../../apps/api/openapi.json', filters: { tags: ['cockpit'] } },
     output: {

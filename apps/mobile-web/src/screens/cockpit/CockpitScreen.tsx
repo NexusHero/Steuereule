@@ -106,7 +106,7 @@ export function CockpitScreen({
     onYearChange?.(fresh)
   }
   const query = useCockpitControllerGetCockpitSummary(year)
-  const selfEmployment = useSelfEmploymentCapability(year)
+  const selfEmployment = useSelfEmploymentCapability()
   const [pulling, setPulling] = useState(false)
   const confirmationQuery = useConfirmationControllerGet(year)
   const interviewQuery = useInterviewControllerGetInterview(year)

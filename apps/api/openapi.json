@@ -8839,6 +8839,27 @@
         ]
       }
     },
+    "/v1/capabilities": {
+      "get": {
+        "operationId": "CapabilitiesController_getCapabilities",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "The switches of this deployment; reachable without a session.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AppCapabilitiesDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "capabilities"
+        ]
+      }
+    },
     "/v1/steuerjahre/{jahr}/veranlagungsartenvergleich": {
       "get": {
         "operationId": "FilingTypeComparisonController_getComparison",
@@ -24126,6 +24147,19 @@
         },
         "required": [
           "status"
+        ]
+      },
+      "AppCapabilitiesDto": {
+        "type": "object",
+        "properties": {
+          "selbststaendig": {
+            "type": "boolean",
+            "description": "SELBSTSTAENDIGE_ENABLED (ADR-0101 §20): the self-employment path is on. Off, the interview stops „Selbstständig“ at the Gewerbe-Gate.",
+            "example": true
+          }
+        },
+        "required": [
+          "selbststaendig"
         ]
       },
       "ComparisonSourceDto": {
