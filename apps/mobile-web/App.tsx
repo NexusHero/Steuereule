@@ -77,7 +77,7 @@ export default function App() {
         <I18nextProvider i18n={i18n}>
           <AppearanceProvider>
             <ThemeBridge>
-              <AuthClientProvider client={authClient}>
+              <AuthClientProvider client={authClient} apiBaseUrl={apiBaseUrl}>
                 <SubmissionGateProvider>
                   <ThemedShellFrame>
                     <RootNavigator />

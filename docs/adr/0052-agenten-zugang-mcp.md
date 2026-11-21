@@ -267,8 +267,10 @@ API ließen sich damit die Lesesicht (Amendment 3), die Scopes und „nur der Nu
    `@ForbidAssistant()` bleibt als zweite Sperre stehen.
 2. **Registrierung nur mit Anmeldung.** `allowUnauthenticatedClientRegistration` ist aus: Einen Client
    registriert nur ein angemeldeter Nutzer. Folge: Ein MCP-Client, der sich vor der Anmeldung selbst
-   registriert (RFC 7591, so verbinden sich die üblichen Assistenten), kommt so nicht mehr herein; dafür
-   braucht es einen Weg in der App, einen Client anzulegen. Offen, eigenes Ticket.
+   registriert (RFC 7591, so verbinden sich die üblichen Assistenten), kommt so nicht mehr herein.
+   Stattdessen legt der Nutzer den Zugang im Profil an („Assistent verbinden“): ein öffentlicher Client
+   (PKCE, kein Secret) mit der Rückruf-Adresse des Assistenten (Claude, ChatGPT oder eine eigene, https
+   oder Loopback). Die App zeigt Server-Adresse und Client-ID, die der Nutzer im Assistenten einträgt.
 3. **Der Assistent ist seine Client-ID.** Herkunft (`Kennzeichnung.herkunftClientId`,
    `vorschlagClientId`) und Aufgaben (`AssistentAufgabe.clientId`) merken sich die Client-ID. „Eigener
    Eintrag“ (zurücknehmen, Kind oder Objekt entfernen, eigene Aufgaben lesen, „du“ in der Lesesicht)

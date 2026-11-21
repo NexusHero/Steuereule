@@ -329,7 +329,27 @@
       "neverActive": "Noch nicht verwendet",
       "revoke": "Trennen",
       "revoking": "Wird getrennt …",
-      "revokeError": "Trennen fehlgeschlagen. Bitte erneut versuchen."
+      "revokeError": "Trennen fehlgeschlagen. Bitte erneut versuchen.",
+      "verbinden": {
+        "oeffnen": "Assistent verbinden",
+        "welcher": "Welchen Assistenten möchten Sie verbinden?",
+        "art": {
+          "claude": "Claude",
+          "chatgpt": "ChatGPT",
+          "anderer": "Anderer"
+        },
+        "name": "Name des Assistenten",
+        "redirect": "Rückruf-Adresse (Redirect URI) des Assistenten",
+        "anlegen": "Zugang anlegen",
+        "busy": "Wird angelegt …",
+        "errName": "Bitte geben Sie dem Assistenten einen Namen.",
+        "errRedirect": "Die Rückruf-Adresse muss mit https:// beginnen oder auf diesen Rechner zeigen (http://localhost oder http://127.0.0.1).",
+        "errGeneric": "Der Assistent konnte nicht angelegt werden. Bitte erneut versuchen.",
+        "fertig": "Der Zugang ist angelegt. Tragen Sie diese beiden Angaben in Ihrem Assistenten ein, wenn Sie dort einen MCP-Server (Connector) hinzufügen:",
+        "serverAdresse": "Server-Adresse",
+        "clientId": "OAuth-Client-ID",
+        "fertigHinweis": "Ein Passwort oder Client-Secret gibt es nicht. Der Assistent öffnet danach diese App, und Sie geben ihm den Zugriff frei. Erst dann erscheint er hier als verbunden."
+      }
     }
   },
   "sicherheit": {
