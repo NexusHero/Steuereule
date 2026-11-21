@@ -86,7 +86,7 @@ export const RECEIPT_REPOSITORY = Symbol('RECEIPT_REPOSITORY')
 export interface ReceiptRepository {
   findAllForUser(userId: string): Promise<ReceiptRecord[]>
   findByIdForUser(userId: string, id: string): Promise<ReceiptRecord | null>
-  /** The facts of every Beleg of the user, newest first: the base of the inbox counts. */
+  /** The facts of every Beleg of the user, in no particular order: the base of the inbox counts. */
   listFactsForUser(userId: string): Promise<ReceiptFacts[]>
   /** At most `query.limit` Belege, newest first, behind `query.after` and inside `query.folder`. */
   findPageForUser(userId: string, query: ReceiptPageQuery): Promise<ReceiptRecord[]>

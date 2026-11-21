@@ -119,7 +119,6 @@ export class PrismaReceiptRepository implements ReceiptRepository {
   async listFactsForUser(userId: string): Promise<ReceiptFacts[]> {
     const rows = await this.prisma.receipt.findMany({
       where: { userId },
-      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
       select: {
         id: true,
         kind: true,
