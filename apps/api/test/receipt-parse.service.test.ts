@@ -765,6 +765,16 @@ describe('craftsmen’s invoices (§ 35a, ADR-0078)', () => {
     expect(res.stagedAction?.companionFields).toEqual({ 'haushalt-gate': 'Ja', 'haushalt-handwerker-rechnungsbetrag': '231' })
   })
 
+  it('asks under the invoice for what it cannot say: paid by transfer, the own household, a subsidy', async () => {
+    const h = buildTestHarness([], false)
+    const res = await h.parseService.parseReceipt('user-h1b', { taxYear: 2025, fileName: 'zimmerei.pdf', rawText: stated })
+    const text = res.assistantMessage?.content ?? ''
+    expect(text).toContain('per Überweisung bezahlt')
+    expect(text).toContain('eigenen Haushalt')
+    expect(text).toContain('Förderung')
+    expect(text).toMatch(/\?/)
+  })
+
   it('adds a second invoice to the first while that draft is still waiting', async () => {
     const h = buildTestHarness([], false)
     await h.parseService.parseReceipt('user-h2', { taxYear: 2025, fileName: 'zimmerei.pdf', rawText: stated })

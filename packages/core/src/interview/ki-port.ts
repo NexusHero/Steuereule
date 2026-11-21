@@ -91,6 +91,9 @@ export interface AdvisorEuroRange {
   readonly toEur: number
 }
 
+/** One line of the estimate's calculation: a figure, or a range where the estimate is one. */
+export type AdvisorEstimateLine = { readonly label: string } & ({ readonly amountEur: number } | AdvisorEuroRange)
+
 /** The app's current estimate for the year as the owl may read it: amounts only. */
 export type AdvisorEstimateReading =
   | {
@@ -110,6 +113,11 @@ export type AdvisorEstimateReading =
       /** Church tax is not part of the result while its facts are open. */
       readonly churchTaxOpen: boolean
       readonly jointAssessment: boolean
+      /**
+       * The way from the income to the result as finished lines, in order. A summary quotes these lines;
+       * nothing in them is to be added up or subtracted again (a model took § 35a off twice).
+       */
+      readonly breakdown?: readonly AdvisorEstimateLine[]
     }
   /** Values are missing; `missing` names them. */
   | { readonly kind: 'open'; readonly missing: readonly string[] }

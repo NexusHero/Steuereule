@@ -54,6 +54,7 @@ function FieldProposalCard({
   const isBusy = busyStatus === action.status
   const legalSource = ADVISOR_LEGAL_SOURCES[action.sourceId]
   const showPauschbetrag = isWithinEmployeeAllowance(action)
+  const companions = Object.entries(action.companionFields ?? {})
 
   async function handleApply() {
     if (!onApply || isBusy) return
@@ -170,6 +171,19 @@ function FieldProposalCard({
           </Text>
         </View>
       </View>
+
+      {/* Everything „Übernehmen“ writes is on the card: a companion value was written unseen (real-data run) */}
+      {companions.length > 0 ? (
+        <View style={styles.diffBox} testID={`${testIDPrefix}-companions`}>
+          <Text style={styles.diffCaption}>{tr('advisor.chat.companionsLabel', 'Wird mit eingetragen:')}</Text>
+          {companions.map(([field, value]) => (
+            <Text key={field} style={styles.diffValues} testID={`${testIDPrefix}-companion-${field}`}>
+              {`${formLineForField(action.screen, field).label}: `}
+              <Text style={styles.diffNewValue}>{value === 'true' ? tr('advisor.chat.companionYes', 'Ja') : value === 'false' ? tr('advisor.chat.companionNo', 'Nein') : formatDraftValue(action.screen, field, value)}</Text>
+            </Text>
+          ))}
+        </View>
+      ) : null}
 
       <Text style={styles.actionReason}>{action.reason}</Text>
 

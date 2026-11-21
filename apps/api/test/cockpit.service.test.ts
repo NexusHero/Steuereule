@@ -283,5 +283,40 @@ describe('CockpitService', () => {
       expect(summary?.status).toEqual({ kind: 'bestimmt', value: 96300 + 107000 })
       expect(summary?.byPerson).toEqual({ a: 96300, b: 107000 })
     })
+
+    it('counts Person B\'s recorded wages when the basis never asked about the partner (figures recorded in the chat)', async () => {
+      const links = new FakeLinkRepository()
+      const link = new LinkService(links, new FakeProfileRepository(), new FakeMasterDataRepository(), { append: () => Promise.resolve() } as never)
+      service = new CockpitService(taxYear, lstb, interview, takeover, pension, capital, rental, ch, link)
+      await link.set('user-a', 2025, { filingType: 'zusammen' })
+      const b = await link.dataUser('user-a', 2025, 'B')
+      taxYear.seed('user-a', { taxYear: 2025, openItems: 0 })
+      // No familienstand / partner-job / partner-ausland: the owl set up the joint return and B's records directly.
+      interview.seed('user-a', 2025, CROSS_BORDER)
+      interview.seed(b, 2025, { 'ch-wohnsitz': 'Deutschland', 'ch-nichtrueckkehrtage': '0' })
+      ch.seed(salaryCertificate({ 'bruttolohn-total': '90000', 'berufliche-vorsorge': '4500', quellensteuer: '4050' }, 1.07))
+      ch.seed({ ...salaryCertificate({ 'bruttolohn-total': '100000', 'berufliche-vorsorge': '4000', quellensteuer: '4600' }, 1.07), userId: b })
+      lstb.seed({ userId: b, taxYear: 2025, bruttoarbeitslohn: '12000', lohnsteuer: '1500', sozialversicherung: '2400' })
+
+      const summary = await service.getSummary('user-a', 2025)
+
+      expect(summary?.byPerson).toEqual({ a: 96300, b: 107000 + 12000 })
+      expect(summary?.status).toEqual({ kind: 'bestimmt', value: 96300 + 107000 + 12000 })
+    })
+
+    it('leaves a joint return without any recorded wage of Person B as the user\'s own income', async () => {
+      const links = new FakeLinkRepository()
+      const link = new LinkService(links, new FakeProfileRepository(), new FakeMasterDataRepository(), { append: () => Promise.resolve() } as never)
+      service = new CockpitService(taxYear, lstb, interview, takeover, pension, capital, rental, ch, link)
+      await link.set('user-a', 2025, { filingType: 'zusammen' })
+      taxYear.seed('user-a', { taxYear: 2025, openItems: 0 })
+      interview.seed('user-a', 2025, CROSS_BORDER)
+      ch.seed(salaryCertificate({ 'bruttolohn-total': '90000', 'berufliche-vorsorge': '4500', quellensteuer: '4050' }, 1.07))
+
+      const summary = await service.getSummary('user-a', 2025)
+
+      expect(summary?.byPerson).toBeUndefined()
+      expect(summary?.status).toEqual({ kind: 'bestimmt', value: 96300 })
+    })
   })
 })

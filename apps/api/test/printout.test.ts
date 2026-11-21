@@ -150,6 +150,20 @@ describe('ausdruckWerte', () => {
     ])
   })
 
+  it('shows what is known of Person B while one of their details is still missing (the print stays blocked)', () => {
+    const { values, missing } = printoutValues({
+      ...FACTS,
+      masterData: { ...FACTS.masterData!, familienstand: 'verheiratet', familienstandSeit: '2020-05-15' },
+      link: {
+        filingType: 'zusammen',
+        personB: { firstName: 'Bernd', lastName: 'Beispiel', steuerId: null, geburtsdatum: '1988-11-20', religion: 'VD', beruf: 'Lehrer' },
+      },
+    })
+    expect(missing).toEqual(['personB'])
+    expect(values).toMatchObject({ 'est1a.nameB': 'Beispiel', 'est1a.vornameB': 'Bernd', 'est1a.geburtsdatumB': '20.11.1988', 'est1a.berufB': 'Lehrer' })
+    expect(values['est1a.idnrB']).toBeUndefined()
+  })
+
   it('married with einzelveranlagung sets einzelveranlagung box without requiring Person B', () => {
     const { values, missing } = printoutValues({
       ...FACTS,
@@ -813,6 +827,15 @@ describe('ausdruckWerte', () => {
       for (const gap of [{ taxId: null }, { kinship: null }, { familyBenefitsOffice: null }, { domesticResidenceAllYear: null }]) {
         expect(printoutValues({ ...JOINT, kinder: [{ ...KIND, ...gap }] }).missing).toEqual(['kinder'])
       }
+    })
+
+    it('names which details of the children are missing, not all that could be', () => {
+      expect(printoutValues({ ...JOINT, kinder: [{ ...KIND, taxId: null }] }).missingChildFields).toEqual(['taxId'])
+      expect(printoutValues({ ...JOINT, kinder: [{ ...KIND, kinship: null }, { ...KIND, taxId: null, familyBenefitsOffice: null }] }).missingChildFields).toEqual(['taxId', 'kinship', 'familyBenefitsOffice'])
+      expect(printoutValues({ ...JOINT, kinder: [{ ...KIND, domesticResidenceAllYear: null }] }).missingChildFields).toEqual(['residence'])
+      expect(printoutValues({ ...JOINT, kinder: [{ ...KIND, kinshipB: null }] }).missingChildFields).toEqual(['otherParent'])
+      expect(printoutValues({ ...JOINT, childrenAnswered: true, kinder: null }).missingChildFields).toEqual(['child'])
+      expect(printoutValues({ ...JOINT, kinder: [KIND] }).missingChildFields).toEqual([])
     })
 
     it('cases the printout cannot cover yet are named, never printed half', () => {

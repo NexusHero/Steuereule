@@ -235,6 +235,13 @@ export class CapitalService {
       return { kind: 'nicht-anwendbar', reason: 'keine-kapitalertraege' }
     }
 
+    // This check knows one person's German wage and the single tariff. A couple's return, a Swiss wage
+    // (Lohnausweis) or a pension is other income it does not read: no number instead of a wrong one
+    // („Tarif 0 €“, real-data run 4). The estimate does that comparison with the whole household.
+    if (answers.familienstand === 'Verheiratet' || answers.ausland === 'Ja, in die Schweiz' || answers.job === 'Rente') {
+      return { kind: 'nicht-anwendbar', reason: 'uebriges-einkommen-unbekannt' }
+    }
+
     const remainingZvE = employeeFromData(wageTaxCertificateDataFrom(lstbRecord), answers).einnahmen
     const assessmentType = 'einzel' as const
 

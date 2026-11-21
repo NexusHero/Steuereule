@@ -45,6 +45,33 @@ function Card({ onSelectSource = vi.fn(), ...props }: CardProps) {
   return <ActionProposalCardView {...(props as Parameters<typeof ActionProposalCardView>[0])} onSelectSource={onSelectSource} styles={styles} />
 }
 
+describe('everything a card would write (ADR-0066 Zero-Write, real-data run)', () => {
+  it('shows every companion value next to the main one, so nothing is written unseen', () => {
+    renderInApp(
+      <Card
+        action={draft({
+          screen: 'kind',
+          field: 'childcareEur',
+          previousValue: null,
+          newValue: '620',
+          instance: 'kind-1',
+          companionFields: { childBenefitClaimEur: '3060', childcareFrom: '01.10.2024', healthInsuranceAbroad: 'true' },
+        })}
+      />,
+    )
+    const box = screen.getByTestId('advisor-action-companions')
+    expect(box.textContent).toContain('Wird mit eingetragen')
+    expect(screen.getByTestId('advisor-action-companion-childBenefitClaimEur').textContent).toMatch(/Kindergeld.*3\.060\s€/)
+    expect(screen.getByTestId('advisor-action-companion-childcareFrom').textContent).toContain('01.10.2024')
+    expect(screen.getByTestId('advisor-action-companion-healthInsuranceAbroad').textContent).toMatch(/Ja$/)
+  })
+
+  it('shows no such list for a draft of one value', () => {
+    renderInApp(<Card action={draft()} />)
+    expect(screen.queryByTestId('advisor-action-companions')).toBeNull()
+  })
+})
+
 describe('the effect on the tax, as the card says it', () => {
   it('names an effect that cannot be computed yet, with its hint', () => {
     renderInApp(<Card action={draft({ effect: 'not-computable', effectHint: 'Es fehlt das Jahreseinkommen.' })} />)

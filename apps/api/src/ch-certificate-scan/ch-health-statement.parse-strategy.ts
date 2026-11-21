@@ -68,12 +68,16 @@ export class ChHealthStatementParseStrategy implements DocumentParseStrategy, On
     // Read for one person of the household (ADR-0092 §5): only their lines; the others are offered apart.
     const only = dto.holder
     for (const person of read.insured) {
-      const key = insuredMember(person.name, members)
-      if (only !== undefined && key !== only) continue
+      const matched = insuredMember(person.name, members)
+      // The user said whose statement it is („Für wen?“): a statement for one person is theirs, also when
+      // the printed name fits nobody on record (real-data run: „Nichts erkannt“ beside the amount read).
+      const key = matched === null && only !== undefined && read.insured.length === 1 && members.some((m) => m.key === only) ? only : matched
+      // A person nobody matches is said, also on a pass for one holder: never dropped without a word.
       if (key === null) {
         unmatched++
         continue
       }
+      if (only !== undefined && key !== only) continue
       const items = countedItemsOf(read.insurer, year, person)
       const chf = Math.round(person.premiumCents / 100)
       if (key === 'A' || key === 'B') {

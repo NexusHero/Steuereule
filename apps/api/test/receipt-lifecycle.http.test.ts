@@ -117,6 +117,16 @@ describe('Beleg lifecycle contract (ADR-0097)', () => {
     expect(forced.processing?.state).toBe('vorschlaege')
   })
 
+  it('reads the second upload of a file whose first upload never got an answer (real-data run: „doppelt hochgeladen“, and nothing was ever read)', async () => {
+    const first = await upload('spende.pdf', pdf('unanswered'))
+    // The first upload was stored but never read to a result (its „Für wen?“ stayed open, the next file came).
+    const second = await upload('spende-nochmal.pdf', pdf('unanswered'))
+    expect(second.duplicateOf).toMatchObject({ id: first.id })
+    const read = await parse({ receiptId: second.id, rawText: DONATION_2025 })
+    expect(read.stagedAction).not.toBeNull()
+    expect(read.processing).toMatchObject({ state: 'vorschlaege', pending: 1, open: true })
+  })
+
   it('deletes a Beleg with its values when asked, and leaves them without the option', async () => {
     const kept = await upload('kept.pdf', pdf('kept'))
     const gone = await upload('gone.pdf', pdf('gone'))

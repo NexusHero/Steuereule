@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { heldDraftsNote, holdUnaskedOverwrites, numbersInMessage } from './advisor-overwrite-guard'
+import { announcedDraftCount, draftCountNote, heldDraftsNote, holdUnaskedOverwrites, numbersInMessage, preparedDraftsSentence, unchangedDraftsNote } from './advisor-overwrite-guard'
 
 const draft = (field: string, newValue: string, expectedPreviousValue: string | null) => ({ field, label: field, newValue, expectedPreviousValue })
 
@@ -34,3 +34,40 @@ describe('numbersInMessage', () => {
     expect([...numbersInMessage('5.120 und 5’120,00 sowie 210 Tage und 1 234,60')]).toEqual(expect.arrayContaining([5120, 210, 1234, 1235]))
   })
 })
+
+describe('what the answer says about its drafts (ADR-0066, real-data run)', () => {
+  it('names a draft that was left out because the field already holds its value', () => {
+    expect(unchangedDraftsNote([])).toBe('')
+    const note = unchangedDraftsNote([{ label: 'Kindergeld (Kind 1)', newValue: '3060' }, { label: 'Kontoführung', newValue: '16' }])
+    expect(note).toContain('Kindergeld (Kind 1) (3060)')
+    expect(note).toContain('Kontoführung (16)')
+    expect(note).toContain('keine Karte')
+  })
+
+  it('reads how many drafts a text announces, as a figure or a word', () => {
+    expect(announcedDraftCount('Ich habe 5 Entwürfe als unverbindliche Vorschläge vorbereitet.')).toBe(5)
+    expect(announcedDraftCount('Mit deinen Angaben habe ich dir fünf neue Entwürfe vorbereitet:')).toBe(5)
+    expect(announcedDraftCount('Ich habe jetzt 3 Entwürfe vorbereitet – darunter auch die Karte fürs Kindergeld.')).toBe(3)
+    expect(announcedDraftCount('Hier sind die beiden Entwurfskarten.')).toBe(2)
+    expect(announcedDraftCount('Ich habe den Entwurf vorbereitet.')).toBeNull()
+    expect(announcedDraftCount('Du hast 6 Karten übernommen, danke.')).toBeNull()
+    expect(announcedDraftCount('Bitte prüfe die Entwürfe.')).toBeNull()
+  })
+
+  it('says how many drafts there really are when the text announces more', () => {
+    expect(draftCountNote('Ich habe 5 Entwürfe vorbereitet.', 5)).toBe('')
+    expect(draftCountNote('Ich habe 5 Entwürfe vorbereitet.', 6)).toBe('')
+    expect(draftCountNote('Ich habe 5 Entwürfe vorbereitet.', 3)).toContain('3 Entwürfe')
+    expect(draftCountNote('Ich habe 5 Entwürfe vorbereitet.', 3)).toContain('nicht 5')
+    expect(draftCountNote('Ich habe 2 Entwürfe vorbereitet.', 1)).toContain('ein Entwurf')
+    expect(draftCountNote('Ich habe 2 Entwürfe vorbereitet.', 0)).toContain('kein Entwurf')
+    expect(draftCountNote('Alles klar, das habe ich notiert.', 0)).toBe('')
+  })
+
+  it('writes the stock sentence for exactly the drafts that are shown', () => {
+    expect(preparedDraftsSentence(['Spende'])).toBe('Ich habe den Entwurf „Spende“ als unverbindlichen Vorschlag vorbereitet.')
+    expect(preparedDraftsSentence(['a', 'b', 'c'])).toBe('Ich habe 3 Entwürfe als unverbindliche Vorschläge vorbereitet.')
+    expect(preparedDraftsSentence([])).toBe('')
+  })
+})
+

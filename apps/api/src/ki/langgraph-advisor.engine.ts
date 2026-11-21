@@ -9,6 +9,7 @@ import {
   checkAdvisorInputBoundary,
   describeModelFailure,
   evaluateAdvisorTurn,
+  preparedDraftsSentence,
   withPreviewedEffects,
   topicRefusal,
   type AdvisorActionProposal,
@@ -650,11 +651,10 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
     }
 
     if (replyText.length === 0) {
-      replyText = pendingActions.length === 1
-        ? `Ich habe den Entwurf „${pendingActions[0]!.label}“ als unverbindlichen Vorschlag vorbereitet.`
-        : pendingActions.length > 1
-          ? `Ich habe ${pendingActions.length} Entwürfe als unverbindliche Vorschläge vorbereitet.`
-          : pendingTwoPaths
+      // One sentence for the drafts, in the core: the service writes it again when it leaves a draft out.
+      replyText = pendingActions.length > 0
+        ? preparedDraftsSentence(pendingActions.map((action) => action.label))
+        : pendingTwoPaths
           ? `Ich habe zwei steuerliche Wege für „${pendingTwoPaths.title}“ vorbereitet.`
           : 'Ich habe deine Steuerakte geprüft.'
     }

@@ -40,6 +40,7 @@ export async function buildPrintoutPlan(input: PrintoutPlanInput): Promise<Print
     children: (input.records.kind ?? []).map((record) => record.handle),
     rentals: (input.records.vermietung ?? []).map((record) => record.handle),
     personalDataConsent: input.personalDataConsent,
+    taxYear: input.taxYear,
   }
   const reads = printoutGapReads(input.missing, ctx)
   const idOf = (screen: 'kind' | 'vermietung' | string, handle: string | undefined): string | undefined =>

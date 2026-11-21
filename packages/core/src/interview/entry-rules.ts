@@ -2,6 +2,8 @@
 // depending on how the model understood an ambiguous sentence; each such spot is decided here, by the
 // app: a draft is refused until the user confirmed what decides it, a value the model must not derive
 // is filled in, and what has to be asked next is told to the model with the tool's answer.
+import { formatChf } from '../common/format'
+import type { ChDailyBenefitRemark } from '../domains/ch-salary-certificate-parser'
 import { fieldSpec } from './field-catalog'
 import type { Screen } from './marking'
 
@@ -16,6 +18,8 @@ export interface DraftRuleInput {
   readonly tool: 'stage' | 'two-paths'
   /** The other drafts of the same answer. */
   readonly others: readonly { readonly screen: Screen; readonly values: DraftValues }[]
+  /** What the draft rests on in words: the user's message of this turn and the reason the model gave. */
+  readonly said?: string | undefined
 }
 
 export type DraftRuleCheck = { readonly ok: true } | { readonly ok: false; readonly code: string; readonly reason: string }
@@ -31,6 +35,45 @@ const ALLOWANCE_TWICE =
 const SICK_PAY_NEEDS_TWO_PATHS =
   'Ausgezahltes Krankentaggeld wird nur abgezogen, wenn es im Bruttolohn Ziffer 8 enthalten ist; der Lohnausweis sagt das nicht eindeutig. Frag den Nutzer, ob das ausgezahlte Taggeld in Ziffer 8 enthalten ist, und schlage es mit `propose_two_paths` vor: ein Weg steuerfreiesKrankentaggeldChf = 0 (nicht abziehen), der andere der ausgezahlte Betrag (abziehen, Nachweis: Taggeld-Abrechnung des Versicherers). Nenne beide Eurowirkungen.'
 
+const CAPITAL_NEEDS_AMOUNT =
+  'Ein Depot, ein Konto mit Zinsen oder ein Freistellungsauftrag heißt: Es gibt Kapitalerträge, auch wenn der Freistellungsauftrag sie abdeckt. „Nein“ gilt nur, wenn der Nutzer ausdrücklich sagt, dass es keine Kapitalerträge gab. Lege stattdessen interview.einkuenfte = „Kapitalerträge“ an (mit Mieteinnahmen „Beides“) und frag nach der Steuerbescheinigung der Bank: Höhe der Kapitalerträge im Jahr (kapital.kapitalertraege), genutzter Sparer-Pauschbetrag (kapital.sparerPauschbetrag), einbehaltene Kapitalertragsteuer und Solidaritätszuschlag (auch 0).'
+
+const CAPITAL_WORDS = /freistellungsauftr|depot|sparer-?pauschbetrag|kapitalertr|zinsen|dividende|tagesgeld|festgeld|wertpapier|\baktien\b|\betfs?\b/i
+const NEGATION = /\bkein(?:e|en|em|er|erlei)?\b|\bnicht\b|\bnichts\b|\bnein\b|\bohne\b|\bweder\b/i
+
+/**
+ * Whether the words name capital income as something the user has: a part of a sentence that names a
+ * deposit account, interest or an exemption order and does not deny it. „Kapitalerträge hatten wir
+ * nicht“ and „kein Depot“ name none.
+ */
+export function namesCapitalIncome(said: string): boolean {
+  // A dot between digits is a thousands separator (1.600 €), not the end of a sentence.
+  return said.split(/(?<!\d)\.|\.(?!\d)|[;\n!?]/).some((part) => CAPITAL_WORDS.test(part) && !NEGATION.test(part))
+}
+
+/** Asked once per Swiss wage statement: the certificate does not say whether paid-out benefits are part of the gross wage. */
+export const SICK_PAY_QUESTION =
+  'Frag, falls noch nicht beantwortet, ob im Jahr Krankentaggeld (auch Unfall- oder Mutterschaftstaggeld) ausgezahlt wurde und ob es im Bruttolohn Ziffer 8 des Lohnausweises enthalten ist (Hinweis: eine Bemerkung wie „KK-Taggeld Verrechnung“ auf dem Lohnausweis). Ohne Taggeld legst du chLohnausweis.steuerfreiesKrankentaggeldChf = 0 an; mit Taggeld gilt der Zwei-Wege-Vorschlag (`propose_two_paths`).'
+
+/** The same question as the app asks it itself, under a wage statement it has just read. */
+export const SICK_PAY_QUESTION_FOR_USER =
+  'Eine Frage zu diesem Lohnausweis: Wurde im Jahr Krankentaggeld (auch Unfall- oder Mutterschaftstaggeld) ausgezahlt, und ist es im Bruttolohn (Ziffer 8) enthalten? Ein Hinweis darauf ist eine Bemerkung wie „KK-Taggeld Verrechnung“. Steuerfreies Taggeld im Bruttolohn wird abgezogen: Nenn mir den Betrag laut Taggeld-Abrechnung, oder sag, dass es keines gab.'
+
+/**
+ * The question under a wage statement just read, with what its remarks say about a paid-out daily
+ * benefit: the amount is named as the proposal, an accident benefit as something treated differently.
+ */
+export function sickPayQuestionForUser(remark: ChDailyBenefitRemark | null | undefined): string {
+  if (!remark) return SICK_PAY_QUESTION_FOR_USER
+  const amount = remark.amountChf === null ? null : formatChf(remark.amountChf)
+  if (remark.kind === 'accident') {
+    return `Eine Frage zu diesem Lohnausweis: In den Bemerkungen steht ein Unfalltaggeld${amount ? ` über ${amount}` : ''}. Unfalltaggeld wird steuerlich anders behandelt als Krankentaggeld, deshalb habe ich dafür nichts vorbereitet. Ist es im Bruttolohn (Ziffer 8) enthalten${amount ? '' : ', und wie hoch war der Betrag'}?`
+  }
+  return amount
+    ? `Eine Frage zu diesem Lohnausweis: In den Bemerkungen steht ausgezahltes Krankentaggeld über ${amount}. Ist es im Bruttolohn (Ziffer 8) enthalten? Nur dann wird es abgezogen. Unter dieser Nachricht stehen beide Wege zur Wahl: nicht abziehen, oder ${amount} abziehen (Nachweis: Taggeld-Abrechnung des Versicherers).`
+    : 'Eine Frage zu diesem Lohnausweis: In den Bemerkungen steht ausgezahltes Krankentaggeld, aber kein Betrag. Ist es im Bruttolohn (Ziffer 8) enthalten, und welchen Betrag nennt die Taggeld-Abrechnung? Steuerfreies Taggeld im Bruttolohn wird abgezogen.'
+}
+
 /** Whether a draft may be made, by the fixed rules; the reason goes back to the model and, through it, to the user. */
 export function checkDraftRules(input: DraftRuleInput): DraftRuleCheck {
   const { screen, values } = input
@@ -44,6 +87,11 @@ export function checkDraftRules(input: DraftRuleInput): DraftRuleCheck {
     if (input.tool === 'stage' && positive(values.steuerfreiesKrankentaggeldChf)) {
       return { ok: false, code: 'TWO_PATHS_REQUIRED', reason: SICK_PAY_NEEDS_TWO_PATHS }
     }
+  }
+  // „Weitere Einkünfte → Nein“ was concluded from „Depot mit Freistellungsaufträgen“ (real-data run): the
+  // capital income was never recorded. An answer without capital income needs the user to say so.
+  if (screen === 'interview' && (values.einkuenfte === 'Nein' || values.einkuenfte === 'Vermietung') && input.said !== undefined && namesCapitalIncome(input.said)) {
+    return { ok: false, code: 'CONFIRMATION_REQUIRED', reason: CAPITAL_NEEDS_AMOUNT }
   }
   if (screen === 'kind' && positive(values.swissFamilyAllowanceEur) && input.others.some((other) => other.screen === 'chLohnausweis' && positive(other.values.familienzulagenChf))) {
     return { ok: false, code: 'DOUBLE_ENTRY', reason: ALLOWANCE_TWICE }
@@ -92,6 +140,17 @@ export function draftFollowUps(screen: Screen, values: DraftValues): string[] {
     if (positive(values.krankenkasseChf) && !has('krankenkasseZusatzChf')) {
       asks.push('Frag, ob im Krankenkassen-Betrag Zusatzversicherungen (VVG) stecken. krankenkasseChf ist nur die Grundversicherung nach KVG; den Zusatz legst du als chLohnausweis.krankenkasseZusatzChf an (0, wenn es keinen gibt).')
     }
+    if (positive(values['bruttolohn-total']) && !has('steuerfreiesKrankentaggeldChf')) {
+      asks.push(SICK_PAY_QUESTION)
+    }
+  }
+  if (screen === 'interview') {
+    if (positive(values['haushalt-handwerker-betrag'])) {
+      asks.push('Handwerkerleistung (§ 35a Abs. 3 und 5 EStG): Frag, falls noch nicht gesagt, (1) ob die Rechnung per Überweisung bezahlt wurde (bar zählt nicht), (2) ob die Arbeit im eigenen Haushalt war (selbst bewohnte Wohnung oder Haus, kein Neubau) und (3) ob es dafür eine öffentliche Förderung gab (KfW, BAFA, Zuschuss oder zinsverbilligtes Darlehen; dann entfällt die Ermäßigung). Passt eines nicht, zieh den Entwurf mit `withdraw_draft` zurück.')
+    }
+    if (positive(values['spenden-betrag'])) {
+      asks.push('Spende (§ 10b EStG): Es zählt das Jahr, in dem sie gezahlt wurde (§ 11 Abs. 2 EStG), nicht das Datum der Zuwendungsbestätigung. Frag, falls noch nicht gesagt, wann die Spende gezahlt wurde; liegt die Zahlung in einem anderen Jahr, gehört sie nicht in dieses Steuerjahr.')
+    }
   }
   return asks
 }
@@ -134,5 +193,17 @@ export function transportFollowUps(values: DraftValues, stored: StoredTransport 
 }
 
 /** Checklist codes of the fixed rules; the plan asks them only while the stored values leave them open. */
-export const ENTRY_RULE_CODES = ['regelLstb', 'regelLstbPersonB', 'regelArbeitsweg', 'regelArbeitswegPersonB', 'regelKrankenkasse', 'regelKrankenkassePersonB', 'regelKapital', 'regelVorauszahlungen'] as const
+export const ENTRY_RULE_CODES = [
+  'regelLstb',
+  'regelLstbPersonB',
+  'regelArbeitsweg',
+  'regelArbeitswegPersonB',
+  'regelKrankenkasse',
+  'regelKrankenkassePersonB',
+  'regelKrankentaggeld',
+  'regelKrankentaggeldPersonB',
+  'regelKapital',
+  'regelVorauszahlungen',
+  'regelKindergeld',
+] as const
 export type EntryRuleCode = (typeof ENTRY_RULE_CODES)[number]

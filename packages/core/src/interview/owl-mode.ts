@@ -219,7 +219,8 @@ export function generateOwlCards(facts: OwlInputFacts): readonly OwlCard[] {
         category: 'abruf_frage',
         title: 'Kinder noch nicht erfasst',
         message: 'Du hast im Interview Kinder angegeben, aber noch kein Kind erfasst.',
-        reason: 'weil zum Beispiel Kinderbetreuungskosten zu 80 % (bis 4.800 € je Kind) als Sonderausgaben abziehbar sind.',
+        // The rule of the tax year (§ 10 Abs. 1 Nr. 5 EStG changed with 2025), as `childcareDeductionEur` applies it.
+        reason: `weil zum Beispiel Kinderbetreuungskosten ${facts.taxYear >= 2025 ? 'zu 80 % (bis 4.800 € je Kind)' : 'zu zwei Dritteln (bis 4.000 € je Kind)'} als Sonderausgaben abziehbar sind.`,
         amountEur: null,
         legalStatusDate: LEGAL_STATUS_DATE,
         sourceId: 'estg-10-1-5',

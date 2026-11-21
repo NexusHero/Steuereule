@@ -5,7 +5,7 @@ import { ToolMessage, type BaseMessage } from '@langchain/core/messages'
 import { LAW_IDS } from './law-text.js'
 import { tool, type StructuredToolInterface } from '@langchain/core/tools'
 import { z } from 'zod'
-import { ADVISOR_PERSONS, draftPersonKey, ISO_DATE_PATTERN, GIFT_TAX_RELATIONS, PRIVATE_SALE_KINDS, ADVISOR_PLAN_MAX_STEPS, ADVISOR_PLAN_STEP_STATUSES, ADVISOR_QUESTION_KINDS, INTERVIEW_AREA_IDS, INTERVIEW_AREA_STATUSES, type AdvisorActionProposal, type AdvisorNotStaged, type Screen } from '@steuereule/core'
+import { ADVISOR_PERSONS, draftPersonKey, withoutInternalNames, ISO_DATE_PATTERN, GIFT_TAX_RELATIONS, PRIVATE_SALE_KINDS, ADVISOR_PLAN_MAX_STEPS, ADVISOR_PLAN_STEP_STATUSES, ADVISOR_QUESTION_KINDS, INTERVIEW_AREA_IDS, INTERVIEW_AREA_STATUSES, type AdvisorActionProposal, type AdvisorNotStaged, type Screen } from '@steuereule/core'
 
 export const MAX_COMPANION_FIELDS = 3
 
@@ -55,7 +55,7 @@ export const draftKey = (draft: Pick<AdvisorActionProposal, 'screen' | 'field' |
   draftPersonKey(draft.person, `${draft.screen}|${draft.instance ?? ''}|${draft.field}`)
 
 /** The euro figures of `read_current_estimate`; naming them in the answer is backed by the app's own estimate. */
-export const ESTIMATE_FIGURE_KEYS = ['fromEur', 'toEur', 'workExpensesEur', 'specialExpensesEur', 'creditedTaxEur', 'prepaymentsEur'] as const
+export const ESTIMATE_FIGURE_KEYS = ['fromEur', 'toEur', 'workExpensesEur', 'specialExpensesEur', 'creditedTaxEur', 'prepaymentsEur', 'amountEur'] as const
 
 export const FIGURE_KEYS = new Set(['beforeRefundEur', 'afterRefundEur', 'deltaEur', 'incomeTaxEur', 'soliEur', 'churchTaxEur', 'totalEur', 'savingEur', 'withoutBenefitsEur', 'separateTotalEur', 'jointTotalEur', 'progressionClauseUpToEur', 'flatRateTotalEur', 'personalTotalEur', 'limitEur', 'withinWindowEur', 'roomLeftEur', 'exemptionLimitEur', 'personalAllowanceEur', 'maintenanceAllowanceEur', 'taxableEur', 'totalTaxEur', 'priorTaxEur', 'taxEur', 'tradeTaxEur', 'baseAmountEur', 'incomeTaxCreditEur', 'netBurdenEur', 'priorYearLimitEur', 'currentYearLimitEur', ...ESTIMATE_FIGURE_KEYS])
 
@@ -83,6 +83,32 @@ export function computedFiguresOf(messages: readonly BaseMessage[]): number[] {
 
 /** The reason of a tool error without its machine prefix (`UNKNOWN_FIELD: …`). */
 export const humanReason = (error: string): string => error.replace(/^[A-Z_]+:\s*/, '')
+
+/** Why a draft was refused, for the user: the tool's error speaks to the model (field ids, how to call the tool). */
+const USER_REASONS: Readonly<Record<string, string>> = {
+  PERSON_REQUIRED: 'Bei einer Zusammenveranlagung gibt es diese Angabe für jede Person einzeln, und es war nicht klar, für wen sie gilt. Sag der Eule, wen sie betrifft, dann bereitet sie den Entwurf vor.',
+  PERSON_MISMATCH: 'Der Titel nennt Person B, der Entwurf war aber für dich angelegt. Sag der Eule, wen die Angabe betrifft, dann bereitet sie den Entwurf vor.',
+  UNKNOWN_FIELD: 'Dafür gibt es in der App kein Feld, das die Eule ausfüllen kann.',
+  FORBIDDEN_TARGET: 'Dafür gibt es in der App keine Maske, die die Eule ausfüllen kann.',
+  INVALID_FIELD: 'Dafür gibt es in der App kein Feld, das die Eule ausfüllen kann.',
+  USE_BOOKING_TOOL: 'Eine Buchung bereitet die Eule auf einem eigenen Weg vor; bitte nenne sie ihr noch einmal.',
+  AI_WRITE_FORBIDDEN: 'Diese Angabe gehört zu deinen persönlichen Daten. Die Eule bereitet sie nur mit deiner Einwilligung vor; sonst trägst du sie selbst in der Maske ein.',
+  INVALID_ARGUMENTS: 'Der Entwurf war unvollständig. Bitte nenne der Eule die Angabe noch einmal.',
+  TOO_MANY_DRAFTS: `Mehr als ${MAX_DRAFTS_PER_TURN} Entwürfe bereitet die Eule in einer Antwort nicht vor. Übernimm erst diese, dann bitte sie um den Rest.`,
+  NEW_RECORD_INCOMPLETE: 'Für ein neues Kind braucht die Eule Vorname und Geburtsdatum.',
+}
+
+/**
+ * The reason a draft was not prepared as the user reads it under the answer: a sentence for them, never
+ * the instruction for the model (real-data run: „Lege den Entwurf mit `person: "A"` … an“ on a card).
+ */
+export function userReason(error: string): string {
+  const code = /^([A-Z_]+):/.exec(error)?.[1]
+  const known = code === undefined ? undefined : USER_REASONS[code]
+  if (known !== undefined) return known
+  // Any other code keeps its words (what a value has to look like), without code spans, field ids and tool names.
+  return withoutInternalNames(humanReason(error).replace(/`[^`]*`/g, '').replace(/zu "[a-zA-Z]+\.[A-Za-z0-9-]+"/g, 'zu diesem Feld').replace(/"[a-zA-Z]+\.[A-Za-z0-9-]+"/g, '')).replace(/ {2,}/g, ' ').replace(/ +([.,;:])/g, '$1').trim()
+}
 
 /**
  * What the answer has to admit: a refused draft the model did not manage to replace. A refusal
@@ -322,7 +348,7 @@ export const TOOL_DESCRIPTIONS: Readonly<Record<ToolName, string>> = {
   request_personal_data_consent:
     'Lässt die App unter deiner Antwort die Einwilligung für persönliche Daten anzeigen („Erlauben“ / „Nicht erlauben“). Rufe es IMMER auf, wenn du ohne Einwilligung auf sie verweist: der Nutzer nennt Name, Geburtsdatum, Anschrift, Steuer-ID, IBAN, Religion, ein Kind oder Partnerin/Partner, oder du brauchst solche Angaben (z. B. um ein Kind oder Person B anzulegen). Ohne diesen Aufruf darfst du nicht sagen, dass die App die Einwilligung zeigt. Die Einwilligung gibt nur der Nutzer über die Karte; ein „Ja“ im Chat reicht nicht.',
   read_current_estimate:
-    'Liest die aktuelle Schätzung der App für das Steuerjahr aus den gespeicherten Werten: Erstattung oder Nachzahlung (`result`, positiv = Erstattung), Werbungskosten, Vorsorgeaufwand, Sonderausgaben, zu versteuerndes Einkommen, Einkommensteuer, Solidaritätszuschlag, Anrechnung (Lohnsteuer, Quellensteuer) und Vorauszahlungen. `kind: open` nennt, was für eine Schätzung noch fehlt. Offene Entwürfe zählen erst mit, wenn der Nutzer sie übernommen hat. Schreibt nichts.',
+    'Liest die aktuelle Schätzung der App für das Steuerjahr aus den gespeicherten Werten: Erstattung oder Nachzahlung (`result`, positiv = Erstattung), Werbungskosten, Vorsorgeaufwand, Sonderausgaben, zu versteuerndes Einkommen, Einkommensteuer, Solidaritätszuschlag, Anrechnung (Lohnsteuer, Quellensteuer) und Vorauszahlungen. `breakdown` ist die fertige Rechnung Zeile für Zeile, zum Zitieren. `kind: open` nennt, was für eine Schätzung noch fehlt. Offene Entwürfe zählen erst mit, wenn der Nutzer sie übernommen hat. Schreibt nichts.',
 }
 
 /** JSON Schema keywords at least one provider's function-calling API rejects outright. */

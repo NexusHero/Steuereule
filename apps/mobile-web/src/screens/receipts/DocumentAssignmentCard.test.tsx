@@ -33,6 +33,15 @@ const which: AssignmentQuestionDto = {
 const background = (id: string) => getComputedStyle(screen.getByTestId(id)).backgroundColor
 
 describe('DocumentAssignmentCard', () => {
+  it('says that a child has to be created when a child’s document meets a return without children (real-data run)', () => {
+    // A childcare certificate addressed to the parent: nobody to pick, the only way is to create the child.
+    const childNeeded: AssignmentQuestionDto = { reason: 'unknown', options: [], preselected: null, printedName: 'Elias Sommer', area: null, offerCreate: ['kind'] }
+    renderUi(<DocumentAssignmentCard question={childNeeded} printed={empty} onChoose={vi.fn()} onCreate={vi.fn()} onConfirmSelf={vi.fn()} />)
+    expect(screen.getByText(/gehört zu einem Kind/)).toBeTruthy()
+    expect(screen.queryByText(/Die Person gibt es in deiner Erklärung noch nicht/)).toBeNull()
+    expect(screen.getByTestId('beleg-zuordnung-anlegen-kind')).toBeTruthy()
+  })
+
   it('leads with „anlegen“, not „Für mich“, when the document names someone outside the household (ADR-0097)', () => {
     const unknown: AssignmentQuestionDto = { reason: 'unknown', options: [{ holder: 'A', name: 'Elias' }], preselected: 'A', printedName: 'Jonas Sommer', area: null, offerCreate: ['B', 'kind'] }
     renderUi(

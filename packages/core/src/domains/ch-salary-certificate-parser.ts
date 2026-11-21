@@ -22,6 +22,15 @@ export interface ChCertificateField {
 
 export type ChCertificateCheck = 'ok' | 'conflict' | 'unknown'
 
+/**
+ * A daily benefit paid out with the wage, as a remark names it: for sickness (Krankentaggeld) or for an
+ * accident (Unfalltaggeld, UVG, SUVA), which is taxed differently. The amount in whole CHF where readable.
+ */
+export interface ChDailyBenefitRemark {
+  readonly kind: 'sickness' | 'accident'
+  readonly amountChf: number | null
+}
+
 export interface ChCertificateRead {
   readonly taxYear: number | null
   readonly period: { readonly from: string; readonly to: string } | null
@@ -36,6 +45,8 @@ export interface ChCertificateRead {
   readonly fields: Partial<Record<SalaryCertificateAmountFieldId, ChCertificateField>>
   /** Kinder-, Ausbildungs- or Familienzulagen the remarks (Ziffer 15) name, CHF: Anlage N-Gre Z. 8 (ADR-0088). */
   readonly familyAllowancesChf: number | null
+  /** A paid-out daily benefit the remarks name („KK-Taggeld Verrechnung“); null when they name none. */
+  readonly dailyBenefit: ChDailyBenefitRemark | null
   /** Ziffer 10.1 and 10.2; `berufliche-vorsorge` is their sum. */
   readonly pension: { readonly ordinary: number | null; readonly buyIn: number | null }
   readonly checks: { readonly gross: ChCertificateCheck; readonly net: ChCertificateCheck }
@@ -321,6 +332,7 @@ export function parseChSalaryCertificateText(rawText: string): ChCertificateRead
     pension,
     checks,
     familyAllowancesChf: familyAllowancesIn(lines),
+    dailyBenefit: dailyBenefitIn(lines),
     missing: EXPECTED.filter((id) => amounts[id] === undefined),
   }
 }
@@ -345,6 +357,28 @@ export function familyAllowancesIn(lines: readonly string[]): number | null {
     }
   }
   return found ? sum : null
+}
+
+const DAILY_BENEFIT = /tagg?eld(?:er|es)?/i
+const ACCIDENT = /unfall|\buvg\b|\bsuva\b|\bnbuv?\b/i
+/** A premium or an insurance for a daily benefit is not a benefit paid out. */
+const NOT_PAID_OUT = /versicherung|pr(?:ä|ae)mie|beitr(?:a|ä|ae)g/i
+
+/**
+ * A paid-out daily benefit the certificate names in a remark: „KK-Taggeld Verrechnung: 12'345 CHF“,
+ * „Krankentaggeld“, „Unfalltaggeld SUVA 2'250.00“. The certificate does not say whether it is part of
+ * the gross wage (Ziffer 8), so this only tells the app to ask, with the amount where one is printed
+ * (ADR-0093). The first such remark counts; a premium or an insurance for daily benefits is none.
+ */
+export function dailyBenefitIn(lines: readonly string[]): ChDailyBenefitRemark | null {
+  for (const line of lines) {
+    const word = DAILY_BENEFIT.exec(line)
+    if (!word || NOT_PAID_OUT.test(line)) continue
+    const amount = /(\d{1,3}(?:['’\s]\d{3})+|\d+)(?:[.,](\d{2}))?(?!\s*%)/.exec(line.slice(word.index + word[0].length))
+    const chf = amount ? Math.round(Number(`${amount[1]!.replace(/['’\s]/g, '')}.${amount[2] ?? '0'}`)) : null
+    return { kind: ACCIDENT.test(line) ? 'accident' : 'sickness', amountChf: chf !== null && Number.isFinite(chf) && chf > 0 ? chf : null }
+  }
+  return null
 }
 
 /**

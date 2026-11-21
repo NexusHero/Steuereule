@@ -20,6 +20,8 @@ export interface FilingTypeComparisonScreenProps {
   readonly onDone?: () => void
   readonly taxYear?: number
   readonly embedded?: boolean
+  /** The joint return is already recorded for the year: married is a fact here, not a question. */
+  readonly marriedKnown?: boolean
 }
 
 export function FilingTypeComparisonScreen({
@@ -27,6 +29,7 @@ export function FilingTypeComparisonScreen({
   onDone,
   taxYear = CURRENT_TAX_YEAR,
   embedded = false,
+  marriedKnown = false,
 }: FilingTypeComparisonScreenProps) {
   const bp = useBreakpoint()
   const t = useTheme()
@@ -40,7 +43,7 @@ export function FilingTypeComparisonScreen({
     (masterData.data?.status === 200 && masterData.data.data.familienstand === 'verheiratet') ||
     (interview.data?.status === 200 && interview.data.data.answers.familienstand === 'Verheiratet')
   const [choice, setMarried] = useState<boolean | null>(null)
-  const married = choice ?? knownMarried
+  const married = marriedKnown || (choice ?? knownMarried)
   const [zveB, setZveB] = useState('')
   const zveBValue = Number(zveB)
   const ready = married && zveB !== '' && Number.isFinite(zveBValue) && zveBValue >= 0
@@ -61,15 +64,19 @@ export function FilingTypeComparisonScreen({
 
       <Text style={styles.heading}>{tr('veranlagungsartenvergleich.heading')}</Text>
 
-      <Text style={styles.label}>{tr('veranlagungsartenvergleich.verheiratetLabel')}</Text>
-      <View style={styles.optionRow}>
-        <Option selected={married} onPress={() => setMarried(true)} style={styles.rowOption} testID="verheiratet-ja">
-          {tr('veranlagungsartenvergleich.ja')}
-        </Option>
-        <Option selected={!married} onPress={() => setMarried(false)} style={styles.rowOption} testID="verheiratet-nein">
-          {tr('veranlagungsartenvergleich.nein')}
-        </Option>
-      </View>
+      {marriedKnown ? null : (
+        <>
+          <Text style={styles.label}>{tr('veranlagungsartenvergleich.verheiratetLabel')}</Text>
+          <View style={styles.optionRow}>
+            <Option selected={married} onPress={() => setMarried(true)} style={styles.rowOption} testID="verheiratet-ja">
+              {tr('veranlagungsartenvergleich.ja')}
+            </Option>
+            <Option selected={!married} onPress={() => setMarried(false)} style={styles.rowOption} testID="verheiratet-nein">
+              {tr('veranlagungsartenvergleich.nein')}
+            </Option>
+          </View>
+        </>
+      )}
 
       {married ? (
         <View style={styles.inputBlock}>

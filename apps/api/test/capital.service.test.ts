@@ -169,6 +169,24 @@ describe('KapitalService', () => {
       expect(await service.getMostFavourableCheck(USER_ID, TAX_YEAR, 0)).toEqual({ kind: 'nicht-anwendbar', reason: 'keine-kapitalertraege' })
     })
 
+    it('shows no number where the other income is not the user\'s own German wage: couple, cross-border wage, pension (real-data run 4)', async () => {
+      seedTaxYear()
+      repository.seed({ userId: USER_ID, taxYear: TAX_YEAR, kapitalertraege: '2700' })
+      const unknown = { kind: 'nicht-anwendbar', reason: 'uebriges-einkommen-unbekannt' }
+      const base = { 'kap-depot': 'Deutscher Broker', lohnersatz: 'Nein' }
+
+      // A joint return: the tariff is the couple's, with Person B's income this check does not read.
+      interviewRepository.seed(USER_ID, TAX_YEAR, { ...base, job: 'Angestellt', familienstand: 'Verheiratet' })
+      expect(await service.getMostFavourableCheck(USER_ID, TAX_YEAR, 0)).toEqual(unknown)
+
+      // A cross-border commuter's wage is in the Swiss certificate, not in the LStB: „Tarif 0 €“ would be wrong.
+      interviewRepository.seed(USER_ID, TAX_YEAR, { ...base, job: 'Angestellt', familienstand: 'Ledig', ausland: 'Ja, in die Schweiz' })
+      expect(await service.getMostFavourableCheck(USER_ID, TAX_YEAR, 0)).toEqual(unknown)
+
+      interviewRepository.seed(USER_ID, TAX_YEAR, { ...base, job: 'Rente', familienstand: 'Ledig' })
+      expect(await service.getMostFavourableCheck(USER_ID, TAX_YEAR, 0)).toEqual(unknown)
+    })
+
     it('a missing Progressionsvorbehalt answer makes the comparison unbestimmt — no verdict', async () => {
       seedTaxYear()
       repository.seed({ userId: USER_ID, taxYear: TAX_YEAR, kapitalertraege: '20000' })

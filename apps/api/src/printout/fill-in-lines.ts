@@ -49,6 +49,16 @@ export function lineOf(year: number, id: string): FormLine | null {
   return linesOf(year).get(id) ?? null
 }
 
+/** The Zeile of each of these values on the year's form; a box in the page head (no Zeile) is left out. */
+export function lineNumbersOf(year: number, values: FieldValues): Record<string, string> {
+  const lines: Record<string, string> = {}
+  for (const id of Object.keys(values)) {
+    const zeile = lineOf(year, id)?.zeile
+    if (zeile) lines[id] = zeile
+  }
+  return lines
+}
+
 /** The field ids of a form in `year`, in the order of that year's lines file. */
 export function lineIdsOf(year: number, formular: string): readonly string[] {
   return [...linesOf(year).values()].filter((line) => line.formular === formular).map((line) => line.id)

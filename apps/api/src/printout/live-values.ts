@@ -14,6 +14,16 @@ export interface LiveForm {
   readonly instances: readonly LiveFormInstance[]
 }
 
+/** A copy for the live form view: its values with the Zeile each one stands in on the year's form. */
+export interface LiveFormInstanceWithLines extends LiveFormInstance {
+  readonly lines: Readonly<Record<string, string>>
+}
+
+export interface LiveFormWithLines {
+  readonly formular: string
+  readonly instances: readonly LiveFormInstanceWithLines[]
+}
+
 /** The record ids per form, in the order printout-values.ts builds that form's instances. */
 export type EntityIds = Readonly<Record<string, readonly string[]>>
 

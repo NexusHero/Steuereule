@@ -69,4 +69,54 @@ describe('fixed rules for drafts (ADR-0093)', () => {
     expect(draftFollowUps('chLohnausweis', { krankenkasseChf: '4200' }).join(' ')).toContain('VVG')
     expect(draftFollowUps('chLohnausweis', { krankenkasseChf: '4200', krankenkasseZusatzChf: '0' })).toEqual([])
   })
+
+  describe('capital income is never answered with „Nein“ from a statement that names a deposit account', () => {
+    const gate = (value: string, said: string) => checkDraftRules({ screen: 'interview', values: { einkuenfte: value }, tool: 'stage', others: [], said })
+
+    it('refuses „Nein“ when the user names a deposit account or exemption orders', () => {
+      const refused = gate('Nein', 'Kapitalerträge: gemeinsames Depot bei einer deutschen Bank, Freistellungsaufträge zusammen 1.600 Euro; Vermietung haben wir nicht.')
+      expect(refused).toMatchObject({ ok: false, code: 'CONFIRMATION_REQUIRED' })
+      expect(!refused.ok && refused.reason).toContain('kapital.kapitalertraege')
+      expect(gate('Nein', 'Wir haben einen Freistellungsauftrag über 1.000 € bei der Sparkasse.').ok).toBe(false)
+      expect(gate('Vermietung', 'Eine Wohnung ist vermietet, dazu ein Tagesgeldkonto mit Zinsen.').ok).toBe(false)
+    })
+
+    it('lets „Nein“ through when the user says there is no capital income, or says nothing about it', () => {
+      expect(gate('Nein', 'Kapitalerträge hatten wir nicht, Vermietung auch nicht.').ok).toBe(true)
+      expect(gate('Nein', 'Wir haben kein Depot und keine Zinsen.').ok).toBe(true)
+      expect(gate('Nein', 'Weder Kapitalerträge noch Mieteinnahmen.').ok).toBe(true)
+      expect(gate('Nein', 'Nein, nichts davon.').ok).toBe(true)
+      expect(checkDraftRules({ screen: 'interview', values: { einkuenfte: 'Nein' }, tool: 'stage', others: [] }).ok).toBe(true)
+    })
+
+    it('never stands in the way of an answer that records the capital income', () => {
+      expect(gate('Kapitalerträge', 'Gemeinsames Depot, Freistellungsaufträge 1.600 Euro.').ok).toBe(true)
+      expect(gate('Beides', 'Depot und eine vermietete Wohnung.').ok).toBe(true)
+    })
+  })
+
+  it('has the paid-out daily sickness benefit asked when a Swiss gross wage is drafted without it', () => {
+    const asks = draftFollowUps('chLohnausweis', { 'bruttolohn-total': '98000' }).join(' ')
+    expect(asks).toContain('Krankentaggeld')
+    expect(asks).toContain('Ziffer 8')
+    expect(asks).toContain('steuerfreiesKrankentaggeldChf')
+    expect(draftFollowUps('chLohnausweis', { 'bruttolohn-total': '98000', steuerfreiesKrankentaggeldChf: '0' }).join(' ')).not.toContain('Krankentaggeld')
+    expect(draftFollowUps('chLohnausweis', { arbeitgeberName: 'Muster AG' })).toEqual([])
+  })
+
+  it('has payment by transfer, the own household and subsidies asked for a craftsman invoice', () => {
+    const asks = draftFollowUps('interview', { 'haushalt-handwerker-betrag': '1400' }).join(' ')
+    expect(asks).toContain('Überweisung')
+    expect(asks).toContain('eigenen Haushalt')
+    expect(asks).toContain('Förderung')
+    expect(draftFollowUps('interview', { 'haushalt-handwerker-betrag': '0' })).toEqual([])
+    expect(draftFollowUps('interview', { 'haushalt-gate': 'Ja' })).toEqual([])
+  })
+
+  it('has the year of payment asked for a donation', () => {
+    const asks = draftFollowUps('interview', { 'spenden-betrag': '300' }).join(' ')
+    expect(asks).toContain('gezahlt')
+    expect(asks).toContain('Zuwendungsbestätigung')
+    expect(draftFollowUps('interview', { spenden: 'Ja' })).toEqual([])
+  })
 })

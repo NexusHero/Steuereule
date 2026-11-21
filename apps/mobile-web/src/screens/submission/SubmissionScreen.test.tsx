@@ -149,21 +149,33 @@ describe('SubmissionScreen (§ 3.4)', () => {
     expect(onOpenPrintout).toHaveBeenCalledWith(TAX_YEAR)
   })
 
-  it('embeds FilingTypeComparison only for Zusammenveranlagung and allows skipping or completing before Printout', async () => {
+  it('does not ask a recorded joint return whether the user is married, and does not hold the printout back (Echtdatenlauf 4)', async () => {
     mockCompleteMarriedCase('zusammen')
 
     const onOpenPrintout = vi.fn()
     renderSubmission({ onOpenPrintout })
 
-    expect(await screen.findByTestId('abgabe-vergleich-abschnitt')).toBeTruthy()
-    expect(screen.getByTestId('verheiratet-ja')).toBeTruthy()
-    expect((screen.getByTestId('abgabe-zum-ausdruck') as HTMLButtonElement).disabled).toBe(true)
-
-    fireEvent.click(screen.getByTestId('abgabe-vergleich-ueberspringen'))
+    // The filing type is recorded: it is said, not asked again.
+    expect((await screen.findByTestId('abgabe-veranlagungsart')).textContent).toContain('Zusammenveranlagung')
+    expect(screen.queryByTestId('verheiratet-ja')).toBeNull()
+    expect(screen.queryByTestId('zveb-input')).toBeNull()
     const printBtn = screen.getByTestId('abgabe-zum-ausdruck') as HTMLButtonElement
     expect(printBtn.disabled).toBe(false)
     fireEvent.click(printBtn)
     expect(onOpenPrintout).toHaveBeenCalledWith(TAX_YEAR)
+  })
+
+  it('offers the comparison with separate returns as an extra, without the married question', async () => {
+    mockCompleteMarriedCase('zusammen')
+    renderSubmission()
+
+    fireEvent.click(await screen.findByTestId('abgabe-vergleich-oeffnen'))
+    expect(screen.getByTestId('abgabe-vergleich-abschnitt')).toBeTruthy()
+    expect(screen.getByTestId('zveb-input')).toBeTruthy()
+    expect(screen.queryByTestId('verheiratet-ja')).toBeNull()
+    expect(screen.queryByTestId('verheiratet-nein')).toBeNull()
+    // Still an extra: the printout stays open while the comparison is.
+    expect((screen.getByTestId('abgabe-zum-ausdruck') as HTMLButtonElement).disabled).toBe(false)
   })
 
   it('K2: says up front that the running year cannot be filed yet, and keeps the printout closed', async () => {

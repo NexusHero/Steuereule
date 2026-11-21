@@ -10,13 +10,13 @@ import { PersonalDataConsentCard } from './PersonalDataConsentCard'
 
 const URL_PATTERN = '*/v1/eulen-modus/personendaten-einwilligung'
 
-function renderCard(onGranted?: () => void) {
+function renderCard(onGranted?: () => void, provider?: string | null) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
   return render(
     <QueryClientProvider client={queryClient}>
       <I18nextProvider i18n={createAppI18n('de')}>
         <ThemeProvider mode="light">
-          <PersonalDataConsentCard onGranted={onGranted} />
+          <PersonalDataConsentCard onGranted={onGranted} {...(provider !== undefined ? { provider } : {})} />
         </ThemeProvider>
       </I18nextProvider>
     </QueryClientProvider>,
@@ -24,8 +24,22 @@ function renderCard(onGranted?: () => void) {
 }
 
 describe('PersonalDataConsentCard (ADR-0091)', () => {
+  it('names the provider that is actually configured, never a fixed one (real-data run)', async () => {
+    const first = renderCard(undefined, 'anthropic')
+    expect(await screen.findByText(/Claude \(Anthropic als Auftragsverarbeiter\)/)).toBeTruthy()
+    expect(screen.queryByText(/Google/)).toBeNull()
+    first.unmount()
+    const second = renderCard(undefined, 'openai')
+    expect(await screen.findByText(/OpenAI \(OpenAI als Auftragsverarbeiter\)/)).toBeTruthy()
+    second.unmount()
+    // No model configured, or one the app does not know by name: nothing is claimed about who gets the data.
+    renderCard(undefined, null)
+    expect(await screen.findByText(/das Sprachmodell, das für die Eule eingerichtet ist/)).toBeTruthy()
+    expect(screen.queryByText(/Google|Gemini/)).toBeNull()
+  })
+
   it('asks for consent while it is not granted', async () => {
-    renderCard()
+    renderCard(undefined, 'google-genai')
     expect(await screen.findByText('Darf die Eule deine persönlichen Daten verarbeiten?')).toBeTruthy()
     expect(screen.getByText(/Google Gemini/)).toBeTruthy()
     expect(screen.getByText(/Art\. 9 DSGVO/)).toBeTruthy()

@@ -9,6 +9,7 @@ import {
   carriedPlan,
   evaluateAdvisorTurn,
   foldThoughtEvent,
+  draftCountNote,
   heldDraftsNote,
   holdUnaskedOverwrites,
   isOfferedChoice,
@@ -16,8 +17,11 @@ import {
   needsPersonalDataConsentOffer,
   openPlanNote,
   openPlanSteps,
+  preparedDraftsSentence,
   replaceNamesWith,
   scrubUserMessagePii,
+  unchangedDraftsNote,
+  withoutInternalNames,
   withPreviewedEffects,
   type AdvisorActionProposal,
   type AdvisorAssessmentBrief,
@@ -433,7 +437,7 @@ export class AdvisorTurn {
           const turnResult = ev.data as AdvisorTurnResult
           // What the model did this turn is the best news about the connection there is.
           if (turnResult.mode === 'langgraph' || turnResult.meta.modelFailure) this.modelConnection?.recordTurn(turnResult.primaryFailure ?? turnResult.meta.modelFailure ?? null)
-          const { meta: enrichedMeta, note: heldNote } = guardModelDrafts(await this.drafts.enrichDraftsWithRawBaseline(userId, taxYear, turnResult.meta), scrubbedUserText)
+          const { meta: enrichedMeta, reply: guardedReply, note: heldNote } = guardModelDrafts(await this.drafts.enrichDraftsWithRawBaseline(userId, taxYear, turnResult.meta), scrubbedUserText, turnResult.replyText)
           await this.drafts.supersedePendingDraftsForSameTargets(userId, taxYear, this.drafts.collectPendingTargetKeys(enrichedMeta))
 
           const engine: AdvisorEngineInfo = {
@@ -470,7 +474,8 @@ export class AdvisorTurn {
           const planNote = turnResult.mode === 'langgraph' && !turn.opening ? openPlanNote(plan, turnResult.replyText) : ''
           const assistant = await finish(
             'complete',
-            turnResult.replyText + heldNote + gapFollowUp.text + planNote,
+            // Field ids and tool names never reach the user, whatever the model wrote.
+            (withoutInternalNames(guardedReply) + heldNote + gapFollowUp.text + planNote).trim(),
             {
               ...metaWithoutConsent,
               ...gapFollowUp.meta,
@@ -605,18 +610,25 @@ export class AdvisorTurn {
  * The model's drafts without the ones that would change a recorded value the user did not ask about, or
  * write the value already there; the answer then says what was left as it was (ADR-0082).
  */
-function guardModelDrafts(meta: AdvisorMessageMeta, userText: string): { meta: AdvisorMessageMeta; note: string } {
+function guardModelDrafts(meta: AdvisorMessageMeta, userText: string, replyText: string): { meta: AdvisorMessageMeta; reply: string; note: string } {
   const drafts = [...(meta.action ? [meta.action] : []), ...(meta.actions ?? [])]
-  if (drafts.length === 0) return { meta, note: '' }
-  const { kept, held } = holdUnaskedOverwrites(drafts.map((d) => (d.person === 'B' ? { ...d, label: `${d.label} (Person B)` } : d)), userText)
+  // Two paths are one card with two drafts; a text that counts them as two is right.
+  const alternatives = meta.twoPaths ? 2 : 0
+  if (drafts.length === 0) return { meta, reply: replyText, note: draftCountNote(replyText, alternatives) }
+  const { kept, held, unchanged } = holdUnaskedOverwrites(drafts.map((d) => (d.person === 'B' ? { ...d, label: `${d.label} (Person B)` } : d)), userText)
   const keep = new Set(kept.map((d) => d.actionId))
   const { action, actions, ...rest } = meta
+  // The engine's stock sentence counted every draft; it is written again for the ones that are shown.
+  const stock = replyText === preparedDraftsSentence(drafts.map((d) => d.label))
+  const reply = stock && kept.length < drafts.length ? preparedDraftsSentence(drafts.filter((d) => keep.has(d.actionId)).map((d) => d.label)) : replyText
   return {
     meta: {
       ...rest,
       ...(action && keep.has(action.actionId) ? { action } : {}),
       ...(actions ? { actions: actions.filter((a) => keep.has(a.actionId)) } : {}),
     },
-    note: heldDraftsNote(held),
+    reply,
+    // What was left out is named, and a text that announces more drafts than there are is corrected by the app.
+    note: heldDraftsNote(held) + unchangedDraftsNote(unchanged) + draftCountNote(reply, kept.length + alternatives),
   }
 }

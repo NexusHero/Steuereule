@@ -95,7 +95,7 @@ describe('PensionerScreen fields', () => {
     renderPension()
     await screen.findByText('Jahr des Rentenbeginns')
 
-    fireEvent.click(screen.getAllByText('unlesbar')[1]!)
+    fireEvent.click(screen.getAllByText('Kann ich nicht lesen')[1]!)
 
     await waitFor(() => expect(calls[0]?.body).toEqual({ kind: 'unklar' }))
   })
@@ -111,7 +111,7 @@ describe('PensionerScreen fields', () => {
     fireEvent.blur(input)
     await waitFor(() => expect(calls[0]?.body).toEqual({ kind: 'erfasst', value: 63 }))
 
-    fireEvent.click(screen.getAllByText('unlesbar')[1]!)
+    fireEvent.click(screen.getAllByText('Kann ich nicht lesen')[1]!)
     await waitFor(() => expect(calls[1]?.body).toEqual({ kind: 'unklar' }))
   })
 

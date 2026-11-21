@@ -5,9 +5,23 @@
  * Onboarding profile endpoints (steuereule#29)
  * OpenAPI spec version: 1.0
  */
+export type PrintoutCheckDtoMissingChildFieldsItem = typeof PrintoutCheckDtoMissingChildFieldsItem[keyof typeof PrintoutCheckDtoMissingChildFieldsItem];
+
+
+export const PrintoutCheckDtoMissingChildFieldsItem = {
+  child: 'child',
+  taxId: 'taxId',
+  kinship: 'kinship',
+  familyBenefitsOffice: 'familyBenefitsOffice',
+  residence: 'residence',
+  otherParent: 'otherParent',
+} as const;
+
 export interface PrintoutCheckDto {
   /** What stops the printout: missing Stammdaten keys, `ehegatte` (married, not yet supported), or an Anlage that is not printable yet (`anlageV`, `anlageKap`, `anlageNGre`, `anlageRAvBav`, `anlageRAus`). Empty = printable. */
   missing: string[];
+  /** Which details of the children are behind `kinder` in `missing`, so the hint names them: `child` = children were named but none is recorded, `residence` = whether the child lived in Germany all year, `otherParent` = the other parent. Empty without `kinder`. */
+  missingChildFields: PrintoutCheckDtoMissingChildFieldsItem[];
 }
 
 /**
@@ -27,6 +41,11 @@ export const LiveFormInstanceDtoPerson = {
  */
 export type LiveFormInstanceDtoValues = {[key: string]: string | true};
 
+/**
+ * The Zeile each of these fields stands in on the Vordruck of this tax year; a box in the page head has none.
+ */
+export type LiveFormInstanceDtoLines = {[key: string]: string};
+
 export interface LiveFormInstanceDto {
   /**
      * Whose copy it is when the form says so (Anlage N, R, KAP, N-Gre of a couple); null otherwise.
@@ -40,6 +59,8 @@ export interface LiveFormInstanceDto {
   entityId: string | null;
   /** The AcroForm field ids of this copy and what is printed in them; `true` = a cross. */
   values: LiveFormInstanceDtoValues;
+  /** The Zeile each of these fields stands in on the Vordruck of this tax year; a box in the page head has none. */
+  lines: LiveFormInstanceDtoLines;
 }
 
 export interface LiveFormDto {

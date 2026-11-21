@@ -10792,7 +10792,8 @@
               "keine-abgeltung-einbehalten",
               "krypto-gegated",
               "kap-depot-nicht-beantwortet",
-              "keine-kapitalertraege"
+              "keine-kapitalertraege",
+              "uebriges-einkommen-unbekannt"
             ],
             "description": "Why the Günstigerprüfung does not apply (only when kind === \"nicht-anwendbar\")."
           }
@@ -17080,10 +17081,29 @@
             "items": {
               "type": "string"
             }
+          },
+          "missingChildFields": {
+            "type": "array",
+            "example": [
+              "taxId"
+            ],
+            "description": "Which details of the children are behind `kinder` in `missing`, so the hint names them: `child` = children were named but none is recorded, `residence` = whether the child lived in Germany all year, `otherParent` = the other parent. Empty without `kinder`.",
+            "items": {
+              "type": "string",
+              "enum": [
+                "child",
+                "taxId",
+                "kinship",
+                "familyBenefitsOffice",
+                "residence",
+                "otherParent"
+              ]
+            }
           }
         },
         "required": [
-          "missing"
+          "missing",
+          "missingChildFields"
         ]
       },
       "LiveFormInstanceDto": {
@@ -17124,12 +17144,23 @@
               "anlN.kz110": "42000"
             },
             "description": "The AcroForm field ids of this copy and what is printed in them; `true` = a cross."
+          },
+          "lines": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "example": {
+              "anlN.kz110": "5"
+            },
+            "description": "The Zeile each of these fields stands in on the Vordruck of this tax year; a box in the page head has none."
           }
         },
         "required": [
           "person",
           "entityId",
-          "values"
+          "values",
+          "lines"
         ]
       },
       "LiveFormDto": {
@@ -19116,6 +19147,29 @@
           "net"
         ]
       },
+      "ChDailyBenefitDto": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "sickness",
+              "accident"
+            ],
+            "description": "Krankentaggeld, or a benefit after an accident (Unfalltaggeld, UVG, SUVA), which is taxed differently."
+          },
+          "amountChf": {
+            "type": "number",
+            "nullable": true,
+            "example": 12345,
+            "description": "Whole CHF as the remark prints it; null when it names no amount."
+          }
+        },
+        "required": [
+          "kind",
+          "amountChf"
+        ]
+      },
       "ParsedChCertificateResponseDto": {
         "type": "object",
         "properties": {
@@ -19178,6 +19232,16 @@
             "type": "boolean",
             "description": "Box F: free transport between home and work."
           },
+          "dailyBenefit": {
+            "nullable": true,
+            "description": "A paid-out daily benefit the remarks name („KK-Taggeld Verrechnung“). The certificate does not say whether it is part of Ziffer 8: the app asks, and never writes it on its own.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ChDailyBenefitDto"
+              }
+            ]
+          },
           "missing": {
             "description": "Ziffern every certificate carries that could not be read.",
             "type": "array",
@@ -19207,6 +19271,7 @@
           "checks",
           "canteen",
           "freeTransport",
+          "dailyBenefit",
           "missing",
           "stagedActionIds",
           "securityBlocked"

@@ -1,6 +1,6 @@
 import { Inject, Injectable, Optional } from '@nestjs/common'
 import { InvalidInputError, NotFoundError } from '../common/domain-error.js'
-import { calculateDifferentialChildBenefit, isValidChildBirthDate, calculateChildrenStatus, type ChildData } from '@steuereule/core'
+import { CHILDCARE_PROVIDER_WIDTH_PT, calculateDifferentialChildBenefit, fitsPrintBox, isValidChildBirthDate, calculateChildrenStatus, type ChildData } from '@steuereule/core'
 import { AuditService } from '../audit/audit.service.js'
 import { CROSS_BORDER_SALARY_STATEMENT_REPOSITORY, type CrossBorderSalaryStatementRepository } from '../ch-salary-certificate/ch-salary-certificate.repository.js'
 import { HouseholdAccessService } from '../household/household-access.service.js'
@@ -59,6 +59,15 @@ function toDto(r: ChildRecord, effectiveSwissEur: number | null, year: number): 
   }
 }
 
+/**
+ * Anlage Kind Z. 67 takes the provider only as wide as its box prints (the same rule the mask applies):
+ * a longer text would be stored here and refused by the printout after payment (ADR-0090).
+ */
+function assertProviderFitsFormLine(provider: string | null | undefined): void {
+  if (provider == null || fitsPrintBox(provider.trim(), CHILDCARE_PROVIDER_WIDTH_PT)) return
+  throw new InvalidInputError('BETREUUNG_ANBIETER_ZU_LANG', 'The childcare provider is longer than the line of Anlage Kind (Zeile 67) prints.')
+}
+
 @Injectable()
 export class ChildrenService {
   constructor(
@@ -110,6 +119,7 @@ export class ChildrenService {
     if (!isValidChildBirthDate(dto.geburtsdatum, taxYear)) {
       throw new InvalidInputError('GEBURTSDATUM_INVALID', 'The birth date is not valid for this tax year.')
     }
+    assertProviderFitsFormLine(dto.childcareProvider)
     const owner = await this.owner(userId, taxYear)
     await this.repository.create(owner, taxYear, dto)
     const records = await this.repository.listForUserAndYear(owner, taxYear)
@@ -120,6 +130,7 @@ export class ChildrenService {
     if (dto.geburtsdatum && !isValidChildBirthDate(dto.geburtsdatum, taxYear)) {
       throw new InvalidInputError('GEBURTSDATUM_INVALID', 'The birth date is not valid for this tax year.')
     }
+    assertProviderFitsFormLine(dto.childcareProvider)
     const owner = await this.owner(userId, taxYear)
     const updated = await this.repository.update(owner, taxYear, id, dto)
     if (!updated) {

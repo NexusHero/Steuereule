@@ -85,6 +85,8 @@ export function PrintoutScreen({ year, payment, onBack, onCompleteDetails, onCom
   const married = missing.includes('ehegatte')
   const riester = missing.includes('riester')
   const kinder = missing.includes('kinder')
+  // Which of the children's details are missing; an API that does not name them gets the general hint.
+  const childFields = check.data.data.missingChildFields ?? []
   const rental = missing.includes('vermietung')
   const capital = missing.includes('kapital')
   const crossBorder = missing.includes('grenzgaenger')
@@ -202,7 +204,11 @@ export function PrintoutScreen({ year, payment, onBack, onCompleteDetails, onCom
           ) : null}
           {kinder ? (
             <>
-              <Text style={styles.sectionBody}>{t('ausdruck.fehlendKinder')}</Text>
+              <Text style={styles.sectionBody} testID="ausdruck-kinder-fehlend">
+                {childFields.length > 0
+                  ? t('ausdruck.fehlendKinderGenau', { felder: childFields.map((field) => t(`ausdruck.kinderFelder.${field}`)).join(', ') })
+                  : t('ausdruck.fehlendKinder')}
+              </Text>
               <Button variant="ghost" onPress={onCompleteChildren} testID="ausdruck-kinder-ergaenzen">
                 {t('ausdruck.kinderErgaenzen')}
               </Button>
