@@ -2,6 +2,10 @@ import type { PrismaClient } from '@prisma/client'
 import { prismaAdapter } from '@better-auth/prisma-adapter'
 import { passkey } from '@better-auth/passkey'
 import { oauthProvider } from '@better-auth/oauth-provider'
+import { createAuthMiddleware } from 'better-auth/api'
+import { authIssuer, mcpResourceUrls } from './mcp-oauth.js'
+import { ensureMcpResource, type ResourceAdapter } from './mcp-resource-seed.js'
+import { sweepUnusedClients, type SweepAdapter } from './oauth-client-sweep.js'
 import { betterAuth, type Auth, type BetterAuthOptions } from 'better-auth'
 import { getCookies } from 'better-auth/cookies'
 import { deviceAuthorization, haveIBeenPwned, jwt, twoFactor } from 'better-auth/plugins'
@@ -19,6 +23,8 @@ export const OAUTH_SCOPES = [
   'steuerdaten:write',
   'belege:write',
   'zahllink:read',
+  // Refresh tokens for the assistant: access tokens last 15 minutes, the connection until revoked (ADR-0052 §10).
+  'offline_access',
 ] as const
 
 export type OAuthScope = (typeof OAUTH_SCOPES)[number]
@@ -87,6 +93,10 @@ function buildOptions(options: CreateBetterAuthOptions & { rateLimitStorage: Res
   const deviceAuthorizationPlugin = deviceAuthorization({ expiresIn: '2m', verificationUri: `${webAppUrl}/device` })
   assertDeviceAuthorizationDisabledPathsComplete(deviceAuthorizationPlugin)
 
+  // Both transports of the MCP endpoint are resources a client may ask a token for (ADR-0052 amendment 6).
+  const ensureResources = mcpResourceUrls(baseUrl).map((identifier) => ensureMcpResource(identifier, OAUTH_SCOPES))
+  const sweepClients = sweepUnusedClients()
+
   return {
     baseURL: baseUrl,
     secret,
@@ -121,13 +131,24 @@ function buildOptions(options: CreateBetterAuthOptions & { rateLimitStorage: Res
         jwks: {
           disablePrivateKeyEncryption: true,
         },
+        // One issuer for signing, the authorization-server metadata and our bearer check (ADR-0052 §2).
+        jwt: { issuer: authIssuer(baseUrl) },
       }),
       oauthProvider({
         scopes: [...OAUTH_SCOPES],
         accessTokenExpiresIn: 15 * 60,
         requirePKCE: true,
         allowDynamicClientRegistration: true,
+        // An MCP client registers itself before the user signs in (RFC 7591), as assistants do: the user
+        // pastes the server address and nothing else. Registration grants nothing; it is rate-limited per
+        // address, and a client nobody approved is swept after a week (ADR-0052 amendment 5).
         allowUnauthenticatedClientRegistration: true,
+        // MCP clients on the user's machine register a loopback redirect without `application_type`:
+        // such a client is native (RFC 8252), one with an https redirect stays a web client.
+        clientRegistrationDefaultApplicationType: 'infer',
+        // A client may ask a token for every enabled resource; the one resource is the MCP endpoint. Linking
+        // clients one by one would need the static `resources` option, which seeds while the app boots.
+        enforcePerClientResources: false,
         consentPage: `${webAppUrl}/oauth/consent`,
         loginPage: `${webAppUrl}/login`,
       }),
@@ -139,6 +160,7 @@ function buildOptions(options: CreateBetterAuthOptions & { rateLimitStorage: Res
       customRules: {
         '/verify-password': { window: 10, max: 3 },
         '/device': { window: 60, max: 10 },
+        '/oauth2/register': { window: 60 * 60, max: 10 },
       },
     },
     advanced: {
@@ -151,6 +173,14 @@ function buildOptions(options: CreateBetterAuthOptions & { rateLimitStorage: Res
     },
     session: {
       freshAge: 0,
+    },
+    hooks: {
+      // The MCP endpoint is the protected resource a client asks a token for (RFC 8707). Created on the
+      // first OAuth request, not via the plugin's `resources` option, which seeds while the app boots.
+      before: createAuthMiddleware(async (ctx) => {
+        if (ctx.path.startsWith('/oauth2/')) await Promise.all(ensureResources.map((ensure) => ensure(ctx.context.adapter as unknown as ResourceAdapter)))
+        if (ctx.path === '/oauth2/register') await sweepClients(ctx.context.adapter as unknown as SweepAdapter)
+      }),
     },
     databaseHooks: {
       session: {

@@ -1,5 +1,5 @@
-import { Inject, Injectable } from '@nestjs/common'
-import { ConflictError, InvalidInputError, NotFoundError } from '../common/domain-error.js'
+import { Inject, Injectable, Optional } from '@nestjs/common'
+import { ConflictError, ForbiddenError, InvalidInputError, NotFoundError } from '../common/domain-error.js'
 import {
   validateFieldValue,
   ANNEXES,
@@ -17,11 +17,14 @@ import {
   type Marking,
   type Screen,
 } from '@steuereule/core'
+import { AssistantTaskService } from '../assistant-task/assistant-task.service.js'
+import type { AssistantTaskDecision } from '../assistant-task/assistant-task.repository.js'
 import { AuditService } from '../audit/audit.service.js'
+import { LinkService } from '../link/link.service.js'
 import { PROVENANCE_REPOSITORY, type ProvenanceRecord, type ProvenanceRepository } from '../marking/marking.repository.js'
 import { assertAiWritable } from './ai-write-policy.js'
 import { FIELD_ACCESS, type FieldAccess, type ScreenAccess } from './field-access.js'
-import type { ConfirmationResponseDto, ProvenanceDto, FieldProvenanceDto } from './dto/confirmation.dto.js'
+import type { AssistantTaskDto, ConfirmationResponseDto, ProvenanceDto, FieldProvenanceDto } from './dto/confirmation.dto.js'
 
 export type WriteResult = 'geschrieben' | 'vorschlag' | 'unveraendert'
 
@@ -60,7 +63,38 @@ export class ConfirmationService {
     @Inject(PROVENANCE_REPOSITORY) private readonly repository: ProvenanceRepository,
     @Inject(FIELD_ACCESS) private readonly access: FieldAccess,
     @Inject(AuditService) private readonly auditService: AuditService,
+    /** Whose figures the user records as Person B (ADR-0054): their values are confirmed here too. */
+    @Optional() @Inject(LinkService) private readonly link?: Pick<LinkService, 'spouseForAdvisor'>,
+    /** The tasks the user's assistant left (#547); without the seam the overview carries none. */
+    @Optional() @Inject(AssistantTaskService) private readonly tasks?: Pick<AssistantTaskService, 'listOpen' | 'decide'>,
   ) {}
+
+  /** The open tasks of the user's own account, as the Cockpit and the confirmation screen show them. */
+  private async openTasks(userId: string, taxYear: number): Promise<AssistantTaskDto[]> {
+    const open = (await this.tasks?.listOpen(userId, taxYear)) ?? []
+    if (open.length > 0) await this.auditService.append({ userId, action: 'READ', resource: 'assistent-aufgabe' })
+    return open.map((t) => ({ id: t.id, kind: t.kind, text: t.text, assistant: t.assistant, createdAt: t.createdAt.toISOString() }))
+  }
+
+  /** The user settles or discards a task; the assistant reads the state with `aufgaben_auflisten`. */
+  async decideTask(userId: string, taxYear: number, taskId: string, decision: AssistantTaskDecision): Promise<ConfirmationResponseDto> {
+    if (this.tasks === undefined) throw new NotFoundError('TASK_NOT_FOUND', 'There is no open task with this id in this tax year.')
+    await this.tasks.decide(userId, taxYear, taskId, decision)
+    return this.overview(userId, taxYear)
+  }
+
+  /** The Person B whose data the user records in a joint return; null when B keeps an own account. */
+  private async recordedSpouse(userId: string, taxYear: number): Promise<string | null> {
+    const spouse = await this.link?.spouseForAdvisor(userId, taxYear)
+    return spouse?.recordable ? spouse.spouseUserId : null
+  }
+
+  private async dataUserFor(userId: string, taxYear: number, person: 'A' | 'B'): Promise<string> {
+    if (person === 'A') return userId
+    const spouse = await this.recordedSpouse(userId, taxYear)
+    if (spouse === null) throw new ForbiddenError('PERSON_B_OWNS_DATA', 'Person B maintains their data in their own account.')
+    return spouse
+  }
 
   private address(key: string, taxYear: number): Address {
     let parts: ReturnType<typeof decomposeProvenanceKey>
@@ -220,17 +254,23 @@ export class ConfirmationService {
   }
 
   async overview(userId: string, taxYear: number): Promise<ConfirmationResponseDto> {
-    const open = (await this.list(userId, taxYear)).filter((r) => !r.confirmed || r.proposal !== null)
-    if (open.length === 0) return { annexes: [] }
+    const spouse = await this.recordedSpouse(userId, taxYear)
+    const isOpen = (r: ProvenanceRecord) => !r.confirmed || r.proposal !== null
+    const open = [
+      ...(await this.list(userId, taxYear)).filter(isOpen).map((record) => ({ record, dataUserId: userId, person: undefined })),
+      ...(spouse === null ? [] : (await this.list(spouse, taxYear)).filter(isOpen).map((record) => ({ record, dataUserId: spouse, person: 'B' as const }))),
+    ]
+    const tasks = await this.openTasks(userId, taxYear)
+    if (open.length === 0) return { annexes: [], tasks }
     await this.auditService.append({ userId, action: 'READ', resource: 'kennzeichnung' })
 
     const read = new Map<string, Promise<Readonly<Record<string, string | null>> | null>>()
     const values: { annex: Annex; dto: FieldProvenanceDto }[] = []
-    for (const r of open) {
+    for (const { record: r, dataUserId, person } of open) {
       const { screen, instance, field } = decomposeProvenanceKey(r.key)
       const access = this.access[screen]
-      const cacheKey = `${r.taxYear}|${screen}|${instance ?? ''}`
-      if (access !== undefined && !read.has(cacheKey)) read.set(cacheKey, access.read(userId, r.taxYear, instance))
+      const cacheKey = `${dataUserId}|${r.taxYear}|${screen}|${instance ?? ''}`
+      if (access !== undefined && !read.has(cacheKey)) read.set(cacheKey, access.read(dataUserId, r.taxYear, instance))
       const fields = access === undefined ? null : await read.get(cacheKey)
       values.push({
         annex: annexOf(r.key),
@@ -243,10 +283,12 @@ export class ConfirmationService {
           provenance: provenanceDto(r.provenance),
           confirmed: r.confirmed,
           proposal: r.proposal === null ? null : { value: r.proposal.value, provenance: provenanceDto(r.proposal.provenance) },
+          ...(person === undefined ? {} : { person }),
         },
       })
     }
     return {
+      tasks,
       annexes: ANNEXES.flatMap((annex) => {
         const own = values.filter((w) => w.annex === annex).map((w) => w.dto)
         return own.length === 0 ? [] : [{ annex, unconfirmed: own.filter((w) => !w.confirmed).length, values: own }]
@@ -257,22 +299,76 @@ export class ConfirmationService {
   async confirmAnnex(userId: string, taxYear: number, annex: Annex): Promise<ConfirmationResponseDto> {
     if (!(ANNEXES as readonly string[]).includes(annex)) throw new InvalidInputError('ANLAGE_UNKNOWN', `"${annex}" is not an Anlage.`)
     await this.repository.confirmAnnex(userId, [taxYear, YEAR_INDEPENDENT], annex)
+    // The user confirms the Anlage for the Person B they record, as they entered her figures (ADR-0054).
+    const spouse = await this.recordedSpouse(userId, taxYear)
+    if (spouse !== null) await this.repository.confirmAnnex(spouse, [taxYear, YEAR_INDEPENDENT], annex)
     return this.overview(userId, taxYear)
   }
 
-  async decideProposal(userId: string, taxYear: number, key: string, decision: 'annehmen' | 'verwerfen'): Promise<ConfirmationResponseDto> {
+  /**
+   * The user's assistant takes back what it entered itself (ADR-0052 amendment 2): its unconfirmed value
+   * is cleared, or its proposal on a value the user confirmed is dropped. Anything the user entered or
+   * confirmed, and anything another assistant wrote, stays.
+   */
+  async withdrawAssistantEntry(userId: string, taxYear: number, key: string, own: (provenance: Provenance | undefined) => boolean): Promise<'zurueckgenommen' | 'vorschlag-entfernt'> {
     const a = this.address(key, taxYear)
     const existing = await this.repository.find(userId, a.taxYear, key)
-    if (existing === null || existing.proposal === null) throw new NotFoundError('PROPOSAL_NOT_FOUND', `There is no open proposal for "${key}".`)
-    const marking: Marking = { ...existing, value: await this.currentValue(userId, a) }
-    if (decision === 'annehmen') {
-      const assumed = acceptProposal(marking)
-      await this.writeValue(userId, a, assumed.value)
-      await this.repository.save(userId, a.taxYear, assumed)
-    } else {
-      const rest = dismissProposal(marking)
+    if (existing?.proposal && own(existing.proposal.provenance)) {
+      const rest = dismissProposal({ ...existing, value: await this.currentValue(userId, a) })
       if (rest === null) await this.repository.remove(userId, a.taxYear, [key])
       else await this.repository.save(userId, a.taxYear, rest)
+      return 'vorschlag-entfernt'
+    }
+    if (existing && !existing.confirmed && existing.proposal === null && own(existing.provenance)) {
+      await this.writeValue(userId, a, null)
+      await this.repository.remove(userId, a.taxYear, [key])
+      return 'zurueckgenommen'
+    }
+    throw new ForbiddenError('NOT_OWN_ENTRY', `"${key}" is not an unconfirmed entry of this assistant; the user changes it in the app.`)
+  }
+
+  /** Drops the markings of a record that is gone (a child the assistant removed). */
+  async forget(userId: string, taxYear: number, keys: readonly string[]): Promise<void> {
+    if (keys.length > 0) await this.repository.remove(userId, taxYear, keys)
+  }
+
+  /** Values a non-user wrote outside this service (a child the assistant created): unconfirmed, with their source. */
+  async markUnconfirmed(userId: string, taxYear: number, keys: readonly string[], provenance: Provenance): Promise<void> {
+    if (provenance.kind === 'nutzer') throw new Error('markUnconfirmed is for non-user writes.')
+    for (const key of keys) {
+      const a = this.address(key, taxYear)
+      await this.repository.save(userId, a.taxYear, { key, provenance, confirmed: false, proposal: null })
+    }
+  }
+
+  /**
+   * A value a non-user offers that must not be written before the user takes it (a booking draft of the
+   * user's assistant, ADR-0052 amendment 6): an open proposal on an empty field, decided with
+   * `decideProposal`. Only for a field no one has marked yet.
+   */
+  async fileProposal(userId: string, taxYear: number, key: string, value: string, provenance: Provenance): Promise<void> {
+    if (provenance.kind === 'nutzer') throw new Error('fileProposal is for non-user proposals.')
+    const a = this.address(key, taxYear)
+    if ((await this.repository.find(userId, a.taxYear, key)) !== null || (await this.currentValue(userId, a)) !== null) {
+      throw new ConflictError('PROPOSAL_TARGET_TAKEN', `"${key}" already holds a value or a marking.`)
+    }
+    await this.repository.save(userId, a.taxYear, { key, provenance: { kind: 'nutzer' }, confirmed: true, proposal: { value, provenance } })
+  }
+
+  async decideProposal(userId: string, taxYear: number, key: string, decision: 'annehmen' | 'verwerfen', person: 'A' | 'B' = 'A'): Promise<ConfirmationResponseDto> {
+    const dataUserId = await this.dataUserFor(userId, taxYear, person)
+    const a = this.address(key, taxYear)
+    const existing = await this.repository.find(dataUserId, a.taxYear, key)
+    if (existing === null || existing.proposal === null) throw new NotFoundError('PROPOSAL_NOT_FOUND', `There is no open proposal for "${key}".`)
+    const marking: Marking = { ...existing, value: await this.currentValue(dataUserId, a) }
+    if (decision === 'annehmen') {
+      const assumed = acceptProposal(marking)
+      await this.writeValue(dataUserId, a, assumed.value)
+      await this.repository.save(dataUserId, a.taxYear, assumed)
+    } else {
+      const rest = dismissProposal(marking)
+      if (rest === null) await this.repository.remove(dataUserId, a.taxYear, [key])
+      else await this.repository.save(dataUserId, a.taxYear, rest)
     }
     return this.overview(userId, taxYear)
   }

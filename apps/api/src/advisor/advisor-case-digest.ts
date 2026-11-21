@@ -4,6 +4,7 @@ import {
   ENTRY_RULE_CODES,
   PERSON_B_HANDLE,
   provenanceKey,
+  type AdvisorEstimateLine,
   type AdvisorEstimateReading,
   type AdvisorHousehold,
   type AdvisorPreviewEffect,
@@ -52,7 +53,40 @@ export function estimateReadingFrom(status: TaxEstimateStatus): AdvisorEstimateR
     prepaymentsEur: status.prepayments ?? 0,
     churchTaxOpen: status.churchTaxOpen,
     jointAssessment: status.jointAssessment === true,
+    breakdown: estimateLines(status),
   }
+}
+
+/**
+ * The estimate's calculation as lines the owl quotes (real-data run: its own table took the § 35a
+ * reduction off the income tax a second time). The figures are the estimate's, none is computed here;
+ * a step the estimate does not name is left out.
+ */
+function estimateLines(status: Extract<TaxEstimateStatus, { kind: 'spanne' }>): AdvisorEstimateLine[] {
+  const line = (label: string, value: number | { readonly from: number; readonly to: number }): AdvisorEstimateLine =>
+    typeof value === 'number' ? { label, amountEur: value } : value.from === value.to ? { label, amountEur: value.from } : { label, fromEur: value.from, toEur: value.to }
+  const steps = status.breakdown
+  const child = steps?.childAllowance
+  const persons = steps?.persons ?? []
+  const who = (index: number) => (persons.length > 1 ? ` Person ${index === 0 ? 'A' : 'B'}` : '')
+  return [
+    ...persons.flatMap((person, i) => [line(`Einkünfte${who(i)} (nach Werbungskosten)`, person.incomeEur), line(`Werbungskosten${who(i)}`, person.workExpensesEur)]),
+    ...(steps?.rentalSurplusEur !== undefined ? [line('Einkünfte aus Vermietung', steps.rentalSurplusEur)] : []),
+    ...(steps ? [line('Summe der Einkünfte', steps.totalIncomeEur)] : []),
+    line('Vorsorgeaufwendungen (abziehbar)', status.provision),
+    line('Sonderausgaben', status.specialExpenses),
+    ...(steps && steps.extraordinaryBurdenEur > 0 ? [line('Außergewöhnliche Belastungen (abziehbar)', steps.extraordinaryBurdenEur)] : []),
+    ...(child?.used ? [line('Kinderfreibeträge (angesetzt)', child.allowanceEur)] : []),
+    line('Zu versteuerndes Einkommen', status.taxableIncome),
+    ...(steps ? [line('Tarifliche Einkommensteuer', steps.tariffTax), line('Steuerermäßigung § 35a EStG (schon abgezogen)', -steps.householdReductionEur)] : []),
+    ...(child?.used ? [line('Hinzugerechnetes Kindergeld', child.childBenefitEur)] : []),
+    ...(steps?.capitalFlatTaxEur !== undefined ? [line('Abgeltungsteuer auf Kapitalerträge', steps.capitalFlatTaxEur)] : []),
+    line('Festzusetzende Einkommensteuer', status.incomeTax),
+    line('Solidaritätszuschlag', status.solidaritaetszuschlag),
+    line('Angerechnete Steuer (Lohnsteuer, Quellensteuer)', status.anrechnung),
+    line('Vorauszahlungen', status.prepayments ?? 0),
+    line('Ergebnis (positiv = Erstattung, negativ = Nachzahlung)', status.result),
+  ]
 }
 
 export function effectFromEstimates(states: { readonly before: TaxEstimateStatus; readonly after: TaxEstimateStatus } | null): AdvisorPreviewEffect {

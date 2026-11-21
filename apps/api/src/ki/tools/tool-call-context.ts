@@ -22,7 +22,7 @@ import {
 } from '@steuereule/core'
 import { type StageTargetCheck } from '../advisor-safety.js'
 import { toolResultLine } from '../advisor-tool-results.js'
-import { toolResult, humanReason, type RejectedDraft, type ToolName } from '../advisor-tools.js'
+import { toolResult, userReason, type RejectedDraft, type ToolName } from '../advisor-tools.js'
 
 /** One tool call of the model's last message. */
 export interface ToolCall<N extends string = ToolName> {
@@ -123,7 +123,7 @@ export function createToolCallContext(input: {
     answer({ ok: false, error: target.error })
   }
   const refuseDraft = (label: string, screen: string, error: string, openScreen?: Screen, consentRequired?: true): void => {
-    turn.rejectedDrafts = [...turn.rejectedDrafts, { label, screen, reason: humanReason(error), ...(openScreen ? { openScreen } : {}), ...(consentRequired ? { consentRequired } : {}) }]
+    turn.rejectedDrafts = [...turn.rejectedDrafts, { label, screen, reason: userReason(error), ...(openScreen ? { openScreen } : {}), ...(consentRequired ? { consentRequired } : {}) }]
   }
   const resolveInstance = (screen: Screen, field: string, raw: string | null | undefined): RecordHandleResolution | { ok: true; id: null; handle: null } => {
     if (!fieldSpec(screen, field)?.perInstance) return { ok: true, id: null, handle: null }

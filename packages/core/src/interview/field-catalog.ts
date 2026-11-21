@@ -123,6 +123,8 @@ export function isAiWritableField(screen: string, field: string, personalDataCon
 const amount: FieldValueKind = { kind: 'amount', max: MAX_AMOUNT }
 const signedAmount: FieldValueKind = { kind: 'amount', max: MAX_AMOUNT, signed: true }
 const text = (maxLength: number): FieldValueKind => ({ kind: 'text', maxLength })
+/** A day the masks keep as TT.MM.JJJJ (commute periods, childcare): checked here too, not only when the mask saves it. */
+const germanDate: FieldValueKind = { kind: 'pattern', pattern: /^\d{2}\.\d{2}\.\d{4}$/, shape: 'Datum TT.MM.JJJJ' }
 const integer = (min: number, max: number): FieldValueKind => ({ kind: 'integer', min, max })
 const oneOf = (values: readonly string[]): FieldValueKind => ({ kind: 'enum', values })
 const bool: FieldValueKind = { kind: 'boolean' }
@@ -152,6 +154,8 @@ const DECLARED: Readonly<Record<Screen, { readonly perInstance: boolean; readonl
       wohnort: text(100),
       beruf: text(100),
       religion: oneOf(RELIGION_KEYS),
+      /** Liable to church tax or not, without the confession (ADR-0052 amendment 3). */
+      kirchensteuerpflichtig: bool,
       familienstand: oneOf(MARITAL_STATUSES),
       familienstandSeit: date,
       iban: { kind: 'iban' },
@@ -198,12 +202,12 @@ const DECLARED: Readonly<Record<Screen, { readonly perInstance: boolean; readonl
       accountFeesEur: amount,
       otherWorkExpensesEur: amount,
       otherWorkExpensesNote: text(100),
-      periodFrom: text(10),
-      periodTo: text(10),
+      periodFrom: germanDate,
+      periodTo: germanDate,
       secondOneWayKm: integer(0, 999),
       secondTransport: oneOf(['pkw', 'oepnv', 'andere']),
-      secondFrom: text(10),
-      secondTo: text(10),
+      secondFrom: germanDate,
+      secondTo: germanDate,
       /** The first place of work (Anlage N/N-Gre „Arbeitsort“) — an address, so personal (ADR-0091). */
       workplace: text(120),
       secondWorkplace: text(120),
@@ -239,6 +243,7 @@ const DECLARED: Readonly<Record<Screen, { readonly perInstance: boolean; readonl
       pkArbeitgeberChf: amount,
       pkArbeitgeberGesamtChf: amount,
       steuerfreiesKrankentaggeldChf: amount,
+      steuerfreiesUnfalltaggeldChf: amount,
       krankentaggeldArbeitgeberProzent: percent,
       krankentaggeldArbeitgeberChf: amount,
       nbuvArbeitgeberProzent: percent,
@@ -307,8 +312,8 @@ const DECLARED: Readonly<Record<Screen, { readonly perInstance: boolean; readonl
       swissFamilyAllowanceEur: { kind: 'amount', max: 9_999_999 },
       childcareEur: { kind: 'amount', max: 9_999_999 },
       childcareProvider: text(45),
-      childcareFrom: text(10),
-      childcareTo: text(10),
+      childcareFrom: germanDate,
+      childcareTo: germanDate,
       swissFamilyAllowancePayer: oneOf(['A', 'B'] as const),
       healthInsuranceAbroad: bool,
     },
@@ -335,11 +340,16 @@ const DECLARED: Readonly<Record<Screen, { readonly perInstance: boolean; readonl
  */
 const HINTS: Readonly<Partial<Record<Screen, Readonly<Record<string, string>>>>> = {
   interview: {
-    einkuenfte: 'Pflichtfrage: Kapitalerträge über dem Sparer-Pauschbetrag bzw. Freistellungsauftrag oder ohne deutschen Steuerabzug (z. B. ausländische Bank) = „Kapitalerträge“; Mieteinnahmen = „Vermietung“; nichts davon = „Nein“',
+    einkuenfte: 'Pflichtfrage: Kapitalerträge (Zinsen, Dividenden, ein Depot; auch wenn ein Freistellungsauftrag sie abdeckt oder ohne deutschen Steuerabzug, z. B. ausländische Bank) = „Kapitalerträge“, dann nach der Höhe fragen; Mieteinnahmen = „Vermietung“; beides = „Beides“; „Nein“ nur, wenn der Nutzer sagt, dass es weder Kapitalerträge noch Mieten gab',
     'vorauszahlungen-gate': '„Ja“, wenn das Finanzamt für das Jahr Einkommensteuer-Vorauszahlungen festgesetzt hat',
     'vorauszahlungen-betrag': 'Summe aller für das Jahr gezahlten Vorauszahlungen in ganzen Euro: Einkommensteuer plus Solidaritätszuschlag plus Kirchensteuer zusammen, es gibt kein eigenes Soli-Feld (z. B. „26.004 Euro Einkommensteuer und 747 Euro Soli“ → 26751); die App setzt vorauszahlungen-gate dazu selbst auf „Ja“',
   },
+  stammdaten: {
+    kirchensteuerpflichtig: '„true“ = kirchensteuerpflichtig, „false“ = nicht; ohne die Konfession, die der Nutzer selbst einträgt. Eine eingetragene Konfession geht vor',
+    religion: 'ELSTER-Schlüssel: VD = keine Religionszugehörigkeit (keine Kirchensteuer), EV = evangelisch, RK = römisch-katholisch, AK = altkatholisch; die übrigen Schlüssel sind Freireligiöse, Israelitische und Jüdische Gemeinden',
+  },
   kind: {
+    childBenefitClaimEur: 'Kindergeldanspruch für dieses Kind in Euro im Jahr (Monate × Monatsbetrag, z. B. 12 × 250 = 3000); die App vergleicht ihn mit dem Kinderfreibetrag',
     healthInsuranceAbroad: '„true“, wenn das Kind bei einer ausländischen Kasse versichert ist (z. B. Schweizer Grundversicherung); dann Anlage Kind Kz 89 statt Kz 66/67',
     swissFamilyAllowanceEur: 'Schweizer Kinder-/Familienzulage für dieses Kind in Euro im Jahr, wenn sie NICHT im Bruttolohn Ziffer 8 des Lohnausweises steckt; steckt sie drin, stattdessen chLohnausweis.familienzulagenChf (die App verteilt sie auf die Kinder)',
     childcareEur: 'Kinderbetreuungskosten, die die Eltern gezahlt haben (Kita, Tagesmutter, Hort), Euro im Jahr, ohne Verpflegung; Anlage Kind Kz 51',
@@ -382,6 +392,7 @@ const HINTS: Readonly<Partial<Record<Screen, Readonly<Record<string, string>>>>>
     pkArbeitgeberGesamtChf: 'alle Arbeitgeberbeiträge an die Pensionskasse, obligatorisch und überobligatorisch zusammen; den überobligatorischen Teil (Zeile 20) rechnet die App',
     krankentaggeldChf: 'Prämie des Arbeitnehmers zur Krankentaggeldversicherung, N-Gre Zeile 80, nicht das ausgezahlte Taggeld',
     steuerfreiesKrankentaggeldChf: 'ausgezahltes steuerfreies Krankentaggeld, NUR wenn es im Bruttolohn Ziffer 8 enthalten ist (N-Gre Zeile 9); der Lohnausweis sagt das nicht eindeutig: immer nachfragen und nur über `propose_two_paths` vorschlagen (ein Weg 0 = nicht abziehen, ein Weg der Betrag)',
+    steuerfreiesUnfalltaggeldChf: 'NUR das ausgezahlte Taggeld der Unfallversicherung (UVG/SUVA), und nur, wenn es im Bruttolohn Ziffer 8 enthalten ist (N-Gre Zeile „SUVA – Geld“); Krankentaggeld gehört in steuerfreiesKrankentaggeldChf; es ist steuerfrei, erhöht aber den Steuersatz (Progressionsvorbehalt, § 32b EStG); der Lohnausweis sagt nicht eindeutig, ob es in Ziffer 8 steckt: immer nachfragen und nur über `propose_two_paths` vorschlagen (ein Weg 0 = nicht abziehen, ein Weg der Betrag)',
     'andere-leistungen': 'Lohnausweis Ziffer 7; kann negativ sein (z. B. -75)',
     krankenkasseChf: 'nur die Grundversicherung nach KVG (Basisabsicherung), ohne Zusatzversicherungen; zeigt der Beleg die Aufteilung nicht, frag nach',
     krankenkasseZusatzChf: 'Zusatzversicherungen nach VVG (Spital-, Zahn-, Komplementärversicherung), sonstige Vorsorge und keine Basisabsicherung; 0, wenn es keine gibt',
@@ -455,7 +466,10 @@ function withoutTrailingUnit(raw: string): string {
   return unit === undefined ? raw : trimmed.slice(0, -unit.length)
 }
 
-/** `"5.000 €"`, `"5 000"`, `"5'000 CHF"`, `"5000,00"` → `"5000"`; anything with real decimals is refused. */
+/**
+ * `"5.000 €"`, `"5 000"`, `"5'000 CHF"`, `"5000,00"` → `"5000"`. Cents and rappen are rounded half up
+ * (`"948,60"` → `"949"`): receipts print them, the forms take whole amounts.
+ */
 function tidyAmount(raw: string, signed = false): string | null {
   const unsigned = withoutTrailingUnit(raw).trim()
   // A typed minus, the typographic one, or the Swiss „–“ in front of the figure.
@@ -466,9 +480,12 @@ function tidyAmount(raw: string, signed = false): string | null {
 }
 
 function tidyUnsignedAmount(bare: string): string | null {
-  const withoutZeroCents = bare.replace(/[.,]0{1,2}$/, '')
-  const withoutGrouping = /^\d{1,3}([.\s'’]\d{3})+$/.test(withoutZeroCents) ? withoutZeroCents.replace(/[.\s'’]/g, '') : withoutZeroCents
-  return /^\d+$/.test(withoutGrouping) ? String(Number(withoutGrouping)) : null
+  // One or two digits after the last separator are cents; three are a thousands group.
+  const [, wholePart = bare, cents] = /^(.*\d)[.,](\d{1,2})$/.exec(bare) ?? []
+  const withoutGrouping = /^\d{1,3}([.\s'’]\d{3})+$/.test(wholePart) ? wholePart.replace(/[.\s'’]/g, '') : wholePart
+  if (!/^\d+$/.test(withoutGrouping)) return null
+  const roundsUp = cents !== undefined && Number(cents.padEnd(2, '0')) >= 50
+  return String(Number(withoutGrouping) + (roundsUp ? 1 : 0))
 }
 
 const fold = (input: string): string =>

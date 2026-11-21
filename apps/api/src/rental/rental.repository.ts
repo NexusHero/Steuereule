@@ -63,4 +63,6 @@ export interface RentalRepository {
   listForUser(userId: string): Promise<RentalObjectRecord[]>
   setField(userId: string, taxYear: number, propertyId: string, field: RentalFieldId, value: string | null): Promise<RentalObjectRecord | null>
   setAddress(userId: string, taxYear: number, propertyId: string, attributes: RentalAttributes): Promise<RentalObjectRecord | null>
+  /** Removes the object of that year; false when the account has none with this id. */
+  delete(userId: string, taxYear: number, propertyId: string): Promise<boolean>
 }

@@ -65,6 +65,10 @@ export class FakeRentalRepository implements RentalRepository {
     return Promise.resolve(updated)
   }
 
+  delete(userId: string, taxYear: number, propertyId: string): Promise<boolean> {
+    return Promise.resolve(this.store.delete(`${key(userId, taxYear)}::${propertyId}`))
+  }
+
   /** Test seam: seed a full record directly, bypassing the create/setFeld paths. */
   seed(record: RentalObjectRecord): void {
     this.store.set(`${key(record.userId, record.taxYear)}::${record.id}`, record)

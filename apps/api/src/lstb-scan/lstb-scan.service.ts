@@ -8,8 +8,9 @@ import { ReceiptService } from '../receipt/receipt.service.js'
 import type { ConfirmLstbScanDto } from './dto/confirm-lstb-scan.dto.js'
 
 /**
- * „Werte übernehmen“ of a scanned LStB (#444, ADR-0008): one transaction writes all three
- * values with Beleg provenance and marks the staged advisor proposals as applied.
+ * „Werte übernehmen“ of a scanned LStB (#444, ADR-0008): one transaction writes the three values
+ * and every further line confirmed with them, with Beleg provenance, and marks the staged advisor
+ * proposals as applied.
  */
 @Injectable()
 export class LstbScanService {
@@ -41,8 +42,12 @@ export class LstbScanService {
         },
         { receiptId, overwriteExisting: dto.overwriteExisting === true, addToExisting: dto.addToExisting === true },
       )
+      // The further lines in the same step: a value refused above writes none of them either.
+      const adding = dto.addToExisting === true
+      await this.lstbService.applyScannedLines(targetUserId, taxYear, { lines: dto.lines ?? {}, arbeitgeber: dto.arbeitgeber ?? null }, { receiptId, addToExisting: adding })
+      const after = dto.lines !== undefined && Object.keys(dto.lines).length > 0 ? await this.lstbService.getState(targetUserId, taxYear) : response
       await this.advisorService.markLstbActionsApplied(actorUserId, taxYear, dto.actionIds ?? [])
-      return response
+      return after
     })
   }
 }

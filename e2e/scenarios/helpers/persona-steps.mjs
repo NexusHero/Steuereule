@@ -86,16 +86,15 @@ export async function assertPrintoutOpen(page, subject) {
 }
 
 /**
- * Opens the submission from the cockpit, fails unless the printout still waits, and goes back.
- * UX review H3: „Verheiratet“ in the interview already set up the joint return, so the printout waits for the
- * Veranlagungsart comparison (or its skip) instead of being open before the master data.
+ * Opens the submission from the cockpit for a recorded joint return and goes back. Echtdatenlauf 4 (cf0373ba): the
+ * joint return is a fact, so the married question is gone, and the Veranlagungsart comparison is an optional extra
+ * that no longer holds the printout back.
  */
-export async function assertPrintoutWaitsForComparison(page, subject) {
+export async function assertComparisonIsOptional(page, subject) {
   await page.locator('[data-testid="cockpit-abgabe-vorbereiten"]').click()
-  const printBtn = page.locator('[data-testid="abgabe-zum-ausdruck"]')
-  await printBtn.waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator('[data-testid="abgabe-vergleich-ueberspringen"]').waitFor({ state: 'visible', timeout: 10_000 })
-  if (!(await printBtn.isDisabled())) fail(`Expected abgabe-zum-ausdruck to wait for the comparison in ${subject}`)
+  await page.locator('[data-testid="abgabe-zum-ausdruck"]').waitFor({ state: 'visible', timeout: 10_000 })
+  await page.locator('[data-testid="abgabe-vergleich-oeffnen"]').waitFor({ state: 'visible', timeout: 10_000 })
+  if (await page.locator('[data-testid="verheiratet-ja"]').count()) fail(`A recorded joint return must not be asked whether it is married in ${subject}`)
   await page.locator('[data-testid="abgabe-zurueck"]').click()
 }
 

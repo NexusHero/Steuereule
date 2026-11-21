@@ -3,7 +3,7 @@ import { ENCRYPTED_PRISMA, type EncryptedPrismaClient } from '../prisma/encrypte
 import { MASTER_DATA_FIELDS, type MasterDataRecord, type MasterDataRepository } from './master-data.repository.js'
 
 function toRecord(row: MasterDataRecord): MasterDataRecord {
-  const record = { religionEinwilligungAm: row.religionEinwilligungAm } as MasterDataRecord
+  const record = { religionEinwilligungAm: row.religionEinwilligungAm, kirchensteuerpflichtig: row.kirchensteuerpflichtig ?? null } as MasterDataRecord
   for (const field of MASTER_DATA_FIELDS) record[field] = row[field]
   return record
 }

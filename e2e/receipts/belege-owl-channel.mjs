@@ -89,7 +89,7 @@ async function main() {
     // One finished area, so the cockpit has something under „Erledigt“.
     await call(api, 'PUT', `/v1/steuerjahre/${YEAR}/arbeitsweg`, { workdays: [1, 2, 3, 4, 5], vacationDays: 25, sickDays: 3, homeOfficeDays: 40, oneWayKm: 28, transport: 'pkw', workplace: 'Dresden' })
     // Two documents with a date in the year: each waits with a proposal.
-    const receipts = async () => call(api, 'GET', '/v1/belege')
+    const receipts = async () => (await call(api, 'GET', '/v1/belege?limit=100')).items
     const upload = async (name, belegdatum) => {
       const res = await api.post('/v1/belege/upload', { multipart: { file: { name, mimeType: 'image/png', buffer: TINY_PNG }, kind: 'Sonstiges', belegdatum } })
       if (res.status() !== 201) fail(`uploading ${name} answered ${res.status()}`)
@@ -244,10 +244,21 @@ async function main() {
     // --- Belege: every card says what became of it (ADR-0097), served states ------------------------
     const deleted = new Set()
     const deletes = []
-    await page.route('**/v1/belege', async (route) => {
+    // The list is served in pages with counts over all Belege: the mocked ones join the page and the counts.
+    const inboxUrl = /\/v1\/belege(\?.*)?$/
+    await page.route(inboxUrl, async (route) => {
       if (route.request().method() !== 'GET') return route.continue()
       const real = await (await route.fetch()).json()
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([...real, ...MOCK_RECEIPTS.filter((r) => !deleted.has(r.id))]) })
+      const mocked = MOCK_RECEIPTS.filter((r) => !deleted.has(r.id))
+      const items = [...real.items, ...mocked]
+      const counts = {
+        ...real.counts,
+        total: real.counts.total + mocked.length,
+        open: real.counts.open + mocked.filter((r) => r.processing.open).length,
+        unassigned: real.counts.unassigned + mocked.filter((r) => r.assignment.kind !== 'zugeordnet').length,
+        folders: { ...real.counts.folders, weitere: real.counts.folders.weitere + mocked.length },
+      }
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ...real, items, counts }) })
     })
     await page.route('**/v1/belege/e2e-*', async (route) => {
       if (route.request().method() !== 'DELETE') return route.continue()
@@ -299,7 +310,7 @@ async function main() {
     await until(async () => page.evaluate(() => sessionStorage.getItem('steuereule.taxYear')), '2025', 'the card should switch back to 2025')
     await byId('receipt-e2e-wartet-zu-vorschlaegen').click()
     await page.waitForURL((u) => u.pathname === '/app/eule', { timeout: 10_000 })
-    await page.unroute('**/v1/belege')
+    await page.unroute(inboxUrl)
     await page.unroute('**/v1/belege/e2e-*')
     await page.unroute('**/v1/belege/parse')
     console.log(`[${TAG}] ✅ Belege — „Liegt im Steuerjahr 2025“ switches the year, „Zu den Vorschlägen“ opens the owl`)

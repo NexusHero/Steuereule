@@ -329,7 +329,27 @@
       "neverActive": "Not used yet",
       "revoke": "Disconnect",
       "revoking": "Disconnecting …",
-      "revokeError": "Disconnection failed. Please try again."
+      "revokeError": "Disconnection failed. Please try again.",
+      "verbinden": {
+        "oeffnen": "Connect an assistant",
+        "welcher": "Which assistant do you want to connect?",
+        "art": {
+          "claude": "Claude",
+          "chatgpt": "ChatGPT",
+          "anderer": "Other"
+        },
+        "name": "Name of the assistant",
+        "redirect": "Redirect URI of the assistant",
+        "anlegen": "Create access",
+        "busy": "Creating …",
+        "errName": "Please give the assistant a name.",
+        "errRedirect": "The redirect URI must start with https:// or point to this machine (http://localhost or http://127.0.0.1).",
+        "errGeneric": "The assistant could not be created. Please try again.",
+        "fertig": "The access is created. Enter these two values in your assistant when you add an MCP server (connector) there:",
+        "serverAdresse": "Server address",
+        "clientId": "OAuth client ID",
+        "fertigHinweis": "There is no password or client secret. The assistant then opens this app and you grant it access. Only then does it appear here as connected."
+      }
     }
   },
   "sicherheit": {
@@ -402,11 +422,33 @@
     "anlageBestaetigen": "Confirm {{anlage}}",
     "einzelnAendern": "Change individually",
     "vorschlag": "{{herkunft}} suggests {{neu}} instead of {{alt}}.",
+    "personB": "Person B",
+    "buchung": {
+      "label": "Booking",
+      "zeile": "{{datum}} · {{text}} · document {{beleg}} · {{summe}}",
+      "vorschlag": "{{herkunft}} proposes this booking: {{buchung}}. Nothing is booked until you accept it.",
+      "unlesbar": "Booking draft not readable"
+    },
     "vorschlagAnnehmen": "Accept",
     "vorschlagVerwerfen": "Discard",
     "leererWert": "empty",
     "unklar": "unreadable",
     "fehler": "That did not work. Please try again.",
+    "aufgaben": {
+      "title": "Tasks from your assistant",
+      "intro": "Only you can do these. Tick off what is done, or discard what does not fit.",
+      "von": "From {{name}}",
+      "erledigt": "Done",
+      "verwerfen": "Discard",
+      "art": {
+        "konfession": "Enter your religious affiliation",
+        "einwilligung": "Give a consent",
+        "bestaetigen": "Confirm entries",
+        "beleg_nachreichen": "Hand in a receipt",
+        "kind_entfernen": "Remove a child",
+        "sonstiges": "Task"
+      }
+    },
     "anlagen": {
       "hauptvordruck": "Main form (ESt 1 A)",
       "anlageN": "Anlage N",
@@ -488,6 +530,15 @@
     "fehlendRiester": "Your Riester contract still needs details for Anlage AV: whether you are eligible yourself or through your spouse, and if yourself, your contributory earnings of the previous year.",
     "riesterErgaenzen": "Complete Riester details",
     "fehlendKinder": "Anlage Kind still needs details about your children: tax ID, parent-child relationship, Familienkasse, residence and, if needed, the other parent.",
+    "fehlendKinderGenau": "Anlage Kind still needs: {{felder}}.",
+    "kinderFelder": {
+      "child": "a recorded child (you said you have children)",
+      "taxId": "the child's tax ID",
+      "kinship": "parent-child relationship",
+      "familyBenefitsOffice": "Familienkasse",
+      "residence": "the child's residence",
+      "otherParent": "details of the other parent"
+    },
     "kinderErgaenzen": "Complete child details",
     "fehlendVermietung": "Anlage V still needs details about your rental: rent, expenses (0 counts), the address and whether the depreciation is as last year.",
     "vermietungErgaenzen": "Complete rental details",
@@ -540,7 +591,54 @@
       "Hand in all pages, including empty ones — but do not staple or clip them.",
       "Only enclose receipts where a form explicitly asks for them."
     ],
-    "hinweisEdaten": "Income tax, social security and other “e” lines are already reported by your employer and stay empty. Only the gross wage (Anlage N, line 5) is filled in, as a cross-check."
+    "hinweisEdaten": "Income tax, social security and other “e” lines are already reported by your employer and stay empty. Only the gross wage (Anlage N, line 5) is filled in, as a cross-check.",
+    "glasErklaerung": {
+      "zeilen": {
+        "zeile": "Line {{zeile}}",
+        "zeilenVonBis": "Lines {{von}}–{{bis}}",
+        "chfUndEur": "{{chf}} CHF · {{eur}}",
+        "weg": "Commuter allowance ({{ort}} · {{km}} km · {{tage}} days)",
+        "wegOhneOrt": "Commuter allowance ({{km}} km · {{tage}} days)",
+        "berufsverbaende": "Professional association fees",
+        "arbeitsmittel": "Work equipment",
+        "fortbildung": "Training costs",
+        "sonstiges": "Further work expenses",
+        "nGre": {
+          "z6": "Gross wage as per Lohnausweis",
+          "z8": "Child and education allowances",
+          "z9": "Tax-free daily sickness benefit",
+          "z10": "SUVA benefit (daily accident benefit)",
+          "z18": "Employer contributions to daily sickness insurance",
+          "z19": "Employer contributions to non-occupational accident insurance",
+          "z20": "Employer contributions above the mandatory pension (pillar 2b)",
+          "z23": "Taxable wage",
+          "z25": "Swiss withholding tax (at most 4.5 %)",
+          "z78": "Income compensation (EO)",
+          "z79": "Unemployment insurance (ALV)",
+          "z80": "Daily sickness insurance contributions",
+          "z81": "50 % of the non-occupational accident insurance contributions",
+          "z82": "Total of other provision expenses",
+          "z83": "AHV / IV",
+          "z84": "Pension fund, employee (mandatory, pillar 2a)",
+          "z85": "Total employee contributions to old-age provision",
+          "z87": "Pension fund, employer (mandatory, pillar 2a)",
+          "z88": "Total employer contributions to old-age provision"
+        },
+        "vorsorge": {
+          "kz326": "Statutory health insurance (basic cover)",
+          "kz328": "Of which with entitlement to sick pay",
+          "kz329": "Statutory long-term care insurance",
+          "kz338": "Optional and supplementary cover (statutory)",
+          "kz350": "Private health insurance (basic cover)",
+          "kz351": "Private compulsory long-term care insurance",
+          "kz354": "Optional and supplementary cover (private)",
+          "kz333": "Foreign health insurance (basic cover)",
+          "kz334": "Of which without entitlement to sick pay",
+          "kz335": "Foreign long-term care insurance",
+          "kz339": "Optional and supplementary cover (foreign)"
+        }
+      }
+    }
   },
   "adresssuche": {
     "label": "Search address",
@@ -676,7 +774,13 @@
   "owlPersonalData": {
     "card": {
       "title": "May the owl process your personal data?",
-      "body": "So that the owl can also enter your name, tax ID, date of birth, address, bank details (IBAN), marital status, the details about your partner and children, and your religious affiliation, these details are sent to the language model Google Gemini (Google as processor). Religious affiliation is a special category of personal data (Art. 9 GDPR); by choosing “Allow” you also expressly consent to this. Without consent the owl masks these details and you enter them yourself in the forms. You can withdraw your consent at any time under Profile → Privacy.",
+      "body": "So that the owl can also enter your name, tax ID, date of birth, address, bank details (IBAN), marital status, the details about your partner and children, and your religious affiliation, these details are sent to {{processor}}. Religious affiliation is a special category of personal data (Art. 9 GDPR); by choosing “Allow” you also expressly consent to this. Without consent the owl masks these details and you enter them yourself in the forms. You can withdraw your consent at any time under Profile → Privacy.",
+      "processor": {
+        "google-genai": "the language model Google Gemini (Google as processor)",
+        "anthropic": "the language model Claude (Anthropic as processor)",
+        "openai": "the language model by OpenAI (OpenAI as processor)",
+        "other": "the language model set up for the owl (its provider as processor)"
+      },
       "allow": "Allow",
       "deny": "Do not allow",
       "saving": "Saving …",
@@ -961,7 +1065,7 @@
     },
     "feld": {
       "placeholder": "Whole euros",
-      "unklar": "unreadable"
+      "unklar": "I cannot read it"
     },
     "zustand": {
       "unvollstaendig": "Still {{offen}} open, {{unklar}} unreadable.",
@@ -985,6 +1089,10 @@
         "pdf_ocr_render": "Running local OCR on scanned PDF …",
         "image_ocr": "Running local OCR on photo …",
         "parsing": "Checking lines 3, 4 and social insurance (23, 25–27) …"
+      },
+      "lines": {
+        "heading": "Further lines of the certificate",
+        "help": "These values were read too and are not saved yet. “Apply values” writes them to their fields further down; lines left empty are not applied."
       },
       "draftBanner": {
         "title": "Draft from wage tax statement — not saved yet",
@@ -1010,7 +1118,8 @@
           "plausibility_conflict": "Value does not reconcile with gross pay — please verify.",
           "partial_sv_lines": "Only some social-insurance lines (23, 25, 26, 27) detected — please check sum.",
           "llm_suggested": "Suggested by text recognition — please compare with your certificate.",
-          "ocr_source": "Read from a photo or scan — please compare every digit with your certificate."
+          "ocr_source": "Read from a photo or scan — please compare every digit with your certificate.",
+          "empty_line": "Line empty on the certificate — proposed as 0, please check."
         }
       },
       "yearConflict": {
@@ -1072,7 +1181,7 @@
     },
     "feld": {
       "placeholder": "Whole number",
-      "unklar": "unreadable"
+      "unklar": "I cannot read it"
     },
     "posten": {
       "heading": "Taxable share",
@@ -1113,7 +1222,7 @@
       "label": "Capital income before the saver's allowance (certificate: „Höhe der Kapitalerträge“)",
       "plausiNetto": "The saver's allowance used is larger than your capital income. Did you enter the amount after the allowance? Then {{brutto}} would be right here, otherwise we compute 0 € tax on your capital income.",
       "placeholder": "Whole number",
-      "unklar": "unreadable"
+      "unklar": "I cannot read it"
     },
     "posten": {
       "heading": "Your capital income",
@@ -1132,7 +1241,14 @@
       "keineAbgeltungEinbehalten": "No withholding tax was withheld — the comparison does not arise.",
       "kryptoGegated": "Crypto stays 2.0 — no comparison for crypto.",
       "kapDepotNichtBeantwortet": "Answer the brokerage question in the interview first — then we know whether the comparison applies.",
-      "keineKapitalertraege": "Enter your capital income first — then we compute the comparison."
+      "keineKapitalertraege": "Enter your capital income first — then we compute the comparison.",
+      "unterschied": "Difference",
+      "schaetzungAbgeltung": "The estimate in the cockpit counts your capital income at the flat withholding rate, not at the cheaper tariff.",
+      "schaetzungQuelle": "The estimate in the cockpit leaves it at the withholding tax already deducted; it does not apply the cheaper tariff.",
+      "schaetzungOffen": "We compare on the estimate in the cockpit. It still lacks: {{liste}}",
+      "schaetzungNichtMoeglich": "We compare on the estimate in the cockpit, and it cannot be made here yet: {{grund}}",
+      "fehltPartner": "Person B: {{was}}",
+      "fehltVeranlagungsart": "How you are assessed (set up the joint assessment in “Details for the return”)"
     },
     "weiter": "Continue"
   },
@@ -1159,7 +1275,7 @@
     },
     "feld": {
       "placeholder": "Whole number",
-      "unklar": "unreadable"
+      "unklar": "I cannot read it"
     },
     "objektHeading": "Object {{index}}",
     "addObjekt": "Add another object",
@@ -1535,6 +1651,9 @@
     "warnungenBestaetigen": "Read, continue anyway",
     "schrittVergleich": "Assessment comparison",
     "vergleichUeberspringen": "Skip",
+    "zusammenErfasst": "You file together (joint assessment). That is what “Details for your return” records.",
+    "vergleichOeffnen": "Compare with separate returns",
+    "vergleichSchliessen": "Close comparison",
     "schrittAusdruck": "Printout",
     "zumAusdruck": "Continue to printout",
     "elsterHinweis": "A year with self-employment is filed through Mein ELSTER – we show you what to enter there.",
@@ -1611,6 +1730,7 @@
       "status": {
         "offen": "Open",
         "erledigt": "Done",
+        "keinThema": "Does not apply",
         "betragOffen": "⏳ Amount open",
         "optional": "Optional"
       },
@@ -1738,6 +1858,30 @@
       "veranlagungsartOffen": "You are married: set up the joint return under “Details for your return” – then we calculate for both of you.",
       "offen_one": "The estimate still needs 1 detail.",
       "offen_other": "The estimate still needs {{count}} details.",
+      "fehlt": {
+        "eigene": "{{was}} · {{wo}}",
+        "partner": "{{name}}: {{was}} · {{wo}}",
+        "ohneOrt": "{{was}}",
+        "partnerOhneOrt": "{{name}}: {{was}}",
+        "oeffnen": "Opens the form where the detail is missing",
+        "kachel": "Missing for the estimate: {{liste}}",
+        "sonstiges": "One more detail",
+        "bruttoarbeitslohn": "Gross wage (line 3)",
+        "lohnsteuer": "Wage tax withheld (line 4)",
+        "sozialversicherung": "Social security contributions",
+        "lohnsteuer-uebersteigt-brutto": "Wage tax higher than the gross wage, please check",
+        "sozialversicherung-uebersteigt-brutto": "Social security higher than the gross wage, please check",
+        "grenzgaenger-status": "The two questions on your cross-border status",
+        "bruttolohn-total": "Gross salary (item 8)",
+        "berufliche-vorsorge": "Occupational pension (item 10)",
+        "quellensteuer": "Withholding tax (item 12)",
+        "wechselkurs": "Exchange rate",
+        "pk-obligatorium": "Pension fund: employee contribution",
+        "rente": "Pension amount",
+        "lohnersatz-betrag": "Amount of wage replacement benefits",
+        "selbststaendig": "Details on self-employment",
+        "einkommen": "Details on your income"
+      },
       "grund": {
         "verheiratet": "We do not estimate the refund for married couples yet.",
         "nur-angestellte": "So far we estimate the refund only for employees.",
@@ -1765,6 +1909,9 @@
       "hinweis_one": "{{summe}} is still waiting for your confirmation.",
       "hinweis_other": "{{summe}} are still waiting for your confirmation.",
       "hinweisOhneSumme": "New values are waiting for your confirmation.",
+      "aufgaben_one": "{{count}} task from your assistant",
+      "aufgaben_other": "{{count}} tasks from your assistant",
+      "aufgabenAnsehen": "View tasks",
       "anlage": "{{anlage}} · {{anzahl}}",
       "pruefen": "Review & confirm"
     },
@@ -1818,6 +1965,7 @@
       "someoneElse": "someone else",
       "unknown": "The document is in the name of {{printed}}. This person is not in your return yet – who is it for?",
       "unknownNoName": "Who is this document for? Nobody in your return fits it yet.",
+      "childNeeded": "This document belongs to a child, and your return has none yet. Add the child and the document is read for it.",
       "confirmSelf": "The document is in the name of {{printed}}. Are you {{printed}}?"
     },
     "nichtsUebernommen": "Nothing was taken over yet.",
@@ -1864,6 +2012,10 @@
   },
   "belege": {
     "appbarTitle": "Receipts",
+    "mehrLaden": {
+      "cta": "Load more",
+      "laedt": "Loading …"
+    },
     "loading": "Loading your receipts …",
     "loadError": {
       "heading": "That didn't work.",
@@ -2048,7 +2200,7 @@
     },
     "feld": {
       "placeholder": "Whole euros",
-      "unklar": "unreadable"
+      "unklar": "I cannot read it"
     },
     "datum": {
       "label": "Assessment date (DD.MM.YYYY)"
@@ -2116,6 +2268,8 @@
         "familienzulagenChf": "Child and education allowances in the gross wage (CHF, 0 if none)",
         "krankentaggeldChf": "Your daily sickness insurance contributions (CHF, 0 if none)",
         "steuerfreiesKrankentaggeldChf": "Tax-free daily sickness benefit paid out within the gross wage, e.g. “KK-Taggeld” on the supplement (CHF, 0 if none)",
+        "steuerfreiesUnfalltaggeldChf": "Daily accident benefit (UVG/SUVA) within the gross wage",
+        "steuerfreiesUnfalltaggeldChfHilfe": "Tax-free, but it raises the tax rate (progression clause). A daily sickness benefit belongs in the field above.",
         "pkArbeitnehmerChf": "Pension fund – mandatory part (BVG): your contribution (CHF)",
         "pkArbeitgeberGesamtChf": "Pension fund – all employer contributions, mandatory and supplementary (CHF)",
         "pkArbeitgeberChf": "Pension fund – mandatory part (BVG): employer contribution (CHF)",
@@ -2127,7 +2281,7 @@
         "familienzulagenImBruttolohnHilfe": "Only then is the allowance deducted from the gross salary (Anlage N-Gre line 8). Otherwise it belongs to the child (Children mask).",
         "kvZuschussAnspruch": "Entitled to tax-free subsidies or employer contributions to health insurance? (Anlage Vorsorgeaufwand line 49)"
       },
-      "sonderfaelle": "Were there unemployment or SUVA benefits, maternity or disability daily allowances, tax-free supplements, direct insurance, options, travel reimbursement, flat expenses, or a company car?",
+      "sonderfaelle": "Were there unemployment benefits, maternity or disability daily allowances, tax-free supplements, direct insurance, options, travel reimbursement, flat expenses, or a company car?",
       "ja": "Yes",
       "nein": "No"
     },
@@ -2221,6 +2375,17 @@
       }
     }
   },
+  "kinder": {
+    "anbieterVoll": "No more fits the line of the form. Shorten the address, for example (street and town are enough).",
+    "anbieterGekuerzt": "The text was too long for the line of the form and was cut. Shorten the address, for example (street and town are enough).",
+    "speichert": "Saving …",
+    "gespeichert": "{{name}} is saved.",
+    "pflichtFehlt": "Please enter first name, last name and date of birth.",
+    "datumFalsch": "Please enter the date of birth as DD.MM.YYYY.",
+    "speichernFehler": "The child was not saved. Check the details and the connection and try again.",
+    "kinderzulageAusLohnausweis": "The same figure as in the Swiss salary certificate (“child and family allowances”): {{betrag}} of it fall to this child. Enter something here only if it is a different amount.",
+    "kinderzulageHinweis": "The same figure as “child and family allowances” in the Swiss salary certificate. If it is entered there already, leave this field empty: the amount is taken from there."
+  },
   "veranlagungsartenvergleich": {
     "back": "Back",
     "loading": "Working out your comparison …",
@@ -2257,6 +2422,7 @@
     "scopeSteuerdatenWrite": "Fill tax facts (remains unconfirmed until your review)",
     "scopeBelegeWrite": "Upload receipts",
     "scopeZahllinkRead": "Fetch payment link",
+    "scopeOfflineAccess": "The connection lasts until you revoke it under “Connected assistants”",
     "drittlandHeading": "Data transfer notice (third countries)",
     "drittlandNotice": "By connecting, your data is transferred to the provider of this assistant. This may include servers in third countries (e.g. US) without an EU adequacy decision. Processing is governed by that provider’s policies.",
     "allow": "Allow connection",
@@ -2523,6 +2689,9 @@
       "effectNone": "Does not change the estimate",
       "effectOpen": "Effect not known yet",
       "entryLabel": "Entry:",
+      "companionsLabel": "Also entered:",
+      "companionYes": "Yes",
+      "companionNo": "No",
       "notRecorded": "Not recorded",
       "forPerson": "for {{name}}",
       "forYou": "for you",
@@ -4032,5 +4201,8 @@
       "ueber30": "More than 30 employees (no U1 levy)",
       "kircheOhneZeile": "The wage tax return of your federal state has no line of its own for {{kuerzel}}, or the municipality key in the profile is missing. The church tax is only in the total (Kz 83); ask your tax office where it belongs."
     }
+  },
+  "betrag": {
+    "unlesbar": "That is not an amount. Please enter it like 948 or 948,60."
   }
 }

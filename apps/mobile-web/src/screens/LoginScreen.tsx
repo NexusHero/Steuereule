@@ -17,6 +17,7 @@ import { EmailVerificationBanner } from './shared/EmailVerificationBanner'
 import { LegalLinks } from './legal/LegalLinks'
 import type { LegalPage } from './legal/texts'
 import { MIN_PASSWORD_LENGTH } from '../auth/password-policy'
+import { isAssistantSignIn } from '../auth/assistant-sign-in'
 
 export interface LoginScreenProps {
   readonly onDone: () => void
@@ -78,6 +79,8 @@ export function LoginScreen({ onDone, onGuest, onRegister, showDeviceQr = true, 
         setStage({ kind: 'two-factor', email: mail })
         return
       }
+      // Signed in for an assistant's connection: the client is already on its way to the consent.
+      if (continuesElsewhere(data)) return
       if (data.user.emailVerified) {
         setStage({ kind: 'form' })
         onDone()
@@ -218,6 +221,8 @@ function TwoFactorChallenge({ email, onDone }: { readonly email: string; readonl
       setBusy(false)
       return
     }
+    // In an assistant's connection the client is already on its way to the consent.
+    if (isAssistantSignIn()) return
     onDone()
   }
 
@@ -250,4 +255,10 @@ function TwoFactorChallenge({ email, onDone }: { readonly email: string; readonl
       </Button>
     </View>
   )
+}
+
+/** better-auth answers a sign-in inside an OAuth flow with where it goes on; its redirect plugin follows. */
+function continuesElsewhere(data: unknown): boolean {
+  const answer = data as { readonly redirect?: unknown; readonly url?: unknown }
+  return answer.redirect === true && typeof answer.url === 'string' && answer.url.length > 0
 }

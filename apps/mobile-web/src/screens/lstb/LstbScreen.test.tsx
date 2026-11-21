@@ -12,6 +12,7 @@ import { EMPTY_LSTB_RESPONSE, server } from '../../test-msw-server'
 import { pendingLstbScanAction } from '../../test-lstb-fixtures'
 import type {
   AdvisorChatMessageDto,
+  LstbExtractedFieldDto,
   LstbResponseDto,
   ParseReceiptResponseDto,
   ReceiptResponseDto,
@@ -86,6 +87,20 @@ function makeUploadedReceipt(id = 'rec-lstb-1', fileName = 'lstb-2026.pdf'): Rec
   }
 }
 
+const missingLine: LstbExtractedFieldDto = { value: null, status: 'pruefen', sourceLines: [], calculation: [], reason: 'missing' }
+const NO_LINES: NonNullable<ParseReceiptResponseDto['lstb']>['lines'] = {
+  solidaritaetszuschlag: missingLine,
+  kirchensteuer: missingLine,
+  kirchensteuerEhegatte: missingLine,
+  rvArbeitgeber: missingLine,
+  rvArbeitnehmer: missingLine,
+  zuschuesseKvPv: missingLine,
+  zuschussPv: missingLine,
+  kvArbeitnehmer: missingLine,
+  pvArbeitnehmer: missingLine,
+  avArbeitnehmer: missingLine,
+}
+
 function makeParseResponse(overrides?: Partial<NonNullable<ParseReceiptResponseDto['lstb']>>): ParseReceiptResponseDto {
   const baseLstb: NonNullable<ParseReceiptResponseDto['lstb']> = {
     stage: 'deterministic',
@@ -124,6 +139,8 @@ function makeParseResponse(overrides?: Partial<NonNullable<ParseReceiptResponseD
         reason: null,
       },
     },
+    lines: NO_LINES,
+    employer: { value: null, status: 'pruefen', reason: 'missing' },
     stagedActionIds: ['act-1', 'act-2', 'act-3'],
     securityBlocked: false,
     person: 'A',
@@ -165,6 +182,14 @@ describe('LstbScreen', () => {
     expect(screen.getByText('Die Lohnsteuer ist höher als der Bruttoarbeitslohn.')).toBeTruthy()
   })
 
+  it('does not put the word „unlesbar“ under a field that is fine: the way out reads as the action it is (Echtdatenlauf 4)', async () => {
+    renderLstb()
+    await screen.findByText('Bruttoarbeitslohn (Zeile 3)')
+    // The bare word read like a verdict on every field; it is an offer to the user who cannot read the paper.
+    expect(screen.queryByText('unlesbar')).toBeNull()
+    expect(screen.getAllByRole('button', { name: 'Kann ich nicht lesen' }).length).toBeGreaterThan(0)
+  })
+
   it('PUTs the honest "unklar" state when the unreadable fallback is tapped', async () => {
     let body: unknown
     let url = ''
@@ -178,7 +203,7 @@ describe('LstbScreen', () => {
     renderLstb()
     await screen.findByText('Bruttoarbeitslohn (Zeile 3)')
 
-    const unclearButtons = screen.getAllByText('unlesbar')
+    const unclearButtons = screen.getAllByText('Kann ich nicht lesen')
     fireEvent.click(unclearButtons[0]!)
 
     await waitFor(() => expect(body).toEqual({ kind: 'unklar' }))
@@ -951,3 +976,65 @@ describe('LstbScreen', () => {
     await waitFor(() => expect(onDone).toHaveBeenCalledOnce())
   })
 })
+
+// Real-data run 4: the scan filled only the three values; the user typed Soli, church tax, the lines and the
+// employer. Every line read is now shown in the draft and taken over with the three in one step.
+describe('LstbScreen — the further lines of a scanned certificate', () => {
+  it('shows each line read, blocks until a yellow one is confirmed, and takes them over with the three values', async () => {
+    let bulkPutBody: Record<string, unknown> | null = null
+    const ok = (value: number, line: string): LstbExtractedFieldDto => ({ value, status: 'ok', sourceLines: [line], calculation: [{ line, amount: value }], reason: null })
+    server.use(
+      http.post(UPLOAD_URL, () => HttpResponse.json(makeUploadedReceipt(), { status: 201 })),
+      http.post(PARSE_URL, () =>
+        HttpResponse.json(
+          makeParseResponse({
+            lines: {
+              ...NO_LINES,
+              solidaritaetszuschlag: ok(12.34, '5'),
+              kirchensteuer: ok(576, '6'),
+              kvArbeitnehmer: { value: 3651, status: 'pruefen', sourceLines: ['25'], calculation: [{ line: '25', amount: 3650.5 }], reason: 'unreadable' },
+            },
+            employer: { value: 'Beispielwerke GmbH', status: 'ok', reason: null },
+            stagedActionIds: ['act-1', 'act-2', 'act-3', 'act-4', 'act-5', 'act-6'],
+          }),
+          { status: 200 },
+        ),
+      ),
+      http.put(LSTB_URL, async ({ request }) => {
+        bulkPutBody = (await request.json()) as Record<string, unknown>
+        return HttpResponse.json(EMPTY_LSTB_RESPONSE, { status: 200 })
+      }),
+    )
+    mockExtractDocumentText.mockResolvedValue({ kind: 'pdf', mimeType: 'application/pdf', text: 'Lohnsteuerbescheinigung 2026', usedOcrFallback: false, pagesProcessed: 1 })
+
+    renderLstb()
+    fireEvent.change(await screen.findByTestId('lstb-scan-file-input'), { target: { files: [new File(['%PDF-1.4'], 'lstb-2026.pdf', { type: 'application/pdf' })] } })
+
+    const lines = await screen.findByTestId('lstb-scan-lines')
+    expect(lines.textContent).toContain('Einbehaltener Solidaritätszuschlag (Zeile 5, in Euro mit Cent)')
+    expect((screen.getByTestId('lstb-scan-line-solidaritaetszuschlag') as HTMLInputElement).value).toBe('12,34')
+    expect((screen.getByTestId('lstb-scan-line-kirchensteuer') as HTMLInputElement).value).toBe('576')
+    expect((screen.getByTestId('lstb-scan-line-arbeitgeber') as HTMLInputElement).value).toBe('Beispielwerke GmbH')
+    // A line the certificate does not print is not offered.
+    expect(screen.queryByTestId('lstb-scan-line-kirchensteuerEhegatte')).toBeNull()
+
+    // Line 25 is yellow: „Werte übernehmen“ waits for its confirmation, like the three values.
+    expect(screen.getByTestId('lstb-scan-apply').getAttribute('aria-disabled')).toBe('true')
+    fireEvent.click(screen.getByTestId('lstb-confirm-line-kvArbeitnehmer'))
+    await waitFor(() => expect(screen.getByTestId('lstb-scan-apply').getAttribute('aria-disabled')).not.toBe('true'))
+
+    fireEvent.change(screen.getByTestId('lstb-scan-line-kirchensteuer'), { target: { value: '580,40' } })
+    fireEvent.click(screen.getByTestId('lstb-scan-apply'))
+    await waitFor(() => expect(bulkPutBody).not.toBeNull())
+    expect(bulkPutBody).toEqual({
+      bruttoarbeitslohn: 54000,
+      lohnsteuer: 8200,
+      sozialversicherung: 11100,
+      receiptId: 'rec-lstb-1',
+      actionIds: ['act-1', 'act-2', 'act-3', 'act-4', 'act-5', 'act-6'],
+      lines: { solidaritaetszuschlag: 12.34, kirchensteuer: 580, kvArbeitnehmer: 3651 },
+      arbeitgeber: 'Beispielwerke GmbH',
+    })
+  })
+})
+

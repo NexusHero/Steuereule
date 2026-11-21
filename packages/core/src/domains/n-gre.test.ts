@@ -166,6 +166,31 @@ describe('Anlage N-Gre — tax-free Krankentaggeld (Zeilen 9 and 76)', () => {
 })
 
 
+describe('Anlage N-Gre — daily accident benefit of the Swiss accident insurance (Zeile 10, „SUVA – Geld“)', () => {
+  it('takes it out of the wage and the contribution base exactly like the sickness benefit', () => {
+    const accident = annexNGreAmounts({ ...INPUT, steuerfreiesUnfalltaggeldChf: 3853 })
+    const sickness = annexNGreAmounts({ ...INPUT, steuerfreiesKrankentaggeldChf: 3853 })
+    expect(accident.chf).toMatchObject({ z9: 0, z10: 3853, z15: 93747, z23: 93747, z76: 6253, z77: 93747, z83: 4734 })
+    // Only the line differs: every sum and every contribution is the same as with a sickness benefit.
+    expect({ ...accident.chf, z9: 0, z10: 0 }).toEqual({ ...sickness.chf, z9: 0, z10: 0 })
+    expect(accident.assessed).toEqual(sickness.assessed)
+  })
+
+  it('exposes it as its own amount in CHF and EUR, beside a sickness benefit', () => {
+    const { chf, eur } = annexNGreAmounts({ ...INPUT, steuerfreiesKrankentaggeldChf: 1000, steuerfreiesUnfalltaggeldChf: 2000 })
+    expect(chf).toMatchObject({ z9: 1000, z10: 2000, z15: 94600, z76: 5400 })
+    // 2000 CHF at 1,065
+    expect(eur.z10).toBe(2130)
+    expect(eur.z15).toBe(eur.z6 - eur.z8 - eur.z9 - eur.z10)
+  })
+
+  it('is 0 when not given, and nothing else changes', () => {
+    expect(annexNGreAmounts(INPUT).chf.z10).toBe(0)
+    expect(annexNGreAmounts({ ...INPUT, steuerfreiesUnfalltaggeldChf: 0 })).toEqual(annexNGreAmounts(INPUT))
+  })
+})
+
+
 describe('annexNGreAmounts: as the tax office converts (ADR-0094)', () => {
   it('converts the CHF totals, rounds the wage down and the Swiss tax credit up', () => {
     // 111.750 + 6.382 + 608 + 4.470 = 123.210 CHF at 1,065: 131.218,65 € on the notice 131.218 €,

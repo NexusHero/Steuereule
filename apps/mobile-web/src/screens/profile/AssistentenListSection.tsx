@@ -9,6 +9,7 @@ import {
 import { useQueryClient } from '@tanstack/react-query'
 import { APP_NS } from '../../i18n/resources'
 import { formatRequestedAt } from '../device/deviceContext'
+import { AssistantConnectForm } from './AssistantConnectForm'
 
 export function AssistantsListSection() {
   const t = useTheme()
@@ -21,6 +22,7 @@ export function AssistantsListSection() {
 
   const [revokingId, setRevokingId] = useState<string | null>(null)
   const [revokeError, setRevokeError] = useState<string | null>(null)
+  const [connecting, setConnecting] = useState(false)
 
   function handleRevoke(clientId: string) {
     setRevokeError(null)
@@ -98,6 +100,14 @@ export function AssistantsListSection() {
       {assistants.length === 0 ? (
         <Text style={styles.emptyText}>{tr('profil.assistenten.empty')}</Text>
       ) : null}
+
+      {connecting ? (
+        <AssistantConnectForm />
+      ) : (
+        <Button variant="ghost" onPress={() => setConnecting(true)} testID="assistent-verbinden">
+          {tr('profil.assistenten.verbinden.oeffnen')}
+        </Button>
+      )}
     </Card>
   )
 }

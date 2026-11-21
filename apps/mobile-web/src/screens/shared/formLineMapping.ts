@@ -62,6 +62,9 @@ export function formLineForField(screen: Screen, field?: string): FormLineInfo {
       ) {
         return { form: 'Anlage N-Gre', line: 'Zeilen 81–93', label: 'Anlage N-Gre · Zeilen 81–93 (Vorsorge CH)' }
       }
+      if (f === 'steuerfreiesUnfalltaggeldChf') {
+        return { form: 'Anlage N-Gre', line: 'Zeile 10', label: 'Anlage N-Gre · Zeile 10 (SUVA-Geld)' }
+      }
       if (f.startsWith('krankentaggeld') || f.startsWith('nbuv') || f === 'steuerfreiesKrankentaggeldChf') {
         return { form: 'Anlage N-Gre', line: 'Zeilen 94–98', label: 'Anlage N-Gre · Zeilen 94–98 (NBUV / KTG)' }
       }
@@ -241,6 +244,10 @@ export function maskTargetForAcroField(acroFieldId: string): AcroFieldJumpTarget
     case 'anlNGre': {
       if (key === 'kz169') {
         return { screen: 'chLohnausweis', field: 'withholdingTaxChf', label: 'Anlage N-Gre · Zeile 24 (Kz 169 Quellensteuer)' }
+      }
+      // „SUVA – Geld“: the daily benefit of the accident insurance, the line below the sickness benefit.
+      if (key === 'z10' || key === 'z10Chf' || key === 'z10Eur') {
+        return { screen: 'chLohnausweis', field: 'steuerfreiesUnfalltaggeldChf', label: 'Anlage N-Gre · Zeile 10 (SUVA-Geld)' }
       }
       if (key.startsWith('z8') && !key.startsWith('z80') && !key.startsWith('z81') && !key.startsWith('z82') && !key.startsWith('z86') && !key.startsWith('z87')) {
         return { screen: 'chLohnausweis', field: 'familienzulagenChf', label: 'Anlage N-Gre · Zeile 8 (Familienzulagen)' }

@@ -31,6 +31,8 @@ export interface PrintoutGapContext {
   readonly rentals: readonly string[]
   /** The user consented to personal data for the owl (ADR-0091). */
   readonly personalDataConsent: boolean
+  /** The tax year of the conversation: a question names this year, never a fixed one. */
+  readonly taxYear?: number | undefined
 }
 
 export interface PrintoutGapQuestion extends PrintoutGapTarget {
@@ -92,7 +94,8 @@ const TEXTS: Readonly<Record<string, FieldText>> = {
   'kapital.kapitalertragsteuer': { question: 'Einbehaltene Kapitalertragsteuer (auch 0)?', keywords: ['kapitalertragsteuer'] },
   'kapital.solidaritaetszuschlag': { question: 'Einbehaltener Solidaritätszuschlag (auch 0)?', keywords: ['solidarit'] },
   'kapital.kirchensteuer': { question: 'Einbehaltene Kirchensteuer auf die Kapitalerträge (auch 0)?', keywords: ['kirchensteuer'] },
-  'interview.ch-wohnsitz': { question: 'Wohnsitz 2025: Deutschland oder Schweiz?', keywords: ['wohnsitz', 'wohnt', 'wohnen'] },
+  // „{jahr}“ is the tax year of the conversation (`questionFor`).
+  'interview.ch-wohnsitz': { question: 'Wohnsitz{jahr}: Deutschland oder Schweiz?', keywords: ['wohnsitz', 'wohnt', 'wohnen'] },
   'interview.ch-nichtrueckkehrtage': { question: 'An wie vielen Arbeitstagen nicht nach Hause zurückgekehrt (Nichtrückkehrtage, auch 0)?', keywords: ['nichtrückkehr', 'zurückgekehrt', 'zurückgefahren'] },
   'chLohnausweis.wechselkurs': { question: 'Welcher Wechselkurs: der Jahresdurchschnitt oder ein Monatskurs?', keywords: ['kurs'] },
   'chLohnausweis.bruttolohn-total': { question: 'Bruttolohn total (Lohnausweis Ziffer 8)?', keywords: ['bruttolohn', 'lohnausweis'] },
@@ -139,8 +142,15 @@ const TEXTS: Readonly<Record<string, FieldText>> = {
   'commute.shortestRouteConfirmed': { question: 'Es zählt die kürzeste Straßenverbindung (§ 9 Abs. 1 Nr. 4 EStG): Sind die erfassten Kilometer die kürzeste Strecke zur Arbeit?', keywords: ['kürzeste'] },
   'commute.secondShortestRouteConfirmed': { question: 'Sind auch die Kilometer des zweiten Arbeitswegs die kürzeste Straßenverbindung?', keywords: ['kürzeste'] },
   'commute.periodFrom': { question: 'Es gab im Jahr zwei Arbeitgeber: Für welchen Zeitraum gilt der erfasste Arbeitsweg (von/bis), und gibt es für den anderen Arbeitgeber einen eigenen Weg (Kilometer, Fahrtage) oder keinen?', keywords: ['zeitraum', 'arbeitgeberwechsel', 'anderen arbeitgeber'] },
+  'chLohnausweis.steuerfreiesKrankentaggeldChf': {
+    question:
+      'Wurde im Jahr Krankentaggeld (auch Mutterschaftstaggeld) oder Unfalltaggeld der Unfallversicherung (UVG/SUVA) ausgezahlt, und ist es im Bruttolohn Ziffer 8 des Lohnausweises enthalten (Hinweis z. B. eine Bemerkung wie „KK-Taggeld Verrechnung“)? Wenn ja: welcher Betrag in CHF laut Taggeld-Abrechnung? Krankentaggeld gehört in dieses Feld, Unfalltaggeld in chLohnausweis.steuerfreiesUnfalltaggeldChf (steuerfrei, erhöht aber den Steuersatz). Ohne Taggeld: 0.',
+    keywords: ['taggeld ausgezahlt', 'ausgezahltes krankentaggeld', 'ausgezahlte krankentaggeld', 'ausgezahltes taggeld', 'ausgezahlte taggeld', 'ausgezahltes unfalltaggeld', 'ausgezahlte unfalltaggeld'],
+  },
+  'kapital.kapitalertraege': { question: 'Wie hoch waren die Kapitalerträge im Jahr laut Steuerbescheinigung der Bank (auch wenn der Freistellungsauftrag sie abdeckt)?', keywords: ['höhe der kapitalertr', 'steuerbescheinigung'] },
+  'kind.childBenefitClaimEur': { question: 'Kindergeld: Für wie viele Monate bestand im Jahr Anspruch auf deutsches Kindergeld (auch wenn eine Schweizer Kinderzulage es kürzt)? Der Anspruch im Jahr gehört in die Anlage Kind, auch 0.', keywords: ['kindergeld'] },
   'chLohnausweis.krankenkasseZusatzChf': { question: 'Krankenkasse: Wie viel vom erfassten Betrag entfällt auf Zusatzversicherungen (VVG) statt auf die Grundversicherung (KVG)? In CHF, auch 0.', keywords: ['zusatzversicherung', 'vvg', 'grundversicherung'] },
-  'interview.einkuenfte': { question: 'Gab es Kapitalerträge über dem Sparer-Pauschbetrag bzw. Freistellungsauftrag oder ohne deutschen Steuerabzug (z. B. bei einer ausländischen Bank), oder Mieteinnahmen?', keywords: ['kapitalertr', 'freistellungsauftrag', 'sparer-pauschbetrag'] },
+  'interview.einkuenfte': { question: 'Gab es Kapitalerträge (Zinsen, Dividenden, ein Depot; auch wenn ein Freistellungsauftrag sie abdeckt oder ohne deutschen Steuerabzug, z. B. bei einer ausländischen Bank), oder Mieteinnahmen?', keywords: ['kapitalertr', 'freistellungsauftrag', 'sparer-pauschbetrag'] },
   'interview.vorauszahlungen-gate': { question: 'Hat das Finanzamt für das Jahr Einkommensteuer-Vorauszahlungen festgesetzt?', keywords: ['vorauszahlung'] },
   'interview.vorauszahlungen-betrag': { question: 'Wie viel hast du für das Jahr an Vorauszahlungen gezahlt, Einkommensteuer, Soli und Kirchensteuer zusammen (Euro)?', keywords: ['vorauszahlung'] },
   'interview.riester-art': { question: 'Riester: unmittelbar oder mittelbar begünstigt?', keywords: ['mittelbar'] },
@@ -256,6 +266,8 @@ export function printoutGapReads(missing: readonly string[], ctx: PrintoutGapCon
     } else if (code === 'riester') {
       add(code, 'A', 'interview', 'riester-art')
       add(code, 'A', 'interview', 'riester-einnahmen-vorjahr')
+    } else if (code === 'regelKindergeld') {
+      for (const handle of ctx.children) add(code, 'A', 'kind', 'childBenefitClaimEur', handle)
     } else if (code in RULE_READS) {
       const person = rulePerson(code)
       if (person === 'B' && ctx.personB === null) continue
@@ -279,6 +291,7 @@ const COMMUTE_RULE_READS: readonly (readonly [Screen, string])[] = [
   ['chLohnausweis', 'bruttolohn-total'],
 ]
 const HEALTH_RULE_READS: readonly (readonly [Screen, string])[] = [['chLohnausweis', 'krankenkasseChf'], ['chLohnausweis', 'krankenkasseZusatzChf']]
+const SICK_PAY_RULE_READS: readonly (readonly [Screen, string])[] = [['chLohnausweis', 'bruttolohn-total'], ['chLohnausweis', 'steuerfreiesKrankentaggeldChf'], ['chLohnausweis', 'steuerfreiesUnfalltaggeldChf']]
 
 /** What each fixed rule (ADR-0093) reads to decide whether it is still open. */
 const RULE_READS: Readonly<Record<string, readonly (readonly [Screen, string])[]>> = {
@@ -288,7 +301,9 @@ const RULE_READS: Readonly<Record<string, readonly (readonly [Screen, string])[]
   regelArbeitswegPersonB: COMMUTE_RULE_READS,
   regelKrankenkasse: HEALTH_RULE_READS,
   regelKrankenkassePersonB: HEALTH_RULE_READS,
-  regelKapital: [['interview', 'einkuenfte']],
+  regelKrankentaggeld: SICK_PAY_RULE_READS,
+  regelKrankentaggeldPersonB: SICK_PAY_RULE_READS,
+  regelKapital: [['interview', 'einkuenfte'], ['kapital', 'kapitalertraege']],
   regelVorauszahlungen: [['interview', 'vorauszahlungen-gate'], ['interview', 'vorauszahlungen-betrag']],
 }
 
@@ -311,8 +326,16 @@ function ruleGaps(code: string, read: (screen: Screen, field: string) => string 
     if (twoEmployers && first && !second && empty(read('commute', 'periodFrom')) && empty(read('commute', 'periodTo'))) out.push(['commute', 'periodFrom'])
   } else if (code.startsWith('regelKrankenkasse')) {
     if ((amount('chLohnausweis', 'krankenkasseChf') ?? 0) > 0 && amount('chLohnausweis', 'krankenkasseZusatzChf') === null) out.push(['chLohnausweis', 'krankenkasseZusatzChf'])
+  } else if (code.startsWith('regelKrankentaggeld')) {
+    // A recorded Swiss wage statement without the answer: a tax-free benefit may still sit in the wage (real-data run).
+    // An accident benefit (UVG/SUVA) on its own field answers the same question.
+    const answered = amount('chLohnausweis', 'steuerfreiesKrankentaggeldChf') !== null || amount('chLohnausweis', 'steuerfreiesUnfalltaggeldChf') !== null
+    if ((amount('chLohnausweis', 'bruttolohn-total') ?? 0) > 0 && !answered) out.push(['chLohnausweis', 'steuerfreiesKrankentaggeldChf'])
   } else if (code === 'regelKapital') {
-    if (empty(read('interview', 'einkuenfte'))) out.push(['interview', 'einkuenfte'])
+    const answer = read('interview', 'einkuenfte')
+    if (empty(answer)) out.push(['interview', 'einkuenfte'])
+    // „Yes, capital income“ without its amount records nothing.
+    else if ((answer === 'Kapitalerträge' || answer === 'Beides') && amount('kapital', 'kapitalertraege') === null) out.push(['kapital', 'kapitalertraege'])
   } else if (code === 'regelVorauszahlungen') {
     const gate = read('interview', 'vorauszahlungen-gate')
     const paid = read('interview', 'vorauszahlungen-betrag')
@@ -340,7 +363,8 @@ function subjectOf(target: PrintoutGapTarget): string {
 }
 
 function questionFor(ctx: PrintoutGapContext, target: PrintoutGapTarget, required: boolean): PrintoutGapQuestion {
-  const text = TEXTS[`${target.screen}.${target.field}`] ?? { question: `${target.field}?`, keywords: [target.field.toLowerCase()] }
+  const known = TEXTS[`${target.screen}.${target.field}`] ?? { question: `${target.field}?`, keywords: [target.field.toLowerCase()] }
+  const text = { ...known, question: known.question.replace('{jahr}', ctx.taxYear === undefined ? '' : ` ${ctx.taxYear}`) }
   const mask = maskOf(target.screen, target.field)
   return {
     ...target,
@@ -460,6 +484,9 @@ export function planPrintoutGaps(missing: readonly string[], ctx: PrintoutGapCon
       const kind = valueOf('A', 'interview', 'riester-art')
       if (kind !== 'Unmittelbar' && kind !== 'Mittelbar') ask({ code, person: 'A', screen: 'interview', field: 'riester-art' })
       else if (kind === 'Unmittelbar' && !isInteger(valueOf('A', 'interview', 'riester-einnahmen-vorjahr'))) ask({ code, person: 'A', screen: 'interview', field: 'riester-einnahmen-vorjahr' })
+    } else if (code === 'regelKindergeld') {
+      // The form showed 0 € of Kindergeld in a year nobody had asked for it (real-data run).
+      for (const record of ctx.children) if (empty(valueOf('A', 'kind', 'childBenefitClaimEur', record))) ask({ code, person: 'A', screen: 'kind', field: 'childBenefitClaimEur', record })
     } else if (code in RULE_READS) {
       const person = rulePerson(code)
       if (person === 'B' && ctx.personB === null) continue

@@ -1,7 +1,8 @@
 export type Provenance =
   | { readonly kind: 'nutzer' }
   | { readonly kind: 'uebernahme'; readonly lastYear: number }
-  | { readonly kind: 'assistent'; readonly name: string; readonly receiptId?: string }
+  /** `clientId` says which connection wrote it; the name is only what the user reads (ADR-0052 amendment 4). */
+  | { readonly kind: 'assistent'; readonly name: string; readonly receiptId?: string; readonly clientId?: string }
   | { readonly kind: 'beleg'; readonly receiptId: string }
 
 export interface Proposal {

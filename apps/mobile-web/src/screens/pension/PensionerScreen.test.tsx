@@ -91,7 +91,7 @@ describe('RentnerScreen', () => {
     renderPensioner()
     await screen.findByText('Jahresbetrag der Rente')
 
-    const unclearButtons = screen.getAllByText('unlesbar')
+    const unclearButtons = screen.getAllByText('Kann ich nicht lesen')
     fireEvent.click(unclearButtons[0]!)
 
     await waitFor(() => expect(body).toEqual({ kind: 'unklar' }))

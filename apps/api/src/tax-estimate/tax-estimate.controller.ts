@@ -20,6 +20,8 @@ export class TaxEstimateController {
   @ApiUnauthorizedResponse({ description: 'Guest session — this endpoint requires a signed-in account.' })
   async get(@CurrentUser() userId: string, @Param('jahr', ParseTaxYearPipe) year: number): Promise<TaxEstimateDto> {
     const status = await this.service.getState(userId, year)
-    return { ...status, ...('missing' in status ? { missing: [...status.missing] } : {}) } as TaxEstimateDto
+    // The breakdown is for explaining the estimate to an assistant (ADR-0052 amendment 3), not part of this contract.
+    const { breakdown: _breakdown, ...figures } = status as typeof status & { breakdown?: unknown }
+    return { ...figures, ...('missing' in status ? { missing: [...status.missing] } : {}) } as TaxEstimateDto
   }
 }

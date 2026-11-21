@@ -1051,6 +1051,7 @@ describe('App', () => {
               pkArbeitgeberChf: null,
               pkArbeitgeberGesamtChf: null,
               steuerfreiesKrankentaggeldChf: null,
+              steuerfreiesUnfalltaggeldChf: null,
               krankentaggeldArbeitgeberProzent: null,
               krankentaggeldArbeitgeberChf: null,
               nbuvArbeitgeberProzent: null,

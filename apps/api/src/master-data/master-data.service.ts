@@ -43,7 +43,8 @@ export class MasterDataService {
       throw new InvalidInputError('RELIGION_CONSENT_REQUIRED', 'religion requires religionConsent = true (Art. 9 DSGVO).')
     }
     const previous = await this.repository.findByUserId(userId)
-    const record = { religionEinwilligungAm: null } as MasterDataRecord
+    // The form does not know the yes/no an assistant may have set (ADR-0052 amendment 3): it stays.
+    const record = { religionEinwilligungAm: null, kirchensteuerpflichtig: previous?.kirchensteuerpflichtig ?? null } as MasterDataRecord
     for (const field of MASTER_DATA_FIELDS) record[field] = trimOrNull(dto[field])
     if (record.iban !== null) record.iban = normalizeIban(record.iban)
     if (record.familienstand === 'ledig') record.familienstandSeit = null

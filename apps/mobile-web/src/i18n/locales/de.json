@@ -329,7 +329,27 @@
       "neverActive": "Noch nicht verwendet",
       "revoke": "Trennen",
       "revoking": "Wird getrennt …",
-      "revokeError": "Trennen fehlgeschlagen. Bitte erneut versuchen."
+      "revokeError": "Trennen fehlgeschlagen. Bitte erneut versuchen.",
+      "verbinden": {
+        "oeffnen": "Assistent verbinden",
+        "welcher": "Welchen Assistenten möchten Sie verbinden?",
+        "art": {
+          "claude": "Claude",
+          "chatgpt": "ChatGPT",
+          "anderer": "Anderer"
+        },
+        "name": "Name des Assistenten",
+        "redirect": "Rückruf-Adresse (Redirect URI) des Assistenten",
+        "anlegen": "Zugang anlegen",
+        "busy": "Wird angelegt …",
+        "errName": "Bitte geben Sie dem Assistenten einen Namen.",
+        "errRedirect": "Die Rückruf-Adresse muss mit https:// beginnen oder auf diesen Rechner zeigen (http://localhost oder http://127.0.0.1).",
+        "errGeneric": "Der Assistent konnte nicht angelegt werden. Bitte erneut versuchen.",
+        "fertig": "Der Zugang ist angelegt. Tragen Sie diese beiden Angaben in Ihrem Assistenten ein, wenn Sie dort einen MCP-Server (Connector) hinzufügen:",
+        "serverAdresse": "Server-Adresse",
+        "clientId": "OAuth-Client-ID",
+        "fertigHinweis": "Ein Passwort oder Client-Secret gibt es nicht. Der Assistent öffnet danach diese App, und Sie geben ihm den Zugriff frei. Erst dann erscheint er hier als verbunden."
+      }
     }
   },
   "sicherheit": {
@@ -402,11 +422,33 @@
     "anlageBestaetigen": "{{anlage}} bestätigen",
     "einzelnAendern": "Einzeln ändern",
     "vorschlag": "{{herkunft}} schlägt {{neu}} statt {{alt}} vor.",
+    "personB": "Person B",
+    "buchung": {
+      "label": "Buchung",
+      "zeile": "{{datum}} · {{text}} · Beleg {{beleg}} · {{summe}}",
+      "vorschlag": "{{herkunft}} schlägt diese Buchung vor: {{buchung}}. Gebucht wird erst, wenn du sie übernimmst.",
+      "unlesbar": "Buchungsentwurf nicht lesbar"
+    },
     "vorschlagAnnehmen": "Übernehmen",
     "vorschlagVerwerfen": "Verwerfen",
     "leererWert": "leer",
     "unklar": "unlesbar",
     "fehler": "Das hat nicht geklappt. Versuch es noch mal.",
+    "aufgaben": {
+      "title": "Aufgaben von deinem Assistenten",
+      "intro": "Das kannst nur du erledigen. Hak ab, was erledigt ist, oder verwirf, was nicht passt.",
+      "von": "Von {{name}}",
+      "erledigt": "Erledigt",
+      "verwerfen": "Verwerfen",
+      "art": {
+        "konfession": "Konfession eintragen",
+        "einwilligung": "Einwilligung geben",
+        "bestaetigen": "Einträge bestätigen",
+        "beleg_nachreichen": "Beleg nachreichen",
+        "kind_entfernen": "Kind entfernen",
+        "sonstiges": "Aufgabe"
+      }
+    },
     "anlagen": {
       "hauptvordruck": "Hauptvordruck (ESt 1 A)",
       "anlageN": "Anlage N",
@@ -488,6 +530,15 @@
     "fehlendRiester": "Für deinen Riester-Vertrag fehlen noch Angaben für die Anlage AV: ob du selbst oder über deinen Ehepartner begünstigt bist, und gegebenenfalls deine beitragspflichtigen Einnahmen im Vorjahr.",
     "riesterErgaenzen": "Riester-Angaben ergänzen",
     "fehlendKinder": "Für die Anlage Kind fehlen noch Angaben zu deinen Kindern: Steuer-ID, Kindschaftsverhältnis, Familienkasse, Wohnsitz und gegebenenfalls der andere Elternteil.",
+    "fehlendKinderGenau": "Für die Anlage Kind fehlt noch: {{felder}}.",
+    "kinderFelder": {
+      "child": "ein erfasstes Kind (du hast Kinder angegeben)",
+      "taxId": "Steuer-ID des Kindes",
+      "kinship": "Kindschaftsverhältnis",
+      "familyBenefitsOffice": "Familienkasse",
+      "residence": "Wohnsitz des Kindes",
+      "otherParent": "Angaben zum anderen Elternteil"
+    },
     "kinderErgaenzen": "Kinder-Angaben ergänzen",
     "fehlendVermietung": "Für die Anlage V fehlen noch Angaben zu deiner Vermietung: Mieteinnahmen, Werbungskosten (auch 0), Adresse des Objekts und ob die AfA wie im Vorjahr ist.",
     "vermietungErgaenzen": "Vermietungs-Angaben ergänzen",
@@ -540,7 +591,54 @@
       "Alle Seiten abgeben, auch leere – aber nicht heften oder klammern.",
       "Belege nur beilegen, wenn ein Vordruck ausdrücklich danach fragt."
     ],
-    "hinweisEdaten": "Lohnsteuer, Sozialversicherung und andere „e“-Zeilen liegen dem Finanzamt bereits vom Arbeitgeber vor und bleiben leer. Nur den Bruttoarbeitslohn (Anlage N, Zeile 5) tragen wir zur Kontrolle ein."
+    "hinweisEdaten": "Lohnsteuer, Sozialversicherung und andere „e“-Zeilen liegen dem Finanzamt bereits vom Arbeitgeber vor und bleiben leer. Nur den Bruttoarbeitslohn (Anlage N, Zeile 5) tragen wir zur Kontrolle ein.",
+    "glasErklaerung": {
+      "zeilen": {
+        "zeile": "Zeile {{zeile}}",
+        "zeilenVonBis": "Zeilen {{von}}–{{bis}}",
+        "chfUndEur": "{{chf}} CHF · {{eur}}",
+        "weg": "Entfernungspauschale ({{ort}} · {{km}} km · {{tage}} Tage)",
+        "wegOhneOrt": "Entfernungspauschale ({{km}} km · {{tage}} Tage)",
+        "berufsverbaende": "Beiträge zu Berufsverbänden",
+        "arbeitsmittel": "Arbeitsmittel",
+        "fortbildung": "Fortbildungskosten",
+        "sonstiges": "Weitere Werbungskosten",
+        "nGre": {
+          "z6": "Bruttoarbeitslohn laut Lohnausweis",
+          "z8": "Kinder- und Ausbildungszulagen",
+          "z9": "Steuerfreies Krankentaggeld",
+          "z10": "SUVA-Geld (Unfalltaggeld)",
+          "z18": "Arbeitgeberbeiträge zur Krankentaggeldversicherung",
+          "z19": "Arbeitgeberbeiträge zur Nichtberufsunfallversicherung",
+          "z20": "Arbeitgeberbeiträge ins Überobligatorium (Säule 2b)",
+          "z23": "Steuerpflichtiger Arbeitslohn",
+          "z25": "Schweizer Abzugssteuer (höchstens 4,5 %)",
+          "z78": "Erwerbsersatzordnung (EO)",
+          "z79": "Arbeitslosenversicherung (ALV)",
+          "z80": "Beiträge zur Krankentaggeldversicherung",
+          "z81": "50 % der Beiträge zur Nichtberufsunfallversicherung",
+          "z82": "Summe der sonstigen Vorsorgeaufwendungen",
+          "z83": "AHV / IV",
+          "z84": "Pensionskasse Arbeitnehmer (Obligatorium, Säule 2a)",
+          "z85": "Summe der Arbeitnehmerbeiträge zur Altersvorsorge",
+          "z87": "Pensionskasse Arbeitgeber (Obligatorium, Säule 2a)",
+          "z88": "Summe der Arbeitgeberbeiträge zur Altersvorsorge"
+        },
+        "vorsorge": {
+          "kz326": "Gesetzliche Krankenversicherung (Basisabsicherung)",
+          "kz328": "Davon mit Anspruch auf Krankengeld",
+          "kz329": "Soziale Pflegeversicherung",
+          "kz338": "Wahl- und Zusatzleistungen (gesetzlich)",
+          "kz350": "Private Krankenversicherung (Basisabsicherung)",
+          "kz351": "Private Pflege-Pflichtversicherung",
+          "kz354": "Wahl- und Zusatzleistungen (privat)",
+          "kz333": "Ausländische Krankenversicherung (Basisabsicherung)",
+          "kz334": "Davon ohne Anspruch auf Krankengeld",
+          "kz335": "Ausländische Pflegeversicherung",
+          "kz339": "Wahl- und Zusatzleistungen (ausländisch)"
+        }
+      }
+    }
   },
   "adresssuche": {
     "label": "Adresse suchen",
@@ -676,7 +774,13 @@
   "owlPersonalData": {
     "card": {
       "title": "Darf die Eule deine persönlichen Daten verarbeiten?",
-      "body": "Damit die Eule auch Name, Steuer-ID, Geburtsdatum, Anschrift, Bankverbindung (IBAN), Familienstand, die Angaben zu Partnerin/Partner und Kindern sowie deine Religionszugehörigkeit eintragen kann, gehen diese Angaben an das Sprachmodell Google Gemini (Google als Auftragsverarbeiter). Die Religionszugehörigkeit ist eine besondere Kategorie personenbezogener Daten (Art. 9 DSGVO); mit „Erlauben“ willigst du auch dafür ausdrücklich ein. Ohne Einwilligung macht die Eule diese Angaben unkenntlich und du trägst sie selbst in den Masken ein. Du kannst die Einwilligung jederzeit unter Profil → Datenschutz widerrufen.",
+      "body": "Damit die Eule auch Name, Steuer-ID, Geburtsdatum, Anschrift, Bankverbindung (IBAN), Familienstand, die Angaben zu Partnerin/Partner und Kindern sowie deine Religionszugehörigkeit eintragen kann, gehen diese Angaben an {{processor}}. Die Religionszugehörigkeit ist eine besondere Kategorie personenbezogener Daten (Art. 9 DSGVO); mit „Erlauben“ willigst du auch dafür ausdrücklich ein. Ohne Einwilligung macht die Eule diese Angaben unkenntlich und du trägst sie selbst in den Masken ein. Du kannst die Einwilligung jederzeit unter Profil → Datenschutz widerrufen.",
+      "processor": {
+        "google-genai": "das Sprachmodell Google Gemini (Google als Auftragsverarbeiter)",
+        "anthropic": "das Sprachmodell Claude (Anthropic als Auftragsverarbeiter)",
+        "openai": "das Sprachmodell von OpenAI (OpenAI als Auftragsverarbeiter)",
+        "other": "das Sprachmodell, das für die Eule eingerichtet ist (dessen Anbieter als Auftragsverarbeiter)"
+      },
       "allow": "Erlauben",
       "deny": "Nicht erlauben",
       "saving": "Wird gespeichert …",
@@ -961,7 +1065,7 @@
     },
     "feld": {
       "placeholder": "Ganzzahlige Euro",
-      "unklar": "unlesbar"
+      "unklar": "Kann ich nicht lesen"
     },
     "zustand": {
       "unvollstaendig": "Noch {{offen}} offen, {{unklar}} unlesbar.",
@@ -985,6 +1089,10 @@
         "pdf_ocr_render": "Gescanntes PDF wird lokal per OCR gelesen …",
         "image_ocr": "Foto wird lokal per OCR gelesen …",
         "parsing": "Zeilen 3, 4 und SV-Beiträge (23, 25–27) werden geprüft …"
+      },
+      "lines": {
+        "heading": "Weitere Zeilen der Bescheinigung",
+        "help": "Auch diese Werte sind erkannt und noch nicht gespeichert. „Werte übernehmen“ schreibt sie in ihre Felder weiter unten; leer gelassene Zeilen werden nicht übernommen."
       },
       "draftBanner": {
         "title": "Entwurf aus Lohnsteuerbescheinigung — noch nicht gespeichert",
@@ -1010,7 +1118,8 @@
           "plausibility_conflict": "Wert passt rechnerisch nicht zum Bruttoarbeitslohn — bitte prüfen.",
           "partial_sv_lines": "Nur ein Teil der SV-Zeilen (23, 25, 26, 27) erkannt — Summe bitte prüfen.",
           "llm_suggested": "Vorschlag der Texterkennung — bitte mit deinem Beleg vergleichen.",
-          "ocr_source": "Aus Foto oder Scan gelesen — bitte jede Ziffer mit deinem Beleg vergleichen."
+          "ocr_source": "Aus Foto oder Scan gelesen — bitte jede Ziffer mit deinem Beleg vergleichen.",
+          "empty_line": "Zeile auf dem Beleg leer — als 0 vorgeschlagen, bitte prüfen."
         }
       },
       "yearConflict": {
@@ -1072,7 +1181,7 @@
     },
     "feld": {
       "placeholder": "Ganzzahliger Wert",
-      "unklar": "unlesbar"
+      "unklar": "Kann ich nicht lesen"
     },
     "posten": {
       "heading": "Steuerpflichtiger Anteil",
@@ -1113,7 +1222,7 @@
       "label": "Kapitalerträge vor Abzug des Sparer-Pauschbetrags (Steuerbescheinigung: „Höhe der Kapitalerträge“)",
       "plausiNetto": "Der genutzte Sparer-Pauschbetrag ist größer als deine Kapitalerträge. Hast du den Betrag nach Abzug eingetragen? Dann wäre hier {{brutto}} richtig, sonst rechnen wir 0 € Steuer auf deine Kapitalerträge.",
       "placeholder": "Ganzzahliger Wert",
-      "unklar": "unlesbar"
+      "unklar": "Kann ich nicht lesen"
     },
     "posten": {
       "heading": "Deine Kapitalerträge",
@@ -1132,7 +1241,14 @@
       "keineAbgeltungEinbehalten": "Keine Abgeltungsteuer einbehalten — die Günstigerprüfung stellt sich hier nicht.",
       "kryptoGegated": "Krypto bleibt 2.0 — keine Günstigerprüfung für Krypto.",
       "kapDepotNichtBeantwortet": "Erst die Depot-Frage im Interview beantworten — dann wissen wir, ob die Günstigerprüfung anwendbar ist.",
-      "keineKapitalertraege": "Trag zuerst deine Kapitalerträge ein — dann rechnen wir den Vergleich."
+      "keineKapitalertraege": "Trag zuerst deine Kapitalerträge ein — dann rechnen wir den Vergleich.",
+      "unterschied": "Unterschied",
+      "schaetzungAbgeltung": "Die Schätzung im Cockpit rechnet deine Kapitalerträge mit der Abgeltungsteuer, nicht mit dem günstigeren Tarif.",
+      "schaetzungQuelle": "Die Schätzung im Cockpit lässt es bei der einbehaltenen Abgeltungsteuer; den günstigeren Tarif rechnet sie nicht ein.",
+      "schaetzungOffen": "Den Vergleich rechnen wir auf der Schätzung im Cockpit. Ihr fehlt noch: {{liste}}",
+      "schaetzungNichtMoeglich": "Den Vergleich rechnen wir auf der Schätzung im Cockpit, und die geht hier noch nicht: {{grund}}",
+      "fehltPartner": "Person B: {{was}}",
+      "fehltVeranlagungsart": "Wie ihr veranlagt werdet (Zusammenveranlagung in „Angaben für die Erklärung“ anlegen)"
     },
     "weiter": "Weiter"
   },
@@ -1159,7 +1275,7 @@
     },
     "feld": {
       "placeholder": "Ganzzahliger Wert",
-      "unklar": "unlesbar"
+      "unklar": "Kann ich nicht lesen"
     },
     "objektHeading": "Objekt {{index}}",
     "addObjekt": "Weiteres Objekt hinzufügen",
@@ -1535,6 +1651,9 @@
     "warnungenBestaetigen": "Gelesen, trotzdem weiter",
     "schrittVergleich": "Veranlagungsartenvergleich",
     "vergleichUeberspringen": "Überspringen",
+    "zusammenErfasst": "Ihr gebt gemeinsam ab (Zusammenveranlagung). So ist es in „Angaben für die Erklärung“ erfasst.",
+    "vergleichOeffnen": "Mit getrennter Abgabe vergleichen",
+    "vergleichSchliessen": "Vergleich schließen",
     "schrittAusdruck": "Ausdruck",
     "zumAusdruck": "Weiter zum Ausdruck",
     "elsterHinweis": "Ein Jahr mit Selbstständigkeit gibst du über Mein ELSTER ab – wir füllen dir aus, was du dort einträgst.",
@@ -1611,6 +1730,7 @@
       "status": {
         "offen": "Offen",
         "erledigt": "Erledigt",
+        "keinThema": "Trifft nicht zu",
         "betragOffen": "⏳ Betrag offen",
         "optional": "Optional"
       },
@@ -1738,6 +1858,30 @@
       "veranlagungsartOffen": "Ihr seid verheiratet: Leg in „Angaben für die Erklärung“ die Zusammenveranlagung an – dann rechnen wir für euch beide.",
       "offen_one": "Für die Schätzung fehlt noch 1 Angabe.",
       "offen_other": "Für die Schätzung fehlen noch {{count}} Angaben.",
+      "fehlt": {
+        "eigene": "{{was}} · {{wo}}",
+        "partner": "{{name}}: {{was}} · {{wo}}",
+        "ohneOrt": "{{was}}",
+        "partnerOhneOrt": "{{name}}: {{was}}",
+        "oeffnen": "Öffnet die Maske, in der die Angabe fehlt",
+        "kachel": "Fehlt für die Schätzung: {{liste}}",
+        "sonstiges": "Eine weitere Angabe",
+        "bruttoarbeitslohn": "Bruttoarbeitslohn (Zeile 3)",
+        "lohnsteuer": "Einbehaltene Lohnsteuer (Zeile 4)",
+        "sozialversicherung": "Sozialversicherungsbeiträge",
+        "lohnsteuer-uebersteigt-brutto": "Lohnsteuer höher als der Bruttolohn, bitte prüfen",
+        "sozialversicherung-uebersteigt-brutto": "Sozialversicherung höher als der Bruttolohn, bitte prüfen",
+        "grenzgaenger-status": "Die zwei Fragen zum Grenzgänger-Status",
+        "bruttolohn-total": "Bruttolohn (Ziffer 8)",
+        "berufliche-vorsorge": "Berufliche Vorsorge (Ziffer 10)",
+        "quellensteuer": "Quellensteuer (Ziffer 12)",
+        "wechselkurs": "Wechselkurs",
+        "pk-obligatorium": "Pensionskasse: Arbeitnehmerbeitrag",
+        "rente": "Rentenbetrag",
+        "lohnersatz-betrag": "Betrag der Lohnersatzleistungen",
+        "selbststaendig": "Angaben zur Selbstständigkeit",
+        "einkommen": "Angaben zum Einkommen"
+      },
       "grund": {
         "verheiratet": "Für Verheiratete rechnen wir die Erstattung noch nicht.",
         "nur-angestellte": "Die Erstattung rechnen wir bisher nur für Angestellte.",
@@ -1765,6 +1909,9 @@
       "hinweis_one": "{{summe}} wartet noch auf deine Bestätigung.",
       "hinweis_other": "{{summe}} warten noch auf deine Bestätigung.",
       "hinweisOhneSumme": "Neue Werte warten auf deine Bestätigung.",
+      "aufgaben_one": "{{count}} Aufgabe von deinem Assistenten",
+      "aufgaben_other": "{{count}} Aufgaben von deinem Assistenten",
+      "aufgabenAnsehen": "Aufgaben ansehen",
       "anlage": "{{anlage}} · {{anzahl}}",
       "pruefen": "Prüfen & bestätigen"
     },
@@ -1818,6 +1965,7 @@
       "someoneElse": "jemand anderen",
       "unknown": "Der Beleg lautet auf {{printed}}. Die Person gibt es in deiner Erklärung noch nicht – für wen ist er?",
       "unknownNoName": "Für wen ist dieser Beleg? In deiner Erklärung gibt es noch niemanden, zu dem er passt.",
+      "childNeeded": "Dieser Beleg gehört zu einem Kind, und in deiner Erklärung ist noch keines angelegt. Leg das Kind an, dann wird der Beleg für es gelesen.",
       "confirmSelf": "Der Beleg lautet auf {{printed}}. Bist du {{printed}}?"
     },
     "nichtsUebernommen": "Es wurde noch nichts übernommen.",
@@ -1864,6 +2012,10 @@
   },
   "belege": {
     "appbarTitle": "Belege",
+    "mehrLaden": {
+      "cta": "Mehr laden",
+      "laedt": "Lädt …"
+    },
     "loading": "Deine Belege werden geladen …",
     "loadError": {
       "heading": "Das hat nicht geklappt.",
@@ -2048,7 +2200,7 @@
     },
     "feld": {
       "placeholder": "Ganzzahlige Euro",
-      "unklar": "unlesbar"
+      "unklar": "Kann ich nicht lesen"
     },
     "datum": {
       "label": "Bescheiddatum (TT.MM.JJJJ)"
@@ -2116,6 +2268,8 @@
         "familienzulagenChf": "Kinder- und Ausbildungszulagen im Bruttolohn (CHF, ggf. 0)",
         "krankentaggeldChf": "Deine Beiträge zur Krankentaggeldversicherung (CHF, ggf. 0)",
         "steuerfreiesKrankentaggeldChf": "Ausgezahltes steuerfreies Krankentaggeld im Bruttolohn, z. B. „KK-Taggeld“ im Zusatzblatt (CHF, ggf. 0)",
+        "steuerfreiesUnfalltaggeldChf": "Unfalltaggeld (UVG/SUVA) im Bruttolohn",
+        "steuerfreiesUnfalltaggeldChfHilfe": "Steuerfrei, erhöht aber den Steuersatz (Progressionsvorbehalt). Krankentaggeld gehört ins Feld darüber.",
         "pkArbeitnehmerChf": "Pensionskasse – davon obligatorisch (BVG): dein Beitrag (CHF)",
         "pkArbeitgeberGesamtChf": "Pensionskasse – alle Beiträge des Arbeitgebers, obligatorisch und überobligatorisch (CHF)",
         "pkArbeitgeberChf": "Pensionskasse – davon obligatorisch (BVG): Beitrag des Arbeitgebers (CHF)",
@@ -2127,7 +2281,7 @@
         "familienzulagenImBruttolohnHilfe": "Nur dann wird die Zulage vom Bruttolohn abgezogen (Anlage N-Gre Zeile 8). Sonst gehört sie zum Kind (Maske Kinder).",
         "kvZuschussAnspruch": "Anspruch auf steuerfreie Zuschüsse oder Arbeitgeberbeiträge zur Krankenversicherung? (Anlage Vorsorgeaufwand Zeile 49)"
       },
-      "sonderfaelle": "Gab es Arbeitslosen- oder SUVA-Gelder, Mutterschafts- oder IV-Taggelder, steuerfreie Zuschläge, Direktversicherung, Optionsrechte, Fahrtkostenersatz, Spesenpauschalen oder einen Firmenwagen?",
+      "sonderfaelle": "Gab es Arbeitslosengeld, Mutterschafts- oder IV-Taggelder, steuerfreie Zuschläge, Direktversicherung, Optionsrechte, Fahrtkostenersatz, Spesenpauschalen oder einen Firmenwagen?",
       "ja": "Ja",
       "nein": "Nein"
     },
@@ -2221,6 +2375,17 @@
       }
     }
   },
+  "kinder": {
+    "anbieterVoll": "Mehr passt nicht in die Zeile des Formulars. Kürz z. B. die Anschrift ab (Straße und Ort genügen).",
+    "anbieterGekuerzt": "Der Text war zu lang für die Zeile des Formulars und wurde gekürzt. Kürz z. B. die Anschrift ab (Straße und Ort genügen).",
+    "speichert": "Speichert …",
+    "gespeichert": "{{name}} ist gespeichert.",
+    "pflichtFehlt": "Bitte Vorname, Nachname und Geburtsdatum eintragen.",
+    "datumFalsch": "Bitte das Geburtsdatum als TT.MM.JJJJ eintragen.",
+    "speichernFehler": "Das Kind wurde nicht gespeichert. Prüf die Angaben und die Verbindung und versuch es noch mal.",
+    "kinderzulageAusLohnausweis": "Dieselbe Angabe wie im Schweizer Lohnausweis („Kinder- und Familienzulagen“): Von dort entfallen {{betrag}} auf dieses Kind. Trag hier nur etwas ein, wenn es ein anderer Betrag ist.",
+    "kinderzulageHinweis": "Dieselbe Angabe wie „Kinder- und Familienzulagen“ im Schweizer Lohnausweis. Steht sie dort schon, lass das Feld leer: Der Betrag wird von dort übernommen."
+  },
   "veranlagungsartenvergleich": {
     "back": "Zurück",
     "loading": "Dein Vergleich wird berechnet …",
@@ -2257,6 +2422,7 @@
     "scopeSteuerdatenWrite": "Steuerfakten ausfüllen (bleibt unbestätigt bis zu Ihrer Prüfung)",
     "scopeBelegeWrite": "Belege hochladen",
     "scopeZahllinkRead": "Zahllink abrufen",
+    "scopeOfflineAccess": "Verbindung bleibt bestehen, bis Sie sie unter „Verbundene Assistenten“ widerrufen",
     "drittlandHeading": "Hinweis zur Datenübertragung (Drittland)",
     "drittlandNotice": "Durch die Verbindung werden Ihre Daten an den Anbieter dieses Assistenten übermittelt. Dies kann Server in einem Drittland (z. B. USA) ohne Angemessenheitsbeschluss der EU-Kommission umfassen. Die Verarbeitung dort unterliegt den Bestimmungen des jeweiligen Anbieters.",
     "allow": "Verbindung erlauben",
@@ -2523,6 +2689,9 @@
       "effectNone": "Ändert die Schätzung nicht",
       "effectOpen": "Wirkung noch offen",
       "entryLabel": "Eintrag:",
+      "companionsLabel": "Wird mit eingetragen:",
+      "companionYes": "Ja",
+      "companionNo": "Nein",
       "notRecorded": "Nicht erfasst",
       "forPerson": "für {{name}}",
       "forYou": "für dich",
@@ -4032,5 +4201,8 @@
       "ueber30": "Mehr als 30 Beschäftigte (keine Umlage U1)",
       "kircheOhneZeile": "Für {{kuerzel}} hat die Lohnsteuer-Anmeldung deines Bundeslandes keine eigene Zeile, oder der Gemeindeschlüssel im Profil fehlt. Die Kirchensteuer steckt nur im Gesamtbetrag (Kz 83); frag dein Finanzamt, wohin sie gehört."
     }
+  },
+  "betrag": {
+    "unlesbar": "Das ist kein Betrag. Bitte so eingeben: 948 oder 948,60."
   }
 }

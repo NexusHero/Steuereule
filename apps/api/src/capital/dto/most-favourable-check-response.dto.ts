@@ -6,8 +6,11 @@ export class MostFavourableCheckSourceDto {
   @ApiProperty({ type: Number, example: 20000, description: 'The Kapitalerträge (whole euros) — the basis of both amounts.' })
   kapitalertraege!: number
 
-  @ApiProperty({ type: Number, example: 60000, description: 'The übrige zvE-basis (Einnahmen-Basis from @steuereule/core — layer 3 open, no real zvE yet).' })
+  @ApiProperty({ type: Number, example: 60000, description: 'The taxable income of the Cockpit estimate without the capital income (the upper end of its range).' })
   remainingZvE!: number
+
+  @ApiPropertyOptional({ type: Number, example: 59000, description: 'The lower end of the estimate’s taxable income; the figures are those of the upper end.' })
+  remainingZvEFrom?: number
 
   @ApiProperty({ type: Number, example: 1000, description: 'The applied Sparerpauschbetrag (§ 20 Abs. 9 EStG).' })
   saversAllowance!: number
@@ -27,10 +30,10 @@ export class MostFavourableCheckDto {
   @ApiPropertyOptional({ type: String, enum: ['abgeltung', 'persoenlich'], description: 'The recommendation (only when kind === "eindeutig").' })
   recommendation?: 'abgeltung' | 'persoenlich'
 
-  @ApiPropertyOptional({ type: Number, example: 4750, description: 'Abgeltungsteuer + Soli + KiSt-Ermäßigung (only when kind !== "nicht-anwendbar").' })
+  @ApiPropertyOptional({ type: Number, example: 5011.25, description: 'Abgeltungsteuer + Soli (5,5 % without exemption limit) + KiSt, in euros with cents (only when kind !== "nicht-anwendbar").' })
   flatRateTax?: number
 
-  @ApiPropertyOptional({ type: Number, example: 8012, description: 'The personal (tariff) tax on the capital income (only when kind !== "nicht-anwendbar").' })
+  @ApiPropertyOptional({ type: Number, example: 8012, description: 'The tariff tax the capital income adds to the estimate (tariff with minus tariff without, plus Soli and KiSt; only when kind !== "nicht-anwendbar").' })
   personal?: number
 
   @ApiPropertyOptional({ type: Number, example: 3262, description: 'persoenlich − abgeltung (only when kind !== "nicht-anwendbar").' })
@@ -44,8 +47,22 @@ export class MostFavourableCheckDto {
 
   @ApiPropertyOptional({
     type: String,
-    enum: ['keine-abgeltung-einbehalten', 'krypto-gegated', 'kap-depot-nicht-beantwortet', 'keine-kapitalertraege'],
+    enum: ['keine-abgeltung-einbehalten', 'krypto-gegated', 'kap-depot-nicht-beantwortet', 'keine-kapitalertraege', 'schaetzung-offen', 'schaetzung-nicht-moeglich'],
     description: 'Why the Günstigerprüfung does not apply (only when kind === "nicht-anwendbar").',
   })
-  reason?: 'keine-abgeltung-einbehalten' | 'krypto-gegated' | 'kap-depot-nicht-beantwortet' | 'keine-kapitalertraege'
+  reason?: 'keine-abgeltung-einbehalten' | 'krypto-gegated' | 'kap-depot-nicht-beantwortet' | 'keine-kapitalertraege' | 'schaetzung-offen' | 'schaetzung-nicht-moeglich'
+
+  @ApiPropertyOptional({ type: [String], example: ['lohnsteuer'], description: 'What the Cockpit estimate still lacks, as its own missing list (only when reason === "schaetzung-offen").' })
+  missing?: string[]
+
+  @ApiPropertyOptional({ type: String, example: 'besondere-lebenslage', description: 'Why the Cockpit estimate cannot be computed (only when reason === "schaetzung-nicht-moeglich").' })
+  estimateReason?: string
+
+  @ApiPropertyOptional({
+    type: String,
+    enum: ['abgeltung', 'quelle'],
+    description:
+      'How the Cockpit estimate counts the capital income (only when kind !== "nicht-anwendbar"): "abgeltung" = at the flat rate in the joint estimate, "quelle" = left with the flat tax withheld at source. It never applies the cheaper tariff itself.',
+  })
+  estimateTreatment?: 'abgeltung' | 'quelle'
 }

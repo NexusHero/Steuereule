@@ -6609,22 +6609,54 @@
     "/v1/belege": {
       "get": {
         "operationId": "ReceiptController_list",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "ordner",
+            "required": false,
+            "in": "query",
+            "description": "Only the Belege of this folder; the counts still cover all of them.",
+            "schema": {
+              "enum": [
+                "einkuenfte",
+                "vorsorge",
+                "bescheide",
+                "weitere"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "description": "`nextCursor` of the page before.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "Belege per page, 1 to 100; 30 without it.",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
         "responses": {
           "200": {
-            "description": "The caller’s Beleg inbox, newest first.",
+            "description": "",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/ReceiptResponseDto"
-                  }
+                  "$ref": "#/components/schemas/ReceiptPageResponseDto"
                 }
               }
             }
           }
         },
+        "summary": "One page of the Beleg inbox, newest first, with the counts the inbox shows over all Belege",
         "tags": [
           "belege"
         ]
@@ -8370,6 +8402,63 @@
           },
           "404": {
             "description": "No open proposal for this field."
+          }
+        },
+        "tags": [
+          "bestaetigung"
+        ]
+      }
+    },
+    "/v1/steuerjahre/{jahr}/bestaetigung/aufgaben/{id}": {
+      "put": {
+        "operationId": "ConfirmationController_decideTask",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "The id of a task from the overview.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "description": "The tax year (ParseSteuerjahrPipe, same as Cockpit).",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TaskDecisionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The task the assistant left is settled or discarded; the remaining overview.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConfirmationResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Guest session — this endpoint requires a signed-in account."
+          },
+          "404": {
+            "description": "No open task with this id in this tax year."
           }
         },
         "tags": [
@@ -10767,7 +10856,12 @@
           "remainingZvE": {
             "type": "number",
             "example": 60000,
-            "description": "The übrige zvE-basis (Einnahmen-Basis from @steuereule/core — layer 3 open, no real zvE yet)."
+            "description": "The taxable income of the Cockpit estimate without the capital income (the upper end of its range)."
+          },
+          "remainingZvEFrom": {
+            "type": "number",
+            "example": 59000,
+            "description": "The lower end of the estimate’s taxable income; the figures are those of the upper end."
           },
           "saversAllowance": {
             "type": "number",
@@ -10825,13 +10919,13 @@
           },
           "flatRateTax": {
             "type": "number",
-            "example": 4750,
-            "description": "Abgeltungsteuer + Soli + KiSt-Ermäßigung (only when kind !== \"nicht-anwendbar\")."
+            "example": 5011.25,
+            "description": "Abgeltungsteuer + Soli (5,5 % without exemption limit) + KiSt, in euros with cents (only when kind !== \"nicht-anwendbar\")."
           },
           "personal": {
             "type": "number",
             "example": 8012,
-            "description": "The personal (tariff) tax on the capital income (only when kind !== \"nicht-anwendbar\")."
+            "description": "The tariff tax the capital income adds to the estimate (tariff with minus tariff without, plus Soli and KiSt; only when kind !== \"nicht-anwendbar\")."
           },
           "delta": {
             "type": "number",
@@ -10860,9 +10954,34 @@
               "keine-abgeltung-einbehalten",
               "krypto-gegated",
               "kap-depot-nicht-beantwortet",
-              "keine-kapitalertraege"
+              "keine-kapitalertraege",
+              "schaetzung-offen",
+              "schaetzung-nicht-moeglich"
             ],
             "description": "Why the Günstigerprüfung does not apply (only when kind === \"nicht-anwendbar\")."
+          },
+          "missing": {
+            "example": [
+              "lohnsteuer"
+            ],
+            "description": "What the Cockpit estimate still lacks, as its own missing list (only when reason === \"schaetzung-offen\").",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "estimateReason": {
+            "type": "string",
+            "example": "besondere-lebenslage",
+            "description": "Why the Cockpit estimate cannot be computed (only when reason === \"schaetzung-nicht-moeglich\")."
+          },
+          "estimateTreatment": {
+            "type": "string",
+            "enum": [
+              "abgeltung",
+              "quelle"
+            ],
+            "description": "How the Cockpit estimate counts the capital income (only when kind !== \"nicht-anwendbar\"): \"abgeltung\" = at the flat rate in the joint estimate, \"quelle\" = left with the flat tax withheld at source. It never applies the cheaper tariff itself."
           }
         },
         "required": [
@@ -11482,6 +11601,10 @@
             "type": "number",
             "nullable": true
           },
+          "steuerfreiesUnfalltaggeldChf": {
+            "type": "number",
+            "nullable": true
+          },
           "krankentaggeldArbeitgeberProzent": {
             "type": "number",
             "nullable": true
@@ -11525,6 +11648,7 @@
           "pkArbeitgeberChf",
           "pkArbeitgeberGesamtChf",
           "steuerfreiesKrankentaggeldChf",
+          "steuerfreiesUnfalltaggeldChf",
           "krankentaggeldArbeitgeberProzent",
           "krankentaggeldArbeitgeberChf",
           "nbuvArbeitgeberProzent",
@@ -11699,6 +11823,11 @@
             "type": "number",
             "nullable": true,
             "description": "Whole CHF — tax-free Krankentaggeld paid out and contained in Ziffer 8 (Zeilen 9/76)."
+          },
+          "steuerfreiesUnfalltaggeldChf": {
+            "type": "number",
+            "nullable": true,
+            "description": "Whole CHF — daily benefit of the Swiss accident insurance (UVG/SUVA) paid out and contained in Ziffer 8 (line „SUVA – Geld“). Tax-free, but it raises the tax rate (§ 32b EStG)."
           },
           "krankentaggeldArbeitgeberProzent": {
             "type": "number",
@@ -17382,10 +17511,29 @@
             "items": {
               "type": "string"
             }
+          },
+          "missingChildFields": {
+            "type": "array",
+            "example": [
+              "taxId"
+            ],
+            "description": "Which details of the children are behind `kinder` in `missing`, so the hint names them: `child` = children were named but none is recorded, `residence` = whether the child lived in Germany all year, `otherParent` = the other parent. Empty without `kinder`.",
+            "items": {
+              "type": "string",
+              "enum": [
+                "child",
+                "taxId",
+                "kinship",
+                "familyBenefitsOffice",
+                "residence",
+                "otherParent"
+              ]
+            }
           }
         },
         "required": [
-          "missing"
+          "missing",
+          "missingChildFields"
         ]
       },
       "LiveFormInstanceDto": {
@@ -17426,12 +17574,23 @@
               "anlN.kz110": "42000"
             },
             "description": "The AcroForm field ids of this copy and what is printed in them; `true` = a cross."
+          },
+          "lines": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "example": {
+              "anlN.kz110": "5"
+            },
+            "description": "The Zeile each of these fields stands in on the Vordruck of this tax year; a box in the page head has none."
           }
         },
         "required": [
           "person",
           "entityId",
-          "values"
+          "values",
+          "lines"
         ]
       },
       "LiveFormDto": {
@@ -17851,6 +18010,123 @@
           "duplicateOf"
         ]
       },
+      "ReceiptFolderCountsDto": {
+        "type": "object",
+        "properties": {
+          "einkuenfte": {
+            "type": "number",
+            "example": 3,
+            "description": "Belege in the folder Einkünfte (Lohnausweis, Quellensteuer, Rentenbezugsmitteilung, Familienzulage)."
+          },
+          "vorsorge": {
+            "type": "number",
+            "example": 1,
+            "description": "Belege in the folder Vorsorge (Pensionskasse, Säule 3a, Krankenkasse)."
+          },
+          "bescheide": {
+            "type": "number",
+            "example": 0,
+            "description": "Belege in the folder Bescheide (Steuerbescheid, Steuerbescheinigung)."
+          },
+          "weitere": {
+            "type": "number",
+            "example": 5,
+            "description": "Every other Beleg, one without a kind included."
+          }
+        },
+        "required": [
+          "einkuenfte",
+          "vorsorge",
+          "bescheide",
+          "weitere"
+        ]
+      },
+      "ReceiptProposalDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "b1f6c9a0-0f5e-4a52-9a43-7d0c4d3b2e10"
+          },
+          "taxYear": {
+            "type": "number",
+            "example": 2025,
+            "description": "The tax year the Beleg is proposed for."
+          }
+        },
+        "required": [
+          "id",
+          "taxYear"
+        ]
+      },
+      "ReceiptCountsDto": {
+        "type": "object",
+        "properties": {
+          "total": {
+            "type": "number",
+            "example": 9,
+            "description": "Every Beleg of the caller, whatever page or folder is shown."
+          },
+          "open": {
+            "type": "number",
+            "example": 2,
+            "description": "Belege not fully processed yet (`processing.open`), over all of them."
+          },
+          "unassigned": {
+            "type": "number",
+            "example": 4,
+            "description": "Belege whose tax year is not confirmed yet: no year, only proposed, or in conflict."
+          },
+          "folders": {
+            "$ref": "#/components/schemas/ReceiptFolderCountsDto"
+          },
+          "proposals": {
+            "description": "Every Beleg whose year is only proposed and waits for a yes, over all of them: what one tap on „alle zuordnen“ takes.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReceiptProposalDto"
+            }
+          }
+        },
+        "required": [
+          "total",
+          "open",
+          "unassigned",
+          "folders",
+          "proposals"
+        ]
+      },
+      "ReceiptPageResponseDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "description": "One page of the Beleg inbox, newest first.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReceiptResponseDto"
+            }
+          },
+          "nextCursor": {
+            "type": "string",
+            "nullable": true,
+            "example": "eyJ0IjoiMjAyNi0wMS0wMVQwMDowMDowMC4wMDBaIiwiaSI6ImFiYyJ9",
+            "description": "Pass it as `cursor` for the next page; null on the last one. Opaque: do not build or read it."
+          },
+          "counts": {
+            "description": "The numbers the inbox shows, counted over all Belege and not just this page.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ReceiptCountsDto"
+              }
+            ]
+          }
+        },
+        "required": [
+          "items",
+          "nextCursor",
+          "counts"
+        ]
+      },
       "CreateReceiptDto": {
         "type": "object",
         "properties": {
@@ -18077,6 +18353,11 @@
             "minimum": 1,
             "maximum": 99,
             "description": "For a business receipt: which business of the account holder books it (ADR-0101 §22); the first by default."
+          },
+          "inChat": {
+            "type": "boolean",
+            "example": true,
+            "description": "Uploaded in the chat of `taxYear` (entry context, ADR-0097 §4): the Beleg is filed in that year — also when it asks „Für wen?“ or yields nothing — unless the document itself names another year; a year the user chose stays."
           },
           "stageDraft": {
             "type": "boolean",
@@ -18381,7 +18662,8 @@
               "plausibility_conflict",
               "partial_sv_lines",
               "llm_suggested",
-              "ocr_source"
+              "ocr_source",
+              "empty_line"
             ],
             "example": null
           }
@@ -18858,7 +19140,8 @@
               "plausibility_conflict",
               "partial_sv_lines",
               "llm_suggested",
-              "ocr_source"
+              "ocr_source",
+              "empty_line"
             ],
             "example": null
           },
@@ -19234,7 +19517,8 @@
               "plausibility_conflict",
               "partial_sv_lines",
               "llm_suggested",
-              "ocr_source"
+              "ocr_source",
+              "empty_line"
             ],
             "example": null
           }
@@ -19264,6 +19548,133 @@
           "bruttoarbeitslohn",
           "lohnsteuer",
           "sozialversicherung"
+        ]
+      },
+      "LstbExtractedLinesDto": {
+        "type": "object",
+        "properties": {
+          "solidaritaetszuschlag": {
+            "description": "Zeile 5, Euro mit Cent.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/LstbExtractedFieldDto"
+              }
+            ]
+          },
+          "kirchensteuer": {
+            "description": "Zeile 6.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/LstbExtractedFieldDto"
+              }
+            ]
+          },
+          "kirchensteuerEhegatte": {
+            "description": "Zeile 7.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/LstbExtractedFieldDto"
+              }
+            ]
+          },
+          "rvArbeitgeber": {
+            "description": "Zeile 22 a + b.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/LstbExtractedFieldDto"
+              }
+            ]
+          },
+          "rvArbeitnehmer": {
+            "description": "Zeile 23 a + b.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/LstbExtractedFieldDto"
+              }
+            ]
+          },
+          "zuschuesseKvPv": {
+            "description": "Zeile 24 a + b + c.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/LstbExtractedFieldDto"
+              }
+            ]
+          },
+          "zuschussPv": {
+            "description": "Zeile 24c allein.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/LstbExtractedFieldDto"
+              }
+            ]
+          },
+          "kvArbeitnehmer": {
+            "description": "Zeile 25.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/LstbExtractedFieldDto"
+              }
+            ]
+          },
+          "pvArbeitnehmer": {
+            "description": "Zeile 26.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/LstbExtractedFieldDto"
+              }
+            ]
+          },
+          "avArbeitnehmer": {
+            "description": "Zeile 27.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/LstbExtractedFieldDto"
+              }
+            ]
+          }
+        },
+        "required": [
+          "solidaritaetszuschlag",
+          "kirchensteuer",
+          "kirchensteuerEhegatte",
+          "rvArbeitgeber",
+          "rvArbeitnehmer",
+          "zuschuesseKvPv",
+          "zuschussPv",
+          "kvArbeitnehmer",
+          "pvArbeitnehmer",
+          "avArbeitnehmer"
+        ]
+      },
+      "LstbExtractedEmployerDto": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "type": "string",
+            "nullable": true,
+            "example": "Beispielwerke GmbH"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "pruefen"
+            ]
+          },
+          "reason": {
+            "type": "string",
+            "nullable": true,
+            "enum": [
+              "missing",
+              "ocr_source"
+            ]
+          }
+        },
+        "required": [
+          "value",
+          "status",
+          "reason"
         ]
       },
       "ParsedLstbResponseDto": {
@@ -19301,6 +19712,17 @@
           },
           "fields": {
             "$ref": "#/components/schemas/LstbExtractedFieldsDto"
+          },
+          "lines": {
+            "description": "Every further line of the mask: Soli, church tax, Zeilen 22–27 and the subsidies (Zeile 24).",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/LstbExtractedLinesDto"
+              }
+            ]
+          },
+          "employer": {
+            "$ref": "#/components/schemas/LstbExtractedEmployerDto"
           },
           "stagedActionIds": {
             "example": [
@@ -19342,6 +19764,8 @@
           "yearConflict",
           "existingLstbConflict",
           "fields",
+          "lines",
+          "employer",
           "stagedActionIds",
           "securityBlocked",
           "person",
@@ -19418,6 +19842,29 @@
           "net"
         ]
       },
+      "ChDailyBenefitDto": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "sickness",
+              "accident"
+            ],
+            "description": "Krankentaggeld, or a benefit after an accident (Unfalltaggeld, UVG, SUVA), which is taxed differently."
+          },
+          "amountChf": {
+            "type": "number",
+            "nullable": true,
+            "example": 12345,
+            "description": "Whole CHF as the remark prints it; null when it names no amount."
+          }
+        },
+        "required": [
+          "kind",
+          "amountChf"
+        ]
+      },
       "ParsedChCertificateResponseDto": {
         "type": "object",
         "properties": {
@@ -19480,6 +19927,16 @@
             "type": "boolean",
             "description": "Box F: free transport between home and work."
           },
+          "dailyBenefit": {
+            "nullable": true,
+            "description": "A paid-out daily benefit the remarks name („KK-Taggeld Verrechnung“). The certificate does not say whether it is part of Ziffer 8: the app asks, and never writes it on its own.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ChDailyBenefitDto"
+              }
+            ]
+          },
           "missing": {
             "description": "Ziffern every certificate carries that could not be read.",
             "type": "array",
@@ -19509,6 +19966,7 @@
           "checks",
           "canteen",
           "freeTransport",
+          "dailyBenefit",
           "missing",
           "stagedActionIds",
           "securityBlocked"
@@ -21257,6 +21715,13 @@
                 "$ref": "#/components/schemas/ProposalDto"
               }
             ]
+          },
+          "person": {
+            "type": "string",
+            "enum": [
+              "B"
+            ],
+            "description": "Set when the value belongs to Person B, whose figures the user records (ADR-0054)."
           }
         },
         "required": [
@@ -21304,6 +21769,47 @@
           "values"
         ]
       },
+      "AssistantTaskDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "konfession",
+              "einwilligung",
+              "bestaetigen",
+              "beleg_nachreichen",
+              "kind_entfernen",
+              "sonstiges"
+            ],
+            "example": "konfession"
+          },
+          "text": {
+            "type": "string",
+            "example": "Bitte trage deine Konfession in den Stammdaten ein.",
+            "description": "Written by the assistant; show as plain text only."
+          },
+          "assistant": {
+            "type": "string",
+            "example": "Claude",
+            "description": "Name of the assistant that left the task."
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "text",
+          "assistant",
+          "createdAt"
+        ]
+      },
       "ConfirmationResponseDto": {
         "type": "object",
         "properties": {
@@ -21312,10 +21818,18 @@
             "items": {
               "$ref": "#/components/schemas/AnnexConfirmationDto"
             }
+          },
+          "tasks": {
+            "description": "The open tasks the user's assistant left for this tax year.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AssistantTaskDto"
+            }
           }
         },
         "required": [
-          "annexes"
+          "annexes",
+          "tasks"
         ]
       },
       "ProposalDecisionDto": {
@@ -21327,11 +21841,89 @@
               "annehmen",
               "verwerfen"
             ]
+          },
+          "person": {
+            "type": "string",
+            "enum": [
+              "A",
+              "B"
+            ],
+            "description": "Whose proposal: B for a value of Person B the user records. Default A."
           }
         },
         "required": [
           "decision"
         ]
+      },
+      "TaskDecisionDto": {
+        "type": "object",
+        "properties": {
+          "decision": {
+            "type": "string",
+            "enum": [
+              "erledigt",
+              "verworfen"
+            ]
+          }
+        },
+        "required": [
+          "decision"
+        ]
+      },
+      "ConfirmLstbScanLinesDto": {
+        "type": "object",
+        "properties": {
+          "solidaritaetszuschlag": {
+            "type": "number",
+            "example": 12.34,
+            "description": "Zeile 5: Solidaritätszuschlag, Euro mit Cent."
+          },
+          "kirchensteuer": {
+            "type": "number",
+            "example": 576,
+            "description": "Zeile 6: Kirchensteuer. Ganze Euro; weggelassen = nicht gelesen, bleibt wie es ist."
+          },
+          "kirchensteuerEhegatte": {
+            "type": "number",
+            "example": 121,
+            "description": "Zeile 7: Kirchensteuer des Ehegatten/Lebenspartners. Ganze Euro; weggelassen = nicht gelesen, bleibt wie es ist."
+          },
+          "rvArbeitgeber": {
+            "type": "number",
+            "example": 4474,
+            "description": "Zeile 22 a/b: Arbeitgeberanteil zur Rentenversicherung. Ganze Euro; weggelassen = nicht gelesen, bleibt wie es ist."
+          },
+          "rvArbeitnehmer": {
+            "type": "number",
+            "example": 4464,
+            "description": "Zeile 23 a/b: Arbeitnehmeranteil zur Rentenversicherung. Ganze Euro; weggelassen = nicht gelesen, bleibt wie es ist."
+          },
+          "zuschuesseKvPv": {
+            "type": "number",
+            "example": 2251,
+            "description": "Zeile 24 a–c: steuerfreie Arbeitgeberzuschüsse zur Kranken- und Pflegeversicherung. Ganze Euro; weggelassen = nicht gelesen, bleibt wie es ist."
+          },
+          "zuschussPv": {
+            "type": "number",
+            "example": 451,
+            "description": "Zeile 24c: Pflegeversicherungs-Teil des Zuschusses. Ganze Euro; weggelassen = nicht gelesen, bleibt wie es ist."
+          },
+          "kvArbeitnehmer": {
+            "type": "number",
+            "example": 3651,
+            "description": "Zeile 25: Krankenversicherung. Ganze Euro; weggelassen = nicht gelesen, bleibt wie es ist."
+          },
+          "pvArbeitnehmer": {
+            "type": "number",
+            "example": 816,
+            "description": "Zeile 26: Pflegeversicherung. Ganze Euro; weggelassen = nicht gelesen, bleibt wie es ist."
+          },
+          "avArbeitnehmer": {
+            "type": "number",
+            "example": 624,
+            "description": "Zeile 27: Arbeitslosenversicherung. Ganze Euro; weggelassen = nicht gelesen, bleibt wie es ist."
+          }
+        }
       },
       "ConfirmLstbScanDto": {
         "type": "object",
@@ -21366,6 +21958,19 @@
             "type": "boolean",
             "example": false,
             "description": "Adds the values to a certificate already captured for the year (second employer, later payment) instead of replacing it. The same certificate twice is refused (409 LSTB_SAME_CERTIFICATE)."
+          },
+          "lines": {
+            "description": "The further lines read and confirmed with the three values; each is written to its field of the mask.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ConfirmLstbScanLinesDto"
+              }
+            ]
+          },
+          "arbeitgeber": {
+            "type": "string",
+            "example": "Beispielwerke GmbH",
+            "description": "The employer as the certificate names it (ADR-0099 §8); on a further certificate one already recorded stays."
           },
           "actionIds": {
             "example": [

@@ -11,6 +11,7 @@ import {
 afterEach(() => {
   vi.restoreAllMocks()
   sessionStorage.clear()
+  localStorage.clear()
 })
 
 describe('sessionMemory — the chosen year and the pending path survive registration (F12)', () => {
@@ -20,6 +21,21 @@ describe('sessionMemory — the chosen year and the pending path survive registr
     expect(rememberedTaxYear(2026, [2026, 2025])).toBe(2025)
     rememberTaxYear(1999)
     expect(rememberedTaxYear(2026, [2026, 2025])).toBe(2026)
+  })
+
+  it('keeps the chosen year across a new browser session, where the session storage starts empty (Echtdatenlauf 4)', () => {
+    rememberTaxYear(2024)
+    sessionStorage.clear()
+    expect(rememberedTaxYear(2025, [2026, 2025, 2024])).toBe(2024)
+  })
+
+  it('lets the year chosen in this tab win over the one another tab stored', () => {
+    rememberTaxYear(2024)
+    localStorage.setItem('steuereule.taxYear', '2026')
+    expect(rememberedTaxYear(2025, [2026, 2025, 2024])).toBe(2024)
+    localStorage.setItem('steuereule.taxYear', '1999')
+    sessionStorage.clear()
+    expect(rememberedTaxYear(2025, [2026, 2025, 2024])).toBe(2025)
   })
 
   it('remembers and clears the pending funnel path, ignoring unknown values', () => {
@@ -46,6 +62,9 @@ describe('sessionMemory — the chosen year and the pending path survive registr
 
   it('falls back to the defaults when storage is blocked', () => {
     vi.spyOn(window, 'sessionStorage', 'get').mockImplementation(() => {
+      throw new Error('blocked')
+    })
+    vi.spyOn(window, 'localStorage', 'get').mockImplementation(() => {
       throw new Error('blocked')
     })
     expect(() => rememberTaxYear(2025)).not.toThrow()

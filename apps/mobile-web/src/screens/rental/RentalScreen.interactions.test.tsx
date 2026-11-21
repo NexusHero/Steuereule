@@ -118,7 +118,7 @@ describe('VermietungScreen — field answers', () => {
     renderRental()
     await screen.findByText('Objekt 1')
 
-    fireEvent.click(screen.getAllByText('unlesbar')[0]!)
+    fireEvent.click(screen.getAllByText('Kann ich nicht lesen')[0]!)
 
     await waitFor(() => expect(bodies).toEqual([{ feld: 'mieteinnahmen', body: { kind: 'unklar' } }]))
   })

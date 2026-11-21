@@ -92,7 +92,8 @@ export const stageFieldDraftTool = toolHandler(['stage_field_draft'], async (_ca
   const companionEntries = [...statedCompanions, ...Object.entries(implied).map(([name, value]) => [name, value] as const)]
   const companionFields = companionEntries.length > 0 ? Object.fromEntries(companionEntries) : undefined
   const draftValues = Object.fromEntries([[cleanFieldName, newValue], ...companionEntries])
-  const rule = checkDraftRules({ screen: target.screen, values: draftValues, tool: 'stage', others: turn.pendingActions.map(draftValuesOf) })
+  // The user's words of this turn and the model's reason: what a rule about an ambiguous statement reads.
+  const rule = checkDraftRules({ screen: target.screen, values: draftValues, tool: 'stage', others: turn.pendingActions.map(draftValuesOf), said: `${request.message}\n${reason}` })
   if (!rule.ok) {
     // A question for the user, not a failed draft: the model asks and stages again.
     answer({ ok: false, error: `${rule.code}: ${rule.reason}` })

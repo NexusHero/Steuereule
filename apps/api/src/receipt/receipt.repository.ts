@@ -1,4 +1,4 @@
-import type { HolderRef, ReceiptDirection, ReceiptReadOutcome, ReceiptReadReason, ReceiptType } from '@steuereule/core'
+import type { HolderRef, ReceiptDirection, ReceiptFolder, ReceiptReadOutcome, ReceiptReadReason, ReceiptType } from '@steuereule/core'
 
 export interface ReceiptFileMetaRecord {
   readonly mimeType: string
@@ -31,6 +31,22 @@ export interface ReceiptRecord {
   direction?: ReceiptDirection | null
   createdAt: Date
   updatedAt: Date
+}
+
+/**
+ * The stored facts every derived state of a Beleg is computed from: no file name (encrypted), no holders,
+ * no file. Enough for the inbox counts without decrypting or joining anything.
+ */
+export type ReceiptFacts = Pick<
+  ReceiptRecord,
+  'id' | 'kind' | 'taxYear' | 'belegdatum' | 'zahlungsdatum' | 'proposalDismissed' | 'readAt' | 'readOutcome' | 'readReason' | 'draftsTaxYear' | 'createdAt'
+>
+
+/** One page of the inbox, newest first: keyset on (createdAt, id), so a page costs the same however far in. */
+export interface ReceiptPageQuery {
+  readonly limit: number
+  readonly after?: { readonly createdAt: Date; readonly id: string }
+  readonly folder?: ReceiptFolder
 }
 
 export interface CreateReceiptData {
@@ -70,6 +86,11 @@ export const RECEIPT_REPOSITORY = Symbol('RECEIPT_REPOSITORY')
 export interface ReceiptRepository {
   findAllForUser(userId: string): Promise<ReceiptRecord[]>
   findByIdForUser(userId: string, id: string): Promise<ReceiptRecord | null>
+  /** The facts of every Beleg of the user, newest first: the base of the inbox counts. */
+  listFactsForUser(userId: string): Promise<ReceiptFacts[]>
+  /** At most `query.limit` Belege, newest first, behind `query.after` and inside `query.folder`. */
+  findPageForUser(userId: string, query: ReceiptPageQuery): Promise<ReceiptRecord[]>
+  findManyByIdsForUser(userId: string, ids: readonly string[]): Promise<ReceiptRecord[]>
   create(userId: string, data: CreateReceiptData): Promise<ReceiptRecord>
   setAssignment(userId: string, id: string, data: SetAssignmentData): Promise<ReceiptRecord | null>
   /** Records whose document it is (ADR-0092): the holder first, then the people it was also taken over for. */

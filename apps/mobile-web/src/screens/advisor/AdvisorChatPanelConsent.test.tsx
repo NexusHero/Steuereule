@@ -46,11 +46,13 @@ describe('AdvisorChatPanel: consent to personal data in the chat (ADR-0091)', ()
     expect(await screen.findByText('Darf die Eule deine persönlichen Daten verarbeiten?')).toBeTruthy()
   })
 
-  it('answers the last question again after „Erlauben“, in place of the refused turn', async () => {
+  it('goes on after „Erlauben“ and keeps the first answer: its questions do not vanish (real-data run)', async () => {
     const onSendMessage = vi.fn()
     render(panel({ messages: [user('u1', 'Unsere Tochter kam 2021 zur Welt.'), owlAskingForConsent('a1')], onSendMessage }))
     await allow()
-    await waitFor(() => expect(onSendMessage).toHaveBeenCalledWith('Unsere Tochter kam 2021 zur Welt.', { replaceFromMessageId: 'u1' }))
+    // Nothing in the question was masked: the owl is told the consent exists, as a new turn, replacing nothing.
+    await waitFor(() => expect(onSendMessage).toHaveBeenCalledWith('Ich habe dir erlaubt, meine persönlichen Daten zu verarbeiten. Bitte mach mit meiner letzten Nachricht weiter.'))
+    expect(onSendMessage.mock.calls.every((call) => call[1]?.replaceFromMessageId === undefined)).toBe(true)
   })
 
   it('sends what the user typed, not its masked stored form', async () => {
@@ -63,7 +65,9 @@ describe('AdvisorChatPanel: consent to personal data in the chat (ADR-0091)', ()
 
     view.rerender(panel({ messages: [user('u1', 'Meine Steuer-ID ist [STEUER-ID-GESCHÜTZT].'), owlAskingForConsent('a1')], onSendMessage }))
     await allow()
-    await waitFor(() => expect(onSendMessage).toHaveBeenLastCalledWith(typed, { replaceFromMessageId: 'u1' }))
+    // The stored question is masked, so the owl has to hear the words as typed: again, as a new turn.
+    await waitFor(() => expect(onSendMessage).toHaveBeenCalledTimes(2))
+    expect(onSendMessage.mock.calls[1]).toEqual([typed])
   })
 
   it('tells the owl that the consent exists when the typed words are gone (a reload)', async () => {

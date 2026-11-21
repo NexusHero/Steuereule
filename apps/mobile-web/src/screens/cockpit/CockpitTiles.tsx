@@ -23,7 +23,8 @@ import { CockpitPartnerSection } from './CockpitPartnerSection'
 import { derivePersonas } from './personas'
 import { declaresSelfEmployment, useSelfEmploymentCapability } from '../business/useSelfEmployment'
 import { tileStyles } from './tileStyles'
-import { TILES, groupTiles, hasAnswersForEntry, isRequiredTile, tileHintSeverity, type PartnerFacts, type TileDefinition, type TileFacts, type TileId, type TileStatus } from './tiles'
+import { partnerAreasWithMissing, tilesWithMissing, type MissingItem } from './estimateMissing'
+import { TILES, groupTiles, hasAnswersForEntry, isRequiredTile, isSettled, tileHintSeverity, type PartnerFacts, type TileDefinition, type TileFacts, type TileId, type TileStatus } from './tiles'
 
 export function useCockpitTileFacts(
   year: number,
@@ -128,6 +129,8 @@ export interface CockpitTilesProps {
   readonly hasPositiveRefund?: boolean
   /** Steps of the user's path still open: the submission tile says how many stand before it. */
   readonly openSteps?: number | undefined
+  /** What the estimate still lacks: the tile that holds it reads „Offen“ and says what is missing. */
+  readonly estimateMissing?: readonly MissingItem[]
   readonly onOpenTile: (tile: TileDefinition, revisit: boolean) => void
   readonly onOpenSubmission?: () => void
   readonly onOpenPartner?: (area: PartnerAreaParam, name: string) => void
@@ -143,6 +146,7 @@ export function CockpitTiles({
   notices = [],
   hasPositiveRefund = false,
   openSteps,
+  estimateMissing = [],
   onOpenTile,
   onOpenSubmission,
   onOpenPartner,
@@ -180,7 +184,23 @@ export function CockpitTiles({
 
   const personas = derivePersonas(facts.answers, facts.masterData)
   // UX review 2026-11: tiles are grouped by what is left to do, so progress shows at a glance.
-  const { required, optional, done, more } = groupTiles(facts, (id) => tileHintSeverity(id, conflicts, notices) !== null)
+  const missingByTile = tilesWithMissing(estimateMissing)
+  const { required, optional, done, more } = groupTiles(facts, (id) => tileHintSeverity(id, conflicts, notices) !== null || missingByTile.has(id))
+  /** A tile is not done while the estimate lacks something it holds (Echtdatenlauf 4). */
+  const statusOf = (tile: TileDefinition): TileStatus => {
+    const status = tile.status(facts)
+    return status === 'erledigt' && missingByTile.has(tile.id) ? 'offen' : status
+  }
+  function renderMissing(tile: TileDefinition) {
+    const items = missingByTile.get(tile.id)
+    if (items === undefined) return null
+    const list = items.map((item) => tr(`cockpit.erstattung.fehlt.${item.id}`)).join(', ')
+    return (
+      <Text style={styles.hintWarning} testID={`cockpit-kachel-${tile.id}-fehlt`}>
+        {tr('cockpit.erstattung.fehlt.kachel', { liste: list })}
+      </Text>
+    )
+  }
   const boosterTitleKey =
     personas.has('grenzgaenger') && !hasPositiveRefund
       ? 'cockpit.boosterUeberschrift.nachzahlung'
@@ -204,12 +224,12 @@ export function CockpitTiles({
   }
 
   function renderTile(tile: TileDefinition) {
-    const status = tile.status(facts)
+    const status = statusOf(tile)
     const revisit = tileRevisitFlag(tile, facts.answers)
     const severity = tileHintSeverity(tile.id, conflicts, notices)
-    const isCompactDone = status === 'erledigt' && severity === null
+    const isCompactDone = isSettled(status) && severity === null
     // An open tile that never blocks the return says so instead of reading like a duty.
-    const isOptional = status === 'offen' && !isRequiredTile(tile, facts.path, facts)
+    const isOptional = status === 'offen' && !isRequiredTile(tile, facts.path, facts) && !missingByTile.has(tile.id)
     return (
       <Pressable
         key={tile.id}
@@ -235,6 +255,7 @@ export function CockpitTiles({
               {tr(severity === 'blocker' ? 'cockpit.kachel.hinweis.blocker' : 'cockpit.kachel.hinweis.warnung')}
             </Text>
           ) : null}
+          {renderMissing(tile)}
         </Card>
       </Pressable>
     )
@@ -245,10 +266,10 @@ export function CockpitTiles({
    * its own, so the open duties stand out and the screen gets shorter. Same test ids as the card.
    */
   function renderRow(tile: TileDefinition, index: number) {
-    const status = tile.status(facts)
+    const status = statusOf(tile)
     const revisit = tileRevisitFlag(tile, facts.answers)
     const severity = tileHintSeverity(tile.id, conflicts, notices)
-    const isOptional = status === 'offen' && !isRequiredTile(tile, facts.path, facts)
+    const isOptional = status === 'offen' && !isRequiredTile(tile, facts.path, facts) && !missingByTile.has(tile.id)
     return (
       <Pressable
         key={tile.id}
@@ -269,6 +290,7 @@ export function CockpitTiles({
               {tr(severity === 'blocker' ? 'cockpit.kachel.hinweis.blocker' : 'cockpit.kachel.hinweis.warnung')}
             </Text>
           ) : null}
+          {renderMissing(tile)}
         </View>
         {renderBadge(tile, status, isOptional)}
       </Pressable>
@@ -337,6 +359,7 @@ export function CockpitTiles({
           crossBorder={facts.answers['partner-ausland'] === 'Ja, in die Schweiz' || (facts.answers['partner-ausland'] === undefined && facts.answers.ausland === 'Ja, in die Schweiz')}
           partnerJob={facts.answers['partner-job']}
           partnerGermanJob={facts.answers['partner-de-job'] === GERMAN_JOB_TOO}
+          openAreas={new Set(partnerAreasWithMissing(estimateMissing).keys())}
           onOpenPartner={onOpenPartner}
         />
       ) : null}
@@ -366,30 +389,35 @@ export function CockpitTiles({
 
 function statusLabel(status: TileStatus, tr: ReturnType<typeof useTranslation<typeof APP_NS>>['t']): string {
   if (status === 'erledigt') return tr('cockpit.kachel.status.erledigt')
+  if (status === 'kein-thema') return tr('cockpit.kachel.status.keinThema')
   if (status === 'betrag-offen') return tr('cockpit.kachel.status.betragOffen')
   return tr('cockpit.kachel.status.offen')
 }
 
 function statusGlyph(status: TileStatus): string {
   if (status === 'erledigt') return '✓'
+  if (status === 'kein-thema') return '–'
   if (status === 'betrag-offen') return '◷'
   return '!'
 }
 
 function statusPillStyle(status: TileStatus, styles: ReturnType<typeof makeStyles>): ViewStyle {
   if (status === 'erledigt') return styles.statusPillDone
+  if (status === 'kein-thema') return styles.statusPillOptional
   if (status === 'betrag-offen') return styles.statusPillLater
   return styles.statusPillOpen
 }
 
 function statusGlyphStyle(status: TileStatus, styles: ReturnType<typeof makeStyles>): TextStyle {
   if (status === 'erledigt') return styles.statusDone
+  if (status === 'kein-thema') return styles.statusOptional
   if (status === 'betrag-offen') return styles.statusLater
   return styles.statusOpen
 }
 
 function statusStyle(status: TileStatus, styles: ReturnType<typeof makeStyles>): TextStyle {
   if (status === 'erledigt') return styles.statusDone
+  if (status === 'kein-thema') return styles.statusOptional
   if (status === 'betrag-offen') return styles.statusLater
   return styles.statusOpen
 }

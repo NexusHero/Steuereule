@@ -13,7 +13,7 @@ import {
   unlockTaxYearInDb,
   runStandaloneScenario,
 } from './helpers/scenario-harness.mjs'
-import { startPersona, completeLstb, assertPrintoutWaitsForComparison, saveCapitalFields } from './helpers/persona-steps.mjs'
+import { startPersona, completeLstb, assertComparisonIsOptional, saveCapitalFields } from './helpers/persona-steps.mjs'
 import { openCockpitTopic } from '../harness/flows.mjs'
 
 export async function runScenario21(browser, webOrigin, sql) {
@@ -48,7 +48,7 @@ export async function runScenario21(browser, webOrigin, sql) {
   await waitForStromStep(page, 'fertig')
   await leaveStrom(page)
   await page.locator('[data-testid="cockpit-kacheln"]').waitFor({ state: 'visible', timeout: 10_000 })
-  await assertPrintoutWaitsForComparison(page, 'Scenario 21')
+  await assertComparisonIsOptional(page, 'Scenario 21')
 
   // --- 1. MasterDataScreen Partner B inline sub-screens (Back + Save roundtrips) ---
   await page.locator('[data-testid="cockpit-stammdaten"]').waitFor({ state: 'visible', timeout: 10_000 })
@@ -135,8 +135,6 @@ export async function runScenario21(browser, webOrigin, sql) {
   // --- 2. PrintoutRoute Embedded Sub-Screens ---
   unlockTaxYearInDb(sql, email, 2025)
   await page.locator('[data-testid="cockpit-ausdruck"]').click()
-  await page.locator('[data-testid="abgabe-vergleich-ueberspringen"]').waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator('[data-testid="abgabe-vergleich-ueberspringen"]').click()
   await page.locator('[data-testid="abgabe-zum-ausdruck"]').waitFor({ state: 'visible', timeout: 10_000 })
   await page.locator('[data-testid="abgabe-zum-ausdruck"]').click()
   await page.locator('[data-testid="ausdruck-zurueck"]').waitFor({ state: 'visible', timeout: 10_000 })

@@ -1,6 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger'
 import { ANNEXES, SCREENS } from '@steuereule/core'
-import { IsIn } from 'class-validator'
+import { ASSISTANT_TASK_DECISIONS, ASSISTANT_TASK_KINDS, type AssistantTaskDecision, type AssistantTaskKind } from '../../assistant-task/assistant-task.repository.js'
+import { IsIn, IsOptional } from 'class-validator'
 
 export class ProvenanceDto {
   @ApiProperty({ type: String, enum: ['nutzer', 'uebernahme', 'assistent', 'beleg'], example: 'assistent' })
@@ -48,6 +49,9 @@ export class FieldProvenanceDto {
 
   @ApiProperty({ type: ProposalDto, nullable: true })
   proposal!: ProposalDto | null
+
+  @ApiPropertyOptional({ type: String, enum: ['B'], description: 'Set when the value belongs to Person B, whose figures the user records (ADR-0054).' })
+  person?: 'B'
 }
 
 export class AnnexConfirmationDto {
@@ -61,14 +65,46 @@ export class AnnexConfirmationDto {
   values!: FieldProvenanceDto[]
 }
 
-/** Was der Nutzer noch prüfen muss: je Anlage die unbestätigten Werte und offenen Vorschläge. */
+/** A task the user's own assistant left for the user (#547); `text` is plain text, never markup. */
+export class AssistantTaskDto {
+  @ApiProperty({ type: String })
+  id!: string
+
+  @ApiProperty({ type: String, enum: ASSISTANT_TASK_KINDS, example: 'konfession' })
+  kind!: AssistantTaskKind
+
+  @ApiProperty({ type: String, example: 'Bitte trage deine Konfession in den Stammdaten ein.', description: 'Written by the assistant; show as plain text only.' })
+  text!: string
+
+  @ApiProperty({ type: String, example: 'Claude', description: 'Name of the assistant that left the task.' })
+  assistant!: string
+
+  @ApiProperty({ type: String, format: 'date-time' })
+  createdAt!: string
+}
+
+/** Was der Nutzer noch prüfen muss: je Anlage die unbestätigten Werte und offenen Vorschläge, dazu die offenen Aufgaben. */
 export class ConfirmationResponseDto {
   @ApiProperty({ type: [AnnexConfirmationDto] })
   annexes!: AnnexConfirmationDto[]
+
+  @ApiProperty({ type: [AssistantTaskDto], description: 'The open tasks the user\'s assistant left for this tax year.' })
+  tasks!: AssistantTaskDto[]
+}
+
+export class TaskDecisionDto {
+  @ApiProperty({ type: String, enum: ASSISTANT_TASK_DECISIONS })
+  @IsIn(ASSISTANT_TASK_DECISIONS)
+  decision!: AssistantTaskDecision
 }
 
 export class ProposalDecisionDto {
   @ApiProperty({ type: String, enum: ['annehmen', 'verwerfen'] })
   @IsIn(['annehmen', 'verwerfen'])
   decision!: 'annehmen' | 'verwerfen'
+
+  @ApiPropertyOptional({ type: String, enum: ['A', 'B'], description: 'Whose proposal: B for a value of Person B the user records. Default A.' })
+  @IsOptional()
+  @IsIn(['A', 'B'])
+  person?: 'A' | 'B'
 }

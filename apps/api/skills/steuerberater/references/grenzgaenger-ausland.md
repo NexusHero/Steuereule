@@ -56,6 +56,11 @@
   Die Anleitung zur Anlage N-Gre nennt für Zeile 9 keinen; FG Baden-Württemberg 14 K 2647/18 vom
   08.05.2019: Taggeld aus einer Kollektivversicherung nach VVG nicht unter § 32b. Für Taggeld nach
   KVG offen (nicht belegt) → als unsicher nennen.
+- **Unfalltaggeld (UVG/SUVA)**: Das ausgezahlte Taggeld der obligatorischen Unfallversicherung, das
+  im Bruttolohn steckt → `steuerfreiesUnfalltaggeldChf` (Zeile 10 „SUVA – Geld“, auch Zeile 76),
+  nie ins Feld für Krankentaggeld. Steuerfrei (§ 3 Nr. 1 Buchst. a, Nr. 2 Buchst. e EStG) und wie
+  das Krankentaggeld vom Bruttolohn abgezogen, aber mit Progressionsvorbehalt (§ 32b EStG, BFH
+  VI R 26/24): Es erhöht den Steuersatz. Die Schätzung rechnet das mit.
 - **Krankenversicherung**: Optionsrecht (KVG in CH oder GKV/PKV in DE); Beiträge als
   Basis-KV § 10 Abs. 1 Nr. 3 abziehbar; NBU (Nichtberufsunfall) → sonstige Vorsorge.
 - **Werbungskosten**: Entfernungspauschale zum Arbeitsort in CH, Vignette nur anteilig/

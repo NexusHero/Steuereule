@@ -133,6 +133,8 @@ model Session {
   user               User                @relation(fields: [userId], references: [id], onDelete: Cascade)
   oauthAccessTokens  OauthAccessToken[]
   oauthRefreshTokens OauthRefreshToken[]
+
+  @@index([userId])
 }
 
 /// One row per credential/identity linked to a User — email+password today
@@ -153,6 +155,8 @@ model Account {
   password              String?
   createdAt             DateTime  @default(now())
   updatedAt             DateTime  @updatedAt
+
+  @@index([userId])
 }
 
 /// Short-lived tokens: email verification, password reset (REQ-005/REQ-010).
@@ -494,6 +498,7 @@ model Receipt {
 
   @@index([userId])
   @@index([userId, taxYear])
+  @@index([userId, createdAt(sort: Desc), id(sort: Desc)])
   @@map("Beleg")
 }
 
@@ -626,6 +631,9 @@ model ChSalaryCertificate {
   pkArbeitgeberGesamtChf           String? /// @encrypted?mode=strict
   /// Tax-free Krankentaggeld paid out and contained in Ziffer 8 (N-Gre Zeilen 9/76). Whole CHF.
   steuerfreiesKrankentaggeldChf    String? /// @encrypted?mode=strict
+  /// Daily benefit of the Swiss accident insurance (UVG/SUVA) paid out and contained in Ziffer 8 (N-Gre
+  /// line „SUVA – Geld“). Tax-free, but under the progression clause (§ 32b EStG). Whole CHF.
+  steuerfreiesUnfalltaggeldChf     String? /// @encrypted?mode=strict
   /// Who pays the Kollektivkrankentaggeld / NBUV premium (N-Gre Zeilen 18/19, 95–98): employer share in
   /// percent (0–100), plus the employer CHF only when it pays everything; null = not entered.
   krankentaggeldArbeitgeberProzent String? /// @encrypted?mode=strict
@@ -900,6 +908,8 @@ model Marking {
   provenanceName         String?  @map("herkunftName")
   provenanceReceiptId    String?  @map("herkunftBelegId")
   lastYear               Int?     @map("vorjahr")
+  /// The OAuth client that wrote the value (ADR-0052 amendment 4); null for rows from before, and for non-assistants.
+  provenanceClientId     String?  @map("herkunftClientId")
   /// false = UNBESTÄTIGT; true = the user confirmed the Anlage or chose the value.
   confirmed              Boolean  @default(false) @map("bestaetigt")
   /// Null when there is no open proposal.
@@ -907,6 +917,7 @@ model Marking {
   proposalProvenanceName String?  @map("vorschlagHerkunftName")
   proposalReceiptId      String?  @map("vorschlagBelegId")
   proposalLastYear       Int?     @map("vorschlagVorjahr")
+  proposalClientId       String?  @map("vorschlagClientId")
   proposalValue          String?  @map("vorschlagWert") /// @encrypted?mode=strict
   createdAt              DateTime @default(now())
   updatedAt              DateTime @updatedAt
@@ -959,6 +970,8 @@ model MasterData {
   beruf                  String? /// @encrypted?mode=strict
   religion               String? /// @encrypted?mode=strict
   religionEinwilligungAm DateTime?
+  /// Liable to church tax or not, without the confession (ADR-0052 amendment 3); the confession wins.
+  kirchensteuerpflichtig Boolean?
   familienstand          String? /// @encrypted?mode=strict
   familienstandSeit      String? /// @encrypted?mode=strict
   iban                   String? /// @encrypted?mode=strict
@@ -1464,6 +1477,31 @@ model AdvisorNote {
 
   @@index([userId, taxYear, createdAt])
   @@map("BeraterNotiz")
+}
+
+// A task the user's own assistant (MCP, ADR-0052) leaves for the user: something only the user can
+// do in the app (enter the confession, give a consent, confirm entries). Shown in the Cockpit until
+// the user settles or discards it. The text is free text an external model wrote: encrypted, and
+// checked for identifiers before it is stored. No FK to User, like every tax-data table: the account
+// deletion erases it through `taxDataTables`, so a legal hold keeps it.
+model AssistantTask {
+  id        String    @id @default(uuid())
+  userId    String
+  taxYear   Int       @map("steuerjahr")
+  /// One of ASSISTANT_TASK_KINDS (assistant-task.repository.ts).
+  kind      String    @map("art")
+  text      String    @map("inhalt") /// @encrypted?mode=strict
+  /// The client name of the assistant that left the task, as the user reads it.
+  assistant String    @map("assistent")
+  /// The OAuth client that left it: what "its own tasks" goes by (ADR-0052 amendment 4).
+  clientId  String    @map("clientId")
+  /// 'offen' | 'erledigt' | 'verworfen'
+  status    String    @default("offen")
+  createdAt DateTime  @default(now())
+  decidedAt DateTime? @map("entschiedenAm")
+
+  @@index([userId, taxYear])
+  @@map("AssistentAufgabe")
 }
 
 // Where the Berater-Interview stands for one tax year: which areas of the checklist are settled

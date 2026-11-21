@@ -129,6 +129,16 @@ export class PrismaRentalRepository implements RentalRepository {
     return toRecord(row)
   }
 
+  async delete(userId: string, taxYear: number, propertyId: string): Promise<boolean> {
+    const existing = await this.prisma.rentalProperty.findFirst({ where: { id: propertyId, userId, taxYear } })
+    if (existing === null) return false
+    await this.prisma.$transaction([
+      this.prisma.rentalProperty.delete({ where: { id: propertyId } }),
+      this.prisma.taxDataAccessLog.create({ data: { userId, action: 'WRITE', resource: 'vermietung' } }),
+    ])
+    return true
+  }
+
   async setAddress(userId: string, taxYear: number, propertyId: string, attributes: RentalAttributes): Promise<RentalObjectRecord | null> {
     const existing = await this.prisma.rentalProperty.findFirst({ where: { id: propertyId, userId, taxYear } })
     if (existing === null) return null

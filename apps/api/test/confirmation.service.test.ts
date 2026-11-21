@@ -19,6 +19,8 @@ import { FakeInterviewAnswerRepository } from './fakes/fake-interview-answer.rep
 import { FakeChSalaryCertificateRepository } from './fakes/fake-ch-salary-certificate.repository.js'
 import { FakeChildRepository } from './fakes/fake-child.repository.js'
 import { AuditService } from '../src/audit/audit.service.js'
+import { AssistantTaskService } from '../src/assistant-task/assistant-task.service.js'
+import { FakeAssistantTaskRepository } from './fakes/fake-assistant-task.repository.js'
 
 const USER = 'user-1'
 const YEAR = 2025
@@ -145,6 +147,87 @@ describe('BestaetigungService', () => {
     expect(await service.missing(USER, YEAR)).toEqual([])
   })
 
+  describe('Person B recorded by the user (ADR-0054, ADR-0052 amendment 2)', () => {
+    const SHADOW_B = 'shadow-b'
+    const spouse = (recordable: boolean) => ({ spouseForAdvisor: async () => ({ spouseUserId: SHADOW_B, recordable, firstName: null, lastName: null }) })
+    const withSpouse = (recordable: boolean) =>
+      new ConfirmationService(markings, fieldAccessFrom({ lstb, pension, capital: new FakeCapitalRepository(), rental, profile, masterData, link, interview, chSalaryCertificate: chSalary, child, commute, assessment }), new AuditService(new FakeAuditRepository()), spouse(recordable) as never)
+
+    it('the overview shows the values the assistant wrote for Person B, marked as hers', async () => {
+      const svc = withSpouse(true)
+      await svc.write(SHADOW_B, YEAR, 'chLohnausweis.krankenkasseChf', '3593', CLAUDE)
+      const overview = await svc.overview(USER, YEAR)
+      expect(overview.annexes).toHaveLength(1)
+      expect(overview.annexes[0]!.unconfirmed).toBe(1)
+      expect(overview.annexes[0]!.values[0]).toMatchObject({ key: 'chLohnausweis.krankenkasseChf', person: 'B', value: '3593' })
+    })
+
+    it('confirming an Anlage confirms Person B’s values in it too, so her block lifts', async () => {
+      const svc = withSpouse(true)
+      await svc.write(SHADOW_B, YEAR, 'chLohnausweis.krankenkasseChf', '3593', CLAUDE)
+      const [annex] = (await svc.overview(USER, YEAR)).annexes
+      await svc.confirmAnnex(USER, YEAR, annex!.annex)
+      expect(await svc.missing(SHADOW_B, YEAR)).toEqual([])
+      expect((await svc.overview(USER, YEAR)).annexes).toEqual([])
+    })
+
+    it('decides a proposal on Person B’s field in her data', async () => {
+      const svc = withSpouse(true)
+      await lstb.setField(SHADOW_B, YEAR, 'lohnsteuer', '700')
+      await svc.write(SHADOW_B, YEAR, 'lstb.lohnsteuer', '720', CLAUDE)
+      await svc.decideProposal(USER, YEAR, 'lstb.lohnsteuer', 'annehmen', 'B')
+      expect((await lstb.findForUserAndYear(SHADOW_B, YEAR))?.lohnsteuer).toBe('720')
+    })
+
+    it('leaves out a Person B who keeps her data in her own account', async () => {
+      const svc = withSpouse(false)
+      await svc.write(SHADOW_B, YEAR, 'chLohnausweis.krankenkasseChf', '3593', CLAUDE)
+      expect((await svc.overview(USER, YEAR)).annexes).toEqual([])
+      await expect(svc.decideProposal(USER, YEAR, 'lstb.lohnsteuer', 'annehmen', 'B')).rejects.toMatchObject({ code: 'PERSON_B_OWNS_DATA' })
+    })
+  })
+
+  describe('an assistant takes back its own entry (ADR-0052 amendment 2)', () => {
+    const OTHER = { kind: 'assistent', name: 'Gemini' } as const
+
+    it('clears an unconfirmed value the same assistant wrote, and its marking', async () => {
+      await service.write(USER, YEAR, 'lstb.lohnsteuer', '700', CLAUDE)
+      expect(await service.withdrawAssistantEntry(USER, YEAR, 'lstb.lohnsteuer', (p) => p?.kind === 'assistent' && p.name === 'Claude')).toBe('zurueckgenommen')
+      expect((await lstb.findForUserAndYear(USER, YEAR))?.lohnsteuer ?? null).toBeNull()
+      expect(markings.all()).toEqual([])
+    })
+
+    it('drops only its proposal on a value the user confirmed, the user value stays', async () => {
+      await lstb.setField(USER, YEAR, 'lohnsteuer', '700')
+      await service.write(USER, YEAR, 'lstb.lohnsteuer', '720', CLAUDE)
+      expect(await service.withdrawAssistantEntry(USER, YEAR, 'lstb.lohnsteuer', (p) => p?.kind === 'assistent' && p.name === 'Claude')).toBe('vorschlag-entfernt')
+      expect((await lstb.findForUserAndYear(USER, YEAR))?.lohnsteuer).toBe('700')
+      expect(markings.all()).toEqual([])
+    })
+
+    it('refuses a value the user entered or confirmed, and one another assistant wrote', async () => {
+      await lstb.setField(USER, YEAR, 'lohnsteuer', '700')
+      await expect(service.withdrawAssistantEntry(USER, YEAR, 'lstb.lohnsteuer', (p) => p?.kind === 'assistent' && p.name === 'Claude')).rejects.toMatchObject({ code: 'NOT_OWN_ENTRY' })
+      await service.write(USER, YEAR, 'lstb.bruttoarbeitslohn', '5000', OTHER)
+      await expect(service.withdrawAssistantEntry(USER, YEAR, 'lstb.bruttoarbeitslohn', (p) => p?.kind === 'assistent' && p.name === 'Claude')).rejects.toMatchObject({ code: 'NOT_OWN_ENTRY' })
+      await service.write(USER, YEAR, 'rente.jahresbetrag', '1', CLAUDE)
+      await service.confirmAnnex(USER, YEAR, 'anlageR')
+      await expect(service.withdrawAssistantEntry(USER, YEAR, 'rente.jahresbetrag', (p) => p?.kind === 'assistent' && p.name === 'Claude')).rejects.toMatchObject({ code: 'NOT_OWN_ENTRY' })
+    })
+
+    it('marks values a non-user wrote another way as unconfirmed, with their source', async () => {
+      await service.markUnconfirmed(USER, YEAR, ['lstb.lohnsteuer'], CLAUDE)
+      expect(markings.all()).toEqual([{ userId: USER, taxYear: YEAR, key: 'lstb.lohnsteuer', provenance: CLAUDE, confirmed: false, proposal: null }])
+    })
+  })
+
+  it('stores „kirchensteuerpflichtig“ as a yes/no of its own and leaves the confession alone (#543)', async () => {
+    await service.write(USER, YEAR, 'stammdaten.kirchensteuerpflichtig', 'false', CLAUDE)
+    expect((await masterData.findByUserId(USER))?.kirchensteuerpflichtig).toBe(false)
+    expect((await masterData.findByUserId(USER))?.religion ?? null).toBeNull()
+    expect(await service.readRawValues(USER, YEAR, ['stammdaten.kirchensteuerpflichtig'])).toEqual({ 'stammdaten.kirchensteuerpflichtig': 'false' })
+  })
+
   it('a proposal decision on a field without a proposal is a 404, an unknown key a 400', async () => {
     await expect(service.decideProposal(USER, YEAR, 'lstb.lohnsteuer', 'annehmen')).rejects.toMatchObject({ code: 'PROPOSAL_NOT_FOUND' })
     await expect(service.decideProposal(USER, YEAR, 'gewerbe.gewinn', 'annehmen')).rejects.toMatchObject({ code: 'FIELD_UNKNOWN' })
@@ -167,7 +250,7 @@ describe('BestaetigungService', () => {
 
   it('the overview is scoped to the caller', async () => {
     await service.write('user-2', YEAR, 'lstb.lohnsteuer', '700', CLAUDE)
-    expect(await service.overview(USER, YEAR)).toEqual({ annexes: [] })
+    expect(await service.overview(USER, YEAR)).toEqual({ annexes: [], tasks: [] })
     expect(await service.missing(USER, YEAR)).toEqual([])
   })
 
@@ -270,5 +353,61 @@ describe('BestaetigungService', () => {
     expect(await profile.findByUserId(USER)).toBeNull()
     expect(await masterData.findByUserId(USER)).toBeNull()
     expect(await link.findByUserAndYear(USER, YEAR)).toBeNull()
+  })
+  describe('tasks the assistant left for the user (#547)', () => {
+    let tasks: AssistantTaskService
+    let audit: FakeAuditRepository
+    let svc: ConfirmationService
+
+    beforeEach(() => {
+      tasks = new AssistantTaskService(new FakeAssistantTaskRepository())
+      audit = new FakeAuditRepository()
+      svc = new ConfirmationService(
+        markings,
+        fieldAccessFrom({ lstb, pension, capital: new FakeCapitalRepository(), rental, profile, masterData, link, interview, chSalaryCertificate: chSalary, child, commute, assessment }),
+        new AuditService(audit),
+        undefined,
+        tasks,
+      )
+    })
+
+    it('a service without the task seam always answers with no tasks', async () => {
+      expect(await service.overview(USER, YEAR)).toEqual({ annexes: [], tasks: [] })
+    })
+
+    it('the overview carries the open tasks even when no value is unconfirmed, and logs the read', async () => {
+      const created = await tasks.create(USER, YEAR, { kind: 'konfession', text: 'Bitte trage deine Konfession ein.', assistant: 'Claude', clientId: 'client-claude' })
+      if (!created.ok) throw new Error('setup')
+      expect(await svc.overview(USER, YEAR)).toEqual({
+        annexes: [],
+        tasks: [{ id: created.task.id, kind: 'konfession', text: 'Bitte trage deine Konfession ein.', assistant: 'Claude', createdAt: created.task.createdAt.toISOString() }],
+      })
+      expect(audit.all()).toContainEqual(expect.objectContaining({ userId: USER, action: 'READ', resource: 'assistent-aufgabe' }))
+    })
+
+    it('the overview carries the tasks next to the unconfirmed values', async () => {
+      await tasks.create(USER, YEAR, { kind: 'bestaetigen', text: 'Bitte bestätige die Anlage N.', assistant: 'Claude', clientId: 'client-claude' })
+      await svc.write(USER, YEAR, 'lstb.bruttoarbeitslohn', '50000', CLAUDE)
+      const overview = await svc.overview(USER, YEAR)
+      expect(overview.annexes.map((a) => a.annex)).toEqual(['anlageN'])
+      expect(overview.tasks.map((t) => t.kind)).toEqual(['bestaetigen'])
+    })
+
+    it('settling or discarding a task takes it out of the overview', async () => {
+      const a = await tasks.create(USER, YEAR, { kind: 'konfession', text: 'Erste Aufgabe', assistant: 'Claude', clientId: 'client-claude' })
+      const b = await tasks.create(USER, YEAR, { kind: 'sonstiges', text: 'Zweite Aufgabe', assistant: 'Claude', clientId: 'client-claude' })
+      if (!a.ok || !b.ok) throw new Error('setup')
+      expect((await svc.decideTask(USER, YEAR, a.task.id, 'erledigt')).tasks.map((t) => t.id)).toEqual([b.task.id])
+      expect((await svc.decideTask(USER, YEAR, b.task.id, 'verworfen')).tasks).toEqual([])
+      expect((await tasks.listForAssistant(USER, YEAR, 'client-claude')).map((t) => t.status)).toEqual(['erledigt', 'verworfen'])
+    })
+
+    it('a task of another user, or one that is not there, is not found', async () => {
+      const created = await tasks.create('user-2', YEAR, { kind: 'konfession', text: 'Fremde Aufgabe', assistant: 'Claude', clientId: 'client-claude' })
+      if (!created.ok) throw new Error('setup')
+      await expect(svc.decideTask(USER, YEAR, created.task.id, 'erledigt')).rejects.toMatchObject({ code: 'TASK_NOT_FOUND' })
+      await expect(service.decideTask(USER, YEAR, 'nope', 'erledigt')).rejects.toMatchObject({ code: 'TASK_NOT_FOUND' })
+      expect(await tasks.listOpen('user-2', YEAR)).toHaveLength(1)
+    })
   })
 })

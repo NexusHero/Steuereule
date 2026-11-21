@@ -86,7 +86,7 @@ describe('CapitalScreen states', () => {
     renderCapital()
     await screen.findByText('Kapital & Depot')
 
-    fireEvent.click(screen.getByText('unlesbar'))
+    fireEvent.click(screen.getByText('Kann ich nicht lesen'))
 
     await waitFor(() => expect(bodies[0]).toEqual({ kind: 'unklar' }))
   })
@@ -141,6 +141,46 @@ describe('the Günstigerprüfung verdicts', () => {
     mockVerdict({ kind: 'nicht-anwendbar', reason })
     renderCapital()
     expect(await screen.findByText(expected)).toBeTruthy()
+  })
+
+  it('shows both amounts, the difference and how the Cockpit estimate counts the capital income', async () => {
+    mockCapital()
+    mockVerdict({ kind: 'eindeutig', recommendation: 'abgeltung', flatRateTax: 1846.25, personal: 2940, delta: 1093.75, uncertainty: { kind: 'bestimmt', upperLimit: 0 }, estimateTreatment: 'abgeltung' })
+    renderCapital()
+    expect((await screen.findByTestId('guenstigerpruefung-abgeltung')).textContent).toBe('1.846,25\u00a0€')
+    expect(screen.getByTestId('guenstigerpruefung-persoenlich').textContent).toBe('2.940\u00a0€')
+    expect(screen.getByTestId('guenstigerpruefung-unterschied').textContent).toBe('1.093,75\u00a0€')
+    expect(screen.getByText('Die Schätzung im Cockpit rechnet deine Kapitalerträge mit der Abgeltungsteuer, nicht mit dem günstigeren Tarif.')).toBeTruthy()
+  })
+
+  it('says the single estimate leaves the flat tax withheld at source', async () => {
+    mockCapital()
+    mockVerdict({ kind: 'eindeutig', recommendation: 'persoenlich', flatRateTax: 791.25, personal: 0, delta: -791.25, uncertainty: { kind: 'bestimmt', upperLimit: 0 }, estimateTreatment: 'quelle' })
+    renderCapital()
+    expect((await screen.findByTestId('guenstigerpruefung-unterschied')).textContent).toBe('791,25\u00a0€')
+    expect(screen.getByText('Die Schätzung im Cockpit lässt es bei der einbehaltenen Abgeltungsteuer; den günstigeren Tarif rechnet sie nicht ein.')).toBeTruthy()
+  })
+
+  it('names what the Cockpit estimate still lacks instead of a number', async () => {
+    mockCapital()
+    mockVerdict({ kind: 'nicht-anwendbar', reason: 'schaetzung-offen', missing: ['lohnsteuer', 'personB.bruttolohn-total'] })
+    renderCapital()
+    expect(await screen.findByText('Den Vergleich rechnen wir auf der Schätzung im Cockpit. Ihr fehlt noch: Einbehaltene Lohnsteuer (Zeile 4), Person B: Bruttolohn (Ziffer 8)')).toBeTruthy()
+    expect(screen.queryByTestId('guenstigerpruefung-abgeltung')).toBeNull()
+  })
+
+  it('names the open filing type of a couple', async () => {
+    mockCapital()
+    mockVerdict({ kind: 'nicht-anwendbar', reason: 'schaetzung-offen', missing: ['veranlagungsart'] })
+    renderCapital()
+    expect(await screen.findByText(/^Den Vergleich rechnen wir auf der Schätzung im Cockpit\. Ihr fehlt noch: Wie ihr veranlagt werdet/)).toBeTruthy()
+  })
+
+  it('says when the Cockpit estimate cannot price the case', async () => {
+    mockCapital()
+    mockVerdict({ kind: 'nicht-anwendbar', reason: 'schaetzung-nicht-moeglich', estimateReason: 'nur-angestellte' })
+    renderCapital()
+    expect(await screen.findByText('Den Vergleich rechnen wir auf der Schätzung im Cockpit, und die geht hier noch nicht: Die Erstattung rechnen wir bisher nur für Angestellte.')).toBeTruthy()
   })
 
   it('shows nothing when there is no verdict', async () => {

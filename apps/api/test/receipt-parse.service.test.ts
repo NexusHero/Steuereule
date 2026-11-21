@@ -19,6 +19,8 @@ import { LstbService } from '../src/lstb/lstb.service.js'
 import { AutoReceiptParseStrategy } from '../src/receipt/parse/auto-receipt-parse.strategy.js'
 import { DocumentParseRegistry } from '../src/receipt/parse/document-parse.registry.js'
 import { ReceiptParseService, receiptKindOfDocument } from '../src/receipt/receipt-parse.service.js'
+import { ReceiptService } from '../src/receipt/receipt.service.js'
+import { InMemoryStorageAdapter } from './fakes/in-memory-storage.adapter.js'
 import { FakeAssessmentRepository } from './fakes/fake-assessment.repository.js'
 import { FakeAuditRepository } from './fakes/fake-audit.repository.js'
 import { FakeCapitalRepository } from './fakes/fake-capital.repository.js'
@@ -566,7 +568,7 @@ describe('ReceiptParseService — Two-Stage LStB Cascade (#444)', () => {
     // 5051.76 + 4100 + 1050 + 710 = 10911.76 -> 10912 (never adding employer line 22a!)
     expect(res.lstb?.fields.sozialversicherung.value).toBe(10912)
     expect(res.lstb?.fields.sozialversicherung.status).toBe('ok')
-    expect(res.lstb?.stagedActionIds).toHaveLength(3)
+    expect(res.lstb?.stagedActionIds).toHaveLength(3 + 6) // and the lines 22a, 23a, 25, 26, 27 and 24 (empty: 0)
 
     // Zero-Write proof: Lstb table must remain completely empty until user confirms
     expect(await h.lstbRepo.findForUserAndYear('user-lstb-1', 2025)).toBeNull()
@@ -583,7 +585,7 @@ describe('ReceiptParseService — Two-Stage LStB Cascade (#444)', () => {
     const res = await h.parseService.parseReceipt('user-lstb-auto', { taxYear: 2025, kind: 'auto', fileName: 'scan.pdf', rawText, textSource: 'pdf_text' })
     expect(res.lstb?.fields.bruttoarbeitslohn).toMatchObject({ value: 54320, status: 'ok' })
     expect(res.lstb?.fields.lohnsteuer.value).toBe(9840)
-    expect(res.lstb?.stagedActionIds).toHaveLength(3)
+    expect(res.lstb?.stagedActionIds).toHaveLength(3 + 1) // and line 23a
   })
 
   it('Stage 2 sees only the allowlisted rows, and invented amounts never become values (ADR-0058, AC 4)', async () => {
@@ -718,7 +720,8 @@ describe('ReceiptParseService — Two-Stage LStB Cascade (#444)', () => {
 
     expect(res.lstb?.taxYearOnDocument).toBe(2024)
     expect(res.lstb?.yearConflict).toEqual({ documentYear: 2024, activeYear: 2025 })
-    expect(res.lstb?.stagedActionIds.length).toBe(3)
+    // The three values and the lines 23a, 25 and 24 (not printed beside 25: 0, to be checked).
+    expect(res.lstb?.stagedActionIds.length).toBe(6)
     expect(res.draftsTaxYear).toBe(2024)
     expect(res.filedInTaxYear).toBe(2024)
     expect(await h.advisorRepo.listForUserAndYear('user-lstb-3', 2025)).toHaveLength(0)
@@ -763,6 +766,16 @@ describe('craftsmen’s invoices (§ 35a, ADR-0078)', () => {
     const res = await h.parseService.parseReceipt('user-h1', { taxYear: 2025, fileName: 'zimmerei.pdf', rawText: stated })
     expect(res.stagedAction).toMatchObject({ screen: 'interview', field: 'haushalt-handwerker-betrag', newValue: '207', sourceId: 'estg-35a' })
     expect(res.stagedAction?.companionFields).toEqual({ 'haushalt-gate': 'Ja', 'haushalt-handwerker-rechnungsbetrag': '231' })
+  })
+
+  it('asks under the invoice for what it cannot say: paid by transfer, the own household, a subsidy', async () => {
+    const h = buildTestHarness([], false)
+    const res = await h.parseService.parseReceipt('user-h1b', { taxYear: 2025, fileName: 'zimmerei.pdf', rawText: stated })
+    const text = res.assistantMessage?.content ?? ''
+    expect(text).toContain('per Überweisung bezahlt')
+    expect(text).toContain('eigenen Haushalt')
+    expect(text).toContain('Förderung')
+    expect(text).toMatch(/\?/)
   })
 
   it('adds a second invoice to the first while that draft is still waiting', async () => {
@@ -932,3 +945,129 @@ describe('ReceiptParseService — the recognised kind goes back to the stored Be
     expect(receiptKindOfDocument('auto')).toBeNull()
   })
 })
+
+// Real-data run 4: the LStB scan read only lines 3, 4 and the sum; the user typed the rest. Every line the
+// mask has a field for is read, carried in the response and staged as a draft like the three. Invented text.
+describe('ReceiptParseService — every line of the LStB mask', () => {
+  const FULL_LSTB = [
+    'Ausdruck der elektronischen Lohnsteuerbescheinigung für 2025',
+    'Arbeitgeber: Beispielwerke GmbH',
+    '3. Bruttoarbeitslohn einschl. Sachbezüge ohne 9. und 10.   48.000,00',
+    '4. Einbehaltene Lohnsteuer von 3.                         7.200,00',
+    '5. Einbehaltener Solidaritätszuschlag von 3.                 12,34',
+    '6. Einbehaltene Kirchensteuer des Arbeitnehmers von 3.      576,40',
+    '22a Arbeitgeberanteil zur gesetzlichen Rentenversicherung 4.464,00',
+    '23a Arbeitnehmeranteil zur gesetzlichen Rentenversicherung 4.464,00',
+    '25. Arbeitnehmerbeiträge zur gesetzlichen Krankenversicherung 3.650,50',
+    '26. Arbeitnehmerbeiträge zur sozialen Pflegeversicherung 816,20',
+    '27. Arbeitnehmerbeiträge zur Arbeitslosenversicherung 624,00',
+  ].join('\n')
+
+  it('returns the further lines and the employer and stages each line read as a draft', async () => {
+    const h = buildTestHarness(['SHOULD_NOT_BE_CALLED'], true)
+    const res = await h.parseService.parseReceipt('user-lines', { taxYear: 2025, kind: 'lstb', fileName: 'lstb.pdf', rawText: FULL_LSTB, textSource: 'pdf_text' })
+
+    expect(res.lstb?.lines.solidaritaetszuschlag).toMatchObject({ value: 12.34, status: 'ok', sourceLines: ['5'] })
+    expect(res.lstb?.lines.kirchensteuer).toMatchObject({ value: 576, status: 'ok' })
+    expect(res.lstb?.lines.kirchensteuerEhegatte).toMatchObject({ value: null, reason: 'missing' })
+    expect(res.lstb?.lines.rvArbeitgeber.value).toBe(4464)
+    expect(res.lstb?.lines.kvArbeitnehmer.value).toBe(3651)
+    expect(res.lstb?.employer).toEqual({ value: 'Beispielwerke GmbH', status: 'ok', reason: null })
+
+    const staged = (res.assistantMessage?.meta?.actions ?? []).filter((a) => a.screen === 'lstb')
+    expect(Object.fromEntries(staged.map((a) => [a.field, a.newValue]))).toEqual({
+      bruttoarbeitslohn: '48000',
+      lohnsteuer: '7200',
+      sozialversicherung: String(4464 + 3651 + 816 + 624),
+      solidaritaetszuschlag: '12.34',
+      kirchensteuer: '576',
+      rvArbeitgeber: '4464',
+      rvArbeitnehmer: '4464',
+      kvArbeitnehmer: '3651',
+      pvArbeitnehmer: '816',
+      avArbeitnehmer: '624',
+      // Line 24 is not printed beside 25 and 26: 0, to be confirmed (ADR-0093).
+      zuschuesseKvPv: '0',
+    })
+    expect(res.lstb?.lines.zuschuesseKvPv).toMatchObject({ value: 0, status: 'pruefen', reason: 'empty_line' })
+    expect(res.lstb?.stagedActionIds).toHaveLength(11)
+    // Zero-Write: nothing is stored before the user takes the drafts over.
+    expect(await h.lstbRepo.findForUserAndYear('user-lines', 2025)).toBeNull()
+  })
+
+  it('marks every line of a photo „bitte prüfen“ and the employer too', async () => {
+    const h = buildTestHarness([], false)
+    const res = await h.parseService.parseReceipt('user-lines-ocr', { taxYear: 2025, kind: 'lstb', fileName: 'foto.jpg', rawText: FULL_LSTB, textSource: 'ocr' })
+    expect(res.lstb?.lines.kirchensteuer).toMatchObject({ value: 576, status: 'pruefen', reason: 'ocr_source' })
+    expect(res.lstb?.employer).toMatchObject({ value: 'Beispielwerke GmbH', status: 'pruefen', reason: 'ocr_source' })
+  })
+})
+
+// Real-data run 4: the Cockpit said „N Belege warten auf dich – ordne sie einem Steuerjahr zu“ for receipts
+// uploaded in the chat of a tax year. A Beleg got its year only with staged drafts, so one that asked
+// „Für wen?“ or yielded nothing stayed without one. An upload in the chat of a year carries that year.
+describe('ReceiptParseService — an upload in the chat of a tax year', () => {
+  const STRANGERS_LSTB = (year: number) =>
+    [
+      `Ausdruck der elektronischen Lohnsteuerbescheinigung für ${year}`,
+      'Jonas Weber',
+      '3. Bruttoarbeitslohn einschl. Sachbezüge ohne 9. und 10.   21.000,00',
+      '4. Einbehaltene Lohnsteuer von 3.                         2.150,00',
+    ].join('\n')
+
+  async function setUp() {
+    const h = buildTestHarness([], false)
+    await h.profileRepo.upsert('user-chat', { firstName: 'Anna', lastName: 'Beispiel' } as never)
+    const parse = new ReceiptParseService(h.registry, h.autoStrategy, h.receiptRepo, h.advisorService)
+    const inbox = new ReceiptService(h.receiptRepo, new AuditService(new FakeAuditRepository()), new InMemoryStorageAdapter(), h.advisorService)
+    const unassigned = async () => (await inbox.listPage('user-chat', { limit: 1 })).counts.unassigned
+    return { h, parse, inbox, unassigned }
+  }
+
+  it('files a document that asked „Für wen?“ in the chat’s year, so the Cockpit does not count it', async () => {
+    const { h, parse, unassigned } = await setUp()
+    const beleg = await h.receiptRepo.create('user-chat', { fileName: 'lstb.pdf' })
+    const res = await parse.parseReceipt('user-chat', { taxYear: 2025, fileName: 'lstb.pdf', receiptId: beleg.id, rawText: STRANGERS_LSTB(2025), textSource: 'pdf_text', inChat: true })
+    expect(res.assignment?.question).not.toBeNull()
+    expect((await h.receiptRepo.findByIdForUser('user-chat', beleg.id))?.taxYear).toBe(2025)
+    expect(await unassigned()).toBe(0)
+  })
+
+  it('files a document that yielded nothing in the chat’s year', async () => {
+    const { h, parse, unassigned } = await setUp()
+    const beleg = await h.receiptRepo.create('user-chat', { fileName: 'notiz.pdf' })
+    const res = await parse.parseReceipt('user-chat', { taxYear: 2025, fileName: 'notiz.pdf', receiptId: beleg.id, rawText: 'Einkaufsliste: Milch, Brot', textSource: 'pdf_text', inChat: true })
+    expect(res.stagedAction ?? null).toBeNull()
+    expect((await h.receiptRepo.findByIdForUser('user-chat', beleg.id))?.taxYear).toBe(2025)
+    expect(await unassigned()).toBe(0)
+  })
+
+  it('files a file the device could not read in the chat’s year too', async () => {
+    const { h, parse, unassigned } = await setUp()
+    const beleg = await h.receiptRepo.create('user-chat', { fileName: 'kaputt.pdf' })
+    await parse.parseReceipt('user-chat', { taxYear: 2025, fileName: 'kaputt.pdf', receiptId: beleg.id, deviceReadFailure: 'read_failed', inChat: true })
+    expect((await h.receiptRepo.findByIdForUser('user-chat', beleg.id))?.taxYear).toBe(2025)
+    expect(await unassigned()).toBe(0)
+  })
+
+  it('keeps asking for the year when the document clearly names another one', async () => {
+    const { h, parse, unassigned } = await setUp()
+    const beleg = await h.receiptRepo.create('user-chat', { fileName: 'lstb-2024.pdf' })
+    await parse.parseReceipt('user-chat', { taxYear: 2025, fileName: 'lstb-2024.pdf', receiptId: beleg.id, rawText: STRANGERS_LSTB(2024), textSource: 'pdf_text', inChat: true })
+    expect((await h.receiptRepo.findByIdForUser('user-chat', beleg.id))?.taxYear ?? null).toBeNull()
+    expect(await unassigned()).toBe(1)
+  })
+
+  it('never changes a year the user chose, and leaves an upload outside the chat as it was', async () => {
+    const { h, parse } = await setUp()
+    const chosen = await h.receiptRepo.create('user-chat', { fileName: 'a.pdf' })
+    await h.receiptRepo.setAssignment('user-chat', chosen.id, { taxYear: 2023, proposalDismissed: false })
+    await parse.parseReceipt('user-chat', { taxYear: 2025, fileName: 'a.pdf', receiptId: chosen.id, rawText: 'Einkaufsliste: Milch, Brot', textSource: 'pdf_text', inChat: true })
+    expect((await h.receiptRepo.findByIdForUser('user-chat', chosen.id))?.taxYear).toBe(2023)
+
+    const tab = await h.receiptRepo.create('user-chat', { fileName: 'b.pdf' })
+    await parse.parseReceipt('user-chat', { taxYear: 2025, fileName: 'b.pdf', receiptId: tab.id, rawText: 'Einkaufsliste: Milch, Brot', textSource: 'pdf_text' })
+    expect((await h.receiptRepo.findByIdForUser('user-chat', tab.id))?.taxYear ?? null).toBeNull()
+  })
+})
+

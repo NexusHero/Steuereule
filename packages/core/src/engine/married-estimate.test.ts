@@ -236,3 +236,18 @@ describe('church tax for two Grenzgänger (escalation case, ADR-0088)', () => {
     expect(withCapital.anrechnung - plain.anrechnung).toBe(50)
   })
 })
+
+describe('the breakdown of the estimate (ADR-0052 amendment 3, #545)', () => {
+  it('shows how the income tax of the couple comes about, and its parts add up', () => {
+    const estimate = estimateMarriedCouple({ ...WEBER, children: 1, childBenefit: 3000, householdReductionEur: 1200, capitalIncomeEur: 682 })
+    if (estimate.kind !== 'spanne') throw new Error('expected an estimate')
+    const b = estimate.breakdown!
+    expect(b.persons).toHaveLength(2)
+    expect(b.totalIncomeEur).toBe(b.persons!.reduce((sum, p) => sum + p.incomeEur, 0) + (b.rentalSurplusEur ?? 0))
+    expect(b.householdReductionEur).toBe(1200)
+    expect(b.capitalFlatTaxEur).toBe(Math.floor(682 * 0.25))
+    const added = b.childAllowance!.used ? b.childAllowance!.childBenefitEur : 0
+    expect(estimate.incomeTax.to).toBe(b.tariffTax.to - b.householdReductionEur + added + b.capitalFlatTaxEur!)
+    expect(estimate.werbungskosten).toBe(b.persons!.reduce((sum, p) => sum + p.workExpensesEur, 0))
+  })
+})

@@ -1155,7 +1155,7 @@
     "type": "function",
     "function": {
       "name": "read_current_estimate",
-      "description": "Liest die aktuelle Schätzung der App für das Steuerjahr aus den gespeicherten Werten: Erstattung oder Nachzahlung (`result`, positiv = Erstattung), Werbungskosten, Vorsorgeaufwand, Sonderausgaben, zu versteuerndes Einkommen, Einkommensteuer, Solidaritätszuschlag, Anrechnung (Lohnsteuer, Quellensteuer) und Vorauszahlungen. `kind: open` nennt, was für eine Schätzung noch fehlt. Offene Entwürfe zählen erst mit, wenn der Nutzer sie übernommen hat. Schreibt nichts.",
+      "description": "Liest die aktuelle Schätzung der App für das Steuerjahr aus den gespeicherten Werten: Erstattung oder Nachzahlung (`result`, positiv = Erstattung), Werbungskosten, Vorsorgeaufwand, Sonderausgaben, zu versteuerndes Einkommen, Einkommensteuer, Solidaritätszuschlag, Anrechnung (Lohnsteuer, Quellensteuer) und Vorauszahlungen. `breakdown` ist die fertige Rechnung Zeile für Zeile, zum Zitieren. `kind: open` nennt, was für eine Schätzung noch fehlt. Offene Entwürfe zählen erst mit, wenn der Nutzer sie übernommen hat. Schreibt nichts.",
       "parameters": {
         "type": "object",
         "properties": {},

@@ -36,6 +36,19 @@ export function printedWidthPt(text: string, sizePt: number = PRINT_FONT_SIZE_PT
  */
 export const CHILDCARE_PROVIDER_WIDTH_PT = 238.4 - 3
 
+/**
+ * The longest beginning of a text that fits a box of this width, for a text pasted too long: cut, never
+ * dropped. Leading blanks are kept (the caller trims on save), a trailing blank does not count.
+ */
+export function cutToPrintBox(text: string, widthPt: number): string {
+  let kept = ''
+  for (const char of text) {
+    if (!fitsPrintBox(`${kept}${char}`.trim(), widthPt)) break
+    kept += char
+  }
+  return kept
+}
+
 /** Whether a text fits a box of this width on the forms. */
 export function fitsPrintBox(text: string, widthPt: number): boolean {
   return printedWidthPt(text) <= widthPt

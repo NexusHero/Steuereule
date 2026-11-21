@@ -11,6 +11,9 @@ export type ReceiptData = {
   readonly proposalDismissed: boolean
 }
 
+/** What the year assignment reads of a Beleg: its dates and the year the user confirmed. */
+export type ReceiptAssignmentFacts = Pick<ReceiptData, 'belegdatum' | 'zahlungsdatum' | 'taxYear' | 'proposalDismissed'>
+
 export type ProposalSource = 'zahlungsdatum' | 'belegdatum'
 
 export interface TaxYearProposal {
@@ -23,7 +26,7 @@ function yearFromDate(iso: string): number | null {
   return match === null ? null : Number(match[1])
 }
 
-export function taxYearProposal(data: ReceiptData): TaxYearProposal | null {
+export function taxYearProposal(data: ReceiptAssignmentFacts): TaxYearProposal | null {
   if (data.zahlungsdatum !== undefined) {
     const year = yearFromDate(data.zahlungsdatum)
     if (year !== null) return { taxYear: year, provenance: 'zahlungsdatum' }
@@ -41,7 +44,7 @@ export type ReceiptAssignment =
   | { readonly kind: 'zugeordnet'; readonly taxYear: number }
   | { readonly kind: 'konflikt'; readonly assigned: number; readonly proposal: TaxYearProposal }
 
-export function assignmentFromData(data: ReceiptData): ReceiptAssignment {
+export function assignmentFromData(data: ReceiptAssignmentFacts): ReceiptAssignment {
   const proposal = taxYearProposal(data)
   const currentTaxYear = data.taxYear
   const isDismissed = data.proposalDismissed

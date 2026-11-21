@@ -214,4 +214,26 @@ describe('AusdruckScreen (ADR-0050)', () => {
     expect(await screen.findByText('Die Bezahlung ist auf dieser Umgebung noch nicht eingerichtet.')).toBeTruthy()
     expect(screen.queryByTestId('ausdruck-bezahlen')).toBeNull()
   })
+  it('names what is really missing for the Anlage Kind, not everything that could be', async () => {
+    server.use(
+      http.get('*/v1/steuerjahre/2025/freischaltung', () => HttpResponse.json({ status: 'offen' })),
+      http.get('*/v1/steuerjahre/2025/ausdruck/pruefung', () => HttpResponse.json({ missing: ['kinder'], missingChildFields: ['taxId'] })),
+    )
+    renderScreen()
+
+    const hint = await screen.findByTestId('ausdruck-kinder-fehlend')
+    expect(hint.textContent).toBe('Für die Anlage Kind fehlt noch: Steuer-ID des Kindes.')
+    expect(hint.textContent).not.toMatch(/Kindschaftsverhältnis|Familienkasse|Wohnsitz/)
+  })
+
+  it('lists several missing child details together', async () => {
+    server.use(
+      http.get('*/v1/steuerjahre/2025/freischaltung', () => HttpResponse.json({ status: 'offen' })),
+      http.get('*/v1/steuerjahre/2025/ausdruck/pruefung', () => HttpResponse.json({ missing: ['kinder'], missingChildFields: ['kinship', 'otherParent'] })),
+    )
+    renderScreen()
+
+    expect((await screen.findByTestId('ausdruck-kinder-fehlend')).textContent).toBe('Für die Anlage Kind fehlt noch: Kindschaftsverhältnis, Angaben zum anderen Elternteil.')
+  })
+
 })

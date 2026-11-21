@@ -166,3 +166,178 @@ Technischer Schnitt (folgt aus §6/§7, ohne neue Abhängigkeit):
   und schreibt Felder nur über die Repositories der Masken. 17.1 verdrahtet die Masken, die ein
   Nicht-Nutzer heute füllen kann (LStB, Rente, Kapital, Vermietung); die übrigen Masken bekommen
   Schreibweg und Nutzer-Hook mit dem Assistenten (17.3).
+
+## Amendment 2 (2026-11-20) — Beratung und Rückmeldung für den Assistenten
+
+Stakeholder-Entscheidung (NexusHero): Der Assistent des Nutzers bekommt dieselbe fachliche Beratung
+wie der In-App-Berater, damit er die Erklärung selbstständig führen und seinem Nutzer Rückmeldung
+geben kann. Kein Modellaufruf unsererseits (§1 bleibt): die Beratung sind **deterministische
+Werkzeuge**, keine Agent-zu-Agent-Frage an unser LLM.
+
+- **Beratungswerkzeuge** (Scope `steuerdaten:read`, lesen und schreiben keine Nutzerdaten, auditiert):
+  `einkommensteuer_berechnen`, `veranlagungsarten_vergleichen`, `kapitalertraege_guenstigerpruefung`,
+  `spekulationsfrist_pruefen`, `renovierung_15_prozent_pruefen`, `schenkungsteuer_berechnen`,
+  `kleinunternehmer_pruefen`, `gewerbesteuer_schaetzen`, `steuerwissen_lesen`, `gesetzestext_lesen`,
+  `rechtsquelle_nachschlagen`. Sie teilen Schemas und Rechenkern mit dem In-App-Berater
+  (`TOOL_ARG_SCHEMAS`), die Zahlen sind also dieselben.
+- **Rückmeldung:** `steuerbericht` (Schätzung, Ausdruck-Lücken, unbestätigte Anlagen, offene Fragen,
+  nächste Schritte), `offene_fragen` (nächste Interview-Frage mit möglichen Antworten, nur der Nutzer
+  kennt sie) und `auswirkung_simulieren` (Erstattung vorher/nachher über den echten Schreibweg in einer
+  immer zurückgerollten Transaktion; Scope `steuerdaten:write`, nie innerhalb einer laufenden Transaktion).
+- **Fremdtext gekennzeichnet:** `gesetzestext_lesen` liefert den abgerufenen Wortlaut mit `untrusted: true`
+  und dem Hinweis, ihn nur als Quelle zu zitieren.
+- **Eintragen mit derselben Zielprüfung wie der interne Berater:** `maske_eintragen` lehnt unbekannte
+  Felder, nie beschreibbare Felder, die Buchungsmaske und Werte, die das Feld nicht halten kann, mit
+  dem Grund ab. Personenbezogene Felder bleiben für den eigenen Assistenten offen (§8).
+- **Person B (Zusammenveranlagung, ADR-0054):** `maske_eintragen` und `auswirkung_simulieren` nehmen
+  `person` (A/B) mit den Regeln des In-App-Beraters (`checkDraftPerson`): B nur, wenn der Nutzer B's
+  Angaben führt, nur in B's eigenen Masken, dort ist die Person Pflicht. Der Nutzer bestätigt B's
+  unbestätigte Werte und entscheidet ihre Vorschläge auf „Prüfen & bestätigen“ mit (als „Person B“
+  gekennzeichnet); das Bestätigen einer Anlage gilt für beide.
+- **Kinder als Datensätze:** `kinder_auflisten` (Vorname maskiert, Geburtsjahr, `instance`) und
+  `kind_anlegen` (Scope `steuerdaten:write`); die Angaben folgen mit `maske_eintragen`, Maske `kind`.
+- **Anmeldung für Standard-MCP-Clients** (MCP Authorization, RFC 9728/8414/8707), im lokalen Lauf mit
+  echtem MCP-Client geprüft: `/mcp/sse` antwortet ohne Token mit 401 und
+  `WWW-Authenticate: Bearer resource_metadata=…`; `/.well-known/oauth-protected-resource[/mcp/sse]` nennt
+  better-auth unter `/api/auth` als Server, dessen Metadaten auch unter
+  `/.well-known/oauth-authorization-server[/api/auth]` liegen. Der MCP-Endpunkt ist eine OAuth-Ressource;
+  ihr Eintrag entsteht bei der ersten `/oauth2/`-Anfrage (`ensureMcpResource`), nicht beim Start, damit
+  die App ohne Datenbank bootet. Tokens für diese Ressource sind JWTs (Aussteller `…/api/auth`,
+  Zielgruppe `…/mcp/sse`); der Guard prüft sie gegen die eigenen Schlüssel und verlangt zusätzlich die
+  noch bestehende Einwilligung, damit ein Widerruf auch für JWTs sofort wirkt (§10). Clients mit
+  Loopback-Weiterleitung gelten als native (RFC 8252), `offline_access` gibt Refresh-Tokens, die
+  Einwilligungsseite sagt dazu, dass die Verbindung bis zum Widerruf besteht.
+- **Eigene Fehler zurücknehmen:** `eintrag_zuruecknehmen` leert einen unbestätigten Wert oder verwirft
+  einen Vorschlag, beides nur, wenn derselbe Assistent ihn geschrieben hat. `kind_entfernen` löscht nur
+  ein Kind, das der Assistent angelegt hat und an dem nichts bestätigt oder vom Nutzer eingetragen ist;
+  dafür markiert `kind_anlegen` Name und Geburtsdatum als unbestätigte Einträge des Assistenten.
+  Doppeltes `kind_anlegen` liefert das vorhandene Kind.
+- **Felder beschreiben:** `maske_felder` liefert je Maske Form und Hinweis aus dem Feldkatalog; Verweise
+  auf Werkzeuge des In-App-Beraters werden für den externen Assistenten umformuliert.
+- **Noch nicht:** Buchungen und Anlagegüter (Selbstständige) und neue Vermietungsobjekte über MCP. Bezahlen, Konto und Einwilligungen bleiben ausgeschlossen (§4).
+
+## Amendment 3 (2026-11-20) — Lesesicht: der Assistent liest abgeleitet, nicht im Detail
+
+Stakeholder-Entscheidungen (NexusHero, Grilling 20.11.2026 nach dem Echtdatenlauf 2024 über MCP).
+Verschärft §8 („lesen maskiert“) zu Datenminimierung; gilt nur für den externen Assistenten, der
+In-App-Berater behält ADR-0091.
+
+1. **Personen nur abgeleitet.** Je Person (Nutzer, Partner, Kinder): Alter am 31.12. des Steuerjahres
+   statt Geburtsdatum, Bundesland statt Adresse (keine PLZ, kein Ort, keine Straße), Familienstand und
+   Veranlagung, Berufsgruppe aus der Interview-Antwort `beruf` (nicht die Berufsbezeichnung).
+   Steuer-ID und IBAN nie, auch nicht maskiert.
+2. **Beträge im Klartext.** Steuerbeträge identifizieren niemanden und sind der Kern der Beratung.
+3. **Schreiben genau, lesen abgeleitet.** Der Assistent schreibt genaue Werte (Geburtsdatum,
+   Arbeitgeberadresse); zurück liest er sie abgeleitet, auch seine eigenen („Geburtsdatum gesetzt,
+   Alter 33“).
+4. **Dritte nur als Rolle und Land** („Arbeitgeber 1, Schweiz“); Arbeitgeber, Kita, Handwerker,
+   Spendenempfänger und der andere Elternteil ohne Namen und Adressen.
+5. **Freitext nur als „gesetzt“.** Bemerkungen, Erläuterungen und Notizen fließen nicht zurück.
+6. **Kinder als Nummer und Alter** mit `instance`, ohne Anfangsbuchstaben; die Zuordnung gleich alter
+   Kinder hält der Assistent selbst (aus `kind_anlegen`).
+7. **Kirchensteuer ohne Konfession.** Der Assistent schreibt je Person nur die neue Angabe
+   „kirchensteuerpflichtig ja/nein“, die die Schätzung nutzt; eine Konfession (Art. 9 DSGVO) trägt der
+   Nutzer mit Einwilligung in der App ein. Bei „ja“ ohne Konfession meldet der Bericht eine Lücke für
+   den Ausdruck. Widersprechen sich beide, gilt die Konfession des Nutzers (§7), der Bericht nennt den
+   Widerspruch. Der Religionsschlüssel ist über MCP nicht mehr beschreibbar.
+8. **Werkzeuge.** `maske_lesen(screen, person)`: je Feld Wert (Beträge klar, Persönliches abgeleitet),
+   Stand (bestätigt / unbestätigt / Vorschlag offen) und Herkunft als Art (Nutzer, du selbst, anderer
+   Assistent, Jahresübernahme, Beleg; Namen anderer Assistenten nicht). `haushalt_ueberblick` ersetzt
+   `steuerjahr_stand`. Belege lesbar mit belegId, Art, Jahr, Datum und den Feldern, deren Herkunft sie
+   sind, ohne Dateinamen.
+9. **Transparenz** über das Audit-Log wie bisher (REQ-004); keine eigene Ansicht.
+
+Dazu, aus dem Echtdatenlauf, weitere Werkzeuge für die Arbeit des Assistenten (Ticketschnitt in
+`17-agenten-zugang-mcp.md`, Slices 17.8–17.13): Stapel-Eintrag je Maske, Aufschlüsselung der Schätzung
+(Rechenweg), Bescheid-Abgleich mit Einspruchsfrist, Prüfregeln und Ausdruck-Plan, Aufgaben an den
+Nutzer, Komfort (Veranlagungsvergleich aus Falldaten, Mehrfeld-Szenario, Wechselkurse, Vordruck-Zeilen,
+Feld finden, Vorjahr und Fristen), Vermietungsobjekte und Buchungen. Unverändert ausgeschlossen:
+Belege serverseitig auslesen (§11), Einwilligungen, Bezahlen, Kontoaktionen.
+
+## Amendment 4 (2026-11-21) — Der Zugang des Assistenten endet am MCP-Endpunkt
+
+Befund aus dem Sicherheitsreview nach den Echtdatenläufen: Ein Assistenten-Token wurde seit 17.2 von
+`UserContextGuard` auf jeder Route angenommen und von `RequiresAccount` wie eine Nutzer-Sitzung
+behandelt; gesperrt war nur, wo `@ForbidAssistant()` stand (5 von 39 Controllern). Über die normale
+API ließen sich damit die Lesesicht (Amendment 3), die Scopes und „nur der Nutzer bestätigt“ umgehen.
+
+1. **Erlaubnis statt Verbotsliste.** Ein Bearer-Token gilt nur an Controllern mit
+   `@AcceptsAssistantToken()`; das ist allein der MCP-Controller. Überall sonst antwortet der Guard mit
+   403, bevor er das Token nachschlägt. Ein Test hält fest, dass die Markierung nur dort steht.
+   `@ForbidAssistant()` bleibt als zweite Sperre stehen.
+2. **Registrierung nur mit Anmeldung.** `allowUnauthenticatedClientRegistration` ist aus: Einen Client
+   registriert nur ein angemeldeter Nutzer. Folge: Ein MCP-Client, der sich vor der Anmeldung selbst
+   registriert (RFC 7591, so verbinden sich die üblichen Assistenten), kommt so nicht mehr herein.
+   Stattdessen legt der Nutzer den Zugang im Profil an („Assistent verbinden“): ein öffentlicher Client
+   (PKCE, kein Secret) mit der Rückruf-Adresse des Assistenten (Claude, ChatGPT oder eine eigene, https
+   oder Loopback). Die App zeigt Server-Adresse und Client-ID, die der Nutzer im Assistenten einträgt.
+3. **Der Assistent ist seine Client-ID.** Herkunft (`Kennzeichnung.herkunftClientId`,
+   `vorschlagClientId`) und Aufgaben (`AssistentAufgabe.clientId`) merken sich die Client-ID. „Eigener
+   Eintrag“ (zurücknehmen, Kind oder Objekt entfernen, eigene Aufgaben lesen, „du“ in der Lesesicht)
+   geht nach ihr; der Name, den sich ein Client selbst gibt, ist nur Anzeige. Einträge von vor dieser
+   Änderung tragen keine ID und gelten weiter nach dem Namen.
+4. **Aufgaben an den Nutzer** (`aufgabe_fuer_nutzer`): feste Arten, höchstens 300 Zeichen, keine
+   Kennungen (IBAN, Steuer-ID), keine Links oder Webadressen, höchstens 20 offene je Jahr; in der App
+   nur als reiner Text mit dem Namen des Assistenten.
+
+Bewusst nicht in diesem Schnitt: Obergrenze für Werkzeugaufrufe und gleichzeitige Sitzungen; Aufgaben
+nur aus Textbausteinen. Buchungsentwürfe über MCP bleiben offen (eine Buchung ist kein Feldwert und
+braucht einen eigenen Entwurfsweg).
+
+## Amendment 5 (2026-11-21) — Der Assistent registriert sich wieder selbst
+
+Amendment 4 Nr. 2 ist zurückgenommen. Üblich ist bei MCP, dass der Nutzer im Assistenten nur die
+Server-Adresse einträgt; der Assistent liest die Metadaten (RFC 9728, RFC 8414), registriert sich selbst
+(RFC 7591) und schickt den Nutzer zur Anmeldung und Freigabe. Ein Client-Secret gibt es nicht (öffentlicher
+Client, PKCE). Eine Client-ID von Hand zu kopieren ist ein Schritt mehr als bei anderen Diensten.
+
+1. `allowUnauthenticatedClientRegistration` ist wieder an. Eine Registrierung gewährt nichts: Ein Token
+   entsteht erst nach Anmeldung und Freigabe des Nutzers und gilt nur am MCP-Endpunkt (Amendment 4 Nr. 1).
+2. **Limit:** höchstens 10 Registrierungen je Stunde und Adresse (`/oauth2/register`).
+3. **Aufräumen:** Ein selbst registrierter Client, den nach 7 Tagen kein Nutzer freigegeben hat, wird
+   gelöscht (`oauth-client-sweep.ts`; läuft mit einer Registrierung, höchstens stündlich je Prozess).
+4. „Assistent verbinden“ im Profil bleibt als zweiter Weg für Assistenten ohne eigene Registrierung;
+   ein dort angelegter Client gehört dem Konto und wird nicht aufgeräumt.
+
+Nicht geprüft: Client ID Metadata Documents (die Client-ID ist eine Adresse des Assistenten, nichts
+wird gespeichert) als späterer Ersatz für die Registrierung.
+
+
+## Amendment 6 (2026-11-21) — Buchungsentwürfe, Vergleiche, Limit und Streamable HTTP
+
+Schließt #548 und #549 und nimmt die in Amendment 4 offen gelassenen Punkte (Buchungsentwürfe, Obergrenze)
+auf. Unverändert: Der Assistent schreibt nur Unbestätigtes oder Vorschläge, der Nutzer entscheidet in der App.
+
+1. **Buchungsentwürfe sind Vorschläge.** `buchung_entwerfen(taxYear, …)` nimmt dieselben Angaben wie
+   `stage_booking_draft` des In-App-Beraters und prüft sie gleich (`parseBookingDraft`, `checkBookingDraft`:
+   Kontenrahmen, Steuerschlüssel, Ausgleich, Festschreibung, Jahr; ohne Buch `NO_BOOK`). Weil es über MCP keine
+   Karte im Chat gibt, liegt der Entwurf als offener Vorschlag auf `buchung:<entwurf-id>.entry` mit der Herkunft
+   des Assistenten (`fileProposal`); er erscheint unter „Prüfen & bestätigen“ (Anlage EÜR) als lesbare Buchung
+   (Datum, Text, Beleg, Summe) und wird erst mit „Übernehmen“ über den bestehenden Buchungsweg gebucht
+   (`decideProposal` → `applyDraft`), „Verwerfen“ lässt nichts zurück. `buchungsentwuerfe_auflisten` zeigt nur
+   die eigenen offenen Entwürfe; den Buchungstext gibt es zurück, er ist Angabe des Nutzers, keine Kennung.
+   Zurücknehmen geht mit `eintrag_zuruecknehmen` (Maske `buchung`, Feld `entry`); eine übernommene Buchung
+   storniert nur der Nutzer. Höchstens 25 offene Entwürfe je Assistent und Jahr; nur das erste Unternehmen.
+2. **Vergleiche aus den Falldaten.** `veranlagung_vergleichen` rechnet Zusammen- gegen Einzelveranlagung mit
+   dem Kern (`filingTypeComparison`) aus dem zu versteuernden Einkommen der App-Schätzung, im Verhältnis der
+   Einkünfte auf beide Personen aufgeteilt (eine Näherung, das sagt die Antwort; ohne Kirchensteuer); ohne
+   Person B oder Schätzung nennt es den Grund. `vorjahr_vergleichen` legt `schaetzung_aufschluesseln` beider
+   Jahre nebeneinander, mit Veränderung der Hauptzahlen, den Feldern mit Vorjahreswert, die jetzt leer sind
+   (nur Masken- und Feldnamen, nur die eigenen des Nutzers), und der Zahl der Kinder und Vermietungsobjekte.
+3. **Limit:** höchstens 120 Werkzeugaufrufe je Nutzer und Minute (gleitendes Fenster, über alle Sitzungen und
+   Clients des Nutzers) und höchstens 3 offene SSE-Sitzungen je Nutzer (`MCP_LIMITS` in `mcp-rate-limit.ts`).
+   Darüber antwortet ein Werkzeug mit `RATE_LIMITED: … in X Sekunden wieder`, eine weitere SSE-Sitzung mit 429.
+   Der erste abgelehnte Aufruf einer Sperre und jede abgelehnte Sitzung kommen ins Audit-Log. Der Zähler liegt
+   im Speicher des Prozesses, ohne Datenbank: **Er gilt je Instanz**; bei mehreren Instanzen (ADR-0053) kann
+   ein Nutzer entsprechend mehr. Ein gemeinsamer Zähler (z. B. Redis) wäre der nächste Schritt.
+4. **Streamable HTTP.** Neben dem alten SSE-Transport (`GET /mcp/sse`, `POST /mcp/messages`) gibt es
+   `POST /mcp` (MCP Streamable HTTP, zustandslos: je Anfrage ein neuer Server, JSON-Antworten, `GET`/`DELETE`
+   mit 405). Gleicher Guard, `@AcceptsAssistantToken()`, 401 mit `WWW-Authenticate` und dasselbe Limit. Da
+   nichts zwischen Anfragen gehalten wird, beantwortet jede Instanz jede Anfrage. Die **SSE-Sitzungen bleiben
+   im Speicher einer Instanz**: Ein `POST /mcp/messages`, der auf einer anderen landet, findet seine Sitzung
+   nicht (404); Clients sollen `/mcp` nutzen.
+5. **Zwei Ressourcen, ein Endpunkt.** `/mcp` ist eine eigene OAuth-Ressource (Metadaten unter
+   `/.well-known/oauth-protected-resource/mcp` mit `resource …/mcp`), weil ein Client prüft, dass die Ressource
+   zu seiner Server-Adresse passt (`/mcp/sse` passt nicht zu `/mcp`). Beide Ressourcen werden beim ersten
+   OAuth-Aufruf angelegt; der Guard nimmt Tokens mit Zielgruppe `…/mcp/sse` (alle bisher ausgestellten) und
+   `…/mcp` an beiden Transporten an. Die Metadaten von `/mcp/sse` bleiben unverändert.

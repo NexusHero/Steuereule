@@ -33,8 +33,10 @@ describe('captureReceipt — what the entry tells the server', () => {
       area: 'kind:k1',
       holder: 'B',
       alsoFor: true,
+      inChat: true,
     })
     expect(deps.parse.mock.calls[0]![0]).toMatchObject({
+      inChat: true,
       kind: 'geschaeftsbeleg',
       direction: 'ausgabe',
       expectedKind: 'lstb',
@@ -51,7 +53,7 @@ describe('captureReceipt — what the entry tells the server', () => {
     const deps = makeDeps()
     await captureReceipt(pdf, { taxYear: 2025, deps, person: 'A' })
     const dto = deps.parse.mock.calls[0]![0] as unknown as Record<string, unknown>
-    for (const key of ['expectedKind', 'mask', 'allowDuplicate', 'person', 'area', 'holder', 'alsoFor', 'direction']) expect(dto).not.toHaveProperty(key)
+    for (const key of ['expectedKind', 'mask', 'allowDuplicate', 'person', 'area', 'holder', 'alsoFor', 'direction', 'inChat']) expect(dto).not.toHaveProperty(key)
   })
 
   it('reports reading progress except the finished stage', async () => {

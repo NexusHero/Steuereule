@@ -247,7 +247,7 @@ export class AdvisorActionProposalDto implements AdvisorActionProposal {
   @ApiPropertyOptional({
     type: String,
     nullable: true,
-    enum: ['missing', 'unreadable', 'plausibility_conflict', 'partial_sv_lines', 'llm_suggested', 'ocr_source'],
+    enum: ['missing', 'unreadable', 'plausibility_conflict', 'partial_sv_lines', 'llm_suggested', 'ocr_source', 'empty_line'],
     example: null,
   })
   fieldReason?: LstbFieldReason | null | undefined

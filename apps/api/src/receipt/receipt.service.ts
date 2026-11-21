@@ -1,14 +1,14 @@
 import { Inject, Injectable, Optional } from '@nestjs/common'
-import { ISO_DATE_PATTERN, assignmentFromData, isReceiptType, type ReceiptAssignment, type ReceiptType } from '@steuereule/core'
+import { ISO_DATE_PATTERN, assignmentFromData, isReceiptType, receiptFolderOfKind, type ReceiptAssignment, type ReceiptFolder, type ReceiptType } from '@steuereule/core'
 import { AdvisorService } from '../advisor/advisor.service.js'
 import type { ReceiptDraftRecord } from '../advisor/advisor.repository.js'
 import { InvalidInputError, NotFoundError } from '../common/domain-error.js'
 import { AuditService } from '../audit/audit.service.js'
 import { draftsByReceipt, duplicateDto, filledFieldsOf, originalsByContent, processingOf } from './receipt-state.js'
-import { RECEIPT_REPOSITORY, type ReceiptRecord, type ReceiptRepository } from './receipt.repository.js'
+import { RECEIPT_REPOSITORY, type ReceiptFacts, type ReceiptRecord, type ReceiptRepository } from './receipt.repository.js'
 import { detectAllowedReceiptMimeType, type AllowedReceiptMimeType } from './storage/magic-bytes.js'
 import { STORAGE_PORT, type StoragePort, type StoredReceiptMeta } from './storage/storage.port.js'
-import type { DeleteReceiptResponseDto, ReceiptResponseDto } from './dto/receipt-response.dto.js'
+import type { DeleteReceiptResponseDto, ReceiptCountsDto, ReceiptPageResponseDto, ReceiptProposalDto, ReceiptResponseDto } from './dto/receipt-response.dto.js'
 import type { CreateReceiptDto } from './dto/create-receipt.dto.js'
 import type { SetAssignmentDto } from './dto/set-assignment.dto.js'
 import type { AssignmentDto } from './dto/assignment.dto.js'
@@ -99,6 +99,38 @@ function toReceiptResponse(record: ReceiptRecord, derived: DerivedReceiptFacts, 
   }
 }
 
+/** The cursor is the position of the last Beleg on the page; opaque to the caller. */
+function encodeReceiptCursor(row: Pick<ReceiptRecord, 'createdAt' | 'id'>): string {
+  return Buffer.from(JSON.stringify({ t: row.createdAt.toISOString(), i: row.id })).toString('base64url')
+}
+
+function decodeReceiptCursor(cursor: string): { createdAt: Date; id: string } {
+  try {
+    const parsed = JSON.parse(Buffer.from(cursor, 'base64url').toString('utf8')) as { t?: unknown; i?: unknown }
+    const createdAt = typeof parsed.t === 'string' ? new Date(parsed.t) : null
+    if (createdAt !== null && !Number.isNaN(createdAt.getTime()) && typeof parsed.i === 'string' && parsed.i !== '') return { createdAt, id: parsed.i }
+  } catch {
+    // falls through to the refusal below
+  }
+  throw new InvalidInputError('RECEIPT_CURSOR_INVALID', 'Der Cursor ist ungültig.')
+}
+
+/** What the inbox shows beside the page, counted over every Beleg (the screen counted over the whole list before). */
+function countsOf(facts: readonly ReceiptFacts[], drafts: ReadonlyMap<string, ReceiptDraftRecord[]>): ReceiptCountsDto {
+  const folders = { einkuenfte: 0, vorsorge: 0, bescheide: 0, weitere: 0 }
+  const proposals: ReceiptProposalDto[] = []
+  let open = 0
+  let unassigned = 0
+  for (const fact of facts) {
+    folders[receiptFolderOfKind(fact.kind)] += 1
+    if (processingOf(fact, drafts.get(fact.id) ?? []).open) open += 1
+    const assignment = assignmentFromData(fact)
+    if (assignment.kind !== 'zugeordnet') unassigned += 1
+    if (assignment.kind === 'vorgeschlagen') proposals.push({ id: fact.id, taxYear: assignment.proposal.taxYear })
+  }
+  return { total: facts.length, open, unassigned, folders, proposals }
+}
+
 const NOTHING_DERIVED: DerivedReceiptFacts = { drafts: [] }
 
 /** Application logic for the Beleg-Posteingang: userId-scoped reads/writes, encrypted binary storage, and derived-Zuordnung mapping. */
@@ -129,6 +161,43 @@ export class ReceiptService {
     const [drafts, keys] = await Promise.all([this.draftsPerReceipt(userId), this.storage.listContentKeys(userId)])
     const originals = originalsByContent(rows, keys)
     return rows.map((row) => toReceiptResponse(row, { drafts: drafts.get(row.id) ?? [], original: originals.get(row.id) }))
+  }
+
+  /**
+   * One page of the inbox with the counts the screen shows. The counts come from the light facts of every
+   * Beleg (no file name to decrypt, no file joined); only the page itself is read in full and enriched.
+   */
+  async listPage(userId: string, query: { readonly limit: number; readonly cursor?: string | undefined; readonly folder?: ReceiptFolder | undefined }): Promise<ReceiptPageResponseDto> {
+    const after = query.cursor === undefined ? undefined : decodeReceiptCursor(query.cursor)
+    const facts = await this.repository.listFactsForUser(userId)
+    if (facts.length === 0) return { items: [], nextCursor: null, counts: countsOf([], new Map()) }
+    await this.auditService.append({ userId, action: 'READ', resource: 'beleg' })
+
+    const [drafts, keys, rows] = await Promise.all([
+      this.draftsPerReceipt(userId),
+      this.storage.listContentKeys(userId),
+      this.repository.findPageForUser(userId, { limit: query.limit + 1, ...(after ? { after } : {}), ...(query.folder ? { folder: query.folder } : {}) }),
+    ])
+    const page = rows.slice(0, query.limit)
+    const last = page[page.length - 1]
+    const originals = originalsByContent(facts, keys)
+    const originalRecords = await this.originalRecords(userId, page, originals)
+    return {
+      items: page.map((row) => {
+        const original = originals.get(row.id)
+        return toReceiptResponse(row, { drafts: drafts.get(row.id) ?? [], original: original ? originalRecords.get(original.id) : undefined })
+      }),
+      nextCursor: rows.length > query.limit && last ? encodeReceiptCursor(last) : null,
+      counts: countsOf(facts, drafts),
+    }
+  }
+
+  /** The older uploads the page's duplicates point at; the ones already on the page are not read again. */
+  private async originalRecords(userId: string, page: readonly ReceiptRecord[], originals: ReadonlyMap<string, { readonly id: string }>): Promise<Map<string, ReceiptRecord>> {
+    const known = new Map(page.map((row) => [row.id, row]))
+    const wanted = [...new Set(page.flatMap((row) => originals.get(row.id)?.id ?? []))].filter((id) => !known.has(id))
+    for (const row of await this.repository.findManyByIdsForUser(userId, wanted)) known.set(row.id, row)
+    return known
   }
 
   async create(userId: string, dto: CreateReceiptDto): Promise<ReceiptResponseDto> {

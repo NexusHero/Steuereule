@@ -10,8 +10,10 @@ import { printoutValues, type PrintoutFacts, type ChSalaryCertificateFacts } fro
 import felder2025 from '../src/printout/felder-2025.json' with { type: 'json' }
 import manifest from '../src/printout/vordrucke-2025.json' with { type: 'json' }
 import felder2024 from '../src/printout/felder-2024.json' with { type: 'json' }
+import felder2023 from '../src/printout/felder-2023.json' with { type: 'json' }
+import felder2022 from '../src/printout/felder-2022.json' with { type: 'json' }
 import manifest2024 from '../src/printout/vordrucke-2024.json' with { type: 'json' }
-import { FIELD_SETS, extractAcroFormWidgets, forYear, loadAcroFormTemplateBytes, renderForms, OverflowError } from '../src/printout/form-renderer.js'
+import { FIELD_SETS, extractAcroFormWidgets, forYear, loadAcroFormTemplateBytes, renderForms, OverflowError, type FieldSet } from '../src/printout/form-renderer.js'
 
 const TEMPLATES = new URL('../assets/vordrucke/2025/', import.meta.url)
 const ACROFORM_TEMPLATES = new URL('../assets/vordrucke-acroform/2025/', import.meta.url)
@@ -148,6 +150,20 @@ describe('ausdruckWerte', () => {
       { 'anlN.kz110': '42000', 'anlN.personA': true, 'anlN.name': 'Beispiel', 'anlN.vorname': 'Anna', 'anlN.steuernummer': '2010304050' },
       { 'anlN.kz110': '54000', 'anlN.personB': true, 'anlN.name': 'Beispiel', 'anlN.vorname': 'Bernd', 'anlN.steuernummer': '2010304050' },
     ])
+  })
+
+  it('shows what is known of Person B while one of their details is still missing (the print stays blocked)', () => {
+    const { values, missing } = printoutValues({
+      ...FACTS,
+      masterData: { ...FACTS.masterData!, familienstand: 'verheiratet', familienstandSeit: '2020-05-15' },
+      link: {
+        filingType: 'zusammen',
+        personB: { firstName: 'Bernd', lastName: 'Beispiel', steuerId: null, geburtsdatum: '1988-11-20', religion: 'VD', beruf: 'Lehrer' },
+      },
+    })
+    expect(missing).toEqual(['personB'])
+    expect(values).toMatchObject({ 'est1a.nameB': 'Beispiel', 'est1a.vornameB': 'Bernd', 'est1a.geburtsdatumB': '20.11.1988', 'est1a.berufB': 'Lehrer' })
+    expect(values['est1a.idnrB']).toBeUndefined()
   })
 
   it('married with einzelveranlagung sets einzelveranlagung box without requiring Person B', () => {
@@ -350,6 +366,7 @@ describe('ausdruckWerte', () => {
       pkArbeitnehmerGesamtChf: null,
       pkArbeitgeberGesamtChf: null,
       steuerfreiesKrankentaggeldChf: null,
+      steuerfreiesUnfalltaggeldChf: null,
       krankentaggeldArbeitgeberProzent: '0',
       krankentaggeldArbeitgeberChf: null,
       nbuvArbeitgeberProzent: '0',
@@ -543,9 +560,62 @@ describe('ausdruckWerte', () => {
       })
     })
 
-    it('leaves Zeilen 9 and 20 empty when there is nothing to print', () => {
+    it('prints the daily accident benefit on the „SUVA – Geld“ line (Z. 10) in CHF and EUR and takes it out of the wage', () => {
+      const { values, missing } = ngre({ steuerfreiesUnfalltaggeldChf: '2000' })
+      expect(missing).toEqual([])
+      // Rate 1,065: 2000 CHF = 2130 €. Z. 15 = 100000 − 2400 − 2000 = 95600; EUR 106500 − 2556 − 2130 = 101814.
+      expect(values).toMatchObject({
+        'anlNGre.z10Chf': '2000',
+        'anlNGre.z10Eur': '2130',
+        'anlNGre.z15Chf': '95600',
+        'anlNGre.z15Eur': '101814',
+        'anlNGre.z23Chf': '95600',
+        // Z. 76 = Familienzulagen + Unfalltaggeld
+        'anlNGre.z76Chf': '4400',
+        'anlNGre.z77Chf': '95600',
+      })
+      // The sickness line stays empty: the two benefits never share a line.
+      expect(values['anlNGre.z9Chf']).toBeUndefined()
+    })
+
+    it('declares the accident benefit for the progression clause as well: Hauptvordruck Zeile 36 (Kz 136), in EUR', () => {
+      const { values } = ngre({ steuerfreiesUnfalltaggeldChf: '2000' })
+      // „Leistungen aus einem EU-/EWR-Staat oder der Schweiz, die mit Einkommensersatzleistungen vergleichbar sind“.
+      expect(values['est1a.kz136']).toBe('2130')
+      expect(values['est1a.kz137']).toBeUndefined()
+      // A sickness benefit of a collective insurance is not under the progression clause: nothing there.
+      expect(ngre({ steuerfreiesKrankentaggeldChf: '2000' }).values['est1a.kz136']).toBeUndefined()
+      // Domestic benefits stay on their own line.
+      const life = { trainingEur: null, relocationEur: null, wageReplacementEur: 3000, severance: false, secondHousehold: false }
+      const both = printoutValues({ ...FACTS, chSalaryCertificate: { ...CH, steuerfreiesUnfalltaggeldChf: '2000' }, lifeSituations: life }).values
+      expect(both).toMatchObject({ 'est1a.kz120': '3000', 'est1a.kz136': '2130' })
+    })
+
+    it('prints both daily benefits side by side', () => {
+      const { values } = ngre({ steuerfreiesKrankentaggeldChf: '1000', steuerfreiesUnfalltaggeldChf: '2000' })
+      expect(values).toMatchObject({ 'anlNGre.z9Chf': '1000', 'anlNGre.z10Chf': '2000', 'anlNGre.z15Chf': '94600', 'anlNGre.z76Chf': '5400' })
+    })
+
+    it('has a box for the „SUVA – Geld“ line on the forms of every measured year, directly below the sickness line', () => {
+      for (const set of [felder2022, felder2023, felder2024, felder2025]) {
+        const box = (id: string) => (set as FieldSet).felder.find((field) => field.id === id)
+        for (const column of ['Chf', 'Eur']) {
+          const sickness = box(`anlNGre.z9${column}`)
+          const accident = box(`anlNGre.z10${column}`)
+          expect(accident, `anlNGre.z10${column}`).toBeDefined()
+          expect(accident!.seite).toBe(sickness!.seite)
+          expect(accident!.kasten.x).toBeCloseTo(sickness!.kasten.x, 0)
+          // PDF coordinates grow upwards: the next line sits lower, within about two line heights.
+          expect(accident!.kasten.y).toBeLessThan(sickness!.kasten.y)
+          expect(sickness!.kasten.y - accident!.kasten.y).toBeLessThan(40)
+        }
+      }
+    })
+
+    it('leaves Zeilen 9, 10 and 20 empty when there is nothing to print', () => {
       const { values } = ngre({})
       expect(values['anlNGre.z9Chf']).toBeUndefined()
+      expect(values['anlNGre.z10Chf']).toBeUndefined()
       expect(values['anlNGre.z20Chf']).toBeUndefined()
     })
 
@@ -813,6 +883,15 @@ describe('ausdruckWerte', () => {
       for (const gap of [{ taxId: null }, { kinship: null }, { familyBenefitsOffice: null }, { domesticResidenceAllYear: null }]) {
         expect(printoutValues({ ...JOINT, kinder: [{ ...KIND, ...gap }] }).missing).toEqual(['kinder'])
       }
+    })
+
+    it('names which details of the children are missing, not all that could be', () => {
+      expect(printoutValues({ ...JOINT, kinder: [{ ...KIND, taxId: null }] }).missingChildFields).toEqual(['taxId'])
+      expect(printoutValues({ ...JOINT, kinder: [{ ...KIND, kinship: null }, { ...KIND, taxId: null, familyBenefitsOffice: null }] }).missingChildFields).toEqual(['taxId', 'kinship', 'familyBenefitsOffice'])
+      expect(printoutValues({ ...JOINT, kinder: [{ ...KIND, domesticResidenceAllYear: null }] }).missingChildFields).toEqual(['residence'])
+      expect(printoutValues({ ...JOINT, kinder: [{ ...KIND, kinshipB: null }] }).missingChildFields).toEqual(['otherParent'])
+      expect(printoutValues({ ...JOINT, childrenAnswered: true, kinder: null }).missingChildFields).toEqual(['child'])
+      expect(printoutValues({ ...JOINT, kinder: [KIND] }).missingChildFields).toEqual([])
     })
 
     it('cases the printout cannot cover yet are named, never printed half', () => {
@@ -1149,7 +1228,7 @@ describe('rendereVordrucke (real templates)', () => {
       status: 'echter-grenzgaenger', rate: 1.065, grossWageChf: '50000', ahvContributionsChf: '3300', withholdingTaxChf: '2250',
       arbeitgeberName: 'Muster AG', arbeitgeberStrasse: 'Bahnhofstrasse 1', arbeitgeberPlzOrt: '4051 Basel',
       familienzulagenChf: '0', krankentaggeldChf: '150', pkArbeitnehmerChf: '2500', pkArbeitgeberChf: '3000', specialCases: false,
-      pkArbeitnehmerGesamtChf: null, pkArbeitgeberGesamtChf: null, steuerfreiesKrankentaggeldChf: null,
+      pkArbeitnehmerGesamtChf: null, pkArbeitgeberGesamtChf: null, steuerfreiesKrankentaggeldChf: '600', steuerfreiesUnfalltaggeldChf: '900',
       krankentaggeldArbeitgeberProzent: '0', krankentaggeldArbeitgeberChf: null, nbuvArbeitgeberProzent: '0', nbuvArbeitgeberChf: null,
     },
     specialExpenses: { donations: '200' },
@@ -1173,6 +1252,14 @@ describe('rendereVordrucke (real templates)', () => {
     capital: { depot: 'auslaendischer-broker', kapitalertraege: '800', sparerPauschbetrag: '200' },
     riester: { kind: 'Mittelbar', incomeLastYear: null },
   }
+
+  it('declares Person B’s accident benefit in B’s column (Kz 137)', () => {
+    const b = MARRIED.link!.personB!
+    const { values, instances } = printoutValues({ ...MARRIED, link: { ...MARRIED.link!, personB: { ...b, chSalaryCertificate: { ...ALL_FACTS.chSalaryCertificate!, steuerfreiesUnfalltaggeldChf: '1000' } } } })
+    // A: 900 CHF, B: 1000 CHF at 1,065.
+    expect(values).toMatchObject({ 'est1a.kz136': '959', 'est1a.kz137': '1065' })
+    expect(instances?.['anlage-n-gre']?.map((copy) => copy['anlNGre.z10Chf'])).toEqual(['900', '1000'])
+  })
 
   for (const [fall, facts] of [['single parent', ALL_FACTS], ['joint return', MARRIED]] as const) {
     it(`renders every field the mapping writes — ${fall}, all facts`, async () => {

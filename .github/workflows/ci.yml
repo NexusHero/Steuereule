@@ -956,6 +956,10 @@ jobs:
         # One account through the masks in the browser; the printout check is stubbed for the
         # too-long case only. Needs DATABASE_URL (job env) to verify the sign-up.
         run: node e2e/forms/real-case-additions.mjs
+      - name: Main coverage gate (21.11.2026) — assistant access, tasks, what the cockpit needs, Veranlagungsart, children's hint, child save states, Günstigerprüfung, paged Belege, stored receipts, scanned LStB lines, companion values
+        # Fresh accounts through the API and the masks in the browser; scan results and a long inbox by route
+        # mock. Needs DATABASE_URL (job env) to verify the sign-ups.
+        run: node e2e/forms/main-coverage.mjs
       - name: Church tax gate (#450 6F, ADR-0063) — the six 6F personas, Zeile 6 in the LStB mask, cockpit hints
         # Real accounts through the API with their own sessions; Zeile 6 typed in the browser and the
         # cockpit hint read there. Needs DATABASE_URL (job env) to verify the sign-ups.

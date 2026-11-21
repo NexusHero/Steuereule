@@ -17,6 +17,7 @@ import { ReceiptsScreen } from './ReceiptsScreen'
 import { server } from '../../test-msw-server'
 import { ShellStateProvider, useShellState } from '../../navigation/ShellState'
 import type { AssignmentQuestionDto, ParseReceiptResponseDto, ReceiptResponseDto } from '@steuereule/api-client'
+import { receiptInboxHandler, receiptPage } from '../../test-receipt-inbox'
 
 // The device reading (PDF text layer / OCR) is the one seam replaced here: everything after it is the real pipeline.
 const { mockExtractDocumentText } = vi.hoisted(() => ({ mockExtractDocumentText: vi.fn() }))
@@ -96,7 +97,7 @@ const CONFLICT: ReceiptResponseDto = {
 }
 
 function mockReceipts(data: ReceiptResponseDto[], status = 200) {
-  server.use(http.get(RECEIPTS_URL, () => HttpResponse.json(data, { status })))
+  server.use(status === 200 ? receiptInboxHandler(data) : http.get(RECEIPTS_URL, () => HttpResponse.json(data, { status })))
 }
 
 function mockReceiptsError() {
@@ -214,7 +215,7 @@ describe('BelegeScreen', () => {
     const fetchSpy = vi.spyOn(globalThis, 'fetch')
     mockExtractDocumentText.mockResolvedValue({ kind: 'pdf', mimeType: 'application/pdf', text: 'Spendenbescheinigung 50,00 EUR', usedOcrFallback: false, pagesProcessed: 1 })
     server.use(
-      http.get(RECEIPTS_URL, () => HttpResponse.json(list, { status: 200 })),
+      receiptInboxHandler(() => list),
       http.post('*/v1/belege/upload', () => {
         list = [ASSIGNED]
         return HttpResponse.json(ASSIGNED, { status: 201 })
@@ -256,7 +257,7 @@ describe('BelegeScreen', () => {
     const parseBodies: unknown[] = []
     mockExtractDocumentText.mockRejectedValue(new Error('Invalid PDF structure'))
     server.use(
-      http.get(RECEIPTS_URL, () => HttpResponse.json(list, { status: 200 })),
+      receiptInboxHandler(() => list),
       http.post('*/v1/belege/upload', () => {
         list = [ASSIGNED]
         return HttpResponse.json(ASSIGNED, { status: 201 })
@@ -381,7 +382,7 @@ describe('BelegeScreen', () => {
     let deleteCalls = 0
     let failDelete = true
     server.use(
-      http.get(RECEIPTS_URL, () => HttpResponse.json(list, { status: 200 })),
+      receiptInboxHandler(() => list),
       http.delete('*/v1/belege/b-zugeordnet', () => {
         deleteCalls += 1
         if (failDelete) {
@@ -458,7 +459,7 @@ describe('BelegeScreen', () => {
     let list: ReceiptResponseDto[] = [PROPOSED]
     let posted: { id: string; body: unknown } | null = null
     server.use(
-      http.get(RECEIPTS_URL, () => HttpResponse.json(list, { status: 200 })),
+      receiptInboxHandler(() => list),
       http.post('*/v1/belege/:id/zuordnung', async ({ params, request }) => {
         posted = { id: String(params.id), body: await request.json() }
         list = [{ ...PROPOSED, assignment: { kind: 'zugeordnet', taxYear: 2026 } }]
@@ -478,7 +479,7 @@ describe('BelegeScreen', () => {
     let list: ReceiptResponseDto[] = [PROPOSED]
     let posted: unknown = null
     server.use(
-      http.get(RECEIPTS_URL, () => HttpResponse.json(list, { status: 200 })),
+      receiptInboxHandler(() => list),
       http.post('*/v1/belege/:id/zuordnung', async ({ request }) => {
         posted = await request.json()
         // The API's real derived state: confirmed 2025 contradicts the date-derived 2026.
@@ -524,7 +525,7 @@ describe('BelegeScreen', () => {
     let list: ReceiptResponseDto[] = [CONFLICT]
     let posted: unknown = null
     server.use(
-      http.get(RECEIPTS_URL, () => HttpResponse.json(list, { status: 200 })),
+      receiptInboxHandler(() => list),
       http.post('*/v1/belege/:id/zuordnung', async ({ request }) => {
         posted = await request.json()
         list = [{ ...CONFLICT, assignment: { kind: 'zugeordnet', taxYear: 2026 } }]
@@ -543,7 +544,7 @@ describe('BelegeScreen', () => {
     let list: ReceiptResponseDto[] = [CONFLICT]
     let posted: unknown = null
     server.use(
-      http.get(RECEIPTS_URL, () => HttpResponse.json(list, { status: 200 })),
+      receiptInboxHandler(() => list),
       http.post('*/v1/belege/:id/zuordnung', async ({ request }) => {
         posted = await request.json()
         // The API's real derived state: dismissing the suggestion resolves to zugeordnet on the
@@ -597,7 +598,7 @@ describe('BelegeScreen', () => {
     server.use(
       http.get(RECEIPTS_URL, () => {
         getCalls += 1
-        return HttpResponse.json(getCalls === 1 ? [PROPOSED] : [ASSIGNED], { status: 200 })
+        return HttpResponse.json(receiptPage(getCalls === 1 ? [PROPOSED] : [ASSIGNED]), { status: 200 })
       }),
       http.post('*/v1/belege/:id/zuordnung', () => HttpResponse.json(ASSIGNED, { status: 200 })),
     )
@@ -661,9 +662,25 @@ describe('BelegeScreen', () => {
       expect(screen.getByTestId('receipt-folder-b-zugeordnet').textContent).toContain('2026 / Einkünfte & Lohn')
       expect(screen.getByTestId('belege-ordner-einkuenfte').textContent).toContain('(1)')
 
+      // The server filters by folder: the other Beleg leaves once the folder's page has arrived.
       fireEvent.click(screen.getByTestId('belege-ordner-einkuenfte'))
+      await waitFor(() => expect(screen.queryByText('rechnung-fortbildung.pdf')).toBeNull())
       expect(screen.getByText('lohnausweis-2026.pdf')).toBeTruthy()
-      expect(screen.queryByText('rechnung-fortbildung.pdf')).toBeNull()
+      expect(screen.getByTestId('belege-ordner-weitere').textContent).toContain('(1)')
+    })
+
+    it('loads the Belege in pages and counts over all of them, not just the pages shown', async () => {
+      const many = Array.from({ length: 31 }, (_, n) => ({ ...UNBOUND, id: `b-${n}`, fileName: `beleg-${n}.pdf` }))
+      mockReceipts(many)
+      renderReceipts()
+
+      await screen.findByText('beleg-0.pdf')
+      expect(screen.queryByText('beleg-30.pdf')).toBeNull()
+      expect(screen.getByTestId('belege-ordner-alle').textContent).toContain('(31)')
+
+      fireEvent.click(screen.getByTestId('belege-mehr-laden'))
+      await screen.findByText('beleg-30.pdf')
+      expect(screen.queryByTestId('belege-mehr-laden')).toBeNull()
     })
 
     it('imports a Steuerbescheid via BescheidCheckCard and shows the comparison status', async () => {
@@ -807,7 +824,7 @@ describe('BelegeScreen', () => {
       let list: ReceiptResponseDto[] = [receipt]
       const calls: string[] = []
       server.use(
-        http.get(RECEIPTS_URL, () => HttpResponse.json(list, { status: 200 })),
+        receiptInboxHandler(() => list),
         http.delete('*/v1/belege/b-spende', ({ request }) => {
           calls.push(new URL(request.url).searchParams.get('takeBackValues') ?? 'none')
           list = []
@@ -830,7 +847,7 @@ describe('BelegeScreen', () => {
       const receipt = read('b-wartend', 'spende.pdf', { state: 'vorschlaege', reason: null, pending: 2, applied: 0, dismissed: 0, draftsTaxYear: 2025, open: true })
       const calls: string[] = []
       server.use(
-        http.get(RECEIPTS_URL, () => HttpResponse.json(calls.length > 0 ? [] : [receipt], { status: 200 })),
+        receiptInboxHandler(() => (calls.length > 0 ? [] : [receipt])),
         http.delete('*/v1/belege/b-wartend', ({ request }) => {
           calls.push(new URL(request.url).searchParams.get('takeBackValues') ?? 'none')
           return HttpResponse.json({ deleted: true, takenBack: 0, withdrawn: 0 }, { status: 200 })
@@ -850,7 +867,7 @@ describe('BelegeScreen', () => {
       const parseBodies: { holder?: string }[] = []
       mockExtractDocumentText.mockResolvedValue({ kind: 'pdf', mimeType: 'application/pdf', text: 'Spendenbescheinigung Jonas 50 EUR', usedOcrFallback: false, pagesProcessed: 1 })
       server.use(
-        http.get(RECEIPTS_URL, () => HttpResponse.json(list, { status: 200 })),
+        receiptInboxHandler(() => list),
         http.post('*/v1/belege/upload', () => {
           list = [ASSIGNED]
           return HttpResponse.json(ASSIGNED, { status: 201 })

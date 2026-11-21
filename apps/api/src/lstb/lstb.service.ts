@@ -12,6 +12,7 @@ import {
   type WageTaxCertificateConflict,
   provenanceKey,
   LSTB_SOCIAL_LINES,
+  type LstbSocialLine,
   lstbSocialSecurityFromLines,
   lstbSubsidyQuestionOpen,
 } from '@steuereule/core'
@@ -36,6 +37,9 @@ const LSTB_FIELD_IDS: readonly WageTaxCertificateFieldId[] = ['bruttoarbeitslohn
  * further certificate the sum already recorded stands (ADR-0083).
  */
 export type ScannedLstbValues = Readonly<Record<'bruttoarbeitslohn' | 'lohnsteuer', number>> & { readonly sozialversicherung: number | null }
+
+/** Further lines of a scanned LStB the user confirmed; an absent line was not read and stays as it is. */
+export type ScannedLstbLines = Readonly<Partial<Record<LstbSocialLine | 'kirchensteuer' | 'kirchensteuerEhegatte' | 'zuschuesseKvPv' | 'solidaritaetszuschlag', number>>>
 
 export interface ExistingLstbValues {
   readonly hasExisting: boolean
@@ -191,6 +195,16 @@ export class LstbService {
     return linesDtoFrom(await storeLstbLines(this.repository, userId, taxYear, patch))
   }
 
+  /** The further lines of a scanned LStB, written with the three values (`applyScannedLstbLines`). */
+  async applyScannedLines(
+    userId: string,
+    taxYear: number,
+    scanned: { readonly lines: ScannedLstbLines; readonly arbeitgeber: string | null },
+    options: { readonly receiptId: string | null; readonly addToExisting: boolean },
+  ): Promise<void> {
+    await applyScannedLstbLines(this.repository, this.markings, userId, taxYear, scanned, options)
+  }
+
   /** Values already captured for the year — a scan must never overwrite them silently (ADR-0008). */
   async existingValues(userId: string, taxYear: number): Promise<ExistingLstbValues> {
     const data = wageTaxCertificateDataFrom(await this.repository.findForUserAndYear(userId, taxYear))
@@ -286,6 +300,76 @@ export class LstbService {
       }
     }
     return toResponse(candidate)
+  }
+}
+
+/**
+ * Writes the further lines of a scanned LStB next to the three values (`applyScannedValues`), in the same
+ * transaction: each line to its field of the mask, the sum following the lines (ADR-0093), with Beleg
+ * provenance. A further certificate adds its lines to those recorded and keeps the employer named first.
+ */
+export async function applyScannedLstbLines(
+  repository: WageTaxCertificateRepository,
+  markings: ProvenanceRepository,
+  userId: string,
+  taxYear: number,
+  scanned: { readonly lines: ScannedLstbLines; readonly arbeitgeber: string | null },
+  options: { readonly receiptId: string | null; readonly addToExisting: boolean },
+): Promise<void> {
+  const current = options.addToExisting ? await repository.findForUserAndYear(userId, taxYear) : null
+  const wholeBefore = (value: string | null | undefined): number => (value !== null && value !== undefined && /^\d+$/.test(value) ? Number(value) : 0)
+  const total = (line: keyof ScannedLstbLines, value: number): number => {
+    const before = current?.[line as keyof WageTaxCertificateRecord] as string | null | undefined
+    if (line !== 'solidaritaetszuschlag') return value + wholeBefore(before)
+    const cents = before !== null && before !== undefined && /^\d+(\.\d{1,2})?$/.test(before) ? Math.round(Number(before) * 100) : 0
+    return (cents + Math.round(value * 100)) / 100
+  }
+  const written: string[] = []
+  const patch: LstbLinePatch = {}
+  for (const line of LSTB_SOCIAL_LINES) {
+    const value = scanned.lines[line]
+    if (value === undefined) continue
+    if (!isValidAmount(value)) throw new InvalidInputError('FIELD_VALUE_INVALID', `"${line}" requires a non-negative whole-euro amount.`)
+    patch[line] = String(total(line, value))
+    written.push(line)
+  }
+  const soli = scanned.lines.solidaritaetszuschlag
+  if (soli !== undefined) {
+    if (!Number.isFinite(soli) || soli < 0) throw new InvalidInputError('FIELD_VALUE_INVALID', '"solidaritaetszuschlag" requires a non-negative amount.')
+    patch.solidaritaetszuschlag = String(total('solidaritaetszuschlag', Math.round(soli * 100) / 100))
+    written.push('solidaritaetszuschlag')
+  }
+  if (Object.keys(patch).length > 0) await storeLstbLines(repository, userId, taxYear, patch)
+
+  const church = { kirchensteuer: scanned.lines.kirchensteuer, kirchensteuerEhegatte: scanned.lines.kirchensteuerEhegatte }
+  if (church.kirchensteuer !== undefined || church.kirchensteuerEhegatte !== undefined) {
+    const stored = await repository.findForUserAndYear(userId, taxYear)
+    const next = (line: 'kirchensteuer' | 'kirchensteuerEhegatte'): string | null => {
+      const value = church[line]
+      if (value === undefined) return stored?.[line] ?? null
+      if (!isValidAmount(value)) throw new InvalidInputError('FIELD_VALUE_INVALID', `"${line}" requires a non-negative whole-euro amount.`)
+      written.push(line)
+      return String(total(line, value))
+    }
+    await repository.setChurchTax(userId, taxYear, { kirchensteuer: next('kirchensteuer'), kirchensteuerEhegatte: next('kirchensteuerEhegatte') })
+  }
+  const subsidies = scanned.lines.zuschuesseKvPv
+  if (subsidies !== undefined) {
+    if (!isValidAmount(subsidies)) throw new InvalidInputError('FIELD_VALUE_INVALID', '"zuschuesseKvPv" requires a non-negative whole-euro amount.')
+    await repository.setSubsidies(userId, taxYear, String(total('zuschuesseKvPv', subsidies)))
+    written.push('zuschuesseKvPv')
+  }
+  const employer = scanned.arbeitgeber?.trim() ?? ''
+  if (employer !== '') {
+    const recorded = (await repository.findForUserAndYear(userId, taxYear))?.arbeitgeber ?? null
+    if (!options.addToExisting || recorded === null || recorded.trim() === '') await repository.setEmployer(userId, taxYear, employer)
+  }
+
+  for (const line of written) {
+    const key = provenanceKey('lstb', line)
+    // A sum of two certificates is no single receipt's figure: the user's own, confirmed (as for the three values).
+    if (options.addToExisting) await markings.save(userId, taxYear, { key, provenance: { kind: 'nutzer' }, confirmed: true, proposal: null })
+    else if (options.receiptId !== null) await markings.save(userId, taxYear, { key, provenance: { kind: 'beleg', receiptId: options.receiptId }, confirmed: true, proposal: null })
   }
 }
 

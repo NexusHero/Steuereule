@@ -435,7 +435,7 @@ async function main() {
     await see('verlauf-upload-nicht-gelesen')
     await see('verlauf-upload-eckjahr')
     if (parseBody?.kind !== 'steuerbescheid' || parseBody?.expectedKind !== 'steuerbescheid') fail(`the Verlauf upload should read as \`steuerbescheid\`, it sent ${JSON.stringify(parseBody?.kind)}`)
-    await until(async () => (await call(api, 'GET', '/v1/belege')).some((r) => r.fileName === 'bescheid-2020.pdf' && r.kind === 'Steuerbescheid'), true, 'the Bescheid should be stored in the Belege tab as a Steuerbescheid', 30_000)
+    await until(async () => (await call(api, 'GET', '/v1/belege?limit=100')).items.some((r) => r.fileName === 'bescheid-2020.pdf' && r.kind === 'Steuerbescheid'), true, 'the Bescheid should be stored in the Belege tab as a Steuerbescheid', 30_000)
     await page.unroute('**/v1/belege/parse')
     console.log(`[${TAG}] ✅ Upload — same pipeline as the Belege tab, the reading says what it read, what not, and that an Eckjahr comes`)
 

@@ -170,6 +170,8 @@ export class ChCertificateScanParseStrategy implements DocumentParseStrategy, On
         engine: slot ? { mode: 'langgraph', provider: slot.provider, model: slot.model } : { mode: 'deterministic_fallback', provider: 'deterministic' },
         summaryText: summaryOf(read, person, fields, fromOcr),
         sourceId: 'estg-9-1',
+        // What the remarks say about a paid-out daily benefit: asked, with the amount as the proposal (ADR-0093).
+        dailyBenefit: read.dailyBenefit,
         fields: [
           ...stageable.map((f) => ({
             field: f.field,
@@ -201,6 +203,7 @@ export class ChCertificateScanParseStrategy implements DocumentParseStrategy, On
       checks: read.checks,
       canteen: read.canteen,
       freeTransport: read.freeTransport,
+      dailyBenefit: read.dailyBenefit,
       missing: [...read.missing],
       stagedActionIds,
       securityBlocked,

@@ -206,6 +206,15 @@ export class ParseReceiptDto {
   @ApiPropertyOptional({
     type: Boolean,
     example: true,
+    description: 'Uploaded in the chat of `taxYear` (entry context, ADR-0097 §4): the Beleg is filed in that year — also when it asks „Für wen?“ or yields nothing — unless the document itself names another year; a year the user chose stays.',
+  })
+  @IsOptional()
+  @IsBoolean()
+  inChat?: boolean
+
+  @ApiPropertyOptional({
+    type: Boolean,
+    example: true,
     description: 'Stages an unconfirmed pending draft in Eulen-Modus when true (default true).',
   })
   @IsOptional()
@@ -255,7 +264,7 @@ export class LstbExtractedFieldDto {
   @ApiProperty({
     type: String,
     nullable: true,
-    enum: ['missing', 'unreadable', 'plausibility_conflict', 'partial_sv_lines', 'llm_suggested', 'ocr_source'],
+    enum: ['missing', 'unreadable', 'plausibility_conflict', 'partial_sv_lines', 'llm_suggested', 'ocr_source', 'empty_line'],
     example: null,
   })
   reason!: LstbFieldReason | null
@@ -270,6 +279,51 @@ export class LstbExtractedFieldsDto {
 
   @ApiProperty({ type: LstbExtractedFieldDto })
   sozialversicherung!: LstbExtractedFieldDto
+}
+
+/** The further lines of the LStB mask a scan read (catalogue screen `lstb`); `value: null` where none is printed. */
+export class LstbExtractedLinesDto {
+  @ApiProperty({ type: LstbExtractedFieldDto, description: 'Zeile 5, Euro mit Cent.' })
+  solidaritaetszuschlag!: LstbExtractedFieldDto
+
+  @ApiProperty({ type: LstbExtractedFieldDto, description: 'Zeile 6.' })
+  kirchensteuer!: LstbExtractedFieldDto
+
+  @ApiProperty({ type: LstbExtractedFieldDto, description: 'Zeile 7.' })
+  kirchensteuerEhegatte!: LstbExtractedFieldDto
+
+  @ApiProperty({ type: LstbExtractedFieldDto, description: 'Zeile 22 a + b.' })
+  rvArbeitgeber!: LstbExtractedFieldDto
+
+  @ApiProperty({ type: LstbExtractedFieldDto, description: 'Zeile 23 a + b.' })
+  rvArbeitnehmer!: LstbExtractedFieldDto
+
+  @ApiProperty({ type: LstbExtractedFieldDto, description: 'Zeile 24 a + b + c.' })
+  zuschuesseKvPv!: LstbExtractedFieldDto
+
+  @ApiProperty({ type: LstbExtractedFieldDto, description: 'Zeile 24c allein.' })
+  zuschussPv!: LstbExtractedFieldDto
+
+  @ApiProperty({ type: LstbExtractedFieldDto, description: 'Zeile 25.' })
+  kvArbeitnehmer!: LstbExtractedFieldDto
+
+  @ApiProperty({ type: LstbExtractedFieldDto, description: 'Zeile 26.' })
+  pvArbeitnehmer!: LstbExtractedFieldDto
+
+  @ApiProperty({ type: LstbExtractedFieldDto, description: 'Zeile 27.' })
+  avArbeitnehmer!: LstbExtractedFieldDto
+}
+
+/** The employer as the certificate names it (ADR-0099 §8); never sent to a model. */
+export class LstbExtractedEmployerDto {
+  @ApiProperty({ type: String, nullable: true, example: 'Beispielwerke GmbH' })
+  value!: string | null
+
+  @ApiProperty({ type: String, enum: ['ok', 'pruefen'] })
+  status!: 'ok' | 'pruefen'
+
+  @ApiProperty({ type: String, nullable: true, enum: ['missing', 'ocr_source'] })
+  reason!: 'missing' | 'ocr_source' | null
 }
 
 export class LstbYearConflictDto {
@@ -318,6 +372,12 @@ export class ParsedLstbResponseDto {
   @ApiProperty({ type: LstbExtractedFieldsDto })
   fields!: LstbExtractedFieldsDto
 
+  @ApiProperty({ type: LstbExtractedLinesDto, description: 'Every further line of the mask: Soli, church tax, Zeilen 22–27 and the subsidies (Zeile 24).' })
+  lines!: LstbExtractedLinesDto
+
+  @ApiProperty({ type: LstbExtractedEmployerDto })
+  employer!: LstbExtractedEmployerDto
+
   @ApiProperty({ type: [String], example: ['act-1', 'act-2', 'act-3'] })
   stagedActionIds!: string[]
 
@@ -359,6 +419,14 @@ export class ChCertificateChecksDto {
   net!: 'ok' | 'conflict' | 'unknown'
 }
 
+export class ChDailyBenefitDto {
+  @ApiProperty({ type: String, enum: ['sickness', 'accident'], description: 'Krankentaggeld, or a benefit after an accident (Unfalltaggeld, UVG, SUVA), which is taxed differently.' })
+  kind!: 'sickness' | 'accident'
+
+  @ApiProperty({ type: Number, nullable: true, example: 12345, description: 'Whole CHF as the remark prints it; null when it names no amount.' })
+  amountChf!: number | null
+}
+
 export class ParsedChCertificateResponseDto {
   @ApiProperty({ type: String, enum: ['deterministic', 'llm_text_fallback'] })
   stage!: 'deterministic' | 'llm_text_fallback'
@@ -392,6 +460,13 @@ export class ParsedChCertificateResponseDto {
 
   @ApiProperty({ type: Boolean, description: 'Box F: free transport between home and work.' })
   freeTransport!: boolean
+
+  @ApiProperty({
+    type: ChDailyBenefitDto,
+    nullable: true,
+    description: 'A paid-out daily benefit the remarks name („KK-Taggeld Verrechnung“). The certificate does not say whether it is part of Ziffer 8: the app asks, and never writes it on its own.',
+  })
+  dailyBenefit!: ChDailyBenefitDto | null
 
   @ApiProperty({ type: [String], description: 'Ziffern every certificate carries that could not be read.' })
   missing!: string[]

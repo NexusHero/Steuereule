@@ -26,7 +26,8 @@ import type {
 
 import type {
   ConfirmationResponseDto,
-  ProposalDecisionDto
+  ProposalDecisionDto,
+  TaskDecisionDto
 } from './bestaetigung.schemas';
 
 import { httpClient } from '../http-client';
@@ -341,5 +342,97 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
         TContext
       > => {
       return useMutation(getConfirmationControllerDecideProposalMutationOptions(options), queryClient);
+    }
+
+export type confirmationControllerDecideTaskResponse200 = {
+  data: ConfirmationResponseDto
+  status: 200
+}
+
+export type confirmationControllerDecideTaskResponse401 = {
+  data: void
+  status: 401
+}
+
+export type confirmationControllerDecideTaskResponse404 = {
+  data: void
+  status: 404
+}
+
+export type confirmationControllerDecideTaskResponseSuccess = (confirmationControllerDecideTaskResponse200) & {
+  headers: Headers;
+};
+export type confirmationControllerDecideTaskResponseError = (confirmationControllerDecideTaskResponse401 | confirmationControllerDecideTaskResponse404) & {
+  headers: Headers;
+};
+
+export type confirmationControllerDecideTaskResponse = (confirmationControllerDecideTaskResponseSuccess | confirmationControllerDecideTaskResponseError)
+
+export const getConfirmationControllerDecideTaskUrl = (jahr: number,
+    id: string,) => {
+
+
+
+
+  return `/v1/steuerjahre/${jahr}/bestaetigung/aufgaben/${id}`
+}
+
+export const confirmationControllerDecideTask = async (jahr: number,
+    id: string,
+    taskDecisionDto: TaskDecisionDto, options?: RequestInit): Promise<confirmationControllerDecideTaskResponse> => {
+
+  return httpClient<confirmationControllerDecideTaskResponse>(getConfirmationControllerDecideTaskUrl(jahr,id),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(taskDecisionDto)
+  }
+);}
+
+
+
+
+
+export const getConfirmationControllerDecideTaskMutationOptions = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof confirmationControllerDecideTask>>, TError,{jahr: number;id: string;data: TaskDecisionDto}, TContext>, request?: SecondParameter<typeof httpClient>}
+): UseMutationOptions<Awaited<ReturnType<typeof confirmationControllerDecideTask>>, TError,{jahr: number;id: string;data: TaskDecisionDto}, TContext> => {
+
+const mutationKey = ['confirmationControllerDecideTask'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof confirmationControllerDecideTask>>, {jahr: number;id: string;data: TaskDecisionDto}> = (props) => {
+          const {jahr,id,data} = props ?? {};
+
+          return  confirmationControllerDecideTask(jahr,id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ConfirmationControllerDecideTaskMutationResult = NonNullable<Awaited<ReturnType<typeof confirmationControllerDecideTask>>>
+    export type ConfirmationControllerDecideTaskMutationBody = TaskDecisionDto
+    export type ConfirmationControllerDecideTaskMutationError = void
+
+    export const useConfirmationControllerDecideTask = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof confirmationControllerDecideTask>>, TError,{jahr: number;id: string;data: TaskDecisionDto}, TContext>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof confirmationControllerDecideTask>>,
+        TError,
+        {jahr: number;id: string;data: TaskDecisionDto},
+        TContext
+      > => {
+      return useMutation(getConfirmationControllerDecideTaskMutationOptions(options), queryClient);
     }
 

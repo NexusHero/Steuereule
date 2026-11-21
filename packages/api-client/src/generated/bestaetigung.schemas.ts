@@ -67,6 +67,16 @@ export interface ProposalDto {
   provenance: ProvenanceDto;
 }
 
+/**
+ * Set when the value belongs to Person B, whose figures the user records (ADR-0054).
+ */
+export type FieldProvenanceDtoPerson = typeof FieldProvenanceDtoPerson[keyof typeof FieldProvenanceDtoPerson];
+
+
+export const FieldProvenanceDtoPerson = {
+  B: 'B',
+} as const;
+
 export interface FieldProvenanceDto {
   key: string;
   screen: FieldProvenanceDtoScreen;
@@ -85,6 +95,8 @@ export interface FieldProvenanceDto {
   confirmed: boolean;
   /** @nullable */
   proposal: ProposalDto | null;
+  /** Set when the value belongs to Person B, whose figures the user records (ADR-0054). */
+  person?: FieldProvenanceDtoPerson;
 }
 
 export interface AnnexConfirmationDto {
@@ -94,8 +106,32 @@ export interface AnnexConfirmationDto {
   values: FieldProvenanceDto[];
 }
 
+export type AssistantTaskDtoKind = typeof AssistantTaskDtoKind[keyof typeof AssistantTaskDtoKind];
+
+
+export const AssistantTaskDtoKind = {
+  konfession: 'konfession',
+  einwilligung: 'einwilligung',
+  bestaetigen: 'bestaetigen',
+  beleg_nachreichen: 'beleg_nachreichen',
+  kind_entfernen: 'kind_entfernen',
+  sonstiges: 'sonstiges',
+} as const;
+
+export interface AssistantTaskDto {
+  id: string;
+  kind: AssistantTaskDtoKind;
+  /** Written by the assistant; show as plain text only. */
+  text: string;
+  /** Name of the assistant that left the task. */
+  assistant: string;
+  createdAt: string;
+}
+
 export interface ConfirmationResponseDto {
   annexes: AnnexConfirmationDto[];
+  /** The open tasks the user's assistant left for this tax year. */
+  tasks: AssistantTaskDto[];
 }
 
 export type ProposalDecisionDtoDecision = typeof ProposalDecisionDtoDecision[keyof typeof ProposalDecisionDtoDecision];
@@ -106,7 +142,32 @@ export const ProposalDecisionDtoDecision = {
   verwerfen: 'verwerfen',
 } as const;
 
+/**
+ * Whose proposal: B for a value of Person B the user records. Default A.
+ */
+export type ProposalDecisionDtoPerson = typeof ProposalDecisionDtoPerson[keyof typeof ProposalDecisionDtoPerson];
+
+
+export const ProposalDecisionDtoPerson = {
+  A: 'A',
+  B: 'B',
+} as const;
+
 export interface ProposalDecisionDto {
   decision: ProposalDecisionDtoDecision;
+  /** Whose proposal: B for a value of Person B the user records. Default A. */
+  person?: ProposalDecisionDtoPerson;
+}
+
+export type TaskDecisionDtoDecision = typeof TaskDecisionDtoDecision[keyof typeof TaskDecisionDtoDecision];
+
+
+export const TaskDecisionDtoDecision = {
+  erledigt: 'erledigt',
+  verworfen: 'verworfen',
+} as const;
+
+export interface TaskDecisionDto {
+  decision: TaskDecisionDtoDecision;
 }
 

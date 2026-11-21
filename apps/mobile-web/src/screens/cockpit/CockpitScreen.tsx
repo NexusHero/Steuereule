@@ -29,7 +29,8 @@ import { usePlausibility } from '../plausibility/usePlausibility'
 import { CockpitTiles, tileRevisitFlag, useCockpitTileFacts } from './CockpitTiles'
 import { useSelfEmploymentCapability } from '../business/useSelfEmployment'
 import { derivePersonas } from './personas'
-import { nextStep, type TileDefinition, type TileFacts } from './tiles'
+import { nextStep, tileById, type TileDefinition, type TileFacts } from './tiles'
+import { missingItems, type MissingItem, type MissingTarget } from './estimateMissing'
 import { nextOpenStep, stromProgress, type StromStep } from '../strom/stromPlan'
 import { stromStepTitle } from '../strom/stromTitles'
 import { CockpitInbox } from './CockpitInbox'
@@ -232,6 +233,7 @@ export function CockpitScreen({
       {...shared}
       summary={summary}
       confirmation={confirmationQuery.data?.status === 200 ? confirmationQuery.data.data.annexes : null}
+      assistantTaskCount={confirmationQuery.data?.status === 200 ? (confirmationQuery.data.data.tasks ?? []).length : 0}
       {...(onOpenConfirmation ? { onOpenConfirmation: () => onOpenConfirmation(year) } : {})}
     />
   )
@@ -247,7 +249,15 @@ interface PullToRefresh {
   readonly onPull: () => void
 }
 
-function Refund({ year, hideRange = false }: { readonly year: number; readonly hideRange?: boolean }) {
+interface RefundProps {
+  readonly year: number
+  readonly hideRange?: boolean
+  readonly partnerName: string
+  /** Opens the mask that holds a missing detail; without it the details are named but lead nowhere. */
+  readonly onOpenMissing?: ((target: MissingTarget) => void) | undefined
+}
+
+function Refund({ year, hideRange = false, partnerName, onOpenMissing }: RefundProps) {
   const t = useTheme()
   const styles = makeStyles(t)
   const { t: tr, i18n } = useTranslation(APP_NS)
@@ -256,6 +266,19 @@ function Refund({ year, hideRange = false }: { readonly year: number; readonly h
   return (
     <>
       {hideRange ? null : <Text style={styles.refundLater} testID="cockpit-erstattung">{refundText(estimate, tr, i18n.language)}</Text>}
+      {/* A count alone leaves the user searching (Echtdatenlauf 4): each missing detail is named, with its mask. */}
+      {estimateMissingItems(estimate).map((item) => {
+        const target = item.target
+        const text = missingItemText(item, tr, partnerName)
+        if (target === null || onOpenMissing === undefined) {
+          return <Text key={item.raw} style={styles.refundLater} testID={`cockpit-fehlt-${item.raw}`}>{`• ${text}`}</Text>
+        }
+        return (
+          <Pressable key={item.raw} accessibilityRole="button" accessibilityHint={tr('cockpit.erstattung.fehlt.oeffnen')} onPress={() => onOpenMissing(target)} style={styles.missingEstimateRow} testID={`cockpit-fehlt-${item.raw}`}>
+            <Text style={styles.missingEstimateText}>{`${text} →`}</Text>
+          </Pressable>
+        )
+      })}
       {estimate?.kind === 'spanne' && estimate.churchTaxOpen ? (
         <Text style={styles.refundLater} testID="cockpit-kirchensteuer-offen">
           {estimate.churchTax?.kind === 'offen' && estimate.churchTax.reason
@@ -327,6 +350,20 @@ function effectText(effect: Effect, tr: TFunction<typeof APP_NS>): string {
     formular: tr(`cockpit.kachel.${effect.area}.formular`),
     wirkung: direction,
   })
+}
+
+/** What an open estimate lacks; nothing while the couple's filing type is the open point (it has its own sentence). */
+function estimateMissingItems(estimate: TaxEstimateDto | null): readonly MissingItem[] {
+  if (estimate?.kind !== 'offen' || estimate.missing === undefined || estimate.missing.includes('veranlagungsart')) return []
+  return missingItems(estimate.missing)
+}
+
+/** „Pensionskasse: Arbeitnehmerbeitrag · Schweizer Lohnausweis“, for Person B with the name in front. */
+function missingItemText(item: MissingItem, tr: TFunction<typeof APP_NS>, partnerName: string): string {
+  const was = tr(item.known ? `cockpit.erstattung.fehlt.${item.id}` : 'cockpit.erstattung.fehlt.sonstiges')
+  const wo = item.target === null ? null : tr(item.target.kind === 'tile' ? `cockpit.kachel.${item.target.tile}.titel` : `cockpit.kachel.partner-${item.target.area}.titel`)
+  if (item.person === 'B') return wo === null ? tr('cockpit.erstattung.fehlt.partnerOhneOrt', { name: partnerName, was }) : tr('cockpit.erstattung.fehlt.partner', { name: partnerName, was, wo })
+  return wo === null ? tr('cockpit.erstattung.fehlt.ohneOrt', { was }) : tr('cockpit.erstattung.fehlt.eigene', { was, wo })
 }
 
 function refundText(estimate: TaxEstimateDto | null, tr: TFunction<typeof APP_NS>, language: string): string {
@@ -600,10 +637,12 @@ interface CockpitWorkAreaProps
   > {
   readonly hasPositiveRefund?: boolean
   readonly owlTestID?: string
+  /** What the estimate still lacks: the tile that holds it does not read „Erledigt“. */
+  readonly estimateMissing?: readonly MissingItem[]
 }
 
 /** Inbox, tiles, the owl card and the master-data notice — the same on the empty and the loaded Cockpit. */
-function CockpitWorkArea({ year, tileFacts, isSignedIn, isJointMarried, partnerName, findings, onOpenTile, onOpenPartner, onOpenSubmission, masterData, onOpenOwlMode, progress, onOpenReceipts, hasPositiveRefund = false, owlTestID }: CockpitWorkAreaProps) {
+function CockpitWorkArea({ year, tileFacts, isSignedIn, isJointMarried, partnerName, findings, onOpenTile, onOpenPartner, onOpenSubmission, masterData, onOpenOwlMode, progress, onOpenReceipts, hasPositiveRefund = false, owlTestID, estimateMissing }: CockpitWorkAreaProps) {
   const styles = makeStyles(useTheme())
   return (
     <>
@@ -619,6 +658,7 @@ function CockpitWorkArea({ year, tileFacts, isSignedIn, isJointMarried, partnerN
           conflicts={findings.conflicts}
           notices={findings.notices}
           hasPositiveRefund={hasPositiveRefund}
+          {...(estimateMissing ? { estimateMissing } : {})}
           openSteps={progress === null ? undefined : progress.total - progress.done}
           onOpenTile={onOpenTile}
           {...(onOpenPartner ? { onOpenPartner } : {})}
@@ -680,23 +720,27 @@ function CockpitEmpty(props: CockpitEmptyProps) {
 
 interface ConfirmationNoticeProps {
   readonly annexes: readonly AnnexConfirmationDto[] | null
+  /** Open tasks the user's assistant left (#547); the confirmation screen lists them. */
+  readonly taskCount: number
   readonly status: CockpitStatusDto
   readonly onOpenConfirmation?: () => void
 }
 
-function ConfirmationNotice({ annexes, status, onOpenConfirmation }: ConfirmationNoticeProps) {
+function ConfirmationNotice({ annexes, taskCount, status, onOpenConfirmation }: ConfirmationNoticeProps) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const styles = makeStyles(t)
   const open = (annexes ?? []).filter((a) => a.unconfirmed > 0)
-  if (open.length === 0) return null
+  if (open.length === 0 && taskCount === 0) return null
   const sum = status.kind === 'spanne' ? (status.unconfirmedSum ?? 0) : 0
 
   return (
     <Card variant="default" testID="bestaetigung-hinweis">
-      <Text style={styles.help}>
-        {sum > 0 ? tr('cockpit.bestaetigung.hinweis', { count: open.reduce((n, a) => n + a.unconfirmed, 0), summe: formatEuro(sum) }) : tr('cockpit.bestaetigung.hinweisOhneSumme')}
-      </Text>
+      {open.length > 0 ? (
+        <Text style={styles.help}>
+          {sum > 0 ? tr('cockpit.bestaetigung.hinweis', { count: open.reduce((n, a) => n + a.unconfirmed, 0), summe: formatEuro(sum) }) : tr('cockpit.bestaetigung.hinweisOhneSumme')}
+        </Text>
+      ) : null}
       {open.map((a) => (
         <View key={a.annex} style={styles.uebernahmeZeile}>
           <Text style={styles.uebernahmeZeileText}>
@@ -707,9 +751,14 @@ function ConfirmationNotice({ annexes, status, onOpenConfirmation }: Confirmatio
           </Text>
         </View>
       ))}
+      {taskCount > 0 ? (
+        <View style={styles.uebernahmeZeile} testID="bestaetigung-aufgaben">
+          <Text style={styles.uebernahmeZeileText}>{tr('cockpit.bestaetigung.aufgaben', { count: taskCount })}</Text>
+        </View>
+      ) : null}
       {onOpenConfirmation ? (
         <Button variant="ghost" onPress={onOpenConfirmation} testID="bestaetigung-oeffnen">
-          {tr('cockpit.bestaetigung.pruefen')}
+          {open.length > 0 ? tr('cockpit.bestaetigung.pruefen') : tr('cockpit.bestaetigung.aufgabenAnsehen')}
         </Button>
       ) : null}
     </Card>
@@ -719,6 +768,7 @@ function ConfirmationNotice({ annexes, status, onOpenConfirmation }: Confirmatio
 interface CockpitLoadedProps extends CockpitEmptyProps {
   readonly summary: CockpitSummaryDto
   readonly confirmation: readonly AnnexConfirmationDto[] | null
+  readonly assistantTaskCount: number
   readonly onOpenConfirmation?: () => void
 }
 
@@ -743,7 +793,7 @@ function CockpitLoaded(props: CockpitLoadedProps) {
       <Appbar year={year} onYearChange={onYearChange} isRefreshing={isRefreshing} />
       <YearNotices year={year} answers={deadlineAnswers} />
       <EuleBannerNotice />
-      <ConfirmationNotice annexes={confirmation} status={status} {...(onOpenConfirmation ? { onOpenConfirmation } : {})} />
+      <ConfirmationNotice annexes={confirmation} taskCount={props.assistantTaskCount} status={status} {...(onOpenConfirmation ? { onOpenConfirmation } : {})} />
       <Card variant="nacht">
         {refundFirst ? (
           <>
@@ -759,7 +809,15 @@ function CockpitLoaded(props: CockpitLoadedProps) {
         )}
         {/* Zero open questions is no news: the progress line below says where the user stands. */}
         {hasOpenItems || progress === null ? <Text style={styles.openItems}>{tr('cockpit.hero.openItems', { count: openItems })}</Text> : null}
-        <Refund year={year} hideRange={refundFirst} />
+        <Refund
+          year={year}
+          hideRange={refundFirst}
+          partnerName={props.partnerName}
+          onOpenMissing={(target) => {
+            if (target.kind === 'partner') props.onOpenPartner?.(target.area, props.partnerName)
+            else props.onOpenTile(tileById(target.tile), tileFacts !== null && tileRevisitFlag(tileById(target.tile), tileFacts.answers))
+          }}
+        />
       </Card>
       <ProgressLine progress={progress} />
       {next ? (
@@ -776,7 +834,7 @@ function CockpitLoaded(props: CockpitLoadedProps) {
           {tr('cockpit.elsterHinweis')}
         </Text>
       ) : null}
-      <CockpitWorkArea {...props} hasPositiveRefund={estimate?.kind === 'spanne' && (estimate.result?.from ?? 0) > 0} />
+      <CockpitWorkArea {...props} hasPositiveRefund={estimate?.kind === 'spanne' && (estimate.result?.from ?? 0) > 0} estimateMissing={estimateMissingItems(estimate)} />
       <SecondaryActions
         tileFacts={tileFacts}
         onOpenAssessment={onOpenAssessment}

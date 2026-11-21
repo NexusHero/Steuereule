@@ -8,6 +8,15 @@ export class PrintoutCheckDto {
       'What stops the printout: missing Stammdaten keys, `ehegatte` (married, not yet supported), or an Anlage that is not printable yet (`anlageV`, `anlageKap`, `anlageNGre`, `anlageRAvBav`, `anlageRAus`). Empty = printable.',
   })
   missing!: string[]
+
+  @ApiProperty({
+    type: [String],
+    enum: ['child', 'taxId', 'kinship', 'familyBenefitsOffice', 'residence', 'otherParent'],
+    example: ['taxId'],
+    description:
+      'Which details of the children are behind `kinder` in `missing`, so the hint names them: `child` = children were named but none is recorded, `residence` = whether the child lived in Germany all year, `otherParent` = the other parent. Empty without `kinder`.',
+  })
+  missingChildFields!: ('child' | 'taxId' | 'kinship' | 'familyBenefitsOffice' | 'residence' | 'otherParent')[]
 }
 
 export type PrintoutJobStatus = 'queued' | 'processing' | 'completed' | 'failed'
@@ -76,6 +85,14 @@ export class LiveFormInstanceDto {
     description: 'The AcroForm field ids of this copy and what is printed in them; `true` = a cross.',
   })
   readonly values!: Readonly<Record<string, string | true>>
+
+  @ApiProperty({
+    type: Object,
+    additionalProperties: { type: 'string' },
+    example: { 'anlN.kz110': '5' },
+    description: 'The Zeile each of these fields stands in on the Vordruck of this tax year; a box in the page head has none.',
+  })
+  readonly lines!: Readonly<Record<string, string>>
 }
 
 export class LiveFormDto {

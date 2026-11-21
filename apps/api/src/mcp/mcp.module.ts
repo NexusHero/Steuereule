@@ -11,7 +11,17 @@ import { ProfileModule } from '../profile/profile.module.js'
 import { MasterDataModule } from '../master-data/master-data.module.js'
 import { AuditModule } from '../audit/audit.module.js'
 import { McpController } from './mcp.controller.js'
+import { McpRateLimiter } from './mcp-rate-limit.js'
+import { McpReportService } from './mcp-report.service.js'
 import { McpService } from './mcp.service.js'
+import { InterviewModule } from '../interview/interview.module.js'
+import { TaxEstimateModule } from '../tax-estimate/tax-estimate.module.js'
+import { LinkModule } from '../link/link.module.js'
+import { ChildrenModule } from '../children/children.module.js'
+import { DeadlinesModule } from '../deadlines/deadlines.module.js'
+import { RentalModule } from '../rental/rental.module.js'
+import { AssistantTaskModule } from '../assistant-task/assistant-task.module.js'
+import { BusinessModule } from '../business/business.module.js'
 
 @Module({
   imports: [
@@ -26,9 +36,17 @@ import { McpService } from './mcp.service.js'
     ProfileModule,
     MasterDataModule,
     AuditModule,
+    InterviewModule,
+    TaxEstimateModule,
+    LinkModule,
+    ChildrenModule,
+    DeadlinesModule,
+    RentalModule,
+    AssistantTaskModule,
+    BusinessModule,
   ],
   controllers: [McpController],
-  providers: [McpService],
+  providers: [McpService, McpReportService, { provide: McpRateLimiter, useFactory: () => new McpRateLimiter() }],
   exports: [McpService],
 })
 export class McpModule {}

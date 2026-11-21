@@ -81,6 +81,12 @@ describe('OauthConsentScreen (ADR-0052 §2 / §9 / §10)', () => {
     expect(screen.getByText('Ablehnen')).toBeTruthy()
   })
 
+  it('says that a lasting connection (offline_access) stays until revoked (ADR-0052 §10)', async () => {
+    mockConsentRedirectingTo('http://localhost:9999/callback?code=x')
+    renderConsentScreen({ clientId: 'claude-desktop', scope: 'steuerdaten:read offline_access' })
+    expect(await screen.findByText(/bleibt bestehen, bis Sie sie unter „Verbundene Assistenten“ widerrufen/)).toBeTruthy()
+  })
+
   it('approving calls the consent endpoint with accept: true and navigates to the redirect url', async () => {
     const consentBodies = mockConsentRedirectingTo('http://127.0.0.1:8080/callback?code=test-code-123')
     const onNavigate = vi.fn()

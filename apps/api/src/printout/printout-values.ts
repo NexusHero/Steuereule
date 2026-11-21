@@ -97,6 +97,23 @@ function childGap(k: ChildFacts, taxYear: number, joint: boolean): string | null
   return needsOtherParent(k, joint) ? otherParentGap(k) : null
 }
 
+/** What of a child's details stops the Anlage Kind; `child` = children were named but none is recorded. */
+export type ChildGapField = 'child' | 'taxId' | 'kinship' | 'familyBenefitsOffice' | 'residence' | 'otherParent'
+
+const CHILD_GAP_ORDER: readonly ChildGapField[] = ['child', 'taxId', 'kinship', 'familyBenefitsOffice', 'residence', 'otherParent']
+
+/** The details behind a child's „kinder“ gap, so the hint names them instead of listing all that could be missing. */
+function childGapFields(k: ChildFacts, taxYear: number, joint: boolean): ChildGapField[] {
+  if (childGap(k, taxYear, joint) !== 'kinder') return []
+  const fields: ChildGapField[] = []
+  if (!k.taxId) fields.push('taxId')
+  if (!k.kinship) fields.push('kinship')
+  if (!k.familyBenefitsOffice) fields.push('familyBenefitsOffice')
+  if (k.domesticResidenceAllYear == null) fields.push('residence')
+  if (needsOtherParent(k, joint) && otherParentGap(k) === 'kinder') fields.push('otherParent')
+  return fields
+}
+
 export interface RentalFacts {
   sequenceNumber?: string
   strasse: string | null
@@ -156,6 +173,8 @@ export interface ChSalaryCertificateFacts {
   pkArbeitgeberGesamtChf: string | null
   /** Tax-free Krankentaggeld contained in Ziffer 8 (Zeilen 9/76). */
   steuerfreiesKrankentaggeldChf: string | null
+  /** Daily benefit of the accident insurance (UVG/SUVA) contained in Ziffer 8 (Zeile 10 „SUVA – Geld“, also Zeile 76). */
+  steuerfreiesUnfalltaggeldChf: string | null
   krankentaggeldArbeitgeberProzent: string | null
   krankentaggeldArbeitgeberChf: string | null
   nbuvArbeitgeberProzent: string | null
@@ -187,6 +206,7 @@ function nbuvEmployeeChf(ch: ChSalaryCertificateFacts): number | null {
     pkArbeitnehmerChf: 0,
     pkArbeitgeberChf: 0,
     steuerfreiesKrankentaggeldChf: optionalNumber(ch.steuerfreiesKrankentaggeldChf),
+    steuerfreiesUnfalltaggeldChf: optionalNumber(ch.steuerfreiesUnfalltaggeldChf),
     nbuvArbeitgeberProzent: optionalNumber(ch.nbuvArbeitgeberProzent),
     rate: ch.rate,
   }).split.nbuv.employeeChf
@@ -245,6 +265,8 @@ function kapValues(
 interface NGreResult {
   readonly values: Record<string, string | true>
   readonly gap: string | null
+  /** The daily accident benefit of Zeile 10 in EUR: also declared for the progression clause (Hauptvordruck Zeile 36). */
+  readonly accidentBenefitEur?: number
 }
 
 /** One Anlage N-Gre for Person A or B, or null when that person has no Swiss wage. */
@@ -279,6 +301,7 @@ function nGreValues(
     pkArbeitnehmerGesamtChf: optionalNumber(ch.pkArbeitnehmerGesamtChf),
     pkArbeitgeberGesamtChf: optionalNumber(ch.pkArbeitgeberGesamtChf),
     steuerfreiesKrankentaggeldChf: optionalNumber(ch.steuerfreiesKrankentaggeldChf),
+    steuerfreiesUnfalltaggeldChf: optionalNumber(ch.steuerfreiesUnfalltaggeldChf),
     rate: ch.rate!,
     krankentaggeldArbeitgeberProzent: optionalNumber(ch.krankentaggeldArbeitgeberProzent),
     krankentaggeldArbeitgeberChf: optionalNumber(ch.krankentaggeldArbeitgeberChf),
@@ -286,8 +309,8 @@ function nGreValues(
     nbuvArbeitgeberChf: optionalNumber(ch.nbuvArbeitgeberChf),
   })
   for (const row of Object.keys(chf) as NGreRow[]) {
-    // Z. 9 and 18–20 only apply when there is such an amount; an empty line stays empty.
-    if ((row === 'z9' || row === 'z18' || row === 'z19' || row === 'z20') && chf[row] === 0) continue
+    // Z. 9, 10 and 18–20 only apply when there is such an amount; an empty line stays empty.
+    if ((row === 'z9' || row === 'z10' || row === 'z18' || row === 'z19' || row === 'z20') && chf[row] === 0) continue
     values[`anlNGre.${row}Chf`] = String(chf[row])
     values[`anlNGre.${row}Eur`] = String(eur[row])
   }
@@ -306,7 +329,7 @@ function nGreValues(
   set('anlNGre.arbeitgeberName', ch.arbeitgeberName)
   set('anlNGre.arbeitgeberStrasse', ch.arbeitgeberStrasse)
   set('anlNGre.arbeitgeberPlzOrt', ch.arbeitgeberPlzOrt)
-  return { values, gap: null }
+  return { values, gap: null, accidentBenefitEur: eur.z10 }
 }
 
 export interface SpecialExpensesFacts {
@@ -565,6 +588,8 @@ export interface PrintoutValues {
   values: FieldValues
   instances?: Record<string, FieldValues[]>
   missing: string[]
+  /** Which details of the children are behind a „kinder“ entry in `missing`; empty without one. */
+  missingChildFields: ChildGapField[]
 }
 
 const REQUIRED_MASTER_DATA = ['geburtsdatum', 'strasse', 'hausnummer', 'plz', 'wohnort', 'religion', 'familienstand', 'iban', 'finanzamt'] as const
@@ -630,11 +655,12 @@ export function printoutValues(facts: PrintoutFacts): PrintoutValues {
     } else if (facts.link.filingType === 'zusammen') {
       values['est1a.zusammenveranlagung'] = true
       const b = facts.link.personB
-      if (!b || !b.lastName || !b.firstName || !b.steuerId || !b.geburtsdatum) {
-        missing.push('personB')
-      } else {
+      if (!b || !b.lastName || !b.firstName || !b.steuerId || !b.geburtsdatum) missing.push('personB')
+      // What is known of Person B shows in the form view even while a detail is missing, as for
+      // Person A; „personB“ keeps the print blocked until all of it is there.
+      if (b) {
         set('est1a.idnrB', b.steuerId)
-        set('est1a.geburtsdatumB', formatGermanDate(b.geburtsdatum))
+        set('est1a.geburtsdatumB', b.geburtsdatum ? formatGermanDate(b.geburtsdatum) : null)
         set('est1a.nameB', b.lastName)
         set('est1a.vornameB', b.firstName)
         set('est1a.religionB', b.religion)
@@ -805,11 +831,19 @@ export function printoutValues(facts: PrintoutFacts): PrintoutValues {
   if (nGreB?.gap === null && !hasGrossB) addLifeSituationWorkExpenses(nGreB.values, 'anlNGre', personB?.lifeSituations)
   for (const n of [nGreA, nGreB]) if (n?.gap) missing.push(n.gap)
   // Children named on the basis page but none recorded: the Anlage Kind would be missing (Strom-vs-chat, P2).
-  if (facts.childrenAnswered && (facts.kinder?.length ?? 0) === 0 && !missing.includes('kinder')) missing.push('kinder')
+  const childFields = new Set<ChildGapField>()
+  if (facts.childrenAnswered && (facts.kinder?.length ?? 0) === 0) {
+    childFields.add('child')
+    if (!missing.includes('kinder')) missing.push('kinder')
+  }
   // Einkommensersatzleistungen (Hauptvordruck Z. 35) and the life situations without a printout yet (ADR-0090).
   const lifeB = facts.link?.filingType === 'zusammen' ? personB?.lifeSituations : null
   if (facts.lifeSituations?.wageReplacementEur) values['est1a.kz120'] = String(facts.lifeSituations.wageReplacementEur)
   if (lifeB?.wageReplacementEur) values['est1a.kz121'] = String(lifeB.wageReplacementEur)
+  // The Swiss accident insurance's daily benefit left the wage in the Anlage N-Gre (Zeile 10); it is a benefit
+  // from Switzerland comparable to those of Zeile 35 and declared in Zeile 36, Kz 136 (A) / 137 (B) (§ 32b EStG).
+  if (nGreA?.accidentBenefitEur) values['est1a.kz136'] = String(nGreA.accidentBenefitEur)
+  if (nGreB?.accidentBenefitEur) values['est1a.kz137'] = String(nGreB.accidentBenefitEur)
   for (const ls of [facts.lifeSituations, lifeB]) {
     if (ls?.severance && !missing.includes('anlageNEntschaedigung')) missing.push('anlageNEntschaedigung')
     if (ls?.secondHousehold && !missing.includes('anlageNDhf')) missing.push('anlageNDhf')
@@ -957,6 +991,7 @@ export function printoutValues(facts: PrintoutFacts): PrintoutValues {
     for (const kind of facts.kinder) {
       const missingField = childGap(kind, facts.taxYear, isJoint)
       if (missingField && !missing.includes(missingField)) missing.push(missingField)
+      for (const field of childGapFields(kind, facts.taxYear, isJoint)) childFields.add(field)
     }
   }
 
@@ -1027,7 +1062,7 @@ export function printoutValues(facts: PrintoutFacts): PrintoutValues {
     }
   }
 
-  const result: PrintoutValues = { values, missing }
+  const result: PrintoutValues = { values, missing, missingChildFields: CHILD_GAP_ORDER.filter((field) => childFields.has(field)) }
   if (Object.keys(instances).length > 0) result.instances = instances
   return result
 }

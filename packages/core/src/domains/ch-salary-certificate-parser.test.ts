@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  dailyBenefitIn,
   familyAllowancesIn,
   applyChCertificateTextFallback,
   certificateHolderPerson,
@@ -346,3 +347,33 @@ describe('familyAllowancesIn (both parents Grenzgänger, ADR-0088)', () => {
     expect(familyAllowancesIn(['15. Bemerkungen   See Supplementary Sheet'])).toBeNull()
   })
 })
+
+describe('dailyBenefitIn: a paid-out daily benefit named in the remarks (real-data run)', () => {
+  it('reads a sickness benefit with its amount in whole francs', () => {
+    expect(dailyBenefitIn(["15. Bemerkungen   KK-Taggeld Verrechnung: 12'345.00 CHF"])).toEqual({ kind: 'sickness', amountChf: 12345 })
+    expect(dailyBenefitIn(['Krankentaggeld CHF 4’820.60 in Ziffer 1 enthalten'])).toEqual({ kind: 'sickness', amountChf: 4821 })
+    expect(dailyBenefitIn(['Bemerkungen', 'Taggelder 3100'])).toEqual({ kind: 'sickness', amountChf: 3100 })
+  })
+
+  it('tells an accident benefit apart', () => {
+    expect(dailyBenefitIn(["Unfalltaggeld 2'250.00"])).toEqual({ kind: 'accident', amountChf: 2250 })
+    expect(dailyBenefitIn(['UVG-Taggeld CHF 900'])).toEqual({ kind: 'accident', amountChf: 900 })
+    expect(dailyBenefitIn(['Taggeld SUVA verrechnet'])).toEqual({ kind: 'accident', amountChf: null })
+  })
+
+  it('keeps the kind when no amount is readable', () => {
+    expect(dailyBenefitIn(['KK-Taggeld Verrechnung'])).toEqual({ kind: 'sickness', amountChf: null })
+  })
+
+  it('reads nothing from a premium, an insurance or an ordinary certificate', () => {
+    expect(dailyBenefitIn(['Krankentaggeldversicherung: Prämie Arbeitnehmer 310.00'])).toBeNull()
+    expect(dailyBenefitIn(['Beitrag KTG-Versicherung 0.5 %'])).toBeNull()
+    expect(dailyBenefitIn([' 9. Beiträge AHV/IV/EO/ALV/NBUV   6.900', '15. Bemerkungen'])).toBeNull()
+  })
+
+  it('is part of what the parser reads', () => {
+    expect(parseChSalaryCertificateText("15. Bemerkungen\nKK-Taggeld Verrechnung: 12'345 CHF").dailyBenefit).toEqual({ kind: 'sickness', amountChf: 12345 })
+    expect(parseChSalaryCertificateText('15. Bemerkungen').dailyBenefit).toBeNull()
+  })
+})
+

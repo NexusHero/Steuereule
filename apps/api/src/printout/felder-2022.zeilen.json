@@ -812,6 +812,24 @@
       "spalte": null
     },
     {
+      "id": "anlNGre.z10Chf",
+      "formular": "anlage-n-gre",
+      "seite": 1,
+      "zeile": "9",
+      "kennzahlen": [],
+      "label": "SUVA-Geld (lt. ergänzender Bescheinigung des Arbeitgebers)",
+      "spalte": null
+    },
+    {
+      "id": "anlNGre.z10Eur",
+      "formular": "anlage-n-gre",
+      "seite": 1,
+      "zeile": "9",
+      "kennzahlen": [],
+      "label": "SUVA-Geld (lt. ergänzender Bescheinigung des Arbeitgebers)",
+      "spalte": null
+    },
+    {
       "id": "anlNGre.z15Chf",
       "formular": "anlage-n-gre",
       "seite": 1,
@@ -1828,6 +1846,28 @@
       ],
       "label": "– die dem Progressionsvorbehalt unterliegen, z. B. Arbeitslosengeld, Elterngeld, Insolvenzgeld, Krankengeld, Mutterschaftsgeld, Verdienstausfallentschädigung (Infektionsschutzgesetz)",
       "spalte": "EUR"
+    },
+    {
+      "id": "est1a.kz136",
+      "formular": "est-1-a",
+      "seite": 2,
+      "zeile": "44",
+      "kennzahlen": [
+        "136"
+      ],
+      "label": "– vergleichbare Leistungen i. S. d. Zeile 43 aus einem EU- / EWR-Staat oder der Schweiz",
+      "spalte": null
+    },
+    {
+      "id": "est1a.kz137",
+      "formular": "est-1-a",
+      "seite": 2,
+      "zeile": "44",
+      "kennzahlen": [
+        "137"
+      ],
+      "label": "– vergleichbare Leistungen i. S. d. Zeile 43 aus einem EU- / EWR-Staat oder der Schweiz",
+      "spalte": null
     },
     {
       "id": "anlKind.inlandVon",

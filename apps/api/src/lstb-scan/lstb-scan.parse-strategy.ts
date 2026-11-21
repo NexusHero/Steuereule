@@ -4,14 +4,18 @@ import { HumanMessage, SystemMessage } from '@langchain/core/messages'
 import { Inject, Injectable, Optional, type OnModuleInit } from '@nestjs/common'
 import { z } from 'zod'
 import {
+  LSTB_SCAN_LINES,
   applyLstbTextFallback,
+  capOcrSourcedEmployer,
   capOcrSourcedExtraction,
   certificateHolderPerson,
+  extractLstbEmployer,
   parseLstbTextDeterministically,
   receiptFilingYear,
   scrubDocumentTextPii,
   selectLstbRelevantLines,
   type LstbExtractionResult,
+  type LstbScanLine,
 } from '@steuereule/core'
 import { AdvisorService } from '../advisor/advisor.service.js'
 import { AuditService } from '../audit/audit.service.js'
@@ -55,6 +59,20 @@ const LSTB_STAGE2_ISOLATED_SYSTEM_PROMPT = [
   '{"taxYear":number|null,"line3BruttoEur":number|null,"line4LohnsteuerEur":number|null,"line23RvEur":number|null,"line23aRvEur":number|null,"line23bRvEur":number|null,"line25KvEur":number|null,"line26PvEur":number|null,"line27AlvEur":number|null}',
   'WICHTIG: Gib nur Beträge zurück, die wörtlich im Text stehen. Extrahiere NIEMALS Zeile 22a/22b oder 24 (Arbeitgeberanteil) und summiere nichts selbst.',
 ].join('\n')
+
+/** How the owl names each further line of the certificate in its drafts. */
+const LINE_LABELS: Readonly<Record<LstbScanLine, string>> = {
+  solidaritaetszuschlag: 'Solidaritätszuschlag (Zeile 5)',
+  kirchensteuer: 'Kirchensteuer (Zeile 6)',
+  kirchensteuerEhegatte: 'Kirchensteuer Ehegatte/Lebenspartner (Zeile 7)',
+  rvArbeitgeber: 'Arbeitgeberanteil Rentenversicherung (Zeile 22)',
+  rvArbeitnehmer: 'Arbeitnehmeranteil Rentenversicherung (Zeile 23)',
+  zuschuesseKvPv: 'Steuerfreie Zuschüsse Kranken- und Pflegeversicherung (Zeile 24)',
+  zuschussPv: 'Steuerfreier Zuschuss Pflegeversicherung (Zeile 24c)',
+  kvArbeitnehmer: 'Krankenversicherung (Zeile 25)',
+  pvArbeitnehmer: 'Pflegeversicherung (Zeile 26)',
+  avArbeitnehmer: 'Arbeitslosenversicherung (Zeile 27)',
+}
 
 /**
  * `kind: 'lstb'` strategy (#444): deterministic Core parser first, isolated text fallback second,
@@ -202,6 +220,21 @@ export class LstbScanParseStrategy implements DocumentParseStrategy, OnModuleIni
       lohnsteuer: toFieldDto(extraction.fields.lohnsteuer),
       sozialversicherung: toFieldDto(extraction.fields.sozialversicherung),
     }
+    const linesDto: Record<LstbScanLine, ReturnType<typeof toFieldDto>> = {
+      solidaritaetszuschlag: toFieldDto(extraction.lines.solidaritaetszuschlag),
+      kirchensteuer: toFieldDto(extraction.lines.kirchensteuer),
+      kirchensteuerEhegatte: toFieldDto(extraction.lines.kirchensteuerEhegatte),
+      rvArbeitgeber: toFieldDto(extraction.lines.rvArbeitgeber),
+      rvArbeitnehmer: toFieldDto(extraction.lines.rvArbeitnehmer),
+      zuschuesseKvPv: toFieldDto(extraction.lines.zuschuesseKvPv),
+      zuschussPv: toFieldDto(extraction.lines.zuschussPv),
+      kvArbeitnehmer: toFieldDto(extraction.lines.kvArbeitnehmer),
+      pvArbeitnehmer: toFieldDto(extraction.lines.pvArbeitnehmer),
+      avArbeitnehmer: toFieldDto(extraction.lines.avArbeitnehmer),
+    }
+    // The employer is read on the server only, from the text the device sent; it never goes to a model.
+    const readEmployer = extractLstbEmployer(rawText)
+    const employer = dto.textSource === 'pdf_text' ? readEmployer : capOcrSourcedEmployer(readEmployer)
 
     const parsedSummary: ParsedReceiptDataDto = {
       vendorCategory: 'sonstiges',
@@ -259,6 +292,12 @@ export class LstbScanParseStrategy implements DocumentParseStrategy, OnModuleIni
             label: 'SV-Arbeitnehmeranteil (Zeilen 23, 25, 26, 27)',
             extracted: extraction.fields.sozialversicherung,
           },
+          // The further lines the certificate prints, each as its own draft of the mask's field.
+          ...LSTB_SCAN_LINES.filter((line) => extraction.lines[line].value !== null).map((line) => ({
+            field: line,
+            label: LINE_LABELS[line],
+            extracted: extraction.lines[line],
+          })),
         ],
       })
       stagedActionIds = staged.actions.map((a) => a.actionId)
@@ -274,6 +313,8 @@ export class LstbScanParseStrategy implements DocumentParseStrategy, OnModuleIni
       yearConflict,
       existingLstbConflict,
       fields: lstbFieldsDto,
+      lines: linesDto,
+      employer,
       stagedActionIds,
       securityBlocked,
       person,

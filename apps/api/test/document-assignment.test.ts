@@ -207,7 +207,8 @@ describe('another person for a document (decision 4)', () => {
     expect((await t.kit.lstbRepo.findForUserAndYear(USER, YEAR))?.bruttoarbeitslohn).toBe('21000')
 
     const moved = await t.reassign.reassign(USER, receiptId, { taxYear: YEAR, holder: 'B', rawText: lstbOf('Nora Sommer', '21.000,00'), textSource: 'pdf_text' })
-    expect(moved).toMatchObject({ holders: ['B'], takenBack: 3, applied: 3, waiting: 0 })
+    // The three values and the lines 23a, 25–27 and 24 (empty: 0) each are a draft.
+    expect(moved).toMatchObject({ holders: ['B'], takenBack: 8, applied: 8, waiting: 0 })
     expect((await t.kit.lstbRepo.findForUserAndYear(USER, YEAR))?.bruttoarbeitslohn ?? null).toBeNull()
     const bUser = await t.kit.linkService.dataUser(USER, YEAR, 'B')
     expect((await t.kit.lstbRepo.findForUserAndYear(bUser, YEAR))?.bruttoarbeitslohn).toBe('21000')
@@ -220,7 +221,7 @@ describe('another person for a document (decision 4)', () => {
     await t.applyAll(await t.pending())
     await t.kit.lstbRepo.setField(USER, YEAR, 'bruttoarbeitslohn', '22000')
     const moved = await t.reassign.reassign(USER, receiptId, { taxYear: YEAR, holder: 'B' })
-    expect(moved).toMatchObject({ holders: ['B'], takenBack: 3, parse: null })
+    expect(moved).toMatchObject({ holders: ['B'], takenBack: 8, parse: null })
     const after = await t.kit.lstbRepo.findForUserAndYear(USER, YEAR)
     expect(after?.bruttoarbeitslohn).toBe('22000')
     expect(after?.lohnsteuer ?? null).toBeNull()
@@ -230,7 +231,7 @@ describe('another person for a document (decision 4)', () => {
     const t = await setUp({ b: { firstName: 'Nora', lastName: 'Sommer' } })
     const { receiptId } = await t.upload(lstbOf('Nora Sommer', '21.000,00'))
     const res = await t.reassign.reassign(USER, receiptId, { taxYear: YEAR, holder: 'B', rawText: lstbOf('Nora Sommer', '21.000,00') })
-    expect(res).toMatchObject({ takenBack: 0, applied: 0, waiting: 3 })
+    expect(res).toMatchObject({ takenBack: 0, applied: 0, waiting: 8 })
   })
 
   it('refuses another account’s document and a stranger as holder', async () => {

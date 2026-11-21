@@ -11,6 +11,6 @@ import { InterviewService } from './interview.service.js'
   imports: [PrismaModule, AuditModule, LinkModule],
   controllers: [InterviewController],
   providers: [InterviewService, { provide: INTERVIEW_ANSWER_REPOSITORY, useClass: PrismaInterviewAnswerRepository }],
-  exports: [INTERVIEW_ANSWER_REPOSITORY],
+  exports: [INTERVIEW_ANSWER_REPOSITORY, InterviewService],
 })
 export class InterviewModule {}

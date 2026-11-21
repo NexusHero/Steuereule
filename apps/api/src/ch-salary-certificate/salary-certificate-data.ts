@@ -62,6 +62,7 @@ export function nGreInputFromRecord(record: CrossBorderSalaryStatementRecord, ra
     pkArbeitnehmerGesamtChf: values['berufliche-vorsorge'],
     pkArbeitgeberGesamtChf: optionalAmount(n.pkArbeitgeberGesamtChf),
     steuerfreiesKrankentaggeldChf: optionalAmount(n.steuerfreiesKrankentaggeldChf),
+    steuerfreiesUnfalltaggeldChf: optionalAmount(n.steuerfreiesUnfalltaggeldChf),
     krankentaggeldArbeitgeberProzent: optionalAmount(n.krankentaggeldArbeitgeberProzent),
     krankentaggeldArbeitgeberChf: optionalAmount(n.krankentaggeldArbeitgeberChf),
     nbuvArbeitgeberProzent: optionalAmount(n.nbuvArbeitgeberProzent),

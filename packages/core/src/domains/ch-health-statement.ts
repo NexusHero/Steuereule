@@ -155,6 +155,14 @@ export function insuredMember(name: string, members: readonly HouseholdMember[])
     .map((m) => ({ key: m.key, names: [...foldName(m.firstName ?? ''), ...foldName(m.lastName ?? '')] }))
     .filter((m) => m.names.length >= 2 && m.names.every((n) => printed.has(n)))
     .sort((a, b) => b.names.length - a.names.length)
-  if (fits.length === 0) return null
+  if (fits.length === 0) {
+    // A member on record with one name only (a spouse whose last name is not entered yet): taken when
+    // that name is printed and fits nobody else. A real-data run read the amount and offered no card.
+    const partial = members.filter((m) => {
+      const names = [...foldName(m.firstName ?? ''), ...foldName(m.lastName ?? '')]
+      return names.length === 1 && foldName(m.firstName ?? '').length === 1 && printed.has(names[0]!)
+    })
+    return partial.length === 1 ? partial[0]!.key : null
+  }
   return fits.length === 1 || fits[0]!.names.length > fits[1]!.names.length ? fits[0]!.key : null
 }

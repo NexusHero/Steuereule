@@ -40,6 +40,13 @@ describe('salary certificate record → core inputs', () => {
     expect(exchangeRateFromRecord(RECORD)).toEqual(annualAverageRate('2025', 1.065))
   })
 
+  it('feeds the daily accident benefit (UVG/SUVA) to the Anlage N-Gre; absent when not recorded', () => {
+    const rate = annualAverageRate('2025', 1.065)
+    expect(nGreInputFromRecord(RECORD, rate).steuerfreiesUnfalltaggeldChf).toBeUndefined()
+    const withAccident = { ...RECORD, nGre: { ...RECORD.nGre, steuerfreiesUnfalltaggeldChf: '2250' } }
+    expect(nGreInputFromRecord(withAccident, rate).steuerfreiesUnfalltaggeldChf).toBe(2250)
+  })
+
   it('feeds Ziffer 10 as the employee total and the stored N-Gre facts to the Anlage N-Gre', () => {
     const input = nGreInputFromRecord(RECORD, annualAverageRate('2025', 1.065))
     expect(input).toMatchObject({ pkArbeitnehmerGesamtChf: 7186, pkArbeitgeberGesamtChf: 7186, steuerfreiesKrankentaggeldChf: 3853, rate: 1.065 })

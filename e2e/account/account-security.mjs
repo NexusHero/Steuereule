@@ -173,11 +173,9 @@ async function main() {
 
     // Row D — OAuth consent (deny, allow), token on MCP, revoke in the profile.
     {
-      const reg = await fetch(`${apiOrigin}/api/auth/oauth2/register`, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ application_type: 'native', client_name: 'E2E-Testassistent', redirect_uris: [REDIRECT_URI], token_endpoint_auth_method: 'none', grant_types: ['authorization_code'], response_types: ['code'] }),
-      })
+      const registration = { application_type: 'native', client_name: 'E2E-Testassistent', redirect_uris: [REDIRECT_URI], token_endpoint_auth_method: 'none', grant_types: ['authorization_code'], response_types: ['code'] }
+      // The client registers itself before anyone signs in, as an MCP client does (ADR-0052 amendment 5).
+      const reg = await fetch(`${apiOrigin}/api/auth/oauth2/register`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(registration) })
       if (!reg.ok) fail(`Row D: client registration answered ${reg.status}: ${(await reg.text()).slice(0, 200)}`)
       const client = await reg.json()
       const { ctx, page } = await browserSignIn(browser, webOrigin, bob)

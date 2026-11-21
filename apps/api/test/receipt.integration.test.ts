@@ -86,8 +86,9 @@ describe('POST/GET /v1/belege — real Postgres (ADR-007/008)', () => {
 
     const list = await app.inject({ method: 'GET', url: '/v1/belege', headers: { cookie } })
     expect(list.statusCode).toBe(200)
-    expect(list.json()).toHaveLength(1)
-    expect(list.json()[0]).toMatchObject({ fileName: 'quittung.pdf', assignment: { kind: 'ungebunden' } })
+    expect(list.json().items).toHaveLength(1)
+    expect(list.json().counts).toMatchObject({ total: 1, open: 1 })
+    expect(list.json().items[0]).toMatchObject({ fileName: 'quittung.pdf', assignment: { kind: 'ungebunden' } })
   })
 
   it('the year suggestion prefers the payment date over the invoice date (§ 11 Zufluss) — the cross-year case', async () => {
@@ -167,11 +168,13 @@ describe('POST/GET /v1/belege — real Postgres (ADR-007/008)', () => {
 
     const userB = await app.inject({ method: 'GET', url: '/v1/belege' })
     const cookieB = extractSessionCookie(userB.headers['set-cookie'])!
-    expect(userB.json()).toEqual([])
+    // The inbox answers one page with its counts (e52771f4).
+    expect(userB.json().items).toEqual([])
+    expect(userB.json().counts.total).toBe(0)
 
     // Reassigning user A's id as user B → 404, never a leak.
     const created = await app.inject({ method: 'GET', url: '/v1/belege', headers: { cookie: cookieA } })
-    const idA = created.json()[0].id as string
+    const idA = created.json().items[0].id as string
     const foreign = await app.inject({
       method: 'POST',
       url: `/v1/belege/${idA}/zuordnung`,
@@ -228,7 +231,7 @@ describe('POST/GET /v1/belege — real Postgres (ADR-007/008)', () => {
     expect(created.body).toMatchObject({ fileName: 'lohnausweis.pdf', kind: 'Lohnausweis' })
 
     const list = await app.inject({ method: 'GET', url: '/v1/belege', headers: { cookie } })
-    expect(list.json()[0]).toMatchObject({ kind: 'Lohnausweis' })
+    expect(list.json().items[0]).toMatchObject({ kind: 'Lohnausweis' })
 
     const invalid = await createReceipt(cookie, { fileName: 'x.pdf', kind: 'LStB' })
     expect(invalid.statusCode).toBe(400)

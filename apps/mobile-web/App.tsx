@@ -16,6 +16,7 @@ import { APP_QUERY_DEFAULTS } from './src/query-client'
 import { SplashScreen } from './src/screens/SplashScreen'
 import { LoginScreen } from './src/screens/LoginScreen'
 import { RegistrationScreen } from './src/screens/RegistrationScreen'
+import { carryAssistantSignIn } from './src/auth/assistant-sign-in'
 import { OnboardingScreen } from './src/screens/OnboardingScreen'
 import { LstbScreen } from './src/screens/lstb/LstbScreen'
 import { CatalogScreen } from './src/screens/catalog/CatalogScreen'
@@ -76,7 +77,7 @@ export default function App() {
         <I18nextProvider i18n={i18n}>
           <AppearanceProvider>
             <ThemeBridge>
-              <AuthClientProvider client={authClient}>
+              <AuthClientProvider client={authClient} apiBaseUrl={apiBaseUrl}>
                 <SubmissionGateProvider>
                   <ThemedShellFrame>
                     <RootNavigator />
@@ -191,7 +192,7 @@ function LoginRoute({ navigation }: NativeStackScreenProps<RootStackParamList, '
     <LoginScreen
       onDone={() => navigation.replace('App')}
       onGuest={() => navigation.replace('App', { start: 'interview' })}
-      onRegister={() => navigation.replace('Registration')}
+      onRegister={() => carryAssistantSignIn('/registrierung') || navigation.replace('Registration')}
       onLegal={(page) => navigation.navigate('Legal', { page })}
     />
   )
@@ -201,7 +202,7 @@ function RegistrationRoute({ navigation }: NativeStackScreenProps<RootStackParam
   return (
     <RegistrationScreen
       onDone={() => navigation.replace('Onboarding')}
-      onLogin={() => navigation.replace('Login')}
+      onLogin={() => carryAssistantSignIn('/login') || navigation.replace('Login')}
     />
   )
 }

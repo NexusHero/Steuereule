@@ -4,19 +4,24 @@ import {
   addAmounts,
   amountCombination,
   childNamedIn,
+  formatChf,
   formatEur,
   provenanceKey,
   sameReceiptAgain,
+  sickPayQuestionForUser,
   simulateAdvisorFieldDelta,
   sumFieldCombination,
+  withPreviewedEffects,
   type AdvisorActionProposal,
   type AdvisorCountedItem,
   type AdvisorEngineInfo,
   type AdvisorMessageMeta,
   type AssignmentMember,
+  type ChDailyBenefitRemark,
   type ExistingValueSource,
   type LstbCalculationTerm,
   type LstbExtractedField,
+  type LstbScanLine,
   type OwlSourceId,
   type ReceiptMark,
   type Screen,
@@ -112,7 +117,8 @@ export interface LstbScanBatchInput {
   readonly engine: AdvisorEngineInfo
   readonly summaryText: string
   readonly fields: ReadonlyArray<{
-    readonly field: WageTaxCertificateFieldId
+    /** One of the three fields, or a further line of the mask (`LstbScanLine`). */
+    readonly field: WageTaxCertificateFieldId | LstbScanLine
     readonly label: string
     readonly extracted: LstbExtractedField
   }>
@@ -127,6 +133,8 @@ export interface DocumentDraftsInput {
   readonly engine: AdvisorEngineInfo
   readonly summaryText: string
   readonly sourceId: OwlSourceId
+  /** A paid-out daily benefit a Lohnausweis names in its remarks: the question about it carries the amount. */
+  readonly dailyBenefit?: ChDailyBenefitRemark | null | undefined
   readonly fields: ReadonlyArray<{
     readonly field: string
     readonly label: string
@@ -273,10 +281,10 @@ export class AdvisorDocumentStaging {
     }
 
     // One draft, or the two ways „zusätzlich“ / „ersetzen“ as alternatives of one answer.
-    const enrichedMeta = await this.drafts.enrichDraftsWithRawBaseline(userId, taxYear, {
+    const enrichedMeta = await this.withEstimateEffects(userId, taxYear, await this.drafts.enrichDraftsWithRawBaseline(userId, taxYear, {
       sources: [input.sourceId],
       ...(drafts.length === 1 ? { action: drafts[0]! } : { actions: drafts }),
-    })
+    }))
 
     await this.drafts.supersedePendingDraftsForSameTargets(userId, taxYear, this.drafts.collectPendingTargetKeys(enrichedMeta))
 
@@ -379,8 +387,9 @@ export class AdvisorDocumentStaging {
         }
       }
       // The mask asks „hinzufügen oder ersetzen“ itself; the chat gets both ways as drafts (ADR-0092 §6).
+      // Soli has cents: no „zusätzlich“ sum of whole amounts for it, a plain draft.
       const existing =
-        input.askCombination === true && item.extracted.value !== null
+        input.askCombination === true && item.extracted.value !== null && /^\d+$/.test(valueStr)
           ? await this.existingAmount(userId, taxYear, input.digestUserId ?? userId, { screen: 'lstb', field: item.field, person: input.person ?? 'A' }, input.receiptId)
           : null
       if (existing === null || amountCombination(existing.value, valueStr, existing.source) === 'write') {
@@ -520,18 +529,50 @@ export class AdvisorDocumentStaging {
       }
       rawActions.push(...combinationDrafts(draft, item.label, existing!, incoming, item.countedItems))
     }
-    const initialMeta: AdvisorMessageMeta = { sources: [input.sourceId], actions: rawActions }
-    const enrichedMeta = await this.drafts.enrichDraftsWithRawBaseline(userId, taxYear, initialMeta)
+    const question = await this.sickPayQuestion(taxYear, input)
+    // A daily benefit with a printed amount is proposed the only way the rules allow it (ADR-0093): as
+    // two paths the user chooses between, never as a value that is simply taken over. A sickness benefit
+    // and an accident benefit (UVG/SUVA) each go to their own field.
+    const benefit = question !== null && input.dailyBenefit && input.dailyBenefit.amountChf !== null ? { kind: input.dailyBenefit.kind, amountChf: input.dailyBenefit.amountChf } : null
+    const initialMeta: AdvisorMessageMeta = {
+      sources: [input.sourceId],
+      actions: rawActions,
+      ...(benefit !== null ? { twoPaths: dailyBenefitPaths(benefit.kind, benefit.amountChf, input) } : {}),
+    }
+    const enrichedMeta = await this.withEstimateEffects(userId, taxYear, await this.drafts.enrichDraftsWithRawBaseline(userId, taxYear, initialMeta))
     checkPiiFree(enrichedMeta)
     await this.drafts.supersedePendingDraftsForSameTargets(userId, taxYear, this.drafts.collectPendingTargetKeys(enrichedMeta))
     const assistantMessage = await this.advisorRepo.createMessage({
       userId,
       taxYear,
       role: 'assistant',
-      content: input.summaryText,
+      content: question === null ? input.summaryText : `${input.summaryText}\n\n${question}`,
       meta: { ...enrichedMeta, engine: input.engine },
     })
     return { actions: (enrichedMeta.actions ?? []).map((a) => toPublicAction(a)), assistantMessage: toMessageDto(assistantMessage) }
+  }
+
+  /**
+   * The before and after of a document's drafts from the app's own estimate, as the chat's drafts have
+   * it. The digest's approximation knows neither Person B nor the prepayments: a card read „-28.467 €
+   * → -28.467 €“ while the estimate stood at -4 € (real-data run). Without an estimate behind the
+   * service the approximation stays.
+   */
+  private async withEstimateEffects(userId: string, taxYear: number, meta: AdvisorMessageMeta): Promise<AdvisorMessageMeta> {
+    return withPreviewedEffects(meta, this.caseDigest.previewEffectFor(userId, taxYear))
+  }
+
+  /**
+   * A Swiss wage statement does not say whether a paid-out daily benefit is part of the gross wage
+   * (ADR-0093): asked once, under the statement just read, while the answer is not recorded in the
+   * sickness field or in the accident field.
+   */
+  private async sickPayQuestion(taxYear: number, input: DocumentDraftsInput): Promise<string | null> {
+    const wageStatement = input.fields.some((item) => (item.screen ?? input.screen) === 'chLohnausweis' && item.field === 'bruttolohn-total')
+    if (!wageStatement && !input.dailyBenefit) return null
+    const read = (field: string) => this.confirmationService.readRawValue(input.digestUserId, taxYear, `chLohnausweis.${field}`).catch(() => null)
+    const [sickness, accident] = await Promise.all([read('steuerfreiesKrankentaggeldChf'), read('steuerfreiesUnfalltaggeldChf')])
+    return sickness === null && accident === null ? sickPayQuestionForUser(input.dailyBenefit) : null
   }
 
   /**
@@ -693,6 +734,64 @@ export class AdvisorDocumentStaging {
         await this.advisorRepo.updateMessageMeta(msg.id, userId, { ...msg.meta, actions: nextActions })
       }
     }
+  }
+}
+
+/**
+ * The two treatments of a daily benefit a wage statement names (ADR-0093): not deducted, or deducted
+ * with the benefit statement as proof. Alternatives of one group; the user picks one. A sickness benefit
+ * goes to its field, a benefit of the accident insurance (UVG/SUVA) to the other: both leave the wage,
+ * only the accident benefit raises the tax rate (§ 32b EStG).
+ */
+function dailyBenefitPaths(kind: ChDailyBenefitRemark['kind'], amountChf: number, input: DocumentDraftsInput): NonNullable<AdvisorMessageMeta['twoPaths']> {
+  const accident = kind === 'accident'
+  const group = newActionId()
+  const path = (suffix: 'safe' | 'max', value: number, label: string, reason: string): AdvisorActionProposal => ({
+    actionId: `${group}-${suffix}`,
+    alternativeGroup: group,
+    status: 'pending',
+    screen: 'chLohnausweis',
+    field: accident ? 'steuerfreiesUnfalltaggeldChf' : 'steuerfreiesKrankentaggeldChf',
+    instance: null,
+    ...(input.person === 'B' ? { person: 'B' as const } : {}),
+    label,
+    previousValue: null,
+    expectedPreviousValue: null,
+    newValue: String(value),
+    beforeRefundEur: 0,
+    afterRefundEur: 0,
+    deltaEur: 0,
+    effect: 'not-computable',
+    effectHint: 'Die Wirkung zeigt die Schätzung, sobald der Lohnausweis übernommen ist.',
+    reason,
+    sourceId: input.sourceId,
+    paragraph: ADVISOR_LEGAL_SOURCES[input.sourceId].paragraph,
+    ...(input.receiptId ? { receiptId: input.receiptId } : {}),
+  })
+  if (accident) {
+    return {
+      title: 'Ausgezahltes Unfalltaggeld (UVG/SUVA): im Bruttolohn (Ziffer 8) enthalten?',
+      sourceId: input.sourceId,
+      safePath: path('safe', 0, 'Unfalltaggeld nicht abziehen', 'Das Unfalltaggeld ist nicht im Bruttolohn Ziffer 8 enthalten (oder du bist nicht sicher): Der Lohn bleibt, wie er auf dem Ausweis steht.'),
+      maxPath: {
+        ...path(
+          'max',
+          amountChf,
+          `Unfalltaggeld ${formatChf(amountChf)} abziehen`,
+          'Das Unfalltaggeld ist im Bruttolohn Ziffer 8 enthalten: Es ist steuerfrei und wird vom Lohn abgezogen (Anlage N-Gre, Zeile „SUVA – Geld“), erhöht aber den Steuersatz (Progressionsvorbehalt, § 32b EStG).',
+        ),
+        evidenceHint: 'Bitte die ergänzende Bescheinigung des Arbeitgebers oder die Taggeld-Abrechnung der Unfallversicherung aufbewahren.',
+      },
+    }
+  }
+  return {
+    title: 'Ausgezahltes Krankentaggeld: im Bruttolohn (Ziffer 8) enthalten?',
+    sourceId: input.sourceId,
+    safePath: path('safe', 0, 'Krankentaggeld nicht abziehen', 'Das Taggeld ist nicht im Bruttolohn Ziffer 8 enthalten (oder du bist nicht sicher): Der Lohn bleibt, wie er auf dem Ausweis steht.'),
+    maxPath: {
+      ...path('max', amountChf, `Krankentaggeld ${formatChf(amountChf)} abziehen`, 'Das Taggeld ist im Bruttolohn Ziffer 8 enthalten: Es ist steuerfrei und wird vom Lohn abgezogen (Anlage N-Gre Zeile 9).'),
+      evidenceHint: 'Bitte die Taggeld-Abrechnung des Versicherers aufbewahren.',
+    },
   }
 }
 

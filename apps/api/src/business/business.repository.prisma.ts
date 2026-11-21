@@ -255,19 +255,37 @@ export class PrismaBusinessRepository implements BusinessRepository {
           contentHash: entryContentHash(entry),
         },
       })
-      for (const [position, line] of entry.lines.entries()) {
-        await tx.journalLine.create({
-          data: { entryId: row.id, userId, taxYear, position: position + 1, account: line.account, side: line.side, amount: String(line.amount), taxKey: line.taxKey, taxPart: line.taxPart },
-        })
-      }
-    }
-    for (const record of append.log ?? []) {
-      await tx.ledgerLogRecord.create({
-        data: { ledgerId, userId, taxYear, seq: record.seq, at: record.at, kind: record.kind, payload: canonicalJson(record.payload), prevHash: record.prevHash, hash: record.hash },
+      await tx.journalLine.createMany({
+        data: entry.lines.map((line, position) => ({
+          entryId: row.id,
+          userId,
+          taxYear,
+          position: position + 1,
+          account: line.account,
+          side: line.side,
+          amount: String(line.amount),
+          taxKey: line.taxKey,
+          taxPart: line.taxPart,
+        })),
       })
     }
-    for (const asset of append.assets ?? []) {
-      await tx.fixedAsset.create({ data: { userId, ...asset, acquisitionCost: String(asset.acquisitionCost) } })
+    if (append.log?.length) {
+      await tx.ledgerLogRecord.createMany({
+        data: append.log.map((record) => ({
+          ledgerId,
+          userId,
+          taxYear,
+          seq: record.seq,
+          at: record.at,
+          kind: record.kind,
+          payload: canonicalJson(record.payload),
+          prevHash: record.prevHash,
+          hash: record.hash,
+        })),
+      })
+    }
+    if (append.assets?.length) {
+      await tx.fixedAsset.createMany({ data: append.assets.map((asset) => ({ userId, ...asset, acquisitionCost: String(asset.acquisitionCost) })) })
     }
     if (append.lockedThrough !== undefined) {
       await tx.ledger.update({ where: { id: ledgerId }, data: { lockedThrough: append.lockedThrough } })
@@ -325,14 +343,18 @@ export class PrismaBusinessRepository implements BusinessRepository {
       update: {},
     })
     const known = new Set((await this.prisma.bankTransaction.findMany({ where: { ledgerId: book.id }, select: { fingerprint: true } })).map((r) => r.fingerprint))
-    let added = 0
+    const fresh: typeof transactions[number][] = []
     for (const tx of transactions) {
       if (known.has(tx.fingerprint)) continue
       known.add(tx.fingerprint)
-      await this.prisma.bankTransaction.create({ data: { ledgerId: book.id, userId, taxYear, fingerprint: tx.fingerprint, amount: String(tx.amount), details: tx.details } })
-      added++
+      fresh.push(tx)
     }
-    return added
+    if (fresh.length === 0) return 0
+    const { count } = await this.prisma.bankTransaction.createMany({
+      data: fresh.map((tx) => ({ ledgerId: book.id, userId, taxYear, fingerprint: tx.fingerprint, amount: String(tx.amount), details: tx.details })),
+      skipDuplicates: true,
+    })
+    return count
   }
 
   async setBankTransactionStatus(userId: string, id: string, status: BankTransactionRecord['status'], entryNumber: number | null): Promise<void> {

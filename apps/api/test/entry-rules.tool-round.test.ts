@@ -64,6 +64,18 @@ describe('fixed rules in the tool round (ADR-0093)', () => {
     expect(both.update.pendingTwoPaths).toMatchObject({ safePath: { newValue: '0' }, maxPath: { newValue: '2900' } })
   })
 
+  it('takes a paid-out accident benefit (UVG/SUVA) only as two paths on its own field', async () => {
+    const single = await round([draft({ screen: 'chLohnausweis', field: 'steuerfreiesUnfalltaggeldChf', newValue: '2250' })])
+    expect(single.drafts).toHaveLength(0)
+    expect(single.answers[0]!.error).toContain('TWO_PATHS_REQUIRED')
+
+    const both = await round([
+      { name: 'propose_two_paths', args: { title: 'Unfalltaggeld in Ziffer 8?', sourceId: 'estg-9-1', safePath: path('steuerfreiesUnfalltaggeldChf', '0'), maxPath: path('steuerfreiesUnfalltaggeldChf', '2250') } },
+    ])
+    expect(both.answers[0]).toMatchObject({ ok: true })
+    expect(both.update.pendingTwoPaths).toMatchObject({ safePath: { field: 'steuerfreiesUnfalltaggeldChf', newValue: '0' }, maxPath: { field: 'steuerfreiesUnfalltaggeldChf', newValue: '2250' } })
+  })
+
   it('stages prepayments from the amount alone and sets the gate itself', async () => {
     const { drafts } = await round([draft({ screen: 'interview', field: 'vorauszahlungen-betrag', newValue: '4.800 Euro' })])
     expect(drafts).toEqual([expect.objectContaining({ field: 'vorauszahlungen-betrag', newValue: '4800', companionFields: { 'vorauszahlungen-gate': 'Ja' } })])
@@ -82,5 +94,30 @@ describe('fixed rules in the tool round (ADR-0093)', () => {
   it('takes a negative Ziffer 7', async () => {
     const { drafts } = await round([draft({ screen: 'chLohnausweis', field: 'andere-leistungen', newValue: '-75' })])
     expect(drafts).toEqual([expect.objectContaining({ field: 'andere-leistungen', newValue: '-75' })])
+  })
+
+  it('does not answer „Weitere Einkünfte“ with „Nein“ when the user named a deposit account with exemption orders', async () => {
+    const message = 'Kapitalerträge: gemeinsames Depot bei einer deutschen Bank, Freistellungsaufträge zusammen 1.600 Euro; Vermietung haben wir nicht.'
+    const refused = await round([draft({ screen: 'interview', field: 'einkuenfte', newValue: 'Nein', reason: 'Im Rahmen des Freistellungsauftrags' })], { message })
+    expect(refused.drafts).toHaveLength(0)
+    expect(refused.answers[0]!.error).toContain('CONFIRMATION_REQUIRED')
+    expect(refused.answers[0]!.error).toContain('kapital.kapitalertraege')
+
+    const recorded = await round([draft({ screen: 'interview', field: 'einkuenfte', newValue: 'Kapitalerträge' })], { message })
+    expect(recorded.drafts).toEqual([expect.objectContaining({ field: 'einkuenfte', newValue: 'Kapitalerträge' })])
+    const none = await round([draft({ screen: 'interview', field: 'einkuenfte', newValue: 'Nein', reason: 'Nutzer verneint' })], { message: 'Kapitalerträge hatten wir nicht, Vermietung auch nicht.' })
+    expect(none.drafts).toEqual([expect.objectContaining({ field: 'einkuenfte', newValue: 'Nein' })])
+  })
+
+  it('tells the model to ask for the paid-out sickness benefit, the craftsman conditions and the donation year', async () => {
+    const { answers } = await round([
+      draft({ screen: 'chLohnausweis', field: 'bruttolohn-total', newValue: '98000' }),
+      draft({ screen: 'interview', field: 'haushalt-handwerker-betrag', newValue: '1400' }),
+      draft({ screen: 'interview', field: 'spenden-betrag', newValue: '300' }),
+    ])
+    expect(answers.map((a) => a.ok)).toEqual([true, true, true])
+    expect(answers[0]!.mustAsk?.join(' ')).toContain('Krankentaggeld')
+    expect(answers[1]!.mustAsk?.join(' ')).toContain('Überweisung')
+    expect(answers[2]!.mustAsk?.join(' ')).toContain('gezahlt')
   })
 })

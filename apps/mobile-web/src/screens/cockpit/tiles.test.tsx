@@ -62,6 +62,7 @@ function emptyCh(): ChSalaryCertificateResponseDto {
       pkArbeitgeberChf: null,
       pkArbeitgeberGesamtChf: null,
       steuerfreiesKrankentaggeldChf: null,
+      steuerfreiesUnfalltaggeldChf: null,
       krankentaggeldArbeitgeberProzent: null,
       krankentaggeldArbeitgeberChf: null,
       nbuvArbeitgeberProzent: null,
@@ -306,7 +307,10 @@ describe('cockpit tiles (§ 2.2–2.4 & Slice 5 § 5.2)', () => {
         status: { kind: 'bestimmt', einnahmen: 12000, vorsorgeaufwand: 0, anrechnung: 0, werbungskosten: 2000, depreciation: 1000, openItems: 0, conflicts: 0 },
       }
       expect(tileById('vermietung').status(baseFacts({ rental: openRental }))).toBe('offen')
-      expect(tileById('vermietung').status(baseFacts({ rental: doneRental }))).toBe('erledigt')
+      // No object recorded: the topic was never entered, so it is not done (Echtdatenlauf 4).
+      expect(tileById('vermietung').status(baseFacts({ rental: doneRental }))).toBe('offen')
+      const withProperty = { ...doneRental, properties: [{ id: 'p1' }] } as unknown as RentalResponseDto
+      expect(tileById('vermietung').status(baseFacts({ rental: withProperty }))).toBe('erledigt')
 
       const emptyChildren: ChildrenResponseDto = {
         kinder: [],
@@ -352,7 +356,8 @@ describe('cockpit tiles (§ 2.2–2.4 & Slice 5 § 5.2)', () => {
       ).toBe('erledigt')
 
       expect(tileById('haushalt').status(baseFacts({ answers: {} }))).toBe('offen')
-      expect(tileById('haushalt').status(baseFacts({ answers: { 'haushalt-gate': 'Nein' } }))).toBe('erledigt')
+      // „Nein“ (said, or not picked in the Strom) is not work done: the tile says the topic does not apply.
+      expect(tileById('haushalt').status(baseFacts({ answers: { 'haushalt-gate': 'Nein' } }))).toBe('kein-thema')
       expect(
         tileById('haushalt').status(
           baseFacts({
@@ -367,7 +372,15 @@ describe('cockpit tiles (§ 2.2–2.4 & Slice 5 § 5.2)', () => {
       ).toBe('betrag-offen')
 
       expect(tileById('gesundheit').status(baseFacts({ answers: {} }))).toBe('offen')
-      expect(tileById('gesundheit').status(baseFacts({ answers: { 'gesundheit-gate': 'Nein' } }))).toBe('erledigt')
+      expect(tileById('gesundheit').status(baseFacts({ answers: { 'gesundheit-gate': 'Nein' } }))).toBe('kein-thema')
+      expect(tileById('gesundheit').status(baseFacts({ answers: { 'gesundheit-gate': 'Ja', 'gesundheit-betrag': '900' } }))).not.toBe('kein-thema')
+      expect(tileById('vorauszahlungen').status(baseFacts({ answers: { 'vorauszahlungen-gate': 'Nein' } }))).toBe('kein-thema')
+    })
+
+    it('keeps a topic that does not apply out of the open duties, at the end with the settled ones', () => {
+      const grouped = groupTiles(baseFacts({ boosterEnabled: true, answers: { job: 'Angestellt', 'haushalt-gate': 'Nein' } }))
+      expect(grouped.done.map((t) => t.id)).toContain('haushalt')
+      expect(grouped.required.map((t) => t.id)).not.toContain('haushalt')
     })
   })
 

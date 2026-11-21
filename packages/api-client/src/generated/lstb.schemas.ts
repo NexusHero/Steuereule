@@ -74,6 +74,29 @@ export interface LstbResponseDto {
   state: LstbStatusDto;
 }
 
+export interface ConfirmLstbScanLinesDto {
+  /** Zeile 5: Solidaritätszuschlag, Euro mit Cent. */
+  solidaritaetszuschlag?: number;
+  /** Zeile 6: Kirchensteuer. Ganze Euro; weggelassen = nicht gelesen, bleibt wie es ist. */
+  kirchensteuer?: number;
+  /** Zeile 7: Kirchensteuer des Ehegatten/Lebenspartners. Ganze Euro; weggelassen = nicht gelesen, bleibt wie es ist. */
+  kirchensteuerEhegatte?: number;
+  /** Zeile 22 a/b: Arbeitgeberanteil zur Rentenversicherung. Ganze Euro; weggelassen = nicht gelesen, bleibt wie es ist. */
+  rvArbeitgeber?: number;
+  /** Zeile 23 a/b: Arbeitnehmeranteil zur Rentenversicherung. Ganze Euro; weggelassen = nicht gelesen, bleibt wie es ist. */
+  rvArbeitnehmer?: number;
+  /** Zeile 24 a–c: steuerfreie Arbeitgeberzuschüsse zur Kranken- und Pflegeversicherung. Ganze Euro; weggelassen = nicht gelesen, bleibt wie es ist. */
+  zuschuesseKvPv?: number;
+  /** Zeile 24c: Pflegeversicherungs-Teil des Zuschusses. Ganze Euro; weggelassen = nicht gelesen, bleibt wie es ist. */
+  zuschussPv?: number;
+  /** Zeile 25: Krankenversicherung. Ganze Euro; weggelassen = nicht gelesen, bleibt wie es ist. */
+  kvArbeitnehmer?: number;
+  /** Zeile 26: Pflegeversicherung. Ganze Euro; weggelassen = nicht gelesen, bleibt wie es ist. */
+  pvArbeitnehmer?: number;
+  /** Zeile 27: Arbeitslosenversicherung. Ganze Euro; weggelassen = nicht gelesen, bleibt wie es ist. */
+  avArbeitnehmer?: number;
+}
+
 export interface ConfirmLstbScanDto {
   /** Bruttoarbeitslohn (Zeile 3) in whole EUR. */
   bruttoarbeitslohn: number;
@@ -90,6 +113,10 @@ export interface ConfirmLstbScanDto {
   overwriteExisting?: boolean;
   /** Adds the values to a certificate already captured for the year (second employer, later payment) instead of replacing it. The same certificate twice is refused (409 LSTB_SAME_CERTIFICATE). */
   addToExisting?: boolean;
+  /** The further lines read and confirmed with the three values; each is written to its field of the mask. */
+  lines?: ConfirmLstbScanLinesDto;
+  /** The employer as the certificate names it (ADR-0099 §8); on a further certificate one already recorded stays. */
+  arbeitgeber?: string;
   /** Staged advisor actionIds fulfilled by this confirmation. */
   actionIds?: string[];
 }

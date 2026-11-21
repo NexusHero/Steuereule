@@ -125,7 +125,7 @@ export async function runScenario22(browser, webOrigin) {
   await page.waitForTimeout(400)
 
   // Click "unlesbar" button on one field and verify active state
-  const unlesbarBtn = page.locator('text=unlesbar').first()
+  const unlesbarBtn = page.locator('text=Kann ich nicht lesen').first()
   await unlesbarBtn.click()
   await page.waitForTimeout(300)
 

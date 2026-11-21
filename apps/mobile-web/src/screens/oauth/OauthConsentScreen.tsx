@@ -128,6 +128,9 @@ export function OauthConsentScreen({
             {scopes.includes('zahllink:read') ? (
               <Text style={styles.scopeItem}>✓ {tr('oauthConsent.scopeZahllinkRead')}</Text>
             ) : null}
+            {scopes.includes('offline_access') ? (
+              <Text style={styles.scopeItem}>✓ {tr('oauthConsent.scopeOfflineAccess')}</Text>
+            ) : null}
             {scopes.length === 0 ? (
               <Text style={styles.scopeItem}>✓ {tr('oauthConsent.scopeSteuerdatenRead')}</Text>
             ) : null}

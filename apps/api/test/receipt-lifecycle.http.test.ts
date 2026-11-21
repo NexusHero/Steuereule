@@ -60,7 +60,7 @@ describe('Beleg lifecycle contract (ADR-0097)', () => {
   async function inbox(): Promise<Map<string, Receipt>> {
     const res = await app.inject({ method: 'GET', url: '/v1/belege', headers: COOKIE })
     expect(res.statusCode).toBe(200)
-    return new Map((res.json() as Receipt[]).map((r) => [r.id, r]))
+    return new Map((res.json() as { items: Receipt[] }).items.map((r) => [r.id, r]))
   }
 
   it('walks a batch: every Beleg ends in a defined state, and open follows it', async () => {
@@ -117,6 +117,16 @@ describe('Beleg lifecycle contract (ADR-0097)', () => {
     expect(forced.processing?.state).toBe('vorschlaege')
   })
 
+  it('reads the second upload of a file whose first upload never got an answer (real-data run: „doppelt hochgeladen“, and nothing was ever read)', async () => {
+    const first = await upload('spende.pdf', pdf('unanswered'))
+    // The first upload was stored but never read to a result (its „Für wen?“ stayed open, the next file came).
+    const second = await upload('spende-nochmal.pdf', pdf('unanswered'))
+    expect(second.duplicateOf).toMatchObject({ id: first.id })
+    const read = await parse({ receiptId: second.id, rawText: DONATION_2025 })
+    expect(read.stagedAction).not.toBeNull()
+    expect(read.processing).toMatchObject({ state: 'vorschlaege', pending: 1, open: true })
+  })
+
   it('deletes a Beleg with its values when asked, and leaves them without the option', async () => {
     const kept = await upload('kept.pdf', pdf('kept'))
     const gone = await upload('gone.pdf', pdf('gone'))
@@ -163,5 +173,25 @@ describe('Beleg lifecycle contract (ADR-0097)', () => {
   it('refuses a device failure without the stored Beleg', async () => {
     const res = await app.inject({ method: 'POST', url: '/v1/belege/parse', headers: COOKIE, payload: { taxYear: YEAR, fileName: 'x.pdf', deviceReadFailure: 'read_failed' } })
     expect(res.statusCode).toBe(400)
+  })
+  it('pages the inbox over HTTP and refuses a bad limit, folder or cursor', async () => {
+    await upload('a.pdf', pdf('a'))
+    await upload('b.pdf', pdf('b'))
+    await upload('c.pdf', pdf('c'))
+
+    const first = await app.inject({ method: 'GET', url: '/v1/belege?limit=2', headers: COOKIE })
+    const page = first.json() as { items: Receipt[]; nextCursor: string | null; counts: { total: number } }
+    expect(page.items).toHaveLength(2)
+    expect(page.counts.total).toBe(3)
+    expect(page.nextCursor).not.toBeNull()
+
+    const second = await app.inject({ method: 'GET', url: `/v1/belege?limit=2&cursor=${page.nextCursor}`, headers: COOKIE })
+    expect((second.json() as { items: Receipt[]; nextCursor: string | null }).items).toHaveLength(1)
+    expect((second.json() as { nextCursor: string | null }).nextCursor).toBeNull()
+
+    for (const query of ['limit=0', 'limit=101', 'limit=abc', 'ordner=alle', 'cursor=kaputt']) {
+      const res = await app.inject({ method: 'GET', url: `/v1/belege?${query}`, headers: COOKIE })
+      expect(res.statusCode, query).toBe(400)
+    }
   })
 })

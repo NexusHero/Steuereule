@@ -28,7 +28,9 @@ import type {
   CreateReceiptDto,
   DeleteReceiptResponseDto,
   ReceiptControllerDeleteParams,
+  ReceiptControllerListParams,
   ReceiptControllerUploadBody,
+  ReceiptPageResponseDto,
   ReceiptResponseDto,
   SetAssignmentDto
 } from './belege.schemas';
@@ -56,7 +58,7 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
 };
 
 export type receiptControllerListResponse200 = {
-  data: ReceiptResponseDto[]
+  data: ReceiptPageResponseDto
   status: 200
 }
 
@@ -67,17 +69,27 @@ export type receiptControllerListResponseSuccess = (receiptControllerListRespons
 
 export type receiptControllerListResponse = (receiptControllerListResponseSuccess)
 
-export const getReceiptControllerListUrl = () => {
+export const getReceiptControllerListUrl = (params?: ReceiptControllerListParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
 
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
 
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/v1/belege`
+  return stringifiedParams.length > 0 ? `/v1/belege?${stringifiedParams}` : `/v1/belege`
 }
 
-export const receiptControllerList = async ( options?: RequestInit): Promise<receiptControllerListResponse> => {
+/**
+ * @summary One page of the Beleg inbox, newest first, with the counts the inbox shows over all Belege
+ */
+export const receiptControllerList = async (params?: ReceiptControllerListParams, options?: RequestInit): Promise<receiptControllerListResponse> => {
 
-  return httpClient<receiptControllerListResponse>(getReceiptControllerListUrl(),
+  return httpClient<receiptControllerListResponse>(getReceiptControllerListUrl(params),
   {
     ...options,
     method: 'GET'
@@ -90,23 +102,23 @@ export const receiptControllerList = async ( options?: RequestInit): Promise<rec
 
 
 
-export const getReceiptControllerListQueryKey = () => {
+export const getReceiptControllerListQueryKey = (params?: ReceiptControllerListParams,) => {
     return [
-    `/v1/belege`
+    `/v1/belege`, ...(params ? [params] : [])
     ] as const;
     }
 
 
-export const getReceiptControllerListQueryOptions = <TData = Awaited<ReturnType<typeof receiptControllerList>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof receiptControllerList>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+export const getReceiptControllerListQueryOptions = <TData = Awaited<ReturnType<typeof receiptControllerList>>, TError = unknown>(params?: ReceiptControllerListParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof receiptControllerList>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getReceiptControllerListQueryKey();
+  const queryKey =  queryOptions?.queryKey ?? getReceiptControllerListQueryKey(params);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof receiptControllerList>>> = ({ signal }) => receiptControllerList({ signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof receiptControllerList>>> = ({ signal }) => receiptControllerList(params, { signal, ...requestOptions });
 
 
 
@@ -120,7 +132,7 @@ export type ReceiptControllerListQueryError = unknown
 
 
 export function useReceiptControllerList<TData = Awaited<ReturnType<typeof receiptControllerList>>, TError = unknown>(
-  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof receiptControllerList>>, TError, TData>> & Pick<
+ params: undefined |  ReceiptControllerListParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof receiptControllerList>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
           Awaited<ReturnType<typeof receiptControllerList>>,
           TError,
@@ -130,7 +142,7 @@ export function useReceiptControllerList<TData = Awaited<ReturnType<typeof recei
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useReceiptControllerList<TData = Awaited<ReturnType<typeof receiptControllerList>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof receiptControllerList>>, TError, TData>> & Pick<
+ params?: ReceiptControllerListParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof receiptControllerList>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
           Awaited<ReturnType<typeof receiptControllerList>>,
           TError,
@@ -140,16 +152,19 @@ export function useReceiptControllerList<TData = Awaited<ReturnType<typeof recei
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useReceiptControllerList<TData = Awaited<ReturnType<typeof receiptControllerList>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof receiptControllerList>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+ params?: ReceiptControllerListParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof receiptControllerList>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary One page of the Beleg inbox, newest first, with the counts the inbox shows over all Belege
+ */
 
 export function useReceiptControllerList<TData = Awaited<ReturnType<typeof receiptControllerList>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof receiptControllerList>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+ params?: ReceiptControllerListParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof receiptControllerList>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
-  const queryOptions = getReceiptControllerListQueryOptions(options)
+  const queryOptions = getReceiptControllerListQueryOptions(params,options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 

@@ -73,7 +73,8 @@ describe('whose LStB an upload in the chat is', () => {
     const { parse } = await setup(false)
     const named = await parse(lstbOf('Elias Sommer', '21.000,00'))
     expect(named.lstb).toMatchObject({ person: 'A', personUnclear: false })
-    expect(named.lstb?.stagedActionIds).toHaveLength(3)
+    // The three values and the lines 23a, 25–27 and 24 (empty: 0).
+    expect(named.lstb?.stagedActionIds).toHaveLength(8)
     expect((await parse(lstbOf('', '21.000,00'))).lstb).toMatchObject({ person: 'A', personUnclear: false })
   })
 

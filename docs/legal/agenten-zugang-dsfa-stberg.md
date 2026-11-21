@@ -71,6 +71,10 @@ Steuerdaten stellen finanzielle Daten mit hoher Sensibilität dar (teilweise ein
 | Assistent trägt fehlerhafte Zahlen ein | Mittel | Mittel | Unbestätigte Werte sperren Ausdruck; zwingende Nutzerprüfung je Anlage | Gering |
 | Token-Diebstahl / Missbrauch | Gering | Hoch | Scoped OAuth-Token; administrative Aktionen gesperrt; Sofort-Widerruf in UI | Gering |
 | Unbemerkter Datenabfluss | Gering | Mittel | Lückenloser DSGVO Art. 30 Audit-Trail für jeden Tool-Aufruf | Sehr gering |
+| Assistent liest mehr als nötig (Namen, Geburtsdaten, Kennungen) | Gering | Hoch | Lesesicht (ADR-0052 Amendment 3): Beträge im Klartext, Personen nur abgeleitet (Alter, Bundesland), Dritte und Freitext nur als „gesetzt“; das Token gilt nur am MCP-Endpunkt (Amendment 4), nicht an der übrigen API | Gering |
+| Rückschluss auf die Religionszugehörigkeit (Art. 9 DSGVO) | Gering | Hoch | Die Konfession trägt nur der Nutzer ein und der Assistent liest sie nie; er schreibt und liest allein „kirchensteuerpflichtig ja/nein“. Das Merkmal bleibt ein mittelbarer Hinweis auf eine Religionszugehörigkeit und ist von der Einwilligung bei der Verbindung umfasst | Gering |
+| Irreführender Aufgabentext eines fremden Modells in der App | Gering | Mittel | Feste Arten, 300 Zeichen, keine Kennungen und keine Links, Anzeige als reiner Text mit dem Namen des Assistenten; der Nutzer verwirft die Aufgabe. Namen im Text verhindert nur die Werkzeugbeschreibung | Gering |
+| Fremder Client gibt sich als verbundener Assistent aus | Sehr gering | Mittel | Eigene Einträge und Aufgaben gehen nach der OAuth-Client-ID, nicht nach dem Namen; eine Registrierung gewährt nichts ohne Anmeldung und Freigabe des Nutzers, ist je Adresse begrenzt, und nie freigegebene Clients werden nach 7 Tagen gelöscht | Minimal |
 
 **Ergebnis:** Das verbleibende Restrisiko ist angemessen und durch die implementierten Sicherheitskontrollen wirksam eingedämmt.
 

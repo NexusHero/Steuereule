@@ -15,7 +15,6 @@ import {
   getDeviceControllerRequestCodeMockHandler,
   getInterviewControllerGetInterviewMockHandler,
   getLstbControllerGetLstbMockHandler,
-  getReceiptControllerListMockHandler,
   getChSalaryCertificateControllerGetMockHandler,
   getChSalaryCertificateControllerSetFieldMockHandler,
   getChSalaryCertificateControllerSetExchangeRateMockHandler,
@@ -37,6 +36,7 @@ import {
 } from '@steuereule/api-client/msw'
 import { SALARY_CERTIFICATE_FIELDS } from '@steuereule/core'
 import type { ProfileResponseDto, AuthCapabilitiesDto, DeviceCodeResponseDto, InterviewStateDto, LstbResponseDto, ChSalaryCertificateResponseDto, PensionResponseDto, KapitalResponseDto, RentalResponseDto, DeadlinesResponseDto, RolloverResponseDto, ConfirmationResponseDto, ChildrenResponseDto, LinkResponseDto, OwlSettingResponseDto, OwlCardsResponseDto, CommuteResponseDto } from '@steuereule/api-client'
+import { receiptInboxHandler } from './test-receipt-inbox'
 
 export const EMPTY_PROFILE_RESPONSE: ProfileResponseDto = {
   firstName: null,
@@ -117,6 +117,7 @@ export const EMPTY_CH_SALARY_CERTIFICATE_RESPONSE: ChSalaryCertificateResponseDt
     pkArbeitgeberChf: null,
     pkArbeitgeberGesamtChf: null,
     steuerfreiesKrankentaggeldChf: null,
+    steuerfreiesUnfalltaggeldChf: null,
     krankentaggeldArbeitgeberProzent: null,
     krankentaggeldArbeitgeberChf: null,
     nbuvArbeitgeberProzent: null,
@@ -197,7 +198,7 @@ export const EMPTY_TAKEOVER_RESPONSE: RolloverResponseDto = {
 }
 
 /** Default `GET .../bestaetigung` answer (REQ-032): nothing to confirm — no hint, nothing blocked. */
-export const EMPTY_CONFIRMATION_RESPONSE: ConfirmationResponseDto = { annexes: [] }
+export const EMPTY_CONFIRMATION_RESPONSE: ConfirmationResponseDto = { annexes: [], tasks: [] }
 
 export const EMPTY_KINDER_RESPONSE: ChildrenResponseDto = {
   kinder: [],
@@ -246,6 +247,8 @@ export const server = setupServer(
   }),
   http.get('*/v1/stammdaten', () => HttpResponse.json({ missing: [] }, { status: 200 })),
   http.get('*/v1/steuerjahre/:jahr/arbeitsweg', () => HttpResponse.json(EMPTY_COMMUTE_RESPONSE, { status: 200 })),
+  // What the printout would fill: nothing by default, so the structured preview names the masks' figures.
+  http.get('*/v1/steuerjahre/:jahr/ausdruck/werte', () => HttpResponse.json({ forms: [] }, { status: 200 })),
   http.put('*/v1/steuerjahre/:jahr/lstb/:feld', () =>
     HttpResponse.json(EMPTY_LSTB_RESPONSE, { status: 200 }),
   ),
@@ -352,7 +355,7 @@ export const server = setupServer(
   // so the default inbox is the honest empty list. Present by default so shell-level tests
   // that pass through the Belege tab don't each have to stub it; BelegeScreen's own suite
   // overrides it with real Belege where the Zuordnung states are the point.
-  getReceiptControllerListMockHandler([]),
+  receiptInboxHandler([]),
   getDeviceControllerRequestCodeMockHandler(DEVICE_CODE_RESPONSE),
   // Task 6's polling default — "still pending" (RFC 8628 `authorization_pending`, HTTP 400,
   // the exact shape `translateDeviceApiError` relays), not the generated mock's 200 `AckResponseDto`:
