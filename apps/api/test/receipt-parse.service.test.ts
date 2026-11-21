@@ -818,6 +818,17 @@ describe('donation receipts add up, never twice (§ 10b, ADR-0080)', () => {
     expect(res.stagedAction).not.toHaveProperty('countedItems')
   })
 
+  // Real-data run: a certificate dated in the following year, and the owl never asked when the donation was paid.
+  it('asks when the donation was paid when the certificate names only its own date', async () => {
+    const h = buildTestHarness([], false)
+    const undated = ['Aussteller: Andere Hilfe e.V.', 'Bestätigung über Geldzuwendungen im Sinne des § 10b EStG', 'Betrag der Zuwendung - in Ziffern -', '50,00 €', 'Köln, den 10.01.2026'].join('\n')
+    const res = await h.parseService.parseReceipt('user-d0', { taxYear: 2025, fileName: 'spende.pdf', rawText: undated })
+    expect(res.assistantMessage?.content).toContain('Wann wurde die Spende gezahlt?')
+    expect(res.assistantMessage?.content).toContain('§ 11 Abs. 2 EStG')
+    const dated = await h.parseService.parseReceipt('user-d0b', { taxYear: 2024, fileName: 'spende.pdf', rawText: other })
+    expect(dated.assistantMessage?.content ?? '').not.toContain('Wann wurde die Spende gezahlt?')
+  })
+
   it('counts a partner’s own receipt and a copy of a donation already counted only once', async () => {
     const h = buildTestHarness([], false)
     await h.parseService.parseReceipt('user-d2', { taxYear: 2024, fileName: 'a.pdf', rawText: copy })

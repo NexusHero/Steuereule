@@ -254,6 +254,10 @@ export function draftFollowUps(screen: Screen, values: DraftValues): string[] {
     }
   }
   if (screen === 'interview') {
+    // „Kapitalerträge“ without its amount records nothing (real-data run: the gate set, the amount never asked).
+    if ((values.einkuenfte === 'Kapitalerträge' || values.einkuenfte === 'Beides') && !has('kapitalertraege')) {
+      asks.push('Kapitalerträge sind angegeben: Frag nach der Steuerbescheinigung der Bank und lege die Höhe der Kapitalerträge im Jahr an (kapital.kapitalertraege), dazu den genutzten Sparer-Pauschbetrag (kapital.sparerPauschbetrag) und die einbehaltene Kapitalertragsteuer (auch 0).')
+    }
     if (positive(values['haushalt-handwerker-betrag'])) {
       asks.push('Handwerkerleistung (§ 35a Abs. 3 und 5 EStG): Frag, falls noch nicht gesagt, (1) ob die Rechnung per Überweisung bezahlt wurde (bar zählt nicht), (2) ob die Arbeit im eigenen Haushalt war (selbst bewohnte Wohnung oder Haus, kein Neubau) und (3) ob es dafür eine öffentliche Förderung gab (KfW, BAFA, Zuschuss oder zinsverbilligtes Darlehen; dann entfällt die Ermäßigung). Passt eines nicht, zieh den Entwurf mit `withdraw_draft` zurück.')
     }

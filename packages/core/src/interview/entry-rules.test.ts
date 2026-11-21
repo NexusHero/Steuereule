@@ -141,6 +141,13 @@ describe('fixed rules for drafts (ADR-0093)', () => {
     expect(draftFollowUps('chLohnausweis', { arbeitgeberName: 'Muster AG' })).toEqual([])
   })
 
+  // Real-data run: the gate said capital income, the amount was never asked.
+  it('asks the amount of capital income when the answer drafted says there is some', () => {
+    expect(draftFollowUps('interview', { einkuenfte: 'Kapitalerträge' }).join(' ')).toContain('kapital.kapitalertraege')
+    expect(draftFollowUps('interview', { einkuenfte: 'Beides' }).join(' ')).toContain('Steuerbescheinigung')
+    expect(draftFollowUps('interview', { einkuenfte: 'Vermietung' }).join(' ')).not.toContain('kapital.kapitalertraege')
+  })
+
   it('has payment by transfer, the own household and subsidies asked for a craftsman invoice', () => {
     const asks = draftFollowUps('interview', { 'haushalt-handwerker-betrag': '1400' }).join(' ')
     expect(asks).toContain('Überweisung')
