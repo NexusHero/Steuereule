@@ -66,7 +66,8 @@ describe('what the answer says about its drafts (ADR-0066, real-data run)', () =
 
   it('writes the stock sentence for exactly the drafts that are shown', () => {
     expect(preparedDraftsSentence(['Spende'])).toBe('Ich habe den Entwurf „Spende“ als unverbindlichen Vorschlag vorbereitet.')
-    expect(preparedDraftsSentence(['a', 'b', 'c'])).toBe('Ich habe 3 Entwürfe als unverbindliche Vorschläge vorbereitet.')
+    // Real-data run: late answers were only „N Entwürfe vorbereitet“; the sentence names them.
+    expect(preparedDraftsSentence(['a', 'b', 'c'])).toBe('Ich habe 3 Entwürfe als unverbindliche Vorschläge vorbereitet: „a“, „b“ und „c“.')
     expect(preparedDraftsSentence([])).toBe('')
   })
 })

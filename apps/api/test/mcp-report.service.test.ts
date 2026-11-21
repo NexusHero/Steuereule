@@ -243,6 +243,23 @@ describe('McpReportService (ADR-0052 amendment 2)', () => {
       expect(JSON.stringify(result)).not.toContain('keywords')
     })
 
+    it('asks where a daily benefit recorded before the question came from, with the AHV hint (ADR-0072, Punkt 5)', async () => {
+      const values: Record<string, string> = { 'chLohnausweis.bruttolohn-total': '90000', 'chLohnausweis.ahv-beitraege': '5380', 'chLohnausweis.steuerfreiesKrankentaggeldChf': '6000', 'interview.einkuenfte': 'Nein', 'interview.vorauszahlungen-gate': 'Nein' }
+      const confirmation = {
+        overview: vi.fn(),
+        writeConfirmedByAdvisor: vi.fn(),
+        readRawValues: vi.fn(async (_user: string, _year: number, keys: readonly string[]) => Object.fromEntries(keys.map((key) => [key, values[key] ?? null]))),
+      }
+      const result = await service({ printout: { check: vi.fn().mockResolvedValue({ missing: [] }) }, confirmation }).check('u', 2025, { spouse: null, childIds: [] })
+      const fragen = result.fragen as { screen: string; feld: string; frage: string; werTraegtEin: string }[]
+      const source = fragen.find((q) => q.feld === 'taggeldQuelle')
+      expect(source).toMatchObject({ screen: 'chLohnausweis', werTraegtEin: 'du' })
+      expect(source!.frage).toContain('Woher kam das Taggeld im Bruttolohn (Ziffer 8)')
+      expect(source!.frage).toContain('Lohnfortzahlung des Arbeitgebers ohne Versicherung')
+      expect(source!.frage).toContain('Hinweis zur Plausibilität (keine Entscheidung)')
+      expect(source!.frage).toContain('ohne das Taggeld')
+    })
+
     it('lists what no entry closes (a confirmation, a form the app does not print)', async () => {
       const printout = { check: vi.fn().mockResolvedValue({ missing: ['unbestaetigt.anlageN'] }) }
       const confirmation = { overview: vi.fn(), writeConfirmedByAdvisor: vi.fn(), readRawValues: vi.fn().mockResolvedValue({}) }

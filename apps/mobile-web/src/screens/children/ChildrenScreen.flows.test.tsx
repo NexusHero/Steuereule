@@ -115,6 +115,33 @@ describe('KinderScreen (connected)', () => {
 })
 
 describe('KinderScreen — a save that fails', () => {
+  // Real-data run: „Kind speichern“, then „Bearbeiten“, then save said „Das Kind wurde nicht gespeichert“ —
+  // the list held the new child under a local id, and the PUT went to a child that does not exist.
+  it('edits a child right after creating it under the id the server gave it', async () => {
+    const NOAH: ChildItem = { id: 'kind-neu', sequenceNumber: 1, firstName: 'Noah', lastName: 'Muster', geburtsdatum: '2019-09-02' }
+    const calls: string[] = []
+    server.use(
+      http.get('*/v1/steuerjahre/2025/kinder', () => HttpResponse.json(listBody(calls.length > 0 ? [NOAH] : []))),
+      http.post('*/v1/steuerjahre/2025/kinder', () => {
+        calls.push('POST')
+        return HttpResponse.json(listBody([NOAH]), { status: 201 })
+      }),
+      http.put('*/v1/steuerjahre/2025/kinder/:id', ({ params }) => {
+        calls.push(`PUT ${String(params.id)}`)
+        return params.id === 'kind-neu' ? HttpResponse.json(listBody([NOAH])) : HttpResponse.json({ message: 'not found' }, { status: 404 })
+      }),
+    )
+    renderConnected()
+    fireEvent.change(await screen.findByLabelText('Vorname'), { target: { value: 'Noah' } })
+    fireEvent.change(screen.getByLabelText('Nachname'), { target: { value: 'Muster' } })
+    fireEvent.change(screen.getByLabelText('Geburtsdatum'), { target: { value: '02.09.2019' } })
+    fireEvent.click(screen.getByTestId('kind-speichern'))
+    fireEvent.click(await screen.findByLabelText('Kind Noah bearbeiten'))
+    fireEvent.click(screen.getByTestId('kind-speichern'))
+    await waitFor(() => expect(calls).toEqual(['POST', 'PUT kind-neu']))
+    expect(screen.queryByText('Das Kind wurde nicht gespeichert. Prüf die Angaben und die Verbindung und versuch es noch mal.')).toBeNull()
+  })
+
   it('keeps the form and the input when adding fails', async () => {
     const onAdd = vi.fn().mockRejectedValue(new Error('offline'))
     renderView({ initialKinder: [], onAddChild: onAdd })

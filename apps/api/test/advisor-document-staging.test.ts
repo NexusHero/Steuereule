@@ -70,12 +70,41 @@ describe('a Swiss wage statement read from a document', () => {
       fields: [{ field: 'bruttolohn-total', label: 'Bruttolohn (Ziffer 8)', value: 98000, status: 'ok', reason: null }],
     })
 
-  it('asks whether a paid-out daily sickness benefit is part of the gross wage', async () => {
+  it('asks where a daily benefit in the gross wage came from, with the six answers', async () => {
     const kit = buildAdvisorTestKit()
     const { assistantMessage } = await wage(kit)
     expect(assistantMessage.content).toContain('Lohnausweis gelesen.')
-    expect(assistantMessage.content).toContain('Krankentaggeld')
-    expect(assistantMessage.content).toContain('Ziffer 8')
+    expect(assistantMessage.content).toContain('Woher kam das Taggeld im Bruttolohn (Ziffer 8)')
+    expect(assistantMessage.content).toContain('Krankentaggeldversicherung (mit dem Lohn verrechnet)')
+    expect(assistantMessage.content).toContain('Lohnfortzahlung des Arbeitgebers ohne Versicherung')
+  })
+
+  it('does not ask again once the source is recorded', async () => {
+    const kit = buildAdvisorTestKit()
+    await kit.chRepo.setNGre(USER, YEAR, { taggeldQuelle: 'kein' })
+    const { assistantMessage } = await wage(kit)
+    expect(assistantMessage.content).toBe('Lohnausweis gelesen.')
+  })
+
+  it('offers a sickness benefit a remark carries as two paths, the deduction as the insurance, with the AHV hint', async () => {
+    const kit = buildAdvisorTestKit()
+    const { assistantMessage } = await kit.service.stageDocumentDrafts(USER, 2025, {
+      screen: 'chLohnausweis', person: 'A', digestUserId: USER, receiptId: null, engine: RULES, summaryText: 'Lohnausweis gelesen.', sourceId: 'estg-9-1',
+      fields: [
+        { field: 'bruttolohn-total', label: 'Bruttolohn', value: 90000, status: 'ok', reason: null },
+        { field: 'ahv-beitraege', label: 'AHV/IV/EO/ALV/NBUV', value: 5380, status: 'ok', reason: null },
+      ],
+      dailyBenefit: { kind: 'sickness', amountChf: 6000 },
+    })
+    // The owl proposes, the user picks (ADR-0093): taking the deduction records the answer „Versicherung“ too.
+    expect(assistantMessage.meta?.twoPaths).toMatchObject({
+      safePath: { field: 'steuerfreiesKrankentaggeldChf', newValue: '0' },
+      maxPath: { field: 'steuerfreiesKrankentaggeldChf', newValue: '6000', companionFields: { taggeldQuelle: 'krankentaggeldversicherung' } },
+    })
+    expect(assistantMessage.meta?.twoPaths?.safePath.companionFields).toBeUndefined()
+    expect(assistantMessage.content).toContain('Woher kam das Taggeld')
+    expect(assistantMessage.content).toContain('Hinweis zur Plausibilität (keine Entscheidung)')
+    expect(assistantMessage.content).toContain('ohne das Taggeld')
   })
 
   it('does not ask again once the answer is recorded, also as 0', async () => {
@@ -104,6 +133,7 @@ describe('a Swiss wage statement read from a document', () => {
       maxPath: { field: 'steuerfreiesUnfalltaggeldChf', newValue: '2250' },
     })
     expect(assistantMessage.meta?.twoPaths?.maxPath.evidenceHint).toContain('Bescheinigung des Arbeitgebers')
+    expect(assistantMessage.meta?.twoPaths?.maxPath.companionFields).toEqual({ taggeldQuelle: 'unfallversicherung' })
     expect(assistantMessage.content).toContain('beide Wege')
   })
 

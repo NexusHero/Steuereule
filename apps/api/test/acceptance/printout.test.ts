@@ -135,7 +135,7 @@ describe('Formular-Ausdruck (ADR-0050), against the real server', () => {
     await pay(userId)
 
     const check = await fetch(`${baseUrl}/v1/steuerjahre/2025/ausdruck/pruefung`, { headers: { cookie } })
-    expect(await check.json()).toEqual({ missing: [], missingChildFields: [] })
+    expect(await check.json()).toEqual({ missing: [], missingChildFields: [], hints: [] })
 
     const pdf = await PDFDocument.load(new Uint8Array(await (await printout(cookie)).arrayBuffer()))
     expect(pdf.getPageCount()).toBe(6 + ANNEX_V_PAGES)
@@ -148,7 +148,7 @@ describe('Formular-Ausdruck (ADR-0050), against the real server', () => {
     await prisma.pension.create({ data: { userId, taxYear: 2025, rentenart: 'Betriebsrente', jahresbetrag: '3000' } })
 
     const check = await fetch(`${baseUrl}/v1/steuerjahre/2025/ausdruck/pruefung`, { headers: { cookie } })
-    expect(await check.json()).toEqual({ missing: ['anlageRAvBav'], missingChildFields: [] })
+    expect(await check.json()).toEqual({ missing: ['anlageRAvBav'], missingChildFields: [], hints: [] })
 
     const checkout = await fetch(`${baseUrl}/v1/steuerjahre/2025/ausdruck/checkout`, { method: 'POST', headers: { cookie } })
     expect(checkout.status).toBe(422)

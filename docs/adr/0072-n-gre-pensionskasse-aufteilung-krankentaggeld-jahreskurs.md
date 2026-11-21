@@ -92,6 +92,33 @@ der App wich an fünf Stellen ab:
      - **Offen:** Taggeld nach KVG (soziale Krankenversicherung). BFH VI R 26/24 hat für das
        gesetzliche UVG-Taggeld Buchst. k bejaht; dieselbe Begründung könnte auf KVG-Taggeld
        übertragen werden. Die Eule nennt das als unsicher.
+   - **Woher kam das Taggeld? (Nachtrag)** Ein Betrag in Ziffer 8 wird nicht nach seinem Namen,
+     sondern nach seiner Herkunft behandelt. Eine feste Frage, gleich in Maske, Eule und MCP
+     (`pruefen`), speichert die Antwort je Lohnausweis im verschlüsselten Feld `taggeldQuelle`
+     (Migration `20261126100000_n_gre_taggeld_quelle`) und erst danach den Betrag:
+     - `krankentaggeldversicherung`: Leistung der Kollektiv-Krankentaggeldversicherung des
+       Arbeitgebers, vom Arbeitgeber empfangen und mit dem Lohn verrechnet („KK-Taggeld
+       Verrechnung“). Steuerfrei, ohne Progressionsvorbehalt (FG Baden-Württemberg 08.05.2019,
+       14 K 1955/18 und 14 K 2647/18; die Prämie des Arbeitgebers ist Lohn) →
+       `steuerfreiesKrankentaggeldChf`.
+     - `lohnfortzahlung`: eigene Lohnfortzahlung des Arbeitgebers ohne Versicherung (Art. 324a OR).
+       Gewöhnlicher Lohn, nichts abzuziehen; die App speichert 0.
+     - `beides`: Die Versicherung zahlt einen Teil (z. B. 80 %), der Arbeitgeber stockt auf. Nur der
+       Teil der Versicherung wird abgezogen, die Aufstockung bleibt Lohn.
+     - `unfallversicherung`: UVG/SUVA, steuerfrei mit Progressionsvorbehalt →
+       `steuerfreiesUnfalltaggeldChf`.
+     - `mutterschaftIv`: Mutterschaftsentschädigung nach EOG und IV-Taggelder haben in der
+       Anlage N-Gre eine eigene Zeile (steuerfrei, mit Progressionsvorbehalt). Die App druckt diese
+       Zeile noch nicht (ein Kasten wäre erst aus dem Vordruck zu vermessen); der Betrag geht bis dahin
+       wie bisher ins Krankentaggeld-Feld, ohne Progressionsvorbehalt. **Offen.**
+     - `kein`: kein Taggeld im Lohnausweis, auch eine private Einzel-Taggeldversicherung, die dem
+       Arbeitnehmer direkt zahlt.
+     Anhaltspunkt, keine Entscheidung: Leistungen einer Versicherung sind nicht AHV-pflichtig, Lohn
+     ist es. `ahvContributionFit` (Kern) vergleicht Ziffer 9 mit AHV/IV/EO 5,3 % und ALV 1,1 % bis
+     148.200 CHF (Jahresparameter `swissSocialSecurity`) auf den Bruttolohn mit und ohne den Betrag
+     und sagt, was besser passt, oder „unklar“ innerhalb einer Toleranz oder wenn Ziffer 9 mehr
+     enthält (NBU-Prämie). Die Eule schlägt weiterhin zwei Wege vor (`TWO_PATHS_REQUIRED`); der
+     Nutzer wählt.
 6. **„Sonderfälle“ sind nur noch die Zeilen 7, 10–14, 16, 17, 21, 22.** Zeilen 9 und 20 druckt die
    App jetzt; die Frage in der Maske nennt Krankentaggeld und Überobligatorium nicht mehr. Zeile 10
    (SUVA-Geld) druckt die App inzwischen ebenfalls; die Frage nennt SUVA-Gelder nicht mehr.

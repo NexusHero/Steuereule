@@ -86,3 +86,23 @@ describe('the estimate as the owl reads it', () => {
     expect(prompt).toMatch(/Zeile für Zeile/)
   })
 })
+
+// Real-data run: the owl explained an estimate range with a reason it made up. The reading names the causes.
+describe('why the estimate is a range', () => {
+  it('names nothing for a point value', () => {
+    const reading = estimateReadingFrom(status)
+    expect(reading.kind === 'computed' && reading.rangeCauses).toEqual([])
+  })
+
+  it('names the provision range, amounts marked for later and open church tax, and the prompt says to quote only these', () => {
+    const ranged: TaxEstimateStatus = { ...status, provision: { from: 20500, to: 21000 }, result: { from: -2500, to: -2300 }, laterAmounts: 2, churchTaxOpen: true }
+    const reading = estimateReadingFrom(ranged)
+    const causes = (reading.kind === 'computed' ? reading.rangeCauses : undefined) ?? []
+    expect(causes.join(' ')).toContain('Vorsorgeaufwendungen')
+    expect(causes.join(' ')).toContain('20.500')
+    expect(causes.join(' ')).toContain('2 Beträge')
+    expect(causes.join(' ')).toContain('Kirchensteuer')
+    expect(buildStableSystemPrompt()).toContain('rangeCauses')
+  })
+})
+

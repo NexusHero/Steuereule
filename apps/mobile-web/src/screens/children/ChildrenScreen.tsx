@@ -158,8 +158,9 @@ export interface ChildrenScreenProps {
   readonly onBack?: () => void
   readonly taxYear?: number
   readonly initialKinder?: readonly ChildItem[] | undefined
-  readonly onAddChild?: ((kind: ChildInput) => Promise<void> | void) | undefined
-  readonly onSaveChild?: ((id: string, kind: ChildInput) => Promise<void> | void) | undefined
+  /** Resolves with the stored list when the server returns it, so a new child carries the id it was given. */
+  readonly onAddChild?: ((kind: ChildInput) => Promise<readonly ChildItem[] | void> | void) | undefined
+  readonly onSaveChild?: ((id: string, kind: ChildInput) => Promise<readonly ChildItem[] | void> | void) | undefined
   readonly onDeleteChild?: ((id: string) => Promise<void> | void) | undefined
   readonly onSingleParentQuestions?: (() => void) | undefined
   /** Married people cannot claim the Entlastungsbetrag für Alleinerziehende (§ 24b EStG), so its questions stay hidden. */
@@ -244,16 +245,18 @@ function ConnectedKinderScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TA
       initialKinder={query.data.data.kinder}
       onAddChild={(data) => {
         const task = (async () => {
-          await watchSaveResult(createChild.mutateAsync({ jahr: taxYear, data }))
+          const created = await watchSaveResult(createChild.mutateAsync({ jahr: taxYear, data }))
           await invalidate()
+          return created.status === 201 ? (created.data.kinder as readonly ChildItem[]) : undefined
         })()
         track(task)
         return task
       }}
       onSaveChild={(id, data) => {
         const task = (async () => {
-          await watchSaveResult(updateChild.mutateAsync({ jahr: taxYear, id, data }))
+          const updated = await watchSaveResult(updateChild.mutateAsync({ jahr: taxYear, id, data }))
           await invalidate()
+          return updated.status === 200 ? (updated.data.kinder as readonly ChildItem[]) : undefined
         })()
         track(task)
         return task
@@ -472,11 +475,12 @@ function KinderScreenView({
     }
     setSaving(true)
     setSaveError(null)
+    let stored: readonly ChildItem[] | void = undefined
     try {
       if (edited) {
-        if (onSaveChild) await onSaveChild(edited, payload)
+        if (onSaveChild) stored = await onSaveChild(edited, payload)
       } else if (onAddChild) {
-        await onAddChild(payload)
+        stored = await onAddChild(payload)
       }
     } catch {
       // The save did not reach the server or was refused: keep the form open with the user's input, and say so here.
@@ -486,7 +490,10 @@ function KinderScreenView({
       setSaving(false)
     }
     setSavedName(payload.firstName)
-    if (edited) {
+    if (stored) {
+      // The server's list: a new child has its own id, so editing it right away updates that child.
+      setKinder(stored)
+    } else if (edited) {
       setKinder(kinder.map((k) => (k.id === edited ? { ...k, ...payload } : k)))
     } else {
       setKinder([...kinder, { id: `local-${Date.now()}`, sequenceNumber: kinder.length + 1, ...payload }])

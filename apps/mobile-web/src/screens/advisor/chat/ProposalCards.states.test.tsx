@@ -63,6 +63,9 @@ describe('everything a card would write (ADR-0066 Zero-Write, real-data run)', (
     expect(box.textContent).toContain('Wird mit eingetragen')
     expect(screen.getByTestId('advisor-action-companion-childBenefitClaimEur').textContent).toMatch(/Kindergeld.*3\.060\s€/)
     expect(screen.getByTestId('advisor-action-companion-childcareFrom').textContent).toContain('01.10.2024')
+    // The field's own name, not only the form line it lands on (real-data run).
+    expect(screen.getByTestId('advisor-action-companion-childcareFrom').textContent).toContain('Betreuung von (')
+    expect(screen.getByTestId('advisor-action-companion-healthInsuranceAbroad').textContent).toContain('Versicherung im Ausland')
     expect(screen.getByTestId('advisor-action-companion-healthInsuranceAbroad').textContent).toMatch(/Ja$/)
   })
 

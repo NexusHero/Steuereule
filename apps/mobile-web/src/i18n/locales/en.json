@@ -720,7 +720,8 @@
       "IW": "Jewish Comm. Württemberg",
       "JD": "Jewish cult tax NRW",
       "JH": "Jewish cult tax Hamburg"
-    }
+    },
+    "ohneReligion": "Saved – except the religion: your consent is still missing for it."
   },
   "rechtliches": {
     "back": "Back",
@@ -1248,7 +1249,11 @@
       "schaetzungOffen": "We compare on the estimate in the cockpit. It still lacks: {{liste}}",
       "schaetzungNichtMoeglich": "We compare on the estimate in the cockpit, and it cannot be made here yet: {{grund}}",
       "fehltPartner": "Person B: {{was}}",
-      "fehltVeranlagungsart": "How you are assessed (set up the joint assessment in “Details for the return”)"
+      "fehltVeranlagungsart": "How you are assessed (set up the joint assessment in “Details for the return”)",
+      "schaetzungAbgeltungGuenstiger": "The Cockpit estimate counts your capital income with the flat-rate tax, which is also the cheaper side here.",
+      "schaetzungAbgeltungNeutral": "The Cockpit estimate counts your capital income with the flat-rate tax.",
+      "schaetzungQuelleGuenstiger": "The Cockpit estimate keeps the flat-rate tax withheld at source, which is also the cheaper side here.",
+      "schaetzungQuelleNeutral": "The Cockpit estimate keeps the flat-rate tax withheld at source."
     },
     "weiter": "Continue"
   },
@@ -1670,8 +1675,6 @@
     "heading": "Check before filing",
     "einreichbar": "All clear — no contradictions, nothing left open.",
     "nichtEinreichbar": "Something is still open:",
-    "stammdatenOffen_one": "1 personal detail is still missing for the printout (e.g. address or IBAN).",
-    "stammdatenOffen_other": "{{count}} personal details are still missing for the printout (e.g. address or IBAN).",
     "stammdatenUnbekannt": "We couldn't check right now whether your personal details are complete.",
     "weiterZumVergleich": "Continue to the assessment-type comparison",
     "werktageNote": "Honestly: the work-days and commuting-allowance check comes in a later step.",
@@ -1688,7 +1691,10 @@
       "erfasst-nicht-gerechnet": "Some captured amounts are not yet calculated.",
       "werbungskosten-uebersteigt-einnahmen": "Your work-related expenses exceed your income.",
       "betrag-spaeter": "At least one amount is still marked to be entered later."
-    }
+    },
+    "ausdruckOffen_one": "1 detail is still missing for the printout (e.g. address or IBAN).",
+    "ausdruckOffen_other": "{{count}} details are still missing for the printout (e.g. address or IBAN).",
+    "ibanHinweis": "An IBAN is missing. A payment needs none; should it become a refund, enter it in “Angaben für die Erklärung”."
   },
   "cockpit": {
     "appbarTitle": "Tax year",
@@ -1709,7 +1715,7 @@
       "nochOffen": "Still open",
       "offenePosten_one": "{{count}} item still open",
       "offenePosten_other": "{{count}} items still open",
-      "herkunftRegel": "Range rule · ADR-015",
+      "herkunftRegel": "While entries are open, we show a range instead of a fixed amount.",
       "herkunftRechenweg_one": "{{count}} open item × {{perItem}} uncertainty",
       "herkunftRechenweg_other": "{{count}} open items × {{perItem}} uncertainty",
       "gatedHeading": "Honestly: we're not good enough for this yet.",
@@ -2269,7 +2275,6 @@
         "krankentaggeldChf": "Your daily sickness insurance contributions (CHF, 0 if none)",
         "steuerfreiesKrankentaggeldChf": "Tax-free daily sickness benefit paid out within the gross wage, e.g. “KK-Taggeld” on the supplement (CHF, 0 if none)",
         "steuerfreiesUnfalltaggeldChf": "Daily accident benefit (UVG/SUVA) within the gross wage",
-        "steuerfreiesUnfalltaggeldChfHilfe": "Tax-free, but it raises the tax rate (progression clause). A daily sickness benefit belongs in the field above.",
         "pkArbeitnehmerChf": "Pension fund – mandatory part (BVG): your contribution (CHF)",
         "pkArbeitgeberGesamtChf": "Pension fund – all employer contributions, mandatory and supplementary (CHF)",
         "pkArbeitgeberChf": "Pension fund – mandatory part (BVG): employer contribution (CHF)",
@@ -2280,6 +2285,38 @@
         "familienzulagenImBruttolohn": "Included in gross salary, Ziffer 8?",
         "familienzulagenImBruttolohnHilfe": "Only then is the allowance deducted from the gross salary (Anlage N-Gre line 8). Otherwise it belongs to the child (Children mask).",
         "kvZuschussAnspruch": "Entitled to tax-free subsidies or employer contributions to health insurance? (Anlage Vorsorgeaufwand line 49)"
+      },
+      "taggeld": {
+        "frage": "Where did the daily benefit in the gross wage (Ziffer 8) come from?",
+        "hilfe": "Only the daily benefit of an insurance is tax-free and deducted from the gross wage. A remark such as “KK-Taggeld Verrechnung” on the Lohnausweis points to the insurance. If a private insurance pays you directly, it is not in the Lohnausweis: then “no daily benefit”.",
+        "quelle": {
+          "krankentaggeldversicherung": "Daily sickness benefit insurance (offset with the wage)",
+          "lohnfortzahlung": "Continued pay by the employer without an insurance",
+          "beides": "Both (the insurance pays part, the employer tops up)",
+          "unfallversicherung": "Accident insurance (UVG/SUVA)",
+          "mutterschaftIv": "Maternity / disability (IV)",
+          "kein": "No daily benefit"
+        },
+        "betrag": {
+          "krankentaggeldversicherung": "Daily sickness benefit of the insurance within the gross wage (CHF)",
+          "beides": "Paid by the insurance (CHF)",
+          "unfallversicherung": "Daily accident benefit (UVG/SUVA) within the gross wage (CHF)",
+          "mutterschaftIv": "Maternity or disability (IV) daily benefit within the gross wage (CHF)"
+        },
+        "betragHilfe": {
+          "krankentaggeldversicherung": "As on the insurer’s benefit statement. Tax-free, with no effect on the tax rate.",
+          "beides": "Only the insurance’s part as on the benefit statement. The employer’s top-up stays wage and is not deducted.",
+          "unfallversicherung": "Tax-free, but it raises the tax rate (progression clause).",
+          "mutterschaftIv": "Tax-free. The app does not fill the Anlage N-Gre’s own line for maternity and disability benefits yet: the amount is deducted like a daily sickness benefit for now, without the progression clause."
+        },
+        "lohnfortzahlung": "Continued pay by the employer is wage: nothing is deducted.",
+        "ahv": {
+          "fits_without": "Plausibility hint (not a decision): the contributions in Ziffer 9 ({{ziffer9}}) fit the gross wage without the daily benefit (AHV/IV/EO and ALV about {{ohne}}) better than with it (about {{mit}}), by {{abstand}}. That points to an insurance benefit, which is no AHV wage. Ziffer 9 can also hold the NBU premium; the benefit statement decides.",
+          "fits_with": "Plausibility hint (not a decision): the contributions in Ziffer 9 ({{ziffer9}}) fit the gross wage with the daily benefit (AHV/IV/EO and ALV about {{mit}}) better than without it (about {{ohne}}), by {{abstand}}. That points to the money being paid as wage, i.e. continued pay by the employer. Ziffer 9 can also hold the NBU premium; the benefit statement decides.",
+          "too_close": "Plausibility hint (not a decision): with and without the daily benefit the contributions in Ziffer 9 would be almost the same (about {{mit}} and {{ohne}}); they cannot tell the source apart.",
+          "nbu_likely": "Plausibility hint (not a decision): Ziffer 9 ({{ziffer9}}) holds more than AHV/IV/EO and ALV on the whole gross wage (about {{mit}}), likely the NBU premium too; it does not show where the daily benefit came from.",
+          "fits_neither": "Plausibility hint (not a decision): Ziffer 9 ({{ziffer9}}) is well below the contributions with the daily benefit (about {{mit}}) and without it (about {{ohne}}); it does not show where the daily benefit came from."
+        }
       },
       "sonderfaelle": "Were there unemployment benefits, maternity or disability daily allowances, tax-free supplements, direct insurance, options, travel reimbursement, flat expenses, or a company car?",
       "ja": "Yes",

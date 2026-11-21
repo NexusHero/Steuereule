@@ -160,6 +160,7 @@ const EXPECTED_ENCRYPTED_FIELDS: ExpectedEncryptedField[] = [
   { model: 'ChSalaryCertificate', field: 'pkArbeitgeberGesamtChf', encrypt: true, strictDecryption: true },
   { model: 'ChSalaryCertificate', field: 'steuerfreiesKrankentaggeldChf', encrypt: true, strictDecryption: true },
   { model: 'ChSalaryCertificate', field: 'steuerfreiesUnfalltaggeldChf', encrypt: true, strictDecryption: true },
+  { model: 'ChSalaryCertificate', field: 'taggeldQuelle', encrypt: true, strictDecryption: true },
   { model: 'ChSalaryCertificate', field: 'krankentaggeldArbeitgeberProzent', encrypt: true, strictDecryption: true },
   { model: 'ChSalaryCertificate', field: 'krankentaggeldArbeitgeberChf', encrypt: true, strictDecryption: true },
   { model: 'ChSalaryCertificate', field: 'nbuvArbeitgeberProzent', encrypt: true, strictDecryption: true },

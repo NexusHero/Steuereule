@@ -12,7 +12,7 @@ import {
 import {
   useInterviewControllerGetInterview,
   useLstbControllerGetLstb,
-  useMasterDataControllerRead,
+  usePrintoutControllerCheck,
   type LstbResponseDto,
 } from '@steuereule/api-client'
 import { pathFromAnswers } from '../funnel/KontoWandScreen'
@@ -28,7 +28,10 @@ export interface PlausibilityHookResult {
   readonly status: PlausibilityStatus
   readonly conflicts: readonly Conflict[]
   readonly notices: readonly Notice[]
-  readonly missingPersonalDetails: number | null
+  /** What the printout check still names (the same list the printout blocks on); null when it could not be read. */
+  readonly missingForPrintout: number | null
+  /** Missing, but not needed for this return (`iban` for a payment). */
+  readonly printoutHints: readonly string[]
   readonly answers: Answers
   readonly retry: () => void
 }
@@ -77,21 +80,21 @@ export function usePlausibility(
   const enabled = options.enabled ?? true
   const lstbQuery = useLstbControllerGetLstb(taxYear, undefined, { query: { enabled } })
   const interviewQuery = useInterviewControllerGetInterview(taxYear, undefined, { query: { enabled } })
-  const masterDataQuery = useMasterDataControllerRead({ query: { enabled } })
+  const printoutQuery = usePrintoutControllerCheck(taxYear, { query: { enabled } })
   const capability = useSelfEmploymentCapability()
 
   const retry = () => {
     void lstbQuery.refetch()
     void interviewQuery.refetch()
-    void masterDataQuery.refetch()
+    void printoutQuery.refetch()
   }
 
   if (!enabled) {
-    return { status: 'ready', conflicts: [], notices: [], missingPersonalDetails: null, answers: {}, retry }
+    return { status: 'ready', conflicts: [], notices: [], missingForPrintout: null, printoutHints: [], answers: {}, retry }
   }
 
-  if (lstbQuery.isPending || interviewQuery.isPending || masterDataQuery.isPending || (enabled && capability.pending)) {
-    return { status: 'loading', conflicts: [], notices: [], missingPersonalDetails: null, answers: {}, retry }
+  if (lstbQuery.isPending || interviewQuery.isPending || printoutQuery.isPending || (enabled && capability.pending)) {
+    return { status: 'loading', conflicts: [], notices: [], missingForPrintout: null, printoutHints: [], answers: {}, retry }
   }
 
   if (
@@ -100,20 +103,20 @@ export function usePlausibility(
     interviewQuery.isError ||
     interviewQuery.data?.status !== 200
   ) {
-    return { status: 'error', conflicts: [], notices: [], missingPersonalDetails: null, answers: {}, retry }
+    return { status: 'error', conflicts: [], notices: [], missingForPrintout: null, printoutHints: [], answers: {}, retry }
   }
 
   const data = dataFromResponse(lstbQuery.data.data)
   const answers = interviewQuery.data.data.answers as Answers
   const result = checkPlausibility(foldInputs(data, answers, capability.enabled), { selfEmployment: capability.enabled })
-  const missingPersonalDetails =
-    masterDataQuery.data?.status === 200 ? masterDataQuery.data.data.missing.length : null
+  const printout = printoutQuery.data?.status === 200 ? printoutQuery.data.data : null
 
   return {
     status: 'ready',
     conflicts: result.kind === 'nicht-einreichbar' ? result.conflicts : [],
     notices: result.notices,
-    missingPersonalDetails,
+    missingForPrintout: printout === null ? null : printout.missing.length,
+    printoutHints: printout?.hints ?? [],
     answers,
     retry,
   }

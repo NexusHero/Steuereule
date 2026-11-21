@@ -126,19 +126,19 @@ export function MasterDataScreen({ onBack, taxYear = CURRENT_TAX_YEAR, onRecordP
   )
 
   function submit() {
-    if (form.religion !== null && !form.religionConsent) {
-      triggerSaveErrorHaptic()
-      setMessage({ kind: 'fehler', text: t('stammdaten.saveError.einwilligung') })
-      return
-    }
+    // Art. 9 DSGVO: a religion without the consent is not sent; everything else is saved anyway (real-data run),
+    // and the stored religion, consented before, stays.
+    const religionWaits = form.religion !== null && !form.religionConsent
+    const sent = religionWaits ? { ...form, religion: status.religion, religionConsent: status.religion !== null } : form
     save.mutate(
-      { data: zuPutDto(form) },
+      { data: zuPutDto(sent) },
       {
         onSuccess: (response) => {
           if (response.status === 200) {
             queryClient.setQueryData(query.queryKey, response)
-            setDraft(null)
-            setMessage({ kind: 'ok', text: t('stammdaten.gespeichert') })
+            setDraft(religionWaits ? { ...toDraft(response.data), religion: form.religion, religionConsent: false } : null)
+            if (religionWaits) triggerSaveErrorHaptic()
+            setMessage(religionWaits ? { kind: 'fehler', text: t('stammdaten.ohneReligion') } : { kind: 'ok', text: t('stammdaten.gespeichert') })
           } else {
             triggerSaveErrorHaptic()
             setMessage({ kind: 'fehler', text: t('stammdaten.saveError.validation') })

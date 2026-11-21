@@ -151,9 +151,11 @@ describe('the Swiss pension split and the tax-free Krankentaggeld in the catalog
     expect(describeFieldForPrompt(fieldSpec('chLohnausweis', 'pkArbeitgeberChf')!)).toContain('nur der obligatorische BVG-Teil')
     expect(describeFieldForPrompt(fieldSpec('chLohnausweis', 'pkArbeitgeberGesamtChf')!)).toContain('alle Arbeitgeberbeiträge')
     expect(describeFieldForPrompt(fieldSpec('chLohnausweis', 'krankentaggeldChf')!)).toContain('nicht das ausgezahlte Taggeld')
-    expect(describeFieldForPrompt(fieldSpec('chLohnausweis', 'steuerfreiesKrankentaggeldChf')!)).toBe(
-      'steuerfreiesKrankentaggeldChf (Betrag, ganze Zahl; ausgezahltes steuerfreies Krankentaggeld, NUR wenn es im Bruttolohn Ziffer 8 enthalten ist (N-Gre Zeile 9); der Lohnausweis sagt das nicht eindeutig: immer nachfragen und nur über `propose_two_paths` vorschlagen (ein Weg 0 = nicht abziehen, ein Weg der Betrag))',
-    )
+    const sickPay = describeFieldForPrompt(fieldSpec('chLohnausweis', 'steuerfreiesKrankentaggeldChf')!)
+    expect(sickPay).toContain('NUR wenn es im Bruttolohn Ziffer 8 enthalten ist (N-Gre Zeile 9)')
+    expect(sickPay).toContain('`propose_two_paths`')
+    expect(sickPay).toContain('Lohnfortzahlung des Arbeitgebers ohne Versicherung: 0')
+    expect(sickPay).toContain('nur der Teil der Versicherung')
   })
 })
 
@@ -167,6 +169,20 @@ describe('the daily accident benefit (UVG/SUVA) in the catalogue', () => {
     expect(hint).toContain('steuerfreiesKrankentaggeldChf')
     expect(hint).toContain('erhöht aber den Steuersatz')
     expect(hint).toContain('propose_two_paths')
+  })
+})
+
+describe('where the daily benefit came from (taggeldQuelle)', () => {
+  it('is one of the six answers, which the owl may write, with a hint naming the field of each', () => {
+    const spec = fieldSpec('chLohnausweis', 'taggeldQuelle')
+    expect(spec?.aiWritable).toBe(true)
+    expect(spec?.value).toEqual({ kind: 'enum', values: ['krankentaggeldversicherung', 'lohnfortzahlung', 'beides', 'unfallversicherung', 'mutterschaftIv', 'kein'] })
+    expect(validateFieldValue('chLohnausweis', 'taggeldQuelle', 'beides')).toEqual(ok('beides'))
+    expect(validateFieldValue('chLohnausweis', 'taggeldQuelle', 'Arbeitgeber').ok).toBe(false)
+    const hint = describeFieldForPrompt(spec!)
+    expect(hint).toContain('Ziffer 8')
+    expect(hint).toContain('steuerfreiesUnfalltaggeldChf')
+    expect(hint).toContain('Lohnfortzahlung')
   })
 })
 

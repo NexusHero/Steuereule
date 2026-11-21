@@ -150,7 +150,23 @@ describe('the Günstigerprüfung verdicts', () => {
     expect((await screen.findByTestId('guenstigerpruefung-abgeltung')).textContent).toBe('1.846,25\u00a0€')
     expect(screen.getByTestId('guenstigerpruefung-persoenlich').textContent).toBe('2.940\u00a0€')
     expect(screen.getByTestId('guenstigerpruefung-unterschied').textContent).toBe('1.093,75\u00a0€')
-    expect(screen.getByText('Die Schätzung im Cockpit rechnet deine Kapitalerträge mit der Abgeltungsteuer, nicht mit dem günstigeren Tarif.')).toBeTruthy()
+    // The flat tax is the cheaper side here: the line must not call the tariff the cheaper one (real-data run).
+    expect(screen.getByText('Die Schätzung im Cockpit rechnet deine Kapitalerträge mit der Abgeltungsteuer, und das ist hier auch die günstigere Seite.')).toBeTruthy()
+    expect(screen.queryByText(/nicht mit dem günstigeren Tarif/)).toBeNull()
+  })
+
+  it('says the estimate leaves out the cheaper tariff only when the tariff is the cheaper side', async () => {
+    mockCapital()
+    mockVerdict({ kind: 'eindeutig', recommendation: 'persoenlich', flatRateTax: 791.25, personal: 0, delta: -791.25, uncertainty: { kind: 'bestimmt', upperLimit: 0 }, estimateTreatment: 'abgeltung' })
+    renderCapital()
+    expect(await screen.findByText('Die Schätzung im Cockpit rechnet deine Kapitalerträge mit der Abgeltungsteuer, nicht mit dem günstigeren Tarif.')).toBeTruthy()
+  })
+
+  it('names no cheaper side for a result too close to call', async () => {
+    mockCapital()
+    mockVerdict({ kind: 'zu-knapp', flatRateTax: 800, personal: 790, delta: -10, uncertainty: { kind: 'bestimmt', upperLimit: 0 }, estimateTreatment: 'abgeltung' })
+    renderCapital()
+    expect(await screen.findByText('Die Schätzung im Cockpit rechnet deine Kapitalerträge mit der Abgeltungsteuer.')).toBeTruthy()
   })
 
   it('says the single estimate leaves the flat tax withheld at source', async () => {

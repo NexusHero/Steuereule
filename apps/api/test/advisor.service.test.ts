@@ -8,6 +8,7 @@ import { AuditService } from '../src/audit/audit.service.js'
 import { ConfirmationService } from '../src/confirmation/confirmation.service.js'
 import { fieldAccessFrom } from '../src/confirmation/field-access.js'
 import { RagKiAdapter } from '../src/ki/ki.adapter.js'
+import { historySources } from '../src/advisor/advisor-shared.js'
 import { OwlModeService } from '../src/owl-mode/owl-mode.service.js'
 import { FakeAssessmentRepository } from './fakes/fake-assessment.repository.js'
 import { FakeAuditRepository } from './fakes/fake-audit.repository.js'
@@ -229,13 +230,17 @@ describe('AdvisorService (In-App Steuerberater Agent "Deine Eule")', () => {
       message:
         'Ich bin Markus Brenner (Kind Mila, Steuer-ID 12 345 678 901, IBAN DE89 3704 0044 0532 0130 00) und möchte 250 € Spenden eintragen.',
     })
-    expect(res.userMessage.content).not.toContain('Markus')
-    expect(res.userMessage.content).not.toContain('Mila')
-    expect(res.userMessage.content).not.toContain('12 345 678 901')
-    expect(res.userMessage.content).not.toContain('DE89 3704')
-    expect(res.userMessage.content).toContain('[MANDANT]')
-    expect(res.userMessage.content).toContain('[STEUER-ID-GESCHÜTZT]')
-    expect(res.userMessage.content).toContain('[IBAN-GESCHÜTZT]')
+    // The user's own message is kept and shown as written (real-data run: „[MANDANT]“ in the user's text after
+    // the consent); only what goes to the model is masked, on every read of the history.
+    expect(res.userMessage.content).toBe('Ich bin Markus Brenner (Kind Mila, Steuer-ID 12 345 678 901, IBAN DE89 3704 0044 0532 0130 00) und möchte 250 € Spenden eintragen.')
+    const [forModel] = historySources([{ ...res.userMessage, meta: null, status: 'done' } as never], ['Markus', 'Brenner', 'Mila'])
+    expect(forModel!.content).not.toContain('Markus')
+    expect(forModel!.content).not.toContain('Mila')
+    expect(forModel!.content).not.toContain('12 345 678 901')
+    expect(forModel!.content).not.toContain('DE89 3704')
+    expect(forModel!.content).toContain('[MANDANT]')
+    expect(forModel!.content).toContain('[STEUER-ID-GESCHÜTZT]')
+    expect(forModel!.content).toContain('[IBAN-GESCHÜTZT]')
   })
 
   it('enforces Zero-Write during chat, applies action with confirmed=true on 1-click Apply, and restores previousValue on 1-click Undo', async () => {
@@ -740,10 +745,14 @@ describe('AdvisorService (In-App Steuerberater Agent "Deine Eule")', () => {
     const withPrintout = new AdvisorService(advisorRepo, owlModeService, confirmationService, new AuditService(auditRepo), interviewRepo, lstbRepo, chRepo, commuteRepo, childRepo, new FakeRentalRepository(), new FakeCapitalRepository(), profileRepo, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, printout as never)
     await confirmationService.writeConfirmedByAdvisor(USER, YEAR, 'chLohnausweis.bruttolohn-total', '98000')
     const keys = (await withPrintout.buildCaseDigest(USER, YEAR)).furtherFacts?.printoutPlan?.questions.map((q) => q.key) ?? []
-    // A recorded Swiss wage statement asks once whether a paid-out sickness benefit sits in the gross wage.
-    expect(keys).toContain('A|chLohnausweis.steuerfreiesKrankentaggeldChf')
+    // A recorded Swiss wage statement asks once where a daily benefit in the gross wage came from.
+    expect(keys).toContain('A|chLohnausweis.taggeldQuelle')
+    // The answer goes through the confirmed write path like any field; „Lohnfortzahlung“ deducts nothing.
+    await confirmationService.writeConfirmedByAdvisor(USER, YEAR, 'chLohnausweis.taggeldQuelle', 'lohnfortzahlung')
     await confirmationService.writeConfirmedByAdvisor(USER, YEAR, 'chLohnausweis.steuerfreiesKrankentaggeldChf', '0')
+    expect(await confirmationService.readRawValue(USER, YEAR, 'chLohnausweis.taggeldQuelle')).toBe('lohnfortzahlung')
     const after = (await withPrintout.buildCaseDigest(USER, YEAR)).furtherFacts?.printoutPlan?.questions.map((q) => q.key) ?? []
+    expect(after).not.toContain('A|chLohnausweis.taggeldQuelle')
     expect(after).not.toContain('A|chLohnausweis.steuerfreiesKrankentaggeldChf')
   })
 

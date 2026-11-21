@@ -38,8 +38,8 @@ export function PlausibilityScreen({ onBack, onDone, taxYear = CURRENT_TAX_YEAR 
     )
   }
 
-  const { conflicts, notices, missingPersonalDetails } = plausibility
-  const allClear = conflicts.length === 0 && missingPersonalDetails === 0
+  const { conflicts, notices, missingForPrintout, printoutHints } = plausibility
+  const allClear = conflicts.length === 0 && missingForPrintout === 0
 
   return (
     <ScrollView contentContainerStyle={bp === 's' ? styles.screen : styles.wideScreen} testID="screen-container">
@@ -56,10 +56,11 @@ export function PlausibilityScreen({ onBack, onDone, taxYear = CURRENT_TAX_YEAR 
       ) : (
         <Text style={styles.nichtEinreichbar}>{tr('plausibilitaet.nichtEinreichbar')}</Text>
       )}
-      {missingPersonalDetails !== null && missingPersonalDetails > 0 ? (
-        <Text style={styles.nichtEinreichbar}>{tr('plausibilitaet.stammdatenOffen', { count: missingPersonalDetails })}</Text>
+      {missingForPrintout !== null && missingForPrintout > 0 ? (
+        <Text style={styles.nichtEinreichbar}>{tr('plausibilitaet.ausdruckOffen', { count: missingForPrintout })}</Text>
       ) : null}
-      {missingPersonalDetails === null ? <Text style={styles.nichtEinreichbar}>{tr('plausibilitaet.stammdatenUnbekannt')}</Text> : null}
+      {missingForPrintout === null ? <Text style={styles.nichtEinreichbar}>{tr('plausibilitaet.stammdatenUnbekannt')}</Text> : null}
+      {printoutHints.includes('iban') ? <Text style={styles.hinweisItem}>{tr('plausibilitaet.ibanHinweis')}</Text> : null}
 
       {conflicts.length > 0 ? (
         <View style={styles.block}>

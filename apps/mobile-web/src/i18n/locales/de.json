@@ -720,7 +720,8 @@
       "IW": "Israelit. Religionsgem. Württemberg",
       "JD": "Jüdische Kultussteuer NRW",
       "JH": "Jüdische Kultussteuer Hamburg"
-    }
+    },
+    "ohneReligion": "Gespeichert – nur die Religion nicht: Dafür fehlt noch deine Einwilligung."
   },
   "rechtliches": {
     "back": "Zurück",
@@ -1248,7 +1249,11 @@
       "schaetzungOffen": "Den Vergleich rechnen wir auf der Schätzung im Cockpit. Ihr fehlt noch: {{liste}}",
       "schaetzungNichtMoeglich": "Den Vergleich rechnen wir auf der Schätzung im Cockpit, und die geht hier noch nicht: {{grund}}",
       "fehltPartner": "Person B: {{was}}",
-      "fehltVeranlagungsart": "Wie ihr veranlagt werdet (Zusammenveranlagung in „Angaben für die Erklärung“ anlegen)"
+      "fehltVeranlagungsart": "Wie ihr veranlagt werdet (Zusammenveranlagung in „Angaben für die Erklärung“ anlegen)",
+      "schaetzungAbgeltungGuenstiger": "Die Schätzung im Cockpit rechnet deine Kapitalerträge mit der Abgeltungsteuer, und das ist hier auch die günstigere Seite.",
+      "schaetzungAbgeltungNeutral": "Die Schätzung im Cockpit rechnet deine Kapitalerträge mit der Abgeltungsteuer.",
+      "schaetzungQuelleGuenstiger": "Die Schätzung im Cockpit lässt es bei der einbehaltenen Abgeltungsteuer, und das ist hier auch die günstigere Seite.",
+      "schaetzungQuelleNeutral": "Die Schätzung im Cockpit lässt es bei der einbehaltenen Abgeltungsteuer."
     },
     "weiter": "Weiter"
   },
@@ -1670,8 +1675,6 @@
     "heading": "Prüfung vor Abgabe",
     "einreichbar": "Alles klar — keine Widersprüche, nichts mehr offen.",
     "nichtEinreichbar": "Da ist noch etwas offen:",
-    "stammdatenOffen_one": "Für den Ausdruck fehlt noch 1 persönliche Angabe (z. B. Adresse oder IBAN).",
-    "stammdatenOffen_other": "Für den Ausdruck fehlen noch {{count}} persönliche Angaben (z. B. Adresse oder IBAN).",
     "stammdatenUnbekannt": "Ob deine persönlichen Angaben vollständig sind, konnten wir gerade nicht prüfen.",
     "weiterZumVergleich": "Weiter zum Veranlagungsartenvergleich",
     "werktageNote": "Ehrlich: die Arbeitstage- und Pendlerpauschale-Prüfung folgt in einem späteren Schritt.",
@@ -1688,7 +1691,10 @@
       "erfasst-nicht-gerechnet": "Erfasste, aber noch nicht gerechnete Beträge sind vorhanden.",
       "werbungskosten-uebersteigt-einnahmen": "Deine Werbungskosten übersteigen die Einnahmen.",
       "betrag-spaeter": "Mindestens ein Betrag ist noch mit „Später eintragen“ markiert."
-    }
+    },
+    "ausdruckOffen_one": "Für den Ausdruck fehlt noch 1 Angabe (z. B. Adresse oder IBAN).",
+    "ausdruckOffen_other": "Für den Ausdruck fehlen noch {{count}} Angaben (z. B. Adresse oder IBAN).",
+    "ibanHinweis": "Eine IBAN fehlt. Für eine Nachzahlung brauchst du keine; ergibt sich doch eine Erstattung, trag sie in „Angaben für die Erklärung“ ein."
   },
   "cockpit": {
     "appbarTitle": "Steuerjahr",
@@ -1709,7 +1715,7 @@
       "nochOffen": "Noch offen",
       "offenePosten_one": "{{count}} Posten offen",
       "offenePosten_other": "{{count}} Posten offen",
-      "herkunftRegel": "Spannen-Regel · ADR-015",
+      "herkunftRegel": "Solange Angaben offen sind, zeigen wir eine Spanne statt eines festen Betrags.",
       "herkunftRechenweg_one": "{{count}} offener Posten × {{perItem}} Unsicherheit",
       "herkunftRechenweg_other": "{{count}} offene Posten × {{perItem}} Unsicherheit",
       "gatedHeading": "Ehrlich: dafür sind wir noch nicht gut genug.",
@@ -2269,7 +2275,6 @@
         "krankentaggeldChf": "Deine Beiträge zur Krankentaggeldversicherung (CHF, ggf. 0)",
         "steuerfreiesKrankentaggeldChf": "Ausgezahltes steuerfreies Krankentaggeld im Bruttolohn, z. B. „KK-Taggeld“ im Zusatzblatt (CHF, ggf. 0)",
         "steuerfreiesUnfalltaggeldChf": "Unfalltaggeld (UVG/SUVA) im Bruttolohn",
-        "steuerfreiesUnfalltaggeldChfHilfe": "Steuerfrei, erhöht aber den Steuersatz (Progressionsvorbehalt). Krankentaggeld gehört ins Feld darüber.",
         "pkArbeitnehmerChf": "Pensionskasse – davon obligatorisch (BVG): dein Beitrag (CHF)",
         "pkArbeitgeberGesamtChf": "Pensionskasse – alle Beiträge des Arbeitgebers, obligatorisch und überobligatorisch (CHF)",
         "pkArbeitgeberChf": "Pensionskasse – davon obligatorisch (BVG): Beitrag des Arbeitgebers (CHF)",
@@ -2280,6 +2285,38 @@
         "familienzulagenImBruttolohn": "Im Bruttolohn Ziffer 8 enthalten?",
         "familienzulagenImBruttolohnHilfe": "Nur dann wird die Zulage vom Bruttolohn abgezogen (Anlage N-Gre Zeile 8). Sonst gehört sie zum Kind (Maske Kinder).",
         "kvZuschussAnspruch": "Anspruch auf steuerfreie Zuschüsse oder Arbeitgeberbeiträge zur Krankenversicherung? (Anlage Vorsorgeaufwand Zeile 49)"
+      },
+      "taggeld": {
+        "frage": "Woher kam das Taggeld im Bruttolohn (Ziffer 8)?",
+        "hilfe": "Nur das Taggeld einer Versicherung ist steuerfrei und wird vom Bruttolohn abgezogen. Ein Hinweis auf die Versicherung ist eine Bemerkung wie „KK-Taggeld Verrechnung“ auf dem Lohnausweis. Zahlt eine private Versicherung dir direkt, steht es nicht im Lohnausweis: dann „kein Taggeld“.",
+        "quelle": {
+          "krankentaggeldversicherung": "Krankentaggeldversicherung (mit dem Lohn verrechnet)",
+          "lohnfortzahlung": "Lohnfortzahlung des Arbeitgebers ohne Versicherung",
+          "beides": "beides (Versicherung zahlt einen Teil, der Arbeitgeber stockt auf)",
+          "unfallversicherung": "Unfallversicherung (UVG/SUVA)",
+          "mutterschaftIv": "Mutterschaft / IV",
+          "kein": "kein Taggeld"
+        },
+        "betrag": {
+          "krankentaggeldversicherung": "Krankentaggeld der Versicherung im Bruttolohn (CHF)",
+          "beides": "Davon von der Versicherung gezahlt (CHF)",
+          "unfallversicherung": "Unfalltaggeld (UVG/SUVA) im Bruttolohn (CHF)",
+          "mutterschaftIv": "Mutterschafts- oder IV-Taggeld im Bruttolohn (CHF)"
+        },
+        "betragHilfe": {
+          "krankentaggeldversicherung": "Laut Taggeld-Abrechnung des Versicherers. Steuerfrei, ohne Einfluss auf den Steuersatz.",
+          "beides": "Nur den Teil der Versicherung laut Taggeld-Abrechnung. Die Aufstockung des Arbeitgebers bleibt Lohn und wird nicht abgezogen.",
+          "unfallversicherung": "Steuerfrei, erhöht aber den Steuersatz (Progressionsvorbehalt).",
+          "mutterschaftIv": "Steuerfrei. Die eigene Zeile der Anlage N-Gre für Mutterschafts- und IV-Taggelder füllt die App noch nicht: Der Betrag wird vorerst wie Krankentaggeld abgezogen, ohne Progressionsvorbehalt."
+        },
+        "lohnfortzahlung": "Die Lohnfortzahlung des Arbeitgebers ist Lohn: Es wird nichts abgezogen.",
+        "ahv": {
+          "fits_without": "Hinweis zur Plausibilität (keine Entscheidung): Die Beiträge in Ziffer 9 ({{ziffer9}}) passen besser zum Bruttolohn ohne das Taggeld (AHV/IV/EO und ALV etwa {{ohne}}) als mit dem Taggeld (etwa {{mit}}), um {{abstand}}. Das spricht für eine Versicherungsleistung, denn sie ist kein AHV-pflichtiger Lohn. Ziffer 9 kann auch die NBU-Prämie enthalten; entscheidend ist die Taggeld-Abrechnung.",
+          "fits_with": "Hinweis zur Plausibilität (keine Entscheidung): Die Beiträge in Ziffer 9 ({{ziffer9}}) passen besser zum Bruttolohn mit dem Taggeld (AHV/IV/EO und ALV etwa {{mit}}) als ohne das Taggeld (etwa {{ohne}}), um {{abstand}}. Das spricht dafür, dass das Geld als Lohn gezahlt wurde, also als Lohnfortzahlung des Arbeitgebers. Ziffer 9 kann auch die NBU-Prämie enthalten; entscheidend ist die Taggeld-Abrechnung.",
+          "too_close": "Hinweis zur Plausibilität (keine Entscheidung): Mit und ohne das Taggeld ergäben sich fast dieselben Beiträge in Ziffer 9 (etwa {{mit}} und {{ohne}}); daran lässt sich die Herkunft nicht unterscheiden.",
+          "nbu_likely": "Hinweis zur Plausibilität (keine Entscheidung): Ziffer 9 ({{ziffer9}}) enthält mehr als AHV/IV/EO und ALV auf den ganzen Bruttolohn (etwa {{mit}}), wahrscheinlich auch die NBU-Prämie; daran lässt sich die Herkunft des Taggelds nicht ablesen.",
+          "fits_neither": "Hinweis zur Plausibilität (keine Entscheidung): Ziffer 9 ({{ziffer9}}) liegt deutlich unter den Beiträgen mit dem Taggeld (etwa {{mit}}) und ohne das Taggeld (etwa {{ohne}}); daran lässt sich die Herkunft nicht ablesen."
+        }
       },
       "sonderfaelle": "Gab es Arbeitslosengeld, Mutterschafts- oder IV-Taggelder, steuerfreie Zuschläge, Direktversicherung, Optionsrechte, Fahrtkostenersatz, Spesenpauschalen oder einen Firmenwagen?",
       "ja": "Ja",
