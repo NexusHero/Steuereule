@@ -49,8 +49,9 @@ export async function runScenario14(browser, webOrigin) {
   await page.locator('[data-testid="cockpit-abgabe-vorbereiten"]').waitFor({ state: 'visible', timeout: 10_000 })
   await page.locator('[data-testid="cockpit-abgabe-vorbereiten"]').click()
 
-  await page.locator('[data-testid="verheiratet-ja"]').waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator('[data-testid="verheiratet-ja"]').click()
+  // The joint return is recorded, so no married question (Echtdatenlauf 4); the comparison is opened on demand.
+  await page.locator('[data-testid="abgabe-vergleich-oeffnen"]').waitFor({ state: 'visible', timeout: 10_000 })
+  await page.locator('[data-testid="abgabe-vergleich-oeffnen"]').click()
 
   const zveBInput = page.locator('[data-testid="zveb-input"]')
   await zveBInput.waitFor({ state: 'visible', timeout: 10_000 })
@@ -58,10 +59,10 @@ export async function runScenario14(browser, webOrigin) {
   await zveBInput.blur()
 
   await page.locator('text=Zusammenveranlagung').first().waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator('[data-testid="veranlagungsartenvergleich-weiter"]').click()
+  await page.locator('[data-testid="abgabe-vergleich-schliessen"]').click()
   const printBtn = page.locator('[data-testid="abgabe-zum-ausdruck"]')
   await printBtn.waitFor({ state: 'visible', timeout: 10_000 })
-  if (await printBtn.isDisabled()) fail('Expected abgabe-zum-ausdruck enabled after FilingTypeComparison in Scenario 14')
+  if (await printBtn.isDisabled()) fail('Expected abgabe-zum-ausdruck enabled with the optional FilingTypeComparison in Scenario 14')
   await page.locator('[data-testid="abgabe-zurueck"]').click()
   await page.locator('[data-testid="cockpit-kacheln"]').waitFor({ state: 'visible', timeout: 10_000 })
   console.log('[Scenario 14] PASS: Married couple FilingTypeComparison calculation verified.')
