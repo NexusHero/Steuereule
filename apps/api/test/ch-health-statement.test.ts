@@ -130,6 +130,12 @@ describe('the health insurer’s statement', () => {
       await parse(strategy, secondHalf("1'800.00", '01.03.2025', '31.12.2025'))
       expect((await pendingPremiums(kit)).map((d) => d.newValue).sort()).toEqual(['1800', '3800'])
     })
+
+    it('still offers both ways when a statement names no period (N2: never added silently)', async () => {
+      const { kit, strategy } = await firstApplied()
+      await parse(strategy, secondHalf("1'800.00").replace('01.07.2025 - 31.12.2025 ', ''))
+      expect((await pendingPremiums(kit)).map((d) => d.newValue).sort()).toEqual(['1800', '3800'])
+    })
   })
 
   it('converts the child’s premiums at the official annual average while no rate is chosen, to be checked (ADR-0086)', async () => {

@@ -524,8 +524,9 @@ export class AdvisorDocumentStaging {
         continue
       }
       // A second insurer's statement for another part of the year adds up; „ersetzen“ would delete the first
-      // insurer's premium (real-data run). Both ways stay only where the periods overlap or the value was typed.
-      if (how === 'ask' && item.accumulate === true && existing!.fromDocument && !periodsOverlap(existing!.counted, item.countedItems)) {
+      // insurer's premium (real-data run). Both ways stay where the periods overlap, a period is unknown (a
+      // correction of the same statement, N2) or the value was typed.
+      if (how === 'ask' && item.accumulate === true && existing!.fromDocument && periodsApart(existing!.counted, item.countedItems)) {
         const sum = addAmounts(existing!.value!, incoming)
         rawActions.push(
           draft(sum, {
@@ -868,10 +869,12 @@ function periodRange(period: string | undefined): readonly [string, string] | nu
   return m ? [`${m[3]}-${m[2]}-${m[1]}`, `${m[6]}-${m[5]}-${m[4]}`] : null
 }
 
-/** Whether a document's period overlaps one already counted; unknown periods are no overlap. */
-function periodsOverlap(counted: readonly AdvisorCountedItem[], incoming: readonly AdvisorCountedItem[] | undefined): boolean {
-  const before = counted.map((item) => periodRange(item.period)).filter((range): range is readonly [string, string] => range !== null)
-  const now = (incoming ?? []).map((item) => periodRange(item.period)).filter((range): range is readonly [string, string] => range !== null)
-  return before.some(([from, to]) => now.some(([nowFrom, nowTo]) => nowFrom <= to && from <= nowTo))
+/** Whether a document covers another part of the year than the one already counted: both periods known, none overlapping. */
+function periodsApart(counted: readonly AdvisorCountedItem[], incoming: readonly AdvisorCountedItem[] | undefined): boolean {
+  const ranges = (items: readonly AdvisorCountedItem[]) => items.map((item) => periodRange(item.period)).filter((range): range is readonly [string, string] => range !== null)
+  const before = ranges(counted)
+  const now = ranges(incoming ?? [])
+  if (before.length === 0 || before.length !== counted.length || now.length === 0 || now.length !== (incoming ?? []).length) return false
+  return !before.some(([from, to]) => now.some(([nowFrom, nowTo]) => nowFrom <= to && from <= nowTo))
 }
 
