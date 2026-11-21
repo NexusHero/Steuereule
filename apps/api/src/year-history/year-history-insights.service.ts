@@ -147,6 +147,11 @@ function zvEOf(assessment: AssessmentRecord | null): number | undefined {
  * couples, the groups and the Unterlagen. Reads the further facts it needs (children, Anlagen, receipts),
  * hands everything to the core and returns what it computed; nothing is stored.
  */
+/** The records of several years by their tax year. */
+function byYear<T extends { readonly taxYear: number }>(records: readonly T[]): Map<number, T> {
+  return new Map(records.map((record) => [record.taxYear, record]))
+}
+
 @Injectable()
 export class YearHistoryInsightsService {
   constructor(
@@ -166,13 +171,13 @@ export class YearHistoryInsightsService {
       this.children.listAllForUser(userId),
       this.rental.listForUser(userId),
       this.receipts.findAllForUser(userId),
-      Promise.all(dataYears.map(async (g) => [g.year, await this.capital.findForUserAndYear(userId, g.year)] as const)),
-      Promise.all(dataYears.map(async (g) => [g.year, await this.pension.findForUserAndYear(userId, g.year)] as const)),
+      this.capital.listForUserAndYears(userId, dataYears.map((g) => g.year)),
+      this.pension.listForUserAndYears(userId, dataYears.map((g) => g.year)),
     ])
     const cuts = repeatedCuts(context.diffs)
     return {
       events: this.events(dataYears, children.map((c) => c.geburtsdatum), rentals),
-      recurring: await this.recurring(userId, context, cuts, { children, rentals, capitals: new Map(capitals), pensions: new Map(pensions) }),
+      recurring: await this.recurring(userId, context, cuts, { children, rentals, capitals: byYear(capitals), pensions: byYear(pensions) }),
       prepayments: prepaymentSeries(
         context.list
           .filter((l) => l.assessedRefund !== null)
@@ -180,7 +185,7 @@ export class YearHistoryInsightsService {
       ),
       repeatedCuts: cuts,
       couples: context.years.flatMap((g) => this.couple(g)),
-      groups: this.groups(context, rentals, new Map(capitals), new Map(pensions)),
+      groups: this.groups(context, rentals, byYear(capitals), byYear(pensions)),
       documents: this.documents(context, receipts),
     }
   }

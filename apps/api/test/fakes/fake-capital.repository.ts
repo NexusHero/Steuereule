@@ -17,6 +17,10 @@ export class FakeCapitalRepository implements CapitalRepository {
     return Promise.resolve(this.store.get(key(userId, taxYear)) ?? null)
   }
 
+  listForUserAndYears(userId: string, taxYears: readonly number[]): Promise<CapitalRecord[]> {
+    return Promise.resolve(taxYears.flatMap((taxYear) => this.store.get(key(userId, taxYear)) ?? []))
+  }
+
   setField(userId: string, taxYear: number, field: CapitalFieldId, value: string | null): Promise<CapitalRecord> {
     const k = key(userId, taxYear)
     const existing = this.store.get(k)

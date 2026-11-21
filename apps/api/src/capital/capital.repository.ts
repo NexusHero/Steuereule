@@ -19,6 +19,8 @@ export const CAPITAL_REPOSITORY = Symbol('CAPITAL_REPOSITORY')
 /** The persistence seam for the capital gains guided mask. */
 export interface CapitalRepository {
   findForUserAndYear(userId: string, taxYear: number): Promise<CapitalRecord | null>
+  /** The records of several years in one query; a year without a record is simply absent. */
+  listForUserAndYears(userId: string, taxYears: readonly number[]): Promise<CapitalRecord[]>
   setField(userId: string, taxYear: number, field: CapitalFieldId, value: string | null): Promise<CapitalRecord>
   setOwner(userId: string, taxYear: number, inhaber: CapitalOwner): Promise<CapitalRecord>
 }
