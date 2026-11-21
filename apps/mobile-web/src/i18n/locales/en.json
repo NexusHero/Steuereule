@@ -329,7 +329,27 @@
       "neverActive": "Not used yet",
       "revoke": "Disconnect",
       "revoking": "Disconnecting …",
-      "revokeError": "Disconnection failed. Please try again."
+      "revokeError": "Disconnection failed. Please try again.",
+      "verbinden": {
+        "oeffnen": "Connect an assistant",
+        "welcher": "Which assistant do you want to connect?",
+        "art": {
+          "claude": "Claude",
+          "chatgpt": "ChatGPT",
+          "anderer": "Other"
+        },
+        "name": "Name of the assistant",
+        "redirect": "Redirect URI of the assistant",
+        "anlegen": "Create access",
+        "busy": "Creating …",
+        "errName": "Please give the assistant a name.",
+        "errRedirect": "The redirect URI must start with https:// or point to this machine (http://localhost or http://127.0.0.1).",
+        "errGeneric": "The assistant could not be created. Please try again.",
+        "fertig": "The access is created. Enter these two values in your assistant when you add an MCP server (connector) there:",
+        "serverAdresse": "Server address",
+        "clientId": "OAuth client ID",
+        "fertigHinweis": "There is no password or client secret. The assistant then opens this app and you grant it access. Only then does it appear here as connected."
+      }
     }
   },
   "sicherheit": {

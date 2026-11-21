@@ -68,3 +68,11 @@ describe('AssistentenListSection (ADR-0052 §10)', () => {
     })
   })
 })
+
+describe('AssistentenListSection: connecting an assistant (ADR-0052 amendment 4)', () => {
+  it('offers to connect an assistant', async () => {
+    server.use(http.get(`${BASE_URL}/v1/assistenten`, () => HttpResponse.json([])))
+    renderAssistantsList()
+    expect(await screen.findByTestId('assistent-verbinden')).toBeTruthy()
+  })
+})
