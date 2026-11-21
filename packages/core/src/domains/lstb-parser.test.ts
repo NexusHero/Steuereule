@@ -66,8 +66,8 @@ describe('parseLstbTextDeterministically', () => {
       { line: '26', amount: 977.76 },
       { line: '27', amount: 706.16 },
     ])
-    // The printed lines added in cents, rounded once (real-data run: 18.147 against a printed 18.145,99).
-    expect(res.fields.sozialversicherung.value).toBe(10918)
+    // The app's sum of the whole-euro lines (ADR-0093): 5.052 + 4.183 + 978 + 706.
+    expect(res.fields.sozialversicherung.value).toBe(10919)
   })
 
   it('extracts a clean official German LStB deterministically without needing LLM fallback', () => {
@@ -102,10 +102,10 @@ describe('parseLstbTextDeterministically', () => {
       calculation: [{ line: '4', amount: 9810 }],
       reason: null,
     })
-    // Sum of the printed lines in cents, rounded once: 5.051,76 + 4.182,64 + 977,76 + 706,16 = 10.918,32 → 10.918 €
-    // (adding the rounded lines, 5.052 + 4.183 + 978 + 706 = 10.919, is a euro above the certificate).
+    // Sum of the lines in whole euros, as the mask stores it (ADR-0093): 5.052 + 4.183 + 978 + 706 = 10.919 €
+    // (the raw 10.918,32 would round to 10.918, a euro off what taking the lines over stores).
     // Does NOT add line 22a (employer share)!
-    expect(res.fields.sozialversicherung.value).toBe(10918)
+    expect(res.fields.sozialversicherung.value).toBe(10919)
     expect(res.fields.sozialversicherung.status).toBe('ok')
     expect(res.fields.sozialversicherung.sourceLines).toEqual(['23a', '25', '26', '27'])
     expect(res.fields.sozialversicherung.reason).toBeNull()
