@@ -182,6 +182,14 @@ describe('StromScreen summary', () => {
 
   it('leads from an open step to its page', async () => {
     serve(PENSIONER)
+    // The pension is genuinely still open. With the default fixture (`bestimmt`) the step only
+    // looked open while `/rente` was loading and moved to „übernommen“ once it answered — the
+    // click used to land in that gap.
+    server.use(
+      http.get(`*/v1/steuerjahre/${YEAR}/rente`, () =>
+        HttpResponse.json({ kind: null, jahresbetrag: { kind: 'offen' }, rentenbeginnJahr: { kind: 'offen' }, alterBeiRentenbeginn: { kind: 'offen' }, items: [], status: { kind: 'offen' } }, { status: 200 }),
+      ),
+    )
     const onGo = vi.fn()
     renderStrom('fertig', { onGo })
     fireEvent.click(await screen.findByTestId('strom-offen-rente'))

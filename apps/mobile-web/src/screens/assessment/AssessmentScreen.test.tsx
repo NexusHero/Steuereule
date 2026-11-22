@@ -16,32 +16,9 @@ import { AssessmentScreen } from './AssessmentScreen'
 import { server } from '../../test-msw-server'
 import type { AssessmentResponseDto } from '@steuereule/api-client'
 import { DIFF_2024 } from '../../test-history-fixture'
+import { emptyAssessment } from '../../test-assessment-fixture'
 
 const ASSESSMENT_URL = '*/v1/steuerjahre/2026/bescheid'
-
-function emptyAssessment(): AssessmentResponseDto {
-  return {
-    status: 'eingegangen',
-    assessmentDate: null,
-    appealReason: null,
-    appealDate: null,
-    appealOutcome: null,
-    appealOutcomeAmount: null,
-    fields: [
-      { id: 'einnahmen', kind: 'offen' },
-      { id: 'vorsorgeaufwand', kind: 'offen' },
-      { id: 'anrechnung', kind: 'offen' },
-      { id: 'festgesetzteSteuer', kind: 'offen' },
-      { id: 'erstattung', kind: 'offen' },
-    ],
-    reconciliation: { deviations: [], calculationIncomplete: false },
-    frist: { assessmentDate: null, deadlineEnd: null, remainingDays: null, running: null },
-    nextStates: ['geprüft'],
-    positions: [],
-    explanations: [],
-    diff: null,
-  }
-}
 
 function mockAssessment(data: AssessmentResponseDto, status = 200) {
   server.use(http.get(ASSESSMENT_URL, () => HttpResponse.json(data, { status })))
