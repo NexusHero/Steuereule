@@ -350,6 +350,23 @@ describe('KinderScreen', () => {
     await waitFor(() => expect(screen.queryByTestId('kind-speichern-fehler')).toBeNull())
   })
 
+  it('saves once when two taps land before the screen has re-rendered', async () => {
+    let finishSave = () => {}
+    const onSave = vi.fn(() => new Promise<void>((resolve) => (finishSave = resolve)))
+    renderKinder({ onSaveChild: onSave })
+    fireEvent.click(screen.getByLabelText('Kind Lina bearbeiten'))
+    const button = screen.getByTestId('kind-speichern')
+    // Raw dispatches, not `fireEvent` (which wraps each in act and renders in between): both taps
+    // reach the button inside one task, before `saving` can have re-rendered into its handler.
+    await act(async () => {
+      button.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+      button.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    })
+    expect(onSave).toHaveBeenCalledTimes(1)
+    await act(async () => finishSave())
+    expect((await screen.findByTestId('kind-gespeichert')).textContent).toBe('Lina ist gespeichert.')
+  })
+
   it('confirms a saved edit where the form was, and says what is missing instead of doing nothing', async () => {
     const onSave = vi.fn().mockResolvedValue(undefined)
     renderKinder({ onSaveChild: onSave })

@@ -12,6 +12,7 @@ import { CockpitScreen } from '../cockpit/CockpitScreen'
 import { OwlModeScreen } from './OwlModeScreen'
 import { AdvisorChatPanel } from './AdvisorChatPanel'
 import { CopilotBridgeProvider, type CopilotMode, useCopilotBridge, useOptionalCopilotBridge } from './CopilotBridgeProvider'
+import { emptyAssessment } from '../../test-assessment-fixture'
 
 function setViewportWidth(width: number) {
   Object.defineProperty(document.documentElement, 'clientWidth', { value: width, configurable: true })
@@ -924,7 +925,7 @@ describe('Slice 4: CopilotBridgeProvider & 3-Breakpoint OwlMode Workspace', () =
     }))
 
     server.use(
-      http.get('*/v1/steuerjahre/2025/bescheid', () => HttpResponse.json(null)),
+      http.get('*/v1/steuerjahre/2025/bescheid', () => HttpResponse.json(emptyAssessment())),
       http.post('*/v1/steuerjahre/2025/advisor/stream', () =>
         makeSseStreamResponse([{ event: 'done', data: { userMessage: null, assistantMessage: null } }]),
       ),

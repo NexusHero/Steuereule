@@ -1,7 +1,8 @@
 import { afterAll, afterEach, beforeAll, vi } from 'vitest'
-import { cleanup, configure } from '@testing-library/react'
+import { cleanup, configure, getConfig } from '@testing-library/react'
 import { cleanStores, type WritableAtom } from 'nanostores'
 import { server } from './test-msw-server'
+import { reactSchedulerIdle } from './test-react-scheduler'
 
 // RTL's default `asyncUtilTimeout` (findBy*/waitFor, 1000ms) is tuned for an
 // uncontended CI runner. Under `pnpm -r test`'s full monorepo parallel run (every
@@ -15,6 +16,24 @@ import { server } from './test-msw-server'
 // Paired with `testTimeout` in vitest.config.ts, which must stay strictly larger than this —
 // otherwise both budgets expire at once and Vitest's vaguer timeout wins the race.
 configure({ asyncUtilTimeout: 5_000 })
+
+// A `findBy*`/`waitFor` hands control back only once React's scheduler has run the work it queued,
+// not as soon as the DOM matches. react-native-web gives a Pressable its new `onPress`/`disabled`
+// in a passive effect (`usePressEvents` → `pressResponder.configure`), one scheduler task after the
+// DOM commit. A commit outside `act` (a query answering, a timer) leaves that task to the scheduler's
+// `setImmediate`, which RTL's own `setTimeout(0)` drain does not wait for — on a loaded runner the
+// next `fireEvent` then hit the stale handler, or a button still disabled, and did nothing. A person
+// cannot tap inside that gap; the test could. Waiting for the scheduler inside the wrapper (act
+// environment still off) closes it for every async util at once. Guarded by `vitest.scheduler-delay.config.ts`.
+const rtlAsyncWrapper = getConfig().asyncWrapper
+configure({
+  asyncWrapper: (callback) =>
+    rtlAsyncWrapper(async () => {
+      const result = await callback()
+      await reactSchedulerIdle()
+      return result
+    }),
+})
 
 // #240 — a shared-harness fix, not a screen patch. nanostores' deferred UNMOUNT timer
 // (`nanostores/lifecycle`'s `STORE_UNMOUNT_DELAY`) can fire after Vitest tears this file's

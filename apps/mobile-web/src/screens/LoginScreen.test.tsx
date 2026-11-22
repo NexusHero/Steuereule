@@ -921,53 +921,56 @@ describe('LoginScreen', () => {
     // directly — the same discipline Salih's own T1 script applied, per NexusHero's instruction.
     describe('polling for approval (#238 task 6, AC-5)', () => {
       it('polls POST /v1/device/token at the server-given interval and signs the desktop in once approved, never faster than that interval', async () => {
+        // `shouldAdvanceTime` lets the fake clock run on with the wall clock (the mint's
+        // `findBy*` needs that), so counting the test's own `advanceTimersByTimeAsync` steps
+        // would mis-measure on a slow runner: wall-clock drift moves every timer earlier
+        // relative to those steps. Every interval below is therefore read off the fake clock
+        // itself, at the moment the request or callback actually happens.
         vi.useFakeTimers({ shouldAdvanceTime: true })
-        let tokenRequests = 0
+        let mintedAt = Number.NaN
+        const pollAt: number[] = []
         server.use(
+          http.post(`${BASE_URL}/v1/device/code`, () => {
+            mintedAt = Date.now()
+            return HttpResponse.json(DEVICE_CODE_RESPONSE, { status: 201 })
+          }),
           http.post(`${BASE_URL}/v1/device/token`, () => {
-            tokenRequests += 1
+            pollAt.push(Date.now())
             // Approved only on the second real poll — the first must genuinely still be
             // "pending", not a synthetic always-succeeds stub, or this would prove nothing
             // about the loop actually running more than once.
-            if (tokenRequests < 2) {
+            if (pollAt.length < 2) {
               return HttpResponse.json({ error: 'authorization_pending' }, { status: 400 })
             }
             return HttpResponse.json({ success: true }, { status: 200 })
           }),
         )
-        const onDone = vi.fn()
+        let doneAt = Number.NaN
+        let confirmationShownBeforeDone = false
+        // #283 §5, state 7 — the confirmation beat: approved is *shown*, `onDone` doesn't fire
+        // in the same tick the 200 arrives.
+        const onDone = vi.fn(() => {
+          doneAt = Date.now()
+          confirmationShownBeforeDone = screen.queryByText('Das war’s — du bist drin.') !== null
+        })
         setViewportWidth(1024)
         renderLogin({ onDone })
         await screen.findByLabelText('QR-Code zum Anmelden mit dem Handy')
-        expect(tokenRequests).toBe(0)
 
-        // DEVICE_CODE_RESPONSE's interval is 5s — well short of it (`shouldAdvanceTime`'s own
-        // real-clock drift while awaiting the mint above is at most a handful of ms, nowhere
-        // near enough to close a 1s margin), nothing has polled yet.
-        await act(async () => {
-          await vi.advanceTimersByTimeAsync(4000)
-        })
-        expect(tokenRequests).toBe(0)
+        for (let step = 0; step < 200 && onDone.mock.calls.length === 0; step += 1) {
+          await act(async () => {
+            await vi.advanceTimersByTimeAsync(100)
+          })
+        }
 
-        await act(async () => {
-          await vi.advanceTimersByTimeAsync(1500)
-        })
-        expect(tokenRequests).toBe(1)
-        expect(onDone).not.toHaveBeenCalled()
-
-        await act(async () => {
-          await vi.advanceTimersByTimeAsync(5500)
-        })
-        expect(tokenRequests).toBe(2)
-        // #283 §5, state 7 — the confirmation beat: approved is *shown*, `onDone` doesn't fire
-        // in the same tick the 200 arrives.
-        await screen.findByText('Das war’s — du bist drin.')
-        expect(onDone).not.toHaveBeenCalled()
-
-        await act(async () => {
-          await vi.advanceTimersByTimeAsync(1500)
-        })
+        expect(pollAt).toHaveLength(2)
+        // DEVICE_CODE_RESPONSE's interval is 5s: nothing polls before it, and no poll follows
+        // another any sooner.
+        expect(pollAt[0]! - mintedAt).toBeGreaterThanOrEqual(5000)
+        expect(pollAt[1]! - pollAt[0]!).toBeGreaterThanOrEqual(5000)
         expect(onDone).toHaveBeenCalledTimes(1)
+        expect(confirmationShownBeforeDone).toBe(true)
+        expect(doneAt - pollAt[1]!).toBeGreaterThanOrEqual(1500)
 
         vi.clearAllTimers()
         vi.useRealTimers()
@@ -1335,13 +1338,19 @@ describe('LoginScreen', () => {
     // pre-fix code, and pass against the fix.
     it('backs the retry delay off (2s → 4s → 8s → capped 16s) and stops after MAX_AUTO_RETRIES, never resetting mid-cycle (#298 F1)', async () => {
       vi.useFakeTimers({ shouldAdvanceTime: true })
-      let requests = 0
+      // Read off the fake clock where each request starts and fails. `shouldAdvanceTime` lets
+      // that clock run on with the wall clock (the `findBy*` below needs it), so counting this
+      // test's own advance steps instead would shrink every gap by however long a slow runner
+      // took — the measurement, not the backoff, would decide the result.
+      const requestedAt: number[] = []
+      const failedAt: number[] = []
       server.use(
         http.post(`${BASE_URL}/v1/device/code`, async () => {
-          requests += 1
+          requestedAt.push(Date.now())
           // The load-bearing detail (see comment above): a real delay, matching Musti's own
           // measurement method exactly, not a smaller value picked just to clear the boundary.
           await delay(300)
+          failedAt.push(Date.now())
           return HttpResponse.error()
         }),
       )
@@ -1349,58 +1358,40 @@ describe('LoginScreen', () => {
       renderLogin()
 
       await screen.findByText('Wir versuchen es automatisch erneut …')
-      expect(requests).toBe(1)
+      expect(requestedAt).toHaveLength(1)
 
-      // Advances fake time in small, fixed steps until `requests` reaches `target`, and returns
-      // how much fake time that actually took — measuring the GAP empirically rather than
-      // asserting a cumulative absolute boundary (which is where an earlier draft of this test
-      // got its own arithmetic wrong: `advanceTimersByTimeAsync` keeps ADDING to a running fake
-      // clock, it does not reset a per-checkpoint baseline). `shouldAdvanceTime` genuinely tracks
-      // wall-clock overhead too (this file's other tests already rely on it for
-      // `findByText`/`waitFor` polling to progress at all), so a fixed small step size is what
-      // keeps the measurement's own resolution well under the 2×/4×/8×/16000ms gaps it's trying
-      // to tell apart.
-      async function measureGapUntil(target: number, maxMs = 20_000, stepMs = 100): Promise<number> {
-        const steps = maxMs / stepMs
-        let elapsed = 0
-        for (let i = 0; i < steps; i += 1) {
+      // Advances fake time in small, fixed steps until `target` requests have gone out.
+      async function advanceUntilRequests(target: number, maxMs = 20_000, stepMs = 100): Promise<void> {
+        for (let elapsed = 0; elapsed < maxMs && requestedAt.length < target; elapsed += stepMs) {
           await act(async () => {
             await vi.advanceTimersByTimeAsync(stepMs)
           })
-          elapsed += stepMs
-          if (requests >= target) return elapsed
         }
-        throw new Error(`measureGapUntil: requests never reached ${target} within ${maxMs}ms (stuck at ${requests}).`)
+        if (requestedAt.length < target) {
+          throw new Error(`advanceUntilRequests: requests never reached ${target} within ${maxMs}ms (stuck at ${requestedAt.length}).`)
+        }
       }
+      /** From request `n`'s failure to the next request firing (1-based, like the comments). */
+      const gapAfter = (n: number) => requestedAt[n]! - failedAt[n - 1]!
 
-      // Each gap is measured from the PREVIOUS request's own failure (≈20ms mint delay) to the
-      // next mint firing — asserted against the expected backoff with a tolerance band wide
-      // enough to absorb that overhead and this environment's own scheduling jitter, but narrow
-      // enough that the reset bug (a constant ~2000-2300ms every time, per Musti's own
-      // measurement) cannot pass any of the later, larger-expected-gap checks.
-      const gap1to2 = await measureGapUntil(2) // expect ≈2000ms
-      expect(gap1to2).toBeGreaterThanOrEqual(1700)
-      expect(gap1to2).toBeLessThan(3000)
-
-      const gap2to3 = await measureGapUntil(3) // expect ≈4000ms — the reset bug caps this at ~2300
-      expect(gap2to3).toBeGreaterThanOrEqual(3400)
-      expect(gap2to3).toBeLessThan(5500)
-
-      const gap3to4 = await measureGapUntil(4) // expect ≈8000ms
-      expect(gap3to4).toBeGreaterThanOrEqual(7000)
-      expect(gap3to4).toBeLessThan(10_000)
-
-      const gap4to5 = await measureGapUntil(5) // expect ≈16000ms — RETRY_CAP_MS, not 16000×2
-      expect(gap4to5).toBeGreaterThanOrEqual(14_000)
-      expect(gap4to5).toBeLessThan(19_000)
-
-      const gap5to6 = await measureGapUntil(6) // still capped at ≈16000ms, not growing further
-      expect(gap5to6).toBeGreaterThanOrEqual(14_000)
-      expect(gap5to6).toBeLessThan(19_000)
-
-      const gap6to7 = await measureGapUntil(7) // the 6th and last automatic retry (MAX_AUTO_RETRIES)
-      expect(gap6to7).toBeGreaterThanOrEqual(14_000)
-      expect(gap6to7).toBeLessThan(19_000)
+      // Each gap is measured from the PREVIOUS request's own failure to the next mint firing —
+      // asserted against the expected backoff with a tolerance band wide enough to absorb this
+      // environment's own scheduling jitter, but narrow enough that the reset bug (a constant
+      // ~2000-2300ms every time, per Musti's own measurement) cannot pass any of the later,
+      // larger-expected-gap checks.
+      await advanceUntilRequests(7, 80_000)
+      expect(gapAfter(1)).toBeGreaterThanOrEqual(1700) // expect ≈2000ms
+      expect(gapAfter(1)).toBeLessThan(3000)
+      expect(gapAfter(2)).toBeGreaterThanOrEqual(3400) // expect ≈4000ms — the reset bug caps this at ~2300
+      expect(gapAfter(2)).toBeLessThan(5500)
+      expect(gapAfter(3)).toBeGreaterThanOrEqual(7000) // expect ≈8000ms
+      expect(gapAfter(3)).toBeLessThan(10_000)
+      expect(gapAfter(4)).toBeGreaterThanOrEqual(14_000) // expect ≈16000ms — RETRY_CAP_MS, not 16000×2
+      expect(gapAfter(4)).toBeLessThan(19_000)
+      expect(gapAfter(5)).toBeGreaterThanOrEqual(14_000) // still capped at ≈16000ms, not growing further
+      expect(gapAfter(5)).toBeLessThan(19_000)
+      expect(gapAfter(6)).toBeGreaterThanOrEqual(14_000) // the 6th and last automatic retry (MAX_AUTO_RETRIES)
+      expect(gapAfter(6)).toBeLessThan(19_000)
 
       // The cap: 6 automatic retries have now happened (7 mints total). No further request
       // fires on its own, no matter how long — this is the count cap Musti's F1(b) asked for,
@@ -1409,14 +1400,14 @@ describe('LoginScreen', () => {
       await act(async () => {
         await vi.advanceTimersByTimeAsync(60_000)
       })
-      expect(requests).toBe(7)
+      expect(requestedAt).toHaveLength(7)
 
       // The manual way out still works after the cap — it isn't a dead end.
       fireEvent.click(screen.getByText('Erneut versuchen'))
       await act(async () => {
         await vi.advanceTimersByTimeAsync(50)
       })
-      expect(requests).toBe(8)
+      expect(requestedAt).toHaveLength(8)
 
       vi.clearAllTimers()
       vi.useRealTimers()
