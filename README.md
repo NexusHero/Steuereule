@@ -113,8 +113,8 @@ Traditional tax software presents dense tabular forms without proactive guidance
   Over **58 Architecture Decision Records ([docs/adr/](docs/adr/))** document every technical decision, trade-off, and alternative considered. Comprehensive architectural blueprints follow the international **[arc42](docs/arc42/README.md)** standard with PlantUML component models.
 * **Contract-First API Design:**
   The REST API (NestJS + Fastify) generates an OpenAPI specification that compiles into end-to-end typed TypeScript SDKs via Orval, guaranteeing compile-time type safety across frontend and backend boundaries.
-* **Automated Hardened CI/CD ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)):**
-  A 1,100+ line pipeline enforcing synthetic linting (`oxlint`), strict TypeScript checking, security vulnerability scanning (`trivy`, `semgrep`, `gitleaks`), Docker Compose deployment validation, and Playwright end-to-end browser testing. Infrastructure is managed via OpenTofu for deployment to **Google Cloud Run** ([`infra/gcp`](infra/gcp/)).
+* **Automated Hardened CI/CD ([`.github/workflows/`](.github/workflows)):**
+  Separate pipelines, each with its own entry in the Actions sidebar: `Quality` (quality.yml), `Security` (security.yml), `Build & E2E` (ci.yml) and `Load` (load.yml, nightly many-user load test). Together they enforce synthetic linting (`oxlint`), strict TypeScript checking, security vulnerability scanning (`trivy`, `semgrep`, `gitleaks`), Docker Compose deployment validation, and Playwright end-to-end browser testing. Infrastructure is managed via OpenTofu for deployment to **Google Cloud Run** ([`infra/gcp`](infra/gcp/)).
 
 ---
 

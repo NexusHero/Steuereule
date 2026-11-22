@@ -1,0 +1,57 @@
+# Security pipeline: secret scan, IaC/Dockerfile scan, SAST and workflow lint. Container and SBOM scans stay with the
+# image build in ci.yml.
+name: Security
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+# One in-flight run per ref; a newer push cancels the older run.
+concurrency:
+  group: security-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  # DevSecOps static analysis gate: Secret scanning (Gitleaks), SCA & IaC scanning (Trivy),
+  # Custom SAST rules (Semgrep .semgrep.yml), Dockerfile linting (Hadolint), and GitHub Actions
+  # workflow linting (Actionlint). Blocking on HIGH/CRITICAL findings.
+  security-static:
+    name: DevSecOps Static (Gitleaks, Trivy FS/IaC, Semgrep SAST, Hadolint, Actionlint)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          fetch-depth: 0
+      - name: Gitleaks Secret Scanning (.gitleaks.toml)
+        uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7 # v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_CONFIG: .gitleaks.toml
+      - name: Hadolint — Lint apps/api/Dockerfile
+        uses: hadolint/hadolint-action@54c9adbab1582c2ef04b2016b760714a4bfde3cf # v3.1.0
+        with:
+          dockerfile: apps/api/Dockerfile
+          failure-threshold: error
+      - name: Hadolint — Lint apps/mobile-web/Dockerfile
+        uses: hadolint/hadolint-action@54c9adbab1582c2ef04b2016b760714a4bfde3cf # v3.1.0
+        with:
+          dockerfile: apps/mobile-web/Dockerfile
+          failure-threshold: error
+      - name: Actionlint — Lint .github/workflows/*.yml
+        run: docker run --rm -v "$PWD:/repo" -w /repo rhysd/actionlint:1.7.7 -color
+      - name: Trivy IaC Scan (Terraform, Dockerfiles, Compose & K8s — HIGH/CRITICAL)
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: config
+          scan-ref: .
+          severity: HIGH,CRITICAL
+          exit-code: '1'
+          trivyignores: .trivyignore
+      - name: Semgrep SAST Scan (.semgrep.yml custom NestJS/DSGVO rules)
+        run: docker run --rm -v "$PWD:/src" -w /src semgrep/semgrep:1.110.0 semgrep scan --config .semgrep.yml --error

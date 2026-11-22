@@ -7,8 +7,9 @@
 //   LOADTEST_USERS=1000 LOADTEST_COOKIES=/tmp/cookies.txt pnpm --filter @steuereule/api exec tsx scripts/loadtest-seed.ts
 // Then:
 //   node scripts/loadtest/multi-user.mjs --cookies /tmp/cookies.txt --users 1000 --seconds 60 --think 5000-15000 \
-//     [--url http://localhost:3000] [--origin http://localhost:8081] [--pid <api pid>]
-// --pid additionally samples the API process' CPU and memory (ps).
+//     [--url http://localhost:3000] [--origin http://localhost:8081] [--pid <api pid>] [--max-p95 <ms>] [--max-error-rate <percent>]
+// --pid additionally samples the API process' CPU and memory (ps). With --max-p95 / --max-error-rate the run
+// exits 1 when the slowest endpoint's p95 or the error rate is above the budget (the nightly pipeline uses both).
 import { execFileSync } from 'node:child_process'
 import { readFileSync } from 'node:fs'
 import { performance } from 'node:perf_hooks'
@@ -29,6 +30,8 @@ const [THINK_MIN, THINK_MAX] = option('think', '5000-15000').split('-').map(Numb
 const BASE_URL = option('url', process.env.API_URL || 'http://localhost:3000')
 const ORIGIN = option('origin', process.env.WEB_ORIGIN || 'http://localhost:8081')
 const PID = option('pid')
+const MAX_P95_MS = option('max-p95') === undefined ? null : Number(option('max-p95'))
+const MAX_ERROR_RATE = option('max-error-rate') === undefined ? null : Number(option('max-error-rate'))
 
 const cookies = readFileSync(COOKIES_FILE, 'utf8').split('\n').filter(Boolean).slice(0, USERS)
 if (cookies.length < USERS) console.warn(`Only ${cookies.length} cookies for ${USERS} users: sessions are shared.`)
@@ -91,11 +94,13 @@ const duration = (performance.now() - startedAt) / 1000
 
 let total = 0
 let failed = 0
+let worstP95 = 0
 const rows = Object.entries(stats).map(([name, { latencies, errors }]) => {
   const sorted = latencies.sort((a, b) => a - b)
   const errorCount = Object.values(errors).reduce((sum, n) => sum + n, 0)
   total += sorted.length + errorCount
   failed += errorCount
+  worstP95 = Math.max(worstP95, percentile(sorted, 0.95))
   const ms = (q) => `${percentile(sorted, q).toFixed(0)}`.padStart(5)
   return `${name.padEnd(18)} n=${String(sorted.length).padStart(5)} p50=${ms(0.5)}ms p95=${ms(0.95)}ms p99=${ms(0.99)}ms err=${errorCount}${errorCount ? ` ${JSON.stringify(errors)}` : ''}`
 })
@@ -105,4 +110,13 @@ console.log(`total=${total} errors=${failed} (${((failed / Math.max(1, total)) *
 if (PID && samples.cpu.length > 0) {
   const avg = (values) => (values.reduce((sum, n) => sum + n, 0) / values.length).toFixed(0)
   console.log(`server cpu avg=${avg(samples.cpu)}% max=${Math.max(...samples.cpu).toFixed(0)}%  rss max=${Math.max(...samples.rssMb).toFixed(0)} MB`)
+}
+
+const errorRate = (failed / Math.max(1, total)) * 100
+const violations = []
+if (MAX_ERROR_RATE !== null && errorRate > MAX_ERROR_RATE) violations.push(`error rate ${errorRate.toFixed(2)}% > ${MAX_ERROR_RATE}%`)
+if (MAX_P95_MS !== null && worstP95 > MAX_P95_MS) violations.push(`worst p95 ${worstP95.toFixed(0)} ms > ${MAX_P95_MS} ms`)
+if (violations.length > 0) {
+  console.error(`Budget exceeded: ${violations.join('; ')}`)
+  process.exit(1)
 }
