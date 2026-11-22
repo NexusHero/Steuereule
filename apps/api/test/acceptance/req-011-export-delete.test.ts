@@ -185,7 +185,7 @@ describe('REQ-011 T1 — DELETE /v1/account, against the real server (ADR-0013)'
     await saveProfile(cookie, '02476291358')
     const auditRowsBefore = await prisma.taxDataAccessLog.count({ where: { userId } })
 
-    const { deleteAccountTransaction } = await import('../../src/account/delete-account-transaction.js')
+    const { deleteAccountTransaction } = await import('../../src/account/delete-account-transaction.prisma.js')
     await expect(
       deleteAccountTransaction(prisma, userId, {
         simulateFailureAfterProfileStep: () => {

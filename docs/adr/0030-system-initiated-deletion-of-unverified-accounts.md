@@ -67,7 +67,7 @@ a real question and a different one.
 
 ### 3. The erasure itself is not a new mechanism
 
-It calls **`deleteAccountTransaction`** (`apps/api/src/account/delete-account-transaction.ts`)
+It calls **`deleteAccountTransaction`** (`apps/api/src/account/delete-account-transaction.prisma.ts`)
 unchanged. That function is already exported as a raw function precisely so it can be driven without
 the HTTP/DI machinery, and it already handles LegalHold exemption, audit anonymisation, and the
 cascade — proven at acceptance tier by REQ-011's suite.

@@ -2,7 +2,7 @@ import { Inject, Injectable } from '@nestjs/common'
 import { USER_KEY_STORE, type UserKeyStore } from '../keystore/user-key-store.js'
 import { PrismaService } from '../prisma/prisma.service.js'
 import type { AccountDeletionRepository } from './account-deletion.repository.js'
-import { deleteAccountTransaction, type DeleteAccountResult } from './delete-account-transaction.js'
+import { deleteAccountTransaction, type DeleteAccountResult } from './delete-account-transaction.prisma.js'
 
 @Injectable()
 export class PrismaAccountDeletionRepository implements AccountDeletionRepository {

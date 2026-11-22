@@ -1,14 +1,9 @@
 import { randomUUID } from 'node:crypto'
 import type { PrismaClient } from '@prisma/client'
 
-export interface DeleteAccountResult {
-  deleted: {
-    profile: boolean
-    account: true
-  }
-  retainedAnonymisedAuditRows: number
-  retainedUnderLegalHold: number
-}
+import type { DeleteAccountResult } from './account-deletion.repository.js'
+
+export type { DeleteAccountResult }
 
 export interface DeleteAccountTestHooks {
   simulateFailureAfterProfileStep?: () => void

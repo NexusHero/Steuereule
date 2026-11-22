@@ -12,7 +12,15 @@ import {
 } from '../src/auth/user-context.guard.js'
 import type { BetterAuthBundle } from '../src/auth/auth.tokens.js'
 import { createResettableRateLimitStorage } from '../src/auth/rate-limit-storage.js'
-import type { PrismaService } from '../src/prisma/prisma.service.js'
+import type { AssistantClient, BearerTokenRepository } from '../src/auth/bearer-token.repository.js'
+
+function fakeTokens(overrides: Partial<Record<keyof BearerTokenRepository, ReturnType<typeof vi.fn>>> = {}) {
+  return {
+    findOpaqueToken: overrides.findOpaqueToken ?? vi.fn().mockResolvedValue(null),
+    findClient: overrides.findClient ?? vi.fn().mockResolvedValue(null),
+    hasConsent: overrides.hasConsent ?? vi.fn().mockResolvedValue(false),
+  } satisfies BearerTokenRepository
+}
 
 const SECRET = 'test-secret'
 const SESSION_COOKIE_NAME = 'better-auth.session_token'
@@ -169,7 +177,7 @@ describe('UserContextGuard', () => {
 
     it('refuses an assistant token on every controller but the MCP endpoint, before looking it up', async () => {
       const findUnique = vi.fn()
-      const guard = new UserContextGuard(makeBetterAuthBundle(vi.fn()), { oauthAccessToken: { findUnique } } as unknown as PrismaService)
+      const guard = new UserContextGuard(makeBetterAuthBundle(vi.fn()), fakeTokens({ findOpaqueToken: findUnique }))
       const { context, request } = makeContext({}, { authorization: 'Bearer some-valid-token' }, OrdinaryController)
       await expect(guard.canActivate(context)).rejects.toBeInstanceOf(ForbiddenException)
       expect(findUnique).not.toHaveBeenCalled()
@@ -187,13 +195,9 @@ describe('UserContextGuard', () => {
         revoked: null,
         client: { clientId: 'client-1', name: 'Claude Assistant', disabled: false },
       }
-      const fakePrisma = {
-        oauthAccessToken: {
-          findUnique: vi.fn().mockResolvedValue(tokenRecord),
-        },
-      } as unknown as PrismaService
+      const tokens = fakeTokens({ findOpaqueToken: vi.fn().mockResolvedValue(tokenRecord) })
 
-      const guard = new UserContextGuard(makeBetterAuthBundle(vi.fn()), fakePrisma)
+      const guard = new UserContextGuard(makeBetterAuthBundle(vi.fn()), tokens)
       const { context, request, setCookie } = makeContext({}, { authorization: `Bearer ${rawToken}` })
 
       await expect(guard.canActivate(context)).resolves.toBe(true)
@@ -206,10 +210,7 @@ describe('UserContextGuard', () => {
         scopes: ['openid', 'steuerdaten:read', 'steuerdaten:write'],
       })
       expect(setCookie).not.toHaveBeenCalled()
-      expect(fakePrisma.oauthAccessToken.findUnique).toHaveBeenCalledWith({
-        where: { token: hashed },
-        include: { client: { select: { name: true, disabled: true } } },
-      })
+      expect(tokens.findOpaqueToken).toHaveBeenCalledWith(hashed)
     })
 
     it('an expired bearer token throws UnauthorizedException (never falls back to guest)', async () => {
@@ -222,13 +223,9 @@ describe('UserContextGuard', () => {
         revoked: null,
         client: { clientId: 'client-1', name: 'Claude', disabled: false },
       }
-      const fakePrisma = {
-        oauthAccessToken: {
-          findUnique: vi.fn().mockResolvedValue(tokenRecord),
-        },
-      } as unknown as PrismaService
+      const tokens = fakeTokens({ findOpaqueToken: vi.fn().mockResolvedValue(tokenRecord) })
 
-      const guard = new UserContextGuard(makeBetterAuthBundle(vi.fn()), fakePrisma)
+      const guard = new UserContextGuard(makeBetterAuthBundle(vi.fn()), tokens)
       const { context, setCookie } = makeContext({}, { authorization: `Bearer ${rawToken}` })
 
       await expect(guard.canActivate(context)).rejects.toThrow(UnauthorizedException)
@@ -245,13 +242,9 @@ describe('UserContextGuard', () => {
         revoked: new Date(), // revoked
         client: { clientId: 'client-1', name: 'Claude', disabled: false },
       }
-      const fakePrisma = {
-        oauthAccessToken: {
-          findUnique: vi.fn().mockResolvedValue(tokenRecord),
-        },
-      } as unknown as PrismaService
+      const tokens = fakeTokens({ findOpaqueToken: vi.fn().mockResolvedValue(tokenRecord) })
 
-      const guard = new UserContextGuard(makeBetterAuthBundle(vi.fn()), fakePrisma)
+      const guard = new UserContextGuard(makeBetterAuthBundle(vi.fn()), tokens)
       const { context, setCookie } = makeContext({}, { authorization: `Bearer ${rawToken}` })
 
       await expect(guard.canActivate(context)).rejects.toThrow(UnauthorizedException)
@@ -259,13 +252,9 @@ describe('UserContextGuard', () => {
     })
 
     it('an unknown bearer token throws UnauthorizedException', async () => {
-      const fakePrisma = {
-        oauthAccessToken: {
-          findUnique: vi.fn().mockResolvedValue(null),
-        },
-      } as unknown as PrismaService
+      const tokens = fakeTokens({ findOpaqueToken: vi.fn().mockResolvedValue(null) })
 
-      const guard = new UserContextGuard(makeBetterAuthBundle(vi.fn()), fakePrisma)
+      const guard = new UserContextGuard(makeBetterAuthBundle(vi.fn()), tokens)
       const { context, setCookie } = makeContext({}, { authorization: 'Bearer nonexistent-token' })
 
       await expect(guard.canActivate(context)).rejects.toThrow(UnauthorizedException)
@@ -282,13 +271,9 @@ describe('UserContextGuard', () => {
         revoked: null,
         client: { clientId: 'client-1', name: 'Claude', disabled: true }, // disabled client
       }
-      const fakePrisma = {
-        oauthAccessToken: {
-          findUnique: vi.fn().mockResolvedValue(tokenRecord),
-        },
-      } as unknown as PrismaService
+      const tokens = fakeTokens({ findOpaqueToken: vi.fn().mockResolvedValue(tokenRecord) })
 
-      const guard = new UserContextGuard(makeBetterAuthBundle(vi.fn()), fakePrisma)
+      const guard = new UserContextGuard(makeBetterAuthBundle(vi.fn()), tokens)
       const { context, setCookie } = makeContext({}, { authorization: `Bearer ${rawToken}` })
 
       await expect(guard.canActivate(context)).rejects.toThrow(UnauthorizedException)
@@ -330,12 +315,8 @@ describe('UserContextGuard', () => {
         rateLimitStorage: createResettableRateLimitStorage(),
       }
     }
-    function prisma(client: object | null = { clientId: 'client-1', name: 'Claude', disabled: false }, consent: object | null = { id: 'c1' }) {
-      return {
-        oauthAccessToken: { findUnique: vi.fn().mockResolvedValue(null) },
-        oauthClient: { findUnique: vi.fn().mockResolvedValue(client) },
-        oauthConsent: { findFirst: vi.fn().mockResolvedValue(consent) },
-      } as unknown as PrismaService
+    function prisma(client: AssistantClient | null = { name: 'Claude', disabled: false }, consent: object | null = { id: 'c1' }) {
+      return fakeTokens({ findClient: vi.fn().mockResolvedValue(client), hasConsent: vi.fn().mockResolvedValue(consent !== null) })
     }
 
     it('a JWT for the MCP endpoint sets the assistant context from its claims and the client', async () => {
@@ -369,7 +350,7 @@ describe('UserContextGuard', () => {
     })
 
     it('refuses a JWT of a disabled client and one without a user (client credentials)', async () => {
-      const disabled = new UserContextGuard(bundle(), prisma({ clientId: 'client-1', name: 'Claude', disabled: true }))
+      const disabled = new UserContextGuard(bundle(), prisma({ name: 'Claude', disabled: true }))
       await expect(disabled.canActivate(makeContext({}, { authorization: `Bearer ${jwt(valid)}` }).context)).rejects.toBeInstanceOf(UnauthorizedException)
       const machine = new UserContextGuard(bundle(), prisma())
       await expect(machine.canActivate(makeContext({}, { authorization: `Bearer ${jwt({ ...valid, sub: 'client-1' })}` }).context)).rejects.toBeInstanceOf(UnauthorizedException)

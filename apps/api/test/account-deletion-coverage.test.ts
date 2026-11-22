@@ -5,7 +5,7 @@
 // ten tax-data tables outlived "Konto löschen" because none has a FK to User.
 import { Prisma } from '@prisma/client'
 import { describe, expect, it } from 'vitest'
-import { taxDataTables } from '../src/account/delete-account-transaction.js'
+import { taxDataTables } from '../src/account/delete-account-transaction.prisma.js'
 
 // Handled by deleteAccountTransaction outside taxDataTables(), each with its reason.
 const HANDLED_ELSEWHERE: Record<string, string> = {
@@ -52,7 +52,7 @@ describe('account deletion covers every userId-keyed model', () => {
 
 describe('account deletion and the append-only book (ADR-0101)', () => {
   it('turns the erasure flag on before it deletes a single tax-data row', async () => {
-    const { deleteAccountTransaction } = await import('../src/account/delete-account-transaction.js')
+    const { deleteAccountTransaction } = await import('../src/account/delete-account-transaction.prisma.js')
     const calls: string[] = []
     const table = (name: string) => ({
       count: async () => 0,

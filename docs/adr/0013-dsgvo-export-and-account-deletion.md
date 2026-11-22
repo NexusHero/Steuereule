@@ -59,7 +59,7 @@ given hard-delete.
 
 Deletion runs as a **single `$transaction`** on the plain (non-field-encryption) client — it only
 deletes rows and re-keys the audit `userId`, never reads/writes the encrypted fields, mirroring
-`guest-account-upgrade.ts`:
+`guest-account-upgrade.prisma.ts`:
 
 1. Hard-delete `Profile` for the userId (except any `Profile`/tax-data row under active **LegalHold** —
    see §5).
