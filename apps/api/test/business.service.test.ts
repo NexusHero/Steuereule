@@ -191,6 +191,25 @@ describe('BusinessService (ADR-0101)', () => {
     expect(closing.euer?.profit.profitEur).toBe(48_800)
   })
 
+  it('a refund above the costs of the year raises the profit instead of failing the closing', async () => {
+    const { service } = setup()
+    await service.post('u', YEAR, A1, sale)
+    const before = await service.closing('u', YEAR, A1)
+    // A credit note for last year's office supplies: 4930 nets below 0 in 2024.
+    await service.post('u', YEAR, A1, {
+      date: '2024-04-02',
+      documentNumber: 'GS-3',
+      text: 'Gutschrift Büromaterial 2023',
+      lines: [
+        { account: '1200', side: 'debit', amount: 5_950 },
+        { account: '4930', side: 'credit', amount: 5_950, taxKey: 'vst19' },
+      ],
+    })
+    const closing = await service.closing('u', YEAR, A1)
+    expect(closing.euer?.totals.byKey.ausgaben_sonstige).toBe(-5_000)
+    expect(closing.euer?.profit.profitEur).toBe((before.euer?.profit.profitEur ?? 0) + 59.5)
+  })
+
   it('bank import: preset CSV in, duplicates out on a re-import, a suggestion accepted as a booking with a rule', async () => {
     const { service } = setup()
     const first = await service.importBank('u', 2025, A1, { format: 'csv', content: SPARKASSE, preset: 'sparkasse' })
