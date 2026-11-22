@@ -28,9 +28,36 @@ const COMMUTE = { workdays: [1, 2, 3, 4, 5], vacationDays: 30, sickDays: 5, home
 const commute = async (api) => (await call(api, 'GET', `/v1/steuerjahre/${YEAR}/arbeitsweg`)).inputs
 const setCommute = (api, values) => call(api, 'PUT', `/v1/steuerjahre/${YEAR}/arbeitsweg`, { ...COMMUTE, ...values })
 
+/** What a signed-in page did, printed when a row fails: the API answers, console errors and the chat text. */
+const pageTrails = new Map()
+let lastSignedInPage = null
+
+function recordTrail(page) {
+  const trail = []
+  pageTrails.set(page, trail)
+  page.on('response', (res) => {
+    const url = new URL(res.url())
+    if (url.pathname.startsWith('/v1/') || url.pathname.startsWith('/api/')) trail.push(`${res.status()} ${res.request().method()} ${url.pathname}`)
+  })
+  page.on('console', (msg) => {
+    if (msg.type() === 'error') trail.push(`console.error ${msg.text().slice(0, 300)}`)
+  })
+  page.on('pageerror', (err) => trail.push(`pageerror ${String(err).slice(0, 300)}`))
+}
+
+async function reportTrail(page) {
+  if (!page) return
+  console.error(`[${TAG}] page ${page.url()}`)
+  for (const line of (pageTrails.get(page) ?? []).slice(-40)) console.error(`[${TAG}]   ${line}`)
+  const chat = await page.locator('[data-testid="advisor-chat-input"]').first().evaluate((el) => el.closest('main, [role="main"], body')?.innerText ?? '').catch(() => '')
+  console.error(`[${TAG}] visible text (last 1500 chars):\n${chat.slice(-1500)}`)
+}
+
 async function signIn(browser, webOrigin, email, breakpoint) {
   const ctx = await newContextAtBreakpoint(browser, breakpoint)
   const page = await ctx.newPage()
+  recordTrail(page)
+  lastSignedInPage = page
   guardAgainst429(page, fail, '/api/auth/')
   await skipSplash(page, webOrigin)
   await waitForBucketHeadroom(AUTH_BUCKET, 'sign-in/email', TAG)
@@ -236,6 +263,9 @@ async function main() {
 
     await user.api.dispose()
     console.log(`[${TAG}] PASS — Eulen-Modus flows with the fake KiPort verified (#450 1A, 5F).`)
+  } catch (error) {
+    await reportTrail(lastSignedInPage)
+    throw error
   } finally {
     await closeBrowser(browser)
     await stop()
