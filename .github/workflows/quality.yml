@@ -88,8 +88,12 @@ jobs:
         run: pnpm -r typecheck
       # One run with coverage on: it enforces each package's own vitest thresholds (core, ui,
       # tokens, mobile-web >= 90%) and writes the lcov reports the `sonar` job imports.
+      # One package at a time: each Vitest already starts a worker per core, so pnpm's default of
+      # four packages at once put ~4x the workers on the runner's cores. Tests that take 0.7 s alone
+      # (printout.test.ts) then took 10 s and hit their timeouts (22.11.2026). Sequential packages
+      # keep every worker on its own core, so a timeout means a slow test, not a crowded runner.
       - name: Test + coverage gates (includes DevMLOps Golden Dataset, Red-Team & PII Fuzzing suites)
-        run: pnpm -r test --coverage
+        run: pnpm -r --workspace-concurrency=1 test --coverage
       - name: Upload the coverage reports for SonarQube Cloud
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
