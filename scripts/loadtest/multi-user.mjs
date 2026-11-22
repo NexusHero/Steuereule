@@ -75,7 +75,7 @@ const samples = { cpu: [], rssMb: [] }
 const sampler = PID
   ? setInterval(() => {
       try {
-        const [cpu, rss] = execFileSync('ps', ['-o', '%cpu=,rss=', '-p', PID]).toString().trim().split(/\s+/).map(Number)
+        const [cpu, rss] = execFileSync('/bin/ps', ['-o', '%cpu=,rss=', '-p', PID]).toString().trim().split(/\s+/).map(Number)
         samples.cpu.push(cpu)
         samples.rssMb.push(rss / 1024)
       } catch {
