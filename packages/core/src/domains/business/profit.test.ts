@@ -93,7 +93,19 @@ describe('EÜR profit (§ 4 Abs. 3 EStG)', () => {
     expect(result.lines.find((l) => l.key === 'nicht_abziehbar_sonstige')).toEqual({ key: 'nicht_abziehbar_sonstige', amountEur: 150, countedEur: 0, effectEur: 0 })
   })
 
-  it('refuses negative amounts', () => {
-    expect(() => euerProfit(2024, { ausgaben_sonstige: -1 })).toThrow(RangeError)
+  it('takes a refund above the costs of the year as income (§ 11 Abs. 1 EStG)', () => {
+    // A credit note for last year's costs booked on the expense account: the key nets below 0.
+    const result = euerProfit(2024, { einnahmen_umsatzsteuerpflichtig: 1_000, ausgaben_sonstige: -200 })
+    expect(result).toMatchObject({ incomeEur: 1_000, expensesEur: -200, profitEur: 1_200, nonDeductibleEur: 0 })
+    expect(result.lines).toContainEqual({ key: 'ausgaben_sonstige', amountEur: -200, countedEur: -200, effectEur: 200 })
+  })
+
+  it('reverses only the deductible part of a refunded restricted expense, and nothing of a Gewerbesteuer refund', () => {
+    const result = euerProfit(2024, { einnahmen_umsatzsteuerpflichtig: 1_000, beschraenkt_bewirtung: -100, ausgaben_gewerbesteuer: -500 })
+    expect(result).toMatchObject({ profitEur: 1_070, nonDeductibleEur: 0 })
+  })
+
+  it('refuses amounts that are not numbers', () => {
+    expect(() => euerProfit(2024, { ausgaben_sonstige: Number.NaN })).toThrow(RangeError)
   })
 })

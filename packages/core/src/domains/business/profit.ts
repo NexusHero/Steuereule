@@ -5,7 +5,9 @@ import { EUER_KEYS, type EuerKey } from './euer-keys'
 /**
  * The Gewinn of a year by Einnahmenüberschussrechnung (§ 4 Abs. 3 EStG) from the totals per EÜR key.
  * Bilanzierer take their profit from the bookkeeping (§ 4 Abs. 1, § 5 EStG); this covers the EÜR.
- * Amounts are positive euros; the key says whether they are income or expense.
+ * Amounts are euros; the key says whether they are income or expense. A key can net below 0 in a
+ * year, e.g. a refund of last year's costs booked on the expense account: the refund is income of the
+ * year it comes in (§ 11 Abs. 1 EStG), so the negative amount raises the profit by its deductible part.
  */
 
 export type EuerKeyAmounts = Partial<Record<EuerKey, number>>
@@ -91,7 +93,7 @@ export function euerProfit(year: number, totals: EuerKeyAmounts, details: Profit
     const hasDetail = restrictedDetailGiven(key, details)
     if ((amount === undefined || amount === 0) && !hasDetail) continue
     const amountEur = amount ?? 0
-    if (!(amountEur >= 0)) throw new RangeError(`${key}: amounts are positive euros`)
+    if (!Number.isFinite(amountEur)) throw new RangeError(`${key}: amounts are euros`)
     const countedEur = cents(counted(year, key, amountEur, details, openPoints))
     const sign = key.startsWith(INCOME_PREFIX) || key === 'gewinn_iab_hinzurechnung' ? 1 : -1
     lines.push({ key, amountEur, countedEur, effectEur: countedEur === 0 ? 0 : sign * countedEur })
