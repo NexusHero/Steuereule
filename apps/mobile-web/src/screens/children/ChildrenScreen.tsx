@@ -1,5 +1,5 @@
 import { wholeEurosFrom } from '../shared/wholeEuros'
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { HouseholdChildrenSection } from './HouseholdChildrenSection'
 import { AddressSearch } from '../shared/AddressSearch'
 import { todayIso } from '../shared/today'
@@ -319,6 +319,8 @@ function KinderScreenView({
   /** The provider text hit the width of the form line: typed one character too many, or a longer text was cut. */
   const [providerFull, setProviderFull] = useState<'voll' | 'gekuerzt' | null>(null)
   const [saving, setSaving] = useState(false)
+  /** Set the moment a save starts: `saving` is state and reaches this closure only after a render, so two taps dispatched before it would both save. */
+  const saveInFlight = useRef(false)
   const [saveError, setSaveError] = useState<'pflicht' | 'datum' | 'server' | null>(null)
   /** The child the last save stored, named where the form was. */
   const [savedName, setSavedName] = useState<string | null>(null)
@@ -434,7 +436,7 @@ function KinderScreenView({
   }
 
   async function handleSave() {
-    if (saving) return
+    if (saveInFlight.current) return
     setSavedName(null)
     // A press that does nothing reads like a broken button (real-data run 4): say what is missing.
     if (!firstName.trim() || !lastName.trim() || !geburtsdatum.trim()) {
@@ -473,6 +475,7 @@ function KinderScreenView({
       childcareFrom: GERMAN_DATE_PATTERN.test(childcareFrom.trim()) ? childcareFrom.trim() : null,
       childcareTo: GERMAN_DATE_PATTERN.test(childcareTo.trim()) ? childcareTo.trim() : null,
     }
+    saveInFlight.current = true
     setSaving(true)
     setSaveError(null)
     let stored: readonly ChildItem[] | void = undefined
@@ -487,6 +490,7 @@ function KinderScreenView({
       setSaveError('server')
       return
     } finally {
+      saveInFlight.current = false
       setSaving(false)
     }
     setSavedName(payload.firstName)
