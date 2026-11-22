@@ -185,14 +185,14 @@ jobs:
             exit 1
           }
 
-  # SonarQube Cloud analysis with the coverage of the `test` job (automatic analysis is off,
+  # SonarQube Cloud analysis with the coverage of the `test` and `integration` jobs (automatic analysis is off,
   # it cannot import coverage). Settings live in sonar-project.properties. No stored secret:
   # the auth action trades the job's GitHub OIDC token for a short-lived, project-scoped
   # SonarQube token and exports it as SONAR_TOKEN. Fork PRs get no OIDC token, so the job is
   # skipped for them instead of failing.
   sonar:
     name: SonarQube Cloud
-    needs: test
+    needs: [test, integration]
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-24.04
     permissions:
@@ -207,6 +207,12 @@ jobs:
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           name: coverage-lcov
+      # A single-file artifact is stored without its directories, so it is put back where Sonar looks for it.
+      - name: Download the integration coverage report
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: coverage-lcov-integration
+          path: apps/api/coverage-integration
       - name: Cache SonarQube packages
         uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
@@ -302,7 +308,16 @@ jobs:
       - name: Install Playwright's Chromium (for the REQ-011 PDF export suites)
         run: pnpm --filter @steuereule/api exec playwright-core install chromium --with-deps
       - name: Integration + acceptance tests — encryption/audit + REQ-005/006/009/010/011 (ADR-0012/ADR-0013)
-        run: pnpm --filter @steuereule/api test:integration
+        run: pnpm --filter @steuereule/api test:integration --coverage
+      # The DB-backed code (Prisma repositories) is only exercised here: Sonar gets this report next to the
+      # unit one, otherwise every repository change counts as uncovered.
+      - name: Upload the integration coverage report for SonarQube Cloud
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: coverage-lcov-integration
+          path: apps/api/coverage-integration/lcov.info
+          if-no-files-found: error
+          retention-days: 3
       - name: Owl run log on Redis Streams (ADR-0064) — replay, stop across instances, expiry
         # Its own step with REDIS_URL set only here: with the variable on the whole tier the rate
         # limiter would share its counters across all test files and they would throttle each other.

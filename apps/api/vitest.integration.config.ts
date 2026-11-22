@@ -38,5 +38,14 @@ export default defineConfig({
       // keep the Gewerbe-Gate path they were written for. Tests of the switch set it themselves.
       SELBSTSTAENDIGE_ENABLED: 'false',
     },
+    // Measured for SonarQube Cloud, no threshold: the Prisma repositories and other DB-backed code are
+    // exercised here, not in the unit tier. Its own directory, so it never overwrites the unit report.
+    coverage: {
+      provider: 'v8',
+      reportsDirectory: 'coverage-integration',
+      reporter: ['text-summary', ['lcov', { projectRoot: '../..' }]],
+      include: ['src/**/*.ts'],
+      exclude: ['src/**/*.spec.ts', 'src/**/*.test.ts'],
+    },
   },
 })
