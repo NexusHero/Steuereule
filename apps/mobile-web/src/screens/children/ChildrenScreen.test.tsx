@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { I18nextProvider } from 'react-i18next'
 import { ThemeProvider } from '@steuereule/ui'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -335,9 +335,14 @@ describe('KinderScreen', () => {
     renderKinder({ onSaveChild: onSave })
     fireEvent.click(screen.getByLabelText('Kind Lina bearbeiten'))
     expect(screen.queryByTestId('kind-speichern-fehler')).toBeNull()
-    fireEvent.click(screen.getByTestId('kind-speichern'))
+    // The failed save settles inside act, so React also runs the effects of that render before the next
+    // click. Waiting with findBy* only sees the DOM: react-native-web hands the button its new onPress and
+    // disabled state in a passive effect, and on a loaded runner the click landed before it (CI, 22.11.2026).
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('kind-speichern'))
+    })
 
-    expect((await screen.findByTestId('kind-speichern-fehler')).textContent).toContain('nicht gespeichert')
+    expect(screen.getByTestId('kind-speichern-fehler').textContent).toContain('nicht gespeichert')
     expect((screen.getByLabelText('Vorname') as HTMLInputElement).value).toBe('Lina')
     // A second try that succeeds takes the message away again.
     onSave.mockResolvedValueOnce(undefined)

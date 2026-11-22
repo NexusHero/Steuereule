@@ -2,7 +2,7 @@
 
 Two mechanical gates on the docs that used to be checked only by a human re-reading them
 (ADR-0021 and the Requirements-Register-ownership decision landing via #251). One CI job
-(`docs-consistency` in `.github/workflows/ci.yml`), two families, no new dependency —
+(`docs-consistency` in `.github/workflows/quality.yml`), two families, no new dependency —
 everything here is plain Node (`fs`, `fetch`), because the vocabulary each check needs (a
 handful of glob patterns, one pipe-table shape) is small enough that a real dependency would
 be more supply chain than the problem needs.
@@ -30,7 +30,7 @@ pnpm adr-check         # node scripts/checks/adr-check.mjs
    review on #252: this used to only know about `apps/api` and `apps/mobile-web`, so
    `packages/core`, `packages/tokens`, `packages/api-client` and `packages/ui` all
    false-negatived even though `pnpm -r test` runs every one of them), and against
-   `.github/workflows/ci.yml`'s literal e2e `node e2e/....mjs` invocations. A workspace glob's
+   the literal e2e `node e2e/....mjs` invocations in `.github/workflows/*.yml`. A workspace glob's
    `exclude` array is honoured for every discovered project, not just the first one written
    (F4). A file under a path this check doesn't recognise as any known workspace project is its
    own distinct finding, not folded into "not run" (F3) — those are different problems with

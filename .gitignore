@@ -8,6 +8,7 @@ dist/
 # test work without a build step (ADR-050); keep this one dist/ tracked on purpose.
 !packages/tokens/dist/
 coverage/
+coverage-integration/
 .turbo/
 *.tsbuildinfo
 # Local runtime artifacts (agent worktrees, Expo cache) — never committed.

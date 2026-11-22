@@ -1,0 +1,111 @@
+# Load pipeline: many different users (own account session, receipts and chat history each) walk the hot read
+# endpoints against the real server and a real Postgres. Measures what the single-user gate in ci.yml cannot:
+# behaviour with hundreds of users at once. Runs on every pull request with a small load, so its check can be
+# required like every other one (a check that only runs on some PRs would leave the others waiting forever),
+# and nightly / on demand at full size.
+name: Load
+
+on:
+  schedule:
+    - cron: '23 3 * * *'
+  workflow_dispatch:
+    inputs:
+      users:
+        description: Number of virtual users
+        default: '500'
+      seconds:
+        description: Duration of the run in seconds
+        default: '60'
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: load-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  multi-user:
+    name: Many users (seeded accounts, think times)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: steuereule
+          POSTGRES_PASSWORD: steuereule
+          POSTGRES_DB: steuereule
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U steuereule -d steuereule"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=10
+    env:
+      # Synthetic, throwaway values (ADR-0012): this job only talks to its own service container.
+      GUEST_SESSION_SECRET: ci-load-guest-secret
+      PRISMA_FIELD_ENCRYPTION_KEY: k1.aesgcm256.MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=
+      BETTER_AUTH_SECRET: ci-load-better-auth-secret-0123456789
+      BETTER_AUTH_URL: http://localhost:3302
+      API_ORIGIN: http://localhost:3302
+      WEB_ORIGIN: http://localhost:8081
+      CORS_ALLOWED_ORIGINS: http://localhost:8081
+      PORT: '3302'
+      TRUSTED_PROXIES: none
+      # Pull requests and pushes run a small load (catches a regression without costing a full run);
+      # the nightly and manual runs use the full size.
+      LOADTEST_USERS: ${{ (github.event_name == 'pull_request' || github.event_name == 'push') && '50' || inputs.users || '500' }}
+      LOADTEST_SECONDS: ${{ (github.event_name == 'pull_request' || github.event_name == 'push') && '20' || inputs.seconds || '60' }}
+      LOADTEST_COOKIES: /tmp/loadtest-cookies.txt
+    steps:
+      - name: Database URL of the Postgres service container
+        run: echo "DATABASE_URL=postgres://${DB_USER}:${DB_PASSWORD}@localhost:5432/${DB_NAME}" >> "$GITHUB_ENV"
+        env:
+          DB_USER: steuereule
+          DB_PASSWORD: steuereule
+          DB_NAME: steuereule
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - name: Set up pnpm
+        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+      - name: Set up Node
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: 24
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Generate Prisma Client
+        run: pnpm --filter @steuereule/api prisma:generate
+      - name: Apply migrations (tax data and keystore)
+        run: pnpm --filter @steuereule/api migrate:deploy
+      - name: Build the API
+        run: pnpm --filter @steuereule/api build
+      - name: Seed the users (signed sessions, receipts, chat history)
+        working-directory: apps/api
+        run: pnpm exec tsx scripts/loadtest-seed.ts
+      - name: Boot the real server
+        working-directory: apps/api
+        run: |
+          node --import tsx dist/main.js > /tmp/steuereule-api-load.log 2>&1 &
+          echo $! > /tmp/steuereule-api-load.pid
+          curl --fail --silent --show-error --retry 30 --retry-delay 1 --retry-all-errors --retry-connrefused "${API_ORIGIN}/v1/health/ready"
+      - name: Many-user load (p95 of every endpoint <= 1000 ms, 0.5 % errors at most)
+        run: >-
+          node scripts/loadtest/multi-user.mjs --cookies "${LOADTEST_COOKIES}" --users "${LOADTEST_USERS}"
+          --seconds "${LOADTEST_SECONDS}" --think 1000-3000 --url "${API_ORIGIN}" --origin "${WEB_ORIGIN}"
+          --pid "$(cat /tmp/steuereule-api-load.pid)" --max-p95 1000 --max-error-rate 0.5
+      - name: API log (on failure)
+        if: failure()
+        run: cat /tmp/steuereule-api-load.log || true
+      - name: Stop the server (PID-scoped only — #114, never a blanket process kill)
+        if: always()
+        run: |
+          if [ -f /tmp/steuereule-api-load.pid ]; then
+            kill "$(cat /tmp/steuereule-api-load.pid)" 2>/dev/null || true
+          fi
