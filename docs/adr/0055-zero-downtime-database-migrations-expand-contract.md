@@ -1,6 +1,6 @@
 # ADR-0055 — Zero-Downtime Database Migrations (Expand and Contract Pattern)
 
-- **Status:** Accepted (FAANG Engineering Standard)
+- **Status:** Accepted
 - **Date:** 2026-11-08
 - **Deciders:** Steuereule Engineering
 - **Applies to:** `apps/api/prisma/schema.prisma`, `apps/api/prisma/migrations/`, Google Cloud Run Rollouts

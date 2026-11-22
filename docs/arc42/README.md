@@ -1,5 +1,13 @@
 # SteuerEule — Architecture (arc42)
 
+> **Which document is authoritative.** The system overview is [`docs/architecture.md`](../architecture.md):
+> context, building blocks, runtime, deployment, concepts, risks. This document keeps what that one
+> does not go into: the build and quality toolchain (§8) and the boot-ordering invariant (§8.1).
+> **§5 and §5.1 below describe the system as it stood at REQ-014** (nine tables, a handful of
+> modules). They are kept as a record of that slice and are not maintained against today's code;
+> for the current structure read `architecture.md` §5 and
+> [`architecture-subsystems.md`](../architecture-subsystems.md).
+
 The living architecture document for the SteuerEule engineering build, kept as
 docs-as-code alongside the [engineering ADR log](../adr/index.md). It is **as important as
 the software**: a stale arc42 is treated the way we treat a failing test, and every
@@ -248,12 +256,14 @@ thing.** A check that runs only on a developer's machine is evidence, not a guar
 |---|---|---|---|
 | Types | `tsc --noEmit`, TS **7.0.2**, `strict` + `noUncheckedIndexedAccess` + `exactOptionalPropertyTypes` | Type correctness across the workspace. Carries the **type-aware** load that the linter deliberately does not (ADR-0019 §4). | CI `test` job |
 | Static lint | **oxlint** (ADR-0019) | Syntactic/semantic defect classes `tsc` does not cover — notably unused bindings (`noUnusedLocals` is **not** enabled) and shadowing across the Playwright `page.evaluate` serialisation boundary. | CI `lint` job |
-| Architecture boundaries | **oxlint** `no-restricted-imports` (ADR-0102) + `packages/core/src/architecture.test.ts` | Ports & Adapters: Prisma, LangChain, Stripe and nodemailer appear only in their adapter files under `apps/api/src`; the core's layers stay acyclic. The shape is drawn in [`../architecture.md` §4.1](../architecture.md#_architecture_style). | CI `lint` and `test` jobs |
+| Architecture boundaries | Vitest: `apps/api/test/architecture.test.ts`, `packages/core/src/architecture.test.ts` (ADR-0102) | Ports & Adapters: the database client and each external SDK are imported only by the files named for them; the set of module → module imports matches a baseline; the core has no new import direction and no value-import cycle between files. The proof that the check can fail is inside the test: twelve constructed violations. | CI `test` job |
 | Unit / pure logic | Vitest | Behaviour of pure logic, no DB. | CI `test` job |
 | Compliance | Vitest against **real Postgres** | REQ-003 field encryption at rest, REQ-004 append-only audit, REQ-005/006/009/010/011 acceptance. Never a mock (ADR-0010). | CI `integration` job |
 | Boot | compiled `dist/` over real HTTP | Wiring bugs that `.inject()` is structurally blind to. | CI `smoke` job |
 | Browser CORS | headless Chromium, two real origins | Credentialed cross-origin behaviour no `curl` or Node `fetch()` can enforce. | CI `cross-origin-smoke` job |
 | Real-browser layout | headless Chromium, real viewports (s/m/l) | ADR-0014 breakpoint `maxWidth` resolution and the DS's `.fk-btn { width: 100% }` contract — jsdom performs no layout, so this is unprovable at the unit layer. | CI `cross-origin-smoke` job |
+
+The jobs live in two workflows: `lint`, `test` and `integration` in *Quality* (`quality.yml`), `smoke` and `cross-origin-smoke` in *Build & E2E* (`ci.yml`).
 
 ### Why the linter has its own parser
 
@@ -277,15 +287,7 @@ The standing consequence: **every gate here must be demonstrated failing.** The 
 is a link to a CI run that went red on a deliberately introduced defect and skipped its dependants
 — not a green run, and not a local one.
 
-> **In flight on `chore/oxlint-adoption-113`:** the `lint` row above describes the toolchain as
-> decided in ADR-0019. The CI job itself is still the placeholder until Salih's wiring and its
-> failing-run proof land on this branch. Following this document's convention for work in review,
-> this marker comes off when that job is real — the map may show what is coming, but only for as
-> long as it says so out loud.
-
-> **In flight on `refactor/hexagonal-boundaries`:** the *Architecture boundaries* row was proven
-> red **locally** (three probe files, every import group, table in ADR-0102). The CI run that goes
-> red on a deliberately introduced import is still owed; this marker comes off with its link.
+The `lint` job is real: `quality.yml` runs `pnpm lint`, which is `oxlint --deny-warnings`.
 
 ## 8.1 Boot ordering — a structural invariant in `apps/api/src/main.ts`
 
@@ -310,7 +312,7 @@ the process.
 |---|---|
 | A lint rule preventing a re-sort | **None.** `.oxlintrc.json` has no import-sort rule today. If one is ever adopted it needs an exception for this line. |
 | A test that goes red when the order breaks | **Yes**, `apps/api/test/boot/assert-env-not-file-sourced.test.ts` — the acceptance case's own refusal disappears, and a derived ordering-broken entry point proves it (ADR-0021 control proof). Scope: it spawns `tsx src/main.ts`, never `dist/`. |
-| The invariant holding in the compiled `dist/` | **Observed on the code path, not controlled, and never in the image.** Rows 1 and 2 were reproduced against `node --import tsx dist/main.js` — the `CMD` in `apps/api/Dockerfile:96` — on Node 24 with `@prisma/client` 6.19.3 against real Postgres at `ff633a3` (Salih's #310 run): the refusal fired and named the guarded vars, and the no-op case booted through to a real `GET /v1/profile` → 200. **That run was made outside any container, against a fresh `tsc` build — not against the built production image**, which a registry/blob-CDN block prevents building in this environment (the same block behind `e2e/harness/README.md`'s native-Postgres fallback). The emitted order was re-checked at `71074c6`: `tsc` puts `import './config/env-snapshot.js'` first in `dist/main.js` and emits `dist/config/env-snapshot.js`, so it neither reorders nor elides. |
+| The invariant holding in the compiled `dist/` | **Observed on the code path, not controlled, and never in the image.** Rows 1 and 2 were reproduced against `node --import tsx dist/main.js` — the `CMD` in `apps/api/Dockerfile` — on Node 24 with `@prisma/client` 6.19.3 against real Postgres at `ff633a3` (Salih's #310 run): the refusal fired and named the guarded vars, and the no-op case booted through to a real `GET /v1/profile` → 200. **That run was made outside any container, against a fresh `tsc` build — not against the built production image**, which a registry/blob-CDN block prevents building in this environment (the same block behind `e2e/harness/README.md`'s native-Postgres fallback). The emitted order was re-checked at `71074c6`: `tsc` puts `import './config/env-snapshot.js'` first in `dist/main.js` and emits `dist/config/env-snapshot.js`, so it neither reorders nor elides. |
 
 **The gap that remains, stated as narrowly as it now is.** The invariant has been *seen to hold* on
 the code path production runs — that is more than the earlier "by construction, untested" wording
@@ -324,7 +326,7 @@ things are still missing, and they are different sizes:
   `apps/api/test/boot/support/run-server.ts`'s `entryPath` defaults to `src/main.ts` and no fixture
   points at `dist/`.
 - **This invariant inside the image.** The image *is* built and booted in CI — `prod-deploy-smoke`
-  (`.github/workflows/ci.yml:699`, "Production compose stack … (real Docker build)") — but that job
+  (`.github/workflows/ci.yml`, "Production compose stack … (real Docker build)") — but that job
   asserts guest/registration/login/QR, not the env-source guard. So the image is exercised and this
   invariant is exercised, never in the same run.
 

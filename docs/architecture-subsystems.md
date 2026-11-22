@@ -1,338 +1,188 @@
-# Backend Subsystems — Component View (C4 Level 3)
+# SteuerEule — Backend-Module von innen
 
-Dieses Dokument ist der **C4 Level-3 (Komponenten-) Begleiter** zur zentralen Architektur-Dokumentation [`architecture.md`](./architecture.md).
+| | |
+| :--- | :--- |
+| **Stand** | 2026-11-22 |
+| **Ebene** | Komponenten (C4 Level 3) zu [`architecture.md`](architecture.md) |
+| **Geltungsbereich** | ausgewählte Module unter `apps/api/src` |
 
-Während die Building Block View in `architecture.md` das Gesamtsystem auf Container- und Paketebene (Level 1 und 2) umreißt, zoomt dieses Dokument in jedes **Backend-Subsystem in Isolation** und beschreibt dessen innere Struktur und Verdrahtung unter `apps/api/src/`.
+Dieses Dokument zeigt für die wichtigsten Module, wer hereinkommt, welcher Service arbeitet, welche Ports er braucht und welche Funktionen des Kerns er ruft. Es ist keine Routenliste: Die vollständige und maßgebliche Liste aller Routen ist `apps/api/openapi.json`, zur Laufzeit unter `/docs`.
 
----
+Jeder Name hier ist gegen den Code geprüft. Kernfunktionen sind Exporte aus `packages/core/src`, Tabellen sind Modelle aus `apps/api/prisma/schema.prisma`.
 
-## Architektur-Vertrag der Subsysteme
-
-Jedes Subsystem in Steuereule unterliegt denselben strengen Architektur-Garantien:
-
-1. **Echtes Modul-Scoping & Tenant-Isolation:**
-   Jeder Controller sitzt hinter `UserContextGuard` bzw. `RequiresAccountGuard`. Das Scoping auf `userId` und `Steuerjahr` wird serverseitig garantiert — kein Client kann Daten fremder Mandanten adressieren oder manipulieren.
-2. **Delegation an den deterministischen Kern (`@steuereule/core`):**
-   Kein Controller und kein Service erfindet steuerliche Berechnungen oder Tarife. Sämtliche Beträge, Tarife (§ 32a EStG), Freibeträge, AfA-Sätze, Besteuerungsanteile und Verjährungsfristen werden von rein funktionalen, zustandslosen Funktionen in `@steuereule/core` berechnet ([ADR-0038](adr/0038-berechnungs-kern-ki-port.md)). Der Kern ist streng in fünf Schichten unterteilt (`math/`, `engine/`, `domains/`, `interview/`, `common/`) und wird durch automatisierte Architektur-Linter (`architecture.test.ts`) gegen zyklische Abhängigkeiten geschützt.
-3. **Feldverschlüsselung im Ruhezustand (Encryption at Rest, [ADR-0008](adr/0008-profile-persistence-encryption.md)):**
-   Alle steuerlichen Werte, Stammdaten und PII werden vor dem Schreiben in PostgreSQL über AES-256-GCM verschlüsselt. In der Datenbank stehen ausschließlich Chiffre-Texte mit zufälligem Nonce.
-4. **Ports & Adapters, vom Linter erzwungen ([ADR-0102](adr/0102-ports-und-adapter-per-linter-erzwungen.md)):**
-   Services kennen nur Ports (`*.repository.ts`, `ki/single-shot-model.ts`, `unlock/payment-provider.ts`, `auth/email-sender.ts`, …). Prisma darf nur in `*.prisma.ts`, LangChain nur in `src/ki/**`, Stripe nur in `unlock/stripe-payment-provider.ts` und nodemailer nur in `auth/smtp-email-sender.ts` vorkommen. Ein Verstoß macht `pnpm lint` rot. Das Gesamtbild mit allen Ringen steht in [`architecture.md` §4.1](./architecture.md#_architecture_style).
-
-### Diagramm-Legende (Shared Mermaid `classDef`)
-* **ctrl** (Blau): HTTP Controller Surface (`apps/api/src/<modul>/*.controller.ts`)
-* **svc** (Grün): Orchestrierung & Business-Service (`apps/api/src/<modul>/*.service.ts`)
-* **core** (Orange): Reine, zustandslose Kernlogik (`packages/core/src/*.ts`)
-* **db** (Grau): PostgreSQL-Tabellen. Ein Pfeil von einem Service dorthin steht immer für *Repository-Port → Prisma-Adapter*, nie für einen direkten Prisma-Aufruf im Service.
-* **port** / **adapter** (Lila): Ports zu externen Anbietern und ihre Adapter (Stripe, E-Mail, Sprachmodelle)
-
----
-
-## 1. Cockpit & Tax Estimate Subsystem
-
-Das `cockpit`- und `tax-estimate`-Subsystem verwaltet den aktuellen Erklärungsstand, die offenen Pflichtpunkte und die Spanne der vorläufigen Steuererstattung.
+## Das gemeinsame Muster
 
 ```mermaid
-flowchart TD
-  classDef ctrl fill:#e3f0ff,stroke:#2b6cb0,color:#1a365d;
-  classDef svc fill:#eef7ee,stroke:#38a169,color:#1c4532;
-  classDef core fill:#fff5e6,stroke:#dd6b20,color:#7b341e;
-  classDef db fill:#f0f0f5,stroke:#718096,color:#2d3748;
-
-  CockpitCtrl["CockpitController\nGET /v1/steuerjahre/:jahr/cockpit"]:::ctrl
-  EstimateCtrl["TaxEstimateController\nGET /v1/steuerjahre/:jahr/schaetzung"]:::ctrl
-
-  CockpitSvc["CockpitService"]:::svc
-  EstimateSvc["TaxEstimateService"]:::svc
-
-  CoreCalc["@steuereule/core\nberechneErstattung()\nTaxYearParameters"]:::core
-  CoreRange["@steuereule/core\ncockpitSpanne()"]:::core
-
-  PrismaTax["Prisma\nTaxYear, LstbData,\nPensionData, RentalObject"]:::db
-
-  CockpitCtrl --> CockpitSvc
-  EstimateCtrl --> EstimateSvc
-
-  CockpitSvc --> EstimateSvc
-  CockpitSvc --> PrismaTax
-  EstimateSvc --> PrismaTax
-  EstimateSvc --> CoreCalc
-  EstimateSvc --> CoreRange
+flowchart LR
+  Ctrl["Controller\n*.controller.ts"] --> Svc["Service\n*.service.ts"]
+  Svc --> Core["@steuereule/core\nreine Funktionen"]
+  Svc --> Port["Port\n*.repository.ts"]
+  Adapter["Adapter\n*.repository.prisma.ts"] -. implementiert .-> Port
+  Adapter --> Db[("PostgreSQL")]
+  Module["*.module.ts"] -. bindet .-> Adapter
 ```
+
+Was für jedes Modul gilt:
+
+1. **Identität.** Die Nutzer-ID einer Anfrage setzt allein der `UserContextGuard`. Routen mit `@RequiresAccount()` lehnen Gäste ab. Ohne Guard arbeiten nur `HealthController`, `CapabilitiesController`, `AuthCapabilitiesController`, `OAuthDiscoveryController`, `DeviceController` und die Webhook-Route von Stripe.
+2. **Rechnen im Kern.** Kein Service berechnet einen Steuerbetrag selbst ([ADR-0038](adr/0038-berechnungs-kern-ki-port.md)).
+3. **Persistenz über Ports.** Ein Service kennt sein Repository als Interface. Der Prisma-Adapter verschlüsselt die Felder, die im Schema mit `/// @encrypted` markiert sind. Nicht jedes Feld ist verschlüsselt, siehe [`architecture.md` §8.2](architecture.md#82-verschlüsselung).
+4. **Geprüfte Grenzen.** Datenbank-Client und externe SDKs dürfen nur die dafür benannten Dateien importieren. Das prüft `apps/api/test/architecture.test.ts` ([ADR-0102](adr/0102-ports-und-adapter-per-architekturtest.md)).
+
+In den Tabellen unten steht `…` für das Präfix `/v1/steuerjahre/:jahr`.
 
 ---
 
-## 2. Interview & Minimal-Gate Subsystem
+## 1. Cockpit und Steuerschätzung
 
-Das `interview`-Subsystem steuert das dynamische Drei-Fragen-Minimal-Gate und den On-Demand-Lebenslagen-Katalog ([ADR-0031](adr/0031-the-interview-is-three-questions-and-a-catalog.md), [ADR-0045](adr/0045-value-first-funnel.md)).
+Das Cockpit zeigt die Erstattungsspanne und die offenen Punkte eines Steuerjahrs. Die Steuerschätzung liefert die detaillierte Rechnung.
 
-```mermaid
-flowchart TD
-  classDef ctrl fill:#e3f0ff,stroke:#2b6cb0,color:#1a365d;
-  classDef svc fill:#eef7ee,stroke:#38a169,color:#1c4532;
-  classDef core fill:#fff5e6,stroke:#dd6b20,color:#7b341e;
-  classDef db fill:#f0f0f5,stroke:#718096,color:#2d3748;
+| | Cockpit | Steuerschätzung |
+| :--- | :--- | :--- |
+| Eingang | `CockpitController`: `GET …/cockpit` | `TaxEstimateController`: `GET …/steuerschaetzung`, nur mit Konto |
+| Service | `CockpitService` | `TaxEstimateService` |
+| Kern | `cockpitRangeFromInputs` | `taxEstimateEmployee`, `taxEstimatePensioner`, `taxEstimateCrossBorder`, `taxEstimateSelfEmployed`, `estimateMarriedCouple` |
+| Ports | `TAX_YEAR_REPOSITORY`, `WAGE_TAX_CERTIFICATE_REPOSITORY`, `INTERVIEW_ANSWER_REPOSITORY`, `PROVENANCE_REPOSITORY`, `PENSION_REPOSITORY`, `CAPITAL_REPOSITORY`, `RENTAL_REPOSITORY`, `CROSS_BORDER_SALARY_STATEMENT_REPOSITORY` | die Repositories der Fachmodule, deren Daten in die Schätzung eingehen |
 
-  InterviewCtrl["InterviewController\nGET /v1/steuerjahre/:jahr/interview\nPOST /v1/steuerjahre/:jahr/interview/antworten"]:::ctrl
+Die beiden Services rufen einander nicht auf. Beide lesen dieselben Fachdaten und rechnen jeweils im Kern. `CockpitService` nutzt zusätzlich `SubmissionService` und `BusinessService`; das Cockpit ist damit eines der am stärksten gekoppelten Module (25 eingehende Modulkanten).
 
-  InterviewSvc["InterviewService\n(Transaktions-Queue & Re-Entry)"]:::svc
+## 2. Interview
 
-  CoreGraph["@steuereule/core\nInterviewGraph\nQUESTIONS, isReachable()"]:::core
+| | |
+| :--- | :--- |
+| Eingang | `InterviewController`: `GET …/interview`, `POST …/interview/antworten`. Beide auch für Gäste. |
+| Service | `InterviewService` |
+| Kern | `ENTRIES` (Fragenkatalog), `isValidAnswer`, `isReachableFor`, `nextStepFor` |
+| Ports | `INTERVIEW_ANSWER_REPOSITORY` |
+| Weitere Abhängigkeiten | `AuditService`, `LinkService` |
+| Tabelle | `InterviewAnswer`; verschlüsselt ist das Feld `value` |
 
-  PrismaInterview["Prisma (AES-256-GCM)\nInterviewAnswer, TaxYear"]:::db
+Die Antwort auf eine Frage liefert den nächsten Schritt und die Zahl der offenen Punkte. Die Erstattungsspanne kommt nicht von hier, sondern aus dem Cockpit.
 
-  InterviewCtrl --> InterviewSvc
-  InterviewSvc --> CoreGraph
-  InterviewSvc --> PrismaInterview
-```
+## 3. Lohnsteuerbescheinigung und Arbeitsweg
 
----
+| | Lohnsteuerbescheinigung | Arbeitsweg |
+| :--- | :--- | :--- |
+| Eingang | `LstbController`: `GET …/lstb`, `PUT …/lstb/:feld`, dazu je `GET` und `PUT` für `lstb-kirchensteuer`, `lstb-zeilen`, `lstb-arbeitgeber`, `lstb-zuschuesse`. `LstbScanController`: `PUT …/lstb` für eine gelesene Bescheinigung als Ganzes. | `CommuteController`: `GET …/arbeitsweg`, `PUT …/arbeitsweg` |
+| Service | `LstbService`, `LstbScanService` | `CommuteService`, Hilfsfunktionen in `commute/ways-to-work.ts` |
+| Kern | `wageTaxCertificateStatus`, `setWageTaxCertificateField` | `calculateWorkdays`, `commuterAllowanceByWay` |
+| Ports | `WAGE_TAX_CERTIFICATE_REPOSITORY`, `PROVENANCE_REPOSITORY` | `COMMUTE_REPOSITORY` |
+| Tabellen | `Lstb` | `Commute` |
 
-## 3. LStB & Pendler-Subsystem
+Alle Routen verlangen ein Konto. Die Entfernung zur Arbeit gibt der Nutzer ein; es gibt keinen Routing-Dienst.
 
-Verwaltet Lohnsteuerbescheinigungen, Werbungskosten, Entfernungspauschale und Homeoffice-Tage.
+## 4. Grenzgänger Schweiz
 
-```mermaid
-flowchart TD
-  classDef ctrl fill:#e3f0ff,stroke:#2b6cb0,color:#1a365d;
-  classDef svc fill:#eef7ee,stroke:#38a169,color:#1c4532;
-  classDef core fill:#fff5e6,stroke:#dd6b20,color:#7b341e;
-  classDef db fill:#f0f0f5,stroke:#718096,color:#2d3748;
-  classDef port fill:#f3e8ff,stroke:#7e22ce,color:#581c87;
+| | |
+| :--- | :--- |
+| Eingang | `ChSalaryCertificateController`: `GET …/ch-lohnausweis`, `PUT …/ch-lohnausweis/:feld`, dazu `PUT` für `bemerkungen`, `vorsorge`, `n-gre`, `wechselkurs`, `grenzgaenger` |
+| Service | `ChSalaryCertificateService` |
+| Kern | `crossBorderStatus`, `chItemsAsCoreItems`, `chfToEur`, `officialMonthlyRate` |
+| Ports | `CROSS_BORDER_SALARY_STATEMENT_REPOSITORY` |
+| Tabelle | `ChSalaryCertificate` |
 
-  LstbCtrl["LstbController\nGET/PUT /v1/steuerjahre/:jahr/lstb"]:::ctrl
-  CommuteCtrl["CommuteController\nGET/PUT /v1/steuerjahre/:jahr/arbeitsweg"]:::ctrl
+Entscheidung: [ADR-0042](adr/0042-grenzgaenger-ch-vertikale.md), ergänzt durch [ADR-0072](adr/0072-n-gre-pensionskasse-aufteilung-krankentaggeld-jahreskurs.md).
 
-  LstbSvc["LstbService"]:::svc
-  CommuteSvc["CommuteService"]:::svc
+## 5. Rente, Kapital, Vermietung
 
-  CoreEmployee["@steuereule/core\nvalidateLstb()\nTaxYearParameters (Freibetrag)"]:::core
-  CoreWorkdays["@steuereule/core\ncommuterAllowanceByWay()\nweekdaysInPeriod()"]:::core
+| | Rente | Kapital | Vermietung |
+| :--- | :--- | :--- | :--- |
+| Eingang | `PensionController`: `GET …/rente`, `PUT …/rente/art`, `PUT …/rente/:feld` | `CapitalController`: `GET …/kapital`, `PUT …/kapital/inhaber`, `PUT …/kapital/:feld`, `GET …/kapital/guenstigerpruefung` | `RentalController`: `GET …/vermietung`, `POST …/vermietung/objekte`, `PUT …/vermietung/objekte/:objektId/:feld`, `PUT …/vermietung/objekte/:objektId/adresse` |
+| Service | `PensionService` | `CapitalService` | `RentalService` |
+| Kern | `pensionStatus`, `pensionAsCoreLineItem` | `classifyCapitalDepot`, `capitalAsCoreLineItem`, `mostFavourableCheckOnEstimate` | `classifyRental`, `rentalStatus`, `rentalPropertyFacts` |
+| Ports | `PENSION_REPOSITORY` | `CAPITAL_REPOSITORY` | `RENTAL_REPOSITORY` |
+| Tabellen | `Pension` | `Capital` | `RentalProperty` |
 
-  CommuteRepo["CommuteRepository\n(Port, COMMUTE_REPOSITORY)"]:::port
-  PrismaLstb["Prisma (AES-256-GCM)\nLstb, Commute"]:::db
+## 6. Freischaltung und Zahlung
 
-  LstbCtrl --> LstbSvc
-  CommuteCtrl --> CommuteSvc
+| | |
+| :--- | :--- |
+| Eingang | `UnlockController`: `GET …/freischaltung` und der Webhook `POST /v1/zahlung/stripe/webhook`. Den Checkout startet `PrintoutController` (§7). |
+| Service | `UnlockService` |
+| Ports | `PAYMENT_PROVIDER` (`PaymentProvider` mit `createCheckout` und `verifyEvent`), `UNLOCK_REPOSITORY` |
+| Adapter | `StripePaymentProvider` in `unlock/stripe-payment-provider.ts`, die einzige Datei mit dem Stripe-SDK |
+| Tabelle | `Unlock` |
 
-  LstbSvc --> CoreEmployee
-  LstbSvc --> PrismaLstb
-  CommuteSvc --> CommuteRepo
-  CommuteRepo --> PrismaLstb
-  CommuteSvc --> CoreWorkdays
-```
+Der Webhook steht nicht hinter dem `UserContextGuard`. Er weist sich über die Signatur aus, die `verifyEvent` prüft. Der Ablauf steht in [`architecture.md` §6.2](architecture.md#62-freischalten-und-drucken).
 
----
+## 7. Ausdruck
 
-## 4. Grenzgänger Schweiz (CH-Vertikale)
+| | |
+| :--- | :--- |
+| Eingang | `PrintoutController`: `GET …/ausdruck/pruefung`, `GET …/ausdruck/werte`, `POST …/ausdruck/checkout`, `GET …/ausdruck`, `GET …/ausdruck/vorlage/:formular`, dazu `POST …/ausdruck/async` und `GET …/ausdruck/jobs/:jobId` |
+| Services | `PrintoutService` stellt die Werte zusammen und startet den Checkout über `UnlockService`. `PrintoutJobService` führt asynchrone Aufträge. |
+| Rendern | Funktion `renderForms` in `printout/form-renderer.ts`, die einzige Datei mit `pdf-lib` |
+| Daten | Feldpositionen `FIELD_SETS` in derselben Datei (2024 und 2025), Vordrucke unter `apps/api/assets/vordrucke/<jahr>/`, Prüfsummen in `printout/vordrucke-<jahr>.json` |
 
-Abwicklung von Schweizer Lohnausweisen, 60-Tage-Regel nach Art. 15a DBA-CH und amtlicher CHF-Währungsumrechnung.
+`PrintoutJobService` hält Aufträge in einer `Map` im Prozessspeicher und startet sie mit `setImmediate`. Es gibt keinen Worker und keinen dauerhaften Speicher. Das ist als Schuld in [`architecture.md` §11](architecture.md#11-risiken-und-technische-schulden) geführt.
 
-```mermaid
-flowchart TD
-  classDef ctrl fill:#e3f0ff,stroke:#2b6cb0,color:#1a365d;
-  classDef svc fill:#eef7ee,stroke:#38a169,color:#1c4532;
-  classDef core fill:#fff5e6,stroke:#dd6b20,color:#7b341e;
-  classDef db fill:#f0f0f5,stroke:#718096,color:#2d3748;
-
-  ChCtrl["ChSalaryCertificateController\nGET/PUT /v1/steuerjahre/:jahr/ch-lohnausweis"]:::ctrl
-
-  ChSvc["ChSalaryCertificateService"]:::svc
-
-  CoreCh["@steuereule/core\ngrenzgaengerStatus()\nchPostenAlsKernposten()"]:::core
-  CoreEx["@steuereule/core\numrechnenChfEur()\nBMF_REFERENZKURSE"]:::core
-
-  PrismaCh["Prisma (AES-256-GCM)\nChSalaryCertificate"]:::db
-
-  ChCtrl --> ChSvc
-  ChSvc --> CoreCh
-  ChSvc --> CoreEx
-  ChSvc --> PrismaCh
-```
-
----
-
-## 5. Renten, Kapital & Vermietung Subsysteme
-
-Die spezialisierten Einkunftsarten für Rentner (§ 22 EStG), Kapitalanleger (§ 20 EStG) und Vermieter (§ 21 EStG / lineare AfA § 7 Abs. 4 EStG).
+## 8. Eule
 
 ```mermaid
-flowchart TD
-  classDef ctrl fill:#e3f0ff,stroke:#2b6cb0,color:#1a365d;
-  classDef svc fill:#eef7ee,stroke:#38a169,color:#1c4532;
-  classDef core fill:#fff5e6,stroke:#dd6b20,color:#7b341e;
-  classDef db fill:#f0f0f5,stroke:#718096,color:#2d3748;
-
-  PensionCtrl["PensionController\n/v1/.../rente"]:::ctrl
-  CapitalCtrl["CapitalController\n/v1/.../kapital"]:::ctrl
-  RentalCtrl["RentalController\n/v1/.../vermietung"]:::ctrl
-
-  PensionSvc["PensionService"]:::svc
-  CapitalSvc["CapitalService"]:::svc
-  RentalSvc["RentalService"]:::svc
-
-  CorePension["@steuereule/core\nbesteuerungsanteil()\nertragsanteil()"]:::core
-  CoreCapital["@steuereule/core\nguenstigerpruefungKapital()\nSparerpauschbetrag"]:::core
-  CoreRental["@steuereule/core\nlineareAfaSatz()\nvalidateRentalObject()"]:::core
-
-  PrismaSub["Prisma (AES-256-GCM)\nPensionData, CapitalData, RentalObject"]:::db
-
-  PensionCtrl --> PensionSvc
-  CapitalCtrl --> CapitalSvc
-  RentalCtrl --> RentalSvc
-
-  PensionSvc --> CorePension
-  CapitalSvc --> CoreCapital
-  RentalSvc --> CoreRental
-
-  PensionSvc --> PrismaSub
-  CapitalSvc --> PrismaSub
-  RentalSvc --> PrismaSub
+flowchart LR
+  Ctrl["AdvisorController\n/v1/steuerjahre/:jahr/advisor"] --> Svc["AdvisorService"]
+  Ctrl --> Runs["AdvisorRunService"]
+  Svc --> Engine["ADVISOR_ENGINE\nLangGraphAdvisorEngine"]
+  Svc --> Guard["ADVISOR_TOPIC_GUARD\nAdvisorTopicGuard"]
+  Svc --> Repo["ADVISOR_REPOSITORY"]
+  Svc --> Tx["TRANSACTION_RUNNER"]
+  Engine --> Factory["createChatModelFromConfig\nAnthropic · OpenAI · Google · Fake"]
+  Guard --> Single["SingleShotModel"]
+  Runs --> Log["ADVISOR_RUN_LOG\nProzessspeicher oder Redis"]
 ```
 
----
+| | |
+| :--- | :--- |
+| Eingang | `AdvisorController` mit 27 Routen, darunter `POST chat`, `POST stream`, `GET runs/:runId/events`, `GET models` |
+| Services | `AdvisorService` (Gespräche, Entwürfe, Anwenden und Rückgängigmachen), `AdvisorRunService` (Antwortläufe, [ADR-0064](adr/0064-eulen-chat-antwortlaeufe-und-wiederaufnahme.md)), `AdvisorModelsService` |
+| Kern | Fachlogik der Eule in `packages/core/src/interview/advisor*.ts`; `scrubUserMessagePii` vor jedem Modellaufruf |
+| Ports | `ADVISOR_ENGINE` (Interface `AdvisorEnginePort` im Kern), `ADVISOR_TOPIC_GUARD`, `ADVISOR_REPOSITORY`, `ADVISOR_RUN_LOG`, `TRANSACTION_RUNNER` |
+| Adapter | `LangGraphAdvisorEngine` und die übrigen LangChain-Dateien in `ki/`; `advisor/run/advisor-run-log.redis.ts` |
+| Tabellen | `AdvisorConversation`, `AdvisorChatMessage` und weitere mit Präfix `Advisor` |
 
-## 6. Freischaltung & Zahlungs-Subsystem (Stripe)
+`AdvisorService` ist das Modul mit den meisten ausgehenden Kanten (24): Die Eule liest und entwirft in fast jedem Fachmodul. Die Werkzeuge der Eule liegen in `ki/tools/` (23 Dateien, Stand 2026-11-22).
 
-Rechtssicherer Verkauf des Formular-Ausdrucks pro Steuerjahr mit HMAC-geprüften Webhooks und Widerrufs-Zustimmung (§ 356 Abs. 5 BGB).
+## 9. MCP-Server
 
-```mermaid
-flowchart TD
-  classDef ctrl fill:#e3f0ff,stroke:#2b6cb0,color:#1a365d;
-  classDef svc fill:#eef7ee,stroke:#38a169,color:#1c4532;
-  classDef db fill:#f0f0f5,stroke:#718096,color:#2d3748;
-  classDef port fill:#f3e8ff,stroke:#7e22ce,color:#581c87;
+Über MCP arbeitet nicht die Eule, sondern ein fremder Assistent des Nutzers ([ADR-0052](adr/0052-agenten-zugang-mcp.md)).
 
-  CheckoutCtrl["UnlockController\nPOST /v1/.../ausdruck/checkout\nGET /v1/.../freischaltung"]:::ctrl
-  WebhookCtrl["PaymentWebhookController\nPOST /v1/zahlung/stripe/webhook"]:::ctrl
+| | |
+| :--- | :--- |
+| Eingang | `McpController`: `POST /mcp` (Streamable HTTP), dazu `GET /mcp`, `DELETE /mcp`, `GET /mcp/sse`, `POST /mcp/messages` |
+| Identität | Bearer-Token, geprüft vom `UserContextGuard` über `BEARER_TOKEN_REPOSITORY`. Nur dieser Controller akzeptiert Assistenten-Token. |
+| Services | `McpService` registriert die Werkzeuge aus `mcp/tools/` (45 Registrierungen, Stand 2026-11-22). `McpReportService` liefert Berichte und Simulationen. |
+| Ports | `TRANSACTION_RUNNER`: Eine Simulation schreibt über den normalen Schreibweg in einer Transaktion, die immer zurückgerollt wird. Sie läuft nur, wenn der Runner `rollsBack` meldet. |
 
-  UnlockSvc["UnlockService"]:::svc
-  StripeProvider["StripePaymentProvider\n(verifyWebhookSignature, createSession)"]:::port
+## 10. Belege
 
-  PrismaUnlock["Prisma\nFreischaltung, TaxYear"]:::db
+| | |
+| :--- | :--- |
+| Eingang | `ReceiptController` (Ablage), `ReceiptParseController`: `POST /v1/belege/parse`, `POST /v1/belege/:id/inhaber` |
+| Services | `ReceiptService`, `ReceiptParseService`, `ReceiptReassignService` |
+| Strategien | `DocumentParseRegistry` wählt nach Belegart: `AutoReceiptParseStrategy`, `LstbScanParseStrategy`, `ChCertificateScanParseStrategy` und weitere für Schweizer Schreiben |
+| Kern | feste Leseregeln je Belegart, `scrubDocumentTextPii` |
+| Ports | `RECEIPT_REPOSITORY`, `STORAGE_PORT`, `SINGLE_SHOT_MODEL_FACTORY` |
+| Adapter | `PostgresByteaStorageAdapter` mit `EnvelopeCryptoService`; Schlüssel je Nutzer über `USER_KEY_STORE` ([ADR-0059](adr/0059-beleg-keystore-crypto-shredding.md)) |
+| Tabellen | `Receipt`, `ReceiptFile` |
 
-  CheckoutCtrl --> UnlockSvc
-  WebhookCtrl --> UnlockSvc
-  UnlockSvc --> StripeProvider
-  UnlockSvc --> PrismaUnlock
-```
+Der Ablauf steht in [`architecture.md` §6.3](architecture.md#63-einen-beleg-lesen). Lebenszyklus eines Belegs: [ADR-0097](adr/0097-beleg-lebenszyklus.md).
 
----
+## 11. Konto: Export und Löschung
 
-## 7. Formular-Ausdruck Pipeline (Printout)
+| | Export | Löschung |
+| :--- | :--- | :--- |
+| Eingang | `AccountExportController`: `GET /v1/account/export` | `AccountDeletionController`: `DELETE /v1/account` |
+| Service | `AccountExportService` | `AccountDeletionService` |
+| Ports | `TAX_DATA_EXPORT_REPOSITORY`, `PDF_RENDERER` | `ACCOUNT_DELETION_REPOSITORY` |
+| Adapter | `PlaywrightPdfRenderer` | `account-deletion.repository.prisma.ts`, Transaktion in `delete-account-transaction.prisma.ts` |
 
-Schreibt die berechneten Daten exakt an die vermessenen Positionen der amtlichen BMF-NET-Vordrucke ([ADR-0050](adr/0050-papierweg-statt-elster-in-1-0.md)). Unterstützt sowohl synchrones Streaming als auch eine entkoppelte asynchrone Job-Queue ([ADR-0056](adr/0056-asynchronous-pdf-generation-job-queue.md)).
+Die Löschung läuft in einer Datenbank-Transaktion. Einträge im Zugriffsprotokoll bleiben anonymisiert erhalten, Daten unter einer rechtlichen Aufbewahrungspflicht ebenfalls ([ADR-0013](adr/0013-dsgvo-export-and-account-deletion.md)). Belegdateien werden vor der Transaktion vernichtet und sind daher nicht Teil ihrer Atomarität. `apps/api/test/account-deletion-coverage.test.ts` prüft anhand des Prisma-Schemas, dass keine Tabelle mit Nutzerbezug vergessen wird.
 
-```mermaid
-flowchart TD
-  classDef ctrl fill:#e3f0ff,stroke:#2b6cb0,color:#1a365d;
-  classDef svc fill:#eef7ee,stroke:#38a169,color:#1c4532;
-  classDef core fill:#fff5e6,stroke:#dd6b20,color:#7b341e;
-  classDef db fill:#f0f0f5,stroke:#718096,color:#2d3748;
+## 12. Beobachtbarkeit
 
-  PrintoutCtrl["PrintoutController\nGET /v1/.../ausdruck\nGET /v1/.../ausdruck/pruefung\nPOST /v1/.../ausdruck/async\nGET /v1/.../ausdruck/jobs/:jobId"]:::ctrl
-
-  PrintoutSvc["PrintoutService\n(Vorprüfung & Datenassemblierung)"]:::svc
-  PrintoutJobSvc["PrintoutJobService\n(Asynchrone Worker-Queue & Status)"]:::svc
-
-  Renderer["FormRenderer\n(pdf-lib Engine)"]:::svc
-  FieldSets["FIELD_SETS\n(felder-<jahr>.json)"]:::core
-  Templates["assets/vordrucke/<jahr>/\n(Amtliche BMF NET-PDFs)"]:::db
-
-  PrintoutCtrl --> PrintoutSvc
-  PrintoutCtrl --> PrintoutJobSvc
-  PrintoutJobSvc --> PrintoutSvc
-  PrintoutSvc --> Renderer
-  Renderer --> FieldSets
-  Renderer --> Templates
-```
-
----
-
-## 8. Eulen-Modus (KI-Assistent) & MCP-Server
-
-Sichere KI-Beratung mit PII-Maskierung und Rollback-Mechanismus ([ADR-0051](adr/0051-eulen-ki-modus.md), [ADR-0052](adr/0052-agenten-zugang-mcp.md)).
-
-```mermaid
-flowchart TD
-  classDef ctrl fill:#e3f0ff,stroke:#2b6cb0,color:#1a365d;
-  classDef svc fill:#eef7ee,stroke:#38a169,color:#1c4532;
-  classDef core fill:#fff5e6,stroke:#dd6b20,color:#7b341e;
-  classDef db fill:#f0f0f5,stroke:#718096,color:#2d3748;
-  classDef port fill:#f3e8ff,stroke:#7e22ce,color:#581c87;
-
-  AdvisorCtrl["AdvisorController\nPOST /v1/advisor/chat\nPOST /v1/advisor/undo"]:::ctrl
-  McpCtrl["McpController\n/mcp/sse, /mcp/messages"]:::ctrl
-
-  AdvisorSvc["AdvisorService\n(Session & Context Manager)"]:::svc
-  McpSvc["McpService\n(6 gesicherte Fach-Tools)"]:::svc
-
-  PiiMask["@steuereule/core\nmaskPii(), unmaskPii()"]:::core
-  AdvisorEngine["LangGraphAdvisorEngine\n(ADVISOR_ENGINE)"]:::port
-  ModelFactory["createChatModelFromConfig\nAnthropic · OpenAI · Gemini · Fake\n(LangChain, nur src/ki/**)"]:::port
-
-  PrismaAdvisor["Prisma (AES-256-GCM)\nAdvisorSession, AuditLog"]:::db
-
-  AdvisorCtrl --> AdvisorSvc
-  McpCtrl --> McpSvc
-
-  AdvisorSvc --> AdvisorEngine
-  AdvisorEngine --> ModelFactory
-  AdvisorSvc --> McpSvc
-  McpSvc --> PiiMask
-  AdvisorSvc --> PrismaAdvisor
-```
-
----
-
-## 9. DSGVO & Kontoverwaltung Subsystem
-
-Garantiert die Einhaltung von Art. 15/20 (Datenexport) und Art. 17 (Recht auf Vergessenwerden) über DMMF-gestützte Deckungstests.
-
-```mermaid
-flowchart TD
-  classDef ctrl fill:#e3f0ff,stroke:#2b6cb0,color:#1a365d;
-  classDef svc fill:#eef7ee,stroke:#38a169,color:#1c4532;
-  classDef db fill:#f0f0f5,stroke:#718096,color:#2d3748;
-
-  AccountCtrl["AccountController\nDELETE /v1/account\nGET /v1/account/export"]:::ctrl
-
-  AccountSvc["AccountService"]:::svc
-  ExportRepo["TaxDataExportRepository\n(Entschlüsselung aller Tabellen)"]:::svc
-  AuditRepo["AuditRepository\n(Unveränderliches Audit-Log)"]:::svc
-
-  PrismaAll["Prisma Database Engine\n(Atomare $transaction über alle Tabellen)"]:::db
-
-  AccountCtrl --> AccountSvc
-  AccountSvc --> ExportRepo
-  AccountSvc --> AuditRepo
-  AccountSvc --> PrismaAll
-```
-
----
-
-## 10. Observability, Tracing & Resilience Subsystem
-
-Sichert Systemzuverlässigkeit, Tracing und Fault Isolation gemäß [SRE Reliability Spec](sre/reliability-spec.md).
-
-```mermaid
-flowchart TD
-  classDef ctrl fill:#e3f0ff,stroke:#2b6cb0,color:#1a365d;
-  classDef svc fill:#eef7ee,stroke:#38a169,color:#1c4532;
-  classDef port fill:#f3e8ff,stroke:#7e22ce,color:#581c87;
-  classDef db fill:#f0f0f5,stroke:#718096,color:#2d3748;
-
-  ReqMiddleware["Fastify genReqId / onSend\n(W3C traceparent, x-request-id)"]:::ctrl
-  ErrorFilter["DomainErrorFilter\n(Embeds requestId in error response)"]:::ctrl
-
-  TracerModule["OpenTelemetry Tracer\n(withSpan helper)"]:::svc
-  EstimateSpan["TaxEstimateService\n(Span: tax_estimate.calculate)"]:::svc
-
-  CloudTrace["Google Cloud Trace / Monitoring\n(Distributed Traces)"]:::port
-  PrismaPool["Prisma Connection Pool\n(Circuit Breaker / Transient Recovery)"]:::db
-
-  ReqMiddleware --> ErrorFilter
-  EstimateSpan --> TracerModule
-  TracerModule --> CloudTrace
-  ErrorFilter -.-> PrismaPool
-```
+| Baustein | Datei | Was er tut |
+| :--- | :--- | :--- |
+| Request-ID | `common/request-id.ts` | übernimmt `traceparent` oder `x-request-id`, sonst eine neue UUID |
+| Fehlerfilter | `common/domain-error.filter.ts` (`DomainErrorFilter`) | einheitlicher Fehlerkörper mit der Request-ID |
+| Health | `health/health.controller.ts` | `GET /v1/health/live`, `GET /v1/health/ready` mit Datenbankprüfung |
+| Tracing | `telemetry/tracer.ts` (`withSpan`) | zwei Spans: Steuerschätzung und Druckauftrag. Ohne Exporter werden sie nicht gesammelt. |

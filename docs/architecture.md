@@ -1,142 +1,159 @@
----
-title: "Steuereule — Architecture Documentation"
-subtitle: "Based on arc42 Template Version 9.0 · arc42.org"
-status: "Living Document"
-lang: de
-toc: true
-toc-depth: 3
-numbersections: true
----
+# SteuerEule — Architektur
 
-# 1. Einführung und Ziele {#section-introduction-and-goals}
-
-## 1.1 Anforderungsübersicht {#_requirements_overview}
-
-**Steuereule** ist eine plattformübergreifende Steuererklärungs- und Beratungsanwendung für deutsche Steuerzahler, die ab Version 1.0 auf **Web, iOS und Android** bereitgestellt wird. 
-
-### Produkt-These & Leitprinzip ([ADR-0050](adr/0050-papierweg-statt-elster-in-1-0.md), [ADR-0038](adr/0038-berechnungs-kern-ki-port.md))
-Die Anwendung löst die Diskrepanz zwischen fehleranfälligen manuellen Formularen und undurchsichtigen „Blackbox“-Steuersoftwares durch ein zentrales architektonisches Axiom:
-
-> **Deterministischer Kern entscheidet, KI assistiert:**
-> Alle Steuerberechnungen (§ 32a EStG, Tarife, Freibeträge, Pauschalen, Fristen, AfA-Sätze, Besteuerungsanteile) werden **ausschließlich durch pure, zustandslose Funktionen in `@steuereule/core`** berechnet.
-> Ein Large Language Model (im „Eulen-Modus“) berät, schlägt vor, strukturiert und formuliert — stets mit protokollierter Herkunft (*Provenance*), niemals eigenmächtig schreibend und ohne Scheinwerte zu erfinden.
-
-### Zielgruppen und Scope in 1.0
-1. **Angestellte & Arbeitnehmer:** Lohnsteuerbescheinigung, Homeoffice-Pauschale, Entfernungspauschale, doppelte Haushaltsführung, Sonderausgaben (Vorsorge, Spenden, Kirchensteuer, Riester).
-2. **Grenzgänger Schweiz (CH-Vertikale, [ADR-0042](adr/0042-grenzgaenger-ch-vertikale.md)):** CH-Lohnausweis, 60-Tage-Regel nach Art. 15a DBA-CH, Schweizer Quellensteueranrechnung, BMF-Monatsreferenzkurse zur CHF/EUR-Umrechnung, amtliche Anlage N-Gre.
-3. **Rentner & Versorgungsempfänger:** Gesetzliche Rente, Privatrente, Witwenrente, Besteuerungsanteil aus gesetzlicher Kohortentabelle nach § 22 EStG.
-4. **Kapitalanleger:** Inländische und ausländische Broker, Sparer-Pauschbetrag, Günstigerprüfung nach § 32d Abs. 6 EStG.
-5. **Vermieter:** Ganzjährig vermietete Wohnobjekte, Mieteinnahmen, Werbungskosten, lineare Gebäude-AfA nach § 7 Abs. 4 EStG.
-6. **Ehepaare:** Zusammenveranlagungs-Vergleich (§ 26 EStG) mit typisierter Empfehlung.
-
-### Nicht-Ziele für 1.0 (Non-Goals)
-* **Keine ELSTER-Onlineübermittlung in 1.0 ([ADR-0050](adr/0050-papierweg-statt-elster-in-1-0.md)):** Die elektronische Übermittlung per Behördenzertifikat ist an gewerbliche Gewinneinkünfte gekoppelt. Für Arbeitnehmer, Rentner und Grenzgänger ist der amtliche Papierausdruck rechtlich vollständig zulässig (§ 150 Abs. 1 AO, BMF-Schreiben vom 12.08.2022). 1.0 liefert den druckfertigen, behördengeprüften PDF-Formularsatz (Hauptvordruck ESt 1 A und Anlagen).
-* **Keine Gewerbetreibenden oder Freiberufler:** Gewerbliche Einkünfte (Anlage G, S, EÜR) werden durch das *Gewerbe-Gate* transparent abgefangen.
-
----
-
-## 1.2 Qualitätsziele {#_quality_goals}
-
-| Priorität | Qualitätsziel | Motivation & Messkriterium |
-| :---: | :--- | :--- |
-| **1** | **Mathematische & Steuerliche Exaktheit** | 100 % Konformität mit BMF-Tarifpolynomen (§ 32a EStG, SolZG) für alle unterstützten Steuerjahre (2022–2026). Keine Schätzwerte oder Scheinbeträge im Berechnungs- und Ausdruckspfad. |
-| **2** | **Datenschutz & Vertraulichkeit (DSGVO)** | Durchgängige Feldverschlüsselung im Ruhezustand (AES-256-GCM mit rotierbaren Schlüsseln). Vollständige Einhaltung von Art. 9 (Einwilligung Religionsdaten), Art. 15/20 (Datenexport) und Art. 17 (atomare Löschkaskade). |
-| **3** | **Behördenkonforme Drucktreue (BMF-Vordrucke)** | Generierung des Ausdrucks direkt auf den amtlichen BMF-NET-PDFs mit serifenloser 10pt-Schrift, DIN A4 (595 × 842 pt). Jeder Kasten wird vorab vermessen; Kastenüberläufe werden hart verhindert (`OverflowError`). |
-| **4** | **Value-First & Reibungsarme UX** | Sofortige Nutzbarkeit ohne Registrierungszwang (*Guest Session*). Berechnung der vorläufigen Erstattungsspanne bereits im Gastmodus. Atomare Datenübernahme beim Account-Upgrade. |
-| **5** | **DevSecOps & Supply Chain Security** | Null Hochrisiko-Schwachstellen (Trivy Container Scan), signierte CycloneDX Software Bill of Materials (SBOM) nach CRA / BSI TR-03183, 24 automatisierte Playwright E2E-Szenarien in CI. |
-
----
-
-## 1.3 Stakeholder {#_stakeholders}
-
-| Rolle / Person | Erwartungshaltung & Hauptinteresse |
+| | |
 | :--- | :--- |
-| **Endnutzer (Steuerzahler)** | Maximale, verständliche Steuererstattung, schnelle Eingabe, keine Angst vor Steuerdeutsch, absolute Datensicherheit, stressfreier Ausdruck. |
-| **NexusHero (Product Owner / Stakeholder)** | Kommerziell tragfähiges 1.0-Release ohne Abhängigkeit vom verzögerten ELSTER-Zertifikat; Monetarisierung beim PDF-Ausdruck via Stripe; exzellente Code-Qualität. |
-| **Finanzamt / Steuerverwaltung** | Ordnungsgemäße, formrichtige Einreichung auf amtlichen Vordrucken mit korrekten Formularschlüsseln (`...NET`) und lesbaren Werten. |
-| **Engineering / DevOps Team** | Klare Seams, modularer TypeScript-Monorepo-Stack, deterministische Testbarkeit, automatisierte CI/CD-Pipelines, lückenlose Protokollierung in `progress.db`. |
+| **Stand** | 2026-11-22 |
+| **Gliederung** | arc42, zwölf Abschnitte |
+| **Geltungsbereich** | das Monorepo: `apps/api`, `apps/mobile-web`, `packages/*`, `infra/gcp` |
+| **Quelle der Entscheidungen** | [`docs/adr/`](adr/index.md). Dieses Dokument zeigt die Struktur, die ADRs begründen sie. |
+
+**Wie dieses Dokument wahr bleibt.** Eine Regel nennt den Test, der sie prüft. Eine Zahl nennt ihr Datum und woher sie stammt. Was geplant, aber nicht gebaut ist, steht in §11 und nirgends sonst. Namen von Dateien, Klassen und Routen sind gegen den Code geprüft. Wer hier einen Namen findet, den es nicht gibt, hat einen Fehler gefunden.
+
+**Verwandte Dokumente.** [`architecture-subsystems.md`](architecture-subsystems.md) zeigt einzelne Backend-Module von innen. [`arc42/README.md`](arc42/README.md) beschreibt Werkzeugkette und Boot-Reihenfolge im Detail. [`sre/reliability-spec.md`](sre/reliability-spec.md) nennt die Zielwerte für den Betrieb.
 
 ---
 
-# 2. Architekturbeschränkungen {#section-architecture-constraints}
+# 1. Einführung und Ziele
 
-## 2.1 Technische Beschränkungen
-* **Isomorphes TypeScript Monorepo:** Pnpm Workspaces mit Turborepo (`packages/core`, `apps/api`, `apps/mobile-web`, `packages/tokens`, `packages/ui`).
-* **Framework-freie Kernlogik:** `@steuereule/core` ist frei von HTTP-, Browser- und Node-Abhängigkeiten. Sämtliche Steuerregeln laufen identisch auf Node.js (API) und im Browser (Mobile-Web).
-* **NestJS 11 auf Fastify Adapter:** Maximale Durchsatzleistung und strenge Dependency Injection im Backend (`apps/api`).
-* **Prisma ORM mit PostgreSQL:** Datenbank-Persistenz mit Pflicht-Migration-Boot-Guards (`assertDatabaseMigrated`) und Nicht-Dateibasierten Secrets (`assertEnvNotFileSourced`).
-* **React Native Web (Expo):** Geteilte UI-Komponenten für Web und Mobile auf Basis des hauseigenen Design-Systems.
-* **Poppler-Tools:** `pdftotext` und `pdftocairo` als CI-Gate für die millimetergenaue Vermessung amtlicher Vordrucke.
+## 1.1 Aufgabe
 
-## 2.2 Regulatorische & Rechtliche Beschränkungen
-* **DSGVO Art. 9 Abs. 2 Buchst. a:** Religionsmerkmale (Kirchensteuer) werden ausschließlich nach ausdrücklicher, separat quittierter Einwilligung erfasst und gespeichert.
-* **BMF-Schreiben vom 12.08.2022 (IV A 5 - O 1561/19/10001 :004):** Anforderungen an nichtamtliche und Internet-Vordrucke: 100 % A4-Maßstab, serifenlose Schrift ≥ 10 pt, Dezimalkomma, Formularschlüssel mit `NET`.
-* **§ 356 Abs. 5 BGB:** Ausdrückliche Zustimmung des Verbrauchers zum vorzeitigen Erlöschen des Widerrufsrechts bei Bereitstellung digitaler Inhalte im Stripe Checkout.
-* **Keine Rechts- oder Steuerberatung im Sinne des StBerG:** Transparenter Entwurfshinweis; Berechnungen erfolgen als Software-Werkzeug.
+SteuerEule führt Privatpersonen in Deutschland durch ihre Einkommensteuererklärung. Die App fragt in einem Interview, rechnet die voraussichtliche Erstattung als Spanne, liest Belege, und druckt die Erklärung auf die amtlichen Vordrucke. Eine KI-Assistentin, die Eule, berät im Chat und bereitet Einträge als Entwürfe vor.
+
+Das tragende Prinzip ([ADR-0038](adr/0038-berechnungs-kern-ki-port.md)):
+
+> **Der Kern rechnet, das Sprachmodell formuliert.** Jeder Steuerbetrag entsteht in reinen Funktionen von `@steuereule/core`. Ein Sprachmodell schlägt vor und erklärt. Es schreibt nie selbst in die Erklärung: Aus einem Vorschlag wird erst durch die Bestätigung des Nutzers ein Eintrag.
+
+**Wer bedient wird**
+
+| Gruppe | Umfang | Entscheidung |
+| :--- | :--- | :--- |
+| Angestellte | Lohnsteuerbescheinigung, Arbeitsweg, Homeoffice, Sonderausgaben, haushaltsnahe Leistungen | [ADR-0041](adr/0041-lstb-angestellte-vertikale.md) |
+| Grenzgänger Schweiz | Lohnausweis, 60-Tage-Regel, Wechselkurse, Anlage N-Gre | [ADR-0042](adr/0042-grenzgaenger-ch-vertikale.md) |
+| Rentner | gesetzliche und private Renten | [ADR-0044](adr/0044-rentner-vertikale.md) |
+| Kapitalanleger, Vermieter | Depots, Günstigerprüfung, Mietobjekte mit AfA | [ADR-0048](adr/0048-kapital-vertikale.md), [ADR-0046](adr/0046-vermietung-vertikale.md) |
+| Ehepaare | eine gemeinsame Erklärung, Vergleich der Veranlagungsarten | [ADR-0054](adr/0054-zusammenveranlagung-eine-erklaerung.md), [ADR-0034](adr/0034-veranlagungsartenvergleich-returns-a-bounded-comparison.md) |
+| Selbstständige | EÜR, Buchhaltung, Bilanz, Umsatz- und Gewerbesteuer | [ADR-0101](adr/0101-selbststaendige.md) |
+
+**Abgabeweg.** Die Erklärung wird gedruckt und per Post abgegeben ([ADR-0050](adr/0050-papierweg-statt-elster-in-1-0.md)). Vordrucke liegen für die Steuerjahre 2022 bis 2025 vor, der Kern rechnet 2022 bis 2026. Für Selbstständige, die elektronisch abgeben müssen, gibt es Code für die Übermittlung über einen ERiC-Prozess (`apps/api/src/business/elster-transmission.ts`). Er braucht ein Zertifikat des Betreibers und ist in §11 als offen geführt.
+
+## 1.2 Qualitätsziele
+
+| # | Ziel | Was das konkret heißt | Wie es geprüft wird |
+| :-: | :--- | :--- | :--- |
+| 1 | **Rechnerische Richtigkeit** | Tarif, Soli, Freibeträge und Fristen stimmen je Steuerjahr mit dem Gesetz überein. Kein geschätzter Betrag im Rechen- oder Druckpfad. | Unit-Tests des Kerns gegen gesetzliche Werte; Fuzzing über alle Interview-Pfade (`packages/core/src/interview/matrix-fuzzing.test.ts`) |
+| 2 | **Vertraulichkeit** | Als `@encrypted` markierte Felder stehen nur verschlüsselt in der Datenbank. Belegdateien sind je Nutzer verschlüsselt und lassen sich durch Löschen des Schlüssels vernichten. | Akzeptanztests gegen echtes PostgreSQL (`req-003-encryption-at-rest.test.ts`, `req-003-key-rotation.test.ts`); `account-deletion-coverage.test.ts` prüft, dass die Löschung jede Tabelle mit Nutzerbezug abdeckt |
+| 3 | **Drucktreue** | Jeder Wert steht im richtigen Kasten des amtlichen Vordrucks. Ein Wert, der nicht passt, bricht den Druck ab. | Vermessungs-Gates im CI-Workflow *Quality* (`scripts/vordrucke/vermessen.mjs --check`) |
+| 4 | **Nutzbar ohne Konto** | Ein Gast beantwortet die ersten Fragen und sieht das Cockpit. Beim Anlegen des Kontos wandern die Antworten mit. | Akzeptanztest `req-006-guest-upgrade.test.ts`, E2E-Szenario 23 |
+| 5 | **Änderbarkeit** | Datenbank und externe SDKs sind nur an benannten Stellen erreichbar. Neue Kopplung zwischen Modulen ist eine sichtbare Entscheidung. | zwei Architekturtests, §4.1.3 |
+
+## 1.3 Stakeholder
+
+| Wer | Erwartung |
+| :--- | :--- |
+| Nutzer | eine richtige Erklärung, verständliche Fragen, Kontrolle über jeden Eintrag |
+| Product Owner | ein verkaufbares Produkt: bezahlt wird beim Ausdruck, je Steuerjahr |
+| Finanzamt | formrichtige Vordrucke mit lesbaren Werten |
+| Entwicklung und Betrieb | klare Grenzen, schnelle Tests, nachvollziehbare Entscheidungen |
 
 ---
 
-# 3. Kontext und Abgrenzung {#section-context-and-scope}
+# 2. Randbedingungen
 
-## 3.1 Fachlicher Kontext (C4 Level 1)
+## 2.1 Technisch
+
+| Bereich | Festlegung | Quelle |
+| :--- | :--- | :--- |
+| Sprache | TypeScript 7, `strict`, `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes` | `tsconfig.base.json` |
+| Laufzeit | Node.js ≥ 22 (CI und Images: 24), pnpm 10 | `package.json` |
+| Monorepo | pnpm-Workspaces mit Turborepo | `pnpm-workspace.yaml`, `turbo.json` |
+| API | NestJS 11 auf Fastify 5 | `apps/api/package.json` |
+| Datenbank | PostgreSQL über Prisma 6, 58 Modelle | `apps/api/prisma/schema.prisma` |
+| Client | Expo 53 mit React Native Web; ausgeliefert wird die Web-App | `apps/mobile-web` |
+| Kern | keine npm-Laufzeitabhängigkeiten; drei Dateien nutzen `node:crypto` | `packages/core/package.json` |
+| Statische Prüfung | oxlint ([ADR-0019](adr/0019-oxlint-replaces-eslint.md)), `tsc --noEmit` | `.oxlintrc.json` |
+
+## 2.2 Rechtlich
+
+| Vorgabe | Folge für die Architektur |
+| :--- | :--- |
+| DSGVO Art. 9 | Die Religionszugehörigkeit wird nur mit eigener Einwilligung gespeichert. |
+| DSGVO Art. 15, 17, 20 | Export als JSON und PDF; Kontolöschung in einer Transaktion, das Zugriffsprotokoll wird dabei anonymisiert statt gelöscht ([ADR-0013](adr/0013-dsgvo-export-and-account-deletion.md)). |
+| BMF-Schreiben vom 12.08.2022 zu Internet-Vordrucken | Druck im Maßstab 1:1, serifenlose Schrift ab 10 pt, Formularschlüssel mit `NET`. |
+| § 356 Abs. 5 BGB | Der Checkout holt die Zustimmung zum vorzeitigen Erlöschen des Widerrufsrechts ein. |
+| Steuerberatungsgesetz | Die App ist ein Werkzeug und leistet keine Steuerberatung im Sinne des Gesetzes. |
+
+---
+
+# 3. Kontext und Abgrenzung
 
 ```mermaid
-flowchart TD
-  User["Steuerzahler / Endnutzer\n(Web-Browser & Mobile App)"]
+flowchart LR
+  User["Nutzer\n(Browser)"]
+  Assistant["Eigener KI-Assistent des Nutzers\n(MCP-Client)"]
 
-  subgraph SystemBoundary ["Systemgrenze: Steuereule Plattform"]
-    App["Steuereule\nFrontend & API Monolith"]
+  subgraph System ["SteuerEule"]
+    Web["Web-App\napps/mobile-web"]
+    Api["API\napps/api"]
   end
 
-  BMF["Bundesfinanzverwaltung (FMS)\nAmtliche PDF-Vordrucke\nformulare-bfinv.de"]
-  Stripe["Stripe Payments\nGehosteter Checkout & Webhooks"]
-  Brevo["Brevo (EU)\nTransaktionaler E-Mail-Versand"]
-  LLM["Sprachmodell-Anbieter\nAnthropic · OpenAI · Google Gemini\n(über LangChain, nur PII-freie Texte)"]
-  Assistant["Eigener KI-Assistent des Nutzers\n(MCP-Client, OAuth 2.1)"]
-  HIBP["HaveIBeenPwned API\nPasswort-Leak-Prüfung"]
-  Finanzamt["Finanzamt (Behörde)\nEmpfänger des Post-Ausdrucks"]
+  Stripe["Stripe"]
+  Mail["SMTP oder Brevo"]
+  LLM["Sprachmodell-Anbieter\nAnthropic · OpenAI · Google"]
+  Google["Google OAuth"]
+  HIBP["Have I Been Pwned"]
+  Bfinv["formulare-bfinv.de"]
+  Eric["ERiC-Prozess\n(ELSTER)"]
+  Finanzamt["Finanzamt"]
 
-  User <-->|"Nutzung, Erfassung, Beratung"| App
-  App -->|"Vorlage-Bezug (Build/Update)"| BMF
-  App <-->|"Freischaltung & Webhook"| Stripe
-  App -->|"Transaktionale Mails"| Brevo
-  App <-->|"Eule: Beratung, Beleg-Lesehilfe"| LLM
-  Assistant -->|"MCP-Tools (ADR-0052)"| App
-  App -->|"k-Anonymity Leak Check"| HIBP
-  User -.->|"Unterschriebener Ausdruck (Papier)"| Finanzamt
+  User --> Web --> Api
+  Assistant -->|"MCP, OAuth 2.1"| Api
+  Api --> Stripe
+  Api --> Mail
+  Api --> LLM
+  Api --> Google
+  Api --> HIBP
+  Api -.-> Eric
+  Bfinv -.->|"Vordrucke, zur Build-Zeit"| Api
+  User -.->|"Ausdruck per Post"| Finanzamt
 ```
+
+| Nachbarsystem | Wozu | Adapter im Code | Was die API dorthin gibt |
+| :--- | :--- | :--- | :--- |
+| Stripe | Bezahlung des Ausdrucks, Webhook | `unlock/stripe-payment-provider.ts` hinter `PaymentProvider` | Nutzer-ID, Steuerjahr, Preis-ID |
+| SMTP, Brevo | Bestätigungs- und Sicherheitsmails | `auth/smtp-email-sender.ts`, `auth/brevo-email-sender.ts` hinter `EmailSender`; ohne Konfiguration ein Log-Ersatz | E-Mail-Adresse, Mailtext |
+| Sprachmodell-Anbieter | Eule-Chat, Lesehilfe für Belege, Themenwächter | `ki/chat-model.factory.ts` (LangChain) | Chatverlauf und Falldaten; Belegtext nach Entfernen von Namen, Adressen und Kennungen. Persönliche Daten nur mit Einwilligung ([ADR-0091](adr/0091-eule-persoenliche-daten-mit-einwilligung.md)). |
+| Google OAuth | Anmeldung mit Google-Konto | `auth/better-auth.ts` | OAuth-Protokolldaten |
+| Have I Been Pwned | Prüfung neuer Passwörter auf bekannte Lecks | better-auth-Plugin, `auth/breach-check.ts` | einen Teil des Passwort-Hashes (k-Anonymität), nie das Passwort |
+| MCP-Clients | Der Assistent des Nutzers liest die Erklärung und füllt Entwürfe | `mcp/` als eingehender Adapter ([ADR-0052](adr/0052-agenten-zugang-mcp.md)) | nur, was der Nutzer per OAuth-Scope freigegeben hat |
+| formulare-bfinv.de | Quelle der amtlichen Vordrucke | `scripts/vordrucke/download-vordrucke.mjs`, nicht zur Laufzeit | nichts |
+| ERiC | elektronische Übermittlung für Selbstständige | `business/elster-transmission.ts` | die Übermittlungsdaten; siehe §11 |
 
 ---
 
-# 4. Lösungsstrategie {#section-solution-strategy}
+# 4. Lösungsstrategie
 
-1. **Zentrale Temporal Parameter Registry (`TaxYearParameters`):**
-   Sämtliche steuerlichen Tarife (§ 32a EStG), Freibeträge, Soli-Grenzen, Höchstbeträge und Abgabefristen sind über die Jahre 2022, 2023, 2024, 2025 und 2026 temporal parametrisiert. Es gibt keine verstreuten Hardcoded-Konstanten.
-2. **Umfassende Feldverschlüsselung (Envelope Encryption):**
-   Jedes sensible Feld in der PostgreSQL-Datenbank wird mit AES-256-GCM verschlüsselt. Schlüsselrotation wird durch Key-Versionierung im Ciphertext unterstützt.
-3. **Vorlagen-Manifeste mit SHA-256-Pins:**
-   Die 18 amtlichen BMF-NET-Vordrucke je Steuerjahr liegen unverändert im Repository. Ihre Prüfsummen und offiziellen Formularschlüssel sind in `vordrucke-<jahr>.json` gepinnt. CI verhindert Abweichungen ohne Neuvermessung.
-4. **Zwei-Segment-Interview:**
-   Segment 1 (Minimal-Gate) grenzt Fälle in 3 Fragen ein. Segment 2 (Katalog) öffnet spezifische Lebenslagen (Lebenslagen, Sonderausgaben, Grenzgänger) nach Bedarf.
-5. **Eulen-Modus mit MCP-Architektur:**
-   Der KI-Assistent greift über 6 streng authentifizierte, PII-maskierte MCP-Tools auf den Datenstand zu. Jede Änderung ist ein verifizierbarer Vorschlag mit Undo-Garantie.
+1. **Ein reiner Rechenkern.** Steuerregeln sind Funktionen ohne Ein- und Ausgabe in `packages/core`. API und Web-App nutzen denselben Kern, die Regel existiert genau einmal.
+2. **Parameter je Steuerjahr.** Freibeträge, Pauschalen und Fristen stehen in `math/tax-parameters.ts`, Tarif- und Soli-Tabellen in `math/tarif.ts`. Einzelne Fachmodule tragen noch eigene Jahreskonstanten, siehe §11.
+3. **Ports & Adapters um den Kern.** Datenbank und externe SDKs sind nur an benannten Stellen erreichbar. §4.1 beschreibt das im Detail.
+4. **Entwurf vor Eintrag.** Was Eule, Beleg-Leser oder ein fremder Assistent vorschlagen, ist ein Entwurf mit berechneter Wirkung. Erst die Bestätigung schreibt ([ADR-0066](adr/0066-eule-feldkatalog-und-ein-schreibweg.md)).
+5. **Verschlüsselung am Rand der Persistenz.** Felder verschlüsselt der Prisma-Adapter, Belegdateien der Speicher-Adapter. Services sehen Klartext und wissen nichts vom Verfahren.
+6. **Amtliche Vordrucke als Daten.** 18 Vordrucke je Steuerjahr (2022 bis 2025) liegen unverändert im Repository, ihre Prüfsummen sind in `apps/api/src/printout/vordrucke-<jahr>.json` gepinnt.
 
-
-## 4.1 Architekturstil: Ports & Adapters (hexagonal) {#_architecture_style}
+## 4.1 Architekturstil: Ports & Adapters
 
 ![Ports & Adapters: der reine Kern in der Mitte, die Anwendungsservices darum, Adapter am Rand](../images/architecture-hexagon.svg)
 
-**Kurzfassung.** Steuereule hat drei Ringe und eine Regel: *Jede Abhängigkeit zeigt nach innen.* Der Kern weiß nichts von HTTP, Datenbank oder Sprachmodell. Die Anwendungsservices kennen den Kern und Ports, aber kein SDK. Nur Adapter kennen ein SDK, und jeder Adapter nur seines. Zwei Prüfungen erzwingen die Regel: `packages/core/src/architecture.test.ts` im Kern und `eslint/no-restricted-imports` in `.oxlintrc.json` für `apps/api` ([ADR-0102](adr/0102-ports-und-adapter-per-linter-erzwungen.md)).
+Drei Ringe und eine Regel: **Jede Abhängigkeit zeigt nach innen.** Der Kern weiß nichts von HTTP, Datenbank oder Sprachmodell. Die Anwendungsservices kennen den Kern und Ports. Ein SDK kennt nur die Datei, die dafür benannt ist.
 
 ### 4.1.1 Die drei Ringe
 
-| Ring | Wo im Repo | Darf abhängen von | Darf nicht abhängen von |
+| Ring | Wo | Darf abhängen von | Darf nicht abhängen von |
 | :--- | :--- | :--- | :--- |
-| **Domänenkern** | `packages/core/src/{math,engine,domains,interview,common}` | sich selbst (Schichten-DAG, §5.1), Node-Bordmittel wie `node:crypto` | Frameworks, I/O, `apps/*`. `package.json` des Kerns hat keine Laufzeit-Abhängigkeiten, ein solcher Import löst also gar nicht erst auf. |
-| **Anwendung** | `apps/api/src/<modul>/*.service.ts`, Guards, Parse-Strategien, und die Ports selbst (`*.repository.ts`, `ki/single-shot-model.ts`, `unlock/payment-provider.ts`, …) | `@steuereule/core` (nur über die Einstiege im `exports`-Feld), Ports, NestJS-Dekoratoren | Prisma, LangChain, Stripe, nodemailer |
-| **Adapter** | eingehend: `*.controller.ts`, `mcp/`; ausgehend: `*.prisma.ts`, `src/ki/**`, `unlock/stripe-payment-provider.ts`, `auth/*-email-sender.ts`, `account/export/pdf-renderer.playwright.ts`, `receipt/storage/postgres-bytea-storage.adapter.ts` | Ports, Kern, *ihr eigenes* SDK | die SDKs der anderen Adapter |
+| **Kern** | `packages/core/src/{math,common,domains,engine,interview}` | sich selbst und `node:crypto` | npm-Paketen, `apps/*` |
+| **Anwendung** | `apps/api/src/<modul>/`: Services, Guards, Parse-Strategien und die Ports (`*.repository.ts`, `common/transaction-runner.ts`, `ki/single-shot-model.ts`, `unlock/payment-provider.ts`, `auth/email-sender.ts`) | Kern, Ports, NestJS | Datenbank-Client, externen SDKs |
+| **Adapter** | eingehend: `*.controller.ts`, `mcp/`; ausgehend: `*.prisma.ts`, `prisma/`, die LangChain-Dateien in `ki/`, `unlock/stripe-payment-provider.ts`, `auth/smtp-email-sender.ts`, `account/export/pdf-renderer.playwright.ts`, `receipt/storage/postgres-bytea-storage.adapter.ts` | Ports, Kern, ihrem eigenen SDK | den SDKs anderer Adapter |
 
-Der **Composition Root** sind die Nest-Module (`*.module.ts`). Nur dort wird ein Port-Token an einen Adapter gebunden:
+Die Nest-Module (`*.module.ts`) sind der **Composition Root**. Nur dort wird ein Port an einen Adapter gebunden:
 
 ```ts
 // apps/api/src/receipt/receipt-storage.module.ts
@@ -144,342 +161,388 @@ Der **Composition Root** sind die Nest-Module (`*.module.ts`). Nur dort wird ein
 { provide: RECEIPT_REPOSITORY, useClass: PrismaReceiptRepository },
 ```
 
-Ein Service sieht nur das Interface:
-
 ```ts
+// ein Service sieht nur das Interface
 constructor(@Inject(RECEIPT_REPOSITORY) private readonly receipts: ReceiptRepository) {}
 ```
 
-Die Web-App (`apps/mobile-web`) ist aus Sicht der API ein eingehender Adapter. Sie spricht die API nur über den generierten Client `@steuereule/api-client` an und rechnet mit demselben Kern, den sie direkt importiert. Steuerlogik gibt es damit genau einmal.
-
 ### 4.1.2 Die wichtigsten Ports
 
-| Fähigkeit | Port (Interface · Token) | Adapter in Produktion | Ersatz in Tests |
+| Fähigkeit | Port · DI-Token | Adapter in Produktion | Ersatz in Tests |
 | :--- | :--- | :--- | :--- |
-| Persistenz je Fachmodul (34 Repositories) | z. B. `ReceiptRepository` · `RECEIPT_REPOSITORY` | `PrismaReceiptRepository` (`*.repository.prisma.ts`), Feldverschlüsselung in `prisma/encrypted-prisma.provider.ts` | `apps/api/test/fakes/fake-*.repository.ts` |
+| Persistenz je Fachmodul (33 Repositories, Stand 2026-11-22) | z. B. `ReceiptRepository` · `RECEIPT_REPOSITORY` | `PrismaReceiptRepository` in `*.repository.prisma.ts` | `apps/api/test/fakes/fake-*.repository.ts` |
 | Transaktion über mehrere Repositories | `TransactionRunner` · `TRANSACTION_RUNNER` | `PrismaTransactionRunner` | `passThroughTransactionRunner` |
-| Eule-Beratungsrunde (Streaming, Werkzeuge) | `ADVISOR_ENGINE` | `LangGraphAdvisorEngine` | `FakeKiChatModel`, `test/fakes/scripted-model.ts` |
-| Einzelner Modellaufruf (Beleg-, LStB-, Lohnausweis-Lesehilfe) | `SingleShotModel` · `SINGLE_SHOT_MODEL_FACTORY` | `langchain-single-shot.adapter.ts` | `noSingleShotModel` oder ein umhüllter Fake |
-| Fachliche KI-Fähigkeiten | `KiPort` (im Kern) · `KI_PORT` | `RagKiAdapter` | — |
+| Beratungsrunde der Eule | `AdvisorEnginePort` (im Kern) · `ADVISOR_ENGINE` | `LangGraphAdvisorEngine` | `FakeKiChatModel`, `test/fakes/scripted-model.ts` |
+| Einzelner Modellaufruf | `SingleShotModel` · `SINGLE_SHOT_MODEL_FACTORY` | `ki/langchain-single-shot.adapter.ts` | `noSingleShotModel` |
+| Fachliche KI-Fähigkeiten | `KiPort` (im Kern) · `KI_PORT` | `RagKiAdapter` | |
 | Zahlung | `PaymentProvider` · `PAYMENT_PROVIDER` | `StripePaymentProvider` | `FakeProvider` in `unlock.service.test.ts` |
-| E-Mail | `EmailSender` · `EMAIL_SENDER` | `SmtpEmailSender`, `BrevoEmailSender`, `LoggingEmailSender` | `LoggingEmailSender` |
-| Belegdateien | `StoragePort` · `STORAGE_PORT` | `PostgresByteaStorageAdapter` (verschlüsselt, ADR-0059) | Fake-Storage in den Beleg-Tests |
-| PDF für den DSGVO-Export | `PdfRenderer` · `PDF_RENDERER` | `PlaywrightPdfRenderer` (Chromium) | — |
+| E-Mail | `EmailSender` · `EMAIL_SENDER` | `SmtpEmailSender`, `BrevoEmailSender` | `LoggingEmailSender` |
+| Belegdateien | `StoragePort` · `STORAGE_PORT` | `PostgresByteaStorageAdapter` | In-Memory-Adapter der Beleg-Tests |
+| PDF des DSGVO-Exports | `PdfRenderer` · `PDF_RENDERER` | `PlaywrightPdfRenderer` | |
 | Assistenten-Token prüfen | `BearerTokenRepository` · `BEARER_TOKEN_REPOSITORY` | `PrismaBearerTokenRepository` | Fake im Guard-Test |
 
-### 4.1.3 Was geprüft wird und wie
+### 4.1.3 Was geprüft wird
 
-| Invariante | Werkzeug | Läuft in | Nachweis |
-| :--- | :--- | :--- | :--- |
-| Kernschichten bilden einen DAG (`math` importiert nichts, `common` nur `math`, `engine` nie `interview`) | `packages/core/src/architecture.test.ts` (Vitest) | `pnpm test`, CI | Test ist Teil der Kern-Suite |
-| Der Kern hat keine Framework-Abhängigkeit | pnpm-Workspace-Isolation: nicht deklarierte Pakete lösen nicht auf | `pnpm -r typecheck` | `packages/core/package.json` ohne `dependencies` |
-| Apps nutzen den Kern nur über die Einstiege im `exports`-Feld | `exports`-Feld in `packages/core/package.json` | Modulauflösung | tiefe Pfade wie `@steuereule/core/src/...` lösen nicht auf |
-| Prisma, LangChain, Stripe und nodemailer nur in ihren Adaptern | `eslint/no-restricted-imports` mit Overrides je Adaptergruppe | `pnpm lint`, CI-Job *Quality* | durch Brechen bewiesen, Tabelle in ADR-0102 |
+| Invariante | Test | Wie er beweist, dass er rot werden kann |
+| :--- | :--- | :--- |
+| Datenbank-Client und elf weitere SDK-Gruppen werden nur von den dafür benannten Dateien importiert. Das schließt `src/prisma/**` und Adapterklassen `*.prisma.ts` ein. | `apps/api/test/architecture.test.ts` | zwölf konstruierte Verstöße im Test, je einer muss genau einen Befund liefern |
+| Eine namentliche Ausnahme, die ihr SDK nicht mehr importiert, ist ein Fehler. | derselbe Test | fand beim ersten Lauf eine überflüssige Ausnahme |
+| Die Menge der Importe *Modul → Modul* in `apps/api/src` entspricht der Baseline (352 Kanten zwischen 50 Ordnern, Stand 2026-11-22). | derselbe Test, Baseline `apps/api/test/architecture-module-edges.json` | Abweichung in beide Richtungen schlägt fehl |
+| Im Kern: `math` importiert nichts, `common` nur `math`, `engine` nie `interview`; keine neue Richtung zwischen den Ordnern. | `packages/core/src/architecture.test.ts` | am 2026-11-22 mit Probe-Dateien gebrochen ([ADR-0102](adr/0102-ports-und-adapter-per-architekturtest.md)) |
+| Im Kern: Die Dateien, die gegen die gewollte Ordnung importieren, sind genau die bekannten 23. | derselbe Test | wie oben |
+| Im Kern: kein Zyklus von Wert-Importen zwischen Dateien. | derselbe Test | wie oben |
+| Der Kern hat keine npm-Abhängigkeit. | pnpm löst nicht deklarierte Pakete nicht auf; `pnpm -r typecheck` | `packages/core/package.json` ohne `dependencies` |
 
-### 4.1.4 Bekannte Grenzen (bewusst nicht erzwungen)
+Beide Tests laufen im CI-Job `test` des Workflows *Quality*.
 
-- **Kopplung zwischen Fachmodulen.** Services rufen andere Services direkt auf, z. B. `AuditService`, `LinkService` und `AdvisorService`. Das verletzt Ports & Adapters nicht, macht Module aber schwer einzeln zu ändern. Siehe §10.
-- **`domains` ↔ `interview` im Kern.** §5.1 beschreibt `interview → domains → engine → math`. Der Test erzwingt davon nur `math`, `common` und `engine ↛ interview`.
-- **`ADVISOR_ENGINE` hat kein eigenes Interface.** Das Token steht in der Adapterdatei `langgraph-advisor.engine.ts` und ist an die konkrete Klasse gebunden. Ein zweiter Engine-Adapter bräuchte zuerst ein Interface.
-- **`*.module.ts` ist pauschal von der Prisma-Regel ausgenommen**, weil die Module die Verdrahtung sind. Fachlogik in einem Modul fällt nur im Review auf.
-- **DI-Tokens sind nicht typgeprüft.** `@Inject(TOKEN) x: Port` vertraut darauf, dass das Modul einen passenden Adapter bindet. Ein falsch gebundener Adapter fällt erst beim Start oder in Integrationstests auf, nicht im Compiler.
+### 4.1.4 Bekannte Grenzen
 
-### 4.1.5 Rezept: eine neue externe Abhängigkeit anbinden
+- **LangChain liegt in acht Dateien, nicht hinter einem Port.** Die Beratungsrunde der Eule ist in LangChain-Typen geschrieben: Prompt-Aufbau (`ki/advisor-prompt.ts`), Werkzeugrunde (`ki/advisor-tool-round.ts`, `ki/advisor-tools.ts`) und Werkzeugkontext (`ki/tools/tool-call-context.ts`). Ein Wechsel des Frameworks hieße, diese Dateien neu zu schreiben. Ein Wechsel des *Anbieters* ist dagegen Konfiguration.
+- **`mcp/` lädt LangChain mit**, weil es `TOOL_ARG_SCHEMAS` aus `ki/advisor-tools.ts` importiert.
+- **`pdf-lib` hat keinen Port.** Nur `printout/form-renderer.ts` importiert es, Services rufen `renderForms` aber direkt.
+- **better-auth ist auf zwei Module begrenzt, nicht auf eine Datei.** Zwölf Dateien in `auth/` und `device/` nutzen es, darunter der Guard für die JWT-Prüfung.
+- **Module koppeln stark.** 352 Kanten, 16 Modulpaare importieren sich gegenseitig. Die Ratsche verhindert Zuwachs, sie baut nichts ab.
+- **Der Kern hat zwei Zyklen auf Ordnerebene**, siehe §5.2.
+- **DI-Tokens sind nicht typgeprüft.** Eine fehlende Bindung fällt beim Start auf, eine falsche erst im Integrationstest.
+- **Importe werden per Muster gefunden.** Ein zur Laufzeit berechneter Importpfad bleibt unsichtbar.
 
-1. **Port definieren**, im Modul, das ihn braucht: `foo.port.ts` mit Interface, DI-Token (`Symbol`) und den Ergebnistypen. Der Port importiert kein SDK, und seine Typen gehören ihm, nicht dem Adapter.
-2. **Adapter schreiben**: `foo.<technologie>.ts`. Für Prisma ist die Endung `.prisma.ts` Pflicht, sie ist zugleich die Ausnahme in der Lint-Regel.
-3. **Neues SDK?** Dann eine Gruppe in `.oxlintrc.json` ergänzen und den Adapter als einzige Ausnahme eintragen. Die Regel mit einer Probe-Datei brechen, bevor die PR aufgeht (ADR-0021).
-4. **Verdrahten** im `*.module.ts` des Moduls: `{ provide: FOO_PORT, useClass: TechFooAdapter }`.
-5. **Fake** unter `apps/api/test/fakes/` für Unit-Tests. Ein Integrationstest prüft den echten Adapter.
+### 4.1.5 Rezept: eine externe Abhängigkeit anbinden
 
-### 4.1.6 Warum dieser Stil, und was er kostet
+1. **Port** im Modul, das ihn braucht: Interface, DI-Token, Ergebnistypen. Kein SDK-Import. Die Typen gehören dem Port.
+2. **Adapter** in einer eigenen Datei. Für Prisma ist die Endung `.prisma.ts` Pflicht.
+3. **Tabelle** in `apps/api/test/architecture.test.ts` um das SDK und die Adapterdatei ergänzen, dazu einen konstruierten Verstoß.
+4. **Bindung** im `*.module.ts`: `{ provide: FOO_PORT, useClass: TechFooAdapter }`.
+5. **Fake** unter `apps/api/test/fakes/` für Unit-Tests; ein Integrationstest prüft den echten Adapter.
 
-| Gewinn | Kosten |
+### 4.1.6 Abwägung
+
+| Gewinn | Preis |
 | :--- | :--- |
-| Der Kern ist schnell und ohne Infrastruktur testbar (§ 32a in ~60 ns, Fuzzing über 144 Interview-Pfade). | Pro externer Abhängigkeit vier Artefakte: Interface, Token, Adapter, Fake. |
-| Drei LLM-Anbieter und ein Fake-Modell für CI hinter einer Factory. Ein Anbieterwechsel ist Konfiguration, kein Umbau. | Eine Indirektion mehr beim Lesen: Wer `RECEIPT_REPOSITORY` verfolgt, muss im Modul nachsehen, was gebunden ist. |
-| Verschlüsselung, Mandantentrennung und PII-Schutz sitzen an genau einer Stelle im Adapter, nicht verstreut in Services. | DI-Tokens sind zur Compile-Zeit nicht geprüft (§4.1.4). |
-| Ein Verstoß kostet einen roten Lint-Lauf, kein Architektur-Review. | Die Ausnahmeliste für Infrastruktur-Dateien muss gepflegt werden, wenn sie wandern. |
+| Der Kern ist ohne Infrastruktur testbar: 2067 Tests in 155 Dateien laufen ohne Datenbank (Stand 2026-11-22). | Je externer Abhängigkeit vier Artefakte: Interface, Token, Adapter, Fake. |
+| Drei Modell-Anbieter und ein Fake für CI hinter einer Factory. | Eine Indirektion beim Lesen: Was hinter `RECEIPT_REPOSITORY` steht, sagt erst das Modul. |
+| Feldverschlüsselung sitzt im Prisma-Adapter, Services sehen sie nicht. | DI-Tokens prüft der Compiler nicht. |
+| Ein Verstoß kostet einen roten Testlauf statt eines Architektur-Reviews. | Ausnahmelisten und die Kanten-Baseline müssen gepflegt werden. |
 
 ---
 
-# 5. Bausteinsicht (Building Block View — C4 Level 2)
+# 5. Bausteinsicht
+
+## 5.1 Pakete
 
 ```mermaid
 flowchart TD
-  subgraph Frontend ["Client Layer (Expo / React Native Web)"]
-    WebClient["apps/mobile-web\nExpo Router, UI Screens"]
-    TokensPkg["packages/tokens\nDesign Tokens & Theme"]
-    UIPkg["packages/ui\nKomponenten-Bibliothek"]
-    ApiClient["packages/api-client\nOrval generierter TypeScript Client"]
+  subgraph Clients
+    Web["apps/mobile-web\nExpo, React Native Web"]
+    Site["apps/website\nöffentliche Website"]
   end
-
-  subgraph Backend ["Server Layer (NestJS on Fastify)"]
-    API["apps/api\nREST API & Security Interceptors"]
-    AuthModule["Auth Module\n(Better-Auth, TOTP, Passkey)"]
-    CoreService["Steuerfachliche Services\n(LStB, Rente, CH, V&V, Printout)"]
-    McpModule["Eule & MCP-Server\n(LangGraph-Engine, PII-Maskierung, src/ki/**)"]
+  subgraph Shared ["packages"]
+    ApiClient["api-client\naus OpenAPI generiert (Orval)"]
+    Ui["ui · tokens\nDesign-System"]
+    Core["core\nSteuerregeln, Interview, Eule-Fachlogik"]
   end
+  Api["apps/api\nNestJS, 50 Module"]
+  Db[("PostgreSQL")]
 
-  subgraph SharedCore ["Pure Domain Core Layer (@steuereule/core)"]
-    direction TB
-    InterviewCore["interview/\n(Fragebaum, Vorbehalt, Regeln)"]
-    DomainsCore["domains/\n(LStB, Rente, V&V, CH-Spezifika)"]
-    EngineCore["engine/\n(Berechnung, Status, Vergleich)"]
-    MathCore["math/\n(Tarif §32a, Parameter-Registry)"]
-    CommonCore["common/\n(Geldbeträge, Hilfsfunktionen)"]
-
-    InterviewCore --> DomainsCore
-    DomainsCore --> EngineCore
-    EngineCore --> MathCore
-    CommonCore --> MathCore
-  end
-
-  subgraph Persistence ["Persistence Layer"]
-    PrismaDB["Prisma-Adapter *.repository.prisma.ts\n(PostgreSQL mit AES-256-GCM)"]
-    AuditDB["Audit Log Repository\n(Unveränderlicher Audit Trail)"]
-  end
-
-  WebClient --> ApiClient
-  WebClient --> TokensPkg
-  WebClient --> UIPkg
-  ApiClient --> API
-
-  API --> AuthModule
-  API --> CoreService
-  API --> McpModule
-
-  CoreService --> InterviewCore
-  CoreService --> DomainsCore
-  CoreService --> EngineCore
-  CoreService --> MathCore
-  McpModule --> InterviewCore
-  CoreService -->|"Repository-Port"| PrismaDB
-  API -->|"AuditRepository-Port"| AuditDB
+  Web --> ApiClient
+  Web --> Ui
+  Web --> Core
+  ApiClient -.->|"HTTP /v1"| Api
+  Api --> Core
+  Api --> Db
 ```
 
-### 5.1 Schichtenarchitektur & Abhängigkeits-DAG in `@steuereule/core`
-Der Rechenkern ist streng modularisiert und schützt sich über einen automatisierten Architektur-Test (`packages/core/src/architecture.test.ts`) gegen Regressionsschulden und Schichtenverletzungen:
-1. **`math/` (Reine Steuer-Mathematik):** Grundpolynome nach § 32a EStG, Tariftabellen, Temporal Parameter Registry (`tax-parameters.ts`). **Darf keine übergeordneten Module importieren.**
-2. **`engine/` (Rechen-Engine & Status):** Aggregation von Einkunftsarten, Berechnung von Summen und Erstattungsspannen, Veranlagungsartenvergleich (§ 26 EStG).
-3. **`domains/` (Fachliche Domänen):** Spezifische Steuervertikalen wie LStB, Rente (§ 22 EStG), Vermietung & Verpachtung (§ 21 EStG), Kapitalvermögen (§ 20 EStG), Grenzgänger CH (Art. 15a DBA).
-4. **`interview/` (Dynamische Frageführung & Regeln):** Fragebaum (`InterviewGraph`), Erreichbarkeitsprüfung, Progressionsvorbehaltsregeln (§ 32b EStG).
-5. **`common/` (Geteilte Basistypen):** Währungsbeträge, gemeinsame Datentypen.
+| Paket | Aufgabe | Abhängigkeiten im Workspace |
+| :--- | :--- | :--- |
+| `packages/core` | Steuerrecht als reine Funktionen, Interview-Regeln, Fachlogik der Eule | keine |
+| `packages/api-client` | typisierter Client, aus `apps/api/openapi.json` generiert | keine |
+| `packages/tokens`, `packages/ui` | Design-Tokens und Komponenten | `ui` nutzt `tokens` |
+| `apps/api` | REST-API unter `/v1`, MCP-Server unter `/mcp`, Authentifizierung, Persistenz | `core` |
+| `apps/mobile-web` | die Anwendung im Browser | `core`, `api-client`, `ui`, `tokens` |
+| `apps/website` | öffentliche Website | keine |
 
-Die Abhängigkeiten fließen ausnahmslos top-down:
-$$\text{interview} \longrightarrow \text{domains} \longrightarrow \text{engine} \longrightarrow \text{math}$$
+Die API ist in 50 Ordner unter `apps/api/src` gegliedert, je Fachthema einer (`lstb`, `rental`, `receipt`, `advisor`, …) plus Querschnitt (`auth`, `prisma`, `audit`, `common`, `config`, `telemetry`). [`architecture-subsystems.md`](architecture-subsystems.md) zeigt die wichtigsten von innen.
 
-*Für eine detaillierte Aufschlüsselung der Komponenten auf C4 Level 3 siehe [`architecture-subsystems.md`](./architecture-subsystems.md).*
+## 5.2 Der Kern von innen
+
+Die fünf Ordner sind nach Thema geschnitten:
+
+| Ordner | Inhalt | Dateien |
+| :--- | :--- | :-: |
+| `math/` | Tarif nach § 32a EStG, Soli, Parameter je Steuerjahr | 3 |
+| `common/` | Arbeitstage und Feiertage, Postleitzahlen, Finanzämter, Bankleitzahlen, Prüfung der Steuer-ID, PII-Maskierung | 17 |
+| `domains/` | Fachvertikalen: Lohn, Rente, Kapital, Vermietung, Grenzgänger, Kirchensteuer, Vorsorge, Selbstständige (`business/`, `ledger/`), Belege, Jahresverlauf | 83 |
+| `engine/` | Steuerschätzung, Veranlagungsvergleich, Bescheidabgleich, Rechenmodell `berechnung.ts` | 10 |
+| `interview/` | Fragenkatalog und Erreichbarkeit, Cockpit-Spanne, Fachlogik und Ports der Eule | 42 |
+
+Gemessene Importe zwischen den Ordnern (Anzahl Import-Anweisungen, ohne Tests, Stand 2026-11-22):
+
+| von ↓ nach → | math | common | engine | domains | interview |
+| :--- | :-: | :-: | :-: | :-: | :-: |
+| **math** | | 0 | 0 | 0 | 0 |
+| **common** | 2 | | 0 | 0 | 0 |
+| **engine** | 13 | 3 | | 18 | 0 |
+| **domains** | 19 | 8 | **15** | | **10** |
+| **interview** | 8 | 6 | 7 | 25 | |
+
+`math` und `common` sind saubere Fundamente. Darüber gibt es zwei Zyklen auf Ordnerebene: `engine` orchestriert Fachregeln aus `domains`, während Fachvertikalen in `domains` das Rechenmodell aus `engine` nutzen; und `domains` greift auf das Antwortmodell in `interview` zu. Die gewollte Ordnung ist `interview → engine → domains → common → math`. Die fett gesetzten Felder sind die Importe dagegen. Der Architekturtest führt die 23 betroffenen Dateien als Liste, die nur kürzer werden darf. Zwischen einzelnen Dateien gibt es keinen Zyklus von Wert-Importen.
 
 ---
 
-# 6. Laufzeitsicht (Runtime View) {#section-runtime-view}
+# 6. Laufzeitsicht
 
-## 6.1 Onboarding, Minimal-Gate & LStB-Erfassung
+## 6.1 Vom Gast zum Cockpit
 
 ```mermaid
 sequenceDiagram
   autonumber
-  actor User as Steuerzahler
-  participant App as Mobile-Web Client
-  participant API as NestJS API
-  participant Core as @steuereule/core
-  participant DB as PostgreSQL (Prisma)
+  actor U as Nutzer
+  participant W as Web-App
+  participant G as UserContextGuard
+  participant I as InterviewController
+  participant C as CockpitController
+  participant K as @steuereule/core
 
-  User->>App: Öffnet Steuereule (Gast-Modus)
-  App->>API: GET /v1/auth/session (Gast)
-  API-->>App: Signierter Guest-Token
-  User->>App: Beantwortet 3 Fragen im Minimal-Gate
-  App->>API: POST /v1/steuerjahre/2024/interview/antworten
-  API->>DB: Speichert verschlüsselte Antworten
-  API->>Core: berechneErstattung()
-  Core-->>API: Vorläufige Spanne (z. B. 400 € – 1.100 €)
-  API-->>App: Erstattungsspanne im Cockpit aktualisiert
-  User->>App: Transkribiert LStB (Bruttoarbeitslohn, LSt, SV)
-  App->>API: PUT /v1/steuerjahre/2024/lstb
-  API->>Core: validateLstb()
-  API->>DB: Speichert LstbData (AES-256-GCM)
-  API-->>App: Cockpit zeigt punktgenaue Schätzung
+  U->>W: öffnet die App
+  W->>I: POST /v1/steuerjahre/:jahr/interview/antworten
+  I->>G: canActivate
+  Note over G: kein Session-Cookie, kein Gast-Cookie:<br/>neue Gast-ID, signiertes Cookie se_guest_session
+  I->>K: isValidAnswer, nextStepFor
+  I-->>W: nächster Schritt, offene Punkte
+  W->>C: GET /v1/steuerjahre/:jahr/cockpit
+  C->>K: cockpitRangeFromInputs
+  C-->>W: Erstattungsspanne, offene Punkte
 ```
 
-## 6.2 Freischaltung & Synchroner Ausdruck
+Der Guard ist die einzige Stelle, die die Nutzer-ID einer Anfrage festlegt (`auth/user-context.guard.ts`). Es gibt keine Route, die eine Gastsitzung ausstellt: Die erste geschützte Anfrage ohne Cookie erzeugt sie. Routen mit `@RequiresAccount()` lehnen Gäste ab, darunter die Lohnsteuerbescheinigung und die detaillierte Steuerschätzung. Legt der Gast ein Konto an, überträgt `auth/guest-account-upgrade.prisma.ts` seine Daten in einer Transaktion ([ADR-0012](adr/0012-session-guard-coexistence-and-guest-upgrade.md), [ADR-0045](adr/0045-value-first-funnel.md)).
+
+## 6.2 Freischalten und drucken
 
 ```mermaid
 sequenceDiagram
   autonumber
-  actor User as Steuerzahler
-  participant App as Mobile-Web Client
-  participant API as NestJS API
-  participant Stripe as Stripe Gateway
-  participant Renderer as FormRenderer
-  participant DB as PostgreSQL (Prisma)
+  actor U as Nutzer
+  participant P as PrintoutController
+  participant S as PrintoutService
+  participant X as UnlockService
+  participant Pay as PaymentProvider (Stripe)
+  participant R as renderForms (pdf-lib)
 
-  User->>App: Klickt „Steuererklärung drucken“
-  App->>API: GET /v1/steuerjahre/2024/ausdruck/pruefung
-  API-->>App: 200 OK (Stammdaten vollständig)
-  User->>App: Klickt „Jetzt für 29,90 € freischalten“
-  App->>API: POST /v1/steuerjahre/2024/ausdruck/checkout
-  API->>Stripe: Erstellt Checkout-Session mit §356 BGB Klausel
-  Stripe-->>API: Checkout URL
-  API-->>App: Weiterleitung zu Stripe Checkout
-  User->>Stripe: Führt Zahlung durch
-  Stripe->>API: Webhook: checkout.session.completed (HMAC signiert)
-  API->>API: Prüft Webhook-Signatur
-  API->>DB: Setzt Freischaltung = bezahlt
-  User->>App: Kehrt zurück & fordert PDF an
-  App->>API: GET /v1/steuerjahre/2024/ausdruck
-  API->>Renderer: renderForms(FIELD_SETS[2024], Werte)
-  Renderer->>Renderer: Schreibt Werte auf 18 gepinnte BMF-NET-Vorlagen
-  Renderer-->>API: Fertiges A4 PDF
-  API-->>App: PDF Download (Druckfertiges Paket)
+  U->>P: GET …/:jahr/ausdruck/pruefung
+  P-->>U: Vorprüfung: was fehlt, was wird gedruckt
+  U->>P: POST …/:jahr/ausdruck/checkout
+  P->>S: startCheckout
+  S->>X: Checkout anlegen
+  X->>Pay: createCheckout
+  Pay-->>U: Weiterleitung zum Stripe-Checkout
+  Pay->>X: POST /v1/zahlung/stripe/webhook
+  X->>Pay: verifyEvent (Signatur)
+  Note over X: Freischaltung für Nutzer und Steuerjahr gespeichert
+  U->>P: GET …/:jahr/ausdruck
+  P->>S: Werte zusammenstellen
+  S->>R: renderForms
+  R-->>U: PDF: Hauptvordruck und die benötigten Anlagen
 ```
 
-## 6.3 Asynchrone Headless-Chromium PDF Queue ([ADR-0056](adr/0056-asynchronous-pdf-generation-job-queue.md))
+Der Preis steht nicht im Code, sondern als Preis-ID in der Konfiguration. `renderForms` schreibt mit `pdf-lib` in die amtlichen PDF-Vorlagen und wirft einen Fehler, wenn ein Wert nicht in seinen Kasten passt.
 
-Zum Schutz vor RAM-Erschöpfung und Blockieren des Fastify-Event-Loops bei hoher Last (z. B. Abgabestichtag) bietet die API ein asynchrones Job-Muster mit vollständiger Fault Isolation:
+## 6.3 Einen Beleg lesen
 
 ```mermaid
 sequenceDiagram
   autonumber
-  actor Client as Mobile / Web Client
-  participant API as Fastify API Controller
-  participant JobService as PrintoutJobService
-  participant Worker as Background PDF Worker
-  participant DB as DB & Encrypted Storage
+  actor U as Nutzer
+  participant W as Web-App
+  participant C as ReceiptParseController
+  participant S as Parse-Strategie
+  participant K as @steuereule/core
+  participant M as SingleShotModel
 
-  Client->>API: POST /v1/steuerjahre/2024/ausdruck/async
-  API->>JobService: enqueueJob(userId, jahr, fields)
-  JobService-->>API: jobId (Status: queued)
-  API-->>Client: 202 Accepted { "jobId": "job-123", "status": "queued" }
-
-  Worker->>JobService: processNext()
-  JobService->>Worker: Rendert amtliche BMF-Vordrucke
-  Worker->>DB: Speichert verschlüsseltes PDF
-  JobService->>JobService: Markiert jobId = completed, downloadUrl
-
-  Client->>API: GET /v1/steuerjahre/2024/ausdruck/jobs/job-123
-  API->>JobService: getJobStatus(jobId)
-  JobService-->>API: { "jobId": "job-123", "status": "completed", "downloadUrl": "..." }
-  API-->>Client: 200 OK
+  U->>W: lädt PDF oder Foto hoch
+  Note over W: Text entsteht im Browser:<br/>PDF-Textebene oder On-Device-OCR (ADR-0060)
+  W->>C: POST /v1/belege/parse (Text, keine Bilddaten)
+  C->>S: Strategie nach Belegart
+  S->>K: feste Regeln lesen, was sie sicher erkennen
+  S->>K: scrubDocumentTextPii
+  S->>M: ein Aufruf mit dem bereinigten Text
+  M-->>S: JSON
+  Note over S: Schema-Prüfung; bei Fehler, Zeitüberschreitung<br/>oder Ablehnung bleibt das Ergebnis der Regeln
+  S-->>W: Entwurf mit Feldern und Herkunft
+  U->>W: bestätigt Feld für Feld
 ```
 
----
-
-# 7. Querschnittliche Konzepte {#section-concepts}
-
-## 7.1 Temporal Tax Parameter Architecture
-Alle gesetzlichen Variablen sind in der temporalen Registry [`packages/core/src/math/tax-parameters.ts`](../packages/core/src/math/tax-parameters.ts) zentralisiert:
-* **§ 32a EStG Tarife:** Grundfreibetrag (2022: 10.347 €, 2023: 10.908 €, 2024: 11.604 €, 2025: 12.096 €, 2026: 12.348 €), Zonen-Grenzwerte und Polynomkoeffizienten.
-* **Solidaritätszuschlag (§ 4 SolZG):** Nullzone (2022: 16.956 €, 2023: 17.543 €, 2024: 18.130 €, ab 2025: 19.950 €) und Milderungszone.
-* **Pauschbeträge:** Arbeitnehmerpauschbetrag (1.200 € / 1.230 €), Sparer-Pauschbetrag (801 € / 1.000 €), Homeoffice-Tagespauschale und Jahreshöchstbeträge.
-* **Abgabefristen:** Gesetzliche Fristen nach § 149 AO und 4-jährige Verjährungsfristen für freiwillige Antragsveranlagung (§ 169 Abs. 2 Satz 1 Nr. 2 AO).
-
-## 7.2 Datensicherheit & Kryptographie
-* **Feldverschlüsselung (AES-256-GCM):** Jeder sensible Tabelleneintrag (Steuer-ID, IBAN, Löhne, Renten, Adressen) wird mit einem 12-Byte Zufalls-Nonce verschlüsselt. Die Nonce-Wiederholung ist rechnerisch ausgeschlossen.
-* **Key-Rotation:** Schlüssel tragen einen Versions-Präfix (`k1:`, `k2:`). Beim Rotieren entschlüsselt die API alte Versionen über den Schlüsselbund und re-verschlüsselt mit dem aktiven Schlüssel.
-* **Boot-Guards:** Beim Serverstart prüft `assertEnvNotFileSourced`, dass Produktions-Secrets niemals aus `.env`-Dateien auf der Platte stammen, und `assertDatabaseMigrated` erzwingt die vollständige Konsistenz zwischen Prisma-Migrations und der Datenbank.
-
-## 7.3 DevSecOps & Supply Chain Security
-* **Statische Sicherheit (Shift-Left):** Gitleaks (Secret Detection), Trivy Config (IaC Scanning), Semgrep (SAST), Hadolint (Dockerfiles) und Actionlint (CI Workflows).
-* **Software Supply Chain:** Automatische Generierung von CycloneDX SBOMs für Root-Repo, API- und Web-Container-Images.
-* **Container Security:** Blockierender Trivy-Scan auf HIGH/CRITICAL Vulnerabilities für Produktions-Images.
-* **End-to-End Verifikation:** 24 vollautomatisierte Playwright-Szenarien testen reale Nutzerreisen im echten Browser.
-
-## 7.4 Request Correlation & W3C Trace-Context
-Zur lückenlosen Nachverfolgbarkeit von Fehlern und Latenzen über Frontend, API-Schichten und Logs hinweg nutzt das Backend standardisierte Correlation-IDs:
-* **W3C `traceparent` & `x-request-id`:** Fastify extrahiert vorhandene W3C Trace IDs (`00-<trace_id>-<parent_id>-<flags>`) oder `x-request-id`-Header und generiert bei Fehlen eine eindeutige Request-ID ([`apps/api/src/common/request-id.ts`](../apps/api/src/common/request-id.ts)).
-* **Log-Präfix & Client Propagation:** Jedes strukturierte Logzeile im Fehlerfilter (`DomainErrorFilter`) wird mit `[requestId]` annotiert. Der Header `x-request-id` wird in jeder HTTP-Antwort zurückgeliefert; Fehler-Payloads enthalten die ID transparent im JSON-Body (`{ "statusCode": 404, "requestId": "req-..." }`).
-
-## 7.5 OpenTelemetry (OTel) Distributed Tracing
-* **Vendor-agnostisches Tracing:** Über `@opentelemetry/api` und den Wrapper [`withSpan`](../apps/api/src/telemetry/tracer.ts) werden rechenintensive Operationen (z. B. `tax_estimate.calculate`) transparent in OpenTelemetry-Spans gekapselt.
-* **Google Cloud Trace Export:** In Google Cloud Run fließen die Trace-Kontexte automatisch in Cloud Trace und Cloud Monitoring, ohne proprietäre SDK-Abhängigkeiten im Business-Code.
-
-## 7.6 SRE Reliability, SLOs & Chaos Resilience ([`docs/sre/reliability-spec.md`](sre/reliability-spec.md))
-* **Service Level Objectives:**
-  - Berechnungs-Engine: 99,9 % der Requests $< 150\,\text{ms}$.
-  - Asynchrone PDF-Generierung: 99 % der Jobs $< 4\,\text{s}$.
-  - System-Verfügbarkeit (Availability): 99,9 % fehlerfreie HTTP-Requests.
-* **Error Budget & Burn-Rate Alerts:** 30 Tage rollierendes Fehlerbudget von 0,1 % ($\approx 43{,}2\,\text{Minuten}$ Gesamtausfall). Multi-Window Burn-Rate Alerting bei $14{,}4\times$ (1h-Window) und $6\times$ (6h-Window) Budget-Verbrauch mit dedizierten On-Call Playbooks.
-* **Chaos- & Transient-Recovery:** Automatische CI-Resilience-Tests (`database-chaos-recovery.test.ts`) stellen sicher, dass temporäre PostgreSQL-Verbindungsabbrüche sauber mit `503 Service Unavailable` beantwortet werden und der Pool sich ohne Node-Prozess-Neustart selbstständig erholt.
-* **Kapazitätsplanung & Resource Envelopes:** Quantitatives Speichermodell für Headless-Chromium ($180\,\text{MB} - 320\,\text{MB}$ pro Render, Concurrency-Deckelung auf $C=3$, Backpressure-Limit $K=50$) und mathematische PostgreSQL-Connection-Pool-Dimensionierung.
-* **Disaster Recovery (DR):** RPO $< 5\,\text{Minuten}$ (Continuous WAL Archiving via Cloud SQL PITR) und RTO $< 15\,\text{Minuten}$ (deklaratives OpenTofu Re-Provisioning).
-
-## 7.7 Zero-Downtime Database Migrations ([ADR-0055](adr/0055-zero-downtime-database-migrations-expand-contract.md))
-* **Expand and Contract Pattern:** Schema-Änderungen auf Produktiv-Datenbanken (Cloud SQL) erfolgen immer in zwei separaten Phasen:
-  1. *Expand:* Neue Spalten/Tabellen werden rein additiv und nullable angelegt. Alte und neue Container-Instanzen können parallel arbeiten.
-  2. *Contract:* Nach vollständigem Rollout und Daten-Backfill werden alte Spalten in einer nachfolgenden Migration sicher entfernt. Keine Downtime bei Rolling Updates.
-
-## 7.8 Zero-Trust Threat Model & Vertrauensgrenzen
-* **Trust Boundaries:** Aufteilung in drei formale Vertrauenszonen: Untrusted Client Zone $\rightarrow$ Authenticated Cloud Run Memory Boundary $\rightarrow$ Encrypted PostgreSQL Storage.
-* **Zero-Persistence:** PII und Steuerdaten verlassen den In-Memory-Zustand ausschließlich als AES-256-GCM Chiffrat; Klartexte werden weder geloggt noch in persistenten Caches abgelegt.
+Drei Schutzlinien liegen vor dem Modell. Beim Lohnausweis und der Lohnsteuerbescheinigung verlässt nur eine Positivliste von Zeilen den Server ([ADR-0058](adr/0058-lstb-textfallback-allowlist.md)), und das Modell wird nur gefragt, wenn die festen Regeln ein Feld leer gelassen haben. Dann entfernt `scrubDocumentTextPii` Namen, Adressen und Kennungen. Zuletzt bricht `checkPiiFree` ab, wenn im Text noch eine IBAN oder Steuer-ID steht. Werte aus OCR gelten nie als sicher gelesen und müssen bestätigt werden.
 
 ---
 
-# 8. Architekturentscheidungen (ADR-Register & progress.db) {#section-design-decisions}
-
-Ausführlich begründet in [`docs/adr/`](adr/index.md) und lückenlos protokolliert in `~/.progress/progress.db`:
-
-| ADR | Titel & Kernaussage | Status | Auslöser / Meilenstein in progress.db |
-| :---: | :--- | :---: | :--- |
-| **ADR-0038** | *Deterministischer Berechnungs-Kern mit KI-Port:* Steuerrecht erfordert absolute Berechenbarkeit. KI assistiert nur, hinter einem Port. | Accepted | Kern-Architekturprinzip (#495) |
-| **ADR-0008** | *Feldverschlüsselung im Ruhezustand:* AES-256-GCM für Steuer-ID, Stammdaten und Geldbeträge in PostgreSQL. | Accepted | Sicherheits-Standard (#468, #475) |
-| **ADR-0012** | *Anonyme Gast-Session:* Value-First-Funnel ohne Zwangs-Registrierung; Erstattungsspanne im Gastmodus. | Accepted | Product Onboarding (#474) |
-| **ADR-0013** | *DSGVO Kontolöschung nach Art. 17:* Vollständige Löschung aller Steuerdaten über atomare `$transaction`. | Accepted | Compliance Audit (#482) |
-| **ADR-0049** | *Vorjahresübernahme als Vorschlag:* Übernommene Werte bleiben unbestätigt, bis der Nutzer sie prüft. | Draft | Jahreswechsel (#489) |
-| **ADR-0024** | *QR-Code Gerätekopplung:* Sichere Autorisierung des Desktops über das Smartphone ohne Passwortübertragung. | Accepted | Device Auth (#473) |
-| **ADR-0031** | *Zwei-Segment-Interview:* Drei-Fragen-Minimal-Gate + On-Demand Lebenslagenkatalog. | Accepted | Interview Engine (#474) |
-| **ADR-0034** | *Typisierter Veranlagungsartenvergleich:* `eindeutig`, `zu-knapp`, `unbestimmt` statt falscher Ratschläge. | Accepted | Tariflogik (#492) |
-| **ADR-0042** | *Grenzgänger-Schweiz Vertikale:* 60-Tage-Regel, CH-Lohnausweis, BMF-Monatskurse, Anlage N-Gre. | Accepted | CH-Feature Track (#490) |
-| **ADR-0045** | *Value-First-Funnel:* Gäste dürfen Minimal-Gate ausfüllen; Daten wandern beim Upgrade mit. | Accepted | Conversion Optimization (#491) |
-| **ADR-0050** | *Papierweg statt ELSTER in 1.0:* Amtliche BMF-Vordrucke auf Papier, Bezahlung beim Ausdruck via Stripe. | Accepted | 1.0 Readiness (#496) |
-| **ADR-0051** | *Eulen-Modus KI-Architektur:* PII-Maskierung, Tool-Calling, Herkunftsnachweis und Undo-Garantie. | Accepted | AI Advisor (#471) |
-| **ADR-0055** | *Zero-Downtime Database Migrations:* Expand & Contract Pattern für unterbrechungsfreie Cloud Run Deployments. | Accepted | FAANG Architecture Hardening (#510) |
-| **ADR-0056** | *Asynchronous PDF Generation Job Queue:* Entkoppelte Worker-Queue für rechen- und RAM-intensive BMF-Formular-Renderings. | Accepted | FAANG Architecture Hardening (#510) |
-| **ADR-0052** | *Agenten-Zugang:* Der eigene KI-Assistent des Nutzers füllt über MCP und OAuth 2.1 Entwürfe; der Nutzer bestätigt gesammelt. | Accepted | Ticket 17 |
-| **ADR-0102** | *Ports & Adapters per Linter erzwungen:* Prisma, LangChain, Stripe und nodemailer nur in ihren Adaptern; oxlint bricht sonst den Build. | Accepted | Architektur-Review 2026-11-22 |
-
----
-
-# 9. Qualitätsanforderungen und Testmatrix {#section-quality-scenarios}
-
-Die Software-Qualität wird über ein **4-Ebenen-Testmodell** sichergestellt:
+# 7. Verteilungssicht
 
 ```mermaid
-flowchart TD
-  T1["Ebene 1: Unit- & Eigenschaftstests (Vitest)\n@steuereule/core (662 Tests)\nReine Funktionen, Tarife, Rundungsregeln,\nArchitektur-Linter (DAG-Guard)"]
-  T2["Ebene 2: API-Integrations- & Vertragstests (Vitest)\n@steuereule/api (800+ Tests)\nEchte Postgres Container, Fastify Inject, Chaos Recovery,\nOpenAPI Contracts, W3C Trace-Context"]
-  T3["Ebene 3: UI-Komponenten & Screen-Tests (Vitest/RTL)\n@steuereule/mobile-web (619 Tests)\nMock Service Worker (MSW), ARIA Accessibility"]
-  T4["Ebene 4: End-to-End Browser-Matrix (Playwright)\n24 reale Lebenslagen-Szenarien\nEchter Chromium, echter Node API Monolith, echte Datenbank"]
-
-  T1 --> T2 --> T3 --> T4
+flowchart LR
+  Browser["Browser"]
+  subgraph GCP ["Google Cloud · europe-west4"]
+    WebSvc["Cloud Run: steuereule-web\n1 vCPU · 512 MiB · 0–10 Instanzen"]
+    ApiSvc["Cloud Run: steuereule-api\n1 vCPU · 2 GiB · 0–10 Instanzen"]
+    Db[("Cloud SQL PostgreSQL\nAnwendungsdaten")]
+    Keys[("Cloud SQL PostgreSQL\nKeystore für Beleg-Schlüssel")]
+    Redis[("Memorystore Redis\noptional")]
+    Secrets["Secret Manager"]
+  end
+  Browser --> WebSvc
+  Browser --> ApiSvc
+  ApiSvc --> Db
+  ApiSvc --> Keys
+  ApiSvc -.-> Redis
+  ApiSvc --> Secrets
 ```
 
-Zusätzlich sichern **Vordruck-Vermessungs-Gates** (`scripts/vordrucke/vermessen.mjs --check` und `lagebericht.mjs --check`) ab, dass keine Feldverschiebung auf amtlichen Formularen unbemerkt bleibt.
+| Baustein | Festlegung | Quelle |
+| :--- | :--- | :--- |
+| Zwei Dienste | `steuereule-api` und `steuereule-web`, je ein Container, skalieren auf null | `.github/workflows/deploy.yml` |
+| Datenbank | Cloud SQL, eine Zone, automatische Sicherung mit Point-in-Time-Recovery | `infra/gcp/main.tf` |
+| Keystore | eigene Cloud-SQL-Instanz nur für die Schlüssel der Belegdateien: Wer einen Schlüssel löscht, macht den Beleg auch in alten Sicherungen unlesbar | [ADR-0059](adr/0059-beleg-keystore-crypto-shredding.md) |
+| Redis | optional (`enable_redis`): Laufprotokoll der Eule über mehrere Instanzen und Rate-Limit der Anmeldung | [ADR-0064](adr/0064-eulen-chat-antwortlaeufe-und-wiederaufnahme.md) |
+| Auslieferung | Images bauen, vor dem Rollout eine Sicherung anlegen, neue Revision, bei Fehlschlag Verkehr zurück auf die vorige | `deploy.yml` |
+| Infrastruktur als Code | OpenTofu/Terraform | `infra/gcp/` |
+
+Hosting-Entscheidung: [ADR-0053](adr/0053-beta-hosting-cloud-run.md). Unter `infra/terraform`, `infra/k3s` und `infra/manifests` liegt zusätzlich eine ältere Zielumgebung auf Hetzner mit k3s (§11).
+
+Weil die API auf bis zu zehn Instanzen läuft, gilt für jeden Zustand im Prozessspeicher: Er ist je Instanz getrennt und geht beim Herunterskalieren verloren. Das betrifft heute die asynchronen Druckaufträge und einen Teil des Rate-Limits (§11).
 
 ---
 
-# 10. Risiken und Technische Schulden {#section-technical-risks}
+# 8. Querschnittliche Konzepte
 
-| Risiko / Technische Schuld | Auswirkung & Schwere | Geplante Mitigierungsstrategie |
-| :--- | :---: | :--- |
-| **Jährliche Layout-Änderungen durch das BMF** | Hoch (Ausdruck unbrauchbar bei verschobenen Feldern) | Automatisiertes Download-Tool ([`download-vordrucke.mjs`](../scripts/vordrucke/download-vordrucke.mjs)) und striktes CI-Vermessungs-Gate für alle Vordruck-Vorlagen. |
-| **Verzögerung des ELSTER-Zertifikats** | Mittel (Keine Online-Übermittlung in 1.0) | Vollständig gelöst durch ADR-0050: Zulässiger, rechtskonformer Papierausdruck schließt 1.0 ab; ELSTER folgt in 1.x. |
-| **Kopplung zwischen Fachmodulen in `apps/api` ist nicht erzwungen** | Mittel (Services importieren sich quer, z. B. `audit.service` aus 34 Dateien; Änderungen ziehen Kreise) | Bewusst außerhalb von ADR-0102. Nächster Schritt: dependency-cruiser mit Modulgraph, erst messen, dann eine Ratsche wie beim E2E-Coverage-Gate. |
-| **In-Memory Rate Limiting** | Niedrig (Bypass bei horizontaler Pod-Skalierung) | Für 1.0 mit Single-Instance ausreichend; Redis-Anbindung ist als Folge-Task für Multi-Pod-Betrieb vorbereitet. |
+## 8.1 Authentifizierung und Identität
+
+- **better-auth** ist der Auth-Server ([ADR-0009](adr/0009-better-auth-as-auth-server.md)): E-Mail und Passwort, Google, Passkeys, TOTP, Geräte-Freigabe per QR-Code ([ADR-0024](adr/0024-qr-device-authorization-endpoints.md)).
+- **Drei Arten von Identität**, alle vom `UserContextGuard` gesetzt: Sitzung eines Kontos, signiertes Gast-Cookie, Bearer-Token eines Assistenten.
+- **Ein Assistenten-Token gilt nur am MCP-Endpunkt.** Auf jedem anderen Controller wird es abgelehnt, bevor es nachgeschlagen wird. Ein JWT wird gegen die Schlüssel von better-auth, den Aussteller und die Zielgruppe geprüft; zusätzlich muss die Zustimmung des Nutzers noch bestehen, damit ein Widerruf sofort wirkt.
+- **Nicht jeder Controller steht hinter dem Guard.** Ohne Guard sind `v1/health`, `v1/capabilities`, `v1/auth/capabilities`, die OAuth-Discovery, die Geräte-Freigabe und der Stripe-Webhook, der sich über die Signatur ausweist.
+
+## 8.2 Verschlüsselung
+
+| Was | Verfahren | Schlüssel |
+| :--- | :--- | :--- |
+| Felder mit `/// @encrypted` im Prisma-Schema (190 Markierungen, Stand 2026-11-22) | AES-256-GCM durch `prisma-field-encryption`, eingehängt in `prisma/encrypted-prisma.provider.ts` | ein Anwendungsschlüssel `PRISMA_FIELD_ENCRYPTION_KEY`; frühere Schlüssel in `PRISMA_FIELD_DECRYPTION_KEYS` bleiben lesbar |
+| Belegdateien | Envelope-Verschlüsselung in `receipt/storage/envelope-crypto.service.ts` | ein Schlüssel je Nutzer im Keystore |
+
+Nicht jedes Feld ist verschlüsselt. Klartext sind zum Beispiel der Status eines Steuerjahrs, Entfernungskilometer und Zahlungsbeträge. Ein Schlüsselwechsel verschlüsselt bestehende Werte nicht neu; das geschieht erst beim nächsten Schreiben des Werts.
+
+## 8.3 Grenze zu den Sprachmodellen
+
+- Belegtext wird vor dem Modell bereinigt (§6.3).
+- Der Chat der Eule enthält Falldaten. Namen und Kennungen werden maskiert (`packages/core/src/common/pii-masking.ts`); persönliche Daten gehen nur mit Einwilligung an das Modell ([ADR-0091](adr/0091-eule-persoenliche-daten-mit-einwilligung.md)).
+- Beträge kommen aus dem Kern: Schätzung, Pauschalen und Werbungskosten sind berechnet, bevor das Modell gefragt wird. Jede Antwort wird danach ohne Modell geprüft.
+- Ein Themenwächter sortiert jede getippte Frage vor ([ADR-0100](adr/0100-eule-waechter-parallel-und-messung.md)). Fällt er aus, läuft die Frage durch, und die Themenregel im Prompt der Eule bleibt als zweite Linie.
+- Welches Modell an welcher Stelle arbeitet, steht in Slots (`ki/ai-runtime-config.service.ts`). Ein Notschalter stellt Modellaufrufe ab; die Beleg-Leser arbeiten dann nur mit den festen Regeln.
+
+## 8.4 Persistenz und Transaktionen
+
+- Jedes Fachmodul hat sein Repository als Port und einen Prisma-Adapter.
+- `TransactionRunner.run` fasst mehrere Repository-Aufrufe zu einer Transaktion mit Isolation *Repeatable Read* zusammen. Ein gleichzeitiger Schreibzugriff führt zu einem Konflikt, der als `CONCURRENT_WRITE_CONFLICT` beim Client ankommt, statt zu einem stillen Überschreiben.
+- Schemaänderungen folgen *Expand and Contract* ([ADR-0055](adr/0055-zero-downtime-database-migrations-expand-contract.md)). Das ist eine Arbeitsregel; kein Test erzwingt sie.
+- Zugriffe auf Steuerdaten protokolliert der `AuditService` in der Tabelle `TaxDataAccessLog`.
+
+## 8.5 Beobachtbarkeit
+
+- **Request-ID.** Fastify übernimmt eine W3C-`traceparent`- oder `x-request-id`-Kopfzeile oder erzeugt eine UUID (`common/request-id.ts`). Der Fehlerfilter schreibt sie in jeden Fehlerkörper. Die Web-App sendet bisher keine eigene ID mit.
+- **Tracing.** `telemetry/tracer.ts` kapselt die OpenTelemetry-API. Zwei Stellen erzeugen Spans. Es ist weder ein SDK noch ein Exporter eingebunden, die Spans werden also derzeit nirgends gesammelt (§11).
+- **Health.** `GET /v1/health/live` und `GET /v1/health/ready`; Letzteres prüft die Datenbank.
+- **Zielwerte.** SLOs, Fehlerbudget und Wiederanlaufziele stehen in [`sre/reliability-spec.md`](sre/reliability-spec.md). Sie sind Ziele; Alarme dazu sind nicht als Code hinterlegt.
+
+## 8.6 Lieferkette
+
+Der Workflow *Security* prüft bei jedem Pull Request auf Geheimnisse (gitleaks), unsichere Muster (semgrep) und Fehlkonfiguration (trivy, hadolint, actionlint). *Build & E2E* scannt die Container-Images und bricht bei hohen und kritischen Funden ab; `.trivyignore` nimmt dabei bekannte Funde aus (120 Einträge, Stand 2026-11-22). Für Repository und beide Images entstehen CycloneDX-SBOMs. Sie werden als Artefakt abgelegt und nicht signiert.
+
+## 8.7 Rate-Limiting
+
+Zwei Mechanismen: der Limiter von better-auth für Anmeldung und Registrierung, der Redis nutzt, wenn `REDIS_URL` gesetzt ist; und `ThrottlerModule` von NestJS für einzelne Routen, das im Prozessspeicher zählt.
 
 ---
 
-# 11. Glossar {#section-glossary}
+# 9. Architekturentscheidungen
 
-| Begriff | Definition & Fachlicher Kontext |
+Das Verzeichnis [`docs/adr/index.md`](adr/index.md) führt alle Entscheidungen (101 Dateien, Stand 2026-11-22). Die folgenden tragen die Struktur:
+
+| ADR | Entscheidung | Status |
+| :-- | :--- | :--- |
+| [0008](adr/0008-profile-persistence-encryption.md) | Profil serverseitig, sensible Felder verschlüsselt | Accepted |
+| [0009](adr/0009-better-auth-as-auth-server.md) | better-auth als Auth-Server | Accepted |
+| [0012](adr/0012-session-guard-coexistence-and-guest-upgrade.md) | Guard für Gast oder Sitzung, Übernahme der Gastdaten in einer Transaktion | Accepted |
+| [0013](adr/0013-dsgvo-export-and-account-deletion.md) | DSGVO-Export und Kontolöschung; das Zugriffsprotokoll wird anonymisiert und behalten | Accepted |
+| [0019](adr/0019-oxlint-replaces-eslint.md) | oxlint als Lint-Gate | Accepted |
+| [0021](adr/0021-controls-are-proven-by-breaking-them.md) | Eine Kontrolle wird durch Brechen bewiesen | Accepted |
+| [0034](adr/0034-veranlagungsartenvergleich-returns-a-bounded-comparison.md) | Der Veranlagungsvergleich liefert einen begrenzten Vergleich, kein Urteil | Accepted |
+| [0038](adr/0038-berechnungs-kern-ki-port.md) | Deterministischer Rechenkern, KI hinter einem Port | Accepted |
+| [0045](adr/0045-value-first-funnel.md) | Gäste dürfen die ersten Fragen beantworten, das Konto übernimmt sie | Accepted |
+| [0050](adr/0050-papierweg-statt-elster-in-1-0.md) | Abgabe auf Papier, bezahlt je Steuerjahr beim Ausdruck | Accepted |
+| [0052](adr/0052-agenten-zugang-mcp.md) | Zugang für den eigenen Assistenten des Nutzers über MCP und OAuth | Accepted |
+| [0053](adr/0053-beta-hosting-cloud-run.md) | Hosting auf Cloud Run und Cloud SQL | Accepted |
+| [0055](adr/0055-zero-downtime-database-migrations-expand-contract.md) | Migrationen nach Expand and Contract | Accepted |
+| [0059](adr/0059-beleg-keystore-crypto-shredding.md) | Eigener Keystore für Beleg-Schlüssel | Accepted |
+| [0064](adr/0064-eulen-chat-antwortlaeufe-und-wiederaufnahme.md) | Antwortläufe der Eule, von der Verbindung gelöst | Accepted |
+| [0066](adr/0066-eule-feldkatalog-und-ein-schreibweg.md) | Ein Feldkatalog, ein Schreibweg, Entwurf vor Eintrag | Accepted |
+| [0101](adr/0101-selbststaendige.md) | Selbstständige: EÜR, Buchhaltung, Bilanz, Umsatz- und Gewerbesteuer | Accepted |
+| [0102](adr/0102-ports-und-adapter-per-architekturtest.md) | Ports & Adapters, durch zwei Architekturtests erzwungen | Accepted |
+
+Die Entscheidungen zu Vermietung, Kapital und Jahresübernahme (0046, 0048, 0049) haben noch den Status *Draft*, obwohl der Code dazu ausgeliefert wird (§11).
+
+---
+
+# 10. Qualität und Tests
+
+| Ebene | Werkzeug | Was sie beweist | Umfang am 2026-11-22 | CI |
+| :--- | :--- | :--- | :--- | :--- |
+| Kern | Vitest | Steuerregeln, Interview-Regeln, Architekturregeln des Kerns | 155 Dateien, 2067 Tests | *Quality* · `test` |
+| API, ohne Datenbank | Vitest mit Fakes | Services, Guards, Parser, Architekturregeln der API | 205 Dateien, 2247 Tests | *Quality* · `test` |
+| API, mit Datenbank | Vitest gegen PostgreSQL als CI-Dienst ([ADR-0010](adr/0010-ci-postgres-and-boot-smoke.md)) | Verschlüsselung, Zugriffsprotokoll, Akzeptanztests der Anforderungen | 53 Dateien | *Quality* · `integration` |
+| Web-App | Vitest, Testing Library, MSW | Screens und Komponenten | 233 Dateien | *Quality* · `test` |
+| Start | gebautes `dist/` über echtes HTTP | Verdrahtungsfehler, die Tests im Prozess nicht sehen | | *Build & E2E* · `smoke` |
+| Ende zu Ende | Playwright mit Chromium gegen den Compose-Stack | 28 Szenarien aus Nutzersicht, dazu Einzel-Gates für Belege, Eule und Verlauf | `e2e/scenarios/` | *Build & E2E* |
+| Last | Lasttest mit vielen Nutzern | klein bei jedem Pull Request, voll in der Nacht | | *Load* |
+| KI-Qualität | Auswertungen gegen echte Anbieter | Antwortqualität der Eule und des Themenwächters | | *AI eval (nightly)* |
+
+Die Zahlen stammen aus einem lokalen Testlauf und aus der Zählung der Testdateien. Sie veralten; maßgeblich ist der jeweils letzte CI-Lauf.
+
+Zwei Regeln für Gates: Ein Gate zählt nur, wenn es in CI gegen das Echte läuft ([ADR-0010](adr/0010-ci-postgres-and-boot-smoke.md)), und jedes Gate muss einmal absichtlich rot gemacht worden sein ([ADR-0021](adr/0021-controls-are-proven-by-breaking-them.md)).
+
+---
+
+# 11. Risiken und technische Schulden
+
+| # | Befund | Folge | Nächster Schritt |
+| :-: | :--- | :--- | :--- |
+| 1 | **Asynchrone Druckaufträge leben im Prozessspeicher.** `printout/printout-job.service.ts` hält sie in einer `Map` und startet sie mit `setImmediate`. Es gibt keinen Worker und keine Begrenzung gleichzeitiger Aufträge. [ADR-0056](adr/0056-asynchronous-pdf-generation-job-queue.md) beschreibt eine Warteschlange, die so nicht gebaut ist. | Auf zehn Instanzen findet eine Statusabfrage den Auftrag nur zufällig. Ein Neustart verliert ihn. Die Web-App nutzt den Weg derzeit nicht. | Aufträge in die Datenbank oder nach Redis legen, oder den Weg entfernen und ADR-0056 als nicht umgesetzt kennzeichnen. |
+| 2 | **Tracing ohne Exporter.** | Es gibt keine verteilten Traces, auch wenn der Code Spans erzeugt. | OpenTelemetry-SDK mit Exporter einbinden. |
+| 3 | **SLOs ohne Alarme.** Die Zielwerte in `sre/reliability-spec.md` sind nicht als Monitoring-Ressourcen hinterlegt. | Eine Verletzung fällt niemandem automatisch auf. | Alarmregeln in `infra/gcp` anlegen. |
+| 4 | **Zwei Ordner-Zyklen im Kern** (§5.2). | Änderungen an `engine/berechnung.ts` oder am Antwortmodell wirken in viele Fachvertikalen. | Rechenmodell und Antwortmodell in eine untere Schicht ziehen; die Liste im Architekturtest zeigt den Fortschritt. |
+| 5 | **Starke Kopplung der API-Module** (§4.1.4). | Ein Modul lässt sich selten allein ändern oder testen. | Die 16 gegenseitigen Paare einzeln auflösen; die Baseline schrumpft mit. |
+| 6 | **LangChain durchzieht die Beratungsrunde** (§4.1.4). | Bindung an ein Framework. | Akzeptiert, solange der Anbieterwechsel Konfiguration bleibt. |
+| 7 | **Rate-Limit teils im Prozessspeicher** (§8.7). | Bei mehreren Instanzen gilt das Limit je Instanz. | `ThrottlerModule` an Redis anbinden. |
+| 8 | **ELSTER-Übermittlung nicht betriebsbereit.** Der Code ruft einen ERiC-Prozess auf, das Zertifikat des Betreibers fehlt. | Selbstständige, die elektronisch abgeben müssen, können das nicht über die App. | Zertifikat beschaffen, Betrieb des ERiC-Prozesses klären ([ADR-0101](adr/0101-selbststaendige.md)). |
+| 9 | **Vordrucke ändern sich jährlich.** | Ein verschobenes Feld macht den Ausdruck unbrauchbar. | Besteht als Gate: Prüfsummen und Vermessung brechen den Build. Für 2026 fehlen die Vordrucke noch. |
+| 10 | **Jahreskonstanten außerhalb der Parameter-Registry**, zum Beispiel in `domains/business/payroll.ts`. | Ein neues Steuerjahr braucht Änderungen an mehreren Stellen. | Beim nächsten Jahreswechsel in `tax-parameters.ts` zusammenführen. |
+| 11 | **Zweite Zielumgebung in `infra/`.** Neben `infra/gcp` liegen Definitionen für Hetzner mit k3s. | Wer das Repository liest, sieht zwei Zielumgebungen und weiß nicht, welche gilt. | Entfernen oder als Archiv kennzeichnen. |
+| 12 | **ADRs im Status *Draft* zu ausgeliefertem Code** (0046, 0048, 0049). | Die Entscheidung ist nicht formal abgenommen. | Status klären. |
+| 13 | **Zwei arc42-Dokumente.** Dieses Dokument und `arc42/README.md` überschneiden sich; Letzteres beschreibt in §5 und §5.1 einen frühen Stand. | Leser wissen nicht, welches gilt. | Maßgeblich ist dieses Dokument. `arc42/README.md` auf Werkzeugkette und Boot-Reihenfolge kürzen. |
+
+---
+
+# 12. Glossar
+
+| Begriff | Bedeutung |
 | :--- | :--- |
-| **LStB** | Lohnsteuerbescheinigung: Amtlicher Nachweis des Arbeitgebers über gezahlten Arbeitslohn und einbehaltene Lohnsteuer. |
-| **N-Gre** | Spezifische amtliche Anlage für Grenzgänger in die Schweiz zur Besteuerung der Schweizer Einkünfte in Deutschland. |
-| **zvE** | Zu versteuerndes Einkommen: Bemessungsgrundlage für den Einkommensteuertarif nach § 32a EStG nach Abzug aller Freibeträge. |
-| **Splittingverfahren** | Steuerberechnung für zusammenveranlagte Ehepaare nach § 32a Abs. 5 EStG zur Glättung der Progression. |
-| **Günstigerprüfung** | Gesetzlicher Vergleich zweier steuerlicher Alternativen (z. B. Kindergeld vs. Kinderfreibetrag; KapESt-Abgeltungsteuer vs. tarifliche ESt). |
-| **Formularschlüssel** | Amtlicher Kenncode auf jeder Seite der BMF-Vordrucke (z. B. `2024AnlN031NET`). |
-| **Port** | Schnittstelle (TypeScript-`interface` plus DI-Token), über die der Anwendungsring etwas von außen braucht oder anbietet, z. B. `ReceiptRepository` / `RECEIPT_REPOSITORY`. |
-| **Adapter** | Implementierung eines Ports gegen ein konkretes Framework oder SDK, z. B. `PrismaReceiptRepository`. Eingehende (*driving*) Adapter rufen die Anwendung auf (Controller, MCP), ausgehende (*driven*) werden von ihr aufgerufen (Datenbank, LLM, Stripe). |
-| **Composition Root** | Der Ort, an dem Ports an Adapter gebunden werden; hier die Nest-Module `*.module.ts`. |
-| **Eulen-Modus** | Dialogbasierter KI-Beratungsmodus mit gesicherten MCP-Tools und automatischer PII-Maskierung. |
+| **Adapter** | Implementierung eines Ports gegen ein Framework oder SDK. Eingehende Adapter rufen die Anwendung auf (Controller, MCP), ausgehende werden von ihr aufgerufen (Datenbank, Sprachmodell, Stripe). |
+| **Composition Root** | Der Ort, an dem Ports an Adapter gebunden werden: die Nest-Module `*.module.ts`. |
+| **Cockpit** | Startseite eines Steuerjahrs: Erstattungsspanne und offene Punkte. |
+| **Entwurf** | Ein vorgeschlagener Eintrag mit berechneter Wirkung, der erst durch Bestätigung geschrieben wird. |
+| **Eule** | Die KI-Assistentin im Chat der App. Nicht zu verwechseln mit dem MCP-Zugang, über den ein *fremder* Assistent des Nutzers arbeitet. |
+| **Formularschlüssel** | Amtlicher Code auf jeder Vordruckseite, zum Beispiel `2024AnlN031NET`. |
+| **Günstigerprüfung** | Gesetzlicher Vergleich zweier Besteuerungswege, etwa Abgeltungsteuer gegen tarifliche Steuer. Etwas anderes als der Veranlagungsvergleich. |
+| **LStB** | Lohnsteuerbescheinigung. |
+| **Minimal-Gate** | Die ersten Fragen des Interviews (`job`, `ausland`, `kinder`, `familienstand`), die auch ein Gast beantworten darf. |
+| **N-Gre** | Anlage für Grenzgänger. |
+| **Port** | TypeScript-Interface mit DI-Token, über das der Anwendungsring etwas von außen braucht, zum Beispiel `ReceiptRepository` mit `RECEIPT_REPOSITORY`. |
+| **Veranlagungsvergleich** | Vergleich von Einzel- und Zusammenveranlagung für Ehepaare ([ADR-0034](adr/0034-veranlagungsartenvergleich-returns-a-bounded-comparison.md)). |
+| **Vordruck** | Amtliches Formular der Finanzverwaltung als PDF. |
+| **zvE** | Zu versteuerndes Einkommen, Bemessungsgrundlage des Tarifs nach § 32a EStG. |

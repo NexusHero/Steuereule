@@ -5,8 +5,9 @@ Architecture decisions for the *engineering* build, in lightweight [MADR](https:
 a decision that replaces another **supersedes** it (never rewrite history). Governed by
 ultimate-dev-process §1.2.
 
-The ADRs **justify** the architecture; the [living arc42 document](../arc42/README.md) **shows** it
-(building-block and data views, PlantUML sources + exported SVGs). The two are kept in step.
+The ADRs **justify** the architecture; [`docs/architecture.md`](../architecture.md) **shows** it
+(arc42: context, building blocks, runtime, deployment, concepts, risks). The toolchain and the
+boot-ordering invariant are detailed in [`docs/arc42/README.md`](../arc42/README.md).
 
 ## Two ADR logs — on purpose
 
