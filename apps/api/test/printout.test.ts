@@ -1294,5 +1294,6 @@ describe('rendereVordrucke (real templates)', () => {
     expect(loadedEditable.getForm().getTextField('anlN.kz110').getText()).toBe('42000')
     expect(loadedEditable.getForm().getTextField('anlKind.vorname').getText()).toBe('Lina')
     expect(loadedEditable.getForm().getTextField('anlKind.vorname#2').getText()).toBe('Lina')
-  })
+    // Renders two PDFs of 15+ pages from the real templates: more than the default 5 s on a shared CI runner.
+  }, 30_000)
 })
