@@ -10,10 +10,14 @@ function fakeAdapter(clients: Client[], consented: string[]) {
   const deleted: string[] = []
   let scans = 0
   const adapter: SweepAdapter = {
-    findMany: async ({ where }) => {
+    findMany: async ({ where, limit, offset = 0 }) => {
       scans += 1
       const cutoff = where.find((w) => w.field === 'createdAt')?.value as Date
-      return clients.filter((c) => c.createdAt < cutoff && !deleted.includes(c.clientId))
+      const rows = clients
+        .filter((c) => c.createdAt < cutoff && !deleted.includes(c.clientId))
+        .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())
+        .slice(offset)
+      return limit === undefined ? rows : rows.slice(0, limit)
     },
     findOne: async ({ where }) => (consented.includes(String(where[0]?.value)) ? { id: 'consent' } : null),
     delete: async ({ where }) => {
@@ -37,6 +41,21 @@ describe('sweepUnusedClients (ADR-0052 amendment 5)', () => {
       ],
       ['approved'],
     )
+    await sweepUnusedClients()(adapter, NOW)
+    expect(deleted).toEqual(['stale'])
+  })
+
+  // Registration allows 600 an hour from one address (amendment 7): one run must clear more than that.
+  it('clears more stale clients in one run than an hour of registrations can add', async () => {
+    const stale = Array.from({ length: 1000 }, (_, i) => ({ clientId: `stale-${i}`, userId: null, createdAt: new Date(old.getTime() - i * 1000) }))
+    const { adapter, deleted } = fakeAdapter(stale, [])
+    await sweepUnusedClients()(adapter, NOW)
+    expect(deleted).toHaveLength(1000)
+  })
+
+  it('is not stalled by more kept clients than fit in one page', async () => {
+    const kept = Array.from({ length: 250 }, (_, i) => ({ clientId: `owned-${i}`, userId: 'user-1', createdAt: new Date(old.getTime() - DAY - i * 1000) }))
+    const { adapter, deleted } = fakeAdapter([...kept, { clientId: 'stale', userId: null, createdAt: old }], [])
     await sweepUnusedClients()(adapter, NOW)
     expect(deleted).toEqual(['stale'])
   })

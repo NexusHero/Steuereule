@@ -1,6 +1,6 @@
 import type { PrismaClient } from '@prisma/client'
 import { describe, expect, it, vi } from 'vitest'
-import { createBetterAuth } from '../src/auth/better-auth.js'
+import { createBetterAuth, OAUTH_REGISTRATION_RATE_LIMIT } from '../src/auth/better-auth.js'
 import { resolveAppleClientId, resolveAppleClientSecret, resolveAppleSignInEnabled, resolveBetterAuthSecret, resolveBetterAuthUrl, resolveGoogleClientId, resolveGoogleClientSecret } from '../src/auth/better-auth-env.js'
 import type { EmailSender } from '../src/auth/email-sender.js'
 
@@ -213,5 +213,12 @@ describe('OAuth 2.1 Provider plugin (ADR-0052 §4, Issue #385)', () => {
     expect(plugin.options.scopes).toContain('zahllink:read')
     expect(plugin.options.accessTokenExpiresIn).toBe(900)
     expect(plugin.options.requirePKCE).toBe(true)
+  })
+
+  // A hosted assistant (Claude.ai) registers from its own servers: every user of it shares a few addresses.
+  it('lets far more than ten clients register per hour from one address', () => {
+    const rule = createBetterAuth(base).auth.options.rateLimit?.customRules?.['/oauth2/register'] as { window: number; max: number }
+    expect(rule).toEqual(OAUTH_REGISTRATION_RATE_LIMIT)
+    expect((rule.max * 3600) / rule.window).toBeGreaterThanOrEqual(500)
   })
 })

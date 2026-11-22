@@ -341,3 +341,18 @@ auf. Unverändert: Der Assistent schreibt nur Unbestätigtes oder Vorschläge, d
    zu seiner Server-Adresse passt (`/mcp/sse` passt nicht zu `/mcp`). Beide Ressourcen werden beim ersten
    OAuth-Aufruf angelegt; der Guard nimmt Tokens mit Zielgruppe `…/mcp/sse` (alle bisher ausgestellten) und
    `…/mcp` an beiden Transporten an. Die Metadaten von `/mcp/sse` bleiben unverändert.
+
+
+## Amendment 7 (2026-11-22) — Registrierungslimit für gehostete Assistenten
+
+Ändert Amendment 5 Nr. 2. Ein gehosteter Assistent wie Claude.ai registriert sich von seinen eigenen
+Servern aus, nicht vom Gerät des Nutzers. Alle seine Nutzer teilen sich damit wenige Adressen; mit
+10 Registrierungen je Stunde und Adresse käme ab dem elften Nutzer in der Stunde niemand mehr herein.
+
+1. **Limit:** höchstens 100 Registrierungen je 10 Minuten und Adresse (`OAUTH_REGISTRATION_RATE_LIMIT`).
+2. Das bleibt vertretbar, weil eine Registrierung nichts gewährt (Amendment 5 Nr. 1) und ein nie
+   freigegebener Client nach 7 Tagen gelöscht wird (Amendment 5 Nr. 3). Das Limit schützt nur die Tabelle.
+   Damit das Aufräumen Schritt hält, prüft ein Lauf bis zu 20 Seiten zu 200 Clients (4.000 statt 200), die
+   ältesten zuerst, und überspringt behaltene Clients, statt an ihnen hängen zu bleiben.
+3. Offen: Das Limit zählt je Prozess im Speicher, wie die übrigen better-auth-Limits; mit mehreren
+   Instanzen vervielfacht es sich. Ein gemeinsamer Speicher (Redis) kommt mit #292.

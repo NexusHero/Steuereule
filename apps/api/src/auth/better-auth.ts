@@ -36,6 +36,14 @@ export const SESSION_COOKIE_ATTRIBUTES = {
   path: '/',
 }
 
+/**
+ * Self-registration of an MCP client (ADR-0052 amendment 7). A hosted assistant such as Claude.ai registers
+ * from its own servers, so all its users share a few addresses: the limit is per address, not per person,
+ * and must let a crowd of them in. A registration grants nothing, and one nobody approved is swept after a
+ * week, so the limit only keeps the table from being flooded.
+ */
+export const OAUTH_REGISTRATION_RATE_LIMIT = { window: 10 * 60, max: 100 } as const
+
 export interface CreateBetterAuthOptions {
   prisma: PrismaClient
   secret: string
@@ -160,7 +168,7 @@ function buildOptions(options: CreateBetterAuthOptions & { rateLimitStorage: Res
       customRules: {
         '/verify-password': { window: 10, max: 3 },
         '/device': { window: 60, max: 10 },
-        '/oauth2/register': { window: 60 * 60, max: 10 },
+        '/oauth2/register': OAUTH_REGISTRATION_RATE_LIMIT,
       },
     },
     advanced: {
