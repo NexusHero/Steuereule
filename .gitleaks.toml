@@ -12,6 +12,9 @@ paths = [
   '''\.github/workflows/ci\.yml$''',
   '''apps/api/src/prisma/field-encryption-key\.ts$''',
   '''apps/api/test/.*''',
+  # The fixed synthetic keys of the API's Vitest suites (ADR-0008); a full-history scan
+  # (workflow_dispatch) reads them in commits a pull-request scan never sees.
+  '''apps/api/vitest(\.(integration|live))?\.config\.ts$''',
   '''packages/core/src/.*\.test\.ts$''',
   '''e2e/.*''',
   '''scripts/checks/bundle-security-check\.mjs$''',
