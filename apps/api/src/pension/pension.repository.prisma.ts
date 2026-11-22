@@ -44,6 +44,12 @@ export class PrismaPensionRepository implements PensionRepository {
     return row === null ? null : toRecord(row)
   }
 
+  async listForUserAndYears(userId: string, taxYears: readonly number[]): Promise<PensionRecord[]> {
+    if (taxYears.length === 0) return []
+    const rows = await this.prisma.pension.findMany({ where: { userId, taxYear: { in: [...taxYears] } } })
+    return rows.map(toRecord)
+  }
+
   async setField(userId: string, taxYear: number, field: PensionFieldId, value: string | null): Promise<PensionRecord> {
     const [row] = await this.prisma.$transaction([
       this.prisma.pension.upsert({

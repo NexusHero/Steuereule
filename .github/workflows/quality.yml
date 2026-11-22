@@ -1,0 +1,425 @@
+# Quality pipeline: compose validation, lint, unit tests, SonarQube, integration (Postgres), docs consistency and
+# the Vordrucke measurement. Its own workflow so the Actions sidebar shows it on its own; the build pipeline (ci.yml)
+# no longer waits for it, both run side by side and both are required checks.
+name: Quality
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+# One in-flight run per ref; a newer push cancels the older run.
+concurrency:
+  group: quality-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  validate-compose:
+    name: Validate compose
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: base
+        run: docker compose -f docker-compose.yml config
+      - name: base + ci overlay
+        run: docker compose -f docker-compose.yml -f docker-compose.ci.yml config
+      - name: base + e2e overlay
+        run: docker compose -f docker-compose.yml -f docker-compose.e2e.yml config
+      # #76: the production-shaped local stack (docker-compose.prod.yml + apps/api/Dockerfile +
+      # apps/mobile-web/Dockerfile) — parses without a real `.env` present (unset vars default to
+      # a blank string, a warning not an error; `prod-deploy-smoke` in ci.yml is what actually proves
+      # this overlay boots and works, with real values).
+      - name: base + prod overlay
+        run: docker compose -f docker-compose.yml -f docker-compose.prod.yml config
+
+  # Real gate (#168): oxlint (ADR-0019) against the whole repo. Purely syntactic —
+  # no Prisma, no Postgres, no Playwright — so it stays the cheap ~0.1s check that
+  # runs before the expensive jobs. Runs `pnpm lint` (`oxlint --deny-warnings`),
+  # never bare `oxlint`: a bare run exits 0 even when it reports findings
+  # (measured), so the exit code has to come from a step that actually fails on
+  # findings, not be assumed. Never invoke oxlint with `--config` here — in oxlint
+  # 1.76.0 that silently disables `ignorePatterns` (ADR-0019 §5, measured: 276
+  # findings vs 0) — `.oxlintrc.json` lives at the repo root specifically so it is
+  # auto-discovered.
+  lint:
+    name: Lint
+    needs: validate-compose
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - name: Set up pnpm
+        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+      - name: Set up Node
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: 24
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Lint (oxlint --deny-warnings, ADR-0019 — auto-discovered config, exit code asserted)
+        run: pnpm lint
+
+  # Real gate: typecheck and test every workspace package in the monorepo (no-DB
+  # unit/pure-logic suite — DB-requiring tests live in the `integration` job below,
+  # ADR-0004).
+  test:
+    name: Test
+    needs: validate-compose
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - name: Set up pnpm
+        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+      - name: Set up Node
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: 24
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Generate Prisma Client
+        run: pnpm --filter @steuereule/api prisma:generate
+      - name: Typecheck
+        run: pnpm -r typecheck
+      # One run with coverage on: it enforces each package's own vitest thresholds (core, ui,
+      # tokens, mobile-web >= 90%) and writes the lcov reports the `sonar` job imports.
+      # One package at a time: each Vitest already starts a worker per core, so pnpm's default of
+      # four packages at once put ~4x the workers on the runner's cores. Tests that take 0.7 s alone
+      # (printout.test.ts) then took 10 s and hit their timeouts (22.11.2026). Sequential packages
+      # keep every worker on its own core, so a timeout means a slow test, not a crowded runner.
+      - name: Test + coverage gates (includes DevMLOps Golden Dataset, Red-Team & PII Fuzzing suites)
+        run: pnpm -r --workspace-concurrency=1 test --coverage
+      - name: Upload the coverage reports for SonarQube Cloud
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: coverage-lcov
+          path: |
+            packages/*/coverage/lcov.info
+            apps/*/coverage/lcov.info
+          if-no-files-found: error
+          retention-days: 3
+      # The app suite once more with React's scheduler slowed down (apps/mobile-web/src/test-scheduler-delay.ts):
+      # a test that clicks before React has run its passive effects — a Pressable still holding its old
+      # onPress/disabled — fails here every run instead of flaking now and then on a loaded runner.
+      - name: Scheduler-delay gate — the app suite with React's queued work landing late
+        run: pnpm --filter @steuereule/mobile-web test:scheduler-delay
+      - name: License Compliance Gate (Block AGPL/GPL/BUSL/SSPL)
+        run: node scripts/checks/license-check.mjs
+      - name: AcroForm Preprocessor Gate — pre-compiled Vordruck templates match felder-<jahr>.json
+        run: node scripts/vordrucke/acroform-vorlagen.mjs --check
+      # Freshness gate (#238, Musti's PR #239 ruling): the checked-in openapi.json is
+      # generated by a *different* toolchain (tsx/esbuild, no decorator-metadata
+      # emission) than the one that builds it correctly in-process elsewhere
+      # (production's tsc build, this very job's Vitest/SWC test run) — three
+      # endpoints already shipped with this file silently stale while every other
+      # check stayed green (test/openapi-contract.test.ts's own header comment has
+      # the full story). Re-running the generator and failing on any diff is what
+      # keeps that file's own answer from going stale against the artifact orval
+      # actually reads, the same way `test/openapi-contract.test.ts` now reads it.
+      - name: OpenAPI spec freshness — regenerate and fail on any diff
+        run: |
+          pnpm --filter @steuereule/api openapi:spec
+          git diff --exit-code apps/api/openapi.json || {
+            echo "::error::apps/api/openapi.json is stale — run 'pnpm --filter @steuereule/api openapi:spec' and commit the result."
+            exit 1
+          }
+      # Freshness gate (#242): the checked-in `packages/api-client/src/generated/*` is
+      # orval output generated FROM the openapi.json the step above just confirmed is
+      # current — nothing previously asserted the client still matched it. #324 merged
+      # two new endpoints and their openapi.json entries while the generated client kept
+      # its old contents (zero occurrences of `interview` anywhere under `src/generated/`)
+      # and typecheck, lint, all six suites and all nine CI jobs stayed green throughout;
+      # the divergence surfaced only because a later task needed those hooks and someone
+      # grepped for them.
+      #
+      # Runs `pnpm --filter @steuereule/api-client run generate` directly against the
+      # working copy (same one-line shape as the openapi.json gate immediately above,
+      # not a separate temp checkout) — this job's checkout is itself the disposable
+      # copy, so regenerating in place and diffing with git is exactly "regenerate and
+      # diff against the committed output", nothing survives past this job.
+      #
+      # Diff and typecheck are ONE gate here, not two (Musti's #242 ruling, folded into
+      # the ticket's own AC by Suhay's DoR comment): a detector that only diffs would
+      # have hidden a second, real defect the #324 episode also produced — regenerating
+      # by hand found that `StepDto.id` (this API's first optional-but-not-nullable
+      # response property) trips orval's default faker mock into emitting
+      # `id: faker.helpers.arrayElement([value, undefined])`, which fails to typecheck
+      # under this repo's `exactOptionalPropertyTypes: true` (TS2375). The fix is
+      # `override.mock.required: true`, scoped to the `interview` project in
+      # `orval.config.ts` — configuration, not a hand-edit of generated output, and
+      # confirmed reproducible from that config alone (a clean regeneration against
+      # today's openapi.json produces zero diff and typechecks) before this gate was
+      # written, not assumed. A content diff alone would pass a client that does not
+      # compile; typechecking the freshly regenerated output is what actually proves the
+      # regeneration is usable, not merely identical-or-not to what's committed.
+      #
+      # `git add --intent-to-add` before the diff (Musti's #330 review, blocking finding
+      # r3747098040): `git diff --exit-code` only ever compares TRACKED paths, so a newly
+      # generated file that was never committed is invisible to it and the step exits 0 —
+      # measured: an untracked file dropped under this path leaves `git diff --exit-code`
+      # at 0 until `--intent-to-add` puts it in the index (then it correctly flips to 1).
+      # That is not a hypothetical gap: `orval.config.ts` is one project per OpenAPI tag
+      # with `mode: 'split'`, so a genuinely NEW tag produces four new files
+      # (`<tag>.{ts,schemas,faker,msw}.ts`), not a modification to an existing one — #324,
+      # this gate's own motivation above, was exactly that shape, and an untracked-blind
+      # diff would let it through green a second time. `--intent-to-add` stages the paths
+      # (empty blobs, no content) so `--exit-code` sees them without giving up either the
+      # exit-code short-circuit or the diff output naming the actual new/changed content on
+      # failure — this is the property that makes this shape equivalent to the sibling
+      # openapi.json gate above, not merely similar to it: that gate's target is a single
+      # file already tracked in the repo (regeneration can only ever modify it in place, so
+      # `git diff` alone already sees the whole file set), while this gate's target is a
+      # DIRECTORY that a `mode: 'split'` regeneration can add new members to — so this gate
+      # must compare the file SET, not just tracked-file content, and only `--intent-to-add`
+      # (or an equivalent `git status --porcelain`-based check) gives it that.
+      - name: API client freshness — regenerate, diff, and typecheck as one gate
+        run: |
+          pnpm --filter @steuereule/api-client run generate
+          git add --intent-to-add -- packages/api-client/src/generated
+          git diff --exit-code -- packages/api-client/src/generated || {
+            echo "::error::packages/api-client/src/generated is stale — run 'pnpm --filter @steuereule/api openapi:spec' then 'pnpm --filter @steuereule/api-client generate' and commit the result."
+            exit 1
+          }
+          pnpm --filter @steuereule/api-client typecheck || {
+            echo "::error::The regenerated api-client no longer typechecks (exactOptionalPropertyTypes). See orval.config.ts's per-project 'override.mock' entries — a genuinely optional, non-nullable response property (e.g. StepDto.id, #242) needs 'mock.required: true' on that project or orval's default faker mock emits an explicit 'undefined' that TS2375 rejects."
+            exit 1
+          }
+
+  # SonarQube Cloud analysis with the coverage of the `test` and `integration` jobs (automatic analysis is off,
+  # it cannot import coverage). Settings live in sonar-project.properties. No stored secret:
+  # the auth action trades the job's GitHub OIDC token for a short-lived, project-scoped
+  # SonarQube token and exports it as SONAR_TOKEN. Fork PRs get no OIDC token, so the job is
+  # skipped for them instead of failing.
+  sonar:
+    name: SonarQube Cloud
+    needs: [test, integration]
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          # Full history for blame and new-code detection.
+          fetch-depth: 0
+      - name: Download the coverage reports
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: coverage-lcov
+      # A single-file artifact is stored without its directories, so it is put back where Sonar looks for it.
+      - name: Download the integration coverage report
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: coverage-lcov-integration
+          path: apps/api/coverage-integration
+      - name: Cache SonarQube packages
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: ~/.sonar/cache
+          key: ${{ runner.os }}-sonar
+          restore-keys: ${{ runner.os }}-sonar
+      - name: SonarQube Cloud token via GitHub OIDC
+        uses: SonarSource/sonarqube-auth-action@b372e2c2930aadfcc4f4399446da1e12772709ad # v1.2
+      - name: SonarQube Cloud scan
+        uses: SonarSource/sonarqube-scan-action@59202af334b4ba7b5db01b701b8e79f8b3bef0f4 # v8.5.0
+
+  # Real gate (#66, extended for Slice 2/ADR-0012): proves the DSGVO-critical
+  # guarantees — REQ-003 field-encryption at rest, REQ-004 append-only audit log,
+  # and now REQ-005/006/009/010's auth acceptance suites (email/password signup +
+  # verification, session/guard precedence, guest->account upgrade, security
+  # hardening) — against a real, migrated Postgres, not just the no-DB unit suite.
+  # A GitHub Actions service container (rather than docker-compose) because the test
+  # process runs natively on the runner (ADR-0010) — the compose stack's `postgres`
+  # service is the parity image for the *local*/e2e stack, not this job's database.
+  integration:
+    name: Integration (Postgres)
+    needs: validate-compose
+    runs-on: ubuntu-24.04
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: steuereule
+          POSTGRES_PASSWORD: steuereule
+          POSTGRES_DB: steuereule
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U steuereule -d steuereule"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=10
+      # The cluster runs the owl's run log on Redis (ADR-0064); one step below exercises that path.
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd="redis-cli ping"
+          --health-interval=5s
+          --health-timeout=3s
+          --health-retries=10
+    env:
+      # Synthetic, dev-only (ADR-0012) — vitest.integration.config.ts already sets
+      # these for the test process, but declared here too for the same reason
+      # DATABASE_URL is: this job's env is meant to be self-documenting about what
+      # it actually exercises.
+      BETTER_AUTH_SECRET: ci-integration-test-better-auth-secret-0123456789
+      BETTER_AUTH_URL: http://localhost:3000
+      # #241: no real reverse proxy in front of this job's server — declared
+      # explicitly for the same self-documenting reason as the two lines above.
+      TRUSTED_PROXIES: none
+    steps:
+      # Built here rather than written out in the job env, so no connection string with
+      # credentials sits in the workflow; every later step reads it from the environment.
+      - name: Database URL of the Postgres service container
+        run: echo "DATABASE_URL=postgres://${DB_USER}:${DB_PASSWORD}@localhost:5432/${DB_NAME}" >> "$GITHUB_ENV"
+        env:
+          DB_USER: steuereule
+          DB_PASSWORD: steuereule
+          DB_NAME: steuereule
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - name: Set up pnpm
+        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+      - name: Set up Node
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: 24
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Generate Prisma Client
+        run: pnpm --filter @steuereule/api prisma:generate
+      - name: Apply migrations (migrate deploy, never migrate dev)
+        run: pnpm --filter @steuereule/api migrate:deploy
+      - name: Prisma Schema-vs-Migrations Drift Gate (zero drift between schema.prisma and migrations/)
+        run: pnpm --filter @steuereule/api exec prisma migrate diff --from-schema-datasource prisma/schema.prisma --to-schema-datamodel prisma/schema.prisma --exit-code
+      - name: Cache Playwright browsers
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-chromium-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+      # REQ-011/ADR-0013 §7: the export acceptance/integration suites render a real
+      # PDF-Bericht through PlaywrightPdfRenderer — a genuine Chromium launch, not a
+      # stub — so this job needs the same browser binary the cross-origin-smoke job
+      # already installs (same command, same rationale: `playwright-core`'s
+      # registered bin is `playwright-core`, not `playwright`).
+      - name: Install Playwright's Chromium (for the REQ-011 PDF export suites)
+        run: pnpm --filter @steuereule/api exec playwright-core install chromium --with-deps
+      - name: Integration + acceptance tests — encryption/audit + REQ-005/006/009/010/011 (ADR-0012/ADR-0013)
+        run: pnpm --filter @steuereule/api test:integration --coverage
+      # The DB-backed code (Prisma repositories) is only exercised here: Sonar gets this report next to the
+      # unit one, otherwise every repository change counts as uncovered.
+      - name: Upload the integration coverage report for SonarQube Cloud
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: coverage-lcov-integration
+          path: apps/api/coverage-integration/lcov.info
+          if-no-files-found: error
+          retention-days: 3
+      - name: Owl run log on Redis Streams (ADR-0064) — replay, stop across instances, expiry
+        # Its own step with REDIS_URL set only here: with the variable on the whole tier the rate
+        # limiter would share its counters across all test files and they would throttle each other.
+        env:
+          REDIS_URL: redis://localhost:6379
+        run: pnpm --filter @steuereule/api exec vitest run --config vitest.integration.config.ts test/advisor-run-log.redis.integration.test.ts
+
+  # Real gate (#221, and the register-ownership decision landing via #251) — turns
+  # docs/requirements/register.md and docs/adr/ from a
+  # claim, checked only when a human happens to re-read it, into a control (ADR-0021): both
+  # register-check and adr-check are proven by breaking them, not by watching them pass — see
+  # scripts/checks/README.md and this job's own PR evidence block for the six break/restore
+  # transcripts.
+  #
+  # Standalone (no `needs`): this reads docs/ and the vitest configs' source text directly, no
+  # build/Postgres/browser required, so it's cheap and gives the fastest possible signal on a
+  # docs-only PR. No `pnpm install` either — everything under scripts/checks is plain Node
+  # (`fs`, `fetch`), deliberately dependency-free (see the README).
+  docs-consistency:
+    name: Docs consistency — register-check + adr-check
+    runs-on: ubuntu-24.04
+    # F7 (Musti's review on #252): the only job in this pipeline that hands GITHUB_TOKEN to a
+    # `fetch()` call (check 5's issue-open lookup) — with no permissions: block anywhere in
+    # this workflow, that token would carry the repository's default, which can be far wider
+    # than "read one issue". Least privilege, stated explicitly rather than inherited.
+    permissions:
+      contents: read
+      issues: read
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - name: Set up Node
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: 24
+          # actions/setup-node@v5's package-manager-cache auto-detection defaults to true and
+          # reads root package.json's `packageManager` field, expecting `pnpm` already on
+          # PATH to cache its store — but this job runs no `pnpm install` (see above), so
+          # `pnpm` was never installed here and the step failed with "Unable to locate
+          # executable file: pnpm" (observed on this PR's own first CI run, run 30846683020,
+          # job 91796590386 — exactly ADR-0021's own defect class: a declared-but-not-connected
+          # default). Explicitly opted out rather than adding an unneeded pnpm/install step.
+          package-manager-cache: false
+      - name: register-check — docs/requirements/register.md against the real repo (checks 1-5)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: node scripts/checks/register-check.mjs
+      - name: adr-check — docs/adr/ numbering, index, cross-references (check 6)
+        # if: '!cancelled()' — otherwise a red register-check step (the normal, default
+        # GitHub Actions step behaviour: a failed step skips every step after it) silently
+        # skips adr-check entirely, hiding a real ADR-numbering collision behind an unrelated
+        # register finding. Observed on this PR's own first passing run (30846993334, job
+        # 91797618882): register-check's real pre-existing findings correctly failed the
+        # step, and adr-check's step showed "skipped" right below it — the two checks must
+        # report independently since either one, alone, is what the reviewer needs to see.
+        # `always()` was the first fix but is too broad (Musti's F8 review on #252): it also
+        # runs this step when the *job itself* is cancelled, which this workflow's own
+        # `cancel-in-progress: true` concurrency group (top of this file) makes routine,
+        # not exotic — `!cancelled()` gives the same behaviour on success/failure and the
+        # correct one on cancellation.
+        #
+        # Runs against whatever `actions/checkout` resolved for this event — for a
+        # `pull_request` run, that's the synthetic merge commit (refs/pull/N/merge) by
+        # default, which is the whole mechanism behind catching a cross-PR ADR-number
+        # collision (see scripts/checks/adr-check.mjs's header comment for the honest limit:
+        # this only re-checks on a new push, and only until #71/branch protection lands).
+        if: '!cancelled()'
+        run: node scripts/checks/adr-check.mjs
+
+  vordrucke:
+    name: Vordrucke — Vermessung und Lage der Ausdruck-Felder
+    runs-on: ubuntu-24.04
+    # The Ausdruck writes onto fixed positions of the official PDFs. A swapped template, a spec
+    # that no longer resolves to the checked-in boxes, or a box that now sits next to another
+    # label would print a wrong but plausible-looking return — none of that is visible to the
+    # unit tests, which only see field ids. Node built-ins + poppler only: no pnpm install.
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - name: Set up Node
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: 24
+          # No pnpm in this job (see docs-consistency for why the cache must be off).
+          package-manager-cache: false
+      - name: Install poppler (pdftotext, pdftocairo)
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq --no-install-recommends poppler-utils
+      - name: Vermessung — felder-<jahr>.json equals what templates + spec measure
+        run: |
+          for spec in apps/api/src/printout/felder-*.spec.json; do
+            jahr=$(basename "$spec" | grep -oE '[0-9]{4}')
+            node scripts/vordrucke/vermessen.mjs "$jahr" --check
+          done
+      - name: Lage — felder-<jahr>.lage.txt unchanged (a change needs a human review)
+        if: '!cancelled()'
+        run: |
+          for spec in apps/api/src/printout/felder-*.spec.json; do
+            jahr=$(basename "$spec" | grep -oE '[0-9]{4}')
+            node scripts/vordrucke/lagebericht.mjs "$jahr" --check
+          done

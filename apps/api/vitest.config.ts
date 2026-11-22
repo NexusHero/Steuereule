@@ -35,7 +35,7 @@ export default defineConfig({
       SELBSTSTAENDIGE_ENABLED: 'false',
     },
     // Measured for SonarQube Cloud only, no threshold: the unit tier alone does not exercise the
-    // DB-backed code, which the integration tier covers.
+    // DB-backed code, which the integration tier covers (vitest.integration.config.ts reports it).
     coverage: {
       provider: 'v8',
       reporter: ['text-summary', ['lcov', { projectRoot: '../..' }]],

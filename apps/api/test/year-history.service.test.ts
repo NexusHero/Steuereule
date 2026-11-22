@@ -1,7 +1,7 @@
 // Fast, no-DB tier (ADR-0004): the Verlauf service against fakes. The household is the mock's
 // (docs/mocks/steuer-verlauf.html, ADR-0098): an Eckjahr 2021, the joint 2024 with Person A's
 // Werbungskosten cut, 2025 submitted without a Bescheid, 2026 still open.
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import type { AssessmentPositionValues } from '@steuereule/core'
 import type { AssessmentRecord } from '../src/assessment/assessment.repository.js'
 import type { CommuteInputs, CommuteRepository } from '../src/commute/commute.repository.js'
@@ -132,8 +132,25 @@ function setup() {
   const receipts = new FakeReceiptRepository()
   const insights = new YearHistoryInsightsService(children, capital, pension, rental, commute, receipts)
   const service = new YearHistoryService(yearRepo, assessments, versions, lstb, ch, commute, interview, link, estimates, insights)
-  return { service, assessments, versions, lstb, interview, children, rental, receipts, yearRepo, link }
+  return { service, assessments, versions, lstb, interview, children, rental, receipts, yearRepo, link, capital, pension }
 }
+
+describe('YearHistoryService reads', () => {
+  it('reads Kapital and Rente of all years with data in one query each, not one per year', async () => {
+    const { service, capital, pension } = setup()
+    const perYearCapital = vi.spyOn(capital, 'findForUserAndYear')
+    const perYearPension = vi.spyOn(pension, 'findForUserAndYear')
+    const batchCapital = vi.spyOn(capital, 'listForUserAndYears')
+    const batchPension = vi.spyOn(pension, 'listForUserAndYears')
+
+    await service.get(USER, TODAY)
+
+    expect(perYearCapital).not.toHaveBeenCalled()
+    expect(perYearPension).not.toHaveBeenCalled()
+    expect(batchCapital).toHaveBeenCalledTimes(1)
+    expect(batchPension).toHaveBeenCalledTimes(1)
+  })
+})
 
 describe('YearHistoryService', () => {
   it('lists every year with how it stands, what was declared and assessed, and its deviations', async () => {

@@ -25,6 +25,12 @@ export class PrismaCapitalRepository implements CapitalRepository {
     return row === null ? null : toRecord(row)
   }
 
+  async listForUserAndYears(userId: string, taxYears: readonly number[]): Promise<CapitalRecord[]> {
+    if (taxYears.length === 0) return []
+    const rows = await this.prisma.capital.findMany({ where: { userId, taxYear: { in: [...taxYears] } } })
+    return rows.map(toRecord)
+  }
+
   async setField(userId: string, taxYear: number, field: CapitalFieldId, value: string | null): Promise<CapitalRecord> {
     const [row] = await this.prisma.$transaction([
       this.prisma.capital.upsert({

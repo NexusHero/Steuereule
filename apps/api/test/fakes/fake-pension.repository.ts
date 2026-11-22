@@ -17,6 +17,10 @@ export class FakePensionRepository implements PensionRepository {
     return Promise.resolve(this.store.get(key(userId, taxYear)) ?? null)
   }
 
+  listForUserAndYears(userId: string, taxYears: readonly number[]): Promise<PensionRecord[]> {
+    return Promise.resolve(taxYears.flatMap((taxYear) => this.store.get(key(userId, taxYear)) ?? []))
+  }
+
   setField(userId: string, taxYear: number, field: PensionFieldId, value: string | null): Promise<PensionRecord> {
     const k = key(userId, taxYear)
     const existing = this.store.get(k)

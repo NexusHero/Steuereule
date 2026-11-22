@@ -246,4 +246,22 @@ describe('POST/GET /v1/belege — real Postgres (ADR-007/008)', () => {
     expect(response.statusCode).toBe(400)
     await expect(prisma.receipt.count()).resolves.toBe(0)
   })
+  it('pages the inbox over the cursor and keeps the folder on every page (keyset on createdAt, id)', async () => {
+    const first = await app.inject({ method: 'GET', url: '/v1/belege' })
+    const cookie = extractSessionCookie(first.headers['set-cookie'])!
+    for (const n of [1, 2, 3, 4, 5]) expect((await createReceipt(cookie, { fileName: `sonstiges-${n}.pdf`, kind: 'Sonstiges' })).statusCode).toBe(201)
+    for (const n of [1, 2]) expect((await createReceipt(cookie, { fileName: `lohn-${n}.pdf`, kind: 'Lohnausweis' })).statusCode).toBe(201)
+
+    const names: string[] = []
+    let cursor: string | null = null
+    do {
+      const url: string = `/v1/belege?ordner=weitere&limit=2${cursor ? `&cursor=${cursor}` : ''}`
+      const page = (await app.inject({ method: 'GET', url, headers: { cookie } })).json() as { items: { fileName: string }[]; nextCursor: string | null; counts: { total: number; folders: { weitere: number; einkuenfte: number } } }
+      names.push(...page.items.map((item) => item.fileName))
+      expect(page.counts).toMatchObject({ total: 7, folders: { weitere: 5, einkuenfte: 2 } })
+      cursor = page.nextCursor
+    } while (cursor !== null)
+
+    expect(names).toEqual(['sonstiges-5.pdf', 'sonstiges-4.pdf', 'sonstiges-3.pdf', 'sonstiges-2.pdf', 'sonstiges-1.pdf'])
+  })
 })
