@@ -32,7 +32,7 @@ jobs:
         run: docker compose -f docker-compose.yml -f docker-compose.e2e.yml config
       # #76: the production-shaped local stack (docker-compose.prod.yml + apps/api/Dockerfile +
       # apps/mobile-web/Dockerfile) — parses without a real `.env` present (unset vars default to
-      # a blank string, a warning not an error; `prod-deploy-smoke` below is what actually proves
+      # a blank string, a warning not an error; `prod-deploy-smoke` in ci.yml is what actually proves
       # this overlay boots and works, with real values).
       - name: base + prod overlay
         run: docker compose -f docker-compose.yml -f docker-compose.prod.yml config
@@ -359,7 +359,7 @@ jobs:
         # report independently since either one, alone, is what the reviewer needs to see.
         # `always()` was the first fix but is too broad (Musti's F8 review on #252): it also
         # runs this step when the *job itself* is cancelled, which this workflow's own
-        # `cancel-in-progress: true` concurrency group (ci.yml, top of file) makes routine,
+        # `cancel-in-progress: true` concurrency group (top of this file) makes routine,
         # not exotic — `!cancelled()` gives the same behaviour on success/failure and the
         # correct one on cancellation.
         #

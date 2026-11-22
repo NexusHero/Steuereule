@@ -8,7 +8,7 @@
 //      block on the same finding class as a genuinely missing file)
 //   2. every cited test file is actually executed by a CI job — matched against the real
 //      vitest include/exclude globs of every discovered apps/*/packages/* project, and
-//      against ci.yml's e2e invocations. Check 2b: if a project's own vitest config can't be
+//      against the e2e invocations in the workflow files. Check 2b: if a project's own vitest config can't be
 //      read unambiguously (the coverage:-truncation heuristic in lib/vitest-config.mjs
 //      disagreeing with an untruncated read of the same exclude glob), that is itself a
 //      finding rather than a silently-trusted guess (F11, Musti's review on #252).
@@ -125,13 +125,14 @@ async function main() {
 
   // --- Check 2: every cited, existing test file is actually run by a CI job ---------------
   // The pipelines are split over several workflow files (quality, security, build & e2e, load): a step in any of them counts.
-  const ciYml = fs
+  const workflowsText = fs
     .readdirSync(WORKFLOWS_DIR)
     .filter((name) => name.endsWith('.yml'))
     .map((name) => fs.readFileSync(path.join(WORKFLOWS_DIR, name), 'utf8'))
     .join('\n')
-  const runsPlainTest = /\bpnpm\s+-r\s+test\b/.test(ciYml)
-  const runsIntegrationTest = /test:integration\b/.test(ciYml)
+  // `pnpm -r [--flag[=value] ...] test`: flags such as --workspace-concurrency=1 may sit between -r and the script.
+  const runsPlainTest = /\bpnpm\s+-r(?:\s+--?[\w-]+(?:=\S+)?)*\s+test\b/.test(workflowsText)
+  const runsIntegrationTest = /test:integration\b/.test(workflowsText)
   // Every apps/* and packages/* workspace with its own vitest.config.ts, discovered rather
   // than hard-coded (Musti's F3 review on #252 — this used to only know about apps/api and
   // apps/mobile-web, so packages/core/tokens/api-client/ui all false-negatived even though
@@ -156,7 +157,7 @@ async function main() {
   /** @returns {{run: boolean, reason: string}} */
   function isRunByCI(filePath) {
     if (E2E_MJS_RE.test(filePath)) {
-      return ciYml.includes(filePath)
+      return workflowsText.includes(filePath)
         ? { run: true, reason: 'e2e step in a workflow' }
         : { run: false, reason: 'no workflow step invokes this e2e script' }
     }

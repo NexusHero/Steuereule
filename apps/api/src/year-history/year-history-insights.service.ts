@@ -142,16 +142,16 @@ function zvEOf(assessment: AssessmentRecord | null): number | undefined {
   return hasAssessedValues(assessment) ? assessedValuesOf(assessment).zuVersteuerndesEinkommen : undefined
 }
 
-/**
- * The ADR-0099 parts of the Verlauf: events, the checklist of the open year, prepayments, repeated cuts,
- * couples, the groups and the Unterlagen. Reads the further facts it needs (children, Anlagen, receipts),
- * hands everything to the core and returns what it computed; nothing is stored.
- */
 /** The records of several years by their tax year. */
 function byYear<T extends { readonly taxYear: number }>(records: readonly T[]): Map<number, T> {
   return new Map(records.map((record) => [record.taxYear, record]))
 }
 
+/**
+ * The ADR-0099 parts of the Verlauf: events, the checklist of the open year, prepayments, repeated cuts,
+ * couples, the groups and the Unterlagen. Reads the further facts it needs (children, Anlagen, receipts),
+ * hands everything to the core and returns what it computed; nothing is stored.
+ */
 @Injectable()
 export class YearHistoryInsightsService {
   constructor(

@@ -1,21 +1,14 @@
-# Baseline CI pipeline (Steuereule).
+# Build & E2E pipeline (Steuereule): the production build with SBOM and container scan, then every gate
+# that needs the built app: smoke, the browser gates, the E2E scenario matrix and the production compose stack.
+# The other pipelines are their own workflows, each with its own entry in the Actions sidebar:
+# quality.yml (compose validation, lint, typecheck + unit tests, integration, Sonar, docs, Vordrucke),
+# security.yml (static security scans), load.yml (many-user load test) and ai-eval-nightly.yml (AI evals).
+# All of them start in parallel on a pull request; merging waits for the required checks of every one.
 #
-# The Docker Compose files (docker-compose.yml + the ci/e2e/prod overlays) are the
-# foundation this pipeline is built on. `build` is still an honest placeholder
-# (grows as buildable-image work lands); `lint`, `test`, `integration`, `smoke`,
-# `cross-origin-smoke` and `prod-deploy-smoke` are real, CI-blocking gates.
-#
-# `lint` runs oxlint (ADR-0019) — a syntactic gate only; type-aware rules are
-# knowingly deferred to `tsc --strict` in the `test` job (#168). "CI: green"
-# now covers a real lint pass for the first time, but not that gap.
-#
-# Flow:  validate-compose ──► build ──► smoke
-#                                 ├─► cross-origin-smoke
-#                                 ├─► e2e-scenarios / e2e-self-employed
-#                                 └─► prod-deploy-smoke
-#
-# The other pipelines are their own workflows (own entry in the Actions sidebar): quality.yml (lint, tests,
-# integration, Sonar, docs), security.yml (static security scans) and load.yml (many-user load test).
+# Flow:  build ──► smoke
+#              ├─► cross-origin-smoke
+#              ├─► e2e-scenarios / e2e-self-employed
+#              └─► prod-deploy-smoke
 name: Build & E2E
 
 on:
@@ -35,30 +28,10 @@ permissions:
   contents: read
 
 jobs:
-  # Real gate today: the three compose file combinations must parse.
-  validate-compose:
-    name: Validate compose
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-      - name: base
-        run: docker compose -f docker-compose.yml config
-      - name: base + ci overlay
-        run: docker compose -f docker-compose.yml -f docker-compose.ci.yml config
-      - name: base + e2e overlay
-        run: docker compose -f docker-compose.yml -f docker-compose.e2e.yml config
-      # #76: the production-shaped local stack (docker-compose.prod.yml + apps/api/Dockerfile +
-      # apps/mobile-web/Dockerfile) — parses without a real `.env` present (unset vars default to
-      # a blank string, a warning not an error; `prod-deploy-smoke` below is what actually proves
-      # this overlay boots and works, with real values).
-      - name: base + prod overlay
-        run: docker compose -f docker-compose.yml -f docker-compose.prod.yml config
-
   # Real production build, CycloneDX SBOM generation, Trivy container image vulnerability scan,
   # and Web Bundle Security / Size Budget gate.
   build:
     name: Build, CycloneDX SBOM, Trivy Container Scan & Bundle Gate
-    needs: validate-compose
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
@@ -206,7 +179,7 @@ jobs:
           path: ~/.cache/ms-playwright
           key: playwright-chromium-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
       # REQ-011/ADR-0013 §7: the PDF-export smoke check below needs a real Chromium to
-      # render against — same install as the `integration` job, same rationale.
+      # render against — same install as the `integration` job (quality.yml), same rationale.
       - name: Install Playwright's Chromium (for the REQ-011 PDF export smoke check)
         run: pnpm --filter @steuereule/api exec playwright-core install chromium --with-deps
       - name: Boot the real server
@@ -1045,7 +1018,7 @@ jobs:
         # The coordinator's own F5 follow-up: F1 (Musti's #274 review) added Chromium to
         # apps/api/Dockerfile, but nothing had actually exercised it INSIDE the built container —
         # e2e/prod-deploy/run.mjs only covers guest/registration/login/QR, and the `smoke`/
-        # `integration` jobs' own REQ-011 checks run against the API booted directly on the
+        # `integration` (quality.yml) jobs' own REQ-011 checks run against the API booted directly on the
         # runner via the tsx bridge, never through this Dockerfile. Chromium installing without
         # error is not the same claim as Chromium launching and rendering inside THIS image's
         # exact base layers/permissions — closing that gap here, the same way `smoke`'s own

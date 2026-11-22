@@ -18,7 +18,7 @@
 // trigger checks out the synthetic
 // merge commit (`refs/pull/N/merge`) by default, not either side alone — so the *same* scan
 // run under that event naturally sees the union of base + head, and the second PR to run
-// this job goes red the moment the first one merges (nothing in ci.yml has to ask for that
+// this job goes red the moment the first one merges (nothing in quality.yml has to ask for that
 // ref explicitly; it's what `actions/checkout` resolves to for this event).
 //
 // (a) That mechanism only reaches the *auto-mergeable* half of the collision space. GitHub
@@ -35,7 +35,7 @@
 //     Without required-status-check branch protection (#71, still open) nothing forces a
 //     stale PR to re-run this job before it's mergeable.
 //
-//     The `push: branches: [main]` trigger (ci.yml) is not a redundant no-op here — it is the
+//     The `push: branches: [main]` trigger (quality.yml) is not a redundant no-op here — it is the
 //     compensating control for (b). `main` can carry a collision arriving through exactly a
 //     stale PR run: the run that let a doomed PR merge was stale, but the run *on the merge
 //     commit itself* is not, because `push` always checks out that exact commit fresh. So the

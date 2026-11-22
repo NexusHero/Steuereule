@@ -1,7 +1,8 @@
 # Load pipeline: many different users (own account session, receipts and chat history each) walk the hot read
 # endpoints against the real server and a real Postgres. Measures what the single-user gate in ci.yml cannot:
-# behaviour with hundreds of users at once. Nightly and on demand; on pull requests only when the load test itself
-# changes, so it cannot rot unnoticed.
+# behaviour with hundreds of users at once. Runs on every pull request with a small load, so its check can be
+# required like every other one (a check that only runs on some PRs would leave the others waiting forever),
+# and nightly / on demand at full size.
 name: Load
 
 on:
@@ -15,12 +16,10 @@ on:
       seconds:
         description: Duration of the run in seconds
         default: '60'
+  push:
+    branches: [main]
   pull_request:
     branches: [main]
-    paths:
-      - scripts/loadtest/multi-user.mjs
-      - apps/api/scripts/loadtest-seed.ts
-      - .github/workflows/load.yml
 
 concurrency:
   group: load-${{ github.ref }}
@@ -59,9 +58,10 @@ jobs:
       CORS_ALLOWED_ORIGINS: http://localhost:8081
       PORT: '3302'
       TRUSTED_PROXIES: none
-      # A pull request only proves the scripts still run; the nightly run uses the full size.
-      LOADTEST_USERS: ${{ github.event_name == 'pull_request' && '50' || inputs.users || '500' }}
-      LOADTEST_SECONDS: ${{ github.event_name == 'pull_request' && '20' || inputs.seconds || '60' }}
+      # Pull requests and pushes run a small load (catches a regression without costing a full run);
+      # the nightly and manual runs use the full size.
+      LOADTEST_USERS: ${{ (github.event_name == 'pull_request' || github.event_name == 'push') && '50' || inputs.users || '500' }}
+      LOADTEST_SECONDS: ${{ (github.event_name == 'pull_request' || github.event_name == 'push') && '20' || inputs.seconds || '60' }}
       LOADTEST_COOKIES: /tmp/loadtest-cookies.txt
     steps:
       - name: Database URL of the Postgres service container
