@@ -18,30 +18,23 @@ Primärquellen: Gesetzestext (gesetze-im-internet.de), amtliche Anleitung zur Ei
 
 ## Neu gerechnetes Soll (Rechenkern, Bescheid-Fälle aus `notice-parity.test.ts` mit den Korrekturen)
 
-Minus = Nachzahlung, plus = Erstattung, nach Vorauszahlungen. Werte gerundet auf den Cent, Kurse wie im Bescheid.
+Minus = Nachzahlung, plus = Erstattung, nach Vorauszahlungen. Steuerfreies Taggeld und Kinderzulage sind auch kein AHV-Lohn: Die abziehbare Altersvorsorge sinkt mit ihnen (Anleitung N-Gre Z. 75 bis 77 und 83, AHV/IV 5,05 % von Zeile 77). Diese Folge ist eingerechnet.
 
 | 2024 | zvE | nach Vorauszahlungen |
 |---|---|---|
 | Bescheid | 174.855 | −4.059,90 |
-| + Kinderzulage | 174.437 | −3.862,96 |
-| + halbe NBU als Werbungskosten | 174.618 | −3.948,00 |
-| + Taggeld steuerfrei, ohne Progressionsvorbehalt | 153.073 | +6.178,95 |
-| + Taggeld steuerfrei, mit Progressionsvorbehalt | 153.073 | +3.212,48 |
-| **alle, ohne Progressionsvorbehalt, Anrechnung gekürzt** | **152.418** | **+5.485,56** |
-| alle, ohne Progressionsvorbehalt, Anrechnung voll | 152.418 | +6.485,56 |
-| alle, mit Progressionsvorbehalt, Anrechnung gekürzt | 152.418 | +2.510,14 |
+| **alle Korrekturen, ohne Progressionsvorbehalt, Anrechnung gekürzt (Soll)** | **153.276** | **+5.082,72** |
+| dasselbe mit Progressionsvorbehalt auf das Taggeld | 153.276 | +2.121,84 |
+| dasselbe mit voller Anrechnung (wie die App heute) | 153.276 | +6.082,72 |
 
 | 2025 | zvE | nach Vorauszahlungen |
 |---|---|---|
 | Bescheid | 221.690 | −4.633,52 |
-| + Kinderzulage | 218.942 | −3.342,20 |
-| + halbe NBU als Werbungskosten | 221.080 | −4.347,06 |
-| + zweiter Grundversicherer (Eltern und Kind) | 217.775 | −2.793,89 |
-| **alle, Anrechnung gekürzt** | **214.417** | **−1.340,10** |
-| alle, Anrechnung voll | 214.417 | −1.216,10 |
+| **alle Korrekturen, Anrechnung gekürzt (Soll)** | **214.556** | **−1.405,00** |
+| dasselbe mit voller Anrechnung (wie die App heute) | 214.556 | −1.281,00 |
 
-Das Taggeld 2025 ist im Bescheid schon abgezogen; Punkt 5 ändert nichts. Offen und nicht eingerechnet: eine zweite Spendenbestätigung über 230 € 2024 (Doppel oder eigene Zuwendung, Frage an die Steuerpflichtigen) und der Kurs (BMF-Jahresdurchschnitt 2025 nachgerechnet 1,0671 statt 1,065; unter 20 € Wirkung bei der KV).
+Das Taggeld 2025 ist im Bescheid schon abgezogen; Punkt 5 ändert nichts. Offen und nicht eingerechnet: eine zweite Spendenbestätigung über 230 € 2024 (Doppel oder eigene Zuwendung, Frage an die Steuerpflichtigen), die Markise 2025 (rund 200 €) und der Kurs (BMF-Jahresdurchschnitt 2025 nachgerechnet 1,0671 statt 1,065; unter 20 € Wirkung bei der KV).
 
 ## Was das für die Abnahmetests heißt
 
-Das Soll eines Echtfalls ist nicht der Bescheid, sondern der Bescheid mit den belegten Korrekturen dieser Liste. Ein Punkt mit mittlerer Sicherheit (1a, 2a) wird im Test als eigene Variante geführt, nicht stillschweigend gewählt. Die Rechnung oben ist eine Schätzung des Rechenkerns und keine Steuerberatung.
+Das Soll eines Echtfalls ist nicht der Bescheid, sondern der Bescheid mit den belegten Korrekturen dieser Liste. Der Fall steht als Abnahmetest in `apps/api/test/acceptance/echtfaelle/`. Ein Punkt mit mittlerer Sicherheit (1a, 2a) wird im Test als eigene Variante geführt, nicht stillschweigend gewählt. Die Rechnung oben ist eine Schätzung des Rechenkerns und keine Steuerberatung.
