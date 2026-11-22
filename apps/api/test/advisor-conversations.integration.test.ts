@@ -40,6 +40,23 @@ describe('conversations in the database (#481)', () => {
     expect(await repo.listConversations(userId, YEAR)).toHaveLength(1)
   })
 
+  it('opens one first conversation when several requests ask for it at the same time (owl gate, 22.11.2026)', async () => {
+    // A new user's owl loads the session and the conversation list and sends the first question at once: each
+    // asks for the year's default conversation. They must all get the same one, or the answer lands in a
+    // conversation the screen does not show.
+    // Several fresh users in a row, so a lucky interleaving cannot hide the race.
+    for (let round = 0; round < 10; round++) {
+      const fresh = `${userId}-concurrent-${round}`
+      try {
+        const opened = await Promise.all(Array.from({ length: 12 }, () => repo.defaultConversation(fresh, YEAR)))
+        expect(new Set(opened.map((conversation) => conversation.id)).size).toBe(1)
+        expect(await repo.listConversations(fresh, YEAR)).toHaveLength(1)
+      } finally {
+        await prisma.advisorConversation.deleteMany({ where: { userId: fresh } })
+      }
+    }
+  })
+
   it('stores the title encrypted and reads it back', async () => {
     const conversation = await repo.createConversation(userId, YEAR, 'Vermietung Musterweg')
     expect((await repo.findConversation(conversation.id, userId))?.title).toBe('Vermietung Musterweg')
