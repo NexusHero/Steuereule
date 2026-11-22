@@ -1,7 +1,5 @@
-import type { BaseChatModel } from '@langchain/core/language_models/chat_models'
 import { holderWithoutPartner } from './document-holder.js'
-import { HumanMessage, SystemMessage } from '@langchain/core/messages'
-import { Inject, Injectable, Optional, type OnModuleInit } from '@nestjs/common'
+import { Inject, Injectable, type OnModuleInit } from '@nestjs/common'
 import { z } from 'zod'
 import {
   applyChCertificateTextFallback,
@@ -18,9 +16,9 @@ import {
 import { AdvisorService } from '../advisor/advisor.service.js'
 import { AuditService } from '../audit/audit.service.js'
 import { AI_RUNTIME_CONFIG_SERVICE, type AiRuntimeConfigService, type ResolvedAiSlotConfig } from '../ki/ai-runtime-config.service.js'
-import { CHAT_MODEL_FACTORY, createChatModelFromConfig, type ChatModelFactory } from '../ki/chat-model.factory.js'
+import { SINGLE_SHOT_MODEL_FACTORY, noSingleShotModel, type SingleShotModel, type SingleShotModelFactory } from '../ki/single-shot-model.js'
 import { checkPiiFree } from '../ki/ki.adapter.js'
-import { extractJsonObject, extractMessageText } from '../ki/llm-json.js'
+import { extractJsonObject } from '../ki/llm-json.js'
 import { LinkService } from '../link/link.service.js'
 import type { ChCertificateFieldDto, ParseReceiptDto, ParseReceiptResponseDto, ParsedChCertificateResponseDto } from '../receipt/dto/parse-receipt.dto.js'
 import { DocumentParseRegistry, type DocumentParseStrategy } from '../receipt/parse/document-parse.registry.js'
@@ -68,7 +66,7 @@ const FALLBACK_SYSTEM_PROMPT = [
 @Injectable()
 export class ChCertificateScanParseStrategy implements DocumentParseStrategy, OnModuleInit {
   readonly kind = 'chLohnausweis' as const
-  private readonly resolveChatModel: ChatModelFactory
+  private readonly resolveModel: SingleShotModelFactory
 
   constructor(
     @Inject(DocumentParseRegistry) private readonly registry: DocumentParseRegistry,
@@ -76,21 +74,21 @@ export class ChCertificateScanParseStrategy implements DocumentParseStrategy, On
     @Inject(AdvisorService) private readonly advisorService: AdvisorService,
     @Inject(AuditService) private readonly auditService: AuditService,
     @Inject(LinkService) private readonly linkService: LinkService,
-    @Optional() @Inject(CHAT_MODEL_FACTORY) modelFactory?: ChatModelFactory,
+    @Inject(SINGLE_SHOT_MODEL_FACTORY) modelFactory: SingleShotModelFactory = noSingleShotModel,
   ) {
-    this.resolveChatModel = modelFactory ?? createChatModelFromConfig
+    this.resolveModel = modelFactory
   }
 
   onModuleInit(): void {
     this.registry.register(this)
   }
 
-  private async model(): Promise<{ model: BaseChatModel; slot: ResolvedAiSlotConfig } | null> {
+  private async model(): Promise<{ model: SingleShotModel; slot: ResolvedAiSlotConfig } | null> {
     try {
       if (await this.runtimeConfig.isKillSwitchActive()) return null
       const slot = await this.runtimeConfig.resolveSlot('vision_ocr')
       if (!slot.enabled || slot.provider === 'deterministic') return null
-      const model = this.resolveChatModel(slot)
+      const model = this.resolveModel(slot)
       return model ? { model, slot } : null
     } catch {
       return null
@@ -118,10 +116,11 @@ export class ChCertificateScanParseStrategy implements DocumentParseStrategy, On
         if (!securityBlocked && grounding.trim()) {
           await this.auditService.append({ userId, action: 'READ', resource: 'ki_lohnausweis_textfallback' })
           try {
-            const answer = await resolved.model.invoke([new SystemMessage(FALLBACK_SYSTEM_PROMPT), new HumanMessage(`Ziffern eines Lohnausweises:\n${grounding}`)], {
-              signal: AbortSignal.timeout(TIMEOUT_MS),
-            })
-            read = applyChCertificateTextFallback(read, FALLBACK_SCHEMA.parse(extractJsonObject(extractMessageText(answer.content))), grounding)
+            const answer = await resolved.model.complete(
+              { system: FALLBACK_SYSTEM_PROMPT, user: `Ziffern eines Lohnausweises:\n${grounding}` },
+              { signal: AbortSignal.timeout(TIMEOUT_MS) },
+            )
+            read = applyChCertificateTextFallback(read, FALLBACK_SCHEMA.parse(extractJsonObject(answer)), grounding)
             stage = 'llm_text_fallback'
             slot = resolved.slot
           } catch {

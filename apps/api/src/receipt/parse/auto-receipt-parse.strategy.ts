@@ -1,6 +1,4 @@
-import type { BaseChatModel } from '@langchain/core/language_models/chat_models'
-import { HumanMessage, SystemMessage } from '@langchain/core/messages'
-import { Inject, Injectable, Optional } from '@nestjs/common'
+import { Inject, Injectable } from '@nestjs/common'
 import { z } from 'zod'
 import { createHash } from 'node:crypto'
 import {
@@ -38,13 +36,9 @@ import {
   type ResolvedAiSlotConfig,
 } from '../../ki/ai-runtime-config.service.js'
 import { validateStageTarget } from '../../ki/advisor-safety.js'
-import {
-  CHAT_MODEL_FACTORY,
-  createChatModelFromConfig,
-  type ChatModelFactory,
-} from '../../ki/chat-model.factory.js'
+import { SINGLE_SHOT_MODEL_FACTORY, noSingleShotModel, type SingleShotModel, type SingleShotModelFactory } from '../../ki/single-shot-model.js'
 import { checkPiiFree } from '../../ki/ki.adapter.js'
-import { extractJsonObject, extractMessageText } from '../../ki/llm-json.js'
+import { extractJsonObject } from '../../ki/llm-json.js'
 import {
   RECEIPT_VENDOR_CATEGORIES,
   type ParseReceiptDto,
@@ -291,7 +285,7 @@ function proposalDetailsFor(parsed: ParsedReceiptDataDto, donationUndated = fals
  */
 @Injectable()
 export class AutoReceiptParseStrategy implements DocumentParseStrategy {
-  private readonly resolveChatModel: ChatModelFactory
+  private readonly resolveModel: SingleShotModelFactory
 
   readonly kind = 'auto' as const
 
@@ -299,9 +293,9 @@ export class AutoReceiptParseStrategy implements DocumentParseStrategy {
     @Inject(AI_RUNTIME_CONFIG_SERVICE) private readonly runtimeConfig: AiRuntimeConfigService,
     @Inject(AdvisorService) private readonly advisorService: AdvisorService,
     @Inject(AuditService) private readonly auditService: AuditService,
-    @Optional() @Inject(CHAT_MODEL_FACTORY) modelFactory?: ChatModelFactory,
+    @Inject(SINGLE_SHOT_MODEL_FACTORY) modelFactory: SingleShotModelFactory = noSingleShotModel,
   ) {
-    this.resolveChatModel = modelFactory ?? createChatModelFromConfig
+    this.resolveModel = modelFactory
   }
 
   private sanitizeExtractedTarget(
@@ -383,13 +377,13 @@ export class AutoReceiptParseStrategy implements DocumentParseStrategy {
     let securityBlocked = false
     let parsed: ParsedReceiptDataDto = extractDeterministically(dto)
 
-    let visionModel: BaseChatModel | null = null
+    let visionModel: SingleShotModel | null = null
     let visionSlot: ResolvedAiSlotConfig | null = null
     try {
       if (!(await this.runtimeConfig.isKillSwitchActive())) {
         const slot = await this.runtimeConfig.resolveSlot('vision_ocr')
         if (slot.enabled && slot.provider !== 'deterministic') {
-          visionModel = this.resolveChatModel(slot)
+          visionModel = this.resolveModel(slot)
           visionSlot = slot
         }
       }
@@ -407,12 +401,11 @@ export class AutoReceiptParseStrategy implements DocumentParseStrategy {
         // Single-shot and isolated: no chat history, no profile, no tools, and no file name
         // (users name files after themselves).
         const context = `Steuerjahr-Kontext: ${dto.taxYear}`
-        const userMessage = new HumanMessage(`${context}\nBelegtext:\n${safeText}`)
-
-        const aiResult = await visionModel.invoke([new SystemMessage(STAGE1_ISOLATED_SYSTEM_PROMPT), userMessage], {
-          signal: AbortSignal.timeout(RECEIPT_EXTRACTION_TIMEOUT_MS),
-        })
-        const rawJson = extractJsonObject(extractMessageText(aiResult.content))
+        const answer = await visionModel.complete(
+          { system: STAGE1_ISOLATED_SYSTEM_PROMPT, user: `${context}\nBelegtext:\n${safeText}` },
+          { signal: AbortSignal.timeout(RECEIPT_EXTRACTION_TIMEOUT_MS) },
+        )
+        const rawJson = extractJsonObject(answer)
         const validated = STAGE1_EXTRACTION_SCHEMA.parse(rawJson)
         const sanitized = this.sanitizeExtractedTarget(validated, knownNames)
         parsed = sanitized.parsed

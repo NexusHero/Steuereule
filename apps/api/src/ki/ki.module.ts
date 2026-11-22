@@ -5,6 +5,8 @@ import {
 } from './ai-runtime-config.service.js'
 import { CHAT_MODEL_FACTORY, createChatModelFromConfig } from './chat-model.factory.js'
 import { KI_PORT, RagKiAdapter } from './ki.adapter.js'
+import { createSingleShotModelFromConfig } from './langchain-single-shot.adapter.js'
+import { SINGLE_SHOT_MODEL_FACTORY } from './single-shot-model.js'
 import { ADVISOR_ENGINE, LangGraphAdvisorEngine } from './langgraph-advisor.engine.js'
 import { ModelConnectionService } from './model-connection.service.js'
 import { ADVISOR_TOPIC_GUARD, AdvisorTopicGuard } from './advisor-topic-guard.js'
@@ -25,6 +27,10 @@ import { ADVISOR_TOPIC_GUARD, AdvisorTopicGuard } from './advisor-topic-guard.js
       provide: CHAT_MODEL_FACTORY,
       useValue: createChatModelFromConfig,
     },
+    {
+      provide: SINGLE_SHOT_MODEL_FACTORY,
+      useValue: createSingleShotModelFromConfig,
+    },
     AdvisorTopicGuard,
     {
       provide: ADVISOR_TOPIC_GUARD,
@@ -40,6 +46,7 @@ import { ADVISOR_TOPIC_GUARD, AdvisorTopicGuard } from './advisor-topic-guard.js
   exports: [
     KI_PORT,
     RagKiAdapter,
+    SINGLE_SHOT_MODEL_FACTORY,
     AI_RUNTIME_CONFIG_SERVICE,
     EnvAiRuntimeConfigService,
     ADVISOR_ENGINE,

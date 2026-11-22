@@ -37,6 +37,7 @@ import { FakePensionRepository } from './fakes/fake-pension.repository.js'
 import { FakeProfileRepository } from './fakes/fake-profile.repository.js'
 import { FakeReceiptRepository } from './fakes/fake-receipt.repository.js'
 import { FakeRentalRepository } from './fakes/fake-rental.repository.js'
+import { singleShotFromChatModel } from '../src/ki/langchain-single-shot.adapter.js'
 
 class RecordingVisionModel extends BaseChatModel {
   public calls: BaseMessage[][] = []
@@ -141,7 +142,7 @@ function buildTestHarness(responses: string[], visionEnabled = true) {
   const visionModel = new RecordingVisionModel(responses)
   const registry = new DocumentParseRegistry()
   const runtime = makeVisionRuntime(visionEnabled)
-  const modelFactory = () => visionModel
+  const modelFactory = () => singleShotFromChatModel(visionModel)
   const lstbService = new LstbService(lstbRepo, auditService, new FakeMarkingRepository())
   const linkService = new LinkService(new FakeLinkRepository(), profileRepo, new FakeMasterDataRepository(), auditService)
   const autoStrategy = new AutoReceiptParseStrategy(runtime, advisorService, auditService, modelFactory)
