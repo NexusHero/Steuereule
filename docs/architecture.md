@@ -14,7 +14,7 @@ numbersections: true
 
 **Steuereule** ist eine plattformübergreifende Steuererklärungs- und Beratungsanwendung für deutsche Steuerzahler, die ab Version 1.0 auf **Web, iOS und Android** bereitgestellt wird. 
 
-### Produkt-These & Leitprinzip ([ADR-0050](adr/0050-papierweg-statt-elster-in-1-0.md), [ADR-0005](adr/0005-deterministic-core-llm-assist.md))
+### Produkt-These & Leitprinzip ([ADR-0050](adr/0050-papierweg-statt-elster-in-1-0.md), [ADR-0038](adr/0038-berechnungs-kern-ki-port.md))
 Die Anwendung löst die Diskrepanz zwischen fehleranfälligen manuellen Formularen und undurchsichtigen „Blackbox“-Steuersoftwares durch ein zentrales architektonisches Axiom:
 
 > **Deterministischer Kern entscheidet, KI assistiert:**
@@ -91,8 +91,8 @@ flowchart TD
   BMF["Bundesfinanzverwaltung (FMS)\nAmtliche PDF-Vordrucke\nformulare-bfinv.de"]
   Stripe["Stripe Payments\nGehosteter Checkout & Webhooks"]
   Brevo["Brevo (EU)\nTransaktionaler E-Mail-Versand"]
-  ORS["Openrouteservice\nPendler-Distanzmatrix"]
-  Gemini["Google Gemini API\nEulen-Modus Steuerberater"]
+  LLM["Sprachmodell-Anbieter\nAnthropic · OpenAI · Google Gemini\n(über LangChain, nur PII-freie Texte)"]
+  Assistant["Eigener KI-Assistent des Nutzers\n(MCP-Client, OAuth 2.1)"]
   HIBP["HaveIBeenPwned API\nPasswort-Leak-Prüfung"]
   Finanzamt["Finanzamt (Behörde)\nEmpfänger des Post-Ausdrucks"]
 
@@ -100,8 +100,8 @@ flowchart TD
   App -->|"Vorlage-Bezug (Build/Update)"| BMF
   App <-->|"Freischaltung & Webhook"| Stripe
   App -->|"Transaktionale Mails"| Brevo
-  App -->|"Routing-Anfragen"| ORS
-  App <-->|"Kontext-Beratung (MCP)"| Gemini
+  App <-->|"Eule: Beratung, Beleg-Lesehilfe"| LLM
+  Assistant -->|"MCP-Tools (ADR-0052)"| App
   App -->|"k-Anonymity Leak Check"| HIBP
   User -.->|"Unterschriebener Ausdruck (Papier)"| Finanzamt
 ```
@@ -121,6 +121,86 @@ flowchart TD
 5. **Eulen-Modus mit MCP-Architektur:**
    Der KI-Assistent greift über 6 streng authentifizierte, PII-maskierte MCP-Tools auf den Datenstand zu. Jede Änderung ist ein verifizierbarer Vorschlag mit Undo-Garantie.
 
+
+## 4.1 Architekturstil: Ports & Adapters (hexagonal) {#_architecture_style}
+
+![Ports & Adapters: der reine Kern in der Mitte, die Anwendungsservices darum, Adapter am Rand](../images/architecture-hexagon.svg)
+
+**Kurzfassung.** Steuereule hat drei Ringe und eine Regel: *Jede Abhängigkeit zeigt nach innen.* Der Kern weiß nichts von HTTP, Datenbank oder Sprachmodell. Die Anwendungsservices kennen den Kern und Ports, aber kein SDK. Nur Adapter kennen ein SDK, und jeder Adapter nur seines. Zwei Prüfungen erzwingen die Regel: `packages/core/src/architecture.test.ts` im Kern und `eslint/no-restricted-imports` in `.oxlintrc.json` für `apps/api` ([ADR-0102](adr/0102-ports-und-adapter-per-linter-erzwungen.md)).
+
+### 4.1.1 Die drei Ringe
+
+| Ring | Wo im Repo | Darf abhängen von | Darf nicht abhängen von |
+| :--- | :--- | :--- | :--- |
+| **Domänenkern** | `packages/core/src/{math,engine,domains,interview,common}` | sich selbst (Schichten-DAG, §5.1), Node-Bordmittel wie `node:crypto` | Frameworks, I/O, `apps/*`. `package.json` des Kerns hat keine Laufzeit-Abhängigkeiten, ein solcher Import löst also gar nicht erst auf. |
+| **Anwendung** | `apps/api/src/<modul>/*.service.ts`, Guards, Parse-Strategien, und die Ports selbst (`*.repository.ts`, `ki/single-shot-model.ts`, `unlock/payment-provider.ts`, …) | `@steuereule/core` (nur über die Einstiege im `exports`-Feld), Ports, NestJS-Dekoratoren | Prisma, LangChain, Stripe, nodemailer |
+| **Adapter** | eingehend: `*.controller.ts`, `mcp/`; ausgehend: `*.prisma.ts`, `src/ki/**`, `unlock/stripe-payment-provider.ts`, `auth/*-email-sender.ts`, `account/export/pdf-renderer.playwright.ts`, `receipt/storage/postgres-bytea-storage.adapter.ts` | Ports, Kern, *ihr eigenes* SDK | die SDKs der anderen Adapter |
+
+Der **Composition Root** sind die Nest-Module (`*.module.ts`). Nur dort wird ein Port-Token an einen Adapter gebunden:
+
+```ts
+// apps/api/src/receipt/receipt-storage.module.ts
+{ provide: STORAGE_PORT, useExisting: PostgresByteaStorageAdapter },
+{ provide: RECEIPT_REPOSITORY, useClass: PrismaReceiptRepository },
+```
+
+Ein Service sieht nur das Interface:
+
+```ts
+constructor(@Inject(RECEIPT_REPOSITORY) private readonly receipts: ReceiptRepository) {}
+```
+
+Die Web-App (`apps/mobile-web`) ist aus Sicht der API ein eingehender Adapter. Sie spricht die API nur über den generierten Client `@steuereule/api-client` an und rechnet mit demselben Kern, den sie direkt importiert. Steuerlogik gibt es damit genau einmal.
+
+### 4.1.2 Die wichtigsten Ports
+
+| Fähigkeit | Port (Interface · Token) | Adapter in Produktion | Ersatz in Tests |
+| :--- | :--- | :--- | :--- |
+| Persistenz je Fachmodul (34 Repositories) | z. B. `ReceiptRepository` · `RECEIPT_REPOSITORY` | `PrismaReceiptRepository` (`*.repository.prisma.ts`), Feldverschlüsselung in `prisma/encrypted-prisma.provider.ts` | `apps/api/test/fakes/fake-*.repository.ts` |
+| Transaktion über mehrere Repositories | `TransactionRunner` · `TRANSACTION_RUNNER` | `PrismaTransactionRunner` | `passThroughTransactionRunner` |
+| Eule-Beratungsrunde (Streaming, Werkzeuge) | `ADVISOR_ENGINE` | `LangGraphAdvisorEngine` | `FakeKiChatModel`, `test/fakes/scripted-model.ts` |
+| Einzelner Modellaufruf (Beleg-, LStB-, Lohnausweis-Lesehilfe) | `SingleShotModel` · `SINGLE_SHOT_MODEL_FACTORY` | `langchain-single-shot.adapter.ts` | `noSingleShotModel` oder ein umhüllter Fake |
+| Fachliche KI-Fähigkeiten | `KiPort` (im Kern) · `KI_PORT` | `RagKiAdapter` | — |
+| Zahlung | `PaymentProvider` · `PAYMENT_PROVIDER` | `StripePaymentProvider` | `FakeProvider` in `unlock.service.test.ts` |
+| E-Mail | `EmailSender` · `EMAIL_SENDER` | `SmtpEmailSender`, `BrevoEmailSender`, `LoggingEmailSender` | `LoggingEmailSender` |
+| Belegdateien | `StoragePort` · `STORAGE_PORT` | `PostgresByteaStorageAdapter` (verschlüsselt, ADR-0059) | Fake-Storage in den Beleg-Tests |
+| PDF für den DSGVO-Export | `PdfRenderer` · `PDF_RENDERER` | `PlaywrightPdfRenderer` (Chromium) | — |
+| Assistenten-Token prüfen | `BearerTokenRepository` · `BEARER_TOKEN_REPOSITORY` | `PrismaBearerTokenRepository` | Fake im Guard-Test |
+
+### 4.1.3 Was geprüft wird und wie
+
+| Invariante | Werkzeug | Läuft in | Nachweis |
+| :--- | :--- | :--- | :--- |
+| Kernschichten bilden einen DAG (`math` importiert nichts, `common` nur `math`, `engine` nie `interview`) | `packages/core/src/architecture.test.ts` (Vitest) | `pnpm test`, CI | Test ist Teil der Kern-Suite |
+| Der Kern hat keine Framework-Abhängigkeit | pnpm-Workspace-Isolation: nicht deklarierte Pakete lösen nicht auf | `pnpm -r typecheck` | `packages/core/package.json` ohne `dependencies` |
+| Apps nutzen den Kern nur über die Einstiege im `exports`-Feld | `exports`-Feld in `packages/core/package.json` | Modulauflösung | tiefe Pfade wie `@steuereule/core/src/...` lösen nicht auf |
+| Prisma, LangChain, Stripe und nodemailer nur in ihren Adaptern | `eslint/no-restricted-imports` mit Overrides je Adaptergruppe | `pnpm lint`, CI-Job *Quality* | durch Brechen bewiesen, Tabelle in ADR-0102 |
+
+### 4.1.4 Bekannte Grenzen (bewusst nicht erzwungen)
+
+- **Kopplung zwischen Fachmodulen.** Services rufen andere Services direkt auf, z. B. `AuditService`, `LinkService` und `AdvisorService`. Das verletzt Ports & Adapters nicht, macht Module aber schwer einzeln zu ändern. Siehe §10.
+- **`domains` ↔ `interview` im Kern.** §5.1 beschreibt `interview → domains → engine → math`. Der Test erzwingt davon nur `math`, `common` und `engine ↛ interview`.
+- **`ADVISOR_ENGINE` hat kein eigenes Interface.** Das Token steht in der Adapterdatei `langgraph-advisor.engine.ts` und ist an die konkrete Klasse gebunden. Ein zweiter Engine-Adapter bräuchte zuerst ein Interface.
+- **`*.module.ts` ist pauschal von der Prisma-Regel ausgenommen**, weil die Module die Verdrahtung sind. Fachlogik in einem Modul fällt nur im Review auf.
+- **DI-Tokens sind nicht typgeprüft.** `@Inject(TOKEN) x: Port` vertraut darauf, dass das Modul einen passenden Adapter bindet. Ein falsch gebundener Adapter fällt erst beim Start oder in Integrationstests auf, nicht im Compiler.
+
+### 4.1.5 Rezept: eine neue externe Abhängigkeit anbinden
+
+1. **Port definieren**, im Modul, das ihn braucht: `foo.port.ts` mit Interface, DI-Token (`Symbol`) und den Ergebnistypen. Der Port importiert kein SDK, und seine Typen gehören ihm, nicht dem Adapter.
+2. **Adapter schreiben**: `foo.<technologie>.ts`. Für Prisma ist die Endung `.prisma.ts` Pflicht, sie ist zugleich die Ausnahme in der Lint-Regel.
+3. **Neues SDK?** Dann eine Gruppe in `.oxlintrc.json` ergänzen und den Adapter als einzige Ausnahme eintragen. Die Regel mit einer Probe-Datei brechen, bevor die PR aufgeht (ADR-0021).
+4. **Verdrahten** im `*.module.ts` des Moduls: `{ provide: FOO_PORT, useClass: TechFooAdapter }`.
+5. **Fake** unter `apps/api/test/fakes/` für Unit-Tests. Ein Integrationstest prüft den echten Adapter.
+
+### 4.1.6 Warum dieser Stil, und was er kostet
+
+| Gewinn | Kosten |
+| :--- | :--- |
+| Der Kern ist schnell und ohne Infrastruktur testbar (§ 32a in ~60 ns, Fuzzing über 144 Interview-Pfade). | Pro externer Abhängigkeit vier Artefakte: Interface, Token, Adapter, Fake. |
+| Drei LLM-Anbieter und ein Fake-Modell für CI hinter einer Factory. Ein Anbieterwechsel ist Konfiguration, kein Umbau. | Eine Indirektion mehr beim Lesen: Wer `RECEIPT_REPOSITORY` verfolgt, muss im Modul nachsehen, was gebunden ist. |
+| Verschlüsselung, Mandantentrennung und PII-Schutz sitzen an genau einer Stelle im Adapter, nicht verstreut in Services. | DI-Tokens sind zur Compile-Zeit nicht geprüft (§4.1.4). |
+| Ein Verstoß kostet einen roten Lint-Lauf, kein Architektur-Review. | Die Ausnahmeliste für Infrastruktur-Dateien muss gepflegt werden, wenn sie wandern. |
+
 ---
 
 # 5. Bausteinsicht (Building Block View — C4 Level 2)
@@ -138,7 +218,7 @@ flowchart TD
     API["apps/api\nREST API & Security Interceptors"]
     AuthModule["Auth Module\n(Better-Auth, TOTP, Passkey)"]
     CoreService["Steuerfachliche Services\n(LStB, Rente, CH, V&V, Printout)"]
-    McpModule["MCP Server & Advisor Module\n(PII Masking, Gemini Adapter)"]
+    McpModule["Eule & MCP-Server\n(LangGraph-Engine, PII-Maskierung, src/ki/**)"]
   end
 
   subgraph SharedCore ["Pure Domain Core Layer (@steuereule/core)"]
@@ -156,7 +236,7 @@ flowchart TD
   end
 
   subgraph Persistence ["Persistence Layer"]
-    PrismaDB["Prisma ORM\n(PostgreSQL mit AES-256-GCM)"]
+    PrismaDB["Prisma-Adapter *.repository.prisma.ts\n(PostgreSQL mit AES-256-GCM)"]
     AuditDB["Audit Log Repository\n(Unveränderlicher Audit Trail)"]
   end
 
@@ -174,10 +254,8 @@ flowchart TD
   CoreService --> EngineCore
   CoreService --> MathCore
   McpModule --> InterviewCore
-  CoreService --> PrismaDB
-  API --> AuditDB
-```
-
+  CoreService -->|"Repository-Port"| PrismaDB
+  API -->|"AuditRepository-Port"| AuditDB
 ```
 
 ### 5.1 Schichtenarchitektur & Abhängigkeits-DAG in `@steuereule/core`
@@ -290,7 +368,7 @@ sequenceDiagram
 # 7. Querschnittliche Konzepte {#section-concepts}
 
 ## 7.1 Temporal Tax Parameter Architecture
-Alle gesetzlichen Variablen sind in der temporalen Registry [`packages/core/src/tax-parameters.ts`](../packages/core/src/tax-parameters.ts) zentralisiert:
+Alle gesetzlichen Variablen sind in der temporalen Registry [`packages/core/src/math/tax-parameters.ts`](../packages/core/src/math/tax-parameters.ts) zentralisiert:
 * **§ 32a EStG Tarife:** Grundfreibetrag (2022: 10.347 €, 2023: 10.908 €, 2024: 11.604 €, 2025: 12.096 €, 2026: 12.348 €), Zonen-Grenzwerte und Polynomkoeffizienten.
 * **Solidaritätszuschlag (§ 4 SolZG):** Nullzone (2022: 16.956 €, 2023: 17.543 €, 2024: 18.130 €, ab 2025: 19.950 €) und Milderungszone.
 * **Pauschbeträge:** Arbeitnehmerpauschbetrag (1.200 € / 1.230 €), Sparer-Pauschbetrag (801 € / 1.000 €), Homeoffice-Tagespauschale und Jahreshöchstbeträge.
@@ -309,11 +387,11 @@ Alle gesetzlichen Variablen sind in der temporalen Registry [`packages/core/src/
 
 ## 7.4 Request Correlation & W3C Trace-Context
 Zur lückenlosen Nachverfolgbarkeit von Fehlern und Latenzen über Frontend, API-Schichten und Logs hinweg nutzt das Backend standardisierte Correlation-IDs:
-* **W3C `traceparent` & `x-request-id`:** Fastify extrahiert vorhandene W3C Trace IDs (`00-<trace_id>-<parent_id>-<flags>`) oder `x-request-id`-Header und generiert bei Fehlen eine eindeutige Request-ID ([`apps/api/src/common/request-id.ts`](file:///Users/suhaysevinc/source/Steuereule/apps/api/src/common/request-id.ts)).
+* **W3C `traceparent` & `x-request-id`:** Fastify extrahiert vorhandene W3C Trace IDs (`00-<trace_id>-<parent_id>-<flags>`) oder `x-request-id`-Header und generiert bei Fehlen eine eindeutige Request-ID ([`apps/api/src/common/request-id.ts`](../apps/api/src/common/request-id.ts)).
 * **Log-Präfix & Client Propagation:** Jedes strukturierte Logzeile im Fehlerfilter (`DomainErrorFilter`) wird mit `[requestId]` annotiert. Der Header `x-request-id` wird in jeder HTTP-Antwort zurückgeliefert; Fehler-Payloads enthalten die ID transparent im JSON-Body (`{ "statusCode": 404, "requestId": "req-..." }`).
 
 ## 7.5 OpenTelemetry (OTel) Distributed Tracing
-* **Vendor-agnostisches Tracing:** Über `@opentelemetry/api` und den Wrapper [`withSpan`](file:///Users/suhaysevinc/source/Steuereule/apps/api/src/telemetry/tracer.ts) werden rechenintensive Operationen (z. B. `tax_estimate.calculate`) transparent in OpenTelemetry-Spans gekapselt.
+* **Vendor-agnostisches Tracing:** Über `@opentelemetry/api` und den Wrapper [`withSpan`](../apps/api/src/telemetry/tracer.ts) werden rechenintensive Operationen (z. B. `tax_estimate.calculate`) transparent in OpenTelemetry-Spans gekapselt.
 * **Google Cloud Trace Export:** In Google Cloud Run fließen die Trace-Kontexte automatisch in Cloud Trace und Cloud Monitoring, ohne proprietäre SDK-Abhängigkeiten im Business-Code.
 
 ## 7.6 SRE Reliability, SLOs & Chaos Resilience ([`docs/sre/reliability-spec.md`](sre/reliability-spec.md))
@@ -343,11 +421,11 @@ Ausführlich begründet in [`docs/adr/`](adr/index.md) und lückenlos protokolli
 
 | ADR | Titel & Kernaussage | Status | Auslöser / Meilenstein in progress.db |
 | :---: | :--- | :---: | :--- |
-| **ADR-0005** | *Deterministischer Rechenkern statt LLM-Schätzungen:* Steuerrecht erfordert absolute Berechenbarkeit. KI assistiert nur. | Accepted | Kern-Architekturprinzip (#495) |
+| **ADR-0038** | *Deterministischer Berechnungs-Kern mit KI-Port:* Steuerrecht erfordert absolute Berechenbarkeit. KI assistiert nur, hinter einem Port. | Accepted | Kern-Architekturprinzip (#495) |
 | **ADR-0008** | *Feldverschlüsselung im Ruhezustand:* AES-256-GCM für Steuer-ID, Stammdaten und Geldbeträge in PostgreSQL. | Accepted | Sicherheits-Standard (#468, #475) |
-| **ADR-0011** | *Anonyme Gast-Session:* Value-First-Funnel ohne Zwangs-Registrierung; Erstattungsspanne im Gastmodus. | Accepted | Product Onboarding (#474) |
+| **ADR-0012** | *Anonyme Gast-Session:* Value-First-Funnel ohne Zwangs-Registrierung; Erstattungsspanne im Gastmodus. | Accepted | Product Onboarding (#474) |
 | **ADR-0013** | *DSGVO Kontolöschung nach Art. 17:* Vollständige Löschung aller Steuerdaten über atomare `$transaction`. | Accepted | Compliance Audit (#482) |
-| **ADR-0022** | *Vorjahresübernahme als Vorschlag:* Übernommene Werte bleiben unbestätigt, bis der Nutzer sie prüft. | Accepted | Jahreswechsel (#489) |
+| **ADR-0049** | *Vorjahresübernahme als Vorschlag:* Übernommene Werte bleiben unbestätigt, bis der Nutzer sie prüft. | Draft | Jahreswechsel (#489) |
 | **ADR-0024** | *QR-Code Gerätekopplung:* Sichere Autorisierung des Desktops über das Smartphone ohne Passwortübertragung. | Accepted | Device Auth (#473) |
 | **ADR-0031** | *Zwei-Segment-Interview:* Drei-Fragen-Minimal-Gate + On-Demand Lebenslagenkatalog. | Accepted | Interview Engine (#474) |
 | **ADR-0034** | *Typisierter Veranlagungsartenvergleich:* `eindeutig`, `zu-knapp`, `unbestimmt` statt falscher Ratschläge. | Accepted | Tariflogik (#492) |
@@ -357,6 +435,8 @@ Ausführlich begründet in [`docs/adr/`](adr/index.md) und lückenlos protokolli
 | **ADR-0051** | *Eulen-Modus KI-Architektur:* PII-Maskierung, Tool-Calling, Herkunftsnachweis und Undo-Garantie. | Accepted | AI Advisor (#471) |
 | **ADR-0055** | *Zero-Downtime Database Migrations:* Expand & Contract Pattern für unterbrechungsfreie Cloud Run Deployments. | Accepted | FAANG Architecture Hardening (#510) |
 | **ADR-0056** | *Asynchronous PDF Generation Job Queue:* Entkoppelte Worker-Queue für rechen- und RAM-intensive BMF-Formular-Renderings. | Accepted | FAANG Architecture Hardening (#510) |
+| **ADR-0052** | *Agenten-Zugang:* Der eigene KI-Assistent des Nutzers füllt über MCP und OAuth 2.1 Entwürfe; der Nutzer bestätigt gesammelt. | Accepted | Ticket 17 |
+| **ADR-0102** | *Ports & Adapters per Linter erzwungen:* Prisma, LangChain, Stripe und nodemailer nur in ihren Adaptern; oxlint bricht sonst den Build. | Accepted | Architektur-Review 2026-11-22 |
 
 ---
 
@@ -384,6 +464,7 @@ Zusätzlich sichern **Vordruck-Vermessungs-Gates** (`scripts/vordrucke/vermessen
 | :--- | :---: | :--- |
 | **Jährliche Layout-Änderungen durch das BMF** | Hoch (Ausdruck unbrauchbar bei verschobenen Feldern) | Automatisiertes Download-Tool ([`download-vordrucke.mjs`](../scripts/vordrucke/download-vordrucke.mjs)) und striktes CI-Vermessungs-Gate für alle Vordruck-Vorlagen. |
 | **Verzögerung des ELSTER-Zertifikats** | Mittel (Keine Online-Übermittlung in 1.0) | Vollständig gelöst durch ADR-0050: Zulässiger, rechtskonformer Papierausdruck schließt 1.0 ab; ELSTER folgt in 1.x. |
+| **Kopplung zwischen Fachmodulen in `apps/api` ist nicht erzwungen** | Mittel (Services importieren sich quer, z. B. `audit.service` aus 34 Dateien; Änderungen ziehen Kreise) | Bewusst außerhalb von ADR-0102. Nächster Schritt: dependency-cruiser mit Modulgraph, erst messen, dann eine Ratsche wie beim E2E-Coverage-Gate. |
 | **In-Memory Rate Limiting** | Niedrig (Bypass bei horizontaler Pod-Skalierung) | Für 1.0 mit Single-Instance ausreichend; Redis-Anbindung ist als Folge-Task für Multi-Pod-Betrieb vorbereitet. |
 
 ---
@@ -398,4 +479,7 @@ Zusätzlich sichern **Vordruck-Vermessungs-Gates** (`scripts/vordrucke/vermessen
 | **Splittingverfahren** | Steuerberechnung für zusammenveranlagte Ehepaare nach § 32a Abs. 5 EStG zur Glättung der Progression. |
 | **Günstigerprüfung** | Gesetzlicher Vergleich zweier steuerlicher Alternativen (z. B. Kindergeld vs. Kinderfreibetrag; KapESt-Abgeltungsteuer vs. tarifliche ESt). |
 | **Formularschlüssel** | Amtlicher Kenncode auf jeder Seite der BMF-Vordrucke (z. B. `2024AnlN031NET`). |
+| **Port** | Schnittstelle (TypeScript-`interface` plus DI-Token), über die der Anwendungsring etwas von außen braucht oder anbietet, z. B. `ReceiptRepository` / `RECEIPT_REPOSITORY`. |
+| **Adapter** | Implementierung eines Ports gegen ein konkretes Framework oder SDK, z. B. `PrismaReceiptRepository`. Eingehende (*driving*) Adapter rufen die Anwendung auf (Controller, MCP), ausgehende (*driven*) werden von ihr aufgerufen (Datenbank, LLM, Stripe). |
+| **Composition Root** | Der Ort, an dem Ports an Adapter gebunden werden; hier die Nest-Module `*.module.ts`. |
 | **Eulen-Modus** | Dialogbasierter KI-Beratungsmodus mit gesicherten MCP-Tools und automatischer PII-Maskierung. |

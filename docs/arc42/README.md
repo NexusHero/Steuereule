@@ -8,7 +8,7 @@ the same breath.
 
 This is a **proportionate** arc42 — it covers the views the system actually needs today,
 done well and extensible later, rather than a hollow 12-section skeleton. Sections are
-added when a change first touches them; the [full arc42 template](../../Documentation/arc42doc/arc42-template.html)
+added when a change first touches them; the [full arc42 template](arc42-template.html)
 remains the reference for the sections not yet populated.
 
 Decisions live in the ADRs (this document **shows the structure**; the ADRs **justify
@@ -248,6 +248,7 @@ thing.** A check that runs only on a developer's machine is evidence, not a guar
 |---|---|---|---|
 | Types | `tsc --noEmit`, TS **7.0.2**, `strict` + `noUncheckedIndexedAccess` + `exactOptionalPropertyTypes` | Type correctness across the workspace. Carries the **type-aware** load that the linter deliberately does not (ADR-0019 §4). | CI `test` job |
 | Static lint | **oxlint** (ADR-0019) | Syntactic/semantic defect classes `tsc` does not cover — notably unused bindings (`noUnusedLocals` is **not** enabled) and shadowing across the Playwright `page.evaluate` serialisation boundary. | CI `lint` job |
+| Architecture boundaries | **oxlint** `no-restricted-imports` (ADR-0102) + `packages/core/src/architecture.test.ts` | Ports & Adapters: Prisma, LangChain, Stripe and nodemailer appear only in their adapter files under `apps/api/src`; the core's layers stay acyclic. The shape is drawn in [`../architecture.md` §4.1](../architecture.md#_architecture_style). | CI `lint` and `test` jobs |
 | Unit / pure logic | Vitest | Behaviour of pure logic, no DB. | CI `test` job |
 | Compliance | Vitest against **real Postgres** | REQ-003 field encryption at rest, REQ-004 append-only audit, REQ-005/006/009/010/011 acceptance. Never a mock (ADR-0010). | CI `integration` job |
 | Boot | compiled `dist/` over real HTTP | Wiring bugs that `.inject()` is structurally blind to. | CI `smoke` job |
@@ -281,6 +282,10 @@ is a link to a CI run that went red on a deliberately introduced defect and skip
 > failing-run proof land on this branch. Following this document's convention for work in review,
 > this marker comes off when that job is real — the map may show what is coming, but only for as
 > long as it says so out loud.
+
+> **In flight on `refactor/hexagonal-boundaries`:** the *Architecture boundaries* row was proven
+> red **locally** (three probe files, every import group, table in ADR-0102). The CI run that goes
+> red on a deliberately introduced import is still owed; this marker comes off with its link.
 
 ## 8.1 Boot ordering — a structural invariant in `apps/api/src/main.ts`
 

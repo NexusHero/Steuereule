@@ -13,18 +13,18 @@ Jedes Subsystem in Steuereule unterliegt denselben strengen Architektur-Garantie
 1. **Echtes Modul-Scoping & Tenant-Isolation:**
    Jeder Controller sitzt hinter `UserContextGuard` bzw. `RequiresAccountGuard`. Das Scoping auf `userId` und `Steuerjahr` wird serverseitig garantiert — kein Client kann Daten fremder Mandanten adressieren oder manipulieren.
 2. **Delegation an den deterministischen Kern (`@steuereule/core`):**
-   Kein Controller und kein Service erfindet steuerliche Berechnungen oder Tarife. Sämtliche Beträge, Tarife (§ 32a EStG), Freibeträge, AfA-Sätze, Besteuerungsanteile und Verjährungsfristen werden von rein funktionalen, zustandslosen Funktionen in `@steuereule/core` berechnet ([ADR-0005](adr/0005-deterministic-core-llm-assist.md)). Der Kern ist streng in fünf Schichten unterteilt (`math/`, `engine/`, `domains/`, `interview/`, `common/`) und wird durch automatisierte Architektur-Linter (`architecture.test.ts`) gegen zyklische Abhängigkeiten geschützt.
-3. **Feldverschlüsselung im Ruhezustand (Encryption at Rest, [ADR-0008](adr/0008-keine-erfundenen-daten.md)):**
+   Kein Controller und kein Service erfindet steuerliche Berechnungen oder Tarife. Sämtliche Beträge, Tarife (§ 32a EStG), Freibeträge, AfA-Sätze, Besteuerungsanteile und Verjährungsfristen werden von rein funktionalen, zustandslosen Funktionen in `@steuereule/core` berechnet ([ADR-0038](adr/0038-berechnungs-kern-ki-port.md)). Der Kern ist streng in fünf Schichten unterteilt (`math/`, `engine/`, `domains/`, `interview/`, `common/`) und wird durch automatisierte Architektur-Linter (`architecture.test.ts`) gegen zyklische Abhängigkeiten geschützt.
+3. **Feldverschlüsselung im Ruhezustand (Encryption at Rest, [ADR-0008](adr/0008-profile-persistence-encryption.md)):**
    Alle steuerlichen Werte, Stammdaten und PII werden vor dem Schreiben in PostgreSQL über AES-256-GCM verschlüsselt. In der Datenbank stehen ausschließlich Chiffre-Texte mit zufälligem Nonce.
-4. **Enge Vendor-Seams (Ports & Adapters):**
-   Externe Drittanbieter (Stripe, Brevo, Openrouteservice, Google Gemini, HIBP) werden ausschließlich über schmale Provider-Interfaces angesprochen. Kein Domänencode importiert Vendor-Typen.
+4. **Ports & Adapters, vom Linter erzwungen ([ADR-0102](adr/0102-ports-und-adapter-per-linter-erzwungen.md)):**
+   Services kennen nur Ports (`*.repository.ts`, `ki/single-shot-model.ts`, `unlock/payment-provider.ts`, `auth/email-sender.ts`, …). Prisma darf nur in `*.prisma.ts`, LangChain nur in `src/ki/**`, Stripe nur in `unlock/stripe-payment-provider.ts` und nodemailer nur in `auth/smtp-email-sender.ts` vorkommen. Ein Verstoß macht `pnpm lint` rot. Das Gesamtbild mit allen Ringen steht in [`architecture.md` §4.1](./architecture.md#_architecture_style).
 
 ### Diagramm-Legende (Shared Mermaid `classDef`)
 * **ctrl** (Blau): HTTP Controller Surface (`apps/api/src/<modul>/*.controller.ts`)
 * **svc** (Grün): Orchestrierung & Business-Service (`apps/api/src/<modul>/*.service.ts`)
 * **core** (Orange): Reine, zustandslose Kernlogik (`packages/core/src/*.ts`)
-* **db** (Grau): PostgreSQL Tabellen & Prisma Repositories
-* **port** / **adapter** (Lila): Externe Provider-Seams (Stripe, Brevo, KI, ORS)
+* **db** (Grau): PostgreSQL-Tabellen. Ein Pfeil von einem Service dorthin steht immer für *Repository-Port → Prisma-Adapter*, nie für einen direkten Prisma-Aufruf im Service.
+* **port** / **adapter** (Lila): Ports zu externen Anbietern und ihre Adapter (Stripe, E-Mail, Sprachmodelle)
 
 ---
 
@@ -101,23 +101,24 @@ flowchart TD
   classDef port fill:#f3e8ff,stroke:#7e22ce,color:#581c87;
 
   LstbCtrl["LstbController\nGET/PUT /v1/steuerjahre/:jahr/lstb"]:::ctrl
-  CommuteCtrl["CommuteController\nPOST /v1/steuerjahre/:jahr/pendler/distanz"]:::ctrl
+  CommuteCtrl["CommuteController\nGET/PUT /v1/steuerjahre/:jahr/arbeitsweg"]:::ctrl
 
   LstbSvc["LstbService"]:::svc
   CommuteSvc["CommuteService"]:::svc
 
   CoreEmployee["@steuereule/core\nvalidateLstb()\nTaxYearParameters (Freibetrag)"]:::core
-  CoreWorkdays["@steuereule/core\ncalculateCommuteDeduction()"]:::core
+  CoreWorkdays["@steuereule/core\ncommuterAllowanceByWay()\nweekdaysInPeriod()"]:::core
 
-  OrsAdapter["OpenrouteserviceAdapter\n(Distanzmatrix-Port)"]:::port
-  PrismaLstb["Prisma (AES-256-GCM)\nLstbData, WorkdayData"]:::db
+  CommuteRepo["CommuteRepository\n(Port, COMMUTE_REPOSITORY)"]:::port
+  PrismaLstb["Prisma (AES-256-GCM)\nLstb, Commute"]:::db
 
   LstbCtrl --> LstbSvc
   CommuteCtrl --> CommuteSvc
 
   LstbSvc --> CoreEmployee
   LstbSvc --> PrismaLstb
-  CommuteSvc --> OrsAdapter
+  CommuteSvc --> CommuteRepo
+  CommuteRepo --> PrismaLstb
   CommuteSvc --> CoreWorkdays
 ```
 
@@ -250,7 +251,7 @@ flowchart TD
 
 ## 8. Eulen-Modus (KI-Assistent) & MCP-Server
 
-Sichere KI-Beratung mit PII-Maskierung und Rollback-Mechanismus ([ADR-0051](adr/0051-eulen-ki-modus.md), [ADR-0052](adr/0052-mcp-ki-assistent.md)).
+Sichere KI-Beratung mit PII-Maskierung und Rollback-Mechanismus ([ADR-0051](adr/0051-eulen-ki-modus.md), [ADR-0052](adr/0052-agenten-zugang-mcp.md)).
 
 ```mermaid
 flowchart TD
@@ -267,14 +268,16 @@ flowchart TD
   McpSvc["McpService\n(6 gesicherte Fach-Tools)"]:::svc
 
   PiiMask["@steuereule/core\nmaskPii(), unmaskPii()"]:::core
-  GeminiAdapter["GoogleGeminiAdapter\n(LLM Provider Port)"]:::port
+  AdvisorEngine["LangGraphAdvisorEngine\n(ADVISOR_ENGINE)"]:::port
+  ModelFactory["createChatModelFromConfig\nAnthropic · OpenAI · Gemini · Fake\n(LangChain, nur src/ki/**)"]:::port
 
   PrismaAdvisor["Prisma (AES-256-GCM)\nAdvisorSession, AuditLog"]:::db
 
   AdvisorCtrl --> AdvisorSvc
   McpCtrl --> McpSvc
 
-  AdvisorSvc --> GeminiAdapter
+  AdvisorSvc --> AdvisorEngine
+  AdvisorEngine --> ModelFactory
   AdvisorSvc --> McpSvc
   McpSvc --> PiiMask
   AdvisorSvc --> PrismaAdvisor

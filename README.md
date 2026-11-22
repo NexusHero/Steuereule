@@ -63,7 +63,7 @@ The owl is a tax advisor in a chat, built like Claude: the conversation is the m
 |:---|:---|:---|
 | [`packages/core/src/math/tarif.ts`](packages/core/src/math/tarif.ts) | **Pure Deterministic Math** | Pure TypeScript implementation of the German progressive income tax formula (§ 32a EStG) and splitting tariff. Zero dependencies, zero I/O, runs in **~64 nanoseconds** ($>15.6\text{M}$ ops/sec). |
 | [`packages/core/src/interview/matrix-fuzzing.test.ts`](packages/core/src/interview/matrix-fuzzing.test.ts) | **Combinatorial Fuzzing & Invariants** | Exhaustively traverses all **144 permutations** of the interview state machine and proves mathematical boundary invariants up to €100M (non-negativity, tariff monotonicity, absence contradiction gates). |
-| [`apps/api/src/prisma/encrypted-prisma.provider.ts`](apps/api/src/prisma/encrypted-prisma.provider.ts) | **Zero-Trust Field Encryption** | Transparent server-side **AES-256-GCM** encryption extension for Prisma, with zero-leak key rotation policies ([ADR-0008](docs/adr/0008-steuer-id-verschluesselung-aes-256-gcm.md)). |
+| [`apps/api/src/prisma/encrypted-prisma.provider.ts`](apps/api/src/prisma/encrypted-prisma.provider.ts) | **Zero-Trust Field Encryption** | Transparent server-side **AES-256-GCM** encryption extension for Prisma, with zero-leak key rotation policies ([ADR-0008](docs/adr/0008-profile-persistence-encryption.md)). |
 | [`apps/api/src/health/health.controller.ts`](apps/api/src/health/health.controller.ts) | **SRE Health Probes** | Cloud-native `/v1/health/live` and `/v1/health/ready` probes with active pooled database reachability checks and graceful shutdown hooks (`app.enableShutdownHooks()`). |
 
 ---
@@ -147,6 +147,19 @@ The core mathematical engine is continuously benchmarked using Vitest Bench (`pn
 ---
 
 ## 🏗️ Architecture & System Design
+
+<p align="center">
+  <img src="images/architecture-hexagon.svg" width="900" alt="Ports and Adapters: the pure @steuereule/core in the centre, the application services of apps/api around it, driving adapters (web app, AI assistants over MCP, jobs) on the left and driven adapters (PostgreSQL, language models, Stripe, e-mail, PDF) on the right; every dependency points inward" />
+</p>
+
+**Ports & Adapters (hexagonal architecture), checked by tools rather than by review.**
+
+- **Domain core.** [`@steuereule/core`](packages/core/) holds every tax rule as pure TypeScript with no I/O. It has no runtime dependencies, so a framework import does not even resolve. [`architecture.test.ts`](packages/core/src/architecture.test.ts) keeps its layers acyclic.
+- **Application ring.** The services in `apps/api` depend on the core and on *ports*: an interface plus a DI token, such as `ReceiptRepository` / `RECEIPT_REPOSITORY`, `SingleShotModel`, `PaymentProvider` or `EmailSender`.
+- **Adapters.** Each adapter is the only place its SDK may appear. Prisma lives only in `*.prisma.ts`, LangChain only in `src/ki/**`, Stripe only in `stripe-payment-provider.ts`. `oxlint` fails the build on any other import ([ADR-0102](docs/adr/0102-ports-und-adapter-per-linter-erzwungen.md)).
+- **Why.** The tax maths is benchmarked in nanoseconds and fuzzed without a database. Three LLM vendors and a CI fake sit behind one factory. Field encryption and PII scrubbing each live in exactly one place.
+
+The full write-up is in [`docs/architecture.md` §4.1](docs/architecture.md#_architecture_style). It covers the rings, the port inventory, what is enforced and how, the known limits, and a recipe for adding a dependency.
 
 Steuereule is structured as a modular TypeScript monorepo powered by `pnpm` and `Turborepo`:
 
