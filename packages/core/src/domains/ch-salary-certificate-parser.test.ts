@@ -354,6 +354,10 @@ describe('dailyBenefitIn: a paid-out daily benefit named in the remarks (real-da
     expect(dailyBenefitIn(["15. Bemerkungen   KK-Taggeld Verrechnung: 12'345.00 CHF"])).toEqual({ kind: 'sickness', amountChf: 12345 })
     expect(dailyBenefitIn(['Krankentaggeld CHF 4’820.60 in Ziffer 1 enthalten'])).toEqual({ kind: 'sickness', amountChf: 4821 })
     expect(dailyBenefitIn(['Bemerkungen', 'Taggelder 3100'])).toEqual({ kind: 'sickness', amountChf: 3100 })
+    // German grouping (real case): „3.853,10“ is 3.853 CHF, not 3,85.
+    expect(dailyBenefitIn(['KK-Taggeld Verrechnung: 3.853,10 CHF'])).toEqual({ kind: 'sickness', amountChf: 3853 })
+    expect(dailyBenefitIn(['KK-Taggeld Verrechnung: 20.843 CHF'])).toEqual({ kind: 'sickness', amountChf: 20843 })
+    expect(dailyBenefitIn(['KK-Taggeld Verrechnung 3853.10'])).toEqual({ kind: 'sickness', amountChf: 3853 })
   })
 
   it('tells an accident benefit apart', () => {
