@@ -16,6 +16,7 @@ import { BETTER_AUTH_BUNDLE } from '../src/auth/auth.tokens.js'
 import { AUTH_CONTEXT_REQUEST_KEY, USER_ID_KIND_REQUEST_KEY, USER_ID_REQUEST_KEY, UserContextGuard } from '../src/auth/user-context.guard.js'
 import { DomainErrorFilter } from '../src/common/domain-error.filter.js'
 import { buildAdvisorTestKit, doneEvent, ScriptedAdvisorEngine, type ScriptStep } from './fakes/advisor-test-kit.js'
+import { BEARER_TOKEN_REPOSITORY } from '../src/auth/bearer-token.repository.js'
 
 const token = (text: string): AdvisorStreamEvent => ({ event: 'token', data: { text } })
 const BASE = '/v1/steuerjahre/2025/advisor'
@@ -53,6 +54,7 @@ async function boot(script: readonly ScriptStep[]) {
       { provide: AdvisorModelsService, useValue: { list: async () => ({ standard: null, models: [] }), isAvailable: async () => false } },
       { provide: BETTER_AUTH_BUNDLE, useValue: { sessionCookieName: 'se.session', auth: { api: { getSession: async () => null } } } },
       { provide: APP_FILTER, useClass: DomainErrorFilter },
+      { provide: BEARER_TOKEN_REPOSITORY, useValue: {} },
       UserContextGuard,
     ],
   })

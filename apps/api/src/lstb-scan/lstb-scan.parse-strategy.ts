@@ -22,7 +22,7 @@ import {
   type AiRuntimeConfigService,
   type ResolvedAiSlotConfig,
 } from '../ki/ai-runtime-config.service.js'
-import { SINGLE_SHOT_MODEL_FACTORY, noSingleShotModel, type SingleShotModel, type SingleShotModelFactory } from '../ki/single-shot-model.js'
+import { SINGLE_SHOT_MODEL_FACTORY, type SingleShotModel, type SingleShotModelFactory } from '../ki/single-shot-model.js'
 import { checkPiiFree } from '../ki/ki.adapter.js'
 import { extractJsonObject } from '../ki/llm-json.js'
 import { LinkService } from '../link/link.service.js'
@@ -79,7 +79,6 @@ const LINE_LABELS: Readonly<Record<LstbScanLine, string>> = {
 @Injectable()
 export class LstbScanParseStrategy implements DocumentParseStrategy, OnModuleInit {
   readonly kind = 'lstb' as const
-  private readonly resolveModel: SingleShotModelFactory
 
   constructor(
     @Inject(DocumentParseRegistry) private readonly registry: DocumentParseRegistry,
@@ -88,10 +87,8 @@ export class LstbScanParseStrategy implements DocumentParseStrategy, OnModuleIni
     @Inject(AuditService) private readonly auditService: AuditService,
     @Inject(LstbService) private readonly lstbService: LstbService,
     @Inject(LinkService) private readonly linkService: LinkService,
-    @Inject(SINGLE_SHOT_MODEL_FACTORY) modelFactory: SingleShotModelFactory = noSingleShotModel,
-  ) {
-    this.resolveModel = modelFactory
-  }
+    @Inject(SINGLE_SHOT_MODEL_FACTORY) private readonly resolveModel: SingleShotModelFactory,
+  ) {}
 
   onModuleInit(): void {
     this.registry.register(this)

@@ -1,9 +1,8 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models'
 import { HumanMessage, SystemMessage } from '@langchain/core/messages'
-import type { ResolvedAiSlotConfig } from './ai-runtime-config.service.js'
-import { createChatModelFromConfig } from './chat-model.factory.js'
+import { createChatModelFromConfig, type ChatModelFactory } from './chat-model.factory.js'
 import { extractMessageText } from './llm-json.js'
-import type { SingleShotModel } from './single-shot-model.js'
+import type { SingleShotModel, SingleShotModelFactory } from './single-shot-model.js'
 
 /** Adapts a LangChain chat model to the single-shot port. */
 export function singleShotFromChatModel(model: BaseChatModel): SingleShotModel {
@@ -15,8 +14,13 @@ export function singleShotFromChatModel(model: BaseChatModel): SingleShotModel {
   }
 }
 
-/** The production factory: the slot's LangChain chat model behind the single-shot port. */
-export function createSingleShotModelFromConfig(config: ResolvedAiSlotConfig): SingleShotModel | null {
-  const model = createChatModelFromConfig(config)
-  return model ? singleShotFromChatModel(model) : null
+/** Turns a chat-model factory into a single-shot factory, so both resolve a slot the same way. */
+export function singleShotFactoryFrom(chatModels: ChatModelFactory): SingleShotModelFactory {
+  return (config) => {
+    const model = chatModels(config)
+    return model ? singleShotFromChatModel(model) : null
+  }
 }
+
+/** The production factory: the slot's LangChain chat model behind the single-shot port. */
+export const createSingleShotModelFromConfig: SingleShotModelFactory = singleShotFactoryFrom(createChatModelFromConfig)

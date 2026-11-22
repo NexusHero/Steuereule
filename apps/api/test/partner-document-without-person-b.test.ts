@@ -13,6 +13,7 @@ import { DocumentParseRegistry } from '../src/receipt/parse/document-parse.regis
 import { buildAdvisorTestKit } from './fakes/advisor-test-kit.js'
 import { FakeAuditRepository } from './fakes/fake-audit.repository.js'
 import { FakeMarkingRepository } from './fakes/fake-marking.repository.js'
+import { noSingleShotModel } from '../src/ki/single-shot-model.js'
 
 const USER = 'user-a'
 const YEAR = 2025
@@ -71,8 +72,8 @@ async function setUp() {
   const audit = new AuditService(new FakeAuditRepository())
   return {
     kit,
-    lstb: new LstbScanParseStrategy(registry, offline, kit.service, audit, new LstbService(kit.lstbRepo, audit, new FakeMarkingRepository()), kit.linkService),
-    lohnausweis: new ChCertificateScanParseStrategy(new DocumentParseRegistry(), offline, kit.service, audit, kit.linkService),
+    lstb: new LstbScanParseStrategy(registry, offline, kit.service, audit, new LstbService(kit.lstbRepo, audit, new FakeMarkingRepository()), kit.linkService, noSingleShotModel),
+    lohnausweis: new ChCertificateScanParseStrategy(new DocumentParseRegistry(), offline, kit.service, audit, kit.linkService, noSingleShotModel),
     pension: new ChPensionStatementParseStrategy(new DocumentParseRegistry(), kit.service, audit, kit.linkService, kit.chRepo),
     premiums: new ChPremiumLetterParseStrategy(new DocumentParseRegistry(), kit.service, audit, kit.linkService, kit.chRepo),
     health: new ChHealthStatementParseStrategy(new DocumentParseRegistry(), kit.service, audit, kit.linkService, kit.chRepo, kit.childRepo),

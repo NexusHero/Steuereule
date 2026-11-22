@@ -3,11 +3,12 @@ import {
   AI_RUNTIME_CONFIG_SERVICE,
   EnvAiRuntimeConfigService,
 } from './ai-runtime-config.service.js'
-import { CHAT_MODEL_FACTORY, createChatModelFromConfig } from './chat-model.factory.js'
+import { CHAT_MODEL_FACTORY, createChatModelFromConfig, type ChatModelFactory } from './chat-model.factory.js'
 import { KI_PORT, RagKiAdapter } from './ki.adapter.js'
-import { createSingleShotModelFromConfig } from './langchain-single-shot.adapter.js'
+import { singleShotFactoryFrom } from './langchain-single-shot.adapter.js'
 import { SINGLE_SHOT_MODEL_FACTORY } from './single-shot-model.js'
-import { ADVISOR_ENGINE, LangGraphAdvisorEngine } from './langgraph-advisor.engine.js'
+import { ADVISOR_ENGINE } from './advisor-engine.token.js'
+import { LangGraphAdvisorEngine } from './langgraph-advisor.engine.js'
 import { ModelConnectionService } from './model-connection.service.js'
 import { ADVISOR_TOPIC_GUARD, AdvisorTopicGuard } from './advisor-topic-guard.js'
 
@@ -29,7 +30,8 @@ import { ADVISOR_TOPIC_GUARD, AdvisorTopicGuard } from './advisor-topic-guard.js
     },
     {
       provide: SINGLE_SHOT_MODEL_FACTORY,
-      useValue: createSingleShotModelFromConfig,
+      inject: [CHAT_MODEL_FACTORY],
+      useFactory: (chatModels: ChatModelFactory) => singleShotFactoryFrom(chatModels),
     },
     AdvisorTopicGuard,
     {

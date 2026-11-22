@@ -23,7 +23,7 @@ export interface OpaqueAccessToken {
   readonly scopes: readonly string[]
   readonly revoked: Date | null
   readonly expiresAt: Date | null
-  readonly client: AssistantClient | null
+  readonly client: AssistantClient
 }
 
 export const BEARER_TOKEN_REPOSITORY = Symbol('BEARER_TOKEN_REPOSITORY')

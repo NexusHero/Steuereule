@@ -36,7 +36,7 @@ import {
   type ResolvedAiSlotConfig,
 } from '../../ki/ai-runtime-config.service.js'
 import { validateStageTarget } from '../../ki/advisor-safety.js'
-import { SINGLE_SHOT_MODEL_FACTORY, noSingleShotModel, type SingleShotModel, type SingleShotModelFactory } from '../../ki/single-shot-model.js'
+import { SINGLE_SHOT_MODEL_FACTORY, type SingleShotModel, type SingleShotModelFactory } from '../../ki/single-shot-model.js'
 import { checkPiiFree } from '../../ki/ki.adapter.js'
 import { extractJsonObject } from '../../ki/llm-json.js'
 import {
@@ -285,7 +285,6 @@ function proposalDetailsFor(parsed: ParsedReceiptDataDto, donationUndated = fals
  */
 @Injectable()
 export class AutoReceiptParseStrategy implements DocumentParseStrategy {
-  private readonly resolveModel: SingleShotModelFactory
 
   readonly kind = 'auto' as const
 
@@ -293,10 +292,8 @@ export class AutoReceiptParseStrategy implements DocumentParseStrategy {
     @Inject(AI_RUNTIME_CONFIG_SERVICE) private readonly runtimeConfig: AiRuntimeConfigService,
     @Inject(AdvisorService) private readonly advisorService: AdvisorService,
     @Inject(AuditService) private readonly auditService: AuditService,
-    @Inject(SINGLE_SHOT_MODEL_FACTORY) modelFactory: SingleShotModelFactory = noSingleShotModel,
-  ) {
-    this.resolveModel = modelFactory
-  }
+    @Inject(SINGLE_SHOT_MODEL_FACTORY) private readonly resolveModel: SingleShotModelFactory,
+  ) {}
 
   private sanitizeExtractedTarget(
     raw: z.infer<typeof STAGE1_EXTRACTION_SCHEMA>,

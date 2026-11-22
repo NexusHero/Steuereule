@@ -3,8 +3,6 @@ import type { PrismaClient } from '@prisma/client'
 
 import type { DeleteAccountResult } from './account-deletion.repository.js'
 
-export type { DeleteAccountResult }
-
 export interface DeleteAccountTestHooks {
   simulateFailureAfterProfileStep?: () => void
 }

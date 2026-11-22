@@ -1,31 +1,9 @@
 import { AsyncLocalStorage } from 'node:async_hooks'
 import { Prisma } from '@prisma/client'
 import { ConflictError } from '../common/domain-error.js'
-
-/**
- * Unit-of-work seam: every repository call made inside `run` joins one database
- * transaction, so a multi-repository write either commits as a whole or not at all.
- */
-export interface TransactionRunner {
-  run<T>(work: () => Promise<T>): Promise<T>
-}
-
-export const TRANSACTION_RUNNER = Symbol('TRANSACTION_RUNNER')
-
-/** In-memory repositories have no transaction to join; tests and fakes use this. */
-export const passThroughTransactionRunner: TransactionRunner = {
-  run: (work) => work(),
-}
+import type { TransactionRunner } from '../common/transaction-runner.js'
 
 const activeTransaction = new AsyncLocalStorage<object>()
-
-/**
- * Whether the caller already runs inside a transaction. `run` then joins it instead of starting its
- * own, so work that relies on its own rollback (a simulation) must refuse rather than ride along.
- */
-export function isInsideTransaction(): boolean {
-  return activeTransaction.getStore() !== undefined
-}
 
 /**
  * Repositories keep injecting one client; the proxy routes each call to the
@@ -63,7 +41,13 @@ interface InteractiveTransactionClient {
 }
 
 export class PrismaTransactionRunner implements TransactionRunner {
+  readonly rollsBack = true
+
   constructor(private readonly client: InteractiveTransactionClient) {}
+
+  isActive(): boolean {
+    return activeTransaction.getStore() !== undefined
+  }
 
   async run<T>(work: () => Promise<T>): Promise<T> {
     if (activeTransaction.getStore() !== undefined) return work()

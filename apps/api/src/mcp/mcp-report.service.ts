@@ -8,7 +8,7 @@ import { HOUSEHOLD_AND_HEALTH_BOOSTERS } from '../config/features.js'
 import { ConfirmationService } from '../confirmation/confirmation.service.js'
 import { admittedEntryIds, InterviewService } from '../interview/interview.service.js'
 import { PrintoutService } from '../printout/printout.service.js'
-import { isInsideTransaction, PrismaTransactionRunner, TRANSACTION_RUNNER, type TransactionRunner } from '../prisma/transaction.js'
+import { TRANSACTION_RUNNER, type TransactionRunner } from '../common/transaction-runner.js'
 import { TaxEstimateService } from '../tax-estimate/tax-estimate.service.js'
 import { churchTaxLiableFrom } from './read-view.js'
 
@@ -352,9 +352,10 @@ export class McpReportService {
 
   /** The same for several entries at once: one scenario, one refund before and after (#548). */
   async simulateEntries(userId: string, taxYear: number, entries: readonly SimulationEntry[]): Promise<SimulationResult> {
-    // The write is rolled back only by a real database transaction: trust the Prisma runner alone, never
-    // an unknown one, and never join a transaction already running (its commit would keep the write).
-    if (!(this.transactions instanceof PrismaTransactionRunner) || isInsideTransaction()) return { ok: false, reason: 'Die Simulation steht in dieser Umgebung nicht zur Verfügung.' }
+    // The write is rolled back only by a runner that says it rolls back, and never inside a transaction
+    // already running (its commit would keep the write).
+    const transactions = this.transactions
+    if (!transactions?.rollsBack || transactions.isActive()) return { ok: false, reason: 'Die Simulation steht in dieser Umgebung nicht zur Verfügung.' }
     // § 35a and § 33 are left out of the estimate while their boosters are off: 0 € would read as "brings nothing".
     for (const entry of entries) {
       const leftOut = effectLeftOutOfEstimate({ screen: entry.screen, instance: entry.instance ?? null, values: [[entry.field, entry.value]] }, HOUSEHOLD_AND_HEALTH_BOOSTERS)
@@ -362,7 +363,7 @@ export class McpReportService {
     }
     let result: SimulationResult = { ok: false, reason: NOT_COMPUTABLE }
     try {
-      await this.transactions.run(async () => {
+      await transactions.run(async () => {
         const before = estimateReadingFrom(await this.estimate.getState(userId, taxYear))
         for (const entry of entries) {
           // Whose field is written on trial: Person B's for a value of hers; the estimate is the couple's, read for the user.

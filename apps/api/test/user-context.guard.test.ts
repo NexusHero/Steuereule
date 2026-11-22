@@ -67,7 +67,7 @@ describe('UserContextGuard', () => {
 
   it('trusts a valid signed guest cookie and does not mint a new one (no better-auth session cookie present)', async () => {
     const getSession = vi.fn()
-    const guard = new UserContextGuard(makeBetterAuthBundle(getSession))
+    const guard = new UserContextGuard(makeBetterAuthBundle(getSession), fakeTokens())
     const existingUserId = 'existing-user'
     const token = signGuestSession(existingUserId, SECRET)
     const { context, request, setCookie } = makeContext({ [GUEST_SESSION_COOKIE]: token })
@@ -83,7 +83,7 @@ describe('UserContextGuard', () => {
 
   it('mints a fresh userId and sets a cookie when no cookie is present, without touching better-auth', async () => {
     const getSession = vi.fn()
-    const guard = new UserContextGuard(makeBetterAuthBundle(getSession))
+    const guard = new UserContextGuard(makeBetterAuthBundle(getSession), fakeTokens())
     const { context, request, setCookie } = makeContext({})
 
     await expect(guard.canActivate(context)).resolves.toBe(true)
@@ -108,7 +108,7 @@ describe('UserContextGuard', () => {
 
   it('mints a fresh userId when the guest cookie is tampered/forged (never trusts it)', async () => {
     const getSession = vi.fn()
-    const guard = new UserContextGuard(makeBetterAuthBundle(getSession))
+    const guard = new UserContextGuard(makeBetterAuthBundle(getSession), fakeTokens())
     const { context, request, setCookie } = makeContext({
       [GUEST_SESSION_COOKIE]: 'attacker-supplied-user-id.deadbeef',
     })
@@ -119,7 +119,7 @@ describe('UserContextGuard', () => {
   })
 
   it('two requests with no cookie get two different userIds (no cross-request leakage)', async () => {
-    const guard = new UserContextGuard(makeBetterAuthBundle(vi.fn()))
+    const guard = new UserContextGuard(makeBetterAuthBundle(vi.fn()), fakeTokens())
     const first = makeContext({})
     const second = makeContext({})
 
@@ -133,7 +133,7 @@ describe('UserContextGuard', () => {
   describe('a better-auth session cookie is present', () => {
     it('a verified session wins: userId = session.user.id, and no guest cookie is minted or touched', async () => {
       const getSession = vi.fn().mockResolvedValue({ user: { id: 'real-account-id' }, session: {} })
-      const guard = new UserContextGuard(makeBetterAuthBundle(getSession))
+      const guard = new UserContextGuard(makeBetterAuthBundle(getSession), fakeTokens())
       // Even carrying a guest cookie too (e.g. a browser that never cleared it) — the
       // verified session must still win per ADR-0012 §2's precedence rule.
       const guestToken = signGuestSession('some-guest', SECRET)
@@ -152,7 +152,7 @@ describe('UserContextGuard', () => {
 
     it('an expired/revoked session (getSession resolves null) falls through to the guest path', async () => {
       const getSession = vi.fn().mockResolvedValue(null)
-      const guard = new UserContextGuard(makeBetterAuthBundle(getSession))
+      const guard = new UserContextGuard(makeBetterAuthBundle(getSession), fakeTokens())
       const { context, request, setCookie } = makeContext({
         [SESSION_COOKIE_NAME]: 'a-revoked-session-cookie-value',
       })
@@ -282,7 +282,7 @@ describe('UserContextGuard', () => {
 
     it('sets authContext = { source: "nutzer" } for normal session and guest', async () => {
       const getSession = vi.fn().mockResolvedValue({ user: { id: 'u1' }, session: {} })
-      const guard = new UserContextGuard(makeBetterAuthBundle(getSession))
+      const guard = new UserContextGuard(makeBetterAuthBundle(getSession), fakeTokens())
 
       const sessionReq = makeContext({ [SESSION_COOKIE_NAME]: 'sess' })
       await guard.canActivate(sessionReq.context)
@@ -315,12 +315,12 @@ describe('UserContextGuard', () => {
         rateLimitStorage: createResettableRateLimitStorage(),
       }
     }
-    function prisma(client: AssistantClient | null = { name: 'Claude', disabled: false }, consent: object | null = { id: 'c1' }) {
-      return fakeTokens({ findClient: vi.fn().mockResolvedValue(client), hasConsent: vi.fn().mockResolvedValue(consent !== null) })
+    function tokensFor(client: AssistantClient | null = { name: 'Claude', disabled: false }, consented = true) {
+      return fakeTokens({ findClient: vi.fn().mockResolvedValue(client), hasConsent: vi.fn().mockResolvedValue(consented) })
     }
 
     it('a JWT for the MCP endpoint sets the assistant context from its claims and the client', async () => {
-      const guard = new UserContextGuard(bundle(), prisma())
+      const guard = new UserContextGuard(bundle(), tokensFor())
       const { context, request } = makeContext({}, { authorization: `Bearer ${jwt(valid)}` })
       await expect(guard.canActivate(context)).resolves.toBe(true)
       expect(request[USER_ID_REQUEST_KEY]).toBe('oauth-user-id')
@@ -329,7 +329,7 @@ describe('UserContextGuard', () => {
     })
 
     it('accepts a JWT for the Streamable HTTP endpoint /mcp as well as one for /mcp/sse (ADR-0052 amendment 6)', async () => {
-      const guard = new UserContextGuard(bundle(), prisma())
+      const guard = new UserContextGuard(bundle(), tokensFor())
       const { context, request } = makeContext({}, { authorization: `Bearer ${jwt({ ...valid, aud: `${BASE}/mcp` })}` })
       await expect(guard.canActivate(context)).resolves.toBe(true)
       expect(request[USER_ID_REQUEST_KEY]).toBe('oauth-user-id')
@@ -337,22 +337,22 @@ describe('UserContextGuard', () => {
 
     it('refuses a JWT for another audience, another issuer or a forged signature', async () => {
       for (const token of [jwt({ ...valid, aud: 'https://elsewhere.example/api' }), jwt({ ...valid, iss: 'https://evil.example' }), `${jwt(valid).slice(0, -4)}AAAA`]) {
-        const guard = new UserContextGuard(bundle(), prisma())
+        const guard = new UserContextGuard(bundle(), tokensFor())
         const { context } = makeContext({}, { authorization: `Bearer ${token}` })
         await expect(guard.canActivate(context)).rejects.toBeInstanceOf(UnauthorizedException)
       }
     })
 
     it('a revoked connection stops a JWT at once: no consent, no access (ADR-0052 §10)', async () => {
-      const guard = new UserContextGuard(bundle(), prisma(undefined, null))
+      const guard = new UserContextGuard(bundle(), tokensFor(undefined, false))
       const { context } = makeContext({}, { authorization: `Bearer ${jwt(valid)}` })
       await expect(guard.canActivate(context)).rejects.toBeInstanceOf(UnauthorizedException)
     })
 
     it('refuses a JWT of a disabled client and one without a user (client credentials)', async () => {
-      const disabled = new UserContextGuard(bundle(), prisma({ name: 'Claude', disabled: true }))
+      const disabled = new UserContextGuard(bundle(), tokensFor({ name: 'Claude', disabled: true }))
       await expect(disabled.canActivate(makeContext({}, { authorization: `Bearer ${jwt(valid)}` }).context)).rejects.toBeInstanceOf(UnauthorizedException)
-      const machine = new UserContextGuard(bundle(), prisma())
+      const machine = new UserContextGuard(bundle(), tokensFor())
       await expect(machine.canActivate(makeContext({}, { authorization: `Bearer ${jwt({ ...valid, sub: 'client-1' })}` }).context)).rejects.toBeInstanceOf(UnauthorizedException)
     })
   })

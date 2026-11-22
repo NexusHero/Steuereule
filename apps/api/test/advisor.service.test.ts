@@ -2,7 +2,7 @@ import type { AdvisorEnginePort } from '@steuereule/core'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { AdvisorService } from '../src/advisor/advisor.service.js'
 import { DEFAULT_AI_TURN_LIMITS } from '../src/ki/ai-runtime-config.service.js'
-import type { TransactionRunner } from '../src/prisma/transaction.js'
+import type { TransactionRunner } from '../src/common/transaction-runner.js'
 import { InMemoryAdvisorRepository } from '../src/advisor/advisor.repository.js'
 import { AuditService } from '../src/audit/audit.service.js'
 import { ConfirmationService } from '../src/confirmation/confirmation.service.js'
@@ -506,6 +506,8 @@ describe('AdvisorService (In-App Steuerberater Agent "Deine Eule")', () => {
     const runs: Array<{ outcome: 'committed' | 'rolled-back'; error?: unknown }> = []
     let insideTransaction = false
     const recordingRunner: TransactionRunner = {
+      rollsBack: false,
+      isActive: () => false,
       async run(work) {
         insideTransaction = true
         try {

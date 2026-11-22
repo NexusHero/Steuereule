@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { McpReportService } from '../src/mcp/mcp-report.service.js'
-import { passThroughTransactionRunner, PrismaTransactionRunner, type TransactionRunner } from '../src/prisma/transaction.js'
+import { passThroughTransactionRunner, type TransactionRunner } from '../src/common/transaction-runner.js'
+import { PrismaTransactionRunner } from '../src/prisma/transaction.js'
 
 const computed = (from: number, to: number) => ({
   kind: 'spanne' as const,
@@ -101,9 +102,9 @@ describe('McpReportService (ADR-0052 amendment 2)', () => {
     expect(confirmation.writeConfirmedByAdvisor).not.toHaveBeenCalled()
   })
 
-  it('trusts only the Prisma runner to roll back, never an unknown one', async () => {
+  it('trusts only a runner that rolls back, never one that does not say so', async () => {
     const confirmation = { overview: vi.fn(), writeConfirmedByAdvisor: vi.fn() }
-    const unknown: TransactionRunner = { run: (work) => work() }
+    const unknown: TransactionRunner = { run: (work) => work(), rollsBack: false, isActive: () => false }
     const result = await service({ confirmation, transactions: unknown }).simulate('u', 2025, 'lstb', 'bruttoarbeitslohn', '50000')
     expect(result.ok).toBe(false)
     expect(confirmation.writeConfirmedByAdvisor).not.toHaveBeenCalled()

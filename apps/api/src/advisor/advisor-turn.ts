@@ -46,7 +46,7 @@ import { DEFAULT_AI_TURN_LIMITS, type AiRuntimeConfigService } from '../ki/ai-ru
 import { ModelConnectionService } from '../ki/model-connection.service.js'
 import { LinkService } from '../link/link.service.js'
 import { OwlModeService } from '../owl-mode/owl-mode.service.js'
-import { type TransactionRunner } from '../prisma/transaction.js'
+import { type TransactionRunner } from '../common/transaction-runner.js'
 import { type ProfileRepository } from '../profile/profile.repository.js'
 import {
   type AdvisorChatMessageRecord,

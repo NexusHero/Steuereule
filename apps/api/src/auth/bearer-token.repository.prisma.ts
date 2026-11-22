@@ -18,7 +18,7 @@ export class PrismaBearerTokenRepository implements BearerTokenRepository {
       scopes: row.scopes,
       revoked: row.revoked,
       expiresAt: row.expiresAt,
-      client: row.client ? toClient(row.client) : null,
+      client: toClient(row.client),
     }
   }
 

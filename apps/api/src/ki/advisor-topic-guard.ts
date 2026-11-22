@@ -3,13 +3,11 @@
 // nothing of its turn reaches the user or a tool before the verdict. An off-topic verdict drops the
 // started turn. Whatever goes wrong with the guard, the turn is let through:
 // the topic rule in the owl's own prompt and the attack patterns stay as the second line.
-import type { BaseChatModel } from '@langchain/core/language_models/chat_models'
-import { HumanMessage, SystemMessage } from '@langchain/core/messages'
-import { Inject, Injectable, Logger, Optional } from '@nestjs/common'
+import { Inject, Injectable, Logger } from '@nestjs/common'
 import { ADVISOR_TOPIC_CATEGORIES, parseTopicCheck, type AdvisorHistoryEntry, type AdvisorTopicOutcome } from '@steuereule/core'
 import { AI_RUNTIME_CONFIG_SERVICE, DEFAULT_GUARD_TIMEOUT_MS, type AiRuntimeConfigService } from './ai-runtime-config.service.js'
-import { CHAT_MODEL_FACTORY, createChatModelFromConfig, type ChatModelFactory } from './chat-model.factory.js'
-import { extractJsonObject, extractMessageText } from './llm-json.js'
+import { extractJsonObject } from './llm-json.js'
+import { SINGLE_SHOT_MODEL_FACTORY, type SingleShotModel, type SingleShotModelFactory } from './single-shot-model.js'
 
 export const ADVISOR_TOPIC_GUARD = Symbol('ADVISOR_TOPIC_GUARD')
 
@@ -65,23 +63,20 @@ export function buildGuardInput(input: AdvisorTopicGuardInput): string {
 
 @Injectable()
 export class AdvisorTopicGuard implements AdvisorTopicGuardPort {
-  private readonly resolveChatModel: ChatModelFactory
   private readonly logger = new Logger('AdvisorTopicGuard')
 
   constructor(
     @Inject(AI_RUNTIME_CONFIG_SERVICE) private readonly runtimeConfig: AiRuntimeConfigService,
-    @Optional() @Inject(CHAT_MODEL_FACTORY) modelFactory?: ChatModelFactory,
-  ) {
-    this.resolveChatModel = modelFactory ?? createChatModelFromConfig
-  }
+    @Inject(SINGLE_SHOT_MODEL_FACTORY) private readonly resolveModel: SingleShotModelFactory,
+  ) {}
 
   async check(input: AdvisorTopicGuardInput, signal?: AbortSignal): Promise<AdvisorTopicOutcome> {
-    let model: BaseChatModel | null = null
+    let model: SingleShotModel | null = null
     let timeoutMs = DEFAULT_GUARD_TIMEOUT_MS
     try {
       const config = await this.runtimeConfig.resolveSlot('advisor_guard')
       timeoutMs = config.timeoutMs ?? DEFAULT_GUARD_TIMEOUT_MS
-      model = config.enabled && config.provider !== 'deterministic' ? this.resolveChatModel(config) : null
+      model = config.enabled && config.provider !== 'deterministic' ? this.resolveModel(config) : null
     } catch {
       model = null
     }
@@ -92,8 +87,7 @@ export class AdvisorTopicGuard implements AdvisorTopicGuardPort {
     const combined = signal ? AbortSignal.any([signal, timeout]) : timeout
     let raw: string
     try {
-      const response = await model.invoke([new SystemMessage(TOPIC_GUARD_INSTRUCTIONS), new HumanMessage(buildGuardInput(input))], { signal: combined })
-      raw = extractMessageText(response.content)
+      raw = await model.complete({ system: TOPIC_GUARD_INSTRUCTIONS, user: buildGuardInput(input) }, { signal: combined })
     } catch (error) {
       const reason = timeout.aborted && !signal?.aborted ? 'timeout' : 'error'
       if (!signal?.aborted) this.logger.warn(`topic guard ${reason}: ${error instanceof Error ? error.message.slice(0, 300) : String(error).slice(0, 300)}`)

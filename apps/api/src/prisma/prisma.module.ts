@@ -1,7 +1,8 @@
 import { Module } from '@nestjs/common'
 import { encryptedPrismaProvider, ENCRYPTED_PRISMA, type EncryptedPrismaClient } from './encrypted-prisma.provider.js'
 import { PrismaService } from './prisma.service.js'
-import { PrismaTransactionRunner, TRANSACTION_RUNNER } from './transaction.js'
+import { TRANSACTION_RUNNER } from '../common/transaction-runner.js'
+import { PrismaTransactionRunner } from './transaction.js'
 
 /** Shared infrastructure module. */
 @Module({

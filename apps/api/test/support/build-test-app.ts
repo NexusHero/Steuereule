@@ -31,7 +31,7 @@ import { MASTER_DATA_REPOSITORY } from '../../src/master-data/master-data.reposi
 import { OWL_CARD_DISMISSAL_REPOSITORY, OWL_SETTING_REPOSITORY } from '../../src/owl-mode/owl-mode.repository.js'
 import { ENCRYPTED_PRISMA } from '../../src/prisma/encrypted-prisma.provider.js'
 import { PrismaService } from '../../src/prisma/prisma.service.js'
-import { passThroughTransactionRunner, TRANSACTION_RUNNER } from '../../src/prisma/transaction.js'
+import { passThroughTransactionRunner, TRANSACTION_RUNNER } from '../../src/common/transaction-runner.js'
 import { PROFILE_REPOSITORY } from '../../src/profile/profile.repository.js'
 import { TAX_YEAR_REPOSITORY } from '../../src/cockpit/tax-year.repository.js'
 import { INTERVIEW_ANSWER_REPOSITORY } from '../../src/interview/interview-answer.repository.js'

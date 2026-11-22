@@ -1,7 +1,8 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models'
 import { AIMessage, type BaseMessage } from '@langchain/core/messages'
 import { describe, expect, it } from 'vitest'
-import { singleShotFromChatModel } from '../src/ki/langchain-single-shot.adapter.js'
+import type { ResolvedAiSlotConfig } from '../src/ki/ai-runtime-config.service.js'
+import { singleShotFactoryFrom, singleShotFromChatModel } from '../src/ki/langchain-single-shot.adapter.js'
 
 function recordingModel(content: AIMessage['content']) {
   const calls: { messages: BaseMessage[]; signal: AbortSignal | undefined }[] = []
@@ -40,5 +41,27 @@ describe('singleShotFromChatModel', () => {
     const answer = await singleShotFromChatModel(model).complete({ system: 's', user: 'u' }, { signal: AbortSignal.timeout(1_000) })
 
     expect(answer).toBe('{"a":1}')
+  })
+})
+
+describe('singleShotFactoryFrom', () => {
+  const slot = { slot: 'vision_ocr', enabled: true, provider: 'anthropic', model: 'm', apiKey: 'k' } as ResolvedAiSlotConfig
+
+  it('resolves the slot through the chat-model factory it was given', async () => {
+    const { model } = recordingModel('ok')
+    const seen: ResolvedAiSlotConfig[] = []
+    const factory = singleShotFactoryFrom((config) => {
+      seen.push(config)
+      return model
+    })
+
+    const answer = await factory(slot)!.complete({ system: 's', user: 'u' }, { signal: AbortSignal.timeout(1_000) })
+
+    expect(answer).toBe('ok')
+    expect(seen).toEqual([slot])
+  })
+
+  it('has no model when the chat-model factory has none', () => {
+    expect(singleShotFactoryFrom(() => null)(slot)).toBeNull()
   })
 })
