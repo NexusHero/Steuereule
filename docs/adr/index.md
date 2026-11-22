@@ -119,7 +119,7 @@ The ADRs **justify** the architecture; the [living arc42 document](../arc42/READ
 | 0099 | Verlauf: Hinweise, Lebensereignisse und Gruppen | Accepted |
 | 0100 | Eule: Wächter neben dem Modell, Zeiten je Runde, Maske vor der Frage | Accepted |
 | 0101 | Selbstständige: EÜR, Buchhaltung, Bilanz, Umsatz- und Gewerbesteuer | Accepted |
-| 0102 | Ports & Adapters: die Grenzen in `apps/api` erzwingt der Linter | Accepted |
+| 0102 | Ports & Adapters: zwei Architekturtests erzwingen die Grenzen in `apps/api` und im Kern | Accepted |
 
 See also the [Tech Radar](./tech-radar.md).
 
