@@ -1,6 +1,11 @@
 {
   "$schema": "https://raw.githubusercontent.com/oxc-project/oxc/main/npm/oxlint/configuration_schema.json",
-  "plugins": ["eslint", "typescript", "unicorn", "oxc"],
+  "plugins": [
+    "eslint",
+    "typescript",
+    "unicorn",
+    "oxc"
+  ],
   "categories": {
     "correctness": "error",
     "suspicious": "error"
@@ -15,13 +20,240 @@
     "Documentation/**"
   ],
   "rules": {
-    "typescript/ban-ts-comment": ["error", { "ts-expect-error": "allow-with-description" }],
-    "typescript/no-extraneous-class": ["error", { "allowWithDecorator": true }],
-    "eslint/no-unused-vars": ["error", { "argsIgnorePattern": "^_", "varsIgnorePattern": "^_" }],
-
+    "typescript/ban-ts-comment": [
+      "error",
+      {
+        "ts-expect-error": "allow-with-description"
+      }
+    ],
+    "typescript/no-extraneous-class": [
+      "error",
+      {
+        "allowWithDecorator": true
+      }
+    ],
+    "eslint/no-unused-vars": [
+      "error",
+      {
+        "argsIgnorePattern": "^_",
+        "varsIgnorePattern": "^_"
+      }
+    ],
     "unicorn/no-array-sort": "off",
     "unicorn/no-invalid-fetch-options": "off",
     "unicorn/consistent-function-scoping": "off",
     "eslint/no-underscore-dangle": "off"
-  }
+  },
+  "overrides": [
+    {
+      "files": [
+        "apps/api/src/**/*.ts"
+      ],
+      "rules": {
+        "eslint/no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": [
+                  "@prisma/*",
+                  "@prisma/**",
+                  "@prisma-keystore/*",
+                  "@prisma-keystore/**",
+                  "prisma-field-encryption",
+                  "prisma-field-encryption/**",
+                  "**/prisma/prisma.service*"
+                ],
+                "message": "Persistence is an adapter: only *.prisma.ts, src/prisma/**, *.module.ts and the listed infrastructure files may touch Prisma. Depend on a repository port instead (ADR-0102)."
+              },
+              {
+                "group": [
+                  "@langchain/*",
+                  "@langchain/**"
+                ],
+                "message": "LangChain lives behind the KI ports in src/ki/** (ADR-0038, ADR-0102). Use SingleShotModel or the advisor engine port."
+              },
+              {
+                "group": [
+                  "stripe",
+                  "stripe/**"
+                ],
+                "message": "Stripe is reached only through PaymentProvider (unlock/stripe-payment-provider.ts, ADR-0102)."
+              },
+              {
+                "group": [
+                  "nodemailer",
+                  "nodemailer/**"
+                ],
+                "message": "Mail goes through the EmailSender port; nodemailer lives in auth/smtp-email-sender.ts only (ADR-0102)."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": [
+        "apps/api/src/ki/**/*.ts"
+      ],
+      "rules": {
+        "eslint/no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": [
+                  "@prisma/*",
+                  "@prisma/**",
+                  "@prisma-keystore/*",
+                  "@prisma-keystore/**",
+                  "prisma-field-encryption",
+                  "prisma-field-encryption/**",
+                  "**/prisma/prisma.service*"
+                ],
+                "message": "Persistence is an adapter: only *.prisma.ts, src/prisma/**, *.module.ts and the listed infrastructure files may touch Prisma. Depend on a repository port instead (ADR-0102)."
+              },
+              {
+                "group": [
+                  "stripe",
+                  "stripe/**"
+                ],
+                "message": "Stripe is reached only through PaymentProvider (unlock/stripe-payment-provider.ts, ADR-0102)."
+              },
+              {
+                "group": [
+                  "nodemailer",
+                  "nodemailer/**"
+                ],
+                "message": "Mail goes through the EmailSender port; nodemailer lives in auth/smtp-email-sender.ts only (ADR-0102)."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": [
+        "apps/api/src/**/*.prisma.ts",
+        "apps/api/src/prisma/**/*.ts",
+        "apps/api/src/**/*.module.ts",
+        "apps/api/src/config/assert-database-migrated.ts",
+        "apps/api/src/config/assert-database-reachable.ts",
+        "apps/api/src/config/database-url.ts",
+        "apps/api/src/auth/better-auth.ts",
+        "apps/api/src/health/pooled-database-reachability-check.ts",
+        "apps/api/src/receipt/storage/postgres-bytea-storage.adapter.ts"
+      ],
+      "rules": {
+        "eslint/no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": [
+                  "@langchain/*",
+                  "@langchain/**"
+                ],
+                "message": "LangChain lives behind the KI ports in src/ki/** (ADR-0038, ADR-0102). Use SingleShotModel or the advisor engine port."
+              },
+              {
+                "group": [
+                  "stripe",
+                  "stripe/**"
+                ],
+                "message": "Stripe is reached only through PaymentProvider (unlock/stripe-payment-provider.ts, ADR-0102)."
+              },
+              {
+                "group": [
+                  "nodemailer",
+                  "nodemailer/**"
+                ],
+                "message": "Mail goes through the EmailSender port; nodemailer lives in auth/smtp-email-sender.ts only (ADR-0102)."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": [
+        "apps/api/src/unlock/stripe-payment-provider.ts"
+      ],
+      "rules": {
+        "eslint/no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": [
+                  "@prisma/*",
+                  "@prisma/**",
+                  "@prisma-keystore/*",
+                  "@prisma-keystore/**",
+                  "prisma-field-encryption",
+                  "prisma-field-encryption/**",
+                  "**/prisma/prisma.service*"
+                ],
+                "message": "Persistence is an adapter: only *.prisma.ts, src/prisma/**, *.module.ts and the listed infrastructure files may touch Prisma. Depend on a repository port instead (ADR-0102)."
+              },
+              {
+                "group": [
+                  "@langchain/*",
+                  "@langchain/**"
+                ],
+                "message": "LangChain lives behind the KI ports in src/ki/** (ADR-0038, ADR-0102). Use SingleShotModel or the advisor engine port."
+              },
+              {
+                "group": [
+                  "nodemailer",
+                  "nodemailer/**"
+                ],
+                "message": "Mail goes through the EmailSender port; nodemailer lives in auth/smtp-email-sender.ts only (ADR-0102)."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": [
+        "apps/api/src/auth/smtp-email-sender.ts"
+      ],
+      "rules": {
+        "eslint/no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": [
+                  "@prisma/*",
+                  "@prisma/**",
+                  "@prisma-keystore/*",
+                  "@prisma-keystore/**",
+                  "prisma-field-encryption",
+                  "prisma-field-encryption/**",
+                  "**/prisma/prisma.service*"
+                ],
+                "message": "Persistence is an adapter: only *.prisma.ts, src/prisma/**, *.module.ts and the listed infrastructure files may touch Prisma. Depend on a repository port instead (ADR-0102)."
+              },
+              {
+                "group": [
+                  "@langchain/*",
+                  "@langchain/**"
+                ],
+                "message": "LangChain lives behind the KI ports in src/ki/** (ADR-0038, ADR-0102). Use SingleShotModel or the advisor engine port."
+              },
+              {
+                "group": [
+                  "stripe",
+                  "stripe/**"
+                ],
+                "message": "Stripe is reached only through PaymentProvider (unlock/stripe-payment-provider.ts, ADR-0102)."
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
 }
