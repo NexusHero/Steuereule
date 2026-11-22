@@ -339,7 +339,9 @@ describe('KinderScreen', () => {
 
     expect((await screen.findByTestId('kind-speichern-fehler')).textContent).toContain('nicht gespeichert')
     expect((screen.getByLabelText('Vorname') as HTMLInputElement).value).toBe('Lina')
-    // A second try that succeeds takes the message away again.
+    // A second try that succeeds takes the message away again. The button is disabled while the first save
+    // is still being wrapped up; a click before it is enabled again does nothing (slow runners hit that).
+    await waitFor(() => expect(screen.getByTestId('kind-speichern').textContent).toBe('Kind speichern'))
     onSave.mockResolvedValueOnce(undefined)
     fireEvent.click(screen.getByTestId('kind-speichern'))
     await waitFor(() => expect(screen.queryByTestId('kind-speichern-fehler')).toBeNull())
