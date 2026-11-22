@@ -352,5 +352,7 @@ Servern aus, nicht vom Gerät des Nutzers. Alle seine Nutzer teilen sich damit w
 1. **Limit:** höchstens 100 Registrierungen je 10 Minuten und Adresse (`OAUTH_REGISTRATION_RATE_LIMIT`).
 2. Das bleibt vertretbar, weil eine Registrierung nichts gewährt (Amendment 5 Nr. 1) und ein nie
    freigegebener Client nach 7 Tagen gelöscht wird (Amendment 5 Nr. 3). Das Limit schützt nur die Tabelle.
+   Damit das Aufräumen Schritt hält, prüft ein Lauf bis zu 20 Seiten zu 200 Clients (4.000 statt 200), die
+   ältesten zuerst, und überspringt behaltene Clients, statt an ihnen hängen zu bleiben.
 3. Offen: Das Limit zählt je Prozess im Speicher, wie die übrigen better-auth-Limits; mit mehreren
    Instanzen vervielfacht es sich. Ein gemeinsamer Speicher (Redis) kommt mit #292.
