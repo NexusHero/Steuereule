@@ -65,7 +65,7 @@ import { isIssueOpen } from './lib/github.mjs'
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const REPO_ROOT = path.resolve(__dirname, '..', '..')
 const REGISTER_PATH = path.join(REPO_ROOT, 'docs/requirements/register.md')
-const CI_YML_PATH = path.join(REPO_ROOT, '.github/workflows/ci.yml')
+const WORKFLOWS_DIR = path.join(REPO_ROOT, '.github/workflows')
 
 const TEST_FILE_RE = /\.test\.tsx?$/
 const E2E_MJS_RE = /^e2e\/.*\.mjs$/
@@ -124,7 +124,12 @@ async function main() {
   }
 
   // --- Check 2: every cited, existing test file is actually run by a CI job ---------------
-  const ciYml = fs.readFileSync(CI_YML_PATH, 'utf8')
+  // The pipelines are split over several workflow files (quality, security, build & e2e, load): a step in any of them counts.
+  const ciYml = fs
+    .readdirSync(WORKFLOWS_DIR)
+    .filter((name) => name.endsWith('.yml'))
+    .map((name) => fs.readFileSync(path.join(WORKFLOWS_DIR, name), 'utf8'))
+    .join('\n')
   const runsPlainTest = /\bpnpm\s+-r\s+test\b/.test(ciYml)
   const runsIntegrationTest = /test:integration\b/.test(ciYml)
   // Every apps/* and packages/* workspace with its own vitest.config.ts, discovered rather
@@ -152,8 +157,8 @@ async function main() {
   function isRunByCI(filePath) {
     if (E2E_MJS_RE.test(filePath)) {
       return ciYml.includes(filePath)
-        ? { run: true, reason: 'e2e step in ci.yml' }
-        : { run: false, reason: 'no ci.yml step invokes this e2e script' }
+        ? { run: true, reason: 'e2e step in a workflow' }
+        : { run: false, reason: 'no workflow step invokes this e2e script' }
     }
     if (!TEST_FILE_RE.test(filePath)) return { run: true, reason: 'not a test file — check 2 does not apply' }
 

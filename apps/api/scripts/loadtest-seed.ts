@@ -17,9 +17,9 @@ const RECEIPTS_PER_USER = 20
 const MESSAGES_PER_USER = 300
 const KINDS = ['Lohnausweis', 'Saeule3a', 'Krankenkasse', 'Steuerbescheid', 'Sonstiges', null]
 
-const action = (n: number, withReceipt: boolean) => ({
+const action = (n: number, receiptId: string | null) => ({
   actionId: `a${n}`,
-  ...(withReceipt ? { receiptId: `r${n % 40}` } : {}),
+  ...(receiptId ? { receiptId } : {}),
   status: 'pending',
   screen: 'interview',
   field: 'spenden-betrag',
@@ -35,11 +35,11 @@ const action = (n: number, withReceipt: boolean) => ({
 })
 
 /** Every second message is an assistant turn; 5 % of those carry receipt drafts, 40 % an open proposal. */
-function metaOf(n: number): string | null {
+function metaOf(n: number, receiptIds: readonly string[]): string | null {
   if (n % 2 === 1) return null
   const share = (n / 2) % 100
-  if (share < 5) return JSON.stringify({ actions: [action(n, true), action(n + 1, true)] })
-  if (share < 45) return JSON.stringify({ actions: [action(n, false)], text: 'y'.repeat(800) })
+  if (share < 5) return JSON.stringify({ actions: [action(n, receiptIds[n % receiptIds.length] ?? null), action(n + 1, receiptIds[(n + 1) % receiptIds.length] ?? null)] })
+  if (share < 45) return JSON.stringify({ actions: [action(n, null)], text: 'y'.repeat(800) })
   return null
 }
 
@@ -56,8 +56,11 @@ async function main(): Promise<void> {
     const session = await ctx.internalAdapter.createSession(user.id)
     const signature = createHmac('sha256', ctx.secret).update(session.token).digest('base64')
     cookies.push(`${bundle.sessionCookieName}=${encodeURIComponent(`${session.token}.${signature}`)}`)
+    // The drafts in the chat metas name these receipts, so the ids are fixed up front.
+    const receiptIds = Array.from({ length: RECEIPTS_PER_USER }, () => randomUUID())
     await prisma.receipt.createMany({
-      data: Array.from({ length: RECEIPTS_PER_USER }, (_, n) => ({
+      data: receiptIds.map((id, n) => ({
+        id,
         userId: user.id,
         fileName: `beleg-${n}.pdf`,
         kind: KINDS[n % KINDS.length] ?? null,
@@ -65,14 +68,17 @@ async function main(): Promise<void> {
         createdAt: new Date(Date.now() - n * 3_600_000),
       })),
     })
+    // The session endpoint reads the history of a conversation, so the messages belong to one.
+    const conversation = await prisma.advisorConversation.create({ data: { userId: user.id, taxYear: TAX_YEAR }, select: { id: true } })
     await prisma.advisorChatMessage.createMany({
       data: Array.from({ length: MESSAGES_PER_USER }, (_, n) => ({
         userId: user.id,
+        conversationId: conversation.id,
         taxYear: TAX_YEAR,
         role: n % 2 === 0 ? 'assistant' : 'user',
         content: 'Hallo '.repeat(60),
         status: 'complete',
-        metaJson: metaOf(n),
+        metaJson: metaOf(n, receiptIds),
         createdAt: new Date(Date.now() - (MESSAGES_PER_USER - n) * 60_000),
       })),
     })
