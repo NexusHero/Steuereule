@@ -201,6 +201,25 @@ describe('a paid-out daily benefit named in the remarks (ADR-0093, real-data run
     expect(await kit.chRepo.findForUserAndYear(USER, YEAR)).toBeNull()
   })
 
+  it('recommends the deduction when Ziffer 9 fits the wage without the benefit, and warns on the other path', async () => {
+    const { strategy } = await setUp()
+    // 100.000 − 20.000 benefit = 80.000 AHV wage → 5.120 CHF (5,3 % + 1,1 %): the benefit is not AHV wage.
+    const text = withRemark("KK-Taggeld Verrechnung: 20'000 CHF").replace(/6\.900$/m, '5.120')
+    const res = await parse(strategy, text)
+    const paths = res.assistantMessage?.meta?.twoPaths
+    expect(paths?.maxPath.label).toContain('(empfohlen)')
+    expect(paths?.maxPath.reason).toContain('Ziffer 9')
+    expect(paths?.safePath.reason).toContain('widerspricht dem Lohnausweis')
+    expect(res.assistantMessage?.content).toContain('Empfehlung: abziehen (Krankentaggeldversicherung)')
+  })
+
+  it('recommends nothing when Ziffer 9 cannot tell the source apart', async () => {
+    const { strategy } = await setUp()
+    const res = await parse(strategy, withRemark("KK-Taggeld Verrechnung: 12'345 CHF"))
+    expect(res.assistantMessage?.meta?.twoPaths?.maxPath.label).not.toContain('empfohlen')
+    expect(res.assistantMessage?.content).not.toContain('Empfehlung')
+  })
+
   it('asks with the kind only when the remark names no amount', async () => {
     const { strategy } = await setUp()
     const res = await parse(strategy, withRemark('Krankentaggeld im Lohn verrechnet'))

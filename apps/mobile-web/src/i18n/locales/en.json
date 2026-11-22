@@ -2310,6 +2310,8 @@
           "mutterschaftIv": "Tax-free. The app does not fill the Anlage N-Gre’s own line for maternity and disability benefits yet: the amount is deducted like a daily sickness benefit for now, without the progression clause."
         },
         "lohnfortzahlung": "Continued pay by the employer is wage: nothing is deducted.",
+        "empfehlung": "Recommended: daily sickness insurance, so deduct it. The AHV contributions in box 9 fit the wage without the benefit, which points to an insurance benefit, and that is tax-free. The choice is yours.",
+        "widerspruch": "This contradicts the wage statement: the AHV contributions in box 9 fit the wage without the benefit of {{betrag}}, which points to an insurance benefit. Choose continued pay only if the benefit statement or the monthly payslips show it (AHV-subject wage of the employer); otherwise tax-free money is taxed.",
         "ahv": {
           "fits_without": "Plausibility hint (not a decision): the contributions in Ziffer 9 ({{ziffer9}}) fit the gross wage without the daily benefit (AHV/IV/EO and ALV about {{ohne}}) better than with it (about {{mit}}), by {{abstand}}. That points to an insurance benefit, which is no AHV wage. Ziffer 9 can also hold the NBU premium; the benefit statement decides.",
           "fits_with": "Plausibility hint (not a decision): the contributions in Ziffer 9 ({{ziffer9}}) fit the gross wage with the daily benefit (AHV/IV/EO and ALV about {{mit}}) better than without it (about {{ohne}}), by {{abstand}}. That points to the money being paid as wage, i.e. continued pay by the employer. Ziffer 9 can also hold the NBU premium; the benefit statement decides.",

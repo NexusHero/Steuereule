@@ -8,7 +8,9 @@ import {
   dailyBenefitAmountField,
   dailyBenefitEntry,
   formatChf,
+  goesAgainstRecommendation,
   isDailyBenefitSource,
+  recommendedDailyBenefitSource,
   type DailyBenefitAmountField,
   type DailyBenefitSource,
 } from '@steuereule/core'
@@ -21,7 +23,9 @@ const AMOUNT_FIELDS: readonly DailyBenefitAmountField[] = ['steuerfreiesKrankent
 /**
  * „Woher kam das Taggeld im Bruttolohn?“ (ADR-0072, Punkt 5): the answer first, then only the amount field
  * that fits it — the insurer's benefit and the accident benefit are deducted, the employer's continued pay
- * is wage. Beside it the AHV hint from Ziffer 8 and 9, never the decision.
+ * is wage. Beside it the AHV hint from Ziffer 8 and 9, never the decision. A sickness amount recorded and
+ * Ziffer 9 fitting the wage without it make the insurance the recommendation; keeping it as wage then
+ * shows the contradiction (the user still decides).
  */
 export function DailyBenefitQuestion({
   nGre,
@@ -46,6 +50,9 @@ export function DailyBenefitQuestion({
     steuerfreiesUnfalltaggeldChf: nGre.steuerfreiesUnfalltaggeldChf ?? null,
   })
 
+  // The last sickness amount recorded: it stays the basis of the check after an answer that clears the field.
+  const [lastSicknessChf, setLastSicknessChf] = useState<number | null>((nGre.steuerfreiesKrankentaggeldChf ?? 0) > 0 ? nGre.steuerfreiesKrankentaggeldChf! : null)
+
   const choose = (next: DailyBenefitSource) => {
     const field = dailyBenefitAmountField(next)
     const entry = dailyBenefitEntry(next, field === null ? null : amounts[field])
@@ -62,6 +69,13 @@ export function DailyBenefitQuestion({
     candidate !== null && candidate > 0 && grossWageChf !== null && ahvContributionsChf !== null
       ? ahvContributionFit({ taxYear, grossWageChf, ahvContributionsChf, candidateChf: candidate, familyAllowancesChf: nGre.familienzulagenImBruttolohn === true ? (nGre.familienzulagenChf ?? 0) : 0 })
       : null
+
+  const sicknessFit =
+    lastSicknessChf !== null && grossWageChf !== null && ahvContributionsChf !== null
+      ? ahvContributionFit({ taxYear, grossWageChf, ahvContributionsChf, candidateChf: lastSicknessChf, familyAllowancesChf: nGre.familienzulagenImBruttolohn === true ? (nGre.familienzulagenChf ?? 0) : 0 })
+      : null
+  const recommended = recommendedDailyBenefitSource('sickness', sicknessFit)
+  const contradiction = source !== null && goesAgainstRecommendation(source, recommended)
 
   return (
     <>
@@ -85,6 +99,16 @@ export function DailyBenefitQuestion({
           })}
         </Text>
       ) : null}
+      {recommended !== null && source === null ? (
+        <Text style={help} testID="ch-ngre-taggeld-empfehlung">
+          {tr('grenzgaenger.nGre.taggeld.empfehlung')}
+        </Text>
+      ) : null}
+      {contradiction ? (
+        <Text style={{ ...help, color: t.color.warn }} testID="ch-ngre-taggeld-widerspruch">
+          {tr('grenzgaenger.nGre.taggeld.widerspruch', { betrag: formatChf(lastSicknessChf ?? 0) })}
+        </Text>
+      ) : null}
       {source === 'lohnfortzahlung' ? <Text style={help}>{tr('grenzgaenger.nGre.taggeld.lohnfortzahlung')}</Text> : null}
       {shown.map((field) => (
         <View key={`${source ?? 'offen'}-${field}`}>
@@ -96,6 +120,7 @@ export function DailyBenefitQuestion({
             onCommit={(text) => {
               const value = text === '' ? null : Number(text)
               setAmounts((previous) => ({ ...previous, [field]: value }))
+              if (field === 'steuerfreiesKrankentaggeldChf' && value !== null && value > 0) setLastSicknessChf(value)
               onSet({ [field]: value })
             }}
           />
