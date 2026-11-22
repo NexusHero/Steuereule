@@ -161,8 +161,19 @@ export class PrismaAdvisorRepository implements AdvisorRepository {
   }
 
   async defaultConversation(userId: string, taxYear: number): Promise<AdvisorConversationRecord> {
-    const latest = await this.prisma.advisorConversation.findFirst({ where: { userId, taxYear }, orderBy: { lastUsedAt: 'desc' } })
-    return latest ?? this.createConversation(userId, taxYear)
+    const latest = await this.latestConversation(this.prisma, userId, taxYear)
+    if (latest) return latest
+    // A new user's owl asks for the year's conversation from several requests at once (session, list, the first
+    // question). Without a lock each one found none and created its own, and the answer landed in a conversation
+    // the screen did not show. The lock per user and year lets one create it; the others wait and read it.
+    return this.prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`advisor-conversation:${userId}:${taxYear}`}, 0))`
+      return (await this.latestConversation(tx, userId, taxYear)) ?? tx.advisorConversation.create({ data: { userId, taxYear, title: null } })
+    })
+  }
+
+  private latestConversation(client: Pick<EncryptedPrismaClient, 'advisorConversation'>, userId: string, taxYear: number): Promise<AdvisorConversationRecord | null> {
+    return client.advisorConversation.findFirst({ where: { userId, taxYear }, orderBy: { lastUsedAt: 'desc' } })
   }
 
   async updateConversation(id: string, userId: string, change: AdvisorConversationChange): Promise<AdvisorConversationRecord | null> {
