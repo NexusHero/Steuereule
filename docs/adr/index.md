@@ -120,7 +120,7 @@ boot-ordering invariant are detailed in [`docs/arc42/README.md`](../arc42/README
 | 0099 | Verlauf: Hinweise, Lebensereignisse und Gruppen | Accepted |
 | 0100 | Eule: Wächter neben dem Modell, Zeiten je Runde, Maske vor der Frage | Accepted |
 | 0101 | Selbstständige: EÜR, Buchhaltung, Bilanz, Umsatz- und Gewerbesteuer | Accepted |
-| 0102 | Ports & Adapters: zwei Architekturtests erzwingen die Grenzen in `apps/api` und im Kern | Accepted |
+| 0102 | Ports & Adapters: two architecture tests enforce the boundaries in `apps/api` and in the core | Accepted |
 
 See also the [Tech Radar](./tech-radar.md).
 

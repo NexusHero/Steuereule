@@ -1,109 +1,111 @@
-# SteuerEule — Architektur
+# SteuerEule — Architecture
 
 | | |
 | :--- | :--- |
-| **Stand** | 2026-11-22 |
-| **Gliederung** | arc42, zwölf Abschnitte |
-| **Geltungsbereich** | das Monorepo: `apps/api`, `apps/mobile-web`, `packages/*`, `infra/gcp` |
-| **Quelle der Entscheidungen** | [`docs/adr/`](adr/index.md). Dieses Dokument zeigt die Struktur, die ADRs begründen sie. |
+| **As of** | 2026-11-22 |
+| **Structure** | arc42, twelve sections |
+| **Scope** | the monorepo: `apps/api`, `apps/mobile-web`, `packages/*`, `infra/gcp` |
+| **Source of decisions** | [`docs/adr/`](adr/index.md). This document shows the structure; the ADRs justify it. |
 
-**Wie dieses Dokument wahr bleibt.** Eine Regel nennt den Test, der sie prüft. Eine Zahl nennt ihr Datum und woher sie stammt. Was geplant, aber nicht gebaut ist, steht in §11 und nirgends sonst. Namen von Dateien, Klassen und Routen sind gegen den Code geprüft. Wer hier einen Namen findet, den es nicht gibt, hat einen Fehler gefunden.
+**How this document stays true.** A rule names the test that checks it. A number carries its date and says where it comes from. What is planned but not built is listed in §11 and nowhere else. Names of files, classes and routes have been checked against the code. If you find a name here that does not exist, you have found a bug.
 
-**Verwandte Dokumente.** [`architecture-subsystems.md`](architecture-subsystems.md) zeigt einzelne Backend-Module von innen. [`arc42/README.md`](arc42/README.md) beschreibt Werkzeugkette und Boot-Reihenfolge im Detail. [`sre/reliability-spec.md`](sre/reliability-spec.md) nennt die Zielwerte für den Betrieb.
+**Related documents.** [`architecture-subsystems.md`](architecture-subsystems.md) shows individual backend modules from the inside. [`arc42/README.md`](arc42/README.md) covers the toolchain and the boot order in detail. [`sre/reliability-spec.md`](sre/reliability-spec.md) states the operational targets.
+
+**A note on language.** The product serves German taxpayers, so routes, form names and some domain terms are German. Each is explained on first use and in the glossary (§12).
 
 ---
 
-# 1. Einführung und Ziele
+# 1. Introduction and goals
 
-## 1.1 Aufgabe
+## 1.1 Purpose
 
-SteuerEule führt Privatpersonen in Deutschland durch ihre Einkommensteuererklärung. Die App fragt in einem Interview, rechnet die voraussichtliche Erstattung als Spanne, liest Belege, und druckt die Erklärung auf die amtlichen Vordrucke. Eine KI-Assistentin, die Eule, berät im Chat und bereitet Einträge als Entwürfe vor.
+SteuerEule guides private individuals in Germany through their income tax return. The app asks questions in an interview, computes the expected refund as a range, reads receipts, and prints the return onto the official tax forms. An AI assistant, the owl (*Eule*), advises in a chat and prepares entries as drafts.
 
-Das tragende Prinzip ([ADR-0038](adr/0038-berechnungs-kern-ki-port.md)):
+The governing principle ([ADR-0038](adr/0038-berechnungs-kern-ki-port.md)):
 
-> **Der Kern rechnet, das Sprachmodell formuliert.** Jeder Steuerbetrag entsteht in reinen Funktionen von `@steuereule/core`. Ein Sprachmodell schlägt vor und erklärt. Es schreibt nie selbst in die Erklärung: Aus einem Vorschlag wird erst durch die Bestätigung des Nutzers ein Eintrag.
+> **The core computes, the language model phrases.** Every tax amount is produced by pure functions in `@steuereule/core`. A language model proposes and explains. It never writes to the return itself: a proposal becomes an entry only when the user confirms it.
 
-**Wer bedient wird**
+**Who is served**
 
-| Gruppe | Umfang | Entscheidung |
+| Group | Scope | Decision |
 | :--- | :--- | :--- |
-| Angestellte | Lohnsteuerbescheinigung, Arbeitsweg, Homeoffice, Sonderausgaben, haushaltsnahe Leistungen | [ADR-0041](adr/0041-lstb-angestellte-vertikale.md) |
-| Grenzgänger Schweiz | Lohnausweis, 60-Tage-Regel, Wechselkurse, Anlage N-Gre | [ADR-0042](adr/0042-grenzgaenger-ch-vertikale.md) |
-| Rentner | gesetzliche und private Renten | [ADR-0044](adr/0044-rentner-vertikale.md) |
-| Kapitalanleger, Vermieter | Depots, Günstigerprüfung, Mietobjekte mit AfA | [ADR-0048](adr/0048-kapital-vertikale.md), [ADR-0046](adr/0046-vermietung-vertikale.md) |
-| Ehepaare | eine gemeinsame Erklärung, Vergleich der Veranlagungsarten | [ADR-0054](adr/0054-zusammenveranlagung-eine-erklaerung.md), [ADR-0034](adr/0034-veranlagungsartenvergleich-returns-a-bounded-comparison.md) |
-| Selbstständige | EÜR, Buchhaltung, Bilanz, Umsatz- und Gewerbesteuer | [ADR-0101](adr/0101-selbststaendige.md) |
+| Employees | wage tax certificate (*Lohnsteuerbescheinigung*), commute, home office, special expenses, household services | [ADR-0041](adr/0041-lstb-angestellte-vertikale.md) |
+| Cross-border commuters to Switzerland | Swiss salary certificate, the 60-day rule, exchange rates, the form *Anlage N-Gre* | [ADR-0042](adr/0042-grenzgaenger-ch-vertikale.md) |
+| Pensioners | statutory and private pensions | [ADR-0044](adr/0044-rentner-vertikale.md) |
+| Investors, landlords | securities accounts, the most-favourable-taxation check, rental properties with depreciation | [ADR-0048](adr/0048-kapital-vertikale.md), [ADR-0046](adr/0046-vermietung-vertikale.md) |
+| Married couples | one joint return, comparison of filing types | [ADR-0054](adr/0054-zusammenveranlagung-eine-erklaerung.md), [ADR-0034](adr/0034-veranlagungsartenvergleich-returns-a-bounded-comparison.md) |
+| Self-employed | cash-basis accounting, bookkeeping, balance sheet, VAT and trade tax | [ADR-0101](adr/0101-selbststaendige.md) |
 
-**Abgabeweg.** Die Erklärung wird gedruckt und per Post abgegeben ([ADR-0050](adr/0050-papierweg-statt-elster-in-1-0.md)). Vordrucke liegen für die Steuerjahre 2022 bis 2025 vor, der Kern rechnet 2022 bis 2026. Für Selbstständige, die elektronisch abgeben müssen, gibt es Code für die Übermittlung über einen ERiC-Prozess (`apps/api/src/business/elster-transmission.ts`). Er braucht ein Zertifikat des Betreibers und ist in §11 als offen geführt.
+**How a return is filed.** The return is printed and sent by post ([ADR-0050](adr/0050-papierweg-statt-elster-in-1-0.md)). Official forms are available for tax years 2022 to 2025; the core computes 2022 to 2026. For self-employed users who must file electronically there is code that transmits through an ERiC process (`apps/api/src/business/elster-transmission.ts`). It needs an operator certificate and is listed as open in §11.
 
-## 1.2 Qualitätsziele
+## 1.2 Quality goals
 
-| # | Ziel | Was das konkret heißt | Wie es geprüft wird |
+| # | Goal | What that means | How it is checked |
 | :-: | :--- | :--- | :--- |
-| 1 | **Rechnerische Richtigkeit** | Tarif, Soli, Freibeträge und Fristen stimmen je Steuerjahr mit dem Gesetz überein. Kein geschätzter Betrag im Rechen- oder Druckpfad. | Unit-Tests des Kerns gegen gesetzliche Werte; Fuzzing über alle Interview-Pfade (`packages/core/src/interview/matrix-fuzzing.test.ts`) |
-| 2 | **Vertraulichkeit** | Als `@encrypted` markierte Felder stehen nur verschlüsselt in der Datenbank. Belegdateien sind je Nutzer verschlüsselt und lassen sich durch Löschen des Schlüssels vernichten. | Akzeptanztests gegen echtes PostgreSQL (`req-003-encryption-at-rest.test.ts`, `req-003-key-rotation.test.ts`); `account-deletion-coverage.test.ts` prüft, dass die Löschung jede Tabelle mit Nutzerbezug abdeckt |
-| 3 | **Drucktreue** | Jeder Wert steht im richtigen Kasten des amtlichen Vordrucks. Ein Wert, der nicht passt, bricht den Druck ab. | Vermessungs-Gates im CI-Workflow *Quality* (`scripts/vordrucke/vermessen.mjs --check`) |
-| 4 | **Nutzbar ohne Konto** | Ein Gast beantwortet die ersten Fragen und sieht das Cockpit. Beim Anlegen des Kontos wandern die Antworten mit. | Akzeptanztest `req-006-guest-upgrade.test.ts`, E2E-Szenario 23 |
-| 5 | **Änderbarkeit** | Datenbank und externe SDKs sind nur an benannten Stellen erreichbar. Neue Kopplung zwischen Modulen ist eine sichtbare Entscheidung. | zwei Architekturtests, §4.1.3 |
+| 1 | **Correct arithmetic** | Tariff, solidarity surcharge, allowances and deadlines match the law for each tax year. No estimated amount on the calculation or print path. | Unit tests of the core against statutory values; fuzzing across all interview paths (`packages/core/src/interview/matrix-fuzzing.test.ts`) |
+| 2 | **Confidentiality** | Fields marked `@encrypted` are stored only as ciphertext. Receipt files are encrypted per user and can be destroyed by deleting the key. | Acceptance tests against a real PostgreSQL (`req-003-encryption-at-rest.test.ts`, `req-003-key-rotation.test.ts`); `account-deletion-coverage.test.ts` checks that deletion covers every table that references a user |
+| 3 | **Print fidelity** | Every value sits in the right box of the official form. A value that does not fit aborts the print. | Measurement gates in the CI workflow *Quality* (`scripts/vordrucke/vermessen.mjs --check`) |
+| 4 | **Usable without an account** | A guest answers the first questions and sees the cockpit. On sign-up the answers move to the account. | Acceptance test `req-006-guest-upgrade.test.ts`, E2E scenario 23 |
+| 5 | **Changeability** | The database and external SDKs are reachable only from named places. New coupling between modules is a visible decision. | two architecture tests, §4.1.3 |
 
-## 1.3 Stakeholder
+## 1.3 Stakeholders
 
-| Wer | Erwartung |
+| Who | Expectation |
 | :--- | :--- |
-| Nutzer | eine richtige Erklärung, verständliche Fragen, Kontrolle über jeden Eintrag |
-| Product Owner | ein verkaufbares Produkt: bezahlt wird beim Ausdruck, je Steuerjahr |
-| Finanzamt | formrichtige Vordrucke mit lesbaren Werten |
-| Entwicklung und Betrieb | klare Grenzen, schnelle Tests, nachvollziehbare Entscheidungen |
+| Users | a correct return, questions they understand, control over every entry |
+| Product owner | a product that sells: payment is taken at print time, per tax year |
+| Tax office | formally correct forms with legible values |
+| Engineering and operations | clear boundaries, fast tests, traceable decisions |
 
 ---
 
-# 2. Randbedingungen
+# 2. Constraints
 
-## 2.1 Technisch
+## 2.1 Technical
 
-| Bereich | Festlegung | Quelle |
+| Area | Constraint | Source |
 | :--- | :--- | :--- |
-| Sprache | TypeScript 7, `strict`, `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes` | `tsconfig.base.json` |
-| Laufzeit | Node.js ≥ 22 (CI und Images: 24), pnpm 10 | `package.json` |
-| Monorepo | pnpm-Workspaces mit Turborepo | `pnpm-workspace.yaml`, `turbo.json` |
-| API | NestJS 11 auf Fastify 5 | `apps/api/package.json` |
-| Datenbank | PostgreSQL über Prisma 6, 58 Modelle | `apps/api/prisma/schema.prisma` |
-| Client | Expo 53 mit React Native Web; ausgeliefert wird die Web-App | `apps/mobile-web` |
-| Kern | keine npm-Laufzeitabhängigkeiten; drei Dateien nutzen `node:crypto` | `packages/core/package.json` |
-| Statische Prüfung | oxlint ([ADR-0019](adr/0019-oxlint-replaces-eslint.md)), `tsc --noEmit` | `.oxlintrc.json` |
+| Language | TypeScript 7, `strict`, `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes` | `tsconfig.base.json` |
+| Runtime | Node.js ≥ 22 (CI and images: 24), pnpm 10 | `package.json` |
+| Monorepo | pnpm workspaces with Turborepo | `pnpm-workspace.yaml`, `turbo.json` |
+| API | NestJS 11 on Fastify 5 | `apps/api/package.json` |
+| Database | PostgreSQL through Prisma 6, 58 models | `apps/api/prisma/schema.prisma` |
+| Client | Expo 53 with React Native Web; what ships is the web app | `apps/mobile-web` |
+| Core | no npm runtime dependencies; three files use `node:crypto` | `packages/core/package.json` |
+| Static analysis | oxlint ([ADR-0019](adr/0019-oxlint-replaces-eslint.md)), `tsc --noEmit` | `.oxlintrc.json` |
 
-## 2.2 Rechtlich
+## 2.2 Legal
 
-| Vorgabe | Folge für die Architektur |
+| Requirement | Consequence for the architecture |
 | :--- | :--- |
-| DSGVO Art. 9 | Die Religionszugehörigkeit wird nur mit eigener Einwilligung gespeichert. |
-| DSGVO Art. 15, 17, 20 | Export als JSON und PDF; Kontolöschung in einer Transaktion, das Zugriffsprotokoll wird dabei anonymisiert statt gelöscht ([ADR-0013](adr/0013-dsgvo-export-and-account-deletion.md)). |
-| BMF-Schreiben vom 12.08.2022 zu Internet-Vordrucken | Druck im Maßstab 1:1, serifenlose Schrift ab 10 pt, Formularschlüssel mit `NET`. |
-| § 356 Abs. 5 BGB | Der Checkout holt die Zustimmung zum vorzeitigen Erlöschen des Widerrufsrechts ein. |
-| Steuerberatungsgesetz | Die App ist ein Werkzeug und leistet keine Steuerberatung im Sinne des Gesetzes. |
+| GDPR Art. 9 | Religious affiliation is stored only with separate consent. |
+| GDPR Art. 15, 17, 20 | Export as JSON and PDF; account deletion in one transaction, in which the access log is anonymised rather than deleted ([ADR-0013](adr/0013-dsgvo-export-and-account-deletion.md)). |
+| Federal Ministry of Finance letter of 2022-08-12 on internet forms | Printed at 1:1 scale, sans-serif type of at least 10 pt, form keys ending in `NET`. |
+| § 356 (5) BGB (German Civil Code) | The checkout collects consent to the early expiry of the right of withdrawal. |
+| Tax Advisory Act (*Steuerberatungsgesetz*) | The app is a tool and does not provide tax advice within the meaning of the act. |
 
 ---
 
-# 3. Kontext und Abgrenzung
+# 3. Context and scope
 
 ```mermaid
 flowchart LR
-  User["Nutzer\n(Browser)"]
-  Assistant["Eigener KI-Assistent des Nutzers\n(MCP-Client)"]
+  User["User\n(browser)"]
+  Assistant["The user's own AI assistant\n(MCP client)"]
 
   subgraph System ["SteuerEule"]
-    Web["Web-App\napps/mobile-web"]
+    Web["Web app\napps/mobile-web"]
     Api["API\napps/api"]
   end
 
   Stripe["Stripe"]
-  Mail["SMTP oder Brevo"]
-  LLM["Sprachmodell-Anbieter\nAnthropic · OpenAI · Google"]
+  Mail["SMTP or Brevo"]
+  LLM["Language model providers\nAnthropic · OpenAI · Google"]
   Google["Google OAuth"]
   HIBP["Have I Been Pwned"]
   Bfinv["formulare-bfinv.de"]
-  Eric["ERiC-Prozess\n(ELSTER)"]
-  Finanzamt["Finanzamt"]
+  Eric["ERiC process\n(ELSTER)"]
+  TaxOffice["Tax office"]
 
   User --> Web --> Api
   Assistant -->|"MCP, OAuth 2.1"| Api
@@ -113,47 +115,47 @@ flowchart LR
   Api --> Google
   Api --> HIBP
   Api -.-> Eric
-  Bfinv -.->|"Vordrucke, zur Build-Zeit"| Api
-  User -.->|"Ausdruck per Post"| Finanzamt
+  Bfinv -.->|"official forms, at build time"| Api
+  User -.->|"printout by post"| TaxOffice
 ```
 
-| Nachbarsystem | Wozu | Adapter im Code | Was die API dorthin gibt |
+| Neighbour | Purpose | Adapter in the code | What the API sends there |
 | :--- | :--- | :--- | :--- |
-| Stripe | Bezahlung des Ausdrucks, Webhook | `unlock/stripe-payment-provider.ts` hinter `PaymentProvider` | Nutzer-ID, Steuerjahr, Preis-ID |
-| SMTP, Brevo | Bestätigungs- und Sicherheitsmails | `auth/smtp-email-sender.ts`, `auth/brevo-email-sender.ts` hinter `EmailSender`; ohne Konfiguration ein Log-Ersatz | E-Mail-Adresse, Mailtext |
-| Sprachmodell-Anbieter | Eule-Chat, Lesehilfe für Belege, Themenwächter | `ki/chat-model.factory.ts` (LangChain) | Chatverlauf und Falldaten; Belegtext nach Entfernen von Namen, Adressen und Kennungen. Persönliche Daten nur mit Einwilligung ([ADR-0091](adr/0091-eule-persoenliche-daten-mit-einwilligung.md)). |
-| Google OAuth | Anmeldung mit Google-Konto | `auth/better-auth.ts` | OAuth-Protokolldaten |
-| Have I Been Pwned | Prüfung neuer Passwörter auf bekannte Lecks | better-auth-Plugin, `auth/breach-check.ts` | einen Teil des Passwort-Hashes (k-Anonymität), nie das Passwort |
-| MCP-Clients | Der Assistent des Nutzers liest die Erklärung und füllt Entwürfe | `mcp/` als eingehender Adapter ([ADR-0052](adr/0052-agenten-zugang-mcp.md)) | nur, was der Nutzer per OAuth-Scope freigegeben hat |
-| formulare-bfinv.de | Quelle der amtlichen Vordrucke | `scripts/vordrucke/download-vordrucke.mjs`, nicht zur Laufzeit | nichts |
-| ERiC | elektronische Übermittlung für Selbstständige | `business/elster-transmission.ts` | die Übermittlungsdaten; siehe §11 |
+| Stripe | payment for the printout, webhook | `unlock/stripe-payment-provider.ts` behind `PaymentProvider` | user id, tax year, price id |
+| SMTP, Brevo | confirmation and security mail | `auth/smtp-email-sender.ts`, `auth/brevo-email-sender.ts` behind `EmailSender`; without configuration a logging stand-in | e-mail address, mail text |
+| Language model providers | the owl's chat, reading aid for receipts, topic guard | `ki/chat-model.factory.ts` (LangChain) | chat history and case data; receipt text after names, addresses and identifiers have been removed. Personal data only with consent ([ADR-0091](adr/0091-eule-persoenliche-daten-mit-einwilligung.md)). |
+| Google OAuth | sign-in with a Google account | `auth/better-auth.ts` | OAuth protocol data |
+| Have I Been Pwned | checks new passwords against known breaches | better-auth plugin, `auth/breach-check.ts` | part of the password hash (k-anonymity), never the password |
+| MCP clients | the user's assistant reads the return and fills drafts | `mcp/` as a driving adapter ([ADR-0052](adr/0052-agenten-zugang-mcp.md)) | only what the user released through an OAuth scope |
+| formulare-bfinv.de | source of the official forms | `scripts/vordrucke/download-vordrucke.mjs`, not at runtime | nothing |
+| ERiC | electronic transmission for the self-employed | `business/elster-transmission.ts` | the transmission data; see §11 |
 
 ---
 
-# 4. Lösungsstrategie
+# 4. Solution strategy
 
-1. **Ein reiner Rechenkern.** Steuerregeln sind Funktionen ohne Ein- und Ausgabe in `packages/core`. API und Web-App nutzen denselben Kern, die Regel existiert genau einmal.
-2. **Parameter je Steuerjahr.** Freibeträge, Pauschalen und Fristen stehen in `math/tax-parameters.ts`, Tarif- und Soli-Tabellen in `math/tarif.ts`. Einzelne Fachmodule tragen noch eigene Jahreskonstanten, siehe §11.
-3. **Ports & Adapters um den Kern.** Datenbank und externe SDKs sind nur an benannten Stellen erreichbar. §4.1 beschreibt das im Detail.
-4. **Entwurf vor Eintrag.** Was Eule, Beleg-Leser oder ein fremder Assistent vorschlagen, ist ein Entwurf mit berechneter Wirkung. Erst die Bestätigung schreibt ([ADR-0066](adr/0066-eule-feldkatalog-und-ein-schreibweg.md)).
-5. **Verschlüsselung am Rand der Persistenz.** Felder verschlüsselt der Prisma-Adapter, Belegdateien der Speicher-Adapter. Services sehen Klartext und wissen nichts vom Verfahren.
-6. **Amtliche Vordrucke als Daten.** 18 Vordrucke je Steuerjahr (2022 bis 2025) liegen unverändert im Repository, ihre Prüfsummen sind in `apps/api/src/printout/vordrucke-<jahr>.json` gepinnt.
+1. **A pure calculation core.** Tax rules are functions without input or output in `packages/core`. The API and the web app use the same core, so each rule exists exactly once.
+2. **Parameters per tax year.** Allowances, lump sums and deadlines are in `math/tax-parameters.ts`, the tariff and surcharge tables in `math/tarif.ts`. A few feature modules still carry their own per-year constants, see §11.
+3. **Ports & Adapters around the core.** The database and external SDKs are reachable only from named places. §4.1 describes this in detail.
+4. **Draft before entry.** Whatever the owl, a receipt reader or an external assistant proposes is a draft with a computed effect. Only confirmation writes ([ADR-0066](adr/0066-eule-feldkatalog-und-ein-schreibweg.md)).
+5. **Encryption at the edge of persistence.** The Prisma adapter encrypts fields, the storage adapter encrypts receipt files. Services see plaintext and know nothing of the mechanism.
+6. **Official forms as data.** 18 forms per tax year (2022 to 2025) are stored unmodified in the repository; their checksums are pinned in `apps/api/src/printout/vordrucke-<year>.json`.
 
-## 4.1 Architekturstil: Ports & Adapters
+## 4.1 Architecture style: Ports & Adapters
 
-![Ports & Adapters: der reine Kern in der Mitte, die Anwendungsservices darum, Adapter am Rand](../images/architecture-hexagon.svg)
+![Ports & Adapters: the pure core in the centre, the application services around it, adapters at the edge](../images/architecture-hexagon.svg)
 
-Drei Ringe und eine Regel: **Jede Abhängigkeit zeigt nach innen.** Der Kern weiß nichts von HTTP, Datenbank oder Sprachmodell. Die Anwendungsservices kennen den Kern und Ports. Ein SDK kennt nur die Datei, die dafür benannt ist.
+Three rings and one rule: **every dependency points inward.** The core knows nothing about HTTP, the database or a language model. The application services know the core and ports. An SDK is known only to the file named for it.
 
-### 4.1.1 Die drei Ringe
+### 4.1.1 The three rings
 
-| Ring | Wo | Darf abhängen von | Darf nicht abhängen von |
+| Ring | Where | May depend on | Must not depend on |
 | :--- | :--- | :--- | :--- |
-| **Kern** | `packages/core/src/{math,common,domains,engine,interview}` | sich selbst und `node:crypto` | npm-Paketen, `apps/*` |
-| **Anwendung** | `apps/api/src/<modul>/`: Services, Guards, Parse-Strategien und die Ports (`*.repository.ts`, `common/transaction-runner.ts`, `ki/single-shot-model.ts`, `unlock/payment-provider.ts`, `auth/email-sender.ts`) | Kern, Ports, NestJS | Datenbank-Client, externen SDKs |
-| **Adapter** | eingehend: `*.controller.ts`, `mcp/`; ausgehend: `*.prisma.ts`, `prisma/`, die LangChain-Dateien in `ki/`, `unlock/stripe-payment-provider.ts`, `auth/smtp-email-sender.ts`, `account/export/pdf-renderer.playwright.ts`, `receipt/storage/postgres-bytea-storage.adapter.ts` | Ports, Kern, ihrem eigenen SDK | den SDKs anderer Adapter |
+| **Core** | `packages/core/src/{math,common,domains,engine,interview}` | itself and `node:crypto` | npm packages, `apps/*` |
+| **Application** | `apps/api/src/<module>/`: services, guards, parse strategies and the ports (`*.repository.ts`, `common/transaction-runner.ts`, `ki/single-shot-model.ts`, `unlock/payment-provider.ts`, `auth/email-sender.ts`) | core, ports, NestJS | the database client, external SDKs |
+| **Adapters** | driving: `*.controller.ts`, `mcp/`; driven: `*.prisma.ts`, `prisma/`, the LangChain files in `ki/`, `unlock/stripe-payment-provider.ts`, `auth/smtp-email-sender.ts`, `account/export/pdf-renderer.playwright.ts`, `receipt/storage/postgres-bytea-storage.adapter.ts` | ports, core, their own SDK | the SDKs of other adapters |
 
-Die Nest-Module (`*.module.ts`) sind der **Composition Root**. Nur dort wird ein Port an einen Adapter gebunden:
+The Nest modules (`*.module.ts`) are the **composition root**. Only there is a port bound to an adapter:
 
 ```ts
 // apps/api/src/receipt/receipt-storage.module.ts
@@ -162,85 +164,85 @@ Die Nest-Module (`*.module.ts`) sind der **Composition Root**. Nur dort wird ein
 ```
 
 ```ts
-// ein Service sieht nur das Interface
+// a service sees only the interface
 constructor(@Inject(RECEIPT_REPOSITORY) private readonly receipts: ReceiptRepository) {}
 ```
 
-### 4.1.2 Die wichtigsten Ports
+### 4.1.2 The main ports
 
-| Fähigkeit | Port · DI-Token | Adapter in Produktion | Ersatz in Tests |
+| Capability | Port · DI token | Adapter in production | Stand-in for tests |
 | :--- | :--- | :--- | :--- |
-| Persistenz je Fachmodul (33 Repositories, Stand 2026-11-22) | z. B. `ReceiptRepository` · `RECEIPT_REPOSITORY` | `PrismaReceiptRepository` in `*.repository.prisma.ts` | `apps/api/test/fakes/fake-*.repository.ts` |
-| Transaktion über mehrere Repositories | `TransactionRunner` · `TRANSACTION_RUNNER` | `PrismaTransactionRunner` | `passThroughTransactionRunner` |
-| Beratungsrunde der Eule | `AdvisorEnginePort` (im Kern) · `ADVISOR_ENGINE` | `LangGraphAdvisorEngine` | `FakeKiChatModel`, `test/fakes/scripted-model.ts` |
-| Einzelner Modellaufruf | `SingleShotModel` · `SINGLE_SHOT_MODEL_FACTORY` | `ki/langchain-single-shot.adapter.ts` | `noSingleShotModel` |
-| Fachliche KI-Fähigkeiten | `KiPort` (im Kern) · `KI_PORT` | `RagKiAdapter` | |
-| Zahlung | `PaymentProvider` · `PAYMENT_PROVIDER` | `StripePaymentProvider` | `FakeProvider` in `unlock.service.test.ts` |
-| E-Mail | `EmailSender` · `EMAIL_SENDER` | `SmtpEmailSender`, `BrevoEmailSender` | `LoggingEmailSender` |
-| Belegdateien | `StoragePort` · `STORAGE_PORT` | `PostgresByteaStorageAdapter` | In-Memory-Adapter der Beleg-Tests |
-| PDF des DSGVO-Exports | `PdfRenderer` · `PDF_RENDERER` | `PlaywrightPdfRenderer` | |
-| Assistenten-Token prüfen | `BearerTokenRepository` · `BEARER_TOKEN_REPOSITORY` | `PrismaBearerTokenRepository` | Fake im Guard-Test |
+| Persistence per feature module (33 repositories as of 2026-11-22) | e.g. `ReceiptRepository` · `RECEIPT_REPOSITORY` | `PrismaReceiptRepository` in `*.repository.prisma.ts` | `apps/api/test/fakes/fake-*.repository.ts` |
+| A transaction across repositories | `TransactionRunner` · `TRANSACTION_RUNNER` | `PrismaTransactionRunner` | `passThroughTransactionRunner` |
+| The owl's advisory turn | `AdvisorEnginePort` (in the core) · `ADVISOR_ENGINE` | `LangGraphAdvisorEngine` | `FakeKiChatModel`, `test/fakes/scripted-model.ts` |
+| A single model call | `SingleShotModel` · `SINGLE_SHOT_MODEL_FACTORY` | `ki/langchain-single-shot.adapter.ts` | `noSingleShotModel` |
+| Domain-level AI capabilities | `KiPort` (in the core) · `KI_PORT` | `RagKiAdapter` | |
+| Payment | `PaymentProvider` · `PAYMENT_PROVIDER` | `StripePaymentProvider` | `FakeProvider` in `unlock.service.test.ts` |
+| E-mail | `EmailSender` · `EMAIL_SENDER` | `SmtpEmailSender`, `BrevoEmailSender` | `LoggingEmailSender` |
+| Receipt files | `StoragePort` · `STORAGE_PORT` | `PostgresByteaStorageAdapter` | the in-memory adapter of the receipt tests |
+| PDF of the GDPR export | `PdfRenderer` · `PDF_RENDERER` | `PlaywrightPdfRenderer` | |
+| Checking assistant tokens | `BearerTokenRepository` · `BEARER_TOKEN_REPOSITORY` | `PrismaBearerTokenRepository` | a fake in the guard test |
 
-### 4.1.3 Was geprüft wird
+### 4.1.3 What is checked
 
-| Invariante | Test | Wie er beweist, dass er rot werden kann |
+| Invariant | Test | How it proves that it can fail |
 | :--- | :--- | :--- |
-| Datenbank-Client und elf weitere SDK-Gruppen werden nur von den dafür benannten Dateien importiert. Das schließt `src/prisma/**` und Adapterklassen `*.prisma.ts` ein. | `apps/api/test/architecture.test.ts` | zwölf konstruierte Verstöße im Test, je einer muss genau einen Befund liefern |
-| Eine namentliche Ausnahme, die ihr SDK nicht mehr importiert, ist ein Fehler. | derselbe Test | fand beim ersten Lauf eine überflüssige Ausnahme |
-| Die Menge der Importe *Modul → Modul* in `apps/api/src` entspricht der Baseline (352 Kanten zwischen 50 Ordnern, Stand 2026-11-22). | derselbe Test, Baseline `apps/api/test/architecture-module-edges.json` | Abweichung in beide Richtungen schlägt fehl |
-| Im Kern: `math` importiert nichts, `common` nur `math`, `engine` nie `interview`; keine neue Richtung zwischen den Ordnern. | `packages/core/src/architecture.test.ts` | am 2026-11-22 mit Probe-Dateien gebrochen ([ADR-0102](adr/0102-ports-und-adapter-per-architekturtest.md)) |
-| Im Kern: Die Dateien, die gegen die gewollte Ordnung importieren, sind genau die bekannten 23. | derselbe Test | wie oben |
-| Im Kern: kein Zyklus von Wert-Importen zwischen Dateien. | derselbe Test | wie oben |
-| Der Kern hat keine npm-Abhängigkeit. | pnpm löst nicht deklarierte Pakete nicht auf; `pnpm -r typecheck` | `packages/core/package.json` ohne `dependencies` |
+| The database client and eleven further SDK groups are imported only by the files named for them. That includes `src/prisma/**` and adapter classes in `*.prisma.ts`. | `apps/api/test/architecture.test.ts` | twelve constructed violations in the test; each must yield exactly one finding |
+| A named exception that no longer imports its SDK is an error. | the same test | found one superfluous exception on its first run |
+| The set of *module → module* imports in `apps/api/src` equals the baseline (352 edges between 50 folders as of 2026-11-22). | the same test, baseline `apps/api/test/architecture-module-edges.json` | a difference in either direction fails |
+| In the core: `math` imports nothing, `common` only `math`, `engine` never `interview`; no new direction between the folders. | `packages/core/src/architecture.test.ts` | broken with probe files on 2026-11-22 ([ADR-0102](adr/0102-ports-and-adapters-enforced-by-architecture-tests.md)) |
+| In the core: the files importing against the intended order are exactly the 23 known ones. | the same test | as above |
+| In the core: no cycle of value imports between files. | the same test | as above |
+| The core has no npm dependency. | pnpm does not resolve undeclared packages; `pnpm -r typecheck` | `packages/core/package.json` has no `dependencies` |
 
-Beide Tests laufen im CI-Job `test` des Workflows *Quality*.
+Both tests run in the CI job `test` of the workflow *Quality*.
 
-### 4.1.4 Bekannte Grenzen
+### 4.1.4 Known limits
 
-- **LangChain liegt in acht Dateien, nicht hinter einem Port.** Die Beratungsrunde der Eule ist in LangChain-Typen geschrieben: Prompt-Aufbau (`ki/advisor-prompt.ts`), Werkzeugrunde (`ki/advisor-tool-round.ts`, `ki/advisor-tools.ts`) und Werkzeugkontext (`ki/tools/tool-call-context.ts`). Ein Wechsel des Frameworks hieße, diese Dateien neu zu schreiben. Ein Wechsel des *Anbieters* ist dagegen Konfiguration.
-- **`mcp/` lädt LangChain mit**, weil es `TOOL_ARG_SCHEMAS` aus `ki/advisor-tools.ts` importiert.
-- **`pdf-lib` hat keinen Port.** Nur `printout/form-renderer.ts` importiert es, Services rufen `renderForms` aber direkt.
-- **better-auth ist auf zwei Module begrenzt, nicht auf eine Datei.** Zwölf Dateien in `auth/` und `device/` nutzen es, darunter der Guard für die JWT-Prüfung.
-- **Module koppeln stark.** 352 Kanten, 16 Modulpaare importieren sich gegenseitig. Die Ratsche verhindert Zuwachs, sie baut nichts ab.
-- **Der Kern hat zwei Zyklen auf Ordnerebene**, siehe §5.2.
-- **DI-Tokens sind nicht typgeprüft.** Eine fehlende Bindung fällt beim Start auf, eine falsche erst im Integrationstest.
-- **Importe werden per Muster gefunden.** Ein zur Laufzeit berechneter Importpfad bleibt unsichtbar.
+- **LangChain is in eight files, not behind a port.** The owl's advisory turn is written in LangChain types: prompt assembly (`ki/advisor-prompt.ts`), the tool round (`ki/advisor-tool-round.ts`, `ki/advisor-tools.ts`) and the tool context (`ki/tools/tool-call-context.ts`). Changing the framework would mean rewriting those files. Changing the *provider* is configuration.
+- **`mcp/` loads LangChain too**, because it imports `TOOL_ARG_SCHEMAS` from `ki/advisor-tools.ts`.
+- **`pdf-lib` has no port.** Only `printout/form-renderer.ts` imports it, but services call `renderForms` directly.
+- **better-auth is confined to two modules, not one file.** Twelve files in `auth/` and `device/` use it, among them the guard for JWT verification.
+- **Modules are tightly coupled.** 352 edges; 16 pairs of modules import each other. The ratchet prevents growth; it removes nothing.
+- **The core has two folder-level cycles**, see §5.2.
+- **DI tokens are not type-checked.** A missing binding fails at start-up, a wrong one only in an integration test.
+- **Imports are found by pattern.** An import path computed at runtime is invisible.
 
-### 4.1.5 Rezept: eine externe Abhängigkeit anbinden
+### 4.1.5 Recipe: connecting an external dependency
 
-1. **Port** im Modul, das ihn braucht: Interface, DI-Token, Ergebnistypen. Kein SDK-Import. Die Typen gehören dem Port.
-2. **Adapter** in einer eigenen Datei. Für Prisma ist die Endung `.prisma.ts` Pflicht.
-3. **Tabelle** in `apps/api/test/architecture.test.ts` um das SDK und die Adapterdatei ergänzen, dazu einen konstruierten Verstoß.
-4. **Bindung** im `*.module.ts`: `{ provide: FOO_PORT, useClass: TechFooAdapter }`.
-5. **Fake** unter `apps/api/test/fakes/` für Unit-Tests; ein Integrationstest prüft den echten Adapter.
+1. **Port** in the module that needs it: interface, DI token, result types. No SDK import. The types belong to the port.
+2. **Adapter** in a file of its own. For Prisma the suffix `.prisma.ts` is mandatory.
+3. **Table** in `apps/api/test/architecture.test.ts`: add the SDK and the adapter file, plus one constructed violation.
+4. **Binding** in the `*.module.ts`: `{ provide: FOO_PORT, useClass: TechFooAdapter }`.
+5. **Fake** under `apps/api/test/fakes/` for unit tests; an integration test covers the real adapter.
 
-### 4.1.6 Abwägung
+### 4.1.6 Trade-offs
 
-| Gewinn | Preis |
+| Gain | Cost |
 | :--- | :--- |
-| Der Kern ist ohne Infrastruktur testbar: 2067 Tests in 155 Dateien laufen ohne Datenbank (Stand 2026-11-22). | Je externer Abhängigkeit vier Artefakte: Interface, Token, Adapter, Fake. |
-| Drei Modell-Anbieter und ein Fake für CI hinter einer Factory. | Eine Indirektion beim Lesen: Was hinter `RECEIPT_REPOSITORY` steht, sagt erst das Modul. |
-| Feldverschlüsselung sitzt im Prisma-Adapter, Services sehen sie nicht. | DI-Tokens prüft der Compiler nicht. |
-| Ein Verstoß kostet einen roten Testlauf statt eines Architektur-Reviews. | Ausnahmelisten und die Kanten-Baseline müssen gepflegt werden. |
+| The core is testable without infrastructure: 2067 tests in 155 files run without a database (as of 2026-11-22). | Four artefacts per external dependency: interface, token, adapter, fake. |
+| Three model providers and a fake for CI behind one factory. | One indirection when reading: what stands behind `RECEIPT_REPOSITORY` is stated only in the module. |
+| Field encryption sits in the Prisma adapter; services do not see it. | The compiler does not check DI tokens. |
+| A violation costs a red test run instead of an architecture review. | Exception lists and the edge baseline have to be maintained. |
 
 ---
 
-# 5. Bausteinsicht
+# 5. Building block view
 
-## 5.1 Pakete
+## 5.1 Packages
 
 ```mermaid
 flowchart TD
   subgraph Clients
     Web["apps/mobile-web\nExpo, React Native Web"]
-    Site["apps/website\nöffentliche Website"]
+    Site["apps/website\npublic website"]
   end
   subgraph Shared ["packages"]
-    ApiClient["api-client\naus OpenAPI generiert (Orval)"]
-    Ui["ui · tokens\nDesign-System"]
-    Core["core\nSteuerregeln, Interview, Eule-Fachlogik"]
+    ApiClient["api-client\ngenerated from OpenAPI (Orval)"]
+    Ui["ui · tokens\ndesign system"]
+    Core["core\ntax rules, interview, the owl's domain logic"]
   end
-  Api["apps/api\nNestJS, 50 Module"]
+  Api["apps/api\nNestJS, 50 modules"]
   Db[("PostgreSQL")]
 
   Web --> ApiClient
@@ -251,32 +253,32 @@ flowchart TD
   Api --> Db
 ```
 
-| Paket | Aufgabe | Abhängigkeiten im Workspace |
+| Package | Responsibility | Workspace dependencies |
 | :--- | :--- | :--- |
-| `packages/core` | Steuerrecht als reine Funktionen, Interview-Regeln, Fachlogik der Eule | keine |
-| `packages/api-client` | typisierter Client, aus `apps/api/openapi.json` generiert | keine |
-| `packages/tokens`, `packages/ui` | Design-Tokens und Komponenten | `ui` nutzt `tokens` |
-| `apps/api` | REST-API unter `/v1`, MCP-Server unter `/mcp`, Authentifizierung, Persistenz | `core` |
-| `apps/mobile-web` | die Anwendung im Browser | `core`, `api-client`, `ui`, `tokens` |
-| `apps/website` | öffentliche Website | keine |
+| `packages/core` | tax law as pure functions, interview rules, the owl's domain logic | none |
+| `packages/api-client` | typed client, generated from `apps/api/openapi.json` | none |
+| `packages/tokens`, `packages/ui` | design tokens and components | `ui` uses `tokens` |
+| `apps/api` | REST API under `/v1`, MCP server under `/mcp`, authentication, persistence | `core` |
+| `apps/mobile-web` | the application in the browser | `core`, `api-client`, `ui`, `tokens` |
+| `apps/website` | public website | none |
 
-Die API ist in 50 Ordner unter `apps/api/src` gegliedert, je Fachthema einer (`lstb`, `rental`, `receipt`, `advisor`, …) plus Querschnitt (`auth`, `prisma`, `audit`, `common`, `config`, `telemetry`). [`architecture-subsystems.md`](architecture-subsystems.md) zeigt die wichtigsten von innen.
+The API is split into 50 folders under `apps/api/src`, one per topic (`lstb`, `rental`, `receipt`, `advisor`, …) plus cross-cutting ones (`auth`, `prisma`, `audit`, `common`, `config`, `telemetry`). [`architecture-subsystems.md`](architecture-subsystems.md) shows the most important ones from the inside.
 
-## 5.2 Der Kern von innen
+## 5.2 Inside the core
 
-Die fünf Ordner sind nach Thema geschnitten:
+The five folders are cut by theme:
 
-| Ordner | Inhalt | Dateien |
+| Folder | Content | Files |
 | :--- | :--- | :-: |
-| `math/` | Tarif nach § 32a EStG, Soli, Parameter je Steuerjahr | 3 |
-| `common/` | Arbeitstage und Feiertage, Postleitzahlen, Finanzämter, Bankleitzahlen, Prüfung der Steuer-ID, PII-Maskierung | 17 |
-| `domains/` | Fachvertikalen: Lohn, Rente, Kapital, Vermietung, Grenzgänger, Kirchensteuer, Vorsorge, Selbstständige (`business/`, `ledger/`), Belege, Jahresverlauf | 83 |
-| `engine/` | Steuerschätzung, Veranlagungsvergleich, Bescheidabgleich, Rechenmodell `berechnung.ts` | 10 |
-| `interview/` | Fragenkatalog und Erreichbarkeit, Cockpit-Spanne, Fachlogik und Ports der Eule | 42 |
+| `math/` | the tariff of § 32a EStG (Income Tax Act), solidarity surcharge, parameters per tax year | 3 |
+| `common/` | working days and public holidays, postal codes, tax offices, bank codes, tax-id check, PII masking | 17 |
+| `domains/` | verticals: wages, pensions, capital income, rental, cross-border, church tax, pension provision, self-employment (`business/`, `ledger/`), receipts, year history | 83 |
+| `engine/` | tax estimate, filing-type comparison, assessment reconciliation, the calculation model `berechnung.ts` | 10 |
+| `interview/` | question catalogue and reachability, the cockpit range, the owl's domain logic and ports | 42 |
 
-Gemessene Importe zwischen den Ordnern (Anzahl Import-Anweisungen, ohne Tests, Stand 2026-11-22):
+Measured imports between the folders (number of import statements, tests excluded, as of 2026-11-22):
 
-| von ↓ nach → | math | common | engine | domains | interview |
+| from ↓ to → | math | common | engine | domains | interview |
 | :--- | :-: | :-: | :-: | :-: | :-: |
 | **math** | | 0 | 0 | 0 | 0 |
 | **common** | 2 | | 0 | 0 | 0 |
@@ -284,43 +286,43 @@ Gemessene Importe zwischen den Ordnern (Anzahl Import-Anweisungen, ohne Tests, S
 | **domains** | 19 | 8 | **15** | | **10** |
 | **interview** | 8 | 6 | 7 | 25 | |
 
-`math` und `common` sind saubere Fundamente. Darüber gibt es zwei Zyklen auf Ordnerebene: `engine` orchestriert Fachregeln aus `domains`, während Fachvertikalen in `domains` das Rechenmodell aus `engine` nutzen; und `domains` greift auf das Antwortmodell in `interview` zu. Die gewollte Ordnung ist `interview → engine → domains → common → math`. Die fett gesetzten Felder sind die Importe dagegen. Der Architekturtest führt die 23 betroffenen Dateien als Liste, die nur kürzer werden darf. Zwischen einzelnen Dateien gibt es keinen Zyklus von Wert-Importen.
+`math` and `common` are clean foundations. Above them are two folder-level cycles: `engine` orchestrates rules from `domains` while verticals in `domains` use the calculation model from `engine`; and `domains` reaches into the answer model in `interview`. The intended order is `interview → engine → domains → common → math`. The bold cells are the imports against it. The architecture test keeps the 23 files involved as a list that may only get shorter. Between individual files there is no cycle of value imports.
 
 ---
 
-# 6. Laufzeitsicht
+# 6. Runtime view
 
-## 6.1 Vom Gast zum Cockpit
+## 6.1 From guest to cockpit
 
 ```mermaid
 sequenceDiagram
   autonumber
-  actor U as Nutzer
-  participant W as Web-App
+  actor U as User
+  participant W as Web app
   participant G as UserContextGuard
   participant I as InterviewController
   participant C as CockpitController
   participant K as @steuereule/core
 
-  U->>W: öffnet die App
+  U->>W: opens the app
   W->>I: POST /v1/steuerjahre/:jahr/interview/antworten
   I->>G: canActivate
-  Note over G: kein Session-Cookie, kein Gast-Cookie:<br/>neue Gast-ID, signiertes Cookie se_guest_session
+  Note over G: no session cookie, no guest cookie:<br/>new guest id, signed cookie se_guest_session
   I->>K: isValidAnswer, nextStepFor
-  I-->>W: nächster Schritt, offene Punkte
+  I-->>W: next step, open items
   W->>C: GET /v1/steuerjahre/:jahr/cockpit
   C->>K: cockpitRangeFromInputs
-  C-->>W: Erstattungsspanne, offene Punkte
+  C-->>W: refund range, open items
 ```
 
-Der Guard ist die einzige Stelle, die die Nutzer-ID einer Anfrage festlegt (`auth/user-context.guard.ts`). Es gibt keine Route, die eine Gastsitzung ausstellt: Die erste geschützte Anfrage ohne Cookie erzeugt sie. Routen mit `@RequiresAccount()` lehnen Gäste ab, darunter die Lohnsteuerbescheinigung und die detaillierte Steuerschätzung. Legt der Gast ein Konto an, überträgt `auth/guest-account-upgrade.prisma.ts` seine Daten in einer Transaktion ([ADR-0012](adr/0012-session-guard-coexistence-and-guest-upgrade.md), [ADR-0045](adr/0045-value-first-funnel.md)).
+The guard is the only place that sets the user id of a request (`auth/user-context.guard.ts`). No route issues a guest session: the first guarded request without a cookie creates one. Routes marked `@RequiresAccount()` reject guests, among them the wage tax certificate and the detailed tax estimate. When the guest creates an account, `auth/guest-account-upgrade.prisma.ts` moves their data in one transaction ([ADR-0012](adr/0012-session-guard-coexistence-and-guest-upgrade.md), [ADR-0045](adr/0045-value-first-funnel.md)).
 
-## 6.2 Freischalten und drucken
+## 6.2 Unlocking and printing
 
 ```mermaid
 sequenceDiagram
   autonumber
-  actor U as Nutzer
+  actor U as User
   participant P as PrintoutController
   participant S as PrintoutService
   participant X as UnlockService
@@ -328,62 +330,62 @@ sequenceDiagram
   participant R as renderForms (pdf-lib)
 
   U->>P: GET …/:jahr/ausdruck/pruefung
-  P-->>U: Vorprüfung: was fehlt, was wird gedruckt
+  P-->>U: pre-check: what is missing, what will be printed
   U->>P: POST …/:jahr/ausdruck/checkout
   P->>S: startCheckout
-  S->>X: Checkout anlegen
+  S->>X: create checkout
   X->>Pay: createCheckout
-  Pay-->>U: Weiterleitung zum Stripe-Checkout
+  Pay-->>U: redirect to the Stripe checkout
   Pay->>X: POST /v1/zahlung/stripe/webhook
-  X->>Pay: verifyEvent (Signatur)
-  Note over X: Freischaltung für Nutzer und Steuerjahr gespeichert
+  X->>Pay: verifyEvent (signature)
+  Note over X: unlock stored for user and tax year
   U->>P: GET …/:jahr/ausdruck
-  P->>S: Werte zusammenstellen
+  P->>S: assemble the values
   S->>R: renderForms
-  R-->>U: PDF: Hauptvordruck und die benötigten Anlagen
+  R-->>U: PDF: main form and the annexes needed
 ```
 
-Der Preis steht nicht im Code, sondern als Preis-ID in der Konfiguration. `renderForms` schreibt mit `pdf-lib` in die amtlichen PDF-Vorlagen und wirft einen Fehler, wenn ein Wert nicht in seinen Kasten passt.
+The price is not in the code; it is a price id in the configuration. `renderForms` writes into the official PDF templates with `pdf-lib` and throws when a value does not fit its box.
 
-## 6.3 Einen Beleg lesen
+## 6.3 Reading a receipt
 
 ```mermaid
 sequenceDiagram
   autonumber
-  actor U as Nutzer
-  participant W as Web-App
+  actor U as User
+  participant W as Web app
   participant C as ReceiptParseController
-  participant S as Parse-Strategie
+  participant S as Parse strategy
   participant K as @steuereule/core
   participant M as SingleShotModel
 
-  U->>W: lädt PDF oder Foto hoch
-  Note over W: Text entsteht im Browser:<br/>PDF-Textebene oder On-Device-OCR (ADR-0060)
-  W->>C: POST /v1/belege/parse (Text, keine Bilddaten)
-  C->>S: Strategie nach Belegart
-  S->>K: feste Regeln lesen, was sie sicher erkennen
+  U->>W: uploads a PDF or a photo
+  Note over W: the text is produced in the browser:<br/>PDF text layer or on-device OCR (ADR-0060)
+  W->>C: POST /v1/belege/parse (text, no image data)
+  C->>S: strategy by document kind
+  S->>K: fixed rules read what they recognise with certainty
   S->>K: scrubDocumentTextPii
-  S->>M: ein Aufruf mit dem bereinigten Text
+  S->>M: one call with the scrubbed text
   M-->>S: JSON
-  Note over S: Schema-Prüfung; bei Fehler, Zeitüberschreitung<br/>oder Ablehnung bleibt das Ergebnis der Regeln
-  S-->>W: Entwurf mit Feldern und Herkunft
-  U->>W: bestätigt Feld für Feld
+  Note over S: schema check; on error, timeout<br/>or refusal the result of the rules stands
+  S-->>W: draft with fields and provenance
+  U->>W: confirms field by field
 ```
 
-Drei Schutzlinien liegen vor dem Modell. Beim Lohnausweis und der Lohnsteuerbescheinigung verlässt nur eine Positivliste von Zeilen den Server ([ADR-0058](adr/0058-lstb-textfallback-allowlist.md)), und das Modell wird nur gefragt, wenn die festen Regeln ein Feld leer gelassen haben. Dann entfernt `scrubDocumentTextPii` Namen, Adressen und Kennungen. Zuletzt bricht `checkPiiFree` ab, wenn im Text noch eine IBAN oder Steuer-ID steht. Werte aus OCR gelten nie als sicher gelesen und müssen bestätigt werden.
+Three lines of defence come before the model. For the Swiss salary certificate and the wage tax certificate only an allowlist of rows leaves the server ([ADR-0058](adr/0058-lstb-textfallback-allowlist.md)), and the model is asked only when the fixed rules left a field empty. Then `scrubDocumentTextPii` removes names, addresses and identifiers. Finally `checkPiiFree` aborts if the text still contains an IBAN or a tax id. Values from OCR never count as read with certainty and have to be confirmed.
 
 ---
 
-# 7. Verteilungssicht
+# 7. Deployment view
 
 ```mermaid
 flowchart LR
   Browser["Browser"]
   subgraph GCP ["Google Cloud · europe-west4"]
-    WebSvc["Cloud Run: steuereule-web\n1 vCPU · 512 MiB · 0–10 Instanzen"]
-    ApiSvc["Cloud Run: steuereule-api\n1 vCPU · 2 GiB · 0–10 Instanzen"]
-    Db[("Cloud SQL PostgreSQL\nAnwendungsdaten")]
-    Keys[("Cloud SQL PostgreSQL\nKeystore für Beleg-Schlüssel")]
+    WebSvc["Cloud Run: steuereule-web\n1 vCPU · 512 MiB · 0–10 instances"]
+    ApiSvc["Cloud Run: steuereule-api\n1 vCPU · 2 GiB · 0–10 instances"]
+    Db[("Cloud SQL PostgreSQL\napplication data")]
+    Keys[("Cloud SQL PostgreSQL\nkeystore for receipt keys")]
     Redis[("Memorystore Redis\noptional")]
     Secrets["Secret Manager"]
   end
@@ -395,154 +397,155 @@ flowchart LR
   ApiSvc --> Secrets
 ```
 
-| Baustein | Festlegung | Quelle |
+| Element | Setting | Source |
 | :--- | :--- | :--- |
-| Zwei Dienste | `steuereule-api` und `steuereule-web`, je ein Container, skalieren auf null | `.github/workflows/deploy.yml` |
-| Datenbank | Cloud SQL, eine Zone, automatische Sicherung mit Point-in-Time-Recovery | `infra/gcp/main.tf` |
-| Keystore | eigene Cloud-SQL-Instanz nur für die Schlüssel der Belegdateien: Wer einen Schlüssel löscht, macht den Beleg auch in alten Sicherungen unlesbar | [ADR-0059](adr/0059-beleg-keystore-crypto-shredding.md) |
-| Redis | optional (`enable_redis`): Laufprotokoll der Eule über mehrere Instanzen und Rate-Limit der Anmeldung | [ADR-0064](adr/0064-eulen-chat-antwortlaeufe-und-wiederaufnahme.md) |
-| Auslieferung | Images bauen, vor dem Rollout eine Sicherung anlegen, neue Revision, bei Fehlschlag Verkehr zurück auf die vorige | `deploy.yml` |
-| Infrastruktur als Code | OpenTofu/Terraform | `infra/gcp/` |
+| Two services | `steuereule-api` and `steuereule-web`, one container each, scaling to zero | `.github/workflows/deploy.yml` |
+| Database | Cloud SQL, one zone, automated backups with point-in-time recovery | `infra/gcp/main.tf` |
+| Keystore | a separate Cloud SQL instance holding only the keys of receipt files: deleting a key makes the receipt unreadable in old backups too | [ADR-0059](adr/0059-beleg-keystore-crypto-shredding.md) |
+| Redis | optional (`enable_redis`): the owl's run log across instances and the sign-in rate limit | [ADR-0064](adr/0064-eulen-chat-antwortlaeufe-und-wiederaufnahme.md) |
+| Delivery | build images, take a backup before the rollout, new revision, on failure route traffic back to the previous one | `deploy.yml` |
+| Infrastructure as code | OpenTofu/Terraform | `infra/gcp/` |
 
-Hosting-Entscheidung: [ADR-0053](adr/0053-beta-hosting-cloud-run.md). Unter `infra/terraform`, `infra/k3s` und `infra/manifests` liegt zusätzlich eine ältere Zielumgebung auf Hetzner mit k3s (§11).
+Hosting decision: [ADR-0053](adr/0053-beta-hosting-cloud-run.md). `infra/terraform`, `infra/k3s` and `infra/manifests` additionally hold an older target environment on Hetzner with k3s (§11).
 
-Weil die API auf bis zu zehn Instanzen läuft, gilt für jeden Zustand im Prozessspeicher: Er ist je Instanz getrennt und geht beim Herunterskalieren verloren. Das betrifft heute die asynchronen Druckaufträge und einen Teil des Rate-Limits (§11).
+Because the API runs on up to ten instances, any state in process memory is separate per instance and is lost on scale-down. Today that affects the asynchronous print jobs and part of the rate limiting (§11).
 
 ---
 
-# 8. Querschnittliche Konzepte
+# 8. Cross-cutting concepts
 
-## 8.1 Authentifizierung und Identität
+## 8.1 Authentication and identity
 
-- **better-auth** ist der Auth-Server ([ADR-0009](adr/0009-better-auth-as-auth-server.md)): E-Mail und Passwort, Google, Passkeys, TOTP, Geräte-Freigabe per QR-Code ([ADR-0024](adr/0024-qr-device-authorization-endpoints.md)).
-- **Drei Arten von Identität**, alle vom `UserContextGuard` gesetzt: Sitzung eines Kontos, signiertes Gast-Cookie, Bearer-Token eines Assistenten.
-- **Ein Assistenten-Token gilt nur am MCP-Endpunkt.** Auf jedem anderen Controller wird es abgelehnt, bevor es nachgeschlagen wird. Ein JWT wird gegen die Schlüssel von better-auth, den Aussteller und die Zielgruppe geprüft; zusätzlich muss die Zustimmung des Nutzers noch bestehen, damit ein Widerruf sofort wirkt.
-- **Nicht jeder Controller steht hinter dem Guard.** Ohne Guard sind `v1/health`, `v1/capabilities`, `v1/auth/capabilities`, die OAuth-Discovery, die Geräte-Freigabe und der Stripe-Webhook, der sich über die Signatur ausweist.
+- **better-auth** is the auth server ([ADR-0009](adr/0009-better-auth-as-auth-server.md)): e-mail and password, Google, passkeys, TOTP, device approval by QR code ([ADR-0024](adr/0024-qr-device-authorization-endpoints.md)).
+- **Three kinds of identity**, all set by `UserContextGuard`: the session of an account, a signed guest cookie, the bearer token of an assistant.
+- **An assistant token is valid only at the MCP endpoint.** Every other controller rejects it before looking it up. A JWT is verified against better-auth's keys, the issuer and the audience; in addition the user's consent must still exist, so that a revocation takes effect at once.
+- **Not every controller sits behind the guard.** Unguarded are `v1/health`, `v1/capabilities`, `v1/auth/capabilities`, OAuth discovery, device approval, and the Stripe webhook, which authenticates by its signature.
 
-## 8.2 Verschlüsselung
+## 8.2 Encryption
 
-| Was | Verfahren | Schlüssel |
+| What | Mechanism | Keys |
 | :--- | :--- | :--- |
-| Felder mit `/// @encrypted` im Prisma-Schema (190 Markierungen, Stand 2026-11-22) | AES-256-GCM durch `prisma-field-encryption`, eingehängt in `prisma/encrypted-prisma.provider.ts` | ein Anwendungsschlüssel `PRISMA_FIELD_ENCRYPTION_KEY`; frühere Schlüssel in `PRISMA_FIELD_DECRYPTION_KEYS` bleiben lesbar |
-| Belegdateien | Envelope-Verschlüsselung in `receipt/storage/envelope-crypto.service.ts` | ein Schlüssel je Nutzer im Keystore |
+| Fields marked `/// @encrypted` in the Prisma schema (190 markers as of 2026-11-22) | AES-256-GCM through `prisma-field-encryption`, installed in `prisma/encrypted-prisma.provider.ts` | one application key, `PRISMA_FIELD_ENCRYPTION_KEY`; earlier keys in `PRISMA_FIELD_DECRYPTION_KEYS` stay readable |
+| Receipt files | envelope encryption in `receipt/storage/envelope-crypto.service.ts` | one key per user in the keystore |
 
-Nicht jedes Feld ist verschlüsselt. Klartext sind zum Beispiel der Status eines Steuerjahrs, Entfernungskilometer und Zahlungsbeträge. Ein Schlüsselwechsel verschlüsselt bestehende Werte nicht neu; das geschieht erst beim nächsten Schreiben des Werts.
+Not every field is encrypted. Plaintext are, for example, the status of a tax year, commuting distances and payment amounts. Rotating a key does not re-encrypt existing values; that happens when a value is next written.
 
-## 8.3 Grenze zu den Sprachmodellen
+## 8.3 The boundary to the language models
 
-- Belegtext wird vor dem Modell bereinigt (§6.3).
-- Der Chat der Eule enthält Falldaten. Namen und Kennungen werden maskiert (`packages/core/src/common/pii-masking.ts`); persönliche Daten gehen nur mit Einwilligung an das Modell ([ADR-0091](adr/0091-eule-persoenliche-daten-mit-einwilligung.md)).
-- Beträge kommen aus dem Kern: Schätzung, Pauschalen und Werbungskosten sind berechnet, bevor das Modell gefragt wird. Jede Antwort wird danach ohne Modell geprüft.
-- Ein Themenwächter sortiert jede getippte Frage vor ([ADR-0100](adr/0100-eule-waechter-parallel-und-messung.md)). Fällt er aus, läuft die Frage durch, und die Themenregel im Prompt der Eule bleibt als zweite Linie.
-- Welches Modell an welcher Stelle arbeitet, steht in Slots (`ki/ai-runtime-config.service.ts`). Ein Notschalter stellt Modellaufrufe ab; die Beleg-Leser arbeiten dann nur mit den festen Regeln.
+- Receipt text is scrubbed before it reaches a model (§6.3).
+- The owl's chat contains case data. Names and identifiers are masked (`packages/core/src/common/pii-masking.ts`); personal data reaches a model only with consent ([ADR-0091](adr/0091-eule-persoenliche-daten-mit-einwilligung.md)).
+- Amounts come from the core: the estimate, lump sums and work-related expenses are computed before the model is asked. Every answer is then checked without a model.
+- A topic guard sorts every typed question first ([ADR-0100](adr/0100-eule-waechter-parallel-und-messung.md)). If it fails, the question passes, and the topic rule in the owl's own prompt remains as the second line.
+- Which model works where is defined in slots (`ki/ai-runtime-config.service.ts`). A kill switch turns model calls off; the receipt readers then work with the fixed rules alone.
 
-## 8.4 Persistenz und Transaktionen
+## 8.4 Persistence and transactions
 
-- Jedes Fachmodul hat sein Repository als Port und einen Prisma-Adapter.
-- `TransactionRunner.run` fasst mehrere Repository-Aufrufe zu einer Transaktion mit Isolation *Repeatable Read* zusammen. Ein gleichzeitiger Schreibzugriff führt zu einem Konflikt, der als `CONCURRENT_WRITE_CONFLICT` beim Client ankommt, statt zu einem stillen Überschreiben.
-- Schemaänderungen folgen *Expand and Contract* ([ADR-0055](adr/0055-zero-downtime-database-migrations-expand-contract.md)). Das ist eine Arbeitsregel; kein Test erzwingt sie.
-- Zugriffe auf Steuerdaten protokolliert der `AuditService` in der Tabelle `TaxDataAccessLog`.
+- Every feature module has its repository as a port and a Prisma adapter.
+- `TransactionRunner.run` joins several repository calls into one transaction at isolation level *Repeatable Read*. A concurrent write results in a conflict that reaches the client as `CONCURRENT_WRITE_CONFLICT` instead of a silent overwrite.
+- Schema changes follow *expand and contract* ([ADR-0055](adr/0055-zero-downtime-database-migrations-expand-contract.md)). That is a working rule; no test enforces it.
+- Access to tax data is logged by `AuditService` in the table `TaxDataAccessLog`.
 
-## 8.5 Beobachtbarkeit
+## 8.5 Observability
 
-- **Request-ID.** Fastify übernimmt eine W3C-`traceparent`- oder `x-request-id`-Kopfzeile oder erzeugt eine UUID (`common/request-id.ts`). Der Fehlerfilter schreibt sie in jeden Fehlerkörper. Die Web-App sendet bisher keine eigene ID mit.
-- **Tracing.** `telemetry/tracer.ts` kapselt die OpenTelemetry-API. Zwei Stellen erzeugen Spans. Es ist weder ein SDK noch ein Exporter eingebunden, die Spans werden also derzeit nirgends gesammelt (§11).
-- **Health.** `GET /v1/health/live` und `GET /v1/health/ready`; Letzteres prüft die Datenbank.
-- **Zielwerte.** SLOs, Fehlerbudget und Wiederanlaufziele stehen in [`sre/reliability-spec.md`](sre/reliability-spec.md). Sie sind Ziele; Alarme dazu sind nicht als Code hinterlegt.
+- **Request id.** Fastify adopts a W3C `traceparent` or an `x-request-id` header, or creates a UUID (`common/request-id.ts`). The error filter writes it into every error body. The web app does not yet send an id of its own.
+- **Tracing.** `telemetry/tracer.ts` wraps the OpenTelemetry API. Two places create spans. Neither an SDK nor an exporter is installed, so the spans are currently collected nowhere (§11).
+- **Health.** `GET /v1/health/live` and `GET /v1/health/ready`; the latter checks the database.
+- **Targets.** SLOs, error budget and recovery objectives are in [`sre/reliability-spec.md`](sre/reliability-spec.md). They are targets; no alerting for them exists as code.
 
-## 8.6 Lieferkette
+## 8.6 Supply chain
 
-Der Workflow *Security* prüft bei jedem Pull Request auf Geheimnisse (gitleaks), unsichere Muster (semgrep) und Fehlkonfiguration (trivy, hadolint, actionlint). *Build & E2E* scannt die Container-Images und bricht bei hohen und kritischen Funden ab; `.trivyignore` nimmt dabei bekannte Funde aus (120 Einträge, Stand 2026-11-22). Für Repository und beide Images entstehen CycloneDX-SBOMs. Sie werden als Artefakt abgelegt und nicht signiert.
+The workflow *Security* checks every pull request for secrets (gitleaks), unsafe patterns (semgrep) and misconfiguration (trivy, hadolint, actionlint). *Build & E2E* scans the container images and fails on high and critical findings; `.trivyignore` exempts known findings (120 entries as of 2026-11-22). CycloneDX SBOMs are produced for the repository and both images. They are stored as artefacts and are not signed.
 
-## 8.7 Rate-Limiting
+## 8.7 Rate limiting
 
-Zwei Mechanismen: der Limiter von better-auth für Anmeldung und Registrierung, der Redis nutzt, wenn `REDIS_URL` gesetzt ist; und `ThrottlerModule` von NestJS für einzelne Routen, das im Prozessspeicher zählt.
+Two mechanisms: better-auth's limiter for sign-in and registration, which uses Redis when `REDIS_URL` is set; and NestJS's `ThrottlerModule` for individual routes, which counts in process memory.
 
 ---
 
-# 9. Architekturentscheidungen
+# 9. Architecture decisions
 
-Das Verzeichnis [`docs/adr/index.md`](adr/index.md) führt alle Entscheidungen (101 Dateien, Stand 2026-11-22). Die folgenden tragen die Struktur:
+The index [`docs/adr/index.md`](adr/index.md) lists every decision (101 files as of 2026-11-22). These carry the structure:
 
-| ADR | Entscheidung | Status |
+| ADR | Decision | Status |
 | :-- | :--- | :--- |
-| [0008](adr/0008-profile-persistence-encryption.md) | Profil serverseitig, sensible Felder verschlüsselt | Accepted |
-| [0009](adr/0009-better-auth-as-auth-server.md) | better-auth als Auth-Server | Accepted |
-| [0012](adr/0012-session-guard-coexistence-and-guest-upgrade.md) | Guard für Gast oder Sitzung, Übernahme der Gastdaten in einer Transaktion | Accepted |
-| [0013](adr/0013-dsgvo-export-and-account-deletion.md) | DSGVO-Export und Kontolöschung; das Zugriffsprotokoll wird anonymisiert und behalten | Accepted |
-| [0019](adr/0019-oxlint-replaces-eslint.md) | oxlint als Lint-Gate | Accepted |
-| [0021](adr/0021-controls-are-proven-by-breaking-them.md) | Eine Kontrolle wird durch Brechen bewiesen | Accepted |
-| [0034](adr/0034-veranlagungsartenvergleich-returns-a-bounded-comparison.md) | Der Veranlagungsvergleich liefert einen begrenzten Vergleich, kein Urteil | Accepted |
-| [0038](adr/0038-berechnungs-kern-ki-port.md) | Deterministischer Rechenkern, KI hinter einem Port | Accepted |
-| [0045](adr/0045-value-first-funnel.md) | Gäste dürfen die ersten Fragen beantworten, das Konto übernimmt sie | Accepted |
-| [0050](adr/0050-papierweg-statt-elster-in-1-0.md) | Abgabe auf Papier, bezahlt je Steuerjahr beim Ausdruck | Accepted |
-| [0052](adr/0052-agenten-zugang-mcp.md) | Zugang für den eigenen Assistenten des Nutzers über MCP und OAuth | Accepted |
-| [0053](adr/0053-beta-hosting-cloud-run.md) | Hosting auf Cloud Run und Cloud SQL | Accepted |
-| [0055](adr/0055-zero-downtime-database-migrations-expand-contract.md) | Migrationen nach Expand and Contract | Accepted |
-| [0059](adr/0059-beleg-keystore-crypto-shredding.md) | Eigener Keystore für Beleg-Schlüssel | Accepted |
-| [0064](adr/0064-eulen-chat-antwortlaeufe-und-wiederaufnahme.md) | Antwortläufe der Eule, von der Verbindung gelöst | Accepted |
-| [0066](adr/0066-eule-feldkatalog-und-ein-schreibweg.md) | Ein Feldkatalog, ein Schreibweg, Entwurf vor Eintrag | Accepted |
-| [0101](adr/0101-selbststaendige.md) | Selbstständige: EÜR, Buchhaltung, Bilanz, Umsatz- und Gewerbesteuer | Accepted |
-| [0102](adr/0102-ports-und-adapter-per-architekturtest.md) | Ports & Adapters, durch zwei Architekturtests erzwungen | Accepted |
+| [0008](adr/0008-profile-persistence-encryption.md) | Profile on the server, sensitive fields encrypted | Accepted |
+| [0009](adr/0009-better-auth-as-auth-server.md) | better-auth as the auth server | Accepted |
+| [0012](adr/0012-session-guard-coexistence-and-guest-upgrade.md) | A guard for guest or session; guest data moves to the account in one transaction | Accepted |
+| [0013](adr/0013-dsgvo-export-and-account-deletion.md) | GDPR export and account deletion; the access log is anonymised and kept | Accepted |
+| [0019](adr/0019-oxlint-replaces-eslint.md) | oxlint as the lint gate | Accepted |
+| [0021](adr/0021-controls-are-proven-by-breaking-them.md) | A control is proven by breaking it | Accepted |
+| [0034](adr/0034-veranlagungsartenvergleich-returns-a-bounded-comparison.md) | The filing-type comparison returns a bounded comparison, not a verdict | Accepted |
+| [0038](adr/0038-berechnungs-kern-ki-port.md) | Deterministic calculation core, AI behind a port | Accepted |
+| [0045](adr/0045-value-first-funnel.md) | Guests may answer the first questions; the account takes them over | Accepted |
+| [0050](adr/0050-papierweg-statt-elster-in-1-0.md) | Filing on paper, paid per tax year at print time | Accepted |
+| [0052](adr/0052-agenten-zugang-mcp.md) | Access for the user's own assistant through MCP and OAuth | Accepted |
+| [0053](adr/0053-beta-hosting-cloud-run.md) | Hosting on Cloud Run and Cloud SQL | Accepted |
+| [0055](adr/0055-zero-downtime-database-migrations-expand-contract.md) | Migrations by expand and contract | Accepted |
+| [0059](adr/0059-beleg-keystore-crypto-shredding.md) | A separate keystore for receipt keys | Accepted |
+| [0064](adr/0064-eulen-chat-antwortlaeufe-und-wiederaufnahme.md) | The owl's answer runs, detached from the connection | Accepted |
+| [0066](adr/0066-eule-feldkatalog-und-ein-schreibweg.md) | One field catalogue, one write path, draft before entry | Accepted |
+| [0101](adr/0101-selbststaendige.md) | Self-employment: cash-basis accounting, bookkeeping, balance sheet, VAT and trade tax | Accepted |
+| [0102](adr/0102-ports-and-adapters-enforced-by-architecture-tests.md) | Ports & Adapters, enforced by two architecture tests | Accepted |
 
-Die Entscheidungen zu Vermietung, Kapital und Jahresübernahme (0046, 0048, 0049) haben noch den Status *Draft*, obwohl der Code dazu ausgeliefert wird (§11).
+The decisions on rental, capital income and the year takeover (0046, 0048, 0049) still have the status *Draft* although their code ships (§11).
 
 ---
 
-# 10. Qualität und Tests
+# 10. Quality and tests
 
-| Ebene | Werkzeug | Was sie beweist | Umfang am 2026-11-22 | CI |
+| Tier | Tooling | What it proves | Size on 2026-11-22 | CI |
 | :--- | :--- | :--- | :--- | :--- |
-| Kern | Vitest | Steuerregeln, Interview-Regeln, Architekturregeln des Kerns | 155 Dateien, 2067 Tests | *Quality* · `test` |
-| API, ohne Datenbank | Vitest mit Fakes | Services, Guards, Parser, Architekturregeln der API | 205 Dateien, 2247 Tests | *Quality* · `test` |
-| API, mit Datenbank | Vitest gegen PostgreSQL als CI-Dienst ([ADR-0010](adr/0010-ci-postgres-and-boot-smoke.md)) | Verschlüsselung, Zugriffsprotokoll, Akzeptanztests der Anforderungen | 53 Dateien | *Quality* · `integration` |
-| Web-App | Vitest, Testing Library, MSW | Screens und Komponenten | 233 Dateien | *Quality* · `test` |
-| Start | gebautes `dist/` über echtes HTTP | Verdrahtungsfehler, die Tests im Prozess nicht sehen | | *Build & E2E* · `smoke` |
-| Ende zu Ende | Playwright mit Chromium gegen den Compose-Stack | 28 Szenarien aus Nutzersicht, dazu Einzel-Gates für Belege, Eule und Verlauf | `e2e/scenarios/` | *Build & E2E* |
-| Last | Lasttest mit vielen Nutzern | klein bei jedem Pull Request, voll in der Nacht | | *Load* |
-| KI-Qualität | Auswertungen gegen echte Anbieter | Antwortqualität der Eule und des Themenwächters | | *AI eval (nightly)* |
+| Core | Vitest | tax rules, interview rules, the core's architecture rules | 155 files, 2067 tests | *Quality* · `test` |
+| API without a database | Vitest with fakes | services, guards, parsers, the API's architecture rules | 205 files, 2247 tests | *Quality* · `test` |
+| API with a database | Vitest against PostgreSQL as a CI service ([ADR-0010](adr/0010-ci-postgres-and-boot-smoke.md)) | encryption, access log, acceptance tests of the requirements | 53 files | *Quality* · `integration` |
+| Web app | Vitest, Testing Library, MSW | screens and components | 233 files | *Quality* · `test` |
+| Start-up | the built `dist/` over real HTTP | wiring bugs that in-process tests cannot see | | *Build & E2E* · `smoke` |
+| End to end | Playwright with Chromium against the compose stack | 28 scenarios from the user's point of view, plus individual gates for receipts, the owl and the history | `e2e/scenarios/` | *Build & E2E* |
+| Load | a load test with many users | small on every pull request, full size at night | | *Load* |
+| AI quality | evaluations against real providers | answer quality of the owl and the topic guard | | *AI eval (nightly)* |
 
-Die Zahlen stammen aus einem lokalen Testlauf und aus der Zählung der Testdateien. Sie veralten; maßgeblich ist der jeweils letzte CI-Lauf.
+The figures come from a local test run and from counting the test files. They go out of date; the latest CI run is authoritative.
 
-Zwei Regeln für Gates: Ein Gate zählt nur, wenn es in CI gegen das Echte läuft ([ADR-0010](adr/0010-ci-postgres-and-boot-smoke.md)), und jedes Gate muss einmal absichtlich rot gemacht worden sein ([ADR-0021](adr/0021-controls-are-proven-by-breaking-them.md)).
+Two rules for gates: a gate counts only when it runs in CI against the real thing ([ADR-0010](adr/0010-ci-postgres-and-boot-smoke.md)), and every gate must have been made to fail on purpose once ([ADR-0021](adr/0021-controls-are-proven-by-breaking-them.md)).
 
 ---
 
-# 11. Risiken und technische Schulden
+# 11. Risks and technical debt
 
-| # | Befund | Folge | Nächster Schritt |
+| # | Finding | Consequence | Next step |
 | :-: | :--- | :--- | :--- |
-| 1 | **Asynchrone Druckaufträge leben im Prozessspeicher.** `printout/printout-job.service.ts` hält sie in einer `Map` und startet sie mit `setImmediate`. Es gibt keinen Worker und keine Begrenzung gleichzeitiger Aufträge. [ADR-0056](adr/0056-asynchronous-pdf-generation-job-queue.md) beschreibt eine Warteschlange, die so nicht gebaut ist. | Auf zehn Instanzen findet eine Statusabfrage den Auftrag nur zufällig. Ein Neustart verliert ihn. Die Web-App nutzt den Weg derzeit nicht. | Aufträge in die Datenbank oder nach Redis legen, oder den Weg entfernen und ADR-0056 als nicht umgesetzt kennzeichnen. |
-| 2 | **Tracing ohne Exporter.** | Es gibt keine verteilten Traces, auch wenn der Code Spans erzeugt. | OpenTelemetry-SDK mit Exporter einbinden. |
-| 3 | **SLOs ohne Alarme.** Die Zielwerte in `sre/reliability-spec.md` sind nicht als Monitoring-Ressourcen hinterlegt. | Eine Verletzung fällt niemandem automatisch auf. | Alarmregeln in `infra/gcp` anlegen. |
-| 4 | **Zwei Ordner-Zyklen im Kern** (§5.2). | Änderungen an `engine/berechnung.ts` oder am Antwortmodell wirken in viele Fachvertikalen. | Rechenmodell und Antwortmodell in eine untere Schicht ziehen; die Liste im Architekturtest zeigt den Fortschritt. |
-| 5 | **Starke Kopplung der API-Module** (§4.1.4). | Ein Modul lässt sich selten allein ändern oder testen. | Die 16 gegenseitigen Paare einzeln auflösen; die Baseline schrumpft mit. |
-| 6 | **LangChain durchzieht die Beratungsrunde** (§4.1.4). | Bindung an ein Framework. | Akzeptiert, solange der Anbieterwechsel Konfiguration bleibt. |
-| 7 | **Rate-Limit teils im Prozessspeicher** (§8.7). | Bei mehreren Instanzen gilt das Limit je Instanz. | `ThrottlerModule` an Redis anbinden. |
-| 8 | **ELSTER-Übermittlung nicht betriebsbereit.** Der Code ruft einen ERiC-Prozess auf, das Zertifikat des Betreibers fehlt. | Selbstständige, die elektronisch abgeben müssen, können das nicht über die App. | Zertifikat beschaffen, Betrieb des ERiC-Prozesses klären ([ADR-0101](adr/0101-selbststaendige.md)). |
-| 9 | **Vordrucke ändern sich jährlich.** | Ein verschobenes Feld macht den Ausdruck unbrauchbar. | Besteht als Gate: Prüfsummen und Vermessung brechen den Build. Für 2026 fehlen die Vordrucke noch. |
-| 10 | **Jahreskonstanten außerhalb der Parameter-Registry**, zum Beispiel in `domains/business/payroll.ts`. | Ein neues Steuerjahr braucht Änderungen an mehreren Stellen. | Beim nächsten Jahreswechsel in `tax-parameters.ts` zusammenführen. |
-| 11 | **Zweite Zielumgebung in `infra/`.** Neben `infra/gcp` liegen Definitionen für Hetzner mit k3s. | Wer das Repository liest, sieht zwei Zielumgebungen und weiß nicht, welche gilt. | Entfernen oder als Archiv kennzeichnen. |
-| 12 | **ADRs im Status *Draft* zu ausgeliefertem Code** (0046, 0048, 0049). | Die Entscheidung ist nicht formal abgenommen. | Status klären. |
-| 13 | **Zwei arc42-Dokumente.** Dieses Dokument und `arc42/README.md` überschneiden sich; Letzteres beschreibt in §5 und §5.1 einen frühen Stand. | Leser wissen nicht, welches gilt. | Maßgeblich ist dieses Dokument. `arc42/README.md` auf Werkzeugkette und Boot-Reihenfolge kürzen. |
+| 1 | **Asynchronous print jobs live in process memory.** `printout/printout-job.service.ts` keeps them in a `Map` and starts them with `setImmediate`. There is no worker and no limit on concurrent jobs. [ADR-0056](adr/0056-asynchronous-pdf-generation-job-queue.md) describes a queue that was not built that way. | On ten instances a status request finds the job only by chance. A restart loses it. The web app does not use this path at present. | Move the jobs to the database or to Redis, or remove the path and mark ADR-0056 as not implemented. |
+| 2 | **Tracing without an exporter.** | There are no distributed traces even though the code creates spans. | Install the OpenTelemetry SDK with an exporter. |
+| 3 | **SLOs without alerts.** The targets in `sre/reliability-spec.md` do not exist as monitoring resources. | Nobody is told automatically when one is violated. | Define alert rules in `infra/gcp`. |
+| 4 | **Two folder-level cycles in the core** (§5.2). | Changes to `engine/berechnung.ts` or to the answer model reach into many verticals. | Move the calculation model and the answer model into a lower layer; the list in the architecture test shows the progress. |
+| 5 | **Tight coupling of the API modules** (§4.1.4). | A module can rarely be changed or tested alone. | Resolve the 16 mutual pairs one by one; the baseline shrinks with them. |
+| 6 | **LangChain runs through the advisory turn** (§4.1.4). | Lock-in to a framework. | Accepted as long as changing the provider stays configuration. |
+| 7 | **Rate limiting partly in process memory** (§8.7). | With several instances the limit applies per instance. | Back `ThrottlerModule` with Redis. |
+| 8 | **ELSTER transmission not operational.** The code calls an ERiC process; the operator certificate is missing. | Self-employed users who must file electronically cannot do so through the app. | Obtain the certificate, decide how the ERiC process is run ([ADR-0101](adr/0101-selbststaendige.md)). |
+| 9 | **The official forms change every year.** | A shifted field makes the printout unusable. | Exists as a gate: checksums and measurements break the build. The forms for 2026 are still missing. |
+| 10 | **Per-year constants outside the parameter registry**, for example in `domains/business/payroll.ts`. | A new tax year needs changes in several places. | Consolidate into `tax-parameters.ts` at the next change of year. |
+| 11 | **A second target environment in `infra/`.** Next to `infra/gcp` there are definitions for Hetzner with k3s. | A reader of the repository sees two targets and cannot tell which one applies. | Remove them or mark them as an archive. |
+| 12 | **ADRs in status *Draft* for shipped code** (0046, 0048, 0049). | The decision has not been formally accepted. | Settle the status. |
+| 13 | **Two arc42 documents.** This document and `arc42/README.md` overlap; the latter describes an early state in its §5 and §5.1. | Readers cannot tell which one applies. | This document is authoritative. Cut `arc42/README.md` down to the toolchain and the boot order. |
 
 ---
 
-# 12. Glossar
+# 12. Glossary
 
-| Begriff | Bedeutung |
+| Term | Meaning |
 | :--- | :--- |
-| **Adapter** | Implementierung eines Ports gegen ein Framework oder SDK. Eingehende Adapter rufen die Anwendung auf (Controller, MCP), ausgehende werden von ihr aufgerufen (Datenbank, Sprachmodell, Stripe). |
-| **Composition Root** | Der Ort, an dem Ports an Adapter gebunden werden: die Nest-Module `*.module.ts`. |
-| **Cockpit** | Startseite eines Steuerjahrs: Erstattungsspanne und offene Punkte. |
-| **Entwurf** | Ein vorgeschlagener Eintrag mit berechneter Wirkung, der erst durch Bestätigung geschrieben wird. |
-| **Eule** | Die KI-Assistentin im Chat der App. Nicht zu verwechseln mit dem MCP-Zugang, über den ein *fremder* Assistent des Nutzers arbeitet. |
-| **Formularschlüssel** | Amtlicher Code auf jeder Vordruckseite, zum Beispiel `2024AnlN031NET`. |
-| **Günstigerprüfung** | Gesetzlicher Vergleich zweier Besteuerungswege, etwa Abgeltungsteuer gegen tarifliche Steuer. Etwas anderes als der Veranlagungsvergleich. |
-| **LStB** | Lohnsteuerbescheinigung. |
-| **Minimal-Gate** | Die ersten Fragen des Interviews (`job`, `ausland`, `kinder`, `familienstand`), die auch ein Gast beantworten darf. |
-| **N-Gre** | Anlage für Grenzgänger. |
-| **Port** | TypeScript-Interface mit DI-Token, über das der Anwendungsring etwas von außen braucht, zum Beispiel `ReceiptRepository` mit `RECEIPT_REPOSITORY`. |
-| **Veranlagungsvergleich** | Vergleich von Einzel- und Zusammenveranlagung für Ehepaare ([ADR-0034](adr/0034-veranlagungsartenvergleich-returns-a-bounded-comparison.md)). |
-| **Vordruck** | Amtliches Formular der Finanzverwaltung als PDF. |
-| **zvE** | Zu versteuerndes Einkommen, Bemessungsgrundlage des Tarifs nach § 32a EStG. |
+| **Adapter** | Implementation of a port against a framework or SDK. Driving adapters call the application (controllers, MCP); driven adapters are called by it (database, language model, Stripe). |
+| **Anlage N-Gre** | The annex to the tax return for cross-border commuters. |
+| **Cockpit** | The start page of a tax year: refund range and open items. |
+| **Composition root** | The place where ports are bound to adapters: the Nest modules, `*.module.ts`. |
+| **Draft** | A proposed entry with a computed effect that is written only on confirmation. |
+| **ELSTER, ERiC** | The tax administration's electronic filing system and its client library. |
+| **Filing-type comparison** (*Veranlagungsvergleich*) | Comparison of individual and joint assessment for married couples ([ADR-0034](adr/0034-veranlagungsartenvergleich-returns-a-bounded-comparison.md)). |
+| **Form key** (*Formularschlüssel*) | The official code on every page of a form, for example `2024AnlN031NET`. |
+| **Lohnsteuerbescheinigung (LStB)** | Wage tax certificate: the employer's annual statement of wages paid and tax withheld. |
+| **Minimal gate** | The first interview questions (`job`, `ausland`, `kinder`, `familienstand`), which a guest may answer too. |
+| **Most-favourable-taxation check** (*Günstigerprüfung*) | A statutory comparison of two ways of taxing the same income, for example flat-rate withholding tax against the progressive tariff. Not the same as the filing-type comparison. |
+| **Owl** (*Eule*) | The AI assistant in the app's chat. Not to be confused with the MCP access, through which an *external* assistant of the user works. |
+| **Port** | A TypeScript interface with a DI token through which the application ring needs something from outside, for example `ReceiptRepository` with `RECEIPT_REPOSITORY`. |
+| **Vordruck** | An official form of the tax administration, as a PDF. |
+| **zvE** | *Zu versteuerndes Einkommen*, taxable income: the basis of the tariff in § 32a EStG. |

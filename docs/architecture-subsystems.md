@@ -1,122 +1,122 @@
-# SteuerEule — Backend-Module von innen
+# SteuerEule — Backend modules from the inside
 
 | | |
 | :--- | :--- |
-| **Stand** | 2026-11-22 |
-| **Ebene** | Komponenten (C4 Level 3) zu [`architecture.md`](architecture.md) |
-| **Geltungsbereich** | ausgewählte Module unter `apps/api/src` |
+| **As of** | 2026-11-22 |
+| **Level** | components (C4 level 3), companion to [`architecture.md`](architecture.md) |
+| **Scope** | selected modules under `apps/api/src` |
 
-Dieses Dokument zeigt für die wichtigsten Module, wer hereinkommt, welcher Service arbeitet, welche Ports er braucht und welche Funktionen des Kerns er ruft. Es ist keine Routenliste: Die vollständige und maßgebliche Liste aller Routen ist `apps/api/openapi.json`, zur Laufzeit unter `/docs`.
+For the most important modules this document shows who calls in, which service does the work, which ports it needs and which core functions it calls. It is not a route list: the complete and authoritative list of routes is `apps/api/openapi.json`, served at `/docs` at runtime.
 
-Jeder Name hier ist gegen den Code geprüft. Kernfunktionen sind Exporte aus `packages/core/src`, Tabellen sind Modelle aus `apps/api/prisma/schema.prisma`.
+Every name here has been checked against the code. Core functions are exports of `packages/core/src`; tables are models in `apps/api/prisma/schema.prisma`. Routes are German because the product is; the glossary in [`architecture.md` §12](architecture.md#12-glossary) explains the terms.
 
-## Das gemeinsame Muster
+## The common pattern
 
 ```mermaid
 flowchart LR
   Ctrl["Controller\n*.controller.ts"] --> Svc["Service\n*.service.ts"]
-  Svc --> Core["@steuereule/core\nreine Funktionen"]
+  Svc --> Core["@steuereule/core\npure functions"]
   Svc --> Port["Port\n*.repository.ts"]
-  Adapter["Adapter\n*.repository.prisma.ts"] -. implementiert .-> Port
+  Adapter["Adapter\n*.repository.prisma.ts"] -. implements .-> Port
   Adapter --> Db[("PostgreSQL")]
-  Module["*.module.ts"] -. bindet .-> Adapter
+  Module["*.module.ts"] -. binds .-> Adapter
 ```
 
-Was für jedes Modul gilt:
+What holds for every module:
 
-1. **Identität.** Die Nutzer-ID einer Anfrage setzt allein der `UserContextGuard`. Routen mit `@RequiresAccount()` lehnen Gäste ab. Ohne Guard arbeiten nur `HealthController`, `CapabilitiesController`, `AuthCapabilitiesController`, `OAuthDiscoveryController`, `DeviceController` und die Webhook-Route von Stripe.
-2. **Rechnen im Kern.** Kein Service berechnet einen Steuerbetrag selbst ([ADR-0038](adr/0038-berechnungs-kern-ki-port.md)).
-3. **Persistenz über Ports.** Ein Service kennt sein Repository als Interface. Der Prisma-Adapter verschlüsselt die Felder, die im Schema mit `/// @encrypted` markiert sind. Nicht jedes Feld ist verschlüsselt, siehe [`architecture.md` §8.2](architecture.md#82-verschlüsselung).
-4. **Geprüfte Grenzen.** Datenbank-Client und externe SDKs dürfen nur die dafür benannten Dateien importieren. Das prüft `apps/api/test/architecture.test.ts` ([ADR-0102](adr/0102-ports-und-adapter-per-architekturtest.md)).
+1. **Identity.** Only `UserContextGuard` sets the user id of a request. Routes marked `@RequiresAccount()` reject guests. Only `HealthController`, `CapabilitiesController`, `AuthCapabilitiesController`, `OAuthDiscoveryController`, `DeviceController` and the Stripe webhook route work without the guard.
+2. **Arithmetic in the core.** No service computes a tax amount itself ([ADR-0038](adr/0038-berechnungs-kern-ki-port.md)).
+3. **Persistence through ports.** A service knows its repository as an interface. The Prisma adapter encrypts the fields marked `/// @encrypted` in the schema. Not every field is encrypted, see [`architecture.md` §8.2](architecture.md#82-encryption).
+4. **Checked boundaries.** The database client and external SDKs may be imported only by the files named for them. `apps/api/test/architecture.test.ts` checks that ([ADR-0102](adr/0102-ports-and-adapters-enforced-by-architecture-tests.md)).
 
-In den Tabellen unten steht `…` für das Präfix `/v1/steuerjahre/:jahr`.
+In the tables below `…` stands for the prefix `/v1/steuerjahre/:jahr` (tax years / year).
 
 ---
 
-## 1. Cockpit und Steuerschätzung
+## 1. Cockpit and tax estimate
 
-Das Cockpit zeigt die Erstattungsspanne und die offenen Punkte eines Steuerjahrs. Die Steuerschätzung liefert die detaillierte Rechnung.
+The cockpit shows the refund range and the open items of a tax year. The tax estimate provides the detailed calculation.
 
-| | Cockpit | Steuerschätzung |
+| | Cockpit | Tax estimate |
 | :--- | :--- | :--- |
-| Eingang | `CockpitController`: `GET …/cockpit` | `TaxEstimateController`: `GET …/steuerschaetzung`, nur mit Konto |
+| Entry | `CockpitController`: `GET …/cockpit` | `TaxEstimateController`: `GET …/steuerschaetzung`, account required |
 | Service | `CockpitService` | `TaxEstimateService` |
-| Kern | `cockpitRangeFromInputs` | `taxEstimateEmployee`, `taxEstimatePensioner`, `taxEstimateCrossBorder`, `taxEstimateSelfEmployed`, `estimateMarriedCouple` |
-| Ports | `TAX_YEAR_REPOSITORY`, `WAGE_TAX_CERTIFICATE_REPOSITORY`, `INTERVIEW_ANSWER_REPOSITORY`, `PROVENANCE_REPOSITORY`, `PENSION_REPOSITORY`, `CAPITAL_REPOSITORY`, `RENTAL_REPOSITORY`, `CROSS_BORDER_SALARY_STATEMENT_REPOSITORY` | die Repositories der Fachmodule, deren Daten in die Schätzung eingehen |
+| Core | `cockpitRangeFromInputs` | `taxEstimateEmployee`, `taxEstimatePensioner`, `taxEstimateCrossBorder`, `taxEstimateSelfEmployed`, `estimateMarriedCouple` |
+| Ports | `TAX_YEAR_REPOSITORY`, `WAGE_TAX_CERTIFICATE_REPOSITORY`, `INTERVIEW_ANSWER_REPOSITORY`, `PROVENANCE_REPOSITORY`, `PENSION_REPOSITORY`, `CAPITAL_REPOSITORY`, `RENTAL_REPOSITORY`, `CROSS_BORDER_SALARY_STATEMENT_REPOSITORY` | the repositories of the feature modules whose data enters the estimate |
 
-Die beiden Services rufen einander nicht auf. Beide lesen dieselben Fachdaten und rechnen jeweils im Kern. `CockpitService` nutzt zusätzlich `SubmissionService` und `BusinessService`; das Cockpit ist damit eines der am stärksten gekoppelten Module (25 eingehende Modulkanten).
+The two services do not call each other. Both read the same feature data and each computes in the core. `CockpitService` additionally uses `SubmissionService` and `BusinessService`; the cockpit is one of the most depended-on modules (25 incoming module edges).
 
 ## 2. Interview
 
 | | |
 | :--- | :--- |
-| Eingang | `InterviewController`: `GET …/interview`, `POST …/interview/antworten`. Beide auch für Gäste. |
+| Entry | `InterviewController`: `GET …/interview`, `POST …/interview/antworten`. Both open to guests. |
 | Service | `InterviewService` |
-| Kern | `ENTRIES` (Fragenkatalog), `isValidAnswer`, `isReachableFor`, `nextStepFor` |
+| Core | `ENTRIES` (the question catalogue), `isValidAnswer`, `isReachableFor`, `nextStepFor` |
 | Ports | `INTERVIEW_ANSWER_REPOSITORY` |
-| Weitere Abhängigkeiten | `AuditService`, `LinkService` |
-| Tabelle | `InterviewAnswer`; verschlüsselt ist das Feld `value` |
+| Other dependencies | `AuditService`, `LinkService` |
+| Table | `InterviewAnswer`; the field `value` is encrypted |
 
-Die Antwort auf eine Frage liefert den nächsten Schritt und die Zahl der offenen Punkte. Die Erstattungsspanne kommt nicht von hier, sondern aus dem Cockpit.
+Answering a question returns the next step and the number of open items. The refund range does not come from here; it comes from the cockpit.
 
-## 3. Lohnsteuerbescheinigung und Arbeitsweg
+## 3. Wage tax certificate and commute
 
-| | Lohnsteuerbescheinigung | Arbeitsweg |
+| | Wage tax certificate | Commute |
 | :--- | :--- | :--- |
-| Eingang | `LstbController`: `GET …/lstb`, `PUT …/lstb/:feld`, dazu je `GET` und `PUT` für `lstb-kirchensteuer`, `lstb-zeilen`, `lstb-arbeitgeber`, `lstb-zuschuesse`. `LstbScanController`: `PUT …/lstb` für eine gelesene Bescheinigung als Ganzes. | `CommuteController`: `GET …/arbeitsweg`, `PUT …/arbeitsweg` |
-| Service | `LstbService`, `LstbScanService` | `CommuteService`, Hilfsfunktionen in `commute/ways-to-work.ts` |
-| Kern | `wageTaxCertificateStatus`, `setWageTaxCertificateField` | `calculateWorkdays`, `commuterAllowanceByWay` |
+| Entry | `LstbController`: `GET …/lstb`, `PUT …/lstb/:feld`, plus a `GET` and a `PUT` each for `lstb-kirchensteuer`, `lstb-zeilen`, `lstb-arbeitgeber`, `lstb-zuschuesse`. `LstbScanController`: `PUT …/lstb` for a certificate read as a whole. | `CommuteController`: `GET …/arbeitsweg`, `PUT …/arbeitsweg` |
+| Service | `LstbService`, `LstbScanService` | `CommuteService`, helpers in `commute/ways-to-work.ts` |
+| Core | `wageTaxCertificateStatus`, `setWageTaxCertificateField` | `calculateWorkdays`, `commuterAllowanceByWay` |
 | Ports | `WAGE_TAX_CERTIFICATE_REPOSITORY`, `PROVENANCE_REPOSITORY` | `COMMUTE_REPOSITORY` |
-| Tabellen | `Lstb` | `Commute` |
+| Tables | `Lstb` | `Commute` |
 
-Alle Routen verlangen ein Konto. Die Entfernung zur Arbeit gibt der Nutzer ein; es gibt keinen Routing-Dienst.
+All routes require an account. The user enters the distance to work; there is no routing service.
 
-## 4. Grenzgänger Schweiz
+## 4. Cross-border commuters to Switzerland
 
 | | |
 | :--- | :--- |
-| Eingang | `ChSalaryCertificateController`: `GET …/ch-lohnausweis`, `PUT …/ch-lohnausweis/:feld`, dazu `PUT` für `bemerkungen`, `vorsorge`, `n-gre`, `wechselkurs`, `grenzgaenger` |
+| Entry | `ChSalaryCertificateController`: `GET …/ch-lohnausweis`, `PUT …/ch-lohnausweis/:feld`, plus `PUT` for `bemerkungen`, `vorsorge`, `n-gre`, `wechselkurs`, `grenzgaenger` |
 | Service | `ChSalaryCertificateService` |
-| Kern | `crossBorderStatus`, `chItemsAsCoreItems`, `chfToEur`, `officialMonthlyRate` |
+| Core | `crossBorderStatus`, `chItemsAsCoreItems`, `chfToEur`, `officialMonthlyRate` |
 | Ports | `CROSS_BORDER_SALARY_STATEMENT_REPOSITORY` |
-| Tabelle | `ChSalaryCertificate` |
+| Table | `ChSalaryCertificate` |
 
-Entscheidung: [ADR-0042](adr/0042-grenzgaenger-ch-vertikale.md), ergänzt durch [ADR-0072](adr/0072-n-gre-pensionskasse-aufteilung-krankentaggeld-jahreskurs.md).
+Decision: [ADR-0042](adr/0042-grenzgaenger-ch-vertikale.md), extended by [ADR-0072](adr/0072-n-gre-pensionskasse-aufteilung-krankentaggeld-jahreskurs.md).
 
-## 5. Rente, Kapital, Vermietung
+## 5. Pensions, capital income, rental
 
-| | Rente | Kapital | Vermietung |
+| | Pensions | Capital income | Rental |
 | :--- | :--- | :--- | :--- |
-| Eingang | `PensionController`: `GET …/rente`, `PUT …/rente/art`, `PUT …/rente/:feld` | `CapitalController`: `GET …/kapital`, `PUT …/kapital/inhaber`, `PUT …/kapital/:feld`, `GET …/kapital/guenstigerpruefung` | `RentalController`: `GET …/vermietung`, `POST …/vermietung/objekte`, `PUT …/vermietung/objekte/:objektId/:feld`, `PUT …/vermietung/objekte/:objektId/adresse` |
+| Entry | `PensionController`: `GET …/rente`, `PUT …/rente/art`, `PUT …/rente/:feld` | `CapitalController`: `GET …/kapital`, `PUT …/kapital/inhaber`, `PUT …/kapital/:feld`, `GET …/kapital/guenstigerpruefung` | `RentalController`: `GET …/vermietung`, `POST …/vermietung/objekte`, `PUT …/vermietung/objekte/:objektId/:feld`, `PUT …/vermietung/objekte/:objektId/adresse` |
 | Service | `PensionService` | `CapitalService` | `RentalService` |
-| Kern | `pensionStatus`, `pensionAsCoreLineItem` | `classifyCapitalDepot`, `capitalAsCoreLineItem`, `mostFavourableCheckOnEstimate` | `classifyRental`, `rentalStatus`, `rentalPropertyFacts` |
+| Core | `pensionStatus`, `pensionAsCoreLineItem` | `classifyCapitalDepot`, `capitalAsCoreLineItem`, `mostFavourableCheckOnEstimate` | `classifyRental`, `rentalStatus`, `rentalPropertyFacts` |
 | Ports | `PENSION_REPOSITORY` | `CAPITAL_REPOSITORY` | `RENTAL_REPOSITORY` |
-| Tabellen | `Pension` | `Capital` | `RentalProperty` |
+| Tables | `Pension` | `Capital` | `RentalProperty` |
 
-## 6. Freischaltung und Zahlung
+## 6. Unlock and payment
 
 | | |
 | :--- | :--- |
-| Eingang | `UnlockController`: `GET …/freischaltung` und der Webhook `POST /v1/zahlung/stripe/webhook`. Den Checkout startet `PrintoutController` (§7). |
+| Entry | `UnlockController`: `GET …/freischaltung` and the webhook `POST /v1/zahlung/stripe/webhook`. The checkout is started by `PrintoutController` (§7). |
 | Service | `UnlockService` |
-| Ports | `PAYMENT_PROVIDER` (`PaymentProvider` mit `createCheckout` und `verifyEvent`), `UNLOCK_REPOSITORY` |
-| Adapter | `StripePaymentProvider` in `unlock/stripe-payment-provider.ts`, die einzige Datei mit dem Stripe-SDK |
-| Tabelle | `Unlock` |
+| Ports | `PAYMENT_PROVIDER` (`PaymentProvider` with `createCheckout` and `verifyEvent`), `UNLOCK_REPOSITORY` |
+| Adapter | `StripePaymentProvider` in `unlock/stripe-payment-provider.ts`, the only file with the Stripe SDK |
+| Table | `Unlock` |
 
-Der Webhook steht nicht hinter dem `UserContextGuard`. Er weist sich über die Signatur aus, die `verifyEvent` prüft. Der Ablauf steht in [`architecture.md` §6.2](architecture.md#62-freischalten-und-drucken).
+The webhook is not behind `UserContextGuard`. It authenticates by the signature that `verifyEvent` checks. The sequence is in [`architecture.md` §6.2](architecture.md#62-unlocking-and-printing).
 
-## 7. Ausdruck
+## 7. Printout
 
 | | |
 | :--- | :--- |
-| Eingang | `PrintoutController`: `GET …/ausdruck/pruefung`, `GET …/ausdruck/werte`, `POST …/ausdruck/checkout`, `GET …/ausdruck`, `GET …/ausdruck/vorlage/:formular`, dazu `POST …/ausdruck/async` und `GET …/ausdruck/jobs/:jobId` |
-| Services | `PrintoutService` stellt die Werte zusammen und startet den Checkout über `UnlockService`. `PrintoutJobService` führt asynchrone Aufträge. |
-| Rendern | Funktion `renderForms` in `printout/form-renderer.ts`, die einzige Datei mit `pdf-lib` |
-| Daten | Feldpositionen `FIELD_SETS` in derselben Datei (2024 und 2025), Vordrucke unter `apps/api/assets/vordrucke/<jahr>/`, Prüfsummen in `printout/vordrucke-<jahr>.json` |
+| Entry | `PrintoutController`: `GET …/ausdruck/pruefung`, `GET …/ausdruck/werte`, `POST …/ausdruck/checkout`, `GET …/ausdruck`, `GET …/ausdruck/vorlage/:formular`, plus `POST …/ausdruck/async` and `GET …/ausdruck/jobs/:jobId` |
+| Services | `PrintoutService` assembles the values and starts the checkout through `UnlockService`. `PrintoutJobService` runs asynchronous jobs. |
+| Rendering | the function `renderForms` in `printout/form-renderer.ts`, the only file with `pdf-lib` |
+| Data | field positions `FIELD_SETS` in the same file (2024 and 2025), the forms under `apps/api/assets/vordrucke/<year>/`, checksums in `printout/vordrucke-<year>.json` |
 
-`PrintoutJobService` hält Aufträge in einer `Map` im Prozessspeicher und startet sie mit `setImmediate`. Es gibt keinen Worker und keinen dauerhaften Speicher. Das ist als Schuld in [`architecture.md` §11](architecture.md#11-risiken-und-technische-schulden) geführt.
+`PrintoutJobService` keeps jobs in a `Map` in process memory and starts them with `setImmediate`. There is no worker and no durable store. This is listed as debt in [`architecture.md` §11](architecture.md#11-risks-and-technical-debt).
 
-## 8. Eule
+## 8. The owl
 
 ```mermaid
 flowchart LR
@@ -126,63 +126,63 @@ flowchart LR
   Svc --> Guard["ADVISOR_TOPIC_GUARD\nAdvisorTopicGuard"]
   Svc --> Repo["ADVISOR_REPOSITORY"]
   Svc --> Tx["TRANSACTION_RUNNER"]
-  Engine --> Factory["createChatModelFromConfig\nAnthropic · OpenAI · Google · Fake"]
+  Engine --> Factory["createChatModelFromConfig\nAnthropic · OpenAI · Google · fake"]
   Guard --> Single["SingleShotModel"]
-  Runs --> Log["ADVISOR_RUN_LOG\nProzessspeicher oder Redis"]
+  Runs --> Log["ADVISOR_RUN_LOG\nprocess memory or Redis"]
 ```
 
 | | |
 | :--- | :--- |
-| Eingang | `AdvisorController` mit 27 Routen, darunter `POST chat`, `POST stream`, `GET runs/:runId/events`, `GET models` |
-| Services | `AdvisorService` (Gespräche, Entwürfe, Anwenden und Rückgängigmachen), `AdvisorRunService` (Antwortläufe, [ADR-0064](adr/0064-eulen-chat-antwortlaeufe-und-wiederaufnahme.md)), `AdvisorModelsService` |
-| Kern | Fachlogik der Eule in `packages/core/src/interview/advisor*.ts`; `scrubUserMessagePii` vor jedem Modellaufruf |
-| Ports | `ADVISOR_ENGINE` (Interface `AdvisorEnginePort` im Kern), `ADVISOR_TOPIC_GUARD`, `ADVISOR_REPOSITORY`, `ADVISOR_RUN_LOG`, `TRANSACTION_RUNNER` |
-| Adapter | `LangGraphAdvisorEngine` und die übrigen LangChain-Dateien in `ki/`; `advisor/run/advisor-run-log.redis.ts` |
-| Tabellen | `AdvisorConversation`, `AdvisorChatMessage` und weitere mit Präfix `Advisor` |
+| Entry | `AdvisorController` with 27 routes, among them `POST chat`, `POST stream`, `GET runs/:runId/events`, `GET models` |
+| Services | `AdvisorService` (conversations, drafts, applying and undoing), `AdvisorRunService` (answer runs, [ADR-0064](adr/0064-eulen-chat-antwortlaeufe-und-wiederaufnahme.md)), `AdvisorModelsService` |
+| Core | the owl's domain logic in `packages/core/src/interview/advisor*.ts`; `scrubUserMessagePii` before every model call |
+| Ports | `ADVISOR_ENGINE` (interface `AdvisorEnginePort` in the core), `ADVISOR_TOPIC_GUARD`, `ADVISOR_REPOSITORY`, `ADVISOR_RUN_LOG`, `TRANSACTION_RUNNER` |
+| Adapters | `LangGraphAdvisorEngine` and the other LangChain files in `ki/`; `advisor/run/advisor-run-log.redis.ts` |
+| Tables | `AdvisorConversation`, `AdvisorChatMessage` and others prefixed `Advisor` |
 
-`AdvisorService` ist das Modul mit den meisten ausgehenden Kanten (24): Die Eule liest und entwirft in fast jedem Fachmodul. Die Werkzeuge der Eule liegen in `ki/tools/` (23 Dateien, Stand 2026-11-22).
+`advisor` is the module with the most outgoing edges (24): the owl reads and drafts in almost every feature module. The owl's tools are in `ki/tools/` (23 files as of 2026-11-22).
 
-## 9. MCP-Server
+## 9. MCP server
 
-Über MCP arbeitet nicht die Eule, sondern ein fremder Assistent des Nutzers ([ADR-0052](adr/0052-agenten-zugang-mcp.md)).
-
-| | |
-| :--- | :--- |
-| Eingang | `McpController`: `POST /mcp` (Streamable HTTP), dazu `GET /mcp`, `DELETE /mcp`, `GET /mcp/sse`, `POST /mcp/messages` |
-| Identität | Bearer-Token, geprüft vom `UserContextGuard` über `BEARER_TOKEN_REPOSITORY`. Nur dieser Controller akzeptiert Assistenten-Token. |
-| Services | `McpService` registriert die Werkzeuge aus `mcp/tools/` (45 Registrierungen, Stand 2026-11-22). `McpReportService` liefert Berichte und Simulationen. |
-| Ports | `TRANSACTION_RUNNER`: Eine Simulation schreibt über den normalen Schreibweg in einer Transaktion, die immer zurückgerollt wird. Sie läuft nur, wenn der Runner `rollsBack` meldet. |
-
-## 10. Belege
+It is not the owl that works through MCP but an external assistant of the user ([ADR-0052](adr/0052-agenten-zugang-mcp.md)).
 
 | | |
 | :--- | :--- |
-| Eingang | `ReceiptController` (Ablage), `ReceiptParseController`: `POST /v1/belege/parse`, `POST /v1/belege/:id/inhaber` |
+| Entry | `McpController`: `POST /mcp` (Streamable HTTP), plus `GET /mcp`, `DELETE /mcp`, `GET /mcp/sse`, `POST /mcp/messages` |
+| Identity | a bearer token, checked by `UserContextGuard` through `BEARER_TOKEN_REPOSITORY`. Only this controller accepts assistant tokens. |
+| Services | `McpService` registers the tools from `mcp/tools/` (45 registrations as of 2026-11-22). `McpReportService` provides reports and simulations. |
+| Ports | `TRANSACTION_RUNNER`: a simulation writes through the normal write path inside a transaction that is always rolled back. It runs only if the runner reports `rollsBack`. |
+
+## 10. Receipts
+
+| | |
+| :--- | :--- |
+| Entry | `ReceiptController` (the filing cabinet), `ReceiptParseController`: `POST /v1/belege/parse`, `POST /v1/belege/:id/inhaber` |
 | Services | `ReceiptService`, `ReceiptParseService`, `ReceiptReassignService` |
-| Strategien | `DocumentParseRegistry` wählt nach Belegart: `AutoReceiptParseStrategy`, `LstbScanParseStrategy`, `ChCertificateScanParseStrategy` und weitere für Schweizer Schreiben |
-| Kern | feste Leseregeln je Belegart, `scrubDocumentTextPii` |
+| Strategies | `DocumentParseRegistry` picks by document kind: `AutoReceiptParseStrategy`, `LstbScanParseStrategy`, `ChCertificateScanParseStrategy` and further ones for Swiss letters |
+| Core | fixed reading rules per document kind, `scrubDocumentTextPii` |
 | Ports | `RECEIPT_REPOSITORY`, `STORAGE_PORT`, `SINGLE_SHOT_MODEL_FACTORY` |
-| Adapter | `PostgresByteaStorageAdapter` mit `EnvelopeCryptoService`; Schlüssel je Nutzer über `USER_KEY_STORE` ([ADR-0059](adr/0059-beleg-keystore-crypto-shredding.md)) |
-| Tabellen | `Receipt`, `ReceiptFile` |
+| Adapters | `PostgresByteaStorageAdapter` with `EnvelopeCryptoService`; a key per user through `USER_KEY_STORE` ([ADR-0059](adr/0059-beleg-keystore-crypto-shredding.md)) |
+| Tables | `Receipt`, `ReceiptFile` |
 
-Der Ablauf steht in [`architecture.md` §6.3](architecture.md#63-einen-beleg-lesen). Lebenszyklus eines Belegs: [ADR-0097](adr/0097-beleg-lebenszyklus.md).
+The sequence is in [`architecture.md` §6.3](architecture.md#63-reading-a-receipt). Life cycle of a receipt: [ADR-0097](adr/0097-beleg-lebenszyklus.md).
 
-## 11. Konto: Export und Löschung
+## 11. Account: export and deletion
 
-| | Export | Löschung |
+| | Export | Deletion |
 | :--- | :--- | :--- |
-| Eingang | `AccountExportController`: `GET /v1/account/export` | `AccountDeletionController`: `DELETE /v1/account` |
+| Entry | `AccountExportController`: `GET /v1/account/export` | `AccountDeletionController`: `DELETE /v1/account` |
 | Service | `AccountExportService` | `AccountDeletionService` |
 | Ports | `TAX_DATA_EXPORT_REPOSITORY`, `PDF_RENDERER` | `ACCOUNT_DELETION_REPOSITORY` |
-| Adapter | `PlaywrightPdfRenderer` | `account-deletion.repository.prisma.ts`, Transaktion in `delete-account-transaction.prisma.ts` |
+| Adapters | `PlaywrightPdfRenderer` | `account-deletion.repository.prisma.ts`, the transaction in `delete-account-transaction.prisma.ts` |
 
-Die Löschung läuft in einer Datenbank-Transaktion. Einträge im Zugriffsprotokoll bleiben anonymisiert erhalten, Daten unter einer rechtlichen Aufbewahrungspflicht ebenfalls ([ADR-0013](adr/0013-dsgvo-export-and-account-deletion.md)). Belegdateien werden vor der Transaktion vernichtet und sind daher nicht Teil ihrer Atomarität. `apps/api/test/account-deletion-coverage.test.ts` prüft anhand des Prisma-Schemas, dass keine Tabelle mit Nutzerbezug vergessen wird.
+Deletion runs in one database transaction. Entries in the access log are kept in anonymised form, as is data under a legal retention duty ([ADR-0013](adr/0013-dsgvo-export-and-account-deletion.md)). Receipt files are destroyed before the transaction and are therefore not part of its atomicity. `apps/api/test/account-deletion-coverage.test.ts` uses the Prisma schema to check that no table referencing a user is forgotten.
 
-## 12. Beobachtbarkeit
+## 12. Observability
 
-| Baustein | Datei | Was er tut |
+| Element | File | What it does |
 | :--- | :--- | :--- |
-| Request-ID | `common/request-id.ts` | übernimmt `traceparent` oder `x-request-id`, sonst eine neue UUID |
-| Fehlerfilter | `common/domain-error.filter.ts` (`DomainErrorFilter`) | einheitlicher Fehlerkörper mit der Request-ID |
-| Health | `health/health.controller.ts` | `GET /v1/health/live`, `GET /v1/health/ready` mit Datenbankprüfung |
-| Tracing | `telemetry/tracer.ts` (`withSpan`) | zwei Spans: Steuerschätzung und Druckauftrag. Ohne Exporter werden sie nicht gesammelt. |
+| Request id | `common/request-id.ts` | adopts `traceparent` or `x-request-id`, otherwise a new UUID |
+| Error filter | `common/domain-error.filter.ts` (`DomainErrorFilter`) | one error body format carrying the request id |
+| Health | `health/health.controller.ts` | `GET /v1/health/live`, `GET /v1/health/ready` with a database check |
+| Tracing | `telemetry/tracer.ts` (`withSpan`) | two spans: tax estimate and print job. Without an exporter they are not collected. |

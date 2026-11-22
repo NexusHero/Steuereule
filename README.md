@@ -148,10 +148,10 @@ The tariff functions have a Vitest benchmark (`pnpm --filter @steuereule/core be
 
 - **Domain core.** [`@steuereule/core`](packages/core/) holds every tax rule as pure TypeScript with no I/O. It has no runtime dependencies, so a framework import does not even resolve. [`architecture.test.ts`](packages/core/src/architecture.test.ts) pins the allowed import directions between its folders and forbids import cycles between files.
 - **Application ring.** The services in `apps/api` depend on the core and on *ports*: an interface plus a DI token, such as `ReceiptRepository` / `RECEIPT_REPOSITORY`, `SingleShotModel`, `PaymentProvider` or `EmailSender`.
-- **Adapters.** The database client and each external SDK may be imported only by the files named for it: Prisma in `*.prisma.ts` and `src/prisma/`, LangChain in eight files of `src/ki/`, Stripe in `stripe-payment-provider.ts`. [`apps/api/test/architecture.test.ts`](apps/api/test/architecture.test.ts) fails on any other import, and on any new import between feature modules ([ADR-0102](docs/adr/0102-ports-und-adapter-per-architekturtest.md)).
+- **Adapters.** The database client and each external SDK may be imported only by the files named for it: Prisma in `*.prisma.ts` and `src/prisma/`, LangChain in eight files of `src/ki/`, Stripe in `stripe-payment-provider.ts`. [`apps/api/test/architecture.test.ts`](apps/api/test/architecture.test.ts) fails on any other import, and on any new import between feature modules ([ADR-0102](docs/adr/0102-ports-and-adapters-enforced-by-architecture-tests.md)).
 - **Why.** The tax rules are tested and fuzzed without a database. Three LLM vendors and a CI fake sit behind one factory. Field encryption sits in the Prisma adapter, so services never see it.
 
-The full write-up is in [`docs/architecture.md` §4.1](docs/architecture.md#41-architekturstil-ports--adapters). It covers the rings, the port inventory, what is enforced and how, the known limits, and a recipe for adding a dependency.
+The full write-up is in [`docs/architecture.md` §4.1](docs/architecture.md#41-architecture-style-ports--adapters). It covers the rings, the port inventory, what is enforced and how, the known limits, and a recipe for adding a dependency.
 
 Steuereule is structured as a modular TypeScript monorepo powered by `pnpm` and `Turborepo`:
 
