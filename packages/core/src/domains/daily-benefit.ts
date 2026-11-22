@@ -152,3 +152,26 @@ export function ahvContributionFitHint(fit: AhvContributionFit): string {
       return `${lead} Ziffer 9 (${box9}) liegt deutlich unter den Beiträgen mit dem Taggeld (etwa ${withText}) und ohne das Taggeld (etwa ${withoutText}); daran lässt sich die Herkunft nicht ablesen.`
   }
 }
+
+/**
+ * The source the app recommends: only when two signs of the certificate agree, the remark naming a paid-out
+ * benefit („KK-Taggeld Verrechnung“) and Ziffer 9 fitting the gross wage without it (a benefit of an
+ * insurance is not AHV wage). The user still answers; null when a sign is missing or they disagree.
+ */
+export function recommendedDailyBenefitSource(remarkKind: 'sickness' | 'accident' | null | undefined, fit: AhvContributionFit | null): DailyBenefitSource | null {
+  if (!remarkKind || fit === null || fit.verdict !== 'without') return null
+  return remarkKind === 'accident' ? 'unfallversicherung' : 'krankentaggeldversicherung'
+}
+
+/** An answer that keeps the benefit as wage although both signs point to an insurance. */
+export function goesAgainstRecommendation(answer: DailyBenefitSource, recommended: DailyBenefitSource | null): boolean {
+  return recommended !== null && (answer === 'lohnfortzahlung' || answer === 'kein')
+}
+
+/** Why the app recommends the deduction, in German, for the question, the card and the mask. */
+export const DAILY_BENEFIT_RECOMMENDATION_REASON =
+  'Die Bemerkung im Lohnausweis nennt das Taggeld, und die AHV-Beiträge in Ziffer 9 passen zum Lohn ohne das Taggeld: Beides spricht für eine Versicherungsleistung, die steuerfrei ist.'
+
+/** The warning beside an answer against the recommendation. */
+export const DAILY_BENEFIT_CONTRADICTION =
+  'Das widerspricht dem Lohnausweis: Bemerkung und Ziffer 9 sprechen für eine Versicherungsleistung. Wähle Lohnfortzahlung nur, wenn die Taggeld-Abrechnung oder die Monatslohnabrechnungen das zeigen (AHV-pflichtiger Lohn des Arbeitgebers); sonst wird steuerfreies Geld versteuert.'

@@ -6,6 +6,8 @@ import {
   ahvContributionFitHint,
   dailyBenefitAmountField,
   dailyBenefitEntry,
+  goesAgainstRecommendation,
+  recommendedDailyBenefitSource,
 } from './daily-benefit'
 
 describe('the Swiss social security rates of the year', () => {
@@ -113,5 +115,38 @@ describe('ahvContributionFit: do the contributions of Ziffer 9 fit the wage with
     const fit = fitOf({ taxYear: 2025, grossWageChf: 200000, ahvContributionsChf: 0, candidateChf: 20000 })
     // 200.000 × 5,3 % + 148.200 × 1,1 % = 10.600 + 1.630; without: 9.540 + 1.630.
     expect(fit).toMatchObject({ expectedWithChf: 12230, expectedWithoutChf: 11170 })
+  })
+})
+
+describe('the source the app recommends when the remark and Ziffer 9 agree', () => {
+  // A real certificate, amounts only: a collective sickness benefit offset in the wage.
+  const offset = ahvContributionFit({ taxYear: 2024, grossWageChf: 102736, ahvContributionsChf: 5205, candidateChf: 20843 })
+
+  it('recommends the insurance for „KK-Taggeld Verrechnung“ when Ziffer 9 fits the wage without the benefit', () => {
+    expect(offset).toMatchObject({ verdict: 'without' })
+    expect(recommendedDailyBenefitSource('sickness', offset)).toBe('krankentaggeldversicherung')
+  })
+
+  it('recommends the accident insurance for an accident benefit that is not AHV wage', () => {
+    expect(recommendedDailyBenefitSource('accident', offset)).toBe('unfallversicherung')
+  })
+
+  it('recommends nothing when one sign is missing or they do not agree', () => {
+    const close = ahvContributionFit({ taxYear: 2025, grossWageChf: 115603, ahvContributionsChf: 7257, candidateChf: 3853 })
+    expect(close).toMatchObject({ verdict: 'unclear' })
+    expect(recommendedDailyBenefitSource('sickness', close)).toBeNull()
+    const wage = ahvContributionFit({ taxYear: 2025, grossWageChf: 90000, ahvContributionsChf: 5760, candidateChf: 6000 })
+    expect(wage).toMatchObject({ verdict: 'with' })
+    expect(recommendedDailyBenefitSource('sickness', wage)).toBeNull()
+    expect(recommendedDailyBenefitSource(null, offset)).toBeNull()
+    expect(recommendedDailyBenefitSource('sickness', null)).toBeNull()
+  })
+
+  it('calls an answer that keeps the benefit as wage a contradiction to the recommendation', () => {
+    expect(goesAgainstRecommendation('lohnfortzahlung', 'krankentaggeldversicherung')).toBe(true)
+    expect(goesAgainstRecommendation('kein', 'krankentaggeldversicherung')).toBe(true)
+    expect(goesAgainstRecommendation('beides', 'krankentaggeldversicherung')).toBe(false)
+    expect(goesAgainstRecommendation('krankentaggeldversicherung', 'krankentaggeldversicherung')).toBe(false)
+    expect(goesAgainstRecommendation('lohnfortzahlung', null)).toBe(false)
   })
 })

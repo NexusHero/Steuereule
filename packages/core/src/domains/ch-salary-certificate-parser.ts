@@ -418,8 +418,9 @@ export function dailyBenefitIn(lines: readonly string[]): ChDailyBenefitRemark |
   for (const line of lines) {
     const word = DAILY_BENEFIT.exec(line)
     if (!word || NOT_PAID_OUT.test(line)) continue
-    const amount = /(\d{1,3}(?:['’\s]\d{3})+|\d+)(?:[.,](\d{2}))?(?!\s*%)/.exec(line.slice(word.index + word[0].length))
-    const chf = amount ? Math.round(Number(`${amount[1]!.replace(/['’\s]/g, '')}.${amount[2] ?? '0'}`)) : null
+    // Swiss grouping („12'345.00“) and German grouping („3.853,10“): a dot before exactly three digits groups.
+    const amount = /(\d{1,3}(?:(?:['’\s]|\.(?=\d{3}(?!\d)))\d{3})+|\d+)(?:[.,](\d{2}))?(?!\s*%)/.exec(line.slice(word.index + word[0].length))
+    const chf = amount ? Math.round(Number(`${amount[1]!.replace(/['’\s.]/g, '')}.${amount[2] ?? '0'}`)) : null
     return { kind: ACCIDENT.test(line) ? 'accident' : 'sickness', amountChf: chf !== null && Number.isFinite(chf) && chf > 0 ? chf : null }
   }
   return null

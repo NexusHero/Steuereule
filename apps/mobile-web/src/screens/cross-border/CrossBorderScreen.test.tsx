@@ -363,6 +363,29 @@ describe('GrenzgaengerScreen — Anlage N-Gre facts', () => {
       expect(screen.queryByTestId('ch-ngre-steuerfreiesUnfalltaggeldChf')).toBeNull()
     })
 
+    it('recommends the insurance when Ziffer 9 fits the wage without the amount, and names the contradiction on continued pay', async () => {
+      // 90.000 − 6.000 = 84.000 AHV wage → 5.376 CHF: the benefit is not AHV wage.
+      const figures: Record<string, number> = { 'bruttolohn-total': 90000, 'ahv-beitraege': 5380 }
+      recordNGre({
+        ...EMPTY_CH,
+        fields: EMPTY_CH.fields.map((f) => {
+          const value = figures[f.id]
+          return value === undefined ? f : { ...f, kind: 'erfasst' as const, value }
+        }),
+        nGre: { ...EMPTY_CH.nGre, steuerfreiesKrankentaggeldChf: 6000 },
+      })
+      renderScreen()
+      expect((await screen.findByTestId('ch-ngre-taggeld-empfehlung')).textContent).toContain('Empfehlung: Krankentaggeldversicherung')
+      expect(screen.queryByTestId('ch-ngre-taggeld-widerspruch')).toBeNull()
+      fireEvent.click(screen.getByTestId('ch-ngre-taggeldQuelle-lohnfortzahlung'))
+      const warning = await screen.findByTestId('ch-ngre-taggeld-widerspruch')
+      expect(warning.textContent).toContain('widerspricht dem Lohnausweis')
+      expect(warning.textContent).toContain('Taggeld-Abrechnung')
+      expect(screen.queryByTestId('ch-ngre-taggeld-empfehlung')).toBeNull()
+      fireEvent.click(screen.getByTestId('ch-ngre-taggeldQuelle-krankentaggeldversicherung'))
+      await waitFor(() => expect(screen.queryByTestId('ch-ngre-taggeld-widerspruch')).toBeNull())
+    })
+
     it('still shows an amount recorded before the question, until the answer is given', async () => {
       recordNGre({ ...EMPTY_CH, nGre: { ...EMPTY_CH.nGre, steuerfreiesKrankentaggeldChf: 3853 } })
       renderScreen()

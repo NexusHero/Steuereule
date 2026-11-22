@@ -9,6 +9,10 @@ import {
   provenanceKey,
   sameReceiptAgain,
   sickPayQuestionForUser,
+  dailyBenefitRecommendation,
+  DAILY_BENEFIT_CONTRADICTION,
+  DAILY_BENEFIT_RECOMMENDATION_REASON,
+  type DailyBenefitHintContext,
   simulateAdvisorFieldDelta,
   sumFieldCombination,
   withPreviewedEffects,
@@ -551,7 +555,7 @@ export class AdvisorDocumentStaging {
     const initialMeta: AdvisorMessageMeta = {
       sources: [input.sourceId],
       actions: rawActions,
-      ...(benefit !== null ? { twoPaths: dailyBenefitPaths(benefit.kind, benefit.amountChf, input) } : {}),
+      ...(benefit !== null ? { twoPaths: dailyBenefitPaths(benefit.kind, benefit.amountChf, input, dailyBenefitRecommendation(input.dailyBenefit, dailyBenefitContext(taxYear, input)) !== null) } : {}),
     }
     const enrichedMeta = await this.withEstimateEffects(userId, taxYear, await this.drafts.enrichDraftsWithRawBaseline(userId, taxYear, initialMeta))
     checkPiiFree(enrichedMeta)
@@ -587,11 +591,7 @@ export class AdvisorDocumentStaging {
     const read = (field: string) => this.confirmationService.readRawValue(input.digestUserId, taxYear, `chLohnausweis.${field}`).catch(() => null)
     const [source, sickness, accident] = await Promise.all([read('taggeldQuelle'), read('steuerfreiesKrankentaggeldChf'), read('steuerfreiesUnfalltaggeldChf')])
     if (source !== null || sickness !== null || accident !== null) return null
-    const amountOf = (field: string): number | null => {
-      const value = input.fields.find((item) => (item.screen ?? input.screen) === 'chLohnausweis' && item.field === field)?.value
-      return typeof value === 'number' ? value : null
-    }
-    return sickPayQuestionForUser(input.dailyBenefit, { taxYear, grossWageChf: amountOf('bruttolohn-total'), ahvContributionsChf: amountOf('ahv-beitraege') })
+    return sickPayQuestionForUser(input.dailyBenefit, dailyBenefitContext(taxYear, input))
   }
 
   /**
@@ -764,7 +764,30 @@ export class AdvisorDocumentStaging {
  * goes to its field, a benefit of the accident insurance (UVG/SUVA) to the other: both leave the wage,
  * only the accident benefit raises the tax rate (§ 32b EStG).
  */
-function dailyBenefitPaths(kind: ChDailyBenefitRemark['kind'], amountChf: number, input: DocumentDraftsInput): NonNullable<AdvisorMessageMeta['twoPaths']> {
+/** Ziffer 8 and 9 of the statement just read, for the AHV hint and the recommendation. */
+function dailyBenefitContext(taxYear: number, input: DocumentDraftsInput): DailyBenefitHintContext {
+  const amountOf = (field: string): number | null => {
+    const value = input.fields.find((item) => (item.screen ?? input.screen) === 'chLohnausweis' && item.field === field)?.value
+    return typeof value === 'number' ? value : null
+  }
+  return { taxYear, grossWageChf: amountOf('bruttolohn-total'), ahvContributionsChf: amountOf('ahv-beitraege') }
+}
+
+/**
+ * With `recommended` the remark and Ziffer 9 agree that an insurance paid the benefit: the deduction is
+ * marked as the recommendation and not deducting carries the contradiction, the user still chooses.
+ */
+function dailyBenefitPaths(kind: ChDailyBenefitRemark['kind'], amountChf: number, input: DocumentDraftsInput, recommended = false): NonNullable<AdvisorMessageMeta['twoPaths']> {
+  const paths = plainDailyBenefitPaths(kind, amountChf, input)
+  if (!recommended) return paths
+  return {
+    ...paths,
+    safePath: { ...paths.safePath, reason: `${paths.safePath.reason} ${DAILY_BENEFIT_CONTRADICTION}` },
+    maxPath: { ...paths.maxPath, label: `${paths.maxPath.label} (empfohlen)`, reason: `${paths.maxPath.reason} ${DAILY_BENEFIT_RECOMMENDATION_REASON}` },
+  }
+}
+
+function plainDailyBenefitPaths(kind: ChDailyBenefitRemark['kind'], amountChf: number, input: DocumentDraftsInput): NonNullable<AdvisorMessageMeta['twoPaths']> {
   const accident = kind === 'accident'
   const group = newActionId()
   // Taking the deduction answers where the money came from too (ADR-0072, Punkt 5). Not deducting leaves the

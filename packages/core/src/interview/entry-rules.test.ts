@@ -231,4 +231,12 @@ describe('the source of a daily benefit decides its field (ADR-0072, Punkt 5)', 
     expect(withHint).toContain('ohne das Taggeld')
     expect(sickPayQuestionForUser(remark)).not.toContain('Plausibilität')
   })
+
+  it('recommends the insurance in the question when the remark and Ziffer 9 agree, and warns against keeping it as wage', () => {
+    const question = sickPayQuestionForUser({ kind: 'sickness', amountChf: 20843 }, { taxYear: 2024, grossWageChf: 102736, ahvContributionsChf: 5205 })
+    expect(question).toContain('Empfehlung: abziehen (Krankentaggeldversicherung)')
+    expect(question).toContain('Bemerkung')
+    expect(question).toContain('Taggeld-Abrechnung')
+    expect(sickPayQuestionForUser({ kind: 'sickness', amountChf: 3853 }, { taxYear: 2025, grossWageChf: 115603, ahvContributionsChf: 7257 })).not.toContain('Empfehlung')
+  })
 })

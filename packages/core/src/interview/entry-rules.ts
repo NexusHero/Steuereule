@@ -5,12 +5,16 @@
 import { formatChf } from '../common/format'
 import type { ChDailyBenefitRemark } from '../domains/ch-salary-certificate-parser'
 import {
+  DAILY_BENEFIT_CONTRADICTION,
+  DAILY_BENEFIT_RECOMMENDATION_REASON,
   DAILY_BENEFIT_SOURCES,
   DAILY_BENEFIT_SOURCE_LABELS,
   ahvContributionFit,
   ahvContributionFitHint,
   dailyBenefitAmountField,
   isDailyBenefitSource,
+  recommendedDailyBenefitSource,
+  type AhvContributionFit,
   type DailyBenefitSource,
 } from '../domains/daily-benefit'
 import { fieldSpec } from './field-catalog'
@@ -80,7 +84,7 @@ const SOURCE_EFFECT =
   'Nur das Taggeld einer Versicherung ist steuerfrei und wird abgezogen: bei „beides“ nur der Teil der Versicherung, die Aufstockung des Arbeitgebers bleibt Lohn; Unfalltaggeld (UVG/SUVA) erhöht außerdem den Steuersatz (Progressionsvorbehalt). Die Lohnfortzahlung des Arbeitgebers ohne Versicherung ist Lohn: Es wird nichts abgezogen. Ein Hinweis auf die Versicherung ist eine Bemerkung wie „KK-Taggeld Verrechnung“.'
 
 /** Asked once per Swiss wage statement: the certificate does not say where a daily benefit in the gross wage came from. */
-export const SICK_PAY_QUESTION = `Frag, falls noch nicht beantwortet, woher das Taggeld im Bruttolohn Ziffer 8 des Lohnausweises kam, mit genau diesen Antworten: ${SOURCE_ANSWERS}. Lege die Antwort als chLohnausweis.taggeldQuelle an (${SOURCE_VALUES}). Erst danach der Betrag laut Taggeld-Abrechnung: Krankentaggeldversicherung und Mutterschaft / IV in chLohnausweis.steuerfreiesKrankentaggeldChf, bei „beides“ nur den Teil der Versicherung in chLohnausweis.steuerfreiesKrankentaggeldChf (die Aufstockung des Arbeitgebers bleibt Lohn), Unfallversicherung in chLohnausweis.steuerfreiesUnfalltaggeldChf (steuerfrei, erhöht aber den Steuersatz); jeden Betrag über den Zwei-Wege-Vorschlag (\`propose_two_paths\`). Bei Lohnfortzahlung und ohne Taggeld wird nichts abgezogen (die App setzt steuerfreiesKrankentaggeldChf = 0). Eine Bemerkung wie „KK-Taggeld Verrechnung“ spricht für die Versicherung; ob die AHV/IV/EO- und ALV-Beiträge in Ziffer 9 zum Bruttolohn mit oder ohne das Taggeld passen, ist nur ein Hinweis (Ziffer 9 kann die NBU-Prämie enthalten), nie die Entscheidung.`
+export const SICK_PAY_QUESTION = `Frag, falls noch nicht beantwortet, woher das Taggeld im Bruttolohn Ziffer 8 des Lohnausweises kam, mit genau diesen Antworten: ${SOURCE_ANSWERS}. Lege die Antwort als chLohnausweis.taggeldQuelle an (${SOURCE_VALUES}). Erst danach der Betrag laut Taggeld-Abrechnung: Krankentaggeldversicherung und Mutterschaft / IV in chLohnausweis.steuerfreiesKrankentaggeldChf, bei „beides“ nur den Teil der Versicherung in chLohnausweis.steuerfreiesKrankentaggeldChf (die Aufstockung des Arbeitgebers bleibt Lohn), Unfallversicherung in chLohnausweis.steuerfreiesUnfalltaggeldChf (steuerfrei, erhöht aber den Steuersatz); jeden Betrag über den Zwei-Wege-Vorschlag (\`propose_two_paths\`). Bei Lohnfortzahlung und ohne Taggeld wird nichts abgezogen (die App setzt steuerfreiesKrankentaggeldChf = 0). Eine Bemerkung wie „KK-Taggeld Verrechnung“ spricht für die Versicherung; ob die AHV/IV/EO- und ALV-Beiträge in Ziffer 9 zum Bruttolohn mit oder ohne das Taggeld passen, ist nur ein Hinweis (Ziffer 9 kann die NBU-Prämie enthalten), nie die Entscheidung. Hat die App unter dem Lohnausweis „Empfehlung: abziehen“ geschrieben (Bemerkung und Ziffer 9 sprechen beide für die Versicherung) und der Nutzer antwortet „Lohnfortzahlung“ oder „kein Taggeld“, sag ihm den Widerspruch einmal und frag nach der Taggeld-Abrechnung oder den Monatslohnabrechnungen; bleibt er dabei, gilt seine Antwort.`
 
 /** The same question as the app asks it itself, under a wage statement it has just read. */
 export const SICK_PAY_QUESTION_FOR_USER = `Eine Frage zu diesem Lohnausweis: ${DAILY_BENEFIT_QUESTION} Zur Wahl: ${SOURCE_ANSWERS}. ${SOURCE_EFFECT} Nenn mir die Herkunft und den Betrag laut Taggeld-Abrechnung, oder sag, dass es keines gab.`
@@ -96,11 +100,21 @@ export interface DailyBenefitHintContext {
   readonly familyAllowancesChf?: number | undefined
 }
 
+function dailyBenefitFit(candidateChf: number | null, context: DailyBenefitHintContext | undefined): AhvContributionFit | null {
+  if (candidateChf === null || candidateChf <= 0 || !context || context.grossWageChf === null || context.ahvContributionsChf === null) return null
+  return ahvContributionFit({ taxYear: context.taxYear, grossWageChf: context.grossWageChf, ahvContributionsChf: context.ahvContributionsChf, candidateChf, familyAllowancesChf: context.familyAllowancesChf })
+}
+
 /** The AHV plausibility hint for a candidate amount, or null when a figure is missing. */
 export function dailyBenefitHint(candidateChf: number | null, context: DailyBenefitHintContext | undefined): string | null {
-  if (candidateChf === null || candidateChf <= 0 || !context || context.grossWageChf === null || context.ahvContributionsChf === null) return null
-  const fit = ahvContributionFit({ taxYear: context.taxYear, grossWageChf: context.grossWageChf, ahvContributionsChf: context.ahvContributionsChf, candidateChf, familyAllowancesChf: context.familyAllowancesChf })
+  const fit = dailyBenefitFit(candidateChf, context)
   return fit === null ? null : ahvContributionFitHint(fit)
+}
+
+/** The source the app recommends for a remark of the statement just read (remark and Ziffer 9 agree), or null. */
+export function dailyBenefitRecommendation(remark: ChDailyBenefitRemark | null | undefined, context: DailyBenefitHintContext | undefined): DailyBenefitSource | null {
+  if (!remark) return null
+  return recommendedDailyBenefitSource(remark.kind, dailyBenefitFit(remark.amountChf, context))
 }
 
 /**
@@ -113,7 +127,13 @@ export function sickPayQuestionForUser(remark: ChDailyBenefitRemark | null | und
   if (!remark) return SICK_PAY_QUESTION_FOR_USER
   const amount = remark.amountChf === null ? null : formatChf(remark.amountChf)
   const hint = dailyBenefitHint(remark.amountChf, context)
-  const withHint = (text: string): string => (hint === null ? text : `${text} ${hint}`)
+  const recommended = amount ? dailyBenefitRecommendation(remark, context) : null
+  // Both signs agree: the app says which way it would go and what keeping it as wage would need.
+  const recommendation =
+    recommended === null
+      ? null
+      : `Empfehlung: abziehen (${recommended === 'unfallversicherung' ? 'Unfallversicherung' : 'Krankentaggeldversicherung'}). ${DAILY_BENEFIT_RECOMMENDATION_REASON} ${DAILY_BENEFIT_CONTRADICTION}`
+  const withHint = (text: string): string => [text, hint, recommendation].filter((part): part is string => part !== null).join(' ')
   if (remark.kind === 'accident') {
     return withHint(
       amount
