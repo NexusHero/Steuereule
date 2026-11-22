@@ -9,6 +9,7 @@
     "web": "expo start --web",
     "export:web": "expo export --platform web",
     "test": "vitest run",
+    "test:scheduler-delay": "vitest run --config vitest.scheduler-delay.config.ts",
     "coverage": "vitest run --coverage",
     "typecheck": "tsc --noEmit -p tsconfig.check.json"
   },

@@ -153,6 +153,11 @@ jobs:
             apps/*/coverage/lcov.info
           if-no-files-found: error
           retention-days: 3
+      # The app suite once more with React's scheduler slowed down (apps/mobile-web/src/test-scheduler-delay.ts):
+      # a test that clicks before React has run its passive effects — a Pressable still holding its old
+      # onPress/disabled — fails here every run instead of flaking now and then on a loaded runner.
+      - name: Scheduler-delay gate — the app suite with React's queued work landing late
+        run: pnpm --filter @steuereule/mobile-web test:scheduler-delay
       - name: License Compliance Gate (Block AGPL/GPL/BUSL/SSPL)
         run: node scripts/checks/license-check.mjs
       - name: AcroForm Preprocessor Gate — pre-compiled Vordruck templates match felder-<jahr>.json
