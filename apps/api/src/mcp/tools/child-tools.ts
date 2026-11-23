@@ -4,6 +4,9 @@ import { assertScope, json, provenanceOf, refused, type McpDeps, type McpSession
 import { ownRecord } from '../own-record.js'
 import { ageAtYearEnd } from '../read-view.js'
 
+/** More children than this in one tax year only the user adds in the app: a household has few, a runaway assistant many. */
+export const MAX_CHILDREN_BY_ASSISTANT = 12
+
 /** The children of the year as records, so the assistant can address the mask `kind` (ADR-0052 amendment 2). */
 export function registerChildTools(session: McpSession, deps: McpDeps): void {
   const { server, userId, assistant } = session
@@ -39,6 +42,7 @@ export function registerChildTools(session: McpSession, deps: McpDeps): void {
       // The same child twice would count its allowance twice; a repeated call returns the one already there.
       const same = existing.find((k) => k.firstName.trim().toLowerCase() === firstName.trim().toLowerCase() && k.geburtsdatum === geburtsdatum)
       if (same) return json({ ok: true, instance: same.id, nummer: same.sequenceNumber, bereitsVorhanden: true, hinweis: 'Dieses Kind gibt es schon; weitere Angaben mit maske_eintragen und dieser instance.' })
+      if (existing.length >= MAX_CHILDREN_BY_ASSISTANT) return refused(`TOO_MANY: Mehr als ${MAX_CHILDREN_BY_ASSISTANT} Kinder legt nur der Nutzer in der App an.`)
       const before = new Set(existing.map((k) => k.id))
       const after = (await children.create(userId, taxYear, { firstName, lastName, geburtsdatum })).kinder
       await deps.audit.append({ userId, action: 'WRITE', resource: 'kind_anlegen' })

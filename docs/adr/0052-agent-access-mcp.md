@@ -356,3 +356,29 @@ servers, not from the user's device. All its users therefore share a few address
    oldest first, and skips retained clients instead of getting stuck on them.
 3. Open: the limit counts per process in memory, like the other better-auth limits; with several
    instances it multiplies. A shared store (Redis) comes with #292.
+
+## Amendment 9 (2026-11-23) — Limits an assistant could walk around
+
+Four gaps from a code review of the MCP server. None let an assistant read or write what it was not
+granted; each let one that was granted access do more than intended. (Amendment 8, the consent screen,
+is in a pull request of its own.)
+
+1. **Children:** `kind_anlegen` had no upper bound, unlike `vermietung_anlegen` (10 objects). An
+   assistant now creates a child only while the tax year holds fewer than 12
+   (`MAX_CHILDREN_BY_ASSISTANT`); more are added by the user in the app.
+2. **SSE session and client:** `POST /mcp/messages` checked that a session belongs to the caller's
+   user, not to the caller's client. The server behind a session carries the scopes of the client
+   that opened it, so another assistant of the same user, granted less, could have acted through it
+   with the session id. A message from another client is now refused with 403.
+3. **Checkout links:** every `zahllink_anfordern` creates a checkout session at the payment provider,
+   bounded only by the 120 tool calls per minute. Now at most 5 per hour and account
+   (`MCP_CHECKOUT_LINK_LIMIT`), refused before the provider is asked.
+4. **Limits across instances:** amends Amendment 6. The tool-call window stays in the process and
+   refuses a flood without a round trip; a call it lets through is also counted in the shared
+   rate-limit storage (ADR-0106), so several instances hold one limit together. The checkout-link limit
+   counts there too. This takes effect only where that storage has Redis (#292); without it the storage
+   counts per process, as before. The limit of open SSE sessions stays per process, because the
+   sessions themselves live in one process.
+5. Cost: with Redis, every tool call that passes the process window adds one round trip to it, and the
+   storage opens a connection per call. If Redis does not answer, the call waits for the storage's
+   timeout (400 ms) and is then counted in the process.

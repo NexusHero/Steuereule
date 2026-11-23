@@ -382,6 +382,16 @@ describe('McpService (ADR-0052 §3 / §5 / §8 / §12)', () => {
     expect(children.create).not.toHaveBeenCalled()
   })
 
+  it('kind_anlegen stops at twelve children a year; more only the user adds in the app', async () => {
+      const kinder = Array.from({ length: 12 }, (_, i) => ({ id: `kind-${i}`, sequenceNumber: i + 1, firstName: `Kind${i}`, lastName: 'S', geburtsdatum: '2015-01-01' }))
+      const create = vi.fn()
+      const client = await clientWith({ list: async () => ({ kinder }), create, delete: vi.fn() })
+      const res = await client.callTool({ name: 'kind_anlegen', arguments: { taxYear: YEAR, firstName: 'Dreizehn', lastName: 'S', geburtsdatum: '2020-01-01' } })
+      expect((res as { isError?: boolean }).isError).toBe(true)
+      expect(getText(res)).toContain('TOO_MANY')
+      expect(create).not.toHaveBeenCalled()
+    })
+
   it('kind_anlegen needs the write scope', async () => {
       const children = { list: async () => ({ kinder: [] }), create: vi.fn() }
       const client = await clientWith(children, ['steuerdaten:read'])
@@ -893,5 +903,23 @@ describe('McpService (ADR-0052 §3 / §5 / §8 / §12)', () => {
     })
     expect(writeRes.isError).toBe(true)
     expect(getText(writeRes)).toContain('Fehlender OAuth-Scope: steuerdaten:write')
+  })
+
+  // ADR-0052 amendment 9: every link is a new checkout session at the payment provider, and the only bound
+  // was the 120 tool calls a minute.
+  it('zahllink_anfordern gives five links an hour per account and refuses the sixth without asking the provider', async () => {
+    const startCheckout = vi.fn(async () => ({ checkoutUrl: 'https://checkout.example/session' }))
+    const svc = new McpService(cockpitService, printoutService, confirmationService, owlModeService, receiptService, { startCheckout } as never, profileRepo, masterDataRepo, auditService)
+    const server = svc.createServer(USER, ALL_SCOPES_ASSISTANT)
+    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair()
+    await server.connect(serverTransport)
+    const client = new Client({ name: 'TestClient', version: '1.0.0' })
+    await client.connect(clientTransport)
+
+    for (let i = 0; i < 5; i += 1) expect(getText(await client.callTool({ name: 'zahllink_anfordern', arguments: { taxYear: YEAR } }))).toContain('checkout.example')
+    const sixth = await client.callTool({ name: 'zahllink_anfordern', arguments: { taxYear: YEAR } })
+    expect((sixth as { isError?: boolean }).isError).toBe(true)
+    expect(getText(sixth)).toContain('RATE_LIMITED')
+    expect(startCheckout).toHaveBeenCalledTimes(5)
   })
 })

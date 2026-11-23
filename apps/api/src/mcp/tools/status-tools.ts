@@ -2,7 +2,8 @@ import { z } from 'zod'
 import { SCREENS, type Screen } from '@steuereule/core'
 import { checkStageValue, validateStageTarget } from '../../ki/advisor-safety.js'
 import type { SimulationEntry } from '../mcp-report.service.js'
-import { assertScope, json, dataUserFor, type McpDeps, type McpSession } from '../mcp-session.js'
+import { MCP_CHECKOUT_LINK_LIMIT } from '../mcp-rate-limit.js'
+import { assertScope, json, refused, dataUserFor, type McpDeps, type McpSession } from '../mcp-session.js'
 
 /** Where the return stands: state, printout pre-check, owl hints, payment link (ADR-0052 §3, §5, §8, §12). */
 export function registerStatusTools(session: McpSession, deps: McpDeps): void {
@@ -53,6 +54,11 @@ export function registerStatusTools(session: McpSession, deps: McpDeps): void {
     },
     async ({ taxYear }) => {
       assertScope(assistant, 'zahllink:read')
+      // Every link is a new checkout session at the payment provider: a few an hour, not 120 a minute.
+      const gate = await deps.limiter?.takeCheckoutLink(userId)
+      if (gate && !gate.ok) {
+        return refused(`RATE_LIMITED: Für dieses Konto wurden in der letzten Stunde schon ${MCP_CHECKOUT_LINK_LIMIT.max} Zahllinks angefordert. Gib dem Nutzer den zuletzt erhaltenen Link, oder versuch es in ${Math.ceil(gate.retryAfterSeconds / 60)} Minuten wieder.`)
+      }
       await deps.audit.append({ userId, action: 'READ', resource: 'zahllink_anfordern' })
 
       const { checkoutUrl } = await deps.unlock.startCheckout(userId, taxYear)

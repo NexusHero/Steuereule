@@ -16,6 +16,7 @@ import type { PrintoutService } from '../printout/printout.service.js'
 import type { ProfileRepository } from '../profile/profile.repository.js'
 import type { ReceiptService } from '../receipt/receipt.service.js'
 import type { UnlockService } from '../unlock/unlock.service.js'
+import type { McpRateLimiter } from './mcp-rate-limit.js'
 import type { McpReportService } from './mcp-report.service.js'
 
 export interface AssistantSessionInfo {
@@ -42,6 +43,8 @@ export interface McpDeps {
   readonly profiles: ProfileRepository
   readonly masterData: MasterDataRepository
   readonly audit: AuditService
+  /** The limits of the endpoint; the checkout link has one of its own (ADR-0052 amendment 9). */
+  readonly limiter?: Pick<McpRateLimiter, 'takeCheckoutLink'> | undefined
   readonly report?: McpReportService | undefined
   /** The joint return (ADR-0054): whose data a value for Person B goes to. */
   readonly link?: Pick<LinkService, 'spouseForAdvisor' | 'dataUser'> | undefined

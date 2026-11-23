@@ -11,7 +11,9 @@ import { ProfileModule } from '../profile/profile.module.js'
 import { MasterDataModule } from '../master-data/master-data.module.js'
 import { AuditModule } from '../audit/audit.module.js'
 import { McpController } from './mcp.controller.js'
-import { McpRateLimiter } from './mcp-rate-limit.js'
+import { BETTER_AUTH_BUNDLE } from '../auth/auth.tokens.js'
+import type { BetterAuthBundle } from '../auth/better-auth.js'
+import { MCP_LIMITS, McpRateLimiter } from './mcp-rate-limit.js'
 import { McpReportService } from './mcp-report.service.js'
 import { McpService } from './mcp.service.js'
 import { InterviewModule } from '../interview/interview.module.js'
@@ -46,7 +48,10 @@ import { BusinessModule } from '../business/business.module.js'
     BusinessModule,
   ],
   controllers: [McpController],
-  providers: [McpService, McpReportService, { provide: McpRateLimiter, useFactory: () => new McpRateLimiter() }],
+  providers: [McpService, McpReportService, 
+    // One limiter per process, counting in the storage all instances share (ADR-0052 amendment 9).
+    { provide: McpRateLimiter, useFactory: (bundle: BetterAuthBundle) => new McpRateLimiter(Date.now, MCP_LIMITS, bundle.rateLimitStorage), inject: [BETTER_AUTH_BUNDLE] },
+  ],
   exports: [McpService],
 })
 export class McpModule {}
