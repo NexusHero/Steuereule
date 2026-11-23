@@ -50,6 +50,10 @@ export class FakeReceiptRepository implements ReceiptRepository {
     return Promise.resolve(this.rows.find((row) => row.userId === userId && row.id === id) ?? null)
   }
 
+  countForUser(userId: string): Promise<number> {
+    return Promise.resolve(this.rows.filter((row) => row.userId === userId).length)
+  }
+
   create(userId: string, data: CreateReceiptData): Promise<ReceiptRecord> {
     const now = new Date()
     const record: ReceiptRecord = {

@@ -19,6 +19,10 @@ import type { AssignmentDto } from './dto/assignment.dto.js'
  */
 export const MAX_RECEIPT_FILES_PER_ACCOUNT = 2_000
 export const MAX_RECEIPT_BYTES_PER_ACCOUNT = 2 * 1024 * 1024 * 1024
+// Beleg ROW cap (ADR-0108): the byte/file quota above bounds only stored blobs (ReceiptFile). A fileless
+// `POST /v1/belege` makes a Receipt row with no file, so it escaped every bound — an authenticated account
+// could grow rows without limit. Generous for real use (several tax years), finite against row flooding.
+export const MAX_RECEIPTS_PER_ACCOUNT = 5_000
 
 function exceedsReceiptQuota(files: number, bytes: number): boolean {
   return files > MAX_RECEIPT_FILES_PER_ACCOUNT || bytes > MAX_RECEIPT_BYTES_PER_ACCOUNT
@@ -219,6 +223,7 @@ export class ReceiptService {
   }
 
   async create(userId: string, dto: CreateReceiptDto): Promise<ReceiptResponseDto> {
+    if ((await this.repository.countForUser(userId)) >= MAX_RECEIPTS_PER_ACCOUNT) throw receiptQuotaExceeded()
     const record = await this.repository.create(userId, {
       fileName: dto.fileName,
       ...(dto.kind !== undefined ? { kind: dto.kind } : {}),
@@ -246,6 +251,7 @@ export class ReceiptService {
     // check, and the second one, which counts the file just stored, takes back whatever went over the cap.
     const usage = await this.storage.usage(userId)
     if (exceedsReceiptQuota(usage.files + 1, usage.bytes + input.buffer.length)) throw receiptQuotaExceeded()
+    if ((await this.repository.countForUser(userId)) >= MAX_RECEIPTS_PER_ACCOUNT) throw receiptQuotaExceeded()
 
     const record = await this.repository.create(userId, {
       fileName: cleanFileName,

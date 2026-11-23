@@ -49,6 +49,25 @@ describe('limits independent of the caller address (ADR-0106 D8/D9)', () => {
     expect(other.status).toBe(200)
   })
 
+  it('ADR-0108: the eleventh /verify-password on one account within 15 minutes is refused, from any address', async () => {
+    const { cookie } = await signUp('verify-pw-abuse@example.com')
+    let lastStatus = 0
+    let lastCode: string | undefined
+    for (let i = 0; i < 11; i += 1) {
+      const response = await fetch(`${baseUrl}/api/auth/verify-password`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', origin: ORIGIN, cookie, 'x-forwarded-for': `203.0.113.${i + 40}` },
+        body: JSON.stringify({ password: `wrong-password-${i}` }),
+      })
+      lastStatus = response.status
+      lastCode = ((await response.json()) as { code?: string }).code
+    }
+    // The per-address limit never trips (each attempt comes from a fresh forwarded address); the per-account
+    // limit does, before the password is even checked — closing the password oracle (ADR-0106 D9 review).
+    expect(lastStatus).toBe(429)
+    expect(lastCode).toBe('VERIFY_PASSWORD_ATTEMPTS_EXCEEDED')
+  })
+
   it('D8: guests from one address may write 300 times an hour, the next write is refused', async () => {
     const statuses: number[] = []
     for (let i = 0; i < 301; i += 1) {

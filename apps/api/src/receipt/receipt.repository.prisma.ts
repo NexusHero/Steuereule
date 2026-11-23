@@ -161,6 +161,10 @@ export class PrismaReceiptRepository implements ReceiptRepository {
     return row === null ? null : toRecord(row)
   }
 
+  async countForUser(userId: string): Promise<number> {
+    return this.prisma.receipt.count({ where: { userId } })
+  }
+
   async create(userId: string, data: CreateReceiptData): Promise<ReceiptRecord> {
     const [row] = await this.prisma.$transaction([
       this.prisma.receipt.create({

@@ -126,6 +126,7 @@ boot-ordering invariant are detailed in [`docs/arc42/README.md`](../arc42/README
 | 0105 | CI gate taxonomy, `category: gate` naming & the advisory CI-Overview transparency rollup | Accepted |
 | 0106 | Fixes for the live penetration test of 2026-11-23 (quadratic readers, client address, step-up, assistant grants, limits) | Accepted |
 | 0107 | Fixes for the third-round penetration test of 2026-11-23 (fastify/deps, AI chat PII leak, name at rest, crypto-shredding scope, rate-limit signal, export fresh-auth, oauth step-up) | Accepted |
+| 0108 | Hardening from the post-merge review (fileless receipt-row cap, per-account /verify-password limit) | Accepted |
 
 See also the [Tech Radar](./tech-radar.md).
 
