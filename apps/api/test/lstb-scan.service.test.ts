@@ -1,7 +1,7 @@
 // Unit tier (ADR-0004): „Werte übernehmen“ of a scanned LStB runs as one unit of work —
 // values + Beleg provenance + staged advisor actions marked applied, or nothing at all.
 import { beforeEach, describe, expect, it } from 'vitest'
-import type { AdvisorService } from '../src/advisor/advisor.service.js'
+import type { AdvisorDocumentStaging } from '../src/advisor/advisor-document-staging.js'
 import { AuditService } from '../src/audit/audit.service.js'
 import { ConflictError } from '../src/common/domain-error.js'
 import { LstbScanService } from '../src/lstb-scan/lstb-scan.service.js'
@@ -35,7 +35,7 @@ describe('LstbScanService.confirm (#444)', () => {
       markLstbActionsApplied: async (userId: string, taxYear: number, actionIds: readonly string[]) => {
         appliedCalls.push({ userId, taxYear, actionIds })
       },
-    } as unknown as AdvisorService
+    } as unknown as AdvisorDocumentStaging
     const transactions: TransactionRunner = {
       rollsBack: false,
       isActive: () => false,
@@ -95,7 +95,7 @@ describe('LstbScanService.confirm — the further lines of the scan', () => {
     lstbRepository = new FakeLstbRepository()
     const audit = new AuditService(new FakeAuditRepository())
     lstbService = new LstbService(lstbRepository, audit, new FakeMarkingRepository())
-    const advisor = { markLstbActionsApplied: async () => {} } as unknown as AdvisorService
+    const advisor = { markLstbActionsApplied: async () => {} } as unknown as AdvisorDocumentStaging
     service = new LstbScanService(lstbService, advisor, new ReceiptService(new FakeReceiptRepository(), audit, new InMemoryStorageAdapter()), passThroughTransactionRunner)
   })
 

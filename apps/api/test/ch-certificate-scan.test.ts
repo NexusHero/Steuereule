@@ -69,7 +69,7 @@ async function setUp(options: { spouse?: boolean; model?: RecordingModel } = {})
   const strategy = new ChCertificateScanParseStrategy(
     registry,
     runtime(options.model !== undefined),
-    kit.service,
+    kit.staging,
     new AuditService(new FakeAuditRepository()),
     kit.linkService,
     options.model ? () => singleShotFromChatModel(options.model!) : noSingleShotModel,

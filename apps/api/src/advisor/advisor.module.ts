@@ -27,6 +27,7 @@ import { AdvisorCaseDigest } from './advisor-case-digest.js'
 import { AdvisorConversations } from './advisor-conversations.js'
 import { AdvisorOpening } from './advisor-opening.js'
 import { AdvisorProjectNotes } from './advisor-project-notes.js'
+import { AdvisorDocumentStaging } from './advisor-document-staging.js'
 import { AdvisorCaseFacts } from './advisor-case-facts.js'
 import { draftRecordsOf } from './advisor-draft-records.js'
 import { AdvisorDrafts, DRAFT_RECORDS } from './advisor-drafts.js'
@@ -81,6 +82,7 @@ export function createAdvisorRunLog(env: NodeJS.ProcessEnv = process.env): Advis
     AdvisorConversations,
     AdvisorProjectNotes,
     AdvisorOpening,
+    AdvisorDocumentStaging,
     { provide: DRAFT_RECORDS, inject: [CHILD_REPOSITORY, RENTAL_REPOSITORY], useFactory: draftRecordsOf },
     AdvisorRunService,
     AdvisorModelsService,
@@ -91,6 +93,6 @@ export function createAdvisorRunLog(env: NodeJS.ProcessEnv = process.env): Advis
       useClass: PrismaAdvisorRepository,
     },
   ],
-  exports: [AdvisorService, ADVISOR_REPOSITORY],
+  exports: [AdvisorService, AdvisorDocumentStaging, AdvisorDrafts, ADVISOR_REPOSITORY],
 })
 export class AdvisorModule {}

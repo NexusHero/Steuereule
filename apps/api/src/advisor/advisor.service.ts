@@ -84,6 +84,7 @@ export class AdvisorService {
     @Inject(AdvisorConversations) private readonly conversations: AdvisorConversations,
     @Inject(AdvisorProjectNotes) private readonly notes: AdvisorProjectNotes,
     @Inject(AdvisorOpening) private readonly opening: AdvisorOpening,
+    @Inject(AdvisorDocumentStaging) private readonly staging: AdvisorDocumentStaging,
     /** Null only where the fixed rules answer alone; AdvisorModule always binds a model engine. */
     @Inject(ADVISOR_ENGINE) private readonly advisorEngine: AdvisorEnginePort | null,
     @Optional() @Inject(CHILD_REPOSITORY) private readonly childRepo?: ChildRepository,
@@ -126,22 +127,6 @@ export class AdvisorService {
       this.assessmentService,
       this.link,
       this.profileRepo,
-      this.childRepo,
-    ))
-  }
-
-  private stagingPart?: AdvisorDocumentStaging
-  private get staging(): AdvisorDocumentStaging {
-    return (this.stagingPart ??= new AdvisorDocumentStaging(
-      this.advisorRepo,
-      this.owlModeService,
-      this.confirmationService,
-      this.auditService,
-      this.transactions,
-      this.caseDigest,
-      this.drafts,
-      this.profileRepo,
-      this.link,
       this.childRepo,
     ))
   }
@@ -404,6 +389,6 @@ export class AdvisorService {
 
   /** The drafts of every tax year that came from a Beleg, metadata only (ADR-0097): for its processing state. */
   async receiptDrafts(userId: string): Promise<ReceiptDraftRecord[]> {
-    return this.advisorRepo.listReceiptDrafts(userId)
+    return this.staging.receiptDrafts(userId)
   }
 }

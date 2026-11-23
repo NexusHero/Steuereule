@@ -71,18 +71,18 @@ function makeVisionRuntime(enabled: boolean): AiRuntimeConfigService {
 }
 
 function buildTestHarness(responses: string[], visionEnabled = true) {
-  const { advisorRepo, interviewRepo, lstbRepo, childRepo, commuteRepo, profileRepo, receiptRepo, auditService, service: advisorService } = buildAdvisorTestKit()
+  const { advisorRepo, interviewRepo, lstbRepo, childRepo, commuteRepo, profileRepo, receiptRepo, auditService, staging, service: advisorService } = buildAdvisorTestKit()
   const visionModel = new RecordingVisionModel(responses)
   const registry = new DocumentParseRegistry()
   const runtime = makeVisionRuntime(visionEnabled)
   const modelFactory = () => singleShotFromChatModel(visionModel)
   const lstbService = new LstbService(lstbRepo, auditService, new FakeMarkingRepository())
   const linkService = new LinkService(new FakeLinkRepository(), profileRepo, new FakeMasterDataRepository(), auditService)
-  const autoStrategy = new AutoReceiptParseStrategy(runtime, advisorService, auditService, modelFactory)
+  const autoStrategy = new AutoReceiptParseStrategy(runtime, staging, auditService, modelFactory)
   const lstbStrategy = new LstbScanParseStrategy(
     registry,
     runtime,
-    advisorService,
+    staging,
     auditService,
     lstbService,
     linkService,
@@ -95,6 +95,7 @@ function buildTestHarness(responses: string[], visionEnabled = true) {
   return {
     advisorRepo,
     advisorService,
+    staging,
     childRepo,
     interviewRepo,
     lstbRepo,
@@ -874,7 +875,7 @@ describe('ReceiptParseService — the recognised kind goes back to the stored Be
   it('files it also when the answer is the question whose it is: the kind does not depend on the holder', async () => {
     const h = buildTestHarness(['{}'])
     await h.profileRepo.upsert('user-kind', { firstName: 'Anna', lastName: 'Beispiel' } as never)
-    const ask = new ReceiptParseService(h.registry, h.autoStrategy, h.receiptRepo, h.advisorService)
+    const ask = new ReceiptParseService(h.registry, h.autoStrategy, h.receiptRepo, h.staging)
     const beleg = await h.receiptRepo.create('user-kind', { fileName: 'scan.pdf', kind: 'Sonstiges' })
     const res = await ask.parseReceipt('user-kind', { taxYear: 2025, fileName: 'scan.pdf', receiptId: beleg.id, rawText: `${SALARY_CERTIFICATE}\nHerr Max Muster` })
     expect(res.assignment?.question).not.toBeNull()
@@ -986,8 +987,8 @@ describe('ReceiptParseService — an upload in the chat of a tax year', () => {
   async function setUp() {
     const h = buildTestHarness([], false)
     await h.profileRepo.upsert('user-chat', { firstName: 'Anna', lastName: 'Beispiel' } as never)
-    const parse = new ReceiptParseService(h.registry, h.autoStrategy, h.receiptRepo, h.advisorService)
-    const inbox = new ReceiptService(h.receiptRepo, new AuditService(new FakeAuditRepository()), new InMemoryStorageAdapter(), h.advisorService)
+    const parse = new ReceiptParseService(h.registry, h.autoStrategy, h.receiptRepo, h.staging)
+    const inbox = new ReceiptService(h.receiptRepo, new AuditService(new FakeAuditRepository()), new InMemoryStorageAdapter(), h.staging)
     const unassigned = async () => (await inbox.listPage('user-chat', { limit: 1 })).counts.unassigned
     return { h, parse, inbox, unassigned }
   }

@@ -36,6 +36,7 @@ import { AdvisorCaseDigest, type PrintoutGaps } from '../../src/advisor/advisor-
 import { AdvisorCaseFacts } from '../../src/advisor/advisor-case-facts.js'
 import { draftRecordsOf } from '../../src/advisor/advisor-draft-records.js'
 import { AdvisorDrafts } from '../../src/advisor/advisor-drafts.js'
+import { AdvisorDocumentStaging } from '../../src/advisor/advisor-document-staging.js'
 import { AdvisorConversations } from '../../src/advisor/advisor-conversations.js'
 import { AdvisorOpening } from '../../src/advisor/advisor-opening.js'
 import { AdvisorProjectNotes } from '../../src/advisor/advisor-project-notes.js'
@@ -89,6 +90,13 @@ export interface AdvisorTestKitOptions {
 /** The advisor wired over the kit's fakes. */
 export interface AdvisorWiring {
   readonly service: AdvisorService
+  readonly drafts: AdvisorDrafts
+  readonly caseDigest: AdvisorCaseDigest
+  readonly conversations: AdvisorConversations
+  readonly notes: AdvisorProjectNotes
+  readonly opening: AdvisorOpening
+  /** What the document readers inject. */
+  readonly staging: AdvisorDocumentStaging
 }
 
 export interface AdvisorTestKit extends AdvisorTestFakes, AdvisorWiring {
@@ -167,6 +175,7 @@ export function buildAdvisorTestKit(engine?: AdvisorEnginePort, modelConnection?
     const conversations = new AdvisorConversations(advisorEngine, advisorRepo, auditService, caseDigest)
     const notes = new AdvisorProjectNotes(advisorRepo, caseDigest)
     const opening = new AdvisorOpening(advisorRepo, caseDigest, notes, taxEstimate)
+    const staging = new AdvisorDocumentStaging(advisorRepo, owlModeService, confirmationService, auditService, transactions, caseDigest, drafts, profileRepo, linkService, childRepo)
     const service = new AdvisorService(
       advisorRepo,
       owlModeService,
@@ -177,6 +186,7 @@ export function buildAdvisorTestKit(engine?: AdvisorEnginePort, modelConnection?
       conversations,
       notes,
       opening,
+      staging,
       advisorEngine,
       childRepo,
       profileRepo,
@@ -187,7 +197,7 @@ export function buildAdvisorTestKit(engine?: AdvisorEnginePort, modelConnection?
       linkService,
       consent,
     )
-    return { service }
+    return { service, drafts, caseDigest, conversations, notes, opening, staging }
   }
 
   const base: AdvisorTestKitOptions = { ...options, engine: options.engine ?? engine, modelConnection: options.modelConnection ?? modelConnection }
