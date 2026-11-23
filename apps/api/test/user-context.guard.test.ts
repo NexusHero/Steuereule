@@ -5,11 +5,13 @@ import { createHash, generateKeyPairSync, sign as signWith } from 'node:crypto'
 import { signGuestSession } from '../src/auth/guest-session.js'
 import {
   AUTH_CONTEXT_REQUEST_KEY,
+  EMAIL_VERIFIED_REQUEST_KEY,
   GUEST_SESSION_COOKIE,
   USER_ID_KIND_REQUEST_KEY,
   USER_ID_REQUEST_KEY,
   UserContextGuard,
 } from '../src/auth/user-context.guard.js'
+import { SESSION_ABSOLUTE_MAX_AGE_MS } from '../src/auth/session-lifetime.js'
 import type { BetterAuthBundle } from '../src/auth/auth.tokens.js'
 import { createResettableRateLimitStorage } from '../src/auth/rate-limit-storage.js'
 import type { AssistantClient, BearerTokenRepository } from '../src/auth/bearer-token.repository.js'
@@ -166,6 +168,44 @@ describe('UserContextGuard', () => {
       // left as (or mistaken for) 'session' — that would let @RequiresAccount() admit
       // a caller whose session just failed to verify.
       expect(request[USER_ID_KIND_REQUEST_KEY]).toBe('guest')
+    })
+  })
+
+  // --- ADR-0103 §2: an absolute cap on session age (freshAge stays 0, ADR-0027) ---
+  describe('absolute session cap', () => {
+    it('refuses a session older than the absolute cap, falling through to the guest path (never left as "session")', async () => {
+      const createdAt = new Date(Date.now() - (SESSION_ABSOLUTE_MAX_AGE_MS + 60_000))
+      const getSession = vi.fn().mockResolvedValue({ user: { id: 'real-account-id', emailVerified: true }, session: { createdAt } })
+      const guard = new UserContextGuard(makeBetterAuthBundle(getSession), fakeTokens())
+      const { context, request, setCookie } = makeContext({ [SESSION_COOKIE_NAME]: 'an-indefinitely-renewed-cookie' })
+
+      await expect(guard.canActivate(context)).resolves.toBe(true)
+      // An over-cap session must never leave the request as 'session' — that would admit a stolen,
+      // forever-renewed cookie past @RequiresAccount().
+      expect(request[USER_ID_KIND_REQUEST_KEY]).toBe('guest')
+      expect(request[USER_ID_REQUEST_KEY]).not.toBe('real-account-id')
+      expect(setCookie).toHaveBeenCalledOnce()
+    })
+
+    it('accepts a session created within the cap and stashes emailVerified', async () => {
+      const createdAt = new Date(Date.now() - 60_000)
+      const getSession = vi.fn().mockResolvedValue({ user: { id: 'real-account-id', emailVerified: true }, session: { createdAt } })
+      const guard = new UserContextGuard(makeBetterAuthBundle(getSession), fakeTokens())
+      const { context, request } = makeContext({ [SESSION_COOKIE_NAME]: 'a-fresh-cookie' })
+
+      await expect(guard.canActivate(context)).resolves.toBe(true)
+      expect(request[USER_ID_KIND_REQUEST_KEY]).toBe('session')
+      expect(request[EMAIL_VERIFIED_REQUEST_KEY]).toBe(true)
+    })
+
+    it('stashes emailVerified = false for a signed-in but unverified account', async () => {
+      const getSession = vi.fn().mockResolvedValue({ user: { id: 'u1', emailVerified: false }, session: { createdAt: new Date() } })
+      const guard = new UserContextGuard(makeBetterAuthBundle(getSession), fakeTokens())
+      const { context, request } = makeContext({ [SESSION_COOKIE_NAME]: 'fresh' })
+
+      await expect(guard.canActivate(context)).resolves.toBe(true)
+      expect(request[USER_ID_KIND_REQUEST_KEY]).toBe('session')
+      expect(request[EMAIL_VERIFIED_REQUEST_KEY]).toBe(false)
     })
   })
 

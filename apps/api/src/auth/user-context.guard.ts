@@ -8,6 +8,7 @@ import { newGuestUserId, resolveGuestSessionSecret, signGuestSession, verifyGues
 import { BEARER_TOKEN_REPOSITORY, type BearerTokenRepository } from './bearer-token.repository.js'
 import { verifyJwsAccessToken } from 'better-auth/oauth2'
 import { authIssuer, mcpResourceUrls } from './mcp-oauth.js'
+import { isSessionWithinAbsoluteCap } from './session-lifetime.js'
 
 type JwksFetch = Extract<Parameters<typeof verifyJwsAccessToken>[1]['jwksFetch'], () => unknown>
 
@@ -15,6 +16,8 @@ export const GUEST_SESSION_COOKIE = 'se_guest_session'
 export const USER_ID_REQUEST_KEY = 'userId'
 export const USER_ID_KIND_REQUEST_KEY = 'userIdKind'
 export const AUTH_CONTEXT_REQUEST_KEY = 'authContext'
+/** Whether the established identity's email is verified — read by `RequiresVerifiedEmailGuard` (ADR-0103). */
+export const EMAIL_VERIFIED_REQUEST_KEY = 'emailVerified'
 
 export interface AssistantAuthContext {
   readonly source: 'assistent'
@@ -37,6 +40,7 @@ export type RequestWithUserId = FastifyRequest & {
   [USER_ID_REQUEST_KEY]?: string
   [USER_ID_KIND_REQUEST_KEY]?: UserIdKind
   [AUTH_CONTEXT_REQUEST_KEY]?: AuthContext
+  [EMAIL_VERIFIED_REQUEST_KEY]?: boolean
 }
 
 /** The ONLY place userId is established for a request. */
@@ -80,6 +84,9 @@ export class UserContextGuard implements CanActivate {
       clientName: client.name ?? 'Assistent',
       scopes: typeof claims.scope === 'string' ? claims.scope.split(' ').filter((scope) => scope.length > 0) : [],
     }
+    // An assistant acts for an account that completed OAuth consent; it cannot verify an email itself, so
+    // it is not subject to the verified-email gate (ADR-0103).
+    request[EMAIL_VERIFIED_REQUEST_KEY] = true
     return true
   }
 
@@ -121,6 +128,7 @@ export class UserContextGuard implements CanActivate {
         clientName: tokenRecord.client.name ?? 'Assistent',
         scopes: [...tokenRecord.scopes],
       }
+      request[EMAIL_VERIFIED_REQUEST_KEY] = true
       return true
     }
 
@@ -130,10 +138,13 @@ export class UserContextGuard implements CanActivate {
       const session = await this.betterAuth.auth.api.getSession({
         headers: fromNodeHeaders(request.headers),
       })
-      if (session) {
+      // Past the absolute cap (ADR-0103) a session is refused like an expired one: the guard falls through
+      // to the guest path rather than honouring an indefinitely-renewed cookie.
+      if (session && isSessionWithinAbsoluteCap(session.session?.createdAt)) {
         request[USER_ID_REQUEST_KEY] = session.user.id
         request[USER_ID_KIND_REQUEST_KEY] = 'session'
         request[AUTH_CONTEXT_REQUEST_KEY] = { source: 'nutzer' }
+        request[EMAIL_VERIFIED_REQUEST_KEY] = session.user.emailVerified === true
         return true
       }
     }
