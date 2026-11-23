@@ -1,4 +1,5 @@
 import { ageAtEndOfYear } from '../common/dates'
+import { CHILDCARE_DEDUCTION_STEPS, valueForYear } from '../math/tax-parameters'
 
 /**
  * Kinderbetreuungskosten as Sonderausgaben (§ 10 Abs. 1 Nr. 5 EStG), per child (ADR-0076): from 2025
@@ -8,6 +9,6 @@ import { ageAtEndOfYear } from '../common/dates'
 export function childcareDeductionEur(year: number, paidEur: number | null | undefined, birthDate?: string | null): number {
   if (!paidEur || paidEur <= 0) return 0
   if (birthDate && (ageAtEndOfYear(birthDate, year) ?? 0) > 14) return 0
-  const [share, cap] = year >= 2025 ? [0.8, 4800] : [2 / 3, 4000]
-  return Math.min(Math.round(paidEur * share), cap)
+  const { share, capEur } = valueForYear(CHILDCARE_DEDUCTION_STEPS, year)
+  return Math.min(Math.round(paidEur * share), capEur)
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { Answers } from '../interview/interview'
+import type { Answers } from './answers'
 import { filingObligation } from './filing-obligation'
 
 // H5 (UX review 2026-11): the deadline banner may only alarm when the return is mandatory

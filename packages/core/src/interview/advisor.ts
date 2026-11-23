@@ -1,6 +1,7 @@
 import type { PrintoutGapPlan } from './advisor-printout-plan'
 import type { OwlSourceId } from './owl-mode'
 import type { StoredTransport } from './entry-rules'
+import type { AdvisorActionStatus } from '../domains/action-status'
 import { furtherWorkExpensesEur, type WorkExpenseAmounts } from '../domains/work-expenses'
 
 /**
@@ -15,17 +16,15 @@ import type { AdvisorModelFailure } from './advisor-failure'
 import type { AdvisorThoughtStep } from './advisor-thought'
 import { topicRefusal, type AdvisorTopicOutcome } from './advisor-topic'
 import { isSupportedIncomeTaxYear } from '../math/tarif'
-import { getTaxYearParameters } from '../math/tax-parameters'
+import { getTaxYearParameters, CHAT_TAX_YEARS } from '../math/tax-parameters'
 import type { Marking, Screen } from './marking'
 import type { AdvisorPerson } from './advisor-household'
-import type { Profession } from './interview'
+import type { Profession } from '../domains/answers'
 import type { LstbCalculationTerm, LstbExtractedFieldStatus, LstbFieldReason } from '../domains/lstb-parser'
 import { taxEstimateCrossBorder, taxEstimateEmployee } from '../engine/tax-estimate'
 
 /** The commute mask's further Werbungskosten the owl can draft (ADR-0076). */
 const WORK_EXPENSE_FIELDS: ReadonlySet<string> = new Set(['professionalBodiesEur', 'workEquipmentEur', 'accountFeesEur', 'otherWorkExpensesEur'])
-
-export type AdvisorActionStatus = 'pending' | 'applied' | 'dismissed' | 'superseded' | 'undone'
 
 export interface AdvisorLegalSource {
   readonly sourceId: OwlSourceId
@@ -794,7 +793,7 @@ function extractFirstEuroAmount(text: string): number | null {
   if (!match || !match[1]) return null
   const clean = match[1].replace(/[.\s]/g, '')
   const n = Number.parseInt(clean, 10)
-  if (!Number.isFinite(n) || n <= 0 || n === 2024 || n === 2025 || n === 2026) return null
+  if (!Number.isFinite(n) || n <= 0 || CHAT_TAX_YEARS.includes(n)) return null
   return n
 }
 

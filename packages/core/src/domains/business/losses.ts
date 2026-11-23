@@ -1,3 +1,4 @@
+import { LOSS_CARRY_BACK_CAP_STEPS, LOSS_CARRY_FORWARD_RATE_STEPS, valueForYear } from '../../math/tax-parameters'
 /**
  * Verlustabzug (§ 10d EStG): a negative Gesamtbetrag der Einkünfte goes back into the two years
  * before (Rücktrag), the rest forward (Vortrag) under the Mindestbesteuerung, and what is left at
@@ -26,10 +27,10 @@ export interface LossRules {
 export function lossRules(year: number, joint: boolean): LossRules {
   const factor = joint ? 2 : 1
   return {
-    carryBackCapEur: (year <= 2023 ? 10_000_000 : 1_000_000) * factor,
+    carryBackCapEur: valueForYear(LOSS_CARRY_BACK_CAP_STEPS, year) * factor,
     carryBackYears: 2,
     forwardBaseEur: 1_000_000 * factor,
-    forwardRate: year >= 2024 && year <= 2027 ? 0.7 : 0.6,
+    forwardRate: valueForYear(LOSS_CARRY_FORWARD_RATE_STEPS, year),
   }
 }
 

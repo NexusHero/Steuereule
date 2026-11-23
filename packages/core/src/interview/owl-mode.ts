@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto'
 import { isSupportedIncomeTaxYear } from '../math/tarif'
-import { getTaxYearParameters } from '../math/tax-parameters'
-import type { HOME_OFFICE_VALUES, Profession } from './interview'
+import { getTaxYearParameters, appliesFrom } from '../math/tax-parameters'
+import type { HOME_OFFICE_VALUES, Profession } from '../domains/answers'
 import { professionTipsFor } from './profession-tips'
 
 export type OwlTriggerKind = 'musterluecke' | 'vorjahresvergleich' | 'rechtsaenderung' | 'lebenslage_hinweis'
@@ -220,7 +220,7 @@ export function generateOwlCards(facts: OwlInputFacts): readonly OwlCard[] {
         title: 'Kinder noch nicht erfasst',
         message: 'Du hast im Interview Kinder angegeben, aber noch kein Kind erfasst.',
         // The rule of the tax year (§ 10 Abs. 1 Nr. 5 EStG changed with 2025), as `childcareDeductionEur` applies it.
-        reason: `weil zum Beispiel Kinderbetreuungskosten ${facts.taxYear >= 2025 ? 'zu 80 % (bis 4.800 € je Kind)' : 'zu zwei Dritteln (bis 4.000 € je Kind)'} als Sonderausgaben abziehbar sind.`,
+        reason: `weil zum Beispiel Kinderbetreuungskosten ${appliesFrom('childcareEightyPercent', facts.taxYear) ? 'zu 80 % (bis 4.800 € je Kind)' : 'zu zwei Dritteln (bis 4.000 € je Kind)'} als Sonderausgaben abziehbar sind.`,
         amountEur: null,
         legalStatusDate: LEGAL_STATUS_DATE,
         sourceId: 'estg-10-1-5',

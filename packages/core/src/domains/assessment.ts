@@ -1,5 +1,5 @@
-import type { CalculationStatus } from './berechnung'
-import type { EmployeeFacts } from '../domains/employee'
+import type { CalculationStatus } from './calculation'
+import type { EmployeeFacts } from './employee'
 import { GERMAN_STATES, publicHolidays, type HolidayRegion } from '../common/public-holidays'
 import { incomeTax, isSupportedIncomeTaxYear, soliExemptionLimits, solidaritaetszuschlag, splittingTariff } from '../math/tarif'
 import { getTaxYearParameters } from '../math/tax-parameters'

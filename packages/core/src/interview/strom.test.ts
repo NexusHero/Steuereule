@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { AMOUNT_LATER, ENTRIES, GATE_ACKNOWLEDGED, isReachableFor, type Answers } from './interview'
+import { ENTRIES, GATE_ACKNOWLEDGED, isReachableFor } from './interview'
+import { AMOUNT_LATER, type Answers } from '../domains/answers'
 import {
   STROM_TOPICS,
   answersToPost,

@@ -1,4 +1,4 @@
-import type { Source } from '../engine/berechnung'
+import type { Source } from './calculation'
 
 /** `amtlich`: BMF monthly rate; `jahresdurchschnitt`: the annual average printed on Anlage N-Gre; `tatsaechlich`: with a Beleg. */
 export type ExchangeRateMode = 'amtlich' | 'jahresdurchschnitt' | 'tatsaechlich'

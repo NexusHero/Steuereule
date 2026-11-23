@@ -4,7 +4,8 @@
 // silently never counted. Which gate belongs to which field comes from the catalogue; this module
 // only adds the copy and decides, from the case, whether the gate still needs a draft.
 import type { CaseDigest } from './advisor'
-import { yesNoGateOf, type EntryStepId } from './interview'
+import { yesNoGateOf } from './interview'
+import { type EntryStepId } from '../domains/answers'
 import type { OwlSourceId } from './owl-mode'
 
 export interface DerivedGateAnswer {

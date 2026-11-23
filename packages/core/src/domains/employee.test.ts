@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { employeeFromAnswers, employeeFromData, calculateEmployeeStatus, type EmployeeInputs } from './employee'
-import { ENTRIES, entryForStep, isReachableFor, nextStepFor, remainingStepsFor, type Answers } from '../interview/interview'
+import { ENTRIES, entryForStep, isReachableFor, nextStepFor, remainingStepsFor } from '../interview/interview'
+import { type Answers } from './answers'
 import { EMPTY_WAGE_TAX_CERTIFICATE, type WageTaxCertificateData } from './lstb'
 
 const INPUTS: EmployeeInputs = {

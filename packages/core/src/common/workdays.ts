@@ -27,10 +27,14 @@ function isoWeekdayAt(year: number, dayIndex0: number): IsoWeekday {
   return (utcDay === 0 ? 7 : utcDay) as IsoWeekday
 }
 
+/** The calendar years a workday count accepts: a guard against typos, not a tax rule. */
+const FIRST_CALENDAR_YEAR = 2000
+const LAST_CALENDAR_YEAR = 2100
+
 function validateWorkdaysInput(input: WorkdaysInput): void {
   const { year, workdays, vacationDays: vacation, sickDays: sick, homeOfficeDays: homeOffice } = input
 
-  if (!Number.isInteger(year) || year < 2000 || year > 2100) {
+  if (!Number.isInteger(year) || year < FIRST_CALENDAR_YEAR || year > LAST_CALENDAR_YEAR) {
     throw new RangeError('year must be an integer calendar year between 2000 and 2100')
   }
   if (workdays.length === 0) {

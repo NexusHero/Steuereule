@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { getTaxYearParameters, taxParameters } from './tax-parameters'
+import { appliesFrom, getTaxYearParameters, MINIJOB_LIMIT_STEPS, PENSION_TAXABLE_SHARE_STEPS, RULE_CHANGE_YEARS, taxParameters, valueForYear } from './tax-parameters'
 
 describe('TaxYearParameters (Temporal Parameter Registry)', () => {
   it('provides the official § 32a EStG Grundfreibetrag per supported year', () => {
@@ -116,5 +116,39 @@ describe('TaxYearParameters (Temporal Parameter Registry)', () => {
 
   it('taxParameters alias returns identical parameters', () => {
     expect(taxParameters(2025)).toEqual(getTaxYearParameters(2025))
+  })
+})
+
+describe('rules that change with the year', () => {
+  const steps = [
+    { from: Number.NEGATIVE_INFINITY, value: 'old' },
+    { from: 2024, value: 'new' },
+    { from: 2028, value: 'later' },
+  ] as const
+
+  it('valueForYear takes the step whose range covers the year, the first one before every change', () => {
+    expect(valueForYear(steps, 1990)).toBe('old')
+    expect(valueForYear(steps, 2023)).toBe('old')
+    expect(valueForYear(steps, 2024)).toBe('new')
+    expect(valueForYear(steps, 2027)).toBe('new')
+    expect(valueForYear(steps, 2028)).toBe('later')
+  })
+
+  it('appliesFrom is true from the named year on', () => {
+    const year = RULE_CHANGE_YEARS.smallBusinessReform
+    expect(appliesFrom('smallBusinessReform', year - 1)).toBe(false)
+    expect(appliesFrom('smallBusinessReform', year)).toBe(true)
+  })
+
+  it('the Minijob limit rises in October 2022, keyed by year and month', () => {
+    expect(valueForYear(MINIJOB_LIMIT_STEPS, 2022 + 8 / 12)).toBe(450)
+    expect(valueForYear(MINIJOB_LIMIT_STEPS, 2022 + 9 / 12)).toBe(520)
+  })
+
+  it('the Besteuerungsanteil is 50 % up to a pension start in 2005 and has no value after 2058', () => {
+    expect(valueForYear(PENSION_TAXABLE_SHARE_STEPS, 2005)).toBe(50)
+    expect(valueForYear(PENSION_TAXABLE_SHARE_STEPS, 2006)).toBe(52)
+    expect(valueForYear(PENSION_TAXABLE_SHARE_STEPS, 2058)).toBe(100)
+    expect(valueForYear(PENSION_TAXABLE_SHARE_STEPS, 2059)).toBeNull()
   })
 })

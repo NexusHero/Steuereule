@@ -1,4 +1,4 @@
-import { calculate, type CalculationInput, type CalculationStatus } from '../engine/berechnung'
+import { calculate, type CalculationInput, type CalculationStatus } from '../domains/calculation'
 import type { IncomeType } from '../domains/income-types'
 import { UNCERTAINTY_PER_CONFLICT, UNCERTAINTY_PER_ITEM } from './cockpit'
 

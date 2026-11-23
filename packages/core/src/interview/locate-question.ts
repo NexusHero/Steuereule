@@ -1,4 +1,5 @@
-import { ENTRIES, QUESTIONS, type EntryId, type EntryStepId } from './interview'
+import { ENTRIES, QUESTIONS, type EntryId } from './interview'
+import { type EntryStepId } from '../domains/answers'
 
 export interface QuestionLocation {
   /** The catalogue entry (page of the interview) the question belongs to. */
