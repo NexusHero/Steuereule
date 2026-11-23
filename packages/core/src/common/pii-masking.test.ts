@@ -177,6 +177,54 @@ describe('PII Masking (ADR-0052 §8 — Personenbezogene Daten: schreiben ja, le
         expect(scrubUserMessagePii(kept, [])).toBe(kept)
       }
     })
+
+    // Review of ADR-0107 H2: German capitalises every noun, so the first version of these patterns took
+    // tax vocabulary for names, employers and addresses and the model never saw the question. Each sentence
+    // here was masked before the fix; none carries personal data.
+    it.each([
+      'Kann meine Frau Kinderbetreuungskosten absetzen?',
+      'Meine Frau Steuerklasse 5, ich Steuerklasse 3 - lohnt sich das?',
+      'Meine Partnerin ist Beamtin, ich bin angestellt.',
+      'Mein Partner ist Rentner und ich bin Grenzgänger.',
+      'Mein Partner Elterngeld bezieht, was heißt das für uns?',
+      'Mein Chef Homeoffice erlaubt, kann ich die Pauschale ansetzen?',
+      'Kann ich die Arzt Rechnung absetzen?',
+      'Mein Vermieter Nebenkosten abrechnet, was davon ist absetzbar?',
+      'Vom Arbeitgeber Fahrtkostenzuschuss erhalten, steuerfrei?',
+      'Arbeitgeber Zuschuss Kita absetzbar?',
+      'Die Firma Dienstwagen stellt, gilt die 1 Prozent Regelung?',
+      'Ich zahle für den Stellplatz 50 Euro im Monat.',
+      'Mein Heimarbeitsplatz 5 Tage die Woche.',
+      'Mein Arbeitsweg 23 Kilometer einfach.',
+      'Ich bin Kommanditist einer GmbH & Co. KG.',
+      'Lohnt sich eine Holding GmbH?',
+      'Ich verdiene 12000 Euro im Jahr 2024.',
+    ])('leaves the tax question untouched: %s', (question) => {
+      expect(scrubUserMessagePii(question, [])).toBe(question)
+    })
+
+    it('keeps the honorific and masks only the name, so the model still knows whose income it is', () => {
+      expect(scrubUserMessagePii('Meine Frau Anna verdient 3000 Euro.', [])).toBe('Meine Frau [NAME-GESCHÜTZT] verdient 3000 Euro.')
+      expect(scrubUserMessagePii('Mein Arzt Dr. Schmidt hat 200 Euro berechnet.', [])).toBe(
+        'Mein Arzt Dr. [NAME-GESCHÜTZT] hat 200 Euro berechnet.',
+      )
+    })
+
+    it('masks an employer when the verb opens the sentence, and a hyphenated legal form', () => {
+      expect(scrubUserMessagePii('Arbeite bei Siemens seit 2020.', [])).toBe('Arbeite bei [ARBEITGEBER-GESCHÜTZT] seit 2020.')
+      expect(scrubUserMessagePii('Ich arbeite bei der Siemens-AG.', [])).not.toContain('Siemens')
+      expect(scrubUserMessagePii('Ich arbeite bei der Müller GmbH & Co. KG.', [])).not.toContain('Müller')
+    })
+
+    it('masks an address whose street has no street ending, by its postcode and town', () => {
+      expect(scrubUserMessagePii('Ich wohne Am Hang 7, 10115 Berlin.', [])).toBe('Ich wohne [ADRESSE-GESCHÜTZT].')
+    })
+
+    it('masks a birth year named by keyword, in either word order', () => {
+      expect(scrubUserMessagePii('Geboren 1980 in Hamburg.', [])).toBe('Geboren [GEBURTSDATUM-GESCHÜTZT] in Hamburg.')
+      expect(scrubUserMessagePii('Ich bin 1980 geboren.', [])).toBe('Ich bin [GEBURTSDATUM-GESCHÜTZT] geboren.')
+      expect(scrubUserMessagePii('Jahrgang 1975, wann gehe ich in Rente?', [])).not.toContain('1975')
+    })
   })
 
   describe('scrubDocumentTextPii', () => {
