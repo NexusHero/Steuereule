@@ -7,20 +7,24 @@ import {
   summaryCut,
   transcriptForSummary,
 } from '@steuereule/core'
+import { Inject, Injectable } from '@nestjs/common'
 import { AuditService } from '../audit/audit.service.js'
+import { ADVISOR_ENGINE } from '../ki/advisor-engine.token.js'
 import { ConflictError, NotFoundError } from '../common/domain-error.js'
-import { type AdvisorConversationRecord, type AdvisorRepository } from './advisor.repository.js'
+import { ADVISOR_REPOSITORY, type AdvisorConversationRecord, type AdvisorRepository } from './advisor.repository.js'
 import type { AdvisorContextDto, AdvisorConversationDto, AdvisorSearchHitDto } from './dto/advisor.dto.js'
 import { PreparedAdvisorTurn, MAX_CONVERSATIONS_PER_YEAR, titleFrom, liveMessages, historySources, contextOf, SEARCH_MIN_CHARS, SEARCH_MAX_HITS, searchKey, snippetAround, toConversationDto } from './advisor-shared.js'
-import type { AdvisorCaseFacts } from './advisor-case-facts.js'
+import { AdvisorCaseDigest } from './advisor-case-digest.js'
 
 /** The conversations of a tax year: opening, naming, searching and summarising them (#481). */
+@Injectable()
 export class AdvisorConversations {
   constructor(
-    private readonly advisorEngine: AdvisorEnginePort | undefined,
-    private readonly advisorRepo: AdvisorRepository,
-    private readonly auditService: AuditService,
-    private readonly knownNamesForScrubbing: AdvisorCaseFacts['knownNamesForScrubbing'],
+    /** Null only where the fixed rules answer alone; AdvisorModule always binds a model engine. */
+    @Inject(ADVISOR_ENGINE) private readonly advisorEngine: AdvisorEnginePort | null,
+    @Inject(ADVISOR_REPOSITORY) private readonly advisorRepo: AdvisorRepository,
+    @Inject(AuditService) private readonly auditService: AuditService,
+    @Inject(AdvisorCaseDigest) private readonly caseDigest: Pick<AdvisorCaseDigest, 'knownNamesForScrubbing'>,
   ) {}
 
   /**
@@ -61,7 +65,7 @@ export class AdvisorConversations {
 
   async renameConversation(userId: string, taxYear: number, conversationId: string, title: string): Promise<AdvisorConversationDto> {
     const conversation = await this.conversationFor(userId, taxYear, conversationId)
-    const knownNames = await this.knownNamesForScrubbing(userId, taxYear)
+    const knownNames = await this.caseDigest.knownNamesForScrubbing(userId, taxYear)
     const updated = await this.advisorRepo.updateConversation(conversation.id, userId, { title: titleFrom(scrubUserMessagePii(title, knownNames)) })
     return toConversationDto(updated ?? conversation)
   }
@@ -90,7 +94,7 @@ export class AdvisorConversations {
    * questions and what became of the proposals, so a full conversation never blocks.
    */
   async compact(userId: string, taxYear: number, conversation: AdvisorConversationRecord, exceptIds: readonly string[], signal?: AbortSignal): Promise<AdvisorConversationRecord> {
-    const knownNames = await this.knownNamesForScrubbing(userId, taxYear)
+    const knownNames = await this.caseDigest.knownNamesForScrubbing(userId, taxYear)
     const live = liveMessages(conversation, await this.advisorRepo.listForConversation(conversation.id, userId)).filter((m) => !exceptIds.includes(m.id))
     const sources = historySources(live, knownNames)
     const cut = summaryCut(sources)
@@ -109,7 +113,7 @@ export class AdvisorConversations {
     const conversation = await this.conversationFor(userId, taxYear, turn.conversationId)
     const thisTurn = [turn.userMessage.id, turn.assistantMessageId]
     const compacted = await this.compact(userId, taxYear, conversation, thisTurn, signal)
-    const knownNames = await this.knownNamesForScrubbing(userId, taxYear)
+    const knownNames = await this.caseDigest.knownNamesForScrubbing(userId, taxYear)
     const live = liveMessages(compacted, await this.advisorRepo.listForConversation(compacted.id, userId)).filter((m) => !thisTurn.includes(m.id))
     // The summary stays masked (it is the model's own text, kept long); the verbatim turns follow the consent (ADR-0091).
     return buildAdvisorHistory(historySources(live, knownNames, [], turn.personalDataConsent === true), { summary: compacted.summary })
@@ -123,7 +127,7 @@ export class AdvisorConversations {
       throw new ConflictError('ADVISOR_NOTHING_TO_SUMMARIZE', 'Dieses Gespräch ist noch zu kurz, um es zusammenzufassen.')
     }
     await this.auditService.append({ userId, action: 'WRITE', resource: 'berater_gespraech_zusammengefasst' })
-    return contextOf(compacted, await this.advisorRepo.listForConversation(compacted.id, userId), await this.knownNamesForScrubbing(userId, taxYear))
+    return contextOf(compacted, await this.advisorRepo.listForConversation(compacted.id, userId), await this.caseDigest.knownNamesForScrubbing(userId, taxYear))
   }
 
   /**

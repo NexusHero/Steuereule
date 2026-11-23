@@ -12,7 +12,7 @@ import { randomUUID } from 'node:crypto'
 import { appendFileSync, mkdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import { AdvisorService } from '../../src/advisor/advisor.service.js'
+import { advisorOf, type AdvisorTestFacade } from '../fakes/advisor-test-kit.js'
 import { AppModule } from '../../src/app.module.js'
 import { CHILD_REPOSITORY, type ChildRepository } from '../../src/children/child.repository.js'
 import { ConfirmationService } from '../../src/confirmation/confirmation.service.js'
@@ -39,7 +39,7 @@ interface Turn {
 describe.skipIf(!KEY)('the owl fills the return through the chat (live model)', () => {
   let app: NestFastifyApplication
   let prisma: PrismaService
-  let advisor: AdvisorService
+  let advisor: AdvisorTestFacade
   let confirmation: ConfirmationService
   let children: ChildRepository
   let rentals: RentalRepository
@@ -59,7 +59,7 @@ describe.skipIf(!KEY)('the owl fills the return through the chat (live model)', 
     app = await NestFactory.create<NestFastifyApplication>(AppModule, new FastifyAdapter(), { logger: false })
     await app.init()
     prisma = app.get(PrismaService)
-    advisor = app.get(AdvisorService)
+    advisor = advisorOf(app)
     confirmation = app.get(ConfirmationService)
     children = app.get<ChildRepository>(CHILD_REPOSITORY)
     rentals = app.get<RentalRepository>(RENTAL_REPOSITORY)

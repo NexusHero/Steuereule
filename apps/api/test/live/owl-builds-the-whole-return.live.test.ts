@@ -16,7 +16,7 @@ import { mkdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { PDFDocument, PDFTextField } from 'pdf-lib'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import { AdvisorService } from '../../src/advisor/advisor.service.js'
+import { advisorOf } from '../fakes/advisor-test-kit.js'
 import { AppModule } from '../../src/app.module.js'
 import { ChildrenService } from '../../src/children/children.service.js'
 import { ConfirmationService } from '../../src/confirmation/confirmation.service.js'
@@ -290,7 +290,7 @@ describe.skipIf(!KEY)('the owl builds whole returns through the chat (live model
         const userId = `live-full-${randomUUID()}`
         users.push(userId)
         const ids = await setUp(userId, scenario.setup)
-        const advisor = app.get(AdvisorService)
+        const advisor = advisorOf(app)
         const messages =
           mode === 'schrittweise'
             ? [...scenario.pieces.map((piece) => `${piece} Bitte eintragen.`), 'Fehlt jetzt noch etwas für meine Erklärung 2025?']
