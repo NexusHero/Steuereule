@@ -15,7 +15,7 @@ import { COMMUTE_REPOSITORY, type CommuteRepository } from '../src/commute/commu
 import { INTERVIEW_ANSWER_REPOSITORY, type InterviewAnswerRepository } from '../src/interview/interview-answer.repository.js'
 import { ENCRYPTED_PRISMA, type EncryptedPrismaClient } from '../src/prisma/encrypted-prisma.provider.js'
 import { PrismaService } from '../src/prisma/prisma.service.js'
-import { TRANSACTION_RUNNER, type TransactionRunner } from '../src/prisma/transaction.js'
+import { TRANSACTION_RUNNER, type TransactionRunner } from '../src/common/transaction-runner.js'
 
 const YEAR = 2025
 

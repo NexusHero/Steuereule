@@ -6,7 +6,7 @@ import { AuditService } from '../src/audit/audit.service.js'
 import { ConflictError } from '../src/common/domain-error.js'
 import { LstbScanService } from '../src/lstb-scan/lstb-scan.service.js'
 import { LstbService } from '../src/lstb/lstb.service.js'
-import type { TransactionRunner } from '../src/prisma/transaction.js'
+import { passThroughTransactionRunner, type TransactionRunner } from '../src/common/transaction-runner.js'
 import { ReceiptService } from '../src/receipt/receipt.service.js'
 import { FakeAuditRepository } from './fakes/fake-audit.repository.js'
 import { FakeLstbRepository } from './fakes/fake-lstb.repository.js'
@@ -37,6 +37,8 @@ describe('LstbScanService.confirm (#444)', () => {
       },
     } as unknown as AdvisorService
     const transactions: TransactionRunner = {
+      rollsBack: false,
+      isActive: () => false,
       run: async (work) => {
         transactionRuns += 1
         return work()
@@ -94,7 +96,7 @@ describe('LstbScanService.confirm — the further lines of the scan', () => {
     const audit = new AuditService(new FakeAuditRepository())
     lstbService = new LstbService(lstbRepository, audit, new FakeMarkingRepository())
     const advisor = { markLstbActionsApplied: async () => {} } as unknown as AdvisorService
-    service = new LstbScanService(lstbService, advisor, new ReceiptService(new FakeReceiptRepository(), audit, new InMemoryStorageAdapter()), { run: async (work) => work() })
+    service = new LstbScanService(lstbService, advisor, new ReceiptService(new FakeReceiptRepository(), audit, new InMemoryStorageAdapter()), passThroughTransactionRunner)
   })
 
   const LINES = {

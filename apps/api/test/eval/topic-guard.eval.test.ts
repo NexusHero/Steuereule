@@ -15,6 +15,7 @@ import type { AdvisorStreamEvent, AdvisorTopicOutcome, AdvisorTurnResult, CaseDi
 import { EnvAiRuntimeConfigService } from '../../src/ki/ai-runtime-config.service.js'
 import { AdvisorTopicGuard } from '../../src/ki/advisor-topic-guard.js'
 import { LangGraphAdvisorEngine } from '../../src/ki/langgraph-advisor.engine.js'
+import { createSingleShotModelFromConfig } from '../../src/ki/langchain-single-shot.adapter.js'
 
 const KEY = process.env.AI_EVAL_GEMINI_API_KEY?.trim()
 
@@ -165,7 +166,7 @@ function report(name: string, rows: readonly { readonly question: string; readon
 describe.skipIf(!KEY)('the topic boundary against the live model', () => {
   const env = { GEMINI_API_KEY: KEY, AI_ADVISOR_PROVIDER: 'google-genai', ...(process.env.AI_EVAL_GUARD_MODEL ? { AI_GUARD_MODEL: process.env.AI_EVAL_GUARD_MODEL } : {}) }
   const runtime = new EnvAiRuntimeConfigService(env)
-  const guard = new AdvisorTopicGuard(runtime)
+  const guard = new AdvisorTopicGuard(runtime, createSingleShotModelFromConfig)
 
   async function judge(questions: readonly string[], withHistory = false) {
     const rows: { question: string; outcome: AdvisorTopicOutcome }[] = []

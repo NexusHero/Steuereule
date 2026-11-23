@@ -5,8 +5,9 @@ Architecture decisions for the *engineering* build, in lightweight [MADR](https:
 a decision that replaces another **supersedes** it (never rewrite history). Governed by
 ultimate-dev-process §1.2.
 
-The ADRs **justify** the architecture; the [living arc42 document](../arc42/README.md) **shows** it
-(building-block and data views, PlantUML sources + exported SVGs). The two are kept in step.
+The ADRs **justify** the architecture; [`docs/architecture.md`](../architecture.md) **shows** it
+(arc42: context, building blocks, runtime, deployment, concepts, risks). The toolchain and the
+boot-ordering invariant are detailed in [`docs/arc42/README.md`](../arc42/README.md).
 
 ## Two ADR logs — on purpose
 
@@ -119,6 +120,7 @@ The ADRs **justify** the architecture; the [living arc42 document](../arc42/READ
 | 0099 | Verlauf: Hinweise, Lebensereignisse und Gruppen | Accepted |
 | 0100 | Eule: Wächter neben dem Modell, Zeiten je Runde, Maske vor der Frage | Accepted |
 | 0101 | Selbstständige: EÜR, Buchhaltung, Bilanz, Umsatz- und Gewerbesteuer | Accepted |
+| 0102 | Ports & Adapters: two architecture tests enforce the boundaries in `apps/api` and in the core | Accepted |
 
 See also the [Tech Radar](./tech-radar.md).
 

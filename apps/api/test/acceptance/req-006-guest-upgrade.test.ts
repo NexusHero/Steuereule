@@ -140,7 +140,7 @@ describe('REQ-006 — guest -> account upgrade, against the real server', () => 
     })
     const { user } = (await signUp.json()) as { user: { id: string } }
 
-    const { upgradeGuestToAccount } = await import('../../src/auth/guest-account-upgrade.js')
+    const { upgradeGuestToAccount } = await import('../../src/auth/guest-account-upgrade.prisma.js')
     // Retry: the guest no longer owns a profile (already migrated), so this must be
     // a clean no-op — never a duplicate row, never an error.
     await upgradeGuestToAccount(prisma, guestUserId, user.id)
@@ -231,7 +231,7 @@ describe('REQ-006 — guest -> account upgrade, against the real server', () => 
       })
       const { user } = (await signUp.json()) as { user: { id: string } }
 
-      const { upgradeGuestToAccount } = await import('../../src/auth/guest-account-upgrade.js')
+      const { upgradeGuestToAccount } = await import('../../src/auth/guest-account-upgrade.prisma.js')
       await upgradeGuestToAccount(prisma, guestUserId, user.id)
 
       await expect(prisma.interviewAnswer.count({ where: { userId: user.id } })).resolves.toBe(4)

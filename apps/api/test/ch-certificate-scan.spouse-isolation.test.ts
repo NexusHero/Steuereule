@@ -6,6 +6,7 @@ import { DEFAULT_AI_TURN_LIMITS, type AiRuntimeConfigService } from '../src/ki/a
 import { DocumentParseRegistry } from '../src/receipt/parse/document-parse.registry.js'
 import { buildAdvisorTestKit } from './fakes/advisor-test-kit.js'
 import { FakeAuditRepository } from './fakes/fake-audit.repository.js'
+import { noSingleShotModel } from '../src/ki/single-shot-model.js'
 
 const USER = 'user-a'
 const YEAR = 2024
@@ -23,7 +24,7 @@ describe('two certificates of a couple', () => {
     await kit.profileRepo.upsert(USER, { firstName: 'Kemal', lastName: 'Muster', steuerId: null, steuernummer: null })
     await kit.linkService.set(USER, YEAR, { filingType: 'zusammen' })
     await kit.linkService.updatePersonB(USER, YEAR, { firstName: 'Anna', lastName: 'Muster' })
-    const strategy = new ChCertificateScanParseStrategy(new DocumentParseRegistry(), runtime, kit.service, new AuditService(new FakeAuditRepository()), kit.linkService)
+    const strategy = new ChCertificateScanParseStrategy(new DocumentParseRegistry(), runtime, kit.service, new AuditService(new FakeAuditRepository()), kit.linkService, noSingleShotModel)
     const apply = async (res: Awaited<ReturnType<typeof strategy.parse>>) =>
       kit.service.applyBatch(USER, YEAR, { drafts: (res.assistantMessage?.meta?.actions ?? []).map((a) => ({ actionId: a.actionId })) })
 

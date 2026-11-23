@@ -14,7 +14,7 @@ import { redirectVerificationToWebApp } from './verification-link.js'
 import { DEVICE_AUTHORIZATION_DISABLED_PATHS, assertDeviceAuthorizationDisabledPathsComplete } from './device-authorization-paths.js'
 import { deviceSessionCookiePlugin } from './device-session-cookie.js'
 import type { EmailSender } from './email-sender.js'
-import { createGuestAccountUpgradeHook } from './guest-account-upgrade.js'
+import { createGuestAccountUpgradeHook } from './guest-account-upgrade.prisma.js'
 import { createResettableRateLimitStorage, type ResettableRateLimitStorage } from './rate-limit-storage.js'
 
 export const OAUTH_SCOPES = [

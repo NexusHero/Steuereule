@@ -1,6 +1,6 @@
 import { ADVISOR_LEGAL_SOURCES, alternativeKeyOf, draftPersonKey, isNewRecordId, withTwoPathsGroup, provenanceKey, type AdvisorActionProposal, type AdvisorMessageMeta, type AdvisorPerson, type AdvisorUndoEntry, type Screen } from '@steuereule/core'
 import { AuditService } from '../audit/audit.service.js'
-import { type TransactionRunner } from '../prisma/transaction.js'
+import { type TransactionRunner } from '../common/transaction-runner.js'
 import { assertAiWritable } from '../confirmation/ai-write-policy.js'
 import { ConfirmationService } from '../confirmation/confirmation.service.js'
 import { ConflictError, InvalidInputError, NotFoundError } from '../common/domain-error.js'

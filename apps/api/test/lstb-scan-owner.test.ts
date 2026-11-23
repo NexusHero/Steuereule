@@ -9,6 +9,7 @@ import { DocumentParseRegistry } from '../src/receipt/parse/document-parse.regis
 import { buildAdvisorTestKit } from './fakes/advisor-test-kit.js'
 import { FakeAuditRepository } from './fakes/fake-audit.repository.js'
 import { FakeMarkingRepository } from './fakes/fake-marking.repository.js'
+import { noSingleShotModel } from '../src/ki/single-shot-model.js'
 
 const USER = 'user-a'
 const YEAR = 2025
@@ -45,7 +46,7 @@ async function setup(joint: boolean) {
     await kit.linkService.updatePersonB(USER, YEAR, { firstName: 'Nora', lastName: 'Sommer' })
   }
   const audit = new AuditService(new FakeAuditRepository())
-  const strategy = new LstbScanParseStrategy(new DocumentParseRegistry(), offline, kit.service, audit, new LstbService(kit.lstbRepo, audit, new FakeMarkingRepository()), kit.linkService)
+  const strategy = new LstbScanParseStrategy(new DocumentParseRegistry(), offline, kit.service, audit, new LstbService(kit.lstbRepo, audit, new FakeMarkingRepository()), kit.linkService, noSingleShotModel)
   const parse = (rawText: string) => strategy.parse(USER, { taxYear: YEAR, kind: 'lstb', fileName: 'lstb.pdf', rawText, textSource: 'pdf_text' })
   return { kit, parse }
 }

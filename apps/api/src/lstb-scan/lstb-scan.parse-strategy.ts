@@ -1,7 +1,5 @@
-import type { BaseChatModel } from '@langchain/core/language_models/chat_models'
 import { holderWithoutPartner } from '../ch-certificate-scan/document-holder.js'
-import { HumanMessage, SystemMessage } from '@langchain/core/messages'
-import { Inject, Injectable, Optional, type OnModuleInit } from '@nestjs/common'
+import { Inject, Injectable, type OnModuleInit } from '@nestjs/common'
 import { z } from 'zod'
 import {
   LSTB_SCAN_LINES,
@@ -24,9 +22,9 @@ import {
   type AiRuntimeConfigService,
   type ResolvedAiSlotConfig,
 } from '../ki/ai-runtime-config.service.js'
-import { CHAT_MODEL_FACTORY, createChatModelFromConfig, type ChatModelFactory } from '../ki/chat-model.factory.js'
+import { SINGLE_SHOT_MODEL_FACTORY, type SingleShotModel, type SingleShotModelFactory } from '../ki/single-shot-model.js'
 import { checkPiiFree } from '../ki/ki.adapter.js'
-import { extractJsonObject, extractMessageText } from '../ki/llm-json.js'
+import { extractJsonObject } from '../ki/llm-json.js'
 import { LinkService } from '../link/link.service.js'
 import { LstbService } from '../lstb/lstb.service.js'
 import type {
@@ -81,7 +79,6 @@ const LINE_LABELS: Readonly<Record<LstbScanLine, string>> = {
 @Injectable()
 export class LstbScanParseStrategy implements DocumentParseStrategy, OnModuleInit {
   readonly kind = 'lstb' as const
-  private readonly resolveChatModel: ChatModelFactory
 
   constructor(
     @Inject(DocumentParseRegistry) private readonly registry: DocumentParseRegistry,
@@ -90,17 +87,15 @@ export class LstbScanParseStrategy implements DocumentParseStrategy, OnModuleIni
     @Inject(AuditService) private readonly auditService: AuditService,
     @Inject(LstbService) private readonly lstbService: LstbService,
     @Inject(LinkService) private readonly linkService: LinkService,
-    @Optional() @Inject(CHAT_MODEL_FACTORY) modelFactory?: ChatModelFactory,
-  ) {
-    this.resolveChatModel = modelFactory ?? createChatModelFromConfig
-  }
+    @Inject(SINGLE_SHOT_MODEL_FACTORY) private readonly resolveModel: SingleShotModelFactory,
+  ) {}
 
   onModuleInit(): void {
     this.registry.register(this)
   }
 
   private async resolveVisionSlotAndModel(): Promise<{
-    visionModel: BaseChatModel | null
+    visionModel: SingleShotModel | null
     visionSlot: ResolvedAiSlotConfig | null
   }> {
     try {
@@ -110,7 +105,7 @@ export class LstbScanParseStrategy implements DocumentParseStrategy, OnModuleIni
       const slot = await this.runtimeConfig.resolveSlot('vision_ocr')
       if (slot.enabled && slot.provider !== 'deterministic') {
         return {
-          visionModel: this.resolveChatModel(slot),
+          visionModel: this.resolveModel(slot),
           visionSlot: slot,
         }
       }
@@ -151,14 +146,11 @@ export class LstbScanParseStrategy implements DocumentParseStrategy, OnModuleIni
           visionSlot = resolved.visionSlot
           await this.auditService.append({ userId, action: 'READ', resource: 'ki_lstb_textfallback' })
           try {
-            const aiResult = await resolved.visionModel.invoke(
-              [
-                new SystemMessage(LSTB_STAGE2_ISOLATED_SYSTEM_PROMPT),
-                new HumanMessage(`Zeilen einer Lohnsteuerbescheinigung:\n${groundingText}`),
-              ],
+            const answer = await resolved.visionModel.complete(
+              { system: LSTB_STAGE2_ISOLATED_SYSTEM_PROMPT, user: `Zeilen einer Lohnsteuerbescheinigung:\n${groundingText}` },
               { signal: AbortSignal.timeout(RECEIPT_EXTRACTION_TIMEOUT_MS) },
             )
-            const validated = LSTB_STAGE2_SCHEMA.parse(extractJsonObject(extractMessageText(aiResult.content)))
+            const validated = LSTB_STAGE2_SCHEMA.parse(extractJsonObject(answer))
             extraction = applyLstbTextFallback(
               stage1,
               {

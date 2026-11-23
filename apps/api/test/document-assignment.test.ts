@@ -20,6 +20,7 @@ import { buildAdvisorTestKit } from './fakes/advisor-test-kit.js'
 import { FakeAuditRepository } from './fakes/fake-audit.repository.js'
 import { FakeMarkingRepository } from './fakes/fake-marking.repository.js'
 import { FakeReceiptRepository } from './fakes/fake-receipt.repository.js'
+import { noSingleShotModel } from '../src/ki/single-shot-model.js'
 
 const USER = 'user-zuordnung'
 const YEAR = 2025
@@ -88,12 +89,12 @@ async function setUp(options: Options = {}) {
   const audit = new AuditService(new FakeAuditRepository())
   const registry = new DocumentParseRegistry()
   const receipts = new FakeReceiptRepository()
-  const auto = new AutoReceiptParseStrategy(offline, kit.service, audit)
+  const auto = new AutoReceiptParseStrategy(offline, kit.service, audit, noSingleShotModel)
   const parser = new ReceiptParseService(registry, auto, receipts, kit.service)
   parser.onModuleInit()
   for (const strategy of [
-    new LstbScanParseStrategy(registry, offline, kit.service, audit, new LstbService(kit.lstbRepo, audit, new FakeMarkingRepository()), kit.linkService),
-    new ChCertificateScanParseStrategy(registry, offline, kit.service, audit, kit.linkService),
+    new LstbScanParseStrategy(registry, offline, kit.service, audit, new LstbService(kit.lstbRepo, audit, new FakeMarkingRepository()), kit.linkService, noSingleShotModel),
+    new ChCertificateScanParseStrategy(registry, offline, kit.service, audit, kit.linkService, noSingleShotModel),
     new ChPensionStatementParseStrategy(registry, kit.service, audit, kit.linkService, kit.chRepo),
     new ChPremiumLetterParseStrategy(registry, kit.service, audit, kit.linkService, kit.chRepo),
     new ChHealthStatementParseStrategy(registry, kit.service, audit, kit.linkService, kit.chRepo, kit.childRepo),

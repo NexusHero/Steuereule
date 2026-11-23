@@ -6,15 +6,15 @@
 
 <p align="center">
   <b>Advisory over form-filling: The deterministic, privacy-first tax platform for employees, families, and cross-border workers.</b><br>
-  Built with a verified pure-TypeScript calculation engine, zero LLM hallucinations in financial math, and AES-256-GCM field-level encryption.
+  Every amount comes from a pure-TypeScript calculation engine, never from a language model. Sensitive fields are encrypted with AES-256-GCM.
 </p>
 
 <p align="center">
   <a href="https://demo.steuereule.de"><img src="https://img.shields.io/badge/Live_Demo-Google_Cloud_Run-4285F4?style=for-the-badge&logo=googlecloud&logoColor=white" alt="Live Demo on Google Cloud Run" /></a>
   <a href="docs/arc42/README.md"><img src="https://img.shields.io/badge/Architecture-arc42_Specification-191B12?style=for-the-badge&labelColor=C9F229&color=191B12" alt="arc42 Architecture" /></a>
-  <a href="docs/adr/"><img src="https://img.shields.io/badge/Decisions-78_ADRs-191B12?style=for-the-badge&labelColor=C9F229&color=191B12" alt="78 ADRs" /></a>
-  <img src="https://img.shields.io/badge/Tests-230%2B_Suites-1F9D55?style=for-the-badge" alt="230+ Test Suites" />
-  <img src="https://img.shields.io/badge/Throughput-15.6M_ops%2Fsec-blue?style=for-the-badge" alt="15.6M ops/sec" />
+  <a href="docs/adr/"><img src="https://img.shields.io/badge/Decisions-100%2B_ADRs-191B12?style=for-the-badge&labelColor=C9F229&color=191B12" alt="More than 100 ADRs" /></a>
+  <img src="https://img.shields.io/badge/Tests-680%2B_test_files-1F9D55?style=for-the-badge" alt="More than 680 test files" />
+  <img src="https://img.shields.io/badge/Tariff-~15M_calls%2Fsec-blue?style=for-the-badge" alt="About 15 million tariff calls per second" />
   <img src="https://img.shields.io/badge/Security-AES--256--GCM_Field_Encryption-1F9D55?style=for-the-badge" alt="Security: AES-256-GCM" />
 </p>
 
@@ -61,10 +61,10 @@ The owl is a tax advisor in a chat, built like Claude: the conversation is the m
 
 | File | Focus Area | Why It Matters |
 |:---|:---|:---|
-| [`packages/core/src/math/tarif.ts`](packages/core/src/math/tarif.ts) | **Pure Deterministic Math** | Pure TypeScript implementation of the German progressive income tax formula (§ 32a EStG) and splitting tariff. Zero dependencies, zero I/O, runs in **~64 nanoseconds** ($>15.6\text{M}$ ops/sec). |
+| [`packages/core/src/math/tarif.ts`](packages/core/src/math/tarif.ts) | **Pure Deterministic Math** | Pure TypeScript implementation of the German progressive income tax formula (§ 32a EStG) and splitting tariff. No dependencies, no I/O. One call takes about 65 nanoseconds on a laptop (`pnpm --filter @steuereule/core bench`). |
 | [`packages/core/src/interview/matrix-fuzzing.test.ts`](packages/core/src/interview/matrix-fuzzing.test.ts) | **Combinatorial Fuzzing & Invariants** | Exhaustively traverses all **144 permutations** of the interview state machine and proves mathematical boundary invariants up to €100M (non-negativity, tariff monotonicity, absence contradiction gates). |
-| [`apps/api/src/prisma/encrypted-prisma.provider.ts`](apps/api/src/prisma/encrypted-prisma.provider.ts) | **Zero-Trust Field Encryption** | Transparent server-side **AES-256-GCM** encryption extension for Prisma, with zero-leak key rotation policies ([ADR-0008](docs/adr/0008-steuer-id-verschluesselung-aes-256-gcm.md)). |
-| [`apps/api/src/health/health.controller.ts`](apps/api/src/health/health.controller.ts) | **SRE Health Probes** | Cloud-native `/v1/health/live` and `/v1/health/ready` probes with active pooled database reachability checks and graceful shutdown hooks (`app.enableShutdownHooks()`). |
+| [`apps/api/src/prisma/encrypted-prisma.provider.ts`](apps/api/src/prisma/encrypted-prisma.provider.ts) | **Field Encryption** | Server-side **AES-256-GCM** encryption of the fields marked `@encrypted`, as a Prisma extension. Old keys stay readable through a list of decryption keys ([ADR-0008](docs/adr/0008-profile-persistence-encryption.md)). |
+| [`apps/api/src/health/health.controller.ts`](apps/api/src/health/health.controller.ts) | **SRE Health Probes** | Cloud-native `/v1/health/live` and `/v1/health/ready` probes; readiness checks that the database pool answers. |
 
 ---
 
@@ -74,20 +74,13 @@ Traditional tax software presents dense tabular forms without proactive guidance
 
 **Steuereule changes this with software-driven advisory:**
 1. **Intelligent Advisory:** Instead of blank forms, Steuereule conducts an adaptive interview, deriving legal deductions (home office lump sums, commute deductions, childcare, education costs) directly cited with the governing statutory paragraph (§ EStG).
-2. **Deterministic Engine vs. AI Hallucination:** All financial computations are executed strictly by a pure, deterministic, open-source calculation kernel ([`@steuereule/core`](packages/core/)). AI assists solely in narrative explanation and contextual suggestions; it is strictly prohibited from mutating financial figures ([ADR-0038](docs/adr/0038-berechnungs-kern-ki-port.md)).
+2. **Deterministic Engine vs. AI Hallucination:** All financial computations are executed strictly by a pure, deterministic calculation kernel ([`@steuereule/core`](packages/core/)). AI assists solely in narrative explanation and contextual suggestions; it is strictly prohibited from mutating financial figures ([ADR-0038](docs/adr/0038-berechnungs-kern-ki-port.md)).
 3. **Transparent Range over Deceptive Promises:** Potential refunds are displayed as an honest, uncommitted range until every relevant legal variable is confirmed ([ADR-0032](docs/adr/0032-nothing-on-screen-promises-what-the-slice-does-not-deliver.md)).
 4. **Verifiable Paper Trail:** Outputs are calibrated directly onto official Federal Ministry of Finance (BMF) tax forms down to the millimeter, making every figure auditable by tax professionals.
 
 ---
 
 ## 📸 Interactive Walkthrough & Preview
-
-> *Screen recording walkthrough demo: Showing guest onboarding, dynamic interview guidance, and instant range calculation in under 15 seconds.*
-
-<!-- Replace with demo.gif once generated -->
-<p align="center">
-  <img src="images/demo.gif" width="760" alt="Steuereule Interactive Flow Demo" onerror="this.style.display='none'" />
-</p>
 
 | Honest Refund Range Cockpit | 1-Question-per-Screen Interview | Privacy-First Onboarding |
 |:---:|:---:|:---:|
@@ -104,13 +97,13 @@ Traditional tax software presents dense tabular forms without proactive guidance
 ## 🛠️ Engineering Highlights
 
 * **Purely Deterministic Calculation Core ([`packages/core`](packages/core/)):**
-  Financial calculation logic (§ 32a EStG income tax brackets, solidarity surcharge, child allowances, split-tariff formulas) is encapsulated in an isolated, pure-TypeScript engine completely free of UI, database, or I/O dependencies. Over 45 dedicated test suites continuously benchmark against official statutory test vectors.
+  Financial calculation logic (§ 32a EStG income tax brackets, solidarity surcharge, child allowances, split-tariff formulas) is encapsulated in an isolated, pure-TypeScript engine completely free of UI, database, or I/O dependencies. 155 test files check it against statutory values (count as of 2026-11-22).
 * **Separation of AI & Calculation ([ADR-0038](docs/adr/0038-berechnungs-kern-ki-port.md)):**
   Large language models offer advice, summarize legal paragraphs, and propose interview topics, but have zero write access to calculation state. A user must explicitly accept a suggestion before parameters feed into the deterministic core.
-* **Zero-Trust Security & Field-Level Encryption:**
-  Sensitive Personal Identifiable Information (PII) and Tax Identification Numbers are encrypted server-side using **AES-256-GCM** with authenticated key management. PII is never stored in browser local storage or persistent client-side state.
+* **Field-Level Encryption:**
+  Fields marked `@encrypted` in the Prisma schema, such as tax identification numbers and amounts, are encrypted server-side with **AES-256-GCM** before they reach PostgreSQL. Receipt files are encrypted with a key per user, so deleting the key destroys the file even in old backups ([ADR-0059](docs/adr/0059-beleg-keystore-crypto-shredding.md)).
 * **Rigorous Architecture Discipline:**
-  Over **58 Architecture Decision Records ([docs/adr/](docs/adr/))** document every technical decision, trade-off, and alternative considered. Comprehensive architectural blueprints follow the international **[arc42](docs/arc42/README.md)** standard with PlantUML component models.
+  More than **100 Architecture Decision Records ([docs/adr/](docs/adr/))** record decisions with their alternatives. The architecture is documented along **arc42** in [`docs/architecture.md`](docs/architecture.md), including its known debts.
 * **Contract-First API Design:**
   The REST API (NestJS + Fastify) generates an OpenAPI specification that compiles into end-to-end typed TypeScript SDKs via Orval, guaranteeing compile-time type safety across frontend and backend boundaries.
 * **Automated Hardened CI/CD ([`.github/workflows/`](.github/workflows)):**
@@ -120,7 +113,7 @@ Traditional tax software presents dense tabular forms without proactive guidance
 
 ## ⚡ High-Throughput Benchmarks
 
-The core mathematical engine is continuously benchmarked using Vitest Bench (`pnpm --filter @steuereule/core bench`):
+The tariff functions have a Vitest benchmark (`pnpm --filter @steuereule/core bench`). It runs locally, not in CI. One run on a developer laptop:
 
 ```text
  ✓ src/math/tarif.bench.ts (4)
@@ -131,7 +124,6 @@ The core mathematical engine is continuously benchmarked using Vitest Bench (`pn
      · full calculation loop (100 income tiers)          222,094 loops/sec (>22.2M evaluations/sec)
 ```
 
-* **Zero Heap Allocations:** Hot evaluation loops operate strictly with native primitives and stack variables.
 * **Scale-to-Zero Cloud Run Friendly:** Instant cold-start and sub-microsecond latency permit running under minimal CPU resource quotas.
 
 ---
@@ -141,18 +133,32 @@ The core mathematical engine is continuously benchmarked using Vitest Bench (`pn
 * **Cloud-Native Health Probes:** Granular `/v1/health/live` and `/v1/health/ready` endpoints allow container orchestrators (Google Cloud Run / Kubernetes) to differentiate process liveness from downstream database pool readiness.
 * **Graceful Termination:** Process lifecycle hooks (`app.enableShutdownHooks()`) capture `SIGTERM` and `SIGINT` signals, ensuring in-flight transactions drain cleanly before container teardown.
 * **Adaptive Connection Pooling:** Dynamic pool sizing (`withAdaptiveDatabasePoolUrl`) adjusts connection limits adaptively to the provisioned container CPU quota, preventing database saturation under horizontal autoscale spikes.
-* **Least-Privilege Non-Root Containers:** Production Docker images enforce least privilege by switching execution to `USER node` (UID 10001) after compilation.
+* **Least-Privilege Non-Root Containers:** Production Docker images enforce least privilege by switching execution to `USER node` after compilation.
 * **Continuous DevSecOps Gates:** Mandatory pull request gates scan for hardcoded secrets (`gitleaks`), static vulnerabilities (`semgrep`), and base-image CVEs (`trivy`).
 
 ---
 
 ## 🏗️ Architecture & System Design
 
+<p align="center">
+  <img src="images/architecture-hexagon.svg" width="900" alt="Ports and Adapters: the pure @steuereule/core in the centre, the application services of apps/api around it, driving adapters (web app, AI assistants over MCP, jobs) on the left and driven adapters (PostgreSQL, language models, Stripe, e-mail, PDF) on the right; every dependency points inward" />
+</p>
+
+**Ports & Adapters (hexagonal architecture), checked by tools rather than by review.**
+
+- **Domain core.** [`@steuereule/core`](packages/core/) holds every tax rule as pure TypeScript with no I/O. It has no runtime dependencies, so a framework import does not even resolve. [`architecture.test.ts`](packages/core/src/architecture.test.ts) pins the allowed import directions between its folders and forbids import cycles between files.
+- **Application ring.** The services in `apps/api` depend on the core and on *ports*: an interface plus a DI token, such as `ReceiptRepository` / `RECEIPT_REPOSITORY`, `SingleShotModel`, `PaymentProvider` or `EmailSender`.
+- **Adapters.** The database client and each external SDK may be imported only by the files named for it: Prisma in `*.prisma.ts` and `src/prisma/`, LangChain in eight files of `src/ki/`, Stripe in `stripe-payment-provider.ts`. [`apps/api/test/architecture.test.ts`](apps/api/test/architecture.test.ts) fails on any other import, and on any new import between feature modules ([ADR-0102](docs/adr/0102-ports-and-adapters-enforced-by-architecture-tests.md)).
+- **Why.** The tax rules are tested and fuzzed without a database. Three LLM vendors and a CI fake sit behind one factory. Field encryption sits in the Prisma adapter, so services never see it.
+
+The full write-up is in [`docs/architecture.md` §4.1](docs/architecture.md#41-architecture-style-ports--adapters). It covers the rings, the port inventory, what is enforced and how, the known limits, and a recipe for adding a dependency.
+
 Steuereule is structured as a modular TypeScript monorepo powered by `pnpm` and `Turborepo`:
 
 ```text
 ├── apps/
 │   ├── mobile-web       # React Native Web + Expo (TanStack Query, i18n, Funke UI)
+│   ├── website          # Public website
 │   └── api              # NestJS + Fastify REST API (/v1/*), Prisma ORM on PostgreSQL
 ├── packages/
 │   ├── core             # Pure, deterministic German tax calculation engine (§ 32a EStG):
@@ -164,11 +170,11 @@ Steuereule is structured as a modular TypeScript monorepo powered by `pnpm` and 
 │   ├── ui               # Neobrutalist "Funke" design system component library
 │   ├── tokens           # Style Dictionary tokens (colors, typography, geometry)
 │   └── api-client       # Generated type-safe client SDK (OpenAPI via Orval)
-├── e2e/                 # Playwright cross-browser test suites against containerized stack
+├── e2e/                 # Playwright (Chromium) scenarios against the containerized stack
 ├── infra/               # OpenTofu infrastructure definitions (Google Cloud Run, Cloud SQL)
 └── docs/
     ├── arc42/           # arc42 architecture specification and PlantUML diagrams
-    └── adr/             # 58 Architecture Decision Records (ADRs)
+    └── adr/             # 100+ Architecture Decision Records (ADRs)
 ```
 
 ---
@@ -192,12 +198,12 @@ Steuereule is structured as a modular TypeScript monorepo powered by `pnpm` and 
 
 ### Prerequisites
 * Docker & Docker Compose
-* Node.js `>= 20.10.0` (or `pnpm >= 9.0.0` for local workspace hacking)
+* Node.js `>= 22` and `pnpm` 10 for working in the workspace
 
 ### Running the Full Local Stack
 ```bash
 # Clone the repository
-git clone https://github.com/suhaysevinc/Steuereule.git
+git clone https://github.com/NexusHero/Steuereule.git
 cd Steuereule
 
 # Spin up all containerized services (Postgres, Mailpit, NestJS API, Web UI)
@@ -209,7 +215,7 @@ scripts/local.sh dev
 
 ### Local Endpoints
 * **Web Application:** [http://localhost:8080](http://localhost:8080) (or `8081` in dev mode)
-* **REST API & Swagger:** [http://localhost:3000/v1](http://localhost:3000/v1)
+* **REST API:** `http://localhost:3000/v1`, Swagger UI at [http://localhost:3000/docs](http://localhost:3000/docs)
 * **Mailpit (Local Email Sandbox):** [http://localhost:8025](http://localhost:8025) (catches verification emails locally; zero external network egress)
 
 > [!NOTE]
@@ -223,8 +229,9 @@ The codebase enforces a multi-tiered testing and verification pipeline:
 
 * **Exhaustive State-Machine Fuzzing ([`matrix-fuzzing.test.ts`](packages/core/src/interview/matrix-fuzzing.test.ts)):**
   Traverses all **144 combinatorial gate variations** across user employment, cross-border status, children, and marital configurations. Validates mathematical invariants up to €100,000,000 without numeric exceptions.
-* **Deterministic Unit Tests:** 45+ isolated test suites in `@steuereule/core` (660+ unit tests executing in under 500ms) covering exact statutory tax formulas.
-* **Integration Tests:** 75+ test suites in `@steuereule/api` running against ephemeral real PostgreSQL instances with test database isolation.
+* **Deterministic Unit Tests:** 155 test files with about 2,000 tests in `@steuereule/core`, none of which needs a database (as of 2026-11-22).
+* **Integration Tests:** 53 integration and acceptance test files in `@steuereule/api` run against a real PostgreSQL in CI.
+* **Architecture Tests:** two tests fail the build when a module imports an SDK it may not, when a new dependency between feature modules appears, or when the core gains an import cycle.
 * **Contract Verification:** Automated verification that runtime API schemas match generated client DTOs.
 * **End-to-End Gates:** Playwright browser automation simulating end-to-end user journeys (guest mode, multi-step interview, tax calculations, PDF export validation).
 * **Continuous Security:** Mandatory CI gates running `gitleaks` (secret scanning), `semgrep` (SAST), and `trivy` (container & dependency vulnerability scanner).

@@ -3,7 +3,7 @@ import { AdvisorService } from '../advisor/advisor.service.js'
 import { NotFoundError } from '../common/domain-error.js'
 import type { LstbResponseDto } from '../lstb/dto/lstb-response.dto.js'
 import { LstbService } from '../lstb/lstb.service.js'
-import { TRANSACTION_RUNNER, type TransactionRunner } from '../prisma/transaction.js'
+import { TRANSACTION_RUNNER, type TransactionRunner } from '../common/transaction-runner.js'
 import { ReceiptService } from '../receipt/receipt.service.js'
 import type { ConfirmLstbScanDto } from './dto/confirm-lstb-scan.dto.js'
 

@@ -6,6 +6,7 @@ import type { ChatResult } from '@langchain/core/outputs'
 import { describe, expect, it } from 'vitest'
 import { EnvAiRuntimeConfigService, type ResolvedAiSlotConfig } from '../src/ki/ai-runtime-config.service.js'
 import { AdvisorTopicGuard, GUARD_HISTORY_ENTRIES } from '../src/ki/advisor-topic-guard.js'
+import { singleShotFromChatModel } from '../src/ki/langchain-single-shot.adapter.js'
 
 class AnsweringModel extends BaseChatModel {
   public seen: BaseMessage[] = []
@@ -35,7 +36,7 @@ function guardWith(model: BaseChatModel | null, env: Record<string, string> = GE
   const configs: ResolvedAiSlotConfig[] = []
   const guard = new AdvisorTopicGuard(new EnvAiRuntimeConfigService(env), (config) => {
     configs.push(config)
-    return model
+    return model ? singleShotFromChatModel(model) : null
   })
   return { guard, configs }
 }

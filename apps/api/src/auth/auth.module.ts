@@ -12,6 +12,8 @@ import { LoggingEmailSender } from './logging-email-sender.js'
 import { resolveSmtpConfig, SmtpEmailSender } from './smtp-email-sender.js'
 import { RequiresAccountGuard } from './requires-account.guard.js'
 import { UserContextGuard } from './user-context.guard.js'
+import { BEARER_TOKEN_REPOSITORY } from './bearer-token.repository.js'
+import { PrismaBearerTokenRepository } from './bearer-token.repository.prisma.js'
 import { AuthCapabilitiesController } from './auth-capabilities.controller.js'
 import { OAuthDiscoveryController } from './oauth-discovery.controller.js'
 
@@ -49,9 +51,10 @@ import { OAuthDiscoveryController } from './oauth-discovery.controller.js'
           trustedProxies: resolveTrustedProxies(),
         }),
     },
+    { provide: BEARER_TOKEN_REPOSITORY, useClass: PrismaBearerTokenRepository },
     UserContextGuard,
     RequiresAccountGuard,
   ],
-  exports: [BETTER_AUTH_BUNDLE, EMAIL_SENDER, UserContextGuard, RequiresAccountGuard, PrismaModule],
+  exports: [BETTER_AUTH_BUNDLE, EMAIL_SENDER, BEARER_TOKEN_REPOSITORY, UserContextGuard, RequiresAccountGuard, PrismaModule],
 })
 export class AuthModule {}

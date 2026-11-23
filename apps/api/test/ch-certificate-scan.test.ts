@@ -12,6 +12,8 @@ import { DocumentParseRegistry } from '../src/receipt/parse/document-parse.regis
 import { looksLikeChSalaryCertificate } from '../src/receipt/receipt-parse.service.js'
 import { buildAdvisorTestKit } from './fakes/advisor-test-kit.js'
 import { FakeAuditRepository } from './fakes/fake-audit.repository.js'
+import { singleShotFromChatModel } from '../src/ki/langchain-single-shot.adapter.js'
+import { noSingleShotModel } from '../src/ki/single-shot-model.js'
 
 const USER = 'user-a'
 const YEAR = 2025
@@ -70,7 +72,7 @@ async function setUp(options: { spouse?: boolean; model?: RecordingModel } = {})
     kit.service,
     new AuditService(new FakeAuditRepository()),
     kit.linkService,
-    options.model ? () => options.model! : undefined,
+    options.model ? () => singleShotFromChatModel(options.model!) : noSingleShotModel,
   )
   return { kit, strategy }
 }

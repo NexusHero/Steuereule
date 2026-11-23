@@ -55,6 +55,7 @@ import { FakePensionRepository } from './fakes/fake-pension.repository.js'
 import { FakeProfileRepository } from './fakes/fake-profile.repository.js'
 import { FakeRentalRepository } from './fakes/fake-rental.repository.js'
 import { SAMPLE_DIGEST as sampleDigest } from './fixtures/sample-digest.js'
+import { BEARER_TOKEN_REPOSITORY } from '../src/auth/bearer-token.repository.js'
 
 class ScriptedChatModel extends BaseChatModel {
   public invokeCount = 0
@@ -502,6 +503,7 @@ describe('AiRuntimeConfigService & LangGraphAdvisorEngine (#446 Slice 2)', () =>
             auth: { api: { getSession: async () => null } },
           },
         },
+        { provide: BEARER_TOKEN_REPOSITORY, useValue: {} },
         UserContextGuard,
       ],
     })

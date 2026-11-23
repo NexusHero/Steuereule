@@ -40,7 +40,6 @@ import { ADVISOR_TOPIC_GUARD, type AdvisorTopicGuardPort } from './advisor-topic
 export { toProviderToolSchema, buildToolSchemas, computedFiguresOf, unresolvedRejections } from './advisor-tools.js'
 export { buildCaseBlock, buildStableSystemPrompt, buildSystemMessage, buildTurnMessages, describeTurnContext, TURN_CONTEXT_HEADER, USER_MESSAGE_HEADER, userTextOf, withHistoryCacheBreakpoint } from './advisor-prompt.js'
 
-export const ADVISOR_ENGINE = Symbol('ADVISOR_ENGINE')
 
 function extractMessageText(content: unknown): string {
   if (typeof content === 'string') return content

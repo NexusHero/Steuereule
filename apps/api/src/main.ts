@@ -1,5 +1,5 @@
 import './config/env-snapshot.js'
-import { assertFakeKiNotInProduction } from './ki/fake-chat-model.js'
+import { assertFakeKiNotInProduction } from './ki/fake-ki-env.js'
 import { installProviderRejectionGuard } from './ki/provider-rejections.js'
 import 'reflect-metadata'
 import fastifyCookie from '@fastify/cookie'
