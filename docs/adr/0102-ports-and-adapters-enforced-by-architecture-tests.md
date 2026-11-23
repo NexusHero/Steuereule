@@ -109,3 +109,11 @@ The proof is in the repository and runs with every test run:
 - `apps/api/test/architecture.test.ts` feeds the same check function twelve constructed violations, one per rule, and expects exactly one finding for each. Five constructed permitted imports must yield none.
 - The core test was broken on 2026-11-22 with four probe files: an import from `math` into `engine`, a new import from `domains/business` into `interview`, and a cycle of two files in `common`. Four of six tests went red, and green again after removal.
 - On its first run the API test found an exception nobody needed (`config/database-url.ts` does not import Prisma). It was struck.
+
+## Update 2026-11-23: the core cycles are gone
+
+The two folder cycles are removed. The modules `domains` used from above now sit in `domains`: the calculation model (`engine/berechnung.ts` → `domains/calculation.ts`), the assessment module, the filing-type comparison and the most-favourable check; the answer model of `interview/interview.ts` moved to `domains/answers.ts`, `AdvisorActionStatus` to `domains/action-status.ts`, and `Range` to `common/range.ts`. The backward lists are deleted. `ALLOWED` is now a strict order, `math → common → domains → engine → interview`, without exceptions.
+
+The core test gained a third rule: no year compared with a bare literal outside `math/tax-parameters.ts`. Of the 36 lines with such a comparison in the core, 35 now read named years (`RULE_CHANGE_YEARS`, `appliesFrom`) or year steps (`valueForYear`) from there; the calendar guard in `common/workdays.ts` (2000 to 2100, not a tax rule) uses two named constants in its own file. The API holds no such rule; its only year switches are demo data in `business/demo-household.ts`.
+
+Proof: constructed violations for each rule run with every test run (five upward imports, one cycle, six year comparisons, seven lines that must pass). On 2026-11-23 the rules were also broken once in real code, with an import from `domains/childcare.ts` into `engine` and a `year >= 2025` in the same file: both tests went red, and green again after removal.
