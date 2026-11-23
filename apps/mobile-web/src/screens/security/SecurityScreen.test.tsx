@@ -5,7 +5,7 @@
 // never from local state that could drift from a server-side revocation.
 import { describe, it, expect } from 'vitest'
 import { http, HttpResponse } from 'msw'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { I18nextProvider } from 'react-i18next'
 import { ThemeProvider } from '@steuereule/ui'
@@ -153,5 +153,32 @@ describe('SicherheitScreen (REQ-007)', () => {
     fireEvent.click(screen.getByText('Entfernen'))
     await screen.findByText('Passkey wurde entfernt.')
     expect(deleteCalled).toBe(true)
+  })
+
+  it('asks for the password again when the server needs a step-up before adding a passkey (ADR-0106 D2)', async () => {
+    let optionsCalls = 0
+    const verifiedWith: string[] = []
+    server.use(
+      http.get('*/api/auth/get-session', () => HttpResponse.json(signedInSession(false))),
+      http.get('*/api/auth/passkey/list-user-passkeys', () => HttpResponse.json([])),
+      http.get('*/api/auth/passkey/generate-register-options', () => {
+        optionsCalls += 1
+        return HttpResponse.json({ code: 'FRESH_AUTH_REQUIRED', message: 'step-up' }, { status: 403 })
+      }),
+      http.post('*/api/auth/verify-password', async ({ request }) => {
+        verifiedWith.push(((await request.json()) as { password: string }).password)
+        return HttpResponse.json({ status: true })
+      }),
+    )
+    renderSecurity()
+
+    await screen.findByText('Passkeys')
+    fireEvent.click(screen.getByText('Passkey hinzufügen'))
+    await screen.findByText('Passwort bestätigen')
+    fireEvent.change(screen.getByTestId('passkey-passwort'), { target: { value: 'correct-password' } })
+    fireEvent.click(screen.getByTestId('passkey-passwort-bestaetigen'))
+
+    await waitFor(() => expect(optionsCalls).toBe(2))
+    expect(verifiedWith).toEqual(['correct-password'])
   })
 })

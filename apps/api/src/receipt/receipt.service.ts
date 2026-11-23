@@ -2,7 +2,7 @@ import { Inject, Injectable, Optional } from '@nestjs/common'
 import { ISO_DATE_PATTERN, assignmentFromData, isReceiptType, receiptFolderOfKind, type ReceiptAssignment, type ReceiptFolder, type ReceiptType } from '@steuereule/core'
 import { AdvisorDocumentStaging } from '../advisor/advisor-document-staging.js'
 import type { ReceiptDraftRecord } from '../advisor/advisor.repository.js'
-import { InvalidInputError, NotFoundError } from '../common/domain-error.js'
+import { ConflictError, InvalidInputError, NotFoundError } from '../common/domain-error.js'
 import { AuditService } from '../audit/audit.service.js'
 import { draftsByReceipt, duplicateDto, filledFieldsOf, originalsByContent, processingOf } from './receipt-state.js'
 import { RECEIPT_REPOSITORY, type ReceiptFacts, type ReceiptRecord, type ReceiptRepository } from './receipt.repository.js'
@@ -12,6 +12,24 @@ import type { DeleteReceiptResponseDto, ReceiptCountsDto, ReceiptPageResponseDto
 import type { CreateReceiptDto } from './dto/create-receipt.dto.js'
 import type { SetAssignmentDto } from './dto/set-assignment.dto.js'
 import type { AssignmentDto } from './dto/assignment.dto.js'
+
+/**
+ * What one account may store (ADR-0106 D7). Without a bound, one account stored 237 MB in 16 seconds into the
+ * database's bytea storage. Several tax years of receipts stay far below it.
+ */
+export const MAX_RECEIPT_FILES_PER_ACCOUNT = 2_000
+export const MAX_RECEIPT_BYTES_PER_ACCOUNT = 2 * 1024 * 1024 * 1024
+
+function exceedsReceiptQuota(files: number, bytes: number): boolean {
+  return files > MAX_RECEIPT_FILES_PER_ACCOUNT || bytes > MAX_RECEIPT_BYTES_PER_ACCOUNT
+}
+
+function receiptQuotaExceeded(): ConflictError {
+  return new ConflictError(
+    'RECEIPT_QUOTA_EXCEEDED',
+    'Dein Speicherplatz für Belege ist voll. Lösche Belege, die du nicht mehr brauchst, und versuche es dann erneut.',
+  )
+}
 
 export interface UploadReceiptInput {
   readonly buffer: Buffer
@@ -224,6 +242,11 @@ export class ReceiptService {
     // A direction makes it a business receipt: it is read into a booking draft (ADR-0101 §6).
     const fileAs = kind ?? (direction !== undefined ? ('Geschaeftsbeleg' as const) : undefined)
 
+    // Checked before the write to refuse early, and again after it: concurrent uploads may all pass the first
+    // check, and the second one, which counts the file just stored, takes back whatever went over the cap.
+    const usage = await this.storage.usage(userId)
+    if (exceedsReceiptQuota(usage.files + 1, usage.bytes + input.buffer.length)) throw receiptQuotaExceeded()
+
     const record = await this.repository.create(userId, {
       fileName: cleanFileName,
       ...(fileAs !== undefined ? { kind: fileAs } : {}),
@@ -239,6 +262,11 @@ export class ReceiptService {
         buffer: input.buffer,
         mimeType,
       })
+      const after = await this.storage.usage(userId)
+      if (exceedsReceiptQuota(after.files, after.bytes)) {
+        await this.storage.delete(userId, record.id).catch(() => false)
+        throw receiptQuotaExceeded()
+      }
       const repoWithFileMeta = this.repository as ReceiptRepository & {
         setFileMeta?: (ownerId: string, receiptId: string, meta: { mimeType: string; byteLength: number } | null) => void
       }

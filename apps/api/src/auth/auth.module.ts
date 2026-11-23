@@ -3,7 +3,6 @@ import { APP_GUARD } from '@nestjs/core'
 import { PrismaModule } from '../prisma/prisma.module.js'
 import { PrismaService } from '../prisma/prisma.service.js'
 import { resolveCorsOrigins } from '../cors/resolve-cors-origins.js'
-import { resolveTrustedProxies } from '../config/trusted-proxies.js'
 import { BETTER_AUTH_BUNDLE } from './auth.tokens.js'
 import { createBetterAuth } from './better-auth.js'
 import { resolveAppleClientId, resolveAppleClientSecret, resolveAppleSignInEnabled, resolveBetterAuthSecret, resolveBetterAuthUrl, resolveGoogleClientId, resolveGoogleClientSecret, resolveWebAppUrl } from './better-auth-env.js'
@@ -45,7 +44,6 @@ import { OAuthDiscoveryController } from './oauth-discovery.controller.js'
           appleSignInEnabled: resolveAppleSignInEnabled(),
           appleClientId: resolveAppleClientId(),
           appleClientSecret: resolveAppleClientSecret(),
-          trustedProxies: resolveTrustedProxies(),
         }),
     },
     { provide: BEARER_TOKEN_REPOSITORY, useClass: PrismaBearerTokenRepository },

@@ -52,7 +52,6 @@
   "assistenten -> prisma",
   "audit -> prisma",
   "auth -> common",
-  "auth -> config",
   "auth -> cors",
   "auth -> prisma",
   "business -> advisor",

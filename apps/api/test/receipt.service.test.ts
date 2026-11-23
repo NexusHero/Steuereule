@@ -4,7 +4,7 @@
 // through Prisma) lives in beleg.integration.test.ts.
 import { beforeEach, describe, expect, it } from 'vitest'
 import { AuditService } from '../src/audit/audit.service.js'
-import { ReceiptService } from '../src/receipt/receipt.service.js'
+import { ReceiptService, MAX_RECEIPT_BYTES_PER_ACCOUNT, MAX_RECEIPT_FILES_PER_ACCOUNT } from '../src/receipt/receipt.service.js'
 import { FakeAuditRepository } from './fakes/fake-audit.repository.js'
 import { FakeReceiptRepository } from './fakes/fake-receipt.repository.js'
 import { InMemoryStorageAdapter } from './fakes/in-memory-storage.adapter.js'
@@ -183,6 +183,34 @@ describe('BelegService', () => {
       const deleted = await service.delete(USER_ID, uploaded.id)
       expect(deleted).toEqual({ deleted: true, takenBack: 0, withdrawn: 0 })
       expect(repository.recordCount()).toBe(0)
+    })
+  })
+
+  describe('per-account storage quota (ADR-0106 D7)', () => {
+    it('refuses an upload once the account holds the maximum number of files, and stores nothing', async () => {
+      storage.usage = async () => ({ files: MAX_RECEIPT_FILES_PER_ACCOUNT, bytes: 0 })
+      await expect(service.upload('user-q', { buffer: PDF_HEADER, fileName: 'a.pdf' })).rejects.toMatchObject({ code: 'RECEIPT_QUOTA_EXCEEDED' })
+      expect(repository.recordCount()).toBe(0)
+    })
+
+    it('refuses an upload that would pass the byte limit', async () => {
+      storage.usage = async () => ({ files: 1, bytes: MAX_RECEIPT_BYTES_PER_ACCOUNT - 4 })
+      await expect(service.upload('user-q', { buffer: PDF_HEADER, fileName: 'a.pdf' })).rejects.toMatchObject({ code: 'RECEIPT_QUOTA_EXCEEDED' })
+    })
+
+    it('takes an upload back when a concurrent one filled the account first', async () => {
+      // The check before the write still sees room; the one after it counts a file a parallel upload stored.
+      let calls = 0
+      storage.usage = async () => (++calls === 1 ? { files: MAX_RECEIPT_FILES_PER_ACCOUNT - 1, bytes: 0 } : { files: MAX_RECEIPT_FILES_PER_ACCOUNT + 1, bytes: 0 })
+      await expect(service.upload('user-q', { buffer: PDF_HEADER, fileName: 'a.pdf' })).rejects.toMatchObject({ code: 'RECEIPT_QUOTA_EXCEEDED' })
+      expect(repository.recordCount()).toBe(0)
+      expect(await storage.listContentKeys('user-q')).toEqual([])
+    })
+
+    it('counts only the uploading account', async () => {
+      await service.upload('other-user', { buffer: PDF_HEADER, fileName: 'a.pdf' })
+      expect(await storage.usage('user-q')).toEqual({ files: 0, bytes: 0 })
+      expect((await storage.usage('other-user')).files).toBe(1)
     })
   })
 })

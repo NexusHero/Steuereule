@@ -33,6 +33,11 @@
     "profil-wissensnetz-*": "UX consolidation (PR #516): saved employer knowledge card in ProfileScreen; covered in ProfileScreen.test.tsx",
     "receipt-folder-*": "UX consolidation (PR #516): smart folder badge on receipt cards in ReceiptsScreen; covered in ReceiptsScreen.test.tsx",
     "stammdaten-unternehmen-*": "UX consolidation (PR #516): saved employer directory in MasterDataScreen; covered in MasterDataScreen.test.tsx",
-    "zweifaktor-qr-wrapper": "UX consolidation (PR #516): high-contrast white QR background wrapper in TwoFactorSection; covered in SecurityScreen.test.tsx"
+    "zweifaktor-qr-wrapper": "UX consolidation (PR #516): high-contrast white QR background wrapper in TwoFactorSection; covered in SecurityScreen.test.tsx",
+    "passkey-passwort": "ADR-0106 D2: the step-up prompt shows only on a session older than five minutes, which a browser gate reaches only by waiting five minutes or ageing the session in the database. Covered by SecurityScreen.test.tsx / OauthConsentScreen.test.tsx (the prompt, the re-entered password, the retry) and the API acceptance tests req-007-passkey.test.ts / oauth-grants-step-up.test.ts (the server refusing an older session)",
+    "passkey-passwort-bestaetigen": "ADR-0106 D2 step-up, see passkey-passwort",
+    "oauth-stepup": "ADR-0106 D2 step-up, see passkey-passwort",
+    "oauth-stepup-passwort": "ADR-0106 D2 step-up, see passkey-passwort",
+    "oauth-stepup-bestaetigen": "ADR-0106 D2 step-up, see passkey-passwort"
   }
 }

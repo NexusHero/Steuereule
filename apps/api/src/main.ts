@@ -11,6 +11,7 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger'
 import { AppModule } from './app.module.js'
 import { BETTER_AUTH_BUNDLE, type BetterAuthBundle } from './auth/auth.tokens.js'
 import { mountBetterAuthHandler } from './auth/mount-better-auth.js'
+import { installClientIpHeader } from './auth/client-ip.js'
 import { validationExceptionFactory } from './common/validation-exception-factory.js'
 import { assertDatabaseMigrated, assertKeystoreMigrated } from './config/assert-database-migrated.js'
 import { assertDatabaseReachable } from './config/assert-database-reachable.js'
@@ -34,6 +35,10 @@ export async function buildApp(): Promise<NestFastifyApplication> {
       rawBody: true,
     },
   )
+
+  // Before every route: better-auth keys its rate limits and session IPs on the address Fastify resolved
+  // (ADR-0106 D3/D4), never on a client-supplied X-Forwarded-For.
+  installClientIpHeader(fastifyAdapter.getInstance())
 
   fastifyAdapter.getInstance().addHook('onSend', async (request, reply) => {
     if (request.id) {

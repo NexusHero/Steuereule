@@ -75,6 +75,7 @@
   },
   "auth": {
     "errInvalidCredentials": "E-Mail oder Passwort stimmen nicht.",
+    "errTooManyAttempts": "Zu viele Anmeldeversuche. Warte ein paar Minuten und versuch es dann noch mal.",
     "errEmailTaken": "Für diese E-Mail gibt es schon ein Konto.",
     "errPasswordTooShort": "Das Passwort ist zu kurz.",
     "errPasswordCompromised": "Dieses Passwort ist in einem bekannten Datenleck aufgetaucht — wähl bitte ein anderes.",
@@ -353,6 +354,12 @@
     }
   },
   "sicherheit": {
+    "stepUp": {
+      "title": "Passwort bestätigen",
+      "body": "Zum Schutz deines Kontos: Bestätige dein Passwort, bevor du einen Passkey hinzufügst. Meldest du dich ohne Passwort an (Google oder Passkey), melde dich ab und wieder an – danach geht es fünf Minuten lang ohne diese Frage.",
+      "confirm": "Bestätigen und fortfahren",
+      "wrong": "Das Passwort stimmt nicht."
+    },
     "title": "Sicherheit",
     "back": "Zurück zu Profil",
     "loading": "Wird geladen …",
@@ -2454,6 +2461,11 @@
     "progressionsvorbehaltHinweis": "Ehrlich: der Progressionsvorbehalt (Lohnersatz) ist hier noch nicht berücksichtigt."
   },
   "oauthConsent": {
+    "stepUpTitle": "Passwort bestätigen",
+    "stepUpBody": "Zum Schutz Ihres Kontos: Bestätigen Sie Ihr Passwort, bevor Sie einen Assistenten verbinden. Melden Sie sich ohne Passwort an (Google oder Passkey), melden Sie sich ab und wieder an.",
+    "stepUpPassword": "Passwort",
+    "stepUpConfirm": "Bestätigen und erlauben",
+    "stepUpWrong": "Das Passwort stimmt nicht.",
     "title": "Assistent verbinden",
     "requestNotice": "möchte sich mit Ihrem SteuerEule-Konto verbinden.",
     "scopesHeading": "Der Assistent erhält Zugriff auf:",

@@ -191,7 +191,7 @@ constructor(@Inject(RECEIPT_REPOSITORY) private readonly receipts: ReceiptReposi
 | :--- | :--- | :--- |
 | The database client and eleven further SDK groups are imported only by the files named for them. That includes `src/prisma/**` and adapter classes in `*.prisma.ts`. No file imports `ModuleRef` from `@nestjs/core` (no service locator); `Reflector` and `NestFactory` stay allowed. | `apps/api/test/architecture.test.ts` | fourteen constructed violations in the test, two of them imports of `ModuleRef` (named and namespace); each must yield exactly one finding |
 | A named exception that no longer imports its SDK is an error. | the same test | found one superfluous exception on its first run |
-| The set of *module → module* imports in `apps/api/src` equals the baseline (335 edges between 53 folders as of 2026-11-23; 352 between 50 on 2026-11-22). | the same test, baseline `apps/api/test/architecture-module-edges.json` | a difference in either direction fails |
+| The set of *module → module* imports in `apps/api/src` equals the baseline (334 edges between 53 folders as of 2026-11-23, after ADR-0106 removed `auth → config`; 352 between 50 on 2026-11-22). | the same test, baseline `apps/api/test/architecture-module-edges.json` | a difference in either direction fails |
 | In the core: `math` imports nothing, `common` only `math`, `engine` never `interview`; no new direction between the folders. | `packages/core/src/architecture.test.ts` | broken with probe files on 2026-11-22 ([ADR-0102](adr/0102-ports-and-adapters-enforced-by-architecture-tests.md)) |
 | In the core: the files importing against the intended order are exactly the 23 known ones. | the same test | as above |
 | In the core: no cycle of value imports between files. | the same test | as above |
@@ -205,7 +205,7 @@ Both tests run in the CI job `test` of the workflow *Quality*.
 - **`mcp/` loads LangChain too**, because it imports `TOOL_ARG_SCHEMAS` from `ki/advisor-tools.ts`.
 - **`pdf-lib` has no port.** Only `printout/form-renderer.ts` imports it, but services call `renderForms` directly.
 - **better-auth is confined to two modules, not one file.** Twelve files in `auth/` and `device/` use it, among them the guard for JWT verification.
-- **Modules are still coupled.** 335 edges; 3 pairs of modules import each other (2026-11-23, down from 16 on 2026-11-22). The ratchet prevents growth; removing an edge means rewriting the baseline (§11, finding 4).
+- **Modules are still coupled.** 334 edges; 3 pairs of modules import each other (2026-11-23, down from 16 on 2026-11-22). The ratchet prevents growth; removing an edge means rewriting the baseline (§11, finding 4).
 - **The core has two folder-level cycles**, see §5.2.
 - **DI tokens are not type-checked.** A missing binding fails at start-up, a wrong one only in an integration test.
 - **Imports are found by pattern.** An import path computed at runtime is invisible.

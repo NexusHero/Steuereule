@@ -3,7 +3,7 @@ import { USER_KEY_STORE, type UserKeyStore, type WrappedUserKey } from '../../ke
 import { ENCRYPTED_PRISMA, type EncryptedPrismaClient } from '../../prisma/encrypted-prisma.provider.js'
 import { EnvelopeCryptoService } from './envelope-crypto.service.js'
 import type { AllowedReceiptMimeType } from './magic-bytes.js'
-import type { PutReceiptFileInput, StoragePort, StoredContentKey, StoredReceiptMeta, StoredReceiptObject } from './storage.port.js'
+import type { PutReceiptFileInput, StoragePort, StoredContentKey, StoredReceiptMeta, StoredReceiptObject, StoredReceiptUsage } from './storage.port.js'
 
 @Injectable()
 export class PostgresByteaStorageAdapter implements StoragePort {
@@ -59,6 +59,11 @@ export class PostgresByteaStorageAdapter implements StoragePort {
       byteLength: input.buffer.length,
       contentMac: encrypted.contentMac,
     }
+  }
+
+  async usage(userId: string): Promise<StoredReceiptUsage> {
+    const total = await this.prisma.receiptFile.aggregate({ where: { userId }, _count: { _all: true }, _sum: { byteLength: true } })
+    return { files: total._count._all, bytes: total._sum.byteLength ?? 0 }
   }
 
   async get(userId: string, receiptId: string): Promise<StoredReceiptObject | null> {

@@ -3,7 +3,7 @@ import { ApiBody, ApiCreatedResponse, ApiOkResponse, ApiQuery, ApiTags } from '@
 import { Throttle, ThrottlerGuard } from '@nestjs/throttler'
 import { fromNodeHeaders } from 'better-auth/node'
 import type { FastifyReply, FastifyRequest } from 'fastify'
-import { DEVICE_CODE_THROTTLE, DEVICE_PENDING_THROTTLE } from '../rate-limit/rate-limit.js'
+import { DEVICE_APPROVE_THROTTLE, DEVICE_CODE_THROTTLE, DEVICE_PENDING_THROTTLE } from '../rate-limit/rate-limit.js'
 import { AckResponseDto } from './dto/ack-response.dto.js'
 import { ApproveDeviceRequestDto } from './dto/approve-device-request.dto.js'
 import { DeviceCodeResponseDto } from './dto/device-code-response.dto.js'
@@ -39,6 +39,8 @@ export class DeviceController {
   }
 
   @Post('approve')
+  @Throttle({ default: DEVICE_APPROVE_THROTTLE })
+  @UseGuards(ThrottlerGuard)
   @HttpCode(200)
   @ApiBody({ type: ApproveDeviceRequestDto })
   @ApiOkResponse({ type: AckResponseDto, description: 'Approves the device-authorization request (ADR-0024) — one tap, no session-scope choice.' })

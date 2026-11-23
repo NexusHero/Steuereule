@@ -124,6 +124,7 @@ boot-ordering invariant are detailed in [`docs/arc42/README.md`](../arc42/README
 | 0103 | Session-security hardening: `/v1` CSRF, an absolute session cap, token rotation, stronger registration defaults | Accepted |
 | 0104 | Fixes for the post-hardening security-audit findings (token-logging, Swagger, redirect, request-id, control chars) | Accepted |
 | 0105 | CI gate taxonomy, `category: gate` naming & the advisory CI-Overview transparency rollup | Accepted |
+| 0106 | Fixes for the live penetration test of 2026-11-23 (quadratic readers, client address, step-up, assistant grants, limits) | Accepted |
 
 See also the [Tech Radar](./tech-radar.md).
 

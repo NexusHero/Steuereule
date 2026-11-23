@@ -6,6 +6,7 @@ import { APP_NS } from '../../i18n/resources'
 import { useAccountSession } from '../../auth/useAccountSession'
 import { useTwoFactor, type TotpSetup } from '../../auth/useTwoFactor'
 import { usePasskey, type PasskeyInfo } from '../../auth/usePasskey'
+import { isStepUpRequired, useStepUp } from '../../auth/useStepUp'
 import { QrMark } from '../../marks/QrMark'
 import { makeSecurityStyles } from './styles'
 
@@ -18,6 +19,8 @@ type Stage =
   | { readonly kind: 'enable-password'; readonly error: string; readonly busy: boolean }
   | { readonly kind: 'enable-setup'; readonly setup: TotpSetup; readonly error: string; readonly busy: boolean }
   | { readonly kind: 'disable-password'; readonly error: string; readonly busy: boolean }
+  /** Adding a passkey needs the password again on an older session (ADR-0106 D2). */
+  | { readonly kind: 'passkey-password'; readonly error: string; readonly busy: boolean }
 
 export function SecurityScreen({ onBack }: SecurityScreenProps) {
   const t = useTheme()
@@ -26,6 +29,7 @@ export function SecurityScreen({ onBack }: SecurityScreenProps) {
   const { state: sessionState } = useAccountSession()
   const twoFactor = useTwoFactor()
   const passkey = usePasskey()
+  const stepUp = useStepUp()
 
   const [stage, setStage] = useState<Stage>({ kind: 'idle' })
   const [password, setPassword] = useState('')
@@ -65,12 +69,29 @@ export function SecurityScreen({ onBack }: SecurityScreenProps) {
     setPasskeyError(null)
     const error = await passkey.add('')
     setPasskeyBusy(false)
+    if (isStepUpRequired(error)) {
+      setStage({ kind: 'passkey-password', error: '', busy: false })
+      return
+    }
     if (error) {
       setPasskeyError(error)
       return
     }
     setPasskeyStatus(tr('sicherheit.passkey.added'))
     await refreshPasskeys()
+  }
+
+  async function submitPasskeyPassword() {
+    if (!password) return
+    setStage((s) => (s.kind === 'passkey-password' ? { ...s, busy: true } : s))
+    const error = await stepUp.verifyPassword(password)
+    if (error) {
+      setStage({ kind: 'passkey-password', error, busy: false })
+      return
+    }
+    setPassword('')
+    setStage({ kind: 'idle' })
+    await submitAddPasskey()
   }
 
   async function submitRemovePasskey(id: string) {
@@ -247,6 +268,19 @@ export function SecurityScreen({ onBack }: SecurityScreenProps) {
                   </View>
                 ))
               : null}
+
+            {stage.kind === 'passkey-password' ? (
+              <View>
+                <Text style={styles.sectionTitle}>{tr('sicherheit.stepUp.title')}</Text>
+                <Text style={styles.sectionBody}>{tr('sicherheit.stepUp.body')}</Text>
+                <Feld label={tr('sicherheit.password')} error={stage.error}>
+                  <Input type="password" value={password} onChange={setPassword} placeholder="••••••••" autoComplete="current-password" testID="passkey-passwort" onSubmit={() => void submitPasskeyPassword()} />
+                </Feld>
+                <Button onPress={() => void submitPasskeyPassword()} disabled={stage.busy || !password} testID="passkey-passwort-bestaetigen">
+                  {stage.busy ? tr('sicherheit.busy') : tr('sicherheit.stepUp.confirm')}
+                </Button>
+              </View>
+            ) : null}
 
             <Button onPress={() => void submitAddPasskey()} disabled={passkeyBusy}>
               {passkeyBusy ? tr('sicherheit.busy') : tr('sicherheit.passkey.add')}

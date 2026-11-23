@@ -75,6 +75,7 @@
   },
   "auth": {
     "errInvalidCredentials": "Email or password doesn't match.",
+    "errTooManyAttempts": "Too many sign-in attempts. Wait a few minutes and try again.",
     "errEmailTaken": "There is already an account for this email.",
     "errPasswordTooShort": "That password's too short.",
     "errPasswordCompromised": "That password has shown up in a known data breach — please choose a different one.",
@@ -353,6 +354,12 @@
     }
   },
   "sicherheit": {
+    "stepUp": {
+      "title": "Confirm your password",
+      "body": "To protect your account, confirm your password before adding a passkey. If you sign in without a password (Google or passkey), sign out and back in — for five minutes afterwards this question is skipped.",
+      "confirm": "Confirm and continue",
+      "wrong": "That password is not correct."
+    },
     "title": "Security",
     "back": "Back to profile",
     "loading": "Loading …",
@@ -2454,6 +2461,11 @@
     "progressionsvorbehaltHinweis": "Honestly: the progression clause (wage-replacement benefits) is not yet factored in here."
   },
   "oauthConsent": {
+    "stepUpTitle": "Confirm your password",
+    "stepUpBody": "To protect your account, confirm your password before connecting an assistant. If you sign in without a password (Google or passkey), sign out and back in.",
+    "stepUpPassword": "Password",
+    "stepUpConfirm": "Confirm and allow",
+    "stepUpWrong": "That password is not correct.",
     "title": "Connect Assistant",
     "requestNotice": "wants to connect to your SteuerEule account.",
     "scopesHeading": "The assistant will receive access to:",

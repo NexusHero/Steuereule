@@ -166,15 +166,12 @@ shell (Cockpit, Profil), with Datenschutz as a drill-down reached from Profil.
 - `PrismaModule` — the shared, field-encryption-extended Prisma client (ADR-0008).
 - **Cross-cutting** — the fail-closed CORS origin allowlist (ADR-0011; never `*`, credentialed
   cross-origin with `SameSite=None; Secure`), `helmet`/CSP, and rate limiting (`@nestjs/throttler`
-  for the device/verify-password routes, better-auth's built-in limiter for its own) — **the rate
-  limit is not an effective control as shipped**: it is keyed on a client IP read from
-  `X-Forwarded-For` with no trusted-proxy boundary, so a single-value header yields a fresh bucket
-  per request ([#241](https://github.com/NexusHero/Steuereule/issues/241)). The storage moved from
-  the removed `RateLimit` table to in-memory (ADR-0035); that fixes where the counter lives, not
-  what it counts. Closes once the deployment supplies that boundary
-  ([#292](https://github.com/NexusHero/Steuereule/issues/292), successor to the closed
-  [#246](https://github.com/NexusHero/Steuereule/issues/246)); the Requirements Register records it
-  as REQ-010 `not met (rate limiting)`. See ADR-0012 §5 and its 2026-08-04 amendment.
+  for the device/verify-password routes, better-auth's built-in limiter for its own). Both key on the
+  client address Fastify resolves from the socket peer and `TRUSTED_PROXIES`, which the server writes
+  into an internal header before any route runs; a client-supplied `X-Forwarded-For` no longer buys a
+  fresh bucket (ADR-0106 D3, closing [#241](https://github.com/NexusHero/Steuereule/issues/241)'s
+  single-value bypass in code). Sign-in is also limited per account, and guest writes per address
+  (ADR-0106 D8/D9). The limiter storage is in-memory per pod, or Redis with `REDIS_URL` (ADR-0035).
 
 **Persistence — Postgres (EU)**, expand-only versioned migrations (ADR-047). Nine tables:
 four `userId`-scoped domain tables, the four better-auth identity tables, and
