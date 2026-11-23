@@ -11,7 +11,8 @@ import { UserContextGuard } from '../auth/user-context.guard.js'
 import { ParseTaxYearPipe } from '../cockpit/parse-tax-year.pipe.js'
 import { UnlockService } from '../unlock/unlock.service.js'
 import { firstBusinessOf, type BusinessPerson, type BusinessRef } from './business.repository.js'
-import { BusinessService, type LossFacts, type PartnershipShare, type TradeTaxInputs } from './business.service.js'
+import { BusinessService } from './business.service.js'
+import type { LossFacts, PartnershipShare, TradeTaxInputs } from './views.js'
 import { ElsterHelpService } from './elster-help.service.js'
 import {
   AcceptBankTransactionDto,

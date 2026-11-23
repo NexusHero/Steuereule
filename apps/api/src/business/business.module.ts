@@ -8,7 +8,9 @@ import { BOOKING_FIELD_ACCESS, bookingFieldAccess } from './booking-field-access
 import { BusinessController } from './business.controller.js'
 import { BUSINESS_REPOSITORY } from './business.repository.js'
 import { PrismaBusinessRepository } from './business.repository.prisma.js'
-import { BusinessService, HEBESATZ_DIRECTORY } from './business.service.js'
+import { BusinessContext } from './business-context.js'
+import { BusinessService } from './business.service.js'
+import { HEBESATZ_DIRECTORY } from './business.tokens.js'
 import { ElsterHelpService } from './elster-help.service.js'
 import { HebesatzDirectory } from './hebesatz.js'
 import { loadSuppliedElsterLines } from './elster-supplied-lines.js'
@@ -18,6 +20,7 @@ import { loadSuppliedElsterLines } from './elster-supplied-lines.js'
   imports: [PrismaModule, AuditModule, InterviewModule, UnlockModule, PrintoutModule],
   controllers: [BusinessController],
   providers: [
+    BusinessContext,
     BusinessService,
     ElsterHelpService,
     { provide: BUSINESS_REPOSITORY, useClass: PrismaBusinessRepository },
