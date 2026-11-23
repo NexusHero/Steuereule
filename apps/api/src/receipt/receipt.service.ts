@@ -1,6 +1,6 @@
 import { Inject, Injectable, Optional } from '@nestjs/common'
 import { ISO_DATE_PATTERN, assignmentFromData, isReceiptType, receiptFolderOfKind, type ReceiptAssignment, type ReceiptFolder, type ReceiptType } from '@steuereule/core'
-import { AdvisorService } from '../advisor/advisor.service.js'
+import { AdvisorDocumentStaging } from '../advisor/advisor-document-staging.js'
 import type { ReceiptDraftRecord } from '../advisor/advisor.repository.js'
 import { InvalidInputError, NotFoundError } from '../common/domain-error.js'
 import { AuditService } from '../audit/audit.service.js'
@@ -141,12 +141,12 @@ export class ReceiptService {
     @Inject(AuditService) private readonly auditService: AuditService,
     @Inject(STORAGE_PORT) private readonly storage: StoragePort,
     /** The owl drafts carry the Beleg id: its processing state and its filled fields come from them (ADR-0097). */
-    @Optional() @Inject(AdvisorService) private readonly advisor?: AdvisorService,
+    @Optional() @Inject(AdvisorDocumentStaging) private readonly staging?: AdvisorDocumentStaging,
   ) {}
 
   /** The drafts of every tax year per Beleg; empty without the owl (a module that does not wire it). */
   private async draftsPerReceipt(userId: string): Promise<Map<string, ReceiptDraftRecord[]>> {
-    return draftsByReceipt((await this.advisor?.receiptDrafts(userId)) ?? [])
+    return draftsByReceipt((await this.staging?.receiptDrafts(userId)) ?? [])
   }
 
   /** Whether the Beleg exists and belongs to the caller (ownership check for parse/confirm). */
@@ -308,10 +308,10 @@ export class ReceiptService {
    * take-back as giving a document to someone else (ADR-0092 §4) — a value changed since stays.
    */
   private async takeBack(userId: string, id: string): Promise<{ takenBack: number; withdrawn: number }> {
-    if (this.advisor === undefined) return { takenBack: 0, withdrawn: 0 }
+    if (this.staging === undefined) return { takenBack: 0, withdrawn: 0 }
     const drafts = (await this.draftsPerReceipt(userId)).get(id) ?? []
     let takenBack = 0
-    for (const taxYear of new Set(drafts.map((d) => d.taxYear))) takenBack += await this.advisor.takeBackDocumentValues(userId, taxYear, id)
+    for (const taxYear of new Set(drafts.map((d) => d.taxYear))) takenBack += await this.staging.takeBackDocumentValues(userId, taxYear, id)
     return { takenBack, withdrawn: drafts.filter((d) => d.status === 'pending').length }
   }
 }

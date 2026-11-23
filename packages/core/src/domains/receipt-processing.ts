@@ -1,4 +1,4 @@
-import type { AdvisorActionStatus } from '../interview/advisor'
+import type { AdvisorActionStatus } from './action-status'
 
 /**
  * ADR-0097 — what became of a Beleg. Like the year assignment of ADR-0040, the processing state is never

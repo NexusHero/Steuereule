@@ -9,8 +9,6 @@ import type { AdvisorStreamEvent } from '@steuereule/core'
 import { afterEach, describe, expect, it } from 'vitest'
 import { AdvisorController, FastifyThrottlerGuard } from '../src/advisor/advisor.controller.js'
 import { AdvisorModelsService } from '../src/advisor/advisor-models.service.js'
-import { AdvisorService } from '../src/advisor/advisor.service.js'
-import { InMemoryAdvisorRunLog } from '../src/advisor/run/advisor-run-log.js'
 import { AdvisorRunService } from '../src/advisor/run/advisor-run.service.js'
 import { BETTER_AUTH_BUNDLE } from '../src/auth/auth.tokens.js'
 import { AUTH_CONTEXT_REQUEST_KEY, USER_ID_KIND_REQUEST_KEY, USER_ID_REQUEST_KEY, UserContextGuard } from '../src/auth/user-context.guard.js'
@@ -44,12 +42,12 @@ let currentUser = 'user-http-1'
 
 async function boot(script: readonly ScriptStep[]) {
   const kit = buildAdvisorTestKit(new ScriptedAdvisorEngine(script))
-  const runs = new AdvisorRunService(kit.service, new InMemoryAdvisorRunLog(), kit.advisorRepo)
+  const runs = kit.runService()
   const moduleRef = await Test.createTestingModule({
     imports: [ThrottlerModule.forRoot([{ name: 'default', ttl: 60_000, limit: 10 }])],
     controllers: [AdvisorController],
     providers: [
-      { provide: AdvisorService, useValue: kit.service },
+      ...kit.providers,
       { provide: AdvisorRunService, useValue: runs },
       { provide: AdvisorModelsService, useValue: { list: async () => ({ standard: null, models: [] }), isAvailable: async () => false } },
       { provide: BETTER_AUTH_BUNDLE, useValue: { sessionCookieName: 'se.session', auth: { api: { getSession: async () => null } } } },

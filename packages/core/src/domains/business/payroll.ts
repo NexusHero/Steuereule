@@ -1,3 +1,4 @@
+import { MINIJOB_LIMIT_STEPS, valueForYear } from '../../math/tax-parameters'
 /**
  * Wages of the self-employed's own employees (ADR-0101 §22): the app books the runs of an outside
  * payroll (tax office, payroll software) and computes a gewerblicher Minijob itself; it gives the
@@ -29,11 +30,7 @@ const RV_MIN_BASE_EUR = 175
 
 /** § 8 Abs. 1a SGB IV: 450 € until 30.9.2022, then Mindestlohn × 130 / 3 (520, 538, 556, 603 €). */
 export function minijobLimitEur(year: number, month: number): number {
-  if (year < 2022 || (year === 2022 && month < 10)) return 450
-  if (year <= 2023) return 520
-  if (year === 2024) return 538
-  if (year === 2025) return 556
-  return 603
+  return valueForYear(MINIJOB_LIMIT_STEPS, year + (month - 1) / 12)
 }
 
 const c2 = (v: number) => Math.round(v * 100) / 100

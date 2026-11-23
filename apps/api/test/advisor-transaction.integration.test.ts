@@ -10,7 +10,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest'
 import { randomUUID } from 'node:crypto'
 import { AppModule } from '../src/app.module.js'
 import { ADVISOR_REPOSITORY, type AdvisorRepository } from '../src/advisor/advisor.repository.js'
-import { AdvisorService } from '../src/advisor/advisor.service.js'
+import { advisorOf, type AdvisorTestFacade } from './fakes/advisor-test-kit.js'
 import { COMMUTE_REPOSITORY, type CommuteRepository } from '../src/commute/commute.repository.js'
 import { INTERVIEW_ANSWER_REPOSITORY, type InterviewAnswerRepository } from '../src/interview/interview-answer.repository.js'
 import { ENCRYPTED_PRISMA, type EncryptedPrismaClient } from '../src/prisma/encrypted-prisma.provider.js'
@@ -24,7 +24,7 @@ describe('Eulen-Modus unit of work — real Postgres', () => {
   let prisma: PrismaService
   let encrypted: EncryptedPrismaClient
   let runner: TransactionRunner
-  let advisor: AdvisorService
+  let advisor: AdvisorTestFacade
   let advisorRepo: AdvisorRepository
   let interviewRepo: InterviewAnswerRepository
   let commuteRepo: CommuteRepository
@@ -36,7 +36,7 @@ describe('Eulen-Modus unit of work — real Postgres', () => {
     prisma = app.get(PrismaService)
     encrypted = app.get(ENCRYPTED_PRISMA)
     runner = app.get(TRANSACTION_RUNNER)
-    advisor = app.get(AdvisorService)
+    advisor = advisorOf(app)
     advisorRepo = app.get(ADVISOR_REPOSITORY)
     interviewRepo = app.get(INTERVIEW_ANSWER_REPOSITORY)
     commuteRepo = app.get(COMMUTE_REPOSITORY)

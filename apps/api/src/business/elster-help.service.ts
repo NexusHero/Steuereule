@@ -5,7 +5,8 @@ import { INCOME_TAX_FORMS, LATEST_LINES_YEAR, latestLineOf, lineIdsOf, lineOf, l
 import type { LiveForm, LiveFormInstance } from '../printout/live-values.js'
 import { PrintoutService } from '../printout/printout.service.js'
 import { FIRST_BUSINESS, type BusinessRef } from './business.repository.js'
-import { BusinessService, type ElsterHelp, type ElsterLineValue } from './business.service.js'
+import { BusinessService } from './business.service.js'
+import type { ElsterHelp, ElsterLineValue } from './views.js'
 
 /** The forms of the business itself, before the income-tax return (ADR-0101 §16). */
 const BUSINESS_FORMS = ['anlage-euer', 'anlage-s', 'anlage-g', 'ust-2-a', 'gewst-1-a'] as const

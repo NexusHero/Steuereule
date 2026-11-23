@@ -43,7 +43,7 @@ async function setUp(withRate = true) {
   await kit.linkService.updatePersonB(USER, YEAR, { firstName: 'Anna', lastName: 'Muster' })
   const child = await kit.childRepo.create(USER, YEAR, { firstName: 'Lea', lastName: 'Muster', geburtsdatum: '2022-01-01' })
   if (withRate) await kit.chRepo.setExchangeRate(USER, YEAR, { month: '2025', rate: 1.05, mode: 'jahresdurchschnitt' })
-  const strategy = new ChHealthStatementParseStrategy(new DocumentParseRegistry(), kit.service, new AuditService(new FakeAuditRepository()), kit.linkService, kit.chRepo, kit.childRepo)
+  const strategy = new ChHealthStatementParseStrategy(new DocumentParseRegistry(), kit.staging, new AuditService(new FakeAuditRepository()), kit.linkService, kit.chRepo, kit.childRepo)
   return { kit, strategy, childId: child.id }
 }
 
@@ -94,7 +94,7 @@ describe('the health insurer’s statement', () => {
     await kit.linkService.set(USER, YEAR, { filingType: 'zusammen' })
     await kit.childRepo.create(USER, YEAR, { firstName: 'Lea', lastName: 'Muster', geburtsdatum: '2022-01-01' })
     await kit.chRepo.setExchangeRate(USER, YEAR, { month: '2025', rate: 1.05, mode: 'jahresdurchschnitt' })
-    const strategy = new ChHealthStatementParseStrategy(new DocumentParseRegistry(), kit.service, new AuditService(new FakeAuditRepository()), kit.linkService, kit.chRepo, kit.childRepo)
+    const strategy = new ChHealthStatementParseStrategy(new DocumentParseRegistry(), kit.staging, new AuditService(new FakeAuditRepository()), kit.linkService, kit.chRepo, kit.childRepo)
     const res = await parse(strategy, family)
     const drafts = (await kit.advisorRepo.listForUserAndYear(USER, YEAR)).flatMap((m) => m.meta?.actions ?? [])
     expect(drafts.find((d) => d.field === 'krankenkasseChf' && d.person === 'B')?.newValue).toBe('1400')

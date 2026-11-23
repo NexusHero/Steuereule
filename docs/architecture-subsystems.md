@@ -120,12 +120,19 @@ The webhook is not behind `UserContextGuard`. It authenticates by the signature 
 
 ```mermaid
 flowchart LR
-  Ctrl["AdvisorController\n/v1/steuerjahre/:jahr/advisor"] --> Svc["AdvisorService"]
+  Ctrl["AdvisorController\n/v1/steuerjahre/:jahr/advisor"] --> Turn["AdvisorTurn"]
+  Ctrl --> Parts["AdvisorConversations\nAdvisorProjectNotes\nAdvisorDrafts"]
+  Ctrl --> Svc["AdvisorService\nsession, feedback, connection"]
   Ctrl --> Runs["AdvisorRunService"]
-  Svc --> Engine["ADVISOR_ENGINE\nLangGraphAdvisorEngine"]
-  Svc --> Guard["ADVISOR_TOPIC_GUARD\nAdvisorTopicGuard"]
-  Svc --> Repo["ADVISOR_REPOSITORY"]
-  Svc --> Tx["TRANSACTION_RUNNER"]
+  Runs --> Turn
+  Turn --> Parts
+  Turn --> Digest["AdvisorCaseDigest\nAdvisorCaseFacts"]
+  Turn --> Engine["ADVISOR_ENGINE\nLangGraphAdvisorEngine"]
+  Readers["document readers\nreceipt, lstb-scan, ch-certificate-scan,\nassessment-scan, business"] --> Staging["AdvisorDocumentStaging"]
+  Staging --> Digest
+  Parts --> Repo["ADVISOR_REPOSITORY"]
+  Parts --> Tx["TRANSACTION_RUNNER"]
+  Engine --> Guard["ADVISOR_TOPIC_GUARD\nAdvisorTopicGuard"]
   Engine --> Factory["createChatModelFromConfig\nAnthropic · OpenAI · Google · fake"]
   Guard --> Single["SingleShotModel"]
   Runs --> Log["ADVISOR_RUN_LOG\nprocess memory or Redis"]
@@ -134,7 +141,8 @@ flowchart LR
 | | |
 | :--- | :--- |
 | Entry | `AdvisorController` with 27 routes, among them `POST chat`, `POST stream`, `GET runs/:runId/events`, `GET models` |
-| Services | `AdvisorService` (conversations, drafts, applying and undoing), `AdvisorRunService` (answer runs, [ADR-0064](adr/0064-owl-chat-answer-runs-and-resumption.md)), `AdvisorModelsService` |
+| Services | Eight parts, each a provider of `AdvisorModule` with its own required dependencies: `AdvisorTurn` (one question and its answer), `AdvisorConversations`, `AdvisorProjectNotes`, `AdvisorOpening`, `AdvisorDrafts` (applying and undoing), `AdvisorCaseDigest` and `AdvisorCaseFacts` (what the owl is told about the case), `AdvisorDocumentStaging` (drafts from read documents). `AdvisorService` keeps the session, clearing a conversation, feedback, the opening state and the connection. `AdvisorRunService` (answer runs, [ADR-0064](adr/0064-owl-chat-answer-runs-and-resumption.md)), `AdvisorModelsService` |
+| Draft rows | The rows a draft may create are a registry by screen behind `DRAFT_RECORDS`: `ChildDraftRecords` from `children`, `RentalDraftRecords` from `rental` (interface `DraftRecordSource` in `common/`) |
 | Core | the owl's domain logic in `packages/core/src/interview/advisor*.ts`; `scrubUserMessagePii` before every model call |
 | Ports | `ADVISOR_ENGINE` (interface `AdvisorEnginePort` in the core), `ADVISOR_TOPIC_GUARD`, `ADVISOR_REPOSITORY`, `ADVISOR_RUN_LOG`, `TRANSACTION_RUNNER` |
 | Adapters | `LangGraphAdvisorEngine` and the other LangChain files in `ki/`; `advisor/run/advisor-run-log.redis.ts` |

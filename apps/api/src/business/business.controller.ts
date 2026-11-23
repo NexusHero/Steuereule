@@ -11,7 +11,8 @@ import { UserContextGuard } from '../auth/user-context.guard.js'
 import { ParseTaxYearPipe } from '../cockpit/parse-tax-year.pipe.js'
 import { UnlockService } from '../unlock/unlock.service.js'
 import { firstBusinessOf, type BusinessPerson, type BusinessRef } from './business.repository.js'
-import { BusinessService, type LossFacts, type PartnershipShare, type TradeTaxInputs } from './business.service.js'
+import { BusinessService } from './business.service.js'
+import type { LossFacts, PartnershipShare, TradeTaxInputs } from './views.js'
 import { ElsterHelpService } from './elster-help.service.js'
 import {
   AcceptBankTransactionDto,
@@ -110,8 +111,8 @@ export class BusinessController {
   @Get(':jahr/selbststaendig/betriebe')
   @RequiresAccount()
   @ApiOkResponse({ type: BusinessListItemDto, isArray: true, description: 'The businesses of the person in the year, at least the first.' })
-  businesses(@CurrentUser() userId: string, @Param('jahr', ParseTaxYearPipe) year: number, @Query('person') person?: string): Promise<BusinessListItemDto[]> {
-    return this.service.listBusinesses(userId, year, personOf(person)) as unknown as Promise<BusinessListItemDto[]>
+  businesses(@CurrentUser() userId: string, @Param('jahr', ParseTaxYearPipe) year: number, @Query('person') person?: string): Promise<readonly BusinessListItemDto[]> {
+    return this.service.listBusinesses(userId, year, personOf(person))
   }
 
   @Post(':jahr/selbststaendig/betriebe')
@@ -120,7 +121,7 @@ export class BusinessController {
   @ApiBody({ type: NewBusinessDto })
   @ApiOkResponse({ type: BusinessProfileDto, description: 'The new business with the next number.' })
   addBusiness(@CurrentUser() userId: string, @Param('jahr', ParseTaxYearPipe) year: number, @Body() dto: NewBusinessDto, @Query('person') person?: string): Promise<BusinessProfileDto> {
-    return this.service.addBusiness(userId, year, personOf(person), dto.name) as unknown as Promise<BusinessProfileDto>
+    return this.service.addBusiness(userId, year, personOf(person), dto.name)
   }
 
   @Post(':jahr/selbststaendig/betriebe/:nummer/entfernen')
@@ -148,7 +149,7 @@ export class BusinessController {
   @RequiresAccount()
   @ApiOkResponse({ type: BusinessProfileDto, description: 'The business profile with the core’s Freiberuf/Gewerbe suggestion and its reasons.' })
   profile(@CurrentUser() userId: string, @Param('jahr', ParseTaxYearPipe) year: number, @Query('person') person?: string, @Query('betrieb') business?: string): Promise<BusinessProfileDto> {
-    return this.service.getProfile(userId, year, refOf(person, business)) as unknown as Promise<BusinessProfileDto>
+    return this.service.getProfile(userId, year, refOf(person, business))
   }
 
   @Put(':jahr/selbststaendig')
@@ -164,14 +165,14 @@ export class BusinessController {
       tradeTaxInputs: dto.tradeTaxInputs as TradeTaxInputs | null | undefined,
       lossFacts: dto.lossFacts as LossFacts | null | undefined,
       partnershipShares: dto.partnershipShares as PartnershipShare[] | null | undefined,
-    }) as unknown as Promise<BusinessProfileDto>
+    })
   }
 
   @Get(':jahr/selbststaendig/buch')
   @RequiresAccount()
   @ApiOkResponse({ type: BookDto, description: 'Every entry of the year; `integrity` is checked on every read (hash chain, numbering).' })
   book(@CurrentUser() userId: string, @Param('jahr', ParseTaxYearPipe) year: number, @Query('person') person?: string, @Query('betrieb') business?: string): Promise<BookDto> {
-    return this.service.getBook(userId, year, refOf(person, business)) as unknown as Promise<BookDto>
+    return this.service.getBook(userId, year, refOf(person, business))
   }
 
   @Post(':jahr/selbststaendig/buchungen')
@@ -183,7 +184,7 @@ export class BusinessController {
   post(@CurrentUser() userId: string, @Param('jahr', ParseTaxYearPipe) year: number, @Body() dto: BookingDraftDto, @Query('person') person?: string, @Query('betrieb') business?: string): Promise<JournalEntryDto> {
     const parsed = parseBookingDraft(JSON.stringify(dto))
     if (!parsed.ok) throw new InvalidInputError('BOOKING_DRAFT_INVALID', parsed.reason)
-    return this.service.post(userId, year, refOf(person, business), parsed.draft) as unknown as Promise<JournalEntryDto>
+    return this.service.post(userId, year, refOf(person, business), parsed.draft)
   }
 
   @Post(':jahr/selbststaendig/buchungen/:nummer/storno')
@@ -201,7 +202,7 @@ export class BusinessController {
     @Query('person') person?: string,
     @Query('betrieb') business?: string,
   ): Promise<JournalEntryDto> {
-    return this.service.reverse(userId, year, refOf(person, business), number, dto) as unknown as Promise<JournalEntryDto>
+    return this.service.reverse(userId, year, refOf(person, business), number, dto)
   }
 
   @Post(':jahr/selbststaendig/schnellerfassung')
@@ -210,8 +211,8 @@ export class BusinessController {
   @ApiBody({ type: QuickEntryDto })
   @ApiOkResponse({ type: [JournalEntryDto], description: 'One booking per EÜR total (ADR-0101 §6).' })
   @Errors(409)
-  quickEntry(@CurrentUser() userId: string, @Param('jahr', ParseTaxYearPipe) year: number, @Body() dto: QuickEntryDto, @Query('person') person?: string, @Query('betrieb') business?: string): Promise<JournalEntryDto[]> {
-    return this.service.quickEntry(userId, year, refOf(person, business), dto.totals) as unknown as Promise<JournalEntryDto[]>
+  quickEntry(@CurrentUser() userId: string, @Param('jahr', ParseTaxYearPipe) year: number, @Body() dto: QuickEntryDto, @Query('person') person?: string, @Query('betrieb') business?: string): Promise<readonly JournalEntryDto[]> {
+    return this.service.quickEntry(userId, year, refOf(person, business), dto.totals)
   }
 
   @Post(':jahr/selbststaendig/festschreibung')
@@ -221,7 +222,7 @@ export class BusinessController {
   @ApiOkResponse({ type: BookDto })
   @Errors(409)
   lock(@CurrentUser() userId: string, @Param('jahr', ParseTaxYearPipe) year: number, @Body() dto: LockDto, @Query('person') person?: string, @Query('betrieb') business?: string): Promise<BookDto> {
-    return this.service.lock(userId, year, refOf(person, business), dto.through) as unknown as Promise<BookDto>
+    return this.service.lock(userId, year, refOf(person, business), dto.through)
   }
 
   @Post(':jahr/selbststaendig/bank/import')
@@ -237,7 +238,7 @@ export class BusinessController {
   @RequiresAccount()
   @ApiOkResponse({ type: [BankTransactionDto], description: 'Imported transactions with a booking suggestion from the rules.' })
   bank(@CurrentUser() userId: string, @Param('jahr', ParseTaxYearPipe) year: number, @Query('person') person?: string, @Query('betrieb') business?: string): Promise<BankTransactionDto[]> {
-    return this.service.listBank(userId, year, refOf(person, business)) as unknown as Promise<BankTransactionDto[]>
+    return this.service.listBank(userId, year, refOf(person, business))
   }
 
   @Post(':jahr/selbststaendig/bank/:umsatzId/buchen')
@@ -255,7 +256,7 @@ export class BusinessController {
     @Query('person') person?: string,
     @Query('betrieb') business?: string,
   ): Promise<JournalEntryDto> {
-    return this.service.acceptBank(userId, year, refOf(person, business), id, { ...dto, taxKey: dto.taxKey as BookingTaxKey | undefined }) as unknown as Promise<JournalEntryDto>
+    return this.service.acceptBank(userId, year, refOf(person, business), id, { ...dto, taxKey: dto.taxKey as BookingTaxKey | undefined })
   }
 
   @Post(':jahr/selbststaendig/bank/:umsatzId/ignorieren')
@@ -271,7 +272,7 @@ export class BusinessController {
   @RequiresAccount()
   @ApiOkResponse({ type: AssetsResponseDto, description: 'The asset register of the year with the core’s depreciation; a row `id` is the asset id `…/anlagen/{anlageId}/abgang` takes.' })
   assets(@CurrentUser() userId: string, @Param('jahr', ParseTaxYearPipe) year: number, @Query('person') person?: string, @Query('betrieb') business?: string): Promise<AssetsResponseDto> {
-    return this.service.assets(userId, year, refOf(person, business)) as unknown as Promise<AssetsResponseDto>
+    return this.service.assets(userId, year, refOf(person, business))
   }
 
   @Post(':jahr/selbststaendig/anlagen')
@@ -280,7 +281,7 @@ export class BusinessController {
   @ApiBody({ type: FixedAssetInputDto })
   @ApiOkResponse({ type: FixedAssetDto })
   createAsset(@CurrentUser() userId: string, @Param('jahr', ParseTaxYearPipe) year: number, @Body() dto: FixedAssetInputDto, @Query('person') person?: string, @Query('betrieb') business?: string): Promise<FixedAssetDto> {
-    return this.service.createAsset(userId, year, refOf(person, business), dto) as unknown as Promise<FixedAssetDto>
+    return this.service.createAsset(userId, year, refOf(person, business), dto)
   }
 
   @Put(':jahr/selbststaendig/anlagen/:anlageId/angaben')
@@ -291,7 +292,7 @@ export class BusinessController {
   @ApiOkResponse({ type: FixedAssetDto, description: 'The § 7g Sonder-AfA and the § 15a Vorsteuerberichtigung of the asset; null clears one.' })
   @Errors(400, 404)
   setAssetFacts(@CurrentUser() userId: string, @Param('jahr', ParseTaxYearPipe) year: number, @Param('anlageId') id: string, @Body() dto: AssetFactsDto, @Query('person') person?: string, @Query('betrieb') business?: string): Promise<FixedAssetDto> {
-    return this.service.setAssetFacts(userId, year, refOf(person, business), id, dto) as unknown as Promise<FixedAssetDto>
+    return this.service.setAssetFacts(userId, year, refOf(person, business), id, dto)
   }
 
   @Post(':jahr/selbststaendig/anlagen/:anlageId/abgang')
@@ -302,7 +303,7 @@ export class BusinessController {
   @ApiOkResponse({ type: FixedAssetDto })
   @Errors(404)
   disposeAsset(@CurrentUser() userId: string, @Param('jahr', ParseTaxYearPipe) year: number, @Param('anlageId') id: string, @Body() dto: AssetDisposalDto, @Query('person') person?: string, @Query('betrieb') business?: string): Promise<FixedAssetDto> {
-    return this.service.disposeAsset(userId, year, refOf(person, business), id, dto) as unknown as Promise<FixedAssetDto>
+    return this.service.disposeAsset(userId, year, refOf(person, business), id, dto)
   }
 
   @Post(':jahr/selbststaendig/anlagen/abschreibung')
@@ -310,15 +311,15 @@ export class BusinessController {
   @RequiresAccount()
   @ApiOkResponse({ type: [JournalEntryDto], description: 'Books the year’s depreciation and disposals, once per asset and year.' })
   @Errors(409)
-  bookDepreciation(@CurrentUser() userId: string, @Param('jahr', ParseTaxYearPipe) year: number, @Query('person') person?: string, @Query('betrieb') business?: string): Promise<JournalEntryDto[]> {
-    return this.service.bookDepreciation(userId, year, refOf(person, business)) as unknown as Promise<JournalEntryDto[]>
+  bookDepreciation(@CurrentUser() userId: string, @Param('jahr', ParseTaxYearPipe) year: number, @Query('person') person?: string, @Query('betrieb') business?: string): Promise<readonly JournalEntryDto[]> {
+    return this.service.bookDepreciation(userId, year, refOf(person, business))
   }
 
   @Get(':jahr/selbststaendig/abschluss')
   @RequiresAccount()
   @ApiOkResponse({ type: ClosingDto, description: 'EÜR totals and profit, or GuV, Bilanz, closing balances and the opening entry of the next year.' })
   closing(@CurrentUser() userId: string, @Param('jahr', ParseTaxYearPipe) year: number, @Query('person') person?: string, @Query('betrieb') business?: string): Promise<ClosingDto> {
-    return this.service.closing(userId, year, refOf(person, business)) as unknown as Promise<ClosingDto>
+    return this.service.closing(userId, year, refOf(person, business))
   }
 
   @Post(':jahr/selbststaendig/abschluss/eroeffnung')
@@ -327,7 +328,7 @@ export class BusinessController {
   @ApiOkResponse({ type: JournalEntryDto, description: 'The Eröffnungsbilanz entry posted into the next year’s book.' })
   @Errors(409)
   carryForward(@CurrentUser() userId: string, @Param('jahr', ParseTaxYearPipe) year: number, @Query('person') person?: string, @Query('betrieb') business?: string): Promise<JournalEntryDto> {
-    return this.service.carryForward(userId, year, refOf(person, business)) as unknown as Promise<JournalEntryDto>
+    return this.service.carryForward(userId, year, refOf(person, business))
   }
 
   @Post(':jahr/selbststaendig/firmenwagen')
@@ -336,7 +337,7 @@ export class BusinessController {
   @ApiBody({ type: CompanyCarInputDto })
   @ApiOkResponse({ type: CompanyCarResultDto, description: 'The private use of a business car (1 %-Regel or Fahrtenbuch), the commute and the VAT; nothing is booked.' })
   companyCar(@CurrentUser() userId: string, @Param('jahr', ParseTaxYearPipe) year: number, @Body() dto: CompanyCarInputDto, @Query('person') person?: string, @Query('betrieb') business?: string): Promise<CompanyCarResultDto> {
-    return this.service.companyCar(userId, year, refOf(person, business), dto) as unknown as Promise<CompanyCarResultDto>
+    return this.service.companyCar(userId, year, refOf(person, business), dto)
   }
 
   @Post(':jahr/selbststaendig/firmenwagen/buchen')
@@ -344,15 +345,15 @@ export class BusinessController {
   @ApiBody({ type: CompanyCarInputDto })
   @ApiOkResponse({ type: JournalEntryDto, isArray: true, description: 'The Entnahme and the non-deductible commute, dated 31.12.' })
   @Errors(409)
-  bookCompanyCar(@CurrentUser() userId: string, @Param('jahr', ParseTaxYearPipe) year: number, @Body() dto: CompanyCarInputDto, @Query('person') person?: string, @Query('betrieb') business?: string): Promise<JournalEntryDto[]> {
-    return this.service.bookCompanyCar(userId, year, refOf(person, business), dto) as unknown as Promise<JournalEntryDto[]>
+  bookCompanyCar(@CurrentUser() userId: string, @Param('jahr', ParseTaxYearPipe) year: number, @Body() dto: CompanyCarInputDto, @Query('person') person?: string, @Query('betrieb') business?: string): Promise<readonly JournalEntryDto[]> {
+    return this.service.bookCompanyCar(userId, year, refOf(person, business), dto)
   }
 
   @Get(':jahr/selbststaendig/lohn')
   @RequiresAccount()
   @ApiOkResponse({ type: PayrollOverviewDto, description: 'The payroll runs, the Lohnsteuer-Anmeldungen (§ 41a EStG) and the Minijob charges; no social security reports are filed.' })
   payroll(@CurrentUser() userId: string, @Param('jahr', ParseTaxYearPipe) year: number, @Query('person') person?: string, @Query('betrieb') business?: string): Promise<PayrollOverviewDto> {
-    return this.service.payroll(userId, year, refOf(person, business)) as unknown as Promise<PayrollOverviewDto>
+    return this.service.payroll(userId, year, refOf(person, business))
   }
 
   @Post(':jahr/selbststaendig/lohn')
@@ -361,7 +362,7 @@ export class BusinessController {
   @ApiOkResponse({ type: JournalEntryDto, description: 'The entry the run was booked as.' })
   @Errors(409)
   async addPayrollRun(@CurrentUser() userId: string, @Param('jahr', ParseTaxYearPipe) year: number, @Body() dto: PayrollRunInputDto, @Query('person') person?: string, @Query('betrieb') business?: string): Promise<JournalEntryDto> {
-    return (await this.service.addPayrollRun(userId, year, refOf(person, business), dto)).entry as unknown as JournalEntryDto
+    return (await this.service.addPayrollRun(userId, year, refOf(person, business), dto)).entry
   }
 
   @Get(':jahr/selbststaendig/sondertarife')
@@ -376,21 +377,21 @@ export class BusinessController {
   @RequiresAccount()
   @ApiOkResponse({ type: VatPrepaymentsDto, description: 'The Voranmeldungen of the year with their Kennzahlen, the Sondervorauszahlung and the Zusammenfassende Meldungen; nothing is transmitted.' })
   vatPrepayments(@CurrentUser() userId: string, @Param('jahr', ParseTaxYearPipe) year: number, @Query('person') person?: string, @Query('betrieb') business?: string): Promise<VatPrepaymentsDto> {
-    return this.service.vatPrepayments(userId, year, refOf(person, business)) as unknown as Promise<VatPrepaymentsDto>
+    return this.service.vatPrepayments(userId, year, refOf(person, business))
   }
 
   @Get(':jahr/selbststaendig/umsatzsteuer')
   @RequiresAccount()
   @ApiOkResponse({ type: VatReturnDto, description: 'Umsatzsteuer-Jahreserklärung from the book and the prepayments sum.' })
   vat(@CurrentUser() userId: string, @Param('jahr', ParseTaxYearPipe) year: number, @Query('person') person?: string, @Query('betrieb') business?: string): Promise<VatReturnDto> {
-    return this.service.vatReturn(userId, year, refOf(person, business)) as unknown as Promise<VatReturnDto>
+    return this.service.vatReturn(userId, year, refOf(person, business))
   }
 
   @Get(':jahr/selbststaendig/gewerbesteuer')
   @RequiresAccount()
   @ApiOkResponse({ type: TradeTaxDto, description: 'Gewerbesteuer-Erklärung: status berechnet | offen (missing) | entfaellt (Freiberuf).' })
   tradeTax(@CurrentUser() userId: string, @Param('jahr', ParseTaxYearPipe) year: number, @Query('person') person?: string, @Query('betrieb') business?: string): Promise<TradeTaxDto> {
-    return this.service.tradeTax(userId, year, refOf(person, business)) as unknown as Promise<TradeTaxDto>
+    return this.service.tradeTax(userId, year, refOf(person, business))
   }
 
   @Get(':jahr/selbststaendig/gewerbesteuer/hebesatz')
@@ -407,7 +408,7 @@ export class BusinessController {
   @RequiresAccount()
   @ApiOkResponse({ type: LossesDto, description: '§ 10d: facts, rules of the year, Verlustvortrag used, a new loss and its Rücktrag (or the waiver).' })
   losses(@CurrentUser() userId: string, @Param('jahr', ParseTaxYearPipe) year: number, @Query('person') person?: string, @Query('betrieb') business?: string): Promise<LossesDto> {
-    return this.service.losses(userId, year, refOf(person, business)) as unknown as Promise<LossesDto>
+    return this.service.losses(userId, year, refOf(person, business))
   }
 
   @Get(':jahr/selbststaendig/elster')
@@ -415,6 +416,7 @@ export class BusinessController {
   @ApiOkResponse({ type: ElsterFormListDto, description: 'The forms of the whole return that carry a value for this household and year, each copy (person, child, property) on its own.' })
   @Errors(402, 404, 409)
   elsterForms(@CurrentUser() userId: string, @Param('jahr', ParseTaxYearPipe) year: number, @Query('person') person?: string, @Query('betrieb') business?: string): Promise<ElsterFormListDto> {
+    // Cast kept: the service returns instance.kind 'business', which ElsterInstanceDto's documented enum lacks; adding it changes openapi.json.
     return this.elsterHelp.forms(userId, year, refOf(person, business)) as unknown as Promise<ElsterFormListDto>
   }
 
@@ -432,6 +434,7 @@ export class BusinessController {
     @Query('betrieb') business?: string,
     @Query('instanz') instance?: string,
   ): Promise<ElsterHelpDto> {
+    // Cast kept: the service returns instance.kind 'business', which ElsterInstanceDto's documented enum lacks; adding it changes openapi.json.
     return this.elsterHelp.help(userId, year, refOf(person, business), form, instance === '' ? undefined : instance) as unknown as Promise<ElsterHelpDto>
   }
 
@@ -451,7 +454,7 @@ export class BusinessController {
   @RequiresAccount()
   @ApiOkResponse({ type: ProcedureDocDto })
   procedureDoc(@CurrentUser() userId: string, @Param('jahr', ParseTaxYearPipe) year: number, @Query('person') person?: string, @Query('betrieb') business?: string): Promise<ProcedureDocDto> {
-    return this.service.procedureDoc(userId, year, refOf(person, business)) as unknown as Promise<ProcedureDocDto>
+    return this.service.procedureDoc(userId, year, refOf(person, business))
   }
 
   @Put(':jahr/selbststaendig/verfahrensdokumentation')
@@ -460,7 +463,7 @@ export class BusinessController {
   @ApiBody({ type: ProcedureDocInputDto })
   @ApiOkResponse({ type: ProcedureDocDto })
   saveProcedureDoc(@CurrentUser() userId: string, @Param('jahr', ParseTaxYearPipe) year: number, @Body() dto: ProcedureDocInputDto, @Query('person') person?: string, @Query('betrieb') business?: string): Promise<ProcedureDocDto> {
-    return this.service.saveProcedureDoc(userId, year, refOf(person, business), dto.values as Partial<Record<VerfahrensdokuPlaceholder, string>>) as unknown as Promise<ProcedureDocDto>
+    return this.service.saveProcedureDoc(userId, year, refOf(person, business), dto.values as Partial<Record<VerfahrensdokuPlaceholder, string>>)
   }
 
   @Get(':jahr/selbststaendig/e-bilanz')
@@ -478,7 +481,7 @@ export class BusinessController {
   @ApiOkResponse({ type: EBilanzTransmissionDto, description: 'Validates or sends the E-Bilanz through the operator’s ERiC sidecar; nicht_eingerichtet names what is missing.' })
   @Errors(402, 409)
   transmitEBilanz(@CurrentUser() userId: string, @Param('jahr', ParseTaxYearPipe) year: number, @Body() dto: EBilanzTransmitDto, @Query('person') person?: string, @Query('betrieb') business?: string): Promise<EBilanzTransmissionDto> {
-    return this.service.transmitEBilanz(userId, year, refOf(person, business), dto.mode) as unknown as Promise<EBilanzTransmissionDto>
+    return this.service.transmitEBilanz(userId, year, refOf(person, business), dto.mode)
   }
 
   @Get(':jahr/selbststaendig/e-bilanz/datei')

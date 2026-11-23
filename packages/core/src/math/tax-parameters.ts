@@ -318,3 +318,172 @@ export function getTaxYearParameters(year: number): TaxYearParameters {
  * Alias für `getTaxYearParameters`.
  */
 export const taxParameters = getTaxYearParameters
+
+// ---------------------------------------------------------------------------------------------
+// Rules that change with the year (ADR-0102)
+//
+// Every year in which a rule changes is named here, so no rule elsewhere compares a year with a
+// bare literal (enforced by `architecture.test.ts`). Many of these rules reach beyond the income-tax
+// years of `TAX_YEAR_REGISTRY` (business rules run to 2032), so they are kept as steps, not per year.
+// ---------------------------------------------------------------------------------------------
+
+/** One step of a value that changes with the year: it holds from `from` until the next step begins. */
+export interface YearStep<T> {
+  readonly from: number
+  readonly value: T
+}
+
+/** Steps of one value, at least one; the first covers every year before the first change. */
+export type YearSteps<T> = readonly [YearStep<T>, ...YearStep<T>[]]
+
+/** The first step covers every year before the first change. */
+const ALWAYS = Number.NEGATIVE_INFINITY
+
+/** The value of the step that covers `year`. Steps run in ascending order of `from`. */
+export function valueForYear<T>(steps: YearSteps<T>, year: number): T {
+  let value = steps[0].value
+  for (const step of steps) if (year >= step.from) value = step.value
+  return value
+}
+
+/** The first year in which each new rule applies. */
+export const RULE_CHANGE_YEARS = {
+  /** JStG 2022: the Arbeitszimmer as a 1.260 € Jahrespauschale; outside the centre of work only the Tagespauschale (§ 4 Abs. 5 Satz 1 Nr. 6b EStG). */
+  homeOfficeReform: 2023,
+  /** § 12 Abs. 3 UStG: 0 % for photovoltaic supplies, Kz 87 of the Voranmeldung. */
+  vatZeroRatePhotovoltaic: 2023,
+  /** Wachstumschancengesetz: § 34a Abs. 2 Satz 3 EStG, withdrawals pay the Thesaurierungssteuer first; the Gewerbesteuer is added back. */
+  retainedProfitReform: 2024,
+  /** § 19 Abs. 1 UStG (JStG 2024): 25.000 € / 100.000 €, the rule ends with the supply that crosses the running year's limit. */
+  smallBusinessReform: 2025,
+  /** Besonderes Kirchgeld from the step table valid from 2025. */
+  kirchgeldTable2025: 2025,
+  /** § 9 Nr. 1 Satz 1 GewStG (JStG 2024): the Grundsteuer booked in the year replaces 1,2 % of the Einheitswert. */
+  tradeTaxLandDeductionByLandTax: 2025,
+  /** JStG 2024: Kinderbetreuungskosten at 80 %, at most 4.800 € per child (§ 10 Abs. 1 Nr. 5 EStG). */
+  childcareEightyPercent: 2025,
+  /** BEG IV: Buchungsbelege are kept 8 years; applies to every Beleg whose old period had not run out by the end of the year before (Art. 97 § 19a EGAO). */
+  bookingVoucherEightYears: 2025,
+} as const
+
+export type RuleChange = keyof typeof RULE_CHANGE_YEARS
+
+/** Whether the rule named by `change` applies in `year`. */
+export function appliesFrom(change: RuleChange, year: number): boolean {
+  return year >= RULE_CHANGE_YEARS[change]
+}
+
+/** § 10 Abs. 1 Nr. 5 EStG: share of Kinderbetreuungskosten and cap per child. */
+export const CHILDCARE_DEDUCTION_STEPS: YearSteps<{ readonly share: number; readonly capEur: number }> = [
+  { from: ALWAYS, value: { share: 2 / 3, capEur: 4000 } },
+  { from: RULE_CHANGE_YEARS.childcareEightyPercent, value: { share: 0.8, capEur: 4800 } },
+]
+
+/** § 32 Abs. 6 EStG: Kinderfreibetrag without the BEA part, for years outside `TAX_YEAR_REGISTRY`. */
+export const CHILD_ALLOWANCE_FALLBACK_STEPS: YearSteps<number> = [
+  { from: ALWAYS, value: 6024 },
+  { from: 2024, value: 6828 },
+]
+
+/** § 66 EStG: monthly Kindergeld, for years outside `TAX_YEAR_REGISTRY`. */
+export const CHILD_BENEFIT_FALLBACK_STEPS: YearSteps<number> = [
+  { from: ALWAYS, value: 219 },
+  { from: 2023, value: 250 },
+]
+
+/** § 23 Abs. 3 Satz 5 EStG: Freigrenze for private sales. */
+export const PRIVATE_SALES_EXEMPTION_STEPS: YearSteps<number> = [
+  { from: ALWAYS, value: 600 },
+  { from: 2024, value: 1000 },
+]
+
+/** § 7 Abs. 4 Satz 1 EStG: AfA rate in percent by the year a residential building was completed. */
+export const RESIDENTIAL_DEPRECIATION_STEPS: YearSteps<number> = [
+  { from: ALWAYS, value: 2.5 },
+  { from: 1925, value: 2 },
+  { from: 2023, value: 3 },
+]
+
+/** § 22 Nr. 1 Satz 3 Buchst. a Doppelbuchst. aa EStG: Besteuerungsanteil in percent by the year the pension began; null after the table ends. */
+export const PENSION_TAXABLE_SHARE_STEPS: YearSteps<number | null> = [
+  { from: ALWAYS, value: 50 },
+  ...Object.entries({
+    2006: 52, 2007: 54, 2008: 56, 2009: 58, 2010: 60,
+    2011: 62, 2012: 64, 2013: 66, 2014: 68, 2015: 70,
+    2016: 72, 2017: 74, 2018: 76, 2019: 78, 2020: 80,
+    2021: 81, 2022: 82,
+    2023: 82.5, 2024: 83, 2025: 83.5, 2026: 84, 2027: 84.5, 2028: 85, 2029: 85.5, 2030: 86,
+    2031: 86.5, 2032: 87, 2033: 87.5, 2034: 88, 2035: 88.5, 2036: 89, 2037: 89.5, 2038: 90,
+    2039: 90.5, 2040: 91, 2041: 91.5, 2042: 92, 2043: 92.5, 2044: 93, 2045: 93.5, 2046: 94,
+    2047: 94.5, 2048: 95, 2049: 95.5, 2050: 96, 2051: 96.5, 2052: 97, 2053: 97.5, 2054: 98,
+    2055: 98.5, 2056: 99, 2057: 99.5, 2058: 100,
+  }).map(([from, value]) => ({ from: Number(from), value })),
+  { from: 2059, value: null },
+]
+
+/** § 16 Abs. 4 Satz 2 GewStG: minimum Hebesatz in percent; 280 % from EZ 2027 (§ 36 Abs. 5b GewStG). */
+export const TRADE_TAX_MINIMUM_MULTIPLIER_STEPS: YearSteps<number> = [
+  { from: ALWAYS, value: 200 },
+  { from: 2027, value: 280 },
+]
+
+/** § 4 Abs. 5 Satz 1 Nr. 1 EStG: limit for business gifts per recipient (Wachstumschancengesetz from 2024). */
+export const GIFT_LIMIT_STEPS: YearSteps<number> = [
+  { from: ALWAYS, value: 35 },
+  { from: 2024, value: 50 },
+]
+
+/** § 18 Abs. 2 Satz 2, 3 and Abs. 2a UStG: limits for monthly filing and for exemption from the Voranmeldung. */
+export const VAT_PERIOD_LIMIT_STEPS: YearSteps<{ readonly monthlyAboveEur: number; readonly exemptUpToEur: number }> = [
+  { from: ALWAYS, value: { monthlyAboveEur: 7_500, exemptUpToEur: 1_000 } },
+  { from: 2025, value: { monthlyAboveEur: 9_000, exemptUpToEur: 2_000 } },
+]
+
+/** § 20 Satz 1 Nr. 1 UStG: prior-year turnover limit for Ist-Versteuerung (Wachstumschancengesetz from 2024). */
+export const CASH_ACCOUNTING_LIMIT_STEPS: YearSteps<number> = [
+  { from: ALWAYS, value: 600_000 },
+  { from: 2024, value: 800_000 },
+]
+
+/** The years the Umsatzsteuer-Jahreserklärung covers. */
+export const VAT_ANNUAL_RETURN_YEARS = { first: 2022, last: 2026 } as const
+
+export function isVatAnnualReturnYear(year: number): boolean {
+  return year >= VAT_ANNUAL_RETURN_YEARS.first && year <= VAT_ANNUAL_RETURN_YEARS.last
+}
+
+/** § 10d Abs. 1 EStG: Verlustrücktrag cap per person, by loss year (§ 52 Abs. 18b Satz 2 EStG for 2022 and 2023). */
+export const LOSS_CARRY_BACK_CAP_STEPS: YearSteps<number> = [
+  { from: ALWAYS, value: 10_000_000 },
+  { from: 2024, value: 1_000_000 },
+]
+
+/** § 10d Abs. 2 EStG: share of the Verlustvortrag above the base; 70 % for VZ 2024–2027 (§ 52 Abs. 18b Satz 3 EStG). */
+export const LOSS_CARRY_FORWARD_RATE_STEPS: YearSteps<number> = [
+  { from: ALWAYS, value: 0.6 },
+  { from: 2024, value: 0.7 },
+  { from: 2028, value: 0.6 },
+]
+
+/**
+ * § 8 Abs. 1a SGB IV: Minijob limit in € per month. The key is the year plus the month as a fraction
+ * (`year + (month - 1) / 12`), since the limit rose to 520 € in October 2022.
+ */
+export const MINIJOB_LIMIT_STEPS: YearSteps<number> = [
+  { from: ALWAYS, value: 450 },
+  { from: 2022 + 9 / 12, value: 520 },
+  { from: 2024, value: 538 },
+  { from: 2025, value: 556 },
+  { from: 2026, value: 603 },
+]
+
+/** § 34a Abs. 1 Satz 1 EStG: Thesaurierungssteuersatz (28,25 % until 2027, then down to 25 % from 2032). */
+export const RETAINED_PROFIT_RATE_STEPS: YearSteps<number> = [
+  { from: ALWAYS, value: 0.2825 },
+  { from: 2028, value: 0.27 },
+  { from: 2030, value: 0.26 },
+  { from: 2032, value: 0.25 },
+]
+
+/** The tax years the Eule talks about today: a bare number among them in a chat message is a year, not an amount. */
+export const CHAT_TAX_YEARS: readonly number[] = [2024, 2025, 2026]

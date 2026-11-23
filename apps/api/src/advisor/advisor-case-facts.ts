@@ -17,50 +17,48 @@ import {
   type PersonBFigures,
   YES_NO_GATE_IDS,
 } from '@steuereule/core'
+import { Inject, Injectable } from '@nestjs/common'
 import { checkPiiFree } from '../ki/ki.adapter.js'
-import { type CapitalRepository } from '../capital/capital.repository.js'
-import { type CrossBorderSalaryStatementRepository } from '../ch-salary-certificate/ch-salary-certificate.repository.js'
-import { type ChildRepository } from '../children/child.repository.js'
-import { type CommuteRepository } from '../commute/commute.repository.js'
+import { CAPITAL_REPOSITORY, type CapitalRepository } from '../capital/capital.repository.js'
+import { CROSS_BORDER_SALARY_STATEMENT_REPOSITORY, type CrossBorderSalaryStatementRepository } from '../ch-salary-certificate/ch-salary-certificate.repository.js'
+import { CHILD_REPOSITORY, type ChildRepository } from '../children/child.repository.js'
+import { COMMUTE_REPOSITORY, type CommuteRepository } from '../commute/commute.repository.js'
 import { ConfirmationService } from '../confirmation/confirmation.service.js'
-import { type InterviewAnswerRepository } from '../interview/interview-answer.repository.js'
-import { type WageTaxCertificateRepository } from '../lstb/lstb.repository.js'
+import { INTERVIEW_ANSWER_REPOSITORY, type InterviewAnswerRepository } from '../interview/interview-answer.repository.js'
+import { WAGE_TAX_CERTIFICATE_REPOSITORY, type WageTaxCertificateRepository } from '../lstb/lstb.repository.js'
 import { OwlModeService } from '../owl-mode/owl-mode.service.js'
-import { type ProfileRepository } from '../profile/profile.repository.js'
-import { type PensionRecord, type PensionRepository } from '../pension/pension.repository.js'
-import { type RentalRepository } from '../rental/rental.repository.js'
+import { PROFILE_REPOSITORY, type ProfileRepository } from '../profile/profile.repository.js'
+import { PENSION_REPOSITORY, type PensionRecord, type PensionRepository } from '../pension/pension.repository.js'
+import { RENTAL_REPOSITORY, type RentalRepository } from '../rental/rental.repository.js'
 import { parseNum } from './advisor-shared.js'
 
 /** What the owl is told about the case: the figures of the return without anything personal, and the neutral names of its records. */
+@Injectable()
 export class AdvisorCaseFacts {
   constructor(
-    private readonly capitalRepo: CapitalRepository | undefined,
-    private readonly chRepo: CrossBorderSalaryStatementRepository | undefined,
-    private readonly childRepo: ChildRepository | undefined,
-    private readonly commuteRepo: CommuteRepository | undefined,
-    private readonly confirmationService: ConfirmationService,
-    private readonly interviewRepo: InterviewAnswerRepository,
-    private readonly lstbRepo: WageTaxCertificateRepository | undefined,
-    private readonly owlModeService: OwlModeService,
-    private readonly profileRepo: ProfileRepository | undefined,
-    private readonly rentalRepo: RentalRepository | undefined,
-    private readonly pensionRepo?: PensionRepository | undefined,
+    @Inject(CAPITAL_REPOSITORY) private readonly capitalRepo: CapitalRepository,
+    @Inject(CROSS_BORDER_SALARY_STATEMENT_REPOSITORY) private readonly chRepo: CrossBorderSalaryStatementRepository,
+    @Inject(CHILD_REPOSITORY) private readonly childRepo: ChildRepository,
+    @Inject(COMMUTE_REPOSITORY) private readonly commuteRepo: CommuteRepository,
+    @Inject(ConfirmationService) private readonly confirmationService: ConfirmationService,
+    @Inject(INTERVIEW_ANSWER_REPOSITORY) private readonly interviewRepo: InterviewAnswerRepository,
+    @Inject(WAGE_TAX_CERTIFICATE_REPOSITORY) private readonly lstbRepo: WageTaxCertificateRepository,
+    @Inject(OwlModeService) private readonly owlModeService: OwlModeService,
+    @Inject(PROFILE_REPOSITORY) private readonly profileRepo: ProfileRepository,
+    @Inject(RENTAL_REPOSITORY) private readonly rentalRepo: RentalRepository,
+    @Inject(PENSION_REPOSITORY) private readonly pensionRepo: PensionRepository,
   ) {}
 
   /** Names of the user and their children, so free text can be scrubbed before it reaches any model. */
   async knownNamesForScrubbing(userId: string, taxYear: number): Promise<string[]> {
     const names: string[] = []
-    if (this.profileRepo) {
-      const profile = await this.profileRepo.findByUserId(userId)
-      if (profile?.firstName) names.push(profile.firstName)
-      if (profile?.lastName) names.push(profile.lastName)
-    }
-    if (this.childRepo) {
-      const children = await this.childRepo.listForUserAndYear(userId, taxYear)
-      for (const child of children) {
-        if (child.firstName) names.push(child.firstName)
-        if (child.lastName) names.push(child.lastName)
-      }
+    const profile = await this.profileRepo.findByUserId(userId)
+    if (profile?.firstName) names.push(profile.firstName)
+    if (profile?.lastName) names.push(profile.lastName)
+    const children = await this.childRepo.listForUserAndYear(userId, taxYear)
+    for (const child of children) {
+      if (child.firstName) names.push(child.firstName)
+      if (child.lastName) names.push(child.lastName)
     }
     return names
   }
@@ -71,8 +69,8 @@ export class AdvisorCaseFacts {
    */
   async loadRecordHandles(userId: string, taxYear: number): Promise<AdvisorRecordHandles> {
     const [children, rentals] = await Promise.all([
-      this.childRepo ? this.childRepo.listForUserAndYear(userId, taxYear) : Promise.resolve([]),
-      this.rentalRepo ? this.rentalRepo.listForUserAndYear(userId, taxYear) : Promise.resolve([]),
+      this.childRepo.listForUserAndYear(userId, taxYear),
+      this.rentalRepo.listForUserAndYear(userId, taxYear),
     ])
     return {
       vermietung: buildRecordHandles('vermietung', rentals.map((rental) => rental.id)),
@@ -83,10 +81,10 @@ export class AdvisorCaseFacts {
   /** Person B's figures already entered (ADR-0073): amounts and kilometres only, nothing that names her or him. */
   async personBFigures(spouseUserId: string, taxYear: number): Promise<PersonBFigures> {
     const [lstb, ch, commute, pension] = await Promise.all([
-      this.lstbRepo ? this.lstbRepo.findForUserAndYear(spouseUserId, taxYear) : Promise.resolve(null),
-      this.chRepo ? this.chRepo.findForUserAndYear(spouseUserId, taxYear) : Promise.resolve(null),
-      this.commuteRepo ? this.commuteRepo.findForUserAndYear(spouseUserId, taxYear) : Promise.resolve(null),
-      this.pensionRepo ? this.pensionRepo.findForUserAndYear(spouseUserId, taxYear) : Promise.resolve(null),
+      this.lstbRepo.findForUserAndYear(spouseUserId, taxYear),
+      this.chRepo.findForUserAndYear(spouseUserId, taxYear),
+      this.commuteRepo.findForUserAndYear(spouseUserId, taxYear),
+      this.pensionRepo.findForUserAndYear(spouseUserId, taxYear),
     ])
     const figures: PersonBFigures = {
       grossWageEur: parseNum(lstb?.bruttoarbeitslohn),
@@ -114,15 +112,15 @@ export class AdvisorCaseFacts {
     ] = await Promise.all([
       this.interviewRepo.findAllForUserAndYear(userId, taxYear),
       this.interviewRepo.findAllForUserAndYear(userId, taxYear - 1),
-      this.lstbRepo ? this.lstbRepo.findForUserAndYear(userId, taxYear) : Promise.resolve(null),
-      this.chRepo ? this.chRepo.findForUserAndYear(userId, taxYear) : Promise.resolve(null),
-      this.commuteRepo ? this.commuteRepo.findForUserAndYear(userId, taxYear) : Promise.resolve(null),
-      this.childRepo ? this.childRepo.listForUserAndYear(userId, taxYear) : Promise.resolve([]),
-      this.rentalRepo ? this.rentalRepo.listForUserAndYear(userId, taxYear) : Promise.resolve([]),
-      this.capitalRepo ? this.capitalRepo.findForUserAndYear(userId, taxYear) : Promise.resolve(null),
+      this.lstbRepo.findForUserAndYear(userId, taxYear),
+      this.chRepo.findForUserAndYear(userId, taxYear),
+      this.commuteRepo.findForUserAndYear(userId, taxYear),
+      this.childRepo.listForUserAndYear(userId, taxYear),
+      this.rentalRepo.listForUserAndYear(userId, taxYear),
+      this.capitalRepo.findForUserAndYear(userId, taxYear),
       this.owlModeService.getCards(userId, taxYear),
       this.confirmationService.missing(userId, taxYear),
-      this.pensionRepo ? this.pensionRepo.findForUserAndYear(userId, taxYear) : Promise.resolve(null),
+      this.pensionRepo.findForUserAndYear(userId, taxYear),
     ])
 
     const answerMap: Record<string, string> = {}
@@ -169,8 +167,7 @@ export class AdvisorCaseFacts {
         homeOfficeAnswer: answerMap['homeoffice'] ?? null,
         homeOfficeDays,
         distanceKm: commuteRecord?.oneWayKm ?? parseNum(answerMap['weg']),
-        // Without a commute repository the mask is unknown, and nothing may be called missing.
-        meansOfTransport: this.commuteRepo ? { transport: commuteRecord?.transport ?? null, secondTransport: commuteRecord?.secondTransport ?? null } : undefined,
+        meansOfTransport: { transport: commuteRecord?.transport ?? null, secondTransport: commuteRecord?.secondTransport ?? null },
       },
       catalogExpenses: {
         hasTraining: answerMap['fortbildung'] === 'Ja' || answerMap['katalog_fortbildung'] === 'ja',

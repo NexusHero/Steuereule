@@ -6,7 +6,7 @@ import { businessOfInstance, instanceForBusiness } from '../src/business/booking
 import { AuditService } from '../src/audit/audit.service.js'
 import { BusinessReceiptParseStrategy } from '../src/business/business-receipt.parse-strategy.js'
 import type { BusinessService } from '../src/business/business.service.js'
-import type { AdvisorService } from '../src/advisor/advisor.service.js'
+import type { AdvisorDocumentStaging } from '../src/advisor/advisor-document-staging.js'
 import type { ParseReceiptDto, ParseReceiptResponseDto } from '../src/receipt/dto/parse-receipt.dto.js'
 import { DocumentParseRegistry } from '../src/receipt/parse/document-parse.registry.js'
 import { ReceiptParseService } from '../src/receipt/receipt-parse.service.js'
@@ -52,7 +52,7 @@ describe('business receipts through the one Beleg upload (ADR-0101 §6)', () => 
   it('the reader drafts an income booking for direction einnahme', async () => {
     process.env.SELBSTSTAENDIGE_ENABLED = 'true'
     const staged: { entry: string }[] = []
-    const advisor = { stageBookingProposal: async (_u: string, _y: number, input: { entry: string }) => (staged.push(input), { action: null, assistantMessage: null }) } as unknown as AdvisorService
+    const advisor = { stageBookingProposal: async (_u: string, _y: number, input: { entry: string }) => (staged.push(input), { action: null, assistantMessage: null }) } as unknown as AdvisorDocumentStaging
     const business = { pathOpen: async () => true, bookingTarget: async () => ({ chart: 'SKR03', mode: 'euer', year: 2025, lockedThrough: null, smallBusiness: false }) } as unknown as BusinessService
     const strategy = new BusinessReceiptParseStrategy(new DocumentParseRegistry(), advisor, new AuditService(new FakeAuditRepository()), business)
     await strategy.parse('u', { taxYear: 2025, fileName: 'r.pdf', rawText: INVOICE, direction: 'einnahme' })
@@ -67,7 +67,7 @@ describe('business receipts through the one Beleg upload (ADR-0101 §6)', () => 
     process.env.SELBSTSTAENDIGE_ENABLED = 'true'
     const staged: { business?: number }[] = []
     const asked: unknown[] = []
-    const advisor = { stageBookingProposal: async (_u: string, _y: number, input: { business?: number }) => (staged.push(input), { action: null, assistantMessage: null }) } as unknown as AdvisorService
+    const advisor = { stageBookingProposal: async (_u: string, _y: number, input: { business?: number }) => (staged.push(input), { action: null, assistantMessage: null }) } as unknown as AdvisorDocumentStaging
     const business = { pathOpen: async () => true, bookingTarget: async (_u: string, _y: number, ref: unknown) => (asked.push(ref), { chart: 'SKR03', mode: 'euer', year: 2025, lockedThrough: null, smallBusiness: false }) } as unknown as BusinessService
     const strategy = new BusinessReceiptParseStrategy(new DocumentParseRegistry(), advisor, new AuditService(new FakeAuditRepository()), business)
     await strategy.parse('u', { taxYear: 2025, fileName: 'r.pdf', rawText: INVOICE, business: 2 })

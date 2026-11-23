@@ -1,4 +1,4 @@
-import { amountFromAnswer, type Answers } from '../interview/interview'
+import { amountFromAnswer, type Answers } from './answers'
 import { gatedIncomeTypes, type IncomeType } from './income-types'
 import { wageTaxCertificateStatus, type WageTaxCertificateData } from './lstb'
 import { deductibleBasicProvision, healthInsuranceFromAnswers } from './health-insurance'

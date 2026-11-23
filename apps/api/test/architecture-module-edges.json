@@ -273,6 +273,7 @@
   "prisma -> config",
   "profile -> audit",
   "profile -> auth",
+  "profile -> common",
   "profile -> prisma",
   "rate-limit -> auth",
   "receipt -> advisor",

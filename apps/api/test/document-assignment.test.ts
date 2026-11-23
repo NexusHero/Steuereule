@@ -89,19 +89,19 @@ async function setUp(options: Options = {}) {
   const audit = new AuditService(new FakeAuditRepository())
   const registry = new DocumentParseRegistry()
   const receipts = new FakeReceiptRepository()
-  const auto = new AutoReceiptParseStrategy(offline, kit.service, audit, noSingleShotModel)
-  const parser = new ReceiptParseService(registry, auto, receipts, kit.service)
+  const auto = new AutoReceiptParseStrategy(offline, kit.staging, audit, noSingleShotModel)
+  const parser = new ReceiptParseService(registry, auto, receipts, kit.staging)
   parser.onModuleInit()
   for (const strategy of [
-    new LstbScanParseStrategy(registry, offline, kit.service, audit, new LstbService(kit.lstbRepo, audit, new FakeMarkingRepository()), kit.linkService, noSingleShotModel),
-    new ChCertificateScanParseStrategy(registry, offline, kit.service, audit, kit.linkService, noSingleShotModel),
-    new ChPensionStatementParseStrategy(registry, kit.service, audit, kit.linkService, kit.chRepo),
-    new ChPremiumLetterParseStrategy(registry, kit.service, audit, kit.linkService, kit.chRepo),
-    new ChHealthStatementParseStrategy(registry, kit.service, audit, kit.linkService, kit.chRepo, kit.childRepo),
+    new LstbScanParseStrategy(registry, offline, kit.staging, audit, new LstbService(kit.lstbRepo, audit, new FakeMarkingRepository()), kit.linkService, noSingleShotModel),
+    new ChCertificateScanParseStrategy(registry, offline, kit.staging, audit, kit.linkService, noSingleShotModel),
+    new ChPensionStatementParseStrategy(registry, kit.staging, audit, kit.linkService, kit.chRepo),
+    new ChPremiumLetterParseStrategy(registry, kit.staging, audit, kit.linkService, kit.chRepo),
+    new ChHealthStatementParseStrategy(registry, kit.staging, audit, kit.linkService, kit.chRepo, kit.childRepo),
   ]) {
     strategy.onModuleInit()
   }
-  const reassign = new ReceiptReassignService(receipts, parser, kit.service)
+  const reassign = new ReceiptReassignService(receipts, parser, kit.staging, kit.drafts)
   const upload = async (rawText: string, extra: Partial<ParseReceiptDto> = {}) => {
     const receipt = await receipts.create(USER, { fileName: 'beleg.pdf' })
     const res = await parser.parseReceipt(USER, { taxYear: YEAR, fileName: 'beleg.pdf', rawText, textSource: 'pdf_text', receiptId: receipt.id, ...extra })

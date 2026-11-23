@@ -1,6 +1,8 @@
+import { appliesFrom } from '../math/tax-parameters'
 // Kirchensteuer (#450 Teil 6F, ADR-0063): rate by Bundesland, Kappung, besonderes Kirchgeld in
 // glaubensverschiedener Ehe and the church tax on capital income. All amounts as ranges (ADR-015).
 import type { GermanState } from '../common/postal-codes'
+import type { Range } from '../common/range'
 import {
   CHURCH_RULES,
   KIRCHGELD_TABLE_FROM_2025,
@@ -107,7 +109,7 @@ export function churchTaxOnIncome(input: ChurchTaxOnIncomeInput): ChurchTaxAmoun
 
 /** Besonderes Kirchgeld from the official step table of the year (0 below the first step). */
 export function kirchgeldFor(year: number, jointZvE: number): number {
-  const table = year >= 2025 ? KIRCHGELD_TABLE_FROM_2025 : KIRCHGELD_TABLE_UNTIL_2024
+  const table = appliesFrom('kirchgeldTable2025', year) ? KIRCHGELD_TABLE_FROM_2025 : KIRCHGELD_TABLE_UNTIL_2024
   let amount = 0
   for (const step of table) if (jointZvE >= step.fromZvE) amount = step.annualEur
   return amount
@@ -165,3 +167,18 @@ export function flatRateTaxWithChurchTax(
   const incomeTax = Math.max(0, Math.floor((capitalIncome - 4 * creditableForeignTax) / (4 + churchRate)))
   return { incomeTax, churchTax: Math.floor(incomeTax * churchRate) }
 }
+
+/** Kirchensteuer in the estimate (#450 Teil 6F, ADR-0063). */
+export type EstimateChurchTax =
+  | { readonly kind: 'none' }
+  | {
+      readonly kind: 'offen'
+      readonly reason: 'konfession-fehlt' | 'kappung-unbekannt' | 'kirchgeld-unbekannt' | 'einbehalt-fehlt'
+    }
+  | {
+      readonly kind: 'spanne'
+      readonly due: Range
+      /** Church tax already withheld (LStB Zeilen 6 und 7) — credited like the wage tax. */
+      readonly withheld: number
+      readonly capOnApplication: boolean
+    }

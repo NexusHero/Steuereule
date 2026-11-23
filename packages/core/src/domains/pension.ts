@@ -1,5 +1,6 @@
-import { calculate, type CalculationStatus, type Item } from '../engine/berechnung'
+import { calculate, type CalculationStatus, type Item } from './calculation'
 import type { IncomeType } from './income-types'
+import { PENSION_TAXABLE_SHARE_STEPS, valueForYear } from '../math/tax-parameters'
 
 export type PensionType =
   | 'GesetzlicheRente'
@@ -19,23 +20,9 @@ export function isPensionType(value: string): value is PensionType {
   return (PENSION_TYPES as readonly string[]).includes(value)
 }
 
-const TAXABLE_SHARE_TABLE: Readonly<Record<number, number>> = {
-  2006: 52, 2007: 54, 2008: 56, 2009: 58, 2010: 60,
-  2011: 62, 2012: 64, 2013: 66, 2014: 68, 2015: 70,
-  2016: 72, 2017: 74, 2018: 76, 2019: 78, 2020: 80,
-  2021: 81, 2022: 82,
-  2023: 82.5, 2024: 83, 2025: 83.5, 2026: 84, 2027: 84.5, 2028: 85, 2029: 85.5, 2030: 86,
-  2031: 86.5, 2032: 87, 2033: 87.5, 2034: 88, 2035: 88.5, 2036: 89, 2037: 89.5, 2038: 90,
-  2039: 90.5, 2040: 91, 2041: 91.5, 2042: 92, 2043: 92.5, 2044: 93, 2045: 93.5, 2046: 94,
-  2047: 94.5, 2048: 95, 2049: 95.5, 2050: 96, 2051: 96.5, 2052: 97, 2053: 97.5, 2054: 98,
-  2055: 98.5, 2056: 99, 2057: 99.5, 2058: 100,
-}
-
 export function taxableSharePercent(rentenbeginnJahr: number): number | null {
   if (!Number.isInteger(rentenbeginnJahr) || rentenbeginnJahr < 0) return null
-  if (rentenbeginnJahr <= 2005) return 50
-  if (rentenbeginnJahr > 2058) return null
-  return TAXABLE_SHARE_TABLE[rentenbeginnJahr] ?? null
+  return valueForYear(PENSION_TAXABLE_SHARE_STEPS, rentenbeginnJahr)
 }
 
 const INCOME_SHARE_TABLE: readonly (readonly [number, number, number])[] = [

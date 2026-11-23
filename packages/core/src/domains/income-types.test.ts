@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { INCOME_TYPES, incomeTypesFromAnswers, gatedIncomeTypes, isIncomeType } from './income-types'
-import type { Answers } from '../interview/interview'
+import type { Answers } from './answers'
 
 // ADR-010/030 — the derivation is the load-bearing piece: it is the bridge between the
 // onboarding shorthand (interview answers) and the fachliche truth (Einkunftsarten). Every

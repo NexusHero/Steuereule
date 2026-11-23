@@ -72,11 +72,11 @@ async function setUp() {
   const audit = new AuditService(new FakeAuditRepository())
   return {
     kit,
-    lstb: new LstbScanParseStrategy(registry, offline, kit.service, audit, new LstbService(kit.lstbRepo, audit, new FakeMarkingRepository()), kit.linkService, noSingleShotModel),
-    lohnausweis: new ChCertificateScanParseStrategy(new DocumentParseRegistry(), offline, kit.service, audit, kit.linkService, noSingleShotModel),
-    pension: new ChPensionStatementParseStrategy(new DocumentParseRegistry(), kit.service, audit, kit.linkService, kit.chRepo),
-    premiums: new ChPremiumLetterParseStrategy(new DocumentParseRegistry(), kit.service, audit, kit.linkService, kit.chRepo),
-    health: new ChHealthStatementParseStrategy(new DocumentParseRegistry(), kit.service, audit, kit.linkService, kit.chRepo, kit.childRepo),
+    lstb: new LstbScanParseStrategy(registry, offline, kit.staging, audit, new LstbService(kit.lstbRepo, audit, new FakeMarkingRepository()), kit.linkService, noSingleShotModel),
+    lohnausweis: new ChCertificateScanParseStrategy(new DocumentParseRegistry(), offline, kit.staging, audit, kit.linkService, noSingleShotModel),
+    pension: new ChPensionStatementParseStrategy(new DocumentParseRegistry(), kit.staging, audit, kit.linkService, kit.chRepo),
+    premiums: new ChPremiumLetterParseStrategy(new DocumentParseRegistry(), kit.staging, audit, kit.linkService, kit.chRepo),
+    health: new ChHealthStatementParseStrategy(new DocumentParseRegistry(), kit.staging, audit, kit.linkService, kit.chRepo, kit.childRepo),
   }
 }
 

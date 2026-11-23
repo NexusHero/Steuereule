@@ -4,6 +4,7 @@ import { AuditModule } from '../audit/audit.module.js'
 import { InterviewModule } from '../interview/interview.module.js'
 import { PrismaModule } from '../prisma/prisma.module.js'
 import { RentalController } from './rental.controller.js'
+import { RentalDraftRecords } from './rental-draft-records.js'
 import { RENTAL_REPOSITORY } from './rental.repository.js'
 import { PrismaRentalRepository } from './rental.repository.prisma.js'
 import { RentalService } from './rental.service.js'
@@ -11,7 +12,7 @@ import { RentalService } from './rental.service.js'
 @Module({
   imports: [MarkingModule, PrismaModule, AuditModule, InterviewModule],
   controllers: [RentalController],
-  providers: [RentalService, { provide: RENTAL_REPOSITORY, useClass: PrismaRentalRepository }],
-  exports: [RENTAL_REPOSITORY],
+  providers: [RentalService, RentalDraftRecords, { provide: RENTAL_REPOSITORY, useClass: PrismaRentalRepository }],
+  exports: [RENTAL_REPOSITORY, RentalDraftRecords],
 })
 export class RentalModule {}

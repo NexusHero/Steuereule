@@ -24,7 +24,7 @@ describe('two certificates of a couple', () => {
     await kit.profileRepo.upsert(USER, { firstName: 'Kemal', lastName: 'Muster', steuerId: null, steuernummer: null })
     await kit.linkService.set(USER, YEAR, { filingType: 'zusammen' })
     await kit.linkService.updatePersonB(USER, YEAR, { firstName: 'Anna', lastName: 'Muster' })
-    const strategy = new ChCertificateScanParseStrategy(new DocumentParseRegistry(), runtime, kit.service, new AuditService(new FakeAuditRepository()), kit.linkService, noSingleShotModel)
+    const strategy = new ChCertificateScanParseStrategy(new DocumentParseRegistry(), runtime, kit.staging, new AuditService(new FakeAuditRepository()), kit.linkService, noSingleShotModel)
     const apply = async (res: Awaited<ReturnType<typeof strategy.parse>>) =>
       kit.service.applyBatch(USER, YEAR, { drafts: (res.assistantMessage?.meta?.actions ?? []).map((a) => ({ actionId: a.actionId })) })
 

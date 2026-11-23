@@ -18,7 +18,7 @@ const CHILD_MESSAGE = 'Unsere Tochter ist geboren am 9. März 2021. Kindergeld, 
 
 function fakeModelKit(): AdvisorTestKit {
   const engine = new LangGraphAdvisorEngine(new EnvAiRuntimeConfigService({ AI_FAKE_KI: '1', NODE_ENV: 'test' }), createChatModelFromConfig)
-  return buildAdvisorTestKit(engine, undefined, { withEstimate: true })
+  return buildAdvisorTestKit(engine)
 }
 
 /** A married couple filing jointly, both employed; no child recorded yet. */

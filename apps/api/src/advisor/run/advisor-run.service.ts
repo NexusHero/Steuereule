@@ -1,7 +1,10 @@
 import { Inject, Injectable, Logger, type OnApplicationShutdown } from '@nestjs/common'
 import { ConflictError, NotFoundError } from '../../common/domain-error.js'
 import { ADVISOR_REPOSITORY, type AdvisorRepository } from '../advisor.repository.js'
-import { AdvisorService, type PreparedAdvisorTurn } from '../advisor.service.js'
+import { AdvisorConversations } from '../advisor-conversations.js'
+import { AdvisorService } from '../advisor.service.js'
+import type { PreparedAdvisorTurn } from '../advisor-shared.js'
+import { AdvisorTurn } from '../advisor-turn.js'
 import type { AdvisorContextDto, AdvisorSessionResponseDto, SendAdvisorMessageDto } from '../dto/advisor.dto.js'
 import { ADVISOR_RUN_LOG, type AdvisorRunEntry, type AdvisorRunLog } from './advisor-run-log.js'
 
@@ -21,14 +24,17 @@ export class AdvisorRunService implements OnApplicationShutdown {
   private readonly active = new Map<string, { readonly stop: AbortController; readonly finished: Promise<void> }>()
 
   constructor(
+    /** The session and clearing a conversation: what no single part owns. */
     @Inject(AdvisorService) private readonly advisor: AdvisorService,
+    @Inject(AdvisorTurn) private readonly turn: AdvisorTurn,
+    @Inject(AdvisorConversations) private readonly conversations: AdvisorConversations,
     @Inject(ADVISOR_RUN_LOG) private readonly log: AdvisorRunLog,
     @Inject(ADVISOR_REPOSITORY) private readonly advisorRepo: AdvisorRepository,
   ) {}
 
   /** Checks and persists synchronously (a quota error is still plain HTTP), then lets the run go. */
   async start(userId: string, taxYear: number, dto: SendAdvisorMessageDto): Promise<{ runId: string }> {
-    const turn = await this.advisor.prepareTurn(userId, taxYear, dto)
+    const turn = await this.turn.prepareTurn(userId, taxYear, dto)
     await this.log.open({ runId: turn.runId, userId, taxYear, assistantMessageId: turn.assistantMessageId })
     const stop = new AbortController()
     const unsubscribe = this.log.onStop(turn.runId, () => stop.abort())
@@ -42,7 +48,7 @@ export class AdvisorRunService implements OnApplicationShutdown {
 
   private async pump(userId: string, taxYear: number, turn: PreparedAdvisorTurn, signal: AbortSignal): Promise<void> {
     try {
-      for await (const event of this.advisor.executeTurn(userId, taxYear, turn, signal)) {
+      for await (const event of this.turn.executeTurn(userId, taxYear, turn, signal)) {
         await this.log.append(turn.runId, event)
       }
     } catch (error) {
@@ -108,7 +114,7 @@ export class AdvisorRunService implements OnApplicationShutdown {
   /** An answer that is still being written would lose the message it writes into. */
   private async refuseWhileAnswering(userId: string, taxYear: number, conversationId: string | undefined, what: string): Promise<void> {
     await this.reconcileOrphans(userId, taxYear)
-    const conversation = await this.advisor.conversationFor(userId, taxYear, conversationId)
+    const conversation = await this.conversations.conversationFor(userId, taxYear, conversationId)
     const messages = await this.advisorRepo.listForConversation(conversation.id, userId)
     if (messages.some((m) => m.status === 'streaming')) {
       throw new ConflictError('ADVISOR_RUN_ACTIVE', `Die Eule antwortet gerade noch. Stoppe die Antwort, bevor du ${what}.`)
@@ -122,12 +128,12 @@ export class AdvisorRunService implements OnApplicationShutdown {
 
   async summarizeConversation(userId: string, taxYear: number, conversationId: string): Promise<AdvisorContextDto> {
     await this.refuseWhileAnswering(userId, taxYear, conversationId, 'das Gespräch zusammenfasst')
-    return this.advisor.summarizeConversation(userId, taxYear, conversationId)
+    return this.conversations.summarizeConversation(userId, taxYear, conversationId)
   }
 
   async deleteConversation(userId: string, taxYear: number, conversationId: string): Promise<{ deletedMessages: number }> {
     await this.refuseWhileAnswering(userId, taxYear, conversationId, 'das Gespräch löschst')
-    return this.advisor.deleteConversation(userId, taxYear, conversationId)
+    return this.conversations.deleteConversation(userId, taxYear, conversationId)
   }
 
   /** On shutdown every run of this instance ends as aborted instead of staying `streaming`. */

@@ -16,7 +16,7 @@ import {
   type Screen,
 } from '@steuereule/core'
 import { Inject, Injectable, Optional, type OnModuleInit } from '@nestjs/common'
-import { AdvisorService } from '../advisor/advisor.service.js'
+import { AdvisorDocumentStaging } from '../advisor/advisor-document-staging.js'
 import { DomainError, InvalidInputError, NotFoundError } from '../common/domain-error.js'
 import {
   ALLOWED_RECEIPT_PARSE_MIME_TYPES,
@@ -56,7 +56,7 @@ export class ReceiptParseService implements OnModuleInit {
     @Inject(AutoReceiptParseStrategy) private readonly autoStrategy: AutoReceiptParseStrategy,
     @Inject(RECEIPT_REPOSITORY) private readonly receiptRepository: ReceiptRepository,
     /** The household, to tell whose a document is (ADR-0092). Without it every document is read as before. */
-    @Optional() @Inject(AdvisorService) private readonly advisor?: AdvisorService,
+    @Optional() @Inject(AdvisorDocumentStaging) private readonly staging?: AdvisorDocumentStaging,
     /** The content keys of stored files, to tell a duplicate upload (ADR-0097 §7). Without it none is one. */
     @Optional() @Inject(STORAGE_PORT) private readonly storage?: StoragePort,
   ) {}
@@ -133,7 +133,7 @@ export class ReceiptParseService implements OnModuleInit {
   }
 
   private async processingNow(userId: string, record: ReceiptRecord) {
-    const drafts = draftsByReceipt((await this.advisor?.receiptDrafts(userId)) ?? []).get(record.id) ?? []
+    const drafts = draftsByReceipt((await this.staging?.receiptDrafts(userId)) ?? []).get(record.id) ?? []
     return { ...processingOf(record, drafts) }
   }
 
@@ -160,8 +160,8 @@ export class ReceiptParseService implements OnModuleInit {
     // Whose the document is (ADR-0092): one rule for the masks, the Belege tab and the chat.
     const rawText = dto.rawText ?? ''
     const scope = holderScopeOf(kind as DetectedDocumentKind, rawText)
-    if (this.advisor === undefined || scope === 'none') return strategy.parse(userId, dto)
-    const members = await this.advisor.householdMembers(userId, dto.taxYear)
+    if (this.staging === undefined || scope === 'none') return strategy.parse(userId, dto)
+    const members = await this.staging.householdMembers(userId, dto.taxYear)
     const chosen = dto.holder ?? dto.person
     const area = dto.area
     for (const ref of [chosen, area]) {

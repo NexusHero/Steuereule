@@ -32,17 +32,18 @@ import {
   type Screen,
   type WageTaxCertificateFieldId,
 } from '@steuereule/core'
+import { Inject, Injectable } from '@nestjs/common'
 import { AuditService } from '../audit/audit.service.js'
-import { type ChildRepository } from '../children/child.repository.js'
+import { CHILD_REPOSITORY, type ChildRepository } from '../children/child.repository.js'
 import { newActionId } from '../common/action-id.js'
 import { assertAiWritable } from '../confirmation/ai-write-policy.js'
 import { ConfirmationService } from '../confirmation/confirmation.service.js'
 import { checkPiiFree } from '../ki/ki.adapter.js'
 import { LinkService } from '../link/link.service.js'
 import { OwlModeService } from '../owl-mode/owl-mode.service.js'
-import { type TransactionRunner } from '../common/transaction-runner.js'
-import { type ProfileRepository } from '../profile/profile.repository.js'
-import { type AdvisorRepository } from './advisor.repository.js'
+import { TRANSACTION_RUNNER, type TransactionRunner } from '../common/transaction-runner.js'
+import { PROFILE_REPOSITORY, type ProfileRepository } from '../profile/profile.repository.js'
+import { ADVISOR_REPOSITORY, type AdvisorRepository, type ReceiptDraftRecord } from './advisor.repository.js'
 import { AdvisorCaseDigest } from './advisor-case-digest.js'
 import { AdvisorDrafts } from './advisor-drafts.js'
 import { toMessageDto, toPublicAction } from './advisor-shared.js'
@@ -180,19 +181,30 @@ function eurText(raw: string): string {
  * Drafts read from documents (a receipt, an LStB scan, another form) staged as one owl message each
  * (Zero-Write), how a document's amount meets what a field already holds, and taking a document back.
  */
+@Injectable()
 export class AdvisorDocumentStaging {
   constructor(
-    private readonly advisorRepo: AdvisorRepository,
-    private readonly owlModeService: OwlModeService,
-    private readonly confirmationService: ConfirmationService,
-    private readonly auditService: AuditService,
-    private readonly transactions: TransactionRunner,
-    private readonly caseDigest: AdvisorCaseDigest,
-    private readonly drafts: AdvisorDrafts,
-    private readonly profileRepo: ProfileRepository | undefined,
-    private readonly link: LinkService | undefined,
-    private readonly childRepo: ChildRepository | undefined,
+    @Inject(ADVISOR_REPOSITORY) private readonly advisorRepo: AdvisorRepository,
+    @Inject(OwlModeService) private readonly owlModeService: OwlModeService,
+    @Inject(ConfirmationService) private readonly confirmationService: ConfirmationService,
+    @Inject(AuditService) private readonly auditService: AuditService,
+    @Inject(TRANSACTION_RUNNER) private readonly transactions: TransactionRunner,
+    @Inject(AdvisorCaseDigest) private readonly caseDigest: AdvisorCaseDigest,
+    @Inject(AdvisorDrafts) private readonly drafts: AdvisorDrafts,
+    @Inject(PROFILE_REPOSITORY) private readonly profileRepo: ProfileRepository,
+    @Inject(LinkService) private readonly link: LinkService,
+    @Inject(CHILD_REPOSITORY) private readonly childRepo: ChildRepository,
   ) {}
+
+  /** Every name that must not reach a model, for scrubbing a document's text before it is read. */
+  async knownNamesForScrubbing(userId: string, taxYear: number): Promise<string[]> {
+    return this.caseDigest.knownNamesForScrubbing(userId, taxYear)
+  }
+
+  /** The drafts of every tax year that came from a Beleg, metadata only (ADR-0097): for its processing state. */
+  async receiptDrafts(userId: string): Promise<ReceiptDraftRecord[]> {
+    return this.advisorRepo.listReceiptDrafts(userId)
+  }
 
   async stageReceiptProposal(
     userId: string,
@@ -446,7 +458,7 @@ export class AdvisorDocumentStaging {
     userId: string,
     taxYear: number,
   ): Promise<HouseholdNames> {
-    const [profile, spouse] = await Promise.all([this.profileRepo?.findByUserId(userId), this.link?.spouseForAdvisor(userId, taxYear)])
+    const [profile, spouse] = await Promise.all([this.profileRepo.findByUserId(userId), this.link.spouseForAdvisor(userId, taxYear)])
     return {
       A: { firstName: profile?.firstName ?? null, lastName: profile?.lastName ?? null },
       B: spouse ? { firstName: spouse.firstName, lastName: spouse.lastName, recordable: spouse.recordable } : null,
@@ -459,7 +471,7 @@ export class AdvisorDocumentStaging {
    */
   async householdMembers(userId: string, taxYear: number): Promise<AssignmentMember[]> {
     const names = await this.householdNames(userId, taxYear)
-    const children = (await this.childRepo?.listForUserAndYear(userId, taxYear)) ?? []
+    const children = await this.childRepo.listForUserAndYear(userId, taxYear)
     return [
       { ref: 'A', ...names.A },
       ...(names.B ? [{ ref: 'B' as const, firstName: names.B.firstName, lastName: names.B.lastName }] : []),
@@ -658,7 +670,7 @@ export class AdvisorDocumentStaging {
    * (ADR-0086). Null when it stays unclear; `children` says how many there are, for the question to the user.
    */
   async childForReceipt(userId: string, taxYear: number, text: string): Promise<{ id: string | null; children: number }> {
-    const children = (await this.childRepo?.listForUserAndYear(userId, taxYear)) ?? []
+    const children = await this.childRepo.listForUserAndYear(userId, taxYear)
     return { id: children.length === 0 ? null : childNamedIn(text, children), children: children.length }
   }
 

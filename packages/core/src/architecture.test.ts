@@ -6,62 +6,30 @@ import { fileURLToPath } from 'node:url'
 /**
  * The dependency rules of `@steuereule/core`, checked on every test run (ADR-0102).
  *
- * The five folders are themes, not strict layers: `engine` orchestrates rules from `domains`,
- * and some `domains` verticals build on the calculation model in `engine`. What holds, and is
- * enforced here:
- *   1. the allowed directions between folders (`ALLOWED`),
- *   2. the known imports against the intended order interview → engine → domains → common → math
- *      (`BACKWARD`): a list of files that may only shrink,
- *   3. no cycle of value imports between files.
+ * The folders are layers, lowest first: math → common → domains → engine → interview. A folder
+ * imports only from the folders below it, so there is no cycle between folders. What is enforced:
+ *   1. the allowed directions between folders (`ALLOWED`), with no exceptions,
+ *   2. no cycle of value imports between files,
+ *   3. no tax year as a bare literal in a comparison outside `math/tax-parameters.ts`: a rule that
+ *      changes with the year names that year there (`RULE_CHANGE_YEARS`, the `*_STEPS` tables).
+ * Each rule is also shown to fail on a constructed violation (ADR-0021).
  */
 
 const SRC = path.dirname(fileURLToPath(import.meta.url))
 const LAYERS = ['math', 'common', 'domains', 'engine', 'interview'] as const
 type Layer = (typeof LAYERS)[number]
 
-/** Every direction that exists today. A new direction is a design decision, not a side effect. */
+/** Each folder may import the folders below it, never one above. */
 const ALLOWED: Record<Layer, readonly Layer[]> = {
   math: [],
   common: ['math'],
-  domains: ['math', 'common', 'engine', 'interview'],
+  domains: ['math', 'common'],
   engine: ['math', 'common', 'domains'],
   interview: ['math', 'common', 'domains', 'engine'],
 }
 
-/**
- * Files that import against the intended order. Each entry is debt: `domains` reaching up into
- * `engine` for the calculation model and the assessment types, and into `interview` for the
- * answer model. Remove an entry when its file is fixed; never add one.
- */
-const BACKWARD: Record<string, readonly string[]> = {
-  'domains->engine': [
-    'domains/assessment-notice.ts',
-    'domains/capital.ts',
-    'domains/cross-border.ts',
-    'domains/exchange-rate.ts',
-    'domains/history-groups.ts',
-    'domains/history-patterns.ts',
-    'domains/history-years.ts',
-    'domains/pension.ts',
-    'domains/recurring-items.ts',
-    'domains/rental.ts',
-    'domains/submission.ts',
-    'domains/takeover.ts',
-    'domains/year-history.ts',
-  ],
-  'domains->interview': [
-    'domains/cross-border.ts',
-    'domains/employee.ts',
-    'domains/extraordinary-burdens.ts',
-    'domains/filing-obligation.ts',
-    'domains/health-insurance.ts',
-    'domains/household-services.ts',
-    'domains/income-types.ts',
-    'domains/receipt-processing.ts',
-    'domains/recurring-items.ts',
-    'domains/self-paid-provision.ts',
-  ],
-}
+/** The one file where a year may be compared with a literal. */
+const YEAR_PARAMETERS_FILE = 'math/tax-parameters.ts'
 
 interface Import {
   readonly from: string
@@ -147,35 +115,110 @@ function cycles(edges: readonly Import[]): string[][] {
   return found
 }
 
+interface CrossLayerImport extends Import {
+  readonly source: Layer
+  readonly target: Layer
+}
+
+function crossLayerImports(imports: readonly Import[]): CrossLayerImport[] {
+  return imports
+    .map((imp) => ({ ...imp, source: layerOf(imp.from), target: layerOf(imp.to) }))
+    .filter((imp): imp is CrossLayerImport => imp.source !== null && imp.target !== null && imp.target !== imp.source)
+}
+
+function folderViolations(imports: readonly Import[]): string[] {
+  return crossLayerImports(imports)
+    .filter((imp) => !ALLOWED[imp.source].includes(imp.target))
+    .map((imp) => `${imp.from} -> ${imp.to}`)
+}
+
+/** A comparison operator (not the arrow `=>`) next to a four-digit year from 1900 to 2099. */
+const YEAR_COMPARISON = /(?<![=!<>])(?:[<>]=?|[!=]==?)\s*\(?\s*(?:19|20)\d{2}\b(?![\d_.])|(?<![\d_.])\b(?:19|20)\d{2}\s*\)?\s*(?:[<>]=?|[!=]==?)(?![=>])/
+
+/** Comments and quoted strings hold years as text; they are not code. Template literals stay, their `${…}` is code. */
+function codeOf(source: string): string {
+  return source.replace(/\/\*[\s\S]*?\*\/|\/\/[^\n]*|'(?:[^'\\\n]|\\.)*'|"(?:[^"\\\n]|\\.)*"/g, (match) => match.replace(/[^\n]/g, ' '))
+}
+
+function yearComparisons(file: string, source: string): string[] {
+  if (file === YEAR_PARAMETERS_FILE) return []
+  return codeOf(source)
+    .split('\n')
+    .flatMap((line, index) => (YEAR_COMPARISON.test(line) ? [`${file}:${index + 1}: ${line.trim()}`] : []))
+}
+
 describe('@steuereule/core dependency rules', () => {
   const imports = scanImports()
-  const crossLayer = imports
-    .map((imp) => ({ ...imp, source: layerOf(imp.from)!, target: layerOf(imp.to) }))
-    .filter((imp): imp is typeof imp & { target: Layer } => imp.target !== null && imp.target !== imp.source)
 
   it('finds the source files, subfolders included', () => {
     expect(imports.length).toBeGreaterThan(300)
     expect(imports.some((imp) => imp.from.startsWith('domains/business/'))).toBe(true)
   })
 
-  it('math imports nothing outside math, and common only math', () => {
-    expect(crossLayer.filter((imp) => imp.source === 'math')).toEqual([])
-    expect(crossLayer.filter((imp) => imp.source === 'common' && imp.target !== 'math')).toEqual([])
+  it('each folder imports only the folders below it', () => {
+    expect(folderViolations(imports)).toEqual([])
   })
 
-  it('only the allowed directions between folders exist', () => {
-    const forbidden = crossLayer.filter((imp) => !ALLOWED[imp.source].includes(imp.target))
-    expect(forbidden.map((imp) => `${imp.from} -> ${imp.to}`)).toEqual([])
+  it('the allowed directions form a strict order, so no folders can import each other', () => {
+    for (const [index, layer] of LAYERS.entries()) {
+      expect(ALLOWED[layer].every((target) => LAYERS.indexOf(target) < index)).toBe(true)
+    }
   })
 
-  it.each(Object.keys(BACKWARD))('%s: the files importing against the intended order are exactly the known ones', (pair) => {
-    const [source, target] = pair.split('->')
-    const actual = [...new Set(crossLayer.filter((imp) => imp.source === source && imp.target === target).map((imp) => imp.from))].sort()
-    // Fails in both directions: a new file is new debt, a missing one must be struck from the list.
-    expect(actual).toEqual([...BACKWARD[pair]!].sort())
+  it.each([
+    ['domains/rental.ts', 'engine/tax-estimate.ts'],
+    ['domains/employee.ts', 'interview/interview.ts'],
+    ['engine/tax-estimate.ts', 'interview/cockpit.ts'],
+    ['common/dates.ts', 'domains/children.ts'],
+    ['math/tarif.ts', 'common/dates.ts'],
+  ])('a constructed upward import %s -> %s is reported', (from, to) => {
+    expect(folderViolations([{ from, to, typeOnly: true }])).toEqual([`${from} -> ${to}`])
+  })
+
+  it('a downward import is not reported', () => {
+    expect(folderViolations([{ from: 'engine/tax-estimate.ts', to: 'domains/children.ts', typeOnly: false }])).toEqual([])
   })
 
   it('no cycle of value imports between files', () => {
     expect(cycles(imports.filter((imp) => !imp.typeOnly))).toEqual([])
+  })
+
+  it('a constructed cycle is found', () => {
+    const edge = (from: string, to: string): Import => ({ from, to, typeOnly: false })
+    expect(cycles([edge('domains/a.ts', 'domains/b.ts'), edge('domains/b.ts', 'domains/a.ts')])).toEqual([['domains/a.ts', 'domains/b.ts']])
+  })
+
+  it(`no year is compared with a bare literal outside ${YEAR_PARAMETERS_FILE}`, () => {
+    const found = LAYERS.flatMap((layer) =>
+      sourceFiles(path.join(SRC, layer)).flatMap((file) => yearComparisons(rel(file), fs.readFileSync(file, 'utf8'))),
+    )
+    expect(found).toEqual([])
+  })
+
+  it.each([
+    'if (year >= 2025) return 0',
+    'const fromNewRule = input.year < 2025',
+    'return 2024 === year',
+    'if ((input.year ?? 2026) >= 2023) put()',
+    'const old = baujahr <= 1924',
+    'const text = `${taxYear >= 2025 ? "a" : "b"}`',
+  ])('a constructed year comparison is reported: %s', (line) => {
+    expect(yearComparisons('domains/example.ts', line)).toHaveLength(1)
+  })
+
+  it.each([
+    'const steps = [{ from: 2024, value: 1000 }]',
+    'const pick = (year: number) => 2024',
+    'if (amount >= 20_000) return',
+    'if (amount > 2000.5) return',
+    'if (appliesFrom(\'smallBusinessReform\', year)) return',
+    '// until 2024: year <= 2024',
+    "throw new RangeError('from 2023 a study counts only when year >= 2023')",
+  ])('a line without a year comparison is not reported: %s', (line) => {
+    expect(yearComparisons('domains/example.ts', line)).toEqual([])
+  })
+
+  it(`${YEAR_PARAMETERS_FILE} itself may compare years`, () => {
+    expect(yearComparisons(YEAR_PARAMETERS_FILE, 'return year >= 2025')).toEqual([])
   })
 })

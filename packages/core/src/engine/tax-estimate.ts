@@ -2,32 +2,13 @@ import { incomeTax, isSupportedIncomeTaxYear, progressionClauseTax, soliExemptio
 import { getTaxYearParameters } from '../math/tax-parameters'
 import { applyHouseholdTaxReduction } from '../domains/household-services'
 import { calculateExtraordinaryBurden, type BurdenChildrenBracket } from '../domains/extraordinary-burdens'
-import { churchTaxOnIncome, type ChurchMembership } from '../domains/church-tax'
+import { churchTaxOnIncome, type ChurchMembership, type EstimateChurchTax } from '../domains/church-tax'
 import { childTaxAllowance } from '../domains/children'
 import type { GermanState } from '../common/postal-codes'
+import type { Range } from '../common/range'
 import { deductibleProvision, type PersonProvision, type ProvisionDeduction } from '../domains/provision'
 import { withSpecialTariffs } from '../domains/business/special-tariffs'
 import { afterTradeTaxCredit, businessTotal, creditPerson, lossesOfYear, type BusinessEstimate, type BusinessIncome, type LossCarry, type Prepayments } from './business-income'
-
-export interface Range {
-  readonly from: number
-  readonly to: number
-}
-
-/** Kirchensteuer in the estimate (#450 Teil 6F, ADR-0063). */
-export type EstimateChurchTax =
-  | { readonly kind: 'none' }
-  | {
-      readonly kind: 'offen'
-      readonly reason: 'konfession-fehlt' | 'kappung-unbekannt' | 'kirchgeld-unbekannt' | 'einbehalt-fehlt'
-    }
-  | {
-      readonly kind: 'spanne'
-      readonly due: Range
-      /** Church tax already withheld (LStB Zeilen 6 und 7) — credited like the wage tax. */
-      readonly withheld: number
-      readonly capOnApplication: boolean
-    }
 
 /** What the estimate needs to know about the church tax of one person. */
 export interface ChurchTaxInput {
