@@ -17,7 +17,7 @@ Dieses Dokument bietet die **fachliche Anwendungsfall-Sicht** auf Steuereule. Es
 ### Grundregeln der Architektur & Nachvollziehbarkeit
 
 1. **Jeder Use Case verweist auf konkrete `REQ-NNN`** im [Requirements Register](requirements/register.md) und auf zugehörige [ADRs](adr/index.md).
-2. **Deterministischer Kern vor KI-Vorschlag ([ADR-0005](adr/0005-deterministic-core-llm-assist.md), [ADR-0051](adr/0051-eulen-ki-modus.md)):**
+2. **Deterministischer Kern vor KI-Vorschlag ([ADR-0005](adr/0005-deterministic-core-llm-assist.md), [ADR-0051](adr/0051-owl-ai-mode.md)):**
    Der deterministische Rechenkern in `@steuereule/core` berechnet jeden Betrag, Tarif, Splittingvorteil, Freibetrag und jede Frist ausnahmslos deterministisch und manipulationssicher. Der KI-Assistent („Eulen-Modus“) schlägt lediglich vor, erklärt, strukturiert und formuliert — stets mit protokollierter Herkunft (*Provenance*), niemals eigenmächtig mutierend und ohne Schweigen bei Fehlern.
 3. **E2E-Automatisierung:**
    Jeder relevante Ablauf ist in der E2E-Szenario-Matrix (`e2e/scenarios/01-24`) als realer Browser-Durchlauf auf CI fest verankert und gegen Regressionen abgesichert.
@@ -35,7 +35,7 @@ Dieses Dokument bietet die **fachliche Anwendungsfall-Sicht** auf Steuereule. Es
 | **Sarah Fischer** | Angestellte mit Homeoffice und Riester-Rentenvertrag (Sonderausgaben § 10a EStG) | UC-02, UC-03, UC-05 | `e2e/scenarios/06-sarah-fischer-homeoffice-riester.mjs` |
 | **David Richter** | Alleinerziehend mit Kind, Entlastungsbetrag nach § 24b EStG, Kindergeld-Günstigerprüfung | UC-02, UC-03, UC-05 | `e2e/scenarios/07-david-richter-alleinerziehend.mjs`, `16-sabine-kranz-geschieden-kind.mjs` |
 | **Maximilian Allesgeber** | Vollspektrum-Erfasser mit allen Lebenslagen (Umzug, doppelte Haushaltsführung, Abfindung) | UC-02, UC-03, UC-05 | `e2e/scenarios/17-maximilian-allesgeber-maximal-katalog.mjs` |
-| **Maximiliane Koch** | Gewerbetreibende / Selbstständige: Gewerbe-Gate, solange der Schalter für Selbstständige aus ist; danach EÜR, Buchhaltung, Umsatz- und Gewerbesteuer ([ADR-0101](adr/0101-selbststaendige.md)) | UC-02 (Gate) | `e2e/scenarios/09-maximiliane-koch-selbststaendig-gate.mjs` |
+| **Maximiliane Koch** | Gewerbetreibende / Selbstständige: Gewerbe-Gate, solange der Schalter für Selbstständige aus ist; danach EÜR, Buchhaltung, Umsatz- und Gewerbesteuer ([ADR-0101](adr/0101-self-employed.md)) | UC-02 (Gate) | `e2e/scenarios/09-maximiliane-koch-selbststaendig-gate.mjs` |
 | **Erika Zimmermann** | Verwitwete Steuerzahlerin (Gnadensplitting nach § 32a Abs. 6 EStG im Sterbefolgejahr) | UC-02, UC-04, UC-05 | `e2e/scenarios/13-erika-zimmermann-verwitwet.mjs` |
 
 ---
@@ -73,9 +73,9 @@ Dieses Dokument bietet die **fachliche Anwendungsfall-Sicht** auf Steuereule. Es
 * **Ziel:** Schnelle Einordnung der Einkunftsarten und rechtskonformer Ausschluss nicht unterstützter Fälle ([ADR-0031](adr/0031-the-interview-is-three-questions-and-a-catalog.md)).
 * **Ablauf:**
   1. Frage 1: Erwerbstätigkeit (`Angestellt`, `Rentner`, `Selbstständig/Gewerbe`, `Beides`).
-     * *Gewerbe-Gate:* Selbstständige werden mit transparentem Hinweis abgefangen ([REQ-015](requirements/register.md#REQ-015)), solange der Schalter für Selbstständige aus ist; danach führt der Weg in EÜR, Buchhaltung, Umsatz- und Gewerbesteuer ([ADR-0101](adr/0101-selbststaendige.md)).
+     * *Gewerbe-Gate:* Selbstständige werden mit transparentem Hinweis abgefangen ([REQ-015](requirements/register.md#REQ-015)), solange der Schalter für Selbstständige aus ist; danach führt der Weg in EÜR, Buchhaltung, Umsatz- und Gewerbesteuer ([ADR-0101](adr/0101-self-employed.md)).
   2. Frage 2: Auslandsbezug (`Inland`, `Schweiz / Grenzgänger`, `Anderes Ausland`).
-     * *CH-Only-Gate:* Nur Grenzgänger zur Schweiz werden in Version 1.0 unterstützt ([ADR-0042](adr/0042-grenzgaenger-ch-vertikale.md)).
+     * *CH-Only-Gate:* Nur Grenzgänger zur Schweiz werden in Version 1.0 unterstützt ([ADR-0042](adr/0042-grenzgaenger-ch-vertical.md)).
   3. Frage 3: Kinder (`Ja`, `Nein`).
   4. Alle Antworten werden serverseitig validiert, verschlüsselt in `InterviewAnswer` gespeichert und reduzieren sofort die offenen Punkte im Cockpit.
 
@@ -88,7 +88,7 @@ Dieses Dokument bietet die **fachliche Anwendungsfall-Sicht** auf Steuereule. Es
   4. **Vermietung & Verpachtung:** Objektadresse, Mieteinnahmen, Anschaffungskosten Gebäude, Baujahr (lineare AfA nach § 7 Abs. 4 EStG: 2,5 %, 2,0 % oder 3,0 %), Werbungskosten.
 
 ### UC-04: Grenzgänger Schweiz (CH-Vertikale)
-* **Ziel:** Vollständige Abwicklung des DBA Deutschland-Schweiz ([ADR-0042](adr/0042-grenzgaenger-ch-vertikale.md), [REQ-020](requirements/register.md#REQ-020), [REQ-021](requirements/register.md#REQ-021)).
+* **Ziel:** Vollständige Abwicklung des DBA Deutschland-Schweiz ([ADR-0042](adr/0042-grenzgaenger-ch-vertical.md), [REQ-020](requirements/register.md#REQ-020), [REQ-021](requirements/register.md#REQ-021)).
 * **Ablauf:**
   1. Der Nutzer transkribiert den Schweizer Lohnausweis (Bruttolohn Ziffer 1, AHV/ALV Ziffer 9, PK Ziffer 10, Quellensteuer Ziffer 12).
   2. Prüfung der 60-Tage-Nichtrückkehrregel (Art. 15a Abs. 2 DBA-CH): Bei ≤ 60 Tagen gilt der echte Grenzgänger-Status mit 4,5 % pauschaler Schweizer Quellensteuer und Besteuerung im Ansässigkeitsstaat Deutschland.
@@ -104,7 +104,7 @@ Dieses Dokument bietet die **fachliche Anwendungsfall-Sicht** auf Steuereule. Es
   4. **Veranlagungsvergleich:** Bei Verheirateten wird die Steuerlast für Einzelveranlagung (§ 26a EStG) und Zusammenveranlagung (§ 26b EStG) gegenübergestellt. Das Ergebnis liefert eine typisierte Entscheidung: `eindeutig` (mit Sparpotenzial), `zu-knapp` oder `unbestimmt`.
 
 ### UC-07: Freischaltung & Bezahlung (Stripe)
-* **Ziel:** Rechtssicherer Verkauf des amtlichen Ausdrucks pro Steuerjahr ([ADR-0050](adr/0050-papierweg-statt-elster-in-1-0.md)).
+* **Ziel:** Rechtssicherer Verkauf des amtlichen Ausdrucks pro Steuerjahr ([ADR-0050](adr/0050-paper-filing-instead-of-elster-in-1-0.md)).
 * **Ablauf:**
   1. Der Nutzer fordert den Checkout an (`POST /v1/steuerjahre/{jahr}/ausdruck/checkout`).
   2. Die Vorprüfung validiert, ob der Ausdruck vollständig geliefert werden kann (keine Zahlung bei unvollständigen Stammdaten).
@@ -113,7 +113,7 @@ Dieses Dokument bietet die **fachliche Anwendungsfall-Sicht** auf Steuereule. Es
   5. Nach erfolgreicher Zahlung schaltet ausschließlich der signaturgeprüfte Webhook (`POST /v1/zahlung/stripe/webhook`) das Steuerjahr frei.
 
 ### UC-08: Amtlicher Formular-Ausdruck (Papierweg)
-* **Ziel:** Erzeugung eines druckfertigen, behördenkonformen Steuererklärungspakets auf amtlichen BMF-Vorlagen ([ADR-0050](adr/0050-papierweg-statt-elster-in-1-0.md)).
+* **Ziel:** Erzeugung eines druckfertigen, behördenkonformen Steuererklärungspakets auf amtlichen BMF-Vorlagen ([ADR-0050](adr/0050-paper-filing-instead-of-elster-in-1-0.md)).
 * **Ablauf:**
   1. Vorprüfung (`GET /v1/steuerjahre/{jahr}/ausdruck/pruefung`): Prüfung auf Vollständigkeit aller Stammdaten (Name, Steuer-ID, Adresse, Geburtsdatum, Religion nach Art. 9 DSGVO, IBAN, Finanzamt).
   2. Der `FormRenderer` lädt die für das Steuerjahr gepinnten, leeren amtlichen Internet-Vordrucke (`assets/vordrucke/<jahr>/`).
@@ -122,7 +122,7 @@ Dieses Dokument bietet die **fachliche Anwendungsfall-Sicht** auf Steuereule. Es
   5. Der Nutzer druckt das Dokument aus, unterschreibt auf Seite 2 des ESt 1 A und reicht es postalisch beim Finanzamt ein.
 
 ### UC-09: Eulen-Modus (KI-Steuerberater)
-* **Ziel:** Kontextbezogene, dialogbasierte Steuerberatung und Optimierungsvorschläge ([ADR-0051](adr/0051-eulen-ki-modus.md)).
+* **Ziel:** Kontextbezogene, dialogbasierte Steuerberatung und Optimierungsvorschläge ([ADR-0051](adr/0051-owl-ai-mode.md)).
 * **Ablauf:**
   1. Nutzer stellt eine Frage im Chat (z. B. „Kann ich mein Arbeitszimmer absetzen?“).
   2. Der KI-Adapter ruft über gesicherte MCP-Tools den aktuellen Steuerstand ab (mit PII-Maskierung für Steuer-ID, IBAN, Namen).

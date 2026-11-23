@@ -3,7 +3,7 @@
 - **Status:** Accepted — promoted 2026-10-24 (reviewed as part of the ticket reviews; Musti)
 - **Date:** 2026-10-24
 - **Deciders:** Robin (backend, Ticket 09) — draft; promotion needs Musti review
-- **Nummer offen:** `0041` kollidiert mit t08s `0041-lstb-angestellte-vertikale.md` — die
+- **Nummer offen:** `0041` kollidiert mit t08s `0041-employee-vertical-lstb.md` — die
   endgültige Nummer wird bei Promotion vergeben (0041/0042), nicht hier festgeschrieben.
 - **Implements** Produkt-ADR-029 (volle CH-Tiefe), Produkt-ADR-012 (Wechselkurs), Produkt-ADR-013
   (nur Schweiz; 45-Tage-Regel — korrigiert auf 60 Tage, siehe Amendment 2026-11-05), Produkt-ADR-036 (Scan-Fallback-Maske, CHF führt)

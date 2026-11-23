@@ -3,7 +3,7 @@
 > **Dokumenten-Status:** Akzeptiert & Aktueller Stand (`#446` Antigravity Split-Pane App-Agent: Cockpit ↔ Eulen-Modus)  
 > **Gültig ab:** Version 2.0 (November 2026)  
 > **Zielgruppe:** Engineering, Produktmanagement, Legal & Datenschutz, Stakeholder  
-> **Bezüge:** Epic #16 (E7 Berater & Eulen-Modus), `#446`, [ADR-0051](adr/0051-eulen-ki-modus.md), [ADR-0052](adr/0052-agenten-zugang-mcp.md), [DSFA & StBerG-Dokumentation](legal/agenten-zugang-dsfa-stberg.md)
+> **Bezüge:** Epic #16 (E7 Berater & Eulen-Modus), `#446`, [ADR-0051](adr/0051-owl-ai-mode.md), [ADR-0052](adr/0052-agent-access-mcp.md), [DSFA & StBerG-Dokumentation](legal/agent-access-dpia-stberg.md)
 
 ---
 

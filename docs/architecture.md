@@ -21,7 +21,7 @@
 
 SteuerEule guides private individuals in Germany through their income tax return. The app asks questions in an interview, computes the expected refund as a range, reads receipts, and prints the return onto the official tax forms. An AI assistant, the owl (*Eule*), advises in a chat and prepares entries as drafts.
 
-The governing principle ([ADR-0038](adr/0038-berechnungs-kern-ki-port.md)):
+The governing principle ([ADR-0038](adr/0038-calculation-core-and-ai-port.md)):
 
 > **The core computes, the language model phrases.** Every tax amount is produced by pure functions in `@steuereule/core`. A language model proposes and explains. It never writes to the return itself: a proposal becomes an entry only when the user confirms it.
 
@@ -29,14 +29,14 @@ The governing principle ([ADR-0038](adr/0038-berechnungs-kern-ki-port.md)):
 
 | Group | Scope | Decision |
 | :--- | :--- | :--- |
-| Employees | wage tax certificate (*Lohnsteuerbescheinigung*), commute, home office, special expenses, household services | [ADR-0041](adr/0041-lstb-angestellte-vertikale.md) |
-| Cross-border commuters to Switzerland | Swiss salary certificate, the 60-day rule, exchange rates, the form *Anlage N-Gre* | [ADR-0042](adr/0042-grenzgaenger-ch-vertikale.md) |
-| Pensioners | statutory and private pensions | [ADR-0044](adr/0044-rentner-vertikale.md) |
-| Investors, landlords | securities accounts, the most-favourable-taxation check, rental properties with depreciation | [ADR-0048](adr/0048-kapital-vertikale.md), [ADR-0046](adr/0046-vermietung-vertikale.md) |
-| Married couples | one joint return, comparison of filing types | [ADR-0054](adr/0054-zusammenveranlagung-eine-erklaerung.md), [ADR-0034](adr/0034-veranlagungsartenvergleich-returns-a-bounded-comparison.md) |
-| Self-employed | cash-basis accounting, bookkeeping, balance sheet, VAT and trade tax | [ADR-0101](adr/0101-selbststaendige.md) |
+| Employees | wage tax certificate (*Lohnsteuerbescheinigung*), commute, home office, special expenses, household services | [ADR-0041](adr/0041-employee-vertical-lstb.md) |
+| Cross-border commuters to Switzerland | Swiss salary certificate, the 60-day rule, exchange rates, the form *Anlage N-Gre* | [ADR-0042](adr/0042-grenzgaenger-ch-vertical.md) |
+| Pensioners | statutory and private pensions | [ADR-0044](adr/0044-pensioner-vertical.md) |
+| Investors, landlords | securities accounts, the most-favourable-taxation check, rental properties with depreciation | [ADR-0048](adr/0048-capital-income-vertical.md), [ADR-0046](adr/0046-rental-vertical.md) |
+| Married couples | one joint return, comparison of filing types | [ADR-0054](adr/0054-joint-assessment-one-return.md), [ADR-0034](adr/0034-veranlagungsartenvergleich-returns-a-bounded-comparison.md) |
+| Self-employed | cash-basis accounting, bookkeeping, balance sheet, VAT and trade tax | [ADR-0101](adr/0101-self-employed.md) |
 
-**How a return is filed.** The return is printed and sent by post ([ADR-0050](adr/0050-papierweg-statt-elster-in-1-0.md)). Official forms are available for tax years 2022 to 2025; the core computes 2022 to 2026. For self-employed users who must file electronically there is code that transmits through an ERiC process (`apps/api/src/business/elster-transmission.ts`). It needs an operator certificate and is listed as open in §11.
+**How a return is filed.** The return is printed and sent by post ([ADR-0050](adr/0050-paper-filing-instead-of-elster-in-1-0.md)). Official forms are available for tax years 2022 to 2025; the core computes 2022 to 2026. For self-employed users who must file electronically there is code that transmits through an ERiC process (`apps/api/src/business/elster-transmission.ts`). It needs an operator certificate and is listed as open in §11.
 
 ## 1.2 Quality goals
 
@@ -123,10 +123,10 @@ flowchart LR
 | :--- | :--- | :--- | :--- |
 | Stripe | payment for the printout, webhook | `unlock/stripe-payment-provider.ts` behind `PaymentProvider` | user id, tax year, price id |
 | SMTP, Brevo | confirmation and security mail | `auth/smtp-email-sender.ts`, `auth/brevo-email-sender.ts` behind `EmailSender`; without configuration a logging stand-in | e-mail address, mail text |
-| Language model providers | the owl's chat, reading aid for receipts, topic guard | `ki/chat-model.factory.ts` (LangChain) | chat history and case data; receipt text after names, addresses and identifiers have been removed. Personal data only with consent ([ADR-0091](adr/0091-eule-persoenliche-daten-mit-einwilligung.md)). |
+| Language model providers | the owl's chat, reading aid for receipts, topic guard | `ki/chat-model.factory.ts` (LangChain) | chat history and case data; receipt text after names, addresses and identifiers have been removed. Personal data only with consent ([ADR-0091](adr/0091-owl-personal-data-with-consent.md)). |
 | Google OAuth | sign-in with a Google account | `auth/better-auth.ts` | OAuth protocol data |
 | Have I Been Pwned | checks new passwords against known breaches | better-auth plugin, `auth/breach-check.ts` | part of the password hash (k-anonymity), never the password |
-| MCP clients | the user's assistant reads the return and fills drafts | `mcp/` as a driving adapter ([ADR-0052](adr/0052-agenten-zugang-mcp.md)) | only what the user released through an OAuth scope |
+| MCP clients | the user's assistant reads the return and fills drafts | `mcp/` as a driving adapter ([ADR-0052](adr/0052-agent-access-mcp.md)) | only what the user released through an OAuth scope |
 | formulare-bfinv.de | source of the official forms | `scripts/vordrucke/download-vordrucke.mjs`, not at runtime | nothing |
 | ERiC | electronic transmission for the self-employed | `business/elster-transmission.ts` | the transmission data; see §11 |
 
@@ -137,7 +137,7 @@ flowchart LR
 1. **A pure calculation core.** Tax rules are functions without input or output in `packages/core`. The API and the web app use the same core, so each rule exists exactly once.
 2. **Parameters per tax year.** Allowances, lump sums and deadlines are in `math/tax-parameters.ts`, the tariff and surcharge tables in `math/tarif.ts`. A few feature modules still carry their own per-year constants, see §11.
 3. **Ports & Adapters around the core.** The database and external SDKs are reachable only from named places. §4.1 describes this in detail.
-4. **Draft before entry.** Whatever the owl, a receipt reader or an external assistant proposes is a draft with a computed effect. Only confirmation writes ([ADR-0066](adr/0066-eule-feldkatalog-und-ein-schreibweg.md)).
+4. **Draft before entry.** Whatever the owl, a receipt reader or an external assistant proposes is a draft with a computed effect. Only confirmation writes ([ADR-0066](adr/0066-owl-field-catalog-and-one-write-path.md)).
 5. **Encryption at the edge of persistence.** The Prisma adapter encrypts fields, the storage adapter encrypts receipt files. Services see plaintext and know nothing of the mechanism.
 6. **Official forms as data.** 18 forms per tax year (2022 to 2025) are stored unmodified in the repository; their checksums are pinned in `apps/api/src/printout/vordrucke-<year>.json`.
 
@@ -372,7 +372,7 @@ sequenceDiagram
   U->>W: confirms field by field
 ```
 
-Three lines of defence come before the model. For the Swiss salary certificate and the wage tax certificate only an allowlist of rows leaves the server ([ADR-0058](adr/0058-lstb-textfallback-allowlist.md)), and the model is asked only when the fixed rules left a field empty. Then `scrubDocumentTextPii` removes names, addresses and identifiers. Finally `checkPiiFree` aborts if the text still contains an IBAN or a tax id. Values from OCR never count as read with certainty and have to be confirmed.
+Three lines of defence come before the model. For the Swiss salary certificate and the wage tax certificate only an allowlist of rows leaves the server ([ADR-0058](adr/0058-lstb-text-fallback-allowlist.md)), and the model is asked only when the fixed rules left a field empty. Then `scrubDocumentTextPii` removes names, addresses and identifiers. Finally `checkPiiFree` aborts if the text still contains an IBAN or a tax id. Values from OCR never count as read with certainty and have to be confirmed.
 
 ---
 
@@ -401,8 +401,8 @@ flowchart LR
 | :--- | :--- | :--- |
 | Two services | `steuereule-api` and `steuereule-web`, one container each, scaling to zero | `.github/workflows/deploy.yml` |
 | Database | Cloud SQL, one zone, automated backups with point-in-time recovery | `infra/gcp/main.tf` |
-| Keystore | a separate Cloud SQL instance holding only the keys of receipt files: deleting a key makes the receipt unreadable in old backups too | [ADR-0059](adr/0059-beleg-keystore-crypto-shredding.md) |
-| Redis | optional (`enable_redis`): the owl's run log across instances and the sign-in rate limit | [ADR-0064](adr/0064-eulen-chat-antwortlaeufe-und-wiederaufnahme.md) |
+| Keystore | a separate Cloud SQL instance holding only the keys of receipt files: deleting a key makes the receipt unreadable in old backups too | [ADR-0059](adr/0059-document-keystore-crypto-shredding.md) |
+| Redis | optional (`enable_redis`): the owl's run log across instances and the sign-in rate limit | [ADR-0064](adr/0064-owl-chat-answer-runs-and-resumption.md) |
 | Delivery | build images, take a backup before the rollout, new revision, on failure route traffic back to the previous one | `deploy.yml` |
 | Infrastructure as code | OpenTofu/Terraform | `infra/gcp/` |
 
@@ -433,9 +433,9 @@ Not every field is encrypted. Plaintext are, for example, the status of a tax ye
 ## 8.3 The boundary to the language models
 
 - Receipt text is scrubbed before it reaches a model (§6.3).
-- The owl's chat contains case data. Names and identifiers are masked (`packages/core/src/common/pii-masking.ts`); personal data reaches a model only with consent ([ADR-0091](adr/0091-eule-persoenliche-daten-mit-einwilligung.md)).
+- The owl's chat contains case data. Names and identifiers are masked (`packages/core/src/common/pii-masking.ts`); personal data reaches a model only with consent ([ADR-0091](adr/0091-owl-personal-data-with-consent.md)).
 - Amounts come from the core: the estimate, lump sums and work-related expenses are computed before the model is asked. Every answer is then checked without a model.
-- A topic guard sorts every typed question first ([ADR-0100](adr/0100-eule-waechter-parallel-und-messung.md)). If it fails, the question passes, and the topic rule in the owl's own prompt remains as the second line.
+- A topic guard sorts every typed question first ([ADR-0100](adr/0100-owl-guard-alongside-the-model-and-timings.md)). If it fails, the question passes, and the topic rule in the owl's own prompt remains as the second line.
 - Which model works where is defined in slots (`ki/ai-runtime-config.service.ts`). A kill switch turns model calls off; the receipt readers then work with the fixed rules alone.
 
 ## 8.4 Persistence and transactions
@@ -475,16 +475,16 @@ The index [`docs/adr/index.md`](adr/index.md) lists every decision (101 files as
 | [0019](adr/0019-oxlint-replaces-eslint.md) | oxlint as the lint gate | Accepted |
 | [0021](adr/0021-controls-are-proven-by-breaking-them.md) | A control is proven by breaking it | Accepted |
 | [0034](adr/0034-veranlagungsartenvergleich-returns-a-bounded-comparison.md) | The filing-type comparison returns a bounded comparison, not a verdict | Accepted |
-| [0038](adr/0038-berechnungs-kern-ki-port.md) | Deterministic calculation core, AI behind a port | Accepted |
+| [0038](adr/0038-calculation-core-and-ai-port.md) | Deterministic calculation core, AI behind a port | Accepted |
 | [0045](adr/0045-value-first-funnel.md) | Guests may answer the first questions; the account takes them over | Accepted |
-| [0050](adr/0050-papierweg-statt-elster-in-1-0.md) | Filing on paper, paid per tax year at print time | Accepted |
-| [0052](adr/0052-agenten-zugang-mcp.md) | Access for the user's own assistant through MCP and OAuth | Accepted |
+| [0050](adr/0050-paper-filing-instead-of-elster-in-1-0.md) | Filing on paper, paid per tax year at print time | Accepted |
+| [0052](adr/0052-agent-access-mcp.md) | Access for the user's own assistant through MCP and OAuth | Accepted |
 | [0053](adr/0053-beta-hosting-cloud-run.md) | Hosting on Cloud Run and Cloud SQL | Accepted |
 | [0055](adr/0055-zero-downtime-database-migrations-expand-contract.md) | Migrations by expand and contract | Accepted |
-| [0059](adr/0059-beleg-keystore-crypto-shredding.md) | A separate keystore for receipt keys | Accepted |
-| [0064](adr/0064-eulen-chat-antwortlaeufe-und-wiederaufnahme.md) | The owl's answer runs, detached from the connection | Accepted |
-| [0066](adr/0066-eule-feldkatalog-und-ein-schreibweg.md) | One field catalogue, one write path, draft before entry | Accepted |
-| [0101](adr/0101-selbststaendige.md) | Self-employment: cash-basis accounting, bookkeeping, balance sheet, VAT and trade tax | Accepted |
+| [0059](adr/0059-document-keystore-crypto-shredding.md) | A separate keystore for receipt keys | Accepted |
+| [0064](adr/0064-owl-chat-answer-runs-and-resumption.md) | The owl's answer runs, detached from the connection | Accepted |
+| [0066](adr/0066-owl-field-catalog-and-one-write-path.md) | One field catalogue, one write path, draft before entry | Accepted |
+| [0101](adr/0101-self-employed.md) | Self-employment: cash-basis accounting, bookkeeping, balance sheet, VAT and trade tax | Accepted |
 | [0102](adr/0102-ports-and-adapters-enforced-by-architecture-tests.md) | Ports & Adapters, enforced by two architecture tests | Accepted |
 
 The decisions on rental, capital income and the year takeover (0046, 0048, 0049) still have the status *Draft* although their code ships (§11).
@@ -521,7 +521,7 @@ Two rules for gates: a gate counts only when it runs in CI against the real thin
 | 5 | **Tight coupling of the API modules** (§4.1.4). | A module can rarely be changed or tested alone. | Resolve the 16 mutual pairs one by one; the baseline shrinks with them. |
 | 6 | **LangChain runs through the advisory turn** (§4.1.4). | Lock-in to a framework. | Accepted as long as changing the provider stays configuration. |
 | 7 | **Rate limiting partly in process memory** (§8.7). | With several instances the limit applies per instance. | Back `ThrottlerModule` with Redis. |
-| 8 | **ELSTER transmission not operational.** The code calls an ERiC process; the operator certificate is missing. | Self-employed users who must file electronically cannot do so through the app. | Obtain the certificate, decide how the ERiC process is run ([ADR-0101](adr/0101-selbststaendige.md)). |
+| 8 | **ELSTER transmission not operational.** The code calls an ERiC process; the operator certificate is missing. | Self-employed users who must file electronically cannot do so through the app. | Obtain the certificate, decide how the ERiC process is run ([ADR-0101](adr/0101-self-employed.md)). |
 | 9 | **The official forms change every year.** | A shifted field makes the printout unusable. | Exists as a gate: checksums and measurements break the build. The forms for 2026 are still missing. |
 | 10 | **Per-year constants outside the parameter registry**, for example in `domains/business/payroll.ts`. | A new tax year needs changes in several places. | Consolidate into `tax-parameters.ts` at the next change of year. |
 | 11 | **A second target environment in `infra/`.** Next to `infra/gcp` there are definitions for Hetzner with k3s. | A reader of the repository sees two targets and cannot tell which one applies. | Remove them or mark them as an archive. |

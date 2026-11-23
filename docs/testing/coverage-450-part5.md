@@ -1,6 +1,6 @@
 # Testabdeckung #450 Teil 5: Dialoge, Uploads, Fehlerzustände
 
-Stand: 11.11.2026. Ergänzt [abdeckung-450-teil4.md](abdeckung-450-teil4.md). **Lücke** heißt, dass es noch keinen Test gibt.
+Stand: 11.11.2026. Ergänzt [coverage-450-part4.md](coverage-450-part4.md). **Lücke** heißt, dass es noch keinen Test gibt.
 
 | Teil | Was | Datei | Art |
 | :--- | :--- | :--- | :--- |

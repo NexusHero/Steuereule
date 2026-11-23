@@ -110,7 +110,7 @@ amtlich vorgeschriebene Vordruck verwendet wird (§ 150 Abs. 1 AO). Das BMF-Schr
 `felder-<jahr>.json` dem entspricht, was Vorlagen und Spec ergeben (inkl. Prüfsumme jeder Vorlage),
 und dass der Lagebericht `felder-<jahr>.lage.txt` — Zeile, Beschriftung und Spaltenkopf je Feld —
 unverändert ist. Ein geänderter Bericht verlangt eine menschliche Durchsicht (Ablauf:
-`docs/process/vordrucke-jahreswechsel.md`). Das amtliche FFWP-Format ist verschlüsselt und ohne
+`docs/process/official-forms-at-year-change.md`). Das amtliche FFWP-Format ist verschlüsselt und ohne
 Spezifikation; ein eigener Parser wurde verworfen.
 
 **Bearbeitbare Variante (AcroForm).** `GET …/ausdruck?bearbeitbar=true` liefert dieselben Werte als

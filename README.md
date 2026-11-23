@@ -41,7 +41,7 @@
 
 The owl is a tax advisor in a chat, built like Claude: the conversation is the main surface, the return stays one click away. She works for the user's money, cites the law, and never writes into the return on her own.
 
-- **She opens the conversation.** With enough on file she analyses the case unasked: where the refund stands, what already counts, where money is still lying around. With gaps she says what she knows and asks for the rest as a round of tappable answers. With nothing on file she offers to start the interview. She only opens again when the case changed ([ADR-0067 §11](docs/adr/0067-eule-projekte-gespraeche-notizen-kontext.md)).
+- **She opens the conversation.** With enough on file she analyses the case unasked: where the refund stands, what already counts, where money is still lying around. With gaps she says what she knows and asks for the rest as a round of tappable answers. With nothing on file she offers to start the interview. She only opens again when the case changed ([ADR-0067 §11](docs/adr/0067-owl-projects-conversations-notes-context.md)).
 - **Figures from the engine, words from the model.** The estimate, the commute and home-office allowances and the work expenses are computed by [`@steuereule/core`](packages/core/) before the model is asked; they are the only amounts she may name. Every answer is checked without a model, and an opening that names an amount the app did not compute is written again.
 - **`/grill-me`.** The Berater-Interview skill asks in rounds, each with tappable answers and her recommendation; the answers become drafts the user approves.
 - **Drafts, not writes.** Everything she prepares is a draft with its computed effect on the refund; nothing reaches the return without a click (or Turbo, visible and undoable).
@@ -74,7 +74,7 @@ Traditional tax software presents dense tabular forms without proactive guidance
 
 **Steuereule changes this with software-driven advisory:**
 1. **Intelligent Advisory:** Instead of blank forms, Steuereule conducts an adaptive interview, deriving legal deductions (home office lump sums, commute deductions, childcare, education costs) directly cited with the governing statutory paragraph (§ EStG).
-2. **Deterministic Engine vs. AI Hallucination:** All financial computations are executed strictly by a pure, deterministic calculation kernel ([`@steuereule/core`](packages/core/)). AI assists solely in narrative explanation and contextual suggestions; it is strictly prohibited from mutating financial figures ([ADR-0038](docs/adr/0038-berechnungs-kern-ki-port.md)).
+2. **Deterministic Engine vs. AI Hallucination:** All financial computations are executed strictly by a pure, deterministic calculation kernel ([`@steuereule/core`](packages/core/)). AI assists solely in narrative explanation and contextual suggestions; it is strictly prohibited from mutating financial figures ([ADR-0038](docs/adr/0038-calculation-core-and-ai-port.md)).
 3. **Transparent Range over Deceptive Promises:** Potential refunds are displayed as an honest, uncommitted range until every relevant legal variable is confirmed ([ADR-0032](docs/adr/0032-nothing-on-screen-promises-what-the-slice-does-not-deliver.md)).
 4. **Verifiable Paper Trail:** Outputs are calibrated directly onto official Federal Ministry of Finance (BMF) tax forms down to the millimeter, making every figure auditable by tax professionals.
 
@@ -98,10 +98,10 @@ Traditional tax software presents dense tabular forms without proactive guidance
 
 * **Purely Deterministic Calculation Core ([`packages/core`](packages/core/)):**
   Financial calculation logic (§ 32a EStG income tax brackets, solidarity surcharge, child allowances, split-tariff formulas) is encapsulated in an isolated, pure-TypeScript engine completely free of UI, database, or I/O dependencies. 155 test files check it against statutory values (count as of 2026-11-22).
-* **Separation of AI & Calculation ([ADR-0038](docs/adr/0038-berechnungs-kern-ki-port.md)):**
+* **Separation of AI & Calculation ([ADR-0038](docs/adr/0038-calculation-core-and-ai-port.md)):**
   Large language models offer advice, summarize legal paragraphs, and propose interview topics, but have zero write access to calculation state. A user must explicitly accept a suggestion before parameters feed into the deterministic core.
 * **Field-Level Encryption:**
-  Fields marked `@encrypted` in the Prisma schema, such as tax identification numbers and amounts, are encrypted server-side with **AES-256-GCM** before they reach PostgreSQL. Receipt files are encrypted with a key per user, so deleting the key destroys the file even in old backups ([ADR-0059](docs/adr/0059-beleg-keystore-crypto-shredding.md)).
+  Fields marked `@encrypted` in the Prisma schema, such as tax identification numbers and amounts, are encrypted server-side with **AES-256-GCM** before they reach PostgreSQL. Receipt files are encrypted with a key per user, so deleting the key destroys the file even in old backups ([ADR-0059](docs/adr/0059-document-keystore-crypto-shredding.md)).
 * **Rigorous Architecture Discipline:**
   More than **100 Architecture Decision Records ([docs/adr/](docs/adr/))** record decisions with their alternatives. The architecture is documented along **arc42** in [`docs/architecture.md`](docs/architecture.md), including its known debts.
 * **Contract-First API Design:**

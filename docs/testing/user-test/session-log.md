@@ -10,8 +10,8 @@
 1. **Begrüßung (5 Min)** — Text vorlesen:
    > „Danke, dass Sie mitmachen. Wir testen die App, nicht Sie. Es gibt keine falschen Antworten. Denken Sie bitte laut: Sagen Sie, was Sie suchen, was Sie erwarten und was Sie überrascht. Alle Angaben sind ausgedacht, bitte tragen Sie nichts Eigenes ein. Sie können jederzeit abbrechen.“
    Einwilligung (Notizen; Aufnahme nur, wenn ausdrücklich zugestimmt) unterschreiben lassen.
-2. **Aufgaben 1–4 (25 Min)** — Karte für Karte aus [aufgaben.md](aufgaben.md). Zwischen den Aufgaben nicht loben oder bewerten.
-3. **SUS (5 Min)** — Bogen aus [sus-fragebogen.md](sus-fragebogen.md) allein ausfüllen lassen, direkt nach Aufgabe 4, vor jedem Gespräch.
+2. **Aufgaben 1–4 (25 Min)** — Karte für Karte aus [tasks.md](tasks.md). Zwischen den Aufgaben nicht loben oder bewerten.
+3. **SUS (5 Min)** — Bogen aus [sus-questionnaire.md](sus-questionnaire.md) allein ausfüllen lassen, direkt nach Aufgabe 4, vor jedem Gespräch.
 4. **Nachgespräch (5 Min)** — drei Fragen:
    - „Was war am schwierigsten?“
    - „Gab es eine Stelle, an der Sie nicht wussten, wo Sie gerade sind?“

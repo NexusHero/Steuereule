@@ -57,7 +57,7 @@ Geprüft für 2022 bis 2026: Das FMS (Ordner est22 bis est25, Formular-IDs 03409
 ### Aktualisieren
 
 1. Neue BMF-Adressen in `scripts/elster-lines/sources.mjs` eintragen (Prüfsumme leer lassen), `node scripts/elster-lines/build-elster-lines.mjs` laufen lassen; die gemeldete Abweichung der Prüfsumme nach Durchsicht übernehmen.
-2. Für ESt 1 A / Anlage Sonstiges zuerst den Vordrucke-Prozess (`docs/process/vordrucke-jahreswechsel.md`) für das neue Jahr; dann das Jahr in `sources.mjs` ergänzen.
+2. Für ESt 1 A / Anlage Sonstiges zuerst den Vordrucke-Prozess (`docs/process/official-forms-at-year-change.md`) für das neue Jahr; dann das Jahr in `sources.mjs` ergänzen.
 3. Den Diff von `lines.generated.ts` lesen wie einen Lagebericht und die Stichproben in `catalogue.test.ts` um das neue Jahr erweitern. Bricht das Skript mit „no id for unnumbered row“ ab, die Zeile in `EUER_UNNUMBERED` benennen.
 
 Bekannte Grenzen der Textauswertung: In einzelnen Zeilen steht eine Abschnittsüberschrift vor der Beschriftung (EÜR 2022 Zeile 46 „Raumkosten …“); in der USt 2 A 2022 sind die Beschriftungen der Ergebniszeilen 165 bis 169 unvollständig, weil Teile davon als Überschrift gedruckt sind. Zeilen, Kennzahlen und Zuordnungen sind davon nicht betroffen.

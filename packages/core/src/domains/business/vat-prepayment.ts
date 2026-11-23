@@ -3,7 +3,7 @@ import type { VatRateKind } from './vat-annual'
 /**
  * The Umsatzsteuer-Voranmeldung (§ 18 Abs. 1, 2, 2a UStG, §§ 46–48 UStDV) and the Zusammenfassende
  * Meldung (§ 18a UStG), ADR-0101 §22. The app computes and shows the Kennzahlen to type into Mein ELSTER;
- * it does not transmit. Sources: docs/research/selbststaendige-erweiterung.md §3, §4.
+ * it does not transmit. Sources: docs/research/self-employed-extension.md §3, §4.
  */
 
 export type VatFilingPeriod = 'monat' | 'quartal' | 'befreit'

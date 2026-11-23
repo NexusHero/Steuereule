@@ -12,9 +12,9 @@ Primärquellen: Gesetzestext (gesetze-im-internet.de), amtliche Anleitung zur Ei
 | 1a | Progressionsvorbehalt auf dieses Taggeld | – | nach Anleitung und FG BW 14 K 2647/18 nein; BFH VI R 26/24 (Unfalltaggeld) könnte übertragen werden | mittel | `01-krankentaggeld.md` |
 | 2 | Schweizer Kinderzulage (FamZG) im Bruttolohn | nicht abgezogen | steuerfrei (Anleitung N-Gre, § 65 EStG), abziehen (2024 Z. 7, 2025 Z. 8); kein Progressionsvorbehalt. BFH VI R 24/17: das Weglassen durch den Berater ist grob fahrlässig | hoch (Ergebnis), mittel (genaue Norm) | `02-kinderzulage.md` |
 | 2a | Schweizer Abzugsteuer auf den steuerfreien Teil | voll angerechnet | nach Anleitung (Zeile 25) nur, soweit die Einkünfte erfasst sind | mittel (Verfügung nur sekundär) | `02-kinderzulage.md` |
-| 3 | Zweiter KVG-Grundversicherer nach Kassenwechsel im Jahr | fehlt | Beiträge beider Versicherer voll als Basisabsicherung (§ 10 Abs. 1 Nr. 3 a EStG, BMF Rz. 140); Kind in Anlage Kind Kz 89 | hoch (ca. 90 %) | `03-kv-wechsel-grundversicherung.md` |
+| 3 | Zweiter KVG-Grundversicherer nach Kassenwechsel im Jahr | fehlt | Beiträge beider Versicherer voll als Basisabsicherung (§ 10 Abs. 1 Nr. 3 a EStG, BMF Rz. 140); Kind in Anlage Kind Kz 89 | hoch (ca. 90 %) | `03-health-insurance-switch-basic-cover.md` |
 | 4 | Hälfte der NBUV-Prämie als Werbungskosten | nicht angesetzt | richtig: je 50 % Werbungskosten (Z. 59) und Vorsorge (Z. 81), BMF 28.10.2009 Tz. 1.3 | hoch (AN-Anteil), mittel-hoch (AG-Anteil) | `04-nbu-werbungskosten.md` |
-| 5 | Höchstbetrag sonstige Vorsorge bei selbst bezahlter KVG | 1.900 € bei einer Person | 2.800 € (§ 10 Abs. 4 Satz 1); wirkt hier nicht, weil die Basisbeiträge den Höchstbetrag übersteigen (Satz 4) | hoch | `05-hoechstbetrag-sonstige-vorsorge.md` |
+| 5 | Höchstbetrag sonstige Vorsorge bei selbst bezahlter KVG | 1.900 € bei einer Person | 2.800 € (§ 10 Abs. 4 Satz 1); wirkt hier nicht, weil die Basisbeiträge den Höchstbetrag übersteigen (Satz 4) | hoch | `05-cap-on-other-provident-expenses.md` |
 
 ## Neu gerechnetes Soll (Rechenkern, Bescheid-Fälle aus `notice-parity.test.ts` mit den Korrekturen)
 

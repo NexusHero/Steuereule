@@ -52,7 +52,7 @@ status column and progress.db context updated to done (D17). No per-phase stakeh
 5. Pre-go-live load test passed.
 6. No "AI smell": the phase 0.2 bespoke list replaced, comment discipline repo-wide.
 7. ~~ELSTER submission activated once the manufacturer certificate arrives (external track).~~
-   **Amended by [ADR-0050](0050-papierweg-statt-elster-in-1-0.md) (2026-10-28):** 1.0 files on paper —
+   **Amended by [ADR-0050](0050-paper-filing-instead-of-elster-in-1-0.md) (2026-10-28):** 1.0 files on paper —
    form printout per BMF letter of 12.08.2022, paid unlock per tax year, legal pages reviewed by a
    lawyer. ELSTER becomes a 1.x extension.
 

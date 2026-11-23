@@ -3,7 +3,7 @@
 - **Status:** Accepted
 - **Date:** 2026-11-13
 - **Deciders:** NexusHero (Product Owner), Steuereule Engineering
-- **Applies to:** `apps/api/src/printout/`, `scripts/vordrucke/`, `docs/process/vordrucke-jahreswechsel.md`, `apps/mobile-web/src/screens/printout/PrintoutScreen.tsx`
+- **Applies to:** `apps/api/src/printout/`, `scripts/vordrucke/`, `docs/process/official-forms-at-year-change.md`, `apps/mobile-web/src/screens/printout/PrintoutScreen.tsx`
 - **Baut auf:** ADR-0050 (Papierweg, Vermessung der Vordrucke)
 
 ## Kontext

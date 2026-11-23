@@ -5,7 +5,7 @@
 //     API_ORIGIN=… WEB_ORIGIN=… DATABASE_URL=… node e2e/navigation-efficiency/measure.mjs   # the old app, no gate
 //   node e2e/navigation-efficiency/measure.mjs --update-budgets    # budgets.json = measured + 10 % (D5)
 //
-// Tasks (the same for both variants, see docs/testing/navigation-vorher-nachher.md):
+// Tasks (the same for both variants, see docs/testing/navigation-before-after.md):
 //   1 Erster Durchlauf — the persona's own scenario script of that commit, from registration to the
 //     printout screen (both commits ship 01, 02, 04, 05, 07). Counted is everything the script does.
 //   2 Korrektur        — from the cockpit, change the primary amount (gross wage, Lohnausweis or capital

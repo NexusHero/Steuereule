@@ -27,7 +27,7 @@ Die Qualitätslatte (D3): **professionelles Engineering statt AI-Blähe.**
 |---|---|---|
 | **Code** | Phasen 0–3 unten | sofort |
 | **Infra** | #292: k3s/Hetzner + managed EU-Postgres + Redis, CI/CD, Observability, Backups/DR, arm64-Verifikation (D7) | parallel zur Phase 0 |
-| **ELSTER (extern)** | Hersteller-Zertifikat beantragen — langer Behörden-Vorlauf (D8). **Seit [ADR-0050](adr/0050-papierweg-statt-elster-in-1-0.md) kein 1.0-Kriterium mehr**: 1.0 gibt auf Papier ab, ELSTER folgt als 1.x | läuft weiter, Owner: NexusHero |
+| **ELSTER (extern)** | Hersteller-Zertifikat beantragen — langer Behörden-Vorlauf (D8). **Seit [ADR-0050](adr/0050-paper-filing-instead-of-elster-in-1-0.md) kein 1.0-Kriterium mehr**: 1.0 gibt auf Papier ab, ELSTER folgt als 1.x | läuft weiter, Owner: NexusHero |
 
 ## Phasen
 
@@ -66,7 +66,7 @@ Abgabe-bereit-Paket (PDF-Export, Bescheid-Vorbereitung) · Marketing-Website (M9
 DSGVO-Final-Audit vor dem ersten echten Konto · **#170: echte Google-Credentials — echter
 OAuth-Handshake statt Platzhalter** · REQ-010 schließt mit der #292-Netzwerk-Eigenschaft ·
 Pre-Go-Live-Lasttest · **Formular-Ausdruck auf amtlichen Vordruck-Vorlagen, bezahlt pro Steuerjahr
-beim Ausdruck** ([ADR-0050](adr/0050-papierweg-statt-elster-in-1-0.md)) · Rechtsseiten anwaltlich
+beim Ausdruck** ([ADR-0050](adr/0050-paper-filing-instead-of-elster-in-1-0.md)) · Rechtsseiten anwaltlich
 geprüft. Die ELSTER-Übermittlung ist kein 1.0-Kriterium mehr; sie folgt als 1.x bei Zertifikats-Eingang.
 
 ## Definition of Done — vier Ebenen (D13–D20)
@@ -104,7 +104,7 @@ PR-Checkliste + Review-Haken; Ausnahmen sichtbar + genehmigt + begründet + mit 
 4. DSGVO-Final-Audit vor dem ersten echten Konto.
 5. Pre-Go-Live-Lasttest bestanden.
 6. Kein „AI-Geruch": Eigenbau-Liste aus Phase 0.2 ersetzt, Kommentar-Disziplin repo-weit.
-7. ~~ELSTER-Übermittlung aktiviert~~ → **Papierweg** ([ADR-0050](adr/0050-papierweg-statt-elster-in-1-0.md)):
+7. ~~ELSTER-Übermittlung aktiviert~~ → **Papierweg** ([ADR-0050](adr/0050-paper-filing-instead-of-elster-in-1-0.md)):
    Formular-Ausdruck nach BMF-Schreiben vom 12.08.2022, Freischaltung pro Steuerjahr bezahlt,
    Rechtsseiten anwaltlich geprüft. ELSTER folgt als 1.x.
 

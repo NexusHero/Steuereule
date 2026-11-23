@@ -4,10 +4,10 @@ Ziel: Herausfinden, ob die neue Navigation (#443, Hub-Cockpit) Menschen tatsäch
 
 | Datei | Wofür |
 | :--- | :--- |
-| [protokoll.md](protokoll.md) | Ablauf je Sitzung, Rolle der Moderation, Vorlage für die Notizen |
-| [aufgaben.md](aufgaben.md) | Die vier Aufgaben mit Testdaten und Erfolgskriterium |
-| [sus-fragebogen.md](sus-fragebogen.md) | System Usability Scale (10 Fragen) mit Auswertung |
-| [auswertung.md](auswertung.md) | Tabelle für die Ergebnisse und den Bericht |
+| [session-log.md](session-log.md) | Ablauf je Sitzung, Rolle der Moderation, Vorlage für die Notizen |
+| [tasks.md](tasks.md) | Die vier Aufgaben mit Testdaten und Erfolgskriterium |
+| [sus-questionnaire.md](sus-questionnaire.md) | System Usability Scale (10 Fragen) mit Auswertung |
+| [evaluation.md](evaluation.md) | Tabelle für die Ergebnisse und den Bericht |
 
 ## Aufbau
 
@@ -20,7 +20,7 @@ Ziel: Herausfinden, ob die neue Navigation (#443, Hub-Cockpit) Menschen tatsäch
 
 ## Datenschutz
 
-- Nur **synthetische Testdaten** aus [aufgaben.md](aufgaben.md). Die Personen tragen nie eigene Daten ein.
+- Nur **synthetische Testdaten** aus [tasks.md](tasks.md). Die Personen tragen nie eigene Daten ein.
 - Testkonten werden vorher angelegt und danach gelöscht.
 - Keine Bild- oder Tonaufnahme ohne schriftliche Einwilligung. Ohne Einwilligung: nur Notizen und Stoppuhr.
 - In den Ergebnissen stehen Kürzel (A1–A5, N1–N5), keine Namen.
@@ -30,4 +30,4 @@ Ziel: Herausfinden, ob die neue Navigation (#443, Hub-Cockpit) Menschen tatsäch
 1. Stack starten (siehe `e2e/harness/README.md`), für **Alt** vorher `git worktree add ../steuereule-alt baseline/pre-443`.
 2. Je Person ein frisches, bestätigtes Konto anlegen (E-Mail `nutzertest-<kürzel>@beispiel.de`), noch ohne Angaben.
 3. Browser: neues Profil, kein Autofill, Zoom 100 %, Fenster 1280 × 800.
-4. Stoppuhr, ausgedruckte Aufgabenkarten, ausgedruckter SUS-Bogen, Notizvorlage aus [protokoll.md](protokoll.md).
+4. Stoppuhr, ausgedruckte Aufgabenkarten, ausgedruckter SUS-Bogen, Notizvorlage aus [session-log.md](session-log.md).

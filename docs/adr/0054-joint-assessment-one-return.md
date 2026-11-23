@@ -3,7 +3,7 @@
 - **Status:** Accepted (Stakeholder-Entscheidung 2026-11-05, Grilling nach dem 4-Personen-Testlauf)
 - **Date:** 2026-11-05
 - **Deciders:** NexusHero (Stakeholder)
-- **Amends** [ADR-0050](0050-papierweg-statt-elster-in-1-0.md) (Ausdruck, Freischaltung pro Steuerjahr)
+- **Amends** [ADR-0050](0050-paper-filing-instead-of-elster-in-1-0.md) (Ausdruck, Freischaltung pro Steuerjahr)
 - **Context tags:** product scope, data model, payment, test gate
 
 ## Context
