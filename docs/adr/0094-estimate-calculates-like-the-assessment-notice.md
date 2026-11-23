@@ -1,4 +1,4 @@
-# ADR-0094 — Die Schätzung rechnet wie der Bescheid
+# ADR-0094 — The estimate calculates like the Bescheid
 
 - **Status:** Accepted
 - **Date:** 2026-11-17
@@ -9,42 +9,42 @@
   - `packages/core/src/math/tarif.ts` (`solidaritaetszuschlagInCents`, `capitalFlatTax`, `soliOnFlatTax`)
   - `packages/core/src/common/workdays.ts` (`commuterAllowance`)
   - `apps/api/src/tax-estimate/tax-estimate.service.ts`
-- **Baut auf:** ADR-0054 (Ehegatten-Schätzung), ADR-0079 (Wechseljahr), ADR-0090 (LStB Zeile 24, NBUV), ADR-0093 (Zeilen der Lohnsteuerbescheinigung)
-- **Ändert:** Produkt-ADR-015 („nie ein Punktwert“) für den Fall, dass alle Zeilen vorliegen
+- **Builds on:** ADR-0054 (spouse estimate), ADR-0079 (job-change year), ADR-0090 (LStB line 24, NBUV), ADR-0093 (lines of the Lohnsteuerbescheinigung)
+- **Changes:** product ADR-015 ("never a point value") for the case that all lines are present
 
-## Kontext
+## Context
 
-Ein Lauf mit echten Unterlagen über 2024 und 2025 endete rund 3.230 € und 190 € neben den Bescheiden. Die Zerlegung zeigte Fehler in beide Richtungen, die sich teils aufhoben. Ein Teil lag an den Eingaben (ADR-0093), ein Teil an der Rechnung:
+A run with real documents for 2024 and 2025 ended about €3,230 and €190 away from the Bescheide (Steuerbescheid, tax assessment notices). The breakdown showed errors in both directions that partly cancelled each other out. Part of it was due to the inputs (ADR-0093), part to the calculation:
 
-- Die Vorsorge war eine Spanne von 91 bis 93 % der Sozialversicherung statt der Höchstbetragsrechnung.
-- Kapitalerträge ohne Steuerabzug fehlten in der Ehegatten-Schätzung.
-- Der Solidaritätszuschlag wurde auf die Steuer vor den Ermäßigungen und in ganzen Euro gerechnet.
-- Schweizer Beträge wurden Zeile für Zeile gerundet, das Finanzamt rechnet die Summe um.
+- Provision was a range of 91 to 93 % of social insurance instead of the maximum-amount calculation.
+- Capital income without tax deduction was missing from the spouse estimate.
+- The solidarity surcharge was calculated on the tax before reductions and in whole euros.
+- Swiss amounts were rounded line by line; the Finanzamt (tax office) converts the sum.
 
-Beide Bescheide wurden vollständig abgeschrieben und nachgerechnet. Jede Summe geht auf.
+Both Bescheide were copied in full and recalculated. Every sum adds up.
 
-## Entscheidung
+## Decision
 
-1. **Zwei Bescheide sind Prüffälle im Rechenkern** (`notice-parity.test.ts`). Sie enthalten nur Beträge, keine Namen, Arbeitgeber oder Nummern. Erwartet wird der Bescheid auf den Euro, der Solidaritätszuschlag auf den Cent.
-2. **Vorsorge Zeile für Zeile** (`deductibleProvision`, § 10 Abs. 3 und 4 EStG):
-   - Altersvorsorge: Arbeitnehmer- und Arbeitgeberanteil zusammen, höchstens der Höchstbetrag (für Ehegatten doppelt), mal Anteil des Jahres, abzüglich Arbeitgeberanteil.
-   - Basis-Kranken- und Pflegeversicherung voll. Beiträge mit Krankengeldanspruch werden um 4 % gekürzt; die Kürzung bemisst sich am Beitrag nach Abzug seines eigenen Zuschusses. Steuerfreie Arbeitgeberzuschüsse gehen ab.
-   - Sonstige Vorsorge nur, soweit die Basisabsicherung den Höchstbetrag nicht ausschöpft. Der Höchstbetrag ist 1.900 € je Person mit Anspruch auf Zuschüsse zur Krankenversicherung und 2.800 € ohne; für Ehegatten addieren sich die Beträge.
-   - Liegen die Zeilen für beide Ehegatten vor, ist die Vorsorge ein Betrag. Fehlen sie, bleibt die bisherige Spanne.
-3. **Rundung wie das Finanzamt:** Einnahmen ab, Werbungskosten und Anrechnungsbeträge auf. Die Entfernungspauschale wird auf volle Euro aufgerundet. Schweizer Lohn ist die Summe in CHF mal Kurs, abgerundet; die Abzugsteuer je Person aufgerundet.
-4. **Kapitalerträge** über dem Sparer-Pauschbetrag tragen 25 % (§ 32d Abs. 1 EStG), abgerundet auf volle Euro. Der Pauschbetrag zählt einmal, gleich wo eine Bank ihn schon berücksichtigt hat. Einbehaltene Kapitalertragsteuer und ihr Solidaritätszuschlag werden angerechnet.
-5. **Solidaritätszuschlag** auf die tarifliche Steuer nach Kinderfreibeträgen und nach Steuerermäßigungen, centgenau, Bruchteile eines Cents entfallen. Auf die Steuer nach § 32d kommen 5,5 % ohne Freigrenze.
-6. **Kinderfreibetrag** je Monat ein Zwölftel (§ 32 Abs. 6 Satz 5 EStG).
-7. **Ein Punktwert ist erlaubt, wenn nichts mehr geschätzt wird.** Die Spanne bleibt die Form der Antwort; ihre Enden fallen zusammen, sobald alle Zeilen vorliegen.
+1. **Two Bescheide are test cases in the calculation core** (`notice-parity.test.ts`). They contain only amounts, no names, employers or numbers. The Bescheid is expected to the euro, the solidarity surcharge to the cent.
+2. **Provision line by line** (`deductibleProvision`, § 10 Abs. 3 und 4 EStG):
+   - Retirement provision: employee and employer share together, at most the maximum amount (doubled for spouses), times the share of the year, minus the employer share.
+   - Basic health and long-term care insurance in full. Contributions with entitlement to sick pay are reduced by 4 %; the reduction is measured on the contribution after deducting its own subsidy. Tax-free employer subsidies are deducted.
+   - Other provision only insofar as the basic cover does not use up the maximum amount. The maximum amount is €1,900 per person with entitlement to health insurance subsidies and €2,800 without; for spouses the amounts add up.
+   - If the lines for both spouses are present, provision is one amount. If they are missing, the previous range stays.
+3. **Rounding like the Finanzamt:** income down, Werbungskosten (work-related expenses) and credit amounts up. The distance allowance is rounded up to full euros. Swiss salary is the sum in CHF times the rate, rounded down; the withholding tax per person rounded up.
+4. **Capital income** above the saver's lump sum bears 25 % (§ 32d Abs. 1 EStG), rounded down to full euros. The lump sum counts once, regardless of where a bank has already taken it into account. Withheld capital gains tax and its solidarity surcharge are credited.
+5. **Solidarity surcharge** on the tariff tax after child allowances and after tax reductions, to the cent, fractions of a cent are dropped. On the tax under § 32d, 5.5 % applies without an exemption limit.
+6. **Child allowance** one twelfth per month (§ 32 Abs. 6 Satz 5 EStG).
+7. **A point value is allowed when nothing is estimated any more.** The range remains the form of the answer; its ends coincide as soon as all lines are present.
 
-## Bewusste Unterschiede zum Bescheid
+## Deliberate differences from the Bescheid
 
-- **Hälfte der NBUV-Prämie als Werbungskosten** (ADR-0090): In den Erklärungen des Echtfalls fehlte sie. Die App setzt sie an; das sind dort 286 € und 324 € mehr Werbungskosten als im Bescheid 2025.
-- **Höchstbetrag für sonstige Vorsorge:** Ein Grenzgänger ohne Zuschuss zur Krankenversicherung hat 2.800 €. Im Bescheid 2025 stehen für eine Person 1.900 €, weil die Zeile in der Erklärung leer war. Die App rechnet nach der Angabe `kvZuschussAnspruch`.
-- **Entfernung:** Die App prüft keine Route. Kürzt das Finanzamt die Entfernung, weicht der Bescheid ab.
+- **Half of the NBUV premium as Werbungskosten** (ADR-0090): it was missing from the tax returns of the real case. The app includes it; there that is €286 and €324 more Werbungskosten than in the 2025 Bescheid.
+- **Maximum amount for other provision:** a Grenzgänger (cross-border commuter) without a health insurance subsidy has €2,800. The 2025 Bescheid shows €1,900 for one person because the line in the tax return was empty. The app calculates according to the entry `kvZuschussAnspruch`.
+- **Distance:** the app checks no route. If the Finanzamt shortens the distance, the Bescheid differs.
 
-## Offen
+## Open
 
-- Zusatzversicherung eines Kindes (Anlage Kind Zeile 30) hat noch kein Feld; sie wirkt nur, wenn die Basisabsicherung den Höchstbetrag nicht ausschöpft.
-- Die Einzelveranlagung rechnet die Vorsorge weiter als Spanne.
-- Spendenhöchstbetrag (20 % des Gesamtbetrags der Einkünfte) wird nicht geprüft.
+- A child's supplementary insurance (Anlage Kind, child annex, line 30) has no field yet; it only has an effect if the basic cover does not use up the maximum amount.
+- The Einzelveranlagung (separate assessment) still calculates provision as a range.
+- The maximum amount for donations (20 % of the total amount of income) is not checked.

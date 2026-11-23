@@ -1,4 +1,4 @@
-# ADR-0096 — Modell und Denktiefe wählbar (Gründlich / Max)
+# ADR-0096 — Selectable model and thinking depth (Gründlich / Max)
 
 - **Status:** Accepted
 - **Date:** 2026-11-18
@@ -9,24 +9,24 @@
   - `apps/api/src/advisor/{advisor-models.service,advisor.controller,advisor.service,advisor-conversations,advisor.repository*}.ts`
   - `apps/api/prisma/migrations/20261118120000_conversation_chat_model/`
   - `apps/mobile-web/src/screens/advisor/{AdvisorChatPanel,OwlModeScreen*,CopilotBridgeProvider}.tsx`, `chat/ModelControls.tsx`
-- **Baut auf:** ADR-0069 (Themengrenze), #481 (Denkstufe mittel), #493 (Ausweichmodell)
+- **Builds on:** ADR-0069 (topic boundary), #481 (thinking level medium), #493 (fallback model)
 
-## Kontext
+## Context
 
-Modell und Denktiefe der Eule waren bisher nur über Umgebungsvariablen einstellbar (`AI_ADVISOR_MODEL`, `AI_ADVISOR_THINKING_LEVEL=medium`). Nutzer wollen für schwierige Fragen gründlicher denken lassen und das Modell selbst wählen, dabei aber sehen, was das kostet. Die Modelle unterscheiden sich darin, wie man die Tiefe steuert: Neuere Claude-Modelle über `effort`, Claude bis 4.5 über ein Token-Budget, Gemini 3 über `thinkingLevel` bis `high`, andere gar nicht. Ein falscher Parameter führt zu einem Fehler 400.
+Until now, the owl's model and thinking depth could only be set via environment variables (`AI_ADVISOR_MODEL`, `AI_ADVISOR_THINKING_LEVEL=medium`). Users want to let it think more thoroughly for difficult questions and to choose the model themselves, while seeing what that costs. The models differ in how the depth is controlled: newer Claude models via `effort`, Claude up to 4.5 via a token budget, Gemini 3 via `thinkingLevel` up to `high`, others not at all. A wrong parameter leads to a 400 error.
 
-## Entscheidung
+## Decision
 
-1. **Zwei Stufen pro Nachricht:** „Gründlich“ ist der bisherige Standard (medium) und bleibt Voreinstellung. „Max“ denkt deutlich tiefer: Claude `effort: high`, Gemini `high`, Claude bis 4.5 ein Budget von 16.000 Tokens. Claude `effort: max` wurde gemessen und verworfen: Für eine einfache Frage brauchte es 330 s statt 17 s und etwa 15-mal die Kosten von Gründlich (Entscheidung des Nutzers nach dem Prüflauf). Kann ein Modell nicht tiefer als Gründlich, gibt es Max nicht. Max gilt nur für die eine Nachricht und schaltet sich danach aus. Eine Max-Antwort bekommt Platz für 20.000 Tokens und die Zeit einer Aufgabe (120 s statt 60 s); mit den üblichen 4.096 Tokens und 60 s kam sie im Prüflauf leer zurück oder lief in die Zeitgrenze. Es zählt nicht extra aufs Tageskontingent; ein eigenes Limit gibt es nicht.
-2. **Modell pro Gespräch:** Der Nutzer wählt aus allen Chat-Modellen der Anbieter, für die ein Schlüssel hinterlegt ist. Die Liste kommt vom Anbieter selbst (Anthropic `GET /v1/models`, Gemini `models`, OpenAI `models`), wird 6 Stunden zwischengespeichert und enthält immer das Standardmodell. Standard ist Gemini 3.8 Flash mit Gründlich (medium), auch ohne Einstellung des Betreibers; jedes neue Gespräch beginnt damit vorgewählt. Ausweichmodell ist Claude Sonnet 5.5. Die Wahl steht am Gespräch (`BeraterGespraech.modell`, „provider:model“). Fehlt der Schlüssel eines gewählten Anbieters später, antwortet das Standardmodell.
-3. **Eine Fähigkeitsliste im Kern** (`advisor-models.ts`) legt je Modell fest, wie die Tiefe gesteuert wird und welche Stufen es gibt. API (Modellaufbau) und App (Angebot) lesen dieselbe Liste; der Server prüft selbst.
-4. **Kosten relativ und gemessen:** Jede Antwort speichert in ihrem Verbrauch (`verbrauch`, ohne Inhalt) Anbieter, Modell, Stufe, Tokens und die Zeit bis zum ersten Wort. Die App zeigt den Median der letzten 2.000 Antworten im Verhältnis zum Standardmodell mit Gründlich, z. B. „ca. 3× Kosten · erste Worte nach ca. 15 s“. Unter 5 Antworten heißt es „noch nicht gemessen“. Ein Kostenfaktor braucht Tokenpreise; hinterlegt sind die Listenpreise von Anthropic und für Gemini 3.8 Flash Googles regulärer Preis (1,50 $ / 7,50 $ je Million Tokens; den Einführungspreis bis 31.12.2026 nicht, damit die Faktoren im Januar nicht springen). Ohne Preis steht „Kosten noch nicht bekannt“ mit der gemessenen Wartezeit.
-5. **Beim Betreiber bleiben:** Belegscan, Themenprüfung (Guard) und Ausweichmodell folgen nicht der Wahl. Springt das Ausweichmodell bei einer Max-Frage ein, denkt es auf seiner eigenen höchsten Stufe; die Statuszeile sagt, wer antwortet.
-6. **Keine Schlüssel in URLs:** Die Modelllisten werden mit Schlüssel im Header abgefragt (`x-api-key`, `x-goog-api-key`, `Authorization`).
+1. **Two levels per message:** „Gründlich“ ("Thorough") is the previous default (medium) and remains the default setting. „Max“ thinks considerably deeper: Claude `effort: high`, Gemini `high`, Claude up to 4.5 a budget of 16,000 tokens. Claude `effort: max` was measured and rejected: for a simple question it needed 330 s instead of 17 s and about 15 times the cost of Gründlich (the user's decision after the test run). If a model cannot go deeper than Gründlich, there is no Max. Max applies only to the one message and switches itself off afterwards. A Max answer gets room for 20,000 tokens and the time of a task (120 s instead of 60 s); with the usual 4,096 tokens and 60 s it came back empty in the test run or ran into the time limit. It does not count extra against the daily quota; there is no separate limit.
+2. **Model per conversation:** the user chooses from all chat models of the providers for which a key is stored. The list comes from the provider itself (Anthropic `GET /v1/models`, Gemini `models`, OpenAI `models`), is cached for 6 hours and always contains the default model. The default is Gemini 3.8 Flash with Gründlich (medium), even without an operator setting; every new conversation starts with it preselected. The fallback model is Claude Sonnet 5.5. The choice is stored on the conversation (`BeraterGespraech.modell`, "provider:model"). If the key of a chosen provider is missing later, the default model answers.
+3. **One capability list in the core** (`advisor-models.ts`) defines per model how the depth is controlled and which levels exist. API (model setup) and app (offering) read the same list; the server checks itself.
+4. **Costs relative and measured:** every answer stores in its usage (`verbrauch`, without content) provider, model, level, tokens and the time to the first word. The app shows the median of the last 2,000 answers relative to the default model with Gründlich, e.g. „ca. 3× Kosten · erste Worte nach ca. 15 s“ ("approx. 3× cost · first words after approx. 15 s"). Under 5 answers it says „noch nicht gemessen“ ("not measured yet"). A cost factor needs token prices; stored are Anthropic's list prices and, for Gemini 3.8 Flash, Google's regular price ($1.50 / $7.50 per million tokens; not the introductory price until 31.12.2026, so that the factors do not jump in January). Without a price it shows „Kosten noch nicht bekannt“ ("Cost not known yet") with the measured waiting time.
+5. **Stays with the operator:** document scan, topic check (guard) and fallback model do not follow the choice. If the fallback model steps in on a Max question, it thinks at its own highest level; the status line says who is answering.
+6. **No keys in URLs:** the model lists are requested with the key in the header (`x-api-key`, `x-goog-api-key`, `Authorization`).
 
-## Folgen
+## Consequences
 
-- Max kostet laut Messung mehrfach so viel wie Gründlich; ohne Limit trägt der Nutzer die Entscheidung allein, die relative Angabe ist der einzige Bremsklotz.
-- Neue Modelle eines Anbieters sind sofort wählbar, bevor sie den Echtdaten-Prüflauf bestanden haben. Ein Modell, das bei der Steuer schlechter rechnet, steht dann ohne Warnung im Angebot. Beides ist bewusst so entschieden und lässt sich später einschränken (Liste des Betreibers, Limit für Max).
-- Ein Wechsel des Modells mitten im Gespräch verliert den Prompt-Cache dieses Gesprächs; deshalb gilt die Modellwahl pro Gespräch, nicht pro Nachricht.
-- Preise anderer Anbieter fehlen; ihr Kostenfaktor bleibt unbekannt, bis Preise hinterlegt sind.
+- According to the measurement, Max costs several times as much as Gründlich; without a limit the user bears the decision alone, and the relative figure is the only brake.
+- New models of a provider are selectable immediately, before they have passed the real-data test run. A model that calculates worse on tax then appears in the offering without a warning. Both are deliberately decided this way and can be restricted later (operator list, limit for Max).
+- Switching the model in the middle of a conversation loses that conversation's prompt cache; that is why the model choice applies per conversation, not per message.
+- Prices of other providers are missing; their cost factor stays unknown until prices are stored.

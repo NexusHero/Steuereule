@@ -15,18 +15,18 @@
 ## Context
 
 Two problems, one function. `packages/core/src/tarif.ts` (#340, the N strand of #321) computes the
-comparison between **Einzelveranlagung** and **Zusammenveranlagung** and returns, alongside the two
-amounts, a field named `empfehlung`.
+comparison between **Einzelveranlagung** (separate assessment) and **Zusammenveranlagung** (joint assessment) and returns, alongside the two
+amounts, a field named `empfehlung` (recommendation).
 
 ### 1. The verdict outruns its evidence, and it does so at the API boundary
 
 Measured on #340's head: `empfehlung` is emitted in identical form at `delta = 1 €` and at
 `delta = −1449 €`. The module's own header names three factors it does **not** compute —
-Solidaritätszuschlag, Kirchensteuer, Progressionsvorbehalt — and states correctly that each can flip
-which Veranlagung wins.
+Solidaritätszuschlag (solidarity surcharge), Kirchensteuer (church tax), Progressionsvorbehalt (progression proviso) — and states correctly that each can flip
+which Veranlagung (assessment) wins.
 
 That honesty is real and it is entirely in the comments. What crosses the module boundary is a field
-called `empfehlung` from a function documented as *the Günstigerprüfung*, with no attached limit. A
+called `empfehlung` from a function documented as *the Günstigerprüfung* (most-favorable-outcome check), with no attached limit. A
 caller cannot distinguish a coin-flip from a clear answer, because the return value does not carry the
 difference.
 
@@ -35,16 +35,16 @@ handed, and a module that manufactures an unqualified claim has already spent th
 any screen is written. **The rule binds where the claim is made, not only where it is rendered.**
 
 Magnitude, so this is a measurement and not a feeling. Kirchensteuer is 8–9 % of the assessed income
-tax; Solidaritätszuschlag is 5.5 % of it above the Freigrenze. Both are surcharges **on an ESt that
+tax; Solidaritätszuschlag is 5.5 % of it above the Freigrenze (exemption threshold). Both are surcharges **on an ESt that
 differs between the two Veranlagungen**, so their contribution to the delta is of the order of tens to
 hundreds of euro at ordinary incomes. A delta of 1 € is inside that band. So is a delta of 100 €.
-Progressionsvorbehalt is worse: with Lohnersatzleistungen in play it is unbounded from the inputs this
+Progressionsvorbehalt is worse: with Lohnersatzleistungen (wage replacement benefits) in play it is unbounded from the inputs this
 module has.
 
 ### 2. The name is already taken, in the other log, for a different comparison
 
 **Günstigerprüfung** in this product's vocabulary is **Produkt-ADR-032**'s sense — § 32d Abs. 6 EStG,
-Abgeltungsteuer on Kapitalerträge against the personal tariff rate. What `tarif.ts` performs is the
+Abgeltungsteuer (flat withholding tax) on Kapitalerträge (capital income) against the personal tariff rate. What `tarif.ts` performs is the
 § 26 / § 26a / § 26b comparison of **assessment types**.
 
 Two different comparisons, both of which a German speaker would describe as "checking which is
@@ -52,7 +52,7 @@ cheaper". The collision is **scheduled, not hypothetical**: #341 already declare
 `kap-depot` branch that Produkt-ADR-032's Kapitalerträge slice will hang off, and that slice needs the
 word *Günstigerprüfung* for its own, correct meaning.
 
-The correct term for what this function does is **Veranlagungsartenvergleich**.
+The correct term for what this function does is **Veranlagungsartenvergleich** (comparison of assessment types).
 
 This is the same conflation ADR-0033 § *Citation form* was written against, one level up: there it was
 two **ADR logs** sharing a number, here it is two **decisions** sharing a word.

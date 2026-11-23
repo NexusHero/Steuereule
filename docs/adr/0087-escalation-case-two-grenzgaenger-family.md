@@ -1,67 +1,75 @@
-# ADR-0087 — Eskalationsfall: zwei Grenzgänger mit Wechseljahr, drei Kinder, Krankheitskosten
+# ADR-0087 — Escalation case: two Grenzgänger with a change year, three children, medical costs
 
 - **Status:** Accepted
 - **Date:** 2026-11-14
 - **Deciders:** NexusHero (Product Owner), Steuereule Engineering
 - **Applies to:** `apps/api/src/ch-salary-certificate/`, `apps/api/src/tax-estimate/tax-estimate.service.ts`, `apps/api/src/lstb-scan/lstb-scan.parse-strategy.ts`, `apps/api/src/advisor/{advisor.service,advisor-drafts}.ts`, `apps/api/src/receipt/parse/auto-receipt-parse.strategy.ts`, `apps/api/src/ch-certificate-scan/ch-health-statement.parse-strategy.ts`, `packages/core/src/domains/{medical-invoice,childcare-notice}.ts`, `apps/mobile-web/src/screens/cross-border/CrossBorderScreen.tsx`, `apps/mobile-web/src/screens/cockpit/CockpitPartnerSection.tsx`, `e2e/scenarios/25-familie-sommer-eskalation.mjs`
-- **Baut auf:** ADR-0054 (Person A erfasst für Person B), ADR-0074 (Lohnausweis lesen), ADR-0077 (Krankheitskosten), ADR-0079 (Wechseljahr), ADR-0080 (Krankenkassen-Auszüge), ADR-0086 (Betreuungszeitraum)
+- **Builds on:** ADR-0054 (Person A enters data for Person B), ADR-0074 (reading the Lohnausweis), ADR-0077 (medical costs), ADR-0079 (change year), ADR-0080 (health insurance statements), ADR-0086 (care period)
 
-## Kontext
+## Context
 
-Ein absichtlich zugespitzter, erfundener Fall: Beide Ehegatten arbeiten bis Juni bei einem deutschen
-Arbeitgeber (deutsche Sozialversicherung und Rente) und ab Juli als Grenzgänger in der Schweiz (AHV,
-Pensionskasse mit Obligatorium, Quellensteuer). Drei Kinder sind in Kindergarten und Kita, es gibt eine
-Zahnarztrechnung über 1.700 € und eine Schönheitsoperation. Jeder Beleg soll ein Feld finden, und der Ausdruck
-soll vollständig sein. Der erste Durchlauf fand diese Lücken:
+A deliberately exaggerated, fictional case: both spouses work until June for a German employer
+(German social insurance and pension) and from July as Grenzgänger (cross-border commuters) in
+Switzerland (AHV, Pensionskasse with Obligatorium, Quellensteuer). Three children are in
+kindergarten and day care, there is a dentist invoice of €1,700 and a cosmetic surgery. Every
+document should find a field, and the printout should be complete. The first run found these gaps:
 
-- Für Person B gab es weder Lohnausweis-Maske noch Schnittstelle. Bs Arbeitgeberadresse, Kurs und
-  Grenzgänger-Status ließen sich nirgends eintragen, der Ausdruck blieb gesperrt.
-- Die gemeinsame Schätzung zählte Bs Schweizer Lohn nicht, sobald B auch eine LStB hatte, weil B als Person ohne
-  Konto keine Interview-Antwort „Schweiz“ hat.
-- Die gelesene LStB von B wurde als Entwurf für A vorbereitet und verdrängte As eigene LStB-Entwürfe.
-- Beträge mit Tausenderpunkt wurden falsch gelesen (1.700,00 € als 700 €).
-- Arzt- und Zahnarztrechnungen fanden kein Feld. Eine Schönheits-OP wurde nicht erkannt.
-- Die selbst getragenen Kosten im Schweizer Krankenkassen-Auszug erschienen nur als Hinweis.
-- Ein Kita-Beleg mit bezahlter Jahressumme ergab nur den Zeitraum, nicht den Betrag.
-- Eine Rechnung, die auf einen noch offenen Dokument-Entwurf aufsetzt, ersetzte ihn, statt ihn mitzuzählen.
+- For Person B there was neither a Lohnausweis (Swiss salary certificate) form nor an interface. B's
+  employer address, rate and Grenzgänger status could not be entered anywhere; the printout stayed
+  locked.
+- The joint estimate did not count B's Swiss salary as soon as B also had an LStB, because B as a
+  person without an account has no interview answer „Schweiz“ ("Switzerland").
+- B's read LStB was prepared as a draft for A and displaced A's own LStB drafts.
+- Amounts with a thousands dot were read incorrectly (€1.700,00 as €700).
+- Doctor and dentist invoices found no field. A cosmetic surgery was not recognized.
+- The self-borne costs in the Swiss health insurance statement appeared only as a hint.
+- A day care document with an annual total paid yielded only the period, not the amount.
+- An invoice that builds on a still open document draft replaced it instead of adding to it.
 
-## Entscheidung
+## Decision
 
-1. **Bs Schweizer Angaben.** Alle Endpunkte von `ch-lohnausweis` nehmen `?person=B`, wie LStB und Arbeitsweg
-   (ADR-0054). Bs eigene Grenzgänger-Fragen (Wohnsitz, Nichtrückkehrtage) speichert `PUT
-   ch-lohnausweis/grenzgaenger?person=B` als Bs Antworten. Schätzung, Ausdruck und Maske leiten Bs Status daraus
-   ab wie bei A aus dem Interview. Für A bleibt das Interview der Ort dieser Fragen (400 ohne `person=B`).
-   Im Cockpit hat B in einer Schweiz-Erklärung das Feld „Lohnausweis Schweiz“. Bs Maske fragt zuerst Wohnsitz
-   und Tage.
-2. **Schätzung.** Eine Person mit Lohnausweis gilt als Grenzgänger, wenn sie „Schweiz“ geantwortet oder die
-   Grenzgänger-Fragen beantwortet hat. Mit LStB dazu ist es ein Wechseljahr (ADR-0079), auch für B.
-3. **Wessen LStB.** Eine LStB ohne angegebene Person (Upload im Chat) gehört in einer Zusammenveranlagung der
-   Person, deren Name darauf steht. Passt keiner, fragt der Chat wie beim Lohnausweis. Entwürfe für B tragen
-   `person: 'B'` und verdrängen As Entwürfe nicht.
-4. **Krankheitskosten aus Rechnungen (§ 33 EStG).** Eine Arzt-, Zahnarzt- oder ähnliche Rechnung wird zum
-   Entwurf für `gesundheit-betrag` mit „Ja“ als Begleitantwort. Der Betrag ist der Eigenanteil nach einer
-   gedruckten Erstattung, sonst der Rechnungsbetrag. Mehrere Rechnungen summieren sich, dieselbe Rechnung zählt
-   einmal. Eine Schönheitsoperation oder kosmetische Behandlung erfasst die App **nicht**: kein Entwurf, und der
-   Chat sagt, warum (Entscheidung des Product Owners: „gar nicht erfassen“). § 33 EStG ist eine Rechtsquelle der
-   Eule.
-5. **Selbst getragene Kosten aus dem Schweizer Auszug** (Franchise, Selbstbehalt) gehen in Euro zum Kurs des
-   Lohnausweises (sonst zum Jahresdurchschnitt, „prüfen“) zu den Krankheitskosten, je Auszug einmal.
-6. **Kita-Betrag.** Nennt ein Beleg die für das Jahr gezahlte Summe („Gesamt 2025“, „im Jahr 2025 gezahlt“),
-   wird sie als Entwurf „prüfen“ vorgeschlagen. Ein Monatsbeitrag bleibt weiterhin kein Betrag (ADR-0086).
-7. **Aufsummieren und Konflikte.** Eine Rechnung zählt auch auf einen offenen Dokument-Entwurf auf und übernimmt
-   dessen gezählte Positionen. Ein Feld, das beim Übernehmen schon genau den Wert des Entwurfs hat (zwei Belege
-   öffnen beide „Krankheitskosten: Ja“), ist kein veralteter Stand.
-8. **Beträge** mit Tausenderpunkt werden ganz gelesen; die Zeile mit dem Rechnungsbetrag geht vor.
-9. **Zumutbare Belastung mit erfassten Kindern.** Die Interview-Antwort „2 oder mehr“ unterscheidet 2 nicht von 3+
-   und zählt weiter als „1–2“. Sind für das Jahr Kinder erfasst, entscheidet ihre Zahl: ab drei gelten 1/1/2 %
-   (§ 33 Abs. 3 EStG). Gefunden beim Abgleich mit dem BMF-Rechner; dessen Tarifwerte für den Fall stimmten.
+1. **B's Swiss data.** All endpoints of `ch-lohnausweis` take `?person=B`, like LStB and commute
+   (ADR-0054). B's own Grenzgänger questions (residence, non-return days) are stored by `PUT
+   ch-lohnausweis/grenzgaenger?person=B` as B's answers. Estimate, printout and form derive B's
+   status from them as for A from the interview. For A the interview remains the place for these
+   questions (400 without `person=B`). In the cockpit, B has the field „Lohnausweis Schweiz“ in a
+   Switzerland tax return. B's form first asks for residence and days.
+2. **Estimate.** A person with a Lohnausweis counts as a Grenzgänger if they answered „Schweiz“ or
+   answered the Grenzgänger questions. With an LStB in addition it is a change year (ADR-0079),
+   also for B.
+3. **Whose LStB.** An LStB without a specified person (upload in the chat) belongs, in a
+   Zusammenveranlagung (joint assessment), to the person whose name is on it. If none matches, the
+   chat asks as for the Lohnausweis. Drafts for B carry `person: 'B'` and do not displace A's
+   drafts.
+4. **Medical costs from invoices (§ 33 EStG).** A doctor, dentist or similar invoice becomes a draft
+   for `gesundheit-betrag` with „Ja“ ("Yes") as the accompanying answer. The amount is the own share
+   after a printed reimbursement, otherwise the invoice amount. Several invoices add up, the same
+   invoice counts once. The app does **not** record a cosmetic surgery or cosmetic treatment: no
+   draft, and the chat says why (Product Owner decision: "do not record at all"). § 33 EStG is a
+   legal source of the owl.
+5. **Self-borne costs from the Swiss statement** (franchise, deductible) go to the medical costs in
+   euros at the Lohnausweis rate (otherwise at the annual average, „prüfen“ ("check")), once per
+   statement.
+6. **Day care amount.** If a document states the total paid for the year („Gesamt 2025“, „im Jahr
+   2025 gezahlt“ ("total 2025", "paid in 2025")), it is proposed as a „prüfen“ draft. A monthly fee
+   still does not count as an amount (ADR-0086).
+7. **Summing up and conflicts.** An invoice also adds onto an open document draft and takes over its
+   counted items. A field that, when applying, already has exactly the draft's value (two documents
+   both open „Krankheitskosten: Ja“ ("Medical costs: yes")) is not a stale state.
+8. **Amounts** with a thousands dot are read in full; the line with the invoice amount takes
+   precedence.
+9. **Reasonable burden with entered children.** The interview answer „2 oder mehr“ ("2 or more")
+   does not distinguish 2 from 3+ and still counts as "1–2". If children are entered for the year,
+   their number decides: from three, 1/1/2 % applies (§ 33 Abs. 3 EStG). Found when comparing with
+   the BMF calculator; its tariff values for the case matched.
 
-## Folgen
+## Consequences
 
-- Szenario 25 („Familie Sommer“) in der E2E-Matrix spielt den Fall durch: Belege im Chat und über dieselbe
-  Schnittstelle, Bs Schweiz-Maske im Browser, dann die übrigen Masken. Es prüft die Schätzung mit beiden
-  Wechseljahren, einen Ausdruck ohne fehlende Angaben und jeden Betrag in seinem Feld. Krankheitskosten: 1.700 €
-  plus die selbst getragenen Kosten, nie die 3.800 € der Operation.
-- Schönheitsoperationen mit amtsärztlich bestätigter medizinischer Notwendigkeit trägt der Nutzer selbst ein;
-  die App erkennt sie nicht als Ausnahme.
-- Die Lohnsteuer druckt die Anlage N weiterhin nicht (sie kommt aus der elektronischen LStB), nur den Bruttolohn.
+- Scenario 25 („Familie Sommer“) in the E2E matrix plays through the case: documents in the chat and
+  via the same interface, B's Switzerland form in the browser, then the remaining forms. It checks
+  the estimate with both change years, a printout without missing entries and every amount in its
+  field. Medical costs: €1,700 plus the self-borne costs, never the €3,800 of the surgery.
+- Cosmetic surgeries with medical necessity confirmed by a public health officer are entered by the
+  user themselves; the app does not recognize them as an exception.
+- The Anlage N still does not print the wage tax (it comes from the electronic LStB), only the gross
+  salary.

@@ -1,4 +1,4 @@
-# ADR-0091 — Die Eule füllt jedes Feld: persönliche Daten mit Einwilligung
+# ADR-0091 — The owl fills every field: personal data with consent
 
 - **Status:** Accepted
 - **Date:** 2026-11-14
@@ -6,160 +6,160 @@
 - **Applies to:**
   - `packages/core/src/interview/{field-catalog,record-handles,advisor-household,advisor,ki-port,advisor-basis-facts}.ts`
   - `apps/api/src/{owl-mode,confirmation,advisor,ki,ch-salary-certificate,account}/`
-  - `apps/api/src/{lstb-scan,ch-certificate-scan,receipt}/` (Belege ohne Person B)
-  - `apps/api/prisma/` (Tabelle `EulenPersonendatenEinwilligung`)
+  - `apps/api/src/{lstb-scan,ch-certificate-scan,receipt}/` (documents without Person B)
+  - `apps/api/prisma/` (table `EulenPersonendatenEinwilligung`)
   - `apps/mobile-web/src/screens/{advisor,privacy,PrivacyScreen.tsx}`
-- **Baut auf:** ADR-0052 §8 (Personenbezogene Daten maskiert), ADR-0054/0073 (Person B), ADR-0066 (Feldkatalog, ein Schreibweg), ADR-0090 (Strom-gegen-Chat-Vergleich)
-- **Ändert:** ADR-0066 (Sperre `AI_FORBIDDEN_SCREENS`/`AI_FORBIDDEN_FIELDS` gilt nur noch ohne Einwilligung)
+- **Builds on:** ADR-0052 §8 (personal data masked), ADR-0054/0073 (Person B), ADR-0066 (field catalog, one write path), ADR-0090 (stream-versus-chat comparison)
+- **Changes:** ADR-0066 (the block `AI_FORBIDDEN_SCREENS`/`AI_FORBIDDEN_FIELDS` now applies only without consent)
 
-## Kontext
+## Context
 
-Der Vergleich Strom gegen Chat (sieben erfundene Haushalte, ADR-0090) zeigte: Die Eule kommt nur bei einfachen Ein-Personen-Fällen an dieselbe Erklärung wie der Strom. Der Hauptgrund ist eine Design-Sperre. Seit ADR-0066 schreibt die Eule keine Namen, keine Steuer-ID, keine Geburtsdaten, Adressen, IBAN oder Religion. Sie legt auch keine Kopplung (Person B) und keine Kinder an. Diese Werte gingen auch nie an das Sprachmodell. Die Folgen:
+The comparison of stream versus chat (seven made-up households, ADR-0090) showed: the owl reaches the same tax return as the stream only in simple single-person cases. The main reason is a design block. Since ADR-0066 the owl writes no names, no Steuer-ID (tax identification number), no dates of birth, addresses, IBAN or religion. It also creates no link (Person B) and no children. These values were also never sent to the language model. The consequences:
 
-- Ohne Name und Steuer-ID gibt es keinen Ausdruck.
-- Ohne Person B gibt es nichts für B.
-- Ohne Vorname und Geburtsdatum gibt es kein Kind, damit kein Kindergeld, keine Kita und keine Kinderzulage.
+- Without name and Steuer-ID there is no printout.
+- Without Person B there is nothing for B.
+- Without first name and date of birth there is no child, and therefore no Kindergeld (child benefit), no daycare and no Kinderzulage (Swiss child allowance).
 
-Dazu kamen Fehler im Chat:
+On top of that came errors in the chat:
 
-- **C2:** Belege der Partnerin landeten bei A.
-- **C3:** Zwei Arbeitsweg-Entwürfe einer Antwort blockierten sich mit 409.
-- **C4:** Wechselkurs, Kapital-Inhaber und Mietobjekte waren nicht schreibbar.
-- **M1:** `interview.job` fehlte oft, damit auch die Schätzung.
-- **U1:** Eine LStB mit `kind: auto` wurde nur generisch gelesen.
+- **C2:** The partner's documents ended up with A.
+- **C3:** Two commute drafts in one answer blocked each other with 409.
+- **C4:** Exchange rate, capital holder and rental properties were not writable.
+- **M1:** `interview.job` was often missing, and with it the estimate.
+- **U1:** An LStB (Lohnsteuerbescheinigung, wage tax certificate) with `kind: auto` was read only generically.
 
-Der Product Owner hat entschieden: „Alles an die Eule“. Die Eule darf alle Felder schreiben, und diese Werte dürfen an das Modell gehen. Das gilt aber erst nach einer einmaligen, ausdrücklichen Einwilligung des Nutzers.
+The Product Owner decided: „Alles an die Eule“ ("Everything to the owl"). The owl may write all fields, and these values may go to the model. But this applies only after a one-time, explicit consent from the user.
 
-## Entscheidung
+## Decision
 
-1. **Einwilligung, einmal, ausdrücklich, widerruflich.**
-   - Die Karte erscheint im Chat unter der Antwort, sobald die Eule persönliche Daten bräuchte oder der Nutzer welche schreibt.
-   - Sie nennt die Daten: Name, Steuer-ID, Geburtsdatum, Anschrift, IBAN, Familienstand, Partner und Kinder.
-   - Sie nennt den Empfänger: Google Gemini als Auftragsverarbeiter.
-   - Sie nennt die Religionszugehörigkeit ausdrücklich als besondere Kategorie (Art. 9 DSGVO); „Erlauben“ gilt auch dafür.
-   - Die Knöpfe heißen „Erlauben“ und „Nicht erlauben“.
-   - Gespeichert wird je Nutzer in der Tabelle `EulenPersonendatenEinwilligung`: `version`, `erteiltAm`, `widerrufenAm`. Es stehen keine personenbezogenen Daten darin, nur die Entscheidung. Deshalb ist die Tabelle nicht feldverschlüsselt, sondern bewusst in der Metadaten-Liste von `prisma-encrypted-fields.test.ts` geführt. Sie ist Teil des Datenexports und der Kontolöschung.
-   - Erteilen und Widerrufen schreiben je eine Zeile ins Audit-Log: `eulen_personendaten_einwilligung` und `…_widerruf`.
-   - Endpunkt: `GET`/`PUT /v1/eulen-modus/personendaten-einwilligung`. Das `PUT` ist für Assistenten-Zugänge gesperrt (`@ForbidAssistant`), denn nur der Nutzer selbst willigt ein.
-   - Widerrufen wird unter Profil → Datenschutz („Eule und persönliche Daten“).
-   - Eine Einwilligung zu einer älteren Textfassung (`OWL_PERSONAL_DATA_CONSENT_VERSION`) zählt nicht.
-2. **Ohne Einwilligung bleibt alles wie heute.**
-   - Die Maskierung ist an.
-   - Die Sperre aus ADR-0066 gilt.
-   - Die Eule erklärt, warum sie das Feld nicht vorbereitet, und die Antwort trägt `personalDataConsentRequest`, damit die Karte erscheint.
-3. **Mit Einwilligung:**
-   - Nachricht und Verlauf gehen unmaskiert an das Modell.
-   - Die persönlichen Felder sind schreibbar: `profil`, `stammdaten`, `kopplung.filingType`, alle Felder von `kind`, die Anschrift des Mietobjekts.
-   - Der Feldkatalog bietet sie im Prompt an.
-   - Es bleibt beim einen Schreibweg aus ADR-0066: Entwurf, „✓ Jetzt übernehmen“, Prüfung des Werts gegen den Katalog, Compare-and-set.
-   - Die Einwilligung wird bei jedem Vorschlag, jedem Übernehmen und jedem Rückgängig neu gelesen. Ein Widerruf wirkt deshalb sofort, auch für Entwürfe, die vorher entstanden sind.
-   - Die Zusammenfassung älterer Gesprächsteile bleibt maskiert.
-   - Der Text der Belege, mit dem das Modell Beträge liest, bleibt maskiert. Für die Beträge braucht es keine Namen, und die Zuordnung zu A, B oder einem Kind läuft ohne Modell.
-4. **Nie:** `kopplung.invitationCode`. Der Einladungscode ist ein Schlüssel zu einer fremden Erklärung, kein Wert der Erklärung (`AI_NEVER_FIELDS`).
-5. **Werte prüfen, auch die persönlichen.** Die Katalogprüfung gilt wie für jeden anderen Wert:
-   - Die Steuer-ID hat 11 Ziffern, die Steuernummer bis zu 13 Ziffern. Leerzeichen und Schrägstriche lässt die Prüfung weg.
-   - Die IBAN prüft sie mit Prüfziffer, wie die Stammdaten-Maske.
-   - Religion und Familienstand nimmt sie nur als Schlüssel der Maske an.
-   - Schreibt die Eule die Religion, speichert die App den Zeitpunkt der Einwilligung mit (`religionEinwilligungAm`), wie die Maske.
-6. **Neue Einträge (C1/C4).**
-   - `instance: „neu“` legt beim Übernehmen einen neuen Eintrag an, bei mehreren in einer Antwort „neu 1“, „neu 2“.
-   - Ein Kind geht nur mit Einwilligung, und der Entwurf braucht Vorname und Geburtsdatum.
-   - Ein Mietobjekt geht immer: mit Fläche, Einheiten, „AfA wie Vorjahr“, Umlagen, Schuldzinsen und Anteil A. Die Anschrift braucht die Einwilligung.
-   - Der Eintrag entsteht einmal je Antwort und Platzhalter. Die anderen Entwürfe derselben Antwort zeigen danach auf ihn.
-   - Rückgängig entfernt ein so angelegtes Kind wieder. Ein Mietobjekt bleibt leer stehen, wie die Maske es hält.
+1. **Consent, once, explicit, revocable.**
+   - The card appears in the chat below the answer as soon as the owl would need personal data or the user writes some.
+   - It names the data: name, Steuer-ID, date of birth, address, IBAN, marital status, partner and children.
+   - It names the recipient: Google Gemini as processor.
+   - It names religious affiliation explicitly as a special category (Art. 9 DSGVO); „Erlauben“ ("Allow") covers that too.
+   - The buttons are labeled „Erlauben“ and „Nicht erlauben“ ("Don't allow").
+   - It is stored per user in the table `EulenPersonendatenEinwilligung`: `version`, `erteiltAm`, `widerrufenAm`. It contains no personal data, only the decision. That is why the table is not field-encrypted but deliberately listed in the metadata list of `prisma-encrypted-fields.test.ts`. It is part of the data export and of account deletion.
+   - Granting and revoking each write one row to the audit log: `eulen_personendaten_einwilligung` and `…_widerruf`.
+   - Endpoint: `GET`/`PUT /v1/eulen-modus/personendaten-einwilligung`. The `PUT` is blocked for assistant accesses (`@ForbidAssistant`), because only the user themselves gives consent.
+   - Revoking is done under Profile → Privacy („Eule und persönliche Daten“ ("Owl and personal data")).
+   - A consent to an older text version (`OWL_PERSONAL_DATA_CONSENT_VERSION`) does not count.
+2. **Without consent, everything stays as it is today.**
+   - Masking is on.
+   - The block from ADR-0066 applies.
+   - The owl explains why it does not prepare the field, and the answer carries `personalDataConsentRequest` so that the card appears.
+3. **With consent:**
+   - The message and history go to the model unmasked.
+   - The personal fields are writable: `profil`, `stammdaten`, `kopplung.filingType`, all fields of `kind`, the address of the rental property.
+   - The field catalog offers them in the prompt.
+   - The one write path from ADR-0066 stays: draft, „✓ Jetzt übernehmen“ ("✓ Apply now"), check of the value against the catalog, compare-and-set.
+   - The consent is re-read on every proposal, every apply and every undo. A revocation therefore takes effect immediately, also for drafts created before it.
+   - The summary of older conversation parts stays masked.
+   - The text of the documents from which the model reads amounts stays masked. The amounts need no names, and the assignment to A, B or a child runs without the model.
+4. **Never:** `kopplung.invitationCode`. The invitation code is a key to someone else's tax return, not a value of the tax return (`AI_NEVER_FIELDS`).
+5. **Check values, including the personal ones.** The catalog check applies as for any other value:
+   - The Steuer-ID has 11 digits, the tax number up to 13 digits. The check ignores spaces and slashes.
+   - It checks the IBAN with its check digit, like the master data screen.
+   - It accepts religion and marital status only as keys of the screen.
+   - When the owl writes the religion, the app also stores the time of consent (`religionEinwilligungAm`), like the screen.
+6. **New entries (C1/C4).**
+   - `instance: „neu“` creates a new entry on apply; with several in one answer, „neu 1“, „neu 2“.
+   - A child works only with consent, and the draft needs first name and date of birth.
+   - A rental property always works: with floor area, units, „AfA wie Vorjahr“ ("depreciation as in the previous year"), service charges, loan interest and share of A. The address needs the consent.
+   - The entry is created once per answer and placeholder. The other drafts of the same answer then point to it.
+   - Undo removes a child created this way. A rental property remains as an empty entry, as the screen keeps it.
 7. **Person B (C1).**
-   - Die Eule legt Person B über `kopplung.filingType = zusammen` an. Das läuft über denselben `LinkService.set` wie die Kopplungs-Maske; der Platzhalter für B entsteht dort.
-   - Danach (in der nächsten Antwort) schreibt sie Bs `profil` und `stammdaten` mit `person: "B"`. Beide Masken gehören jetzt zu `PERSON_B_SCREENS`.
-   - Bs Belege lassen sich dann B zuordnen. Das gilt auch für den Familien-Krankenkassenauszug und die Kita-Bescheinigung eines Kindes (C5).
-8. **Belege ohne Person B (C2), vorerst nur das Sicherheitsnetz.**
-   - Nennt eine LStB, ein Lohnausweis, ein Pensionskassen- oder Prämienbrief einen Namen, der nicht zu A passt, wird der Beleg nie A zugeschrieben. Die App fragt „Wessen Beleg ist das?“ (`personUnclear`), und A's Entwürfe bleiben stehen.
-   - Ohne erkennbaren Namen bleibt es bei A.
-   - Wie Belege dauerhaft zugeordnet werden (B aus dem Beleg anlegen, umhängen, Haushaltsbelege teilen), entscheidet ein eigenes ADR.
-9. **Entwürfe einer Antwort blockieren sich nicht (C3).**
-   - Übernimmt der Nutzer einen Entwurf, der einen Datensatz erst anlegt (z. B. den Arbeitsweg mit 0 Krankheitstagen), übernehmen die übrigen offenen Entwürfe derselben Antwort den neuen Stand als Ausgangswert. Das gilt nur für Felder, die dieser Schritt verändert hat, ohne sie zu schreiben.
-   - Eine Änderung durch jemand anderen bleibt ein Konflikt (409).
-10. **Wechselkurs und Kapital-Inhaber (C4).**
-    - `chLohnausweis.wechselkurs` (EUR je CHF) wird zusammen mit `wechselkursMonat` gespeichert. `JJJJ` steht für den Jahresdurchschnitt laut Anlage N-Gre, `JJJJ-MM` für den BMF-Monatskurs. Ohne Monat gilt der Jahresdurchschnitt des Steuerjahrs. Den tatsächlichen Kurs mit Beleg setzt nur die Maske.
-    - `kapital.inhaber` ist A, B oder gemeinsam.
-11. **Basisangaben (M1).**
-    - Hat die Eule eine LStB, einen Lohnausweis oder eine Rente vor sich und ist `interview.job` (bzw. `ausland`) offen, hängt sie selbst einen Entwurf an: Angestellt bzw. „Ja, in die Schweiz“ bzw. Rente. Ohne diese Angabe gibt es keine Schätzung.
-    - Der Prompt verlangt die Basisfragen, die Feiertagsregion beim Arbeitsweg und „keine Kirchensteuer“ als `kapital.kirchensteuer = 0`.
-12. **`kind: auto` (U1).** Eine erkannte LStB geht an den LStB-Leser, wie mit `kind: lstb`.
+   - The owl creates Person B via `kopplung.filingType = zusammen`. This runs through the same `LinkService.set` as the link screen; the placeholder for B is created there.
+   - After that (in the next answer) it writes B's `profil` and `stammdaten` with `person: "B"`. Both screens now belong to `PERSON_B_SCREENS`.
+   - B's documents can then be assigned to B. This also applies to the family health insurance statement and a child's daycare certificate (C5).
+8. **Documents without Person B (C2), for now only the safety net.**
+   - If an LStB, a Lohnausweis (Swiss salary certificate), a Pensionskasse (Swiss pension fund) letter or a premium letter names a person who does not match A, the document is never attributed to A. The app asks „Wessen Beleg ist das?“ ("Whose document is this?") (`personUnclear`), and A's drafts remain.
+   - Without a recognizable name it stays with A.
+   - How documents are assigned permanently (create B from the document, reassign, split household documents) is decided by a separate ADR.
+9. **Drafts of one answer do not block each other (C3).**
+   - If the user applies a draft that first creates a record (for example the commute with 0 sick days), the remaining open drafts of the same answer take the new state as their starting value. This applies only to fields that this step changed without writing them.
+   - A change by someone else remains a conflict (409).
+10. **Exchange rate and capital holder (C4).**
+    - `chLohnausweis.wechselkurs` (EUR per CHF) is stored together with `wechselkursMonat`. `JJJJ` stands for the annual average according to Anlage N-Gre (annex for cross-border commuters), `JJJJ-MM` for the BMF monthly rate. Without a month, the annual average of the tax year applies. Only the screen sets the actual rate with a supporting document.
+    - `kapital.inhaber` is A, B or joint.
+11. **Basis information (M1).**
+    - If the owl has an LStB, a Lohnausweis or a pension in front of it and `interview.job` (or `ausland`) is open, it attaches a draft itself: employed, or „Ja, in die Schweiz“ ("Yes, to Switzerland"), or pension. Without this information there is no estimate.
+    - The prompt demands the basis questions, the public-holiday region for the commute, and "no church tax" as `kapital.kirchensteuer = 0`.
+12. **`kind: auto` (U1).** A recognized LStB goes to the LStB reader, as with `kind: lstb`.
 
-## Folgen
+## Consequences
 
-- **Datenschutz:**
-  - Mit Einwilligung verarbeitet ein Auftragsverarbeiter persönliche Daten, auch Art.-9-Daten.
-  - Vorausgesetzt sind der AV-Vertrag mit Google und die Region, wie für den Chat schon heute.
-  - Die Datenschutzerklärung muss den neuen Zweck nennen. Das ist Text außerhalb dieses ADR und offen.
-- **Gespeicherte Nachrichten:**
-  - Mit Einwilligung speichert die App den Text der Nutzer unmaskiert, feldverschlüsselt wie bisher (`AdvisorChatMessage.inhalt`).
-  - Nach einem Widerruf maskiert die App den Verlauf wieder bei jedem Lesen für das Modell.
-  - Bereits gespeicherter Text bleibt beim Nutzer, bis er das Gespräch löscht.
+- **Data protection:**
+  - With consent, a processor processes personal data, including Art. 9 data.
+  - The prerequisites are the data processing agreement with Google and the region, as already for the chat today.
+  - The privacy policy must name the new purpose. That is text outside this ADR and is open.
+- **Stored messages:**
+  - With consent, the app stores the users' text unmasked, field-encrypted as before (`AdvisorChatMessage.inhalt`).
+  - After a revocation, the app masks the history again on every read for the model.
+  - Text already stored stays with the user until they delete the conversation.
 - **Tests:**
-  - `advisor-field-coverage.integration.test.ts` geht jetzt alle 190 Felder durch, die die Eule mit Einwilligung kennt; alle sind schreibbar.
-  - `advisor-personal-data*.test.ts`, `advisor-tool-round-personal.test.ts`, `advisor-field-access-personal.test.ts` und `personal-data-consent.*.test.ts` decken Einwilligung, Widerruf, neue Einträge, Person B und C3 ab.
-- **Offen:**
-  - Die dauerhafte Zuordnung von Belegen (Punkt 8).
-  - Person B und ihre Angaben in einer einzigen Antwort, ohne Zwischenschritt.
-  - Die Karte hat noch keinen E2E-Lauf, weil der Chat im E2E ein Modell bräuchte.
+  - `advisor-field-coverage.integration.test.ts` now goes through all 190 fields the owl knows with consent; all are writable.
+  - `advisor-personal-data*.test.ts`, `advisor-tool-round-personal.test.ts`, `advisor-field-access-personal.test.ts` and `personal-data-consent.*.test.ts` cover consent, revocation, new entries, Person B and C3.
+- **Open:**
+  - The permanent assignment of documents (point 8).
+  - Person B and her details in a single answer, without an intermediate step.
+  - The card has no E2E run yet, because the chat in E2E would need a model.
 
-## Nachtrag: Die Eule fragt die Ausdruck-Lücken ab
+## Addendum: The owl asks for the printout gaps
 
-- **Datum:** 2026-11-14
-- **Anlass:** Der zweite Vergleich Strom gegen Chat (R2–R4) zeigte: Mit Einwilligung darf die Eule jedes Feld schreiben, die Schätzungen stimmen, aber kein Chat-Konto druckt. Die Eule fragt nie nach dem, was die Ausdruck-Prüfung noch vermisst (Weber: Depotart und Inhaber; Sommer: Bs Grenzgänger-Angaben, Verwandtschaft der Kinder, Bs Geburtsdatum; Brandt: Kinderzulage-Zahler, `kinshipB`; Richter: Familienkasse und die Kindergeld-Angaben). „Fehlt noch etwas?“ bekam nur die Codes in Worten.
+- **Date:** 2026-11-14
+- **Reason:** The second comparison of stream versus chat (R2–R4) showed: with consent, the owl may write every field and the estimates are correct, but no chat account prints. The owl never asks for what the printout check is still missing (Weber: depot type and holder; Sommer: B's Grenzgänger details, the children's relationship, B's date of birth; Brandt: Kinderzulage payer, `kinshipB`; Richter: Familienkasse (family benefits office) and the Kindergeld details). „Fehlt noch etwas?“ ("Is anything still missing?") got only the codes in words.
 
-**Entscheidung**
+**Decision**
 
-1. **Ein fester Plan statt Prompt-Wortlaut** (`packages/core/src/interview/advisor-printout-plan.ts`).
-   - Aus den Codes der Ausdruck-Prüfung (`PrintoutService.check`, unverändert) leitet `printoutGapReads` die Felder ab, die jeden Code schließen können, je Person, Kind oder Objekt. Beispiele: `grenzgaengerPersonB` → Bs `interview.ch-wohnsitz`/`ch-nichtrueckkehrtage` und Bs Lohnausweis- und N-Gre-Felder; `kinder` → je Kind `taxId`, `kinship`, `kinshipB`, `familyBenefitsOffice`, `domesticResidenceAllYear`, der andere Elternteil, die Kindergeld-Angaben und der Kinderzulage-Zahler; `kapital` → `interview.kap-depot`, die Pflichtbeträge der Depotart, `kapital.inhaber`; Stammdaten-Codes → das Feld selbst; `personB` → Bs Name, Steuer-ID, Geburtsdatum, dazu Religion und Beruf.
-   - Die App liest diese Felder über denselben Feldzugriff, über den die Entwürfe schreiben (`ConfirmationService.readRawValues`), Person B unter Bs Nutzer. `planPrintoutGaps` behält nur, was leer ist, mit den Bedingungen der Prüfung (Nichtrückkehrtage nur bei Wohnsitz Deutschland, Prämienanteile wie `premiumClarified`, der andere Elternteil nur ohne Zusammenveranlagung).
-   - Jede Frage sagt, ob die Eule sie vorbereiten darf: Katalog und Einwilligung wie in Punkt 2 und 3, Person B nur, solange der Nutzer sie erfasst. Sonst nennt sie die Maske („Stammdaten“, „im eigenen Konto von Person B“).
-   - Codes ohne Feld (eine Anlage, die die App nicht druckt, eine Bestätigung, ein zu langer Wert) bleiben Worte aus `describePrintoutGap`.
-2. **Die Eule bekommt eine Checkliste.** Der Plan steht als `furtherFacts.printoutPlan` im Fall-Überblick (nur Feldnamen und neutrale Namen wie „Kind 1“) und als eigene Liste „Ausdruck-Checkliste“ im Fall-Prompt. Regel 10 (d) sagt, wann: wenn der Nutzer fragt, ob noch etwas fehlt, nach übernommenen Entwürfen, oder wenn sonst nichts offen ist. Höchstens vier Punkte je Antwort, nach Person oder Kind gruppiert, in der Sprache des Nutzers. Was der Nutzer schon gesagt hat, legt sie als Entwurf an, statt zu fragen.
-3. **Die App fragt selbst, wenn das Modell es auslässt.** `printoutGapFollowUp` hängt an die Antwort (auch ohne Modell) „Damit der Ausdruck vollständig ist, fehlt noch: …“. Das geschieht, wenn der Nutzer nach Fehlendem fragt, oder wenn die Entwürfe der letzten Antwort übernommen sind und diese Antwort nichts fragt und nichts vorbereitet. Was das Modell schon fragt oder gerade als Entwurf vorbereitet, fügt sie nicht noch einmal an. Dieselben Fragen wiederholt sie nicht ungefragt (`meta.printoutGapsAsked`, nur auf dem Server).
-4. **Zwei Felder, ohne die der Chat nie drucken konnte.**
-   - `chLohnausweis.nGreSonderfaelle` („keine Sonderfälle“ der Anlage N-Gre) ist ein Katalogfeld (Ja/Nein) und schreibt denselben Schalter wie die Maske. Ohne ihn fehlte im Chat jede N-Gre (`grenzgaenger`).
-   - Person B darf im Interview ihre eigenen Grenzgänger-Antworten bekommen (`PERSON_B_INTERVIEW_FIELDS`: `ch-wohnsitz`, `ch-nichtrueckkehrtage`). Dort schreibt sie auch die Schweiz-Maske hin, und daraus leiten Ausdruck und Schätzung Bs Status ab. Das übrige Interview bleibt gemeinsam.
+1. **A fixed plan instead of prompt wording** (`packages/core/src/interview/advisor-printout-plan.ts`).
+   - From the codes of the printout check (`PrintoutService.check`, unchanged), `printoutGapReads` derives the fields that can close each code, per person, child or property. Examples: `grenzgaengerPersonB` → B's `interview.ch-wohnsitz`/`ch-nichtrueckkehrtage` and B's Lohnausweis and N-Gre fields; `kinder` → per child `taxId`, `kinship`, `kinshipB`, `familyBenefitsOffice`, `domesticResidenceAllYear`, the other parent, the Kindergeld details and the Kinderzulage payer; `kapital` → `interview.kap-depot`, the required amounts of the depot type, `kapital.inhaber`; master data codes → the field itself; `personB` → B's name, Steuer-ID, date of birth, plus religion and occupation.
+   - The app reads these fields through the same field access the drafts write through (`ConfirmationService.readRawValues`), Person B under B's user. `planPrintoutGaps` keeps only what is empty, with the conditions of the check (non-return days only with residence in Germany, premium shares like `premiumClarified`, the other parent only without Zusammenveranlagung (joint assessment)).
+   - Each question says whether the owl may prepare it: catalog and consent as in points 2 and 3, Person B only as long as the user enters her. Otherwise it names the screen („Stammdaten“ ("Master data"), „im eigenen Konto von Person B“ ("in Person B's own account")).
+   - Codes without a field (an annex the app does not print, a confirmation, a value that is too long) remain words from `describePrintoutGap`.
+2. **The owl gets a checklist.** The plan is in the case overview as `furtherFacts.printoutPlan` (only field names and neutral names like „Kind 1“ ("Child 1")) and as its own list „Ausdruck-Checkliste“ ("Printout checklist") in the case prompt. Rule 10 (d) says when: when the user asks whether anything is still missing, after applied drafts, or when nothing else is open. At most four points per answer, grouped by person or child, in the user's language. What the user has already said, it creates as a draft instead of asking.
+3. **The app asks itself when the model leaves it out.** `printoutGapFollowUp` appends to the answer (also without a model) „Damit der Ausdruck vollständig ist, fehlt noch: …“ ("For the printout to be complete, the following is still missing: …"). This happens when the user asks about missing items, or when the drafts of the last answer have been applied and this answer asks nothing and prepares nothing. What the model already asks or is preparing as a draft right now, it does not append again. It does not repeat the same questions unasked (`meta.printoutGapsAsked`, server only).
+4. **Two fields without which the chat could never print.**
+   - `chLohnausweis.nGreSonderfaelle` („keine Sonderfälle“ ("no special cases") of Anlage N-Gre) is a catalog field (yes/no) and writes the same switch as the screen. Without it, every N-Gre was missing in the chat (`grenzgaenger`).
+   - Person B may get her own Grenzgänger answers in the interview (`PERSON_B_INTERVIEW_FIELDS`: `ch-wohnsitz`, `ch-nichtrueckkehrtage`). The Switzerland screen also writes them there, and printout and estimate derive B's status from that. The rest of the interview stays shared.
 
-**Folgen**
+**Consequences**
 
-- Der Feldkatalog hat ein Feld mehr. `advisor-field-coverage.integration.test.ts` geht es mit durch.
-- Die Nachfrage der App ist deutsch. Auf Englisch fragt nur das Modell.
-- Was weder Nutzer noch Beleg kennt (etwa die Steuer-ID eines Kindes oder Name und Anschrift des anderen Elternteils), bleibt eine ehrliche Lücke. Die Eule nennt sie jetzt aber mit Feld und Maske.
+- The field catalog has one more field. `advisor-field-coverage.integration.test.ts` includes it.
+- The app's follow-up question is in German. In English only the model asks.
+- What neither the user nor a document knows (for example a child's Steuer-ID or the name and address of the other parent) remains an honest gap. But the owl now names it with field and screen.
 
-## Nachtrag: Die Karte hängt nicht mehr am Modell; ein Kind in einer Antwort
+## Addendum: The card no longer depends on the model; a child in one answer
 
-- **Datum:** 2026-11-17
-- **Anlass:** Der Echtdaten-Lauf (2024 und 2025). Die Eule verwies auf eine Einwilligung „unter dieser Antwort“, die Karte erschien aber nicht. Ein Kind ließ sich deshalb im Chat nicht anlegen, und Kinderfreibetrag, Kindergeld-Vergleich und Betreuungskosten fehlten in der Schätzung. Dazu: Nachrichten über 2.000 Zeichen kamen als „HTTP 400“ zurück, und die Eule nannte im selben Gespräch vier verschiedene Gesamtergebnisse.
+- **Date:** 2026-11-17
+- **Reason:** The real-data run (2024 and 2025). The owl referred to a consent „unter dieser Antwort“ ("below this answer"), but the card did not appear. As a result, a child could not be created in the chat, and the child allowance, the Kindergeld comparison and childcare costs were missing from the estimate. In addition: messages over 2,000 characters came back as „HTTP 400“, and the owl gave four different total results in the same conversation.
 
-**Ursache**
+**Cause**
 
-`personalDataConsentRequest` entstand nur auf zwei Wegen: Die Maskierung hatte etwas aus der Nachricht genommen (Steuer-ID, IBAN, Kontakt, ein bekannter Name), oder das Modell hatte einen Entwurf für ein gesperrtes Feld versucht. Ohne Einwilligung steht die Maske `kind` aber gar nicht im Feldkatalog des Prompts, und Regel 2 sagt dem Modell, es dürfe solche Felder nicht vorschlagen. Es rief also kein Werkzeug auf und schrieb nur den Satz. Ein Geburtsdatum oder „unsere Tochter“ maskiert die App nicht. Damit traf keiner der beiden Wege zu.
+`personalDataConsentRequest` was created only in two ways: the masking had removed something from the message (Steuer-ID, IBAN, contact, a known name), or the model had attempted a draft for a blocked field. Without consent, however, the screen `kind` is not in the prompt's field catalog at all, and rule 2 tells the model it may not propose such fields. So it called no tool and only wrote the sentence. The app does not mask a date of birth or „unsere Tochter“ ("our daughter"). So neither of the two ways applied.
 
-**Entscheidung**
+**Decision**
 
-1. **Die App entscheidet über die Karte** (`needsPersonalDataConsentOffer`, `packages/core/src/interview/advisor-consent-offer.ts`). Ohne Einwilligung trägt die Antwort die Karte, wenn eines davon zutrifft:
-   - Die Maskierung hat etwas ersetzt.
-   - Die Eule hat darum gebeten (neues Werkzeug `request_personal_data_consent`) oder ein Entwurf wurde wegen fehlender Einwilligung abgelehnt.
-   - Die Antwort selbst verweist auf die Einwilligung.
-   - Der Nutzer nennt ein Kind und es ist noch keines angelegt, oder eine Partnerin/einen Partner und es gibt keine Person B.
-   - Der Nutzer schreibt ein Geburtsdatum, eine Anschrift, oder dass er einwilligt. Ein „Ja“ im Chat ersetzt die Karte nicht.
-2. **Nach „Erlauben“ geht das Gespräch von selbst weiter.** Der Chat schickt die letzte Nachricht des Nutzers noch einmal, anstelle der abgelehnten Runde (`replaceFromMessageId`), und zwar so, wie sie getippt wurde. Gespeichert ist ohne Einwilligung nur die maskierte Fassung; ist der getippte Text nicht mehr da (neu geladen), sagt der Chat der Eule in einem Satz, dass die Einwilligung jetzt vorliegt. Das gilt nur für die Karte unter der letzten Antwort.
-3. **Ein Kind in einer Antwort.** Weitere Entwürfe für dasselbe neue Kind (`instance: „neu“`: Kindergeld, Kinderzulage mit Zahler, Betreuung, Krankenversicherung, Verwandtschaft) hängen sich an den Entwurf, der es mit Vorname und Geburtsdatum anlegt. Bisher lehnte die Werkzeugrunde jeden davon mit `NEW_RECORD_INCOMPLETE` ab, und weil ein Entwurf derselben Maske gelang, stand die Ablehnung nicht einmal unter „nicht vorbereitet“.
-4. **Die Eule liest die Schätzung der App** (`read_current_estimate`): Ergebnis, Werbungskosten, Vorsorge, Sonderausgaben, zu versteuerndes Einkommen, Einkommensteuer, Soli, Anrechnung, Vorauszahlungen. Es sind nur Beträge. Regel 16 im Prompt: Jede Zahl zum Gesamtergebnis kommt von dort.
-5. **Nachrichtenlänge 8.000 Zeichen** (`ADVISOR_MESSAGE_MAX_CHARS` im Kern, für API-Prüfung, OpenAPI und Eingabefeld).
-   - Das Eingabefeld zählt ab 90 % mit und sendet eine längere Nachricht nicht.
-   - Eine Ablehnung der API steht in Worten im Chat, nie als „HTTP 400“.
-   - Das Verlaufsbudget steigt von 6.000 auf 12.000 Token, damit mehrere volle Nachrichten wörtlich bleiben.
-   - Der Themenprüfer sieht von einer langen Nachricht Anfang und Ende.
+1. **The app decides about the card** (`needsPersonalDataConsentOffer`, `packages/core/src/interview/advisor-consent-offer.ts`). Without consent, the answer carries the card if one of these applies:
+   - The masking replaced something.
+   - The owl asked for it (new tool `request_personal_data_consent`) or a draft was rejected for lack of consent.
+   - The answer itself refers to the consent.
+   - The user mentions a child and none has been created yet, or a partner and there is no Person B.
+   - The user writes a date of birth, an address, or that they consent. A „Ja“ ("Yes") in the chat does not replace the card.
+2. **After „Erlauben“ the conversation continues on its own.** The chat sends the user's last message again, in place of the rejected round (`replaceFromMessageId`), exactly as it was typed. Without consent, only the masked version is stored; if the typed text is no longer there (reloaded), the chat tells the owl in one sentence that consent is now given. This applies only to the card below the last answer.
+3. **A child in one answer.** Further drafts for the same new child (`instance: „neu“`: Kindergeld, Kinderzulage with payer, childcare, health insurance, relationship) attach to the draft that creates it with first name and date of birth. Until now the tool round rejected each of them with `NEW_RECORD_INCOMPLETE`, and because one draft for the same screen succeeded, the rejection did not even appear under „nicht vorbereitet“ ("not prepared").
+4. **The owl reads the app's estimate** (`read_current_estimate`): result, Werbungskosten (work-related expenses), provision expenses, Sonderausgaben (special expenses), taxable income, income tax, Soli, credits, advance tax payments. These are amounts only. Rule 16 in the prompt: every figure about the total result comes from there.
+5. **Message length 8,000 characters** (`ADVISOR_MESSAGE_MAX_CHARS` in the core, for API validation, OpenAPI and the input field).
+   - The input field counts from 90 % and does not send a longer message.
+   - A rejection by the API appears in words in the chat, never as „HTTP 400“.
+   - The history budget rises from 6,000 to 12,000 tokens so that several full messages stay verbatim.
+   - The topic checker sees the beginning and end of a long message.
 
-**Kindergeld im Vergleich**
+**Kindergeld in the comparison**
 
-Die Günstigerprüfung rechnet mit dem Anspruch auf Kindergeld für die Monate des Jahres, nicht mit dem, was ausgezahlt wurde (§ 31 Satz 4 EStG). Eine Schweizer Kinderzulage zählt als Kindergeld (§ 65 EStG), das Differenzkindergeld füllt sie auf; zusammen sind sie derselbe Anspruch. Die Schätzung tut das schon (`monthlyChildBenefitClaim × claimMonths`); `childBenefitForComparison` benennt es, und ein Test hält fest, dass der eingetragene Betrag die Schätzung nicht ändert.
+The Günstigerprüfung (most-favorable comparison) calculates with the entitlement to Kindergeld for the months of the year, not with what was paid out (§ 31 Satz 4 EStG). A Swiss Kinderzulage counts as Kindergeld (§ 65 EStG), and the differential Kindergeld tops it up; together they are the same entitlement. The estimate already does this (`monthlyChildBenefitClaim × claimMonths`); `childBenefitForComparison` names it, and a test records that the entered amount does not change the estimate.
 
-**Folgen**
+**Consequences**
 
-- `advisor-child-through-chat.test.ts` geht den Weg mit dem echten LangGraph-Lauf und dem Skript-Modell: Karte, Einwilligung, Kind mit allen Beträgen, Schätzung. Derselbe Fall über die Kinder-Maske ergibt dieselbe Schätzung.
-- Die Karte kann häufiger erscheinen als nötig, etwa wenn der Nutzer nur beiläufig ein Kind erwähnt. Das ist gewollt: „Nicht erlauben“ blendet sie aus, und eine fehlende Karte war der teurere Fehler.
-- **Offen im Rechenkern:** Die Krankenversicherung eines Kindes (`healthBasicEur`, `careEur`) fließt nicht in den Vorsorgeaufwand der Schätzung ein. Der Kinderfreibetrag wird für ein im Steuerjahr geborenes Kind nicht nach Monaten gekürzt, das Kindergeld schon.
+- `advisor-child-through-chat.test.ts` goes the path with the real LangGraph run and the script model: card, consent, child with all amounts, estimate. The same case through the children screen gives the same estimate.
+- The card may appear more often than necessary, for example when the user only mentions a child in passing. That is intended: „Nicht erlauben“ hides it, and a missing card was the more costly error.
+- **Open in the calculation core:** A child's health insurance (`healthBasicEur`, `careEur`) does not flow into the Vorsorgeaufwand (provision expenses) of the estimate. The child allowance is not reduced by months for a child born in the tax year; Kindergeld is.

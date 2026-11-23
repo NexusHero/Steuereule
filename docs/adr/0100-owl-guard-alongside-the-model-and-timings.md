@@ -1,44 +1,44 @@
-# ADR-0100 — Eule: Wächter neben dem Modell, Zeiten je Runde, Maske vor der Frage
+# ADR-0100 — The owl: guard alongside the model, timings per round, form before the question
 
 - **Status:** Accepted
 - **Date:** 2026-11-19
 - **Deciders:** NexusHero (Product Owner), Steuereule Engineering
 - **Applies to:** `apps/api/src/ki/{langgraph-advisor.engine,advisor-prompt,advisor-topic-guard,fake-chat-model}.ts`, `apps/api/src/advisor/advisor-turn.ts`, `packages/core/src/interview/ki-port.ts`
-- **Baut auf:** ADR-0069 (Themengrenze; ändert dort „Prüfer vor dem Hauptmodell“), ADR-0096 (Modell und Denktiefe), #476 (Provider-Cache)
+- **Builds on:** ADR-0069 (topic boundary; changes "checker before the main model" there), ADR-0096 (model and thinking depth), #476 (provider cache)
 
-## Kontext
+## Context
 
-171 gespeicherte Antworten aus Testläufen: rund 100.000 Eingabe-Tokens je Antwort, davon 61 bis 81 % aus dem Cache, und 24 bis 36 Sekunden bis zum ersten Wort. Gespeichert war nur die Gesamtzeit; wo sie blieb, war nicht ablesbar.
+171 stored answers from test runs: around 100,000 input tokens per answer, 61 to 81 % of them from the cache, and 24 to 36 seconds until the first word. Only the total time was stored; where it went could not be read.
 
-## Entscheidung
+## Decision
 
-1. **Zeiten je Antwort.** Neben den Tokens steht jetzt, wie lange die Vorbereitung der App, der Themen-Wächter, jede Modell-Runde und die Werkzeuge gedauert haben (`prepMs`, `guardMs`, `roundMs`, `toolMs`), im Verbrauchs-Datensatz und in der Logzeile `advisor_turn`.
-2. **Der Wächter läuft neben dem Modell, nicht mehr davor.** Das Modell beginnt sofort. Bis zum Urteil des Wächters erreicht nichts davon den Nutzer, und kein Werkzeug läuft. Bei „themenfremd“ wird der begonnene Lauf verworfen und die feste Ablehnung gezeigt; bei „Grauzone“ beginnt der Lauf mit dem Grauzonen-Hinweis neu. Das ändert ADR-0069, die den Wächter davor stellte, damit eine Ablehnung nur den kleinen Aufruf kostet. Jetzt kostet eine Ablehnung zusätzlich die erste, abgebrochene Runde des Hauptmodells; der größte Teil davon kommt aus dem Cache.
-3. **Was nur für eine Antwort gilt, steht vor der Frage, nicht im Fall-Block.** Die aktive Maske, die Aufforderung „erst planen“ und der Grauzonen-Hinweis stehen jetzt in der Frage-Nachricht, klar als Angaben der App markiert. Der Fall-Block bleibt direkt hinter den Regeln und ändert sich nur noch mit einem Wert, einem Beleg, einer Notiz oder dem Plan.
+1. **Timings per answer.** Next to the tokens it now records how long the app's preparation, the topic guard, each model round and the tools took (`prepMs`, `guardMs`, `roundMs`, `toolMs`), in the usage record and in the log line `advisor_turn`.
+2. **The guard runs alongside the model, no longer before it.** The model starts immediately. Until the guard's verdict, none of it reaches the user, and no tool runs. On "off-topic" the started run is discarded and the fixed refusal is shown; on "gray zone" the run restarts with the gray-zone hint. This changes ADR-0069, which placed the guard before it so that a refusal only costs the small call. Now a refusal additionally costs the first, aborted round of the main model; most of it comes from the cache.
+3. **What applies to only one answer goes before the question, not in the case block.** The active form, the "plan first" prompt and the gray-zone hint are now in the question message, clearly marked as information from the app. The case block stays directly after the rules and now changes only with a value, a document, a note or the plan.
 
-## Messung
+## Measurement
 
-Dasselbe Gespräch mit sechs Fragen, vorher und nachher, je einmal mit Claude Sonnet 5.5 und Gemini 3.8 Flash; die Maske wechselt zweimal. Erfundene Beispieldaten.
+The same conversation with six questions, before and after, once each with Claude Sonnet 5.5 and Gemini 3.8 Flash; the form changes twice. Invented sample data.
 
-| | vorher | nachher |
+| | before | after |
 |---|---|---|
-| Zeit außerhalb des Modells je Antwort, Claude | 2,2 s | 0,3 s |
-| Zeit außerhalb des Modells je Antwort, Gemini | 2,0 s | 0,2 s |
-| Claude, Anteil aus dem Cache bei gewechselter Maske | 83 % und 75 % | 93 % und 93 % |
-| Claude, Eingabe ohne Cache, alle sechs Antworten | 76.500 Tokens | 44.500 Tokens |
+| Time outside the model per answer, Claude | 2.2 s | 0.3 s |
+| Time outside the model per answer, Gemini | 2.0 s | 0.2 s |
+| Claude, share from the cache with a changed form | 83 % and 75 % | 93 % and 93 % |
+| Claude, input without cache, all six answers | 76,500 tokens | 44,500 tokens |
 
-- Der Wächter selbst braucht weiter 1,3 bis 3 Sekunden; diese Zeit läuft jetzt neben der ersten Modell-Runde.
-- Vorbereitung (rund 0,1 s) und Werkzeuge (unter 0,2 s) fallen nicht ins Gewicht. Die Zeit einer Antwort ist die Zeit der Modell-Runden.
-- Von den 32.000 gesparten Tokens bei Claude stammen rund 30.000 aus der ersten Antwort, deren Cache im Lauf „vorher“ kalt war. Der saubere Effekt ist der Anteil bei gewechselter Maske.
-- Geminis Cache-Zahlen schwanken (0 % bis über 100 % in einzelnen Antworten) und erlauben keine Aussage.
-- Die Gesamtdauer je Antwort schwankt mit der Zahl der Runden, die das Modell wählt (Claude 10,9 s vorher, 10,7 s nachher bei mehr Runden). Der Inhalt der Antworten wurde nicht verglichen.
+- The guard itself still needs 1.3 to 3 seconds; this time now runs alongside the first model round.
+- Preparation (around 0.1 s) and tools (under 0.2 s) are negligible. The time of an answer is the time of the model rounds.
+- Of the 32,000 tokens saved with Claude, around 30,000 come from the first answer, whose cache was cold in the "before" run. The clean effect is the share with a changed form.
+- Gemini's cache figures fluctuate (0 % to over 100 % in individual answers) and allow no conclusion.
+- The total duration per answer fluctuates with the number of rounds the model chooses (Claude 10.9 s before, 10.7 s after with more rounds). The content of the answers was not compared.
 
-## Verworfen
+## Rejected
 
-- **Den ganzen Fall-Block hinter den Verlauf stellen.** Gebaut und gemessen: Der Block (rund 7.000 Tokens) wird dann bei jeder Antwort neu bezahlt, auch wenn sich nichts geändert hat (Claude, Antwort mit unverändertem Fall: 800 Tokens ohne Cache vorher, 7.400 danach). Das lohnt erst bei langen Gesprächen mit vielen Änderungen am Fall.
-- **Regeln kürzen oder ein kleineres Modell:** Die Regeln liegen im Cache; der Gewinn wäre klein, das Risiko für die Qualität echt.
+- **Placing the whole case block after the conversation history.** Built and measured: the block (around 7,000 tokens) is then paid for again with every answer, even if nothing has changed (Claude, answer with an unchanged case: 800 tokens without cache before, 7,400 after). That only pays off in long conversations with many changes to the case.
+- **Shortening the rules or a smaller model:** the rules are in the cache; the gain would be small, the risk to quality real.
 
-## Folgen
+## Consequences
 
-- Eine themenfremde Frage kostet mehr als bisher. Die Tagesgrenze der Nachrichten je Nutzer begrenzt das weiter.
-- Mit den Zeiten je Runde lassen sich die nächsten Schritte messen statt schätzen: weniger Runden je Antwort und der Denkaufwand je Runde.
+- An off-topic question costs more than before. The daily message limit per user continues to cap that.
+- With the timings per round, the next steps can be measured instead of estimated: fewer rounds per answer and the thinking effort per round.

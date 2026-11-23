@@ -1,98 +1,98 @@
-# ADR-0062 — Haushalt auf Kontoebene: Ehepartner und Kinder einmal anlegen, pro Jahr auswählen
+# ADR-0062 — Household at account level: create spouse and children once, select them per year
 
 - **Status:** Accepted
 - **Date:** 2026-11-10
 - **Deciders:** NexusHero (Product Owner), Steuereule Engineering
-- **Applies to:** `apps/api/src/household/`, `apps/api/prisma/schema.prisma`, `packages/core/src/common/household.ts`, Kinder-Maske, Stammdaten (Kopplung)
-- **Ersetzt Teile von:** Produkt-ADR-006 (Kopplung je Steuerjahr) und ADR-0054 §3 (Einladungscode je Jahr)
-- **Ticket:** #452 (Grilling 10.11.2026, Entscheidungen 1–12)
+- **Applies to:** `apps/api/src/household/`, `apps/api/prisma/schema.prisma`, `packages/core/src/common/household.ts`, children form, master data (linking)
+- **Partially supersedes:** product ADR-006 (linking per tax year) and ADR-0054 §3 (invitation code per year)
+- **Ticket:** #452 (grilling 10.11.2026, decisions 1–12)
 
-## Kontext
+## Context
 
-Ehepartner und Kinder werden heute pro Steuerjahr neu angelegt: `Kind` hängt an `userId` + `steuerjahr`,
-die Kopplung (`SteuerjahrKopplung`) gilt für ein Jahr, ein Partner ohne Konto bekommt je Jahr einen neuen
-Platzhalter `spouse_<user>_<jahr>`, und mit Konto braucht jedes Jahr einen neuen Einladungscode. Wer
-jedes Jahr wiederkommt, tippt Name, Geburtsdatum und Steuer-ID erneut.
+Today the spouse and children are created anew for each tax year: `Kind` hangs off `userId` + `steuerjahr`,
+the link (`SteuerjahrKopplung`) applies for one year, a partner without an account gets a new
+placeholder `spouse_<user>_<jahr>` each year, and with an account every year needs a new invitation code. Anyone who
+comes back every year types name, date of birth and Steuer-ID (tax identification number) again.
 
-Die Steuerberechnung, der Ausdruck und der Veranlagungsartenvergleich lesen genau diese Jahreszeilen.
-Ihre Ergebnisse dürfen sich durch die Umstellung nicht ändern (AC 10, alle 24 Szenarien).
+The tax calculation, the printout and the Veranlagungsartenvergleich (comparison of assessment types) read exactly these year rows.
+Their results must not change because of the switch (AC 10, all 24 scenarios).
 
-## Entscheidung
+## Decision
 
-### 1. Erweitern, nicht umbauen (ADR-0055, Expand)
+### 1. Expand, do not rebuild (ADR-0055, expand)
 
-Die Jahreszeilen bleiben, was die Berechnung liest: `Kind` (alle Felder der Anlage Kind) und
-`SteuerjahrKopplung` (Veranlagungsart und Person B des Jahres). Daneben kommt der **Haushalt** als
-Quelle für jedes neue Jahr. Keine Berechnung liest den Haushalt; deshalb sind die Ergebnisse vor und
-nach der Migration identisch.
+The year rows remain what the calculation reads: `Kind` (all fields of the Anlage Kind (child schedule)) and
+`SteuerjahrKopplung` (assessment type and Person B of the year). Next to them comes the **household** as the
+source for every new year. No calculation reads the household; that is why the results before and
+after the migration are identical.
 
-### 2. Neue Modelle
+### 2. New models
 
-| Modell | Inhalt |
+| Model | Content |
 | :--- | :--- |
-| `HouseholdPerson` (`HaushaltPerson`) | Ehepartner oder Kind, einmal je Haushalt. Stabile Angaben (Vorname, Nachname, Geburtsdatum, Steuer-ID, bei Ehepartnern das Sterbedatum) liegen in einem Umschlag, verschlüsselt mit einem **eigenen Schlüssel je Person** im Keystore (ADR-0059, Schlüssel-ID `household-person:<id>`). `leftFromYear` = „ab Jahr X nicht mehr dabei“. Bearbeiter und Zeitpunkt der letzten Änderung. |
-| `TaxYearMembership` (`HaushaltJahr`) | Person × Steuerjahr, mit Verweis auf die Jahreszeile (`Kind.id` bzw. Person B der Kopplung). Die jährlichen Angaben (Kindergeld, gemeldet bei mir, KV/PV, Ausbildung ab 18, Veranlagungsart) bleiben in der Jahreszeile. |
-| `PartnerLink` (`PartnerVerknuepfung`) | Ehepartner-Verknüpfung **ohne Jahr**: Person A, Person B (eigenes Konto oder Haushaltsperson ohne Konto), `validFromYear`, `endedFromYear`. |
-| `HouseholdMergeCandidate` (`HaushaltDublette`) | Zwei Personen, die ähnlich, aber nicht gleich sind; die App fragt einmal „Sind das dieselben?“. |
+| `HouseholdPerson` (`HaushaltPerson`) | Spouse or child, once per household. Stable details (first name, last name, date of birth, Steuer-ID, for spouses the date of death) sit in an envelope, encrypted with a **separate key per person** in the keystore (ADR-0059, key ID `household-person:<id>`). `leftFromYear` = "no longer included from year X". Editor and time of the last change. |
+| `TaxYearMembership` (`HaushaltJahr`) | Person × tax year, with a reference to the year row (`Kind.id` or Person B of the link). The yearly details (Kindergeld, registered with me, KV/PV, education from 18, assessment type) stay in the year row. |
+| `PartnerLink` (`PartnerVerknuepfung`) | Spouse link **without a year**: Person A, Person B (own account or household person without an account), `validFromYear`, `endedFromYear`. |
+| `HouseholdMergeCandidate` (`HaushaltDublette`) | Two persons who are similar but not the same; the app asks once „Sind das dieselben?“ ("Are these the same?"). |
 
-Der Haushalt gehört dem Konto von Person A. Ein verknüpfter Partner mit eigenem Konto liest und
-schreibt die gemeinsamen Kinder mit (Entscheidung 7); eigene Daten (Lohn, Steuer-ID, Stammdaten)
-bearbeitet jeder nur selbst. Jede Änderung an einer Haushaltsperson protokolliert Bearbeiter und
-Zeitpunkt; die Maske zeigt „geändert von …, Datum“.
+The household belongs to Person A's account. A linked partner with their own account reads and
+writes the shared children too (decision 7); own data (wages, Steuer-ID, master data)
+each person edits only themselves. Every change to a household person logs the editor and
+time; the form shows „geändert von …, Datum“ ("changed by …, date").
 
-### 3. Ehepartner
+### 3. Spouse
 
-- Einmal angelegt bzw. einmal über den Einladungscode verknüpft, gilt die Verknüpfung ab
-  `validFromYear` für alle folgenden Jahre, bis einer sie mit „ab Jahr X nicht mehr dabei“ beendet
-  (AC 2). Kein Einladungscode mehr pro Jahr.
-- **Wechsel der Veranlagungsart** (zusammen ↔ einzeln, Entscheidung des Product Owners vom
-  10.11.2026): Die Verknüpfung bleibt bestehen. Die Veranlagungsart bleibt eine Angabe pro Jahr in
+- Once created, or once linked via the invitation code, the link applies from
+  `validFromYear` for all following years, until one of them ends it with "no longer included from year X"
+  (AC 2). No more invitation code per year.
+- **Change of assessment type** (joint ↔ separate, Product Owner decision of
+  10.11.2026): The link stays in place. The assessment type remains a per-year detail in
   `SteuerjahrKopplung`.
-- Wählt Person A in einem neuen Jahr „zusammen“, wird die Jahreszeile aus der Verknüpfung befüllt:
-  mit eigenem Konto direkt Person B, ohne Konto der Platzhalter des Jahres, vorbelegt aus der
-  Haushaltsperson.
-- Ein verstorbener Ehegatte bleibt im Folgejahr auswählbar (Gnadensplitting, § 32a Abs. 6 Nr. 1 EStG).
+- If Person A chooses "joint" in a new year, the year row is filled from the link:
+  with an own account, Person B directly; without an account, the placeholder of the year, pre-filled from the
+  household person.
+- A deceased spouse remains selectable in the following year (Gnadensplitting (widow's splitting), § 32a Abs. 6 Nr. 1 EStG).
 
-### 4. Neues Steuerjahr
+### 4. New tax year
 
-Personen mit einer Zugehörigkeit im Vorjahr sind **vorausgewählt** und als „aus 2025“ gekennzeichnet;
-ein Klick bestätigt und legt die Jahreszeile mit den stabilen Angaben an. Kinder, die im neuen Jahr
-älter als 25 sind, sind nicht vorausgewählt, bleiben aber auswählbar. Ab 18 fragt die Maske nach der
-Ausbildung; die Antwort wird gespeichert, verändert die Berechnung aber in dieser Umstellung nicht
-(AC 10) und ist als solche gekennzeichnet.
+Persons with a membership in the previous year are **preselected** and marked „aus 2025“ ("from 2025");
+one click confirms and creates the year row with the stable details. Children who are
+older than 25 in the new year are not preselected, but remain selectable. From 18 the form asks about
+education; the answer is stored, but does not change the calculation in this switch
+(AC 10) and is marked as such.
 
-### 5. Migration (wiederholbar, verliert nichts)
+### 5. Migration (repeatable, loses nothing)
 
-Die stabilen Felder sind feldverschlüsselt; eine SQL-Migration kann sie nicht lesen. Deshalb
-migriert die API **beim ersten Zugriff auf den Haushalt**, je Konto, idempotent:
+The stable fields are field-encrypted; an SQL migration cannot read them. That is why
+the API migrates **on the first access to the household**, per account, idempotently:
 
-1. Alle `Kind`-Zeilen und Partner-Platzhalter des Kontos werden nach normalisiertem Namen
-   (Groß/Klein, Umlaute, Leerraum) **und** Geburtsdatum gruppiert. Gleich → eine Person, jede
-   Jahreszeile bekommt eine Zugehörigkeit.
-2. Ähnlich, aber nicht gleich (Abstand im Namen ≤ 2 bei gleichem Geburtsdatum, oder gleicher Name
-   bei einem Tag/Monat Abstand im Geburtsdatum) → zwei Personen und **ein** Kandidat.
-3. Schon zugeordnete Jahreszeilen werden übersprungen. Keine Jahreszeile wird geändert oder gelöscht.
+1. All `Kind` rows and partner placeholders of the account are grouped by normalized name
+   (upper/lower case, umlauts, whitespace) **and** date of birth. Equal → one person, every
+   year row gets a membership.
+2. Similar but not equal (name distance ≤ 2 with the same date of birth, or the same name
+   with a day/month difference in the date of birth) → two persons and **one** candidate.
+3. Year rows that are already assigned are skipped. No year row is changed or deleted.
 
-Die Gruppierung ist eine reine Funktion in `packages/core` und unit-getestet.
+The grouping is a pure function in `packages/core` and is unit-tested.
 
-### 6. Entfernen
+### 6. Removing
 
-- „Ab Jahr X nicht mehr dabei“ setzt `leftFromYear`; frühere Jahre bleiben unverändert (AC 5).
-- „Endgültig löschen“ löscht die Jahreszeilen der Person in allen Jahren, ihre Zugehörigkeiten und
-  ihren Schlüssel im Keystore (Crypto-Shredding, ADR-0059). Die Maske warnt deutlich, dass auch
-  abgeschlossene Jahre betroffen sind.
+- "No longer included from year X" sets `leftFromYear`; earlier years stay unchanged (AC 5).
+- "Delete permanently" deletes the person's year rows in all years, their memberships and
+  their key in the keystore (crypto-shredding, ADR-0059). The form warns clearly that
+  completed years are affected too.
 
-### 7. Was nicht kommt
+### 7. What is not coming
 
-- **Familienkasse aus der Kindergeldnummer (Entscheidung 9):** Das Format ist amtlich belegt
-  (11 Zeichen, `xxxFKxxxxxx`, Merkblatt Kindergeld KG 2 der BA, abgerufen am 10.11.2026). Dass die
-  ersten drei Ziffern die Familienkasse angeben, steht in keiner amtlichen Quelle, und es gibt keine
-  amtliche Zuordnungsliste. Nach der Vorgabe des Product Owners entfällt dieser Helfer.
+- **Familienkasse (family benefits office) from the Kindergeld number (decision 9):** The format is officially documented
+  (11 characters, `xxxFKxxxxxx`, Merkblatt Kindergeld KG 2 of the BA, retrieved on 10.11.2026). That the
+  first three digits identify the Familienkasse is stated in no official source, and there is no
+  official mapping list. Following the Product Owner's direction, this helper is dropped.
 
-## Konsequenzen
+## Consequences
 
-- Kontolöschung, DSGVO-Export und die Liste der verschlüsselten Felder decken die neuen Modelle ab.
-- Ein späterer Contract-Schritt (ADR-0055) kann die stabilen Felder aus `Kind` entfernen, sobald alle
-  Konten migriert sind und die Berechnung sie aus dem Haushalt liest. Das ist nicht Teil von #452.
-- Die Regression über alle 24 Szenarien ist das Abnahme-Gate: gleiche Spanne vor und nach der
-  Migration.
+- Account deletion, the DSGVO (GDPR) export and the list of encrypted fields cover the new models.
+- A later contract step (ADR-0055) can remove the stable fields from `Kind` once all
+  accounts are migrated and the calculation reads them from the household. That is not part of #452.
+- The regression across all 24 scenarios is the acceptance gate: same range before and after the
+  migration.

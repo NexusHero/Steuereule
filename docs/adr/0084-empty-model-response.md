@@ -1,28 +1,30 @@
-# ADR-0084 — Eine leere Antwort des Modells wird wiederholt und dann offen benannt
+# ADR-0084 — An empty model response is retried and then stated openly
 
 - **Status:** Accepted
 - **Date:** 2026-11-13
 - **Deciders:** NexusHero (Product Owner), Steuereule Engineering
 - **Applies to:** `apps/api/src/ki/langgraph-advisor.engine.ts`
-- **Baut auf:** #487 (Gründe für Modellfehler), dem Nachhaken ohne Werkzeuge bei stummem Rundenende
+- **Builds on:** #487 (reasons for model errors), the follow-up without tools when a round ends silently
 
-## Kontext
+## Context
 
-Im Echtfall 2024 bat der Nutzer, Kindergeld und Schweizer Kinderzulage der Tochter einzutragen. Das Modell gab
-nichts zurück: keinen Text und keinen Entwurf, auch nicht nach dem Nachhaken. Die App zeigte „Ich habe deine
-Steuerakte geprüft.“, und die Runde sah beantwortet aus. Derselbe Zug lief später live sauber durch: Kindergeld
-und Kinderzulage wurden richtig vorbereitet. Es war also ein Aussetzer des Modells, kein Wissensproblem.
+In the 2024 real case the user asked to enter the daughter's Kindergeld (child benefit) and Swiss
+Kinderzulage (child allowance). The model returned nothing: no text and no draft, not even after the
+follow-up. The app showed „Ich habe deine Steuerakte geprüft.“ ("I have checked your tax file."),
+and the round looked answered. The same turn later ran cleanly live: Kindergeld and Kinderzulage were
+prepared correctly. So it was a model dropout, not a knowledge problem.
 
-## Entscheidung
+## Decision
 
-1. **Eine Runde ohne jedes Ergebnis wird einmal wiederholt.** Ohne jedes Ergebnis heißt: kein Text, kein Entwurf,
-   keine zwei Wege, keine Auswahl, keine Fragerunde und keine Notiz- oder Interviewänderung. Der Nutzer sieht
-   dabei „Die Eule fragt noch einmal nach …“.
-2. **Bleibt sie leer, antworten die festen Regeln.** Die Antwort trägt den Modellfehler „unknown“ („Das
-   Sprachmodell hat nicht geantwortet.“), und die App bietet die Wiederholung an.
-3. Der Standardsatz bleibt nur für Runden, die etwas vorbereitet, aber nichts dazu geschrieben haben.
+1. **A round without any result is retried once.** Without any result means: no text, no draft, no
+   two paths, no selection, no question round and no note or interview change. Meanwhile the user
+   sees „Die Eule fragt noch einmal nach …“ ("The owl is asking again …").
+2. **If it stays empty, the fixed rules answer.** The answer carries the model error "unknown"
+   („Das Sprachmodell hat nicht geantwortet.“ ("The language model did not respond.")), and the app
+   offers a retry.
+3. The default sentence remains only for rounds that prepared something but wrote nothing about it.
 
-## Folgen
+## Consequences
 
-- Eine stumme Runde kostet höchstens einen zweiten Modellaufruf.
-- Im Betrieb steht jede leere Runde mit Anbieter und Modell im Log.
+- A silent round costs at most a second model call.
+- In operation every empty round is logged with provider and model.

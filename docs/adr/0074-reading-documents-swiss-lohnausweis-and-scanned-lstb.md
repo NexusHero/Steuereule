@@ -1,54 +1,58 @@
-# ADR-0074 — Belege lesen: Schweizer Lohnausweis und gescannte Lohnsteuerbescheinigung
+# ADR-0074 — Reading documents: Swiss Lohnausweis and scanned Lohnsteuerbescheinigung
 
 - **Status:** Accepted
 - **Date:** 2026-11-13
 - **Deciders:** NexusHero (Product Owner), Steuereule Engineering
 - **Applies to:** `packages/core/src/domains/{ch-salary-certificate-parser,lstb-parser,document-kind}.ts`, `apps/api/src/ch-certificate-scan/`, `apps/api/src/advisor/advisor.service.ts` (`stageDocumentDrafts`, `householdNames`), `apps/api/src/receipt/{receipt-parse.service,dto/parse-receipt.dto}.ts`, `apps/api/src/lstb/lstb.service.ts`, `apps/api/src/lstb-scan/`, `apps/mobile-web/src/lib/receipts/captureReceipt.ts`, `apps/mobile-web/src/screens/advisor/{CopilotBridgeProvider,AdvisorChatPanel}.tsx`, `apps/mobile-web/src/screens/lstb/scan/`
-- **Baut auf:** ADR-0058 (Allowlist vor dem Modell), ADR-0060 (OCR nie grün), ADR-0072 (N-Gre), ADR-0073 (Entwürfe für Person B)
+- **Builds on:** ADR-0058 (allowlist before the model), ADR-0060 (OCR never green), ADR-0072 (N-Gre), ADR-0073 (drafts for Person B)
 
-## Kontext
+## Context
 
-Im Echtfall-Test (Ehepaar, beide Grenzgänger CH) las die App keinen der beiden Schweizer
-Lohnausweise: Die allgemeine Beleg-Erkennung legt höchstens ein Feld an, und nur Krankenkasse,
-Krankentaggeld oder Säule 3a. Ein Beleg landete immer beim Hochladenden. Gescannte deutsche
-Lohnsteuerbescheinigungen (zweispaltig, OCR) las der feste Teil nur zum Teil: Text der linken Spalte
-stand vor der Zeilennummer, Umlaute fehlten, „für“ kam als „fur“. Eine zweite Bescheinigung im
-selben Jahr (zweiter Arbeitgeber, spätere Zahlung) konnte nur die erste ersetzen.
+In the real-case test (married couple, both Grenzgänger (cross-border commuters) to CH) the app read
+neither of the two Swiss Lohnausweise (Swiss salary certificates): the general document recognition
+creates at most one field, and only health insurance, Krankentaggeld (sickness daily allowance) or
+pillar 3a. A document always ended up with the person who uploaded it. Scanned German
+Lohnsteuerbescheinigungen (wage tax certificates) (two columns, OCR) were read only partly by the
+fixed part: text from the left column stood before the line number, umlauts were missing, „für“
+came out as „fur“. A second certificate in the same year (second employer, later payment) could
+only replace the first.
 
-## Entscheidung
+## Decision
 
-1. **Ein eigener Leser für den Lohnausweis (Formular 11).** Eine feste Regel im Kern liest Kopf
-   (Jahr, Zeitraum, Felder F und G), die Ziffern 1–14 und 10.1/10.2. Sie prüft sich mit den Summen
-   des Formulars: Ziffer 8 = 1 bis 7, Ziffer 11 = 8 − 9 − 10. Zahlen, die eine Summe brechen, sind
-   „prüfen“. Reißt OCR eine Zahl auseinander („1 1 1 839“), gilt der Wert, den die Summe verlangt,
-   nur wenn genau seine Ziffern auf der Zeile stehen.
-2. **Das Modell sieht nur die Ziffern 1–12.** Kopf (Name, Adresse, AHV-Nummer, Geburtsdatum),
-   Bemerkungen und Arbeitgeber verlassen den Server nie. Das Modell füllt nur leere Ziffern, nur mit
-   Beträgen, die wörtlich im gezeigten Text stehen, und nie als „gelesen“.
-3. **Wessen Ausweis es ist, sagt der Name darauf.** Vor- und Nachname einer Person (Umlaute auch als
-   „ue“) müssen beide auf dem Ausweis stehen. Passt der Name zu keiner oder zu beiden Personen, fragt
-   die App „Wessen Lohnausweis ist das?“ und liest erst mit der Antwort; der Beleg wird dafür nicht
-   ein zweites Mal hochgeladen. Hat Person B ein eigenes Konto, wird nichts vorbereitet.
-4. **Entwürfe statt Schreiben.** Die Ziffern werden Entwürfe der Eule für die Lohnausweis-Maske der
-   richtigen Person (`stageDocumentDrafts`, Person B über ADR-0073). Erst „Übernehmen“ schreibt.
-   Negative Ziffern (etwa eine Korrektur in Ziffer 7) werden nicht übernommen, weil die Maske keine kennt; Ziffer 8
-   enthält sie schon. Die Arbeitgeberadresse bleibt dem Nutzer (Feld ist für die KI gesperrt), die
-   Aufteilung der Pensionskasse steht nicht auf dem Ausweis.
-5. **Erkennung an einer Stelle.** `classifyDocumentKind` erkennt den Ausweis an „Lohnausweis“,
-   „Certificat de salaire“ und „Bruttolohn total“; App und Server leiten damit gleich weiter.
-6. **Gescannte LStB.** Die Zeilennummer wird auch hinter Text der linken Spalte gefunden, wenn die
-   Überschrift der Zeile folgt; Überschriften gelten ohne Umlaute; „für“ auch als „fur/fiir“; Tausender
-   mit Komma („61,234,56“). An das Modell geht nur die Zeile ab ihrer Nummer, nie die linke Spalte.
-7. **Eine weitere Bescheinigung im Jahr** wird auf Wunsch dazugerechnet (`addToExisting`). Dieselbe
-   Bescheinigung zweimal lehnt der Server ab (`LSTB_SAME_CERTIFICATE`). Eine Summe zweier Belege
-   ist kein einzelner Beleg mehr: Herkunft „nutzer“, bestätigt.
+1. **A dedicated reader for the Lohnausweis (Form 11).** A fixed rule in the core reads the header
+   (year, period, fields F and G), items 1–14 and 10.1/10.2. It checks itself with the form's
+   totals: item 8 = 1 to 7, item 11 = 8 − 9 − 10. Figures that break a total are
+   „prüfen“ ("check"). If OCR splits a number apart („1 1 1 839“), the value the total requires
+   applies only if exactly its digits are on the line.
+2. **The model sees only items 1–12.** Header (name, address, AHV number, date of birth), remarks
+   and employer never leave the server. The model fills only empty items, only with amounts that
+   appear verbatim in the text shown, and never as „gelesen“ ("read").
+3. **The name on it says whose certificate it is.** A person's first and last name (umlauts also as
+   "ue") must both appear on the certificate. If the name matches neither or both persons, the app
+   asks „Wessen Lohnausweis ist das?“ ("Whose salary certificate is this?") and reads only with the
+   answer; the document is not uploaded a second time for this. If Person B has their own account,
+   nothing is prepared.
+4. **Drafts instead of writes.** The items become owl drafts for the Lohnausweis form of the
+   correct person (`stageDocumentDrafts`, Person B via ADR-0073). Only „Übernehmen“ ("Apply")
+   writes. Negative items (such as a correction in item 7) are not applied, because the form does
+   not support any; item 8 already contains them. The employer address is left to the user (the
+   field is locked for the AI); the Pensionskasse split is not on the certificate.
+5. **Recognition in one place.** `classifyDocumentKind` recognizes the certificate by
+   „Lohnausweis“, „Certificat de salaire“ and „Bruttolohn total“; app and server route with it the
+   same way.
+6. **Scanned LStB.** The line number is also found after left-column text when the line's heading
+   follows; headings match without umlauts; „für“ also as „fur/fiir“; thousands with a comma
+   („61,234,56“). Only the line from its number onward goes to the model, never the left column.
+7. **A further certificate in the year** is added on request (`addToExisting`). The server rejects
+   the same certificate twice (`LSTB_SAME_CERTIFICATE`). A sum of two documents is no longer a
+   single document: provenance „nutzer“ (user), confirmed.
 
-## Folgen
+## Consequences
 
-- Echtfall 2025: Beide Lohnausweise werden vollständig gelesen, beide Summen gehen auf, der
-  gescannte Ausweis der Ehefrau landet bei Person B. 2024: eine gescannte Bescheinigung eines deutschen Arbeitgebers liefert
-  Bruttolohn, Lohnsteuer, Renten-, Kranken- und Arbeitslosenversicherung; die Pflegeversicherung war
-  im Scan unlesbar und bleibt dem Modell oder dem Nutzer.
-- Werte aus OCR bleiben „prüfen“ (ADR-0060); erst der Nutzer bestätigt.
-- Nicht enthalten: Rentenbescheinigung (Feld B), Pensionskassen-Bescheinigung, Personenerkennung
-  für die deutsche LStB (dort wählt der Nutzer die Person wie bisher).
+- Real case 2025: both Lohnausweise are read completely, both totals add up, the wife's scanned
+  certificate lands with Person B. 2024: a scanned certificate from a German employer yields
+  gross salary, wage tax, pension, health and unemployment insurance; the long-term care insurance
+  was illegible in the scan and is left to the model or the user.
+- Values from OCR remain „prüfen“ (ADR-0060); only the user confirms.
+- Not included: pension certificate (field B), Pensionskasse certificate, person recognition for the
+  German LStB (there the user chooses the person as before).

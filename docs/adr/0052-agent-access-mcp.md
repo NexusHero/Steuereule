@@ -1,358 +1,358 @@
-# ADR-0052 — Agenten-Zugang: der eigene KI-Assistent des Nutzers füllt die Erklärung aus (MCP)
+# ADR-0052 — Agent access: the user's own AI assistant fills in the tax return (MCP)
 
-- **Status:** Accepted (Stakeholder-Entscheidung NexusHero, 2026-11-03) — Entwurf aus der
-  Grilling-Session mit NexusHero; Musti-Review läuft auf den Slice-PRs
+- **Status:** Accepted (stakeholder decision NexusHero, 2026-11-03) — draft from the
+  grilling session with NexusHero; Musti review runs on the slice PRs
 - **Date:** 2026-11-05
-- **Deciders:** NexusHero (Stakeholder) — Entscheidungen; Musti — Architektur-Review
-- **Ändert / ergänzt:** Produkt-ADR-014/048 (KI schlägt vor, nie direkt), ADR-0051 (keine
-  personenbezogenen Daten an externe KI), ADR-0049 (Kennzeichnungs-Schicht der Jahresübernahme),
-  ADR-0009 (better-auth als Auth-Server), ADR-0050 (Papierweg, Bezahlung beim Ausdruck)
-- **Verschiebt:** den 1.0-Go-Live (siehe Konsequenzen)
+- **Deciders:** NexusHero (stakeholder) — decisions; Musti — architecture review
+- **Amends / supplements:** product ADR-014/048 (AI suggests, never directly), ADR-0051 (no
+  personal data to external AI), ADR-0049 (marking layer of the year carry-over),
+  ADR-0009 (better-auth as auth server), ADR-0050 (paper route, payment at printout)
+- **Postpones:** the 1.0 go-live (see Consequences)
 
-## Kontext
+## Context
 
-Nutzer wollen SteuerEule mit ihrem eigenen KI-Assistenten (Claude, Gemini, DeepSeek oder andere)
-verwenden: Der Assistent soll Unterlagen auswerten und die Steuererklärung in der App
-weitgehend selbstständig ausfüllen. Die App ist dafür heute nicht gebaut:
+Users want to use SteuerEule with their own AI assistant (Claude, Gemini, DeepSeek or others):
+the assistant should evaluate documents and fill in the tax return in the app
+largely on its own. The app is not built for this today:
 
-- Identität ist ein httpOnly-Session-Cookie (ADR-0007/0009); es gibt keinen Zugang für fremde Clients.
-- Jede Maske kennt nur Werte, keine Herkunft. „Unbestätigt“ gibt es nur für übernommene
-  Vorjahreswerte (ADR-0049).
-- Produkt-ADR-014/048 lässt eine KI nur vorschlagen; erst die Bestätigung des Nutzers macht einen
-  Posten. ADR-0051 verbietet personenbezogene Daten an externe Modelle — für *unsere* KI.
-- Die Beleg-Inbox speichert nur Metadaten (Dateiname, Art, Datum), keine Dateien.
+- Identity is an httpOnly session cookie (ADR-0007/0009); there is no access for third-party clients.
+- Every form knows only values, no origin. "Unconfirmed" exists only for carried-over
+  previous-year values (ADR-0049).
+- Product ADR-014/048 lets an AI only suggest; only the user's confirmation turns it into an
+  item. ADR-0051 forbids personal data to external models — for *our* AI.
+- The document inbox stores only metadata (file name, type, date), no files.
 
-## Entscheidung
+## Decision
 
-1. **Akteur: der eigene Assistent des Nutzers.** SteuerEule stellt eine Schnittstelle bereit; der
-   Nutzer verbindet sie mit seinem Assistenten. Wir rufen kein fremdes Modell auf und betreiben
-   keinen Agenten. Dritte, die Erklärungen für viele Nutzer bearbeiten (Lohnbüros, andere Apps),
-   sind ausgeschlossen. Nur Konten, keine Gast-Sitzungen (ADR-0045).
+1. **Actor: the user's own assistant.** SteuerEule provides an interface; the
+   user connects it to their assistant. We do not call any third-party model and do not run
+   an agent. Third parties that handle tax returns for many users (payroll offices, other apps)
+   are excluded. Accounts only, no guest sessions (ADR-0045).
 
-2. **Schnittstelle: ein Remote-MCP-Server mit OAuth 2.1.** Autorisierung über das OAuth-/OIDC-
-   Provider-Plugin von better-auth (ADR-0009): ein Login, eine Identität, kein zweiter Auth-Dienst.
-   Der Nutzer erteilt den Zugang auf einer Einwilligungsseite, die den Namen des Assistenten aus
-   der Client-Registrierung zeigt.
+2. **Interface: a remote MCP server with OAuth 2.1.** Authorization via the OAuth/OIDC
+   provider plugin of better-auth (ADR-0009): one login, one identity, no second auth service.
+   The user grants access on a consent page that shows the assistant's name from
+   the client registration.
 
-3. **Werkzeuge: wenige, fachliche Werkzeuge** in der Sprache der Erklärung — nicht aus der OpenAPI
-   generiert. Mindestens: Stand eines Steuerjahres, was für den Ausdruck fehlt (Vorprüfung), je
-   Maske ein Werkzeug zum Eintragen (Lohnsteuerbescheinigung, Interview-Antworten, Kinder,
-   Vermietung, Kapital, Lohnausweis/N-Gre, Stammdaten, Kopplung), Beleg hochladen, Eulen-Hinweise
-   lesen, Zahllink anfordern.
+3. **Tools: a few domain tools** in the language of the tax return — not generated from the OpenAPI.
+   At a minimum: status of a tax year, what is missing for the printout (pre-check), one tool per
+   form for entering data (Lohnsteuerbescheinigung (wage tax certificate), interview answers, children,
+   rental income, capital, Lohnausweis/N-Gre, master data, linking), upload document, read owl
+   hints, request payment link.
 
-4. **Umfang.** Der Agent liest und schreibt alle Steuerfakten, Stammdaten und die Kopplung und lädt
-   Belege samt Datei hoch. **Nicht über die Schnittstelle:** Konto löschen, E-Mail, Passwort,
-   Passkeys, Geräte abmelden, jede Einwilligung (insbesondere Art. 9 DSGVO zur Religion, der
-   Eulen-Modus, der Agenten-Zugang selbst) und das Bezahlen.
+4. **Scope.** The agent reads and writes all tax facts, master data and the linking, and uploads
+   documents including the file. **Not via the interface:** delete account, email, password,
+   passkeys, sign out devices, any consent (in particular Art. 9 DSGVO (GDPR) on religion, the
+   owl mode, the agent access itself) and paying.
 
-5. **Bezahlung.** Der Agent kann den Stripe-Checkout anstoßen und erhält den Zahllink; bezahlen und
-   damit den Vertrag schließen tut der Mensch (ADR-0050).
+5. **Payment.** The agent can trigger the Stripe checkout and receives the payment link; paying, and
+   thereby concluding the contract, is done by the human (ADR-0050).
 
-6. **Gesammelte Bestätigung statt Bestätigung pro Wert** — ein Amendment, keine Aufhebung von
-   Produkt-ADR-014/048. Alles, was der Agent schreibt, ist **unbestätigt** und trägt seine Herkunft
-   („Assistent: Claude, aus Beleg X“). Der Nutzer prüft in der App **je Anlage** und bestätigt oder
-   ändert. Vorprüfung, Ausdruck und Bezahlung behandeln unbestätigte Werte wie offene. Technisch ist
-   das die Kennzeichnungs-Schicht aus ADR-0049, erweitert auf jede Maske.
+6. **Collective confirmation instead of confirmation per value** — an amendment, not a repeal of
+   product ADR-014/048. Everything the agent writes is **unconfirmed** and carries its origin
+   („Assistent: Claude, aus Beleg X“, "Assistant: Claude, from document X"). The user reviews in the app **per Anlage** (schedule) and confirms or
+   changes. Pre-check, printout and payment treat unconfirmed values like open ones. Technically this
+   is the marking layer from ADR-0049, extended to every form.
 
-7. **Konflikte: der Nutzer gewinnt.** Schreibt der Agent einen Wert, den der Nutzer bestätigt oder
-   selbst eingegeben hat, bleibt dieser Wert stehen; der Agent-Wert erscheint als Vorschlag
-   („Assistent schlägt 4.800 statt 4.750 vor“).
+7. **Conflicts: the user wins.** If the agent writes a value that the user has confirmed or
+   entered themselves, that value stays; the agent value appears as a suggestion
+   („Assistent schlägt 4.800 statt 4.750 vor“, "Assistant suggests 4,800 instead of 4,750").
 
-8. **Personenbezogene Daten: schreiben ja, lesen maskiert.** Steuer-ID, IBAN, Adresse, Namen
-   Dritter (Partner, anderer Elternteil, Arbeitgeber) gibt die Schnittstelle nur maskiert zurück.
-   Was einmal in der App ist, fließt nicht erneut zum Modell. ADR-0051 gilt unverändert für unsere
-   eigene KI; der Datenfluss zum Assistenten des Nutzers geschieht auf dessen Veranlassung und ist
-   davon getrennt geregelt.
+8. **Personal data: write yes, read masked.** Steuer-ID (tax identification number), IBAN, address, names of
+   third parties (partner, other parent, employer) are returned by the interface only masked.
+   What is in the app once does not flow to the model again. ADR-0051 applies unchanged to our
+   own AI; the data flow to the user's assistant happens at the user's instigation and is
+   governed separately.
 
-9. **Drittländer.** Wir sperren keine Anbieter. Die Einwilligungsseite sagt klar, dass die Daten zum
-   Anbieter des gewählten Assistenten gehen — gegebenenfalls in ein Land ohne
-   Angemessenheitsbeschluss — und die Entscheidung beim Nutzer liegt.
+9. **Third countries.** We do not block any providers. The consent page states clearly that the data goes to the
+   provider of the chosen assistant — possibly to a country without an
+   adequacy decision — and that the decision lies with the user.
 
-10. **Laufzeit und Widerruf.** Eine Verbindung gilt unbefristet, bis der Nutzer sie widerruft. Pflicht
-    ist daher eine Übersicht „Verbundene Assistenten“ (Name, verbunden seit, zuletzt genutzt,
-    Widerruf) neben der Geräteverwaltung. Jeder Zugriff wird im Audit-Log mit dem Assistenten als
-    Quelle protokolliert (REQ-004).
+10. **Duration and revocation.** A connection applies indefinitely until the user revokes it. Mandatory
+    is therefore an overview „Verbundene Assistenten“ ("Connected assistants") (name, connected since, last used,
+    revoke) next to the device management. Every access is logged in the audit log with the assistant as
+    the source (REQ-004).
 
-11. **Belege mit Datei.** Die Beleg-Inbox bekommt eine echte Dateiablage: EU-Objektspeicher,
-    verschlüsselt, Typ- und Größenprüfung, Virenscan, Teil von DSGVO-Export und Löschung. Wir lesen
-    die Dateien nicht serverseitig aus — das tut der Assistent; die Datei ist der Nachweis.
+11. **Documents with files.** The document inbox gets real file storage: EU object storage,
+    encrypted, type and size check, virus scan, part of DSGVO export and deletion. We do not read
+    the files server-side — the assistant does that; the file is the evidence.
 
-12. **Eulen-Modus bleibt.** Er dient Nutzern ohne eigenen Assistenten; der Agent bekommt die
-    Eulen-Karten als Werkzeug „Hinweise“ und sieht dieselben Funde.
+12. **Owl mode stays.** It serves users without their own assistant; the agent gets the
+    owl cards as the tool "hints" and sees the same findings.
 
-13. **Zeitpunkt: vor 1.0, und der Go-Live wartet darauf.** DSGVO-Audit, Datenschutz-Folgenabschätzung
-    und Rechtsprüfung (#329) umfassen den Agenten-Zugang von Anfang an.
+13. **Timing: before 1.0, and the go-live waits for it.** DSGVO audit, DSFA (data protection impact assessment)
+    and legal review (#329) cover the agent access from the start.
 
-## Konsequenzen
+## Consequences
 
-- **Zweiter Identitätsweg.** Neben dem Session-Cookie gibt es Bearer-Tokens mit Scopes. Jeder Guard,
-  jedes Rate-Limit (#350) und das Audit-Log müssen beide Wege kennen; die ausgeschlossenen Aktionen
-  aus Punkt 4 werden für Tokens serverseitig verweigert, nicht nur nicht angeboten. Ein unbefristetes
-  Token mit weitem Zugriff ist ein lohnendes Ziel — kurze Access-Token-Laufzeit mit Refresh,
-  Widerruf wirkt sofort.
-- **Herkunft wird ein Querschnittsthema.** Heute speichert jede Maske nur den Wert. Künftig braucht
-  jeder Wert Herkunft und Bestätigungsstand; Cockpit, Vorprüfung, Ausdruck, Jahresübernahme und
-  DSGVO-Export müssen ihn auswerten. Das ist der größte Umbau dieses Vorhabens.
-- **Neue Infrastruktur.** OAuth-Provider (better-auth-Plugin), MCP-Server, Objektspeicher mit
-  Virenscan. Die Dateiablage hängt an der noch offenen Hetzner-Infrastruktur (#292) — damit wird der
-  Infrastruktur-Track noch stärker zum kritischen Pfad.
-- **Rechtliches.** Zusätzlich zu #329: Abgrenzung zur geschäftsmäßigen Hilfe in Steuersachen (StBerG)
-  für das Modell „eigener Assistent“, Datenschutz-Folgenabschätzung für den Agenten-Zugang,
-  Datenschutzerklärung (Drittland-Hinweis), AGB-Klausel zur Verantwortung des Nutzers für bestätigte
-  Werte.
-- **Produktversprechen.** „Vollautomatisch“ heißt: Der Assistent füllt aus, der Mensch prüft und
-  bestätigt je Anlage. Marketing und Website dürfen nicht mehr versprechen.
-- **Last.** Agenten rufen häufiger und schneller auf als Menschen; Lasttest (Ticket 11) und
-  Rate-Limits müssen Agenten-Verkehr abdecken.
-- **Qualitäts-Gate.** Ein durchgehender Test mit einem echten MCP-Client im CI: Verbinden,
-  Werkzeuge, unbestätigte Werte, Bestätigung je Anlage, Widerruf, verweigerte Kontoaktionen.
-- **1.0 verschiebt sich** um diesen Block samt Audit und Rechtsprüfung.
+- **Second identity path.** Besides the session cookie there are bearer tokens with scopes. Every guard,
+  every rate limit (#350) and the audit log must know both paths; the excluded actions
+  from point 4 are refused server-side for tokens, not merely not offered. An indefinite
+  token with broad access is a worthwhile target — short access token lifetime with refresh,
+  revocation takes effect immediately.
+- **Origin becomes a cross-cutting concern.** Today every form stores only the value. In future every
+  value needs an origin and a confirmation state; cockpit, pre-check, printout, year carry-over and
+  DSGVO export must evaluate it. This is the largest rebuild of this undertaking.
+- **New infrastructure.** OAuth provider (better-auth plugin), MCP server, object storage with
+  virus scan. The file storage depends on the still-open Hetzner infrastructure (#292) — this makes the
+  infrastructure track even more of a critical path.
+- **Legal.** In addition to #329: delimitation from commercial assistance in tax matters (StBerG)
+  for the "own assistant" model, DSFA for the agent access,
+  privacy policy (third-country notice), terms clause on the user's responsibility for confirmed
+  values.
+- **Product promise.** "Fully automatic" means: the assistant fills in, the human reviews and
+  confirms per Anlage. Marketing and website must not promise more.
+- **Load.** Agents call more often and faster than humans; the load test (ticket 11) and
+  rate limits must cover agent traffic.
+- **Quality gate.** An end-to-end test with a real MCP client in CI: connecting,
+  tools, unconfirmed values, confirmation per Anlage, revocation, refused account actions.
+- **1.0 is postponed** by this block, including audit and legal review.
 
-## Umsetzung (Ticketschnitt)
+## Implementation (ticket breakdown)
 
-In Abhängigkeitsreihenfolge; Details im Roadmap-Ticket `17-agenten-zugang-mcp.md`.
+In dependency order; details in the roadmap ticket `17-agenten-zugang-mcp.md`.
 
-1. **Herkunft und Bestätigung für jede Maske** — Kennzeichnungs-Schicht aus ADR-0049
-   verallgemeinern; Vorprüfung, Ausdruck und Bezahlung behandeln „unbestätigt“ wie offen;
-   Bestätigungs-Screen je Anlage; Konfliktregel „Nutzer gewinnt“.
-2. **OAuth-Provider** — better-auth-Plugin, Scopes, Einwilligungsseite mit Drittland-Hinweis,
-   Übersicht „Verbundene Assistenten“ mit Widerruf, Token-Weg in Guards, Rate-Limits und Audit.
-3. **MCP-Server** — fachliche Werkzeuge, Maskierung beim Lesen, verweigerte Aktionen serverseitig,
-   CI-Test mit echtem MCP-Client.
-4. **Dateiablage für Belege** — EU-Objektspeicher, Verschlüsselung, Prüfungen, Virenscan, Export und
-   Löschung (abhängig von #292).
-5. **Recht und Datenschutz** — Rechtsprüfung, Datenschutz-Folgenabschätzung, Datenschutzerklärung,
-   AGB; Teil der 1.0-Abnahme.
+1. **Origin and confirmation for every form** — generalize the marking layer from ADR-0049;
+   pre-check, printout and payment treat "unconfirmed" like open;
+   confirmation screen per Anlage; conflict rule "user wins".
+2. **OAuth provider** — better-auth plugin, scopes, consent page with third-country notice,
+   overview „Verbundene Assistenten“ with revocation, token path in guards, rate limits and audit.
+3. **MCP server** — domain tools, masking on read, refused actions server-side,
+   CI test with a real MCP client.
+4. **File storage for documents** — EU object storage, encryption, checks, virus scan, export and
+   deletion (depends on #292).
+5. **Law and data protection** — legal review, DSFA, privacy policy,
+   terms; part of the 1.0 acceptance.
 
-## Verworfene Alternativen
+## Rejected alternatives
 
-- **Wir betreiben den Agenten (eigener Modellaufruf).** Wir würden Verantwortliche für den
-  Datentransfer zu jedem Anbieter (Auftragsverarbeitung, Drittland) und trügen die Modellkosten.
-- **Dritte für viele Nutzer.** Nahe an der geschäftsmäßigen Hilfe in Steuersachen; Haftung und
-  Missbrauchsrisiko deutlich größer.
-- **Werte des Agenten gelten sofort.** Widerspricht Produkt-ADR-014/048 und legt die Verantwortung
-  für eine Steuererklärung in ein Modell.
-- **Persönlicher API-Schlüssel statt OAuth.** Ein langlebiges Geheimnis mit weitem Zugriff, das im
-  Assistenten im Klartext steht; kein standardisierter Einwilligungs- und Widerrufsweg.
-- **Werkzeuge aus der OpenAPI generieren.** Rund 80 technische Werkzeuge überfordern viele Modelle
-  und legen Interna offen.
-- **Bekannte Anbieter blockieren.** Über den frei wählbaren Client-Namen trivial zu umgehen.
+- **We run the agent (our own model call).** We would become the controller for the
+  data transfer to every provider (data processing, third country) and would bear the model costs.
+- **Third parties for many users.** Close to commercial assistance in tax matters; liability and
+  risk of misuse considerably greater.
+- **Agent values apply immediately.** Contradicts product ADR-014/048 and puts the responsibility
+  for a tax return into a model.
+- **Personal API key instead of OAuth.** A long-lived secret with broad access that sits in the
+  assistant in plain text; no standardized consent and revocation path.
+- **Generate tools from the OpenAPI.** Around 80 technical tools overwhelm many models
+  and expose internals.
+- **Block known providers.** Trivial to bypass via the freely chosen client name.
 
-## Amendment 1 (2026-11-03) — Umsetzung 17.1: Herkunft und Bestätigung (#384, REQ-032)
+## Amendment 1 (2026-11-03) — Implementation 17.1: origin and confirmation (#384, REQ-032)
 
-Stakeholder-Entscheidungen (NexusHero, Refinement 17.1):
+Stakeholder decisions (NexusHero, refinement 17.1):
 
-- Unbestätigte Werte sperren Vorprüfung, Ausdruck und Bezahlung **unabhängig von der Herkunft** —
-  auch bestehende, nicht bestätigte Jahresübernahmen.
-- „Der Nutzer gewinnt“ (§7) gilt für **jeden** Nicht-Nutzer-Schreiber, auch für die Jahresübernahme:
-  sie überschreibt keinen im Zieljahr eingetragenen Wert mehr, sondern legt einen Vorschlag ab.
-- Bestätigt wird auf einem eigenen Screen „Prüfen & bestätigen“ (aus dem Cockpit-Hinweis und der
-  Ausdruck-Vorprüfung erreichbar); der Einzel-Bestätigen-Knopf der Übernahme entfällt.
-- Je Feld gibt es höchstens einen offenen Vorschlag; der neueste ersetzt den älteren.
+- Unconfirmed values block pre-check, printout and payment **regardless of origin** —
+  including existing, unconfirmed year carry-overs.
+- "The user wins" (§7) applies to **every** non-user writer, including the year carry-over:
+  it no longer overwrites a value entered in the target year, but files a suggestion instead.
+- Confirmation happens on a dedicated screen „Prüfen & bestätigen“ ("Review & confirm") (reachable from the cockpit hint and the
+  printout pre-check); the single-confirm button of the carry-over is dropped.
+- There is at most one open suggestion per field; the newest replaces the older one.
 
-Technischer Schnitt (folgt aus §6/§7, ohne neue Abhängigkeit):
+Technical cut (follows from §6/§7, without a new dependency):
 
-- Die Tabelle `UebernahmeKennzeichnung` (ADR-0049) wird zur generischen `Kennzeichnung` umbenannt
-  und je **Feld** geführt (`<maske>[:<instanz>].<feld>`); bestehende Fakt-Kennzeichnungen werden
-  per Migration auf ihre Felder aufgefächert. Keine Zeile = vom Nutzer eingetragen = bestätigt.
-  Profil und Stammdaten sind jahresunabhängig und liegen unter Steuerjahr 0.
-- Der Vorschlagswert ist verschlüsselt (`mode=strict`), weil er alles tragen kann, was eine Maske
-  speichert. Herkunft und Bestätigung sind Teil von Export und Löschung.
-- Ändert der Nutzer einen Wert selbst, gilt er als bestätigt (die Kennzeichnung entfällt). Ein
-  offener Vorschlag auf einem bestätigten Wert sperrt nicht — er ist kein Wert der Erklärung.
-- Bei Zusammenveranlagung sperren auch unbestätigte Werte von Person B (`unbestaetigt.personB`);
-  Person B bestätigt in der eigenen App.
-- Die Entscheidung über Schreiben oder Vorschlag liegt im Core (`kennzeichnung.ts`); die API liest
-  und schreibt Felder nur über die Repositories der Masken. 17.1 verdrahtet die Masken, die ein
-  Nicht-Nutzer heute füllen kann (LStB, Rente, Kapital, Vermietung); die übrigen Masken bekommen
-  Schreibweg und Nutzer-Hook mit dem Assistenten (17.3).
+- The table `UebernahmeKennzeichnung` (ADR-0049) is renamed to the generic `Kennzeichnung`
+  and kept per **field** (`<maske>[:<instanz>].<feld>`); existing fact markings are
+  fanned out to their fields by a migration. No row = entered by the user = confirmed.
+  Profile and master data are independent of the year and sit under tax year 0.
+- The suggestion value is encrypted (`mode=strict`), because it can carry anything a form
+  stores. Origin and confirmation are part of export and deletion.
+- If the user changes a value themselves, it counts as confirmed (the marking is dropped). An
+  open suggestion on a confirmed value does not block — it is not a value of the tax return.
+- With Zusammenveranlagung (joint assessment), unconfirmed values of Person B also block (`unbestaetigt.personB`);
+  Person B confirms in their own app.
+- The decision between writing and suggesting lies in the core (`kennzeichnung.ts`); the API reads
+  and writes fields only via the forms' repositories. 17.1 wires up the forms that a
+  non-user can fill today (LStB, pension, capital, rental income); the remaining forms get
+  the write path and user hook together with the assistant (17.3).
 
-## Amendment 2 (2026-11-20) — Beratung und Rückmeldung für den Assistenten
+## Amendment 2 (2026-11-20) — Advice and feedback for the assistant
 
-Stakeholder-Entscheidung (NexusHero): Der Assistent des Nutzers bekommt dieselbe fachliche Beratung
-wie der In-App-Berater, damit er die Erklärung selbstständig führen und seinem Nutzer Rückmeldung
-geben kann. Kein Modellaufruf unsererseits (§1 bleibt): die Beratung sind **deterministische
-Werkzeuge**, keine Agent-zu-Agent-Frage an unser LLM.
+Stakeholder decision (NexusHero): The user's assistant gets the same domain advice
+as the in-app advisor, so that it can run the tax return on its own and give its user
+feedback. No model call on our side (§1 stays): the advice consists of **deterministic
+tools**, not an agent-to-agent question to our LLM.
 
-- **Beratungswerkzeuge** (Scope `steuerdaten:read`, lesen und schreiben keine Nutzerdaten, auditiert):
+- **Advice tools** (scope `steuerdaten:read`, they neither read nor write user data, audited):
   `einkommensteuer_berechnen`, `veranlagungsarten_vergleichen`, `kapitalertraege_guenstigerpruefung`,
   `spekulationsfrist_pruefen`, `renovierung_15_prozent_pruefen`, `schenkungsteuer_berechnen`,
   `kleinunternehmer_pruefen`, `gewerbesteuer_schaetzen`, `steuerwissen_lesen`, `gesetzestext_lesen`,
-  `rechtsquelle_nachschlagen`. Sie teilen Schemas und Rechenkern mit dem In-App-Berater
-  (`TOOL_ARG_SCHEMAS`), die Zahlen sind also dieselben.
-- **Rückmeldung:** `steuerbericht` (Schätzung, Ausdruck-Lücken, unbestätigte Anlagen, offene Fragen,
-  nächste Schritte), `offene_fragen` (nächste Interview-Frage mit möglichen Antworten, nur der Nutzer
-  kennt sie) und `auswirkung_simulieren` (Erstattung vorher/nachher über den echten Schreibweg in einer
-  immer zurückgerollten Transaktion; Scope `steuerdaten:write`, nie innerhalb einer laufenden Transaktion).
-- **Fremdtext gekennzeichnet:** `gesetzestext_lesen` liefert den abgerufenen Wortlaut mit `untrusted: true`
-  und dem Hinweis, ihn nur als Quelle zu zitieren.
-- **Eintragen mit derselben Zielprüfung wie der interne Berater:** `maske_eintragen` lehnt unbekannte
-  Felder, nie beschreibbare Felder, die Buchungsmaske und Werte, die das Feld nicht halten kann, mit
-  dem Grund ab. Personenbezogene Felder bleiben für den eigenen Assistenten offen (§8).
-- **Person B (Zusammenveranlagung, ADR-0054):** `maske_eintragen` und `auswirkung_simulieren` nehmen
-  `person` (A/B) mit den Regeln des In-App-Beraters (`checkDraftPerson`): B nur, wenn der Nutzer B's
-  Angaben führt, nur in B's eigenen Masken, dort ist die Person Pflicht. Der Nutzer bestätigt B's
-  unbestätigte Werte und entscheidet ihre Vorschläge auf „Prüfen & bestätigen“ mit (als „Person B“
-  gekennzeichnet); das Bestätigen einer Anlage gilt für beide.
-- **Kinder als Datensätze:** `kinder_auflisten` (Vorname maskiert, Geburtsjahr, `instance`) und
-  `kind_anlegen` (Scope `steuerdaten:write`); die Angaben folgen mit `maske_eintragen`, Maske `kind`.
-- **Anmeldung für Standard-MCP-Clients** (MCP Authorization, RFC 9728/8414/8707), im lokalen Lauf mit
-  echtem MCP-Client geprüft: `/mcp/sse` antwortet ohne Token mit 401 und
-  `WWW-Authenticate: Bearer resource_metadata=…`; `/.well-known/oauth-protected-resource[/mcp/sse]` nennt
-  better-auth unter `/api/auth` als Server, dessen Metadaten auch unter
-  `/.well-known/oauth-authorization-server[/api/auth]` liegen. Der MCP-Endpunkt ist eine OAuth-Ressource;
-  ihr Eintrag entsteht bei der ersten `/oauth2/`-Anfrage (`ensureMcpResource`), nicht beim Start, damit
-  die App ohne Datenbank bootet. Tokens für diese Ressource sind JWTs (Aussteller `…/api/auth`,
-  Zielgruppe `…/mcp/sse`); der Guard prüft sie gegen die eigenen Schlüssel und verlangt zusätzlich die
-  noch bestehende Einwilligung, damit ein Widerruf auch für JWTs sofort wirkt (§10). Clients mit
-  Loopback-Weiterleitung gelten als native (RFC 8252), `offline_access` gibt Refresh-Tokens, die
-  Einwilligungsseite sagt dazu, dass die Verbindung bis zum Widerruf besteht.
-- **Eigene Fehler zurücknehmen:** `eintrag_zuruecknehmen` leert einen unbestätigten Wert oder verwirft
-  einen Vorschlag, beides nur, wenn derselbe Assistent ihn geschrieben hat. `kind_entfernen` löscht nur
-  ein Kind, das der Assistent angelegt hat und an dem nichts bestätigt oder vom Nutzer eingetragen ist;
-  dafür markiert `kind_anlegen` Name und Geburtsdatum als unbestätigte Einträge des Assistenten.
-  Doppeltes `kind_anlegen` liefert das vorhandene Kind.
-- **Felder beschreiben:** `maske_felder` liefert je Maske Form und Hinweis aus dem Feldkatalog; Verweise
-  auf Werkzeuge des In-App-Beraters werden für den externen Assistenten umformuliert.
-- **Noch nicht:** Buchungen und Anlagegüter (Selbstständige) und neue Vermietungsobjekte über MCP. Bezahlen, Konto und Einwilligungen bleiben ausgeschlossen (§4).
+  `rechtsquelle_nachschlagen`. They share schemas and calculation core with the in-app advisor
+  (`TOOL_ARG_SCHEMAS`), so the numbers are the same.
+- **Feedback:** `steuerbericht` (estimate, printout gaps, unconfirmed Anlagen, open questions,
+  next steps), `offene_fragen` (next interview question with possible answers, only the user
+  knows them) and `auswirkung_simulieren` (refund before/after via the real write path in a
+  transaction that is always rolled back; scope `steuerdaten:write`, never inside a running transaction).
+- **External text marked:** `gesetzestext_lesen` returns the retrieved wording with `untrusted: true`
+  and the note to cite it only as a source.
+- **Entering with the same target check as the internal advisor:** `maske_eintragen` rejects unknown
+  fields, never-writable fields, the bookkeeping form and values the field cannot hold, giving
+  the reason. Personal fields stay open for the user's own assistant (§8).
+- **Person B (Zusammenveranlagung, ADR-0054):** `maske_eintragen` and `auswirkung_simulieren` take
+  `person` (A/B) with the rules of the in-app advisor (`checkDraftPerson`): B only if the user manages B's
+  details, only in B's own forms, where the person is mandatory. The user confirms B's
+  unconfirmed values and decides on their suggestions as well on „Prüfen & bestätigen“ (marked as „Person B“);
+  confirming an Anlage applies to both.
+- **Children as records:** `kinder_auflisten` (first name masked, year of birth, `instance`) and
+  `kind_anlegen` (scope `steuerdaten:write`); the details follow with `maske_eintragen`, form `kind`.
+- **Sign-in for standard MCP clients** (MCP Authorization, RFC 9728/8414/8707), verified in a local run with a
+  real MCP client: `/mcp/sse` answers without a token with 401 and
+  `WWW-Authenticate: Bearer resource_metadata=…`; `/.well-known/oauth-protected-resource[/mcp/sse]` names
+  better-auth under `/api/auth` as the server, whose metadata is also available under
+  `/.well-known/oauth-authorization-server[/api/auth]`. The MCP endpoint is an OAuth resource;
+  its entry is created on the first `/oauth2/` request (`ensureMcpResource`), not at startup, so that
+  the app boots without a database. Tokens for this resource are JWTs (issuer `…/api/auth`,
+  audience `…/mcp/sse`); the guard checks them against its own keys and additionally requires the
+  still-existing consent, so that a revocation takes effect immediately for JWTs too (§10). Clients with
+  loopback redirect count as native (RFC 8252), `offline_access` grants refresh tokens, and the
+  consent page states that the connection lasts until revoked.
+- **Undoing its own mistakes:** `eintrag_zuruecknehmen` clears an unconfirmed value or discards
+  a suggestion, both only if the same assistant wrote it. `kind_entfernen` deletes only
+  a child that the assistant created and on which nothing is confirmed or entered by the user;
+  for this, `kind_anlegen` marks name and date of birth as unconfirmed entries of the assistant.
+  A duplicate `kind_anlegen` returns the existing child.
+- **Describing fields:** `maske_felder` returns shape and hint from the field catalog per form; references
+  to tools of the in-app advisor are reworded for the external assistant.
+- **Not yet:** bookings and fixed assets (self-employed) and new rental properties via MCP. Payment, account and consents remain excluded (§4).
 
-## Amendment 3 (2026-11-20) — Lesesicht: der Assistent liest abgeleitet, nicht im Detail
+## Amendment 3 (2026-11-20) — Read view: the assistant reads derived data, not details
 
-Stakeholder-Entscheidungen (NexusHero, Grilling 20.11.2026 nach dem Echtdatenlauf 2024 über MCP).
-Verschärft §8 („lesen maskiert“) zu Datenminimierung; gilt nur für den externen Assistenten, der
-In-App-Berater behält ADR-0091.
+Stakeholder decisions (NexusHero, grilling 20.11.2026 after the real-data run 2024 via MCP).
+Tightens §8 ("read masked") into data minimization; applies only to the external assistant, the
+in-app advisor keeps ADR-0091.
 
-1. **Personen nur abgeleitet.** Je Person (Nutzer, Partner, Kinder): Alter am 31.12. des Steuerjahres
-   statt Geburtsdatum, Bundesland statt Adresse (keine PLZ, kein Ort, keine Straße), Familienstand und
-   Veranlagung, Berufsgruppe aus der Interview-Antwort `beruf` (nicht die Berufsbezeichnung).
-   Steuer-ID und IBAN nie, auch nicht maskiert.
-2. **Beträge im Klartext.** Steuerbeträge identifizieren niemanden und sind der Kern der Beratung.
-3. **Schreiben genau, lesen abgeleitet.** Der Assistent schreibt genaue Werte (Geburtsdatum,
-   Arbeitgeberadresse); zurück liest er sie abgeleitet, auch seine eigenen („Geburtsdatum gesetzt,
-   Alter 33“).
-4. **Dritte nur als Rolle und Land** („Arbeitgeber 1, Schweiz“); Arbeitgeber, Kita, Handwerker,
-   Spendenempfänger und der andere Elternteil ohne Namen und Adressen.
-5. **Freitext nur als „gesetzt“.** Bemerkungen, Erläuterungen und Notizen fließen nicht zurück.
-6. **Kinder als Nummer und Alter** mit `instance`, ohne Anfangsbuchstaben; die Zuordnung gleich alter
-   Kinder hält der Assistent selbst (aus `kind_anlegen`).
-7. **Kirchensteuer ohne Konfession.** Der Assistent schreibt je Person nur die neue Angabe
-   „kirchensteuerpflichtig ja/nein“, die die Schätzung nutzt; eine Konfession (Art. 9 DSGVO) trägt der
-   Nutzer mit Einwilligung in der App ein. Bei „ja“ ohne Konfession meldet der Bericht eine Lücke für
-   den Ausdruck. Widersprechen sich beide, gilt die Konfession des Nutzers (§7), der Bericht nennt den
-   Widerspruch. Der Religionsschlüssel ist über MCP nicht mehr beschreibbar.
-8. **Werkzeuge.** `maske_lesen(screen, person)`: je Feld Wert (Beträge klar, Persönliches abgeleitet),
-   Stand (bestätigt / unbestätigt / Vorschlag offen) und Herkunft als Art (Nutzer, du selbst, anderer
-   Assistent, Jahresübernahme, Beleg; Namen anderer Assistenten nicht). `haushalt_ueberblick` ersetzt
-   `steuerjahr_stand`. Belege lesbar mit belegId, Art, Jahr, Datum und den Feldern, deren Herkunft sie
-   sind, ohne Dateinamen.
-9. **Transparenz** über das Audit-Log wie bisher (REQ-004); keine eigene Ansicht.
+1. **Persons only derived.** Per person (user, partner, children): age on 31.12. of the tax year
+   instead of date of birth, federal state instead of address (no postcode, no town, no street), marital status and
+   assessment type, occupational group from the interview answer `beruf` (not the job title).
+   Steuer-ID and IBAN never, not even masked.
+2. **Amounts in plain text.** Tax amounts identify nobody and are the core of the advice.
+3. **Write precisely, read derived.** The assistant writes precise values (date of birth,
+   employer address); it reads them back derived, including its own („Geburtsdatum gesetzt,
+   Alter 33“, "date of birth set, age 33").
+4. **Third parties only as role and country** („Arbeitgeber 1, Schweiz“, "employer 1, Switzerland"); employers, daycare, tradespeople,
+   donation recipients and the other parent without names and addresses.
+5. **Free text only as "set".** Remarks, explanations and notes do not flow back.
+6. **Children as number and age** with `instance`, without initials; the assistant keeps the mapping of children
+   of the same age itself (from `kind_anlegen`).
+7. **Church tax without denomination.** Per person, the assistant writes only the new detail
+   "subject to church tax yes/no", which the estimate uses; a denomination (Art. 9 DSGVO) is entered by the
+   user with consent in the app. With "yes" without a denomination, the report flags a gap for
+   the printout. If the two contradict each other, the user's denomination applies (§7), and the report names the
+   contradiction. The religion key is no longer writable via MCP.
+8. **Tools.** `maske_lesen(screen, person)`: per field the value (amounts in plain text, personal data derived),
+   state (confirmed / unconfirmed / suggestion open) and origin as a type (user, you yourself, other
+   assistant, year carry-over, document; no names of other assistants). `haushalt_ueberblick` replaces
+   `steuerjahr_stand`. Documents readable with belegId, type, year, date and the fields whose origin they
+   are, without file names.
+9. **Transparency** via the audit log as before (REQ-004); no separate view.
 
-Dazu, aus dem Echtdatenlauf, weitere Werkzeuge für die Arbeit des Assistenten (Ticketschnitt in
-`17-agenten-zugang-mcp.md`, Slices 17.8–17.13): Stapel-Eintrag je Maske, Aufschlüsselung der Schätzung
-(Rechenweg), Bescheid-Abgleich mit Einspruchsfrist, Prüfregeln und Ausdruck-Plan, Aufgaben an den
-Nutzer, Komfort (Veranlagungsvergleich aus Falldaten, Mehrfeld-Szenario, Wechselkurse, Vordruck-Zeilen,
-Feld finden, Vorjahr und Fristen), Vermietungsobjekte und Buchungen. Unverändert ausgeschlossen:
-Belege serverseitig auslesen (§11), Einwilligungen, Bezahlen, Kontoaktionen.
+In addition, from the real-data run, further tools for the assistant's work (ticket breakdown in
+`17-agenten-zugang-mcp.md`, slices 17.8–17.13): batch entry per form, breakdown of the estimate
+(calculation path), Bescheid (tax assessment notice) reconciliation with the objection deadline, check rules and printout plan, tasks for the
+user, convenience (assessment comparison from case data, multi-field scenario, exchange rates, Vordruck (form) lines,
+find field, previous year and deadlines), rental properties and bookings. Still excluded:
+reading documents server-side (§11), consents, payment, account actions.
 
-## Amendment 4 (2026-11-21) — Der Zugang des Assistenten endet am MCP-Endpunkt
+## Amendment 4 (2026-11-21) — The assistant's access ends at the MCP endpoint
 
-Befund aus dem Sicherheitsreview nach den Echtdatenläufen: Ein Assistenten-Token wurde seit 17.2 von
-`UserContextGuard` auf jeder Route angenommen und von `RequiresAccount` wie eine Nutzer-Sitzung
-behandelt; gesperrt war nur, wo `@ForbidAssistant()` stand (5 von 39 Controllern). Über die normale
-API ließen sich damit die Lesesicht (Amendment 3), die Scopes und „nur der Nutzer bestätigt“ umgehen.
+Finding from the security review after the real-data runs: since 17.2 an assistant token had been accepted by
+`UserContextGuard` on every route and treated by `RequiresAccount` like a user session;
+it was blocked only where `@ForbidAssistant()` was present (5 of 39 controllers). Via the normal
+API, the read view (Amendment 3), the scopes and "only the user confirms" could thereby be bypassed.
 
-1. **Erlaubnis statt Verbotsliste.** Ein Bearer-Token gilt nur an Controllern mit
-   `@AcceptsAssistantToken()`; das ist allein der MCP-Controller. Überall sonst antwortet der Guard mit
-   403, bevor er das Token nachschlägt. Ein Test hält fest, dass die Markierung nur dort steht.
-   `@ForbidAssistant()` bleibt als zweite Sperre stehen.
-2. **Registrierung nur mit Anmeldung.** `allowUnauthenticatedClientRegistration` ist aus: Einen Client
-   registriert nur ein angemeldeter Nutzer. Folge: Ein MCP-Client, der sich vor der Anmeldung selbst
-   registriert (RFC 7591, so verbinden sich die üblichen Assistenten), kommt so nicht mehr herein.
-   Stattdessen legt der Nutzer den Zugang im Profil an („Assistent verbinden“): ein öffentlicher Client
-   (PKCE, kein Secret) mit der Rückruf-Adresse des Assistenten (Claude, ChatGPT oder eine eigene, https
-   oder Loopback). Die App zeigt Server-Adresse und Client-ID, die der Nutzer im Assistenten einträgt.
-3. **Der Assistent ist seine Client-ID.** Herkunft (`Kennzeichnung.herkunftClientId`,
-   `vorschlagClientId`) und Aufgaben (`AssistentAufgabe.clientId`) merken sich die Client-ID. „Eigener
-   Eintrag“ (zurücknehmen, Kind oder Objekt entfernen, eigene Aufgaben lesen, „du“ in der Lesesicht)
-   geht nach ihr; der Name, den sich ein Client selbst gibt, ist nur Anzeige. Einträge von vor dieser
-   Änderung tragen keine ID und gelten weiter nach dem Namen.
-4. **Aufgaben an den Nutzer** (`aufgabe_fuer_nutzer`): feste Arten, höchstens 300 Zeichen, keine
-   Kennungen (IBAN, Steuer-ID), keine Links oder Webadressen, höchstens 20 offene je Jahr; in der App
-   nur als reiner Text mit dem Namen des Assistenten.
+1. **Allowlist instead of denylist.** A bearer token is valid only on controllers with
+   `@AcceptsAssistantToken()`; that is the MCP controller alone. Everywhere else the guard answers with
+   403 before it looks up the token. A test records that the marker is present only there.
+   `@ForbidAssistant()` remains as a second block.
+2. **Registration only when signed in.** `allowUnauthenticatedClientRegistration` is off: only a signed-in
+   user registers a client. Consequence: an MCP client that registers itself before sign-in
+   (RFC 7591, which is how the usual assistants connect) no longer gets in this way.
+   Instead, the user creates the access in the profile („Assistent verbinden“, "Connect assistant"): a public client
+   (PKCE, no secret) with the assistant's callback address (Claude, ChatGPT or a custom one, https
+   or loopback). The app shows the server address and client ID, which the user enters in the assistant.
+3. **The assistant is its client ID.** Origin (`Kennzeichnung.herkunftClientId`,
+   `vorschlagClientId`) and tasks (`AssistentAufgabe.clientId`) record the client ID. "Own
+   entry" (undo, remove child or property, read own tasks, "you" in the read view)
+   goes by it; the name a client gives itself is display only. Entries from before this
+   change carry no ID and continue to go by the name.
+4. **Tasks for the user** (`aufgabe_fuer_nutzer`): fixed types, at most 300 characters, no
+   identifiers (IBAN, Steuer-ID), no links or web addresses, at most 20 open per year; in the app
+   only as plain text with the assistant's name.
 
-Bewusst nicht in diesem Schnitt: Obergrenze für Werkzeugaufrufe und gleichzeitige Sitzungen; Aufgaben
-nur aus Textbausteinen. Buchungsentwürfe über MCP bleiben offen (eine Buchung ist kein Feldwert und
-braucht einen eigenen Entwurfsweg).
+Deliberately not in this cut: an upper limit for tool calls and concurrent sessions; tasks
+only from text templates. Booking drafts via MCP remain open (a booking is not a field value and
+needs its own draft path).
 
-## Amendment 5 (2026-11-21) — Der Assistent registriert sich wieder selbst
+## Amendment 5 (2026-11-21) — The assistant registers itself again
 
-Amendment 4 Nr. 2 ist zurückgenommen. Üblich ist bei MCP, dass der Nutzer im Assistenten nur die
-Server-Adresse einträgt; der Assistent liest die Metadaten (RFC 9728, RFC 8414), registriert sich selbst
-(RFC 7591) und schickt den Nutzer zur Anmeldung und Freigabe. Ein Client-Secret gibt es nicht (öffentlicher
-Client, PKCE). Eine Client-ID von Hand zu kopieren ist ein Schritt mehr als bei anderen Diensten.
+Amendment 4 no. 2 is withdrawn. With MCP it is usual that the user enters only the
+server address in the assistant; the assistant reads the metadata (RFC 9728, RFC 8414), registers itself
+(RFC 7591) and sends the user to sign in and grant access. There is no client secret (public
+client, PKCE). Copying a client ID by hand is one step more than with other services.
 
-1. `allowUnauthenticatedClientRegistration` ist wieder an. Eine Registrierung gewährt nichts: Ein Token
-   entsteht erst nach Anmeldung und Freigabe des Nutzers und gilt nur am MCP-Endpunkt (Amendment 4 Nr. 1).
-2. **Limit:** höchstens 10 Registrierungen je Stunde und Adresse (`/oauth2/register`).
-3. **Aufräumen:** Ein selbst registrierter Client, den nach 7 Tagen kein Nutzer freigegeben hat, wird
-   gelöscht (`oauth-client-sweep.ts`; läuft mit einer Registrierung, höchstens stündlich je Prozess).
-4. „Assistent verbinden“ im Profil bleibt als zweiter Weg für Assistenten ohne eigene Registrierung;
-   ein dort angelegter Client gehört dem Konto und wird nicht aufgeräumt.
+1. `allowUnauthenticatedClientRegistration` is on again. A registration grants nothing: a token
+   is only created after the user signs in and grants access, and applies only at the MCP endpoint (Amendment 4 no. 1).
+2. **Limit:** at most 10 registrations per hour and address (`/oauth2/register`).
+3. **Cleanup:** A self-registered client that no user has approved after 7 days is
+   deleted (`oauth-client-sweep.ts`; runs with a registration, at most hourly per process).
+4. „Assistent verbinden“ in the profile remains as a second path for assistants without their own registration;
+   a client created there belongs to the account and is not cleaned up.
 
-Nicht geprüft: Client ID Metadata Documents (die Client-ID ist eine Adresse des Assistenten, nichts
-wird gespeichert) als späterer Ersatz für die Registrierung.
-
-
-## Amendment 6 (2026-11-21) — Buchungsentwürfe, Vergleiche, Limit und Streamable HTTP
-
-Schließt #548 und #549 und nimmt die in Amendment 4 offen gelassenen Punkte (Buchungsentwürfe, Obergrenze)
-auf. Unverändert: Der Assistent schreibt nur Unbestätigtes oder Vorschläge, der Nutzer entscheidet in der App.
-
-1. **Buchungsentwürfe sind Vorschläge.** `buchung_entwerfen(taxYear, …)` nimmt dieselben Angaben wie
-   `stage_booking_draft` des In-App-Beraters und prüft sie gleich (`parseBookingDraft`, `checkBookingDraft`:
-   Kontenrahmen, Steuerschlüssel, Ausgleich, Festschreibung, Jahr; ohne Buch `NO_BOOK`). Weil es über MCP keine
-   Karte im Chat gibt, liegt der Entwurf als offener Vorschlag auf `buchung:<entwurf-id>.entry` mit der Herkunft
-   des Assistenten (`fileProposal`); er erscheint unter „Prüfen & bestätigen“ (Anlage EÜR) als lesbare Buchung
-   (Datum, Text, Beleg, Summe) und wird erst mit „Übernehmen“ über den bestehenden Buchungsweg gebucht
-   (`decideProposal` → `applyDraft`), „Verwerfen“ lässt nichts zurück. `buchungsentwuerfe_auflisten` zeigt nur
-   die eigenen offenen Entwürfe; den Buchungstext gibt es zurück, er ist Angabe des Nutzers, keine Kennung.
-   Zurücknehmen geht mit `eintrag_zuruecknehmen` (Maske `buchung`, Feld `entry`); eine übernommene Buchung
-   storniert nur der Nutzer. Höchstens 25 offene Entwürfe je Assistent und Jahr; nur das erste Unternehmen.
-2. **Vergleiche aus den Falldaten.** `veranlagung_vergleichen` rechnet Zusammen- gegen Einzelveranlagung mit
-   dem Kern (`filingTypeComparison`) aus dem zu versteuernden Einkommen der App-Schätzung, im Verhältnis der
-   Einkünfte auf beide Personen aufgeteilt (eine Näherung, das sagt die Antwort; ohne Kirchensteuer); ohne
-   Person B oder Schätzung nennt es den Grund. `vorjahr_vergleichen` legt `schaetzung_aufschluesseln` beider
-   Jahre nebeneinander, mit Veränderung der Hauptzahlen, den Feldern mit Vorjahreswert, die jetzt leer sind
-   (nur Masken- und Feldnamen, nur die eigenen des Nutzers), und der Zahl der Kinder und Vermietungsobjekte.
-3. **Limit:** höchstens 120 Werkzeugaufrufe je Nutzer und Minute (gleitendes Fenster, über alle Sitzungen und
-   Clients des Nutzers) und höchstens 3 offene SSE-Sitzungen je Nutzer (`MCP_LIMITS` in `mcp-rate-limit.ts`).
-   Darüber antwortet ein Werkzeug mit `RATE_LIMITED: … in X Sekunden wieder`, eine weitere SSE-Sitzung mit 429.
-   Der erste abgelehnte Aufruf einer Sperre und jede abgelehnte Sitzung kommen ins Audit-Log. Der Zähler liegt
-   im Speicher des Prozesses, ohne Datenbank: **Er gilt je Instanz**; bei mehreren Instanzen (ADR-0053) kann
-   ein Nutzer entsprechend mehr. Ein gemeinsamer Zähler (z. B. Redis) wäre der nächste Schritt.
-4. **Streamable HTTP.** Neben dem alten SSE-Transport (`GET /mcp/sse`, `POST /mcp/messages`) gibt es
-   `POST /mcp` (MCP Streamable HTTP, zustandslos: je Anfrage ein neuer Server, JSON-Antworten, `GET`/`DELETE`
-   mit 405). Gleicher Guard, `@AcceptsAssistantToken()`, 401 mit `WWW-Authenticate` und dasselbe Limit. Da
-   nichts zwischen Anfragen gehalten wird, beantwortet jede Instanz jede Anfrage. Die **SSE-Sitzungen bleiben
-   im Speicher einer Instanz**: Ein `POST /mcp/messages`, der auf einer anderen landet, findet seine Sitzung
-   nicht (404); Clients sollen `/mcp` nutzen.
-5. **Zwei Ressourcen, ein Endpunkt.** `/mcp` ist eine eigene OAuth-Ressource (Metadaten unter
-   `/.well-known/oauth-protected-resource/mcp` mit `resource …/mcp`), weil ein Client prüft, dass die Ressource
-   zu seiner Server-Adresse passt (`/mcp/sse` passt nicht zu `/mcp`). Beide Ressourcen werden beim ersten
-   OAuth-Aufruf angelegt; der Guard nimmt Tokens mit Zielgruppe `…/mcp/sse` (alle bisher ausgestellten) und
-   `…/mcp` an beiden Transporten an. Die Metadaten von `/mcp/sse` bleiben unverändert.
+Not examined: Client ID Metadata Documents (the client ID is an address of the assistant, nothing
+is stored) as a later replacement for registration.
 
 
-## Amendment 7 (2026-11-22) — Registrierungslimit für gehostete Assistenten
+## Amendment 6 (2026-11-21) — Booking drafts, comparisons, limit and Streamable HTTP
 
-Ändert Amendment 5 Nr. 2. Ein gehosteter Assistent wie Claude.ai registriert sich von seinen eigenen
-Servern aus, nicht vom Gerät des Nutzers. Alle seine Nutzer teilen sich damit wenige Adressen; mit
-10 Registrierungen je Stunde und Adresse käme ab dem elften Nutzer in der Stunde niemand mehr herein.
+Closes #548 and #549 and takes up the points left open in Amendment 4 (booking drafts, upper limit).
+Unchanged: the assistant writes only unconfirmed values or suggestions; the user decides in the app.
 
-1. **Limit:** höchstens 100 Registrierungen je 10 Minuten und Adresse (`OAUTH_REGISTRATION_RATE_LIMIT`).
-2. Das bleibt vertretbar, weil eine Registrierung nichts gewährt (Amendment 5 Nr. 1) und ein nie
-   freigegebener Client nach 7 Tagen gelöscht wird (Amendment 5 Nr. 3). Das Limit schützt nur die Tabelle.
-   Damit das Aufräumen Schritt hält, prüft ein Lauf bis zu 20 Seiten zu 200 Clients (4.000 statt 200), die
-   ältesten zuerst, und überspringt behaltene Clients, statt an ihnen hängen zu bleiben.
-3. Offen: Das Limit zählt je Prozess im Speicher, wie die übrigen better-auth-Limits; mit mehreren
-   Instanzen vervielfacht es sich. Ein gemeinsamer Speicher (Redis) kommt mit #292.
+1. **Booking drafts are suggestions.** `buchung_entwerfen(taxYear, …)` takes the same details as
+   `stage_booking_draft` of the in-app advisor and checks them the same way (`parseBookingDraft`, `checkBookingDraft`:
+   chart of accounts, tax code, balance, finalization, year; without a book `NO_BOOK`). Because there is no
+   card in the chat via MCP, the draft sits as an open suggestion on `buchung:<entwurf-id>.entry` with the assistant's
+   origin (`fileProposal`); it appears under „Prüfen & bestätigen“ (Anlage EÜR) as a readable booking
+   (date, text, document, total) and is only booked with „Übernehmen“ ("Apply") via the existing booking path
+   (`decideProposal` → `applyDraft`); „Verwerfen“ ("Discard") leaves nothing behind. `buchungsentwuerfe_auflisten` shows only
+   its own open drafts; the booking text is returned, as it is the user's own detail, not an identifier.
+   Undoing works with `eintrag_zuruecknehmen` (form `buchung`, field `entry`); an applied booking
+   can only be cancelled by the user. At most 25 open drafts per assistant and year; only the first business.
+2. **Comparisons from the case data.** `veranlagung_vergleichen` calculates Zusammenveranlagung versus Einzelveranlagung with
+   the core (`filingTypeComparison`) from the taxable income of the app estimate, split between both persons in the ratio of their
+   income (an approximation, which the answer says; without church tax); without
+   Person B or an estimate, it names the reason. `vorjahr_vergleichen` puts `schaetzung_aufschluesseln` of both
+   years side by side, with the change in the main figures, the fields with a previous-year value that are now empty
+   (only form and field names, only the user's own), and the number of children and rental properties.
+3. **Limit:** at most 120 tool calls per user and minute (sliding window, across all of the user's sessions and
+   clients) and at most 3 open SSE sessions per user (`MCP_LIMITS` in `mcp-rate-limit.ts`).
+   Beyond that, a tool answers with `RATE_LIMITED: … in X Sekunden wieder`, and a further SSE session with 429.
+   The first rejected call of a block and every rejected session go into the audit log. The counter lives
+   in the process memory, without a database: **it applies per instance**; with several instances (ADR-0053)
+   a user can do correspondingly more. A shared counter (e.g. Redis) would be the next step.
+4. **Streamable HTTP.** Besides the old SSE transport (`GET /mcp/sse`, `POST /mcp/messages`) there is
+   `POST /mcp` (MCP Streamable HTTP, stateless: a new server per request, JSON responses, `GET`/`DELETE`
+   with 405). Same guard, `@AcceptsAssistantToken()`, 401 with `WWW-Authenticate` and the same limit. Since
+   nothing is held between requests, any instance answers any request. The **SSE sessions stay
+   in the memory of one instance**: a `POST /mcp/messages` that lands on another one does not find its session
+   (404); clients should use `/mcp`.
+5. **Two resources, one endpoint.** `/mcp` is a separate OAuth resource (metadata under
+   `/.well-known/oauth-protected-resource/mcp` with `resource …/mcp`), because a client checks that the resource
+   matches its server address (`/mcp/sse` does not match `/mcp`). Both resources are created on the first
+   OAuth call; the guard accepts tokens with audience `…/mcp/sse` (all issued so far) and
+   `…/mcp` on both transports. The metadata of `/mcp/sse` remains unchanged.
+
+
+## Amendment 7 (2026-11-22) — Registration limit for hosted assistants
+
+Amends Amendment 5 no. 2. A hosted assistant such as Claude.ai registers itself from its own
+servers, not from the user's device. All its users therefore share a few addresses; with
+10 registrations per hour and address, from the eleventh user in an hour nobody would get in any more.
+
+1. **Limit:** at most 100 registrations per 10 minutes and address (`OAUTH_REGISTRATION_RATE_LIMIT`).
+2. This remains justifiable because a registration grants nothing (Amendment 5 no. 1) and a never-
+   approved client is deleted after 7 days (Amendment 5 no. 3). The limit only protects the table.
+   So that the cleanup keeps up, one run checks up to 20 pages of 200 clients (4,000 instead of 200), the
+   oldest first, and skips retained clients instead of getting stuck on them.
+3. Open: the limit counts per process in memory, like the other better-auth limits; with several
+   instances it multiplies. A shared store (Redis) comes with #292.

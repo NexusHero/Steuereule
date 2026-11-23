@@ -1,35 +1,38 @@
-# ADR-0082 — Die Eule ändert erfasste Werte nur auf Wunsch
+# ADR-0082 — The owl changes entered values only on request
 
 - **Status:** Accepted
 - **Date:** 2026-11-13
 - **Deciders:** NexusHero (Product Owner), Steuereule Engineering
 - **Applies to:** `packages/core/src/interview/advisor-overwrite-guard.ts`, `apps/api/src/advisor/advisor.service.ts`
-- **Baut auf:** ADR-0066 (Feldkatalog), ADR-0073 (Person B)
+- **Builds on:** ADR-0066 (field catalog), ADR-0073 (Person B)
 
-## Kontext
+## Context
 
-Im Echtfall 2025 antwortete der Nutzer auf eine Rückfrage nur, dass die Partnerin selbst nichts zum
-Krankentaggeld zahlt. Die Eule legte daraufhin für alle Prämienfelder der Partnerin neue Entwürfe an. Einer
-setzte die NBU-Prämie, gelesen aus der Bestätigung des Arbeitgebers, auf das Zehnfache. Wer die Entwürfe
-übernimmt, ohne jeden zu lesen, verliert so einen richtigen Wert.
+In the 2025 real case the user answered a follow-up question only by saying that the partner pays
+nothing toward the Krankentaggeld (sickness daily allowance) herself. The owl then created new
+drafts for all of the partner's premium fields. One of them set the NBU premium, read from the
+employer's confirmation, to ten times its value. Anyone who applies the drafts without reading each
+one thus loses a correct value.
 
-## Entscheidung
+## Decision
 
-1. **Leere Felder darf die Eule füllen**, auch Felder, die noch auf 0 stehen. Das ist der Zustand einer
-   unberührten Maske.
-2. **Ein erfasster Wert ändert sich nur auf Wunsch.** Ein Entwurf für ein Feld mit anderem Wert bleibt nur
-   stehen, wenn die Nachricht des Nutzers den neuen Wert nennt (in jeder üblichen Schreibweise: „5.120“,
-   „5’120,00“) oder um eine Änderung bittet („ändern“, „korrigieren“, „falsch“, „statt“ …).
-3. **Ein Entwurf, der den vorhandenen Wert noch einmal schreibt, entfällt.**
-4. **Die Antwort sagt, was unverändert blieb:** welches Feld, der erfasste Wert und was die Eule vorgeschlagen
-   hätte. Ein Satz lädt den Nutzer ein, den richtigen Wert zu nennen.
-5. Die Regel gilt für die Entwürfe des Modells, sowohl für die Live-Anzeige als auch für die gespeicherte
-   Antwort. Entwürfe aus Belegen und Unterlagen bleiben ausgenommen, denn dort ist das Dokument der Wunsch. Für
-   die festen Regeln ohne Modell gilt sie ebenfalls nicht, weil sie ihre Werte aus der Nachricht selbst lesen.
+1. **The owl may fill empty fields**, including fields that are still at 0. That is the state of an
+   untouched form.
+2. **An entered value changes only on request.** A draft for a field with a different value stays
+   only if the user's message names the new value (in any usual notation: „5.120“,
+   „5’120,00“) or asks for a change („ändern“, „korrigieren“, „falsch“, „statt“ ("change",
+   "correct", "wrong", "instead of") …).
+3. **A draft that writes the existing value again is dropped.**
+4. **The answer says what stayed unchanged:** which field, the entered value and what the owl would
+   have proposed. One sentence invites the user to state the correct value.
+5. The rule applies to the model's drafts, both for the live display and for the stored answer.
+   Drafts from documents remain exempt, because there the document is the request. It also does not
+   apply to the fixed rules without a model, because they read their values from the message itself.
 
-## Folgen
+## Consequences
 
-- Echtfall 2025: Die NBU-Prämie bliebe beim gelesenen Wert. Die Eule hätte ihren abweichenden Vorschlag genannt,
-  statt ihn still vorzubereiten.
-- Ein Wert, den die Eule aus Angaben ableitet (z. B. gefahrene Tage in Urlaubstage umgerechnet), geht nur in
-  ein leeres oder auf 0 stehendes Feld. Will der Nutzer einen erfassten Wert so ändern, sagt er es.
+- 2025 real case: the NBU premium would stay at the value read. The owl would have stated its
+  differing proposal instead of silently preparing it.
+- A value the owl derives from information (e.g. days driven converted into vacation days) goes
+  only into an empty field or one at 0. If the user wants to change an entered value this way, they
+  say so.

@@ -1,15 +1,15 @@
-# ADR-0035 — Foundation-Konsolidierung: Framework-Standard statt Eigenbau, ein Produkt statt Slices
+# ADR-0035 — Foundation consolidation: framework standard instead of bespoke builds, one product instead of slices
 
 - **Status:** Accepted
 - **Date:** 2026-10-23
-- **Deciders:** NexusHero (Stakeholder) · **Review:** Musti (Lead) — re-review GO (2026-10-23)
+- **Deciders:** NexusHero (stakeholder) · **Review:** Musti (lead) — re-review GO (2026-10-23)
 - **Introduced by:** roadmap grilling session 2026-10-23 (decisions D3, D4, D6, D9)
 - **Builds on** [ADR-0009](0009-better-auth-as-auth-server.md) (better-auth is the auth server),
   [ADR-0011](0011-cors-credentialed-cross-origin.md), [ADR-0012](0012-session-guard-coexistence-and-guest-upgrade.md),
   [ADR-0023](0023-routing-in-the-web-app.md), [ADR-0024](0024-qr-device-authorization-endpoints.md),
   [ADR-0026](0026-local-production-shaped-compose-stack.md) (whose #292 gap the parallel infra
   track closes — see `docs/roadmap-1.0.md`), research ADR-046 (backend NestJS),
-  ADR-048 (KI-Architektur), ADR-049 (Deployment k3s/Hetzner).
+  ADR-048 (AI architecture), ADR-049 (deployment k3s/Hetzner).
 - **Context tags:** architecture, quality, foundation
 
 ## Context
@@ -46,14 +46,14 @@ A **foundation phase** precedes all new product work, in strict internal order, 
 3. **Integration:** one navigation, one session/data flow, shared honest-state pattern;
    screens cut to responsible sizes.
 4. **Shared tax domain core** (research ADR-048's determinism boundary, ADR-006/-010/-030):
-   Steuerjahr/Einkunftsarten model in `packages/core`, deterministic computation core with
-   the KI behind a port, interview-engine skeleton (catalogue, ADR-018 state machine),
-   Beleg-Posteingang seam (ADR-007/008). Nothing in the core depends on a concrete
+   tax year / Einkunftsarten (income types) model in `packages/core`, deterministic computation core with
+   the AI behind a port, interview-engine skeleton (catalogue, ADR-018 state machine),
+   document inbox seam (ADR-007/008). Nothing in the core depends on a concrete
    Einkunftsart.
 5. **Mantle completion in the foundation:** REQ-007 (TOTP/passkey), REQ-008 (Apple wiring,
    flagged off), REQ-009 (Expo `SecureStore` half) — built on the consolidated auth stack,
    deliberately before product features. This supersedes product ADR-027(b)'s "keine 2FA in
-   1.0" on exactly this point; the amendment is recorded in the research ADR log, and its
+   1.0" (no 2FA in 1.0) on exactly this point; the amendment is recorded in the research ADR log, and its
    enforcement site is ticket 05.
 
 **Comment discipline, repo-wide from now on:** comments explain *why*, never *what*; file
@@ -64,8 +64,8 @@ headers trimmed on every touched file (boy-scout rule, no global comment sprint)
 - Phase 0.2 touches security-critical paths (auth, cookies, rate limiting); the existing
   acceptance tests are the safety net and must stay green or be changed only with a
   documented reason.
-- The domain core is the deepest seam of the whole roadmap: both product tracks (Angestellte,
-  Grenzgänger-CH) plug into it, which is what makes parallel tracks viable without producing
+- The domain core is the deepest seam of the whole roadmap: both product tracks (employees,
+  Grenzgänger (cross-border commuters) CH) plug into it, which is what makes parallel tracks viable without producing
   two apps (see `docs/roadmap-1.0.md`, decision D5).
 - The foundation is large (hygiene → replacement → integration → core → mantle); WIP limit
   and the internal order are load-bearing. Overload risk was named and accepted by the

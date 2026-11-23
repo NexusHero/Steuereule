@@ -1,37 +1,40 @@
-# ADR-0085 — Ausdruck für 2024, zu lange Angaben vor dem Bezahlen
+# ADR-0085 — Printout for 2024, overlong entries before payment
 
 - **Status:** Accepted
 - **Date:** 2026-11-13
 - **Deciders:** NexusHero (Product Owner), Steuereule Engineering
 - **Applies to:** `apps/api/src/printout/`, `scripts/vordrucke/`, `docs/process/official-forms-at-year-change.md`, `apps/mobile-web/src/screens/printout/PrintoutScreen.tsx`
-- **Baut auf:** ADR-0050 (Papierweg, Vermessung der Vordrucke)
+- **Builds on:** ADR-0050 (paper path, measuring the Vordrucke)
 
-## Kontext
+## Context
 
-Die Vordrucke 2024 lagen im Repo, waren aber nicht vermessen; für 2024 gab es keinen Ausdruck. Die Vordrucke
-2024 sind anders nummeriert als 2025: In der Anlage N steht der Arbeitsweg drei Zeilen tiefer, in der Anlage
-N-Gre und der Anlage Kind eine Zeile höher. Das Vermessen mit der Spec von 2025 traf manche Felder trotzdem,
-aber in der falschen Zeile, weil dieselbe Nummer dort etwas anderes bedeutet. Im Echtfall 2024 scheiterte der
-Ausdruck außerdem an einem Anbietertext, der bei 10 pt nicht in seine Zeile passte. Das zeigte sich erst beim
-Erstellen, also nach dem Bezahlen.
+The 2024 Vordrucke (official forms) were in the repo but not measured; there was no printout for
+2024. The 2024 Vordrucke are numbered differently from 2025: in the Anlage N the commute is three
+lines lower, in the Anlage N-Gre and the Anlage Kind one line higher. Measuring with the 2025 spec
+still hit some fields, but in the wrong line, because the same number means something else there.
+In the 2024 real case the printout also failed on a provider text that did not fit its line at
+10 pt. This only showed up when creating it, i.e. after payment.
 
-## Entscheidung
+## Decision
 
-1. **Vordrucke 2024 vermessen** (293 Felder) und mit dem Lagebericht Feld für Feld gegen 2025 gelesen.
-2. **Zeilenabgleich als Werkzeug:** `zeilen-abgleich.mjs` ordnet jedem Feld die Zeile des neuen Jahres mit
-   demselben gedruckten Text zu. Gleich lautende Zeilen (1. und 2. Angabe) und Zeilen ohne eigenen Text
-   bekommen den Versatz ihrer Nachbarn und werden zum Prüfen gemeldet. `vermessen.mjs --alle` listet alle
-   Felder, die sich nicht vermessen lassen, statt beim ersten abzubrechen.
-3. **Felder, die ein Jahr nicht hat** (2024: Beruf in der Anlage N-Gre), stehen in `NOT_ON_FORM`. Ihr Wert
-   wird für dieses Jahr weggelassen. Jede andere unbekannte Feld-ID bleibt ein Fehler.
-4. **Zu lange Angaben vor dem Bezahlen:** Die Prüfung vor dem Bezahlen rendert den Ausdruck probehalber und
-   meldet zu lange Werte als `zuLang.<feld>`. Die App nennt sie, damit der Nutzer kürzt. Die Schrift wird nicht
-   verkleinert, weil die Vordruckregeln mindestens 10 pt verlangen (ADR-0050). Die Eule schlägt für den Anbieter
-   der Kinderbetreuung höchstens 45 Zeichen vor.
+1. **Measure the 2024 Vordrucke** (293 fields) and read them field by field against 2025 with the
+   position report.
+2. **Line matching as a tool:** `zeilen-abgleich.mjs` assigns each field the line of the new year
+   with the same printed text. Identically worded lines (1st and 2nd entry) and lines without their
+   own text get the offset of their neighbors and are reported for checking. `vermessen.mjs --alle`
+   lists all fields that cannot be measured instead of aborting at the first one.
+3. **Fields a year does not have** (2024: occupation in the Anlage N-Gre) are in `NOT_ON_FORM`.
+   Their value is omitted for that year. Any other unknown field ID remains an error.
+4. **Overlong entries before payment:** the check before payment renders the printout as a trial
+   and reports overlong values as `zuLang.<feld>`. The app names them so that the user shortens
+   them. The font is not reduced, because the Vordruck rules require at least 10 pt (ADR-0050). The
+   owl proposes at most 45 characters for the childcare provider.
 
-## Folgen
+## Consequences
 
-- Echtfall 2024: Der Ausdruck entsteht. Anlage N-Gre beider Partner, Arbeitswege mit Zeitraum, Kindergeld und
-  Kinderbetreuung stimmen mit dem Steuerberater überein, soweit die gespeicherten Testdaten vollständig sind.
-- Der CI-Job „Vordrucke“ prüft 2024 mit, weil er alle Specs durchläuft.
-- Nebenbei nachgeholt: Der Lagebericht 2025 enthielt die mit ADR-0079 neu vermessenen Felder noch nicht.
+- 2024 real case: the printout is produced. Anlage N-Gre of both partners, commutes with period,
+  Kindergeld (child benefit) and childcare match the tax advisor, as far as the stored test data is
+  complete.
+- The CI job „Vordrucke“ also checks 2024, because it runs through all specs.
+- Caught up along the way: the 2025 position report did not yet contain the fields newly measured
+  with ADR-0079.

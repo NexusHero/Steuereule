@@ -1,43 +1,46 @@
-# ADR-0080 — Spendenbestätigungen addieren, Schweizer Krankenkassen-Auszüge lesen
+# ADR-0080 — Adding up donation receipts, reading Swiss health insurance statements
 
 - **Status:** Accepted
 - **Date:** 2026-11-13
 - **Deciders:** NexusHero (Product Owner), Steuereule Engineering
 - **Applies to:** `packages/core/src/domains/{donation-receipt,ch-health-statement,document-kind}.ts`, `packages/core/src/interview/{advisor,owl-mode}.ts`, `apps/api/src/receipt/parse/auto-receipt-parse.strategy.ts`, `apps/api/src/ch-certificate-scan/ch-health-statement.parse-strategy.ts`, `apps/api/src/advisor/advisor.service.ts`
-- **Baut auf:** ADR-0074/0075 (Schweizer Unterlagen lesen), ADR-0076 und ADR-0078 (Belege addieren sich)
+- **Builds on:** ADR-0074/0075 (reading Swiss documents), ADR-0076 and ADR-0078 (documents add up)
 
-## Kontext
+## Context
 
-Im Echtfall 2024 kam die App nur auf einen Bruchteil der Spenden: Jede Bestätigung ersetzte die vorige. Einfaches
-Addieren wäre aber auch falsch gewesen. Eine Spende stand mit derselben Buchungsnummer in der gemeinsamen
-Sammelbestätigung und in der eigenen Bestätigung eines Partners, und eine dritte Bestätigung war eine Zweitschrift.
-Die Auszüge der Schweizer Krankenkassen las nur das Modell, ohne Zuordnung zu Kind oder Kassenwechsel.
+In the 2024 real case the app arrived at only a fraction of the donations: each receipt replaced the
+previous one. Simply adding them up would also have been wrong, though. One donation appeared with
+the same booking number in the joint collective receipt and in a partner's own receipt, and a third
+receipt was a duplicate copy. The statements of the Swiss health insurers were read only by the
+model, without assignment to a child or a change of insurer.
 
-## Entscheidung
+## Decision
 
-1. **Spenden als Posten.** Ein fester Leser zerlegt eine Zuwendungsbestätigung in Posten: Buchungsnummer, wenn
-   gedruckt, und immer Aussteller, Betrag und Jahr. Ein Posten gilt als schon gezählt, wenn die Buchungsnummer
-   gleich ist oder, wenn eine Seite keine hat, Aussteller, Betrag und Jahr gleich sind. Neue Posten kommen zur
-   Summe dazu, schon gezählte nicht, und die Eule sagt das. Das Jahr ist das Jahr der Zuwendung, nicht das Datum
-   der Bestätigung.
-2. **Krankenkassen-Auszug als eigene Unterlage** (`chKrankenkasse`). Gelesen wird die Prämie der
-   Grundversicherung je versicherter Person, bei Helsana einzeln je Person, bei SWICA für die ganze Familie.
-   Der Name entscheidet, wohin die Prämie gehört: zu Person A, zu Person B (jeweils `krankenkasseChf`) oder zu
-   einem Kind (`healthBasicEur`, Anlage Kind Kz 66, in Euro zum Kurs des Lohnausweises). Bei mehreren
-   passenden Personen gewinnt die mit den meisten Namen; bei Gleichstand bleibt es offen. Ohne Wechselkurs gibt
-   es für das Kind keinen Entwurf, nur einen Hinweis.
-3. **Kassenwechsel addiert, derselbe Auszug nicht.** Eine zweite Kasse im Jahr kommt zur ersten dazu. Derselbe
-   Auszug noch einmal zählt nicht.
-4. **Gezählte Posten am Entwurf.** Jeder Entwurf trägt seine gezählten Posten nur als Hash. Sie bleiben auf dem
-   Server und gehen nie an den Client. Ein Hash beginnt mit einer Ziffer, damit die IBAN-Sperre ihn nicht für
-   eine IBAN hält.
-5. **Rechtsquelle `estg-10-1-3`** (Basis-Krankenversicherung).
+1. **Donations as items.** A fixed reader splits a donation receipt into items: booking number, if
+   printed, and always issuer, amount and year. An item counts as already counted if the booking
+   number is the same or, if one side has none, issuer, amount and year are the same. New items are
+   added to the total, already counted ones are not, and the owl says so. The year is the year of
+   the donation, not the date of the receipt.
+2. **Health insurance statement as its own document type** (`chKrankenkasse`). It reads the premium
+   of the basic insurance per insured person, for Helsana individually per person, for SWICA for the
+   whole family. The name decides where the premium belongs: to Person A, to Person B (each
+   `krankenkasseChf`) or to a child (`healthBasicEur`, Anlage Kind Kz 66, in euros at the
+   Lohnausweis (Swiss salary certificate) rate). If several persons match, the one with the most
+   names wins; on a tie it stays open. Without an exchange rate there is no draft for the child, only
+   a hint.
+3. **A change of insurer adds up, the same statement does not.** A second insurer in the year is
+   added to the first. The same statement again does not count.
+4. **Counted items on the draft.** Each draft carries its counted items only as a hash. They stay on
+   the server and never go to the client. A hash starts with a digit so that the IBAN block does not
+   take it for an IBAN.
+5. **Legal source `estg-10-1-3`** (basic health insurance).
 
-## Folgen
+## Consequences
 
-- Echtfall 2024: Spenden wie beim Steuerberater, in jeder Upload-Reihenfolge; die Krankenkassenprämien beider Partner wie beim
-  Steuerberater.
-- Echtfall 2025: Spenden wie beim Steuerberater; die Bestätigung für 2024 landet in 2024. Bei der Krankenkasse rechnet die App
-  beide Kassen des Jahres; der Steuerberater hat nur die erste angesetzt (offene Frage an ihn).
-- Selbst getragene Krankheitskosten aus dem Auszug nennt die Eule nur als Hinweis. Sie gehören zu den
-  Krankheitskosten (§ 33) und werden nicht automatisch übernommen.
+- 2024 real case: donations as with the tax advisor, in any upload order; the health insurance
+  premiums of both partners as with the tax advisor.
+- 2025 real case: donations as with the tax advisor; the receipt for 2024 lands in 2024. For health
+  insurance the app counts both insurers of the year; the tax advisor claimed only the first (open
+  question to him).
+- Self-borne medical costs from the statement are mentioned by the owl only as a hint. They belong
+  to the medical costs (§ 33) and are not applied automatically.

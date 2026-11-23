@@ -1,48 +1,48 @@
-# ADR-0099 — Verlauf: Hinweise, Lebensereignisse und Gruppen
+# ADR-0099 — History: hints, life events and groups
 
 - **Status:** Accepted
 - **Date:** 2026-11-19
 - **Deciders:** NexusHero (Product Owner), Steuereule Engineering
-- **Applies to:** `packages/core/src/domains/year-history.ts` und neue Kernfunktionen, `apps/api/src/year-history/*`, `apps/api/prisma/schema.prisma` (neue Felder), `apps/mobile-web/src/screens/history/*`
-- **Baut auf:** ADR-0098 (Steuer-Verlauf, Zeitleiste), ADR-0097 (Beleg-Lebenszyklus), ADR-0039 (Steuerjahr-Zustände), ADR-0049 (Festsetzungsfrist), ADR-0032 (nichts versprechen)
+- **Applies to:** `packages/core/src/domains/year-history.ts` and new core functions, `apps/api/src/year-history/*`, `apps/api/prisma/schema.prisma` (new fields), `apps/mobile-web/src/screens/history/*`
+- **Builds on:** ADR-0098 (tax history, timeline), ADR-0097 (document lifecycle), ADR-0039 (tax-year states), ADR-0049 (assessment period), ADR-0032 (promise nothing)
 - **Mock:** `docs/mocks/steuer-verlauf-ideen.html`
 
-## Kontext
+## Context
 
-Nach dem Umbau zur Zeitleiste (ADR-0098) war der Verlauf ein Bildschirm, der sagt, was ansteht. Er sagte aber nichts über Jahre, die gar nicht in der App sind, über Posten, die jedes Jahr wiederkommen, und über die Lage einzelner Gruppen (Grenzgänger, Vermieter, Anleger, Rentner). Der Mock zeigt alle Ideen; der Product Owner hat sie in einer Grilling-Runde entschieden.
+After the rebuild as a timeline (ADR-0098), the history was a screen that says what is due. But it said nothing about years that are not in the app at all, about items that come back every year, or about the situation of individual groups (Grenzgänger (cross-border commuters), landlords, investors, pensioners). The mock shows all the ideas; the Product Owner decided them in a grilling round.
 
-## Entscheidung
+## Decision
 
-Alles in einem Pull Request, ohne Prognose (ADR-0098 §7 gilt weiter).
+Everything in one pull request, without a forecast (ADR-0098 §7 continues to apply).
 
-1. **Hier liegt noch Geld.**
-   - Die Zeitleiste zeigt immer die letzten vier Jahre der Festsetzungsfrist, auch ohne Daten, dazu ältere Jahre mit Daten.
-   - Ein Jahr ohne Daten fragt einmal: „Schon abgegeben?“ **Ja** = anderswo abgegeben, wartet auf den Bescheid-Upload (Status `extern-erledigt` mit der Markierung „noch ohne Bescheid“). **Nein** = offenes Jahr, in „Jetzt wichtig“ mit „bis 31.12.JJJJ möglich“. **Weiß nicht** = die Frage kommt drei Monate vor Fristende noch einmal.
-   - Einen Betrag gibt es nur, wenn das Jahr eigene Fakten hat (Spanne des Kerns). Werte aus Vorjahren werden nie hochgerechnet.
-   - Jahre mit Bescheid tragen „änderbar bis …“.
-2. **Kommt jedes Jahr wieder.** Auf der Seite des offenen Jahres eine Checkliste der Posten, die in einem der letzten zwei Jahre vorkamen. Der Vorjahresbetrag steht als Hinweis, nie als Vorausfüllung.
-3. **Vorauszahlungen.** Bei jeder Nachzahlung laut Bescheid der Hinweis „Vorauszahlungen anpassen lassen (Antrag beim Finanzamt)“, keine Spartipps. Die Nachzahlungen über die Jahre stehen als Tab auf „Entwicklung“.
-4. **Lebensereignisse.** Nur aus vorhandenen Daten abgeleitet, als Marker auf der Zeitleiste: Wechsel zur Zusammenveranlagung, Kind, neuer Arbeitgeber, Start als Grenzgänger, Umzug, Immobilienkauf. Keine eigene Eingabe.
-5. **Wiederholt gekürzt.** Dieselbe Position in mindestens zwei Bescheid-Jahren gekürzt: als Muster auf der Jahresseite und in der Checkliste des offenen Jahres.
-6. **Paare.** Für jedes Bescheid-Jahr eines Paares der Vergleich in beide Richtungen („Zusammen veranlagt hat … gebracht“ / „Einzeln wären es … mehr gewesen“), gerechnet im Kern (`filingTypeComparison`). Bei gemeinsamem Bescheid kommt die Aufteilung je Person aus den Fakten der eingereichten Fassung und heißt „Rechnung der App, etwa“, mit Spanne bei Unsicherheit; exakt nur bei zwei Einzelerklärungen.
-7. **Gruppen als Tabs auf „Entwicklung“,** nur mit Daten:
-   - Grenzgänger: Kurs je Jahr, angerechnete Quellensteuer, Anteil des Schweizer Einkommens.
-   - Vermieter: Ergebnis je Objekt und Jahr, AfA mit Restwert, 15-%-Grenze (anschaffungsnahe Herstellungskosten, § 6 Abs. 1 Nr. 1a EStG) in den drei Jahren nach dem Kauf.
-   - Kapital: genutzter Sparer-Pauschbetrag, Günstigerprüfung.
-   - Rentner: Besteuerungsanteil und Rentenfreibetrag.
-   - Verlustvortrag und Verlustverrechnungstöpfe: „noch nicht erfasst“.
-8. **Neue Felder, nur die günstigen:** Anschaffungsdatum und Erhaltungsaufwand je Objekt und Jahr; Datum und Ergebnis eines Einspruchs; Arbeitgeber auf der Lohnsteuerbescheinigung. Jedes Mietobjekt bekommt eine feste Kennung, die die Jahresübernahme mitnimmt, damit es über die Jahre verfolgbar ist.
-9. **Unterlagen.** Eine Zeile am Ende der Zeitleiste öffnet eine Seite mit den Bescheiden als Liste (einzeln herunterladbar), der Dauer von der Abgabe bis zum Bescheid (ab zwölf Wochen ohne Bescheid „Nachfragen lohnt sich“) und der Einspruch-Historie.
-10. **Kürzen nach dem UX-Review (19.11.2026).** Gemessen am Handy trug die Jahresseite 136 Wörter, jetzt etwa 60.
-    - Der Abgleich zeigt je Änderung eine Zeile wie ein Diff: Vorzeichen, Position, Wirkung. Werte, Grund, Zitat und Hinweis öffnen sich beim Antippen (ersetzt die Zeile mit Kurzgrund aus ADR-0098 §8).
-    - Muster, Paare-Vergleich und Vorauszahlungs-Hinweis sind je eine Zeile ohne farbigen Kasten; die Herleitung steht hinter dem Antippen.
-    - Die Jahresseite nennt den Betrag des Jahres, wenn kein Abgleich ihn zeigt (Schätzung als Spanne, Erstattung oder Nachzahlung laut Bescheid). Eine Änderung ohne Wirkung auf die Erstattung sagt das.
-    - Die Checkliste klappt Erledigtes ein, außer eine Position wurde schon einmal gekürzt.
-    - „Entwicklung“ trennt Kennzahlen und Bereiche in zwei Reihen. Das Diagramm zeigt Balken, Kürzung und Schätzung; der Strich für „erklärt“, der Kasten für offene Jahre und Text im Diagramm entfallen.
+1. **There is still money here.**
+   - The timeline always shows the last four years of the assessment period, even without data, plus older years with data.
+   - A year without data asks once: „Schon abgegeben?“ ("Already filed?") **Yes** = filed elsewhere, waiting for the Bescheid (tax assessment notice) upload (status `extern-erledigt` with the marker „noch ohne Bescheid“, "no Bescheid yet"). **No** = open year, in „Jetzt wichtig“ ("Important now") with „bis 31.12.JJJJ möglich“ ("possible until 31.12.YYYY"). **Don't know** = the question comes again three months before the end of the period.
+   - An amount exists only if the year has its own facts (range from the core). Values from previous years are never extrapolated.
+   - Years with a Bescheid carry „änderbar bis …“ ("changeable until …").
+2. **Comes back every year.** On the page of the open year, a checklist of the items that occurred in one of the last two years. The previous year's amount appears as a hint, never as a prefill.
+3. **Advance tax payments.** For every additional payment according to the Bescheid, the hint „Vorauszahlungen anpassen lassen (Antrag beim Finanzamt)“ ("Have advance tax payments adjusted (application to the Finanzamt)"), no saving tips. The additional payments across the years appear as a tab on „Entwicklung“ ("Development").
+4. **Life events.** Derived only from existing data, as markers on the timeline: change to Zusammenveranlagung (joint assessment), child, new employer, start as a Grenzgänger, move, property purchase. No separate input.
+5. **Repeatedly reduced.** The same item reduced in at least two Bescheid years: as a pattern on the year page and in the checklist of the open year.
+6. **Couples.** For every Bescheid year of a couple, the comparison in both directions („Zusammen veranlagt hat … gebracht“ / „Einzeln wären es … mehr gewesen“, "Joint assessment gained …" / "Separately it would have been … more"), calculated in the core (`filingTypeComparison`). With a joint Bescheid, the split per person comes from the facts of the filed version and is called „Rechnung der App, etwa“ ("The app's calculation, approximately"), with a range where uncertain; exact only with two separate tax returns.
+7. **Groups as tabs on „Entwicklung“,** only with data:
+   - Grenzgänger: exchange rate per year, credited Quellensteuer (withholding tax), share of Swiss income.
+   - Landlords: result per property and year, AfA with residual value, 15 % limit (acquisition-related production costs, § 6 Abs. 1 Nr. 1a EStG) in the three years after the purchase.
+   - Capital: Sparer-Pauschbetrag (saver's allowance) used, Günstigerprüfung (most-favorable check).
+   - Pensioners: taxable portion and pension allowance.
+   - Loss carryforward and loss offset pots: „noch nicht erfasst“ ("not yet recorded").
+8. **New fields, only the cheap ones:** acquisition date and maintenance expenses per property and year; date and outcome of an objection; employer on the Lohnsteuerbescheinigung (wage tax certificate). Each rental property gets a fixed identifier that the year carry-over takes along, so that it can be tracked across the years.
+9. **Records.** A line at the end of the timeline opens a page with the Bescheide as a list (individually downloadable), the time from filing to Bescheid (from twelve weeks without a Bescheid „Nachfragen lohnt sich“, "Worth following up") and the objection history.
+10. **Shortening after the UX review (19.11.2026).** Measured on a phone, the year page carried 136 words, now about 60.
+    - The comparison shows one line per change like a diff: sign, item, effect. Values, reason, quote and hint open on tap (replaces the line with the short reason from ADR-0098 §8).
+    - Pattern, couples comparison and advance-payment hint are one line each without a colored box; the derivation is behind the tap.
+    - The year page names the year's amount if no comparison shows it (estimate as a range, refund or additional payment according to the Bescheid). A change without an effect on the refund says so.
+    - The checklist collapses completed items, unless an item has already been reduced once.
+    - „Entwicklung“ separates metrics and areas into two rows. The chart shows bars, reduction and estimate; the line for "declared", the box for open years and text in the chart are dropped.
 
-## Folgen
+## Consequences
 
-- Der Haupt-Tab bleibt ein Bildschirm: neue Hinweise erscheinen in „Jetzt wichtig“ (eines zur Zeit) oder auf Unterseiten.
-- Neue Fakten sind feldverschlüsselt wie ihre Nachbarn (ADR-0008); alles bleibt nutzergebunden (ADR-0007), nichts wird über Nutzer hinweg ausgewertet.
-- Die Paare-Rechnung ist bei gemeinsamem Bescheid eine Näherung und sagt das.
-- Prognose und Vergleich mit anderen Nutzern bleiben draußen.
+- The main tab stays one screen: new hints appear in „Jetzt wichtig“ (one at a time) or on subpages.
+- New facts are field-encrypted like their neighbors (ADR-0008); everything stays user-bound (ADR-0007), nothing is analyzed across users.
+- With a joint Bescheid the couples calculation is an approximation and says so.
+- Forecast and comparison with other users stay out.

@@ -56,70 +56,70 @@ boot-ordering invariant are detailed in [`docs/arc42/README.md`](../arc42/README
 | 0034 | The Veranlagungsartenvergleich returns a bounded comparison, never a bare verdict — and it is not a Günstigerprüfung (#340 F3, #321) | Accepted |
 | 0035 | Foundation consolidation: framework standard over bespoke machinery, one product over slices, shared tax domain core, mantle completion in the foundation | Accepted |
 | 0036 | Definition of Done: four levels (ticket · REQ · phase · 1.0), posture line, exception process | Accepted |
-| 0037 | Einkunftsarten-/Steuerjahr-Modell in `packages/core` (ADR-006/010/030) | Accepted |
-| 0038 | Berechnungs-Kern mit KI-Port (determinism boundary, ADR-014/048) | Accepted |
-| 0039 | Steuerjahr-Zustandsmaschine (ADR-018: Rückfrage/Extern-erledigt) | Accepted |
-| 0040 | Beleg-Posteingang (ADR-007/008: Zuordnung als Vorschlag, Konflikt sichtbar) | Accepted |
-| 0041 | LStB-/Angestellte-Vertikale (Scan-Fallback-Maske, Katalog-Admission) | Accepted |
-| 0042 | Grenzgänger-CH-Vertikale (Belegart-Vokabular, Wechselkurs-Kern, segment-ch) | Accepted |
-| 0044 | Rentner-Vertikale (Rentenart, gesetzliche Tabellen, Anlage-R-Faltung) | Accepted |
-| 0045 | Value-First-Funnel: Gast darf das Minimal-Gate, Steuer-ID wird optional, Upgrade nimmt Interview-Antworten mit | Accepted |
-| 0046 | Vermietung-Vertikale: mehrere Objekte je Anlage V, lineare AfA, Verkauf/möbliert-Gate | Draft |
-| 0047 | Fristen-/Verspätungszuschlag-Warnmodus: Abgabefrist-Regelwerk, 60-Tage-Banner, kein verspätet-Status | Draft |
-| 0043 | Veranlagungsartenvergleich-Verfeinerung: Soli/KiSt eingefaltet, Unschärfe nur noch der Progressionsvorbehalt | Accepted |
-| 0048 | Kapital-Vertikale: Depot-Einordnung, Kapitalerträge-Maske, § 32d-Günstigerprüfung (bounded comparison) | Draft |
-| 0049 | Jahresübernahme M1: Quelle `uebernahme`, unbestätigte Posten zählen in die Spanne, generische Kennzeichnungs-Schicht | Draft |
-| 0050 | 1.0 gibt auf Papier ab: Formular-Ausdruck statt ELSTER, bezahlt pro Steuerjahr beim Ausdruck (Stripe), E-Mail über Brevo, Rechtsseiten | Accepted |
-| 0051 | Eulen-KI-Modus & Strikte Datenschutz-Grenze (Ticket 10.9, Product ADRs 037–042) | Accepted |
-| 0052 | Agenten-Zugang: der eigene KI-Assistent des Nutzers füllt die Erklärung aus (MCP, OAuth, gesammelte Bestätigung) | Accepted |
-| 0053 | Beta-Hosting auf Google Cloud Run und Cloud SQL (ändert Produkt-ADR-049 für die Beta) | Accepted |
-| 0054 | Zusammenveranlagung: eine gemeinsame Erklärung, Person A erfasst für Person B mit | Accepted |
+| 0037 | Income-type / tax-year model in `packages/core` (ADR-006/010/030) | Accepted |
+| 0038 | Calculation core with AI port (determinism boundary, ADR-014/048) | Accepted |
+| 0039 | Tax-year state machine (ADR-018: follow-up question / handled externally) | Accepted |
+| 0040 | Document inbox (ADR-007/008: assignment as a suggestion, conflict visible) | Accepted |
+| 0041 | LStB / employees vertical (scan fallback form, catalog admission) | Accepted |
+| 0042 | Grenzgänger CH vertical (document-type vocabulary, exchange-rate core, segment-ch) | Accepted |
+| 0044 | Pensioner vertical (pension type, statutory tables, Anlage R folding) | Accepted |
+| 0045 | Value-first funnel: a guest may pass the minimal gate, Steuer-ID becomes optional, upgrade carries interview answers along | Accepted |
+| 0046 | Rental income vertical: multiple properties per Anlage V, linear AfA, sale/furnished gate | Draft |
+| 0047 | Deadline / late-filing surcharge warning mode: filing-deadline rule set, 60-day banner, no late status | Draft |
+| 0043 | Veranlagungsartenvergleich refinement: Soli/church tax folded in, only remaining uncertainty is the Progressionsvorbehalt | Accepted |
+| 0048 | Capital vertical: securities-account classification, capital income form, § 32d Günstigerprüfung (bounded comparison) | Draft |
+| 0049 | Year carry-over M1: source `uebernahme`, unconfirmed items count into the range, generic labeling layer | Draft |
+| 0050 | 1.0 files on paper: form printout instead of ELSTER, paid per tax year at printout (Stripe), email via Brevo, legal pages | Accepted |
+| 0051 | Owl AI mode & strict privacy boundary (ticket 10.9, product ADRs 037–042) | Accepted |
+| 0052 | Agent access: the user's own AI assistant fills in the tax return (MCP, OAuth, collected confirmation) | Accepted |
+| 0053 | Beta hosting on Google Cloud Run and Cloud SQL (changes product ADR-049 for the beta) | Accepted |
+| 0054 | Zusammenveranlagung: one joint tax return, Person A also records for Person B | Accepted |
 | 0055 | Zero-Downtime Database Migrations (Expand and Contract Pattern) | Accepted |
-| 0056 | Asynchrone PDF-Generierung & Job-Entkopplung (Fault Isolation) | Accepted |
-| 0058 | LStB-Textfallback: Allowlist, Belegprüfung, nie grün | Accepted |
-| 0059 | Eigene Keystore-Datenbank für Beleg-Schlüssel (Crypto-Shredding bis in die Backups) | Accepted |
-| 0060 | On-Device-OCR im Web, selbst gehostet, OCR-Werte nie grün | Accepted |
-| 0061 | Diktieren Stufe 2: Sprachmodell von Hugging Face, gepinnt und geprüft (Abweichung von ADR-0060) | Accepted |
-| 0062 | Haushalt auf Kontoebene: Ehepartner und Kinder einmal anlegen, pro Jahr auswählen | Accepted |
-| 0063 | Kirchensteuer in der Schätzung: Satz, Kappung, besonderes Kirchgeld, Abgeltungsteuer | Accepted |
-| 0064 | Eulen-Chat: Antwort-Läufe, losgelöst von der Verbindung, mit Wiederaufnahme | Accepted |
-| 0065 | Adresssuche über den eigenen Server (Abweichung von #451 Entscheidung 7 und 8) | Accepted |
-| 0066 | Eule: ein Feldkatalog, eine Wertprüfung, ehrliche Vorschau | Accepted |
-| 0067 | Eule: Steuerjahr als Projekt, mehrere Gespräche, Projektnotizen, Kontext mit Zusammenfassung | Accepted |
-| 0068 | Eule: Skills und Fragerunden | Accepted |
-| 0069 | Eule: Beraterhaltung immer, Steuerwissen zum Nachschlagen, alle Steuerthemen | Accepted |
-| 0070 | Eule: Sparplan, Ausblick, Bescheid-Check und „Unsere Situation“ | Accepted |
-| 0071 | Eule: Steuerjahre als Projekte in der Seitenleiste, Gespräche antworten gleichzeitig | Accepted |
-| 0072 | Anlage N-Gre: Pensionskasse nach Obligatorium/Überobligatorium, NBUV zu 100 % beim Arbeitgeber, steuerfreies Krankentaggeld, Jahresdurchschnittskurs | Accepted |
-| 0073 | Eule: Entwürfe für Person B in der Zusammenveranlagung | Accepted |
-| 0074 | Belege lesen: Schweizer Lohnausweis und gescannte Lohnsteuerbescheinigung | Accepted |
-| 0075 | Schweizer Briefe: Nachweis der Pensionskasse und Prämienbestätigung des Arbeitgebers | Accepted |
-| 0076 | Weitere Werbungskosten, Kinderbetreuung und der Arbeitgeberanteil der Prämien | Accepted |
-| 0077 | Krankheitskosten (§ 33) und haushaltsnahe Aufwendungen (§ 35a) eingeschaltet | Accepted |
-| 0078 | Handwerkerrechnungen lesen (§ 35a Abs. 3 EStG) | Accepted |
-| 0079 | Wechseljahr: deutscher und Schweizer Lohn in einem Jahr, zwei Arbeitswege | Accepted |
-| 0080 | Spendenbestätigungen addieren, Schweizer Krankenkassen-Auszüge lesen | Accepted |
-| 0081 | Vorauszahlungen in der Schätzung | Accepted |
-| 0082 | Die Eule ändert erfasste Werte nur auf Wunsch | Accepted |
-| 0083 | Lohnsteuerbescheinigung ohne lesbare Sozialversicherung | Accepted |
-| 0084 | Eine leere Antwort des Modells wird wiederholt und dann offen benannt | Accepted |
-| 0085 | Ausdruck für 2024, zu lange Angaben vor dem Bezahlen | Accepted |
-| 0086 | KV des Kindes ohne gewählten Kurs, Betreuungszeitraum aus dem Bescheid | Accepted |
-| 0087 | Eskalationsfall: zwei Grenzgänger mit Wechseljahr, drei Kinder, Krankheitskosten | Accepted |
-| 0088 | Person B vollständig erfassen, Schweizer Kinderzulage je Kind | Accepted |
-| 0089 | Der Strom: eine Auswahl statt Ja/Nein-Seiten, eine Seite je Thema | Accepted |
-| 0090 | Funde aus dem Echtfall-Lauf über den Strom (2024/2025) | Accepted |
-| 0091 | Die Eule füllt jedes Feld: persönliche Daten mit Einwilligung | Accepted |
-| 0092 | Belegzuordnung: Wem gehört ein Beleg? | Accepted |
-| 0093 | Pflichtfelder und Rückfragen statt Deutung | Accepted |
-| 0094 | Die Schätzung rechnet wie der Bescheid | Accepted |
-| 0095 | Belege nach Position lesen: Lesereihenfolge, 300 dpi, Wortkästen | Accepted |
-| 0096 | Modell und Denktiefe wählbar (Gründlich / Max) | Accepted |
-| 0097 | Beleg-Lebenszyklus: Jeder Beleg sagt, was aus ihm wurde | Accepted |
-| 0098 | Steuer-Verlauf: Alle Jahre auf einen Blick | Accepted |
-| 0099 | Verlauf: Hinweise, Lebensereignisse und Gruppen | Accepted |
-| 0100 | Eule: Wächter neben dem Modell, Zeiten je Runde, Maske vor der Frage | Accepted |
-| 0101 | Selbstständige: EÜR, Buchhaltung, Bilanz, Umsatz- und Gewerbesteuer | Accepted |
+| 0056 | Asynchronous PDF generation & job decoupling (fault isolation) | Accepted |
+| 0058 | LStB text fallback: allowlist, document check, never green | Accepted |
+| 0059 | Separate keystore database for document keys (crypto-shredding down into the backups) | Accepted |
+| 0060 | On-device OCR on the web, self-hosted, OCR values never green | Accepted |
+| 0061 | Dictation stage 2: speech model from Hugging Face, pinned and verified (deviation from ADR-0060) | Accepted |
+| 0062 | Household at account level: create spouse and children once, select per year | Accepted |
+| 0063 | Church tax in the estimate: rate, cap, special Kirchgeld, Abgeltungsteuer | Accepted |
+| 0064 | Owl chat: answer runs, detached from the connection, with resumption | Accepted |
+| 0065 | Address search via our own server (deviation from #451 decisions 7 and 8) | Accepted |
+| 0066 | The owl: one field catalog, one value check, honest preview | Accepted |
+| 0067 | The owl: tax year as a project, multiple conversations, project notes, context with summary | Accepted |
+| 0068 | The owl: skills and question rounds | Accepted |
+| 0069 | The owl: advisor stance always, tax knowledge to look up, all tax topics | Accepted |
+| 0070 | The owl: savings plan, outlook, Bescheid check and „Unsere Situation“ | Accepted |
+| 0071 | The owl: tax years as projects in the sidebar, conversations answer concurrently | Accepted |
+| 0072 | Anlage N-Gre: Pensionskasse by Obligatorium/Überobligatorium, NBUV 100 % at the employer, tax-free Krankentaggeld, annual average exchange rate | Accepted |
+| 0073 | The owl: drafts for Person B in the Zusammenveranlagung | Accepted |
+| 0074 | Reading documents: Swiss Lohnausweis and scanned Lohnsteuerbescheinigung | Accepted |
+| 0075 | Swiss letters: Pensionskasse statement and the employer's premium confirmation | Accepted |
+| 0076 | Further Werbungskosten, childcare and the employer's share of the premiums | Accepted |
+| 0077 | Medical expenses (§ 33) and household-related expenses (§ 35a) switched on | Accepted |
+| 0078 | Reading tradesman invoices (§ 35a Abs. 3 EStG) | Accepted |
+| 0079 | Changeover year: German and Swiss wages in one year, two commutes | Accepted |
+| 0080 | Adding up donation receipts, reading Swiss health-insurance statements | Accepted |
+| 0081 | Advance tax payments in the estimate | Accepted |
+| 0082 | The owl changes recorded values only on request | Accepted |
+| 0083 | Lohnsteuerbescheinigung without readable social security | Accepted |
+| 0084 | An empty answer from the model is retried and then named openly | Accepted |
+| 0085 | Printout for 2024, overlong entries before payment | Accepted |
+| 0086 | Child's health insurance without a chosen exchange rate, care period from the Bescheid | Accepted |
+| 0087 | Escalation case: two Grenzgänger with a changeover year, three children, medical expenses | Accepted |
+| 0088 | Recording Person B completely, Swiss Kinderzulage per child | Accepted |
+| 0089 | The stream: one selection instead of yes/no pages, one page per topic | Accepted |
+| 0090 | Findings from the real-case run through the stream (2024/2025) | Accepted |
+| 0091 | The owl fills every field: personal data with consent | Accepted |
+| 0092 | Document assignment: who does a document belong to? | Accepted |
+| 0093 | Required fields and follow-up questions instead of interpretation | Accepted |
+| 0094 | The estimate calculates like the Bescheid | Accepted |
+| 0095 | Reading documents by position: reading order, 300 dpi, word boxes | Accepted |
+| 0096 | Selectable model and thinking depth (Gründlich / Max) | Accepted |
+| 0097 | Document lifecycle: every document says what became of it | Accepted |
+| 0098 | Tax history: all years at a glance | Accepted |
+| 0099 | History: hints, life events and groups | Accepted |
+| 0100 | The owl: guard alongside the model, timings per round, form before the question | Accepted |
+| 0101 | Self-employed: EÜR, bookkeeping, balance sheet, VAT and trade tax | Accepted |
 | 0102 | Ports & Adapters: two architecture tests enforce the boundaries in `apps/api` and in the core | Accepted |
 
 See also the [Tech Radar](./tech-radar.md).

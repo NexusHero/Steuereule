@@ -1,4 +1,4 @@
-# ADR-0090 — Funde aus dem Echtfall-Lauf über den Strom (2024/2025)
+# ADR-0090 — Findings from the real-case run through the stream (2024/2025)
 
 - **Status:** Accepted
 - **Date:** 2026-11-14
@@ -9,40 +9,40 @@
   - `apps/api/prisma/`
   - `apps/mobile-web/src/screens/{lstb,children,master-data,filing-type-comparison}/`
   - `e2e/forms/real-case-additions.mjs`
-- **Baut auf:** ADR-0063 (Kirchensteuer-Zeilen der LStB), ADR-0066 (Feldkatalog der Eule), ADR-0079 (Wechseljahr), ADR-0080 (Schweizer KV-Auszug), ADR-0087/0088, ADR-0089 (Strom)
+- **Builds on:** ADR-0063 (church tax lines of the LStB, Lohnsteuerbescheinigung / wage tax certificate), ADR-0066 (the owl's field catalog), ADR-0079 (job-change year), ADR-0080 (Swiss health insurance statement), ADR-0087/0088, ADR-0089 (the stream)
 
-## Kontext
+## Context
 
-Der Echtfall eines verheirateten Grenzgänger-Haushalts lief für 2024 und 2025 nur über die App, mit dem neuen Strom. Die Ausdrucke erzeugte die App selbst. Erklärung und Bescheid des Beraters dienten erst danach als Vergleich. Der Lauf zeigte Fehler, Lücken und zwei fachliche Fragen. Die Fragen haben wir an der amtlichen Anleitung 2025 und an den Vordrucken geklärt.
+The real case of a married Grenzgänger (cross-border commuter) household for 2024 and 2025 was run through the app alone, with the new stream. The app produced the printouts itself. The advisor's tax return and the Bescheid (Steuerbescheid, tax assessment notice) served as a comparison only afterwards. The run showed errors, gaps and two domain questions. We settled the questions using the official 2025 instructions and the Vordrucke (official forms).
 
-## Entscheidung
+## Decision
 
-1. **Veranlagungsvergleich auf der Abgabe-Seite.** Er beginnt beim bekannten Familienstand: Stammdaten oder Basis-Antwort. Bisher stand er immer auf „Nein“. Die beiden Knöpfe teilen sich die Zeile, statt aus der Karte zu ragen.
-2. **zvE wie im Bescheid.** Bei Zusammenveranlagung meldet die Schätzung das zu versteuernde Einkommen nach den Freibeträgen für Kinder, wenn diese günstiger sind als das Kindergeld (§ 2 Abs. 5 EStG). Die Steuer selbst war schon richtig. Der Vergleich mit dem Bescheid ließ es aber so aussehen, als fehle der Kinderfreibetrag.
-3. **Religion von Person B.** Das Partner-Formular fragt die Religion von B ab und speichert sie nur mit Einwilligung (Art. 9 DSGVO). Ohne diese Angabe blieb die Kirchensteuer der Zusammenveranlagung „offen“.
-4. **LStB Zeile 24.** Die steuerfreien Arbeitgeberzuschüsse zur Kranken- und Pflegeversicherung (a–c, als Summe) sind eine optionale Zeile neben der Kirchensteuer: eigene Spalte, verschlüsselt, Endpunkt `lstb-zuschuesse`. Die Schätzung zieht sie vom Sozialversicherungsanteil ab, denn abziehbar ist nur, was der Arbeitnehmer getragen hat (§ 10 Abs. 2 Satz 1 Nr. 1 EStG). Die Eule kann Zeile 24 und die Kirchensteuer-Zeilen 6/7 jetzt auch schreiben.
-5. **Erstattete Krankheitskosten.** Das Interview fragt die Kosten vor der Erstattung (Kz 302) und dazu, was Kasse, Versicherung oder Beihilfe erstattet haben (Kz 303, neue Frage `gesundheit-erstattung`). Abziehbar ist die Differenz, nie weniger als 0. Vorher musste der Nutzer selbst rechnen; im Echtfall ging das schief.
-6. **Kita-Anbieter.** Das Feld nimmt nur so viel Text an, wie in die Zeile 67 der Anlage Kind passt, und sagt das. Gemessen wird in Helvetica 10 pt (`printedWidthPt`) und gegen die schmalere Box der Vordrucke 2024/2025. Ein Paritätstest gleicht die Breiten mit dem Renderer ab. Der Ausdruck lehnt einen zu langen Text deshalb nicht mehr erst nach der Bezahlung ab.
-7. **N-Gre Zeile 82 bleibt.** Krankentaggeld und die halbe NBUV gehören laut Vordruck und ELSTER-Anleitung 2025 in Z. 80/81 (Summe Z. 82). Berater und Finanzamt haben sie weggelassen. Steuerlich wirken sie nicht, wenn die Basis-KV den Höchstbetrag von 2.800 € schon ausschöpft.
-8. **Neu: die andere Hälfte der NBUV** zählt als Werbungskosten, N-Gre Z. 57/58 (Kz 380) und in der Schätzung. So sagt es die Anleitung zu Z. 97/98: Ein Nichtberufsunfall umfasst den Arbeitsweg.
-9. **Schweizer KV des Kindes in Kz 89.** Ein Kind hat jetzt `healthInsuranceAbroad`. Ist es gesetzt, gehen KV und PV zusammen in die Anlage Kind, Kz 89 („ausländische Kranken- und Pflegeversicherung“, 2024 Z. 36, 2025 Z. 37), nicht in Kz 66/67. Der Schweizer KV-Auszug setzt die Angabe selbst, und die Eule kann sie schreiben.
-10. **Kein doppeltes Zählen.** Eine im Interview als „ausländisch“ angegebene KV zählt nicht noch einmal, wenn die Grenzgänger-Maske schon eine Schweizer Kasse hat. Beides ist dieselbe Police.
+1. **Filing type comparison on the filing page.** It starts from the known marital status: master data or the basis answer. Until now it always stood at „Nein“ ("No"). The two buttons share the row instead of sticking out of the card.
+2. **Taxable income (zvE) as in the Bescheid.** For Zusammenveranlagung (joint assessment), the estimate reports taxable income after the allowances for children when these are more favorable than Kindergeld (child benefit) (§ 2 Abs. 5 EStG). The tax itself was already correct. But the comparison with the Bescheid made it look as if the child allowance were missing.
+3. **Religion of Person B.** The partner form asks for B's religion and stores it only with consent (Art. 9 DSGVO). Without this information the church tax of the Zusammenveranlagung stayed „offen“ ("open").
+4. **LStB line 24.** The tax-free employer contributions to health and long-term care insurance (a–c, as a sum) are an optional line next to the church tax: own column, encrypted, endpoint `lstb-zuschuesse`. The estimate deducts them from the social insurance share, because only what the employee bore is deductible (§ 10 Abs. 2 Satz 1 Nr. 1 EStG). The owl can now also write line 24 and church tax lines 6/7.
+5. **Reimbursed medical costs.** The interview asks for the costs before reimbursement (Kz 302) and for what the insurer, insurance or Beihilfe (civil-service allowance) reimbursed (Kz 303, new question `gesundheit-erstattung`). The difference is deductible, never less than 0. Before, the user had to do the arithmetic; in the real case this went wrong.
+6. **Daycare provider.** The field accepts only as much text as fits in line 67 of Anlage Kind (child annex), and says so. It is measured in Helvetica 10 pt (`printedWidthPt`) and against the narrower box of the 2024/2025 Vordrucke. A parity test matches the widths with the renderer. The printout therefore no longer rejects a text that is too long only after payment.
+7. **N-Gre line 82 stays.** Krankentaggeld (Swiss daily sickness allowance insurance) and half of the NBUV (non-occupational accident insurance) belong in lines 80/81 (sum line 82) according to the form and the 2025 ELSTER instructions. The advisor and the Finanzamt (tax office) left them out. They have no tax effect when the basic health insurance already uses up the maximum of €2,800.
+8. **New: the other half of the NBUV** counts as Werbungskosten (work-related expenses), N-Gre lines 57/58 (Kz 380) and in the estimate. That is what the instructions on lines 97/98 say: a non-occupational accident includes the commute.
+9. **Child's Swiss health insurance in Kz 89.** A child now has `healthInsuranceAbroad`. If it is set, health and long-term care insurance go together into Anlage Kind, Kz 89 („ausländische Kranken- und Pflegeversicherung“ ("foreign health and long-term care insurance"), 2024 line 36, 2025 line 37), not into Kz 66/67. The Swiss health insurance statement sets the flag itself, and the owl can write it.
+10. **No double counting.** A health insurance entered as „ausländisch“ ("foreign") in the interview does not count again when the Grenzgänger screen already has a Swiss insurer. Both are the same policy.
 
-Aus dem Vergleich Strom gegen Chat (sieben erfundene Haushalte) kamen hinzu:
+The comparison of stream versus chat (seven made-up households) added:
 
-11. **Lebenslagen im Ausdruck.** Bisher fehlten sie im PDF, und die Prüfung meldete nichts. Jetzt druckt die App:
-    - Fortbildung: Anlage N Z. 60 bzw. N-Gre Z. 55, Kz 330.
-    - Umzug: als weitere Werbungskosten, Kz 380.
-    - Einkommensersatzleistungen: Hauptvordruck Z. 35, Kz 120 für A und Kz 121 für B.
+11. **Life events in the printout.** Until now they were missing from the PDF, and the check reported nothing. Now the app prints:
+    - Further training: Anlage N line 60 or N-Gre line 55, Kz 330.
+    - Relocation: as other Werbungskosten, Kz 380.
+    - Income replacement benefits: main form line 35, Kz 120 for A and Kz 121 for B.
 
-    Für die Abfindung (Anlage N Z. 17/18, je nachdem, wie der Arbeitgeber sie besteuert hat) und die doppelte Haushaltsführung (eigene Anlage) gibt es noch keinen Ausdruck. Die Prüfung sagt das jetzt ausdrücklich, statt still zu drucken.
-12. **Anlage Kind ohne Kind.** Nennt die Basis Kinder, ist aber keins erfasst, meldet die Prüfung „kinder“.
-13. **LStB für B im Wechseljahr.** Arbeitet B in der Schweiz und zeigt Bs Arbeitsweg einen Jobwechsel (oder ist schon eine LStB erfasst), bietet das Cockpit auch Bs deutsche LStB an. Es ist dieselbe Regel wie für A im Strom (`hasGermanJobToo`).
+    For severance pay (Anlage N lines 17/18, depending on how the employer taxed it) and double housekeeping (separate annex) there is no printout yet. The check now says so explicitly instead of printing silently.
+12. **Anlage Kind without a child.** If the basis names children but none is entered, the check reports „kinder“.
+13. **LStB for B in the job-change year.** If B works in Switzerland and B's commute shows a job change (or an LStB is already entered), the cockpit also offers B's German LStB. It is the same rule as for A in the stream (`hasGermanJobToo`).
 
-## Folgen
+## Consequences
 
-- Im Echtfall 2025 stimmen die Krankenversicherung (Kassenwechsel Helsana → SWICA zum 1.7.) und Z. 82 der App. Berater und Finanzamt haben die SWICA-Hälfte und die KV des Kindes übersehen. Das ist ein Hinweis für einen Einspruch, kein App-Fehler.
-- **E2E:** `real-case-additions` prüft die Zeilen B (Kita zu lang, Kasse im Ausland), G (Religion von B) und H (Zeile 24). `e2e/advisor/strom-vs-chat.mjs` vergleicht Strom und Chat je Haushalt (manuell, kostet Modellaufrufe).
-- **Offen:**
-  - Im Einzel-Pfad der Schätzung gibt es noch keine Günstigerprüfung für Alleinerziehende mit hohem Einkommen.
-  - Im Strom steht Person B noch nicht (eigener PR).
+- In the 2025 real case, the app's health insurance (insurer change Helsana → SWICA on 1 July) and line 82 are correct. The advisor and the Finanzamt overlooked the SWICA half and the child's health insurance. That is a pointer for an objection, not an app error.
+- **E2E:** `real-case-additions` checks rows B (daycare too long, insurer abroad), G (religion of B) and H (line 24). `e2e/advisor/strom-vs-chat.mjs` compares stream and chat per household (manual, costs model calls).
+- **Open:**
+  - The single-filing path of the estimate does not yet have a Günstigerprüfung (most-favorable comparison) for high-income single parents.
+  - Person B is not in the stream yet (separate PR).

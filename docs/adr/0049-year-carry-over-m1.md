@@ -1,86 +1,87 @@
-# ADR-0049 — Jahresübernahme: Quelle `uebernahme`, unbestätigte Posten zählen in die Spanne, Kennzeichnungs-Schicht (Entwurf)
+# ADR-0049 — Year carry-over: source `uebernahme`, unconfirmed items count toward the range, marking layer (Draft)
 
 - **Status:** Draft — promotion needs Musti review (ticket 10.8 review)
-- **Date:** 2026-10-25 (M2: Übernahme ALLER Fakten; M3: Jahr-Auswahl + Hinweis + 4-Rückjahre-Validierung)
-- **Deciders:** Suhay (agent, Ticket 10.8) — draft; promotion needs Musti review
-- **Implements** Produkt-ADR-021 (Jahresübernahme: alles kopieren, aber als „unbestätigt"
-  markiert), Produkt-ADR-022 (Jahresbezug der Herkunft)
-- **Builds on** ADR-0038 (`berechne`/`Posten`/`Quelle`), ADR-0037 (Steuerjahr-Modell),
-  ADR-0014/015 (Herkunft/partielle Wahrheit), ADR-0008 (Feldverschlüsselung)
+- **Date:** 2026-10-25 (M2: carry-over of ALL facts; M3: year selection + notice + 4-prior-years validation)
+- **Deciders:** Suhay (agent, ticket 10.8) — draft; promotion needs Musti review
+- **Implements** product ADR-021 (year carry-over: copy everything, but marked as "unconfirmed"),
+  product ADR-022 (year reference of the provenance)
+- **Builds on** ADR-0038 (`berechne`/`Posten`/`Quelle`), ADR-0037 (tax year model),
+  ADR-0014/015 (provenance/partial truth), ADR-0008 (field encryption)
 - **Context tags:** architecture, uebernahme, determinism boundary, honesty principle, security
 
 ## Context
 
-Produkt-ADR-021: ein neues Steuerjahr KOPIERT alles aus dem Vorjahr, aber jeder kopierte Posten
-trägt die Herkunft „Übernahme aus {Vorjahr}" und gilt als **unbestätigt**, bis er angetippt oder
-durch einen Beleg gedeckt wird; unbestätigte zählen in die Spanne, nicht in den Punktwert — ein
-ruhiger, grauer Ton, nie ein Konflikt (ADR-008 ist für Widersprüche da). Der Ticket-Umfang
-(Jahresübernahme + bis 4 Rückjahre + prominente Jahr-Auswahl + Jahresregelwerke) ist zu groß für
-einen Schnitt — dieser Entwurf legt die Schnitte fest: M1 (LStB-Tracer, gemergt) → M2 (alle
-Fakten + Cockpit-Summen, dieser Stand) → Rest (ADR-022-UI, benannte Follow-ups).
+Product ADR-021: a new tax year COPIES everything from the prior year, but every copied item
+carries the provenance „Übernahme aus {Vorjahr}" ("Carried over from {prior year}") and counts as **unconfirmed** until it is tapped or
+covered by a document; unconfirmed items count toward the range, not toward the point value — a
+calm, grey tone, never a conflict (ADR-008 is there for contradictions). The ticket scope
+(year carry-over + up to 4 prior years + prominent year selection + annual rule sets) is too large for
+one slice — this draft fixes the slices: M1 (LStB tracer, merged) → M2 (all
+facts + cockpit sums, this state) → rest (ADR-022 UI, named follow-ups).
 
 ## Decision
 
-1. **Der Kern trägt den Übernahme-Zustand (`berechnung.ts`)** — `Quelle` wächst um
-   `{ art: 'uebernahme'; vorjahr: number }` (die Herkunft mit Jahresbezug, ADR-022), `Posten` um
-   `unbestaetigt?: boolean` (absent = bestätigt). `berechne` zählt unbestätigte Posten MIT in die
-   Buckets (es sind echte Zahlen), versagt aber den Punktwert und benennt sie im `offen`-Zweig
-   ruhig: `unbestaetigte` (Anzahl) + `unbestaetigteSumme` (Einnahmen-Summe) — nie als Konflikt.
-   `cockpitSpanne` trägt `unbestaetigteSumme` als Unsicherheit in die Spanne.
+1. **The core carries the carry-over state (`berechnung.ts`)** — `Quelle` grows by
+   `{ art: 'uebernahme'; vorjahr: number }` (the provenance with year reference, ADR-022), `Posten` by
+   `unbestaetigt?: boolean` (absent = confirmed). `berechne` COUNTS unconfirmed items in the
+   buckets (they are real numbers), but withholds the point value and names them calmly in the `offen` branch:
+   `unbestaetigte` (count) + `unbestaetigteSumme` (income sum) — never as a conflict.
+   `cockpitSpanne` carries `unbestaetigteSumme` as uncertainty into the range.
 
-2. **Der Kopier-/Bestätigungs-Vertrag (`uebernahme.ts`)** — `uebernommenerPosten(posten,
-   vorjahr)` (Quelle `uebernahme`, `unbestaetigt: true`), `bestaetigePosten(posten)` (Flag weg,
-   Herkunft BLEIBT — eine bestätigte Tatsache ändert ihre Herkunft nicht, ADR-0012 §4-Instinkt),
-   `uebernahmeHerkunft(vorjahr)` (der Herkunfts-Chip).
+2. **The copy/confirmation contract (`uebernahme.ts`)** — `uebernommenerPosten(posten,
+   vorjahr)` (source `uebernahme`, `unbestaetigt: true`), `bestaetigePosten(posten)` (flag removed,
+   provenance STAYS — a confirmed fact does not change its provenance, ADR-0012 §4 instinct),
+   `uebernahmeHerkunft(vorjahr)` (the provenance chip).
 
-3. **Eine generische Kennzeichnungs-Schicht statt unbestaetigt-Spalten in jedem Fakten-Modell**
-   — `UebernahmeKennzeichnung { userId, steuerjahr, vorjahr, postenKey, bestaetigt }` mit
-   `@@unique([userId, steuerjahr, postenKey])`. Die Fakten bleiben in ihren Modellen (Lstb/…);
-   die Kennzeichnung ist die Schicht, die sagt, was wovon kopiert wurde und ob es bestätigt ist.
-   Ein zweiter Kopierversuch ist ein 409 (DB-Unique als zweite Kontrolle), eine Bestätigung ohne
-   Kennzeichnung ein 404.
+3. **One generic marking layer instead of unbestaetigt columns in every fact model**
+   — `UebernahmeKennzeichnung { userId, steuerjahr, vorjahr, postenKey, bestaetigt }` with
+   `@@unique([userId, steuerjahr, postenKey])`. The facts stay in their models (Lstb/…);
+   the marking is the layer that says what was copied from where and whether it is confirmed.
+   A second copy attempt is a 409 (DB unique as a second control), a confirmation without
+   a marking is a 404.
 
-4. **M2 (die Übernahme ALLER Fakten):** `POST …/uebernahme` kopiert LStB, Rente, Kapital und
-   jedes Vermietungsobjekt — je Fakt eine Kennzeichnung (`lstb`, `rente`, `kapital`,
-   `vermietung-<objektId>`); ein bereits übernommenes Jahr ist ein 409 (nie eine Halbkopie), ein
-   Vorjahr ohne EINEN einzigen übernehmbaren Fakt ein 404 („Nothing to take over" — der Fakt
-   zählt, nicht die Anlage). Die Cockpit-Spanne summiert ALLE unbestätigten erfassten Beträge
-   (LStB-Brutto + Rente-Jahresbetrag + Kapitalerträge + je Objekt die Mieteinnahmen); ein offenes
-   kopiertes Feld trägt keine Summe — offen bleibt offen, nie ein fabricated zero (ADR-032).
+4. **M2 (the carry-over of ALL facts):** `POST …/uebernahme` copies LStB, pension, capital and
+   every rental property — one marking per fact (`lstb`, `rente`, `kapital`,
+   `vermietung-<objektId>`); a year already carried over is a 409 (never a half copy), a
+   prior year without A SINGLE fact that can be carried over is a 404 ("Nothing to take over" — the fact
+   counts, not the form). The cockpit range sums ALL unconfirmed captured amounts
+   (LStB gross + pension annual amount + capital income + rental income per property); an open
+   copied field carries no sum — open stays open, never a fabricated zero (ADR-032).
 
-5. **M3 (ADR-022-UI):** die Cockpit-Appbar trägt eine prominente Jahr-Auswahl (Chips, aktuelles
-   Jahr + bis 4 Rückjahre) — Screen-State, der Cockpit-Query läuft pro gewähltem Jahr (nie
-   „aktuelle" Werte); der ruhige Übernahme-Hinweis erscheint im Cockpit, sobald unbestätigte
-   Kennzeichnungen da sind — die Summe, die die Spanne trägt, wird ehrlich zitiert, jede Zeile
-   trägt ihre Herkunft mit Jahresbezug („Lohnsteuerbescheinigung · Übernahme aus 2025",
-   `uebernahmeHerkunft` aus dem Kern) und wird einzeln bestätigt (PUT bestaetigen → Refetch,
-   der Hinweis verschwindet ehrlich). Die Übernahme validiert `von >= steuerjahr - 4`
-   (MAX_RUECKJAHRE = 4, ein älteres Jahr ist ein 400 — nie eine stille Alt-Kopie).
+5. **M3 (ADR-022 UI):** the cockpit app bar carries a prominent year selection (chips, current
+   year + up to 4 prior years) — screen state, the cockpit query runs per selected year (never
+   "current" values); the calm carry-over notice appears in the cockpit as soon as unconfirmed
+   markings exist — the sum carried by the range is quoted honestly, every row
+   carries its provenance with year reference („Lohnsteuerbescheinigung · Übernahme aus 2025"
+   ("wage tax certificate · carried over from 2025"),
+   `uebernahmeHerkunft` from the core) and is confirmed individually (PUT bestaetigen → refetch,
+   the notice disappears honestly). The carry-over validates `von >= steuerjahr - 4`
+   (MAX_RUECKJAHRE = 4, an older year is a 400 — never a silent old copy).
 
-6. **Rest-Grenze (ehrlich benannt):** der Jahr-Auswahl-Einstieg im ONBOARDING (die Chips leben
-   bisher nur im Cockpit), die gesammelte Prüf-Screen-Sammlung, die Herkunfts-Chips in den
-   Detail-Screens (LStB/Rente/Kapital/Vermietung) und die Jahresregelwerke-UI (Pauschalen/
-   Freibeträge pro Jahr — das Muster liegt seit 10.7: per-Jahr-Tabellen, nie „aktuelle" Werte)
-   sind benannte Follow-ups; die Kennzeichnungs-Schicht trägt ihre Schlüssel schon.
+6. **Remaining limit (named honestly):** the year-selection entry in ONBOARDING (the chips live
+   only in the cockpit so far), the collected review-screen collection, the provenance chips in the
+   detail screens (LStB/pension/capital/rental income) and the annual-rule-set UI (lump sums/
+   allowances per year — the pattern has been in place since 10.7: per-year tables, never "current" values)
+   are named follow-ups; the marking layer already carries their keys.
 
 ## Consequences
 
-- **Ehrliche Grenze, einmal benannt:** unbestätigte sind weder „offene Pflichtfelder" noch
-  Konflikte — ein dritter, ruhiger Zustand; der Punktwert bleibt versagt, die Spanne trägt die
-  übernommene Summe als Unsicherheit (ADR-021 wortwörtlich).
-- **Keine denormalisierten unbestaetigt-Spalten:** ein neues Fakten-Modell braucht keine
-  Schema-Änderung — es braucht einen `postenKey` und den Service-Lesepfad.
-- **Security posture:** die Kennzeichnung trägt keine Beträge/PII (nur userId + Jahre + Schlüssel),
-  Klartext ist vertretbar (wie Beleg.art); die kopierten Fakten bleiben in ihren
-  field-encrypted-Spalten (ADR-0008) — die Kopie bewegt verschlüsselte Feld-Strings unverändert,
-  nie neu berechnet; WRITE auditiert (REQ-004).
-- **Register:** REQ-028 (nächste freie Nummer nach 027).
+- **Honest limit, named once:** unconfirmed items are neither "open required fields" nor
+  conflicts — a third, calm state; the point value stays withheld, the range carries the
+  carried-over sum as uncertainty (ADR-021 verbatim).
+- **No denormalized unbestaetigt columns:** a new fact model needs no
+  schema change — it needs a `postenKey` and the service read path.
+- **Security posture:** the marking carries no amounts/PII (only userId + years + key),
+  plaintext is justifiable (like Beleg.art); the copied facts stay in their
+  field-encrypted columns (ADR-0008) — the copy moves encrypted field strings unchanged,
+  never recomputed; WRITE audited (REQ-004).
+- **Register:** REQ-028 (next free number after 027).
 
 ## Alternatives considered
 
-- **`unbestaetigt`-Spalte in jedem Fakten-Modell.** Verworfen: fünf Schema-Änderungen für einen
-  Zustand, der über die Kennzeichnungs-Schicht generisch und mit Jahresbezug billiger lebt.
-- **Unbestätigte wie Konflikte behandeln.** Verworfen: ADR-021 schreibt den ruhigen Ton vor; ein
-  Konflikt blockiert die Einreichung hart, eine Übernahme wartet nur auf ein Antippen.
-- **Die Übernahme ignoriert den offen/unklar-Zustand des Vorjahrs.** Verworfen: die kopierten
-  Feld-Strings reisen UNVERÄNDERT — offen bleibt offen (kein fabricated zero, ADR-032).
+- **`unbestaetigt` column in every fact model.** Rejected: five schema changes for a
+  state that lives more cheaply, generically and with a year reference via the marking layer.
+- **Treat unconfirmed items like conflicts.** Rejected: ADR-021 prescribes the calm tone; a
+  conflict hard-blocks the submission, a carry-over only waits for a tap.
+- **The carry-over ignores the open/unclear state of the prior year.** Rejected: the copied
+  field strings travel UNCHANGED — open stays open (no fabricated zero, ADR-032).

@@ -1,117 +1,117 @@
-# ADR-0048 — Kapital-Vertikale: Depot-Einordnung, Kapitalerträge-Maske, § 32d-Günstigerprüfung (bounded comparison) (Entwurf)
+# ADR-0048 — Capital vertical: depot classification, capital income form, § 32d Günstigerprüfung (bounded comparison) (Draft)
 
 - **Status:** Draft — promotion needs Musti review (ticket 10.5 review)
 - **Date:** 2026-10-25
-- **Deciders:** Suhay (agent, Ticket 10.5) — draft; promotion needs Musti review
-- **Implements** Produkt-ADR-032 (Kapitalerträge in 1.0, Krypto bleibt 2.0), Produkt-ADR-010
-  (Einkunftsart `Kapital`), Produkt-ADR-030 (frei kombinierbar), Produkt-ADR-032 (kein fabricated
+- **Deciders:** Suhay (agent, ticket 10.5) — draft; promotion needs Musti review
+- **Implements** product ADR-032 (capital income in 1.0, crypto stays 2.0), product ADR-010
+  (income type `Kapital`), product ADR-030 (freely combinable), product ADR-032 (no fabricated
   zero)
-- **Builds on** ADR-0037 (Einkunftsart-Set), ADR-0038 (`berechne`/`Posten`/`Quelle`), ADR-0034
-  (bounded comparison, Günstigerprüfungs-Namensreservierung), ADR-0040 (Belegart-Vokabular),
-  ADR-0043 (Soli/KiSt eingefaltet, Unschärfe nur noch der Progressionsvorbehalt)
+- **Builds on** ADR-0037 (income-type set), ADR-0038 (`berechne`/`Posten`/`Quelle`), ADR-0034
+  (bounded comparison, Günstigerprüfung name reservation), ADR-0040 (document type vocabulary),
+  ADR-0043 (Soli/KiSt folded in, the uncertainty is now only the Progressionsvorbehalt)
 - **Context tags:** architecture, kapital, anlage-kap, guenstigerpruefung, determinism boundary,
   honesty principle, security
 
 ## Context
 
-Kapitalerträge werden in 1.0 eine vollwertige Einkunftsart (Produkt-ADR-032): deutsche Depots
-(Abgeltungsteuer, Sparerpauschbetrag, **Günstigerprüfung § 32d Abs. 6**) plus ausländische Broker
-(IBKR, Revolut — keine Steuer abgeführt → KAP-Pflicht; genau die junge Zielgruppe). Krypto bleibt
-2.0 (privates Veräußerungsgeschäft, Haltefristen, eigene Beschaffungslogik — ehrliches Gate).
-Die Interview-Antwort `kap-depot` (Deutscher Broker / Ausländischer Broker / Krypto) existiert
-bereits im Segment-2-Graphen (interview.ts `KAP_DEPOT_VALUES`) und `gatedEinkunftsarten` gatet
-`Kapital` bereits für die Krypto-Antwort — was fehlt, ist der Posten-/Anlage-KAP-Ausbau: die
-geführte Datenschnittstelle für die Jahressteuerbescheinigung, die Depot-Einordnung, und die
-§ 32d-Günstigerprüfung als bounded comparison nach dem ADR-0034-Muster.
+In 1.0 capital income becomes a full income type (product ADR-032): German depots
+(Abgeltungsteuer (flat-rate withholding tax), Sparerpauschbetrag (saver's lump-sum allowance), **Günstigerprüfung (most-favorable check) § 32d Abs. 6**) plus foreign brokers
+(IBKR, Revolut — no tax withheld → Anlage KAP (capital income form) obligation; exactly the young target group). Crypto stays
+2.0 (private sale transaction, holding periods, its own sourcing logic — an honest gate).
+The interview answer `kap-depot` (Deutscher Broker / Ausländischer Broker / Krypto) already exists
+in the segment 2 graph (interview.ts `KAP_DEPOT_VALUES`) and `gatedEinkunftsarten` already gates
+`Kapital` for the crypto answer — what is missing is the item/Anlage KAP build-out: the
+guided data interface for the Jahressteuerbescheinigung (annual bank tax certificate), the depot classification, and the
+§ 32d Günstigerprüfung as a bounded comparison following the ADR-0034 pattern.
 
-Namens-Disziplin (ADR-0034 §1): **Dieses** Ticket trägt den Namen „Günstigerprüfung" (§ 32d
-Abs. 6 EStG) — der Veranlagungsartenvergleich (10.2) heißt nicht so, und umgekehrt. Zwei
-verschiedene Vergleiche, zwei Namen, nie wieder einer.
+Naming discipline (ADR-0034 §1): **this** ticket carries the name "Günstigerprüfung" (§ 32d
+Abs. 6 EStG) — the Veranlagungsartenvergleich (comparison of assessment types, 10.2) is not called that, and vice versa. Two
+different comparisons, two names, never again one.
 
 ## Decision
 
-Ein reines, UI-freies Modul `packages/core/src/capital.ts`, ein zweites
-`packages/core/src/most-favourable-check.ts` (ADR-0004, kein I/O), plus eine Belegart-Erweiterung,
-plus der übliche API-/Screen-Ausbau:
+A pure, UI-free module `packages/core/src/capital.ts`, a second one
+`packages/core/src/most-favourable-check.ts` (ADR-0004, no I/O), plus a document type extension,
+plus the usual API/screen build-out:
 
-1. **Depot-Einordnung (`ordneKapDepotEin`)** — die `kap-depot`-Antwort wird auf das abgebildet,
-   was sie für die Steuererklärung BEDEUTET: `deutscher-broker` (Abgeltungsteuer einbehalten —
-   die Günstigerprüfung ist die hier anwendbare Frage), `auslaendischer-broker` (keine deutsche
-   Steuer abgeführt → Pflichtveranlagung Anlage KAP, tarifliche Besteuerung — die KAP-Pflicht
-   wird ehrlich benannt, nie eine Abgeltung erfunden), `krypto` (gegated, ADR-032 §2),
-   `unbekannt` (nie geraten). Die Einordnung ist eine reine Ableitung aus der EINEN Quelle
-   (Interview-Antwort) — keine denormalisierte Spalte, die driften kann.
+1. **Depot classification (`ordneKapDepotEin`)** — the `kap-depot` answer is mapped to
+   what it MEANS for the tax return: `deutscher-broker` (Abgeltungsteuer withheld —
+   the Günstigerprüfung is the applicable question here), `auslaendischer-broker` (no German
+   tax withheld → mandatory assessment Anlage KAP, taxation at the standard tariff — the KAP obligation
+   is named honestly, a flat-rate withholding is never invented), `krypto` (gated, ADR-032 §2),
+   `unbekannt` (never guessed). The classification is a pure derivation from the ONE source
+   (interview answer) — no denormalized column that can drift.
 
-2. **Geführte Datenschnittstelle (`KapitalDaten`)** — ein erfasstes Faktum: die Kapitalerträge
-   (Einkünfte aus Kapitalvermögen, ganze Euro), `erfasst`/`offen`/`unklar` (dieselbe
-   Ehrlichkeits-Zustandsmaschine wie lstb.ts/rente.ts). Serialisierung in EINER Stelle
-   (ADR-0033-Ein-Regel-Instinkt). Faltung: `kapitalAlsKernposten` → `Posten` der Einkunftsart
-   `Kapital` mit `Quelle: { art: 'eingabe' }` (die geführte Maske ist eine Transkription; die
-   Beleg-/KI-Vorschlag-Herkunft trägt der `Quelle`-Vertrag bereits — sie ist der
-   Zuordnungs-Slice, ein benannter Follow-up, kein halbes Feature hier); `kapitalStand` faltet
-   über `berechne` und reicht `gegated` unverändert durch — ein Krypto-Anleger liest offen mit
-   benanntem Gate.
+2. **Guided data interface (`KapitalDaten`)** — one captured fact: the capital income
+   (income from capital assets, whole euros), `erfasst`/`offen`/`unklar` (the same
+   honesty state machine as lstb.ts/rente.ts). Serialization in ONE place
+   (ADR-0033 one-rule instinct). Folding: `kapitalAlsKernposten` → `Posten` of income type
+   `Kapital` with `Quelle: { art: 'eingabe' }` (the guided form is a transcription; the
+   document/AI-suggestion provenance is already carried by the `Quelle` contract — it is the
+   assignment slice, a named follow-up, not a half feature here); `kapitalStand` folds
+   via `berechne` and passes `gegated` through unchanged — a crypto investor reads open with a
+   named gate.
 
-3. **`guenstigerpruefung.ts` — § 32d Abs. 6 EStG als bounded comparison (ADR-0034-Muster):**
-   - `abgeltung`: 25 % auf (Kapitalerträge − Sparerpauschbetrag § 20 Abs. 9: 1.000 € einzeln /
-     2.000 € zusammen) + Soli (§ 4 SolZG) + KiSt mit der § 32d Abs. 1 Satz 4-Ermäßigung (die
-     Abgeltungsteuer ermäßigt sich um 25 % der entfallenden KiSt). Alle Sätze zitiert, keine
-     erfundene Konstante.
-   - `persoenlich`: die tarifliche Steuer auf den Kapitalertrags-Anteil = § 32a-Tarif auf
-     (übriges zvE + Kapitalerträge) − Tarif auf übriges zvE, plus die Soli-Differenz (die
-     Freigrenze macht den Soli nichtlinear — Differenz, nie ein Zuschlag auf die Differenz) und
-     die KiSt; Zusammenveranlagung = Splitting (§ 32a Abs. 5) auf die kombinierte Basis.
-   - Ergebnis ist die ADR-0034-Union: `aussage` `eindeutig` (mit `empfehlung`) / `zu-knapp` /
-     `unbestimmt` — `empfehlung` existiert NUR auf `eindeutig`, der Compiler verweigert die
-     Abkürzung. `unschaerfe` ist die EINE Schranke-Definition aus dem Veranlagungsartenvergleich
-     (`progressionsvorbehaltSchranke`, dafür exportiert): der Progressionsvorbehalt (§ 32b) ist
-     der einzige ausgeschlossene Faktor, der das Ergebnis kippen kann. `eindeutig` nur, wenn die
-     Schranke bestimmt ist UND |delta| sie übersteigt. Ebene 3 bleibt offen: `uebrigesZvE` ist
-     eine Einnahmen-Basis (kein echtes zvE), das trägt `herkunft` ehrlich mit.
+3. **`guenstigerpruefung.ts` — § 32d Abs. 6 EStG as a bounded comparison (ADR-0034 pattern):**
+   - `abgeltung`: 25 % on (capital income − Sparerpauschbetrag § 20 Abs. 9: €1,000 single /
+     €2,000 joint) + Soli (§ 4 SolZG) + KiSt with the § 32d Abs. 1 Satz 4 reduction (the
+     Abgeltungsteuer is reduced by 25 % of the church tax attributable to it). All rates cited, no
+     invented constant.
+   - `persoenlich`: the tariff tax on the capital income share = § 32a tariff on
+     (remaining zvE + capital income) − tariff on remaining zvE, plus the Soli difference (the
+     exemption limit makes the Soli non-linear — a difference, never a surcharge on the difference) and
+     the KiSt; Zusammenveranlagung (joint assessment) = splitting (§ 32a Abs. 5) on the combined basis.
+   - The result is the ADR-0034 union: `aussage` `eindeutig` (with `empfehlung`) / `zu-knapp` /
+     `unbestimmt` — `empfehlung` exists ONLY on `eindeutig`, the compiler refuses the
+     shortcut. `unschaerfe` is the ONE bound definition from the Veranlagungsartenvergleich
+     (`progressionsvorbehaltSchranke`, exported for this): the Progressionsvorbehalt (§ 32b) is
+     the only excluded factor that can tip the result. `eindeutig` only if the
+     bound is determined AND |delta| exceeds it. Level 3 stays open: `uebrigesZvE` is
+     an income basis (not a real zvE), and `herkunft` honestly carries that along.
 
-4. **`Steuerbescheinigung` als Belegart** — die `Belegart`-Union (ADR-0040) wächst um einen Wert
-   (die Jahressteuerbescheinigung der Bank), kein Rename, keine Semantik-Änderung bestehender
-   Werte.
+4. **`Steuerbescheinigung` as a document type** — the `Belegart` union (ADR-0040) grows by one value
+   (the bank's annual tax certificate), no rename, no change in semantics of existing
+   values.
 
-5. **API (`Kapital`-Modul) + Screen** — `GET`/`PUT /v1/steuerjahre/{jahr}/kapital[/
-   {feld}]`, eine Zeile pro `(userId, steuerjahr)`, `kapitalertraege` feldencrypted at rest
-   (ADR-0008). `GET .../kapital/guenstigerpruefung` rechnet NUR über @steuereule/core und
-   benennt die ehrlichen Gates (`nicht-anwendbar`): ausländischer Broker
-   (`keine-abgeltung-einbehalten`), Krypto (`krypto-gegated`), unbeantwortetes kap-depot
-   (`kap-depot-nicht-beantwortet`), fehlende Kapitalerträge (`keine-kapitalertraege`) — nie ein
-   erfundener Vergleich. Der Screen zeigt die Depot-Einordnung, das Feld, den Posten mit
-   Herkunft und die Günstigerprüfung mit `aussage` zuerst.
+5. **API (`Kapital` module) + screen** — `GET`/`PUT /v1/steuerjahre/{jahr}/kapital[/
+   {feld}]`, one row per `(userId, steuerjahr)`, `kapitalertraege` field-encrypted at rest
+   (ADR-0008). `GET .../kapital/guenstigerpruefung` computes ONLY via @steuereule/core and
+   names the honest gates (`nicht-anwendbar`): foreign broker
+   (`keine-abgeltung-einbehalten`), crypto (`krypto-gegated`), unanswered kap-depot
+   (`kap-depot-nicht-beantwortet`), missing capital income (`keine-kapitalertraege`) — never an
+   invented comparison. The screen shows the depot classification, the field, the item with
+   provenance and the Günstigerprüfung with `aussage` first.
 
 ## Consequences
 
-- **M1-Grenzen, einmal benannt:** `uebrigesZvE` der Günstigerprüfung ist die LStB-Einnahmen-
-  Basis desselben Steuerjahres (wie der Veranlagungsartenvergleich 10.2 sie verwendet) — Rente/
-  Vermietung/CH sind noch nicht eingefaltet (Ebene 3 offen, trägt `herkunft`). Zusammenveranlagung
-  rechnet der Kern, die API dient M1 einzeln (Partner-Figuren werden nie erfunden — benannter
-  Follow-up). KiSt ist ein Query-Eingang (M1 erhebt sie noch nicht, Standard 0).
-- **Ehrliche Grenze, einmal benannt:** Verlustverrechnung, ausländische Quellensteuer-Anrechnung
-  (§ 32d Abs. 5), § 32d Abs. 2-Fälle (Beteiligungen) und die KiSt-Kappung sind NICHT hier —
-  benannte Follow-ups, keine stille Näherung.
-- **Krypto bleibt 2.0:** das Gate ist die ehrliche Aussage (Screen + `gatedEinkunftsarten`),
-  kein halbes Feature (ADR-032 §2).
-- **Security posture:** `kapitalertraege` ist field-encrypted at rest (ADR-0008) — tatsächliches
-  Kapitalvermögen ist eines der sensibelsten Fakten, joinable zur Steuer-ID; die Depot-Einordnung
-  ist KEINE eigene Spalte, sondern die (ebenfalls verschlüsselte) Interview-Antwort `kap-depot`;
-  WRITE/READ auditiert (REQ-004). Kein Performance-Achse.
-- **Register:** REQ-025; die Nachbar-Tickets belegen 022/023/024 — beim Merge auf Kollision
-  prüfen (10.6 nimmt 026).
+- **M1 limits, named once:** `uebrigesZvE` of the Günstigerprüfung is the LStB income
+  basis of the same tax year (as the Veranlagungsartenvergleich 10.2 uses it) — pension/
+  rental income/CH are not yet folded in (level 3 open, carries `herkunft`). Zusammenveranlagung
+  is computed by the core, the API serves M1 single (partner figures are never invented — a named
+  follow-up). KiSt is a query input (M1 does not collect it yet, default 0).
+- **Honest limit, named once:** loss offsetting, crediting of foreign Quellensteuer (withholding tax)
+  (§ 32d Abs. 5), § 32d Abs. 2 cases (shareholdings) and the KiSt cap are NOT here —
+  named follow-ups, no silent approximation.
+- **Crypto stays 2.0:** the gate is the honest statement (screen + `gatedEinkunftsarten`),
+  not a half feature (ADR-032 §2).
+- **Security posture:** `kapitalertraege` is field-encrypted at rest (ADR-0008) — actual
+  capital assets are among the most sensitive facts, joinable to the Steuer-ID; the depot classification
+  is NOT its own column, but the (likewise encrypted) interview answer `kap-depot`;
+  WRITE/READ audited (REQ-004). No performance axis.
+- **Register:** REQ-025; the neighboring tickets occupy 022/023/024 — check for collisions
+  on merge (10.6 takes 026).
 
 ## Alternatives considered
 
-- **Abgeltungsteuer ohne Sparerpauschbetrag.** Verworfen: § 20 Abs. 9 EStG ist zitierbar und
-  verändert die Bemessungsgrundlage erheblich — weglassen wäre eine stille Verfälschung, keine
-  Vereinfachung.
-- **KiSt als Unschärfe-Schranke statt eingefaltet.** Verworfen: die § 32d Abs. 1 Satz 4-Ermäßigung
-  ist zitierbar; eingefaltet bleibt die Unschärfe ausschließlich der Progressionsvorbehalt —
-  dieselbe Form wie der Veranlagungsartenvergleich (ADR-0043), eine Schranke-Definition für beide.
-- **Depot-Art als eigene Prisma-Spalte.** Verworfen: eine denormalisierte Kopie der
-  Interview-Antwort kann driften (ADR-0033-Defektklasse); die Ableitung aus der einen Quelle ist
-  rein und testbar.
-- **Günstigerprüfung für ausländische Broker „miterfinden".** Verworfen: dort wurde nie
-  Abgeltungsteuer einbehalten, der Vergleich ist gegenstandslos — die ehrliche
-  `nicht-anwendbar`-Antwort ist die KAP-Pflicht-Benennung selbst (ADR-032).
+- **Abgeltungsteuer without Sparerpauschbetrag.** Rejected: § 20 Abs. 9 EStG is citable and
+  changes the assessment basis considerably — leaving it out would be a silent falsification, not a
+  simplification.
+- **KiSt as an uncertainty bound instead of folded in.** Rejected: the § 32d Abs. 1 Satz 4 reduction
+  is citable; once folded in, the uncertainty remains exclusively the Progressionsvorbehalt —
+  the same shape as the Veranlagungsartenvergleich (ADR-0043), one bound definition for both.
+- **Depot type as its own Prisma column.** Rejected: a denormalized copy of the
+  interview answer can drift (ADR-0033 defect class); the derivation from the one source is
+  pure and testable.
+- **"Make up" a Günstigerprüfung for foreign brokers as well.** Rejected: there,
+  Abgeltungsteuer was never withheld, the comparison is moot — the honest
+  `nicht-anwendbar` answer is itself the naming of the KAP obligation (ADR-032).

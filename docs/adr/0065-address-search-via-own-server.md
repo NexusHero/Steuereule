@@ -1,63 +1,63 @@
-# ADR-0065 — Adresssuche über den eigenen Server (Abweichung von #451 Entscheidung 7 und 8)
+# ADR-0065 — Address search via our own server (deviation from #451 decisions 7 and 8)
 
 - **Status:** Accepted
 - **Date:** 2026-11-11
 - **Deciders:** NexusHero (Product Owner), Steuereule Engineering
-- **Applies to:** `apps/api/src/address/`, `apps/api/scripts/fetch-street-data.ts`, `apps/mobile-web/src/screens/shared/AddressSearch.tsx`; Stammdaten, Vermietung (Objektadresse), Kinder (Adresse des anderen Elternteils)
-- **Weicht ab von:** Ticket #451 Entscheidung 7 („kein Request nach außen" für Adressen) und Entscheidung 8 (Adressdaten nur mit der App ausgeliefert)
+- **Applies to:** `apps/api/src/address/`, `apps/api/scripts/fetch-street-data.ts`, `apps/mobile-web/src/screens/shared/AddressSearch.tsx`; master data, rental income (property address), children (address of the other parent)
+- **Deviates from:** Ticket #451 decision 7 ("no outbound request" for addresses) and decision 8 (address data shipped only with the app)
 
-## Kontext
+## Context
 
-#451 hat die Adresseingabe auf zwei Hilfen begrenzt: Autofill-Hinweise für den Browser und eine
-PLZ-Tabelle, die mit der App ausgeliefert wird. Beides verlässt das Gerät nicht. Im Test durch den
-Product Owner (11.11.2026) hat das nicht gereicht: Browser-Autofill greift nur, wenn im Browser
-schon eine Adresse gespeichert ist, und die Straße tippt man weiter komplett von Hand. Erwartet
-wird eine Suche wie in einer Karten-App: ein paar Buchstaben tippen, Adresse auswählen.
+#451 limited address entry to two aids: autofill hints for the browser and a
+postcode (PLZ) table shipped with the app. Neither leaves the device. In testing by the
+Product Owner (11 November 2026) this was not enough: browser autofill only works if an address is
+already stored in the browser, and the street is still typed entirely by hand. What is expected
+is a search like in a maps app: type a few letters, select the address.
 
-Eine Straßenliste für ganz Deutschland hat rund 1,19 Mio. Einträge (55 MB Quelle). Das ist zu groß,
-um es wie die PLZ-Tabelle (~240 KB) in die App zu packen.
+A street list for all of Germany has around 1.19 million entries (55 MB source). That is too large
+to pack into the app like the postcode table (~240 KB).
 
-## Entscheidung
+## Decision
 
-**Die Straßensuche läuft auf unserem eigenen Server. Kein Dritter sieht die Eingabe.**
+**The street search runs on our own server. No third party sees the input.**
 
-1. **Daten:** dieselbe OpenStreetMap-Straßenliste des OpenPLZ-API-Projekts (ODbL 1.0), aus der
-   schon die PLZ-Tabelle gebaut wird, auf denselben Commit gepinnt.
-   `pnpm --filter @steuereule/api run streets:fetch` lädt sie, prüft die SHA-256-Prüfsumme und legt
-   ein Manifest daneben (wie die Geo-IP-Datenbank, ADR-0024). Die Datei wird nicht eingecheckt.
-2. **Suche im Speicher:** Beim Start liest die API die Datei aus `STREET_DATA_PATH` in einen
-   sortierten Index (gemessen: ~2 s Ladezeit, ~45 MB Heap, Antwort unter 15 ms). Keine Datenbank,
-   keine Migration.
-3. **Endpunkt `POST /v1/adressen/suche`:** POST statt GET, damit die getippte Adresse nicht in URLs,
-   Zugriffslogs oder Proxy-Caches landet. Die Anfrage wird nicht gespeichert. Begrenzt auf
-   120 Anfragen pro Minute je Konto bzw. IP.
-4. **Ohne Daten ehrlich:** Fehlt die Datei, antwortet der Endpunkt `available: false`. Die Maske
-   sagt dann, dass die Suche nicht verfügbar ist, und die Felder werden wie bisher getippt.
-5. **Ein Suchfeld über den Adressfeldern:** „Hauptstr. 12, Köln" → Auswahl füllt Straße,
-   Hausnummer, PLZ und Ort. Die Einzelfelder, Browser-Autofill und der PLZ-Lookup aus #451 bleiben.
+1. **Data:** the same OpenStreetMap street list from the OpenPLZ API project (ODbL 1.0) from which
+   the postcode table is already built, pinned to the same commit.
+   `pnpm --filter @steuereule/api run streets:fetch` downloads it, checks the SHA-256 checksum and places
+   a manifest next to it (like the geo-IP database, ADR-0024). The file is not checked in.
+2. **In-memory search:** On startup, the API reads the file from `STREET_DATA_PATH` into a
+   sorted index (measured: ~2 s load time, ~45 MB heap, response under 15 ms). No database,
+   no migration.
+3. **Endpoint `POST /v1/adressen/suche`:** POST instead of GET, so that the typed address does not end up in URLs,
+   access logs or proxy caches. The request is not stored. Limited to
+   120 requests per minute per account or IP.
+4. **Honest without data:** If the file is missing, the endpoint responds `available: false`. The screen
+   then says that the search is not available, and the fields are typed as before.
+5. **One search field above the address fields:** "Hauptstr. 12, Köln" → selecting fills street,
+   house number, postcode and city. The individual fields, browser autofill and the postcode lookup from #451 remain.
 
-## Grenzen
+## Limits
 
-- **Keine Hausnummern in den Daten.** Die Hausnummer wird aus der Eingabe übernommen, nicht geprüft.
-- **Kein „Meinen Standort verwenden".** Die Daten haben keine Koordinaten; GPS bleibt nach #451
-  Entscheidung 7 ausgeschlossen.
-- **Schreibweise:** Die Quelle kürzt „Straße" durchgehend als „Str." ab. Der Index schreibt es
-  wieder aus („Hauptstraße"). Eine Straße, die amtlich „…str." heißt, würde damit falsch
-  ausgeschrieben; das Feld bleibt änderbar.
-- **Nur Deutschland.**
+- **No house numbers in the data.** The house number is taken from the input, not checked.
+- **No „Meinen Standort verwenden" ("Use my location").** The data has no coordinates; GPS remains excluded per #451
+  decision 7.
+- **Spelling:** The source abbreviates "Straße" as "Str." throughout. The index writes it
+  out again ("Hauptstraße"). A street whose official name is "…str." would thus be written out
+  incorrectly; the field remains editable.
+- **Germany only.**
 
-## Folgen
+## Consequences
 
-- Der Betrieb muss die Datei bereitstellen und `STREET_DATA_PATH` setzen (lokal erledigt das
-  `scripts/local.sh dev`). Der API-Prozess braucht rund 50 MB mehr Speicher und startet ~2 s später.
-- Jährliche Aktualisierung zusammen mit der PLZ-Tabelle: Commit in beiden Skripten anheben,
-  Prüfsumme anpassen.
-- Die Datenschutzerklärung nennt die Verarbeitung der Sucheingabe auf dem eigenen Server
-  (keine Speicherung, kein Dritter).
+- Operations must provide the file and set `STREET_DATA_PATH` (locally this is done by
+  `scripts/local.sh dev`). The API process needs around 50 MB more memory and starts ~2 s later.
+- Annual update together with the postcode table: bump the commit in both scripts,
+  adjust the checksum.
+- The privacy policy mentions the processing of the search input on our own server
+  (no storage, no third party).
 
-## Verworfen
+## Rejected
 
-- **Google Places o. Ä.:** beste Trefferqualität inklusive Hausnummern, aber jede Eingabe geht an
-  einen Dritten.
-- **Öffentliche OSM-Dienste (Photon, Nominatim):** ebenfalls ein Dritter, dazu Nutzungsgrenzen.
-- **Straßenliste in der App:** 55 MB Quelle, auch verdichtet zweistellige MB im Bundle.
+- **Google Places or similar:** best hit quality including house numbers, but every input goes to
+  a third party.
+- **Public OSM services (Photon, Nominatim):** also a third party, plus usage limits.
+- **Street list in the app:** 55 MB source, even compressed double-digit MB in the bundle.

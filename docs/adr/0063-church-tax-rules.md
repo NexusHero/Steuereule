@@ -1,100 +1,100 @@
-# ADR-0063 — Kirchensteuer in der Schätzung: Satz, Kappung, besonderes Kirchgeld, Abgeltungsteuer
+# ADR-0063 — Church tax in the estimate: rate, cap, besonderes Kirchgeld, Abgeltungsteuer
 
 - **Status:** Accepted
 - **Date:** 2026-11-11
 - **Deciders:** NexusHero (Product Owner), Steuereule Engineering
-- **Applies to:** `packages/core/src/domains/church-tax*.ts`, `packages/core/src/engine/tax-estimate.ts`, `married-estimate.ts`, `most-favourable-check.ts`, `apps/api/src/tax-estimate/`, `apps/api/src/lstb/` (Zeilen 6 und 7), LStB-Maske, Cockpit
-- **Ticket:** #450 Teil 6F (Scope-Erweiterung vom 10.11.2026)
+- **Applies to:** `packages/core/src/domains/church-tax*.ts`, `packages/core/src/engine/tax-estimate.ts`, `married-estimate.ts`, `most-favourable-check.ts`, `apps/api/src/tax-estimate/`, `apps/api/src/lstb/` (lines 6 and 7), LStB form, cockpit
+- **Ticket:** #450 part 6F (scope extension of 10.11.2026)
 
-## Kontext
+## Context
 
-Bis jetzt hat die Schätzung die Kirchensteuer nicht gerechnet:
+Until now the estimate did not calculate church tax:
 
-- **Ledige:** Für Ledige gab es nur den Hinweis `churchTaxOpen`.
-- **Ehepaare:** Für Ehepaare wurde eine Spanne von 8–9 % gerechnet, aber nur wenn kein Ehegatte deutsche Lohnsteuer hatte.
-- **LStB:** Die einbehaltene Kirchensteuer laut LStB wurde nicht erfasst.
-- **Sonderausgabe:** Gezahlte Kirchensteuer wurde nicht als Sonderausgabe abgezogen.
-- **Kappung und Kirchgeld:** Die Kappung fehlte, ebenso das besondere Kirchgeld.
-- **Abgeltungsteuer:** Bei der Abgeltungsteuer stand eine Näherung statt der Formel.
+- **Single people:** For single people there was only the hint `churchTaxOpen`.
+- **Married couples:** For married couples a range of 8–9 % was calculated, but only if neither spouse had German wage tax.
+- **LStB:** The church tax withheld according to the LStB (Lohnsteuerbescheinigung, wage tax certificate) was not captured.
+- **Sonderausgabe:** Church tax paid was not deducted as a Sonderausgabe (special expense).
+- **Cap and Kirchgeld:** The cap was missing, as was the besonderes Kirchgeld (special church levy).
+- **Abgeltungsteuer:** For the Abgeltungsteuer (flat-rate withholding tax on capital income) there was an approximation instead of the formula.
 
-Damit fehlte Kirchenmitgliedern die Erstattung der zu viel einbehaltenen Kirchensteuer.
+As a result, church members were missing the refund of church tax withheld in excess.
 
-## Entscheidung
+## Decision
 
-### 1. Anrechnung und Sonderausgabe
+### 1. Crediting and Sonderausgabe
 
-- **Neue Felder in der LStB:** Zeile 6 (Kirchensteuer des Arbeitnehmers) und Zeile 7 (Kirchensteuer des Ehegatten, nur bei konfessionsverschiedener Ehe) sind zwei optionale, verschlüsselte Felder (`Lstb.kirchensteuer`, `Lstb.kirchensteuerEhegatte`).
-  - Sie stehen neben den drei Pflichtfeldern. Eine LStB ohne diese Zeilen bleibt vollständig.
-- **Anrechnung:** Die einbehaltene Kirchensteuer wird wie die Lohnsteuer gegen die geschuldete gerechnet, für Ledige und für Paare.
-  - Bei Paaren zählen die Zeilen 6 und 7 beider LStB.
-  - Ein Grenzgänger CH hat keine deutsche Kirchensteuer einbehalten, also 0 €.
-- **Sonderausgabe:** Die im Jahr einbehaltene Kirchensteuer ist Sonderausgabe nach § 10 Abs. 1 Nr. 4 EStG.
-  - Sie wird mit den Spenden gegen den Sonderausgaben-Pauschbetrag gerechnet.
-  - Erstattungen von Kirchensteuer aus Vorjahren werden nicht gegengerechnet (bewusste Vereinfachung).
-- **Bemessung:** Die Kirchensteuer bemisst sich nach der Einkommensteuer nach Abzug der Kinderfreibeträge (§ 51a Abs. 2 EStG). Das gilt auch dann, wenn die Günstigerprüfung das Kindergeld ergibt.
-  - Bei Ledigen mit Kindern ist das eine Spanne zwischen halbem und vollem Freibetrag (Übertragung).
+- **New fields in the LStB:** Line 6 (the employee's church tax) and line 7 (the spouse's church tax, only in a mixed-denomination marriage) are two optional, encrypted fields (`Lstb.kirchensteuer`, `Lstb.kirchensteuerEhegatte`).
+  - They sit next to the three required fields. An LStB without these lines remains complete.
+- **Crediting:** The withheld church tax is credited against the church tax owed, like the wage tax, for single people and for couples.
+  - For couples, lines 6 and 7 of both LStBs count.
+  - A Grenzgänger (cross-border commuter) CH has had no German church tax withheld, so €0.
+- **Sonderausgabe:** The church tax withheld in the year is a Sonderausgabe under § 10 Abs. 1 Nr. 4 EStG.
+  - It is offset together with donations against the Sonderausgaben lump sum.
+  - Church tax refunds from previous years are not offset (deliberate simplification).
+- **Assessment basis:** Church tax is assessed on the income tax after deduction of the child allowances (§ 51a Abs. 2 EStG). This also applies if the Günstigerprüfung (most-favorable check) results in Kindergeld.
+  - For single people with children this is a range between half and full allowance (transfer).
 
-### 2. Satz und Bundesland
+### 2. Rate and federal state
 
-- **Satz:** 8 % in Bayern und Baden-Württemberg, sonst 9 %.
-  - Das Bundesland kommt aus der PLZ der Stammdaten (PLZ-Tabelle aus #451).
-  - Unbekannte PLZ oder eine PLZ über zwei Länder ergibt die Spanne 8–9 %.
-  - Ausnahme: Katholiken in Bad Wimpfen (PLZ 74206) gehören zur Diözese Mainz und zahlen 9 % (BStBl 2026 I S. 869).
-- **Konfession:** Die Konfession kommt aus den Stammdaten.
-  - `VD` bedeutet keine Kirchensteuer und kein Hinweis.
-  - Ist die Konfession leer oder unbekannt, ist der Zustand **„offen“** (`konfession-fehlt`), nie ein stiller Ansatz von 0 €.
-  - Bei Paaren gilt das auch, wenn für Person B keine Angabe vorliegt.
-- **Fehlende Zeile 6:** Fehlt bei einem Mitglied mit LStB die Zeile 6, ist der Zustand ebenfalls „offen“ (`einbehalt-fehlt`).
+- **Rate:** 8 % in Bavaria and Baden-Württemberg, otherwise 9 %.
+  - The federal state comes from the postcode in the master data (postcode table from #451).
+  - An unknown postcode or a postcode spanning two states results in the range 8–9 %.
+  - Exception: Catholics in Bad Wimpfen (postcode 74206) belong to the Diocese of Mainz and pay 9 % (BStBl 2026 I S. 869).
+- **Denomination:** The denomination comes from the master data.
+  - `VD` means no church tax and no hint.
+  - If the denomination is empty or unknown, the state is **"open"** (`konfession-fehlt`), never a silent assumption of €0.
+  - For couples this also applies if there is no information for Person B.
+- **Missing line 6:** If line 6 is missing for a member with an LStB, the state is also "open" (`einbehalt-fehlt`).
 
-### 3. Kappung
+### 3. Cap
 
-Die Kappungssätze stehen je Land und Kirche mit Quelle in `church-tax.data.ts`. Grundlage sind die amtlichen Bekanntmachungen der Kirchensteuerbeschlüsse bzw. die staatlich anerkannten Beschlüsse.
+The cap rates are listed per state and church with their source in `church-tax.data.ts`. The basis is the official announcements of the church tax resolutions or the state-recognized resolutions.
 
-| Art | Länder | Wirkung |
+| Type | States | Effect |
 | :--- | :--- | :--- |
-| automatisch | BE, BB, MV (3 %), SN, TH, ST (3,5 %), NI (ev. 3–3,5 %, kath. 3,5–4 %), HH, SH ev. (3 %), HB ev. (3,5 %) | Die Kirchensteuer ist höchstens dieser Anteil des zvE |
-| nur auf Antrag | BW, NW, RP (die amtliche Bekanntmachung nennt keine Kappung) | Gerechnet wird ohne Kappung. Liegt die Kirchensteuer über 2,75 % des zvE, zeigt das Cockpit „Kappung auf Antrag möglich“ |
-| keine | BY | — |
-| kein amtlicher Wert | HE, SL; HH, SH, HB kath. | „offen“ (`kappung-unbekannt`), aber nur wenn die Kirchensteuer über 2,75 % des zvE liegt. Darunter kann keine Kappung greifen |
+| automatic | BE, BB, MV (3 %), SN, TH, ST (3.5 %), NI (Prot. 3–3.5 %, Cath. 3.5–4 %), HH, SH Prot. (3 %), HB Prot. (3.5 %) | Church tax is at most this share of the zvE (taxable income) |
+| on application only | BW, NW, RP (the official announcement names no cap) | Calculated without a cap. If church tax exceeds 2.75 % of the zvE, the cockpit shows „Kappung auf Antrag möglich“ ("cap possible on application") |
+| none | BY | — |
+| no official value | HE, SL; HH, SH, HB Cath. | "open" (`kappung-unbekannt`), but only if church tax exceeds 2.75 % of the zvE. Below that no cap can apply |
 
-Spannen bei Niedersachsen entstehen, weil die PLZ die Landeskirche bzw. das Bistum nicht eindeutig bestimmt.
+Ranges for Lower Saxony arise because the postcode does not uniquely determine the regional church or diocese.
 
-### 4. Besonderes Kirchgeld und konfessionsverschiedene Ehe
+### 4. Besonderes Kirchgeld and mixed-denomination marriage
 
-- **Konfessionsverschieden** (beide Mitglied, verschiedene Kirchen): Die Kirchensteuer wird halbteilig auf die gemeinsame Steuer gerechnet. Die Summe ist dieselbe wie bei gleicher Konfession, nur die Aufteilung auf die Kirchen unterscheidet sich.
-- **Glaubensverschieden** (nur ein Ehegatte Mitglied):
-  - **Anteil:** Die Kirchensteuer fällt auf den Anteil des Mitglieds an der gemeinsamen Steuer. Der Anteil ergibt sich aus dem Verhältnis der Grundtarif-Steuer auf die eigenen Einkünfte. Die Kappung bezieht sich auf denselben Anteil am zvE.
-  - **Vergleich:** Diese Kirchensteuer wird mit dem besonderen Kirchgeld nach der amtlichen Stufentabelle verglichen, der höhere Betrag gilt.
-  - **Bemessungsgrundlage** des Kirchgelds ist das gemeinsame zvE nach § 51a Abs. 2 EStG, also nach den Kinderfreibeträgen.
-- **Tabellen:**
-  - bis 2024 ab 40.000 € (BStBl 2024 I S. 706 / S. 720, BStBl 2023 I S. 343)
-  - ab 2025 ab 50.000 € (Bekanntmachungen 2025 SN, NI, NW, MV, BE, TH; 2026 SN, BW)
-  - je 13 Stufen von 96 € bis 3.600 €
-- **Wo erhoben:**
-  - **Wird erhoben:** wo eine amtliche Quelle es für das Jahr belegt.
-  - **Wird nicht erhoben:** Bayern (beide Kirchen), NRW und BW katholisch (dort nennt die amtliche Bekanntmachung nur andere Kirchen).
-  - **Sonst:** „offen“ (`kirchgeld-unbekannt`), aber nur wenn die Tabelle greifen würde.
+- **Mixed denomination** (both members, different churches): Church tax is calculated half-and-half on the joint tax. The total is the same as with the same denomination; only the split between the churches differs.
+- **Mixed faith** (only one spouse is a member):
+  - **Share:** Church tax falls on the member's share of the joint tax. The share results from the ratio of the basic-tariff tax on their own income. The cap refers to the same share of the zvE.
+  - **Comparison:** This church tax is compared with the besonderes Kirchgeld according to the official bracket table; the higher amount applies.
+  - **Assessment basis** of the Kirchgeld is the joint zvE under § 51a Abs. 2 EStG, i.e. after the child allowances.
+- **Tables:**
+  - up to 2024 from €40,000 (BStBl 2024 I S. 706 / S. 720, BStBl 2023 I S. 343)
+  - from 2025 from €50,000 (announcements 2025 SN, NI, NW, MV, BE, TH; 2026 SN, BW)
+  - 13 brackets each, from €96 to €3,600
+- **Where it is levied:**
+  - **Levied:** where an official source documents it for the year.
+  - **Not levied:** Bavaria (both churches), NRW and BW Catholic (there the official announcement names only other churches).
+  - **Otherwise:** "open" (`kirchgeld-unbekannt`), but only if the table would apply.
 
 ### 5. Abgeltungsteuer
 
-`churchTaxReductionShare` steckt jetzt in der exakten Formel des § 32d Abs. 1 Satz 4 EStG:
+`churchTaxReductionShare` now sits in the exact formula of § 32d Abs. 1 Satz 4 EStG:
 
 - ESt = (e − 4q) / (4 + k)
-- Kirchensteuer = k × ESt
+- church tax = k × ESt
 
-Das ersetzt die Näherung „25 % − 25 % der Kirchensteuer“ in der Günstigerprüfung.
+This replaces the approximation "25 % − 25 % of the church tax" in the Günstigerprüfung.
 
-### 6. Was nicht geraten wird
+### 6. What is not guessed
 
-Fehlt für ein Land ein amtlich belegter Wert, setzt die App ihn nicht ein. Das gilt für den Kappungssatz und für die Kirchgeld-Tabelle des Jahres. Wo der fehlende Wert die Kirchensteuer ändern könnte, zeigt die App „offen“ mit dem Grund. Der PR listet die Länder.
+If an officially documented value is missing for a state, the app does not insert one. This applies to the cap rate and to the year's Kirchgeld table. Where the missing value could change the church tax, the app shows "open" with the reason. The PR lists the states.
 
-## Folgen
+## Consequences
 
-- Die Erstattungsspanne von Kirchenmitgliedern enthält jetzt die Kirchensteuer.
-- Bei unbekannter Konfession zeigt das Cockpit einen Hinweis. Das gilt auch für Konten, die früher keinen bekamen, weil die Stammdaten leer sind.
-- Der BMF-Rechner zur Einkommensteuer rechnet keine Kirchensteuer. Die Referenzwerte (6F) wenden deshalb Satz und Kappung auf die BMF-Einkommensteuer der 6A-Fixtures an.
+- The refund range of church members now includes church tax.
+- With an unknown denomination, the cockpit shows a hint. This also applies to accounts that previously did not get one because the master data is empty.
+- The BMF income tax calculator does not calculate church tax. The reference values (6F) therefore apply rate and cap to the BMF income tax of the 6A fixtures.
 
-## Annahmen
+## Assumptions
 
-- **Kappungssätze:** Sie stammen aus Bekanntmachungen 2024–2026 und gelten in der App für 2022–2026. Die Sätze sind seit vielen Jahren unverändert, eine Änderung wäre in den Bekanntmachungen sichtbar.
-- **Monatsweise Kürzung:** Die Kürzung bei unterjährigem Kirchenaustritt oder Eheschluss ist nicht abgebildet. Die Schätzung rechnet ein ganzes Jahr.
+- **Cap rates:** They come from announcements 2024–2026 and apply in the app for 2022–2026. The rates have been unchanged for many years; a change would be visible in the announcements.
+- **Monthly reduction:** The reduction for leaving the church or marrying during the year is not modeled. The estimate calculates a full year.

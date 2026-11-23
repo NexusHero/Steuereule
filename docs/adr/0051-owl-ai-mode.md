@@ -1,48 +1,48 @@
-# ADR-0051: Eulen-KI-Modus & Strikte Datenschutz-Grenze
+# ADR-0051: Owl AI mode & strict data protection boundary
 
-**Status:** Akzeptiert (Ticket 10.9, Product ADRs 037–042) · 2026-11-03
+**Status:** Accepted (ticket 10.9, product ADRs 037–042) · 2026-11-03
 
-## Kontext
-SteuerEule soll über den rein reaktiven Vorschlags-Helfer hinauswachsen und im "Eulen-Modus" proaktiv mitdenken (Musterlücken erkennen, Vorjahresvergleiche ziehen, Gesetzes-/Urteilsänderungen ab 50 € melden). Dabei müssen zwingend eingehalten werden:
-1. **Kein PII an externe KI-Modelle:** Keine Klarnamen, keine Steuer-IDs, keine IBANs, keine unredigierten Beleg-PDFs werden je an ein LLM gesendet.
-2. **Determinismus-Grenze (ADR-014/048):** KI rechnet niemals Steuerbeträge; alle Beträge stammen deterministisch aus `@steuereule/core`.
-3. **StBerG-Grenze (ADR-040):** Bei unklarer Rechtslage darf die KI keine einseitige Rechtsberatung simulieren, sondern stellt den sicheren Weg neben den riskanteren Weg (mit Differenzbetrag) und lässt den Nutzer entscheiden.
-4. **Offline / Fallback:** Wenn kein LLM-API-Schlüssel konfiguriert ist oder das Netzwerk offline ist, schlägt der Eulen-Modus deterministisch auf Basis der statischen Wissensbasis an.
+## Context
+SteuerEule is meant to grow beyond the purely reactive suggestion helper and think ahead proactively in "owl mode" (detect pattern gaps, draw prior-year comparisons, report changes in law/case law from €50). The following must strictly be observed:
+1. **No PII to external AI models:** no real names, no Steuer-IDs (tax identification numbers), no IBANs, no unredacted document PDFs are ever sent to an LLM.
+2. **Determinism boundary (ADR-014/048):** AI never computes tax amounts; all amounts come deterministically from `@steuereule/core`.
+3. **StBerG boundary (ADR-040):** where the legal situation is unclear, the AI must not simulate one-sided legal advice, but places the safe route next to the riskier route (with the difference amount) and lets the user decide.
+4. **Offline / fallback:** if no LLM API key is configured or the network is offline, owl mode triggers deterministically on the basis of the static knowledge base.
 
-## Entscheidung
-1. **Core-Engine (`packages/core/src/owl-mode.ts`):**
-   - 4 Trigger:
-     - `musterluecke` (z.B. Fortbildung erfasst ohne Fahrtkosten/Werbungskosten)
-     - `vorjahresvergleich` (z.B. Abweichungen zu Vorjahresposten)
-     - `rechtsaenderung` (Urteile/Gesetze mit Auswirkung >= 50 €)
-     - `lebenslage_hinweis` (Belege deuten auf nicht angelegte Lebenslage hin)
-   - Kartendisziplin: Nur Funde >= 50 € kommen proaktiv ins Cockpit; alles andere wartet auf Abruf im Berater-Tab.
-   - Verworfene Karten werden per Fingerprint-Hash (`sha256`) dauerhaft unterdrückt, bis neue Fakten hinzukommen.
-   - Archiv-Wache: Beobachtung von bestandskräftig noch offenen Jahren im Einspruchsfenster.
+## Decision
+1. **Core engine (`packages/core/src/owl-mode.ts`):**
+   - 4 triggers:
+     - `musterluecke` (e.g. further training captured without travel costs/Werbungskosten (work-related expenses))
+     - `vorjahresvergleich` (e.g. deviations from prior-year items)
+     - `rechtsaenderung` (rulings/laws with an impact >= €50)
+     - `lebenslage_hinweis` (documents point to a life situation that has not been set up)
+   - Card discipline: only findings >= €50 come proactively into the cockpit; everything else waits to be called up in the advisor tab.
+   - Dismissed cards are suppressed permanently via fingerprint hash (`sha256`) until new facts are added.
+   - Archive guard: monitoring of years that are final but still open within the objection window.
 
-2. **API & Service-Grenze (`apps/api/src/ki/`):**
-   - Eulen-Modus-Einstellungen (`optIn`, `aktiviertAm`) und Karten-Verwürfe (`fingerprint`) werden verschlüsselt gespeichert.
-   - Anfragen an den LLM-Adapter werden strikt anonymisiert (nur aggregierte Posten und anonyme Metadaten).
-   - Bei fehlendem API-Schlüssel liefert der deterministische Fallback exakt dieselben fundierten Regelsätze.
+2. **API & service boundary (`apps/api/src/ki/`):**
+   - Owl mode settings (`optIn`, `aktiviertAm`) and card dismissals (`fingerprint`) are stored encrypted.
+   - Requests to the LLM adapter are strictly anonymized (only aggregated items and anonymous metadata).
+   - If the API key is missing, the deterministic fallback delivers exactly the same well-founded rule sets.
 
-3. **UI (`apps/mobile-web`) — Update `#446` (Cockpit ↔ Eulen-Modus Split-Pane App-Agent):**
-   - **Strikte Modus-Trennung:** Das **Cockpit** (`Cockpit`, `Belege`, `Profil`) bleibt ruhig ohne permanente Sidebars, Docks oder Diff-Overlays. Der aktive Co-Pilot lebt im dedizierten **Eulen-Modus** (`🦉 Eule` / Kachel im Cockpit).
-   - **3-Breakpoint-Workbench (`OwlModeScreen`):** Desktop (62 % linke Werkbank mit Artefakten/Diff-Review & inline Fachmasken / 38 % KI-Chat rechts), Tablet (Split-View/Slide-Over-Drawer) und Mobile (maximierter Chat mit 20-%-Mini-Dock unten).
-   - **Drafts, Stale-Check & Hard-Lock:** Entwürfe (`pending` / `superseded` / `applied` / `undone`) werden mit `expectedPreviousValue` per Stale-Check (`409`) einzeln oder per `apply-batch` atomar übernommen; `profil`, `stammdaten` und `kopplung` sind per `403 AI_WRITE_FORBIDDEN` hart für die KI gesperrt.
-   - Violette Signalfarbe (`--ki`) ausschließlich für KI-Meinungen; Theme-Tokens konsequent über `useTheme()` (`tokens.dark`-kompatibel).
+3. **UI (`apps/mobile-web`) — update `#446` (cockpit ↔ owl mode split-pane app agent):**
+   - **Strict mode separation:** the **cockpit** (`Cockpit`, `Belege`, `Profil`) stays calm without permanent sidebars, docks or diff overlays. The active co-pilot lives in the dedicated **owl mode** (`🦉 Eule` / tile in the cockpit).
+   - **3-breakpoint workbench (`OwlModeScreen`):** desktop (62 % left workbench with artifacts/diff review & inline field forms / 38 % AI chat on the right), tablet (split view/slide-over drawer) and mobile (maximized chat with a 20 % mini dock at the bottom).
+   - **Drafts, stale check & hard lock:** drafts (`pending` / `superseded` / `applied` / `undone`) are applied individually with `expectedPreviousValue` via a stale check (`409`), or atomically via `apply-batch`; `profil`, `stammdaten` and `kopplung` are hard-locked for the AI via `403 AI_WRITE_FORBIDDEN`.
+   - Violet signal color (`--ki`) exclusively for AI opinions; theme tokens consistently via `useTheme()` (`tokens.dark`-compatible).
 
-## Nachtrag `#446` — Review-Befunde aus PR #447
+## Addendum `#446` — review findings from PR #447
 
-Die Review deckte auf, dass „atomar“ und „strikt anonymisiert“ im Code nicht galten. Festgelegt wird:
+The review revealed that "atomic" and "strictly anonymized" did not hold in the code. The following is established:
 
-4. **Übernahme als Unit of Work (`apps/api/src/prisma/transaction.ts`):**
-   - `apply`, `apply-batch` und `undo` laufen in **einer** Datenbanktransaktion (`TransactionRunner`, Isolationsstufe *Repeatable Read*). Die Repositories bleiben unverändert: Der verschlüsselte Prisma-Client leitet Aufrufe per `AsyncLocalStorage` in die laufende Transaktion, und ihre eigenen `$transaction([...])`-Batches treten ihr bei. Kompensierende Rück-Schreibvorgänge entfallen.
-   - Jeder geschriebene Wert ist ein **Compare-and-Set** gegen die beim Entwurf gelesene Rohwert-Baseline, auch für Begleitfelder (`companionExpectedValues`). Eine gleichzeitige Masken-Änderung zwischen Prüfung und Schreiben endet als `409 CONCURRENT_WRITE_CONFLICT` statt als verlorenes Update.
-   - Ein `409 ADVISOR_ACTION_STALE_CONFLICT` nennt in `details.conflicts` alle betroffenen Felder mit ihrem aktuellen Wert. „Mit neuem Stand übernehmen“ schickt genau diese Werte als `acknowledgedCurrentValues` zurück. Das bleibt ein Compare-and-Set, kein Überschreiben ohne Prüfung.
-   - `undo` stellt Wert **und** Herkunftsmarkierung exakt wieder her (`undoSnapshot`, serverintern) und verweigert sich, wenn das Feld nach der Übernahme manuell geändert wurde.
-   - Die Feldsperre (`apps/api/src/confirmation/ai-write-policy.ts`) gilt auf dem **Schreibpfad**, nicht nur beim Vorschlag, und ebenso für Begleitfelder.
-   - Nachvollziehbarkeit: Jede übernommene Aktion trägt `appliedAt` bzw. `undoneAt` neben Feld, Werten, Rechtsquelle und Engine (Modus/Anbieter/Modell) in ihren Nachrichten-Metadaten. Das Audit-Log bleibt bei „wer/was/wann“ ohne wertführende Spalte (REQ-004.5).
+4. **Apply as a unit of work (`apps/api/src/prisma/transaction.ts`):**
+   - `apply`, `apply-batch` and `undo` run in **one** database transaction (`TransactionRunner`, isolation level *Repeatable Read*). The repositories stay unchanged: the encrypted Prisma client routes calls into the running transaction via `AsyncLocalStorage`, and their own `$transaction([...])` batches join it. Compensating write-backs are no longer needed.
+   - Every written value is a **compare-and-set** against the raw-value baseline read at draft time, including for companion fields (`companionExpectedValues`). A concurrent form change between check and write ends as `409 CONCURRENT_WRITE_CONFLICT` instead of a lost update.
+   - A `409 ADVISOR_ACTION_STALE_CONFLICT` lists in `details.conflicts` all affected fields with their current value. „Mit neuem Stand übernehmen“ ("Apply with the new state") sends exactly these values back as `acknowledgedCurrentValues`. That remains a compare-and-set, not an overwrite without a check.
+   - `undo` restores value **and** provenance marking exactly (`undoSnapshot`, server-internal) and refuses if the field was changed manually after the apply.
+   - The field lock (`apps/api/src/confirmation/ai-write-policy.ts`) applies on the **write path**, not only at suggestion time, and likewise for companion fields.
+   - Traceability: every applied action carries `appliedAt` or `undoneAt` next to field, values, legal source and engine (mode/provider/model) in its message metadata. The audit log stays at "who/what/when" without a value-bearing column (REQ-004.5).
 
-5. **Beleg-Isolation:** Ein Belegbild erreicht nie ein Modell. Text entsteht auf dem Gerät (PDF-Text-Layer bzw. On-Device-OCR); der Parse-Endpunkt nimmt kein Bild an (`imageBase64` entfernt mit #444, Anfragen mit Bildfeld werden mit 400 abgelehnt). Hinaus geht nur geschwärzter Text (Namen aus Profil und Kindern); für Lohnsteuerbescheinigungen zusätzlich nur die erlaubten Zeilen (ADR-0058). Der Dateiname wird nie gesendet. Gespeichert und später dem Chat-Modell als Verlauf gezeigt wird ausschließlich eine Zusammenfassung aus validierten Strukturfeldern, nie Freitext aus Dokument oder Modell.
+5. **Document isolation:** a document image never reaches a model. Text is produced on the device (PDF text layer or on-device OCR); the parse endpoint accepts no image (`imageBase64` removed with #444, requests with an image field are rejected with 400). Only redacted text goes out (names from the profile and children); for Lohnsteuerbescheinigungen (wage tax certificates) additionally only the permitted lines (ADR-0058). The file name is never sent. Only a summary built from validated structured fields is stored and later shown to the chat model as history, never free text from the document or the model.
 
-6. **Turn-Budget & Stream-Protokoll:** Timeout (25 s), Tool-Runden (5) und Tageskontingent (50) kommen aus `AiRuntimeConfigService.resolveLimits()`. Client-Abbruch und Timeout brechen den kostenpflichtigen Modellaufruf per `AbortSignal` ab. Tool-Argumente werden gegen dieselben Zod-Schemas geprüft, die das Modell sieht. Das SSE-Protokoll kennt zusätzlich `ui_command` (gesperrtes Feld → Werkbank öffnet die Maske zur manuellen Eingabe) und `error`. Eine abgebrochene Teilantwort wird nie als vollständige Antwort gespeichert. `done` trägt `mode`, damit die UI den **Basis-Modus** kennzeichnen kann.
+6. **Turn budget & stream protocol:** timeout (25 s), tool rounds (5) and daily quota (50) come from `AiRuntimeConfigService.resolveLimits()`. Client abort and timeout cancel the paid model call via `AbortSignal`. Tool arguments are validated against the same Zod schemas the model sees. The SSE protocol additionally knows `ui_command` (locked field → the workbench opens the form for manual input) and `error`. An aborted partial answer is never stored as a complete answer. `done` carries `mode` so the UI can label the **basic mode**.

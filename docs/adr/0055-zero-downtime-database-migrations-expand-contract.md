@@ -3,41 +3,41 @@
 - **Status:** Accepted
 - **Date:** 2026-11-08
 - **Deciders:** Steuereule Engineering
-- **Applies to:** `apps/api/prisma/schema.prisma`, `apps/api/prisma/migrations/`, Google Cloud Run Rollouts
+- **Applies to:** `apps/api/prisma/schema.prisma`, `apps/api/prisma/migrations/`, Google Cloud Run rollouts
 
-## Kontext
+## Context
 
-Auf Google Cloud Run (ADR-0053) und Kubernetes (Produkt-ADR-049) werden Deployments als Rolling Updates ausgeführt:
-Während eine neue Version ausgerollt wird, laufen alte Container-Instanzen (Revision $N$) und neue Instanzen (Revision $N+1$) für mehrere Minuten gleichzeitig nebeneinander gegen dieselbe PostgreSQL-Produktionsdatenbank.
+On Google Cloud Run (ADR-0053) and Kubernetes (product ADR-049), deployments run as rolling updates:
+while a new version is being rolled out, old container instances (revision $N$) and new instances (revision $N+1$) run side by side for several minutes against the same PostgreSQL production database.
 
-Führt ein Release eine destruktive oder umbenennende Datenbank-Migration aus (z. B. Spalte umbenennen, Spalte löschen, NOT NULL ohne Default hinzufügen), bevor alle Alt-Container beendet sind, stürzen laufende Alt-Instanzen mit SQL-Fehlern (`column does not exist`) ab. Ebenso schlägt ein Rollback fehl, wenn die Datenbank bereits inkompatibel mutiert wurde.
+If a release runs a destructive or renaming database migration (e.g. renaming a column, dropping a column, adding NOT NULL without a default) before all old containers have stopped, running old instances crash with SQL errors (`column does not exist`). Likewise, a rollback fails if the database has already been mutated incompatibly.
 
-## Entscheidung
+## Decision
 
-Alle zukünftigen Datenbankschema-Änderungen in `apps/api/prisma/` unterliegen verpflichtend dem **Expand-and-Contract-Muster (Parallellauf)** in mindestens zwei separaten Release-Zyklen:
+All future database schema changes in `apps/api/prisma/` are mandatorily subject to the **expand-and-contract pattern (parallel run)** across at least two separate release cycles:
 
-### Phase 1: Expand (Additiv & Abwärtskompatibel)
-1. **Neue Spalten/Tabellen sind immer optional:** Neue Spalten werden als `nullable` oder mit sicherem Default-Wert angelegt.
-2. **Keine Spaltenumbenennung in einem Schritt:** Ein Feld `oldField` wird niemals per SQL-Rename umbenannt. Stattdessen wird `newField` additiv hinzugefügt.
-3. **Dual Writing (Schreib-Doppelung):** Die Anwendungsschicht (Revision $N+1$) schreibt synchron in beide Felder (`oldField` und `newField`), liest aber weiterhin aus `oldField`.
-4. **Alte Container überleben:** Revision $N$ liest und schreibt ungestört weiterhin in `oldField`.
+### Phase 1: Expand (additive & backward compatible)
+1. **New columns/tables are always optional:** New columns are created as `nullable` or with a safe default value.
+2. **No column rename in one step:** A field `oldField` is never renamed via an SQL rename. Instead, `newField` is added additively.
+3. **Dual writing:** The application layer (revision $N+1$) writes synchronously to both fields (`oldField` and `newField`), but keeps reading from `oldField`.
+4. **Old containers survive:** Revision $N$ keeps reading and writing `oldField` undisturbed.
 
 ### Phase 2: Read Switch & Backfill
-1. **Daten-Synchronisation:** Bestehende Alt-Datensätze werden idempotent migriert (`UPDATE table SET newField = oldField WHERE newField IS NULL`).
-2. **Lese-Umschaltung:** Der Code liest nun aus `newField`, schreibt weiterhin in beide.
+1. **Data synchronization:** Existing old records are migrated idempotently (`UPDATE table SET newField = oldField WHERE newField IS NULL`).
+2. **Read switch:** The code now reads from `newField` and keeps writing to both.
 
-### Phase 3: Contract (Bereinigung)
-1. **Erst im nachfolgenden Release:** Wenn Revision $N$ vollständig heruntergefahren ist und die Stabilität von $N+1$ bewiesen ist, wird im nächsten Deployment (Revision $N+2$) das alte Feld `oldField` per Migration gelöscht und der Dual-Write-Code entfernt.
+### Phase 3: Contract (cleanup)
+1. **Only in the following release:** Once revision $N$ has been fully shut down and the stability of $N+1$ has been proven, the next deployment (revision $N+2$) drops the old field `oldField` via a migration and removes the dual-write code.
 
-### Unmittelbar verbotene Migrations-Praktiken (CI-Sperre)
-- ❌ **`ALTER TABLE ... DROP COLUMN`** im selben Release wie Code-Änderungen, die das Feld noch referenzieren.
-- ❌ **`ALTER TABLE ... RENAME COLUMN`** (ist immer destruktiv für alte Container).
-- ❌ **`ALTER TABLE ... ADD COLUMN ... NOT NULL`** ohne Default-Wert auf befüllten Tabellen (blockiert Schreibvorgänge während des Migrationslaufs).
+### Migration practices that are forbidden outright (CI block)
+- ❌ **`ALTER TABLE ... DROP COLUMN`** in the same release as code changes that still reference the field.
+- ❌ **`ALTER TABLE ... RENAME COLUMN`** (always destructive for old containers).
+- ❌ **`ALTER TABLE ... ADD COLUMN ... NOT NULL`** without a default value on populated tables (blocks writes while the migration runs).
 
-## Konsequenzen
+## Consequences
 
-- **Vorteile:**
-  - **Zero Downtime:** Nahtloses Rolling Deployment auf Google Cloud Run ohne 500er-Spikes.
-  - **Rollback-Sicherheit:** Revision $N+1$ kann jederzeit auf Revision $N$ zurückgerollt werden, da das Datenbankschema während Phase 1 vollständig abwärtskompatibel bleibt.
-- **Nachteile:**
-  - Brechende Schema-Änderungen erfordern zwei Releases statt eines einzigen Schnellschusses (Disziplin und Planung erforderlich).
+- **Advantages:**
+  - **Zero downtime:** Seamless rolling deployment on Google Cloud Run without 500 spikes.
+  - **Rollback safety:** Revision $N+1$ can be rolled back to revision $N$ at any time, because the database schema stays fully backward compatible during phase 1.
+- **Disadvantages:**
+  - Breaking schema changes require two releases instead of a single quick shot (discipline and planning required).

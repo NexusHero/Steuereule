@@ -1,44 +1,46 @@
-# ADR-0076 — Weitere Werbungskosten, Kinderbetreuung und der Arbeitgeberanteil der Prämien
+# ADR-0076 — More Werbungskosten, childcare and the employer share of the premiums
 
 - **Status:** Accepted
 - **Date:** 2026-11-13
 - **Deciders:** NexusHero (Product Owner), Steuereule Engineering
-- **Applies to:** `apps/api/prisma/schema.prisma` (Arbeitsweg, Kind), `apps/api/src/commute/`, `apps/api/src/children/`, `apps/api/src/confirmation/field-access.ts`, `apps/api/src/tax-estimate/tax-estimate.service.ts`, `apps/api/src/printout/`, `apps/api/src/receipt/parse/auto-receipt-parse.strategy.ts`, `apps/api/src/advisor/{advisor.service,advisor-case-facts}.ts`, `apps/api/src/ki/advisor-prompt.ts`, `apps/api/src/ch-certificate-scan/ch-letter.parse-strategy.ts`, `packages/core/src/domains/{work-expenses,childcare,n-gre}.ts`, `packages/core/src/interview/{advisor,field-catalog}.ts`, `apps/mobile-web/src/screens/{workdays,children,cross-border}/`
-- **Baut auf:** ADR-0050 (Ausdruck-Felder vermessen), ADR-0072 (N-Gre-Prämien), ADR-0073 (Person B), ADR-0075 (Prämienbrief)
+- **Applies to:** `apps/api/prisma/schema.prisma` (commute, child), `apps/api/src/commute/`, `apps/api/src/children/`, `apps/api/src/confirmation/field-access.ts`, `apps/api/src/tax-estimate/tax-estimate.service.ts`, `apps/api/src/printout/`, `apps/api/src/receipt/parse/auto-receipt-parse.strategy.ts`, `apps/api/src/advisor/{advisor.service,advisor-case-facts}.ts`, `apps/api/src/ki/advisor-prompt.ts`, `apps/api/src/ch-certificate-scan/ch-letter.parse-strategy.ts`, `packages/core/src/domains/{work-expenses,childcare,n-gre}.ts`, `packages/core/src/interview/{advisor,field-catalog}.ts`, `apps/mobile-web/src/screens/{workdays,children,cross-border}/`
+- **Builds on:** ADR-0050 (measuring printout fields), ADR-0072 (N-Gre premiums), ADR-0073 (Person B), ADR-0075 (premium letter)
 
-## Kontext
+## Context
 
-Im Echtfall setzte der Steuerberater Arbeitsmittel (Berufskleidung), Kontoführung und
-Kinderbetreuung an. Die App hatte dafür kein Feld: Die Eule nannte sie als Hebel, konnte sie aber
-nirgends ablegen, die Schätzung kannte sie nicht, der Ausdruck druckte sie nicht. Belege über
-Arbeitsmittel landeten als „Fortbildung = Ja“. Bei Grenzgängern zählten Fortbildung und Umzug in
-der Schätzung gar nicht. Der Arbeitgeberbetrag einer Prämie war in der Maske erst bei 100 % sichtbar,
-obwohl die Rechnung ihn immer verwendet und ein Prämienbrief ihn ohne Anteil nennt.
+In the real case the tax advisor claimed work equipment (work clothing), account fees and
+childcare. The app had no field for these: the owl named them as levers but could not store them
+anywhere, the estimate did not know them, the printout did not print them. Documents about work
+equipment ended up as "further training = yes". For Grenzgänger (cross-border commuters), further
+training and relocation did not count in the estimate at all. The employer amount of a premium was
+only visible in the form at 100 %, although the calculation always uses it and a premium letter
+states it without a share.
 
-## Entscheidung
+## Decision
 
-1. **Weitere Werbungskosten je Person in der Arbeitsweg-Maske:** Berufsverbände (Kz 310), Arbeitsmittel
-   und typische Berufskleidung (Kz 320, mit „was es war“), Kontoführung und Sonstiges (Kz 380, mit
-   „wofür“). Die Arbeitsweg-Maske ist schon je Person geführt, auch für Person B; ein Speichern ohne diese
-   Felder lässt sie unverändert. Verschlüsselt wie alle Beträge.
-2. **Schätzung:** Sie zählen zu Arbeitsweg und Homeoffice und werden wie bisher mit dem
-   Arbeitnehmer-Pauschbetrag verglichen. Fortbildung und Umzug zählen jetzt auch bei Grenzgängern.
-3. **Ausdruck:** Anlage N Z. 53/54/56 und 62–64, Anlage N-Gre Z. 48/49/51 und 57–59, neu vermessen.
-4. **Kinderbetreuung je Kind** (Betrag, Art/Anbieter, Zeitraum): Anlage Kind Z. 67 (Kz 51). Die Schätzung
-   zieht ab 2025 80 %, höchstens 4.800 € je Kind ab (davor zwei Drittel, höchstens 4.000 €), nur für ein
-   Kind, das zu Jahresbeginn noch nicht 14 war; beim Ehepaar einmal für den Haushalt.
-5. **Eule und Belege:** Die Felder stehen im Feldkatalog und sind Entwurfsziele (auch für Person B). Die
-   Eule kennt ihre Wirkung im Fall-Überblick. Ein Arbeitsmittel-Beleg geht auf Kz 320; mehrere Belege
-   addieren sich zur Jahressumme statt sich zu ersetzen. Ein Wert, der kein schlichter Betrag ist, bleibt
-   für die PII-Prüfung stehen und wird nicht „korrigiert“.
-6. **Prämien:** Der Arbeitgeberbetrag ist sichtbar, solange der Anteil offen oder 100 % ist. Zahlt die Person
-   selbst nichts zum Krankentaggeld, gilt der Arbeitgeber als 100 %-Zahler — in der Rechnung und im
-   Prämienbrief-Leser. Für die NBUV bleibt der Anteil eine Frage an den Nutzer, weil der Arbeitnehmeranteil
-   dort nur ein Rest aus Ziffer 9 ist.
+1. **More Werbungskosten (work-related expenses) per person in the commute form:** professional
+   associations (Kz 310), work equipment and typical work clothing (Kz 320, with "what it was"),
+   account fees and other (Kz 380, with "what for"). The commute form is already kept per person,
+   also for Person B; saving without these fields leaves them unchanged. Encrypted like all
+   amounts.
+2. **Estimate:** they count together with commute and home office and are compared with the
+   employee lump sum as before. Further training and relocation now also count for Grenzgänger.
+3. **Printout:** Anlage N l. 53/54/56 and 62–64, Anlage N-Gre l. 48/49/51 and 57–59, newly measured.
+4. **Childcare per child** (amount, type/provider, period): Anlage Kind l. 67 (Kz 51). From 2025 the
+   estimate deducts 80 %, at most €4,800 per child (before that two thirds, at most €4,000), only for
+   a child who was not yet 14 at the start of the year; for a married couple once for the household.
+5. **Owl and documents:** the fields are in the field catalog and are draft targets (also for
+   Person B). The owl knows their effect in the case overview. A work equipment document goes to
+   Kz 320; several documents add up to the annual total instead of replacing each other. A value
+   that is not a plain amount is left in place for the PII check and is not "corrected".
+6. **Premiums:** the employer amount is visible as long as the share is open or 100 %. If the person
+   pays nothing toward the Krankentaggeld (sickness daily allowance) themselves, the employer counts
+   as the 100 % payer — in the calculation and in the premium letter reader. For the NBUV the share
+   remains a question to the user, because the employee share there is only a remainder from item 9.
 
-## Folgen
+## Consequences
 
-- Echtfall: Arbeitsmittel und Kontoführung je Person und die Kinderbetreuung lassen sich erfassen und
-  stehen im Ausdruck wie beim Steuerberater.
-- Nicht enthalten: Fortbildungskosten (Kz 330) stehen noch nicht im Ausdruck; Reisekosten und doppelte
-  Haushaltsführung bleiben wie bisher.
+- Real case: work equipment and account fees per person and the childcare can be entered and appear
+  in the printout as with the tax advisor.
+- Not included: further training costs (Kz 330) are not in the printout yet; travel expenses and
+  double housekeeping stay as before.

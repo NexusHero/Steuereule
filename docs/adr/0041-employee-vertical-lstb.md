@@ -1,97 +1,97 @@
-# ADR-0041 — Angestellte-Vertikale: LStB-Scan-Fallback-Maske + On-Demand-Katalog-Einträge (Entwurf) 
+# ADR-0041 — Employee vertical: LStB scan fallback form + on-demand catalog entries (Draft) 
 
 - **Status:** Accepted — promoted 2026-10-24 (reviewed as part of the ticket reviews; Musti)
 - **Date:** 2026-10-24
 - **Deciders:** Kaan (backend/FE, Ticket 08) — draft; promotion needs Musti review
-- **Implements** Produkt-ADR-036 (Scan-Fallback-Maske statt OCR), Produkt-ADR-031 (5 Lebenslagen),
-  Produkt-ADR-016/035 (on-demand Sonderausgaben-Katalog), Produkt-ADR-008 (sichtbarer Konflikt,
-  nie stilles Überschreiben)
-- **Builds on** ADR-0008 (Feldverschlüsselung), ADR-0007/0012 (userId-Seam), REQ-004 (Audit),
-  ADR-0031 §3 (ein Katalog-Walker, kein zweiter Codepfad), ADR-0033 (Graph in `packages/core`,
-  Server validiert), ADR-0032 (nichts verspricht mehr als der Slice liefert)
+- **Implements** product ADR-036 (scan fallback form instead of OCR), product ADR-031 (5 life situations),
+  product ADR-016/035 (on-demand Sonderausgaben (special expenses) catalog), product ADR-008 (visible conflict,
+  never silent overwriting)
+- **Builds on** ADR-0008 (field encryption), ADR-0007/0012 (userId seam), REQ-004 (audit),
+  ADR-0031 §3 (one catalog walker, no second code path), ADR-0033 (graph in `packages/core`,
+  server validates), ADR-0032 (nothing promises more than the slice delivers)
 - **Context tags:** architecture, lstb, interview, catalog, honesty principle, encryption
 
-> **⚠ Nummern-Kollision (offen — hier NICHT auflösen):** `0041` ist auch vom parallelen
-> Grenzgänger-CH-Zweig (Ticket 09) belegt, der in seinem eigenen Worktree (nicht in diesem Branch)
-> den Entwurf `0041-grenzgaenger-ch-vertikale.md` führt. Beim Merge sind dieser Entwurf und der
-> t09-Entwurf auf `0041`/`0042` aufzulösen; die endgültige Nummer ist DANN in diesem Titel und allen
-> Verweisen nachzuziehen. Dieser Entwurf behält `0041` bewusst bei, damit beide Branches textuell
-> mergebar bleiben; der `adr-check-ignore`-Marker im Titel trägt den Entwurf bis zu dieser
-> Umnummerierung durch den ADR-Nummern-Check.
+> **⚠ Number collision (open — do NOT resolve here):** `0041` is also taken by the parallel
+> Grenzgänger (cross-border commuter) CH branch (Ticket 09), which in its own worktree (not in this branch)
+> holds the draft `0041-grenzgaenger-ch-vertikale.md`. On merge, this draft and the
+> t09 draft are to be resolved to `0041`/`0042`; the final number is THEN to be carried into this title and all
+> references. This draft deliberately keeps `0041` so that both branches stay textually
+> mergeable; the `adr-check-ignore` marker in the title carries the draft through the ADR number check until this
+> renumbering.
 
 ## Context
 
-Phase 1a (Ticket 08) baut die Angestellte-Vertikale auf dem geteilten Kern (Phase 0.4). Zwei
-Datenaufnahmen sind neu und brauchen eine Architektur-Entscheidung, weil sie beide den
-Ehrlichkeits-Grundsatz (ADR-0032/ADR-032) auf der Persistenz-Seite umsetzen müssen:
+Phase 1a (Ticket 08) builds the employee vertical on the shared core (Phase 0.4). Two
+data intakes are new and need an architecture decision, because both have to implement the
+honesty principle (ADR-0032/ADR-032) on the persistence side:
 
-1. **LStB-Datenaufnahme** (Produkt-ADR-036): Der Nutzer überträgt die drei gedruckten LStB-Werte
-   feldweise in eine geführte Maske. Scan/OCR ist bewusst NICHT hier (Produkt-ADR-045, später).
-   Die Maske muss drei ehrliche Zustände pro Feld abbilden — `erfasst`, `offen`, `unklar`
-   ("hingesehen, nicht lesbar") — und einen sichtbaren Widerspruch (Produkt-ADR-008), nie ein
-   stilles Korrigieren.
-2. **Interview Segment 2 / Katalog** (Produkt-ADR-031/016/035): Die 5 Lebenslagen und die
-   Sonderausgaben (Spenden, KV/PV, Riester) kommen als WEITERE Katalog-Einträge über die SAME
-   Engine, die schon das Minimal-Gate läuft (ADR-0031 §3). Die Server-Zulassung darf kein zweiter
-   Codepfad werden.
+1. **LStB data intake** (product ADR-036): The user transfers the three printed LStB (Lohnsteuerbescheinigung, wage tax certificate) values
+   field by field into a guided form. Scan/OCR is deliberately NOT here (product ADR-045, later).
+   The form must represent three honest states per field — `erfasst`, `offen`, `unklar`
+   ("looked at, not readable") — and a visible contradiction (product ADR-008), never a
+   silent correction.
+2. **Interview segment 2 / catalog** (product ADR-031/016/035): The 5 life situations and the
+   Sonderausgaben (donations, KV/PV (health/long-term care insurance), Riester) come as FURTHER catalog entries via the SAME
+   engine that already runs the minimal gate (ADR-0031 §3). Server admission must not become a second
+   code path.
 
 ## Decision
 
-1. **`packages/core/lstb.ts` — das reine LStB-Modell.** Drei Felder, je eines von
-   `erfasst` (Ganzzahl-Euro) | `offen` | `unklar`. Der abgeleitete `LstbZustand`
-   (`unvollstaendig` | `widerspruch` | `vollstaendig`) ist eine reine Funktion der drei
-   Feldzustände und wird bei jedem Lesen neu gerechnet, **nie gespeichert** (ADR-014/048:
-   eine gespeicherte Kopie eines ableitbaren Zustands kann nur driften). Der Widerspruch
-   ("Lohnsteuer/SV übersteigt Brutto") ist benannt, nie still korrigiert (ADR-008).
+1. **`packages/core/lstb.ts` — the pure LStB model.** Three fields, each one of
+   `erfasst` (integer euros) | `offen` | `unklar`. The derived `LstbZustand`
+   (`unvollstaendig` | `widerspruch` | `vollstaendig`) is a pure function of the three
+   field states and is recomputed on every read, **never stored** (ADR-014/048:
+   a stored copy of a derivable state can only drift). The contradiction
+   ("Lohnsteuer/SV exceeds gross") is named, never silently corrected (ADR-008).
 
-2. **Persistenz: drei nullable String-Spalten, eine Encoding-Stelle.** `null` = `offen`, der
-   reservierte Marker `unklar` = "nicht lesbar", jede andere Zeichenkette = Ganzzahl-Euro
-   (`erfasst`). Die Abbildung Feldzustand ↔ String lebt an GENAU einer Stelle
-   (`serialisiereLstbFeld`/`deserialisiereLstbFeld` in `packages/core/lstb.ts`), damit das
-   API-Repository und seine Tests nicht auseinanderdriften (ADR-0033-Instinkt). Der Marker kann
-   nie mit einem echten Wert kollidieren, weil erfasste Werte Ganzzahlen sind und der Marker
-   keine Zahl ist. **Warum ein String, keine drei Spalten pro Zustand:** eine Spalte pro Feld
-   trägt den Zustand inklusive Betrag, ohne dass eine "Zustands-Spalte" neben einer
-   "Betrags-Spalte" auseinanderlaufen kann.
+2. **Persistence: three nullable string columns, one encoding point.** `null` = `offen`, the
+   reserved marker `unklar` = "not readable", any other string = integer euros
+   (`erfasst`). The mapping field state ↔ string lives in EXACTLY one place
+   (`serialisiereLstbFeld`/`deserialisiereLstbFeld` in `packages/core/lstb.ts`), so that the
+   API repository and its tests do not drift apart (ADR-0033 instinct). The marker can
+   never collide with a real value, because captured values are integers and the marker
+   is not a number. **Why a string, not three columns per state:** one column per field
+   carries the state including the amount, without a "state column" next to an
+   "amount column" being able to diverge.
 
-3. **Alle drei Werte sind feldverschlüsselt at rest** (ADR-0008). Tatsächliches Einkommen ist die
-   sensibelste personenbezogene Tatsache, die eine Steuer-App hält — über dieselbe `userId`
-   verknüpfbar mit der Steuer-ID im `Profile` — anders als `TaxYear` (nur Zähler) oder die
-   `Beleg`-Daten (die die Vorschlagsregel im Klartext braucht). Das `Lstb`-Modell (`schema.prisma`)
-   dokumentiert diese Begründung am Modell.
+3. **All three values are field-encrypted at rest** (ADR-0008). Actual income is the
+   most sensitive personal fact a tax app holds — linkable via the same `userId`
+   with the Steuer-ID (tax identification number) in the `Profile` — unlike `TaxYear` (counters only) or the
+   `Beleg` data (which the suggestion rule needs in plaintext). The `Lstb` model (`schema.prisma`)
+   documents this rationale on the model.
 
-4. **API: `GET /v1/steuerjahre/{jahr}/lstb` + `PUT .../lstb/{feld}`.** Ein Row pro
-   `(userId, steuerjahr)`; der GET liefert die drei Feldzustände plus den abgeleiteten `zustand`
-   (Wiedereinstieg, derselbe "Server entscheidet, was wahr ist"-Seam wie das Interview). Der PUT
-   ist ein Upsert EINES Felds. `@RequiresAccount()` (kein Gast-Pfad), WRITE-Audit atomar mit dem
-   Upsert (REQ-004), READ-Audit nur bei vorhandener Zeile.
+4. **API: `GET /v1/steuerjahre/{jahr}/lstb` + `PUT .../lstb/{feld}`.** One row per
+   `(userId, steuerjahr)`; the GET returns the three field states plus the derived `zustand`
+   (re-entry, the same "server decides what is true" seam as the interview). The PUT
+   is an upsert of ONE field. `@RequiresAccount()` (no guest path), WRITE audit atomic with the
+   upsert (REQ-004), READ audit only when a row exists.
 
-5. **Katalog-Einträge: ein Walker, eine Registry (ADR-0031 §3).** `ENTRIES['lebenslagen']` und
-   `ENTRIES['sonderausgaben']` sind Einträge desselben `CatalogueEntry`-Typs; nur die
-   Betrags-Follow-ups sind namensgeprägt (`dhf-miete`, `umzug-kosten`, `spenden-betrag`, …), die
-   Top-Level-Ids (`dhf`, `umzug`, `spenden`, …) sind bewusst nackt — das ist ein Namens-Merkmal,
-   kein Namespace. Die Kollisionssicherheit gegen die parallele Grenzgänger-CH-Vertikale (Ticket 09) kommt
-   strukturell aus der geschlossenen `EntryStepId`-Union plus dem `buildStepIndex`-Throw (D3), nicht
-   aus der Benennung: ein zweiter Claim derselben Id lässt sich so nicht bauen. Der Server leitet den
-   besitzenden Eintrag aus der nackten `questionId` ab (`entryForStep`, D3 in `interview.ts`),
-   statt einem Client-gelieferten Scope zu vertrauen — dieselbe Admission, nur der Eintrag
-   unterscheidet sich. Das `eintrag`-Query auf dem GET ist die Wiedereinstiegs-Oberfläche; ein
-   unbekannter Id ist ein 400.
+5. **Catalog entries: one walker, one registry (ADR-0031 §3).** `ENTRIES['lebenslagen']` and
+   `ENTRIES['sonderausgaben']` are entries of the same `CatalogueEntry` type; only the
+   amount follow-ups carry name prefixes (`dhf-miete`, `umzug-kosten`, `spenden-betrag`, …), the
+   top-level ids (`dhf`, `umzug`, `spenden`, …) are deliberately bare — that is a naming trait,
+   not a namespace. Collision safety against the parallel Grenzgänger CH vertical (Ticket 09) comes
+   structurally from the closed `EntryStepId` union plus the `buildStepIndex` throw (D3), not
+   from the naming: a second claim of the same id cannot be built that way. The server derives the
+   owning entry from the bare `questionId` (`entryForStep`, D3 in `interview.ts`),
+   instead of trusting a client-supplied scope — the same admission, only the entry
+   differs. The `eintrag` query on the GET is the re-entry surface; an
+   unknown id is a 400.
 
 ## Consequences
 
-- **Ehrlichkeit ist strukturell:** ein nicht-lesbarer LStB-Wert kann nicht als "vergessen"
-  dargestellt werden und ein Widerspruch nicht als korrigiert — beides ist ein benannter Zustand,
-  kein Default.
-- **Ein Rechenweg:** der `LstbZustand` (und später der `AngestelltenStand`/die
-  `Plausibilitäts-Prüfung`) wird ausschließlich in `packages/core` gerechnet; die API mappt nur.
-- **Client bleibt dumm:** mobile-web rendert die Maske aus dem GET; keine zweite Zustandslogik im
-  Client (ADR-0033). MSW-Handler sind generiert (orval), nie handgeschrieben.
-- **Bewusst NICHT hier:** Scan/OCR (Produkt-ADR-045), die Steuerformeln (Tarif, Fünftelregelung,
-  Progressionsvorbehalt, zumutbare Belastung), die Arbeitstage-/Pendlerpauschale-Anbindung an die
-  API und die Cockpit-Echtdaten — das sind spätere Slices; dieser Slice erfasst und faltet ehrlich,
-  was erfasst und faltbar ist (derselbe "partial truth as partial truth"-Schnitt wie
+- **Honesty is structural:** an unreadable LStB value cannot be
+  presented as "forgotten" and a contradiction cannot be presented as corrected — both are a named state,
+  not a default.
+- **One calculation path:** the `LstbZustand` (and later the `AngestelltenStand`/the
+  `Plausibilitäts-Prüfung`) is computed exclusively in `packages/core`; the API only maps.
+- **The client stays dumb:** mobile-web renders the form from the GET; no second state logic in the
+  client (ADR-0033). MSW handlers are generated (orval), never handwritten.
+- **Deliberately NOT here:** scan/OCR (product ADR-045), the tax formulas (tariff, Fünftelregelung (one-fifth rule),
+  Progressionsvorbehalt (progression proviso), zumutbare Belastung (reasonable burden)), wiring the working days / Pendlerpauschale (commuter allowance) to the
+  API, and the real cockpit data — those are later slices; this slice captures and folds honestly
+  what can be captured and folded (the same "partial truth as partial truth" cut as
   `berechnung.ts`).
-- **Migration:** eine additive `Lstb`-Tabelle, `@@unique([userId, steuerjahr])`; keine Änderung an
-  bestehenden Tabellen (Interview/TaxYear/Beleg unberührt) — die Interview-Änderungen (R2) sind
-  rein additiv im Katalog-Layer.
+- **Migration:** one additive `Lstb` table, `@@unique([userId, steuerjahr])`; no change to
+  existing tables (Interview/TaxYear/Beleg untouched) — the interview changes (R2) are
+  purely additive in the catalog layer.

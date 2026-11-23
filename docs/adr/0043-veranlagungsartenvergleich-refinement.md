@@ -1,106 +1,107 @@
-# ADR-0043 — Veranlagungsartenvergleich-Verfeinerung: Soli/KiSt eingefaltet, Unschärfe nur noch der Progressionsvorbehalt
+# ADR-0043 — Veranlagungsartenvergleich refinement: Soli/KiSt folded in, the uncertainty is now only the Progressionsvorbehalt
 
 - **Status:** Accepted
 - **Date:** 2026-10-24
-- **Deciders:** Robin (backend, Ticket 10.2) — Verfeinerung von ADR-0034, ausgelöst durch Mustis
-  Review des 10.2-Branches (REQUEST-CHANGES F2).
+- **Deciders:** Robin (backend, ticket 10.2) — refinement of ADR-0034, triggered by Musti's
+  review of the 10.2 branch (REQUEST-CHANGES F2).
 - **Refines** [ADR-0034](0034-veranlagungsartenvergleich-returns-a-bounded-comparison.md) Decision 3
-  (und dessen Consequences-Absatz „until Soli and Kirchensteuer are computed …").
-- **Applies** [ADR-0032](0032-nothing-on-screen-promises-what-the-slice-does-not-deliver.md) (kein
-  fabrizierter Nullwert) und [ADR-0033](0033-the-question-graph-lives-in-packages-core.md) § *citation
-  form* — die PV-Schranke ist eine neue, zitierbare Ableitung und gehört ins ADR-Log, nicht nur in
-  einen Modul-Kopf-Vermerk.
+  (and its Consequences paragraph "until Soli and Kirchensteuer are computed …").
+- **Applies** [ADR-0032](0032-nothing-on-screen-promises-what-the-slice-does-not-deliver.md) (no
+  fabricated zero) and [ADR-0033](0033-the-question-graph-lives-in-packages-core.md) § *citation
+  form* — the PV bound is a new, citable derivation and belongs in the ADR log, not only in a
+  module-header note.
 - **Context tags:** architecture, determinism boundary, honesty principle, tax computation
 
 ## Context
 
-ADR-0034 regelte den Veranlagungsartenvergleich als **bounded comparison** und ließ dabei drei
-Faktoren explizit **unberechnet** — Solidaritätszuschlag, Kirchensteuer und Progressionsvorbehalt.
-Decision 3 modellierte Soli und KiSt als (berechenbare) obere Schranke über Zahlen, die das Modul
-„already holds", und den Progressionsvorbehalt als **unboundable**: ohne Eingabe ist `unschaerfe`
-`unbestimmt` und `aussage` kann nie `eindeutig` werden.
+ADR-0034 defined the Veranlagungsartenvergleich (comparison of assessment types) as a **bounded
+comparison** and explicitly left three factors **uncomputed** — Solidaritätszuschlag (solidarity
+surcharge), church tax and Progressionsvorbehalt (progression proviso).
+Decision 3 modeled Soli and KiSt as a (computable) upper bound over numbers the module
+"already holds", and the Progressionsvorbehalt as **unboundable**: without input, `unschaerfe` is
+`unbestimmt` and `aussage` can never become `eindeutig`.
 
-Ticket 10.2 (M1) hat zwei dieser drei Lücken geschlossen, und zwar anders, als ADR-0034 sie
-antizipiert hatte:
+Ticket 10.2 (M1) closed two of these three gaps, and did so differently from how ADR-0034 had
+anticipated:
 
-1. **Soli und KiSt werden jetzt berechnet** (`packages/core/src/tarif.ts` — §4 SolZG mit Freigrenze +
-   Milderungszone, §51a als Aufrufer-Faktor `0 | 0.08 | 0.09`), und in `einzel`/`zusammen`/`delta`
-   eingefaltet. ADR-0034s Decision-3-Text („an upper bound … arithmetic over numbers this module
-   already holds") beschreibt damit einen Mechanismus, den es nicht mehr gibt: Soli/KiSt sind nicht
-   mehr Teil von `unschaerfe`.
-2. **Der Progressionsvorbehalt wird begrenzbar**, über ein neues Eingabeobjekt
-   (`ProgressionsvorbehaltEingabe`) mit einer Schranke, die ADR-0034 als nicht herleitbar
-   bezeichnete. Die Kern-Invariante (bounded comparison, `aussage` zuerst, `empfehlung` nur auf
-   `eindeutig`) bleibt dabei vollständig gewahrt — es ist eine Verfeinerung, kein stiller
-   Widerspruch, und ADR-0034s Consequences-Absatz („until Soli and Kirchensteuer are computed and
-   Progressionsvorbehalt is an input") hat genau diesen Schritt vorhergesehen. Aber der ADR-Text zu
-   Decision 3 ist jetzt **stale**, und die neue PV-Schranke ist eine Ableitung, die im ADR-Log
-   fehlt (ADR-0033: citation form).
+1. **Soli and KiSt are now computed** (`packages/core/src/tarif.ts` — §4 SolZG with exemption limit +
+   phase-in zone, §51a as a caller factor `0 | 0.08 | 0.09`), and folded into `einzel`/`zusammen`/`delta`.
+   ADR-0034's Decision 3 text ("an upper bound … arithmetic over numbers this module
+   already holds") therefore describes a mechanism that no longer exists: Soli/KiSt are no
+   longer part of `unschaerfe`.
+2. **The Progressionsvorbehalt becomes boundable**, via a new input object
+   (`ProgressionsvorbehaltEingabe`) with a bound that ADR-0034 called non-derivable.
+   The core invariant (bounded comparison, `aussage` first, `empfehlung` only on
+   `eindeutig`) is fully preserved — this is a refinement, not a silent
+   contradiction, and ADR-0034's Consequences paragraph ("until Soli and Kirchensteuer are computed and
+   Progressionsvorbehalt is an input") anticipated exactly this step. But the ADR text on
+   Decision 3 is now **stale**, and the new PV bound is a derivation that is missing from the
+   ADR log (ADR-0033: citation form).
 
 ## Decision
 
-Decision 3 von ADR-0034 wird wie folgt präzisiert (nicht rückwirkend umgeschrieben — siehe
+Decision 3 of ADR-0034 is made more precise as follows (not rewritten retroactively — see
 Consequences):
 
-1. **`einzel`/`zusammen`/`delta` tragen die volle festgesetzte Steuer.** Die Zahlen sind
-   Einkommensteuer **plus** Solidaritätszuschlag **plus** (optionaler) Kirchensteuer — exakt auf den
-   Euro, für die zwei übergebenen zvE-Basen. Soli und KiSt sind **nicht mehr** Teil der Unschärfe:
-   Sie sind monotone Zuschläge auf eine ESt, die sich zwischen den Veranlagungsarten unterscheidet,
-   und können das Vorzeichen von `delta` nicht drehen — ein ausgeschlossener Faktor, der das
-   Ergebnis nicht kippen kann, gehört nicht in die Fehlergrenze.
+1. **`einzel`/`zusammen`/`delta` carry the full assessed tax.** The numbers are
+   income tax **plus** Solidaritätszuschlag **plus** (optional) church tax — exact to the
+   euro, for the two zvE (taxable income) bases passed in. Soli and KiSt are **no longer** part of
+   the uncertainty: they are monotone surcharges on an income tax that differs between the
+   assessment types, and cannot flip the sign of `delta` — an excluded factor that cannot tip the
+   result does not belong in the error bound.
 
-2. **`unschaerfe` ist ausschließlich der Progressionsvorbehalt (§32b EStG).** Der einzige
-   ausgeschlossene Faktor, der das Ergebnis kippen kann. Seine obere Schranke ist
-   `45 % × Lohnersatzleistungen`, aufgerundet auf den ganzen Euro
-   (`Math.ceil(MAX_GRENZSTEUERSATZ * betrag)`, `MAX_GRENZSTEUERSATZ = 0.45` aus §32a Abs. 1 Nr. 5
-   EStG). Herleitung: die PV-Wirkung ist `y·[s(y+P)−s(y)]` mit `s′(u)=(T′(u)−s(u))/u ≤ 45 %/u`,
-   also `≤ 45 %·y·ln(1+P/y) ≤ 45 %·P`; da der PV beide Seiten (einzel/zusammen) nur erhöht, gilt
-   `|Δdelta| ≤ 45 %·P`. Das ist eine **konservative, zitierbare** Obergrenze — der Spitzengrenz-
-   steuersatz als oberer Deckel, keine aus dem Gefühl gewählte Schwelle (im Geist von ADR-0034
-   „computed, not chosen").
+2. **`unschaerfe` is exclusively the Progressionsvorbehalt (§32b EStG).** The only
+   excluded factor that can tip the result. Its upper bound is
+   `45 % × Lohnersatzleistungen` (wage replacement benefits), rounded up to the whole euro
+   (`Math.ceil(MAX_GRENZSTEUERSATZ * betrag)`, `MAX_GRENZSTEUERSATZ = 0.45` from §32a Abs. 1 Nr. 5
+   EStG). Derivation: the PV effect is `y·[s(y+P)−s(y)]` with `s′(u)=(T′(u)−s(u))/u ≤ 45 %/u`,
+   hence `≤ 45 %·y·ln(1+P/y) ≤ 45 %·P`; since the PV only increases both sides (einzel/zusammen),
+   `|Δdelta| ≤ 45 %·P` holds. This is a **conservative, citable** upper limit — the top marginal
+   tax rate as the ceiling, not a threshold chosen by feel (in the spirit of ADR-0034
+   "computed, not chosen").
 
-3. **`nicht-angegeben` bleibt der ehrliche Unbestimmtheits-Fall.** Wenn der Progressionsvorbehalt
-   nicht (oder nicht vollständig) erfasst ist — `ProgressionsvorbehaltEingabe` mit `art:
-   'nicht-angegeben'` —, ist `unschaerfe` `unbestimmt` und `aussage` kann **nie** `eindeutig`
-   werden. Das gilt auch für die Service-Ebene: ein `lohnersatz === 'Ja'` ohne erfassten (positiven)
-   Betrag wird auf `nicht-angegeben` gemappt, **nicht** auf `lohnersatzleistungen` mit `betrag: 0`
-   (ein fabrizierter Nullwert würde `obergrenze: 0` erzeugen und ein falsches `eindeutig` möglich
-   machen — ADR-0032).
+3. **`nicht-angegeben` remains the honest indeterminate case.** If the Progressionsvorbehalt
+   is not (or not fully) captured — `ProgressionsvorbehaltEingabe` with `art:
+   'nicht-angegeben'` —, `unschaerfe` is `unbestimmt` and `aussage` can **never** become
+   `eindeutig`. This also applies at the service level: a `lohnersatz === 'Ja'` without a captured
+   (positive) amount is mapped to `nicht-angegeben`, **not** to `lohnersatzleistungen` with `betrag: 0`
+   (a fabricated zero would produce `obergrenze: 0` and make a false `eindeutig` possible
+   — ADR-0032).
 
-`aussage === 'eindeutig'` genau dann, wenn `unschaerfe.kind === 'bestimmt' && |delta| >
-unschaerfe.obergrenze` — dieselbe Invariante wie in ADR-0034 Decision 3, mit der präzisierten
-Bedeutung der beiden Terme.
+`aussage === 'eindeutig'` if and only if `unschaerfe.kind === 'bestimmt' && |delta| >
+unschaerfe.obergrenze` — the same invariant as in ADR-0034 Decision 3, with the refined
+meaning of the two terms.
 
 ## Consequences
 
-- **ADR-0034 bleibt die Quelle der Invariante; Decision 3 ist dort nicht mehr wörtlich aktuell.**
-  Dieses ADR **supersediert** den Soli/KiSt-Schranken- und den „PV ist unboundable"-Teil von
-  ADR-0034 Decision 3. Der Rest von ADR-0034 (Decision 1 Namensdisziplin, Decision 2 Typ-Erzwingung,
-  Decision 4 Schlussfolgerungs-Tabelle) bleibt unverändert in Kraft. ADR-0034 wird nicht rückwirkend
-  umgeschrieben (Log-Regel: ein ADR, das ein anderes ersetzt, supersediert es, schreibt Geschichte
-  nicht neu).
-- **`unschaerfe` wird enger und ehrlicher.** Statt einer Schranke über drei nicht berechnete
-  Faktoren ist sie jetzt die Schranke über genau den einen, der tatsächlich kippen kann. Der
-  `zu-knapp`-Fall ist damit seltener falsch als unter ADR-0034: ein Delta innerhalb der
-  PV-Rauschgrenze wird nicht mehr zusätzlich mit der Soli/KiSt-Unsicherheit belastet.
-- **Die PV-Schranke ist eine Zahl, die jemand verteidigen können muss.** Deshalb steht sie hier mit
-  Herleitung, nicht als Kommentar im Modul-Kopf. Ein Aufrufer, der `unschaerfe.obergrenze` liest,
-  kann auf dieses ADR zeigen statt eine Konstante zu rechtfertigen.
-- **Ebene 3 bleibt offen.** Wie in ADR-0034 §4 behauptet dieses Modul nichts über die Richtigkeit
-  der eingegebenen zvE-Basen; `zveA`/`zveB` sind im M1-Slice eine Einnahmen-Basis, kein echtes
-  zu versteuerndes Einkommen. Diese Verfeinerung ändert das nicht.
+- **ADR-0034 remains the source of the invariant; Decision 3 there is no longer literally current.**
+  This ADR **supersedes** the Soli/KiSt bound part and the "PV is unboundable" part of
+  ADR-0034 Decision 3. The rest of ADR-0034 (Decision 1 naming discipline, Decision 2 type enforcement,
+  Decision 4 conclusion table) stays in force unchanged. ADR-0034 is not rewritten
+  retroactively (log rule: an ADR that replaces another supersedes it, it does not rewrite
+  history).
+- **`unschaerfe` becomes narrower and more honest.** Instead of a bound over three uncomputed
+  factors, it is now the bound over exactly the one that can actually tip the result. The
+  `zu-knapp` case is therefore wrong less often than under ADR-0034: a delta within the
+  PV noise bound is no longer additionally burdened with the Soli/KiSt uncertainty.
+- **The PV bound is a number someone must be able to defend.** That is why it is stated here with
+  its derivation, not as a comment in the module header. A caller reading `unschaerfe.obergrenze`
+  can point to this ADR instead of justifying a constant.
+- **Level 3 stays open.** As in ADR-0034 §4, this module asserts nothing about the correctness
+  of the zvE bases entered; in the M1 slice `zveA`/`zveB` are an income basis, not a real
+  taxable income. This refinement does not change that.
 
 ## Alternatives considered
 
-- **Soli/KiSt weiter in `unschaerfe` modellieren statt zu berechnen.** Rejected: Ticket 10.2
-  berechnet sie ohnehin (tarif.ts); sie als „unberechenbare" Schranke zu behandeln wäre eine
-  Selbst-Auskunft über einen Faktor, den das Modul inzwischen exakt kennt, und würde `einzel`/
-  `zusammen` weiter mit einer Unsicherheit belasten, die es nicht mehr gibt.
-- **Die PV-Schranke als Teil von ADR-0034 nachdokumentieren statt ein Folge-ADR anzulegen.**
-  Rejected: Das ADR-Log ist append-only (4-stellig, sequentiell, immutable); eine nachträgliche
-  Änderung von Decision 3 würde Geschichte umschreiben. Ein Folge-ADR, das referenziert und
-  präzisiert, ist die Regel.
-- **Die PV-Schranke als Kommentar im Modul-Kopf belassen.** Rejected auf ADR-0021s These: ein
-  Vermerk, den niemand zwingend lesen muss, ist keine Kontrolle und kein ADR-Log-Eintrag
-  (ADR-0033 citation form). Die Ableitung gehört in das Dokument, das Architekturentscheidungen
-  rechtfertigt.
+- **Keep modeling Soli/KiSt in `unschaerfe` instead of computing them.** Rejected: ticket 10.2
+  computes them anyway (tarif.ts); treating them as an "uncomputable" bound would be a
+  self-report about a factor the module now knows exactly, and would keep burdening `einzel`/
+  `zusammen` with an uncertainty that no longer exists.
+- **Document the PV bound retroactively as part of ADR-0034 instead of creating a follow-up ADR.**
+  Rejected: the ADR log is append-only (4-digit, sequential, immutable); a retroactive
+  change to Decision 3 would rewrite history. A follow-up ADR that references and
+  refines is the rule.
+- **Leave the PV bound as a comment in the module header.** Rejected on ADR-0021's thesis: a
+  note that nobody is required to read is not a control and not an ADR log entry
+  (ADR-0033 citation form). The derivation belongs in the document that justifies architecture
+  decisions.

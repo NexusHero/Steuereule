@@ -1,104 +1,100 @@
-# ADR-0073 — Eule: Entwürfe für Person B in der Zusammenveranlagung
+# ADR-0073 — Owl: drafts for Person B in the Zusammenveranlagung
 
 - **Status:** Accepted
 - **Date:** 2026-11-13
 - **Deciders:** NexusHero (Product Owner), Steuereule Engineering
 - **Applies to:** `packages/core/src/interview/{advisor-household,advisor,ki-port}.ts`, `packages/core/src/common/pii-masking.ts`, `apps/api/src/ki/{advisor-tools,advisor-tool-round,advisor-prompt}.ts`, `apps/api/src/advisor/{advisor.service,advisor-drafts,advisor-case-facts}.ts`, `apps/api/src/link/link.service.ts`, `apps/api/skills/berater-interview/SKILL.md`, `apps/mobile-web/src/screens/advisor/chat/ProposalCards.tsx`
-- **Baut auf:** ADR-0054 (Person A erfasst für Person B mit), ADR-0038/ADR-0066 (Zero-Write, ein Schreibweg, Feldkatalog)
+- **Builds on:** ADR-0054 (Person A also enters data for Person B), ADR-0038/ADR-0066 (zero write, one write path, field catalog)
 
-## Kontext
+## Context
 
-Entwürfe der Eule (`stage_field_draft`, `propose_two_paths`) kannten Maske, Feld und Eintrag, aber
-keine Person. In einer Zusammenveranlagung, in der Person B kein eigenes Konto hat, ließ sich
-deshalb nichts von dem, was der Nutzer über seine Frau oder seinen Mann erzählt, über den Chat
-eintragen. Im Realfall-Test nannte ein Ehepaar den Schweizer Lohnausweis und den Arbeitsweg der
-Ehefrau: Die Eule konnte nichts vorbereiten, und die eingebauten Regeln (Rückfall ohne Modell)
-trugen die „24 km“ der Ehefrau als Arbeitsweg des Ehemanns ein.
+The owl's drafts (`stage_field_draft`, `propose_two_paths`) knew the form, field and entry, but no
+person. In a Zusammenveranlagung (joint assessment) in which Person B has no account of their own,
+nothing the user said about their wife or husband could therefore be entered through the chat. In
+the real-case test a married couple mentioned the wife's Swiss Lohnausweis (Swiss salary
+certificate) and commute: the owl could prepare nothing, and the built-in rules (fallback without a
+model) entered the wife's "24 km" as the husband's commute.
 
-## Entscheidung
+## Decision
 
-1. **Ein Entwurf nennt die Person.** `AdvisorActionProposal.person` ist `'A' | 'B'`; fehlt es, ist
-   es der Nutzer (A). Beide Werkzeuge nehmen `person` mit der Vorgabe `A` an, bei
-   `propose_two_paths` je Weg. Ein Entwurf für B und einer für A auf dasselbe Feld sind zwei
-   verschiedene Ziele: Sie stehen nebeneinander, ersetzen sich nicht und kollidieren im Batch nicht.
-2. **Geschrieben wird über denselben Weg wie in der Maske.** Basiswert, Stale-Prüfung, Übernehmen
-   und Rückgängig lösen für jeden Entwurf `LinkService.dataUser(userId, jahr, person)` auf, genau
-   wie die Masken mit `?person=B`. Damit gelten dieselben Regeln: B nur bei einer
-   Zusammenveranlagung, die A angelegt hat, und nur solange B kein eigenes Konto hat
-   (`PERSON_B_OWNS_DATA`). Hat B inzwischen ein Konto, schlägt Übernehmen mit diesem Grund fehl;
-   Verwerfen geht immer. Die Wirkungsvorschau schreibt Bs Felder in Bs Datensatz (in der
-   zurückgerollten Transaktion) und liest die gemeinsame Schätzung des Nutzers.
-3. **Nur Bs eigene Masken.** Person B gibt es für `lstb`, `chLohnausweis`, `commute` und `rente`
-   (ADR-0054 § 2). Kinder, Vermietung, Kapital und das Interview gehören zur gemeinsamen Erklärung;
-   ein Entwurf für B dort wird mit `JOINT_SCREEN` abgelehnt. Gesperrte Felder bleiben für B gesperrt
-   (dieselbe Prüfung vor der Personenprüfung und auf dem Schreibweg).
-4. **Die Eule kennt den Haushalt, keine Namen.** Der Turn bekommt `household`: ob es eine Person B
-   gibt, ob der Nutzer für sie erfassen darf, und Bs bereits erfasste Zahlen (Bruttolohn LStB bzw.
-   CH, Arbeitsweg, Rente). B heißt für das Modell immer „Person B“. Bs Vor- und Nachname werden in
-   der Nachricht des Nutzers durch „Person B“ ersetzt, bevor sie gespeichert oder an das Modell
-   geschickt wird, und stehen sonst auf der Liste der Namen, die aus jedem Text entfernt werden.
-   Der Name erscheint nur in der App.
-5. **Wann B gemeint ist, sagt der Prompt.** Regel 14 im festen Teil des Prompts: Alles, was der
-   Nutzer über Ehefrau, Ehemann, Partnerin oder Partner sagt, ist Person B; unklar → nachfragen.
-   Der Skill „Berater-Interview“ fragt die persönlichen Bereiche bei einer Zusammenveranlagung für
-   beide ab.
-6. **Die Regeln ohne Modell entwerfen nie aus einem Satz über eine andere Person.** Nennt die
-   Nachricht Ehefrau, Ehemann, Partner, Kind (oder „Person B“), gibt `evaluateAdvisorTurn` keinen
-   Entwurf zurück, sondern sagt ehrlich, dass es dafür das Modell oder die Maske braucht. Die Regeln
-   kennen nur die Felder des Nutzers und sollen dort nichts Fremdes eintragen.
-7. **Die Karte zeigt die Person.** Ein Entwurf für B trägt „für ‹Vorname›“ (ohne bekannten Namen
-   „für Person B“). Den Vornamen holt die App über die Kopplung, nur solange ein solcher Entwurf zu
-   sehen ist. Übernehmen und Rückgängig laufen über dieselben Knöpfe und Endpunkte.
+1. **A draft names the person.** `AdvisorActionProposal.person` is `'A' | 'B'`; if it is missing,
+   it is the user (A). Both tools accept `person` with the default `A`, for
+   `propose_two_paths` per path. A draft for B and one for A on the same field are two different
+   targets: they sit side by side, do not replace each other and do not collide in the batch.
+2. **Writes go through the same path as in the form.** Base value, stale check, apply and undo
+   resolve `LinkService.dataUser(userId, jahr, person)` for each draft, exactly like the forms with
+   `?person=B`. The same rules therefore apply: B only in a Zusammenveranlagung that A created, and
+   only as long as B has no account of their own (`PERSON_B_OWNS_DATA`). If B has since got an
+   account, applying fails with this reason; dismissing always works. The impact preview writes B's
+   fields into B's record (in the rolled-back transaction) and reads the user's joint estimate.
+3. **Only B's own forms.** Person B exists for `lstb`, `chLohnausweis`, `commute` and `rente`
+   (ADR-0054 § 2). Children, rental income, capital and the interview belong to the joint tax
+   return; a draft for B there is rejected with `JOINT_SCREEN`. Locked fields stay locked for B
+   (the same check before the person check and on the write path).
+4. **The owl knows the household, not names.** The turn receives `household`: whether there is a
+   Person B, whether the user may enter data for them, and B's already entered figures (gross salary
+   from the LStB or CH, commute, pension). To the model, B is always called "Person B". B's first and
+   last name are replaced with "Person B" in the user's message before it is stored or sent to the
+   model, and are otherwise on the list of names removed from every text. The name appears only in
+   the app.
+5. **The prompt says when B is meant.** Rule 14 in the fixed part of the prompt: everything the user
+   says about wife, husband or partner is Person B; if unclear → ask. The skill
+   „Berater-Interview“ asks about the personal areas for both in a Zusammenveranlagung.
+6. **The rules without a model never draft from a sentence about another person.** If the message
+   mentions wife, husband, partner, child (or "Person B"), `evaluateAdvisorTurn` returns no draft,
+   but says honestly that this needs the model or the form. The rules know only the user's fields
+   and must not enter anything belonging to someone else there.
+7. **The card shows the person.** A draft for B carries „für ‹Vorname›“ ("for ‹first name›")
+   (without a known name „für Person B“). The app fetches the first name via the link, only while
+   such a draft is visible. Apply and undo use the same buttons and endpoints.
 
-## Konsequenzen
+## Consequences
 
-- Der Chat kann eine gemeinsame Erklärung jetzt für beide füllen; der Live-Test
-  `owl-person-b.live.test.ts` prüft das am echten Modell (ohne Schlüssel übersprungen).
-- Ist der Nutzer selbst Person B (eigenes Konto, gekoppelt), darf die Eule nichts für den Partner
-  entwerfen; der Prompt sagt ihr das. Der Partner heißt dann im Prompt ebenfalls „Person B“.
-- Für `chLohnausweis` von B gibt es noch keine Maske in der App (die API nimmt dort kein `person`).
-  Die Werte landen im Datensatz von B, den Schätzung und Ausdruck lesen; ansehen kann der Nutzer
-  sie erst, wenn diese Maske für B gebaut ist.
-- Ein `ui_command`, das bei einem gesperrten Feld die Maske öffnet, öffnet die Maske des Nutzers,
-  nicht die von B.
-- Der Wortgrenzen-Abgleich der Namen arbeitet jetzt mit Unicode-Buchstaben: Namen mit Umlaut am
-  Anfang („Ümit“) wurden vorher nicht entfernt.
+- The chat can now fill a joint tax return for both; the live test
+  `owl-person-b.live.test.ts` checks this against the real model (skipped without a key).
+- If the user is Person B themselves (own account, linked), the owl must not draft anything for the
+  partner; the prompt tells it so. The partner is then also called "Person B" in the prompt.
+- There is no form in the app yet for B's `chLohnausweis` (the API takes no `person` there).
+  The values land in B's record, which the estimate and printout read; the user can only view them
+  once this form is built for B.
+- A `ui_command` that opens the form for a locked field opens the user's form, not B's.
+- The word-boundary matching of names now works with Unicode letters: names with an umlaut at the
+  start („Ümit“) were previously not removed.
 
-## Nachtrag: Kein stiller Standard für die Person (17.11.2026)
+## Addendum: No silent default for the person (17.11.2026)
 
-**Anlass.** Im Echtdatenlauf mit einem Grenzgänger-Paar (Chat 2024/2025, vier Läufe) hat die Eule
-dreimal einen Entwurf für Person B ohne `person` angelegt: Bs Krankenkasse, Bs Vorname und Bs
-Arbeitsweg. Das Schema setzte `person` stillschweigend auf `A`. Die Karte hätte so den Wert des
-Nutzers überschrieben, sichtbar etwa als „67 → 26“. Die Eule bemerkte den Fehler zweimal selbst,
-konnte die Karte aber nicht zurücknehmen und bat den Nutzer, sie abzulehnen. Einen Knopf dafür hatte
-die Karte nicht.
+**Occasion.** In the real-data run with a Grenzgänger couple (chat 2024/2025, four runs) the owl
+created a draft for Person B without `person` three times: B's health insurer, B's first name and
+B's commute. The schema silently set `person` to `A`. The card would thus have overwritten the
+user's value, visible e.g. as "67 → 26". The owl noticed the error itself twice, but could not
+withdraw the card and asked the user to reject it. The card had no button for that.
 
-**Entscheidung.**
+**Decision.**
 
-1. **Die Person ist Pflicht, wo es die Angabe zweimal gibt.** `person` hat im Werkzeug-Schema keinen
-   Standardwert mehr. Bei einer Zusammenveranlagung, in der der Nutzer für B erfasst, lehnt
-   `checkDraftPerson` einen Entwurf auf einer Maske einer Person (`PERSON_B_SCREENS` und Bs eigene
-   Interview-Antworten) ohne `person` mit `PERSON_REQUIRED` ab. Die Eule bekommt den Grund und legt
-   den Entwurf in derselben Antwort richtig neu an. Gemeinsame Masken und Haushalte ohne B bleiben,
-   wie sie waren: Dort heißt keine Angabe weiter „der Nutzer“.
-2. **Der Titel muss zur Person passen.** Nennt der Titel eines Entwurfs für den Nutzer Person B,
-   über den Handle „Person B“ oder Bs Vor- bzw. vollen Namen als eigenes Wort, lehnt der Server ihn
-   mit `PERSON_MISMATCH` ab. Bs Namen kommen aus Bs Profil (`spouseForAdvisor`) und reisen als
-   `aliases` nur im Server mit. In den Prompt gehen sie nicht; der Fall-Prompt nennt B weiter nur
-   „Person B“.
-3. **Die Eule kann zurückziehen.** Das Werkzeug `withdraw_draft` nimmt einen Entwurf derselben
-   Antwort zurück (Maske, Feld, ggf. Datensatz und Person), auch einen Weg aus `propose_two_paths`.
-4. **Der Nutzer kann verwerfen.** Jede offene Karte hat einen Knopf „Verwerfen“. Er nutzt den
-   vorhandenen Endpunkt `dismiss` und zeigt danach „Verworfen“.
+1. **The person is mandatory where the field exists twice.** `person` no longer has a default value
+   in the tool schema. In a Zusammenveranlagung in which the user enters data for B,
+   `checkDraftPerson` rejects a draft on a single-person form (`PERSON_B_SCREENS` and B's own
+   interview answers) without `person` with `PERSON_REQUIRED`. The owl receives the reason and
+   creates the draft again correctly in the same answer. Joint forms and households without B stay
+   as they were: there, no value still means "the user".
+2. **The title must match the person.** If the title of a draft for the user names Person B, via the
+   handle "Person B" or B's first or full name as a separate word, the server rejects it with
+   `PERSON_MISMATCH`. B's names come from B's profile (`spouseForAdvisor`) and travel as
+   `aliases` only within the server. They do not go into the prompt; the case prompt still calls B
+   only "Person B".
+3. **The owl can withdraw.** The tool `withdraw_draft` withdraws a draft from the same answer (form,
+   field, record if applicable, and person), including a path from `propose_two_paths`.
+4. **The user can dismiss.** Every open card has a button „Verwerfen“ ("Dismiss"). It uses the
+   existing endpoint `dismiss` and afterwards shows „Verworfen“ ("Dismissed").
 
-**Konsequenzen.**
+**Consequences.**
 
-- Für die Masken einer Person gibt die Eule bei einer Zusammenveranlagung jetzt immer `person: "A"`
-  oder `"B"` an. Vergisst sie es, kostet das einen Werkzeugaufruf, aber nie einen falschen Wert.
-- Der Namensabgleich findet nur Namen, die die App kennt. Nennt der Nutzer B mit einem Spitznamen,
-  greift nur Punkt 1.
-- **Jede Karte einer Personen-Maske nennt ihren Besitzer.** Bei einer Zusammenveranlagung trägt auch
-  ein Entwurf für den Nutzer auf diesen Masken „für ‹Vorname›“ (ohne bekannten Namen „für dich“),
-  neben Bs „für ‹Vorname›“. Eine Karte, die Bs Zahl in das Feld des Nutzers schreiben würde, steht so
-  sichtbar als „für Suhay · 67 → 26“ da. Gemeinsame Masken bleiben ohne Kennzeichnung. Die Namen holt
-  die App aus Kopplung und Profil, nur solange eine solche Karte zu sehen ist.
+- For single-person forms in a Zusammenveranlagung the owl now always specifies `person: "A"`
+  or `"B"`. If it forgets, this costs one tool call, but never a wrong value.
+- The name matching finds only names the app knows. If the user refers to B by a nickname, only
+  point 1 applies.
+- **Every card on a single-person form names its owner.** In a Zusammenveranlagung a draft for the
+  user on these forms also carries „für ‹Vorname›“ (without a known name „für dich“ ("for you")),
+  next to B's „für ‹Vorname›“. A card that would write B's figure into the user's field thus
+  visibly reads „für Suhay · 67 → 26“. Joint forms stay unlabeled. The app fetches the names from
+  the link and profile, only while such a card is visible.

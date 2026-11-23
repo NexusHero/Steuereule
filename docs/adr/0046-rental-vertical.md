@@ -1,101 +1,101 @@
-# ADR-0046 — Vermietung-Vertikale: mehrere Objekte je Anlage V, lineare AfA, Verkauf/möbliert-Gate (Entwurf)
+# ADR-0046 — Rental vertical: several properties per Anlage V, straight-line AfA, sale/furnished gate (Draft)
 
 - **Status:** Draft — promotion needs Musti review (ticket 10.6 review)
 - **Date:** 2026-10-25
-- **Deciders:** Suhay (agent, Ticket 10.6) — draft; promotion needs Musti review
-- **Implements** Produkt-ADR-033 (Vermietung EINFACH; Verkauf/möbliert bleibt Gate), Produkt-ADR-010
-  (Einkunftsart `Vermietung`), Produkt-ADR-030 (frei kombinierbar), Produkt-ADR-032 (kein fabricated
+- **Deciders:** Suhay (agent, ticket 10.6) — draft; promotion needs Musti review
+- **Implements** product ADR-033 (rental income SIMPLE; sale/furnished stays gated), product ADR-010
+  (income type `Vermietung`), product ADR-030 (freely combinable), product ADR-032 (no fabricated
   zero)
-- **Builds on** ADR-0037 (Einkunftsart-Set), ADR-0038 (`berechne`/`Posten`/`Quelle`), ADR-0041/0042/
-  0044 (die Vertikalen-Muster), ADR-0040 (Belegart-Vokabular)
+- **Builds on** ADR-0037 (income-type set), ADR-0038 (`berechne`/`Posten`/`Quelle`), ADR-0041/0042/
+  0044 (the vertical patterns), ADR-0040 (document type vocabulary)
 - **Context tags:** architecture, vermietung, anlage-v, determinism boundary, honesty principle,
   security
 
 ## Context
 
-Vermietung wird in 1.0 eine vollwertige Einkunftsart — aber EINFACH (Produkt-ADR-033): mehrere
-**ganzjährig vermietete** Objekte, je Objekt eine Anlage V, lineare AfA. Verkauf und
-möbliert-auf-Zeit bleiben gegated (privates Veräußerungsgeschäft mit Fristen bzw. eigene
-Abgrenzung) — die Grenze wird ehrlich benannt, nicht still erweitert. Die Interview-Antwort
-`vermietung-art` (Einfach / Mehrere / Verkauf oder möbliert) existiert bereits im
-Segment-2-Graphen (interview.ts `VERMIETUNG_ART_VALUES`) und `gatedEinkunftsarten` gatet
-`Vermietung` bereits für die Verkauf/möbliert-Antwort — was fehlt, ist der
-Posten-/Anlage-V-Ausbau: die geführte Datenschnittstelle je Objekt, die lineare AfA, und die
-Faltung in den deterministischen Kern.
+In 1.0 rental income becomes a full income type — but SIMPLE (product ADR-033): several
+**properties let for the whole year**, one Anlage V (rental income form) per property, straight-line AfA (depreciation). Sale and
+furnished short-term letting stay gated (private sale transaction with holding periods, or a separate
+delimitation respectively) — the limit is named honestly, not silently extended. The interview answer
+`vermietung-art` (Einfach / Mehrere / Verkauf oder möbliert) already exists in the
+segment 2 graph (interview.ts `VERMIETUNG_ART_VALUES`) and `gatedEinkunftsarten` already gates
+`Vermietung` for the sale/furnished answer — what is missing is the
+item/Anlage V build-out: the guided data interface per property, the straight-line AfA, and the
+folding into the deterministic core.
 
-Vermietung unterscheidet sich von Rente (10.4) und Kapital (10.5) strukturell: es gibt
-**mehrere Objekte** pro `(userId, steuerjahr)` — der Listen-Charakter ist der Normalfall
-(ADR-030: Vermietung+Kapital+Rente+Grenzgänger ist eine normale Kombination), keine Ecke.
+Rental income differs structurally from pensions (10.4) and capital (10.5): there are
+**several properties** per `(userId, steuerjahr)` — the list character is the normal case
+(ADR-030: rental income+capital+pension+Grenzgänger is a normal combination), not an edge case.
 
 ## Decision
 
-Ein reines, UI-freies Modul `packages/core/src/rental.ts` (ADR-0004, kein I/O), plus der
-übliche API-/Screen-Ausbau:
+A pure, UI-free module `packages/core/src/rental.ts` (ADR-0004, no I/O), plus the
+usual API/screen build-out:
 
-1. **Vermietung-Einordnung (`ordneVermietungEin`)** — die `vermietung-art`-Antwort wird auf das
-   abgebildet, was sie BEDEUTET: `einfach`/`mehrere` sind berechenbar (ganzjährig vermietet, je
-   Objekt eine Anlage V), `verkauf-oder-moebliert` bleibt gegated (ADR-033 — benannt, nie
-   erweitert), `unbekannt` wird nie geraten. Reine Ableitung aus der EINEN Quelle
-   (Interview-Antwort), keine denormalisierte Spalte.
+1. **Rental classification (`ordneVermietungEin`)** — the `vermietung-art` answer is mapped to
+   what it MEANS: `einfach`/`mehrere` are computable (let for the whole year, one
+   Anlage V per property), `verkauf-oder-moebliert` stays gated (ADR-033 — named, never
+   extended), `unbekannt` is never guessed. A pure derivation from the ONE source
+   (interview answer), no denormalized column.
 
-2. **Geführte Datenschnittstelle je Objekt (`VermietungsobjektDaten`)** — vier erfasste Fakten:
-   Mieteinnahmen (Jahreskaltmiete), Anschaffungskosten (Gebäudeanteil), Baujahr (Fertigstellung),
-   laufende Werbungskosten — jeweils `erfasst`/`offen`/`unklar` (dieselbe Ehrlichkeits-
-   Zustandsmaschine wie lstb.ts/rente.ts/kapital.ts), Serialisierung in EINER Stelle
-   (ADR-0033-Ein-Regel-Instinkt). Werbungskosten dürfen 0 sein — aber diese 0 ist die EINGABE
-   des Benutzers, nie eine vom Kern erfundene Null (ADR-032).
+2. **Guided data interface per property (`VermietungsobjektDaten`)** — four captured facts:
+   rental income (annual base rent), acquisition costs (building share), year of construction (completion),
+   ongoing Werbungskosten (work-related expenses) — each `erfasst`/`offen`/`unklar` (the same honesty
+   state machine as lstb.ts/rente.ts/kapital.ts), serialization in ONE place
+   (ADR-0033 one-rule instinct). Werbungskosten may be 0 — but that 0 is the user's INPUT,
+   never a zero invented by the core (ADR-032).
 
-3. **Lineare AfA (`afaSatzProzent`)** — § 7 Abs. 4 Satz 1 EStG, die drei gesetzlichen Bänder
-   VERBATIM (kein ausgedachter Prozentsatz): bis einschließlich 1924 fertiggestellt → 2,5 %;
-   1925–2022 → 2 %; ab 2023 (Wohngebäude, § 7 Abs. 4 Satz 1 Nr. 2 i.d.F. JStG 2022) → 3 %.
-   Ein nicht-ganzzahliges/negatives Baujahr ist offen (null), nie geraten.
+3. **Straight-line AfA (`afaSatzProzent`)** — § 7 Abs. 4 Satz 1 EStG, the three statutory bands
+   VERBATIM (no invented percentage): completed up to and including 1924 → 2.5 %;
+   1925–2022 → 2 %; from 2023 (residential buildings, § 7 Abs. 4 Satz 1 Nr. 2 i.d.F. JStG 2022) → 3 %.
+   A non-integer/negative year of construction is open (null), never guessed.
 
-4. **Fakten je Objekt + Faltung (`vermietungsobjektFakten`/`vermietungStand`)** — die
-   Mieteinnahmen werden ein Einnahme-`Posten` der Einkunftsart `Vermietung` mit
-   `Quelle: { art: 'eingabe' }`; Werbungskosten und AfA werden SEPARAT gemeldet (Summe über
-   alle Objekte, AfA mit `§ 7 Abs. 4 Satz 1 EStG`-Herkunft) — reported, never subtracted: die
-   Netto-Rechnung ist der Steuerformel-Slice, dieselbe „partial truth stated as a partial
-   truth"-Ehrlichkeit wie angestellte.ts's sonderausgaben. `offenePosten` zählt je Objekt die
-   blockierten Ergebnisse (Mieteinnahmen, AfA, Werbungskosten — max 3); `gegated` läuft
-   unverändert durch, sodass ein Verkauf/möbliert-Anleger offen mit benanntem Gate liest.
+4. **Facts per property + folding (`vermietungsobjektFakten`/`vermietungStand`)** — the
+   rental income becomes an income `Posten` of income type `Vermietung` with
+   `Quelle: { art: 'eingabe' }`; Werbungskosten and AfA are reported SEPARATELY (sum over
+   all properties, AfA with `§ 7 Abs. 4 Satz 1 EStG` provenance) — reported, never subtracted: the
+   net computation is the tax-formula slice, the same "partial truth stated as a partial
+   truth" honesty as angestellte.ts's sonderausgaben. `offenePosten` counts the
+   blocked results per property (rental income, AfA, Werbungskosten — max 3); `gegated` passes
+   through unchanged, so that a sale/furnished landlord reads open with a named gate.
 
-5. **API (`Vermietung`-Modul) + Screen** — eine Zeile PRO OBJEKT
-   (`Vermietungsobjekt`-Modell, vier feldencrypted-Spalten, ADR-0008), nicht eine JSON-Spalte:
-   das Feldverschlüsselungs-Muster braucht eine Zeile pro Fakt. `GET /v1/steuerjahre/{jahr}/
-   vermietung`, `POST …/vermietung/objekte` (legt ein leeres Objekt an), `PUT …/vermietung/
-   objekte/{objektId}/{feld}` — fremde/unbekannte `objektId` ist ein 404 (nie ein Cross-User-
-   Read). Der Screen zeigt die Einordnung, je Objekt die vier Felder + Fakten (AfA mit
-   Herkunft), „Weiteres Objekt hinzufügen" und die Summe — das Verkauf/möbliert-Gate blendet
-   die Eingabe aus und benennt die Grenze.
+5. **API (`Vermietung` module) + screen** — one row PER PROPERTY
+   (`Vermietungsobjekt` model, four field-encrypted columns, ADR-0008), not a JSON column:
+   the field-encryption pattern needs one row per fact. `GET /v1/steuerjahre/{jahr}/
+   vermietung`, `POST …/vermietung/objekte` (creates an empty property), `PUT …/vermietung/
+   objekte/{objektId}/{feld}` — a foreign/unknown `objektId` is a 404 (never a cross-user
+   read). The screen shows the classification, per property the four fields + facts (AfA with
+   provenance), „Weiteres Objekt hinzufügen" ("Add another property") and the sum — the sale/furnished gate hides
+   the input and names the limit.
 
 ## Consequences
 
-- **M1-Grenze, einmal benannt:** Objekte können angelegt und feldfüllend bearbeitet werden;
-  ein Löschen einzelner Objekte gibt es in M1 nicht (ein falsches Objekt wird feldweise zurück
-  auf `offen` gesetzt) — ein benannter Follow-up mit dem Einreichungs-/Fassungs-Modell, keine
-  stille Lücke. Der Verkauf/möbliert-Fall und alle Sonder-AfA-Fälle (§ 7 Abs. 5 EStG, erhöhte
-  Absetzungen) sind NICHT hier.
-- **Ehrliche Grenze, einmal benannt:** die Netto-Rechnung (Einnahmen − Werbungskosten − AfA)
-  und die daraus folgende Steuer sind der Steuerformel-Slice — hier werden die drei Zahlen
-  ehrlich NEBENEINANDER gemeldet, nie still saldiert (ADR-015/032).
-- **Security posture:** alle vier Zahlen sind field-encrypted at rest (ADR-0008) — Mieteinnahmen
-  und Anschaffungskosten gehören zu den sensibelsten Fakten, joinable zur Steuer-ID; die
-  Einordnung ist KEINE eigene Spalte, sondern die (ebenfalls verschlüsselte) Interview-Antwort
-  `vermietung-art`; WRITE/READ auditiert (REQ-004). Kein Performance-Achse.
-- **Register:** REQ-026; 10.2/10.3/10.4 belegen 022/023/024, 10.5 belegt 025 — beim Merge auf
-  Kollision prüfen (10.7 nimmt 027; REQ-Nummern sind stabil und werden nie wiederverwendet).
+- **M1 limit, named once:** properties can be created and edited field by field;
+  deleting individual properties does not exist in M1 (a wrong property is set back field by field
+  to `offen`) — a named follow-up with the submission/version model, not a
+  silent gap. The sale/furnished case and all special AfA cases (§ 7 Abs. 5 EStG, increased
+  deductions) are NOT here.
+- **Honest limit, named once:** the net computation (income − Werbungskosten − AfA)
+  and the resulting tax are the tax-formula slice — here the three numbers are
+  honestly reported SIDE BY SIDE, never silently netted (ADR-015/032).
+- **Security posture:** all four numbers are field-encrypted at rest (ADR-0008) — rental income
+  and acquisition costs are among the most sensitive facts, joinable to the Steuer-ID; the
+  classification is NOT its own column, but the (likewise encrypted) interview answer
+  `vermietung-art`; WRITE/READ audited (REQ-004). No performance axis.
+- **Register:** REQ-026; 10.2/10.3/10.4 occupy 022/023/024, 10.5 occupies 025 — check for
+  collisions on merge (10.7 takes 027; REQ numbers are stable and never reused).
 
 ## Alternatives considered
 
-- **Eine JSON-Spalte für alle Objekte.** Verworfen: bricht das feldverschlüsselte
-  Spalten-Muster und die Eindeutigkeit pro Fakt; eine Zeile pro Objekt ist das Muster der
-  Nachbar-Vertikalen (ADR-0008) und reviewbar.
-- **Nur EIN Objekt pro Jahr (wie Rente).** Verworfen: Produkt-ADR-033 nennt „mehrere Objekte"
-  explizit als 1.0-Umfang, und der Listen-Charakter ist der Normalfall (ADR-030) — die
-  Einschränkung wäre eine vermeidbare Lücke, keine Ehrlichkeit.
-- **AfA-Satz als Formel statt als zitierte Bänder.** Verworfen: die drei Bänder sind direkt aus
-  § 7 Abs. 4 Satz 1 EStG zitierbar und im Test gepinnt; eine Formel driftet leichter vom Gesetz
-  (dieselbe Begründung wie ADR-0044 für die Renten-Tabellen).
-- **Werbungskosten optional mit stiller 0.** Verworfen: eine still erfundene 0 wäre genau der
-  fabricated-zero-Fehler, den ADR-032 verbietet — 0 ist eine Benutzereingabe, nie ein
-  Kern-Default.
+- **One JSON column for all properties.** Rejected: breaks the field-encrypted
+  column pattern and the uniqueness per fact; one row per property is the pattern of the
+  neighboring verticals (ADR-0008) and reviewable.
+- **Only ONE property per year (like pensions).** Rejected: product ADR-033 names "several properties"
+  explicitly as 1.0 scope, and the list character is the normal case (ADR-030) — the
+  limitation would be an avoidable gap, not honesty.
+- **AfA rate as a formula instead of cited bands.** Rejected: the three bands are directly
+  citable from § 7 Abs. 4 Satz 1 EStG and pinned in the test; a formula drifts away from the statute more easily
+  (the same reasoning as ADR-0044 for the pension tables).
+- **Werbungskosten optional with a silent 0.** Rejected: a silently invented 0 would be exactly the
+  fabricated-zero error that ADR-032 forbids — 0 is a user input, never a
+  core default.

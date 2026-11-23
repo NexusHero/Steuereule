@@ -1,30 +1,31 @@
-# ADR-0083 — Lohnsteuerbescheinigung ohne lesbare Sozialversicherung
+# ADR-0083 — Lohnsteuerbescheinigung without readable social insurance
 
 - **Status:** Accepted
 - **Date:** 2026-11-13
 - **Deciders:** NexusHero (Product Owner), Steuereule Engineering
 - **Applies to:** `apps/api/src/lstb/lstb.service.ts`, `apps/api/src/lstb-scan/`, `apps/mobile-web/src/screens/lstb/scan/`
-- **Baut auf:** ADR-0008 (Werte übernehmen), dem Dazurechnen einer weiteren Bescheinigung (Scan-Robustheit)
+- **Builds on:** ADR-0008 (applying values), adding a further certificate (scan robustness)
 
-## Kontext
+## Context
 
-Im Echtfall 2024 gab es eine zweite Lohnsteuerbescheinigung desselben Arbeitgebers (Zahlung nach dem Austritt,
-Steuerklasse 6). Bruttolohn und Lohnsteuer waren lesbar, die Zeilen der Sozialversicherung im Scan nicht. „Werte
-übernehmen“ verlangte alle drei Werte, darum fehlten Lohn und Steuer dieser Bescheinigung ganz.
+In the 2024 real case there was a second Lohnsteuerbescheinigung (wage tax certificate) from the
+same employer (payment after leaving, tax class 6). Gross salary and wage tax were readable, the
+social insurance lines in the scan were not. „Werte übernehmen“ ("Apply values") required all three
+values, so the salary and tax of this certificate were missing entirely.
 
-## Entscheidung
+## Decision
 
-1. **Die Sozialversicherung darf fehlen.** Bruttolohn und Lohnsteuer werden übernommen. Bleibt die Sozialversicherung
-   leer, gilt sie als offen.
-2. **Bei einer weiteren Bescheinigung** kommen Lohn und Steuer zur bisherigen Summe dazu. Die Summe der
-   Sozialversicherung bleibt mit ihrer Herkunft stehen.
-3. **Als dieselbe Bescheinigung** gilt eine weitere nur dann, wenn alle gelesenen Werte gleich sind.
-4. **Maske:** Ein leeres Sozialversicherungsfeld blockiert „Werte übernehmen“ nicht. Ein Hinweis sagt, was dann
-   passiert, und dass der Nutzer den Betrag auch selbst eintragen kann. Die Plausibilitätsprüfung rechnet die
-   fehlende Sozialversicherung als 0.
+1. **The social insurance may be missing.** Gross salary and wage tax are applied. If the social
+   insurance stays empty, it counts as open.
+2. **For a further certificate** the salary and tax are added to the existing total. The social
+   insurance total stays in place with its provenance.
+3. **A further certificate counts as the same certificate** only if all values read are the same.
+4. **Form:** an empty social insurance field does not block „Werte übernehmen“. A hint says what
+   then happens and that the user can also enter the amount themselves. The plausibility check
+   treats the missing social insurance as 0.
 
-## Folgen
+## Consequences
 
-- Echtfall 2024: Lohn und Lohnsteuer beider Bescheinigungen stehen zusammen in der Lohnsteuerbescheinigung, wie
-  beim Steuerberater.
-- Die Entwürfe der Eule zu einer gescannten Bescheinigung bleiben, wie sie sind; übernommen wird über die Maske.
+- 2024 real case: salary and wage tax of both certificates appear together in the
+  Lohnsteuerbescheinigung, as with the tax advisor.
+- The owl's drafts for a scanned certificate stay as they are; values are applied via the form.

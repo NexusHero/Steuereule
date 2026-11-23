@@ -1,153 +1,153 @@
-# ADR-0066 — Eule: ein Feldkatalog, eine Wertprüfung, ehrliche Vorschau, geprüfte Antwort
+# ADR-0066 — Owl: one field catalog, one value check, honest preview, checked answer
 
 - **Status:** Accepted
 - **Date:** 2026-11-11
 - **Deciders:** NexusHero (Product Owner), Steuereule Engineering
 - **Applies to:** `packages/core/src/interview/{field-catalog,record-handles,advisor-answer-check,ki-port,advisor}.ts`, `.github/workflows/deploy.yml`, `infra/gcp/`, `apps/api/src/ki/{langgraph-advisor.engine,advisor-safety}.ts`, `apps/api/src/advisor/advisor.service.ts`, `apps/api/src/confirmation/confirmation.service.ts`, `apps/api/test/live/`, `.github/workflows/ai-eval-nightly.yml`
-- **Ergänzt:** ADR-0038 (KI-Port, Zero-Write), ADR-0051 (Eulen-Modus), ADR-0064 (Antwort-Läufe)
-- **Nummer:** 0065 ist von einem parallelen Zweig belegt (Adresssuche), deshalb 0066.
+- **Supplements:** ADR-0038 (AI port, zero-write), ADR-0051 (owl mode), ADR-0064 (answer runs)
+- **Number:** 0065 is taken by a parallel branch (address search), hence 0066.
 
-## Kontext
+## Context
 
-Die Eule soll die Steuererklärung über den Chat füllen können. Der Durchlauf gegen das echte
-Modell (#476) hat gezeigt, wo das nicht trägt:
+The owl is meant to be able to fill in the tax return via the chat. The run against the real
+model (#476) showed where this does not hold up:
 
-- Die Liste der Felder, die das Modell kennt, die Liste der Felder, die geschrieben werden dürfen,
-  und die Regeln, welcher Wert in ein Feld passt, lagen an drei Stellen. 51 Felder speicherten auf
-  dem Schreibweg der Eule jeden Wert, auch offensichtlichen Unsinn; eine ungültige Interview-Antwort
-  machte danach das ganze Interview des Nutzers unlesbar.
-- Eine Antwort konnte genau einen Entwurf tragen. Nannte der Nutzer drei Dinge, entstand einer,
-  und der Antworttext behauptete drei.
-- Vermietungsobjekte und Kinder sind mehrere Datensätze. Das Modell kannte ihre Kennungen nicht
-  und erfand welche („1“, „Objekt 1“); die Entwürfe ließen sich nie übernehmen.
-- Die Vorschau „bringt +X €“ kam aus einer Näherung über den Fall-Überblick. Für die meisten
-  Felder war sie 0 oder falsch.
+- The list of fields the model knows, the list of fields that may be written,
+  and the rules for which value fits a field were in three places. 51 fields stored, on
+  the owl's write path, any value, even obvious nonsense; an invalid interview answer
+  then made the user's whole interview unreadable.
+- An answer could carry exactly one draft. If the user named three things, one was created,
+  and the answer text claimed three.
+- Rental properties and children are several records. The model did not know their identifiers
+  and invented some ("1", "Objekt 1"); the drafts could never be applied.
+- The preview "brings +X €" came from an approximation over the case overview. For most
+  fields it was 0 or wrong.
 
-Die Frage dahinter: Muss für jedes Feld ein eigener KI-Adapter gebaut werden? Nein. Es fehlte eine
-einzige Stelle, die jedes Feld beschreibt.
+The question behind this: does a separate AI adapter have to be built for every field? No. What was missing was a
+single place that describes every field.
 
-## Entscheidung
+## Decision
 
-### 1. Der Feldkatalog ist die eine Quelle
+### 1. The field catalog is the one source
 
-`packages/core/src/interview/field-catalog.ts` beschreibt jedes Feld der Erklärung: Maske, Name,
-Wertform (Betrag, Ganzzahl, Auswahl, Ja/Nein, Datum, Wochentage, Text, Interview-Antwort), ob die
-Maske mehrere Datensätze hat und ob die Eule das Feld beschreiben darf. Daraus werden abgeleitet:
+`packages/core/src/interview/field-catalog.ts` describes every field of the tax return: screen, name,
+value shape (amount, integer, choice, yes/no, date, weekdays, text, interview answer), whether the
+screen has several records and whether the owl may write the field. Derived from this are:
 
-- die Feldliste im Systemprompt (`describeAiWritableFields`),
-- die Menge der für die Eule beschreibbaren Felder (`AI_WRITABLE_FIELDS`),
-- die Wertprüfung `validateFieldValue`, die einen Wert annimmt, in die gespeicherte Form bringt
-  („9.600 €“ → `9600`, „Ja“ → `true`, „12.05.2019“ → `2019-05-12`, Auswahl in kanonischer
-  Schreibweise) oder mit einem Grund in der Sprache des Nutzers ablehnt.
+- the field list in the system prompt (`describeAiWritableFields`),
+- the set of fields writable by the owl (`AI_WRITABLE_FIELDS`),
+- the value check `validateFieldValue`, which accepts a value and brings it into the stored form
+  ("9.600 €" → `9600`, "Ja" → `true`, "12.05.2019" → `2019-05-12`, choice in canonical
+  spelling) or rejects it with a reason in the user's language.
 
-**Ein neues Feld gehört in den Katalog.** Ein Test hält Katalog und Schreibzugriff deckungsgleich
-(`field-catalog-consistency.test.ts`); ein Feld, das nur an einer der beiden Stellen steht, lässt
-den Test rot werden.
+**A new field belongs in the catalog.** A test keeps the catalog and write access congruent
+(`field-catalog-consistency.test.ts`); a field that is only in one of the two places turns
+the test red.
 
-### 2. Eine Wertprüfung, an zwei Stellen aufgerufen
+### 2. One value check, called in two places
 
-Dieselbe Prüfung läuft, wenn die Eule einen Entwurf anlegt, und noch einmal beim Schreiben
-(`writeConfirmedByAdvisor`). Die erste Stelle sorgt dafür, dass ein Entwurf, der nicht übernehmbar
-wäre, gar nicht entsteht und das Modell den Grund erfährt. Die zweite schützt vor Entwürfen aus
-der Zeit vor einer Regel und vor jedem Weg, der die erste Stelle umgeht.
+The same check runs when the owl creates a draft, and once more on writing
+(`writeConfirmedByAdvisor`). The first place ensures that a draft that could not be applied
+is not created at all and that the model learns the reason. The second protects against drafts from
+the time before a rule and against any path that bypasses the first place.
 
-Die Masken des Nutzers behalten ihre eigene Eingabeprüfung (DTOs). Die strengere Prüfung gilt für
-**neue Schreibvorgänge der Eule**; bereits gespeicherte Werte werden nicht migriert. „Rückgängig“
-schreibt den alten Wert ungeprüft zurück, damit ein Zustand, der vorher bestand, immer
-wiederherstellbar ist.
+The user's screens keep their own input validation (DTOs). The stricter check applies to
+**new writes by the owl**; values already stored are not migrated. „Rückgängig“ ("Undo")
+writes the old value back unchecked, so that a state that existed before can always be
+restored.
 
-### 3. Mehrere Entwürfe pro Antwort, und die App sagt, was nicht ging
+### 3. Several drafts per answer, and the app says what did not work
 
-Eine Antwort trägt beliebig viele Entwürfe (höchstens acht; ein zweiter Entwurf für dasselbe Feld
-ersetzt den ersten). Jede Ablehnung eines Entwurfs wird festgehalten. Was das Modell bis zum Ende
-der Antwort nicht korrigiert hat, steht als „Nicht vorbereitet“ mit Grund unter der Antwort. Diese
-Aussage kommt von der App, nicht vom Modell: Ob etwas vorbereitet wurde, entscheidet allein, ob
-ein Werkzeug es bestätigt hat.
+An answer carries any number of drafts (at most eight; a second draft for the same field
+replaces the first). Every rejection of a draft is recorded. Whatever the model has not corrected by the end
+of the answer appears as „Nicht vorbereitet“ ("Not prepared") with a reason under the answer. This
+statement comes from the app, not from the model: whether something was prepared is decided solely by whether
+a tool confirmed it.
 
-### 4. Datensätze über neutrale Namen; die Eule legt keine an
+### 4. Records via neutral names; the owl creates none
 
-Das Modell bekommt für Vermietung und Kinder nur Namen: „Objekt 1“, „Kind 2“, in der gespeicherten
-Reihenfolge. Die Zuordnung Name → Datensatz kennt nur der Server und setzt sie beim Anlegen des
-Entwurfs ein. Weder Kennungen noch Namen oder Adressen gehen an das Modell.
+For rental income and children, the model only receives names: „Objekt 1“ ("Property 1"), „Kind 2“ ("Child 2"), in the stored
+order. Only the server knows the mapping name → record and inserts it when creating the
+draft. Neither identifiers nor names or addresses go to the model.
 
-- Ein Datensatz: der Name darf fehlen.
-- Mehrere, keiner genannt: Rückfrage an den Nutzer. Das ist keine Ablehnung.
-- Keiner: Die Eule bereitet nichts vor. **Datensätze legt der Nutzer in der Maske an**; die Antwort
-  sagt das und bietet den Weg in die Maske an.
+- One record: the name may be missing.
+- Several, none named: follow-up question to the user. That is not a rejection.
+- None: the owl prepares nothing. **The user creates records in the screen**; the answer
+  says so and offers the way into the screen.
 
-Das Anlegen bleibt bewusst beim Nutzer: Ein Objekt oder ein Kind bringt Pflichtangaben mit, die
-die Eule nicht sehen darf (Name, Geburtsdatum, Adresse).
+Creating stays deliberately with the user: a property or a child comes with mandatory details that
+the owl must not see (name, date of birth, address).
 
-### 5. Die Vorschau ist die Schätzung der App, oder sie ist offen
+### 5. The preview is the app's estimate, or it is open
 
-Die Wirkung eines Entwurfs rechnet die Steuerschätzung der App zweimal: für den gespeicherten Stand
-und mit den Feldern des Entwurfs. Der zweite Lauf schreibt über denselben Weg wie „Übernehmen“,
-in einer Transaktion, die **immer** verworfen wird. Damit ist die Vorschau per Konstruktion das,
-was nach dem Übernehmen in der Schätzung steht.
+The effect of a draft is computed twice by the app's tax estimate: for the stored state
+and with the draft's fields. The second run writes via the same path as „Übernehmen“ ("Apply"),
+in a transaction that is **always** discarded. This makes the preview by construction what
+will be in the estimate after applying.
 
-Kann die Schätzung nichts sagen (Angaben unvollständig, Lebenslage ohne automatische Schätzung),
-zeigt die Karte keine Zahl, sondern „Wirkung noch offen“ mit dem Grund. Eine Wirkung von 0 € heißt
-„ändert die Schätzung nicht“. Das Modell darf nur die gemeldeten Zahlen nennen.
+If the estimate cannot say anything (details incomplete, life situation without automatic estimate),
+the card shows no number but „Wirkung noch offen“ ("Effect still open") with the reason. An effect of €0 means
+„ändert die Schätzung nicht“ ("does not change the estimate"). The model may only name the reported numbers.
 
-Ohne Datenbank hinter der Engine (In-Memory-Tests, Regel-Fallback) bleibt die alte Näherung; sie
-ist am fehlenden `effect` erkennbar.
+Without a database behind the engine (in-memory tests, rules fallback), the old approximation remains; it
+can be recognized by the missing `effect`.
 
-### 6. Maßstab: Szenarien gegen das echte Modell, nachts
+### 6. Yardstick: scenarios against the real model, at night
 
-`apps/api/test/live/` spielt je Bereich der Erklärung einen Kundensatz gegen das echte Modell und
-eine echte Datenbank, übernimmt die Entwürfe und liest die gespeicherten Werte zurück. Dazu die
-Grenzen (unsinniger Wert, Stammdaten, kein Objekt). Das läuft im Nightly-Workflow und schreibt
-einen Bericht; rot wird der Job erst mit `AI_EVAL_ENFORCE=1`, weil das Modell nicht deterministisch
-ist. Deterministisch und im normalen CI geprüft wird dagegen: Kein Feld mit fester Form nimmt
-Unsinn an (`advisor-field-coverage.integration.test.ts`).
+`apps/api/test/live/` plays one customer sentence per area of the tax return against the real model and
+a real database, applies the drafts and reads back the stored values. In addition the
+limits (nonsensical value, master data, no property). This runs in the nightly workflow and writes
+a report; the job only turns red with `AI_EVAL_ENFORCE=1`, because the model is not deterministic.
+What is checked deterministically and in normal CI, on the other hand: no field with a fixed shape accepts
+nonsense (`advisor-field-coverage.integration.test.ts`).
 
-### 7. Der fertige Antworttext wird geprüft, ohne Modell
+### 7. The finished answer text is checked, without a model
 
-Der Prompt bittet das Modell, sich an Regeln zu halten; `checkAdvisorAnswer` findet die Antworten,
-in denen es das nicht getan hat. Geprüft wird nach jeder Antwort, rein mit Regeln:
+The prompt asks the model to stick to rules; `checkAdvisorAnswer` finds the answers
+in which it did not. The check runs after every answer, purely with rules:
 
-- ein Euro-Betrag als Wirkung („bringt dir 450 € Erstattung“), den weder ein Werkzeug berechnet
-  noch der Nutzer genannt hat und der in keinem Entwurf steht,
-- „Ich habe … eingetragen“: Die Eule schreibt nie selbst,
-- „Ich habe … vorbereitet“, ohne dass ein Entwurf existiert,
-- eine Quellenangabe, die es im Quellenkatalog nicht gibt,
-- ein Thema außerhalb der privaten Einkommensteuer (Gewerbe-, Umsatzsteuer, Bilanz), bei dem der
-  Verweis an Steuerberatung oder Lohnsteuerhilfeverein fehlt.
+- a euro amount as an effect („bringt dir 450 € Erstattung“ ("gets you a €450 refund")) that neither a tool computed
+  nor the user named and that is in no draft,
+- „Ich habe … eingetragen“ ("I have entered …"): the owl never writes itself,
+- „Ich habe … vorbereitet“ ("I have prepared …"), without a draft existing,
+- a source reference that does not exist in the source catalog,
+- a topic outside private income tax (trade tax, VAT, balance sheet) where the
+  referral to a tax advisor or Lohnsteuerhilfeverein (wage tax assistance association) is missing.
 
-Der Text bleibt, wie er geschrieben wurde. Die App setzt einen Hinweis darunter
-(`meta.notices`). Ein lesbarer Hinweis ist besser als eine stillschweigend veränderte Antwort,
-und der Text ist beim Streamen ohnehin schon zu sehen. Die Prüfung erkennt Muster, kein
-inhaltlich falsches Steuerrecht; dafür bleibt die nächtliche Auswertung zuständig.
+The text stays as it was written. The app places a notice beneath it
+(`meta.notices`). A readable notice is better than a silently altered answer,
+and the text is already visible during streaming anyway. The check recognizes patterns, not
+substantively wrong tax law; the nightly evaluation remains responsible for that.
 
-### 8. Betrieb auf Cloud Run
+### 8. Operation on Cloud Run
 
-- **CPU bleibt zugeteilt** (`--no-cpu-throttling`): Eine Antwort läuft weiter, nachdem die
-  HTTP-Antwort beendet ist (ADR-0064). Mit gedrosselter CPU friert sie in dem Moment ein.
-- **Session-Affinität** (`--session-affinity`): Solange es kein gemeinsames Redis gibt, liegt ein
-  Lauf nur auf der Instanz, die ihn ausführt. Die Affinität hält den Client dort.
-- **Ohne gemeinsames Protokoll gilt ein unbekannter Lauf erst nach 3 Minuten als verloren.** Vorher
-  kann er auf einer anderen Instanz laufen; die Antwort als fehlgeschlagen zu markieren, wäre
-  falsch. Kein Lauf lebt länger als das Zeitbudget einer Antwort (höchstens 120 s).
-- **Redis ist vorbereitet, aber aus** (`enable_redis` in `infra/gcp`): Die kleinste
-  Memorystore-Instanz kostet mehr als das Monatsbudget der Beta. Einschalten, sobald regelmäßig
-  mehr als eine Instanz den Chat bedient; jedes andere Redis geht über das Secret `REDIS_URL`.
-- **Modell-Schlüssel** (`GEMINI_API_KEY`, `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`) sind optionale
-  Secrets des Deployments. Ohne einen davon antwortet die Eule aus den eingebauten Regeln.
+- **CPU stays allocated** (`--no-cpu-throttling`): an answer keeps running after the
+  HTTP response has ended (ADR-0064). With throttled CPU it freezes at that moment.
+- **Session affinity** (`--session-affinity`): as long as there is no shared Redis, a
+  run lives only on the instance that executes it. Affinity keeps the client there.
+- **Without a shared log, an unknown run is only considered lost after 3 minutes.** Before that
+  it may be running on another instance; marking the answer as failed would be
+  wrong. No run lives longer than the time budget of one answer (at most 120 s).
+- **Redis is prepared, but off** (`enable_redis` in `infra/gcp`): the smallest
+  Memorystore instance costs more than the beta's monthly budget. Turn it on as soon as more than one
+  instance regularly serves the chat; any other Redis goes via the secret `REDIS_URL`.
+- **Model keys** (`GEMINI_API_KEY`, `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`) are optional
+  secrets of the deployment. Without any of them, the owl answers from the built-in rules.
 
-## Folgen
+## Consequences
 
-- Ein neues Feld braucht einen Katalogeintrag; danach kann die Eule es ohne weiteren Code füllen.
-- Freitextfelder (derzeit `chLohnausweis.bemerkungen`) lassen sich nicht inhaltlich prüfen und
-  bleiben die einzige Ausnahme.
-- Die Vorschau kostet zwei Schätzungen und eine verworfene Transaktion je Entwurf.
-- Die Namen „Objekt n“ folgen der gespeicherten Reihenfolge. Löscht der Nutzer einen Datensatz,
-  verschieben sie sich; ein Entwurf zeigt auf den Datensatz selbst und bleibt deshalb richtig,
-  ein Entwurf auf einen gelöschten Datensatz lässt sich nicht übernehmen.
+- A new field needs a catalog entry; after that the owl can fill it without further code.
+- Free-text fields (currently `chLohnausweis.bemerkungen`) cannot be checked for content and
+  remain the only exception.
+- The preview costs two estimates and one discarded transaction per draft.
+- The names "Objekt n" follow the stored order. If the user deletes a record,
+  they shift; a draft points to the record itself and therefore stays correct,
+  a draft on a deleted record cannot be applied.
 
-## Verworfen
+## Rejected
 
-- **Ein KI-Adapter je Feld:** vervielfacht genau die Dopplung, die das Problem war.
-- **Die Eule legt Objekte und Kinder selbst an:** bräuchte personenbezogene Pflichtangaben im
-  Modellkontext.
-- **Vorschau über eine zweite, „überlagernde“ Rechnung im Speicher:** müsste für jede Maske
-  nachbauen, wie ein Feld in den Datensatz eingeht, und könnte von der echten Schätzung abweichen.
+- **One AI adapter per field:** multiplies exactly the duplication that was the problem.
+- **The owl creates properties and children itself:** would need personal mandatory details in the
+  model context.
+- **Preview via a second, "overlaying" calculation in memory:** would have to rebuild for every screen
+  how a field enters the record, and could deviate from the real estimate.

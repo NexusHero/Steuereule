@@ -1,18 +1,18 @@
-# ADR-0040 — Beleg-Posteingang-Schnitt (Entwurf) 
+# ADR-0040 — Document inbox slice (Draft) 
 
 - **Status:** Accepted — promoted 2026-10-24 (reviewed as part of the ticket reviews; Musti)
 - **Date:** 2026-10-24
 - **Deciders:** Robin (backend, Ticket 04) — draft; promotion needs Musti review
-- **Implements** Produkt-ADR-007 (Upload ohne Jahresbindung, Zuordnung als Vorschlag),
-  Produkt-ADR-008 (Posten-Konflikt sichtbar statt stilles Überschreiben)
-- **Builds on** ADR-0008 (Feldverschlüsselung), ADR-0007/0012 (userId-Seam), REQ-004 (Audit)
+- **Implements** product ADR-007 (upload without binding to a year, assignment as a suggestion),
+  product ADR-008 (line-item conflict visible instead of silent overwriting)
+- **Builds on** ADR-0008 (field encryption), ADR-0007/0012 (userId seam), REQ-004 (audit)
 - **Context tags:** architecture, receipt inbox, security, honesty principle
 
 ## Context
 
-Produkt-ADR-007: users photograph receipts at the moment of receipt, not while filing — so a Beleg
+Product ADR-007: users photograph receipts at the moment of receipt, not while filing — so a Beleg (document)
 lands **unbound** (no year); extraction *suggests* a year (payment date over invoice date, § 11 EStG
-Zufluss/Abfluss) and a tap confirms. Produkt-ADR-008: conflicting sources become a **visible
+Zufluss/Abfluss (inflow/outflow)) and a tap confirms. Product ADR-008: conflicting sources become a **visible
 conflict**, never a silent overwrite. Scan/OCR is out of scope here (ADR-036/045, later slices) —
 this slice builds the **data interface** only.
 
@@ -22,21 +22,21 @@ this slice builds the **data interface** only.
    - `BelegDaten`: the persisted *facts* (id, userId, filename, optional invoice/payment dates,
      confirmed year).
    - `steuerjahrVorschlag`: the § 11 rule — payment date's year, else invoice date's year, else
-     none; carries the `herkunft` (`zahlungsdatum`|`belegdatum`) for the "Regel: Zahlungsdatum" chip.
+     none; carries the `herkunft` (`zahlungsdatum`|`belegdatum`) for the "Regel: Zahlungsdatum" ("Rule: payment date") chip.
    - `zuordnungAusDaten`: the **derived** state (`ungebunden | vorgeschlagen | zugeordnet |
      konflikt`). `konflikt` = a confirmed year contradicts the date-derived suggestion — **both
      years stay visible** (ADR-008).
    - `ordneZu`: the one assignment operation; it persists the year, and the conflict is *derived*
      on the next read, never a separate stored flag.
 
-   The Zuordnung state is **derived, never stored** — same instinct as TaxYear's range being
+   The Zuordnung (assignment) state is **derived, never stored** — same instinct as TaxYear's range being
    recomputed (ADR-014/048): a stored copy of a derivable state could only drift.
 
 2. **`apps/api` Beleg module + Prisma migration** — `POST /v1/belege` (unbound create),
    `GET /v1/belege` (inbox), `POST /v1/belege/:id/zuordnung` (the tap). Guest-compatible
-   (UserContextGuard, like Profile/Cockpit — receipts are collected "im Moment des Erhalts",
+   (UserContextGuard, like Profile/Cockpit — receipts are collected "im Moment des Erhalts" (at the moment of receipt),
    possibly pre-account; REQ-006 carries them over). The `Beleg` table stores facts; `dateiname`
-   is field-encrypted at rest (ADR-0008 — filenames carry PII, joinable to Profile's Steuer-ID);
+   is field-encrypted at rest (ADR-0008 — filenames carry PII, joinable to Profile's Steuer-ID (tax identification number));
    dates stay clear (the suggestion rule and the `(userId, steuerjahr)` index need them without
    decrypting). WRITE/READ access is audited (REQ-004).
 
@@ -44,15 +44,15 @@ this slice builds the **data interface** only.
 
 - The conflict is honest and cheap: assigning a year that contradicts the dates *just works* and
   the derived state reports `konflikt` — nothing is silently overwritten, no extra column.
-- The Posten-**amount** conflict (ADR-008's "Beleg sagt 480 €, Nutzer tippt 500 €") lives in the
-  Berechnungs-Kern (`PostenKonflikt`, draft 0038) because it is triggered by OCR, which is not built
+- The Posten-**amount** conflict (ADR-008's "Beleg sagt 480 €, Nutzer tippt 500 €" — document says 480 €, user types 500 €) lives in the
+  calculation core (`PostenKonflikt`, draft 0038) because it is triggered by OCR, which is not built
   yet — this slice's Beleg table therefore stores no `betrag` column (honest: no amount to store).
 - **Security posture:** new persistent user data. `dateiname` field-encrypted (ADR-0008); access
   audited (REQ-004). The receipt *binary* storage is out of scope here (ADR-036/045) — when it
   lands, the storage-key field must join the encrypted set.
 - **Open for promotion review:** whether the "conflict on the *year*" is even a product-visible
   state, or whether ADR-008's conflict is exclusively the Posten-**amount** conflict and the year
-  reassignment should simply overwrite (the slice modelled the year-conflict because the ticket
+  reassignment should simply overwrite (the slice modeled the year-conflict because the ticket
   AC lists ADR-007/008 together — a product call, not a settled law).
 
 ## Alternatives considered

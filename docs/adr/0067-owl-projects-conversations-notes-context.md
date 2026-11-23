@@ -1,240 +1,239 @@
-# ADR-0067 — Eule: Steuerjahr als Projekt, mehrere Gespräche, Projektnotizen, Kontext mit Zusammenfassung
+# ADR-0067 — Owl: tax year as a project, several conversations, project notes, context with summary
 
 - **Status:** Accepted
 - **Date:** 2026-11-12
 - **Deciders:** NexusHero (Product Owner), Steuereule Engineering
 - **Applies to:** Ticket #481; `apps/api/src/advisor/`, `apps/api/src/ki/{langgraph-advisor.engine,ai-runtime-config.service,chat-model.factory}.ts`, `packages/core/src/interview/{advisor-history,advisor-notes,ki-port}.ts`, `apps/mobile-web/src/screens/advisor/`
-- **Ergänzt:** ADR-0038 (KI-Port, Zero-Write), ADR-0064 (Antwort-Läufe), ADR-0066 (Feldkatalog, geprüfte Antwort)
-- **Nummer:** 0065 ist von einem parallelen Zweig belegt (Adresssuche).
+- **Supplements:** ADR-0038 (AI port, zero-write), ADR-0064 (answer runs), ADR-0066 (field catalog, checked answer)
+- **Number:** 0065 is taken by a parallel branch (address search).
 
-## Kontext
+## Context
 
-Die Eule führte genau ein Gespräch pro Steuerjahr. Der Verlauf wuchs mit jedem Thema, Antworten
-wurden langsamer und ungenauer, und der ältere Teil fiel für das Modell still weg. Bis zum ersten
-Wort vergingen rund zwölf Sekunden, in denen der Nutzer nichts sah. Vorbild für die Lösung sind
-Projekte mit mehreren Sitzungen: ein gemeinsamer Wissensstand, darunter beliebig viele getrennte
-Kontexte.
+The owl held exactly one conversation per tax year. The history grew with every topic, answers
+became slower and less precise, and the older part silently dropped away for the model. It took
+around twelve seconds until the first word, during which the user saw nothing. The model for the solution is
+projects with several sessions: a shared state of knowledge, and beneath it any number of separate
+contexts.
 
-Die Entscheidungen stammen aus dem Grilling vom 12.11.2026 mit dem Product Owner.
+The decisions come from the grilling session with the Product Owner on 12 November 2026.
 
-## Entscheidung
+## Decision
 
-### 1. Das Steuerjahr ist das Projekt
+### 1. The tax year is the project
 
-Niemand legt ein Projekt an. Mit der Erklärung eines Jahres gibt es das Projekt und sein erstes
-Gespräch. Was alle Gespräche eines Jahres teilen:
+Nobody creates a project. With the tax return of a year come the project and its first
+conversation. What all conversations of a year share:
 
-- den Stand der Erklärung (der Fall-Überblick geht wie bisher in jede Antwort),
-- die Projektnotizen (§ 3),
-- die Entwürfe: Sie gehören zur Erklärung, nicht zum Gespräch. Ein Entwurf aus Gespräch A lässt
-  sich übernehmen, während Gespräch B offen ist, und „durch neueren Entwurf ersetzt“ gilt über
-  Gespräche hinweg.
+- the state of the tax return (the case overview goes into every answer as before),
+- the project notes (§ 3),
+- the drafts: they belong to the tax return, not to the conversation. A draft from conversation A can
+  be applied while conversation B is open, and "replaced by newer draft" applies across
+  conversations.
 
-### 2. Mehrere Gespräche, jedes mit eigenem Kontext
+### 2. Several conversations, each with its own context
 
-Ein Gespräch ist ein eigener Kontext: Das Modell sieht nur dessen Verlauf.
+A conversation is a separate context: the model sees only its history.
 
-- Ohne Angabe öffnet sich das zuletzt benutzte Gespräch.
-- „Neues Gespräch“ verwendet ein noch leeres wieder; es stapeln sich keine leeren.
-- Der Titel entsteht aus der ersten Frage (ohne Namen und Kennungen, höchstens 60 Zeichen),
-  ohne Modellaufruf. Umbenennen ist möglich.
-- Höchstens 50 Gespräche pro Jahr. Das Tageskontingent zählt je Nutzer, nicht je Gespräch.
-- Gespräche und Notizen sind privat je Nutzer, auch bei Zusammenveranlagung.
-- Schnellstarts laufen im offenen Gespräch.
-- Der bestehende Verlauf eines Jahres wird in der Migration das erste Gespräch.
-- ~~Es antwortet immer nur ein Gespräch gleichzeitig; während einer Antwort ist der Wechsel
-  gesperrt.~~ Seit ADR-0071 antworten Gespräche gleichzeitig; ein Gespräch hat weiterhin nur eine
-  Antwort zur selben Zeit.
+- Without a selection, the most recently used conversation opens.
+- „Neues Gespräch“ ("New conversation") reuses one that is still empty; empty ones do not pile up.
+- The title is derived from the first question (without names and identifiers, at most 60 characters),
+  without a model call. Renaming is possible.
+- At most 50 conversations per year. The daily quota counts per user, not per conversation.
+- Conversations and notes are private per user, also with Zusammenveranlagung (joint assessment).
+- Quick starts run in the open conversation.
+- The existing history of a year becomes the first conversation in the migration.
+- ~~Only one conversation answers at a time; during an answer, switching is
+  locked.~~ Since ADR-0071 conversations answer concurrently; a conversation still has only one
+  answer at a time.
 
-Eine Suche findet Text in den Titeln und Nachrichten aller Gespräche des Jahres; Groß- und
-Kleinschreibung und Umlaute spielen keine Rolle. Die Nachrichten liegen verschlüsselt in der
-Datenbank, deshalb sucht der Server über den entschlüsselten Text des einen Nutzers und Jahres
-(höchstens 50 Gespräche) statt in der Datenbank.
+A search finds text in the titles and messages of all conversations of the year; upper and
+lower case and umlauts do not matter. The messages are stored encrypted in the
+database, so the server searches over the decrypted text of the one user and year
+(at most 50 conversations) instead of in the database.
 
-Auf breiten Bildschirmen steht die Liste in einer Seitenleiste links vom Chat. Sie startet offen
-und merkt sich, wenn sie eingeklappt wurde. ~~Auf schmalen Bildschirmen öffnet derselbe Inhalt als
-Sheet.~~ Seit Abschnitt 10 öffnet sie unter 1280 px als Schublade von links, und die Suche ist ein
-Dialog.
+On wide screens, the list sits in a sidebar to the left of the chat. It starts open
+and remembers when it was collapsed. ~~On narrow screens the same content opens as a
+sheet.~~ Since section 10, it opens below 1280 px as a drawer from the left, and the search is a
+dialog.
 
-### 3. Projektnotizen: Die Eule schreibt hier selbst
+### 3. Project notes: the owl writes here itself
 
-Was in einem Gespräch geklärt wurde, aber kein Wert der Erklärung ist („Arbeitszimmer geprüft:
-lohnt sich nicht, weil kein eigener Raum“), hält die Eule als Notiz zum Steuerjahr fest. Jedes
-Gespräch des Jahres liest die Notizen.
+What was clarified in a conversation but is not a value of the tax return („Arbeitszimmer geprüft:
+lohnt sich nicht, weil kein eigener Raum“ ("Home office room checked: not worth it, because no separate room")), the owl records as a note on the tax year. Every
+conversation of the year reads the notes.
 
-**Die Eule legt Notizen ohne Klick an, ersetzt und entfernt sie.** Das ist eine bewusste Ausnahme
-vom Grundsatz aus ADR-0038, dass die Eule nichts selbst schreibt. Sie gilt für Notizen und nur für
-Notizen: Die Erklärung ändert sich weiterhin erst, wenn der Nutzer einen Entwurf übernimmt.
+**The owl creates, replaces and removes notes without a click.** This is a deliberate exception
+to the principle from ADR-0038 that the owl writes nothing itself. It applies to notes and only to
+notes: the tax return still only changes when the user applies a draft.
 
-Was die Ausnahme tragbar macht:
+What makes the exception acceptable:
 
-- Jede Änderung steht unter der Antwort („Gemerkt: …“, „Notiz aktualisiert: …“, „Notiz entfernt:
-  …“) mit „Rückgängig“. Rückgängig stellt den vorherigen Text oder die entfernte Notiz wieder her.
-- Alle Notizen sind sichtbar (seit Abschnitt 10 hinter dem Situation-Chip im Eingabefeld); der Nutzer kann jede ändern, löschen und eigene
-  hinzufügen.
-- Höchstens 20 Notizen je Jahr mit je 200 Zeichen, eine Zeile, keine personenbezogenen Daten
-  (geprüft beim Anlegen durch das Modell und beim Speichern).
-- Das Modell kennt Notizen nur unter neutralen Namen („Notiz 2“), nie unter ihrer Kennung.
-- Notizen gelten je Steuerjahr und wandern nicht in das nächste Jahr.
+- Every change appears under the answer („Gemerkt: …“ ("Noted: …"), „Notiz aktualisiert: …“ ("Note updated: …"), „Notiz entfernt:
+  …“ ("Note removed: …")) with „Rückgängig“ ("Undo"). Undo restores the previous text or the removed note.
+- All notes are visible (since section 10 behind the situation chip in the input field); the user can change or delete any of them and add their own.
+- At most 20 notes per year with 200 characters each, one line, no personal data
+  (checked when the model creates them and on saving).
+- The model knows notes only under neutral names („Notiz 2“ ("Note 2")), never under their identifier.
+- Notes apply per tax year and do not carry over into the next year.
 
-### 4. Der Kontext eines Gesprächs ist sichtbar und wird zusammengefasst, wenn er voll ist
+### 4. The context of a conversation is visible and is summarized when it is full
 
-Das Modell liest die jüngsten Beiträge eines Gesprächs wörtlich, bis zu einem Budget von 6.000
-geschätzten Tokens. Ein kleiner Ring im Eingabefeld zeigt, wie voll dieser Kontext ist; ab 80 %
-färbt er sich um.
+The model reads the most recent turns of a conversation verbatim, up to a budget of 6,000
+estimated tokens. A small ring in the input field shows how full this context is; from 80%
+it changes color.
 
-- **Voll:** Vor der nächsten Antwort fasst die Eule den älteren Teil zusammen und sagt das im Chat.
-  Die jüngsten Beiträge (ein Viertel des Budgets, mindestens die letzte Frage mit Antwort) bleiben
-  wörtlich.
-- **Auf Wunsch:** Ein Tipp auf den Ring nennt den Füllstand und bietet „Jetzt zusammenfassen“.
-- **Der Nutzer behält alles:** Alle Nachrichten bleiben lesbar. Eine Trennlinie „Älterer Verlauf
-  zusammengefasst“ markiert die Stelle; die Zusammenfassung lässt sich dort aufklappen.
-- Die Zusammenfassung schreibt das Modell in einem schlichten Aufruf ohne Werkzeuge, mit dem
-  Auftrag, nichts hinzuzuerfinden und eine frühere Zusammenfassung fortzuführen. Antwortet kein
-  Modell, entsteht sie ohne Modell aus den Fragen und dem Schicksal der Vorschläge. Ein volles
-  Gespräch blockiert deshalb nie.
+- **Full:** Before the next answer, the owl summarizes the older part and says so in the chat.
+  The most recent turns (a quarter of the budget, at least the last question with its answer) stay
+  verbatim.
+- **On request:** A tap on the ring shows the fill level and offers „Jetzt zusammenfassen“ ("Summarize now").
+- **The user keeps everything:** All messages remain readable. A divider „Älterer Verlauf
+  zusammengefasst“ ("Older history summarized") marks the spot; the summary can be expanded there.
+- The model writes the summary in a plain call without tools, with the
+  instruction not to invent anything and to continue an earlier summary. If no
+  model answers, it is produced without a model from the questions and the fate of the suggestions. A full
+  conversation therefore never blocks.
 
-### 5. Gedankengang sichtbar, mittlere Denkstufe
+### 5. Reasoning visible, medium thinking level
 
-Der Gedankengang (die Denk-Zusammenfassung des Anbieters) ist standardmäßig an: Ein Warten, dem
-man zusehen kann, ist ein kürzeres Warten. Die Denkstufe für Gemini ist `medium`.
+The reasoning (the provider's thinking summary) is on by default: a wait that
+one can watch is a shorter wait. The thinking level for Gemini is `medium`.
 
-Gemessen gegen Gemini (`scripts/ai-eval/latency-check.ts`), Zeit bis zum ersten Wort der Antwort:
+Measured against Gemini (`scripts/ai-eval/latency-check.ts`), time to the first word of the answer:
 
-| Denkstufe | erstes Lebenszeichen | erstes Wort |
+| Thinking level | first sign of life | first word |
 | --- | --- | --- |
-| niedrig | 2 bis 3 s | 3 bis 6 s |
-| **mittel (Voreinstellung)** | 3 bis 4 s | 6 bis 9 s |
-| Modell wählt | 3 bis 4 s | 10 bis 13 s |
-| hoch | 3 bis 4 s | 13 bis 20 s |
+| low | 2 to 3 s | 3 to 6 s |
+| **medium (default)** | 3 to 4 s | 6 to 9 s |
+| model chooses | 3 to 4 s | 10 to 13 s |
+| high | 3 to 4 s | 13 to 20 s |
 
-Mittel ist die Entscheidung des Product Owners: Gründlichkeit vor den letzten Sekunden.
-`AI_ADVISOR_THINKING_LEVEL` und `AI_ADVISOR_REASONING=off` stellen es um.
+Medium is the Product Owner's decision: thoroughness over the last few seconds.
+`AI_ADVISOR_THINKING_LEVEL` and `AI_ADVISOR_REASONING=off` change it.
 
-### 6. Um das Eingabefeld steht nur das Feld
+### 6. Around the input field there is only the field
 
-Das Banner mit dem Diktier-Tipp ist entfernt. Das Mikrofon-Symbol erscheint weiterhin dort, wo
-das Diktieren auf dem Gerät möglich ist (ADR-0061).
+The banner with the dictation tip has been removed. The microphone icon still appears where
+dictation is possible on the device (ADR-0061).
 
-### 7. Wenn das Sprachmodell nicht antwortet, sagt die Eule warum
+### 7. When the language model does not answer, the owl says why
 
-Ein Anbieterfehler ist kein stiller Wechsel zu den eingebauten Regeln und kein nacktes „abgebrochen“.
-Die API ordnet ihn einem Grund zu (Schlüssel oder Modell abgelehnt, Kontingent, überlastet,
-Zeitüberschreitung, Verbindung, blockiert, unbekannt) und hängt ihn als `meta.modelFailure` an die
-Antwort. Die Oberfläche zeigt darunter einen Hinweis mit dem Grund, dass die Antwort aus festen Regeln
-kommt, und der technischen Angabe „Anbieter · HTTP-Status“. Meldungstexte des Anbieters verlassen den
-Server nicht. „Noch einmal versuchen“ erscheint nur, wo Wiederholen helfen kann; ein abgelehnter
-Schlüssel wird dem Nutzer als Sache des Betreibers genannt. Der Hinweis steht in der gespeicherten
-Antwort und bleibt nach dem Neuladen. Bricht der Strom mitten in der Antwort ab, nennt auch der
-Fehler den Grund.
+A provider error is not a silent switch to the built-in rules and not a bare "aborted".
+The API maps it to a reason (key or model rejected, quota, overloaded,
+timeout, connection, blocked, unknown) and attaches it as `meta.modelFailure` to the
+answer. The UI shows a notice beneath it with the reason, that the answer comes from fixed rules,
+and the technical detail "provider · HTTP status". The provider's message texts do not leave the
+server. „Noch einmal versuchen“ ("Try again") only appears where retrying can help; a rejected
+key is presented to the user as the operator's matter. The notice is in the stored
+answer and remains after reloading. If the stream breaks off in the middle of the answer, the
+error also names the reason.
 
-### 8. Turbo: die Eule übernimmt selbst und zeigt es
+### 8. Turbo: the owl applies by itself and shows it
 
-Ein Schalter „Turbo“ am Eingabefeld (aus in jeder neuen Sitzung, #491). Aus bleibt alles wie in
-ADR-0038: Die Eule bereitet Entwürfe vor und wartet auf den Klick. An, übernimmt der Server die
-offenen Entwürfe einer Antwort, sobald sie fertig und gespeichert ist, in einem Schritt, genau wie
-„Alle übernehmen“: mit Prüfung gegen zwischenzeitliche Änderungen, Herkunft „Assistent: SteuerEule“,
-Prüfpfad und Rückgängig.
+A switch „Turbo“ at the input field (off in every new session, #491). Off, everything stays as in
+ADR-0038: the owl prepares drafts and waits for the click. On, the server applies the
+open drafts of an answer as soon as it is finished and stored, in one step, exactly like
+„Alle übernehmen“ ("Apply all"): with a check against intermediate changes, origin „Assistent: SteuerEule“,
+audit trail and undo.
 
-- Die Karten bleiben sichtbar, jetzt als „Übernommen“ mit altem und neuem Wert; darüber sagt eine
-  Zeile, wie viele Änderungen die Eule übernommen hat (`meta.turbo`).
-- Was nicht passt (Feld zwischenzeitlich geändert, Konflikt, abgelehnter Wert), wird nicht erzwungen:
-  Alle Entwürfe bleiben offen. „Zwei Wege“ wartet immer auf eine Wahl.
-- Das ist die zweite bewusste Ausnahme von Zero-Write, diesmal auf Wunsch des Nutzers je Nachricht.
+- The cards remain visible, now as „Übernommen“ ("Applied") with old and new value; above them a
+  line says how many changes the owl has applied (`meta.turbo`).
+- What does not fit (field changed in the meantime, conflict, rejected value) is not forced:
+  all drafts stay open. „Zwei Wege“ ("Two ways") always waits for a choice.
+- This is the second deliberate exception to zero-write, this time at the user's request per message.
 
-### 9. Fällt das Modell aus, antwortet ein zweites (#493)
+### 9. If the model fails, a second one answers (#493)
 
-Jeder Anbieter-Client wiederholt kurze Fehler (429, 503, abgerissene Verbindung) zweimal mit Wartezeit.
-Scheitert der Aufruf trotzdem, bevor das erste Wort da ist, fragt die Eule das Modell des Slots
-`fallback` (`AI_FALLBACK_PROVIDER`, `_MODEL`, `_API_KEY`), einmal, mit eigenem Zeitlimit. Der
-Gedankengang steht dort: „Gemini antwortet nicht. Die Eule fragt Claude …“. Das Ergebnis nennt das
-Modell, das geantwortet hat, und den Fehler des ersten (`primaryFailure`), den die Verbindungsanzeige
-mitzählt. Kein Zweitmodell eingerichtet, oder dasselbe Modell mit demselben Schlüssel, oder eine
-blockierte Frage: Es antworten wie bisher die festen Regeln, mit dem Grund. Mitten in einer Antwort
-wird nicht gewechselt; dort bleibt der Abbruch ehrlich sichtbar.
+Every provider client retries short errors (429, 503, dropped connection) twice with a wait.
+If the call still fails before the first word has arrived, the owl asks the model of the slot
+`fallback` (`AI_FALLBACK_PROVIDER`, `_MODEL`, `_API_KEY`), once, with its own time limit. The
+reasoning then says: „Gemini antwortet nicht. Die Eule fragt Claude …“ ("Gemini is not answering. The owl is asking Claude …"). The result names the
+model that answered and the error of the first one (`primaryFailure`), which the connection indicator
+counts. No second model configured, or the same model with the same key, or a
+blocked question: the fixed rules answer as before, with the reason. There is no switch in the middle of an answer;
+there the abort stays honestly visible.
 
-### 10. Chat zuerst (Nachtrag 13.11.2026)
+### 10. Chat first (addendum 13 November 2026)
 
-Der Chat bekam neben Seitenleiste, Erklärtexten und Suchfeld zu wenig Aufmerksamkeit. Der Screen
-folgt jetzt dem Aufbau, den Nutzer von Claude kennen:
+Next to the sidebar, explanatory texts and search field, the chat received too little attention. The screen
+now follows the layout users know from Claude:
 
-- **Seitenleiste nur für Gespräche:** „Neues Gespräch“, „Suchen“ mit Lupe, „Steuerjahr 2026 ▾“
-  und je Gespräch eine Zeile. Umbenennen und Löschen liegen hinter dem „…“ der Zeile. Keine
-  Erklärtexte. Die anderen Jahre stehen im Menü des Steuerjahrs; ein anderes Jahr öffnet mit
-  seinem zuletzt genutzten Gespräch. Breite weiter ziehbar, Standard 260 px.
-- **Suche als Dialog** hinter der Lupe und mit Cmd/Ctrl+K, über dieselbe Suche des Servers.
-- **Unter 1280 px** öffnen die Gespräche als Schublade von links über das Symbol oben links.
-- **Situation und Notizen** stehen nicht mehr in der Seitenleiste, sondern hinter einem Chip im
-  Eingabefeld („Situation: …“, leer „Situation ergänzen“). Er öffnet „Was die Eule über euch weiß“
-  mit der Situation und den Notizen des Jahres.
-- **Kopfzeile:** Datenschutz, Hinweise (mit Zahl, wenn Hinweise oder Entwürfe warten) und
-  Einstellungen sind Symbole. Der Rechtsstand steht als eine Zeile unter dem Chat.
-- **Leerer Chat:** Frage und Eingabefeld in der Mitte, darunter vier Schnellstarts; die übrigen
-  klappt „Mehr …“ auf.
-- **Gedankengang wie bei Claude:** eine Zeile „Nachgedacht · 8 s · 4 Schritte“, aufklappbar zu
-  den Schritten mit Symbol und Ergebnis, darunter die Denk-Zusammenfassung. Während die Eule
-  arbeitet: „Denkt nach · 4 s“ mit dem aktuellen Schritt, ebenfalls aufklappbar. Die Schritte
-  werden strukturiert gespeichert (`meta.thoughtSteps`: Art, Werkzeug, Label, Ergebnis); ältere
-  Antworten mit reinen Textzeilen (`meta.steps`) zeigt die App weiter. Das Ergebnis eines Werkzeugs
-  kommt als eigenes Ereignis `tool_result` und wird auf dem Server aus einer festen Vorlage je
-  Werkzeug gebildet, nur aus Zahlen, Beträgen und Katalogtiteln: nie aus Text des Modells oder des
-  Nutzers, nie mit dem Grund einer Ablehnung. Die Dauer (`durationMs`) war schon gespeichert und
-  geht jetzt mit der fertigen Antwort an die App; Kosten und Tokens bleiben beim Betrieb.
+- **Sidebar only for conversations:** „Neues Gespräch“, „Suchen“ ("Search") with a magnifier, „Steuerjahr 2026 ▾“ ("Tax year 2026 ▾")
+  and one row per conversation. Rename and delete sit behind the row's "…". No
+  explanatory texts. The other years are in the tax year menu; another year opens with
+  its most recently used conversation. Width still draggable, default 260 px.
+- **Search as a dialog** behind the magnifier and with Cmd/Ctrl+K, via the same server search.
+- **Below 1280 px** the conversations open as a drawer from the left via the icon at the top left.
+- **Situation and notes** are no longer in the sidebar, but behind a chip in the
+  input field („Situation: …“, empty „Situation ergänzen“ ("Add situation")). It opens „Was die Eule über euch weiß“ ("What the owl knows about you")
+  with the situation and the notes of the year.
+- **Header:** privacy, hints (with a number when hints or drafts are waiting) and
+  settings are icons. The legal status appears as one line under the chat.
+- **Empty chat:** question and input field in the middle, beneath them four quick starts; the rest
+  are expanded by „Mehr …“ ("More …").
+- **Reasoning as in Claude:** a line „Nachgedacht · 8 s · 4 Schritte“ ("Thought · 8 s · 4 steps"), expandable to
+  the steps with icon and result, beneath it the thinking summary. While the owl is
+  working: „Denkt nach · 4 s“ ("Thinking · 4 s") with the current step, also expandable. The steps
+  are stored in structured form (`meta.thoughtSteps`: kind, tool, label, result); older
+  answers with plain text lines (`meta.steps`) are still shown by the app. The result of a tool
+  comes as its own event `tool_result` and is built on the server from a fixed template per
+  tool, only from numbers, amounts and catalog titles: never from text of the model or the
+  user, never with the reason for a rejection. The duration (`durationMs`) was already stored and
+  now goes to the app with the finished answer; costs and tokens stay with operations.
 
-### 11. Die Eule eröffnet das Gespräch (Nachtrag 13.11.2026)
+### 11. The owl opens the conversation (addendum 13 November 2026)
 
-Ein neues Gespräch beginnt nicht mehr leer, wenn die App schon etwas über das Jahr weiß. Die Eule
-spricht zuerst, mit dem Steuerberater-Skill und dem Fall-Überblick, den sie ohnehin in jedem Zug
-bekommt. Der Überblick umfasst jetzt alles, was das Interview und die Masken kennen
-(`furtherFacts`: Rente, Summen der Vermietung, Kapital mit einbehaltener Steuer, Nebenjob,
-Lohnersatz, Abfindung, Krankheitskosten, haushaltsnahe Dienste, Fristen), weiter nur Beträge und
-Zählungen, nie Namen, Adressen oder Kennungen.
+A new conversation no longer starts empty if the app already knows something about the year. The owl
+speaks first, with the tax advisor skill and the case overview it receives in every turn anyway.
+The overview now covers everything the interview and the screens know
+(`furtherFacts`: pension, rental income totals, capital with withheld tax, side job,
+wage replacement, severance, medical costs, household-related services, deadlines), still only amounts and
+counts, never names, addresses or identifiers.
 
-- **Stufe ohne Modell:** Der Rechenkern bestimmt vor jedem Modellaufruf die Stufe.
-  - `empty`: nichts erfasst. Keine Eröffnung; der Chat bietet „Lass uns anfangen“ an, das das Berater-Interview startet.
-  - `partial`: etwas erfasst, aber kein Einkommen mit Betrag oder keine Angabe zur Veranlagung. Die Eule sagt kurz, was sie weiß, und fragt die Lücken als Fragerunde mit antippbaren Antworten ab.
-  - `ready`: mindestens ein Einkommen mit Betrag und die Veranlagung. Die Eule analysiert frei.
-- **Nur wenn sich etwas geändert hat:** Ein Fingerabdruck (FNV-1a) aus Fall-Überblick, eigener
-  Beschreibung und Notizen steht an jeder Eröffnung. Gleicht er dem der letzten Eröffnung des
-  Jahres, bleibt das neue Gespräch leer und verlinkt „Letzte Analyse vom … ansehen“.
-- **Zahlen aus dem Rechenkern:** Vor dem Modellaufruf rechnet die App die Kennzahlen der Eröffnung
-  (Ergebnis-Spanne der Schätzung, Entfernungs- und Homeoffice-Pauschale aus den erfassten Tagen,
-  Werbungskosten gegen den Arbeitnehmer-Pauschbetrag). Sie stehen im Prompt als die einzigen
-  Beträge, die die Eule nennen darf; jeden weiteren muss sie mit `compute_income_tax` oder
-  `simulate_tax_delta` rechnen. Die Antwort-Prüfung zählt die Kennzahlen als berechnet.
-- **Prüfung blockt:** Die Eröffnung wird zurückgehalten, bis sie geprüft ist. Nennt sie einen
-  Betrag, den die App nicht berechnet hat, wird sie einmal neu geschrieben, mit diesen Beträgen als
-  falsch benannt. Erst eine zweite Verfehlung erscheint, dann mit dem üblichen Hinweis.
-- **Keine Entwürfe:** Eine Eröffnung legt nie Entwürfe an, auch nicht mit Turbo. Entwürfe
-  entstehen aus der Antwort des Nutzers auf die Fragerunde.
-- Ein eröffnetes Gespräch heißt „Einschätzung 2026“ (mit dem Steuerjahr), bis der Nutzer es umbenennt.
-- Technisch ist die Eröffnung ein Zug mit `quickAction: 'opening'`. Die Frage dahinter ist ein
-  Platzhalter, den der Chat nicht zeigt (`meta.opening` an beiden Nachrichten); ohne Sprachmodell
-  gibt es keine Eröffnung.
+- **Stage without a model:** The calculation core determines the stage before every model call.
+  - `empty`: nothing recorded. No opening; the chat offers „Lass uns anfangen“ ("Let's get started"), which starts the advisor interview.
+  - `partial`: something recorded, but no income with an amount or no detail on the assessment type. The owl briefly says what it knows and asks about the gaps as a question round with tappable answers.
+  - `ready`: at least one income with an amount and the assessment type. The owl analyzes freely.
+- **Only when something has changed:** A fingerprint (FNV-1a) from the case overview, the user's own
+  description and notes is attached to every opening. If it matches that of the last opening of the
+  year, the new conversation stays empty and links „Letzte Analyse vom … ansehen“ ("View last analysis from …").
+- **Numbers from the calculation core:** Before the model call, the app computes the key figures of the opening
+  (result range of the estimate, distance and home office allowance from the recorded days,
+  Werbungskosten (work-related expenses) against the Arbeitnehmer-Pauschbetrag (employee lump-sum allowance)). They are in the prompt as the only
+  amounts the owl may name; any further one it must compute with `compute_income_tax` or
+  `simulate_tax_delta`. The answer check counts the key figures as computed.
+- **The check blocks:** The opening is held back until it has been checked. If it names an
+  amount the app has not computed, it is rewritten once, with these amounts named as
+  wrong. Only a second miss appears, then with the usual notice.
+- **No drafts:** An opening never creates drafts, not even with Turbo. Drafts
+  arise from the user's answer to the question round.
+- An opened conversation is called „Einschätzung 2026“ ("Assessment 2026") (with the tax year) until the user renames it.
+- Technically, the opening is a turn with `quickAction: 'opening'`. The question behind it is a
+  placeholder the chat does not show (`meta.opening` on both messages); without a language model
+  there is no opening.
 
-Die Ergebnisse der Werkzeuge im Gedankengang wiederholen ihr Label nicht mehr („Schlage im
-Steuerwissen nach: Kennzahlen je Steuerjahr“ statt „…: Gefunden: …“), und die Denk-Zusammenfassung
-erscheint als Überschriften und Absätze statt als rohes Markdown; die Eule wird gebeten, auf
-Deutsch zu denken.
+The results of the tools in the reasoning no longer repeat their label („Schlage im
+Steuerwissen nach: Kennzahlen je Steuerjahr“ ("Looking up tax knowledge: key figures per tax year") instead of „…: Gefunden: …“ ("…: Found: …")), and the thinking summary
+appears as headings and paragraphs instead of raw Markdown; the owl is asked to think in
+German.
 
-## Folgen
+## Consequences
 
-- Ein Gespräch löschen entfernt seine Nachrichten und die darin noch offenen Entwürfe;
-  übernommene Werte bleiben.
-- Eine Zusammenfassung kostet einen Modellaufruf, sobald ein Gespräch sein Budget erreicht.
-- Die Zusammenfassung ist das einzige Gedächtnis des älteren Teils für das Modell. Was sie
-  auslässt, weiß die Eule in diesem Gespräch nicht mehr; die Erklärung und die Notizen fangen das
-  Wesentliche auf.
-- Notizen ohne Klick heißt: Die Eule kann auch etwas vergessen, das der Nutzer behalten wollte.
-  Aufgefangen wird das durch den Hinweis mit „Rückgängig“ und die Liste in der Seitenleiste.
-- Datenexport und Kontolöschung umfassen Gespräche und Notizen.
+- Deleting a conversation removes its messages and the drafts still open in it;
+  applied values remain.
+- A summary costs one model call as soon as a conversation reaches its budget.
+- The summary is the model's only memory of the older part. What it
+  leaves out, the owl no longer knows in this conversation; the tax return and the notes catch the
+  essentials.
+- Notes without a click means: the owl can also forget something the user wanted to keep.
+  This is caught by the notice with "Undo" and the list in the sidebar.
+- Data export and account deletion cover conversations and notes.
 
-## Verworfen
+## Rejected
 
-- **Frei anlegbare Projekte, eigene Anweisungen je Projekt, Datei-Uploads ins Projekt:** bringen
-  Steuernutzern nichts; Belege gibt es schon.
-- **Notizen erst nach Bestätigung:** Der Product Owner hat sich für das selbstständige Schreiben
-  entschieden, mit Rückgängig als Sicherung.
-- **Titel vom Modell formuliert:** kostet einen Aufruf je Gespräch und kommt verzögert.
-- **Paralleles Arbeiten in mehreren Gesprächen:** kein erkennbarer Bedarf.
-- **Notizen über alle Jahre:** veraltete Aussagen würden in neue Jahre hineinwirken.
+- **Freely creatable projects, custom instructions per project, file uploads into the project:** bring
+  tax users nothing; documents already exist.
+- **Notes only after confirmation:** The Product Owner decided in favor of autonomous writing,
+  with undo as a safeguard.
+- **Title worded by the model:** costs a call per conversation and arrives delayed.
+- **Parallel work in several conversations:** no discernible need.
+- **Notes across all years:** outdated statements would carry over into new years.

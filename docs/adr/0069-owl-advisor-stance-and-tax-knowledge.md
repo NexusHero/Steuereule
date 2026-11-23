@@ -1,245 +1,245 @@
-# ADR-0069 — Eule: Beraterhaltung immer, Steuerwissen zum Nachschlagen, alle Steuerthemen
+# ADR-0069 — Owl: advisor stance always, tax knowledge to look up, all tax topics
 
 - **Status:** Accepted
 - **Date:** 2026-11-12
 - **Deciders:** NexusHero (Product Owner), Steuereule Engineering
 - **Applies to:** Ticket #499; `.agents/skills/steuerberater/`, `apps/api/src/ki/{advisor-stance,advisor-knowledge.generated,advisor-income-tax,advisor-tools,advisor-tool-round,advisor-prompt,advisor-topic-guard,ai-runtime-config.service}.ts`, `packages/core/src/interview/{advisor,advisor-answer-check,advisor-topic}.ts`
-- **Ergänzt:** 2026-11-13, Abschnitt „Themengrenze nach außen“
-- **Ändert:** ADR-0038 und ADR-0066, soweit sie die Eule auf die private Einkommensteuererklärung begrenzen
+- **Supplemented:** 2026-11-13, section "Outward topic boundary"
+- **Amends:** ADR-0038 and ADR-0066, insofar as they limit the owl to the private income tax return
 
-## Kontext
+## Context
 
-Der Product Owner hat einen Skill „steuerberater“ geschrieben: Haltung und Arbeitsablauf eines
-gründlichen Steuerberaters, acht Wissensdateien und einen Tarifrechner. Er soll in der Eule immer
-gelten. Der Skill ist für einen Coding-Agenten gebaut (liest Dateien, führt ein Python-Skript aus,
-schlägt im Netz nach); die Eule kann nichts davon.
+The Product Owner wrote a skill "steuerberater" (tax advisor): the stance and workflow of a
+thorough tax advisor, eight knowledge files and a tariff calculator. It is meant to always apply in the owl.
+The skill is built for a coding agent (reads files, runs a Python script,
+looks things up on the web); the owl can do none of that.
 
-## Entscheidung
+## Decision
 
-1. **Die Haltung steht im festen Teil des Prompts jeder Antwort** (`ADVISOR_STANCE`): erst fragen,
-   Fundstelle nennen, Steuerjahr festnageln, nie im Kopf rechnen, zwei Wege bei Spielraum, legal
-   gestalten, ehrlich über Grenzen. Sie ist kein abschaltbarer Skill.
-2. **Das Wissen wird nachgeschlagen, nicht mitgeschickt.** `lookup_tax_knowledge` liefert einen
-   der Abschnitte. Die Quelle ist der Skill-Ordner `apps/api/skills/steuerberater/`; wie er in
-   den Code kommt, regelt „Skills als Dateien“ unten. `quellen.md` (Nachschlagen im Netz) wird
-   nicht ausgeliefert.
-3. **Gerechnet wird mit dem Rechenkern.** `compute_income_tax` rechnet Tarif, Soli und
-   Kirchensteuer mit `packages/core/src/math`, nicht mit dem Python-Skript. Der Kern rundet Soli
-   und Kirchensteuer auf volle Euro ab, das Skript auf Cent; die Einkommensteuer ist identisch.
-4. **Es gelten die Zahlen der App.** Die Tabelle `kennzahlen` ergänzt, was die App nicht rechnet.
-   Ein mit „prüfen“ markierter Wert wird als unsicher genannt. Ein Test vergleicht den
-   Grundfreibetrag der Tabelle mit dem Kern.
-5. **Die Themengrenze innerhalb der Steuer entfällt.** Die Eule berät erklärend auch zu Umsatzsteuer, Selbstständigen
-   und Gewerbe, Erbschaft und Schenkung, Verfahren. Entwürfe gibt es weiter nur für die Felder der
-   App, und Zero-Write gilt unverändert. Entfernt sind die Ablehnung solcher Fragen vor dem
-   Modellaufruf und der Hinweis „gehört nicht zur privaten Einkommensteuererklärung“.
-6. **Was bleibt:** keine verbindliche Rechtsauskunft (wird weiter vor dem Modell abgelehnt), keine
-   Hilfe bei Hinterziehung, der Schutz vor Prompt-Injection, die PII-Prüfung und die Prüfung
-   „Betrag nicht von der App berechnet“. Der Verweis an einen Steuerberater in den Fällen aus B8
-   entfällt (Punkt 37).
+1. **The stance is in the fixed part of the prompt of every answer** (`ADVISOR_STANCE`): ask first,
+   cite the source, pin down the tax year, never calculate in one's head, two ways where there is leeway, plan
+   legally, be honest about limits. It is not a skill that can be switched off.
+2. **The knowledge is looked up, not sent along.** `lookup_tax_knowledge` returns one
+   of the sections. The source is the skill folder `apps/api/skills/steuerberater/`; how it gets into
+   the code is governed by "Skills as files" below. `quellen.md` (looking things up on the web) is
+   not shipped.
+3. **Calculations use the calculation core.** `compute_income_tax` calculates tariff, Soli and
+   church tax with `packages/core/src/math`, not with the Python script. The core rounds Soli
+   and church tax down to full euros, the script to cents; the income tax is identical.
+4. **The app's numbers apply.** The table `kennzahlen` supplements what the app does not calculate.
+   A value marked "prüfen" ("check") is named as uncertain. A test compares the
+   Grundfreibetrag (basic tax-free allowance) in the table with the core.
+5. **The topic boundary within tax is dropped.** The owl also advises, by explanation, on VAT, the self-employed
+   and trade, inheritance and gifts, procedure. Drafts still exist only for the app's
+   fields, and zero-write applies unchanged. Removed are the rejection of such questions before the
+   model call and the notice „gehört nicht zur privaten Einkommensteuererklärung“ ("does not belong to the private income tax return").
+6. **What remains:** no binding legal information (still rejected before the model), no
+   help with evasion, the protection against prompt injection, the PII check and the check
+   "amount not calculated by the app". The referral to a tax advisor in the cases from B8
+   is dropped (point 37).
 
-7. **Maßstab ist die Eule für zahlende Nutzer.** Jede Datei des Wissens trägt „Stand: Datum,
-   geprüft für die Steuerjahre X–Y“. Die Beträge des geltenden Rechts sind am Gesetzestext
-   abgeglichen (12.11.2026: 109 Stellen in EStG, UStG, AO, GewStG, ErbStG, SolZG). Was nicht am
-   Gesetz belegt ist (Verwaltungspraxis, Rechtsprechung), bleibt mit „(nicht belegt)“ stehen, und
-   die Eule nennt es als unsicher. Ein Test schlägt an, sobald der Rechenkern ein Steuerjahr
-   kennt, für das das Wissen nicht geprüft ist.
-8. **Bewährung von Hand.** `pnpm --filter @steuereule/api test:eval` stellt 21 typische
-   Beratungsfragen an das echte Modell und prüft, was eine gute Antwort enthalten muss (Norm,
-   Betrag, Rückfrage, nachgeschlagen, gerechnet). Kein Gate, kein nächtlicher Lauf: Er läuft, wenn
-   der Skill oder der Prompt sich ändert.
+7. **The yardstick is the owl for paying users.** Every knowledge file carries „Stand: Datum,
+   geprüft für die Steuerjahre X–Y“ ("As of: date, checked for tax years X–Y"). The amounts of current law have been reconciled against the statute text
+   (12 November 2026: 109 places in EStG, UStG, AO, GewStG, ErbStG, SolZG). What is not backed by the
+   statute (administrative practice, case law) stays marked "(nicht belegt)" ("(not verified)"), and
+   the owl names it as uncertain. A test fires as soon as the calculation core knows a tax year
+   for which the knowledge has not been checked.
+8. **Proving by hand.** `pnpm --filter @steuereule/api test:eval` asks the real model 21 typical
+   advisory questions and checks what a good answer must contain (norm,
+   amount, follow-up question, looked up, calculated). No gate, no nightly run: it runs when
+   the skill or the prompt changes.
 
-## Themengrenze nach außen (ergänzt 2026-11-13)
+## Outward topic boundary (added 2026-11-13)
 
-Punkt 5 öffnet die Eule für alle Steuerthemen. Für alles andere war sie bis hierhin leicht zu
-benutzen: Vor dem Modell standen nur drei Wortmuster (Kuchenrezept, „schreibe ein Gedicht“,
-Hinterziehung), im Prompt stand nichts. „Schreib mir ein Gedicht“, jede englische Frage und jede
-Umschreibung kamen durch. Entscheidungen des Product Owners vom 13.11.2026:
+Point 5 opens the owl to all tax topics. For everything else it was easy to
+misuse up to this point: before the model there were only three word patterns (cake recipe, „schreibe ein Gedicht“ ("write a poem"),
+evasion), the prompt said nothing. „Schreib mir ein Gedicht“ ("Write me a poem"), every English question and every
+paraphrase got through. Decisions of the Product Owner from 13 November 2026:
 
-9. **Grenze: Steuer und was direkt hineingreift.** Erlaubt sind die eigenen Steuerangelegenheiten
-   (alle Steuerarten aus Punkt 5), die Bedienung der App und was direkt in die Steuer greift:
-   Belege, Post vom Finanzamt, Riester/Rürup, Kindergeld, Elterngeld, Lohnabrechnung. Abgelehnt
-   wird alles andere, auch allgemeine Finanz-, Rechts- und Gesundheitsfragen.
-10. **Ein Vorab-Prüfer entscheidet, nicht eine Wortliste.** Ein kleines Modell im eigenen KI-Slot
-    `advisor_guard` (`AI_GUARD_PROVIDER`/`_MODEL`/`_API_KEY`/`_TIMEOUT_MS`; Standard: das kleine
-    Modell des Chat-Anbieters, Temperatur 0, 5 s) ordnet jede getippte Nachricht als `tax`, `gray`
-    oder `off_topic` ein, mit grober Kategorie und Sprache. Er sieht die Nachricht und die letzten
-    zwei Runden, damit „Und 2025?“ als Steuerfrage erkannt wird, und behandelt die Nachricht als
-    Daten, nicht als Anweisung. Er lief zuerst vor dem Hauptmodell, damit eine Ablehnung nur
-    einen kleinen Aufruf kostet; seit ADR-0100 läuft er daneben, und bis zu seinem Urteil erreicht
-    nichts vom Hauptmodell den Nutzer oder ein Werkzeug. Im Admin-Panel einstellbar wird der Slot mit #445; bis
-    dahin über die Umgebung wie die anderen Slots.
-11. **Was der Prüfer sagt, und was folgt.**
-    - `off_topic`: ein fester Satz („Dabei kann ich dir nicht helfen – ich bin nur für deine
-      Steuern da.“) in der Sprache der Frage (de, en, tr, fr, it, es, pl; sonst Deutsch) und bis zu
-      drei Vorschläge aus den offenen Hinweisen des Falls. Kein Hauptmodell, also nicht
-      überredbar und kostenlos.
-    - `gray` (z. B. „ETF oder Bausparvertrag?“): Das Hauptmodell antwortet mit dem Zusatz, nur den
-      steuerlichen Teil zu beantworten.
-    - `tax`: wie bisher.
-    - **Kein Urteil** (Ausfall, Timeout, unlesbare Antwort, nicht eingerichtet): Die Nachricht geht
-      durch (fail-open). Zweite Verteidigung sind die Themenregel im Prompt (Leitplanke 0) und die
-      Angriffsmuster (`PROMPT_INJECTION_PATTERNS`), die vor jedem Modell kostenlos greifen.
-12. **Nur getippter Text wird geprüft.** Eine Eröffnung (der Server ersetzt ihren Text) und ein
-    angetippter Vorschlag oder eine Antwort einer Fragerunde der letzten Antwort, Zeichen für
-    Zeichen, überspringen den Prüfer. Den Abgleich macht der Server, kein Client-Flag.
-    Schnellstarts und Skills werden geprüft, weil ihr Text vom Client kommt.
-13. **Über sich selbst spricht die Eule nicht.** Fragen nach Anweisungen, Regeln, Prompt,
-    Werkzeugen und auch nach ihren Fähigkeiten („Was kannst du?“) zählen als `off_topic` (Kategorie
-    `meta`) und bekommen den festen Satz.
-14. **Hinterziehung wird erklärt, nie unterstützt.** Die Wortmuster dafür sind entfernt. Eine
-    ehrliche Frage („Ist das schon Hinterziehung, wenn ich die Zinsen vergessen habe?“) geht ans
-    Hauptmodell, das Rechtslage, Folgen, Berichtigung (§ 153 AO) und Selbstanzeige (§ 371 AO)
-    erklärt und jede Hilfe beim Verschleiern ablehnt.
-15. **Sprache:** Die Eule antwortet in der Sprache der Frage; Formulare, Anlagen, Zeilen und
-    Fachbegriffe bleiben deutsch. Ihr Gedankengang bleibt deutsch.
-16. **Gezählt wird ohne Text.** Das Urteil (Verdict, Kategorie, Sprache, bei Ausfall der Grund)
-    steht in der internen `engine`-Info der Antwort, die der Client nie sieht, und im Log
-    `advisor_turn`. Daraus ergibt sich die Zahl je Nutzer und Tag. Gesperrt oder gedrosselt wird
-    niemand.
-17. **Bewährung.** Unit-Tests mit festen Urteilen prüfen die Verdrahtung in jeder CI
+9. **Boundary: tax and what directly reaches into it.** Allowed are one's own tax affairs
+   (all tax types from point 5), operating the app and what directly reaches into tax:
+   documents, mail from the Finanzamt (tax office), Riester/Rürup, Kindergeld, Elterngeld, payslip. Everything else
+   is rejected, including general financial, legal and health questions.
+10. **A pre-checker decides, not a word list.** A small model in its own AI slot
+    `advisor_guard` (`AI_GUARD_PROVIDER`/`_MODEL`/`_API_KEY`/`_TIMEOUT_MS`; default: the small
+    model of the chat provider, temperature 0, 5 s) classifies every typed message as `tax`, `gray`
+    or `off_topic`, with a rough category and language. It sees the message and the last
+    two rounds, so that „Und 2025?“ ("And 2025?") is recognized as a tax question, and treats the message as
+    data, not as an instruction. It first ran before the main model, so that a rejection only
+    costs a small call; since ADR-0100 it runs alongside it, and until its verdict
+    nothing from the main model reaches the user or a tool. The slot becomes configurable in the admin panel with #445; until
+    then via the environment like the other slots.
+11. **What the checker says, and what follows.**
+    - `off_topic`: a fixed sentence („Dabei kann ich dir nicht helfen – ich bin nur für deine
+      Steuern da.“ ("I can't help you with that – I'm only here for your taxes.")) in the language of the question (de, en, tr, fr, it, es, pl; otherwise German) and up to
+      three suggestions from the open hints of the case. No main model, so it cannot be
+      talked round and costs nothing.
+    - `gray` (e.g. „ETF oder Bausparvertrag?“ ("ETF or building savings contract?")): the main model answers with the addition of only answering the
+      tax part.
+    - `tax`: as before.
+    - **No verdict** (outage, timeout, unreadable answer, not configured): the message goes
+      through (fail-open). The second line of defense is the topic rule in the prompt (guardrail 0) and the
+      attack patterns (`PROMPT_INJECTION_PATTERNS`), which take effect before any model at no cost.
+12. **Only typed text is checked.** An opening (the server replaces its text) and a
+    tapped suggestion or an answer to a question round of the last answer, character for
+    character, skip the checker. The server does the matching, not a client flag.
+    Quick starts and skills are checked, because their text comes from the client.
+13. **The owl does not talk about itself.** Questions about instructions, rules, prompt,
+    tools and also about its capabilities („Was kannst du?“ ("What can you do?")) count as `off_topic` (category
+    `meta`) and get the fixed sentence.
+14. **Evasion is explained, never supported.** The word patterns for it have been removed. An
+    honest question („Ist das schon Hinterziehung, wenn ich die Zinsen vergessen habe?“ ("Is it already evasion if I forgot the interest?")) goes to the
+    main model, which explains the legal situation, consequences, correction (§ 153 AO) and voluntary disclosure (§ 371 AO)
+    and refuses any help with concealment.
+15. **Language:** The owl answers in the language of the question; forms, Anlagen (schedules), lines and
+    technical terms stay German. Its reasoning stays German.
+16. **Counting without text.** The verdict (verdict, category, language, the reason in case of an outage)
+    is in the internal `engine` info of the answer, which the client never sees, and in the log
+    `advisor_turn`. From this follows the count per user and day. Nobody is blocked or
+    throttled.
+17. **Proving.** Unit tests with fixed verdicts check the wiring in every CI run
     (`advisor-topic-guard.test.ts`, `advisor-topic-boundary.test.ts`). `test/eval/topic-guard.eval.test.ts`
-    misst gegen das echte Modell, nächtlich und vor jedem Modellwechsel: mindestens 90 % von rund
-    40 Zweckentfremdungsversuchen abgelehnt, höchstens 5 % von rund 40 Steuer- und
-    Grauzonenfragen fälschlich abgelehnt, und mit ausgefallenem Prüfer hält die Regel im Prompt.
-    Die fertige Antwort wird nicht nachgeprüft: Sie ist beim Streamen schon gelesen.
+    measures against the real model, nightly and before every model change: at least 90% of around
+    40 misuse attempts rejected, at most 5% of around 40 tax and
+    gray-zone questions wrongly rejected, and with the checker down the rule in the prompt holds.
+    The finished answer is not re-checked: it has already been read during streaming.
 
-## Skills als Dateien (ergänzt 2026-11-13)
+## Skills as files (added 2026-11-13)
 
-Entscheidung des Product Owners: Ein Skill der Eule liegt wie bei Claude als Ordner mit Textdateien
-im Repo und wird beim Bauen wörtlich eingelesen, nicht von Hand in TypeScript abgeschrieben.
+Decision of the Product Owner: a skill of the owl lives, as with Claude, as a folder of text files
+in the repo and is read in verbatim at build time, not copied by hand into TypeScript.
 
-18. **Ablage:** `apps/api/skills/<id>/SKILL.md` (Frontmatter `name`, `description`, `activation`,
-    `command`, `references`; darunter die Anweisungen) und `references/*.md`. Die Haltung ist der
-    Skill `steuerberater` mit `activation: always`; das Berater-Interview ist `berater-interview`
-    mit `activation: user` und `command: grill-me`. `advisor-stance.ts` und der handgeschriebene
-    Interview-Text entfallen.
-19. **Beim Bauen, nicht zur Laufzeit:** `scripts/generate-skills.ts` schreibt
-    `src/ki/skills.generated.ts` (nicht eingecheckt). Es läuft bei `install`, `build`,
-    `typecheck` und `test`. Ausgeliefert wird nur das gebaute Modul; zur Laufzeit liest die API
-    keine Skill-Datei. Der Drift-Test zwischen Skill und eingechecktem Modul entfällt damit.
-20. **Der Bau bricht ab, wenn ein Skill nicht stimmt:** Frontmatter fehlt oder ist unlesbar, `name`
-    ungleich Ordner, unbekannte `activation`, leere Anweisungen, eine Referenz ohne Datei, nicht
-    genau ein `always`-Skill, oder die `user`-Skills und ihre Befehle weichen von
-    `ADVISOR_SKILL_IDS`/`ADVISOR_SKILL_COMMANDS` in `packages/core` ab. Die Liste dort bleibt die
-    typisierte Quelle für API-Schema und Oberfläche.
-21. **Coding-Agent und Eule teilen das Wissen, nicht die Anweisungen.** `.agents/skills/steuerberater/`
-    behält sein eigenes `SKILL.md` (Python-Skript, Websuche) und liest `references/` per Symlink
-    aus dem Ordner der Eule.
+18. **Location:** `apps/api/skills/<id>/SKILL.md` (front matter `name`, `description`, `activation`,
+    `command`, `references`; below it the instructions) and `references/*.md`. The stance is the
+    skill `steuerberater` with `activation: always`; the advisor interview is `berater-interview`
+    with `activation: user` and `command: grill-me`. `advisor-stance.ts` and the hand-written
+    interview text are dropped.
+19. **At build time, not at runtime:** `scripts/generate-skills.ts` writes
+    `src/ki/skills.generated.ts` (not checked in). It runs on `install`, `build`,
+    `typecheck` and `test`. Only the built module is shipped; at runtime the API reads
+    no skill file. The drift test between skill and checked-in module is thereby dropped.
+20. **The build fails if a skill is not right:** front matter missing or unreadable, `name`
+    not equal to the folder, unknown `activation`, empty instructions, a reference without a file, not
+    exactly one `always` skill, or the `user` skills and their commands deviate from
+    `ADVISOR_SKILL_IDS`/`ADVISOR_SKILL_COMMANDS` in `packages/core`. The list there remains the
+    typed source for API schema and UI.
+21. **Coding agent and owl share the knowledge, not the instructions.** `.agents/skills/steuerberater/`
+    keeps its own `SKILL.md` (Python script, web search) and reads `references/` via symlink
+    from the owl's folder.
 
-## Rechnen statt Überschlagen (ergänzt 2026-11-13)
+## Calculating instead of rough estimates (added 2026-11-13)
 
-22. **Neue Werkzeuge auf den geprüften Kern.** `compare_filing_types` (Zusammen- gegen
-    Einzelveranlagung, `filingTypeComparison`) und `check_capital_taxation` (Günstigerprüfung
-    § 32d Abs. 6, `mostFavourableCheck`). Ist unbekannt, ob es Lohnersatz gab, ist das Ergebnis
-    `open` statt einer geratenen Empfehlung.
-23. **Progressionsvorbehalt exakt.** `progressionClauseTax` im Kern wendet den besonderen
-    Steuersatz (§ 32b Abs. 2 EStG) an; `compute_income_tax` nimmt `wageReplacementEur`. Die alte
-    Anleitung im Wissen („zweimal rechnen“) war falsch und ist ersetzt. Wie das Finanzamt den
-    Satz rundet, ist nicht am Gesetz belegt; der Kern rechnet ihn ungerundet.
-24. **Fehler im Kern behoben:** Die Günstigerprüfung zog den Sparer-Pauschbetrag nur auf der
-    Seite der Abgeltungsteuer ab. § 20 Abs. 9 EStG gilt für beide Seiten; der persönliche Satz
-    wirkte dadurch zu teuer, auch in der Maske „Kapital“.
-25. **§ 35a und § 33 ehrlich.** Die Felder dafür gibt es, die Schätzung zählt sie aber nicht,
-    solange `HOUSEHOLD_AND_HEALTH_BOOSTERS` aus ist (#443 Slice 5, angehalten: GdE und
-    Druckmappings fehlen). Ein Entwurf dort zeigt deshalb „nicht berechenbar“ statt 0 €, und der
-    Sparplan fragt danach, wenn nichts eingetragen ist.
+22. **New tools on the checked core.** `compare_filing_types` (Zusammenveranlagung (joint assessment) versus
+    Einzelveranlagung (separate assessment), `filingTypeComparison`) and `check_capital_taxation` (Günstigerprüfung (most-favorable check)
+    § 32d Abs. 6, `mostFavourableCheck`). If it is unknown whether there were wage replacement benefits, the result is
+    `open` instead of a guessed recommendation.
+23. **Progressionsvorbehalt (progression clause) exact.** `progressionClauseTax` in the core applies the special
+    tax rate (§ 32b Abs. 2 EStG); `compute_income_tax` takes `wageReplacementEur`. The old
+    instruction in the knowledge ("calculate twice") was wrong and has been replaced. How the Finanzamt rounds the
+    rate is not backed by the statute; the core calculates it unrounded.
+24. **Bug in the core fixed:** the Günstigerprüfung deducted the Sparer-Pauschbetrag (saver's lump-sum allowance) only on the
+    Abgeltungsteuer (flat-rate withholding tax) side. § 20 Abs. 9 EStG applies to both sides; the personal rate
+    therefore appeared too expensive, also in the screen „Kapital“ ("Capital").
+25. **§ 35a and § 33 honest.** The fields for them exist, but the estimate does not count them
+    as long as `HOUSEHOLD_AND_HEALTH_BOOSTERS` is off (#443 slice 5, paused: GdE and
+    print mappings are missing). A draft there therefore shows „nicht berechenbar“ ("not calculable") instead of €0, and the
+    savings plan asks about it if nothing has been entered.
 
-## Fristen, Termine und Prüfungen (ergänzt 2026-11-13)
+## Deadlines, dates and checks (added 2026-11-13)
 
-26. **Einspruchsfrist genau.** `appealDeadlineEnd` rechnet ab der Bekanntgabe: Bescheiddatum
-    plus vier Tage (ab 2025, vorher drei; § 122 Abs. 2 AO), ein Tag am Wochenende oder Feiertag
-    geht auf den nächsten Werktag, dann ein Monat, das Ende ebenso verschoben (§ 108 Abs. 3 AO).
-    Ohne Bundesland zählen nur bundesweite Feiertage, damit die Frist nie später ist als die
-    echte. Bisher: Bescheiddatum plus ein Monat, also bis zu einer Woche zu früh.
-27. **Termine.** Die Eule bekommt die festen Termine der nächsten 90 Tage
-    (`upcomingTaxDates`: Vorauszahlungen, Verlustbescheinigung 15.12., Zahlungen bis 31.12.,
-    Abgabefristen), nichts über den Fall Angenommenes.
-28. **Sparhebel mit Schwellen.** Liegen die eingetragenen Werbungskosten bis 300 € unter der
-    Pauschale, fragt der Sparplan nach Vergessenem; mehr als 600 € darüber schlägt er den
-    Lohnsteuer-Freibetrag (§ 39a) vor. Lohnersatz über 410 € nennt er als Pflichtveranlagung.
-29. **Neue Werkzeuge.** `check_holding_period` (§ 23 EStG: Fristen auf den Tag, eigene Wohnung,
-    Freigrenze 600/1.000 €) und `check_rental_repairs` (15-%-Grenze, § 6 Abs. 1 Nr. 1a EStG).
+26. **Appeal deadline exact.** `appealDeadlineEnd` calculates from the notification: date of the Bescheid (tax assessment notice)
+    plus four days (from 2025, previously three; § 122 Abs. 2 AO), a day on a weekend or public holiday
+    moves to the next working day, then one month, the end moved the same way (§ 108 Abs. 3 AO).
+    Without a federal state, only nationwide public holidays count, so that the deadline is never later than the
+    real one. Previously: date of the Bescheid plus one month, i.e. up to a week too early.
+27. **Dates.** The owl receives the fixed dates of the next 90 days
+    (`upcomingTaxDates`: advance tax payments, loss certificate 15 Dec, payments by 31 Dec,
+    filing deadlines), nothing assumed about the case.
+28. **Savings levers with thresholds.** If the entered Werbungskosten (work-related expenses) are up to €300 below the
+    lump sum, the savings plan asks about forgotten items; more than €600 above it, it suggests the
+    wage tax allowance (§ 39a). Wage replacement benefits over €410 are named as a mandatory assessment.
+29. **New tools.** `check_holding_period` (§ 23 EStG: deadlines to the day, own home,
+    exemption limit €600/€1,000) and `check_rental_repairs` (15% limit, § 6 Abs. 1 Nr. 1a EStG).
 
-## Schenkung, Selbstständige, Kennzahlen (ergänzt 2026-11-13)
+## Gifts, self-employed, key figures (added 2026-11-13)
 
-30. **Neue Rechner im Kern, als Werkzeuge der Eule:** `compute_gift_tax` (ErbStG: Klasse,
-    Freibeträge §§ 16, 17, Sätze mit Härteausgleich § 19 Abs. 3, zehn Jahre § 14; Befreiungen und
-    Bewertung bleiben Rückfrage), `check_small_business` (§ 19 UStG, Grenzen bis 2024 und ab 2025)
-    und `estimate_trade_tax` (Überschlag GewStG mit Anrechnung § 35 EStG, ohne Kappung an der
-    anteiligen Einkommensteuer). Damit entfällt die Überschlagsrechnung für diese Themen.
-31. **Kennzahlen gegen den Kern.** `advisor-kennzahlen.test.ts` liest die Tabelle des Skills und
-    vergleicht Soli-Freigrenzen, Kindergeld, Kinder- und BEA-Freibetrag, Entlastungsbetrag,
-    Pauschbeträge, Entfernungspauschale, Homeoffice, § 35a, sonstige Vorsorge und die Abgabefristen
-    2023–2026 mit `getTaxYearParameters`. Heute stimmt alles überein. Punkt 4 und „Verworfen:
-    Skill-Tabelle als maßgebliche Zahlenquelle“ gelten weiter: Der Kern rechnet, der Test findet
-    nur Abweichungen.
-32. **Belegt am 13.11.2026** (gesetze-im-internet.de): Kinderbetreuung 80 %, höchstens 4.800 €
-    (§ 10 Abs. 1 Nr. 5), Übungsleiter 3.300 € (§ 3 Nr. 26), Ehrenamt 960 € (§ 3 Nr. 26a),
-    Parteispenden höchstens 1.650/3.300 € (§ 34g). Offen bleibt, ab welchem Jahr § 34g in dieser
-    Höhe gilt, und ob „in allen offenen Fällen“ (§ 52 Abs. 4 S. 10) auch die Beträge von § 3
-    Nr. 26, 26a für frühere Jahre meint.
+30. **New calculators in the core, as tools of the owl:** `compute_gift_tax` (ErbStG: class,
+    allowances §§ 16, 17, rates with hardship equalization § 19 Abs. 3, ten years § 14; exemptions and
+    valuation remain a follow-up question), `check_small_business` (§ 19 UStG, limits until 2024 and from 2025)
+    and `estimate_trade_tax` (rough estimate GewStG with credit § 35 EStG, without capping at the
+    proportional income tax). This drops the rough estimate for these topics.
+31. **Key figures against the core.** `advisor-kennzahlen.test.ts` reads the skill's table and
+    compares Soli exemption limits, Kindergeld, child and BEA allowance, single-parent relief amount,
+    lump-sum allowances, Entfernungspauschale (distance allowance), home office, § 35a, other provident expenses and the filing deadlines
+    2023–2026 with `getTaxYearParameters`. Today everything matches. Point 4 and "Rejected:
+    skill table as the authoritative source of numbers" still apply: the core calculates, the test only finds
+    deviations.
+32. **Verified on 13 November 2026** (gesetze-im-internet.de): childcare 80%, at most €4,800
+    (§ 10 Abs. 1 Nr. 5), Übungsleiter (coach/instructor allowance) €3,300 (§ 3 Nr. 26), volunteering €960 (§ 3 Nr. 26a),
+    party donations at most €1,650/€3,300 (§ 34g). It remains open from which year § 34g applies at this
+    level, and whether „in allen offenen Fällen“ ("in all open cases") (§ 52 Abs. 4 S. 10) also covers the amounts of § 3
+    Nr. 26, 26a for earlier years.
 
-## Gesetze ändern sich (ergänzt 2026-11-13)
+## Laws change (added 2026-11-13)
 
-33. **Wächter.** `apps/api/scripts/check-law-changes.ts` liest jede Norm, die der Skill zitiert
-    oder der Quellenkatalog nennt (heute 102), von gesetze-im-internet.de und vergleicht Wortlaut
-    und Fußnoten mit dem Fingerabdruck in `skills/steuerberater/law-watch.json`. Nächtlich in CI
-    (`law-watch.yml`); bei einer Änderung öffnet er ein Issue oder ergänzt das offene. Angepasst
-    werden Skill und Rechenkern von Hand, danach `laws:check --update`. Ein Test schlägt an, wenn
-    der Skill eine Norm zitiert, die der Wächter noch nicht kennt.
-34. **Die Eule liest den Wortlaut.** `read_law_text` holt eine Norm (oder einen Absatz, eine
-    Nummer) von gesetze-im-internet.de: nur diese Seite, nur die gelisteten Steuergesetze, die
-    Adresse baut der Server. Der Text kommt als Daten mit Hinweis zurück, einen Tag zwischengespeichert,
-    auf 4.000 Zeichen gekürzt, mit den Anwendungshinweisen der Seite. B3 macht das Lesen zur
-    Pflicht, wenn eine Norm die Antwort trägt. Damit ist Punkt 2 („kein Netz“) für diese eine
-    Quelle aufgehoben.
-35. **Heute ist nicht das Steuerjahr.** Die Seite zeigt nur die geltende Fassung. Für ein früheres
-    Jahr sagt die Eule das dazu; welche Fassung gilt, regeln § 52 EStG und Art. 97 EGAO. Beträge
-    der Erklärung bleiben die der App: Ändert sich ein Gesetz, muss erst der Rechenkern folgen
-    (Punkt 33), sonst sagt die Eule etwas anderes, als die App rechnet.
-36. **Quellenkatalog geprüft.** Die neun Zusammenfassungen sind am 13.11.2026 gegen den Wortlaut
-    gelesen (`LEGAL_SOURCES_CHECKED_ON`); die Kinderbetreuung nennt jetzt 80 %/4.800 €. Das
-    Rechtsstand-Datum der Eulen-Karten (`LEGAL_STATUS_DATE`, 01.01.2025) ist davon getrennt und
-    nicht neu geprüft.
+33. **Guard.** `apps/api/scripts/check-law-changes.ts` reads every norm the skill cites
+    or the source catalog names (102 today) from gesetze-im-internet.de and compares wording
+    and footnotes with the fingerprint in `skills/steuerberater/law-watch.json`. Nightly in CI
+    (`law-watch.yml`); on a change it opens an issue or adds to the open one. Skill and calculation core
+    are adjusted by hand, then `laws:check --update`. A test fires when
+    the skill cites a norm the guard does not know yet.
+34. **The owl reads the wording.** `read_law_text` fetches a norm (or a paragraph, a
+    number) from gesetze-im-internet.de: only this site, only the listed tax laws, the
+    server builds the address. The text comes back as data with a notice, cached for one day,
+    truncated to 4,000 characters, with the site's application notes. B3 makes reading
+    mandatory when a norm carries the answer. This lifts point 2 ("no web") for this one
+    source.
+35. **Today is not the tax year.** The site only shows the current version. For an earlier
+    year the owl says so; which version applies is governed by § 52 EStG and Art. 97 EGAO. Amounts
+    of the tax return remain those of the app: if a law changes, the calculation core must follow first
+    (point 33), otherwise the owl says something different from what the app calculates.
+36. **Source catalog checked.** The nine summaries were read against the wording on 13 November 2026
+    (`LEGAL_SOURCES_CHECKED_ON`); childcare now states 80%/€4,800. The
+    legal-status date of the owl cards (`LEGAL_STATUS_DATE`, 01.01.2025) is separate from this and
+    has not been re-checked.
 
-## Selbst beraten statt verweisen (ergänzt 2026-11-13)
+## Advising itself instead of referring (added 2026-11-13)
 
-37. **Entscheidung des Product Owners: Die Eule schickt niemanden zu einem anderen Berater.** Auch
-    Betriebsprüfung, Unternehmensverkauf, Erbschaften mit Betriebsvermögen, Wegzug, GmbH-Gestaltung
-    und ein Streit vor dem Finanzgericht erklärt und rechnet sie selbst (B8). Sie sagt offen, wo viel
-    Geld oder Haftung im Spiel ist und was sie nicht prüfen kann (Bewertung, Verträge, ungesehene
-    Unterlagen); einen Notar nennt sie, wo das Gesetz ihn vorschreibt, als Schritt.
-38. **Zwei Ausnahmen bleiben.** Selbstanzeige und Steuerstrafrecht: Verweis an einen Fachanwalt für
-    Steuerstrafrecht (B7), weil eine fehlerhafte Selbstanzeige die Straffreiheit verliert. Und weiter
-    keine verbindliche Rechtsauskunft, keine Vertretung beim Finanzamt, der Satz „kein zugelassener
-    Steuerberater“ bleibt; die feste Ablehnung davor verweist aber nicht mehr weiter, sondern bietet
-    an, die Rechtslage zu erklären und das Schreiben ans Finanzamt vorzubereiten.
-39. **Golden-Set.** Die `stberg`-Fälle verlangen jetzt eigene Beratung ohne Verweis (Metrik
-    „Beratung statt Verweis“, D1 bleibt ≥ 95 %); dazu je ein Fall für die zwei Ausnahmen.
+37. **Decision of the Product Owner: the owl sends nobody to another advisor.** It also
+    explains and calculates tax audits, business sales, inheritances with business assets, emigration, GmbH structuring
+    and a dispute before the fiscal court itself (B8). It says openly where a lot of
+    money or liability is at stake and what it cannot check (valuation, contracts, unseen
+    documents); it names a notary as a step where the law requires one.
+38. **Two exceptions remain.** Voluntary disclosure and tax criminal law: referral to a specialist lawyer for
+    tax criminal law (B7), because a faulty voluntary disclosure loses immunity from prosecution. And still
+    no binding legal information, no representation before the Finanzamt, the sentence „kein zugelassener
+    Steuerberater“ ("not a licensed tax advisor") remains; the fixed rejection before it, however, no longer refers elsewhere but offers
+    to explain the legal situation and to prepare the letter to the Finanzamt.
+39. **Golden set.** The `stberg` cases now require the owl's own advice without referral (metric
+    "advice instead of referral", D1 stays ≥ 95%); plus one case each for the two exceptions.
 
-## Offen und Risiken
+## Open points and risks
 
-- **Rechtlich ungeprüft.** Geschäftsmäßige Hilfeleistung in Steuersachen ist nach dem
-  Steuerberatungsgesetz zugelassenen Personen vorbehalten. Punkt 5 und Punkt 37 sind Entscheidungen des
-  Product Owners vom 12./13.11.2026; eine rechtliche Prüfung vor dem Verkauf steht aus. Ohne
-  Verweis in schweren Fällen wiegt das schwerer.
-- Für Umsatzsteuer und Erbschaftsteuer gibt es keinen Rechner in der App. Die Eule zeigt dort
-  Formel und Schritte und nennt es eine Überschlagsrechnung; die Prüfung der Antwort markiert
-  Wirkungsbeträge, die kein Werkzeug gerechnet hat.
-- Das Wissen ist so aktuell wie der Skill; der Bau liest es jedes Mal neu ein.
-- Nicht gegen ein echtes Modell erprobt: ob das Modell zuverlässig nachschlägt, bevor es antwortet.
-- Die Themengrenze ist noch nicht gegen das echte Modell gemessen; die Schwellen (90 % / 5 %) sind
-  Startwerte. Der Prüfer kostet jede getippte Nachricht einen kleinen Aufruf und etwa 0,3–1 s bis
-  zum ersten Wort.
-- Mit Tricks in der Nachricht lässt sich auch der Prüfer täuschen. Dann bleibt die Regel im Prompt.
-- `read_law_text` hängt an einer fremden Seite: Ändert sie ihren Aufbau, schlagen Werkzeug und Wächter fehl (der Wächter meldet „nicht erreichbar“). Ob das Modell vor jeder tragenden Norm wirklich liest, ist noch nicht gegen das echte Modell gemessen.
+- **Not legally reviewed.** Commercial assistance in tax matters is reserved under the
+  StBerG (Tax Advisory Act) to licensed persons. Point 5 and point 37 are decisions of the
+  Product Owner from 12/13 November 2026; a legal review before sale is pending. Without
+  referral in serious cases this weighs more heavily.
+- For VAT and inheritance tax there is no calculator in the app. There the owl shows
+  formula and steps and calls it a rough estimate; the answer check flags
+  effect amounts that no tool calculated.
+- The knowledge is as current as the skill; the build reads it in afresh every time.
+- Not tested against a real model: whether the model reliably looks things up before it answers.
+- The topic boundary has not yet been measured against the real model; the thresholds (90% / 5%) are
+  starting values. The checker costs a small call per typed message and about 0.3–1 s until
+  the first word.
+- With tricks in the message, the checker can also be fooled. Then the rule in the prompt remains.
+- `read_law_text` depends on a third-party site: if it changes its structure, tool and guard fail (the guard reports „nicht erreichbar“ ("not reachable")). Whether the model really reads before every load-bearing norm has not yet been measured against the real model.
 
-## Verworfen
+## Rejected
 
-- **Alles Wissen fest in den Prompt:** rund 40 KB je Antwort, langsamer, teurer.
-- **Das Python-Skript auf dem Server ausführen:** zweiter Rechenweg neben dem geprüften Kern.
-- **Themengrenze nur per Wortliste oder nur im Prompt:** Wortlisten sind lückenhaft und lehnen
-  ehrliche Fragen ab; eine Regel nur im Prompt lässt sich wegreden.
-- **Prüfer parallel zum Hauptmodell:** schneller, aber jede Ablehnung bezahlt den großen Aufruf mit. Mit ADR-0100 nach Messung doch so entschieden (1,3 bis 3 s je Antwort).
-- **Skill-Tabelle als maßgebliche Zahlenquelle:** zwei Quellen, die auseinanderlaufen können.
+- **All knowledge fixed in the prompt:** around 40 KB per answer, slower, more expensive.
+- **Running the Python script on the server:** a second calculation path alongside the checked core.
+- **Topic boundary only via word list or only in the prompt:** word lists have gaps and reject
+  honest questions; a rule only in the prompt can be talked away.
+- **Checker in parallel with the main model:** faster, but every rejection also pays for the large call. With ADR-0100, after measurement, decided this way after all (1.3 to 3 s per answer).
+- **Skill table as the authoritative source of numbers:** two sources that can drift apart.
