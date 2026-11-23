@@ -27,12 +27,29 @@ describe('redirectVerificationToWebApp', () => {
     expect(new URL(result).searchParams.get('callbackURL')).toBe('http://localhost:8080/')
   })
 
-  it('leaves an absolute callbackURL untouched', () => {
+  // ADR-0104 L2 — an off-origin callback must not be trusted; it is neutralised to the web app root.
+  it('neutralises a foreign absolute callbackURL to the web app root', () => {
     const link = `${API}&callbackURL=${encodeURIComponent('https://www.example.com/app')}`
 
     const result = redirectVerificationToWebApp(link, WEB_APP)
 
-    expect(new URL(result).searchParams.get('callbackURL')).toBe('https://www.example.com/app')
+    expect(new URL(result).searchParams.get('callbackURL')).toBe('http://localhost:8080/')
+  })
+
+  it('neutralises a protocol-relative callbackURL (//evil.com), which would otherwise resolve to http://evil.com/', () => {
+    const link = `${API}&callbackURL=${encodeURIComponent('//evil.com')}`
+
+    const result = redirectVerificationToWebApp(link, WEB_APP)
+
+    expect(new URL(result).searchParams.get('callbackURL')).toBe('http://localhost:8080/')
+  })
+
+  it('keeps an absolute callbackURL that is already on the web app origin', () => {
+    const link = `${API}&callbackURL=${encodeURIComponent('http://localhost:8080/app?x=1')}`
+
+    const result = redirectVerificationToWebApp(link, WEB_APP)
+
+    expect(new URL(result).searchParams.get('callbackURL')).toBe('http://localhost:8080/app?x=1')
   })
 
   it('keeps the token', () => {

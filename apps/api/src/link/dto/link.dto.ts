@@ -1,6 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger'
 import { RELIGION_KEYS } from '@steuereule/core'
 import { IsBoolean, IsIn, IsOptional, IsString } from 'class-validator'
+import { NoControlCharacters } from '../../common/no-control-characters.validator.js'
 import { IsTaxId } from '../../profile/dto/steuer-id.validators.js'
 
 export class SetLinkDto {
@@ -13,11 +14,13 @@ export class LinkPersonBDto {
   @ApiPropertyOptional({ type: String, nullable: true, example: 'Erika' })
   @IsOptional()
   @IsString()
+  @NoControlCharacters()
   firstName?: string | null
 
   @ApiPropertyOptional({ type: String, nullable: true, example: 'Muster' })
   @IsOptional()
   @IsString()
+  @NoControlCharacters()
   lastName?: string | null
 
   @ApiPropertyOptional({ type: String, nullable: true, example: '12345678901' })
@@ -47,6 +50,7 @@ export class LinkPersonBDto {
   @ApiPropertyOptional({ type: String, nullable: true, example: 'Angestellte' })
   @IsOptional()
   @IsString()
+  @NoControlCharacters()
   beruf?: string | null
 }
 
