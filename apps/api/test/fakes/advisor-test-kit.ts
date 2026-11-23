@@ -36,6 +36,10 @@ import { AdvisorCaseDigest, type PrintoutGaps } from '../../src/advisor/advisor-
 import { AdvisorCaseFacts } from '../../src/advisor/advisor-case-facts.js'
 import { draftRecordsOf } from '../../src/advisor/advisor-draft-records.js'
 import { AdvisorDrafts } from '../../src/advisor/advisor-drafts.js'
+import { AdvisorTurn } from '../../src/advisor/advisor-turn.js'
+import { InMemoryAdvisorRunLog, type AdvisorRunLog } from '../../src/advisor/run/advisor-run-log.js'
+import { AdvisorRunService } from '../../src/advisor/run/advisor-run.service.js'
+import type { Provider } from '@nestjs/common'
 import { AdvisorDocumentStaging } from '../../src/advisor/advisor-document-staging.js'
 import { AdvisorConversations } from '../../src/advisor/advisor-conversations.js'
 import { AdvisorOpening } from '../../src/advisor/advisor-opening.js'
@@ -95,6 +99,11 @@ export interface AdvisorWiring {
   readonly conversations: AdvisorConversations
   readonly notes: AdvisorProjectNotes
   readonly opening: AdvisorOpening
+  readonly turn: AdvisorTurn
+  /** What AdvisorController injects from the advisor, for a Nest testing module. */
+  readonly providers: readonly Provider[]
+  /** The run service over this wiring; its log stays in memory unless a test brings one. */
+  runService(log?: AdvisorRunLog): AdvisorRunService
   /** What the document readers inject. */
   readonly staging: AdvisorDocumentStaging
 }
@@ -176,28 +185,18 @@ export function buildAdvisorTestKit(engine?: AdvisorEnginePort, modelConnection?
     const notes = new AdvisorProjectNotes(advisorRepo, caseDigest)
     const opening = new AdvisorOpening(advisorRepo, caseDigest, notes, taxEstimate)
     const staging = new AdvisorDocumentStaging(advisorRepo, owlModeService, confirmationService, auditService, transactions, caseDigest, drafts, profileRepo, linkService, childRepo)
-    const service = new AdvisorService(
-      advisorRepo,
-      owlModeService,
-      confirmationService,
-      auditService,
-      drafts,
-      caseDigest,
-      conversations,
-      notes,
-      opening,
-      staging,
-      advisorEngine,
-      childRepo,
-      profileRepo,
-      runtimeConfig,
-      transactions,
-      wiring.modelConnection ?? new ModelConnectionService(runtimeConfig),
-      assessmentService,
-      linkService,
-      consent,
-    )
-    return { service, drafts, caseDigest, conversations, notes, opening, staging }
+    const connection = wiring.modelConnection ?? new ModelConnectionService(runtimeConfig)
+    const turn = new AdvisorTurn(advisorRepo, owlModeService, caseDigest, conversations, notes, opening, drafts, transactions, consent, advisorEngine, runtimeConfig, connection, assessmentService, linkService, profileRepo, childRepo)
+    const service = new AdvisorService(advisorRepo, owlModeService, auditService, drafts, caseDigest, conversations, notes, opening, staging, turn, advisorEngine, connection)
+    const providers = [
+      { provide: AdvisorService, useValue: service },
+      { provide: AdvisorTurn, useValue: turn },
+      { provide: AdvisorConversations, useValue: conversations },
+      { provide: AdvisorProjectNotes, useValue: notes },
+      { provide: AdvisorDrafts, useValue: drafts },
+    ]
+    const runService = (log: AdvisorRunLog = new InMemoryAdvisorRunLog()) => new AdvisorRunService(service, turn, conversations, log, advisorRepo)
+    return { service, drafts, caseDigest, conversations, notes, opening, staging, turn, providers, runService }
   }
 
   const base: AdvisorTestKitOptions = { ...options, engine: options.engine ?? engine, modelConnection: options.modelConnection ?? modelConnection }

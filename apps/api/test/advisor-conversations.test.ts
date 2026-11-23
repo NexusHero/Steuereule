@@ -3,8 +3,6 @@
 import type { AdvisorStreamEvent } from '@steuereule/core'
 import { describe, expect, it } from 'vitest'
 import { MAX_CONVERSATIONS_PER_YEAR, searchKey, snippetAround, titleFrom } from '../src/advisor/advisor.service.js'
-import { InMemoryAdvisorRunLog } from '../src/advisor/run/advisor-run-log.js'
-import { AdvisorRunService } from '../src/advisor/run/advisor-run.service.js'
 import { buildAdvisorTestKit, collect, doneEvent, ScriptedAdvisorEngine, type ScriptStep } from './fakes/advisor-test-kit.js'
 
 const USER = 'user-conversations'
@@ -15,7 +13,7 @@ const answer = (text: string): ScriptStep[] => [token(text), doneEvent({ replyTe
 function build(script: readonly ScriptStep[] = answer('Antwort.')) {
   const engine = new ScriptedAdvisorEngine(script)
   const kit = buildAdvisorTestKit(engine)
-  const runs = new AdvisorRunService(kit.service, new InMemoryAdvisorRunLog(), kit.advisorRepo)
+  const runs = kit.runService()
   return { ...kit, engine, runs }
 }
 
@@ -208,7 +206,7 @@ describe('a full conversation is summarised (#481)', () => {
       },
     })
     const kit = buildAdvisorTestKit(summarising)
-    const runs = new AdvisorRunService(kit.service, new InMemoryAdvisorRunLog(), kit.advisorRepo)
+    const runs = kit.runService()
     return { ...kit, engine, asked, runs }
   }
 

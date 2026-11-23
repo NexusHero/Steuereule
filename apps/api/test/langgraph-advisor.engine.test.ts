@@ -13,8 +13,6 @@ import { ThrottlerModule } from '@nestjs/throttler'
 import { describe, expect, it } from 'vitest'
 import type { AdvisorStreamEvent } from '@steuereule/core'
 import { AdvisorController, FastifyThrottlerGuard } from '../src/advisor/advisor.controller.js'
-import { AdvisorService } from '../src/advisor/advisor.service.js'
-import { InMemoryAdvisorRunLog } from '../src/advisor/run/advisor-run-log.js'
 import { AdvisorRunService } from '../src/advisor/run/advisor-run.service.js'
 import { BETTER_AUTH_BUNDLE } from '../src/auth/auth.tokens.js'
 import {
@@ -116,10 +114,9 @@ function runtimeWithProvider(
   }
 }
 
-/** An AdvisorService on in-memory fakes around the given engine, plus the repositories the tests read back. */
+/** The advisor on in-memory fakes around the given engine. */
 function buildAdvisorServiceOnFakes(engine: LangGraphAdvisorEngine) {
-  const { advisorRepo, commuteRepo, service } = buildAdvisorTestKit(engine)
-  return { advisorRepo, commuteRepo, service }
+  return buildAdvisorTestKit(engine)
 }
 
 describe('AiRuntimeConfigService & LangGraphAdvisorEngine (#446 Slice 2)', () => {
@@ -418,14 +415,14 @@ describe('AiRuntimeConfigService & LangGraphAdvisorEngine (#446 Slice 2)', () =>
       new AIMessage('Ich prüfe deinen Arbeitsweg direkt für das Steuerjahr 2025.'),
     ])
     const engine = new LangGraphAdvisorEngine(runtimeWithProvider('google-genai'), () => scriptedModel)
-    const { advisorRepo, service } = buildAdvisorServiceOnFakes(engine)
+    const kit = buildAdvisorServiceOnFakes(engine)
 
     const moduleRef = await Test.createTestingModule({
       imports: [ThrottlerModule.forRoot([{ name: 'default', ttl: 60_000, limit: 10 }])],
       controllers: [AdvisorController],
       providers: [
-        { provide: AdvisorService, useValue: service },
-        { provide: AdvisorRunService, useValue: new AdvisorRunService(service, new InMemoryAdvisorRunLog(), advisorRepo) },
+        ...kit.providers,
+        { provide: AdvisorRunService, useValue: kit.runService() },
         { provide: AdvisorModelsService, useValue: { list: async () => ({ standard: null, models: [] }), isAvailable: async () => false } },
         {
           provide: BETTER_AUTH_BUNDLE,

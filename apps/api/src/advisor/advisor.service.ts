@@ -1,5 +1,4 @@
-import { PersonalDataConsentService } from '../owl-mode/personal-data-consent.service.js'
-import { Inject, Injectable, Optional } from '@nestjs/common'
+import { Inject, Injectable } from '@nestjs/common'
 import {
   ADVISOR_LEGAL_SOURCES,
   type AdvisorHousehold,
@@ -19,16 +18,9 @@ import {
 } from '@steuereule/core'
 import { AuditService } from '../audit/audit.service.js'
 import { ADVISOR_ENGINE } from '../ki/advisor-engine.token.js'
-import { AI_RUNTIME_CONFIG_SERVICE, type AiRuntimeConfigService } from '../ki/ai-runtime-config.service.js'
-import { AssessmentService } from '../assessment/assessment.service.js'
 import { ModelConnectionService } from '../ki/model-connection.service.js'
-import { TRANSACTION_RUNNER, passThroughTransactionRunner, type TransactionRunner } from '../common/transaction-runner.js'
 import { AdvisorOpening } from './advisor-opening.js'
-import { CHILD_REPOSITORY, type ChildRepository } from '../children/child.repository.js'
-import { ConfirmationService } from '../confirmation/confirmation.service.js'
 import { OwlModeService } from '../owl-mode/owl-mode.service.js'
-import { PROFILE_REPOSITORY, type ProfileRepository } from '../profile/profile.repository.js'
-import { LinkService } from '../link/link.service.js'
 import { InvalidInputError, NotFoundError } from '../common/domain-error.js'
 import {
   ADVISOR_REPOSITORY,
@@ -77,7 +69,6 @@ export class AdvisorService {
   constructor(
     @Inject(ADVISOR_REPOSITORY) private readonly advisorRepo: AdvisorRepository,
     @Inject(OwlModeService) private readonly owlModeService: OwlModeService,
-    @Inject(ConfirmationService) private readonly confirmationService: ConfirmationService,
     @Inject(AuditService) private readonly auditService: AuditService,
     @Inject(AdvisorDrafts) private readonly drafts: AdvisorDrafts,
     @Inject(AdvisorCaseDigest) private readonly caseDigest: AdvisorCaseDigest,
@@ -85,50 +76,17 @@ export class AdvisorService {
     @Inject(AdvisorProjectNotes) private readonly notes: AdvisorProjectNotes,
     @Inject(AdvisorOpening) private readonly opening: AdvisorOpening,
     @Inject(AdvisorDocumentStaging) private readonly staging: AdvisorDocumentStaging,
+    @Inject(AdvisorTurn) private readonly turn: AdvisorTurn,
     /** Null only where the fixed rules answer alone; AdvisorModule always binds a model engine. */
     @Inject(ADVISOR_ENGINE) private readonly advisorEngine: AdvisorEnginePort | null,
-    @Optional() @Inject(CHILD_REPOSITORY) private readonly childRepo?: ChildRepository,
-    @Optional() @Inject(PROFILE_REPOSITORY) private readonly profileRepo?: ProfileRepository,
-    @Optional() @Inject(AI_RUNTIME_CONFIG_SERVICE) private readonly runtimeConfig?: AiRuntimeConfigService,
-    @Optional() @Inject(TRANSACTION_RUNNER) private readonly transactions: TransactionRunner = passThroughTransactionRunner,
-    @Optional() @Inject(ModelConnectionService) private readonly modelConnection?: ModelConnectionService,
-    @Optional() @Inject(AssessmentService) private readonly assessmentService?: AssessmentService,
-    @Optional() @Inject(LinkService) private readonly link?: LinkService,
-    @Optional() @Inject(PersonalDataConsentService) private readonly personalDataConsent?: PersonalDataConsentService,
+    @Inject(ModelConnectionService) private readonly modelConnection: ModelConnectionService,
   ) {}
-
-  /** Whether the user consented to personal data going to the owl's model (ADR-0091); read fresh on every use. */
-  private async hasPersonalDataConsent(userId: string): Promise<boolean> {
-    return (await this.personalDataConsent?.hasConsent(userId)) ?? false
-  }
 
   /** Whether a new conversation opens with the owl speaking first (ADR-0067 §11). */
   async openingState(userId: string, taxYear: number): Promise<AdvisorOpeningStateDto> {
     const state = await this.opening.state(userId, taxYear)
     // Without a language model the fixed rules answer; they have nothing to open with.
     return this.advisorEngine ? state : { ...state, shouldOpen: false }
-  }
-
-  private turnPart?: AdvisorTurn
-  private get turn(): AdvisorTurn {
-    return (this.turnPart ??= new AdvisorTurn(
-      this.advisorRepo,
-      this.owlModeService,
-      this.caseDigest,
-      this.conversations,
-      this.notes,
-      this.opening,
-      this.drafts,
-      this.transactions,
-      (userId) => this.hasPersonalDataConsent(userId),
-      this.advisorEngine ?? undefined,
-      this.runtimeConfig,
-      this.modelConnection,
-      this.assessmentService,
-      this.link,
-      this.profileRepo,
-      this.childRepo,
-    ))
   }
 
   // ── Delegated to the parts ─────────────────────────────────────────────────────────────────
@@ -139,9 +97,7 @@ export class AdvisorService {
 
   /** Whether the owl can reach its language model right now (#488). */
   async connection(): Promise<AdvisorConnectionDto> {
-    return (
-      (await this.modelConnection?.check()) ?? { state: 'rules-only', provider: null, model: null, checkedAt: new Date().toISOString() }
-    )
+    return this.modelConnection.check()
   }
 
   async listConversations(userId: string, taxYear: number): Promise<AdvisorConversationDto[]> {

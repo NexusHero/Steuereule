@@ -1,7 +1,7 @@
 import type { AdvisorStreamEvent } from '@steuereule/core'
 import { describe, expect, it, vi } from 'vitest'
 import { InMemoryAdvisorRunLog, type AdvisorRunEntry } from '../src/advisor/run/advisor-run-log.js'
-import { AdvisorRunService, ORPHAN_GRACE_MS } from '../src/advisor/run/advisor-run.service.js'
+import { ORPHAN_GRACE_MS } from '../src/advisor/run/advisor-run.service.js'
 import { buildAdvisorTestKit, doneEvent, ScriptedAdvisorEngine, type ScriptStep } from './fakes/advisor-test-kit.js'
 
 const USER = 'user-run-1'
@@ -19,7 +19,7 @@ function gate(): { readonly open: () => void; readonly opened: Promise<void> } {
 function build(script: readonly ScriptStep[]) {
   const kit = buildAdvisorTestKit(new ScriptedAdvisorEngine(script))
   const log = new InMemoryAdvisorRunLog()
-  const runs = new AdvisorRunService(kit.service, log, kit.advisorRepo)
+  const runs = kit.runService(log)
   return { ...kit, log, runs }
 }
 
