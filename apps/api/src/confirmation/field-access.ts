@@ -1,12 +1,6 @@
 import {
-  ASSESSMENT_FIELD_IDS,
-  ASSESSMENT_NEW_POSITION_IDS,
-  isAssessmentPositionId,
-  isValidAssessmentPositionAmount,
   SALARY_CERTIFICATE_AMOUNT_FIELDS,
   calculateWorkdays,
-  isValidAssessmentAmount,
-  type AssessmentField,
   type IsoWeekday,
   type Screen,
   type SalaryCertificateAmountFieldId,
@@ -14,11 +8,11 @@ import {
   germanStateOfAddress,
   isHolidayRegion,
   GERMAN_DATE_PATTERN,
-  ISO_DATE_PATTERN,
 } from '@steuereule/core'
 import { InvalidInputError } from '../common/domain-error.js'
 import type { ScreenAccess } from '../common/screen-access.js'
 import type { AssessmentRepository } from '../assessment/assessment.repository.js'
+import { ASSESSMENT_ACCESS_FIELDS, assessmentFieldAccess } from '../assessment/assessment-field-access.js'
 import type { CapitalRepository } from '../capital/capital.repository.js'
 import { CAPITAL_ACCESS_FIELDS, capitalFieldAccess } from '../capital/capital-field-access.js'
 import { MEANS_OF_TRANSPORT, WORK_EXPENSE_AMOUNT_FIELDS, WORK_EXPENSE_NOTE_FIELDS, type CommuteInputs, type CommuteRepository, type MeansOfTransport } from '../commute/commute.repository.js'
@@ -98,9 +92,6 @@ const COMMUTE_ACCESS_FIELDS = [
 ] as const
 const COMMUTE_BOOLEAN_FIELDS: ReadonlySet<string> = new Set(['shortestRouteConfirmed', 'secondShortestRouteConfirmed'])
 const COMMUTE_DATE_FIELDS: ReadonlySet<string> = new Set(['periodFrom', 'periodTo', 'secondFrom', 'secondTo'])
-/** The five figures, the Besteuerungsgrundlagen beyond them, the date and the Erläuterungen (ADR-0098 §8). */
-const ASSESSMENT_ACCESS_FIELDS = [...ASSESSMENT_FIELD_IDS, ...ASSESSMENT_NEW_POSITION_IDS, 'assessmentDate', 'erlaeuterungen'] as const
-const MAX_EXPLANATIONS_LENGTH = 4_000
 const INTEGER_RE = /^-?\d+$/
 
 const NGRE_FIELDS: readonly (keyof NGreDetails)[] = [
@@ -451,66 +442,7 @@ export function fieldAccessFrom({
     }
   }
 
-  if (assessment) {
-    // Any Bescheid value taken over, from whichever entry point, may be the first of an Eckjahr (ADR-0098 §4).
-    const written = async (userId: string, taxYear: number, value: string | null) => {
-      if (value !== null) await assessment.recordExternalYear(userId, taxYear)
-      return true
-    }
-    access.assessment = {
-      fields: ASSESSMENT_ACCESS_FIELDS,
-      withInstance: false,
-      async read(userId, taxYear) {
-        const r = await assessment.findForUserAndYear(userId, taxYear)
-        return {
-          einnahmen: r?.fields.einnahmen ?? null,
-          vorsorgeaufwand: r?.fields.vorsorgeaufwand ?? null,
-          anrechnung: r?.fields.anrechnung ?? null,
-          festgesetzteSteuer: r?.fields.festgesetzteSteuer ?? null,
-          erstattung: r?.fields.erstattung ?? null,
-          ...Object.fromEntries(ASSESSMENT_NEW_POSITION_IDS.map((id) => [id, r?.positions?.[id] ?? null])),
-          assessmentDate: r?.assessmentDate ?? null,
-          erlaeuterungen: r?.explanations ?? null,
-        }
-      },
-      async write(userId, taxYear, _instance, field, value) {
-        if (field === 'assessmentDate') {
-          if (value !== null && !ISO_DATE_PATTERN.test(value)) {
-            throw new InvalidInputError('BESCHEIDDATUM_INVALID', 'assessmentDate must be an ISO yyyy-mm-dd date.')
-          }
-          await assessment.setDate(userId, taxYear, value)
-          return written(userId, taxYear, value)
-        }
-        if (field === 'erlaeuterungen') {
-          const text = value === null ? null : value.trim()
-          if (text !== null && text.length > MAX_EXPLANATIONS_LENGTH) {
-            throw new InvalidInputError('FIELD_VALUE_INVALID', `"erlaeuterungen" must be at most ${MAX_EXPLANATIONS_LENGTH} characters.`)
-          }
-          await assessment.setExplanations(userId, taxYear, text === '' ? null : text)
-          return written(userId, taxYear, text === '' ? null : text)
-        }
-        const original = (ASSESSMENT_FIELD_IDS as readonly string[]).includes(field)
-        if (original || isAssessmentPositionId(field)) {
-          if (value === null || value === 'unklar') {
-            await assessment.setField(userId, taxYear, field as AssessmentField, value)
-            return written(userId, taxYear, value)
-          }
-          const trimmed = value.trim()
-          if (!INTEGER_RE.test(trimmed)) {
-            throw new InvalidInputError('FIELD_VALUE_INVALID', `"${field}" requires a whole-euro integer or "unklar".`)
-          }
-          const n = Number(trimmed)
-          const valid = original ? isValidAssessmentAmount(field as AssessmentField, n) : isAssessmentPositionId(field) && isValidAssessmentPositionAmount(field, n)
-          if (!valid) {
-            throw new InvalidInputError('FIELD_VALUE_INVALID', `"${field}" value "${value}" is out of allowed range.`)
-          }
-          await assessment.setField(userId, taxYear, field as AssessmentField, String(n))
-          return written(userId, taxYear, String(n))
-        }
-        return false
-      },
-    }
-  }
+  if (assessment) access.assessment = assessmentFieldAccess(assessment)
 
   if (booking) access.buchung = booking
   return access
