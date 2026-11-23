@@ -130,7 +130,7 @@ describe('PII Masking (ADR-0052 §8 — Personenbezogene Daten: schreiben ja, le
       expect(output).not.toContain('Konrad Bauer')
       expect(output).not.toContain('Siemens AG')
       expect(output).toContain('[ADRESSE-GESCHÜTZT]')
-      expect(output).toContain('[GEBURTSDATUM-GESCHÜTZT]')
+      expect(output).toContain('[ALTER: ca. ')
       expect(output).toContain('[NAME-GESCHÜTZT]')
       expect(output).toContain('[ARBEITGEBER-GESCHÜTZT]')
     })
@@ -138,7 +138,7 @@ describe('PII Masking (ADR-0052 §8 — Personenbezogene Daten: schreiben ja, le
     it('masks a birthdate written before the keyword too ("… 12.03.1980 geboren", ADR-0107 H2 review)', () => {
       const output = scrubUserMessagePii('Ich bin am 12.03.1980 geboren.', [])
       expect(output).not.toContain('12.03.1980')
-      expect(output).toContain('[GEBURTSDATUM-GESCHÜTZT]')
+      expect(output).toContain('[ALTER: ca. ')
     })
 
     it('leaves ordinary tax chat and euro amounts untouched (no over-masking)', () => {
@@ -220,10 +220,24 @@ describe('PII Masking (ADR-0052 §8 — Personenbezogene Daten: schreiben ja, le
       expect(scrubUserMessagePii('Ich wohne Am Hang 7, 10115 Berlin.', [])).toBe('Ich wohne [ADRESSE-GESCHÜTZT].')
     })
 
-    it('masks a birth year named by keyword, in either word order', () => {
-      expect(scrubUserMessagePii('Geboren 1980 in Hamburg.', [])).toBe('Geboren [GEBURTSDATUM-GESCHÜTZT] in Hamburg.')
-      expect(scrubUserMessagePii('Ich bin 1980 geboren.', [])).toBe('Ich bin [GEBURTSDATUM-GESCHÜTZT] geboren.')
-      expect(scrubUserMessagePii('Jahrgang 1975, wann gehe ich in Rente?', [])).not.toContain('1975')
+    // The day of birth identifies a person; the age is what the answer needs (a child under 14, the start of
+    // a pension). So a birthdate leaves as a rough age, counted from the year alone.
+    it('replaces a birth year or birthdate with the rough age in years', () => {
+      expect(scrubUserMessagePii('Geboren 1980 in Hamburg.', [], 2026)).toBe('Geboren [ALTER: ca. 46 Jahre] in Hamburg.')
+      expect(scrubUserMessagePii('Ich bin 1980 geboren.', [], 2026)).toBe('Ich bin [ALTER: ca. 46 Jahre] geboren.')
+      expect(scrubUserMessagePii('Jahrgang 1975, wann gehe ich in Rente?', [], 2026)).toBe('Jahrgang [ALTER: ca. 51 Jahre], wann gehe ich in Rente?')
+      expect(scrubUserMessagePii('Mein Sohn, geboren am 03.05.2015, geht in den Hort.', [], 2026)).toBe('Mein Sohn, [ALTER: ca. 11 Jahre], geht in den Hort.')
+      expect(scrubUserMessagePii('Ich bin am 12. März 1980 geboren.', [], 2026)).toBe('Ich bin am [ALTER: ca. 46 Jahre] geboren.')
+    })
+
+    it('reads a two-digit year as the most recent one that is not in the future', () => {
+      expect(scrubUserMessagePii('geb. 12.03.80', [], 2026)).toBe('[ALTER: ca. 46 Jahre]')
+      expect(scrubUserMessagePii('geb. 12.03.15', [], 2026)).toBe('[ALTER: ca. 11 Jahre]')
+    })
+
+    it('keeps the plain placeholder when the year gives no plausible age', () => {
+      expect(scrubUserMessagePii('Geboren 2090 laut Formular.', [], 2026)).toBe('Geboren [GEBURTSDATUM-GESCHÜTZT] laut Formular.')
+      expect(scrubUserMessagePii('geboren am 12.03.198', [], 2026)).toBe('[GEBURTSDATUM-GESCHÜTZT]')
     })
   })
 

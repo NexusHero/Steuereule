@@ -97,7 +97,8 @@ const PHONE_TEXT_REGEX = /(?:\+(?:49|41|43)[\s/-]?\d{2,4}|0\d{2,4})[\s/-]?\d{3,4
 /**
  * Scrubs free-text user chat messages before sending them to an external LLM.
  * Replaces known profile names, 11-digit tax IDs, tax numbers, IBANs, emails, phone numbers,
- * and — added after the live pentest of 2026-11-23 (ADR-0107 H2) — street addresses, birthdates,
+ * and — added after the live pentest of 2026-11-23 (ADR-0107 H2) — street addresses, birthdates (replaced
+ * by a rough age in years, counted from `referenceYear`),
  * inline employer names and honorific-prefixed third-party names, so a typed chat message leaks no
  * more PII to the provider than an uploaded document does. Every added pattern uses bounded
  * quantifiers and unambiguous separators, so this stays linear and fast in the message length
@@ -106,6 +107,7 @@ const PHONE_TEXT_REGEX = /(?:\+(?:49|41|43)[\s/-]?\d{2,4}|0\d{2,4})[\s/-]?\d{3,4
 export function scrubUserMessagePii(
   text: string,
   knownNames: readonly string[] = [],
+  referenceYear: number = new Date().getFullYear(),
 ): string {
   if (!text) return ''
 
@@ -123,10 +125,13 @@ export function scrubUserMessagePii(
   // document-only patterns used to miss on the chat path (pentest 2026-11-23, ADR-0107 H2).
   scrubbed = scrubbed.replace(ADDRESS_WITH_POSTCODE_REGEX, '[ADRESSE-GESCHÜTZT]')
   scrubbed = scrubbed.replace(STREET_AND_NUMBER_REGEX, '[ADRESSE-GESCHÜTZT]')
-  scrubbed = scrubbed.replace(DOB_VALUE_REGEX, '[GEBURTSDATUM-GESCHÜTZT]')
-  scrubbed = scrubbed.replace(DOB_BEFORE_KEYWORD_REGEX, '[GEBURTSDATUM-GESCHÜTZT]')
-  scrubbed = scrubbed.replace(BIRTH_YEAR_REGEX, '$1[GEBURTSDATUM-GESCHÜTZT]')
-  scrubbed = scrubbed.replace(BIRTH_YEAR_BEFORE_KEYWORD_REGEX, '[GEBURTSDATUM-GESCHÜTZT]')
+  // A birthdate leaves as a rough age: the day identifies a person, the age is what the tax answer needs
+  // (a child under 14, the year a pension starts).
+  const roughAge = (date: string): string => roughAgeFor(date, referenceYear)
+  scrubbed = scrubbed.replace(DOB_VALUE_REGEX, roughAge)
+  scrubbed = scrubbed.replace(DOB_BEFORE_KEYWORD_REGEX, roughAge)
+  scrubbed = scrubbed.replace(BIRTH_YEAR_REGEX, (match: string, keyword: string) => keyword + roughAge(match))
+  scrubbed = scrubbed.replace(BIRTH_YEAR_BEFORE_KEYWORD_REGEX, roughAge)
   scrubbed = scrubbed.replace(EMPLOYER_INLINE_REGEX, '[ARBEITGEBER-GESCHÜTZT]')
   scrubbed = scrubbed.replace(EMPLOYER_CONTEXT_REGEX, '$1[ARBEITGEBER-GESCHÜTZT]')
 
@@ -139,6 +144,27 @@ export function scrubUserMessagePii(
   // stay ($1): "meine Frau [NAME-GESCHÜTZT]" still tells the model whose income the question is about.
   scrubbed = scrubbed.replace(RELATED_PERSON_NAME_REGEX, '$1[NAME-GESCHÜTZT]')
   return scrubbed.replace(HONORIFIC_NAME_REGEX, '$1[NAME-GESCHÜTZT]')
+}
+
+const BIRTHDATE_PLACEHOLDER = '[GEBURTSDATUM-GESCHÜTZT]'
+const OLDEST_PLAUSIBLE_AGE = 120
+
+/**
+ * The stand-in for a birthdate in chat: the age in whole years, counted from the year alone ("ca.", because
+ * the birthday within the year is not looked at). A two-digit year is read as the most recent year that is
+ * not in the future. A date whose year gives no plausible age keeps the plain placeholder.
+ */
+function roughAgeFor(date: string, referenceYear: number): string {
+  const digits = /(\d{2,4})\D*$/.exec(date)?.[1]
+  if (digits === undefined || digits.length === 3) return BIRTHDATE_PLACEHOLDER
+  let year = Number(digits)
+  if (digits.length === 2) {
+    const century = Math.floor(referenceYear / 100) * 100
+    year = century + year > referenceYear ? century - 100 + year : century + year
+  }
+  const age = referenceYear - year
+  if (age < 0 || age > OLDEST_PLAUSIBLE_AGE) return BIRTHDATE_PLACEHOLDER
+  return `[ALTER: ca. ${age} Jahre]`
 }
 
 /**
