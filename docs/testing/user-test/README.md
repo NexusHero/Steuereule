@@ -1,33 +1,35 @@
-# Nutzertest Navigation alt ↔ neu (#450 Teil 2B, D12)
+# User test: old ↔ new navigation (#450 part 2B, D12)
 
-Ziel: Herausfinden, ob die neue Navigation (#443, Hub-Cockpit) Menschen tatsächlich schneller und sicherer durch die Erklärung bringt als der alte Tunnel. Die automatische Messung (Teil 2A) zählt Klicks; dieser Test misst Zeit, Fehler und Stellen, an denen jemand nicht weiterweiß.
+Goal: find out whether the new navigation (#443, hub cockpit) actually gets people through the tax return faster and more reliably than the old tunnel. The automated measurement (part 2A) counts clicks; this test measures time, errors and the points at which someone does not know how to continue.
 
-| Datei | Wofür |
+The participants are German-speaking. Text that is read aloud or handed to participants stays in German in these materials, with an English translation next to or below it.
+
+| File | Purpose |
 | :--- | :--- |
-| [session-log.md](session-log.md) | Ablauf je Sitzung, Rolle der Moderation, Vorlage für die Notizen |
-| [tasks.md](tasks.md) | Die vier Aufgaben mit Testdaten und Erfolgskriterium |
-| [sus-questionnaire.md](sus-questionnaire.md) | System Usability Scale (10 Fragen) mit Auswertung |
-| [evaluation.md](evaluation.md) | Tabelle für die Ergebnisse und den Bericht |
+| [session-log.md](session-log.md) | Flow of each session, role of the facilitator, template for the notes |
+| [tasks.md](tasks.md) | The four tasks with test data and success criterion |
+| [sus-questionnaire.md](sus-questionnaire.md) | System Usability Scale (10 questions) with scoring |
+| [evaluation.md](evaluation.md) | Table for the results and the report |
 
-## Aufbau
+## Setup
 
-- **10 Personen**, 5 je Variante (**between-subjects**: jede Person sieht nur eine Variante, damit sie nicht aus der ersten lernt).
-  - **Alt:** Tag `baseline/pre-443` (Commit `1990ed3`), der Stand vor #443.
-  - **Neu:** aktueller `main`.
-- Gleiche Aufgaben, gleiche Testdaten, gleiche Reihenfolge, gleiches Gerät (Laptop, Chrome, 1280 px).
-- Dauer je Sitzung etwa 40 Minuten: 5 Begrüßung, 25 Aufgaben, 5 SUS, 5 Nachgespräch.
-- Rekrutierung durch den Product Owner. Mischung je Variante möglichst gleich: mindestens 2 Personen, die ihre Erklärung bisher selbst machen, mindestens 1 Person über 55, höchstens 1 Person aus dem Team oder mit Kenntnis der App.
+- **10 people**, 5 per variant (**between-subjects**: each person sees only one variant, so that they do not learn from the first).
+  - **Old:** tag `baseline/pre-443` (commit `1990ed3`), the state before #443.
+  - **New:** current `main`.
+- Same tasks, same test data, same order, same device (laptop, Chrome, 1280 px).
+- Duration per session about 40 minutes: 5 welcome, 25 tasks, 5 SUS, 5 debrief.
+- Recruitment by the product owner. Mix per variant as equal as possible: at least 2 people who have so far done their tax return themselves, at least 1 person over 55, at most 1 person from the team or with knowledge of the app.
 
-## Datenschutz
+## Data protection
 
-- Nur **synthetische Testdaten** aus [tasks.md](tasks.md). Die Personen tragen nie eigene Daten ein.
-- Testkonten werden vorher angelegt und danach gelöscht.
-- Keine Bild- oder Tonaufnahme ohne schriftliche Einwilligung. Ohne Einwilligung: nur Notizen und Stoppuhr.
-- In den Ergebnissen stehen Kürzel (A1–A5, N1–N5), keine Namen.
+- Only **synthetic test data** from [tasks.md](tasks.md). Participants never enter their own data.
+- Test accounts are created beforehand and deleted afterwards.
+- No video or audio recording without written consent. Without consent: only notes and a stopwatch.
+- The results use codes (A1–A5, N1–N5), no names.
 
-## Vorbereitung (je Variante einmal)
+## Preparation (once per variant)
 
-1. Stack starten (siehe `e2e/harness/README.md`), für **Alt** vorher `git worktree add ../steuereule-alt baseline/pre-443`.
-2. Je Person ein frisches, bestätigtes Konto anlegen (E-Mail `nutzertest-<kürzel>@beispiel.de`), noch ohne Angaben.
-3. Browser: neues Profil, kein Autofill, Zoom 100 %, Fenster 1280 × 800.
-4. Stoppuhr, ausgedruckte Aufgabenkarten, ausgedruckter SUS-Bogen, Notizvorlage aus [session-log.md](session-log.md).
+1. Start the stack (see `e2e/harness/README.md`); for **Old**, first run `git worktree add ../steuereule-alt baseline/pre-443`.
+2. Create a fresh, confirmed account per person (email `nutzertest-<kürzel>@beispiel.de`), still without any details.
+3. Browser: new profile, no autofill, zoom 100 %, window 1280 × 800.
+4. Stopwatch, printed task cards, printed SUS form, note template from [session-log.md](session-log.md).

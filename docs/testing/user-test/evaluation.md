@@ -1,19 +1,19 @@
-# Auswertung (Vorlage)
+# Evaluation (template)
 
-Nach den 10 Sitzungen ausfüllen. Zeiten als **Median** je Variante (bei 5 Personen ist der Mittelwert zu anfällig für einen Ausreißer); Aufgaben ohne Erfolg gehen mit dem Zeitlimit (480 s) ein.
+Fill in after the 10 sessions. Times as the **median** per variant (with 5 people the mean is too sensitive to an outlier); tasks without success count with the time limit (480 s).
 
-## Zeit und Erfolg je Aufgabe
+## Time and success per task
 
-| Aufgabe | Alt: Median Zeit (s) | Alt: Erfolg ohne Hilfe | Neu: Median Zeit (s) | Neu: Erfolg ohne Hilfe | Differenz |
+| Task | Old: median time (s) | Old: success without help | New: median time (s) | New: success without help | Difference |
 | :--- | ---: | ---: | ---: | ---: | ---: |
-| 1 Erster Durchlauf | | /5 | | /5 | |
-| 2 Korrektur | | /5 | | /5 | |
-| 3 Unterbrechung | | /5 | | /5 | |
-| 4 Wiedereinstieg | | /5 | | /5 | |
+| 1 First run | | /5 | | /5 | |
+| 2 Correction | | /5 | | /5 | |
+| 3 Interruption | | /5 | | /5 | |
+| 4 Re-entry | | /5 | | /5 | |
 
-## Fehler und Stockstellen
+## Errors and sticking points
 
-| Aufgabe | Alt: Fehler gesamt | Neu: Fehler gesamt | Häufigste Stockstelle alt | Häufigste Stockstelle neu |
+| Task | Old: total errors | New: total errors | Most frequent sticking point old | Most frequent sticking point new |
 | :--- | ---: | ---: | :--- | :--- |
 | 1 | | | | |
 | 2 | | | | |
@@ -22,25 +22,25 @@ Nach den 10 Sitzungen ausfüllen. Zeiten als **Median** je Variante (bei 5 Perso
 
 ## SUS
 
-| Variante | Einzelwerte | Median | Spannweite |
+| Variant | Individual scores | Median | Range |
 | :--- | :--- | ---: | :--- |
-| Alt | | | |
-| Neu | | | |
+| Old | | | |
+| New | | | |
 
-## Vergleich mit der automatischen Messung (Teil 2A)
+## Comparison with the automated measurement (part 2A)
 
-| Aufgabe | Interaktionen alt (2A) | Interaktionen neu (2A) | Passt das Ergebnis der Menschen dazu? |
+| Task | Interactions old (2A) | Interactions new (2A) | Does the human result match? |
 | :--- | ---: | ---: | :--- |
 | 1 | | | |
 | 2 | | | |
 | 3 | | | |
 | 4 | | | |
 
-## Bericht (höchstens eine Seite)
+## Report (one page at most)
 
-1. **Ergebnis in einem Satz:** …
-2. **Wo die neue Navigation hilft:** …
-3. **Wo sie schadet oder nichts ändert:** …
-4. **Die drei wichtigsten Stockstellen** mit Screen und Vorschlag: …
-5. **Grenzen:** 5 Personen je Variante, Laborsituation, ausgedachte Daten.
-6. **Folgetickets:** …
+1. **Result in one sentence:** …
+2. **Where the new navigation helps:** …
+3. **Where it hurts or changes nothing:** …
+4. **The three most important sticking points** with screen and proposal: …
+5. **Limits:** 5 people per variant, lab situation, made-up data.
+6. **Follow-up tickets:** …
