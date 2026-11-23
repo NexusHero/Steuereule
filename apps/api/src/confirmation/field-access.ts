@@ -6,12 +6,9 @@ import {
   WAGE_TAX_CERTIFICATE_FIELDS, LSTB_OPTIONAL_LINES, LSTB_SOCIAL_LINES, LSTB_SOLI_LINE,
   RENTAL_FIELDS,
   SALARY_CERTIFICATE_AMOUNT_FIELDS,
-  QUESTIONS,
   calculateWorkdays,
-  isValidAnswer,
   isValidAssessmentAmount,
   type AssessmentField,
-  type EntryStepId,
   type IsoWeekday,
   type WageTaxCertificateFieldId,
   type Screen,
@@ -39,6 +36,7 @@ import type { ProfileRepository } from '../profile/profile.repository.js'
 import { MASTER_DATA_FIELDS, type MasterDataField, type MasterDataRepository } from '../master-data/master-data.repository.js'
 import type { PartnerCouplingRepository } from '../link/link.repository.js'
 import type { InterviewAnswerRepository } from '../interview/interview-answer.repository.js'
+import { INTERVIEW_ACCESS_FIELDS, interviewFieldAccess } from '../interview/interview-field-access.js'
 import { N_GRE_BOOLEAN_FIELDS, type CrossBorderSalaryStatementRepository, type NGreDetails } from '../ch-salary-certificate/ch-salary-certificate.repository.js'
 import type { ChildRepository } from '../children/child.repository.js'
 
@@ -112,7 +110,6 @@ const INTEGER_RE = /^-?\d+$/
 
 const PROFILE_ACCESS_FIELDS = ['firstName', 'lastName', 'steuerId', 'steuernummer'] as const
 const LINK_ACCESS_FIELDS = ['filingType', 'invitationCode'] as const
-const INTERVIEW_ACCESS_FIELDS = Object.keys(QUESTIONS)
 const NGRE_FIELDS: readonly (keyof NGreDetails)[] = [
   'arbeitgeberName',
   'arbeitgeberStrasse',
@@ -390,32 +387,7 @@ export function fieldAccessFrom({
     }
   }
 
-  if (interview) {
-    access.interview = {
-      fields: INTERVIEW_ACCESS_FIELDS,
-      withInstance: false,
-      async read(userId, taxYear) {
-        const rows = await interview.findAllForUserAndYear(userId, taxYear)
-        return Object.fromEntries(rows.map((r) => [r.questionId, r.value]))
-      },
-      async write(userId, taxYear, _instance, field, value) {
-        // The interview's own endpoint checks every answer; this path did not. One value outside
-        // the accepted set (say „angestellt“ for „Angestellt“) made every later read of that
-        // user's interview fail (#476). Null and '' take an answer back and stay allowed.
-        if (value !== null && value !== '' && !isValidAnswer(field as EntryStepId, value)) {
-          throw new InvalidInputError('FIELD_VALUE_INVALID', `"${value}" is not an accepted answer for "${field}".`)
-        }
-        await interview.write({
-          userId,
-          taxYear,
-          questionId: field,
-          value: value ?? '',
-          openItems: 0,
-        })
-        return true
-      },
-    }
-  }
+  if (interview) access.interview = interviewFieldAccess(interview)
 
   if (chSalaryCertificate) {
     access.chLohnausweis = {
