@@ -5,6 +5,7 @@ import { Button, Card, Feld, Input, useTheme, type UiTheme } from '@steuereule/u
 import { useAssistantsControllerGetClientInfo, getApiClientBaseUrl } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
 import { STEP_UP_REQUIRED_CODE } from '../../auth/useStepUp'
+import { consentDestinations } from './consentDestination'
 
 export interface OauthConsentScreenProps {
   readonly clientId?: string | undefined
@@ -60,6 +61,16 @@ export function OauthConsentScreen({
   const clientName = clientInfoQuery.data?.status === 200
     ? clientInfoQuery.data.data.name
     : params.clientId || 'KI-Assistent'
+
+  // The name is the assistant's own claim; where the approval leads is what it registered (see consentDestination).
+  const destinations = clientInfoQuery.data?.status === 200
+    ? consentDestinations(clientInfoQuery.data.data.redirectTargets ?? [], params.oauthQuery)
+    : []
+  const destinationLabel = (destination: string): string => {
+    if (destination === 'localhost') return tr('oauthConsent.destinationDevice')
+    if (destination.endsWith('://')) return tr('oauthConsent.destinationApp', { scheme: destination })
+    return destination
+  }
 
   const scopes = params.scope ? params.scope.split(' ').filter(Boolean) : []
 
@@ -152,6 +163,19 @@ export function OauthConsentScreen({
           <Text style={styles.clientHeading}>
             <Text style={styles.boldText}>{clientName}</Text> {tr('oauthConsent.requestNotice')}
           </Text>
+          {clientInfoQuery.isPending ? null : (
+            <Text style={styles.clientHeading} testID="oauth-destination">
+              {tr('oauthConsent.destinationLabel')}{' '}
+              <Text style={styles.boldText}>
+                {destinations.length > 0 ? destinations.map(destinationLabel).join(', ') : tr('oauthConsent.destinationUnknown')}
+              </Text>
+            </Text>
+          )}
+        </View>
+
+        <View style={styles.warningBox}>
+          <Text style={styles.warningHeading}>{tr('oauthConsent.unverifiedHeading')}</Text>
+          <Text style={styles.warningBody}>{tr('oauthConsent.unverifiedNotice')}</Text>
         </View>
 
         <View style={styles.section}>

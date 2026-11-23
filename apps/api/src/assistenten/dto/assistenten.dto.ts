@@ -14,6 +14,18 @@ export class ConnectedAssistantDto {
   lastUsed!: string | null
 }
 
+export class OauthRedirectTargetDto {
+  @ApiProperty({ type: String, example: 'https://claude.ai/api/mcp/auth_callback', description: 'A redirect address the client registered.' })
+  uri!: string
+
+  @ApiProperty({
+    type: String,
+    example: 'claude.ai',
+    description: 'Where that address leads, for the consent screen: the host of a web address, "localhost" for an app on the user\'s machine, or an app scheme such as "cursor://".',
+  })
+  destination!: string
+}
+
 export class OauthClientInfoDto {
   @ApiProperty({ type: String, example: 'client_xyz123' })
   clientId!: string
@@ -26,6 +38,12 @@ export class OauthClientInfoDto {
 
   @ApiPropertyOptional({ type: String, example: null, nullable: true })
   icon?: string | null
+
+  @ApiProperty({
+    type: [OauthRedirectTargetDto],
+    description: 'Where an approval can send the access to. The name above is the client\'s own claim; these addresses are what it registered.',
+  })
+  redirectTargets!: OauthRedirectTargetDto[]
 }
 
 export class RevokeAssistantResponseDto {

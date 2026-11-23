@@ -10,6 +10,8 @@ export interface ClientInfo {
   name: string
   uri: string | null
   icon: string | null
+  /** The redirect addresses the client registered: the only places an approval can send the access to. */
+  redirectUris: readonly string[]
 }
 
 export const ASSISTANT_REPOSITORY = Symbol('ASSISTANT_REPOSITORY')
