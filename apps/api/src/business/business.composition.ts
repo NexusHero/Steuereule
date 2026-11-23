@@ -6,6 +6,8 @@ import type { BusinessRepository } from './business.repository.js'
 import { BusinessService } from './business.service.js'
 import type { HebesatzDirectory } from './hebesatz.js'
 import { LedgerService } from './ledger.service.js'
+import { BusinessProfileService } from './business-profile.service.js'
+import { BusinessElsterService } from './business-elster.service.js'
 import { BusinessSummaryService } from './business-summary.service.js'
 import { BusinessTaxService } from './business-tax.service.js'
 import { VatService } from './vat.service.js'
@@ -28,12 +30,18 @@ export function composeBusinessService(
 ): BusinessService {
   const context = new BusinessContext(repository, interview, unlock, now)
   const ledger = new LedgerService(repository, audit, context)
-  const payrollRuns = new PayrollService(repository, audit, context, ledger)
-  const exports = new BusinessExportService(repository, audit, context, ledger)
-  const bank = new BankImportService(repository, audit, context, ledger)
-  const fixedAssets = new AssetService(repository, audit, context, ledger)
   const vat = new VatService(repository, audit, context)
   const tax = new BusinessTaxService(audit, context, ledger, hebesaetze)
-  const summary = new BusinessSummaryService(repository, context, vat, tax)
-  return new BusinessService(repository, audit, hebesaetze, context, ledger, payrollRuns, exports, bank, fixedAssets, vat, tax, summary)
+  return new BusinessService(
+    new BusinessProfileService(repository, audit, context),
+    ledger,
+    new BankImportService(repository, audit, context, ledger),
+    new AssetService(repository, audit, context, ledger),
+    new PayrollService(repository, audit, context, ledger),
+    vat,
+    tax,
+    new BusinessSummaryService(repository, context, vat, tax),
+    new BusinessElsterService(audit, context, ledger, vat, tax, hebesaetze),
+    new BusinessExportService(repository, audit, context, ledger),
+  )
 }
