@@ -82,14 +82,30 @@ once by `auth/trusted-origins.ts` (`mergeTrustedOrigins`) and used in both place
 so a legitimate web-app call and an attacker's call are *both* `Sec-Fetch-Site: cross-site` — only the Origin
 value distinguishes them.
 
-### 2. An absolute session cap, enforced in the guard
+### 2. An absolute session cap, enforced on both session boundaries
 
-better-auth's config cannot express a maximum age independent of the sliding window, so `UserContextGuard`
-enforces it: a session whose `createdAt` is older than **30 days** (`SESSION_ABSOLUTE_MAX_AGE_MS`) is refused
-like an expired one — the guard falls through to the guest path rather than honouring an indefinitely-renewed
-cookie. The sliding idle window is pinned explicitly at its existing values (`expiresIn` 7 days, `updateAge`
-1 day) so they are reviewed decisions rather than inherited defaults, and **`freshAge` stays 0** (ADR-0027 —
-the device list depends on it; this ADR does not touch that).
+better-auth's config cannot express a maximum age independent of the sliding window, so the cap
+(**30 days** from `createdAt`, `SESSION_ABSOLUTE_MAX_AGE_MS`) is enforced in two places — because there are
+two session readers, and the mounted better-auth handler (`/api/auth/*`, `mount-better-auth.ts`) runs
+*outside* `UserContextGuard`:
+
+- **`UserContextGuard`** (the `/v1` routes): a session whose `createdAt` is over the cap is refused like an
+  expired one — the guard falls through to the guest path. This is immediate, including for a pre-existing
+  session that has not been slid since this shipped.
+- **A `databaseHooks.session.update.before` clamp** (`session-absolute-cap.ts`): every expiry slide
+  better-auth performs is clamped to `createdAt + cap`. Once a session is past the cap the clamp is a time
+  in the past, so better-auth's own `expiresAt < now` check (`session.mjs`) expires and **deletes** the
+  session on its next read — on *every* route, better-auth's own endpoints included. This is what forces a
+  **stolen, actively-used** cookie to re-authenticate: clamping the server-side `expiresAt` invalidates the
+  row for whoever holds the cookie, where merely clearing the legitimate user's cookie would not.
+  *Residual:* a slide happens at most once per `updateAge` (1 day), so a session that was already over the
+  cap when this shipped keeps working on `/api/auth/*` until its next slide (≤1 day of use) catches it; the
+  guard already blocks it on `/v1` immediately, and every session created from here on is clamped before it
+  can ever exceed the cap.
+
+The sliding idle window is pinned explicitly at its existing values (`expiresIn` 7 days, `updateAge` 1 day)
+so they are reviewed decisions rather than inherited defaults, and **`freshAge` stays 0** (ADR-0027 — the
+device list depends on it; this ADR does not touch that).
 
 30 days balances the "stay signed in" expectation of a consumer tax app against bounding a stolen
 `SameSite=None` cookie's lifetime: well beyond the 7-day idle window, so an ordinary active user is never cut

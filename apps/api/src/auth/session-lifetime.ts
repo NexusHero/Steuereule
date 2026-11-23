@@ -38,7 +38,32 @@ export const SESSION_ABSOLUTE_MAX_AGE_MS = 60 * 60 * 24 * 30 * 1000 // 30 days
  */
 export function isSessionWithinAbsoluteCap(createdAt: Date | string | number | null | undefined, now: number = Date.now()): boolean {
   if (createdAt === null || createdAt === undefined) return true
-  const createdMs = createdAt instanceof Date ? createdAt.getTime() : new Date(createdAt).getTime()
+  const createdMs = toEpochMs(createdAt)
   if (!Number.isFinite(createdMs)) return true
   return now - createdMs < SESSION_ABSOLUTE_MAX_AGE_MS
+}
+
+function toEpochMs(value: Date | string | number): number {
+  return value instanceof Date ? value.getTime() : new Date(value).getTime()
+}
+
+/**
+ * The absolute-cap ceiling for a session's `expiresAt`, used where better-auth itself slides the session
+ * (`databaseHooks.session.update.before`). Returns the clamped `expiresAt` (never later than
+ * `createdAt + SESSION_ABSOLUTE_MAX_AGE_MS`) when the proposed value would exceed the cap, otherwise
+ * `undefined` (leave it as proposed). Once a session is past the cap this returns a time in the past, so
+ * better-auth's own `expiresAt < now` check expires and deletes the session on its next read — which is why
+ * this, not the guard check alone, is what forces a stolen, actively-used cookie to die on every route.
+ */
+export function clampExpiresAtToAbsoluteCap(
+  createdAt: Date | string | number | null | undefined,
+  proposedExpiresAt: Date | string | number | null | undefined,
+): Date | undefined {
+  if (createdAt === null || createdAt === undefined || proposedExpiresAt === null || proposedExpiresAt === undefined) return undefined
+  const createdMs = toEpochMs(createdAt)
+  const proposedMs = toEpochMs(proposedExpiresAt)
+  if (!Number.isFinite(createdMs) || !Number.isFinite(proposedMs)) return undefined
+  const capMs = createdMs + SESSION_ABSOLUTE_MAX_AGE_MS
+  if (proposedMs <= capMs) return undefined
+  return new Date(capMs)
 }

@@ -19,6 +19,7 @@ import { createResettableRateLimitStorage, type ResettableRateLimitStorage } fro
 import { mergeTrustedOrigins } from './trusted-origins.js'
 import { SESSION_IDLE_EXPIRES_IN_SECONDS, SESSION_UPDATE_AGE_SECONDS } from './session-lifetime.js'
 import { forceRevokeOtherSessionsOnPasswordChange } from './force-session-rotation.js'
+import { capSessionUpdateExpiry } from './session-absolute-cap.js'
 
 export const OAUTH_SCOPES = [
   'openid',
@@ -209,6 +210,12 @@ function buildOptions(options: CreateBetterAuthOptions & { rateLimitStorage: Res
       session: {
         create: {
           after: createGuestAccountUpgradeHook(prisma),
+        },
+        update: {
+          // Enforce the absolute cap at the better-auth boundary too (ADR-0103 vulnerability 2): clamp every
+          // expiry slide to createdAt + cap, so a stolen, actively-used cookie dies on every route, not only
+          // on `/v1` (which UserContextGuard already refuses). The mounted handler bypasses that guard.
+          before: async (data, context) => capSessionUpdateExpiry(data, context),
         },
       },
     },
