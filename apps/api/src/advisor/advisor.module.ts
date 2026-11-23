@@ -23,6 +23,12 @@ import { AdvisorController } from './advisor.controller.js'
 import { ADVISOR_REPOSITORY } from './advisor.repository.js'
 import { PrismaAdvisorRepository } from './advisor.repository.prisma.js'
 import { AdvisorService } from './advisor.service.js'
+import { AdvisorCaseDigest } from './advisor-case-digest.js'
+import { AdvisorCaseFacts } from './advisor-case-facts.js'
+import { draftRecordsOf } from './advisor-draft-records.js'
+import { AdvisorDrafts, DRAFT_RECORDS } from './advisor-drafts.js'
+import { CHILD_REPOSITORY } from '../children/child.repository.js'
+import { RENTAL_REPOSITORY } from '../rental/rental.repository.js'
 import { AdvisorModelsService } from './advisor-models.service.js'
 import { AdvisorModelCatalog } from '../ki/advisor-model-catalog.js'
 import { ADVISOR_RUN_LOG, InMemoryAdvisorRunLog, type AdvisorRunLog } from './run/advisor-run-log.js'
@@ -66,6 +72,10 @@ export function createAdvisorRunLog(env: NodeJS.ProcessEnv = process.env): Advis
   controllers: [AdvisorController],
   providers: [
     AdvisorService,
+    AdvisorCaseFacts,
+    AdvisorDrafts,
+    AdvisorCaseDigest,
+    { provide: DRAFT_RECORDS, inject: [CHILD_REPOSITORY, RENTAL_REPOSITORY], useFactory: draftRecordsOf },
     AdvisorRunService,
     AdvisorModelsService,
     AdvisorModelCatalog,

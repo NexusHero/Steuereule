@@ -1,4 +1,3 @@
-import { PrintoutService } from '../printout/printout.service.js'
 import { PersonalDataConsentService } from '../owl-mode/personal-data-consent.service.js'
 import { Inject, Injectable, Optional } from '@nestjs/common'
 import {
@@ -25,21 +24,11 @@ import { AssessmentService } from '../assessment/assessment.service.js'
 import { ModelConnectionService } from '../ki/model-connection.service.js'
 import { TaxEstimateService } from '../tax-estimate/tax-estimate.service.js'
 import { TRANSACTION_RUNNER, passThroughTransactionRunner, type TransactionRunner } from '../common/transaction-runner.js'
-import { CAPITAL_REPOSITORY, type CapitalRepository } from '../capital/capital.repository.js'
-import { PENSION_REPOSITORY, type PensionRepository } from '../pension/pension.repository.js'
 import { AdvisorOpening } from './advisor-opening.js'
-import {
-  CROSS_BORDER_SALARY_STATEMENT_REPOSITORY,
-  type CrossBorderSalaryStatementRepository,
-} from '../ch-salary-certificate/ch-salary-certificate.repository.js'
 import { CHILD_REPOSITORY, type ChildRepository } from '../children/child.repository.js'
-import { COMMUTE_REPOSITORY, type CommuteRepository } from '../commute/commute.repository.js'
 import { ConfirmationService } from '../confirmation/confirmation.service.js'
-import { INTERVIEW_ANSWER_REPOSITORY, type InterviewAnswerRepository } from '../interview/interview-answer.repository.js'
-import { WAGE_TAX_CERTIFICATE_REPOSITORY, type WageTaxCertificateRepository } from '../lstb/lstb.repository.js'
 import { OwlModeService } from '../owl-mode/owl-mode.service.js'
 import { PROFILE_REPOSITORY, type ProfileRepository } from '../profile/profile.repository.js'
-import { RENTAL_REPOSITORY, type RentalRepository } from '../rental/rental.repository.js'
 import { LinkService } from '../link/link.service.js'
 import { InvalidInputError, NotFoundError } from '../common/domain-error.js'
 import {
@@ -67,8 +56,6 @@ import type {
 import { ANSWERING_WINDOW_MS, projectsOf, toMessageDto, PreparedAdvisorTurn, contextOf, toNoteDto, toConversationDto } from './advisor-shared.js'
 import { AdvisorConversations } from './advisor-conversations.js'
 import { AdvisorProjectNotes } from './advisor-project-notes.js'
-import { AdvisorCaseFacts } from './advisor-case-facts.js'
-import { RECEIPT_REPOSITORY, type ReceiptRepository } from '../receipt/receipt.repository.js'
 import { AdvisorDrafts } from './advisor-drafts.js'
 import { AdvisorCaseDigest } from './advisor-case-digest.js'
 import { AdvisorTurn } from './advisor-turn.js'
@@ -81,7 +68,6 @@ import {
   type ReceiptProposalInput,
   type BookingProposalInput,
 } from './advisor-document-staging.js'
-import { BusinessService } from '../business/business.service.js'
 export { MAX_CONVERSATIONS_PER_YEAR, searchKey, snippetAround, titleFrom } from './advisor-shared.js'
 export type { PreparedAdvisorTurn } from './advisor-shared.js'
 export { effectFromEstimates, estimateReadingFrom } from './advisor-case-digest.js'
@@ -94,15 +80,9 @@ export class AdvisorService {
     @Inject(OwlModeService) private readonly owlModeService: OwlModeService,
     @Inject(ConfirmationService) private readonly confirmationService: ConfirmationService,
     @Inject(AuditService) private readonly auditService: AuditService,
-    @Inject(INTERVIEW_ANSWER_REPOSITORY) private readonly interviewRepo: InterviewAnswerRepository,
-    @Optional() @Inject(WAGE_TAX_CERTIFICATE_REPOSITORY) private readonly lstbRepo?: WageTaxCertificateRepository,
-    @Optional()
-    @Inject(CROSS_BORDER_SALARY_STATEMENT_REPOSITORY)
-    private readonly chRepo?: CrossBorderSalaryStatementRepository,
-    @Optional() @Inject(COMMUTE_REPOSITORY) private readonly commuteRepo?: CommuteRepository,
+    @Inject(AdvisorDrafts) private readonly drafts: AdvisorDrafts,
+    @Inject(AdvisorCaseDigest) private readonly caseDigest: AdvisorCaseDigest,
     @Optional() @Inject(CHILD_REPOSITORY) private readonly childRepo?: ChildRepository,
-    @Optional() @Inject(RENTAL_REPOSITORY) private readonly rentalRepo?: RentalRepository,
-    @Optional() @Inject(CAPITAL_REPOSITORY) private readonly capitalRepo?: CapitalRepository,
     @Optional() @Inject(PROFILE_REPOSITORY) private readonly profileRepo?: ProfileRepository,
     @Optional() @Inject(ADVISOR_ENGINE) private readonly advisorEngine?: AdvisorEnginePort,
     @Optional() @Inject(AI_RUNTIME_CONFIG_SERVICE) private readonly runtimeConfig?: AiRuntimeConfigService,
@@ -110,12 +90,8 @@ export class AdvisorService {
     @Optional() @Inject(TaxEstimateService) private readonly taxEstimate?: TaxEstimateService,
     @Optional() @Inject(ModelConnectionService) private readonly modelConnection?: ModelConnectionService,
     @Optional() @Inject(AssessmentService) private readonly assessmentService?: AssessmentService,
-    @Optional() @Inject(PENSION_REPOSITORY) private readonly pensionRepo?: PensionRepository,
     @Optional() @Inject(LinkService) private readonly link?: LinkService,
-    @Optional() @Inject(PrintoutService) private readonly printout?: PrintoutService,
     @Optional() @Inject(PersonalDataConsentService) private readonly personalDataConsent?: PersonalDataConsentService,
-    @Optional() @Inject(RECEIPT_REPOSITORY) private readonly receiptRepo?: ReceiptRepository,
-    @Optional() @Inject(BusinessService) private readonly business?: BusinessService,
   ) {}
 
   /** Whether the user consented to personal data going to the owl's model (ADR-0091); read fresh on every use. */
@@ -149,59 +125,6 @@ export class AdvisorService {
   private notesPart?: AdvisorProjectNotes
   private get notes(): AdvisorProjectNotes {
     return (this.notesPart ??= new AdvisorProjectNotes(this.advisorRepo, (...args) => this.knownNamesForScrubbing(...args)))
-  }
-
-  private factsPart?: AdvisorCaseFacts
-  private get facts(): AdvisorCaseFacts {
-    return (this.factsPart ??= new AdvisorCaseFacts(this.capitalRepo, this.chRepo, this.childRepo, this.commuteRepo, this.confirmationService, this.interviewRepo, this.lstbRepo, this.owlModeService, this.profileRepo, this.rentalRepo, this.pensionRepo))
-  }
-
-  private draftsPart?: AdvisorDrafts
-  private get drafts(): AdvisorDrafts {
-    const link = this.link
-    return (this.draftsPart ??= new AdvisorDrafts(
-      this.advisorRepo,
-      this.auditService,
-      this.confirmationService,
-      this.transactions,
-      link ? (userId, taxYear, person) => link.dataUser(userId, taxYear, person) : undefined,
-      (userId) => this.hasPersonalDataConsent(userId),
-      {
-        create: async (dataUserId, taxYear, screen, values) => {
-          if (screen === 'kind') {
-            if (!this.childRepo) return null
-            const child = await this.childRepo.create(dataUserId, taxYear, {
-              firstName: values.firstName ?? '',
-              lastName: values.lastName ?? '',
-              geburtsdatum: values.geburtsdatum ?? '',
-            })
-            return child.id
-          }
-          if (screen === 'vermietung') return (await this.rentalRepo?.create(dataUserId, taxYear))?.id ?? null
-          return null
-        },
-        remove: async (dataUserId, taxYear, screen, id) => {
-          if (screen === 'kind') await this.childRepo?.delete(dataUserId, taxYear, id)
-        },
-      },
-    ))
-  }
-
-  private caseDigestPart?: AdvisorCaseDigest
-  private get caseDigest(): AdvisorCaseDigest {
-    return (this.caseDigestPart ??= new AdvisorCaseDigest(
-      this.advisorRepo,
-      this.confirmationService,
-      this.facts,
-      this.drafts,
-      this.transactions,
-      (userId) => this.hasPersonalDataConsent(userId),
-      this.link,
-      this.printout,
-      this.receiptRepo,
-      this.taxEstimate,
-      this.business,
-    ))
   }
 
   private turnPart?: AdvisorTurn

@@ -32,7 +32,11 @@ import { HebesatzDirectory } from '../../src/business/hebesatz.js'
 import { passThroughTransactionRunner, type TransactionRunner } from '../../src/common/transaction-runner.js'
 import { EnvAiRuntimeConfigService, type AiRuntimeConfigService } from '../../src/ki/ai-runtime-config.service.js'
 import { ModelConnectionService } from '../../src/ki/model-connection.service.js'
-import type { PrintoutService } from '../../src/printout/printout.service.js'
+import { AdvisorCaseDigest, type PrintoutGaps } from '../../src/advisor/advisor-case-digest.js'
+import { AdvisorCaseFacts } from '../../src/advisor/advisor-case-facts.js'
+import { draftRecordsOf } from '../../src/advisor/advisor-draft-records.js'
+import { AdvisorDrafts } from '../../src/advisor/advisor-drafts.js'
+import { NotFoundError } from '../../src/common/domain-error.js'
 import { FakeBusinessRepository } from './fake-business.repository.js'
 import { FakeReceiptRepository } from './fake-receipt.repository.js'
 
@@ -75,13 +79,8 @@ export interface AdvisorTestKitOptions {
   readonly modelConnection?: ModelConnectionService | undefined
   readonly transactions?: TransactionRunner | undefined
   /** The printout check; the kit's default knows no forms for any year, so the digest carries no printout gaps. */
-  readonly printout?: PrintoutCheck | undefined
+  readonly printout?: PrintoutGaps | undefined
   readonly runtimeConfig?: AiRuntimeConfigService | undefined
-}
-
-/** The part of the printout the advisor reads: what still blocks it. */
-export interface PrintoutCheck {
-  check(userId: string, taxYear: number): Promise<{ readonly missing: string[] }>
 }
 
 /** The advisor wired over the kit's fakes. */
@@ -95,9 +94,9 @@ export interface AdvisorTestKit extends AdvisorTestFakes, AdvisorWiring {
 }
 
 /** A year without forms: the printout has nothing to check, as for a tax year the app has no templates for. */
-const noFormsPrintout: PrintoutCheck = {
+const noFormsPrintout: PrintoutGaps = {
   check: async () => {
-    throw new Error('no forms for this year')
+    throw new NotFoundError('VORDRUCKE_MISSING', 'No Vordrucke are available for this tax year yet.')
   },
 }
 
@@ -157,31 +156,27 @@ export function buildAdvisorTestKit(engine?: AdvisorEnginePort, modelConnection?
 
   const wire = (wiring: AdvisorTestKitOptions): AdvisorWiring => {
     const runtimeConfig = wiring.runtimeConfig ?? defaultRuntimeConfig
+    const transactions = wiring.transactions ?? passThroughTransactionRunner
+    const facts = new AdvisorCaseFacts(capitalRepo, chRepo, childRepo, commuteRepo, confirmationService, interviewRepo, lstbRepo, owlModeService, profileRepo, rentalRepo, pensionRepo)
+    const drafts = new AdvisorDrafts(advisorRepo, auditService, confirmationService, transactions, linkService, consent, draftRecordsOf(childRepo, rentalRepo))
+    const caseDigest = new AdvisorCaseDigest(advisorRepo, confirmationService, facts, drafts, transactions, consent, linkService, wiring.printout ?? noFormsPrintout, receiptRepo, taxEstimate, business)
     const service = new AdvisorService(
       advisorRepo,
       owlModeService,
       confirmationService,
       auditService,
-      interviewRepo,
-      lstbRepo,
-      chRepo,
-      commuteRepo,
+      drafts,
+      caseDigest,
       childRepo,
-      rentalRepo,
-      capitalRepo,
       profileRepo,
       wiring.engine,
       runtimeConfig,
-      wiring.transactions ?? passThroughTransactionRunner,
+      transactions,
       taxEstimate,
       wiring.modelConnection ?? new ModelConnectionService(runtimeConfig),
       assessmentService,
-      pensionRepo,
       linkService,
-      (wiring.printout ?? noFormsPrintout) as unknown as PrintoutService,
       consent,
-      receiptRepo,
-      business,
     )
     return { service }
   }
