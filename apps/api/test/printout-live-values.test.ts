@@ -17,6 +17,7 @@ import { FakeMasterDataRepository } from './fakes/fake-master-data.repository.js
 import { FakePensionRepository } from './fakes/fake-pension.repository.js'
 import { FakeProfileRepository } from './fakes/fake-profile.repository.js'
 import { FakeRentalRepository } from './fakes/fake-rental.repository.js'
+import { taxCaseReaderOver } from '../src/tax-case/repository-tax-case.reader.js'
 
 const TEMPLATES_BASE = new URL('../assets/vordrucke/', import.meta.url)
 
@@ -51,23 +52,7 @@ async function setup() {
   }
   const commute: CommuteRepository = { findForUserAndYear: async () => null, save: async (_u, _y, e) => e }
 
-  const service = new PrintoutService(
-    profile,
-    masterData,
-    lstb,
-    new FakePensionRepository(),
-    new FakeCapitalRepository(),
-    rental,
-    new FakeChSalaryCertificateRepository(),
-    children,
-    new FakeLinkRepository(),
-    new FakeInterviewAnswerRepository(),
-    new FakeMarkingRepository(),
-    commute,
-    new UnlockService(unlockRepo, paymentProvider, 'http://localhost:8081'),
-    new AuditService(audit),
-    TEMPLATES_BASE,
-  )
+  const service = new PrintoutService(taxCaseReaderOver({ profile, masterData, wageTaxCertificate: lstb, pension: new FakePensionRepository(), capital: new FakeCapitalRepository(), rental, salaryStatement: new FakeChSalaryCertificateRepository(), children, coupling: new FakeLinkRepository(), interview: new FakeInterviewAnswerRepository(), commute }), new FakeMarkingRepository(), new UnlockService(unlockRepo, paymentProvider, 'http://localhost:8081'), new AuditService(audit), TEMPLATES_BASE)
   return { service, audit, mia, ben }
 }
 

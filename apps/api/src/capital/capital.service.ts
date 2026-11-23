@@ -29,7 +29,8 @@ import {
   INTERVIEW_ANSWER_REPOSITORY,
   type InterviewAnswerRepository,
 } from '../interview/interview-answer.repository.js'
-import { TAX_YEAR_REPOSITORY, type TaxYearRepository } from '../cockpit/tax-year.repository.js'
+import { HOUSEHOLD_ESTIMATE, type HouseholdEstimate } from './household-estimate.port.js'
+import { TAX_YEAR_REPOSITORY, type TaxYearRepository } from '../tax-year/tax-year.repository.js'
 import { CAPITAL_REPOSITORY, type CapitalRecord, type CapitalRepository } from './capital.repository.js'
 import type { PutCapitalFieldDto, CapitalFieldDto } from './dto/capital-field.dto.js'
 import type { DepotClassificationDto, CapitalItemDto, CapitalResponseDto, CapitalStatusDto } from './dto/capital-response.dto.js'
@@ -37,16 +38,6 @@ import type { MostFavourableCheckDto, MostFavourableCheckSourceDto } from './dto
 import type { UncertaintyDto } from '../filing-type-comparison/dto/filing-type-comparison-response.dto.js'
 import { answersFrom } from '../interview/answers.js'
 import { interviewOptions } from '../config/self-employment.js'
-import type { TaxEstimateStatus } from '../tax-estimate/tax-estimate.service.js'
-
-/**
- * The Cockpit estimate of the household (`TaxEstimateService.getState`). A token, because the estimate's
- * module imports this one for the capital records: CapitalModule resolves it lazily.
- */
-export const HOUSEHOLD_ESTIMATE = Symbol('HOUSEHOLD_ESTIMATE')
-export interface HouseholdEstimate {
-  getState(userId: string, taxYear: number): Promise<TaxEstimateStatus>
-}
 
 function dataFromRecord(record: CapitalRecord | null): CapitalData {
   if (record === null) return EMPTY_CAPITAL

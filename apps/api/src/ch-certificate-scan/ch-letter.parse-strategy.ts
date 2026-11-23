@@ -15,6 +15,16 @@ import { checkPiiFree } from '../ki/ki.adapter.js'
 import { LinkService } from '../link/link.service.js'
 import type { ChLetterFieldDto, ParseReceiptDto, ParseReceiptResponseDto, ParsedChLetterResponseDto } from '../receipt/dto/parse-receipt.dto.js'
 import { DocumentParseRegistry, type DocumentParseStrategy } from '../receipt/parse/document-parse.registry.js'
+import {
+  DETERMINISTIC_ENGINE,
+  NOTHING_STAGED,
+  SCAN_CHECK_NOTE,
+  isFromOcr,
+  noTaxYearReason,
+  stagedDraftsOf,
+  yearConflictOf,
+  type StagedDrafts,
+} from '../receipt/parse/document-parse-steps.js'
 
 const LABELS: Readonly<Record<string, string>> = {
   pkArbeitnehmerChf: 'Pensionskasse Arbeitnehmer, obligatorisch (N-Gre Zeile 84)',
@@ -63,77 +73,106 @@ abstract class ChLetterParseStrategy implements DocumentParseStrategy, OnModuleI
 
   async parse(userId: string, dto: ParseReceiptDto): Promise<ParseReceiptResponseDto> {
     const rawText = dto.rawText ?? ''
-    const fromOcr = dto.textSource !== 'pdf_text'
+    const fromOcr = isFromOcr(dto)
     // One year rule (ADR-0097 §5): the letter's year decides the household, the record and where its drafts go.
     // The year printed is only known after reading, so the letter is read first without the stored Ziffer 10.
     const filingYear = receiptFilingYear(this.read(rawText, null, fromOcr).taxYear, dto.taxYear)
-    const year = filingYear ?? dto.taxYear
-    const household = await this.staging.householdNames(userId, year)
-    // The name is looked for in the whole letter, on the server only; only one person's name may fit.
-    const person: 'A' | 'B' | null = dto.person ?? (household.B === null ? holderWithoutPartner(rawText, household.A) : certificateHolderPerson(rawText, household))
-    const personNotRecordable = person === 'B' && household.B?.recordable !== true
-    const dataUser = person !== null && !personNotRecordable ? await this.linkService.dataUser(userId, year, person) : null
-    const stored = dataUser ? await this.chRepo?.findForUserAndYear(dataUser, year) : null
-    const ziffer10 = stored?.fields['berufliche-vorsorge'] ? Number(stored.fields['berufliche-vorsorge']) : null
-
-    const letter = this.read(rawText, Number.isFinite(ziffer10) ? ziffer10 : null, fromOcr, { krankentaggeldChf: stored?.nGre.krankentaggeldChf ?? null })
+    const holder = await this.resolveHolder(userId, dto, rawText, filingYear ?? dto.taxYear)
+    const letter = this.read(rawText, holder.ziffer10, fromOcr, holder.stored)
     checkPiiFree({ fields: letter.fields, missing: letter.missing })
     await this.auditService.append({ userId, action: 'READ', resource: 'beleg_analyse' })
-    const yearConflict = letter.taxYear !== null && letter.taxYear !== dto.taxYear ? { documentYear: letter.taxYear, activeYear: dto.taxYear } : null
 
-    let stagedActionIds: string[] = []
-    let stagedAction: ParseReceiptResponseDto['stagedAction'] = null
-    let assistantMessage: ParseReceiptResponseDto['assistantMessage'] = null
     // Another year no longer blocks (`yearConflict` only reports it); a year the app does not keep stages nothing.
-    if ((dto.stageDraft ?? true) && person !== null && dataUser !== null && filingYear !== null && letter.fields.length > 0) {
-      const whose = person === 'B' ? 'von Person B' : 'von dir'
-      const title = this.kind === 'chPensionskasse' ? 'den Nachweis der Pensionskasse' : 'die Bestätigung des Arbeitgebers zu Krankentaggeld und NBU'
-      const staged = await this.staging.stageDocumentDrafts(userId, filingYear, {
-        screen: 'chLohnausweis',
-        person,
-        digestUserId: dataUser,
-        receiptId: dto.receiptId ?? null,
-        engine: { mode: 'deterministic_fallback', provider: 'deterministic' },
-        summaryText: [`Ich habe ${title} ${whose} für ${letter.taxYear ?? dto.taxYear} gelesen.`, ...(fromOcr ? ['Der Text stammt aus einem Scan; prüfe die Beträge, bevor du sie übernimmst.'] : []), ...letter.notes].join('\n'),
-        sourceId: 'estg-9-1',
-        fields: letter.fields.map((f) => ({ field: f.field, label: LABELS[f.field] ?? f.field, value: f.value, status: f.status, reason: f.reason })),
-      })
-      stagedActionIds = staged.actions.map((a) => a.actionId)
-      stagedAction = staged.actions[0] ?? null
-      assistantMessage = staged.assistantMessage
-    }
+    const { person, dataUser } = holder
+    const staged =
+      (dto.stageDraft ?? true) && person !== null && dataUser !== null && filingYear !== null && letter.fields.length > 0
+        ? await this.stageDrafts(userId, dto, filingYear, { person, dataUser, letter, fromOcr })
+        : NOTHING_STAGED
 
     const chLetter: ParsedChLetterResponseDto = {
       kind: this.kind,
       receiptId: dto.receiptId ?? null,
       taxYearOnDocument: letter.taxYear,
-      yearConflict,
+      yearConflict: yearConflictOf(letter.taxYear, dto.taxYear),
       person,
       personUnclear: person === null,
-      personNotRecordable,
+      personNotRecordable: holder.personNotRecordable,
       fields: letter.fields,
       missing: letter.missing,
-      stagedActionIds,
+      stagedActionIds: staged.stagedActionIds,
     }
     return {
       mode: 'deterministic_fallback',
       securityBlocked: false,
-      parsed: {
-        vendorCategory: 'sonstiges',
-        receiptDate: null,
-        amountEur: null,
-        suggestedScreen: 'chLohnausweis',
-        suggestedField: letter.fields[0]?.field ?? null,
-        suggestedValue: letter.fields[0] ? String(letter.fields[0].value) : null,
-        summary: this.kind === 'chPensionskasse' ? 'Nachweis der Pensionskasse gelesen.' : 'Prämienbestätigung gelesen.',
-        taxYear: letter.taxYear ?? dto.taxYear,
-      },
-      stagedAction,
-      assistantMessage,
+      parsed: letterSummary(this.kind, letter, dto.taxYear),
+      stagedAction: staged.stagedAction,
+      assistantMessage: staged.assistantMessage,
       chLetter,
-      draftsTaxYear: stagedActionIds.length > 0 ? filingYear : null,
-      noValuesReason: (dto.stageDraft ?? true) && filingYear === null ? 'kein_steuerjahr' : null,
+      draftsTaxYear: staged.stagedActionIds.length > 0 ? filingYear : null,
+      noValuesReason: noTaxYearReason(dto, filingYear),
     }
+  }
+
+  /**
+   * Whose letter it is, and what that person's mask already holds. The name is looked for in the whole
+   * letter, on the server only; only one person's name may fit.
+   */
+  private async resolveHolder(userId: string, dto: ParseReceiptDto, rawText: string, year: number): Promise<LetterHolder> {
+    const household = await this.staging.householdNames(userId, year)
+    const person: 'A' | 'B' | null = dto.person ?? (household.B === null ? holderWithoutPartner(rawText, household.A) : certificateHolderPerson(rawText, household))
+    const personNotRecordable = person === 'B' && household.B?.recordable !== true
+    const dataUser = person !== null && !personNotRecordable ? await this.linkService.dataUser(userId, year, person) : null
+    const stored = dataUser ? await this.chRepo?.findForUserAndYear(dataUser, year) : null
+    const ziffer10 = stored?.fields['berufliche-vorsorge'] ? Number(stored.fields['berufliche-vorsorge']) : null
+    return {
+      person,
+      personNotRecordable,
+      dataUser,
+      ziffer10: Number.isFinite(ziffer10) ? ziffer10 : null,
+      stored: { krankentaggeldChf: stored?.nGre.krankentaggeldChf ?? null },
+    }
+  }
+
+  /** The figures as drafts for that person's Lohnausweis mask (N-Gre part). */
+  private async stageDrafts(userId: string, dto: ParseReceiptDto, filingYear: number, input: { person: 'A' | 'B'; dataUser: string; letter: LetterRead; fromOcr: boolean }): Promise<StagedDrafts> {
+    const { person, letter } = input
+    const whose = person === 'B' ? 'von Person B' : 'von dir'
+    const title = this.kind === 'chPensionskasse' ? 'den Nachweis der Pensionskasse' : 'die Bestätigung des Arbeitgebers zu Krankentaggeld und NBU'
+    const staged = await this.staging.stageDocumentDrafts(userId, filingYear, {
+      screen: 'chLohnausweis',
+      person,
+      digestUserId: input.dataUser,
+      receiptId: dto.receiptId ?? null,
+      engine: DETERMINISTIC_ENGINE,
+      summaryText: [`Ich habe ${title} ${whose} für ${letter.taxYear ?? dto.taxYear} gelesen.`, ...(input.fromOcr ? [SCAN_CHECK_NOTE] : []), ...letter.notes].join('\n'),
+      sourceId: 'estg-9-1',
+      fields: letter.fields.map((f) => ({ field: f.field, label: LABELS[f.field] ?? f.field, value: f.value, status: f.status, reason: f.reason })),
+    })
+    return stagedDraftsOf(staged)
+  }
+}
+
+interface LetterHolder {
+  readonly person: 'A' | 'B' | null
+  readonly personNotRecordable: boolean
+  /** The record the drafts go to; null when the person is unclear or not recordable. */
+  readonly dataUser: string | null
+  /** Ziffer 10 of that person's Lohnausweis, when recorded. */
+  readonly ziffer10: number | null
+  readonly stored: StoredFacts
+}
+
+/** The receipt-level summary every reader returns, pointing at the letter's first figure. */
+function letterSummary(kind: ChInsuranceLetterKind, letter: LetterRead, activeYear: number): ParseReceiptResponseDto['parsed'] {
+  return {
+    vendorCategory: 'sonstiges',
+    receiptDate: null,
+    amountEur: null,
+    suggestedScreen: 'chLohnausweis',
+    suggestedField: letter.fields[0]?.field ?? null,
+    suggestedValue: letter.fields[0] ? String(letter.fields[0].value) : null,
+    summary: kind === 'chPensionskasse' ? 'Nachweis der Pensionskasse gelesen.' : 'Prämienbestätigung gelesen.',
+    taxYear: letter.taxYear ?? activeYear,
   }
 }
 

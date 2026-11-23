@@ -17,6 +17,7 @@ import { LinkService } from '../src/link/link.service.js'
 import { FakeLinkRepository } from './fakes/fake-link.repository.js'
 import { FakeProfileRepository } from './fakes/fake-profile.repository.js'
 import { FakeMasterDataRepository } from './fakes/fake-master-data.repository.js'
+import { taxCaseReaderOver } from '../src/tax-case/repository-tax-case.reader.js'
 
 describe('CockpitService', () => {
   let taxYear: FakeTaxYearRepository
@@ -38,7 +39,7 @@ describe('CockpitService', () => {
     capital = new FakeCapitalRepository()
     rental = new FakeRentalRepository()
     ch = new FakeChSalaryCertificateRepository()
-    service = new CockpitService(taxYear, lstb, interview, takeover, pension, capital, rental, ch)
+    service = new CockpitService(taxYear, taxCaseReaderOver({ wageTaxCertificate: lstb, interview, pension, capital, rental, salaryStatement: ch }), takeover)
   })
 
   it('REQ-001 returns null for a userId/steuerjahr with nothing seeded — the honest empty state', async () => {
@@ -269,7 +270,7 @@ describe('CockpitService', () => {
     it('sums the wages of both persons of a joint return and names each share (Echtdatentest 18.11.2026)', async () => {
       const links = new FakeLinkRepository()
       const link = new LinkService(links, new FakeProfileRepository(), new FakeMasterDataRepository(), { append: () => Promise.resolve() } as never)
-      service = new CockpitService(taxYear, lstb, interview, takeover, pension, capital, rental, ch, link)
+      service = new CockpitService(taxYear, taxCaseReaderOver({ wageTaxCertificate: lstb, interview, pension, capital, rental, salaryStatement: ch }), takeover, link)
       await link.set('user-a', 2025, { filingType: 'zusammen' })
       const b = await link.dataUser('user-a', 2025, 'B')
       taxYear.seed('user-a', { taxYear: 2025, openItems: 0 })
@@ -287,7 +288,7 @@ describe('CockpitService', () => {
     it('counts Person B\'s recorded wages when the basis never asked about the partner (figures recorded in the chat)', async () => {
       const links = new FakeLinkRepository()
       const link = new LinkService(links, new FakeProfileRepository(), new FakeMasterDataRepository(), { append: () => Promise.resolve() } as never)
-      service = new CockpitService(taxYear, lstb, interview, takeover, pension, capital, rental, ch, link)
+      service = new CockpitService(taxYear, taxCaseReaderOver({ wageTaxCertificate: lstb, interview, pension, capital, rental, salaryStatement: ch }), takeover, link)
       await link.set('user-a', 2025, { filingType: 'zusammen' })
       const b = await link.dataUser('user-a', 2025, 'B')
       taxYear.seed('user-a', { taxYear: 2025, openItems: 0 })
@@ -307,7 +308,7 @@ describe('CockpitService', () => {
     it('leaves a joint return without any recorded wage of Person B as the user\'s own income', async () => {
       const links = new FakeLinkRepository()
       const link = new LinkService(links, new FakeProfileRepository(), new FakeMasterDataRepository(), { append: () => Promise.resolve() } as never)
-      service = new CockpitService(taxYear, lstb, interview, takeover, pension, capital, rental, ch, link)
+      service = new CockpitService(taxYear, taxCaseReaderOver({ wageTaxCertificate: lstb, interview, pension, capital, rental, salaryStatement: ch }), takeover, link)
       await link.set('user-a', 2025, { filingType: 'zusammen' })
       taxYear.seed('user-a', { taxYear: 2025, openItems: 0 })
       interview.seed('user-a', 2025, CROSS_BORDER)

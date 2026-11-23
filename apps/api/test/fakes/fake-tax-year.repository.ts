@@ -1,7 +1,7 @@
 // In-memory fake keyed by `${userId}::${steuerjahr}` — mirrors FakeProfileRepository's
 // approach so round-trip and cross-user/cross-year isolation are genuinely exercised,
 // not just echoed back (ADR-0004).
-import type { TaxYearRecord, TaxYearRepository } from '../../src/cockpit/tax-year.repository.js'
+import type { TaxYearRecord, TaxYearRepository } from '../../src/tax-year/tax-year.repository.js'
 
 function key(userId: string, taxYear: number): string {
   return `${userId}::${taxYear}`

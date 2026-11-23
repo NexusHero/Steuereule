@@ -2,6 +2,7 @@
 // beleg.service.test.ts. The full real-Postgres proof (ciphertext at rest, audit atomicity,
 // cross-user isolation, the real Abgleich through the computed stand) lives in
 // bescheid.integration.test.ts and the acceptance tier (req-023-bescheidpruefung.test.ts).
+import { taxCaseReaderOver } from '../src/tax-case/repository-tax-case.reader.js'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { AuditService } from '../src/audit/audit.service.js'
 import { AssessmentService, todayIso } from '../src/assessment/assessment.service.js'
@@ -29,7 +30,7 @@ describe('BescheidService', () => {
     interview = new FakeInterviewAnswerRepository()
     ch = new FakeChSalaryCertificateRepository()
     auditRepository = new FakeAuditRepository()
-    service = new AssessmentService(repository, lstb, interview, ch, new AuditService(auditRepository))
+    service = new AssessmentService(repository, taxCaseReaderOver({ wageTaxCertificate: lstb, interview, salaryStatement: ch }), new AuditService(auditRepository))
   })
 
   /** Seed a computed side of 50.000 € Einnahmen (Angestellt) so the Abgleich has a counterpart. */
@@ -164,7 +165,7 @@ describe('BescheidService', () => {
         positions: { bruttoarbeitslohnA: 54_900, fahrtwegA: 1_320, homeofficeA: 1_260, zuVersteuerndesEinkommen: 70_971, festgesetzteSteuer: 12_078, anrechnung: 12_979, erstattung: 901 },
         estimateAtSubmission: null,
       })
-      const withVersions = new AssessmentService(repository, lstb, interview, ch, new AuditService(auditRepository), versions)
+      const withVersions = new AssessmentService(repository, taxCaseReaderOver({ wageTaxCertificate: lstb, interview, salaryStatement: ch }), new AuditService(auditRepository), versions)
       await withVersions.setField(USER_ID, 2024, 'homeofficeA', { kind: 'erfasst', value: 1_080 })
       const state = await withVersions.setField(USER_ID, 2024, 'erstattung', { kind: 'erfasst', value: 845 })
 

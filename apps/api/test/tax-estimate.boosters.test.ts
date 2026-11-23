@@ -11,6 +11,7 @@ import { FakeLinkRepository } from './fakes/fake-link.repository.js'
 import { FakeLstbRepository } from './fakes/fake-lstb.repository.js'
 import { FakeMasterDataRepository } from './fakes/fake-master-data.repository.js'
 import { FakeRentalRepository } from './fakes/fake-rental.repository.js'
+import { taxCaseReaderOver } from '../src/tax-case/repository-tax-case.reader.js'
 
 function range(status: TaxEstimateStatus) {
   if (status.kind !== 'spanne') throw new Error(`expected spanne, got ${status.kind}`)
@@ -29,7 +30,7 @@ function setup() {
   const link = new FakeLinkRepository()
   const kinder = new FakeChildRepository()
   const rental = new FakeRentalRepository()
-  const service = new TaxEstimateService(lstb, interview, ch, masterData, emptyCommute(), link, kinder, rental)
+  const service = new TaxEstimateService(taxCaseReaderOver({ wageTaxCertificate: lstb, interview, salaryStatement: ch, masterData, commute: emptyCommute(), coupling: link, children: kinder, rental }))
   return { lstb, interview, masterData, link, service }
 }
 

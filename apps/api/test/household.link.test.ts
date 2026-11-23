@@ -1,10 +1,10 @@
 // #452 / ADR-0062 §3: the spouse is linked once, not per year.
 import { beforeEach, describe, expect, it } from 'vitest'
 import { AuditService } from '../src/audit/audit.service.js'
-import { HouseholdAccessService } from '../src/household/household-access.service.js'
-import { InMemoryHouseholdRepository } from '../src/household/household.repository.js'
+import { HouseholdAccessService } from '../src/household-core/household-access.service.js'
+import { InMemoryHouseholdRepository } from '../src/household-core/household.repository.js'
 import { HouseholdService } from '../src/household/household.service.js'
-import { PersonSealService } from '../src/household/person-seal.service.js'
+import { PersonSealService } from '../src/household-core/person-seal.service.js'
 import { resolveKeystoreMasterKeys } from '../src/keystore/keystore-config.js'
 import { LinkService } from '../src/link/link.service.js'
 import { EnvelopeCryptoService } from '../src/receipt/storage/envelope-crypto.service.js'

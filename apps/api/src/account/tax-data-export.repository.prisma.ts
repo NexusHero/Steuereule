@@ -1,5 +1,5 @@
 import { Inject, Injectable, Optional } from '@nestjs/common'
-import { PersonSealService } from '../household/person-seal.service.js'
+import { PersonSealService } from '../household-core/person-seal.service.js'
 import { Prisma } from '@prisma/client'
 import { ENCRYPTED_PRISMA, type EncryptedPrismaClient } from '../prisma/encrypted-prisma.provider.js'
 import type { ExportTaxDataEntry, ExportTaxDataValue } from './export/export-document.js'

@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common'
 import { AuditModule } from '../audit/audit.module.js'
 import { ChSalaryCertificateModule } from '../ch-salary-certificate/ch-salary-certificate.module.js'
-import { HouseholdCoreModule } from '../household/household-core.module.js'
+import { HouseholdCoreModule } from '../household-core/household-core.module.js'
 import { LinkModule } from '../link/link.module.js'
 import { PrismaModule } from '../prisma/prisma.module.js'
 import { ChildDraftRecords } from './child-draft-records.js'

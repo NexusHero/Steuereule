@@ -4,7 +4,7 @@ import { ANNEXES, type Annex } from '@steuereule/core'
 import { CurrentUser } from '../auth/current-user.decorator.js'
 import { RequiresAccount } from '../auth/requires-account.guard.js'
 import { UserContextGuard } from '../auth/user-context.guard.js'
-import { ParseTaxYearPipe } from '../cockpit/parse-tax-year.pipe.js'
+import { ParseTaxYearPipe } from '../common/parse-tax-year.pipe.js'
 import { ConfirmationService } from './confirmation.service.js'
 import { ConfirmationResponseDto, ProposalDecisionDto, TaskDecisionDto } from './dto/confirmation.dto.js'
 

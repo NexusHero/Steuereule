@@ -13,6 +13,7 @@ import { AuditService } from '../audit/audit.service.js'
 import { checkPiiFree } from '../ki/ki.adapter.js'
 import type { ParseReceiptDto, ParseReceiptResponseDto, ParsedAssessmentNoticeResponseDto } from '../receipt/dto/parse-receipt.dto.js'
 import { DocumentParseRegistry, type DocumentParseStrategy } from '../receipt/parse/document-parse.registry.js'
+import { DETERMINISTIC_ENGINE, NOTHING_STAGED, SCAN_CHECK_NOTE, isFromOcr, noTaxYearReason, stagedDraftsOf, type StagedDrafts } from '../receipt/parse/document-parse-steps.js'
 
 /** The Erläuterungen are quoted text: a long one is kept, a page of it is not. */
 const MAX_EXPLANATIONS_LENGTH = 4_000
@@ -39,47 +40,21 @@ export class AssessmentNoticeParseStrategy implements DocumentParseStrategy, OnM
   }
 
   async parse(userId: string, dto: ParseReceiptDto): Promise<ParseReceiptResponseDto> {
-    const rawText = dto.rawText ?? ''
-    const read = parseAssessmentNotice(rawText)
+    const read = parseAssessmentNotice(dto.rawText ?? '')
     await this.auditService.append({ userId, action: 'READ', resource: 'beleg_analyse' })
 
     const filingYear = receiptFilingYear(read.taxYear, dto.taxYear)
-    const year = filingYear ?? dto.taxYear
     // Only a PDF text layer is read as is; a scan's figures are offered to be checked (ADR-0060).
-    const status = dto.textSource === 'pdf_text' ? ('ok' as const) : ('pruefen' as const)
+    const status = isFromOcr(dto) ? ('pruefen' as const) : ('ok' as const)
     const readIds = ASSESSMENT_POSITION_IDS.filter((id) => read.positions[id] !== undefined)
-    const explanations = await this.safeExplanations(userId, year, read.explanations)
-
-    const fields = [
-      ...readIds.map((id) => ({ field: id, label: assessmentPosition(id).label, value: read.positions[id]!, status, reason: null })),
-      ...(read.assessmentDate ? [{ field: 'assessmentDate', label: 'Bescheiddatum', value: read.assessmentDate, status, reason: null }] : []),
-      ...(explanations ? [{ field: 'erlaeuterungen', label: 'Erläuterungen des Finanzamts', value: explanations.text, status, reason: null }] : []),
-    ]
+    const explanations = await this.safeExplanations(userId, filingYear ?? dto.taxYear, read.explanations)
+    const fields = assessmentDraftFields(read, readIds, explanations, status)
     const createsEckjahr = filingYear !== null && !(await this.assessments.hasDeclaration(userId, filingYear))
-    const summary = `Steuerbescheid ${read.taxYear ?? year} gelesen.`
 
-    let stagedActionIds: string[] = []
-    let stagedAction: ParseReceiptResponseDto['stagedAction'] = null
-    let assistantMessage: ParseReceiptResponseDto['assistantMessage'] = null
-    if ((dto.stageDraft ?? true) && filingYear !== null && fields.length > 0) {
-      const staged = await this.staging.stageDocumentDrafts(userId, filingYear, {
-        screen: 'assessment',
-        person: 'A',
-        digestUserId: userId,
-        receiptId: dto.receiptId ?? null,
-        engine: { mode: 'deterministic_fallback', provider: 'deterministic' },
-        summaryText: [
-          `Ich habe den Steuerbescheid für ${filingYear} gelesen.`,
-          ...(status === 'pruefen' ? ['Der Text stammt aus einem Scan; prüfe die Beträge, bevor du sie übernimmst.'] : []),
-          ...(createsEckjahr ? [`Für ${filingYear} gibt es in der App keine Erklärung: Übernimmst du die Werte, steht ${filingYear} im Verlauf als extern erledigt.`] : []),
-        ].join('\n'),
-        sourceId: 'ao-355',
-        fields,
-      })
-      stagedActionIds = staged.actions.map((a) => a.actionId)
-      stagedAction = staged.actions[0] ?? null
-      assistantMessage = staged.assistantMessage
-    }
+    const staged =
+      (dto.stageDraft ?? true) && filingYear !== null && fields.length > 0
+        ? await this.stageDrafts(userId, dto, filingYear, { fields, fromScan: status === 'pruefen', createsEckjahr })
+        : NOTHING_STAGED
 
     const assessmentNotice: ParsedAssessmentNoticeResponseDto = {
       receiptId: dto.receiptId ?? null,
@@ -89,28 +64,37 @@ export class AssessmentNoticeParseStrategy implements DocumentParseStrategy, OnM
       notRead: ASSESSMENT_POSITION_IDS.filter((id) => read.positions[id] === undefined),
       explanations: explanations?.count ?? 0,
       createsEckjahr,
-      stagedActionIds,
+      stagedActionIds: staged.stagedActionIds,
     }
-    const first: AssessmentPositionId | undefined = readIds[0]
     return {
       mode: 'deterministic_fallback',
       securityBlocked: explanations === null && read.explanations.length > 0,
-      parsed: {
-        vendorCategory: 'sonstiges',
-        receiptDate: read.assessmentDate,
-        amountEur: read.positions.erstattung === undefined ? null : Math.abs(read.positions.erstattung),
-        suggestedScreen: 'assessment',
-        suggestedField: first ?? null,
-        suggestedValue: first === undefined ? null : String(read.positions[first]),
-        summary,
-        taxYear: read.taxYear ?? dto.taxYear,
-      },
-      stagedAction,
-      assistantMessage,
+      parsed: assessmentSummary(read, readIds, filingYear ?? dto.taxYear, dto.taxYear),
+      stagedAction: staged.stagedAction,
+      assistantMessage: staged.assistantMessage,
       assessmentNotice,
-      draftsTaxYear: stagedActionIds.length > 0 ? filingYear : null,
-      noValuesReason: (dto.stageDraft ?? true) && filingYear === null ? 'kein_steuerjahr' : readIds.length === 0 ? 'nichts_erkannt' : null,
+      draftsTaxYear: staged.stagedActionIds.length > 0 ? filingYear : null,
+      noValuesReason: noTaxYearReason(dto, filingYear) ?? (readIds.length === 0 ? 'nichts_erkannt' : null),
     }
+  }
+
+  /** Each read position as an owl draft for the year the Bescheid is for (Zero-Write). */
+  private async stageDrafts(userId: string, dto: ParseReceiptDto, filingYear: number, input: { fields: AssessmentDraftField[]; fromScan: boolean; createsEckjahr: boolean }): Promise<StagedDrafts> {
+    const staged = await this.staging.stageDocumentDrafts(userId, filingYear, {
+      screen: 'assessment',
+      person: 'A',
+      digestUserId: userId,
+      receiptId: dto.receiptId ?? null,
+      engine: DETERMINISTIC_ENGINE,
+      summaryText: [
+        `Ich habe den Steuerbescheid für ${filingYear} gelesen.`,
+        ...(input.fromScan ? [SCAN_CHECK_NOTE] : []),
+        ...(input.createsEckjahr ? [`Für ${filingYear} gibt es in der App keine Erklärung: Übernimmst du die Werte, steht ${filingYear} im Verlauf als extern erledigt.`] : []),
+      ].join('\n'),
+      sourceId: 'ao-355',
+      fields: input.fields,
+    })
+    return stagedDraftsOf(staged)
   }
 
   /**
@@ -130,5 +114,44 @@ export class AssessmentNoticeParseStrategy implements DocumentParseStrategy, OnM
       return null
     }
     return { text, count: paragraphs.length }
+  }
+}
+
+type AssessmentRead = ReturnType<typeof parseAssessmentNotice>
+
+export interface AssessmentDraftField {
+  readonly field: string
+  readonly label: string
+  readonly value: number | string
+  readonly status: 'ok' | 'pruefen'
+  readonly reason: null
+}
+
+/** The drafts: every position read, the date of the Bescheid and the Finanzamt's explanations as a quote. */
+export function assessmentDraftFields(
+  read: AssessmentRead,
+  readIds: readonly AssessmentPositionId[],
+  explanations: { text: string } | null,
+  status: 'ok' | 'pruefen',
+): AssessmentDraftField[] {
+  return [
+    ...readIds.map((id) => ({ field: id, label: assessmentPosition(id).label, value: read.positions[id]!, status, reason: null })),
+    ...(read.assessmentDate ? [{ field: 'assessmentDate', label: 'Bescheiddatum', value: read.assessmentDate, status, reason: null }] : []),
+    ...(explanations ? [{ field: 'erlaeuterungen', label: 'Erläuterungen des Finanzamts', value: explanations.text, status, reason: null }] : []),
+  ]
+}
+
+/** The receipt-level summary every reader returns, pointing at the first position read. */
+function assessmentSummary(read: AssessmentRead, readIds: readonly AssessmentPositionId[], year: number, activeYear: number): ParseReceiptResponseDto['parsed'] {
+  const first: AssessmentPositionId | undefined = readIds[0]
+  return {
+    vendorCategory: 'sonstiges',
+    receiptDate: read.assessmentDate,
+    amountEur: read.positions.erstattung === undefined ? null : Math.abs(read.positions.erstattung),
+    suggestedScreen: 'assessment',
+    suggestedField: first ?? null,
+    suggestedValue: first === undefined ? null : String(read.positions[first]),
+    summary: `Steuerbescheid ${read.taxYear ?? year} gelesen.`,
+    taxYear: read.taxYear ?? activeYear,
   }
 }

@@ -24,6 +24,7 @@ import { FakeInterviewAnswerRepository } from './fakes/fake-interview-answer.rep
 import { FakeLinkRepository } from './fakes/fake-link.repository.js'
 import { FakeLstbRepository } from './fakes/fake-lstb.repository.js'
 import { FakeMasterDataRepository } from './fakes/fake-master-data.repository.js'
+import { taxCaseReaderOver } from '../src/tax-case/repository-tax-case.reader.js'
 
 const USER = 'user-a'
 const spouse = (year: number) => `spouse_${USER}_${year}`
@@ -97,7 +98,7 @@ function setup() {
   const link = new FakeLinkRepository()
   const commutes = new Map<string, CommuteInputs>()
   const commute: CommuteRepository = { findForUserAndYear: async (u, y) => commutes.get(`${u}:${y}`) ?? null, save: async (_u, _y, e) => e }
-  const estimates = new TaxEstimateService(lstb, interview, ch, new FakeMasterDataRepository(), commute, link)
+  const estimates = new TaxEstimateService(taxCaseReaderOver({ wageTaxCertificate: lstb, interview, salaryStatement: ch, masterData: new FakeMasterDataRepository(), commute, coupling: link }))
 
   assessments.seed(assessment(2021, { werbungskostenA: 1_850, festgesetzteSteuer: 6_410, erstattung: 280 }))
   for (const year of [2024, 2025, 2026]) void link.upsert(USER, year, { personBUserId: spouse(year), filingType: 'zusammen' })
@@ -131,7 +132,7 @@ function setup() {
   const rental = new FakeRentalRepository()
   const receipts = new FakeReceiptRepository()
   const insights = new YearHistoryInsightsService(children, capital, pension, rental, commute, receipts)
-  const service = new YearHistoryService(yearRepo, assessments, versions, lstb, ch, commute, interview, link, estimates, insights)
+  const service = new YearHistoryService(yearRepo, assessments, versions, taxCaseReaderOver({ wageTaxCertificate: lstb, salaryStatement: ch, commute, interview, coupling: link }), estimates, insights)
   return { service, assessments, versions, lstb, interview, children, rental, receipts, yearRepo, link, capital, pension }
 }
 

@@ -23,6 +23,7 @@ import type { CommuteRepository } from '../src/commute/commute.repository.js'
 import type { CrossBorderSalaryStatementRecord } from '../src/ch-salary-certificate/ch-salary-certificate.repository.js'
 import type { MasterDataRecord } from '../src/master-data/master-data.repository.js'
 import { incomeTax, soliExemptionLimits, solidaritaetszuschlag, solidaritaetszuschlagInCents, splittingTariff } from '@steuereule/core'
+import { taxCaseReaderOver } from '../src/tax-case/repository-tax-case.reader.js'
 
 const USER_ID = 'user-1'
 const TAX_YEAR = 2026
@@ -69,7 +70,7 @@ describe('KapitalService', () => {
     link = new FakeLinkRepository()
     pension = new FakePensionRepository()
     // The Cockpit estimate over the same records: the mask compares on its figures.
-    estimates = new TaxEstimateService(lstbRepository, interviewRepository, ch, masterData, NO_COMMUTE, link, new FakeChildRepository(), new FakeRentalRepository(), pension, repository)
+    estimates = new TaxEstimateService(taxCaseReaderOver({ wageTaxCertificate: lstbRepository, interview: interviewRepository, salaryStatement: ch, masterData, commute: NO_COMMUTE, coupling: link, children: new FakeChildRepository(), rental: new FakeRentalRepository(), pension, capital: repository }))
     service = new CapitalService(repository, interviewRepository, taxYearRepository, new AuditService(auditRepository), markings, estimates)
   })
 

@@ -7,9 +7,9 @@ import { CHILD_REPOSITORY, type ChildRecord, type ChildRepository } from '../chi
 import { PARTNER_COUPLING_REPOSITORY, type PartnerCouplingRepository } from '../link/link.repository.js'
 import { MASTER_DATA_REPOSITORY, type MasterDataRepository } from '../master-data/master-data.repository.js'
 import { PROFILE_REPOSITORY, type ProfileRepository } from '../profile/profile.repository.js'
-import { HOUSEHOLD_REPOSITORY, type HouseholdPersonRecord, type HouseholdRepository, type MembershipRecord } from './household.repository.js'
-import { HouseholdAccessService } from './household-access.service.js'
-import { PersonSealService, type PersonFacts } from './person-seal.service.js'
+import { HOUSEHOLD_REPOSITORY, type HouseholdPersonRecord, type HouseholdRepository, type MembershipRecord } from '../household-core/household.repository.js'
+import { HouseholdAccessService } from '../household-core/household-access.service.js'
+import { PersonSealService, type PersonFacts } from '../household-core/person-seal.service.js'
 
 export interface HouseholdPersonView {
   readonly personId: string

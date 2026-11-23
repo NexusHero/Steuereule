@@ -7,7 +7,6 @@ import {
   parseChSalaryCertificateText,
   formatChf,
   receiptFilingYear,
-  scrubDocumentTextPii,
   selectChCertificateRelevantLines,
   SALARY_CERTIFICATE_FIELDS,
   type ChCertificateRead,
@@ -16,14 +15,23 @@ import {
 import { AdvisorDocumentStaging } from '../advisor/advisor-document-staging.js'
 import { AuditService } from '../audit/audit.service.js'
 import { AI_RUNTIME_CONFIG_SERVICE, type AiRuntimeConfigService, type ResolvedAiSlotConfig } from '../ki/ai-runtime-config.service.js'
-import { SINGLE_SHOT_MODEL_FACTORY, type SingleShotModel, type SingleShotModelFactory } from '../ki/single-shot-model.js'
+import { SINGLE_SHOT_MODEL_FACTORY, type SingleShotModelFactory } from '../ki/single-shot-model.js'
 import { checkPiiFree } from '../ki/ki.adapter.js'
-import { extractJsonObject } from '../ki/llm-json.js'
 import { LinkService } from '../link/link.service.js'
 import type { ChCertificateFieldDto, ParseReceiptDto, ParseReceiptResponseDto, ParsedChCertificateResponseDto } from '../receipt/dto/parse-receipt.dto.js'
 import { DocumentParseRegistry, type DocumentParseStrategy } from '../receipt/parse/document-parse.registry.js'
-
-const TIMEOUT_MS = 20_000
+import {
+  NOTHING_STAGED,
+  extractWithModel,
+  isFromOcr,
+  isolateGrounding,
+  noTaxYearReason,
+  resolveVisionModel,
+  stagedDraftsOf,
+  stagingEngine,
+  yearConflictOf,
+  type StagedDrafts,
+} from '../receipt/parse/document-parse-steps.js'
 
 const DIGIT_OF: Readonly<Record<string, string>> = Object.fromEntries(SALARY_CERTIFICATE_FIELDS.map((f) => [f.id, f.digit]))
 
@@ -80,122 +88,33 @@ export class ChCertificateScanParseStrategy implements DocumentParseStrategy, On
     this.registry.register(this)
   }
 
-  private async model(): Promise<{ model: SingleShotModel; slot: ResolvedAiSlotConfig } | null> {
-    try {
-      if (await this.runtimeConfig.isKillSwitchActive()) return null
-      const slot = await this.runtimeConfig.resolveSlot('vision_ocr')
-      if (!slot.enabled || slot.provider === 'deterministic') return null
-      const model = this.resolveModel(slot)
-      return model ? { model, slot } : null
-    } catch {
-      return null
-    }
-  }
-
   async parse(userId: string, dto: ParseReceiptDto): Promise<ParseReceiptResponseDto> {
     const rawText = dto.rawText ?? ''
-    let read: ChCertificateRead = parseChSalaryCertificateText(rawText)
-    let stage: 'deterministic' | 'llm_text_fallback' = 'deterministic'
-    let slot: ResolvedAiSlotConfig | null = null
-    let securityBlocked = false
-
-    if (read.missing.length > 0 && rawText.trim()) {
-      const resolved = await this.model()
-      if (resolved) {
-        const knownNames = await this.staging.knownNamesForScrubbing(userId, dto.taxYear)
-        // Allowlist first: only the Ziffer rows leave the server, never the head with name and AHV number.
-        const grounding = scrubDocumentTextPii(selectChCertificateRelevantLines(rawText), knownNames)
-        try {
-          checkPiiFree({ text: grounding })
-        } catch {
-          securityBlocked = true
-        }
-        if (!securityBlocked && grounding.trim()) {
-          await this.auditService.append({ userId, action: 'READ', resource: 'ki_lohnausweis_textfallback' })
-          try {
-            const answer = await resolved.model.complete(
-              { system: FALLBACK_SYSTEM_PROMPT, user: `Ziffern eines Lohnausweises:\n${grounding}` },
-              { signal: AbortSignal.timeout(TIMEOUT_MS) },
-            )
-            read = applyChCertificateTextFallback(read, FALLBACK_SCHEMA.parse(extractJsonObject(answer)), grounding)
-            stage = 'llm_text_fallback'
-            slot = resolved.slot
-          } catch {
-            // Timeout, refusal or malformed JSON: the rule's read stands.
-          }
-        }
-      }
-    }
-
-    // Only a PDF text layer may give a value as read; OCR confuses digits (ADR-0060).
-    const fromOcr = dto.textSource !== 'pdf_text'
-    const fields: ChCertificateFieldDto[] = (Object.entries(read.fields) as [SalaryCertificateAmountFieldId, NonNullable<ChCertificateRead['fields'][SalaryCertificateAmountFieldId]>][]).map(
-      ([field, f]) => ({
-        field,
-        digit: DIGIT_OF[field] ?? '',
-        value: f.value,
-        status: f.status === 'ok' && !fromOcr ? 'ok' : 'pruefen',
-        reason: f.reason ?? (fromOcr ? 'ocr_source' : null),
-      }),
-    )
+    const { read, stage, slot, securityBlocked } = await this.fillMissingWithModel(userId, dto, parseChSalaryCertificateText(rawText))
+    const fromOcr = isFromOcr(dto)
+    const fields = certificateFieldDtos(read, fromOcr)
     checkPiiFree({ fields, checks: read.checks, missing: read.missing })
     await this.auditService.append({ userId, action: 'READ', resource: 'beleg_analyse' })
 
     // One year rule (ADR-0097 §5): a certificate of another year is read for that year and its drafts go there.
     const filingYear = receiptFilingYear(read.taxYear, dto.taxYear)
-    const year = filingYear ?? dto.taxYear
-    const household = await this.staging.householdNames(userId, year)
-    // The name in box H; when that fits nobody, the one name of the household the whole form carries.
-    const person: 'A' | 'B' | null =
-      dto.person ?? (household.B === null ? holderWithoutPartner(rawText, household.A, read.holder ?? undefined) : (certificateHolderPerson(read.holder, household) ?? certificateHolderPerson(rawText, household)))
-    const personUnclear = person === null
+    const household = await this.staging.householdNames(userId, filingYear ?? dto.taxYear)
+    const person = certificateHolder(dto, rawText, read, household)
     const personNotRecordable = person === 'B' && household.B?.recordable !== true
-    const yearConflict = read.taxYear !== null && read.taxYear !== dto.taxYear ? { documentYear: read.taxYear, activeYear: dto.taxYear } : null
-
-    let stagedActionIds: string[] = []
-    let stagedAction: ParseReceiptResponseDto['stagedAction'] = null
-    let assistantMessage: ParseReceiptResponseDto['assistantMessage'] = null
     const stageable = fields.filter((f) => f.value >= 0)
     // Another year no longer blocks (`yearConflict` only reports it); a year the app does not keep stages nothing.
-    if ((dto.stageDraft ?? true) && person !== null && !personNotRecordable && filingYear !== null && stageable.length > 0) {
-      const staged = await this.staging.stageDocumentDrafts(userId, filingYear, {
-        screen: 'chLohnausweis',
-        person,
-        digestUserId: await this.linkService.dataUser(userId, filingYear, person),
-        receiptId: dto.receiptId ?? null,
-        engine: slot ? { mode: 'langgraph', provider: slot.provider, model: slot.model } : { mode: 'deterministic_fallback', provider: 'deterministic' },
-        summaryText: summaryOf(read, person, fields, fromOcr),
-        sourceId: 'estg-9-1',
-        // What the remarks say about a paid-out daily benefit: asked, with the amount as the proposal (ADR-0093).
-        dailyBenefit: read.dailyBenefit,
-        fields: [
-          ...stageable.map((f) => ({
-            field: f.field,
-            label: LABELS[f.field as SalaryCertificateAmountFieldId] ?? f.field,
-            value: f.value,
-            status: f.status,
-            reason: f.reason === 'negative' ? null : f.reason,
-          })),
-          // The family allowances the remarks name: Anlage N-Gre Z. 8, kept out of the taxed wage (ADR-0088).
-          // Premiums the employer took over, as the remarks name them: 100 % and the amount, to be checked (wage, N-Gre 18/19).
-          ...employerPremiumDrafts(read.employerPremiums),
-          ...(read.familyAllowancesChf !== null
-            ? [{ field: 'familienzulagenChf', label: 'Familienzulagen (CHF, Anlage N-Gre Zeile 8)', value: read.familyAllowancesChf, status: fromOcr ? ('pruefen' as const) : ('ok' as const), reason: fromOcr ? ('ocr_source' as const) : null }]
-            : []),
-        ],
-      })
-      stagedActionIds = staged.actions.map((a) => a.actionId)
-      stagedAction = staged.actions[0] ?? null
-      assistantMessage = staged.assistantMessage
-    }
+    const staged =
+      (dto.stageDraft ?? true) && person !== null && !personNotRecordable && filingYear !== null && stageable.length > 0
+        ? await this.stageDrafts(userId, dto, filingYear, { read, person, slot, fields, stageable, fromOcr })
+        : NOTHING_STAGED
 
     const chLohnausweis: ParsedChCertificateResponseDto = {
       stage,
       receiptId: dto.receiptId ?? null,
       taxYearOnDocument: read.taxYear,
-      yearConflict,
+      yearConflict: yearConflictOf(read.taxYear, dto.taxYear),
       person,
-      personUnclear,
+      personUnclear: person === null,
       personNotRecordable,
       fields,
       checks: read.checks,
@@ -203,29 +122,127 @@ export class ChCertificateScanParseStrategy implements DocumentParseStrategy, On
       freeTransport: read.freeTransport,
       dailyBenefit: read.dailyBenefit,
       missing: [...read.missing],
-      stagedActionIds,
+      stagedActionIds: staged.stagedActionIds,
       securityBlocked,
     }
-    const gross = read.amounts['bruttolohn-total'] ?? null
     return {
       mode: slot ? 'vision_ocr' : 'deterministic_fallback',
       securityBlocked,
-      parsed: {
-        vendorCategory: 'sonstiges',
-        receiptDate: null,
-        amountEur: null,
-        suggestedScreen: 'chLohnausweis',
-        suggestedField: 'bruttolohn-total',
-        suggestedValue: gross !== null ? String(gross) : null,
-        summary: `Lohnausweis (${read.taxYear ?? dto.taxYear}) gelesen.`,
-        taxYear: read.taxYear ?? dto.taxYear,
-      },
-      stagedAction,
-      assistantMessage,
+      parsed: certificateSummary(read, dto.taxYear),
+      stagedAction: staged.stagedAction,
+      assistantMessage: staged.assistantMessage,
       chLohnausweis,
-      draftsTaxYear: stagedActionIds.length > 0 ? filingYear : null,
-      noValuesReason: (dto.stageDraft ?? true) && filingYear === null ? 'kein_steuerjahr' : null,
+      draftsTaxYear: staged.stagedActionIds.length > 0 ? filingYear : null,
+      noValuesReason: noTaxYearReason(dto, filingYear),
     }
+  }
+
+  /** A model fills only what the rule left empty, and sees only the Ziffer rows; any failure keeps the rule's read. */
+  private async fillMissingWithModel(userId: string, dto: ParseReceiptDto, ruleRead: ChCertificateRead): Promise<ModelFill> {
+    const rawText = dto.rawText ?? ''
+    const unchanged: ModelFill = { read: ruleRead, stage: 'deterministic', slot: null, securityBlocked: false }
+    if (ruleRead.missing.length === 0 || !rawText.trim()) return unchanged
+    const vision = await resolveVisionModel(this.runtimeConfig, this.resolveModel)
+    if (!vision) return unchanged
+
+    const knownNames = await this.staging.knownNamesForScrubbing(userId, dto.taxYear)
+    // Allowlist first: only the Ziffer rows leave the server, never the head with name and AHV number.
+    const grounding = isolateGrounding(selectChCertificateRelevantLines(rawText), knownNames)
+    if (grounding.blocked) return { ...unchanged, securityBlocked: true }
+    if (!grounding.text.trim()) return unchanged
+
+    await this.auditService.append({ userId, action: 'READ', resource: 'ki_lohnausweis_textfallback' })
+    try {
+      const filled = await extractWithModel(vision.model, { system: FALLBACK_SYSTEM_PROMPT, user: `Ziffern eines Lohnausweises:\n${grounding.text}` }, FALLBACK_SCHEMA)
+      return { read: applyChCertificateTextFallback(ruleRead, filled, grounding.text), stage: 'llm_text_fallback', slot: vision.slot, securityBlocked: false }
+    } catch {
+      // Timeout, refusal or malformed JSON: the rule's read stands.
+      return unchanged
+    }
+  }
+
+  /** The values as drafts for that person's Lohnausweis mask, written only when the user applies them. */
+  private async stageDrafts(
+    userId: string,
+    dto: ParseReceiptDto,
+    filingYear: number,
+    input: { read: ChCertificateRead; person: 'A' | 'B'; slot: ResolvedAiSlotConfig | null; fields: ChCertificateFieldDto[]; stageable: ChCertificateFieldDto[]; fromOcr: boolean },
+  ): Promise<StagedDrafts> {
+    const { read, person, fromOcr } = input
+    const staged = await this.staging.stageDocumentDrafts(userId, filingYear, {
+      screen: 'chLohnausweis',
+      person,
+      digestUserId: await this.linkService.dataUser(userId, filingYear, person),
+      receiptId: dto.receiptId ?? null,
+      engine: stagingEngine(input.slot),
+      summaryText: summaryOf(read, person, input.fields, fromOcr),
+      sourceId: 'estg-9-1',
+      // What the remarks say about a paid-out daily benefit: asked, with the amount as the proposal (ADR-0093).
+      dailyBenefit: read.dailyBenefit,
+      fields: certificateDraftFields(read, input.stageable, fromOcr),
+    })
+    return stagedDraftsOf(staged)
+  }
+}
+
+interface ModelFill {
+  readonly read: ChCertificateRead
+  readonly stage: 'deterministic' | 'llm_text_fallback'
+  /** The slot whose model filled Ziffern; null when the rule's read stands. */
+  readonly slot: ResolvedAiSlotConfig | null
+  readonly securityBlocked: boolean
+}
+
+type HouseholdNames = Awaited<ReturnType<AdvisorDocumentStaging['householdNames']>>
+
+/** Whose certificate: the name in box H; when that fits nobody, the one name of the household the whole form carries. */
+function certificateHolder(dto: ParseReceiptDto, rawText: string, read: ChCertificateRead, household: HouseholdNames): 'A' | 'B' | null {
+  if (dto.person) return dto.person
+  return household.B === null ? holderWithoutPartner(rawText, household.A, read.holder ?? undefined) : (certificateHolderPerson(read.holder, household) ?? certificateHolderPerson(rawText, household))
+}
+
+/** Every Ziffer read. Only a PDF text layer may give a value as read; OCR confuses digits (ADR-0060). */
+export function certificateFieldDtos(read: ChCertificateRead, fromOcr: boolean): ChCertificateFieldDto[] {
+  return (Object.entries(read.fields) as [SalaryCertificateAmountFieldId, NonNullable<ChCertificateRead['fields'][SalaryCertificateAmountFieldId]>][]).map(([field, f]) => ({
+    field,
+    digit: DIGIT_OF[field] ?? '',
+    value: f.value,
+    status: f.status === 'ok' && !fromOcr ? 'ok' : 'pruefen',
+    reason: f.reason ?? (fromOcr ? 'ocr_source' : null),
+  }))
+}
+
+/** The drafts: each stageable Ziffer, the employer's premiums and the family allowances the remarks name. */
+export function certificateDraftFields(read: ChCertificateRead, stageable: readonly ChCertificateFieldDto[], fromOcr: boolean) {
+  return [
+    ...stageable.map((f) => ({
+      field: f.field,
+      label: LABELS[f.field as SalaryCertificateAmountFieldId] ?? f.field,
+      value: f.value,
+      status: f.status,
+      reason: f.reason === 'negative' ? null : f.reason,
+    })),
+    // The family allowances the remarks name: Anlage N-Gre Z. 8, kept out of the taxed wage (ADR-0088).
+    // Premiums the employer took over, as the remarks name them: 100 % and the amount, to be checked (wage, N-Gre 18/19).
+    ...employerPremiumDrafts(read.employerPremiums),
+    ...(read.familyAllowancesChf !== null
+      ? [{ field: 'familienzulagenChf', label: 'Familienzulagen (CHF, Anlage N-Gre Zeile 8)', value: read.familyAllowancesChf, status: fromOcr ? ('pruefen' as const) : ('ok' as const), reason: fromOcr ? ('ocr_source' as const) : null }]
+      : []),
+  ]
+}
+
+/** The receipt-level summary every reader returns, pointing at the gross wage (Ziffer 8). */
+function certificateSummary(read: ChCertificateRead, activeYear: number): ParseReceiptResponseDto['parsed'] {
+  const gross = read.amounts['bruttolohn-total'] ?? null
+  return {
+    vendorCategory: 'sonstiges',
+    receiptDate: null,
+    amountEur: null,
+    suggestedScreen: 'chLohnausweis',
+    suggestedField: 'bruttolohn-total',
+    suggestedValue: gross !== null ? String(gross) : null,
+    summary: `Lohnausweis (${read.taxYear ?? activeYear}) gelesen.`,
+    taxYear: read.taxYear ?? activeYear,
   }
 }
 

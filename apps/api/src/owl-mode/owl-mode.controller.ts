@@ -4,7 +4,7 @@ import { CurrentUser } from '../auth/current-user.decorator.js'
 import { ForbidAssistant } from '../auth/forbid-assistant.guard.js'
 import { RequiresAccount } from '../auth/requires-account.guard.js'
 import { UserContextGuard } from '../auth/user-context.guard.js'
-import { ParseTaxYearPipe } from '../cockpit/parse-tax-year.pipe.js'
+import { ParseTaxYearPipe } from '../common/parse-tax-year.pipe.js'
 import { OwlModeService } from './owl-mode.service.js'
 import { PersonalDataConsentService } from './personal-data-consent.service.js'
 import {

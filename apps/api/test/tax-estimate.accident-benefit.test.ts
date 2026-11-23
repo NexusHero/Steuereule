@@ -12,6 +12,7 @@ import { FakeLinkRepository } from './fakes/fake-link.repository.js'
 import { FakeChildRepository } from './fakes/fake-child.repository.js'
 import { FakeRentalRepository } from './fakes/fake-rental.repository.js'
 import { FakePensionRepository } from './fakes/fake-pension.repository.js'
+import { taxCaseReaderOver } from '../src/tax-case/repository-tax-case.reader.js'
 
 // The daily benefit of the Swiss accident insurance (UVG/SUVA) is tax-free like the sickness benefit of a
 // collective insurance, so both leave the wage; only the accident benefit raises the tax rate (§ 32b EStG).
@@ -29,7 +30,7 @@ function setup() {
   const ch = new FakeChSalaryCertificateRepository()
   const masterData = new FakeMasterDataRepository()
   const link = new FakeLinkRepository()
-  const service = new TaxEstimateService(lstb, interview, ch, masterData, NO_COMMUTE, link, new FakeChildRepository(), new FakeRentalRepository(), new FakePensionRepository())
+  const service = new TaxEstimateService(taxCaseReaderOver({ wageTaxCertificate: lstb, interview, salaryStatement: ch, masterData, commute: NO_COMMUTE, coupling: link, children: new FakeChildRepository(), rental: new FakeRentalRepository(), pension: new FakePensionRepository() }))
   return { lstb, interview, ch, masterData, link, service }
 }
 

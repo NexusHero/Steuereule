@@ -1,27 +1,18 @@
 import { Module } from '@nestjs/common'
-import { ChSalaryCertificateModule } from '../ch-salary-certificate/ch-salary-certificate.module.js'
-import { InterviewModule } from '../interview/interview.module.js'
-import { CapitalModule } from '../capital/capital.module.js'
-import { LstbModule } from '../lstb/lstb.module.js'
 import { PrismaModule } from '../prisma/prisma.module.js'
-import { PensionModule } from '../pension/pension.module.js'
 import { MarkingModule } from '../marking/marking.module.js'
-import { RentalModule } from '../rental/rental.module.js'
 import { LinkModule } from '../link/link.module.js'
 import { SubmissionModule } from '../submission/submission.module.js'
 import { BusinessModule } from '../business/business.module.js'
 import { CockpitController } from './cockpit.controller.js'
 import { CockpitService } from './cockpit.service.js'
-import { PrismaTaxYearRepository } from './tax-year.repository.prisma.js'
-import { TAX_YEAR_REPOSITORY } from './tax-year.repository.js'
+import { TaxCaseModule } from '../tax-case/tax-case.module.js'
+import { TaxYearModule } from '../tax-year/tax-year.module.js'
 
 @Module({
-  imports: [PrismaModule, LstbModule, InterviewModule, MarkingModule, PensionModule, CapitalModule, RentalModule, ChSalaryCertificateModule, LinkModule, SubmissionModule, BusinessModule],
+  imports: [PrismaModule, TaxCaseModule, MarkingModule, LinkModule, SubmissionModule, BusinessModule, TaxYearModule],
   controllers: [CockpitController],
-  providers: [
-    CockpitService,
-    { provide: TAX_YEAR_REPOSITORY, useClass: PrismaTaxYearRepository },
-  ],
+  providers: [CockpitService],
   exports: [CockpitService],
 })
 export class CockpitModule {}

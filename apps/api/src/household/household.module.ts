@@ -5,7 +5,7 @@ import { LinkModule } from '../link/link.module.js'
 import { MasterDataModule } from '../master-data/master-data.module.js'
 import { ProfileModule } from '../profile/profile.module.js'
 import { HouseholdController } from './household.controller.js'
-import { HouseholdCoreModule } from './household-core.module.js'
+import { HouseholdCoreModule } from '../household-core/household-core.module.js'
 import { HouseholdService } from './household.service.js'
 
 @Module({

@@ -49,6 +49,7 @@ import { AdvisorProjectNotes } from '../../src/advisor/advisor-project-notes.js'
 import { NotFoundError } from '../../src/common/domain-error.js'
 import { FakeBusinessRepository } from './fake-business.repository.js'
 import { FakeReceiptRepository } from './fake-receipt.repository.js'
+import { taxCaseReaderOver } from '../../src/tax-case/repository-tax-case.reader.js'
 
 /** The fakes and the services over them that every wiring of the advisor shares. */
 export interface AdvisorTestFakes {
@@ -247,9 +248,9 @@ export function buildAdvisorTestKit(engine?: AdvisorEnginePort, modelConnection?
     new RagKiAdapter(),
     auditService,
   )
-  const taxEstimate = new TaxEstimateService(lstbRepo, interviewRepo, chRepo, masterDataRepo, commuteRepo, linkRepo, childRepo, rentalRepo, pensionRepo)
+  const taxEstimate = new TaxEstimateService(taxCaseReaderOver({ wageTaxCertificate: lstbRepo, interview: interviewRepo, salaryStatement: chRepo, masterData: masterDataRepo, commute: commuteRepo, coupling: linkRepo, children: childRepo, rental: rentalRepo, pension: pensionRepo }))
   const children = new ChildrenService(childRepo, auditService, chRepo, linkRepo)
-  const assessmentService = new AssessmentService(assessmentRepo, lstbRepo, interviewRepo, chRepo, auditService)
+  const assessmentService = new AssessmentService(assessmentRepo, taxCaseReaderOver({ wageTaxCertificate: lstbRepo, interview: interviewRepo, salaryStatement: chRepo }), auditService)
   const business = composeBusinessService(new FakeBusinessRepository(), interviewRepo, auditService, new HebesatzDirectory())
   const defaultRuntimeConfig = new EnvAiRuntimeConfigService({})
 

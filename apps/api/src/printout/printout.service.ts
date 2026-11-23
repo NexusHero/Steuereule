@@ -18,23 +18,17 @@ import {
   commuteDaysByWay,
 } from '@steuereule/core'
 import { waysToWork } from '../commute/ways-to-work.js'
-import { COMMUTE_REPOSITORY, type CommuteInputs, type CommuteRepository } from '../commute/commute.repository.js'
+import type { CommuteInputs } from '../commute/commute.repository.js'
 import { AuditService } from '../audit/audit.service.js'
-import { CROSS_BORDER_SALARY_STATEMENT_REPOSITORY, type CrossBorderSalaryStatementRecord, type CrossBorderSalaryStatementRepository } from '../ch-salary-certificate/ch-salary-certificate.repository.js'
+import type { CrossBorderSalaryStatementRecord } from '../ch-salary-certificate/ch-salary-certificate.repository.js'
 import { UnlockService } from '../unlock/unlock.service.js'
-import { INTERVIEW_ANSWER_REPOSITORY, type InterviewAnswerRepository } from '../interview/interview-answer.repository.js'
-import { CAPITAL_REPOSITORY, type CapitalRepository } from '../capital/capital.repository.js'
-import { CHILD_REPOSITORY, type ChildRepository } from '../children/child.repository.js'
 import { PROVENANCE_REPOSITORY, type ProvenanceRepository } from '../marking/marking.repository.js'
-import { PARTNER_COUPLING_REPOSITORY, type PartnerCouplingRepository } from '../link/link.repository.js'
-import { WAGE_TAX_CERTIFICATE_REPOSITORY, type WageTaxCertificateRepository } from '../lstb/lstb.repository.js'
-import { PROFILE_REPOSITORY, type ProfileRepository } from '../profile/profile.repository.js'
-import { PENSION_REPOSITORY, type PensionRepository } from '../pension/pension.repository.js'
-import { MASTER_DATA_REPOSITORY, religionForReturn, type MasterDataRepository } from '../master-data/master-data.repository.js'
-import { RENTAL_REPOSITORY, type RentalRepository } from '../rental/rental.repository.js'
+import { religionForReturn } from '../master-data/master-data.repository.js'
+import { TAX_CASE_READER, type TaxCaseReader, type TaxCaseRecords } from '../tax-case/tax-case.reader.js'
 import { childAllowancesEur } from '../children/swiss-allowance.js'
 import { fillInForms, lineNumbersOf } from './fill-in-lines.js'
 import { liveForms, type LiveForm, type LiveFormWithLines } from './live-values.js'
+import { PRINTOUT_ESTIMATE, type PrintoutEstimate } from './printout-estimate.port.js'
 import { printoutValues, type ChildGapField, type CommuteFacts, type ChSalaryCertificateFacts, type LifeSituationFacts, type PersonBFacts } from './printout-values.js'
 import {
   FIELD_SETS,
@@ -48,14 +42,6 @@ import {
 
 export const TEMPLATES_BASE = Symbol('VORLAGEN_BASIS')
 export const ACROFORM_TEMPLATES_BASE = Symbol('ACROFORM_VORLAGEN_BASIS')
-/** The Cockpit estimate, looked up when asked for (the estimate's module reads the same records). */
-export const PRINTOUT_ESTIMATE = Symbol('PRINTOUT_ESTIMATE')
-
-/** What the printout check needs of the estimate: whether the return ends in a payment. */
-export interface PrintoutEstimate {
-  getState(userId: string, taxYear: number): Promise<{ readonly kind: string; readonly result?: { readonly from: number; readonly to: number } }>
-}
-
 /** What stops the printout, and what only belongs on it for a refund. */
 export interface PrintoutCheck {
   readonly missing: string[]
@@ -76,18 +62,8 @@ function crossBorderStatusFrom(answers: Record<string, string>): CrossBorderStat
 @Injectable()
 export class PrintoutService {
   constructor(
-    @Inject(PROFILE_REPOSITORY) private readonly profile: ProfileRepository,
-    @Inject(MASTER_DATA_REPOSITORY) private readonly masterData: MasterDataRepository,
-    @Inject(WAGE_TAX_CERTIFICATE_REPOSITORY) private readonly lstb: WageTaxCertificateRepository,
-    @Inject(PENSION_REPOSITORY) private readonly pension: PensionRepository,
-    @Inject(CAPITAL_REPOSITORY) private readonly capital: CapitalRepository,
-    @Inject(RENTAL_REPOSITORY) private readonly rental: RentalRepository,
-    @Inject(CROSS_BORDER_SALARY_STATEMENT_REPOSITORY) private readonly chSalaryCertificate: CrossBorderSalaryStatementRepository,
-    @Inject(CHILD_REPOSITORY) private readonly kinder: ChildRepository,
-    @Inject(PARTNER_COUPLING_REPOSITORY) private readonly link: PartnerCouplingRepository,
-    @Inject(INTERVIEW_ANSWER_REPOSITORY) private readonly interview: InterviewAnswerRepository,
+    @Inject(TAX_CASE_READER) private readonly cases: TaxCaseReader,
     @Inject(PROVENANCE_REPOSITORY) private readonly markings: ProvenanceRepository,
-    @Inject(COMMUTE_REPOSITORY) private readonly commute: CommuteRepository,
     @Inject(UnlockService) private readonly unlock: UnlockService,
     @Inject(AuditService) private readonly audit: AuditService,
     @Inject(TEMPLATES_BASE) private readonly templatesBase: URL,
@@ -152,7 +128,7 @@ export class PrintoutService {
   async liveValues(userId: string, year: number): Promise<{ forms: LiveFormWithLines[] }> {
     const fieldSet = FIELD_SETS[year]
     if (!fieldSet) throw new NotFoundError('VORDRUCKE_MISSING', `No Vordrucke are available for tax year ${year} yet.`)
-    const link = await this.link.findByUserAndYear(userId, year)
+    const { coupling: link } = await this.cases.read(userId, year, ['coupling'])
     // ADR-0054: Person A prints the couple's return; Person B has no copy of their own to show.
     if (link?.filingType === 'zusammen' && link.personAUserId !== userId) return { forms: [] }
     const { values, instances, entityIds } = await this.collectValues(userId, year)
@@ -167,7 +143,7 @@ export class PrintoutService {
    * behind per-record copies are named so the help can tell two Anlagen Kind apart.
    */
   async fillInValues(userId: string, year: number): Promise<{ forms: LiveForm[]; names: Readonly<Record<string, string | null>> }> {
-    const link = await this.link.findByUserAndYear(userId, year)
+    const { coupling: link } = await this.cases.read(userId, year, ['coupling'])
     // ADR-0054: Person A files the couple's return; Person B has no return of their own to type in.
     if (link?.filingType === 'zusammen' && link.personAUserId !== userId) return { forms: [], names: {} }
     const { values, instances, entityIds, names } = await this.collectValues(userId, year)
@@ -221,7 +197,7 @@ export class PrintoutService {
   }
 
   private async collect(userId: string, year: number) {
-    const link = await this.link.findByUserAndYear(userId, year)
+    const { coupling: link } = await this.cases.read(userId, year, ['coupling'])
     // ADR-0054: a couple files one return, printed by Person A. Person B sees it but never prints a
     // second one with themselves as Person A.
     if (link?.filingType === 'zusammen' && link.personAUserId !== userId) {
@@ -233,36 +209,36 @@ export class PrintoutService {
   }
 
   private async collectValues(userId: string, year: number) {
-    const [profile, masterData, lstb, pension, capital, properties, ch, kinder, link, interviewRows, commute] = await Promise.all([
-      this.profile.findByUserId(userId),
-      this.masterData.findByUserId(userId),
-      this.lstb.findForUserAndYear(userId, year),
-      this.pension.findForUserAndYear(userId, year),
-      this.capital.findForUserAndYear(userId, year),
-      this.rental.listForUserAndYear(userId, year),
-      this.chSalaryCertificate.findForUserAndYear(userId, year),
-      this.kinder.listForUserAndYear(userId, year),
-      this.link.findByUserAndYear(userId, year),
-      this.interview.findAllForUserAndYear(userId, year),
-      this.commute.findForUserAndYear(userId, year),
-    ])
+    const {
+      profile,
+      masterData,
+      wageTaxCertificate: lstb,
+      pension,
+      capital,
+      rentals: properties,
+      salaryStatement: ch,
+      children: kinder,
+      coupling: link,
+      interviewRows,
+      commute,
+    } = await this.cases.read(userId, year, ['profile', 'masterData', 'wageTaxCertificate', 'pension', 'capital', 'rentals', 'salaryStatement', 'children', 'coupling', 'interviewRows', 'commute'])
 
     const answers: Record<string, string> = {}
     for (const row of interviewRows) answers[row.questionId] = row.value
 
     let personBFacts: PersonBFacts | null = null
-    let spouseChRecord: Awaited<ReturnType<typeof this.chSalaryCertificate.findForUserAndYear>> = null
+    let spouseChRecord: TaxCaseRecords['salaryStatement'] = null
     if (link?.filingType === 'zusammen' && link.personBUserId) {
       const spouseId = link.personBUserId
-      const [spouseProf, spouseSd, spouseLstb, spousePension, spouseCh, spouseCommute, spouseInterview] = await Promise.all([
-        this.profile.findByUserId(spouseId),
-        this.masterData.findByUserId(spouseId),
-        this.lstb.findForUserAndYear(spouseId, year),
-        this.pension.findForUserAndYear(spouseId, year),
-        this.chSalaryCertificate.findForUserAndYear(spouseId, year),
-        this.commute.findForUserAndYear(spouseId, year),
-        this.interview.findAllForUserAndYear(spouseId, year),
-      ])
+      const {
+        profile: spouseProf,
+        masterData: spouseSd,
+        wageTaxCertificate: spouseLstb,
+        pension: spousePension,
+        salaryStatement: spouseCh,
+        commute: spouseCommute,
+        interviewRows: spouseInterview,
+      } = await this.cases.read(spouseId, year, ['profile', 'masterData', 'wageTaxCertificate', 'pension', 'salaryStatement', 'commute', 'interviewRows'])
       spouseChRecord = spouseCh
       const spouseAnswers: Record<string, string> = {}
       for (const row of spouseInterview) spouseAnswers[row.questionId] = row.value

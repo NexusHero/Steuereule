@@ -3,7 +3,7 @@ import { ApiOkResponse, ApiParam, ApiTags, ApiUnauthorizedResponse } from '@nest
 import { CurrentUser } from '../auth/current-user.decorator.js'
 import { RequiresAccount } from '../auth/requires-account.guard.js'
 import { UserContextGuard } from '../auth/user-context.guard.js'
-import { ParseTaxYearPipe } from '../cockpit/parse-tax-year.pipe.js'
+import { ParseTaxYearPipe } from '../common/parse-tax-year.pipe.js'
 import { TaxEstimateDto } from './dto/tax-estimate.dto.js'
 import { TaxEstimateService } from './tax-estimate.service.js'
 

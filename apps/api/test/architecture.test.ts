@@ -21,6 +21,8 @@ interface Boundary {
   readonly name: string
   /** npm packages: an exact name, or a scope/prefix ending in `/`. */
   readonly packages?: readonly string[]
+  /** Only these named imports of the packages cross the boundary (a namespace import counts as all of them). */
+  readonly names?: readonly string[]
   /** Source files (relative to `src`) that count as part of this SDK when imported. */
   readonly internal?: (file: string) => boolean
   /** Who may import it: an exact file, a directory ending in `/`, or a suffix starting with `*`. */
@@ -87,6 +89,13 @@ const BOUNDARIES: readonly Boundary[] = [
   { name: 'Playwright', packages: ['playwright-core'], allowedIn: ['account/export/pdf-renderer.playwright.ts'], instead: 'Use PdfRenderer (account/export/pdf-renderer.ts).' },
   { name: 'pdf-lib', packages: ['pdf-lib'], allowedIn: ['printout/form-renderer.ts'], instead: 'Call renderForms (printout/form-renderer.ts).' },
   { name: 'OpenTelemetry', packages: ['@opentelemetry/'], allowedIn: ['telemetry/'], instead: 'Use withSpan (telemetry/tracer.ts).' },
+  {
+    name: 'service locator',
+    packages: ['@nestjs/core'],
+    names: ['ModuleRef'],
+    allowedIn: [],
+    instead: 'Inject a port: a token and an interface owned by the consuming module, bound by the module that provides it.',
+  },
   { name: 'child processes', packages: ['node:child_process'], allowedIn: ['business/elster-transmission.ts'], instead: 'An external process is an adapter of its own.' },
 ]
 
@@ -96,10 +105,23 @@ interface SourceImport {
   readonly pkg: string | null
   /** The source file under `src`, when the specifier is relative and resolves. */
   readonly file: string | null
+  /** The imported bindings (`*` for a namespace or dynamic import); empty for a side-effect import. */
+  readonly names?: readonly string[]
 }
 
-const STATIC_IMPORT = /^(?:import|export)\s+(?:type\s+)?(?:[\w*{}\s,$]+?\s+from\s+)?['"]([^'"]+)['"]/gm
+const STATIC_IMPORT = /^(?:import|export)\s+(?:type\s+)?(?:([\w*{}\s,$]+?)\s+from\s+)?['"]([^'"]+)['"]/gm
 const DYNAMIC_IMPORT = /\b(?:import|require)\(\s*['"]([^'"]+)['"]\s*\)/g
+
+/** `A, { B, type C as D }` → `A`, `B`, `C`; `* as ns` → `*`. */
+function importedNames(clause: string | undefined): string[] {
+  if (clause === undefined) return []
+  return clause
+    .replace(/[{}]/g, ',')
+    .split(',')
+    .map((part) => part.trim().replace(/^type\s+/, ''))
+    .filter((part) => part.length > 0)
+    .map((part) => (part.startsWith('*') ? '*' : part.split(/\s+as\s+/)[0]!))
+}
 
 function sourceFiles(dir: string): string[] {
   return fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
@@ -122,10 +144,13 @@ function resolveRelative(fromFile: string, specifier: string): string | null {
 function scanImports(): SourceImport[] {
   return sourceFiles(SRC).flatMap((file) => {
     const text = fs.readFileSync(file, 'utf8')
-    const specifiers = [...text.matchAll(STATIC_IMPORT), ...text.matchAll(DYNAMIC_IMPORT)].map((match) => match[1]!)
-    return specifiers.map((specifier): SourceImport => {
+    const found = [
+      ...[...text.matchAll(STATIC_IMPORT)].map((match) => ({ specifier: match[2]!, names: importedNames(match[1]) })),
+      ...[...text.matchAll(DYNAMIC_IMPORT)].map((match) => ({ specifier: match[1]!, names: ['*'] })),
+    ]
+    return found.map(({ specifier, names }): SourceImport => {
       const relative = specifier.startsWith('.')
-      return { from: rel(file), pkg: relative ? null : specifier, file: relative ? resolveRelative(file, specifier) : null }
+      return { from: rel(file), pkg: relative ? null : specifier, file: relative ? resolveRelative(file, specifier) : null, names }
     })
   })
 }
@@ -136,8 +161,11 @@ const matchesPackage = (pkg: string, pattern: string): boolean =>
 const isAllowed = (file: string, allowedIn: readonly string[]): boolean =>
   allowedIn.some((entry) => (entry.startsWith('*') ? file.endsWith(entry.slice(1)) : entry.endsWith('/') ? file.startsWith(entry) : file === entry))
 
+const namesOne = (imp: SourceImport, names: readonly string[] | undefined): boolean =>
+  names === undefined || (imp.names ?? ['*']).some((name) => name === '*' || names.includes(name))
+
 function crossesBoundary(imp: SourceImport, boundary: Boundary): boolean {
-  if (imp.pkg !== null) return (boundary.packages ?? []).some((pattern) => matchesPackage(imp.pkg!, pattern))
+  if (imp.pkg !== null) return (boundary.packages ?? []).some((pattern) => matchesPackage(imp.pkg!, pattern)) && namesOne(imp, boundary.names)
   return imp.file !== null && boundary.internal?.(imp.file) === true
 }
 
@@ -164,6 +192,13 @@ function moduleEdges(imports: readonly SourceImport[]): string[] {
 
 describe('apps/api dependency rules', () => {
   const imports = scanImports()
+
+  it('reads the names an import binds', () => {
+    expect(importedNames('{ ModuleRef, type Reflector as R }')).toEqual(['ModuleRef', 'Reflector'])
+    expect(importedNames('Default, { A }')).toEqual(['Default', 'A'])
+    expect(importedNames('* as core')).toEqual(['*'])
+    expect(importedNames(undefined)).toEqual([])
+  })
 
   it('finds the source tree', () => {
     expect(imports.length).toBeGreaterThan(2000)
@@ -199,6 +234,8 @@ describe('apps/api dependency rules', () => {
     ['a feature module importing better-auth', { from: 'cockpit/cockpit.controller.ts', pkg: 'better-auth/node', file: null }],
     ['a service importing the MCP SDK', { from: 'advisor/advisor.service.ts', pkg: '@modelcontextprotocol/sdk/server/mcp.js', file: null }],
     ['a service opening a Redis connection', { from: 'advisor/advisor.service.ts', pkg: 'ioredis', file: null }],
+    ['a module looking up a provider through ModuleRef', { from: 'capital/capital.module.ts', pkg: '@nestjs/core', file: null, names: ['ModuleRef'] }],
+    ['a namespace import of @nestjs/core', { from: 'printout/printout.module.ts', pkg: '@nestjs/core', file: null, names: ['*'] }],
   ] satisfies [string, SourceImport][])('flags %s', (_case, forbidden) => {
     expect(boundaryViolations([forbidden])).toHaveLength(1)
   })
@@ -209,6 +246,8 @@ describe('apps/api dependency rules', () => {
     ['a module importing PrismaModule', { from: 'rental/rental.module.ts', pkg: null, file: 'prisma/prisma.module.ts' }],
     ['a service importing the transaction port', { from: 'advisor/advisor.service.ts', pkg: null, file: 'common/transaction-runner.ts' }],
     ['a file that only sounds like a package', { from: 'unlock/unlock.service.ts', pkg: 'stripe-like-helper', file: null }],
+    ['a guard reading metadata through Reflector', { from: 'auth/require-scope.guard.ts', pkg: '@nestjs/core', file: null, names: ['Reflector'] }],
+    ['the bootstrap creating the app', { from: 'main.ts', pkg: '@nestjs/core', file: null, names: ['NestFactory'] }],
   ] satisfies [string, SourceImport][])('accepts %s', (_case, allowed) => {
     expect(boundaryViolations([allowed])).toEqual([])
   })

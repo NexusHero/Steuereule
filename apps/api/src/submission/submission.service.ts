@@ -14,13 +14,9 @@ import {
 import { hasAssessedValues } from '../assessment/assessment-positions.js'
 import { ASSESSMENT_REPOSITORY, type AssessmentRepository } from '../assessment/assessment.repository.js'
 import { FILING_VERSION_REPOSITORY, type FilingVersionRepository } from '../assessment/filing-version.repository.js'
-import { CROSS_BORDER_SALARY_STATEMENT_REPOSITORY, type CrossBorderSalaryStatementRepository } from '../ch-salary-certificate/ch-salary-certificate.repository.js'
-import { COMMUTE_REPOSITORY, type CommuteRepository } from '../commute/commute.repository.js'
 import { ConflictError, InvalidInputError, NotFoundError } from '../common/domain-error.js'
-import { INTERVIEW_ANSWER_REPOSITORY, type InterviewAnswerRepository } from '../interview/interview-answer.repository.js'
-import { PARTNER_COUPLING_REPOSITORY, type PartnerCouplingRepository } from '../link/link.repository.js'
 import { recordedSpouseUserId } from '../link/link.service.js'
-import { WAGE_TAX_CERTIFICATE_REPOSITORY, type WageTaxCertificateRepository } from '../lstb/lstb.repository.js'
+import { TAX_CASE_READER, type TaxCaseReader } from '../tax-case/tax-case.reader.js'
 import { TaxEstimateService } from '../tax-estimate/tax-estimate.service.js'
 import { todaysWorkExpenses, wageFacts } from '../year-history/person-facts.js'
 import { SUBMISSION_REPOSITORY, type SubmissionRepository } from './submission.repository.js'
@@ -50,11 +46,7 @@ export class SubmissionService {
     @Inject(SUBMISSION_REPOSITORY) private readonly submissions: SubmissionRepository,
     @Inject(FILING_VERSION_REPOSITORY) private readonly versions: FilingVersionRepository,
     @Inject(ASSESSMENT_REPOSITORY) private readonly assessments: AssessmentRepository,
-    @Inject(WAGE_TAX_CERTIFICATE_REPOSITORY) private readonly lstb: WageTaxCertificateRepository,
-    @Inject(CROSS_BORDER_SALARY_STATEMENT_REPOSITORY) private readonly ch: CrossBorderSalaryStatementRepository,
-    @Inject(COMMUTE_REPOSITORY) private readonly commute: CommuteRepository,
-    @Inject(INTERVIEW_ANSWER_REPOSITORY) private readonly interview: InterviewAnswerRepository,
-    @Inject(PARTNER_COUPLING_REPOSITORY) private readonly link: PartnerCouplingRepository,
+    @Inject(TAX_CASE_READER) private readonly cases: TaxCaseReader,
     @Inject(TaxEstimateService) private readonly estimates: TaxEstimateService,
   ) {}
 
@@ -109,7 +101,7 @@ export class SubmissionService {
    * where this account keeps B's figures (ADR-0054).
    */
   private async frozenReturn(userId: string, taxYear: number): Promise<{ filingType: 'einzel' | 'zusammen'; positions: AssessmentPositionValues; estimateAtSubmission: Range | null }> {
-    const link = await this.link.findByUserAndYear(userId, taxYear)
+    const { coupling: link } = await this.cases.read(userId, taxYear, ['coupling'])
     const filingType: 'einzel' | 'zusammen' = link?.filingType === 'zusammen' ? 'zusammen' : 'einzel'
     const spouseUserId = filingType === 'zusammen' ? recordedSpouseUserId(link, userId) : null
     const [a, b, estimate] = await Promise.all([
@@ -121,12 +113,12 @@ export class SubmissionService {
   }
 
   private async personFacts(dataUserId: string, taxYear: number): Promise<PersonYearFacts> {
-    const [lstbRecord, chRecord, path, rows] = await Promise.all([
-      this.lstb.findForUserAndYear(dataUserId, taxYear),
-      this.ch.findForUserAndYear(dataUserId, taxYear),
-      this.commute.findForUserAndYear(dataUserId, taxYear),
-      this.interview.findAllForUserAndYear(dataUserId, taxYear),
-    ])
+    const {
+      wageTaxCertificate: lstbRecord,
+      salaryStatement: chRecord,
+      commute: path,
+      interviewRows: rows,
+    } = await this.cases.read(dataUserId, taxYear, ['wageTaxCertificate', 'salaryStatement', 'commute', 'interviewRows'])
     return { wage: wageFacts(lstbRecord, chRecord), declaredWorkExpenses: todaysWorkExpenses(taxYear, path, rows) }
   }
 

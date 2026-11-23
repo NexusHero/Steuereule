@@ -16,6 +16,7 @@ import { FakeLinkRepository } from './fakes/fake-link.repository.js'
 import { FakeChildRepository } from './fakes/fake-child.repository.js'
 import { FakeRentalRepository } from './fakes/fake-rental.repository.js'
 import { FakePensionRepository } from './fakes/fake-pension.repository.js'
+import { taxCaseReaderOver } from '../src/tax-case/repository-tax-case.reader.js'
 
 const A1 = { person: 'A', business: 1 } as const
 
@@ -27,10 +28,7 @@ function setup() {
   const interview = new FakeInterviewAnswerRepository()
   const repository = new FakeBusinessRepository()
   const business = composeBusinessService(repository, interview, new AuditService(new FakeAuditRepository()), new HebesatzDirectory())
-  const service = new TaxEstimateService(
-    lstb, interview, new FakeChSalaryCertificateRepository(), new FakeMasterDataRepository(), commute,
-    new FakeLinkRepository(), new FakeChildRepository(), new FakeRentalRepository(), pension, undefined, business,
-  )
+  const service = new TaxEstimateService(taxCaseReaderOver({ wageTaxCertificate: lstb, interview, salaryStatement: new FakeChSalaryCertificateRepository(), masterData: new FakeMasterDataRepository(), commute, coupling: new FakeLinkRepository(), children: new FakeChildRepository(), rental: new FakeRentalRepository(), pension, capital: undefined }), business)
   return { interview, business, service, pension, lstb }
 }
 
