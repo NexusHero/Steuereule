@@ -20,6 +20,8 @@ import { mergeTrustedOrigins } from './trusted-origins.js'
 import { SESSION_IDLE_EXPIRES_IN_SECONDS, SESSION_UPDATE_AGE_SECONDS } from './session-lifetime.js'
 import { forceRevokeOtherSessionsOnPasswordChange } from './force-session-rotation.js'
 import { capSessionUpdateExpiry } from './session-absolute-cap.js'
+import { CLIENT_IP_HEADER } from './client-ip.js'
+import { revokeOauthGrantsOnPasswordChangePlugin, stepUpPlugin } from './step-up.js'
 
 export const OAUTH_SCOPES = [
   'openid',
@@ -60,7 +62,6 @@ export interface CreateBetterAuthOptions {
   appleSignInEnabled?: boolean
   appleClientId?: string | undefined
   appleClientSecret?: string | undefined
-  trustedProxies: string[]
   rateLimitStorage?: ResettableRateLimitStorage
 }
 
@@ -84,7 +85,6 @@ function buildOptions(options: CreateBetterAuthOptions & { rateLimitStorage: Res
     appleSignInEnabled,
     appleClientId,
     appleClientSecret,
-    trustedProxies,
     rateLimitStorage,
   } = options
 
@@ -143,10 +143,12 @@ function buildOptions(options: CreateBetterAuthOptions & { rateLimitStorage: Res
       deviceSessionCookiePlugin,
       twoFactor({ issuer: 'SteuerEule' }),
       passkey({ rpName: 'SteuerEule' }),
+      // Passkey, assistant consent and social linking need a fresh sign-in or a re-entered password (ADR-0106 D2).
+      stepUpPlugin,
+      revokeOauthGrantsOnPasswordChangePlugin,
+      // The private key is stored encrypted under BETTER_AUTH_SECRET (the default): a database read alone no
+      // longer lets anyone sign assistant tokens for any user (ADR-0106 D6).
       jwt({
-        jwks: {
-          disablePrivateKeyEncryption: true,
-        },
         // One issuer for signing, the authorization-server metadata and our bearer check (ADR-0052 §2).
         jwt: { issuer: authIssuer(baseUrl) },
       }),
@@ -183,8 +185,11 @@ function buildOptions(options: CreateBetterAuthOptions & { rateLimitStorage: Res
       defaultCookieAttributes: SESSION_COOKIE_ATTRIBUTES,
       useSecureCookies: new URL(baseUrl).protocol === 'https:',
       disableOriginCheck: false,
+      // The address Fastify resolved from the socket and TRUSTED_PROXIES, written by the server alone
+      // (installClientIpHeader). It is a single, already-resolved value, so no proxy list applies here
+      // (ADR-0106 D3/D4).
       ipAddress: {
-        trustedProxies,
+        ipAddressHeaders: [CLIENT_IP_HEADER],
       },
     },
     session: {

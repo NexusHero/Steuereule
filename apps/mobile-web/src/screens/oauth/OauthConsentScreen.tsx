@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
 import { ActivityIndicator, ScrollView, Text, View, type TextStyle, type ViewStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
-import { Button, Card, useTheme, type UiTheme } from '@steuereule/ui'
+import { Button, Card, Feld, Input, useTheme, type UiTheme } from '@steuereule/ui'
 import { useAssistantsControllerGetClientInfo, getApiClientBaseUrl } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
+import { STEP_UP_REQUIRED_CODE } from '../../auth/useStepUp'
 
 export interface OauthConsentScreenProps {
   readonly clientId?: string | undefined
@@ -52,6 +53,9 @@ export function OauthConsentScreen({
 
   const [submitting, setSubmitting] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  // Approving an assistant on an older session needs the password again (ADR-0106 D2).
+  const [stepUp, setStepUp] = useState<{ readonly error: string } | null>(null)
+  const [password, setPassword] = useState('')
 
   const clientName = clientInfoQuery.data?.status === 200
     ? clientInfoQuery.data.data.name
@@ -79,6 +83,14 @@ export function OauthConsentScreen({
         }),
       })
 
+      if (response.status === 403 && accept) {
+        const body = (await response.json().catch(() => ({}))) as { code?: string }
+        if (body.code === STEP_UP_REQUIRED_CODE) {
+          setStepUp({ error: '' })
+          setSubmitting(false)
+          return
+        }
+      }
       if (!response.ok) {
         throw new Error(`Consent endpoint returned ${response.status}`)
       }
@@ -93,6 +105,35 @@ export function OauthConsentScreen({
       setErrorMessage(tr('oauthConsent.error'))
       setSubmitting(false)
     }
+  }
+
+  async function confirmPassword() {
+    if (submitting || !password) return
+    setSubmitting(true)
+    try {
+      const response = await fetch(`${getApiClientBaseUrl()}/api/auth/verify-password`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Origin: typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000',
+        },
+        credentials: 'include',
+        body: JSON.stringify({ password }),
+      })
+      if (!response.ok) {
+        setStepUp({ error: tr('oauthConsent.stepUpWrong') })
+        setSubmitting(false)
+        return
+      }
+    } catch {
+      setStepUp({ error: tr('oauthConsent.error') })
+      setSubmitting(false)
+      return
+    }
+    setPassword('')
+    setStepUp(null)
+    setSubmitting(false)
+    await handleDecision(true)
   }
 
   return (
@@ -146,6 +187,19 @@ export function OauthConsentScreen({
           <Text style={styles.errorText} accessibilityRole="alert">
             {errorMessage}
           </Text>
+        ) : null}
+
+        {stepUp ? (
+          <View style={styles.section} testID="oauth-stepup">
+            <Text style={styles.sectionHeading}>{tr('oauthConsent.stepUpTitle')}</Text>
+            <Text style={styles.help}>{tr('oauthConsent.stepUpBody')}</Text>
+            <Feld label={tr('oauthConsent.stepUpPassword')} error={stepUp.error}>
+              <Input type="password" value={password} onChange={setPassword} placeholder="••••••••" autoComplete="current-password" testID="oauth-stepup-passwort" onSubmit={() => void confirmPassword()} />
+            </Feld>
+            <Button variant="primaer" disabled={submitting || !password} onPress={() => void confirmPassword()} testID="oauth-stepup-bestaetigen">
+              {submitting ? tr('oauthConsent.processing') : tr('oauthConsent.stepUpConfirm')}
+            </Button>
+          </View>
         ) : null}
 
         <View style={styles.actionRow}>

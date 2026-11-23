@@ -2,6 +2,7 @@ import { useTranslation } from 'react-i18next'
 import { APP_NS } from '../i18n/resources'
 import { useAuthClient } from './AuthClientProvider'
 import type { AuthErrorLike } from './authErrors'
+import { STEP_UP_REQUIRED_CODE, type StepUpRequired } from './useStepUp'
 
 export interface PasskeyInfo {
   readonly id: string
@@ -12,7 +13,8 @@ export interface PasskeyInfo {
 
 export interface UsePasskeyResult {
   readonly list: () => Promise<PasskeyInfo[] | string>
-  readonly add: (name: string) => Promise<string | null>
+  /** `null` when added, a message to show, or the request for a re-entered password (ADR-0106 D2). */
+  readonly add: (name: string) => Promise<string | null | StepUpRequired>
   readonly remove: (id: string) => Promise<string | null>
 }
 
@@ -52,9 +54,10 @@ export function usePasskey(): UsePasskeyResult {
     }
   }
 
-  async function add(name: string): Promise<string | null> {
+  async function add(name: string): Promise<string | null | StepUpRequired> {
     try {
       const { error } = await client.passkey.addPasskey({ name })
+      if (error?.code === STEP_UP_REQUIRED_CODE) return { stepUp: true }
       if (error) return translate(error.code)
       return null
     } catch {

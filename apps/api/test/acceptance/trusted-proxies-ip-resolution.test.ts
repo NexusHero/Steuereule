@@ -1,15 +1,12 @@
-// #241 — X-Forwarded-For trusted verbatim: better-auth's built-in rate limiter and
-// Session.ipAddress both key on getIp(), which reads X-Forwarded-For and, with
-// `advanced.ipAddress.trustedProxies` unset, trusts a single-value header outright.
-// Real Postgres, real HTTP against the actual `buildApp()` boot (never `.inject()`,
-// never a mocked limiter — the same tier every other REQ-010 assertion runs at).
+// #241 / ADR-0106 D3 — whose address the rate limiter and Session.ipAddress key on.
+// better-auth used to read X-Forwarded-For itself and, with no trusted proxies, believed a single-value
+// header from anyone. It now reads the address Fastify resolved from the socket peer and TRUSTED_PROXIES.
+// Real Postgres, real HTTP against the actual `buildApp()` boot (never `.inject()`, never a mocked limiter —
+// the same tier every other REQ-010 assertion runs at).
 //
-// A1 and A2 are deliberately NOT the same test with a switch (Musti's review): A1
-// proves the break and stays as a permanent regression test after the fix lands
-// (ADR-0021's own scope test — delete it, and nothing else here would catch its
-// return), A2 proves the repair. Each app instance below is booted with its own
-// TRUSTED_PROXIES value baked in at construction time, so A1's app and A2/A3's app
-// are two separate boots, not one instance reconfigured mid-test.
+// A1 (no trusted proxy: a rotating header buys nothing) and A2/A3 (a trusted proxy: the real client behind
+// it is the key) are two boots with their own TRUSTED_PROXIES value baked in at construction time, not one
+// instance reconfigured mid-test.
 import type { NestFastifyApplication } from '@nestjs/platform-fastify'
 import { PrismaClient } from '@prisma/client'
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest'
@@ -54,19 +51,11 @@ async function attemptSignIn(baseUrl: string, xForwardedFor: string): Promise<nu
   return response.status
 }
 
-// @documents-defect #292 — A1 stays green *because* the single-value X-Forwarded-For bypass
-// is unfixed (register.md, REQ-010). Green here means "the bypass is still there", not "the
-// fix works": no TRUSTED_PROXIES value closes the single-value form, only the network property
-// of the app being unreachable except through a real proxy does — and that needs a real
-// deployment, which still does not exist (ADR-049: k3s on Hetzner). #246 carried that gap
-// until the stakeholder closed it on 2026-08-05; #274 had landed two minutes earlier, but it
-// ships a *local* production-shaped Compose stack and its own merge commit says so — "what
-// this deliberately does not resolve: #75 ... and #246 ... both stay open". #292 is #246's
-// successor and carries the same gap and the same dependents. register-check's check 5
-// (docs/requirements/register.md's citation of this file, both tables) mirrors this exact
-// marker text and verifies #292 is still open — the day it closes, that citation goes red
-// until re-read, which is exactly how #246's closure was caught.
-describe('#241 A1 — TRUSTED_PROXIES unset: today’s live bypass, kept as a permanent regression test', () => {
+// The single-value bypass this file used to document (#241, tracked under #292) is closed in code since
+// ADR-0106 D3: better-auth no longer reads X-Forwarded-For itself but the address Fastify resolved from the
+// socket peer and TRUSTED_PROXIES (`installClientIpHeader`). A1 turned from proof of the bypass into proof
+// of the fix: the same rotating header now trips the limit.
+describe('#241 A1 — TRUSTED_PROXIES unset: a client-supplied X-Forwarded-For buys no fresh bucket (ADR-0106 D3)', () => {
   let app: NestFastifyApplication
   let baseUrl: string
   let prisma: PrismaClient
@@ -94,26 +83,27 @@ describe('#241 A1 — TRUSTED_PROXIES unset: today’s live bypass, kept as a pe
     await app.close()
   })
 
-  it('a rotating single-value X-Forwarded-For never trips 429 — every request is a fresh, unaccumulated bucket', async () => {
+  it('a rotating single-value X-Forwarded-For still trips 429 after the sign-in threshold', async () => {
     const statuses: number[] = []
     for (let i = 0; i < SIGN_IN_WINDOW_MAX + 3; i += 1) {
-      // A different single value on every request — createRateLimitKey(ip, path)
-      // therefore differs every time, so no bucket ever accumulates past 1.
+      // A different value on every request: before ADR-0106 D3 each one was a fresh bucket and all six
+      // answered 401. Now the socket peer is the key, so the fourth attempt is refused.
       statuses.push(await attemptSignIn(baseUrl, `203.0.113.${i + 1}`))
     }
-    // Positive expectation, not an absence (Musti's review, ADR-0021: "a check states
-    // its expectation independently of what it checks" — `not.toContain(429)` would
-    // stay green if every request 500'd, or 404'd after a path move, or the server
-    // never came up at all, none of which say anything about the bypass). Every
-    // attempt is a genuine failed login against an account that does not exist (no
-    // beforeEach/signUp seeds one, and afterEach's cleanUp() deletes every user row
-    // regardless) — better-auth deliberately answers that the same way it answers a
-    // wrong password against a real account, 401 INVALID_EMAIL_OR_PASSWORD, so the
-    // endpoint can't be used to enumerate accounts; checked directly against the real
-    // server before writing this assertion, not guessed. This test would go red on a
-    // broken endpoint AND on a returned 429, and green only when the exact condition
-    // it names actually holds.
-    expect(statuses).toEqual(Array(SIGN_IN_WINDOW_MAX + 3).fill(401))
+    expect(statuses).toEqual([...Array<number>(SIGN_IN_WINDOW_MAX).fill(401), 429, 429, 429])
+  })
+
+  it('a client cannot set the internal client-address header either', async () => {
+    const statuses: number[] = []
+    for (let i = 0; i < SIGN_IN_WINDOW_MAX + 1; i += 1) {
+      const response = await fetch(`${baseUrl}/api/auth/sign-in/email`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', origin: 'https://allowed.example.com', 'x-steuereule-client-ip': `198.51.100.${i + 1}` },
+        body: JSON.stringify({ email: 'trusted-proxies-probe@example.com', password: 'definitely-wrong-password' }),
+      })
+      statuses.push(response.status)
+    }
+    expect(statuses).toEqual([...Array<number>(SIGN_IN_WINDOW_MAX).fill(401), 429])
   })
 })
 
@@ -134,7 +124,9 @@ describe('#241 A2/A3 — TRUSTED_PROXIES configured: the fix, proven against a s
     // deliberately NOT overlapping any test IP below (TEST-NET-2/TEST-NET-3, RFC
     // 5737), so the resolver's own hop-stripping logic is what's under test, not an
     // accidental address collision.
-    process.env.TRUSTED_PROXIES = '10.0.0.0/24'
+    // The test client connects over loopback, so loopback is the trusted proxy hop: proxy-addr believes an
+    // X-Forwarded-For only from a trusted peer (ADR-0106 D3).
+    process.env.TRUSTED_PROXIES = '127.0.0.1,10.0.0.0/24'
     ;({ app, baseUrl, prisma } = await bootApp(0))
   })
 

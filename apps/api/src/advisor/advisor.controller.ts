@@ -37,20 +37,22 @@ import type { FastifyReply } from 'fastify'
 const OwlRoute = (): MethodDecorator =>
   applyDecorators(RequiresAccount(), ForbidAssistant(), ApiParam({ name: 'jahr', type: Number, example: 2025 }))
 
+/**
+ * Counts per account, else per resolved client address. `req.ips[0]`, which this used before, is the socket
+ * peer: behind a proxy every user shared the proxy's one bucket (ADR-0106 D3).
+ */
 @Injectable()
 export class FastifyThrottlerGuard extends ThrottlerGuard {
   protected override async getTracker(req: Record<string, unknown>): Promise<string> {
-    const ips = req.ips
-    if (Array.isArray(ips) && typeof ips[0] === 'string') {
-      return ips[0]
-    }
-    return typeof req.ip === 'string' ? req.ip : '127.0.0.1'
+    const userId = req[USER_ID_REQUEST_KEY]
+    if (typeof userId === 'string') return userId
+    return typeof req.ip === 'string' ? req.ip : 'no-ip'
   }
 }
 import { CurrentUser } from '../auth/current-user.decorator.js'
 import { ForbidAssistant } from '../auth/forbid-assistant.guard.js'
 import { RequiresAccount } from '../auth/requires-account.guard.js'
-import { UserContextGuard } from '../auth/user-context.guard.js'
+import { USER_ID_REQUEST_KEY, UserContextGuard } from '../auth/user-context.guard.js'
 import { ParseTaxYearPipe } from '../common/parse-tax-year.pipe.js'
 import { AdvisorService } from './advisor.service.js'
 import { AdvisorConversations } from './advisor-conversations.js'

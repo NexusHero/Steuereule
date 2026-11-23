@@ -336,4 +336,44 @@ describe('REQ-007 — WebAuthn passkey (passwordless sign-in), against the real 
     const session = await fetch(`${baseUrl}/api/auth/get-session`, { headers: { cookie: sessionCookie } })
     expect(((await session.json()) as { user: { email: string } }).user.email).toBe('req007-passkey-not2fa@example.com')
   })
+
+  // ADR-0106 D2: a stolen cookie could register its own passkey and sign in with it after the victim changed
+  // the password. Registration now needs a fresh sign-in or a password re-entered within five minutes.
+  describe('step-up before registering a passkey (ADR-0106 D2)', () => {
+    async function ageSession(cookie: string): Promise<void> {
+      const token = decodeURIComponent(cookie.split('=')[1]!).split('.')[0]!
+      await prisma.session.update({ where: { token }, data: { createdAt: new Date(Date.now() - 10 * 60 * 1000) } })
+    }
+
+    it('refuses an older session with FRESH_AUTH_REQUIRED', async () => {
+      const cookie = await signUp('req007-stepup-refused@example.com')
+      await ageSession(cookie)
+      const optionsRes = await fetch(`${baseUrl}/api/auth/passkey/generate-register-options`, { headers: { cookie } })
+      expect(optionsRes.status).toBe(403)
+      expect(((await optionsRes.json()) as { code?: string }).code).toBe('FRESH_AUTH_REQUIRED')
+      expect(await prisma.passkey.count()).toBe(0)
+    })
+
+    it('lets the same session register after the password is re-entered', async () => {
+      const cookie = await signUp('req007-stepup-verified@example.com')
+      await ageSession(cookie)
+      const wrong = await fetch(`${baseUrl}/api/auth/verify-password`, {
+        method: 'POST',
+        headers: { cookie, 'content-type': 'application/json', ...TRUSTED_ORIGIN_HEADERS },
+        body: JSON.stringify({ password: 'not-the-password-at-all' }),
+      })
+      expect(wrong.status).toBe(400)
+      const stillRefused = await fetch(`${baseUrl}/api/auth/passkey/generate-register-options`, { headers: { cookie } })
+      expect(stillRefused.status).toBe(403)
+
+      const verified = await fetch(`${baseUrl}/api/auth/verify-password`, {
+        method: 'POST',
+        headers: { cookie, 'content-type': 'application/json', ...TRUSTED_ORIGIN_HEADERS },
+        body: JSON.stringify({ password: PASSWORD }),
+      })
+      expect(verified.status).toBe(200)
+      await registerPasskey(cookie)
+      expect(await prisma.passkey.count()).toBe(1)
+    })
+  })
 })

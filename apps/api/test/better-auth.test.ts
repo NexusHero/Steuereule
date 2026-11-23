@@ -45,7 +45,6 @@ describe('createBetterAuth', () => {
       baseUrl,
       webAppUrl: 'http://localhost:8081',
       trustedOrigins: [],
-      trustedProxies: [],
       emailSender: fakeEmailSender(),
     }).sessionCookieName
   }
@@ -69,7 +68,6 @@ describe('createBetterAuth', () => {
       baseUrl: 'http://localhost:3000',
       webAppUrl: 'http://localhost:8081',
       trustedOrigins: [],
-      trustedProxies: [],
       emailSender: fakeEmailSender(),
     })
 
@@ -120,7 +118,6 @@ describe('createBetterAuth — enabledSocialProviders', () => {
     baseUrl: 'http://localhost:3000',
     webAppUrl: 'http://localhost:8081',
     trustedOrigins: ['http://localhost:3000'],
-    trustedProxies: [],
     emailSender: fakeEmailSender(),
   }
 
@@ -199,7 +196,6 @@ describe('OAuth 2.1 Provider plugin (ADR-0052 §4, Issue #385)', () => {
     baseUrl: 'http://localhost:3000',
     webAppUrl: 'http://localhost:8081',
     trustedOrigins: ['http://localhost:3000'],
-    trustedProxies: [],
     emailSender: fakeEmailSender(),
   }
 
@@ -232,7 +228,6 @@ describe('createBetterAuth — session-security hardening (ADR-0103)', () => {
     baseUrl: 'http://localhost:3000',
     webAppUrl: 'https://app.steuereule.de',
     trustedOrigins: ['https://allowed.example.com'],
-    trustedProxies: [],
     emailSender: fakeEmailSender(),
   }
 

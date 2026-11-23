@@ -136,4 +136,34 @@ describe('OauthConsentScreen (ADR-0052 §2 / §9 / §10)', () => {
       expect(onNavigate).toHaveBeenCalledWith('http://127.0.0.1:8080/callback?error=access_denied')
     })
   })
+
+  it('asks for the password when approving needs a step-up, then approves (ADR-0106 D2)', async () => {
+    const consentBodies: unknown[] = []
+    const verifiedWith: string[] = []
+    const onNavigate = vi.fn()
+    server.use(
+      http.get(`${BASE_URL}/v1/oauth/client-info`, () => HttpResponse.json({ clientId: 'claude-desktop', name: 'Claude Desktop', uri: null, icon: null })),
+      http.post(`${BASE_URL}/api/auth/oauth2/consent`, async ({ request }) => {
+        consentBodies.push(await request.json())
+        if (verifiedWith.length === 0) return HttpResponse.json({ code: 'FRESH_AUTH_REQUIRED', message: 'step-up' }, { status: 403 })
+        return HttpResponse.json({ redirect: true, url: 'https://assistant.example/callback?code=abc' })
+      }),
+      http.post(`${BASE_URL}/api/auth/verify-password`, async ({ request }) => {
+        verifiedWith.push(((await request.json()) as { password: string }).password)
+        return HttpResponse.json({ status: true })
+      }),
+    )
+    renderConsentScreen({ clientId: 'claude-desktop', scope: 'steuerdaten:read', oauthQuery: 'client_id=claude-desktop', onNavigate })
+
+    fireEvent.click(await screen.findByTestId('oauth-erlauben'))
+    await screen.findByTestId('oauth-stepup')
+    expect(onNavigate).not.toHaveBeenCalled()
+    fireEvent.change(screen.getByTestId('oauth-stepup-passwort'), { target: { value: 'correct-password' } })
+    fireEvent.click(screen.getByTestId('oauth-stepup-bestaetigen'))
+
+    await waitFor(() => expect(onNavigate).toHaveBeenCalledWith('https://assistant.example/callback?code=abc'))
+    expect(verifiedWith).toEqual(['correct-password'])
+    expect(consentBodies).toHaveLength(2)
+  })
+
 })
