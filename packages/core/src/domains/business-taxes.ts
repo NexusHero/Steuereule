@@ -1,3 +1,4 @@
+import { appliesFrom, TRADE_TAX_MINIMUM_MULTIPLIER_STEPS, valueForYear } from '../math/tax-parameters'
 /**
  * Two overview checks for the self-employed: the small business rule of the VAT act (§ 19 UStG)
  * and a rough trade tax with its credit against income tax (GewStG, § 35 EStG). Both are
@@ -38,7 +39,7 @@ export interface SmallBusinessResult {
  * and an expected 50.000 €.
  */
 export function checkSmallBusiness(input: SmallBusinessInput): SmallBusinessResult {
-  const fromNewRule = input.year >= 2025
+  const fromNewRule = appliesFrom('smallBusinessReform', input.year)
   const priorYearLimitEur = fromNewRule ? 25_000 : 22_000
   if (input.founding) {
     // Founding year: only the running year counts, against the prior-year limit (§ 19 Abs. 2 UStG from
@@ -62,7 +63,7 @@ export function checkSmallBusiness(input: SmallBusinessInput): SmallBusinessResu
  * the first taxed supply, or null. Up to 2024 the limit was a forecast at the start of the year: no cut.
  */
 export function smallBusinessCutoff(input: { readonly year: number; readonly founding: boolean; readonly supplies: readonly { readonly date: string; readonly netEur: number }[] }): string | null {
-  if (input.year < 2025) return null
+  if (!appliesFrom('smallBusinessReform', input.year)) return null
   const limit = input.founding ? 25_000 : 100_000
   let sum = 0
   for (const s of [...input.supplies].sort((a, b) => a.date.localeCompare(b.date))) {
@@ -74,7 +75,7 @@ export function smallBusinessCutoff(input: { readonly year: number; readonly fou
 
 /** § 16 Abs. 4 Satz 2 GewStG: 200 %, 280 % from EZ 2027 (§ 36 Abs. 5b GewStG, BGBl. 2026 I Nr. 197; statute read). */
 export function minimumMultiplierPercent(year: number): number {
-  return year >= 2027 ? 280 : 200
+  return valueForYear(TRADE_TAX_MINIMUM_MULTIPLIER_STEPS, year)
 }
 
 export const TRADE_TAX_ALLOWANCE_EUR = 24_500

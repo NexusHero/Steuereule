@@ -1,4 +1,4 @@
-import { getTaxYearParameters } from '../../math/tax-parameters'
+import { getTaxYearParameters, GIFT_LIMIT_STEPS, appliesFrom, valueForYear } from '../../math/tax-parameters'
 import { isSupportedIncomeTaxYear } from '../../math/tarif'
 import { EUER_KEYS, type EuerKey } from './euer-keys'
 
@@ -14,7 +14,7 @@ export type EuerKeyAmounts = Partial<Record<EuerKey, number>>
 
 /** § 4 Abs. 5 Satz 1 Nr. 1 EStG: 35 €, 50 € for Wirtschaftsjahre beginning after 31.12.2023 (§ 52 Abs. 6 Satz 1 EStG, Wachstumschancengesetz). */
 export function giftLimitEur(year: number): number {
-  return year >= 2024 ? 50 : 35
+  return valueForYear(GIFT_LIMIT_STEPS, year)
 }
 
 /** § 4 Abs. 5 Satz 1 Nr. 2 EStG: 70 % of reasonable business entertainment is deductible. */
@@ -184,11 +184,11 @@ export function homeOfficeDeduction(year: number, office: HomeOffice): number {
     case 'tagespauschale':
       return Math.min(Math.min(Math.max(0, Math.floor(office.days)), daily.maxDays) * daily.dailyRateEur, daily.maxAnnualEur)
     case 'mittelpunkt': {
-      if (office.lumpSum && year >= 2023) return (ROOM_LUMP_SUM_EUR * Math.min(12, Math.max(0, office.monthsMet ?? 12))) / 12
+      if (office.lumpSum && appliesFrom('homeOfficeReform', year)) return (ROOM_LUMP_SUM_EUR * Math.min(12, Math.max(0, office.monthsMet ?? 12))) / 12
       return Math.max(0, office.costsEur)
     }
     case 'kein_anderer_arbeitsplatz':
-      if (year >= 2023) throw new RangeError('from 2023 a study outside the centre of work counts only through the Tagespauschale')
+      if (appliesFrom('homeOfficeReform', year)) throw new RangeError('from 2023 a study outside the centre of work counts only through the Tagespauschale')
       return Math.min(Math.max(0, office.costsEur), ROOM_CAP_2022_EUR)
   }
 }

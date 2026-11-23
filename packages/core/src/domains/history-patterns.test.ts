@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { diffAssessment, assessmentLessons, type AssessmentPositionValues } from '../engine/assessment'
+import { diffAssessment, assessmentLessons, type AssessmentPositionValues } from './assessment'
 import { PREPAYMENT_HINT, prepaymentSeries, repeatedCuts } from './history-patterns'
 
 // ADR-0099 §3 (Vorauszahlungen) and §5 (Wiederholt gekürzt): patterns over the user's own Bescheide only.

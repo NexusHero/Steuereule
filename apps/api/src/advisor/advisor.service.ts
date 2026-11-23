@@ -1,138 +1,37 @@
-import { PrintoutService } from '../printout/printout.service.js'
-import { PersonalDataConsentService } from '../owl-mode/personal-data-consent.service.js'
-import { Inject, Injectable, Optional } from '@nestjs/common'
-import {
-  ADVISOR_LEGAL_SOURCES,
-  type AdvisorHousehold,
-  type AdvisorActionProposal,
-  type AdvisorCountedItem,
-  type AssignmentMember,
-  type AdvisorEstimateReading,
-  type AdvisorEnginePort,
-  type AdvisorFeedbackRating,
-  type AdvisorFeedbackReason,
-  type AdvisorMessageFeedback,
-  type AdvisorPreviewEffect,
-  type AdvisorPreviewTarget,
-  type AdvisorRecordHandles,
-  type AdvisorStreamEvent,
-  type CaseDigest,
-} from '@steuereule/core'
+import { Inject, Injectable } from '@nestjs/common'
+import { ADVISOR_LEGAL_SOURCES, type AdvisorEnginePort, type AdvisorFeedbackRating, type AdvisorFeedbackReason, type AdvisorMessageFeedback } from '@steuereule/core'
 import { AuditService } from '../audit/audit.service.js'
 import { ADVISOR_ENGINE } from '../ki/advisor-engine.token.js'
-import { AI_RUNTIME_CONFIG_SERVICE, type AiRuntimeConfigService } from '../ki/ai-runtime-config.service.js'
-import { AssessmentService } from '../assessment/assessment.service.js'
 import { ModelConnectionService } from '../ki/model-connection.service.js'
-import { TaxEstimateService } from '../tax-estimate/tax-estimate.service.js'
-import { TRANSACTION_RUNNER, passThroughTransactionRunner, type TransactionRunner } from '../common/transaction-runner.js'
-import { CAPITAL_REPOSITORY, type CapitalRepository } from '../capital/capital.repository.js'
-import { PENSION_REPOSITORY, type PensionRepository } from '../pension/pension.repository.js'
 import { AdvisorOpening } from './advisor-opening.js'
-import {
-  CROSS_BORDER_SALARY_STATEMENT_REPOSITORY,
-  type CrossBorderSalaryStatementRepository,
-} from '../ch-salary-certificate/ch-salary-certificate.repository.js'
-import { CHILD_REPOSITORY, type ChildRepository } from '../children/child.repository.js'
-import { COMMUTE_REPOSITORY, type CommuteRepository } from '../commute/commute.repository.js'
-import { ConfirmationService } from '../confirmation/confirmation.service.js'
-import { INTERVIEW_ANSWER_REPOSITORY, type InterviewAnswerRepository } from '../interview/interview-answer.repository.js'
-import { WAGE_TAX_CERTIFICATE_REPOSITORY, type WageTaxCertificateRepository } from '../lstb/lstb.repository.js'
 import { OwlModeService } from '../owl-mode/owl-mode.service.js'
-import { PROFILE_REPOSITORY, type ProfileRepository } from '../profile/profile.repository.js'
-import { RENTAL_REPOSITORY, type RentalRepository } from '../rental/rental.repository.js'
-import { LinkService } from '../link/link.service.js'
 import { InvalidInputError, NotFoundError } from '../common/domain-error.js'
-import {
-  ADVISOR_REPOSITORY,
-  type AdvisorConversationRecord,
-  type AdvisorRepository,
-  type ReceiptDraftRecord,
-} from './advisor.repository.js'
-import type {
-  AdvisorActionMutationResponseDto,
-  AdvisorChatMessageDto,
-  AdvisorConnectionDto,
-  AdvisorContextDto,
-  AdvisorConversationDto,
-  AdvisorNoteDto,
-  AdvisorSituationDto,
-  AdvisorSearchHitDto,
-  AdvisorSessionResponseDto,
-  ApplyBatchActionsDto,
-  ApplyBatchActionsResponseDto,
-  SendAdvisorMessageDto,
-  SendAdvisorMessageResponseDto,
-  AdvisorOpeningStateDto,
-} from './dto/advisor.dto.js'
-import { ANSWERING_WINDOW_MS, projectsOf, toMessageDto, PreparedAdvisorTurn, contextOf, toNoteDto, toConversationDto } from './advisor-shared.js'
+import { ADVISOR_REPOSITORY, type AdvisorRepository } from './advisor.repository.js'
+import type { AdvisorChatMessageDto, AdvisorConnectionDto, AdvisorSessionResponseDto, AdvisorOpeningStateDto } from './dto/advisor.dto.js'
+import { ANSWERING_WINDOW_MS, projectsOf, toMessageDto, contextOf, toNoteDto, toConversationDto } from './advisor-shared.js'
 import { AdvisorConversations } from './advisor-conversations.js'
 import { AdvisorProjectNotes } from './advisor-project-notes.js'
-import { AdvisorCaseFacts } from './advisor-case-facts.js'
-import { RECEIPT_REPOSITORY, type ReceiptRepository } from '../receipt/receipt.repository.js'
-import { AdvisorDrafts } from './advisor-drafts.js'
 import { AdvisorCaseDigest } from './advisor-case-digest.js'
-import { AdvisorTurn } from './advisor-turn.js'
-import {
-  AdvisorDocumentStaging,
-  type CountTarget,
-  type DocumentDraftsInput,
-  type HouseholdNames,
-  type LstbScanBatchInput,
-  type ReceiptProposalInput,
-  type BookingProposalInput,
-} from './advisor-document-staging.js'
-import { BusinessService } from '../business/business.service.js'
-export { MAX_CONVERSATIONS_PER_YEAR, searchKey, snippetAround, titleFrom } from './advisor-shared.js'
-export type { PreparedAdvisorTurn } from './advisor-shared.js'
-export { effectFromEstimates, estimateReadingFrom } from './advisor-case-digest.js'
-export { combinationDrafts, type CountTarget } from './advisor-document-staging.js'
 
+/**
+ * What belongs to the chat as a whole and to no single part: the session a client loads, clearing a
+ * conversation, feedback on an answer, the opening state and the model connection. Everything else
+ * is injected from the part that owns it (advisor-*.ts).
+ */
 @Injectable()
 export class AdvisorService {
   constructor(
     @Inject(ADVISOR_REPOSITORY) private readonly advisorRepo: AdvisorRepository,
     @Inject(OwlModeService) private readonly owlModeService: OwlModeService,
-    @Inject(ConfirmationService) private readonly confirmationService: ConfirmationService,
     @Inject(AuditService) private readonly auditService: AuditService,
-    @Inject(INTERVIEW_ANSWER_REPOSITORY) private readonly interviewRepo: InterviewAnswerRepository,
-    @Optional() @Inject(WAGE_TAX_CERTIFICATE_REPOSITORY) private readonly lstbRepo?: WageTaxCertificateRepository,
-    @Optional()
-    @Inject(CROSS_BORDER_SALARY_STATEMENT_REPOSITORY)
-    private readonly chRepo?: CrossBorderSalaryStatementRepository,
-    @Optional() @Inject(COMMUTE_REPOSITORY) private readonly commuteRepo?: CommuteRepository,
-    @Optional() @Inject(CHILD_REPOSITORY) private readonly childRepo?: ChildRepository,
-    @Optional() @Inject(RENTAL_REPOSITORY) private readonly rentalRepo?: RentalRepository,
-    @Optional() @Inject(CAPITAL_REPOSITORY) private readonly capitalRepo?: CapitalRepository,
-    @Optional() @Inject(PROFILE_REPOSITORY) private readonly profileRepo?: ProfileRepository,
-    @Optional() @Inject(ADVISOR_ENGINE) private readonly advisorEngine?: AdvisorEnginePort,
-    @Optional() @Inject(AI_RUNTIME_CONFIG_SERVICE) private readonly runtimeConfig?: AiRuntimeConfigService,
-    @Optional() @Inject(TRANSACTION_RUNNER) private readonly transactions: TransactionRunner = passThroughTransactionRunner,
-    @Optional() @Inject(TaxEstimateService) private readonly taxEstimate?: TaxEstimateService,
-    @Optional() @Inject(ModelConnectionService) private readonly modelConnection?: ModelConnectionService,
-    @Optional() @Inject(AssessmentService) private readonly assessmentService?: AssessmentService,
-    @Optional() @Inject(PENSION_REPOSITORY) private readonly pensionRepo?: PensionRepository,
-    @Optional() @Inject(LinkService) private readonly link?: LinkService,
-    @Optional() @Inject(PrintoutService) private readonly printout?: PrintoutService,
-    @Optional() @Inject(PersonalDataConsentService) private readonly personalDataConsent?: PersonalDataConsentService,
-    @Optional() @Inject(RECEIPT_REPOSITORY) private readonly receiptRepo?: ReceiptRepository,
-    @Optional() @Inject(BusinessService) private readonly business?: BusinessService,
+    @Inject(AdvisorCaseDigest) private readonly caseDigest: AdvisorCaseDigest,
+    @Inject(AdvisorConversations) private readonly conversations: AdvisorConversations,
+    @Inject(AdvisorProjectNotes) private readonly notes: AdvisorProjectNotes,
+    @Inject(AdvisorOpening) private readonly opening: AdvisorOpening,
+    /** Null only where the fixed rules answer alone; AdvisorModule always binds a model engine. */
+    @Inject(ADVISOR_ENGINE) private readonly advisorEngine: AdvisorEnginePort | null,
+    @Inject(ModelConnectionService) private readonly modelConnection: ModelConnectionService,
   ) {}
-
-  /** Whether the user consented to personal data going to the owl's model (ADR-0091); read fresh on every use. */
-  private async hasPersonalDataConsent(userId: string): Promise<boolean> {
-    return (await this.personalDataConsent?.hasConsent(userId)) ?? false
-  }
-
-  // The service is the front door; each theme lives in its own part.
-  private openingPart?: AdvisorOpening
-  private get opening(): AdvisorOpening {
-    return (this.openingPart ??= new AdvisorOpening(
-      this.advisorRepo,
-      (userId, taxYear) => this.buildCaseDigest(userId, taxYear),
-      async (userId) => (await this.notes.getSituation(userId)).text,
-      this.taxEstimate ? (userId, taxYear) => this.taxEstimate!.getState(userId, taxYear) : undefined,
-    ))
-  }
 
   /** Whether a new conversation opens with the owl speaking first (ADR-0067 §11). */
   async openingState(userId: string, taxYear: number): Promise<AdvisorOpeningStateDto> {
@@ -141,221 +40,13 @@ export class AdvisorService {
     return this.advisorEngine ? state : { ...state, shouldOpen: false }
   }
 
-  private conversationsPart?: AdvisorConversations
-  private get conversations(): AdvisorConversations {
-    return (this.conversationsPart ??= new AdvisorConversations(this.advisorEngine, this.advisorRepo, this.auditService, (...args) => this.knownNamesForScrubbing(...args)))
-  }
-
-  private notesPart?: AdvisorProjectNotes
-  private get notes(): AdvisorProjectNotes {
-    return (this.notesPart ??= new AdvisorProjectNotes(this.advisorRepo, (...args) => this.knownNamesForScrubbing(...args)))
-  }
-
-  private factsPart?: AdvisorCaseFacts
-  private get facts(): AdvisorCaseFacts {
-    return (this.factsPart ??= new AdvisorCaseFacts(this.capitalRepo, this.chRepo, this.childRepo, this.commuteRepo, this.confirmationService, this.interviewRepo, this.lstbRepo, this.owlModeService, this.profileRepo, this.rentalRepo, this.pensionRepo))
-  }
-
-  private draftsPart?: AdvisorDrafts
-  private get drafts(): AdvisorDrafts {
-    const link = this.link
-    return (this.draftsPart ??= new AdvisorDrafts(
-      this.advisorRepo,
-      this.auditService,
-      this.confirmationService,
-      this.transactions,
-      link ? (userId, taxYear, person) => link.dataUser(userId, taxYear, person) : undefined,
-      (userId) => this.hasPersonalDataConsent(userId),
-      {
-        create: async (dataUserId, taxYear, screen, values) => {
-          if (screen === 'kind') {
-            if (!this.childRepo) return null
-            const child = await this.childRepo.create(dataUserId, taxYear, {
-              firstName: values.firstName ?? '',
-              lastName: values.lastName ?? '',
-              geburtsdatum: values.geburtsdatum ?? '',
-            })
-            return child.id
-          }
-          if (screen === 'vermietung') return (await this.rentalRepo?.create(dataUserId, taxYear))?.id ?? null
-          return null
-        },
-        remove: async (dataUserId, taxYear, screen, id) => {
-          if (screen === 'kind') await this.childRepo?.delete(dataUserId, taxYear, id)
-        },
-      },
-    ))
-  }
-
-  private caseDigestPart?: AdvisorCaseDigest
-  private get caseDigest(): AdvisorCaseDigest {
-    return (this.caseDigestPart ??= new AdvisorCaseDigest(
-      this.advisorRepo,
-      this.confirmationService,
-      this.facts,
-      this.drafts,
-      this.transactions,
-      (userId) => this.hasPersonalDataConsent(userId),
-      this.link,
-      this.printout,
-      this.receiptRepo,
-      this.taxEstimate,
-      this.business,
-    ))
-  }
-
-  private turnPart?: AdvisorTurn
-  private get turn(): AdvisorTurn {
-    return (this.turnPart ??= new AdvisorTurn(
-      this.advisorRepo,
-      this.owlModeService,
-      this.caseDigest,
-      this.conversations,
-      this.notes,
-      this.opening,
-      this.drafts,
-      this.transactions,
-      (userId) => this.hasPersonalDataConsent(userId),
-      this.advisorEngine,
-      this.runtimeConfig,
-      this.modelConnection,
-      this.assessmentService,
-      this.link,
-      this.profileRepo,
-      this.childRepo,
-    ))
-  }
-
-  private stagingPart?: AdvisorDocumentStaging
-  private get staging(): AdvisorDocumentStaging {
-    return (this.stagingPart ??= new AdvisorDocumentStaging(
-      this.advisorRepo,
-      this.owlModeService,
-      this.confirmationService,
-      this.auditService,
-      this.transactions,
-      this.caseDigest,
-      this.drafts,
-      this.profileRepo,
-      this.link,
-      this.childRepo,
-    ))
-  }
-
-  // ── Delegated to the parts ─────────────────────────────────────────────────────────────────
-
-  async conversationFor(userId: string, taxYear: number, conversationId?: string): Promise<AdvisorConversationRecord> {
-    return this.conversations.conversationFor(userId, taxYear, conversationId)
-  }
-
   /** Whether the owl can reach its language model right now (#488). */
   async connection(): Promise<AdvisorConnectionDto> {
-    return (
-      (await this.modelConnection?.check()) ?? { state: 'rules-only', provider: null, model: null, checkedAt: new Date().toISOString() }
-    )
+    return this.modelConnection.check()
   }
-
-  async listConversations(userId: string, taxYear: number): Promise<AdvisorConversationDto[]> {
-    return this.conversations.listConversations(userId, taxYear)
-  }
-
-  async createConversation(userId: string, taxYear: number): Promise<AdvisorConversationDto> {
-    return this.conversations.createConversation(userId, taxYear)
-  }
-
-  async setConversationModel(userId: string, taxYear: number, conversationId: string, choice: { readonly provider: string; readonly model: string } | null): Promise<AdvisorConversationDto> {
-    return this.conversations.setChatModel(userId, taxYear, conversationId, choice)
-  }
-
-  async renameConversation(userId: string, taxYear: number, conversationId: string, title: string): Promise<AdvisorConversationDto> {
-    return this.conversations.renameConversation(userId, taxYear, conversationId, title)
-  }
-
-  async deleteConversation(userId: string, taxYear: number, conversationId: string): Promise<{ deletedMessages: number }> {
-    return this.conversations.deleteConversation(userId, taxYear, conversationId)
-  }
-
-  async summarizeConversation(userId: string, taxYear: number, conversationId?: string): Promise<AdvisorContextDto> {
-    return this.conversations.summarizeConversation(userId, taxYear, conversationId)
-  }
-
-  async searchConversations(userId: string, taxYear: number, rawQuery: string): Promise<AdvisorSearchHitDto[]> {
-    return this.conversations.searchConversations(userId, taxYear, rawQuery)
-  }
-
-  async saveSituation(userId: string, taxYear: number, raw: string): Promise<AdvisorSituationDto> {
-    return this.notes.saveSituation(userId, taxYear, raw)
-  }
-
-  async listNotes(userId: string, taxYear: number): Promise<AdvisorNoteDto[]> {
-    return this.notes.listNotes(userId, taxYear)
-  }
-
-  async createNote(userId: string, taxYear: number, raw: string): Promise<AdvisorNoteDto> {
-    return this.notes.createNote(userId, taxYear, raw)
-  }
-
-  async updateNote(userId: string, taxYear: number, noteId: string, raw: string): Promise<AdvisorNoteDto> {
-    return this.notes.updateNote(userId, taxYear, noteId, raw)
-  }
-
-  async deleteNote(userId: string, taxYear: number, noteId: string): Promise<{ deleted: true }> {
-    return this.notes.deleteNote(userId, taxYear, noteId)
-  }
-
-  async undoNoteChange(userId: string, taxYear: number, messageId: string, index: number): Promise<AdvisorChatMessageDto> {
-    return this.notes.undoNoteChange(userId, taxYear, messageId, index)
-  }
-
-  /** Every name that must not reach a model: the user's, the children's and the spouse's. */
-  async knownNamesForScrubbing(userId: string, taxYear: number): Promise<string[]> {
-    return this.caseDigest.knownNamesForScrubbing(userId, taxYear)
-  }
-
-  /** The household as the owl may know it (ADR-0073); see `AdvisorCaseDigest.advisorHousehold`. */
-  async advisorHousehold(userId: string, taxYear: number): Promise<AdvisorHousehold> {
-    return this.caseDigest.advisorHousehold(userId, taxYear)
-  }
-
-  async loadRecordHandles(userId: string, taxYear: number): Promise<AdvisorRecordHandles> {
-    return this.caseDigest.loadRecordHandles(userId, taxYear)
-  }
-
-  async buildCaseDigest(userId: string, taxYear: number): Promise<CaseDigest> {
-    return this.caseDigest.buildCaseDigest(userId, taxYear)
-  }
-
-
-  async applyAction(userId: string, taxYear: number, actionId: string): Promise<AdvisorActionMutationResponseDto> {
-    return this.drafts.applyAction(userId, taxYear, actionId)
-  }
-
-  async applyBatch(userId: string, taxYear: number, dto: ApplyBatchActionsDto): Promise<ApplyBatchActionsResponseDto> {
-    return this.drafts.applyBatch(userId, taxYear, dto)
-  }
-
-  async undoAction(userId: string, taxYear: number, actionId: string): Promise<AdvisorActionMutationResponseDto> {
-    return this.drafts.undoAction(userId, taxYear, actionId)
-  }
-
-  async dismissAction(userId: string, taxYear: number, actionId: string): Promise<AdvisorActionMutationResponseDto> {
-    return this.drafts.dismissAction(userId, taxYear, actionId)
-  }
-
-  /** What a draft would do to the refund, by the app's own estimate (rolled back); see `AdvisorCaseDigest.previewEffectFor`. */
-  previewEffectFor(userId: string, taxYear: number): ((target: AdvisorPreviewTarget) => Promise<AdvisorPreviewEffect>) | undefined {
-    return this.caseDigest.previewEffectFor(userId, taxYear)
-  }
-
-  /** The app's own estimate of the year for the owl to read (`read_current_estimate`): figures only. */
-  estimateReaderFor(userId: string, taxYear: number): (() => Promise<AdvisorEstimateReading>) | undefined {
-    return this.caseDigest.estimateReaderFor(userId, taxYear)
-  }
-
-  // ── Project notes (#481) ──────────────────────────────────────────────────────────────────
 
   async getSession(userId: string, taxYear: number, conversationId?: string): Promise<AdvisorSessionResponseDto> {
-    const conversation = await this.conversationFor(userId, taxYear, conversationId)
+    const conversation = await this.conversations.conversationFor(userId, taxYear, conversationId)
     const [setting, cardsRes, history, conversations, notes] = await Promise.all([
       this.owlModeService.getSetting(userId),
       this.owlModeService.getCards(userId, taxYear),
@@ -385,7 +76,7 @@ export class AdvisorService {
       conversationId: conversation.id,
       conversations: conversations.map((c) => toConversationDto(c, answering.has(c.id))),
       projects: projectsOf(taxYear, allConversations, answering),
-      context: contextOf(conversation, history, await this.knownNamesForScrubbing(userId, taxYear)),
+      context: contextOf(conversation, history, await this.caseDigest.knownNamesForScrubbing(userId, taxYear)),
       notes: notes.map(toNoteDto),
       situation: await this.notes.getSituation(userId),
       messages: history.filter((m) => !m.meta?.replaced).map(toMessageDto),
@@ -397,26 +88,6 @@ export class AdvisorService {
       ],
       legalSources: Object.values(ADVISOR_LEGAL_SOURCES),
     }
-  }
-
-  // ── The turn (advisor-turn.ts) ─────────────────────────────────────────────────────────────
-
-  async sendMessage(userId: string, taxYear: number, dto: SendAdvisorMessageDto): Promise<SendAdvisorMessageResponseDto> {
-    return this.turn.sendMessage(userId, taxYear, dto)
-  }
-
-  /** Quota, masking and both messages, before the stream opens (#476); see `AdvisorTurn.prepareTurn`. */
-  async prepareTurn(userId: string, taxYear: number, dto: SendAdvisorMessageDto): Promise<PreparedAdvisorTurn> {
-    return this.turn.prepareTurn(userId, taxYear, dto)
-  }
-
-  async *streamMessage(userId: string, taxYear: number, dto: SendAdvisorMessageDto, signal?: AbortSignal): AsyncIterable<AdvisorStreamEvent> {
-    yield* this.turn.streamMessage(userId, taxYear, dto, signal)
-  }
-
-  /** Runs a prepared turn to one of its final states; the answer never stays `streaming`. */
-  async *executeTurn(userId: string, taxYear: number, turn: PreparedAdvisorTurn, signal?: AbortSignal): AsyncIterable<AdvisorStreamEvent> {
-    yield* this.turn.executeTurn(userId, taxYear, turn, signal)
   }
 
   async setFeedback(
@@ -446,60 +117,10 @@ export class AdvisorService {
    * that were still open disappear with the messages that carried them.
    */
   async clearConversation(userId: string, taxYear: number, conversationId?: string): Promise<{ deletedMessages: number }> {
-    const conversation = await this.conversationFor(userId, taxYear, conversationId)
+    const conversation = await this.conversations.conversationFor(userId, taxYear, conversationId)
     const deletedMessages = await this.advisorRepo.deleteMessagesOfConversation(conversation.id, userId)
     await this.advisorRepo.updateConversation(conversation.id, userId, { title: null, summary: null, summaryUntil: null })
     await this.auditService.append({ userId, action: 'WRITE', resource: 'berater_verlauf_geloescht' })
     return { deletedMessages }
-  }
-
-  // ── Documents staged as drafts (advisor-document-staging.ts) ───────────────────────────────
-
-  async stageBookingProposal(userId: string, taxYear: number, input: BookingProposalInput): Promise<{ action: AdvisorActionProposal; assistantMessage: AdvisorChatMessageDto }> {
-    return this.staging.stageBookingProposal(userId, taxYear, input)
-  }
-
-  async stageReceiptProposal(userId: string, taxYear: number, input: ReceiptProposalInput): Promise<{ action: AdvisorActionProposal; assistantMessage: AdvisorChatMessageDto }> {
-    return this.staging.stageReceiptProposal(userId, taxYear, input)
-  }
-
-  async stageLstbScanBatch(userId: string, taxYear: number, input: LstbScanBatchInput): Promise<{ actions: AdvisorActionProposal[]; assistantMessage: AdvisorChatMessageDto }> {
-    return this.staging.stageLstbScanBatch(userId, taxYear, input)
-  }
-
-  /** The names on record for A and B, only to tell whose document an upload is. */
-  async householdNames(userId: string, taxYear: number): Promise<HouseholdNames> {
-    return this.staging.householdNames(userId, taxYear)
-  }
-
-  /** The household of the year for the assignment of documents (ADR-0092). */
-  async householdMembers(userId: string, taxYear: number): Promise<AssignmentMember[]> {
-    return this.staging.householdMembers(userId, taxYear)
-  }
-
-  async stageDocumentDrafts(userId: string, taxYear: number, input: DocumentDraftsInput): Promise<{ actions: AdvisorActionProposal[]; assistantMessage: AdvisorChatMessageDto }> {
-    return this.staging.stageDocumentDrafts(userId, taxYear, input)
-  }
-
-  async countedReceiptItems(userId: string, taxYear: number, target: CountTarget): Promise<AdvisorCountedItem[]> {
-    return this.staging.countedReceiptItems(userId, taxYear, target)
-  }
-
-  async childForReceipt(userId: string, taxYear: number, text: string): Promise<{ id: string | null; children: number }> {
-    return this.staging.childForReceipt(userId, taxYear, text)
-  }
-
-  /** Takes back what one document put into the return (ADR-0092 §4); returns how many applied drafts. */
-  async takeBackDocumentValues(userId: string, taxYear: number, receiptId: string): Promise<number> {
-    return this.staging.takeBackDocumentValues(userId, taxYear, receiptId)
-  }
-
-  async markLstbActionsApplied(userId: string, taxYear: number, actionIds: readonly string[]): Promise<void> {
-    return this.staging.markLstbActionsApplied(userId, taxYear, actionIds)
-  }
-
-  /** The drafts of every tax year that came from a Beleg, metadata only (ADR-0097): for its processing state. */
-  async receiptDrafts(userId: string): Promise<ReceiptDraftRecord[]> {
-    return this.advisorRepo.listReceiptDrafts(userId)
   }
 }

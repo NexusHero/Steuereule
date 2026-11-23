@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { employeeFromAnswers } from './employee'
-import { ENTRIES, nextStepFor, type Answers } from '../interview/interview'
+import { ENTRIES, nextStepFor } from '../interview/interview'
+import { type Answers } from './answers'
 import { countsInterviewHealthInsurance, healthInsuranceFromAnswers } from './health-insurance'
 
 const SPECIAL_EXPENSES = ENTRIES.sonderausgaben

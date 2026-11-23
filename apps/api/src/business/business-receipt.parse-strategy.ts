@@ -1,7 +1,7 @@
 import { Inject, Injectable, type OnModuleInit } from '@nestjs/common'
 import { OWN_FIRST_BUSINESS } from './business.repository.js'
 import { bookingDraftFromReceipt, checkBookingDraft, looksLikeEInvoice, readBusinessReceipt, readEInvoice, serializeBookingDraft } from '@steuereule/core'
-import { AdvisorService } from '../advisor/advisor.service.js'
+import { AdvisorDocumentStaging } from '../advisor/advisor-document-staging.js'
 import { AuditService } from '../audit/audit.service.js'
 import type { ParseReceiptDto, ParseReceiptResponseDto } from '../receipt/dto/parse-receipt.dto.js'
 import { DocumentParseRegistry, type DocumentParseStrategy } from '../receipt/parse/document-parse.registry.js'
@@ -20,7 +20,7 @@ export class BusinessReceiptParseStrategy implements DocumentParseStrategy, OnMo
 
   constructor(
     @Inject(DocumentParseRegistry) private readonly registry: DocumentParseRegistry,
-    @Inject(AdvisorService) private readonly advisor: AdvisorService,
+    @Inject(AdvisorDocumentStaging) private readonly staging: AdvisorDocumentStaging,
     @Inject(AuditService) private readonly audit: AuditService,
     @Inject(BusinessService) private readonly business: BusinessService,
   ) {}
@@ -50,7 +50,7 @@ export class BusinessReceiptParseStrategy implements DocumentParseStrategy, OnMo
     const check = checkBookingDraft(proposal.draft, target)
     if (!check.ok) return { ...nothing, parsed: { ...nothing.parsed, summary: check.reason } }
 
-    const staged = await this.advisor.stageBookingProposal(userId, dto.taxYear, {
+    const staged = await this.staging.stageBookingProposal(userId, dto.taxYear, {
       entry: serializeBookingDraft(proposal.draft),
       label: `Buchung: ${proposal.draft.text}`,
       reason: ['Aus dem Geschäftsbeleg gelesen.', ...invoiceNotes, ...proposal.notes].join(' '),

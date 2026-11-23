@@ -8,7 +8,7 @@ import {
   receiptFilingYear,
   type ChInsuranceLetterKind,
 } from '@steuereule/core'
-import { AdvisorService } from '../advisor/advisor.service.js'
+import { AdvisorDocumentStaging } from '../advisor/advisor-document-staging.js'
 import { AuditService } from '../audit/audit.service.js'
 import { CROSS_BORDER_SALARY_STATEMENT_REPOSITORY, type CrossBorderSalaryStatementRepository } from '../ch-salary-certificate/ch-salary-certificate.repository.js'
 import { checkPiiFree } from '../ki/ki.adapter.js'
@@ -59,7 +59,7 @@ abstract class ChLetterParseStrategy implements DocumentParseStrategy, OnModuleI
 
   constructor(
     protected readonly registry: DocumentParseRegistry,
-    protected readonly advisorService: AdvisorService,
+    protected readonly staging: AdvisorDocumentStaging,
     protected readonly auditService: AuditService,
     protected readonly linkService: LinkService,
     protected readonly chRepo?: CrossBorderSalaryStatementRepository,
@@ -118,7 +118,7 @@ abstract class ChLetterParseStrategy implements DocumentParseStrategy, OnModuleI
    * letter, on the server only; only one person's name may fit.
    */
   private async resolveHolder(userId: string, dto: ParseReceiptDto, rawText: string, year: number): Promise<LetterHolder> {
-    const household = await this.advisorService.householdNames(userId, year)
+    const household = await this.staging.householdNames(userId, year)
     const person: 'A' | 'B' | null = dto.person ?? (household.B === null ? holderWithoutPartner(rawText, household.A) : certificateHolderPerson(rawText, household))
     const personNotRecordable = person === 'B' && household.B?.recordable !== true
     const dataUser = person !== null && !personNotRecordable ? await this.linkService.dataUser(userId, year, person) : null
@@ -138,7 +138,7 @@ abstract class ChLetterParseStrategy implements DocumentParseStrategy, OnModuleI
     const { person, letter } = input
     const whose = person === 'B' ? 'von Person B' : 'von dir'
     const title = this.kind === 'chPensionskasse' ? 'den Nachweis der Pensionskasse' : 'die Bestätigung des Arbeitgebers zu Krankentaggeld und NBU'
-    const staged = await this.advisorService.stageDocumentDrafts(userId, filingYear, {
+    const staged = await this.staging.stageDocumentDrafts(userId, filingYear, {
       screen: 'chLohnausweis',
       person,
       digestUserId: input.dataUser,
@@ -189,12 +189,12 @@ export class ChPensionStatementParseStrategy extends ChLetterParseStrategy {
 
   constructor(
     @Inject(DocumentParseRegistry) registry: DocumentParseRegistry,
-    @Inject(AdvisorService) advisorService: AdvisorService,
+    @Inject(AdvisorDocumentStaging) staging: AdvisorDocumentStaging,
     @Inject(AuditService) auditService: AuditService,
     @Inject(LinkService) linkService: LinkService,
     @Optional() @Inject(CROSS_BORDER_SALARY_STATEMENT_REPOSITORY) chRepo?: CrossBorderSalaryStatementRepository,
   ) {
-    super(registry, advisorService, auditService, linkService, chRepo)
+    super(registry, staging, auditService, linkService, chRepo)
   }
 
   protected read(rawText: string, ziffer10: number | null, fromOcr: boolean): LetterRead {
@@ -237,12 +237,12 @@ export class ChPremiumLetterParseStrategy extends ChLetterParseStrategy {
 
   constructor(
     @Inject(DocumentParseRegistry) registry: DocumentParseRegistry,
-    @Inject(AdvisorService) advisorService: AdvisorService,
+    @Inject(AdvisorDocumentStaging) staging: AdvisorDocumentStaging,
     @Inject(AuditService) auditService: AuditService,
     @Inject(LinkService) linkService: LinkService,
     @Optional() @Inject(CROSS_BORDER_SALARY_STATEMENT_REPOSITORY) chRepo?: CrossBorderSalaryStatementRepository,
   ) {
-    super(registry, advisorService, auditService, linkService, chRepo)
+    super(registry, staging, auditService, linkService, chRepo)
   }
 
   protected read(rawText: string, _ziffer10: number | null, fromOcr: boolean, stored?: StoredFacts): LetterRead {

@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import { confirmLineItem, adoptionProvenance, adoptedLineItem } from './takeover'
-import { calculate } from '../engine/berechnung'
+import { calculate } from './calculation'
 import { calculateCockpitRange } from '../interview/cockpit-range'
 import { UNCERTAINTY_PER_ITEM } from '../interview/cockpit'
-import type { Item } from '../engine/berechnung'
+import type { Item } from './calculation'
 
 // Ticket 10.8 (M1) — die Jahresübernahme (Produkt-ADR-021): kopierte Posten tragen die Herkunft
 // „Übernahme aus {Vorjahr}" und sind UNBESTÄTIGT, bis sie angetippt werden; unbestätigte zählen

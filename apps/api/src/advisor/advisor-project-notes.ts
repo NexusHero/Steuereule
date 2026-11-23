@@ -1,15 +1,17 @@
 import { scrubUserMessagePii, ADVISOR_NOTES_MAX, tidyNoteText, tidySituationText, type AdvisorNoteChange } from '@steuereule/core'
+import { Inject, Injectable } from '@nestjs/common'
 import { ConflictError, InvalidInputError, NotFoundError } from '../common/domain-error.js'
-import { type AdvisorNoteRecord, type AdvisorRepository } from './advisor.repository.js'
+import { ADVISOR_REPOSITORY, type AdvisorNoteRecord, type AdvisorRepository } from './advisor.repository.js'
 import type { AdvisorChatMessageDto, AdvisorNoteDto, AdvisorSituationDto } from './dto/advisor.dto.js'
 import { toMessageDto, toNoteDto } from './advisor-shared.js'
-import type { AdvisorCaseFacts } from './advisor-case-facts.js'
+import { AdvisorCaseDigest } from './advisor-case-digest.js'
 
 /** The project notes of a tax year: what the user edits, what the owl writes on its own, and how that is undone (#481). */
+@Injectable()
 export class AdvisorProjectNotes {
   constructor(
-    private readonly advisorRepo: AdvisorRepository,
-    private readonly knownNamesForScrubbing: AdvisorCaseFacts['knownNamesForScrubbing'],
+    @Inject(ADVISOR_REPOSITORY) private readonly advisorRepo: AdvisorRepository,
+    @Inject(AdvisorCaseDigest) private readonly caseDigest: Pick<AdvisorCaseDigest, 'knownNamesForScrubbing'>,
   ) {}
 
   /** The user's own description of the situation; an empty text while nothing was written (#501). */
@@ -20,7 +22,7 @@ export class AdvisorProjectNotes {
 
   /** Stores the description without names or identifiers: what the owl reads in every conversation must not name anyone. */
   async saveSituation(userId: string, taxYear: number, raw: string): Promise<AdvisorSituationDto> {
-    const checked = tidySituationText(scrubUserMessagePii(raw, await this.knownNamesForScrubbing(userId, taxYear)))
+    const checked = tidySituationText(scrubUserMessagePii(raw, await this.caseDigest.knownNamesForScrubbing(userId, taxYear)))
     if (!checked.ok) throw new InvalidInputError('ADVISOR_SITUATION_INVALID', checked.reason)
     const record = await this.advisorRepo.saveSituation(userId, checked.text)
     return { text: record.text, updatedAt: record.updatedAt.toISOString() }
@@ -32,7 +34,7 @@ export class AdvisorProjectNotes {
 
   /** A note text as it may be stored: one line, within the length, without names or identifiers. */
   async storableNoteText(userId: string, taxYear: number, raw: string): Promise<string> {
-    const scrubbed = scrubUserMessagePii(raw, await this.knownNamesForScrubbing(userId, taxYear))
+    const scrubbed = scrubUserMessagePii(raw, await this.caseDigest.knownNamesForScrubbing(userId, taxYear))
     const text = tidyNoteText(scrubbed)
     if (!text.ok) throw new InvalidInputError('ADVISOR_NOTE_INVALID', text.reason)
     return text.text

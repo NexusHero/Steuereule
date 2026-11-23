@@ -1,4 +1,5 @@
 import type { VatRateKind } from './vat-annual'
+import { VAT_PERIOD_LIMIT_STEPS, appliesFrom, valueForYear } from '../../math/tax-parameters'
 
 /**
  * The Umsatzsteuer-Voranmeldung (§ 18 Abs. 1, 2, 2a UStG, §§ 46–48 UStDV) and the Zusammenfassende
@@ -10,7 +11,7 @@ export type VatFilingPeriod = 'monat' | 'quartal' | 'befreit'
 
 /** § 18 Abs. 2 Satz 2, 3 and Abs. 2a: 7.500 € / 1.000 € until 2024, 9.000 € / 2.000 € from 2025. */
 export function vatPeriodLimits(year: number): { readonly monthlyAboveEur: number; readonly exemptUpToEur: number } {
-  return year >= 2025 ? { monthlyAboveEur: 9_000, exemptUpToEur: 2_000 } : { monthlyAboveEur: 7_500, exemptUpToEur: 1_000 }
+  return valueForYear(VAT_PERIOD_LIMIT_STEPS, year)
 }
 
 export interface FilingPeriodInput {
@@ -155,7 +156,7 @@ export function vatPeriodReturn(input: { readonly figures: PeriodFigures; readon
     put('81', f.taxableNetEur.standard ?? 0)
     put('86', f.taxableNetEur.reduced ?? 0)
     // 0 % for photovoltaic supplies (§ 12 Abs. 3 UStG): Kz 87 from the 2023 form on (verified).
-    if ((input.year ?? 2026) >= 2023) put('87', f.taxableNetEur.zero ?? 0)
+    if (appliesFrom('vatZeroRatePhotovoltaic', input.year ?? 2026)) put('87', f.taxableNetEur.zero ?? 0)
     put('41', f.taxFreeWithDeductionEur)
     put('48', f.taxFreeWithoutDeductionEur)
     put('21', f.euServicesNetEur)

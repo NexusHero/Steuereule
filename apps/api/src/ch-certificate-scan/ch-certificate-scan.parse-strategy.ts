@@ -12,7 +12,7 @@ import {
   type ChCertificateRead,
   type SalaryCertificateAmountFieldId,
 } from '@steuereule/core'
-import { AdvisorService } from '../advisor/advisor.service.js'
+import { AdvisorDocumentStaging } from '../advisor/advisor-document-staging.js'
 import { AuditService } from '../audit/audit.service.js'
 import { AI_RUNTIME_CONFIG_SERVICE, type AiRuntimeConfigService, type ResolvedAiSlotConfig } from '../ki/ai-runtime-config.service.js'
 import { SINGLE_SHOT_MODEL_FACTORY, type SingleShotModelFactory } from '../ki/single-shot-model.js'
@@ -78,7 +78,7 @@ export class ChCertificateScanParseStrategy implements DocumentParseStrategy, On
   constructor(
     @Inject(DocumentParseRegistry) private readonly registry: DocumentParseRegistry,
     @Inject(AI_RUNTIME_CONFIG_SERVICE) private readonly runtimeConfig: AiRuntimeConfigService,
-    @Inject(AdvisorService) private readonly advisorService: AdvisorService,
+    @Inject(AdvisorDocumentStaging) private readonly staging: AdvisorDocumentStaging,
     @Inject(AuditService) private readonly auditService: AuditService,
     @Inject(LinkService) private readonly linkService: LinkService,
     @Inject(SINGLE_SHOT_MODEL_FACTORY) private readonly resolveModel: SingleShotModelFactory,
@@ -98,7 +98,7 @@ export class ChCertificateScanParseStrategy implements DocumentParseStrategy, On
 
     // One year rule (ADR-0097 §5): a certificate of another year is read for that year and its drafts go there.
     const filingYear = receiptFilingYear(read.taxYear, dto.taxYear)
-    const household = await this.advisorService.householdNames(userId, filingYear ?? dto.taxYear)
+    const household = await this.staging.householdNames(userId, filingYear ?? dto.taxYear)
     const person = certificateHolder(dto, rawText, read, household)
     const personNotRecordable = person === 'B' && household.B?.recordable !== true
     const stageable = fields.filter((f) => f.value >= 0)
@@ -145,7 +145,7 @@ export class ChCertificateScanParseStrategy implements DocumentParseStrategy, On
     const vision = await resolveVisionModel(this.runtimeConfig, this.resolveModel)
     if (!vision) return unchanged
 
-    const knownNames = await this.advisorService.knownNamesForScrubbing(userId, dto.taxYear)
+    const knownNames = await this.staging.knownNamesForScrubbing(userId, dto.taxYear)
     // Allowlist first: only the Ziffer rows leave the server, never the head with name and AHV number.
     const grounding = isolateGrounding(selectChCertificateRelevantLines(rawText), knownNames)
     if (grounding.blocked) return { ...unchanged, securityBlocked: true }
@@ -169,7 +169,7 @@ export class ChCertificateScanParseStrategy implements DocumentParseStrategy, On
     input: { read: ChCertificateRead; person: 'A' | 'B'; slot: ResolvedAiSlotConfig | null; fields: ChCertificateFieldDto[]; stageable: ChCertificateFieldDto[]; fromOcr: boolean },
   ): Promise<StagedDrafts> {
     const { read, person, fromOcr } = input
-    const staged = await this.advisorService.stageDocumentDrafts(userId, filingYear, {
+    const staged = await this.staging.stageDocumentDrafts(userId, filingYear, {
       screen: 'chLohnausweis',
       person,
       digestUserId: await this.linkService.dataUser(userId, filingYear, person),
@@ -193,7 +193,7 @@ interface ModelFill {
   readonly securityBlocked: boolean
 }
 
-type HouseholdNames = Awaited<ReturnType<AdvisorService['householdNames']>>
+type HouseholdNames = Awaited<ReturnType<AdvisorDocumentStaging['householdNames']>>
 
 /** Whose certificate: the name in box H; when that fits nobody, the one name of the household the whole form carries. */
 function certificateHolder(dto: ParseReceiptDto, rawText: string, read: ChCertificateRead, household: HouseholdNames): 'A' | 'B' | null {

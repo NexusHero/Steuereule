@@ -6,7 +6,7 @@ import {
   type Item,
   type ItemConflict,
   type Source,
-} from './berechnung'
+} from './calculation'
 
 // ADR-014/015/048/008/032 — the deterministic core. The load-bearing property: a
 // determined amount is emitted ONLY when nothing is open, conflicting or gated; otherwise

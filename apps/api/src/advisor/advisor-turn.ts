@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import { Logger } from '@nestjs/common'
+import { Inject, Injectable, Logger } from '@nestjs/common'
 import {
   PERSON_B_HANDLE,
   advisorContextUsage,
@@ -39,16 +39,19 @@ import {
   type AdvisorTurnUsage,
 } from '@steuereule/core'
 import { AssessmentService } from '../assessment/assessment.service.js'
-import { type ChildRepository } from '../children/child.repository.js'
+import { CHILD_REPOSITORY, type ChildRepository } from '../children/child.repository.js'
 import { newActionId } from '../common/action-id.js'
 import { ConflictError, DomainError, InvalidInputError, TooManyRequestsError, UnavailableError } from '../common/domain-error.js'
-import { DEFAULT_AI_TURN_LIMITS, type AiRuntimeConfigService } from '../ki/ai-runtime-config.service.js'
+import { ADVISOR_ENGINE } from '../ki/advisor-engine.token.js'
+import { AI_RUNTIME_CONFIG_SERVICE, type AiRuntimeConfigService } from '../ki/ai-runtime-config.service.js'
+import { PersonalDataConsentService } from '../owl-mode/personal-data-consent.service.js'
 import { ModelConnectionService } from '../ki/model-connection.service.js'
 import { LinkService } from '../link/link.service.js'
 import { OwlModeService } from '../owl-mode/owl-mode.service.js'
-import { type TransactionRunner } from '../common/transaction-runner.js'
-import { type ProfileRepository } from '../profile/profile.repository.js'
+import { TRANSACTION_RUNNER, type TransactionRunner } from '../common/transaction-runner.js'
+import { PROFILE_REPOSITORY, type ProfileRepository } from '../profile/profile.repository.js'
 import {
+  ADVISOR_REPOSITORY,
   type AdvisorChatMessageRecord,
   type AdvisorMessageUsage,
   type AdvisorRepository,
@@ -71,26 +74,29 @@ const TURN_FAILED_MESSAGE = 'Die Antwort der Eule ist unterwegs abgebrochen. Bit
  * One turn of the owl: prepared while it can still fail as plain HTTP, then run to one of its final
  * states, with the usage record written when it ends.
  */
+@Injectable()
 export class AdvisorTurn {
   private readonly logger = new Logger('AdvisorTurn')
 
   constructor(
-    private readonly advisorRepo: AdvisorRepository,
-    private readonly owlModeService: OwlModeService,
-    private readonly caseDigest: AdvisorCaseDigest,
-    private readonly conversations: AdvisorConversations,
-    private readonly notes: AdvisorProjectNotes,
-    private readonly opening: AdvisorOpening,
-    private readonly drafts: AdvisorDrafts,
-    private readonly transactions: TransactionRunner,
-    private readonly hasPersonalDataConsent: (userId: string) => Promise<boolean>,
-    private readonly advisorEngine: AdvisorEnginePort | undefined,
-    private readonly runtimeConfig: AiRuntimeConfigService | undefined,
-    private readonly modelConnection: ModelConnectionService | undefined,
-    private readonly assessmentService: AssessmentService | undefined,
-    private readonly link: LinkService | undefined,
-    private readonly profileRepo: ProfileRepository | undefined,
-    private readonly childRepo: ChildRepository | undefined,
+    @Inject(ADVISOR_REPOSITORY) private readonly advisorRepo: AdvisorRepository,
+    @Inject(OwlModeService) private readonly owlModeService: OwlModeService,
+    @Inject(AdvisorCaseDigest) private readonly caseDigest: AdvisorCaseDigest,
+    @Inject(AdvisorConversations) private readonly conversations: AdvisorConversations,
+    @Inject(AdvisorProjectNotes) private readonly notes: AdvisorProjectNotes,
+    @Inject(AdvisorOpening) private readonly opening: AdvisorOpening,
+    @Inject(AdvisorDrafts) private readonly drafts: AdvisorDrafts,
+    @Inject(TRANSACTION_RUNNER) private readonly transactions: TransactionRunner,
+    /** The consent to personal data for the owl (ADR-0091); read fresh on every use. */
+    @Inject(PersonalDataConsentService) private readonly personalDataConsent: PersonalDataConsentService,
+    /** Null only where the fixed rules answer alone; AdvisorModule always binds a model engine. */
+    @Inject(ADVISOR_ENGINE) private readonly advisorEngine: AdvisorEnginePort | null,
+    @Inject(AI_RUNTIME_CONFIG_SERVICE) private readonly runtimeConfig: AiRuntimeConfigService,
+    @Inject(ModelConnectionService) private readonly modelConnection: ModelConnectionService,
+    @Inject(AssessmentService) private readonly assessmentService: AssessmentService,
+    @Inject(LinkService) private readonly link: LinkService,
+    @Inject(PROFILE_REPOSITORY) private readonly profileRepo: ProfileRepository,
+    @Inject(CHILD_REPOSITORY) private readonly childRepo: ChildRepository,
   ) {}
 
   async sendMessage(
@@ -116,7 +122,7 @@ export class AdvisorTurn {
    * Both messages exist afterwards: the question, and the answer as `streaming` (#476).
    */
   async prepareTurn(userId: string, taxYear: number, dto: SendAdvisorMessageDto): Promise<PreparedAdvisorTurn> {
-    const { dailyMessageLimit } = this.runtimeConfig ? await this.runtimeConfig.resolveLimits() : DEFAULT_AI_TURN_LIMITS
+    const { dailyMessageLimit } = await this.runtimeConfig.resolveLimits()
     const startOfDayUtc = new Date()
     startOfDayUtc.setUTCHours(0, 0, 0, 0)
     const todayCount = await this.advisorRepo.countUserMessagesSince(userId, startOfDayUtc)
@@ -135,13 +141,13 @@ export class AdvisorTurn {
 
     // Double PII Shield: scrub known names, Steuer-IDs, IBANs, emails, and phones from user free-text & history.
     // With the user's consent to personal data nothing is masked (ADR-0091); it is read fresh, so a revocation counts at once.
-    const consent = await this.hasPersonalDataConsent(userId)
+    const consent = await this.personalDataConsent.hasConsent(userId)
     const knownNames = consent ? [] : await this.caseDigest.knownNamesForScrubbing(userId, taxYear)
     const isOpening = dto.quickAction === 'opening'
     // The spouse's name becomes the handle the owl drafts for („Person B“), not an anonymous stand-in.
-    const spouse = isOpening ? null : await this.link?.spouseForAdvisor(userId, taxYear)
+    const spouse = isOpening ? null : await this.link.spouseForAdvisor(userId, taxYear)
     // A last name the couple shares stays a stand-in: it would turn the user into „Person B“ too.
-    const ownProfile = isOpening ? null : await this.profileRepo?.findByUserId(userId)
+    const ownProfile = isOpening ? null : await this.profileRepo.findByUserId(userId)
     const spouseNames = consent ? [] : [spouse?.firstName, spouse?.lastName !== ownProfile?.lastName ? spouse?.lastName : null].filter((name): name is string => !!name)
     const maskedText = isOpening ? OPENING_PLACEHOLDER : scrubUserMessagePii(replaceNamesWith(dto.message.trim(), spouseNames, PERSON_B_HANDLE), knownNames)
     const scrubbedUserText = consent && !isOpening ? dto.message.trim() : maskedText
@@ -429,7 +435,7 @@ export class AdvisorTurn {
         }
 
         if (ev.event === 'error') {
-          this.modelConnection?.recordTurn(ev.data.failure ?? null)
+          this.modelConnection.recordTurn(ev.data.failure ?? null)
           // Half an answer is kept for the record, but never as if it were complete.
           await finish('failed', text, ev.data.failure ? { modelFailure: ev.data.failure } : {})
           yield ev
@@ -439,7 +445,7 @@ export class AdvisorTurn {
         if (ev.event === 'done') {
           const turnResult = ev.data as AdvisorTurnResult
           // What the model did this turn is the best news about the connection there is.
-          if (turnResult.mode === 'langgraph' || turnResult.meta.modelFailure) this.modelConnection?.recordTurn(turnResult.primaryFailure ?? turnResult.meta.modelFailure ?? null)
+          if (turnResult.mode === 'langgraph' || turnResult.meta.modelFailure) this.modelConnection.recordTurn(turnResult.primaryFailure ?? turnResult.meta.modelFailure ?? null)
           // The workbench shows the model's draft labels, reasons and plan steps as written: cleaned like the reply.
           const { meta: enrichedMeta, reply: guardedReply, note: heldNote } = guardModelDrafts(
             metaWithoutInternalNames(await this.drafts.enrichDraftsWithRawBaseline(userId, taxYear, turnResult.meta)),
@@ -593,7 +599,7 @@ export class AdvisorTurn {
 
   /** A child's first name for its neutral name, so the app's own question names the child; only with the consent. */
   private async childLabels(userId: string, taxYear: number, consent: boolean): Promise<Record<string, string> | undefined> {
-    if (!consent || !this.childRepo) return undefined
+    if (!consent) return undefined
     const children = await this.childRepo.listForUserAndYear(userId, taxYear)
     return Object.fromEntries(children.map((child, i) => [`Kind ${i + 1}`, child.firstName]).filter(([, name]) => !!name))
   }
@@ -601,7 +607,6 @@ export class AdvisorTurn {
   /** The tax office's notice against the return, as the assessment check needs it: figures only, nothing that names a person. */
   private async assessmentBrief(userId: string, taxYear: number): Promise<AdvisorAssessmentBrief> {
     const empty: AdvisorAssessmentBrief = { recorded: false, status: 'nicht erfasst', deviations: [], calculationIncomplete: false, appealDaysLeft: null }
-    if (!this.assessmentService) return empty
     const state = await this.assessmentService.getState(userId, taxYear).catch(() => null)
     if (state === null || !state.fields.some((field) => field.kind === 'erfasst')) return empty
     return {

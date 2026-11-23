@@ -19,7 +19,7 @@ import {
   type CraftsmanInvoiceRead,
   type ReceiptReadReason,
 } from '@steuereule/core'
-import { AdvisorService } from '../../advisor/advisor.service.js'
+import { AdvisorDocumentStaging } from '../../advisor/advisor-document-staging.js'
 import { AuditService } from '../../audit/audit.service.js'
 import { AI_RUNTIME_CONFIG_SERVICE, type AiRuntimeConfigService, type ResolvedAiSlotConfig } from '../../ki/ai-runtime-config.service.js'
 import { SINGLE_SHOT_MODEL_FACTORY, type SingleShotModelFactory } from '../../ki/single-shot-model.js'
@@ -76,7 +76,7 @@ export class AutoReceiptParseStrategy implements DocumentParseStrategy {
 
   constructor(
     @Inject(AI_RUNTIME_CONFIG_SERVICE) private readonly runtimeConfig: AiRuntimeConfigService,
-    @Inject(AdvisorService) private readonly advisorService: AdvisorService,
+    @Inject(AdvisorDocumentStaging) private readonly staging: AdvisorDocumentStaging,
     @Inject(AuditService) private readonly auditService: AuditService,
     @Inject(SINGLE_SHOT_MODEL_FACTORY) private readonly resolveModel: SingleShotModelFactory,
   ) {}
@@ -104,7 +104,7 @@ export class AutoReceiptParseStrategy implements DocumentParseStrategy {
       noValuesReason: null,
     }
     const vision = await resolveVisionModel(this.runtimeConfig, this.resolveModel)
-    const knownNames = await this.advisorService.knownNamesForScrubbing(userId, dto.taxYear)
+    const knownNames = await this.staging.knownNamesForScrubbing(userId, dto.taxYear)
     // Uploaded documents carry address blocks, employer lines and IDs that chat text does not.
     const safeText = dto.rawText ? scrubDocumentTextPii(dto.rawText, knownNames) : ''
     // Text only (ADR-0051): document pixels never reach a model. Without text there is nothing to send.
@@ -140,7 +140,7 @@ export class AutoReceiptParseStrategy implements DocumentParseStrategy {
     if (donation.items.length === 0) return recognised
     const { parsed } = reading
     const year = donation.taxYear ?? parsed.taxYear ?? dto.taxYear
-    const counted = await this.advisorService.countedReceiptItems(userId, year, { screen: 'interview', field: 'spenden-betrag' })
+    const counted = await this.staging.countedReceiptItems(userId, year, { screen: 'interview', field: 'spenden-betrag' })
     const { fresh, repeated } = uncountedDonations(donation.items.map(hashDonation), counted)
     const freshEur = Math.round(fresh.reduce((sum, item) => sum + item.amountCents, 0) / 100)
     const note = repeatedDonationsNote(fresh.length, repeated.length, donation.isCopy, freshEur)
@@ -179,7 +179,7 @@ export class AutoReceiptParseStrategy implements DocumentParseStrategy {
     if (!medical || medical.totalEur === null || medical.totalEur <= 0) return reading
     const year = medical.taxYear ?? parsed.taxYear ?? dto.taxYear
     const hashed = hashMedical(medical.ref)
-    const counted = await this.advisorService.countedReceiptItems(userId, year, { screen: 'interview', field: 'gesundheit-betrag' })
+    const counted = await this.staging.countedReceiptItems(userId, year, { screen: 'interview', field: 'gesundheit-betrag' })
     const repeated = counted.some((c) => c.ref === hashed)
     return {
       ...reading,
@@ -206,7 +206,7 @@ export class AutoReceiptParseStrategy implements DocumentParseStrategy {
     const chosenChild = dto.holder !== undefined && isHolderRef(dto.holder) ? holderChildId(dto.holder) : null
     const careText = chosenChild !== null && dto.rawText ? await this.childSection(userId, dto.taxYear, dto.rawText, chosenChild) : dto.rawText
     const period = !reading.securityBlocked && !reading.invoice && !reading.donationRecognised && careText ? childcarePeriod(careText, dto.taxYear) : null
-    const child = period && (dto.stageDraft ?? true) ? (chosenChild !== null ? { id: chosenChild, children: 1 } : await this.advisorService.childForReceipt(userId, dto.taxYear, dto.rawText ?? '')) : null
+    const child = period && (dto.stageDraft ?? true) ? (chosenChild !== null ? { id: chosenChild, children: 1 } : await this.staging.childForReceipt(userId, dto.taxYear, dto.rawText ?? '')) : null
     const childId = child?.id ?? null
     if (period && childId) return { reading, draft: { period, childId, careText } }
     if (period && child && child.children > 1) {
@@ -219,7 +219,7 @@ export class AutoReceiptParseStrategy implements DocumentParseStrategy {
 
   /** The lines of a childcare notice about one child, when it lists several (ADR-0092 §5). */
   private async childSection(userId: string, taxYear: number, rawText: string, childId: string): Promise<string> {
-    const members = await this.advisorService.householdMembers(userId, taxYear)
+    const members = await this.staging.householdMembers(userId, taxYear)
     const child = members.find((m) => m.ref === `kind:${childId}`)
     return child === undefined ? rawText : sectionForMember(rawText, child, members.filter((m) => m.ref.startsWith('kind:')))
   }
@@ -230,7 +230,7 @@ export class AutoReceiptParseStrategy implements DocumentParseStrategy {
     const ocr = dto.textSource !== 'pdf_text'
     // A Kita's annual statement says what was paid; a plain notice only the monthly contribution.
     const paid = childcarePaidInYear(draft.careText ?? '', dto.taxYear)
-    const staged = await this.advisorService.stageDocumentDrafts(userId, dto.taxYear, {
+    const staged = await this.staging.stageDocumentDrafts(userId, dto.taxYear, {
       screen: 'kind',
       person: 'A',
       digestUserId: userId,
@@ -272,7 +272,7 @@ export class AutoReceiptParseStrategy implements DocumentParseStrategy {
       return { mode, securityBlocked, parsed, stagedAction: null, assistantMessage: null, draftsTaxYear: null, noValuesReason }
     }
     const proposalMeta = invoice?.labourEur ? craftsmanProposal(invoice) : proposalDetailsFor(parsed, reading.donationUndated)
-    const staged = await this.advisorService.stageReceiptProposal(userId, targetTaxYear, {
+    const staged = await this.staging.stageReceiptProposal(userId, targetTaxYear, {
       screen: parsed.suggestedScreen,
       field: parsed.suggestedField,
       newValue: parsed.suggestedValue,

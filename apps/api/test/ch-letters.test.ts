@@ -45,8 +45,8 @@ async function setUp() {
   const audit = new AuditService(new FakeAuditRepository())
   return {
     kit,
-    pension: new ChPensionStatementParseStrategy(registry, kit.service, audit, kit.linkService, kit.chRepo),
-    premiums: new ChPremiumLetterParseStrategy(registry, kit.service, audit, kit.linkService, kit.chRepo),
+    pension: new ChPensionStatementParseStrategy(registry, kit.staging, audit, kit.linkService, kit.chRepo),
+    premiums: new ChPremiumLetterParseStrategy(registry, kit.staging, audit, kit.linkService, kit.chRepo),
   }
 }
 

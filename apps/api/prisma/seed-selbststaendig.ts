@@ -17,7 +17,7 @@ import { fieldEncryptionExtension } from 'prisma-field-encryption'
 import { AuditService } from '../src/audit/audit.service.js'
 import type { AuditRepository } from '../src/audit/audit.repository.js'
 import { PrismaBusinessRepository } from '../src/business/business.repository.prisma.js'
-import { BusinessService } from '../src/business/business.service.js'
+import { composeBusinessService } from '../src/business/business.composition.js'
 import { DEMO_ANSWERS, DEMO_YEARS, seedDemoHousehold } from '../src/business/demo-household.js'
 import { HebesatzDirectory } from '../src/business/hebesatz.js'
 import { PrismaInterviewAnswerRepository } from '../src/interview/interview-answer.repository.prisma.js'
@@ -42,7 +42,7 @@ const prisma = transactionAwareClient(basePrisma.$extends(fieldEncryptionExtensi
 
 const silentAudit: AuditRepository = { append: async () => undefined, findOwnRows: async () => [] } as unknown as AuditRepository
 const repository = new PrismaBusinessRepository(prisma)
-const business = new BusinessService(repository, new PrismaInterviewAnswerRepository(prisma), new AuditService(silentAudit), new HebesatzDirectory())
+const business = composeBusinessService(repository, new PrismaInterviewAnswerRepository(prisma), new AuditService(silentAudit), new HebesatzDirectory())
 
 async function main(): Promise<void> {
   const user = await basePrisma.user.findUnique({ where: { email } })

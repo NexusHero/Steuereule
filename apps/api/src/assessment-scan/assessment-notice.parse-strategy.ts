@@ -7,7 +7,7 @@ import {
   scrubDocumentTextPii,
   type AssessmentPositionId,
 } from '@steuereule/core'
-import { AdvisorService } from '../advisor/advisor.service.js'
+import { AdvisorDocumentStaging } from '../advisor/advisor-document-staging.js'
 import { ASSESSMENT_REPOSITORY, type AssessmentRepository } from '../assessment/assessment.repository.js'
 import { AuditService } from '../audit/audit.service.js'
 import { checkPiiFree } from '../ki/ki.adapter.js'
@@ -30,7 +30,7 @@ export class AssessmentNoticeParseStrategy implements DocumentParseStrategy, OnM
 
   constructor(
     @Inject(DocumentParseRegistry) private readonly registry: DocumentParseRegistry,
-    @Inject(AdvisorService) private readonly advisorService: AdvisorService,
+    @Inject(AdvisorDocumentStaging) private readonly staging: AdvisorDocumentStaging,
     @Inject(AuditService) private readonly auditService: AuditService,
     @Inject(ASSESSMENT_REPOSITORY) private readonly assessments: AssessmentRepository,
   ) {}
@@ -80,7 +80,7 @@ export class AssessmentNoticeParseStrategy implements DocumentParseStrategy, OnM
 
   /** Each read position as an owl draft for the year the Bescheid is for (Zero-Write). */
   private async stageDrafts(userId: string, dto: ParseReceiptDto, filingYear: number, input: { fields: AssessmentDraftField[]; fromScan: boolean; createsEckjahr: boolean }): Promise<StagedDrafts> {
-    const staged = await this.advisorService.stageDocumentDrafts(userId, filingYear, {
+    const staged = await this.staging.stageDocumentDrafts(userId, filingYear, {
       screen: 'assessment',
       person: 'A',
       digestUserId: userId,
@@ -103,7 +103,7 @@ export class AssessmentNoticeParseStrategy implements DocumentParseStrategy, OnM
    */
   private async safeExplanations(userId: string, year: number, paragraphs: readonly string[]): Promise<{ text: string; count: number } | null> {
     if (paragraphs.length === 0) return null
-    const knownNames = await this.advisorService.knownNamesForScrubbing(userId, year)
+    const knownNames = await this.staging.knownNamesForScrubbing(userId, year)
     const text = paragraphs
       .map((p) => scrubDocumentTextPii(p, knownNames))
       .join('\n')

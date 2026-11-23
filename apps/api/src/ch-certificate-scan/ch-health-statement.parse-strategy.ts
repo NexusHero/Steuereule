@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto'
 import { Inject, Injectable, Optional, type OnModuleInit } from '@nestjs/common'
 import { ANNUAL_AVERAGE_RATES, chfToEur, formatChf, insuredMember, parseChHealthStatement, receiptFilingYear, type AdvisorCountedItem, type InsuredPremium } from '@steuereule/core'
-import { AdvisorService } from '../advisor/advisor.service.js'
+import { AdvisorDocumentStaging } from '../advisor/advisor-document-staging.js'
 import { AuditService } from '../audit/audit.service.js'
 import { CROSS_BORDER_SALARY_STATEMENT_REPOSITORY, type CrossBorderSalaryStatementRepository } from '../ch-salary-certificate/ch-salary-certificate.repository.js'
 import { exchangeRateFromRecord } from '../ch-salary-certificate/salary-certificate-data.js'
@@ -11,7 +11,7 @@ import type { ParseReceiptDto, ParseReceiptResponseDto } from '../receipt/dto/pa
 import { DocumentParseRegistry, type DocumentParseStrategy } from '../receipt/parse/document-parse.registry.js'
 import { DETERMINISTIC_ENGINE, NOTHING_STAGED, SCAN_CHECK_NOTE, isFromOcr, noTaxYearReason, type StagedDrafts } from '../receipt/parse/document-parse-steps.js'
 
-type Field = Parameters<AdvisorService['stageDocumentDrafts']>[2]['fields'][number]
+type Field = Parameters<AdvisorDocumentStaging['stageDocumentDrafts']>[2]['fields'][number]
 
 /**
  * A Swiss health insurer's statement for the tax return (ADR-0080): the basic-insurance premiums of each
@@ -25,7 +25,7 @@ export class ChHealthStatementParseStrategy implements DocumentParseStrategy, On
 
   constructor(
     @Inject(DocumentParseRegistry) private readonly registry: DocumentParseRegistry,
-    @Inject(AdvisorService) private readonly advisorService: AdvisorService,
+    @Inject(AdvisorDocumentStaging) private readonly staging: AdvisorDocumentStaging,
     @Inject(AuditService) private readonly auditService: AuditService,
     @Inject(LinkService) private readonly linkService: LinkService,
     @Optional() @Inject(CROSS_BORDER_SALARY_STATEMENT_REPOSITORY) private readonly chRepo?: CrossBorderSalaryStatementRepository,
@@ -70,7 +70,7 @@ export class ChHealthStatementParseStrategy implements DocumentParseStrategy, On
 
   /** The partners and the children of the year, as the statement's names are matched against them. */
   private async householdOf(userId: string, year: number): Promise<Household> {
-    const names = await this.advisorService.householdNames(userId, year)
+    const names = await this.staging.householdNames(userId, year)
     const kids = (await this.children?.listForUserAndYear(userId, year)) ?? []
     const members = [
       { key: 'A', ...names.A },
@@ -94,7 +94,7 @@ export class ChHealthStatementParseStrategy implements DocumentParseStrategy, On
     const drafts: Drafts = { forA: [], forB: [], notes: [] }
     const ctx: InsuredContext = { userId, dto, year, insurer: read.insurer, household, rates, drafts, childRateNoted: false }
     // Franchise and Selbstbehalt the household paid itself: Krankheitskosten (§ 33 EStG), in euros.
-    const countedHealth = await this.advisorService.countedReceiptItems(userId, year, { screen: 'interview', field: 'gesundheit-betrag' })
+    const countedHealth = await this.staging.countedReceiptItems(userId, year, { screen: 'interview', field: 'gesundheit-betrag' })
     const selfBorne = { chf: 0, items: [] as AdvisorCountedItem[] }
     // Read for one person of the household (ADR-0092 §5): only their lines; the others are offered apart.
     const only = dto.holder
@@ -135,7 +135,7 @@ export class ChHealthStatementParseStrategy implements DocumentParseStrategy, On
     const items = countedItemsOf(ctx.insurer, year, person)
     const chf = Math.round(person.premiumCents / 100)
     if (key === 'A' || key === 'B') {
-      const counted = await this.advisorService.countedReceiptItems(userId, year, { screen: 'chLohnausweis', field: 'krankenkasseChf', person: key })
+      const counted = await this.staging.countedReceiptItems(userId, year, { screen: 'chLohnausweis', field: 'krankenkasseChf', person: key })
       if (counted.some((c) => c.ref === items[0]!.ref)) {
         drafts.notes.push(`Die Prämien ${key === 'B' ? 'von Person B' : 'für dich'} aus diesem Auszug sind schon gezählt.`)
         return false
@@ -144,7 +144,7 @@ export class ChHealthStatementParseStrategy implements DocumentParseStrategy, On
       return true
     }
     const childId = key.slice('kind:'.length)
-    const counted = await this.advisorService.countedReceiptItems(userId, year, { screen: 'kind', field: 'healthBasicEur', instance: childId })
+    const counted = await this.staging.countedReceiptItems(userId, year, { screen: 'kind', field: 'healthBasicEur', instance: childId })
     if (counted.some((c) => c.ref === items[0]!.ref)) {
       drafts.notes.push('Die Prämien für das Kind aus diesem Auszug sind schon gezählt.')
       return false
@@ -177,7 +177,7 @@ export class ChHealthStatementParseStrategy implements DocumentParseStrategy, On
         drafts.notes.push('Die Prämien von Person B kann ich erst eintragen, wenn ihr gekoppelt seid.')
         continue
       }
-      const result = await this.advisorService.stageDocumentDrafts(userId, year, {
+      const result = await this.staging.stageDocumentDrafts(userId, year, {
         screen: 'chLohnausweis',
         person,
         digestUserId: await this.linkService.dataUser(userId, year, person),
@@ -196,7 +196,7 @@ export class ChHealthStatementParseStrategy implements DocumentParseStrategy, On
 }
 
 type HealthStatement = ReturnType<typeof parseChHealthStatement>
-type HouseholdNames = Awaited<ReturnType<AdvisorService['householdNames']>>
+type HouseholdNames = Awaited<ReturnType<AdvisorDocumentStaging['householdNames']>>
 
 interface Household {
   readonly names: HouseholdNames

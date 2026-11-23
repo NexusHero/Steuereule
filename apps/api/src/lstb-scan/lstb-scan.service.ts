@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common'
-import { AdvisorService } from '../advisor/advisor.service.js'
+import { AdvisorDocumentStaging } from '../advisor/advisor-document-staging.js'
 import { NotFoundError } from '../common/domain-error.js'
 import type { LstbResponseDto } from '../lstb/dto/lstb-response.dto.js'
 import { LstbService } from '../lstb/lstb.service.js'
@@ -16,7 +16,7 @@ import type { ConfirmLstbScanDto } from './dto/confirm-lstb-scan.dto.js'
 export class LstbScanService {
   constructor(
     @Inject(LstbService) private readonly lstbService: LstbService,
-    @Inject(AdvisorService) private readonly advisorService: AdvisorService,
+    @Inject(AdvisorDocumentStaging) private readonly staging: AdvisorDocumentStaging,
     @Inject(ReceiptService) private readonly receiptService: ReceiptService,
     @Inject(TRANSACTION_RUNNER) private readonly transactions: TransactionRunner,
   ) {}
@@ -46,7 +46,7 @@ export class LstbScanService {
       const adding = dto.addToExisting === true
       await this.lstbService.applyScannedLines(targetUserId, taxYear, { lines: dto.lines ?? {}, arbeitgeber: dto.arbeitgeber ?? null }, { receiptId, addToExisting: adding })
       const after = dto.lines !== undefined && Object.keys(dto.lines).length > 0 ? await this.lstbService.getState(targetUserId, taxYear) : response
-      await this.advisorService.markLstbActionsApplied(actorUserId, taxYear, dto.actionIds ?? [])
+      await this.staging.markLstbActionsApplied(actorUserId, taxYear, dto.actionIds ?? [])
       return after
     })
   }

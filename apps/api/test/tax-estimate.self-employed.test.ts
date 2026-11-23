@@ -3,7 +3,7 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import type { CommuteRepository } from '../src/commute/commute.repository.js'
 import { AuditService } from '../src/audit/audit.service.js'
-import { BusinessService } from '../src/business/business.service.js'
+import { composeBusinessService } from '../src/business/business.composition.js'
 import { HebesatzDirectory } from '../src/business/hebesatz.js'
 import { TaxEstimateService } from '../src/tax-estimate/tax-estimate.service.js'
 import { FakeAuditRepository } from './fakes/fake-audit.repository.js'
@@ -26,7 +26,7 @@ function setup() {
   const lstb = new FakeLstbRepository()
   const interview = new FakeInterviewAnswerRepository()
   const repository = new FakeBusinessRepository()
-  const business = new BusinessService(repository, interview, new AuditService(new FakeAuditRepository()), new HebesatzDirectory())
+  const business = composeBusinessService(repository, interview, new AuditService(new FakeAuditRepository()), new HebesatzDirectory())
   const service = new TaxEstimateService(
     lstb, interview, new FakeChSalaryCertificateRepository(), new FakeMasterDataRepository(), commute,
     new FakeLinkRepository(), new FakeChildRepository(), new FakeRentalRepository(), pension, undefined, business,

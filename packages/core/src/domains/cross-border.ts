@@ -1,7 +1,7 @@
 import type { IncomeType } from './income-types'
-import { calculate, type CalculationStatus, type Item } from '../engine/berechnung'
+import { calculate, type CalculationStatus, type Item } from './calculation'
 import { chfToEur, type ExchangeRate } from './exchange-rate'
-import { CH_RESIDENCE_VALUES, type ChResidence } from '../interview/interview'
+import { CH_RESIDENCE_VALUES, type ChResidence } from './answers'
 
 export { CH_RESIDENCE_VALUES as CH_WOHNSITZ_VALUES }
 export type { ChResidence as ChWohnsitz }

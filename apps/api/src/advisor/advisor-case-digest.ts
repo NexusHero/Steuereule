@@ -1,4 +1,4 @@
-import { Logger } from '@nestjs/common'
+import { Inject, Injectable, Logger } from '@nestjs/common'
 import { OWN_FIRST_BUSINESS } from '../business/business.repository.js'
 import {
   ENTRY_RULE_CODES,
@@ -17,17 +17,23 @@ import { ConfirmationService } from '../confirmation/confirmation.service.js'
 import { checkPiiFree } from '../ki/ki.adapter.js'
 import { LinkService } from '../link/link.service.js'
 import { PrintoutService } from '../printout/printout.service.js'
-import { passThroughTransactionRunner, type TransactionRunner } from '../common/transaction-runner.js'
-import { type ReceiptRepository } from '../receipt/receipt.repository.js'
+import { TRANSACTION_RUNNER, passThroughTransactionRunner, type TransactionRunner } from '../common/transaction-runner.js'
+import { RECEIPT_REPOSITORY, type ReceiptRepository } from '../receipt/receipt.repository.js'
 import { TaxEstimateService, type TaxEstimateStatus } from '../tax-estimate/tax-estimate.service.js'
-import type { BusinessService } from '../business/business.service.js'
-import { type AdvisorRepository } from './advisor.repository.js'
+import { BusinessService } from '../business/business.service.js'
+import { ADVISOR_REPOSITORY, type AdvisorRepository } from './advisor.repository.js'
+import { PersonalDataConsentService } from '../owl-mode/personal-data-consent.service.js'
 import { AdvisorCaseFacts } from './advisor-case-facts.js'
 import { AdvisorDrafts } from './advisor-drafts.js'
 import { describePrintoutGap } from './advisor-printout-gaps.js'
 import { buildPrintoutPlan } from './advisor-printout-plan.js'
 import { buildReceiptInbox } from './advisor-receipt-inbox.js'
 import { effectLeftOutOfEstimate } from './advisor-shared.js'
+
+/** The part of the printout the digest reads: what still blocks it. */
+export interface PrintoutGaps {
+  check(userId: string, taxYear: number): Promise<{ readonly missing: readonly string[] }>
+}
 
 /** Thrown on purpose at the end of an effect preview: the transaction must never commit. */
 class PreviewRollback extends Error {}
@@ -129,27 +135,29 @@ export function effectFromEstimates(states: { readonly before: TaxEstimateStatus
  * What the owl knows about the case: the digest of the return with the receipt inbox and the
  * printout's gaps, the household, the record handles, and the app's own estimate and effect preview.
  */
+@Injectable()
 export class AdvisorCaseDigest {
   private readonly logger = new Logger('AdvisorTurn')
 
   constructor(
-    private readonly advisorRepo: AdvisorRepository,
-    private readonly confirmationService: ConfirmationService,
-    private readonly facts: AdvisorCaseFacts,
-    private readonly drafts: AdvisorDrafts,
-    private readonly transactions: TransactionRunner,
-    private readonly hasPersonalDataConsent: (userId: string) => Promise<boolean>,
-    private readonly link: LinkService | undefined,
-    private readonly printout: PrintoutService | undefined,
-    private readonly receiptRepo: ReceiptRepository | undefined,
-    private readonly taxEstimate: TaxEstimateService | undefined,
-    /** The book of the self-employed (ADR-0101); absent where the owl runs without it. */
-    private readonly business?: BusinessService | undefined,
+    @Inject(ADVISOR_REPOSITORY) private readonly advisorRepo: AdvisorRepository,
+    @Inject(ConfirmationService) private readonly confirmationService: ConfirmationService,
+    @Inject(AdvisorCaseFacts) private readonly facts: AdvisorCaseFacts,
+    @Inject(AdvisorDrafts) private readonly drafts: AdvisorDrafts,
+    @Inject(TRANSACTION_RUNNER) private readonly transactions: TransactionRunner,
+    /** The consent to personal data for the owl (ADR-0091); read fresh on every use. */
+    @Inject(PersonalDataConsentService) private readonly personalDataConsent: PersonalDataConsentService,
+    @Inject(LinkService) private readonly link: LinkService,
+    @Inject(PrintoutService) private readonly printout: PrintoutGaps,
+    @Inject(RECEIPT_REPOSITORY) private readonly receiptRepo: ReceiptRepository,
+    @Inject(TaxEstimateService) private readonly taxEstimate: TaxEstimateService,
+    /** The book of the self-employed (ADR-0101). */
+    @Inject(BusinessService) private readonly business: BusinessService,
   ) {}
 
   /** Every name that must not reach a model: the user's, the children's and the spouse's. */
   async knownNamesForScrubbing(userId: string, taxYear: number): Promise<string[]> {
-    const [own, spouse] = await Promise.all([this.facts.knownNamesForScrubbing(userId, taxYear), this.link?.spouseForAdvisor(userId, taxYear)])
+    const [own, spouse] = await Promise.all([this.facts.knownNamesForScrubbing(userId, taxYear), this.link.spouseForAdvisor(userId, taxYear)])
     return [...own, ...[spouse?.firstName, spouse?.lastName].filter((name): name is string => !!name)]
   }
 
@@ -159,7 +167,7 @@ export class AdvisorCaseDigest {
    * only travel as `aliases`, which the tool round checks draft titles against.
    */
   async advisorHousehold(userId: string, taxYear: number): Promise<AdvisorHousehold> {
-    const spouse = await this.link?.spouseForAdvisor(userId, taxYear)
+    const spouse = await this.link.spouseForAdvisor(userId, taxYear)
     if (!spouse) return { personB: null }
     return {
       personB: {
@@ -183,7 +191,6 @@ export class AdvisorCaseDigest {
 
   /** A short business summary (ADR-0101): profit so far, VAT balance, open bank items, the book's frame. */
   private async withBusiness(userId: string, taxYear: number, digest: CaseDigest): Promise<CaseDigest> {
-    if (!this.business) return digest
     try {
       const [summary, target] = await Promise.all([this.business.digest(userId, taxYear), this.business.bookingTarget(userId, taxYear, OWN_FIRST_BUSINESS)])
       if (summary === null) return digest
@@ -208,7 +215,7 @@ export class AdvisorCaseDigest {
 
   /** The stored Belege of the year, as far as the owl may know them (no file names). A failing read leaves the digest as it was. */
   private async withReceiptInbox(userId: string, taxYear: number, digest: CaseDigest): Promise<CaseDigest> {
-    if (!this.receiptRepo || !digest.furtherFacts) return digest
+    if (!digest.furtherFacts) return digest
     try {
       const [records, messages] = await Promise.all([this.receiptRepo.findAllForUser(userId), this.advisorRepo.listForUserAndYear(userId, taxYear)])
       const drafts = messages.flatMap((m) => [...(m.meta?.action ? [m.meta.action] : []), ...(m.meta?.actions ?? [])])
@@ -222,8 +229,8 @@ export class AdvisorCaseDigest {
   }
 
   private async withPrintoutGaps(userId: string, taxYear: number, digest: CaseDigest): Promise<CaseDigest> {
-    if (!this.printout || !digest.furtherFacts) return digest
-    let missing: string[]
+    if (!digest.furtherFacts) return digest
+    let missing: readonly string[]
     try {
       missing = (await this.printout.check(userId, taxYear)).missing
     } catch {
@@ -241,7 +248,7 @@ export class AdvisorCaseDigest {
 
   /** What closes each printout gap, per person, child or object (ADR-0091, Nachtrag). */
   private async printoutPlan(userId: string, taxYear: number, missing: readonly string[]) {
-    const [spouse, records, consent] = await Promise.all([this.link?.spouseForAdvisor(userId, taxYear), this.loadRecordHandles(userId, taxYear), this.hasPersonalDataConsent(userId)])
+    const [spouse, records, consent] = await Promise.all([this.link.spouseForAdvisor(userId, taxYear), this.loadRecordHandles(userId, taxYear), this.personalDataConsent.hasConsent(userId)])
     return buildPrintoutPlan({
       userId,
       taxYear,
@@ -261,7 +268,7 @@ export class AdvisorCaseDigest {
    */
   previewEffectFor(userId: string, taxYear: number): ((target: AdvisorPreviewTarget) => Promise<AdvisorPreviewEffect>) | undefined {
     const estimate = this.taxEstimate
-    if (!estimate || this.transactions === passThroughTransactionRunner) return undefined
+    if (this.transactions === passThroughTransactionRunner) return undefined
     return async (target) => {
       // The estimate leaves § 35a and § 33 out while their boosters are off (#443 slice 5): a draft
       // there would show 0 € and read as "brings nothing", which is not true.
@@ -271,7 +278,7 @@ export class AdvisorCaseDigest {
       try {
         // Person B's fields are written where B's data lives; the estimate is the couple's, read for the user.
         const dataUserId = await this.drafts.dataUserFor(userId, taxYear, target)
-        const personalDataConsent = await this.hasPersonalDataConsent(userId)
+        const personalDataConsent = await this.personalDataConsent.hasConsent(userId)
         await this.transactions.run(async () => {
           const before = await estimate.getState(userId, taxYear)
           for (const [field, value] of target.values) {
@@ -291,10 +298,8 @@ export class AdvisorCaseDigest {
   }
 
   /** The app's own estimate of the year for the owl to read (`read_current_estimate`): figures only. */
-  estimateReaderFor(userId: string, taxYear: number): (() => Promise<AdvisorEstimateReading>) | undefined {
-    const estimate = this.taxEstimate
-    if (!estimate) return undefined
-    return async () => estimateReadingFrom(await estimate.getState(userId, taxYear))
+  estimateReaderFor(userId: string, taxYear: number): () => Promise<AdvisorEstimateReading> {
+    return async () => estimateReadingFrom(await this.taxEstimate.getState(userId, taxYear))
   }
 }
 

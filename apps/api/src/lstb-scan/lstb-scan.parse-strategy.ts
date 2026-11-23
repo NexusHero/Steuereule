@@ -14,7 +14,7 @@ import {
   type LstbExtractionResult,
   type LstbScanLine,
 } from '@steuereule/core'
-import { AdvisorService } from '../advisor/advisor.service.js'
+import { AdvisorDocumentStaging } from '../advisor/advisor-document-staging.js'
 import { AuditService } from '../audit/audit.service.js'
 import { AI_RUNTIME_CONFIG_SERVICE, type AiRuntimeConfigService, type ResolvedAiSlotConfig } from '../ki/ai-runtime-config.service.js'
 import { SINGLE_SHOT_MODEL_FACTORY, type SingleShotModelFactory } from '../ki/single-shot-model.js'
@@ -87,7 +87,7 @@ export class LstbScanParseStrategy implements DocumentParseStrategy, OnModuleIni
   constructor(
     @Inject(DocumentParseRegistry) private readonly registry: DocumentParseRegistry,
     @Inject(AI_RUNTIME_CONFIG_SERVICE) private readonly runtimeConfig: AiRuntimeConfigService,
-    @Inject(AdvisorService) private readonly advisorService: AdvisorService,
+    @Inject(AdvisorDocumentStaging) private readonly staging: AdvisorDocumentStaging,
     @Inject(AuditService) private readonly auditService: AuditService,
     @Inject(LstbService) private readonly lstbService: LstbService,
     @Inject(LinkService) private readonly linkService: LinkService,
@@ -161,7 +161,7 @@ export class LstbScanParseStrategy implements DocumentParseStrategy, OnModuleIni
     const vision = await resolveVisionModel(this.runtimeConfig, this.resolveModel)
     if (!vision) return unchanged
 
-    const knownNames = await this.advisorService.knownNamesForScrubbing(userId, dto.taxYear)
+    const knownNames = await this.staging.knownNamesForScrubbing(userId, dto.taxYear)
     // Allowlist first (ADR-0058): only rows 3, 4, 23–27 leave the server; the scrubber and
     // checkPiiFree are a second and third line of defence, not the primary control.
     const grounding = isolateGrounding(selectLstbRelevantLines(rawText), knownNames)
@@ -187,7 +187,7 @@ export class LstbScanParseStrategy implements DocumentParseStrategy, OnModuleIni
    * B; a name that fits nobody is asked about instead of guessed (as for the Swiss certificate, ADR-0074).
    */
   private async resolveHolder(userId: string, dto: ParseReceiptDto, rawText: string, year: number): Promise<LstbHolder> {
-    const household = dto.person === undefined ? await this.advisorService.householdNames(userId, year) : null
+    const household = dto.person === undefined ? await this.staging.householdNames(userId, year) : null
     const person: 'A' | 'B' | null = dto.person ?? (household?.B ? certificateHolderPerson(rawText, household) : holderWithoutPartner(rawText, household?.A ?? { firstName: null, lastName: null }))
     const personNotRecordable = person === 'B' && household !== null && household.B?.recordable !== true
     const targetUserId = person !== null && !personNotRecordable ? await this.linkService.dataUser(userId, year, person) : userId
@@ -202,7 +202,7 @@ export class LstbScanParseStrategy implements DocumentParseStrategy, OnModuleIni
     read: { extraction: LstbExtractionResult; stage: LstbStage; slot: ResolvedAiSlotConfig | null; holder: LstbHolder; summary: string; employerRead: boolean },
   ): Promise<StagedDrafts> {
     const { extraction, holder } = read
-    const staged = await this.advisorService.stageLstbScanBatch(userId, filingYear, {
+    const staged = await this.staging.stageLstbScanBatch(userId, filingYear, {
       digestUserId: holder.targetUserId,
       receiptId: dto.receiptId ?? null,
       stage: read.stage,

@@ -53,6 +53,10 @@ import { RequiresAccount } from '../auth/requires-account.guard.js'
 import { UserContextGuard } from '../auth/user-context.guard.js'
 import { ParseTaxYearPipe } from '../cockpit/parse-tax-year.pipe.js'
 import { AdvisorService } from './advisor.service.js'
+import { AdvisorConversations } from './advisor-conversations.js'
+import { AdvisorDrafts } from './advisor-drafts.js'
+import { AdvisorProjectNotes } from './advisor-project-notes.js'
+import { AdvisorTurn } from './advisor-turn.js'
 import { AdvisorModelsService } from './advisor-models.service.js'
 import { InvalidInputError } from '../common/domain-error.js'
 import {
@@ -90,7 +94,12 @@ const SSE_HEARTBEAT_MS = 15_000
 @UseGuards(UserContextGuard)
 export class AdvisorController {
   constructor(
+    /** The opening state, the connection and feedback: what no single part owns. */
     @Inject(AdvisorService) private readonly service: AdvisorService,
+    @Inject(AdvisorTurn) private readonly turn: AdvisorTurn,
+    @Inject(AdvisorConversations) private readonly conversations: AdvisorConversations,
+    @Inject(AdvisorProjectNotes) private readonly notes: AdvisorProjectNotes,
+    @Inject(AdvisorDrafts) private readonly drafts: AdvisorDrafts,
     @Inject(AdvisorRunService) private readonly runs: AdvisorRunService,
     @Inject(AdvisorModelsService) private readonly models: AdvisorModelsService,
   ) {}
@@ -118,11 +127,11 @@ export class AdvisorController {
   ): Promise<AdvisorConversationDto> {
     const provider = dto.provider ?? null
     const model = dto.model ?? null
-    if (provider === null && model === null) return this.service.setConversationModel(userId, year, conversationId, null)
+    if (provider === null && model === null) return this.conversations.setChatModel(userId, year, conversationId, null)
     if (provider === null || model === null || !(await this.models.isAvailable(provider, model))) {
       throw new InvalidInputError('ADVISOR_MODEL_UNAVAILABLE', 'Dieses Modell steht gerade nicht zur Verfügung.')
     }
-    return this.service.setConversationModel(userId, year, conversationId, { provider, model })
+    return this.conversations.setChatModel(userId, year, conversationId, { provider, model })
   }
 
   @Get('session')
@@ -222,7 +231,7 @@ export class AdvisorController {
       return
     }
 
-    return this.service.sendMessage(userId, year, dto)
+    return this.turn.sendMessage(userId, year, dto)
   }
 
   @Post('stream')
@@ -321,7 +330,7 @@ export class AdvisorController {
   @ApiQuery({ name: 'q', type: String, description: 'At least two characters; case and accents are ignored.' })
   @ApiOkResponse({ type: [AdvisorSearchHitDto] })
   search(@CurrentUser() userId: string, @Param('jahr', ParseTaxYearPipe) year: number, @Query('q') query?: string): Promise<AdvisorSearchHitDto[]> {
-    return this.service.searchConversations(userId, year, (query ?? '').slice(0, 100))
+    return this.conversations.searchConversations(userId, year, (query ?? '').slice(0, 100))
   }
 
   @Put('situation')
@@ -330,7 +339,7 @@ export class AdvisorController {
   @ApiBody({ type: SaveAdvisorSituationDto })
   @ApiOkResponse({ type: AdvisorSituationDto })
   saveSituation(@CurrentUser() userId: string, @Param('jahr', ParseTaxYearPipe) year: number, @Body() dto: SaveAdvisorSituationDto): Promise<AdvisorSituationDto> {
-    return this.service.saveSituation(userId, year, dto.text)
+    return this.notes.saveSituation(userId, year, dto.text)
   }
 
   @Get('notes')
@@ -338,7 +347,7 @@ export class AdvisorController {
   @ApiOperation({ summary: 'The project notes of this tax year (#481)' })
   @ApiOkResponse({ type: [AdvisorNoteDto] })
   listNotes(@CurrentUser() userId: string, @Param('jahr', ParseTaxYearPipe) year: number): Promise<AdvisorNoteDto[]> {
-    return this.service.listNotes(userId, year)
+    return this.notes.listNotes(userId, year)
   }
 
   @Post('notes')
@@ -349,7 +358,7 @@ export class AdvisorController {
   @ApiOkResponse({ type: AdvisorNoteDto })
   @ApiConflictResponse({ description: 'The tax year already holds the maximum number of notes.' })
   createNote(@CurrentUser() userId: string, @Param('jahr', ParseTaxYearPipe) year: number, @Body() dto: SaveAdvisorNoteDto): Promise<AdvisorNoteDto> {
-    return this.service.createNote(userId, year, dto.text)
+    return this.notes.createNote(userId, year, dto.text)
   }
 
   @Put('notes/:noteId')
@@ -365,7 +374,7 @@ export class AdvisorController {
     @Param('noteId') noteId: string,
     @Body() dto: SaveAdvisorNoteDto,
   ): Promise<AdvisorNoteDto> {
-    return this.service.updateNote(userId, year, noteId, dto.text)
+    return this.notes.updateNote(userId, year, noteId, dto.text)
   }
 
   @Delete('notes/:noteId')
@@ -375,7 +384,7 @@ export class AdvisorController {
   @ApiOkResponse({ type: DeleteAdvisorNoteResponseDto })
   @ApiNotFoundResponse({ description: 'No such note in this tax year.' })
   deleteNote(@CurrentUser() userId: string, @Param('jahr', ParseTaxYearPipe) year: number, @Param('noteId') noteId: string): Promise<DeleteAdvisorNoteResponseDto> {
-    return this.service.deleteNote(userId, year, noteId)
+    return this.notes.deleteNote(userId, year, noteId)
   }
 
   @Post('messages/:messageId/note-changes/:index/undo')
@@ -393,7 +402,7 @@ export class AdvisorController {
     @Param('messageId') messageId: string,
     @Param('index', ParseIntPipe) index: number,
   ): Promise<AdvisorChatMessageDto> {
-    return this.service.undoNoteChange(userId, year, messageId, index)
+    return this.notes.undoNoteChange(userId, year, messageId, index)
   }
 
   @Get('conversations')
@@ -401,7 +410,7 @@ export class AdvisorController {
   @ApiOperation({ summary: 'The conversations of this tax year, most recently used first (#481)' })
   @ApiOkResponse({ type: [AdvisorConversationDto] })
   listConversations(@CurrentUser() userId: string, @Param('jahr', ParseTaxYearPipe) year: number): Promise<AdvisorConversationDto[]> {
-    return this.service.listConversations(userId, year)
+    return this.conversations.listConversations(userId, year)
   }
 
   @Post('conversations')
@@ -411,7 +420,7 @@ export class AdvisorController {
   @ApiOkResponse({ type: AdvisorConversationDto })
   @ApiConflictResponse({ description: 'The tax year already holds the maximum number of conversations.' })
   createConversation(@CurrentUser() userId: string, @Param('jahr', ParseTaxYearPipe) year: number): Promise<AdvisorConversationDto> {
-    return this.service.createConversation(userId, year)
+    return this.conversations.createConversation(userId, year)
   }
 
   @Put('conversations/:conversationId')
@@ -427,7 +436,7 @@ export class AdvisorController {
     @Param('conversationId') conversationId: string,
     @Body() dto: RenameAdvisorConversationDto,
   ): Promise<AdvisorConversationDto> {
-    return this.service.renameConversation(userId, year, conversationId, dto.title)
+    return this.conversations.renameConversation(userId, year, conversationId, dto.title)
   }
 
   @Post('conversations/:conversationId/summarize')
@@ -488,7 +497,7 @@ export class AdvisorController {
     @Param('jahr', ParseTaxYearPipe) year: number,
     @Body() dto: ApplyBatchActionsDto,
   ): Promise<ApplyBatchActionsResponseDto> {
-    return this.service.applyBatch(userId, year, dto)
+    return this.drafts.applyBatch(userId, year, dto)
   }
 
   @Post('actions/:actionId/apply')
@@ -502,7 +511,7 @@ export class AdvisorController {
     @Param('jahr', ParseTaxYearPipe) year: number,
     @Param('actionId') actionId: string,
   ): Promise<AdvisorActionMutationResponseDto> {
-    return this.service.applyAction(userId, year, actionId)
+    return this.drafts.applyAction(userId, year, actionId)
   }
 
   @Post('actions/:actionId/undo')
@@ -516,7 +525,7 @@ export class AdvisorController {
     @Param('jahr', ParseTaxYearPipe) year: number,
     @Param('actionId') actionId: string,
   ): Promise<AdvisorActionMutationResponseDto> {
-    return this.service.undoAction(userId, year, actionId)
+    return this.drafts.undoAction(userId, year, actionId)
   }
 
   @Post('actions/:actionId/dismiss')
@@ -530,6 +539,6 @@ export class AdvisorController {
     @Param('jahr', ParseTaxYearPipe) year: number,
     @Param('actionId') actionId: string,
   ): Promise<AdvisorActionMutationResponseDto> {
-    return this.service.dismissAction(userId, year, actionId)
+    return this.drafts.dismissAction(userId, year, actionId)
   }
 }
