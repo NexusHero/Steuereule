@@ -22,10 +22,12 @@ reviewer could not answer "what does CI actually test, and what blocks a merge?"
 
 Two facts surfaced while mapping it, and are recorded because they matter more than the cosmetics:
 
-1. **`main` configures no required status checks.** Branch protection enforces only "conversations resolved"
-   and admin enforcement — so every gate is *advisory* and none blocks a merge today. The green pipeline is a
-   convention, not an enforced invariant. Making the critical gates required is **#71**, still the
-   stakeholder's to set.
+1. **`main`'s required checks are enforced by a repository *ruleset*, not classic branch protection.** The
+   branch-protection `required_status_checks` API returns 404, but an active ruleset requires 16 status checks
+   — under the names they had *before* this PR. So the rename here must be mirrored into the ruleset's required
+   list in the same window the PR merges (the old→new mapping lives in `docs/ci-pipeline.md`); updating the
+   ruleset is a repo setting, still the stakeholder's to make (**#71**). An earlier audit that checked only
+   classic branch protection wrongly reported "nothing required" — corrected here.
 2. The richest security signals (ZAP DAST, the BOLA/IDOR matrix, the a11y gates) were the least visible.
 
 ## Decision
@@ -47,9 +49,10 @@ Two facts surfaced while mapping it, and are recorded because they matter more t
 
 ## Consequences
 
-- No gate logic changes — only names, the split, and the added advisory rollup + doc. Because `main` pins no
-  required check names, renaming cannot strand branch protection (and when #71 lands, the required list
-  should be set from the new names).
+- No gate logic changes — only names, the split, and the added advisory rollup + doc. But the ruleset **does**
+  pin the old names, so the rename *does* strand the required list until the ruleset is switched to the new
+  names (`docs/ci-pipeline.md` carries the old→new mapping); this must happen in the same window the PR merges,
+  and is the stakeholder's to do (#71).
 - The ZAP DAST and a11y gates stay inside their host jobs (they need that job's real-stack setup; splitting
   would stand the stack up twice). Their names and the overview now surface them; the map notes the caveat.
 - The overview comment and `docs/ci-pipeline.md` must be kept in step with the workflows — the map lists the

@@ -8,13 +8,35 @@ Checks are named `category: gate` so the GitHub PR checklist clusters by categor
 pipelines (`Quality`, `Build & E2E`, `Security`, `Load`, and the advisory `CI Overview`) run in parallel on
 every pull request; the nightly ones (`AI eval`, `Law watch`) do not gate PRs.
 
-## ⚠️ Nothing is a required check yet
+## ⚠️ Required checks are enforced by a *ruleset*, under the pre-rename names
 
-`main`'s branch protection currently sets **no `required_status_checks`** — only "conversations resolved" and
-admin enforcement. So every gate below is **advisory**: a red check does **not** block a merge today. Making
-the critical gates *required* is tracked in **#71** (branch protection) and is the stakeholder's to set. Until
-then this map (and the CI-Overview comment) is how a reviewer sees what passed; the green pipeline is a
-convention, not an enforced invariant.
+`main` has **no** classic `required_status_checks` (the branch-protection API returns 404) — but a repository
+**ruleset** (`main`, active) *does* require 16 status checks, under the names they had **before** this PR's
+rename. Renaming the jobs makes those contexts stop reporting, so the ruleset's required list must be switched
+to the new names **in the same window** this PR merges: switched too early it blocks every other open PR,
+switched too late this PR cannot merge. Updating the ruleset is a repo setting and the stakeholder's to make
+(tracked in **#71**).
+
+| Required context (ruleset, pre-rename) | New check name (this PR) |
+|---|---|
+| `Lint` | `static: lint (oxlint)` |
+| `Test` | `correctness: unit tests (no DB)` |
+| `Integration (Postgres)` | `correctness: integration (postgres)` |
+| `Build, CycloneDX SBOM, Trivy Container Scan & Bundle Gate` | `supply-chain: build, SBOM, container scan & bundle gate` |
+| `DevSecOps Static (Gitleaks, Trivy FS/IaC, Semgrep SAST, Hadolint, Actionlint)` | **split into five:** `security: secret scan (gitleaks)` · `security: sast (semgrep — custom NestJS/DSGVO rules)` · `security: iac scan (trivy — terraform, dockerfiles, compose, k8s)` · `security: dockerfile lint (hadolint)` · `security: workflow lint (actionlint)` |
+| `Docs consistency — register-check + adr-check` | `static: docs consistency (register + adr)` |
+| `Validate compose` | `static: validate compose` |
+| `Vordrucke — Vermessung und Lage der Ausdruck-Felder` | `static: vordrucke (form-field geometry)` |
+| `Smoke` | `e2e: smoke (real /api/auth over HTTP)` |
+| `Browser gates (real stack, headless Chromium)` | `e2e: browser gates & a11y (BFSG/WCAG 2.1 AA, headless Chromium)` |
+| `Production compose stack — guest, registration, login, QR (real Docker build)` | `e2e: production compose stack + OWASP ZAP DAST (real Docker build)` |
+| `E2E Scenarios Matrix (Shard 1/4 … 4/4)` | `e2e: scenarios (shard 1/4 … 4/4)` |
+| `SonarCloud Code Analysis` | **unchanged** — posted by the SonarCloud app, not a workflow job, so it keeps reporting |
+
+Only `SonarCloud Code Analysis` survives the rename untouched; the other 15 contexts change name (and one splits
+into five). Two gates this PR also surfaces — `e2e: scenario 09b (self-employment switch on)` and
+`performance: load (many users …)` — are **not** in the ruleset today; add them only to raise the bar. Until the
+ruleset is updated, this map (and the CI-Overview comment) is how a reviewer reads what each new check proves.
 
 ## Categories
 
