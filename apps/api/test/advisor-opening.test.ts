@@ -106,7 +106,10 @@ function openingWith(digest: CaseDigest, messages: Partial<AdvisorChatMessageRec
     listNotes: async () => [],
     listForUserAndYear: async () => messages as AdvisorChatMessageRecord[],
   } as unknown as AdvisorRepository
-  return new AdvisorOpening(repo, async () => digest, async () => '', undefined)
+  const noEstimate = async (): Promise<never> => {
+    throw new Error('no estimate in this test')
+  }
+  return new AdvisorOpening(repo, { buildCaseDigest: async () => digest }, { getSituation: async () => ({ text: '', updatedAt: null }) }, { getState: noEstimate })
 }
 
 describe('AdvisorOpening.state', () => {

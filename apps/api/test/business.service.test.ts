@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { serializeBookingDraft, type BookingDraft } from '@steuereule/core'
 import { AuditService } from '../src/audit/audit.service.js'
-import { BusinessService } from '../src/business/business.service.js'
+import { composeBusinessService } from '../src/business/business.composition.js'
 import { bookingFieldAccess } from '../src/business/booking-field-access.js'
 import { HebesatzDirectory } from '../src/business/hebesatz.js'
 import type { UnlockService } from '../src/unlock/unlock.service.js'
@@ -49,7 +49,7 @@ function setup(job = 'Selbstständig', unlocked = true) {
   const unlock = { status: async () => (unlocked ? 'freigeschaltet' : 'offen') } as unknown as UnlockService
   let tick = 0
   const clock = () => `2026-11-19T10:00:${String(tick++ % 60).padStart(2, '0')}.000Z`
-  const service = new BusinessService(repository, interview, new AuditService(new FakeAuditRepository()), new HebesatzDirectory(), unlock, clock)
+  const service = composeBusinessService(repository, interview, new AuditService(new FakeAuditRepository()), new HebesatzDirectory(), unlock, clock)
   return { repository, interview, service }
 }
 

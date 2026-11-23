@@ -1,6 +1,6 @@
 import { isValidDate } from '../common/master-data'
 import { isSupportedIncomeTaxYear } from '../math/tarif'
-import { getTaxYearParameters } from '../math/tax-parameters'
+import { getTaxYearParameters, CHILD_ALLOWANCE_FALLBACK_STEPS, CHILD_BENEFIT_FALLBACK_STEPS, valueForYear } from '../math/tax-parameters'
 
 export const CHILD_RELATIONSHIPS = ['1', '2', '3'] as const
 export type ChildRelationship = (typeof CHILD_RELATIONSHIPS)[number]
@@ -29,16 +29,14 @@ export function childTaxAllowance(year: number): number {
     return getTaxYearParameters(year).children.childAllowanceTotalEur
   }
   const bea = 2928
-  if (year <= 2023) return 6024 + bea
-  return 6828 + bea
+  return valueForYear(CHILD_ALLOWANCE_FALLBACK_STEPS, year) + bea
 }
 
 export function monthlyChildBenefitClaim(year: number): number {
   if (isSupportedIncomeTaxYear(year)) {
     return getTaxYearParameters(year).children.monthlyBenefitEur
   }
-  if (year <= 2022) return 219
-  return 250
+  return valueForYear(CHILD_BENEFIT_FALLBACK_STEPS, year)
 }
 
 export function claimMonths(birthDate: string, year: number): number {

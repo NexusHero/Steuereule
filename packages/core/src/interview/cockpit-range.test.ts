@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { calculate } from '../engine/berechnung'
+import { calculate } from '../domains/calculation'
 import { UNCERTAINTY_PER_CONFLICT, UNCERTAINTY_PER_ITEM } from './cockpit'
 import { calculateCockpitRange, cockpitRangeFromInputs, rangeFromCalculation } from './cockpit-range'
 

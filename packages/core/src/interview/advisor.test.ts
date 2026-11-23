@@ -4,9 +4,9 @@ import {
   evaluateAdvisorTurn,
   extractAmountNear,
   simulateAdvisorFieldDelta,
-  type AdvisorActionStatus,
   type CaseDigest,
 } from './advisor'
+import type { AdvisorActionStatus } from '../domains/action-status'
 
 const sampleDigest: CaseDigest = {
   taxYear: 2025,

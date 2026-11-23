@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { PROFESSION_VALUES } from './interview'
+import { PROFESSION_VALUES } from '../domains/answers'
 import { EMPLOYEE_LUMP_SUM_NOTE, PROFESSION_TIPS, professionTipsFor } from './profession-tips'
 
 describe('profession tips', () => {

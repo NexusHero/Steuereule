@@ -135,7 +135,7 @@ flowchart LR
 # 4. Solution strategy
 
 1. **A pure calculation core.** Tax rules are functions without input or output in `packages/core`. The API and the web app use the same core, so each rule exists exactly once.
-2. **Parameters per tax year.** Allowances, lump sums and deadlines are in `math/tax-parameters.ts`, the tariff and surcharge tables in `math/tarif.ts`. A few feature modules still carry their own per-year constants, see §11.
+2. **Parameters per tax year.** Allowances, lump sums and deadlines are in `math/tax-parameters.ts`, the tariff and surcharge tables in `math/tarif.ts`. Every year in which a rule changes is named there too (`RULE_CHANGE_YEARS`, the `*_STEPS` tables, §5.2). A few feature modules still carry their own per-year tables, see §11.
 3. **Ports & Adapters around the core.** The database and external SDKs are reachable only from named places. §4.1 describes this in detail.
 4. **Draft before entry.** Whatever the owl, a receipt reader or an external assistant proposes is a draft with a computed effect. Only confirmation writes ([ADR-0066](adr/0066-eule-feldkatalog-und-ein-schreibweg.md)).
 5. **Encryption at the edge of persistence.** The Prisma adapter encrypts fields, the storage adapter encrypts receipt files. Services see plaintext and know nothing of the mechanism.
@@ -191,7 +191,7 @@ constructor(@Inject(RECEIPT_REPOSITORY) private readonly receipts: ReceiptReposi
 | :--- | :--- | :--- |
 | The database client and eleven further SDK groups are imported only by the files named for them. That includes `src/prisma/**` and adapter classes in `*.prisma.ts`. No file imports `ModuleRef` from `@nestjs/core` (no service locator); `Reflector` and `NestFactory` stay allowed. | `apps/api/test/architecture.test.ts` | fourteen constructed violations in the test, two of them imports of `ModuleRef` (named and namespace); each must yield exactly one finding |
 | A named exception that no longer imports its SDK is an error. | the same test | found one superfluous exception on its first run |
-| The set of *module → module* imports in `apps/api/src` equals the baseline (334 edges between 53 folders as of 2026-11-23; 352 between 50 on 2026-11-22). | the same test, baseline `apps/api/test/architecture-module-edges.json` | a difference in either direction fails |
+| The set of *module → module* imports in `apps/api/src` equals the baseline (335 edges between 53 folders as of 2026-11-23; 352 between 50 on 2026-11-22). | the same test, baseline `apps/api/test/architecture-module-edges.json` | a difference in either direction fails |
 | In the core: `math` imports nothing, `common` only `math`, `engine` never `interview`; no new direction between the folders. | `packages/core/src/architecture.test.ts` | broken with probe files on 2026-11-22 ([ADR-0102](adr/0102-ports-and-adapters-enforced-by-architecture-tests.md)) |
 | In the core: the files importing against the intended order are exactly the 23 known ones. | the same test | as above |
 | In the core: no cycle of value imports between files. | the same test | as above |
@@ -205,7 +205,7 @@ Both tests run in the CI job `test` of the workflow *Quality*.
 - **`mcp/` loads LangChain too**, because it imports `TOOL_ARG_SCHEMAS` from `ki/advisor-tools.ts`.
 - **`pdf-lib` has no port.** Only `printout/form-renderer.ts` imports it, but services call `renderForms` directly.
 - **better-auth is confined to two modules, not one file.** Twelve files in `auth/` and `device/` use it, among them the guard for JWT verification.
-- **Modules are still coupled.** 334 edges; 3 pairs of modules import each other (2026-11-23, down from 16 on 2026-11-22). The ratchet prevents growth; removing an edge means rewriting the baseline (§11, finding 5).
+- **Modules are still coupled.** 335 edges; 3 pairs of modules import each other (2026-11-23, down from 16 on 2026-11-22). The ratchet prevents growth; removing an edge means rewriting the baseline (§11, finding 4).
 - **The core has two folder-level cycles**, see §5.2.
 - **DI tokens are not type-checked.** A missing binding fails at start-up, a wrong one only in an integration test.
 - **Imports are found by pattern.** An import path computed at runtime is invisible.
@@ -268,27 +268,29 @@ The API is split into 50 folders under `apps/api/src`, one per topic (`lstb`, `r
 
 ## 5.2 Inside the core
 
-The five folders are cut by theme:
+The five folders are layers. Each one imports only the folders below it:
 
 | Folder | Content | Files |
 | :--- | :--- | :-: |
-| `math/` | the tariff of § 32a EStG (Income Tax Act), solidarity surcharge, parameters per tax year | 3 |
-| `common/` | working days and public holidays, postal codes, tax offices, bank codes, tax-id check, PII masking | 17 |
-| `domains/` | verticals: wages, pensions, capital income, rental, cross-border, church tax, pension provision, self-employment (`business/`, `ledger/`), receipts, year history | 83 |
-| `engine/` | tax estimate, filing-type comparison, assessment reconciliation, the calculation model `berechnung.ts` | 10 |
+| `math/` | the tariff of § 32a EStG (Income Tax Act), solidarity surcharge, parameters per tax year and the years in which rules change | 3 |
+| `common/` | working days and public holidays, postal codes, tax offices, bank codes, tax-id check, PII masking, the `Range` of an estimate | 18 |
+| `domains/` | verticals: wages, pensions, capital income, rental, cross-border, church tax, pension provision, self-employment (`business/`, `ledger/`), receipts, year history; the calculation model `calculation.ts`, the assessment reconciliation, the filing-type comparison and the answer model `answers.ts` | 89 |
+| `engine/` | the tax estimate for one person and for a married couple, business income, the couple comparison | 6 |
 | `interview/` | question catalogue and reachability, the cockpit range, the owl's domain logic and ports | 42 |
 
-Measured imports between the folders (number of import statements, tests excluded, as of 2026-11-22):
+Measured imports between the folders (number of import statements, tests excluded, as of 2026-11-23):
 
-| from ↓ to → | math | common | engine | domains | interview |
+| from ↓ to → | math | common | domains | engine | interview |
 | :--- | :-: | :-: | :-: | :-: | :-: |
 | **math** | | 0 | 0 | 0 | 0 |
 | **common** | 2 | | 0 | 0 | 0 |
-| **engine** | 13 | 3 | | 18 | 0 |
-| **domains** | 19 | 8 | **15** | | **10** |
-| **interview** | 8 | 6 | 7 | 25 | |
+| **domains** | 37 | 13 | | 0 | 0 |
+| **engine** | 8 | 5 | 17 | | 0 |
+| **interview** | 8 | 7 | 42 | 2 | |
 
-`math` and `common` are clean foundations. Above them are two folder-level cycles: `engine` orchestrates rules from `domains` while verticals in `domains` use the calculation model from `engine`; and `domains` reaches into the answer model in `interview`. The intended order is `interview → engine → domains → common → math`. The bold cells are the imports against it. The architecture test keeps the 23 files involved as a list that may only get shorter. Between individual files there is no cycle of value imports.
+Every cell above the diagonal is 0: the order is `math → common → domains → engine → interview`, and there is no cycle between folders. The architecture test (`packages/core/src/architecture.test.ts`) enforces this without exceptions. Until 2026-11-22, 23 files in `domains` imported from `engine` (the calculation model, the assessment types) or from `interview` (the answer model); those modules now sit in `domains`, and `Range` sits in `common`. Between individual files there is no cycle of value imports either.
+
+The same test forbids a year compared with a bare literal (`year >= 2025`) anywhere in the core except `math/tax-parameters.ts`. A rule that changes with the year names that year there, in `RULE_CHANGE_YEARS` (read with `appliesFrom`) or in a `*_STEPS` table (read with `valueForYear`).
 
 ---
 
@@ -519,16 +521,15 @@ Two rules for gates: a gate counts only when it runs in CI against the real thin
 | 1 | **Asynchronous print jobs live in process memory.** `printout/printout-job.service.ts` keeps them in a `Map` and starts them with `setImmediate`. There is no worker and no limit on concurrent jobs. [ADR-0056](adr/0056-asynchronous-pdf-generation-job-queue.md) describes a queue that was not built that way. | On ten instances a status request finds the job only by chance. A restart loses it. The web app does not use this path at present. | Move the jobs to the database or to Redis, or remove the path and mark ADR-0056 as not implemented. |
 | 2 | **Tracing without an exporter.** | There are no distributed traces even though the code creates spans. | Install the OpenTelemetry SDK with an exporter. |
 | 3 | **SLOs without alerts.** The targets in `sre/reliability-spec.md` do not exist as monitoring resources. | Nobody is told automatically when one is violated. | Define alert rules in `infra/gcp`. |
-| 4 | **Two folder-level cycles in the core** (§5.2). | Changes to `engine/berechnung.ts` or to the answer model reach into many verticals. | Move the calculation model and the answer model into a lower layer; the list in the architecture test shows the progress. |
-| 5 | **Coupling of the API modules** (§4.1.4). On 2026-11-22: 352 edges, 16 mutual pairs. On 2026-11-23: 334 edges, 3 mutual pairs. Removed by moving `ParseTaxYearPipe` to `common/`, the tax-year rows to `tax-year/`, the household storage to `household-core/` and the receipt-inbox prompt text to `ki/`, and by replacing the two `ModuleRef` lookups of the estimate with ports. Left: **advisor ↔ business** (the receipt parse strategy of `business/` stages drafts through `advisor/`, the owl reads the book), **advisor ↔ receipt** (receipt services write drafts through `advisor/`, the owl lists the receipts) and **business ↔ confirmation** (`booking-field-access.ts` takes `BOOKING_ACCESS_FIELDS` from `confirmation/field-access.ts`). All three sit in files that the open PRs #562–#564 rewrite. | A module of such a pair cannot be changed or tested without the other. | Once #562–#564 are merged: give the draft staging a port owned by `receipt/` and `business/`, move `BOOKING_ACCESS_FIELDS` into `business/`, and rewrite the baseline. |
-| 6 | **LangChain runs through the advisory turn** (§4.1.4). | Lock-in to a framework. | Accepted as long as changing the provider stays configuration. |
-| 7 | **Rate limiting partly in process memory** (§8.7). | With several instances the limit applies per instance. | Back `ThrottlerModule` with Redis. |
-| 8 | **ELSTER transmission not operational.** The code calls an ERiC process; the operator certificate is missing. | Self-employed users who must file electronically cannot do so through the app. | Obtain the certificate, decide how the ERiC process is run ([ADR-0101](adr/0101-selbststaendige.md)). |
-| 9 | **The official forms change every year.** | A shifted field makes the printout unusable. | Exists as a gate: checksums and measurements break the build. The forms for 2026 are still missing. |
-| 10 | **Per-year constants outside the parameter registry**, for example in `domains/business/payroll.ts`. | A new tax year needs changes in several places. | Consolidate into `tax-parameters.ts` at the next change of year. |
-| 11 | **A second target environment in `infra/`.** Next to `infra/gcp` there are definitions for Hetzner with k3s. | A reader of the repository sees two targets and cannot tell which one applies. | Remove them or mark them as an archive. |
-| 12 | **ADRs in status *Draft* for shipped code** (0046, 0048, 0049). | The decision has not been formally accepted. | Settle the status. |
-| 13 | **Two arc42 documents.** This document and `arc42/README.md` overlap; the latter describes an early state in its §5 and §5.1. | Readers cannot tell which one applies. | This document is authoritative. Cut `arc42/README.md` down to the toolchain and the boot order. |
+| 4 | **Coupling of the API modules** (§4.1.4). On 2026-11-22: 352 edges, 16 mutual pairs. On 2026-11-23, after #562–#565 were merged: 335 edges, 3 mutual pairs. Removed by moving `ParseTaxYearPipe` to `common/`, the tax-year rows to `tax-year/`, the household storage to `household-core/` and the receipt-inbox prompt text to `ki/`, and by replacing the two `ModuleRef` lookups of the estimate with ports. Left: **advisor ↔ business** (the receipt parse strategy of `business/` stages drafts through `advisor/`, the owl reads the book), **advisor ↔ receipt** (receipt services write drafts through `advisor/`, the owl lists the receipts) and **business ↔ confirmation** (`booking-field-access.ts` takes `BOOKING_ACCESS_FIELDS` from `confirmation/field-access.ts`). Each needs a new port in code that #562–#564 have just reshaped. | A module of such a pair cannot be changed or tested without the other. | Give the draft staging a port owned by `receipt/` and `business/`, move `BOOKING_ACCESS_FIELDS` into `business/`, and rewrite the baseline. |
+| 5 | **LangChain runs through the advisory turn** (§4.1.4). | Lock-in to a framework. | Accepted as long as changing the provider stays configuration. |
+| 6 | **Rate limiting partly in process memory** (§8.7). | With several instances the limit applies per instance. | Back `ThrottlerModule` with Redis. |
+| 7 | **ELSTER transmission not operational.** The code calls an ERiC process; the operator certificate is missing. | Self-employed users who must file electronically cannot do so through the app. | Obtain the certificate, decide how the ERiC process is run ([ADR-0101](adr/0101-selbststaendige.md)). |
+| 8 | **The official forms change every year.** | A shifted field makes the printout unusable. | Exists as a gate: checksums and measurements break the build. The forms for 2026 are still missing. |
+| 9 | **Per-year tables outside the parameter registry.** Since 2026-11-23 no year comparison remains outside `math/tax-parameters.ts`; four tables remain in their modules: `EARLIER_EMPLOYEE_LUMP_SUMS` (`domains/assessment.ts`), `EARLIER_SAVER_ALLOWANCE` (`domains/history-groups.ts`), `ROOM_CAP_2022_EUR` (`domains/business/profit.ts`) and the Kirchgeld tables (`domains/church-tax.data.ts`). | A new tax year can still need a change outside the registry. | Move them into `tax-parameters.ts` at the next change of year. |
+| 10 | **A second target environment in `infra/`.** Next to `infra/gcp` there are definitions for Hetzner with k3s. | A reader of the repository sees two targets and cannot tell which one applies. | Remove them or mark them as an archive. |
+| 11 | **ADRs in status *Draft* for shipped code** (0046, 0048, 0049). | The decision has not been formally accepted. | Settle the status. |
+| 12 | **Two arc42 documents.** This document and `arc42/README.md` overlap; the latter describes an early state in its §5 and §5.1. | Readers cannot tell which one applies. | This document is authoritative. Cut `arc42/README.md` down to the toolchain and the boot order. |
 
 ---
 

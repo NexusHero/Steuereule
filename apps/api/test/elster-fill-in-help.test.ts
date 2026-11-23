@@ -4,7 +4,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { clearSuppliedLines, parseSuppliedLines, registerSuppliedLines, type BookingDraft } from '@steuereule/core'
 import { AuditService } from '../src/audit/audit.service.js'
-import { BusinessService } from '../src/business/business.service.js'
+import { composeBusinessService } from '../src/business/business.composition.js'
 import { ElsterHelpService } from '../src/business/elster-help.service.js'
 import { HebesatzDirectory } from '../src/business/hebesatz.js'
 import type { CommuteRepository } from '../src/commute/commute.repository.js'
@@ -71,7 +71,7 @@ async function household(years: readonly number[], { unlocked = true } = {}) {
   const audit = new AuditService(new FakeAuditRepository())
   const unlock = { status: async () => (unlocked ? 'freigeschaltet' : 'offen') } as unknown as UnlockService
   const printout = new PrintoutService(taxCaseReaderOver({ profile, masterData, wageTaxCertificate: lstb, pension: new FakePensionRepository(), capital: new FakeCapitalRepository(), rental, salaryStatement: new FakeChSalaryCertificateRepository(), children, coupling: new FakeLinkRepository(), interview, commute }), new FakeMarkingRepository(), unlock, audit, TEMPLATES_BASE)
-  const business = new BusinessService(new FakeBusinessRepository(), interview, audit, new HebesatzDirectory(), unlock, () => '2026-11-20T10:00:00.000Z')
+  const business = composeBusinessService(new FakeBusinessRepository(), interview, audit, new HebesatzDirectory(), unlock, () => '2026-11-20T10:00:00.000Z')
   for (const year of years) await business.post(USER, year, A1, fee(year))
   return { help: new ElsterHelpService(business, printout, audit), printout, business }
 }

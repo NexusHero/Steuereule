@@ -13,8 +13,11 @@ import {
   type CaseDigest,
   type OpeningEstimate,
 } from '@steuereule/core'
-import type { TaxEstimateStatus } from '../tax-estimate/tax-estimate.service.js'
-import type { AdvisorRepository } from './advisor.repository.js'
+import { Inject, Injectable } from '@nestjs/common'
+import { TaxEstimateService } from '../tax-estimate/tax-estimate.service.js'
+import { ADVISOR_REPOSITORY, type AdvisorRepository } from './advisor.repository.js'
+import { AdvisorCaseDigest } from './advisor-case-digest.js'
+import { AdvisorProjectNotes } from './advisor-project-notes.js'
 import { ANSWERING_WINDOW_MS } from './advisor-shared.js'
 import type { AdvisorOpeningStateDto } from './dto/advisor.dto.js'
 
@@ -33,17 +36,18 @@ export interface OpeningContext {
  * The owl opens a new conversation itself (ADR-0067 §11). The stage and every figure come from
  * the app before any model is asked; the model only puts them into words.
  */
+@Injectable()
 export class AdvisorOpening {
   constructor(
-    private readonly advisorRepo: AdvisorRepository,
-    private readonly buildDigest: (userId: string, taxYear: number) => Promise<CaseDigest>,
-    private readonly situationOf: (userId: string) => Promise<string>,
-    private readonly estimateOf: ((userId: string, taxYear: number) => Promise<TaxEstimateStatus>) | undefined,
+    @Inject(ADVISOR_REPOSITORY) private readonly advisorRepo: AdvisorRepository,
+    @Inject(AdvisorCaseDigest) private readonly caseDigest: Pick<AdvisorCaseDigest, 'buildCaseDigest'>,
+    @Inject(AdvisorProjectNotes) private readonly notes: Pick<AdvisorProjectNotes, 'getSituation'>,
+    @Inject(TaxEstimateService) private readonly taxEstimate: Pick<TaxEstimateService, 'getState'>,
   ) {}
 
   async context(userId: string, taxYear: number): Promise<OpeningContext> {
-    const [digest, situation, notes] = await Promise.all([this.buildDigest(userId, taxYear), this.situationOf(userId), this.advisorRepo.listNotes(userId, taxYear)])
-    return { digest, stage: advisorOpeningStage(digest), fingerprint: caseFingerprint(digest, situation, notes.map((note) => note.text)) }
+    const [digest, situation, notes] = await Promise.all([this.caseDigest.buildCaseDigest(userId, taxYear), this.notes.getSituation(userId), this.advisorRepo.listNotes(userId, taxYear)])
+    return { digest, stage: advisorOpeningStage(digest), fingerprint: caseFingerprint(digest, situation.text, notes.map((note) => note.text)) }
   }
 
   /** The newest finished opening of the year, if any. */
@@ -73,7 +77,7 @@ export class AdvisorOpening {
   async brief(userId: string, taxYear: number, context: OpeningContext): Promise<AdvisorOpeningBrief> {
     const stage = context.stage === 'ready' ? 'ready' : 'partial'
     let estimate: OpeningEstimate | null = null
-    const status = this.estimateOf ? await this.estimateOf(userId, taxYear).catch(() => null) : null
+    const status = await this.taxEstimate.getState(userId, taxYear).catch(() => null)
     if (status?.kind === 'spanne') {
       estimate = { resultFromEur: status.result.from, resultToEur: status.result.to, incomeRelatedExpensesEur: status.werbungskosten }
     }

@@ -1,33 +1,19 @@
 import type { AdvisorEnginePort } from '@steuereule/core'
 import { beforeEach, describe, expect, it } from 'vitest'
-import { AdvisorService } from '../src/advisor/advisor.service.js'
+import { buildAdvisorTestKit, type AdvisorTestFacade, type AdvisorTestKit } from './fakes/advisor-test-kit.js'
 import { DEFAULT_AI_TURN_LIMITS } from '../src/ki/ai-runtime-config.service.js'
 import type { TransactionRunner } from '../src/common/transaction-runner.js'
 import { InMemoryAdvisorRepository } from '../src/advisor/advisor.repository.js'
-import { AuditService } from '../src/audit/audit.service.js'
 import { ConfirmationService } from '../src/confirmation/confirmation.service.js'
-import { fieldAccessFrom } from '../src/confirmation/field-access.js'
-import { RagKiAdapter } from '../src/ki/ki.adapter.js'
 import { historySources } from '../src/advisor/advisor-shared.js'
-import { OwlModeService } from '../src/owl-mode/owl-mode.service.js'
-import { FakeAssessmentRepository } from './fakes/fake-assessment.repository.js'
 import { FakeAuditRepository } from './fakes/fake-audit.repository.js'
-import { FakeCapitalRepository } from './fakes/fake-capital.repository.js'
 import { FakeChSalaryCertificateRepository } from './fakes/fake-ch-salary-certificate.repository.js'
 import { FakeChildRepository } from './fakes/fake-child.repository.js'
 import { FakeCommuteRepository } from './fakes/fake-commute.repository.js'
 import { FakeInterviewAnswerRepository } from './fakes/fake-interview-answer.repository.js'
-import { FakeLinkRepository } from './fakes/fake-link.repository.js'
 import { FakeLstbRepository } from './fakes/fake-lstb.repository.js'
 import { FakeMarkingRepository } from './fakes/fake-marking.repository.js'
-import { FakeMasterDataRepository } from './fakes/fake-master-data.repository.js'
-import {
-  FakeOwlCardDismissalRepository,
-  FakeOwlSettingRepository,
-} from './fakes/fake-owl-mode.repository.js'
-import { FakePensionRepository } from './fakes/fake-pension.repository.js'
 import { FakeProfileRepository } from './fakes/fake-profile.repository.js'
-import { FakeRentalRepository } from './fakes/fake-rental.repository.js'
 
 const USER = 'user-advisor-1'
 const YEAR = 2025
@@ -40,66 +26,16 @@ describe('AdvisorService (In-App Steuerberater Agent "Deine Eule")', () => {
   let childRepo: FakeChildRepository
   let profileRepo: FakeProfileRepository
   let commuteRepo: FakeCommuteRepository
-  let assessmentRepo: FakeAssessmentRepository
   let markingRepo: FakeMarkingRepository
   let auditRepo: FakeAuditRepository
   let confirmationService: ConfirmationService
-  let owlModeService: OwlModeService
-  let advisorService: AdvisorService
+  let advisorService: AdvisorTestFacade
+  let kit: AdvisorTestKit
 
   beforeEach(async () => {
-    advisorRepo = new InMemoryAdvisorRepository()
-    interviewRepo = new FakeInterviewAnswerRepository()
-    lstbRepo = new FakeLstbRepository()
-    chRepo = new FakeChSalaryCertificateRepository()
-    childRepo = new FakeChildRepository()
-    profileRepo = new FakeProfileRepository()
-    commuteRepo = new FakeCommuteRepository()
-    assessmentRepo = new FakeAssessmentRepository()
-    markingRepo = new FakeMarkingRepository()
-    auditRepo = new FakeAuditRepository()
-
-    const auditService = new AuditService(auditRepo)
-    const access = fieldAccessFrom({
-      lstb: lstbRepo,
-      pension: new FakePensionRepository(),
-      capital: new FakeCapitalRepository(),
-      rental: new FakeRentalRepository(),
-      profile: profileRepo,
-      masterData: new FakeMasterDataRepository(),
-      link: new FakeLinkRepository(),
-      interview: interviewRepo,
-      chSalaryCertificate: chRepo,
-      child: childRepo,
-      commute: commuteRepo,
-      assessment: assessmentRepo,
-    })
-
-    confirmationService = new ConfirmationService(markingRepo, access, auditService)
-    owlModeService = new OwlModeService(
-      new FakeOwlSettingRepository(),
-      new FakeOwlCardDismissalRepository(),
-      childRepo,
-      interviewRepo,
-      assessmentRepo,
-      new RagKiAdapter(),
-      auditService,
-    )
-
-    advisorService = new AdvisorService(
-      advisorRepo,
-      owlModeService,
-      confirmationService,
-      auditService,
-      interviewRepo,
-      lstbRepo,
-      chRepo,
-      commuteRepo,
-      childRepo,
-      new FakeRentalRepository(),
-      new FakeCapitalRepository(),
-      profileRepo,
-    )
+    kit = buildAdvisorTestKit()
+    ;({ advisorRepo, interviewRepo, lstbRepo, chRepo, childRepo, profileRepo, commuteRepo, markingRepo, auditRepo, confirmationService } = kit)
+    advisorService = kit.service
 
     // Seed baseline profile & LStB
     await profileRepo.upsert(USER, {
@@ -528,23 +464,7 @@ describe('AdvisorService (In-App Steuerberater Agent "Deine Eule")', () => {
       if (!insideTransaction) writesOutsideTransaction.push(args[2])
       return originalWrite(...args)
     }
-    const transactional = new AdvisorService(
-      advisorRepo,
-      owlModeService,
-      confirmationService,
-      new AuditService(auditRepo),
-      interviewRepo,
-      lstbRepo,
-      chRepo,
-      commuteRepo,
-      childRepo,
-      new FakeRentalRepository(),
-      new FakeCapitalRepository(),
-      profileRepo,
-      undefined,
-      undefined,
-      recordingRunner,
-    )
+    const transactional = kit.rewire({ transactions: recordingRunner }).service
 
     await expect(
       transactional.applyBatch(USER, YEAR, { drafts: [{ actionId: d1.actionId }, { actionId: 'act-bad-commute' }] }),
@@ -717,7 +637,7 @@ describe('AdvisorService (In-App Steuerberater Agent "Deine Eule")', () => {
 
   it('hands the owl what still blocks the printout, in words, so „Fehlt noch etwas?“ names all of it', async () => {
     const printout = { check: async () => ({ missing: ['iban', 'grenzgaenger', 'kinder', 'anlageSO'] }) }
-    const withPrintout = new AdvisorService(advisorRepo, owlModeService, confirmationService, new AuditService(auditRepo), interviewRepo, lstbRepo, chRepo, commuteRepo, childRepo, new FakeRentalRepository(), new FakeCapitalRepository(), profileRepo, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, printout as never)
+    const withPrintout = kit.rewire({ printout }).service
     const gaps = (await withPrintout.buildCaseDigest(USER, YEAR)).furtherFacts?.printoutGaps ?? []
     expect(gaps).toHaveLength(4)
     expect(gaps[0]).toContain('IBAN')
@@ -729,7 +649,7 @@ describe('AdvisorService (In-App Steuerberater Agent "Deine Eule")', () => {
 
   it('hands the owl a checklist of the fields that close the gaps, per child, read through the field access (ADR-0091, Nachtrag)', async () => {
     const printout = { check: async () => ({ missing: ['kinder', 'anlageSO'] }) }
-    const withPrintout = new AdvisorService(advisorRepo, owlModeService, confirmationService, new AuditService(auditRepo), interviewRepo, lstbRepo, chRepo, commuteRepo, childRepo, new FakeRentalRepository(), new FakeCapitalRepository(), profileRepo, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, printout as never)
+    const withPrintout = kit.rewire({ printout }).service
     const [mila] = await childRepo.listForUserAndYear(USER, YEAR)
     await confirmationService.writeConfirmedByAdvisor(USER, YEAR, `kind:${mila!.id}.kinship`, '1', undefined, undefined, { personalDataConsent: true })
     const plan = (await withPrintout.buildCaseDigest(USER, YEAR)).furtherFacts?.printoutPlan
@@ -744,7 +664,7 @@ describe('AdvisorService (In-App Steuerberater Agent "Deine Eule")', () => {
 
   it('asks once whether a paid-out sickness benefit sits in a recorded Swiss gross wage (real-data run)', async () => {
     const printout = { check: async () => ({ missing: ['iban', 'finanzamt'] }) }
-    const withPrintout = new AdvisorService(advisorRepo, owlModeService, confirmationService, new AuditService(auditRepo), interviewRepo, lstbRepo, chRepo, commuteRepo, childRepo, new FakeRentalRepository(), new FakeCapitalRepository(), profileRepo, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, printout as never)
+    const withPrintout = kit.rewire({ printout }).service
     await confirmationService.writeConfirmedByAdvisor(USER, YEAR, 'chLohnausweis.bruttolohn-total', '98000')
     const keys = (await withPrintout.buildCaseDigest(USER, YEAR)).furtherFacts?.printoutPlan?.questions.map((q) => q.key) ?? []
     // A recorded Swiss wage statement asks once where a daily benefit in the gross wage came from.
@@ -767,7 +687,7 @@ describe('AdvisorService (In-App Steuerberater Agent "Deine Eule")', () => {
 
   it('asks what still blocks the printout when the user asks „Fehlt noch etwas?“, without a model too (ADR-0091, Nachtrag)', async () => {
     const printout = { check: async () => ({ missing: ['kinder'] }) }
-    const withPrintout = new AdvisorService(advisorRepo, owlModeService, confirmationService, new AuditService(auditRepo), interviewRepo, lstbRepo, chRepo, commuteRepo, childRepo, new FakeRentalRepository(), new FakeCapitalRepository(), profileRepo, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, printout as never)
+    const withPrintout = kit.rewire({ printout }).service
     const res = await withPrintout.sendMessage(USER, YEAR, { message: 'Fehlt jetzt noch etwas für den Ausdruck?' })
     expect(res.assistantMessage.content).toMatch(/Damit der Ausdruck vollständig ist, fehlt noch:/)
     expect(res.assistantMessage.content).toMatch(/Kind 1: .*Familienkasse/)
@@ -779,7 +699,7 @@ describe('AdvisorService (In-App Steuerberater Agent "Deine Eule")', () => {
 
   it('leaves the gaps out when the year has no printout to check', async () => {
     const printout = { check: async () => { throw new Error('no forms for this year') } }
-    const withPrintout = new AdvisorService(advisorRepo, owlModeService, confirmationService, new AuditService(auditRepo), interviewRepo, lstbRepo, chRepo, commuteRepo, childRepo, new FakeRentalRepository(), new FakeCapitalRepository(), profileRepo, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, printout as never)
+    const withPrintout = kit.rewire({ printout }).service
     expect((await withPrintout.buildCaseDigest(USER, YEAR)).furtherFacts?.printoutGaps).toBeUndefined()
   })
 
@@ -794,21 +714,7 @@ describe('AdvisorService (In-App Steuerberater Agent "Deine Eule")', () => {
         yield { event: 'done', data: { replyText: 'Ok.', meta: {}, mode: 'langgraph' } }
       },
     }
-    const withEngine = new AdvisorService(
-      advisorRepo,
-      owlModeService,
-      confirmationService,
-      new AuditService(auditRepo),
-      interviewRepo,
-      lstbRepo,
-      chRepo,
-      commuteRepo,
-      childRepo,
-      new FakeRentalRepository(),
-      new FakeCapitalRepository(),
-      profileRepo,
-      recordingEngine,
-    )
+    const withEngine = kit.rewire({ engine: recordingEngine }).service
     await withEngine.sendMessage(USER, YEAR, { message: 'Was hab ich vergessen?', quickAction: 'forgotten_check' })
     await withEngine.sendMessage(USER, YEAR, { message: 'Was hab ich vergessen?' })
     expect(seen).toEqual([true, false])
@@ -825,7 +731,7 @@ describe('AdvisorService (In-App Steuerberater Agent "Deine Eule")', () => {
         yield { event: 'done', data: { replyText: 'Weiter.', meta: { interviewChanges: [{ area: 'kinder', status: 'not_applicable' }] }, mode: 'langgraph' } }
       },
     }
-    const withEngine = new AdvisorService(advisorRepo, owlModeService, confirmationService, new AuditService(auditRepo), interviewRepo, lstbRepo, chRepo, commuteRepo, childRepo, new FakeRentalRepository(), new FakeCapitalRepository(), profileRepo, engine)
+    const withEngine = kit.rewire({ engine }).service
     const first = await withEngine.sendMessage(USER, YEAR, { message: 'Fang an', skill: 'berater-interview' })
     await withEngine.sendMessage(USER, YEAR, { message: 'Weiter', skill: 'berater-interview' })
     expect(seen).toEqual([{}, { kinder: 'not_applicable' }])
@@ -878,7 +784,7 @@ describe('AdvisorService (In-App Steuerberater Agent "Deine Eule")', () => {
           yield { event: 'done', data: { replyText: 'Ok.', meta: {}, mode: 'langgraph' } }
         },
       }
-      const withEngine = new AdvisorService(advisorRepo, owlModeService, confirmationService, new AuditService(auditRepo), interviewRepo, lstbRepo, chRepo, commuteRepo, childRepo, new FakeRentalRepository(), new FakeCapitalRepository(), profileRepo, recordingEngine)
+      const withEngine = kit.rewire({ engine: recordingEngine }).service
       await withEngine.sendMessage(USER, YEAR, { message: 'Hallo' })
       expect(seen).toEqual(['Wir bauen 2027 ein Haus.'])
     })
@@ -908,7 +814,7 @@ describe('AdvisorService (In-App Steuerberater Agent "Deine Eule")', () => {
         yield { event: 'done', data: { replyText: 'Ok.', meta: {}, mode: 'langgraph' } }
       },
     }
-    const withEngine = new AdvisorService(advisorRepo, owlModeService, confirmationService, new AuditService(auditRepo), interviewRepo, lstbRepo, chRepo, commuteRepo, childRepo, new FakeRentalRepository(), new FakeCapitalRepository(), profileRepo, recordingEngine)
+    const withEngine = kit.rewire({ engine: recordingEngine }).service
     await withEngine.sendMessage(USER, YEAR, { message: 'Sparplan', quickAction: 'savings_plan' })
     await withEngine.sendMessage(USER, YEAR, { message: 'Bescheid prüfen', quickAction: 'assessment_check' })
     await withEngine.sendMessage(USER, YEAR, { message: 'Hallo' })

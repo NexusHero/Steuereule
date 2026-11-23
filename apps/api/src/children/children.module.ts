@@ -4,6 +4,7 @@ import { ChSalaryCertificateModule } from '../ch-salary-certificate/ch-salary-ce
 import { HouseholdCoreModule } from '../household-core/household-core.module.js'
 import { LinkModule } from '../link/link.module.js'
 import { PrismaModule } from '../prisma/prisma.module.js'
+import { ChildDraftRecords } from './child-draft-records.js'
 import { ChildrenController } from './children.controller.js'
 import { ChildrenService } from './children.service.js'
 import { CHILD_REPOSITORY } from './child.repository.js'
@@ -14,11 +15,12 @@ import { PrismaChildRepository } from './child.repository.prisma.js'
   controllers: [ChildrenController],
   providers: [
     ChildrenService,
+    ChildDraftRecords,
     {
       provide: CHILD_REPOSITORY,
       useClass: PrismaChildRepository,
     },
   ],
-  exports: [ChildrenService, CHILD_REPOSITORY],
+  exports: [ChildrenService, ChildDraftRecords, CHILD_REPOSITORY],
 })
 export class ChildrenModule {}

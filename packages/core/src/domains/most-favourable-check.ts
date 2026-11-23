@@ -1,4 +1,4 @@
-import { flatRateTaxWithChurchTax } from '../domains/church-tax'
+import { flatRateTaxWithChurchTax } from './church-tax'
 import {
   capitalFlatTax,
   incomeTax,
@@ -13,7 +13,7 @@ import {
   type IncomeTaxYear,
   type ChurchTaxFactor,
 } from '../math/tarif'
-import type { Range } from './tax-estimate'
+import type { Range } from '../common/range'
 import { getTaxYearParameters } from '../math/tax-parameters'
 import {
   progressionClauseLimit,

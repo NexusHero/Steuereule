@@ -1,3 +1,4 @@
+import { CASH_ACCOUNTING_LIMIT_STEPS, isVatAnnualReturnYear, valueForYear } from '../../math/tax-parameters'
 /**
  * Umsatzsteuer-Jahreserklärung (§ 18 Abs. 3 UStG) for a business under the general rules, and the
  * § 13b tax a Kleinunternehmer still owes as recipient. The Voranmeldungen stay outside the app; the
@@ -41,7 +42,7 @@ export type VatMethod = 'soll' | 'ist'
  */
 export function cashAccountingAllowed(year: number, priorYearTotalTurnoverEur: number, freelance: boolean, exemptFromBookkeeping = false): boolean {
   if (freelance || exemptFromBookkeeping) return true
-  return priorYearTotalTurnoverEur <= (year >= 2024 ? 800_000 : 600_000)
+  return priorYearTotalTurnoverEur <= valueForYear(CASH_ACCOUNTING_LIMIT_STEPS, year)
 }
 
 export type NetByRate = Partial<Record<VatRateKind, number>>
@@ -99,7 +100,7 @@ function taxByRate(net: NetByRate | undefined): Record<VatRateKind, number> {
  * tax (§ 15 Abs. 2 and 4 UStG need the split per invoice, which the bookkeeping holds).
  */
 export function vatAnnualReturn(input: VatAnnualInput): VatAnnualResult {
-  if (!(input.year >= 2022 && input.year <= 2026)) throw new RangeError('the VAT return covers 2022–2026')
+  if (!isVatAnnualReturnYear(input.year)) throw new RangeError('the VAT return covers 2022–2026')
   const small = input.regime === 'klein'
   const outputVat = small ? { standard: 0, reduced: 0, zero: 0 } : taxByRate(input.taxableNetEur)
   const reverse = taxByRate(input.reverseChargeNetEur)

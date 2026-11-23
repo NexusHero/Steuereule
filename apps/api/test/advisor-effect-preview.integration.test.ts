@@ -5,7 +5,7 @@ import { NestFactory } from '@nestjs/core'
 import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fastify'
 import { randomUUID } from 'node:crypto'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import { AdvisorService } from '../src/advisor/advisor.service.js'
+import { advisorOf, type AdvisorTestFacade } from './fakes/advisor-test-kit.js'
 import { AppModule } from '../src/app.module.js'
 import { ConfirmationService } from '../src/confirmation/confirmation.service.js'
 import { PrismaService } from '../src/prisma/prisma.service.js'
@@ -17,7 +17,7 @@ const YEAR = 2025
 describe('effect preview through the real estimate', () => {
   let app: NestFastifyApplication
   let prisma: PrismaService
-  let advisor: AdvisorService
+  let advisor: AdvisorTestFacade
   let confirmation: ConfirmationService
   let estimate: TaxEstimateService
   const employee = `it-preview-${randomUUID()}`
@@ -29,7 +29,7 @@ describe('effect preview through the real estimate', () => {
     app = await NestFactory.create<NestFastifyApplication>(AppModule, new FastifyAdapter(), { logger: false })
     await app.init()
     prisma = app.get(PrismaService)
-    advisor = app.get(AdvisorService)
+    advisor = advisorOf(app)
     confirmation = app.get(ConfirmationService)
     estimate = app.get(TaxEstimateService)
 

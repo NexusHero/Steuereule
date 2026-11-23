@@ -7,7 +7,7 @@ import { mandatoryCapitalFields, classifyCapitalDepot } from '../domains/capital
 import { lstbSubsidyQuestionOpen } from '../domains/lstb'
 import { dailyBenefitAmountField, isDailyBenefitSource } from '../domains/daily-benefit'
 import { DAILY_BENEFIT_GAP_QUESTION, dailyBenefitHint } from './entry-rules'
-import { AMOUNT_LATER } from './interview'
+import { AMOUNT_LATER } from '../domains/answers'
 import { PERSON_B_HANDLE, PERSON_B_SCREENS, PERSON_B_INTERVIEW_FIELDS, type AdvisorPerson } from './advisor-household'
 import { isAiWritableField } from './field-catalog'
 import type { Screen } from './marking'

@@ -1,0 +1,2 @@
+export const HEBESATZ_DIRECTORY = Symbol('HEBESATZ_DIRECTORY')
+export const BUSINESS_CLOCK = Symbol('BUSINESS_CLOCK')

@@ -25,7 +25,7 @@ const notice = (year: number) =>
 
 function setUp() {
   const kit = buildAdvisorTestKit()
-  const strategy = new AssessmentNoticeParseStrategy(new DocumentParseRegistry(), kit.service, new AuditService(new FakeAuditRepository()), kit.assessmentRepo)
+  const strategy = new AssessmentNoticeParseStrategy(new DocumentParseRegistry(), kit.staging, new AuditService(new FakeAuditRepository()), kit.assessmentRepo)
   const parse = (rawText: string, extra: Record<string, unknown> = {}) =>
     strategy.parse(USER, { taxYear: OPEN_YEAR, fileName: 'bescheid.pdf', rawText, textSource: 'pdf_text', ...extra } as never)
   return { kit, parse }

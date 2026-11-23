@@ -23,6 +23,18 @@ import { AdvisorController } from './advisor.controller.js'
 import { ADVISOR_REPOSITORY } from './advisor.repository.js'
 import { PrismaAdvisorRepository } from './advisor.repository.prisma.js'
 import { AdvisorService } from './advisor.service.js'
+import { AdvisorCaseDigest } from './advisor-case-digest.js'
+import { AdvisorConversations } from './advisor-conversations.js'
+import { AdvisorOpening } from './advisor-opening.js'
+import { AdvisorProjectNotes } from './advisor-project-notes.js'
+import { AdvisorDocumentStaging } from './advisor-document-staging.js'
+import { AdvisorTurn } from './advisor-turn.js'
+import { AdvisorCaseFacts } from './advisor-case-facts.js'
+import { draftRecordRegistry } from './advisor-draft-records.js'
+import { AdvisorDrafts, DRAFT_RECORDS } from './advisor-drafts.js'
+import { ChildDraftRecords } from '../children/child-draft-records.js'
+import type { DraftRecordSource } from '../common/draft-record-source.js'
+import { RentalDraftRecords } from '../rental/rental-draft-records.js'
 import { AdvisorModelsService } from './advisor-models.service.js'
 import { AdvisorModelCatalog } from '../ki/advisor-model-catalog.js'
 import { ADVISOR_RUN_LOG, InMemoryAdvisorRunLog, type AdvisorRunLog } from './run/advisor-run-log.js'
@@ -66,6 +78,16 @@ export function createAdvisorRunLog(env: NodeJS.ProcessEnv = process.env): Advis
   controllers: [AdvisorController],
   providers: [
     AdvisorService,
+    AdvisorCaseFacts,
+    AdvisorDrafts,
+    AdvisorCaseDigest,
+    AdvisorConversations,
+    AdvisorProjectNotes,
+    AdvisorOpening,
+    AdvisorDocumentStaging,
+    AdvisorTurn,
+    // Each owning module provides the rows of its mask; a new mask with rows adds its source here.
+    { provide: DRAFT_RECORDS, inject: [ChildDraftRecords, RentalDraftRecords], useFactory: (...sources: DraftRecordSource[]) => draftRecordRegistry(sources) },
     AdvisorRunService,
     AdvisorModelsService,
     AdvisorModelCatalog,
@@ -75,6 +97,6 @@ export function createAdvisorRunLog(env: NodeJS.ProcessEnv = process.env): Advis
       useClass: PrismaAdvisorRepository,
     },
   ],
-  exports: [AdvisorService, ADVISOR_REPOSITORY],
+  exports: [AdvisorDocumentStaging, AdvisorDrafts, ADVISOR_REPOSITORY],
 })
 export class AdvisorModule {}

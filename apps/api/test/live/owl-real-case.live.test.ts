@@ -16,7 +16,7 @@ import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { PDFCheckBox, PDFDocument, PDFTextField } from 'pdf-lib'
 import { afterAll, beforeAll, describe, it } from 'vitest'
-import { AdvisorService } from '../../src/advisor/advisor.service.js'
+import { advisorOf } from '../fakes/advisor-test-kit.js'
 import { AppModule } from '../../src/app.module.js'
 import { ChSalaryCertificateService } from '../../src/ch-salary-certificate/ch-salary-certificate.service.js'
 import { ChildrenService } from '../../src/children/children.service.js'
@@ -95,7 +95,7 @@ describe.skipIf(!KEY || !CASE_FILE)('a real case through the chat (live model, b
   it('from the documents to the printed forms', { timeout: 90 * 60 * 1000 }, async () => {
     const { year, userId } = realCase
     const prisma = app.get(PrismaService)
-    const advisor = app.get(AdvisorService)
+    const advisor = advisorOf(app)
 
     const link = app.get(LinkService)
     const childIds: string[] = []

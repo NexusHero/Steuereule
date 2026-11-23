@@ -4,90 +4,25 @@
 //   3. Daily rate-limit enforcement (`DEFAULT_AI_TURN_LIMITS.dailyMessageLimit = 50`).
 //   4. MCP Server tool scope enforcement (`steuerdaten:read` cannot invoke write/payment tools).
 import { beforeEach, describe, expect, it } from 'vitest'
-import { AdvisorService } from '../src/advisor/advisor.service.js'
 import { DEFAULT_AI_TURN_LIMITS } from '../src/ki/ai-runtime-config.service.js'
-import { InMemoryAdvisorRepository } from '../src/advisor/advisor.repository.js'
-import { AuditService } from '../src/audit/audit.service.js'
 import { NotFoundError, TooManyRequestsError } from '../src/common/domain-error.js'
-import { ConfirmationService } from '../src/confirmation/confirmation.service.js'
-import { fieldAccessFrom } from '../src/confirmation/field-access.js'
-import { checkPiiFree, RagKiAdapter, validateAiProposal } from '../src/ki/ki.adapter.js'
-import { OwlModeService } from '../src/owl-mode/owl-mode.service.js'
-import { FakeAssessmentRepository } from './fakes/fake-assessment.repository.js'
-import { FakeAuditRepository } from './fakes/fake-audit.repository.js'
-import { FakeCapitalRepository } from './fakes/fake-capital.repository.js'
-import { FakeChSalaryCertificateRepository } from './fakes/fake-ch-salary-certificate.repository.js'
-import { FakeChildRepository } from './fakes/fake-child.repository.js'
+import { checkPiiFree, validateAiProposal } from '../src/ki/ki.adapter.js'
 import { FakeInterviewAnswerRepository } from './fakes/fake-interview-answer.repository.js'
-import { FakeLinkRepository } from './fakes/fake-link.repository.js'
-import { FakeLstbRepository } from './fakes/fake-lstb.repository.js'
-import { FakeMarkingRepository } from './fakes/fake-marking.repository.js'
-import { FakeMasterDataRepository } from './fakes/fake-master-data.repository.js'
-import {
-  FakeOwlCardDismissalRepository,
-  FakeOwlSettingRepository,
-} from './fakes/fake-owl-mode.repository.js'
-import { FakePensionRepository } from './fakes/fake-pension.repository.js'
-import { FakeProfileRepository } from './fakes/fake-profile.repository.js'
-import { FakeRentalRepository } from './fakes/fake-rental.repository.js'
+import { buildAdvisorTestKit, type AdvisorTestFacade } from './fakes/advisor-test-kit.js'
 
 const USER_A = 'user-redteam-a'
 const USER_B = 'user-redteam-b'
 const YEAR = 2025
 
 describe('DevMLOps Backend Red-Team & Egress Boundary Suite', () => {
-  let advisorService: AdvisorService
+  let advisorService: AdvisorTestFacade
   let interviewRepo: FakeInterviewAnswerRepository
 
   beforeEach(async () => {
-    const advisorRepo = new InMemoryAdvisorRepository()
-    interviewRepo = new FakeInterviewAnswerRepository()
-    const lstbRepo = new FakeLstbRepository()
-    const chRepo = new FakeChSalaryCertificateRepository()
-    const childRepo = new FakeChildRepository()
-    const profileRepo = new FakeProfileRepository()
-    const markingRepo = new FakeMarkingRepository()
-    const auditRepo = new FakeAuditRepository()
-
-    const auditService = new AuditService(auditRepo)
-    const access = fieldAccessFrom({
-      lstb: lstbRepo,
-      pension: new FakePensionRepository(),
-      capital: new FakeCapitalRepository(),
-      rental: new FakeRentalRepository(),
-      profile: profileRepo,
-      masterData: new FakeMasterDataRepository(),
-      link: new FakeLinkRepository(),
-      interview: interviewRepo,
-      chSalaryCertificate: chRepo,
-      child: childRepo,
-    })
-
-    const confirmationService = new ConfirmationService(markingRepo, access, auditService)
-    const owlModeService = new OwlModeService(
-      new FakeOwlSettingRepository(),
-      new FakeOwlCardDismissalRepository(),
-      childRepo,
-      interviewRepo,
-      new FakeAssessmentRepository(),
-      new RagKiAdapter(),
-      auditService,
-    )
-
-    advisorService = new AdvisorService(
-      advisorRepo,
-      owlModeService,
-      confirmationService,
-      auditService,
-      interviewRepo,
-      lstbRepo,
-      chRepo,
-      undefined,
-      childRepo,
-      new FakeRentalRepository(),
-      new FakeCapitalRepository(),
-      profileRepo,
-    )
+    const kit = buildAdvisorTestKit()
+    const { profileRepo } = kit
+    interviewRepo = kit.interviewRepo
+    advisorService = kit.service
 
     await profileRepo.upsert(USER_A, {
       firstName: 'Lena',

@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto'
 import { Inject, Injectable, Optional, type OnModuleInit } from '@nestjs/common'
 import { ANNUAL_AVERAGE_RATES, chfToEur, formatChf, insuredMember, parseChHealthStatement, receiptFilingYear, type AdvisorCountedItem, type InsuredPremium } from '@steuereule/core'
-import { AdvisorService } from '../advisor/advisor.service.js'
+import { AdvisorDocumentStaging } from '../advisor/advisor-document-staging.js'
 import { AuditService } from '../audit/audit.service.js'
 import { CROSS_BORDER_SALARY_STATEMENT_REPOSITORY, type CrossBorderSalaryStatementRepository } from '../ch-salary-certificate/ch-salary-certificate.repository.js'
 import { exchangeRateFromRecord } from '../ch-salary-certificate/salary-certificate-data.js'
@@ -10,7 +10,7 @@ import { LinkService } from '../link/link.service.js'
 import type { ParseReceiptDto, ParseReceiptResponseDto } from '../receipt/dto/parse-receipt.dto.js'
 import { DocumentParseRegistry, type DocumentParseStrategy } from '../receipt/parse/document-parse.registry.js'
 
-type Field = Parameters<AdvisorService['stageDocumentDrafts']>[2]['fields'][number]
+type Field = Parameters<AdvisorDocumentStaging['stageDocumentDrafts']>[2]['fields'][number]
 
 /**
  * A Swiss health insurer's statement for the tax return (ADR-0080): the basic-insurance premiums of each
@@ -24,7 +24,7 @@ export class ChHealthStatementParseStrategy implements DocumentParseStrategy, On
 
   constructor(
     @Inject(DocumentParseRegistry) private readonly registry: DocumentParseRegistry,
-    @Inject(AdvisorService) private readonly advisorService: AdvisorService,
+    @Inject(AdvisorDocumentStaging) private readonly staging: AdvisorDocumentStaging,
     @Inject(AuditService) private readonly auditService: AuditService,
     @Inject(LinkService) private readonly linkService: LinkService,
     @Optional() @Inject(CROSS_BORDER_SALARY_STATEMENT_REPOSITORY) private readonly chRepo?: CrossBorderSalaryStatementRepository,
@@ -43,7 +43,7 @@ export class ChHealthStatementParseStrategy implements DocumentParseStrategy, On
     await this.auditService.append({ userId, action: 'READ', resource: 'beleg_analyse' })
     const otherYear = read.taxYear !== null && read.taxYear !== dto.taxYear
 
-    const household = await this.advisorService.householdNames(userId, year)
+    const household = await this.staging.householdNames(userId, year)
     const kids = (await this.children?.listForUserAndYear(userId, year)) ?? []
     const members = [
       { key: 'A', ...household.A },
@@ -64,7 +64,7 @@ export class ChHealthStatementParseStrategy implements DocumentParseStrategy, On
     // Franchise and Selbstbehalt the household paid itself: Krankheitskosten (§ 33 EStG), in euros.
     let selfBorneChf = 0
     const selfBorneItems: AdvisorCountedItem[] = []
-    const countedHealth = await this.advisorService.countedReceiptItems(userId, year, { screen: 'interview', field: 'gesundheit-betrag' })
+    const countedHealth = await this.staging.countedReceiptItems(userId, year, { screen: 'interview', field: 'gesundheit-betrag' })
     // Read for one person of the household (ADR-0092 §5): only their lines; the others are offered apart.
     const only = dto.holder
     // A Person B without a name on record matches nobody; the one insured person no one matches is then B
@@ -87,7 +87,7 @@ export class ChHealthStatementParseStrategy implements DocumentParseStrategy, On
       const items = countedItemsOf(read.insurer, year, person)
       const chf = Math.round(person.premiumCents / 100)
       if (key === 'A' || key === 'B') {
-        const counted = await this.advisorService.countedReceiptItems(userId, year, { screen: 'chLohnausweis', field: 'krankenkasseChf', person: key })
+        const counted = await this.staging.countedReceiptItems(userId, year, { screen: 'chLohnausweis', field: 'krankenkasseChf', person: key })
         if (counted.some((c) => c.ref === items[0]!.ref)) {
           notes.push(`Die Prämien ${key === 'B' ? 'von Person B' : 'für dich'} aus diesem Auszug sind schon gezählt.`)
           continue
@@ -95,7 +95,7 @@ export class ChHealthStatementParseStrategy implements DocumentParseStrategy, On
         ;(key === 'A' ? forA : forB).push(premiumField('krankenkasseChf', chf, dto, items))
       } else {
         const childId = key.slice('kind:'.length)
-        const counted = await this.advisorService.countedReceiptItems(userId, year, { screen: 'kind', field: 'healthBasicEur', instance: childId })
+        const counted = await this.staging.countedReceiptItems(userId, year, { screen: 'kind', field: 'healthBasicEur', instance: childId })
         if (counted.some((c) => c.ref === items[0]!.ref)) {
           notes.push('Die Prämien für das Kind aus diesem Auszug sind schon gezählt.')
           continue
@@ -148,7 +148,7 @@ export class ChHealthStatementParseStrategy implements DocumentParseStrategy, On
           notes.push('Die Prämien von Person B kann ich erst eintragen, wenn ihr gekoppelt seid.')
           continue
         }
-        const result = await this.advisorService.stageDocumentDrafts(userId, year, {
+        const result = await this.staging.stageDocumentDrafts(userId, year, {
           screen: 'chLohnausweis',
           person,
           digestUserId: await this.linkService.dataUser(userId, year, person),

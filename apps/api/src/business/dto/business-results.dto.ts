@@ -5,6 +5,7 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger'
 import { Type } from 'class-transformer'
 import { IsBoolean, IsIn, IsInt, IsNumber, IsOptional, IsString, Matches, Max, MaxLength, Min, ValidateNested, IsArray } from 'class-validator'
 import { BANK_CSV_PRESETS, CATALOG_PROFESSIONS, CHURCH_CODES, FREE_ACTIVITIES, USEFUL_LIVES, type ChurchCode } from '@steuereule/core'
+import type { InputVatCorrectionLine, PayrollOverview, VatPrepaymentOverview } from '../views.js'
 
 export const ASSET_CATEGORIES = Object.keys(USEFUL_LIVES) as (keyof typeof USEFUL_LIVES)[]
 const EUR = { type: Number, description: 'Euros.' } as const
@@ -19,10 +20,10 @@ export class BookIntegrityDto {
   ok!: boolean
 
   @ApiPropertyOptional({ type: String, description: 'German reason when ok is false.' })
-  reason?: string
+  reason?: string | undefined
 
   @ApiPropertyOptional({ type: Number })
-  firstBadSeq?: number
+  firstBadSeq?: number | undefined
 }
 
 /**
@@ -31,13 +32,13 @@ export class BookIntegrityDto {
  */
 export class BusinessErrorDto {
   @ApiProperty({ type: Number, example: 409 }) statusCode!: number
-  @ApiPropertyOptional({ type: String, example: 'Conflict' }) error?: string
+  @ApiPropertyOptional({ type: String, example: 'Conflict' }) error?: string | undefined
   @ApiPropertyOptional({ type: String, example: 'BOOK_INTEGRITY_BROKEN', description: 'Stable error code (absent only for a DTO validation 400, which carries `fields`).' })
-  code?: string
+  code?: string | undefined
   @ApiPropertyOptional({ type: String, example: 'Buchung 3 weicht vom Protokoll ab.', description: 'German, shown to the user.' })
-  message?: string
+  message?: string | undefined
   @ApiPropertyOptional({ type: Object, description: 'DTO validation only: the fields and their constraint.' })
-  fields?: Record<string, unknown>
+  fields?: Record<string, unknown> | undefined
 }
 
 // ---------------------------------------------------------------------------------------------------
@@ -45,59 +46,59 @@ export class BusinessErrorDto {
 
 export class ProfessionAnswersDto {
   @ApiPropertyOptional({ enum: ['freiberuf', 'gewerbe'], nullable: true, description: 'What the last assessment said (Anlage S or G); null when there is none.' })
-  @IsOptional() @IsIn(['freiberuf', 'gewerbe', null]) priorAssessment?: 'freiberuf' | 'gewerbe' | null
+  @IsOptional() @IsIn(['freiberuf', 'gewerbe', null]) priorAssessment?: 'freiberuf' | 'gewerbe' | null | undefined
   @ApiPropertyOptional({ enum: CATALOG_PROFESSIONS, nullable: true, description: 'Katalogberuf of § 18 Abs. 1 Nr. 1 EStG (core CATALOG_PROFESSIONS).' })
-  @IsOptional() @IsIn([...CATALOG_PROFESSIONS, null]) catalogProfession?: (typeof CATALOG_PROFESSIONS)[number] | null
+  @IsOptional() @IsIn([...CATALOG_PROFESSIONS, null]) catalogProfession?: (typeof CATALOG_PROFESSIONS)[number] | null | undefined
   @ApiPropertyOptional({ type: Boolean, description: 'Comparable to a Katalogberuf in training and work (ähnlicher Beruf).' })
-  @IsOptional() @IsBoolean() similarToCatalogProfession?: boolean
+  @IsOptional() @IsBoolean() similarToCatalogProfession?: boolean | undefined
   @ApiPropertyOptional({ enum: FREE_ACTIVITIES, nullable: true, description: 'A free activity (wissenschaftlich, künstlerisch, …).' })
-  @IsOptional() @IsIn([...FREE_ACTIVITIES, null]) freeActivity?: (typeof FREE_ACTIVITIES)[number] | null
+  @IsOptional() @IsIn([...FREE_ACTIVITIES, null]) freeActivity?: (typeof FREE_ACTIVITIES)[number] | null | undefined
   // The four yes/no questions: one not answered yet counts as „Nein“ for the suggestion.
-  @ApiPropertyOptional({ type: Boolean, description: 'The work rests on own expert knowledge; absent = Nein.' }) @IsOptional() @IsBoolean() ownExpertWork?: boolean
-  @ApiPropertyOptional({ type: Boolean, description: 'Employs qualified staff; absent = Nein.' }) @IsOptional() @IsBoolean() employsQualifiedStaff?: boolean
-  @ApiPropertyOptional({ type: Boolean, description: 'Leads the staff personally and answers for each job; absent = Nein.' }) @IsOptional() @IsBoolean() leadsPersonally?: boolean
-  @ApiPropertyOptional({ type: Boolean, description: 'Trades goods or runs a shop beside the profession; absent = Nein.' }) @IsOptional() @IsBoolean() tradesGoods?: boolean
+  @ApiPropertyOptional({ type: Boolean, description: 'The work rests on own expert knowledge; absent = Nein.' }) @IsOptional() @IsBoolean() ownExpertWork?: boolean | undefined
+  @ApiPropertyOptional({ type: Boolean, description: 'Employs qualified staff; absent = Nein.' }) @IsOptional() @IsBoolean() employsQualifiedStaff?: boolean | undefined
+  @ApiPropertyOptional({ type: Boolean, description: 'Leads the staff personally and answers for each job; absent = Nein.' }) @IsOptional() @IsBoolean() leadsPersonally?: boolean | undefined
+  @ApiPropertyOptional({ type: Boolean, description: 'Trades goods or runs a shop beside the profession; absent = Nein.' }) @IsOptional() @IsBoolean() tradesGoods?: boolean | undefined
 }
 
 export class FinancingComponentsDto {
-  @ApiPropertyOptional({ ...EUR, description: '§ 8 Nr. 1 a GewStG: Entgelte für Schulden, euros.' }) @IsOptional() @IsNumber() @Min(0) debtChargesEur?: number
-  @ApiPropertyOptional({ ...EUR, description: '§ 8 Nr. 1 b: Renten und dauernde Lasten, euros.' }) @IsOptional() @IsNumber() @Min(0) annuitiesEur?: number
-  @ApiPropertyOptional({ ...EUR, description: '§ 8 Nr. 1 c: Gewinnanteile stiller Gesellschafter, euros.' }) @IsOptional() @IsNumber() @Min(0) silentPartnerSharesEur?: number
-  @ApiPropertyOptional({ ...EUR, description: '§ 8 Nr. 1 d: Miete/Leasing beweglicher Wirtschaftsgüter, euros.' }) @IsOptional() @IsNumber() @Min(0) rentMovableEur?: number
-  @ApiPropertyOptional({ ...EUR, description: '§ 8 Nr. 1 d: dieselbe für E-Fahrzeuge und Fahrräder, euros.' }) @IsOptional() @IsNumber() @Min(0) rentMovableLowEmissionEur?: number
-  @ApiPropertyOptional({ ...EUR, description: '§ 8 Nr. 1 e: Miete/Pacht unbeweglicher Wirtschaftsgüter, euros.' }) @IsOptional() @IsNumber() @Min(0) rentImmovableEur?: number
-  @ApiPropertyOptional({ ...EUR, description: '§ 8 Nr. 1 f: Lizenzen und Konzessionen, euros.' }) @IsOptional() @IsNumber() @Min(0) licencesEur?: number
+  @ApiPropertyOptional({ ...EUR, description: '§ 8 Nr. 1 a GewStG: Entgelte für Schulden, euros.' }) @IsOptional() @IsNumber() @Min(0) debtChargesEur?: number | undefined
+  @ApiPropertyOptional({ ...EUR, description: '§ 8 Nr. 1 b: Renten und dauernde Lasten, euros.' }) @IsOptional() @IsNumber() @Min(0) annuitiesEur?: number | undefined
+  @ApiPropertyOptional({ ...EUR, description: '§ 8 Nr. 1 c: Gewinnanteile stiller Gesellschafter, euros.' }) @IsOptional() @IsNumber() @Min(0) silentPartnerSharesEur?: number | undefined
+  @ApiPropertyOptional({ ...EUR, description: '§ 8 Nr. 1 d: Miete/Leasing beweglicher Wirtschaftsgüter, euros.' }) @IsOptional() @IsNumber() @Min(0) rentMovableEur?: number | undefined
+  @ApiPropertyOptional({ ...EUR, description: '§ 8 Nr. 1 d: dieselbe für E-Fahrzeuge und Fahrräder, euros.' }) @IsOptional() @IsNumber() @Min(0) rentMovableLowEmissionEur?: number | undefined
+  @ApiPropertyOptional({ ...EUR, description: '§ 8 Nr. 1 e: Miete/Pacht unbeweglicher Wirtschaftsgüter, euros.' }) @IsOptional() @IsNumber() @Min(0) rentImmovableEur?: number | undefined
+  @ApiPropertyOptional({ ...EUR, description: '§ 8 Nr. 1 f: Lizenzen und Konzessionen, euros.' }) @IsOptional() @IsNumber() @Min(0) licencesEur?: number | undefined
 }
 
 export class TradeTaxInputsDto {
-  @ApiPropertyOptional({ type: FinancingComponentsDto }) @IsOptional() @ValidateNested() @Type(() => FinancingComponentsDto) financing?: FinancingComponentsDto
-  @ApiPropertyOptional({ ...EUR, description: 'Further additions (§ 8 Nr. 4–12 GewStG), euros.' }) @IsOptional() @IsNumber() @Min(0) otherAdditionsEur?: number
-  @ApiPropertyOptional({ ...EUR, description: 'Einheitswert of the business land for § 9 Nr. 1 GewStG, euros.' }) @IsOptional() @IsNumber() @Min(0) einheitswertEur?: number
-  @ApiPropertyOptional({ ...EUR, description: 'Further deductions (§ 9 Nr. 2–10), euros.' }) @IsOptional() @IsNumber() @Min(0) otherDeductionsEur?: number
-  @ApiPropertyOptional({ ...EUR, description: 'Gewerbeverlust carried forward (§ 10a GewStG), euros.' }) @IsOptional() @IsNumber() @Min(0) lossCarriedForwardEur?: number
+  @ApiPropertyOptional({ type: FinancingComponentsDto }) @IsOptional() @ValidateNested() @Type(() => FinancingComponentsDto) financing?: FinancingComponentsDto | undefined
+  @ApiPropertyOptional({ ...EUR, description: 'Further additions (§ 8 Nr. 4–12 GewStG), euros.' }) @IsOptional() @IsNumber() @Min(0) otherAdditionsEur?: number | undefined
+  @ApiPropertyOptional({ ...EUR, description: 'Einheitswert of the business land for § 9 Nr. 1 GewStG, euros.' }) @IsOptional() @IsNumber() @Min(0) einheitswertEur?: number | undefined
+  @ApiPropertyOptional({ ...EUR, description: 'Further deductions (§ 9 Nr. 2–10), euros.' }) @IsOptional() @IsNumber() @Min(0) otherDeductionsEur?: number | undefined
+  @ApiPropertyOptional({ ...EUR, description: 'Gewerbeverlust carried forward (§ 10a GewStG), euros.' }) @IsOptional() @IsNumber() @Min(0) lossCarriedForwardEur?: number | undefined
 }
 
 export class LossFactsDto {
-  @ApiPropertyOptional({ ...EUR, description: 'Verbleibender Verlustvortrag of the last Feststellungsbescheid, euros.' }) @IsOptional() @IsNumber() @Min(0) carriedForwardEur?: number
-  @ApiPropertyOptional({ type: Boolean, description: '§ 10d Abs. 1 Satz 5: waive the Rücktrag (as a whole).' }) @IsOptional() @IsBoolean() waiveCarryBack?: boolean
+  @ApiPropertyOptional({ ...EUR, description: 'Verbleibender Verlustvortrag of the last Feststellungsbescheid, euros.' }) @IsOptional() @IsNumber() @Min(0) carriedForwardEur?: number | undefined
+  @ApiPropertyOptional({ type: Boolean, description: '§ 10d Abs. 1 Satz 5: waive the Rücktrag (as a whole).' }) @IsOptional() @IsBoolean() waiveCarryBack?: boolean | undefined
   @ApiPropertyOptional({ type: [Number], description: 'What the GdE of the year before and the second year before still offers, euros: [y−1, y−2].' })
-  @IsOptional() @IsArray() @IsNumber({}, { each: true }) roomEur?: [number, number]
-  @ApiPropertyOptional({ ...EUR, description: 'A later year’s loss carried back into this year, euros.' }) @IsOptional() @IsNumber() @Min(0) carriedBackEur?: number
+  @IsOptional() @IsArray() @IsNumber({}, { each: true }) roomEur?: readonly [number, number] | undefined
+  @ApiPropertyOptional({ ...EUR, description: 'A later year’s loss carried back into this year, euros.' }) @IsOptional() @IsNumber() @Min(0) carriedBackEur?: number | undefined
 }
 
 export class PartnershipShareDto {
   @ApiProperty({ type: String }) @IsString() @MaxLength(200) name!: string
   @ApiProperty({ enum: ['freiberuf', 'gewerbe'] }) @IsIn(['freiberuf', 'gewerbe']) kind!: 'freiberuf' | 'gewerbe'
   @ApiProperty({ ...EUR, description: 'Share of the profit per Feststellungsbescheid, euros (negative for a loss).' }) @IsNumber() profitEur!: number
-  @ApiPropertyOptional({ ...EUR, description: 'Share of the Gewerbesteuer-Messbetrag (§ 35), euros.' }) @IsOptional() @IsNumber() baseAmountEur?: number
-  @ApiPropertyOptional({ ...EUR, description: 'Share of the Gewerbesteuer actually due (§ 35), euros.' }) @IsOptional() @IsNumber() tradeTaxEur?: number
+  @ApiPropertyOptional({ ...EUR, description: 'Share of the Gewerbesteuer-Messbetrag (§ 35), euros.' }) @IsOptional() @IsNumber() baseAmountEur?: number | undefined
+  @ApiPropertyOptional({ ...EUR, description: 'Share of the Gewerbesteuer actually due (§ 35), euros.' }) @IsOptional() @IsNumber() tradeTaxEur?: number | undefined
 }
 
 /** A CSV column: by header name (`nth` for a repeated header, 1 = first) or by position (`index`, 0 = first). */
 export class CsvColumnDto {
-  @ApiPropertyOptional({ type: String, example: 'Buchungstag' }) @IsOptional() @IsString() @MaxLength(100) name?: string
-  @ApiPropertyOptional({ type: Number, example: 2, description: 'Which occurrence of a repeated header name, 1 = first.' }) @IsOptional() @IsInt() @Min(1) nth?: number
-  @ApiPropertyOptional({ type: Number, example: 1, description: 'Column position in the header row, 0 = first; used when `name` is not given.' }) @IsOptional() @IsInt() @Min(0) @Max(200) index?: number
+  @ApiPropertyOptional({ type: String, example: 'Buchungstag' }) @IsOptional() @IsString() @MaxLength(100) name?: string | undefined
+  @ApiPropertyOptional({ type: Number, example: 2, description: 'Which occurrence of a repeated header name, 1 = first.' }) @IsOptional() @IsInt() @Min(1) nth?: number | undefined
+  @ApiPropertyOptional({ type: Number, example: 1, description: 'Column position in the header row, 0 = first; used when `name` is not given.' }) @IsOptional() @IsInt() @Min(0) @Max(200) index?: number | undefined
 }
 
 /** The column mapping of a bank CSV no preset fits (core CsvMapping). */
@@ -106,17 +107,17 @@ export class CsvMappingDto {
   @ApiProperty({ enum: [',', '.'], description: 'Decimal separator of the amounts.' }) @IsIn([',', '.']) decimal!: ',' | '.'
   @ApiProperty({ enum: ['DD.MM.YYYY', 'DD.MM.YY', 'YYYY-MM-DD'] }) @IsIn(['DD.MM.YYYY', 'DD.MM.YY', 'YYYY-MM-DD']) dateFormat!: 'DD.MM.YYYY' | 'DD.MM.YY' | 'YYYY-MM-DD'
   @ApiProperty({ type: CsvColumnDto }) @ValidateNested() @Type(() => CsvColumnDto) bookingDate!: CsvColumnDto
-  @ApiPropertyOptional({ type: CsvColumnDto }) @IsOptional() @ValidateNested() @Type(() => CsvColumnDto) valueDate?: CsvColumnDto
-  @ApiPropertyOptional({ type: CsvColumnDto, description: 'One signed amount column; or `debit` and `credit`.' }) @IsOptional() @ValidateNested() @Type(() => CsvColumnDto) amount?: CsvColumnDto
-  @ApiPropertyOptional({ type: CsvColumnDto, description: 'Unsigned debit (Soll) column, with `credit`.' }) @IsOptional() @ValidateNested() @Type(() => CsvColumnDto) debit?: CsvColumnDto
-  @ApiPropertyOptional({ type: CsvColumnDto, description: 'Unsigned credit (Haben) column, with `debit`.' }) @IsOptional() @ValidateNested() @Type(() => CsvColumnDto) credit?: CsvColumnDto
-  @ApiPropertyOptional({ type: CsvColumnDto }) @IsOptional() @ValidateNested() @Type(() => CsvColumnDto) counterpartyName?: CsvColumnDto
-  @ApiPropertyOptional({ type: CsvColumnDto }) @IsOptional() @ValidateNested() @Type(() => CsvColumnDto) counterpartyIban?: CsvColumnDto
-  @ApiProperty({ type: [CsvColumnDto], description: 'One or more columns, joined with a space.' }) @IsArray() @ValidateNested({ each: true }) @Type(() => CsvColumnDto) reference!: CsvColumnDto[]
-  @ApiPropertyOptional({ type: CsvColumnDto }) @IsOptional() @ValidateNested() @Type(() => CsvColumnDto) currency?: CsvColumnDto
-  @ApiPropertyOptional({ type: CsvColumnDto }) @IsOptional() @ValidateNested() @Type(() => CsvColumnDto) endToEndId?: CsvColumnDto
-  @ApiPropertyOptional({ type: CsvColumnDto }) @IsOptional() @ValidateNested() @Type(() => CsvColumnDto) accountIban?: CsvColumnDto
-  @ApiPropertyOptional({ type: String, example: 'EUR' }) @IsOptional() @Matches(/^[A-Z]{3}$/) defaultCurrency?: string
+  @ApiPropertyOptional({ type: CsvColumnDto }) @IsOptional() @ValidateNested() @Type(() => CsvColumnDto) valueDate?: CsvColumnDto | undefined
+  @ApiPropertyOptional({ type: CsvColumnDto, description: 'One signed amount column; or `debit` and `credit`.' }) @IsOptional() @ValidateNested() @Type(() => CsvColumnDto) amount?: CsvColumnDto | undefined
+  @ApiPropertyOptional({ type: CsvColumnDto, description: 'Unsigned debit (Soll) column, with `credit`.' }) @IsOptional() @ValidateNested() @Type(() => CsvColumnDto) debit?: CsvColumnDto | undefined
+  @ApiPropertyOptional({ type: CsvColumnDto, description: 'Unsigned credit (Haben) column, with `debit`.' }) @IsOptional() @ValidateNested() @Type(() => CsvColumnDto) credit?: CsvColumnDto | undefined
+  @ApiPropertyOptional({ type: CsvColumnDto }) @IsOptional() @ValidateNested() @Type(() => CsvColumnDto) counterpartyName?: CsvColumnDto | undefined
+  @ApiPropertyOptional({ type: CsvColumnDto }) @IsOptional() @ValidateNested() @Type(() => CsvColumnDto) counterpartyIban?: CsvColumnDto | undefined
+  @ApiProperty({ type: [CsvColumnDto], description: 'One or more columns, joined with a space.' }) @IsArray() @ValidateNested({ each: true }) @Type(() => CsvColumnDto) reference!: readonly CsvColumnDto[]
+  @ApiPropertyOptional({ type: CsvColumnDto }) @IsOptional() @ValidateNested() @Type(() => CsvColumnDto) currency?: CsvColumnDto | undefined
+  @ApiPropertyOptional({ type: CsvColumnDto }) @IsOptional() @ValidateNested() @Type(() => CsvColumnDto) endToEndId?: CsvColumnDto | undefined
+  @ApiPropertyOptional({ type: CsvColumnDto }) @IsOptional() @ValidateNested() @Type(() => CsvColumnDto) accountIban?: CsvColumnDto | undefined
+  @ApiPropertyOptional({ type: String, example: 'EUR' }) @IsOptional() @Matches(/^[A-Z]{3}$/) defaultCurrency?: string | undefined
 }
 
 // ---------------------------------------------------------------------------------------------------
@@ -135,10 +136,10 @@ export class AssetCategoryDto {
 }
 
 export class BusinessCataloguesDto {
-  @ApiProperty({ type: [CatalogEntryDto], description: 'Katalogberufe the suggestion knows (`professionAnswers.catalogProfession`).' }) professions!: CatalogEntryDto[]
-  @ApiProperty({ type: [CatalogEntryDto], description: 'Free activities (`professionAnswers.freeActivity`).' }) freeActivities!: CatalogEntryDto[]
-  @ApiProperty({ type: [AssetCategoryDto], description: 'AfA-table categories (`category` of an asset).' }) assetCategories!: AssetCategoryDto[]
-  @ApiProperty({ enum: Object.keys(BANK_CSV_PRESETS), isArray: true, description: 'Bank CSV presets (`preset` of the bank import).' }) bankPresets!: string[]
+  @ApiProperty({ type: [CatalogEntryDto], description: 'Katalogberufe the suggestion knows (`professionAnswers.catalogProfession`).' }) professions!: readonly CatalogEntryDto[]
+  @ApiProperty({ type: [CatalogEntryDto], description: 'Free activities (`professionAnswers.freeActivity`).' }) freeActivities!: readonly CatalogEntryDto[]
+  @ApiProperty({ type: [AssetCategoryDto], description: 'AfA-table categories (`category` of an asset).' }) assetCategories!: readonly AssetCategoryDto[]
+  @ApiProperty({ enum: Object.keys(BANK_CSV_PRESETS), isArray: true, description: 'Bank CSV presets (`preset` of the bank import).' }) bankPresets!: readonly string[]
 }
 
 // ---------------------------------------------------------------------------------------------------
@@ -166,8 +167,8 @@ export class EuerProfitDto {
   @ApiProperty(EUR) nonDeductibleEur!: number
   @ApiProperty(EUR) profitBeforeIabEur!: number
   @ApiProperty({ ...EUR, description: 'Gewinn, euros (negative = Verlust).' }) profitEur!: number
-  @ApiProperty({ type: [ProfitLineDto] }) lines!: ProfitLineDto[]
-  @ApiProperty({ type: [String], description: 'Restricted expenses entered as totals only; the user should check them.' }) openPoints!: string[]
+  @ApiProperty({ type: [ProfitLineDto] }) lines!: readonly ProfitLineDto[]
+  @ApiProperty({ type: [String], description: 'Restricted expenses entered as totals only; the user should check them.' }) openPoints!: readonly string[]
 }
 
 export class EuerClosingDto {
@@ -209,20 +210,20 @@ export class DraftLineDto {
   @ApiProperty({ type: String }) account!: string
   @ApiProperty({ enum: ['debit', 'credit'] }) side!: 'debit' | 'credit'
   @ApiProperty(CENTS) amount!: number
-  @ApiPropertyOptional({ type: String }) taxKey?: string
+  @ApiPropertyOptional({ type: String }) taxKey?: string | undefined
 }
 
 export class OpeningEntryDto {
   @ApiProperty({ type: String }) date!: string
   @ApiProperty({ type: String }) documentNumber!: string
   @ApiProperty({ type: String }) text!: string
-  @ApiProperty({ type: [DraftLineDto] }) lines!: DraftLineDto[]
+  @ApiProperty({ type: [DraftLineDto] }) lines!: readonly DraftLineDto[]
 }
 
 export class BilanzClosingDto {
   @ApiProperty({ type: IncomeStatementDto }) incomeStatement!: IncomeStatementDto
   @ApiProperty({ type: BalanceSheetDto }) balanceSheet!: BalanceSheetDto
-  @ApiProperty({ type: [ClosingBalanceDto] }) closingBalances!: ClosingBalanceDto[]
+  @ApiProperty({ type: [ClosingBalanceDto] }) closingBalances!: readonly ClosingBalanceDto[]
   @ApiProperty({ type: OpeningEntryDto, description: 'The Eröffnungsbilanz entry of the next year (`POST …/abschluss/eroeffnung` posts it).' }) openingEntry!: OpeningEntryDto
 }
 
@@ -237,9 +238,9 @@ export class ClosingDto {
 // Umsatzsteuer
 
 export class NetByRateDto {
-  @ApiPropertyOptional({ ...EUR, description: '19 %, euros.' }) standard?: number
-  @ApiPropertyOptional({ ...EUR, description: '7 %, euros.' }) reduced?: number
-  @ApiPropertyOptional({ ...EUR, description: '0 %, euros.' }) zero?: number
+  @ApiPropertyOptional({ ...EUR, description: '19 %, euros.' }) standard?: number | undefined
+  @ApiPropertyOptional({ ...EUR, description: '7 %, euros.' }) reduced?: number | undefined
+  @ApiPropertyOptional({ ...EUR, description: '0 %, euros.' }) zero?: number | undefined
 }
 
 export class VatFiguresDto {
@@ -279,7 +280,7 @@ export class SmallBusinessCheckDto {
   @ApiProperty({ type: String, nullable: true, description: 'From 2025: the date of the supply that passed the running year’s limit; it and every later one are taxed (§ 19 Abs. 1 Satz 1 UStG).' }) taxedFrom!: string | null
 }
 
-export class InputVatCorrectionLineDto {
+export class InputVatCorrectionLineDto implements InputVatCorrectionLine {
   @ApiProperty({ type: String }) assetId!: string
   @ApiProperty({ type: String }) label!: string
   @ApiProperty(EUR) correctionEur!: number
@@ -291,7 +292,7 @@ export class VatReturnDto {
   @ApiProperty({ type: VatResultDto }) result!: VatResultDto
   @ApiProperty({ type: Boolean, description: 'Ist-Versteuerung allowed by the turnover of the year before (§ 20 UStG).' }) cashAccountingAllowed!: boolean
   @ApiProperty({ type: SmallBusinessCheckDto }) smallBusiness!: SmallBusinessCheckDto
-  @ApiProperty({ type: [InputVatCorrectionLineDto], description: 'The § 15a corrections of the year per asset.' }) inputVatCorrections!: InputVatCorrectionLineDto[]
+  @ApiProperty({ type: [InputVatCorrectionLineDto], description: 'The § 15a corrections of the year per asset.' }) inputVatCorrections!: readonly InputVatCorrectionLineDto[]
 }
 
 // ---------------------------------------------------------------------------------------------------
@@ -319,11 +320,11 @@ export class TradeTaxMultiplierDto {
 
 export class TradeTaxDto {
   @ApiProperty({ enum: ['berechnet', 'offen', 'entfaellt'] }) status!: 'berechnet' | 'offen' | 'entfaellt'
-  @ApiPropertyOptional({ ...EUR, description: 'status berechnet: the Gewinn aus Gewerbebetrieb the return starts from, euros.' }) profitEur?: number
-  @ApiPropertyOptional({ type: TradeTaxResultDto, description: 'status berechnet.' }) result?: TradeTaxResultDto
-  @ApiPropertyOptional({ type: TradeTaxMultiplierDto, description: 'status berechnet.' }) multiplier?: TradeTaxMultiplierDto
-  @ApiPropertyOptional({ type: [String], example: ['hebesatz'], description: 'status offen: what is missing.' }) missing?: string[]
-  @ApiPropertyOptional({ type: String, description: 'status entfaellt: why (German).' }) reason?: string
+  @ApiPropertyOptional({ ...EUR, description: 'status berechnet: the Gewinn aus Gewerbebetrieb the return starts from, euros.' }) profitEur?: number | undefined
+  @ApiPropertyOptional({ type: TradeTaxResultDto, description: 'status berechnet.' }) result?: TradeTaxResultDto | undefined
+  @ApiPropertyOptional({ type: TradeTaxMultiplierDto, description: 'status berechnet.' }) multiplier?: TradeTaxMultiplierDto | undefined
+  @ApiPropertyOptional({ type: [String], example: ['hebesatz'], description: 'status offen: what is missing.' }) missing?: readonly string[] | undefined
+  @ApiPropertyOptional({ type: String, description: 'status entfaellt: why (German).' }) reason?: string | undefined
 }
 
 // ---------------------------------------------------------------------------------------------------
@@ -378,7 +379,7 @@ export class AssetRegisterRowDto extends AssetRegisterColumnsDto {
 }
 
 export class AssetRegisterDto {
-  @ApiProperty({ type: [AssetRegisterRowDto] }) rows!: AssetRegisterRowDto[]
+  @ApiProperty({ type: [AssetRegisterRowDto] }) rows!: readonly AssetRegisterRowDto[]
   @ApiProperty({ type: AssetRegisterColumnsDto }) totals!: AssetRegisterColumnsDto
 }
 
@@ -401,7 +402,7 @@ export class FixedAssetDto {
 
 export class AssetsResponseDto {
   @ApiProperty({ type: AssetRegisterDto }) register!: AssetRegisterDto
-  @ApiProperty({ type: [FixedAssetDto] }) records!: FixedAssetDto[]
+  @ApiProperty({ type: [FixedAssetDto] }) records!: readonly FixedAssetDto[]
 }
 
 
@@ -422,26 +423,26 @@ export class CarVatResultDto {
 
 export class CompanyCarResultDto {
   @ApiProperty({ enum: ['berechnet', 'nicht_zulaessig', 'offen'] }) kind!: 'berechnet' | 'nicht_zulaessig' | 'offen'
-  @ApiPropertyOptional({ enum: ['pauschal', 'fahrtenbuch'] }) method?: 'pauschal' | 'fahrtenbuch'
-  @ApiPropertyOptional({ type: Number, description: 'Fraction of the list price (1, 0,5, 0,25).' }) factor?: number
-  @ApiPropertyOptional(EUR) assessedListPriceEur?: number
-  @ApiPropertyOptional({ ...EUR, description: 'The Entnahme of the year.' }) privateUseEur?: number
-  @ApiPropertyOptional({ type: CarCommuteResultDto, nullable: true }) commute?: CarCommuteResultDto | null
-  @ApiPropertyOptional({ type: Boolean }) capped?: boolean
-  @ApiPropertyOptional({ type: CarVatResultDto, nullable: true }) vat?: CarVatResultDto | null
-  @ApiPropertyOptional({ enum: ['betriebliche_nutzung_bis_50'] }) reason?: 'betriebliche_nutzung_bis_50'
-  @ApiPropertyOptional({ type: [String] }) missing?: string[]
+  @ApiPropertyOptional({ enum: ['pauschal', 'fahrtenbuch'] }) method?: 'pauschal' | 'fahrtenbuch' | undefined
+  @ApiPropertyOptional({ type: Number, description: 'Fraction of the list price (1, 0,5, 0,25).' }) factor?: number | undefined
+  @ApiPropertyOptional(EUR) assessedListPriceEur?: number | undefined
+  @ApiPropertyOptional({ ...EUR, description: 'The Entnahme of the year.' }) privateUseEur?: number | undefined
+  @ApiPropertyOptional({ type: CarCommuteResultDto, nullable: true }) commute?: CarCommuteResultDto | null | undefined
+  @ApiPropertyOptional({ type: Boolean }) capped?: boolean | undefined
+  @ApiPropertyOptional({ type: CarVatResultDto, nullable: true }) vat?: CarVatResultDto | null | undefined
+  @ApiPropertyOptional({ enum: ['betriebliche_nutzung_bis_50'] }) reason?: 'betriebliche_nutzung_bis_50' | undefined
+  @ApiPropertyOptional({ type: [String] }) missing?: readonly string[] | undefined
 }
 
 // ---------------------------------------------------------------------------------------------------
 // Umsatzsteuer-Voranmeldung und Zusammenfassende Meldung (ADR-0101 §22)
 
 export class VatPeriodFactsDto {
-  @ApiPropertyOptional({ enum: ['monat', 'quartal', 'befreit'], description: 'The period the office set; absent = derived from the year before.' }) @IsOptional() @IsIn(['monat', 'quartal', 'befreit']) period?: 'monat' | 'quartal' | 'befreit'
-  @ApiPropertyOptional({ type: Boolean, description: 'Dauerfristverlängerung (§ 46 UStDV).' }) @IsOptional() @IsBoolean() extension?: boolean
-  @ApiPropertyOptional({ ...EUR, description: 'The Sondervorauszahlung as paid; absent = 1/11 of last year (§ 47 UStDV).' }) @IsOptional() @IsNumber() @Min(0) specialPrepaymentEur?: number
-  @ApiPropertyOptional({ type: Boolean, description: 'Monthly by choice after a refund above the limit (§ 18 Abs. 2a UStG).' }) @IsOptional() @IsBoolean() chooseMonthly?: boolean
-  @ApiPropertyOptional({ type: Boolean, description: 'Freed from keeping books by the office (§ 148 AO): Istversteuerung whatever the turnover (§ 20 Satz 1 Nr. 2 UStG).' }) @IsOptional() @IsBoolean() exemptFromBookkeeping?: boolean
+  @ApiPropertyOptional({ enum: ['monat', 'quartal', 'befreit'], description: 'The period the office set; absent = derived from the year before.' }) @IsOptional() @IsIn(['monat', 'quartal', 'befreit']) period?: 'monat' | 'quartal' | 'befreit' | undefined
+  @ApiPropertyOptional({ type: Boolean, description: 'Dauerfristverlängerung (§ 46 UStDV).' }) @IsOptional() @IsBoolean() extension?: boolean | undefined
+  @ApiPropertyOptional({ ...EUR, description: 'The Sondervorauszahlung as paid; absent = 1/11 of last year (§ 47 UStDV).' }) @IsOptional() @IsNumber() @Min(0) specialPrepaymentEur?: number | undefined
+  @ApiPropertyOptional({ type: Boolean, description: 'Monthly by choice after a refund above the limit (§ 18 Abs. 2a UStG).' }) @IsOptional() @IsBoolean() chooseMonthly?: boolean | undefined
+  @ApiPropertyOptional({ type: Boolean, description: 'Freed from keeping books by the office (§ 148 AO): Istversteuerung whatever the turnover (§ 20 Satz 1 Nr. 2 UStG).' }) @IsOptional() @IsBoolean() exemptFromBookkeeping?: boolean | undefined
 }
 
 export class VatPeriodDto {
@@ -462,20 +463,20 @@ export class EcSalesRowDto {
 export class EcSalesReportDto {
   @ApiProperty({ type: String }) label!: string
   @ApiProperty({ type: String }) due!: string
-  @ApiProperty({ type: [EcSalesRowDto] }) rows!: EcSalesRowDto[]
+  @ApiProperty({ type: [EcSalesRowDto] }) rows!: readonly EcSalesRowDto[]
 }
 
 export class EcSalesListDto {
   @ApiProperty({ enum: ['monat', 'quartal'] }) period!: 'monat' | 'quartal'
-  @ApiProperty({ type: [EcSalesReportDto] }) reports!: EcSalesReportDto[]
+  @ApiProperty({ type: [EcSalesReportDto] }) reports!: readonly EcSalesReportDto[]
 }
 
-export class VatPrepaymentsDto {
+export class VatPrepaymentsDto implements VatPrepaymentOverview {
   @ApiProperty({ enum: ['monat', 'quartal', 'befreit'] }) period!: 'monat' | 'quartal' | 'befreit'
   @ApiProperty({ enum: ['angabe', 'vorjahressteuer', 'gruendung_schaetzung', 'wahl_ueberschuss'] }) periodSource!: 'angabe' | 'vorjahressteuer' | 'gruendung_schaetzung' | 'wahl_ueberschuss'
   @ApiProperty({ type: Boolean }) extension!: boolean
   @ApiProperty({ type: Number, nullable: true, description: 'Sondervorauszahlung, euros; monthly filers with extension only.' }) specialPrepaymentEur!: number | null
-  @ApiProperty({ type: [VatPeriodDto] }) periods!: VatPeriodDto[]
+  @ApiProperty({ type: [VatPeriodDto] }) periods!: readonly VatPeriodDto[]
   @ApiProperty({ ...EUR, description: 'All prepayments with the Sondervorauszahlung: the annual return’s Vorauszahlungssoll.' }) totalEur!: number
   @ApiProperty({ type: EcSalesListDto }) ecSalesList!: EcSalesListDto
 }
@@ -495,8 +496,8 @@ export class DisposalFactsDto {
 
 export class RetainedFactsDto {
   @ApiProperty({ ...EUR, description: 'The amount applied for under § 34a.' }) @IsNumber() @Min(0) requestedEur!: number
-  @ApiPropertyOptional({ ...EUR, description: 'Nachversteuerungspflichtiger Betrag of the last Feststellung.' }) @IsOptional() @IsNumber() @Min(0) carriedForwardEur?: number
-  @ApiPropertyOptional({ ...EUR, description: 'From 2024: withdrawals this year to pay the § 34a tax of earlier years (Abs. 2 Satz 2); this year\'s tax the app deems paid from the withdrawals itself (Satz 3).' }) @IsOptional() @IsNumber() @Min(0) withdrawalsForRetainedTaxEur?: number
+  @ApiPropertyOptional({ ...EUR, description: 'Nachversteuerungspflichtiger Betrag of the last Feststellung.' }) @IsOptional() @IsNumber() @Min(0) carriedForwardEur?: number | undefined
+  @ApiPropertyOptional({ ...EUR, description: 'From 2024: withdrawals this year to pay the § 34a tax of earlier years (Abs. 2 Satz 2); this year\'s tax the app deems paid from the withdrawals itself (Satz 3).' }) @IsOptional() @IsNumber() @Min(0) withdrawalsForRetainedTaxEur?: number | undefined
 }
 
 export class DisposalResultDto {
@@ -530,22 +531,22 @@ export class PayrollRunInputDto {
   @ApiProperty({ enum: ['regulaer', 'minijob'] }) @IsIn(['regulaer', 'minijob']) kind!: 'regulaer' | 'minijob'
   @ApiProperty({ type: String, maxLength: 80, description: 'The employee as the user calls them.' }) @IsString() @MaxLength(80) employee!: string
   @ApiProperty(EUR) @IsNumber() @Min(0) grossEur!: number
-  @ApiPropertyOptional(EUR) @IsOptional() @IsNumber() @Min(0) wageTaxEur?: number
-  @ApiPropertyOptional(EUR) @IsOptional() @IsNumber() @Min(0) soliEur?: number
-  @ApiPropertyOptional(EUR) @IsOptional() @IsNumber() @Min(0) churchTaxEur?: number
+  @ApiPropertyOptional(EUR) @IsOptional() @IsNumber() @Min(0) wageTaxEur?: number | undefined
+  @ApiPropertyOptional(EUR) @IsOptional() @IsNumber() @Min(0) soliEur?: number | undefined
+  @ApiPropertyOptional(EUR) @IsOptional() @IsNumber() @Min(0) churchTaxEur?: number | undefined
   @ApiPropertyOptional({ enum: [...CHURCH_CODES], nullable: true, description: 'Church-tax code of the ELStAM; ev and rk go to Kz 61/62, the others to the line of the Betriebsstätte’s Land.' })
   @IsOptional()
   @IsIn([...CHURCH_CODES, null])
-  church?: ChurchCode | null
-  @ApiPropertyOptional({ ...EUR, description: 'Pauschale Lohnsteuer the employer takes over (§§ 40, 40a Abs. 1, 3, 40b EStG), Kz 41.' }) @IsOptional() @IsNumber() @Min(0) flatWageTaxEur?: number
-  @ApiPropertyOptional({ ...EUR, description: 'Pauschale Lohnsteuer under § 37b EStG, Kz 44.' }) @IsOptional() @IsNumber() @Min(0) flat37bTaxEur?: number
-  @ApiPropertyOptional({ ...EUR, description: 'Pauschale Kirchensteuer in the simplified procedure, Kz 47.' }) @IsOptional() @IsNumber() @Min(0) flatChurchTaxEur?: number
-  @ApiPropertyOptional({ ...EUR, description: 'BAV-Förderbetrag taken off the wage tax (§ 100 EStG), Kz 45; at most 288 € a year per employee.' }) @IsOptional() @IsNumber() @Min(0) @Max(288) bavSupportEur?: number
-  @ApiPropertyOptional({ ...EUR, description: 'The employee’s share of social security.' }) @IsOptional() @IsNumber() @Min(0) employeeSocialEur?: number
-  @ApiPropertyOptional({ ...EUR, description: 'The employer’s share and the levies.' }) @IsOptional() @IsNumber() @Min(0) employerSocialEur?: number
-  @ApiPropertyOptional({ type: Boolean, description: 'Minijob: in the statutory health insurance (flat 13 % KV).' }) @IsOptional() @IsBoolean() statutoryHealthInsured?: boolean
-  @ApiPropertyOptional({ type: Boolean, description: 'Minijob: exempt from the pension insurance.' }) @IsOptional() @IsBoolean() rvExempt?: boolean
-  @ApiPropertyOptional({ type: Boolean, description: 'Minijob: false for an employer with more than 30 employees, who pays no U1 (§ 1 Abs. 1 AAG).' }) @IsOptional() @IsBoolean() u1Applies?: boolean
+  church?: ChurchCode | null | undefined
+  @ApiPropertyOptional({ ...EUR, description: 'Pauschale Lohnsteuer the employer takes over (§§ 40, 40a Abs. 1, 3, 40b EStG), Kz 41.' }) @IsOptional() @IsNumber() @Min(0) flatWageTaxEur?: number | undefined
+  @ApiPropertyOptional({ ...EUR, description: 'Pauschale Lohnsteuer under § 37b EStG, Kz 44.' }) @IsOptional() @IsNumber() @Min(0) flat37bTaxEur?: number | undefined
+  @ApiPropertyOptional({ ...EUR, description: 'Pauschale Kirchensteuer in the simplified procedure, Kz 47.' }) @IsOptional() @IsNumber() @Min(0) flatChurchTaxEur?: number | undefined
+  @ApiPropertyOptional({ ...EUR, description: 'BAV-Förderbetrag taken off the wage tax (§ 100 EStG), Kz 45; at most 288 € a year per employee.' }) @IsOptional() @IsNumber() @Min(0) @Max(288) bavSupportEur?: number | undefined
+  @ApiPropertyOptional({ ...EUR, description: 'The employee’s share of social security.' }) @IsOptional() @IsNumber() @Min(0) employeeSocialEur?: number | undefined
+  @ApiPropertyOptional({ ...EUR, description: 'The employer’s share and the levies.' }) @IsOptional() @IsNumber() @Min(0) employerSocialEur?: number | undefined
+  @ApiPropertyOptional({ type: Boolean, description: 'Minijob: in the statutory health insurance (flat 13 % KV).' }) @IsOptional() @IsBoolean() statutoryHealthInsured?: boolean | undefined
+  @ApiPropertyOptional({ type: Boolean, description: 'Minijob: exempt from the pension insurance.' }) @IsOptional() @IsBoolean() rvExempt?: boolean | undefined
+  @ApiPropertyOptional({ type: Boolean, description: 'Minijob: false for an employer with more than 30 employees, who pays no U1 (§ 1 Abs. 1 AAG).' }) @IsOptional() @IsBoolean() u1Applies?: boolean | undefined
 }
 
 export class PayrollRunDto {
@@ -571,10 +572,10 @@ export class MinijobMonthDto {
   @ApiProperty({ ...EUR, description: 'Employer charges and the Minijobber’s RV share, to the Minijob-Zentrale.' }) totalEur!: number
 }
 
-export class PayrollOverviewDto {
-  @ApiProperty({ type: [PayrollRunDto] }) runs!: PayrollRunDto[]
+export class PayrollOverviewDto implements PayrollOverview {
+  @ApiProperty({ type: [PayrollRunDto] }) runs!: readonly PayrollRunDto[]
   @ApiProperty({ enum: ['monat', 'quartal', 'jahr'] }) wageTaxPeriod!: 'monat' | 'quartal' | 'jahr'
-  @ApiProperty({ type: [WageTaxReturnDto] }) wageTaxReturns!: WageTaxReturnDto[]
-  @ApiProperty({ type: [MinijobMonthDto] }) minijobCharges!: MinijobMonthDto[]
-  @ApiProperty({ type: [String], description: 'Church-tax codes the Anmeldung of the Betriebsstätte’s Land has no line for: their tax is in Kz 83 only.' }) unassignedChurchCodes!: string[]
+  @ApiProperty({ type: [WageTaxReturnDto] }) wageTaxReturns!: readonly WageTaxReturnDto[]
+  @ApiProperty({ type: [MinijobMonthDto] }) minijobCharges!: readonly MinijobMonthDto[]
+  @ApiProperty({ type: [String], description: 'Church-tax codes the Anmeldung of the Betriebsstätte’s Land has no line for: their tax is in Kz 83 only.' }) unassignedChurchCodes!: readonly string[]
 }

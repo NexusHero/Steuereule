@@ -1,7 +1,7 @@
 // ADR-0101: the Cockpit's income sum includes the business profit of the book (switch on); off, nothing changes.
 import { afterEach, describe, expect, it } from 'vitest'
 import { AuditService } from '../src/audit/audit.service.js'
-import { BusinessService } from '../src/business/business.service.js'
+import { composeBusinessService } from '../src/business/business.composition.js'
 import { HebesatzDirectory } from '../src/business/hebesatz.js'
 import { CockpitService } from '../src/cockpit/cockpit.service.js'
 import { FakeAuditRepository } from './fakes/fake-audit.repository.js'
@@ -21,7 +21,7 @@ const A1 = { person: 'A', business: 1 } as const
 async function setup() {
   const taxYear = new FakeTaxYearRepository()
   const interview = new FakeInterviewAnswerRepository()
-  const business = new BusinessService(new FakeBusinessRepository(), interview, new AuditService(new FakeAuditRepository()), new HebesatzDirectory())
+  const business = composeBusinessService(new FakeBusinessRepository(), interview, new AuditService(new FakeAuditRepository()), new HebesatzDirectory())
   const service = new CockpitService(taxYear, taxCaseReaderOver({ wageTaxCertificate: new FakeLstbRepository(), interview, pension: new FakePensionRepository(), capital: new FakeCapitalRepository(), rental: new FakeRentalRepository(), salaryStatement: new FakeChSalaryCertificateRepository() }), new FakeMarkingRepository(), undefined, undefined, business)
   taxYear.seed('u', { taxYear: 2025, openItems: 0 })
   interview.seed('u', 2025, { job: 'Selbstständig', ausland: 'Nein', kinder: 'Nein', familienstand: 'Ledig' })

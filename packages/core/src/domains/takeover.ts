@@ -1,4 +1,4 @@
-import type { Item } from '../engine/berechnung'
+import type { Item } from './calculation'
 
 export function adoptedLineItem(lineItem: Item, priorYear: number): Item {
   if (!Number.isInteger(priorYear) || priorYear < 0) {

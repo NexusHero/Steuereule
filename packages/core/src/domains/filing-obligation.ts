@@ -1,4 +1,4 @@
-import type { Answers } from '../interview/interview'
+import type { Answers } from './answers'
 
 /**
  * Whether the user must file (Pflichtveranlagung) or may file (Antragsveranlagung).
