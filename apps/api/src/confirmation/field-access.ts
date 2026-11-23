@@ -1,6 +1,4 @@
-import {
-  type Screen,
-} from '@steuereule/core'
+import type { Screen } from '@steuereule/core'
 import type { ScreenAccess } from '../common/screen-access.js'
 import type { AssessmentRepository } from '../assessment/assessment.repository.js'
 import { ASSESSMENT_ACCESS_FIELDS, assessmentFieldAccess } from '../assessment/assessment-field-access.js'
@@ -58,8 +56,6 @@ export interface FieldAccessRepositories {
 /** The one field of a booking draft: the entry as JSON (core `serializeBookingDraft`). */
 export const BOOKING_ACCESS_FIELDS = ['entry'] as const
 
-
-
 /**
  * Every field a screen can take through the confirmation path, without touching a repository.
  * The same lists `fieldAccessFrom` serves; whoever proposes a write (the owl, a receipt) can check
@@ -81,49 +77,29 @@ export const WRITABLE_FIELDS_BY_SCREEN: Readonly<Record<Screen, readonly string[
   buchung: BOOKING_ACCESS_FIELDS,
 }
 
-export function fieldAccessFrom({
-  lstb,
-  pension,
-  capital,
-  rental,
-  profile,
-  masterData,
-  link,
-  interview,
-  chSalaryCertificate,
-  child,
-  commute,
-  assessment,
-  linkFilingType,
-  booking,
-}: FieldAccessRepositories): FieldAccess {
+/**
+ * Composes the field access of every screen from what the feature modules provide: each has a
+ * `<screen>-field-access.ts` next to its repository port. A new screen is such a file, a line here
+ * and a line in `WRITABLE_FIELDS_BY_SCREEN`.
+ */
+export function fieldAccessFrom(repositories: FieldAccessRepositories): FieldAccess {
+  const { profile, masterData, link, interview, chSalaryCertificate, child, commute, assessment, booking } = repositories
+  // The public-holiday region of a way starts from the home address, which the master data holds.
+  const homePostalCode = masterData && (async (userId: string) => (await masterData.findByUserId(userId))?.plz)
   const access: Partial<Record<Screen, ScreenAccess>> = {
-    lstb: lstbFieldAccess(lstb),
-    rente: pensionFieldAccess(pension),
-    kapital: capitalFieldAccess(capital),
-    vermietung: rentalFieldAccess(rental),
+    lstb: lstbFieldAccess(repositories.lstb),
+    rente: pensionFieldAccess(repositories.pension),
+    kapital: capitalFieldAccess(repositories.capital),
+    vermietung: rentalFieldAccess(repositories.rental),
   }
-
   if (profile) access.profil = profileFieldAccess(profile)
-
   if (masterData) access.stammdaten = masterDataFieldAccess(masterData)
-
-  if (link) access.kopplung = linkFieldAccess(link, linkFilingType)
-
+  if (link) access.kopplung = linkFieldAccess(link, repositories.linkFilingType)
   if (interview) access.interview = interviewFieldAccess(interview)
-
   if (chSalaryCertificate) access.chLohnausweis = chSalaryCertificateFieldAccess(chSalaryCertificate)
-
   if (child) access.kind = childFieldAccess(child)
-
-  if (commute) {
-    // The public-holiday region of a way starts from the home address, which the master data holds.
-    const homePostalCode = masterData && (async (userId: string) => (await masterData.findByUserId(userId))?.plz)
-    access.commute = commuteFieldAccess(commute, homePostalCode)
-  }
-
+  if (commute) access.commute = commuteFieldAccess(commute, homePostalCode)
   if (assessment) access.assessment = assessmentFieldAccess(assessment)
-
   if (booking) access.buchung = booking
   return access
 }
