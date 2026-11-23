@@ -1,38 +1,38 @@
-# Batch-Auftrag: Ticket #443 komplett (Slices 1–7)
+# Batch assignment: Ticket #443 complete (Slices 1–7)
 
-Du arbeitest im Repo **SteuerEule** (pnpm-Monorepo, Expo + react-native-web, ausgeliefert **nur als Web-App**).
-Du setzt **alle sieben Slices von GitHub-Issue #443** nacheinander um, ohne Rückfragen zwischendurch. Danach prüft ein Reviewer jeden Slice einzeln.
+You are working in the **SteuerEule** repo (pnpm monorepo, Expo + react-native-web, shipped **only as a web app**).
+You implement **all seven slices of GitHub issue #443** one after another, without asking questions in between. Afterwards a reviewer checks each slice individually.
 
-Lies diesen Auftrag **vollständig**, bevor du irgendetwas änderst. Halte dich wörtlich daran. Steht etwas hier nicht, entscheide **nicht** selbst: Schreib es unter „Offene Fragen“ in den Bericht und nimm die im Auftrag genannte Ersatzlösung, oder lass den Punkt weg.
+Read this assignment **in full** before you change anything. Follow it to the letter. If something is not stated here, do **not** decide it yourself: write it under "Open questions" in the report and use the fallback named in the assignment, or leave the point out.
 
 ---
 
-## TEIL A — Arbeitsmodus (gilt für den ganzen Batch)
+## PART A — Working mode (applies to the whole batch)
 
-### A1. Reihenfolge und Branches
+### A1. Order and branches
 
-Die Slices werden **streng nacheinander** umgesetzt. Jeder Slice bekommt einen eigenen Branch, der auf dem vorherigen aufbaut (gestapelt):
+The slices are implemented **strictly one after another**. Each slice gets its own branch that builds on the previous one (stacked):
 
-| Slice | Branch | Abgezweigt von |
+| Slice | Branch | Branched from |
 | :--- | :--- | :--- |
 | 1 Navigation | `feat/443-s1-navigation` | `origin/main` |
-| 2 Hub-Cockpit | `feat/443-s2-hub-cockpit` | `feat/443-s1-navigation` |
-| 3 Abgabe-Gate | `feat/443-s3-submission-gate` | `feat/443-s2-hub-cockpit` |
+| 2 Hub cockpit | `feat/443-s2-hub-cockpit` | `feat/443-s1-navigation` |
+| 3 Submission gate | `feat/443-s3-submission-gate` | `feat/443-s2-hub-cockpit` |
 | 4 Sheets | `feat/443-s4-sheets` | `feat/443-s3-submission-gate` |
-| 5 Persona-Booster | `feat/443-s5-persona-boosters` | `feat/443-s4-sheets` |
-| 6 Dark Mode | `feat/443-s6-dark-mode` | `feat/443-s5-persona-boosters` |
-| 7 Tastatur & Haptik | `feat/443-s7-keyboard-haptics` | `feat/443-s6-dark-mode` |
+| 5 Persona boosters | `feat/443-s5-persona-boosters` | `feat/443-s4-sheets` |
+| 6 Dark mode | `feat/443-s6-dark-mode` | `feat/443-s5-persona-boosters` |
+| 7 Keyboard & haptics | `feat/443-s7-keyboard-haptics` | `feat/443-s6-dark-mode` |
 
 ```bash
 git fetch origin && git switch -c feat/443-s1-navigation origin/main
 ```
-Für jeden weiteren Slice: `git switch -c <neuer Branch>` direkt vom fertigen vorherigen Branch.
+For each further slice: `git switch -c <new branch>` directly from the finished previous branch.
 
-**Nicht pushen. Keine PRs öffnen. Nichts mergen.** Das macht der Reviewer.
+**Do not push. Do not open PRs. Do not merge anything.** The reviewer does that.
 
-### A2. Gate am Ende jedes Slices
+### A2. Gate at the end of each slice
 
-Ein Slice ist erst fertig, wenn **alle** diese Befehle grün sind:
+A slice is only done when **all** of these commands are green:
 
 ```bash
 pnpm lint
@@ -53,334 +53,334 @@ pnpm --filter @steuereule/e2e no-client-persistence
 pnpm --filter @steuereule/e2e breakpoint-layout
 ```
 
-Die E2E-Befehle starten den Stack selbst. Wenn der Stack lokal **gar nicht** startet (Docker/Postgres fehlt), schreib die genaue Fehlermeldung einmal in den Bericht und arbeite weiter, solange Lint, Typecheck und Unit-Tests grün sind. Markiere dann jeden Slice im Bericht mit „E2E nicht lokal verifiziert“.
+The E2E commands start the stack themselves. If the stack does **not start at all** locally (Docker/Postgres missing), write the exact error message into the report once and keep working as long as lint, typecheck and unit tests are green. Then mark each slice in the report with "E2E not verified locally".
 
-### A3. Stopp-Regeln (den ganzen Batch anhalten)
+### A3. Stop rules (halt the whole batch)
 
-Hör **sofort** auf, schreib den Bericht und mach **keinen** weiteren Slice, wenn:
-1. ein Gate-Befehl nach **drei** ernsthaften Reparaturversuchen weiter rot ist;
-2. du eine Datei in einem verbotenen Bereich (A5) ändern müsstest, für die dieser Auftrag keine Ausnahme nennt;
-3. ein bestehender Test nur grün wird, wenn du seine Erwartung fachlich änderst (z. B. ein anderer Euro-Betrag), ohne dass dieser Auftrag die Änderung ausdrücklich verlangt;
-4. du für eine Steuerregel einen Wert bräuchtest, der hier nicht steht.
+Stop **immediately**, write the report and do **not** start another slice if:
+1. a gate command is still red after **three** serious repair attempts;
+2. you would have to change a file in a forbidden area (A5) for which this assignment names no exception;
+3. an existing test only turns green if you change its expectation in domain terms (e.g. a different euro amount) without this assignment explicitly requiring the change;
+4. you would need a value for a tax rule that is not stated here.
 
-Ein angehaltener Batch ist ein **gutes** Ergebnis, wenn der Bericht genau sagt, wo und warum.
+A halted batch is a **good** result if the report says exactly where and why.
 
 ### A4. Commits
 
-- Kleine Commits, mindestens einer pro Arbeitsschritt, Format `feat(<bereich>): …`, `test(<bereich>): …`, `refactor(<bereich>): …`. Auf Englisch.
-- Kein Commit mit rotem Typecheck oder roten Unit-Tests.
-- Neue Tests **zuerst** schreiben und rot sehen, dann implementieren. Steht die Implementierung schon: den Fehler kurz absichtlich einbauen, Test rot sehen, wieder rausnehmen.
+- Small commits, at least one per work step, format `feat(<area>): …`, `test(<area>): …`, `refactor(<area>): …`. In English.
+- No commit with a red typecheck or red unit tests.
+- Write new tests **first** and see them red, then implement. If the implementation already exists: briefly introduce the bug on purpose, see the test red, take it out again.
 
-### A5. Harte Regeln (alle Slices)
+### A5. Hard rules (all slices)
 
-- **Nur Web wird geprüft.** Native Varianten nur hinter `Platform.OS !== 'web'`, sie dürfen nichts blockieren.
-- **`packages/core`, `apps/api`, DTOs, Prisma-Schema, ELSTER-Druckschablonen** nicht ändern. Ausnahmen stehen ausdrücklich bei Slice 2 und Slice 5.
-- **Kein bestehendes `testID` / `data-testid`** umbenennen oder entfernen. Neue `testID`s auf Deutsch mit Bindestrich, im Stil der vorhandenen (`cockpit-weiter`).
-- **Keine bestehenden Tests löschen, abschwächen oder `.skip`pen.** Ein Test darf nur angepasst werden, wenn er die alte Klickfolge oder interne Struktur prüft, nicht das fachliche Ergebnis. Jede Anpassung im Bericht begründen.
-- **E2E-Szenarien:** Wird ein Szenario rot, zuerst prüfen, ob die App falsch ist (dann App fixen). Nur wenn das Szenario die alte Klickfolge erwartet, das Szenario anpassen. **Die erwarteten Euro-Beträge, PDF-Inhalte und Formularwerte in den Szenarien dürfen sich in Slices 1–4, 6, 7 nicht ändern.**
-- **Keine personenbezogenen Daten in URLs** (keine Namen, Steuer-IDs, Beträge).
-- **Keine Steuerdaten in localStorage/sessionStorage.** Erlaubt sind nur die hier genannten Keys: `steuereule.returnTo` (sessionStorage), `steuereule.appearance` und `steuereule.haptics` (localStorage).
-- **Bezeichner, Dateinamen, Kommentare, Commit-Messages auf Englisch.** Sichtbare UI-Texte auf Deutsch, immer über i18n (`apps/mobile-web/src/i18n/locales/de.json` und `en.json` mit denselben Schlüsseln, Namespace `APP_NS`). Keine hart codierten deutschen Strings in Komponenten.
-- **Farben nur über `useTheme()`** (`t.color.*`, `t.shadow.*`). Keine Hex-Werte in Komponenten.
-- **Keine neuen Abhängigkeiten** außer `@react-navigation/bottom-tabs` (Slice 1) und `expo-haptics` (Slice 7).
-- **Keine Datei über ~300 Zeilen** neu entstehen lassen. Lieber aufteilen.
+- **Only web is checked.** Native variants only behind `Platform.OS !== 'web'`; they must not block anything.
+- Do not change **`packages/core`, `apps/api`, DTOs, the Prisma schema, ELSTER print templates**. Exceptions are stated explicitly for Slice 2 and Slice 5.
+- **Do not rename or remove any existing `testID` / `data-testid`.** New `testID`s in German with hyphens, in the style of the existing ones (`cockpit-weiter`).
+- **Do not delete, weaken or `.skip` existing tests.** A test may only be adjusted if it checks the old click sequence or internal structure, not the domain result. Justify every adjustment in the report.
+- **E2E scenarios:** If a scenario turns red, first check whether the app is wrong (then fix the app). Only if the scenario expects the old click sequence, adjust the scenario. **The expected euro amounts, PDF contents and form values in the scenarios must not change in Slices 1–4, 6, 7.**
+- **No personal data in URLs** (no names, Steuer-IDs (tax IDs), amounts).
+- **No tax data in localStorage/sessionStorage.** Only the keys named here are allowed: `steuereule.returnTo` (sessionStorage), `steuereule.appearance` and `steuereule.haptics` (localStorage).
+- **Identifiers, file names, comments, commit messages in English.** Visible UI text in German, always via i18n (`apps/mobile-web/src/i18n/locales/de.json` and `en.json` with the same keys, namespace `APP_NS`). No hard-coded German strings in components.
+- **Colors only via `useTheme()`** (`t.color.*`, `t.shadow.*`). No hex values in components.
+- **No new dependencies** except `@react-navigation/bottom-tabs` (Slice 1) and `expo-haptics` (Slice 7).
+- **Do not let any new file grow beyond ~300 lines.** Rather split it.
 
-### A6. Bericht
+### A6. Report
 
-Schreib den Bericht fortlaufend in `docs/agent-prompts/443-batch-report.md` (pro Slice ein Abschnitt, gleich nach dem Slice) und committe ihn mit dem letzten Commit des Slices. Gliederung pro Slice:
+Write the report continuously in `docs/agent-prompts/443-batch-report.md` (one section per slice, right after the slice) and commit it with the last commit of the slice. Structure per slice:
 
-1. **Status:** fertig / angehalten (mit Stopp-Regel-Nummer).
-2. **Branch und letzter Commit-Hash.**
-3. **Geänderte und neue Dateien:** je ein Satz.
-4. **Abweichungen vom Auftrag:** jede mit Begründung, sonst „keine“.
-5. **Angepasste bestehende Tests/Szenarien:** welche, warum.
-6. **Ergebnis jedes Gate-Befehls (A2):** grün/rot, bei rot die Ausgabe.
-7. **Offene Fragen.**
+1. **Status:** done / halted (with stop rule number).
+2. **Branch and last commit hash.**
+3. **Changed and new files:** one sentence each.
+4. **Deviations from the assignment:** each with justification, otherwise "none".
+5. **Adjusted existing tests/scenarios:** which ones, why.
+6. **Result of each gate command (A2):** green/red, for red the output.
+7. **Open questions.**
 
 ---
 
-## TEIL B — Pflichtlektüre vor Slice 1
+## PART B — Required reading before Slice 1
 
-1. `gh issue view 443` komplett (Kontext, 22 Entscheidungen, Slices, AC 1–12).
-2. `docs/agent-prompts/443-slice-1-navigation.md` komplett: Das ist der **ausführliche Teil für Slice 1**.
+1. `gh issue view 443` in full (context, 22 decisions, slices, AC 1–12).
+2. `docs/agent-prompts/443-slice-1-navigation.md` in full: this is the **detailed part for Slice 1**.
 3. `apps/mobile-web/App.tsx`, `apps/mobile-web/App.test.tsx`.
 4. `apps/mobile-web/src/screens/cockpit/CockpitScreen.tsx`.
 5. `apps/mobile-web/src/screens/catalog/CatalogScreen.tsx`.
-6. `apps/mobile-web/src/screens/plausibility/PlausibilityScreen.tsx` und `packages/core/src/interview/plausibility.ts`.
-7. `packages/core/src/interview/interview.ts` (Typen `EntryStepId`, `Answers`, Werte-Konstanten).
-8. `e2e/scenarios/helpers/scenario-harness.mjs` und `e2e/scenarios/01-lena-hoffmann-angestellt.mjs`.
+6. `apps/mobile-web/src/screens/plausibility/PlausibilityScreen.tsx` and `packages/core/src/interview/plausibility.ts`.
+7. `packages/core/src/interview/interview.ts` (types `EntryStepId`, `Answers`, value constants).
+8. `e2e/scenarios/helpers/scenario-harness.mjs` and `e2e/scenarios/01-lena-hoffmann-angestellt.mjs`.
 
 ---
 
-## TEIL C — Die Slices
+## PART C — The slices
 
-### SLICE 1 — Navigation (Tab-Stacks & URL pro Maske)
+### SLICE 1 — Navigation (tab stacks & a URL per screen)
 
-Führe **Abschnitte 1–7** aus `docs/agent-prompts/443-slice-1-navigation.md` aus. Dessen Abschnitte 8 (Commits) und 9 (Bericht) werden durch Teil A ersetzt; der Branch heißt `feat/443-s1-navigation`.
+Carry out **sections 1–7** from `docs/agent-prompts/443-slice-1-navigation.md`. Its sections 8 (commits) and 9 (report) are replaced by Part A; the branch is called `feat/443-s1-navigation`.
 
-Danach gibt es: `apps/mobile-web/src/navigation/` mit `routes.ts`, `linking.ts`, `ShellState.tsx`, `CockpitStack.tsx`, `ProfileStack.tsx`, `AppTabs.tsx`, `RequiresAccount.tsx`. Alle folgenden Slices bauen darauf auf.
+Afterwards there is: `apps/mobile-web/src/navigation/` with `routes.ts`, `linking.ts`, `ShellState.tsx`, `CockpitStack.tsx`, `ProfileStack.tsx`, `AppTabs.tsx`, `RequiresAccount.tsx`. All following slices build on it.
 
 ---
 
-### SLICE 2 — Hub-Cockpit
+### SLICE 2 — Hub cockpit
 
-**Ziel:** Kein Tunnel mehr. Nach dem Primärbeleg und nach jeder Maske geht es zurück ins Cockpit. Das Cockpit zeigt Kacheln mit Status und einen hervorgehobenen „Nächster Schritt“.
+**Goal:** No more tunnel. After the primary document and after each screen, the user returns to the cockpit. The cockpit shows tiles with a status and a highlighted „Nächster Schritt“ ("Next step").
 
-**2.1 Tunnel auflösen** (in `CockpitStack.tsx`):
+**2.1 Dissolve the tunnel** (in `CockpitStack.tsx`):
 
-| Maske | `onDone` heute | `onDone` neu |
+| Screen | `onDone` today | `onDone` new |
 | :--- | :--- | :--- |
 | `Lstb` | Catalog `lebenslagen` | `CockpitHome` |
 | `CrossBorder` | Catalog `einkuenfte` | `CockpitHome` |
-| `Pension` | `CockpitHome` | unverändert |
-| `Catalog` (alle `entry`) | nächster Katalog / `Workdays` | `CockpitHome` |
-| `Workdays` | `Plausibility` bzw. `CockpitHome` | `CockpitHome` |
-| `Plausibility`, `FilingTypeComparison` | wie heute | unverändert (Slice 3 baut sie um) |
+| `Pension` | `CockpitHome` | unchanged |
+| `Catalog` (all `entry`) | next catalog / `Workdays` | `CockpitHome` |
+| `Workdays` | `Plausibility` or `CockpitHome` | `CockpitHome` |
+| `Plausibility`, `FilingTypeComparison` | as today | unchanged (Slice 3 rebuilds them) |
 
-Alle `onBack` der Masken führen zu `CockpitHome`. Ausnahmen: `Partner` → `CockpitMasterData` (wie heute) und `FilingTypeComparison` → `Plausibility` (wie heute). `revisit` beim Katalog ist immer `true`, wenn der Katalog über eine Kachel geöffnet wird und für diesen `entry` schon Antworten existieren; sonst `false`.
+All `onBack` of the screens lead to `CockpitHome`. Exceptions: `Partner` → `CockpitMasterData` (as today) and `FilingTypeComparison` → `Plausibility` (as today). `revisit` on the catalog is always `true` when the catalog is opened via a tile and answers already exist for this `entry`; otherwise `false`.
 
-**2.2 Kacheln.** Neue Datei `apps/mobile-web/src/screens/cockpit/tiles.ts` mit **einer** Liste aller Kacheln (rein, ohne React), und `CockpitTiles.tsx` zum Rendern. In Slice 2 sind **alle** Kacheln sichtbar, außer wo die Spalte „Sichtbar wenn“ etwas sagt (Persona-Filter kommt in Slice 5).
+**2.2 Tiles.** New file `apps/mobile-web/src/screens/cockpit/tiles.ts` with **one** list of all tiles (pure, without React), and `CockpitTiles.tsx` for rendering. In Slice 2, **all** tiles are visible, except where the "Visible when" column says something (the persona filter comes in Slice 5).
 
-| Kachel-ID | Route | Sichtbar wenn | Status „erledigt“, wenn |
+| Tile ID | Route | Visible when | Status "done" when |
 | :--- | :--- | :--- | :--- |
-| `lstb` | `Lstb` | Pfad `angestellte` | LStB-Status aus `wageTaxCertificateStatus` (core) ist vollständig |
-| `ch` | `CrossBorder` | Pfad `ch` | `foldStatus?.kind === 'bestimmt' && exchangeRate !== null` |
-| `rente` | `Pension` | Pfad `rente` | `status.kind === 'bestimmt'` |
-| `lebenslagen` | `Catalog` `lebenslagen` | immer | `nextStepFor(ENTRIES.lebenslagen, answers).kind === 'done'` |
-| `einkuenfte` | `Catalog` `einkuenfte` | immer | wie oben mit `einkuenfte` |
-| `sonderausgaben` | `Catalog` `sonderausgaben` | immer | wie oben mit `sonderausgaben` |
-| `arbeitsweg` | `Workdays` | Pfad ≠ `rente` | Arbeitsweg-Query liefert erfasste Arbeitstage |
-| `kapital` | `Capital` | immer | `status.kind === 'bestimmt'` (halb ausgefüllt = offen) |
-| `vermietung` | `Rental` | immer | `status.kind === 'bestimmt'` (halb ausgefüllt = offen) |
-| `kinder` | `Children` | Interview-Antwort `kinder` ≠ `Nein` | Kinder-Query liefert mindestens ein Kind |
+| `lstb` | `Lstb` | path `angestellte` | LStB status from `wageTaxCertificateStatus` (core) is complete |
+| `ch` | `CrossBorder` | path `ch` | `foldStatus?.kind === 'bestimmt' && exchangeRate !== null` |
+| `rente` | `Pension` | path `rente` | `status.kind === 'bestimmt'` |
+| `lebenslagen` | `Catalog` `lebenslagen` | always | `nextStepFor(ENTRIES.lebenslagen, answers).kind === 'done'` |
+| `einkuenfte` | `Catalog` `einkuenfte` | always | as above with `einkuenfte` |
+| `sonderausgaben` | `Catalog` `sonderausgaben` | always | as above with `sonderausgaben` |
+| `arbeitsweg` | `Workdays` | path ≠ `rente` | commute query returns recorded workdays |
+| `kapital` | `Capital` | always | `status.kind === 'bestimmt'` (half filled = open) |
+| `vermietung` | `Rental` | always | `status.kind === 'bestimmt'` (half filled = open) |
+| `kinder` | `Children` | interview answer `kinder` ≠ `Nein` | children query returns at least one child |
 
-- Die „Query“ ist jeweils der Hook, den die zugehörige Screen-Komponente heute schon benutzt (in deren Datei nachsehen). Lässt sich „erledigt“ aus der Antwort nicht eindeutig ablesen: Kachel zeigt **keinen** Status, und du schreibst es unter „Offene Fragen“.
-- Der Pfad kommt aus `pathFromAnswers(interview.answers)` wie heute in `CockpitScreen`.
-- Status-Anzeige: `offen` / `erledigt` / `⏳ Betrag offen` (siehe 2.4). Texte über i18n (`cockpit.kachel.status.offen` = „Offen“, `…erledigt` = „Erledigt“, `…betragOffen` = „⏳ Betrag offen“; Titel `cockpit.kachel.<id>.titel`, deutsch, kurz).
-- testIDs: Kachel `cockpit-kachel-<id>`, Status `cockpit-kachel-<id>-status`.
-- Die vorhandenen Buttons `cockpit-kapital`, `cockpit-vermietung`, `cockpit-kinder` **bleiben** (testIDs nicht entfernen); sie dürfen optisch zur Kachel werden, solange der testID am klickbaren Element bleibt. Dasselbe gilt für `cockpit-bescheid`, `cockpit-stammdaten`, `cockpit-ausdruck`.
-- Stil: vorhandene `Card`-Komponente aus `@steuereule/ui`, 2px-Konturen und harte Schatten wie die übrigen Karten. Kein neuer Stil.
+- The "query" is in each case the hook that the corresponding screen component already uses today (look it up in its file). If "done" cannot be read unambiguously from the response: the tile shows **no** status, and you write it under "Open questions".
+- The path comes from `pathFromAnswers(interview.answers)` as today in `CockpitScreen`.
+- Status display: `offen` / `erledigt` / `⏳ Betrag offen` (see 2.4). Text via i18n (`cockpit.kachel.status.offen` = „Offen“ ("Open"), `…erledigt` = „Erledigt“ ("Done"), `…betragOffen` = „⏳ Betrag offen“ ("Amount pending"); title `cockpit.kachel.<id>.titel`, German, short).
+- testIDs: tile `cockpit-kachel-<id>`, status `cockpit-kachel-<id>-status`.
+- The existing buttons `cockpit-kapital`, `cockpit-vermietung`, `cockpit-kinder` **stay** (do not remove the testIDs); they may visually become tiles as long as the testID stays on the clickable element. The same applies to `cockpit-bescheid`, `cockpit-stammdaten`, `cockpit-ausdruck`.
+- Style: the existing `Card` component from `@steuereule/ui`, 2px outlines and hard shadows like the other cards. No new style.
 
-**2.3 „Nächster Schritt“.** Der vorhandene Button `cockpit-weiter` wird zum „Nächster Schritt“-Button (testID bleibt `cockpit-weiter`). Er öffnet die **erste nicht erledigte sichtbare** Kachel in dieser Reihenfolge:
+**2.3 „Nächster Schritt“.** The existing button `cockpit-weiter` becomes the „Nächster Schritt“ button (testID stays `cockpit-weiter`). It opens the **first visible tile that is not done**, in this order:
 
-- Pfad `angestellte`: `lstb` → `lebenslagen` → `einkuenfte` → `sonderausgaben` → `arbeitsweg`
-- Pfad `ch`: `ch` → `einkuenfte` → `sonderausgaben` → `arbeitsweg`
-- Pfad `rente`: `rente` → `einkuenfte` → `sonderausgaben` *(vom Product Owner bestätigt)*
+- Path `angestellte`: `lstb` → `lebenslagen` → `einkuenfte` → `sonderausgaben` → `arbeitsweg`
+- Path `ch`: `ch` → `einkuenfte` → `sonderausgaben` → `arbeitsweg`
+- Path `rente`: `rente` → `einkuenfte` → `sonderausgaben` *(confirmed by the product owner)*
 
-Sind alle erledigt, zeigt der Button auf „Abgabe vorbereiten“ (ab Slice 3; in Slice 2 verschwindet er dann). Label über i18n: `cockpit.naechsterSchritt` = „Nächster Schritt: {{titel}}“. Für Gäste und solange das Interview nicht fertig ist, bleibt das heutige Verhalten von `cockpit-weiter` / `cockpit-interview` unverändert.
+When all are done, the button points to „Abgabe vorbereiten“ ("Prepare submission"; from Slice 3 on; in Slice 2 it disappears then). Label via i18n: `cockpit.naechsterSchritt` = „Nächster Schritt: {{titel}}“. For guests and as long as the interview is not finished, today's behavior of `cockpit-weiter` / `cockpit-interview` stays unchanged.
 
-**2.4 „Betrag später eintragen“ (AC 5). Erlaubte Ausnahme: `packages/core`, `apps/api/src/tax-estimate`, und in `apps/api/src/advisor/advisor.service.ts`, `apps/api/src/owl-mode/owl-mode.service.ts`, `apps/api/src/printout/printout.service.ts` nur der Austausch des Betrags-Parsens.** *(Korrigiert nach PR #449: Die Steuerschätzung hat keinen `openItems`-Mechanismus; `UNCERTAINTY_PER_ITEM`/`cockpit-range.ts` gehören zur Einkommensspanne.)*
-- In `packages/core/src/interview/interview.ts`: Konstante `export const AMOUNT_LATER = 'spaeter'`, Allowlist `export const LATER_ALLOWED_STEPS = ['dhf-miete', 'umzug-kosten', 'spenden-betrag', 'kv-pv-betrag', 'pv-betrag', 'kv-wahl-betrag', 'riester-betrag'] as const` und Funktion `laterAmountSteps(answers: Answers): readonly EntryStepId[]` (alle Schritte, deren Antwort `AMOUNT_LATER` ist). Export über den vorhandenen Index.
-- `isValidAnswer` akzeptiert `AMOUNT_LATER` **nur** für Schritte aus `LATER_ALLOWED_STEPS`. Für alle anderen Integer-Schritte (`weg`, `tage`, `ch-nichtrueckkehrtage`, `abfindung-betrag`, `lohnersatz-betrag`, `nebenjob-brutto`, `riester-einnahmen-vorjahr`) bleibt es ungültig.
-- Neue Core-Funktion `amountFromAnswer(value: string | undefined): number | null` (`null` für `undefined` und `AMOUNT_LATER`). Ersetze damit das lokale Parsen der Allowlist-Schritte in `parseAmount` (`packages/core/src/domains/health-insurance.ts`), `intFrom` (`packages/core/src/domains/employee.ts`) und in den drei oben genannten API-Dateien. `null` → wie „nicht angegeben“. `integerFrom` in `progression-clause.ts` bleibt unverändert. Pro Stelle ein Test, dass `'spaeter'` nicht zu `NaN` wird.
-- `packages/core/src/interview/plausibility.ts`: neue **Notice** (keine Conflict) `{ kind: 'betrag-spaeter', steps }`, wenn `laterAmountSteps` nicht leer ist. Dafür `PlausibilityInput` um die Katalog-Antworten erweitern, falls sie dort fehlen.
-- Spanne: reine Funktion `widenForLaterAmounts(result: Range, count: number): Range` in `packages/core/src/interview/cockpit.ts`: `to + count × UNCERTAINTY_PER_ITEM`, `from` unverändert; `count < 0` → `RangeError`. `apps/api/src/tax-estimate/tax-estimate.service.ts` ruft sie nur bei `kind === 'spanne'` auf, mit der Summe der `AMOUNT_LATER`-Antworten des Jahres (bei Ehepaaren beider Personen). Nur `result` wird verbreitert; `taxableIncome`, `incomeTax` usw. bleiben. Die Core-Schätzfunktionen bleiben unverändert. `apps/api/src/cockpit` wird nicht angefasst.
-- `TaxEstimateDto` bekommt `laterAmounts?: number` (nur gesetzt, wenn > 0). Danach `pnpm --filter @steuereule/api openapi:spec` und `pnpm --filter @steuereule/api-client generate`, generierte Dateien mit committen.
-- `CatalogScreen.tsx`, Komponente `IntegerFollowUp`: zweiter Button unter „Weiter“, **nur für Schritte aus `LATER_ALLOWED_STEPS`**, Variante `leise`, Text i18n `katalog.amountLater` = „Betrag später eintragen“, testID `katalog-later-<step>`. Er beantwortet den Schritt mit `AMOUNT_LATER`. Der Katalog läuft danach weiter wie nach einer normalen Antwort.
-- Kachel-Status `⏳ Betrag offen`: wenn eine Antwort im Katalog-`entry` der Kachel `AMOUNT_LATER` ist (hat Vorrang vor „erledigt“).
-- Wenn der Nutzer den Betrag später nachträgt (Katalog mit `revisit` öffnen, Zahl eingeben), ersetzt die Zahl `AMOUNT_LATER`.
+**2.4 „Betrag später eintragen“ ("Enter amount later") (AC 5). Allowed exception: `packages/core`, `apps/api/src/tax-estimate`, and in `apps/api/src/advisor/advisor.service.ts`, `apps/api/src/owl-mode/owl-mode.service.ts`, `apps/api/src/printout/printout.service.ts` only the replacement of the amount parsing.** *(Corrected after PR #449: the tax estimate has no `openItems` mechanism; `UNCERTAINTY_PER_ITEM`/`cockpit-range.ts` belong to the income range.)*
+- In `packages/core/src/interview/interview.ts`: constant `export const AMOUNT_LATER = 'spaeter'`, allowlist `export const LATER_ALLOWED_STEPS = ['dhf-miete', 'umzug-kosten', 'spenden-betrag', 'kv-pv-betrag', 'pv-betrag', 'kv-wahl-betrag', 'riester-betrag'] as const` and function `laterAmountSteps(answers: Answers): readonly EntryStepId[]` (all steps whose answer is `AMOUNT_LATER`). Export via the existing index.
+- `isValidAnswer` accepts `AMOUNT_LATER` **only** for steps from `LATER_ALLOWED_STEPS`. For all other integer steps (`weg`, `tage`, `ch-nichtrueckkehrtage`, `abfindung-betrag`, `lohnersatz-betrag`, `nebenjob-brutto`, `riester-einnahmen-vorjahr`) it stays invalid.
+- New core function `amountFromAnswer(value: string | undefined): number | null` (`null` for `undefined` and `AMOUNT_LATER`). Use it to replace the local parsing of the allowlist steps in `parseAmount` (`packages/core/src/domains/health-insurance.ts`), `intFrom` (`packages/core/src/domains/employee.ts`) and in the three API files named above. `null` → like "not specified". `integerFrom` in `progression-clause.ts` stays unchanged. One test per location that `'spaeter'` does not become `NaN`.
+- `packages/core/src/interview/plausibility.ts`: new **notice** (not a conflict) `{ kind: 'betrag-spaeter', steps }` when `laterAmountSteps` is not empty. For this, extend `PlausibilityInput` with the catalog answers if they are missing there.
+- Range: pure function `widenForLaterAmounts(result: Range, count: number): Range` in `packages/core/src/interview/cockpit.ts`: `to + count × UNCERTAINTY_PER_ITEM`, `from` unchanged; `count < 0` → `RangeError`. `apps/api/src/tax-estimate/tax-estimate.service.ts` calls it only for `kind === 'spanne'`, with the sum of the year's `AMOUNT_LATER` answers (for married couples, of both persons). Only `result` is widened; `taxableIncome`, `incomeTax` etc. stay. The core estimate functions stay unchanged. `apps/api/src/cockpit` is not touched.
+- `TaxEstimateDto` gets `laterAmounts?: number` (only set when > 0). Then `pnpm --filter @steuereule/api openapi:spec` and `pnpm --filter @steuereule/api-client generate`, commit the generated files too.
+- `CatalogScreen.tsx`, component `IntegerFollowUp`: a second button below „Weiter“ ("Continue"), **only for steps from `LATER_ALLOWED_STEPS`**, variant `leise`, text i18n `katalog.amountLater` = „Betrag später eintragen“, testID `katalog-later-<step>`. It answers the step with `AMOUNT_LATER`. The catalog then continues as after a normal answer.
+- Tile status `⏳ Betrag offen`: when an answer in the tile's catalog `entry` is `AMOUNT_LATER` (takes precedence over "done").
+- When the user enters the amount later (opens the catalog with `revisit`, enters a number), the number replaces `AMOUNT_LATER`.
 
-**2.5 Tests (Unit, `apps/mobile-web`):** Tunnel-Kanten aus 2.1; Reihenfolge von `cockpit-weiter` je Pfad; Statuslogik je Kachel (reine Funktionen in `tiles.ts`); `katalog-later-<step>` speichert `spaeter`; Kachel zeigt `⏳ Betrag offen`. **Core:** `laterAmountSteps`, Notice `betrag-spaeter`, `AMOUNT_LATER` als 0 €. `widenForLaterAmounts` mit `count` 0, 1, 3 und negativ; `isValidAnswer` mit `spaeter` für erlaubte und verbotene Schritte. **API:** Service-Test, dass eine `spaeter`-Antwort `result.to` um genau `UNCERTAINTY_PER_ITEM` erhöht und `result.from` gleich bleibt; Ehepaar mit je einer `spaeter`-Antwort → doppelt (Stil der vorhandenen Tests in `apps/api/test/tax-estimate.service.test.ts`).
+**2.5 Tests (unit, `apps/mobile-web`):** tunnel edges from 2.1; order of `cockpit-weiter` per path; status logic per tile (pure functions in `tiles.ts`); `katalog-later-<step>` stores `spaeter`; tile shows `⏳ Betrag offen`. **Core:** `laterAmountSteps`, notice `betrag-spaeter`, `AMOUNT_LATER` as €0. `widenForLaterAmounts` with `count` 0, 1, 3 and negative; `isValidAnswer` with `spaeter` for allowed and forbidden steps. **API:** service test that a `spaeter` answer raises `result.to` by exactly `UNCERTAINTY_PER_ITEM` and `result.from` stays the same; married couple with one `spaeter` answer each → double (style of the existing tests in `apps/api/test/tax-estimate.service.test.ts`).
 
-**2.6 E2E:** Die Szenarien 01–07 und 09–18 laufen heute durch den Tunnel. Ergänze in `e2e/scenarios/helpers/scenario-harness.mjs` zwei Helfer:
-- `openTile(page, tileId)` — klickt `cockpit-kachel-<tileId>` und wartet auf die Maske.
-- `nextStep(page)` — klickt `cockpit-weiter` und wartet auf die Maske.
+**2.6 E2E:** Scenarios 01–07 and 09–18 currently run through the tunnel. Add two helpers in `e2e/scenarios/helpers/scenario-harness.mjs`:
+- `openTile(page, tileId)` — clicks `cockpit-kachel-<tileId>` and waits for the screen.
+- `nextStep(page)` — clicks `cockpit-weiter` and waits for the screen.
 
-Stell die Szenarien so um, dass sie nach jeder Maske über `nextStep(page)` (oder `openTile`, wenn das Szenario eine andere Reihenfolge braucht) zur nächsten Maske gehen. **Die eingegebenen Werte und erwarteten Ergebnisse bleiben identisch.** Plausibilität und Veranlagungsvergleich öffnen die Szenarien in Slice 2 über die bestehenden Wege; in Slice 3 werden sie auf das Gate umgestellt. Ergänze in Szenario 06 einen Fall „Betrag später eintragen“ → Kachel zeigt `⏳ Betrag offen` → Betrag nachtragen → Status `Erledigt`.
+Rework the scenarios so that after each screen they go to the next screen via `nextStep(page)` (or `openTile`, if the scenario needs a different order). **The entered values and expected results stay identical.** In Slice 2 the scenarios open plausibility and the filing type comparison via the existing routes; in Slice 3 they are switched to the gate. In scenario 06, add a case „Betrag später eintragen“ → tile shows `⏳ Betrag offen` → enter the amount → status `Erledigt`.
 
 ---
 
-### SLICE 3 — Abgabe-Gate
+### SLICE 3 — Submission gate
 
-**Ziel:** Ohne bestandene Plausibilitätsprüfung kein Ausdruck. Warnungen erscheinen schon vorher an den Kacheln.
+**Goal:** No printout without a passed plausibility check. Warnings already appear on the tiles beforehand.
 
-**3.1 Hook.** Zieh die Berechnung aus `PlausibilityScreen.tsx` in einen Hook `apps/mobile-web/src/screens/plausibility/usePlausibility.ts`: `usePlausibility(taxYear) → { status: 'loading' | 'error' | 'ready', conflicts, notices }`. Er benutzt dieselben Queries und `checkPlausibility` wie heute. `PlausibilityScreen` benutzt danach den Hook (Verhalten unverändert).
+**3.1 Hook.** Pull the computation out of `PlausibilityScreen.tsx` into a hook `apps/mobile-web/src/screens/plausibility/usePlausibility.ts`: `usePlausibility(taxYear) → { status: 'loading' | 'error' | 'ready', conflicts, notices }`. It uses the same queries and `checkPlausibility` as today. `PlausibilityScreen` then uses the hook (behavior unchanged).
 
-**3.2 Zuordnung zu Kacheln.** In `tiles.ts` eine Konstante `FINDING_TILE: Record<Conflict['kind'] | Notice['kind'], TileId | 'abgabe'>`. Ordne jede `kind` aus `plausibility.ts` der Kachel zu, deren Maske das Problem behebt (z. B. `lstb-offen` → `lstb`; `betrag-spaeter` → die Kachel des `entry`, in dem der Schritt liegt). Passt keine Kachel: `'abgabe'`. Jede Zuordnung bekommt einen Unit-Test.
+**3.2 Mapping to tiles.** In `tiles.ts`, a constant `FINDING_TILE: Record<Conflict['kind'] | Notice['kind'], TileId | 'abgabe'>`. Map each `kind` from `plausibility.ts` to the tile whose screen fixes the problem (e.g. `lstb-offen` → `lstb`; `betrag-spaeter` → the tile of the `entry` that contains the step). If no tile fits: `'abgabe'`. Each mapping gets a unit test.
 
-**3.3 Live-Hinweise an den Kacheln.** Hat eine Kachel einen Conflict: rotes Hinweis-Label (Farbe aus dem Theme, die heute für Fehler genutzt wird), Text `cockpit.kachel.hinweis.blocker` = „Muss vor der Abgabe geklärt werden“. Hat sie nur Notices: Label `cockpit.kachel.hinweis.warnung` = „Bitte prüfen“. testID `cockpit-kachel-<id>-hinweis`.
+**3.3 Live hints on the tiles.** If a tile has a conflict: red hint label (theme color used for errors today), text `cockpit.kachel.hinweis.blocker` = „Muss vor der Abgabe geklärt werden“ ("Must be resolved before submission"). If it only has notices: label `cockpit.kachel.hinweis.warnung` = „Bitte prüfen“ ("Please check"). testID `cockpit-kachel-<id>-hinweis`.
 
-**3.4 Kachel „Abgabe vorbereiten“.** Eigene, breite Kachel unter den anderen, testID `cockpit-abgabe-vorbereiten`, i18n `cockpit.abgabe.titel` = „Abgabe vorbereiten“. Sie öffnet die neue Route `Submission` (`/app/steuerjahr/:year/abgabe`, in `routes.ts`/`linking.ts`/`CockpitStack.tsx` ergänzen, konto-pflichtig über `RequiresAccount`). Der Screen `SubmissionScreen` (neu, `apps/mobile-web/src/screens/submission/`) zeigt nacheinander:
-1. **Plausibilität:** Liste der Conflicts und Notices aus `usePlausibility`, jede mit Button zur zugehörigen Kachel-Route. Bei Conflicts ist „Weiter“ gesperrt. Bei nur Notices: Button `gate-warnung-bestaetigen`, Text `abgabe.warnungenBestaetigen` = „Gelesen, trotzdem weiter“.
-2. **Veranlagungsvergleich:** nur bei Zusammenveranlagung (gleiche Bedingung, unter der heute `FilingTypeComparisonScreen` sinnvoll ist; in den Stammdaten nachsehen). Optional: Button „Überspringen“ (`abgabe-vergleich-ueberspringen`). Inhalt: der vorhandene `FilingTypeComparisonScreen` eingebettet.
-3. **Ausdruck:** Button `abgabe-zum-ausdruck` öffnet den vorhandenen Root-Screen `Printout`.
+**3.4 Tile „Abgabe vorbereiten“.** Its own wide tile below the others, testID `cockpit-abgabe-vorbereiten`, i18n `cockpit.abgabe.titel` = „Abgabe vorbereiten“. It opens the new route `Submission` (`/app/steuerjahr/:year/abgabe`, add it in `routes.ts`/`linking.ts`/`CockpitStack.tsx`, account-required via `RequiresAccount`). The screen `SubmissionScreen` (new, `apps/mobile-web/src/screens/submission/`) shows in sequence:
+1. **Plausibility:** list of the conflicts and notices from `usePlausibility`, each with a button to the corresponding tile route. With conflicts, „Weiter“ is locked. With only notices: button `gate-warnung-bestaetigen`, text `abgabe.warnungenBestaetigen` = „Gelesen, trotzdem weiter“ ("Read, continue anyway").
+2. **Filing type comparison:** only for Zusammenveranlagung (joint assessment) (the same condition under which `FilingTypeComparisonScreen` makes sense today; look it up in the master data). Optional: button „Überspringen“ ("Skip") (`abgabe-vergleich-ueberspringen`). Content: the existing `FilingTypeComparisonScreen` embedded.
+3. **Printout:** button `abgabe-zum-ausdruck` opens the existing root screen `Printout`.
 
-- Die Bestätigung der Warnungen wird im `ShellState` gemerkt, je Steuerjahr und je Menge der Notice-`kind`s. Kommt eine neue Notice dazu, muss erneut bestätigt werden. Nach Reload ist sie weg (das ist gewollt).
-- `cockpit-weiter` zeigt auf „Abgabe vorbereiten“, wenn alle Kacheln der Reihenfolge aus 2.3 erledigt sind.
+- The confirmation of the warnings is remembered in `ShellState`, per tax year and per set of notice `kind`s. If a new notice is added, it must be confirmed again. After a reload it is gone (this is intended).
+- `cockpit-weiter` points to „Abgabe vorbereiten“ when all tiles of the order from 2.3 are done.
 
-**3.5 Ausdruck sperren.**
-- Der Button `cockpit-ausdruck` öffnet ab jetzt `Submission` statt direkt `Printout` (testID bleibt).
-- Der Root-Screen `Printout` (in `App.tsx`, `PrintoutRoute`) prüft beim Öffnen das Gate: Gibt es Conflicts **oder** unbestätigte Notices, ersetze die Route durch `App` → `Cockpit` → `Submission` mit demselben Jahr. Die Rückkehr von Stripe (`payment`-Param) bleibt erlaubt, wenn das Gate bestanden ist.
-- Die alte Route `Plausibility` bleibt erreichbar (URL bleibt), damit nichts bricht; das Cockpit verlinkt sie aber nicht mehr direkt.
+**3.5 Lock the printout.**
+- From now on, the button `cockpit-ausdruck` opens `Submission` instead of `Printout` directly (testID stays).
+- The root screen `Printout` (in `App.tsx`, `PrintoutRoute`) checks the gate on opening: if there are conflicts **or** unconfirmed notices, replace the route with `App` → `Cockpit` → `Submission` with the same year. The return from Stripe (`payment` param) stays allowed if the gate is passed.
+- The old route `Plausibility` stays reachable (the URL stays) so nothing breaks; but the cockpit no longer links to it directly.
 
-**3.6 Tests:** Unit: Gate sperrt bei Conflict; Notices brauchen Bestätigung; neue Notice → erneute Bestätigung; Vergleich nur bei Zusammenveranlagung; `/app/steuerjahr/2025/ausdruck` mit Conflict → `Submission`. **E2E:** alle Szenarien, die heute Plausibilität/Vergleich/Ausdruck erreichen (mindestens 01, 04, 14), gehen über `cockpit-abgabe-vorbereiten`. Ergänze in Szenario 08 einen Fall: Direktaufruf `/app/steuerjahr/2025/ausdruck` mit offener LStB → landet auf der Abgabe-Seite.
+**3.6 Tests:** Unit: gate locks on a conflict; notices need confirmation; new notice → confirmation again; comparison only for Zusammenveranlagung; `/app/steuerjahr/2025/ausdruck` with a conflict → `Submission`. **E2E:** all scenarios that currently reach plausibility/comparison/printout (at least 01, 04, 14) go via `cockpit-abgabe-vorbereiten`. In scenario 08, add a case: direct call `/app/steuerjahr/2025/ausdruck` with an open LStB → lands on the submission page.
 
 ---
 
 ### SLICE 4 — Sheets
 
-**Ziel:** Masken öffnen als Sheet über dem Cockpit. Beim Schließen wird gespeichert.
+**Goal:** Screens open as a sheet over the cockpit. Closing saves.
 
-**4.1 Komponente `Sheet`** in `packages/ui/src/components/Sheet.tsx` (Export im Index von `@steuereule/ui`):
+**4.1 Component `Sheet`** in `packages/ui/src/components/Sheet.tsx` (export in the index of `@steuereule/ui`):
 - Props: `onClose: () => void`, `children`, `testID?`.
-- Breite < 768 px (`useBreakpoint()` aus `@steuereule/ui` benutzen): Panel über die volle Breite, oben abgerundet (`t.radius.*`), oben ein Grabber (`sheet-grabber`), fährt von unten hoch. Ziehen am Grabber um mehr als 120 px nach unten → `onClose`. Benutze `PanResponder` aus `react-native`.
-- Breite ≥ 768 px: zentriertes Panel, max. Breite `WIDE_CONTENT_MAX_WIDTH`, kein Grabber.
-- In beiden Fällen: halbtransparenter Hintergrund (Farbe aus dem Theme), Klick darauf → `onClose`; Schließen-Button oben rechts `sheet-schliessen` mit Label i18n (in `packages/ui` per Prop `closeLabel` reinreichen, damit `ui` keine App-i18n braucht); `Escape`-Taste im Web → `onClose`.
-- `accessibilityViewIsModal` bzw. `role="dialog"` und `aria-modal` setzen; Fokus beim Öffnen ins Panel.
-- Stil: 2px-Kontur und harter Schatten wie `Card`.
-- Storybook/Gallery: Eintrag in `packages/ui/src/gallery/Gallery.tsx` ergänzen, wenn dort alle Komponenten gelistet sind.
+- Width < 768 px (use `useBreakpoint()` from `@steuereule/ui`): panel across the full width, rounded at the top (`t.radius.*`), a grabber at the top (`sheet-grabber`), slides up from the bottom. Dragging the grabber down by more than 120 px → `onClose`. Use `PanResponder` from `react-native`.
+- Width ≥ 768 px: centered panel, max width `WIDE_CONTENT_MAX_WIDTH`, no grabber.
+- In both cases: semi-transparent background (color from the theme), click on it → `onClose`; close button at the top right `sheet-schliessen` with an i18n label (passed into `packages/ui` via a `closeLabel` prop so that `ui` needs no app i18n); `Escape` key on web → `onClose`.
+- Set `accessibilityViewIsModal` or `role="dialog"` and `aria-modal`; focus moves into the panel on opening.
+- Style: 2px outline and hard shadow like `Card`.
+- Storybook/gallery: add an entry in `packages/ui/src/gallery/Gallery.tsx` if all components are listed there.
 
-**4.2 Einsatz.** In `CockpitStack.tsx` werden diese Routen als Sheet dargestellt: `Lstb`, `CrossBorder`, `Pension`, `Catalog`, `Workdays`, `Capital`, `Rental`, `Children`, `Partner`. Umsetzung:
-- Diese Routen in eine `Stack.Group` mit `screenOptions={{ presentation: 'transparentModal', animation: 'slide_from_bottom' }}`.
-- Der Wrapper jeder dieser Routen rendert `<Sheet onClose={close}>` um die Screen-Komponente.
-- Prüfe im Browser (Playwright oder `pnpm --filter @steuereule/mobile-web web`), dass das Cockpit hinter dem Sheet sichtbar bleibt. **Falls nicht:** Hintergrund des Sheets deckend machen und das im Bericht als Abweichung nennen. Nicht weiter basteln.
-- `renderActiveStackRoute` (`src/navigation/guards.ts`, aus Slice 1) unmountet verdeckte Stack-Routen. Für Sheets anpassen: `CockpitHome` bleibt gemountet, wenn die oberste Route eine dieser Sheet-Routen ist. Mit einem App-Test absichern (Sheet offen → `CockpitScreen` im Baum vorhanden).
-- Die TabBar ist ausgeblendet, solange eine dieser Routen aktiv ist (Logik in der `tabBar`-Funktion aus `AppTabs.tsx` ergänzen).
-- Die Masken-Komponenten selbst bekommen **keine** Sheet-Hülle. `OwlModeScreen` bettet sie weiter inline ein (nicht ändern).
+**4.2 Usage.** In `CockpitStack.tsx` these routes are shown as a sheet: `Lstb`, `CrossBorder`, `Pension`, `Catalog`, `Workdays`, `Capital`, `Rental`, `Children`, `Partner`. Implementation:
+- Put these routes in a `Stack.Group` with `screenOptions={{ presentation: 'transparentModal', animation: 'slide_from_bottom' }}`.
+- The wrapper of each of these routes renders `<Sheet onClose={close}>` around the screen component.
+- Check in the browser (Playwright or `pnpm --filter @steuereule/mobile-web web`) that the cockpit stays visible behind the sheet. **If not:** make the sheet's background opaque and name this in the report as a deviation. Do not keep tinkering.
+- `renderActiveStackRoute` (`src/navigation/guards.ts`, from Slice 1) unmounts covered stack routes. Adapt it for sheets: `CockpitHome` stays mounted when the topmost route is one of these sheet routes. Cover this with an app test (sheet open → `CockpitScreen` present in the tree).
+- The TabBar is hidden while one of these routes is active (add the logic in the `tabBar` function from `AppTabs.tsx`).
+- The screen components themselves get **no** sheet wrapper. `OwlModeScreen` keeps embedding them inline (do not change).
 
-**4.3 Auto-Save beim Schließen.** Helfer `apps/mobile-web/src/lib/blurActiveInput.ts`:
+**4.3 Auto-save on close.** Helper `apps/mobile-web/src/lib/blurActiveInput.ts`:
 - Web: `(document.activeElement as HTMLElement | null)?.blur()`.
-- Nativ: `Keyboard.dismiss()`.
+- Native: `Keyboard.dismiss()`.
 
-`close` in den Sheet-Wrappern ruft zuerst `blurActiveInput()`, dann `navigation.navigate('CockpitHome')`. Das löst das vorhandene Speichern beim Verlassen eines Feldes aus. **Kein** Verwerfen-Dialog. Ein gestagter LStB-Scan (`stagedDraft`, #444) wird **nicht** übernommen, weil `LstbScreen` bei einem gestagten Entwurf ohnehin nicht speichert. Das nicht umgehen.
+`close` in the sheet wrappers first calls `blurActiveInput()`, then `navigation.navigate('CockpitHome')`. This triggers the existing save on leaving a field. **No** discard dialog. A staged LStB scan (`stagedDraft`, #444) is **not** applied, because `LstbScreen` does not save with a staged draft anyway. Do not work around this.
 
-**4.4 Tests:** Unit für `Sheet` (Grabber nur < 768 px, `onClose` bei Escape, Backdrop, Schließen-Button; Ziehen > 120 px). App-Test: Betrag in `lstb-bruttoarbeitslohn` tippen, ohne das Feld zu verlassen `sheet-schliessen` drücken → PUT wurde gesendet (MSW). App-Test: Bei gestagtem Scan-Entwurf → **kein** PUT. **E2E:** Szenario 22 um „Sheet per Schließen-Button und per Escape schließen, Wert ist gespeichert“ ergänzen. `breakpoint-layout` muss bei 375 px und 1280 px grün sein.
+**4.4 Tests:** Unit for `Sheet` (grabber only < 768 px, `onClose` on Escape, backdrop, close button; drag > 120 px). App test: type an amount into `lstb-bruttoarbeitslohn`, press `sheet-schliessen` without leaving the field → a PUT was sent (MSW). App test: with a staged scan draft → **no** PUT. **E2E:** extend scenario 22 with "close the sheet via the close button and via Escape, the value is saved". `breakpoint-layout` must be green at 375 px and 1280 px.
 
 ---
 
-### SLICE 5 — Persona-Booster & duales Cockpit
+### SLICE 5 — Persona boosters & dual cockpit
 
-**Erlaubte Ausnahme: `packages/core`, `apps/api` (Interview-Katalog und Steuerschätzung), Szenario-Erwartungen nur dort, wo die neuen Abzüge greifen.**
+**Allowed exception: `packages/core`, `apps/api` (interview catalog and tax estimate), scenario expectations only where the new deductions apply.**
 
-**5.1 Persona ableiten.** Reine Funktion `derivePersonas(answers, masterData) → ReadonlySet<Persona>` in `apps/mobile-web/src/screens/cockpit/personas.ts`. `Persona = 'angestellt' | 'grenzgaenger' | 'rentner' | 'vermieter' | 'verheiratet' | 'alleinerziehend' | 'eltern'`. Regeln (Werte aus `interview.ts`):
-- `angestellt`: `job` ∈ {`Angestellt`, `Beides`} und `ausland` ≠ `Ja, in die Schweiz`
+**5.1 Derive the persona.** Pure function `derivePersonas(answers, masterData) → ReadonlySet<Persona>` in `apps/mobile-web/src/screens/cockpit/personas.ts`. `Persona = 'angestellt' | 'grenzgaenger' | 'rentner' | 'vermieter' | 'verheiratet' | 'alleinerziehend' | 'eltern'`. Rules (values from `interview.ts`):
+- `angestellt`: `job` ∈ {`Angestellt`, `Beides`} and `ausland` ≠ `Ja, in die Schweiz`
 - `grenzgaenger`: `ausland` = `Ja, in die Schweiz`
 - `rentner`: `job` = `Rente`
-- `vermieter`: Antwort auf Schritt `einkuenfte` ∈ {`Vermietung`, `Beides`} (`INCOME_VALUES`)
+- `vermieter`: answer to step `einkuenfte` ∈ {`Vermietung`, `Beides`} (`INCOME_VALUES`)
 - `verheiratet`: `familienstand` = `Verheiratet`
 - `eltern`: `kinder` ≠ `Nein`
-- `alleinerziehend`: `eltern` und `familienstand` ∈ {`Ledig`, `Geschieden oder getrennt`, `Verwitwet`}
+- `alleinerziehend`: `eltern` and `familienstand` ∈ {`Ledig`, `Geschieden oder getrennt`, `Verwitwet`}
 
-Kein neues Gate-Feld, keine neue Frage im Minimal-Gate. Unit-Tests für jede Regel.
+No new gate field, no new question in the minimal gate. Unit tests for each rule.
 
-**5.2 Sichtbarkeit.** Erweitere `tiles.ts` um eine Spalte „Personas“. Eine Kachel ist im Hauptbereich sichtbar, wenn sie zu einer der abgeleiteten Personas passt. **Alle anderen Kacheln** stehen in einem eingeklappten Bereich „Weitere Themen“ (`cockpit-weitere-themen`, i18n `cockpit.weitereThemen` = „Weitere Themen“). Keine Kachel ist ganz unerreichbar.
+**5.2 Visibility.** Extend `tiles.ts` with a "Personas" column. A tile is visible in the main area if it matches one of the derived personas. **All other tiles** go into a collapsed area „Weitere Themen“ ("More topics") (`cockpit-weitere-themen`, i18n `cockpit.weitereThemen` = „Weitere Themen“). No tile is completely unreachable.
 
-| Kachel-ID | Personas (Hauptbereich) | Route |
+| Tile ID | Personas (main area) | Route |
 | :--- | :--- | :--- |
 | `lstb` | angestellt | `Lstb` |
 | `ch` | grenzgaenger | `CrossBorder` |
 | `rente` | rentner | `Pension` |
 | `lebenslagen` | angestellt, grenzgaenger | `Catalog` lebenslagen |
-| `einkuenfte` | alle | `Catalog` einkuenfte |
-| `sonderausgaben` | alle | `Catalog` sonderausgaben |
+| `einkuenfte` | all | `Catalog` einkuenfte |
+| `sonderausgaben` | all | `Catalog` sonderausgaben |
 | `arbeitsweg` | angestellt, grenzgaenger | `Workdays` |
 | `kapital` | rentner | `Capital` |
 | `vermietung` | vermieter | `Rental` |
 | `kinder` | eltern | `Children` |
-| `alleinerziehend` (neu) | alleinerziehend | `Catalog` `alleinerziehend` (existiert schon in `CatalogScreen`) |
-| `haushalt` (neu) | alle | `Catalog` `haushalt` (neu, 5.4) |
-| `gesundheit` (neu) | rentner, eltern, alleinerziehend | `Catalog` `gesundheit` (neu, 5.5) |
+| `alleinerziehend` (new) | alleinerziehend | `Catalog` `alleinerziehend` (already exists in `CatalogScreen`) |
+| `haushalt` (new) | all | `Catalog` `haushalt` (new, 5.4) |
+| `gesundheit` (new) | rentner, eltern, alleinerziehend | `Catalog` `gesundheit` (new, 5.5) |
 
-Bei `grenzgaenger` lautet die Überschrift über den Kacheln i18n `cockpit.boosterUeberschrift.nachzahlung` = „Nachzahlung senken“, sonst `cockpit.boosterUeberschrift.erstattung` = „Erstattung erhöhen“.
+For `grenzgaenger`, the heading above the tiles is i18n `cockpit.boosterUeberschrift.nachzahlung` = „Nachzahlung senken“ ("Lower the additional payment"), otherwise `cockpit.boosterUeberschrift.erstattung` = „Erstattung erhöhen“ ("Increase the refund").
 
-**5.3 Duales Cockpit (ADR-0054).** Bei `verheiratet` **und** Veranlagungsart „zusammen“ (aus den Stammdaten): zwei Abschnitte, i18n `cockpit.bereich.du` = „Du“ und `cockpit.bereich.partner` = „{{name}}“ (Partnername aus der Stammdaten-Query, **nie** in die URL). Der Partner-Abschnitt hat die Kacheln `partner-lstb` und `partner-arbeitsweg` → Route `Partner` mit `area` `lstb` bzw. `arbeitsweg`; vor dem Navigieren `setPartner({ area, name })` im `ShellState`. Der Splittingvorteil erscheint über die **vorhandene** Steuerschätzung (`tax-estimate.service.ts` rechnet Person B schon mit). Keine neue Rechnung. Der Weg über die Stammdaten (`onRecordPartner`) bleibt zusätzlich erhalten.
+**5.3 Dual cockpit (ADR-0054).** For `verheiratet` **and** filing type "joint" (from the master data): two sections, i18n `cockpit.bereich.du` = „Du“ ("You") and `cockpit.bereich.partner` = „{{name}}“ (partner name from the master data query, **never** in the URL). The partner section has the tiles `partner-lstb` and `partner-arbeitsweg` → route `Partner` with `area` `lstb` or `arbeitsweg`; before navigating, `setPartner({ area, name })` in `ShellState`. The splitting advantage appears via the **existing** tax estimate (`tax-estimate.service.ts` already includes Person B). No new calculation. The route via the master data (`onRecordPartner`) is kept in addition.
 
-**5.4 Neuer Katalog `haushalt` (§ 35a EStG).** In `packages/core/src/interview/interview.ts` (Typ `EntryId`, Konstante `ENTRIES` ab ca. Zeile 290; als Vorlage dient der Eintrag `alleinerziehend`) einen neuen Eintrag `haushalt` mit diesen Schritten:
-1. `haushalt-gate`: „Hattest du Kosten für Handwerker, Haushaltshilfe oder Dienstleistungen rund um die Wohnung, auch aus der Nebenkostenabrechnung?“ Werte `Ja` / `Nein`. Bei `Nein` → fertig.
-2. `haushalt-dienstleistung-betrag`: Arbeitskosten haushaltsnahe Dienstleistungen und Pflege (z. B. Hausmeister, Treppenhausreinigung, Gartenpflege, Winterdienst), in Euro.
-3. `haushalt-handwerker-betrag`: Arbeitskosten Handwerkerleistungen (Renovierung, Reparatur, Wartung), in Euro.
-4. `haushalt-minijob-betrag`: Aufwendungen für eine geringfügig Beschäftigte im Haushalt, in Euro.
+**5.4 New catalog `haushalt` (§ 35a EStG).** In `packages/core/src/interview/interview.ts` (type `EntryId`, constant `ENTRIES` from around line 290; the entry `alleinerziehend` serves as a template), a new entry `haushalt` with these steps:
+1. `haushalt-gate`: „Hattest du Kosten für Handwerker, Haushaltshilfe oder Dienstleistungen rund um die Wohnung, auch aus der Nebenkostenabrechnung?“ ("Did you have costs for tradespeople, household help or services around your home, including from the utility bill?") Values `Ja` / `Nein`. With `Nein` → done.
+2. `haushalt-dienstleistung-betrag`: labor costs for household-related services and care (e.g. caretaker, stairwell cleaning, garden maintenance, winter service), in euros.
+3. `haushalt-handwerker-betrag`: labor costs for tradesperson services (renovation, repair, maintenance), in euros.
+4. `haushalt-minijob-betrag`: expenses for a marginally employed person in the household, in euros.
 
-Fragetexte deutsch über i18n (`katalog.questions.<step>`), Hinweis unter Schritt 1: „Nur Arbeits-, Maschinen- und Fahrtkosten zählen, kein Material. Bezahlt per Überweisung, nicht bar.“ Alle Beträge erlauben `Betrag später eintragen`.
+Question texts in German via i18n (`katalog.questions.<step>`), hint below step 1: „Nur Arbeits-, Maschinen- und Fahrtkosten zählen, kein Material. Bezahlt per Überweisung, nicht bar.“ ("Only labor, machine and travel costs count, no material. Paid by bank transfer, not cash.") All amounts allow `Betrag später eintragen`.
 
-**Rechenregel** (in `packages/core/src/domains/household-services.ts`, Parameter in `packages/core/src/math/tax-parameters.ts`, jeweils mit Kommentar `§ 35a EStG`):
-- Minijob (§ 35a Abs. 1): 20 % der Aufwendungen, höchstens **510 €**.
-- Dienstleistungen und Pflege (§ 35a Abs. 2): 20 %, höchstens **4.000 €**.
-- Handwerker (§ 35a Abs. 3): 20 %, höchstens **1.200 €**.
-- Die Summe ist eine **Steuerermäßigung**: Sie mindert die tarifliche Einkommensteuer, aber nie unter 0 €. Keine Erstattung darüber hinaus.
-- Rechne in Cent, Rundung wie der restliche Core (vorhandene Rundungshelfer benutzen).
+**Calculation rule** (in `packages/core/src/domains/household-services.ts`, parameters in `packages/core/src/math/tax-parameters.ts`, each with the comment `§ 35a EStG`):
+- Minijob (§ 35a Abs. 1): 20 % of the expenses, at most **510 €**.
+- Services and care (§ 35a Abs. 2): 20 %, at most **4.000 €**.
+- Tradespeople (§ 35a Abs. 3): 20 %, at most **1.200 €**.
+- The sum is a **tax reduction**: it reduces the tariff income tax, but never below 0 €. No refund beyond that.
+- Calculate in cents, rounding like the rest of the core (use the existing rounding helpers).
 
-**5.5 Neuer Katalog `gesundheit` (§ 33 EStG, Krankheitskosten).** Schritte:
-1. `gesundheit-gate`: „Hattest du selbst bezahlte Krankheitskosten (Zuzahlungen, Brille, Zahnersatz, Medikamente auf Rezept)?“ `Ja` / `Nein`.
-2. `gesundheit-betrag`: Summe der selbst getragenen Kosten nach Erstattungen der Krankenkasse, in Euro.
+**5.5 New catalog `gesundheit` (§ 33 EStG, medical costs).** Steps:
+1. `gesundheit-gate`: „Hattest du selbst bezahlte Krankheitskosten (Zuzahlungen, Brille, Zahnersatz, Medikamente auf Rezept)?“ ("Did you have self-paid medical costs (co-payments, glasses, dentures, prescription medication)?") `Ja` / `Nein`.
+2. `gesundheit-betrag`: sum of the self-borne costs after reimbursements from the health insurer, in euros.
 
-**Rechenregel** (`packages/core/src/domains/extraordinary-burdens.ts`, Parameter in `tax-parameters.ts`, Kommentar `§ 33 Abs. 3 EStG, stufenweise nach BFH VI R 75/14`):
-- Abziehbar ist nur der Teil über der **zumutbaren Belastung**. Sie wird **stufenweise** auf den Gesamtbetrag der Einkünfte (GdE) berechnet:
+**Calculation rule** (`packages/core/src/domains/extraordinary-burdens.ts`, parameters in `tax-parameters.ts`, comment `§ 33 Abs. 3 EStG, stufenweise nach BFH VI R 75/14`):
+- Only the part above the **reasonable burden** (zumutbare Belastung) is deductible. It is calculated **in tiers** on the total amount of income (Gesamtbetrag der Einkünfte, GdE):
 
-| GdE-Teil | bis 15.340 € | 15.341 € bis 51.130 € | über 51.130 € |
+| GdE portion | up to 15.340 € | 15.341 € to 51.130 € | over 51.130 € |
 | :--- | :--- | :--- | :--- |
-| Ledig, keine Kinder | 5 % | 6 % | 7 % |
-| Zusammenveranlagt, keine Kinder | 4 % | 5 % | 6 % |
-| 1 oder 2 Kinder | 2 % | 3 % | 4 % |
-| 3 oder mehr Kinder | 1 % | 1 % | 2 % |
+| Single, no children | 5 % | 6 % | 7 % |
+| Jointly assessed, no children | 4 % | 5 % | 6 % |
+| 1 or 2 children | 2 % | 3 % | 4 % |
+| 3 or more children | 1 % | 1 % | 2 % |
 
-- Pflicht-Testfall: GdE 51.835 €, 2 Kinder → 15.340 × 2 % + 35.790 × 3 % + 705 × 4 % = 306,80 + 1.073,70 + 28,20 = **1.408,70 €** zumutbare Belastung.
-- Der abziehbare Betrag mindert das zu versteuernde Einkommen (wie andere Abzüge im Core; den vorhandenen Weg finden und benutzen).
-- Woher der GdE kommt: aus der vorhandenen Berechnung im Core. Gibt es keinen GdE-Wert, den du sicher benutzen kannst: **Stopp-Regel 4**.
-- Die Kinderzahl kommt aus der Interview-Antwort `kinder`: `1 Kind` → 1–2 Kinder; `2 oder mehr` → **1–2 Kinder** (die Antwort unterscheidet nicht zwischen 2 und 3+; vom Product Owner bestätigt, nicht als offene Frage melden).
+- Mandatory test case: GdE 51.835 €, 2 children → 15.340 × 2 % + 35.790 × 3 % + 705 × 4 % = 306,80 + 1.073,70 + 28,20 = **1.408,70 €** reasonable burden.
+- The deductible amount reduces taxable income (like other deductions in the core; find and use the existing route).
+- Where the GdE comes from: from the existing calculation in the core. If there is no GdE value you can use safely: **stop rule 4**.
+- The number of children comes from the interview answer `kinder`: `1 Kind` → 1–2 children; `2 oder mehr` → **1–2 children** (the answer does not distinguish between 2 and 3+; confirmed by the product owner, do not report it as an open question).
 
-**5.6 Durchreichen.** Die API muss die Einträge `haushalt` und `gesundheit` wie die anderen Katalog-Einträge speichern und lesen. Ergänze beide Werte an genau diesen zwei Stellen: `ADMITTED_ENTRY_IDS` in `apps/api/src/interview/interview.service.ts` und das `enum` von `@ApiQuery({ name: 'eintrag' … })` in `apps/api/src/interview/interview.controller.ts`. Danach den API-Client neu erzeugen und die erzeugten Dateien mit committen:
+**5.6 Pass through.** The API must store and read the entries `haushalt` and `gesundheit` like the other catalog entries. Add both values in exactly these two places: `ADMITTED_ENTRY_IDS` in `apps/api/src/interview/interview.service.ts` and the `enum` of `@ApiQuery({ name: 'eintrag' … })` in `apps/api/src/interview/interview.controller.ts`. Then regenerate the API client and commit the generated files too:
 ```bash
 pnpm --filter @steuereule/api openapi:spec
 ```
 ```bash
 pnpm --filter @steuereule/api-client generate
 ```
-Generierte Dateien in `packages/api-client/src/generated/` nie von Hand ändern. Die Steuerschätzung (`apps/api/src/tax-estimate/tax-estimate.service.ts` → Core-Schätzfunktionen) bezieht beide Ergebnisse ein. Liste im Bericht jede Schätzfunktion, die du geändert hast. `CatalogScreen` bekommt die beiden neuen `entry`-Werte.
+Never edit generated files in `packages/api-client/src/generated/` by hand. The tax estimate (`apps/api/src/tax-estimate/tax-estimate.service.ts` → core estimate functions) includes both results. List every estimate function you changed in the report. `CatalogScreen` gets the two new `entry` values.
 
-**5.7 Ausdruck.** Prüfe mit `grep -ri "haushaltsnah\|aussergewoehnlich\|außergewöhnlich" apps/api/src/printout`, ob die Druckschablonen die Anlagen „Haushaltsnahe Aufwendungen“ und „Außergewöhnliche Belastungen“ schon können.
-- **Wenn nicht:** Lege in `apps/mobile-web/src/config/features.ts` die Konstante `HOUSEHOLD_AND_HEALTH_BOOSTERS = false` an. Solange sie `false` ist, sind die Kacheln `haushalt` und `gesundheit` unsichtbar und die Steuerschätzung ignoriert beide Kataloge (Flag zusätzlich in der API als Konstante). Grund: Nichts auf dem Bildschirm darf etwas versprechen, das der Ausdruck nicht liefert (ADR-0032). Im Bericht als offene Frage „Druckschablonen für § 35a/§ 33“ nennen.
-- **Wenn doch:** Flag `true` und die Werte in die vorhandenen Druckfelder schreiben.
-- In beiden Fällen sind Rechenlogik und Tests vollständig fertig.
+**5.7 Printout.** Check with `grep -ri "haushaltsnah\|aussergewoehnlich\|außergewöhnlich" apps/api/src/printout` whether the print templates already support the forms „Haushaltsnahe Aufwendungen“ (household-related expenses) and „Außergewöhnliche Belastungen“ (extraordinary burdens).
+- **If not:** create the constant `HOUSEHOLD_AND_HEALTH_BOOSTERS = false` in `apps/mobile-web/src/config/features.ts`. As long as it is `false`, the tiles `haushalt` and `gesundheit` are invisible and the tax estimate ignores both catalogs (flag additionally as a constant in the API). Reason: nothing on screen may promise something the printout does not deliver (ADR-0032). Name it in the report as the open question "Print templates for § 35a/§ 33".
+- **If so:** flag `true` and write the values into the existing print fields.
+- In both cases, the calculation logic and tests are fully complete.
 
-**5.8 Tests:** Core: alle Grenzen aus 5.4 (unter/genau auf/über dem Höchstbetrag je Absatz; Ermäßigung nie unter 0); alle 12 Zellen der Tabelle aus 5.5 plus der Pflicht-Testfall. Mobile: `derivePersonas` je Regel; Sichtbarkeit je Persona; „Weitere Themen“ enthält alle übrigen Kacheln; duales Cockpit nur bei verheiratet + zusammen; Partnername nicht in der URL. **E2E:** Szenario 04 (Weber) über die Partner-Kacheln statt über die Stammdaten; Szenario 05 (Rentner) sieht `kapital` im Hauptbereich und `arbeitsweg` unter „Weitere Themen“; Szenario 07 (alleinerziehend) sieht `alleinerziehend`. Ändern sich dadurch erwartete Beträge, **Stopp-Regel 3**, es sei denn das Flag aus 5.7 ist `true` und das Szenario gibt § 35a/§ 33-Kosten ein.
-
----
-
-### SLICE 6 — Dark Mode
-
-**6.1 Token-Audit.** Quelle der Farben: `finanzo-funke-design-system/project/tokens/colors.css` (hell) und `dunkel.css` (dunkel). Danach baut `pnpm --filter @steuereule/tokens build` das Paket `@steuereule/tokens`.
-- Liste im Bericht jede Farbe aus `colors.css`, die in `dunkel.css` **keinen** eigenen Wert hat, und sag zu jeder: bleibt gleich (Begründung) oder neuer Wert.
-- Neue Dunkel-Werte nur aus der vorhandenen Palette ableiten (keine neuen Markenfarben). Die Limette `funke` bleibt Akzent.
-- Harte Schatten (`effects.css`): Im Dunkeln dürfen sie nicht schwarz auf fast schwarz sein. Wenn `dunkel.css` keinen Schattenwert hat, setz den Schatten im Dunkeln auf die Konturfarbe (`tinte` dunkel), damit er sichtbar bleibt.
-- **Kontrast-Test** in `packages/tokens/src/contrast.test.ts`: Für hell **und** dunkel muss jede Text-auf-Fläche-Kombination, die die App benutzt (mindestens `tinte` und `tinte2` auf `grund`, `karte` und `nacht`, Text auf `funke`), ein Kontrastverhältnis von mindestens **4,5 : 1** haben (WCAG-Formel, im Test implementieren). Schlägt er fehl, Werte in `dunkel.css` anpassen, nicht den Test.
-
-**6.2 Verdrahten.**
-- `apps/mobile-web/src/lib/appearance.ts`: `type AppearancePreference = 'system' | 'light' | 'dark'`, lesen/schreiben in **localStorage** Key `steuereule.appearance`, jeder Zugriff in `try/catch`, Standard `system`. Geschrieben wird **nur**, wenn der Nutzer die Einstellung ändert.
-- `App.tsx`: `ThemeProvider mode` = Präferenz, bei `system` aus `useColorScheme()` (`react-native`). `StatusBar style` = `light` im Dunkeln, sonst `dark`.
-- `packages/ui`: Prüfe jede Komponente auf feste Farben (grep nach `#` und `rgba(`); ersetze sie durch Theme-Tokens.
-- `apps/mobile-web/src/icons/AppleG.tsx`: Füllfarbe `#1d1d1f` ist auf dunklem Grund unsichtbar; über eine `color`-Prop aus `t.color.tinte` steuern. `GoogleG.tsx` (Markenfarben) bleibt.
-
-**6.3 Profil.** In `ProfileScreen` ein Abschnitt „Darstellung“ (i18n `profil.darstellung.titel`) mit drei Optionen `System` / `Immer hell` / `Immer dunkel` (vorhandene `Option`- oder `Chip`-Komponente benutzen), testIDs `profil-darstellung-system`, `profil-darstellung-hell`, `profil-darstellung-dunkel`. Wirkt sofort und bleibt nach Reload.
-
-**6.4 Tests:** Unit: Präferenz-Logik (inkl. blockiertem Storage); `ThemeProvider` bekommt `dark` bei System-Dunkel; Profil-Auswahl schreibt den Key. **E2E:** neues Skript `e2e/responsive/dark-mode.mjs` (Stil wie `breakpoint-layout.mjs`, in `e2e/package.json` als `dark-mode` eintragen): `colorScheme: 'dark'` emulieren, Cockpit, eine Maske, Profil öffnen, prüfen, dass der Body-Hintergrund dem dunklen `grund` entspricht; `Immer hell` wählen, neu laden, hell. `no-client-persistence` muss grün bleiben. Wenn es wegen `steuereule.appearance` rot wird, prüfen, ob der Test-Flow die Einstellung ändert; der Key darf nur dann geschrieben werden.
+**5.8 Tests:** Core: all limits from 5.4 (below/exactly at/above the maximum per paragraph; reduction never below 0); all 12 cells of the table from 5.5 plus the mandatory test case. Mobile: `derivePersonas` per rule; visibility per persona; „Weitere Themen“ contains all remaining tiles; dual cockpit only for married + joint; partner name not in the URL. **E2E:** scenario 04 (Weber) via the partner tiles instead of via the master data; scenario 05 (pensioner) sees `kapital` in the main area and `arbeitsweg` under „Weitere Themen“; scenario 07 (single parent) sees `alleinerziehend`. If expected amounts change as a result, **stop rule 3**, unless the flag from 5.7 is `true` and the scenario enters § 35a/§ 33 costs.
 
 ---
 
-### SLICE 7 — Tastatur & Haptik
+### SLICE 6 — Dark mode
 
-**7.1 Tastatur.** `Input` aus `@steuereule/ui` setzt bei `type="numeric"` schon `keyboardType="number-pad"`; react-native-web macht daraus `inputmode="numeric"`.
-- Prüfe mit einem Unit-Test in `packages/ui`, dass `Input type="numeric"` im Web `inputmode="numeric"` rendert.
-- Finde alle Betrags- und Zahlenfelder in `apps/mobile-web/src` (grep nach `<Input` und `TextInput`), die **nicht** `type="numeric"` haben, aber Zahlen erwarten, und stell sie um. Liste sie im Bericht.
-- Formulare müssen bei geöffneter Bildschirmtastatur bedienbar bleiben: Masken mit Formularen (die Sheet-Inhalte aus Slice 4) bekommen `KeyboardAvoidingView` (`behavior="padding"` nur auf iOS, sonst ohne).
+**6.1 Token audit.** Source of the colors: `finanzo-funke-design-system/project/tokens/colors.css` (light) and `dunkel.css` (dark). Afterwards `pnpm --filter @steuereule/tokens build` builds the package `@steuereule/tokens`.
+- List in the report every color from `colors.css` that has **no** value of its own in `dunkel.css`, and for each say: stays the same (justification) or new value.
+- Derive new dark values only from the existing palette (no new brand colors). The lime `funke` stays the accent.
+- Hard shadows (`effects.css`): in the dark they must not be black on almost black. If `dunkel.css` has no shadow value, set the shadow in the dark to the outline color (`tinte` dark) so it stays visible.
+- **Contrast test** in `packages/tokens/src/contrast.test.ts`: for light **and** dark, every text-on-surface combination the app uses (at least `tinte` and `tinte2` on `grund`, `karte` and `nacht`, text on `funke`) must have a contrast ratio of at least **4,5 : 1** (WCAG formula, implement it in the test). If it fails, adjust the values in `dunkel.css`, not the test.
 
-**7.2 Haptik.**
+**6.2 Wire up.**
+- `apps/mobile-web/src/lib/appearance.ts`: `type AppearancePreference = 'system' | 'light' | 'dark'`, read/write in **localStorage** key `steuereule.appearance`, every access in `try/catch`, default `system`. It is written **only** when the user changes the setting.
+- `App.tsx`: `ThemeProvider mode` = preference, for `system` from `useColorScheme()` (`react-native`). `StatusBar style` = `light` in the dark, otherwise `dark`.
+- `packages/ui`: check every component for fixed colors (grep for `#` and `rgba(`); replace them with theme tokens.
+- `apps/mobile-web/src/icons/AppleG.tsx`: fill color `#1d1d1f` is invisible on a dark background; control it via a `color` prop from `t.color.tinte`. `GoogleG.tsx` (brand colors) stays.
+
+**6.3 Profile.** In `ProfileScreen`, a section „Darstellung“ ("Appearance") (i18n `profil.darstellung.titel`) with three options `System` / `Immer hell` ("Always light") / `Immer dunkel` ("Always dark") (use the existing `Option` or `Chip` component), testIDs `profil-darstellung-system`, `profil-darstellung-hell`, `profil-darstellung-dunkel`. Takes effect immediately and persists after a reload.
+
+**6.4 Tests:** Unit: preference logic (incl. blocked storage); `ThemeProvider` gets `dark` with system dark; profile selection writes the key. **E2E:** new script `e2e/responsive/dark-mode.mjs` (style like `breakpoint-layout.mjs`, register it in `e2e/package.json` as `dark-mode`): emulate `colorScheme: 'dark'`, open the cockpit, a screen, the profile, check that the body background matches the dark `grund`; choose `Immer hell`, reload, light. `no-client-persistence` must stay green. If it turns red because of `steuereule.appearance`, check whether the test flow changes the setting; the key may only be written then.
+
+---
+
+### SLICE 7 — Keyboard & haptics
+
+**7.1 Keyboard.** `Input` from `@steuereule/ui` already sets `keyboardType="number-pad"` for `type="numeric"`; react-native-web turns that into `inputmode="numeric"`.
+- Check with a unit test in `packages/ui` that `Input type="numeric"` renders `inputmode="numeric"` on web.
+- Find all amount and number fields in `apps/mobile-web/src` (grep for `<Input` and `TextInput`) that do **not** have `type="numeric"` but expect numbers, and switch them over. List them in the report.
+- Forms must stay usable with the on-screen keyboard open: screens with forms (the sheet contents from Slice 4) get `KeyboardAvoidingView` (`behavior="padding"` only on iOS, otherwise without).
+
+**7.2 Haptics.**
 ```bash
 pnpm --filter @steuereule/ui exec npx expo install expo-haptics
 ```
-(Falls das im Paket nicht klappt: `expo-haptics` mit der zu Expo SDK 53 passenden Version in `packages/ui/package.json` eintragen; Version im Bericht nennen.)
-- `packages/ui/src/lib/haptics.ts`: `hapticSelection()`, `hapticLight()`, `hapticMedium()`, `hapticSuccess()`, `hapticWarning()`. Auf Web **No-Op** (`Platform.OS === 'web'` → sofort zurück, `expo-haptics` gar nicht laden: `await import('expo-haptics')` nur nativ). Aus, wenn `AccessibilityInfo.isReduceMotionEnabled()` true ist oder die Präferenz aus. Fehler immer schlucken.
-- Präferenz: `setHapticsEnabled(boolean)` in `haptics.ts`; die App liest/schreibt sie in **localStorage** Key `steuereule.haptics` (`apps/mobile-web/src/lib/hapticsPreference.ts`, `try/catch`, nur beim Ändern schreiben) und reicht sie beim Start an `setHapticsEnabled` weiter.
-- Einbau: `Option` antippen → `hapticLight`; `TabBar`-Wechsel und Steuerjahr-Umschalter → `hapticSelection`; `Button variant="primaer"` → `hapticMedium`; Kachel wechselt auf „erledigt“ → `hapticSuccess`; Gate zeigt einen Conflict oder Speichern schlägt fehl → `hapticWarning`.
-- Profil: Schalter „Haptisches Feedback“ (`profil-haptik`), **nur auf nativen Plattformen** sichtbar (im Web ausblenden).
+(If that does not work in the package: add `expo-haptics` with the version matching Expo SDK 53 to `packages/ui/package.json`; name the version in the report.)
+- `packages/ui/src/lib/haptics.ts`: `hapticSelection()`, `hapticLight()`, `hapticMedium()`, `hapticSuccess()`, `hapticWarning()`. On web a **no-op** (`Platform.OS === 'web'` → return immediately, do not load `expo-haptics` at all: `await import('expo-haptics')` only on native). Off when `AccessibilityInfo.isReduceMotionEnabled()` is true or the preference is off. Always swallow errors.
+- Preference: `setHapticsEnabled(boolean)` in `haptics.ts`; the app reads/writes it in **localStorage** key `steuereule.haptics` (`apps/mobile-web/src/lib/hapticsPreference.ts`, `try/catch`, write only on change) and passes it to `setHapticsEnabled` at startup.
+- Integration: tapping `Option` → `hapticLight`; `TabBar` change and tax year switcher → `hapticSelection`; `Button variant="primaer"` → `hapticMedium`; tile changes to "done" → `hapticSuccess`; gate shows a conflict or saving fails → `hapticWarning`.
+- Profile: switch „Haptisches Feedback“ ("Haptic feedback") (`profil-haptik`), visible **only on native platforms** (hide on web).
 
-**7.3 Tests:** Unit: Haptik ist auf Web No-Op (Mock von `expo-haptics` wird nie aufgerufen); nativ (Platform-Mock) wird bei Primär-Button `impactAsync(Medium)` aufgerufen; bei reduce motion nicht; Präferenz aus → nicht. `inputmode="numeric"`-Test aus 7.1. E2E: keine neuen nötig, alle bestehenden grün.
+**7.3 Tests:** Unit: haptics is a no-op on web (the mock of `expo-haptics` is never called); on native (platform mock) `impactAsync(Medium)` is called for the primary button; not with reduce motion; preference off → not. The `inputmode="numeric"` test from 7.1. E2E: no new ones needed, all existing ones green.
 
 ---
 
-## TEIL D — Abschluss des Batches
+## PART D — Completing the batch
 
-Wenn Slice 7 fertig ist (oder der Batch angehalten wurde):
-1. Bericht `docs/agent-prompts/443-batch-report.md` um einen Abschnitt **„Gesamt“** ergänzen: Liste der Branches mit letztem Commit-Hash; Liste **aller** offenen Fragen aus allen Slices; welche Gate-Befehle lokal nicht liefen.
-2. Bericht committen.
-3. Nichts pushen.
+When Slice 7 is done (or the batch was halted):
+1. Add a section **„Gesamt“** ("Overall") to the report `docs/agent-prompts/443-batch-report.md`: list of the branches with the last commit hash; list of **all** open questions from all slices; which gate commands did not run locally.
+2. Commit the report.
+3. Push nothing.
