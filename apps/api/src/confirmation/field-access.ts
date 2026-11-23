@@ -4,7 +4,6 @@ import {
   isAssessmentPositionId,
   isValidAssessmentPositionAmount,
   WAGE_TAX_CERTIFICATE_FIELDS, LSTB_OPTIONAL_LINES, LSTB_SOCIAL_LINES, LSTB_SOLI_LINE,
-  RENTAL_FIELDS,
   SALARY_CERTIFICATE_AMOUNT_FIELDS,
   calculateWorkdays,
   isValidAssessmentAmount,
@@ -12,7 +11,6 @@ import {
   type IsoWeekday,
   type WageTaxCertificateFieldId,
   type Screen,
-  type RentalFieldId,
   type SalaryCertificateAmountFieldId,
   effectivePublicHolidays,
   germanStateOfAddress,
@@ -32,6 +30,7 @@ import { assertTravelDaysFit } from '../commute/ways-to-work.js'
 import type { PensionRepository } from '../pension/pension.repository.js'
 import { PENSION_ACCESS_FIELDS, pensionFieldAccess } from '../pension/pension-field-access.js'
 import type { RentalRepository } from '../rental/rental.repository.js'
+import { RENTAL_ACCESS_FIELDS, rentalFieldAccess } from '../rental/rental-field-access.js'
 import type { ProfileRepository } from '../profile/profile.repository.js'
 import { PROFILE_ACCESS_FIELDS, profileFieldAccess } from '../profile/profile-field-access.js'
 import { MASTER_DATA_FIELDS, type MasterDataField, type MasterDataRepository } from '../master-data/master-data.repository.js'
@@ -144,10 +143,6 @@ const CH_SALARY_ACCESS_FIELDS = [
   'kvZuschussAnspruch',
   'familienzulagenImBruttolohn',
 ] as const
-/** What describes a rental object beyond its amounts (Anlage V Zeilen 1–13, 20, 33, 46, 86); the mask's address call stores them. */
-const RENTAL_DETAIL_FIELDS = ['strasse', 'hausnummer', 'plz', 'city', 'livingArea', 'einheiten', 'depreciationAsLastYear', 'umlagen', 'schuldzinsen', 'anteilA'] as const
-type RentalDetailField = (typeof RENTAL_DETAIL_FIELDS)[number]
-const RENTAL_ACCESS_FIELDS = [...RENTAL_FIELDS, ...RENTAL_DETAIL_FIELDS] as const
 const CHILD_ACCESS_FIELDS = [
   'firstName',
   'lastName',
@@ -252,30 +247,7 @@ export function fieldAccessFrom({
     },
     rente: pensionFieldAccess(pension),
     kapital: capitalFieldAccess(capital),
-    vermietung: {
-      fields: RENTAL_ACCESS_FIELDS,
-      withInstance: true,
-      async read(userId, taxYear, instance) {
-        const property = (await rental.listForUserAndYear(userId, taxYear)).find((o) => o.id === instance)
-        if (property === undefined) return null
-        const details = Object.fromEntries(
-          RENTAL_DETAIL_FIELDS.map((f) => {
-            const v = property[f]
-            return [f, v === null || v === undefined ? null : String(v)]
-          }),
-        )
-        return { ...Object.fromEntries(RENTAL_FIELDS.map((f) => [f, property[f]])), ...details }
-      },
-      async write(userId, taxYear, instance, field, value) {
-        if (instance === null) return false
-        if ((RENTAL_DETAIL_FIELDS as readonly string[]).includes(field)) {
-          const detail = field as RentalDetailField
-          const stored = detail === 'depreciationAsLastYear' ? (value === null ? null : value === 'true') : value
-          return (await rental.setAddress(userId, taxYear, instance, { [detail]: stored })) !== null
-        }
-        return (await rental.setField(userId, taxYear, instance, field as RentalFieldId, value)) !== null
-      },
-    },
+    vermietung: rentalFieldAccess(rental),
   }
 
   if (profile) access.profil = profileFieldAccess(profile)
