@@ -36,16 +36,15 @@ export function masterDataFieldAccess(masterData: MasterDataRepository): ScreenA
     },
     async write(userId, _year, _instance, field, value) {
       const current = (await masterData.findByUserId(userId)) ?? emptyMasterData()
-      if (field === CHURCH_TAX_LIABLE) {
-        await masterData.save(userId, { ...current, kirchensteuerpflichtig: value === null ? null : value === 'true' })
-        return true
-      }
-      await masterData.save(userId, {
-        ...current,
-        [field as MasterDataField]: value,
-        // Art. 9 DSGVO: the religion is stored only with the moment of the consent (ADR-0091 for the owl's write).
-        ...(field === 'religion' ? { religionEinwilligungAm: value === null ? null : new Date() } : {}),
-      })
+      const changes =
+        field === CHURCH_TAX_LIABLE
+          ? { kirchensteuerpflichtig: value === null ? null : value === 'true' }
+          : {
+              [field as MasterDataField]: value,
+              // Art. 9 DSGVO: the religion is stored only with the moment of the consent (ADR-0091 for the owl's write).
+              ...(field === 'religion' ? { religionEinwilligungAm: value === null ? null : new Date() } : {}),
+            }
+      await masterData.save(userId, { ...current, ...changes })
       return true
     },
   }
