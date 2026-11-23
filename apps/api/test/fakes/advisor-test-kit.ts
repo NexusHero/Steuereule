@@ -18,7 +18,6 @@ import { FakeLinkRepository } from './fake-link.repository.js'
 import { FakeLstbRepository } from './fake-lstb.repository.js'
 import { FakeMarkingRepository } from './fake-marking.repository.js'
 import { FakeMasterDataRepository } from './fake-master-data.repository.js'
-import type { ModelConnectionService } from '../../src/ki/model-connection.service.js'
 import { FakeOwlCardDismissalRepository, FakeOwlSettingRepository } from './fake-owl-mode.repository.js'
 import { FakePensionRepository } from './fake-pension.repository.js'
 import { FakeProfileRepository } from './fake-profile.repository.js'
@@ -27,15 +26,31 @@ import { FakePersonalDataConsentRepository } from './fake-personal-data-consent.
 import { PersonalDataConsentService } from '../../src/owl-mode/personal-data-consent.service.js'
 import { TaxEstimateService } from '../../src/tax-estimate/tax-estimate.service.js'
 import { ChildrenService } from '../../src/children/children.service.js'
+import { AssessmentService } from '../../src/assessment/assessment.service.js'
+import { BusinessService } from '../../src/business/business.service.js'
+import { HebesatzDirectory } from '../../src/business/hebesatz.js'
+import { passThroughTransactionRunner, type TransactionRunner } from '../../src/common/transaction-runner.js'
+import { EnvAiRuntimeConfigService, type AiRuntimeConfigService } from '../../src/ki/ai-runtime-config.service.js'
+import { ModelConnectionService } from '../../src/ki/model-connection.service.js'
+import type { PrintoutService } from '../../src/printout/printout.service.js'
+import { FakeBusinessRepository } from './fake-business.repository.js'
+import { FakeReceiptRepository } from './fake-receipt.repository.js'
 
-export interface AdvisorTestKit {
+/** The fakes and the services over them that every wiring of the advisor shares. */
+export interface AdvisorTestFakes {
   readonly advisorRepo: InMemoryAdvisorRepository
   readonly interviewRepo: FakeInterviewAnswerRepository
   readonly rentalRepo: FakeRentalRepository
+  readonly capitalRepo: FakeCapitalRepository
   readonly childRepo: FakeChildRepository
   readonly commuteRepo: FakeCommuteRepository
   readonly chRepo: FakeChSalaryCertificateRepository
   readonly lstbRepo: FakeLstbRepository
+  readonly pensionRepo: FakePensionRepository
+  readonly receiptRepo: FakeReceiptRepository
+  readonly markingRepo: FakeMarkingRepository
+  readonly auditRepo: FakeAuditRepository
+  readonly linkRepo: FakeLinkRepository
   /** The Bescheid the drafts of a read Steuerbescheid are applied to (ADR-0098). */
   readonly assessmentRepo: FakeAssessmentRepository
   /** The joint return: set it up with `set` and `updatePersonB` to give the user a Person B. */
@@ -43,20 +58,50 @@ export interface AdvisorTestKit {
   readonly profileRepo: FakeProfileRepository
   /** The consent to personal data for the owl (ADR-0091); none until a test gives it. */
   readonly consent: PersonalDataConsentService
-  readonly service: AdvisorService
   readonly masterDataRepo: FakeMasterDataRepository
-  /** The estimate over the same fakes; the owl reads it only when the kit is built with `withEstimate`. */
+  readonly auditService: AuditService
+  readonly confirmationService: ConfirmationService
+  readonly owlModeService: OwlModeService
+  /** The estimate over the same fakes, as the owl reads it. */
   readonly taxEstimate: TaxEstimateService
   /** The Kinder mask's own service over the same fakes, for comparing the mask against the chat. */
   readonly children: ChildrenService
 }
 
+/** What a test may replace in a wiring; everything else is the kit's fake or the real service over the fakes. */
 export interface AdvisorTestKitOptions {
-  /** Hand the app's estimate to the AdvisorService, as the API module does. */
-  readonly withEstimate?: boolean
+  /** The language model. Without one the fixed rules answer. */
+  readonly engine?: AdvisorEnginePort | undefined
+  readonly modelConnection?: ModelConnectionService | undefined
+  readonly transactions?: TransactionRunner | undefined
+  /** The printout check; the kit's default knows no forms for any year, so the digest carries no printout gaps. */
+  readonly printout?: PrintoutCheck | undefined
+  readonly runtimeConfig?: AiRuntimeConfigService | undefined
 }
 
-/** An AdvisorService on in-memory fakes; pass an engine to exercise the model path. */
+/** The part of the printout the advisor reads: what still blocks it. */
+export interface PrintoutCheck {
+  check(userId: string, taxYear: number): Promise<{ readonly missing: string[] }>
+}
+
+/** The advisor wired over the kit's fakes. */
+export interface AdvisorWiring {
+  readonly service: AdvisorService
+}
+
+export interface AdvisorTestKit extends AdvisorTestFakes, AdvisorWiring {
+  /** The advisor once more over the same fakes, with other collaborators: another engine, a recording transaction runner. */
+  rewire(overrides: AdvisorTestKitOptions): AdvisorWiring
+}
+
+/** A year without forms: the printout has nothing to check, as for a tax year the app has no templates for. */
+const noFormsPrintout: PrintoutCheck = {
+  check: async () => {
+    throw new Error('no forms for this year')
+  },
+}
+
+/** The advisor on in-memory fakes, wired completely; pass an engine to exercise the model path. */
 export function buildAdvisorTestKit(engine?: AdvisorEnginePort, modelConnection?: ModelConnectionService, options: AdvisorTestKitOptions = {}): AdvisorTestKit {
   const advisorRepo = new InMemoryAdvisorRepository()
   const interviewRepo = new FakeInterviewAnswerRepository()
@@ -64,10 +109,14 @@ export function buildAdvisorTestKit(engine?: AdvisorEnginePort, modelConnection?
   const chRepo = new FakeChSalaryCertificateRepository()
   const childRepo = new FakeChildRepository()
   const rentalRepo = new FakeRentalRepository()
+  const capitalRepo = new FakeCapitalRepository()
   const profileRepo = new FakeProfileRepository()
   const commuteRepo = new FakeCommuteRepository()
   const assessmentRepo = new FakeAssessmentRepository()
-  const auditService = new AuditService(new FakeAuditRepository())
+  const receiptRepo = new FakeReceiptRepository()
+  const markingRepo = new FakeMarkingRepository()
+  const auditRepo = new FakeAuditRepository()
+  const auditService = new AuditService(auditRepo)
   const linkRepo = new FakeLinkRepository()
   const masterDataRepo = new FakeMasterDataRepository()
   const pensionRepo = new FakePensionRepository()
@@ -75,7 +124,7 @@ export function buildAdvisorTestKit(engine?: AdvisorEnginePort, modelConnection?
   const access = fieldAccessFrom({
     lstb: lstbRepo,
     pension: pensionRepo,
-    capital: new FakeCapitalRepository(),
+    capital: capitalRepo,
     rental: rentalRepo,
     profile: profileRepo,
     masterData: masterDataRepo,
@@ -90,7 +139,7 @@ export function buildAdvisorTestKit(engine?: AdvisorEnginePort, modelConnection?
     },
   })
   const consent = new PersonalDataConsentService(new FakePersonalDataConsentRepository(), auditService)
-  const confirmationService = new ConfirmationService(new FakeMarkingRepository(), access, auditService)
+  const confirmationService = new ConfirmationService(markingRepo, access, auditService)
   const owlModeService = new OwlModeService(
     new FakeOwlSettingRepository(),
     new FakeOwlCardDismissalRepository(),
@@ -102,31 +151,69 @@ export function buildAdvisorTestKit(engine?: AdvisorEnginePort, modelConnection?
   )
   const taxEstimate = new TaxEstimateService(lstbRepo, interviewRepo, chRepo, masterDataRepo, commuteRepo, linkRepo, childRepo, rentalRepo, pensionRepo)
   const children = new ChildrenService(childRepo, auditService, chRepo, linkRepo)
-  const service = new AdvisorService(
+  const assessmentService = new AssessmentService(assessmentRepo, lstbRepo, interviewRepo, chRepo, auditService)
+  const business = new BusinessService(new FakeBusinessRepository(), interviewRepo, auditService, new HebesatzDirectory())
+  const defaultRuntimeConfig = new EnvAiRuntimeConfigService({})
+
+  const wire = (wiring: AdvisorTestKitOptions): AdvisorWiring => {
+    const runtimeConfig = wiring.runtimeConfig ?? defaultRuntimeConfig
+    const service = new AdvisorService(
+      advisorRepo,
+      owlModeService,
+      confirmationService,
+      auditService,
+      interviewRepo,
+      lstbRepo,
+      chRepo,
+      commuteRepo,
+      childRepo,
+      rentalRepo,
+      capitalRepo,
+      profileRepo,
+      wiring.engine,
+      runtimeConfig,
+      wiring.transactions ?? passThroughTransactionRunner,
+      taxEstimate,
+      wiring.modelConnection ?? new ModelConnectionService(runtimeConfig),
+      assessmentService,
+      pensionRepo,
+      linkService,
+      (wiring.printout ?? noFormsPrintout) as unknown as PrintoutService,
+      consent,
+      receiptRepo,
+      business,
+    )
+    return { service }
+  }
+
+  const base: AdvisorTestKitOptions = { ...options, engine: options.engine ?? engine, modelConnection: options.modelConnection ?? modelConnection }
+  return {
     advisorRepo,
-    owlModeService,
-    confirmationService,
-    auditService,
     interviewRepo,
-    lstbRepo,
-    chRepo,
-    commuteRepo,
-    childRepo,
     rentalRepo,
-    new FakeCapitalRepository(),
-    profileRepo,
-    engine,
-    undefined,
-    undefined,
-    options.withEstimate ? taxEstimate : undefined,
-    modelConnection,
-    undefined,
+    capitalRepo,
+    childRepo,
+    commuteRepo,
+    chRepo,
+    lstbRepo,
     pensionRepo,
+    receiptRepo,
+    markingRepo,
+    auditRepo,
+    linkRepo,
+    assessmentRepo,
     linkService,
-    undefined,
+    profileRepo,
     consent,
-  )
-  return { advisorRepo, interviewRepo, rentalRepo, childRepo, commuteRepo, chRepo, lstbRepo, assessmentRepo, linkService, profileRepo, consent, service, masterDataRepo, taxEstimate, children }
+    masterDataRepo,
+    auditService,
+    confirmationService,
+    owlModeService,
+    taxEstimate,
+    children,
+    ...wire(base),
+    rewire: (overrides) => wire({ ...base, ...overrides }),
+  }
 }
 
 /** A step of a scripted engine turn: an event, or a pause that only ends when the turn is aborted. */

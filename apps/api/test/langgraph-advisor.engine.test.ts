@@ -16,8 +16,6 @@ import { AdvisorController, FastifyThrottlerGuard } from '../src/advisor/advisor
 import { AdvisorService } from '../src/advisor/advisor.service.js'
 import { InMemoryAdvisorRunLog } from '../src/advisor/run/advisor-run-log.js'
 import { AdvisorRunService } from '../src/advisor/run/advisor-run.service.js'
-import { InMemoryAdvisorRepository } from '../src/advisor/advisor.repository.js'
-import { AuditService } from '../src/audit/audit.service.js'
 import { BETTER_AUTH_BUNDLE } from '../src/auth/auth.tokens.js'
 import {
   AUTH_CONTEXT_REQUEST_KEY,
@@ -27,8 +25,6 @@ import {
 } from '../src/auth/user-context.guard.js'
 import { buildCorsOptions } from '../src/cors/build-cors-options.js'
 import { registerHelmet } from '../src/security/register-helmet.js'
-import { ConfirmationService } from '../src/confirmation/confirmation.service.js'
-import { fieldAccessFrom } from '../src/confirmation/field-access.js'
 import {
   DEFAULT_AI_TURN_LIMITS,
   EnvAiRuntimeConfigService,
@@ -36,26 +32,10 @@ import {
   type AiTurnLimits,
 } from '../src/ki/ai-runtime-config.service.js'
 import { createChatModelFromConfig } from '../src/ki/chat-model.factory.js'
-import { RagKiAdapter } from '../src/ki/ki.adapter.js'
 import { LangGraphAdvisorEngine } from '../src/ki/langgraph-advisor.engine.js'
-import { OwlModeService } from '../src/owl-mode/owl-mode.service.js'
-import { FakeAssessmentRepository } from './fakes/fake-assessment.repository.js'
-import { FakeAuditRepository } from './fakes/fake-audit.repository.js'
-import { FakeCapitalRepository } from './fakes/fake-capital.repository.js'
-import { FakeChSalaryCertificateRepository } from './fakes/fake-ch-salary-certificate.repository.js'
-import { FakeChildRepository } from './fakes/fake-child.repository.js'
-import { FakeCommuteRepository } from './fakes/fake-commute.repository.js'
-import { FakeInterviewAnswerRepository } from './fakes/fake-interview-answer.repository.js'
-import { FakeLinkRepository } from './fakes/fake-link.repository.js'
-import { FakeLstbRepository } from './fakes/fake-lstb.repository.js'
-import { FakeMarkingRepository } from './fakes/fake-marking.repository.js'
-import { FakeMasterDataRepository } from './fakes/fake-master-data.repository.js'
-import { FakeOwlCardDismissalRepository, FakeOwlSettingRepository } from './fakes/fake-owl-mode.repository.js'
-import { FakePensionRepository } from './fakes/fake-pension.repository.js'
-import { FakeProfileRepository } from './fakes/fake-profile.repository.js'
-import { FakeRentalRepository } from './fakes/fake-rental.repository.js'
 import { SAMPLE_DIGEST as sampleDigest } from './fixtures/sample-digest.js'
 import { BEARER_TOKEN_REPOSITORY } from '../src/auth/bearer-token.repository.js'
+import { buildAdvisorTestKit } from './fakes/advisor-test-kit.js'
 
 class ScriptedChatModel extends BaseChatModel {
   public invokeCount = 0
@@ -138,56 +118,7 @@ function runtimeWithProvider(
 
 /** An AdvisorService on in-memory fakes around the given engine, plus the repositories the tests read back. */
 function buildAdvisorServiceOnFakes(engine: LangGraphAdvisorEngine) {
-  const advisorRepo = new InMemoryAdvisorRepository()
-  const interviewRepo = new FakeInterviewAnswerRepository()
-  const lstbRepo = new FakeLstbRepository()
-  const chRepo = new FakeChSalaryCertificateRepository()
-  const childRepo = new FakeChildRepository()
-  const commuteRepo = new FakeCommuteRepository()
-  const assessmentRepo = new FakeAssessmentRepository()
-  const auditService = new AuditService(new FakeAuditRepository())
-
-  const access = fieldAccessFrom({
-    lstb: lstbRepo,
-    pension: new FakePensionRepository(),
-    capital: new FakeCapitalRepository(),
-    rental: new FakeRentalRepository(),
-    profile: new FakeProfileRepository(),
-    masterData: new FakeMasterDataRepository(),
-    link: new FakeLinkRepository(),
-    interview: interviewRepo,
-    chSalaryCertificate: chRepo,
-    child: childRepo,
-    commute: commuteRepo,
-    assessment: assessmentRepo,
-  })
-
-  const confirmationService = new ConfirmationService(new FakeMarkingRepository(), access, auditService)
-  const owlModeService = new OwlModeService(
-    new FakeOwlSettingRepository(),
-    new FakeOwlCardDismissalRepository(),
-    childRepo,
-    interviewRepo,
-    assessmentRepo,
-    new RagKiAdapter(),
-    auditService,
-  )
-
-  const service = new AdvisorService(
-    advisorRepo,
-    owlModeService,
-    confirmationService,
-    auditService,
-    interviewRepo,
-    lstbRepo,
-    chRepo,
-    commuteRepo,
-    childRepo,
-    new FakeRentalRepository(),
-    new FakeCapitalRepository(),
-    new FakeProfileRepository(),
-    engine,
-  )
+  const { advisorRepo, commuteRepo, service } = buildAdvisorTestKit(engine)
   return { advisorRepo, commuteRepo, service }
 }
 
