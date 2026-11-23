@@ -20,7 +20,6 @@ import {
   vatPeriodsOf,
   type CompanyCarInput,
   type CompanyCarResult,
-  chartAccounts,
   BANK_CSV_PRESETS,
   USEFUL_LIVES,
   type AssetCategory,
@@ -28,8 +27,6 @@ import {
   applyLosses,
   balanceSheet,
   carryBackLoss,
-  checkBookingDraft,
-  parseBookingDraft,
   closingBalances,
   depreciationDrafts,
   disposalDrafts,
@@ -45,14 +42,10 @@ import {
   anlagespiegel,
   kontennachweise,
   kontennachweisRequired,
-  isEuerKey,
-  lockPeriod,
   lossRules,
   openingEntryDraft,
   parseBankCsv,
   parseCamt053,
-  postEntry,
-  reverseEntry,
   suggestBooking,
   suggestProfessionKind,
   tradeTaxReturn,
@@ -62,14 +55,12 @@ import {
   withFingerprints,
   assetRegister,
   cashAccountingAllowed,
-  isIncomeKey,
   type BankCsvPreset,
   type BankTransaction,
   type BookingDraft,
   type BookingRule,
   type BookingTaxKey,
   type BusinessIncome,
-  type ChartOfAccounts,
   type BookkeepingMode,
   type CsvMapping,
   type ElsterForm,
@@ -78,7 +69,6 @@ import {
   type ChurchCode,
   type JournalEntry,
   type Ledger,
-  type LogRecord,
   type ProfessionAnswers,
   type ProfessionSuggestion,
   type TradeTaxReturn,
@@ -91,7 +81,6 @@ import { selfEmploymentEnabled } from '../config/self-employment.js'
 import { elsterTransmissionConfig, missingForTransmission, transmitEBilanz, type TransmissionMode, type TransmissionResult } from './elster-transmission.js'
 import {
   BUSINESS_REPOSITORY,
-  type BookAppend,
   type BusinessPerson,
   type BusinessRef,
   FIRST_BUSINESS,
@@ -101,17 +90,16 @@ import {
   type BusinessRepository,
   type FixedAssetRecord,
   type NewFixedAsset,
-  type LoadedBook,
 } from './business.repository.js'
-import { accountForEuerKey, bankAccountOf, bookIntegrity, deductibleByKeyInEuros, ecSalesListOf, eur, registerAssetOf, vatCorrectionOf, vatFiguresOf, type VatFigures } from './business-ledger.js'
+import { bankAccountOf, bookIntegrity, deductibleByKeyInEuros, ecSalesListOf, eur, registerAssetOf, vatCorrectionOf, vatFiguresOf, type VatFigures } from './business-ledger.js'
 import { HebesatzDirectory, type HebesatzLookup } from './hebesatz.js'
 import { zipStored } from './zip.js'
 import { BusinessContext } from './business-context.js'
+import { LedgerService } from './ledger.service.js'
 import { HEBESATZ_DIRECTORY } from './business.tokens.js'
 import {
   emptyTransaction,
   extraordinaryOf,
-  LABEL_ONLY_TAX_KEYS,
   ledgerCall,
   parseJson,
   PERSON_FORMS,
@@ -120,13 +108,12 @@ import {
   profitOf,
   round2,
   smallBusinessCheckOf,
-  taxKeyOfAccount,
   turnoverOf,
   withDefaultAnswers,
   withoutPersonWide,
 } from './business-helpers.js'
 import type {
-  AppliedMultiplier, BookView,
+  AppliedMultiplier,
   BuildingFactsInput,
   BusinessProfileView,
   DisposalFacts,
@@ -155,6 +142,7 @@ export class BusinessService {
     @Inject(AuditService) private readonly audit: AuditService,
     @Inject(HEBESATZ_DIRECTORY) private readonly hebesaetze: HebesatzDirectory,
     @Inject(BusinessContext) private readonly context: BusinessContext,
+    @Inject(LedgerService) private readonly ledger: LedgerService,
   ) {}
 
   /** Whether the path is open for the year (switch on, a business declared), for callers that must not throw. */
@@ -283,149 +271,24 @@ export class BusinessService {
   // ------------------------------------------------------------------------------------------------
   // The book
 
-  private view(book: LoadedBook | null, chart: ChartOfAccounts, mode: BookkeepingMode): BookView {
-    if (book === null) return { chart, mode, lockedThrough: null, integrity: { ok: true, entries: 0, headHash: null }, entries: [] }
-    const reversedBy = new Map(book.ledger.entries.filter((e) => e.reversalOf !== null).map((e) => [e.reversalOf!, e.number]))
-    return {
-      chart: book.book.chart,
-      mode: book.book.mode,
-      lockedThrough: book.book.lockedThrough,
-      integrity: bookIntegrity(book.ledger, book.log),
-      entries: book.ledger.entries.map((e) => ({ ...e, source: book.sources.get(e.number) ?? 'nutzer', reversedBy: reversedBy.get(e.number) ?? null })),
-    }
+  getBook(...args: Parameters<LedgerService['getBook']>) {
+    return this.ledger.getBook(...args)
   }
 
-  async getBook(userId: string, year: number, ref: BusinessRef): Promise<BookView> {
-    await this.context.assertOpen(userId, year)
-    const [{ chart, mode }, book] = await Promise.all([this.context.frame(userId, year, ref), this.repository.loadBook(userId, year, ref)])
-    await this.audit.append({ userId, action: 'READ', resource: 'selbststaendig' })
-    return this.view(book, chart, mode)
+  post(...args: Parameters<LedgerService['post']>) {
+    return this.ledger.post(...args)
   }
 
-  /** A change of the book refuses to build on a broken chain: the user has to see it first. */
-  private assertIntact(book: LoadedBook): void {
-    const integrity = bookIntegrity(book.ledger, book.log)
-    if (!integrity.ok) throw new ConflictError('BOOK_INTEGRITY_BROKEN', integrity.reason)
+  reverse(...args: Parameters<LedgerService['reverse']>) {
+    return this.ledger.reverse(...args)
   }
 
-  /** Posts drafts in order, each with its log record; validation errors come back in German. */
-  private postAll(book: LoadedBook, year: number, profile: BusinessProfileRecord | null, drafts: readonly { draft: BookingDraft; source: string; keepDraft?: string }[]): { ledger: Ledger; append: BookAppend; posted: JournalEntry[] } {
-    this.assertIntact(book)
-    let ledger = book.ledger
-    let log: readonly LogRecord[] = book.log
-    const posted: JournalEntry[] = []
-    const entries: { entry: JournalEntry; source: string; draft?: string }[] = []
-    for (const { draft, source, keepDraft } of drafts) {
-      const check = checkBookingDraft(draft, { chart: ledger.chart, mode: ledger.mode, year, lockedThrough: ledger.lockedThrough, smallBusiness: profile?.smallBusiness ?? false })
-      if (!check.ok) throw new InvalidInputError(`BOOKING_${check.code.toUpperCase()}`, check.reason)
-      const { asset: _asset, ...entryDraft } = draft
-      const result = postEntry(ledger, entryDraft)
-      ledger = result.ledger
-      log = appendLogRecord(log, 'entry', result.entry, this.context.now())
-      posted.push(result.entry)
-      entries.push({ entry: result.entry, source, ...(keepDraft !== undefined ? { draft: keepDraft } : {}) })
-    }
-    return { ledger, posted, append: { entries, log: log.slice(book.log.length) } }
+  quickEntry(...args: Parameters<LedgerService['quickEntry']>) {
+    return this.ledger.quickEntry(...args)
   }
 
-  /** One booking (ADR-0101 §11); a draft with an asset also enters the asset register. */
-  async post(userId: string, year: number, ref: BusinessRef, draft: BookingDraft, source = 'nutzer', keepDraft?: string): Promise<JournalEntry> {
-    await this.context.assertOpen(userId, year)
-    const { chart, mode, profile } = await this.context.frame(userId, year, ref)
-    const entry = await this.repository.changeBook(userId, year, ref, { chart, mode }, (book) => {
-      if (keepDraft !== undefined && [...book.sources.values()].includes(source)) throw new ConflictError('BOOKING_DRAFT_POSTED', 'Dieser Buchungsentwurf ist schon gebucht.')
-      const { posted, append } = this.postAll(book, year, profile, [{ draft, source, ...(keepDraft !== undefined ? { keepDraft } : {}) }])
-      const asset = draft.asset !== undefined && draft.asset.method !== 'sofort' ? this.assetOf(year, ref, chart, posted[0]!, draft) : null
-      return { result: posted[0]!, append: asset === null ? append : { ...append, assets: [asset] } }
-    })
-    await this.audit.append({ userId, action: 'WRITE', resource: 'selbststaendig' })
-    return entry
-  }
-
-  /** The asset an entry capitalises, checked by the core's schedule before anything is written. */
-  private assetOf(year: number, ref: BusinessRef, chart: ChartOfAccounts, entry: JournalEntry, draft: BookingDraft): NewFixedAsset | null {
-    const assetLine = entry.lines.find((l) => l.side === 'debit' && l.taxPart !== 'tax' && accountKindIsAsset(chart, l.account))
-    if (assetLine === undefined || draft.asset === undefined) return null
-    const category = draft.asset.category
-    const asset: NewFixedAsset = {
-      taxYear: year,
-      person: ref.person,
-      business: ref.business,
-      label: draft.asset.label,
-      account: assetLine.account,
-      acquisitionDate: entry.date,
-      acquisitionCost: assetLine.amount,
-      method: draft.asset.method,
-      category: category ?? null,
-      usefulLifeYears: draft.asset.usefulLifeYears ?? (category ? USEFUL_LIVES[category].years : null),
-      specialDepreciation: null,
-      disposal: null,
-      buildingFacts: null,
-      vatCorrection: null,
-    }
-    ledgerCall(() => registerAssetOf({ ...asset, id: 'neu' }, year))
-    return asset
-  }
-
-  /** Storno (GoBD Rz. 58 ff.): a mirrored entry, the original stays. */
-  async reverse(userId: string, year: number, ref: BusinessRef, number: number, input: { date: string; documentNumber: string; text?: string | undefined }): Promise<JournalEntry> {
-    await this.context.assertOpen(userId, year)
-    const { chart, mode } = await this.context.frame(userId, year, ref)
-    const entry = await this.repository.changeBook(userId, year, ref, { chart, mode }, (book) => {
-      this.assertIntact(book)
-      if (Number(input.date.slice(0, 4)) !== year) throw new InvalidInputError('BOOKING_WRONG_YEAR', `Das Datum ${input.date} liegt nicht im Jahr ${year}.`)
-      const result = ledgerCall(() => reverseEntry(book.ledger, number, { date: input.date, documentNumber: input.documentNumber, ...(input.text !== undefined ? { text: input.text } : {}) }))
-      const log = appendLogRecord(book.log, 'entry', result.entry, this.context.now())
-      return { result: result.entry, append: { entries: [{ entry: result.entry, source: 'storno' }], log: log.slice(book.log.length) } }
-    })
-    await this.audit.append({ userId, action: 'WRITE', resource: 'selbststaendig' })
-    return entry
-  }
-
-  /** The quick path (ADR-0101 §6): a total per EÜR line, booked against the bank like any entry. */
-  async quickEntry(userId: string, year: number, ref: BusinessRef, totals: readonly { key: string; amountCents: number; date?: string | undefined }[]): Promise<readonly JournalEntry[]> {
-    await this.context.assertOpen(userId, year)
-    const { chart, mode, profile } = await this.context.frame(userId, year, ref)
-    if (mode !== 'euer') throw new InvalidInputError('QUICK_ENTRY_EUER_ONLY', 'Summen je EÜR-Zeile gibt es nur bei der Einnahmenüberschussrechnung.')
-    const bank = bankAccountOf(chart)
-    const drafts = totals.map(({ key, amountCents, date }) => {
-      if (!isEuerKey(key)) throw new InvalidInputError('QUICK_ENTRY_UNKNOWN_KEY', `Die EÜR-Position „${key}“ gibt es nicht.`)
-      const account = accountForEuerKey(chart, key)
-      if (account === null) throw new InvalidInputError('QUICK_ENTRY_NO_ACCOUNT', `Für „${key}“ hat der ${chart} kein Konto.`)
-      const income = isIncomeKey(key)
-      // A tax key that only labels the line (no VAT in it) keeps the turnover visible to the VAT return
-      // and the § 19 test; a key that splits VAT stays off, the EÜR total is net and its VAT has its own line.
-      const labelKey = LABEL_ONLY_TAX_KEYS.has(taxKeyOfAccount(chart, account)) ? { taxKey: taxKeyOfAccount(chart, account) } : {}
-      const draft: BookingDraft = {
-        date: date ?? `${year}-12-31`,
-        documentNumber: `Summe-${key}`,
-        text: `Summe ${year}: ${key}`,
-        lines: income
-          ? [{ account: bank, side: 'debit', amount: amountCents }, { account, side: 'credit', amount: amountCents, ...labelKey }]
-          : [{ account, side: 'debit', amount: amountCents }, { account: bank, side: 'credit', amount: amountCents }],
-      }
-      return { draft, source: 'summe' }
-    })
-    const posted = await this.repository.changeBook(userId, year, ref, { chart, mode }, (book) => {
-      const result = this.postAll(book, year, profile, drafts)
-      return { result: result.posted, append: result.append }
-    })
-    await this.audit.append({ userId, action: 'WRITE', resource: 'selbststaendig' })
-    return posted
-  }
-
-  /** Festschreibung up to a day; it only moves forward, in the core, the database and the log. */
-  async lock(userId: string, year: number, ref: BusinessRef, through: string): Promise<BookView> {
-    await this.context.assertOpen(userId, year)
-    const { chart, mode } = await this.context.frame(userId, year, ref)
-    await this.repository.changeBook(userId, year, ref, { chart, mode }, (book) => {
-      this.assertIntact(book)
-      const ledger = ledgerCall(() => lockPeriod(book.ledger, through))
-      const log = appendLogRecord(book.log, 'lock', { through }, this.context.now())
-      return { result: ledger, append: { log: log.slice(book.log.length), lockedThrough: through } }
-    })
-    await this.audit.append({ userId, action: 'WRITE', resource: 'selbststaendig' })
-    return this.view(await this.repository.loadBook(userId, year, ref), chart, mode)
+  lock(...args: Parameters<LedgerService['lock']>) {
+    return this.ledger.lock(...args)
   }
 
   // ------------------------------------------------------------------------------------------------
@@ -496,7 +359,7 @@ export class BusinessService {
     const text = input.text ?? item.suggestion?.text ?? (item.transaction.counterpartyName ?? item.transaction.reference)
     const { chart } = await this.context.frame(userId, year, ref)
     const draft = draftFromTransaction(item.transaction, bankAccountOf(chart), { ruleId: item.suggestion?.ruleId ?? 'manuell', account, taxKey, text }, input.documentNumber ?? `Bank-${item.transaction.bookingDate}-${id.slice(0, 6)}`)
-    const entry = await this.post(userId, year, ref, draft, `bank:${id}`)
+    const entry = await this.ledger.post(userId, year, ref, draft, `bank:${id}`)
     await this.repository.setBankTransactionStatus(userId, id, 'gebucht', entry.number)
     if (input.remember === true && (item.transaction.counterpartyIban || item.transaction.counterpartyName)) {
       const criteria = item.transaction.counterpartyIban ? { counterpartyIban: item.transaction.counterpartyIban } : { counterpartyNameContains: item.transaction.counterpartyName! }
@@ -600,14 +463,12 @@ export class BusinessService {
     await this.context.assertOpen(userId, year)
     const { chart, mode, profile } = await this.context.frame(userId, year, ref)
     const assets = (await this.repository.listAssets(userId, ref, year)).map((r) => registerAssetOf(r, year))
-    const posted = await this.repository.changeBook(userId, year, ref, { chart, mode }, (book) => {
+    const posted = await this.ledger.postDrafts(userId, year, ref, { chart, mode }, profile, (book) => {
       const booked = new Set(book.sources.values())
-      const drafts: { draft: BookingDraft; source: string }[] = [
+      return [
         ...ledgerCall(() => depreciationDrafts(chart, assets, year)).map((draft) => ({ draft, source: `afa:${draft.documentNumber}` })),
         ...ledgerCall(() => disposalDrafts(chart, assets, year, bankAccountOf(chart))).map((draft) => ({ draft, source: `abgang:${draft.documentNumber}` })),
       ].filter((d) => !booked.has(d.source))
-      const result = this.postAll(book, year, profile, drafts)
-      return { result: result.posted, append: result.append }
     })
     await this.audit.append({ userId, action: 'WRITE', resource: 'selbststaendig' })
     return posted
@@ -642,13 +503,12 @@ export class BusinessService {
     const [nextFrame, thisFrame] = await Promise.all([this.context.frame(userId, next, ref), this.context.frame(userId, year, ref)])
     const profile = nextFrame.profile
     const frame = profile ? { chart: nextFrame.chart, mode: nextFrame.mode } : { chart: thisFrame.chart, mode: 'bilanz' as const }
-    const entry = await this.repository.changeBook(userId, next, ref, frame, (book) => {
+    const [entry] = await this.ledger.postDrafts(userId, next, ref, frame, profile, (book) => {
       if ([...book.sources.values()].includes('eb')) throw new ConflictError('OPENING_ENTRY_EXISTS', `Die Eröffnungsbilanz ${next} ist schon gebucht.`)
-      const result = this.postAll(book, next, profile, [{ draft: closing.bilanz!.openingEntry, source: 'eb' }])
-      return { result: result.posted[0]!, append: result.append }
+      return [{ draft: closing.bilanz!.openingEntry, source: 'eb' }]
     })
     await this.audit.append({ userId, action: 'WRITE', resource: 'selbststaendig' })
-    return entry
+    return entry!
   }
 
   // ------------------------------------------------------------------------------------------------
@@ -708,10 +568,7 @@ export class BusinessService {
         },
       })
     }
-    const posted = await this.repository.changeBook(userId, year, ref, { chart, mode }, (book) => {
-      const out = this.postAll(book, year, profile, drafts)
-      return { result: out.posted, append: out.append }
-    })
+    const posted = await this.ledger.postDrafts(userId, year, ref, { chart, mode }, profile, () => drafts)
     await this.audit.append({ userId, action: 'WRITE', resource: 'selbststaendig' })
     return posted
   }
@@ -940,33 +797,12 @@ export class BusinessService {
     return { facts, rules: lossRules(year, false), businessProfitEur: profitEur, year: year_, carryBack }
   }
 
-  // ------------------------------------------------------------------------------------------------
-  // Booking drafts (owl, receipts; ADR-0066 Zero-Write): posted only when the user takes them
-
-  /** The accepted draft behind `eule:<ref>`, while its entry stands (not reversed); null otherwise. */
-  async acceptedDraft(userId: string, year: number, ref: BusinessRef, draftRef: string): Promise<string | null> {
-    const book = await this.repository.loadBook(userId, year, ref)
-    if (book === null) return null
-    const number = [...book.sources.entries()].find(([, source]) => source === `eule:${draftRef}`)?.[0]
-    if (number === undefined) return null
-    if (book.ledger.entries.some((e) => e.reversalOf === number)) return null
-    return book.drafts.get(number) ?? null
+  acceptedDraft(...args: Parameters<LedgerService['acceptedDraft']>) {
+    return this.ledger.acceptedDraft(...args)
   }
 
-  /** Posts an accepted draft (`value`), or reverses the entry of `ref` when `value` is null (the draft's undo). */
-  async applyDraft(userId: string, year: number, ref: BusinessRef, draftRef: string, value: string | null): Promise<void> {
-    if (value === null) {
-      const book = await this.repository.loadBook(userId, year, ref)
-      const number = book ? [...book.sources.entries()].find(([, source]) => source === `eule:${draftRef}`)?.[0] : undefined
-      if (number === undefined) throw new NotFoundError('BOOKING_DRAFT_NOT_POSTED', 'Zu diesem Entwurf gibt es keine Buchung.')
-      const today = this.context.now().slice(0, 10)
-      const date = Number(today.slice(0, 4)) === year ? today : `${year}-12-31`
-      await this.reverse(userId, year, ref, number, { date, documentNumber: `Storno-${number}`, text: `Storno von Buchung ${number} (Entwurf zurückgenommen)` })
-      return
-    }
-    const parsed = parseBookingDraft(value)
-    if (!parsed.ok) throw new InvalidInputError('BOOKING_DRAFT_INVALID', parsed.reason)
-    await this.post(userId, year, ref, parsed.draft, `eule:${draftRef}`, value)
+  applyDraft(...args: Parameters<LedgerService['applyDraft']>) {
+    return this.ledger.applyDraft(...args)
   }
 
   // ------------------------------------------------------------------------------------------------
@@ -1076,10 +912,7 @@ export class BusinessService {
         ...(l.socialPayableEur > 0 ? [{ account: n('social_security_payables'), side: 'credit' as const, amount: c(l.socialPayableEur) }] : []),
       ],
     }
-    const [entry] = await this.repository.changeBook(userId, year, ref, { chart, mode }, (book) => {
-      const out = this.postAll(book, year, profile, [{ draft, source: 'lohn' }])
-      return { result: out.posted, append: out.append }
-    })
+    const [entry] = await this.ledger.postDrafts(userId, year, ref, { chart, mode }, profile, () => [{ draft, source: 'lohn' }])
     const run = await this.repository.addPayrollRun(userId, {
       taxYear: year,
       person: ref.person,
@@ -1282,7 +1115,7 @@ export class BusinessService {
    */
   private async elsterContext(userId: string, year: number, ref: BusinessRef) {
     const [own, businesses] = await Promise.all([this.context.loaded(userId, year, ref), this.context.businessesOf(userId, year, ref.person)])
-    for (const b of businesses) if (b.book) this.assertIntact(b.book)
+    for (const b of businesses) if (b.book) this.ledger.assertIntact(b.book)
     const first = businesses.find((b) => b.ref.business === FIRST_BUSINESS)?.profile ?? own.profile
     const merged: Ledger = { chart: own.ledger.chart, mode: 'euer', entries: businesses.flatMap((b) => b.vatEntries), lockedThrough: null }
     const personProfitEur = round2(businesses.reduce((sum, b) => sum + (b.book === null ? 0 : profitOf(b.ledger, year)), 0))
@@ -1402,7 +1235,7 @@ export class BusinessService {
     await this.context.assertUnlocked(userId, year)
     const { chart, mode, profile } = await this.context.frame(userId, year, ref)
     const files = await this.repository.changeBook(userId, year, ref, { chart, mode }, (book) => {
-      this.assertIntact(book)
+      this.ledger.assertIntact(book)
       const meta = { supplierName: profile?.name ?? 'Einzelunternehmen', supplierLocation: 'Deutschland', from: `${year}-01-01`, to: `${year}-12-31` }
       const log = appendLogRecord(book.log, 'export', { kind: 'gdpdu', from: meta.from, to: meta.to }, this.context.now())
       return { result: gdpduExport(book.ledger, log, meta).files, append: { log: log.slice(book.log.length) } }
@@ -1446,7 +1279,7 @@ export class BusinessService {
     if (download) await this.context.assertUnlocked(userId, year)
     const { book, ledger, profile } = await this.context.loaded(userId, year, ref)
     if (ledger.mode !== 'bilanz') throw new InvalidInputError('E_BILANZ_BILANZ_ONLY', 'Eine E-Bilanz gibt es nur bei der Bilanz.')
-    if (book) this.assertIntact(book)
+    if (book) this.ledger.assertIntact(book)
     const doc = parseJson<Partial<Record<VerfahrensdokuPlaceholder, string>>>(profile?.procedureDoc ?? null, {})
     const steuernummer = (doc.steuernummer ?? '').replaceAll(/\D/g, '')
     const assets = (await this.repository.listAssets(userId, ref, year)).map((r) => registerAssetOf(r, year))
@@ -1490,7 +1323,7 @@ export class BusinessService {
     // Sending runs under the book's lock: two requests cannot both send; the ticket goes into the log.
     const { chart, mode: bookMode } = await this.context.frame(userId, year, ref)
     const result = await this.repository.changeBook<TransmissionResult>(userId, year, ref, { chart, mode: bookMode }, async (book) => {
-      this.assertIntact(book)
+      this.ledger.assertIntact(book)
       if (book.log.some((r) => r.kind === 'export' && (r.payload as { kind?: string } | null)?.kind === 'e-bilanz')) {
         throw new ConflictError('E_BILANZ_ALREADY_SENT', 'Die E-Bilanz für dieses Jahr ist schon übermittelt; eine Berichtigung macht die App nicht.')
       }
@@ -1504,16 +1337,3 @@ export class BusinessService {
   }
 }
 
-function accountKindIsAsset(chart: ChartOfAccounts, number: string): boolean {
-  return ledgerAccounts(chart).get(number) === 'asset'
-}
-
-const accountKinds = new Map<ChartOfAccounts, Map<string, string>>()
-function ledgerAccounts(chart: ChartOfAccounts): Map<string, string> {
-  let map = accountKinds.get(chart)
-  if (!map) {
-    map = new Map(chartAccounts(chart).map((a) => [a.number, a.kind]))
-    accountKinds.set(chart, map)
-  }
-  return map
-}

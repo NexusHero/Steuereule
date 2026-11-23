@@ -5,6 +5,7 @@ import { BusinessContext } from './business-context.js'
 import type { BusinessRepository } from './business.repository.js'
 import { BusinessService } from './business.service.js'
 import type { HebesatzDirectory } from './hebesatz.js'
+import { LedgerService } from './ledger.service.js'
 
 /**
  * The self-employment services wired by hand, as BusinessModule wires them through Nest: for tests and
@@ -19,5 +20,6 @@ export function composeBusinessService(
   now?: () => string,
 ): BusinessService {
   const context = new BusinessContext(repository, interview, unlock, now)
-  return new BusinessService(repository, audit, hebesaetze, context)
+  const ledger = new LedgerService(repository, audit, context)
+  return new BusinessService(repository, audit, hebesaetze, context, ledger)
 }
