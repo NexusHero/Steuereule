@@ -39,6 +39,7 @@ import type { InterviewAnswerRepository } from '../interview/interview-answer.re
 import { INTERVIEW_ACCESS_FIELDS, interviewFieldAccess } from '../interview/interview-field-access.js'
 import { N_GRE_BOOLEAN_FIELDS, type CrossBorderSalaryStatementRepository, type NGreDetails } from '../ch-salary-certificate/ch-salary-certificate.repository.js'
 import type { ChildRepository } from '../children/child.repository.js'
+import { CHILD_ACCESS_FIELDS, childFieldAccess } from '../children/child-field-access.js'
 
 export type { ScreenAccess }
 
@@ -135,34 +136,6 @@ const CH_SALARY_ACCESS_FIELDS = [
   /** Anlage Vorsorgeaufwand Zeile 49 and the family allowance inside Ziffer 8 (ADR-0093). */
   'kvZuschussAnspruch',
   'familienzulagenImBruttolohn',
-] as const
-const CHILD_ACCESS_FIELDS = [
-  'firstName',
-  'lastName',
-  'geburtsdatum',
-  'taxId',
-  'childBenefitClaimEur',
-  'kinship',
-  'kinshipB',
-  'familyBenefitsOffice',
-  'domesticResidenceAllYear',
-  'otherParent',
-  'otherParentName',
-  'otherParentBirthDate',
-  'otherParentAddress',
-  'otherParentKind',
-  'otherParentDiedOn',
-  'registeredWithMeAllYear',
-  'childBenefitToMeAllYear',
-  'healthBasicEur',
-  'careEur',
-  'swissFamilyAllowanceEur',
-  'childcareEur',
-  'childcareProvider',
-  'childcareFrom',
-  'childcareTo',
-  'swissFamilyAllowancePayer',
-  'healthInsuranceAbroad',
 ] as const
 
 /**
@@ -291,53 +264,7 @@ export function fieldAccessFrom({
     }
   }
 
-  if (child) {
-    access.kind = {
-      fields: CHILD_ACCESS_FIELDS,
-      withInstance: true,
-      async read(userId, taxYear, instance) {
-        if (instance === null) return null
-        const list = await child.listForUserAndYear(userId, taxYear)
-        const c = list.find((k) => k.id === instance)
-        if (!c) return null
-        return {
-          firstName: c.firstName,
-          lastName: c.lastName,
-          geburtsdatum: c.geburtsdatum,
-          taxId: c.taxId,
-          childBenefitClaimEur: c.childBenefitClaimEur,
-          kinship: c.kinship,
-          kinshipB: c.kinshipB,
-          familyBenefitsOffice: c.familyBenefitsOffice,
-          domesticResidenceAllYear: c.domesticResidenceAllYear === null ? null : String(c.domesticResidenceAllYear),
-          otherParent: c.otherParent,
-          otherParentName: c.otherParentName,
-          otherParentBirthDate: c.otherParentBirthDate,
-          otherParentAddress: c.otherParentAddress,
-          otherParentKind: c.otherParentKind,
-          otherParentDiedOn: c.otherParentDiedOn,
-          registeredWithMeAllYear: c.registeredWithMeAllYear === null ? null : String(c.registeredWithMeAllYear),
-          childBenefitToMeAllYear: c.childBenefitToMeAllYear === null ? null : String(c.childBenefitToMeAllYear),
-          healthBasicEur: c.healthBasicEur,
-          careEur: c.careEur,
-          swissFamilyAllowanceEur: c.swissFamilyAllowanceEur,
-          childcareEur: c.childcareEur ?? null,
-          childcareProvider: c.childcareProvider ?? null,
-          childcareFrom: c.childcareFrom ?? null,
-          childcareTo: c.childcareTo ?? null,
-          swissFamilyAllowancePayer: c.swissFamilyAllowancePayer ?? null,
-          healthInsuranceAbroad: c.healthInsuranceAbroad === null || c.healthInsuranceAbroad === undefined ? null : String(c.healthInsuranceAbroad),
-        }
-      },
-      async write(userId, taxYear, instance, field, value) {
-        if (instance === null) return false
-        const boolFields = ['domesticResidenceAllYear', 'registeredWithMeAllYear', 'childBenefitToMeAllYear', 'healthInsuranceAbroad']
-        const parsedValue = boolFields.includes(field) ? (value === 'true' ? true : value === 'false' ? false : null) : value
-        const updated = await child.update(userId, taxYear, instance, { [field]: parsedValue })
-        return updated !== null
-      },
-    }
-  }
+  if (child) access.kind = childFieldAccess(child)
 
   if (commute) {
     access.commute = {
