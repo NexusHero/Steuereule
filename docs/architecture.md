@@ -182,14 +182,16 @@ constructor(@Inject(RECEIPT_REPOSITORY) private readonly receipts: ReceiptReposi
 | Receipt files | `StoragePort` · `STORAGE_PORT` | `PostgresByteaStorageAdapter` | the in-memory adapter of the receipt tests |
 | PDF of the GDPR export | `PdfRenderer` · `PDF_RENDERER` | `PlaywrightPdfRenderer` | |
 | Checking assistant tokens | `BearerTokenRepository` · `BEARER_TOKEN_REPOSITORY` | `PrismaBearerTokenRepository` | a fake in the guard test |
+| The tax case of a person and year, for the seven services that compute on a return (estimate, printout, Cockpit, Abgabe, Verlauf, Bescheid, Veranlagungsvergleich) | `TaxCaseReader` · `TAX_CASE_READER` (`tax-case/`) | `RepositoryTaxCaseReader` | `taxCaseReaderOver({ … })` over the fake repositories |
+| The estimate, for modules the estimate itself reads | `HouseholdEstimate` · `HOUSEHOLD_ESTIMATE` (owned by `capital/`), `PrintoutEstimate` · `PRINTOUT_ESTIMATE` (owned by `printout/`) | `TaxEstimateService`, bound by the global `TaxEstimatePortsModule` that only `AppModule` imports | the service over fakes, or a stub |
 
 ### 4.1.3 What is checked
 
 | Invariant | Test | How it proves that it can fail |
 | :--- | :--- | :--- |
-| The database client and eleven further SDK groups are imported only by the files named for them. That includes `src/prisma/**` and adapter classes in `*.prisma.ts`. | `apps/api/test/architecture.test.ts` | twelve constructed violations in the test; each must yield exactly one finding |
+| The database client and eleven further SDK groups are imported only by the files named for them. That includes `src/prisma/**` and adapter classes in `*.prisma.ts`. No file imports `ModuleRef` from `@nestjs/core` (no service locator); `Reflector` and `NestFactory` stay allowed. | `apps/api/test/architecture.test.ts` | fourteen constructed violations in the test, two of them imports of `ModuleRef` (named and namespace); each must yield exactly one finding |
 | A named exception that no longer imports its SDK is an error. | the same test | found one superfluous exception on its first run |
-| The set of *module → module* imports in `apps/api/src` equals the baseline (352 edges between 50 folders as of 2026-11-22). | the same test, baseline `apps/api/test/architecture-module-edges.json` | a difference in either direction fails |
+| The set of *module → module* imports in `apps/api/src` equals the baseline (335 edges between 53 folders as of 2026-11-23; 352 between 50 on 2026-11-22). | the same test, baseline `apps/api/test/architecture-module-edges.json` | a difference in either direction fails |
 | In the core: `math` imports nothing, `common` only `math`, `engine` never `interview`; no new direction between the folders. | `packages/core/src/architecture.test.ts` | broken with probe files on 2026-11-22 ([ADR-0102](adr/0102-ports-and-adapters-enforced-by-architecture-tests.md)) |
 | In the core: the files importing against the intended order are exactly the 23 known ones. | the same test | as above |
 | In the core: no cycle of value imports between files. | the same test | as above |
@@ -203,7 +205,7 @@ Both tests run in the CI job `test` of the workflow *Quality*.
 - **`mcp/` loads LangChain too**, because it imports `TOOL_ARG_SCHEMAS` from `ki/advisor-tools.ts`.
 - **`pdf-lib` has no port.** Only `printout/form-renderer.ts` imports it, but services call `renderForms` directly.
 - **better-auth is confined to two modules, not one file.** Twelve files in `auth/` and `device/` use it, among them the guard for JWT verification.
-- **Modules are tightly coupled.** 352 edges; 16 pairs of modules import each other. The ratchet prevents growth; it removes nothing.
+- **Modules are still coupled.** 335 edges; 3 pairs of modules import each other (2026-11-23, down from 16 on 2026-11-22). The ratchet prevents growth; removing an edge means rewriting the baseline (§11, finding 4).
 - **The core has two folder-level cycles**, see §5.2.
 - **DI tokens are not type-checked.** A missing binding fails at start-up, a wrong one only in an integration test.
 - **Imports are found by pattern.** An import path computed at runtime is invisible.
@@ -521,7 +523,7 @@ Two rules for gates: a gate counts only when it runs in CI against the real thin
 | 1 | **Asynchronous print jobs live in process memory.** `printout/printout-job.service.ts` keeps them in a `Map` and starts them with `setImmediate`. There is no worker and no limit on concurrent jobs. [ADR-0056](adr/0056-asynchronous-pdf-generation-job-queue.md) describes a queue that was not built that way. | On ten instances a status request finds the job only by chance. A restart loses it. The web app does not use this path at present. | Move the jobs to the database or to Redis, or remove the path and mark ADR-0056 as not implemented. |
 | 2 | **Tracing without an exporter.** | There are no distributed traces even though the code creates spans. | Install the OpenTelemetry SDK with an exporter. |
 | 3 | **SLOs without alerts.** The targets in `sre/reliability-spec.md` do not exist as monitoring resources. | Nobody is told automatically when one is violated. | Define alert rules in `infra/gcp`. |
-| 4 | **Tight coupling of the API modules** (§4.1.4). | A module can rarely be changed or tested alone. | Resolve the 16 mutual pairs one by one; the baseline shrinks with them. |
+| 4 | **Coupling of the API modules** (§4.1.4). On 2026-11-22: 352 edges, 16 mutual pairs. On 2026-11-23, after #562–#565 were merged: 335 edges, 3 mutual pairs. Removed by moving `ParseTaxYearPipe` to `common/`, the tax-year rows to `tax-year/`, the household storage to `household-core/` and the receipt-inbox prompt text to `ki/`, and by replacing the two `ModuleRef` lookups of the estimate with ports. Left: **advisor ↔ business** (the receipt parse strategy of `business/` stages drafts through `advisor/`, the owl reads the book), **advisor ↔ receipt** (receipt services write drafts through `advisor/`, the owl lists the receipts) and **business ↔ confirmation** (`booking-field-access.ts` takes `BOOKING_ACCESS_FIELDS` from `confirmation/field-access.ts`). Each needs a new port in code that #562–#564 have just reshaped. | A module of such a pair cannot be changed or tested without the other. | Give the draft staging a port owned by `receipt/` and `business/`, move `BOOKING_ACCESS_FIELDS` into `business/`, and rewrite the baseline. |
 | 5 | **LangChain runs through the advisory turn** (§4.1.4). | Lock-in to a framework. | Accepted as long as changing the provider stays configuration. |
 | 6 | **Rate limiting partly in process memory** (§8.7). | With several instances the limit applies per instance. | Back `ThrottlerModule` with Redis. |
 | 7 | **ELSTER transmission not operational.** The code calls an ERiC process; the operator certificate is missing. | Self-employed users who must file electronically cannot do so through the app. | Obtain the certificate, decide how the ERiC process is run ([ADR-0101](adr/0101-selbststaendige.md)). |

@@ -10,7 +10,7 @@ import type { FastifyRequest } from 'fastify'
 import { CurrentUser } from '../auth/current-user.decorator.js'
 import { RequiresAccount } from '../auth/requires-account.guard.js'
 import { UserContextGuard } from '../auth/user-context.guard.js'
-import { ParseTaxYearPipe } from '../cockpit/parse-tax-year.pipe.js'
+import { ParseTaxYearPipe } from '../common/parse-tax-year.pipe.js'
 import { UnlockStatusDto } from './dto/unlock.dto.js'
 import { UnlockService } from './unlock.service.js'
 

@@ -25,6 +25,7 @@ import { FakeMasterDataRepository } from './fakes/fake-master-data.repository.js
 import { FakePensionRepository } from './fakes/fake-pension.repository.js'
 import { FakeProfileRepository } from './fakes/fake-profile.repository.js'
 import { FakeRentalRepository } from './fakes/fake-rental.repository.js'
+import { taxCaseReaderOver } from '../src/tax-case/repository-tax-case.reader.js'
 
 const A1 = { person: 'A', business: 1 } as const
 
@@ -69,10 +70,7 @@ async function household(years: readonly number[], { unlocked = true } = {}) {
   const commute: CommuteRepository = { findForUserAndYear: async () => null, save: async (_u, _y, e) => e }
   const audit = new AuditService(new FakeAuditRepository())
   const unlock = { status: async () => (unlocked ? 'freigeschaltet' : 'offen') } as unknown as UnlockService
-  const printout = new PrintoutService(
-    profile, masterData, lstb, new FakePensionRepository(), new FakeCapitalRepository(), rental, new FakeChSalaryCertificateRepository(),
-    children, new FakeLinkRepository(), interview, new FakeMarkingRepository(), commute, unlock, audit, TEMPLATES_BASE,
-  )
+  const printout = new PrintoutService(taxCaseReaderOver({ profile, masterData, wageTaxCertificate: lstb, pension: new FakePensionRepository(), capital: new FakeCapitalRepository(), rental, salaryStatement: new FakeChSalaryCertificateRepository(), children, coupling: new FakeLinkRepository(), interview, commute }), new FakeMarkingRepository(), unlock, audit, TEMPLATES_BASE)
   const business = composeBusinessService(new FakeBusinessRepository(), interview, audit, new HebesatzDirectory(), unlock, () => '2026-11-20T10:00:00.000Z')
   for (const year of years) await business.post(USER, year, A1, fee(year))
   return { help: new ElsterHelpService(business, printout, audit), printout, business }

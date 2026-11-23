@@ -26,6 +26,7 @@ import { InterviewModule } from './interview/interview.module.js'
 import { CapitalModule } from './capital/capital.module.js'
 import { CommuteModule } from './commute/commute.module.js'
 import { TaxEstimateModule } from './tax-estimate/tax-estimate.module.js'
+import { TaxEstimatePortsModule } from './tax-estimate/tax-estimate-ports.module.js'
 import { LstbModule } from './lstb/lstb.module.js'
 import { ProfileModule } from './profile/profile.module.js'
 import { PensionModule } from './pension/pension.module.js'
@@ -55,6 +56,7 @@ import { DomainErrorFilter } from './common/domain-error.filter.js'
     CapitalModule,
     CommuteModule,
     TaxEstimateModule,
+    TaxEstimatePortsModule,
     ReceiptModule,
     LstbScanModule,
     ChCertificateScanModule,

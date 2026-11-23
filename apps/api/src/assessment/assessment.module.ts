@@ -1,9 +1,7 @@
 import { Module } from '@nestjs/common'
 import { AuditModule } from '../audit/audit.module.js'
-import { ChSalaryCertificateModule } from '../ch-salary-certificate/ch-salary-certificate.module.js'
-import { InterviewModule } from '../interview/interview.module.js'
-import { LstbModule } from '../lstb/lstb.module.js'
 import { PrismaModule } from '../prisma/prisma.module.js'
+import { TaxCaseModule } from '../tax-case/tax-case.module.js'
 import { AssessmentController } from './assessment.controller.js'
 import { ASSESSMENT_REPOSITORY } from './assessment.repository.js'
 import { PrismaAssessmentRepository } from './assessment.repository.prisma.js'
@@ -12,7 +10,7 @@ import { FILING_VERSION_REPOSITORY } from './filing-version.repository.js'
 import { PrismaFilingVersionRepository } from './filing-version.repository.prisma.js'
 
 @Module({
-  imports: [PrismaModule, AuditModule, LstbModule, InterviewModule, ChSalaryCertificateModule],
+  imports: [PrismaModule, AuditModule, TaxCaseModule],
   controllers: [AssessmentController],
   providers: [
     AssessmentService,

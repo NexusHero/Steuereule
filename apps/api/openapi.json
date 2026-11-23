@@ -935,6 +935,423 @@
         ]
       }
     },
+    "/v1/steuerjahre/{jahr}/ch-lohnausweis": {
+      "get": {
+        "operationId": "ChSalaryCertificateController_get",
+        "parameters": [
+          {
+            "name": "person",
+            "required": false,
+            "in": "query",
+            "description": "B: Person A records the Swiss figures of a partner without an own account (ADR-0054).",
+            "schema": {
+              "enum": [
+                "A",
+                "B"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "description": "The tax year (Steuerjahr) — validated to a sensible window (ParseSteuerjahrPipe, same as Cockpit).",
+            "schema": {
+              "example": 2026,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The caller’s CH-Lohnausweis mask + fold for this tax year — re-entry.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChSalaryCertificateResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Guest session — this endpoint requires a signed-in account."
+          }
+        },
+        "tags": [
+          "ch-lohnausweis"
+        ]
+      }
+    },
+    "/v1/steuerjahre/{jahr}/ch-lohnausweis/{feld}": {
+      "put": {
+        "operationId": "ChSalaryCertificateController_setField",
+        "parameters": [
+          {
+            "name": "person",
+            "required": false,
+            "in": "query",
+            "description": "B: Person A records the Swiss figures of a partner without an own account (ADR-0054).",
+            "schema": {
+              "enum": [
+                "A",
+                "B"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "feld",
+            "required": true,
+            "in": "path",
+            "description": "One of the 14 CHF-betrag Lohnausweis fields (ParseLohnausweisFeldPipe).",
+            "schema": {
+              "example": "bruttolohn-total",
+              "type": "string"
+            }
+          },
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "description": "The tax year (Steuerjahr) — validated to a sensible window (ParseSteuerjahrPipe, same as Cockpit).",
+            "schema": {
+              "example": 2026,
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PutSalaryCertificateFieldDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The updated mask and its derived fold.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChSalaryCertificateResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Guest session — this endpoint requires a signed-in account."
+          }
+        },
+        "tags": [
+          "ch-lohnausweis"
+        ]
+      }
+    },
+    "/v1/steuerjahre/{jahr}/ch-lohnausweis/bemerkungen": {
+      "put": {
+        "operationId": "ChSalaryCertificateController_setRemarks",
+        "parameters": [
+          {
+            "name": "person",
+            "required": false,
+            "in": "query",
+            "description": "B: Person A records the Swiss figures of a partner without an own account (ADR-0054).",
+            "schema": {
+              "enum": [
+                "A",
+                "B"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "description": "The tax year (Steuerjahr).",
+            "schema": {
+              "example": 2026,
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PutRemarksDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The updated mask and its derived fold.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChSalaryCertificateResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "ch-lohnausweis"
+        ]
+      }
+    },
+    "/v1/steuerjahre/{jahr}/ch-lohnausweis/vorsorge": {
+      "put": {
+        "operationId": "ChSalaryCertificateController_setProvision",
+        "parameters": [
+          {
+            "name": "person",
+            "required": false,
+            "in": "query",
+            "description": "B: Person A records the Swiss figures of a partner without an own account (ADR-0054).",
+            "schema": {
+              "enum": [
+                "A",
+                "B"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "description": "The tax year (Steuerjahr).",
+            "schema": {
+              "example": 2026,
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PutProvisionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The updated mask and its derived fold.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChSalaryCertificateResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "ch-lohnausweis"
+        ]
+      }
+    },
+    "/v1/steuerjahre/{jahr}/ch-lohnausweis/n-gre": {
+      "put": {
+        "operationId": "ChSalaryCertificateController_setNGre",
+        "parameters": [
+          {
+            "name": "person",
+            "required": false,
+            "in": "query",
+            "description": "B: Person A records the Swiss figures of a partner without an own account (ADR-0054).",
+            "schema": {
+              "enum": [
+                "A",
+                "B"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "description": "The tax year (Steuerjahr).",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PutNGreDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The updated mask including the Anlage-N-Gre facts.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChSalaryCertificateResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "ch-lohnausweis"
+        ]
+      }
+    },
+    "/v1/steuerjahre/{jahr}/ch-lohnausweis/wechselkurs": {
+      "put": {
+        "operationId": "ChSalaryCertificateController_setExchangeRate",
+        "parameters": [
+          {
+            "name": "person",
+            "required": false,
+            "in": "query",
+            "description": "B: Person A records the Swiss figures of a partner without an own account (ADR-0054).",
+            "schema": {
+              "enum": [
+                "A",
+                "B"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "description": "The tax year (Steuerjahr).",
+            "schema": {
+              "example": 2026,
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PutExchangeRateDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The updated mask and its derived fold.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChSalaryCertificateResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "ch-lohnausweis"
+        ]
+      }
+    },
+    "/v1/steuerjahre/{jahr}/ch-lohnausweis/grenzgaenger": {
+      "put": {
+        "operationId": "ChSalaryCertificateController_setCrossBorderFacts",
+        "parameters": [
+          {
+            "name": "person",
+            "required": true,
+            "in": "query",
+            "description": "Only for Person B: the user answers these questions in the interview.",
+            "schema": {
+              "enum": [
+                "B"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "description": "The tax year (Steuerjahr).",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PutCrossBorderFactsDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Person B’s mask with the Grenzgänger status the answers give.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChSalaryCertificateResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "ch-lohnausweis"
+        ]
+      }
+    },
+    "/v1/arbeitgeber": {
+      "get": {
+        "operationId": "KnownEmployersController_list",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "The employers recorded on the Swiss salary certificates of the user and their Person B, over all years.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/KnownEmployerDto"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Guest session — this endpoint requires a signed-in account."
+          }
+        },
+        "tags": [
+          "ch-lohnausweis"
+        ]
+      }
+    },
     "/v1/steuerjahre/{jahr}/interview": {
       "get": {
         "operationId": "InterviewController_getInterview",
@@ -1066,6 +1483,108 @@
         },
         "tags": [
           "interview"
+        ]
+      }
+    },
+    "/v1/steuerjahre/{jahr}/arbeitsweg": {
+      "get": {
+        "operationId": "CommuteController_get",
+        "parameters": [
+          {
+            "name": "person",
+            "required": false,
+            "in": "query",
+            "description": "B: Person A reads the commute of a partner without an own account (ADR-0054).",
+            "schema": {
+              "enum": [
+                "A",
+                "B"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommuteResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Guest session — this endpoint requires a signed-in account."
+          }
+        },
+        "tags": [
+          "arbeitsweg"
+        ]
+      },
+      "put": {
+        "operationId": "CommuteController_put",
+        "parameters": [
+          {
+            "name": "person",
+            "required": false,
+            "in": "query",
+            "description": "B: Person A records the commute of a partner without an own account (ADR-0054).",
+            "schema": {
+              "enum": [
+                "A",
+                "B"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CommuteInputsDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommuteResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Guest session — this endpoint requires a signed-in account."
+          }
+        },
+        "tags": [
+          "arbeitsweg"
         ]
       }
     },
@@ -1613,254 +2132,46 @@
         ]
       }
     },
-    "/v1/steuerjahre/{jahr}/ch-lohnausweis": {
+    "/v1/steuerjahre/{jahr}/kinder": {
       "get": {
-        "operationId": "ChSalaryCertificateController_get",
+        "operationId": "ChildrenController_list",
         "parameters": [
-          {
-            "name": "person",
-            "required": false,
-            "in": "query",
-            "description": "B: Person A records the Swiss figures of a partner without an own account (ADR-0054).",
-            "schema": {
-              "enum": [
-                "A",
-                "B"
-              ],
-              "type": "string"
-            }
-          },
           {
             "name": "jahr",
             "required": true,
             "in": "path",
-            "description": "The tax year (Steuerjahr) — validated to a sensible window (ParseSteuerjahrPipe, same as Cockpit).",
             "schema": {
-              "example": 2026,
+              "example": 2025,
               "type": "number"
             }
           }
         ],
         "responses": {
           "200": {
-            "description": "The caller’s CH-Lohnausweis mask + fold for this tax year — re-entry.",
+            "description": "",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ChSalaryCertificateResponseDto"
+                  "$ref": "#/components/schemas/ChildrenResponseDto"
                 }
               }
             }
           },
           "401": {
-            "description": "Guest session — this endpoint requires a signed-in account."
+            "description": "Requires account."
           }
         },
         "tags": [
-          "ch-lohnausweis"
+          "kinder"
         ]
-      }
-    },
-    "/v1/steuerjahre/{jahr}/ch-lohnausweis/{feld}": {
-      "put": {
-        "operationId": "ChSalaryCertificateController_setField",
+      },
+      "post": {
+        "operationId": "ChildrenController_create",
         "parameters": [
-          {
-            "name": "person",
-            "required": false,
-            "in": "query",
-            "description": "B: Person A records the Swiss figures of a partner without an own account (ADR-0054).",
-            "schema": {
-              "enum": [
-                "A",
-                "B"
-              ],
-              "type": "string"
-            }
-          },
-          {
-            "name": "feld",
-            "required": true,
-            "in": "path",
-            "description": "One of the 14 CHF-betrag Lohnausweis fields (ParseLohnausweisFeldPipe).",
-            "schema": {
-              "example": "bruttolohn-total",
-              "type": "string"
-            }
-          },
           {
             "name": "jahr",
             "required": true,
             "in": "path",
-            "description": "The tax year (Steuerjahr) — validated to a sensible window (ParseSteuerjahrPipe, same as Cockpit).",
-            "schema": {
-              "example": 2026,
-              "type": "number"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/PutSalaryCertificateFieldDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "The updated mask and its derived fold.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ChSalaryCertificateResponseDto"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Guest session — this endpoint requires a signed-in account."
-          }
-        },
-        "tags": [
-          "ch-lohnausweis"
-        ]
-      }
-    },
-    "/v1/steuerjahre/{jahr}/ch-lohnausweis/bemerkungen": {
-      "put": {
-        "operationId": "ChSalaryCertificateController_setRemarks",
-        "parameters": [
-          {
-            "name": "person",
-            "required": false,
-            "in": "query",
-            "description": "B: Person A records the Swiss figures of a partner without an own account (ADR-0054).",
-            "schema": {
-              "enum": [
-                "A",
-                "B"
-              ],
-              "type": "string"
-            }
-          },
-          {
-            "name": "jahr",
-            "required": true,
-            "in": "path",
-            "description": "The tax year (Steuerjahr).",
-            "schema": {
-              "example": 2026,
-              "type": "number"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/PutRemarksDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "The updated mask and its derived fold.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ChSalaryCertificateResponseDto"
-                }
-              }
-            }
-          }
-        },
-        "tags": [
-          "ch-lohnausweis"
-        ]
-      }
-    },
-    "/v1/steuerjahre/{jahr}/ch-lohnausweis/vorsorge": {
-      "put": {
-        "operationId": "ChSalaryCertificateController_setProvision",
-        "parameters": [
-          {
-            "name": "person",
-            "required": false,
-            "in": "query",
-            "description": "B: Person A records the Swiss figures of a partner without an own account (ADR-0054).",
-            "schema": {
-              "enum": [
-                "A",
-                "B"
-              ],
-              "type": "string"
-            }
-          },
-          {
-            "name": "jahr",
-            "required": true,
-            "in": "path",
-            "description": "The tax year (Steuerjahr).",
-            "schema": {
-              "example": 2026,
-              "type": "number"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/PutProvisionDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "The updated mask and its derived fold.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ChSalaryCertificateResponseDto"
-                }
-              }
-            }
-          }
-        },
-        "tags": [
-          "ch-lohnausweis"
-        ]
-      }
-    },
-    "/v1/steuerjahre/{jahr}/ch-lohnausweis/n-gre": {
-      "put": {
-        "operationId": "ChSalaryCertificateController_setNGre",
-        "parameters": [
-          {
-            "name": "person",
-            "required": false,
-            "in": "query",
-            "description": "B: Person A records the Swiss figures of a partner without an own account (ADR-0054).",
-            "schema": {
-              "enum": [
-                "A",
-                "B"
-              ],
-              "type": "string"
-            }
-          },
-          {
-            "name": "jahr",
-            "required": true,
-            "in": "path",
-            "description": "The tax year (Steuerjahr).",
             "schema": {
               "example": 2025,
               "type": "number"
@@ -1872,42 +2183,41 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/PutNGreDto"
+                "$ref": "#/components/schemas/CreateChildDto"
               }
             }
           }
         },
         "responses": {
-          "200": {
-            "description": "The updated mask including the Anlage-N-Gre facts.",
+          "201": {
+            "description": "",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ChSalaryCertificateResponseDto"
+                  "$ref": "#/components/schemas/ChildrenResponseDto"
                 }
               }
             }
+          },
+          "401": {
+            "description": "Requires account."
           }
         },
         "tags": [
-          "ch-lohnausweis"
+          "kinder"
         ]
       }
     },
-    "/v1/steuerjahre/{jahr}/ch-lohnausweis/wechselkurs": {
+    "/v1/steuerjahre/{jahr}/kinder/{id}": {
       "put": {
-        "operationId": "ChSalaryCertificateController_setExchangeRate",
+        "operationId": "ChildrenController_update",
         "parameters": [
           {
-            "name": "person",
-            "required": false,
-            "in": "query",
-            "description": "B: Person A records the Swiss figures of a partner without an own account (ADR-0054).",
+            "name": "id",
+            "required": true,
+            "in": "path",
             "schema": {
-              "enum": [
-                "A",
-                "B"
-              ],
+              "example": "uuid",
               "type": "string"
             }
           },
@@ -1915,61 +2225,6 @@
             "name": "jahr",
             "required": true,
             "in": "path",
-            "description": "The tax year (Steuerjahr).",
-            "schema": {
-              "example": 2026,
-              "type": "number"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/PutExchangeRateDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "The updated mask and its derived fold.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ChSalaryCertificateResponseDto"
-                }
-              }
-            }
-          }
-        },
-        "tags": [
-          "ch-lohnausweis"
-        ]
-      }
-    },
-    "/v1/steuerjahre/{jahr}/ch-lohnausweis/grenzgaenger": {
-      "put": {
-        "operationId": "ChSalaryCertificateController_setCrossBorderFacts",
-        "parameters": [
-          {
-            "name": "person",
-            "required": true,
-            "in": "query",
-            "description": "Only for Person B: the user answers these questions in the interview.",
-            "schema": {
-              "enum": [
-                "B"
-              ],
-              "type": "string"
-            }
-          },
-          {
-            "name": "jahr",
-            "required": true,
-            "in": "path",
-            "description": "The tax year (Steuerjahr).",
             "schema": {
               "example": 2025,
               "type": "number"
@@ -1981,52 +2236,69 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/PutCrossBorderFactsDto"
+                "$ref": "#/components/schemas/UpdateChildDto"
               }
             }
           }
         },
         "responses": {
           "200": {
-            "description": "Person B’s mask with the Grenzgänger status the answers give.",
+            "description": "",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ChSalaryCertificateResponseDto"
-                }
-              }
-            }
-          }
-        },
-        "tags": [
-          "ch-lohnausweis"
-        ]
-      }
-    },
-    "/v1/arbeitgeber": {
-      "get": {
-        "operationId": "KnownEmployersController_list",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": "The employers recorded on the Swiss salary certificates of the user and their Person B, over all years.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/KnownEmployerDto"
-                  }
+                  "$ref": "#/components/schemas/ChildrenResponseDto"
                 }
               }
             }
           },
           "401": {
-            "description": "Guest session — this endpoint requires a signed-in account."
+            "description": "Requires account."
           }
         },
         "tags": [
-          "ch-lohnausweis"
+          "kinder"
+        ]
+      },
+      "delete": {
+        "operationId": "ChildrenController_delete",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChildrenResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Requires account."
+          }
+        },
+        "tags": [
+          "kinder"
         ]
       }
     },
@@ -2374,108 +2646,6 @@
         ]
       }
     },
-    "/v1/steuerjahre/{jahr}/arbeitsweg": {
-      "get": {
-        "operationId": "CommuteController_get",
-        "parameters": [
-          {
-            "name": "person",
-            "required": false,
-            "in": "query",
-            "description": "B: Person A reads the commute of a partner without an own account (ADR-0054).",
-            "schema": {
-              "enum": [
-                "A",
-                "B"
-              ],
-              "type": "string"
-            }
-          },
-          {
-            "name": "jahr",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "example": 2025,
-              "type": "number"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/CommuteResponseDto"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Guest session — this endpoint requires a signed-in account."
-          }
-        },
-        "tags": [
-          "arbeitsweg"
-        ]
-      },
-      "put": {
-        "operationId": "CommuteController_put",
-        "parameters": [
-          {
-            "name": "person",
-            "required": false,
-            "in": "query",
-            "description": "B: Person A records the commute of a partner without an own account (ADR-0054).",
-            "schema": {
-              "enum": [
-                "A",
-                "B"
-              ],
-              "type": "string"
-            }
-          },
-          {
-            "name": "jahr",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "example": 2025,
-              "type": "number"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CommuteInputsDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/CommuteResponseDto"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Guest session — this endpoint requires a signed-in account."
-          }
-        },
-        "tags": [
-          "arbeitsweg"
-        ]
-      }
-    },
     "/v1/steuerjahre/{jahr}/steuerschaetzung": {
       "get": {
         "operationId": "TaxEstimateController_get",
@@ -2507,176 +2677,6 @@
         },
         "tags": [
           "steuerschaetzung"
-        ]
-      }
-    },
-    "/v1/steuerjahre/{jahr}/kinder": {
-      "get": {
-        "operationId": "ChildrenController_list",
-        "parameters": [
-          {
-            "name": "jahr",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "example": 2025,
-              "type": "number"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ChildrenResponseDto"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Requires account."
-          }
-        },
-        "tags": [
-          "kinder"
-        ]
-      },
-      "post": {
-        "operationId": "ChildrenController_create",
-        "parameters": [
-          {
-            "name": "jahr",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "example": 2025,
-              "type": "number"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateChildDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ChildrenResponseDto"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Requires account."
-          }
-        },
-        "tags": [
-          "kinder"
-        ]
-      }
-    },
-    "/v1/steuerjahre/{jahr}/kinder/{id}": {
-      "put": {
-        "operationId": "ChildrenController_update",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "example": "uuid",
-              "type": "string"
-            }
-          },
-          {
-            "name": "jahr",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "example": 2025,
-              "type": "number"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateChildDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ChildrenResponseDto"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Requires account."
-          }
-        },
-        "tags": [
-          "kinder"
-        ]
-      },
-      "delete": {
-        "operationId": "ChildrenController_delete",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "example": "uuid",
-              "type": "string"
-            }
-          },
-          {
-            "name": "jahr",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "example": 2025,
-              "type": "number"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ChildrenResponseDto"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Requires account."
-          }
-        },
-        "tags": [
-          "kinder"
         ]
       }
     },
@@ -10321,6 +10321,587 @@
           }
         }
       },
+      "SalaryCertificateFieldDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "The machine field id (LohnausweisFeldId)."
+          },
+          "digit": {
+            "type": "string",
+            "description": "The box number on the paper (1–15)."
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "erfasst",
+              "offen",
+              "unklar"
+            ],
+            "description": "The field’s capture state."
+          },
+          "value": {
+            "type": "number",
+            "example": 84000,
+            "description": "The whole-CHF amount — present only when kind === \"erfasst\"."
+          }
+        },
+        "required": [
+          "id",
+          "digit",
+          "kind"
+        ]
+      },
+      "ExchangeRateDto": {
+        "type": "object",
+        "properties": {
+          "month": {
+            "type": "string",
+            "example": "2026-01",
+            "description": "yyyy-mm the rate applies to; yyyy for the Jahresdurchschnittskurs."
+          },
+          "rate": {
+            "type": "number",
+            "example": 0.9412,
+            "description": "EUR per 1 CHF, strictly positive."
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "amtlich",
+              "jahresdurchschnitt",
+              "tatsaechlich"
+            ],
+            "description": "The rate mode (ADR-012, ADR-0072)."
+          },
+          "receiptId": {
+            "type": "string",
+            "description": "Beleg id — required iff modus === \"tatsaechlich\"."
+          }
+        },
+        "required": [
+          "month",
+          "rate",
+          "mode"
+        ]
+      },
+      "ChItemDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Stable line-item id."
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "Bruttolohn",
+              "Quellensteuer",
+              "Pensionskasse",
+              "Saeule3a",
+              "Krankenkasse"
+            ],
+            "description": "The CH line-item kind."
+          },
+          "digit": {
+            "type": "string",
+            "description": "The Lohnausweis Ziffer (when from the Lohnausweis)."
+          },
+          "amountChf": {
+            "type": "number",
+            "description": "CHF amount as entered (ADR-036: CHF führt)."
+          },
+          "amountEur": {
+            "type": "number",
+            "description": "EUR amount = chfNachEur(betragChf, kurs), rounded to cents."
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "einnahme",
+              "vorsorgeaufwand",
+              "anrechnung"
+            ],
+            "description": "The fold bucket (Rolle)."
+          },
+          "exchangeRate": {
+            "description": "The Kurs the conversion was made with.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ExchangeRateDto"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "amountChf",
+          "amountEur",
+          "role",
+          "exchangeRate"
+        ]
+      },
+      "CalculationStatusDto": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "bestimmt",
+              "offen"
+            ],
+            "description": "Determined, or open (naming what blocks)."
+          },
+          "einnahmen": {
+            "type": "number",
+            "description": "Sum of Einnahme Posten (whole euros)."
+          },
+          "vorsorgeaufwand": {
+            "type": "number",
+            "description": "Sum of Vorsorgeaufwand Posten (whole euros)."
+          },
+          "anrechnung": {
+            "type": "number",
+            "description": "Sum of Anrechnung Posten (whole euros)."
+          },
+          "openItems": {
+            "type": "number",
+            "description": "Required-but-empty line items (only when offen)."
+          },
+          "conflicts": {
+            "type": "number",
+            "description": "Open conflicts (only when offen)."
+          },
+          "gated": {
+            "description": "Gated Einkunftsarten (only when offen).",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "kind",
+          "einnahmen",
+          "vorsorgeaufwand",
+          "anrechnung"
+        ]
+      },
+      "NGreDetailsDto": {
+        "type": "object",
+        "properties": {
+          "arbeitgeberName": {
+            "type": "string",
+            "nullable": true
+          },
+          "arbeitgeberStrasse": {
+            "type": "string",
+            "nullable": true
+          },
+          "arbeitgeberPlzOrt": {
+            "type": "string",
+            "nullable": true
+          },
+          "familienzulagenChf": {
+            "type": "number",
+            "nullable": true
+          },
+          "krankentaggeldChf": {
+            "type": "number",
+            "nullable": true
+          },
+          "pkArbeitnehmerChf": {
+            "type": "number",
+            "nullable": true
+          },
+          "pkArbeitgeberChf": {
+            "type": "number",
+            "nullable": true
+          },
+          "pkArbeitgeberGesamtChf": {
+            "type": "number",
+            "nullable": true
+          },
+          "steuerfreiesKrankentaggeldChf": {
+            "type": "number",
+            "nullable": true
+          },
+          "steuerfreiesUnfalltaggeldChf": {
+            "type": "number",
+            "nullable": true
+          },
+          "taggeldQuelle": {
+            "type": "string",
+            "enum": [
+              "krankentaggeldversicherung",
+              "lohnfortzahlung",
+              "beides",
+              "unfallversicherung",
+              "mutterschaftIv",
+              "kein"
+            ],
+            "nullable": true,
+            "description": "Where a daily benefit in Ziffer 8 came from; null = not answered."
+          },
+          "krankentaggeldArbeitgeberProzent": {
+            "type": "number",
+            "nullable": true
+          },
+          "krankentaggeldArbeitgeberChf": {
+            "type": "number",
+            "nullable": true
+          },
+          "nbuvArbeitgeberProzent": {
+            "type": "number",
+            "nullable": true
+          },
+          "nbuvArbeitgeberChf": {
+            "type": "number",
+            "nullable": true
+          },
+          "specialCases": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "krankenkasseZusatzChf": {
+            "type": "number",
+            "nullable": true
+          },
+          "kvZuschussAnspruch": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "familienzulagenImBruttolohn": {
+            "type": "boolean",
+            "nullable": true
+          }
+        },
+        "required": [
+          "arbeitgeberName",
+          "arbeitgeberStrasse",
+          "arbeitgeberPlzOrt",
+          "familienzulagenChf",
+          "krankentaggeldChf",
+          "pkArbeitnehmerChf",
+          "pkArbeitgeberChf",
+          "pkArbeitgeberGesamtChf",
+          "steuerfreiesKrankentaggeldChf",
+          "steuerfreiesUnfalltaggeldChf",
+          "taggeldQuelle",
+          "krankentaggeldArbeitgeberProzent",
+          "krankentaggeldArbeitgeberChf",
+          "nbuvArbeitgeberProzent",
+          "nbuvArbeitgeberChf",
+          "specialCases",
+          "krankenkasseZusatzChf",
+          "kvZuschussAnspruch",
+          "familienzulagenImBruttolohn"
+        ]
+      },
+      "ChSalaryCertificateResponseDto": {
+        "type": "object",
+        "properties": {
+          "fields": {
+            "description": "The 14 CHF-betrag fields, in paper order (Ziffern 1–14).",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SalaryCertificateFieldDto"
+            }
+          },
+          "bemerkungen": {
+            "type": "string",
+            "nullable": true,
+            "description": "Ziffer 15 Bemerkungen (Freitext), null when not entered."
+          },
+          "exchangeRate": {
+            "nullable": true,
+            "description": "The Wechselkurs, null when not yet set.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ExchangeRateDto"
+              }
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "echter-grenzgaenger",
+              "kein-grenzgaenger"
+            ],
+            "nullable": true,
+            "description": "The derived Grenzgänger-Status (ADR-013); null while ch-wohnsitz is unanswered."
+          },
+          "items": {
+            "description": "The folded CH line items (empty until the Kurs + status exist).",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ChItemDto"
+            }
+          },
+          "foldStatus": {
+            "nullable": true,
+            "description": "The fold result, null until foldable.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CalculationStatusDto"
+              }
+            ]
+          },
+          "nGre": {
+            "description": "The Anlage-N-Gre facts beyond the Lohnausweis.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/NGreDetailsDto"
+              }
+            ]
+          }
+        },
+        "required": [
+          "fields",
+          "bemerkungen",
+          "exchangeRate",
+          "status",
+          "items",
+          "foldStatus",
+          "nGre"
+        ]
+      },
+      "PutSalaryCertificateFieldDto": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "erfasst",
+              "offen",
+              "unklar"
+            ],
+            "description": "The field’s capture state."
+          },
+          "value": {
+            "type": "number",
+            "example": 84000,
+            "description": "The whole-CHF amount — present only when kind === \"erfasst\". Zero or more; only Ziffer 7 (`andere-leistungen`) may be negative (checked per field via @steuereule/core, ADR-0093)."
+          }
+        },
+        "required": [
+          "kind"
+        ]
+      },
+      "PutRemarksDto": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string",
+            "nullable": true,
+            "description": "The free-text remark, or null to clear."
+          }
+        }
+      },
+      "PutProvisionDto": {
+        "type": "object",
+        "properties": {
+          "saeule3aChf": {
+            "type": "number",
+            "nullable": true,
+            "description": "Säule 3a whole-CHF amount, or null to clear."
+          },
+          "krankenkasseChf": {
+            "type": "number",
+            "nullable": true,
+            "description": "Krankenkasse whole-CHF amount, or null to clear."
+          }
+        }
+      },
+      "PutNGreDto": {
+        "type": "object",
+        "properties": {
+          "arbeitgeberName": {
+            "type": "string",
+            "nullable": true,
+            "description": "Arbeitgeber, Zeile 89."
+          },
+          "arbeitgeberStrasse": {
+            "type": "string",
+            "nullable": true,
+            "description": "Arbeitgeber, Zeile 90."
+          },
+          "arbeitgeberPlzOrt": {
+            "type": "string",
+            "nullable": true,
+            "description": "Arbeitgeber, Zeile 91."
+          },
+          "familienzulagenChf": {
+            "type": "number",
+            "nullable": true,
+            "description": "Whole CHF — Kinder-/Ausbildungszulagen in Ziffer 8 (Zeilen 8/76)."
+          },
+          "krankentaggeldChf": {
+            "type": "number",
+            "nullable": true,
+            "description": "Whole CHF — employee Krankentaggeld premium (Zeile 80), not the Taggeld paid out."
+          },
+          "pkArbeitnehmerChf": {
+            "type": "number",
+            "nullable": true,
+            "description": "Whole CHF — Säule 2a Obligatorium, employee (Zeile 84)."
+          },
+          "pkArbeitgeberChf": {
+            "type": "number",
+            "nullable": true,
+            "description": "Whole CHF — Säule 2a Obligatorium, employer (Zeile 87)."
+          },
+          "pkArbeitgeberGesamtChf": {
+            "type": "number",
+            "nullable": true,
+            "description": "Whole CHF — all employer pension contributions; the part above the Obligatorium is taxable wage (Zeile 20)."
+          },
+          "steuerfreiesKrankentaggeldChf": {
+            "type": "number",
+            "nullable": true,
+            "description": "Whole CHF — tax-free Krankentaggeld paid out and contained in Ziffer 8 (Zeilen 9/76)."
+          },
+          "steuerfreiesUnfalltaggeldChf": {
+            "type": "number",
+            "nullable": true,
+            "description": "Whole CHF — daily benefit of the Swiss accident insurance (UVG/SUVA) paid out and contained in Ziffer 8 (line „SUVA – Geld“). Tax-free, but it raises the tax rate (§ 32b EStG)."
+          },
+          "taggeldQuelle": {
+            "type": "string",
+            "enum": [
+              "krankentaggeldversicherung",
+              "lohnfortzahlung",
+              "beides",
+              "unfallversicherung",
+              "mutterschaftIv",
+              "kein"
+            ],
+            "nullable": true,
+            "description": "Where a daily benefit in Ziffer 8 came from: the collective sickness insurance (deducted in steuerfreiesKrankentaggeldChf), the employer’s continued pay (wage, nothing deducted), both (only the insurer’s part deducted), the accident insurance (steuerfreiesUnfalltaggeldChf), maternity / IV, or none."
+          },
+          "krankentaggeldArbeitgeberProzent": {
+            "type": "number",
+            "nullable": true,
+            "description": "Employer share of the Krankentaggeld premium in percent, 0–100 (Zeilen 18, 95, 96)."
+          },
+          "krankentaggeldArbeitgeberChf": {
+            "type": "number",
+            "nullable": true,
+            "description": "Whole CHF — employer Krankentaggeld contribution; only needed when the employer pays 100 %."
+          },
+          "nbuvArbeitgeberProzent": {
+            "type": "number",
+            "nullable": true,
+            "description": "Employer share of the NBUV premium in percent, 0–100 (Zeilen 19, 97, 98)."
+          },
+          "nbuvArbeitgeberChf": {
+            "type": "number",
+            "nullable": true,
+            "description": "Whole CHF — employer NBUV contribution; only needed when the employer pays 100 %."
+          },
+          "specialCases": {
+            "type": "boolean",
+            "nullable": true,
+            "description": "Any of N-Gre Zeilen 7, 10–14, 16, 17, 21 or 22 applies."
+          },
+          "krankenkasseZusatzChf": {
+            "type": "number",
+            "nullable": true,
+            "description": "Whole CHF — supplementary health insurance (VVG): other provision, not basic cover (ADR-0093)."
+          },
+          "kvZuschussAnspruch": {
+            "type": "boolean",
+            "nullable": true,
+            "description": "Anlage Vorsorgeaufwand Zeile 49: entitled to tax-free subsidies or employer contributions to health insurance."
+          },
+          "familienzulagenImBruttolohn": {
+            "type": "boolean",
+            "nullable": true,
+            "description": "The family allowance is contained in the gross wage of Ziffer 8; only then Zeile 8 deducts it (ADR-0093)."
+          }
+        }
+      },
+      "PutExchangeRateDto": {
+        "type": "object",
+        "properties": {
+          "month": {
+            "type": "string",
+            "example": "2026-01",
+            "description": "yyyy-mm the rate applies to; yyyy for the Jahresdurchschnittskurs."
+          },
+          "rate": {
+            "type": "number",
+            "example": 0.9412,
+            "description": "EUR per 1 CHF, strictly positive."
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "amtlich",
+              "jahresdurchschnitt",
+              "tatsaechlich"
+            ],
+            "description": "The rate mode (ADR-012, ADR-0072)."
+          },
+          "receiptId": {
+            "type": "string",
+            "description": "Beleg id — required iff modus === \"tatsaechlich\"."
+          }
+        },
+        "required": [
+          "month",
+          "rate",
+          "mode"
+        ]
+      },
+      "PutCrossBorderFactsDto": {
+        "type": "object",
+        "properties": {
+          "residence": {
+            "type": "string",
+            "enum": [
+              "Deutschland",
+              "Schweiz"
+            ],
+            "description": "Where Person B lives."
+          },
+          "daysWithoutReturn": {
+            "type": "number",
+            "example": 0,
+            "description": "Working days Person B did not return home (Nichtrückkehrtage)."
+          }
+        },
+        "required": [
+          "residence",
+          "daysWithoutReturn"
+        ]
+      },
+      "KnownEmployerDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "Cilag AG"
+          },
+          "strasse": {
+            "type": "string",
+            "example": "Hochstrasse 201"
+          },
+          "plzOrt": {
+            "type": "string",
+            "example": "8205 Schaffhausen"
+          }
+        },
+        "required": [
+          "name",
+          "strasse",
+          "plzOrt"
+        ]
+      },
       "StepDto": {
         "type": "object",
         "properties": {
@@ -10416,6 +10997,237 @@
         "required": [
           "nextStep",
           "openItems"
+        ]
+      },
+      "CommuteInputsDto": {
+        "type": "object",
+        "properties": {
+          "workdays": {
+            "example": [
+              1,
+              2,
+              3,
+              4,
+              5
+            ],
+            "description": "ISO weekdays worked (1 = Monday … 7 = Sunday).",
+            "type": "array",
+            "items": {
+              "type": "number"
+            }
+          },
+          "vacationDays": {
+            "type": "number",
+            "example": 30
+          },
+          "sickDays": {
+            "type": "number",
+            "example": 5
+          },
+          "homeOfficeDays": {
+            "type": "number",
+            "example": 20
+          },
+          "oneWayKm": {
+            "type": "number",
+            "nullable": true,
+            "example": 23,
+            "description": "One-way distance in full kilometres."
+          },
+          "transport": {
+            "type": "string",
+            "enum": [
+              "pkw",
+              "oepnv",
+              "andere"
+            ],
+            "nullable": true,
+            "example": "pkw"
+          },
+          "workplace": {
+            "type": "string",
+            "nullable": true,
+            "example": "79539 Lörrach, Hauptstraße 1"
+          },
+          "publicHolidays": {
+            "type": "number",
+            "nullable": true,
+            "example": 11,
+            "description": "Confirmed public holidays on working days, subtracted from the commute days."
+          },
+          "publicHolidayRegion": {
+            "type": "string",
+            "nullable": true,
+            "example": "BW",
+            "description": "German state or Swiss canton the holiday suggestion came from."
+          },
+          "professionalBodiesEur": {
+            "type": "number",
+            "nullable": true,
+            "example": 110,
+            "description": "Werbungskosten Kz 310: professional bodies, e.g. a trade union. Whole euros; omitted keeps what is stored."
+          },
+          "professionalBodiesNote": {
+            "type": "string",
+            "nullable": true,
+            "example": "Berufskleidung",
+            "description": "Which bodies (Anlage N Zeile 53)."
+          },
+          "workEquipmentEur": {
+            "type": "number",
+            "nullable": true,
+            "example": 110,
+            "description": "Werbungskosten Kz 320: work tools and typical work clothing. Whole euros; omitted keeps what is stored."
+          },
+          "workEquipmentNote": {
+            "type": "string",
+            "nullable": true,
+            "example": "Berufskleidung",
+            "description": "What the work tools were (Anlage N Zeile 54)."
+          },
+          "accountFeesEur": {
+            "type": "number",
+            "nullable": true,
+            "example": 110,
+            "description": "Werbungskosten Kz 380: account fees (16 € a year are accepted without proof). Whole euros; omitted keeps what is stored."
+          },
+          "otherWorkExpensesEur": {
+            "type": "number",
+            "nullable": true,
+            "example": 110,
+            "description": "Werbungskosten Kz 380: other expenses, e.g. applications. Whole euros; omitted keeps what is stored."
+          },
+          "otherWorkExpensesNote": {
+            "type": "string",
+            "nullable": true,
+            "example": "Berufskleidung",
+            "description": "What the other expenses were (Anlage N Zeile 63)."
+          },
+          "periodFrom": {
+            "type": "string",
+            "nullable": true,
+            "example": "01.01.2024",
+            "description": "This way to work from (DD.MM.YYYY), when not the whole year (ADR-0079)."
+          },
+          "periodTo": {
+            "type": "string",
+            "nullable": true,
+            "example": "31.10.2024",
+            "description": "This way to work until (DD.MM.YYYY)."
+          },
+          "secondOneWayKm": {
+            "type": "number",
+            "nullable": true,
+            "example": 87,
+            "description": "A second way to work after a change of job: one-way km."
+          },
+          "secondTransport": {
+            "type": "string",
+            "enum": [
+              "pkw",
+              "oepnv",
+              "andere"
+            ],
+            "nullable": true
+          },
+          "secondWorkplace": {
+            "type": "string",
+            "nullable": true,
+            "example": "8050 Zürich, Birchstrasse 155"
+          },
+          "secondFrom": {
+            "type": "string",
+            "nullable": true,
+            "example": "01.11.2024"
+          },
+          "secondTo": {
+            "type": "string",
+            "nullable": true,
+            "example": "31.12.2024"
+          },
+          "travelDays": {
+            "type": "number",
+            "nullable": true,
+            "example": 205,
+            "description": "Days the first place of work was actually visited on this way; replaces the days derived from working days less days off (ADR-0093). Omitted keeps what is stored."
+          },
+          "secondTravelDays": {
+            "type": "number",
+            "nullable": true,
+            "example": 40,
+            "description": "Days actually travelled on the second way."
+          },
+          "shortestRouteConfirmed": {
+            "type": "boolean",
+            "nullable": true,
+            "description": "The user confirmed that `oneWayKm` is the shortest road connection (§ 9 Abs. 1 Nr. 4 Satz 4 EStG)."
+          },
+          "secondShortestRouteConfirmed": {
+            "type": "boolean",
+            "nullable": true,
+            "description": "The same confirmation for `secondOneWayKm`."
+          }
+        },
+        "required": [
+          "workdays",
+          "vacationDays",
+          "sickDays",
+          "homeOfficeDays",
+          "oneWayKm",
+          "transport",
+          "workplace"
+        ]
+      },
+      "WorkdaysDto": {
+        "type": "object",
+        "properties": {
+          "weekdays": {
+            "type": "number"
+          },
+          "workdays": {
+            "type": "number"
+          },
+          "commuteDays": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "weekdays",
+          "workdays",
+          "commuteDays"
+        ]
+      },
+      "CommuteResponseDto": {
+        "type": "object",
+        "properties": {
+          "inputs": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CommuteInputsDto"
+              }
+            ]
+          },
+          "workdays": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/WorkdaysDto"
+              }
+            ]
+          },
+          "commuterAllowance": {
+            "type": "number",
+            "nullable": true,
+            "description": "Entfernungspauschale in whole euros; null until distance and means of travel are known."
+          }
+        },
+        "required": [
+          "inputs",
+          "workdays",
+          "commuterAllowance"
         ]
       },
       "PensionFieldDto": {
@@ -11394,586 +12206,554 @@
           }
         }
       },
-      "SalaryCertificateFieldDto": {
+      "ChildResponseDto": {
         "type": "object",
         "properties": {
           "id": {
             "type": "string",
-            "description": "The machine field id (LohnausweisFeldId)."
+            "example": "uuid"
           },
-          "digit": {
+          "sequenceNumber": {
+            "type": "number",
+            "example": 1
+          },
+          "firstName": {
             "type": "string",
-            "description": "The box number on the paper (1–15)."
+            "example": "Lina"
           },
-          "kind": {
+          "lastName": {
+            "type": "string",
+            "example": "Muster"
+          },
+          "geburtsdatum": {
+            "type": "string",
+            "example": "2018-05-12"
+          },
+          "taxId": {
+            "type": "string",
+            "nullable": true,
+            "example": "12345678901"
+          },
+          "childBenefitClaimEur": {
+            "type": "string",
+            "nullable": true,
+            "example": "3000"
+          },
+          "kinship": {
             "type": "string",
             "enum": [
-              "erfasst",
-              "offen",
-              "unklar"
+              "1",
+              "2",
+              "3"
             ],
-            "description": "The field’s capture state."
+            "nullable": true
           },
-          "value": {
-            "type": "number",
-            "example": 84000,
-            "description": "The whole-CHF amount — present only when kind === \"erfasst\"."
+          "kinshipB": {
+            "type": "string",
+            "enum": [
+              "1",
+              "2",
+              "3"
+            ],
+            "nullable": true
+          },
+          "familyBenefitsOffice": {
+            "type": "string",
+            "nullable": true
+          },
+          "domesticResidenceAllYear": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "otherParent": {
+            "type": "string",
+            "enum": [
+              "Inland",
+              "Ausland",
+              "Verstorben",
+              "Unbekannt"
+            ],
+            "nullable": true
+          },
+          "otherParentName": {
+            "type": "string",
+            "nullable": true
+          },
+          "otherParentBirthDate": {
+            "type": "string",
+            "nullable": true
+          },
+          "otherParentAddress": {
+            "type": "string",
+            "nullable": true
+          },
+          "otherParentKind": {
+            "type": "string",
+            "enum": [
+              "1",
+              "2"
+            ],
+            "nullable": true
+          },
+          "otherParentDiedOn": {
+            "type": "string",
+            "nullable": true
+          },
+          "registeredWithMeAllYear": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "childBenefitToMeAllYear": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "healthBasicEur": {
+            "type": "string",
+            "nullable": true
+          },
+          "careEur": {
+            "type": "string",
+            "nullable": true
+          },
+          "swissFamilyAllowanceEur": {
+            "type": "string",
+            "nullable": true,
+            "example": "2748",
+            "description": "Zeile 6 (Kz 15): Schweizer Kinderzulage in whole EUR."
+          },
+          "childcareEur": {
+            "type": "string",
+            "nullable": true
+          },
+          "childcareProvider": {
+            "type": "string",
+            "nullable": true
+          },
+          "childcareFrom": {
+            "type": "string",
+            "nullable": true
+          },
+          "childcareTo": {
+            "type": "string",
+            "nullable": true
+          },
+          "swissFamilyAllowancePayer": {
+            "type": "string",
+            "nullable": true,
+            "enum": [
+              "A",
+              "B"
+            ]
+          },
+          "healthInsuranceAbroad": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "swissFamilyAllowanceDerived": {
+            "type": "boolean",
+            "description": "The allowance is a share of a parent’s Swiss allowances, not entered for the child (ADR-0088)."
+          },
+          "differentialChildBenefitEur": {
+            "type": "string",
+            "nullable": true,
+            "example": "312",
+            "description": "Differenz-Kindergeld der deutschen Familienkasse in whole EUR."
+          },
+          "totalClaimEur": {
+            "type": "string",
+            "nullable": true,
+            "example": "3060",
+            "description": "Gesamtanspruch auf Kindergeld oder vergleichbare Leistungen (Zeile 6)."
           }
         },
         "required": [
           "id",
-          "digit",
-          "kind"
+          "sequenceNumber",
+          "firstName",
+          "lastName",
+          "geburtsdatum",
+          "kinship",
+          "kinshipB",
+          "familyBenefitsOffice",
+          "domesticResidenceAllYear",
+          "otherParent",
+          "otherParentName",
+          "otherParentBirthDate",
+          "otherParentAddress",
+          "otherParentKind",
+          "otherParentDiedOn",
+          "registeredWithMeAllYear",
+          "childBenefitToMeAllYear",
+          "healthBasicEur",
+          "careEur"
         ]
       },
-      "ExchangeRateDto": {
+      "ChildrenResponseDto": {
         "type": "object",
         "properties": {
-          "month": {
-            "type": "string",
-            "example": "2026-01",
-            "description": "yyyy-mm the rate applies to; yyyy for the Jahresdurchschnittskurs."
-          },
-          "rate": {
-            "type": "number",
-            "example": 0.9412,
-            "description": "EUR per 1 CHF, strictly positive."
-          },
-          "mode": {
-            "type": "string",
-            "enum": [
-              "amtlich",
-              "jahresdurchschnitt",
-              "tatsaechlich"
-            ],
-            "description": "The rate mode (ADR-012, ADR-0072)."
-          },
-          "receiptId": {
-            "type": "string",
-            "description": "Beleg id — required iff modus === \"tatsaechlich\"."
-          }
-        },
-        "required": [
-          "month",
-          "rate",
-          "mode"
-        ]
-      },
-      "ChItemDto": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "description": "Stable line-item id."
-          },
-          "kind": {
-            "type": "string",
-            "enum": [
-              "Bruttolohn",
-              "Quellensteuer",
-              "Pensionskasse",
-              "Saeule3a",
-              "Krankenkasse"
-            ],
-            "description": "The CH line-item kind."
-          },
-          "digit": {
-            "type": "string",
-            "description": "The Lohnausweis Ziffer (when from the Lohnausweis)."
-          },
-          "amountChf": {
-            "type": "number",
-            "description": "CHF amount as entered (ADR-036: CHF führt)."
-          },
-          "amountEur": {
-            "type": "number",
-            "description": "EUR amount = chfNachEur(betragChf, kurs), rounded to cents."
-          },
-          "role": {
-            "type": "string",
-            "enum": [
-              "einnahme",
-              "vorsorgeaufwand",
-              "anrechnung"
-            ],
-            "description": "The fold bucket (Rolle)."
-          },
-          "exchangeRate": {
-            "description": "The Kurs the conversion was made with.",
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/ExchangeRateDto"
-              }
-            ]
-          }
-        },
-        "required": [
-          "id",
-          "kind",
-          "amountChf",
-          "amountEur",
-          "role",
-          "exchangeRate"
-        ]
-      },
-      "CalculationStatusDto": {
-        "type": "object",
-        "properties": {
-          "kind": {
-            "type": "string",
-            "enum": [
-              "bestimmt",
-              "offen"
-            ],
-            "description": "Determined, or open (naming what blocks)."
-          },
-          "einnahmen": {
-            "type": "number",
-            "description": "Sum of Einnahme Posten (whole euros)."
-          },
-          "vorsorgeaufwand": {
-            "type": "number",
-            "description": "Sum of Vorsorgeaufwand Posten (whole euros)."
-          },
-          "anrechnung": {
-            "type": "number",
-            "description": "Sum of Anrechnung Posten (whole euros)."
-          },
-          "openItems": {
-            "type": "number",
-            "description": "Required-but-empty line items (only when offen)."
-          },
-          "conflicts": {
-            "type": "number",
-            "description": "Open conflicts (only when offen)."
-          },
-          "gated": {
-            "description": "Gated Einkunftsarten (only when offen).",
+          "kinder": {
             "type": "array",
             "items": {
-              "type": "string"
-            }
-          }
-        },
-        "required": [
-          "kind",
-          "einnahmen",
-          "vorsorgeaufwand",
-          "anrechnung"
-        ]
-      },
-      "NGreDetailsDto": {
-        "type": "object",
-        "properties": {
-          "arbeitgeberName": {
-            "type": "string",
-            "nullable": true
-          },
-          "arbeitgeberStrasse": {
-            "type": "string",
-            "nullable": true
-          },
-          "arbeitgeberPlzOrt": {
-            "type": "string",
-            "nullable": true
-          },
-          "familienzulagenChf": {
-            "type": "number",
-            "nullable": true
-          },
-          "krankentaggeldChf": {
-            "type": "number",
-            "nullable": true
-          },
-          "pkArbeitnehmerChf": {
-            "type": "number",
-            "nullable": true
-          },
-          "pkArbeitgeberChf": {
-            "type": "number",
-            "nullable": true
-          },
-          "pkArbeitgeberGesamtChf": {
-            "type": "number",
-            "nullable": true
-          },
-          "steuerfreiesKrankentaggeldChf": {
-            "type": "number",
-            "nullable": true
-          },
-          "steuerfreiesUnfalltaggeldChf": {
-            "type": "number",
-            "nullable": true
-          },
-          "taggeldQuelle": {
-            "type": "string",
-            "enum": [
-              "krankentaggeldversicherung",
-              "lohnfortzahlung",
-              "beides",
-              "unfallversicherung",
-              "mutterschaftIv",
-              "kein"
-            ],
-            "nullable": true,
-            "description": "Where a daily benefit in Ziffer 8 came from; null = not answered."
-          },
-          "krankentaggeldArbeitgeberProzent": {
-            "type": "number",
-            "nullable": true
-          },
-          "krankentaggeldArbeitgeberChf": {
-            "type": "number",
-            "nullable": true
-          },
-          "nbuvArbeitgeberProzent": {
-            "type": "number",
-            "nullable": true
-          },
-          "nbuvArbeitgeberChf": {
-            "type": "number",
-            "nullable": true
-          },
-          "specialCases": {
-            "type": "boolean",
-            "nullable": true
-          },
-          "krankenkasseZusatzChf": {
-            "type": "number",
-            "nullable": true
-          },
-          "kvZuschussAnspruch": {
-            "type": "boolean",
-            "nullable": true
-          },
-          "familienzulagenImBruttolohn": {
-            "type": "boolean",
-            "nullable": true
-          }
-        },
-        "required": [
-          "arbeitgeberName",
-          "arbeitgeberStrasse",
-          "arbeitgeberPlzOrt",
-          "familienzulagenChf",
-          "krankentaggeldChf",
-          "pkArbeitnehmerChf",
-          "pkArbeitgeberChf",
-          "pkArbeitgeberGesamtChf",
-          "steuerfreiesKrankentaggeldChf",
-          "steuerfreiesUnfalltaggeldChf",
-          "taggeldQuelle",
-          "krankentaggeldArbeitgeberProzent",
-          "krankentaggeldArbeitgeberChf",
-          "nbuvArbeitgeberProzent",
-          "nbuvArbeitgeberChf",
-          "specialCases",
-          "krankenkasseZusatzChf",
-          "kvZuschussAnspruch",
-          "familienzulagenImBruttolohn"
-        ]
-      },
-      "ChSalaryCertificateResponseDto": {
-        "type": "object",
-        "properties": {
-          "fields": {
-            "description": "The 14 CHF-betrag fields, in paper order (Ziffern 1–14).",
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/SalaryCertificateFieldDto"
+              "$ref": "#/components/schemas/ChildResponseDto"
             }
           },
-          "bemerkungen": {
-            "type": "string",
-            "nullable": true,
-            "description": "Ziffer 15 Bemerkungen (Freitext), null when not entered."
+          "count": {
+            "type": "number",
+            "example": 1
           },
-          "exchangeRate": {
-            "nullable": true,
-            "description": "The Wechselkurs, null when not yet set.",
-            "type": "object",
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/ExchangeRateDto"
-              }
-            ]
+          "childBenefitSum": {
+            "type": "number",
+            "example": 3000
           },
-          "status": {
-            "type": "string",
-            "enum": [
-              "echter-grenzgaenger",
-              "kein-grenzgaenger"
-            ],
-            "nullable": true,
-            "description": "The derived Grenzgänger-Status (ADR-013); null while ch-wohnsitz is unanswered."
+          "totalAllowance": {
+            "type": "number",
+            "example": 9600
           },
-          "items": {
-            "description": "The folded CH line items (empty until the Kurs + status exist).",
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/ChItemDto"
-            }
+          "swissFamilyAllowanceSum": {
+            "type": "number",
+            "example": 5496,
+            "description": "Summe der Schweizer Kinderzulagen in EUR."
           },
-          "foldStatus": {
-            "nullable": true,
-            "description": "The fold result, null until foldable.",
-            "type": "object",
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/CalculationStatusDto"
-              }
-            ]
-          },
-          "nGre": {
-            "description": "The Anlage-N-Gre facts beyond the Lohnausweis.",
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/NGreDetailsDto"
-              }
-            ]
+          "differentialChildBenefitSum": {
+            "type": "number",
+            "example": 624,
+            "description": "Summe des Differenz-Kindergeldes in EUR."
           }
         },
         "required": [
-          "fields",
-          "bemerkungen",
-          "exchangeRate",
-          "status",
-          "items",
-          "foldStatus",
-          "nGre"
+          "kinder",
+          "count",
+          "childBenefitSum",
+          "totalAllowance",
+          "swissFamilyAllowanceSum",
+          "differentialChildBenefitSum"
         ]
       },
-      "PutSalaryCertificateFieldDto": {
+      "CreateChildDto": {
         "type": "object",
         "properties": {
-          "kind": {
+          "kinship": {
             "type": "string",
             "enum": [
-              "erfasst",
-              "offen",
-              "unklar"
+              "1",
+              "2",
+              "3"
             ],
-            "description": "The field’s capture state."
+            "nullable": true,
+            "description": "Kz 02: 1 = leiblich/adoptiert, 2 = Pflegekind, 3 = Enkel-/Stiefkind"
           },
-          "value": {
-            "type": "number",
-            "example": 84000,
-            "description": "The whole-CHF amount — present only when kind === \"erfasst\". Zero or more; only Ziffer 7 (`andere-leistungen`) may be negative (checked per field via @steuereule/core, ADR-0093)."
-          }
-        },
-        "required": [
-          "kind"
-        ]
-      },
-      "PutRemarksDto": {
-        "type": "object",
-        "properties": {
-          "text": {
-            "type": "string",
-            "nullable": true,
-            "description": "The free-text remark, or null to clear."
-          }
-        }
-      },
-      "PutProvisionDto": {
-        "type": "object",
-        "properties": {
-          "saeule3aChf": {
-            "type": "number",
-            "nullable": true,
-            "description": "Säule 3a whole-CHF amount, or null to clear."
-          },
-          "krankenkasseChf": {
-            "type": "number",
-            "nullable": true,
-            "description": "Krankenkasse whole-CHF amount, or null to clear."
-          }
-        }
-      },
-      "PutNGreDto": {
-        "type": "object",
-        "properties": {
-          "arbeitgeberName": {
-            "type": "string",
-            "nullable": true,
-            "description": "Arbeitgeber, Zeile 89."
-          },
-          "arbeitgeberStrasse": {
-            "type": "string",
-            "nullable": true,
-            "description": "Arbeitgeber, Zeile 90."
-          },
-          "arbeitgeberPlzOrt": {
-            "type": "string",
-            "nullable": true,
-            "description": "Arbeitgeber, Zeile 91."
-          },
-          "familienzulagenChf": {
-            "type": "number",
-            "nullable": true,
-            "description": "Whole CHF — Kinder-/Ausbildungszulagen in Ziffer 8 (Zeilen 8/76)."
-          },
-          "krankentaggeldChf": {
-            "type": "number",
-            "nullable": true,
-            "description": "Whole CHF — employee Krankentaggeld premium (Zeile 80), not the Taggeld paid out."
-          },
-          "pkArbeitnehmerChf": {
-            "type": "number",
-            "nullable": true,
-            "description": "Whole CHF — Säule 2a Obligatorium, employee (Zeile 84)."
-          },
-          "pkArbeitgeberChf": {
-            "type": "number",
-            "nullable": true,
-            "description": "Whole CHF — Säule 2a Obligatorium, employer (Zeile 87)."
-          },
-          "pkArbeitgeberGesamtChf": {
-            "type": "number",
-            "nullable": true,
-            "description": "Whole CHF — all employer pension contributions; the part above the Obligatorium is taxable wage (Zeile 20)."
-          },
-          "steuerfreiesKrankentaggeldChf": {
-            "type": "number",
-            "nullable": true,
-            "description": "Whole CHF — tax-free Krankentaggeld paid out and contained in Ziffer 8 (Zeilen 9/76)."
-          },
-          "steuerfreiesUnfalltaggeldChf": {
-            "type": "number",
-            "nullable": true,
-            "description": "Whole CHF — daily benefit of the Swiss accident insurance (UVG/SUVA) paid out and contained in Ziffer 8 (line „SUVA – Geld“). Tax-free, but it raises the tax rate (§ 32b EStG)."
-          },
-          "taggeldQuelle": {
+          "kinshipB": {
             "type": "string",
             "enum": [
-              "krankentaggeldversicherung",
-              "lohnfortzahlung",
-              "beides",
-              "unfallversicherung",
-              "mutterschaftIv",
-              "kein"
+              "1",
+              "2",
+              "3"
             ],
             "nullable": true,
-            "description": "Where a daily benefit in Ziffer 8 came from: the collective sickness insurance (deducted in steuerfreiesKrankentaggeldChf), the employer’s continued pay (wage, nothing deducted), both (only the insurer’s part deducted), the accident insurance (steuerfreiesUnfalltaggeldChf), maternity / IV, or none."
+            "description": "Kz 03, to the spouse — only for a joint return"
           },
-          "krankentaggeldArbeitgeberProzent": {
-            "type": "number",
+          "familyBenefitsOffice": {
+            "type": "string",
             "nullable": true,
-            "description": "Employer share of the Krankentaggeld premium in percent, 0–100 (Zeilen 18, 95, 96)."
+            "example": "Familienkasse Sachsen"
           },
-          "krankentaggeldArbeitgeberChf": {
-            "type": "number",
-            "nullable": true,
-            "description": "Whole CHF — employer Krankentaggeld contribution; only needed when the employer pays 100 %."
-          },
-          "nbuvArbeitgeberProzent": {
-            "type": "number",
-            "nullable": true,
-            "description": "Employer share of the NBUV premium in percent, 0–100 (Zeilen 19, 97, 98)."
-          },
-          "nbuvArbeitgeberChf": {
-            "type": "number",
-            "nullable": true,
-            "description": "Whole CHF — employer NBUV contribution; only needed when the employer pays 100 %."
-          },
-          "specialCases": {
+          "domesticResidenceAllYear": {
             "type": "boolean",
             "nullable": true,
-            "description": "Any of N-Gre Zeilen 7, 10–14, 16, 17, 21 or 22 applies."
+            "description": "The child lived in Germany all year (Zeile 8)."
           },
-          "krankenkasseZusatzChf": {
-            "type": "number",
+          "otherParent": {
+            "type": "string",
+            "enum": [
+              "Inland",
+              "Ausland",
+              "Verstorben",
+              "Unbekannt"
+            ],
             "nullable": true,
-            "description": "Whole CHF — supplementary health insurance (VVG): other provision, not basic cover (ADR-0093)."
+            "description": "The other parent outside this return (Zeilen 11–15)."
           },
-          "kvZuschussAnspruch": {
+          "otherParentName": {
+            "type": "string",
+            "nullable": true,
+            "example": "Muster, Max"
+          },
+          "otherParentBirthDate": {
+            "type": "string",
+            "nullable": true,
+            "example": "1984-02-11"
+          },
+          "otherParentAddress": {
+            "type": "string",
+            "nullable": true,
+            "example": "Hauptstraße 3, 01067 Dresden"
+          },
+          "otherParentKind": {
+            "type": "string",
+            "enum": [
+              "1",
+              "2"
+            ],
+            "nullable": true
+          },
+          "otherParentDiedOn": {
+            "type": "string",
+            "nullable": true,
+            "example": "2025-06-30"
+          },
+          "registeredWithMeAllYear": {
             "type": "boolean",
             "nullable": true,
-            "description": "Anlage Vorsorgeaufwand Zeile 49: entitled to tax-free subsidies or employer contributions to health insurance."
+            "description": "Zeile 45: the child was registered with the filer all year."
           },
-          "familienzulagenImBruttolohn": {
+          "childBenefitToMeAllYear": {
             "type": "boolean",
             "nullable": true,
-            "description": "The family allowance is contained in the gross wage of Ziffer 8; only then Zeile 8 deducts it (ADR-0093)."
+            "description": "Zeile 46: the Kindergeld was paid to the filer all year."
+          },
+          "healthBasicEur": {
+            "type": "string",
+            "nullable": true,
+            "example": "1080",
+            "description": "Zeile 27 (Kz 66): KV Basisabsicherung of the child paid by the parents, whole euros."
+          },
+          "careEur": {
+            "type": "string",
+            "nullable": true,
+            "example": "0",
+            "description": "Zeile 28 (Kz 67): PV of the child paid by the parents, whole euros."
+          },
+          "swissFamilyAllowanceEur": {
+            "type": "string",
+            "nullable": true,
+            "example": "2748",
+            "description": "Zeile 6 (Kz 15): Schweizer Kinderzulage / Familienzulage in whole EUR."
+          },
+          "childcareEur": {
+            "type": "string",
+            "nullable": true,
+            "example": "739",
+            "description": "Zeile 67 (Kz 51): childcare the parents paid, whole euros (ADR-0076)."
+          },
+          "childcareProvider": {
+            "type": "string",
+            "nullable": true,
+            "example": "Kindergarten, Gemeinde Musterdorf, Hauptstr. 1",
+            "description": "Zeile 67: kind of service, provider name and address."
+          },
+          "childcareFrom": {
+            "type": "string",
+            "nullable": true,
+            "example": "01.01.2025",
+            "description": "Zeile 67: from (DD.MM.YYYY)."
+          },
+          "childcareTo": {
+            "type": "string",
+            "nullable": true,
+            "example": "31.12.2025",
+            "description": "Zeile 67: until (DD.MM.YYYY)."
+          },
+          "swissFamilyAllowancePayer": {
+            "type": "string",
+            "nullable": true,
+            "enum": [
+              "A",
+              "B"
+            ],
+            "description": "Who receives the Swiss Kinderzulage with their wage (ADR-0088)."
+          },
+          "healthInsuranceAbroad": {
+            "type": "boolean",
+            "nullable": true,
+            "description": "The child’s KV/PV is with a foreign insurer (e.g. Swiss basic insurance): Anlage Kind Kz 89 (ADR-0090)."
+          },
+          "firstName": {
+            "type": "string",
+            "example": "Lina"
+          },
+          "lastName": {
+            "type": "string",
+            "example": "Muster"
+          },
+          "geburtsdatum": {
+            "type": "string",
+            "example": "2018-05-12",
+            "description": "ISO date YYYY-MM-DD"
+          },
+          "taxId": {
+            "type": "string",
+            "example": "12345678901"
+          },
+          "childBenefitClaimEur": {
+            "type": "string",
+            "example": "3000"
+          }
+        },
+        "required": [
+          "firstName",
+          "lastName",
+          "geburtsdatum"
+        ]
+      },
+      "UpdateChildDto": {
+        "type": "object",
+        "properties": {
+          "kinship": {
+            "type": "string",
+            "enum": [
+              "1",
+              "2",
+              "3"
+            ],
+            "nullable": true,
+            "description": "Kz 02: 1 = leiblich/adoptiert, 2 = Pflegekind, 3 = Enkel-/Stiefkind"
+          },
+          "kinshipB": {
+            "type": "string",
+            "enum": [
+              "1",
+              "2",
+              "3"
+            ],
+            "nullable": true,
+            "description": "Kz 03, to the spouse — only for a joint return"
+          },
+          "familyBenefitsOffice": {
+            "type": "string",
+            "nullable": true,
+            "example": "Familienkasse Sachsen"
+          },
+          "domesticResidenceAllYear": {
+            "type": "boolean",
+            "nullable": true,
+            "description": "The child lived in Germany all year (Zeile 8)."
+          },
+          "otherParent": {
+            "type": "string",
+            "enum": [
+              "Inland",
+              "Ausland",
+              "Verstorben",
+              "Unbekannt"
+            ],
+            "nullable": true,
+            "description": "The other parent outside this return (Zeilen 11–15)."
+          },
+          "otherParentName": {
+            "type": "string",
+            "nullable": true,
+            "example": "Muster, Max"
+          },
+          "otherParentBirthDate": {
+            "type": "string",
+            "nullable": true,
+            "example": "1984-02-11"
+          },
+          "otherParentAddress": {
+            "type": "string",
+            "nullable": true,
+            "example": "Hauptstraße 3, 01067 Dresden"
+          },
+          "otherParentKind": {
+            "type": "string",
+            "enum": [
+              "1",
+              "2"
+            ],
+            "nullable": true
+          },
+          "otherParentDiedOn": {
+            "type": "string",
+            "nullable": true,
+            "example": "2025-06-30"
+          },
+          "registeredWithMeAllYear": {
+            "type": "boolean",
+            "nullable": true,
+            "description": "Zeile 45: the child was registered with the filer all year."
+          },
+          "childBenefitToMeAllYear": {
+            "type": "boolean",
+            "nullable": true,
+            "description": "Zeile 46: the Kindergeld was paid to the filer all year."
+          },
+          "healthBasicEur": {
+            "type": "string",
+            "nullable": true,
+            "example": "1080",
+            "description": "Zeile 27 (Kz 66): KV Basisabsicherung of the child paid by the parents, whole euros."
+          },
+          "careEur": {
+            "type": "string",
+            "nullable": true,
+            "example": "0",
+            "description": "Zeile 28 (Kz 67): PV of the child paid by the parents, whole euros."
+          },
+          "swissFamilyAllowanceEur": {
+            "type": "string",
+            "nullable": true,
+            "example": "2748",
+            "description": "Zeile 6 (Kz 15): Schweizer Kinderzulage / Familienzulage in whole EUR."
+          },
+          "childcareEur": {
+            "type": "string",
+            "nullable": true,
+            "example": "739",
+            "description": "Zeile 67 (Kz 51): childcare the parents paid, whole euros (ADR-0076)."
+          },
+          "childcareProvider": {
+            "type": "string",
+            "nullable": true,
+            "example": "Kindergarten, Gemeinde Musterdorf, Hauptstr. 1",
+            "description": "Zeile 67: kind of service, provider name and address."
+          },
+          "childcareFrom": {
+            "type": "string",
+            "nullable": true,
+            "example": "01.01.2025",
+            "description": "Zeile 67: from (DD.MM.YYYY)."
+          },
+          "childcareTo": {
+            "type": "string",
+            "nullable": true,
+            "example": "31.12.2025",
+            "description": "Zeile 67: until (DD.MM.YYYY)."
+          },
+          "swissFamilyAllowancePayer": {
+            "type": "string",
+            "nullable": true,
+            "enum": [
+              "A",
+              "B"
+            ],
+            "description": "Who receives the Swiss Kinderzulage with their wage (ADR-0088)."
+          },
+          "healthInsuranceAbroad": {
+            "type": "boolean",
+            "nullable": true,
+            "description": "The child’s KV/PV is with a foreign insurer (e.g. Swiss basic insurance): Anlage Kind Kz 89 (ADR-0090)."
+          },
+          "firstName": {
+            "type": "string",
+            "example": "Lina"
+          },
+          "lastName": {
+            "type": "string",
+            "example": "Muster"
+          },
+          "geburtsdatum": {
+            "type": "string",
+            "example": "2018-05-12"
+          },
+          "taxId": {
+            "type": "string",
+            "example": "12345678901"
+          },
+          "childBenefitClaimEur": {
+            "type": "string",
+            "example": "3000"
           }
         }
-      },
-      "PutExchangeRateDto": {
-        "type": "object",
-        "properties": {
-          "month": {
-            "type": "string",
-            "example": "2026-01",
-            "description": "yyyy-mm the rate applies to; yyyy for the Jahresdurchschnittskurs."
-          },
-          "rate": {
-            "type": "number",
-            "example": 0.9412,
-            "description": "EUR per 1 CHF, strictly positive."
-          },
-          "mode": {
-            "type": "string",
-            "enum": [
-              "amtlich",
-              "jahresdurchschnitt",
-              "tatsaechlich"
-            ],
-            "description": "The rate mode (ADR-012, ADR-0072)."
-          },
-          "receiptId": {
-            "type": "string",
-            "description": "Beleg id — required iff modus === \"tatsaechlich\"."
-          }
-        },
-        "required": [
-          "month",
-          "rate",
-          "mode"
-        ]
-      },
-      "PutCrossBorderFactsDto": {
-        "type": "object",
-        "properties": {
-          "residence": {
-            "type": "string",
-            "enum": [
-              "Deutschland",
-              "Schweiz"
-            ],
-            "description": "Where Person B lives."
-          },
-          "daysWithoutReturn": {
-            "type": "number",
-            "example": 0,
-            "description": "Working days Person B did not return home (Nichtrückkehrtage)."
-          }
-        },
-        "required": [
-          "residence",
-          "daysWithoutReturn"
-        ]
-      },
-      "KnownEmployerDto": {
-        "type": "object",
-        "properties": {
-          "name": {
-            "type": "string",
-            "example": "Cilag AG"
-          },
-          "strasse": {
-            "type": "string",
-            "example": "Hochstrasse 201"
-          },
-          "plzOrt": {
-            "type": "string",
-            "example": "8205 Schaffhausen"
-          }
-        },
-        "required": [
-          "name",
-          "strasse",
-          "plzOrt"
-        ]
       },
       "SubmitTaxReturnDto": {
         "type": "object",
@@ -12648,237 +13428,6 @@
           "outcome"
         ]
       },
-      "CommuteInputsDto": {
-        "type": "object",
-        "properties": {
-          "workdays": {
-            "example": [
-              1,
-              2,
-              3,
-              4,
-              5
-            ],
-            "description": "ISO weekdays worked (1 = Monday … 7 = Sunday).",
-            "type": "array",
-            "items": {
-              "type": "number"
-            }
-          },
-          "vacationDays": {
-            "type": "number",
-            "example": 30
-          },
-          "sickDays": {
-            "type": "number",
-            "example": 5
-          },
-          "homeOfficeDays": {
-            "type": "number",
-            "example": 20
-          },
-          "oneWayKm": {
-            "type": "number",
-            "nullable": true,
-            "example": 23,
-            "description": "One-way distance in full kilometres."
-          },
-          "transport": {
-            "type": "string",
-            "enum": [
-              "pkw",
-              "oepnv",
-              "andere"
-            ],
-            "nullable": true,
-            "example": "pkw"
-          },
-          "workplace": {
-            "type": "string",
-            "nullable": true,
-            "example": "79539 Lörrach, Hauptstraße 1"
-          },
-          "publicHolidays": {
-            "type": "number",
-            "nullable": true,
-            "example": 11,
-            "description": "Confirmed public holidays on working days, subtracted from the commute days."
-          },
-          "publicHolidayRegion": {
-            "type": "string",
-            "nullable": true,
-            "example": "BW",
-            "description": "German state or Swiss canton the holiday suggestion came from."
-          },
-          "professionalBodiesEur": {
-            "type": "number",
-            "nullable": true,
-            "example": 110,
-            "description": "Werbungskosten Kz 310: professional bodies, e.g. a trade union. Whole euros; omitted keeps what is stored."
-          },
-          "professionalBodiesNote": {
-            "type": "string",
-            "nullable": true,
-            "example": "Berufskleidung",
-            "description": "Which bodies (Anlage N Zeile 53)."
-          },
-          "workEquipmentEur": {
-            "type": "number",
-            "nullable": true,
-            "example": 110,
-            "description": "Werbungskosten Kz 320: work tools and typical work clothing. Whole euros; omitted keeps what is stored."
-          },
-          "workEquipmentNote": {
-            "type": "string",
-            "nullable": true,
-            "example": "Berufskleidung",
-            "description": "What the work tools were (Anlage N Zeile 54)."
-          },
-          "accountFeesEur": {
-            "type": "number",
-            "nullable": true,
-            "example": 110,
-            "description": "Werbungskosten Kz 380: account fees (16 € a year are accepted without proof). Whole euros; omitted keeps what is stored."
-          },
-          "otherWorkExpensesEur": {
-            "type": "number",
-            "nullable": true,
-            "example": 110,
-            "description": "Werbungskosten Kz 380: other expenses, e.g. applications. Whole euros; omitted keeps what is stored."
-          },
-          "otherWorkExpensesNote": {
-            "type": "string",
-            "nullable": true,
-            "example": "Berufskleidung",
-            "description": "What the other expenses were (Anlage N Zeile 63)."
-          },
-          "periodFrom": {
-            "type": "string",
-            "nullable": true,
-            "example": "01.01.2024",
-            "description": "This way to work from (DD.MM.YYYY), when not the whole year (ADR-0079)."
-          },
-          "periodTo": {
-            "type": "string",
-            "nullable": true,
-            "example": "31.10.2024",
-            "description": "This way to work until (DD.MM.YYYY)."
-          },
-          "secondOneWayKm": {
-            "type": "number",
-            "nullable": true,
-            "example": 87,
-            "description": "A second way to work after a change of job: one-way km."
-          },
-          "secondTransport": {
-            "type": "string",
-            "enum": [
-              "pkw",
-              "oepnv",
-              "andere"
-            ],
-            "nullable": true
-          },
-          "secondWorkplace": {
-            "type": "string",
-            "nullable": true,
-            "example": "8050 Zürich, Birchstrasse 155"
-          },
-          "secondFrom": {
-            "type": "string",
-            "nullable": true,
-            "example": "01.11.2024"
-          },
-          "secondTo": {
-            "type": "string",
-            "nullable": true,
-            "example": "31.12.2024"
-          },
-          "travelDays": {
-            "type": "number",
-            "nullable": true,
-            "example": 205,
-            "description": "Days the first place of work was actually visited on this way; replaces the days derived from working days less days off (ADR-0093). Omitted keeps what is stored."
-          },
-          "secondTravelDays": {
-            "type": "number",
-            "nullable": true,
-            "example": 40,
-            "description": "Days actually travelled on the second way."
-          },
-          "shortestRouteConfirmed": {
-            "type": "boolean",
-            "nullable": true,
-            "description": "The user confirmed that `oneWayKm` is the shortest road connection (§ 9 Abs. 1 Nr. 4 Satz 4 EStG)."
-          },
-          "secondShortestRouteConfirmed": {
-            "type": "boolean",
-            "nullable": true,
-            "description": "The same confirmation for `secondOneWayKm`."
-          }
-        },
-        "required": [
-          "workdays",
-          "vacationDays",
-          "sickDays",
-          "homeOfficeDays",
-          "oneWayKm",
-          "transport",
-          "workplace"
-        ]
-      },
-      "WorkdaysDto": {
-        "type": "object",
-        "properties": {
-          "weekdays": {
-            "type": "number"
-          },
-          "workdays": {
-            "type": "number"
-          },
-          "commuteDays": {
-            "type": "number"
-          }
-        },
-        "required": [
-          "weekdays",
-          "workdays",
-          "commuteDays"
-        ]
-      },
-      "CommuteResponseDto": {
-        "type": "object",
-        "properties": {
-          "inputs": {
-            "nullable": true,
-            "type": "object",
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/CommuteInputsDto"
-              }
-            ]
-          },
-          "workdays": {
-            "nullable": true,
-            "type": "object",
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/WorkdaysDto"
-              }
-            ]
-          },
-          "commuterAllowance": {
-            "type": "number",
-            "nullable": true,
-            "description": "Entfernungspauschale in whole euros; null until distance and means of travel are known."
-          }
-        },
-        "required": [
-          "inputs",
-          "workdays",
-          "commuterAllowance"
-        ]
-      },
       "RangeDto": {
         "type": "object",
         "properties": {
@@ -13009,555 +13558,6 @@
         "required": [
           "kind"
         ]
-      },
-      "ChildResponseDto": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "example": "uuid"
-          },
-          "sequenceNumber": {
-            "type": "number",
-            "example": 1
-          },
-          "firstName": {
-            "type": "string",
-            "example": "Lina"
-          },
-          "lastName": {
-            "type": "string",
-            "example": "Muster"
-          },
-          "geburtsdatum": {
-            "type": "string",
-            "example": "2018-05-12"
-          },
-          "taxId": {
-            "type": "string",
-            "nullable": true,
-            "example": "12345678901"
-          },
-          "childBenefitClaimEur": {
-            "type": "string",
-            "nullable": true,
-            "example": "3000"
-          },
-          "kinship": {
-            "type": "string",
-            "enum": [
-              "1",
-              "2",
-              "3"
-            ],
-            "nullable": true
-          },
-          "kinshipB": {
-            "type": "string",
-            "enum": [
-              "1",
-              "2",
-              "3"
-            ],
-            "nullable": true
-          },
-          "familyBenefitsOffice": {
-            "type": "string",
-            "nullable": true
-          },
-          "domesticResidenceAllYear": {
-            "type": "boolean",
-            "nullable": true
-          },
-          "otherParent": {
-            "type": "string",
-            "enum": [
-              "Inland",
-              "Ausland",
-              "Verstorben",
-              "Unbekannt"
-            ],
-            "nullable": true
-          },
-          "otherParentName": {
-            "type": "string",
-            "nullable": true
-          },
-          "otherParentBirthDate": {
-            "type": "string",
-            "nullable": true
-          },
-          "otherParentAddress": {
-            "type": "string",
-            "nullable": true
-          },
-          "otherParentKind": {
-            "type": "string",
-            "enum": [
-              "1",
-              "2"
-            ],
-            "nullable": true
-          },
-          "otherParentDiedOn": {
-            "type": "string",
-            "nullable": true
-          },
-          "registeredWithMeAllYear": {
-            "type": "boolean",
-            "nullable": true
-          },
-          "childBenefitToMeAllYear": {
-            "type": "boolean",
-            "nullable": true
-          },
-          "healthBasicEur": {
-            "type": "string",
-            "nullable": true
-          },
-          "careEur": {
-            "type": "string",
-            "nullable": true
-          },
-          "swissFamilyAllowanceEur": {
-            "type": "string",
-            "nullable": true,
-            "example": "2748",
-            "description": "Zeile 6 (Kz 15): Schweizer Kinderzulage in whole EUR."
-          },
-          "childcareEur": {
-            "type": "string",
-            "nullable": true
-          },
-          "childcareProvider": {
-            "type": "string",
-            "nullable": true
-          },
-          "childcareFrom": {
-            "type": "string",
-            "nullable": true
-          },
-          "childcareTo": {
-            "type": "string",
-            "nullable": true
-          },
-          "swissFamilyAllowancePayer": {
-            "type": "string",
-            "nullable": true,
-            "enum": [
-              "A",
-              "B"
-            ]
-          },
-          "healthInsuranceAbroad": {
-            "type": "boolean",
-            "nullable": true
-          },
-          "swissFamilyAllowanceDerived": {
-            "type": "boolean",
-            "description": "The allowance is a share of a parent’s Swiss allowances, not entered for the child (ADR-0088)."
-          },
-          "differentialChildBenefitEur": {
-            "type": "string",
-            "nullable": true,
-            "example": "312",
-            "description": "Differenz-Kindergeld der deutschen Familienkasse in whole EUR."
-          },
-          "totalClaimEur": {
-            "type": "string",
-            "nullable": true,
-            "example": "3060",
-            "description": "Gesamtanspruch auf Kindergeld oder vergleichbare Leistungen (Zeile 6)."
-          }
-        },
-        "required": [
-          "id",
-          "sequenceNumber",
-          "firstName",
-          "lastName",
-          "geburtsdatum",
-          "kinship",
-          "kinshipB",
-          "familyBenefitsOffice",
-          "domesticResidenceAllYear",
-          "otherParent",
-          "otherParentName",
-          "otherParentBirthDate",
-          "otherParentAddress",
-          "otherParentKind",
-          "otherParentDiedOn",
-          "registeredWithMeAllYear",
-          "childBenefitToMeAllYear",
-          "healthBasicEur",
-          "careEur"
-        ]
-      },
-      "ChildrenResponseDto": {
-        "type": "object",
-        "properties": {
-          "kinder": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/ChildResponseDto"
-            }
-          },
-          "count": {
-            "type": "number",
-            "example": 1
-          },
-          "childBenefitSum": {
-            "type": "number",
-            "example": 3000
-          },
-          "totalAllowance": {
-            "type": "number",
-            "example": 9600
-          },
-          "swissFamilyAllowanceSum": {
-            "type": "number",
-            "example": 5496,
-            "description": "Summe der Schweizer Kinderzulagen in EUR."
-          },
-          "differentialChildBenefitSum": {
-            "type": "number",
-            "example": 624,
-            "description": "Summe des Differenz-Kindergeldes in EUR."
-          }
-        },
-        "required": [
-          "kinder",
-          "count",
-          "childBenefitSum",
-          "totalAllowance",
-          "swissFamilyAllowanceSum",
-          "differentialChildBenefitSum"
-        ]
-      },
-      "CreateChildDto": {
-        "type": "object",
-        "properties": {
-          "kinship": {
-            "type": "string",
-            "enum": [
-              "1",
-              "2",
-              "3"
-            ],
-            "nullable": true,
-            "description": "Kz 02: 1 = leiblich/adoptiert, 2 = Pflegekind, 3 = Enkel-/Stiefkind"
-          },
-          "kinshipB": {
-            "type": "string",
-            "enum": [
-              "1",
-              "2",
-              "3"
-            ],
-            "nullable": true,
-            "description": "Kz 03, to the spouse — only for a joint return"
-          },
-          "familyBenefitsOffice": {
-            "type": "string",
-            "nullable": true,
-            "example": "Familienkasse Sachsen"
-          },
-          "domesticResidenceAllYear": {
-            "type": "boolean",
-            "nullable": true,
-            "description": "The child lived in Germany all year (Zeile 8)."
-          },
-          "otherParent": {
-            "type": "string",
-            "enum": [
-              "Inland",
-              "Ausland",
-              "Verstorben",
-              "Unbekannt"
-            ],
-            "nullable": true,
-            "description": "The other parent outside this return (Zeilen 11–15)."
-          },
-          "otherParentName": {
-            "type": "string",
-            "nullable": true,
-            "example": "Muster, Max"
-          },
-          "otherParentBirthDate": {
-            "type": "string",
-            "nullable": true,
-            "example": "1984-02-11"
-          },
-          "otherParentAddress": {
-            "type": "string",
-            "nullable": true,
-            "example": "Hauptstraße 3, 01067 Dresden"
-          },
-          "otherParentKind": {
-            "type": "string",
-            "enum": [
-              "1",
-              "2"
-            ],
-            "nullable": true
-          },
-          "otherParentDiedOn": {
-            "type": "string",
-            "nullable": true,
-            "example": "2025-06-30"
-          },
-          "registeredWithMeAllYear": {
-            "type": "boolean",
-            "nullable": true,
-            "description": "Zeile 45: the child was registered with the filer all year."
-          },
-          "childBenefitToMeAllYear": {
-            "type": "boolean",
-            "nullable": true,
-            "description": "Zeile 46: the Kindergeld was paid to the filer all year."
-          },
-          "healthBasicEur": {
-            "type": "string",
-            "nullable": true,
-            "example": "1080",
-            "description": "Zeile 27 (Kz 66): KV Basisabsicherung of the child paid by the parents, whole euros."
-          },
-          "careEur": {
-            "type": "string",
-            "nullable": true,
-            "example": "0",
-            "description": "Zeile 28 (Kz 67): PV of the child paid by the parents, whole euros."
-          },
-          "swissFamilyAllowanceEur": {
-            "type": "string",
-            "nullable": true,
-            "example": "2748",
-            "description": "Zeile 6 (Kz 15): Schweizer Kinderzulage / Familienzulage in whole EUR."
-          },
-          "childcareEur": {
-            "type": "string",
-            "nullable": true,
-            "example": "739",
-            "description": "Zeile 67 (Kz 51): childcare the parents paid, whole euros (ADR-0076)."
-          },
-          "childcareProvider": {
-            "type": "string",
-            "nullable": true,
-            "example": "Kindergarten, Gemeinde Musterdorf, Hauptstr. 1",
-            "description": "Zeile 67: kind of service, provider name and address."
-          },
-          "childcareFrom": {
-            "type": "string",
-            "nullable": true,
-            "example": "01.01.2025",
-            "description": "Zeile 67: from (DD.MM.YYYY)."
-          },
-          "childcareTo": {
-            "type": "string",
-            "nullable": true,
-            "example": "31.12.2025",
-            "description": "Zeile 67: until (DD.MM.YYYY)."
-          },
-          "swissFamilyAllowancePayer": {
-            "type": "string",
-            "nullable": true,
-            "enum": [
-              "A",
-              "B"
-            ],
-            "description": "Who receives the Swiss Kinderzulage with their wage (ADR-0088)."
-          },
-          "healthInsuranceAbroad": {
-            "type": "boolean",
-            "nullable": true,
-            "description": "The child’s KV/PV is with a foreign insurer (e.g. Swiss basic insurance): Anlage Kind Kz 89 (ADR-0090)."
-          },
-          "firstName": {
-            "type": "string",
-            "example": "Lina"
-          },
-          "lastName": {
-            "type": "string",
-            "example": "Muster"
-          },
-          "geburtsdatum": {
-            "type": "string",
-            "example": "2018-05-12",
-            "description": "ISO date YYYY-MM-DD"
-          },
-          "taxId": {
-            "type": "string",
-            "example": "12345678901"
-          },
-          "childBenefitClaimEur": {
-            "type": "string",
-            "example": "3000"
-          }
-        },
-        "required": [
-          "firstName",
-          "lastName",
-          "geburtsdatum"
-        ]
-      },
-      "UpdateChildDto": {
-        "type": "object",
-        "properties": {
-          "kinship": {
-            "type": "string",
-            "enum": [
-              "1",
-              "2",
-              "3"
-            ],
-            "nullable": true,
-            "description": "Kz 02: 1 = leiblich/adoptiert, 2 = Pflegekind, 3 = Enkel-/Stiefkind"
-          },
-          "kinshipB": {
-            "type": "string",
-            "enum": [
-              "1",
-              "2",
-              "3"
-            ],
-            "nullable": true,
-            "description": "Kz 03, to the spouse — only for a joint return"
-          },
-          "familyBenefitsOffice": {
-            "type": "string",
-            "nullable": true,
-            "example": "Familienkasse Sachsen"
-          },
-          "domesticResidenceAllYear": {
-            "type": "boolean",
-            "nullable": true,
-            "description": "The child lived in Germany all year (Zeile 8)."
-          },
-          "otherParent": {
-            "type": "string",
-            "enum": [
-              "Inland",
-              "Ausland",
-              "Verstorben",
-              "Unbekannt"
-            ],
-            "nullable": true,
-            "description": "The other parent outside this return (Zeilen 11–15)."
-          },
-          "otherParentName": {
-            "type": "string",
-            "nullable": true,
-            "example": "Muster, Max"
-          },
-          "otherParentBirthDate": {
-            "type": "string",
-            "nullable": true,
-            "example": "1984-02-11"
-          },
-          "otherParentAddress": {
-            "type": "string",
-            "nullable": true,
-            "example": "Hauptstraße 3, 01067 Dresden"
-          },
-          "otherParentKind": {
-            "type": "string",
-            "enum": [
-              "1",
-              "2"
-            ],
-            "nullable": true
-          },
-          "otherParentDiedOn": {
-            "type": "string",
-            "nullable": true,
-            "example": "2025-06-30"
-          },
-          "registeredWithMeAllYear": {
-            "type": "boolean",
-            "nullable": true,
-            "description": "Zeile 45: the child was registered with the filer all year."
-          },
-          "childBenefitToMeAllYear": {
-            "type": "boolean",
-            "nullable": true,
-            "description": "Zeile 46: the Kindergeld was paid to the filer all year."
-          },
-          "healthBasicEur": {
-            "type": "string",
-            "nullable": true,
-            "example": "1080",
-            "description": "Zeile 27 (Kz 66): KV Basisabsicherung of the child paid by the parents, whole euros."
-          },
-          "careEur": {
-            "type": "string",
-            "nullable": true,
-            "example": "0",
-            "description": "Zeile 28 (Kz 67): PV of the child paid by the parents, whole euros."
-          },
-          "swissFamilyAllowanceEur": {
-            "type": "string",
-            "nullable": true,
-            "example": "2748",
-            "description": "Zeile 6 (Kz 15): Schweizer Kinderzulage / Familienzulage in whole EUR."
-          },
-          "childcareEur": {
-            "type": "string",
-            "nullable": true,
-            "example": "739",
-            "description": "Zeile 67 (Kz 51): childcare the parents paid, whole euros (ADR-0076)."
-          },
-          "childcareProvider": {
-            "type": "string",
-            "nullable": true,
-            "example": "Kindergarten, Gemeinde Musterdorf, Hauptstr. 1",
-            "description": "Zeile 67: kind of service, provider name and address."
-          },
-          "childcareFrom": {
-            "type": "string",
-            "nullable": true,
-            "example": "01.01.2025",
-            "description": "Zeile 67: from (DD.MM.YYYY)."
-          },
-          "childcareTo": {
-            "type": "string",
-            "nullable": true,
-            "example": "31.12.2025",
-            "description": "Zeile 67: until (DD.MM.YYYY)."
-          },
-          "swissFamilyAllowancePayer": {
-            "type": "string",
-            "nullable": true,
-            "enum": [
-              "A",
-              "B"
-            ],
-            "description": "Who receives the Swiss Kinderzulage with their wage (ADR-0088)."
-          },
-          "healthInsuranceAbroad": {
-            "type": "boolean",
-            "nullable": true,
-            "description": "The child’s KV/PV is with a foreign insurer (e.g. Swiss basic insurance): Anlage Kind Kz 89 (ADR-0090)."
-          },
-          "firstName": {
-            "type": "string",
-            "example": "Lina"
-          },
-          "lastName": {
-            "type": "string",
-            "example": "Muster"
-          },
-          "geburtsdatum": {
-            "type": "string",
-            "example": "2018-05-12"
-          },
-          "taxId": {
-            "type": "string",
-            "example": "12345678901"
-          },
-          "childBenefitClaimEur": {
-            "type": "string",
-            "example": "3000"
-          }
-        }
       },
       "BusinessErrorDto": {
         "type": "object",

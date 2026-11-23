@@ -30,14 +30,12 @@ import { assessedValuesOf, filedReturnOf, hasAssessedValues, assessedReturnOf } 
 import { ASSESSMENT_REPOSITORY, type AssessmentRecord, type AssessmentRepository } from '../assessment/assessment.repository.js'
 import { FILING_VERSION_REPOSITORY, type FilingVersionRecord, type FilingVersionRepository } from '../assessment/filing-version.repository.js'
 import { AuditService } from '../audit/audit.service.js'
-import { CROSS_BORDER_SALARY_STATEMENT_REPOSITORY, type CrossBorderSalaryStatementRecord, type CrossBorderSalaryStatementRepository } from '../ch-salary-certificate/ch-salary-certificate.repository.js'
+import type { CrossBorderSalaryStatementRecord } from '../ch-salary-certificate/ch-salary-certificate.repository.js'
 import { ConflictError, InvalidInputError } from '../common/domain-error.js'
-import { COMMUTE_REPOSITORY, type CommuteRepository } from '../commute/commute.repository.js'
 import { answersFrom } from '../interview/answers.js'
-import { INTERVIEW_ANSWER_REPOSITORY, type InterviewAnswerRepository } from '../interview/interview-answer.repository.js'
-import { PARTNER_COUPLING_REPOSITORY, type PartnerCouplingRepository } from '../link/link.repository.js'
 import { recordedSpouseUserId } from '../link/link.service.js'
-import { WAGE_TAX_CERTIFICATE_REPOSITORY, type WageTaxCertificateRecord, type WageTaxCertificateRepository } from '../lstb/lstb.repository.js'
+import type { WageTaxCertificateRecord } from '../lstb/lstb.repository.js'
+import { TAX_CASE_READER, type TaxCaseReader } from '../tax-case/tax-case.reader.js'
 import { TaxEstimateService } from '../tax-estimate/tax-estimate.service.js'
 import { todaysWorkExpenses, wageFacts } from './person-facts.js'
 import { YearHistoryInsightsService, type YearHistoryInsights } from './year-history-insights.service.js'
@@ -192,11 +190,7 @@ export class YearHistoryService {
     @Inject(YEAR_HISTORY_REPOSITORY) private readonly years: YearHistoryRepository,
     @Inject(ASSESSMENT_REPOSITORY) private readonly assessments: AssessmentRepository,
     @Inject(FILING_VERSION_REPOSITORY) private readonly filingVersions: FilingVersionRepository,
-    @Inject(WAGE_TAX_CERTIFICATE_REPOSITORY) private readonly lstb: WageTaxCertificateRepository,
-    @Inject(CROSS_BORDER_SALARY_STATEMENT_REPOSITORY) private readonly ch: CrossBorderSalaryStatementRepository,
-    @Inject(COMMUTE_REPOSITORY) private readonly commute: CommuteRepository,
-    @Inject(INTERVIEW_ANSWER_REPOSITORY) private readonly interview: InterviewAnswerRepository,
-    @Inject(PARTNER_COUPLING_REPOSITORY) private readonly link: PartnerCouplingRepository,
+    @Inject(TAX_CASE_READER) private readonly cases: TaxCaseReader,
     @Inject(TaxEstimateService) private readonly estimates: TaxEstimateService,
     @Inject(YearHistoryInsightsService) private readonly insights: YearHistoryInsightsService,
     @Optional() @Inject(AuditService) private readonly audit?: AuditService,
@@ -294,7 +288,7 @@ export class YearHistoryService {
 
   private async gather(userId: string, record: HistoryYearRecord): Promise<GatheredYear> {
     const { year, status, hasData } = record
-    const link = await this.link.findByUserAndYear(userId, year)
+    const { coupling: link } = await this.cases.read(userId, year, ['coupling'])
     const filingType: 'einzel' | 'zusammen' = link?.filingType === 'zusammen' ? 'zusammen' : 'einzel'
     const spouseUserId = recordedSpouseUserId(link, userId)
     const [assessmentA, versionA, assessmentB, versionB] = await Promise.all([
@@ -306,7 +300,7 @@ export class YearHistoryService {
     const [recordsA, recordsB, answerRows] = await Promise.all([
       this.personRecords(userId, year),
       spouseUserId ? this.personRecords(spouseUserId, year) : Promise.resolve(null),
-      this.interview.findAllForUserAndYear(userId, year),
+      this.cases.read(userId, year, ['interviewRows']).then((c) => c.interviewRows),
     ])
     const [personA, personB] = await Promise.all([
       this.personFacts(recordsA, year, versionA, 'A'),
@@ -369,7 +363,7 @@ export class YearHistoryService {
   }
 
   private async personRecords(dataUserId: string, year: number): Promise<GatheredPerson> {
-    const [lstb, ch] = await Promise.all([this.lstb.findForUserAndYear(dataUserId, year), this.ch.findForUserAndYear(dataUserId, year)])
+    const { wageTaxCertificate: lstb, salaryStatement: ch } = await this.cases.read(dataUserId, year, ['wageTaxCertificate', 'salaryStatement'])
     return { dataUserId, lstb, ch }
   }
 
@@ -393,7 +387,7 @@ export class YearHistoryService {
   }
 
   private async todaysWorkExpenses(dataUserId: string, year: number): Promise<WorkExpenseParts | null> {
-    const [path, rows] = await Promise.all([this.commute.findForUserAndYear(dataUserId, year), this.interview.findAllForUserAndYear(dataUserId, year)])
+    const { commute: path, interviewRows: rows } = await this.cases.read(dataUserId, year, ['commute', 'interviewRows'])
     return todaysWorkExpenses(year, path, rows)
   }
 }

@@ -2,10 +2,10 @@
 // the one-time "Sind das dieselben?" question and shared editing by a linked spouse.
 import { beforeEach, describe, expect, it } from 'vitest'
 import { AuditService } from '../src/audit/audit.service.js'
-import { HouseholdAccessService } from '../src/household/household-access.service.js'
+import { HouseholdAccessService } from '../src/household-core/household-access.service.js'
 import { HouseholdService } from '../src/household/household.service.js'
-import { InMemoryHouseholdRepository } from '../src/household/household.repository.js'
-import { PersonSealService } from '../src/household/person-seal.service.js'
+import { InMemoryHouseholdRepository } from '../src/household-core/household.repository.js'
+import { PersonSealService } from '../src/household-core/person-seal.service.js'
 import { resolveKeystoreMasterKeys } from '../src/keystore/keystore-config.js'
 import { EnvelopeCryptoService } from '../src/receipt/storage/envelope-crypto.service.js'
 import { FakeAuditRepository } from './fakes/fake-audit.repository.js'

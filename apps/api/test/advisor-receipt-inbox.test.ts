@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { buildReceiptInbox, describeReceiptInboxForPrompt, RECEIPT_INBOX_CAP } from '../src/advisor/advisor-receipt-inbox.js'
+import { buildReceiptInbox, RECEIPT_INBOX_CAP } from '../src/advisor/advisor-receipt-inbox.js'
+import { describeReceiptInboxForPrompt } from '../src/ki/receipt-inbox-prompt.js'
 import { checkPiiFree } from '../src/ki/ki.adapter.js'
 import { buildCaseSystemPrompt } from '../src/ki/advisor-prompt.js'
 import type { ReceiptRecord } from '../src/receipt/receipt.repository.js'

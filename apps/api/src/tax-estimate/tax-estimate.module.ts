@@ -1,20 +1,11 @@
 import { Module } from '@nestjs/common'
-import { CommuteModule } from '../commute/commute.module.js'
-import { ChSalaryCertificateModule } from '../ch-salary-certificate/ch-salary-certificate.module.js'
-import { InterviewModule } from '../interview/interview.module.js'
-import { ChildrenModule } from '../children/children.module.js'
-import { LinkModule } from '../link/link.module.js'
-import { RentalModule } from '../rental/rental.module.js'
-import { PensionModule } from '../pension/pension.module.js'
-import { CapitalModule } from '../capital/capital.module.js'
-import { LstbModule } from '../lstb/lstb.module.js'
-import { MasterDataModule } from '../master-data/master-data.module.js'
 import { BusinessModule } from '../business/business.module.js'
+import { TaxCaseModule } from '../tax-case/tax-case.module.js'
 import { TaxEstimateController } from './tax-estimate.controller.js'
 import { TaxEstimateService } from './tax-estimate.service.js'
 
 @Module({
-  imports: [LstbModule, InterviewModule, ChSalaryCertificateModule, MasterDataModule, CommuteModule, LinkModule, ChildrenModule, RentalModule, PensionModule, CapitalModule, BusinessModule],
+  imports: [TaxCaseModule, BusinessModule],
   controllers: [TaxEstimateController],
   providers: [TaxEstimateService],
   exports: [TaxEstimateService],

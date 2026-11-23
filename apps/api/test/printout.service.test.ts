@@ -19,6 +19,7 @@ import { FakeMasterDataRepository } from './fakes/fake-master-data.repository.js
 import { FakePensionRepository } from './fakes/fake-pension.repository.js'
 import { FakeProfileRepository } from './fakes/fake-profile.repository.js'
 import { FakeRentalRepository } from './fakes/fake-rental.repository.js'
+import { taxCaseReaderOver } from '../src/tax-case/repository-tax-case.reader.js'
 
 const TEMPLATES_BASE = new URL('../assets/vordrucke/', import.meta.url)
 
@@ -59,23 +60,7 @@ describe('PrintoutService with AMOUNT_LATER', () => {
       save: async (_u, _y, e) => e,
     }
 
-    const service = new PrintoutService(
-      profileRepo,
-      masterDataRepo,
-      lstbRepo,
-      new FakePensionRepository(),
-      new FakeCapitalRepository(),
-      new FakeRentalRepository(),
-      new FakeChSalaryCertificateRepository(),
-      new FakeChildRepository(),
-      new FakeLinkRepository(),
-      interviewRepo,
-      new FakeMarkingRepository(),
-      commuteRepo,
-      new UnlockService(unlockRepo, paymentProvider, 'http://localhost:8081'),
-      new AuditService(new FakeAuditRepository()),
-      TEMPLATES_BASE,
-    )
+    const service = new PrintoutService(taxCaseReaderOver({ profile: profileRepo, masterData: masterDataRepo, wageTaxCertificate: lstbRepo, pension: new FakePensionRepository(), capital: new FakeCapitalRepository(), rental: new FakeRentalRepository(), salaryStatement: new FakeChSalaryCertificateRepository(), children: new FakeChildRepository(), coupling: new FakeLinkRepository(), interview: interviewRepo, commute: commuteRepo }), new FakeMarkingRepository(), new UnlockService(unlockRepo, paymentProvider, 'http://localhost:8081'), new AuditService(new FakeAuditRepository()), TEMPLATES_BASE)
 
     const pdfBytes = await service.create('u1', 2025, { editable: true })
     const pdf = await PDFDocument.load(pdfBytes)
@@ -101,12 +86,7 @@ describe('PrintoutService check before payment (ADR-0085)', () => {
     }
     const unlockRepo: UnlockRepository = { isPaid: async () => false, createOpenOnes: async () => {}, markPaid: async () => {} }
     const paymentProvider: PaymentProvider = { createCheckout: async () => ({ id: 'cs_2', url: 'https://example.test' }), verifyEvent: () => ({ kind: 'bezahlt', sessionId: 'cs_2', amountCents: 3900 }) }
-    return new PrintoutService(
-      profileRepo, masterDataRepo, lstbRepo, new FakePensionRepository(), new FakeCapitalRepository(), new FakeRentalRepository(),
-      new FakeChSalaryCertificateRepository(), new FakeChildRepository(), new FakeLinkRepository(), new FakeInterviewAnswerRepository(),
-      new FakeMarkingRepository(), commuteRepo, new UnlockService(unlockRepo, paymentProvider, 'http://localhost:8081'),
-      new AuditService(new FakeAuditRepository()), TEMPLATES_BASE,
-    )
+    return new PrintoutService(taxCaseReaderOver({ profile: profileRepo, masterData: masterDataRepo, wageTaxCertificate: lstbRepo, pension: new FakePensionRepository(), capital: new FakeCapitalRepository(), rental: new FakeRentalRepository(), salaryStatement: new FakeChSalaryCertificateRepository(), children: new FakeChildRepository(), coupling: new FakeLinkRepository(), interview: new FakeInterviewAnswerRepository(), commute: commuteRepo }), new FakeMarkingRepository(), new UnlockService(unlockRepo, paymentProvider, 'http://localhost:8081'), new AuditService(new FakeAuditRepository()), TEMPLATES_BASE)
   }
 
   it('names a value too long for its box before the user pays', async () => {
@@ -136,12 +116,7 @@ describe('PrintoutService check: the IBAN is only needed for a refund', () => {
     const unlockRepo: UnlockRepository = { isPaid: async () => false, createOpenOnes: async () => {}, markPaid: async () => {} }
     const paymentProvider: PaymentProvider = { createCheckout: async () => ({ id: 'cs_3', url: 'https://example.test' }), verifyEvent: () => ({ kind: 'bezahlt', sessionId: 'cs_3', amountCents: 3900 }) }
     const estimate = { getState: async () => (result === null ? { kind: 'offen' as const } : { kind: 'spanne' as const, result }) }
-    return new PrintoutService(
-      profileRepo, masterDataRepo, lstbRepo, new FakePensionRepository(), new FakeCapitalRepository(), new FakeRentalRepository(),
-      new FakeChSalaryCertificateRepository(), new FakeChildRepository(), new FakeLinkRepository(), new FakeInterviewAnswerRepository(),
-      new FakeMarkingRepository(), commuteRepo, new UnlockService(unlockRepo, paymentProvider, 'http://localhost:8081'),
-      new AuditService(new FakeAuditRepository()), TEMPLATES_BASE, undefined, estimate as never,
-    )
+    return new PrintoutService(taxCaseReaderOver({ profile: profileRepo, masterData: masterDataRepo, wageTaxCertificate: lstbRepo, pension: new FakePensionRepository(), capital: new FakeCapitalRepository(), rental: new FakeRentalRepository(), salaryStatement: new FakeChSalaryCertificateRepository(), children: new FakeChildRepository(), coupling: new FakeLinkRepository(), interview: new FakeInterviewAnswerRepository(), commute: commuteRepo }), new FakeMarkingRepository(), new UnlockService(unlockRepo, paymentProvider, 'http://localhost:8081'), new AuditService(new FakeAuditRepository()), TEMPLATES_BASE, undefined, estimate as never)
   }
 
   it('names a missing IBAN as a hint, not a block, when the estimate is a payment', async () => {

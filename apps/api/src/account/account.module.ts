@@ -1,4 +1,4 @@
-import { HouseholdCoreModule } from '../household/household-core.module.js'
+import { HouseholdCoreModule } from '../household-core/household-core.module.js'
 import { Module } from '@nestjs/common'
 import { AuditModule } from '../audit/audit.module.js'
 import { PrismaModule } from '../prisma/prisma.module.js'

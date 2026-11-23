@@ -15,6 +15,7 @@ import { FakeLinkRepository } from './fakes/fake-link.repository.js'
 import { FakeLstbRepository } from './fakes/fake-lstb.repository.js'
 import { FakeMasterDataRepository } from './fakes/fake-master-data.repository.js'
 import { FakeRentalRepository } from './fakes/fake-rental.repository.js'
+import { taxCaseReaderOver } from '../src/tax-case/repository-tax-case.reader.js'
 
 const YEAR = 2025
 const PARAMS = getTaxYearParameters(YEAR)
@@ -28,16 +29,7 @@ async function estimate(answers: Answers, married = false): Promise<TaxEstimateS
   const lstb = new FakeLstbRepository()
   const interview = new FakeInterviewAnswerRepository()
   const masterData = new FakeMasterDataRepository()
-  const service = new TaxEstimateService(
-    lstb,
-    interview,
-    new FakeChSalaryCertificateRepository(),
-    masterData,
-    { findForUserAndYear: async () => null, save: async (_u, _y, e) => e },
-    new FakeLinkRepository(),
-    new FakeChildRepository(),
-    new FakeRentalRepository(),
-  )
+  const service = new TaxEstimateService(taxCaseReaderOver({ wageTaxCertificate: lstb, interview, salaryStatement: new FakeChSalaryCertificateRepository(), masterData, commute: { findForUserAndYear: async () => null, save: async (_u, _y, e) => e }, coupling: new FakeLinkRepository(), children: new FakeChildRepository(), rental: new FakeRentalRepository() }))
   interview.seed('u', YEAR, answers)
   if (married) await masterData.save('u', { familienstand: 'verheiratet' } as MasterDataRecord)
   lstb.seed({ userId: 'u', taxYear: YEAR, bruttoarbeitslohn: '45000', lohnsteuer: '6100', sozialversicherung: '9200' })

@@ -11,7 +11,7 @@ import {
 } from '@nestjs/swagger'
 import { CurrentUser, CurrentUserKind } from '../auth/current-user.decorator.js'
 import { UserContextGuard, type UserIdKind } from '../auth/user-context.guard.js'
-import { ParseTaxYearPipe } from '../cockpit/parse-tax-year.pipe.js'
+import { ParseTaxYearPipe } from '../common/parse-tax-year.pipe.js'
 import { LinkService } from '../link/link.service.js'
 import { ParsePersonPipe } from '../link/parse-person.pipe.js'
 import { InterviewStateDto } from './dto/interview-state.dto.js'

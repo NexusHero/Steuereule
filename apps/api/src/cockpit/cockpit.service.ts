@@ -10,17 +10,13 @@ import {
   type Answers,
   type CockpitRange,
 } from '@steuereule/core'
-import { INTERVIEW_ANSWER_REPOSITORY, type InterviewAnswerRepository } from '../interview/interview-answer.repository.js'
-import { CAPITAL_REPOSITORY, type CapitalRepository } from '../capital/capital.repository.js'
-import { WAGE_TAX_CERTIFICATE_REPOSITORY, type WageTaxCertificateRepository } from '../lstb/lstb.repository.js'
-import { PENSION_REPOSITORY, type PensionRepository } from '../pension/pension.repository.js'
 import { PROVENANCE_REPOSITORY, type ProvenanceRepository } from '../marking/marking.repository.js'
-import { RENTAL_REPOSITORY, type RentalRepository } from '../rental/rental.repository.js'
-import { TAX_YEAR_REPOSITORY, type TaxYearRepository } from './tax-year.repository.js'
+import { TAX_CASE_READER, type TaxCaseReader } from '../tax-case/tax-case.reader.js'
+import { TAX_YEAR_REPOSITORY, type TaxYearRepository } from '../tax-year/tax-year.repository.js'
 import type { CockpitStatusDto, CockpitSummaryDto } from './dto/cockpit-summary.dto.js'
 import { answersFrom } from '../interview/answers.js'
 import { wageTaxCertificateDataFrom } from '../lstb/lstb-data.js'
-import { CROSS_BORDER_SALARY_STATEMENT_REPOSITORY, type CrossBorderSalaryStatementRecord, type CrossBorderSalaryStatementRepository } from '../ch-salary-certificate/ch-salary-certificate.repository.js'
+import type { CrossBorderSalaryStatementRecord } from '../ch-salary-certificate/ch-salary-certificate.repository.js'
 import { crossBorderStatusFromAnswers, salaryCertificateValuesFromRecord, exchangeRateFromRecord } from '../ch-salary-certificate/salary-certificate-data.js'
 import { LinkService } from '../link/link.service.js'
 import { SubmissionService } from '../submission/submission.service.js'
@@ -102,13 +98,8 @@ function partnerAnswers(answers: Answers, own: Answers): Answers {
 export class CockpitService {
   constructor(
     @Inject(TAX_YEAR_REPOSITORY) private readonly taxYearRepository: TaxYearRepository,
-    @Inject(WAGE_TAX_CERTIFICATE_REPOSITORY) private readonly lstbRepository: WageTaxCertificateRepository,
-    @Inject(INTERVIEW_ANSWER_REPOSITORY) private readonly interviewRepository: InterviewAnswerRepository,
+    @Inject(TAX_CASE_READER) private readonly cases: TaxCaseReader,
     @Inject(PROVENANCE_REPOSITORY) private readonly markingRepository: ProvenanceRepository,
-    @Inject(PENSION_REPOSITORY) private readonly pensionRepository: PensionRepository,
-    @Inject(CAPITAL_REPOSITORY) private readonly capitalRepository: CapitalRepository,
-    @Inject(RENTAL_REPOSITORY) private readonly rentalRepository: RentalRepository,
-    @Inject(CROSS_BORDER_SALARY_STATEMENT_REPOSITORY) private readonly chSalaryCertificateRepository: CrossBorderSalaryStatementRepository,
     @Optional() private readonly link?: LinkService,
     /** The Abgabe of the year (ADR-0098 §8); absent in tests that build the cockpit without it. */
     @Optional() @Inject(SubmissionService) private readonly submissions?: SubmissionService,
@@ -124,11 +115,11 @@ export class CockpitService {
 
   /** Wages and pension of one person, from their own records (a Grenzgänger's Lohnausweis, the LStB, the pension). */
   private async personIncome(userId: string, taxYear: number, answers: Answers): Promise<{ readonly facts: IncomeFacts; readonly data: WageTaxCertificateData; readonly pension: number | null }> {
-    const [lstbRecord, pensionRecord, chRecord] = await Promise.all([
-      this.lstbRepository.findForUserAndYear(userId, taxYear),
-      this.pensionRepository.findForUserAndYear(userId, taxYear),
-      this.chSalaryCertificateRepository.findForUserAndYear(userId, taxYear),
-    ])
+    const {
+      wageTaxCertificate: lstbRecord,
+      pension: pensionRecord,
+      salaryStatement: chRecord,
+    } = await this.cases.read(userId, taxYear, ['wageTaxCertificate', 'pension', 'salaryStatement'])
     const data = wageTaxCertificateDataFrom(lstbRecord)
     const baseFacts: IncomeFacts = answers.ausland === CH_FOREIGN ? withGermanJob(crossBorderFacts(chRecord, answers), data, answers) : { ...employeeFromData(data, answers), gated: gatedIncomeTypes(answers, interviewOptions()) }
     // A pensioner's income is the pension, not the LStB — without it the hero read "0 €" (UX review K3).
@@ -154,13 +145,10 @@ export class CockpitService {
     } catch {
       return null
     }
-    const own = answersFrom(await this.interviewRepository.findAllForUserAndYear(partnerId, taxYear))
+    const own = answersFrom((await this.cases.read(partnerId, taxYear, ['interviewRows'])).interviewRows)
     const job = answers['partner-job']
     if (answers.familienstand === 'Verheiratet' && (job === 'Angestellt' || job === 'Rente')) return { userId: partnerId, answers: partnerAnswers(answers, own) }
-    const [lstbRecord, chRecord] = await Promise.all([
-      this.lstbRepository.findForUserAndYear(partnerId, taxYear),
-      this.chSalaryCertificateRepository.findForUserAndYear(partnerId, taxYear),
-    ])
+    const { wageTaxCertificate: lstbRecord, salaryStatement: chRecord } = await this.cases.read(partnerId, taxYear, ['wageTaxCertificate', 'salaryStatement'])
     const swissWage = recordedValue(chRecord?.fields['bruttolohn-total'] ?? null) !== null
     const germanWage = recordedValue(lstbRecord?.bruttoarbeitslohn ?? null) !== null
     if (!swissWage && !germanWage) return null
@@ -171,12 +159,9 @@ export class CockpitService {
     const record = await this.taxYearRepository.findByUserAndYear(userId, taxYear)
     if (!record) return null
 
-    const [interviewRows, markings, pensionRecord, capitalRecord, rentalRecords] = await Promise.all([
-      this.interviewRepository.findAllForUserAndYear(userId, taxYear),
+    const [{ interviewRows, pension: pensionRecord, capital: capitalRecord, rentals: rentalRecords }, markings] = await Promise.all([
+      this.cases.read(userId, taxYear, ['interviewRows', 'pension', 'capital', 'rentals']),
       this.markingRepository.listForUserAndYears(userId, [taxYear]),
-      this.pensionRepository.findForUserAndYear(userId, taxYear),
-      this.capitalRepository.findForUserAndYear(userId, taxYear),
-      this.rentalRepository.listForUserAndYear(userId, taxYear),
     ])
 
     const answers = answersFrom(interviewRows)

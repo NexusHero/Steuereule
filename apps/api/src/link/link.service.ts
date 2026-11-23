@@ -1,5 +1,5 @@
 import { Inject, Injectable, Optional } from '@nestjs/common'
-import { HouseholdAccessService, linkActiveIn } from '../household/household-access.service.js'
+import { HouseholdAccessService, linkActiveIn } from '../household-core/household-access.service.js'
 import { ForbiddenError, InvalidInputError, NotFoundError } from '../common/domain-error.js'
 import { randomBytes } from 'node:crypto'
 import { AuditService } from '../audit/audit.service.js'
