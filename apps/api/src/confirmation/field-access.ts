@@ -3,13 +3,11 @@ import {
   ASSESSMENT_NEW_POSITION_IDS,
   isAssessmentPositionId,
   isValidAssessmentPositionAmount,
-  WAGE_TAX_CERTIFICATE_FIELDS, LSTB_OPTIONAL_LINES, LSTB_SOCIAL_LINES, LSTB_SOLI_LINE,
   SALARY_CERTIFICATE_AMOUNT_FIELDS,
   calculateWorkdays,
   isValidAssessmentAmount,
   type AssessmentField,
   type IsoWeekday,
-  type WageTaxCertificateFieldId,
   type Screen,
   type SalaryCertificateAmountFieldId,
   effectivePublicHolidays,
@@ -24,8 +22,8 @@ import type { AssessmentRepository } from '../assessment/assessment.repository.j
 import type { CapitalRepository } from '../capital/capital.repository.js'
 import { CAPITAL_ACCESS_FIELDS, capitalFieldAccess } from '../capital/capital-field-access.js'
 import { MEANS_OF_TRANSPORT, WORK_EXPENSE_AMOUNT_FIELDS, WORK_EXPENSE_NOTE_FIELDS, type CommuteInputs, type CommuteRepository, type MeansOfTransport } from '../commute/commute.repository.js'
-import type { LstbLine, WageTaxCertificateRepository } from '../lstb/lstb.repository.js'
-import { storeLstbLines } from '../lstb/lstb-data.js'
+import type { WageTaxCertificateRepository } from '../lstb/lstb.repository.js'
+import { LSTB_ACCESS_FIELDS, lstbFieldAccess } from '../lstb/lstb-field-access.js'
 import { assertTravelDaysFit } from '../commute/ways-to-work.js'
 import type { PensionRepository } from '../pension/pension.repository.js'
 import { PENSION_ACCESS_FIELDS, pensionFieldAccess } from '../pension/pension-field-access.js'
@@ -99,9 +97,6 @@ const COMMUTE_ACCESS_FIELDS = [
   'secondShortestRouteConfirmed',
 ] as const
 const COMMUTE_BOOLEAN_FIELDS: ReadonlySet<string> = new Set(['shortestRouteConfirmed', 'secondShortestRouteConfirmed'])
-/** Zeilen 22–27, 24c and 5 of the LStB (ADR-0093). */
-const LSTB_LINE_FIELDS: readonly string[] = [...LSTB_SOCIAL_LINES, LSTB_SOLI_LINE]
-const LSTB_ACCESS_FIELDS = [...WAGE_TAX_CERTIFICATE_FIELDS, ...LSTB_OPTIONAL_LINES, ...LSTB_LINE_FIELDS] as const
 const COMMUTE_DATE_FIELDS: ReadonlySet<string> = new Set(['periodFrom', 'periodTo', 'secondFrom', 'secondTo'])
 /** The five figures, the Besteuerungsgrundlagen beyond them, the date and the Erläuterungen (ADR-0098 §8). */
 const ASSESSMENT_ACCESS_FIELDS = [...ASSESSMENT_FIELD_IDS, ...ASSESSMENT_NEW_POSITION_IDS, 'assessmentDate', 'erlaeuterungen'] as const
@@ -214,37 +209,7 @@ export function fieldAccessFrom({
   booking,
 }: FieldAccessRepositories): FieldAccess {
   const access: Partial<Record<Screen, ScreenAccess>> = {
-    lstb: {
-      fields: LSTB_ACCESS_FIELDS,
-      withInstance: false,
-      async read(userId, taxYear) {
-        const r = await lstb.findForUserAndYear(userId, taxYear)
-        return {
-          bruttoarbeitslohn: r?.bruttoarbeitslohn ?? null,
-          lohnsteuer: r?.lohnsteuer ?? null,
-          sozialversicherung: r?.sozialversicherung ?? null,
-          kirchensteuer: r?.kirchensteuer ?? null,
-          kirchensteuerEhegatte: r?.kirchensteuerEhegatte ?? null,
-          zuschuesseKvPv: r?.zuschuesseKvPv ?? null,
-          ...Object.fromEntries(LSTB_LINE_FIELDS.map((line) => [line, r?.[line as LstbLine] ?? null])),
-        }
-      },
-      async write(userId, taxYear, _instance, field, value) {
-        if (LSTB_LINE_FIELDS.includes(field)) {
-          // The same write as the mask's: the sum of Zeilen 23, 25, 26 and 27 follows the lines (ADR-0093).
-          await storeLstbLines(lstb, userId, taxYear, { [field as LstbLine]: value })
-        } else if (field === 'zuschuesseKvPv') {
-          await lstb.setSubsidies(userId, taxYear, value)
-        } else if (field === 'kirchensteuer' || field === 'kirchensteuerEhegatte') {
-          const r = await lstb.findForUserAndYear(userId, taxYear)
-          const lines = { kirchensteuer: r?.kirchensteuer ?? null, kirchensteuerEhegatte: r?.kirchensteuerEhegatte ?? null }
-          await lstb.setChurchTax(userId, taxYear, { ...lines, [field]: value })
-        } else {
-          await lstb.setField(userId, taxYear, field as WageTaxCertificateFieldId, value)
-        }
-        return true
-      },
-    },
+    lstb: lstbFieldAccess(lstb),
     rente: pensionFieldAccess(pension),
     kapital: capitalFieldAccess(capital),
     vermietung: rentalFieldAccess(rental),
