@@ -91,9 +91,11 @@ export interface ReceiptRepository {
   /** At most `query.limit` Belege, newest first, behind `query.after` and inside `query.folder`. */
   findPageForUser(userId: string, query: ReceiptPageQuery): Promise<ReceiptRecord[]>
   findManyByIdsForUser(userId: string, ids: readonly string[]): Promise<ReceiptRecord[]>
-  /** How many Beleg rows the account holds — the cap that bounds fileless receipt creation (ADR-0108). */
-  countForUser(userId: string): Promise<number>
-  create(userId: string, data: CreateReceiptData): Promise<ReceiptRecord>
+  /**
+   * Creates a Beleg unless the account already holds `maxRows` of them, then `null` (ADR-0108). Counting and
+   * creating are one step per account: two requests at the cap cannot both pass a count taken beforehand.
+   */
+  create(userId: string, data: CreateReceiptData, maxRows: number): Promise<ReceiptRecord | null>
   setAssignment(userId: string, id: string, data: SetAssignmentData): Promise<ReceiptRecord | null>
   /** Records whose document it is (ADR-0092): the holder first, then the people it was also taken over for. */
   setHolders(userId: string, id: string, holders: readonly HolderRef[], taxYear: number): Promise<ReceiptRecord | null>

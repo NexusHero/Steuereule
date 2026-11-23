@@ -50,11 +50,11 @@ export class FakeReceiptRepository implements ReceiptRepository {
     return Promise.resolve(this.rows.find((row) => row.userId === userId && row.id === id) ?? null)
   }
 
-  countForUser(userId: string): Promise<number> {
-    return Promise.resolve(this.rows.filter((row) => row.userId === userId).length)
-  }
-
-  create(userId: string, data: CreateReceiptData): Promise<ReceiptRecord> {
+  /** Without a cap a test seeds a row and always gets it back; with one it behaves like the port. */
+  create(userId: string, data: CreateReceiptData): Promise<ReceiptRecord>
+  create(userId: string, data: CreateReceiptData, maxRows: number): Promise<ReceiptRecord | null>
+  create(userId: string, data: CreateReceiptData, maxRows = Number.POSITIVE_INFINITY): Promise<ReceiptRecord | null> {
+    if (this.rows.filter((row) => row.userId === userId).length >= maxRows) return Promise.resolve(null)
     const now = new Date()
     const record: ReceiptRecord = {
       id: `beleg-${this.seq++}`,

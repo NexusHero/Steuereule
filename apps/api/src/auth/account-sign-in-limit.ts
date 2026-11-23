@@ -29,19 +29,24 @@ export async function enforceAccountSignInLimit(storage: ResettableRateLimitStor
 }
 
 /**
- * Password-check attempts per account on `/verify-password` (ADR-0108, review of ADR-0106 D9).
+ * Password-check attempts per account, for a caller that already holds a session (ADR-0108, review of
+ * ADR-0106 D9).
  *
- * `/verify-password` is a password oracle: a holder of a session cookie can re-check the account password
- * (to satisfy step-up, ADR-0106 D2). better-auth caps it only per client address (3/10s), so a guesser
- * spread over many addresses could brute-force it. Every attempt on the session's account counts here,
- * whatever its outcome, the same per-account bar the sign-in limit sets. `enforceVerifyPasswordAccountLimit`
- * runs before the password is checked, so a correct guess at the limit is refused too.
+ * `/verify-password` and `/change-password` are both password oracles: a holder of a session cookie can
+ * re-check the account password (to satisfy step-up, ADR-0106 D2) or offer a guess as the current password,
+ * and a right guess on `/change-password` also takes the account over. better-auth caps both only per client
+ * address (3/10s), so a guesser spread over many addresses could brute-force either. Every attempt on the
+ * session's account counts here, whatever its outcome and whichever of the two paths it used: they share one
+ * budget, or closing one would leave the other open. `enforceVerifyPasswordAccountLimit` runs before the
+ * password is checked, so a correct guess at the limit is refused too.
  */
 export const VERIFY_PASSWORD_ACCOUNT_LIMIT = { window: 15 * 60, max: 10 } as const
 export const VERIFY_PASSWORD_PATH = '/verify-password'
+export const CHANGE_PASSWORD_PATH = '/change-password'
+export const PASSWORD_CHECK_PATHS: ReadonlySet<string> = new Set([VERIFY_PASSWORD_PATH, CHANGE_PASSWORD_PATH])
 export const VERIFY_PASSWORD_ATTEMPTS_EXCEEDED = 'VERIFY_PASSWORD_ATTEMPTS_EXCEEDED'
 
-/** Pure counter: consumes one per-account verify-password attempt and throws 429 once the window is full. */
+/** Pure counter: consumes one per-account password-check attempt and throws 429 once the window is full. */
 export async function consumeVerifyPasswordAccountLimit(storage: ResettableRateLimitStorage, userId: string): Promise<void> {
   const decision = await storage.consume(`verify-password-account:${userId}`, VERIFY_PASSWORD_ACCOUNT_LIMIT)
   if (!decision.allowed) {
@@ -52,9 +57,9 @@ export async function consumeVerifyPasswordAccountLimit(storage: ResettableRateL
   }
 }
 
-/** The `/verify-password` hook: resolves the session's account and applies the per-account limit. */
+/** The hook for the password-check paths: resolves the session's account and applies the per-account limit. */
 export async function enforceVerifyPasswordAccountLimit(storage: ResettableRateLimitStorage, ctx: AuthMiddlewareContext): Promise<void> {
-  if (ctx.path !== VERIFY_PASSWORD_PATH) return
+  if (!PASSWORD_CHECK_PATHS.has(ctx.path ?? '')) return
   const session = await getSessionFromCtx(ctx)
   if (!session) return
   await consumeVerifyPasswordAccountLimit(storage, session.user.id)

@@ -161,13 +161,14 @@ export class PrismaReceiptRepository implements ReceiptRepository {
     return row === null ? null : toRecord(row)
   }
 
-  async countForUser(userId: string): Promise<number> {
-    return this.prisma.receipt.count({ where: { userId } })
-  }
-
-  async create(userId: string, data: CreateReceiptData): Promise<ReceiptRecord> {
-    const [row] = await this.prisma.$transaction([
-      this.prisma.receipt.create({
+  async create(userId: string, data: CreateReceiptData, maxRows: number): Promise<ReceiptRecord | null> {
+    // The lock per account makes "count, then create" one step: without it, requests in parallel all read the
+    // same count below the cap and all created their row (review of ADR-0108). It is released with the
+    // transaction, and other accounts never wait on it.
+    return this.prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`receipt-rows:${userId}`}, 0))`
+      if ((await tx.receipt.count({ where: { userId } })) >= maxRows) return null
+      const row = await tx.receipt.create({
         data: {
           userId,
           fileName: data.fileName,
@@ -177,12 +178,10 @@ export class PrismaReceiptRepository implements ReceiptRepository {
           ...(data.direction !== undefined ? { direction: data.direction } : {}),
         },
         include: FILE_META_INCLUDE,
-      }),
-      this.prisma.taxDataAccessLog.create({
-        data: { userId, action: 'WRITE', resource: 'beleg' },
-      }),
-    ])
-    return toRecord(row)
+      })
+      await tx.taxDataAccessLog.create({ data: { userId, action: 'WRITE', resource: 'beleg' } })
+      return toRecord(row)
+    })
   }
 
   async setAssignment(userId: string, id: string, data: SetAssignmentData): Promise<ReceiptRecord | null> {

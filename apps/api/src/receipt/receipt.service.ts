@@ -223,13 +223,13 @@ export class ReceiptService {
   }
 
   async create(userId: string, dto: CreateReceiptDto): Promise<ReceiptResponseDto> {
-    if ((await this.repository.countForUser(userId)) >= MAX_RECEIPTS_PER_ACCOUNT) throw receiptQuotaExceeded()
     const record = await this.repository.create(userId, {
       fileName: dto.fileName,
       ...(dto.kind !== undefined ? { kind: dto.kind } : {}),
       ...(dto.belegdatum !== undefined ? { belegdatum: dto.belegdatum } : {}),
       ...(dto.zahlungsdatum !== undefined ? { zahlungsdatum: dto.zahlungsdatum } : {}),
-    })
+    }, MAX_RECEIPTS_PER_ACCOUNT)
+    if (record === null) throw receiptQuotaExceeded()
     return toReceiptResponse(record, NOTHING_DERIVED)
   }
 
@@ -251,7 +251,6 @@ export class ReceiptService {
     // check, and the second one, which counts the file just stored, takes back whatever went over the cap.
     const usage = await this.storage.usage(userId)
     if (exceedsReceiptQuota(usage.files + 1, usage.bytes + input.buffer.length)) throw receiptQuotaExceeded()
-    if ((await this.repository.countForUser(userId)) >= MAX_RECEIPTS_PER_ACCOUNT) throw receiptQuotaExceeded()
 
     const record = await this.repository.create(userId, {
       fileName: cleanFileName,
@@ -259,7 +258,8 @@ export class ReceiptService {
       ...(direction !== undefined ? { direction } : {}),
       ...(belegdatum !== undefined ? { belegdatum } : {}),
       ...(zahlungsdatum !== undefined ? { zahlungsdatum } : {}),
-    })
+    }, MAX_RECEIPTS_PER_ACCOUNT)
+    if (record === null) throw receiptQuotaExceeded()
 
     try {
       const storedMeta = await this.storage.put({

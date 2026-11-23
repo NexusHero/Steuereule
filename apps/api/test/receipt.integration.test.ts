@@ -15,6 +15,7 @@ import { AppModule } from '../src/app.module.js'
 import { resolveGuestSessionSecret, verifyGuestSession } from '../src/auth/guest-session.js'
 import { validationExceptionFactory } from '../src/common/validation-exception-factory.js'
 import { PrismaService } from '../src/prisma/prisma.service.js'
+import { RECEIPT_REPOSITORY, type ReceiptRepository } from '../src/receipt/receipt.repository.js'
 import { extractSessionCookie } from './support/build-test-app.js'
 
 /** Recovers the trusted userId the app minted, from the raw `Set-Cookie`/`Cookie` pair. */
@@ -263,5 +264,21 @@ describe('POST/GET /v1/belege — real Postgres (ADR-007/008)', () => {
     } while (cursor !== null)
 
     expect(names).toEqual(['sonstiges-5.pdf', 'sonstiges-4.pdf', 'sonstiges-3.pdf', 'sonstiges-2.pdf', 'sonstiges-1.pdf'])
+  })
+
+  // Review of ADR-0108: the row cap used to count first and create afterwards, so requests in parallel all
+  // read a count below the cap and all created their row. Counting and creating are now one step per account.
+  it('ADR-0108: creates in parallel stop exactly at the row cap, per account', async () => {
+    const repository = app.get<ReceiptRepository>(RECEIPT_REPOSITORY)
+    const cap = 3
+
+    const results = await Promise.all(
+      Array.from({ length: 12 }, (_, i) => repository.create('row-cap-user', { fileName: `parallel-${i}.pdf` }, cap)),
+    )
+
+    expect(results.filter((record) => record !== null)).toHaveLength(cap)
+    expect(await prisma.receipt.count({ where: { userId: 'row-cap-user' } })).toBe(cap)
+    // Another account has its own count and its own lock.
+    expect(await repository.create('row-cap-other', { fileName: 'other.pdf' }, cap)).not.toBeNull()
   })
 })

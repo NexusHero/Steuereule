@@ -68,6 +68,30 @@ describe('limits independent of the caller address (ADR-0106 D8/D9)', () => {
     expect(lastCode).toBe('VERIFY_PASSWORD_ATTEMPTS_EXCEEDED')
   })
 
+  // Review of ADR-0108: /change-password checks the current password just like /verify-password, and a right
+  // guess there takes the account over. Limiting one path alone left the oracle open on the other.
+  it('ADR-0108: /change-password shares the per-account budget, so the oracle is not open next door', async () => {
+    const { cookie } = await signUp('change-pw-abuse@example.com')
+    const guess = (path: string, body: object, i: number) =>
+      fetch(`${baseUrl}/api/auth${path}`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', origin: ORIGIN, cookie, 'x-forwarded-for': `203.0.113.${i + 80}` },
+        body: JSON.stringify(body),
+      })
+    const statuses: number[] = []
+    for (let i = 0; i < 5; i += 1) statuses.push((await guess('/verify-password', { password: `wrong-password-${i}` }, i)).status)
+    for (let i = 5; i < 10; i += 1) {
+      statuses.push((await guess('/change-password', { currentPassword: `wrong-password-${i}`, newPassword: 'another-fine-password-2' }, i)).status)
+    }
+    expect(statuses.filter((status) => status === 429)).toEqual([])
+
+    // The eleventh attempt is refused on either path, even with the right password.
+    const eleventh = await guess('/change-password', { currentPassword: 'a-fine-strong-password-1', newPassword: 'another-fine-password-2' }, 10)
+    expect(eleventh.status).toBe(429)
+    expect(((await eleventh.json()) as { code?: string }).code).toBe('VERIFY_PASSWORD_ATTEMPTS_EXCEEDED')
+    expect((await guess('/verify-password', { password: 'a-fine-strong-password-1' }, 11)).status).toBe(429)
+  })
+
   it('D8: guests from one address may write 300 times an hour, the next write is refused', async () => {
     const statuses: number[] = []
     for (let i = 0; i < 301; i += 1) {
