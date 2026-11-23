@@ -34,7 +34,10 @@ jobs:
             PR=$(gh api "repos/$REPO/commits/$SHA/pulls" --jq '.[0].number // empty')
             [ -n "$PR" ] || { echo "No PR for $SHA."; return 0; }
             RUNS=$(gh api "repos/$REPO/commits/$SHA/check-runs" --paginate \
-              --jq '.check_runs[] | {name, status, conclusion}')
+              --jq '.check_runs[] | {name, status, conclusion}') ||
+              { echo "check-run retrieval failed; skipping overview."; return 0; }
+            [ -n "$RUNS" ] ||
+              { echo "no check-runs retrieved; skipping overview (not posting a misleading empty summary)."; return 0; }
             PENDING=$(printf '%s\n' "$RUNS" | jq -rs \
               '[.[] | select((.name|startswith("overview:"))|not) | select(.status!="completed")] | length')
             [ "$PENDING" = "0" ] || { echo "$PENDING checks still running; waiting."; return 0; }
