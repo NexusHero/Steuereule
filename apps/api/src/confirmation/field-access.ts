@@ -1,9 +1,7 @@
 import {
-  SALARY_CERTIFICATE_AMOUNT_FIELDS,
   calculateWorkdays,
   type IsoWeekday,
   type Screen,
-  type SalaryCertificateAmountFieldId,
   effectivePublicHolidays,
   germanStateOfAddress,
   isHolidayRegion,
@@ -31,7 +29,8 @@ import type { PartnerCouplingRepository } from '../link/link.repository.js'
 import { LINK_ACCESS_FIELDS, linkFieldAccess, type SetFilingType } from '../link/link-field-access.js'
 import type { InterviewAnswerRepository } from '../interview/interview-answer.repository.js'
 import { INTERVIEW_ACCESS_FIELDS, interviewFieldAccess } from '../interview/interview-field-access.js'
-import { N_GRE_BOOLEAN_FIELDS, type CrossBorderSalaryStatementRepository, type NGreDetails } from '../ch-salary-certificate/ch-salary-certificate.repository.js'
+import type { CrossBorderSalaryStatementRepository } from '../ch-salary-certificate/ch-salary-certificate.repository.js'
+import { CH_SALARY_ACCESS_FIELDS, chSalaryCertificateFieldAccess } from '../ch-salary-certificate/ch-salary-certificate-field-access.js'
 import type { ChildRepository } from '../children/child.repository.js'
 import { CHILD_ACCESS_FIELDS, childFieldAccess } from '../children/child-field-access.js'
 
@@ -94,40 +93,6 @@ const COMMUTE_BOOLEAN_FIELDS: ReadonlySet<string> = new Set(['shortestRouteConfi
 const COMMUTE_DATE_FIELDS: ReadonlySet<string> = new Set(['periodFrom', 'periodTo', 'secondFrom', 'secondTo'])
 const INTEGER_RE = /^-?\d+$/
 
-const NGRE_FIELDS: readonly (keyof NGreDetails)[] = [
-  'arbeitgeberName',
-  'arbeitgeberStrasse',
-  'arbeitgeberPlzOrt',
-  'familienzulagenChf',
-  'krankentaggeldChf',
-  'pkArbeitnehmerChf',
-  'pkArbeitgeberChf',
-  'pkArbeitgeberGesamtChf',
-  'steuerfreiesKrankentaggeldChf',
-  'steuerfreiesUnfalltaggeldChf',
-  'taggeldQuelle',
-  'krankentaggeldArbeitgeberProzent',
-  'krankentaggeldArbeitgeberChf',
-  'nbuvArbeitgeberProzent',
-  'nbuvArbeitgeberChf',
-  'krankenkasseZusatzChf',
-]
-/** The Wechselkurs CHF→EUR as two fields (C4): the rate, and a year (annual average) or a month (BMF monthly rate). */
-const EXCHANGE_RATE_FIELDS = ['wechselkurs', 'wechselkursMonat'] as const
-const YEAR_OR_MONTH_RE = /^\d{4}(-(0[1-9]|1[0-2]))?$/
-const CH_SALARY_ACCESS_FIELDS = [
-  ...SALARY_CERTIFICATE_AMOUNT_FIELDS,
-  'bemerkungen',
-  'saeule3aChf',
-  'krankenkasseChf',
-  ...NGRE_FIELDS,
-  ...EXCHANGE_RATE_FIELDS,
-  /** „Keine Sonderfälle“ of the Anlage N-Gre, as the mask's switch (ADR-0091, Nachtrag). */
-  'nGreSonderfaelle',
-  /** Anlage Vorsorgeaufwand Zeile 49 and the family allowance inside Ziffer 8 (ADR-0093). */
-  'kvZuschussAnspruch',
-  'familienzulagenImBruttolohn',
-] as const
 
 /**
  * Every field a screen can take through the confirmation path, without touching a repository.
@@ -181,79 +146,7 @@ export function fieldAccessFrom({
 
   if (interview) access.interview = interviewFieldAccess(interview)
 
-  if (chSalaryCertificate) {
-    access.chLohnausweis = {
-      fields: CH_SALARY_ACCESS_FIELDS,
-      withInstance: false,
-      async read(userId, taxYear) {
-        const r = await chSalaryCertificate.findForUserAndYear(userId, taxYear)
-        const nGreFields: Record<string, string | null> = {}
-        if (r?.nGre) {
-          for (const [k, v] of Object.entries(r.nGre)) {
-            nGreFields[k] = v === null ? null : typeof v === 'boolean' ? String(v) : v
-          }
-        }
-        return {
-          ...(r?.fields),
-          wechselkurs: r?.exchangeRateValue === null || r?.exchangeRateValue === undefined ? null : String(r.exchangeRateValue),
-          wechselkursMonat: r?.exchangeRateMonth ?? null,
-          bemerkungen: r?.bemerkungen ?? null,
-          saeule3aChf: r?.saeule3aChf ?? null,
-          krankenkasseChf: r?.krankenkasseChf ?? null,
-          ...nGreFields,
-        }
-      },
-      async write(userId, taxYear, _instance, field, value) {
-        if ((SALARY_CERTIFICATE_AMOUNT_FIELDS as readonly string[]).includes(field)) {
-          await chSalaryCertificate.setField(userId, taxYear, field as SalaryCertificateAmountFieldId, value)
-          return true
-        }
-        if (field === 'bemerkungen') {
-          await chSalaryCertificate.setRemarks(userId, taxYear, value)
-          return true
-        }
-        if ((EXCHANGE_RATE_FIELDS as readonly string[]).includes(field)) {
-          // The mode follows the period: a year is the annual average (Anlage N-Gre), a month the BMF monthly rate.
-          // A rate with a receipt ("tatsächlich") is the mask's, the owl does not set it.
-          const current = await chSalaryCertificate.findForUserAndYear(userId, taxYear)
-          let rate = current?.exchangeRateValue ?? null
-          let month = current?.exchangeRateMonth ?? null
-          if (field === 'wechselkurs') {
-            const parsed = value === null ? null : Number(value.replace(',', '.'))
-            if (parsed !== null && (!Number.isFinite(parsed) || parsed <= 0)) {
-              throw new InvalidInputError('WECHSELKURS_INVALID', '"wechselkurs" must be a positive number.')
-            }
-            rate = parsed
-            month ??= String(taxYear)
-          } else {
-            if (value !== null && !YEAR_OR_MONTH_RE.test(value)) {
-              throw new InvalidInputError('WECHSELKURS_INVALID', '"wechselkursMonat" must be yyyy or yyyy-mm.')
-            }
-            month = value
-          }
-          const mode = month === null ? null : month.length === 4 ? 'jahresdurchschnitt' : 'amtlich'
-          await chSalaryCertificate.setExchangeRate(userId, taxYear, { month, rate, mode })
-          return true
-        }
-        if (field === 'saeule3aChf' || field === 'krankenkasseChf') {
-          await chSalaryCertificate.setProvision(userId, taxYear, { [field]: value })
-          return true
-        }
-        if ((NGRE_FIELDS as readonly string[]).includes(field)) {
-          await chSalaryCertificate.setNGre(userId, taxYear, { [field]: value })
-          return true
-        }
-        if ((N_GRE_BOOLEAN_FIELDS as readonly string[]).includes(field)) {
-          if (value !== null && value !== 'true' && value !== 'false') {
-            throw new InvalidInputError('FIELD_VALUE_INVALID', `"${value}" is not "true" or "false".`)
-          }
-          await chSalaryCertificate.setNGre(userId, taxYear, { [field]: value === null ? null : value === 'true' })
-          return true
-        }
-        return false
-      },
-    }
-  }
+  if (chSalaryCertificate) access.chLohnausweis = chSalaryCertificateFieldAccess(chSalaryCertificate)
 
   if (child) access.kind = childFieldAccess(child)
 
