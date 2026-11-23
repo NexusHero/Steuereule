@@ -1,94 +1,94 @@
-# Höchstbetrag sonstige Vorsorgeaufwendungen (§ 10 Abs. 4 EStG): Schweizer Grenzgänger mit selbst bezahlter KVG
+# Cap on other Vorsorgeaufwendungen (§ 10 Abs. 4 EStG): Swiss Grenzgänger with self-paid KVG
 
-Stand der Recherche: 22.11.2026. VZ 2025, Zusammenveranlagung, beide Ehegatten Grenzgänger CH, Wohnsitz BW, KVG-Grundversicherung vollständig selbst bezahlt, kein Arbeitgeberzuschuss, keine deutsche GKV.
+Research as of: 22.11.2026. VZ (assessment period) 2025, Zusammenveranlagung (joint assessment), both spouses Grenzgänger (cross-border commuters) to CH, resident in BW, KVG basic insurance paid entirely by themselves, no employer subsidy, no German GKV.
 
-## Quellen (primär)
+## Sources (primary)
 
 - [Q1] § 10 EStG, gesetze-im-internet.de: https://www.gesetze-im-internet.de/estg/__10.html
-- [Q2] BMF-Schreiben vom 24.05.2017, IV C 3 - S 2221/16/10001 :004, BStBl I 2017, 820, „Einkommensteuerrechtliche Behandlung von Vorsorgeaufwendungen“, Rz. 125–130. Gelesen als PDF-Kopie: https://www.bvl-verband.de/fileadmin/steuerpolitik/bmf-schreiben/2017/2017-05-24-einkommensteuerrechtliche-behandlung-von-vorsorgeaufwendungen_.pdf. Amtliche Fundstelle im EStH 2022, Anhang 1a II.1: https://esth.bundesfinanzministerium.de/esth/2022/C-Anhaenge/Anhang-01a/II-1/anhang-1a-II-1.html. Diese Seite lieferte beim Abruf HTTP 503, deshalb wurde der Text aus der Kopie gelesen.
-- [Q3] Amtliche ELSTER-Anleitung zur Einkommensteuererklärung 2025, mit den Abschnitten Anlage N-Gre und Anlage Vorsorgeaufwand: https://www.elster.de/eportal/helpGlobal?themaGlobal=help_est_ufa_10_2025
-- [Q4] Vordruck Anlage Vorsorgeaufwand 2025, Zeile 49, Kz. 307/407. Gelesen über eine Kopie bei einem Softwareanbieter (Sekundärquelle als Träger des amtlichen Vordrucks): https://www.buhl.de/steuer/wp-content/uploads/sites/31/2026/02/Anlage_Vorsorgeaufwand_2025.pdf
-- [Q5] BFH, Urteil vom 23.01.2013, X R 43/09, BStBl II 2013, 608: https://www.bundesfinanzhof.de/en/entscheidungen/entscheidungen-online/decision-detail/STRE201310067/
-- [Q6] BFH, Urteil vom 24.07.2025, X R 10/20: https://www.bundesfinanzhof.de/de/entscheidung/entscheidungen-online/detail/pdf/STRE202520291?type=1646225765 und die Pressemitteilung: https://www.bundesfinanzhof.de/de/presse/pressemeldungen/detail/abziehbarkeit-von-beitraegen-zu-einer-freiwilligen-pflegezusatzversicherung-als-sonderausgaben-verfassungsrechtlich-nicht-geboten/. Den Inhalt kenne ich nur aus Suchauszügen. Den Volltext habe ich nicht selbst gelesen.
+- [Q2] BMF letter of 24.05.2017, IV C 3 - S 2221/16/10001 :004, BStBl I 2017, 820, „Einkommensteuerrechtliche Behandlung von Vorsorgeaufwendungen“, Rz. 125–130. Read as a PDF copy: https://www.bvl-verband.de/fileadmin/steuerpolitik/bmf-schreiben/2017/2017-05-24-einkommensteuerrechtliche-behandlung-von-vorsorgeaufwendungen_.pdf. Official reference in EStH 2022, Annex 1a II.1: https://esth.bundesfinanzministerium.de/esth/2022/C-Anhaenge/Anhang-01a/II-1/anhang-1a-II-1.html. This page returned HTTP 503 on retrieval, so the text was read from the copy.
+- [Q3] Official ELSTER guide to the income tax return 2025, with the sections Anlage N-Gre and Anlage Vorsorgeaufwand: https://www.elster.de/eportal/helpGlobal?themaGlobal=help_est_ufa_10_2025
+- [Q4] Form Anlage Vorsorgeaufwand 2025, line 49, Kz. 307/407. Read via a copy at a software vendor (secondary source as carrier of the official form): https://www.buhl.de/steuer/wp-content/uploads/sites/31/2026/02/Anlage_Vorsorgeaufwand_2025.pdf
+- [Q5] BFH, ruling of 23.01.2013, X R 43/09, BStBl II 2013, 608: https://www.bundesfinanzhof.de/en/entscheidungen/entscheidungen-online/decision-detail/STRE201310067/
+- [Q6] BFH, ruling of 24.07.2025, X R 10/20: https://www.bundesfinanzhof.de/de/entscheidung/entscheidungen-online/detail/pdf/STRE202520291?type=1646225765 and the press release: https://www.bundesfinanzhof.de/de/presse/pressemeldungen/detail/abziehbarkeit-von-beitraegen-zu-einer-freiwilligen-pflegezusatzversicherung-als-sonderausgaben-verfassungsrechtlich-nicht-geboten/. I know the content only from search excerpts. I did not read the full text myself.
 
-## 1. 2.800 € oder 1.900 €?
+## 1. 2.800 € or 1.900 €?
 
-**Gesetz.** Nach § 10 Abs. 4 Satz 1 EStG beträgt der Höchstbetrag 2.800 € [Q1]. Satz 2 senkt ihn auf 1.900 €, und zwar nur in zwei Fällen [Q1]:
-- (a) Der Steuerpflichtige hat „ganz oder teilweise ohne eigene Aufwendungen“ einen Anspruch auf Erstattung oder Übernahme **von Krankheitskosten**.
-- (b) Für **„dessen Krankenversicherung“** werden Leistungen nach § 3 Nr. 9, 14, 57 oder 62 EStG erbracht.
+**Statute.** Under § 10 Abs. 4 Satz 1 EStG the cap is 2.800 € [Q1]. Satz 2 lowers it to 1.900 €, and only in two cases [Q1]:
+- (a) The taxpayer has, „ganz oder teilweise ohne eigene Aufwendungen“, an entitlement to reimbursement or assumption **of medical costs**.
+- (b) For **„dessen Krankenversicherung“** benefits under § 3 Nr. 9, 14, 57 or 62 EStG are provided.
 
-Nach Satz 3 ergibt sich der gemeinsame Höchstbetrag zusammen veranlagter Ehegatten aus der Summe der Einzelbeträge. Jeder Ehegatte wird dabei für sich geprüft [Q1], [Q2 Rz. 130].
+Under Satz 3 the joint cap of jointly assessed spouses is the sum of the individual amounts. Each spouse is examined separately [Q1], [Q2 Rz. 130].
 
-**BMF.** Rz. 126 wiederholt den Gesetzestext. Es kommt nicht darauf an, ob tatsächlich Leistungen fließen oder wie hoch der Anspruch ist [Q2 Rz. 126]. Rz. 127 zählt die typischen 1.900-€-Fälle auf [Q2 Rz. 127]:
-- Arbeitnehmer mit steuerfreien Arbeitgeberbeiträgen nach § 3 Nr. 62 **zur Krankenversicherung**, auch bei DBA-freiem Auslandslohn,
-- Beihilfeberechtigte,
-- Rentner mit Zuschuss nach § 3 Nr. 14,
-- familienversicherte Angehörige,
-- KSK-Versicherte,
-- Ehegatten, für die der Arbeitgeber § 3-Nr.-62-Leistungen erbringt ([Q5] X R 43/09).
+**BMF.** Rz. 126 repeats the statutory text. It does not matter whether benefits actually flow or how high the entitlement is [Q2 Rz. 126]. Rz. 127 lists the typical 1.900 € cases [Q2 Rz. 127]:
+- employees with tax-free employer contributions under § 3 Nr. 62 **to health insurance**, also for DBA-exempt foreign wages,
+- persons entitled to Beihilfe (civil-servant allowance),
+- pensioners with a subsidy under § 3 Nr. 14,
+- family-insured dependants,
+- KSK-insured persons,
+- spouses for whom the employer provides § 3 Nr. 62 benefits ([Q5] X R 43/09).
 
-Im Beispiel 1 bei Rz. 132 hat der privat versicherte Selbständige A 2.800 €, weil er „seine Krankenversicherung vollständig aus eigenen Mitteln finanziert“ [Q2 Rz. 132].
+In example 1 at Rz. 132, the privately insured self-employed person A has 2.800 € because he „seine Krankenversicherung vollständig aus eigenen Mitteln finanziert“ [Q2 Rz. 132].
 
-**Anwendung.** Schweizer Arbeitgeber zahlen nach dem Sachverhalt nichts zur KVG. Damit fehlt Fall (b). Einen beitragsfreien Anspruch auf Erstattung von Krankheitskosten (Fall a) gibt es ebenfalls nicht. Die KVG-Leistungen beruhen auf den selbst bezahlten Prämien, also auf „eigenen Aufwendungen“.
+**Application.** According to the facts, the Swiss employers pay nothing towards the KVG. Case (b) is therefore absent. There is also no contribution-free entitlement to reimbursement of medical costs (case a). The KVG benefits rest on the self-paid premiums, i.e. on „eigenen Aufwendungen“.
 
-**AHV/IV, EO, ALV, BVG.** Der Arbeitgeberanteil zur AHV/IV kann nach § 3 Nr. 62 steuerfrei sein. Er ist aber eine Leistung zur **Renten- bzw. Invaliditätsversicherung** und nicht „für dessen Krankenversicherung“. Das ergibt sich aus dem Wortlaut von Satz 2 [Q1]. Die Anleitung zur N-Gre ordnet die AHV/IV der Basisversorgung zu, also der Altersvorsorge nach Nr. 2. Die übrigen Beiträge laut Ziffer 9 des Lohnausweises (EO, ALV) zählen zu den sonstigen Vorsorgeaufwendungen [Q3, Anlage N-Gre Zeilen 75–88]. Keine dieser Positionen ist eine Leistung im Sinne des Satzes 2.
+**AHV/IV, EO, ALV, BVG.** The employer share of AHV/IV can be tax-free under § 3 Nr. 62. But it is a benefit for **pension or disability insurance** and not „für dessen Krankenversicherung“. This follows from the wording of Satz 2 [Q1]. The guide to the N-Gre assigns AHV/IV to basic provision, i.e. retirement provision under Nr. 2. The remaining contributions per item 9 of the Lohnausweis (Swiss salary certificate) (EO, ALV) count as other Vorsorgeaufwendungen (provident expenses) [Q3, Anlage N-Gre lines 75–88]. None of these items is a benefit within the meaning of Satz 2.
 
-**Ergebnis:** 2.800 € je Ehegatte, zusammen 5.600 €.
+**Result:** 2.800 € per spouse, 5.600 € together.
 
-**Nicht verifiziert bzw. kein Primärbeleg gefunden:**
-- Ein BFH-Urteil speziell zu Grenzgängern und § 10 Abs. 4 Satz 2 habe ich nicht gefunden. Die Suche auf bundesfinanzhof.de ergab nur X R 43/09 (Ehegatten, § 3 Nr. 62) und X R 10/20 (Satz 4).
-- Schweizer UVG (Berufsunfall, vom Arbeitgeber finanziert, mit Heilbehandlung): Ob die Verwaltung darin einen Anspruch auf „Übernahme von Krankheitskosten“ sieht, ist in den Primärquellen nicht geregelt. Rz. 127 nennt die Unfallversicherung nicht. Auch beim deutschen Arbeitnehmer führt die gesetzliche Unfallversicherung nicht zu 1.900 €. Das ist meine Schlussfolgerung, kein Beleg.
-- Kantonale Prämienverbilligung (IPV) zur KVG: Falls die Eheleute sie bezogen haben, wäre das gesondert zu prüfen. Für diese Konstellation habe ich keine Quelle gefunden.
-- Der freiwillige Zuschuss eines Arbeitgebers zur KVG wäre ein eigener Fall. Er liegt laut Sachverhalt nicht vor und wurde nicht vertieft.
+**Not verified or no primary evidence found:**
+- I did not find a BFH ruling specifically on Grenzgänger and § 10 Abs. 4 Satz 2. The search on bundesfinanzhof.de only yielded X R 43/09 (spouses, § 3 Nr. 62) and X R 10/20 (Satz 4).
+- Swiss UVG (occupational accident, financed by the employer, with medical treatment): whether the administration sees in it an entitlement to „Übernahme von Krankheitskosten“ is not addressed in the primary sources. Rz. 127 does not name accident insurance. For a German employee, too, statutory accident insurance does not lead to 1.900 €. This is my conclusion, not evidence.
+- Cantonal premium reduction (IPV) for the KVG: if the spouses received it, this would need to be examined separately. I found no source for this constellation.
+- An employer's voluntary subsidy towards the KVG would be a separate case. According to the facts it does not apply and was not examined in depth.
 
-## 2. Was sagen Anleitung und Vordruck zur Zuschussfrage?
+## 2. What do the guide and the form say about the subsidy question?
 
-- Die Frage steht in **Zeile 49 der Anlage Vorsorgeaufwand 2025**: „Haben Sie zu Ihrer Krankenversicherung oder Ihren Krankheitskosten Anspruch auf steuerfreie Zuschüsse, steuerfreie Arbeitgeberbeiträge oder steuerfreie Beihilfen?“ Die Kennzahlen sind 307 (Person A) und 407 (Person B), und als **einzige Eintragung vorgesehen ist „2 = Nein“** [Q4].
-- Laut Anleitung bedeutet ein leeres Feld „Ja“. Wörtlich: „Wenn Sie die Frage mit "Ja" beantworten, lassen Sie Zeile 49 bitte leer.“ [Q3, Anlage Vorsorgeaufwand, Zeile 49 bis 55]
-- Die Antwort „Nein“ ist zu geben, unter anderem wenn „Sie haben Beiträge für eine Krankenversicherung ausschließlich selbst bezahlt.“ [Q3]
-- Bleibt das Feld leer, rechnet das Finanzamt also mit 1.900 €. Das erklärt das Ergebnis im Bescheid.
+- The question is in **line 49 of Anlage Vorsorgeaufwand 2025**: „Haben Sie zu Ihrer Krankenversicherung oder Ihren Krankheitskosten Anspruch auf steuerfreie Zuschüsse, steuerfreie Arbeitgeberbeiträge oder steuerfreie Beihilfen?“ The codes are 307 (Person A) and 407 (Person B), and **the only entry provided for is „2 = Nein“** [Q4].
+- According to the guide, an empty field means „Ja“. Literally: „Wenn Sie die Frage mit "Ja" beantworten, lassen Sie Zeile 49 bitte leer.“ [Q3, Anlage Vorsorgeaufwand, Zeile 49 bis 55]
+- The answer „Nein“ is to be given, among other cases, if „Sie haben Beiträge für eine Krankenversicherung ausschließlich selbst bezahlt.“ [Q3]
+- If the field stays empty, the Finanzamt therefore calculates with 1.900 €. That explains the result in the Bescheid (tax assessment notice).
 - **Anlage N-Gre:**
-  - Der Abschnitt Sonderausgaben (Zeilen 75–88) erfasst nur die Schweizer Sozialabgaben, die über den Arbeitgeber laufen. Laut Anleitung sind „insoweit“ keine Eintragungen auf der Anlage Vorsorgeaufwand mehr nötig [Q3].
-  - Die Zeilen 94–96 betreffen die Krankentaggeldversicherung, die Zeilen 97–98 die NBUV [Q3].
-  - In der Anleitung zur N-Gre 2025 habe ich **keine eigene Zeile zum „Anspruch auf steuerfreie Zuschüsse“ zur Krankenversicherung gefunden**.
-  - Die selbst bezahlte KVG gehört nicht in die N-Gre. Sie gehört in die Anlage Vorsorgeaufwand, und zwar auf die Teilseite für „Beiträge an ausländische Kranken-/Pflegeversicherung“ [Q3].
-  - Die Zuschussfrage, auf die es ankommt, ist damit Zeile 49 der Anlage Vorsorgeaufwand.
-  - **Nicht verifiziert:** Den Vordruck N-Gre 2025 selbst konnte ich nicht abrufen. Ob er zusätzlich eine solche Frage enthält, bleibt offen.
+  - The Sonderausgaben (special expenses) section (lines 75–88) records only the Swiss social contributions that run via the employer. According to the guide, „insoweit“ no further entries on Anlage Vorsorgeaufwand are needed [Q3].
+  - Lines 94–96 concern the Krankentaggeld insurance, lines 97–98 the NBUV [Q3].
+  - In the guide to the N-Gre 2025 I **did not find a separate line on the „Anspruch auf steuerfreie Zuschüsse“ to health insurance**.
+  - The self-paid KVG does not belong in the N-Gre. It belongs in Anlage Vorsorgeaufwand, on the sub-page for „Beiträge an ausländische Kranken-/Pflegeversicherung“ [Q3].
+  - The subsidy question that matters is therefore line 49 of Anlage Vorsorgeaufwand.
+  - **Not verified:** I could not retrieve the N-Gre 2025 form itself. Whether it additionally contains such a question remains open.
 
-## 3. Spielt der Höchstbetrag überhaupt eine Rolle? (§ 10 Abs. 4 Satz 4 EStG)
+## 3. Does the cap matter at all? (§ 10 Abs. 4 Satz 4 EStG)
 
-**Gesetz.** Übersteigen die Vorsorgeaufwendungen nach Abs. 1 Nr. 3 (Basis-Kranken- und Pflegeversicherung) die Höchstbeträge der Sätze 1–3, werden sie **voll** abgezogen, und ein Abzug nach Nr. 3a entfällt [Q1]. Die Verwaltung spricht vom „Mindestansatz“: Es gibt „keine betragsmäßige Deckelung“, und daneben ist kein Abzug nach Nr. 3a möglich [Q2 Rz. 129]. Bei Zusammenveranlagung wird die Summe der Basisbeiträge mit dem gemeinsamen Höchstbetrag verglichen [Q2 Rz. 130]. Der BFH bestätigt diese Systematik. Nr.-3a-Beiträge sind nur abziehbar, soweit sie zusammen mit den Nr.-3-Beiträgen den Höchstbetrag nicht übersteigen, bei Ehegatten maximal 5.600 € [Q6 X R 10/20, laut Suchauszug].
+**Statute.** If the Vorsorgeaufwendungen under Abs. 1 Nr. 3 (basic health and long-term care insurance) exceed the caps of Sätze 1–3, they are deducted **in full**, and a deduction under Nr. 3a is excluded [Q1]. The administration speaks of the „Mindestansatz“ (minimum amount): there is „keine betragsmäßige Deckelung“, and no deduction under Nr. 3a is possible alongside it [Q2 Rz. 129]. For Zusammenveranlagung, the sum of the basic contributions is compared with the joint cap [Q2 Rz. 130]. The BFH confirms this system. Nr. 3a contributions are only deductible to the extent that, together with the Nr. 3 contributions, they do not exceed the cap, for spouses at most 5.600 € [Q6 X R 10/20, per search excerpt].
 
-**Mechanismus.** Abziehbar ist max(B, min(B + S, H)), wobei gilt:
-- B = Basisbeiträge nach Nr. 3 (Ehegatten zusammen),
-- S = sonstige Beiträge nach Nr. 3a (z. B. ALV, EO, halbe NBUV, Krankentaggeld, KVG-Zusatzversicherungen, Haftpflicht),
-- H = gemeinsamer Höchstbetrag.
+**Mechanism.** Deductible is max(B, min(B + S, H)), where:
+- B = basic contributions under Nr. 3 (spouses together),
+- S = other contributions under Nr. 3a (e.g. ALV, EO, half of NBUV, Krankentaggeld, KVG supplementary insurance, liability),
+- H = joint cap.
 
-Damit gibt es drei Fälle:
+This gives three cases:
 
-| Basisbeiträge B (Ehegatten zusammen) | Wirkung des falschen Höchstbetrags (4.700 € statt 5.600 €) |
+| Basic contributions B (spouses together) | Effect of the wrong cap (4.700 € instead of 5.600 €) |
 |---|---|
-| B ≥ 5.600 € | Keine. In beiden Varianten werden nur B abgezogen; Nr. 3a fällt ganz weg. |
-| 4.700 € < B < 5.600 € | Mit 4.700 € fällt Nr. 3a ganz weg. Mit 5.600 € sind Nr.-3a-Beiträge bis 5.600 − B abziehbar. Der Nachteil liegt bei weniger als 900 €. |
-| B ≤ 4.700 € | Es fehlen bis zu 900 € Sonderausgaben, soweit S ausreicht, um den Höchstbetrag zu füllen. |
+| B ≥ 5.600 € | None. In both variants only B is deducted; Nr. 3a drops out entirely. |
+| 4.700 € < B < 5.600 € | With 4.700 €, Nr. 3a drops out entirely. With 5.600 €, Nr. 3a contributions up to 5.600 − B are deductible. The disadvantage is less than 900 €. |
+| B ≤ 4.700 € | Up to 900 € of Sonderausgaben are missing, to the extent S is enough to fill the cap. |
 
-Bei B über 5.600 € ist der Fehler also steuerlich wirkungslos. Ein Einspruch wegen Zeile 49 bringt dann nichts.
+With B above 5.600 €, the error therefore has no tax effect. An Einspruch (objection) because of line 49 then achieves nothing.
 
-**Zu beachten:**
-- B ist nur der Teil der KVG-Prämie, der die Basisabsicherung abdeckt. Zusatzversicherungen (VVG) gehören zu Nr. 3a [Q1 § 10 Abs. 1 Nr. 3 Buchst. a], [Q3 „Beiträge für Zusatzleistungen“].
-- Die Beiträge sind in Euro zum Jahresdurchschnittskurs umzurechnen [Q2 Rz. 98].
-- Ein Anspruch auf Krankengeld kann den Basisanteil kürzen (§ 10 Abs. 1 Nr. 3 Satz 1 Buchst. a Satz 4 EStG [Q1]). Diesen Wortlaut habe ich nicht im Detail geprüft.
-- Die Günstigerprüfung nach § 10 Abs. 4a habe ich für 2025 nicht geprüft. Nach meinem Verständnis läuft ihre Tabelle bis VZ 2019, das ist nicht verifiziert.
+**To note:**
+- B is only the part of the KVG premium that covers the basic cover. Supplementary insurances (VVG) belong to Nr. 3a [Q1 § 10 Abs. 1 Nr. 3 Buchst. a], [Q3 „Beiträge für Zusatzleistungen“].
+- The contributions are to be converted into euros at the annual average rate [Q2 Rz. 98].
+- An entitlement to Krankengeld can reduce the basic portion (§ 10 Abs. 1 Nr. 3 Satz 1 Buchst. a Satz 4 EStG [Q1]). I did not examine this wording in detail.
+- I did not check the Günstigerprüfung (most-favorable-treatment check) under § 10 Abs. 4a for 2025. As I understand it, its table runs until VZ 2019; this is not verified.
 
-## 4. Ergebnis
+## 4. Result
 
-- **Richtig ist der Höchstbetrag von 2.800 € je Ehegatten (§ 10 Abs. 4 Satz 1), zusammen 5.600 €.** Die KVG ist vollständig selbst bezahlt, und weder ein Arbeitgeber noch ein Dritter erbringt § 3-Leistungen „für dessen Krankenversicherung“. AHV/IV und die anderen Schweizer Sozialversicherungen lösen Satz 2 nicht aus.
-- Die 1.900 € gehen mit hoher Wahrscheinlichkeit auf das leere Feld in Zeile 49 der Anlage Vorsorgeaufwand zurück, denn ein leeres Feld gilt als „Ja“ [Q3]. Korrekt wäre „2 = Nein“ für beide Personen gewesen.
-- **Steuerliche Wirkung:**
-  - Liegen die Basis-KVG-Beiträge des Paares über 5.600 €, hat der Fehler nach Satz 4 keine Auswirkung.
-  - Liegen sie zwischen 4.700 € und 5.600 €, entsteht ein Nachteil von weniger als 900 €.
-  - Liegen sie darunter, entsteht ein Nachteil von höchstens 900 € Sonderausgaben, soweit genug Nr.-3a-Beiträge vorhanden sind.
-- **Sicherheit:**
-  - Hoch beim Höchstbetrag, weil Gesetzeswortlaut, BMF Rz. 126/127/132 und die Anleitung zu Zeile 49 übereinstimmen.
-  - Hoch beim Mechanismus nach Satz 4 (Gesetz, BMF Rz. 129/130, BFH X R 10/20).
-  - Mittel bei den Randfragen UVG-Heilbehandlung und kantonale Prämienverbilligung, weil es dazu keine Primärquelle gibt.
+- **The correct cap is 2.800 € per spouse (§ 10 Abs. 4 Satz 1), 5.600 € together.** The KVG is paid entirely by the spouses themselves, and neither an employer nor a third party provides § 3 benefits „für dessen Krankenversicherung“. AHV/IV and the other Swiss social insurances do not trigger Satz 2.
+- The 1.900 € very likely goes back to the empty field in line 49 of Anlage Vorsorgeaufwand, because an empty field counts as „Ja“ [Q3]. Correct would have been „2 = Nein“ for both persons.
+- **Tax effect:**
+  - If the couple's basic KVG contributions are above 5.600 €, the error has no effect under Satz 4.
+  - If they are between 4.700 € and 5.600 €, there is a disadvantage of less than 900 €.
+  - If they are below that, there is a disadvantage of at most 900 € of Sonderausgaben, to the extent enough Nr. 3a contributions exist.
+- **Certainty:**
+  - High for the cap, because the statutory wording, BMF Rz. 126/127/132 and the guide to line 49 agree.
+  - High for the mechanism under Satz 4 (statute, BMF Rz. 129/130, BFH X R 10/20).
+  - Medium for the side questions UVG medical treatment and cantonal premium reduction, because there is no primary source on them.

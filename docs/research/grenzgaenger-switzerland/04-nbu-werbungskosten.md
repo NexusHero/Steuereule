@@ -1,59 +1,59 @@
-# NBUV-Prämien von Grenzgängern (Schweiz): 50 % Werbungskosten, 50 % Vorsorgeaufwendungen?
+# NBUV premiums of Grenzgänger (Switzerland): 50 % Werbungskosten, 50 % Vorsorgeaufwendungen?
 
-Stand der Recherche: 22.11.2026. Primärquellen: amtliche Anleitung zur ESt-Erklärung 2024/2025 (ELSTER-Hilfe, Abschnitt Anlage N-Gre), LStH 2025 Anhang 18 (BMF-Schreiben vom 28.10.2009), EStG auf gesetze-im-internet.de.
+Research as of: 22.11.2026. Primary sources: official guide to the income tax return 2024/2025 (ELSTER help, section Anlage N-Gre), LStH 2025 Annex 18 (BMF letter of 28.10.2009), EStG on gesetze-im-internet.de.
 
-Quellen:
-- [A24] Amtliche Anleitung 2024 (ELSTER): https://www.elster.de/eportal/helpGlobal?themaGlobal=help_est_ufa_10_2024
-- [A25] Amtliche Anleitung 2025 (ELSTER): https://www.elster.de/eportal/helpGlobal?themaGlobal=help_est_ufa_10_2025
-- [BMF] BMF vom 28.10.2009, IV C 5 – S 2332/09/10004, BStBl I S. 1275, abgedruckt als LStH 2025 Anhang 18: https://esth.bundesfinanzministerium.de/lsth/2025/B-Anhaenge/Anhang-18/inhalt.html
+Sources:
+- [A24] Official guide 2024 (ELSTER): https://www.elster.de/eportal/helpGlobal?themaGlobal=help_est_ufa_10_2024
+- [A25] Official guide 2025 (ELSTER): https://www.elster.de/eportal/helpGlobal?themaGlobal=help_est_ufa_10_2025
+- [BMF] BMF of 28.10.2009, IV C 5 – S 2332/09/10004, BStBl I S. 1275, reprinted as LStH 2025 Annex 18: https://esth.bundesfinanzministerium.de/lsth/2025/B-Anhaenge/Anhang-18/inhalt.html
 - [§10] § 10 EStG: https://www.gesetze-im-internet.de/estg/__10.html
 - [§9] § 9 EStG: https://www.gesetze-im-internet.de/estg/__9.html
 
-## 1. Was die Anleitung zur Anlage N-Gre sagt
+## 1. What the guide to Anlage N-Gre says
 
-Beide Jahrgänge (2024 und 2025) sagen im Abschnitt „Abfragen bezüglich der Nichtberufsunfallversicherung, Zeilen 97 bis 98“ wortgleich dasselbe [A24], [A25]:
+Both editions (2024 and 2025) say the same thing word for word in the section „Abfragen bezüglich der Nichtberufsunfallversicherung, Zeilen 97 bis 98“ [A24], [A25]:
 
-- Begründung: Zu den Nichtberufsunfällen rechnen bei Vollzeitbeschäftigten auch Unfälle auf dem Weg zur ersten Tätigkeitsstätte.
-- Rechtsfolge, Zitat: „Beiträge des Arbeitnehmers zur NBUV hälftig als Werbungskosten (Zeile 59)“, die andere Hälfte als Sonderausgaben nach § 10 Abs. 1 Nr. 3a EStG im Rahmen der Höchstbeträge, eingetragen in Zeile 81.
-- **Der Anteil beträgt 50 %** (die Anleitung sagt „hälftig“).
+- Reasoning: for full-time employees, non-occupational accidents (NBU) also include accidents on the way to the first place of work.
+- Legal consequence, quote: „Beiträge des Arbeitnehmers zur NBUV hälftig als Werbungskosten (Zeile 59)“, the other half as Sonderausgaben (special expenses) under § 10 Abs. 1 Nr. 3a EStG within the caps, entered in line 81.
+- **The share is 50 %** (the guide says „hälftig“).
 
-Im Abschnitt „Sonderausgaben, Zeilen 75 bis 88“ wiederholt der „Hinweis zur Ermittlung der Beiträge zur NBUV“ die Aufteilung [A24], [A25]. Die NBUV-Prämie ergibt sich als Rest aus Ziffer 9 (2024) bzw. Ziffer 10 (2025) des Lohnausweises nach Abzug von AHV/IV, EO und ALV. Zitat: „Die Hälfte dieser Differenz kann als Sonderausgaben in Zeile 81“. Die andere Hälfte geht als Werbungskosten in Zeile 59.
+In the section „Sonderausgaben, Zeilen 75 bis 88“ the „Hinweis zur Ermittlung der Beiträge zur NBUV“ repeats the split [A24], [A25]. The NBUV premium is the remainder of item 9 (2024) or item 10 (2025) of the Lohnausweis (Swiss salary certificate) after deducting AHV/IV, EO and ALV. Quote: „Die Hälfte dieser Differenz kann als Sonderausgaben in Zeile 81“. The other half goes into line 59 as Werbungskosten (work-related expenses).
 
-Unterschiede zwischen den Jahren gibt es nur bei der Zeilennummer für den Arbeitgeberbeitrag zur NBUV: **2024 Zeile 18**, **2025 Zeile 19** [A24], [A25]. Zeile 59 und Zeile 81 heißen in beiden Jahren gleich.
+The only differences between the years are in the line number for the employer contribution to the NBUV: **2024 line 18**, **2025 line 19** [A24], [A25]. Line 59 and line 81 are the same in both years.
 
-## 2. Grundlage: warum 50 %
+## 2. Basis: why 50 %
 
-- Das BMF-Schreiben vom 28.10.2009 (LStH 2025 Anhang 18) ist die Rechtsgrundlage [BMF]:
-  - Tz. 1.1: Eine Versicherung nur gegen Berufsunfälle ist voll Werbungskosten. Das schließt ausdrücklich Unfälle auf dem Weg zur (damals) regelmäßigen Arbeitsstätte ein.
-  - Tz. 1.2: Eine Versicherung gegen außerberufliche Unfälle ist Sonderausgabe.
-  - Tz. 1.3: Eine Versicherung gegen alle Unfälle ist aufzuteilen, mit Verweis auf BFH vom 22.06.1990, VI R 2/87, BStBl II S. 901. Maßgeblich sind die Angaben des Versicherers, sonst wird geschätzt. Zitat: „keine Bedenken, wenn die Anteile auf jeweils 50 % … geschätzt werden“.
-- Die NBUV deckt formal nur Nichtberufsunfälle, nach Schweizer Recht aber bei Vollzeitbeschäftigten auch Wegeunfälle. Deshalb behandelt die Finanzverwaltung sie als gemischte Versicherung nach Tz. 1.3. Die 50 % sind eine **Vereinfachungsschätzung der Verwaltung** und keine gesetzliche Quote. Das folgt aus dem Zusammenspiel von [A25] und [BMF].
-- Der Sonderausgaben-Teil stützt sich auf § 10 Abs. 1 Nr. 3a EStG, der „Unfall- und Haftpflichtversicherungen“ ausdrücklich nennt [§10].
-- **Nicht verifiziert:**
-  - Den Volltext des BFH-Urteils VI R 2/87 habe ich nicht auf bundesfinanzhof.de gefunden (Urteil von 1990). Zitiert ist es hier nur über das BMF-Schreiben.
-  - Ein BFH-Urteil speziell zur Schweizer NBUV habe ich nicht gefunden.
-  - Das Schweizer UVG (Wegeunfall als Nichtberufsunfall bei Vollzeit) habe ich nicht an der Primärquelle geprüft. Die Aussage stammt hier aus der Anleitung.
-- Offene Spannung: Nach § 9 Abs. 2 Satz 1 EStG sind durch die Entfernungspauschale „sämtliche Aufwendungen abgegolten“, die durch die Wege veranlasst sind [§9]. Die Verwaltung behandelt den Prämienanteil für Wegeunfälle trotzdem als Werbungskosten ([BMF] Tz. 1.1, [A25]). Eine BFH-Entscheidung, die das für Unfallversicherungsprämien klärt, habe ich nicht gefunden (nicht verifiziert). Für die Erklärung ist das ohne Bedeutung, weil die Verwaltung selbst so vorgibt.
+- The BMF letter of 28.10.2009 (LStH 2025 Annex 18) is the legal basis [BMF]:
+  - Tz. 1.1: insurance against occupational accidents only is fully Werbungskosten. This expressly includes accidents on the way to the (then) regular place of work.
+  - Tz. 1.2: insurance against non-occupational accidents is a Sonderausgabe.
+  - Tz. 1.3: insurance against all accidents is to be split, with reference to BFH of 22.06.1990, VI R 2/87, BStBl II S. 901. The insurer's information is decisive, otherwise an estimate is made. Quote: „keine Bedenken, wenn die Anteile auf jeweils 50 % … geschätzt werden“.
+- Formally, the NBUV covers only non-occupational accidents, but under Swiss law, for full-time employees, also commuting accidents. That is why the tax administration treats it as mixed insurance under Tz. 1.3. The 50 % is a **simplifying estimate by the administration** and not a statutory quota. This follows from the interplay of [A25] and [BMF].
+- The Sonderausgaben part rests on § 10 Abs. 1 Nr. 3a EStG, which expressly names „Unfall- und Haftpflichtversicherungen“ [§10].
+- **Not verified:**
+  - I did not find the full text of the BFH ruling VI R 2/87 on bundesfinanzhof.de (ruling from 1990). It is cited here only via the BMF letter.
+  - I did not find a BFH ruling specifically on the Swiss NBUV.
+  - I did not check the Swiss UVG (commuting accident as non-occupational accident for full-time employees) at the primary source. The statement here comes from the guide.
+- Open tension: under § 9 Abs. 2 Satz 1 EStG the Entfernungspauschale (commuting allowance) settles all expenses caused by the commute („sämtliche Aufwendungen abgegolten“) [§9]. The administration nevertheless treats the premium portion for commuting accidents as Werbungskosten ([BMF] Tz. 1.1, [A25]). I did not find a BFH decision that settles this for accident insurance premiums (not verified). For the tax return this is irrelevant, because the administration itself prescribes it this way.
 
-## 3. Gilt das auch, wenn der Arbeitgeber die Prämie zahlt?
+## 3. Does this also apply if the employer pays the premium?
 
-Ja, soweit der Arbeitgeberbeitrag als Arbeitslohn versteuert wurde:
-- Die Anleitung sagt, vom Arbeitgeber übernommene NBUV-Beiträge sind steuerpflichtiger Arbeitslohn (Zukunftssicherungsleistungen) und gehören in Zeile 19 (2025) bzw. Zeile 18 (2024) [A25], [A24].
-- Ist die Hinzurechnung in dieser Zeile erfolgt, sind laut Anleitung „die hälftigen Beiträge des Arbeitnehmers und des Arbeitgebers in Zeile 81 einzutragen“ [A25] (2024 sinngleich mit Zeile 18 [A24]).
-- BMF Tz. 1.4: Vom Arbeitgeber übernommene Beiträge sind steuerpflichtiger Arbeitslohn. Tz. 4: Der Arbeitnehmer kann die versteuerten Beiträge als Werbungskosten oder Sonderausgaben geltend machen, und für die Aufteilung gelten Tz. 1.1 bis 1.3, also auch die 50 % [BMF].
-- Ergebnis: Werbungskosten (50 %) und Sonderausgaben (50 %) gibt es auf die Summe aus Arbeitnehmerbeitrag und **versteuertem** Arbeitgeberbeitrag.
-- Einschränkungen:
-  - Für den Arbeitgeberanteil nennt die Anleitung ausdrücklich nur Zeile 81. Dass dessen andere Hälfte in Zeile 59 gehört, folgt aus BMF Tz. 4 i. V. m. Tz. 1.3 und aus der Systematik, steht aber nicht wörtlich in der Anleitung.
-  - Wurde der Arbeitgeberbeitrag nicht hinzugerechnet, ist er kein Aufwand des Arbeitnehmers. Dann gibt es dafür keinen Abzug (Folgerung aus [BMF] Tz. 1.4/4).
+Yes, to the extent the employer contribution was taxed as wages:
+- The guide says NBUV contributions borne by the employer are taxable wages (future-provision benefits) and belong in line 19 (2025) or line 18 (2024) [A25], [A24].
+- If the addition was made in that line, according to the guide half of the employee's and the employer's contributions are to be entered in line 81: „die hälftigen Beiträge des Arbeitnehmers und des Arbeitgebers in Zeile 81 einzutragen“ [A25] (2024 with the same meaning, with line 18 [A24]).
+- BMF Tz. 1.4: contributions borne by the employer are taxable wages. Tz. 4: the employee can claim the taxed contributions as Werbungskosten or Sonderausgaben, and Tz. 1.1 to 1.3 apply to the split, i.e. also the 50 % [BMF].
+- Result: Werbungskosten (50 %) and Sonderausgaben (50 %) apply to the sum of the employee contribution and the **taxed** employer contribution.
+- Limitations:
+  - For the employer portion the guide expressly names only line 81. That its other half belongs in line 59 follows from BMF Tz. 4 in conjunction with Tz. 1.3 and from the system, but is not stated literally in the guide.
+  - If the employer contribution was not added, it is not an expense of the employee. Then there is no deduction for it (inference from [BMF] Tz. 1.4/4).
 
-## 4. Urteil
+## 4. Verdict
 
-Es ist **korrekt**, 50 % der NBUV-Prämie als Werbungskosten und 50 % als sonstige Vorsorgeaufwendungen anzusetzen. Das gilt für den Arbeitnehmeranteil und für den als Arbeitslohn versteuerten Arbeitgeberanteil. Es entspricht der wörtlichen Vorgabe der amtlichen Anleitung 2024 und 2025 [A24], [A25] und dem BMF-Schreiben vom 28.10.2009, Tz. 1.3 und 4 [BMF].
+It is **correct** to claim 50 % of the NBUV premium as Werbungskosten and 50 % as other Vorsorgeaufwendungen (provident expenses). This applies to the employee portion and to the employer portion taxed as wages. It matches the literal requirement of the official guide 2024 and 2025 [A24], [A25] and the BMF letter of 28.10.2009, Tz. 1.3 and 4 [BMF].
 
-**Konfidenz: hoch** für den Arbeitnehmeranteil (wörtlich belegt). **Mittel bis hoch** für die Werbungskosten-Hälfte des versteuerten Arbeitgeberanteils (über BMF Tz. 4 belegt, in der Anleitung nur für Zeile 81 ausdrücklich).
+**Confidence: high** for the employee portion (literally documented). **Medium to high** for the Werbungskosten half of the taxed employer portion (documented via BMF Tz. 4, in the guide expressly only for line 81).
 
-Hinweise für die Software:
-- Die Werbungskosten-Hälfte wirkt sich nur aus, wenn die gesamten Werbungskosten den Arbeitnehmer-Pauschbetrag übersteigen.
-- Die Sonderausgaben-Hälfte steht unter den Höchstbeträgen des § 10 Abs. 4 EStG und ist oft schon durch Kranken- und Pflegeversicherungsbeiträge ausgeschöpft [§10].
-- Weist der Versicherer einen anderen beruflichen Anteil aus, ist nach BMF Tz. 1.3 dieser maßgeblich. Die 50 % sind nur der Schätzwert, wenn solche Angaben fehlen.
-- Die Zeilennummern unterscheiden sich je Jahr: Arbeitgeberbeitrag 2024 in Zeile 18, 2025 in Zeile 19. Die Lohnausweis-Ziffer ist 2024 Ziffer 9, 2025 Ziffer 10.
+Notes for the software:
+- The Werbungskosten half only has an effect if the total Werbungskosten exceed the employee lump sum (Arbeitnehmer-Pauschbetrag).
+- The Sonderausgaben half is subject to the caps of § 10 Abs. 4 EStG and is often already exhausted by health and long-term care insurance contributions [§10].
+- If the insurer states a different occupational share, that share is decisive under BMF Tz. 1.3. The 50 % is only the estimate when such information is missing.
+- The line numbers differ per year: employer contribution 2024 in line 18, 2025 in line 19. The Lohnausweis item is item 9 in 2024, item 10 in 2025.

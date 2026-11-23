@@ -1,60 +1,60 @@
-# Steuerregeln für Selbstständige 2022–2026 — Quellen
+# Tax rules for the self-employed 2022–2026 — sources
 
-Stand: 19.11.2026. Grundlage für `packages/core/src/domains/business/*` und die Einbindung in die Schätzung (`engine/business-income.ts`, ADR-0101). „Geprüft“ heißt: am Normtext auf gesetze-im-internet.de oder am BMF-Schreiben selbst nachgelesen. „Nicht am Primärtext geprüft“ steht dabei, wo nur Sekundärquellen oder Gedächtnis tragen.
+As of: 19.11.2026. Basis for `packages/core/src/domains/business/*` and its integration into the estimate (`engine/business-income.ts`, ADR-0101). "Checked" means: read in the statutory text on gesetze-im-internet.de or in the BMF letter itself. "Not checked against the primary text" is noted where only secondary sources or memory support the statement.
 
-## Freiberuf oder Gewerbe (`profession.ts`)
+## Freelance profession or trade (`profession.ts`)
 
-- § 18 Abs. 1 Nr. 1 Satz 2 EStG: Katalogberufe und die wissenschaftliche, künstlerische, schriftstellerische, unterrichtende, erzieherische Tätigkeit. Geprüft.
-- § 18 Abs. 1 Nr. 1 Satz 3 und 4 EStG: Mithilfe fachlich vorgebildeter Arbeitskräfte nur bei eigener leitender und eigenverantwortlicher Tätigkeit; Vertretung bei vorübergehender Verhinderung schadet nicht. Geprüft.
-- § 15 Abs. 2 EStG: Gewerbebetrieb als Auffangtatbestand. H 15.6 EStH zum „ähnlichen Beruf“: nicht am Primärtext geprüft.
+- § 18 Abs. 1 Nr. 1 Satz 2 EStG: catalog professions and scientific, artistic, literary, teaching and educational activity. Checked.
+- § 18 Abs. 1 Nr. 1 Satz 3 und 4 EStG: assistance from professionally trained staff only with the person's own leading and self-responsible activity; a stand-in during temporary unavailability does no harm. Checked.
+- § 15 Abs. 2 EStG: Gewerbebetrieb (trade or business) as the catch-all category. H 15.6 EStH on the „ähnlicher Beruf“ (similar profession): not checked against the primary text.
 
-## Abschreibung (`depreciation.ts`)
+## Depreciation (`depreciation.ts`)
 
-- § 6 Abs. 2 EStG: GWG bis 800 € netto; Verzeichnis über 250 €. § 52 Abs. 12 EStG: für Anschaffungen nach dem 31.12.2017. Geprüft.
-- § 6 Abs. 2a EStG: Sammelposten über 250 € bis 1.000 €, je ein Fünftel im Bildungsjahr und den vier folgenden, Abgang mindert nicht, bis 250 € Sofortabzug, einheitlich für alle Wirtschaftsgüter des Jahres. Geprüft.
-- § 7 Abs. 1 Satz 4 EStG: im Anschaffungsjahr je ein Zwölftel weniger für jeden vollen Monat vor dem Anschaffungsmonat. Geprüft. Abgangsjahr zeitanteilig einschließlich Abgangsmonat (R 7.4 Abs. 8 EStR): nicht am Primärtext geprüft.
-- § 7 Abs. 2 EStG, degressive AfA: aktueller Text 1.7.2025–31.12.2027, 3-fach, höchstens 30 %. Geprüft. § 52 Abs. 15 Satz 4 EStG nennt die Fenster 1.1.2020–31.12.2022 und 1.4.–31.12.2024. Geprüft. Die Sätze dieser Fenster (2,5-fach/25 % und 2-fach/20 %) stammen aus den Änderungsgesetzen: nicht am Primärtext geprüft.
-- § 7 Abs. 4 EStG: 3 % Betriebsgebäude (Nr. 1), 3 % Wohngebäude fertiggestellt nach dem 31.12.2022, 2 % sonst, 2,5 % vor 1925. Geprüft.
-- § 7 Abs. 5a EStG: 5 % vom Restwert für Wohngebäude mit Baubeginn 1.10.2023–30.9.2029. Geprüft.
-- AfA-Tabelle AV, BMF 15.12.2000, IV D 2 - S 1551 - 188/00, BStBl I S. 1532: Nutzungsdauern im Code mit Fundstelle. Geprüft am Tabellentext.
-- BMF 22.02.2022, IV C 3 - S 2190/21/10002 :025 (ersetzt BMF 26.02.2021): Computerhardware und Software 1 Jahr; kein Wahlrecht, Verzeichnis nötig, volle AfA im Anschaffungsjahr wird nicht beanstandet (Tz. 1.1, 1.2, 1.4). Geprüft über WD 4 - 3000 - 051/22 des Bundestags. Ob Smartphones darunterfallen: offen; der Code nimmt 5 Jahre (AfA-Tabelle AV 6.13.2.2).
-- § 7g Abs. 1 EStG: IAB bis 50 %, Gewinngrenze 200.000 €, Höchstbetrag 200.000 € je Betrieb. Abs. 2: Hinzurechnung bis 50 % der Kosten, Herabsetzung der Kosten. Abs. 3: Rückgängigmachung nach dem dritten Folgejahr. Abs. 5: Sonder-AfA bis 40 % im Anschaffungsjahr und den vier folgenden. Abs. 6: Gewinngrenze, fast ausschließlich betriebliche Nutzung. Geprüft.
-- § 52 Abs. 16 EStG: 40 % für Anschaffungen nach dem 31.12.2023 (davor 20 %); Investitionsfrist für Abzüge 2017 sechs, 2018 fünf, 2019 vier Jahre. Für 2020 und 2021 keine Verlängerung im Text. Geprüft.
-- § 7a Abs. 9 EStG: nach Ablauf des Begünstigungszeitraums Restwert auf die Restnutzungsdauer. Nicht am Primärtext geprüft.
+- § 6 Abs. 2 EStG: GWG (low-value assets) up to €800 net; register above €250. § 52 Abs. 12 EStG: for acquisitions after 31.12.2017. Checked.
+- § 6 Abs. 2a EStG: Sammelposten (pool) above €250 up to €1,000, one fifth each in the year of formation and the four following years, a disposal does not reduce it, immediate deduction up to €250, uniform for all assets of the year. Checked.
+- § 7 Abs. 1 Satz 4 EStG: in the year of acquisition, one twelfth less for each full month before the month of acquisition. Checked. Year of disposal pro rata including the month of disposal (R 7.4 Abs. 8 EStR): not checked against the primary text.
+- § 7 Abs. 2 EStG, declining-balance AfA (depreciation): current text 1.7.2025–31.12.2027, 3 times, at most 30 %. Checked. § 52 Abs. 15 Satz 4 EStG names the windows 1.1.2020–31.12.2022 and 1.4.–31.12.2024. Checked. The rates of these windows (2.5 times/25 % and 2 times/20 %) come from the amending acts: not checked against the primary text.
+- § 7 Abs. 4 EStG: 3 % for business buildings (Nr. 1), 3 % for residential buildings completed after 31.12.2022, 2 % otherwise, 2.5 % before 1925. Checked.
+- § 7 Abs. 5a EStG: 5 % of the residual value for residential buildings with construction start 1.10.2023–30.9.2029. Checked.
+- AfA-Tabelle AV (depreciation table for general assets), BMF 15.12.2000, IV D 2 - S 1551 - 188/00, BStBl I S. 1532: useful lives in the code with citation. Checked against the table text.
+- BMF 22.02.2022, IV C 3 - S 2190/21/10002 :025 (replaces BMF 26.02.2021): computer hardware and software 1 year; no option, register required, full AfA in the year of acquisition is not objected to (Tz. 1.1, 1.2, 1.4). Checked via WD 4 - 3000 - 051/22 of the Bundestag. Whether smartphones fall under it: open; the code uses 5 years (AfA-Tabelle AV 6.13.2.2).
+- § 7g Abs. 1 EStG: IAB (investment deduction) up to 50 %, profit limit €200,000, maximum €200,000 per business. Abs. 2: add-back up to 50 % of the costs, reduction of the costs. Abs. 3: reversal after the third following year. Abs. 5: special AfA up to 40 % in the year of acquisition and the four following years. Abs. 6: profit limit, almost exclusively business use. Checked.
+- § 52 Abs. 16 EStG: 40 % for acquisitions after 31.12.2023 (before that 20 %); investment period for deductions from 2017 six, 2018 five, 2019 four years. For 2020 and 2021 no extension in the text. Checked.
+- § 7a Abs. 9 EStG: after the end of the incentive period, residual value over the remaining useful life. Not checked against the primary text.
 
-## Umsatzsteuer (`vat-annual.ts`, `business-taxes.ts`)
+## Umsatzsteuer (VAT) (`vat-annual.ts`, `business-taxes.ts`)
 
-- § 12 Abs. 1, 2 UStG: 19 % und 7 %. § 12 Abs. 3 UStG: 0 % Photovoltaik bis 30 kWp. Geprüft (Text ohne Befristung).
-- § 12 Abs. 2 Nr. 15 UStG, Speisen in der Gastronomie ohne Getränke: 7 % ab 1.1.2026, Steueränderungsgesetz 2025 vom 22.12.2025 (BGBl. 2025 I Nr. 363). Geprüft am aktuellen Text; Datum über Bundestag/KPMG/Haufe. 7 % vom 1.7.2020 bis 31.12.2023 und 19 % in 2024/2025: nicht am Primärtext geprüft.
-- § 28 Abs. 5 UStG, Gas 7 % vom 1.10.2022 bis 31.3.2024: nicht am Primärtext geprüft.
-- § 19 Abs. 1 UStG: 25.000 € Vorjahr, 100.000 € laufendes Jahr (ab 2025); Gesamtumsatz nach vereinnahmten Entgelten (Abs. 2); Verzicht bindet fünf Jahre (Abs. 3). Geprüft. BMF 18.03.2025, III C 3 - S 7360/00027/044/105: Überschreiten der 100.000 € beendet die Regel mit diesem Umsatz. Bis 2024 22.000 € / 50.000 €: nicht am Primärtext geprüft.
-- § 20 Satz 1 UStG: Istversteuerung bis 800.000 € Vorjahresumsatz, für freie Berufe ohne Grenze. Geprüft. 600.000 € bis 2023: nicht am Primärtext geprüft.
-- § 13b, § 15 Abs. 1 Satz 1 Nr. 4, § 19 Abs. 1 Satz 4 UStG (Steuerschuld des Empfängers, Abzug, Kleinunternehmer ohne Abzug): nicht am Primärtext geprüft.
+- § 12 Abs. 1, 2 UStG: 19 % and 7 %. § 12 Abs. 3 UStG: 0 % photovoltaics up to 30 kWp. Checked (text without time limit).
+- § 12 Abs. 2 Nr. 15 UStG, food in restaurants excluding drinks: 7 % from 1.1.2026, Steueränderungsgesetz 2025 of 22.12.2025 (BGBl. 2025 I Nr. 363). Checked against the current text; date via Bundestag/KPMG/Haufe. 7 % from 1.7.2020 to 31.12.2023 and 19 % in 2024/2025: not checked against the primary text.
+- § 28 Abs. 5 UStG, gas 7 % from 1.10.2022 to 31.3.2024: not checked against the primary text.
+- § 19 Abs. 1 UStG: €25,000 previous year, €100,000 current year (from 2025); total turnover based on payments received (Abs. 2); waiver binds for five years (Abs. 3). Checked. BMF 18.03.2025, III C 3 - S 7360/00027/044/105: exceeding €100,000 ends the scheme with that transaction. Until 2024 €22,000 / €50,000: not checked against the primary text.
+- § 20 Satz 1 UStG: cash-basis taxation up to €800,000 previous-year turnover, for freelance professions without limit. Checked. €600,000 until 2023: not checked against the primary text.
+- § 13b, § 15 Abs. 1 Satz 1 Nr. 4, § 19 Abs. 1 Satz 4 UStG (reverse charge, deduction, Kleinunternehmer without deduction): not checked against the primary text.
 
-## Gewerbesteuer (`trade-tax.ts`)
+## Gewerbesteuer (trade tax) (`trade-tax.ts`)
 
-- § 8 Nr. 1 GewStG: ein Viertel der Summe aus a) bis f) über 200.000 €; d) ein Fünftel (Hälfte davon für E-Fahrzeuge und Fahrräder), e) die Hälfte, f) ein Viertel. Geprüft.
-- § 9 Nr. 1 Satz 1 GewStG ab EZ 2025: die im Erhebungszeitraum als Betriebsausgabe erfasste Grundsteuer (§ 36 Abs. 4b Satz 1 GewStG, Fassung des JStG 2024 vom 2.12.2024). Geprüft. Bis 2024 1,2 % von 140 % des Einheitswerts: über Haufe/NWB, nicht am Primärtext geprüft.
-- § 10a GewStG: Fehlbeträge bis 1 Mio. € voll, darüber 60 %. Geprüft.
-- § 11 Abs. 1, 2 GewStG: Abrundung auf volle 100 €, Freibetrag 24.500 € höchstens in Höhe des abgerundeten Ertrags, Messzahl 3,5 %. Geprüft. R 14.1 Satz 3 GewStR: Messbetrag auf volle Euro abrunden (über NWB, Fassung der GewStR 2009).
-- § 35 Abs. 1 EStG: 4,0-faches des Messbetrags, Ermäßigungshöchstbetrag, Begrenzung auf die tatsächlich zu zahlende Gewerbesteuer. Geprüft.
-- BMF 03.11.2016, IV C 6 - S 2296-a/08/10002-003, BStBl I S. 1187, geändert durch BMF 17.04.2019, IV C 6 - S 2296-a/17/10004: Rn. 4 (Ausgangsgröße, § 35a danach), Rn. 9 (je Betrieb begrenzt), Rn. 10 (Ehegatten), Rn. 16–18 (Formel, positive Einkünfte je Einkunftsart, Beispiele). Geprüft am Text. Ein neueres Schreiben habe ich nicht gefunden.
-- § 51a Abs. 2 Satz 3 EStG: § 35 bleibt bei der Kirchensteuer außer Betracht. Geprüft. § 3 Abs. 2 SolZG: Soli auf die festzusetzende Einkommensteuer mit Kinderfreibeträgen; nennt § 35 nicht. Dass § 35 den Soli mindert, ist die übliche Lesart; nicht am Wortlaut belegt.
+- § 8 Nr. 1 GewStG: one quarter of the sum of a) to f) above €200,000; d) one fifth (half of that for electric vehicles and bicycles), e) one half, f) one quarter. Checked.
+- § 9 Nr. 1 Satz 1 GewStG from EZ 2025: the Grundsteuer (property tax) recorded as a business expense in the assessment period (§ 36 Abs. 4b Satz 1 GewStG, version of the JStG 2024 of 2.12.2024). Checked. Until 2024 1.2 % of 140 % of the Einheitswert (assessed value): via Haufe/NWB, not checked against the primary text.
+- § 10a GewStG: deficits up to €1 million in full, above that 60 %. Checked.
+- § 11 Abs. 1, 2 GewStG: rounding down to full €100, allowance €24,500 at most up to the rounded-down income, base rate 3.5 %. Checked. R 14.1 Satz 3 GewStR: round the base amount down to full euros (via NWB, version of the GewStR 2009).
+- § 35 Abs. 1 EStG: 4.0 times the base amount, maximum reduction amount, limit to the trade tax actually payable. Checked.
+- BMF 03.11.2016, IV C 6 - S 2296-a/08/10002-003, BStBl I S. 1187, amended by BMF 17.04.2019, IV C 6 - S 2296-a/17/10004: Rn. 4 (starting figure, § 35a after it), Rn. 9 (limited per business), Rn. 10 (spouses), Rn. 16–18 (formula, positive income per type of income, examples). Checked against the text. I did not find a newer letter.
+- § 51a Abs. 2 Satz 3 EStG: § 35 is disregarded for church tax. Checked. § 3 Abs. 2 SolZG: Soli (solidarity surcharge) on the income tax to be assessed with child allowances; does not name § 35. That § 35 reduces the Soli is the usual reading; not supported by the wording.
 
-## Verluste (`losses.ts`)
+## Losses (`losses.ts`)
 
-- § 10d Abs. 1 EStG (Fassung ab 1.1.2024): Rücktrag bis 1 Mio. € (2 Mio. € zusammen), erst ins Vorjahr, dann ins zweite Vorjahr, vorrangig vor Sonderausgaben; Verzicht nur insgesamt. Geprüft.
-- § 10d Abs. 2 EStG: 1 Mio. € (2 Mio. €) voll, darüber 70 %. Geprüft. § 52 Abs. 18b Satz 3 EStG: ab VZ 2024. 70 % nur bis 2027, ab 2028 60 %: über Steuerschröder, nicht am Primärtext geprüft.
-- 10 Mio. € / 20 Mio. € für 2022 und 2023 (Viertes Corona-Steuerhilfegesetz; § 52 Abs. 18b Satz 2 EStG): über Haufe und buzer.de, nicht am Primärtext geprüft.
-- § 10d Abs. 4 Satz 2 EStG: verbleibender Verlustvortrag. Geprüft.
-- Offen: ob der Höchstbetrag des Satzes 1 für beide Rücktragsjahre zusammen gilt (der Code liest es so); die Reihenfolge von Rücktrag aus einem späteren Jahr und Vortrag im selben Jahr (der Code zieht den Rücktrag zuerst ab); BVerfG 23.07.2025, 2 BvL 19/14 zur Mindestbesteuerung, Inhalt nicht gelesen.
+- § 10d Abs. 1 EStG (version from 1.1.2024): carry-back up to €1 million (€2 million jointly), first into the previous year, then into the second previous year, with priority over Sonderausgaben (special expenses); waiver only in full. Checked.
+- § 10d Abs. 2 EStG: €1 million (€2 million) in full, above that 70 %. Checked. § 52 Abs. 18b Satz 3 EStG: from VZ 2024. 70 % only until 2027, from 2028 60 %: via Steuerschröder, not checked against the primary text.
+- €10 million / €20 million for 2022 and 2023 (Viertes Corona-Steuerhilfegesetz; § 52 Abs. 18b Satz 2 EStG): via Haufe and buzer.de, not checked against the primary text.
+- § 10d Abs. 4 Satz 2 EStG: remaining loss carry-forward. Checked.
+- Open: whether the maximum amount of Satz 1 applies to both carry-back years together (the code reads it that way); the order of a carry-back from a later year and a carry-forward in the same year (the code deducts the carry-back first); BVerfG 23.07.2025, 2 BvL 19/14 on minimum taxation, content not read.
 
-## Gewinn (`profit.ts`)
+## Profit (`profit.ts`)
 
-- § 4 Abs. 5 Satz 1 Nr. 1 EStG: Geschenke bis 50 € je Empfänger und Jahr. Geprüft. § 52 Abs. 6 Satz 1 EStG: ab Wirtschaftsjahren nach dem 31.12.2023. Geprüft. Vorher 35 €: nicht am Primärtext geprüft.
-- § 4 Abs. 5 Satz 1 Nr. 2 EStG: Bewirtung zu 70 %. Geprüft.
-- § 4 Abs. 5 Satz 1 Nr. 5 mit § 9 Abs. 4a Satz 3 EStG: 28 € / 14 €. Geprüft am aktuellen Text.
-- § 4 Abs. 5 Satz 1 Nr. 6 EStG: Fahrten Wohnung–Betrieb mit Entfernungspauschale, 0,03-%-Regel bei Kfz im Betriebsvermögen. Geprüft.
-- § 9 Abs. 1 Satz 3 Nr. 4 EStG: 0,38 € ab dem ersten Kilometer, aktueller Text. Geprüft. Ab 2026 durch das Steueränderungsgesetz 2025 (BT-Drs. 21/1974). Bis 2025 0,30 € / 0,38 € ab dem 21. km: nicht am Primärtext geprüft.
-- § 4 Abs. 5 Satz 1 Nr. 6b, 6c EStG: Mittelpunkt, Jahrespauschale 1.260 € mit Kürzung je Monat, Tagespauschale 6 € bis 1.260 €. Geprüft. Fassung 2022 (1.250 €, 5 € bis 600 €): nicht am Primärtext geprüft.
-- § 4 Abs. 5b EStG: Gewerbesteuer keine Betriebsausgabe. Geprüft.
+- § 4 Abs. 5 Satz 1 Nr. 1 EStG: gifts up to €50 per recipient and year. Checked. § 52 Abs. 6 Satz 1 EStG: from financial years after 31.12.2023. Checked. Previously €35: not checked against the primary text.
+- § 4 Abs. 5 Satz 1 Nr. 2 EStG: business entertainment at 70 %. Checked.
+- § 4 Abs. 5 Satz 1 Nr. 5 with § 9 Abs. 4a Satz 3 EStG: €28 / €14. Checked against the current text.
+- § 4 Abs. 5 Satz 1 Nr. 6 EStG: trips between home and business with the Entfernungspauschale (distance allowance), 0.03 % rule for a car in business assets. Checked.
+- § 9 Abs. 1 Satz 3 Nr. 4 EStG: €0.38 from the first kilometer, current text. Checked. From 2026 through the Steueränderungsgesetz 2025 (BT-Drs. 21/1974). Until 2025 €0.30 / €0.38 from the 21st km: not checked against the primary text.
+- § 4 Abs. 5 Satz 1 Nr. 6b, 6c EStG: center of activity, annual flat rate €1,260 with reduction per month, daily flat rate €6 up to €1,260. Checked. 2022 version (€1,250, €5 up to €600): not checked against the primary text.
+- § 4 Abs. 5b EStG: Gewerbesteuer is not a business expense. Checked.
