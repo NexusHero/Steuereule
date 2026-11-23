@@ -3,7 +3,6 @@ import {
   ASSESSMENT_NEW_POSITION_IDS,
   isAssessmentPositionId,
   isValidAssessmentPositionAmount,
-  CAPITAL_FIELDS,
   WAGE_TAX_CERTIFICATE_FIELDS, LSTB_OPTIONAL_LINES, LSTB_SOCIAL_LINES, LSTB_SOLI_LINE,
   RENTAL_FIELDS,
   SALARY_CERTIFICATE_AMOUNT_FIELDS,
@@ -13,7 +12,6 @@ import {
   isValidAssessmentAmount,
   type AssessmentField,
   type EntryStepId,
-  type CapitalFieldId,
   type IsoWeekday,
   type WageTaxCertificateFieldId,
   type Screen,
@@ -29,6 +27,7 @@ import { InvalidInputError } from '../common/domain-error.js'
 import type { ScreenAccess } from '../common/screen-access.js'
 import type { AssessmentRepository } from '../assessment/assessment.repository.js'
 import type { CapitalRepository } from '../capital/capital.repository.js'
+import { CAPITAL_ACCESS_FIELDS, capitalFieldAccess } from '../capital/capital-field-access.js'
 import { MEANS_OF_TRANSPORT, WORK_EXPENSE_AMOUNT_FIELDS, WORK_EXPENSE_NOTE_FIELDS, type CommuteInputs, type CommuteRepository, type MeansOfTransport } from '../commute/commute.repository.js'
 import type { LstbLine, WageTaxCertificateRepository } from '../lstb/lstb.repository.js'
 import { storeLstbLines } from '../lstb/lstb-data.js'
@@ -148,8 +147,6 @@ const CH_SALARY_ACCESS_FIELDS = [
   'kvZuschussAnspruch',
   'familienzulagenImBruttolohn',
 ] as const
-const CAPITAL_ACCESS_FIELDS = [...CAPITAL_FIELDS, 'inhaber'] as const
-const CAPITAL_OWNERS = ['A', 'B', 'gemeinsam'] as const
 /** What describes a rental object beyond its amounts (Anlage V Zeilen 1–13, 20, 33, 46, 86); the mask's address call stores them. */
 const RENTAL_DETAIL_FIELDS = ['strasse', 'hausnummer', 'plz', 'city', 'livingArea', 'einheiten', 'depreciationAsLastYear', 'umlagen', 'schuldzinsen', 'anteilA'] as const
 type RentalDetailField = (typeof RENTAL_DETAIL_FIELDS)[number]
@@ -257,25 +254,7 @@ export function fieldAccessFrom({
       },
     },
     rente: pensionFieldAccess(pension),
-    kapital: {
-      fields: CAPITAL_ACCESS_FIELDS,
-      withInstance: false,
-      async read(userId, taxYear) {
-        const r = await capital.findForUserAndYear(userId, taxYear)
-        return { ...Object.fromEntries(CAPITAL_FIELDS.map((f) => [f, r?.[f] ?? null])), inhaber: r?.inhaber ?? r?.owner ?? null }
-      },
-      async write(userId, taxYear, _instance, field, value) {
-        if (field === 'inhaber') {
-          if (!(CAPITAL_OWNERS as readonly (string | null)[]).includes(value)) {
-            throw new InvalidInputError('FIELD_VALUE_INVALID', `"inhaber" must be one of: ${CAPITAL_OWNERS.join(', ')}.`)
-          }
-          await capital.setOwner(userId, taxYear, value as (typeof CAPITAL_OWNERS)[number])
-          return true
-        }
-        await capital.setField(userId, taxYear, field as CapitalFieldId, value)
-        return true
-      },
-    },
+    kapital: capitalFieldAccess(capital),
     vermietung: {
       fields: RENTAL_ACCESS_FIELDS,
       withInstance: true,
