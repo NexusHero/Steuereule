@@ -1,67 +1,67 @@
-# ADR-0045 — Value-First-Funnel: Gast darf das Minimal-Gate, Steuer-ID wird optional, Upgrade nimmt Interview-Antworten mit
+# ADR-0045 — Value-first funnel: a guest may use the minimal gate, the Steuer-ID becomes optional, the upgrade carries interview answers along
 
-- **Status:** Accepted — entschieden vom Nutzer (Stakeholder) am 2026-10-25; Promotion des
-  Texts im Review
+- **Status:** Accepted — decided by the user (stakeholder) on 2026-10-25; promotion of the
+  text in review
 - **Date:** 2026-10-25
-- **Deciders:** NexusHero (Stakeholder-Entscheid „Stufe 2 Value-First-Funnel") — Umsetzung:
+- **Deciders:** NexusHero (stakeholder decision „Stufe 2 Value-First-Funnel" ("Stage 2 value-first funnel")) — implementation:
   Suhay (agent)
 - **Context tags:** funnel, onboarding, identity, data-ownership, honesty principle
 
 ## Context
 
-Die App verlangte bisher Konto + Steuer-ID, BEVOR der Nutzer irgendeinen Wert sieht. Der
-Stakeholder hat entschieden („Stufe 2 Value-First-Funnel"): der Nutzer soll zuerst Wert erleben —
-Gast → Minimal-Gate (drei Fragen) → Cockpit-Spanne → erst DANN die Konto-Wand (Registrierung/
-Login) → Profil, und die Steuer-ID darf dabei zunächst fehlen (sie wird später im Profil ergänzt).
-Im selben Zug entschied der Stakeholder die Lizenz: **PolyForm Noncommercial 1.0.0** (LICENSE
-ersetzt MIT) — eine Stakeholder-Entscheidung, hier referenziert, nicht technisch begründet.
+Until now the app required an account + Steuer-ID (tax identification number) BEFORE the user sees any value. The
+stakeholder decided („Stufe 2 Value-First-Funnel"): the user should experience value first —
+guest → minimal gate (three questions) → cockpit range → only THEN the account wall (registration/
+login) → profile, and the Steuer-ID may initially be missing (it is added later in the profile).
+In the same move the stakeholder decided the license: **PolyForm Noncommercial 1.0.0** (LICENSE
+replaces MIT) — a stakeholder decision, referenced here, not technically justified.
 
-Die Folgen für den Datenfluss: ein Gast, der das Minimal-Gate beantwortet, hat bereits
-InterviewAnswer- und TaxYear-Zeilen unter seiner Gast-UserId; der Gast→Konto-Upgrade (REQ-006)
-muss diese übernehmen statt sie zu verlieren.
+The consequences for the data flow: a guest who answers the minimal gate already has
+InterviewAnswer and TaxYear rows under their guest UserId; the guest→account upgrade (REQ-006)
+must take these over instead of losing them.
 
 ## Decision
 
-1. **Gast darf das Minimal-Gate (Segment 1), sonst nichts.** `InterviewController` verliert das
-   pauschale `@RequiresAccount`; `InterviewService` lässt einen Gast NUR für den Eintrag
-   `minimal-gate` lesen/schreiben — jeder andere Katalog-Eintrag bleibt 401 (dieselbe Fehlerform
-   wie zuvor, ADR-0031 §4: der Zugriffsschutz bleibt serverseitig, nicht im Client).
+1. **A guest may use the minimal gate (segment 1), nothing else.** `InterviewController` loses the
+   blanket `@RequiresAccount`; `InterviewService` lets a guest read/write ONLY the entry
+   `minimal-gate` — every other catalog entry stays 401 (the same error shape
+   as before, ADR-0031 §4: access protection stays server-side, not in the client).
 
-2. **Steuer-ID wird optional.** `Profile.steuerId` wird nullable (Migration
-   `profile_steuer_id_optional`); `PutProfileDto.steuerId` optional, fehlt sie → `null`
-   („noch nicht angegeben", nie ein leerer String); Export-Template und Profile-DTOs behandeln
-   `null` ehrlich („—"). Die Validierung (`isValidSteuerId`) greift weiterhin für jeden
-   angegebenen Wert — optional heißt nur „darf fehlen", nie „darf beliebig sein".
+2. **The Steuer-ID becomes optional.** `Profile.steuerId` becomes nullable (migration
+   `profile_steuer_id_optional`); `PutProfileDto.steuerId` optional, if missing → `null`
+   ("not provided yet", never an empty string); the export template and profile DTOs handle
+   `null` honestly („—"). Validation (`isValidSteuerId`) still applies to every
+   value provided — optional only means "may be missing", never "may be anything".
 
-3. **Der Upgrade nimmt die Gast-Antworten mit.** `upgradeGuestToAccount` re-keyed
-   `InterviewAnswer`- und `TaxYear`-Zeilen je Steuerjahr auf die Account-UserId; bei Konflikt
-   gewinnt das Konto (idempotent — ein zweiter Lauf ändert nichts). Audit-Einträge des
-   Interviews wandern mit; der Rest des Gast-Audits bleibt beim Gast-Kontext.
+3. **The upgrade carries the guest answers along.** `upgradeGuestToAccount` re-keys
+   `InterviewAnswer` and `TaxYear` rows per tax year to the account UserId; on conflict
+   the account wins (idempotent — a second run changes nothing). Audit entries of the
+   interview move along; the rest of the guest audit stays with the guest context.
 
-4. **Konto-Wand als Screen.** `KontoWandScreen` sitzt im Funnel-Pfad (Gast → Interview →
-   Cockpit-Spanne → Konto-Wand → Profil); „Später"-Pfad bleibt ehrlich sichtbar (der Nutzer
-   kann zur Cockpit-Spanne zurück, die Konto-Aufforderung kommt wieder, wenn der Funnel es
-   vorsieht).
+4. **Account wall as a screen.** `KontoWandScreen` sits in the funnel path (guest → interview →
+   cockpit range → account wall → profile); the „Später" ("Later") path stays honestly visible (the user
+   can go back to the cockpit range, the account prompt comes back when the funnel
+   provides for it).
 
 ## Consequences
 
-- REQ-015 (Minimal-Gate) P3 kippt bewusst: der Gast darf das Minimal-Gate — die Acceptance
-  (real socket) beweist den neuen Gast-Pfad UND dass Katalog-Einträge für Gäste 401 bleiben.
-- REQ-006 (Gast→Konto, atomar) wächst um die Carry-over-Fälle: InterviewAnswer + TaxYear je
-  Steuerjahr re-keyed, idempotent, Konflikt-Regel dokumentiert.
-- Lizenz: LICENSE ist jetzt PolyForm Noncommercial 1.0.0 — eine rechtliche Stakeholder-
-  Entscheidung, die kein Gate berührt (kein Build-Impact, nur Text).
-- Die Steuer-ID-Nullability reicht durch Profile-Repository, Export-Report, Onboarding-Mapping
-  und die generierten Clients — `null` ist der neue ehrliche „noch nicht angegeben"-Zustand.
+- REQ-015 (minimal gate) P3 flips deliberately: the guest may use the minimal gate — the acceptance test
+  (real socket) proves the new guest path AND that catalog entries stay 401 for guests.
+- REQ-006 (guest→account, atomic) grows by the carry-over cases: InterviewAnswer + TaxYear per
+  tax year re-keyed, idempotent, conflict rule documented.
+- License: LICENSE is now PolyForm Noncommercial 1.0.0 — a legal stakeholder
+  decision that touches no gate (no build impact, text only).
+- The Steuer-ID nullability reaches through the profile repository, export report, onboarding mapping
+  and the generated clients — `null` is the new honest "not provided yet" state.
 
 ## Alternatives considered
 
-- **Gast voll sperren (Status quo).** Verworfen vom Stakeholder: genau der Wert-vor-Konto-
-  Einstieg fehlt.
-- **Gast darf den ganzen Katalog.** Verworfen: Segment 2 ist noch nicht server-seitig
-  zugelassen, und jeder weitere Gast-Zugriff wäre ein Sicherheits- und Datenhygiene-Risiko
-  ohne Produkt-Grund.
-- **Steuer-ID als leerer String „nicht angegeben".** Verworfen: `null` ist der eine ehrliche
-  Zustand; ein leerer String würde die Validierung und den Export umgehen.
-- **Upgrade wirft Gast-Antworten weg.** Verworfen: das wäre genau der Wertverlust, den der
-  Funnel dem Nutzer zuerst gezeigt hat.
+- **Lock guests out fully (status quo).** Rejected by the stakeholder: exactly the value-before-account
+  entry is missing.
+- **A guest may use the whole catalog.** Rejected: segment 2 is not yet permitted server-side,
+  and every further guest access would be a security and data-hygiene risk
+  without a product reason.
+- **Steuer-ID as an empty string "not provided".** Rejected: `null` is the one honest
+  state; an empty string would bypass validation and the export.
+- **The upgrade discards guest answers.** Rejected: that would be exactly the loss of value the
+  funnel showed the user first.

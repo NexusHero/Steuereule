@@ -36,7 +36,7 @@ export const E_BILANZ_TAXONOMIES: readonly TaxonomyVersion[] = [
 /**
  * Element names of the Kontennachweis tuple and the Anlagenspiegel, read off the official 6.9 package
  * (esteuer.de, `de-gaap-ci-2025-04-01.xsd` and `…-dimensions.xsd`; unchanged in 6.10), research
- * selbststaendige-erweiterung.md §9. The tuple is `accountBalances` with a capital B, its items
+ * self-employed-extension.md §9. The tuple is `accountBalances` with a capital B, its items
  * `accountbalances.` with a small one. The Anlagenspiegel is dimensional: each column is a primary item,
  * the position a member of `dim_changes.nt.ass.gross`. Validation by ERiC is still to come (§17).
  */

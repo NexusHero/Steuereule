@@ -4,13 +4,13 @@
 technical grill; both open calls ruled by the stakeholder). Realises **REQ-011** (#48), the hard gate
 before any real, non-synthetic user is let onto Slice 2. **Extends** [ADR-0008](./0008-profile-persistence-encryption.md)
 (field-encryption + append-only audit) and [ADR-0012](./0012-session-guard-coexistence-and-guest-upgrade.md)
-(the atomic `userId` re-key precedent, guard seam). References product **ADR-011** (Löschschutz) and
+(the atomic `userId` re-key precedent, guard seam). References product **ADR-011** (Löschschutz, deletion protection) and
 **ADR-020** (server-side deletion + pre-delete export offer).
 
 ## Context
 
-Every account holder must be able to **export** their full data (DSGVO Art. 15/20) and **delete** their
-account (Art. 17), with the mandatory pre-delete export offer and the "you lose your Finanzamt evidence"
+Every account holder must be able to **export** their full data (DSGVO, i.e. GDPR, Art. 15/20) and **delete** their
+account (Art. 17), with the mandatory pre-delete export offer and the "you lose your Finanzamt (tax office) evidence"
 warning (product ADR-011). This is a **hard sequencing gate**: it must be Done before real users touch
 Slice 2 (register §sequencing; ADR-0012 §Stakeholder-asks).
 

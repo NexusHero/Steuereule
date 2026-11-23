@@ -3,7 +3,7 @@ import { MINIJOB_LIMIT_STEPS, valueForYear } from '../../math/tax-parameters'
  * Wages of the self-employed's own employees (ADR-0101 §22): the app books the runs of an outside
  * payroll (tax office, payroll software) and computes a gewerblicher Minijob itself; it gives the
  * Lohnsteuer-Anmeldung as fill-in help. It files no social security reports (those need ITSG-certified
- * software). Sources: docs/research/selbststaendige-erweiterung.md §2, §5.
+ * software). Sources: docs/research/self-employed-extension.md §2, §5.
  */
 
 interface MinijobRates {

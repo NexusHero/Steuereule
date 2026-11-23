@@ -4,7 +4,7 @@ import { commuteAllowance } from './profit'
  * Private use of a business car (ADR-0101 §22): the Entnahme of the income tax (§ 6 Abs. 1 Nr. 4
  * Satz 2, 3 EStG), the non-deductible trips between home and business (§ 4 Abs. 5 Satz 1 Nr. 6 EStG)
  * and the unentgeltliche Wertabgabe of the VAT (§ 3 Abs. 9a Nr. 1 UStG, Abschn. 15.23 Abs. 5 UStAE).
- * Sources: docs/research/selbststaendige-erweiterung.md §1.
+ * Sources: docs/research/self-employed-extension.md §1.
  */
 
 export type CarDrive = 'verbrenner' | 'elektro' | 'hybrid'

@@ -1,44 +1,44 @@
-# ADR-0060 — On-Device-OCR im Web, selbst gehostet, OCR-Werte nie grün
+# ADR-0060 — On-device OCR on the web, self-hosted, OCR values never green
 
 - **Status:** Accepted
 - **Date:** 2026-11-10
 - **Deciders:** NexusHero (Product Owner), Steuereule Engineering
 - **Applies to:** `apps/mobile-web/src/lib/documentOcr.ts`, `apps/mobile-web/scripts/ocr-assets.mjs`, `scripts/checks/bundle-security-check.mjs`
-- **Ergänzt:** ADR-0051 §5 (kein Belegbild an ein Modell), ADR-0058 (LStB-Textfallback), Ticket #444
+- **Supplements:** ADR-0051 §5 (no document image to a model), ADR-0058 (LStB text fallback), ticket #444
 
-## Kontext
+## Context
 
-Ticket #444 hatte „Foto-OCR im Web“ zunächst ausgeklammert. Die Leitentscheidung lautete: Fotos
-im Web landen in der manuellen Maske. Ein Verweis auf eine OCR-ADR („ADR-045“) zeigte ins Leere,
-denn die Nummer gehört dem Value-First-Funnel. Der Product Owner will Belege im Web und im Chat
-einfach hochladen können, auch als Foto.
+Ticket #444 initially excluded "photo OCR on the web". The guiding decision was: photos
+on the web end up in the manual form. A reference to an OCR ADR ("ADR-045") pointed nowhere,
+because that number belongs to the value-first funnel. The Product Owner wants to be able to simply
+upload documents on the web and in the chat, including as a photo.
 
-Der erste Entwurf nutzte tesseract.js mit Standardeinstellungen. Dann lädt die Bibliothek Worker,
-WASM-Core und Sprachdaten (mehrere MB) zur Laufzeit von einem öffentlichen CDN. Die Folgen: Die
-IP-Adresse geht an einen Dritten, es läuft ungepinnter Code, und „On-Device“ stimmt nur halb.
+The first draft used tesseract.js with default settings. The library then loads the worker,
+WASM core and language data (several MB) at runtime from a public CDN. The consequences: the
+IP address goes to a third party, unpinned code runs, and "on-device" is only half true.
 
-## Entscheidung
+## Decision
 
-1. **Text entsteht auf dem Gerät.** PDF-Text-Layer per pdf.js, gescannte PDFs und Fotos
-   (JPEG/PNG/WebP) per tesseract.js (`deu+eng`, LSTM). Weder Bild noch PDF gehen an ein Modell.
-   Hinaus geht höchstens Text nach ADR-0051/0058.
-2. **Selbst gehostet und gepinnt.** `scripts/ocr-assets.mjs` (postinstall) kopiert Worker, die drei
-   LSTM-Cores (plain, SIMD, relaxed SIMD) und `deu`/`eng` (`4.0.0_best_int`) aus
-   `node_modules` nach `public/ocr/`. Jede Datei wird gegen `ocr-assets.lock.json` (SHA-256)
-   geprüft. `createWorker` bekommt `workerPath`, `corePath` und `langPath` auf den eigenen
-   Origin sowie `workerBlobURL: false`.
-3. **Eigenes Budget im Bundle-Gate.** Die OCR-Dateien werden nur beim ersten Scan geladen. Sie
-   zählen nicht zum App-Budget, haben ein eigenes Budget (24 MB) und müssen im Export exakt dem
-   Lock entsprechen. Ungepinnte Dateien unter `ocr/` lassen das Gate scheitern.
-4. **OCR-Werte werden nie grün.** OCR verwechselt Ziffern (8/3, 1/7). Der Client meldet
-   `textSource: 'pdf_text' | 'ocr'`. Ohne Angabe gilt `ocr`. Nur ein PDF-Text-Layer darf grüne
-   Felder erzeugen. Bei OCR-Text wird jedes Feld `pruefen` mit Grund `ocr_source` und muss
-   einzeln bestätigt werden (AC 4).
+1. **Text is produced on the device.** PDF text layer via pdf.js, scanned PDFs and photos
+   (JPEG/PNG/WebP) via tesseract.js (`deu+eng`, LSTM). Neither image nor PDF goes to a model.
+   At most text goes out, per ADR-0051/0058.
+2. **Self-hosted and pinned.** `scripts/ocr-assets.mjs` (postinstall) copies the worker, the three
+   LSTM cores (plain, SIMD, relaxed SIMD) and `deu`/`eng` (`4.0.0_best_int`) from
+   `node_modules` to `public/ocr/`. Every file is checked against `ocr-assets.lock.json` (SHA-256).
+   `createWorker` gets `workerPath`, `corePath` and `langPath` pointing to the app's own
+   origin, plus `workerBlobURL: false`.
+3. **Separate budget in the bundle gate.** The OCR files are only loaded on the first scan. They
+   do not count toward the app budget, have their own budget (24 MB) and must match the
+   lock exactly in the export. Unpinned files under `ocr/` make the gate fail.
+4. **OCR values never turn green.** OCR confuses digits (8/3, 1/7). The client reports
+   `textSource: 'pdf_text' | 'ocr'`. Without a value, `ocr` applies. Only a PDF text layer may produce
+   green fields. With OCR text, every field becomes `pruefen` with reason `ocr_source` and must
+   be confirmed individually (AC 4).
 
-## Konsequenzen
+## Consequences
 
-- Ein Upgrade von tesseract.js oder den Sprachdaten ist eine bewusste Änderung:
-  `node scripts/ocr-assets.mjs --update`, Lock-Diff im Review.
-- Der erste Foto-Scan lädt einmalig etwa 10 bis 17 MB vom eigenen Server, danach aus dem Cache.
-- Die native App (ML Kit / Apple Vision) bleibt ein eigener Slice. Dieselbe Regel (OCR nie grün)
-  gilt dort genauso.
+- An upgrade of tesseract.js or the language data is a deliberate change:
+  `node scripts/ocr-assets.mjs --update`, lock diff in the review.
+- The first photo scan loads about 10 to 17 MB once from the app's own server, after that from the cache.
+- The native app (ML Kit / Apple Vision) remains a separate slice. The same rule (OCR never green)
+  applies there as well.

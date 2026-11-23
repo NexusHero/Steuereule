@@ -2,7 +2,7 @@ import { RETAINED_PROFIT_RATE_STEPS, appliesFrom, valueForYear } from '../../mat
 /**
  * Special tariffs of Gewinneinkünfte (ADR-0101 §22): the gain on selling or giving up the business
  * (§ 16 EStG) with the Fünftelregelung or the reduced rate (§ 34 Abs. 1, 3 EStG), and the retained
- * profit of a Bilanzierer (Thesaurierung, § 34a EStG). Sources: docs/research/selbststaendige-erweiterung.md §6, §7.
+ * profit of a Bilanzierer (Thesaurierung, § 34a EStG). Sources: docs/research/self-employed-extension.md §6, §7.
  */
 
 /** § 16 Abs. 4 EStG: 45.000 € once in a life from age 55 or permanently unable to work, less what the gain exceeds 136.000 €. */

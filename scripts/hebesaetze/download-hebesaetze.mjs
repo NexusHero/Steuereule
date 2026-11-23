@@ -7,7 +7,7 @@
 //   node scripts/hebesaetze/download-hebesaetze.mjs            # downloads the sources below
 //   node scripts/hebesaetze/download-hebesaetze.mjs --check    # fails if a committed file would change
 //
-// Sources, per year (docs/research/selbststaendige-formulare.md, "Hebesätze"):
+// Sources, per year (docs/research/self-employed-forms.md, "Hebesätze"):
 // - up to 2022 the yearly publication "Hebesätze der Realsteuern" (xlsx, one sheet per Land); it was
 //   discontinued after the 2022 edition;
 // - from 2023 the data moved to the Regionaldatenbank Deutschland (table 71231-01-03-5), which

@@ -1,6 +1,6 @@
 // Reads the numbered lines (Zeilen) of an official tax form from its PDF text layer, with the word
 // coordinates poppler's `pdftotext -bbox` gives (poppler is already required by the Vordrucke
-// process, docs/process/vordrucke-jahreswechsel.md).
+// process, docs/process/official-forms-at-year-change.md).
 //
 // Why coordinates and not the plain layout text: the forms place the Zeile number differently per
 // year (vertically centred on a two-line label in 2022, on its last line from 2024), and a label line

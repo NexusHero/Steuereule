@@ -25,7 +25,7 @@ flowchart LR
 What holds for every module:
 
 1. **Identity.** Only `UserContextGuard` sets the user id of a request. Routes marked `@RequiresAccount()` reject guests. Only `HealthController`, `CapabilitiesController`, `AuthCapabilitiesController`, `OAuthDiscoveryController`, `DeviceController` and the Stripe webhook route work without the guard.
-2. **Arithmetic in the core.** No service computes a tax amount itself ([ADR-0038](adr/0038-berechnungs-kern-ki-port.md)).
+2. **Arithmetic in the core.** No service computes a tax amount itself ([ADR-0038](adr/0038-calculation-core-and-ai-port.md)).
 3. **Persistence through ports.** A service knows its repository as an interface. The Prisma adapter encrypts the fields marked `/// @encrypted` in the schema. Not every field is encrypted, see [`architecture.md` §8.2](architecture.md#82-encryption).
 4. **Checked boundaries.** The database client and external SDKs may be imported only by the files named for them. `apps/api/test/architecture.test.ts` checks that ([ADR-0102](adr/0102-ports-and-adapters-enforced-by-architecture-tests.md)).
 
@@ -81,7 +81,7 @@ All routes require an account. The user enters the distance to work; there is no
 | Ports | `CROSS_BORDER_SALARY_STATEMENT_REPOSITORY` |
 | Table | `ChSalaryCertificate` |
 
-Decision: [ADR-0042](adr/0042-grenzgaenger-ch-vertikale.md), extended by [ADR-0072](adr/0072-n-gre-pensionskasse-aufteilung-krankentaggeld-jahreskurs.md).
+Decision: [ADR-0042](adr/0042-grenzgaenger-ch-vertical.md), extended by [ADR-0072](adr/0072-n-gre-pension-fund-split-krankentaggeld-annual-rate.md).
 
 ## 5. Pensions, capital income, rental
 
@@ -141,7 +141,7 @@ flowchart LR
 | | |
 | :--- | :--- |
 | Entry | `AdvisorController` with 27 routes, among them `POST chat`, `POST stream`, `GET runs/:runId/events`, `GET models` |
-| Services | Eight parts, each a provider of `AdvisorModule` with its own required dependencies: `AdvisorTurn` (one question and its answer), `AdvisorConversations`, `AdvisorProjectNotes`, `AdvisorOpening`, `AdvisorDrafts` (applying and undoing), `AdvisorCaseDigest` and `AdvisorCaseFacts` (what the owl is told about the case), `AdvisorDocumentStaging` (drafts from read documents). `AdvisorService` keeps the session, clearing a conversation, feedback, the opening state and the connection. `AdvisorRunService` (answer runs, [ADR-0064](adr/0064-eulen-chat-antwortlaeufe-und-wiederaufnahme.md)), `AdvisorModelsService` |
+| Services | Eight parts, each a provider of `AdvisorModule` with its own required dependencies: `AdvisorTurn` (one question and its answer), `AdvisorConversations`, `AdvisorProjectNotes`, `AdvisorOpening`, `AdvisorDrafts` (applying and undoing), `AdvisorCaseDigest` and `AdvisorCaseFacts` (what the owl is told about the case), `AdvisorDocumentStaging` (drafts from read documents). `AdvisorService` keeps the session, clearing a conversation, feedback, the opening state and the connection. `AdvisorRunService` (answer runs, [ADR-0064](adr/0064-owl-chat-answer-runs-and-resumption.md)), `AdvisorModelsService` |
 | Draft rows | The rows a draft may create are a registry by screen behind `DRAFT_RECORDS`: `ChildDraftRecords` from `children`, `RentalDraftRecords` from `rental` (interface `DraftRecordSource` in `common/`) |
 | Core | the owl's domain logic in `packages/core/src/interview/advisor*.ts`; `scrubUserMessagePii` before every model call |
 | Ports | `ADVISOR_ENGINE` (interface `AdvisorEnginePort` in the core), `ADVISOR_TOPIC_GUARD`, `ADVISOR_REPOSITORY`, `ADVISOR_RUN_LOG`, `TRANSACTION_RUNNER` |
@@ -152,7 +152,7 @@ flowchart LR
 
 ## 9. MCP server
 
-It is not the owl that works through MCP but an external assistant of the user ([ADR-0052](adr/0052-agenten-zugang-mcp.md)).
+It is not the owl that works through MCP but an external assistant of the user ([ADR-0052](adr/0052-agent-access-mcp.md)).
 
 | | |
 | :--- | :--- |
@@ -170,10 +170,10 @@ It is not the owl that works through MCP but an external assistant of the user (
 | Strategies | `DocumentParseRegistry` picks by document kind: `AutoReceiptParseStrategy`, `LstbScanParseStrategy`, `ChCertificateScanParseStrategy` and further ones for Swiss letters |
 | Core | fixed reading rules per document kind, `scrubDocumentTextPii` |
 | Ports | `RECEIPT_REPOSITORY`, `STORAGE_PORT`, `SINGLE_SHOT_MODEL_FACTORY` |
-| Adapters | `PostgresByteaStorageAdapter` with `EnvelopeCryptoService`; a key per user through `USER_KEY_STORE` ([ADR-0059](adr/0059-beleg-keystore-crypto-shredding.md)) |
+| Adapters | `PostgresByteaStorageAdapter` with `EnvelopeCryptoService`; a key per user through `USER_KEY_STORE` ([ADR-0059](adr/0059-document-keystore-crypto-shredding.md)) |
 | Tables | `Receipt`, `ReceiptFile` |
 
-The sequence is in [`architecture.md` §6.3](architecture.md#63-reading-a-receipt). Life cycle of a receipt: [ADR-0097](adr/0097-beleg-lebenszyklus.md).
+The sequence is in [`architecture.md` §6.3](architecture.md#63-reading-a-receipt). Life cycle of a receipt: [ADR-0097](adr/0097-document-lifecycle.md).
 
 ## 11. Account: export and deletion
 

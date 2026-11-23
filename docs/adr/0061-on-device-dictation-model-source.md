@@ -1,73 +1,73 @@
-# ADR-0061 — Diktieren Stufe 2: Sprachmodell von Hugging Face, gepinnt und geprüft (Abweichung von ADR-0060)
+# ADR-0061 — Dictation stage 2: speech model from Hugging Face, pinned and verified (deviation from ADR-0060)
 
 - **Status:** Accepted
 - **Date:** 2026-11-10
 - **Deciders:** NexusHero (Product Owner), Steuereule Engineering
-- **Applies to:** Ticket #451 Slice 5 (Diktieren Stufe 2); `apps/mobile-web/src/lib/dictation/`, `apps/mobile-web/dictation/worker.mjs`, `apps/mobile-web/scripts/dictation-*.mjs`, `scripts/checks/bundle-security-check.mjs`
-- **Weicht ab von:** ADR-0060 (selbst gehostete On-Device-OCR) für die Modelldateien
-- **Ergänzt:** ADR-0008 (dokumentierte Ausnahme: Modell-Cache im Browser)
+- **Applies to:** Ticket #451 slice 5 (dictation stage 2); `apps/mobile-web/src/lib/dictation/`, `apps/mobile-web/dictation/worker.mjs`, `apps/mobile-web/scripts/dictation-*.mjs`, `scripts/checks/bundle-security-check.mjs`
+- **Deviates from:** ADR-0060 (self-hosted on-device OCR) for the model files
+- **Supplements:** ADR-0008 (documented exception: model cache in the browser)
 
-## Kontext
+## Context
 
-Slice 5 von #451 bringt einen eigenen Mikro-Button. Die Spracherkennung läuft auf dem Gerät
-(Whisper „base“, mehrsprachig, im Browser über WebGPU). Der Ton verlässt das Gerät nie, der Text
-landet im Eingabefeld und wird nie automatisch gesendet.
+Slice 5 of #451 adds a dedicated microphone button. Speech recognition runs on the device
+(Whisper "base", multilingual, in the browser via WebGPU). The audio never leaves the device, the text
+lands in the input field and is never sent automatically.
 
-ADR-0060 hat für die OCR das Laden von einem öffentlichen CDN verworfen: Die IP-Adresse geht an
-einen Dritten, es läuft ungepinnter Code, und „On-Device“ stimmt nur halb. Pinning und Prüfsumme
-lösen den Punkt „ungepinnter Code“. Den Punkt „IP an Dritte“ lösen sie nicht.
+ADR-0060 rejected loading from a public CDN for the OCR: the IP address goes to
+a third party, unpinned code runs, and "on-device" is only half true. Pinning and checksum
+solve the "unpinned code" point. They do not solve the "IP to third parties" point.
 
-## Entscheidung
+## Decision
 
-**Option A: Die Modelldateien kommen von Hugging Face, gepinnt und geprüft; der Code, der sie
-ausführt, bleibt selbst gehostet.**
+**Option A: The model files come from Hugging Face, pinned and verified; the code that
+runs them stays self-hosted.**
 
-1. **Modell:** `onnx-community/whisper-base` (Apache-2.0) auf Commit
-   `27a07b4b52b3a4c5886134bb4320e93e1a4bbc7c`, int8-quantisierte ONNX-Dateien (Encoder +
-   zusammengeführter Decoder) plus Konfiguration und Tokenizer, zusammen 79,7 MB.
-   `scripts/dictation-model-lock.mjs` schreibt Pfad, Größe und SHA-256 jeder Datei nach
+1. **Model:** `onnx-community/whisper-base` (Apache-2.0) at commit
+   `27a07b4b52b3a4c5886134bb4320e93e1a4bbc7c`, int8-quantized ONNX files (encoder +
+   merged decoder) plus configuration and tokenizer, 79.7 MB in total.
+   `scripts/dictation-model-lock.mjs` writes path, size and SHA-256 of each file to
    `src/lib/dictation/modelLock.ts`.
-2. **Erst Zustimmung, dann Download.** Vor dem ersten Diktat zeigt ein Dialog Größe, Herkunft
-   (Hugging Face, USA) und dass Hugging Face IP-Adresse und Zeitpunkt sieht. Ohne Zustimmung geht
-   kein Request hinaus. Der Abruf läuft ohne Cookies und ohne Referrer.
-3. **Jede Datei wird geprüft.** Der Main-Thread lädt jede Datei von
-   `huggingface.co/<repo>/resolve/<commit>/<pfad>` (große Dateien leitet Hugging Face auf sein
-   eigenes CDN um, z. B. `us.aws.cdn.hf.co`), prüft SHA-256 gegen den Lock und legt sie erst
-   dann in Cache Storage ab. Eine Abweichung verwirft den ganzen Cache; es bleibt nichts halb
-   Geprüftes liegen.
-4. **Laufzeit selbst gehostet (wie ADR-0060).** `scripts/dictation-assets.mjs` (postinstall) kopiert
-   den Worker, `transformers.min.js` (transformers.js 4.3.2) und die ONNX-Runtime-WASM in genau der
-   Version, die transformers.js bündelt, nach `public/dictation/`, geprüft gegen
-   `dictation-assets.lock.json`. Im Bundle-Gate gilt ein eigenes Budget (32 MB), ungepinnte Dateien
-   lassen es scheitern. Der Worker schaltet entferntes Laden ab und liest Modelldateien nur aus den
-   geprüften Cache-Einträgen.
-5. **Gerät:** Mikro-Button nur bei WebGPU und mindestens 4 GB Speicher (wo der Browser ihn meldet);
-   sonst bleibt der Hinweis aus Stufe 1.
-6. **Ton und Text:** Audio nur im Arbeitsspeicher, 16 kHz mono, nie gespeichert oder gesendet;
-   Transkript ins Eingabefeld, der PII-Filter greift beim Senden wie bei getipptem Text.
-7. **Cache:** einzige dokumentierte Ausnahme zu ADR-0008, ohne Nutzerdaten; „Profil → Sprachmodell
-   löschen“ entfernt ihn. local- und sessionStorage bleiben unberührt (`no-client-persistence`).
-8. **Datenschutzerklärung:** Hugging Face als Empfänger der IP-Adresse beim einmaligen Abruf,
-   Einwilligung nach Art. 6 Abs. 1 lit. a und Art. 49 Abs. 1 lit. a DSGVO.
+2. **Consent first, then download.** Before the first dictation, a dialog shows the size, origin
+   (Hugging Face, USA) and that Hugging Face sees the IP address and time. Without consent,
+   no request goes out. The fetch runs without cookies and without a referrer.
+3. **Every file is verified.** The main thread loads each file from
+   `huggingface.co/<repo>/resolve/<commit>/<pfad>` (Hugging Face redirects large files to its
+   own CDN, e.g. `us.aws.cdn.hf.co`), checks SHA-256 against the lock and only then
+   stores it in Cache Storage. A mismatch discards the whole cache; nothing half-verified
+   is left behind.
+4. **Runtime self-hosted (as in ADR-0060).** `scripts/dictation-assets.mjs` (postinstall) copies
+   the worker, `transformers.min.js` (transformers.js 4.3.2) and the ONNX Runtime WASM in exactly the
+   version that transformers.js bundles to `public/dictation/`, verified against
+   `dictation-assets.lock.json`. The bundle gate has its own budget (32 MB); unpinned files
+   make it fail. The worker disables remote loading and reads model files only from the
+   verified cache entries.
+5. **Device:** Microphone button only with WebGPU and at least 4 GB of memory (where the browser reports it);
+   otherwise the hint from stage 1 remains.
+6. **Audio and text:** Audio only in working memory, 16 kHz mono, never stored or sent;
+   transcript into the input field, the PII filter applies on sending just as for typed text.
+7. **Cache:** the only documented exception to ADR-0008, without user data; „Profil → Sprachmodell
+   löschen“ ("Profile → Delete speech model") removes it. local and sessionStorage stay untouched (`no-client-persistence`).
+8. **Privacy policy:** Hugging Face as recipient of the IP address on the one-time fetch,
+   consent under Art. 6(1)(a) and Art. 49(1)(a) DSGVO (GDPR).
 
-## Verworfene Alternative
+## Rejected alternative
 
-**B — Modell selbst hosten wie ADR-0060.** Kein Request an Dritte, aber rund 80 MB mehr im
-Web-Export und eigener Traffic beim ersten Diktat jedes Nutzers. Der Product Owner hat sich am
-10.11.2026 für A entschieden; mit Zustimmung, Pinning und Prüfsumme ist der verbleibende Punkt
-(IP-Adresse an Hugging Face) offen benannt und vom Nutzer gewählt.
+**B — Host the model ourselves as in ADR-0060.** No request to third parties, but around 80 MB more in the
+web export and our own traffic on every user's first dictation. The Product Owner decided for A on
+10.11.2026; with consent, pinning and checksum, the remaining point
+(IP address to Hugging Face) is openly named and chosen by the user.
 
-## Konsequenzen
+## Consequences
 
-- Lokal einmal echt geprüft (headless Chromium mit Software-WebGPU): Download der 7 Dateien,
-  Prüfsummen stimmen, der Worker lädt das Modell aus dem Cache und erkennt den Satz „Ich habe
-  dieses Jahr 300 Euro gespendet.“; kontaktiert wurden nur der eigene Origin, `huggingface.co`
-  und `us.aws.cdn.hf.co`. In CI lädt der Gate das Modell bewusst nicht.
-- Ein Wechsel des Modells ist eine bewusste Änderung: neuer Commit in
-  `scripts/dictation-model-lock.mjs`, Lock-Diff im Review.
-- Ein Upgrade von transformers.js braucht `node scripts/dictation-assets.mjs --update`; das Skript
-  bricht ab, wenn die gebündelte ONNX-Runtime nicht zum installierten WASM passt.
-- Ist Hugging Face nicht erreichbar, kann man nicht diktieren; Tippen und das Diktat der Tastatur
-  (Stufe 1) bleiben.
-- Die native App (iOS/Android) nutzt später die Spracherkennung des Systems; dieselbe Regel
-  (Text nur ins Feld, nie automatisch senden) gilt dort genauso.
+- Verified for real once locally (headless Chromium with software WebGPU): download of the 7 files,
+  checksums match, the worker loads the model from the cache and recognizes the sentence „Ich habe
+  dieses Jahr 300 Euro gespendet.“ ("I donated 300 euros this year."); only the app's own origin, `huggingface.co`
+  and `us.aws.cdn.hf.co` were contacted. In CI the gate deliberately does not load the model.
+- Changing the model is a deliberate change: new commit in
+  `scripts/dictation-model-lock.mjs`, lock diff in the review.
+- An upgrade of transformers.js needs `node scripts/dictation-assets.mjs --update`; the script
+  aborts if the bundled ONNX Runtime does not match the installed WASM.
+- If Hugging Face is unreachable, dictation is not possible; typing and the keyboard's dictation
+  (stage 1) remain.
+- The native app (iOS/Android) will later use the system's speech recognition; the same rule
+  (text only into the field, never sent automatically) applies there as well.

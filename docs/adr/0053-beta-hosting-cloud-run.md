@@ -1,78 +1,79 @@
-# ADR-0053 — Beta-Hosting auf Google Cloud Run und Cloud SQL
+# ADR-0053 — Beta hosting on Google Cloud Run and Cloud SQL
 
-- **Status:** Accepted (Stakeholder-Entscheidung NexusHero, 2026-11-04)
+- **Status:** Accepted (stakeholder decision NexusHero, 2026-11-04)
 - **Date:** 2026-11-04
-- **Deciders:** NexusHero (Stakeholder); Musti — Architektur-Review auf dem PR
-- **Ändert:** Produkt-ADR-049 (k3s auf Hetzner) — gilt erst wieder, wenn Last oder
-  Verfügbarkeit es verlangen; ADR-0026 (lokaler Compose-Stack bleibt das lokale Gegenstück)
+- **Deciders:** NexusHero (stakeholder); Musti — architecture review on the PR
+- **Amends:** product ADR-049 (k3s on Hetzner) — applies again only once load or
+  availability requires it; ADR-0026 (the local Compose stack stays the local counterpart)
 
-## Kontext
+## Context
 
-Die Beta startet mit höchstens zehn Testern. Das Zielbild aus Produkt-ADR-049 (k3s-Cluster,
-Load Balancer, verwaltetes Postgres bei einem Drittanbieter) kostet rund 30–60 € im Monat und
-verlangt, dass wir Cluster, Backups und Updates selbst betreiben. Infra #292 hängt seit Wochen
-an genau diesem Aufwand.
+The beta starts with at most ten testers. The target picture from product ADR-049 (k3s cluster,
+load balancer, managed Postgres from a third-party provider) costs around €30–60 a month and
+requires us to operate the cluster, backups and updates ourselves. Infra #292 has been stuck on
+exactly this effort for weeks.
 
-Verglichen wurden (netto, grob, November 2026):
+Compared (net, rough, November 2026):
 
-| | Hetzner, eine VM mit Compose | Google Cloud Run + Cloud SQL |
+| | Hetzner, one VM with Compose | Google Cloud Run + Cloud SQL |
 |---|---|---|
-| Erstes Jahr | ~95–135 € | ~130 € (die ersten 90 Tage deckt das Startguthaben) |
-| Ab Jahr 2 | ~95–135 € | ~165 € |
-| Backups, PITR, Logs, Secrets | selbst betrieben | verwaltet |
-| Anbieter | deutsch | US-Anbieter, Rechenzentrum in der EU |
+| First year | ~€95–135 | ~€130 (the starting credit covers the first 90 days) |
+| From year 2 | ~€95–135 | ~€165 |
+| Backups, PITR, logs, secrets | self-operated | managed |
+| Provider | German | US provider, data center in the EU |
 
-## Entscheidung
+## Decision
 
-Die Beta läuft auf Google Cloud in **`europe-west4`** (Niederlande):
+The beta runs on Google Cloud in **`europe-west4`** (Netherlands):
 
-- **Cloud Run** betreibt zwei Dienste aus den bestehenden Images: `steuereule-api`
-  (1 vCPU, 2 GiB wegen Chromium) und `steuereule-web`. Beide skalieren auf null, höchstens
-  zwei Instanzen.
-- **Cloud Run Job** `steuereule-migrate` führt `prisma migrate deploy` mit dem API-Image aus,
-  vor jedem API-Rollout — das Pendant zum `migrate`-Dienst im Compose-Stack.
-- **Cloud SQL** Postgres 16, Stufe `db-f1-micro`, tägliche Backups und PITR. Die API verbindet
-  sich über den Unix-Socket, den Cloud Run bereitstellt; es gibt keine freigegebenen Netze.
-- **Secret Manager** hält alle Secrets. OpenTofu legt nur die leeren Secrets an; die Werte
-  erzeugt `scripts/infra/gcp-setup.sh` lokal und schreibt sie direkt hinein. So landet kein
-  Secret im Tofu-State.
-- **Artifact Registry** statt GHCR, mit Aufräumregel (die letzten fünf Images bleiben).
-- **GitHub Actions** deployt per Workload Identity Federation, ohne langlebigen Schlüssel.
-  Der Zugang ist auf `NexusHero/Steuereule` beschränkt.
-- **Eigene Domain** mit `www.` (Web) und `api.` (API) über Cloud-Run-Domain-Mappings.
-  Die `*.run.app`-Adressen liegen auf der Public Suffix List; Web und API wären damit zwei
-  Sites, das Session-Cookie ein Third-Party-Cookie, und Safari würde den Login blockieren.
-  Domain-Mappings sind der Grund für `europe-west4` statt Frankfurt.
-- **Budget-Alarm** bei 20 € im Monat.
+- **Cloud Run** runs two services from the existing images: `steuereule-api`
+  (1 vCPU, 2 GiB because of Chromium) and `steuereule-web`. Both scale to zero, at most
+  two instances.
+- **Cloud Run Job** `steuereule-migrate` runs `prisma migrate deploy` with the API image,
+  before every API rollout — the counterpart of the `migrate` service in the Compose stack.
+- **Cloud SQL** Postgres 16, tier `db-f1-micro`, daily backups and PITR. The API connects
+  via the Unix socket that Cloud Run provides; there are no authorized networks.
+- **Secret Manager** holds all secrets. OpenTofu only creates the empty secrets; the values
+  are generated locally by `scripts/infra/gcp-setup.sh`, which writes them directly into them.
+  This way no secret ends up in the Tofu state.
+- **Artifact Registry** instead of GHCR, with a cleanup rule (the last five images are kept).
+- **GitHub Actions** deploys via Workload Identity Federation, without a long-lived key.
+  Access is restricted to `NexusHero/Steuereule`.
+- **Own domain** with `www.` (web) and `api.` (API) via Cloud Run domain mappings.
+  The `*.run.app` addresses are on the Public Suffix List; web and API would then be two
+  sites, the session cookie a third-party cookie, and Safari would block the login.
+  Domain mappings are the reason for `europe-west4` instead of Frankfurt.
+- **Budget alert** at €20 a month.
 
-Der Hetzner-Teil unter `infra/terraform`, `infra/k3s` und `infra/manifests` bleibt als
-Zielbild für später liegen, wird aber nicht deployt.
+The Hetzner part under `infra/terraform`, `infra/k3s` and `infra/manifests` stays in place as
+the target picture for later, but is not deployed.
 
-## Konsequenzen
+## Consequences
 
-- **Kosten:** ~12–15 € im Monat, unabhängig davon, ob ein oder zehn Tester aktiv sind; fast
-  alles davon ist Cloud SQL. Zwischen Testrunden kann die Instanz angehalten werden (~2–3 €).
-- **Kaltstart:** Nach Leerlauf braucht die erste Anfrage 5–10 Sekunden. Eine dauerhaft warme
-  Instanz würde ~50 € im Monat kosten und ist für die Beta nicht vorgesehen.
-- **Datenschutz:** Google ist ein US-Anbieter (CLOUD Act). Das gehört in die DSFA und in die
-  Datenschutzerklärung; der AVV mit Google ist vor dem ersten echten Tester abzuschließen.
-- **Vor dem ersten Rollout zu prüfen:**
-  - dass Cloud-Run-Domain-Mappings in `europe-west4` verfügbar sind (`gcloud beta run
-    domain-mappings create` scheitert sonst sofort; Ausweg wäre ein Load Balancer für ~18 €);
-  - welche Peer-Adresse die API hinter Cloud Run sieht. `TRUSTED_PROXIES` ist als
-    Repo-Variable gesetzt und mit `169.254.0.0/16` vorbelegt; ein falscher Wert lässt alle
-    Tester einen gemeinsamen Rate-Limit-Topf teilen (fail-closed, nicht fail-open).
-- **Bewusste Abweichungen:** `/v1/health/*` ist öffentlich erreichbar, weil Cloud Run keinen
-  zweiten, internen Port kennt (#344 gilt erst für ein Cluster). Die Endpunkte geben nur
-  `ok`/`error` zurück. Redis entfällt, bis BullMQ-Queues tatsächlich gebaut werden.
-- **Bekanntes Risiko:** Cloud Run beendet Instanzen nach Leerlauf. Ein abgestürzter
-  Chromium-Prozess wird heute nicht neu gestartet (#288); der nächste Kaltstart heilt das,
-  ein langlebiger Prozess nicht.
+- **Cost:** ~€12–15 a month, regardless of whether one or ten testers are active; almost
+  all of it is Cloud SQL. Between test rounds the instance can be stopped (~€2–3).
+- **Cold start:** After idle time the first request takes 5–10 seconds. A permanently warm
+  instance would cost ~€50 a month and is not planned for the beta.
+- **Data protection:** Google is a US provider (CLOUD Act). This belongs in the DSFA (data
+  protection impact assessment) and in the privacy policy; the AVV (data processing agreement)
+  with Google must be concluded before the first real tester.
+- **To check before the first rollout:**
+  - that Cloud Run domain mappings are available in `europe-west4` (`gcloud beta run
+    domain-mappings create` otherwise fails immediately; the way out would be a load balancer for ~€18);
+  - which peer address the API sees behind Cloud Run. `TRUSTED_PROXIES` is set as a
+    repo variable and pre-filled with `169.254.0.0/16`; a wrong value makes all
+    testers share one common rate-limit bucket (fail-closed, not fail-open).
+- **Deliberate deviations:** `/v1/health/*` is publicly reachable because Cloud Run has no
+  second, internal port (#344 only applies to a cluster). The endpoints return only
+  `ok`/`error`. Redis is dropped until BullMQ queues are actually built.
+- **Known risk:** Cloud Run shuts down instances after idle time. A crashed
+  Chromium process is not restarted today (#288); the next cold start heals that,
+  a long-lived process does not.
 
-## Alternativen
+## Alternatives
 
-- **Hetzner, eine VM mit Compose:** etwas günstiger ab Jahr 2, deutscher Anbieter. Abgelehnt,
-  weil Backups, PITR, Updates und Monitoring dann selbst zu betreiben wären.
-- **k3s auf Hetzner (Produkt-ADR-049):** für zehn Tester zu teuer und zu aufwendig.
-- **Global External Load Balancer statt Domain-Mappings:** erlaubt Frankfurt, kostet aber
-  ~18 € im Monat zusätzlich. Bleibt der Ausweg, falls die Domain-Mappings nicht verfügbar sind.
+- **Hetzner, one VM with Compose:** somewhat cheaper from year 2, German provider. Rejected,
+  because backups, PITR, updates and monitoring would then have to be operated ourselves.
+- **k3s on Hetzner (product ADR-049):** too expensive and too much effort for ten testers.
+- **Global External Load Balancer instead of domain mappings:** allows Frankfurt, but costs
+  an additional ~€18 a month. Remains the way out if the domain mappings are not available.

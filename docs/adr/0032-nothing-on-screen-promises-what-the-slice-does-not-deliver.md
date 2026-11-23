@@ -26,7 +26,7 @@ Taken one at a time, each has a plausible local answer ("ship it, refine later",
 placeholder"). Taken together they are one thing three times: **a screen element that makes a
 commitment the slice cannot keep.**
 
-The product's own gates are built on the opposite promise. The Gewerbe gate opens with *"Ehrlich:
+The product's own gates are built on the opposite promise. The Gewerbe (trade business) gate opens with *"Ehrlich:
 dafür sind wir noch nicht gut genug"*; the CH-only gate with *"Ehrlich: andere Länder können wir
 noch nicht"*. A product that says that out loud and then renders a button that quietly does nothing
 has spent the credibility those sentences were buying.

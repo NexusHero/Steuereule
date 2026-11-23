@@ -2,7 +2,7 @@ import { ELSTER_YEARS, type ElsterForm, type ElsterLine, type ElsterYear } from 
 
 /**
  * Lines of the Anlage S and G read off Mein ELSTER (ADR-0101 §22). No official public copy names their
- * Zeilen and Kennzahlen (research selbststaendige-formulare.md), so the app takes them from a file the
+ * Zeilen and Kennzahlen (research self-employed-forms.md), so the app takes them from a file the
  * operator fills from Mein ELSTER (`apps/api/assets/elster-lines/<form>-<year>.json`) and checks it here.
  * Without a file the form stays `not_available` and the help shows the amounts without lines.
  */

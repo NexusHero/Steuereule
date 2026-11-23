@@ -1,7 +1,7 @@
 # Zeilen der Anlage S und G (ADR-0101 §22)
 
 Für die Anlagen S und G gibt es keine öffentliche amtliche Vorlage mit Zeilen und Kennzahlen
-(`docs/research/selbststaendige-formulare.md`). Die Ausfüllhilfe zeigt die Beträge deshalb ohne Zeile,
+(`docs/research/self-employed-forms.md`). Die Ausfüllhilfe zeigt die Beträge deshalb ohne Zeile,
 bis hier eine Datei je Formular und Jahr liegt, abgelesen in Mein ELSTER.
 
 Dateiname `anlage-g-2025.json` (bzw. `anlage-s-<jahr>.json`):

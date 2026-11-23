@@ -1,179 +1,179 @@
-# Auftrag: Ticket #443, Slice 1 — Navigation (Tab-Stacks & URL pro Maske)
+# Assignment: Ticket #443, Slice 1 — Navigation (tab stacks & a URL per screen)
 
-Du arbeitest im Repo **SteuerEule** (pnpm-Monorepo, Expo + react-native-web, ausgeliefert nur als Web-App).
-Du setzt **genau einen Slice** um: **Slice 1 aus GitHub-Issue #443**. Danach wird deine Arbeit von einem Reviewer geprüft.
-Lies diesen Auftrag vollständig, bevor du eine Datei änderst. Halte dich wörtlich daran. Wenn etwas hier nicht steht, entscheide **nicht** selbst, sondern schreib es unter „Offene Fragen“ in deinen Abschlussbericht.
-
----
-
-## 0. Zuerst lesen (Pflicht, in dieser Reihenfolge)
-
-1. `gh issue view 443` — nur die Abschnitte **„Zielplattform“**, **„Beschlossene Entscheidungen“** (Nr. 13–15, 22) und **„Slice 1 — Navigation“** sowie **AC 1, AC 2, AC 3, AC 12** sind für dich relevant.
-2. `apps/mobile-web/App.tsx` komplett (≈570 Zeilen). Das ist die Datei, die du umbaust.
-3. `apps/mobile-web/App.test.tsx` komplett. Diese Tests müssen grün bleiben.
-4. `apps/mobile-web/src/screens/funnel/sessionMemory.ts` und `apps/mobile-web/src/screens/funnel/afterTheInterview.ts`.
-5. `apps/mobile-web/src/screens/advisor/CopilotBridgeProvider.tsx`, nur die Props (`CopilotBridgeProviderProps`, ca. Zeile 113–119).
-6. `packages/ui/src/components/TabBar.tsx` (Props von `TabBar`).
+You are working in the **SteuerEule** repo (pnpm monorepo, Expo + react-native-web, shipped only as a web app).
+You implement **exactly one slice**: **Slice 1 from GitHub issue #443**. Afterwards a reviewer checks your work.
+Read this assignment in full before you change any file. Follow it to the letter. If something is not stated here, do **not** decide it yourself; write it under "Open questions" in your final report.
 
 ---
 
-## 1. Ausgangslage (Fakten, nicht neu prüfen)
+## 0. Read first (mandatory, in this order)
 
-- In `TabbedShell` (`App.tsx`) steuert `useState` `cockpitView` (19 Werte) und `profileView` (4 Werte), welcher Screen sichtbar ist. Masken haben **keine** URL.
-- `changeTab()` setzt bei jedem Tab-Wechsel `setProfileView('main')` und `setCockpitView('main')`. Dadurch gehen Eingaben und Position verloren.
-- Die Root-Navigation (`RootStack`, `linking`) existiert schon mit `@react-navigation/native` und `@react-navigation/native-stack` (beide installiert). `App` liegt auf dem Pfad `app`; `Printout` auf `app/steuerjahr/:year/ausdruck`, `Confirmation` auf `app/steuerjahr/:year/bestaetigung`.
-- `CopilotBridgeProvider` umschließt die Tab-Shell bereits (Ticket #446 ist gemerged). Er bekommt `mode` (`'eulen-modus'` wenn Tab `eule` aktiv, sonst `'cockpit'`) und `onModeChange`.
-- Das Steuerjahr wird über `rememberedTaxYear` / `rememberTaxYear` in **sessionStorage** gemerkt.
-
----
-
-## 2. Ziel von Slice 1
-
-1. Jeder Tab (`cockpit`, `eule`, `belege`, `profil`) hat einen eigenen Navigator. Ein Tab-Wechsel **friert** den Zustand des verlassenen Tabs ein (keine Resets mehr).
-2. Erneutes Antippen des **aktiven** Tabs führt zur Wurzel dieses Tabs (Pop-to-Root).
-3. Jede Cockpit- und Profil-Maske hat eine eigene URL (Tabelle in Abschnitt 4). Reload und Browser-Zurück/-Vor führen zur selben Maske im selben Steuerjahr.
-4. Ein Gast, der eine URL öffnet, die ein Konto braucht, landet an der Konto-Wand und nach Registrierung/Login genau auf dieser URL.
-5. **Der fachliche Ablauf bleibt identisch.** Der bisherige Tunnel (LStB → Lebenslagen → Einkünfte → Sonderausgaben → Arbeitstage → Plausibilität → Veranlagungsvergleich) läuft weiter genauso; jedes `setCockpitView('x')` wird nur durch eine Navigation zur Route `x` ersetzt. **Jede `onDone`- und `onBack`-Kante bleibt exakt gleich** (gleiches Ziel, gleicher `revisit`-Wert).
+1. `gh issue view 443` — only the sections **„Zielplattform“** (target platform), **„Beschlossene Entscheidungen“** (decisions taken; no. 13–15, 22) and **„Slice 1 — Navigation“**, plus **AC 1, AC 2, AC 3, AC 12**, are relevant to you.
+2. `apps/mobile-web/App.tsx` in full (≈570 lines). This is the file you restructure.
+3. `apps/mobile-web/App.test.tsx` in full. These tests must stay green.
+4. `apps/mobile-web/src/screens/funnel/sessionMemory.ts` and `apps/mobile-web/src/screens/funnel/afterTheInterview.ts`.
+5. `apps/mobile-web/src/screens/advisor/CopilotBridgeProvider.tsx`, only the props (`CopilotBridgeProviderProps`, around lines 113–119).
+6. `packages/ui/src/components/TabBar.tsx` (props of `TabBar`).
 
 ---
 
-## 3. Was du NICHT tun darfst (harte Regeln)
+## 1. Starting point (facts, do not re-check)
 
-- **Kein** Hub-Cockpit, **keine** Booster-Kacheln, **keine** Sheets/Modals, **kein** Dark Mode, **keine** Haptik. Das sind spätere Slices.
-- **Keine** Änderung in `packages/core`, `apps/api`, an DTOs oder ELSTER-Druckschablonen.
-- **Keine** Änderung an Screen-Komponenten in `apps/mobile-web/src/screens/**`, außer wenn ein Screen eine Prop braucht, die es noch nicht gibt. Dann: nur die Prop ergänzen, Verhalten nicht ändern, und im Bericht begründen.
-- **Kein** `data-testid` / `testID` umbenennen oder entfernen.
-- **Keine** bestehenden Tests löschen, abschwächen oder mit `.skip` deaktivieren. Ein bestehender Test darf nur angepasst werden, wenn er die alte interne Struktur prüft (nicht das Verhalten); begründe jede Anpassung im Bericht.
-- **Keine personenbezogenen Daten in URLs** (kein Name, keine Steuer-ID, keine Beträge). Erlaubt in URLs: Steuerjahr, Maskenname, `entry`, `area`, `revisit`.
-- **Keine Steuerdaten in localStorage oder sessionStorage.** Erlaubt ist nur eine neue sessionStorage-Notiz für die Rücksprung-URL (Abschnitt 6).
-- Bezeichner, Dateinamen und Kommentare **auf Englisch**. Sichtbare UI-Texte auf Deutsch über i18n (du solltest keine neuen UI-Texte brauchen).
-- Keine neuen Abhängigkeiten außer `@react-navigation/bottom-tabs` (Abschnitt 5).
+- In `TabbedShell` (`App.tsx`), `useState` `cockpitView` (19 values) and `profileView` (4 values) control which screen is visible. Screens have **no** URL.
+- `changeTab()` calls `setProfileView('main')` and `setCockpitView('main')` on every tab change. This loses input and position.
+- The root navigation (`RootStack`, `linking`) already exists with `@react-navigation/native` and `@react-navigation/native-stack` (both installed). `App` is on the path `app`; `Printout` on `app/steuerjahr/:year/ausdruck`, `Confirmation` on `app/steuerjahr/:year/bestaetigung`.
+- `CopilotBridgeProvider` already wraps the tab shell (ticket #446 is merged). It receives `mode` (`'eulen-modus'` when the `eule` tab is active, otherwise `'cockpit'`) and `onModeChange`.
+- The tax year is remembered in **sessionStorage** via `rememberedTaxYear` / `rememberTaxYear`.
 
 ---
 
-## 4. Routen-Tabelle (verbindlich)
+## 2. Goal of Slice 1
 
-Alle Pfade liegen **unter** dem vorhandenen Root-Screen `App` (Pfad `app`). Routennamen auf Englisch, URL-Segmente auf Deutsch.
+1. Each tab (`cockpit`, `eule`, `belege`, `profil`) has its own navigator. A tab change **freezes** the state of the tab being left (no more resets).
+2. Tapping the **active** tab again goes to the root of that tab (pop-to-root).
+3. Every cockpit and profile screen has its own URL (table in section 4). Reload and browser back/forward lead to the same screen in the same tax year.
+4. A guest who opens a URL that needs an account lands on the account wall and, after registration/login, on exactly this URL.
+5. **The domain flow stays identical.** The existing tunnel (LStB → life situations → income → Sonderausgaben (special expenses) → workdays → plausibility → filing type comparison) keeps running exactly as before; every `setCockpitView('x')` is only replaced by a navigation to the route `x`. **Every `onDone` and `onBack` edge stays exactly the same** (same target, same `revisit` value).
 
-**Tab `Cockpit` (Stack `CockpitStack`)**
+---
 
-| Route | URL | Params | Komponente (wie heute im `cockpitView`-Zweig) |
+## 3. What you must NOT do (hard rules)
+
+- **No** hub cockpit, **no** booster tiles, **no** sheets/modals, **no** dark mode, **no** haptics. Those are later slices.
+- **No** change in `packages/core`, `apps/api`, to DTOs or to ELSTER print templates.
+- **No** change to screen components in `apps/mobile-web/src/screens/**`, unless a screen needs a prop that does not exist yet. In that case: only add the prop, do not change behavior, and justify it in the report.
+- **Do not** rename or remove any `data-testid` / `testID`.
+- **Do not** delete, weaken or disable existing tests with `.skip`. An existing test may only be adjusted if it checks the old internal structure (not the behavior); justify every adjustment in the report.
+- **No personal data in URLs** (no name, no Steuer-ID (tax ID), no amounts). Allowed in URLs: tax year, screen name, `entry`, `area`, `revisit`.
+- **No tax data in localStorage or sessionStorage.** The only thing allowed is a new sessionStorage note for the return URL (section 6).
+- Identifiers, file names and comments **in English**. Visible UI text in German via i18n (you should not need any new UI text).
+- No new dependencies except `@react-navigation/bottom-tabs` (section 5).
+
+---
+
+## 4. Route table (binding)
+
+All paths sit **below** the existing root screen `App` (path `app`). Route names in English, URL segments in German.
+
+**Tab `Cockpit` (stack `CockpitStack`)**
+
+| Route | URL | Params | Component (as today in the `cockpitView` branch) |
 | :--- | :--- | :--- | :--- |
 | `CockpitHome` | `/app` | – | `CockpitScreen` |
 | `Interview` | `/app/steuerjahr/:year/interview` | `year` | `InterviewScreen` |
 | `AccountWall` | `/app/konto-wand` | – | `AccountWallScreen` |
-| `Lstb` | `/app/steuerjahr/:year/lstb` | `year` | `LstbScreen` (ohne Partner) |
+| `Lstb` | `/app/steuerjahr/:year/lstb` | `year` | `LstbScreen` (without partner) |
 | `Pension` | `/app/steuerjahr/:year/rente` | `year` | `PensionerScreen` |
 | `CrossBorder` | `/app/steuerjahr/:year/schweiz` | `year` | `CrossBorderScreen` |
-| `Catalog` | `/app/steuerjahr/:year/katalog/:entry` | `year`, `entry` ∈ `lebenslagen`/`einkuenfte`/`sonderausgaben`, optional `revisit` (Query `?revisit=1`) | `CatalogScreen` |
-| `Workdays` | `/app/steuerjahr/:year/arbeitstage` | `year` | `WorkdaysScreen` (ohne Partner) |
+| `Catalog` | `/app/steuerjahr/:year/katalog/:entry` | `year`, `entry` ∈ `lebenslagen`/`einkuenfte`/`sonderausgaben`, optional `revisit` (query `?revisit=1`) | `CatalogScreen` |
+| `Workdays` | `/app/steuerjahr/:year/arbeitstage` | `year` | `WorkdaysScreen` (without partner) |
 | `Plausibility` | `/app/steuerjahr/:year/plausibilitaet` | `year` | `PlausibilityScreen` |
 | `FilingTypeComparison` | `/app/steuerjahr/:year/veranlagungsvergleich` | `year` | `FilingTypeComparisonScreen` |
 | `Assessment` | `/app/steuerjahr/:year/bescheid` | `year` | `AssessmentScreen` |
 | `Capital` | `/app/steuerjahr/:year/kapital` | `year` | `CapitalScreen` |
 | `Rental` | `/app/steuerjahr/:year/vermietung` | `year` | `RentalScreen` |
 | `Children` | `/app/steuerjahr/:year/kinder` | `year` | `ChildrenScreen` |
-| `CockpitMasterData` | `/app/steuerjahr/:year/stammdaten` | `year` | `MasterDataScreen` mit `taxYear` und `onRecordPartner` |
-| `Partner` | `/app/steuerjahr/:year/partner/:area` | `year`, `area` ∈ `lstb`/`arbeitsweg` | `LstbScreen` bzw. `WorkdaysScreen` mit `partnerName` |
+| `CockpitMasterData` | `/app/steuerjahr/:year/stammdaten` | `year` | `MasterDataScreen` with `taxYear` and `onRecordPartner` |
+| `Partner` | `/app/steuerjahr/:year/partner/:area` | `year`, `area` ∈ `lstb`/`arbeitsweg` | `LstbScreen` or `WorkdaysScreen` with `partnerName` |
 
-**Tab `Eule`**: eine Route `Owl`, URL `/app/eule`, Komponente `OwlModeScreen` (Props wie heute).
+**Tab `Eule`**: one route `Owl`, URL `/app/eule`, component `OwlModeScreen` (props as today).
 
-**Tab `Belege`**: eine Route `Receipts`, URL `/app/belege`, Komponente `ReceiptsScreen`.
+**Tab `Belege`**: one route `Receipts`, URL `/app/belege`, component `ReceiptsScreen`.
 
-**Tab `Profil` (Stack `ProfileStack`)**
+**Tab `Profil` (stack `ProfileStack`)**
 
-| Route | URL | Komponente |
+| Route | URL | Component |
 | :--- | :--- | :--- |
 | `ProfileHome` | `/app/profil` | `ProfileScreen` |
 | `Privacy` | `/app/profil/datenschutz` | `PrivacyScreen` |
 | `Security` | `/app/profil/sicherheit` | `SecurityScreen` |
-| `ProfileMasterData` | `/app/profil/stammdaten` | `MasterDataScreen` (ohne `taxYear`, wie heute) |
+| `ProfileMasterData` | `/app/profil/stammdaten` | `MasterDataScreen` (without `taxYear`, as today) |
 
-**Sonderfälle:**
-- **`Partner`:** Der Partnername darf **nicht** in die URL. Halte ihn im Shell-State (Abschnitt 5). Fehlt er (z. B. nach Reload), ersetze die Route durch `CockpitMasterData` mit demselben Jahr.
-- **`year`-Parameter:** Ist `year` in `SELECTABLE_TAX_YEARS` und ungleich dem aktuellen Steuerjahr, setze das Steuerjahr auf `year` (über dieselbe Funktion wie heute `setTaxYear`). Ist `year` keine wählbare Zahl, ersetze die Route durch `CockpitHome`. Navigierst du im Code zu einer Maske, übergib immer `year: taxYear`.
-- **`App`-Param `start: 'interview'`** (von Login/Gast): Beim ersten Rendern zur Route `Interview` mit dem aktuellen Jahr navigieren. Den Param-Typ in `RootStackParamList` nicht ändern.
-- `/app/steuerjahr/:year/ausdruck` und `/app/steuerjahr/:year/bestaetigung` müssen weiterhin die Root-Screens `Printout` bzw. `Confirmation` öffnen.
+**Special cases:**
+- **`Partner`:** The partner name must **not** go into the URL. Keep it in shell state (section 5). If it is missing (e.g. after a reload), replace the route with `CockpitMasterData` with the same year.
+- **`year` parameter:** If `year` is in `SELECTABLE_TAX_YEARS` and differs from the current tax year, set the tax year to `year` (via the same function as today's `setTaxYear`). If `year` is not a selectable number, replace the route with `CockpitHome`. When you navigate to a screen in code, always pass `year: taxYear`.
+- **`App` param `start: 'interview'`** (from login/guest): on the first render, navigate to the route `Interview` with the current year. Do not change the param type in `RootStackParamList`.
+- `/app/steuerjahr/:year/ausdruck` and `/app/steuerjahr/:year/bestaetigung` must continue to open the root screens `Printout` and `Confirmation` respectively.
 
 ---
 
-## 5. Umsetzung (Schritt für Schritt)
+## 5. Implementation (step by step)
 
-Arbeite die Schritte **der Reihe nach** ab. Nach jedem Schritt: `pnpm --filter @steuereule/mobile-web typecheck` muss grün sein, bevor du weitermachst.
+Work through the steps **in order**. After each step: `pnpm --filter @steuereule/mobile-web typecheck` must be green before you continue.
 
-**Schritt 1 — Branch.**
+**Step 1 — Branch.**
 ```bash
 git fetch origin && git switch -c feat/443-slice-1-navigation origin/main
 ```
-Arbeite nur auf diesem Branch. Pushe nicht und öffne keinen PR, das macht der Reviewer.
+Work only on this branch. Do not push and do not open a PR; the reviewer does that.
 
-**Schritt 2 — Abhängigkeit.**
+**Step 2 — Dependency.**
 ```bash
 pnpm --filter @steuereule/mobile-web add @react-navigation/bottom-tabs@^7
 ```
-Prüfe, dass die installierte Hauptversion zu `@react-navigation/native` (7.x) passt.
+Check that the installed major version matches `@react-navigation/native` (7.x).
 
-**Schritt 3 — Neue Dateien anlegen** in `apps/mobile-web/src/navigation/`:
-- `routes.ts` — nur Typen: `CockpitStackParamList`, `ProfileStackParamList`, `AppTabParamList` (`Cockpit`, `Owl`, `Receipts`, `Profile` mit `NavigatorScreenParams`). Parameter genau wie Tabelle in Abschnitt 4; `year` als `number`.
-- `linking.ts` — die vollständige `LinkingOptions<RootStackParamList>`. Verschiebe die bestehende `linking`-Konstante aus `App.tsx` hierher und ergänze unter `App` die verschachtelten `screens` aus Abschnitt 4. Für `year` einen `parse`-Eintrag (`Number`), für `revisit` `parse: (v) => v === '1'` und `stringify: (v) => (v ? '1' : '')`.
-- `ShellState.tsx` — React-Context für den Zustand, der heute in `TabbedShell` lebt und von mehreren Screens gebraucht wird: `taxYear`/`setTaxYear` (inkl. `rememberTaxYear`), `funnelPath`/`setFunnelPath`, `pendingPath`/`setPendingPath`, `partner` (`{ area, name } | null`) / `setPartner`. Plus Hook `useShellState()`, der wirft, wenn der Provider fehlt.
-- `CockpitStack.tsx` — `createNativeStackNavigator<CockpitStackParamList>()` mit `headerShown: false` und allen Cockpit-Routen. Jede Route ist eine kleine Wrapper-Komponente, die `navigation`/`route` liest und die Screen-Komponente **mit denselben Props wie heute** rendert. Ersetze jedes `setCockpitView('x')` durch `navigation.navigate('<Route>', { year: taxYear, ... })`. Bei den Rückwärts-Kanten (`onBack`) ebenfalls `navigate` mit dem Ziel von heute verwenden, **nicht** `goBack()`, damit das Ziel exakt gleich bleibt.
-- `ProfileStack.tsx` — analog für die Profil-Routen; ersetze `setProfileView(...)`.
-- `AppTabs.tsx` — `createBottomTabNavigator<AppTabParamList>()` mit `headerShown: false` und einer **eigenen** `tabBar`-Funktion, die die vorhandene Funke-`TabBar` aus `@steuereule/ui` rendert (Tabs, Icons und Labels genau wie heute in `TabbedShell`). In dieser `tabBar`-Funktion:
-  - Beim Tippen: `navigation.emit({ type: 'tabPress', target: route.key, canPreventDefault: true })`. Ist der Tab **schon aktiv** und nicht prevented → zur Wurzelroute des Tabs navigieren (`CockpitHome` bzw. `ProfileHome`). Sonst `navigation.navigate(route.name)`.
-  - Die TabBar ist ausgeblendet, wenn im Tab `Profile` eine andere Route als `ProfileHome` aktiv ist (wie heute `showsTabBar`). Sonst sichtbar.
-  - Der Inhalt bekommt unten Platz für die schwebende TabBar wie heute (`tabBarClearance(t, insets.bottom)`), aber nur, wenn die TabBar sichtbar ist. Hintergrund `t.color.grund`.
+**Step 3 — Create new files** in `apps/mobile-web/src/navigation/`:
+- `routes.ts` — types only: `CockpitStackParamList`, `ProfileStackParamList`, `AppTabParamList` (`Cockpit`, `Owl`, `Receipts`, `Profile` with `NavigatorScreenParams`). Parameters exactly as in the table in section 4; `year` as `number`.
+- `linking.ts` — the complete `LinkingOptions<RootStackParamList>`. Move the existing `linking` constant from `App.tsx` here and add the nested `screens` from section 4 under `App`. For `year` a `parse` entry (`Number`), for `revisit` `parse: (v) => v === '1'` and `stringify: (v) => (v ? '1' : '')`.
+- `ShellState.tsx` — React context for the state that lives in `TabbedShell` today and is needed by several screens: `taxYear`/`setTaxYear` (incl. `rememberTaxYear`), `funnelPath`/`setFunnelPath`, `pendingPath`/`setPendingPath`, `partner` (`{ area, name } | null`) / `setPartner`. Plus a hook `useShellState()` that throws if the provider is missing.
+- `CockpitStack.tsx` — `createNativeStackNavigator<CockpitStackParamList>()` with `headerShown: false` and all cockpit routes. Each route is a small wrapper component that reads `navigation`/`route` and renders the screen component **with the same props as today**. Replace every `setCockpitView('x')` with `navigation.navigate('<Route>', { year: taxYear, ... })`. For the backward edges (`onBack`) also use `navigate` with today's target, **not** `goBack()`, so the target stays exactly the same.
+- `ProfileStack.tsx` — likewise for the profile routes; replace `setProfileView(...)`.
+- `AppTabs.tsx` — `createBottomTabNavigator<AppTabParamList>()` with `headerShown: false` and its **own** `tabBar` function that renders the existing Funke `TabBar` from `@steuereule/ui` (tabs, icons and labels exactly as today in `TabbedShell`). In this `tabBar` function:
+  - On tap: `navigation.emit({ type: 'tabPress', target: route.key, canPreventDefault: true })`. If the tab is **already active** and not prevented → navigate to the tab's root route (`CockpitHome` or `ProfileHome`). Otherwise `navigation.navigate(route.name)`.
+  - The TabBar is hidden when a route other than `ProfileHome` is active in the `Profile` tab (as today with `showsTabBar`). Otherwise visible.
+  - The content gets room at the bottom for the floating TabBar as today (`tabBarClearance(t, insets.bottom)`), but only when the TabBar is visible. Background `t.color.grund`.
 
-**Schritt 4 — `App.tsx` umbauen.**
-- `TabbedShell` rendert: `ShellStateProvider` → `CopilotBridgeProvider` → `AppTabs`.
-- `CopilotBridgeProvider` bekommt `mode="eulen-modus"`, wenn der fokussierte Tab `Owl` ist, sonst `"cockpit"`. `onModeChange` navigiert zum Tab `Owl` bzw. `Cockpit` (statt `changeTab`). Die übrigen Props (`taxYear`, `isAuthenticated`) wie heute.
-- Die beiden `useEffect`s für `pendingPath` und `rememberedPendingPath` bleiben inhaltlich gleich; statt `setCockpitView(view)` navigieren sie: `'konto-wand'` → `AccountWall`, `'rente'` → `Pension`, `'ch'` → `CrossBorder`, `'lstb'` → `Lstb` (mit `year: taxYear`).
-- `changeTab`, `cockpitView`, `profileView`, `catalogRevisit`, `partnerScreen` als `useState` entfallen vollständig.
-- `onSignedOut` bleibt (Query-Cache leeren, `navigation.replace('Login')`).
-- `NavigationContainer` bekommt `linking` aus `src/navigation/linking.ts`.
-- `App.tsx` soll danach deutlich kürzer sein. Ziel: keine Datei über ~300 Zeilen; teile lieber weiter auf.
+**Step 4 — Restructure `App.tsx`.**
+- `TabbedShell` renders: `ShellStateProvider` → `CopilotBridgeProvider` → `AppTabs`.
+- `CopilotBridgeProvider` gets `mode="eulen-modus"` when the focused tab is `Owl`, otherwise `"cockpit"`. `onModeChange` navigates to the tab `Owl` or `Cockpit` (instead of `changeTab`). The other props (`taxYear`, `isAuthenticated`) as today.
+- The two `useEffect`s for `pendingPath` and `rememberedPendingPath` keep the same content; instead of `setCockpitView(view)` they navigate: `'konto-wand'` → `AccountWall`, `'rente'` → `Pension`, `'ch'` → `CrossBorder`, `'lstb'` → `Lstb` (with `year: taxYear`).
+- `changeTab`, `cockpitView`, `profileView`, `catalogRevisit`, `partnerScreen` as `useState` are removed entirely.
+- `onSignedOut` stays (clear the query cache, `navigation.replace('Login')`).
+- `NavigationContainer` gets `linking` from `src/navigation/linking.ts`.
+- `App.tsx` should be considerably shorter afterwards. Goal: no file over ~300 lines; rather split further.
 
-**Schritt 5 — Gast-Deep-Link (AC 3).**
-- In `sessionMemory.ts` zwei Funktionen ergänzen, im selben Stil wie die vorhandenen: `rememberReturnTo(path: string | null)` und `rememberedReturnTo(): string | null`, Key `steuereule.returnTo`. Nur Pfade speichern, die mit `/app/` beginnen; alles andere ignorieren.
-- Nicht umschlossen werden (Verhalten bleibt wie heute): `CockpitHome`, `Interview`, `AccountWall`, der Tab `Owl` (er hat ein eigenes Gast-Gate) und der Tab `Receipts`. **Alle anderen Cockpit- und Profil-Routen brauchen ein Konto.**
-- Baue eine kleine Komponente `RequiresAccount` (in `src/navigation/`), die die konto-pflichtigen Wrapper umschließt:
-  - `useAccountSession().state.status === 'loading'` → nichts rendern.
-  - `'signed-out'` → aktuelle URL-Pfad merken (`rememberReturnTo`) und Route durch `AccountWall` ersetzen.
-  - `'signed-in'` → Kinder rendern.
-- Nach dem Anmelden (der vorhandene `useEffect` auf `sessionState.status === 'signed-in'`): Gibt es `rememberedReturnTo()`, Notiz löschen und dorthin navigieren (`useLinkTo()` aus `@react-navigation/native`). Diese Rücksprung-URL hat **Vorrang** vor `rememberedPendingPath`.
+**Step 5 — Guest deep link (AC 3).**
+- In `sessionMemory.ts` add two functions, in the same style as the existing ones: `rememberReturnTo(path: string | null)` and `rememberedReturnTo(): string | null`, key `steuereule.returnTo`. Only store paths that start with `/app/`; ignore everything else.
+- Not wrapped (behavior stays as today): `CockpitHome`, `Interview`, `AccountWall`, the `Owl` tab (it has its own guest gate) and the `Receipts` tab. **All other cockpit and profile routes need an account.**
+- Build a small component `RequiresAccount` (in `src/navigation/`) that wraps the account-required wrappers:
+  - `useAccountSession().state.status === 'loading'` → render nothing.
+  - `'signed-out'` → remember the current URL path (`rememberReturnTo`) and replace the route with `AccountWall`.
+  - `'signed-in'` → render children.
+- After signing in (the existing `useEffect` on `sessionState.status === 'signed-in'`): if there is a `rememberedReturnTo()`, delete the note and navigate there (`useLinkTo()` from `@react-navigation/native`). This return URL takes **precedence** over `rememberedPendingPath`.
 
-**Schritt 6 — Tests ergänzen** in `apps/mobile-web/App.test.tsx` (gleicher Stil wie die vorhandenen, React Testing Library + MSW). Mindestens diese Fälle, Testnamen auf Englisch:
-1. *AC 1:* Im Cockpit `Lstb` öffnen, in `lstb-bruttoarbeitslohn` einen Wert tippen (Feld nicht verlassen), zum Tab Belege wechseln, zurück zum Cockpit → LStB-Maske ist sichtbar und das Feld enthält den getippten Wert.
-2. *Pop-to-Root:* Im Cockpit `Lstb` öffnen, erneut auf den Cockpit-Tab tippen → `CockpitScreen` ist sichtbar.
-3. *AC 2:* Direktaufruf `/app/steuerjahr/2025/lstb` (eingeloggt) → LStB-Maske für 2025.
-4. *AC 2:* Direktaufruf `/app/steuerjahr/2025/katalog/einkuenfte` → Katalog mit Eintrag Einkünfte.
-5. *Jahr:* Direktaufruf `/app/steuerjahr/1999/lstb` → Cockpit.
-6. *Partner nach Reload:* Direktaufruf `/app/steuerjahr/2025/partner/lstb` ohne Partner-State → Stammdaten-Maske.
-7. *AC 3:* Als Gast `/app/steuerjahr/2025/kapital` öffnen → Konto-Wand; `sessionStorage['steuereule.returnTo']` ist `/app/steuerjahr/2025/kapital`.
-8. *AC 3:* Danach Anmeldung simulieren (wie in den vorhandenen Login-Tests) → Kapital-Maske ist sichtbar, Notiz ist gelöscht.
-9. *Tunnel unverändert:* LStB `onDone` → Katalog Lebenslagen; dessen `onDone` → Katalog Einkünfte; dessen `onBack` → Lebenslagen mit `revisit`.
-10. `/app/steuerjahr/2025/ausdruck` öffnet weiterhin `Printout`.
+**Step 6 — Add tests** in `apps/mobile-web/App.test.tsx` (same style as the existing ones, React Testing Library + MSW). At least these cases, test names in English:
+1. *AC 1:* In the cockpit open `Lstb`, type a value into `lstb-bruttoarbeitslohn` (do not leave the field), switch to the Belege (documents) tab, back to the cockpit → the LStB screen is visible and the field contains the typed value.
+2. *Pop-to-root:* In the cockpit open `Lstb`, tap the cockpit tab again → `CockpitScreen` is visible.
+3. *AC 2:* Direct call `/app/steuerjahr/2025/lstb` (signed in) → LStB screen for 2025.
+4. *AC 2:* Direct call `/app/steuerjahr/2025/katalog/einkuenfte` → catalog with the income entry.
+5. *Year:* Direct call `/app/steuerjahr/1999/lstb` → cockpit.
+6. *Partner after reload:* Direct call `/app/steuerjahr/2025/partner/lstb` without partner state → master data screen.
+7. *AC 3:* As a guest open `/app/steuerjahr/2025/kapital` → account wall; `sessionStorage['steuereule.returnTo']` is `/app/steuerjahr/2025/kapital`.
+8. *AC 3:* Then simulate a sign-in (as in the existing login tests) → the capital screen is visible, the note is deleted.
+9. *Tunnel unchanged:* LStB `onDone` → catalog life situations; its `onDone` → catalog income; its `onBack` → life situations with `revisit`.
+10. `/app/steuerjahr/2025/ausdruck` still opens `Printout`.
 
-Schreibe jeden neuen Test **zuerst**, sieh ihn rot, dann implementiere (falls die Implementierung schon steht: bau den Fehler kurz absichtlich ein, um zu beweisen, dass der Test ihn fängt, und nimm ihn wieder raus).
+Write each new test **first**, see it red, then implement (if the implementation already exists: briefly introduce the bug on purpose to prove the test catches it, and take it out again).
 
-**Schritt 7 — E2E-Szenarien.**
-- Alle 24 Szenarien laufen lassen (Abschnitt 7). Wenn ein Szenario rot wird, **zuerst prüfen, ob die App falsch ist** (dann App fixen). Nur wenn das Szenario sich auf alte interne Abläufe verlässt (z. B. dass ein Tab-Wechsel die Maske zurücksetzt), das Szenario anpassen und das im Bericht begründen.
-- Ergänze in `e2e/scenarios/08-navigation-gast-und-alle-screens.mjs` am Ende einen Block: eine Maske über eine URL öffnen, `page.reload()`, prüfen, dass dieselbe Maske sichtbar ist; `page.goBack()` prüfen.
-
----
-
-## 6. Akzeptanzkriterien für diesen Slice
-
-- **AC 1:** Eingaben und offene Maske überleben einen Tab-Wechsel.
-- **AC 2:** Jede Maske aus Abschnitt 4 hat ihre URL; Reload und Browser-Zurück/-Vor führen zur selben Maske im selben Jahr.
-- **AC 3:** Gast-Deep-Link → Konto-Wand → nach Anmeldung genau diese Maske.
-- **Pop-to-Root** funktioniert für Cockpit und Profil.
-- **Fachlicher Ablauf unverändert:** jede `onDone`/`onBack`-Kante wie vorher.
-- **AC 12:** alle 24 E2E-Szenarien grün.
+**Step 7 — E2E scenarios.**
+- Run all 24 scenarios (section 7). If a scenario turns red, **first check whether the app is wrong** (then fix the app). Only if the scenario relies on old internal flows (e.g. that a tab change resets the screen), adjust the scenario and justify that in the report.
+- In `e2e/scenarios/08-navigation-gast-und-alle-screens.mjs`, add a block at the end: open a screen via a URL, `page.reload()`, check that the same screen is visible; check `page.goBack()`.
 
 ---
 
-## 7. Prüfbefehle (alle müssen grün sein, bevor du fertig meldest)
+## 6. Acceptance criteria for this slice
+
+- **AC 1:** Input and the open screen survive a tab change.
+- **AC 2:** Every screen from section 4 has its URL; reload and browser back/forward lead to the same screen in the same year.
+- **AC 3:** Guest deep link → account wall → after sign-in exactly this screen.
+- **Pop-to-root** works for cockpit and profile.
+- **Domain flow unchanged:** every `onDone`/`onBack` edge as before.
+- **AC 12:** all 24 E2E scenarios green.
+
+---
+
+## 7. Check commands (all must be green before you report done)
 
 ```bash
 pnpm lint
@@ -194,23 +194,23 @@ pnpm --filter @steuereule/e2e no-client-persistence
 pnpm --filter @steuereule/e2e breakpoint-layout
 ```
 
-Die E2E-Befehle starten den Stack selbst (BOOT-Modus). Wenn der Stack lokal nicht startet (z. B. Docker/Postgres fehlt), **nicht raten oder überspringen**: schreib die genaue Fehlermeldung in den Bericht.
+The E2E commands start the stack themselves (BOOT mode). If the stack does not start locally (e.g. Docker/Postgres missing), **do not guess or skip**: write the exact error message into the report.
 
 ---
 
 ## 8. Commits
 
-- Kleine Commits, je Schritt mindestens einer, Format `feat(navigation): …` / `test(navigation): …` / `refactor(navigation): …` (auf Englisch).
-- Kein Commit mit rotem Typecheck oder roten Unit-Tests.
+- Small commits, at least one per step, format `feat(navigation): …` / `test(navigation): …` / `refactor(navigation): …` (in English).
+- No commit with a red typecheck or red unit tests.
 
 ---
 
-## 9. Abschlussbericht (genau diese Gliederung)
+## 9. Final report (exactly this structure)
 
-1. **Geänderte und neue Dateien** — Liste mit je einem Satz, was drin ist.
-2. **Abweichungen von diesem Auftrag** — jede einzeln mit Begründung. Keine Abweichung → „keine“.
-3. **Angepasste bestehende Tests/Szenarien** — welche, warum.
-4. **Ergebnis jedes Prüfbefehls aus Abschnitt 7** — grün/rot, bei rot die Ausgabe.
-5. **Offene Fragen** — alles, was du nicht entscheiden durftest.
+1. **Changed and new files** — list with one sentence each on what is in it.
+2. **Deviations from this assignment** — each one individually with justification. No deviation → "none".
+3. **Adjusted existing tests/scenarios** — which ones, why.
+4. **Result of each check command from section 7** — green/red, for red the output.
+5. **Open questions** — everything you were not allowed to decide.
 
-Melde nur fertig, wenn alles aus Abschnitt 7 grün ist oder du im Bericht genau sagst, was nicht lief und warum.
+Only report done when everything from section 7 is green, or you state exactly in the report what did not run and why.
