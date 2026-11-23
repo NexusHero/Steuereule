@@ -97,6 +97,6 @@ export function createAdvisorRunLog(env: NodeJS.ProcessEnv = process.env): Advis
       useClass: PrismaAdvisorRepository,
     },
   ],
-  exports: [AdvisorService, AdvisorDocumentStaging, AdvisorDrafts, ADVISOR_REPOSITORY],
+  exports: [AdvisorDocumentStaging, AdvisorDrafts, ADVISOR_REPOSITORY],
 })
 export class AdvisorModule {}

@@ -1,7 +1,6 @@
 import type { AdvisorEnginePort } from '@steuereule/core'
 import { beforeEach, describe, expect, it } from 'vitest'
-import { buildAdvisorTestKit, type AdvisorTestKit } from './fakes/advisor-test-kit.js'
-import type { AdvisorService } from '../src/advisor/advisor.service.js'
+import { buildAdvisorTestKit, type AdvisorTestFacade, type AdvisorTestKit } from './fakes/advisor-test-kit.js'
 import { DEFAULT_AI_TURN_LIMITS } from '../src/ki/ai-runtime-config.service.js'
 import type { TransactionRunner } from '../src/common/transaction-runner.js'
 import { InMemoryAdvisorRepository } from '../src/advisor/advisor.repository.js'
@@ -30,7 +29,7 @@ describe('AdvisorService (In-App Steuerberater Agent "Deine Eule")', () => {
   let markingRepo: FakeMarkingRepository
   let auditRepo: FakeAuditRepository
   let confirmationService: ConfirmationService
-  let advisorService: AdvisorService
+  let advisorService: AdvisorTestFacade
   let kit: AdvisorTestKit
 
   beforeEach(async () => {

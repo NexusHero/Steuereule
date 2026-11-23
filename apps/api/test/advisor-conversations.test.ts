@@ -2,7 +2,7 @@
 // return (and with it every draft), not each other's messages.
 import type { AdvisorStreamEvent } from '@steuereule/core'
 import { describe, expect, it } from 'vitest'
-import { MAX_CONVERSATIONS_PER_YEAR, searchKey, snippetAround, titleFrom } from '../src/advisor/advisor.service.js'
+import { MAX_CONVERSATIONS_PER_YEAR, searchKey, snippetAround, titleFrom } from '../src/advisor/advisor-shared.js'
 import { buildAdvisorTestKit, collect, doneEvent, ScriptedAdvisorEngine, type ScriptStep } from './fakes/advisor-test-kit.js'
 
 const USER = 'user-conversations'

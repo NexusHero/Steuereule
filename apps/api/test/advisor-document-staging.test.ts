@@ -11,8 +11,7 @@ const RULES = { mode: 'deterministic_fallback', provider: 'deterministic' } as c
 /** The estimate's preview as the API module offers it; in-memory setups have none of their own. */
 function withPreview(kit: ReturnType<typeof buildAdvisorTestKit>, preview: (target: AdvisorPreviewTarget) => AdvisorPreviewEffect): AdvisorPreviewTarget[] {
   const seen: AdvisorPreviewTarget[] = []
-  const digest = (kit.service as unknown as { caseDigest: { previewEffectFor: (userId: string, taxYear: number) => unknown } }).caseDigest
-  digest.previewEffectFor = () => async (target: AdvisorPreviewTarget) => {
+  kit.caseDigest.previewEffectFor = () => async (target: AdvisorPreviewTarget) => {
     seen.push(target)
     return preview(target)
   }

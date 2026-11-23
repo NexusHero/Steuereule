@@ -1,7 +1,7 @@
 // The owl's result table subtracted the § 35a reduction twice (real-data run): the estimate now hands
 // over the way from the income to the result as finished lines, and the owl quotes them.
 import { describe, expect, it } from 'vitest'
-import { estimateReadingFrom } from '../src/advisor/advisor.service.js'
+import { estimateReadingFrom } from '../src/advisor/advisor-case-digest.js'
 import { computedFiguresOf } from '../src/ki/advisor-tools.js'
 import { buildStableSystemPrompt } from '../src/ki/advisor-prompt.js'
 import { toolResult } from '../src/ki/advisor-tools.js'

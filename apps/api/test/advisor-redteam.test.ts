@@ -4,19 +4,18 @@
 //   3. Daily rate-limit enforcement (`DEFAULT_AI_TURN_LIMITS.dailyMessageLimit = 50`).
 //   4. MCP Server tool scope enforcement (`steuerdaten:read` cannot invoke write/payment tools).
 import { beforeEach, describe, expect, it } from 'vitest'
-import { AdvisorService } from '../src/advisor/advisor.service.js'
 import { DEFAULT_AI_TURN_LIMITS } from '../src/ki/ai-runtime-config.service.js'
 import { NotFoundError, TooManyRequestsError } from '../src/common/domain-error.js'
 import { checkPiiFree, validateAiProposal } from '../src/ki/ki.adapter.js'
 import { FakeInterviewAnswerRepository } from './fakes/fake-interview-answer.repository.js'
-import { buildAdvisorTestKit } from './fakes/advisor-test-kit.js'
+import { buildAdvisorTestKit, type AdvisorTestFacade } from './fakes/advisor-test-kit.js'
 
 const USER_A = 'user-redteam-a'
 const USER_B = 'user-redteam-b'
 const YEAR = 2025
 
 describe('DevMLOps Backend Red-Team & Egress Boundary Suite', () => {
-  let advisorService: AdvisorService
+  let advisorService: AdvisorTestFacade
   let interviewRepo: FakeInterviewAnswerRepository
 
   beforeEach(async () => {

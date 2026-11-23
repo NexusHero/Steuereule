@@ -41,7 +41,7 @@ import { AdvisorDrafts } from '../../src/advisor/advisor-drafts.js'
 import { AdvisorTurn } from '../../src/advisor/advisor-turn.js'
 import { InMemoryAdvisorRunLog, type AdvisorRunLog } from '../../src/advisor/run/advisor-run-log.js'
 import { AdvisorRunService } from '../../src/advisor/run/advisor-run.service.js'
-import type { Provider } from '@nestjs/common'
+import type { Provider, Type } from '@nestjs/common'
 import { AdvisorDocumentStaging } from '../../src/advisor/advisor-document-staging.js'
 import { AdvisorConversations } from '../../src/advisor/advisor-conversations.js'
 import { AdvisorOpening } from '../../src/advisor/advisor-opening.js'
@@ -93,21 +93,98 @@ export interface AdvisorTestKitOptions {
   readonly runtimeConfig?: AiRuntimeConfigService | undefined
 }
 
-/** The advisor wired over the kit's fakes. */
-export interface AdvisorWiring {
-  readonly service: AdvisorService
+/** The parts of the advisor, each as the app provides it. */
+export interface AdvisorParts {
+  /** The session, clearing a conversation, feedback, the opening state and the connection. */
+  readonly session: AdvisorService
   readonly drafts: AdvisorDrafts
   readonly caseDigest: AdvisorCaseDigest
   readonly conversations: AdvisorConversations
   readonly notes: AdvisorProjectNotes
   readonly opening: AdvisorOpening
   readonly turn: AdvisorTurn
+  /** What the document readers inject. */
+  readonly staging: AdvisorDocumentStaging
+}
+
+/**
+ * Every operation of the advisor under one name, for tests that exercise a flow across parts. The
+ * app has no such object: there each consumer injects the part it uses.
+ */
+export type AdvisorTestFacade = Pick<AdvisorService, 'getSession' | 'setFeedback' | 'clearConversation' | 'connection' | 'openingState'> &
+  Pick<AdvisorTurn, 'sendMessage' | 'prepareTurn' | 'streamMessage' | 'executeTurn'> &
+  Pick<AdvisorConversations, 'conversationFor' | 'listConversations' | 'createConversation' | 'renameConversation' | 'deleteConversation' | 'summarizeConversation' | 'searchConversations'> & {
+    readonly setConversationModel: AdvisorConversations['setChatModel']
+  } & Pick<AdvisorProjectNotes, 'saveSituation' | 'listNotes' | 'createNote' | 'updateNote' | 'deleteNote' | 'undoNoteChange'> &
+  Pick<AdvisorCaseDigest, 'knownNamesForScrubbing' | 'advisorHousehold' | 'loadRecordHandles' | 'buildCaseDigest' | 'previewEffectFor' | 'estimateReaderFor'> &
+  Pick<AdvisorDrafts, 'applyAction' | 'applyBatch' | 'undoAction' | 'dismissAction'> &
+  Pick<
+    AdvisorDocumentStaging,
+    | 'stageBookingProposal'
+    | 'stageReceiptProposal'
+    | 'stageLstbScanBatch'
+    | 'householdNames'
+    | 'householdMembers'
+    | 'stageDocumentDrafts'
+    | 'countedReceiptItems'
+    | 'childForReceipt'
+    | 'takeBackDocumentValues'
+    | 'markLstbActionsApplied'
+    | 'receiptDrafts'
+  >
+
+/** The named methods of a part, bound to it. */
+function bound<T extends object, K extends keyof T>(target: T, ...keys: K[]): Pick<T, K> {
+  return Object.fromEntries(keys.map((key) => [key, (target[key] as (...args: unknown[]) => unknown).bind(target)])) as Pick<T, K>
+}
+
+function facadeOf(parts: AdvisorParts): AdvisorTestFacade {
+  return {
+    ...bound(parts.session, 'getSession', 'setFeedback', 'clearConversation', 'connection', 'openingState'),
+    ...bound(parts.turn, 'sendMessage', 'prepareTurn', 'streamMessage', 'executeTurn'),
+    ...bound(parts.conversations, 'conversationFor', 'listConversations', 'createConversation', 'renameConversation', 'deleteConversation', 'summarizeConversation', 'searchConversations'),
+    setConversationModel: parts.conversations.setChatModel.bind(parts.conversations),
+    ...bound(parts.notes, 'saveSituation', 'listNotes', 'createNote', 'updateNote', 'deleteNote', 'undoNoteChange'),
+    ...bound(parts.caseDigest, 'knownNamesForScrubbing', 'advisorHousehold', 'loadRecordHandles', 'buildCaseDigest', 'previewEffectFor', 'estimateReaderFor'),
+    ...bound(parts.drafts, 'applyAction', 'applyBatch', 'undoAction', 'dismissAction'),
+    ...bound(
+      parts.staging,
+      'stageBookingProposal',
+      'stageReceiptProposal',
+      'stageLstbScanBatch',
+      'householdNames',
+      'householdMembers',
+      'stageDocumentDrafts',
+      'countedReceiptItems',
+      'childForReceipt',
+      'takeBackDocumentValues',
+      'markLstbActionsApplied',
+      'receiptDrafts',
+    ),
+  }
+}
+
+/** The same facade over the parts of a running Nest app, for tests that boot the real modules. */
+export function advisorOf(app: { get<T>(token: Type<T>): T }): AdvisorTestFacade {
+  return facadeOf({
+    session: app.get(AdvisorService),
+    drafts: app.get(AdvisorDrafts),
+    caseDigest: app.get(AdvisorCaseDigest),
+    conversations: app.get(AdvisorConversations),
+    notes: app.get(AdvisorProjectNotes),
+    opening: app.get(AdvisorOpening),
+    staging: app.get(AdvisorDocumentStaging),
+    turn: app.get(AdvisorTurn),
+  })
+}
+
+/** The advisor wired over the kit's fakes. */
+export interface AdvisorWiring extends AdvisorParts {
+  readonly service: AdvisorTestFacade
   /** What AdvisorController injects from the advisor, for a Nest testing module. */
   readonly providers: readonly Provider[]
   /** The run service over this wiring; its log stays in memory unless a test brings one. */
   runService(log?: AdvisorRunLog): AdvisorRunService
-  /** What the document readers inject. */
-  readonly staging: AdvisorDocumentStaging
 }
 
 export interface AdvisorTestKit extends AdvisorTestFakes, AdvisorWiring {
@@ -189,16 +266,17 @@ export function buildAdvisorTestKit(engine?: AdvisorEnginePort, modelConnection?
     const staging = new AdvisorDocumentStaging(advisorRepo, owlModeService, confirmationService, auditService, transactions, caseDigest, drafts, profileRepo, linkService, childRepo)
     const connection = wiring.modelConnection ?? new ModelConnectionService(runtimeConfig)
     const turn = new AdvisorTurn(advisorRepo, owlModeService, caseDigest, conversations, notes, opening, drafts, transactions, consent, advisorEngine, runtimeConfig, connection, assessmentService, linkService, profileRepo, childRepo)
-    const service = new AdvisorService(advisorRepo, owlModeService, auditService, drafts, caseDigest, conversations, notes, opening, staging, turn, advisorEngine, connection)
+    const session = new AdvisorService(advisorRepo, owlModeService, auditService, caseDigest, conversations, notes, opening, advisorEngine, connection)
+    const parts: AdvisorParts = { session, drafts, caseDigest, conversations, notes, opening, staging, turn }
     const providers = [
-      { provide: AdvisorService, useValue: service },
+      { provide: AdvisorService, useValue: session },
       { provide: AdvisorTurn, useValue: turn },
       { provide: AdvisorConversations, useValue: conversations },
       { provide: AdvisorProjectNotes, useValue: notes },
       { provide: AdvisorDrafts, useValue: drafts },
     ]
-    const runService = (log: AdvisorRunLog = new InMemoryAdvisorRunLog()) => new AdvisorRunService(service, turn, conversations, log, advisorRepo)
-    return { service, drafts, caseDigest, conversations, notes, opening, staging, turn, providers, runService }
+    const runService = (log: AdvisorRunLog = new InMemoryAdvisorRunLog()) => new AdvisorRunService(session, turn, conversations, log, advisorRepo)
+    return { ...parts, service: facadeOf(parts), providers, runService }
   }
 
   const base: AdvisorTestKitOptions = { ...options, engine: options.engine ?? engine, modelConnection: options.modelConnection ?? modelConnection }
