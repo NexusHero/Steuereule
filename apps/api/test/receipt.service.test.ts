@@ -198,6 +198,15 @@ describe('BelegService', () => {
       await expect(service.upload('user-q', { buffer: PDF_HEADER, fileName: 'a.pdf' })).rejects.toMatchObject({ code: 'RECEIPT_QUOTA_EXCEEDED' })
     })
 
+    it('takes an upload back when a concurrent one filled the account first', async () => {
+      // The check before the write still sees room; the one after it counts a file a parallel upload stored.
+      let calls = 0
+      storage.usage = async () => (++calls === 1 ? { files: MAX_RECEIPT_FILES_PER_ACCOUNT - 1, bytes: 0 } : { files: MAX_RECEIPT_FILES_PER_ACCOUNT + 1, bytes: 0 })
+      await expect(service.upload('user-q', { buffer: PDF_HEADER, fileName: 'a.pdf' })).rejects.toMatchObject({ code: 'RECEIPT_QUOTA_EXCEEDED' })
+      expect(repository.recordCount()).toBe(0)
+      expect(await storage.listContentKeys('user-q')).toEqual([])
+    })
+
     it('counts only the uploading account', async () => {
       await service.upload('other-user', { buffer: PDF_HEADER, fileName: 'a.pdf' })
       expect(await storage.usage('user-q')).toEqual({ files: 0, bytes: 0 })
