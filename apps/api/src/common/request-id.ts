@@ -14,9 +14,15 @@ export function resolveTraceId(headers: Record<string, string | string[] | undef
     }
   }
 
+  // Accept a client-supplied id only if it is a short, safe token; otherwise generate one. This id is
+  // reflected into the x-request-id response header and used as the log-correlation id, so an unbounded /
+  // unsanitised client value would allow log forging and oversized reflected headers (ADR-0104 L3).
   const incomingReqId = headers['x-request-id']
-  if (typeof incomingReqId === 'string' && incomingReqId.trim().length > 0) {
-    return incomingReqId.trim()
+  if (typeof incomingReqId === 'string') {
+    const trimmed = incomingReqId.trim()
+    if (/^[A-Za-z0-9._-]{1,128}$/.test(trimmed)) {
+      return trimmed
+    }
   }
 
   return crypto.randomUUID()

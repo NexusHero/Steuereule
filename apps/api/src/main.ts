@@ -66,13 +66,18 @@ export async function buildApp(): Promise<NestFastifyApplication> {
     }),
   )
 
-  const config = new DocumentBuilder()
-    .setTitle('SteuerEule API')
-    .setDescription('Onboarding profile endpoints (steuereule#29)')
-    .setVersion('1.0')
-    .build()
-  const document = SwaggerModule.createDocument(app, config)
-  SwaggerModule.setup('docs', app, document)
+  // The /docs Swagger UI is unauthenticated and runs with Helmet disabled on its routes
+  // (register-helmet.ts). It exposes the full API surface, so it is mounted only outside production
+  // (ADR-0104 LM1).
+  if (process.env.NODE_ENV !== 'production') {
+    const config = new DocumentBuilder()
+      .setTitle('SteuerEule API')
+      .setDescription('Onboarding profile endpoints (steuereule#29)')
+      .setVersion('1.0')
+      .build()
+    const document = SwaggerModule.createDocument(app, config)
+    SwaggerModule.setup('docs', app, document)
+  }
 
   await app.init()
   const { auth } = app.get<BetterAuthBundle>(BETTER_AUTH_BUNDLE)

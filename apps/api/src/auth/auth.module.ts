@@ -6,10 +6,8 @@ import { resolveTrustedProxies } from '../config/trusted-proxies.js'
 import { BETTER_AUTH_BUNDLE } from './auth.tokens.js'
 import { createBetterAuth } from './better-auth.js'
 import { resolveAppleClientId, resolveAppleClientSecret, resolveAppleSignInEnabled, resolveBetterAuthSecret, resolveBetterAuthUrl, resolveGoogleClientId, resolveGoogleClientSecret, resolveWebAppUrl } from './better-auth-env.js'
-import { BrevoEmailSender, resolveBrevoConfig } from './brevo-email-sender.js'
 import { EMAIL_SENDER, type EmailSender } from './email-sender.js'
-import { LoggingEmailSender } from './logging-email-sender.js'
-import { resolveSmtpConfig, SmtpEmailSender } from './smtp-email-sender.js'
+import { createEmailSender } from './email-sender.factory.js'
 import { RequiresAccountGuard } from './requires-account.guard.js'
 import { UserContextGuard } from './user-context.guard.js'
 import { BEARER_TOKEN_REPOSITORY } from './bearer-token.repository.js'
@@ -25,12 +23,8 @@ import { OAuthDiscoveryController } from './oauth-discovery.controller.js'
   providers: [
     {
       provide: EMAIL_SENDER,
-      useFactory: (): EmailSender => {
-        const smtp = resolveSmtpConfig()
-        if (smtp) return new SmtpEmailSender(smtp)
-        const brevo = resolveBrevoConfig()
-        return brevo ? new BrevoEmailSender(brevo) : new LoggingEmailSender()
-      },
+      // Fails closed in production if no real provider is configured (ADR-0104 M1).
+      useFactory: (): EmailSender => createEmailSender(),
     },
     {
       provide: BETTER_AUTH_BUNDLE,

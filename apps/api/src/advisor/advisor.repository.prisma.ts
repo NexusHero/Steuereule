@@ -295,13 +295,14 @@ export class PrismaAdvisorRepository implements AdvisorRepository {
     userId: string,
     meta: AdvisorMessageMeta,
   ): Promise<AdvisorChatMessageRecord> {
-    const row = await this.prisma.advisorChatMessage.update({
-      where: { id },
+    // Scoped by owner in the WHERE clause (ADR-0104 L1), so a foreign id changes nothing instead of being
+    // written and only rejected afterwards — matching the sibling finishMessage/setFeedback below.
+    const { count } = await this.prisma.advisorChatMessage.updateMany({
+      where: { id, userId },
       data: { metaJson: JSON.stringify(meta) },
     })
-    if (row.userId !== userId) {
-      throw new Error('Unauthorized message update')
-    }
+    const row = count === 1 ? await this.prisma.advisorChatMessage.findFirst({ where: { id, userId } }) : null
+    if (!row) throw new Error('Unauthorized message update')
     return toRecord(row)
   }
 
