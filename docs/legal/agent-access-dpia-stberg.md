@@ -1,94 +1,94 @@
-# Rechtliche Einordnung und Datenschutz-Folgenabschätzung (DSFA) für den Agenten-Zugang
+# Legal classification and Datenschutz-Folgenabschätzung (DSFA, data protection impact assessment) for agent access
 
-> **Status:** Gültig ab Version 1.0 (November 2026)  
-> **Bezug:** ADR-0052 (Agenten-Zugang via Model Context Protocol), Issue #388 (Slice 17.5)  
-> **Rechtsgrundlagen:** Steuerberatungsgesetz (StBerG), Datenschutz-Grundverordnung (DSGVO Art. 25, 35, 44 ff., 49)
-
----
-
-## 1. Einordnung nach dem Steuerberatungsgesetz (StBerG)
-
-### 1.1 Problemstellung und Normenkontrollrahmen
-Nach § 2 und § 3 StBerG ist die geschäftsmäßige Hilfeleistung in Steuersachen nur Personen und Vereinigungen gestattet, die hierzu befugt sind (z. B. Steuerberater, Steuerbevollmächtigte, Rechtsanwälte). Die unbefugte geschäftsmäßige Hilfeleistung in Steuersachen ist nach § 5 StBerG unzulässig und kann nach § 160 StBerG ordnungswidrigkeitsrechtlich geahndet werden.
-
-### 1.2 Technische und rechtliche Abgrenzung des SteuerEule-Agenten-Zugangs
-SteuerEule erbringt mit der Bereitstellung der Model Context Protocol (MCP) Schnittstelle **keine Hilfeleistung in Steuersachen**, sondern stellt ein technisches Software-Werkzeug bereit:
-
-1. **Eigener Assistent des Nutzers (Werkzeugeigenschaft):**
-   * SteuerEule betreibt den KI-Agenten nicht selbst als geschlossene Beratungsinstanz.
-   * Der Nutzer schließt eigenverantwortlich eine Vereinbarung mit einem Modellanbieter (z. B. Anthropic, OpenAI, lokales LLM) ab oder betreibt seinen eigenen Client.
-   * Der Agent agiert als verlängerter Arm und persönliches Werkzeug des Steuerpflichtigen selbst.
-2. **Keine rechtliche Subsumtion oder Mandatsverhältnis:**
-   * SteuerEule gibt über die MCP-Tools keine verbindliche Rechtsberatung ab.
-   * Berechnungen des Kerns (`@steuereule/core`) sind deterministische Rechenwege auf Basis der amtlichen Gesetze (z. B. § 32a EStG Tarif, Pendlerpauschale, amtliche BMF-Tabellen), die offene Werte nicht erfinden, sondern ehrlich als offen ausweisen (ADR-0032/0034).
-3. **Zwingende menschliche Zwischenschaltung („Der Nutzer gewinnt“ & Bestätigungspflicht):**
-   * Alle vom KI-Assistenten eingetragenen Werte werden serverseitig zwingend als **unbestätigt** (`unbestaetigt`) markiert (ADR-0052 §6).
-   * Unbestätigte Werte sperren die Vorprüfung, den Formular-Ausdruck und die Bezahlung (REQ-032). Ein Ausdruck oder eine Einreichung ohne explizite Sichtprüfung und anlagenweise Bestätigung durch den menschlichen Nutzer ist technisch ausgeschlossen.
-   * Hat der Nutzer einen Wert selbst erfasst, kann der Assistent diesen niemals überschreiben; es wird stattdessen ein Vorschlag erzeugt.
-4. **Keine elektronische Übermittlung an Finanzbehörden (Papierweg):**
-   * SteuerEule bindet in Version 1.0 kein ELSTER-Zertifikat an und übermittelt keine Daten an Finanzämter (ADR-0050). Der Nutzer druckt die Formulare selbst aus, prüft sie und unterschreibt eigenhändig.
+> **Status:** Valid from version 1.0 (November 2026)  
+> **Reference:** ADR-0052 (agent access via Model Context Protocol), Issue #388 (Slice 17.5)  
+> **Legal bases:** Steuerberatungsgesetz (StBerG, Tax Advisory Act), Datenschutz-Grundverordnung (DSGVO, GDPR, Art. 25, 35, 44 ff., 49)
 
 ---
 
-## 2. Datenschutz-Folgenabschätzung (DSFA nach Art. 35 DSGVO)
+## 1. Classification under the Steuerberatungsgesetz (StBerG)
 
-### 2.1 Schwellenwertanalyse (Art. 35 Abs. 1 DSGVO)
-Steuerdaten stellen finanzielle Daten mit hoher Sensibilität dar (teilweise einschließlich Art. 9 DSGVO Daten wie Religionszugehörigkeit für Kirchensteuerzwecke). Da eine automatisierte Schnittstelle (OAuth 2.1 + Remote MCP) für externe KI-Systeme geöffnet wird, wurde eine formalisierte DSFA durchgeführt.
+### 1.1 Problem statement and regulatory framework
+Under § 2 and § 3 StBerG, *geschäftsmäßige Hilfeleistung in Steuersachen* (business-like assistance in tax matters) is permitted only to persons and associations authorized to provide it (e.g. Steuerberater (tax advisors), Steuerbevollmächtigte (authorized tax agents), Rechtsanwälte (attorneys)). *Unbefugte geschäftsmäßige Hilfeleistung in Steuersachen* (unauthorized business-like assistance in tax matters) is prohibited under § 5 StBerG and can be punished as an administrative offense (*Ordnungswidrigkeit*) under § 160 StBerG.
 
-### 2.2 Datenflüsse und Schnittstellenarchitektur
-1. **Authentifizierung:**
-   * Die Authentifizierung erfolgt strikt nach OAuth 2.1 mit PKCE.
-   * Autorisierungsanfragen verlangen explizite Scopes (`steuerdaten:read`, `steuerdaten:write`, `belege:write`, `zahllink:read`).
-   * Der Consent-Screen klärt den Nutzer ausdrücklich über die angeforderten Berechtigungen und das Drittland-Risiko auf.
-2. **Lesezugriff und PII-Maskierung (Privacy by Design, Art. 25 DSGVO):**
-   * Ruft ein Assistent das Werkzeug `steuerjahr_stand` auf, werden personenbezogene Identifikatoren (PII) serverseitig **maskiert**:
-     * Steuer-ID: `12*******01`
+### 1.2 Technical and legal delimitation of SteuerEule agent access
+By providing the Model Context Protocol (MCP) interface, SteuerEule provides **no *Hilfeleistung in Steuersachen* (assistance in tax matters)**, but a technical software tool:
+
+1. **The user's own assistant (tool character):**
+   * SteuerEule does not itself operate the AI agent as a closed advisory instance.
+   * The user, on their own responsibility, concludes an agreement with a model provider (e.g. Anthropic, OpenAI, local LLM) or operates their own client.
+   * The agent acts as the extended arm and personal tool of the taxpayer (*Steuerpflichtiger*) themselves.
+2. **No legal subsumption or client mandate (*Mandatsverhältnis*):**
+   * SteuerEule does not give binding legal advice through the MCP tools.
+   * Calculations of the core (`@steuereule/core`) are deterministic calculation paths based on the official statutes (e.g. § 32a EStG tariff, commuter allowance (*Pendlerpauschale*), official BMF tables), which do not invent open values but honestly show them as open (ADR-0032/0034).
+3. **Mandatory human intermediation („Der Nutzer gewinnt“ ("the user wins") & confirmation requirement):**
+   * All values entered by the AI assistant are mandatorily marked server-side as **unconfirmed** (`unbestaetigt`) (ADR-0052 §6).
+   * Unconfirmed values block the pre-check, the form printout and the payment (REQ-032). A printout or a submission without explicit visual review and confirmation, annex by annex, by the human user is technically impossible.
+   * If the user has entered a value themselves, the assistant can never overwrite it; a suggestion is created instead.
+4. **No electronic transmission to tax authorities (paper route):**
+   * In version 1.0, SteuerEule does not connect an ELSTER certificate and transmits no data to the Finanzämter (tax offices) (ADR-0050). The user prints the forms themselves, checks them and signs them by hand.
+
+---
+
+## 2. Datenschutz-Folgenabschätzung (DSFA under Art. 35 DSGVO)
+
+### 2.1 Threshold analysis (Art. 35(1) DSGVO)
+Tax data is financial data of high sensitivity (partly including Art. 9 DSGVO data such as religious affiliation for church tax purposes). Because an automated interface (OAuth 2.1 + remote MCP) is opened to external AI systems, a formalized DSFA was carried out.
+
+### 2.2 Data flows and interface architecture
+1. **Authentication:**
+   * Authentication is strictly per OAuth 2.1 with PKCE.
+   * Authorization requests require explicit scopes (`steuerdaten:read`, `steuerdaten:write`, `belege:write`, `zahllink:read`).
+   * The consent screen explicitly informs the user about the requested permissions and the third-country risk.
+2. **Read access and PII masking (privacy by design, Art. 25 DSGVO):**
+   * When an assistant calls the tool `steuerjahr_stand`, personal identifiers (PII) are **masked** server-side:
+     * Steuer-ID (tax identification number): `12*******01`
      * IBAN: `DE** **** **** **** **** 00`
-     * Vor-/Nachname: Erster Buchstabe + `***`
-     * Straße & Hausnummer: Maskiert
-     * Telefonnummer: Ortsvorwahl + `***`
-   * Planungsrelevante, steuerliche Eckdaten (PLZ, Wohnort, Beträge, Steuerjahr) bleiben im Klartext erhalten, damit der Assistent steuerlich rechnen kann, ohne die Person identifizieren zu können.
-3. **Schreibzugriff und Kontoschutz:**
-   * Assistenten-Token können nur Fachdaten schreiben (`maske_eintragen`, `beleg_hochladen`).
-   * Administrative Aktionen (Passwortänderung, Kontolöschung, Passkeys, OAuth-Verwaltung, Datenexport nach Art. 20) sind für Bearer-Tokens **serverseitig gesperrt** (`ForbidAssistantGuard`).
-4. **Auditierung und Transparenz (Art. 30 DSGVO):**
-   * Jeder Lese- und Schreibzugriff eines Assistenten wird atomar in der Tabelle `AuditEntry` protokolliert (mit Zeitstempel, Client-ID und Client-Name).
-   * Der Nutzer kann diese Zugriffe im Art. 15/20 DSGVO Datenexport einsehen.
-5. **Widerruf:**
-   * Der Nutzer kann verbundene Assistenten jederzeit unter `Profil → Verbundene Assistenten` mit sofortiger Wirkung sperren. Token und Session werden in der Datenbank invalidiert.
+     * First/last name: first letter + `***`
+     * Street & house number: masked
+     * Phone number: area code + `***`
+   * Planning-relevant tax key data (postal code, place of residence, amounts, tax year) remains in plain text, so that the assistant can do tax calculations without being able to identify the person.
+3. **Write access and account protection:**
+   * Assistant tokens can only write domain data (`maske_eintragen`, `beleg_hochladen`).
+   * Administrative actions (password change, account deletion, passkeys, OAuth management, data export under Art. 20) are **blocked server-side** for bearer tokens (`ForbidAssistantGuard`).
+4. **Auditing and transparency (Art. 30 DSGVO):**
+   * Every read and write access by an assistant is logged atomically in the `AuditEntry` table (with timestamp, client ID and client name).
+   * The user can view these accesses in the Art. 15/20 DSGVO data export.
+5. **Revocation:**
+   * The user can block connected assistants at any time, with immediate effect, under `Profil → Verbundene Assistenten`. Token and session are invalidated in the database.
 
-### 2.3 Drittlandübermittlung (Art. 44 ff. DSGVO)
-* **Risiko:** Führende KI-Modellanbieter (Anthropic, OpenAI, Google) haben ihren Hauptsitz in den USA (Drittland gem. Art. 44 DSGVO).
-* **Rechtsgrundlage:**
-  1. Die Übermittlung erfolgt ausschließlich auf direkte Veranlassung und Weisung des Nutzers (Nutzer verbindet seinen Client).
-  2. Auf dem OAuth-Consent-Screen holt SteuerEule die **ausdrückliche Einwilligung gem. Art. 49 Abs. 1 lit. a DSGVO** ein. Der Nutzer wird darauf hingewiesen, dass in den USA behördliche Zugriffsrisiken (z. B. FISA 702) bestehen.
-  3. Ergänzend minimiert die serverseitige PII-Maskierung die Identifizierbarkeit des Nutzers im Drittland erheblich.
+### 2.3 Third-country transfer (Art. 44 ff. DSGVO)
+* **Risk:** Leading AI model providers (Anthropic, OpenAI, Google) are headquartered in the USA (third country per Art. 44 DSGVO).
+* **Legal basis:**
+  1. The transfer takes place exclusively at the direct initiation and instruction of the user (the user connects their client).
+  2. On the OAuth consent screen, SteuerEule obtains **explicit consent per Art. 49(1)(a) DSGVO**. The user is informed that government access risks exist in the USA (e.g. FISA 702).
+  3. In addition, the server-side PII masking substantially minimizes the identifiability of the user in the third country.
 
-### 2.4 Risikobewertung und Restrisiko
-| Bedrohung / Risiko | Eintrittswahrscheinlichkeit | Schweregrad | Technische/Organisatorische Maßnahme | Restrisiko |
+### 2.4 Risk assessment and residual risk
+| Threat / risk | Likelihood | Severity | Technical/organizational measure | Residual risk |
 | :--- | :--- | :--- | :--- | :--- |
-| Modell liest Klartext-Identifikatoren aus | Sehr gering | Hoch | Automatische serverseitige PII-Maskierung vor Übermittlung | Minimal |
-| Assistent trägt fehlerhafte Zahlen ein | Mittel | Mittel | Unbestätigte Werte sperren Ausdruck; zwingende Nutzerprüfung je Anlage | Gering |
-| Token-Diebstahl / Missbrauch | Gering | Hoch | Scoped OAuth-Token; administrative Aktionen gesperrt; Sofort-Widerruf in UI | Gering |
-| Unbemerkter Datenabfluss | Gering | Mittel | Lückenloser DSGVO Art. 30 Audit-Trail für jeden Tool-Aufruf | Sehr gering |
-| Assistent liest mehr als nötig (Namen, Geburtsdaten, Kennungen) | Gering | Hoch | Lesesicht (ADR-0052 Amendment 3): Beträge im Klartext, Personen nur abgeleitet (Alter, Bundesland), Dritte und Freitext nur als „gesetzt“; das Token gilt nur am MCP-Endpunkt (Amendment 4), nicht an der übrigen API | Gering |
-| Rückschluss auf die Religionszugehörigkeit (Art. 9 DSGVO) | Gering | Hoch | Die Konfession trägt nur der Nutzer ein und der Assistent liest sie nie; er schreibt und liest allein „kirchensteuerpflichtig ja/nein“. Das Merkmal bleibt ein mittelbarer Hinweis auf eine Religionszugehörigkeit und ist von der Einwilligung bei der Verbindung umfasst | Gering |
-| Irreführender Aufgabentext eines fremden Modells in der App | Gering | Mittel | Feste Arten, 300 Zeichen, keine Kennungen und keine Links, Anzeige als reiner Text mit dem Namen des Assistenten; der Nutzer verwirft die Aufgabe. Namen im Text verhindert nur die Werkzeugbeschreibung | Gering |
-| Fremder Client gibt sich als verbundener Assistent aus | Sehr gering | Mittel | Eigene Einträge und Aufgaben gehen nach der OAuth-Client-ID, nicht nach dem Namen; eine Registrierung gewährt nichts ohne Anmeldung und Freigabe des Nutzers, ist je Adresse begrenzt, und nie freigegebene Clients werden nach 7 Tagen gelöscht | Minimal |
+| Model reads plain-text identifiers | Very low | High | Automatic server-side PII masking before transfer | Minimal |
+| Assistant enters incorrect figures | Medium | Medium | Unconfirmed values block the printout; mandatory user review per annex | Low |
+| Token theft / misuse | Low | High | Scoped OAuth token; administrative actions blocked; immediate revocation in the UI | Low |
+| Unnoticed data leakage | Low | Medium | Complete DSGVO Art. 30 audit trail for every tool call | Very low |
+| Assistant reads more than necessary (names, dates of birth, identifiers) | Low | High | Read view (ADR-0052 Amendment 3): amounts in plain text, persons only derived (age, federal state), third parties and free text only as „gesetzt“ ("set"); the token is valid only at the MCP endpoint (Amendment 4), not at the rest of the API | Low |
+| Inference of religious affiliation (Art. 9 DSGVO) | Low | High | Only the user enters the denomination and the assistant never reads it; it writes and reads only „kirchensteuerpflichtig ja/nein“ ("liable to church tax yes/no"). The attribute remains an indirect indication of religious affiliation and is covered by the consent given when connecting | Low |
+| Misleading task text from a third-party model in the app | Low | Medium | Fixed types, 300 characters, no identifiers and no links, displayed as plain text with the assistant's name; the user discards the task. Names in the text are prevented only by the tool description | Low |
+| Third-party client impersonates a connected assistant | Very low | Medium | Own entries and tasks are keyed by the OAuth client ID, not by the name; a registration grants nothing without the user's sign-in and approval, is rate-limited per address, and clients that were never approved are deleted after 7 days | Minimal |
 
-**Ergebnis:** Das verbleibende Restrisiko ist angemessen und durch die implementierten Sicherheitskontrollen wirksam eingedämmt.
+**Result:** The remaining residual risk is appropriate and effectively contained by the implemented security controls.
 
 ---
 
-## 3. Produkt- und Marketingversprechen
+## 3. Product and marketing promises
 
-Zur Vermeidung irreführender Werbung (§ 5 UWG) und zur Wahrung der berufsrechtlichen Grenzen gelten für alle Marketing- und Produkttexte folgende verbindliche Vorgaben:
+To avoid misleading advertising (§ 5 UWG, Act Against Unfair Competition) and to respect the limits of professional law, the following binding rules apply to all marketing and product copy:
 
-* **Unzulässig:**
-  * „SteuerEule macht deine Steuererklärung vollautomatisch ohne dein Zutun.“
-  * „Unsere KI übernimmt die steuerliche Verantwortung.“
-  * „Steuerberatung per Knopfdruck.“
-* **Zulässig und verbindlich:**
-  * „Verbinde deinen eigenen KI-Assistenten, um Daten vorzubereiten.“
-  * „Der Assistent füllt aus – du prüfst und bestätigst jede Anlage selbst.“
-  * „Volle Kontrolle: Du entscheidest, welche Werte in deine Steuererklärung einfließen.“
+* **Not permitted:**
+  * „SteuerEule macht deine Steuererklärung vollautomatisch ohne dein Zutun.“ ("SteuerEule does your tax return fully automatically without any input from you.")
+  * „Unsere KI übernimmt die steuerliche Verantwortung.“ ("Our AI takes on the tax responsibility.")
+  * „Steuerberatung per Knopfdruck.“ ("Tax advice at the push of a button.")
+* **Permitted and binding:**
+  * „Verbinde deinen eigenen KI-Assistenten, um Daten vorzubereiten.“ ("Connect your own AI assistant to prepare data.")
+  * „Der Assistent füllt aus – du prüfst und bestätigst jede Anlage selbst.“ ("The assistant fills in – you check and confirm every annex yourself.")
+  * „Volle Kontrolle: Du entscheidest, welche Werte in deine Steuererklärung einfließen.“ ("Full control: you decide which values go into your tax return.")

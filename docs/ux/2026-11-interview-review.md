@@ -1,383 +1,383 @@
-# UX-Review: Interview und Kataloge (November 2026)
+# UX review: interview and catalogs (November 2026)
 
-**Stand:** `main` @ `9827de5b`. Dazu PR NexusHero/Steuereule#510 (`test/eskalationsfall-familie` @ `bf65cd5e`) als eigener Build.
-**Methode:** Ich habe die App lokal gestartet (API und Web-Export) und mit einer Wegwerf-Datenbank im ATTACH-Stil betrieben, getrennt für `main` und PR #510. Durchgeklickt habe ich im eingebauten Browser auf Handy-Breite (375 px) und Desktop-Breite (1440 px). Ergänzend habe ich den Code gelesen. Alle Personen und Beträge sind erfunden. Ich habe keine Steuer-ID und keine Steuernummer eingegeben.
-**Screenshots:** [`2026-11-interview-review/`](2026-11-interview-review/), Nummern `01`–`37`. Die Datei `NN-…-mobile.jpg` ist Handy-Breite, `NN-…-desktop.jpg` ist Desktop-Breite.
+**State:** `main` @ `9827de5b`. In addition, PR NexusHero/Steuereule#510 (`test/eskalationsfall-familie` @ `bf65cd5e`) as a separate build.
+**Method:** I started the app locally (API and web export) and ran it against a throwaway database in ATTACH style, separately for `main` and PR #510. I clicked through in the built-in browser at phone width (375 px) and desktop width (1440 px). In addition, I read the code. All persons and amounts are made up. I did not enter a Steuer-ID (tax ID) or a tax number.
+**Screenshots:** [`2026-11-interview-review/`](2026-11-interview-review/), numbers `01`–`37`. The file `NN-…-mobile.jpg` is phone width, `NN-…-desktop.jpg` is desktop width.
 
-| Persona | Wer | Steuerjahr | Weg |
+| Persona | Who | Tax year | Path |
 |---|---|---|---|
-| **P1** Lena Hoffmann | angestellt, ledig, keine Kinder, 48.000 € brutto | erst 2026 (Default), dann Ausdruck | Gast → Interview → Konto → LStB → Lebenslagen → Sonderausgaben → Eule → Abgabe |
-| **P2** Markus & Julia Brenner | verheiratet, beide Grenzgänger Schweiz, 2 Kinder | 2025 | Konto → Interview → CH-Maske → Stammdaten/Partner → Kinder; PR #510: Partner-Interview, „Für wen?“, Kinderzulage |
-| **P3** Hans Meyer | Rentner, verwitwet, gesetzliche Rente 18.000 € | 2025 | Gast → Interview → Konto → Rente → Gesundheit |
+| **P1** Lena Hoffmann | employed, single, no children, 48,000 € gross | first 2026 (default), then printout | guest → interview → account → LStB → life situations → Sonderausgaben → owl → filing |
+| **P2** Markus & Julia Brenner | married, both Grenzgänger (cross-border commuters) to Switzerland, 2 children | 2025 | account → interview → CH screen → master data/partner → children; PR #510: partner interview, „Für wen?“ ("For whom?"), Kinderzulage (child allowance) |
+| **P3** Hans Meyer | pensioner, widowed, statutory pension 18,000 € | 2025 | guest → interview → account → pension → health |
 
 ---
 
-## Kurzurteil
+## Short verdict
 
-Der **Einstieg ist stark**: vier Fragen, ein Tipp pro Frage, ein Zurück-Pfeil und eine klare Sprache. Kein klassisches Steuerprogramm startet so leicht. Auch die **Fachtiefe beim Schweiz-Teil** (60-Tage-Regel, N-Gre, Pensionskassen-Aufteilung) und die **ehrlichen Grenzen** („Ehrlich: Krypto können wir noch nicht“) sind echte Alleinstellungsmerkmale.
+The **entry is strong**: four questions, one tip per question, a back arrow and clear language. No classic tax program starts this easily. The **subject depth in the Switzerland part** (60-day rule, N-Gre, Pensionskasse (pension fund) split) and the **honest limits** („Ehrlich: Krypto können wir noch nicht“ ("Honestly: we can't do crypto yet")) are also real differentiators.
 
-Nach dem Einstieg verliert die App aber das, was sie verspricht: **Die Nutzerin sieht nicht, was in ihrer Erklärung passiert.**
-- Die Schätzung fehlt für die meisten Personas. Für Rentner zeigt das Cockpit sogar „0 €“ Einkommen nach 18.000 € Rente.
-- Nach dem Speichern erscheint keine Wirkung.
-- Kacheln, Entwurfskarten und der Ausdruck nennen weder Formular noch Zeile.
-- Interview-Antworten werden an mehreren Stellen nicht übernommen. Familienstand und Zusammenveranlagung müssen ein zweites Mal eingegeben werden.
+After the entry, however, the app loses what it promises: **the user does not see what happens in her tax return.**
+- The estimate is missing for most personas. For pensioners the cockpit even shows „0 €“ income after an 18,000 € pension.
+- After saving, no effect appears.
+- Tiles, draft cards and the printout name neither form nor line.
+- Interview answers are not carried over in several places. Marital status and Zusammenveranlagung (joint assessment) have to be entered a second time.
 
-Dazu kommen zwei Vertrauensbrüche:
-- Die App startet im **laufenden Jahr 2026**. Dass es dafür keinen Ausdruck gibt, erfährt die Nutzerin erst ganz am Ende.
-- Die **Eule** (Basis-Modus) schlägt bei „80 Homeoffice-Tagen“ 210 Tage vor. Die Werkbank übernimmt beide Alternativen mit einem Klick.
+On top of that come two breaches of trust:
+- The app starts in the **current year 2026**. The user only learns at the very end that there is no printout for it.
+- The **owl** (basic mode) suggests 210 days for "80 home office days". The workbench takes over both alternatives with one click.
 
-**Gesamtnote: 2,6 / 5.** Der Einstieg ist sehr gut, Sichtbarkeit und Durchgängigkeit sind schwach. Die größten Hebel sind Daten und Rückmeldung, nicht das visuelle Design.
-
----
-
-## Was schon gut ist
-
-- **Vier-Fragen-Einstieg** mit Auto-Weiter, Zurück-Pfeil und Fortschritt `n/4` ([02](2026-11-interview-review/02-p1-q1-job-mobile.jpg)–[05](2026-11-interview-review/05-p1-q4-familienstand-wordbreak-mobile.jpg)). Ein Klick pro Frage.
-- **„Betrag später eintragen“** bei Spenden, KV und Haushalt ([Katalog](../../apps/mobile-web/src/screens/catalog/CatalogScreen.tsx:351)). Das senkt die Abbruchgefahr.
-- **LStB-Maske mit Papier-Zeilennummern** („Bruttoarbeitslohn (Zeile 3)“) und Scan direkt auf dem Gerät ([10](2026-11-interview-review/10-p1-lstb-maske-mobile.jpg)). Das ist das Vorbild für alle anderen Masken.
-- **Schätzung als Spanne** mit Herkunfts-Chip ([11](2026-11-interview-review/11-p1-cockpit-nach-lstb-mobile.jpg)). Das ist ehrlich.
-- **Entwurfskarten der Eule** mit Vorher/Nachher, Erstattungs-Simulation, Paragraf und Rückgängig ([18](2026-11-interview-review/18-p1-eule-homeoffice-entwuerfe-desktop.jpg)). Konzeptionell stark.
-- **Kacheln nach Person gruppiert** („Du“ / „Julia“, [34](2026-11-interview-review/34-pr510-p2-cockpit-julia-kacheln-mobile.jpg)).
-- **Schweiz-Tiefe:** Nichtrückkehrtage, Wechselkurs-Erklärung, Pensionskasse obligatorisch/überobligatorisch. Das bieten WISO und Taxfix so nicht an.
-- **Adresssuche** füllt Straße, PLZ und Ort aus. Kindername wird mit dem eigenen Nachnamen vorgeschlagen.
+**Overall grade: 2.6 / 5.** The entry is very good; visibility and continuity are weak. The biggest levers are data and feedback, not the visual design.
 
 ---
 
-## Befunde nach Schwere
+## What is already good
 
-Schwere bedeutet: **Kritisch** = falsches Ergebnis oder Vertrauensbruch, der zum Abbruch führt. **Hoch** = Kernziel (Sichtbarkeit, Durchgängigkeit) deutlich verfehlt. **Mittel** = spürbare Reibung. **Niedrig** = Feinschliff.
+- **Four-question entry** with auto-advance, back arrow and progress `n/4` ([02](2026-11-interview-review/02-p1-q1-job-mobile.jpg)–[05](2026-11-interview-review/05-p1-q4-familienstand-wordbreak-mobile.jpg)). One click per question.
+- **„Betrag später eintragen“ ("Enter amount later")** for donations, health insurance and household ([catalog](../../apps/mobile-web/src/screens/catalog/CatalogScreen.tsx:351)). This lowers the risk of abandonment.
+- **LStB screen with paper line numbers** („Bruttoarbeitslohn (Zeile 3)“ ("Gross wages (line 3)")) and scanning directly on the device ([10](2026-11-interview-review/10-p1-lstb-maske-mobile.jpg)). This is the model for all other screens.
+- **Estimate as a range** with an origin chip ([11](2026-11-interview-review/11-p1-cockpit-nach-lstb-mobile.jpg)). That is honest.
+- **The owl's draft cards** with before/after, refund simulation, paragraph and undo ([18](2026-11-interview-review/18-p1-eule-homeoffice-entwuerfe-desktop.jpg)). Conceptually strong.
+- **Tiles grouped by person** („Du“ ("You") / „Julia“, [34](2026-11-interview-review/34-pr510-p2-cockpit-julia-kacheln-mobile.jpg)).
+- **Switzerland depth:** non-return days, exchange-rate explanation, Pensionskasse obligatorisch/überobligatorisch (mandatory/extra-mandatory). WISO and Taxfix do not offer this in this form.
+- **Address search** fills in street, postcode and city. The child's name is suggested with the user's own surname.
 
-### Kritisch
+---
 
-#### K1 – Die Eule schlägt Werte gegen die Angabe der Nutzerin vor, und die Werkbank übernimmt sich ausschließende Alternativen gemeinsam
+## Findings by severity
+
+Severity means: **Critical** = wrong result or breach of trust that leads to abandonment. **High** = core goal (visibility, continuity) clearly missed. **Medium** = noticeable friction. **Low** = polish.
+
+### Critical
+
+#### K1 – The owl suggests values against the user's statement, and the workbench takes over mutually exclusive alternatives together
 - **Persona:** P1 · **Screenshot:** [18](2026-11-interview-review/18-p1-eule-homeoffice-entwuerfe-desktop.jpg), [17](2026-11-interview-review/17-p1-eule-start-desktop.jpg)
 - **Code:** [advisor.ts:906-945](../../packages/core/src/interview/advisor.ts:906), [OwlModeScreen.tsx:410](../../apps/mobile-web/src/screens/advisor/OwlModeScreen.tsx:410), [OwlModeScreen.tsx:644](../../apps/mobile-web/src/screens/advisor/OwlModeScreen.tsx:644)
-- **Beobachtung:** Die Eingabe war „Ich war 2026 an 80 Tagen im Homeoffice.“ Die Eule bietet zwei Wege an: A „1–2 Tage/Woche“ (+6 €) und B „Fast immer … 210 Tage = 1.260 €“ (+20 €). Die 80 Tage tauchen nirgends auf. Weg B würde die Erklärung über die tatsächliche Angabe hinaus aufblähen. Die Werkbank rechts bietet dann „✓ 2 Änderungen übernehmen“ an und würde **beide** sich ausschließenden Werte schreiben.
-- **Weitere Auffälligkeiten:**
-  - Die Simulation zeigt „692 € → 698 €“, obwohl das Cockpit gleichzeitig sagt, es rechne keine Erstattung (siehe K3).
-  - Die Wirkung von nur +6 € wird nicht erklärt (Arbeitnehmer-Pauschbetrag).
-  - Die Werkbank meldet „Alles geprüft. Keine offenen Fragen!“, obwohl 9 Stammdaten fehlen.
-- **Einschränkung:** Die KI lief im Basis-Modus, weil kein API-Schlüssel gesetzt war. Getestet ist also der Regel-Fallback. Mit LLM kann die Antwort anders ausfallen, der Fallback ist aber genau das, was bei einem Ausfall live geht.
-- **Vorschlag:**
-  - Vorschläge nur aus den Angaben der Nutzerin ableiten („80 Tage × 6 € = 480 €“).
-  - Alternativen als Auswahl (Radio) statt als Stapel anbieten. „Alle übernehmen“ für sich ausschließende Entwürfe sperren.
-  - „Alles geprüft“ nur zeigen, wenn wirklich nichts offen ist.
+- **Observation:** The input was „Ich war 2026 an 80 Tagen im Homeoffice.“ ("I worked from home on 80 days in 2026."). The owl offers two paths: A „1–2 Tage/Woche“ ("1–2 days/week") (+6 €) and B „Fast immer … 210 Tage = 1.260 €“ ("Almost always … 210 days = 1,260 €") (+20 €). The 80 days appear nowhere. Path B would inflate the tax return beyond the actual statement. The workbench on the right then offers „✓ 2 Änderungen übernehmen“ ("✓ Apply 2 changes") and would write **both** mutually exclusive values.
+- **Further oddities:**
+  - The simulation shows „692 € → 698 €“, although the cockpit says at the same time that it does not calculate a refund (see K3).
+  - The effect of only +6 € is not explained (employee lump-sum allowance).
+  - The workbench reports „Alles geprüft. Keine offenen Fragen!“ ("Everything checked. No open questions!"), although 9 master data items are missing.
+- **Limitation:** The AI ran in basic mode because no API key was set. So what was tested is the rule fallback. With an LLM the answer may differ, but the fallback is exactly what goes live in an outage.
+- **Suggestion:**
+  - Derive suggestions only from the user's statements („80 Tage × 6 € = 480 €“).
+  - Offer alternatives as a choice (radio) instead of a stack. Block „Alle übernehmen“ ("Apply all") for mutually exclusive drafts.
+  - Show „Alles geprüft“ only when really nothing is open.
 
-#### K2 – Standardjahr 2026: Die Nutzerin füllt ein laufendes Jahr aus und landet am Ende in einer Sackgasse
+#### K2 – Default year 2026: the user fills in a current year and ends up in a dead end
 - **Persona:** P1 · **Screenshot:** [02](2026-11-interview-review/02-p1-q1-job-mobile.jpg), [20](2026-11-interview-review/20-p1-ausdruck-2026-sackgasse-desktop.jpg)
 - **Code:** [taxYear.ts:1](../../apps/mobile-web/src/config/taxYear.ts:1) (`CURRENT_TAX_YEAR = 2026`), [ShellState.tsx:69](../../apps/mobile-web/src/navigation/ShellState.tsx:69)
-- **Beobachtung:** Neue Nutzer starten in „Woher kam dein Geld 2026?“, also im laufenden Jahr. Interview, Konto, LStB, Kataloge und Abgabe-Prüfung laufen alle durch. Erst beim Ausdruck kommt: „Für 2026 gibt es die amtlichen Vordrucke noch nicht.“ Eine Lohnsteuerbescheinigung 2026 existiert im November 2026 noch gar nicht.
-- **Vorschlag:**
-  - Default ist das letzte abgeschlossene Jahr (heute 2025).
-  - Das laufende Jahr heißt „2026 vorbereiten“ und hat einen eigenen Modus: Belege sammeln, Steuer-Tipps fürs Jahresende, kein Ausdruck.
-  - Das Jahr steht im ersten Interview-Screen sichtbar und ist dort änderbar.
+- **Observation:** New users start in „Woher kam dein Geld 2026?“ ("Where did your money come from in 2026?"), i.e. in the current year. Interview, account, LStB, catalogs and filing check all run through. Only at the printout does it say: „Für 2026 gibt es die amtlichen Vordrucke noch nicht.“ ("The official forms for 2026 do not exist yet."). A Lohnsteuerbescheinigung (wage tax certificate) for 2026 does not even exist yet in November 2026.
+- **Suggestion:**
+  - The default is the last completed year (today 2025).
+  - The current year is called „2026 vorbereiten“ ("Prepare 2026") and has its own mode: collect documents, tax tips for the end of the year, no printout.
+  - The year is visible on the first interview screen and can be changed there.
 
-#### K3 – Die Schätzung fehlt für die meisten Personas oder widerspricht sich
-- **Persona:** P1, P3 (P2 auf `main` ohne angelegte Zusammenveranlagung ebenso) · **Screenshot:** [13](2026-11-interview-review/13-p1-lohnersatz-schaetzung-verschwindet-mobile.jpg), [31](2026-11-interview-review/31-p3-cockpit-null-euro-mobile.jpg), [18](2026-11-interview-review/18-p1-eule-homeoffice-entwuerfe-desktop.jpg)
+#### K3 – The estimate is missing for most personas or contradicts itself
+- **Persona:** P1, P3 (P2 on `main` without a created Zusammenveranlagung as well) · **Screenshot:** [13](2026-11-interview-review/13-p1-lohnersatz-schaetzung-verschwindet-mobile.jpg), [31](2026-11-interview-review/31-p3-cockpit-null-euro-mobile.jpg), [18](2026-11-interview-review/18-p1-eule-homeoffice-entwuerfe-desktop.jpg)
 - **Code:** [tax-estimate.service.ts:107-113](../../apps/api/src/tax-estimate/tax-estimate.service.ts:107), [resources.ts:1306-1308](../../apps/mobile-web/src/i18n/resources.ts:1306)
-- **Beobachtung:**
-  - **Rentner:** Nach 18.000 € gesetzlicher Rente zeigt das Cockpit „Erfasstes Einkommen **0 €**“ und „Die Erstattung rechnen wir bisher nur für Angestellte.“ Die Rente-Kachel steht trotzdem auf „Erledigt“. Das wirkt wie ein Datenverlust.
-  - **Ehrliche Antwort wird bestraft:** Antwortet P1 auf „Lohnersatz?“ mit **Ja**, verschwindet die vorher sichtbare Spanne (588–649 €) sofort: „Mit Nebenjob, Abfindung, Lohnersatz oder doppelter Haushaltsführung rechnen wir die Erstattung noch nicht.“
-  - **Widerspruch:** Im Eulen-Chat steht im selben Moment „Erstattung (Simulation): 692 €“.
-  - Die Abgabe-Prüfung schickt die Nutzerin danach zu „Öffnen: Lebenslagen“. Dort kann sie aber nichts reparieren, denn die Grenze liegt in der App ([19](2026-11-interview-review/19-p1-abgabe-pruefung-desktop.jpg)).
-- **Vorschlag:**
-  - Rentner (Besteuerungsanteil nach § 22 EStG) und Lohnersatz (Progressionsvorbehalt) in die Schätzung aufnehmen.
-  - Bis dahin die letzte bekannte Spanne mit Hinweis „ohne Lohnersatz“ stehen lassen, statt sie zu löschen.
-  - „Erfasstes Einkommen“ nie als 0 € zeigen, wenn Einkünfte erfasst sind.
-  - Chat und Cockpit aus derselben Quelle speisen.
+- **Observation:**
+  - **Pensioners:** After an 18,000 € statutory pension, the cockpit shows „Erfasstes Einkommen **0 €**“ ("Recorded income 0 €") and „Die Erstattung rechnen wir bisher nur für Angestellte.“ ("So far we only calculate the refund for employees."). The pension tile is nevertheless set to „Erledigt“ ("Done"). This looks like data loss.
+  - **An honest answer is punished:** If P1 answers **Ja** ("Yes") to „Lohnersatz?“ ("Wage replacement?"), the previously visible range (588–649 €) disappears immediately: „Mit Nebenjob, Abfindung, Lohnersatz oder doppelter Haushaltsführung rechnen wir die Erstattung noch nicht.“ ("With a side job, severance pay, wage replacement or double household we do not calculate the refund yet.").
+  - **Contradiction:** At the same moment, the owl chat says „Erstattung (Simulation): 692 €“ ("Refund (simulation): 692 €").
+  - The filing check then sends the user to „Öffnen: Lebenslagen“ ("Open: life situations"). But she cannot repair anything there, because the limit lies in the app ([19](2026-11-interview-review/19-p1-abgabe-pruefung-desktop.jpg)).
+- **Suggestion:**
+  - Include pensioners (taxable portion under § 22 EStG) and wage replacement (Progressionsvorbehalt (progression proviso)) in the estimate.
+  - Until then, keep the last known range with the note „ohne Lohnersatz“ ("without wage replacement") instead of deleting it.
+  - Never show „Erfasstes Einkommen“ as 0 € when income has been recorded.
+  - Feed chat and cockpit from the same source.
 
-### Hoch
+### High
 
-#### H1 – Die Zahl, die zählt, ist die kleinste auf dem Bildschirm, und nach dem Speichern gibt es keine Wirkung
+#### H1 – The number that matters is the smallest on the screen, and saving has no visible effect
 - **Persona:** P1, P2, P3 · **Screenshot:** [11](2026-11-interview-review/11-p1-cockpit-nach-lstb-mobile.jpg), [16](2026-11-interview-review/16-p1-cockpit-desktop.jpg)
 - **Code:** [CockpitScreen.tsx:513-522](../../apps/mobile-web/src/screens/cockpit/CockpitScreen.tsx:513), [CockpitScreen.tsx:230-268](../../apps/mobile-web/src/screens/cockpit/CockpitScreen.tsx:230), [saveFeedback.ts](../../apps/mobile-web/src/screens/shared/saveFeedback.ts)
-- **Beobachtung:**
-  - Groß und in Neon steht im Hero „ERFASSTES EINKOMMEN 48.000 €“. Die Erstattung „Voraussichtlich 588 – 649 €“ steht klein und grau darunter.
-  - Nach dem Speichern einer Maske springt die App ins Cockpit, ohne zu sagen, was sich geändert hat (kein „+120 € durch Spenden“).
-  - Den Wert bekommt man nur im Cockpit (`CockpitScreen.tsx:235`). In Katalog und Masken gibt es keinen Delta-Hinweis.
-- **Vorschlag:**
-  - Den Hero umdrehen: Erstattung bzw. Nachzahlung als Hauptzahl, Einkommen als Nebeninfo.
-  - Nach jedem Speichern eine Wirkungszeile zeigen: „Spenden 250 € → Anlage Sonderausgaben Z. 5 → +48 € Erstattung“.
-  - Bei Werten ohne Steuerwirkung das auch sagen und den Grund nennen („Pauschbetrag 1.230 € noch nicht überschritten“).
+- **Observation:**
+  - Large and in neon, the hero says „ERFASSTES EINKOMMEN 48.000 €“ ("RECORDED INCOME 48,000 €"). The refund „Voraussichtlich 588 – 649 €“ ("Expected 588 – 649 €") is small and gray below it.
+  - After saving a screen, the app jumps to the cockpit without saying what changed (no „+120 € durch Spenden“ ("+120 € from donations")).
+  - The value is only available in the cockpit (`CockpitScreen.tsx:235`). In the catalog and screens there is no delta hint.
+- **Suggestion:**
+  - Flip the hero: refund or additional payment as the main number, income as secondary info.
+  - After every save, show an effect line: „Spenden 250 € → Anlage Sonderausgaben Z. 5 → +48 € Erstattung“ ("Donations 250 € → Anlage Sonderausgaben line 5 → +48 € refund").
+  - For values without a tax effect, say so as well and give the reason („Pauschbetrag 1.230 € noch nicht überschritten“ ("Lump sum of 1,230 € not exceeded yet")).
 
-#### H2 – Keine Formular- und Zeilen-Transparenz außerhalb von LStB und Stammdaten
+#### H2 – No form and line transparency outside of LStB and master data
 - **Persona:** P1, P2, P3 · **Screenshot:** [16](2026-11-interview-review/16-p1-cockpit-desktop.jpg), [18](2026-11-interview-review/18-p1-eule-homeoffice-entwuerfe-desktop.jpg), [20](2026-11-interview-review/20-p1-ausdruck-2026-sackgasse-desktop.jpg)
 - **Code:** [CockpitTiles.tsx:146-160](../../apps/mobile-web/src/screens/cockpit/CockpitTiles.tsx:146), [ProposalCards.tsx:109-142](../../apps/mobile-web/src/screens/advisor/chat/ProposalCards.tsx:109), [advisor.ts:141-170](../../packages/core/src/interview/advisor.ts:141), [PrintoutScreen.tsx:121-229](../../apps/mobile-web/src/screens/printout/PrintoutScreen.tsx:121)
-- **Beobachtung:**
-  - Kacheln zeigen nur Titel und Status („Offen“ / „Erledigt“), keinen Betrag und keine Anlage.
-  - Entwurfskarten zeigen den Feldwert („Nie → Fast immer“), aber nicht, wo er landet (Anlage N, Z. 45).
-  - Der Ausdruck ist eine Checkliste mit PDF-Download, ohne Vorschau der Formulare und ohne Sprung von einer Zeile zurück in die Maske.
-  - Nur die LStB-Maske („Zeile 3“) und die Stammdaten („Zeile 19–24 ESt 1 A“) nennen Zeilen. Das ist uneinheitlich.
-  - Herkunft wird pro Maske gezeigt, nicht pro Wert. Der Herkunfts-Chip im Hero zeigt „Spannen-Regel · ADR-015“, also eine interne ADR-Nummer ([resources.ts:1235](../../apps/mobile-web/src/i18n/resources.ts:1235)).
-- **Vorschlag:**
-  - Jede Kachel bekommt eine Fußzeile „Anlage N · 3 Zeilen · 1.240 €“.
-  - Entwurfskarten bekommen einen Zeilen-Chip.
-  - Eine „Formular-Ansicht“, die die amtlichen Zeilen live befüllt zeigt. Tippt man eine Zeile an, öffnet sich die Maske, und die Herkunft wird pro Wert angezeigt (Beleg, Eule, selbst).
+- **Observation:**
+  - Tiles show only title and status („Offen“ ("Open") / „Erledigt“), no amount and no Anlage.
+  - Draft cards show the field value („Nie → Fast immer“ ("Never → Almost always")), but not where it lands (Anlage N, line 45).
+  - The printout is a checklist with a PDF download, without a preview of the forms and without a jump from a line back into the screen.
+  - Only the LStB screen („Zeile 3“) and the master data („Zeile 19–24 ESt 1 A“) name lines. That is inconsistent.
+  - Origin is shown per screen, not per value. The origin chip in the hero shows „Spannen-Regel · ADR-015“ ("Range rule · ADR-015"), i.e. an internal ADR number ([resources.ts:1235](../../apps/mobile-web/src/i18n/resources.ts:1235)).
+- **Suggestion:**
+  - Every tile gets a footer „Anlage N · 3 Zeilen · 1.240 €“ ("Anlage N · 3 lines · 1,240 €").
+  - Draft cards get a line chip.
+  - A „Formular-Ansicht“ ("form view") that shows the official lines filled in live. Tapping a line opens the screen, and the origin is shown per value (document, owl, self).
 
-#### H3 – Interview-Antworten werden nicht übernommen: Doppel-Erfassung bei Ehepaaren
+#### H3 – Interview answers are not carried over: double entry for married couples
 - **Persona:** P2 · **Screenshot:** [26](2026-11-interview-review/26-p2-stammdaten-familienstand-nicht-vorbelegt-mobile.jpg), [27](2026-11-interview-review/27-p2-zusammenveranlagung-partner-mobile.jpg), [37](2026-11-interview-review/37-pr510-p2-kind-ehepartner-keines-mobile.jpg)
-- **Code:** [MasterDataScreen.tsx:203](../../apps/mobile-web/src/screens/master-data/MasterDataScreen.tsx:203); PR #510: `ChildrenScreen.tsx:166` (`married` liest nur `masterData.familienstand`)
-- **Beobachtung:**
-  - Das Interview fragt „Verheiratet“, in PR #510 zusätzlich „Und dein Ehepartner? → Angestellt → Arbeitet Person B auch in der Schweiz?“. Trotzdem gilt:
-    - Der Familienstand in den Stammdaten ist **nicht vorbelegt**.
-    - Die Zusammenveranlagung muss von Hand angelegt werden. Das Cockpit sagt dafür: „Ihr seid verheiratet: Leg in ‚Angaben für die Erklärung‘ die Zusammenveranlagung an.“
-    - Der Partnerberuf ist nicht vorbelegt.
-  - Die neue Auswahl „Die Kinderzulage kommt mit dem Lohn von [mir] [Person B]“ erscheint erst, wenn der Familienstand **in den Stammdaten gespeichert** ist. Das Interview-„Verheiratet“ reicht nicht.
-  - In der Kinder-Maske steht „Kindschaftsverhältnis zu deinem Ehepartner“ auf **„Keines“** vorbelegt und ist unter „Weitere Angaben“ versteckt. Bei gemeinsamen Kindern führt das zu einer falschen Anlage Kind.
-- **Vorschlag:**
-  - Eine Quelle der Wahrheit: Interview-Antworten setzen Familienstand, Veranlagungsart und Person B direkt (mit „Ändern“-Link).
-  - Bei Zusammenveranlagung „gemeinsames Kind“ als Default setzen und die Frage nach vorn holen.
-  - Den Partner-Namen früh erfragen, damit alle Folgefragen „Julia“ statt „Person B“ sagen können.
+- **Code:** [MasterDataScreen.tsx:203](../../apps/mobile-web/src/screens/master-data/MasterDataScreen.tsx:203); PR #510: `ChildrenScreen.tsx:166` (`married` only reads `masterData.familienstand`)
+- **Observation:**
+  - The interview asks „Verheiratet“ ("Married"), in PR #510 additionally „Und dein Ehepartner? → Angestellt → Arbeitet Person B auch in der Schweiz?“ ("And your spouse? → Employed → Does Person B also work in Switzerland?"). Nevertheless:
+    - The marital status in the master data is **not prefilled**.
+    - The Zusammenveranlagung has to be created by hand. The cockpit says about this: „Ihr seid verheiratet: Leg in ‚Angaben für die Erklärung‘ die Zusammenveranlagung an.“ ("You are married: create the joint assessment in 'Details for the return'.").
+    - The partner's occupation is not prefilled.
+  - The new choice „Die Kinderzulage kommt mit dem Lohn von [mir] [Person B]“ ("The Kinderzulage comes with the wages of [me] [Person B]") only appears once the marital status is **saved in the master data**. The interview's „Verheiratet“ is not enough.
+  - In the children screen, „Kindschaftsverhältnis zu deinem Ehepartner“ ("Parent-child relationship to your spouse") is prefilled with **„Keines“ ("None")** and hidden under „Weitere Angaben“ ("More details"). For joint children this leads to a wrong Anlage Kind.
+- **Suggestion:**
+  - One source of truth: interview answers set marital status, assessment type and Person B directly (with a „Ändern“ ("Change") link).
+  - For Zusammenveranlagung, set "joint child" as the default and move the question forward.
+  - Ask for the partner's name early, so that all follow-up questions can say "Julia" instead of "Person B".
 
-#### H4 – Die Fortschrittsanzeige ist irreführend: Zähler springen, Gesamtumfang unbekannt
+#### H4 – The progress indicator is misleading: counters jump, total scope unknown
 - **Persona:** P1, P2 · **Screenshot:** [05](2026-11-interview-review/05-p1-q4-familienstand-wordbreak-mobile.jpg), [06](2026-11-interview-review/06-p1-kontowand-mobile.jpg), [08](2026-11-interview-review/08-p1-onboarding-1von3-mobile.jpg), [13](2026-11-interview-review/13-p1-lohnersatz-schaetzung-verschwindet-mobile.jpg), [32](2026-11-interview-review/32-pr510-p2-partner-frage-0von4-mobile.jpg)
 - **Code:** [resources.ts:177](../../apps/mobile-web/src/i18n/resources.ts:177), [CatalogScreen.tsx:242](../../apps/mobile-web/src/screens/catalog/CatalogScreen.tsx:242), PR #510 `QuestionScreen.tsx`
-- **Beobachtung:**
-  - Das Interview zählt `1/4 … 4/4`, danach steht „**Drei** Antworten, und wir wissen …“.
-  - Das Onboarding beginnt wieder bei `1/3`.
-  - In PR #510 springt die Partnerfrage nach `4/4` auf **`0/4`** zurück und bleibt bei der Folgefrage auf `0/4`.
-  - Katalogzähler beginnen bei „0 von 5“. Nach einem „Ja“ wächst das Ziel („4 von 6“).
-  - Insgesamt ist nie sichtbar, wie weit die Nutzerin von „abgabebereit“ entfernt ist.
-- **Vorschlag:**
-  - Ein durchgehender Fortschritt bis zur Abgabe, z. B. „Abgabebereit: 6 von 11 Themen“, im Cockpit und als dünne Leiste im Sheet.
-  - Unterfragen als Teilschritt darstellen (`4a`), statt das Ziel zu verschieben.
-  - Die Texte („Drei Antworten“) aus der tatsächlichen Zahl ableiten.
+- **Observation:**
+  - The interview counts `1/4 … 4/4`, after which it says „**Drei** Antworten, und wir wissen …“ ("**Three** answers, and we know …").
+  - The onboarding starts again at `1/3`.
+  - In PR #510 the partner question jumps back from `4/4` to **`0/4`** and stays at `0/4` for the follow-up question.
+  - Catalog counters start at „0 von 5“ ("0 of 5"). After a „Ja“ the target grows („4 von 6“).
+  - Overall it is never visible how far the user is from "ready to file".
+- **Suggestion:**
+  - One continuous progress up to filing, e.g. „Abgabebereit: 6 von 11 Themen“ ("Ready to file: 6 of 11 topics"), in the cockpit and as a thin bar in the sheet.
+  - Show sub-questions as a sub-step (`4a`) instead of moving the target.
+  - Derive the texts („Drei Antworten“) from the actual number.
 
-#### H5 – Die Fristwarnung ist pauschal und alarmierend
+#### H5 – The deadline warning is blanket and alarming
 - **Persona:** P2, P3 · **Screenshot:** [21](2026-11-interview-review/21-p2-2025-fristwarnung-mobile.jpg), [31](2026-11-interview-review/31-p3-cockpit-null-euro-mobile.jpg)
 - **Code:** [DeadlinesBanner.tsx](../../apps/mobile-web/src/screens/deadlines/DeadlinesBanner.tsx), [resources.ts:996](../../apps/mobile-web/src/i18n/resources.ts:996)
-- **Beobachtung:**
-  - Jeder Nutzer sieht im Jahr 2025 noch vor der ersten Antwort: „Die Abgabefrist 31.07.2026 ist um 106 Tage überschritten. Verspätungszuschlag (§ 152 AO): mindestens 25 € pro Monat.“
-  - Das gilt nur bei Pflicht zur Abgabe. Freiwillige Erklärungen (typischer Angestellter, viele Rentner) haben vier Jahre Zeit und keinen Zuschlag.
-  - Auch bei Pflichtveranlagung ist der Zuschlag vor Ablauf von 14 Monaten nach Jahresende (§ 152 Abs. 2 AO) Ermessenssache. „Mindestens 25 € pro Monat“ ist für November 2026 also zu hart formuliert.
-  - Für Hans (Rentner, Einkommen „0 €“) steht die Warnung direkt neben der fehlenden Schätzung.
-- **Vorschlag:**
-  - Die Frist erst nach der Pflichtveranlagungs-Prüfung zeigen. Grenzgänger CH sind meist pflichtig, ein einfacher Angestellter nicht.
-  - Bei freiwilliger Abgabe: „Freiwillig, du hast Zeit bis 31.12.2029. Eine Erstattung kommt schneller, je früher du abgibst.“
-  - Beim Ton die Lösung zeigen („Heute abgeben dauert noch ~20 Min.“), nicht nur die Strafe.
+- **Observation:**
+  - In the year 2025, every user sees, even before the first answer: „Die Abgabefrist 31.07.2026 ist um 106 Tage überschritten. Verspätungszuschlag (§ 152 AO): mindestens 25 € pro Monat.“ ("The filing deadline 31.07.2026 has been exceeded by 106 days. Late-filing surcharge (§ 152 AO): at least 25 € per month.").
+  - This only applies when filing is mandatory. Voluntary tax returns (typical employee, many pensioners) have four years and no surcharge.
+  - Even for mandatory assessment, the surcharge is discretionary before 14 months after the end of the year have passed (§ 152 Abs. 2 AO). „Mindestens 25 € pro Monat“ is therefore phrased too harshly for November 2026.
+  - For Hans (pensioner, income „0 €“) the warning sits right next to the missing estimate.
+- **Suggestion:**
+  - Show the deadline only after the mandatory-assessment check. Grenzgänger CH are usually obliged to file, a simple employee is not.
+  - For voluntary filing: „Freiwillig, du hast Zeit bis 31.12.2029. Eine Erstattung kommt schneller, je früher du abgibst.“ ("Voluntary, you have until 31.12.2029. A refund comes faster the earlier you file.").
+  - In tone, show the solution („Heute abgeben dauert noch ~20 Min.“ ("Filing today still takes ~20 min.")), not only the penalty.
 
-#### H6 – Die Schweiz-Maske überlädt: 30 Felder, Summen von Hand, keine Rückmeldung, was fehlt
+#### H6 – The Switzerland screen is overloaded: 30 fields, sums by hand, no feedback on what is missing
 - **Persona:** P2 · **Screenshot:** [24](2026-11-interview-review/24-p2-ch-lohnausweis-titel-abgeschnitten-mobile.jpg), [25](2026-11-interview-review/25-p2-cockpit-nach-fertig-weiter-offen-mobile.jpg), [23](2026-11-interview-review/23-p2-nichtrueckkehrtage-mobile.jpg)
 - **Code:** [CrossBorderScreen.tsx](../../apps/mobile-web/src/screens/cross-border/CrossBorderScreen.tsx)
-- **Beobachtung:**
-  - Eine Seite enthält 14 Lohnausweis-Ziffern, Wechselkurs, Vorsorge, 13 N-Gre-Felder und eine Sonderfall-Frage. Insgesamt sind es **30 Eingabefelder**.
-  - Ziffer 8 (Total) und 11 (Netto) sind aus den anderen Ziffern ableitbar, müssen aber getippt werden.
-  - Die Begriffe BVG, NBUV, Säule 2a/2b und KK-Taggeld werden nicht erklärt.
-  - Nach „Fertig“ springt die App ins Cockpit. Die Kachel bleibt **„Offen“**, „Nächster Schritt: Schweizer Lohnausweis“ bleibt stehen, und es fehlt jeder Hinweis, *was* fehlt (vermutlich der Wechselkurs).
-  - Der Titel „CH-Lohnausweis“ ist rechts abgeschnitten.
-- **Vorschlag:**
-  - In 3 Schritte teilen: Lohnausweis (Scan zuerst), Wechselkurs (vorbelegt mit dem amtlichen Jahresdurchschnitt), N-Gre-Extras.
-  - Summen live berechnen und nur Abweichungen markieren.
-  - Bei „Fertig“ mit offenen Pflichtangaben auf der Seite bleiben und das erste fehlende Feld markieren.
+- **Observation:**
+  - One page contains 14 Lohnausweis items, exchange rate, pension provision, 13 N-Gre fields and a special-case question. In total there are **30 input fields**.
+  - Item 8 (total) and 11 (net) can be derived from the other items but have to be typed.
+  - The terms BVG, NBUV, Säule 2a/2b and KK-Taggeld are not explained.
+  - After „Fertig“ ("Done"), the app jumps to the cockpit. The tile stays **„Offen“**, „Nächster Schritt: Schweizer Lohnausweis“ ("Next step: Swiss Lohnausweis") remains, and there is no hint at all about *what* is missing (presumably the exchange rate).
+  - The title „CH-Lohnausweis“ is cut off on the right.
+- **Suggestion:**
+  - Split into 3 steps: Lohnausweis (scan first), exchange rate (prefilled with the official annual average), N-Gre extras.
+  - Calculate sums live and only flag deviations.
+  - On „Fertig“ with open mandatory details, stay on the page and mark the first missing field.
 
-#### H7 – Die Person-B-Logik aus PR #510 ist noch nicht zu Ende gedacht
+#### H7 – The Person B logic from PR #510 is not yet thought through
 - **Persona:** P2 (PR #510) · **Screenshot:** [32](2026-11-interview-review/32-pr510-p2-partner-frage-0von4-mobile.jpg)–[37](2026-11-interview-review/37-pr510-p2-kind-ehepartner-keines-mobile.jpg)
-- **Code:** PR #510 `CatalogScreen.tsx:115-126` („Für wen?“), `ChildrenScreen.tsx` (Kinderzulage-Auswahl mit hart kodierten Texten „mir“ / „Person B“ außerhalb von i18n), `CockpitPartnerSection.tsx`
-- **Beobachtung:**
-  - **„Für wen?“** steht als Schalter über dem Katalog. Schaltet man auf „für Julia“, fragt der Katalog weiter „Hast du gespendet?“ ([36](2026-11-interview-review/36-pr510-p2-fuer-wen-julia-gleiche-frage-mobile.jpg)). Ob der Schalter für die eine Frage oder den ganzen Katalog gilt, ist unklar.
-  - Bei Zusammenveranlagung ist die Zuordnung für Spenden steuerlich ohne Wirkung. Der Schalter erzeugt dort eine Entscheidung ohne Nutzen.
-  - Im Interview heißt die Partnerin „**Person B**“ („Arbeitet Person B auch in der Schweiz?“). Das ist Formularsprache.
-  - Julia bekommt im Cockpit **zugleich** „Lohnsteuerbescheinigung“ und „Lohnausweis Schweiz“, obwohl das Interview sie als reine Grenzgängerin erfasst ([34](2026-11-interview-review/34-pr510-p2-cockpit-julia-kacheln-mobile.jpg)).
-  - Die Partnerfrage kennt weder „Selbstständig“ noch „Grenzgänger in Rente“.
-  - Die Stammdaten bieten für Julia weiter nur „Lohnsteuerbescheinigung von Julia erfassen“ und „Arbeitsweg“ an, keinen Lohnausweis.
-  - Das Ehepaar sieht die Kachel „Alleinerziehend“ und in der Kinder-Maske den Block „Entlastungsbetrag für Alleinerziehende“.
-- **Vorschlag:**
-  - „Für wen?“ nur dort zeigen, wo die Zuordnung zählt (KV/PV, Riester, Arbeitswege, Lohnersatz). Den Fragetext umschreiben („Hat Julia gespendet?“).
-  - Den Schalter pro Frage als Chip unter der Frage setzen, nicht global.
-  - Kacheln aus dem Partnerberuf ableiten.
-  - Alleinerziehenden-Inhalte bei Verheirateten ausblenden.
-  - Die Kinderzulage-Texte nach i18n ziehen und den Namen statt „Person B“ verwenden.
+- **Code:** PR #510 `CatalogScreen.tsx:115-126` („Für wen?“), `ChildrenScreen.tsx` (Kinderzulage choice with hard-coded texts „mir“ ("me") / „Person B“ outside of i18n), `CockpitPartnerSection.tsx`
+- **Observation:**
+  - **„Für wen?“** sits as a switch above the catalog. If you switch to „für Julia“ ("for Julia"), the catalog continues to ask „Hast du gespendet?“ ("Did you donate?") ([36](2026-11-interview-review/36-pr510-p2-fuer-wen-julia-gleiche-frage-mobile.jpg)). Whether the switch applies to the one question or the whole catalog is unclear.
+  - With Zusammenveranlagung, the assignment of donations has no tax effect. There the switch creates a decision without any benefit.
+  - In the interview the partner is called „**Person B**“ („Arbeitet Person B auch in der Schweiz?“). That is form language.
+  - In the cockpit Julia gets **both** „Lohnsteuerbescheinigung“ and „Lohnausweis Schweiz“, although the interview records her as a pure Grenzgängerin ([34](2026-11-interview-review/34-pr510-p2-cockpit-julia-kacheln-mobile.jpg)).
+  - The partner question knows neither „Selbstständig“ ("Self-employed") nor "Grenzgänger in retirement".
+  - For Julia, the master data still only offer „Lohnsteuerbescheinigung von Julia erfassen“ ("Enter Julia's Lohnsteuerbescheinigung") and „Arbeitsweg“ ("Commute"), no Lohnausweis.
+  - The married couple sees the tile „Alleinerziehend“ ("Single parent") and, in the children screen, the block „Entlastungsbetrag für Alleinerziehende“ ("Relief amount for single parents").
+- **Suggestion:**
+  - Show „Für wen?“ only where the assignment matters (health/long-term care insurance, Riester, commutes, wage replacement). Rewrite the question text („Hat Julia gespendet?“ ("Did Julia donate?")).
+  - Place the switch per question as a chip below the question, not globally.
+  - Derive tiles from the partner's occupation.
+  - Hide single-parent content for married users.
+  - Move the Kinderzulage texts into i18n and use the name instead of „Person B“.
 
-### Mittel
+### Medium
 
-#### M1 – Wortumbrüche mitten im Wort und abgeschnittene Titel
-- **Persona:** alle · **Screenshot:** [05](2026-11-interview-review/05-p1-q4-familienstand-wordbreak-mobile.jpg) „Familienstan|d“, [09](2026-11-interview-review/09-p1-onboarding-steuernummer-wordbreak-mobile.jpg) „Steuernumm|er“, [10](2026-11-interview-review/10-p1-lstb-maske-mobile.jpg) „Lohnsteuerbesch|einigung“, [15](2026-11-interview-review/15-p1-sonderausgaben-kv-wordbreak-mobile.jpg) „Pflegeversicherun|g“, [23](2026-11-interview-review/23-p2-nichtrueckkehrtage-mobile.jpg) „zurückgekeh|rt“, [24](2026-11-interview-review/24-p2-ch-lohnausweis-titel-abgeschnitten-mobile.jpg), [27](2026-11-interview-review/27-p2-zusammenveranlagung-partner-mobile.jpg) Chip „Einzelveranlagun…“
-- **Code:** [interview/styles.ts:37](../../apps/mobile-web/src/screens/interview/styles.ts:37) (`size['3xl']`), Sheet-Titel in den Masken
-- **Vorschlag:** Auf Web `hyphens: auto` mit `lang="de"`. Lange Komposita mit `&shy;` brechen oder die Schriftgröße bei Überlänge eine Stufe senken. Chip-Reihen umbrechen lassen. Den 375-px-Screenshot-Test in `e2e/visual` um die Titel erweitern.
+#### M1 – Line breaks in the middle of words and cut-off titles
+- **Persona:** all · **Screenshot:** [05](2026-11-interview-review/05-p1-q4-familienstand-wordbreak-mobile.jpg) „Familienstan|d“, [09](2026-11-interview-review/09-p1-onboarding-steuernummer-wordbreak-mobile.jpg) „Steuernumm|er“, [10](2026-11-interview-review/10-p1-lstb-maske-mobile.jpg) „Lohnsteuerbesch|einigung“, [15](2026-11-interview-review/15-p1-sonderausgaben-kv-wordbreak-mobile.jpg) „Pflegeversicherun|g“, [23](2026-11-interview-review/23-p2-nichtrueckkehrtage-mobile.jpg) „zurückgekeh|rt“, [24](2026-11-interview-review/24-p2-ch-lohnausweis-titel-abgeschnitten-mobile.jpg), [27](2026-11-interview-review/27-p2-zusammenveranlagung-partner-mobile.jpg) chip „Einzelveranlagun…“
+- **Code:** [interview/styles.ts:37](../../apps/mobile-web/src/screens/interview/styles.ts:37) (`size['3xl']`), sheet titles in the screens
+- **Suggestion:** On web, `hyphens: auto` with `lang="de"`. Break long compounds with `&shy;` or lower the font size one step when too long. Let chip rows wrap. Extend the 375 px screenshot test in `e2e/visual` to cover the titles.
 
-#### M2 – Fachbegriffe ohne Erklärung, nur ein einziger Katalog-Hinweis
-- **Persona:** alle · **Screenshot:** [03](2026-11-interview-review/03-p1-q2-ausland-mobile.jpg), [04](2026-11-interview-review/04-p1-q3-kinder-mobile.jpg), [12](2026-11-interview-review/12-p1-lebenslagen-dhf-mobile.jpg), [28](2026-11-interview-review/28-p2-kinder-maske-mobile.jpg), [30](2026-11-interview-review/30-p3-rente-maske-mobile.jpg)
-- **Code:** [resources.ts:1016-1063](../../apps/mobile-web/src/i18n/resources.ts:1016); `katalog.hints` hat nur `haushalt-gate` ([resources.ts:1057](../../apps/mobile-web/src/i18n/resources.ts:1057), [CatalogScreen.tsx:234](../../apps/mobile-web/src/screens/catalog/CatalogScreen.tsx:234))
-- **Beobachtung:** Ohne Erklärung bleiben unter anderem:
-  - „doppelte Haushaltsführung“, „Lohnersatz“, „Minijob/Midijob/Nebenjob“ (die Option „Nebenjob“ wiederholt die Frage)
-  - „Günstigerprüfung“, „Splittingtarif“, „60-Tage-Tracking“ (bei Nicht-Grenzgängern)
-  - „Rentenbezugsmitteilung“, „BEA-Freibetrag“, „unmittelbar/mittelbar“ (Riester)
-  - „Beitragspflichtige Einnahmen im Vorjahr“
-  - Es gibt keine Info-Icons und kein Glossar.
-- **Vorschlag:**
-  - Jede Frage bekommt eine Zeile „Was heißt das?“ mit Beispiel, z. B. „Doppelte Haushaltsführung = zweite Wohnung am Arbeitsort, weil der Weg zu weit ist“.
-  - Fachbegriff erst nach dem Alltagsbegriff nennen.
-  - Ein gemeinsames Glossar, das auch die Eule nutzt.
+#### M2 – Technical terms without explanation, only a single catalog hint
+- **Persona:** all · **Screenshot:** [03](2026-11-interview-review/03-p1-q2-ausland-mobile.jpg), [04](2026-11-interview-review/04-p1-q3-kinder-mobile.jpg), [12](2026-11-interview-review/12-p1-lebenslagen-dhf-mobile.jpg), [28](2026-11-interview-review/28-p2-kinder-maske-mobile.jpg), [30](2026-11-interview-review/30-p3-rente-maske-mobile.jpg)
+- **Code:** [resources.ts:1016-1063](../../apps/mobile-web/src/i18n/resources.ts:1016); `katalog.hints` only has `haushalt-gate` ([resources.ts:1057](../../apps/mobile-web/src/i18n/resources.ts:1057), [CatalogScreen.tsx:234](../../apps/mobile-web/src/screens/catalog/CatalogScreen.tsx:234))
+- **Observation:** Left without explanation are, among others:
+  - „doppelte Haushaltsführung“ ("double household"), „Lohnersatz“, „Minijob/Midijob/Nebenjob“ (the option „Nebenjob“ ("side job") repeats the question)
+  - „Günstigerprüfung“, „Splittingtarif“ ("splitting tariff"), „60-Tage-Tracking“ ("60-day tracking") (for non-Grenzgänger)
+  - „Rentenbezugsmitteilung“ ("pension statement"), „BEA-Freibetrag“ ("childcare/education allowance"), „unmittelbar/mittelbar“ ("directly/indirectly") (Riester)
+  - „Beitragspflichtige Einnahmen im Vorjahr“ ("Income subject to contributions in the previous year")
+  - There are no info icons and no glossary.
+- **Suggestion:**
+  - Every question gets a line „Was heißt das?“ ("What does that mean?") with an example, e.g. „Doppelte Haushaltsführung = zweite Wohnung am Arbeitsort, weil der Weg zu weit ist“ ("Double household = second home at the place of work because the commute is too far").
+  - Name the technical term only after the everyday term.
+  - A shared glossary that the owl uses too.
 
-#### M3 – Irrelevante Fragen und Kacheln
+#### M3 – Irrelevant questions and tiles
 - **Persona:** P1, P3, P2 · **Screenshot:** [29](2026-11-interview-review/29-p3-rentner-pendelfrage-mobile.jpg), [07](2026-11-interview-review/07-p1-cockpit-leer-mobile.jpg), [34](2026-11-interview-review/34-pr510-p2-cockpit-julia-kacheln-mobile.jpg)
-- **Code:** [interview.ts:148](../../packages/core/src/interview/interview.ts:148) (feste `QUESTION_ORDER`), Kachel-Personas in [tiles.ts](../../apps/mobile-web/src/screens/cockpit/tiles.ts)
-- **Beobachtung:**
-  - Der Rentner wird gefragt: „Pendelst du **zum Arbeiten** ins Ausland?“
-  - Die ledige Lena ohne Kinder sieht „Kinder verwalten“, „Kapital & Depot prüfen“ und „Vermietung prüfen“ als feste Buttons.
-  - Das Ehepaar sieht „Alleinerziehend“.
-- **Vorschlag:** `ausland` für „Rente“ umformulieren („Bekommst du eine Rente aus dem Ausland?“) oder überspringen. Die Schnellzugriffe unten im Cockpit an Antworten koppeln.
+- **Code:** [interview.ts:148](../../packages/core/src/interview/interview.ts:148) (fixed `QUESTION_ORDER`), tile personas in [tiles.ts](../../apps/mobile-web/src/screens/cockpit/tiles.ts)
+- **Observation:**
+  - The pensioner is asked: „Pendelst du **zum Arbeiten** ins Ausland?“ ("Do you commute abroad **for work**?")
+  - Single Lena without children sees „Kinder verwalten“ ("Manage children"), „Kapital & Depot prüfen“ ("Check capital & securities account") and „Vermietung prüfen“ ("Check rental income") as fixed buttons.
+  - The married couple sees „Alleinerziehend“.
+- **Suggestion:** Rephrase `ausland` for „Rente“ ("Pension") („Bekommst du eine Rente aus dem Ausland?“ ("Do you receive a pension from abroad?")) or skip it. Tie the quick links at the bottom of the cockpit to the answers.
 
-#### M4 – Gast-Schleife: Der Haupt-CTA führt zurück zur Konto-Wand
+#### M4 – Guest loop: the main CTA leads back to the account wall
 - **Persona:** P1 · **Screenshot:** [06](2026-11-interview-review/06-p1-kontowand-mobile.jpg), [07](2026-11-interview-review/07-p1-cockpit-leer-mobile.jpg)
 - **Code:** [KontoWandScreen.tsx](../../apps/mobile-web/src/screens/funnel/KontoWandScreen.tsx), [afterTheInterview.ts](../../apps/mobile-web/src/screens/funnel/afterTheInterview.ts)
-- **Beobachtung:** Nach „Später — erst mal ins Cockpit“ führt der neongrüne Button „Weiter mit deinem Weg“ wieder auf die Konto-Wand. Der Gast sieht keinen einzigen Wert und hat keine Möglichkeit, etwas zu erfassen. Der „Später“-Button liegt auf dem Handy halb unter der Tab-Leiste.
-- **Vorschlag:**
-  - Gäste die LStB-Maske ausfüllen lassen und eine erste Spanne zeigen. Das Konto erst beim Speichern oder Abgeben verlangen. Das deckt sich mit „Value First“ aus ADR-0045.
-  - Auf der Konto-Wand den Grund nennen („damit deine LStB nicht verloren geht“).
+- **Observation:** After „Später — erst mal ins Cockpit“ ("Later — to the cockpit first"), the neon green button „Weiter mit deinem Weg“ ("Continue on your path") leads back to the account wall. The guest sees not a single value and has no way to enter anything. On the phone, the „Später“ ("Later") button lies half under the tab bar.
+- **Suggestion:**
+  - Let guests fill in the LStB screen and show a first range. Require the account only when saving or filing. This matches "Value First" from ADR-0045.
+  - On the account wall, state the reason („damit deine LStB nicht verloren geht“ ("so that your LStB does not get lost")).
 
-#### M5 – Widersprüchliche oder leere Statusmeldungen
+#### M5 – Contradictory or empty status messages
 - **Persona:** P1, P2 · **Screenshot:** [07](2026-11-interview-review/07-p1-cockpit-leer-mobile.jpg), [11](2026-11-interview-review/11-p1-cockpit-nach-lstb-mobile.jpg), [14](2026-11-interview-review/14-p1-cockpit-bitte-pruefen-mobile.jpg), [18](2026-11-interview-review/18-p1-eule-homeoffice-entwuerfe-desktop.jpg)
-- **Beobachtung:**
-  - Im Cockpit steht „Noch offen · 3 Posten offen · **0 Fragen offen**“.
-  - Es meldet „Kirchensteuer offen: Trag deine Konfession ein“, obwohl die LStB-Maske erklärt hat: „Ohne Kirche lass beide Felder leer.“
-  - Die Kachel Lebenslagen zeigt „Erledigt · **Bitte prüfen**“ ohne Grund.
-  - Die Eule meldet „Alles geprüft“, während der Cockpit-Button „9 fehlen“ zeigt.
-  - Die Kachelüberschrift sagt „Nachzahlung senken“ bzw. „Erstattung erhöhen“, bevor es überhaupt eine Schätzung gibt.
-- **Vorschlag:** Jede Warnung bekommt einen Satz mit dem *Was* und einen Button zum *Wo*. Die Überschrift ist neutral („Was noch fehlt“), bis es eine Richtung gibt. Die Kirchensteuer aus der leeren LStB-Zeile 6 als „keine“ ableiten (mit Rückfrage).
+- **Observation:**
+  - The cockpit says „Noch offen · 3 Posten offen · **0 Fragen offen**“ ("Still open · 3 items open · 0 questions open").
+  - It reports „Kirchensteuer offen: Trag deine Konfession ein“ ("Church tax open: enter your denomination"), although the LStB screen explained: „Ohne Kirche lass beide Felder leer.“ ("Without a church, leave both fields empty.").
+  - The life situations tile shows „Erledigt · **Bitte prüfen**“ ("Done · Please check") without a reason.
+  - The owl reports „Alles geprüft“ while the cockpit button shows „9 fehlen“ ("9 missing").
+  - The tile heading says „Nachzahlung senken“ ("Reduce additional payment") or „Erstattung erhöhen“ ("Increase refund") before there is any estimate at all.
+- **Suggestion:** Every warning gets a sentence with the *what* and a button to the *where*. The heading is neutral („Was noch fehlt“ ("What is still missing")) until there is a direction. Derive church tax from the empty LStB line 6 as "none" (with a follow-up question).
 
-#### M6 – Der Rechtsstand ist inkonsistent und hart kodiert
+#### M6 – The legal status date is inconsistent and hard-coded
 - **Persona:** P1 · **Screenshot:** [17](2026-11-interview-review/17-p1-eule-start-desktop.jpg), [18](2026-11-interview-review/18-p1-eule-homeoffice-entwuerfe-desktop.jpg)
 - **Code:** [OwlModeScreen.tsx:668](../../apps/mobile-web/src/screens/advisor/OwlModeScreen.tsx:668), [resources.ts:1633](../../apps/mobile-web/src/i18n/resources.ts:1633)
-- **Beobachtung:** Auf demselben Bildschirm steht im Steuerjahr 2026 dreimal „Rechtsstand 01.01.2025“ (Fußzeile, Werkbank) und auf den Karten „Rechtsstand 13.11.2026“.
-- **Vorschlag:** Den Rechtsstand aus dem Regelwerk des gewählten Jahres ableiten, nie als Text fest einbauen.
+- **Observation:** On the same screen, in tax year 2026, it says „Rechtsstand 01.01.2025“ ("Legal status 01.01.2025") three times (footer, workbench) and „Rechtsstand 13.11.2026“ on the cards.
+- **Suggestion:** Derive the legal status date from the rule set of the selected year, never build it in as fixed text.
 
-#### M7 – Fehlende Eingabehilfen in den Masken
+#### M7 – Missing input aids in the screens
 - **Persona:** P1, P3 · **Screenshot:** [10](2026-11-interview-review/10-p1-lstb-maske-mobile.jpg), [30](2026-11-interview-review/30-p3-rente-maske-mobile.jpg)
-- **Beobachtung:**
-  - Den „SV-Arbeitnehmeranteil (Summe der Zeilen 23, 25, 26 und 27)“ muss die Nutzerin selbst addieren.
-  - Alle Beträge gehen nur in ganzen Euro, obwohl auf der LStB Cent stehen.
-  - Die Rente ist eine **Einfachauswahl**, obwohl gesetzliche Rente plus Witwenrente häufig ist.
-  - Für die Rentenbezugsmitteilung gibt es keinen Scan wie bei der LStB.
-  - „Noch nicht ermittelbar“ bleibt stehen, obwohl Betrag und Beginn eingetragen sind. Eine Live-Vorschau des steuerpflichtigen Teils fehlt.
-  - Gesundheit bietet kein „später“ und erklärt nicht, dass erst ab der zumutbaren Belastung etwas wirkt.
-  - Die Enter-Taste schickt Onboarding-Formulare nicht ab.
-- **Vorschlag:**
-  - Vier SV-Felder anbieten oder die Summe aus dem Scan ziehen.
-  - Bei Cent-Beträgen automatisch runden und das ansagen.
-  - Mehrere Renten zulassen.
-  - Live „davon steuerpflichtig: 14.220 € (79 %)“ zeigen.
-  - Bei Krankheitskosten die zumutbare Belastung vorab schätzen („wirkt erst ab ca. 900 €“).
+- **Observation:**
+  - The user has to add up the „SV-Arbeitnehmeranteil (Summe der Zeilen 23, 25, 26 und 27)“ ("Employee social security share (sum of lines 23, 25, 26 and 27)") herself.
+  - All amounts only accept whole euros, although the LStB shows cents.
+  - The pension is a **single choice**, although statutory pension plus widow's pension is common.
+  - There is no scan for the Rentenbezugsmitteilung as there is for the LStB.
+  - „Noch nicht ermittelbar“ ("Cannot be determined yet") remains although amount and start are entered. A live preview of the taxable portion is missing.
+  - Health offers no "later" and does not explain that something only has an effect above the reasonable burden.
+  - The Enter key does not submit onboarding forms.
+- **Suggestion:**
+  - Offer four social security fields or take the sum from the scan.
+  - Round cent amounts automatically and say so.
+  - Allow several pensions.
+  - Show live „davon steuerpflichtig: 14.220 € (79 %)“ ("of which taxable: 14,220 € (79 %)").
+  - For medical costs, estimate the reasonable burden in advance („wirkt erst ab ca. 900 €“ ("only takes effect from about 900 €")).
 
-#### M8 – Barrierefreiheit
+#### M8 – Accessibility
 - **Persona:** P2 · **Screenshot:** [22](2026-11-interview-review/22-p2-ch-wohnsitz-kontrast-mobile.jpg), [23](2026-11-interview-review/23-p2-nichtrueckkehrtage-mobile.jpg), [27](2026-11-interview-review/27-p2-zusammenveranlagung-partner-mobile.jpg)
-- **Code:** [MasterDataScreen.tsx](../../apps/mobile-web/src/screens/master-data/MasterDataScreen.tsx) (Partner-Block)
-- **Beobachtung:**
-  - Die sechs Partner-Eingabefelder (Vorname bis Beruf) haben **keinen zugänglichen Namen**. Weder `aria-label` noch ein verknüpftes Label ist gesetzt, ein Screenreader liest also „Textfeld“.
-  - Hervorgehobene Wörter in Neon-Lime auf Beige („du“, „nicht“) haben deutlich zu wenig Kontrast.
-- **Vorschlag:** Den `Feld`-Wrapper mit `accessibilityLabel` an das Input durchreichen. Die Hervorhebung nur als Hintergrund-Marker nutzen (wie bei „Geld“), nie als Textfarbe.
+- **Code:** [MasterDataScreen.tsx](../../apps/mobile-web/src/screens/master-data/MasterDataScreen.tsx) (partner block)
+- **Observation:**
+  - The six partner input fields (first name through occupation) have **no accessible name**. Neither `aria-label` nor a linked label is set, so a screen reader reads "text field".
+  - Highlighted words in neon lime on beige („du“, „nicht“) have clearly too little contrast.
+- **Suggestion:** Pass `accessibilityLabel` from the `Feld` wrapper through to the input. Use the highlight only as a background marker (as with „Geld“), never as text color.
 
-### Niedrig
+### Low
 
-| # | Befund | Persona | Screenshot | Vorschlag |
+| # | Finding | Persona | Screenshot | Suggestion |
 |---|---|---|---|---|
-| N1 | Die Sheet-Höhe springt von Frage zu Frage, dadurch wandern Ja/Nein-Buttons (Gefahr von Fehltipps) | P1 | [12](2026-11-interview-review/12-p1-lebenslagen-dhf-mobile.jpg), [13](2026-11-interview-review/13-p1-lohnersatz-schaetzung-verschwindet-mobile.jpg) | Feste Sheet-Höhe, Antworten unten verankert |
-| N2 | Desktop: schmale Spalte, Handy-Tab-Leiste, Kacheln ohne zusätzliche Information | P1 | [16](2026-11-interview-review/16-p1-cockpit-desktop.jpg) | Ab 1024 px Zwei-Spalten-Layout (Kacheln \| Formular-Vorschau), Navigation links |
-| N3 | Login für Erstbesucher: „weiter, wo du aufgehört hast“ | P1 | [01](2026-11-interview-review/01-login-mobile.jpg) | Text abhängig von bekannter Sitzung |
-| N4 | Zwei Schließen-Affordanzen pro Sheet („←“ und „Schließen“) | alle | [10](2026-11-interview-review/10-p1-lstb-maske-mobile.jpg) | „←“ = Frage zurück, „Schließen“ = Sheet zu, beide beschriften |
-| N5 | „Familienstand am 31.12.“: Für Splitting zählt *ein* Tag im Jahr. „Verwitwet“ ohne Todesjahr (Witwensplitting im Folgejahr) | P3 | [05](2026-11-interview-review/05-p1-q4-familienstand-wordbreak-mobile.jpg) | „… im Jahr 2025 (auch nur kurz)?“; bei Verwitwet das Jahr nachfragen |
-| N6 | Lohnausweis in CHF, Schweizer Kinderzulage in € | P2 | [37](2026-11-interview-review/37-pr510-p2-kind-ehepartner-keines-mobile.jpg) | Eine Währung je Beleg, Umrechnung durch die App |
+| N1 | The sheet height jumps from question to question, so the yes/no buttons move (risk of mis-taps) | P1 | [12](2026-11-interview-review/12-p1-lebenslagen-dhf-mobile.jpg), [13](2026-11-interview-review/13-p1-lohnersatz-schaetzung-verschwindet-mobile.jpg) | Fixed sheet height, answers anchored at the bottom |
+| N2 | Desktop: narrow column, phone tab bar, tiles without additional information | P1 | [16](2026-11-interview-review/16-p1-cockpit-desktop.jpg) | From 1024 px a two-column layout (tiles \| form preview), navigation on the left |
+| N3 | Login for first-time visitors: „weiter, wo du aufgehört hast“ ("continue where you left off") | P1 | [01](2026-11-interview-review/01-login-mobile.jpg) | Text depending on a known session |
+| N4 | Two close affordances per sheet („←“ and „Schließen“ ("Close")) | all | [10](2026-11-interview-review/10-p1-lstb-maske-mobile.jpg) | „←“ = previous question, „Schließen“ = close sheet, label both |
+| N5 | „Familienstand am 31.12.“ ("Marital status on 31.12."): for splitting, *one* day in the year counts. „Verwitwet“ ("Widowed") without the year of death (widow's splitting in the following year) | P3 | [05](2026-11-interview-review/05-p1-q4-familienstand-wordbreak-mobile.jpg) | „… im Jahr 2025 (auch nur kurz)?“ ("… in the year 2025 (even if only briefly)?"); for widowed, ask for the year |
+| N6 | Lohnausweis in CHF, Swiss Kinderzulage in € | P2 | [37](2026-11-interview-review/37-pr510-p2-kind-ehepartner-keines-mobile.jpg) | One currency per document, conversion by the app |
 
 ---
 
-## Bewertungsmatrix
+## Rating matrix
 
-Skala 1 (schlecht) bis 5 (sehr gut). Bewertet ist der beobachtete Stand, nicht der Plan.
+Scale 1 (poor) to 5 (very good). What is rated is the observed state, not the plan.
 
-| Kriterium | P1 Angestellte | P2 Grenzgänger-Paar | P3 Rentner | **Gesamt** | Haupttreiber |
+| Criterion | P1 employee | P2 Grenzgänger couple | P3 pensioner | **Overall** | Main driver |
 |---|:-:|:-:|:-:|:-:|---|
-| **Verständlichkeit** | 3,5 | 2 | 3 | **2,8** | + klare 4 Fragen; − Fachbegriffe ohne Hilfe (M2), „Person B“, 30-Felder-Maske (H6) |
-| **Transparenz** (was passiert in der Erklärung) | 2,5 | 1,5 | 1 | **1,7** | − keine Zeilen/Formulare (H2), keine Wirkung nach Speichern (H1), Schätzung fehlt (K3) |
-| **Aufwand** (Klicks, Doppel-Erfassung) | 3,5 | 2 | 3,5 | **3,0** | + 1 Klick/Frage, „später“; − Doppel-Erfassung (H3), Summen von Hand (H6, M7) |
-| **Vertrauen** | 2,5 | 2,5 | 1,5 | **2,2** | − 2026-Sackgasse (K2), „0 €“ (K3), Eulen-Vorschlag (K1), Fristalarm (H5), Rechtsstand (M6); + Spanne, Paragrafen |
-| **Fehlertoleranz** | 3,5 | 2,5 | 3 | **3,0** | + Zurück, „später“, Undo bei Entwürfen; − „Fertig“ ohne Hinweis (H6), Batch-Übernahme (K1), Default „Keines“ (H3) |
-| **Ø** | 3,1 | 2,1 | 2,4 | **2,6** | |
+| **Comprehensibility** | 3.5 | 2 | 3 | **2.8** | + clear 4 questions; − technical terms without help (M2), „Person B“, 30-field screen (H6) |
+| **Transparency** (what happens in the tax return) | 2.5 | 1.5 | 1 | **1.7** | − no lines/forms (H2), no effect after saving (H1), estimate missing (K3) |
+| **Effort** (clicks, double entry) | 3.5 | 2 | 3.5 | **3.0** | + 1 click/question, "later"; − double entry (H3), sums by hand (H6, M7) |
+| **Trust** | 2.5 | 2.5 | 1.5 | **2.2** | − 2026 dead end (K2), „0 €“ (K3), owl suggestion (K1), deadline alarm (H5), legal status date (M6); + range, paragraphs |
+| **Error tolerance** | 3.5 | 2.5 | 3 | **3.0** | + back, "later", undo on drafts; − „Fertig“ without a hint (H6), batch apply (K1), default „Keines“ (H3) |
+| **Ø** | 3.1 | 2.1 | 2.4 | **2.6** | |
 
 ---
 
-## Abgrenzung: Steuereule heute vs. WISO, Taxfix, ELSTER
+## Positioning: Steuereule today vs. WISO, Taxfix, ELSTER
 
-| | **ELSTER** | **WISO Steuer** | **Taxfix** | **Steuereule heute** |
+| | **ELSTER** | **WISO Steuer** | **Taxfix** | **Steuereule today** |
 |---|---|---|---|---|
-| Einstieg | Formularbaum | Interview oder Formular, Desktop-first | Chat-artiges Interview, mobile-first | 4-Fragen-Weg, mobile-first, ✔ |
-| Sicht auf Formular/Zeile | maximal (es *ist* das Formular) | gut (Formularansicht umschaltbar) | gering | gering (nur LStB, Stammdaten) ✘ |
-| Live-Erstattung | keine | ja, ständig sichtbar | ja | nur für ledige Angestellte, klein ✘ |
-| Erklärung/Beratung | keine | Hilfetexte, Ratgeber | kurze Tooltips | Eule mit Paragraf, Vorher/Nachher ✔ (Qualität s. K1) |
-| Grenzgänger CH | Formular N-Gre, ohne Hilfe | möglich, viel Handarbeit | nicht abgedeckt | **tief und geführt** ✔✔ |
-| Belegabruf / Vorbefüllung | ja (VaSt) | ja (via ELSTER) | ja | nicht beobachtet ✘ |
-| Ehrlichkeit über Grenzen | – | – | wenig | **explizit** („Ehrlich: … können wir noch nicht“) ✔ |
+| Entry | form tree | interview or form, desktop-first | chat-like interview, mobile-first | 4-question path, mobile-first, ✔ |
+| View of form/line | maximal (it *is* the form) | good (form view can be toggled) | low | low (only LStB, master data) ✘ |
+| Live refund | none | yes, constantly visible | yes | only for single employees, small ✘ |
+| Explanation/advice | none | help texts, guides | short tooltips | owl with paragraph, before/after ✔ (quality see K1) |
+| Grenzgänger CH | form N-Gre, without help | possible, a lot of manual work | not covered | **deep and guided** ✔✔ |
+| Document retrieval / prefill | yes (VaSt) | yes (via ELSTER) | yes | not observed ✘ |
+| Honesty about limits | – | – | little | **explicit** („Ehrlich: … können wir noch nicht“) ✔ |
 
-**Was Steuereule heute schon unterscheidet:**
-1. Grenzgänger Schweiz als Kernfall, nicht als Randfall.
-2. Eine Beraterin im Produkt, die Paragrafen nennt und Änderungen als prüfbaren Entwurf mit Undo vorschlägt statt sie still zu schreiben.
-3. Eine ehrliche Spanne statt einer Scheingenauigkeit.
-4. Ein Haushalt mit Personen statt eines Formulars mit Spalten.
+**What already sets Steuereule apart today:**
+1. Grenzgänger to Switzerland as a core case, not as an edge case.
+2. An advisor in the product who names paragraphs and proposes changes as a reviewable draft with undo instead of writing them silently.
+3. An honest range instead of false precision.
+4. A household with persons instead of a form with columns.
 
-**Was zum Gamechanger fehlt:**
-1. **„Glas-Erklärung“:** Jede Eingabe zeigt sofort *Formular → Zeile → Euro-Wirkung*, und jede Zeile der amtlichen Ansicht führt zurück zu ihrer Quelle. Das kann keiner der drei Wettbewerber so durchgängig: WISO zeigt Zeilen, aber keine Herkunft; Taxfix zeigt Wirkung, aber keine Zeilen.
-2. **Eine Schätzung, die für alle gilt** (Rentner, Paare, Lohnersatz), sonst trägt die Kernpromesse nur für eine Persona.
-3. **Ein Datenstrom statt Inseln:** Interview, Stammdaten, Partner und Kinder teilen eine Wahrheit. Nichts wird zweimal gefragt.
-4. **Belegabruf/Vorbefüllung** (ELSTER-VaSt) oder zumindest „Vorjahr übernehmen“ als Standardstart. Das kürzt die Erfassung um Größenordnungen.
-5. **Ganzjahres-Modus fürs laufende Jahr** (statt K2): „Bis 31.12. noch 340 € holen“, Belege sammeln, Homeoffice-Tage zählen. Hier passt die Eule am besten.
+**What is missing for a game changer:**
+1. **"Glass tax return":** every input immediately shows *form → line → euro effect*, and every line of the official view leads back to its source. None of the three competitors does this so consistently: WISO shows lines but no origin; Taxfix shows effect but no lines.
+2. **An estimate that applies to everyone** (pensioners, couples, wage replacement); otherwise the core promise only holds for one persona.
+3. **One data stream instead of islands:** interview, master data, partner and children share one truth. Nothing is asked twice.
+4. **Document retrieval/prefill** (ELSTER VaSt) or at least "carry over previous year" as the default start. That shortens data entry by orders of magnitude.
+5. **Year-round mode for the current year** (instead of K2): „Bis 31.12. noch 340 € holen“ ("Get another 340 € by 31.12."), collect documents, count home office days. This is where the owl fits best.
 
 ---
 
-## Die fünf Hebel mit der größten Wirkung
+## The five levers with the greatest effect
 
-Aufwand: **S** ≤ 2 Personentage, **M** ≤ 1 Woche, **L** > 1 Woche.
+Effort: **S** ≤ 2 person-days, **M** ≤ 1 week, **L** > 1 week.
 
-| # | Hebel | Löst | Wirkung | Aufwand |
+| # | Lever | Solves | Effect | Effort |
 |---|---|---|---|:-:|
-| **1** | **Wirkungszeile nach jedem Speichern und Hero umdrehen.** Erstattung/Nachzahlung als Hauptzahl. Nach jedem Speichern ein Banner „Spenden 250 € → Anlage Sonderausgaben Z. 5 → +48 €“. Kacheln mit Betrag und Anlage. Für den PDF-Ausdruck gibt es bereits Feldnamen je Anlage (z. B. `anlN_wegOrt`, [resources.ts:438](../../apps/mobile-web/src/i18n/resources.ts:438)), auf denen die Zuordnung aufsetzen kann. | H1, H2, M5 | Sichtbarkeit (Frage 2) von „kaum“ auf „ständig“. Größter Unterschied zu WISO und Taxfix. | **M** (Hero S; Delta-Banner + Zeilen-Chips M; volle Formularansicht L) |
-| **2** | **Schätzung für alle Kern-Personas.** Renten (Besteuerungsanteil), Lohnersatz (Progressionsvorbehalt), Paare direkt aus den Interview-Antworten. Nie „0 €“, nie eine verschwundene Spanne, Chat und Cockpit aus einer Quelle. | K3, M5 | Vertrauen; P3 bekommt überhaupt erst einen Wert | **L** (Kern-Rechnung) / **S** (Spanne behalten statt löschen, „0 €“ verhindern) |
-| **3** | **Ein Datenstrom und ein Fortschritt.** Interview setzt Familienstand, Zusammenveranlagung und Person B (mit Namen). Kinder bei Paaren standardmäßig „gemeinsam“. Ein durchgehendes „Abgabebereit: x von y“. | H3, H4, H7, M3 | Weniger Klicks, keine falschen Anlagen | **M** |
-| **4** | **Eule absichern.** Vorschläge nur aus Nutzerangaben, Alternativen exklusiv (Auswahl statt Batch), Rechtsstand dynamisch, „Alles geprüft“ nur wenn wahr, Zeilen-Chip auf Entwürfen. | K1, M6 | Verhindert falsche Erklärungen und Vertrauensbruch | **S–M** |
-| **5** | **Jahr und Frist richtig setzen.** Default = letztes abgeschlossenes Jahr. Laufendes Jahr als „vorbereiten“-Modus. Fristwarnung nur bei Pflichtveranlagung und mit korrekter Stufe. | K2, H5 | Keine Sackgasse am Ende, kein Fehlalarm | **S** |
+| **1** | **Effect line after every save and flip the hero.** Refund/additional payment as the main number. After every save, a banner „Spenden 250 € → Anlage Sonderausgaben Z. 5 → +48 €“. Tiles with amount and Anlage. For the PDF printout there are already field names per Anlage (e.g. `anlN_wegOrt`, [resources.ts:438](../../apps/mobile-web/src/i18n/resources.ts:438)) on which the mapping can build. | H1, H2, M5 | Visibility (question 2) from "barely" to "constantly". Biggest difference to WISO and Taxfix. | **M** (hero S; delta banner + line chips M; full form view L) |
+| **2** | **Estimate for all core personas.** Pensions (taxable portion), wage replacement (Progressionsvorbehalt), couples directly from the interview answers. Never „0 €“, never a vanished range, chat and cockpit from one source. | K3, M5 | Trust; P3 gets a value at all for the first time | **L** (core calculation) / **S** (keep the range instead of deleting it, prevent „0 €“) |
+| **3** | **One data stream and one progress.** The interview sets marital status, Zusammenveranlagung and Person B (with name). Children of couples "joint" by default. One continuous „Abgabebereit: x von y“ ("Ready to file: x of y"). | H3, H4, H7, M3 | Fewer clicks, no wrong Anlagen | **M** |
+| **4** | **Secure the owl.** Suggestions only from user statements, alternatives exclusive (choice instead of batch), dynamic legal status date, „Alles geprüft“ only when true, line chip on drafts. | K1, M6 | Prevents wrong tax returns and breaches of trust | **S–M** |
+| **5** | **Set year and deadline correctly.** Default = last completed year. Current year as a "prepare" mode. Deadline warning only for mandatory assessment and with the correct level. | K2, H5 | No dead end at the end, no false alarm | **S** |
 
-**Quick Wins nebenher (je S):** Wortumbruch und abgeschnittene Titel (M1); Hilfezeile für die 10 häufigsten Fachbegriffe (M2); irrelevante Fragen und Kacheln ausblenden (M3); Labels der Partner-Felder (M8); „Fertig“ in der CH-Maske zeigt, was fehlt (H6, Teil).
+**Quick wins on the side (S each):** line breaks and cut-off titles (M1); help line for the 10 most frequent technical terms (M2); hide irrelevant questions and tiles (M3); labels of the partner fields (M8); „Fertig“ in the CH screen shows what is missing (H6, partly).
 
 ---
 
-## Umsetzung in diesem PR
+## Implementation in this PR
 
-Auftrag: die kritischen Befunde K1–K3 und die Hebel 1, 2, 3 und 5. Hebel 4 (Eule absichern) ist ausgenommen, nur der kritische Teil K1 ist umgesetzt. Der Branch enthält PR NexusHero/Steuereule#510.
+Assignment: the critical findings K1–K3 and levers 1, 2, 3 and 5. Lever 4 (secure the owl) is excluded; only the critical part K1 is implemented. The branch contains PR NexusHero/Steuereule#510.
 
-| Befund / Hebel | Umgesetzt | Wo |
+| Finding / lever | Implemented | Where |
 |---|---|---|
-| **K1** Eule | Homeoffice-Entwurf nur mit den genannten Tagen (`commute.homeOfficeDays`, „80 Tage × 6 € = 480 €“); 210 Tage nur noch als Information. Sich ausschließende Entwürfe tragen `alternativeGroup`: Die API lehnt einen gemeinsamen Batch ab (`ADVISOR_BATCH_ALTERNATIVE_CONFLICT`), die Werkbank sperrt „Alle übernehmen“ und bietet „Diesen Weg übernehmen“ an. | `packages/core/src/interview/advisor*.ts`, `apps/api/src/advisor/`, `OwlModeScreen.tsx` |
-| **K2** + Hebel 5 | Startjahr = letztes abgeschlossenes Jahr (2025). Das laufende Jahr ist als „läuft“ markiert, Cockpit, Abgabe und Ausdruck sagen das vorab. Unter der ersten Frage steht „Anderes Jahr“. Neue Kernfunktion `filingObligation` (pflicht/freiwillig/unklar). Der Fristbanner unterscheidet danach und folgt § 152 Abs. 2 AO (Zuschlag erst nach 14 Monaten zwingend). | `config/taxYear.ts`, `ShellState.tsx`, `DeadlinesBanner.tsx`, `packages/core/src/domains/filing-obligation.ts` |
-| **K3** + Hebel 2 | Alleinstehende Rentner bekommen eine Spanne (Anlage R, 102 € Pauschbetrag, KVdR 11–13 % als Vorsorge, nichts einbehalten). Lohnersatz wird über den Progressionsvorbehalt gerechnet (§ 32b, abzüglich des ungenutzten Arbeitnehmer-Pauschbetrags), für Angestellte, Grenzgänger und Paare. Das Cockpit zählt die Rente als erfasstes Einkommen (nie mehr „0 €“). Lohnersatz gilt nicht mehr als „erfasst, nicht gerechnet“. Alle Eulen-Entwürfe holen ihre Wirkung aus der echten Schätzung (`previewEffectFor`), sonst steht dort „Wirkung noch offen“. | `packages/core/src/engine/tax-estimate.ts`, `married-estimate.ts`, `apps/api/src/tax-estimate/`, `apps/api/src/cockpit/` |
-| Hebel 1 | Mit Spanne ist die Erstattung bzw. Nachzahlung die Hauptzahl, das Einkommen steht darunter. Wirkungszeile nach jeder Änderung („Deine letzte Änderung · Sonderausgaben (Anlage …): +48 € zu deinen Gunsten“). Jede Kachel nennt ihr Formular. | `CockpitScreen.tsx`, `effectMemory.ts`, `CockpitTiles.tsx`, `CockpitPartnerSection.tsx` |
-| Hebel 3 | Das Interview-„Verheiratet“ setzt den Familienstand in den Stammdaten und legt die Zusammenveranlagung an, auch für Gäste nach dem Upgrade. Fortschritt 5/6 und 6/6 statt 0/4. „Dein Partner“ statt „Person B“. Ein neues Kind ist bei Paaren „gemeinsam“ vorbelegt. Ein reiner CH-Partner bekommt keine LStB-Kachel. Keine Alleinerziehenden-Kachel bei Paaren. „Für wen?“ sagt pro Frage, für wen gefragt wird, und dass Spenden für beide zählen. Katalogzähler „Frage 1 von 5“. Rentner-Formulierung der Auslandsfrage. | `link.service.ts`, `interview.service.ts`, `QuestionScreen.tsx`, `ChildrenScreen.tsx`, `CatalogScreen.tsx`, `tiles.ts` |
+| **K1** owl | Home office draft only with the stated days (`commute.homeOfficeDays`, „80 Tage × 6 € = 480 €“); 210 days only as information now. Mutually exclusive drafts carry `alternativeGroup`: the API rejects a joint batch (`ADVISOR_BATCH_ALTERNATIVE_CONFLICT`), the workbench blocks „Alle übernehmen“ and offers „Diesen Weg übernehmen“ ("Apply this path"). | `packages/core/src/interview/advisor*.ts`, `apps/api/src/advisor/`, `OwlModeScreen.tsx` |
+| **K2** + lever 5 | Start year = last completed year (2025). The current year is marked as „läuft“ ("in progress"); cockpit, filing and printout say so up front. Below the first question it says „Anderes Jahr“ ("Other year"). New core function `filingObligation` (pflicht/freiwillig/unklar). The deadline banner distinguishes accordingly and follows § 152 Abs. 2 AO (surcharge mandatory only after 14 months). | `config/taxYear.ts`, `ShellState.tsx`, `DeadlinesBanner.tsx`, `packages/core/src/domains/filing-obligation.ts` |
+| **K3** + lever 2 | Single pensioners get a range (Anlage R, 102 € lump sum, KVdR 11–13 % as provision, nothing withheld). Wage replacement is calculated via the Progressionsvorbehalt (§ 32b, minus the unused employee lump-sum allowance), for employees, Grenzgänger and couples. The cockpit counts the pension as recorded income (never „0 €“ again). Wage replacement no longer counts as "recorded, not calculated". All owl drafts take their effect from the real estimate (`previewEffectFor`), otherwise it says „Wirkung noch offen“ ("Effect still open"). | `packages/core/src/engine/tax-estimate.ts`, `married-estimate.ts`, `apps/api/src/tax-estimate/`, `apps/api/src/cockpit/` |
+| Lever 1 | With a range, the refund or additional payment is the main number, the income is below it. Effect line after every change („Deine letzte Änderung · Sonderausgaben (Anlage …): +48 € zu deinen Gunsten“ ("Your last change · Sonderausgaben (Anlage …): +48 € in your favor")). Every tile names its form. | `CockpitScreen.tsx`, `effectMemory.ts`, `CockpitTiles.tsx`, `CockpitPartnerSection.tsx` |
+| Lever 3 | The interview's „Verheiratet“ sets the marital status in the master data and creates the Zusammenveranlagung, also for guests after the upgrade. Progress 5/6 and 6/6 instead of 0/4. „Dein Partner“ ("Your partner") instead of „Person B“. A new child is prefilled as "joint" for couples. A pure CH partner gets no LStB tile. No single-parent tile for couples. „Für wen?“ says per question for whom it is asking, and that donations count for both. Catalog counter „Frage 1 von 5“ ("Question 1 of 5"). Pensioner phrasing of the foreign question. | `link.service.ts`, `interview.service.ts`, `QuestionScreen.tsx`, `ChildrenScreen.tsx`, `CatalogScreen.tsx`, `tiles.ts` |
 
-**Bewusst nicht umgesetzt:** amtliche Formular-Ansicht mit Zeilensprung (Hebel 1, groß), Rest von Hebel 4 (Rechtsstand dynamisch, „Alles geprüft“), Selbstständige in der Schätzung, Vorbelegung des Partnernamens aus dem Interview (das Interview kennt kein Textfeld).
+**Deliberately not implemented:** official form view with jump to line (lever 1, large), the rest of lever 4 (dynamic legal status date, „Alles geprüft“), self-employed in the estimate, prefilling the partner's name from the interview (the interview has no text field).
 
-## Nachtest im Browser (nach der Umsetzung)
+## Retest in the browser (after the implementation)
 
-Frischer Stack mit Wegwerf-Datenbank, alle drei Personas erneut durchgeklickt. Screenshots: [`2026-11-interview-review/nachtest/`](2026-11-interview-review/nachtest/).
+Fresh stack with a throwaway database, all three personas clicked through again. Screenshots: [`2026-11-interview-review/nachtest/`](2026-11-interview-review/nachtest/).
 
-| Prüfpunkt | Ergebnis | Screenshot |
+| Check | Result | Screenshot |
 |---|---|---|
-| Start im Jahr 2025, „Anderes Jahr“ unter Frage 1 | ✔ | [n01](2026-11-interview-review/nachtest/n01-p1-start-2025-mobile.jpg) |
-| Hero „Voraussichtliche Erstattung 483–544 €“, Einkommen darunter, Anlage auf jeder Kachel, ruhiger Banner „Freiwillige Erklärung“ | ✔ | [n02](2026-11-interview-review/nachtest/n02-p1-cockpit-erstattung-hero-mobile.jpg) |
-| Lohnersatz 3.000 €: Spanne bleibt (248–309 €), Wirkungszeile nennt Lebenslagen und Anlage, Banner wechselt korrekt auf Pflicht (§ 152 Abs. 2 AO), Abgabe-Prüfung ohne „nicht gerechnet“ | ✔ | [n03](2026-11-interview-review/nachtest/n03-p1-lohnersatz-spanne-wirkungszeile-mobile.jpg) |
-| Eule bei „80 Tagen im Homeoffice“: genau ein Entwurf mit 80 Tagen | ✔ | [n04](2026-11-interview-review/nachtest/n04-p1-eule-80-tage-ein-entwurf-desktop.jpg) |
-| Eulen-Wirkung aus der echten Schätzung | ✘ → behoben: zeigte −63 €, weil § 32b den Pauschbetrag falsch kürzte; jetzt „Im Pauschbetrag (1.230 €)“ | [n05](2026-11-interview-review/nachtest/n05-p1-eule-im-pauschbetrag-desktop.jpg) |
-| Partnerfragen zählen 5/6 und 6/6 | ✔ | [n06](2026-11-interview-review/nachtest/n06-p2-partnerfrage-5von6-mobile.jpg) |
-| Zusammenveranlagung automatisch, Partner ohne LStB-Kachel, mit Lohnausweis Schweiz | ✔ | – |
-| Erstes Kind beim Paar „gemeinsam“ vorbelegt | ✘ → behoben (Familienstand kam erst nach dem Öffnen des Formulars) | [n07](2026-11-interview-review/nachtest/n07-p2-kind-gemeinsam-vorbelegt-mobile.jpg) |
-| „Für wen?“ mit Spenden-Hinweis | ✔; Text ohne Partnernamen grammatisch falsch („bei deinen Partner“) → behoben | [n08](2026-11-interview-review/nachtest/n08-p2-fuer-wen-spenden-gemeinsam-mobile.jpg) |
-| Rentner: Auslandsfrage passend formuliert | ✔ | [n09](2026-11-interview-review/nachtest/n09-p3-rentner-auslandsfrage-mobile.jpg) |
-| Rentner: Einkommen 18.000 €, Schätzung vorhanden, neutraler Fristbanner („unklar“) | ✔; „Erstattung 0 €“ → behoben zu „Ergebnis 0 € — weder Nachzahlung noch Erstattung“ | [n10](2026-11-interview-review/nachtest/n10-p3-rentner-schaetzung-mobile.jpg), [n11](2026-11-interview-review/nachtest/n11-p3-ergebnis-ausgeglichen-mobile.jpg) |
+| Start in the year 2025, „Anderes Jahr“ below question 1 | ✔ | [n01](2026-11-interview-review/nachtest/n01-p1-start-2025-mobile.jpg) |
+| Hero „Voraussichtliche Erstattung 483–544 €“ ("Expected refund 483–544 €"), income below, Anlage on every tile, calm banner „Freiwillige Erklärung“ ("Voluntary tax return") | ✔ | [n02](2026-11-interview-review/nachtest/n02-p1-cockpit-erstattung-hero-mobile.jpg) |
+| Wage replacement 3,000 €: range stays (248–309 €), effect line names life situations and Anlage, banner correctly switches to mandatory (§ 152 Abs. 2 AO), filing check without "not calculated" | ✔ | [n03](2026-11-interview-review/nachtest/n03-p1-lohnersatz-spanne-wirkungszeile-mobile.jpg) |
+| Owl on "80 days in the home office": exactly one draft with 80 days | ✔ | [n04](2026-11-interview-review/nachtest/n04-p1-eule-80-tage-ein-entwurf-desktop.jpg) |
+| Owl effect from the real estimate | ✘ → fixed: showed −63 € because § 32b reduced the lump sum incorrectly; now „Im Pauschbetrag (1.230 €)“ ("Within the lump sum (1,230 €)") | [n05](2026-11-interview-review/nachtest/n05-p1-eule-im-pauschbetrag-desktop.jpg) |
+| Partner questions count 5/6 and 6/6 | ✔ | [n06](2026-11-interview-review/nachtest/n06-p2-partnerfrage-5von6-mobile.jpg) |
+| Zusammenveranlagung automatic, partner without LStB tile, with Lohnausweis Schweiz | ✔ | – |
+| First child of the couple prefilled as "joint" | ✘ → fixed (marital status only arrived after the form was opened) | [n07](2026-11-interview-review/nachtest/n07-p2-kind-gemeinsam-vorbelegt-mobile.jpg) |
+| „Für wen?“ with donation hint | ✔; text without partner name grammatically wrong („bei deinen Partner“) → fixed | [n08](2026-11-interview-review/nachtest/n08-p2-fuer-wen-spenden-gemeinsam-mobile.jpg) |
+| Pensioner: foreign question phrased appropriately | ✔ | [n09](2026-11-interview-review/nachtest/n09-p3-rentner-auslandsfrage-mobile.jpg) |
+| Pensioner: income 18,000 €, estimate present, neutral deadline banner („unklar“ ("unclear")) | ✔; „Erstattung 0 €“ → fixed to „Ergebnis 0 € — weder Nachzahlung noch Erstattung“ ("Result 0 € — neither additional payment nor refund") | [n10](2026-11-interview-review/nachtest/n10-p3-rentner-schaetzung-mobile.jpg), [n11](2026-11-interview-review/nachtest/n11-p3-ergebnis-ausgeglichen-mobile.jpg) |
 
-**Offen geblieben (nicht im Auftrag):**
-- Wortumbruch „Familienstan|d“ (M1).
-- „Anderes Jahr“ sieht wie eine Antwortoption aus und sollte eher als Link erscheinen.
-- „Nachzahlung senken“ und „Erstattung erhöhen“ stehen schon vor der ersten Schätzung (M5).
+**Left open (not in the assignment):**
+- Line break „Familienstan|d“ (M1).
+- „Anderes Jahr“ looks like an answer option and should rather appear as a link.
+- „Nachzahlung senken“ and „Erstattung erhöhen“ already show before the first estimate (M5).
 
-## Grenzen dieses Reviews
+## Limits of this review
 
-- **KI im Basis-Modus:** Lokal war kein KI-Schlüssel gesetzt, getestet ist also der regelbasierte Fallback der Eule. Ein Durchgang mit echtem Modell steht noch aus.
-- **PR #510** lief als eigener Build (eigene DB, eigene Ports). Bei Merge-Änderungen bitte H7 erneut prüfen.
-- **Nicht durchlaufen:** echter Belegscan (OCR), „Bescheid prüfen“, Kapital/Vermietung, PDF-Erzeugung für 2025, ELSTER-Übermittlung, E-Mail-Bestätigung. Steuer-ID und Steuernummer habe ich bewusst nicht eingegeben.
-- **Wettbewerbsvergleich:** Er beruht auf öffentlich bekanntem Produktverhalten, nicht auf einem Test im Rahmen dieses Reviews.
+- **AI in basic mode:** no AI key was set locally, so what was tested is the owl's rule-based fallback. A run with a real model is still pending.
+- **PR #510** ran as a separate build (own DB, own ports). If the merge changes things, please re-check H7.
+- **Not run through:** real document scan (OCR), „Bescheid prüfen“ ("Check tax assessment"), capital/rental income, PDF generation for 2025, ELSTER transmission, email confirmation. I deliberately did not enter a Steuer-ID or tax number.
+- **Competitor comparison:** it is based on publicly known product behavior, not on a test within the scope of this review.
