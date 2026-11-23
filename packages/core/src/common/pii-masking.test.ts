@@ -145,6 +145,38 @@ describe('PII Masking (ADR-0052 §8 — Personenbezogene Daten: schreiben ja, le
       const benign = 'Kann ich meine Fahrtkosten absetzen? Ich zahle 1200 Euro Miete und arbeite montags im Büro.'
       expect(scrubUserMessagePii(benign, [])).toBe(benign)
     })
+
+    // Second-round H2 review (ADR-0107): the regex narrowed but still leaked bare employers, honorific-less
+    // third-party names and non-dotted birthdates, while over-masking commute distances and legal-form
+    // questions. These close those residuals.
+    it('masks an employer named by context word without a legal form', () => {
+      expect(scrubUserMessagePii('Ich arbeite bei Siemens, 60000 brutto.', [])).not.toContain('Siemens')
+      expect(scrubUserMessagePii('Mein Arbeitgeber ist die Deutsche Bahn.', [])).not.toContain('Deutsche Bahn')
+      expect(scrubUserMessagePii('Ich arbeite bei Siemens.', [])).toContain('[ARBEITGEBER-GESCHÜTZT]')
+    })
+
+    it('masks a honorific-less third-party name named by relationship', () => {
+      const output = scrubUserMessagePii('Mein Vermieter Konrad Bauer erhöht die Miete.', ['Alice'])
+      expect(output).not.toContain('Konrad Bauer')
+      expect(output).toContain('Vermieter [NAME-GESCHÜTZT]')
+    })
+
+    it('masks birthdates written with a month name or slashes', () => {
+      expect(scrubUserMessagePii('Ich bin am 12. März 1980 geboren.', [])).not.toContain('12. März 1980')
+      expect(scrubUserMessagePii('Geboren 12/03/1980, wie viel Steuer?', [])).not.toContain('12/03/1980')
+    })
+
+    it('does NOT over-mask commute distances, legal-form questions or "bei <noun>" phrases', () => {
+      for (const kept of [
+        'Ich fahre den Radweg 5 km zur Arbeit.',
+        'Ich habe 20 km Arbeitsweg.',
+        'Ich will eine KG gründen, lohnt sich das?',
+        'Eine GmbH gründen — lohnt sich das?',
+        'Ich zahle bei Bedarf extra.',
+      ]) {
+        expect(scrubUserMessagePii(kept, [])).toBe(kept)
+      }
+    })
   })
 
   describe('scrubDocumentTextPii', () => {

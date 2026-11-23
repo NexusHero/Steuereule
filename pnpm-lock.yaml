@@ -16,7 +16,7 @@ overrides:
   effect: 3.22.5
   undici: '>=6.29.1'
   fastify: ^5.12.8
-  find-my-way: '>=9.7.0'
+  find-my-way: '>=9.10.2'
 
 importers:
 

@@ -125,13 +125,15 @@ export function scrubUserMessagePii(
   scrubbed = scrubbed.replace(DOB_VALUE_REGEX, '[GEBURTSDATUM-GESCHÜTZT]')
   scrubbed = scrubbed.replace(DOB_BEFORE_KEYWORD_REGEX, '[GEBURTSDATUM-GESCHÜTZT]')
   scrubbed = scrubbed.replace(EMPLOYER_INLINE_REGEX, '[ARBEITGEBER-GESCHÜTZT]')
+  scrubbed = scrubbed.replace(EMPLOYER_CONTEXT_REGEX, '$1[ARBEITGEBER-GESCHÜTZT]')
 
   // 3. Replace known names from the user's tax profile (first/last names, partner, children).
   scrubbed = replaceNamesWith(scrubbed, knownNames, '[MANDANT]')
 
-  // 4. Only AFTER the known-name pass: honorific-prefixed names that are still in the clear are
-  // third parties a profile-derived list can never hold (landlord, doctor). Running this last keeps
-  // "Herr <known name>" as "Herr [MANDANT]" instead of swallowing the whole "Herr <name>" phrase.
+  // 4. Only AFTER the known-name pass: third-party names still in the clear — by honorific or by
+  // relationship word — are people a profile-derived list can never hold (landlord, doctor). Running
+  // this last keeps "Herr <known name>" as "Herr [MANDANT]" instead of swallowing the whole phrase.
+  scrubbed = scrubbed.replace(RELATED_PERSON_NAME_REGEX, '$1[NAME-GESCHÜTZT]')
   return scrubbed.replace(HONORIFIC_NAME_REGEX, '[NAME-GESCHÜTZT]')
 }
 
@@ -165,22 +167,41 @@ const SVNR_TEXT_REGEX = /\b\d{2}[\s.-]?\d{6}[\s.-]?[A-Z][\s.-]?\d{3}\b/g
 // line: „^\s*“ ran from every line start over all blank lines below it (Sonar S8786).
 const LABELED_PII_LINE_REGEX =
   /^[^\S\r\n]*(?:Arbeitgeber(?:\s*\([^)]*\))?|Arbeitnehmer(?:in)?|Name(?:,?\s*Vorname)?|Vorname|Nachname|Familienname|Anschrift|Adresse|Straße|Strasse|Geburtsdatum|geb\.?\s*am|Identifikationsnummer|IdNr|Steuer-?ID|Steueridentifikationsnummer|Steuernummer|Transferticket|Personal-?Nr\.?|Mandanten-?Nr\.?|Arbeitnehmernummer|Sozialversicherungsnummer|Versicherungsnummer|Finanzamt|AGS|Bundesland|Steuerklasse(?:\s*(?:\/\s*)?Faktor)?|Zahl\s+der\s+Kinderfreibeträge|Kirchensteuermerkmal)(?:\s|[:-]\s).*$/gim
+// Street + house number. The trailing negative lookahead keeps a commute distance ("Radweg 5 km",
+// "Fußweg 10 min") from being mistaken for an address — the over-masking the H2 review flagged (ADR-0107).
 const STREET_AND_NUMBER_REGEX =
-  /\b[A-ZÄÖÜ][a-zäöüß-]{2,60}(?:straße|strasse|str\.|weg|allee|platz|ring|gasse|damm|ufer)\s+\d{1,4}[a-zA-Z]?\b/gi
-const DOB_VALUE_REGEX =
-  /\b(?:geboren\s*(?:am\s*)?|geb\.?\s*(?:am\s*)?|Geburtsdatum\s*)(?:[:-]\s*)?\d{1,2}\.\d{1,2}\.\d{2,4}\b/gi
-// The reversed word order — "… am 12.03.1980 geboren" / "12.03.1980 geboren" (ADR-0107 H2 review).
-// Lookahead on the keyword so only the date is replaced; bounded, so it stays linear.
-const DOB_BEFORE_KEYWORD_REGEX = /\b\d{1,2}\.\d{1,2}\.\d{2,4}(?=\s+geboren\b)/gi
+  /\b[A-ZÄÖÜ][a-zäöüß-]{2,60}(?:straße|strasse|str\.|weg|allee|platz|ring|gasse|damm|ufer)\s+\d{1,4}[a-zA-Z]?\b(?!\s*(?:km|m|meter|kilometer|min|minuten)\b)/gi
+// Birthdate: a birth keyword plus a date in any common German shape — dotted/slashed numeric
+// (12.03.1980, 12/03/1980) or a spelled-out month (12. März 1980). The keyword stays required so plain
+// dates (deadlines, periods) are not masked. Bounded alternation → linear (ADR-0107 H2 review).
+const DOB_DATE = '(?:\\d{1,2}[./]\\d{1,2}[./]\\d{2,4}|\\d{1,2}\\.\\s*(?:Januar|Februar|März|April|Mai|Juni|Juli|August|September|Oktober|November|Dezember)\\s+\\d{2,4})'
+const DOB_VALUE_REGEX = new RegExp(
+  `\\b(?:geboren\\s*(?:am\\s*)?|geb\\.?\\s*(?:am\\s*)?|Geburtsdatum\\s*)(?:[:-]\\s*)?${DOB_DATE}\\b`,
+  'gi',
+)
+// The reversed word order — "… am 12.03.1980 geboren". Lookahead on the keyword so only the date is replaced.
+const DOB_BEFORE_KEYWORD_REGEX = new RegExp(`\\b${DOB_DATE}(?=\\s+geboren\\b)`, 'gi')
 // Inline employer: a capitalised company token (up to four words) followed by a German legal form.
 // Bounded quantifiers only (ADR-0106 D1); case-sensitive on the legal form so prose words like "gegen"
-// cannot match. Catches "Siemens AG", "Muster Bau GmbH" inside a free-text sentence (ADR-0107 H2).
+// cannot match. The leading negative lookahead keeps a sentence-initial determiner out ("Eine KG gründen"
+// is a generic legal-form question, not an employer — the over-masking the H2 review flagged).
 const EMPLOYER_INLINE_REGEX =
-  /\b[A-ZÄÖÜ][\p{L}0-9.&'-]{0,40}(?:[\s-]+[A-ZÄÖÜ0-9][\p{L}0-9.&'-]{0,40}){0,3}[\s-]+(?:AG|GmbH|mbH|gGmbH|UG|OHG|KGaA|KG|SE)\b/gu
+  /\b(?!(?:Eine?|Der|Die|Das|Dem|Den|Meine?|Keine?|Deine?|Seine?|Ihre|Unsere|Diese|Jede|Welche|Solche|Als)\s)[A-ZÄÖÜ][\p{L}0-9.&'-]{0,40}(?:[\s-]+[A-ZÄÖÜ0-9][\p{L}0-9.&'-]{0,40}){0,3}[\s-]+(?:AG|GmbH|mbH|gGmbH|UG|OHG|KGaA|KG|SE)\b/gu
+// Employer named by context word, no legal form ("arbeite bei Siemens", "Arbeitgeber ist die Deutsche Bahn",
+// "Firma Müller") — the bare-brand leak the H2 review flagged. The trigger is captured ($1) and kept; only
+// the company name is masked. Plain "bei <Noun>" is deliberately NOT a trigger (German capitalises every
+// noun, so it would clobber "bei Bedarf"); the trigger must name employment.
+const EMPLOYER_CONTEXT_REGEX =
+  /\b((?:(?:arbeite|angestellt|beschäftigt|tätig)\s+bei|Arbeitgeber(?:in)?|Firma)\s+(?:(?:ist|der|dem|die|das)\s+){0,2})[A-ZÄÖÜ][\p{L}0-9.&'-]{1,40}(?:[\s-]+[A-ZÄÖÜ][\p{L}0-9.&'-]{1,40}){0,2}/gu
 // Honorific-prefixed third-party names a profile-derived name list can never hold (landlord, doctor,
 // accountant): "Herr Konrad Bauer", "Frau Dr. Schmidt". Bounded to three capitalised name words.
 const HONORIFIC_NAME_REGEX =
   /\b(?:Herrn?|Frau|Dr\.|Prof\.)(?:\s+(?:Dr\.|Prof\.|med\.))?\s+[A-ZÄÖÜ][a-zäöüß]{1,30}(?:[\s-]+[A-ZÄÖÜ][a-zäöüß]{1,30}){0,2}/gu
+// Third-party name by relationship word, without an honorific ("mein Vermieter Konrad Bauer"). Captures the
+// relationship ($1) and masks only the name. Applied after the known-name pass, so "[MANDANT]" (which does
+// not start with a capital letter) is never swallowed.
+const RELATED_PERSON_NAME_REGEX =
+  /\b((?:Vermieter(?:in)?|Mieter(?:in)?|Nachbar(?:in|n)?|Arzt|Ärztin|Zahnarzt|Hausarzt|Steuerberater(?:in)?|Makler(?:in)?|Anwalt|Anwältin|Chef(?:in)?|Partner(?:in)?)\s+(?:ist\s+|heißt\s+)?)[A-ZÄÖÜ][a-zäöüß]{1,30}(?:[\s-]+[A-ZÄÖÜ][a-zäöüß]{1,30}){0,2}/gu
 const EMPLOYER_LINE_REGEX =
   /^(?!.*\b(?:Bruttoarbeitslohn|Lohnsteuer|Rentenversicherung|Krankenversicherung|Pflegeversicherung|Arbeitslosenversicherung)\b).*\b(?:GmbH|mbH|UG|OHG|KGaA|GmbH\s*&\s*Co\.?\s*KG|Co\.?\s*KG|AG|SE)\b.*$/gm
 // A second word of the town and trailing blanks no longer compete for the same blanks (Sonar S8786).
