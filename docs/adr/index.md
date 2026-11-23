@@ -121,6 +121,7 @@ boot-ordering invariant are detailed in [`docs/arc42/README.md`](../arc42/README
 | 0100 | Eule: Wächter neben dem Modell, Zeiten je Runde, Maske vor der Frage | Accepted |
 | 0101 | Selbstständige: EÜR, Buchhaltung, Bilanz, Umsatz- und Gewerbesteuer | Accepted |
 | 0102 | Ports & Adapters: two architecture tests enforce the boundaries in `apps/api` and in the core | Accepted |
+| 0103 | Session-security hardening: `/v1` CSRF, an absolute session cap, token rotation, stronger registration defaults | Accepted |
 | 0104 | Fixes for the post-hardening security-audit findings (token-logging, Swagger, redirect, request-id, control chars) | Accepted |
 
 See also the [Tech Radar](./tech-radar.md).

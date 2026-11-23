@@ -65,6 +65,36 @@ describe('REQ-010 — security hardening, against the real server', () => {
     expect(response.status).toBe(200)
   })
 
+  // ADR-0103 vulnerability 1 — the origin check now extends to the app's own `/v1` controllers, which
+  // better-auth's own check (it guards only `/api/auth/*`) never reached. The session cookie is
+  // SameSite=None (ADR-0011), so without this a cross-site form POST would arrive with the victim's cookie.
+  it('a state-changing /v1 request from a non-trusted origin is rejected (origin-based CSRF on the app routes)', async () => {
+    const response = await fetch(`${baseUrl}/v1/profile`, {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json', origin: 'https://not-trusted.example.com' },
+      body: JSON.stringify({ firstName: 'Mallory', lastName: 'Attacker', steuerId: '02476291358' }),
+    })
+    expect(response.status).toBe(403)
+  })
+
+  it('the same /v1 request from the allow-listed origin is not CSRF-blocked (the real web app still works)', async () => {
+    const response = await fetch(`${baseUrl}/v1/profile`, {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json', origin: 'https://allowed.example.com' },
+      body: JSON.stringify({ firstName: 'Anna', lastName: 'Beispiel', steuerId: '02476291358' }),
+    })
+    expect(response.status).toBe(200)
+  })
+
+  it('a state-changing /v1 request with no Origin header is allowed (a native app / server-to-server client, not browser CSRF)', async () => {
+    const response = await fetch(`${baseUrl}/v1/profile`, {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ firstName: 'Nat', lastName: 'Ive', steuerId: '02476291358' }),
+    })
+    expect(response.status).toBe(200)
+  })
+
   it('repeated failed logins from the same account trip better-auth\'s built-in rate limit rather than being unbounded', async () => {
     await fetch(`${baseUrl}/api/auth/sign-up/email`, {
       method: 'POST',

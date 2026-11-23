@@ -107,3 +107,45 @@ describe('/v1/steuerjahre/:jahr/abgabe', () => {
     expect(response.json()).toMatchObject({ code: 'TAX_YEAR_NOT_FOUND' })
   })
 })
+
+// ADR-0103 vulnerability 4 — filing the return requires a verified email. Both accounts here are fully
+// set up for the year, so the only difference is the verification flag: the control's "break it" proof.
+describe('/v1/steuerjahre/:jahr/abgabe — verified-email gate (ADR-0103)', () => {
+  let app: NestFastifyApplication
+  const VERIFIED = 'verified-user'
+  const UNVERIFIED = 'unverified-user'
+
+  beforeEach(async () => {
+    const built = await buildTestApp({
+      sessionsByToken: {
+        'tok-verified': { userId: VERIFIED, emailVerified: true },
+        'tok-unverified': { userId: UNVERIFIED, emailVerified: false },
+      },
+    })
+    app = built.app
+    for (const user of [VERIFIED, UNVERIFIED]) {
+      built.taxYearRepository.seed(user, { taxYear: YEAR, openItems: 0 })
+      built.submissionRepository.seedYear(user, YEAR)
+      built.interviewRepository.seed(user, YEAR, { job: 'Angestellt', familienstand: 'Ledig', ausland: 'Nein', kinder: 'Nein' })
+      built.lstbRepository.seed({ userId: user, taxYear: YEAR, bruttoarbeitslohn: '48200', lohnsteuer: '7457', sozialversicherung: '9880' })
+    }
+  })
+
+  afterEach(async () => {
+    await app.close()
+  })
+
+  const submitAs = (token: string) =>
+    app.inject({ method: 'POST', url: `/v1/steuerjahre/${YEAR}/abgabe`, headers: { cookie: `better-auth.session_token=${token}` }, payload: { submittedOn: '2026-03-14' } })
+
+  it('refuses a signed-in account whose email is not verified (403)', async () => {
+    const response = await submitAs('tok-unverified')
+    expect(response.statusCode).toBe(403)
+  })
+
+  it('lets the same filing through once the email is verified (200)', async () => {
+    const response = await submitAs('tok-verified')
+    expect(response.statusCode).toBe(200)
+    expect(response.json()).toMatchObject({ status: 'eingereicht' })
+  })
+})

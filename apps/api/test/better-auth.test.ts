@@ -1,6 +1,7 @@
 import type { PrismaClient } from '@prisma/client'
 import { describe, expect, it, vi } from 'vitest'
 import { createBetterAuth, OAUTH_REGISTRATION_RATE_LIMIT } from '../src/auth/better-auth.js'
+import { SESSION_IDLE_EXPIRES_IN_SECONDS, SESSION_UPDATE_AGE_SECONDS } from '../src/auth/session-lifetime.js'
 import { resolveAppleClientId, resolveAppleClientSecret, resolveAppleSignInEnabled, resolveBetterAuthSecret, resolveBetterAuthUrl, resolveGoogleClientId, resolveGoogleClientSecret } from '../src/auth/better-auth-env.js'
 import type { EmailSender } from '../src/auth/email-sender.js'
 
@@ -220,5 +221,41 @@ describe('OAuth 2.1 Provider plugin (ADR-0052 §4, Issue #385)', () => {
     const rule = createBetterAuth(base).auth.options.rateLimit?.customRules?.['/oauth2/register'] as { window: number; max: number }
     expect(rule).toEqual(OAUTH_REGISTRATION_RATE_LIMIT)
     expect((rule.max * 3600) / rule.window).toBeGreaterThanOrEqual(500)
+  })
+})
+
+// ADR-0103 — session-security hardening config.
+describe('createBetterAuth — session-security hardening (ADR-0103)', () => {
+  const base = {
+    prisma: {} as PrismaClient,
+    secret: 'test-secret-at-least-32-characters-long!!',
+    baseUrl: 'http://localhost:3000',
+    webAppUrl: 'https://app.steuereule.de',
+    trustedOrigins: ['https://allowed.example.com'],
+    trustedProxies: [],
+    emailSender: fakeEmailSender(),
+  }
+
+  it('requires a 12-character minimum password, not 8 (vulnerability 4)', () => {
+    const options = createBetterAuth(base).auth.options
+    expect(options.emailAndPassword?.minPasswordLength).toBe(12)
+  })
+
+  it('keeps sign-up open to unverified accounts (guest-first onboarding, ADR-0012) — the gate is at the sensitive action', () => {
+    const options = createBetterAuth(base).auth.options
+    expect(options.emailAndPassword?.requireEmailVerification).toBe(false)
+  })
+
+  it('pins the sliding idle window and keeps freshAge 0 (ADR-0027) (vulnerability 2)', () => {
+    const session = createBetterAuth(base).auth.options.session
+    expect(session?.freshAge).toBe(0)
+    expect(session?.expiresIn).toBe(SESSION_IDLE_EXPIRES_IN_SECONDS)
+    expect(session?.updateAge).toBe(SESSION_UPDATE_AGE_SECONDS)
+  })
+
+  it('trusts the CORS origins and the web-app origin as one merged allowlist (ADR-0012 §5)', () => {
+    const trusted = createBetterAuth(base).auth.options.trustedOrigins as string[]
+    expect(trusted).toContain('https://allowed.example.com')
+    expect(trusted).toContain('https://app.steuereule.de')
   })
 })

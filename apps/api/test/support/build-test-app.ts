@@ -74,8 +74,12 @@ export async function buildTestApp(options?: {
   /** Overrides the default always-succeeding DATABASE_REACHABILITY_CHECK stub — the one
    * seam a caller needs to exercise `/v1/health/ready`'s failure branch (#279). */
   databaseReachabilityCheck?: () => Promise<void>
-  /** Maps `better-auth.session_token` cookie values to authenticated userIds for `@RequiresAccount()` tests. */
-  sessionsByToken?: Readonly<Record<string, string>>
+  /**
+   * Maps `better-auth.session_token` cookie values to authenticated userIds for `@RequiresAccount()` tests.
+   * A plain string is a verified account; pass `{ userId, emailVerified: false }` to exercise the
+   * `@RequiresVerifiedEmail()` gate (ADR-0103) with an unverified one.
+   */
+  sessionsByToken?: Readonly<Record<string, string | { userId: string; emailVerified?: boolean }>>
 }): Promise<{
   app: NestFastifyApplication
   repository: FakeProfileRepository
@@ -234,9 +238,11 @@ export async function buildTestApp(options?: {
               const trimmed = part.trim()
               if (trimmed.startsWith('better-auth.session_token=')) {
                 const token = decodeURIComponent(trimmed.slice('better-auth.session_token='.length))
-                const userId = sessions[token]
-                if (userId) {
-                  return { user: { id: userId }, session: { id: `sess-${token}` } }
+                const entry = sessions[token]
+                if (entry) {
+                  const userId = typeof entry === 'string' ? entry : entry.userId
+                  const emailVerified = typeof entry === 'string' ? true : entry.emailVerified ?? true
+                  return { user: { id: userId, emailVerified }, session: { id: `sess-${token}` } }
                 }
               }
             }
