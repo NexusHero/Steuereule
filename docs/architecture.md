@@ -374,6 +374,8 @@ sequenceDiagram
 
 Three lines of defence come before the model. For the Swiss salary certificate and the wage tax certificate only an allowlist of rows leaves the server ([ADR-0058](adr/0058-lstb-textfallback-allowlist.md)), and the model is asked only when the fixed rules left a field empty. Then `scrubDocumentTextPii` removes names, addresses and identifiers. Finally `checkPiiFree` aborts if the text still contains an IBAN or a tax id. Values from OCR never count as read with certainty and have to be confirmed.
 
+Each strategy's `parse()` is a short sequence of named steps: read with the fixed rules, fill gaps with the model, decide whose document it is, stage the drafts, build the response. The steps several strategies share live in `receipt/parse/document-parse-steps.ts`: `resolveVisionModel` (kill switch and `vision_ocr` slot), `isolateGrounding` (`scrubDocumentTextPii`, then `checkPiiFree`), `extractWithModel` (one call through the `SingleShotModel` port with a timeout, then JSON extraction and the zod schema), and the response pieces (`stagingEngine`, `yearConflictOf`, `noTaxYearReason`, `stagedDraftsOf`). The pure steps of the receipt strategy (`kind: 'auto'`) are in `receipt/parse/auto-receipt-steps.ts`.
+
 ---
 
 # 7. Deployment view
@@ -527,6 +529,7 @@ Two rules for gates: a gate counts only when it runs in CI against the real thin
 | 11 | **A second target environment in `infra/`.** Next to `infra/gcp` there are definitions for Hetzner with k3s. | A reader of the repository sees two targets and cannot tell which one applies. | Remove them or mark them as an archive. |
 | 12 | **ADRs in status *Draft* for shipped code** (0046, 0048, 0049). | The decision has not been formally accepted. | Settle the status. |
 | 13 | **Two arc42 documents.** This document and `arc42/README.md` overlap; the latter describes an early state in its §5 and §5.1. | Readers cannot tell which one applies. | This document is authoritative. Cut `arc42/README.md` down to the toolchain and the boot order. |
+| 14 | **The receipt strategy chains four fixed rules.** `AutoReceiptParseStrategy` applies the craftsman, donation, medical and childcare rules in a fixed order; each rule checks flags the earlier ones set (`invoice`, `donationRecognised`). | A fifth rule has to know the order and the flags of the four before it. | When a fifth rule comes, give each rule a common signature and keep them in an ordered list. |
 
 ---
 
