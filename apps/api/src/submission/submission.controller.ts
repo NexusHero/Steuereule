@@ -12,6 +12,7 @@ import {
 } from '@nestjs/swagger'
 import { CurrentUser } from '../auth/current-user.decorator.js'
 import { RequiresAccount } from '../auth/requires-account.guard.js'
+import { RequiresVerifiedEmail } from '../auth/requires-verified-email.guard.js'
 import { UserContextGuard } from '../auth/user-context.guard.js'
 import { ParseTaxYearPipe } from '../cockpit/parse-tax-year.pipe.js'
 import { SubmissionResultDto, SubmitTaxReturnDto } from './dto/submission.dto.js'
@@ -27,6 +28,8 @@ export class SubmissionController {
   @Post(':jahr/abgabe')
   @HttpCode(200)
   @RequiresAccount()
+  // Filing the return is the most sensitive outward action — it requires a verified email (ADR-0103 §4).
+  @RequiresVerifiedEmail()
   @ApiParam({ name: 'jahr', type: Number, example: 2025, description: 'The tax year (Steuerjahr).' })
   @ApiBody({ type: SubmitTaxReturnDto })
   @ApiOkResponse({ type: SubmissionResultDto, description: 'The return as it stands is frozen as the filed version; the year is `eingereicht`.' })

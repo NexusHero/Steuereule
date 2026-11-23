@@ -16,6 +16,9 @@ import { deviceSessionCookiePlugin } from './device-session-cookie.js'
 import type { EmailSender } from './email-sender.js'
 import { createGuestAccountUpgradeHook } from './guest-account-upgrade.prisma.js'
 import { createResettableRateLimitStorage, type ResettableRateLimitStorage } from './rate-limit-storage.js'
+import { mergeTrustedOrigins } from './trusted-origins.js'
+import { SESSION_IDLE_EXPIRES_IN_SECONDS, SESSION_UPDATE_AGE_SECONDS } from './session-lifetime.js'
+import { forceRevokeOtherSessionsOnPasswordChange } from './force-session-rotation.js'
 
 export const OAUTH_SCOPES = [
   'openid',
@@ -109,12 +112,16 @@ function buildOptions(options: CreateBetterAuthOptions & { rateLimitStorage: Res
     baseURL: baseUrl,
     secret,
     database: prismaAdapter(prisma, { provider: 'postgresql' }),
-    trustedOrigins: [...new Set([...trustedOrigins, new URL(webAppUrl).origin])],
+    trustedOrigins: mergeTrustedOrigins(trustedOrigins, webAppUrl),
     emailAndPassword: {
       enabled: true,
       autoSignIn: true,
+      // Guest-first onboarding (ADR-0012) and the unverified-account sweep (ADR-0030) require sign-up to
+      // keep working without a verified email; sensitive actions are gated on verification instead
+      // (`RequiresVerifiedEmailGuard`, ADR-0103 vulnerability 4).
       requireEmailVerification: false,
-      minPasswordLength: 8,
+      // ADR-0103 vulnerability 4: 12, not 8 — paired with the Have I Been Pwned breach check (ADR-0012 §5).
+      minPasswordLength: 12,
     },
     socialProviders,
     emailVerification: {
@@ -180,7 +187,11 @@ function buildOptions(options: CreateBetterAuthOptions & { rateLimitStorage: Res
       },
     },
     session: {
+      // freshAge stays 0 — the device list depends on it (ADR-0027). expiresIn/updateAge are the sliding
+      // idle window; the absolute cap from creation is enforced in UserContextGuard (ADR-0103).
       freshAge: 0,
+      expiresIn: SESSION_IDLE_EXPIRES_IN_SECONDS,
+      updateAge: SESSION_UPDATE_AGE_SECONDS,
     },
     hooks: {
       // The MCP endpoint is the protected resource a client asks a token for (RFC 8707). Created on the
@@ -188,6 +199,10 @@ function buildOptions(options: CreateBetterAuthOptions & { rateLimitStorage: Res
       before: createAuthMiddleware(async (ctx) => {
         if (ctx.path.startsWith('/oauth2/')) await Promise.all(ensureResources.map((ensure) => ensure(ctx.context.adapter as unknown as ResourceAdapter)))
         if (ctx.path === '/oauth2/register') await sweepClients(ctx.context.adapter as unknown as SweepAdapter)
+        // A password change always rotates the current token and revokes the account's other sessions,
+        // whatever the client sent (ADR-0103 vulnerability 3): force better-auth's own flag on.
+        const rotation = forceRevokeOtherSessionsOnPasswordChange(ctx.path, ctx.body)
+        if (rotation) return rotation
       }),
     },
     databaseHooks: {
