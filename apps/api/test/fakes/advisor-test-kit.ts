@@ -36,6 +36,9 @@ import { AdvisorCaseDigest, type PrintoutGaps } from '../../src/advisor/advisor-
 import { AdvisorCaseFacts } from '../../src/advisor/advisor-case-facts.js'
 import { draftRecordsOf } from '../../src/advisor/advisor-draft-records.js'
 import { AdvisorDrafts } from '../../src/advisor/advisor-drafts.js'
+import { AdvisorConversations } from '../../src/advisor/advisor-conversations.js'
+import { AdvisorOpening } from '../../src/advisor/advisor-opening.js'
+import { AdvisorProjectNotes } from '../../src/advisor/advisor-project-notes.js'
 import { NotFoundError } from '../../src/common/domain-error.js'
 import { FakeBusinessRepository } from './fake-business.repository.js'
 import { FakeReceiptRepository } from './fake-receipt.repository.js'
@@ -160,6 +163,10 @@ export function buildAdvisorTestKit(engine?: AdvisorEnginePort, modelConnection?
     const facts = new AdvisorCaseFacts(capitalRepo, chRepo, childRepo, commuteRepo, confirmationService, interviewRepo, lstbRepo, owlModeService, profileRepo, rentalRepo, pensionRepo)
     const drafts = new AdvisorDrafts(advisorRepo, auditService, confirmationService, transactions, linkService, consent, draftRecordsOf(childRepo, rentalRepo))
     const caseDigest = new AdvisorCaseDigest(advisorRepo, confirmationService, facts, drafts, transactions, consent, linkService, wiring.printout ?? noFormsPrintout, receiptRepo, taxEstimate, business)
+    const advisorEngine = wiring.engine ?? null
+    const conversations = new AdvisorConversations(advisorEngine, advisorRepo, auditService, caseDigest)
+    const notes = new AdvisorProjectNotes(advisorRepo, caseDigest)
+    const opening = new AdvisorOpening(advisorRepo, caseDigest, notes, taxEstimate)
     const service = new AdvisorService(
       advisorRepo,
       owlModeService,
@@ -167,12 +174,14 @@ export function buildAdvisorTestKit(engine?: AdvisorEnginePort, modelConnection?
       auditService,
       drafts,
       caseDigest,
+      conversations,
+      notes,
+      opening,
+      advisorEngine,
       childRepo,
       profileRepo,
-      wiring.engine,
       runtimeConfig,
       transactions,
-      taxEstimate,
       wiring.modelConnection ?? new ModelConnectionService(runtimeConfig),
       assessmentService,
       linkService,

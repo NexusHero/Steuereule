@@ -22,7 +22,6 @@ import { ADVISOR_ENGINE } from '../ki/advisor-engine.token.js'
 import { AI_RUNTIME_CONFIG_SERVICE, type AiRuntimeConfigService } from '../ki/ai-runtime-config.service.js'
 import { AssessmentService } from '../assessment/assessment.service.js'
 import { ModelConnectionService } from '../ki/model-connection.service.js'
-import { TaxEstimateService } from '../tax-estimate/tax-estimate.service.js'
 import { TRANSACTION_RUNNER, passThroughTransactionRunner, type TransactionRunner } from '../common/transaction-runner.js'
 import { AdvisorOpening } from './advisor-opening.js'
 import { CHILD_REPOSITORY, type ChildRepository } from '../children/child.repository.js'
@@ -82,12 +81,15 @@ export class AdvisorService {
     @Inject(AuditService) private readonly auditService: AuditService,
     @Inject(AdvisorDrafts) private readonly drafts: AdvisorDrafts,
     @Inject(AdvisorCaseDigest) private readonly caseDigest: AdvisorCaseDigest,
+    @Inject(AdvisorConversations) private readonly conversations: AdvisorConversations,
+    @Inject(AdvisorProjectNotes) private readonly notes: AdvisorProjectNotes,
+    @Inject(AdvisorOpening) private readonly opening: AdvisorOpening,
+    /** Null only where the fixed rules answer alone; AdvisorModule always binds a model engine. */
+    @Inject(ADVISOR_ENGINE) private readonly advisorEngine: AdvisorEnginePort | null,
     @Optional() @Inject(CHILD_REPOSITORY) private readonly childRepo?: ChildRepository,
     @Optional() @Inject(PROFILE_REPOSITORY) private readonly profileRepo?: ProfileRepository,
-    @Optional() @Inject(ADVISOR_ENGINE) private readonly advisorEngine?: AdvisorEnginePort,
     @Optional() @Inject(AI_RUNTIME_CONFIG_SERVICE) private readonly runtimeConfig?: AiRuntimeConfigService,
     @Optional() @Inject(TRANSACTION_RUNNER) private readonly transactions: TransactionRunner = passThroughTransactionRunner,
-    @Optional() @Inject(TaxEstimateService) private readonly taxEstimate?: TaxEstimateService,
     @Optional() @Inject(ModelConnectionService) private readonly modelConnection?: ModelConnectionService,
     @Optional() @Inject(AssessmentService) private readonly assessmentService?: AssessmentService,
     @Optional() @Inject(LinkService) private readonly link?: LinkService,
@@ -99,32 +101,11 @@ export class AdvisorService {
     return (await this.personalDataConsent?.hasConsent(userId)) ?? false
   }
 
-  // The service is the front door; each theme lives in its own part.
-  private openingPart?: AdvisorOpening
-  private get opening(): AdvisorOpening {
-    return (this.openingPart ??= new AdvisorOpening(
-      this.advisorRepo,
-      (userId, taxYear) => this.buildCaseDigest(userId, taxYear),
-      async (userId) => (await this.notes.getSituation(userId)).text,
-      this.taxEstimate ? (userId, taxYear) => this.taxEstimate!.getState(userId, taxYear) : undefined,
-    ))
-  }
-
   /** Whether a new conversation opens with the owl speaking first (ADR-0067 §11). */
   async openingState(userId: string, taxYear: number): Promise<AdvisorOpeningStateDto> {
     const state = await this.opening.state(userId, taxYear)
     // Without a language model the fixed rules answer; they have nothing to open with.
     return this.advisorEngine ? state : { ...state, shouldOpen: false }
-  }
-
-  private conversationsPart?: AdvisorConversations
-  private get conversations(): AdvisorConversations {
-    return (this.conversationsPart ??= new AdvisorConversations(this.advisorEngine, this.advisorRepo, this.auditService, (...args) => this.knownNamesForScrubbing(...args)))
-  }
-
-  private notesPart?: AdvisorProjectNotes
-  private get notes(): AdvisorProjectNotes {
-    return (this.notesPart ??= new AdvisorProjectNotes(this.advisorRepo, (...args) => this.knownNamesForScrubbing(...args)))
   }
 
   private turnPart?: AdvisorTurn
@@ -139,7 +120,7 @@ export class AdvisorService {
       this.drafts,
       this.transactions,
       (userId) => this.hasPersonalDataConsent(userId),
-      this.advisorEngine,
+      this.advisorEngine ?? undefined,
       this.runtimeConfig,
       this.modelConnection,
       this.assessmentService,
