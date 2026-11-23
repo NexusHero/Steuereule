@@ -8,9 +8,6 @@ export const DEVICE_PENDING_THROTTLE = { ttl: 60_000, limit: 10 } as const
 /** Approving a device by its user code; unthrottled it answered ~250 guesses a second (ADR-0106 D11). */
 export const DEVICE_APPROVE_THROTTLE = { ttl: 60_000, limit: 10 } as const
 
-/** Receipt uploads per account (ADR-0106 D7): a busy scanning session stays well below it. */
-export const RECEIPT_UPLOAD_THROTTLE = { ttl: 10 * 60_000, limit: 60 } as const
-
 export const VERIFY_PASSWORD_THROTTLE = { ttl: 10_000, limit: 3 } as const
 
 export const LINK_JOIN_THROTTLE = { ttl: 60_000, limit: 5 } as const

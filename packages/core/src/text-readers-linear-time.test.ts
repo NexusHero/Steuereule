@@ -13,8 +13,11 @@ const SMALL = 8_000
 const LARGE = 32_000
 /** Linear is ~4×; allow noise up to 9×, well short of the 16× a quadratic reader shows. */
 const MAX_GROWTH = 9
-/** Below this a timing is noise; the slow readers took > 1 s at the large size. */
-const FLOOR_MS = 15
+/**
+ * Below this a timing is noise (JIT warm-up, GC, a busy runner). The quadratic readers took 190 ms to 13.7 s
+ * at the large size; the linear ones take a few milliseconds.
+ */
+const FLOOR_MS = 50
 
 const SHAPES: Record<string, string> = {
   dots: '1.',
@@ -40,15 +43,21 @@ const readers: [string, Reader][] = Object.entries(core as Record<string, unknow
   .filter(([name, value]) => typeof value === 'function' && READER_NAME.test(name))
   .map(([name, value]) => [name, value as Reader])
 
-function fastest(reader: (text: string) => unknown, text: string): number {
+function run(reader: Reader, text: string): void {
+  try {
+    reader(text)
+  } catch {
+    // A reader may refuse the shape; only its running time matters here.
+  }
+}
+
+/** The fastest of three runs after one warm-up run, so the JIT and a stray GC pause do not count. */
+function fastest(reader: Reader, text: string): number {
+  run(reader, text)
   let best = Number.POSITIVE_INFINITY
-  for (let round = 0; round < 2; round += 1) {
+  for (let round = 0; round < 3; round += 1) {
     const started = performance.now()
-    try {
-      reader(text)
-    } catch {
-      // A reader may refuse the shape; only its running time matters here.
-    }
+    run(reader, text)
     best = Math.min(best, performance.now() - started)
   }
   return best

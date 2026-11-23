@@ -10,10 +10,12 @@ const mocks = vi.hoisted(() => ({
   session: { state: { status: 'loading' } as unknown },
   twoFactor: { enable: vi.fn(), verifyTotp: vi.fn(), verifyBackupCode: vi.fn(), disable: vi.fn() },
   passkey: { list: vi.fn(), add: vi.fn(), remove: vi.fn() },
+  stepUp: { verifyPassword: vi.fn() },
 }))
 vi.mock('../../auth/useAccountSession', () => ({ useAccountSession: () => ({ state: mocks.session.state }) }))
 vi.mock('../../auth/useTwoFactor', () => ({ useTwoFactor: () => mocks.twoFactor }))
 vi.mock('../../auth/usePasskey', () => ({ usePasskey: () => mocks.passkey }))
+vi.mock('../../auth/useStepUp', async (importOriginal) => ({ ...(await importOriginal<typeof import('../../auth/useStepUp')>()), useStepUp: () => mocks.stepUp }))
 
 import { SecurityScreen } from './SecurityScreen'
 

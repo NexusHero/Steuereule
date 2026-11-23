@@ -18,7 +18,6 @@ import { CurrentUser } from '../auth/current-user.decorator.js'
 import { UserContextGuard } from '../auth/user-context.guard.js'
 import { Throttle } from '@nestjs/throttler'
 import { FastifyThrottlerGuard } from '../advisor/advisor.controller.js'
-import { RECEIPT_UPLOAD_THROTTLE } from '../rate-limit/rate-limit.js'
 import { InvalidInputError } from '../common/domain-error.js'
 import { ReceiptService } from './receipt.service.js'
 import { DeleteReceiptResponseDto, ReceiptPageResponseDto, ReceiptResponseDto } from './dto/receipt-response.dto.js'
@@ -67,6 +66,9 @@ function isFileTooLargeError(error: unknown): boolean {
   const code = 'code' in error ? (error as { code?: unknown }).code : undefined
   return code === 'FST_REQ_FILE_TOO_LARGE' || code === 'FST_FILES_LIMIT'
 }
+
+/** Receipt uploads per account (ADR-0106 D7): a busy scanning session stays well below it. */
+export const RECEIPT_UPLOAD_THROTTLE = { ttl: 10 * 60_000, limit: 60 } as const
 
 @ApiTags('belege')
 @Controller('v1/belege')
