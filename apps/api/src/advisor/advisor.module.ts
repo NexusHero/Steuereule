@@ -30,10 +30,11 @@ import { AdvisorProjectNotes } from './advisor-project-notes.js'
 import { AdvisorDocumentStaging } from './advisor-document-staging.js'
 import { AdvisorTurn } from './advisor-turn.js'
 import { AdvisorCaseFacts } from './advisor-case-facts.js'
-import { draftRecordsOf } from './advisor-draft-records.js'
+import { draftRecordRegistry } from './advisor-draft-records.js'
 import { AdvisorDrafts, DRAFT_RECORDS } from './advisor-drafts.js'
-import { CHILD_REPOSITORY } from '../children/child.repository.js'
-import { RENTAL_REPOSITORY } from '../rental/rental.repository.js'
+import { ChildDraftRecords } from '../children/child-draft-records.js'
+import type { DraftRecordSource } from '../common/draft-record-source.js'
+import { RentalDraftRecords } from '../rental/rental-draft-records.js'
 import { AdvisorModelsService } from './advisor-models.service.js'
 import { AdvisorModelCatalog } from '../ki/advisor-model-catalog.js'
 import { ADVISOR_RUN_LOG, InMemoryAdvisorRunLog, type AdvisorRunLog } from './run/advisor-run-log.js'
@@ -85,7 +86,8 @@ export function createAdvisorRunLog(env: NodeJS.ProcessEnv = process.env): Advis
     AdvisorOpening,
     AdvisorDocumentStaging,
     AdvisorTurn,
-    { provide: DRAFT_RECORDS, inject: [CHILD_REPOSITORY, RENTAL_REPOSITORY], useFactory: draftRecordsOf },
+    // Each owning module provides the rows of its mask; a new mask with rows adds its source here.
+    { provide: DRAFT_RECORDS, inject: [ChildDraftRecords, RentalDraftRecords], useFactory: (...sources: DraftRecordSource[]) => draftRecordRegistry(sources) },
     AdvisorRunService,
     AdvisorModelsService,
     AdvisorModelCatalog,

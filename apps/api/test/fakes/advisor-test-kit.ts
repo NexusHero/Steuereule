@@ -34,7 +34,9 @@ import { EnvAiRuntimeConfigService, type AiRuntimeConfigService } from '../../sr
 import { ModelConnectionService } from '../../src/ki/model-connection.service.js'
 import { AdvisorCaseDigest, type PrintoutGaps } from '../../src/advisor/advisor-case-digest.js'
 import { AdvisorCaseFacts } from '../../src/advisor/advisor-case-facts.js'
-import { draftRecordsOf } from '../../src/advisor/advisor-draft-records.js'
+import { draftRecordRegistry } from '../../src/advisor/advisor-draft-records.js'
+import { ChildDraftRecords } from '../../src/children/child-draft-records.js'
+import { RentalDraftRecords } from '../../src/rental/rental-draft-records.js'
 import { AdvisorDrafts } from '../../src/advisor/advisor-drafts.js'
 import { AdvisorTurn } from '../../src/advisor/advisor-turn.js'
 import { InMemoryAdvisorRunLog, type AdvisorRunLog } from '../../src/advisor/run/advisor-run-log.js'
@@ -178,7 +180,7 @@ export function buildAdvisorTestKit(engine?: AdvisorEnginePort, modelConnection?
     const runtimeConfig = wiring.runtimeConfig ?? defaultRuntimeConfig
     const transactions = wiring.transactions ?? passThroughTransactionRunner
     const facts = new AdvisorCaseFacts(capitalRepo, chRepo, childRepo, commuteRepo, confirmationService, interviewRepo, lstbRepo, owlModeService, profileRepo, rentalRepo, pensionRepo)
-    const drafts = new AdvisorDrafts(advisorRepo, auditService, confirmationService, transactions, linkService, consent, draftRecordsOf(childRepo, rentalRepo))
+    const drafts = new AdvisorDrafts(advisorRepo, auditService, confirmationService, transactions, linkService, consent, draftRecordRegistry([new ChildDraftRecords(childRepo), new RentalDraftRecords(rentalRepo)]))
     const caseDigest = new AdvisorCaseDigest(advisorRepo, confirmationService, facts, drafts, transactions, consent, linkService, wiring.printout ?? noFormsPrintout, receiptRepo, taxEstimate, business)
     const advisorEngine = wiring.engine ?? null
     const conversations = new AdvisorConversations(advisorEngine, advisorRepo, auditService, caseDigest)

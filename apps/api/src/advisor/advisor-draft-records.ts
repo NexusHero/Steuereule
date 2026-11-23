@@ -1,24 +1,18 @@
-import type { ChildRepository } from '../children/child.repository.js'
-import type { RentalRepository } from '../rental/rental.repository.js'
+import type { Screen } from '@steuereule/core'
+import type { DraftRecordSource } from '../common/draft-record-source.js'
 import type { DraftRecords } from './advisor-drafts.js'
 
-/** The rows a draft may prepare as new (ADR-0091): a child, a rental object. Only a child is removed again on undo. */
-export function draftRecordsOf(childRepo: ChildRepository, rentalRepo: RentalRepository): DraftRecords {
+/** The rows a draft may prepare as new, by the mask they belong to (ADR-0091). A mask without a source has no rows. */
+export function draftRecordRegistry(sources: readonly DraftRecordSource[]): DraftRecords {
+  const byScreen = new Map<Screen, DraftRecordSource>()
+  for (const source of sources) {
+    if (byScreen.has(source.screen)) throw new Error(`Two draft record sources for the screen "${source.screen}".`)
+    byScreen.set(source.screen, source)
+  }
   return {
-    create: async (dataUserId, taxYear, screen, values) => {
-      if (screen === 'kind') {
-        const child = await childRepo.create(dataUserId, taxYear, {
-          firstName: values.firstName ?? '',
-          lastName: values.lastName ?? '',
-          geburtsdatum: values.geburtsdatum ?? '',
-        })
-        return child.id
-      }
-      if (screen === 'vermietung') return (await rentalRepo.create(dataUserId, taxYear)).id
-      return null
-    },
+    create: async (dataUserId, taxYear, screen, values) => (await byScreen.get(screen)?.create(dataUserId, taxYear, values)) ?? null,
     remove: async (dataUserId, taxYear, screen, id) => {
-      if (screen === 'kind') await childRepo.delete(dataUserId, taxYear, id)
+      await byScreen.get(screen)?.remove?.(dataUserId, taxYear, id)
     },
   }
 }
