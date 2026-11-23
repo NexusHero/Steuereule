@@ -27,7 +27,7 @@ import { PersonalDataConsentService } from '../../src/owl-mode/personal-data-con
 import { TaxEstimateService } from '../../src/tax-estimate/tax-estimate.service.js'
 import { ChildrenService } from '../../src/children/children.service.js'
 import { AssessmentService } from '../../src/assessment/assessment.service.js'
-import { BusinessService } from '../../src/business/business.service.js'
+import { composeBusinessService } from '../../src/business/business.composition.js'
 import { HebesatzDirectory } from '../../src/business/hebesatz.js'
 import { passThroughTransactionRunner, type TransactionRunner } from '../../src/common/transaction-runner.js'
 import { EnvAiRuntimeConfigService, type AiRuntimeConfigService } from '../../src/ki/ai-runtime-config.service.js'
@@ -250,7 +250,7 @@ export function buildAdvisorTestKit(engine?: AdvisorEnginePort, modelConnection?
   const taxEstimate = new TaxEstimateService(lstbRepo, interviewRepo, chRepo, masterDataRepo, commuteRepo, linkRepo, childRepo, rentalRepo, pensionRepo)
   const children = new ChildrenService(childRepo, auditService, chRepo, linkRepo)
   const assessmentService = new AssessmentService(assessmentRepo, lstbRepo, interviewRepo, chRepo, auditService)
-  const business = new BusinessService(new FakeBusinessRepository(), interviewRepo, auditService, new HebesatzDirectory())
+  const business = composeBusinessService(new FakeBusinessRepository(), interviewRepo, auditService, new HebesatzDirectory())
   const defaultRuntimeConfig = new EnvAiRuntimeConfigService({})
 
   const wire = (wiring: AdvisorTestKitOptions): AdvisorWiring => {
