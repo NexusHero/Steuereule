@@ -6,6 +6,9 @@ import type { BusinessRepository } from './business.repository.js'
 import { BusinessService } from './business.service.js'
 import type { HebesatzDirectory } from './hebesatz.js'
 import { LedgerService } from './ledger.service.js'
+import { BusinessSummaryService } from './business-summary.service.js'
+import { BusinessTaxService } from './business-tax.service.js'
+import { VatService } from './vat.service.js'
 import { AssetService } from './asset.service.js'
 import { BankImportService } from './bank-import.service.js'
 import { BusinessExportService } from './business-export.service.js'
@@ -29,5 +32,8 @@ export function composeBusinessService(
   const exports = new BusinessExportService(repository, audit, context, ledger)
   const bank = new BankImportService(repository, audit, context, ledger)
   const fixedAssets = new AssetService(repository, audit, context, ledger)
-  return new BusinessService(repository, audit, hebesaetze, context, ledger, payrollRuns, exports, bank, fixedAssets)
+  const vat = new VatService(repository, audit, context)
+  const tax = new BusinessTaxService(audit, context, ledger, hebesaetze)
+  const summary = new BusinessSummaryService(repository, context, vat, tax)
+  return new BusinessService(repository, audit, hebesaetze, context, ledger, payrollRuns, exports, bank, fixedAssets, vat, tax, summary)
 }
