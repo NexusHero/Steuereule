@@ -28,6 +28,7 @@ import {
   ISO_DATE_PATTERN,
 } from '@steuereule/core'
 import { InvalidInputError } from '../common/domain-error.js'
+import type { ScreenAccess } from '../common/screen-access.js'
 import type { AssessmentRepository } from '../assessment/assessment.repository.js'
 import type { CapitalRepository } from '../capital/capital.repository.js'
 import { MEANS_OF_TRANSPORT, WORK_EXPENSE_AMOUNT_FIELDS, WORK_EXPENSE_NOTE_FIELDS, type CommuteInputs, type CommuteRepository, type MeansOfTransport } from '../commute/commute.repository.js'
@@ -43,12 +44,7 @@ import type { InterviewAnswerRepository } from '../interview/interview-answer.re
 import { N_GRE_BOOLEAN_FIELDS, type CrossBorderSalaryStatementRepository, type NGreDetails } from '../ch-salary-certificate/ch-salary-certificate.repository.js'
 import type { ChildRepository } from '../children/child.repository.js'
 
-export interface ScreenAccess {
-  readonly fields: readonly string[]
-  readonly withInstance: boolean
-  read(userId: string, taxYear: number, instance: string | null): Promise<Readonly<Record<string, string | null>> | null>
-  write(userId: string, taxYear: number, instance: string | null, field: string, value: string | null): Promise<boolean>
-}
+export type { ScreenAccess }
 
 export type FieldAccess = Readonly<Partial<Record<Screen, ScreenAccess>>>
 
