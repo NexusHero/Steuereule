@@ -117,6 +117,28 @@ describe('PII Masking (ADR-0052 §8 — Personenbezogene Daten: schreiben ja, le
       expect(output).toContain('[KONTAKT-GESCHÜTZT]')
       expect(output).toContain('1.250 € Fortbildung')
     })
+
+    // Regression for the live pentest of 2026-11-23 (ADR-0107 H2): the chat path used to send street
+    // addresses, birthdates, employer names and honorific-prefixed third-party names to the LLM
+    // provider in cleartext, while the document path masked them.
+    it('masks addresses, birthdates, inline employers and honorific third-party names in free-text chat', () => {
+      const input =
+        'Ich wohne Lindenstraße 42, geboren am 12.03.1980, mein Vermieter ist Herr Konrad Bauer, Arbeitgeber Siemens AG.'
+      const output = scrubUserMessagePii(input, ['Alice', 'Victim'])
+      expect(output).not.toContain('Lindenstraße 42')
+      expect(output).not.toContain('12.03.1980')
+      expect(output).not.toContain('Konrad Bauer')
+      expect(output).not.toContain('Siemens AG')
+      expect(output).toContain('[ADRESSE-GESCHÜTZT]')
+      expect(output).toContain('[GEBURTSDATUM-GESCHÜTZT]')
+      expect(output).toContain('[NAME-GESCHÜTZT]')
+      expect(output).toContain('[ARBEITGEBER-GESCHÜTZT]')
+    })
+
+    it('leaves ordinary tax chat and euro amounts untouched (no over-masking)', () => {
+      const benign = 'Kann ich meine Fahrtkosten absetzen? Ich zahle 1200 Euro Miete und arbeite montags im Büro.'
+      expect(scrubUserMessagePii(benign, [])).toBe(benign)
+    })
   })
 
   describe('scrubDocumentTextPii', () => {

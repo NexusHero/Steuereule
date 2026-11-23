@@ -1,7 +1,9 @@
-import { Controller, Get, Inject, NotFoundException, Query, Res, UseGuards } from '@nestjs/common'
+import { Controller, Get, Inject, NotFoundException, Query, Req, Res, UseGuards } from '@nestjs/common'
 import { ApiNotFoundResponse, ApiOkResponse, ApiProduces, ApiQuery, ApiTags } from '@nestjs/swagger'
-import type { FastifyReply } from 'fastify'
+import type { FastifyReply, FastifyRequest } from 'fastify'
+import { BETTER_AUTH_BUNDLE, type BetterAuthBundle } from '../auth/auth.tokens.js'
 import { CurrentUser } from '../auth/current-user.decorator.js'
+import { FreshAuthChecker } from '../auth/fresh-auth.js'
 import { UserContextGuard } from '../auth/user-context.guard.js'
 import { AccountExportService } from './account-export.service.js'
 import { EXPORT_FORMATS, type ExportFormat, ExportQueryDto } from './dto/export-query.dto.js'
@@ -11,7 +13,11 @@ import { ExportDocumentDto } from './dto/export-response.dto.js'
 @Controller('v1/account')
 @UseGuards(UserContextGuard)
 export class AccountExportController {
-  constructor(@Inject(AccountExportService) private readonly exportService: AccountExportService) {}
+  constructor(
+    @Inject(AccountExportService) private readonly exportService: AccountExportService,
+    @Inject(FreshAuthChecker) private readonly freshAuthChecker: FreshAuthChecker,
+    @Inject(BETTER_AUTH_BUNDLE) private readonly betterAuth: BetterAuthBundle,
+  ) {}
 
   @Get('export')
   @ApiProduces('application/json', 'application/pdf')
@@ -28,8 +34,13 @@ export class AccountExportController {
   async exportAccount(
     @CurrentUser() userId: string,
     @Query() query: ExportQueryDto,
+    @Req() request: FastifyRequest,
     @Res({ passthrough: true }) reply: FastifyReply,
   ): Promise<ExportDocumentDto | Buffer> {
+    // Bulk PII leaves only behind a fresh session or a recent password re-entry (ADR-0107 L1),
+    // the same bar the account deletion sets — a stale stolen cookie cannot export everything.
+    await this.freshAuthChecker.assertFreshSessionOrStepUp(this.betterAuth, request.headers, userId)
+
     const document = await this.exportService.assemble(userId)
     if (!document) {
       throw new NotFoundException('No account exists for this session to export.')

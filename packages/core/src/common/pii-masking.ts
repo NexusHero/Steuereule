@@ -96,7 +96,12 @@ const PHONE_TEXT_REGEX = /(?:\+(?:49|41|43)[\s/-]?\d{2,4}|0\d{2,4})[\s/-]?\d{3,4
 
 /**
  * Scrubs free-text user chat messages before sending them to an external LLM.
- * Replaces known profile names, 11-digit tax IDs, tax numbers, IBANs, emails, and phone numbers.
+ * Replaces known profile names, 11-digit tax IDs, tax numbers, IBANs, emails, phone numbers,
+ * and — added after the live pentest of 2026-11-23 (ADR-0107 H2) — street addresses, birthdates,
+ * inline employer names and honorific-prefixed third-party names, so a typed chat message leaks no
+ * more PII to the provider than an uploaded document does. Every added pattern uses bounded
+ * quantifiers, so this stays linear in the message length (ADR-0106 D1; timed by
+ * text-readers-linear-time.test.ts).
  */
 export function scrubUserMessagePii(
   text: string,
@@ -114,8 +119,19 @@ export function scrubUserMessagePii(
   scrubbed = scrubbed.replace(EMAIL_TEXT_REGEX, '[KONTAKT-GESCHÜTZT]')
   scrubbed = scrubbed.replace(PHONE_TEXT_REGEX, '[KONTAKT-GESCHÜTZT]')
 
-  // 2. Replace known names from the user's tax profile (first/last names, partner, children)
-  return replaceNamesWith(scrubbed, knownNames, '[MANDANT]')
+  // 2. Free-text PII the system prompt promises to protect ("Geburtsdaten, Adressen") but the
+  // document-only patterns used to miss on the chat path (pentest 2026-11-23, ADR-0107 H2).
+  scrubbed = scrubbed.replace(STREET_AND_NUMBER_REGEX, '[ADRESSE-GESCHÜTZT]')
+  scrubbed = scrubbed.replace(DOB_VALUE_REGEX, '[GEBURTSDATUM-GESCHÜTZT]')
+  scrubbed = scrubbed.replace(EMPLOYER_INLINE_REGEX, '[ARBEITGEBER-GESCHÜTZT]')
+
+  // 3. Replace known names from the user's tax profile (first/last names, partner, children).
+  scrubbed = replaceNamesWith(scrubbed, knownNames, '[MANDANT]')
+
+  // 4. Only AFTER the known-name pass: honorific-prefixed names that are still in the clear are
+  // third parties a profile-derived list can never hold (landlord, doctor). Running this last keeps
+  // "Herr <known name>" as "Herr [MANDANT]" instead of swallowing the whole "Herr <name>" phrase.
+  return scrubbed.replace(HONORIFIC_NAME_REGEX, '[NAME-GESCHÜTZT]')
 }
 
 /**
@@ -150,7 +166,17 @@ const LABELED_PII_LINE_REGEX =
   /^[^\S\r\n]*(?:Arbeitgeber(?:\s*\([^)]*\))?|Arbeitnehmer(?:in)?|Name(?:,?\s*Vorname)?|Vorname|Nachname|Familienname|Anschrift|Adresse|Straße|Strasse|Geburtsdatum|geb\.?\s*am|Identifikationsnummer|IdNr|Steuer-?ID|Steueridentifikationsnummer|Steuernummer|Transferticket|Personal-?Nr\.?|Mandanten-?Nr\.?|Arbeitnehmernummer|Sozialversicherungsnummer|Versicherungsnummer|Finanzamt|AGS|Bundesland|Steuerklasse(?:\s*(?:\/\s*)?Faktor)?|Zahl\s+der\s+Kinderfreibeträge|Kirchensteuermerkmal)(?:\s|[:-]\s).*$/gim
 const STREET_AND_NUMBER_REGEX =
   /\b[A-ZÄÖÜ][a-zäöüß-]{2,60}(?:straße|strasse|str\.|weg|allee|platz|ring|gasse|damm|ufer)\s+\d{1,4}[a-zA-Z]?\b/gi
-const DOB_VALUE_REGEX = /\b(?:geb\.?\s*(?:am\s*)?|Geburtsdatum\s*)(?:[:-]\s*)?\d{1,2}\.\d{1,2}\.\d{2,4}\b/gi
+const DOB_VALUE_REGEX =
+  /\b(?:geboren\s*(?:am\s*)?|geb\.?\s*(?:am\s*)?|Geburtsdatum\s*)(?:[:-]\s*)?\d{1,2}\.\d{1,2}\.\d{2,4}\b/gi
+// Inline employer: a capitalised company token (up to four words) followed by a German legal form.
+// Bounded quantifiers only (ADR-0106 D1); case-sensitive on the legal form so prose words like "gegen"
+// cannot match. Catches "Siemens AG", "Muster Bau GmbH" inside a free-text sentence (ADR-0107 H2).
+const EMPLOYER_INLINE_REGEX =
+  /\b[A-ZÄÖÜ][\p{L}0-9.&'-]{0,40}(?:[\s-]+[A-ZÄÖÜ0-9][\p{L}0-9.&'-]{0,40}){0,3}[\s-]+(?:AG|GmbH|mbH|gGmbH|UG|OHG|KGaA|KG|SE)\b/gu
+// Honorific-prefixed third-party names a profile-derived name list can never hold (landlord, doctor,
+// accountant): "Herr Konrad Bauer", "Frau Dr. Schmidt". Bounded to three capitalised name words.
+const HONORIFIC_NAME_REGEX =
+  /\b(?:Herrn?|Frau|Dr\.|Prof\.)(?:\s+(?:Dr\.|Prof\.|med\.))?\s+[A-ZÄÖÜ][a-zäöüß]{1,30}(?:[\s-]+[A-ZÄÖÜ][a-zäöüß]{1,30}){0,2}/gu
 const EMPLOYER_LINE_REGEX =
   /^(?!.*\b(?:Bruttoarbeitslohn|Lohnsteuer|Rentenversicherung|Krankenversicherung|Pflegeversicherung|Arbeitslosenversicherung)\b).*\b(?:GmbH|mbH|UG|OHG|KGaA|GmbH\s*&\s*Co\.?\s*KG|Co\.?\s*KG|AG|SE)\b.*$/gm
 // A second word of the town and trailing blanks no longer compete for the same blanks (Sonar S8786).

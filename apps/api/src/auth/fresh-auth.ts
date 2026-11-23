@@ -1,8 +1,9 @@
-import { BadRequestException, ForbiddenException, Injectable, UnauthorizedException } from '@nestjs/common'
+import { BadRequestException, ForbiddenException, Inject, Injectable, UnauthorizedException } from '@nestjs/common'
 import { fromNodeHeaders } from 'better-auth/node'
 import { APIError } from 'better-auth'
 import type { IncomingHttpHeaders } from 'node:http'
 import type { BetterAuthBundle } from './auth.tokens.js'
+import { STEP_UP_GRANT_REPOSITORY, type StepUpGrantRepository } from './step-up-grant.repository.js'
 
 export const ACCOUNT_DELETE_FRESH_WINDOW_MS = 5 * 60 * 1000
 
@@ -26,6 +27,33 @@ export class FreshAuthFailedError extends UnauthorizedException {
 
 @Injectable()
 export class FreshAuthChecker {
+  constructor(
+    @Inject(STEP_UP_GRANT_REPOSITORY) private readonly stepUpGrants: StepUpGrantRepository,
+  ) {}
+
+  /**
+   * Fresh-auth gate for a GET that returns bulk PII (the DSGVO export, ADR-0107 L1): a stolen session
+   * that is still within its absolute cap must not exfiltrate everything without re-auth, matching the
+   * deletion path. Since a GET carries no password body, this accepts either a fresh session or an
+   * existing step-up grant (recorded by /verify-password within the window, ADR-0106 D2). A guest with
+   * no better-auth account is left alone — the export itself answers 404 for it.
+   */
+  async assertFreshSessionOrStepUp(
+    betterAuth: BetterAuthBundle,
+    headers: IncomingHttpHeaders,
+    expectedUserId: string,
+  ): Promise<void> {
+    const session = await betterAuth.auth.api.getSession({ headers: fromNodeHeaders(headers) })
+    if (!session || session.user.id !== expectedUserId) return
+
+    const createdAt = new Date(session.session.createdAt).getTime()
+    if (Date.now() - createdAt < ACCOUNT_DELETE_FRESH_WINDOW_MS) return
+
+    if (await this.stepUpGrants.hasValidGrant(session.session.id)) return
+
+    throw new FreshAuthRequiredError()
+  }
+
   async assertFreshAuth(
     betterAuth: BetterAuthBundle,
     headers: IncomingHttpHeaders,
