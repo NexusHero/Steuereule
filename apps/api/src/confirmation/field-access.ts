@@ -31,7 +31,8 @@ import type { RentalRepository } from '../rental/rental.repository.js'
 import { RENTAL_ACCESS_FIELDS, rentalFieldAccess } from '../rental/rental-field-access.js'
 import type { ProfileRepository } from '../profile/profile.repository.js'
 import { PROFILE_ACCESS_FIELDS, profileFieldAccess } from '../profile/profile-field-access.js'
-import { MASTER_DATA_FIELDS, type MasterDataField, type MasterDataRepository } from '../master-data/master-data.repository.js'
+import type { MasterDataRepository } from '../master-data/master-data.repository.js'
+import { MASTER_DATA_ACCESS_FIELDS, masterDataFieldAccess } from '../master-data/master-data-field-access.js'
 import type { PartnerCouplingRepository } from '../link/link.repository.js'
 import { LINK_ACCESS_FIELDS, linkFieldAccess, type SetFilingType } from '../link/link-field-access.js'
 import type { InterviewAnswerRepository } from '../interview/interview-answer.repository.js'
@@ -169,17 +170,13 @@ const CHILD_ACCESS_FIELDS = [
  * The same lists `fieldAccessFrom` serves; whoever proposes a write (the owl, a receipt) can check
  * a name against them before a draft exists that could never be applied.
  */
-/** The yes/no beside the master data's text fields (ADR-0052 amendment 3). */
-const CHURCH_TAX_LIABLE = 'kirchensteuerpflichtig'
-const STAMMDATEN_ACCESS_FIELDS: readonly string[] = [...MASTER_DATA_FIELDS, CHURCH_TAX_LIABLE]
-
 export const WRITABLE_FIELDS_BY_SCREEN: Readonly<Record<Screen, readonly string[]>> = {
   lstb: LSTB_ACCESS_FIELDS,
   rente: PENSION_ACCESS_FIELDS,
   kapital: CAPITAL_ACCESS_FIELDS,
   vermietung: RENTAL_ACCESS_FIELDS,
   profil: PROFILE_ACCESS_FIELDS,
-  stammdaten: STAMMDATEN_ACCESS_FIELDS,
+  stammdaten: MASTER_DATA_ACCESS_FIELDS,
   kopplung: LINK_ACCESS_FIELDS,
   interview: INTERVIEW_ACCESS_FIELDS,
   chLohnausweis: CH_SALARY_ACCESS_FIELDS,
@@ -214,47 +211,7 @@ export function fieldAccessFrom({
 
   if (profile) access.profil = profileFieldAccess(profile)
 
-  if (masterData) {
-    access.stammdaten = {
-      fields: STAMMDATEN_ACCESS_FIELDS,
-      withInstance: false,
-      async read(userId) {
-        const m = await masterData.findByUserId(userId)
-        const liable = m?.kirchensteuerpflichtig
-        return { ...Object.fromEntries(MASTER_DATA_FIELDS.map((f) => [f, m?.[f] ?? null])), [CHURCH_TAX_LIABLE]: liable === true || liable === false ? String(liable) : null }
-      },
-      async write(userId, _year, _instance, field, value) {
-        const current = (await masterData.findByUserId(userId)) ?? {
-          geburtsdatum: null,
-          strasse: null,
-          hausnummer: null,
-          hausnummerZusatz: null,
-          plz: null,
-          wohnort: null,
-          beruf: null,
-          religion: null,
-          familienstand: null,
-          familienstandSeit: null,
-          iban: null,
-          kontoinhaber: null,
-          finanzamt: null,
-          telefon: null,
-          religionEinwilligungAm: null,
-        }
-        if (field === CHURCH_TAX_LIABLE) {
-          await masterData.save(userId, { ...current, kirchensteuerpflichtig: value === null ? null : value === 'true' })
-          return true
-        }
-        await masterData.save(userId, {
-          ...current,
-          [field as MasterDataField]: value,
-          // Art. 9 DSGVO: the religion is stored only with the moment of the consent (ADR-0091 for the owl's write).
-          ...(field === 'religion' ? { religionEinwilligungAm: value === null ? null : new Date() } : {}),
-        })
-        return true
-      },
-    }
-  }
+  if (masterData) access.stammdaten = masterDataFieldAccess(masterData)
 
   if (link) access.kopplung = linkFieldAccess(link, linkFilingType)
 
