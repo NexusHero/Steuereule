@@ -75,6 +75,7 @@
   },
   "auth": {
     "errInvalidCredentials": "E-Mail oder Passwort stimmen nicht.",
+    "errTooManyAttempts": "Zu viele Anmeldeversuche. Warte ein paar Minuten und versuch es dann noch mal.",
     "errEmailTaken": "Für diese E-Mail gibt es schon ein Konto.",
     "errPasswordTooShort": "Das Passwort ist zu kurz.",
     "errPasswordCompromised": "Dieses Passwort ist in einem bekannten Datenleck aufgetaucht — wähl bitte ein anderes.",

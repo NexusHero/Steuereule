@@ -51,4 +51,9 @@ describe('authErrorKey with codes from the prototype', () => {
       expect(authErrorKey({ code })).toBe('errGeneric')
     }
   })
+
+  it('maps the per-account sign-in limit and a bare 429 to the too-many-attempts key (ADR-0106 D9)', () => {
+    expect(authErrorKey({ code: 'SIGN_IN_ATTEMPTS_EXCEEDED', status: 429 })).toBe('errTooManyAttempts')
+    expect(authErrorKey({ status: 429, message: 'Too many requests. Please try again later.' })).toBe('errTooManyAttempts')
+  })
 })

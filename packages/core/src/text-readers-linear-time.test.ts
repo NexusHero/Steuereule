@@ -35,9 +35,10 @@ const fill = (unit: string, length: number): string => unit.repeat(Math.ceil(len
 
 /** The readers fed with text a user or a document supplies. Matched by name so a new reader joins by itself. */
 const READER_NAME = /^(?:parse|read|classify|scrub|looksLike|extract|detect|select|recognise|recognize)/
-const readers = Object.entries(core).filter(
-  (entry): entry is [string, (text: string) => unknown] => typeof entry[1] === 'function' && READER_NAME.test(entry[0]),
-)
+type Reader = (text: string) => unknown
+const readers: [string, Reader][] = Object.entries(core as Record<string, unknown>)
+  .filter(([name, value]) => typeof value === 'function' && READER_NAME.test(name))
+  .map(([name, value]) => [name, value as Reader])
 
 function fastest(reader: (text: string) => unknown, text: string): number {
   let best = Number.POSITIVE_INFINITY

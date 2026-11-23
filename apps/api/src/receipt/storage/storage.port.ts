@@ -24,6 +24,12 @@ export interface StoredContentKey {
   readonly contentMac: string
 }
 
+/** How much one user stores: the number of files and their plaintext bytes (ADR-0106 D7 quota). */
+export interface StoredReceiptUsage {
+  readonly files: number
+  readonly bytes: number
+}
+
 export const STORAGE_PORT = Symbol('STORAGE_PORT')
 
 /**
@@ -42,4 +48,6 @@ export interface StoragePort {
    * one user, unrelated across users, and gone with the DEK on crypto-shredding.
    */
   listContentKeys(userId: string): Promise<StoredContentKey[]>
+  /** The user's stored files and bytes, for the per-account quota (ADR-0106 D7). */
+  usage(userId: string): Promise<StoredReceiptUsage>
 }

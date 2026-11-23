@@ -98,6 +98,11 @@ export class InMemoryStorageAdapter implements StoragePort {
     return [...this.blobs.values()].filter((e) => e.userId === userId).map((e) => ({ receiptId: e.receiptId, contentMac: e.contentMac }))
   }
 
+  async usage(userId: string): Promise<{ files: number; bytes: number }> {
+    const mine = [...this.blobs.values()].filter((e) => e.userId === userId)
+    return { files: mine.length, bytes: mine.reduce((sum, e) => sum + e.byteLength, 0) }
+  }
+
   async delete(userId: string, receiptId: string): Promise<boolean> {
     return this.blobs.delete(this.key(userId, receiptId))
   }

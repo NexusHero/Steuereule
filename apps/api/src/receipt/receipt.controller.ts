@@ -16,6 +16,9 @@ import {
 } from '@nestjs/swagger'
 import { CurrentUser } from '../auth/current-user.decorator.js'
 import { UserContextGuard } from '../auth/user-context.guard.js'
+import { Throttle } from '@nestjs/throttler'
+import { FastifyThrottlerGuard } from '../advisor/advisor.controller.js'
+import { RECEIPT_UPLOAD_THROTTLE } from '../rate-limit/rate-limit.js'
 import { InvalidInputError } from '../common/domain-error.js'
 import { ReceiptService } from './receipt.service.js'
 import { DeleteReceiptResponseDto, ReceiptPageResponseDto, ReceiptResponseDto } from './dto/receipt-response.dto.js'
@@ -94,6 +97,9 @@ export class ReceiptController {
   }
 
   @Post('upload')
+  // Per account (ADR-0106 D7): the quota bounds what is kept, this how fast it fills.
+  @UseGuards(FastifyThrottlerGuard)
+  @Throttle({ default: RECEIPT_UPLOAD_THROTTLE })
   @ApiConsumes('multipart/form-data')
   @ApiBody({
     schema: {

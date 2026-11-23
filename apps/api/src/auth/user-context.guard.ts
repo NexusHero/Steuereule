@@ -9,6 +9,7 @@ import { BEARER_TOKEN_REPOSITORY, type BearerTokenRepository } from './bearer-to
 import { verifyJwsAccessToken } from 'better-auth/oauth2'
 import { authIssuer, mcpResourceUrls } from './mcp-oauth.js'
 import { isSessionWithinAbsoluteCap } from './session-lifetime.js'
+import { TooManyRequestsError } from '../common/domain-error.js'
 
 type JwksFetch = Extract<Parameters<typeof verifyJwsAccessToken>[1]['jwksFetch'], () => unknown>
 
@@ -33,6 +34,14 @@ export interface UserAuthContext {
 export type AuthContext = AssistantAuthContext | UserAuthContext
 
 const COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 180
+
+/**
+ * Writes by guests per client address (ADR-0106 D8). A guest needs no account, and every guest write may
+ * create rows: 150 anonymous requests created 150 profiles. An interview from one household stays far below
+ * this; a script filling the database does not.
+ */
+export const GUEST_WRITE_LIMIT = { window: 60 * 60, max: 300 } as const
+const STATE_CHANGING_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE'])
 
 export type UserIdKind = 'session' | 'guest' | 'bearer'
 
@@ -162,6 +171,13 @@ export class UserContextGuard implements CanActivate {
         path: '/',
         maxAge: COOKIE_MAX_AGE_SECONDS,
       })
+    }
+
+    if (STATE_CHANGING_METHODS.has(request.method?.toUpperCase() ?? 'GET')) {
+      const decision = await this.betterAuth.rateLimitStorage.consume(`guest-write:${request.ip ?? 'no-ip'}`, GUEST_WRITE_LIMIT)
+      if (!decision.allowed) {
+        throw new TooManyRequestsError('GUEST_WRITE_LIMIT', 'Zu viele Änderungen ohne Konto. Lege ein Konto an oder versuch es später noch mal.')
+      }
     }
 
     request[USER_ID_REQUEST_KEY] = userId

@@ -11,7 +11,9 @@ let app: FastifyInstance | undefined
 function echoApp(trustProxy: string[]): FastifyInstance {
   const instance = Fastify({ trustProxy })
   installClientIpHeader(instance)
-  instance.get('/echo', async (request) => ({ seen: request.raw.headers[CLIENT_IP_HEADER] ?? null }))
+  instance.get('/echo', (request, reply) => {
+    void reply.send({ seen: request.raw.headers[CLIENT_IP_HEADER] ?? null })
+  })
   return instance
 }
 

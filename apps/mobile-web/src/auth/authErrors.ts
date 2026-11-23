@@ -18,10 +18,14 @@ const CODE_TO_KEY: ReadonlyMap<string, string> = new Map([
   ['INVALID_OAUTH_STATE', 'errGeneric'],
   ['INVALID_CODE', 'errGeneric'],
   ['ACCESS_DENIED', 'errGeneric'],
+  // Per-account sign-in limit (ADR-0106 D9).
+  ['SIGN_IN_ATTEMPTS_EXCEEDED', 'errTooManyAttempts'],
 ])
 
 export function authErrorKey(error: AuthErrorLike | null | undefined): string {
   const code = error?.code
   const key = code === undefined ? undefined : CODE_TO_KEY.get(code)
+  // better-auth's own per-address limiter answers 429 without a code.
+  if (key === undefined && error?.status === 429) return 'errTooManyAttempts'
   return key ?? 'errGeneric'
 }

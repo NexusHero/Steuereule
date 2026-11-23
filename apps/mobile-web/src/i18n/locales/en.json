@@ -75,6 +75,7 @@
   },
   "auth": {
     "errInvalidCredentials": "Email or password doesn't match.",
+    "errTooManyAttempts": "Too many sign-in attempts. Wait a few minutes and try again.",
     "errEmailTaken": "There is already an account for this email.",
     "errPasswordTooShort": "That password's too short.",
     "errPasswordCompromised": "That password has shown up in a known data breach — please choose a different one.",
