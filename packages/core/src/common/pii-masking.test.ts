@@ -135,6 +135,12 @@ describe('PII Masking (ADR-0052 §8 — Personenbezogene Daten: schreiben ja, le
       expect(output).toContain('[ARBEITGEBER-GESCHÜTZT]')
     })
 
+    it('masks a birthdate written before the keyword too ("… 12.03.1980 geboren", ADR-0107 H2 review)', () => {
+      const output = scrubUserMessagePii('Ich bin am 12.03.1980 geboren.', [])
+      expect(output).not.toContain('12.03.1980')
+      expect(output).toContain('[GEBURTSDATUM-GESCHÜTZT]')
+    })
+
     it('leaves ordinary tax chat and euro amounts untouched (no over-masking)', () => {
       const benign = 'Kann ich meine Fahrtkosten absetzen? Ich zahle 1200 Euro Miete und arbeite montags im Büro.'
       expect(scrubUserMessagePii(benign, [])).toBe(benign)

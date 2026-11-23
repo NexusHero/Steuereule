@@ -123,6 +123,7 @@ export function scrubUserMessagePii(
   // document-only patterns used to miss on the chat path (pentest 2026-11-23, ADR-0107 H2).
   scrubbed = scrubbed.replace(STREET_AND_NUMBER_REGEX, '[ADRESSE-GESCHÜTZT]')
   scrubbed = scrubbed.replace(DOB_VALUE_REGEX, '[GEBURTSDATUM-GESCHÜTZT]')
+  scrubbed = scrubbed.replace(DOB_BEFORE_KEYWORD_REGEX, '[GEBURTSDATUM-GESCHÜTZT]')
   scrubbed = scrubbed.replace(EMPLOYER_INLINE_REGEX, '[ARBEITGEBER-GESCHÜTZT]')
 
   // 3. Replace known names from the user's tax profile (first/last names, partner, children).
@@ -168,6 +169,9 @@ const STREET_AND_NUMBER_REGEX =
   /\b[A-ZÄÖÜ][a-zäöüß-]{2,60}(?:straße|strasse|str\.|weg|allee|platz|ring|gasse|damm|ufer)\s+\d{1,4}[a-zA-Z]?\b/gi
 const DOB_VALUE_REGEX =
   /\b(?:geboren\s*(?:am\s*)?|geb\.?\s*(?:am\s*)?|Geburtsdatum\s*)(?:[:-]\s*)?\d{1,2}\.\d{1,2}\.\d{2,4}\b/gi
+// The reversed word order — "… am 12.03.1980 geboren" / "12.03.1980 geboren" (ADR-0107 H2 review).
+// Lookahead on the keyword so only the date is replaced; bounded, so it stays linear.
+const DOB_BEFORE_KEYWORD_REGEX = /\b\d{1,2}\.\d{1,2}\.\d{2,4}(?=\s+geboren\b)/gi
 // Inline employer: a capitalised company token (up to four words) followed by a German legal form.
 // Bounded quantifiers only (ADR-0106 D1); case-sensitive on the legal form so prose words like "gegen"
 // cannot match. Catches "Siemens AG", "Muster Bau GmbH" inside a free-text sentence (ADR-0107 H2).

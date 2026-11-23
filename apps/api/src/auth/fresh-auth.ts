@@ -15,7 +15,14 @@ export class GuestSessionCannotDeleteAccountError extends ForbiddenException {
 
 export class FreshAuthRequiredError extends BadRequestException {
   constructor() {
-    super('Your session is not fresh enough for this destructive action — re-enter your password.')
+    // Carries the same machine code the better-auth step-up uses (ADR-0106 D2), so the web client can
+    // tell this apart from a generic 400 and offer password re-entry + retry (ADR-0107 L1 review).
+    super({
+      statusCode: 400,
+      error: 'Bad Request',
+      code: 'FRESH_AUTH_REQUIRED',
+      message: 'Your session is not fresh enough for this action — re-enter your password.',
+    })
   }
 }
 

@@ -184,6 +184,26 @@ describe('DatenschutzScreen', () => {
       expect(await screen.findByText('Heruntergeladen.')).toBeTruthy()
     })
 
+    // ADR-0107 L1 (pentest review): a stale session gets 400 FRESH_AUTH_REQUIRED; the screen must
+    // prompt for the password, verify it, and retry — not dead-end on a generic error.
+    it('on a fresh-auth 400, prompts for the password, verifies and retries the export', async () => {
+      server.use(http.post(`${BASE_URL}/api/auth/verify-password`, () => HttpResponse.json({ status: true })))
+      mockedDownload
+        .mockResolvedValueOnce({ ok: false, status: 400, stepUp: true })
+        .mockResolvedValueOnce({ ok: true, status: 200 })
+      await openAccountScreen()
+
+      fireEvent.click(screen.getByText('Als JSON herunterladen'))
+      await screen.findByText('Bitte bestätige dein Passwort')
+
+      fireEvent.change(screen.getByLabelText('Passwort'), { target: { value: 'right-pass' } })
+      fireEvent.click(screen.getByTestId('export-stepup-bestaetigen'))
+
+      await waitFor(() => expect(mockedDownload).toHaveBeenCalledTimes(2))
+      expect(await screen.findByText('Heruntergeladen.')).toBeTruthy()
+      expect(screen.queryByText('Bitte bestätige dein Passwort')).toBeNull()
+    })
+
     it('triggers the PDF download independently of the JSON one', async () => {
       mockedDownload.mockResolvedValue({ ok: true, status: 200 })
       await openAccountScreen()
