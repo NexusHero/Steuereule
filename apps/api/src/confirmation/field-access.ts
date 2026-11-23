@@ -33,6 +33,7 @@ import type { PensionRepository } from '../pension/pension.repository.js'
 import { PENSION_ACCESS_FIELDS, pensionFieldAccess } from '../pension/pension-field-access.js'
 import type { RentalRepository } from '../rental/rental.repository.js'
 import type { ProfileRepository } from '../profile/profile.repository.js'
+import { PROFILE_ACCESS_FIELDS, profileFieldAccess } from '../profile/profile-field-access.js'
 import { MASTER_DATA_FIELDS, type MasterDataField, type MasterDataRepository } from '../master-data/master-data.repository.js'
 import type { PartnerCouplingRepository } from '../link/link.repository.js'
 import type { InterviewAnswerRepository } from '../interview/interview-answer.repository.js'
@@ -108,7 +109,6 @@ const ASSESSMENT_ACCESS_FIELDS = [...ASSESSMENT_FIELD_IDS, ...ASSESSMENT_NEW_POS
 const MAX_EXPLANATIONS_LENGTH = 4_000
 const INTEGER_RE = /^-?\d+$/
 
-const PROFILE_ACCESS_FIELDS = ['firstName', 'lastName', 'steuerId', 'steuernummer'] as const
 const LINK_ACCESS_FIELDS = ['filingType', 'invitationCode'] as const
 const NGRE_FIELDS: readonly (keyof NGreDetails)[] = [
   'arbeitgeberName',
@@ -278,33 +278,7 @@ export function fieldAccessFrom({
     },
   }
 
-  if (profile) {
-    access.profil = {
-      fields: PROFILE_ACCESS_FIELDS,
-      withInstance: false,
-      async read(userId) {
-        const p = await profile.findByUserId(userId)
-        return {
-          // The profile stores a missing name as '' (both are required columns): that is no value to keep.
-          firstName: p?.firstName || null,
-          lastName: p?.lastName || null,
-          steuerId: p?.steuerId ?? null,
-          steuernummer: p?.steuernummer ?? null,
-        }
-      },
-      async write(userId, _year, _instance, field, value) {
-        const current = await profile.findByUserId(userId)
-        await profile.upsert(userId, {
-          firstName: current?.firstName ?? '',
-          lastName: current?.lastName ?? '',
-          steuerId: current?.steuerId ?? null,
-          steuernummer: current?.steuernummer ?? null,
-          [field]: value,
-        })
-        return true
-      },
-    }
-  }
+  if (profile) access.profil = profileFieldAccess(profile)
 
   if (masterData) {
     access.stammdaten = {
