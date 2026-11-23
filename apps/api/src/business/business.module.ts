@@ -14,6 +14,8 @@ import { HEBESATZ_DIRECTORY } from './business.tokens.js'
 import { ElsterHelpService } from './elster-help.service.js'
 import { HebesatzDirectory } from './hebesatz.js'
 import { LedgerService } from './ledger.service.js'
+import { BusinessExportService } from './business-export.service.js'
+import { PayrollService } from './payroll.service.js'
 import { loadSuppliedElsterLines } from './elster-supplied-lines.js'
 
 /** Selbstständige (ADR-0101): profile, book, bank import, assets, closing, VAT, trade tax, fill-in help, exports. */
@@ -23,6 +25,8 @@ import { loadSuppliedElsterLines } from './elster-supplied-lines.js'
   providers: [
     BusinessContext,
     LedgerService,
+    BusinessExportService,
+    PayrollService,
     BusinessService,
     ElsterHelpService,
     { provide: BUSINESS_REPOSITORY, useClass: PrismaBusinessRepository },

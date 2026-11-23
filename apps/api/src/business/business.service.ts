@@ -2,14 +2,6 @@ import { Inject, Injectable } from '@nestjs/common'
 import {
   accountFor,
   companyCarUse,
-  BAV_SUPPORT_MAX_EUR,
-  churchKennzahl,
-  federalStateOfAgs,
-  minijobCharges,
-  minijobLimitEur,
-  payrollEntryLines,
-  wageTaxFilingPeriod,
-  wageTaxReturn,
   disposalGain,
   retainedProfitTax,
   type RetainedProfit,
@@ -23,7 +15,6 @@ import {
   BANK_CSV_PRESETS,
   USEFUL_LIVES,
   type AssetCategory,
-  appendLogRecord,
   applyLosses,
   balanceSheet,
   carryBackLoss,
@@ -31,17 +22,12 @@ import {
   depreciationDrafts,
   disposalDrafts,
   draftFromTransaction,
-  eBilanzInstance,
   elsterLinesFor,
   ELSTER_FORMS,
   ELSTER_YEARS,
   euerProfit,
   euerTotals,
-  gdpduExport,
   incomeStatement,
-  anlagespiegel,
-  kontennachweise,
-  kontennachweisRequired,
   lossRules,
   openingEntryDraft,
   parseBankCsv,
@@ -51,7 +37,6 @@ import {
   tradeTaxReturn,
   landDeduction,
   vatAnnualReturn,
-  verfahrensdokumentation,
   withFingerprints,
   assetRegister,
   cashAccountingAllowed,
@@ -66,19 +51,16 @@ import {
   type ElsterForm,
   type ElsterYear,
   type EuerKey,
-  type ChurchCode,
   type JournalEntry,
   type Ledger,
   type ProfessionAnswers,
   type ProfessionSuggestion,
   type TradeTaxReturn,
   type VatAnnualResult,
-  type VerfahrensdokuPlaceholder,
 } from '@steuereule/core'
 import { AuditService } from '../audit/audit.service.js'
 import { ConflictError, ForbiddenError, InvalidInputError, NotFoundError } from '../common/domain-error.js'
 import { selfEmploymentEnabled } from '../config/self-employment.js'
-import { elsterTransmissionConfig, missingForTransmission, transmitEBilanz, type TransmissionMode, type TransmissionResult } from './elster-transmission.js'
 import {
   BUSINESS_REPOSITORY,
   type BusinessPerson,
@@ -93,9 +75,10 @@ import {
 } from './business.repository.js'
 import { bankAccountOf, bookIntegrity, deductibleByKeyInEuros, ecSalesListOf, eur, registerAssetOf, vatCorrectionOf, vatFiguresOf, type VatFigures } from './business-ledger.js'
 import { HebesatzDirectory, type HebesatzLookup } from './hebesatz.js'
-import { zipStored } from './zip.js'
 import { BusinessContext } from './business-context.js'
 import { LedgerService } from './ledger.service.js'
+import { BusinessExportService } from './business-export.service.js'
+import { PayrollService } from './payroll.service.js'
 import { HEBESATZ_DIRECTORY } from './business.tokens.js'
 import {
   emptyTransaction,
@@ -122,8 +105,6 @@ import type {
   InputVatCorrectionLine,
   LossFacts,
   PartnershipShare,
-  PayrollOverview,
-  PayrollRunInput,
   ProfileInput,
   RetainedFacts,
   SmallBusinessCheck,
@@ -143,6 +124,8 @@ export class BusinessService {
     @Inject(HEBESATZ_DIRECTORY) private readonly hebesaetze: HebesatzDirectory,
     @Inject(BusinessContext) private readonly context: BusinessContext,
     @Inject(LedgerService) private readonly ledger: LedgerService,
+    @Inject(PayrollService) private readonly payrollRuns: PayrollService,
+    @Inject(BusinessExportService) private readonly exports: BusinessExportService,
   ) {}
 
   /** Whether the path is open for the year (switch on, a business declared), for callers that must not throw. */
@@ -864,137 +847,12 @@ export class BusinessService {
   // ------------------------------------------------------------------------------------------------
   // Lohn (ADR-0101 §22)
 
-  /**
-   * Books one payroll run and keeps it for the Lohnsteuer-Anmeldung. A regular employee's amounts come
-   * from the outside payroll; a Minijob's charges the core computes. Dated the last day of the month.
-   */
-  async addPayrollRun(userId: string, year: number, ref: BusinessRef, input: PayrollRunInput) {
-    await this.context.assertOpen(userId, year)
-    if (!(input.month >= 1 && input.month <= 12)) throw new InvalidInputError('PAYROLL_MONTH', 'Der Monat ist 1 bis 12.')
-    const mini = input.kind === 'minijob' ? minijobCharges({ year, month: input.month, grossEur: input.grossEur, statutoryHealthInsured: input.statutoryHealthInsured !== false, rvExempt: input.rvExempt === true, u1Applies: input.u1Applies !== false }) : null
-    const flat = mini ? { flatWageTaxEur: 0, flat37bTaxEur: 0, flatChurchTaxEur: 0 } : { flatWageTaxEur: input.flatWageTaxEur ?? 0, flat37bTaxEur: input.flat37bTaxEur ?? 0, flatChurchTaxEur: input.flatChurchTaxEur ?? 0 }
-    const bavSupportEur = mini ? 0 : (input.bavSupportEur ?? 0)
-    if (bavSupportEur > 0) {
-      const earlier = (await this.repository.listPayrollRuns(userId, year, ref))
-        .filter((r) => r.employee === input.employee)
-        .reduce((s, r) => s + (parseJson<{ bavSupportEur?: number }>(r.amounts, {}).bavSupportEur ?? 0), 0)
-      if (earlier + bavSupportEur > BAV_SUPPORT_MAX_EUR) throw new InvalidInputError('PAYROLL_BAV_SUPPORT', `Der Förderbetrag ist höchstens ${BAV_SUPPORT_MAX_EUR} € im Jahr je Arbeitnehmer (§ 100 Abs. 2 EStG).`)
-    }
-    if (mini?.overLimit) throw new InvalidInputError('PAYROLL_MINIJOB_OVER_LIMIT', `Über ${minijobLimitEur(year, input.month)} € im Monat ist es kein Minijob; trag die Werte aus der Lohnabrechnung ein.`)
-    const amounts = {
-      kind: input.kind,
-      grossEur: input.grossEur,
-      wageTaxEur: mini ? 0 : (input.wageTaxEur ?? 0),
-      soliEur: mini ? 0 : (input.soliEur ?? 0),
-      churchTaxEur: mini ? 0 : (input.churchTaxEur ?? 0),
-      employeeSocialEur: mini ? mini.employeeRvEur : (input.employeeSocialEur ?? 0),
-      employerSocialEur: mini ? mini.employerTotalEur : (input.employerSocialEur ?? 0),
-      employerFlatTaxEur: round2(flat.flatWageTaxEur + flat.flat37bTaxEur + flat.flatChurchTaxEur),
-    }
-    const lines = payrollEntryLines(amounts)
-    if (!lines.ok) throw new InvalidInputError('PAYROLL_AMOUNTS', lines.reason)
-    const { chart, mode, profile } = await this.context.frame(userId, year, ref)
-    const n = (concept: Parameters<typeof accountFor>[1]) => accountFor(chart, concept).number
-    const c = (v: number) => Math.round(v * 100)
-    const day = new Date(Date.UTC(year, input.month, 0)).getUTCDate()
-    const l = lines.lines
-    const draft: BookingDraft = {
-      date: `${year}-${String(input.month).padStart(2, '0')}-${String(day).padStart(2, '0')}`,
-      documentNumber: `Lohn-${year}-${String(input.month).padStart(2, '0')}-${input.employee.slice(0, 20)}`,
-      text: `${input.kind === 'minijob' ? 'Minijob' : 'Lohn'} ${input.employee} ${String(input.month).padStart(2, '0')}/${year}`,
-      lines: [
-        { account: n(input.kind === 'minijob' ? 'temp_wages' : 'wages'), side: 'debit', amount: c(l.wagesEur) },
-        ...(l.employerSocialEur > 0 ? [{ account: n('social_security'), side: 'debit' as const, amount: c(l.employerSocialEur) }] : []),
-        // The pauschale Lohn- and Kirchensteuer is the employer's own Personalaufwand (DATEV 4198 / 6039).
-        ...(l.employerFlatTaxEur > 0 ? [{ account: n('flat_wage_tax'), side: 'debit' as const, amount: c(l.employerFlatTaxEur) }] : []),
-        ...(l.netEur > 0 ? [{ account: n('bank'), side: 'credit' as const, amount: c(l.netEur) }] : []),
-        ...(l.taxesEur > 0 ? [{ account: n('wage_tax_payables'), side: 'credit' as const, amount: c(l.taxesEur) }] : []),
-        ...(l.socialPayableEur > 0 ? [{ account: n('social_security_payables'), side: 'credit' as const, amount: c(l.socialPayableEur) }] : []),
-      ],
-    }
-    const [entry] = await this.ledger.postDrafts(userId, year, ref, { chart, mode }, profile, () => [{ draft, source: 'lohn' }])
-    const run = await this.repository.addPayrollRun(userId, {
-      taxYear: year,
-      person: ref.person,
-      business: ref.business,
-      month: input.month,
-      kind: input.kind,
-      employee: input.employee,
-      amounts: JSON.stringify({ ...amounts, ...flat, bavSupportEur, church: input.church ?? null, netEur: l.netEur }),
-      entryNumber: entry?.number ?? null,
-    })
-    await this.audit.append({ userId, action: 'WRITE', resource: 'selbststaendig' })
-    return { run, entry }
+  addPayrollRun(...args: Parameters<PayrollService['addPayrollRun']>) {
+    return this.payrollRuns.addPayrollRun(...args)
   }
 
-  /** The runs of the year, the Lohnsteuer-Anmeldungen (§ 41a EStG) and the Minijob charges per month. */
-  async payroll(userId: string, year: number, ref: BusinessRef): Promise<PayrollOverview> {
-    await this.context.assertOpen(userId, year)
-    const [records, prior, profile] = await Promise.all([this.repository.listPayrollRuns(userId, year, ref), this.repository.listPayrollRuns(userId, year - 1, ref), this.context.personRecord(userId, year, ref)])
-    const state = federalStateOfAgs(profile?.municipalityAgs)
-    type Stored = {
-      kind: 'regulaer' | 'minijob'
-      grossEur: number
-      wageTaxEur: number
-      soliEur: number
-      churchTaxEur: number
-      employerSocialEur: number
-      church: ChurchCode | null
-      netEur: number
-      flatWageTaxEur?: number
-      flat37bTaxEur?: number
-      flatChurchTaxEur?: number
-      bavSupportEur?: number
-    }
-    const parse = (r: { amounts: string }) => parseJson<Stored>(r.amounts, { kind: 'regulaer', grossEur: 0, wageTaxEur: 0, soliEur: 0, churchTaxEur: 0, employerSocialEur: 0, church: null, netEur: 0 })
-    const runs = records.map((r) => ({ record: r, a: parse(r) }))
-    // § 41a Abs. 2: by last year's wage tax (a part year annualised, Satz 3); a Betriebsstätte without runs last
-    // year takes its first booked month as the first full month × 12 (Satz 4).
-    const priorTax = prior.reduce((s, r) => s + parse(r).wageTaxEur, 0)
-    const firstMonth = runs.filter((r) => r.a.kind === 'regulaer').map((r) => r.record.month).sort((a, b) => a - b)[0]
-    const wageTaxPeriod =
-      prior.length > 0
-        ? wageTaxFilingPeriod({ priorYearWageTaxEur: priorTax, priorYearMonthsActive: 12 - Math.min(...prior.map((r) => r.month)) + 1 })
-        : firstMonth === undefined
-          ? 'jahr'
-          : wageTaxFilingPeriod({ priorYearWageTaxEur: 0, newEstablishment: { firstFullMonthWageTaxEur: runs.filter((r) => r.record.month === firstMonth).reduce((s, r) => s + r.a.wageTaxEur, 0) } })
-    const step = wageTaxPeriod === 'monat' ? 1 : wageTaxPeriod === 'quartal' ? 3 : 12
-    const wageTaxReturns = []
-    for (let start = 1; start <= 12; start += step) {
-      const end = start + step - 1
-      const inPeriod = runs.filter((r) => r.record.month >= start && r.record.month <= end)
-      if (inPeriod.length === 0) continue
-      const kennzahlen = wageTaxReturn(
-        inPeriod.map((r) => ({
-          kind: r.a.kind,
-          employee: r.record.employee,
-          wageTaxEur: r.a.wageTaxEur,
-          soliEur: r.a.soliEur,
-          churchTaxEur: r.a.churchTaxEur,
-          church: r.a.church,
-          flatWageTaxEur: r.a.flatWageTaxEur,
-          flat37bTaxEur: r.a.flat37bTaxEur,
-          flatChurchTaxEur: r.a.flatChurchTaxEur,
-          bavSupportEur: r.a.bavSupportEur,
-        })),
-        state,
-      )
-      if (Object.keys(kennzahlen).length === 0) continue
-      const label = step === 1 ? `${String(start).padStart(2, '0')}/${year}` : step === 3 ? `Q${(start + 2) / 3}/${year}` : String(year)
-      const dueMonth = end + 1
-      const due = dueMonth > 12 ? `${year + 1}-01-10` : `${year}-${String(dueMonth).padStart(2, '0')}-10`
-      wageTaxReturns.push({ label, due, kennzahlen })
-    }
-    const minijob = new Map<number, number>()
-    for (const r of runs) if (r.a.kind === 'minijob') minijob.set(r.record.month, round2((minijob.get(r.record.month) ?? 0) + r.a.employerSocialEur + (r.a.grossEur - r.a.netEur)))
-    await this.audit.append({ userId, action: 'READ', resource: 'selbststaendig' })
-    return {
-      runs: runs.map(({ record, a }) => ({ id: record.id, month: record.month, kind: a.kind, employee: record.employee, grossEur: a.grossEur, netEur: a.netEur, wageTaxEur: a.wageTaxEur, employerChargesEur: a.employerSocialEur, entryNumber: record.entryNumber })),
-      wageTaxPeriod,
-      wageTaxReturns,
-      minijobCharges: [...minijob.entries()].sort((a, b) => a[0] - b[0]).map(([month, totalEur]) => ({ month, totalEur })),
-      unassignedChurchCodes: [...new Set(runs.flatMap((r) => (r.a.kind === 'regulaer' && r.a.church && churchKennzahl(state, r.a.church) === null ? [r.a.church] : [])))].sort((a, b) => a.localeCompare(b)),
-    }
+  payroll(...args: Parameters<PayrollService['payroll']>) {
+    return this.payrollRuns.payroll(...args)
   }
 
   /** § 16 / § 34 and § 34a of one business as the profile and the book say (ADR-0101 §22). */
@@ -1229,111 +1087,23 @@ export class BusinessService {
   // ------------------------------------------------------------------------------------------------
   // Exports (GoBD Z3, Verfahrensdokumentation, E-Bilanz)
 
-  /** The Z3 data export as a zip; the export itself is logged in the chain (GoBD Rz. 107). */
-  async gobdExport(userId: string, year: number, ref: BusinessRef): Promise<Buffer> {
-    await this.context.assertOpen(userId, year)
-    await this.context.assertUnlocked(userId, year)
-    const { chart, mode, profile } = await this.context.frame(userId, year, ref)
-    const files = await this.repository.changeBook(userId, year, ref, { chart, mode }, (book) => {
-      this.ledger.assertIntact(book)
-      const meta = { supplierName: profile?.name ?? 'Einzelunternehmen', supplierLocation: 'Deutschland', from: `${year}-01-01`, to: `${year}-12-31` }
-      const log = appendLogRecord(book.log, 'export', { kind: 'gdpdu', from: meta.from, to: meta.to }, this.context.now())
-      return { result: gdpduExport(book.ledger, log, meta).files, append: { log: log.slice(book.log.length) } }
-    })
-    await this.audit.append({ userId, action: 'READ', resource: 'selbststaendig-export' })
-    return zipStored({
-      ...files,
-      'LIESMICH.txt':
-        'Datenträgerüberlassung nach § 147 Abs. 6 AO im Beschreibungsstandard der Finanzverwaltung.\r\n' +
-        'index.xml verweist auf die DTD gdpdu-01-09-2004.dtd; die DTD veröffentlicht das Bundesministerium der Finanzen und liegt dem Prüfprogramm der Finanzverwaltung bei.\r\n',
-    })
+  gobdExport(...args: Parameters<BusinessExportService['gobdExport']>) {
+    return this.exports.gobdExport(...args)
   }
 
-  async procedureDoc(userId: string, year: number, ref: BusinessRef) {
-    await this.context.assertOpen(userId, year)
-    const { chart, mode, profile } = await this.context.frame(userId, year, ref)
-    const stored = parseJson<Partial<Record<VerfahrensdokuPlaceholder, string>>>(profile?.procedureDoc ?? null, {})
-    const values = {
-      // What the app knows itself; the user's own values win.
-      kontenrahmen: chart,
-      gewinnermittlung: mode === 'euer' ? 'Einnahmenüberschussrechnung (§ 4 Abs. 3 EStG)' : 'Bestandsvergleich (Bilanz, § 4 Abs. 1, § 5 EStG)',
-      appVersion: process.env.APP_VERSION ?? 'aktuelle Fassung',
-      verschluesselung: 'Feldverschlüsselung mit AES-256-GCM',
-      ...(profile?.name ? { unternehmen: profile.name } : {}),
-      ...(profile?.startDate ? { beginn: profile.startDate } : {}),
-      ...stored,
-    }
-    return { values: stored, ...verfahrensdokumentation(values) }
+  procedureDoc(...args: Parameters<BusinessExportService['procedureDoc']>) {
+    return this.exports.procedureDoc(...args)
   }
 
-  async saveProcedureDoc(userId: string, year: number, ref: BusinessRef, values: Partial<Record<VerfahrensdokuPlaceholder, string>>) {
-    await this.context.assertOpen(userId, year)
-    await this.repository.saveProfile(userId, year, ref, { procedureDoc: JSON.stringify(values) })
-    await this.audit.append({ userId, action: 'WRITE', resource: 'selbststaendig' })
-    return this.procedureDoc(userId, year, ref)
+  saveProcedureDoc(...args: Parameters<BusinessExportService['saveProcedureDoc']>) {
+    return this.exports.saveProcedureDoc(...args)
   }
 
-  /** The E-Bilanz as XBRL, not transmitted (ADR-0101 §17); `download` is gated by the tier. */
-  async eBilanz(userId: string, year: number, ref: BusinessRef, download: boolean): Promise<{ xbrl: string; transmitted: false; transmissionReady: boolean; note: string }> {
-    await this.context.assertOpen(userId, year)
-    if (download) await this.context.assertUnlocked(userId, year)
-    const { book, ledger, profile } = await this.context.loaded(userId, year, ref)
-    if (ledger.mode !== 'bilanz') throw new InvalidInputError('E_BILANZ_BILANZ_ONLY', 'Eine E-Bilanz gibt es nur bei der Bilanz.')
-    if (book) this.ledger.assertIntact(book)
-    const doc = parseJson<Partial<Record<VerfahrensdokuPlaceholder, string>>>(profile?.procedureDoc ?? null, {})
-    const steuernummer = (doc.steuernummer ?? '').replaceAll(/\D/g, '')
-    const assets = (await this.repository.listAssets(userId, ref, year)).map((r) => registerAssetOf(r, year))
-    const xbrl = ledgerCall(() =>
-      eBilanzInstance({
-        company: { name: profile?.name ?? doc.unternehmen ?? 'Einzelunternehmen', steuernummer },
-        fiscalYearBegin: `${year}-01-01`,
-        fiscalYearEnd: `${year}-12-31`,
-        balanceSheet: balanceSheet(ledger, year),
-        incomeStatement: incomeStatement(ledger, year),
-        statementType: 'steuerbilanz',
-        anlagespiegel: { rows: anlagespiegel(ledger.chart, assets, year).rows },
-        // From 2025 the Kontennachweise are part of the data set (§ 5b Abs. 1 EStG i. d. F. JStG 2024).
-        ...(kontennachweisRequired(`${year}-01-01`) ? { kontennachweise: kontennachweise(ledger, year) } : {}),
-      }),
-    )
-    await this.audit.append({ userId, action: 'READ', resource: download ? 'selbststaendig-export' : 'selbststaendig' })
-    const ready = missingForTransmission(elsterTransmissionConfig()).length === 0
-    return {
-      xbrl,
-      transmitted: false,
-      transmissionReady: ready,
-      note: ready
-        ? 'Der Datensatz kann geprüft und an ELSTER übermittelt werden.'
-        : 'Die Übermittlung an ELSTER ist auf diesem Server noch nicht eingerichtet (ERiC und Zertifikat des Betreibers fehlen). Bis dahin ist dies eine Vorschau des Datensatzes; die Elementnamen folgen der amtlichen Taxonomie, geprüft hat ihn ERiC noch nicht.',
-    }
+  eBilanz(...args: Parameters<BusinessExportService['eBilanz']>) {
+    return this.exports.eBilanz(...args)
   }
 
-  /**
-   * Validates or sends the E-Bilanz through the operator's ERiC sidecar (ADR-0101 §17, §22). The paid
-   * tier is needed for both; sending writes an export record into the book's log.
-   */
-  async transmitEBilanz(userId: string, year: number, ref: BusinessRef, mode: TransmissionMode): Promise<TransmissionResult> {
-    await this.context.assertUnlocked(userId, year)
-    const { xbrl } = await this.eBilanz(userId, year, ref, true)
-    if (mode === 'validieren') {
-      const result = await transmitEBilanz(xbrl, mode)
-      await this.audit.append({ userId, action: 'READ', resource: 'selbststaendig-elster' })
-      return result
-    }
-    // Sending runs under the book's lock: two requests cannot both send; the ticket goes into the log.
-    const { chart, mode: bookMode } = await this.context.frame(userId, year, ref)
-    const result = await this.repository.changeBook<TransmissionResult>(userId, year, ref, { chart, mode: bookMode }, async (book) => {
-      this.ledger.assertIntact(book)
-      if (book.log.some((r) => r.kind === 'export' && (r.payload as { kind?: string } | null)?.kind === 'e-bilanz')) {
-        throw new ConflictError('E_BILANZ_ALREADY_SENT', 'Die E-Bilanz für dieses Jahr ist schon übermittelt; eine Berichtigung macht die App nicht.')
-      }
-      const sent = await transmitEBilanz(xbrl, 'senden')
-      if (sent.status !== 'ok') return { result: sent, append: {} }
-      const log = appendLogRecord(book.log, 'export', { kind: 'e-bilanz', ticket: sent.ticket }, this.context.now())
-      return { result: sent, append: { log: log.slice(book.log.length) } }
-    })
-    await this.audit.append({ userId, action: 'WRITE', resource: 'selbststaendig-elster' })
-    return result
+  transmitEBilanz(...args: Parameters<BusinessExportService['transmitEBilanz']>) {
+    return this.exports.transmitEBilanz(...args)
   }
 }
-
