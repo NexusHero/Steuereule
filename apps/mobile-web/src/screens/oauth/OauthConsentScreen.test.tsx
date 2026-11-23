@@ -96,6 +96,26 @@ describe('OauthConsentScreen (ADR-0052 §2 / §9 / §10)', () => {
     expect(screen.getByText(/Den Namen hat der Assistent selbst angegeben/)).toBeTruthy()
   })
 
+  it('does not let the user approve before the destination is on the screen', async () => {
+    let release: () => void = () => undefined
+    const held = new Promise<void>((resolve) => (release = resolve))
+    server.use(
+      http.get(`${BASE_URL}/v1/oauth/client-info`, async () => {
+        await held
+        return HttpResponse.json({ clientId: 'c1', name: 'Claude', uri: null, icon: null, redirectTargets: [{ uri: 'https://evil.example/cb', destination: 'evil.example' }] })
+      }),
+    )
+    renderConsentScreen({ clientId: 'c1', scope: 'steuerdaten:read', oauthQuery: 'client_id=c1' })
+
+    const allow = await screen.findByTestId('oauth-erlauben')
+    expect(allow.getAttribute('aria-disabled') ?? String((allow as HTMLButtonElement).disabled)).toBe('true')
+    expect(screen.queryByTestId('oauth-destination')).toBeNull()
+
+    release()
+    expect(await screen.findByText('evil.example')).toBeTruthy()
+    await waitFor(() => expect((screen.getByTestId('oauth-erlauben').getAttribute('aria-disabled') ?? String((screen.getByTestId('oauth-erlauben') as HTMLButtonElement).disabled))).not.toBe('true'))
+  })
+
   it('says "an app on this device" for a loopback or app-scheme redirect', async () => {
     mockClient('Claude Desktop', [
       { uri: 'http://127.0.0.1:33418/callback', destination: 'localhost' },

@@ -66,6 +66,9 @@ export function OauthConsentScreen({
   const destinations = clientInfoQuery.data?.status === 200
     ? consentDestinations(clientInfoQuery.data.data.redirectTargets ?? [], params.oauthQuery)
     : []
+  // While the lookup runs the destination is not on the screen yet, so approving waits for it: a slow
+  // lookup must not let the user approve before seeing where the access goes.
+  const lookingUpClient = clientInfoQuery.isLoading
   const destinationLabel = (destination: string): string => {
     if (destination === 'localhost') return tr('oauthConsent.destinationDevice')
     if (destination.endsWith('://')) return tr('oauthConsent.destinationApp', { scheme: destination })
@@ -163,7 +166,7 @@ export function OauthConsentScreen({
           <Text style={styles.clientHeading}>
             <Text style={styles.boldText}>{clientName}</Text> {tr('oauthConsent.requestNotice')}
           </Text>
-          {clientInfoQuery.isPending ? null : (
+          {lookingUpClient ? null : (
             <Text style={styles.clientHeading} testID="oauth-destination">
               {tr('oauthConsent.destinationLabel')}{' '}
               <Text style={styles.boldText}>
@@ -229,7 +232,7 @@ export function OauthConsentScreen({
         <View style={styles.actionRow}>
           <Button
             variant="primaer"
-            disabled={submitting}
+            disabled={submitting || lookingUpClient}
             onPress={() => void handleDecision(true)}
             style={styles.actionBtn}
             testID="oauth-erlauben"
