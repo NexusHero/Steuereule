@@ -1,5 +1,5 @@
-import type { AssessmentPositionType } from '../engine/assessment'
-import type { AdvisorActionStatus } from '../interview/advisor'
+import type { AssessmentPositionType } from './assessment'
+import type { AdvisorActionStatus } from './action-status'
 
 /**
  * „Kommt jedes Jahr wieder“ (ADR-0099 §2): the items that came up in either of the last two years, as a

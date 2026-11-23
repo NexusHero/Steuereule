@@ -1,4 +1,5 @@
 import { isIsoDate, parseDate } from '../common/dates'
+import { PRIVATE_SALES_EXEMPTION_STEPS, valueForYear } from '../math/tax-parameters'
 
 /**
  * Private sales (§ 23 EStG): when a gain is taxable at all, and whether the year's gains stay under
@@ -16,7 +17,7 @@ export function holdingYears(kind: PrivateSaleKind): number {
 
 /** § 23 Abs. 3 Satz 5 EStG: an exemption limit, not an allowance; 600 € up to 2023, 1.000 € from 2024. */
 export function privateSalesExemptionLimit(year: number): number {
-  return year >= 2024 ? 1000 : 600
+  return valueForYear(PRIVATE_SALES_EXEMPTION_STEPS, year)
 }
 
 function addYears(iso: string, years: number): Date {

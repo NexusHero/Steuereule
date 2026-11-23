@@ -1,4 +1,4 @@
-import { amountFromAnswer, type Answers } from '../interview/interview'
+import { amountFromAnswer, type Answers } from './answers'
 import { isSupportedIncomeTaxYear } from '../math/tarif'
 import { getTaxYearParameters, type HouseholdServicesParameters } from '../math/tax-parameters'
 

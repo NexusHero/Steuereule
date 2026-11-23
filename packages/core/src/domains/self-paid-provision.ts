@@ -1,4 +1,4 @@
-import { amountFromAnswer, declaresBusiness, paysOwnProvision, type Answers } from '../interview/interview'
+import { amountFromAnswer, declaresBusiness, paysOwnProvision, type Answers } from './answers'
 import { healthInsuranceFromAnswers } from './health-insurance'
 import type { PersonProvision } from './provision'
 

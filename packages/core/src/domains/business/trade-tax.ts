@@ -1,4 +1,5 @@
 import { minimumMultiplierPercent, TRADE_TAX_ALLOWANCE_EUR, TRADE_TAX_BASE_RATE, TRADE_TAX_CREDIT_FACTOR } from '../business-taxes'
+import { appliesFrom } from '../../math/tax-parameters'
 
 /**
  * Gewerbesteuer of a sole trader for one Erhebungszeitraum, as the Gewerbesteuererklärung and the
@@ -57,7 +58,7 @@ export function financingAddition(c: FinancingComponents): FinancingAddition {
  * the Jahressteuergesetz 2024 of 2.12.2024, § 36 Abs. 4b Satz 1 GewStG).
  */
 export function landDeduction(year: number, basis: { readonly einheitswertEur?: number | undefined; readonly landTaxEur?: number | undefined }): number {
-  if (year >= 2025) return cents(Math.max(0, basis.landTaxEur ?? 0))
+  if (appliesFrom('tradeTaxLandDeductionByLandTax', year)) return cents(Math.max(0, basis.landTaxEur ?? 0))
   return cents(Math.max(0, basis.einheitswertEur ?? 0) * 1.4 * 0.012)
 }
 

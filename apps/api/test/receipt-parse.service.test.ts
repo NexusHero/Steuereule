@@ -5,14 +5,8 @@ import type { ChatResult } from '@langchain/core/outputs'
 import type { Runnable } from '@langchain/core/runnables'
 import type { BaseLanguageModelInput } from '@langchain/core/language_models/base'
 import { describe, expect, it } from 'vitest'
-import { AdvisorService } from '../src/advisor/advisor.service.js'
-import { InMemoryAdvisorRepository } from '../src/advisor/advisor.repository.js'
 import { AuditService } from '../src/audit/audit.service.js'
-import { ConfirmationService } from '../src/confirmation/confirmation.service.js'
-import { fieldAccessFrom } from '../src/confirmation/field-access.js'
 import { DEFAULT_AI_TURN_LIMITS, type AiRuntimeConfigService } from '../src/ki/ai-runtime-config.service.js'
-import { RagKiAdapter } from '../src/ki/ki.adapter.js'
-import { OwlModeService } from '../src/owl-mode/owl-mode.service.js'
 import { LinkService } from '../src/link/link.service.js'
 import { LstbScanParseStrategy } from '../src/lstb-scan/lstb-scan.parse-strategy.js'
 import { LstbService } from '../src/lstb/lstb.service.js'
@@ -21,23 +15,12 @@ import { DocumentParseRegistry } from '../src/receipt/parse/document-parse.regis
 import { ReceiptParseService, receiptKindOfDocument } from '../src/receipt/receipt-parse.service.js'
 import { ReceiptService } from '../src/receipt/receipt.service.js'
 import { InMemoryStorageAdapter } from './fakes/in-memory-storage.adapter.js'
-import { FakeAssessmentRepository } from './fakes/fake-assessment.repository.js'
 import { FakeAuditRepository } from './fakes/fake-audit.repository.js'
-import { FakeCapitalRepository } from './fakes/fake-capital.repository.js'
-import { FakeChSalaryCertificateRepository } from './fakes/fake-ch-salary-certificate.repository.js'
-import { FakeChildRepository } from './fakes/fake-child.repository.js'
-import { FakeCommuteRepository } from './fakes/fake-commute.repository.js'
-import { FakeInterviewAnswerRepository } from './fakes/fake-interview-answer.repository.js'
 import { FakeLinkRepository } from './fakes/fake-link.repository.js'
-import { FakeLstbRepository } from './fakes/fake-lstb.repository.js'
 import { FakeMarkingRepository } from './fakes/fake-marking.repository.js'
 import { FakeMasterDataRepository } from './fakes/fake-master-data.repository.js'
-import { FakeOwlCardDismissalRepository, FakeOwlSettingRepository } from './fakes/fake-owl-mode.repository.js'
-import { FakePensionRepository } from './fakes/fake-pension.repository.js'
-import { FakeProfileRepository } from './fakes/fake-profile.repository.js'
-import { FakeReceiptRepository } from './fakes/fake-receipt.repository.js'
-import { FakeRentalRepository } from './fakes/fake-rental.repository.js'
 import { singleShotFromChatModel } from '../src/ki/langchain-single-shot.adapter.js'
+import { buildAdvisorTestKit } from './fakes/advisor-test-kit.js'
 
 class RecordingVisionModel extends BaseChatModel {
   public calls: BaseMessage[][] = []
@@ -88,68 +71,18 @@ function makeVisionRuntime(enabled: boolean): AiRuntimeConfigService {
 }
 
 function buildTestHarness(responses: string[], visionEnabled = true) {
-  const advisorRepo = new InMemoryAdvisorRepository()
-  const interviewRepo = new FakeInterviewAnswerRepository()
-  const lstbRepo = new FakeLstbRepository()
-  const chRepo = new FakeChSalaryCertificateRepository()
-  const childRepo = new FakeChildRepository()
-  const commuteRepo = new FakeCommuteRepository()
-  const assessmentRepo = new FakeAssessmentRepository()
-  const profileRepo = new FakeProfileRepository()
-  const receiptRepo = new FakeReceiptRepository()
-  const auditRepo = new FakeAuditRepository()
-  const auditService = new AuditService(auditRepo)
-
-  const access = fieldAccessFrom({
-    lstb: lstbRepo,
-    pension: new FakePensionRepository(),
-    capital: new FakeCapitalRepository(),
-    rental: new FakeRentalRepository(),
-    profile: profileRepo,
-    masterData: new FakeMasterDataRepository(),
-    link: new FakeLinkRepository(),
-    interview: interviewRepo,
-    chSalaryCertificate: chRepo,
-    child: childRepo,
-    commute: commuteRepo,
-    assessment: assessmentRepo,
-  })
-
-  const confirmationService = new ConfirmationService(new FakeMarkingRepository(), access, auditService)
-  const owlModeService = new OwlModeService(
-    new FakeOwlSettingRepository(),
-    new FakeOwlCardDismissalRepository(),
-    childRepo,
-    interviewRepo,
-    assessmentRepo,
-    new RagKiAdapter(),
-    auditService,
-  )
-  const advisorService = new AdvisorService(
-    advisorRepo,
-    owlModeService,
-    confirmationService,
-    auditService,
-    interviewRepo,
-    lstbRepo,
-    chRepo,
-    commuteRepo,
-    childRepo,
-    new FakeRentalRepository(),
-    new FakeCapitalRepository(),
-    profileRepo,
-  )
+  const { advisorRepo, interviewRepo, lstbRepo, childRepo, commuteRepo, profileRepo, receiptRepo, auditService, staging, service: advisorService } = buildAdvisorTestKit()
   const visionModel = new RecordingVisionModel(responses)
   const registry = new DocumentParseRegistry()
   const runtime = makeVisionRuntime(visionEnabled)
   const modelFactory = () => singleShotFromChatModel(visionModel)
   const lstbService = new LstbService(lstbRepo, auditService, new FakeMarkingRepository())
   const linkService = new LinkService(new FakeLinkRepository(), profileRepo, new FakeMasterDataRepository(), auditService)
-  const autoStrategy = new AutoReceiptParseStrategy(runtime, advisorService, auditService, modelFactory)
+  const autoStrategy = new AutoReceiptParseStrategy(runtime, staging, auditService, modelFactory)
   const lstbStrategy = new LstbScanParseStrategy(
     registry,
     runtime,
-    advisorService,
+    staging,
     auditService,
     lstbService,
     linkService,
@@ -162,6 +95,7 @@ function buildTestHarness(responses: string[], visionEnabled = true) {
   return {
     advisorRepo,
     advisorService,
+    staging,
     childRepo,
     interviewRepo,
     lstbRepo,
@@ -941,7 +875,7 @@ describe('ReceiptParseService — the recognised kind goes back to the stored Be
   it('files it also when the answer is the question whose it is: the kind does not depend on the holder', async () => {
     const h = buildTestHarness(['{}'])
     await h.profileRepo.upsert('user-kind', { firstName: 'Anna', lastName: 'Beispiel' } as never)
-    const ask = new ReceiptParseService(h.registry, h.autoStrategy, h.receiptRepo, h.advisorService)
+    const ask = new ReceiptParseService(h.registry, h.autoStrategy, h.receiptRepo, h.staging)
     const beleg = await h.receiptRepo.create('user-kind', { fileName: 'scan.pdf', kind: 'Sonstiges' })
     const res = await ask.parseReceipt('user-kind', { taxYear: 2025, fileName: 'scan.pdf', receiptId: beleg.id, rawText: `${SALARY_CERTIFICATE}\nHerr Max Muster` })
     expect(res.assignment?.question).not.toBeNull()
@@ -1053,8 +987,8 @@ describe('ReceiptParseService — an upload in the chat of a tax year', () => {
   async function setUp() {
     const h = buildTestHarness([], false)
     await h.profileRepo.upsert('user-chat', { firstName: 'Anna', lastName: 'Beispiel' } as never)
-    const parse = new ReceiptParseService(h.registry, h.autoStrategy, h.receiptRepo, h.advisorService)
-    const inbox = new ReceiptService(h.receiptRepo, new AuditService(new FakeAuditRepository()), new InMemoryStorageAdapter(), h.advisorService)
+    const parse = new ReceiptParseService(h.registry, h.autoStrategy, h.receiptRepo, h.staging)
+    const inbox = new ReceiptService(h.receiptRepo, new AuditService(new FakeAuditRepository()), new InMemoryStorageAdapter(), h.staging)
     const unassigned = async () => (await inbox.listPage('user-chat', { limit: 1 })).counts.unassigned
     return { h, parse, inbox, unassigned }
   }

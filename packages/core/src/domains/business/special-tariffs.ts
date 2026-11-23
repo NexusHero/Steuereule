@@ -1,3 +1,4 @@
+import { RETAINED_PROFIT_RATE_STEPS, appliesFrom, valueForYear } from '../../math/tax-parameters'
 /**
  * Special tariffs of Gewinneinkünfte (ADR-0101 §22): the gain on selling or giving up the business
  * (§ 16 EStG) with the Fünftelregelung or the reduced rate (§ 34 Abs. 1, 3 EStG), and the retained
@@ -68,10 +69,7 @@ export interface RetainedProfit {
 
 /** Abs. 1 Satz 1: 28,25 % until 2027, 27 % 2028–2029, 26 % 2030–2031, 25 % from 2032. */
 export function retainedProfitRate(year: number): number {
-  if (year >= 2032) return 0.25
-  if (year >= 2030) return 0.26
-  if (year >= 2028) return 0.27
-  return 0.2825
+  return valueForYear(RETAINED_PROFIT_RATE_STEPS, year)
 }
 
 const RECAPTURE_RATE = 0.25
@@ -81,8 +79,9 @@ const c2 = (v: number) => Math.round(v * 100) / 100
 export function retainedProfitTax(input: RetainedProfitInput): RetainedProfit {
   const rate = retainedProfitRate(input.year)
   const withdrawals = Math.max(0, input.withdrawalsEur)
-  const earlier = input.year >= 2024 ? Math.max(0, input.withdrawalsForRetainedTaxEur ?? 0) : 0
-  const tradeTaxBack = input.year >= 2024 ? Math.max(0, input.tradeTaxEur) : 0
+  const reformed = appliesFrom('retainedProfitReform', input.year)
+  const earlier = reformed ? Math.max(0, input.withdrawalsForRetainedTaxEur ?? 0) : 0
+  const tradeTaxBack = reformed ? Math.max(0, input.tradeTaxEur) : 0
   const favouredFor = (excluded: number) => {
     const balance = withdrawals - excluded - input.depositsEur
     const nonWithdrawn = Math.max(0, input.profitEur - Math.max(0, balance) + tradeTaxBack)
@@ -91,7 +90,7 @@ export function retainedProfitTax(input: RetainedProfitInput): RetainedProfit {
   // Abs. 2 Satz 3 (from VZ 2024): withdrawals count first as paying this year's § 34a tax and its Soli. The tax
   // depends on the amount it frees, so the excluded part is the fixed point; each step moves by under a third.
   let excluded = Math.min(withdrawals, earlier)
-  if (input.year >= 2024) {
+  if (reformed) {
     for (let i = 0; i < 100; i++) {
       const next = Math.min(withdrawals, earlier + favouredFor(excluded).favoured * rate * (1 + SOLI_RATE))
       if (Math.abs(next - excluded) < 0.001) {
