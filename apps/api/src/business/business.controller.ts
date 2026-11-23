@@ -362,7 +362,7 @@ export class BusinessController {
   @ApiOkResponse({ type: JournalEntryDto, description: 'The entry the run was booked as.' })
   @Errors(409)
   async addPayrollRun(@CurrentUser() userId: string, @Param('jahr', ParseTaxYearPipe) year: number, @Body() dto: PayrollRunInputDto, @Query('person') person?: string, @Query('betrieb') business?: string): Promise<JournalEntryDto> {
-    return (await this.service.addPayrollRun(userId, year, refOf(person, business), dto)).entry as unknown as JournalEntryDto
+    return (await this.service.addPayrollRun(userId, year, refOf(person, business), dto)).entry
   }
 
   @Get(':jahr/selbststaendig/sondertarife')
@@ -416,6 +416,7 @@ export class BusinessController {
   @ApiOkResponse({ type: ElsterFormListDto, description: 'The forms of the whole return that carry a value for this household and year, each copy (person, child, property) on its own.' })
   @Errors(402, 404, 409)
   elsterForms(@CurrentUser() userId: string, @Param('jahr', ParseTaxYearPipe) year: number, @Query('person') person?: string, @Query('betrieb') business?: string): Promise<ElsterFormListDto> {
+    // Cast kept: the service returns instance.kind 'business', which ElsterInstanceDto's documented enum lacks; adding it changes openapi.json.
     return this.elsterHelp.forms(userId, year, refOf(person, business)) as unknown as Promise<ElsterFormListDto>
   }
 
@@ -433,6 +434,7 @@ export class BusinessController {
     @Query('betrieb') business?: string,
     @Query('instanz') instance?: string,
   ): Promise<ElsterHelpDto> {
+    // Cast kept: the service returns instance.kind 'business', which ElsterInstanceDto's documented enum lacks; adding it changes openapi.json.
     return this.elsterHelp.help(userId, year, refOf(person, business), form, instance === '' ? undefined : instance) as unknown as Promise<ElsterHelpDto>
   }
 

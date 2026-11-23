@@ -90,7 +90,8 @@ export class PayrollService {
       entryNumber: entry?.number ?? null,
     })
     await this.audit.append({ userId, action: 'WRITE', resource: 'selbststaendig' })
-    return { run, entry }
+    // One draft posts one entry; the index type alone says it could be missing.
+    return { run, entry: entry! }
   }
 
   /** The runs of the year, the Lohnsteuer-Anmeldungen (§ 41a EStG) and the Minijob charges per month. */
