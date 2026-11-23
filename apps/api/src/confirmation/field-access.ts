@@ -5,7 +5,6 @@ import {
   isValidAssessmentPositionAmount,
   CAPITAL_FIELDS,
   WAGE_TAX_CERTIFICATE_FIELDS, LSTB_OPTIONAL_LINES, LSTB_SOCIAL_LINES, LSTB_SOLI_LINE,
-  PENSION_FIELDS,
   RENTAL_FIELDS,
   SALARY_CERTIFICATE_AMOUNT_FIELDS,
   QUESTIONS,
@@ -18,7 +17,6 @@ import {
   type IsoWeekday,
   type WageTaxCertificateFieldId,
   type Screen,
-  type PensionFieldId,
   type RentalFieldId,
   type SalaryCertificateAmountFieldId,
   effectivePublicHolidays,
@@ -36,6 +34,7 @@ import type { LstbLine, WageTaxCertificateRepository } from '../lstb/lstb.reposi
 import { storeLstbLines } from '../lstb/lstb-data.js'
 import { assertTravelDaysFit } from '../commute/ways-to-work.js'
 import type { PensionRepository } from '../pension/pension.repository.js'
+import { PENSION_ACCESS_FIELDS, pensionFieldAccess } from '../pension/pension-field-access.js'
 import type { RentalRepository } from '../rental/rental.repository.js'
 import type { ProfileRepository } from '../profile/profile.repository.js'
 import { MASTER_DATA_FIELDS, type MasterDataField, type MasterDataRepository } from '../master-data/master-data.repository.js'
@@ -112,7 +111,6 @@ const ASSESSMENT_ACCESS_FIELDS = [...ASSESSMENT_FIELD_IDS, ...ASSESSMENT_NEW_POS
 const MAX_EXPLANATIONS_LENGTH = 4_000
 const INTEGER_RE = /^-?\d+$/
 
-const PENSION_ACCESS_FIELDS = ['rentenart', ...PENSION_FIELDS] as const
 const PROFILE_ACCESS_FIELDS = ['firstName', 'lastName', 'steuerId', 'steuernummer'] as const
 const LINK_ACCESS_FIELDS = ['filingType', 'invitationCode'] as const
 const INTERVIEW_ACCESS_FIELDS = Object.keys(QUESTIONS)
@@ -258,24 +256,7 @@ export function fieldAccessFrom({
         return true
       },
     },
-    rente: {
-      fields: PENSION_ACCESS_FIELDS,
-      withInstance: false,
-      async read(userId, taxYear) {
-        const r = await pension.findForUserAndYear(userId, taxYear)
-        return {
-          rentenart: r?.rentenart ?? null,
-          jahresbetrag: r?.jahresbetrag ?? null,
-          rentenbeginnJahr: r?.rentenbeginnJahr ?? null,
-          alterBeiRentenbeginn: r?.alterBeiRentenbeginn ?? null,
-        }
-      },
-      async write(userId, taxYear, _instance, field, value) {
-        if (field === 'rentenart') await pension.setPensionKind(userId, taxYear, value)
-        else await pension.setField(userId, taxYear, field as PensionFieldId, value)
-        return true
-      },
-    },
+    rente: pensionFieldAccess(pension),
     kapital: {
       fields: CAPITAL_ACCESS_FIELDS,
       withInstance: false,
