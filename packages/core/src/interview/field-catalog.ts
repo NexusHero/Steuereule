@@ -11,8 +11,9 @@ import { SALARY_CERTIFICATE_AMOUNT_FIELDS, SALARY_CERTIFICATE_SIGNED_FIELD } fro
 import { DAILY_BENEFIT_SOURCES } from '../domains/daily-benefit'
 import { LSTB_OPTIONAL_LINES, LSTB_SOCIAL_LINES, LSTB_SOLI_LINE, WAGE_TAX_CERTIFICATE_FIELDS } from '../domains/lstb'
 import { PENSION_TYPES } from '../domains/pension'
-import { ASSESSMENT_FIELDS, ASSESSMENT_POSITIONS } from '../engine/assessment'
-import { AMOUNT_LATER, QUESTIONS, isValidAnswer, type EntryStepId } from './interview'
+import { ASSESSMENT_FIELDS, ASSESSMENT_POSITIONS } from '../domains/assessment'
+import { QUESTIONS, isValidAnswer } from './interview'
+import { AMOUNT_LATER, type EntryStepId } from '../domains/answers'
 import { SCREENS, type Screen } from './marking'
 import { parseBookingDraft, serializeBookingDraft } from './booking-draft'
 

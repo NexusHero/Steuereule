@@ -1,6 +1,6 @@
-import type { Range } from './tax-estimate'
-import { employeeLumpSum, type AssessmentPositionValues } from './assessment'
-import { filingTypeComparison, type FilingTypeComparison, type ProgressionClauseInput } from './filing-type-comparison'
+import type { Range } from '../common/range'
+import { employeeLumpSum, type AssessmentPositionValues } from '../domains/assessment'
+import { filingTypeComparison, type FilingTypeComparison, type ProgressionClauseInput } from '../domains/filing-type-comparison'
 import { isSupportedIncomeTaxYear, type ChurchTaxFactor } from '../math/tarif'
 
 /**

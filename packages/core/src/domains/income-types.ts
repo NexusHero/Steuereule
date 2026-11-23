@@ -1,4 +1,4 @@
-import type { Answers, InterviewOptions } from '../interview/interview'
+import type { Answers, InterviewOptions } from './answers'
 
 export type IncomeType =
   | 'Nichtselbstständig'

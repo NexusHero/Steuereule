@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { AMOUNT_LATER } from '../interview/interview'
+import { AMOUNT_LATER } from './answers'
 import {
   applyHouseholdTaxReduction,
   calculateHouseholdServicesReduction,

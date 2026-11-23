@@ -1,4 +1,4 @@
-import type { AssessmentExplanation, AssessmentPositionId } from '../engine/assessment'
+import type { AssessmentExplanation, AssessmentPositionId } from './assessment'
 
 /**
  * The Einkommensteuerbescheid as a document (ADR-0098 §4): told apart from the LStB it quotes, and its

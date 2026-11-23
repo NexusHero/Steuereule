@@ -1,9 +1,9 @@
 import type {
   AdvisorActionProposal,
-  AdvisorActionStatus,
   AdvisorMessageMeta,
   AdvisorMessageStatus,
 } from './advisor'
+import type { AdvisorActionStatus } from '../domains/action-status'
 import type { AdvisorHistoryEntry } from './ki-port'
 
 /** What the history builder needs of a stored chat message. */

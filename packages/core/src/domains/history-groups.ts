@@ -1,4 +1,4 @@
-import { mostFavourableCheck, type MostFavourableCheck } from '../engine/most-favourable-check'
+import { mostFavourableCheck, type MostFavourableCheck } from './most-favourable-check'
 import { isSupportedIncomeTaxYear } from '../math/tarif'
 import { getTaxYearParameters } from '../math/tax-parameters'
 import { annexNGreAmounts, type NGreInput } from './n-gre'

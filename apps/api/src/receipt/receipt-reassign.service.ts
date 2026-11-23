@@ -1,6 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common'
 import type { AdvisorActionProposal, HolderRef } from '@steuereule/core'
-import { AdvisorService } from '../advisor/advisor.service.js'
+import { AdvisorDocumentStaging } from '../advisor/advisor-document-staging.js'
+import { AdvisorDrafts } from '../advisor/advisor-drafts.js'
 import { ConflictError, InvalidInputError, NotFoundError } from '../common/domain-error.js'
 import type { ReassignReceiptDto, ReassignReceiptResponseDto } from './dto/reassign-receipt.dto.js'
 import { ReceiptParseService } from './receipt-parse.service.js'
@@ -18,18 +19,19 @@ export class ReceiptReassignService {
   constructor(
     @Inject(RECEIPT_REPOSITORY) private readonly receipts: ReceiptRepository,
     @Inject(ReceiptParseService) private readonly parser: ReceiptParseService,
-    @Inject(AdvisorService) private readonly advisor: AdvisorService,
+    @Inject(AdvisorDocumentStaging) private readonly staging: AdvisorDocumentStaging,
+    @Inject(AdvisorDrafts) private readonly drafts: AdvisorDrafts,
   ) {}
 
   async reassign(userId: string, receiptId: string, dto: ReassignReceiptDto): Promise<ReassignReceiptResponseDto> {
     const owned = await this.receipts.findByIdForUser(userId, receiptId)
     if (owned === null) throw new NotFoundError('BELEG_NOT_FOUND', `Beleg "${receiptId}" does not exist for this account.`)
-    const members = await this.advisor.householdMembers(userId, dto.taxYear)
+    const members = await this.staging.householdMembers(userId, dto.taxYear)
     if (!members.some((m) => m.ref === dto.holder)) {
       throw new InvalidInputError('BELEG_HOLDER_UNKNOWN', `"${dto.holder}" is nobody of this household in ${dto.taxYear}.`)
     }
     const holder = dto.holder as HolderRef
-    const takenBack = await this.advisor.takeBackDocumentValues(userId, dto.taxYear, receiptId)
+    const takenBack = await this.staging.takeBackDocumentValues(userId, dto.taxYear, receiptId)
     await this.receipts.setHolders(userId, receiptId, [holder], dto.taxYear)
     if (!dto.rawText?.trim()) return { holders: [holder], takenBack, applied: 0, waiting: 0, parse: null }
 
@@ -49,7 +51,7 @@ export class ReceiptReassignService {
     let applied = 0
     if (plain.length > 0) {
       try {
-        applied = (await this.advisor.applyBatch(userId, dto.taxYear, { drafts: plain.map((a) => ({ actionId: a.actionId })) })).actions.length
+        applied = (await this.drafts.applyBatch(userId, dto.taxYear, { drafts: plain.map((a) => ({ actionId: a.actionId })) })).actions.length
       } catch (error) {
         // A field changed in between: the drafts wait for the user, as any other.
         if (!(error instanceof ConflictError)) throw error

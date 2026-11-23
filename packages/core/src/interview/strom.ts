@@ -2,22 +2,8 @@
 // topic, then one page per chosen topic with all its amounts. Nothing new is stored: the selection
 // is a view on the catalogue's own yes/no answers, so the owl, the printout and the estimate read
 // exactly what they read before.
-import {
-  ENTRIES,
-  GATE_ACKNOWLEDGED,
-  paysOwnProvision,
-  AMOUNT_LATER,
-  QUESTIONS,
-  entryForStep,
-  nextStepFor,
-  type Answers,
-  type CatalogueEntry,
-  type EntryQuestionId,
-  type EntryStepId,
-  type FollowUpTarget,
-  type InterviewOptions,
-  type QuestionDeclaration,
-} from './interview'
+import { ENTRIES, GATE_ACKNOWLEDGED, QUESTIONS, entryForStep, nextStepFor, type CatalogueEntry, type FollowUpTarget, type QuestionDeclaration } from './interview'
+import { paysOwnProvision, AMOUNT_LATER, type Answers, type EntryQuestionId, type EntryStepId, type InterviewOptions } from '../domains/answers'
 
 /** The headings of the selection page. */
 export type StromGroup = 'arbeit' | 'wohnen' | 'vorsorge' | 'gesundheit' | 'sonstiges'

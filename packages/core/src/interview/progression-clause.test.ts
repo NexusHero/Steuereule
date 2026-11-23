@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { Answers } from './interview'
+import type { Answers } from '../domains/answers'
 import { progressionClauseFrom } from './progression-clause'
 
 describe('progressionsvorbehaltAus', () => {

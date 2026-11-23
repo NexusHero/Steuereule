@@ -1,4 +1,4 @@
-import type { Profession } from './interview'
+import type { Profession } from '../domains/answers'
 
 /** Legal sources the profession tips cite (a subset of OwlSourceId). */
 export type ProfessionTipSourceId = 'estg-9-1' | 'estg-9-1-6' | 'estg-9-4a' | 'estg-9-6'

@@ -1,4 +1,4 @@
-import { calculate, type CalculationStatus, type Item } from '../engine/berechnung'
+import { calculate, type CalculationStatus, type Item } from './calculation'
 import type { IncomeType } from './income-types'
 export type CapitalDepotClassification =
   | { readonly kind: 'deutscher-broker' }

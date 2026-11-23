@@ -2,7 +2,7 @@
 // the chains stay intact, 2024 is a loss year of the Gewerbe and 2025 a profit above the Freibetrag.
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { AuditService } from '../src/audit/audit.service.js'
-import { BusinessService } from '../src/business/business.service.js'
+import { composeBusinessService } from '../src/business/business.composition.js'
 import { DEMO_ANSWERS, seedDemoHousehold } from '../src/business/demo-household.js'
 import { HebesatzDirectory } from '../src/business/hebesatz.js'
 import { FakeAuditRepository } from './fakes/fake-audit.repository.js'
@@ -26,7 +26,7 @@ describe('demo household of seed:selbststaendig', () => {
     const repository = new FakeBusinessRepository()
     const interview = new FakeInterviewAnswerRepository()
     for (const year of [2024, 2025]) interview.seed('u', year, { ...DEMO_ANSWERS })
-    const business = new BusinessService(repository, interview, new AuditService(new FakeAuditRepository()), new HebesatzDirectory())
+    const business = composeBusinessService(repository, interview, new AuditService(new FakeAuditRepository()), new HebesatzDirectory())
 
     const { loss2024Eur } = await seedDemoHousehold(business, repository, 'u')
     expect(loss2024Eur).toBeGreaterThan(0)

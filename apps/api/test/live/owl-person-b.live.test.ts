@@ -12,7 +12,7 @@ import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fa
 import { PERSON_B_SCREENS, type AdvisorActionProposal, type AdvisorMessageMeta } from '@steuereule/core'
 import { randomUUID } from 'node:crypto'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import { AdvisorService } from '../../src/advisor/advisor.service.js'
+import { advisorOf, type AdvisorTestFacade } from '../fakes/advisor-test-kit.js'
 import { AppModule } from '../../src/app.module.js'
 import { ConfirmationService } from '../../src/confirmation/confirmation.service.js'
 import { LinkService } from '../../src/link/link.service.js'
@@ -24,7 +24,7 @@ const YEAR = 2025
 describe.skipIf(!KEY)('the owl drafts the spouse’s figures for Person B (live model)', () => {
   let app: NestFastifyApplication
   let prisma: PrismaService
-  let advisor: AdvisorService
+  let advisor: AdvisorTestFacade
   let confirmation: ConfirmationService
   let link: LinkService
   const users: string[] = []
@@ -37,7 +37,7 @@ describe.skipIf(!KEY)('the owl drafts the spouse’s figures for Person B (live 
     app = await NestFactory.create<NestFastifyApplication>(AppModule, new FastifyAdapter(), { logger: false })
     await app.init()
     prisma = app.get(PrismaService)
-    advisor = app.get(AdvisorService)
+    advisor = advisorOf(app)
     confirmation = app.get(ConfirmationService)
     link = app.get(LinkService)
   })

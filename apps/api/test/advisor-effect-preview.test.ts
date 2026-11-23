@@ -1,6 +1,6 @@
 // ADR-0066: what the draft card says about the refund, from the two estimates of a preview.
 import { describe, expect, it } from 'vitest'
-import { effectFromEstimates } from '../src/advisor/advisor.service.js'
+import { effectFromEstimates } from '../src/advisor/advisor-case-digest.js'
 import type { TaxEstimateStatus } from '../src/tax-estimate/tax-estimate.service.js'
 
 const range = (from: number, to: number): TaxEstimateStatus => ({ kind: 'spanne', result: { from, to } }) as unknown as TaxEstimateStatus

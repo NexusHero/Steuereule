@@ -1,24 +1,15 @@
-import { ADVISOR_LEGAL_SOURCES, alternativeKeyOf, draftPersonKey, isNewRecordId, withTwoPathsGroup, provenanceKey, type AdvisorActionProposal, type AdvisorMessageMeta, type AdvisorPerson, type AdvisorUndoEntry, type Screen } from '@steuereule/core'
+import { ADVISOR_LEGAL_SOURCES, alternativeKeyOf, draftPersonKey, isNewRecordId, withTwoPathsGroup, provenanceKey, type AdvisorActionProposal, type AdvisorMessageMeta, type AdvisorUndoEntry, type Screen } from '@steuereule/core'
+import { Inject, Injectable } from '@nestjs/common'
 import { AuditService } from '../audit/audit.service.js'
-import { type TransactionRunner } from '../common/transaction-runner.js'
+import { LinkService } from '../link/link.service.js'
+import { PersonalDataConsentService } from '../owl-mode/personal-data-consent.service.js'
+import { TRANSACTION_RUNNER, type TransactionRunner } from '../common/transaction-runner.js'
 import { assertAiWritable } from '../confirmation/ai-write-policy.js'
 import { ConfirmationService } from '../confirmation/confirmation.service.js'
 import { ConflictError, InvalidInputError, NotFoundError } from '../common/domain-error.js'
-import { type AdvisorChatMessageRecord, type AdvisorRepository } from './advisor.repository.js'
+import { ADVISOR_REPOSITORY, type AdvisorChatMessageRecord, type AdvisorRepository } from './advisor.repository.js'
 import type { AdvisorActionMutationResponseDto, ApplyBatchActionsDto, ApplyBatchActionsResponseDto } from './dto/advisor.dto.js'
 import { ResolvedDraft, toPublicAction, toMessageDto } from './advisor-shared.js'
-
-/** Whose data a person's draft writes; `LinkService.dataUser` in the app (ADR-0054, ADR-0073). */
-export type DataUserResolver = (userId: string, taxYear: number, person: AdvisorPerson) => Promise<string>
-
-/** Without a household behind the service there is no Person B to write for. */
-const ownDataOnly: DataUserResolver = async (userId, _taxYear, person) => {
-  if (person === 'A') return userId
-  throw new InvalidInputError('NO_ACTIVE_ZUSAMMENVERANLAGUNG', 'There is no active Zusammenveranlagung.')
-}
-
-/** Whether the user consented to personal data for the owl (ADR-0091); read on every apply, so a revocation stops drafts at once. */
-export type PersonalDataConsentResolver = (userId: string) => Promise<boolean>
 
 /**
  * Creates and removes the rows a draft prepared as new (ADR-0091): a child from its first name and
@@ -29,21 +20,25 @@ export interface DraftRecords {
   remove(dataUserId: string, taxYear: number, screen: Screen, id: string): Promise<void>
 }
 
-const NO_RECORDS: DraftRecords = { create: async () => null, remove: async () => {} }
+/** Injection token of the rows the owl may create and remove for a draft. */
+export const DRAFT_RECORDS = Symbol('DRAFT_RECORDS')
 
 /** A field's record: whose data, which mask and which row — the part of the key before the field. */
 const recordOf = (dataUserId: string, key: string): string => `${dataUserId}|${key.slice(0, key.lastIndexOf('.'))}`
 
 /** The life of a draft after the owl proposed it: baseline, superseding, applying with a compare-and-set, undo and dismissal. */
+@Injectable()
 export class AdvisorDrafts {
   constructor(
-    private readonly advisorRepo: AdvisorRepository,
-    private readonly auditService: AuditService,
-    private readonly confirmationService: ConfirmationService,
-    private readonly transactions: TransactionRunner,
-    private readonly dataUserOf: DataUserResolver = ownDataOnly,
-    private readonly consentOf: PersonalDataConsentResolver = async () => false,
-    private readonly records: DraftRecords = NO_RECORDS,
+    @Inject(ADVISOR_REPOSITORY) private readonly advisorRepo: AdvisorRepository,
+    @Inject(AuditService) private readonly auditService: AuditService,
+    @Inject(ConfirmationService) private readonly confirmationService: ConfirmationService,
+    @Inject(TRANSACTION_RUNNER) private readonly transactions: TransactionRunner,
+    /** Whose data a person's draft writes (ADR-0054, ADR-0073). */
+    @Inject(LinkService) private readonly link: LinkService,
+    /** The consent to personal data for the owl (ADR-0091); read on every apply, so a revocation stops drafts at once. */
+    @Inject(PersonalDataConsentService) private readonly personalDataConsent: PersonalDataConsentService,
+    @Inject(DRAFT_RECORDS) private readonly records: DraftRecords,
   ) {}
 
   /** What a draft aims at: the field, and for Person B that it is B's field, not the user's. */
@@ -53,7 +48,7 @@ export class AdvisorDrafts {
 
   /** The user whose fields the draft writes. A refusal (B has an own account now) reaches the client as it stands. */
   async dataUserFor(userId: string, taxYear: number, action: Pick<AdvisorActionProposal, 'person'>): Promise<string> {
-    return this.dataUserOf(userId, taxYear, action.person ?? 'A')
+    return this.link.dataUser(userId, taxYear, action.person ?? 'A')
   }
 
   collectPendingTargetKeys(meta: AdvisorMessageMeta | null): Set<string> {
@@ -73,7 +68,7 @@ export class AdvisorDrafts {
     taxYear: number,
     draft: AdvisorActionProposal,
   ): Promise<AdvisorActionProposal> {
-    const consent = await this.consentOf(userId)
+    const consent = await this.personalDataConsent.hasConsent(userId)
     assertAiWritable(draft.screen, draft.field, undefined, consent)
     const dataUserId = await this.dataUserFor(userId, taxYear, draft)
     const key = provenanceKey(draft.screen, draft.field, draft.instance ?? undefined)
@@ -367,7 +362,7 @@ export class AdvisorDrafts {
       throw new InvalidInputError('ADVISOR_BATCH_DUPLICATE_ACTION', 'Eine Aktion ist doppelt im Batch enthalten.')
     }
 
-    const consent = await this.consentOf(userId)
+    const consent = await this.personalDataConsent.hasConsent(userId)
     return this.transactions.run(async () => {
       const drafts: ResolvedDraft[] = []
       const targetKeys = new Set<string>()
@@ -592,7 +587,7 @@ export class AdvisorDrafts {
   }
 
   async undoAction(userId: string, taxYear: number, actionId: string): Promise<AdvisorActionMutationResponseDto> {
-    const consent = await this.consentOf(userId)
+    const consent = await this.personalDataConsent.hasConsent(userId)
     return this.transactions.run(async () => {
       const draft = await this.resolveDraft(userId, taxYear, actionId)
       if (draft.action.status !== 'applied') {

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { ENTRIES, isReachableFor, nextStepFor, type Answers } from '../interview/interview'
+import { ENTRIES, isReachableFor, nextStepFor } from '../interview/interview'
+import { type Answers } from './answers'
 import { deductibleProvision } from './provision'
 import { declaresBusiness, paysOwnProvision, selfPaidProvisionFromAnswers } from './self-paid-provision'
 

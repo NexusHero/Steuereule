@@ -1,4 +1,4 @@
-import type { Range } from '../engine/tax-estimate'
+import type { Range } from '../common/range'
 
 export const UNCERTAINTY_PER_ITEM = 60
 
