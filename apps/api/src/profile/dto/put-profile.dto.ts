@@ -1,5 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger'
 import { IsOptional, IsString } from 'class-validator'
+import { NoControlCharacters } from '../../common/no-control-characters.validator.js'
 import { IsNotBlank, IsTaxId, IsTaxNumber } from './steuer-id.validators.js'
 
 /** `type: String` is given explicitly on every. */
@@ -7,11 +8,13 @@ export class PutProfileDto {
   @ApiProperty({ type: String, example: 'Anna', description: 'Non-empty first name.' })
   @IsString()
   @IsNotBlank()
+  @NoControlCharacters()
   firstName!: string
 
   @ApiProperty({ type: String, example: 'Beispiel', description: 'Non-empty last name.' })
   @IsString()
   @IsNotBlank()
+  @NoControlCharacters()
   lastName!: string
 
   @ApiPropertyOptional({
