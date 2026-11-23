@@ -1,5 +1,6 @@
-import type { AssessmentPositionValues } from '../engine/assessment'
-import type { EstimateChurchTax, Range } from '../engine/tax-estimate'
+import type { AssessmentPositionValues } from './assessment'
+import type { Range } from '../common/range'
+import type { EstimateChurchTax } from './church-tax'
 import { isIsoDate } from '../common/dates'
 import type { TaxYearStatus } from './tax-year-status'
 import type { PersonYearFacts } from './year-history'

@@ -1,4 +1,4 @@
-import { nextWorkingDay } from '../engine/assessment'
+import { nextWorkingDay } from './assessment'
 import { isSupportedIncomeTaxYear } from '../math/tarif'
 import { voluntaryFilingDeadlineFor } from './deadlines'
 

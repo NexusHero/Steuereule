@@ -1,29 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import {
-  AMOUNT_LATER,
-  amountFromAnswer,
-  buildStepIndex,
-  ENTRIES,
-  entryForStep,
-  GATE_ACKNOWLEDGED,
-  isReachable,
-  isReachableFor,
-  isValidAnswer,
-  JOB_VALUES,
-  LATER_ALLOWED_STEPS,
-  laterAmountSteps,
-  nextStep,
-  nextStepFor,
-  QUESTIONS,
-  remainingSteps,
-  remainingStepsFor,
-  type Answers,
-  type CatalogueEntry,
-  type EntryStepId,
-  type QuestionDeclaration,
-  type Step,
-  type StepId,
-} from './interview'
+import { buildStepIndex, ENTRIES, entryForStep, GATE_ACKNOWLEDGED, isReachable, isReachableFor, isValidAnswer, LATER_ALLOWED_STEPS, laterAmountSteps, nextStep, nextStepFor, QUESTIONS, remainingSteps, remainingStepsFor, type CatalogueEntry, type QuestionDeclaration } from './interview'
+import { AMOUNT_LATER, amountFromAnswer, JOB_VALUES, type Answers, type EntryStepId, type Step, type StepId } from '../domains/answers'
 
 // REQ-015 / #318 / #321 — the trap this suite exists to avoid is named in #318's ticket: a test
 // that asserts THAT a next step appears rather than WHICH one. Such a test stays green when the

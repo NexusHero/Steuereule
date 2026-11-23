@@ -1,5 +1,5 @@
-import { employeeLumpSum, type AssessmentPositionId, type AssessmentPositionValues } from '../engine/assessment'
-import type { Range } from '../engine/tax-estimate'
+import { employeeLumpSum, type AssessmentPositionId, type AssessmentPositionValues } from './assessment'
+import type { Range } from '../common/range'
 import { incomeTax, isSupportedIncomeTaxYear, splittingTariff } from '../math/tarif'
 
 /**

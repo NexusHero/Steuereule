@@ -5,7 +5,7 @@ import {
   LEGAL_STATUS_DATE,
   type OwlInputFacts,
 } from './owl-mode'
-import { PROFESSION_VALUES } from './interview'
+import { PROFESSION_VALUES } from '../domains/answers'
 
 describe('eulen-modus', () => {
   it('triggers musterluecke for a Fortbildung, without inventing an amount', () => {

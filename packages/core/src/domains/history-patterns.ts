@@ -1,4 +1,4 @@
-import { assessmentPosition, isAssessmentPositionId, type AssessmentDiff, type AssessmentLesson, type AssessmentPositionId, type AssessmentPositionType } from '../engine/assessment'
+import { assessmentPosition, isAssessmentPositionId, type AssessmentDiff, type AssessmentLesson, type AssessmentPositionId, type AssessmentPositionType } from './assessment'
 
 /**
  * Patterns over the user's own Bescheide (ADR-0099 §3, §5). Nothing here forecasts: a pattern names only

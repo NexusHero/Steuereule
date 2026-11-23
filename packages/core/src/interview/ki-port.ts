@@ -1,4 +1,4 @@
-import type { Item, Source } from '../engine/berechnung'
+import type { Item, Source } from '../domains/calculation'
 import type { IncomeType } from '../domains/income-types'
 import type { AdvisorActionProposal, AdvisorChatMessageView, AdvisorMessageMeta, AdvisorTwoPathsProposal, CaseDigest } from './advisor'
 import type { Screen } from './marking'

@@ -15,7 +15,7 @@ import {
   remainingAppealDays,
   type FilingVersion,
 } from './assessment'
-import type { EmployeeFacts } from '../domains/employee'
+import type { EmployeeFacts } from './employee'
 
 // Bescheidprüfung 1.0 (ticket 10.3) — the deterministic core: the Bescheid data model, the
 // Abgleich (vs berechne), the Korrektur (copy the eingereichte Fassung + diff) and the Einspruch

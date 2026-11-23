@@ -1,5 +1,6 @@
-import type { EstimateChurchTax, Range, TaxEstimate } from './tax-estimate'
-import { churchTaxMixedMarriage, churchTaxOnIncome, type ChurchMembership, type ChurchTaxAmount } from '../domains/church-tax'
+import type { TaxEstimate } from './tax-estimate'
+import type { Range } from '../common/range'
+import { churchTaxMixedMarriage, churchTaxOnIncome, type ChurchMembership, type ChurchTaxAmount, type EstimateChurchTax } from '../domains/church-tax'
 import type { GermanState } from '../common/postal-codes'
 import { incomeTax as basicTariff } from '../math/tarif'
 import { childTaxAllowance } from '../domains/children'

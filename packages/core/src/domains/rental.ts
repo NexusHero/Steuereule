@@ -1,5 +1,6 @@
-import { calculate, type Item } from '../engine/berechnung'
+import { calculate, type Item } from './calculation'
 import type { IncomeType } from './income-types'
+import { RESIDENTIAL_DEPRECIATION_STEPS, valueForYear } from '../math/tax-parameters'
 export type RentalClassification =
   | { readonly kind: 'einfach' }
   | { readonly kind: 'mehrere' }
@@ -25,9 +26,7 @@ export function isRentalCalculable(classification: RentalClassification): boolea
 
 export function depreciationRatePercent(baujahr: number): number | null {
   if (!Number.isInteger(baujahr) || baujahr < 0) return null
-  if (baujahr <= 1924) return 2.5
-  if (baujahr <= 2022) return 2
-  return 3
+  return valueForYear(RESIDENTIAL_DEPRECIATION_STEPS, baujahr)
 }
 
 export type RentalFieldId = 'mieteinnahmen' | 'anschaffungskosten' | 'baujahr' | 'werbungskosten'

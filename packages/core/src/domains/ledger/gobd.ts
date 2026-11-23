@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto'
 import { chartAccounts, findAccount } from './accounts'
 import { isBookingDate, LedgerError, yearOf, type IsoDate, type JournalEntry, type Ledger } from './journal'
+import { appliesFrom, RULE_CHANGE_YEARS } from '../../math/tax-parameters'
 
 /**
  * GoBD integrity for the book (ADR-0101 §13): Festschreibung, an append-only log with a hash chain,
@@ -143,10 +144,10 @@ export function retentionPeriod(category: RetentionCategory, documentYear: numbe
     case 'buecher':
       return { years: 10, retainThrough: through(documentYear + 10), basis: '§ 147 Abs. 1 Nr. 1, Abs. 3 S. 1 AO', extendedWhileAssessmentOpen: true }
     case 'buchungsbelege': {
-      if (documentYear + 10 <= 2024) {
+      if (!appliesFrom('bookingVoucherEightYears', documentYear + 10)) {
         return { years: 10, retainThrough: through(documentYear + 10), basis: '§ 147 Abs. 3 AO a. F.', extendedWhileAssessmentOpen: true }
       }
-      return { years: 8, retainThrough: through(Math.max(documentYear + 8, 2024)), basis: '§ 147 Abs. 1 Nr. 4, Abs. 3 S. 1 AO i. d. F. BEG IV; Art. 97 § 19a EGAO', extendedWhileAssessmentOpen: true }
+      return { years: 8, retainThrough: through(Math.max(documentYear + 8, RULE_CHANGE_YEARS.bookingVoucherEightYears - 1)), basis: '§ 147 Abs. 1 Nr. 4, Abs. 3 S. 1 AO i. d. F. BEG IV; Art. 97 § 19a EGAO', extendedWhileAssessmentOpen: true }
     }
     case 'handelsbriefe':
     case 'sonstige':
