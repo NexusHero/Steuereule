@@ -1,0 +1,69 @@
+# CI Overview (ADR-0105): once the four PR pipelines finish, post ONE PR comment that groups every check by
+# category (the `category: name` prefix) and says what it proves. Advisory only — it never blocks a merge and
+# is written to never fail a check (any rendering error exits 0), so it stays a quiet panel, not a gate.
+name: CI Overview
+
+on:
+  workflow_run:
+    workflows: ['Build & E2E', 'Quality', 'Security', 'Load']
+    types: [completed]
+
+permissions:
+  contents: read
+  checks: read
+  pull-requests: write
+
+concurrency:
+  group: ci-overview-${{ github.event.workflow_run.head_sha }}
+  cancel-in-progress: false
+
+jobs:
+  overview:
+    name: 'overview: CI gate summary'
+    runs-on: ubuntu-24.04
+    if: ${{ github.event.workflow_run.event == 'pull_request' }}
+    steps:
+      - name: Render & upsert the categorized CI overview comment
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SHA: ${{ github.event.workflow_run.head_sha }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -uo pipefail
+          render() {
+            PR=$(gh api "repos/$REPO/commits/$SHA/pulls" --jq '.[0].number // empty')
+            [ -n "$PR" ] || { echo "No PR for $SHA."; return 0; }
+            RUNS=$(gh api "repos/$REPO/commits/$SHA/check-runs" --paginate \
+              --jq '.check_runs[] | {name, status, conclusion}') ||
+              { echo "check-run retrieval failed; skipping overview."; return 0; }
+            [ -n "$RUNS" ] ||
+              { echo "no check-runs retrieved; skipping overview (not posting a misleading empty summary)."; return 0; }
+            PENDING=$(printf '%s\n' "$RUNS" | jq -rs \
+              '[.[] | select((.name|startswith("overview:"))|not) | select(.status!="completed")] | length')
+            [ "$PENDING" = "0" ] || { echo "$PENDING checks still running; waiting."; return 0; }
+            TABLE=$(printf '%s\n' "$RUNS" | jq -rs '
+              [ .[] | select((.name|startswith("overview:"))|not)
+                    | {cat: ((.name|split(": ")[0]) // "other"),
+                       gate: ((.name|sub("^[a-z-]+: ";""))),
+                       ok: (.conclusion // "pending")} ]
+              | sort_by(.cat, .gate) | group_by(.cat)
+              | map("### " + .[0].cat + "\n" + (map("- "
+                  + (if .ok=="success" then "✅" elif .ok=="skipped" then "⏭️"
+                     elif .ok=="neutral" then "➖" else "❌" end) + " " + .gate) | join("\n")))
+              | join("\n\n")')
+            FAILS=$(printf '%s\n' "$RUNS" | jq -rs \
+              '[.[] | select(.conclusion!=null and (.conclusion|IN("success","skipped","neutral")|not))] | length')
+            # shellcheck disable=SC2016  # backticks are literal Markdown in the comment body, not command substitution
+            BODY=$(printf '<!-- ci-overview -->\n## CI Overview — by category\n\n_The `main` ruleset requires these checks under their **pre-rename** names (#71); until it is updated to the new names, the names below are what actually reports. This panel groups every check by what it proves._\n\n%s\n\n**Failing gates: %s** · commit `%s` · see [`docs/ci-pipeline.md`](https://github.com/%s/blob/main/docs/ci-pipeline.md) for what each gate proves and its evidence tier.\n' \
+              "$TABLE" "$FAILS" "${SHA:0:9}" "$REPO")
+            CID=$(gh api "repos/$REPO/issues/$PR/comments" --paginate \
+              --jq '.[] | select(.body|startswith("<!-- ci-overview -->")) | .id' | head -1)
+            if [ -n "$CID" ]; then
+              gh api -X PATCH "repos/$REPO/issues/comments/$CID" -f body="$BODY" >/dev/null
+            else
+              gh api -X POST "repos/$REPO/issues/$PR/comments" -f body="$BODY" >/dev/null
+            fi
+            echo "CI overview posted to PR #$PR."
+          }
+          render || echo "CI overview rendering skipped (non-fatal)."
+          exit 0

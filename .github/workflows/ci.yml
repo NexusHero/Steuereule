@@ -31,7 +31,7 @@ jobs:
   # Real production build, CycloneDX SBOM generation, Trivy container image vulnerability scan,
   # and Web Bundle Security / Size Budget gate.
   build:
-    name: Build, CycloneDX SBOM, Trivy Container Scan & Bundle Gate
+    name: 'supply-chain: build, SBOM, container scan & bundle gate'
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
@@ -107,7 +107,7 @@ jobs:
   # tests are structurally blind to (the missing-`@fastify/static` boot crash, the
   # CORS gap) before it reaches a human or the acceptance/e2e tier.
   smoke:
-    name: Smoke
+    name: 'e2e: smoke (real /api/auth over HTTP)'
     needs: build
     runs-on: ubuntu-24.04
     services:
@@ -365,7 +365,7 @@ jobs:
     # social sign-in response, asserts only "not 404" on the callback), dispatched to Robin, not
     # yet fixed. Wiring a known-broken/flaky script in would be exactly the green-theatre shape
     # this pipeline exists to refuse — it stays unwired until #206 closes.
-    name: Browser gates (real stack, headless Chromium)
+    name: 'e2e: browser gates & a11y (BFSG/WCAG 2.1 AA, headless Chromium)'
     needs: build
     runs-on: ubuntu-24.04
     services:
@@ -733,7 +733,7 @@ jobs:
   # Scenario 24 DevMLOps Advisor Chat UI E2E, 25/26, the escalation cases, and 27, the real Grenzgänger case of
   # ADR-0094 to the cent). Runs all 27 full-persona E2E scenarios on every PR.
   e2e-scenarios:
-    name: E2E Scenarios Matrix (Shard ${{ matrix.shard }})
+    name: 'e2e: scenarios (shard ${{ matrix.shard }})'
     needs: build
     runs-on: ubuntu-24.04
     timeout-minutes: 25
@@ -838,7 +838,7 @@ jobs:
   # 20.11.2026 — profile, quick entry, book, bank import, assets, closing, VAT, trade tax, ELSTER fill-in help,
   # export, checkout and the §22 additions. Its own stack, because the shards pin the switch off.
   e2e-self-employed:
-    name: E2E Scenario 09b — self-employment switch on
+    name: 'e2e: scenario 09b (self-employment switch on)'
     needs: build
     runs-on: ubuntu-24.04
     timeout-minutes: 25
@@ -957,7 +957,7 @@ jobs:
   # origin baked into the web image) is isolated and named, rather than the harness quietly
   # re-pointing itself at whatever the broken value was and never noticing the mismatch.
   prod-deploy-smoke:
-    name: Production compose stack — guest, registration, login, QR (real Docker build)
+    name: 'e2e: production compose stack + OWASP ZAP DAST (real Docker build)'
     needs: build
     runs-on: ubuntu-24.04
     timeout-minutes: 20

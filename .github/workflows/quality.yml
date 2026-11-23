@@ -20,7 +20,7 @@ permissions:
 
 jobs:
   validate-compose:
-    name: Validate compose
+    name: 'static: validate compose'
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -47,7 +47,7 @@ jobs:
   # findings vs 0) — `.oxlintrc.json` lives at the repo root specifically so it is
   # auto-discovered.
   lint:
-    name: Lint
+    name: 'static: lint (oxlint)'
     needs: validate-compose
     runs-on: ubuntu-24.04
     steps:
@@ -68,7 +68,7 @@ jobs:
   # unit/pure-logic suite — DB-requiring tests live in the `integration` job below,
   # ADR-0004).
   test:
-    name: Test
+    name: 'correctness: unit tests (no DB)'
     needs: validate-compose
     runs-on: ubuntu-24.04
     steps:
@@ -196,7 +196,7 @@ jobs:
   # SonarQube token and exports it as SONAR_TOKEN. Fork PRs get no OIDC token, so the job is
   # skipped for them instead of failing.
   sonar:
-    name: SonarQube Cloud
+    name: 'quality: sonarqube cloud'
     needs: [test, integration]
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-24.04
@@ -238,7 +238,7 @@ jobs:
   # process runs natively on the runner (ADR-0010) — the compose stack's `postgres`
   # service is the parity image for the *local*/e2e stack, not this job's database.
   integration:
-    name: Integration (Postgres)
+    name: 'correctness: integration (postgres)'
     needs: validate-compose
     runs-on: ubuntu-24.04
     services:
@@ -342,7 +342,7 @@ jobs:
   # docs-only PR. No `pnpm install` either — everything under scripts/checks is plain Node
   # (`fs`, `fetch`), deliberately dependency-free (see the README).
   docs-consistency:
-    name: Docs consistency — register-check + adr-check
+    name: 'static: docs consistency (register + adr)'
     runs-on: ubuntu-24.04
     # F7 (Musti's review on #252): the only job in this pipeline that hands GITHUB_TOKEN to a
     # `fetch()` call (check 5's issue-open lookup) — with no permissions: block anywhere in
@@ -392,7 +392,7 @@ jobs:
         run: node scripts/checks/adr-check.mjs
 
   vordrucke:
-    name: Vordrucke — Vermessung und Lage der Ausdruck-Felder
+    name: 'static: vordrucke (form-field geometry)'
     runs-on: ubuntu-24.04
     # The Ausdruck writes onto fixed positions of the official PDFs. A swapped template, a spec
     # that no longer resolves to the checked-in boxes, or a box that now sits next to another
