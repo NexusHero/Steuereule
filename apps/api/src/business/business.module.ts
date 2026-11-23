@@ -14,6 +14,8 @@ import { HEBESATZ_DIRECTORY } from './business.tokens.js'
 import { ElsterHelpService } from './elster-help.service.js'
 import { HebesatzDirectory } from './hebesatz.js'
 import { LedgerService } from './ledger.service.js'
+import { AssetService } from './asset.service.js'
+import { BankImportService } from './bank-import.service.js'
 import { BusinessExportService } from './business-export.service.js'
 import { PayrollService } from './payroll.service.js'
 import { loadSuppliedElsterLines } from './elster-supplied-lines.js'
@@ -25,6 +27,8 @@ import { loadSuppliedElsterLines } from './elster-supplied-lines.js'
   providers: [
     BusinessContext,
     LedgerService,
+    AssetService,
+    BankImportService,
     BusinessExportService,
     PayrollService,
     BusinessService,

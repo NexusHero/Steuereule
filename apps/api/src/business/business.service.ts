@@ -1,7 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common'
 import {
-  accountFor,
-  companyCarUse,
   disposalGain,
   retainedProfitTax,
   type RetainedProfit,
@@ -10,18 +8,10 @@ import {
   vatFilingPeriod,
   vatPeriodReturn,
   vatPeriodsOf,
-  type CompanyCarInput,
-  type CompanyCarResult,
-  BANK_CSV_PRESETS,
-  USEFUL_LIVES,
-  type AssetCategory,
   applyLosses,
   balanceSheet,
   carryBackLoss,
   closingBalances,
-  depreciationDrafts,
-  disposalDrafts,
-  draftFromTransaction,
   elsterLinesFor,
   ELSTER_FORMS,
   ELSTER_YEARS,
@@ -30,24 +20,13 @@ import {
   incomeStatement,
   lossRules,
   openingEntryDraft,
-  parseBankCsv,
-  parseCamt053,
-  suggestBooking,
   suggestProfessionKind,
   tradeTaxReturn,
   landDeduction,
   vatAnnualReturn,
-  withFingerprints,
-  assetRegister,
   cashAccountingAllowed,
-  type BankCsvPreset,
-  type BankTransaction,
-  type BookingDraft,
-  type BookingRule,
-  type BookingTaxKey,
   type BusinessIncome,
   type BookkeepingMode,
-  type CsvMapping,
   type ElsterForm,
   type ElsterYear,
   type EuerKey,
@@ -70,18 +49,17 @@ import {
   type BusinessProfilePatch,
   type BusinessProfileRecord,
   type BusinessRepository,
-  type FixedAssetRecord,
-  type NewFixedAsset,
 } from './business.repository.js'
-import { bankAccountOf, bookIntegrity, deductibleByKeyInEuros, ecSalesListOf, eur, registerAssetOf, vatCorrectionOf, vatFiguresOf, type VatFigures } from './business-ledger.js'
+import { bookIntegrity, deductibleByKeyInEuros, ecSalesListOf, eur, vatCorrectionOf, vatFiguresOf, type VatFigures } from './business-ledger.js'
 import { HebesatzDirectory, type HebesatzLookup } from './hebesatz.js'
 import { BusinessContext } from './business-context.js'
 import { LedgerService } from './ledger.service.js'
+import { AssetService } from './asset.service.js'
+import { BankImportService } from './bank-import.service.js'
 import { BusinessExportService } from './business-export.service.js'
 import { PayrollService } from './payroll.service.js'
 import { HEBESATZ_DIRECTORY } from './business.tokens.js'
 import {
-  emptyTransaction,
   extraordinaryOf,
   ledgerCall,
   parseJson,
@@ -97,7 +75,6 @@ import {
 } from './business-helpers.js'
 import type {
   AppliedMultiplier,
-  BuildingFactsInput,
   BusinessProfileView,
   DisposalFacts,
   ElsterHelp,
@@ -108,9 +85,7 @@ import type {
   ProfileInput,
   RetainedFacts,
   SmallBusinessCheck,
-  SpecialDepreciationInput,
   TradeTaxInputs,
-  VatCorrectionInput,
   VatPeriodFacts,
   VatPrepaymentOverview,
 } from './views.js'
@@ -126,6 +101,8 @@ export class BusinessService {
     @Inject(LedgerService) private readonly ledger: LedgerService,
     @Inject(PayrollService) private readonly payrollRuns: PayrollService,
     @Inject(BusinessExportService) private readonly exports: BusinessExportService,
+    @Inject(BankImportService) private readonly bank: BankImportService,
+    @Inject(AssetService) private readonly fixedAssets: AssetService,
   ) {}
 
   /** Whether the path is open for the year (switch on, a business declared), for callers that must not throw. */
@@ -277,184 +254,43 @@ export class BusinessService {
   // ------------------------------------------------------------------------------------------------
   // Bank import (ADR-0101 §14)
 
-  async importBank(
-    userId: string,
-    year: number,
-    ref: BusinessRef,
-    input: { format: 'csv' | 'camt053'; content: string; preset?: BankCsvPreset | undefined; mapping?: CsvMapping | undefined },
-  ): Promise<{ readonly added: number; readonly duplicates: number; readonly outsideYear: number }> {
-    await this.context.assertOpen(userId, year)
-    const { chart, mode } = await this.context.frame(userId, year, ref)
-    let parsed: readonly BankTransaction[]
-    try {
-      if (input.format === 'camt053') parsed = parseCamt053(input.content)
-      else {
-        const mapping = input.mapping ?? (input.preset ? BANK_CSV_PRESETS[input.preset] : undefined)
-        if (mapping === undefined) throw new InvalidInputError('BANK_MAPPING_MISSING', 'Für eine CSV-Datei die Bank wählen oder die Spalten zuordnen.')
-        parsed = parseBankCsv(input.content, mapping)
-      }
-    } catch (error) {
-      if (error instanceof InvalidInputError) throw error
-      throw new InvalidInputError('BANK_FILE_UNREADABLE', error instanceof Error ? error.message : 'Die Datei ließ sich nicht lesen.')
-    }
-    const all = withFingerprints(parsed)
-    const inYear = all.filter((tx) => Number(tx.bookingDate.slice(0, 4)) === year)
-    const added = await this.repository.addBankTransactions(
-      userId,
-      year,
-      ref,
-      { chart, mode },
-      inYear.map(({ fingerprint, amount, ...details }) => ({ fingerprint, amount, details: JSON.stringify(details) })),
-    )
-    await this.audit.append({ userId, action: 'WRITE', resource: 'selbststaendig' })
-    return { added, duplicates: inYear.length - added, outsideYear: all.length - inYear.length }
+  importBank(...args: Parameters<BankImportService['importBank']>) {
+    return this.bank.importBank(...args)
   }
 
-  private async rules(userId: string, person: BusinessPerson): Promise<BookingRule[]> {
-    return (await this.repository.listRules(userId, person)).map((r) => ({ id: r.id, ...parseJson<Omit<BookingRule, 'id' | 'account' | 'taxKey'>>(r.criteria, {}), account: r.account, taxKey: r.taxKey as BookingTaxKey, ...(r.text ? { text: r.text } : {}) }))
+  listBank(...args: Parameters<BankImportService['listBank']>) {
+    return this.bank.listBank(...args)
   }
 
-  async listBank(userId: string, year: number, ref: BusinessRef) {
-    await this.context.assertOpen(userId, year)
-    const [records, rules] = await Promise.all([this.repository.listBankTransactions(userId, year, ref), this.rules(userId, ref.person)])
-    await this.audit.append({ userId, action: 'READ', resource: 'selbststaendig' })
-    return records.map((r) => {
-      const tx: BankTransaction = { ...parseJson<Omit<BankTransaction, 'amount'>>(r.details, emptyTransaction()), amount: r.amount }
-      return { id: r.id, status: r.status, entryNumber: r.entryNumber, transaction: tx, suggestion: r.status === 'offen' ? suggestBooking(tx, rules) : null }
-    })
+  acceptBank(...args: Parameters<BankImportService['acceptBank']>) {
+    return this.bank.acceptBank(...args)
   }
 
-  /** Takes a suggestion (or the user's own account) as a booking: bank against the account. */
-  async acceptBank(
-    userId: string,
-    year: number,
-    ref: BusinessRef,
-    id: string,
-    input: { account?: string | undefined; taxKey?: BookingTaxKey | undefined; text?: string | undefined; documentNumber?: string | undefined; remember?: boolean | undefined },
-  ): Promise<JournalEntry> {
-    const list = await this.listBank(userId, year, ref)
-    const item = list.find((t) => t.id === id)
-    if (!item) throw new NotFoundError('BANK_TRANSACTION_NOT_FOUND', 'Diesen Kontoumsatz gibt es nicht.')
-    if (item.status !== 'offen') throw new ConflictError('BANK_TRANSACTION_DONE', 'Dieser Kontoumsatz ist schon erledigt.')
-    const account = input.account ?? item.suggestion?.account
-    if (account === undefined) throw new InvalidInputError('BANK_ACCOUNT_MISSING', 'Für diesen Umsatz gibt es keinen Vorschlag; bitte ein Konto wählen.')
-    const taxKey = input.taxKey ?? item.suggestion?.taxKey ?? 'none'
-    const text = input.text ?? item.suggestion?.text ?? (item.transaction.counterpartyName ?? item.transaction.reference)
-    const { chart } = await this.context.frame(userId, year, ref)
-    const draft = draftFromTransaction(item.transaction, bankAccountOf(chart), { ruleId: item.suggestion?.ruleId ?? 'manuell', account, taxKey, text }, input.documentNumber ?? `Bank-${item.transaction.bookingDate}-${id.slice(0, 6)}`)
-    const entry = await this.ledger.post(userId, year, ref, draft, `bank:${id}`)
-    await this.repository.setBankTransactionStatus(userId, id, 'gebucht', entry.number)
-    if (input.remember === true && (item.transaction.counterpartyIban || item.transaction.counterpartyName)) {
-      const criteria = item.transaction.counterpartyIban ? { counterpartyIban: item.transaction.counterpartyIban } : { counterpartyNameContains: item.transaction.counterpartyName! }
-      await this.repository.createRule(userId, { person: ref.person, criteria: JSON.stringify({ ...criteria, direction: item.transaction.amount > 0 ? 'in' : 'out' }), account, taxKey, text })
-    }
-    return entry
-  }
-
-  async ignoreBank(userId: string, year: number, ref: BusinessRef, id: string): Promise<void> {
-    await this.context.assertOpen(userId, year)
-    const records = await this.repository.listBankTransactions(userId, year, ref)
-    if (!records.some((r) => r.id === id)) throw new NotFoundError('BANK_TRANSACTION_NOT_FOUND', 'Diesen Kontoumsatz gibt es nicht.')
-    await this.repository.setBankTransactionStatus(userId, id, 'ignoriert', null)
-    await this.audit.append({ userId, action: 'WRITE', resource: 'selbststaendig' })
+  ignoreBank(...args: Parameters<BankImportService['ignoreBank']>) {
+    return this.bank.ignoreBank(...args)
   }
 
   // ------------------------------------------------------------------------------------------------
   // Fixed assets (ADR-0101 §7)
 
-  async assets(userId: string, year: number, ref: BusinessRef) {
-    await this.context.assertOpen(userId, year)
-    const records = await this.repository.listAssets(userId, ref, year)
-    const register = assetRegister(records.map((r) => registerAssetOf(r, year)), year)
-    await this.audit.append({ userId, action: 'READ', resource: 'selbststaendig' })
-    return { register, records }
+  assets(...args: Parameters<AssetService['assets']>) {
+    return this.fixedAssets.assets(...args)
   }
 
-  async createAsset(
-    userId: string,
-    year: number,
-    ref: BusinessRef,
-    input: {
-      label: string
-      account: string
-      acquisitionDate: string
-      acquisitionCostCents: number
-      method: string
-      category?: string | undefined
-      usefulLifeYears?: number | undefined
-      building?: BuildingFactsInput | undefined
-      specialDepreciation?: SpecialDepreciationInput | undefined
-    },
-  ): Promise<FixedAssetRecord> {
-    await this.context.assertOpen(userId, year)
-    if (Number(input.acquisitionDate.slice(0, 4)) > year) throw new InvalidInputError('ASSET_FUTURE', 'Das Anschaffungsdatum liegt nach diesem Jahr.')
-    const asset: NewFixedAsset = {
-      taxYear: Number(input.acquisitionDate.slice(0, 4)),
-      person: ref.person,
-      business: ref.business,
-      label: input.label,
-      account: input.account,
-      acquisitionDate: input.acquisitionDate,
-      acquisitionCost: input.acquisitionCostCents,
-      method: input.method,
-      category: input.category ?? null,
-      // The category sets the useful life when none is given (the DTO's contract), as on the booking path.
-      usefulLifeYears: input.usefulLifeYears ?? (input.category && Object.hasOwn(USEFUL_LIVES, input.category) ? USEFUL_LIVES[input.category as AssetCategory].years : null),
-      specialDepreciation: input.specialDepreciation ? JSON.stringify(input.specialDepreciation) : null,
-      disposal: null,
-      buildingFacts: input.building ? JSON.stringify(input.building) : null,
-      vatCorrection: null,
-    }
-    // The schedule must be computable now, not only at the year's end, and before anything is stored.
-    ledgerCall(() => registerAssetOf({ ...asset, id: 'neu' }, year))
-    const record = await this.repository.createAsset(userId, asset)
-    await this.audit.append({ userId, action: 'WRITE', resource: 'selbststaendig' })
-    return record
+  createAsset(...args: Parameters<AssetService['createAsset']>) {
+    return this.fixedAssets.createAsset(...args)
   }
 
-  /**
-   * The Sonder-AfA (§ 7g Abs. 5 EStG), chosen per year in the acquisition year and the four after it, and the
-   * Vorsteuerberichtigung (§ 15a UStG) of an asset. `null` clears one; the schedule must stay computable.
-   */
-  async setAssetFacts(userId: string, year: number, ref: BusinessRef, assetId: string, facts: { specialDepreciation?: SpecialDepreciationInput | null | undefined; vatCorrection?: VatCorrectionInput | null | undefined }): Promise<FixedAssetRecord> {
-    await this.context.assertOpen(userId, year)
-    const current = (await this.repository.listAssets(userId, ref, year)).find((a) => a.id === assetId)
-    if (!current) throw new NotFoundError('ASSET_NOT_FOUND', 'Dieses Anlagegut gibt es nicht.')
-    const patch = {
-      ...(facts.specialDepreciation !== undefined ? { specialDepreciation: facts.specialDepreciation === null ? null : JSON.stringify(facts.specialDepreciation) } : {}),
-      ...(facts.vatCorrection !== undefined ? { vatCorrection: facts.vatCorrection === null ? null : JSON.stringify(facts.vatCorrection) } : {}),
-    }
-    const next = { ...current, ...patch }
-    ledgerCall(() => registerAssetOf(next, year))
-    ledgerCall(() => vatCorrectionOf(next))
-    const updated = await this.repository.setAssetFacts(userId, assetId, patch)
-    if (!updated) throw new NotFoundError('ASSET_NOT_FOUND', 'Dieses Anlagegut gibt es nicht.')
-    await this.audit.append({ userId, action: 'WRITE', resource: 'selbststaendig' })
-    return updated
+  setAssetFacts(...args: Parameters<AssetService['setAssetFacts']>) {
+    return this.fixedAssets.setAssetFacts(...args)
   }
 
-  async disposeAsset(userId: string, year: number, ref: BusinessRef, assetId: string, disposal: { date: string; proceedsCents?: number | undefined }): Promise<FixedAssetRecord> {
-    await this.context.assertOpen(userId, year)
-    const updated = await this.repository.setAssetDisposal(userId, assetId, JSON.stringify(disposal))
-    if (!updated) throw new NotFoundError('ASSET_NOT_FOUND', 'Dieses Anlagegut gibt es nicht.')
-    await this.audit.append({ userId, action: 'WRITE', resource: 'selbststaendig' })
-    return updated
+  disposeAsset(...args: Parameters<AssetService['disposeAsset']>) {
+    return this.fixedAssets.disposeAsset(...args)
   }
 
-  /** Books the year's depreciation and disposals the core computed, once per asset and year. */
-  async bookDepreciation(userId: string, year: number, ref: BusinessRef): Promise<readonly JournalEntry[]> {
-    await this.context.assertOpen(userId, year)
-    const { chart, mode, profile } = await this.context.frame(userId, year, ref)
-    const assets = (await this.repository.listAssets(userId, ref, year)).map((r) => registerAssetOf(r, year))
-    const posted = await this.ledger.postDrafts(userId, year, ref, { chart, mode }, profile, (book) => {
-      const booked = new Set(book.sources.values())
-      return [
-        ...ledgerCall(() => depreciationDrafts(chart, assets, year)).map((draft) => ({ draft, source: `afa:${draft.documentNumber}` })),
-        ...ledgerCall(() => disposalDrafts(chart, assets, year, bankAccountOf(chart))).map((draft) => ({ draft, source: `abgang:${draft.documentNumber}` })),
-      ].filter((d) => !booked.has(d.source))
-    })
-    await this.audit.append({ userId, action: 'WRITE', resource: 'selbststaendig' })
-    return posted
+  bookDepreciation(...args: Parameters<AssetService['bookDepreciation']>) {
+    return this.fixedAssets.bookDepreciation(...args)
   }
 
   // ------------------------------------------------------------------------------------------------
@@ -497,63 +333,12 @@ export class BusinessService {
   // ------------------------------------------------------------------------------------------------
   // Firmenwagen (ADR-0101 §22)
 
-  /** The private use of a business car: computed, nothing booked. A Kleinunternehmer owes no Wertabgabe. */
-  async companyCar(userId: string, year: number, ref: BusinessRef, input: Omit<CompanyCarInput, 'year' | 'vatDeductible'>): Promise<CompanyCarResult> {
-    await this.context.assertOpen(userId, year)
-    const profile = await this.context.personRecord(userId, year, ref)
-    return companyCarUse({ ...input, year, vatDeductible: !(profile?.smallBusiness ?? false) })
+  companyCar(...args: Parameters<AssetService['companyCar']>) {
+    return this.fixedAssets.companyCar(...args)
   }
 
-  /**
-   * Books the year's private use: the Entnahme (income tax value on the EÜR line, the VAT on its full
-   * base through the 19 % account, the rest without VAT) and the non-deductible commute moved off the
-   * car costs. Two entries dated 31.12., source `kfz`.
-   */
-  async bookCompanyCar(userId: string, year: number, ref: BusinessRef, input: Omit<CompanyCarInput, 'year' | 'vatDeductible'>): Promise<readonly JournalEntry[]> {
-    const result = await this.companyCar(userId, year, ref, input)
-    if (result.kind !== 'berechnet') throw new InvalidInputError('CAR_NOT_COMPUTABLE', result.kind === 'offen' ? 'Für das Fahrtenbuch fehlen Gesamtkosten oder Privatanteil.' : 'Die 1-%-Regel gilt nur bei mehr als 50 % betrieblicher Nutzung.')
-    const { chart, mode, profile } = await this.context.frame(userId, year, ref)
-    const n = (concept: Parameters<typeof accountFor>[1]) => accountFor(chart, concept).number
-    const c = (eurAmount: number) => Math.round(eurAmount * 100)
-    const drafts: { draft: BookingDraft; source: string }[] = []
-    const use = c(result.privateUseEur)
-    const base = c(result.vat?.baseEur ?? 0)
-    const vat = c(result.vat?.vatEur ?? 0)
-    if (use > 0 || base > 0) {
-      const rest = use - base
-      drafts.push({
-        source: 'kfz',
-        draft: {
-          date: `${year}-12-31`,
-          documentNumber: `Kfz-Privat-${year}`,
-          text: `Private Kfz-Nutzung ${year} (${result.method === 'pauschal' ? '1-%-Regel' : 'Fahrtenbuch'})`,
-          lines: [
-            { account: n('private_withdrawals'), side: 'debit', amount: use + vat },
-            ...(base > 0 ? [{ account: n('private_car_use_19'), side: 'credit' as const, amount: base, taxKey: 'ust19' as const, amountIs: 'net' as const }] : []),
-            // An electric car: the VAT base above the income tax value; the difference comes back off the EÜR line.
-            ...(rest > 0 ? [{ account: n('private_car_use_free'), side: 'credit' as const, amount: rest }] : rest < 0 ? [{ account: n('private_car_use_free'), side: 'debit' as const, amount: -rest }] : []),
-          ],
-        },
-      })
-    }
-    const commute = c(result.commute?.nonDeductibleEur ?? 0)
-    if (commute > 0) {
-      drafts.push({
-        source: 'kfz',
-        draft: {
-          date: `${year}-12-31`,
-          documentNumber: `Kfz-Wege-${year}`,
-          text: `Wege Wohnung–Betrieb ${year}, nicht abziehbarer Teil (§ 4 Abs. 5 Satz 1 Nr. 6 EStG)`,
-          lines: [
-            { account: n('commute_nondeductible'), side: 'debit', amount: commute },
-            { account: n('vehicle_other'), side: 'credit', amount: commute },
-          ],
-        },
-      })
-    }
-    const posted = await this.ledger.postDrafts(userId, year, ref, { chart, mode }, profile, () => drafts)
-    await this.audit.append({ userId, action: 'WRITE', resource: 'selbststaendig' })
-    return posted
+  bookCompanyCar(...args: Parameters<AssetService['bookCompanyCar']>) {
+    return this.fixedAssets.bookCompanyCar(...args)
   }
 
   // ------------------------------------------------------------------------------------------------
