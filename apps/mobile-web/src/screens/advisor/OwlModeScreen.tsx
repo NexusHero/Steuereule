@@ -1,51 +1,28 @@
-import type { AdvisorChatModelRefDto, AdvisorModelsDto } from '@steuereule/api-client'
-import { ChatDocumentAssignment } from './ChatDocumentAssignment'
-import { ChatReceiptResults } from './ChatReceiptResults'
-import { useEffect, useRef, useState } from 'react'
-import { Pressable, ScrollView, Text, View, useWindowDimensions } from 'react-native'
+import { ScrollView, View } from 'react-native'
 import { useTranslation } from 'react-i18next'
-import { AiChip, Button, Card, Chip, Option, Sheet, useBreakpoint, useTheme } from '@steuereule/ui'
-import {
-  evaluateAdvisorTurn,
-  formatDraftValue,
-  formatEuro,
-  isWithinEmployeeAllowance,
-  LEGAL_STATUS_DATE,
-  conflictingAlternatives,
-  withoutAlternativesOf,
-  withoutInternalNames,
-  type AdvisorChatMessageView,
-  type AdvisorFeedbackRating,
-  type AdvisorFeedbackReason,
-  type CaseDigest,
-  type OwlCardsDisplay,
-  type Profession,
-  type Screen,
-} from '@steuereule/core'
+import { useTheme } from '@steuereule/ui'
+import type { AdvisorChatModelRefDto, AdvisorModelsDto } from '@steuereule/api-client'
+import type { AdvisorChatMessageView, AdvisorFeedbackRating, AdvisorFeedbackReason, OwlCardsDisplay, Profession, Screen } from '@steuereule/core'
 import { APP_NS } from '../../i18n/resources'
 import { CURRENT_TAX_YEAR } from '../../config/taxYear'
 import { OwlTopBar } from './OwlTopBar'
-import { ProfessionPicker } from './ProfessionPicker'
-import { AdvisorChatPanel, type AdvisorChatOpening, type AdvisorChatPanelProps, type ChatSendOptions } from './AdvisorChatPanel'
-import { ConversationList, type ConversationProject, type ConversationSearchHit, type ConversationSummary } from './chat/ConversationList'
-import { ProjectNotes, type ProjectNote } from './chat/ProjectNotes'
-import { Situation } from './chat/Situation'
-import { SituationChip } from './chat/SituationChip'
-import { ConversationSearch } from './chat/ConversationSearch'
-import { OwlDrawer } from './chat/OwlDrawer'
-import { ConnectionDetails, type ConnectionView } from './chat/ConnectionStatus'
-import { OWL_CHAT_MIN_WIDTH, OWL_PANEL_WIDTHS, readOwlPanelWidth, readOwlSidebarOpen, writeOwlPanelWidth, writeOwlSidebarOpen } from '../../lib/owlSidebarPreference'
+import type { AdvisorChatOpening, AdvisorChatPanelProps, ChatSendOptions } from './AdvisorChatPanel'
+import type { ConversationProject, ConversationSearchHit, ConversationSummary } from './chat/ConversationList'
+import type { ProjectNote } from './chat/ProjectNotes'
+import type { ConnectionView } from './chat/ConnectionStatus'
+import { OWL_PANEL_WIDTHS, writeOwlPanelWidth, writeOwlSidebarOpen } from '../../lib/owlSidebarPreference'
 import { ResizeHandle } from './chat/ResizeHandle'
-import { useOptionalCopilotBridge, type OwlViewMode } from './CopilotBridgeProvider'
+import { useOptionalCopilotBridge } from './CopilotBridgeProvider'
 import { GuestOwlGate } from './OwlGuestGate'
-import { InlineMaskView } from './OwlInlineMask'
-import { GlassFormPreview } from '../printout/GlassFormPreview'
-import { formLineForField } from '../shared/formLineMapping'
-import { StoredReceiptPicker } from './chat/StoredReceiptPicker'
 import { useOptionalSwitchToTab } from '../../navigation/ShellState'
-import { extractAppliedDrafts, extractPendingDrafts, updateActionStatusInMessage } from './owlDrafts'
 import { makeStyles } from './OwlModeScreen.styles'
 import { ConnectedOwlModeScreen } from './OwlModeScreen.connected'
+import { useOwlModeScreen } from './useOwlModeScreen'
+import { owlPanelWidths } from './OwlModeHelpers'
+import { OwlModeChat } from './OwlModeChat'
+import { OwlModeWorkbench } from './OwlModeWorkbench'
+import { OwlModeProjectPanel } from './OwlModeProjectPanel'
+import { OwlModeSheets } from './OwlModeSheets'
 export { makeStyles } from './OwlModeScreen.styles'
 
 export interface OwlModeScreenProps {
@@ -116,49 +93,6 @@ export interface OwlModeScreenProps {
 
 export const AI_MANUAL_ONLY_SCREENS: ReadonlySet<Screen> = new Set<Screen>(['profil', 'stammdaten', 'kopplung'])
 
-const DEFAULT_LOCAL_DIGEST: CaseDigest = {
-  taxYear: CURRENT_TAX_YEAR,
-  filingStatus: 'einzel',
-  lstbPersonA: { grossWageEur: 62000, wageTaxEur: 11800, socialSecurityEur: 11400 },
-  crossBorder: {
-    isCrossBorderCh: false,
-    grossWageChf: null,
-    withholdingTaxChf: null,
-    pillar3aChf: null,
-    healthInsuranceChf: null,
-    dailySicknessBenefitChf: null,
-    nonReturnDays: null,
-  },
-  commuteAndWorkdays: {
-    workdays: 220,
-    homeOfficeAnswer: 'Nie',
-    homeOfficeDays: 0,
-    distanceKm: 18,
-  },
-  catalogExpenses: {
-    hasTraining: false,
-    relocationCostsEur: null,
-    donationsEur: null,
-    selfPaidKvPvEur: null,
-    riesterEur: null,
-    doubleHouseholdRentEur: null,
-  },
-  childrenCount: 0,
-  rentalObjectsCount: 0,
-  capitalGainEur: null,
-  priorYearComparison: { donationsEur: 200 },
-  openOwlHints: [],
-  printoutMissingFields: ['stammdaten.iban'],
-  estimatedRefundEur: 480,
-}
-
-/** The core keeps the legal status as DD.MM.YYYY; English readers get it unambiguous. */
-function formatLegalDate(germanDate: string, language: string): string {
-  if (language.startsWith('de')) return germanDate
-  const [day, month, year] = germanDate.split('.')
-  return day && month && year ? `${year}-${month}-${day}` : germanDate
-}
-
 export function OwlModeScreen(props: OwlModeScreenProps) {
   const bridge = useOptionalCopilotBridge()
   const blockedAsGuest = props.isGuest === true || bridge?.isAuthenticated === false
@@ -217,793 +151,80 @@ export function OwlModeScreenView({
   onSaveSituation,
   opening,
 }: OwlModeScreenProps & { readonly initialCards: readonly OwlCardsDisplay[] }) {
-  const bp = useBreakpoint()
   const t = useTheme()
   const styles = makeStyles(t)
-  const { t: tr, i18n } = useTranslation(APP_NS)
+  const { t: tr } = useTranslation(APP_NS)
   const switchToTab = useOptionalSwitchToTab()
-  const bridge = useOptionalCopilotBridge()
+  const owl = useOwlModeScreen({
+    onDone,
+    taxYear,
+    initialCards,
+    initialMessages,
+    onDismissCard,
+    onSendMessage,
+    onApplyAction,
+    onUndoAction,
+    onDismissAction,
+    onClearConversation,
+    onSearchConversations,
+    situation,
+    onSaveSituation,
+    notes,
+    onAddNote,
+    onEditNote,
+    onDeleteNote,
+  })
+  const {
+    bp,
+    bridge,
+    wide,
+    panelOpen,
+    setPanelChoice,
+    closePanel,
+    setPrivacyOpen,
+    setSettingsOpen,
+    conversationsOpen,
+    setConversationsOpen,
+    setConnectionOpen,
+    setSessionSummaryOpen,
+    sidebarOpen,
+    setSidebarOpen,
+    sidebarWidth,
+    setSidebarWidth,
+    workbenchWidth,
+    setWorkbenchWidth,
+    windowWidth,
+    cards,
+    pendingDrafts,
+  } = owl
 
-  // null: the workbench follows what needs attention; otherwise the reader's own choice stands.
-  const [panelChoice, setPanelChoice] = useState<'open' | 'closed' | null>(null)
-  const [privacyOpen, setPrivacyOpen] = useState(false)
-  const [connectionOpen, setConnectionOpen] = useState(false)
-  const [rechecking, setRechecking] = useState(false)
-  const [settingsOpen, setSettingsOpen] = useState(false)
-  const [conversationsOpen, setConversationsOpen] = useState(false)
-  const [searchOpen, setSearchOpen] = useState(false)
-  const [situationOpen, setSituationOpen] = useState(false)
-  const [sessionSummaryOpen, setSessionSummaryOpen] = useState(false)
-  const [workbenchTab, setWorkbenchTab] = useState<'drafts' | 'forms'>('drafts')
-
-  // Cmd/Ctrl+K opens the search, as in Claude.
-  useEffect(() => {
-    if (!onSearchConversations || typeof window === 'undefined') return
-    function handleKeyDown(event: KeyboardEvent) {
-      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
-        event.preventDefault()
-        setSearchOpen(true)
-      }
-    }
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [onSearchConversations])
-  // Desktop: the conversations and notes sit in a sidebar that remembers whether it was collapsed.
-  const [sidebarOpen, setSidebarOpen] = useState(readOwlSidebarOpen)
-  // The user drags the lines next to the chat: the side panels give way, the chat gets the room.
-  const [sidebarWidth, setSidebarWidth] = useState(() => readOwlPanelWidth('sidebar'))
-  const [workbenchWidth, setWorkbenchWidth] = useState(() => readOwlPanelWidth('workbench'))
-  const { width: windowWidth } = useWindowDimensions()
-  const [clearState, setClearState] = useState<'closed' | 'confirm' | 'clearing' | 'failed'>('closed')
-  const [cards, setCards] = useState<readonly OwlCardsDisplay[]>(initialCards)
-  const [activeIndex, setActiveIndex] = useState(0)
-  const [localMessages, setLocalMessages] = useState<readonly AdvisorChatMessageView[]>(initialMessages ?? [])
-  const [localViewMode, setLocalViewMode] = useState<OwlViewMode>({ kind: 'stage' })
-  const [isSending, setIsSending] = useState(false)
-  const nextLocalMsgIdRef = useRef(1)
-
-  const displayedMessages = initialMessages ?? localMessages
-  const activeCard = cards[activeIndex]
-  const pendingDrafts = extractPendingDrafts(displayedMessages)
-  const appliedDrafts = extractAppliedDrafts(displayedMessages)
-  // Alternatives (two ways to fill one thing) are never applied together: the user picks one (K1).
-  const alternativeGroups = conflictingAlternatives(pendingDrafts)
-  const alternativeIds = new Set(alternativeGroups.flatMap((group) => group.map((d) => d.actionId)))
-  const viewMode = bridge ? bridge.owlViewMode : localViewMode
-  // With the bridge every conversation has its own answer (#503): the open one is busy only while
-  // its own answer is written, whatever is running elsewhere.
-  // The screen's own flag covers the whole screen, so it only counts where no bridge follows the answer.
-  const effectiveSending = bridge && bridge.isAuthenticated ? bridge.streaming : isSending
-
-  // The workbench opens by itself only when there is something to check: on a wide screen for
-  // drafts and masks, on a narrow one only for a mask the reader asked to see, because there it
-  // covers the chat (#476 decision 2).
-  const wide = bp === 'l'
-  const needsAttention = viewMode.kind === 'mask' || (wide && pendingDrafts.length > 0) || (wide && Boolean(bridge?.staleConflict))
-  const panelOpen = panelChoice === null ? needsAttention : panelChoice === 'open'
-  const openMask = viewMode.kind === 'mask' ? viewMode.screen : null
-  const draftCount = pendingDrafts.length
-  const seenAttention = useRef({ mask: openMask, drafts: draftCount })
-  useEffect(() => {
-    // Only something new to check (another mask, one more draft) overrides the reader's own choice;
-    // going back from a mask or applying a draft never closes or reopens the workbench by itself.
-    const seen = seenAttention.current
-    const grew = (openMask !== null && openMask !== seen.mask) || (wide && draftCount > seen.drafts)
-    seenAttention.current = { mask: openMask, drafts: draftCount }
-    if (grew) setPanelChoice(null)
-  }, [openMask, draftCount, wide])
-
-  // An answer that is still being written (after a reload, or on another device) is followed again.
-  const runningRunId = displayedMessages.find((m) => m.role === 'assistant' && m.status === 'streaming')?.runId
-  const resumeRun = bridge?.resumeRun
-  const bridgeStreaming = bridge?.streaming ?? false
-  useEffect(() => {
-    if (resumeRun && runningRunId !== undefined && !bridgeStreaming) void resumeRun(runningRunId)
-  }, [resumeRun, runningRunId, bridgeStreaming])
-
-  function closePanel() {
-    if (viewMode.kind === 'mask') handleReturnToStage()
-    setPanelChoice('closed')
-  }
-
-  async function confirmClear() {
-    if (!onClearConversation) return
-    setClearState('clearing')
-    try {
-      await onClearConversation()
-      setLocalMessages([])
-      setClearState('closed')
-      setSettingsOpen(false)
-    } catch {
-      setClearState('failed')
-    }
-  }
-
-  function handleInspectMask(screen: Screen, field?: string) {
-    if (bridge) {
-      bridge.openMaskPreview(screen, field)
-      return
-    }
-    setLocalViewMode(field === undefined ? { kind: 'mask', screen } : { kind: 'mask', screen, field })
-  }
-
-  function handleReturnToStage() {
-    if (bridge) {
-      bridge.returnToStage()
-      return
-    }
-    setLocalViewMode({ kind: 'stage' })
-  }
-
-  async function handleDismiss(fingerprint: string) {
-    if (onDismissCard) await onDismissCard(fingerprint)
-    const fresh = cards.filter((k) => k.fingerprint !== fingerprint)
-    setCards(fresh)
-    if (activeIndex >= fresh.length && fresh.length > 0) {
-      setActiveIndex(fresh.length - 1)
-    }
-  }
-
-  async function handleSendChat(text: string, options?: ChatSendOptions) {
-    setIsSending(true)
-    try {
-      if (onSendMessage) {
-        await onSendMessage(text, options)
-        return
-      }
-      // Regenerate / edit locally: the replaced turn leaves the chat before the new one is added.
-      const replaceFrom = options?.replaceFromMessageId
-      if (replaceFrom !== undefined) {
-        setLocalMessages((prev) => {
-          const at = prev.findIndex((m) => m.id === replaceFrom)
-          return at === -1 ? prev : prev.slice(0, at)
-        })
-      }
-      if (bridge && bridge.isAuthenticated) {
-        const res = await bridge.sendStreamingMessage(
-          text,
-          viewMode.kind === 'mask' ? viewMode.screen : undefined,
-          options,
-        )
-        // A stopped answer stays stopped: no local stand-in reply (#451 decision 2).
-        if (res === 'aborted') return
-        if (res && res.length > 0) {
-          setLocalMessages((prev) => [...prev, ...res])
-          return
-        }
-      }
-      const userMsg: AdvisorChatMessageView = {
-        id: `msg-u-${nextLocalMsgIdRef.current++}`,
-        role: 'user',
-        content: text,
-        meta: null,
-        createdAt: new Date().toISOString(),
-      }
-      const turn = evaluateAdvisorTurn({
-        message: text,
-        digest: {
-          ...DEFAULT_LOCAL_DIGEST,
-          taxYear,
-          openOwlHints: cards.map((c) => ({
-            id: c.id,
-            fingerprint: c.fingerprint,
-            title: c.title,
-            message: c.message,
-            sourceId: 'estg-9-1',
-            amountEur: c.amountEur,
-          })),
-        },
-      })
-      const assistantMsg: AdvisorChatMessageView = {
-        id: `msg-a-${nextLocalMsgIdRef.current++}`,
-        role: 'assistant',
-        content: turn.replyText,
-        meta: turn.meta,
-        createdAt: new Date().toISOString(),
-      }
-      setLocalMessages((prev) => [...prev, userMsg, assistantMsg])
-    } finally {
-      setIsSending(false)
-    }
-  }
-
-  async function handleClarifyCardWithEule(card: OwlCardsDisplay) {
-    // On a narrow screen the workbench covers the chat: step aside so the answer can be read.
-    if (!wide) setPanelChoice('closed')
-    await handleSendChat(`${card.title}: ${card.message}`)
-  }
-
-  async function handleApplyAction(actionId: string) {
-    if (onApplyAction) {
-      await onApplyAction(actionId)
-      return
-    }
-    if (bridge) {
-      const ok = await bridge.applySingleAction(actionId)
-      if (!ok) return
-    }
-    // Applying one alternative drops the others; the server marks them superseded the same way.
-    const chosen = pendingDrafts.find((d) => d.actionId === actionId)
-    const kept = new Set(chosen ? withoutAlternativesOf(pendingDrafts, chosen).map((d) => d.actionId) : [])
-    const dropped = chosen ? pendingDrafts.filter((d) => d.actionId !== actionId && !kept.has(d.actionId)) : []
-    setLocalMessages((prev) =>
-      prev.map((m) => dropped.reduce((msg, d) => updateActionStatusInMessage(msg, d.actionId, 'superseded'), updateActionStatusInMessage(m, actionId, 'applied'))),
-    )
-  }
-
-  async function handleUndoAction(actionId: string) {
-    if (onUndoAction) {
-      await onUndoAction(actionId)
-      return
-    }
-    if (bridge) {
-      const ok = await bridge.undoSingleAction(actionId)
-      if (!ok) return
-    }
-    setLocalMessages((prev) => prev.map((m) => updateActionStatusInMessage(m, actionId, 'undone')))
-  }
-
-  async function handleDismissAction(actionId: string) {
-    if (onDismissAction) await onDismissAction(actionId)
-    setLocalMessages((prev) => prev.map((m) => updateActionStatusInMessage(m, actionId, 'dismissed')))
-  }
-
-  async function handleBatchApply(acceptCurrentValues = false) {
-    if (pendingDrafts.length === 0 || alternativeGroups.length > 0) return
-    if (bridge) {
-      const acknowledgedConflict = acceptCurrentValues ? (bridge.staleConflict ?? undefined) : undefined
-      const ok = await bridge.applyAllPending(pendingDrafts, { stay: true, ...(acknowledgedConflict ? { acknowledgedConflict } : {}) })
-      if (ok) {
-        for (const d of pendingDrafts) {
-          setLocalMessages((prev) => prev.map((m) => updateActionStatusInMessage(m, d.actionId, 'applied')))
-        }
-      }
-      return
-    }
-    for (const d of pendingDrafts) {
-      await handleApplyAction(d.actionId)
-    }
-    onDone()
-  }
-
-  const handleAttachReceipt = bridge
-    ? async (input: { readonly fileName: string; readonly rawText: string }) => {
-        await bridge.parseReceipt({ fileName: input.fileName, rawText: input.rawText, stageDraft: true })
-      }
-    : undefined
-
-  function renderChatPanel(compact = false) {
-    return (
-      <AdvisorChatPanel
-        models={models}
-        chatModel={chatModel}
-        onPickModel={onPickModel ? (model) => void onPickModel(model) : undefined}
-        messages={displayedMessages}
-        partnerName={partnerName}
-        ownName={ownName}
-        jointReturn={jointReturn}
-        opening={opening}
-        situationChip={hasSituationDialog ? <SituationChip text={situation ?? ''} onPress={() => setSituationOpen(true)} /> : undefined}
-        footnote={tr('eule.workspace.topbar.legalStatus', { date: formatLegalDate(LEGAL_STATUS_DATE, i18n.language) })}
-        quickChips={[
-          // The first four show on an empty chat; the rest wait behind "Mehr …".
-          { label: tr('advisor.chat.forgottenChip'), testID: 'advisor-chip-vergessen', quickAction: 'forgotten_check' },
-          { label: tr('advisor.chat.assessmentChip'), testID: 'advisor-chip-bescheid', quickAction: 'assessment_check' },
-          { label: tr('advisor.chat.homeOfficeChip'), testID: 'advisor-chip-homeoffice' },
-          { label: tr('advisor.chat.finalReviewChip'), testID: 'advisor-chip-endpruefung' },
-          { label: tr('advisor.chat.savingsPlanChip'), testID: 'advisor-chip-sparplan', quickAction: 'savings_plan' },
-          { label: tr('advisor.chat.trainingChip'), testID: 'advisor-chip-fortbildung' },
-          { label: tr('advisor.chat.donationsChip'), testID: 'advisor-chip-spenden' },
-        ]}
-        isSending={effectiveSending}
-        context={context}
-        onSummarize={onSummarize}
-        onUndoNoteChange={onUndoNoteChange}
-        onAcceptSituationSuggestion={onSaveSituation ? (text) => onSaveSituation([situation?.trim() ?? '', text].filter((part) => part !== '').join('\n')) : undefined}
-        streamSteps={bridge?.streamSteps}
-        streamedText={bridge?.streamedText}
-        streamedReasoning={bridge?.streamedReasoning}
-        pendingUserMessage={bridge?.pendingUserMessage}
-        reconnecting={bridge?.reconnecting}
-        onRateMessage={onRateMessage}
-        variant="page"
-        chatError={bridge?.chatError}
-        basisMode={bridge?.basisMode}
-        onSendMessage={handleSendChat}
-        onStop={bridge?.stopStreaming}
-        abortedTurn={bridge?.abortedTurn}
-        plan={bridge?.plan}
-        onApplyAction={handleApplyAction}
-        onUndoAction={handleUndoAction}
-        onDismissAction={handleDismissAction}
-        onInspectMask={handleInspectMask}
-        receiptLinkedActionIds={bridge?.receiptLinkedActionIds}
-        onAttachReceipt={handleAttachReceipt}
-        // The promise is handed on: the chat reads several files one after another and has to know when one is done.
-        onAttachReceiptFile={bridge ? async (file) => void (await bridge.captureReceiptFile(file)) : undefined}
-        receiptProgress={bridge?.receiptPhase ? tr(`advisor.chat.receiptProgress.${bridge.receiptPhase}`) : null}
-        receiptNotice={bridge?.receiptNotice ?? null}
-        receiptQueuePaused={bridge?.documentQuestion != null}
-        onReceiptBatchStart={bridge?.startReceiptBatch}
-        receiptResults={
-          bridge && bridge.receiptResults.length > 0 ? (
-            <ChatReceiptResults results={bridge.receiptResults} openYear={bridge.taxYear} onSwitchYear={bridge.switchTaxYear} onClose={bridge.clearReceiptResults} />
-          ) : undefined
-        }
-        receiptAssignment={
-          bridge && (bridge.documentQuestion !== null || bridge.documentHolder !== null || bridge.lastParsedReceipt !== null) ? (
-            <>
-              {bridge.documentQuestion !== null || bridge.documentHolder !== null ? <ChatDocumentAssignment bridge={bridge} /> : null}
-              {/* The way back from the chat to the document: its original lies in the Belege tab. */}
-              {bridge.lastParsedReceipt !== null && switchToTab ? (
-                <Pressable accessibilityRole="button" onPress={() => switchToTab('Receipts')} testID="eule-receipt-result-belege">
-                  <Text style={styles.help}>{tr('eule.workspace.receiptInInbox')}</Text>
-                </Pressable>
-              ) : null}
-            </>
-          ) : undefined
-        }
-        receiptSources={
-          bridge ? (
-            <StoredReceiptPicker
-              onRead={bridge.readStoredReceipt}
-              disabled={bridge.parsingReceipt}
-              {...(switchToTab ? { onOpenReceipts: () => switchToTab('Receipts') } : {})}
-            />
-          ) : undefined
-        }
-        isParsingReceipt={bridge?.parsingReceipt}
-        compact={compact}
-      />
-    )
-  }
-
-  function renderSettings() {
-    return (
-      <View style={styles.sheetBody}>
-        <Text style={styles.sheetTitle} role="heading" aria-level={2}>
-          {tr('eule.workspace.topbar.settingsTitle')}
-        </Text>
-        {profession !== undefined && onChooseProfession ? (
-          <ProfessionPicker profession={profession} onChoose={onChooseProfession} />
-        ) : null}
-
-        {onToggleOptIn ? (
-          <Option selected={optInEnabled} onPress={() => void onToggleOptIn(!optInEnabled)} testID="eulen-modus-opt-in">
-            {tr('eule.optInLabel', 'Eulen-Modus aktivieren (proaktive Hinweise ab 50 €, keine personenbezogenen Daten an KI)')}
-          </Option>
-        ) : null}
-
-        {onClearConversation ? (
-          clearState === 'closed' ? (
-            <Button
-              variant="leise"
-              onPress={() => setClearState('confirm')}
-              disabled={effectiveSending || displayedMessages.length === 0}
-              testID="eule-clear-conversation-btn"
-            >
-              {tr('advisor.chat.clear.button')}
-            </Button>
-          ) : (
-            <Card style={styles.clearCard} testID="eule-clear-confirm">
-              <Text style={styles.clearTitle}>{tr('advisor.chat.clear.confirmTitle')}</Text>
-              <Text style={styles.help}>{tr('advisor.chat.clear.confirmBody')}</Text>
-              {clearState === 'failed' ? (
-                <Text style={styles.conflictText} role="alert" testID="eule-clear-failed">
-                  {tr('advisor.chat.clear.failed')}
-                </Text>
-              ) : null}
-              <View style={styles.conflictActions}>
-                <Button onPress={() => void confirmClear()} disabled={clearState === 'clearing'} style={{ flex: 1 }} testID="eule-clear-confirm-btn">
-                  {tr('advisor.chat.clear.confirm')}
-                </Button>
-                <Button variant="ghost" onPress={() => setClearState('closed')} style={{ flex: 1 }} testID="eule-clear-cancel-btn">
-                  {tr('advisor.chat.clear.cancel')}
-                </Button>
-              </View>
-            </Card>
-          )
-        ) : null}
-      </View>
-    )
-  }
-
-  function renderWorkbenchBody() {
-    if (viewMode.kind === 'mask') {
-      return (
-        <InlineMaskView
-          screen={viewMode.screen}
-          field={viewMode.field}
-          taxYear={taxYear}
-          onBack={() => {
-            // Back from a mask means back to the drafts, not out of the workbench.
-            setPanelChoice('open')
-            handleReturnToStage()
-          }}
-          styles={styles}
-        />
-      )
-    }
-
-    return (
-      <>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.space.s2, marginBottom: t.space.s3 }} testID="eule-workbench-tabs">
-          <Chip
-            active={workbenchTab === 'drafts'}
-            onPress={() => setWorkbenchTab('drafts')}
-            testID="eule-workbench-tab-drafts"
-          >
-            {tr('eule.workspace.tabDrafts', 'Entwürfe & Hinweise')}
-          </Chip>
-          <Chip
-            active={workbenchTab === 'forms'}
-            onPress={() => setWorkbenchTab('forms')}
-            testID="eule-workbench-tab-forms"
-          >
-            {tr('eule.workspace.tabForms', '🔍 Glas-Erklärung')}
-          </Chip>
-        </View>
-
-        {workbenchTab === 'forms' ? (
-          <GlassFormPreview
-            year={taxYear}
-            defaultOpen
-            onInspectField={(screen, field) => handleInspectMask(screen, field)}
-          />
-        ) : (
-          <>
-        {bridge?.lastParsedReceipt ? (
-          <Card variant="ai" style={styles.receiptResultCard} testID="eule-receipt-result">
-            <Text style={styles.draftSectionTitle}>
-              {tr('eule.workspace.receiptResultTitle', {
-                // A field id („krankenkasseChf“) is no file name the user knows: its label, as on the mask.
-                fileName: withoutInternalNames(bridge.lastParsedReceipt.parsed.suggestedField ?? bridge.lastParsedReceipt.parsed.vendorCategory),
-                defaultValue: `Beleg geprüft: ${withoutInternalNames(bridge.lastParsedReceipt.parsed.vendorCategory)}`,
-              })}
-            </Text>
-            <Text style={styles.help}>{bridge.lastParsedReceipt.parsed.summary}</Text>
-            {bridge.lastParsedReceipt.securityBlocked ? (
-              <Text style={styles.conflictText}>
-                {tr('eule.workspace.receiptBlocked', '⚠️ Sensibler Inhalt geschwärzt (Mandantengeheimnis)')}
-              </Text>
-            ) : null}
-          </Card>
-        ) : null}
-
-        {bridge?.staleConflict ? (
-          <Card variant="default" style={styles.conflictCard} testID="eule-stale-conflict-banner">
-            <Text style={styles.conflictTitle}>{tr('eule.workspace.conflictTitle', '⚠️ Konflikt beim Übernehmen')}</Text>
-            <Text style={styles.conflictText}>{bridge.staleConflict.message}</Text>
-            <View style={styles.conflictActions}>
-              <Button
-                onPress={() => void handleBatchApply(true)}
-                disabled={bridge.batchApplying}
-                style={{ flex: 1 }}
-                testID="eule-force-apply-btn"
-              >
-                {tr('eule.workspace.forceApply', 'Mit neuem Stand trotzdem übernehmen')}
-              </Button>
-              <Button
-                variant="ghost"
-                onPress={() => bridge.clearStaleConflict()}
-                style={{ flex: 1 }}
-                testID="eule-conflict-dismiss-btn"
-              >
-                {tr('eule.workspace.dismissConflict', 'Schließen')}
-              </Button>
-            </View>
-          </Card>
-        ) : null}
-
-        {pendingDrafts.length > 0 ? (
-          <Card style={styles.draftStageCard} testID="eule-draft-stage">
-            <Text style={styles.draftSectionTitle}>
-              {tr('eule.workspace.draftStageTitle', {
-                count: pendingDrafts.length,
-                defaultValue: `Vorbereitete Änderungen (${pendingDrafts.length})`,
-              })}
-            </Text>
-            <View style={styles.draftList}>
-              {pendingDrafts.map((draft) => {
-                const isReceipt = bridge?.receiptLinkedActionIds.has(draft.actionId) ?? false
-                const isZeroPauschbetrag = isWithinEmployeeAllowance(draft)
-                return (
-                  <View key={draft.actionId} style={styles.draftRowCard} testID={`draft-card-${draft.actionId}`}>
-                    <View style={styles.draftTopRow}>
-                      <Text style={styles.draftTitle}>{draft.label}</Text>
-                      {draft.deltaEur > 0 ? (
-                        <Text style={styles.draftDelta}>{`+${formatEuro(draft.deltaEur)}`}</Text>
-                      ) : draft.effect === 'not-computable' ? (
-                        <Text style={styles.draftMutedBadge} testID={`draft-effect-open-${draft.actionId}`}>
-                          {tr('advisor.chat.effectOpen', 'Wirkung noch offen')}
-                        </Text>
-                      ) : isZeroPauschbetrag ? (
-                        <Text style={styles.draftMutedBadge}>
-                          {tr('eule.workspace.pauschbetragBadge', 'Im Pauschbetrag (1.230 €)')}
-                        </Text>
-                      ) : null}
-                    </View>
-                    <Text style={styles.draftProvenance}>
-                      {isReceipt
-                        ? tr('eule.workspace.provenanceReceiptOwl', '📎 Beleg + Eule')
-                        : tr('eule.workspace.provenanceOwlDraft', '🦉 Eulen-Entwurf')}
-                    </Text>
-                    <Text style={styles.draftProvenance} testID={`draft-form-line-${draft.actionId}`}>
-                      {`📄 ${formLineForField(draft.screen, draft.field).label}`}
-                    </Text>
-                    <Text style={styles.draftDiff}>
-                      {`${draft.previousValue === null ? tr('advisor.chat.notRecorded', 'Nicht erfasst') : formatDraftValue(draft.screen, draft.field, draft.previousValue)} → ${formatDraftValue(draft.screen, draft.field, draft.newValue)}`}
-                    </Text>
-                    {alternativeIds.has(draft.actionId) ? (
-                      <Button
-                        variant="leise"
-                        onPress={() => void handleApplyAction(draft.actionId)}
-                        disabled={bridge?.batchApplying ?? false}
-                        testID={`draft-choose-${draft.actionId}`}
-                      >
-                        {tr('eule.workspace.chooseAlternative', 'Diesen Weg übernehmen')}
-                      </Button>
-                    ) : null}
-                    <Pressable
-                      accessibilityRole="button"
-                      onPress={() => handleInspectMask(draft.screen, draft.field)}
-                      style={styles.inspectMaskLink}
-                      testID={`draft-inspect-${draft.actionId}`}
-                    >
-                      <Text style={styles.inspectMaskLinkText}>
-                        {tr('eule.workspace.inspectMask', 'Maske ansehen →')}
-                      </Text>
-                    </Pressable>
-                  </View>
-                )
-              })}
-            </View>
-            {pendingDrafts.some((d) => d.combination !== undefined) ? (
-              <Text style={styles.help} testID="eule-kombination-hinweis">
-                {tr('belegZuordnung.kombination')}
-              </Text>
-            ) : null}
-            {alternativeGroups.length > 0 ? (
-              <Text style={styles.help} testID="eule-batch-alternatives-hint">
-                {tr('eule.workspace.alternativesHint', 'Wähle einen der Wege — beide zusammen geht nicht.')}
-              </Text>
-            ) : null}
-            <Button
-              // Quiet on purpose: the conversation is the stage, the same drafts have their own button there.
-              variant="leise"
-              onPress={() => void handleBatchApply(false)}
-              disabled={(bridge?.batchApplying ?? false) || alternativeGroups.length > 0}
-              testID="eule-batch-apply-btn"
-            >
-              {bridge?.batchApplying
-                ? tr('eule.workspace.applying', 'Wird übernommen …')
-                : pendingDrafts.length === 1
-                  ? tr('eule.workspace.applyOne', '✓ Änderung übernehmen')
-                  : tr('eule.workspace.applyAll', {
-                      count: pendingDrafts.length,
-                      defaultValue: `✓ ${pendingDrafts.length} Änderungen übernehmen`,
-                    })}
-            </Button>
-          </Card>
-        ) : null}
-
-        {appliedDrafts.length > 0 ? (
-          <Card style={styles.draftStageCard} testID="eule-applied-stage">
-            <Text style={styles.draftSectionTitle}>
-              {`✓ Änderungsprotokoll (${appliedDrafts.length} übernommen)`}
-            </Text>
-            <View style={styles.draftList}>
-              {appliedDrafts.map((draft) => (
-                <View key={draft.actionId} style={styles.draftRowCard} testID={`applied-card-${draft.actionId}`}>
-                  <View style={styles.draftTopRow}>
-                    <Text style={styles.draftTitle}>{draft.label}</Text>
-                    <Text style={styles.draftDelta} testID={`applied-status-${draft.actionId}`}>
-                      ✓ Übernommen
-                    </Text>
-                  </View>
-                  <Text style={styles.draftProvenance} testID={`applied-form-line-${draft.actionId}`}>
-                    {`📄 ${formLineForField(draft.screen, draft.field).label}`}
-                  </Text>
-                  <Text style={styles.draftDiff}>
-                    {`${draft.previousValue === null ? tr('advisor.chat.notRecorded', 'Nicht erfasst') : formatDraftValue(draft.screen, draft.field, draft.previousValue)} → ${formatDraftValue(draft.screen, draft.field, draft.newValue)}`}
-                  </Text>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: t.space.s1 }}>
-                    <Pressable
-                      accessibilityRole="button"
-                      onPress={() => handleInspectMask(draft.screen, draft.field)}
-                      style={styles.inspectMaskLink}
-                      testID={`applied-inspect-${draft.actionId}`}
-                    >
-                      <Text style={styles.inspectMaskLinkText}>
-                        {tr('eule.workspace.inspectMask', 'Maske ansehen →')}
-                      </Text>
-                    </Pressable>
-                    <Pressable
-                      accessibilityRole="button"
-                      onPress={() => void handleUndoAction(draft.actionId)}
-                      testID={`applied-undo-${draft.actionId}`}
-                    >
-                      <Text style={styles.draftMutedBadge}>↩ Rückgängig</Text>
-                    </Pressable>
-                  </View>
-                </View>
-              ))}
-            </View>
-          </Card>
-        ) : null}
-
-        {cards.length === 0 ? (
-          <Card style={styles.emptyCard}>
-            <Text style={styles.emptyTitle}>{tr('eule.emptyTitle', 'Alles geprüft. Keine offenen Fragen!')}</Text>
-            <Text style={styles.emptyHelp}>
-              {tr(
-                'eule.emptyHelp',
-                'Deine Angaben sind schlüssig. Sobald neue Belege oder Gesetzesänderungen vorliegen, meldet sich die Eule wieder.',
-              )}
-            </Text>
-            <Text style={styles.rechtsstand}>{tr('eule.rechtsstand', 'Rechtsstand: 01.01.2025 · Zuletzt geprüft: heute')}</Text>
-          </Card>
-        ) : activeCard ? (
-          <View>
-            <Text style={styles.counter}>
-              {tr('eule.counter', { current: activeIndex + 1, total: cards.length, defaultValue: `Frage ${activeIndex + 1} von ${cards.length}` })}
-            </Text>
-            <Card style={styles.kiCard}>
-              <AiChip style={styles.sender} testID="eule-sender-card">{tr('eule.sender', 'Die Eule')}</AiChip>
-              <View style={styles.cardHeader}>
-                <Chip active>{activeCard.title}</Chip>
-                {activeCard.amountEur !== null && (
-                  <Text style={styles.betragBadge}>{`+${formatEuro(activeCard.amountEur)}`}</Text>
-                )}
-              </View>
-
-              <Text style={styles.botschaft}>{activeCard.message}</Text>
-              <Text style={styles.begruendung}>{activeCard.reason}</Text>
-
-              {activeCard.paths && (
-                <View style={styles.wegeBlock}>
-                  <Text style={styles.wegeTitle}>{tr('eule.wegeTitle', 'Empfohlene Vorgehensweise (StBerG-Grenze):')}</Text>
-                  {activeCard.paths.map((path, idx) => (
-                    <Pressable
-                      key={path.name}
-                      accessibilityRole="button"
-                      onPress={() => onAcceptPath?.(activeCard.id, idx)}
-                      style={[styles.wegOption, path.risk === 'sicher' ? styles.wegSicher : styles.wegRisiko]}
-                    >
-                      <View style={styles.wegHeader}>
-                        <Text style={styles.wegName}>{path.name}</Text>
-                        <Text style={styles.wegBetrag}>{formatEuro(path.amountEur)}</Text>
-                      </View>
-                      <Text style={styles.wegDesc}>{path.description}</Text>
-                      <Text style={styles.wegBadge}>
-                        {path.risk === 'sicher' ? '✓ Sicherer Weg' : '⚠ Riskanterer Weg'}
-                      </Text>
-                    </Pressable>
-                  ))}
-                </View>
-              )}
-
-              <View style={styles.quelleRow}>
-                <Text style={styles.quelleText}>{activeCard.sourceTranslated}</Text>
-              </View>
-
-              <View style={styles.cardFooter}>
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel="Stimmt nicht"
-                  onPress={() => handleDismiss(activeCard.fingerprint)}
-                  style={styles.dismissButton}
-                >
-                  <Text style={styles.dismissText}>{tr('eule.dismiss', 'Stimmt nicht')}</Text>
-                </Pressable>
-
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel="Mit Eule klären"
-                  onPress={() => void handleClarifyCardWithEule(activeCard)}
-                  style={styles.clarifyButton}
-                  testID="card-clarify-with-eule"
-                >
-                  <Text style={styles.clarifyButtonText}>Mit Eule klären 💬</Text>
-                </Pressable>
-
-                {activeIndex < cards.length - 1 && (
-                  <Button
-                    variant="ghost"
-                    onPress={() => setActiveIndex(activeIndex + 1)}
-                    style={styles.nextButton}
-                  >
-                    {tr('eule.next', 'Nächste Frage →')}
-                  </Button>
-                )}
-              </View>
-            </Card>
-          </View>
-        ) : null}
-
-        <Button variant="ghost" onPress={onDone} style={styles.cta}>
-          {tr('eule.fertig', 'Zurück zum Cockpit')}
-        </Button>
-          </>
-        )}
-      </>
-    )
-  }
-
-  const workbench = (
-    <>
-      <View style={styles.panelHeader}>
-        <Text style={styles.panelTitle} role="heading" aria-level={2}>
-          {tr('eule.workspace.topbar.panelTitle')}
-        </Text>
-        {wide ? (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={tr('eule.workspace.topbar.panelClose')}
-            onPress={closePanel}
-            style={styles.toolbarToggleBtn}
-            testID="eule-workbench-close"
-          >
-            <Text style={styles.toolbarToggleText}>✕</Text>
-          </Pressable>
-        ) : null}
-      </View>
-      {renderWorkbenchBody()}
-    </>
-  )
+  const workbench = <OwlModeWorkbench owl={owl} taxYear={taxYear} onDone={onDone} onAcceptPath={onAcceptPath} styles={styles} />
 
   /** The project of the tax year: its conversations and its notes. Sidebar on desktop, sheet elsewhere. */
   const projectPanel = (afterSwitch: () => void) => (
-    <View style={styles.projectPanel}>
-      <ConversationList
-        conversations={conversations ?? []}
-        activeId={activeConversationId ?? null}
-        canSwitch
-        activeYear={taxYear}
-        projects={projects}
-        answeringIds={bridge?.answeringConversationIds}
-        onSelectInYear={(year, id) => {
-          onSelectConversationInYear?.(year, id)
-          afterSwitch()
-        }}
-        onSelect={(id) => {
-          onSelectConversation?.(id)
-          afterSwitch()
-        }}
-        onNew={async () => {
-          await onNewConversation?.()
-          afterSwitch()
-        }}
-        onRename={async (id, title) => {
-          await onRenameConversation?.(id, title)
-        }}
-        onDelete={async (id) => {
-          await onDeleteConversation?.(id)
-        }}
-        onOpenSearch={
-          onSearchConversations
-            ? () => {
-                afterSwitch()
-                setSearchOpen(true)
-              }
-            : undefined
-        }
-      />
-    </View>
+    <OwlModeProjectPanel
+      owl={owl}
+      taxYear={taxYear}
+      afterSwitch={afterSwitch}
+      styles={styles}
+      conversations={conversations}
+      activeConversationId={activeConversationId}
+      projects={projects}
+      onSelectConversation={onSelectConversation}
+      onSelectConversationInYear={onSelectConversationInYear}
+      onNewConversation={onNewConversation}
+      onRenameConversation={onRenameConversation}
+      onDeleteConversation={onDeleteConversation}
+      onSearchConversations={onSearchConversations}
+    />
   )
-
-  /** What the owl knows about the household and this year: behind the chip in the composer. */
-  const hasSituationDialog = (situation !== undefined && onSaveSituation !== undefined) || (notes !== undefined && onAddNote !== undefined && onEditNote !== undefined && onDeleteNote !== undefined)
 
   // One layout for every width (#476): the chat is the screen. The workbench is a side panel on a
   // wide screen and a sheet over the chat everywhere else, and only there when it is needed.
   // What the panels may take: the chat keeps its minimum, whatever was dragged or remembered.
   const showSidebar = Boolean(wide && sidebarOpen && conversations && onSelectConversation)
   const showWorkbench = panelOpen && wide
-  const sidebarMax = Math.min(OWL_PANEL_WIDTHS.sidebar.max, windowWidth - OWL_CHAT_MIN_WIDTH - (showWorkbench ? workbenchWidth : 0))
-  const sidebarShown = Math.max(OWL_PANEL_WIDTHS.sidebar.min, Math.min(sidebarWidth, sidebarMax))
-  const workbenchMax = Math.min(OWL_PANEL_WIDTHS.workbench.max, windowWidth - OWL_CHAT_MIN_WIDTH - (showSidebar ? sidebarShown : 0))
-  const workbenchShown = Math.max(OWL_PANEL_WIDTHS.workbench.min, Math.min(workbenchWidth, workbenchMax))
+  const { sidebarMax, sidebarShown, workbenchMax, workbenchShown } = owlPanelWidths({ windowWidth, sidebarWidth, workbenchWidth, showSidebar, showWorkbench })
 
   return (
     <View style={styles.root} testID="eulen-modus-screen">
@@ -1051,7 +272,25 @@ export function OwlModeScreenView({
         ) : null}
 
         <View style={styles.chatMain} testID="eule-chat-main">
-          {renderChatPanel(bp === 's')}
+          <OwlModeChat
+            owl={owl}
+            compact={bp === 's'}
+            switchToTab={switchToTab}
+            styles={styles}
+            models={models}
+            chatModel={chatModel}
+            onPickModel={onPickModel}
+            partnerName={partnerName}
+            ownName={ownName}
+            jointReturn={jointReturn}
+            opening={opening}
+            situation={situation}
+            onSaveSituation={onSaveSituation}
+            context={context}
+            onSummarize={onSummarize}
+            onUndoNoteChange={onUndoNoteChange}
+            onRateMessage={onRateMessage}
+          />
         </View>
 
         {showWorkbench ? (
@@ -1073,102 +312,29 @@ export function OwlModeScreenView({
         ) : null}
       </View>
 
-      {panelOpen && !wide ? (
-        <Sheet onClose={closePanel} closeLabel={tr('eule.workspace.topbar.panelClose')} testID="eule-workbench-sheet">
-          {workbench}
-        </Sheet>
-      ) : null}
-
-      {connectionOpen && connection ? (
-        <Sheet onClose={() => setConnectionOpen(false)} closeLabel={tr('eule.workspace.topbar.privacyClose')} testID="eule-connection-sheet">
-          <ConnectionDetails
-            view={bridge?.reconnecting ? { kind: 'restoring' } : connection}
-            rechecking={rechecking}
-            onRecheck={() => {
-              setRechecking(true)
-              void Promise.resolve(onRecheckConnection?.()).finally(() => setRechecking(false))
-            }}
-          />
-        </Sheet>
-      ) : null}
-
-      {privacyOpen ? (
-        <Sheet onClose={() => setPrivacyOpen(false)} closeLabel={tr('eule.workspace.topbar.privacyClose')} testID="eule-privacy-sheet">
-          <View style={styles.sheetBody}>
-            <Text style={styles.sheetTitle} role="heading" aria-level={2}>
-              {tr('eule.workspace.topbar.privacyTitle')}
-            </Text>
-            <Text style={styles.help} testID="eule-privacy-text">
-              {tr('eule.workspace.topbar.privacyBody')}
-            </Text>
-          </View>
-        </Sheet>
-      ) : null}
-
-      {conversationsOpen && !wide ? (
-        <OwlDrawer onClose={() => setConversationsOpen(false)} closeLabel={tr('eule.workspace.topbar.conversationsClose')} testID="eule-conversations-drawer">
-          {projectPanel(() => setConversationsOpen(false))}
-        </OwlDrawer>
-      ) : null}
-
-      {searchOpen && onSearchConversations ? (
-        <Sheet onClose={() => setSearchOpen(false)} closeLabel={tr('eule.workspace.topbar.conversationsClose')} testID="eule-search-sheet">
-          <ConversationSearch
-            onSearch={onSearchConversations}
-            canSwitch
-            onOpen={(id) => {
-              setSearchOpen(false)
-              if (id !== activeConversationId) onSelectConversation?.(id)
-            }}
-          />
-        </Sheet>
-      ) : null}
-
-      {situationOpen && hasSituationDialog ? (
-        <Sheet onClose={() => setSituationOpen(false)} closeLabel={tr('advisor.chat.situation.dialogClose')} testID="eule-situation-sheet">
-          <View style={styles.situationDialog}>
-            <Text style={styles.sheetTitle} role="heading" aria-level={2}>
-              {tr('advisor.chat.situation.dialogTitle')}
-            </Text>
-            {situation !== undefined && onSaveSituation ? <Situation text={situation} onSave={onSaveSituation} /> : null}
-            {notes && onAddNote && onEditNote && onDeleteNote ? <ProjectNotes notes={notes} onAdd={onAddNote} onEdit={onEditNote} onDelete={onDeleteNote} /> : null}
-          </View>
-        </Sheet>
-      ) : null}
-
-      {settingsOpen ? (
-        <Sheet
-          onClose={() => {
-            setSettingsOpen(false)
-            setClearState('closed')
-          }}
-          closeLabel={tr('eule.workspace.topbar.settingsClose')}
-          testID="eule-settings-sheet"
-        >
-          {renderSettings()}
-        </Sheet>
-      ) : null}
-
-      {sessionSummaryOpen ? (
-        <Sheet
-          onClose={() => setSessionSummaryOpen(false)}
-          closeLabel={tr('eule.workspace.topbar.privacyClose')}
-          testID="eule-session-summary-sheet"
-        >
-          <View style={styles.sheetBody}>
-            <Text style={styles.sheetTitle} role="heading" aria-level={2}>
-              {`Eulen-Summary · Steuerjahr ${taxYear}`}
-            </Text>
-            <Text style={styles.help} testID="eule-session-summary-text">
-              {appliedDrafts.length > 0 || pendingDrafts.length > 0 || cards.length > 0
-                ? `In dieser Session erledigt: ${appliedDrafts.length} ${appliedDrafts.length === 1 ? 'Änderung übernommen' : 'Änderungen übernommen'}${
-                    appliedDrafts.length > 0 ? ` (${appliedDrafts.map((d) => `${d.label}: ${d.newValue}`).join(', ')})` : ''
-                  }. Offene Punkte: ${pendingDrafts.length} ${pendingDrafts.length === 1 ? 'Entwurf' : 'Entwürfe'} und ${cards.length} ${cards.length === 1 ? 'Hinweis' : 'Hinweise'}.`
-                : 'In dieser Session wurden noch keine Änderungen übernommen. Stelle der Eule eine Frage oder lade einen Beleg hoch.'}
-            </Text>
-          </View>
-        </Sheet>
-      ) : null}
+      <OwlModeSheets
+        owl={owl}
+        taxYear={taxYear}
+        optInEnabled={optInEnabled}
+        workbench={workbench}
+        projectPanel={projectPanel}
+        styles={styles}
+        connection={connection}
+        onRecheckConnection={onRecheckConnection}
+        onSearchConversations={onSearchConversations}
+        activeConversationId={activeConversationId}
+        onSelectConversation={onSelectConversation}
+        situation={situation}
+        onSaveSituation={onSaveSituation}
+        notes={notes}
+        onAddNote={onAddNote}
+        onEditNote={onEditNote}
+        onDeleteNote={onDeleteNote}
+        profession={profession}
+        onChooseProfession={onChooseProfession}
+        onToggleOptIn={onToggleOptIn}
+        onClearConversation={onClearConversation}
+      />
     </View>
   )
 }
