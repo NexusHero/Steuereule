@@ -33,6 +33,7 @@ import type { ProfileRepository } from '../profile/profile.repository.js'
 import { PROFILE_ACCESS_FIELDS, profileFieldAccess } from '../profile/profile-field-access.js'
 import { MASTER_DATA_FIELDS, type MasterDataField, type MasterDataRepository } from '../master-data/master-data.repository.js'
 import type { PartnerCouplingRepository } from '../link/link.repository.js'
+import { LINK_ACCESS_FIELDS, linkFieldAccess, type SetFilingType } from '../link/link-field-access.js'
 import type { InterviewAnswerRepository } from '../interview/interview-answer.repository.js'
 import { INTERVIEW_ACCESS_FIELDS, interviewFieldAccess } from '../interview/interview-field-access.js'
 import { N_GRE_BOOLEAN_FIELDS, type CrossBorderSalaryStatementRepository, type NGreDetails } from '../ch-salary-certificate/ch-salary-certificate.repository.js'
@@ -57,11 +58,8 @@ export interface FieldAccessRepositories {
   readonly child?: ChildRepository
   readonly commute?: CommuteRepository
   readonly assessment?: AssessmentRepository
-  /**
-   * Chooses the Veranlagungsart the way the Kopplung mask does (`LinkService.set`): „zusammen“
-   * creates Person B's placeholder, so there is someone to record for (ADR-0054, ADR-0091).
-   */
-  readonly linkFilingType?: (userId: string, taxYear: number, filingType: 'einzel' | 'zusammen') => Promise<void>
+  /** The Kopplung mask's way of choosing the Veranlagungsart (`LinkService.set`); see `SetFilingType`. */
+  readonly linkFilingType?: SetFilingType
   /**
    * The book (ADR-0101 §18): a booking draft the user takes is posted as a journal entry, never
    * written as a field. Provided by the business module; without it a booking draft cannot be applied.
@@ -103,7 +101,6 @@ const ASSESSMENT_ACCESS_FIELDS = [...ASSESSMENT_FIELD_IDS, ...ASSESSMENT_NEW_POS
 const MAX_EXPLANATIONS_LENGTH = 4_000
 const INTEGER_RE = /^-?\d+$/
 
-const LINK_ACCESS_FIELDS = ['filingType', 'invitationCode'] as const
 const NGRE_FIELDS: readonly (keyof NGreDetails)[] = [
   'arbeitgeberName',
   'arbeitgeberStrasse',
@@ -259,44 +256,7 @@ export function fieldAccessFrom({
     }
   }
 
-  if (link) {
-    access.kopplung = {
-      fields: LINK_ACCESS_FIELDS,
-      withInstance: false,
-      async read(userId, taxYear) {
-        const l = await link.findByUserAndYear(userId, taxYear)
-        return {
-          filingType: l?.filingType ?? null,
-          invitationCode: l?.invitationCode ?? null,
-        }
-      },
-      async write(userId, taxYear, _instance, field, value) {
-        if (field === 'filingType' && linkFilingType) {
-          await linkFilingType(userId, taxYear, value === 'zusammen' ? 'zusammen' : 'einzel')
-          return true
-        }
-        const current = await link.findByUserAndYear(userId, taxYear)
-        if (field === 'filingType') {
-          const filingType = value === 'zusammen' ? 'zusammen' : 'einzel'
-          await link.upsert(userId, taxYear, {
-            personBUserId: current?.personBUserId ?? '',
-            filingType,
-            invitationCode: current?.invitationCode ?? null,
-          })
-          return true
-        }
-        if (field === 'invitationCode') {
-          await link.upsert(userId, taxYear, {
-            personBUserId: current?.personBUserId ?? '',
-            filingType: current?.filingType ?? 'einzel',
-            invitationCode: value,
-          })
-          return true
-        }
-        return false
-      },
-    }
-  }
+  if (link) access.kopplung = linkFieldAccess(link, linkFilingType)
 
   if (interview) access.interview = interviewFieldAccess(interview)
 
