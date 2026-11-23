@@ -492,6 +492,9 @@ const ROW_HEADINGS: readonly (readonly [RegExp, RegExp])[] = [
   [/^27$/, /^arbeitnehmer\S*\s+zur\s+arbeits.{0,2}osen/],
 ]
 
+/** How much of a line after a row number is read as its heading; the longest heading is under 60 characters. */
+const HEADING_WINDOW = 160
+
 /**
  * A scan of the two-column form puts the left column's text (address, numbers) before the row
  * number: "1,0 25. Arbeitnehmerbeiträge …". Returns the line from the target row's number on,
@@ -502,7 +505,10 @@ function rowSegment(rawLine: string): string {
   for (const m of line.matchAll(/(?<=^|[\s|:;])(?:(\d{1,2}\s*[ab])\.?\s+|(\d{1,2})\s*(?:\.\s+|(?<=\s)))(?=\S)/g)) {
     const start = m.index ?? 0
     const number = (m[1] ?? m[2])!.trim()
-    const heading = foldOcr(line.slice((m.index ?? 0) + m[0].length))
+    // Only the start of the rest is a heading: folding the whole rest for every number on the line was
+    // quadratic in its length (pentest 2026-11-23, ADR-0106 D1). The longest heading fits well within this.
+    const headingStart = (m.index ?? 0) + m[0].length
+    const heading = foldOcr(line.slice(headingStart, headingStart + HEADING_WINDOW))
     if (ROW_HEADINGS.some(([num, head]) => num.test(number) && head.test(heading))) return line.slice(start).trimStart()
   }
   return line

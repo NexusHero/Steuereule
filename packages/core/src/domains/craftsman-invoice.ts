@@ -39,7 +39,10 @@ function lastAmount(line: string): number | null {
   return all.length > 0 ? euros(all.at(-1)![0]) : null
 }
 
-const LABOUR = /\b(?:std|stunden?|stundenlohn|stundensatz|arbeitszeit|arbeitslohn|lohn|montage|\S*-montage|demontage|wiedermontage|teilmontage|abfahrt|anfahrt|fahrtkosten|bagger\w*|maschine\w*|arbeiten|installation|inbetriebnahme|baustelleneinrichtung|einbau|ausbau|monteur\w*|facharbeiter|hilfsarbeiter|\S*bohrung|\S*herstell\w*|verleg\w*|abdicht\w*|reparatur\w*|wartung|reinigung|\S*arbeiten)\b/i
+// The prefixes of compound words ("Kernbohrung", "Wiederherstellung") are bounded: an unbounded `\S*` is
+// tried from every word boundary to the end of a whitespace-free run, which is quadratic in its length and
+// froze the API for 13.7 s on 31 KB of "1.1.1.…" (pentest 2026-11-23, ADR-0106 D1).
+const LABOUR = /\b(?:std|stunden?|stundenlohn|stundensatz|arbeitszeit|arbeitslohn|lohn|montage|\S{0,40}-montage|demontage|wiedermontage|teilmontage|abfahrt|anfahrt|fahrtkosten|bagger\w*|maschine\w*|arbeiten|installation|inbetriebnahme|baustelleneinrichtung|einbau|ausbau|monteur\w*|facharbeiter|hilfsarbeiter|\S{0,40}bohrung|\S{0,40}herstell\w*|verleg\w*|abdicht\w*|reparatur\w*|wartung|reinigung|\S{0,40}arbeiten)\b/i
 const MATERIAL = /material|lieferung|\bware\b|modul|speicher|wechselrichter|kleineisen|befestigung/i
 const SUMMARY = /summe|gesamt|netto|brutto|\bust\b|ust\.|mwst|mehrwert|betrag|abschlag|zahlung|rabatt|skonto/i
 
