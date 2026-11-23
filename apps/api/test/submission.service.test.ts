@@ -18,6 +18,7 @@ import { FakeLinkRepository } from './fakes/fake-link.repository.js'
 import { FakeLstbRepository } from './fakes/fake-lstb.repository.js'
 import { FakeMasterDataRepository } from './fakes/fake-master-data.repository.js'
 import { FakeSubmissionRepository } from './fakes/fake-submission.repository.js'
+import { taxCaseReaderOver } from '../src/tax-case/repository-tax-case.reader.js'
 
 const USER = 'user-a'
 const OTHER = 'user-b'
@@ -45,8 +46,8 @@ function setup() {
   const interview = new FakeInterviewAnswerRepository()
   const link = new FakeLinkRepository()
   const commutes = new FakeCommuteRepository()
-  const estimates = new TaxEstimateService(lstb, interview, ch, new FakeMasterDataRepository(), commutes, link)
-  const service = new SubmissionService(submissions, versions, assessments, lstb, ch, commutes, interview, link, estimates)
+  const estimates = new TaxEstimateService(taxCaseReaderOver({ wageTaxCertificate: lstb, interview, salaryStatement: ch, masterData: new FakeMasterDataRepository(), commute: commutes, coupling: link }))
+  const service = new SubmissionService(submissions, versions, assessments, taxCaseReaderOver({ wageTaxCertificate: lstb, salaryStatement: ch, commute: commutes, interview, coupling: link }), estimates)
 
   submissions.seedYear(USER, YEAR)
   lstb.seed({ userId: USER, taxYear: YEAR, bruttoarbeitslohn: '48200', lohnsteuer: '7457', sozialversicherung: '9880' })
@@ -57,7 +58,7 @@ function setup() {
     yearsOf: async (userId) => ((await submissions.yearStatus(userId, YEAR)) === null ? [] : [{ year: YEAR, status: await submissions.yearStatus(userId, YEAR), hasData: true, filedElsewhere: null }]),
     setFiledElsewhere: async () => undefined,
   }
-  const history = new YearHistoryService(yearRepo, assessments, versions, lstb, ch, commutes, interview, link, estimates, emptyYearHistoryInsights(commutes))
+  const history = new YearHistoryService(yearRepo, assessments, versions, taxCaseReaderOver({ wageTaxCertificate: lstb, salaryStatement: ch, commute: commutes, interview, coupling: link }), estimates, emptyYearHistoryInsights(commutes))
   return { service, submissions, versions, assessments, audit, commutes, estimates, history, link, lstb, interview }
 }
 

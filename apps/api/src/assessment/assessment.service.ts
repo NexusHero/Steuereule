@@ -28,15 +28,7 @@ import {
   type AssessmentValues,
 } from '@steuereule/core'
 import { AuditService } from '../audit/audit.service.js'
-import {
-  CROSS_BORDER_SALARY_STATEMENT_REPOSITORY,
-  type CrossBorderSalaryStatementRepository,
-} from '../ch-salary-certificate/ch-salary-certificate.repository.js'
-import {
-  INTERVIEW_ANSWER_REPOSITORY,
-  type InterviewAnswerRepository,
-} from '../interview/interview-answer.repository.js'
-import { WAGE_TAX_CERTIFICATE_REPOSITORY, type WageTaxCertificateRepository } from '../lstb/lstb.repository.js'
+import { TAX_CASE_READER, type TaxCaseReader } from '../tax-case/tax-case.reader.js'
 import { ASSESSMENT_REPOSITORY, type AssessmentRecord, type AssessmentRepository, type AssessmentStoredField } from './assessment.repository.js'
 import { assessedReturnOf, filedReturnOf, hasAssessedValues, positionValue } from './assessment-positions.js'
 import { FILING_VERSION_REPOSITORY, type FilingVersionRepository } from './filing-version.repository.js'
@@ -81,20 +73,18 @@ function fieldsFromRecord(record: AssessmentRecord | null): { fields: Assessment
 export class AssessmentService {
   constructor(
     @Inject(ASSESSMENT_REPOSITORY) private readonly repository: AssessmentRepository,
-    @Inject(WAGE_TAX_CERTIFICATE_REPOSITORY) private readonly lstbRepository: WageTaxCertificateRepository,
-    @Inject(INTERVIEW_ANSWER_REPOSITORY) private readonly interviewRepository: InterviewAnswerRepository,
-    @Inject(CROSS_BORDER_SALARY_STATEMENT_REPOSITORY) private readonly chSalaryCertificateRepository: CrossBorderSalaryStatementRepository,
+    @Inject(TAX_CASE_READER) private readonly cases: TaxCaseReader,
     @Inject(AuditService) private readonly auditService: AuditService,
     /** The versions frozen at submission (ADR-0098 §8); without them there is no diff to show. */
     @Optional() @Inject(FILING_VERSION_REPOSITORY) private readonly filingVersions?: FilingVersionRepository,
   ) {}
 
   private async calculationStatus(userId: string, taxYear: number): Promise<CalculationStatus> {
-    const [lstbRecord, interviewRows, chRecord] = await Promise.all([
-      this.lstbRepository.findForUserAndYear(userId, taxYear),
-      this.interviewRepository.findAllForUserAndYear(userId, taxYear),
-      this.chSalaryCertificateRepository.findForUserAndYear(userId, taxYear),
-    ])
+    const {
+      wageTaxCertificate: lstbRecord,
+      interviewRows,
+      salaryStatement: chRecord,
+    } = await this.cases.read(userId, taxYear, ['wageTaxCertificate', 'interviewRows', 'salaryStatement'])
     const answers = answersFrom(interviewRows)
 
     const employee = employeeFromData(

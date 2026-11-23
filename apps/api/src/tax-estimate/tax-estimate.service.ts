@@ -46,20 +46,13 @@ import {
   effectivePublicHolidays,
 } from '@steuereule/core'
 import { HOUSEHOLD_AND_HEALTH_BOOSTERS } from '../config/features.js'
-import { COMMUTE_REPOSITORY, type CommuteInputs, type CommuteRepository } from '../commute/commute.repository.js'
+import type { CommuteInputs } from '../commute/commute.repository.js'
+import type { MasterDataRecord } from '../master-data/master-data.repository.js'
+import { TAX_CASE_READER, type TaxCaseReader } from '../tax-case/tax-case.reader.js'
 import { allowanceOverWays } from '../commute/ways-to-work.js'
-import { CROSS_BORDER_SALARY_STATEMENT_REPOSITORY, type CrossBorderSalaryStatementRepository } from '../ch-salary-certificate/ch-salary-certificate.repository.js'
 import { crossBorderStatusFromAnswers, salaryCertificateValuesFromRecord, exchangeRateFromRecord, nGreInputFromRecord } from '../ch-salary-certificate/salary-certificate-data.js'
-import { INTERVIEW_ANSWER_REPOSITORY, type InterviewAnswerRepository } from '../interview/interview-answer.repository.js'
 import { answersFrom } from '../interview/answers.js'
-import { WAGE_TAX_CERTIFICATE_REPOSITORY, type WageTaxCertificateRepository } from '../lstb/lstb.repository.js'
 import { lstbLineValuesFrom, wageTaxCertificateDataFrom } from '../lstb/lstb-data.js'
-import { CAPITAL_REPOSITORY, type CapitalRepository } from '../capital/capital.repository.js'
-import { MASTER_DATA_REPOSITORY, type MasterDataRepository } from '../master-data/master-data.repository.js'
-import { CHILD_REPOSITORY, type ChildRepository } from '../children/child.repository.js'
-import { PARTNER_COUPLING_REPOSITORY, type PartnerCouplingRepository } from '../link/link.repository.js'
-import { RENTAL_REPOSITORY, type RentalRepository } from '../rental/rental.repository.js'
-import { PENSION_REPOSITORY, type PensionRepository } from '../pension/pension.repository.js'
 import { pensionDataFromRecord } from '../pension/pension.service.js'
 import { churchTaxDtoFrom, subsidiesDtoFrom } from '../lstb/lstb.service.js'
 import type { WageTaxCertificateRecord } from '../lstb/lstb.repository.js'
@@ -85,16 +78,7 @@ const CH_FOREIGN = 'Ja, in die Schweiz'
 @Injectable()
 export class TaxEstimateService {
   constructor(
-    @Inject(WAGE_TAX_CERTIFICATE_REPOSITORY) private readonly lstb: WageTaxCertificateRepository,
-    @Inject(INTERVIEW_ANSWER_REPOSITORY) private readonly interview: InterviewAnswerRepository,
-    @Inject(CROSS_BORDER_SALARY_STATEMENT_REPOSITORY) private readonly chSalaryCertificate: CrossBorderSalaryStatementRepository,
-    @Inject(MASTER_DATA_REPOSITORY) private readonly masterData: MasterDataRepository,
-    @Inject(COMMUTE_REPOSITORY) private readonly commute: CommuteRepository,
-    @Inject(PARTNER_COUPLING_REPOSITORY) private readonly link?: PartnerCouplingRepository,
-    @Inject(CHILD_REPOSITORY) private readonly kinder?: ChildRepository,
-    @Inject(RENTAL_REPOSITORY) private readonly rental?: RentalRepository,
-    @Optional() @Inject(PENSION_REPOSITORY) private readonly pension?: PensionRepository,
-    @Optional() @Inject(CAPITAL_REPOSITORY) private readonly capital?: CapitalRepository,
+    @Inject(TAX_CASE_READER) private readonly cases: TaxCaseReader,
     /** The book of the self-employed (ADR-0101); absent in tests that build the estimate without it. */
     @Optional() @Inject(BusinessService) private readonly business?: BusinessService,
   ) {}
@@ -119,20 +103,20 @@ export class TaxEstimateService {
     if (status.prepayments !== undefined) return status
     // Prepayments the tax office set for the year count against the tax like withheld wage tax (§ 36
     // Abs. 2 Nr. 1 EStG); in a joint return there is one assessment, so they are asked once, of Person A.
-    const prepayments = amountAnswer(answersFrom(await this.interview.findAllForUserAndYear(userId, year)), 'vorauszahlungen')
+    const prepayments = amountAnswer(answersFrom((await this.cases.read(userId, year, ['interviewRows'])).interviewRows), 'vorauszahlungen')
     if (prepayments === 0) return status
     return { ...status, prepayments, result: { from: status.result.from + prepayments, to: status.result.to + prepayments } }
   }
 
   private async calculate(userId: string, year: number, boostersEnabled: boolean): Promise<TaxEstimateStatus> {
     return withSpan('tax_estimate.calculate', async () => {
-      const [lstbRecord, interviewRows, chRecord, masterData, path] = await Promise.all([
-      this.lstb.findForUserAndYear(userId, year),
-      this.interview.findAllForUserAndYear(userId, year),
-      this.chSalaryCertificate.findForUserAndYear(userId, year),
-      this.masterData.findByUserId(userId),
-      this.commute.findForUserAndYear(userId, year),
-    ])
+      const {
+        wageTaxCertificate: lstbRecord,
+        interviewRows,
+        salaryStatement: chRecord,
+        masterData,
+        commute: path,
+      } = await this.cases.read(userId, year, ['wageTaxCertificate', 'interviewRows', 'salaryStatement', 'masterData', 'commute'])
     const answers = answersFrom(interviewRows)
 
     // Employees and pensioners get an estimate; the self-employed only with the switch on (ADR-0101, REQ-015).
@@ -171,7 +155,7 @@ export class TaxEstimateService {
       answers['ae-weitere-person'] !== 'Ja' &&
       answers['ae-haushaltsgemeinschaft'] !== 'Ja'
     const singleParentChildren = singleParent ? await this.childrenForRelief(userId, year, answers) : 0
-    const recordedChildren = this.kinder ? (await this.kinder.listForUserAndYear(userId, year)).length : 0
+    const recordedChildren = (await this.cases.read(userId, year, ['children'])).children.length
     const childrenBracket = burdenChildrenBracket(answers.kinder, recordedChildren)
     const householdReductionEur = boostersEnabled ? householdServicesFromAnswers(answers, year).totalReductionEur : 0
     const healthExpensesEur = boostersEnabled ? extraordinaryBurdenFromAnswers(answers) : 0
@@ -294,17 +278,17 @@ export class TaxEstimateService {
     userId: string,
     year: number,
     answers: Answers,
-    masterData: Awaited<ReturnType<MasterDataRepository['findByUserId']>>,
+    masterData: MasterDataRecord | null,
     boostersEnabled: boolean,
     ownBusiness: { business: BusinessIncome; losses: LossCarry } | null = null,
   ): Promise<TaxEstimateStatus> {
-    const record = this.pension ? await this.pension.findForUserAndYear(userId, year) : null
+    const { pension: record } = await this.cases.read(userId, year, ['pension'])
     const data = record ? pensionDataFromRecord(record) : null
     const item = data ? pensionAsCoreLineItem(data) : null
     if (data === null || item === null || data.jahresbetrag.kind !== 'erfasst') return { kind: 'offen', missing: ['rente'] }
     const numbers = employeeFromAnswers(answers)
     const childcare = await this.childcareDeduction(userId, year)
-    const recordedChildren = this.kinder ? (await this.kinder.listForUserAndYear(userId, year)).length : 0
+    const recordedChildren = (await this.cases.read(userId, year, ['children'])).children.length
     const church = churchTaxInput(masterData, null, 'own', await this.childrenForChurchTax(userId, year, answers))
     return withEstimateExtras(
       taxEstimatePensioner({
@@ -327,13 +311,12 @@ export class TaxEstimateService {
   /** § 24b Abs. 2 Satz 2: the recorded children, else what the interview says (1 or "2 oder mehr" → 2). */
   /** The deductible childcare of all recorded children (80 %, at most 4.800 € each from 2025). */
   private async childcareDeduction(userId: string, year: number): Promise<number> {
-    if (!this.kinder) return 0
-    const children = await this.kinder.listForUserAndYear(userId, year)
+    const { children } = await this.cases.read(userId, year, ['children'])
     return children.reduce((sum, k) => sum + childcareDeductionEur(year, k.childcareEur ? Number(k.childcareEur) : null, k.geburtsdatum), 0)
   }
 
   private async childrenForRelief(userId: string, year: number, answers: Answers): Promise<number> {
-    const recorded = this.kinder ? (await this.kinder.listForUserAndYear(userId, year)).length : 0
+    const recorded = (await this.cases.read(userId, year, ['children'])).children.length
     if (recorded > 0) return recorded
     return answers.kinder === '2 oder mehr' ? 2 : 1
   }
@@ -346,7 +329,7 @@ export class TaxEstimateService {
 
   /** ADR-0054: a couple's estimate from both spouses' figures — only once the joint return for the year is set up. */
   private async marriedCouple(userId: string, year: number, boostersEnabled: boolean): Promise<TaxEstimateStatus> {
-    const link = this.link ? await this.link.findByUserAndYear(userId, year) : null
+    const { coupling: link } = await this.cases.read(userId, year, ['coupling'])
     if (!link || link.filingType !== 'zusammen') return { kind: 'offen', missing: ['veranlagungsart'] }
     const [a, b] = await Promise.all([
       this.income(link.personAUserId, year, boostersEnabled),
@@ -357,15 +340,13 @@ export class TaxEstimateService {
     if (a.kind === 'none') missing.unshift('einkommen')
     if (a.kind === 'ok' && wageReplacementFrom(a.answers) === null) missing.push('lohnersatz-betrag')
     if (missing.length > 0 || a.kind !== 'ok') return { kind: 'offen', missing }
-    const [kinder, properties, sdA, sdB] = await Promise.all([
-      this.kinder ? this.kinder.listForUserAndYear(link.personAUserId, year) : Promise.resolve([]),
-      this.rental ? this.rental.listForUserAndYear(link.personAUserId, year) : Promise.resolve([]),
-      this.masterData.findByUserId(link.personAUserId),
-      link.personBUserId ? this.masterData.findByUserId(link.personBUserId) : Promise.resolve(null),
+    const [{ children: kinder, rentals: properties, masterData: sdA }, sdB] = await Promise.all([
+      this.cases.read(link.personAUserId, year, ['children', 'rentals', 'masterData']),
+      link.personBUserId ? this.cases.read(link.personBUserId, year, ['masterData']).then((c) => c.masterData) : Promise.resolve(null),
     ])
     const [lstbA, lstbB] = await Promise.all([
-      this.lstb.findForUserAndYear(link.personAUserId, year),
-      link.personBUserId ? this.lstb.findForUserAndYear(link.personBUserId, year) : Promise.resolve(null),
+      this.cases.read(link.personAUserId, year, ['wageTaxCertificate']).then((c) => c.wageTaxCertificate),
+      link.personBUserId ? this.cases.read(link.personBUserId, year, ['wageTaxCertificate']).then((c) => c.wageTaxCertificate) : Promise.resolve(null),
     ])
     const churchA = churchTaxInput(sdA, lstbA, 'with-spouse-line', 0)
     const churchB = churchTaxInput(sdB ?? sdA, lstbB, 'with-spouse-line', 0)
@@ -387,7 +368,7 @@ export class TaxEstimateService {
             // One Feststellung for the couple's joint assessment: what both bring forward.
             losses: { carriedForwardEur: (businessA?.losses.carriedForwardEur ?? 0) + (businessB?.losses.carriedForwardEur ?? 0) },
           }
-    const capitalRecord = this.capital ? await this.capital.findForUserAndYear(link.personAUserId, year) : null
+    const { capital: capitalRecord } = await this.cases.read(link.personAUserId, year, ['capital'])
     const capital = flatRateCapital(capitalRecord, getTaxYearParameters(year).lumpSums.saverJoint)
     const amountOf = (value: string | null | undefined) => (value && /^\d+$/.test(value) ? Number(value) : 0)
     const estimate = estimateMarriedCouple({
@@ -452,12 +433,12 @@ export class TaxEstimateService {
     | { kind: 'none'; laterCount: number; answers: Answers }
     | { kind: 'exempt' }
   > {
-    const [lstbRecord, interviewRows, chRecord, path] = await Promise.all([
-      this.lstb.findForUserAndYear(userId, year),
-      this.interview.findAllForUserAndYear(userId, year),
-      this.chSalaryCertificate.findForUserAndYear(userId, year),
-      this.commute.findForUserAndYear(userId, year),
-    ])
+    const {
+      wageTaxCertificate: lstbRecord,
+      interviewRows,
+      salaryStatement: chRecord,
+      commute: path,
+    } = await this.cases.read(userId, year, ['wageTaxCertificate', 'interviewRows', 'salaryStatement', 'commute'])
     const answers = answersFrom(interviewRows)
     const laterCount = countLaterAmounts(answers, boostersEnabled)
     const numbers = employeeFromAnswers(answers)
@@ -526,7 +507,7 @@ export class TaxEstimateService {
     }
     if (lstbRecord === null) {
       // A spouse living on a pension (Anlage R): its taxable share counts in the couple's estimate (ADR-0088).
-      const pensionRecord = this.pension ? await this.pension.findForUserAndYear(userId, year) : null
+      const { pension: pensionRecord } = await this.cases.read(userId, year, ['pension'])
       if (pensionRecord?.rentenart) {
         const item = pensionAsCoreLineItem(pensionDataFromRecord(pensionRecord))
         if (item === null) return { kind: 'offen', missing: ['rente'] }

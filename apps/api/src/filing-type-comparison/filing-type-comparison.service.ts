@@ -7,9 +7,8 @@ import {
   type ChurchTaxFactor,
   type FilingTypeComparison as Vergleich,
 } from '@steuereule/core'
-import { INTERVIEW_ANSWER_REPOSITORY, type InterviewAnswerRepository } from '../interview/interview-answer.repository.js'
-import { WAGE_TAX_CERTIFICATE_REPOSITORY, type WageTaxCertificateRepository } from '../lstb/lstb.repository.js'
-import { TAX_YEAR_REPOSITORY, type TaxYearRepository } from '../cockpit/tax-year.repository.js'
+import { TAX_CASE_READER, type TaxCaseReader } from '../tax-case/tax-case.reader.js'
+import { TAX_YEAR_REPOSITORY, type TaxYearRepository } from '../tax-year/tax-year.repository.js'
 import type { UncertaintyDto, FilingTypeComparisonDto, ComparisonSourceDto } from './dto/filing-type-comparison-response.dto.js'
 import { answersFrom } from '../interview/answers.js'
 import { wageTaxCertificateDataFrom } from '../lstb/lstb-data.js'
@@ -47,8 +46,7 @@ function toDto(comparison: Vergleich): FilingTypeComparisonDto {
 export class AssessmentComparisonService {
   constructor(
     @Inject(TAX_YEAR_REPOSITORY) private readonly taxYearRepository: TaxYearRepository,
-    @Inject(WAGE_TAX_CERTIFICATE_REPOSITORY) private readonly lstbRepository: WageTaxCertificateRepository,
-    @Inject(INTERVIEW_ANSWER_REPOSITORY) private readonly interviewRepository: InterviewAnswerRepository,
+    @Inject(TAX_CASE_READER) private readonly cases: TaxCaseReader,
   ) {}
 
   async getComparison(
@@ -61,10 +59,7 @@ export class AssessmentComparisonService {
     const record = await this.taxYearRepository.findByUserAndYear(userId, taxYear)
     if (!record) return null
 
-    const [lstbRecord, interviewRows] = await Promise.all([
-      this.lstbRepository.findForUserAndYear(userId, taxYear),
-      this.interviewRepository.findAllForUserAndYear(userId, taxYear),
-    ])
+    const { wageTaxCertificate: lstbRecord, interviewRows } = await this.cases.read(userId, taxYear, ['wageTaxCertificate', 'interviewRows'])
 
     const data = wageTaxCertificateDataFrom(lstbRecord)
     const answers = answersFrom(interviewRows)

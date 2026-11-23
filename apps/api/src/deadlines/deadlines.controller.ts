@@ -1,7 +1,7 @@
 import { Controller, Get, Inject, Param, UseGuards } from '@nestjs/common'
 import { ApiOkResponse, ApiParam, ApiTags } from '@nestjs/swagger'
 import { UserContextGuard } from '../auth/user-context.guard.js'
-import { ParseTaxYearPipe } from '../cockpit/parse-tax-year.pipe.js'
+import { ParseTaxYearPipe } from '../common/parse-tax-year.pipe.js'
 import { DeadlinesService } from './deadlines.service.js'
 import { DeadlinesResponseDto } from './dto/deadlines-response.dto.js'
 

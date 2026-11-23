@@ -33,6 +33,7 @@ import { FakeAssistantTaskRepository } from './fakes/fake-assistant-task.reposit
 import type { UnlockRepository } from '../src/unlock/unlock.repository.js'
 import type { PaymentProvider } from '../src/unlock/payment-provider.js'
 import type { CommuteRepository } from '../src/commute/commute.repository.js'
+import { taxCaseReaderOver } from '../src/tax-case/repository-tax-case.reader.js'
 
 const USER = 'user-mcp-1'
 const YEAR = 2025
@@ -126,36 +127,11 @@ describe('McpService (ADR-0052 §3 / §5 / §8 / §12)', () => {
     })
     confirmationService = new ConfirmationService(markingsRepo, fieldAccess, auditService)
 
-    cockpitService = new CockpitService(
-      taxYearRepo,
-      lstbRepo,
-      interviewRepo,
-      markingsRepo,
-      pensionRepo,
-      capitalRepo,
-      rentalRepo,
-      chSalaryRepo,
-    )
+    cockpitService = new CockpitService(taxYearRepo, taxCaseReaderOver({ wageTaxCertificate: lstbRepo, interview: interviewRepo, pension: pensionRepo, capital: capitalRepo, rental: rentalRepo, salaryStatement: chSalaryRepo }), markingsRepo)
 
     unlockService = new UnlockService(new FakeUnlockRepository(), new FakePaymentProvider(), 'http://localhost:8081')
 
-    printoutService = new PrintoutService(
-      profileRepo,
-      masterDataRepo,
-      lstbRepo,
-      pensionRepo,
-      capitalRepo,
-      rentalRepo,
-      chSalaryRepo,
-      childRepo,
-      linkRepo,
-      interviewRepo,
-      markingsRepo,
-      new FakeCommuteRepository(),
-      unlockService,
-      auditService,
-      new URL('../../assets/vordrucke/', import.meta.url),
-    )
+    printoutService = new PrintoutService(taxCaseReaderOver({ profile: profileRepo, masterData: masterDataRepo, wageTaxCertificate: lstbRepo, pension: pensionRepo, capital: capitalRepo, rental: rentalRepo, salaryStatement: chSalaryRepo, children: childRepo, coupling: linkRepo, interview: interviewRepo, commute: new FakeCommuteRepository() }), markingsRepo, unlockService, auditService, new URL('../../assets/vordrucke/', import.meta.url))
 
     owlModeService = new OwlModeService(
       new FakeOwlSettingRepository(),

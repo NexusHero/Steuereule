@@ -3,7 +3,7 @@ import { ApiExtraModels, ApiOkResponse, ApiParam, ApiQuery, ApiTags, getSchemaPa
 import type { ChurchTaxFactor } from '@steuereule/core'
 import { CurrentUser } from '../auth/current-user.decorator.js'
 import { UserContextGuard } from '../auth/user-context.guard.js'
-import { ParseTaxYearPipe } from '../cockpit/parse-tax-year.pipe.js'
+import { ParseTaxYearPipe } from '../common/parse-tax-year.pipe.js'
 import { FilingTypeComparisonDto, ComparisonSourceDto, UncertaintyDto } from './dto/filing-type-comparison-response.dto.js'
 import { AssessmentComparisonService } from './filing-type-comparison.service.js'
 

@@ -27,6 +27,7 @@ import { FakePersonalDataConsentRepository } from './fake-personal-data-consent.
 import { PersonalDataConsentService } from '../../src/owl-mode/personal-data-consent.service.js'
 import { TaxEstimateService } from '../../src/tax-estimate/tax-estimate.service.js'
 import { ChildrenService } from '../../src/children/children.service.js'
+import { taxCaseReaderOver } from '../../src/tax-case/repository-tax-case.reader.js'
 
 export interface AdvisorTestKit {
   readonly advisorRepo: InMemoryAdvisorRepository
@@ -100,7 +101,7 @@ export function buildAdvisorTestKit(engine?: AdvisorEnginePort, modelConnection?
     new RagKiAdapter(),
     auditService,
   )
-  const taxEstimate = new TaxEstimateService(lstbRepo, interviewRepo, chRepo, masterDataRepo, commuteRepo, linkRepo, childRepo, rentalRepo, pensionRepo)
+  const taxEstimate = new TaxEstimateService(taxCaseReaderOver({ wageTaxCertificate: lstbRepo, interview: interviewRepo, salaryStatement: chRepo, masterData: masterDataRepo, commute: commuteRepo, coupling: linkRepo, children: childRepo, rental: rentalRepo, pension: pensionRepo }))
   const children = new ChildrenService(childRepo, auditService, chRepo, linkRepo)
   const service = new AdvisorService(
     advisorRepo,

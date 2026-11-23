@@ -14,6 +14,7 @@ import { FakeMarkingRepository } from './fakes/fake-marking.repository.js'
 import { FakePensionRepository } from './fakes/fake-pension.repository.js'
 import { FakeRentalRepository } from './fakes/fake-rental.repository.js'
 import { FakeTaxYearRepository } from './fakes/fake-tax-year.repository.js'
+import { taxCaseReaderOver } from '../src/tax-case/repository-tax-case.reader.js'
 
 const A1 = { person: 'A', business: 1 } as const
 
@@ -21,7 +22,7 @@ async function setup() {
   const taxYear = new FakeTaxYearRepository()
   const interview = new FakeInterviewAnswerRepository()
   const business = new BusinessService(new FakeBusinessRepository(), interview, new AuditService(new FakeAuditRepository()), new HebesatzDirectory())
-  const service = new CockpitService(taxYear, new FakeLstbRepository(), interview, new FakeMarkingRepository(), new FakePensionRepository(), new FakeCapitalRepository(), new FakeRentalRepository(), new FakeChSalaryCertificateRepository(), undefined, undefined, business)
+  const service = new CockpitService(taxYear, taxCaseReaderOver({ wageTaxCertificate: new FakeLstbRepository(), interview, pension: new FakePensionRepository(), capital: new FakeCapitalRepository(), rental: new FakeRentalRepository(), salaryStatement: new FakeChSalaryCertificateRepository() }), new FakeMarkingRepository(), undefined, undefined, business)
   taxYear.seed('u', { taxYear: 2025, openItems: 0 })
   interview.seed('u', 2025, { job: 'Selbstständig', ausland: 'Nein', kinder: 'Nein', familienstand: 'Ledig' })
   return { service, business }

@@ -13,6 +13,7 @@ import { FakeChildRepository } from './fakes/fake-child.repository.js'
 import { FakeRentalRepository } from './fakes/fake-rental.repository.js'
 import { FakePensionRepository } from './fakes/fake-pension.repository.js'
 import type { TaxEstimateStatus } from '../src/tax-estimate/tax-estimate.service.js'
+import { taxCaseReaderOver } from '../src/tax-case/repository-tax-case.reader.js'
 
 function range(status: TaxEstimateStatus) {
   if (status.kind !== 'spanne') throw new Error(`expected a range, got ${status.kind}`)
@@ -32,7 +33,7 @@ function setup(path: CommuteInputs | null = null) {
   const kinder = new FakeChildRepository()
   const rental = new FakeRentalRepository()
   const pension = new FakePensionRepository()
-  const service = new TaxEstimateService(lstb, interview, ch, masterData, commute(path), link, kinder, rental, pension)
+  const service = new TaxEstimateService(taxCaseReaderOver({ wageTaxCertificate: lstb, interview, salaryStatement: ch, masterData, commute: commute(path), coupling: link, children: kinder, rental, pension }))
   return { lstb, interview, ch, stammdaten: masterData, kopplung: link, kinder, vermietung: rental, pension, service }
 }
 

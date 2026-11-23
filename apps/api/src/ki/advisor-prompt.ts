@@ -23,7 +23,7 @@ import {
   type CaseDigest,
   type Screen,
 } from '@steuereule/core'
-import { describeReceiptInboxForPrompt } from '../advisor/advisor-receipt-inbox.js'
+import { describeReceiptInboxForPrompt } from './receipt-inbox-prompt.js'
 import { describeAiWritableFields } from './advisor-safety.js'
 import { skillPrompt } from './advisor-skills.js'
 import { taskPrompt } from './advisor-tasks.js'
