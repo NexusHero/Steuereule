@@ -356,3 +356,21 @@ servers, not from the user's device. All its users therefore share a few address
    oldest first, and skips retained clients instead of getting stuck on them.
 3. Open: the limit counts per process in memory, like the other better-auth limits; with several
    instances it multiplies. A shared store (Redis) comes with #292.
+
+## Amendment 8 (2026-11-23) — The consent screen says where the access goes
+
+A client registers itself without signing in (Amendment 5) and picks its own name. The consent screen
+showed only that name and the scopes, so a client that calls itself "Claude" and redirects to someone
+else's server looked like the user's own assistant. A user who approves it hands that server an access
+and a refresh token; the read view (Amendment 3) limits what it reads to amounts and derived facts.
+
+1. **Destination:** `GET /v1/oauth/client-info` returns the redirect addresses the client registered,
+   each with where it leads: the host of a web address (in its ASCII form, so a look-alike domain shows
+   as `xn--…`), `localhost` for a loopback redirect of an app on the user's machine, or an app scheme.
+   The screen shows the destination of the redirect address the request names, or every registered
+   destination when the request names none of them. The authorization code is only ever sent to a
+   registered address, so this is the part of a client it cannot make up.
+2. **Notice:** the screen states that SteuerEule has not checked the assistant and that the name is the
+   assistant's own.
+3. Open: nothing verifies a client. A list of known assistants with their redirect hosts would let the
+   screen mark those as recognised; a user who does not read the destination is still not protected.

@@ -24567,6 +24567,25 @@
           "success"
         ]
       },
+      "OauthRedirectTargetDto": {
+        "type": "object",
+        "properties": {
+          "uri": {
+            "type": "string",
+            "example": "https://claude.ai/api/mcp/auth_callback",
+            "description": "A redirect address the client registered."
+          },
+          "destination": {
+            "type": "string",
+            "example": "claude.ai",
+            "description": "Where that address leads, for the consent screen: the host of a web address, \"localhost\" for an app on the user's machine, or an app scheme such as \"cursor://\"."
+          }
+        },
+        "required": [
+          "uri",
+          "destination"
+        ]
+      },
       "OauthClientInfoDto": {
         "type": "object",
         "properties": {
@@ -24587,11 +24606,19 @@
             "type": "string",
             "example": null,
             "nullable": true
+          },
+          "redirectTargets": {
+            "description": "Where an approval can send the access to. The name above is the client's own claim; these addresses are what it registered.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OauthRedirectTargetDto"
+            }
           }
         },
         "required": [
           "clientId",
-          "name"
+          "name",
+          "redirectTargets"
         ]
       },
       "AddressSearchRequestDto": {

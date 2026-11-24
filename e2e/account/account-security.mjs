@@ -5,7 +5,7 @@
 //           (in), and with a backup code (API).
 //   Row C — Geräte: two browsers signed in; A signs B out → B is out on its next request.
 //   Row D — OAuth consent and connected assistants: a local test client asks for access;
-//           „Ablehnen“ redirects with access_denied, „Erlauben“ with a code; the token opens the
+//           the screen names where the access goes; „Ablehnen“ redirects with access_denied, „Erlauben“ with a code; the token opens the
 //           MCP endpoint; revoking the assistant in the profile → the token is refused.
 //   Row E — Konto löschen, both ways: „Erst exportieren“ (a file is downloaded) and „Ohne Export
 //           weiter“; afterwards the sign-in fails.
@@ -205,6 +205,12 @@ async function main() {
       if (callbackBox.value?.searchParams.get('error') !== 'access_denied') fail(`Row D: „Ablehnen“ must redirect with error=access_denied, got ${callbackBox.value}`)
 
       const verifier = await authorize()
+      // The client picks its own name, so the screen says where the access goes (ADR-0052 amendment 8): this
+      // client registered a loopback redirect, an app on the user's machine. Approving waits for that line.
+      const destination = page.locator('[data-testid="oauth-destination"]')
+      await destination.waitFor({ state: 'visible', timeout: 10_000 })
+      const destinationText = (await destination.textContent()) ?? ''
+      if (!/App auf diesem Gerät|app on this device/.test(destinationText)) fail(`Row D: the consent screen must name the loopback redirect as an app on this device, got „${destinationText}“`)
       await page.locator('[data-testid="oauth-erlauben"]').click()
       await waitForCallback(page, callbackBox)
       const code = callbackBox.value?.searchParams.get('code')

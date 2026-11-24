@@ -81,6 +81,58 @@ describe('OauthConsentScreen (ADR-0052 §2 / §9 / §10)', () => {
     expect(screen.getByText('Ablehnen')).toBeTruthy()
   })
 
+  // An assistant registers itself and picks its own name: a client called "Claude" may redirect to anyone's
+  // server. The screen therefore says where the approval leads and that the name is unchecked.
+  function mockClient(name: string, redirectTargets: { uri: string; destination: string }[]) {
+    server.use(http.get(`${BASE_URL}/v1/oauth/client-info`, () => HttpResponse.json({ clientId: 'c1', name, uri: null, icon: null, redirectTargets })))
+  }
+
+  it('shows where the approval leads, so a borrowed name does not hide a foreign server', async () => {
+    mockClient('Claude', [{ uri: 'https://evil.example/cb', destination: 'evil.example' }])
+    renderConsentScreen({ clientId: 'c1', scope: 'steuerdaten:read', oauthQuery: `client_id=c1&redirect_uri=${encodeURIComponent('https://evil.example/cb')}` })
+
+    expect(await screen.findByText('evil.example')).toBeTruthy()
+    expect(screen.getByText('Nicht von SteuerEule geprüft')).toBeTruthy()
+    expect(screen.getByText(/Den Namen hat der Assistent selbst angegeben/)).toBeTruthy()
+  })
+
+  it('does not let the user approve before the destination is on the screen', async () => {
+    let release: () => void = () => undefined
+    const held = new Promise<void>((resolve) => (release = resolve))
+    server.use(
+      http.get(`${BASE_URL}/v1/oauth/client-info`, async () => {
+        await held
+        return HttpResponse.json({ clientId: 'c1', name: 'Claude', uri: null, icon: null, redirectTargets: [{ uri: 'https://evil.example/cb', destination: 'evil.example' }] })
+      }),
+    )
+    renderConsentScreen({ clientId: 'c1', scope: 'steuerdaten:read', oauthQuery: 'client_id=c1' })
+
+    const allow = await screen.findByTestId('oauth-erlauben')
+    expect(allow.getAttribute('aria-disabled') ?? String((allow as HTMLButtonElement).disabled)).toBe('true')
+    expect(screen.queryByTestId('oauth-destination')).toBeNull()
+
+    release()
+    expect(await screen.findByText('evil.example')).toBeTruthy()
+    await waitFor(() => expect((screen.getByTestId('oauth-erlauben').getAttribute('aria-disabled') ?? String((screen.getByTestId('oauth-erlauben') as HTMLButtonElement).disabled))).not.toBe('true'))
+  })
+
+  it('says "an app on this device" for a loopback or app-scheme redirect', async () => {
+    mockClient('Claude Desktop', [
+      { uri: 'http://127.0.0.1:33418/callback', destination: 'localhost' },
+      { uri: 'cursor://oauth/callback', destination: 'cursor://' },
+    ])
+    renderConsentScreen({ clientId: 'c1', scope: 'steuerdaten:read', oauthQuery: 'client_id=c1' })
+
+    expect(await screen.findByText('eine App auf diesem Gerät, eine App auf diesem Gerät (cursor://)')).toBeTruthy()
+  })
+
+  it('says the address is unknown when the client cannot be looked up', async () => {
+    server.use(http.get(`${BASE_URL}/v1/oauth/client-info`, () => new HttpResponse(null, { status: 404 })))
+    renderConsentScreen({ clientId: 'gone', scope: 'steuerdaten:read', oauthQuery: 'client_id=gone' })
+
+    expect(await screen.findByText('eine unbekannte Adresse')).toBeTruthy()
+  })
+
   it('says that a lasting connection (offline_access) stays until revoked (ADR-0052 §10)', async () => {
     mockConsentRedirectingTo('http://localhost:9999/callback?code=x')
     renderConsentScreen({ clientId: 'claude-desktop', scope: 'steuerdaten:read offline_access' })
