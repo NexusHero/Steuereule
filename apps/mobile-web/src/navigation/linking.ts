@@ -83,6 +83,7 @@ const rootScreens: Record<keyof RootStackParamList, unknown> = {
   Legal: 'rechtliches/:page',
   Printout: 'app/steuerjahr/:year/ausdruck',
   Confirmation: 'app/steuerjahr/:year/bestaetigung',
+  PasswordReset: 'passwort-zuruecksetzen',
   OauthConsent: 'oauth/consent',
 }
 
@@ -134,6 +135,7 @@ const ROUTE_TITLES: Readonly<Record<string, string>> = {
   Confirmation: 'SteuerEule — Bestätigung',
   Legal: 'SteuerEule — Rechtliches',
   Device: 'SteuerEule — Gerät verbinden',
+  PasswordReset: 'SteuerEule — Neues Passwort',
   OauthConsent: 'SteuerEule — Freigabe',
 }
 

@@ -71,18 +71,20 @@
         "heading": "Das war’s — du bist drin.",
         "body": "Freigegeben über dein Telefon. Dein Steuerjahr lädt."
       }
-    }
+    },
+    "forgot": "Passwort vergessen?"
   },
   "auth": {
     "errInvalidCredentials": "E-Mail oder Passwort stimmen nicht.",
     "errTooManyAttempts": "Zu viele Anmeldeversuche. Warte ein paar Minuten und versuch es dann noch mal.",
     "errEmailTaken": "Für diese E-Mail gibt es schon ein Konto.",
+    "errEmailNotVerified": "Bitte bestätige zuerst deine E-Mail-Adresse. Wir haben dir einen neuen Link geschickt.",
     "errPasswordTooShort": "Das Passwort ist zu kurz.",
     "errPasswordCompromised": "Dieses Passwort ist in einem bekannten Datenleck aufgetaucht — wähl bitte ein anderes.",
     "errGeneric": "Das hat gerade nicht geklappt. Prüf die Verbindung und versuch es noch mal.",
     "verifyBanner": {
       "heading": "Bitte bestätige noch deine E-Mail.",
-      "body": "Wir haben einen Bestätigungslink an {{email}} geschickt. Du kannst schon loslegen — bestätige, wenn du Zeit hast.",
+      "body": "Wir haben eine E-Mail an {{email}} geschickt, darin steht, wie es weitergeht. Bis du dich angemeldet hast, machst du als Gast weiter — deine Eingaben übernehmen wir dann.",
       "resend": "Mail erneut senden",
       "resendSending": "Wird gesendet …",
       "resendSent": "Ist raus — schau in dein Postfach.",
@@ -90,6 +92,39 @@
     },
     "verifiedBanner": {
       "heading": "E-Mail bestätigt ✓"
+    }
+  },
+  "passwortReset": {
+    "request": {
+      "heading": "Passwort zurücksetzen",
+      "body": "Gib die E-Mail-Adresse deines Kontos ein. Wir schicken dir einen Link zum Zurücksetzen.",
+      "emailLabel": "E-Mail",
+      "submit": "Link anfordern",
+      "submitting": "Wird gesendet …",
+      "confirmation": "Wenn es zu dieser Adresse ein Konto gibt, haben wir dir eine E-Mail geschickt.",
+      "confirmationHint": "Der Link gilt nur kurz. Schau auch im Spam-Ordner nach.",
+      "errEmail": "Das sieht noch nicht nach einer E-Mail aus.",
+      "rateLimited": "Zu viele Anfragen. Warte ein paar Minuten und versuch es dann noch mal.",
+      "error": "Das hat gerade nicht geklappt. Prüf die Verbindung und versuch es noch mal.",
+      "back": "Zurück zum Einloggen"
+    },
+    "reset": {
+      "heading": "Neues Passwort festlegen",
+      "subtitle": "Wähl ein Passwort, das du sonst nirgends verwendest.",
+      "newLabel": "Neues Passwort",
+      "repeatLabel": "Neues Passwort wiederholen",
+      "placeholder": "Mindestens 12 Zeichen",
+      "submit": "Passwort speichern",
+      "submitting": "Wird gespeichert …",
+      "errTooShort": "Mindestens 12 Zeichen fürs Passwort.",
+      "errMismatch": "Die beiden Passwörter stimmen nicht überein.",
+      "rateLimited": "Zu viele Versuche. Warte ein paar Minuten und versuch es dann noch mal.",
+      "invalidHeading": "Dieser Link ist nicht mehr gültig.",
+      "invalidBody": "Der Link ist abgelaufen oder wurde schon benutzt. Fordere einen neuen an.",
+      "requestNew": "Neuen Link anfordern",
+      "successHeading": "Passwort geändert ✓",
+      "successBody": "Du kannst dich jetzt mit dem neuen Passwort einloggen.",
+      "toLogin": "Zum Einloggen"
     }
   },
   "registrierung": {
@@ -100,17 +135,18 @@
     "emailLabel": "E-Mail",
     "emailPlaceholder": "du@beispiel.de",
     "passwordLabel": "Passwort",
-    "passwordPlaceholder": "Mindestens 8 Zeichen",
+    "passwordPlaceholder": "Mindestens 12 Zeichen",
     "submit": "Konto anlegen",
     "submitting": "Wird angelegt …",
     "legalNote": "Mit dem Anlegen akzeptierst du AGB & Datenschutz.",
     "backToLogin": "Schon ein Konto? Einloggen",
     "errEmail": "Das sieht noch nicht nach einer E-Mail aus.",
-    "errPass": "Mindestens 8 Zeichen fürs Passwort.",
+    "errPass": "Mindestens 12 Zeichen fürs Passwort.",
     "success": {
-      "badge": "Konto steht ✓",
-      "heading": "Willkommen bei SteuerEule.",
-      "subtitle": "Jetzt noch drei Angaben, dann ist deine Maske vorgefüllt.",
+      "badge": "Mail unterwegs ✓",
+      "heading": "Schau in dein Postfach.",
+      "subtitle": "Wir haben eine E-Mail an {{email}} geschickt. Darin steht, wie es weitergeht.",
+      "guestNote": "Bis du bestätigt hast, machst du als Gast weiter. Nach der Bestätigung meldest du dich an, dann übernehmen wir deine Eingaben.",
       "cta": "Weiter zum Onboarding →"
     }
   },
@@ -2927,7 +2963,13 @@
       },
       "receiptResults": "Was aus deinen Belegen wurde",
       "receiptResultsClose": "Ausblenden",
-      "receiptPasteNoReceipt": "Eingefügter Text wird nur gelesen. Er legt keinen Beleg an, in deinen Belegen erscheint nichts."
+      "receiptPasteNoReceipt": "Eingefügter Text wird nur gelesen. Er legt keinen Beleg an, in deinen Belegen erscheint nichts.",
+      "link": {
+        "confirm": "Dieser Link führt zu",
+        "confirmHint": "Die Adresse stammt aus der Antwort der Eule, nicht von uns. Öffne sie nur, wenn du ihr traust.",
+        "open": "Link öffnen",
+        "cancel": "Abbrechen"
+      }
     },
     "companion": {
       "triggerTitle": "Eule zu dieser Maske fragen",

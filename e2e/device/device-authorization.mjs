@@ -223,15 +223,9 @@ async function skipSplash(page, webOrigin) {
   }
 }
 
-// SALIH — fixed after this run's own AC-5 finding (see PR #239 comment): better-auth's
-// sign-up/email autoSignIns, which mints and persists a real `Session` row for the out-of-band
-// call itself (`userAgent: 'node'`) — a phantom third row on B's OWN device list that this
-// script's earlier version never accounted for. Left alone, it turns "the non-current row" into
-// an ambiguous choice between two non-current rows (the phantom AND A's real one), which is
-// exactly what caused this script to pick the wrong one and revoke B's OWN session by accident
-// (reported, not hidden — see this file's PR comment). Revoking the phantom immediately, using
-// the very session it minted (Set-Cookie from this exact response, never B's real UI cookie jar),
-// keeps B's own device list to the two rows this flow actually cares about.
+// Sign-up returns no session since ADR-0109 (a taken address must answer like a free one), so it leaves no
+// phantom `Session` row on B's device list: B's own list holds exactly the two rows this flow cares about.
+// (Before, the auto sign-in minted one, and the script had to revoke it again.)
 async function signUpOutOfBand(apiOrigin, webOrigin, email, password) {
   const res = await fetch(`${apiOrigin}/api/auth/sign-up/email`, {
     method: 'POST',
@@ -239,15 +233,7 @@ async function signUpOutOfBand(apiOrigin, webOrigin, email, password) {
     body: JSON.stringify({ name: '', email, password }),
   })
   if (!res.ok) fail(`out-of-band sign-up failed for ${email}: ${res.status} ${await res.text()}`)
-  const body = await res.json()
-  const setCookie = res.headers.get('set-cookie')
-  if (!setCookie) fail('out-of-band sign-up: no Set-Cookie on the response — cannot clean up its own phantom session.')
-  const revokeRes = await fetch(`${apiOrigin}/api/auth/revoke-session`, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json', origin: webOrigin, cookie: setCookie.split(';')[0] },
-    body: JSON.stringify({ token: body.token }),
-  })
-  if (!revokeRes.ok) fail(`out-of-band sign-up: could not revoke its own phantom session (${body.token}): ${revokeRes.status} ${await revokeRes.text()}`)
+  if (res.headers.get('set-cookie')) fail('out-of-band sign-up set a cookie: sign-up must not create a session (ADR-0109).')
 }
 
 /**

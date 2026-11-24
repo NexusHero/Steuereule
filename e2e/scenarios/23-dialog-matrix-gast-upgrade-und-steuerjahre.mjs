@@ -19,6 +19,7 @@ import {
   leaveStrom,
   waitForStromStep,
   runStandaloneScenario,
+  verifyAndSignInAccount,
 } from './helpers/scenario-harness.mjs'
 
 export async function runScenario23(browser, webOrigin) {
@@ -49,7 +50,9 @@ export async function runScenario23(browser, webOrigin) {
   await page.locator('[data-testid="registrierung-email"]').waitFor({ state: 'visible', timeout: 10_000 })
   await page.locator('[data-testid="registrierung-email"]').fill(email)
   await page.locator('[data-testid="registrierung-passwort"]').fill(TEST_PASSWORD)
+  const signUpRequest = page.waitForRequest((request) => request.url().endsWith('/api/auth/sign-up/email'), { timeout: 10_000 })
   await page.locator('[data-testid="registrierung-submit"]').click()
+  const apiOrigin = new URL((await signUpRequest).url()).origin
 
   const continueButton = page.locator('[data-testid="registrierung-success-weiter"]')
   await continueButton.waitFor({ state: 'visible', timeout: 10_000 })
@@ -77,6 +80,13 @@ export async function runScenario23(browser, webOrigin) {
   await page.locator('[data-testid="sheet-schliessen"]').click()
   await page.locator('[data-testid="sheet-schliessen"]').waitFor({ state: 'detached', timeout: 10_000 })
   await page.locator('[data-testid="cockpit-erstattung"]').waitFor({ state: 'visible', timeout: 10_000 })
+
+  // Sign-up returns no session (ADR-0109): until the address is verified and the account signs in, the guest
+  // carries on. The first verified sign-in, with the guest cookie still in this browser, moves the guest's
+  // answers and profile to the account (ADR-0012) — which is what steps 6 and on then read back.
+  await verifyAndSignInAccount(page, { email, password: TEST_PASSWORD, apiOrigin, webOrigin, callerLabel: 'scenario-23' })
+  await page.reload({ waitUntil: 'networkidle' })
+  await page.locator('[data-testid="cockpit-erstattung"]').waitFor({ state: 'visible', timeout: 15_000 })
 
   // 6. Multi-Tax-Year Isolation (the guest starts on the last completed year since UX review K2): 2025 (migrated from Guest with CH path) vs 2026 (fresh year)
   await selectTaxYear(page, 2025)

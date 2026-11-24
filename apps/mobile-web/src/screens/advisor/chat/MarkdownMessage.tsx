@@ -1,21 +1,30 @@
-import { memo, useMemo, type ReactNode } from 'react'
+import { memo, useMemo, useState, type ReactNode } from 'react'
 import { Linking, Pressable, Text, View, type ImageStyle, type TextStyle, type ViewStyle } from 'react-native'
 import { Renderer, useMarkdown, type MarkedStyles } from 'react-native-marked'
 import { ADVISOR_LEGAL_SOURCES, type AdvisorLegalSource } from '@steuereule/core'
-import { useTheme, type UiTheme } from '@steuereule/ui'
-import { linkLegalSources, safeLinkTarget, sourceFromLink } from './markdownLinks'
+import { useTranslation } from 'react-i18next'
+import { Button, useTheme, type UiTheme } from '@steuereule/ui'
+import { APP_NS } from '../../../i18n/resources'
+import { classifyLink, linkLegalSources, sourceFromLink } from './markdownLinks'
 
 /**
  * Renders the owl's answers as Markdown (#451 slice 1b) on top of react-native-marked. The model
  * output is untrusted, so the renderer is narrowed: citations become law chips, only
- * http/https/mailto links open, and images are never fetched (the alt text is shown instead) — a
+ * http/https/mailto links are links, and one outside the official sources opens only after the
+ * user confirmed its destination (never by itself), and images are never fetched (the alt text is shown instead) — a
  * remote image would be a request to a third host.
  */
+interface PendingLink {
+  readonly url: string
+  readonly host: string
+}
+
 class ChatMarkdownRenderer extends Renderer {
   constructor(
     private readonly onSelectSource: (source: AdvisorLegalSource) => void,
     private readonly chipStyle: ViewStyle,
     private readonly chipTextStyle: TextStyle,
+    private readonly onRequestOpen: (link: PendingLink) => void,
   ) {
     super({ selectable: true })
   }
@@ -43,8 +52,8 @@ class ChatMarkdownRenderer extends Renderer {
         </Pressable>
       )
     }
-    const target = safeLinkTarget(href)
-    if (target === null) {
+    const link = classifyLink(href)
+    if (link.kind === 'plain') {
       return (
         <Text key={this.nextKey()} style={styles}>
           {children}
@@ -52,7 +61,12 @@ class ChatMarkdownRenderer extends Renderer {
       )
     }
     return (
-      <Text key={this.nextKey()} accessibilityRole="link" style={styles} onPress={() => void Linking.openURL(target)}>
+      <Text
+        key={this.nextKey()}
+        accessibilityRole="link"
+        style={styles}
+        onPress={() => (link.kind === 'trusted' ? void Linking.openURL(link.url) : this.onRequestOpen(link))}
+      >
         {children}
       </Text>
     )
@@ -77,8 +91,10 @@ export interface MarkdownMessageProps {
 function MarkdownMessageView({ content, onSelectSource, testID }: MarkdownMessageProps) {
   const t = useTheme()
   const styles = useMemo(() => makeStyles(t), [t])
+  const { t: tr } = useTranslation(APP_NS)
+  const [pending, setPending] = useState<PendingLink | null>(null)
   const renderer = useMemo(
-    () => new ChatMarkdownRenderer(onSelectSource, styles.chip, styles.chipText),
+    () => new ChatMarkdownRenderer(onSelectSource, styles.chip, styles.chipText, setPending),
     [onSelectSource, styles],
   )
   const value = useMemo(() => linkLegalSources(content), [content])
@@ -86,6 +102,27 @@ function MarkdownMessageView({ content, onSelectSource, testID }: MarkdownMessag
   return (
     <View style={styles.box} testID={testID}>
       {elements}
+      {pending ? (
+        <View style={styles.confirm} accessibilityRole="alert" testID="md-link-confirm">
+          <Text style={styles.confirmText}>{tr('advisor.chat.link.confirm', 'Dieser Link führt zu')}</Text>
+          <Text style={styles.confirmHost} selectable testID="md-link-host">{pending.host}</Text>
+          <Text style={styles.confirmText}>{tr('advisor.chat.link.confirmHint', 'Die Adresse stammt aus der Antwort der Eule, nicht von uns. Öffne sie nur, wenn du ihr traust.')}</Text>
+          <View style={styles.confirmActions}>
+            <Button
+              onPress={() => {
+                void Linking.openURL(pending.url)
+                setPending(null)
+              }}
+              testID="md-link-open"
+            >
+              {tr('advisor.chat.link.open', 'Link öffnen')}
+            </Button>
+            <Button variant="ghost" onPress={() => setPending(null)} testID="md-link-cancel">
+              {tr('advisor.chat.link.cancel', 'Abbrechen')}
+            </Button>
+          </View>
+        </View>
+      ) : null}
     </View>
   )
 }
@@ -119,6 +156,18 @@ function makeStyles(t: UiTheme) {
   return {
     markdown,
     box: { gap: 2 } as ViewStyle,
+    confirm: {
+      gap: t.space.s2,
+      marginTop: t.space.s2,
+      padding: t.space.s3,
+      borderWidth: 2,
+      borderColor: t.color.linie,
+      borderRadius: t.radius.s,
+      backgroundColor: t.color.karte,
+    } as ViewStyle,
+    confirmText: { fontFamily: t.font.text, fontSize: t.size.s, color: t.color.tinte2 } as TextStyle,
+    confirmHost: { fontFamily: t.font.mono, fontSize: t.size.m, fontWeight: t.weight.fett, color: t.color.tinte } as TextStyle,
+    confirmActions: { flexDirection: 'row', flexWrap: 'wrap', gap: t.space.s2 } as ViewStyle,
     chip: {
       paddingHorizontal: 6,
       paddingVertical: 1,

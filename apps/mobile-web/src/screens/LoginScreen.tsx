@@ -6,14 +6,13 @@ import { APP_NS } from '../i18n/resources'
 import { useAuthClient } from '../auth/AuthClientProvider'
 import { authErrorKey } from '../auth/authErrors'
 import { useSocialSignInAvailable } from '../auth/useSocialSignInAvailable'
-import { useEmailVerified } from '../auth/useEmailVerified'
 import { useDeviceQrCode } from '../auth/useDeviceQrCode'
 import { useTwoFactor } from '../auth/useTwoFactor'
 import { PageHeader } from './login/PageHeader'
 import { DeviceQrColumn } from './login/DeviceQrColumn'
 import { makeLoginStyles } from './login/loginStyles'
 import { SocialSignInSection } from './shared/SocialSignInSection'
-import { EmailVerificationBanner } from './shared/EmailVerificationBanner'
+import { ForgotPasswordForm } from './login/ForgotPasswordForm'
 import { LegalLinks } from './legal/LegalLinks'
 import type { LegalPage } from './legal/texts'
 import { MIN_PASSWORD_LENGTH } from '../auth/password-policy'
@@ -25,15 +24,17 @@ export interface LoginScreenProps {
   readonly onRegister?: () => void
   readonly showDeviceQr?: boolean
   readonly onLegal?: (page: LegalPage) => void
+  /** Opens on the „Passwort vergessen“ form (from an expired reset link). */
+  readonly startWithForgot?: boolean
 }
 
 type Stage =
   | { readonly kind: 'form' }
   | { readonly kind: 'submitting' }
-  | { readonly kind: 'unverified'; readonly email: string }
   | { readonly kind: 'two-factor'; readonly email: string }
+  | { readonly kind: 'forgot' }
 
-export function LoginScreen({ onDone, onGuest, onRegister, showDeviceQr = true, onLegal }: LoginScreenProps) {
+export function LoginScreen({ onDone, onGuest, onRegister, showDeviceQr = true, onLegal, startWithForgot = false }: LoginScreenProps) {
   const t = useTheme()
   const bp = useBreakpoint()
   const { t: tr } = useTranslation(APP_NS)
@@ -43,8 +44,7 @@ export function LoginScreen({ onDone, onGuest, onRegister, showDeviceQr = true, 
   const [mail, setMail] = useState('')
   const [pass, setPass] = useState('')
   const [errorMessage, setError] = useState('')
-  const [stage, setStage] = useState<Stage>({ kind: 'form' })
-  const emailVerified = useEmailVerified(stage.kind === 'unverified' ? stage.email : undefined)
+  const [stage, setStage] = useState<Stage>(startWithForgot ? { kind: 'forgot' } : { kind: 'form' })
 
   const deviceQrEnabled = showDeviceQr && bp !== 's'
   const { state: qrState, requestNewCode: requestNewQrCode, autoRetryStatus } = useDeviceQrCode(onDone, deviceQrEnabled)
@@ -81,28 +81,13 @@ export function LoginScreen({ onDone, onGuest, onRegister, showDeviceQr = true, 
       }
       // Signed in for an assistant's connection: the client is already on its way to the consent.
       if (continuesElsewhere(data)) return
-      if (data.user.emailVerified) {
-        setStage({ kind: 'form' })
-        onDone()
-      } else {
-        setStage({ kind: 'unverified', email: data.user.email })
-      }
+      // An unverified account never gets here: the server refuses its sign-in (ADR-0109).
+      setStage({ kind: 'form' })
+      onDone()
     } catch {
       setStage({ kind: 'form' })
       setFormTransportError(true)
     }
-  }
-
-  if (stage.kind === 'unverified') {
-    return (
-      <ScrollView contentContainerStyle={bp === 's' ? styles.screen : styles.wideScreen} keyboardShouldPersistTaps="handled" testID="screen-container">
-        <PageHeader tr={tr} t={t} showDivider={false} />
-        <EmailVerificationBanner email={stage.email} verified={emailVerified} />
-        <Button onPress={onDone} style={styles.cta}>
-          {tr('login.continue')}
-        </Button>
-      </ScrollView>
-    )
   }
 
   if (stage.kind === 'two-factor') {
@@ -110,6 +95,17 @@ export function LoginScreen({ onDone, onGuest, onRegister, showDeviceQr = true, 
       <ScrollView contentContainerStyle={bp === 's' ? styles.screen : styles.wideScreen} keyboardShouldPersistTaps="handled" testID="screen-container">
         <PageHeader tr={tr} t={t} showDivider={false} />
         <TwoFactorChallenge email={stage.email} onDone={onDone} />
+      </ScrollView>
+    )
+  }
+
+  if (stage.kind === 'forgot') {
+    return (
+      <ScrollView contentContainerStyle={bp === 's' ? styles.screen : styles.wideScreen} keyboardShouldPersistTaps="handled" testID="screen-container">
+        <PageHeader tr={tr} t={t} showDivider={false} />
+        <View style={bp === 's' ? undefined : styles.formColumn}>
+          <ForgotPasswordForm onBack={() => setStage({ kind: 'form' })} />
+        </View>
       </ScrollView>
     )
   }
@@ -150,6 +146,12 @@ export function LoginScreen({ onDone, onGuest, onRegister, showDeviceQr = true, 
           tr('login.submit')
         )}
       </Button>
+
+      <View style={styles.linksRow}>
+        <Pressable accessibilityRole="link" onPress={() => setStage({ kind: 'forgot' })} testID="login-passwort-vergessen">
+          <Text style={styles.link}>{tr('login.forgot')}</Text>
+        </Pressable>
+      </View>
 
       {onRegister ? (
         <View style={styles.linksRow}>

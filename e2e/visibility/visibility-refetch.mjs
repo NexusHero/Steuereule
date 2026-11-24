@@ -1,5 +1,13 @@
 // Visibility-refetch regression gate (#223, promoting #215/#217's manual proof into CI).
 //
+// ADR-0109 REWORK: sign-up returns no session and an unverified account cannot sign in, so there is no
+// signed-in-but-unverified state and LoginScreen no longer shows the banner. What still exists, and is what this
+// gate now proves on RegistrierungScreen: the guest sees the notice banner; a visibilitychange refetch while
+// nobody is signed in does NOT flip it (fail-closed); after the address is verified in the DB and the account
+// signs in on another page of the same browser ("link, then sign in"), the next visibilitychange refetch flips
+// it to verified without a reload; and a foreign account's session reverts it (account-scoping). The
+// sections below that talk about LoginScreen describe the old flow.
+//
 // REQ-005's "shown honestly" clause (register.md) requires the unverified/verified banner to
 // be a LIVE read, never a value snapshotted at sign-up/sign-in and left stale. #194/#215 fixed
 // this on RegistrierungScreen, #217/#225 on LoginScreen; both now go through the shared
@@ -175,9 +183,9 @@ const COPY = {
   splashSkip: 'Weiter zur App',
   register: 'Neu hier? Konto anlegen',
   registrierungEmailPlaceholder: 'du@beispiel.de',
-  registrierungPasswordPlaceholder: 'Mindestens 8 Zeichen',
+  registrierungPasswordPlaceholder: 'Mindestens 12 Zeichen',
   registrierungSubmit: 'Konto anlegen',
-  registrierungSuccessHeading: 'Willkommen bei SteuerEule.',
+  registrierungSuccessHeading: 'Schau in dein Postfach.',
   loginSubmit: 'Einloggen',
   verifyHeading: 'Bitte bestätige noch deine E-Mail.',
   verifiedHeading: 'E-Mail bestätigt ✓',
@@ -351,12 +359,54 @@ async function assertBannerDoesNotFlip(page) {
   return dispatchedAt
 }
 
-async function assertBannerFlipsAfterDbVerify(page, email) {
+async function assertBannerFlipsAfterVerifyAndSignIn(context, page, email, password) {
   sql(`UPDATE "User" SET "emailVerified" = true WHERE email = '${email}'`)
+  await signInOnSecondPage(context, email, password)
   const dispatchedAt = Date.now()
   await dispatchVisibilityChange(page)
   await page.getByRole('alert').getByText(COPY.verifiedHeading).waitFor({ state: 'visible', timeout: 5_000 })
   return dispatchedAt
+}
+
+/**
+ * Signs `signInEmail` in on a SECOND page of the SAME context through the real login form and closes that page
+ * again, so the session lives only in the context's shared cookie jar (ADR-0109: this is "follow the link, then
+ * sign in" — the guest tab on page1 never sees the sign-in itself). Page-scoped counters keep page1's own
+ * exact request counts untouched.
+ */
+async function signInOnSecondPage(context, signInEmail, password) {
+  const page2 = await context.newPage()
+  try {
+    guardAgainst429(page2)
+    const crossAccountSignIn = countRequestsTo(page2, '/api/auth/sign-in/email')
+
+    await skipSplash(page2)
+    await page2.getByPlaceholder('du@beispiel.de').fill(signInEmail)
+    await page2.getByPlaceholder('••••••••').fill(password)
+    await waitForRateLimitHeadroom('/sign-in/email')
+    const signInResponse = page2.waitForResponse(
+      (response) => response.url().includes('/api/auth/sign-in/email'),
+      { timeout: 10_000 },
+    )
+    await page2.getByRole('button', { name: COPY.loginSubmit }).click()
+    const response = await signInResponse
+    if (!response.ok()) {
+      fail(
+        `Second-page sign-in (page2, ${signInEmail}) returned ${response.status()} — ` +
+          'the shared cookie jar never got the session.',
+      )
+    }
+    assertRequestCount(crossAccountSignIn, '/api/auth/sign-in/email', 1, 'Second-page sign-in (page2)')
+  } finally {
+    // Closed BEFORE the dispatch on page1, below — load-bearing, not incidental (Musti's #237
+    // review, F5). Closing page2 first, then reading page1, is what proves the foreign session
+    // lives in the CONTEXT's shared cookie jar rather than in the page that created it — the
+    // property useEmailVerified is actually exposed to on a shared device. Moving this close to
+    // after the assertion would silently weaken the test: it would still pass, but would no
+    // longer distinguish "the context shares the session" from "the page that signed in still
+    // happens to be alive", and no assertion's colour would change to tell a future reader that.
+    await page2.close()
+  }
 }
 
 /**
@@ -389,38 +439,7 @@ async function assertBannerFlipsAfterDbVerify(page, email) {
  * shouldn't have to reconstruct which two accounts were in play from surrounding log lines.
  */
 async function assertBannerRevertsOnForeignAccountSession(context, page, screenEmail, foreignVerifiedEmail, password) {
-  const page2 = await context.newPage()
-  try {
-    guardAgainst429(page2)
-    const crossAccountSignIn = countRequestsTo(page2, '/api/auth/sign-in/email')
-
-    await skipSplash(page2)
-    await page2.getByPlaceholder('du@beispiel.de').fill(foreignVerifiedEmail)
-    await page2.getByPlaceholder('••••••••').fill(password)
-    await waitForRateLimitHeadroom('/sign-in/email')
-    const signInResponse = page2.waitForResponse(
-      (response) => response.url().includes('/api/auth/sign-in/email'),
-      { timeout: 10_000 },
-    )
-    await page2.getByRole('button', { name: COPY.loginSubmit }).click()
-    const response = await signInResponse
-    if (!response.ok()) {
-      fail(
-        `Cross-account sign-in (page2, ${foreignVerifiedEmail}) returned ${response.status()} — ` +
-          'the account-scoping case never got a second real session into the shared cookie jar.',
-      )
-    }
-    assertRequestCount(crossAccountSignIn, '/api/auth/sign-in/email', 1, 'Cross-account sign-in (page2)')
-  } finally {
-    // Closed BEFORE the dispatch on page1, below — load-bearing, not incidental (Musti's #237
-    // review, F5). Closing page2 first, then reading page1, is what proves the foreign session
-    // lives in the CONTEXT's shared cookie jar rather than in the page that created it — the
-    // property useEmailVerified is actually exposed to on a shared device. Moving this close to
-    // after the assertion would silently weaken the test: it would still pass, but would no
-    // longer distinguish "the context shares the session" from "the page that signed in still
-    // happens to be alive", and no assertion's colour would change to tell a future reader that.
-    await page2.close()
-  }
+  await signInOnSecondPage(context, foreignVerifiedEmail, password)
 
   const dispatchedAt = Date.now()
   const gotSessionResponse = page
@@ -495,6 +514,7 @@ async function testRegistrierungScreen(browser) {
     guardAgainst429(page)
     const signUpRequests = countRequestsTo(page, '/api/auth/sign-up/email')
     const email = `visibility-refetch-registrierung-${Date.now()}@beispiel.de`
+    const foreignEmail = `visibility-refetch-foreign-${Date.now()}@beispiel.de`
 
     await skipSplash(page)
     await page.getByText(COPY.register, { exact: true }).click()
@@ -506,101 +526,23 @@ async function testRegistrierungScreen(browser) {
     assertRequestCount(signUpRequests, '/api/auth/sign-up/email', 1, 'RegistrierungScreen sign-up')
 
     await page.getByRole('alert').getByText(COPY.verifyHeading).waitFor({ state: 'visible', timeout: 5_000 })
-    console.log('[visibility-refetch] RegistrierungScreen: unverified banner shown after real sign-up')
+    console.log('[visibility-refetch] RegistrierungScreen: notice banner shown to the guest after the real sign-up')
 
     const negativeDispatchAt = await assertBannerDoesNotFlip(page)
-    console.log('[visibility-refetch] RegistrierungScreen: banner did NOT flip on dispatch while still unverified')
+    console.log('[visibility-refetch] RegistrierungScreen: banner did NOT flip on dispatch while the address is unverified and nobody is signed in')
 
     await waitOutFocusRefetchRateLimit(negativeDispatchAt)
-    await assertBannerFlipsAfterDbVerify(page, email)
-    console.log('[visibility-refetch] RegistrierungScreen: banner flipped to verified after DB flip + dispatch')
+    const positiveDispatchAt = await assertBannerFlipsAfterVerifyAndSignIn(context, page, email, TEST_PASSWORD)
+    console.log('[visibility-refetch] RegistrierungScreen: banner turned verified after DB verify + sign-in on a second page + dispatch')
 
-    // Returned, not left local (#232, Musti's ruling #2): this account is already real and
-    // already verified by the time this flow ends, so it is reused as the "foreign, already
-    // verified" account testLoginScreen's own account-scoping tail needs, rather than paying for
-    // a second sign-up. The ordering dependency (this flow must run, and finish, before
-    // testLoginScreen's tail) lives in the function signature below, not in a module global.
-    return email
-  } finally {
-    await context.close()
-  }
-}
-
-/**
- * @param {string} foreignVerifiedEmail - an already-verified account's email, reused from
- *   `testRegistrierungScreen`'s own tail (#232) — this flow never signs it up itself. Guarded at
- *   entry (Musti's #237 review, F4): without the guard, a future change that drops
- *   `testRegistrierungScreen`'s tail `return` surfaces ~110 lines away as a Playwright type error
- *   on `.fill(undefined)`, not as the broken ordering contract it actually is. This makes the
- *   sequential dependency `main()` already enforces (flow 1 fully awaited before flow 2 starts,
- *   Musti's #232 ruling — an explicit parameter over a module global) fail by its own name; the
- *   real cost, worth stating rather than hiding, is that this flow can no longer be run standalone
- *   for a bisect — there is no per-flow runner today, and a red flow 1 already cost the Login flow
- *   entirely before this parameter existed.
- */
-async function testLoginScreen(browser, foreignVerifiedEmail) {
-  if (!foreignVerifiedEmail) {
-    fail(
-      "testLoginScreen needs testRegistrierungScreen's verified account (#232) as its " +
-        `foreignVerifiedEmail parameter — received ${JSON.stringify(foreignVerifiedEmail)}. Flow 1 ` +
-        'either returned nothing or was never run first.',
-    )
-  }
-
-  const context = await browser.newContext({ viewport: { width: 375, height: 812 } })
-  try {
-    const page = await context.newPage()
-    guardAgainst429(page)
-    const signInRequests = countRequestsTo(page, '/api/auth/sign-in/email')
-    const email = `visibility-refetch-login-${Date.now()}@beispiel.de`
-    const password = TEST_PASSWORD
-
-    // The account is created out-of-band (a direct POST, its own cookie jar never touching the
-    // browser context) so the browser reaches LoginScreen's `unverified` stage through a real
-    // sign-in click, not a fabricated stage — this screen's own sign-up flow is
-    // RegistrierungScreen's job to cover, not this one's. This call is a raw Node `fetch`, never
-    // a page-driven request, so it is invisible to both `countRequestsTo` and `guardAgainst429`
-    // above (see the "WHAT THE PACER DOES NOT COVER" header note) — `signUpOutOfBand`'s own
-    // `!res.ok` check is what covers a 429 on this specific call.
+    // Account scoping: a second, already verified account (created and verified out of band) signs in on page2
+    // and replaces the session in the shared jar; page1's banner must revert, it is about ITS address only.
     await waitForRateLimitHeadroom('/sign-up/email')
-    await signUpOutOfBand(email, password)
-
-    await skipSplash(page)
-    await page.getByPlaceholder('du@beispiel.de').fill(email)
-    await page.getByPlaceholder('••••••••').fill(password)
-    await waitForRateLimitHeadroom('/sign-in/email')
-    await page.getByRole('button', { name: COPY.loginSubmit }).click()
-    await page.getByRole('alert').getByText(COPY.verifyHeading).waitFor({ state: 'visible', timeout: 10_000 })
-    assertRequestCount(signInRequests, '/api/auth/sign-in/email', 1, 'LoginScreen sign-in')
-    console.log('[visibility-refetch] LoginScreen: unverified banner shown after real sign-in')
-
-    const negativeDispatchAt = await assertBannerDoesNotFlip(page)
-    console.log('[visibility-refetch] LoginScreen: banner did NOT flip on dispatch while still unverified')
-
-    await waitOutFocusRefetchRateLimit(negativeDispatchAt)
-    const positiveDispatchAt = await assertBannerFlipsAfterDbVerify(page, email)
-    console.log('[visibility-refetch] LoginScreen: banner flipped to verified after DB flip + dispatch')
-
-    // Re-asserted here, not just at :405 (Musti's #223 re-review, F8 follow-up): unlike
-    // RegistrierungScreen, where nothing after its own sign-up assertion can issue another
-    // sign-up, everything below :405 is the two visibilitychange refetch cycles — exactly where
-    // an unanticipated re-authentication would sit, and the first assertion stopped watching
-    // before them. Kept the first assertion too (not moved) — it fails fast, naming the defect
-    // before spending the ~15s the visibility phases take.
-    assertRequestCount(signInRequests, '/api/auth/sign-in/email', 1, 'LoginScreen sign-in (post-dispatch)')
-
-    // #232's account-scoping tail (Musti's #232 ruling, #3: after the existing DB flip, never
-    // before — beforehand the foreign session would displace the screen's own before step 3 could
-    // pass, forcing a re-authentication this design avoids). page1's own `signInRequests` counter
-    // above is intentionally NOT re-read after this point: the new sign-in below is issued on
-    // page2, a second page of this same context, so page1 truthfully never issues another request
-    // here — nothing to bump.
+    await signUpOutOfBand(foreignEmail, TEST_PASSWORD)
+    sql(`UPDATE "User" SET "emailVerified" = true WHERE email = '${foreignEmail}'`)
     await waitOutFocusRefetchRateLimit(positiveDispatchAt)
-    await assertBannerRevertsOnForeignAccountSession(context, page, email, foreignVerifiedEmail, password)
-    console.log(
-      '[visibility-refetch] LoginScreen: banner reverted to unverified once a foreign, ' +
-        "already-verified account's session landed in the shared cookie jar (account-scoping)",
-    )
+    await assertBannerRevertsOnForeignAccountSession(context, page, email, foreignEmail, TEST_PASSWORD)
+    console.log('[visibility-refetch] RegistrierungScreen: banner reverted once a foreign verified account signed in (account-scoping)')
   } finally {
     await context.close()
   }
@@ -609,11 +551,10 @@ async function testLoginScreen(browser, foreignVerifiedEmail) {
 async function main() {
   const browser = await chromium.launch({ headless: true })
   try {
-    const foreignVerifiedEmail = await testRegistrierungScreen(browser)
-    await testLoginScreen(browser, foreignVerifiedEmail)
+    await testRegistrierungScreen(browser)
     console.log(
-      '[visibility-refetch] PASS — both screens re-read verification live, both directions, and ' +
-        "LoginScreen rejects a foreign account's stale session (account-scoping, #232).",
+      '[visibility-refetch] PASS — the registration notice re-reads the session live on visibility, both directions, ' +
+        "and ignores a foreign account's session (account-scoping, #232).",
     )
   } finally {
     await browser.close()

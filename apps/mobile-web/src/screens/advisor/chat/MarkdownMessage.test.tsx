@@ -37,7 +37,7 @@ describe('MarkdownMessage (#451 slice 1b)', () => {
     expect(onSelectSource).toHaveBeenCalledWith(expect.objectContaining({ sourceId: 'estg-9-1' }))
   })
 
-  it('opens a safe link and never a javascript: link', () => {
+  it('opens an official source on tap and never a javascript: link', () => {
     const open = vi.spyOn(Linking, 'openURL').mockResolvedValue(true)
     renderMd('[Gesetz](https://www.gesetze-im-internet.de/estg/) und [böse](javascript:alert(1))')
     fireEvent.click(screen.getByText('Gesetz'))
@@ -45,6 +45,38 @@ describe('MarkdownMessage (#451 slice 1b)', () => {
     open.mockClear()
     fireEvent.click(screen.getByText('böse'))
     expect(open).not.toHaveBeenCalled()
+    expect(screen.queryByTestId('md-link-confirm')).toBeNull()
+    open.mockRestore()
+  })
+
+  it('shows the host of any other link and opens it only after the user confirms', () => {
+    const open = vi.spyOn(Linking, 'openURL').mockResolvedValue(true)
+    renderMd('[Hier](https://sammler.example/pfad?a=1)')
+    fireEvent.click(screen.getByText('Hier'))
+    expect(open).not.toHaveBeenCalled()
+    expect(screen.getByTestId('md-link-host').textContent).toBe('sammler.example')
+    fireEvent.click(screen.getByTestId('md-link-open'))
+    expect(open).toHaveBeenCalledWith('https://sammler.example/pfad?a=1')
+    expect(screen.queryByTestId('md-link-confirm')).toBeNull()
+    open.mockRestore()
+  })
+
+  it('opens nothing when the user cancels', () => {
+    const open = vi.spyOn(Linking, 'openURL').mockResolvedValue(true)
+    renderMd('[Hier](https://sammler.example/)')
+    fireEvent.click(screen.getByText('Hier'))
+    fireEvent.click(screen.getByTestId('md-link-cancel'))
+    expect(open).not.toHaveBeenCalled()
+    expect(screen.queryByTestId('md-link-confirm')).toBeNull()
+    open.mockRestore()
+  })
+
+  it('renders a link with a long query as text that does nothing', () => {
+    const open = vi.spyOn(Linking, 'openURL').mockResolvedValue(true)
+    renderMd(`[Daten](https://sammler.example/?d=${'x'.repeat(300)})`)
+    fireEvent.click(screen.getByText('Daten'))
+    expect(open).not.toHaveBeenCalled()
+    expect(screen.queryByTestId('md-link-confirm')).toBeNull()
     open.mockRestore()
   })
 

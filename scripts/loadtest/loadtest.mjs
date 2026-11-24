@@ -6,6 +6,7 @@
 // Usage:
 //   node scripts/loadtest/loadtest.mjs [--concurrency 5] [--iterations 5] [--url http://localhost:3000] [--origin http://localhost:3300] [--max-p95 250] [--mock]
 import { randomBytes, randomInt } from 'node:crypto'
+import { execFileSync } from 'node:child_process'
 import { performance } from 'node:perf_hooks'
 
 const args = process.argv.slice(2)
@@ -34,18 +35,24 @@ function extractCookieHeader(res) {
   return raw.map((c) => c.split(';')[0]).join('; ')
 }
 
-async function createAuthenticatedSession() {
-  if (IS_MOCK) return 'mock=1'
-  for (let attempt = 1; attempt <= 3; attempt++) {
-    const email = `loadtest.${Date.now()}.${randomBytes(3).toString('hex')}@steuereule.test`
-    const res = await fetch(`${BASE_URL}/api/auth/sign-up/email`, {
+const PASSWORD = 'LoadTest-Password-2026!'
+
+/**
+ * Sign-up returns no session (ADR-0109), and an unverified account cannot sign in. The address is verified in
+ * the database, as the link in the mail would; the API has no test-only bypass. Needs DATABASE_URL and psql.
+ */
+function verifyAddress(email) {
+  const databaseUrl = process.env.DATABASE_URL
+  if (!databaseUrl) throw new Error('DATABASE_URL is required to verify the load-test accounts (sign-up returns no session).')
+  execFileSync('psql', [databaseUrl, '-q', '-c', `UPDATE "User" SET "emailVerified" = true WHERE email = '${email}'`], { stdio: 'pipe' })
+}
+
+async function post(path, body) {
+  for (let attempt = 1; ; attempt++) {
+    const res = await fetch(`${BASE_URL}${path}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Origin: ORIGIN },
-      body: JSON.stringify({
-        email,
-        password: 'LoadTest-Password-2026!',
-        name: 'Load Tester',
-      }),
+      body: JSON.stringify(body),
     })
     if (res.status === 429 && attempt < 3) {
       await new Promise((r) => setTimeout(r, 11_000))
@@ -53,15 +60,21 @@ async function createAuthenticatedSession() {
     }
     if (!res.ok) {
       const text = await res.text().catch(() => '')
-      throw new Error(`Auth bootstrap failed with HTTP ${res.status}: ${text}`)
+      throw new Error(`Auth bootstrap ${path} failed with HTTP ${res.status}: ${text}`)
     }
-    const cookie = extractCookieHeader(res)
-    if (!cookie) {
-      throw new Error('Auth bootstrap succeeded but returned no session cookie')
-    }
-    return cookie
+    return res
   }
-  throw new Error('Auth bootstrap exhausted retries')
+}
+
+async function createAuthenticatedSession() {
+  if (IS_MOCK) return 'mock=1'
+  const email = `loadtest.${Date.now()}.${randomBytes(3).toString('hex')}@steuereule.test`
+  await post('/api/auth/sign-up/email', { email, password: PASSWORD, name: 'Load Tester' })
+  verifyAddress(email)
+  const res = await post('/api/auth/sign-in/email', { email, password: PASSWORD })
+  const cookie = extractCookieHeader(res)
+  if (!cookie) throw new Error('Auth bootstrap succeeded but returned no session cookie')
+  return cookie
 }
 
 async function runJourney(cookie, workerId, iter) {
