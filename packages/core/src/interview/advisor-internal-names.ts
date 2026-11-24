@@ -25,7 +25,7 @@ const MASK_NAMES: Readonly<Record<string, string>> = {
 
 const FIELD_ID = new RegExp(`\`?\\b(${SCREENS.join('|')})\\.([A-Za-z][A-Za-z0-9-]*)\\b\`?`, 'g')
 /** A tool's name is snake_case; a legal source id is written with hyphens and stays. */
-const TOOL_AS_SOURCE = /\s*\[`?[a-z]+(?:_[a-z]+)+`?\]/g
+const TOOL_AS_SOURCE = /\[`?[a-z]+(?:_[a-z]+)+`?\]/g
 const ESTIMATE_TOOL = /`read_current_estimate`/g
 
 const isField = (screen: string, field: string): boolean => fieldSpec(screen, field) !== undefined
@@ -45,12 +45,20 @@ const quotedLabel = (whole: string, id: string): string => {
   return label === null ? whole : `„${label}“`
 }
 
+/**
+ * Drops every tool name written as a source, with the blanks before it. Done by cutting the text at the names
+ * and trimming each piece's end: „\s*“ in front of the pattern retried from every blank of a long run (Sonar S8786).
+ */
+const withoutToolSources = (text: string): string => {
+  const pieces = text.split(TOOL_AS_SOURCE)
+  return pieces.map((piece, index) => (index < pieces.length - 1 ? piece.trimEnd() : piece)).join('')
+}
+
 export function withoutInternalNames(text: string): string {
-  const cleaned = text
-    .replace(TOOL_AS_SOURCE, '')
+  const cleaned = withoutToolSources(text)
     .replace(ESTIMATE_TOOL, 'Schätzung der App')
     // „(kind.x, Kind 1)“ keeps „(Kind 1)“; a parenthesis that held only the id goes.
-    .replace(/\(\s*`?([A-Za-z]+)\.([A-Za-z][A-Za-z0-9-]*)`?\s*(?:,\s*([^()]*))?\)/g, (whole, screen: string, field: string, rest: string | undefined) =>
+    .replace(/\(\s*`?([A-Za-z]+)\.([A-Za-z][A-Za-z0-9-]*)`?\s*(?:,([^()]*))?\)/g, (whole, screen: string, field: string, rest: string | undefined) =>
       isField(screen, field) ? (rest && rest.trim() !== '' ? `(${rest.trim()})` : '') : whole,
     )
     .replace(FIELD_ID, (whole, screen: string, field: string) => (isField(screen, field) ? `in der Maske „${MASK_NAMES[screen] ?? screen}“` : whole))

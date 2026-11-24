@@ -176,6 +176,15 @@ resource "google_sql_database_instance" "postgres" {
       ssl_mode        = "ENCRYPTED_ONLY"
     }
 
+    # Checkpoints and waits on locks in the instance log: what a slow or stuck database was doing (Sonar S6258).
+    database_flags {
+      name  = "log_checkpoints"
+      value = "on"
+    }
+    database_flags {
+      name  = "log_lock_waits"
+      value = "on"
+    }
     # Every connection attempt in the instance log, for the audit trail of tax data (Sonar S6258).
     database_flags {
       name  = "log_connections"
@@ -248,6 +257,15 @@ resource "google_sql_database_instance" "keystore" {
       ssl_mode        = "ENCRYPTED_ONLY"
     }
 
+    # Checkpoints and waits on locks in the instance log: what a slow or stuck database was doing (Sonar S6258).
+    database_flags {
+      name  = "log_checkpoints"
+      value = "on"
+    }
+    database_flags {
+      name  = "log_lock_waits"
+      value = "on"
+    }
     # Every connection attempt in the instance log, for the audit trail of tax data (Sonar S6258).
     database_flags {
       name  = "log_connections"

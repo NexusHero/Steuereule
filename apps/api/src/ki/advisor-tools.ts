@@ -107,7 +107,7 @@ export function userReason(error: string): string {
   const known = code === undefined ? undefined : USER_REASONS[code]
   if (known !== undefined) return known
   // Any other code keeps its words (what a value has to look like), without code spans, field ids and tool names.
-  return withoutInternalNames(humanReason(error).replace(/`[^`]*`/g, '').replace(/zu "[a-zA-Z]+\.[A-Za-z0-9-]+"/g, 'zu diesem Feld').replace(/"[a-zA-Z]+\.[A-Za-z0-9-]+"/g, '')).replace(/ {2,}/g, ' ').replace(/ +([.,;:])/g, '$1').trim()
+  return withoutInternalNames(humanReason(error).replace(/`[^`]*`/g, '').replace(/zu "[a-zA-Z]+\.[A-Za-z0-9-]+"/g, 'zu diesem Feld').replace(/"[a-zA-Z]+\.[A-Za-z0-9-]+"/g, '')).replace(/ {2,}/g, ' ').replace(/ ([.,;:])/g, '$1').trim()
 }
 
 /**

@@ -35,7 +35,7 @@ const decode = (s) =>
     .replace(/&#(\d+);/g, (_, n) => String.fromCodePoint(Number(n)))
     .replaceAll('&amp;', '&')
 
-const columnIndex = (ref) => [...ref.replace(/\d+$/, '')].reduce((n, c) => n * 26 + c.charCodeAt(0) - 64, 0) - 1
+const columnIndex = (ref) => [...ref.replace(/\d/g, '')].reduce((n, c) => n * 26 + c.charCodeAt(0) - 64, 0) - 1
 
 /** Every sheet of the workbook as `{ name, rows }`, rows as arrays of cell strings. */
 export function readWorkbook(buf) {
