@@ -91,12 +91,12 @@ describe('useAcroFieldSaver — amounts', () => {
 
   it('reports a refusal of the server as failed', async () => {
     record('put', `*/v1/steuerjahre/${YEAR}/lstb/:feld`, 422)
-    expect(await setup()('anlN.kz110', '1000', SINGLE_COPY)).toEqual({ kind: 'failed' })
+    expect(await setup()('anlN.kz110', '1000', SINGLE_COPY)).toMatchObject({ kind: 'failed', error: { status: 422 } })
   })
 
   it('reports an unreachable server as failed', async () => {
     server.use(http.put(`*/v1/steuerjahre/${YEAR}/lstb/:feld`, () => HttpResponse.error()))
-    expect(await setup()('anlN.kz110', '1000', SINGLE_COPY)).toEqual({ kind: 'failed' })
+    expect(await setup()('anlN.kz110', '1000', SINGLE_COPY)).toMatchObject({ kind: 'failed' })
   })
 })
 

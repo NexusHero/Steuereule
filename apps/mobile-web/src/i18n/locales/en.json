@@ -635,6 +635,9 @@
       "Only enclose receipts where a form explicitly asks for them."
     ],
     "hinweisEdaten": "Income tax, social security and other “e” lines are already reported by your employer and stay empty. Only the gross wage (Anlage N, line 5) is filled in, as a cross-check.",
+    "vorlageLadefehler": "The form could not be loaded.",
+    "vorlageUnbekannt": "This form does not exist for this year.",
+    "vorschauLadefehler": "Some of your details could not be loaded; the rows below are incomplete.",
     "glasErklaerung": {
       "zeilen": {
         "zeile": "Line {{zeile}}",

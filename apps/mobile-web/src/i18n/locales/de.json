@@ -635,6 +635,9 @@
       "Belege nur beilegen, wenn ein Vordruck ausdrücklich danach fragt."
     ],
     "hinweisEdaten": "Lohnsteuer, Sozialversicherung und andere „e“-Zeilen liegen dem Finanzamt bereits vom Arbeitgeber vor und bleiben leer. Nur den Bruttoarbeitslohn (Anlage N, Zeile 5) tragen wir zur Kontrolle ein.",
+    "vorlageLadefehler": "Der Vordruck konnte nicht geladen werden.",
+    "vorlageUnbekannt": "Diesen Vordruck gibt es für dieses Jahr nicht.",
+    "vorschauLadefehler": "Ein Teil deiner Angaben konnte nicht geladen werden; die Zeilen unten sind unvollständig.",
     "glasErklaerung": {
       "zeilen": {
         "zeile": "Zeile {{zeile}}",
