@@ -48,7 +48,7 @@ export class PrismaAssistantsRepository implements AssistantRepository {
   async findClientInfo(clientId: string): Promise<ClientInfo | null> {
     const client = await this.prisma.oauthClient.findFirst({
       where: { clientId },
-      select: { clientId: true, name: true, uri: true, icon: true },
+      select: { clientId: true, name: true, uri: true, icon: true, redirectUris: true },
     })
 
     if (!client) return null
@@ -58,6 +58,7 @@ export class PrismaAssistantsRepository implements AssistantRepository {
       name: client.name ?? 'Unbekannter Assistent',
       uri: client.uri ?? null,
       icon: client.icon ?? null,
+      redirectUris: client.redirectUris,
     }
   }
 }

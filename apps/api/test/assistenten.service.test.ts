@@ -53,17 +53,24 @@ describe('AssistentenService (ADR-0052 §10 / Issue #385)', () => {
         name: 'Gemini Assistant',
         uri: 'https://gemini.google.com',
         icon: null,
+        redirectUris: ['https://gemini.google.com/oauth/callback', 'http://127.0.0.1:33418/callback', 'not an address'],
       }),
     }
 
     const service = new AssistantsService(fakeRepo)
     const info = await service.getClientInfo('c1')
 
+    // The name is the client's own claim; where its registered redirects lead is what the screen can show
+    // for sure. An entry that is no address is left out.
     expect(info).toEqual({
       clientId: 'c1',
       name: 'Gemini Assistant',
       uri: 'https://gemini.google.com',
       icon: null,
+      redirectTargets: [
+        { uri: 'https://gemini.google.com/oauth/callback', destination: 'gemini.google.com' },
+        { uri: 'http://127.0.0.1:33418/callback', destination: 'localhost' },
+      ],
     })
     expect(fakeRepo.findClientInfo).toHaveBeenCalledWith('c1')
   })

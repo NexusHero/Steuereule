@@ -28,7 +28,7 @@ export const getAssistantsControllerListConnectedResponseMock = (): ConnectedAss
 
 export const getAssistantsControllerRevokeResponseMock = (overrideResponse: Partial<Extract<RevokeAssistantResponseDto, object>> = {}): RevokeAssistantResponseDto => ({success: faker.datatype.boolean(), ...overrideResponse})
 
-export const getAssistantsControllerGetClientInfoResponseMock = (overrideResponse: Partial<Extract<OauthClientInfoDto, object>> = {}): OauthClientInfoDto => ({clientId: faker.string.alpha({length: {min: 10, max: 20}}), name: faker.string.alpha({length: {min: 10, max: 20}}), uri: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), icon: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), ...overrideResponse})
+export const getAssistantsControllerGetClientInfoResponseMock = (overrideResponse: Partial<Extract<OauthClientInfoDto, object>> = {}): OauthClientInfoDto => ({clientId: faker.string.alpha({length: {min: 10, max: 20}}), name: faker.string.alpha({length: {min: 10, max: 20}}), uri: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), icon: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), redirectTargets: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({uri: faker.string.alpha({length: {min: 10, max: 20}}), destination: faker.string.alpha({length: {min: 10, max: 20}})})), ...overrideResponse})
 
 
 export const getAssistantsControllerListConnectedMockHandler = (overrideResponse?: ConnectedAssistantDto[] | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<ConnectedAssistantDto[]> | ConnectedAssistantDto[]), options?: RequestHandlerOptions) => {
