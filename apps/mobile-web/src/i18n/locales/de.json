@@ -3455,6 +3455,7 @@
     "jahr": {
       "unbekannt": {
         "titel": "{{jahr}} steht nicht im Verlauf",
+        "titelOhneJahr": "Diese Adresse nennt kein Steuerjahr aus deinem Verlauf",
         "text": "Für dieses Jahr gibt es weder eine Erklärung noch einen Bescheid. Zurück im Verlauf kannst du alte Jahre mit ihrem Bescheid ergänzen."
       },
       "satz": {

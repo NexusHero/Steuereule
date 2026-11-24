@@ -3455,6 +3455,7 @@
     "jahr": {
       "unbekannt": {
         "titel": "{{jahr}} is not in the history",
+        "titelOhneJahr": "This address names no tax year of your history",
         "text": "This year has neither a return nor an assessment. Back in the history you can add old years with their assessment."
       },
       "satz": {
