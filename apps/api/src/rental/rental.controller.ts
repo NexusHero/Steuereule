@@ -16,6 +16,7 @@ import { RentalService } from './rental.service.js'
 import { PutRentalFieldDto } from './dto/rental-field.dto.js'
 import { PutRentalAddressDto } from './dto/rental-address.dto.js'
 import { RentalResponseDto } from './dto/rental-response.dto.js'
+import { UserWrite } from '../common/user-write.decorator.js'
 
 @ApiTags('vermietung')
 @Controller('v1/steuerjahre')
@@ -38,6 +39,7 @@ export class RentalController {
   }
 
   @Post(':jahr/vermietung/objekte')
+  @UserWrite('vermietung')
   @RequiresAccount()
   @ApiParam({
     name: 'jahr',
@@ -52,6 +54,7 @@ export class RentalController {
   }
 
   @Put(':jahr/vermietung/objekte/:objektId/:feld')
+  @UserWrite('vermietung')
   @HttpCode(200)
   @RequiresAccount()
   @ApiParam({
@@ -81,6 +84,7 @@ export class RentalController {
   }
 
   @Put(':jahr/vermietung/objekte/:objektId/adresse')
+  @UserWrite('vermietung')
   @HttpCode(200)
   @RequiresAccount()
   @ApiParam({ name: 'jahr', type: Number, example: 2026 })

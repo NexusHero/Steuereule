@@ -8,6 +8,8 @@ function id(userId: string, taxYear: number, key: string): string {
 
 export class FakeMarkingRepository implements ProvenanceRepository {
   private readonly store = new Map<string, ProvenanceRecord>()
+  /** Every save is a later moment, as the database's `updatedAt`. */
+  private clock = 0
 
   listForUserAndYears(userId: string, taxYears: readonly number[]): Promise<ProvenanceRecord[]> {
     return Promise.resolve(
@@ -23,7 +25,8 @@ export class FakeMarkingRepository implements ProvenanceRepository {
 
   save(userId: string, taxYear: number, k: Omit<Marking, 'value'>): Promise<ProvenanceRecord> {
     annexOf(k.key) // same rejection of unknown keys as the real repository
-    const record: ProvenanceRecord = { userId, taxYear, key: k.key, provenance: k.provenance, confirmed: k.confirmed, proposal: k.proposal }
+    this.clock += 1
+    const record: ProvenanceRecord = { userId, taxYear, key: k.key, provenance: k.provenance, confirmed: k.confirmed, proposal: k.proposal, updatedAt: new Date(this.clock) }
     this.store.set(id(userId, taxYear, k.key), record)
     return Promise.resolve(record)
   }
@@ -38,15 +41,39 @@ export class FakeMarkingRepository implements ProvenanceRepository {
     let count = 0
     for (const [k, r] of this.store) {
       if (r.userId === userId && taxYears.includes(r.taxYear) && annexOf(r.key) === annex && !r.confirmed) {
-        this.store.set(k, { ...r, confirmed: true })
+        this.clock += 1
+        this.store.set(k, { ...r, confirmed: true, updatedAt: new Date(this.clock) })
         count += 1
       }
     }
     return Promise.resolve(count)
   }
 
-  /** Test seam: every stored record. */
+  confirmKeys(userId: string, taxYears: readonly number[], annex: Annex, keys: readonly string[]): Promise<number> {
+    let count = 0
+    for (const [k, r] of this.store) {
+      if (r.userId === userId && taxYears.includes(r.taxYear) && annexOf(r.key) === annex && !r.confirmed && keys.includes(r.key)) {
+        this.clock += 1
+        this.store.set(k, { ...r, confirmed: true, updatedAt: new Date(this.clock) })
+        count += 1
+      }
+    }
+    return Promise.resolve(count)
+  }
+
+  removeByKeyPrefix(userId: string, taxYear: number, prefix: string): Promise<number> {
+    let count = 0
+    for (const [k, r] of this.store) {
+      if (r.userId === userId && r.taxYear === taxYear && r.key.startsWith(prefix)) {
+        this.store.delete(k)
+        count += 1
+      }
+    }
+    return Promise.resolve(count)
+  }
+
+  /** Test seam: every stored record, as the tests compare it (without the moment it changed). */
   all(): ProvenanceRecord[] {
-    return [...this.store.values()]
+    return [...this.store.values()].map(({ updatedAt: _updatedAt, ...record }) => record)
   }
 }

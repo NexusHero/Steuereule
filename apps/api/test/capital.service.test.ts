@@ -4,7 +4,6 @@
 // atomicity, cross-user isolation, the real fold through Prisma) lives in
 // test/acceptance/req-025-kapital.test.ts.
 import { beforeEach, describe, expect, it } from 'vitest'
-import { FakeMarkingRepository } from './fakes/fake-marking.repository.js'
 import { AuditService } from '../src/audit/audit.service.js'
 import { CapitalService } from '../src/capital/capital.service.js'
 import { FakeAuditRepository } from './fakes/fake-audit.repository.js'
@@ -45,7 +44,6 @@ const swissCertificate = (userId: string, grossChf: string, withholdingChf: stri
 })
 
 describe('KapitalService', () => {
-  let markings: FakeMarkingRepository
   let repository: FakeCapitalRepository
   let interviewRepository: FakeInterviewAnswerRepository
   let lstbRepository: FakeLstbRepository
@@ -64,14 +62,13 @@ describe('KapitalService', () => {
     lstbRepository = new FakeLstbRepository()
     taxYearRepository = new FakeTaxYearRepository()
     auditRepository = new FakeAuditRepository()
-    markings = new FakeMarkingRepository()
     ch = new FakeChSalaryCertificateRepository()
     masterData = new FakeMasterDataRepository()
     link = new FakeLinkRepository()
     pension = new FakePensionRepository()
     // The Cockpit estimate over the same records: the mask compares on its figures.
     estimates = new TaxEstimateService(taxCaseReaderOver({ wageTaxCertificate: lstbRepository, interview: interviewRepository, salaryStatement: ch, masterData, commute: NO_COMMUTE, coupling: link, children: new FakeChildRepository(), rental: new FakeRentalRepository(), pension, capital: repository }))
-    service = new CapitalService(repository, interviewRepository, taxYearRepository, new AuditService(auditRepository), markings, estimates)
+    service = new CapitalService(repository, interviewRepository, taxYearRepository, new AuditService(auditRepository), estimates)
   })
 
   describe('getState — the honest empty mask and the depot-Einordnung', () => {
@@ -297,11 +294,4 @@ describe('KapitalService', () => {
     })
   })
 
-  it('ADR-0052 §6: a user write drops the marker of exactly that field', async () => {
-    await markings.save('user-1', 2025, { key: 'kapital.kapitalertraege', provenance: { kind: 'uebernahme', lastYear: 2024 }, confirmed: false, proposal: null })
-
-    await service.setField('user-1', 2025, 'kapitalertraege', { kind: 'erfasst', value: 310 })
-
-    expect(markings.all()).toEqual([])
-  })
 })

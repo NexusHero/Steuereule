@@ -18,6 +18,7 @@ import { PensionService } from './pension.service.js'
 import { PutPensionFieldDto } from './dto/pension-field.dto.js'
 import { PutPensionKindDto } from './dto/pension-kind.dto.js'
 import { PensionResponseDto } from './dto/pension-response.dto.js'
+import { UserWrite } from '../common/user-write.decorator.js'
 
 @ApiTags('rente')
 @Controller('v1/steuerjahre')
@@ -48,6 +49,7 @@ export class PensionController {
   }
 
   @Put(':jahr/rente/art')
+  @UserWrite('rente')
   @HttpCode(200)
   @RequiresAccount()
   @ApiParam({ name: 'jahr', type: Number, example: 2026, description: 'The tax year (Steuerjahr).' })
@@ -65,6 +67,7 @@ export class PensionController {
   }
 
   @Put(':jahr/rente/:feld')
+  @UserWrite('rente')
   @HttpCode(200)
   @RequiresAccount()
   @ApiParam({

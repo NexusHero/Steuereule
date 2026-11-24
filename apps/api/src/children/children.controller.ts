@@ -6,6 +6,7 @@ import { UserContextGuard } from '../auth/user-context.guard.js'
 import { ParseTaxYearPipe } from '../common/parse-tax-year.pipe.js'
 import { ChildrenService } from './children.service.js'
 import { CreateChildDto, ChildrenResponseDto, UpdateChildDto } from './dto/child.dto.js'
+import { UserWrite } from '../common/user-write.decorator.js'
 
 @ApiTags('kinder')
 @Controller('v1/steuerjahre')
@@ -23,6 +24,7 @@ export class ChildrenController {
   }
 
   @Post(':jahr/kinder')
+  @UserWrite('kind')
   @RequiresAccount()
   @ApiParam({ name: 'jahr', type: Number, example: 2025 })
   @ApiBody({ type: CreateChildDto })
@@ -37,6 +39,7 @@ export class ChildrenController {
   }
 
   @Put(':jahr/kinder/:id')
+  @UserWrite('kind')
   @HttpCode(200)
   @RequiresAccount()
   @ApiParam({ name: 'jahr', type: Number, example: 2025 })
@@ -54,6 +57,7 @@ export class ChildrenController {
   }
 
   @Delete(':jahr/kinder/:id')
+  @UserWrite('kind')
   @HttpCode(200)
   @RequiresAccount()
   @ApiParam({ name: 'jahr', type: Number, example: 2025 })

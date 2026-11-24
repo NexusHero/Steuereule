@@ -54,12 +54,14 @@ interface Row {
   proposalLastYear: number | null
   proposalClientId: string | null
   proposalValue: string | null
+  updatedAt?: Date
 }
 
 function toRecord(row: Row): ProvenanceRecord {
   return {
     userId: row.userId,
     taxYear: row.taxYear,
+    ...(row.updatedAt === undefined ? {} : { updatedAt: row.updatedAt }),
     key: row.itemKey,
     provenance: provenanceFromColumns({ kind: row.provenanceKind, name: row.provenanceName, receiptId: row.provenanceReceiptId, lastYear: row.lastYear, clientId: row.provenanceClientId }),
     confirmed: row.confirmed,
@@ -142,6 +144,24 @@ export class PrismaMarkingRepository implements ProvenanceRepository {
       }),
       this.prisma.taxDataAccessLog.create({ data: { userId, action: 'WRITE', resource: 'kennzeichnung' } }),
     ])
+    return count
+  }
+
+  async confirmKeys(userId: string, taxYears: readonly number[], annex: Annex, keys: readonly string[]): Promise<number> {
+    if (keys.length === 0) return 0
+    const [{ count }] = await this.prisma.$transaction([
+      this.prisma.marking.updateMany({
+        where: { userId, taxYear: { in: [...taxYears] }, annex, confirmed: false, itemKey: { in: [...keys] } },
+        data: { confirmed: true },
+      }),
+      this.prisma.taxDataAccessLog.create({ data: { userId, action: 'WRITE', resource: 'kennzeichnung' } }),
+    ])
+    return count
+  }
+
+  async removeByKeyPrefix(userId: string, taxYear: number, prefix: string): Promise<number> {
+    const { count } = await this.prisma.marking.deleteMany({ where: { userId, taxYear, itemKey: { startsWith: prefix } } })
+    if (count > 0) await this.prisma.taxDataAccessLog.create({ data: { userId, action: 'WRITE', resource: 'kennzeichnung' } })
     return count
   }
 }
