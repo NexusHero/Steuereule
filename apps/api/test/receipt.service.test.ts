@@ -4,7 +4,7 @@
 // through Prisma) lives in beleg.integration.test.ts.
 import { beforeEach, describe, expect, it } from 'vitest'
 import { AuditService } from '../src/audit/audit.service.js'
-import { ReceiptService, MAX_RECEIPT_BYTES_PER_ACCOUNT, MAX_RECEIPT_FILES_PER_ACCOUNT } from '../src/receipt/receipt.service.js'
+import { ReceiptService, MAX_RECEIPT_BYTES_PER_ACCOUNT, MAX_RECEIPT_FILES_PER_ACCOUNT, MAX_RECEIPTS_PER_ACCOUNT } from '../src/receipt/receipt.service.js'
 import { FakeAuditRepository } from './fakes/fake-audit.repository.js'
 import { FakeReceiptRepository } from './fakes/fake-receipt.repository.js'
 import { InMemoryStorageAdapter } from './fakes/in-memory-storage.adapter.js'
@@ -211,6 +211,33 @@ describe('BelegService', () => {
       await service.upload('other-user', { buffer: PDF_HEADER, fileName: 'a.pdf' })
       expect(await storage.usage('user-q')).toEqual({ files: 0, bytes: 0 })
       expect((await storage.usage('other-user')).files).toBe(1)
+    })
+  })
+
+  // ADR-0108 D7 follow-up: the byte/file quota above bounds only stored blobs, so a fileless
+  // `POST /v1/belege` (create) grew Receipt rows without limit for an authenticated account.
+  describe('per-account receipt-row cap (ADR-0108)', () => {
+    async function fillTo(userId: string, rows: number): Promise<void> {
+      for (let i = 0; i < rows; i += 1) await repository.create(userId, { fileName: `seed-${i}.pdf` })
+    }
+
+    it('refuses a fileless create once the account is at the row cap', async () => {
+      await fillTo('user-r', MAX_RECEIPTS_PER_ACCOUNT)
+      await expect(service.create('user-r', { fileName: 'a.pdf' })).rejects.toMatchObject({ code: 'RECEIPT_QUOTA_EXCEEDED' })
+      expect(repository.recordCount()).toBe(MAX_RECEIPTS_PER_ACCOUNT)
+    })
+
+    it('allows a fileless create one below the row cap, and counts each account by itself', async () => {
+      await fillTo('user-r', MAX_RECEIPTS_PER_ACCOUNT - 1)
+      await expect(service.create('user-r', { fileName: 'a.pdf' })).resolves.toMatchObject({ fileName: 'a.pdf' })
+      await expect(service.create('user-r', { fileName: 'b.pdf' })).rejects.toMatchObject({ code: 'RECEIPT_QUOTA_EXCEEDED' })
+      await expect(service.create('other-user', { fileName: 'c.pdf' })).resolves.toMatchObject({ fileName: 'c.pdf' })
+    })
+
+    it('also caps upload at the row limit, independent of the byte/file quota', async () => {
+      await fillTo('user-r', MAX_RECEIPTS_PER_ACCOUNT)
+      await expect(service.upload('user-r', { buffer: PDF_HEADER, fileName: 'a.pdf' })).rejects.toMatchObject({ code: 'RECEIPT_QUOTA_EXCEEDED' })
+      expect((await storage.usage('user-r')).files).toBe(0)
     })
   })
 })

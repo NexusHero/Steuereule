@@ -19,6 +19,10 @@ import type { AssignmentDto } from './dto/assignment.dto.js'
  */
 export const MAX_RECEIPT_FILES_PER_ACCOUNT = 2_000
 export const MAX_RECEIPT_BYTES_PER_ACCOUNT = 2 * 1024 * 1024 * 1024
+// Beleg ROW cap (ADR-0108): the byte/file quota above bounds only stored blobs (ReceiptFile). A fileless
+// `POST /v1/belege` makes a Receipt row with no file, so it escaped every bound — an authenticated account
+// could grow rows without limit. Generous for real use (several tax years), finite against row flooding.
+export const MAX_RECEIPTS_PER_ACCOUNT = 5_000
 
 function exceedsReceiptQuota(files: number, bytes: number): boolean {
   return files > MAX_RECEIPT_FILES_PER_ACCOUNT || bytes > MAX_RECEIPT_BYTES_PER_ACCOUNT
@@ -224,7 +228,8 @@ export class ReceiptService {
       ...(dto.kind !== undefined ? { kind: dto.kind } : {}),
       ...(dto.belegdatum !== undefined ? { belegdatum: dto.belegdatum } : {}),
       ...(dto.zahlungsdatum !== undefined ? { zahlungsdatum: dto.zahlungsdatum } : {}),
-    })
+    }, MAX_RECEIPTS_PER_ACCOUNT)
+    if (record === null) throw receiptQuotaExceeded()
     return toReceiptResponse(record, NOTHING_DERIVED)
   }
 
@@ -253,7 +258,8 @@ export class ReceiptService {
       ...(direction !== undefined ? { direction } : {}),
       ...(belegdatum !== undefined ? { belegdatum } : {}),
       ...(zahlungsdatum !== undefined ? { zahlungsdatum } : {}),
-    })
+    }, MAX_RECEIPTS_PER_ACCOUNT)
+    if (record === null) throw receiptQuotaExceeded()
 
     try {
       const storedMeta = await this.storage.put({
