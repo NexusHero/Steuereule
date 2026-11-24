@@ -1680,6 +1680,7 @@
     "widerspruchBody": "More vacation/sick days than work days — check your entries.",
     "weiter": "Continue",
     "loading": "Loading …",
+    "zahlUnlesbar": "That is not a whole number. Please type digits only, e.g. 30.",
     "speichernFehler": "That did not work — your entries are not saved yet. Please try again.",
     "weg": {
       "titel": "Your way to work",

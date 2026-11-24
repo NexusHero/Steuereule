@@ -1680,6 +1680,7 @@
     "widerspruchBody": "Mehr Urlaubs-/Krankheitstage als Werktage — prüf deine Eingaben.",
     "weiter": "Weiter",
     "loading": "Wird geladen …",
+    "zahlUnlesbar": "Das ist keine ganze Zahl. Bitte nur Ziffern eingeben, z. B. 30.",
     "speichernFehler": "Das hat nicht geklappt — deine Angaben sind noch nicht gespeichert. Versuch es noch mal.",
     "weg": {
       "titel": "Dein Weg zur Arbeit",
