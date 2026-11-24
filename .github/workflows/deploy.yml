@@ -75,6 +75,10 @@ jobs:
       TRUSTED_PROXIES: ${{ vars.TRUSTED_PROXIES || '169.254.0.0/16' }}
       SQL_INSTANCE: ${{ vars.GCP_SQL_INSTANCE }}
       KEYSTORE_SQL_INSTANCE: ${{ vars.GCP_KEYSTORE_SQL_INSTANCE }}
+      # Cloud SQL has a private address only (and Redis too): the service and the migrate job join this
+      # network with Direct VPC egress. Only private ranges go through it.
+      VPC_NETWORK: ${{ vars.GCP_VPC_NETWORK }}
+      VPC_SUBNET: ${{ vars.GCP_VPC_SUBNET }}
       API_SA: ${{ vars.GCP_RUNTIME_SA }}
       WEB_SA: ${{ vars.GCP_WEB_SA }}
     steps:
@@ -92,7 +96,7 @@ jobs:
             exit 1
           fi
           missing=""
-          for name in GCP_PROJECT_ID GCP_WIF_PROVIDER GCP_DEPLOYER_SA GCP_RUNTIME_SA GCP_WEB_SA GCP_SQL_INSTANCE GCP_KEYSTORE_SQL_INSTANCE APP_DOMAIN EMAIL_FROM; do
+          for name in GCP_PROJECT_ID GCP_WIF_PROVIDER GCP_DEPLOYER_SA GCP_RUNTIME_SA GCP_WEB_SA GCP_SQL_INSTANCE GCP_KEYSTORE_SQL_INSTANCE GCP_VPC_NETWORK GCP_VPC_SUBNET APP_DOMAIN EMAIL_FROM; do
             [ -n "${!name}" ] || missing="$missing $name"
           done
           if [ -n "$missing" ]; then
@@ -114,6 +118,8 @@ jobs:
           GCP_WEB_SA: ${{ vars.GCP_WEB_SA }}
           GCP_SQL_INSTANCE: ${{ vars.GCP_SQL_INSTANCE }}
           GCP_KEYSTORE_SQL_INSTANCE: ${{ vars.GCP_KEYSTORE_SQL_INSTANCE }}
+          GCP_VPC_NETWORK: ${{ vars.GCP_VPC_NETWORK }}
+          GCP_VPC_SUBNET: ${{ vars.GCP_VPC_SUBNET }}
           APP_DOMAIN: ${{ vars.APP_DOMAIN }}
           EMAIL_FROM: ${{ vars.EMAIL_FROM }}
 
@@ -152,16 +158,11 @@ jobs:
 
       - name: Collect secrets that have a value
         if: steps.gate.outputs.ready == 'true'
-        env:
-          VPC_NETWORK: ${{ vars.GCP_VPC_NETWORK }}
-          VPC_SUBNET: ${{ vars.GCP_VPC_SUBNET }}
         run: |
           secrets=""
           for name in DATABASE_URL GUEST_SESSION_SECRET PRISMA_FIELD_ENCRYPTION_KEY KEYSTORE_DATABASE_URL KEYSTORE_MASTER_KEY BETTER_AUTH_SECRET BREVO_API_KEY \
                       GOOGLE_CLIENT_ID GOOGLE_CLIENT_SECRET STRIPE_SECRET_KEY STRIPE_WEBHOOK_SECRET \
                       GEMINI_API_KEY ANTHROPIC_API_KEY OPENAI_API_KEY REDIS_URL REDIS_TLS_CA; do
-            # Memorystore is private: without the VPC egress below the API could not reach it.
-            case "$name" in REDIS_*) [ -n "$VPC_NETWORK" ] && [ -n "$VPC_SUBNET" ] || continue ;; esac
             if [ -n "$(gcloud secrets versions list "$name" --filter=state=enabled --limit=1 --format='value(name)')" ]; then
               secrets="$secrets,$name=$name:latest"
             fi
@@ -198,6 +199,7 @@ jobs:
             --image "$API_IMAGE" --region "$REGION" \
             --service-account "$API_SA" \
             --set-cloudsql-instances "$SQL_INSTANCE,$KEYSTORE_SQL_INSTANCE" \
+            --network "$VPC_NETWORK" --subnet "$VPC_SUBNET" --vpc-egress private-ranges-only \
             --set-secrets "DATABASE_URL=DATABASE_URL:latest,KEYSTORE_DATABASE_URL=KEYSTORE_DATABASE_URL:latest" \
             --command sh --args="-c,cd /repo/apps/api && node scripts/migrate-deploy.mjs" \
             --max-retries 0 --task-timeout 600s \
@@ -209,16 +211,7 @@ jobs:
       # the instance that holds its run while there is no shared Redis.
       - name: Deploy API
         if: steps.gate.outputs.ready == 'true'
-        env:
-          VPC_NETWORK: ${{ vars.GCP_VPC_NETWORK }}
-          VPC_SUBNET: ${{ vars.GCP_VPC_SUBNET }}
         run: |
-          # A private Redis (Memorystore) is only reachable through the VPC; without the two
-          # repository variables the API keeps its public egress and runs without Redis.
-          vpc_flags=()
-          if [ -n "$VPC_NETWORK" ] && [ -n "$VPC_SUBNET" ]; then
-            vpc_flags=(--network "$VPC_NETWORK" --subnet "$VPC_SUBNET" --vpc-egress private-ranges-only)
-          fi
           gcloud run deploy steuereule-api \
             --image "$API_IMAGE" --region "$REGION" \
             --service-account "$API_SA" \
@@ -228,7 +221,7 @@ jobs:
             --cpu 1 --memory 2Gi --cpu-boost \
             --no-cpu-throttling --session-affinity \
             --min-instances 0 --max-instances 10 --concurrency 80 --timeout 120 \
-            "${vpc_flags[@]}" \
+            --network "$VPC_NETWORK" --subnet "$VPC_SUBNET" --vpc-egress private-ranges-only \
             --allow-unauthenticated
 
       - name: Build and push web image

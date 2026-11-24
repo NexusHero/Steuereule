@@ -54,9 +54,21 @@ variable "monthly_budget_eur" {
 }
 
 variable "db_tier" {
-  description = "Cloud SQL machine tier."
+  description = "Cloud SQL machine tier. Unset: db-f1-micro (shared core, no SLA) for beta and staging, db-custom-1-3840 (1 dedicated vCPU, 3.75 GB) for production."
   type        = string
-  default     = "db-f1-micro"
+  default     = null
+}
+
+variable "db_high_availability" {
+  description = "Run both Cloud SQL instances regional (standby in a second zone, automatic failover). Unset: on for production only. Doubles the instance price; needs a dedicated-core tier."
+  type        = bool
+  default     = null
+}
+
+variable "db_keep_public_ipv4" {
+  description = "Transition only: keep the public IPv4 of the Cloud SQL instances next to the private one while moving an existing stack (infra/README.md). Leave false; a new stack never needs it."
+  type        = bool
+  default     = false
 }
 
 variable "enable_redis" {
@@ -66,7 +78,13 @@ variable "enable_redis" {
 }
 
 variable "vpc_network" {
-  description = "VPC the Redis instance lives in. The API reaches it through Direct VPC egress: set the repository variables GCP_VPC_NETWORK and GCP_VPC_SUBNET to the same network."
+  description = "VPC of the stack: Cloud SQL (private services access) and Redis live in it. The API service and the migrate job reach both through Direct VPC egress (GitHub variables GCP_VPC_NETWORK and GCP_VPC_SUBNET, set from the outputs). The network must already exist."
+  type        = string
+  default     = "default"
+}
+
+variable "vpc_subnet" {
+  description = "Subnet of vpc_network in var.region that Direct VPC egress uses (it consumes one address per Cloud Run instance). Only passed on through the output vpc_subnet."
   type        = string
   default     = "default"
 }

@@ -1,12 +1,6 @@
 # .trivyignore — Trivy security scan suppressions
 # Governs accepted trade-offs documented in ADRs / architecture decisions.
 
-# Cloud SQL has a public IPv4 without authorized networks, SSL ENCRYPTED_ONLY, reachable only through the
-# IAM-checked Cloud SQL connector. A private IP needs a VPC peering and serverless egress for the API
-# and the migrate job: a change of its own, not done in ADR-0109.
-AVD-GCP-0017
-GCP-0017
-
 # Template K8s manifests in infra/manifests/base/ (Active production runtime is GCP Cloud Run)
 AVD-KSV-0014
 KSV-0014

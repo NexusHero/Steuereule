@@ -52,6 +52,24 @@ code did not expect, not validation errors.
 2. Is it one user or one input? The request id is in the log entry.
 3. Check whether it started with a deploy; if the route is central (login, cockpit), roll back first.
 
+## New error groups (Cloud Error Reporting)
+
+The API logs unexpected errors with their stack trace in the structured form Cloud Error Reporting
+groups. Cloud Run sends them there on its own: no Terraform resource is needed for the grouping. Open
+Error Reporting in the Cloud console (project of the environment, service `steuereule-api`) to see each
+distinct error once, with its count, first and last occurrence and the stack.
+
+How it relates to the alert above: the alert policy "API: unhandled errors" counts log lines through the
+log-based metric `api_unhandled_error` and fires on volume (3 in 5 minutes). Error Reporting answers a
+different question, "is this a kind of error we have not seen before", and shows every group, also one
+that happens once. The metric filter matches the plain-text and the structured log line, so changing the
+log format does not silence the alert. Use the alert to be woken, Error Reporting to find out which error
+it is.
+
+Operator step, done once per project in the console and not in Terraform: Error Reporting, Configure
+notifications, turn on notifications for new error groups (email or another channel). Without it new
+groups only show in the console.
+
 ## Cloud SQL disk above 80 percent / CPU above 80 percent for 15 minutes
 
 Applies to both instances in the project (tax data and keystore).
@@ -60,7 +78,10 @@ Applies to both instances in the project (tax data and keystore).
    keystore instance does not (`disk_autoresize = false`), so a full keystore disk needs a manual resize.
 2. Disk: check for a large table or a runaway log (`log_connections` and `log_disconnections` are on).
    CPU: look at Query Insights and `pg_stat_activity` for a long-running query.
-3. A migration running at the time? The deploy runs one before the API revision; wait for it to finish
+3. Cloud SQL has a private address only. If the API or the migrate job cannot connect at all, check that
+   the Cloud Run revision still has the VPC network and subnet attached (`gcloud run services describe
+   steuereule-api --region europe-west4`, field network interfaces) before looking at the database.
+4. A migration running at the time? The deploy runs one before the API revision; wait for it to finish
    before acting.
 
 ## After the incident

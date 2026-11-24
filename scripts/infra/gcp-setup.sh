@@ -281,14 +281,14 @@ fi
 write_env STATE_BUCKET "$STATE_BUCKET"
 
 stage "Infrastruktur anlegen (OpenTofu)"
-say "Legt an: Cloud SQL (Postgres 16), Artifact Registry, leere Secrets, Service-Accounts,"
+say "Legt an: Cloud SQL (Postgres 16, nur private IP im VPC), Artifact Registry, leere Secrets, Service-Accounts,"
 say "GitHub-Zugang per Workload Identity und einen Budget-Alarm bei 20 € im Monat."
 "$TOFU" -chdir="$TOFU_DIR" init -input=false -reconfigure -backend-config="bucket=$STATE_BUCKET" \
   -backend-config="prefix=steuereule/$TF_ENVIRONMENT" >/dev/null
 TOFU_VARS=(-var "project_id=$GCP_PROJECT_ID" -var "billing_account_id=$BILLING_ACCOUNT_ID" -var "region=$REGION" \
   -var "environment=$TF_ENVIRONMENT" -var "github_environments=$TF_GITHUB_ENVIRONMENTS")
 "$TOFU" -chdir="$TOFU_DIR" plan -input=false "${TOFU_VARS[@]}" -out=beta.tfplan
-warn "Cloud SQL kostet ab jetzt ca. 10–12 € im Monat (in der Testphase vom Guthaben)."
+warn "Cloud SQL (zwei Instanzen) kostet ab jetzt ca. 20 € im Monat in beta/staging, in production mit eigenem Kern ca. 100 € (mit Hochverfügbarkeit ca. 200 €); Richtwerte."
 if confirm "Plan anwenden?"; then
   "$TOFU" -chdir="$TOFU_DIR" apply -input=false beta.tfplan
   rm -f "$TOFU_DIR/beta.tfplan"
@@ -383,6 +383,9 @@ set_var GCP_RUNTIME_SA "$(tofu_output api_runtime_service_account)"
 set_var GCP_WEB_SA "$(tofu_output web_runtime_service_account)"
 set_var GCP_SQL_INSTANCE "$SQL_CONNECTION"
 set_var GCP_KEYSTORE_SQL_INSTANCE "$KEYSTORE_SQL_CONNECTION"
+# Cloud SQL and Redis have private addresses only; the deploy joins this network (Direct VPC egress).
+set_var GCP_VPC_NETWORK "$(tofu_output vpc_network)"
+set_var GCP_VPC_SUBNET "$(tofu_output vpc_subnet)"
 set_var APP_DOMAIN "$APP_DOMAIN"
 set_var EMAIL_FROM "$EMAIL_FROM"
 pause

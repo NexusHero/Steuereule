@@ -153,10 +153,12 @@ resource "google_monitoring_alert_policy" "api_container_crash" {
 
 # The API logs unhandled request errors through the Nest logger (class ExceptionsHandler, or
 # "Unhandled error in better-auth request handler") to stderr, which Cloud Run records as ERROR.
+# The filter matches both the plain-text form (textPayload) and the structured form (jsonPayload.message)
+# that Cloud Error Reporting groups, so the switch to structured logging does not blind this alert.
 resource "google_logging_metric" "api_unhandled_error" {
   count  = local.alerts_enabled ? 1 : 0
   name   = "api_unhandled_error"
-  filter = "${local.run_filter} AND severity>=ERROR AND (textPayload:\"ExceptionsHandler\" OR textPayload:\"Unhandled error\")"
+  filter = "${local.run_filter} AND severity>=ERROR AND (textPayload:\"ExceptionsHandler\" OR textPayload:\"Unhandled error\" OR jsonPayload.message:\"ExceptionsHandler\" OR jsonPayload.message:\"Unhandled error\")"
 
   metric_descriptor {
     metric_kind = "DELTA"

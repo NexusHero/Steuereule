@@ -34,6 +34,46 @@ Hand (Actions, Deploy, Run workflow, `environment = production`), gebunden an da
 und `GCP_ENVIRONMENT=production`) gehören ins Environment, nicht ins Repository. Der Wizard
 `TF_ENVIRONMENT=production GH_ENVIRONMENT=production scripts/infra/gcp-setup.sh` legt das an.
 
+### Network and database size (ADR-0109)
+
+**Private Cloud SQL.** Both instances (tax data and keystore) have a private address only, through
+private services access on the VPC `vpc_network` (default `default`; it must exist). Cloud Run reaches
+them with Direct VPC egress (`--network`, `--subnet`, `--vpc-egress private-ranges-only`), which has no
+connector instances to pay for; the Cloud SQL socket path in `DATABASE_URL` and `KEYSTORE_DATABASE_URL`
+(`host=/cloudsql/<connection name>`) and `--add-cloudsql-instances` stay as they are, so no secret
+changes. Redis lives in the same VPC. The VPC is now a required part of the stack: the deploy refuses to run
+without the GitHub variables `GCP_VPC_NETWORK` and `GCP_VPC_SUBNET` (`gcp-setup.sh` sets them from the
+outputs `vpc_network` and `vpc_subnet`). Cost of that: the subnet needs one address per running Cloud
+Run instance, and the project needs the `compute` and `servicenetworking` APIs (enabled by this stack).
+The pre-deploy backup step (`gcloud sql backups create`) uses the Cloud SQL admin API, not the network, and is unaffected.
+
+**Size.** `db_tier` unset means `db-f1-micro` for beta and staging and `db-custom-1-3840` for production;
+`db_high_availability` unset means regional (standby in a second zone) for production only. PITR is already
+on for both instances, which is what regional needs. `max_connections` is set to 60 (shared core) or 100;
+the arithmetic is in the comment in `main.tf`. Approximate list prices, europe-west4, not a quote: two
+`db-f1-micro` about 20 EUR a month, two `db-custom-1-3840` zonal about 100 EUR, regional about 200 EUR
+(plus storage). Raise `monthly_budget_eur` for production accordingly.
+
+**Moving an existing stack (beta/staging) to private IP.** Removing the public address cuts off every
+client that used it; the API and the migrate job are the only ones, and they need the VPC first. In this order:
+
+1. Make sure the network exists and note its name and subnet in `europe-west4`
+   (`gcloud compute networks subnets list --network default --filter region:europe-west4`).
+2. `tofu apply -var db_keep_public_ipv4=true ...` (plus the usual variables). This creates the address
+   range and the peering and adds the private address next to the public one. Adding a private address
+   restarts each instance: expect an outage of the API's database access for a few minutes (it is not measured here).
+   Do it in a quiet window.
+3. Set the GitHub variables `GCP_VPC_NETWORK` and `GCP_VPC_SUBNET` (outputs `vpc_network`, `vpc_subnet`) and run
+   the Deploy workflow. The migrate job and the API revision now carry the VPC. No downtime beyond the normal rollout.
+4. Check that the API is healthy (`/v1/health/ready`) and the migrate job succeeded.
+5. `tofu apply` again without `db_keep_public_ipv4` (default false). The public address is removed; the instances
+   restart again, same short outage as in step 2. After it, a connection through the VPC is the only path.
+6. Run the Deploy workflow once more (or hit `/v1/health/ready`) to prove the API still connects.
+
+Rollback of step 5: `tofu apply -var db_keep_public_ipv4=true`. The sequence cannot be rehearsed without a real
+project; whether the Cloud Run socket prefers the private address while both exist is not verified here, which is
+why step 5 is the real proof. A new stack needs none of this: one `apply`, one deploy.
+
 Alarme (`monitoring.tf`) entstehen mit `alert_email`; was sie bedeuten: [docs/sre/incident-runbook.md](../docs/sre/incident-runbook.md).
 
 Datenbank zwischen Testrunden anhalten und wieder starten:
