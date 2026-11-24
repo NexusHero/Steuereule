@@ -4,6 +4,8 @@ import { AuditModule } from '../audit/audit.module.js'
 import { PrismaModule } from '../prisma/prisma.module.js'
 import { ProfileModule } from '../profile/profile.module.js'
 import { FreshAuthChecker } from '../auth/fresh-auth.js'
+import { STEP_UP_GRANT_REPOSITORY } from '../auth/step-up-grant.repository.js'
+import { PrismaStepUpGrantRepository } from '../auth/step-up-grant.repository.prisma.js'
 import { AccountDeletionController } from './account-deletion.controller.js'
 import { AccountExportController } from './account-export.controller.js'
 import { KeystoreModule } from '../keystore/keystore.module.js'
@@ -25,6 +27,7 @@ import { PrismaTaxDataExportRepository } from './tax-data-export.repository.pris
     AccountDeletionService,
     AccountExportService,
     FreshAuthChecker,
+    { provide: STEP_UP_GRANT_REPOSITORY, useClass: PrismaStepUpGrantRepository },
     { provide: ACCOUNT_DELETION_REPOSITORY, useClass: PrismaAccountDeletionRepository },
     { provide: ACCOUNT_IDENTITY_REPOSITORY, useClass: PrismaAccountIdentityRepository },
     { provide: PDF_RENDERER, useClass: PlaywrightPdfRenderer },

@@ -56,12 +56,14 @@ describe('AssistentenController (ADR-0052 §10)', () => {
       name: 'Claude Assistant',
       uri: 'https://claude.ai',
       icon: null,
+      redirectUris: ['https://claude.ai/api/mcp/auth_callback'],
     })
     const service = new AssistantsService(fakeRepo)
     const controller = new AssistantsController(service)
 
     const info = await controller.getClientInfo('c1')
     expect(info.name).toBe('Claude Assistant')
+    expect(info.redirectTargets).toEqual([{ uri: 'https://claude.ai/api/mcp/auth_callback', destination: 'claude.ai' }])
 
     await expect(controller.getClientInfo('nonexistent')).rejects.toThrow(NotFoundException)
   })

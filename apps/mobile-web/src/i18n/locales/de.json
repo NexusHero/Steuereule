@@ -842,7 +842,14 @@
       "pdfHint": "Zum Lesen, Ausdrucken oder Ablegen.",
       "preparing": "Wird erstellt …",
       "success": "Heruntergeladen.",
-      "error": "Der Export hat gerade nicht geklappt. Versuch es noch mal."
+      "error": "Der Export hat gerade nicht geklappt. Versuch es noch mal.",
+      "stepUp": {
+        "heading": "Bitte bestätige dein Passwort",
+        "body": "Zum Schutz deiner Daten brauchen wir dein Passwort noch einmal, bevor wir den Export erstellen.",
+        "label": "Passwort",
+        "confirm": "Bestätigen und exportieren",
+        "cancel": "Abbrechen"
+      }
     },
     "delete": {
       "title": "Löschen",
@@ -2468,6 +2475,12 @@
     "stepUpWrong": "Das Passwort stimmt nicht.",
     "title": "Assistent verbinden",
     "requestNotice": "möchte sich mit Ihrem SteuerEule-Konto verbinden.",
+    "destinationLabel": "Der Zugriff geht an:",
+    "destinationDevice": "eine App auf diesem Gerät",
+    "destinationApp": "eine App auf diesem Gerät ({{scheme}})",
+    "destinationUnknown": "eine unbekannte Adresse",
+    "unverifiedHeading": "Nicht von SteuerEule geprüft",
+    "unverifiedNotice": "Den Namen hat der Assistent selbst angegeben. Erlauben Sie die Verbindung nur, wenn Sie sie gerade selbst in Ihrem Assistenten gestartet haben und die Adresse oben zu ihm gehört.",
     "scopesHeading": "Der Assistent erhält Zugriff auf:",
     "scopeSteuerdatenRead": "Steuerdaten lesen (maskiert)",
     "scopeSteuerdatenWrite": "Steuerfakten ausfüllen (bleibt unbestätigt bis zu Ihrer Prüfung)",

@@ -17,6 +17,13 @@ export interface RevokeAssistantResponseDto {
   success: boolean;
 }
 
+export interface OauthRedirectTargetDto {
+  /** A redirect address the client registered. */
+  uri: string;
+  /** Where that address leads, for the consent screen: the host of a web address, "localhost" for an app on the user's machine, or an app scheme such as "cursor://". */
+  destination: string;
+}
+
 export interface OauthClientInfoDto {
   clientId: string;
   name: string;
@@ -24,6 +31,8 @@ export interface OauthClientInfoDto {
   uri?: string | null;
   /** @nullable */
   icon?: string | null;
+  /** Where an approval can send the access to. The name above is the client's own claim; these addresses are what it registered. */
+  redirectTargets: OauthRedirectTargetDto[];
 }
 
 export type AssistantsControllerGetClientInfoParams = {
