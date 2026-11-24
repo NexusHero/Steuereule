@@ -52,6 +52,16 @@ describe('the legal pages name the operator', () => {
     expect(textOf(terms(FULL))).toContain('angeboten von Eule GmbH')
   })
 
+  it('H2-39: the withdrawal texts name what each tier unlocks and the sample form has no placeholder', () => {
+    for (const operator of [FULL, null]) {
+      const text = textOf(terms(operator))
+      expect(text).not.toMatch(/\[[^\]]*\]/)
+      expect(text).toContain('Ausfüllhilfe für Mein ELSTER')
+      expect(text).toMatch(/Muster-Widerrufsformular: An .*Formular-Ausdrucks \/ der Freischaltung für Selbstständige/)
+    }
+    expect(textOf(terms(FULL))).toContain('Muster-Widerrufsformular: An Eule GmbH, Musterstraße 1, 12345 Musterstadt, E-Mail: hallo@steuereule.de:')
+  })
+
   it('routes every page to its own text', () => {
     expect(content('impressum', FULL)).toEqual(legalNotice(FULL))
     expect(content('datenschutz', FULL)).toEqual(privacy(FULL))

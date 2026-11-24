@@ -14,6 +14,7 @@ import { makePrivacyStyles } from '../privacy/styles'
 import { ErrorState, LoadingState } from '../shared/ScreenState'
 import { GlassFormPreview } from './GlassFormPreview'
 import { loadPrintout } from './printoutDownload'
+import { checkoutRefusalOf, priceText, usePaymentConfirmation } from '../shared/usePaymentConfirmation'
 
 export interface PrintoutScreenProps {
   readonly year: number
@@ -28,9 +29,11 @@ export interface PrintoutScreenProps {
   readonly onConfirm: () => void
   readonly onInspectField?: (screen: Screen, field?: string) => void
   readonly openCheckout?: (url: string) => void
+  /** How often and how long the unlock is awaited after a successful return; the defaults outside tests. */
+  readonly confirmTiming?: { readonly intervalMs: number; readonly timeoutMs: number }
 }
 
-export function PrintoutScreen({ year, payment, onBack, onCompleteDetails, onCompleteRiester, onCompleteChildren, onCompleteRental, onCompleteCapital, onCompleteCrossBorder, onConfirm, onInspectField, openCheckout = (url) => window.location.assign(url) }: PrintoutScreenProps) {
+export function PrintoutScreen({ year, payment, onBack, onCompleteDetails, onCompleteRiester, onCompleteChildren, onCompleteRental, onCompleteCapital, onCompleteCrossBorder, onConfirm, onInspectField, openCheckout = (url) => window.location.assign(url), confirmTiming }: PrintoutScreenProps) {
   const bp = useBreakpoint()
   const theme = useTheme()
   const styles = makePrivacyStyles(theme)
@@ -40,6 +43,8 @@ export function PrintoutScreen({ year, payment, onBack, onCompleteDetails, onCom
   const checkout = usePrintoutControllerCheckout()
   const [message, setMessage] = useState<{ kind: 'ok' | 'fehler'; text: string } | null>(null)
   const [loading, setLoading] = useState(false)
+  const unlocked = status.data?.status === 200 ? status.data.data.status === 'freigeschaltet' : undefined
+  const { phase, recheck } = usePaymentConfirmation({ outcome: payment, unlocked, refetch: status.refetch, ...confirmTiming })
 
   if (isRunningTaxYear(year)) {
     // K2: the running year has no official forms yet — name when filing opens, up front.
@@ -81,6 +86,7 @@ export function PrintoutScreen({ year, payment, onBack, onCompleteDetails, onCom
   }
 
   const unlock = status.data.data.status
+  const price = priceText(status.data.data.price)
   const missing = check.data.data.missing
   const married = missing.includes('ehegatte')
   const riester = missing.includes('riester')
@@ -95,9 +101,21 @@ export function PrintoutScreen({ year, payment, onBack, onCompleteDetails, onCom
   const personBUnconfirmed = missing.includes('unbestaetigt.personB')
   // Values too long for their box at the 10 pt the forms require (ADR-0085): named, to be shortened.
   const tooLong = missing.filter((key) => key.startsWith('zuLang.')).map((key) => key.slice('zuLang.'.length))
-  const ownWay = new Set(['ehegatte', 'riester', 'kinder', 'vermietung', 'kapital', 'grenzgaenger'])
+  const ownWay = new Set(['ehegatte', 'riester', 'kinder', 'vermietung', 'kapital', 'grenzgaenger', 'personADruckt'])
   const masterDataMissing = missing.some((key) => !ownWay.has(key) && !key.startsWith('anlage') && !key.startsWith('unbestaetigt.') && !key.startsWith('zuLang.'))
   const locked = missing.length > 0
+  // ADR-0054: Person B of a joint return never prints or pays; Person A does (WEB-15).
+  const personAPrints = missing.includes('personADruckt')
+
+  function refused(source: unknown) {
+    const refusal = checkoutRefusalOf(source)
+    if (refusal === 'already-paid') {
+      setMessage({ kind: 'ok', text: t('zahlung.schonBezahlt', { year }) })
+      void status.refetch()
+    } else if (refusal === 'pending') setMessage({ kind: 'fehler', text: t('zahlung.ausstehend', { year }) })
+    else if (refusal === 'throttled') setMessage({ kind: 'fehler', text: t('zahlung.zuVieleVersuche') })
+    else setMessage({ kind: 'fehler', text: t('ausdruck.fehler') })
+  }
 
   function pay() {
     setMessage(null)
@@ -106,9 +124,9 @@ export function PrintoutScreen({ year, payment, onBack, onCompleteDetails, onCom
       {
         onSuccess: (response) => {
           if (response.status === 200) openCheckout(response.data.checkoutUrl)
-          else setMessage({ kind: 'fehler', text: t('ausdruck.fehler') })
+          else refused(response)
         },
-        onError: () => setMessage({ kind: 'fehler', text: t('ausdruck.fehler') }),
+        onError: refused,
       },
     )
   }
@@ -171,7 +189,16 @@ export function PrintoutScreen({ year, payment, onBack, onCompleteDetails, onCom
 
       <GlassFormPreview year={year} onInspectField={handleInspectField} />
 
-      {locked ? (
+      {personAPrints ? (
+        <Card style={{ marginBottom: theme.space.s4 }} testID="ausdruck-person-a-druckt">
+          <Text style={styles.sectionTitle}>{t('ausdruckPersonB.titel')}</Text>
+          <Text style={styles.sectionBody}>{t('ausdruckPersonB.text')}</Text>
+          <Button variant="ghost" onPress={onConfirm} testID="ausdruck-person-b-bestaetigen">
+            {t('ausdruckPersonB.bestaetigen')}
+          </Button>
+        </Card>
+      ) : null}
+      {locked && !personAPrints ? (
         <Card style={{ marginBottom: theme.space.s4 }}>
           <Text style={styles.sectionTitle}>{t('ausdruck.fehlendTitel')}</Text>
           {masterDataMissing ? <Text style={styles.sectionBody}>{t('ausdruck.fehlendAngaben')}</Text> : null}
@@ -249,27 +276,42 @@ export function PrintoutScreen({ year, payment, onBack, onCompleteDetails, onCom
         </Card>
       ) : null}
 
-      {payment === 'abbruch' && unlock !== 'freigeschaltet' ? <Text style={styles.hint}>{t('ausdruck.zahlungAbgebrochen')}</Text> : null}
-
-      {unlock === 'nicht-verfuegbar' ? <Text style={styles.sectionBody}>{t('ausdruck.nichtVerfuegbar')}</Text> : null}
-
-      {unlock === 'offen' && payment === 'erfolg' ? (
+      {phase === 'cancelled' ? (
+        <Text style={styles.hint} accessibilityLiveRegion="polite" testID="zahlung-abgebrochen">
+          {t('zahlung.abgebrochen')}
+        </Text>
+      ) : null}
+      {phase === 'paid' ? (
+        <Text style={styles.successNote} accessibilityLiveRegion="polite" testID="zahlung-bestaetigt">
+          {t('zahlung.bestaetigt', { year })}
+        </Text>
+      ) : null}
+      {phase === 'confirming' ? (
+        <Text style={styles.sectionBody} accessibilityLiveRegion="polite" testID="zahlung-wird-bestaetigt">
+          {t('zahlung.wirdBestaetigt')}
+        </Text>
+      ) : null}
+      {phase === 'timeout' ? (
         <View style={{ gap: theme.space.s3 }}>
-          <Text style={styles.sectionBody} accessibilityLiveRegion="polite">
-            {t('ausdruck.zahlungLaeuft')}
+          <Text style={styles.sectionBody} accessibilityLiveRegion="polite" testID="zahlung-zeit-ueberschritten">
+            {t('zahlung.zeitUeberschritten', { year })}
           </Text>
-          <Button variant="ghost" onPress={() => void status.refetch()}>
-            {t('ausdruck.aktualisieren')}
+          <Button variant="ghost" onPress={recheck} testID="zahlung-erneut-pruefen">
+            {t('zahlung.erneutPruefen')}
           </Button>
         </View>
       ) : null}
 
-      {unlock === 'offen' && payment !== 'erfolg' ? (
+      {unlock === 'nicht-verfuegbar' ? <Text style={styles.sectionBody}>{t('ausdruck.nichtVerfuegbar')}</Text> : null}
+
+      {unlock === 'offen' && !personAPrints ? (
         <View style={{ gap: theme.space.s2 }}>
-          <Button onPress={pay} disabled={checkout.isPending || locked} testID="ausdruck-bezahlen">
+          <Button onPress={pay} disabled={checkout.isPending || locked || phase === 'confirming'} testID="ausdruck-bezahlen">
             {t('ausdruck.freischalten')}
           </Button>
-          <Text style={styles.hint}>{t('ausdruck.freischaltenHinweis')}</Text>
+          <Text style={styles.hint} testID="ausdruck-preis">
+            {price ? t('zahlung.preis', { preis: price, year }) : t('zahlung.preisUnbekannt')}
+          </Text>
         </View>
       ) : null}
 

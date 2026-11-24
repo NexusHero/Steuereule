@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto'
-import type { CheckoutRequest, CheckoutSession, PaymentEvent, PaymentProvider } from './payment-provider.js'
+import type { CheckoutLookup, CheckoutRequest, CheckoutSession, PaymentEvent, PaymentProvider, Price } from './payment-provider.js'
+import type { UnlockTier } from './unlock.repository.js'
 import { resolveStripeConfig, StripePaymentProvider } from './stripe-payment-provider.js'
 
 /** The only signature the fake provider's webhook accepts (#450 D7: test unlock, never in production). */
@@ -11,15 +12,41 @@ export const FAKE_PAYMENT_SIGNATURE = 'fake-payment-signature'
  * the printout gate run unchanged. Selectable only with PAYMENT_FAKE_PROVIDER=1 outside production.
  */
 export class FakePaymentProvider implements PaymentProvider {
-  /** Both tiers (ADR-0101 §21): the tier is stored with the open unlock, so the paid event needs no price. */
-  async createCheckout(request: CheckoutRequest): Promise<CheckoutSession> {
-    return { id: `fake_cs_${request.tier ?? 'standard'}_${randomUUID()}`, url: request.successUrl }
+  /** Test prices, never shown in production (the fake refuses to start there). */
+  static readonly PRICES: Readonly<Record<UnlockTier, Price>> = {
+    standard: { amountCents: 3499, currency: 'eur' },
+    selbststaendig: { amountCents: 8999, currency: 'eur' },
   }
 
-  verifyEvent(rawData: Buffer, signature: string): PaymentEvent {
+  private readonly sessions = new Map<string, CheckoutSession>()
+  private readonly byKey = new Map<string, CheckoutSession>()
+
+  /** Both tiers (ADR-0101 §21): the tier is stored with the open unlock, so the paid event needs no price. */
+  async createCheckout(request: CheckoutRequest): Promise<CheckoutSession> {
+    const known = request.idempotencyKey ? this.byKey.get(request.idempotencyKey) : undefined
+    if (known) return known
+    const session = { id: `fake_cs_${request.tier ?? 'standard'}_${randomUUID()}`, url: request.successUrl }
+    this.sessions.set(session.id, session)
+    if (request.idempotencyKey) this.byKey.set(request.idempotencyKey, session)
+    return session
+  }
+
+  /** A session this process created stays open (its URL is the success URL); any other one is closed. */
+  async lookupCheckout(sessionId: string): Promise<CheckoutLookup> {
+    const session = this.sessions.get(sessionId)
+    return session ? { state: 'open', url: session.url } : { state: 'closed' }
+  }
+
+  async priceOf(tier: UnlockTier): Promise<Price> {
+    return FakePaymentProvider.PRICES[tier]
+  }
+
+  /** `{ sessionId }` is the paid event; `{ sessionId, kind: 'erstattet' | 'angefochten' }` takes it back. */
+  async verifyEvent(rawData: Buffer, signature: string): Promise<PaymentEvent> {
     if (signature !== FAKE_PAYMENT_SIGNATURE) throw new Error('invalid fake payment signature')
-    const parsed = JSON.parse(rawData.toString('utf8')) as { sessionId?: unknown }
+    const parsed = JSON.parse(rawData.toString('utf8')) as { sessionId?: unknown; kind?: unknown }
     if (typeof parsed.sessionId !== 'string' || parsed.sessionId === '') throw new Error('the fake paid event needs a sessionId')
+    if (parsed.kind === 'erstattet' || parsed.kind === 'angefochten') return { kind: 'zurueckgenommen', sessionId: parsed.sessionId, reason: parsed.kind }
     return { kind: 'bezahlt', sessionId: parsed.sessionId, amountCents: null }
   }
 }

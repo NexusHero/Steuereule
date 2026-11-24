@@ -47,7 +47,7 @@ import { operatorFromEnv, LEGAL_PAGES } from './src/screens/legal/texts'
 import { useAccountSession } from './src/auth/useAccountSession'
 import { followNativeAppFocus } from './src/app-focus'
 import { viewAfterInterview } from './src/screens/funnel/afterTheInterview'
-import type { RootStackParamList } from './src/navigation/routes'
+import { paymentReturnOf, type RootStackParamList } from './src/navigation/routes'
 import { formatDocumentTitle, linking } from './src/navigation/linking'
 import { ShellStateProvider, useShellState } from './src/navigation/ShellState'
 import { SubmissionGateProvider, useSubmissionGate } from './src/navigation/SubmissionGateContext'
@@ -276,11 +276,11 @@ function PrintoutRoute({ navigation, route }: NativeStackScreenProps<RootStackPa
   if (view === 'sonderausgaben') {
     return <CatalogScreen entry="sonderausgaben" taxYear={year} revisit onDone={() => setView('ausdruck')} onBack={() => setView('ausdruck')} />
   }
-  const payment = route.params?.payment
+  const payment = paymentReturnOf(route.params)
   return (
     <PrintoutScreen
       year={year}
-      {...(payment === 'erfolg' || payment === 'abbruch' ? { payment } : {})}
+      {...(payment ? { payment } : {})}
       onBack={() => (navigation.canGoBack() ? navigation.goBack() : navigation.replace('App'))}
       onCompleteDetails={() => setView('stammdaten')}
       onCompleteRiester={() => setView('sonderausgaben')}

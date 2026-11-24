@@ -128,6 +128,17 @@ export function privacy(operator: Operator | null): readonly Section[] {
   ]
 }
 
+/** What a paid unlock provides, per tier (H2-39): the withdrawal texts name both, as the checkout does. */
+const UNLOCK_SCOPE =
+  'des Formular-Ausdrucks für ein Steuerjahr, oder für Selbstständige der Ausfüllhilfe für Mein ELSTER, der Exporte und des Formular-Ausdrucks für ein Steuerjahr'
+const UNLOCK_SCOPE_SHORT = 'des Formular-Ausdrucks / der Freischaltung für Selbstständige (Ausfüllhilfe für Mein ELSTER, Exporte, Formular-Ausdruck)'
+
+/** The addressee of the sample withdrawal form: the operator with address and e-mail, never a placeholder. */
+function withdrawalAddressee(operator: Operator | null): string {
+  if (!operator) return 'den im Impressum genannten Anbieter (Name, Anschrift und E-Mail siehe Impressum)'
+  return `${operator.name}, ${operator.postalAddress.replaceAll('\n', ', ')}, E-Mail: ${operator.email}`
+}
+
 export function terms(operator: Operator | null): readonly Section[] {
   const provider = operator?.name ?? 'der im Impressum genannte Anbieter'
   return [
@@ -165,8 +176,8 @@ export function terms(operator: Operator | null): readonly Section[] {
       paragraphs: [
         `Widerrufsbelehrung: Du hast das Recht, binnen vierzehn Tagen ohne Angabe von Gründen diesen Vertrag zu widerrufen. Die Widerrufsfrist beträgt vierzehn Tage ab dem Tag des Vertragsabschlusses. Um dein Widerrufsrecht auszuüben, musst du uns (${provider}, Kontakt siehe Impressum) mittels einer eindeutigen Erklärung (z. B. per E-Mail) über deinen Entschluss informieren. Zur Wahrung der Frist reicht es, dass du die Mitteilung vor Ablauf der Frist absendest.`,
         'Folgen des Widerrufs: Wenn du diesen Vertrag widerrufst, erstatten wir dir alle Zahlungen unverzüglich, spätestens binnen vierzehn Tagen ab Eingang deines Widerrufs, über dasselbe Zahlungsmittel.',
-        'Vorzeitiges Erlöschen: Dein Widerrufsrecht erlischt, wenn wir mit der Bereitstellung des Formular-Ausdrucks begonnen haben, nachdem du vor der Zahlung ausdrücklich zugestimmt hast, dass wir vor Ablauf der Widerrufsfrist beginnen, und du bestätigt hast, dass du dadurch dein Widerrufsrecht verlierst (§ 356 Abs. 5 BGB).',
-        'Muster-Widerrufsformular: An [Anbieter laut Impressum]: Hiermit widerrufe(n) ich/wir den von mir/uns abgeschlossenen Vertrag über die Freischaltung des Formular-Ausdrucks für das Steuerjahr ___. Bestellt am ___ / Name ___ / Anschrift ___ / Datum ___.',
+        `Vorzeitiges Erlöschen: Dein Widerrufsrecht erlischt, wenn wir mit der Bereitstellung der Freischaltung begonnen haben – ${UNLOCK_SCOPE} –, nachdem du vor der Zahlung ausdrücklich zugestimmt hast, dass wir vor Ablauf der Widerrufsfrist beginnen, und du bestätigt hast, dass du dadurch dein Widerrufsrecht verlierst (§ 356 Abs. 5 BGB).`,
+        `Muster-Widerrufsformular: An ${withdrawalAddressee(operator)}: Hiermit widerrufe(n) ich/wir den von mir/uns abgeschlossenen Vertrag über die Freischaltung ${UNLOCK_SCOPE_SHORT} für das Steuerjahr ___. Bestellt am ___ / Name ___ / Anschrift ___ / Datum ___ (Unterschrift nur bei Mitteilung auf Papier).`,
       ],
     },
     {

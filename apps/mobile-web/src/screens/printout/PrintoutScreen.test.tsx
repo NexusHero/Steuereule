@@ -91,12 +91,12 @@ describe('AusdruckScreen (ADR-0050)', () => {
     await waitFor(() => expect(openCheckout).toHaveBeenCalledWith('https://checkout.stripe.com/c/pay/cs_test_1'))
   })
 
-  it('back from Stripe with "erfolg" but not yet confirmed: a waiting state, never a download', async () => {
+  it('back from Stripe with "erfolg" but not yet confirmed: a waiting state, never a download, no second payment', async () => {
     mock('offen')
     renderScreen({ payment: 'erfolg' })
-    expect(await screen.findByText('Deine Zahlung wird bestätigt. Das dauert meist nur Sekunden.')).toBeTruthy()
+    expect(await screen.findByText('Deine Zahlung wird bestätigt. Das dauert meist nur Sekunden – du musst nichts weiter tun.')).toBeTruthy()
     expect(screen.queryByTestId('ausdruck-herunterladen')).toBeNull()
-    expect(screen.queryByTestId('ausdruck-bezahlen')).toBeNull()
+    expect(screen.getByTestId('ausdruck-bezahlen').getAttribute('aria-disabled')).toBe('true')
   })
 
   it('unlocked: offers the download and the hand-in rules', async () => {

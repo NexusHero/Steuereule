@@ -68,6 +68,7 @@
   "business -> interview",
   "business -> printout",
   "business -> prisma",
+  "business -> rate-limit",
   "business -> receipt",
   "business -> unlock",
   "capabilities -> config",

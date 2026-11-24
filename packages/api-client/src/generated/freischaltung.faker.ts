@@ -14,5 +14,5 @@ import type {
 } from './freischaltung.schemas';
 
 
-export const getUnlockControllerStatusResponseMock = (overrideResponse: Partial<Extract<UnlockStatusDto, object>> = {}): UnlockStatusDto => ({status: faker.helpers.arrayElement(['freigeschaltet','offen','nicht-verfuegbar'] as const), tier: faker.helpers.arrayElement(['standard','selbststaendig'] as const), filingPath: faker.helpers.arrayElement(['papier','elster-ausfuellhilfe'] as const), ...overrideResponse})
+export const getUnlockControllerStatusResponseMock = (overrideResponse: Partial<Extract<UnlockStatusDto, object>> = {}): UnlockStatusDto => ({status: faker.helpers.arrayElement(['freigeschaltet','offen','nicht-verfuegbar'] as const), tier: faker.helpers.arrayElement(['standard','selbststaendig'] as const), filingPath: faker.helpers.arrayElement(['papier','elster-ausfuellhilfe'] as const), price: faker.helpers.arrayElement([{...{amountCents: faker.number.float({fractionDigits: 2}), currency: faker.string.alpha({length: {min: 10, max: 20}})},}, null]), ...overrideResponse})
 
