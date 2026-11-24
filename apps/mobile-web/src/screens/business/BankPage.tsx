@@ -13,9 +13,9 @@ import {
 } from '@steuereule/api-client'
 import { Choice } from './Choice'
 import { APP_NS } from '../../i18n/resources'
-import { BusinessFrame, BusinessQueryState, Note, Section } from './BusinessFrame'
-import { germanDay, personParams, signedCents, type ApiProblem } from './businessKit'
-import { attempt, queryProblem, useRefreshBusiness } from './useBusiness'
+import { BusinessFrame, BusinessQueryState, Note, ProblemNote, Section } from './BusinessFrame'
+import { germanDay, localProblem, personParams, signedCents, type ApiProblem } from './businessKit'
+import { attempt, queryProblem, useRefreshBusiness, useSingleFlight } from './useBusiness'
 import { buildMapping, EMPTY_MAPPING, MappingForm, type MappingState } from './BankMapping'
 import type { BusinessPageProps } from './BusinessScreen'
 
@@ -37,9 +37,10 @@ export function BankPage({ taxYear, person, business = 1, onBack }: BusinessPage
   const [result, setResult] = useState<BankImportResultDto | null>(null)
   const [problem, setProblem] = useState<ApiProblem | null>(null)
   const inputRef = useRef<HTMLInputElement | null>(null)
+  const flight = useSingleFlight()
 
   const loadProblem = queryProblem(query)
-  if (query.isPending || loadProblem !== null || query.data?.status !== 200) {
+  if (query.isPending || loadProblem !== null || query.data === undefined) {
     return (
       <BusinessFrame title={tr('business.seite.bank')} onBack={onBack}>
         <BusinessQueryState pending={query.isPending} problem={loadProblem} onRetry={() => void query.refetch()} />
@@ -52,7 +53,7 @@ export function BankPage({ taxYear, person, business = 1, onBack }: BusinessPage
     setProblem(null)
     setResult(null)
     const columns = source === 'eigene' ? buildMapping(mapping) : null
-    if (source === 'eigene' && columns === null) return setProblem({ status: 0, code: null, message: tr('business.bank.mapping.unvollstaendig') })
+    if (source === 'eigene' && columns === null) return setProblem(localProblem(tr('business.bank.mapping.unvollstaendig')))
     const content = await file.text()
     const data = source === 'camt053' ? { format: 'camt053' as const, content } : columns !== null ? { format: 'csv' as const, content, mapping: columns } : { format: 'csv' as const, content, preset: source as BankImportDtoPreset }
     const outcome = await attempt(() => importBank.mutateAsync({ jahr: taxYear, data, ...(params ? { params } : {}) }))
@@ -98,10 +99,10 @@ export function BankPage({ taxYear, person, business = 1, onBack }: BusinessPage
               onChange={(event) => {
                 const file = event.target.files?.[0]
                 event.target.value = ''
-                if (file) void onFile(file)
+                if (file) void flight.run(() => onFile(file))
               }}
             />
-            <Button onPress={() => inputRef.current?.click()} testID="bank-datei-waehlen">
+            <Button onPress={() => inputRef.current?.click()} disabled={flight.busy} testID="bank-datei-waehlen">
               {tr('business.bank.dateiWaehlen')}
             </Button>
           </>
@@ -113,20 +114,20 @@ export function BankPage({ taxYear, person, business = 1, onBack }: BusinessPage
             {tr('business.bank.ergebnis', { added: result.added, duplicates: result.duplicates, outside: result.outsideYear })}
           </Text>
         ) : null}
-        {problem !== null ? <Note tone="error" testID="business-speichern-fehler">{problem.message ?? tr('business.speichernFehler')}</Note> : null}
+        <ProblemNote problem={problem} testID="business-speichern-fehler" />
       </Section>
 
       <Section title={tr('business.bank.vorschlaege', { count: open.length })}>
         {open.length === 0 ? <Note testID="bank-leer">{tr('business.bank.leer')}</Note> : null}
         {open.map((row) => (
-          <BankRow key={row.id} row={row} onTake={(data) => void take(row, data)} onSkip={() => void skip(row)} />
+          <BankRow key={row.id} row={row} busy={flight.busy} onTake={(data) => void flight.run(() => take(row, data))} onSkip={() => void flight.run(() => skip(row))} />
         ))}
       </Section>
     </BusinessFrame>
   )
 }
 
-function BankRow({ row, onTake, onSkip }: { readonly row: BankTransactionDto; readonly onTake: (data: { account?: string; taxKey?: string; remember?: boolean }) => void; readonly onSkip: () => void }) {
+function BankRow({ row, busy, onTake, onSkip }: { readonly row: BankTransactionDto; readonly busy: boolean; readonly onTake: (data: { account?: string; taxKey?: string; remember?: boolean }) => void; readonly onSkip: () => void }) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const [account, setAccount] = useState('')
@@ -155,12 +156,12 @@ function BankRow({ row, onTake, onSkip }: { readonly row: BankTransactionDto; re
       </Choice>
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.space.s2, marginTop: t.space.s2 }}>
         <View style={{ flex: 1 }}>
-          <Button disabled={suggestion === null && account.trim() === ''} onPress={() => onTake({ ...(suggestion === null ? { account: account.trim() } : {}), remember })} testID={`bank-buchen-${row.id}`}>
+          <Button disabled={busy || (suggestion === null && account.trim() === '')} onPress={() => onTake({ ...(suggestion === null ? { account: account.trim() } : {}), remember })} testID={`bank-buchen-${row.id}`}>
             {tr('business.bank.buchen')}
           </Button>
         </View>
         <View style={{ flex: 1 }}>
-          <Button variant="ghost" onPress={onSkip} testID={`bank-ignorieren-${row.id}`}>
+          <Button variant="ghost" disabled={busy} onPress={onSkip} testID={`bank-ignorieren-${row.id}`}>
             {tr('business.bank.ignorieren')}
           </Button>
         </View>

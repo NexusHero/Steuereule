@@ -4,9 +4,9 @@ import { useTranslation } from 'react-i18next'
 import { Button, useTheme } from '@steuereule/ui'
 import { useBusinessControllerCarryForward, useBusinessControllerClosing } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
-import { BusinessFrame, BusinessQueryState, Figure, Note, Section } from './BusinessFrame'
+import { BusinessFrame, BusinessQueryState, Figure, Note, ProblemNote, Section } from './BusinessFrame'
 import { personParams, plainCents, signedCents, signedEuro, type ApiProblem } from './businessKit'
-import { attempt, queryProblem, useRefreshBusiness } from './useBusiness'
+import { attempt, queryProblem, useRefreshBusiness, useSingleFlight } from './useBusiness'
 import type { BusinessPageProps } from './BusinessScreen'
 
 /** The year's result: EÜR totals and profit, or GuV and Bilanz with the opening balance carried into the next year. */
@@ -18,10 +18,11 @@ export function ClosingPage({ taxYear, person, business = 1, onBack }: BusinessP
   const carry = useBusinessControllerCarryForward()
   const refresh = useRefreshBusiness(taxYear)
   const [problem, setProblem] = useState<ApiProblem | null>(null)
+  const flight = useSingleFlight()
   const [carried, setCarried] = useState(false)
 
   const loadProblem = queryProblem(query)
-  if (query.isPending || loadProblem !== null || query.data?.status !== 200) {
+  if (query.isPending || loadProblem !== null || query.data === undefined) {
     return (
       <BusinessFrame title={tr('business.seite.abschluss')} onBack={onBack}>
         <BusinessQueryState pending={query.isPending} problem={loadProblem} onRetry={() => void query.refetch()} />
@@ -68,9 +69,9 @@ export function ClosingPage({ taxYear, person, business = 1, onBack }: BusinessP
             <Figure label={tr('business.abschluss.aktiva')} value={plainCents(sheet.bilanz?.balanceSheet.totalAktiva ?? 0)} testID="abschluss-aktiva" />
             <Figure label={tr('business.abschluss.passiva')} value={plainCents(sheet.bilanz?.balanceSheet.totalPassiva ?? 0)} testID="abschluss-passiva" />
           </Section>
-          {problem !== null ? <Note tone="error" testID="business-speichern-fehler">{problem.message ?? tr('business.speichernFehler')}</Note> : null}
+          <ProblemNote problem={problem} testID="business-speichern-fehler" />
           {carried ? <Note testID="abschluss-uebertragen">{tr('business.abschluss.uebertragen', { year: taxYear + 1 })}</Note> : null}
-          <Button disabled={broken} onPress={() => void carryForward()} testID="abschluss-eroeffnung">
+          <Button disabled={broken || flight.busy} onPress={() => void flight.run(carryForward)} testID="abschluss-eroeffnung">
             {tr('business.abschluss.uebertragenButton', { year: taxYear + 1 })}
           </Button>
         </>

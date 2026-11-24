@@ -4142,7 +4142,9 @@
       "ohneName": "Betrieb {{nummer}}",
       "neu": "+ Weiterer Betrieb",
       "name": "Wie heißt der Betrieb?",
-      "anlegen": "Betrieb anlegen"
+      "anlegen": "Betrieb anlegen",
+      "unbekannt": "Den Betrieb {{nummer}} gibt es in diesem Jahr nicht.",
+      "zumErsten": "Zum ersten Betrieb"
     },
     "kfz": {
       "hinweis": "Nutzt du ein Fahrzeug aus dem Betrieb auch privat, ist der private Anteil eine Entnahme. Die App rechnet ihn und bucht ihn auf Wunsch zum 31.12.",

@@ -4142,7 +4142,9 @@
       "ohneName": "Business {{nummer}}",
       "neu": "+ Another business",
       "name": "What is the business called?",
-      "anlegen": "Add business"
+      "anlegen": "Add business",
+      "unbekannt": "Business {{nummer}} does not exist in this year.",
+      "zumErsten": "To the first business"
     },
     "kfz": {
       "hinweis": "If you also use a business vehicle privately, the private share is a withdrawal. The app computes it and books it on 31 Dec if you want.",

@@ -12,8 +12,9 @@ import {
 } from '@steuereule/api-client'
 import { Choice } from './Choice'
 import { APP_NS } from '../../i18n/resources'
-import { BusinessFrame, BusinessQueryState, Note, Section } from './BusinessFrame'
-import { personParams, type ApiProblem } from './businessKit'
+import { BusinessFrame, BusinessQueryState, Note, ProblemNote, Section } from './BusinessFrame'
+import { parseGermanAmount } from '../shared/germanNumber'
+import { localProblem, personParams, type ApiProblem } from './businessKit'
 import { attempt, queryProblem, useRefreshBusiness } from './useBusiness'
 import type { BusinessPageProps } from './BusinessScreen'
 
@@ -41,7 +42,7 @@ export function ProfilePage({ taxYear, person, business = 1, onBack, onOpenPage 
   const [startDate, setStartDate] = useState<string | null>(null)
 
   const loadProblem = queryProblem(query)
-  if (query.isPending || loadProblem !== null || query.data?.status !== 200) {
+  if (query.isPending || loadProblem !== null || query.data === undefined) {
     return (
       <BusinessFrame title={tr('business.seite.profil')} onBack={onBack}>
         <BusinessQueryState pending={query.isPending} problem={loadProblem} onRetry={() => void query.refetch()} />
@@ -58,6 +59,8 @@ export function ProfilePage({ taxYear, person, business = 1, onBack, onOpenPage 
   }
 
   function answer(id: QuestionId, value: boolean) {
+    // The answers are replaced whole: a second tap waits for the first, so none builds on a stale set (NC-15).
+    if (saveProfile.isPending) return
     const base = Object.fromEntries(QUESTIONS.map((q) => [q, answerOf(profile, q) ?? false]))
     void save({ professionAnswers: { ...profile.professionAnswers, ...base, [id]: value } })
   }
@@ -67,8 +70,7 @@ export function ProfilePage({ taxYear, person, business = 1, onBack, onOpenPage 
     setLookup(null)
     try {
       const response = await businessControllerHebesatz(taxYear, { gemeinde, ...params })
-      if (response.status === 200) setLookup(response.data)
-      else setLookupFailed(true)
+      setLookup(response.data)
     } catch {
       setLookupFailed(true)
     }
@@ -88,7 +90,7 @@ export function ProfilePage({ taxYear, person, business = 1, onBack, onOpenPage 
 
   return (
     <BusinessFrame title={tr('business.seite.profil')} onBack={onBack} testID="selbststaendig-profil">
-      {problem !== null ? <Note tone="error" testID="business-speichern-fehler">{problem.message ?? tr('business.speichernFehler')}</Note> : null}
+      <ProblemNote problem={problem} testID="business-speichern-fehler" />
 
       <Section title={tr('business.profil.artTitel')}>
         {QUESTIONS.map((id) => (
@@ -165,7 +167,7 @@ export function ProfilePage({ taxYear, person, business = 1, onBack, onOpenPage 
         </Feld>
         {profile.vatMethod === 'ist' ? (
           <Feld label={tr('business.profil.buchfuehrungBefreit')}>
-            {yesNo(profile.vatPeriodFacts.exemptFromBookkeeping === true, (v) => void save({ vatPeriodFacts: { ...profile.vatPeriodFacts, exemptFromBookkeeping: v } }), 'profil-148')}
+            {yesNo(profile.vatPeriodFacts.exemptFromBookkeeping === true, (v) => void save({ vatPeriodFacts: { exemptFromBookkeeping: v } }), 'profil-148')}
           </Feld>
         ) : null}
       </Section>
@@ -188,14 +190,17 @@ export function ProfilePage({ taxYear, person, business = 1, onBack, onOpenPage 
             <Input
               type="numeric"
               mono
-              value={multiplier ?? (profile.multiplierOverride === null ? '' : String(profile.multiplierOverride))}
+              value={multiplier ?? (profile.multiplierOverride === null ? '' : String(profile.multiplierOverride).replace('.', ','))}
               onChange={setMultiplier}
               placeholder="400"
               accessibilityLabel={tr('business.profil.hebesatzKorrektur')}
               onBlur={() => {
                 if (multiplier === null) return
-                const value = Number(multiplier.replace(',', '.'))
-                void save({ multiplierOverride: multiplier.trim() === '' ? null : Number.isFinite(value) ? value : null })
+                if (multiplier.trim() === '') return void save({ multiplierOverride: null })
+                const value = parseGermanAmount(multiplier)
+                // What is no number is said, never saved as „no correction“ (WEB-46).
+                if (value === null) return setProblem(localProblem(tr('business.erfassung.ungueltig')))
+                void save({ multiplierOverride: value })
               }}
               testID="profil-hebesatz-korrektur"
             />

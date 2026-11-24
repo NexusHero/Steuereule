@@ -16,7 +16,7 @@ import { uploadBusinessReceipt } from '../../lib/receipts/uploadBusinessReceipt'
 import { BUSINESS_RECEIPT_ACCEPT, ReceiptPickerButton } from '../shared/ReceiptPickerButton'
 import { BookingDraftCard } from '../advisor/chat/BookingDraftCard'
 import { makeStyles } from '../advisor/AdvisorChatPanel.styles'
-import { problemOf } from './businessKit'
+import { problemOf, useProblemText } from './businessKit'
 import { useRefreshBusiness } from './useBusiness'
 
 type Direction = 'ausgabe' | 'einnahme'
@@ -33,13 +33,14 @@ export function BusinessReceiptUpload({ taxYear, business = 1, onlyForSelfEmploy
   const capability = useSelfEmploymentCapability()
   const interview = useInterviewControllerGetInterview(taxYear, undefined, { query: { enabled: onlyForSelfEmployed } })
   const refresh = useRefreshBusiness(taxYear)
+  const problemText = useProblemText()
   const [direction, setDirection] = useState<Direction>('ausgabe')
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
   const [draft, setDraft] = useState<AdvisorActionProposal | null>(null)
 
   if (onlyForSelfEmployed) {
-    const answers = interview.data?.status === 200 ? interview.data.data.answers : {}
+    const answers = interview.data?.data.answers ?? {}
     if (!capability.enabled || !declaresSelfEmployment(answers)) return null
   }
 
@@ -56,8 +57,12 @@ export function BusinessReceiptUpload({ taxYear, business = 1, onlyForSelfEmploy
   }
 
   async function run(call: typeof advisorControllerApplyAction, status: 'applied' | 'pending', actionId: string) {
-    const response = await call(taxYear, actionId)
-    if (response.status !== 200) throw new Error(problemOf(response).message ?? tr('business.speichernFehler'))
+    try {
+      await call(taxYear, actionId)
+    } catch (error) {
+      // The card shows the message: the API's German reason of a refusal, else the shared wording (WEB-44).
+      throw new Error(problemText(problemOf(error)), { cause: error })
+    }
     setDraft((d) => (d === null ? d : { ...d, status }))
     refresh()
   }

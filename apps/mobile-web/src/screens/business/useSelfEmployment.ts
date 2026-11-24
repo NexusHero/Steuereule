@@ -18,8 +18,9 @@ export interface SelfEmploymentCapability {
 }
 
 function enabledIn(data: unknown): boolean {
-  const body = data as { readonly status?: number; readonly data?: { readonly selbststaendig?: boolean } | null } | null | undefined
-  return body?.status === 200 && body.data?.selbststaendig === true
+  // The generated client resolves with success answers only (WEB-28): a failure never reaches here.
+  const body = data as { readonly data?: { readonly selbststaendig?: boolean } | null } | null | undefined
+  return body?.data?.selbststaendig === true
 }
 
 /**

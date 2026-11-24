@@ -1,11 +1,60 @@
-import type { ReactNode } from 'react'
+import { createContext, useContext, type ReactNode } from 'react'
 import { ScrollView, Text, View, type TextStyle, type ViewStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
-import { Card, useBreakpoint, useTheme, type UiTheme } from '@steuereule/ui'
+import { Button, Card, useBreakpoint, useTheme, type UiTheme } from '@steuereule/ui'
 import { APP_NS } from '../../i18n/resources'
+import { classifyApiFailure } from '../../net/apiFailure'
 import { BackButton } from '../shared/BackButton'
 import { ErrorState, LoadingState } from '../shared/ScreenState'
-import type { ApiProblem } from './businessKit'
+import { useProblemText, type ApiProblem } from './businessKit'
+
+/** The way to an account when the API answers ACCOUNT_REQUIRED (a session lost to a guest one, WEB-44). */
+export interface BusinessAccountActions {
+  readonly onSignIn?: () => void
+  readonly onCreateAccount?: () => void
+}
+
+export const BusinessAccountContext = createContext<BusinessAccountActions>({})
+
+function needsAccount(problem: ApiProblem): boolean {
+  return problem.error !== null && classifyApiFailure(problem.error).kind === 'account-required'
+}
+
+/** Sign in or create an account, when the failure says an account is needed and the route offers the way. */
+function AccountButtons({ problem }: { readonly problem: ApiProblem }) {
+  const { t: tr } = useTranslation(APP_NS)
+  const t = useTheme()
+  const { onSignIn, onCreateAccount } = useContext(BusinessAccountContext)
+  if (!needsAccount(problem) || (onSignIn === undefined && onCreateAccount === undefined)) return null
+  return (
+    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.space.s2, marginVertical: t.space.s2 }}>
+      {onSignIn !== undefined ? (
+        <Button onPress={onSignIn} testID="business-anmelden">
+          {tr('apiFehler.signIn')}
+        </Button>
+      ) : null}
+      {onCreateAccount !== undefined ? (
+        <Button variant="ghost" onPress={onCreateAccount} testID="business-konto-anlegen">
+          {tr('apiFehler.createAccount')}
+        </Button>
+      ) : null}
+    </View>
+  )
+}
+
+/** A refused write or a failed secondary read, in the shared wording (never the raw server text, WEB-44). */
+export function ProblemNote({ problem, testID }: { readonly problem: ApiProblem | null; readonly testID?: string }) {
+  const text = useProblemText()
+  if (problem === null) return null
+  return (
+    <>
+      <Note tone="error" {...(testID !== undefined ? { testID } : {})}>
+        {text(problem)}
+      </Note>
+      <AccountButtons problem={problem} />
+    </>
+  )
+}
 
 /** The frame every page of the self-employed area shares: back button, title, one calm column. */
 export function BusinessFrame({ title, onBack, testID, children }: { readonly title: string; readonly onBack: () => void; readonly testID?: string; readonly children: ReactNode }) {
@@ -26,21 +75,26 @@ export function BusinessFrame({ title, onBack, testID, children }: { readonly ti
   )
 }
 
-/** Loading and failure of a page's first read: the 403 of the switch is named, not hidden. */
+/** Loading and failure of a page's first read: the 403 of the switch is named, not hidden; a lost account leads to the sign-in. */
 export function BusinessQueryState({ pending, problem, onRetry }: { readonly pending: boolean; readonly problem: ApiProblem | null; readonly onRetry: () => void }) {
   const bp = useBreakpoint()
   const { t: tr } = useTranslation(APP_NS)
+  const text = useProblemText()
+  const account = useContext(BusinessAccountContext)
   if (pending) return <LoadingState bp={bp} label={tr('business.laden')} />
   if (problem === null) return null
   const forbidden = problem.status === 403
   return (
-    <ErrorState
-      bp={bp}
-      heading={forbidden ? tr('business.gesperrt.titel') : tr('business.ladefehler.titel')}
-      message={forbidden ? tr('business.gesperrt.text') : (problem.message ?? tr('business.ladefehler.text'))}
-      {...(forbidden ? {} : { retryLabel: tr('business.ladefehler.nochmal'), onRetry })}
-      testID="business-fehler"
-    />
+    <>
+      <ErrorState
+        bp={bp}
+        heading={forbidden ? tr('business.gesperrt.titel') : tr('business.ladefehler.titel')}
+        message={forbidden ? tr('business.gesperrt.text') : text(problem)}
+        {...(forbidden || (needsAccount(problem) && account.onSignIn !== undefined) ? {} : { retryLabel: tr('business.ladefehler.nochmal'), onRetry })}
+        testID="business-fehler"
+      />
+      <AccountButtons problem={problem} />
+    </>
   )
 }
 

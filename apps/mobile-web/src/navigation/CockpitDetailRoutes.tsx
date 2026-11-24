@@ -12,6 +12,7 @@ import { PensionerScreen } from '../screens/pension/PensionerScreen'
 import { BusinessScreen, isBusinessPage, parentPage } from '../screens/business/BusinessScreen'
 import { OfficialFormScreen } from '../screens/printout/OfficialFormScreen'
 import type { Screen } from '@steuereule/core'
+import { rememberReturnTo } from '../screens/funnel/sessionMemory'
 import { useShellState } from './ShellState'
 import { RequiresAccount } from './RequiresAccount'
 import { CockpitSheet } from './CockpitSheet'
@@ -187,6 +188,11 @@ export function OfficialFormRoute({ navigation, route }: Props<'OfficialForm'>) 
 
 export function BusinessRoute({ navigation, route }: Props<'Business'>) {
   const year = useYearGuard(route.params?.year, navigation)
+  const { onLogin, onRegister } = useShellState()
+  // WEB-44: a request that answers ACCOUNT_REQUIRED offers the sign-in, and comes back to this page after it.
+  const backHere = () => {
+    if (typeof window !== 'undefined') rememberReturnTo(`${window.location.pathname}${window.location.search}`)
+  }
   if (year === null) return null
   const person = route.params?.person === 'B' ? 'B' : 'A'
   // ADR-0101 §22: which business of the person; the first unless the link names another.
@@ -202,6 +208,16 @@ export function BusinessRoute({ navigation, route }: Props<'Business'>) {
         business={business}
         page={page}
         payment={route.params?.zahlung}
+        account={{
+          onSignIn: () => {
+            backHere()
+            onLogin()
+          },
+          onCreateAccount: () => {
+            backHere()
+            onRegister()
+          },
+        }}
         onOpenPage={(next) => navigation.navigate('Business', { year, ...(next ? { page: next } : {}), ...own })}
         onBack={() => {
           if (!page) return home()
