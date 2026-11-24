@@ -99,7 +99,7 @@ describe('unlock page: the price before the redirect (WEB-16)', () => {
     useElsterForms()
     server.use(http.get('*/v1/steuerjahre/2025/freischaltung', () => HttpResponse.json({ status: 'offen', tier: 'selbststaendig', price: { amountCents: 8999, currency: 'eur' } })))
     renderBusiness('freischalten')
-    await waitFor(() => expect(screen.getByTestId('checkout-preis').textContent?.replace(/ /g, ' ')).toBe('Preis: 89,99 € einmalig für 2025, inklusive Umsatzsteuer.'))
+    await waitFor(() => expect(screen.getByTestId('checkout-preis').textContent?.replace(/ /g, ' ')).toBe('Preis: 89,99 € einmalig für 2025.'))
   })
 
   it('already paid: says so and leads to the fill-in help instead of a second payment', async () => {

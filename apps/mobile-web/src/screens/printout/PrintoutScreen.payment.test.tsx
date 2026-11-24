@@ -118,7 +118,7 @@ describe('printout: the price before the redirect (WEB-16)', () => {
     statusSequence({ status: 'offen', price: { amountCents: 3499, currency: 'eur' } })
     renderScreen()
     // Intl writes a no-break space between amount and sign.
-    expect((await screen.findByTestId('ausdruck-preis')).textContent?.replace(/\u00a0/g, ' ')).toBe('Preis: 34,99 € einmalig für 2025, inklusive Umsatzsteuer.')
+    expect((await screen.findByTestId('ausdruck-preis')).textContent?.replace(/\u00a0/g, ' ')).toBe('Preis: 34,99 € einmalig für 2025.')
   })
 
   it('without a price says where it will be shown, and promises no number', async () => {
