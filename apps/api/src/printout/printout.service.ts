@@ -214,9 +214,10 @@ export class PrintoutService {
     if (link?.filingType === 'zusammen' && link.personAUserId !== userId) {
       return { values: {}, instances: {}, missing: ['personADruckt'], missingChildFields: [] }
     }
-    const values = await this.collectValues(userId, year)
     const personBUserId = link?.filingType === 'zusammen' && link.personBUserId ? link.personBUserId : null
-    return { ...values, missing: [...values.missing, ...(await this.unconfirmed(userId, year, personBUserId))] }
+    // Independent reads, one round (OPS-4).
+    const [values, unconfirmed] = await Promise.all([this.collectValues(userId, year), this.unconfirmed(userId, year, personBUserId)])
+    return { ...values, missing: [...values.missing, ...unconfirmed] }
   }
 
   private async collectValues(userId: string, year: number) {
