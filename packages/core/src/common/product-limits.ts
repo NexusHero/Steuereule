@@ -83,8 +83,16 @@ export function formatCount(count: number): string {
   return count.toLocaleString('de-DE')
 }
 
-/** „Google (Gemini), Anthropic (Claude) und OpenAI (GPT)“. */
+function joinGerman(items: readonly string[], conjunction: 'und' | 'oder'): string {
+  return items.length <= 1 ? items.join('') : `${items.slice(0, -1).join(', ')} ${conjunction} ${items.at(-1)}`
+}
+
+/** „Google (Gemini, USA), Anthropic (Claude, USA) und OpenAI (GPT, USA)“: who receives what the owl sends. */
 export function modelProviderList(providers: readonly ModelProvider[] = MODEL_PROVIDERS): string {
-  const names = providers.map((p) => `${p.company} (${p.product})`)
-  return names.length <= 1 ? names.join('') : `${names.slice(0, -1).join(', ')} und ${names.at(-1)}`
+  return joinGerman(providers.map((p) => `${p.company} (${p.product}, ${p.country})`), 'und')
+}
+
+/** „Google, Anthropic oder OpenAI“. */
+export function modelCompanyList(providers: readonly ModelProvider[] = MODEL_PROVIDERS): string {
+  return joinGerman(providers.map((p) => p.company), 'oder')
 }

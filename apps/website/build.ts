@@ -17,6 +17,7 @@ import {
   formatGigabytes,
   formatMegabytes,
   getTaxYearParameters,
+  modelCompanyList,
 } from '@steuereule/core'
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url))
@@ -38,11 +39,6 @@ function escapeHtml(text: string): string {
   return text.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;')
 }
 
-function companyList(): string {
-  const names = MODEL_PROVIDERS.map((p) => p.company)
-  return `${names.slice(0, -1).join(', ')} oder ${names.at(-1)}`
-}
-
 /** The values the template's `{{name}}` placeholders take; text values are HTML-escaped. */
 export function siteValues(appOrigin: string): Readonly<Record<string, string>> {
   const countries = [...new Set(MODEL_PROVIDERS.map((p) => p.country))].join(', ')
@@ -53,7 +49,7 @@ export function siteValues(appOrigin: string): Readonly<Record<string, string>> 
     hostingProvider: HOSTING.provider,
     hostingRegion: HOSTING.region,
     hostingCountry: HOSTING.country,
-    modelProviders: companyList(),
+    modelProviders: modelCompanyList(),
     modelCountries: countries,
     guestDataDays: String(RETENTION.guestDataDays),
     receiptFiles: formatCount(PRODUCT_LIMITS.receiptFilesPerAccount),

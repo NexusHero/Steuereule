@@ -77,6 +77,8 @@ describe('EulenModusScreen', () => {
     it('opens on the chat itself: the greeting, the quick starts and the composer, with no tab to switch to', () => {
       renderScreen()
       expect(screen.getByTestId('advisor-empty-state').textContent).toContain('Womit kann die Eule helfen?')
+      // Before the first message leaves: who receives it and what is removed first (WEB-25).
+      expect(screen.getByTestId('advisor-privacy-notice').textContent).toContain('Google, Anthropic oder OpenAI')
       // Four quick starts under the centred input; the rest wait behind "Mehr …".
       expect(screen.queryByText('Fortbildung & Reisekosten klären')).toBeNull()
       fireEvent.click(screen.getByTestId('advisor-chips-more'))
@@ -286,7 +288,10 @@ describe('EulenModusScreen', () => {
       expect(screen.queryByTestId('eule-privacy-text')).toBeNull()
       fireEvent.click(screen.getByTestId('eule-privacy-badge'))
       const text = screen.getByTestId('eule-privacy-text').textContent ?? ''
-      expect(text).toContain('keine Namen, Steuer-IDs oder IBANs')
+      // True with and without the consent, and for the turbo mode (LEGAL-3).
+      expect(text).toContain('Ohne deine Einwilligung „Eule und persönliche Daten“ entfernen wir vorher Namen, Steuer-IDs, IBANs')
+      expect(text).toContain('mit Einwilligung gehen sie mit')
+      expect(text).toContain('mit Turbo-Modus übernimmt die Eule sie')
       // Honest about what does go to the provider (ADR-0032).
       expect(text).toContain('Zahlen aus deiner Akte')
       expect(text).toContain('verschlüsselt gespeichert')

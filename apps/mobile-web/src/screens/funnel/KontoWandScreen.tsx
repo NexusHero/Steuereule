@@ -1,6 +1,7 @@
 import { ScrollView, View, Text, type ViewStyle, type TextStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { Button, Card, Chip, Sticker, useTheme, useBreakpoint, type UiTheme } from '@steuereule/ui'
+import { RETENTION } from '@steuereule/core'
 import { APP_NS } from '../../i18n/resources'
 
 export type FunnelPath = 'angestellte' | 'rente' | 'ch'
@@ -61,7 +62,7 @@ export function AccountWallScreen({ path, onRegister, onLogin, onLater }: Accoun
       <View style={styles.laterRow}>
         <Chip onPress={onLater} testID="konto-wand-spaeter">{tr('funnel.kontoWand.later')}</Chip>
       </View>
-      <Text style={styles.note}>{tr('funnel.kontoWand.note')}</Text>
+      <Text style={styles.note}>{tr('funnel.kontoWand.note', { days: RETENTION.guestDataDays })}</Text>
     </ScrollView>
   )
 }
