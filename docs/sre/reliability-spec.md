@@ -27,7 +27,7 @@ $$\text{Error Budget} = 100\% - 99.9\% = 0.1\% \quad (\approx 43.2 \text{ minute
 ### Action Triggers
 
 * **Burn Rate $> 2\times$ (Alerting):**
-  * PagerDuty / SRE notification to on-call engineer.
+  * Email alert from Google Cloud Monitoring (`infra/gcp/monitoring.tf`, `alert_email`). There is no paging tool and no on-call rotation; the alerts and the first checks are in [incident-runbook.md](incident-runbook.md). The burn-rate alert itself is not built: the policies that exist are API uptime, a 5xx ratio above 5 percent, container crashes, unhandled errors, and Cloud SQL disk and CPU.
   * Triage of root cause (database pool starvation, memory leak, upstream payment gateway).
 * **50% of Monthly Budget Consumed:**
   * Engineering velocity review: non-critical feature pull requests require SRE approval.
@@ -91,12 +91,14 @@ PostgreSQL connections consume server-side memory ($\approx 10\,\text{MB}$ per b
 | **Recovery Time Objective (RTO)** | **$< 15\text{ minutes}$** | **Immutable Declarative IaC:** Complete infrastructure defined in OpenTofu (`infra/`). Cold-region provisioning (Cloud Run service + Cloud SQL restore from PITR snapshot) executes within 12 minutes automated via CI/CD. |
 
 ### Disaster Recovery Drills (Operational Readiness)
-* **Frequency:** Bi-annual scheduled recovery exercise in staging environment.
+* **Frequency:** Bi-annual scheduled recovery exercise in the staging environment (a separate GCP project from production, ADR-0109). No exercise has been run yet.
 * **Test Procedure:** Automated drop of staging database followed by point-in-time recovery to $T_{-15\text{min}}$, running post-restore data integrity validation against test tenant fixtures.
 
 ---
 
 ## 6. Actionable Incident Response & Operational Runbooks (Playbooks)
+
+> Playbooks A and B describe burn-rate alerts that are not configured yet (see section 2); the first steps for the alerts that exist are in [incident-runbook.md](incident-runbook.md).
 
 ### Playbook A: Multi-Window Fast Burn-Rate Alert ($14.4\times$ over 1 Hour)
 *Trigger:* $2\%$ of the monthly error budget consumed within 60 minutes ($\approx 50$ consecutive $5\text{xx}$ errors or severe latency spikes).
@@ -113,7 +115,7 @@ PostgreSQL connections consume server-side memory ($\approx 10\,\text{MB}$ per b
    - If the spike started immediately following a new deployment, initiate instant traffic roll-back:
      ```bash
      gcloud run services update-traffic steuereule-api \
-       --region=europe-west3 \
+       --region=europe-west4 \
        --to-revisions=PREVIOUS_KNOWN_GOOD_REVISION=100
      ```
 

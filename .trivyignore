@@ -1,7 +1,9 @@
 # .trivyignore — Trivy security scan suppressions
 # Governs accepted trade-offs documented in ADRs / architecture decisions.
 
-# Cloud SQL Beta deployment uses public IP with SSL ENCRYPTED_ONLY (no VPC connector in beta)
+# Cloud SQL has a public IPv4 without authorized networks, SSL ENCRYPTED_ONLY, reachable only through the
+# IAM-checked Cloud SQL connector. A private IP needs a VPC peering and serverless egress for the API
+# and the migrate job: a change of its own, not done in ADR-0109.
 AVD-GCP-0017
 GCP-0017
 
@@ -11,7 +13,13 @@ KSV-0014
 AVD-KSV-0118
 KSV-0118
 
-# Build-time Go toolchain (esbuild/tsc) and dev-only dependencies in container build stage
+# TO CLEAN UP with the first CI scan of the multi-stage image (ADR-0109). These entries were added
+# when the API image shipped every dev dependency and the build toolchain (esbuild, the TypeScript
+# Go port). The runtime image now carries production dependencies only, so most of them should no
+# longer match anything. Which ones still do cannot be told without a scan: run
+#   trivy image --severity HIGH,CRITICAL steuereule-api:ci
+# with this file removed, then re-add only what is reported, each with its reason on the line above.
+# Until then they stay, and this comment replaces the earlier claim that they are build-time only.
 CVE-2023-45288
 CVE-2024-24790
 CVE-2024-34156
@@ -119,7 +127,7 @@ CVE-2026-93749
 CVE-2026-97031
 CVE-2026-97054
 
-# Node/pnpm dependency GHSA advisories in container runtime
+# Node/pnpm dependency GHSA advisories: same clean-up as above (re-check against the runtime image scan).
 GHSA-2x7j-588g-ccc2
 GHSA-5p4m-2wfm-xmqj
 GHSA-72r4-9c5j-mj57

@@ -41,6 +41,10 @@ RUN pnpm --filter @steuereule/mobile-web exec expo export --platform web --clear
 # this container never carries a second, drifting web-server implementation (nginx.conf,
 # a `serve`/`http-server` package) the e2e harness knows nothing about.
 FROM node:24-bookworm-slim AS runtime
+# The same API origin the bundle was built with, now for the Content-Security-Policy (connect-src) of
+# the static server: one build arg feeds both, they cannot drift apart.
+ARG EXPO_PUBLIC_API_BASE_URL
+ENV API_ORIGIN=${EXPO_PUBLIC_API_BASE_URL}
 WORKDIR /app
 COPY --from=build --chown=node:node /repo/apps/mobile-web/dist ./dist
 COPY --from=build --chown=node:node /repo/e2e/cross-origin/static-server.mjs ./static-server.mjs

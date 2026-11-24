@@ -53,6 +53,8 @@ x-api-env: &api-env
   GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
   GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
   PORT: ${API_PORT:-3000}
+  # The Redis of the base compose file, over the compose network (not the host-published port).
+  REDIS_URL: redis://redis:6379
   # KI-Modell-Schlüssel für Steuerberater-Assistenten (Eulen-Modus, ADR-0066)
   ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
   GEMINI_API_KEY: ${GEMINI_API_KEY:-}
@@ -67,13 +69,10 @@ services:
     build:
       context: .
       dockerfile: apps/api/Dockerfile
-    # Same image as `api` below (one Dockerfile, two roles — see that file's own CMD
-    # comment) — overrides the default CMD to run the migration and exit, rather than
-    # boot the server. `cd /repo` because the image's own WORKDIR is apps/api/ (where the
-    # server CMD needs to run from); pnpm's workspace `--filter` resolution walks upward
-    # to find pnpm-workspace.yaml regardless, but running from the actual workspace root
-    # avoids relying on that upward walk for a step this whole stack's boot order depends on.
-    command: ['sh', '-c', 'cd /repo && pnpm --filter @steuereule/api migrate:deploy']
+    # Same image as `api` below (one Dockerfile, two roles): overrides the default CMD to run the
+    # migrations and exit. Plain node, no pnpm: the runtime image has the Prisma CLI and the schema but
+    # not the workspace tooling, and its user cannot write to /repo.
+    command: ['sh', '-c', 'cd /repo/apps/api && node scripts/migrate-deploy.mjs']
     environment: *api-env
     depends_on:
       postgres:
@@ -91,6 +90,8 @@ services:
         condition: service_completed_successfully
       mailpit:
         condition: service_started
+      redis:
+        condition: service_healthy
 
   web:
     build:

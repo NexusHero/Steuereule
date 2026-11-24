@@ -1,10 +1,20 @@
 locals {
+  # One GCP project per environment (staging, production; "beta" is the first stack, which keeps
+  # its resource names and now serves as staging). Names that live inside a project carry the
+  # environment only where a human reads them (Cloud SQL, budget); everything else is already
+  # scoped by the project.
+  # The OIDC token of a GitHub job bound to an environment carries `environment`: the deployer of
+  # a project can only be impersonated from the GitHub environments listed for it.
+  github_environment_condition = join(" || ", [for env in var.github_environments : "assertion.environment == \"${env}\""])
+
   services = [
     "artifactregistry.googleapis.com",
     "billingbudgets.googleapis.com",
     "cloudresourcemanager.googleapis.com",
     "iam.googleapis.com",
     "iamcredentials.googleapis.com",
+    "logging.googleapis.com",
+    "monitoring.googleapis.com",
     "run.googleapis.com",
     "secretmanager.googleapis.com",
     "sqladmin.googleapis.com",
@@ -33,6 +43,8 @@ locals {
     # Shared run log and rate limiter. Without it the API still works: answers resume on the
     # instance that runs them, and Cloud Run session affinity keeps a client on that instance.
     "REDIS_URL",
+    # PEM of the Memorystore server CA; the API verifies the rediss:// connection with it.
+    "REDIS_TLS_CA",
   ]
 }
 
@@ -69,7 +81,7 @@ resource "google_artifact_registry_repository" "images" {
 }
 
 resource "google_sql_database_instance" "postgres" {
-  name                = "steuereule-beta"
+  name                = "steuereule-${var.environment}"
   database_version    = "POSTGRES_16"
   region              = var.region
   deletion_protection = true
@@ -130,7 +142,7 @@ resource "google_sql_database" "app" {
 # from their own backups sooner. Retention here (2 backups, 1 day PITR) is therefore
 # deliberately shorter than the tax-data instance above (7 / 7).
 resource "google_sql_database_instance" "keystore" {
-  name                = "steuereule-beta-keystore"
+  name                = "steuereule-${var.environment}-keystore"
   database_version    = "POSTGRES_16"
   region              = var.region
   deletion_protection = true
@@ -258,12 +270,13 @@ resource "google_iam_workload_identity_pool_provider" "github" {
   display_name                       = "Steuereule repository"
 
   attribute_mapping = {
-    "google.subject"       = "assertion.sub"
-    "attribute.repository" = "assertion.repository"
-    "attribute.ref"        = "assertion.ref"
+    "google.subject"        = "assertion.sub"
+    "attribute.repository"  = "assertion.repository"
+    "attribute.ref"         = "assertion.ref"
+    "attribute.environment" = "assertion.environment"
   }
 
-  attribute_condition = "assertion.repository == \"${var.github_repository}\" && assertion.ref == \"refs/heads/main\""
+  attribute_condition = "assertion.repository == \"${var.github_repository}\" && assertion.ref == \"refs/heads/main\" && (${local.github_environment_condition})"
 
   oidc {
     issuer_uri = "https://token.actions.githubusercontent.com"
@@ -280,7 +293,7 @@ data "google_project" "this" {}
 
 resource "google_billing_budget" "monthly" {
   billing_account = var.billing_account_id
-  display_name    = "Steuereule beta"
+  display_name    = "Steuereule ${var.environment}"
 
   budget_filter {
     projects = ["projects/${data.google_project.this.number}"]
@@ -307,9 +320,16 @@ resource "google_billing_budget" "monthly" {
 }
 
 # ── Redis for the owl's answer runs (ADR-0064, ADR-0066 §8) ──────────────────────────────────
-# Off by default: the smallest Memorystore instance costs more per month than the whole beta
-# budget. Turn it on once more than one API instance regularly serves the chat. Any other Redis
-# works as well: put its URL into the secret REDIS_URL and leave this off.
+# On by default so production runs the code path local development runs (Redis). The smallest
+# Memorystore instance costs roughly 35 EUR a month per environment; set enable_redis = false to
+# go without it, or put the URL of another Redis into the secret REDIS_URL and leave this off.
+#
+# AUTH and TLS are on: the instance is reachable from the whole VPC, so a network position alone
+# must not be enough to read or write the answer runs.
+# KNOWN CONFLICT with ADR-0053 ("no secret in state"): the generated auth_string is a computed
+# attribute of the instance and the secret versions below are built from it, so it is stored in
+# the OpenTofu state. The state bucket is private, versioned and not public, which is the
+# mitigation; removing the conflict needs a Redis whose password is set outside Terraform.
 resource "google_project_service" "redis" {
   count              = var.enable_redis ? 1 : 0
   service            = "redis.googleapis.com"
@@ -331,11 +351,21 @@ resource "google_redis_instance" "runs" {
   authorized_network = data.google_compute_network.default[0].id
   connect_mode       = "DIRECT_PEERING"
 
+  auth_enabled            = true
+  transit_encryption_mode = "SERVER_AUTHENTICATION"
+
   depends_on = [google_project_service.redis]
 }
 
+# With in-transit encryption the instance listens on its TLS port; `port` reports that one.
 resource "google_secret_manager_secret_version" "redis_url" {
   count       = var.enable_redis ? 1 : 0
   secret      = google_secret_manager_secret.app["REDIS_URL"].id
-  secret_data = "redis://${google_redis_instance.runs[0].host}:${google_redis_instance.runs[0].port}"
+  secret_data = "rediss://:${urlencode(google_redis_instance.runs[0].auth_string)}@${google_redis_instance.runs[0].host}:${google_redis_instance.runs[0].port}"
+}
+
+resource "google_secret_manager_secret_version" "redis_tls_ca" {
+  count       = var.enable_redis ? 1 : 0
+  secret      = google_secret_manager_secret.app["REDIS_TLS_CA"].id
+  secret_data = google_redis_instance.runs[0].server_ca_certs[0].cert
 }

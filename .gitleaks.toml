@@ -3,24 +3,22 @@ title = "SteuerEule Gitleaks Configuration"
 [extend]
 useDefault = true
 
+# Only the concrete synthetic values that exist in the repository are allowed, matched by value and
+# not by path or prefix: a real key committed anywhere (also in a test file or a workflow) is still
+# reported. A new fixture value has to be added here on purpose.
 [allowlist]
-description = "Synthetic dev/test-only secrets documented per ADR-0008 and ADR-0012"
-paths = [
-  '''\.env\.example$''',
-  '''apps/api/\.env\.example$''',
-  '''infra/manifests/base/secrets\.example\.yaml$''',
-  '''\.github/workflows/ci\.yml$''',
-  '''apps/api/src/prisma/field-encryption-key\.ts$''',
-  '''apps/api/test/.*''',
-  # The fixed synthetic keys of the API's Vitest suites (ADR-0008); a full-history scan
-  # (workflow_dispatch) reads them in commits a pull-request scan never sees.
-  '''apps/api/vitest(\.(integration|live))?\.config\.ts$''',
-  '''packages/core/src/.*\.test\.ts$''',
-  '''e2e/.*''',
-  '''scripts/checks/bundle-security-check\.mjs$''',
-]
+description = "Synthetic dev/test-only values (ADR-0008, ADR-0012)"
 regexes = [
+  # Field-encryption key of the Vitest suites, CI jobs and .env.example (base64 of "0123456789abcdef0123456789abcdef").
   '''k1\.aesgcm256\.MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=''',
-  '''k2\.aesgcm256\.[A-Za-z0-9+/=]+''',
-  '''ci-(smoke|integration|cross-origin-smoke)-test-[a-z0-9-]+''',
+  # The same bytes as seen after gitleaks decodes the base64 segment.
+  '''k1\.aesgcm256\.0123456789abcdef0123456789abcdef''',
+  # Second fixed key of the integration suite (apps/api/vitest.integration.config.ts).
+  '''k1\.aesgcm256\.88HQ6liBiB7TuT9O1FcbkSPqheUyhJj9cPwirUr8njs=''',
+  # Retired-key fixture of the key-rotation acceptance test (REQ-003).
+  '''k1\.aesgcm256\.fedcba9876543210fedcba9876543210fedcba98765=''',
+  # Guest-session secret of the BOLA/IDOR pentest matrix.
+  '''pentest-guest-secret-0123456789''',
+  # A line item key ("postenKey: 'vermietung-obj-1'"), flagged by the generic rule in commit b6292309c.
+  '''vermietung-obj-1''',
 ]

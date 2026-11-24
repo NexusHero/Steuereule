@@ -17,11 +17,30 @@ Der Wizard führt durch Projekt und Abrechnung, State-Bucket, `tofu apply`, Secr
 Brevo, optional Google-Login und Stripe, GitHub-Variablen, den ersten Deploy und die
 Domain-Verknüpfung. Er ist idempotent: ein zweiter Lauf überschreibt keine vorhandenen Secrets.
 
+### Zwei Umgebungen: staging und production (ADR-0109)
+
+Jede Umgebung ist ein eigenes GCP-Projekt mit eigenem State. `environment` (OpenTofu-Variable)
+benennt sie; der State-Prefix wird beim `init` gesetzt, nie geteilt:
+
+```sh
+tofu init -backend-config="bucket=<state-bucket>" -backend-config="prefix=steuereule/<environment>"
+tofu apply -var environment=<staging|production> -var 'github_environments=["<staging|production>"]' ...
+```
+
+Der erste Stack heißt weiter `beta` (Prefix `steuereule/beta`, Ressourcennamen unverändert) und dient als
+staging. Das Deploy-Workflow rollt jede grüne CI auf `main` nach **staging** aus; **production** nur per
+Hand (Actions, Deploy, Run workflow, `environment = production`), gebunden an das GitHub-Environment
+`production` (dort Required reviewers einstellen). Dessen Variablen (`GCP_*`, `APP_DOMAIN`, `EMAIL_FROM`
+und `GCP_ENVIRONMENT=production`) gehören ins Environment, nicht ins Repository. Der Wizard
+`TF_ENVIRONMENT=production GH_ENVIRONMENT=production scripts/infra/gcp-setup.sh` legt das an.
+
+Alarme (`monitoring.tf`) entstehen mit `alert_email`; was sie bedeuten: [docs/sre/incident-runbook.md](../docs/sre/incident-runbook.md).
+
 Datenbank zwischen Testrunden anhalten und wieder starten:
 
 ```sh
-gcloud sql instances patch steuereule-beta --activation-policy=NEVER
-gcloud sql instances patch steuereule-beta --activation-policy=ALWAYS
+gcloud sql instances patch steuereule-<environment> --activation-policy=NEVER
+gcloud sql instances patch steuereule-<environment> --activation-policy=ALWAYS
 ```
 
 ## Später: k3s auf Hetzner (nicht aktiv)

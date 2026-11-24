@@ -1,2 +1,7 @@
-project_id         = "steuereule-beta"
-billing_account_id = "000000-000000-000000"
+# One file per environment, for example staging.tfvars and production.tfvars.
+project_id          = "steuereule-staging"
+billing_account_id  = "000000-000000-000000"
+environment         = "staging"
+github_environments = ["staging"]
+alert_email         = "ops@example.org"
+api_hostname        = "api.staging.example.org"
