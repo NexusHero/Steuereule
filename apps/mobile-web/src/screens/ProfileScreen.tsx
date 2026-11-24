@@ -7,8 +7,9 @@ import { APP_NS } from '../i18n/resources'
 import { toOnboardingProfile, toPutProfileDto, type OnboardingProfile } from './onboarding/profileMapping'
 import { ProfileView } from './profile/ProfileView'
 import { ProfileEdit } from './profile/ProfileEdit'
-import { LoadingState, ErrorState } from './shared/ScreenState'
+import { LoadingState, LoadFailedState } from './shared/ScreenState'
 import { triggerSaveErrorHaptic } from './shared/saveFeedback'
+import { useProfileSaveFailureMessage } from './onboarding/profileSaveFailure'
 
 export interface ProfileScreenProps {
   readonly onOpenPrivacy: () => void
@@ -28,22 +29,19 @@ export function ProfileScreen({ onOpenPrivacy, onOpenSecurity, onOpenMasterData,
   const [saveError, setSaveError] = useState<string | null>(null)
   const [justSaved, setJustSaved] = useState(false)
 
-  const profile = profileQuery.data ? toOnboardingProfile(profileQuery.data.data) : null
+  const saveFailureMessage = useProfileSaveFailureMessage('profil.saveError')
+
+  // WEB-28 / NR-01: a failed load (5xx, 429, offline) is a failure state, never an empty profile whose
+  // "Bearbeiten → Speichern" would write blanks over the stored data.
+  const profile = profileQuery.isSuccess ? toOnboardingProfile(profileQuery.data.data) : null
 
   if (profileQuery.isPending) {
     return <LoadingState bp={bp} label={tr('profil.loading')} />
   }
-  if (profileQuery.isError || profile === null) {
-    return (
-      <ErrorState
-        bp={bp}
-        heading={tr('profil.loadError.heading')}
-        message={tr('profil.loadError.message')}
-        retryLabel={tr('profil.loadError.retry')}
-        onRetry={() => void profileQuery.refetch()}
-      />
-    )
+  if (profile === null) {
+    return <LoadFailedState bp={bp} error={profileQuery.error} onRetry={() => void profileQuery.refetch()} />
   }
+  const loaded: OnboardingProfile = profile
 
   function startEdit() {
     setDraft(profile)
@@ -62,21 +60,16 @@ export function ProfileScreen({ onOpenPrivacy, onOpenSecurity, onOpenMasterData,
     if (draft === null) return
     setSaveError(null)
     putProfile.mutate(
-      { data: toPutProfileDto(draft) },
+      { data: toPutProfileDto(draft, loaded) },
       {
         onSuccess: (response) => {
-          if (response.status === 200) {
-            queryClient.setQueryData(profileQuery.queryKey, response)
-            setDraft(null)
-            setJustSaved(true)
-          } else {
-            triggerSaveErrorHaptic()
-            setSaveError(tr('profil.saveError.validation'))
-          }
+          queryClient.setQueryData(profileQuery.queryKey, response)
+          setDraft(null)
+          setJustSaved(true)
         },
-        onError: () => {
+        onError: (error) => {
           triggerSaveErrorHaptic()
-          setSaveError(tr('profil.saveError.network'))
+          setSaveError(saveFailureMessage(error))
         },
       },
     )

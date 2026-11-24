@@ -15,21 +15,44 @@ describe('toOnboardingProfil', () => {
   })
 })
 
-describe('toPutProfileDto', () => {
-  it('trims names and strips the display grouping from steuerId', () => {
-    expect(
-      toPutProfileDto({ firstName: '  Kim ', lastName: ' Yilmaz', steuerId: '12 345 678 901', taxNumber: '' }),
-    ).toEqual({ firstName: 'Kim', lastName: 'Yilmaz', steuerId: '12345678901' })
+describe('toPutProfileDto (WEB-28: the server keeps what is absent, null clears)', () => {
+  const loaded = { firstName: 'Kim', lastName: 'Yilmaz', steuerId: '12 345 678 901', taxNumber: '181/815/08155' }
+
+  it('trims names and sends no identifier the user did not change — absent keeps the stored value', () => {
+    expect(toPutProfileDto({ ...loaded, firstName: '  Kim ', lastName: ' Neu' }, loaded)).toEqual({ firstName: 'Kim', lastName: 'Neu' })
   })
 
-  it('omits steuernummer entirely when it was skipped, rather than sending an empty string', () => {
-    const dto = toPutProfileDto({ firstName: 'Kim', lastName: 'Yilmaz', steuerId: '12345678901', taxNumber: '' })
-    expect('steuernummer' in dto).toBe(false)
+  it('sends a changed Steuer-ID without the display grouping', () => {
+    expect(toPutProfileDto({ ...loaded, steuerId: '02 476 291 358' }, loaded)).toEqual({
+      firstName: 'Kim',
+      lastName: 'Yilmaz',
+      steuerId: '02476291358',
+    })
   })
 
-  it('strips the "/" grouping from a present steuernummer', () => {
-    expect(
-      toPutProfileDto({ firstName: 'Kim', lastName: 'Yilmaz', steuerId: '12345678901', taxNumber: '181/815/08155' }),
-    ).toEqual({ firstName: 'Kim', lastName: 'Yilmaz', steuerId: '12345678901', steuernummer: '18181508155' })
+  it('a regrouped but equal Steuernummer is no change', () => {
+    expect(toPutProfileDto({ ...loaded, taxNumber: '18181508155' }, loaded)).toEqual({ firstName: 'Kim', lastName: 'Yilmaz' })
+  })
+
+  it('sends null only when the user cleared a stored value', () => {
+    expect(toPutProfileDto({ ...loaded, steuerId: '', taxNumber: '' }, loaded)).toEqual({
+      firstName: 'Kim',
+      lastName: 'Yilmaz',
+      steuerId: null,
+      steuernummer: null,
+    })
+  })
+
+  it('an empty field that was empty before is not sent at all', () => {
+    const dto = toPutProfileDto({ ...EMPTY_ONBOARDING_PROFILE, firstName: 'Kim', lastName: 'Yilmaz' }, EMPTY_ONBOARDING_PROFILE)
+    expect(dto).toEqual({ firstName: 'Kim', lastName: 'Yilmaz' })
+  })
+
+  it('strips the "/" grouping from a new steuernummer', () => {
+    expect(toPutProfileDto({ ...EMPTY_ONBOARDING_PROFILE, firstName: 'Kim', lastName: 'Yilmaz', taxNumber: '181/815/08155' }, EMPTY_ONBOARDING_PROFILE)).toEqual({
+      firstName: 'Kim',
+      lastName: 'Yilmaz',
+      steuernummer: '18181508155',
+    })
   })
 })

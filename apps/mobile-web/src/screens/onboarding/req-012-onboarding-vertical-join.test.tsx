@@ -115,9 +115,9 @@ describe('REQ-012 — Onboarding vertical-join (ATDD acceptance, steuereule#53)'
     server.use(http.get('*/v1/profile', () => HttpResponse.error()))
     renderOnboarding()
 
-    await screen.findByText('Das hat nicht geklappt.')
+    await screen.findByText('Das konnte nicht geladen werden.')
     expect(
-      screen.getByText('Deine Angaben konnten nicht geladen werden. Prüf die Verbindung und versuch es noch mal.'),
+      screen.getByText('Keine Verbindung zum Server. Prüf dein Internet und versuch es noch mal.'),
     ).toBeTruthy()
     // Never falls through to rendering the form on mock/default data instead.
     expect(screen.queryByPlaceholderText('Kim')).toBeNull()
