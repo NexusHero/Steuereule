@@ -1431,6 +1431,7 @@
       "retry": "Try again"
     },
     "conflict": "Your answer didn't match what was saved. We've updated your progress.",
+    "antwortZurueck": "Your answer was not saved, so the question is shown again.",
     "progress": "Question {{done}} of {{total}}",
     "amountPlaceholder": "Whole euros",
     "amountLater": "Enter amount later",

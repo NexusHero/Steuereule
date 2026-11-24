@@ -1431,6 +1431,7 @@
       "retry": "Noch mal versuchen"
     },
     "conflict": "Deine Antwort passte nicht zum gespeicherten Stand. Wir haben deinen Fortschritt aktualisiert.",
+    "antwortZurueck": "Deine Antwort ist nicht gespeichert, die Frage steht deshalb noch einmal da.",
     "progress": "Frage {{done}} von {{total}}",
     "amountPlaceholder": "Ganzzahlige Euro",
     "amountLater": "Betrag später eintragen",
