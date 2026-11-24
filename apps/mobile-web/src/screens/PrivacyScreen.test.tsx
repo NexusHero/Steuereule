@@ -204,6 +204,19 @@ describe('DatenschutzScreen', () => {
       expect(screen.queryByText('Bitte bestätige dein Passwort')).toBeNull()
     })
 
+    it('cancelling the password prompt closes it without another download', async () => {
+      mockedDownload.mockResolvedValueOnce({ ok: false, status: 400, stepUp: true })
+      await openAccountScreen()
+
+      fireEvent.click(screen.getByText('Als JSON herunterladen'))
+      await screen.findByText('Bitte bestätige dein Passwort')
+      fireEvent.change(screen.getByTestId('export-stepup-passwort'), { target: { value: 'typed' } })
+      fireEvent.click(screen.getByTestId('export-stepup-abbrechen'))
+
+      expect(screen.queryByText('Bitte bestätige dein Passwort')).toBeNull()
+      expect(mockedDownload).toHaveBeenCalledTimes(1)
+    })
+
     it('triggers the PDF download independently of the JSON one', async () => {
       mockedDownload.mockResolvedValue({ ok: true, status: 200 })
       await openAccountScreen()

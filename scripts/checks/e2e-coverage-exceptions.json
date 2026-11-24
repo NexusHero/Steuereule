@@ -38,6 +38,7 @@
     "passkey-passwort-bestaetigen": "ADR-0106 D2 step-up, see passkey-passwort",
     "oauth-stepup": "ADR-0106 D2 step-up, see passkey-passwort",
     "oauth-stepup-passwort": "ADR-0106 D2 step-up, see passkey-passwort",
-    "oauth-stepup-bestaetigen": "ADR-0106 D2 step-up, see passkey-passwort"
+    "oauth-stepup-bestaetigen": "ADR-0106 D2 step-up, see passkey-passwort",
+    "export-stepup-*": "ADR-0107 L1: the export asks for the password only on a session older than five minutes, see passkey-passwort. Covered by PrivacyScreen.test.tsx (the prompt, the re-entered password, the retry, the cancel) and the API acceptance test req-011-export.test.ts (the server refusing an older session)"
   }
 }
