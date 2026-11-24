@@ -55,12 +55,12 @@ describe('PensionerScreen states', () => {
     server.use(http.get(PENSION_URL, () => (healthy ? HttpResponse.json(pension({}), { status: 200 }) : HttpResponse.json(null, { status: 500 }))))
     renderPension()
 
-    expect(await screen.findByText('Das hat nicht geklappt.')).toBeTruthy()
+    expect(await screen.findByText('Das konnte nicht geladen werden.')).toBeTruthy()
     healthy = true
     fireEvent.click(screen.getByText('Noch mal versuchen'))
 
     expect(await screen.findByText('Welche Rente beziehst du?')).toBeTruthy()
-    expect(screen.queryByText('Das hat nicht geklappt.')).toBeNull()
+    expect(screen.queryByText('Das konnte nicht geladen werden.')).toBeNull()
   })
 
   it('shows the loading state first', () => {
