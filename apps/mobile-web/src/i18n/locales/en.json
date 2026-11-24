@@ -4681,7 +4681,7 @@
     "schonBezahlt": "{{year}} is already unlocked.",
     "ausstehend": "Your payment is still being processed, for example a direct debit. As soon as it arrives, we unlock {{year}}.",
     "zuVieleVersuche": "Too many attempts in a short time. Please wait a few minutes.",
-    "preis": "Price: {{preis}} once for {{year}}, VAT included.",
+    "preis": "Price: {{preis}} once for {{year}}.",
     "preisUnbekannt": "Our payment service Stripe shows you the price on the next page, before you pay."
   },
   "ausdruckPersonB": {
