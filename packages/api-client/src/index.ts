@@ -171,7 +171,19 @@ export type {
   YearDeadlineDto,
   YearDocumentsDto,
 } from './generated/verlauf.schemas'
-export { configureApiClient, resetApiClientConfig, getApiClientBaseUrl, type ApiClientConfig } from './http-client'
+export {
+  configureApiClient,
+  resetApiClientConfig,
+  getApiClientBaseUrl,
+  type ApiClientConfig,
+  ApiError,
+  NetworkError,
+  isApiError,
+  isNetworkError,
+  apiErrorStatus,
+  parseRetryAfter,
+  type ApiFieldError,
+} from './http-client'
 export {
   getReceiptFileUrl,
   uploadReceiptFile,

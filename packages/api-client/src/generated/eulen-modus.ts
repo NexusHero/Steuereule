@@ -102,8 +102,6 @@ export type receiptParseControllerParseReceiptResponseError = (receiptParseContr
   headers: Headers;
 };
 
-export type receiptParseControllerParseReceiptResponse = (receiptParseControllerParseReceiptResponseSuccess | receiptParseControllerParseReceiptResponseError)
-
 export const getReceiptParseControllerParseReceiptUrl = () => {
 
 
@@ -112,9 +110,9 @@ export const getReceiptParseControllerParseReceiptUrl = () => {
   return `/v1/belege/parse`
 }
 
-export const receiptParseControllerParseReceipt = async (parseReceiptDto: ParseReceiptDto, options?: RequestInit): Promise<receiptParseControllerParseReceiptResponse> => {
+export const receiptParseControllerParseReceipt = async (parseReceiptDto: ParseReceiptDto, options?: RequestInit): Promise<receiptParseControllerParseReceiptResponseSuccess> => {
 
-  return httpClient<receiptParseControllerParseReceiptResponse>(getReceiptParseControllerParseReceiptUrl(),
+  return httpClient<receiptParseControllerParseReceiptResponseSuccess>(getReceiptParseControllerParseReceiptUrl(),
   {
     ...options,
     method: 'POST',
@@ -186,8 +184,6 @@ export type receiptParseControllerReassignResponseError = (receiptParseControlle
   headers: Headers;
 };
 
-export type receiptParseControllerReassignResponse = (receiptParseControllerReassignResponseSuccess | receiptParseControllerReassignResponseError)
-
 export const getReceiptParseControllerReassignUrl = (id: string,) => {
 
 
@@ -197,9 +193,9 @@ export const getReceiptParseControllerReassignUrl = (id: string,) => {
 }
 
 export const receiptParseControllerReassign = async (id: string,
-    reassignReceiptDto: ReassignReceiptDto, options?: RequestInit): Promise<receiptParseControllerReassignResponse> => {
+    reassignReceiptDto: ReassignReceiptDto, options?: RequestInit): Promise<receiptParseControllerReassignResponseSuccess> => {
 
-  return httpClient<receiptParseControllerReassignResponse>(getReceiptParseControllerReassignUrl(id),
+  return httpClient<receiptParseControllerReassignResponseSuccess>(getReceiptParseControllerReassignUrl(id),
   {
     ...options,
     method: 'POST',
@@ -264,8 +260,6 @@ export type advisorControllerListModelsResponseSuccess = (advisorControllerListM
 };
 ;
 
-export type advisorControllerListModelsResponse = (advisorControllerListModelsResponseSuccess)
-
 export const getAdvisorControllerListModelsUrl = (jahr: number,) => {
 
 
@@ -277,9 +271,9 @@ export const getAdvisorControllerListModelsUrl = (jahr: number,) => {
 /**
  * @summary The chat models the user may pick, with Gründlich/Max and their measured cost and wait (ADR-0096)
  */
-export const advisorControllerListModels = async (jahr: number, options?: RequestInit): Promise<advisorControllerListModelsResponse> => {
+export const advisorControllerListModels = async (jahr: number, options?: RequestInit): Promise<advisorControllerListModelsResponseSuccess> => {
 
-  return httpClient<advisorControllerListModelsResponse>(getAdvisorControllerListModelsUrl(jahr),
+  return httpClient<advisorControllerListModelsResponseSuccess>(getAdvisorControllerListModelsUrl(jahr),
   {
     ...options,
     method: 'GET'
@@ -384,8 +378,6 @@ export type advisorControllerSetConversationModelResponseError = (advisorControl
   headers: Headers;
 };
 
-export type advisorControllerSetConversationModelResponse = (advisorControllerSetConversationModelResponseSuccess | advisorControllerSetConversationModelResponseError)
-
 export const getAdvisorControllerSetConversationModelUrl = (jahr: number,
     conversationId: string,) => {
 
@@ -400,9 +392,9 @@ export const getAdvisorControllerSetConversationModelUrl = (jahr: number,
  */
 export const advisorControllerSetConversationModel = async (jahr: number,
     conversationId: string,
-    setAdvisorConversationModelDto: SetAdvisorConversationModelDto, options?: RequestInit): Promise<advisorControllerSetConversationModelResponse> => {
+    setAdvisorConversationModelDto: SetAdvisorConversationModelDto, options?: RequestInit): Promise<advisorControllerSetConversationModelResponseSuccess> => {
 
-  return httpClient<advisorControllerSetConversationModelResponse>(getAdvisorControllerSetConversationModelUrl(jahr,conversationId),
+  return httpClient<advisorControllerSetConversationModelResponseSuccess>(getAdvisorControllerSetConversationModelUrl(jahr,conversationId),
   {
     ...options,
     method: 'PUT',
@@ -482,8 +474,6 @@ export type advisorControllerGetSessionResponseError = (advisorControllerGetSess
   headers: Headers;
 };
 
-export type advisorControllerGetSessionResponse = (advisorControllerGetSessionResponseSuccess | advisorControllerGetSessionResponseError)
-
 export const getAdvisorControllerGetSessionUrl = (jahr: number,
     params?: AdvisorControllerGetSessionParams,) => {
   const normalizedParams = new URLSearchParams();
@@ -501,9 +491,9 @@ export const getAdvisorControllerGetSessionUrl = (jahr: number,
 }
 
 export const advisorControllerGetSession = async (jahr: number,
-    params?: AdvisorControllerGetSessionParams, options?: RequestInit): Promise<advisorControllerGetSessionResponse> => {
+    params?: AdvisorControllerGetSessionParams, options?: RequestInit): Promise<advisorControllerGetSessionResponseSuccess> => {
 
-  return httpClient<advisorControllerGetSessionResponse>(getAdvisorControllerGetSessionUrl(jahr,params),
+  return httpClient<advisorControllerGetSessionResponseSuccess>(getAdvisorControllerGetSessionUrl(jahr,params),
   {
     ...options,
     method: 'GET'
@@ -611,8 +601,6 @@ export type advisorControllerClearConversationResponseError = (advisorController
   headers: Headers;
 };
 
-export type advisorControllerClearConversationResponse = (advisorControllerClearConversationResponseSuccess | advisorControllerClearConversationResponseError)
-
 export const getAdvisorControllerClearConversationUrl = (jahr: number,
     params?: AdvisorControllerClearConversationParams,) => {
   const normalizedParams = new URLSearchParams();
@@ -633,9 +621,9 @@ export const getAdvisorControllerClearConversationUrl = (jahr: number,
  * @summary Clear the conversation of this tax year; values already applied to the return stay
  */
 export const advisorControllerClearConversation = async (jahr: number,
-    params?: AdvisorControllerClearConversationParams, options?: RequestInit): Promise<advisorControllerClearConversationResponse> => {
+    params?: AdvisorControllerClearConversationParams, options?: RequestInit): Promise<advisorControllerClearConversationResponseSuccess> => {
 
-  return httpClient<advisorControllerClearConversationResponse>(getAdvisorControllerClearConversationUrl(jahr,params),
+  return httpClient<advisorControllerClearConversationResponseSuccess>(getAdvisorControllerClearConversationUrl(jahr,params),
   {
     ...options,
     method: 'DELETE'
@@ -710,8 +698,6 @@ export type advisorControllerSendMessageResponseError = (advisorControllerSendMe
   headers: Headers;
 };
 
-export type advisorControllerSendMessageResponse = (advisorControllerSendMessageResponseSuccess | advisorControllerSendMessageResponseError)
-
 export const getAdvisorControllerSendMessageUrl = (jahr: number,) => {
 
 
@@ -721,9 +707,9 @@ export const getAdvisorControllerSendMessageUrl = (jahr: number,) => {
 }
 
 export const advisorControllerSendMessage = async (jahr: number,
-    sendAdvisorMessageDto: SendAdvisorMessageDto, options?: RequestInit): Promise<advisorControllerSendMessageResponse> => {
+    sendAdvisorMessageDto: SendAdvisorMessageDto, options?: RequestInit): Promise<advisorControllerSendMessageResponseSuccess> => {
 
-  return httpClient<advisorControllerSendMessageResponse>(getAdvisorControllerSendMessageUrl(jahr),
+  return httpClient<advisorControllerSendMessageResponseSuccess>(getAdvisorControllerSendMessageUrl(jahr),
   {
     ...options,
     method: 'POST',
@@ -795,8 +781,6 @@ export type advisorControllerStreamMessageResponseError = (advisorControllerStre
   headers: Headers;
 };
 
-export type advisorControllerStreamMessageResponse = (advisorControllerStreamMessageResponseSuccess | advisorControllerStreamMessageResponseError)
-
 export const getAdvisorControllerStreamMessageUrl = (jahr: number,) => {
 
 
@@ -810,9 +794,9 @@ export const getAdvisorControllerStreamMessageUrl = (jahr: number,) => {
  * @summary Ask the owl and follow the answer as server-sent events
  */
 export const advisorControllerStreamMessage = async (jahr: number,
-    sendAdvisorMessageDto: SendAdvisorMessageDto, options?: RequestInit): Promise<advisorControllerStreamMessageResponse> => {
+    sendAdvisorMessageDto: SendAdvisorMessageDto, options?: RequestInit): Promise<advisorControllerStreamMessageResponseSuccess> => {
 
-  return httpClient<advisorControllerStreamMessageResponse>(getAdvisorControllerStreamMessageUrl(jahr),
+  return httpClient<advisorControllerStreamMessageResponseSuccess>(getAdvisorControllerStreamMessageUrl(jahr),
   {
     ...options,
     method: 'POST',
@@ -887,8 +871,6 @@ export type advisorControllerRunEventsResponseError = (advisorControllerRunEvent
   headers: Headers;
 };
 
-export type advisorControllerRunEventsResponse = (advisorControllerRunEventsResponseSuccess | advisorControllerRunEventsResponseError)
-
 export const getAdvisorControllerRunEventsUrl = (jahr: number,
     runId: string,
     params?: AdvisorControllerRunEventsParams,) => {
@@ -912,9 +894,9 @@ export const getAdvisorControllerRunEventsUrl = (jahr: number,
  */
 export const advisorControllerRunEvents = async (jahr: number,
     runId: string,
-    params?: AdvisorControllerRunEventsParams, options?: RequestInit): Promise<advisorControllerRunEventsResponse> => {
+    params?: AdvisorControllerRunEventsParams, options?: RequestInit): Promise<advisorControllerRunEventsResponseSuccess> => {
 
-  return httpClient<advisorControllerRunEventsResponse>(getAdvisorControllerRunEventsUrl(jahr,runId,params),
+  return httpClient<advisorControllerRunEventsResponseSuccess>(getAdvisorControllerRunEventsUrl(jahr,runId,params),
   {
     ...options,
     method: 'GET'
@@ -1031,8 +1013,6 @@ export type advisorControllerStopRunResponseError = (advisorControllerStopRunRes
   headers: Headers;
 };
 
-export type advisorControllerStopRunResponse = (advisorControllerStopRunResponseSuccess | advisorControllerStopRunResponseError)
-
 export const getAdvisorControllerStopRunUrl = (jahr: number,
     runId: string,) => {
 
@@ -1046,9 +1026,9 @@ export const getAdvisorControllerStopRunUrl = (jahr: number,
  * @summary Stop a running answer; the text so far is kept as aborted, without proposals
  */
 export const advisorControllerStopRun = async (jahr: number,
-    runId: string, options?: RequestInit): Promise<advisorControllerStopRunResponse> => {
+    runId: string, options?: RequestInit): Promise<advisorControllerStopRunResponseSuccess> => {
 
-  return httpClient<advisorControllerStopRunResponse>(getAdvisorControllerStopRunUrl(jahr,runId),
+  return httpClient<advisorControllerStopRunResponseSuccess>(getAdvisorControllerStopRunUrl(jahr,runId),
   {
     ...options,
     method: 'POST'
@@ -1116,8 +1096,6 @@ export type advisorControllerConnectionResponseSuccess = (advisorControllerConne
 };
 ;
 
-export type advisorControllerConnectionResponse = (advisorControllerConnectionResponseSuccess)
-
 export const getAdvisorControllerConnectionUrl = (jahr: number,) => {
 
 
@@ -1129,9 +1107,9 @@ export const getAdvisorControllerConnectionUrl = (jahr: number,) => {
 /**
  * @summary Whether the owl can reach its language model right now (#488); the provider is asked at most once a minute
  */
-export const advisorControllerConnection = async (jahr: number, options?: RequestInit): Promise<advisorControllerConnectionResponse> => {
+export const advisorControllerConnection = async (jahr: number, options?: RequestInit): Promise<advisorControllerConnectionResponseSuccess> => {
 
-  return httpClient<advisorControllerConnectionResponse>(getAdvisorControllerConnectionUrl(jahr),
+  return httpClient<advisorControllerConnectionResponseSuccess>(getAdvisorControllerConnectionUrl(jahr),
   {
     ...options,
     method: 'GET'
@@ -1229,8 +1207,6 @@ export type advisorControllerOpeningResponseSuccess = (advisorControllerOpeningR
 };
 ;
 
-export type advisorControllerOpeningResponse = (advisorControllerOpeningResponseSuccess)
-
 export const getAdvisorControllerOpeningUrl = (jahr: number,) => {
 
 
@@ -1242,9 +1218,9 @@ export const getAdvisorControllerOpeningUrl = (jahr: number,) => {
 /**
  * @summary Whether a new conversation opens with the owl speaking first, and the last opening of the year (ADR-0067 §11)
  */
-export const advisorControllerOpening = async (jahr: number, options?: RequestInit): Promise<advisorControllerOpeningResponse> => {
+export const advisorControllerOpening = async (jahr: number, options?: RequestInit): Promise<advisorControllerOpeningResponseSuccess> => {
 
-  return httpClient<advisorControllerOpeningResponse>(getAdvisorControllerOpeningUrl(jahr),
+  return httpClient<advisorControllerOpeningResponseSuccess>(getAdvisorControllerOpeningUrl(jahr),
   {
     ...options,
     method: 'GET'
@@ -1342,8 +1318,6 @@ export type advisorControllerSearchResponseSuccess = (advisorControllerSearchRes
 };
 ;
 
-export type advisorControllerSearchResponse = (advisorControllerSearchResponseSuccess)
-
 export const getAdvisorControllerSearchUrl = (jahr: number,
     params: AdvisorControllerSearchParams,) => {
   const normalizedParams = new URLSearchParams();
@@ -1364,9 +1338,9 @@ export const getAdvisorControllerSearchUrl = (jahr: number,
  * @summary Search the conversations of this tax year: titles and messages, newest hit first (#481)
  */
 export const advisorControllerSearch = async (jahr: number,
-    params: AdvisorControllerSearchParams, options?: RequestInit): Promise<advisorControllerSearchResponse> => {
+    params: AdvisorControllerSearchParams, options?: RequestInit): Promise<advisorControllerSearchResponseSuccess> => {
 
-  return httpClient<advisorControllerSearchResponse>(getAdvisorControllerSearchUrl(jahr,params),
+  return httpClient<advisorControllerSearchResponseSuccess>(getAdvisorControllerSearchUrl(jahr,params),
   {
     ...options,
     method: 'GET'
@@ -1470,8 +1444,6 @@ export type advisorControllerSaveSituationResponseSuccess = (advisorControllerSa
 };
 ;
 
-export type advisorControllerSaveSituationResponse = (advisorControllerSaveSituationResponseSuccess)
-
 export const getAdvisorControllerSaveSituationUrl = (jahr: number,) => {
 
 
@@ -1484,9 +1456,9 @@ export const getAdvisorControllerSaveSituationUrl = (jahr: number,) => {
  * @summary Save the user’s own description of the household’s situation; the owl reads it in every conversation (#501)
  */
 export const advisorControllerSaveSituation = async (jahr: number,
-    saveAdvisorSituationDto: SaveAdvisorSituationDto, options?: RequestInit): Promise<advisorControllerSaveSituationResponse> => {
+    saveAdvisorSituationDto: SaveAdvisorSituationDto, options?: RequestInit): Promise<advisorControllerSaveSituationResponseSuccess> => {
 
-  return httpClient<advisorControllerSaveSituationResponse>(getAdvisorControllerSaveSituationUrl(jahr),
+  return httpClient<advisorControllerSaveSituationResponseSuccess>(getAdvisorControllerSaveSituationUrl(jahr),
   {
     ...options,
     method: 'PUT',
@@ -1554,8 +1526,6 @@ export type advisorControllerListNotesResponseSuccess = (advisorControllerListNo
 };
 ;
 
-export type advisorControllerListNotesResponse = (advisorControllerListNotesResponseSuccess)
-
 export const getAdvisorControllerListNotesUrl = (jahr: number,) => {
 
 
@@ -1567,9 +1537,9 @@ export const getAdvisorControllerListNotesUrl = (jahr: number,) => {
 /**
  * @summary The project notes of this tax year (#481)
  */
-export const advisorControllerListNotes = async (jahr: number, options?: RequestInit): Promise<advisorControllerListNotesResponse> => {
+export const advisorControllerListNotes = async (jahr: number, options?: RequestInit): Promise<advisorControllerListNotesResponseSuccess> => {
 
-  return httpClient<advisorControllerListNotesResponse>(getAdvisorControllerListNotesUrl(jahr),
+  return httpClient<advisorControllerListNotesResponseSuccess>(getAdvisorControllerListNotesUrl(jahr),
   {
     ...options,
     method: 'GET'
@@ -1674,8 +1644,6 @@ export type advisorControllerCreateNoteResponseError = (advisorControllerCreateN
   headers: Headers;
 };
 
-export type advisorControllerCreateNoteResponse = (advisorControllerCreateNoteResponseSuccess | advisorControllerCreateNoteResponseError)
-
 export const getAdvisorControllerCreateNoteUrl = (jahr: number,) => {
 
 
@@ -1688,9 +1656,9 @@ export const getAdvisorControllerCreateNoteUrl = (jahr: number,) => {
  * @summary Add a project note by hand
  */
 export const advisorControllerCreateNote = async (jahr: number,
-    saveAdvisorNoteDto: SaveAdvisorNoteDto, options?: RequestInit): Promise<advisorControllerCreateNoteResponse> => {
+    saveAdvisorNoteDto: SaveAdvisorNoteDto, options?: RequestInit): Promise<advisorControllerCreateNoteResponseSuccess> => {
 
-  return httpClient<advisorControllerCreateNoteResponse>(getAdvisorControllerCreateNoteUrl(jahr),
+  return httpClient<advisorControllerCreateNoteResponseSuccess>(getAdvisorControllerCreateNoteUrl(jahr),
   {
     ...options,
     method: 'POST',
@@ -1765,8 +1733,6 @@ export type advisorControllerUpdateNoteResponseError = (advisorControllerUpdateN
   headers: Headers;
 };
 
-export type advisorControllerUpdateNoteResponse = (advisorControllerUpdateNoteResponseSuccess | advisorControllerUpdateNoteResponseError)
-
 export const getAdvisorControllerUpdateNoteUrl = (jahr: number,
     noteId: string,) => {
 
@@ -1781,9 +1747,9 @@ export const getAdvisorControllerUpdateNoteUrl = (jahr: number,
  */
 export const advisorControllerUpdateNote = async (jahr: number,
     noteId: string,
-    saveAdvisorNoteDto: SaveAdvisorNoteDto, options?: RequestInit): Promise<advisorControllerUpdateNoteResponse> => {
+    saveAdvisorNoteDto: SaveAdvisorNoteDto, options?: RequestInit): Promise<advisorControllerUpdateNoteResponseSuccess> => {
 
-  return httpClient<advisorControllerUpdateNoteResponse>(getAdvisorControllerUpdateNoteUrl(jahr,noteId),
+  return httpClient<advisorControllerUpdateNoteResponseSuccess>(getAdvisorControllerUpdateNoteUrl(jahr,noteId),
   {
     ...options,
     method: 'PUT',
@@ -1858,8 +1824,6 @@ export type advisorControllerDeleteNoteResponseError = (advisorControllerDeleteN
   headers: Headers;
 };
 
-export type advisorControllerDeleteNoteResponse = (advisorControllerDeleteNoteResponseSuccess | advisorControllerDeleteNoteResponseError)
-
 export const getAdvisorControllerDeleteNoteUrl = (jahr: number,
     noteId: string,) => {
 
@@ -1873,9 +1837,9 @@ export const getAdvisorControllerDeleteNoteUrl = (jahr: number,
  * @summary Delete a project note
  */
 export const advisorControllerDeleteNote = async (jahr: number,
-    noteId: string, options?: RequestInit): Promise<advisorControllerDeleteNoteResponse> => {
+    noteId: string, options?: RequestInit): Promise<advisorControllerDeleteNoteResponseSuccess> => {
 
-  return httpClient<advisorControllerDeleteNoteResponse>(getAdvisorControllerDeleteNoteUrl(jahr,noteId),
+  return httpClient<advisorControllerDeleteNoteResponseSuccess>(getAdvisorControllerDeleteNoteUrl(jahr,noteId),
   {
     ...options,
     method: 'DELETE'
@@ -1955,8 +1919,6 @@ export type advisorControllerUndoNoteChangeResponseError = (advisorControllerUnd
   headers: Headers;
 };
 
-export type advisorControllerUndoNoteChangeResponse = (advisorControllerUndoNoteChangeResponseSuccess | advisorControllerUndoNoteChangeResponseError)
-
 export const getAdvisorControllerUndoNoteChangeUrl = (jahr: number,
     messageId: string,
     index: number,) => {
@@ -1972,9 +1934,9 @@ export const getAdvisorControllerUndoNoteChangeUrl = (jahr: number,
  */
 export const advisorControllerUndoNoteChange = async (jahr: number,
     messageId: string,
-    index: number, options?: RequestInit): Promise<advisorControllerUndoNoteChangeResponse> => {
+    index: number, options?: RequestInit): Promise<advisorControllerUndoNoteChangeResponseSuccess> => {
 
-  return httpClient<advisorControllerUndoNoteChangeResponse>(getAdvisorControllerUndoNoteChangeUrl(jahr,messageId,index),
+  return httpClient<advisorControllerUndoNoteChangeResponseSuccess>(getAdvisorControllerUndoNoteChangeUrl(jahr,messageId,index),
   {
     ...options,
     method: 'POST'
@@ -2042,8 +2004,6 @@ export type advisorControllerListConversationsResponseSuccess = (advisorControll
 };
 ;
 
-export type advisorControllerListConversationsResponse = (advisorControllerListConversationsResponseSuccess)
-
 export const getAdvisorControllerListConversationsUrl = (jahr: number,) => {
 
 
@@ -2055,9 +2015,9 @@ export const getAdvisorControllerListConversationsUrl = (jahr: number,) => {
 /**
  * @summary The conversations of this tax year, most recently used first (#481)
  */
-export const advisorControllerListConversations = async (jahr: number, options?: RequestInit): Promise<advisorControllerListConversationsResponse> => {
+export const advisorControllerListConversations = async (jahr: number, options?: RequestInit): Promise<advisorControllerListConversationsResponseSuccess> => {
 
-  return httpClient<advisorControllerListConversationsResponse>(getAdvisorControllerListConversationsUrl(jahr),
+  return httpClient<advisorControllerListConversationsResponseSuccess>(getAdvisorControllerListConversationsUrl(jahr),
   {
     ...options,
     method: 'GET'
@@ -2162,8 +2122,6 @@ export type advisorControllerCreateConversationResponseError = (advisorControlle
   headers: Headers;
 };
 
-export type advisorControllerCreateConversationResponse = (advisorControllerCreateConversationResponseSuccess | advisorControllerCreateConversationResponseError)
-
 export const getAdvisorControllerCreateConversationUrl = (jahr: number,) => {
 
 
@@ -2175,9 +2133,9 @@ export const getAdvisorControllerCreateConversationUrl = (jahr: number,) => {
 /**
  * @summary Start a new conversation; an empty one that already exists is reused
  */
-export const advisorControllerCreateConversation = async (jahr: number, options?: RequestInit): Promise<advisorControllerCreateConversationResponse> => {
+export const advisorControllerCreateConversation = async (jahr: number, options?: RequestInit): Promise<advisorControllerCreateConversationResponseSuccess> => {
 
-  return httpClient<advisorControllerCreateConversationResponse>(getAdvisorControllerCreateConversationUrl(jahr),
+  return httpClient<advisorControllerCreateConversationResponseSuccess>(getAdvisorControllerCreateConversationUrl(jahr),
   {
     ...options,
     method: 'POST'
@@ -2252,8 +2210,6 @@ export type advisorControllerRenameConversationResponseError = (advisorControlle
   headers: Headers;
 };
 
-export type advisorControllerRenameConversationResponse = (advisorControllerRenameConversationResponseSuccess | advisorControllerRenameConversationResponseError)
-
 export const getAdvisorControllerRenameConversationUrl = (jahr: number,
     conversationId: string,) => {
 
@@ -2268,9 +2224,9 @@ export const getAdvisorControllerRenameConversationUrl = (jahr: number,
  */
 export const advisorControllerRenameConversation = async (jahr: number,
     conversationId: string,
-    renameAdvisorConversationDto: RenameAdvisorConversationDto, options?: RequestInit): Promise<advisorControllerRenameConversationResponse> => {
+    renameAdvisorConversationDto: RenameAdvisorConversationDto, options?: RequestInit): Promise<advisorControllerRenameConversationResponseSuccess> => {
 
-  return httpClient<advisorControllerRenameConversationResponse>(getAdvisorControllerRenameConversationUrl(jahr,conversationId),
+  return httpClient<advisorControllerRenameConversationResponseSuccess>(getAdvisorControllerRenameConversationUrl(jahr,conversationId),
   {
     ...options,
     method: 'PUT',
@@ -2350,8 +2306,6 @@ export type advisorControllerDeleteConversationResponseError = (advisorControlle
   headers: Headers;
 };
 
-export type advisorControllerDeleteConversationResponse = (advisorControllerDeleteConversationResponseSuccess | advisorControllerDeleteConversationResponseError)
-
 export const getAdvisorControllerDeleteConversationUrl = (jahr: number,
     conversationId: string,) => {
 
@@ -2365,9 +2319,9 @@ export const getAdvisorControllerDeleteConversationUrl = (jahr: number,
  * @summary Delete a conversation with its messages; values already applied to the return stay
  */
 export const advisorControllerDeleteConversation = async (jahr: number,
-    conversationId: string, options?: RequestInit): Promise<advisorControllerDeleteConversationResponse> => {
+    conversationId: string, options?: RequestInit): Promise<advisorControllerDeleteConversationResponseSuccess> => {
 
-  return httpClient<advisorControllerDeleteConversationResponse>(getAdvisorControllerDeleteConversationUrl(jahr,conversationId),
+  return httpClient<advisorControllerDeleteConversationResponseSuccess>(getAdvisorControllerDeleteConversationUrl(jahr,conversationId),
   {
     ...options,
     method: 'DELETE'
@@ -2447,8 +2401,6 @@ export type advisorControllerSummarizeConversationResponseError = (advisorContro
   headers: Headers;
 };
 
-export type advisorControllerSummarizeConversationResponse = (advisorControllerSummarizeConversationResponseSuccess | advisorControllerSummarizeConversationResponseError)
-
 export const getAdvisorControllerSummarizeConversationUrl = (jahr: number,
     conversationId: string,) => {
 
@@ -2462,9 +2414,9 @@ export const getAdvisorControllerSummarizeConversationUrl = (jahr: number,
  * @summary Summarise the older part of a conversation now, before its context is full
  */
 export const advisorControllerSummarizeConversation = async (jahr: number,
-    conversationId: string, options?: RequestInit): Promise<advisorControllerSummarizeConversationResponse> => {
+    conversationId: string, options?: RequestInit): Promise<advisorControllerSummarizeConversationResponseSuccess> => {
 
-  return httpClient<advisorControllerSummarizeConversationResponse>(getAdvisorControllerSummarizeConversationUrl(jahr,conversationId),
+  return httpClient<advisorControllerSummarizeConversationResponseSuccess>(getAdvisorControllerSummarizeConversationUrl(jahr,conversationId),
   {
     ...options,
     method: 'POST'
@@ -2539,8 +2491,6 @@ export type advisorControllerSetFeedbackResponseError = (advisorControllerSetFee
   headers: Headers;
 };
 
-export type advisorControllerSetFeedbackResponse = (advisorControllerSetFeedbackResponseSuccess | advisorControllerSetFeedbackResponseError)
-
 export const getAdvisorControllerSetFeedbackUrl = (jahr: number,
     messageId: string,) => {
 
@@ -2555,9 +2505,9 @@ export const getAdvisorControllerSetFeedbackUrl = (jahr: number,
  */
 export const advisorControllerSetFeedback = async (jahr: number,
     messageId: string,
-    setAdvisorFeedbackDto: SetAdvisorFeedbackDto, options?: RequestInit): Promise<advisorControllerSetFeedbackResponse> => {
+    setAdvisorFeedbackDto: SetAdvisorFeedbackDto, options?: RequestInit): Promise<advisorControllerSetFeedbackResponseSuccess> => {
 
-  return httpClient<advisorControllerSetFeedbackResponse>(getAdvisorControllerSetFeedbackUrl(jahr,messageId),
+  return httpClient<advisorControllerSetFeedbackResponseSuccess>(getAdvisorControllerSetFeedbackUrl(jahr,messageId),
   {
     ...options,
     method: 'PUT',
@@ -2632,8 +2582,6 @@ export type advisorControllerApplyBatchResponseError = (advisorControllerApplyBa
   headers: Headers;
 };
 
-export type advisorControllerApplyBatchResponse = (advisorControllerApplyBatchResponseSuccess | advisorControllerApplyBatchResponseError)
-
 export const getAdvisorControllerApplyBatchUrl = (jahr: number,) => {
 
 
@@ -2643,9 +2591,9 @@ export const getAdvisorControllerApplyBatchUrl = (jahr: number,) => {
 }
 
 export const advisorControllerApplyBatch = async (jahr: number,
-    applyBatchActionsDto: ApplyBatchActionsDto, options?: RequestInit): Promise<advisorControllerApplyBatchResponse> => {
+    applyBatchActionsDto: ApplyBatchActionsDto, options?: RequestInit): Promise<advisorControllerApplyBatchResponseSuccess> => {
 
-  return httpClient<advisorControllerApplyBatchResponse>(getAdvisorControllerApplyBatchUrl(jahr),
+  return httpClient<advisorControllerApplyBatchResponseSuccess>(getAdvisorControllerApplyBatchUrl(jahr),
   {
     ...options,
     method: 'POST',
@@ -2717,8 +2665,6 @@ export type advisorControllerApplyActionResponseError = (advisorControllerApplyA
   headers: Headers;
 };
 
-export type advisorControllerApplyActionResponse = (advisorControllerApplyActionResponseSuccess | advisorControllerApplyActionResponseError)
-
 export const getAdvisorControllerApplyActionUrl = (jahr: number,
     actionId: string,) => {
 
@@ -2729,9 +2675,9 @@ export const getAdvisorControllerApplyActionUrl = (jahr: number,
 }
 
 export const advisorControllerApplyAction = async (jahr: number,
-    actionId: string, options?: RequestInit): Promise<advisorControllerApplyActionResponse> => {
+    actionId: string, options?: RequestInit): Promise<advisorControllerApplyActionResponseSuccess> => {
 
-  return httpClient<advisorControllerApplyActionResponse>(getAdvisorControllerApplyActionUrl(jahr,actionId),
+  return httpClient<advisorControllerApplyActionResponseSuccess>(getAdvisorControllerApplyActionUrl(jahr,actionId),
   {
     ...options,
     method: 'POST'
@@ -2803,8 +2749,6 @@ export type advisorControllerUndoActionResponseError = (advisorControllerUndoAct
   headers: Headers;
 };
 
-export type advisorControllerUndoActionResponse = (advisorControllerUndoActionResponseSuccess | advisorControllerUndoActionResponseError)
-
 export const getAdvisorControllerUndoActionUrl = (jahr: number,
     actionId: string,) => {
 
@@ -2815,9 +2759,9 @@ export const getAdvisorControllerUndoActionUrl = (jahr: number,
 }
 
 export const advisorControllerUndoAction = async (jahr: number,
-    actionId: string, options?: RequestInit): Promise<advisorControllerUndoActionResponse> => {
+    actionId: string, options?: RequestInit): Promise<advisorControllerUndoActionResponseSuccess> => {
 
-  return httpClient<advisorControllerUndoActionResponse>(getAdvisorControllerUndoActionUrl(jahr,actionId),
+  return httpClient<advisorControllerUndoActionResponseSuccess>(getAdvisorControllerUndoActionUrl(jahr,actionId),
   {
     ...options,
     method: 'POST'
@@ -2889,8 +2833,6 @@ export type advisorControllerDismissActionResponseError = (advisorControllerDism
   headers: Headers;
 };
 
-export type advisorControllerDismissActionResponse = (advisorControllerDismissActionResponseSuccess | advisorControllerDismissActionResponseError)
-
 export const getAdvisorControllerDismissActionUrl = (jahr: number,
     actionId: string,) => {
 
@@ -2901,9 +2843,9 @@ export const getAdvisorControllerDismissActionUrl = (jahr: number,
 }
 
 export const advisorControllerDismissAction = async (jahr: number,
-    actionId: string, options?: RequestInit): Promise<advisorControllerDismissActionResponse> => {
+    actionId: string, options?: RequestInit): Promise<advisorControllerDismissActionResponseSuccess> => {
 
-  return httpClient<advisorControllerDismissActionResponse>(getAdvisorControllerDismissActionUrl(jahr,actionId),
+  return httpClient<advisorControllerDismissActionResponseSuccess>(getAdvisorControllerDismissActionUrl(jahr,actionId),
   {
     ...options,
     method: 'POST'
@@ -2975,8 +2917,6 @@ export type owlModeControllerGetPersonalDataConsentResponseError = (owlModeContr
   headers: Headers;
 };
 
-export type owlModeControllerGetPersonalDataConsentResponse = (owlModeControllerGetPersonalDataConsentResponseSuccess | owlModeControllerGetPersonalDataConsentResponseError)
-
 export const getOwlModeControllerGetPersonalDataConsentUrl = () => {
 
 
@@ -2985,9 +2925,9 @@ export const getOwlModeControllerGetPersonalDataConsentUrl = () => {
   return `/v1/eulen-modus/personendaten-einwilligung`
 }
 
-export const owlModeControllerGetPersonalDataConsent = async ( options?: RequestInit): Promise<owlModeControllerGetPersonalDataConsentResponse> => {
+export const owlModeControllerGetPersonalDataConsent = async ( options?: RequestInit): Promise<owlModeControllerGetPersonalDataConsentResponseSuccess> => {
 
-  return httpClient<owlModeControllerGetPersonalDataConsentResponse>(getOwlModeControllerGetPersonalDataConsentUrl(),
+  return httpClient<owlModeControllerGetPersonalDataConsentResponseSuccess>(getOwlModeControllerGetPersonalDataConsentUrl(),
   {
     ...options,
     method: 'GET'
@@ -3089,8 +3029,6 @@ export type owlModeControllerSetPersonalDataConsentResponseError = (owlModeContr
   headers: Headers;
 };
 
-export type owlModeControllerSetPersonalDataConsentResponse = (owlModeControllerSetPersonalDataConsentResponseSuccess | owlModeControllerSetPersonalDataConsentResponseError)
-
 export const getOwlModeControllerSetPersonalDataConsentUrl = () => {
 
 
@@ -3099,9 +3037,9 @@ export const getOwlModeControllerSetPersonalDataConsentUrl = () => {
   return `/v1/eulen-modus/personendaten-einwilligung`
 }
 
-export const owlModeControllerSetPersonalDataConsent = async (setPersonalDataConsentDto: SetPersonalDataConsentDto, options?: RequestInit): Promise<owlModeControllerSetPersonalDataConsentResponse> => {
+export const owlModeControllerSetPersonalDataConsent = async (setPersonalDataConsentDto: SetPersonalDataConsentDto, options?: RequestInit): Promise<owlModeControllerSetPersonalDataConsentResponseSuccess> => {
 
-  return httpClient<owlModeControllerSetPersonalDataConsentResponse>(getOwlModeControllerSetPersonalDataConsentUrl(),
+  return httpClient<owlModeControllerSetPersonalDataConsentResponseSuccess>(getOwlModeControllerSetPersonalDataConsentUrl(),
   {
     ...options,
     method: 'PUT',
@@ -3173,8 +3111,6 @@ export type owlModeControllerGetSettingResponseError = (owlModeControllerGetSett
   headers: Headers;
 };
 
-export type owlModeControllerGetSettingResponse = (owlModeControllerGetSettingResponseSuccess | owlModeControllerGetSettingResponseError)
-
 export const getOwlModeControllerGetSettingUrl = () => {
 
 
@@ -3183,9 +3119,9 @@ export const getOwlModeControllerGetSettingUrl = () => {
   return `/v1/eulen-modus/einstellung`
 }
 
-export const owlModeControllerGetSetting = async ( options?: RequestInit): Promise<owlModeControllerGetSettingResponse> => {
+export const owlModeControllerGetSetting = async ( options?: RequestInit): Promise<owlModeControllerGetSettingResponseSuccess> => {
 
-  return httpClient<owlModeControllerGetSettingResponse>(getOwlModeControllerGetSettingUrl(),
+  return httpClient<owlModeControllerGetSettingResponseSuccess>(getOwlModeControllerGetSettingUrl(),
   {
     ...options,
     method: 'GET'
@@ -3287,8 +3223,6 @@ export type owlModeControllerSetSettingResponseError = (owlModeControllerSetSett
   headers: Headers;
 };
 
-export type owlModeControllerSetSettingResponse = (owlModeControllerSetSettingResponseSuccess | owlModeControllerSetSettingResponseError)
-
 export const getOwlModeControllerSetSettingUrl = () => {
 
 
@@ -3297,9 +3231,9 @@ export const getOwlModeControllerSetSettingUrl = () => {
   return `/v1/eulen-modus/einstellung`
 }
 
-export const owlModeControllerSetSetting = async (setOwlSettingDto: SetOwlSettingDto, options?: RequestInit): Promise<owlModeControllerSetSettingResponse> => {
+export const owlModeControllerSetSetting = async (setOwlSettingDto: SetOwlSettingDto, options?: RequestInit): Promise<owlModeControllerSetSettingResponseSuccess> => {
 
-  return httpClient<owlModeControllerSetSettingResponse>(getOwlModeControllerSetSettingUrl(),
+  return httpClient<owlModeControllerSetSettingResponseSuccess>(getOwlModeControllerSetSettingUrl(),
   {
     ...options,
     method: 'PUT',
@@ -3371,8 +3305,6 @@ export type owlModeControllerGetCardsResponseError = (owlModeControllerGetCardsR
   headers: Headers;
 };
 
-export type owlModeControllerGetCardsResponse = (owlModeControllerGetCardsResponseSuccess | owlModeControllerGetCardsResponseError)
-
 export const getOwlModeControllerGetCardsUrl = (jahr: number,) => {
 
 
@@ -3381,9 +3313,9 @@ export const getOwlModeControllerGetCardsUrl = (jahr: number,) => {
   return `/v1/steuerjahre/${jahr}/eulen-karten`
 }
 
-export const owlModeControllerGetCards = async (jahr: number, options?: RequestInit): Promise<owlModeControllerGetCardsResponse> => {
+export const owlModeControllerGetCards = async (jahr: number, options?: RequestInit): Promise<owlModeControllerGetCardsResponseSuccess> => {
 
-  return httpClient<owlModeControllerGetCardsResponse>(getOwlModeControllerGetCardsUrl(jahr),
+  return httpClient<owlModeControllerGetCardsResponseSuccess>(getOwlModeControllerGetCardsUrl(jahr),
   {
     ...options,
     method: 'GET'
@@ -3485,8 +3417,6 @@ export type owlModeControllerDismissCardResponseError = (owlModeControllerDismis
   headers: Headers;
 };
 
-export type owlModeControllerDismissCardResponse = (owlModeControllerDismissCardResponseSuccess | owlModeControllerDismissCardResponseError)
-
 export const getOwlModeControllerDismissCardUrl = (jahr: number,
     fingerprint: string,) => {
 
@@ -3497,9 +3427,9 @@ export const getOwlModeControllerDismissCardUrl = (jahr: number,
 }
 
 export const owlModeControllerDismissCard = async (jahr: number,
-    fingerprint: string, options?: RequestInit): Promise<owlModeControllerDismissCardResponse> => {
+    fingerprint: string, options?: RequestInit): Promise<owlModeControllerDismissCardResponseSuccess> => {
 
-  return httpClient<owlModeControllerDismissCardResponse>(getOwlModeControllerDismissCardUrl(jahr,fingerprint),
+  return httpClient<owlModeControllerDismissCardResponseSuccess>(getOwlModeControllerDismissCardUrl(jahr,fingerprint),
   {
     ...options,
     method: 'POST'

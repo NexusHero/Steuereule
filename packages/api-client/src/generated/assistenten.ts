@@ -75,8 +75,6 @@ export type assistantsControllerListConnectedResponseError = (assistantsControll
   headers: Headers;
 };
 
-export type assistantsControllerListConnectedResponse = (assistantsControllerListConnectedResponseSuccess | assistantsControllerListConnectedResponseError)
-
 export const getAssistantsControllerListConnectedUrl = () => {
 
 
@@ -85,9 +83,9 @@ export const getAssistantsControllerListConnectedUrl = () => {
   return `/v1/assistenten`
 }
 
-export const assistantsControllerListConnected = async ( options?: RequestInit): Promise<assistantsControllerListConnectedResponse> => {
+export const assistantsControllerListConnected = async ( options?: RequestInit): Promise<assistantsControllerListConnectedResponseSuccess> => {
 
-  return httpClient<assistantsControllerListConnectedResponse>(getAssistantsControllerListConnectedUrl(),
+  return httpClient<assistantsControllerListConnectedResponseSuccess>(getAssistantsControllerListConnectedUrl(),
   {
     ...options,
     method: 'GET'
@@ -194,8 +192,6 @@ export type assistantsControllerRevokeResponseError = (assistantsControllerRevok
   headers: Headers;
 };
 
-export type assistantsControllerRevokeResponse = (assistantsControllerRevokeResponseSuccess | assistantsControllerRevokeResponseError)
-
 export const getAssistantsControllerRevokeUrl = (clientId: string,) => {
 
 
@@ -204,9 +200,9 @@ export const getAssistantsControllerRevokeUrl = (clientId: string,) => {
   return `/v1/assistenten/${clientId}`
 }
 
-export const assistantsControllerRevoke = async (clientId: string, options?: RequestInit): Promise<assistantsControllerRevokeResponse> => {
+export const assistantsControllerRevoke = async (clientId: string, options?: RequestInit): Promise<assistantsControllerRevokeResponseSuccess> => {
 
-  return httpClient<assistantsControllerRevokeResponse>(getAssistantsControllerRevokeUrl(clientId),
+  return httpClient<assistantsControllerRevokeResponseSuccess>(getAssistantsControllerRevokeUrl(clientId),
   {
     ...options,
     method: 'DELETE'
@@ -271,8 +267,6 @@ export type assistantsControllerGetClientInfoResponseSuccess = (assistantsContro
 };
 ;
 
-export type assistantsControllerGetClientInfoResponse = (assistantsControllerGetClientInfoResponseSuccess)
-
 export const getAssistantsControllerGetClientInfoUrl = (params: AssistantsControllerGetClientInfoParams,) => {
   const normalizedParams = new URLSearchParams();
 
@@ -288,9 +282,9 @@ export const getAssistantsControllerGetClientInfoUrl = (params: AssistantsContro
   return stringifiedParams.length > 0 ? `/v1/oauth/client-info?${stringifiedParams}` : `/v1/oauth/client-info`
 }
 
-export const assistantsControllerGetClientInfo = async (params: AssistantsControllerGetClientInfoParams, options?: RequestInit): Promise<assistantsControllerGetClientInfoResponse> => {
+export const assistantsControllerGetClientInfo = async (params: AssistantsControllerGetClientInfoParams, options?: RequestInit): Promise<assistantsControllerGetClientInfoResponseSuccess> => {
 
-  return httpClient<assistantsControllerGetClientInfoResponse>(getAssistantsControllerGetClientInfoUrl(params),
+  return httpClient<assistantsControllerGetClientInfoResponseSuccess>(getAssistantsControllerGetClientInfoUrl(params),
   {
     ...options,
     method: 'GET'

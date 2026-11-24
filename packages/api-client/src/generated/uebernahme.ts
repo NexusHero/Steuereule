@@ -68,8 +68,6 @@ export type takeoverControllerGetResponseError = (takeoverControllerGetResponse4
   headers: Headers;
 };
 
-export type takeoverControllerGetResponse = (takeoverControllerGetResponseSuccess | takeoverControllerGetResponseError)
-
 export const getTakeoverControllerGetUrl = (jahr: number,) => {
 
 
@@ -78,9 +76,9 @@ export const getTakeoverControllerGetUrl = (jahr: number,) => {
   return `/v1/steuerjahre/${jahr}/uebernahme`
 }
 
-export const takeoverControllerGet = async (jahr: number, options?: RequestInit): Promise<takeoverControllerGetResponse> => {
+export const takeoverControllerGet = async (jahr: number, options?: RequestInit): Promise<takeoverControllerGetResponseSuccess> => {
 
-  return httpClient<takeoverControllerGetResponse>(getTakeoverControllerGetUrl(jahr),
+  return httpClient<takeoverControllerGetResponseSuccess>(getTakeoverControllerGetUrl(jahr),
   {
     ...options,
     method: 'GET'
@@ -182,8 +180,6 @@ export type takeoverControllerTakeOverResponseError = (takeoverControllerTakeOve
   headers: Headers;
 };
 
-export type takeoverControllerTakeOverResponse = (takeoverControllerTakeOverResponseSuccess | takeoverControllerTakeOverResponseError)
-
 export const getTakeoverControllerTakeOverUrl = (jahr: number,
     params: TakeoverControllerTakeOverParams,) => {
   const normalizedParams = new URLSearchParams();
@@ -201,9 +197,9 @@ export const getTakeoverControllerTakeOverUrl = (jahr: number,
 }
 
 export const takeoverControllerTakeOver = async (jahr: number,
-    params: TakeoverControllerTakeOverParams, options?: RequestInit): Promise<takeoverControllerTakeOverResponse> => {
+    params: TakeoverControllerTakeOverParams, options?: RequestInit): Promise<takeoverControllerTakeOverResponseSuccess> => {
 
-  return httpClient<takeoverControllerTakeOverResponse>(getTakeoverControllerTakeOverUrl(jahr,params),
+  return httpClient<takeoverControllerTakeOverResponseSuccess>(getTakeoverControllerTakeOverUrl(jahr,params),
   {
     ...options,
     method: 'POST'

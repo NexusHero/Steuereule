@@ -56,8 +56,6 @@ export type cockpitControllerGetCockpitSummaryResponseSuccess = (cockpitControll
 };
 ;
 
-export type cockpitControllerGetCockpitSummaryResponse = (cockpitControllerGetCockpitSummaryResponseSuccess)
-
 export const getCockpitControllerGetCockpitSummaryUrl = (jahr: number,) => {
 
 
@@ -66,9 +64,9 @@ export const getCockpitControllerGetCockpitSummaryUrl = (jahr: number,) => {
   return `/v1/steuerjahre/${jahr}/cockpit`
 }
 
-export const cockpitControllerGetCockpitSummary = async (jahr: number, options?: RequestInit): Promise<cockpitControllerGetCockpitSummaryResponse> => {
+export const cockpitControllerGetCockpitSummary = async (jahr: number, options?: RequestInit): Promise<cockpitControllerGetCockpitSummaryResponseSuccess> => {
 
-  return httpClient<cockpitControllerGetCockpitSummaryResponse>(getCockpitControllerGetCockpitSummaryUrl(jahr),
+  return httpClient<cockpitControllerGetCockpitSummaryResponseSuccess>(getCockpitControllerGetCockpitSummaryUrl(jahr),
   {
     ...options,
     method: 'GET'

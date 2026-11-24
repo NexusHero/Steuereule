@@ -85,8 +85,6 @@ export type accountDeletionControllerDeleteAccountResponseError = (accountDeleti
   headers: Headers;
 };
 
-export type accountDeletionControllerDeleteAccountResponse = (accountDeletionControllerDeleteAccountResponseSuccess | accountDeletionControllerDeleteAccountResponseError)
-
 export const getAccountDeletionControllerDeleteAccountUrl = () => {
 
 
@@ -95,9 +93,9 @@ export const getAccountDeletionControllerDeleteAccountUrl = () => {
   return `/v1/account`
 }
 
-export const accountDeletionControllerDeleteAccount = async (deleteAccountRequestDto: DeleteAccountRequestDto, options?: RequestInit): Promise<accountDeletionControllerDeleteAccountResponse> => {
+export const accountDeletionControllerDeleteAccount = async (deleteAccountRequestDto: DeleteAccountRequestDto, options?: RequestInit): Promise<accountDeletionControllerDeleteAccountResponseSuccess> => {
 
-  return httpClient<accountDeletionControllerDeleteAccountResponse>(getAccountDeletionControllerDeleteAccountUrl(),
+  return httpClient<accountDeletionControllerDeleteAccountResponseSuccess>(getAccountDeletionControllerDeleteAccountUrl(),
   {
     ...options,
     method: 'DELETE',
@@ -174,8 +172,6 @@ export type accountExportControllerExportAccountResponseError = (accountExportCo
   headers: Headers;
 };
 
-export type accountExportControllerExportAccountResponse = (accountExportControllerExportAccountResponseSuccess | accountExportControllerExportAccountResponseError)
-
 export const getAccountExportControllerExportAccountUrl = (params?: AccountExportControllerExportAccountParams,) => {
   const normalizedParams = new URLSearchParams();
 
@@ -191,9 +187,9 @@ export const getAccountExportControllerExportAccountUrl = (params?: AccountExpor
   return stringifiedParams.length > 0 ? `/v1/account/export?${stringifiedParams}` : `/v1/account/export`
 }
 
-export const accountExportControllerExportAccount = async (params?: AccountExportControllerExportAccountParams, options?: RequestInit): Promise<accountExportControllerExportAccountResponse> => {
+export const accountExportControllerExportAccount = async (params?: AccountExportControllerExportAccountParams, options?: RequestInit): Promise<accountExportControllerExportAccountResponseSuccess> => {
 
-  return httpClient<accountExportControllerExportAccountResponse>(getAccountExportControllerExportAccountUrl(params),
+  return httpClient<accountExportControllerExportAccountResponseSuccess>(getAccountExportControllerExportAccountUrl(params),
   {
     ...options,
     method: 'GET'

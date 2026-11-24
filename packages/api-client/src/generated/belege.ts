@@ -67,8 +67,6 @@ export type receiptControllerListResponseSuccess = (receiptControllerListRespons
 };
 ;
 
-export type receiptControllerListResponse = (receiptControllerListResponseSuccess)
-
 export const getReceiptControllerListUrl = (params?: ReceiptControllerListParams,) => {
   const normalizedParams = new URLSearchParams();
 
@@ -87,9 +85,9 @@ export const getReceiptControllerListUrl = (params?: ReceiptControllerListParams
 /**
  * @summary One page of the Beleg inbox, newest first, with the counts the inbox shows over all Belege
  */
-export const receiptControllerList = async (params?: ReceiptControllerListParams, options?: RequestInit): Promise<receiptControllerListResponse> => {
+export const receiptControllerList = async (params?: ReceiptControllerListParams, options?: RequestInit): Promise<receiptControllerListResponseSuccess> => {
 
-  return httpClient<receiptControllerListResponse>(getReceiptControllerListUrl(params),
+  return httpClient<receiptControllerListResponseSuccess>(getReceiptControllerListUrl(params),
   {
     ...options,
     method: 'GET'
@@ -187,8 +185,6 @@ export type receiptControllerCreateResponseSuccess = (receiptControllerCreateRes
 };
 ;
 
-export type receiptControllerCreateResponse = (receiptControllerCreateResponseSuccess)
-
 export const getReceiptControllerCreateUrl = () => {
 
 
@@ -197,9 +193,9 @@ export const getReceiptControllerCreateUrl = () => {
   return `/v1/belege`
 }
 
-export const receiptControllerCreate = async (createReceiptDto: CreateReceiptDto, options?: RequestInit): Promise<receiptControllerCreateResponse> => {
+export const receiptControllerCreate = async (createReceiptDto: CreateReceiptDto, options?: RequestInit): Promise<receiptControllerCreateResponseSuccess> => {
 
-  return httpClient<receiptControllerCreateResponse>(getReceiptControllerCreateUrl(),
+  return httpClient<receiptControllerCreateResponseSuccess>(getReceiptControllerCreateUrl(),
   {
     ...options,
     method: 'POST',
@@ -264,8 +260,6 @@ export type receiptControllerUploadResponseSuccess = (receiptControllerUploadRes
 };
 ;
 
-export type receiptControllerUploadResponse = (receiptControllerUploadResponseSuccess)
-
 export const getReceiptControllerUploadUrl = () => {
 
 
@@ -274,7 +268,7 @@ export const getReceiptControllerUploadUrl = () => {
   return `/v1/belege/upload`
 }
 
-export const receiptControllerUpload = async (receiptControllerUploadBody: ReceiptControllerUploadBody, options?: RequestInit): Promise<receiptControllerUploadResponse> => {
+export const receiptControllerUpload = async (receiptControllerUploadBody: ReceiptControllerUploadBody, options?: RequestInit): Promise<receiptControllerUploadResponseSuccess> => {
     const formData = new FormData();
 formData.append(`file`, receiptControllerUploadBody.file);
 if(receiptControllerUploadBody.kind !== undefined) {
@@ -290,7 +284,7 @@ if(receiptControllerUploadBody.direction !== undefined) {
  formData.append(`direction`, receiptControllerUploadBody.direction);
  }
 
-  return httpClient<receiptControllerUploadResponse>(getReceiptControllerUploadUrl(),
+  return httpClient<receiptControllerUploadResponseSuccess>(getReceiptControllerUploadUrl(),
   {
     ...options,
     method: 'POST'
@@ -362,8 +356,6 @@ export type receiptControllerSetAssignmentResponseError = (receiptControllerSetA
   headers: Headers;
 };
 
-export type receiptControllerSetAssignmentResponse = (receiptControllerSetAssignmentResponseSuccess | receiptControllerSetAssignmentResponseError)
-
 export const getReceiptControllerSetAssignmentUrl = (id: string,) => {
 
 
@@ -373,9 +365,9 @@ export const getReceiptControllerSetAssignmentUrl = (id: string,) => {
 }
 
 export const receiptControllerSetAssignment = async (id: string,
-    setAssignmentDto: SetAssignmentDto, options?: RequestInit): Promise<receiptControllerSetAssignmentResponse> => {
+    setAssignmentDto: SetAssignmentDto, options?: RequestInit): Promise<receiptControllerSetAssignmentResponseSuccess> => {
 
-  return httpClient<receiptControllerSetAssignmentResponse>(getReceiptControllerSetAssignmentUrl(id),
+  return httpClient<receiptControllerSetAssignmentResponseSuccess>(getReceiptControllerSetAssignmentUrl(id),
   {
     ...options,
     method: 'POST',
@@ -447,8 +439,6 @@ export type receiptControllerDeleteResponseError = (receiptControllerDeleteRespo
   headers: Headers;
 };
 
-export type receiptControllerDeleteResponse = (receiptControllerDeleteResponseSuccess | receiptControllerDeleteResponseError)
-
 export const getReceiptControllerDeleteUrl = (id: string,
     params?: ReceiptControllerDeleteParams,) => {
   const normalizedParams = new URLSearchParams();
@@ -466,9 +456,9 @@ export const getReceiptControllerDeleteUrl = (id: string,
 }
 
 export const receiptControllerDelete = async (id: string,
-    params?: ReceiptControllerDeleteParams, options?: RequestInit): Promise<receiptControllerDeleteResponse> => {
+    params?: ReceiptControllerDeleteParams, options?: RequestInit): Promise<receiptControllerDeleteResponseSuccess> => {
 
-  return httpClient<receiptControllerDeleteResponse>(getReceiptControllerDeleteUrl(id,params),
+  return httpClient<receiptControllerDeleteResponseSuccess>(getReceiptControllerDeleteUrl(id,params),
   {
     ...options,
     method: 'DELETE'

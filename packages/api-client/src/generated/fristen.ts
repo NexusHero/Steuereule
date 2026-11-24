@@ -56,8 +56,6 @@ export type deadlinesControllerGetDeadlinesResponseSuccess = (deadlinesControlle
 };
 ;
 
-export type deadlinesControllerGetDeadlinesResponse = (deadlinesControllerGetDeadlinesResponseSuccess)
-
 export const getDeadlinesControllerGetDeadlinesUrl = (jahr: number,) => {
 
 
@@ -66,9 +64,9 @@ export const getDeadlinesControllerGetDeadlinesUrl = (jahr: number,) => {
   return `/v1/steuerjahre/${jahr}/fristen`
 }
 
-export const deadlinesControllerGetDeadlines = async (jahr: number, options?: RequestInit): Promise<deadlinesControllerGetDeadlinesResponse> => {
+export const deadlinesControllerGetDeadlines = async (jahr: number, options?: RequestInit): Promise<deadlinesControllerGetDeadlinesResponseSuccess> => {
 
-  return httpClient<deadlinesControllerGetDeadlinesResponse>(getDeadlinesControllerGetDeadlinesUrl(jahr),
+  return httpClient<deadlinesControllerGetDeadlinesResponseSuccess>(getDeadlinesControllerGetDeadlinesUrl(jahr),
   {
     ...options,
     method: 'GET'

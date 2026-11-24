@@ -21,10 +21,16 @@ export interface PutProfileDto {
   firstName: string;
   /** Non-empty last name, at most 100 characters. */
   lastName: string;
-  /** Steuerliche Identifikationsnummer — exactly 11 digits if present. Optional since ADR-0045 (value-first funnel): omitted = not given yet, stored as null. */
-  steuerId?: string;
-  /** Steuernummer — optional; 1-13 digits (no separators) if present. */
-  steuernummer?: string;
+  /**
+     * Steuerliche Identifikationsnummer — exactly 11 digits if present. Omitted = keep the stored value; null = clear it (ADR-0045: a profile may have none yet).
+     * @nullable
+     */
+  steuerId?: string | null;
+  /**
+     * Steuernummer — 1-13 digits (no separators) if present. Omitted = keep the stored value; null = clear it.
+     * @nullable
+     */
+  steuernummer?: string | null;
 }
 
 export interface ValidationFieldErrorDto {

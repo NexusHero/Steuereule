@@ -69,8 +69,6 @@ export type childrenControllerListResponseError = (childrenControllerListRespons
   headers: Headers;
 };
 
-export type childrenControllerListResponse = (childrenControllerListResponseSuccess | childrenControllerListResponseError)
-
 export const getChildrenControllerListUrl = (jahr: number,) => {
 
 
@@ -79,9 +77,9 @@ export const getChildrenControllerListUrl = (jahr: number,) => {
   return `/v1/steuerjahre/${jahr}/kinder`
 }
 
-export const childrenControllerList = async (jahr: number, options?: RequestInit): Promise<childrenControllerListResponse> => {
+export const childrenControllerList = async (jahr: number, options?: RequestInit): Promise<childrenControllerListResponseSuccess> => {
 
-  return httpClient<childrenControllerListResponse>(getChildrenControllerListUrl(jahr),
+  return httpClient<childrenControllerListResponseSuccess>(getChildrenControllerListUrl(jahr),
   {
     ...options,
     method: 'GET'
@@ -183,8 +181,6 @@ export type childrenControllerCreateResponseError = (childrenControllerCreateRes
   headers: Headers;
 };
 
-export type childrenControllerCreateResponse = (childrenControllerCreateResponseSuccess | childrenControllerCreateResponseError)
-
 export const getChildrenControllerCreateUrl = (jahr: number,) => {
 
 
@@ -194,9 +190,9 @@ export const getChildrenControllerCreateUrl = (jahr: number,) => {
 }
 
 export const childrenControllerCreate = async (jahr: number,
-    createChildDto: CreateChildDto, options?: RequestInit): Promise<childrenControllerCreateResponse> => {
+    createChildDto: CreateChildDto, options?: RequestInit): Promise<childrenControllerCreateResponseSuccess> => {
 
-  return httpClient<childrenControllerCreateResponse>(getChildrenControllerCreateUrl(jahr),
+  return httpClient<childrenControllerCreateResponseSuccess>(getChildrenControllerCreateUrl(jahr),
   {
     ...options,
     method: 'POST',
@@ -268,8 +264,6 @@ export type childrenControllerUpdateResponseError = (childrenControllerUpdateRes
   headers: Headers;
 };
 
-export type childrenControllerUpdateResponse = (childrenControllerUpdateResponseSuccess | childrenControllerUpdateResponseError)
-
 export const getChildrenControllerUpdateUrl = (jahr: number,
     id: string,) => {
 
@@ -281,9 +275,9 @@ export const getChildrenControllerUpdateUrl = (jahr: number,
 
 export const childrenControllerUpdate = async (jahr: number,
     id: string,
-    updateChildDto: UpdateChildDto, options?: RequestInit): Promise<childrenControllerUpdateResponse> => {
+    updateChildDto: UpdateChildDto, options?: RequestInit): Promise<childrenControllerUpdateResponseSuccess> => {
 
-  return httpClient<childrenControllerUpdateResponse>(getChildrenControllerUpdateUrl(jahr,id),
+  return httpClient<childrenControllerUpdateResponseSuccess>(getChildrenControllerUpdateUrl(jahr,id),
   {
     ...options,
     method: 'PUT',
@@ -355,8 +349,6 @@ export type childrenControllerDeleteResponseError = (childrenControllerDeleteRes
   headers: Headers;
 };
 
-export type childrenControllerDeleteResponse = (childrenControllerDeleteResponseSuccess | childrenControllerDeleteResponseError)
-
 export const getChildrenControllerDeleteUrl = (jahr: number,
     id: string,) => {
 
@@ -367,9 +359,9 @@ export const getChildrenControllerDeleteUrl = (jahr: number,
 }
 
 export const childrenControllerDelete = async (jahr: number,
-    id: string, options?: RequestInit): Promise<childrenControllerDeleteResponse> => {
+    id: string, options?: RequestInit): Promise<childrenControllerDeleteResponseSuccess> => {
 
-  return httpClient<childrenControllerDeleteResponse>(getChildrenControllerDeleteUrl(jahr,id),
+  return httpClient<childrenControllerDeleteResponseSuccess>(getChildrenControllerDeleteUrl(jahr,id),
   {
     ...options,
     method: 'DELETE'

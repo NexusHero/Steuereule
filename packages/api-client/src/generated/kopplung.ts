@@ -69,8 +69,6 @@ export type linkControllerGetResponseError = (linkControllerGetResponse401) & {
   headers: Headers;
 };
 
-export type linkControllerGetResponse = (linkControllerGetResponseSuccess | linkControllerGetResponseError)
-
 export const getLinkControllerGetUrl = (jahr: number,) => {
 
 
@@ -79,9 +77,9 @@ export const getLinkControllerGetUrl = (jahr: number,) => {
   return `/v1/steuerjahre/${jahr}/kopplung`
 }
 
-export const linkControllerGet = async (jahr: number, options?: RequestInit): Promise<linkControllerGetResponse> => {
+export const linkControllerGet = async (jahr: number, options?: RequestInit): Promise<linkControllerGetResponseSuccess> => {
 
-  return httpClient<linkControllerGetResponse>(getLinkControllerGetUrl(jahr),
+  return httpClient<linkControllerGetResponseSuccess>(getLinkControllerGetUrl(jahr),
   {
     ...options,
     method: 'GET'
@@ -188,8 +186,6 @@ export type linkControllerSetResponseError = (linkControllerSetResponse401 | lin
   headers: Headers;
 };
 
-export type linkControllerSetResponse = (linkControllerSetResponseSuccess | linkControllerSetResponseError)
-
 export const getLinkControllerSetUrl = (jahr: number,) => {
 
 
@@ -199,9 +195,9 @@ export const getLinkControllerSetUrl = (jahr: number,) => {
 }
 
 export const linkControllerSet = async (jahr: number,
-    setLinkDto: SetLinkDto, options?: RequestInit): Promise<linkControllerSetResponse> => {
+    setLinkDto: SetLinkDto, options?: RequestInit): Promise<linkControllerSetResponseSuccess> => {
 
-  return httpClient<linkControllerSetResponse>(getLinkControllerSetUrl(jahr),
+  return httpClient<linkControllerSetResponseSuccess>(getLinkControllerSetUrl(jahr),
   {
     ...options,
     method: 'PUT',
@@ -278,8 +274,6 @@ export type linkControllerUpdatePersonBResponseError = (linkControllerUpdatePers
   headers: Headers;
 };
 
-export type linkControllerUpdatePersonBResponse = (linkControllerUpdatePersonBResponseSuccess | linkControllerUpdatePersonBResponseError)
-
 export const getLinkControllerUpdatePersonBUrl = (jahr: number,) => {
 
 
@@ -289,9 +283,9 @@ export const getLinkControllerUpdatePersonBUrl = (jahr: number,) => {
 }
 
 export const linkControllerUpdatePersonB = async (jahr: number,
-    linkPersonBDto: LinkPersonBDto, options?: RequestInit): Promise<linkControllerUpdatePersonBResponse> => {
+    linkPersonBDto: LinkPersonBDto, options?: RequestInit): Promise<linkControllerUpdatePersonBResponseSuccess> => {
 
-  return httpClient<linkControllerUpdatePersonBResponse>(getLinkControllerUpdatePersonBUrl(jahr),
+  return httpClient<linkControllerUpdatePersonBResponseSuccess>(getLinkControllerUpdatePersonBUrl(jahr),
   {
     ...options,
     method: 'PUT',
@@ -363,8 +357,6 @@ export type linkControllerJoinWithCodeResponseError = (linkControllerJoinWithCod
   headers: Headers;
 };
 
-export type linkControllerJoinWithCodeResponse = (linkControllerJoinWithCodeResponseSuccess | linkControllerJoinWithCodeResponseError)
-
 export const getLinkControllerJoinWithCodeUrl = (jahr: number,
     code: string,) => {
 
@@ -375,9 +367,9 @@ export const getLinkControllerJoinWithCodeUrl = (jahr: number,
 }
 
 export const linkControllerJoinWithCode = async (jahr: number,
-    code: string, options?: RequestInit): Promise<linkControllerJoinWithCodeResponse> => {
+    code: string, options?: RequestInit): Promise<linkControllerJoinWithCodeResponseSuccess> => {
 
-  return httpClient<linkControllerJoinWithCodeResponse>(getLinkControllerJoinWithCodeUrl(jahr,code),
+  return httpClient<linkControllerJoinWithCodeResponseSuccess>(getLinkControllerJoinWithCodeUrl(jahr,code),
   {
     ...options,
     method: 'POST'

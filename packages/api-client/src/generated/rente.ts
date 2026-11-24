@@ -72,8 +72,6 @@ export type pensionControllerGetResponseError = (pensionControllerGetResponse401
   headers: Headers;
 };
 
-export type pensionControllerGetResponse = (pensionControllerGetResponseSuccess | pensionControllerGetResponseError)
-
 export const getPensionControllerGetUrl = (jahr: number,
     params?: PensionControllerGetParams,) => {
   const normalizedParams = new URLSearchParams();
@@ -91,9 +89,9 @@ export const getPensionControllerGetUrl = (jahr: number,
 }
 
 export const pensionControllerGet = async (jahr: number,
-    params?: PensionControllerGetParams, options?: RequestInit): Promise<pensionControllerGetResponse> => {
+    params?: PensionControllerGetParams, options?: RequestInit): Promise<pensionControllerGetResponseSuccess> => {
 
-  return httpClient<pensionControllerGetResponse>(getPensionControllerGetUrl(jahr,params),
+  return httpClient<pensionControllerGetResponseSuccess>(getPensionControllerGetUrl(jahr,params),
   {
     ...options,
     method: 'GET'
@@ -201,8 +199,6 @@ export type pensionControllerSetPensionKindResponseError = (pensionControllerSet
   headers: Headers;
 };
 
-export type pensionControllerSetPensionKindResponse = (pensionControllerSetPensionKindResponseSuccess | pensionControllerSetPensionKindResponseError)
-
 export const getPensionControllerSetPensionKindUrl = (jahr: number,
     params?: PensionControllerSetPensionKindParams,) => {
   const normalizedParams = new URLSearchParams();
@@ -221,9 +217,9 @@ export const getPensionControllerSetPensionKindUrl = (jahr: number,
 
 export const pensionControllerSetPensionKind = async (jahr: number,
     putPensionKindDto: PutPensionKindDto,
-    params?: PensionControllerSetPensionKindParams, options?: RequestInit): Promise<pensionControllerSetPensionKindResponse> => {
+    params?: PensionControllerSetPensionKindParams, options?: RequestInit): Promise<pensionControllerSetPensionKindResponseSuccess> => {
 
-  return httpClient<pensionControllerSetPensionKindResponse>(getPensionControllerSetPensionKindUrl(jahr,params),
+  return httpClient<pensionControllerSetPensionKindResponseSuccess>(getPensionControllerSetPensionKindUrl(jahr,params),
   {
     ...options,
     method: 'PUT',
@@ -295,8 +291,6 @@ export type pensionControllerSetFieldResponseError = (pensionControllerSetFieldR
   headers: Headers;
 };
 
-export type pensionControllerSetFieldResponse = (pensionControllerSetFieldResponseSuccess | pensionControllerSetFieldResponseError)
-
 export const getPensionControllerSetFieldUrl = (jahr: number,
     feld: string,
     params?: PensionControllerSetFieldParams,) => {
@@ -317,9 +311,9 @@ export const getPensionControllerSetFieldUrl = (jahr: number,
 export const pensionControllerSetField = async (jahr: number,
     feld: string,
     putPensionFieldDto: PutPensionFieldDto,
-    params?: PensionControllerSetFieldParams, options?: RequestInit): Promise<pensionControllerSetFieldResponse> => {
+    params?: PensionControllerSetFieldParams, options?: RequestInit): Promise<pensionControllerSetFieldResponseSuccess> => {
 
-  return httpClient<pensionControllerSetFieldResponse>(getPensionControllerSetFieldUrl(jahr,feld,params),
+  return httpClient<pensionControllerSetFieldResponseSuccess>(getPensionControllerSetFieldUrl(jahr,feld,params),
   {
     ...options,
     method: 'PUT',

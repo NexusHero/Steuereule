@@ -103,7 +103,7 @@ export interface PrintoutJobDto {
   statusUrl: string;
   /** Download URL when status is completed. */
   downloadUrl?: string;
-  /** Error explanation if job failed. */
+  /** Machine code if the job failed: a DomainError code, else PRINTOUT_FAILED. Never a raw message (API-5). */
   error?: string;
 }
 

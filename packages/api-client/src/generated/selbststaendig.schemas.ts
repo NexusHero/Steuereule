@@ -207,8 +207,9 @@ export interface ProfessionSuggestionDto {
 
 /**
  * The period the office set; absent = derived from the year before.
+ * @nullable
  */
-export type VatPeriodFactsDtoPeriod = typeof VatPeriodFactsDtoPeriod[keyof typeof VatPeriodFactsDtoPeriod];
+export type VatPeriodFactsDtoPeriod = typeof VatPeriodFactsDtoPeriod[keyof typeof VatPeriodFactsDtoPeriod] | null;
 
 
 export const VatPeriodFactsDtoPeriod = {
@@ -218,16 +219,31 @@ export const VatPeriodFactsDtoPeriod = {
 } as const;
 
 export interface VatPeriodFactsDto {
-  /** The period the office set; absent = derived from the year before. */
+  /**
+     * The period the office set; absent = derived from the year before.
+     * @nullable
+     */
   period?: VatPeriodFactsDtoPeriod;
-  /** Dauerfristverlängerung (§ 46 UStDV). */
-  extension?: boolean;
-  /** The Sondervorauszahlung as paid; absent = 1/11 of last year (§ 47 UStDV). */
-  specialPrepaymentEur?: number;
-  /** Monthly by choice after a refund above the limit (§ 18 Abs. 2a UStG). */
-  chooseMonthly?: boolean;
-  /** Freed from keeping books by the office (§ 148 AO): Istversteuerung whatever the turnover (§ 20 Satz 1 Nr. 2 UStG). */
-  exemptFromBookkeeping?: boolean;
+  /**
+     * Dauerfristverlängerung (§ 46 UStDV).
+     * @nullable
+     */
+  extension?: boolean | null;
+  /**
+     * The Sondervorauszahlung as paid; absent = 1/11 of last year (§ 47 UStDV).
+     * @nullable
+     */
+  specialPrepaymentEur?: number | null;
+  /**
+     * Monthly by choice after a refund above the limit (§ 18 Abs. 2a UStG).
+     * @nullable
+     */
+  chooseMonthly?: boolean | null;
+  /**
+     * Freed from keeping books by the office (§ 148 AO): Istversteuerung whatever the turnover (§ 20 Satz 1 Nr. 2 UStG).
+     * @nullable
+     */
+  exemptFromBookkeeping?: boolean | null;
 }
 
 export type DisposalFactsDtoKind = typeof DisposalFactsDtoKind[keyof typeof DisposalFactsDtoKind];
@@ -288,26 +304,51 @@ export interface FinancingComponentsDto {
 }
 
 export interface TradeTaxInputsDto {
-  financing?: FinancingComponentsDto;
-  /** Further additions (§ 8 Nr. 4–12 GewStG), euros. */
-  otherAdditionsEur?: number;
-  /** Einheitswert of the business land for § 9 Nr. 1 GewStG, euros. */
-  einheitswertEur?: number;
-  /** Further deductions (§ 9 Nr. 2–10), euros. */
-  otherDeductionsEur?: number;
-  /** Gewerbeverlust carried forward (§ 10a GewStG), euros. */
-  lossCarriedForwardEur?: number;
+  /** @nullable */
+  financing?: FinancingComponentsDto | null;
+  /**
+     * Further additions (§ 8 Nr. 4–12 GewStG), euros.
+     * @nullable
+     */
+  otherAdditionsEur?: number | null;
+  /**
+     * Einheitswert of the business land for § 9 Nr. 1 GewStG, euros.
+     * @nullable
+     */
+  einheitswertEur?: number | null;
+  /**
+     * Further deductions (§ 9 Nr. 2–10), euros.
+     * @nullable
+     */
+  otherDeductionsEur?: number | null;
+  /**
+     * Gewerbeverlust carried forward (§ 10a GewStG), euros.
+     * @nullable
+     */
+  lossCarriedForwardEur?: number | null;
 }
 
 export interface LossFactsDto {
-  /** Verbleibender Verlustvortrag of the last Feststellungsbescheid, euros. */
-  carriedForwardEur?: number;
-  /** § 10d Abs. 1 Satz 5: waive the Rücktrag (as a whole). */
-  waiveCarryBack?: boolean;
-  /** What the GdE of the year before and the second year before still offers, euros: [y−1, y−2]. */
-  roomEur?: number[];
-  /** A later year’s loss carried back into this year, euros. */
-  carriedBackEur?: number;
+  /**
+     * Verbleibender Verlustvortrag of the last Feststellungsbescheid, euros.
+     * @nullable
+     */
+  carriedForwardEur?: number | null;
+  /**
+     * § 10d Abs. 1 Satz 5: waive the Rücktrag (as a whole).
+     * @nullable
+     */
+  waiveCarryBack?: boolean | null;
+  /**
+     * What the GdE of the year before and the second year before still offers, euros: [y−1, y−2].
+     * @nullable
+     */
+  roomEur?: number[] | null;
+  /**
+     * A later year’s loss carried back into this year, euros.
+     * @nullable
+     */
+  carriedBackEur?: number | null;
 }
 
 export type PartnershipShareDtoKind = typeof PartnershipShareDtoKind[keyof typeof PartnershipShareDtoKind];
@@ -524,7 +565,7 @@ export interface BusinessProfileInputDto {
      */
   vatPrepaymentsCents?: number | null;
   /**
-     * The Voranmeldung facts. Replaced as a whole.
+     * The Voranmeldung facts. Merged key by key: a key left out stays, null removes it.
      * @nullable
      */
   vatPeriodFacts?: VatPeriodFactsDto | null;
@@ -539,12 +580,12 @@ export interface BusinessProfileInputDto {
      */
   retainedFacts?: RetainedFactsDto | null;
   /**
-     * Gewerbesteuer inputs, euros. Replaced as a whole: send the complete object.
+     * Gewerbesteuer inputs, euros. Merged key by key: a key left out stays, null removes it.
      * @nullable
      */
   tradeTaxInputs?: TradeTaxInputsDto | null;
   /**
-     * § 10d facts, euros. Replaced as a whole.
+     * § 10d facts, euros. Merged key by key: a key left out stays, null removes it.
      * @nullable
      */
   lossFacts?: LossFactsDto | null;

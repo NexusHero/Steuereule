@@ -63,8 +63,6 @@ export type unlockControllerStatusResponseError = (unlockControllerStatusRespons
   headers: Headers;
 };
 
-export type unlockControllerStatusResponse = (unlockControllerStatusResponseSuccess | unlockControllerStatusResponseError)
-
 export const getUnlockControllerStatusUrl = (jahr: number,) => {
 
 
@@ -73,9 +71,9 @@ export const getUnlockControllerStatusUrl = (jahr: number,) => {
   return `/v1/steuerjahre/${jahr}/freischaltung`
 }
 
-export const unlockControllerStatus = async (jahr: number, options?: RequestInit): Promise<unlockControllerStatusResponse> => {
+export const unlockControllerStatus = async (jahr: number, options?: RequestInit): Promise<unlockControllerStatusResponseSuccess> => {
 
-  return httpClient<unlockControllerStatusResponse>(getUnlockControllerStatusUrl(jahr),
+  return httpClient<unlockControllerStatusResponseSuccess>(getUnlockControllerStatusUrl(jahr),
   {
     ...options,
     method: 'GET'

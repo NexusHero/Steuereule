@@ -49,8 +49,6 @@ export type addressControllerSearchResponseError = (addressControllerSearchRespo
   headers: Headers;
 };
 
-export type addressControllerSearchResponse = (addressControllerSearchResponseSuccess | addressControllerSearchResponseError)
-
 export const getAddressControllerSearchUrl = () => {
 
 
@@ -59,9 +57,9 @@ export const getAddressControllerSearchUrl = () => {
   return `/v1/adressen/suche`
 }
 
-export const addressControllerSearch = async (addressSearchRequestDto: AddressSearchRequestDto, options?: RequestInit): Promise<addressControllerSearchResponse> => {
+export const addressControllerSearch = async (addressSearchRequestDto: AddressSearchRequestDto, options?: RequestInit): Promise<addressControllerSearchResponseSuccess> => {
 
-  return httpClient<addressControllerSearchResponse>(getAddressControllerSearchUrl(),
+  return httpClient<addressControllerSearchResponseSuccess>(getAddressControllerSearchUrl(),
   {
     ...options,
     method: 'POST',

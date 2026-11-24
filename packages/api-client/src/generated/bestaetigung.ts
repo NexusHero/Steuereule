@@ -69,8 +69,6 @@ export type confirmationControllerGetResponseError = (confirmationControllerGetR
   headers: Headers;
 };
 
-export type confirmationControllerGetResponse = (confirmationControllerGetResponseSuccess | confirmationControllerGetResponseError)
-
 export const getConfirmationControllerGetUrl = (jahr: number,) => {
 
 
@@ -79,9 +77,9 @@ export const getConfirmationControllerGetUrl = (jahr: number,) => {
   return `/v1/steuerjahre/${jahr}/bestaetigung`
 }
 
-export const confirmationControllerGet = async (jahr: number, options?: RequestInit): Promise<confirmationControllerGetResponse> => {
+export const confirmationControllerGet = async (jahr: number, options?: RequestInit): Promise<confirmationControllerGetResponseSuccess> => {
 
-  return httpClient<confirmationControllerGetResponse>(getConfirmationControllerGetUrl(jahr),
+  return httpClient<confirmationControllerGetResponseSuccess>(getConfirmationControllerGetUrl(jahr),
   {
     ...options,
     method: 'GET'
@@ -183,8 +181,6 @@ export type confirmationControllerConfirmAnnexResponseError = (confirmationContr
   headers: Headers;
 };
 
-export type confirmationControllerConfirmAnnexResponse = (confirmationControllerConfirmAnnexResponseSuccess | confirmationControllerConfirmAnnexResponseError)
-
 export const getConfirmationControllerConfirmAnnexUrl = (jahr: number,
     anlage: 'hauptvordruck' | 'anlageN' | 'anlageNGre' | 'anlageR' | 'anlageKap' | 'anlageV' | 'anlageKind' | 'anlageEuer',) => {
 
@@ -195,9 +191,9 @@ export const getConfirmationControllerConfirmAnnexUrl = (jahr: number,
 }
 
 export const confirmationControllerConfirmAnnex = async (jahr: number,
-    anlage: 'hauptvordruck' | 'anlageN' | 'anlageNGre' | 'anlageR' | 'anlageKap' | 'anlageV' | 'anlageKind' | 'anlageEuer', options?: RequestInit): Promise<confirmationControllerConfirmAnnexResponse> => {
+    anlage: 'hauptvordruck' | 'anlageN' | 'anlageNGre' | 'anlageR' | 'anlageKap' | 'anlageV' | 'anlageKind' | 'anlageEuer', options?: RequestInit): Promise<confirmationControllerConfirmAnnexResponseSuccess> => {
 
-  return httpClient<confirmationControllerConfirmAnnexResponse>(getConfirmationControllerConfirmAnnexUrl(jahr,anlage),
+  return httpClient<confirmationControllerConfirmAnnexResponseSuccess>(getConfirmationControllerConfirmAnnexUrl(jahr,anlage),
   {
     ...options,
     method: 'PUT'
@@ -274,8 +270,6 @@ export type confirmationControllerDecideProposalResponseError = (confirmationCon
   headers: Headers;
 };
 
-export type confirmationControllerDecideProposalResponse = (confirmationControllerDecideProposalResponseSuccess | confirmationControllerDecideProposalResponseError)
-
 export const getConfirmationControllerDecideProposalUrl = (jahr: number,
     key: string,) => {
 
@@ -287,9 +281,9 @@ export const getConfirmationControllerDecideProposalUrl = (jahr: number,
 
 export const confirmationControllerDecideProposal = async (jahr: number,
     key: string,
-    proposalDecisionDto: ProposalDecisionDto, options?: RequestInit): Promise<confirmationControllerDecideProposalResponse> => {
+    proposalDecisionDto: ProposalDecisionDto, options?: RequestInit): Promise<confirmationControllerDecideProposalResponseSuccess> => {
 
-  return httpClient<confirmationControllerDecideProposalResponse>(getConfirmationControllerDecideProposalUrl(jahr,key),
+  return httpClient<confirmationControllerDecideProposalResponseSuccess>(getConfirmationControllerDecideProposalUrl(jahr,key),
   {
     ...options,
     method: 'PUT',
@@ -366,8 +360,6 @@ export type confirmationControllerDecideTaskResponseError = (confirmationControl
   headers: Headers;
 };
 
-export type confirmationControllerDecideTaskResponse = (confirmationControllerDecideTaskResponseSuccess | confirmationControllerDecideTaskResponseError)
-
 export const getConfirmationControllerDecideTaskUrl = (jahr: number,
     id: string,) => {
 
@@ -379,9 +371,9 @@ export const getConfirmationControllerDecideTaskUrl = (jahr: number,
 
 export const confirmationControllerDecideTask = async (jahr: number,
     id: string,
-    taskDecisionDto: TaskDecisionDto, options?: RequestInit): Promise<confirmationControllerDecideTaskResponse> => {
+    taskDecisionDto: TaskDecisionDto, options?: RequestInit): Promise<confirmationControllerDecideTaskResponseSuccess> => {
 
-  return httpClient<confirmationControllerDecideTaskResponse>(getConfirmationControllerDecideTaskUrl(jahr,id),
+  return httpClient<confirmationControllerDecideTaskResponseSuccess>(getConfirmationControllerDecideTaskUrl(jahr,id),
   {
     ...options,
     method: 'PUT',
