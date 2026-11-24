@@ -23,7 +23,7 @@ import { forceRevokeOtherSessionsOnPasswordChange } from './force-session-rotati
 import { capSessionUpdateExpiry } from './session-absolute-cap.js'
 import { CLIENT_IP_HEADER } from './client-ip.js'
 import { revokeOauthGrantsOnPasswordChangePlugin, stepUpPlugin } from './step-up.js'
-import { enforceAccountSignInLimit } from './account-sign-in-limit.js'
+import { enforceAccountSignInLimit, enforceVerifyPasswordAccountLimit } from './account-sign-in-limit.js'
 import {
   PASSWORD_RESET_ADDRESS_RULE,
   PASSWORD_RESET_TOKEN_TTL_SECONDS,
@@ -273,6 +273,7 @@ function buildOptions(options: CreateBetterAuthOptions & { rateLimitStorage: Res
         if (ctx.path === '/sign-in/email' || ctx.path === '/sign-up/email') onSweepOpportunity?.()
         await enforceAccountSignInLimit(rateLimitStorage, ctx.path, ctx.body)
         await enforcePasswordResetRequest(rateLimitStorage, ctx.path, ctx.body, webAppUrl)
+        await enforceVerifyPasswordAccountLimit(rateLimitStorage, ctx)
         // A password change always rotates the current token and revokes the account's other sessions,
         // whatever the client sent (ADR-0103 vulnerability 3): force better-auth's own flag on.
         const rotation = forceRevokeOtherSessionsOnPasswordChange(ctx.path, ctx.body)

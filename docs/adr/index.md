@@ -126,6 +126,7 @@ boot-ordering invariant are detailed in [`docs/arc42/README.md`](../arc42/README
 | 0105 | CI gate taxonomy, `category: gate` naming & the advisory CI-Overview transparency rollup | Accepted |
 | 0106 | Fixes for the live penetration test of 2026-11-23 (quadratic readers, client address, step-up, assistant grants, limits) | Accepted |
 | 0107 | Fixes for the third-round penetration test of 2026-11-23 (fastify/deps, AI chat PII leak, name at rest, crypto-shredding scope, rate-limit signal, export fresh-auth, oauth step-up) | Accepted |
+| 0108 | Hardening from the post-merge review (fileless receipt-row cap, per-account /verify-password limit) | Accepted |
 | 0109 | Hardening after the security report of 2026-11-24 (shared limits, Redis by default, upload admission, guest retention, password reset, sign-up without an account oracle, dependency gate, two-stage image, alerting, staging and production) | Accepted |
 | 0110 | Per-user keys for the field-encrypted columns (own Prisma extension, keystore key per row owner, staged migration) | Accepted |
 

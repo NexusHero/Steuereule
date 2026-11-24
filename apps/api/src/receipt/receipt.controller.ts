@@ -96,6 +96,10 @@ export class ReceiptController {
   }
 
   @Post()
+  // Per account (ADR-0108): the row cap bounds how many fileless Belege exist, this how fast they are made —
+  // the fileless-create vector the quota (blobs only) and the upload throttle did not cover.
+  @UseGuards(FastifyThrottlerGuard)
+  @Throttle({ default: RECEIPT_UPLOAD_THROTTLE })
   @ApiBody({ type: CreateReceiptDto })
   @ApiCreatedResponse({ type: ReceiptResponseDto, description: 'The created, unbound Beleg with its derived Zuordnung.' })
   create(@CurrentUser() userId: string, @Body() dto: CreateReceiptDto): Promise<ReceiptResponseDto> {
