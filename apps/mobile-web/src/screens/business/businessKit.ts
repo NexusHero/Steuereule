@@ -1,4 +1,5 @@
 import { formatEuroCents, toGermanDate } from '@steuereule/core'
+import { parseGermanCents } from '../shared/germanNumber'
 
 export type Person = 'A' | 'B'
 
@@ -34,13 +35,9 @@ export function signedEuro(euro: number): string {
   return signedCents(Math.round(euro * 100))
 }
 
-/** Parses a German or plain decimal euro entry (`1.234,50`, `12,5`, `80`) into cents; null when it is no amount. */
+/** Parses a German euro entry (`1.234,50`, `40.000`, `12,5`, `80`) into cents with the shared parser (WEB-46); null when it is no amount. */
 export function eurosToCents(raw: string): number | null {
-  const text = raw.trim().replaceAll(' ', '')
-  if (text === '') return null
-  const normalised = text.includes(',') ? text.replaceAll('.', '').replace(',', '.') : text
-  if (!/^\d+(\.\d{1,2})?$/.test(normalised)) return null
-  return Math.round(Number(normalised) * 100)
+  return parseGermanCents(raw)
 }
 
 export interface ApiProblem {
