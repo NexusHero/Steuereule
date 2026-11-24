@@ -268,8 +268,8 @@ export function useLstbScan({ taxYear, person }: { readonly taxYear: number; rea
     setOverwriteConflict(false)
     let failure: unknown = null
     for (const actionId of actionIds) {
-      await dismissAction.mutateAsync({ jahr: taxYear, actionId }).catch((error: unknown) => {
-        failure = error
+      await dismissAction.mutateAsync({ jahr: taxYear, actionId }).catch((dismissFailure: unknown) => {
+        failure = dismissFailure
       })
     }
     // The draft is gone here; a dismissal the server did not take would bring it back on reload — say so.
@@ -319,9 +319,9 @@ export function useLstbScan({ taxYear, person }: { readonly taxYear: number; rea
         queryClient.invalidateQueries({ queryKey: getReceiptControllerListQueryKey() }),
         queryClient.invalidateQueries({ queryKey: getAdvisorControllerGetSessionQueryKey(taxYear) }),
       ])
-    } catch (error) {
-      if (classifyApiFailure(error).kind === 'conflict') {
-        if (classifyApiFailure(error).code === 'LSTB_SAME_CERTIFICATE') {
+    } catch (confirmFailure) {
+      if (classifyApiFailure(confirmFailure).kind === 'conflict') {
+        if (classifyApiFailure(confirmFailure).code === 'LSTB_SAME_CERTIFICATE') {
           setSameCertificate(true)
           return
         }
@@ -330,7 +330,7 @@ export function useLstbScan({ taxYear, person }: { readonly taxYear: number; rea
         return
       }
       // NM-07 / WEB-10: a 401, 429 or lost connection says what it is; the draft stays to try again.
-      setError(failureMessage(error, { server: tr('lstb.scan.error.confirmFailed'), unknown: tr('lstb.scan.error.confirmFailed') }))
+      setError(failureMessage(confirmFailure, { server: tr('lstb.scan.error.confirmFailed'), unknown: tr('lstb.scan.error.confirmFailed') }))
     }
   }
 
