@@ -169,4 +169,24 @@ describe('deployment wiring: every production value reaches the runtime (beta P1
     expect(wizard).toMatch(/rechtliches\/agb/)
     expect(wizard).toMatch(/repos\/\$GITHUB_REPOSITORY\/environments\/\$GH_ENVIRONMENT/)
   })
+
+  it('H2-32: every check docs/ci-pipeline.md lists as required is a job that reports under exactly that name', () => {
+    const doc = read('docs/ci-pipeline.md')
+    const section = doc.slice(doc.indexOf('## Required checks'), doc.indexOf('## Categories'))
+    const listed = [...section.matchAll(/^\| `([^`]+)` \|/gm)].map((match) => match[1])
+    const jobNames = readdirSync(repoFile('.github/workflows'))
+      .filter((name) => name.endsWith('.yml'))
+      .flatMap((name) => [...read(`.github/workflows/${name}`).matchAll(/^ {4}name: '?(.+?)'?$/gm)].map((match) => match[1]))
+      .flatMap((name) => (name.includes('${{ matrix.shard }}') ? ['1/4', '2/4', '3/4', '4/4'].map((shard) => name.replace('${{ matrix.shard }}', shard)) : [name]))
+    expect(listed.length).toBeGreaterThanOrEqual(24)
+    for (const check of listed.filter((name) => name !== 'SonarCloud Code Analysis')) expect(jobNames, check).toContain(check)
+    expect(read('.github/workflows/ci-overview.yml')).not.toMatch(/pre-rename/)
+  })
+
+  it('H2-35: the nightly evaluation skips its job until enabled, and fails rather than passing without its key', () => {
+    const nightly = read('.github/workflows/ai-eval-nightly.yml')
+    expect(nightly).toMatch(/^ {4}if: github\.event_name == 'workflow_dispatch' \|\| vars\.AI_EVAL_ENABLED == 'true'$/m)
+    expect(nightly).toMatch(/AI_EVAL_GEMINI_API_KEY is not set[\s\S]*?exit 1/)
+    expect(nightly).not.toMatch(/present=false/)
+  })
 })

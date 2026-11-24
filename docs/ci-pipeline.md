@@ -8,35 +8,43 @@ Checks are named `category: gate` so the GitHub PR checklist clusters by categor
 pipelines (`Quality`, `Build & E2E`, `Security`, `Load`, and the advisory `CI Overview`) run in parallel on
 every pull request; the nightly ones (`AI eval`, `Law watch`) do not gate PRs.
 
-## ⚠️ Required checks are enforced by a *ruleset*, under the pre-rename names
+## Required checks (ruleset `main`)
 
-`main` has **no** classic `required_status_checks` (the branch-protection API returns 404) — but a repository
-**ruleset** (`main`, active) *does* require 16 status checks, under the names they had **before** this PR's
-rename. Renaming the jobs makes those contexts stop reporting, so the ruleset's required list must be switched
-to the new names **in the same window** this PR merges: switched too early it blocks every other open PR,
-switched too late this PR cannot merge. Updating the ruleset is a repo setting and the stakeholder's to make
-(tracked in **#71**).
+`main` has no classic branch protection; a repository **ruleset** (`main`, active) requires status checks by
+name. The names below are the job `name:` values exactly as they report. On 2026-11-24 the ruleset required the
+first twenty (read with `gh api`); the last five are not required yet and must be added by a repository admin
+(H2-32). Each of them runs on every pull request, so requiring it cannot leave a PR waiting.
 
-| Required context (ruleset, pre-rename) | New check name (this PR) |
-|---|---|
-| `Lint` | `static: lint (oxlint)` |
-| `Test` | `correctness: unit tests (no DB)` |
-| `Integration (Postgres)` | `correctness: integration (postgres)` |
-| `Build, CycloneDX SBOM, Trivy Container Scan & Bundle Gate` | `supply-chain: build, SBOM, container scan & bundle gate` |
-| `DevSecOps Static (Gitleaks, Trivy FS/IaC, Semgrep SAST, Hadolint, Actionlint)` | **split into five:** `security: secret scan (gitleaks)` · `security: sast (semgrep — custom NestJS/DSGVO rules)` · `security: iac scan (trivy — terraform, dockerfiles, compose, k8s)` · `security: dockerfile lint (hadolint)` · `security: workflow lint (actionlint)` |
-| `Docs consistency — register-check + adr-check` | `static: docs consistency (register + adr)` |
-| `Validate compose` | `static: validate compose` |
-| `Vordrucke — Vermessung und Lage der Ausdruck-Felder` | `static: vordrucke (form-field geometry)` |
-| `Smoke` | `e2e: smoke (real /api/auth over HTTP)` |
-| `Browser gates (real stack, headless Chromium)` | `e2e: browser gates & a11y (BFSG/WCAG 2.1 AA, headless Chromium)` |
-| `Production compose stack — guest, registration, login, QR (real Docker build)` | `e2e: production compose stack + OWASP ZAP DAST (real Docker build)` |
-| `E2E Scenarios Matrix (Shard 1/4 … 4/4)` | `e2e: scenarios (shard 1/4 … 4/4)` |
-| `SonarCloud Code Analysis` | **unchanged** — posted by the SonarCloud app, not a workflow job, so it keeps reporting |
+| Check | Workflow | Required today |
+|---|---|---|
+| `static: validate compose` | `quality.yml` | yes |
+| `static: lint (oxlint)` | `quality.yml` | yes |
+| `correctness: unit tests (no DB)` | `quality.yml` | yes |
+| `correctness: integration (postgres)` | `quality.yml` | yes |
+| `static: docs consistency (register + adr)` | `quality.yml` | yes |
+| `static: vordrucke (form-field geometry)` | `quality.yml` | yes |
+| `SonarCloud Code Analysis` | SonarCloud app (job `quality: sonarqube cloud` uploads) | yes |
+| `security: secret scan (gitleaks)` | `security.yml` | yes |
+| `security: dockerfile lint (hadolint)` | `security.yml` | yes |
+| `security: workflow lint (actionlint)` | `security.yml` | yes |
+| `security: iac scan (trivy — terraform, dockerfiles, compose, k8s)` | `security.yml` | yes |
+| `security: sast (semgrep — custom NestJS/DSGVO rules)` | `security.yml` | yes |
+| `supply-chain: build, SBOM, container scan & bundle gate` | `ci.yml` | yes |
+| `e2e: smoke (real /api/auth over HTTP)` | `ci.yml` | yes |
+| `e2e: browser gates & a11y (BFSG/WCAG 2.1 AA, headless Chromium)` | `ci.yml` | yes |
+| `e2e: scenarios (shard 1/4)` | `ci.yml` | yes |
+| `e2e: scenarios (shard 2/4)` | `ci.yml` | yes |
+| `e2e: scenarios (shard 3/4)` | `ci.yml` | yes |
+| `e2e: scenarios (shard 4/4)` | `ci.yml` | yes |
+| `e2e: production compose stack + OWASP ZAP DAST (real Docker build)` | `ci.yml` | yes |
+| `e2e: scenario 09b (self-employment switch on)` | `ci.yml` | **add** |
+| `security: dependency audit (production deps)` | `security.yml` | **add** |
+| `performance: load (many users, seeded accounts, think times)` | `load.yml` | **add** |
+| `static: opentofu validate` | `deploy.yml` (every PR since beta P1) | **add** |
 
-Only `SonarCloud Code Analysis` survives the rename untouched; the other 15 contexts change name (and one splits
-into five). Two gates this PR also surfaces — `e2e: scenario 09b (self-employment switch on)` and
-`performance: load (many users …)` — are **not** in the ruleset today; add them only to raise the bar. Until the
-ruleset is updated, this map (and the CI-Overview comment) is how a reviewer reads what each new check proves.
+The deployment wiring (every production value reaches Cloud Run, every `workflow_run` name exists) is checked
+inside `correctness: unit tests (no DB)` (`apps/api/test/config/deployment-wiring.test.ts`), so it needs no
+check of its own.
 
 ## Categories
 
