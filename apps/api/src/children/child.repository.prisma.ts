@@ -150,6 +150,9 @@ export class PrismaChildRepository implements ChildRepository {
 
     await this.prisma.$transaction([
       this.prisma.child.delete({ where: { id } }),
+      // The child's markings and proposals go with it (API-21): whoever deletes it — the mask, the household,
+      // the owl's undo, the assistant — an unconfirmed value of a child that is gone must not block the printout.
+      this.prisma.marking.deleteMany({ where: { userId, taxYear, itemKey: { startsWith: `kind:${id}.` } } }),
       this.prisma.taxDataAccessLog.create({
         data: { userId, action: 'WRITE', resource: 'kind' },
       }),
