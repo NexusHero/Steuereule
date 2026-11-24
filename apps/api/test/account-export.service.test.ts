@@ -160,3 +160,31 @@ describe('AccountExportService.recordExportRead', () => {
     expect(rows[0]).toMatchObject({ userId: 'user-1', action: 'READ', resource: 'export' })
   })
 })
+
+describe('AccountExportService access-log bound (ADR-0109)', () => {
+  async function seeded(rows: number) {
+    const ctx = buildService()
+    ctx.accountIdentityRepository.seed('user-1', ACCOUNT_IDENTITY)
+    for (let i = 0; i < rows; i += 1) await ctx.auditRepository.append({ userId: 'user-1', action: 'READ', resource: `r${i}` })
+    return ctx
+  }
+
+  it('keeps the whole log in the JSON export', async () => {
+    const { service } = await seeded(5)
+    expect((await service.assemble('user-1'))!.accessLog).toHaveLength(5)
+  })
+
+  it('keeps only the newest entries for the PDF and says so', async () => {
+    const { service } = await seeded(5)
+    const document = (await service.assemble('user-1', { accessLogNewest: 3 }))!
+    expect(document.accessLog.map((e) => e.resource)).toEqual(['r2', 'r3', 'r4'])
+    expect(document.accessLogNewestOnly).toBe(3)
+  })
+
+  it('does not claim a cut when everything fits', async () => {
+    const { service } = await seeded(3)
+    const document = (await service.assemble('user-1', { accessLogNewest: 3 }))!
+    expect(document.accessLog).toHaveLength(3)
+    expect(document.accessLogNewestOnly).toBeUndefined()
+  })
+})

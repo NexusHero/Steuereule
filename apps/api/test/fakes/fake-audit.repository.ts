@@ -11,11 +11,11 @@ export class FakeAuditRepository implements AuditRepository {
     return Promise.resolve()
   }
 
-  findOwnRows(userId: string): Promise<AuditLogRow[]> {
-    const rows = this.rows
+  findOwnRows(userId: string, options: { newest?: number } = {}): Promise<AuditLogRow[]> {
+    const own = this.rows
       .filter((row) => row.userId === userId)
       .map(({ action, resource, source, createdAt }) => ({ action, resource, source: source ?? null, createdAt }))
-    return Promise.resolve(rows)
+    return Promise.resolve(options.newest === undefined ? own : own.slice(-options.newest))
   }
 
   all(): readonly AuditEntry[] {

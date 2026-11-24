@@ -10,11 +10,11 @@ export class PrismaAuditRepository implements AuditRepository {
     await this.prisma.taxDataAccessLog.create({ data: entry })
   }
 
-  findOwnRows(userId: string): Promise<AuditLogRow[]> {
-    return this.prisma.taxDataAccessLog.findMany({
-      where: { userId },
-      orderBy: { createdAt: 'asc' },
-      select: { action: true, resource: true, source: true, createdAt: true },
-    })
+  async findOwnRows(userId: string, options: { newest?: number } = {}): Promise<AuditLogRow[]> {
+    const select = { action: true, resource: true, source: true, createdAt: true } as const
+    if (options.newest === undefined) return this.prisma.taxDataAccessLog.findMany({ where: { userId }, orderBy: { createdAt: 'asc' }, select })
+    const newest = await this.prisma.taxDataAccessLog.findMany({ where: { userId }, orderBy: { createdAt: 'desc' }, take: options.newest, select })
+    // Oldest first again, without Array#reverse (the lint rule wants toReversed, which this lib target lacks).
+    return newest.map((_, index) => newest[newest.length - 1 - index]!)
   }
 }

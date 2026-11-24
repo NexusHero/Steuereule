@@ -7,6 +7,12 @@ import { buildExportReportHtml } from './export/export-report-template.js'
 import { PDF_RENDERER, type PdfRenderer } from './export/pdf-renderer.js'
 import { TAX_DATA_EXPORT_REPOSITORY, type TaxDataExportRepository } from './tax-data-export.repository.js'
 
+/**
+ * The PDF report shows the newest this-many access-log entries: it is read by a person, and thousands of table
+ * rows only cost the renderer memory and time. The JSON export keeps the whole log (Art. 15/20 DSGVO, ADR-0109).
+ */
+export const PDF_ACCESS_LOG_ENTRIES = 1000
+
 /** Assembles the DSGVO export document exactly once. */
 @Injectable()
 export class AccountExportService {
@@ -18,13 +24,15 @@ export class AccountExportService {
     @Inject(TAX_DATA_EXPORT_REPOSITORY) private readonly taxDataExportRepository: TaxDataExportRepository,
   ) {}
 
-  async assemble(userId: string): Promise<ExportDocument | null> {
+  async assemble(userId: string, options: { accessLogNewest?: number } = {}): Promise<ExportDocument | null> {
     const account = await this.accountIdentityRepository.findByUserId(userId)
     if (!account) return null
+    const limit = options.accessLogNewest
 
     const [profileRecord, accessLog, taxData] = await Promise.all([
       this.profileRepository.findByUserId(userId),
-      this.auditService.findOwnRows(userId),
+      // One more than shown, to know whether the PDF leaves entries out.
+      this.auditService.findOwnRows(userId, limit === undefined ? {} : { newest: limit + 1 }),
       this.taxDataExportRepository.findAllForUser(userId),
     ])
 
@@ -49,7 +57,8 @@ export class AccountExportService {
           }
         : null,
       taxData,
-      accessLog: accessLog.map((row) => ({
+      ...(limit !== undefined && accessLog.length > limit ? { accessLogNewestOnly: limit } : {}),
+      accessLog: (limit === undefined ? accessLog : accessLog.slice(-limit)).map((row) => ({
         action: row.action,
         resource: row.resource,
         ...(row.source ? { source: row.source } : {}),

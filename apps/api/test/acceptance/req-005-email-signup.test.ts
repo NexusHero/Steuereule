@@ -2,7 +2,7 @@
 // Real Postgres, real HTTP against the actual `buildApp()` boot (never `.inject()`).
 import { Logger } from '@nestjs/common'
 import { describe, expect, it, vi } from 'vitest'
-import { baseUrl, prisma, useAcceptanceServer } from '../support/acceptance-server.js'
+import { baseUrl, prisma, useAcceptanceServer, verifyAndSignIn } from '../support/acceptance-server.js'
 
 const ALLOWED_ORIGIN = 'https://allowed.example.com'
 
@@ -29,7 +29,7 @@ describe('REQ-005 — email/password signup + async verification, against the re
     },
   })
 
-  it('a valid email + a policy-meeting password creates the account, signs in, and surfaces the honest unverified state', async () => {
+  it('a valid email + a policy-meeting password creates an unverified account without a session; it works once the address is verified (ADR-0109)', async () => {
     const signUp = await fetch(`${baseUrl}/api/auth/sign-up/email`, {
       method: 'POST',
       headers: { 'content-type': 'application/json', ...TRUSTED_ORIGIN_HEADERS },
@@ -37,20 +37,18 @@ describe('REQ-005 — email/password signup + async verification, against the re
     })
     expect(signUp.status).toBe(200)
     const signUpBody = (await signUp.json()) as { token: string | null; user: { emailVerified: boolean } }
-    // Account works immediately — signed in on signup (autoSignIn), not blocked on
-    // verification (REQ-005's "while unverified, honest state, never blocking basic use").
-    expect(signUpBody.token).not.toBeNull()
+    // No session from sign-up: a taken address answers the same way (req-005-signup-enumeration).
+    expect(signUpBody.token).toBeNull()
     expect(signUpBody.user.emailVerified).toBe(false)
+    expect(signUp.headers.getSetCookie()).toEqual([])
 
-    const cookie = signUp.headers.get('set-cookie')!.split(';')[0]!
+    const signIn = await verifyAndSignIn('onboard@example.com', 'a-fine-strong-password-1', { origin: ALLOWED_ORIGIN })
+    expect(signIn.status).toBe(200)
+    const cookie = signIn.headers.get('set-cookie')!.split(';')[0]!
     const session = await fetch(`${baseUrl}/api/auth/get-session`, { headers: { cookie } })
     const sessionBody = (await session.json()) as { user: { emailVerified: boolean } }
-    // The UI's "please verify" banner is rendered from exactly this flag — never
-    // silently assumed verified.
-    expect(sessionBody.user.emailVerified).toBe(false)
+    expect(sessionBody.user.emailVerified).toBe(true)
 
-    // Basic use isn't blocked: the guarded profile endpoint still answers under the
-    // real account session while unverified.
     const profile = await fetch(`${baseUrl}/v1/profile`, { headers: { cookie } })
     expect(profile.status).toBe(200)
   })

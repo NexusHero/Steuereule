@@ -10,7 +10,7 @@
 // register row). That half is a documented follow-up, not silently dropped.
 import { createHmac } from 'node:crypto'
 import { describe, expect, it } from 'vitest'
-import { baseUrl, prisma, useAcceptanceServer } from '../support/acceptance-server.js'
+import { baseUrl, prisma, useAcceptanceServer, verifyAndSignIn } from '../support/acceptance-server.js'
 
 const ALLOWED_ORIGIN = 'https://allowed.example.com'
 
@@ -92,7 +92,8 @@ describe('REQ-007 — TOTP 2FA round trip, against the real server', () => {
       body: JSON.stringify({ email, password: PASSWORD, name: 'Req 007' }),
     })
     expect(response.status).toBe(200)
-    return cookieNamed(response.headers.get('set-cookie'), 'session_token')
+    const signedIn = await verifyAndSignIn(email, PASSWORD)
+    return cookieNamed(signedIn.headers.get('set-cookie'), 'session_token')
   }
 
   async function enableTotp(cookie: string): Promise<{ totpURI: string; backupCodes: string[] }> {

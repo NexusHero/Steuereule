@@ -24,7 +24,7 @@
 // main. Only the second `it` (the aged list-sessions call) and the fourth (the accepted
 // `/unlink-account` loss, ADR-0027) are regression guards on this PR's own change.
 import { beforeAll, describe, expect, it } from 'vitest'
-import { baseUrl, prisma, useAcceptanceServer } from '../support/acceptance-server.js'
+import { baseUrl, prisma, useAcceptanceServer, verifyAndSignIn } from '../support/acceptance-server.js'
 
 const ALLOWED_ORIGIN = 'https://allowed.example.com'
 
@@ -70,7 +70,8 @@ describe('REQ-014 — device list session freshness (list-sessions must not requ
       body: JSON.stringify({ email: 'req014-fresh@example.com', password: 'a-fine-strong-password-1', name: 'Req 014 Fresh' }),
     })
     expect(signUp.status).toBe(200)
-    const cookie = signUp.headers.get('set-cookie')!.split(';')[0]!
+    const signIn = await verifyAndSignIn('req014-fresh@example.com', 'a-fine-strong-password-1')
+    const cookie = signIn.headers.get('set-cookie')!.split(';')[0]!
 
     const listSessions = await fetch(`${baseUrl}/api/auth/list-sessions`, { headers: { cookie, ...TRUSTED_ORIGIN_HEADERS } })
     expect(listSessions.status).toBe(200)
@@ -83,7 +84,8 @@ describe('REQ-014 — device list session freshness (list-sessions must not requ
       body: JSON.stringify({ email: 'req014-stale@example.com', password: 'a-fine-strong-password-1', name: 'Req 014 Stale' }),
     })
     expect(signUp.status).toBe(200)
-    const cookie = signUp.headers.get('set-cookie')!.split(';')[0]!
+    const signIn = await verifyAndSignIn('req014-stale@example.com', 'a-fine-strong-password-1')
+    const cookie = signIn.headers.get('set-cookie')!.split(';')[0]!
 
     // Age the real session row directly — the real-world equivalent of "signed in
     // yesterday, opened the app again today", never a fabricated cookie.
@@ -117,8 +119,9 @@ describe('REQ-014 — device list session freshness (list-sessions must not requ
       body: JSON.stringify({ email: 'req014-revoke@example.com', password: 'a-fine-strong-password-1', name: 'Req 014 Revoke' }),
     })
     expect(signUp.status).toBe(200)
-    const cookie = signUp.headers.get('set-cookie')!.split(';')[0]!
-    const body = (await signUp.json()) as { token: string }
+    const signIn = await verifyAndSignIn('req014-revoke@example.com', 'a-fine-strong-password-1')
+    const cookie = signIn.headers.get('set-cookie')!.split(';')[0]!
+    const body = (await signIn.json()) as { token: string }
 
     await prisma.session.updateMany({
       where: { user: { email: 'req014-revoke@example.com' } },
@@ -151,7 +154,8 @@ describe('REQ-014 — device list session freshness (list-sessions must not requ
       body: JSON.stringify({ email: 'req014-unlink@example.com', password: 'a-fine-strong-password-1', name: 'Req 014 Unlink' }),
     })
     expect(signUp.status).toBe(200)
-    const cookie = signUp.headers.get('set-cookie')!.split(';')[0]!
+    const signIn = await verifyAndSignIn('req014-unlink@example.com', 'a-fine-strong-password-1')
+    const cookie = signIn.headers.get('set-cookie')!.split(';')[0]!
     const signUpBody = (await signUp.json()) as { user: { id: string } }
 
     // `/unlink-account` refuses to remove a caller's only linked account

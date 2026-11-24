@@ -10,7 +10,7 @@ export class AuditService {
     return this.repository.append(entry)
   }
 
-  findOwnRows(userId: string): Promise<AuditLogRow[]> {
-    return this.repository.findOwnRows(userId)
+  findOwnRows(userId: string, options?: { newest?: number }): Promise<AuditLogRow[]> {
+    return this.repository.findOwnRows(userId, options)
   }
 }

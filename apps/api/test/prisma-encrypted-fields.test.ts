@@ -286,6 +286,7 @@ const EXPECTED_CURSORS: Record<string, string> = {
   TaxYear: 'id',
   InterviewAnswer: 'id',
   DeviceCode: 'id',
+  GuestActivity: 'userId',
   LegalHold: 'id',
   TwoFactor: 'id',
   Passkey: 'id',
@@ -384,6 +385,8 @@ describe('encrypted/hashed field set (#325) — derived from Prisma.dmmf, not co
       'Account',
       'AdvisorChatSession',
       'DeviceCode',
+      // ADR-0109: a guest id and the time of its last write, nothing else.
+      'GuestActivity',
       'LegalHold',
       // ADR-0101: the book's frame only (chart, mode, Festschreibung date); its entries are encrypted.
       'Ledger',

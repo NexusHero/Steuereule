@@ -30,3 +30,41 @@ describe('PrintoutJobService (ADR-0056: Async PDF Fault Isolation)', () => {
     await expect(service.getJobStatus('user_attacker', 2025, job.jobId)).rejects.toThrow('not found')
   })
 })
+
+describe('PrintoutJobService bounds (ADR-0109)', () => {
+  const finished = () => ({ create: vi.fn().mockResolvedValue(new Uint8Array([37])) }) as unknown as PrintoutService
+  const settle = () => new Promise((resolve) => setImmediate(resolve))
+
+  it('holds at most a few jobs per account, and says when to come back', async () => {
+    const service = new PrintoutJobService({ create: vi.fn(() => new Promise(() => undefined)) } as unknown as PrintoutService)
+    for (let i = 0; i < 3; i += 1) await service.queueExport('u1', 2025, {})
+    await expect(service.queueExport('u1', 2025, {})).rejects.toMatchObject({ code: 'PRINTOUT_JOBS_BUSY', details: { retryAfterSeconds: 15 } })
+    await expect(service.queueExport('u2', 2025, {})).resolves.toBeDefined()
+  })
+
+  it('forgets a job whose result was read after a short grace, and one nobody read after the TTL', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    try {
+      const service = new PrintoutJobService(finished())
+      const read = await service.queueExport('u1', 2025, {})
+      const unread = await service.queueExport('u1', 2025, {})
+      await settle()
+      expect((await service.getJobStatus('u1', 2025, read.jobId)).status).toBe('completed')
+      vi.setSystemTime(Date.now() + 61_000)
+      await expect(service.getJobStatus('u1', 2025, read.jobId)).rejects.toThrow('not found')
+      expect((await service.getJobStatus('u1', 2025, unread.jobId)).status).toBe('completed')
+      vi.setSystemTime(Date.now() + 11 * 60_000)
+      await expect(service.getJobStatus('u1', 2025, unread.jobId)).rejects.toThrow('not found')
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('does not keep the rendered bytes', async () => {
+    const service = new PrintoutJobService(finished())
+    const job = await service.queueExport('u1', 2025, {})
+    await settle()
+    const internal = (service as unknown as { jobs: Map<string, Record<string, unknown>> }).jobs.get(job.jobId)!
+    expect(internal.pdf).toBeUndefined()
+  })
+})

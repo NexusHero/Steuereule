@@ -41,11 +41,20 @@ import { HouseholdModule } from './household/household.module.js'
 import { OwlModeModule } from './owl-mode/owl-mode.module.js'
 import { AdvisorModule } from './advisor/advisor.module.js'
 import { McpModule } from './mcp/mcp.module.js'
+import { BETTER_AUTH_BUNDLE, type BetterAuthBundle } from './auth/auth.tokens.js'
+import { SharedThrottlerStorage } from './rate-limit/shared-throttler-storage.js'
 import { DomainErrorFilter } from './common/domain-error.filter.js'
 
 @Module({
   imports: [
-    ThrottlerModule.forRoot([{ name: 'default', ttl: 60_000, limit: 10 }]),
+    // The counters live on the shared rate-limit storage, so a limit holds across Cloud Run instances (ADR-0109).
+    ThrottlerModule.forRootAsync({
+      inject: [BETTER_AUTH_BUNDLE],
+      useFactory: (bundle: BetterAuthBundle) => ({
+        throttlers: [{ name: 'default', ttl: 60_000, limit: 10 }],
+        storage: new SharedThrottlerStorage(bundle.rateLimitStorage),
+      }),
+    }),
     AuthModule,
     ProfileModule,
     CockpitModule,

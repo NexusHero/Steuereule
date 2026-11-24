@@ -1,9 +1,16 @@
-import { createConnection } from 'node:net'
-import { connect as createTlsConnection } from 'node:tls'
 import type { BetterAuthRateLimitStorage } from 'better-auth'
+import { Redis } from 'ioredis'
+import { redisTlsOptions } from '../redis/redis-options.js'
+
+export type RateLimitRule = { window: number; max: number }
+export type RateLimitDecision = { allowed: boolean; retryAfter: number | null }
 
 export interface ResettableRateLimitStorage extends BetterAuthRateLimitStorage {
+  /** `amount` counts bytes or tokens instead of one request; a refused call does not use up any of the budget. */
+  consume(key: string, rule: RateLimitRule, amount?: number): Promise<RateLimitDecision>
   clear(): void
+  /** Drops the Redis connection; the in-memory fallback keeps working. */
+  close?(): void
 }
 
 export interface RateLimitStorageOptions {
@@ -18,85 +25,44 @@ function retryAfter(lastRequest: number, windowSeconds: number): number {
   return Math.ceil((lastRequest + windowSeconds * 1000 - Date.now()) / 1000)
 }
 
-function encodeRespCommand(args: readonly string[]): string {
-  let out = `*${args.length}\r\n`
-  for (const arg of args) {
-    out += `$${Buffer.byteLength(arg)}\r\n${arg}\r\n`
-  }
-  return out
+/** Refuses without counting when the call would pass `max`: an over-budget upload must not burn the budget. */
+const LUA_RATE_LIMIT_SCRIPT = `
+local cur = tonumber(redis.call("GET", KEYS[1]) or "0")
+local add = tonumber(ARGV[2])
+if cur + add > tonumber(ARGV[3]) then return {cur + add, redis.call("PTTL", KEYS[1])} end
+local c = redis.call("INCRBY", KEYS[1], add)
+if c == add then redis.call("PEXPIRE", KEYS[1], ARGV[1]) end
+return {c, redis.call("PTTL", KEYS[1])}`
+
+/** One client for the life of the process (a connection per call cost a TCP/TLS handshake on every request). */
+function createRedisClient(redisUrl: string): Redis {
+  const client = new Redis(redisUrl, {
+    ...redisTlsOptions(),
+    connectTimeout: REDIS_TIMEOUT_MS,
+    commandTimeout: REDIS_TIMEOUT_MS,
+    maxRetriesPerRequest: 1,
+  })
+  // A refused connection surfaces on each command; the in-memory fallback answers meanwhile.
+  client.on('error', () => undefined)
+  return client
 }
 
-const LUA_RATE_LIMIT_SCRIPT =
-  'local c = redis.call("INCR", KEYS[1]); if c == 1 then redis.call("PEXPIRE", KEYS[1], ARGV[1]) end; local ttl = redis.call("PTTL", KEYS[1]); return {c, ttl}'
-
-async function consumeViaRedis(
-  redisUrl: string,
-  key: string,
-  rule: { window: number; max: number },
-): Promise<{ allowed: boolean; retryAfter: number | null }> {
-  const parsed = new URL(redisUrl)
-  const isTls = parsed.protocol === 'rediss:'
-  const host = parsed.hostname || '127.0.0.1'
-  const port = Number(parsed.port || (isTls ? 6380 : 6379))
-  const password = parsed.password ? decodeURIComponent(parsed.password) : undefined
-  const username = parsed.username ? decodeURIComponent(parsed.username) : undefined
-  const windowMs = String(rule.window * 1000)
-  const redisKey = `steuereule:rl:${key}`
-
-  return new Promise((resolve, reject) => {
-    const socket = isTls
-      ? createTlsConnection({ host, port, servername: host })
-      : createConnection({ host, port })
-
-    let buffer = ''
-    let settled = false
-    const finish = (fn: () => void): void => {
-      if (settled) return
-      settled = true
-      socket.destroy()
-      fn()
-    }
-
-    socket.setTimeout(REDIS_TIMEOUT_MS, () => {
-      finish(() => reject(new Error('Redis rate-limit timeout')))
-    })
-    socket.on('error', (err) => {
-      finish(() => reject(err))
-    })
-
-    socket.on('connect', () => {
-      let payload = ''
-      if (password) {
-        payload += encodeRespCommand(username ? ['AUTH', username, password] : ['AUTH', password])
-      }
-      payload += encodeRespCommand(['EVAL', LUA_RATE_LIMIT_SCRIPT, '1', redisKey, windowMs])
-      socket.write(payload)
-    })
-
-    socket.on('data', (chunk: Buffer) => {
-      buffer += chunk.toString('utf8')
-      // Look for the array reply `*2\r\n:<count>\r\n:<pttl>\r\n`
-      const match = /\*2\r\n:(\d+)\r\n:(-?\d+)\r\n/.exec(buffer)
-      if (!match) return
-      const count = Number(match[1])
-      const pttl = Number(match[2])
-      finish(() => {
-        if (count > rule.max) {
-          const retrySecs = pttl > 0 ? Math.ceil(pttl / 1000) : rule.window
-          resolve({ allowed: false, retryAfter: retrySecs })
-        } else {
-          resolve({ allowed: true, retryAfter: null })
-        }
-      })
-    })
-  })
+async function consumeViaRedis(redis: Redis, key: string, rule: RateLimitRule, amount: number): Promise<RateLimitDecision> {
+  const reply = (await redis.eval(LUA_RATE_LIMIT_SCRIPT, 1, `steuereule:rl:${key}`, String(rule.window * 1000), String(amount), String(rule.max))) as [
+    number,
+    number,
+  ]
+  const [count, pttl] = reply
+  if (count > rule.max) return { allowed: false, retryAfter: pttl > 0 ? Math.ceil(pttl / 1000) : rule.window }
+  return { allowed: true, retryAfter: null }
 }
 
 export function createResettableRateLimitStorage(
   options: RateLimitStorageOptions = {},
 ): ResettableRateLimitStorage {
   const store = new Map<string, { key: string; count: number; lastRequest: number; expiresAt: number }>()
-  const configuredRedisUrl = options.redisUrl ?? process.env.REDIS_URL
+  const configuredRedisUrl = (options.redisUrl ?? process.env.REDIS_URL)?.trim()
+  const redis = configuredRedisUrl ? createRedisClient(configuredRedisUrl) : null
 
   function sweepExpired(now: number): void {
     if (store.size < SWEEP_THRESHOLD) return
@@ -112,38 +78,42 @@ export function createResettableRateLimitStorage(
     }
   }
 
-  function consumeInMemory(key: string, rule: { window: number; max: number }) {
+  function consumeInMemory(key: string, rule: RateLimitRule, amount: number): RateLimitDecision {
     const now = Date.now()
     const windowMs = rule.window * 1000
     const data = store.get(key)
 
     if (!data || now - data.lastRequest > windowMs) {
+      if (amount > rule.max) return { allowed: false, retryAfter: rule.window }
       sweepExpired(now)
-      store.set(key, { key, count: 1, lastRequest: now, expiresAt: now + windowMs })
+      store.set(key, { key, count: amount, lastRequest: now, expiresAt: now + windowMs })
       return { allowed: true, retryAfter: null }
     }
-    if (data.count >= rule.max) {
+    if (data.count + amount > rule.max) {
       return { allowed: false, retryAfter: retryAfter(data.lastRequest, rule.window) }
     }
-    data.count += 1
+    data.count += amount
     data.lastRequest = now
     data.expiresAt = now + windowMs
     return { allowed: true, retryAfter: null }
   }
 
   return {
-    async consume(key, rule) {
-      if (configuredRedisUrl) {
+    async consume(key, rule, amount = 1) {
+      if (redis) {
         try {
-          return await consumeViaRedis(configuredRedisUrl, key, rule)
+          return await consumeViaRedis(redis, key, rule, amount)
         } catch {
           // Graceful degradation: fall back to bounded in-memory limiter if Redis is unreachable.
         }
       }
-      return consumeInMemory(key, rule)
+      return consumeInMemory(key, rule, amount)
     },
     clear() {
       store.clear()
+    },
+    close() {
+      redis?.disconnect()
     },
   }
 }

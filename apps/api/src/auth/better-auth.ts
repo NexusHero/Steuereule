@@ -1,3 +1,4 @@
+import { Logger } from '@nestjs/common'
 import type { PrismaClient } from '@prisma/client'
 import { prismaAdapter } from '@better-auth/prisma-adapter'
 import { passkey } from '@better-auth/passkey'
@@ -23,6 +24,18 @@ import { capSessionUpdateExpiry } from './session-absolute-cap.js'
 import { CLIENT_IP_HEADER } from './client-ip.js'
 import { revokeOauthGrantsOnPasswordChangePlugin, stepUpPlugin } from './step-up.js'
 import { enforceAccountSignInLimit } from './account-sign-in-limit.js'
+import {
+  PASSWORD_RESET_ADDRESS_RULE,
+  PASSWORD_RESET_TOKEN_TTL_SECONDS,
+  REQUEST_PASSWORD_RESET_PATH,
+  RESET_PASSWORD_RULE,
+  enforcePasswordResetRequest,
+  restrictResetLinkToWebApp,
+} from './password-reset.js'
+import { OAUTH_GRANT_MODELS } from './step-up.js'
+
+const resetMailLogger = new Logger('PasswordReset')
+const signUpMailLogger = new Logger('SignUpMail')
 
 export const OAUTH_SCOPES = [
   'openid',
@@ -64,6 +77,8 @@ export interface CreateBetterAuthOptions {
   appleClientId?: string | undefined
   appleClientSecret?: string | undefined
   rateLimitStorage?: ResettableRateLimitStorage
+  /** Called on a sign-in or sign-up: traffic the guest-retention sweep rides on (ADR-0109). */
+  onSweepOpportunity?: () => void
 }
 
 export interface BetterAuthBundle {
@@ -87,6 +102,7 @@ function buildOptions(options: CreateBetterAuthOptions & { rateLimitStorage: Res
     appleClientId,
     appleClientSecret,
     rateLimitStorage,
+    onSweepOpportunity,
   } = options
 
   const socialProviders: NonNullable<BetterAuthOptions['socialProviders']> = {}
@@ -118,23 +134,69 @@ function buildOptions(options: CreateBetterAuthOptions & { rateLimitStorage: Res
     emailAndPassword: {
       enabled: true,
       autoSignIn: true,
-      // Guest-first onboarding (ADR-0012) and the unverified-account sweep (ADR-0030) require sign-up to
-      // keep working without a verified email; sensitive actions are gated on verification instead
-      // (`RequiresVerifiedEmailGuard`, ADR-0103 vulnerability 4).
-      requireEmailVerification: false,
+      // Sign-up must not tell whether an address has an account (ADR-0109): a taken address answers exactly
+      // like a free one, so sign-up cannot return a session, and an unverified account cannot sign in (else
+      // sign-in right after sign-up would be the oracle). The guest keeps working meanwhile; its data moves
+      // to the account on the first verified sign-in (ADR-0012 hook). No auto sign-in on the verification
+      // link either: whoever clicks it may not be who chose the password.
+      requireEmailVerification: true,
+      // Taken address: the owner is told by mail, the requester sees the same answer as for a new address.
+      onExistingUserSignUp: async ({ user }) => {
+        try {
+          await emailSender.sendExistingAccountNotice({
+            to: user.email,
+            subject: 'Jemand hat versucht, sich mit deiner Adresse zu registrieren — SteuerEule',
+            url: `${webAppUrl}/login`,
+          })
+        } catch (error) {
+          signUpMailLogger.error(`Existing-account notice not sent: ${String(error)}`)
+        }
+      },
       // ADR-0103 vulnerability 4: 12, not 8 — paired with the Have I Been Pwned breach check (ADR-0012 §5).
       minPasswordLength: 12,
+      // Password reset by e-mail (ADR-0109). The request answers the same for any address; a failed send is
+      // logged and swallowed so an unknown address and a mail outage look alike from outside.
+      resetPasswordTokenExpiresIn: PASSWORD_RESET_TOKEN_TTL_SECONDS,
+      sendResetPassword: async ({ user, url, token }) => {
+        try {
+          await emailSender.sendPasswordResetEmail({
+            to: user.email,
+            subject: 'Passwort zurücksetzen — SteuerEule',
+            url: restrictResetLinkToWebApp(url, webAppUrl),
+            token,
+          })
+        } catch (error) {
+          resetMailLogger.error(`Password reset mail not sent: ${String(error)}`)
+        }
+      },
+      // Whoever knew the old password may have been the attacker: every session ends ...
+      revokeSessionsOnPasswordReset: true,
+      // ... and so does every assistant connection, as with a password change (ADR-0106 D2).
+      onPasswordReset: async ({ user }) => {
+        for (const model of OAUTH_GRANT_MODELS) {
+          await (prisma as unknown as Record<string, { deleteMany(args: { where: { userId: string } }): Promise<unknown> }>)[model]!.deleteMany({ where: { userId: user.id } })
+        }
+      },
     },
     socialProviders,
     emailVerification: {
       sendOnSignUp: true,
+      // An account that exists but was never verified (older ones, ADR-0030) gets a fresh link when it tries
+      // to sign in with the right password, instead of a dead end.
+      sendOnSignIn: true,
       sendVerificationEmail: async ({ user, url, token }) => {
-        await emailSender.sendVerificationEmail({
-          to: user.email,
-          subject: 'Bitte bestätige deine E-Mail-Adresse — SteuerEule',
-          url: redirectVerificationToWebApp(url, webAppUrl),
-          token,
-        })
+        // A failed send is logged and swallowed: a mail outage must not make a free address answer 500 while a
+        // taken one answers 200 (ADR-0109).
+        try {
+          await emailSender.sendVerificationEmail({
+            to: user.email,
+            subject: 'Bitte bestätige deine E-Mail-Adresse — SteuerEule',
+            url: redirectVerificationToWebApp(url, webAppUrl),
+            token,
+          })
+        } catch (error) {
+          signUpMailLogger.error(`Verification mail not sent: ${String(error)}`)
+        }
       },
     },
     plugins: [
@@ -180,6 +242,8 @@ function buildOptions(options: CreateBetterAuthOptions & { rateLimitStorage: Res
         '/verify-password': { window: 10, max: 3 },
         '/device': { window: 60, max: 10 },
         '/oauth2/register': OAUTH_REGISTRATION_RATE_LIMIT,
+        [REQUEST_PASSWORD_RESET_PATH]: PASSWORD_RESET_ADDRESS_RULE,
+        '/reset-password': RESET_PASSWORD_RULE,
       },
     },
     advanced: {
@@ -206,7 +270,9 @@ function buildOptions(options: CreateBetterAuthOptions & { rateLimitStorage: Res
       before: createAuthMiddleware(async (ctx) => {
         if (ctx.path.startsWith('/oauth2/')) await Promise.all(ensureResources.map((ensure) => ensure(ctx.context.adapter as unknown as ResourceAdapter)))
         if (ctx.path === '/oauth2/register') await sweepClients(ctx.context.adapter as unknown as SweepAdapter)
+        if (ctx.path === '/sign-in/email' || ctx.path === '/sign-up/email') onSweepOpportunity?.()
         await enforceAccountSignInLimit(rateLimitStorage, ctx.path, ctx.body)
+        await enforcePasswordResetRequest(rateLimitStorage, ctx.path, ctx.body, webAppUrl)
         // A password change always rotates the current token and revokes the account's other sessions,
         // whatever the client sent (ADR-0103 vulnerability 3): force better-auth's own flag on.
         const rotation = forceRevokeOtherSessionsOnPasswordChange(ctx.path, ctx.body)

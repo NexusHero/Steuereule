@@ -1,7 +1,7 @@
 // Wire shapes of the self-employment path (ADR-0101). Nested facts travel as plain objects: the core
 // checks their content (parseBookingDraft, suggestProfessionKind, the tax rules), not class-validator.
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger'
-import { IsArray, IsBoolean, IsIn, IsInt, IsObject, IsOptional, IsString, Length, Matches, Max, MaxLength, Min, ValidateNested } from 'class-validator'
+import { ArrayMaxSize, IsArray, IsBoolean, IsIn, IsInt, IsObject, IsOptional, IsString, Length, Matches, Max, MaxLength, Min, ValidateNested } from 'class-validator'
 import { Type } from 'class-transformer'
 import { USEFUL_LIVES } from '@steuereule/core'
 import { BookIntegrityDto, CsvMappingDto, LossFactsDto, PartnershipShareDto, ProfessionAnswersDto, TradeTaxInputsDto, VatPeriodFactsDto, DisposalFactsDto, RetainedFactsDto } from './business-results.dto.js'
@@ -75,6 +75,8 @@ export class BookingDraftDto {
 
   @ApiProperty({ type: [BookingLineDto] })
   @IsArray()
+  // A booking has a handful of lines; the content stays the core's to check (see the header), the size is bounded here.
+  @ArrayMaxSize(200)
   lines!: readonly BookingLineDto[]
 
   @ApiPropertyOptional({ type: String, example: 'ATU12345678', description: 'The counterparty’s foreign VAT id (Zusammenfassende Meldung, § 18a UStG).' })
@@ -124,6 +126,7 @@ export class QuickTotalDto {
 export class QuickEntryDto {
   @ApiProperty({ type: [QuickTotalDto] })
   @IsArray()
+  @ArrayMaxSize(200)
   @ValidateNested({ each: true })
   @Type(() => QuickTotalDto)
   totals!: readonly QuickTotalDto[]

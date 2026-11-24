@@ -13,7 +13,9 @@ import {
   ApiUnauthorizedResponse,
   ApiUnprocessableEntityResponse,
 } from '@nestjs/swagger'
+import { Throttle, ThrottlerGuard } from '@nestjs/throttler'
 import type { FastifyReply } from 'fastify'
+import { PRINTOUT_JOB_THROTTLE, accountKeyedTracker } from '../rate-limit/rate-limit.js'
 import { CurrentUser } from '../auth/current-user.decorator.js'
 import { RequiresAccount } from '../auth/requires-account.guard.js'
 import { UserContextGuard } from '../auth/user-context.guard.js'
@@ -70,6 +72,8 @@ export class PrintoutController {
   @Post(':jahr/ausdruck/async')
   @HttpCode(202)
   @RequiresAccount()
+  @Throttle({ default: { ...PRINTOUT_JOB_THROTTLE, getTracker: accountKeyedTracker } })
+  @UseGuards(ThrottlerGuard)
   @ApiParam({ name: 'jahr', type: Number, example: 2025 })
   @ApiQuery({
     name: 'bearbeitbar',

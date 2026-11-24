@@ -24,7 +24,12 @@ describe('limits independent of the caller address (ADR-0106 D8/D9)', () => {
   })
 
   it('D9: the eleventh sign-in attempt on one account within 15 minutes is refused, from any address', async () => {
-    await signUp('abuse-limit-account@example.com')
+    // Sign-up without the helper's own sign-in, which would use one of the account's ten attempts.
+    await fetch(`${baseUrl}/api/auth/sign-up/email`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', origin: ORIGIN },
+      body: JSON.stringify({ email: 'abuse-limit-account@example.com', password: 'a-fine-strong-password-1', name: 'Abuse' }),
+    })
     const statuses: number[] = []
     const codes: (string | undefined)[] = []
     for (let i = 0; i < 11; i += 1) {

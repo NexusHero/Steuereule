@@ -83,8 +83,8 @@ const BOUNDARIES: readonly Boundary[] = [
   {
     name: 'Redis client',
     packages: ['ioredis'],
-    allowedIn: ['advisor/run/advisor-run-log.redis.ts', 'advisor/advisor.module.ts'],
-    instead: 'Use AdvisorRunLog (advisor/run/advisor-run-log.ts).',
+    allowedIn: ['advisor/run/advisor-run-log.redis.ts', 'advisor/advisor.module.ts', 'auth/rate-limit-storage.ts', 'redis/redis-options.ts'],
+    instead: 'Use AdvisorRunLog (advisor/run/advisor-run-log.ts), or the shared rate-limit storage (auth/rate-limit-storage.ts).',
   },
   { name: 'Playwright', packages: ['playwright-core'], allowedIn: ['account/export/pdf-renderer.playwright.ts'], instead: 'Use PdfRenderer (account/export/pdf-renderer.ts).' },
   { name: 'pdf-lib', packages: ['pdf-lib'], allowedIn: ['printout/form-renderer.ts'], instead: 'Call renderForms (printout/form-renderer.ts).' },

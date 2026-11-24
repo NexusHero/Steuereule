@@ -41,6 +41,7 @@ import { ADVISOR_RUN_LOG, InMemoryAdvisorRunLog, type AdvisorRunLog } from './ru
 import { RedisAdvisorRunLog } from './run/advisor-run-log.redis.js'
 import { AdvisorRunService } from './run/advisor-run.service.js'
 import { Redis } from 'ioredis'
+import { redisTlsOptions } from '../redis/redis-options.js'
 
 /**
  * With REDIS_URL the run log lives in Redis Streams, so any instance can serve a re-attaching
@@ -49,7 +50,7 @@ import { Redis } from 'ioredis'
 export function createAdvisorRunLog(env: NodeJS.ProcessEnv = process.env): AdvisorRunLog {
   const url = env.REDIS_URL?.trim()
   if (!url) return new InMemoryAdvisorRunLog()
-  return new RedisAdvisorRunLog(new Redis(url, { maxRetriesPerRequest: 2, lazyConnect: false }))
+  return new RedisAdvisorRunLog(new Redis(url, { maxRetriesPerRequest: 2, lazyConnect: false, ...redisTlsOptions(env) }))
 }
 
 @Module({

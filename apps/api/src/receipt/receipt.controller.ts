@@ -15,11 +15,12 @@ import {
   ApiTags,
 } from '@nestjs/swagger'
 import { CurrentUser } from '../auth/current-user.decorator.js'
-import { UserContextGuard } from '../auth/user-context.guard.js'
 import { Throttle } from '@nestjs/throttler'
 import { FastifyThrottlerGuard } from '../advisor/advisor.controller.js'
 import { InvalidInputError } from '../common/domain-error.js'
 import { ReceiptService } from './receipt.service.js'
+import { UploadAdmission } from './upload-admission.js'
+import { USER_ID_KIND_REQUEST_KEY, UserContextGuard, type RequestWithUserId } from '../auth/user-context.guard.js'
 import { DeleteReceiptResponseDto, ReceiptPageResponseDto, ReceiptResponseDto } from './dto/receipt-response.dto.js'
 import { CreateReceiptDto } from './dto/create-receipt.dto.js'
 import { SetAssignmentDto } from './dto/set-assignment.dto.js'
@@ -74,7 +75,10 @@ export const RECEIPT_UPLOAD_THROTTLE = { ttl: 10 * 60_000, limit: 60 } as const
 @Controller('v1/belege')
 @UseGuards(UserContextGuard)
 export class ReceiptController {
-  constructor(@Inject(ReceiptService) private readonly receiptService: ReceiptService) {}
+  constructor(
+    @Inject(ReceiptService) private readonly receiptService: ReceiptService,
+    @Inject(UploadAdmission) private readonly admission: UploadAdmission,
+  ) {}
 
   @Get()
   @ApiOperation({ summary: 'One page of the Beleg inbox, newest first, with the counts the inbox shows over all Belege' })
@@ -134,17 +138,37 @@ export class ReceiptController {
       throw new InvalidInputError('RECEIPT_MULTIPART_REQUIRED', 'Erwartet einen multipart/form-data Upload im Feld "file".')
     }
 
-    let part: Awaited<ReturnType<FastifyRequest['file']>>
-    let buffer: Buffer
+    // A guest is told apart by address: a guest id is minted afresh for every request without the cookie.
+    const guest = (req as RequestWithUserId)[USER_ID_KIND_REQUEST_KEY] === 'guest'
+    const address = req.ip ?? 'no-ip'
+    const release = this.admission.acquire(guest ? `ip:${address}` : userId)
     try {
-      part = await req.file()
+      const { part, buffer } = await this.readFile(req)
+      if (guest) await this.admission.chargeGuest(address, buffer.length)
+      return await this.receiptService.upload(userId, {
+        buffer,
+        fileName: part.filename || 'beleg',
+        kind: readMultipartField(part.fields, 'kind'),
+        belegdatum: readMultipartField(part.fields, 'belegdatum'),
+        zahlungsdatum: readMultipartField(part.fields, 'zahlungsdatum'),
+        direction: readMultipartField(part.fields, 'direction'),
+      })
+    } finally {
+      release()
+    }
+  }
+
+  private async readFile(req: FastifyRequest): Promise<{ part: NonNullable<Awaited<ReturnType<FastifyRequest['file']>>>; buffer: Buffer }> {
+    try {
+      const part = await req.file()
       if (!part) {
         throw new InvalidInputError('RECEIPT_FILE_MISSING', 'Keine Datei im Feld "file" gefunden.')
       }
-      buffer = await part.toBuffer()
+      const buffer = await part.toBuffer()
       if (part.file.truncated) {
         throw new InvalidInputError('RECEIPT_FILE_TOO_LARGE', 'Die Datei ist größer als das erlaubte Maximum von 10 MB.')
       }
+      return { part, buffer }
     } catch (error) {
       if (error instanceof InvalidInputError) throw error
       if (isFileTooLargeError(error)) {
@@ -152,15 +176,6 @@ export class ReceiptController {
       }
       throw error
     }
-
-    return this.receiptService.upload(userId, {
-      buffer,
-      fileName: part.filename || 'beleg',
-      kind: readMultipartField(part.fields, 'kind'),
-      belegdatum: readMultipartField(part.fields, 'belegdatum'),
-      zahlungsdatum: readMultipartField(part.fields, 'zahlungsdatum'),
-      direction: readMultipartField(part.fields, 'direction'),
-    })
   }
 
   @Get(':id/datei')

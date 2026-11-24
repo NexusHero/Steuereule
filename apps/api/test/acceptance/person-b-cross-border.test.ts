@@ -8,6 +8,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 process.env.GUEST_SESSION_SECRET = 'person-b-ch-secret'
 process.env.BETTER_AUTH_SECRET = 'person-b-ch-better-auth-secret-0123456789'
 process.env.BETTER_AUTH_URL = 'http://127.0.0.1:39993'
+import { verifyAndSignIn } from '../support/acceptance-server.js'
 const ALLOWED_ORIGIN = 'https://allowed.example.com'
 process.env.CORS_ALLOWED_ORIGINS = ALLOWED_ORIGIN
 
@@ -33,7 +34,8 @@ describe('Person B’s Swiss figures, recorded by the user', () => {
       body: JSON.stringify({ email, password: 'a-fine-strong-password-1', name: 'Test User' }),
     })
     expect(res.status).toBe(200)
-    cookie = res.headers.get('set-cookie')!.split(';')[0]!
+    const signedIn = await verifyAndSignIn(email, 'a-fine-strong-password-1', { origin: ALLOWED_ORIGIN, server: { baseUrl, prisma } })
+    cookie = signedIn.headers.get('set-cookie')!.split(';')[0]!
     await put('/kopplung', { filingType: 'zusammen' })
     await put('/kopplung/person-b', { firstName: 'Nora', lastName: 'Beispiel' })
   })

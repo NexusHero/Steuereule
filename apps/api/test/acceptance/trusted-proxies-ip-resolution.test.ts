@@ -180,6 +180,17 @@ describe('#241 A2/A3 — TRUSTED_PROXIES configured: the fix, proven against a s
       body: JSON.stringify({ email: 'a3-session-ip@example.com', password: 'a-fine-strong-password-1', name: 'A3' }),
     })
     expect(response.status).toBe(200)
+    await prisma.user.update({ where: { email: 'a3-session-ip@example.com' }, data: { emailVerified: true } })
+    const signIn = await fetch(`${baseUrl}/api/auth/sign-in/email`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        origin: 'https://allowed.example.com',
+        'x-forwarded-for': `${spoofedAttackerValue}, ${SIMULATED_REAL_CLIENT}`,
+      },
+      body: JSON.stringify({ email: 'a3-session-ip@example.com', password: 'a-fine-strong-password-1' }),
+    })
+    expect(signIn.status).toBe(200)
 
     const user = await prisma.user.findUniqueOrThrow({ where: { email: 'a3-session-ip@example.com' } })
     const session = await prisma.session.findFirstOrThrow({ where: { userId: user.id } })

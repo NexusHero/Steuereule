@@ -1,7 +1,7 @@
 // REQ-006 — guest -> account upgrade, atomic data carry-over (ADR-0012 §4). Real
 // Postgres, real HTTP against the actual `buildApp()` boot (never `.inject()`).
 import { describe, expect, it } from 'vitest'
-import { baseUrl, prisma, useAcceptanceServer } from '../support/acceptance-server.js'
+import { baseUrl, prisma, useAcceptanceServer, verifyAndSignIn } from '../support/acceptance-server.js'
 
 const GUEST_SESSION_SECRET = 'req-006-secret'
 
@@ -42,17 +42,25 @@ describe('REQ-006 — guest -> account upgrade, against the real server', () => 
     return { guestUserId, guestCookie }
   }
 
-  it('a guest with a persisted profile who signs up carries everything over atomically, and the guest session is retired', async () => {
-    const { guestUserId, guestCookie } = await seedGuestWithProfile()
-
+  /** Sign-up returns no session (ADR-0109): the guest carries on, and the first verified sign-in, with the
+   *  guest cookie still in the browser, moves the data. Returns the account id and the sign-in response. */
+  async function signUpThenSignIn(email: string, name: string, guestCookie?: string): Promise<{ accountUserId: string; signIn: Response }> {
     const signUp = await fetch(`${baseUrl}/api/auth/sign-up/email`, {
       method: 'POST',
-      headers: { 'content-type': 'application/json', cookie: guestCookie, ...TRUSTED_ORIGIN_HEADERS },
-      body: JSON.stringify({ email: 'req006-upgrade@example.com', password: 'a-fine-strong-password-1', name: 'Upgrade Me' }),
+      headers: { 'content-type': 'application/json', ...(guestCookie ? { cookie: guestCookie } : {}), ...TRUSTED_ORIGIN_HEADERS },
+      body: JSON.stringify({ email, password: 'a-fine-strong-password-1', name }),
     })
     expect(signUp.status).toBe(200)
-    const body = (await signUp.json()) as { user: { id: string } }
-    const accountUserId = body.user.id
+    const signIn = await verifyAndSignIn(email, 'a-fine-strong-password-1', { headers: guestCookie ? { cookie: guestCookie } : {} })
+    expect(signIn.status).toBe(200)
+    const user = await prisma.user.findUniqueOrThrow({ where: { email } })
+    return { accountUserId: user.id, signIn }
+  }
+
+  it('a guest with a persisted profile who signs up and signs in carries everything over atomically, and the guest session is retired', async () => {
+    const { guestUserId, guestCookie } = await seedGuestWithProfile()
+
+    const { accountUserId, signIn: signUp } = await signUpThenSignIn('req006-upgrade@example.com', 'Upgrade Me', guestCookie)
 
     // No duplicate rows: exactly one Profile, now under the account id.
     const profiles = await prisma.profile.findMany({ where: { OR: [{ userId: guestUserId }, { userId: accountUserId }] } })
@@ -78,17 +86,25 @@ describe('REQ-006 — guest -> account upgrade, against the real server', () => 
     expect(guestCookieClear).toMatch(/Max-Age=0/)
   })
 
+  it('sign-up alone leaves the guest and its data where they are; the guest session is not retired yet (ADR-0109)', async () => {
+    const { guestUserId, guestCookie } = await seedGuestWithProfile()
+    const signUp = await fetch(`${baseUrl}/api/auth/sign-up/email`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', cookie: guestCookie, ...TRUSTED_ORIGIN_HEADERS },
+      body: JSON.stringify({ email: 'req006-pending@example.com', password: 'a-fine-strong-password-1', name: 'Pending' }),
+    })
+    expect(signUp.status).toBe(200)
+    expect(signUp.headers.getSetCookie()).toEqual([])
+    const profile = await prisma.profile.findUnique({ where: { userId: guestUserId } })
+    expect(profile?.firstName).toBe(GUEST_PROFILE.firstName)
+  })
+
   it('a guest with no profile signs up: no-op migration, no error, guest session still retired', async () => {
     const { newGuestUserId, signGuestSession } = await import('../../src/auth/guest-session.js')
     const guestUserId = newGuestUserId()
     const guestCookie = `se_guest_session=${signGuestSession(guestUserId, GUEST_SESSION_SECRET)}`
 
-    const signUp = await fetch(`${baseUrl}/api/auth/sign-up/email`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json', cookie: guestCookie, ...TRUSTED_ORIGIN_HEADERS },
-      body: JSON.stringify({ email: 'req006-empty-guest@example.com', password: 'a-fine-strong-password-1', name: 'No Data' }),
-    })
-    expect(signUp.status).toBe(200)
+    const { signIn: signUp } = await signUpThenSignIn('req006-empty-guest@example.com', 'No Data', guestCookie)
 
     const setCookies = signUp.headers.getSetCookie()
     expect(setCookies.some((c) => c.startsWith('se_guest_session=') && c.includes('Max-Age=0'))).toBe(true)
@@ -97,12 +113,8 @@ describe('REQ-006 — guest -> account upgrade, against the real server', () => 
 
   it('an account that already owns a profile is never clobbered by a stray guest cookie’s data (guest data left untouched)', async () => {
     // A returning account, already with its own profile from before.
-    const signUp = await fetch(`${baseUrl}/api/auth/sign-up/email`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json', ...TRUSTED_ORIGIN_HEADERS },
-      body: JSON.stringify({ email: 'req006-returning@example.com', password: 'a-fine-strong-password-1', name: 'Returning' }),
-    })
-    const { user } = (await signUp.json()) as { user: { id: string } }
+    const { accountUserId: returningId } = await signUpThenSignIn('req006-returning@example.com', 'Returning')
+    const user = { id: returningId }
     await prisma.profile.create({
       data: { userId: user.id, firstName: 'Account', lastName: 'Owner', steuerId: '65929970489', steuernummer: null },
     })
@@ -129,16 +141,9 @@ describe('REQ-006 — guest -> account upgrade, against the real server', () => 
   it('a retried upgrade is idempotent: re-running the migration after it already succeeded duplicates nothing', async () => {
     const { guestUserId } = await seedGuestWithProfile()
 
-    const signUp = await fetch(`${baseUrl}/api/auth/sign-up/email`, {
-      method: 'POST',
-      headers: {
-        'content-type': 'application/json',
-        cookie: `se_guest_session=${(await import('../../src/auth/guest-session.js')).signGuestSession(guestUserId, GUEST_SESSION_SECRET)}`,
-        ...TRUSTED_ORIGIN_HEADERS,
-      },
-      body: JSON.stringify({ email: 'req006-idempotent@example.com', password: 'a-fine-strong-password-1', name: 'Idempotent' }),
-    })
-    const { user } = (await signUp.json()) as { user: { id: string } }
+    const guestCookie = `se_guest_session=${(await import('../../src/auth/guest-session.js')).signGuestSession(guestUserId, GUEST_SESSION_SECRET)}`
+    const { accountUserId } = await signUpThenSignIn('req006-idempotent@example.com', 'Idempotent', guestCookie)
+    const user = { id: accountUserId }
 
     const { upgradeGuestToAccount } = await import('../../src/auth/guest-account-upgrade.prisma.js')
     // Retry: the guest no longer owns a profile (already migrated), so this must be
@@ -173,14 +178,9 @@ describe('REQ-006 — guest -> account upgrade, against the real server', () => 
     it('a guest who answered the Minimal-Gate signs up: answers + TaxYear move to the account, readable via the API', async () => {
       const { guestUserId, guestCookie } = await guestAnswers()
 
-      const signUp = await fetch(`${baseUrl}/api/auth/sign-up/email`, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json', cookie: guestCookie, ...TRUSTED_ORIGIN_HEADERS },
-        body: JSON.stringify({ email: 'req006-interview@example.com', password: 'a-fine-strong-password-1', name: 'Funnel' }),
-      })
-      expect(signUp.status).toBe(200)
-      const { user } = (await signUp.json()) as { user: { id: string } }
-      const accountCookie = signUp.headers.getSetCookie().find((c) => !c.startsWith('se_guest_session='))!.split(';')[0]!
+      const { accountUserId, signIn } = await signUpThenSignIn('req006-interview@example.com', 'Funnel', guestCookie)
+      const user = { id: accountUserId }
+      const accountCookie = signIn.headers.getSetCookie().find((c) => !c.startsWith('se_guest_session='))!.split(';')[0]!
 
       await expect(prisma.interviewAnswer.count({ where: { userId: guestUserId } })).resolves.toBe(0)
       await expect(prisma.interviewAnswer.count({ where: { userId: user.id } })).resolves.toBe(4)
@@ -196,13 +196,9 @@ describe('REQ-006 — guest -> account upgrade, against the real server', () => 
     })
 
     it('an account that already answered that year is never mixed with a stray guest’s answers (guest rows left untouched)', async () => {
-      const signUp = await fetch(`${baseUrl}/api/auth/sign-up/email`, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json', ...TRUSTED_ORIGIN_HEADERS },
-        body: JSON.stringify({ email: 'req006-interview-returning@example.com', password: 'a-fine-strong-password-1', name: 'Returning' }),
-      })
-      const { user } = (await signUp.json()) as { user: { id: string } }
-      const accountCookie = signUp.headers.get('set-cookie')!.split(';')[0]!
+      const { accountUserId, signIn: first } = await signUpThenSignIn('req006-interview-returning@example.com', 'Returning')
+      const user = { id: accountUserId }
+      const accountCookie = first.headers.get('set-cookie')!.split(';')[0]!
       const own = await fetch(`${baseUrl}/v1/steuerjahre/${TAX_YEAR}/interview/antworten`, {
         method: 'POST',
         headers: { 'content-type': 'application/json', cookie: accountCookie },
@@ -224,12 +220,8 @@ describe('REQ-006 — guest -> account upgrade, against the real server', () => 
 
     it('re-running the migration after the interview already moved duplicates nothing', async () => {
       const { guestUserId, guestCookie } = await guestAnswers()
-      const signUp = await fetch(`${baseUrl}/api/auth/sign-up/email`, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json', cookie: guestCookie, ...TRUSTED_ORIGIN_HEADERS },
-        body: JSON.stringify({ email: 'req006-interview-idem@example.com', password: 'a-fine-strong-password-1', name: 'Idem' }),
-      })
-      const { user } = (await signUp.json()) as { user: { id: string } }
+      const { accountUserId } = await signUpThenSignIn('req006-interview-idem@example.com', 'Idem', guestCookie)
+      const user = { id: accountUserId }
 
       const { upgradeGuestToAccount } = await import('../../src/auth/guest-account-upgrade.prisma.js')
       await upgradeGuestToAccount(prisma, guestUserId, user.id)

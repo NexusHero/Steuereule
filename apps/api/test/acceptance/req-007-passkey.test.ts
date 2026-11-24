@@ -43,7 +43,7 @@
 import { createHash, generateKeyPairSync, randomBytes, sign as signCrypto } from 'node:crypto'
 import { encodeCBOR } from '@levischuck/tiny-cbor'
 import { describe, expect, it } from 'vitest'
-import { baseUrl, prisma, useAcceptanceServer } from '../support/acceptance-server.js'
+import { baseUrl, prisma, useAcceptanceServer, verifyAndSignIn } from '../support/acceptance-server.js'
 
 const ORIGIN = 'https://passkey.example.com'
 const RP_ID = 'passkey.example.com'
@@ -208,7 +208,8 @@ describe('REQ-007 — WebAuthn passkey (passwordless sign-in), against the real 
       body: JSON.stringify({ email, password: PASSWORD, name: 'Req 007 Passkey' }),
     })
     expect(response.status).toBe(200)
-    return cookieNamed(response.headers.get('set-cookie'), 'session_token')
+    const signedIn = await verifyAndSignIn(email, PASSWORD)
+    return cookieNamed(signedIn.headers.get('set-cookie'), 'session_token')
   }
 
   /** Registers one passkey for a signed-in account, returning the mock authenticator (whose

@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto'
 import { Inject, Injectable } from '@nestjs/common'
 import { canonicalJson, type BookingTaxKey, type ChartOfAccounts, type BookkeepingMode, type JournalEntry, type JournalLine, type LogRecord } from '@steuereule/core'
+import { ConflictError } from '../common/domain-error.js'
 import { ENCRYPTED_PRISMA, type EncryptedPrismaClient } from '../prisma/encrypted-prisma.provider.js'
 import type {
   BankTransactionRecord,
@@ -167,6 +168,9 @@ function toEntry(row: {
   }
 }
 
+/** Bank transactions one book keeps (ADR-0109). */
+export const MAX_BANK_TRANSACTIONS_PER_BOOK = 20_000
+
 @Injectable()
 export class PrismaBusinessRepository implements BusinessRepository {
   constructor(@Inject(ENCRYPTED_PRISMA) private readonly prisma: EncryptedPrismaClient) {}
@@ -319,7 +323,7 @@ export class PrismaBusinessRepository implements BusinessRepository {
   async listBankTransactions(userId: string, taxYear: number, ref: BusinessRef): Promise<BankTransactionRecord[]> {
     const book = await this.prisma.ledger.findUnique({ where: { userId_taxYear_person_business: { userId, taxYear, ...ref } } })
     if (!book) return []
-    const rows = await this.prisma.bankTransaction.findMany({ where: { ledgerId: book.id, userId }, orderBy: { createdAt: 'asc' } })
+    const rows = await this.prisma.bankTransaction.findMany({ where: { ledgerId: book.id, userId }, orderBy: { createdAt: 'asc' }, take: MAX_BANK_TRANSACTIONS_PER_BOOK })
     return rows.map((r) => ({
       id: r.id,
       fingerprint: r.fingerprint,
@@ -350,6 +354,11 @@ export class PrismaBusinessRepository implements BusinessRepository {
       fresh.push(tx)
     }
     if (fresh.length === 0) return 0
+    // One book holds this many transactions at most (a year of a busy account is a few thousand), so the list
+    // and the import stay bounded however often a file is uploaded (ADR-0109).
+    if (known.size + fresh.length > MAX_BANK_TRANSACTIONS_PER_BOOK) {
+      throw new ConflictError('BANK_TRANSACTIONS_LIMIT', 'In diesem Buch sind schon sehr viele Kontoumsätze. Weitere kann die SteuerEule nicht aufnehmen.')
+    }
     const { count } = await this.prisma.bankTransaction.createMany({
       data: fresh.map((tx) => ({ ledgerId: book.id, userId, taxYear, fingerprint: tx.fingerprint, amount: String(tx.amount), details: tx.details })),
       skipDuplicates: true,

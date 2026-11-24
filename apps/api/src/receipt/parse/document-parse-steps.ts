@@ -35,6 +35,8 @@ export async function resolveVisionModel(runtimeConfig: AiRuntimeConfigService, 
     if (await runtimeConfig.isKillSwitchActive()) return null
     const slot = await runtimeConfig.resolveSlot('vision_ocr')
     if (!slot.enabled || slot.provider === 'deterministic') return null
+    // The day's model calls across all users are spent (ADR-0109): the deterministic read stands.
+    if (!((await runtimeConfig.takeCallBudget?.()) ?? true)) return null
     const model = resolveModel(slot)
     return model ? { model, slot } : null
   } catch {

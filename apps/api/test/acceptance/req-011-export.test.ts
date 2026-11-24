@@ -9,7 +9,7 @@
 // job runs, distinct from account-export.integration.test.ts's finer-grained,
 // developer-level Postgres/wiring proofs.
 import { beforeAll, describe, expect, it } from 'vitest'
-import { baseUrl, prisma, useAcceptanceServer } from '../support/acceptance-server.js'
+import { baseUrl, prisma, useAcceptanceServer, verifyAndSignIn } from '../support/acceptance-server.js'
 
 const ALLOWED_ORIGIN = 'https://allowed.example.com'
 const TRUSTED_ORIGIN_HEADERS = { origin: ALLOWED_ORIGIN }
@@ -58,7 +58,8 @@ describe('REQ-011 — DSGVO data export (Art. 15/20), against the real server', 
     })
     expect(signUp.status).toBe(200)
     const body = (await signUp.json()) as { user: { id: string } }
-    const cookie = signUp.headers.get('set-cookie')!.split(';')[0]!
+    const signedIn = await verifyAndSignIn(email, 'a-fine-strong-password-1')
+    const cookie = signedIn.headers.get('set-cookie')!.split(';')[0]!
 
     const put = await fetch(`${baseUrl}/v1/profile`, {
       method: 'PUT',

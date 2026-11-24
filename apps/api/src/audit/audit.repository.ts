@@ -20,5 +20,6 @@ export const AUDIT_REPOSITORY = Symbol('AUDIT_REPOSITORY')
 /** The persistence seam for the tax-data access audit trail. */
 export interface AuditRepository {
   append(entry: AuditEntry): Promise<void>
-  findOwnRows(userId: string): Promise<AuditLogRow[]>
+  /** Oldest first. `newest` keeps only the most recent that many rows (still oldest first among them). */
+  findOwnRows(userId: string, options?: { newest?: number }): Promise<AuditLogRow[]>
 }

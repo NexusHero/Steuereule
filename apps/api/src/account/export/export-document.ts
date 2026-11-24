@@ -38,4 +38,6 @@ export interface ExportDocument {
   profile: ExportProfileSection | null
   taxData: ExportTaxDataEntry[]
   accessLog: ExportAccessLogEntry[]
+  /** Set only for the PDF: the log holds just the newest this-many entries (the JSON export is complete). */
+  accessLogNewestOnly?: number
 }

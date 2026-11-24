@@ -14,7 +14,7 @@ describe('the leftover rejection of a broken Gemini stream', () => {
 
   it('lets that one pass with a warning, and keeps every other unhandled rejection fatal', () => {
     let handler: (reason: unknown) => void = () => {}
-    const logger = { warn: vi.fn() } as never
+    const logger = { warn: vi.fn(), error: vi.fn() } as never
     installProviderRejectionGuard({ on: ((_event: string, listener: (reason: unknown) => void) => { handler = listener }) as never }, logger)
 
     expect(() => handler(sdkError('Error reading from the stream'))).not.toThrow()

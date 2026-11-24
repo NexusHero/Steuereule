@@ -1,4 +1,5 @@
 import { Inject, Injectable, Optional } from '@nestjs/common'
+import { BETTER_AUTH_BUNDLE, type BetterAuthBundle } from '../auth/auth.tokens.js'
 import type { AdvisorModelProvider } from '@steuereule/core'
 
 /** `advisor_guard`: the small model that checks a typed question's topic first (ADR-0069). */
@@ -51,6 +52,9 @@ export const DEFAULT_AI_TURN_LIMITS: AiTurnLimits = {
   dailyMessageLimit: 50,
 }
 
+/** Model calls a day across all users, a safety net against a bill that runs away, not a fair-use limit (ADR-0109). */
+export const DEFAULT_AI_DAILY_CALL_LIMIT = 10_000
+
 export const AI_RUNTIME_CONFIG_SERVICE = Symbol('AI_RUNTIME_CONFIG_SERVICE')
 export const AI_ENV_SOURCE = Symbol('AI_ENV_SOURCE')
 
@@ -58,6 +62,12 @@ export interface AiRuntimeConfigService {
   isKillSwitchActive(): Promise<boolean>
   resolveSlot(slot: AiTaskSlot): Promise<ResolvedAiSlotConfig>
   resolveLimits(): Promise<AiTurnLimits>
+  /**
+   * Takes one model call from the day's budget across all users (ADR-0109); false once it is spent, and the
+   * caller answers as if no model were configured. Counted where a turn, a summary or a document read starts,
+   * not per provider round trip. Absent: no global cap.
+   */
+  takeCallBudget?(): Promise<boolean>
   /**
    * The chat slot for the model a user picked for a conversation (ADR-0096), with that provider's
    * key and the chat's own settings; null when the provider has no key, so the standard model answers.
@@ -128,8 +138,23 @@ function validateHttpsBaseUrl(raw: string | undefined): string | undefined {
 export class EnvAiRuntimeConfigService implements AiRuntimeConfigService {
   private readonly env: Readonly<Record<string, string | undefined>>
 
-  constructor(@Optional() @Inject(AI_ENV_SOURCE) env?: Readonly<Record<string, string | undefined>>) {
+  constructor(
+    @Optional() @Inject(AI_ENV_SOURCE) env?: Readonly<Record<string, string | undefined>>,
+    @Optional() @Inject(BETTER_AUTH_BUNDLE) private readonly shared?: Pick<BetterAuthBundle, 'rateLimitStorage'>,
+  ) {
     this.env = env ?? process.env
+  }
+
+  async takeCallBudget(): Promise<boolean> {
+    if (!this.shared) return true
+    const limit = positiveIntOr(this.env.AI_DAILY_CALL_LIMIT, DEFAULT_AI_DAILY_CALL_LIMIT, 100_000_000)
+    const day = new Date().toISOString().slice(0, 10)
+    try {
+      return (await this.shared.rateLimitStorage.consume(`ai-calls:${day}`, { window: 24 * 60 * 60, max: limit })).allowed
+    } catch {
+      // The counter must never take the answers down with it.
+      return true
+    }
   }
 
   async isKillSwitchActive(): Promise<boolean> {

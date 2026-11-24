@@ -54,6 +54,16 @@ model Profile {
   updatedAt    DateTime @updatedAt
 }
 
+/// When a guest (an id without a User row, ADR-0007) last wrote anything. The guest-retention sweep
+/// deletes all data of a guest id 30 days after this moment (ADR-0109). Written by UserContextGuard on a
+/// guest's state-changing requests, at most once an hour per guest.
+model GuestActivity {
+  userId      String   @id
+  lastWriteAt DateTime
+
+  @@index([lastWriteAt])
+}
+
 /// Append-only audit trail of who touched a user's sensitive tax/profile fields, and
 /// when (ADR-0008, REQ-004, DSGVO Art. 30 accountability). Deliberately carries no
 /// value column — not the plaintext, not the ciphertext — only who/what/when. Never

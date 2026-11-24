@@ -8604,7 +8604,7 @@
         ],
         "responses": {
           "200": {
-            "description": "The caller’s full DSGVO export (Art. 15/20), assembled once and returned either as this JSON document (?format=json, the default) or as an equivalent German PDF-Bericht (?format=pdf, application/pdf, same fields, human-readable). Both branches append exactly one READ/export audit entry before the response is sent (ADR-0013).",
+            "description": "The caller’s full DSGVO export (Art. 15/20), assembled once and returned either as this JSON document (?format=json, the default) or as an equivalent German PDF-Bericht (?format=pdf, application/pdf, same fields, human-readable). Both branches append exactly one READ/export audit entry before the response is sent (ADR-0013). The PDF lists the newest 1000 access-log entries and says so; the JSON is complete. 5 exports an hour per account (429 beyond).",
             "content": {
               "application/json": {
                 "schema": {
@@ -9455,12 +9455,12 @@
           "firstName": {
             "type": "string",
             "example": "Anna",
-            "description": "Non-empty first name."
+            "description": "Non-empty first name, at most 100 characters."
           },
           "lastName": {
             "type": "string",
             "example": "Beispiel",
-            "description": "Non-empty last name."
+            "description": "Non-empty last name, at most 100 characters."
           },
           "steuerId": {
             "type": "string",

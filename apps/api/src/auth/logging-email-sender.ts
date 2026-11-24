@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common'
-import type { EmailSender, VerificationEmail } from './email-sender.js'
+import type { EmailSender, ExistingAccountNotice, VerificationEmail } from './email-sender.js'
 
 /** Dev/test EmailSender: logs the verification/reset link instead of dispatching an actual email. */
 @Injectable()
@@ -12,6 +12,10 @@ export class LoggingEmailSender implements EmailSender {
 
   async sendPasswordResetEmail(email: VerificationEmail): Promise<void> {
     this.logger.warn(`password-reset link for ${maskAddress(email.to)}: ${email.url}`)
+  }
+
+  async sendExistingAccountNotice(email: ExistingAccountNotice): Promise<void> {
+    this.logger.warn(`account notice for ${maskAddress(email.to)}: ${email.url}`)
   }
 }
 

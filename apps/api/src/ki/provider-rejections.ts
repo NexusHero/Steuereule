@@ -19,7 +19,9 @@ export function installProviderRejectionGuard(target: Pick<NodeJS.Process, 'on'>
       logger.warn(`A model stream broke off; the turn was ended already (${(reason as Error).message.slice(0, 120)})`)
       return
     }
-    // Not ours: keep Node's rule that an unhandled rejection is fatal.
+    // Not ours: keep Node's rule that an unhandled rejection is fatal (the state it left is unknown, and the
+    // platform starts a fresh instance), but write the stack first so the crash can be traced (ADR-0109).
+    logger.error(`Unhandled rejection, ending the process: ${String(reason)}`, reason instanceof Error ? reason.stack : undefined)
     throw reason
   })
 }
