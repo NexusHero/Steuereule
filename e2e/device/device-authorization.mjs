@@ -432,7 +432,18 @@ async function main() {
     const sessionToken = decodeURIComponent(sessionCookie.value).split('.').slice(0, -1).join('.')
     const sessionRow = sql(`SELECT "ipAddress", "userAgent" FROM "Session" WHERE token = '${sessionToken}'`)
     if (!sessionRow) fail(`Post-poll: no Session row found for A's own token.`)
-    const [sessionIp, sessionUserAgent] = sessionRow.split('|')
+    // Address and user agent are ciphertext at rest (ADR-0109), so the row proves only that both are stored
+    // encrypted; what they say is read the way the app reads it, from A's own session list.
+    const [storedIp, storedUserAgent] = sessionRow.split('|')
+    for (const [column, value] of [['ipAddress', storedIp], ['userAgent', storedUserAgent]]) {
+      if (value && !/^v\d+\.aesgcm256\./.test(value)) fail(`Post-poll: Session.${column} is stored in plain text (${JSON.stringify(value)}).`)
+    }
+    const listed = await contextA.request.get(`${apiOrigin}/api/auth/list-sessions`, { headers: { origin: webOrigin } })
+    if (!listed.ok()) fail(`Post-poll: A could not list its own sessions (${listed.status()}).`)
+    const own = (await listed.json()).find((session) => session.token === sessionToken)
+    if (!own) fail(`Post-poll: A's session list does not contain A's own session.`)
+    const sessionIp = own.ipAddress
+    const sessionUserAgent = own.userAgent
     if (!sessionUserAgent || !sessionUserAgent.includes('Chrome/')) {
       fail(`Post-poll: Session.userAgent (${JSON.stringify(sessionUserAgent)}) does not reflect A's real Chromium User-Agent.`)
     }
