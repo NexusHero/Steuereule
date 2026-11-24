@@ -1,8 +1,7 @@
-# Production-shaped local stack (#76, the stakeholder's own local-testing complement to the
-# real cloud deployment — NOT that pipeline itself; it remains its own, start-gated, separate
-# ticket: #292, successor to #246, which was closed 2026-08-05 with the gap still open. Target
-# is k3s on Hetzner + managed Postgres per ADR-049; #246's own body was corrected to say so on
-# 2026-08-05, so the Fly.io framing this comment used to flag there is gone). Builds real images for the API and the exported web
+# Production-shaped local stack (#76, ADR-0026): the real API and web images on your own machine, with
+# NODE_ENV=production. It is not the cloud deployment, which runs on Google Cloud Run (ADR-0053,
+# infra/README.md). The API treats this stack as local only while every origin is localhost and it is not on
+# Cloud Run; then it accepts the synthetic values of .env.example with a warning. Builds real images for the API and the exported web
 # bundle — no more "postgres only, everything else by hand" — and wires them with the
 # SAME four env vars whose mismatch produced the stakeholder's own bug report (guest
 # browsing, registration, login and the QR code all failing identically, because the

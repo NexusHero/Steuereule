@@ -1,38 +1,120 @@
 # Infra
 
-## Beta: Google Cloud Run + Cloud SQL (aktiv, ADR-0053)
+## Active target: Google Cloud Run + Cloud SQL (ADR-0053)
 
-`infra/gcp/` beschreibt die Beta-Umgebung in `europe-west4`: Cloud SQL (Postgres 16), Artifact
-Registry, Secret Manager (nur leere Secrets — die Werte setzt der Wizard), Service-Accounts,
-Workload Identity für GitHub Actions und einen Budget-Alarm. Die Cloud-Run-Dienste selbst
-rollt `.github/workflows/deploy.yml` nach jeder grünen CI auf `main` aus.
+`infra/gcp/` describes one environment in `europe-west4`: Cloud SQL (Postgres 16, private IP only, a separate
+keystore instance), Memorystore Redis with AUTH and TLS, Artifact Registry, Secret Manager (empty secrets; the
+wizard fills them), service accounts, Workload Identity for GitHub Actions, monitoring alerts with an uptime
+check, and a budget alert. The Cloud Run services themselves are rolled out by `.github/workflows/deploy.yml`.
 
-Einrichten, einmalig und wiederholbar:
+What the API needs at runtime is declared once in `apps/api/src/config/production-config.ts`: name, format and
+where each value comes from. On a deployment the API refuses to start while any value is missing, malformed or
+still a development value published in this repository, and names each one. The unit test
+`apps/api/test/config/deployment-wiring.test.ts` compares that list with `deploy.yml`, `infra/gcp/main.tf`, both
+Dockerfiles, `docker-compose.prod.yml`, `.env.example` and the wizard, so a value without a path to Cloud Run
+fails CI.
+
+### Two environments: staging and production (ADR-0109)
+
+Each environment is its own GCP project with its own OpenTofu state prefix and its own GitHub environment
+(`staging`, `production`). The first stack keeps the name `beta` (prefix `steuereule/beta`, resource names
+unchanged) and serves as staging.
+
+- **staging** is deployed by hand, and after every green `Build & E2E` run on `main` once the repository variable
+  `DEPLOY_STAGING_AUTO` is `true`. Until then the automatic run skips its jobs; it shows "skipped", not "success",
+  and creates no deployment record.
+- **production** is deployed by hand only (Actions, Deploy, Run workflow, `environment = production`), bound to
+  the GitHub environment `production`, whose required reviewers must approve.
+- **Every deploy variable lives in its GitHub environment, none at repository level.** The deploy lists the
+  repository-level ones and refuses to run while any exists, because a repository-level value silently fills
+  in for an environment that lacks it. `GCP_ENVIRONMENT` must equal the environment's name. The one
+  repository-level variable is the switch `DEPLOY_STAGING_AUTO`.
+
+### First deployment, in order
+
+The wizard does steps 1 to 14; run it from the repo root. It is idempotent: a second run keeps every
+secret that already has a value.
 
 ```sh
-scripts/infra/gcp-setup.sh
+scripts/infra/gcp-setup.sh                         # staging (the "beta" stack)
+TF_ENVIRONMENT=production scripts/infra/gcp-setup.sh   # production, in its own project
 ```
 
-Der Wizard führt durch Projekt und Abrechnung, State-Bucket, `tofu apply`, Secrets,
-Brevo, optional Google-Login und Stripe, GitHub-Variablen, den ersten Deploy und die
-Domain-Verknüpfung. Er ist idempotent: ein zweiter Lauf überschreibt keine vorhandenen Secrets.
+Before you start you need: a Google account with a billing account, `gcloud`, `gh` (logged in as a repository
+admin), `tofu` or `terraform`, `openssl`, `curl`, `jq`; a domain whose DNS you control; a Brevo account; a
+Stripe account (test mode for staging and the beta); the operator details for the Impressum.
 
-### Zwei Umgebungen: staging und production (ADR-0109)
+1. Sign in to `gcloud` twice (CLI and Application Default Credentials).
+2. Billing account and project; link them.
+3. Domain (web on `www.`, API on `api.`), sender address, the address that receives alerts, the monthly budget
+   (wizard default 60 EUR for staging, 250 EUR for production; a guideline for Cloud SQL, Redis and Cloud Run together).
+4. State bucket (`<project>-tfstate`, versioned, no public access).
+5. `tofu apply` with `environment`, `github_environments`, `alert_email`, `api_hostname=api.<domain>` and
+   `monthly_budget_eur`. Creates everything listed above. Costs start here.
+6. Generated secrets: `GUEST_SESSION_SECRET`, `BETTER_AUTH_SECRET`, `PRISMA_FIELD_ENCRYPTION_KEY`,
+   `PRISMA_FIELD_ENCRYPTION_HASH_SALT` (before the first migration, ADR-0109 §12), `KEYSTORE_MASTER_KEY`.
+7. Database users and both connection URLs (`DATABASE_URL`, `KEYSTORE_DATABASE_URL`).
+8. Brevo: authenticate the sender domain by DNS, store `BREVO_API_KEY`.
+9. Stripe (required on a deployment, so the printout never ends in "payment not set up"):
+   - two products with a one-time price each, the standard printout and the printout with self-employment;
+     store `STRIPE_PRICE_ID` and `STRIPE_PRICE_ID_SELBSTSTAENDIG`;
+   - in Settings, Public details, the terms URL `https://www.<domain>/rechtliches/agb` (Checkout asks for
+     consent to the terms and refuses without it);
+   - `STRIPE_SECRET_KEY` (`sk_test_…` for the beta);
+   - a webhook endpoint `https://api.<domain>/v1/zahlung/stripe/webhook` with the events
+     `checkout.session.completed` and `checkout.session.async_payment_succeeded`; store its `STRIPE_WEBHOOK_SECRET`.
+10. Optional: Google login (`GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, redirect URI
+    `https://api.<domain>/api/auth/callback/google`).
+11. Operator details: `EXPO_PUBLIC_BETREIBER_NAME`, `_ANSCHRIFT`, `_EMAIL` (required), `_VERTRETEN`, `_USTID`.
+12. GitHub environment: the wizard creates it with deployments from `main` only, and for production with you as
+    required reviewer. **If that call fails** (missing admin rights, or a private repository on a plan without
+    environment reviewers), do it by hand before the first deploy: Settings, Environments, New environment;
+    Deployment branches and tags: Selected, `main`; for production: Required reviewers.
+13. GitHub environment variables: `GCP_ENVIRONMENT`, `GCP_PROJECT_ID`, `GCP_REGION`, `GCP_WIF_PROVIDER`,
+    `GCP_DEPLOYER_SA`, `GCP_RUNTIME_SA`, `GCP_WEB_SA`, `GCP_SQL_INSTANCE`, `GCP_KEYSTORE_SQL_INSTANCE`,
+    `GCP_VPC_NETWORK`, `GCP_VPC_SUBNET`, `APP_DOMAIN`, `EMAIL_FROM`, `TRUSTED_PROXIES` and the operator details.
+14. First deploy (`gh workflow run deploy.yml --ref main -f environment=<staging|production>`): builds both
+    images, backs up the database, runs the migrate job (hash phase), deploys API and web, smoke-tests them.
+    For staging the wizard then offers to set `DEPLOY_STAGING_AUTO=true`.
+15. Domain: verify it in Search Console, create the Cloud Run domain mappings for `www.` and `api.`, set the DNS
+    records the wizard prints, wait for the certificate (up to about an hour).
+16. Check on the real system (OPS-5; none of this has been run against a deployment yet):
+    - `https://api.<domain>/v1/health/ready` answers, the web app loads, sign-up mail arrives;
+    - the API log shows no rate-limiter degradation warning (Redis over TLS with `REDIS_TLS_CA` works);
+    - a receipt upload goes through (upload admission over real HTTP);
+    - a test purchase with a Stripe test card unlocks the printout, and the webhook shows as delivered in Stripe;
+    - a deliberate error appears as an alert (the log filter `Unhandled error` in `monitoring.tf` matches);
+    - the uptime check is green in Cloud Monitoring.
+17. `TRUSTED_PROXIES`: read the peer address of a request in the Cloud Run logs. With direct ingress it is in
+    `169.254.0.0/16`, which the wizard sets. Change it only if traffic goes through an external load balancer
+    (then add its ranges `35.191.0.0/16,130.211.0.0/22`), and deploy again.
+18. After the release, run the encryption phase of the identity backfill in the image:
+    `node --import tsx scripts/backfill-identity.ts` (ADR-0109 §12).
+19. Ask a repository admin to add the four missing required checks (`docs/ci-pipeline.md`, Required checks).
 
-Jede Umgebung ist ein eigenes GCP-Projekt mit eigenem State. `environment` (OpenTofu-Variable)
-benennt sie; der State-Prefix wird beim `init` gesetzt, nie geteilt:
+### Decisions behind the deploy
 
-```sh
-tofu init -backend-config="bucket=<state-bucket>" -backend-config="prefix=steuereule/<environment>"
-tofu apply -var environment=<staging|production> -var 'github_environments=["<staging|production>"]' ...
-```
-
-Der erste Stack heißt weiter `beta` (Prefix `steuereule/beta`, Ressourcennamen unverändert) und dient als
-staging. Das Deploy-Workflow rollt jede grüne CI auf `main` nach **staging** aus; **production** nur per
-Hand (Actions, Deploy, Run workflow, `environment = production`), gebunden an das GitHub-Environment
-`production` (dort Required reviewers einstellen). Dessen Variablen (`GCP_*`, `APP_DOMAIN`, `EMAIL_FROM`
-und `GCP_ENVIRONMENT=production`) gehören ins Environment, nicht ins Repository. Der Wizard
-`TF_ENVIRONMENT=production GH_ENVIRONMENT=production scripts/infra/gcp-setup.sh` legt das an.
+- **The deploy merges, it does not replace (OPS-12).** The API service is updated with `--update-env-vars` and
+  `--update-secrets`. The values the workflow sets are rewritten on every deploy; anything set by hand
+  (`AI_KILL_SWITCH`, model choice, daily limits) survives. Remove a hand-set value with
+  `gcloud run services update steuereule-api --remove-env-vars NAME`. Moving every runtime value into OpenTofu
+  was the alternative; it would mean managing the Cloud Run service in OpenTofu too, which today belongs to the
+  workflow.
+- **Redis is required on a deployment (OPS-7).** Without it every rate limit and the daily AI cost cap would count
+  per instance, up to ten times the limit. The API refuses to start without a `rediss://` `REDIS_URL`.
+  `enable_redis = false` is still possible, with the URL of another Redis in the secret.
+- **`TRUSTED_PROXIES` (OPS-8).** No default in the workflow: the wizard writes `169.254.0.0/16` into the
+  environment, which is right for Cloud Run direct ingress (domain mappings, `*.run.app`). Behind an external
+  load balancer every user would share one rate-limit bucket until the LB ranges are added.
+- **`NODE_ENV` (OPS-9).** Must be `production`, `development` or `test`; any other value refuses to start. The
+  image sets `production`.
+- **Street data is in the image, geo-IP is not (OPS-15).** The API image fetches the pinned street extract
+  (ODbL, checksum in `apps/api/scripts/fetch-street-data.ts`) and sets `STREET_DATA_PATH`. No geo-IP source is
+  pinned (ADR-0024: its licence must be read by a person first), so the device list shows the region as
+  unknown. To enable it, pick a source, fetch it with `scripts/fetch-geoip-database.ts`, and mount the file
+  (for example a Cloud Storage volume) with `GEOIP_DATABASE_PATH`.
+- **Payment on a deployment (OPS-6).** Stripe is required, so the dead end "payment not set up on this
+  environment" cannot occur on a deployment; it remains only on a local stack without Stripe.
 
 ### Network and database size (ADR-0109)
 
@@ -181,7 +263,10 @@ Die echten Schritte (`tofu plan`/`apply` gegen ein Hetzner-Projekt, `kubectl` ge
 echten Cluster, `kubeseal`, `kubectl apply -k` ohne `--dry-run`, GHCR-Push) sind Sub-Ticket
 06.1 ff. und beginnen erst, wenn die Credentials vorliegen.
 
-## 5. Credential-/DNS-Checkliste — für NexusHero (explizite Blocker)
+## 5. Credential-/DNS-Checkliste — nur für das inaktive k3s-Ziel
+
+Dieser Abschnitt gehört zum k3s-Zielbild und ist kein Schritt für das aktive Cloud-Run-Deployment; dessen
+Schritte stehen oben unter „First deployment, in order“.
 
 Jeder Punkt ist ein **harter Blocker** für den weiteren Track. Ohne ihn kann kein Sub-Ticket
 von „Skelett" zu „echt" übergehen. Nichts davon gehört ins Repo.
