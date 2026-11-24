@@ -164,8 +164,9 @@ export class LockDto {
 }
 
 /**
- * PUT merges: a field left out keeps what is stored, `null` clears it. The nested objects
- * (professionAnswers, tradeTaxInputs, lossFacts, partnershipShares) are replaced as a whole.
+ * PUT merges: a field left out keeps what is stored, `null` clears it. The fact objects vatPeriodFacts,
+ * tradeTaxInputs and lossFacts merge key by key the same way (WEB-30/WEB-31); professionAnswers,
+ * disposalFacts, retainedFacts and partnershipShares are replaced as a whole.
  */
 export class BusinessProfileInputDto {
   @ApiPropertyOptional({ enum: ['freiberuf', 'gewerbe'], nullable: true, description: 'The kind the user confirms.' })
@@ -227,7 +228,7 @@ export class BusinessProfileInputDto {
   @IsInt()
   vatPrepaymentsCents?: number | null | undefined
 
-  @ApiPropertyOptional({ type: VatPeriodFactsDto, nullable: true, description: 'The Voranmeldung facts. Replaced as a whole.' })
+  @ApiPropertyOptional({ type: VatPeriodFactsDto, nullable: true, description: 'The Voranmeldung facts. Merged key by key: a key left out stays, null removes it.' })
   @IsOptional()
   @ValidateNested()
   @Type(() => VatPeriodFactsDto)
@@ -245,13 +246,13 @@ export class BusinessProfileInputDto {
   @Type(() => RetainedFactsDto)
   retainedFacts?: RetainedFactsDto | null | undefined
 
-  @ApiPropertyOptional({ type: TradeTaxInputsDto, nullable: true, description: 'Gewerbesteuer inputs, euros. Replaced as a whole: send the complete object.' })
+  @ApiPropertyOptional({ type: TradeTaxInputsDto, nullable: true, description: 'Gewerbesteuer inputs, euros. Merged key by key: a key left out stays, null removes it.' })
   @IsOptional()
   @ValidateNested()
   @Type(() => TradeTaxInputsDto)
   tradeTaxInputs?: TradeTaxInputsDto | null | undefined
 
-  @ApiPropertyOptional({ type: LossFactsDto, nullable: true, description: '§ 10d facts, euros. Replaced as a whole.' })
+  @ApiPropertyOptional({ type: LossFactsDto, nullable: true, description: '§ 10d facts, euros. Merged key by key: a key left out stays, null removes it.' })
   @IsOptional()
   @ValidateNested()
   @Type(() => LossFactsDto)

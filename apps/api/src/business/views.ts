@@ -171,6 +171,12 @@ export interface BusinessProfileView {
   readonly bookExists: boolean
 }
 
+/**
+ * A change to one of the stored fact objects (WEB-30/WEB-31): a key left out keeps its stored value,
+ * `null` removes it. A client that never saw the stored object cannot wipe its other keys.
+ */
+export type FactsPatch<T> = { readonly [K in keyof T]?: T[K] | null | undefined }
+
 export interface ProfileInput {
   readonly confirmedKind?: 'freiberuf' | 'gewerbe' | null | undefined
   readonly professionAnswers?: Partial<ProfessionAnswers> | null | undefined
@@ -183,11 +189,11 @@ export interface ProfileInput {
   readonly multiplierOverride?: number | null | undefined
   readonly startDate?: string | null | undefined
   readonly vatPrepaymentsCents?: number | null | undefined
-  readonly vatPeriodFacts?: VatPeriodFacts | null | undefined
+  readonly vatPeriodFacts?: FactsPatch<VatPeriodFacts> | null | undefined
   readonly disposalFacts?: DisposalFacts | null | undefined
   readonly retainedFacts?: RetainedFacts | null | undefined
-  readonly tradeTaxInputs?: TradeTaxInputs | null | undefined
-  readonly lossFacts?: LossFacts | null | undefined
+  readonly tradeTaxInputs?: FactsPatch<TradeTaxInputs> | null | undefined
+  readonly lossFacts?: FactsPatch<LossFacts> | null | undefined
   readonly partnershipShares?: readonly PartnershipShare[] | null | undefined
 }
 

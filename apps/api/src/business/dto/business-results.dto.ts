@@ -71,19 +71,19 @@ export class FinancingComponentsDto {
 }
 
 export class TradeTaxInputsDto {
-  @ApiPropertyOptional({ type: FinancingComponentsDto }) @IsOptional() @ValidateNested() @Type(() => FinancingComponentsDto) financing?: FinancingComponentsDto | undefined
-  @ApiPropertyOptional({ ...EUR, description: 'Further additions (§ 8 Nr. 4–12 GewStG), euros.' }) @IsOptional() @IsNumber() @Min(0) otherAdditionsEur?: number | undefined
-  @ApiPropertyOptional({ ...EUR, description: 'Einheitswert of the business land for § 9 Nr. 1 GewStG, euros.' }) @IsOptional() @IsNumber() @Min(0) einheitswertEur?: number | undefined
-  @ApiPropertyOptional({ ...EUR, description: 'Further deductions (§ 9 Nr. 2–10), euros.' }) @IsOptional() @IsNumber() @Min(0) otherDeductionsEur?: number | undefined
-  @ApiPropertyOptional({ ...EUR, description: 'Gewerbeverlust carried forward (§ 10a GewStG), euros.' }) @IsOptional() @IsNumber() @Min(0) lossCarriedForwardEur?: number | undefined
+  @ApiPropertyOptional({ type: FinancingComponentsDto, nullable: true }) @IsOptional() @ValidateNested() @Type(() => FinancingComponentsDto) financing?: FinancingComponentsDto | null | undefined
+  @ApiPropertyOptional({ ...EUR, nullable: true, description: 'Further additions (§ 8 Nr. 4–12 GewStG), euros.' }) @IsOptional() @IsNumber() @Min(0) otherAdditionsEur?: number | null | undefined
+  @ApiPropertyOptional({ ...EUR, nullable: true, description: 'Einheitswert of the business land for § 9 Nr. 1 GewStG, euros.' }) @IsOptional() @IsNumber() @Min(0) einheitswertEur?: number | null | undefined
+  @ApiPropertyOptional({ ...EUR, nullable: true, description: 'Further deductions (§ 9 Nr. 2–10), euros.' }) @IsOptional() @IsNumber() @Min(0) otherDeductionsEur?: number | null | undefined
+  @ApiPropertyOptional({ ...EUR, nullable: true, description: 'Gewerbeverlust carried forward (§ 10a GewStG), euros.' }) @IsOptional() @IsNumber() @Min(0) lossCarriedForwardEur?: number | null | undefined
 }
 
 export class LossFactsDto {
-  @ApiPropertyOptional({ ...EUR, description: 'Verbleibender Verlustvortrag of the last Feststellungsbescheid, euros.' }) @IsOptional() @IsNumber() @Min(0) carriedForwardEur?: number | undefined
-  @ApiPropertyOptional({ type: Boolean, description: '§ 10d Abs. 1 Satz 5: waive the Rücktrag (as a whole).' }) @IsOptional() @IsBoolean() waiveCarryBack?: boolean | undefined
-  @ApiPropertyOptional({ type: [Number], description: 'What the GdE of the year before and the second year before still offers, euros: [y−1, y−2].' })
-  @IsOptional() @IsArray() @IsNumber({}, { each: true }) roomEur?: readonly [number, number] | undefined
-  @ApiPropertyOptional({ ...EUR, description: 'A later year’s loss carried back into this year, euros.' }) @IsOptional() @IsNumber() @Min(0) carriedBackEur?: number | undefined
+  @ApiPropertyOptional({ ...EUR, nullable: true, description: 'Verbleibender Verlustvortrag of the last Feststellungsbescheid, euros.' }) @IsOptional() @IsNumber() @Min(0) carriedForwardEur?: number | null | undefined
+  @ApiPropertyOptional({ type: Boolean, nullable: true, description: '§ 10d Abs. 1 Satz 5: waive the Rücktrag (as a whole).' }) @IsOptional() @IsBoolean() waiveCarryBack?: boolean | null | undefined
+  @ApiPropertyOptional({ type: [Number], nullable: true, description: 'What the GdE of the year before and the second year before still offers, euros: [y−1, y−2].' })
+  @IsOptional() @IsArray() @IsNumber({}, { each: true }) roomEur?: readonly [number, number] | null | undefined
+  @ApiPropertyOptional({ ...EUR, nullable: true, description: 'A later year’s loss carried back into this year, euros.' }) @IsOptional() @IsNumber() @Min(0) carriedBackEur?: number | null | undefined
 }
 
 export class PartnershipShareDto {
@@ -438,11 +438,11 @@ export class CompanyCarResultDto {
 // Umsatzsteuer-Voranmeldung und Zusammenfassende Meldung (ADR-0101 §22)
 
 export class VatPeriodFactsDto {
-  @ApiPropertyOptional({ enum: ['monat', 'quartal', 'befreit'], description: 'The period the office set; absent = derived from the year before.' }) @IsOptional() @IsIn(['monat', 'quartal', 'befreit']) period?: 'monat' | 'quartal' | 'befreit' | undefined
-  @ApiPropertyOptional({ type: Boolean, description: 'Dauerfristverlängerung (§ 46 UStDV).' }) @IsOptional() @IsBoolean() extension?: boolean | undefined
-  @ApiPropertyOptional({ ...EUR, description: 'The Sondervorauszahlung as paid; absent = 1/11 of last year (§ 47 UStDV).' }) @IsOptional() @IsNumber() @Min(0) specialPrepaymentEur?: number | undefined
-  @ApiPropertyOptional({ type: Boolean, description: 'Monthly by choice after a refund above the limit (§ 18 Abs. 2a UStG).' }) @IsOptional() @IsBoolean() chooseMonthly?: boolean | undefined
-  @ApiPropertyOptional({ type: Boolean, description: 'Freed from keeping books by the office (§ 148 AO): Istversteuerung whatever the turnover (§ 20 Satz 1 Nr. 2 UStG).' }) @IsOptional() @IsBoolean() exemptFromBookkeeping?: boolean | undefined
+  @ApiPropertyOptional({ enum: ['monat', 'quartal', 'befreit'], nullable: true, description: 'The period the office set; absent = derived from the year before.' }) @IsOptional() @IsIn(['monat', 'quartal', 'befreit']) period?: 'monat' | 'quartal' | 'befreit' | null | undefined
+  @ApiPropertyOptional({ type: Boolean, nullable: true, description: 'Dauerfristverlängerung (§ 46 UStDV).' }) @IsOptional() @IsBoolean() extension?: boolean | null | undefined
+  @ApiPropertyOptional({ ...EUR, nullable: true, description: 'The Sondervorauszahlung as paid; absent = 1/11 of last year (§ 47 UStDV).' }) @IsOptional() @IsNumber() @Min(0) specialPrepaymentEur?: number | null | undefined
+  @ApiPropertyOptional({ type: Boolean, nullable: true, description: 'Monthly by choice after a refund above the limit (§ 18 Abs. 2a UStG).' }) @IsOptional() @IsBoolean() chooseMonthly?: boolean | null | undefined
+  @ApiPropertyOptional({ type: Boolean, nullable: true, description: 'Freed from keeping books by the office (§ 148 AO): Istversteuerung whatever the turnover (§ 20 Satz 1 Nr. 2 UStG).' }) @IsOptional() @IsBoolean() exemptFromBookkeeping?: boolean | null | undefined
 }
 
 export class VatPeriodDto {
