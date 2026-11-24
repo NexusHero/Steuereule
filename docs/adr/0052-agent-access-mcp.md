@@ -374,3 +374,35 @@ and a refresh token; the read view (Amendment 3) limits what it reads to amounts
    assistant's own.
 3. Open: nothing verifies a client. A list of known assistants with their redirect hosts would let the
    screen mark those as recognised; a user who does not read the destination is still not protected.
+
+## Amendment 9 (2026-11-23) — Limits an assistant could walk around
+
+Four gaps from a code review of the MCP server. None let an assistant read or write what it was not
+granted; each let one that was granted access do more than intended.
+
+1. **Children:** `kind_anlegen` had no upper bound, unlike `vermietung_anlegen` (10 objects). An
+   assistant now creates a child only while the tax year holds fewer than 12
+   (`MAX_CHILDREN_BY_ASSISTANT`); more are added by the user in the app. The repository counts and
+   inserts under one advisory lock per account and year, so calls arriving together cannot pass the cap
+   (the same lock also keeps their sequence numbers apart).
+2. **SSE session and client:** `POST /mcp/messages` checked that a session belongs to the caller's
+   user, not to the caller's client. The server behind a session carries the scopes of the client
+   that opened it, so another assistant of the same user, granted less, could have acted through it
+   with the session id. A message from another client is now refused with 403.
+3. **Checkout links:** every `zahllink_anfordern` creates a checkout session at the payment provider,
+   bounded only by the 120 tool calls per minute. Now at most 5 per hour and account
+   (`MCP_CHECKOUT_LINK_LIMIT`), refused before the provider is asked.
+4. **Limits across instances:** amends Amendment 6. The tool-call window stays in the process and
+   refuses a flood without a round trip; a call it lets through is also counted in the shared
+   rate-limit storage (ADR-0106), so several instances hold one limit together. The checkout-link limit
+   counts there too. This takes effect only where that storage has Redis (#292); without it the storage
+   counts per process, as before. The limit of open SSE sessions stays per process, because the
+   sessions themselves live in one process.
+5. Cost: with Redis, every tool call that passes the process window adds one round trip to it, and the
+   storage opens a connection per call. If Redis does not answer, the call waits for the storage's
+   timeout (400 ms) and is then counted in the process.
+6. Known bound: the shared storage counts in fixed windows (a key expires one window after its first
+   increment), as it does for the sign-in limits of ADR-0106. Around a window boundary several instances
+   together can let through up to twice the limit within one rolling window. Each process still holds its
+   own sliding window. The limits bound abuse, not billing, so this is accepted here rather than giving
+   the MCP its own counter.

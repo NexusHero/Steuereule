@@ -1,5 +1,5 @@
 import { Inject, Injectable, Optional } from '@nestjs/common'
-import { InvalidInputError, NotFoundError } from '../common/domain-error.js'
+import { ConflictError, InvalidInputError, NotFoundError } from '../common/domain-error.js'
 import { CHILDCARE_PROVIDER_WIDTH_PT, calculateDifferentialChildBenefit, fitsPrintBox, isValidChildBirthDate, calculateChildrenStatus, type ChildData } from '@steuereule/core'
 import { AuditService } from '../audit/audit.service.js'
 import { CROSS_BORDER_SALARY_STATEMENT_REPOSITORY, type CrossBorderSalaryStatementRepository } from '../ch-salary-certificate/ch-salary-certificate.repository.js'
@@ -68,6 +68,9 @@ function assertProviderFitsFormLine(provider: string | null | undefined): void {
   throw new InvalidInputError('BETREUUNG_ANBIETER_ZU_LANG', 'The childcare provider is longer than the line of Anlage Kind (Zeile 67) prints.')
 }
 
+/** The code of the refusal when a capped create finds the year full. */
+export const TOO_MANY_CHILDREN = 'TOO_MANY_CHILDREN'
+
 @Injectable()
 export class ChildrenService {
   constructor(
@@ -115,13 +118,15 @@ export class ChildrenService {
     return this.toResponse(owner, records, taxYear)
   }
 
-  async create(userId: string, taxYear: number, dto: CreateChildDto): Promise<ChildrenResponseDto> {
+  /** With `maxChildren`, a year already holding that many refuses with `TOO_MANY_CHILDREN` (the assistant's cap, ADR-0052 amendment 9). */
+  async create(userId: string, taxYear: number, dto: CreateChildDto, maxChildren?: number): Promise<ChildrenResponseDto> {
     if (!isValidChildBirthDate(dto.geburtsdatum, taxYear)) {
       throw new InvalidInputError('GEBURTSDATUM_INVALID', 'The birth date is not valid for this tax year.')
     }
     assertProviderFitsFormLine(dto.childcareProvider)
     const owner = await this.owner(userId, taxYear)
-    await this.repository.create(owner, taxYear, dto)
+    const created = maxChildren === undefined ? await this.repository.create(owner, taxYear, dto) : await this.repository.create(owner, taxYear, dto, maxChildren)
+    if (created === null) throw new ConflictError(TOO_MANY_CHILDREN, 'The tax year already holds the most children this caller may add.')
     const records = await this.repository.listForUserAndYear(owner, taxYear)
     return this.toResponse(owner, records, taxYear)
   }

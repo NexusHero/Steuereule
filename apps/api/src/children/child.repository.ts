@@ -38,6 +38,14 @@ export interface ChildRecord extends ChildDetails {
   childBenefitClaimEur: string | null
 }
 
+export type CreateChildData = {
+  firstName: string
+  lastName: string
+  geburtsdatum: string
+  taxId?: string | null
+  childBenefitClaimEur?: string | null
+} & Partial<ChildDetails>
+
 export const CHILD_REPOSITORY = Symbol('CHILD_REPOSITORY')
 
 /** What Anlage Kind needs beyond the child's identity. */
@@ -45,17 +53,9 @@ export interface ChildRepository {
   listForUserAndYear(userId: string, taxYear: number): Promise<ChildRecord[]>
   /** Every year of the account, oldest first — the household migration reads it (ADR-0062). */
   listAllForUser(userId: string): Promise<ChildRecord[]>
-  create(
-    userId: string,
-    taxYear: number,
-    data: {
-      firstName: string
-      lastName: string
-      geburtsdatum: string
-      taxId?: string | null
-      childBenefitClaimEur?: string | null
-    } & Partial<ChildDetails>,
-  ): Promise<ChildRecord>
+  create(userId: string, taxYear: number, data: CreateChildData): Promise<ChildRecord>
+  /** With a cap: null, and nothing created, when the year already holds `maxRows` children; count and insert are one step. */
+  create(userId: string, taxYear: number, data: CreateChildData, maxRows: number): Promise<ChildRecord | null>
   update(
     userId: string,
     taxYear: number,

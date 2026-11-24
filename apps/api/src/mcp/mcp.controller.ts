@@ -34,6 +34,8 @@ import { McpService, type AssistantSessionInfo } from './mcp.service.js'
 interface McpSseSession {
   readonly transport: SSEServerTransport
   readonly userId: string
+  /** The client that opened the session: its scopes are the session's, so only it may send to it. */
+  readonly clientId: string
   readonly createdAt: Date
 }
 
@@ -122,7 +124,7 @@ export class McpController {
     }
     reply.hijack()
 
-    this.sessions.set(sessionId, { transport, userId, createdAt: new Date() })
+    this.sessions.set(sessionId, { transport, userId, clientId: assistant.clientId, createdAt: new Date() })
 
     // oxlint-disable-next-line unicorn/prefer-add-event-listener
     transport.onclose = () => {
@@ -138,7 +140,7 @@ export class McpController {
   async messages(@Req() request: RequestWithUserId, @Res() reply: FastifyReply): Promise<void> {
     const caller = this.assistantOf(request)
     if (!caller) this.challenge(reply)
-    const { userId } = caller
+    const { userId, assistant } = caller
 
     const query = request.query as { sessionId?: string } | undefined
     const sessionId = query?.sessionId
@@ -151,6 +153,12 @@ export class McpController {
     const session = this.sessions.get(sessionId)!
     if (session.userId !== userId) {
       reply.raw.writeHead(403, { 'Content-Type': 'text/plain' }).end('Session belongs to another user account')
+      return
+    }
+    // The server behind the session carries the scopes of the client that opened it. Another assistant of
+    // the same user, granted less, must not act through it (ADR-0052 amendment 9).
+    if (session.clientId !== assistant.clientId) {
+      reply.raw.writeHead(403, { 'Content-Type': 'text/plain' }).end('Session belongs to another assistant')
       return
     }
 
