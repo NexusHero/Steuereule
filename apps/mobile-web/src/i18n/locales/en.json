@@ -1382,7 +1382,8 @@
     "abgelaufen": "The deadline {{frist}} has passed. The tax office may set a late-filing surcharge — from {{pflichtAb}} it must (at least {{mindestsatz}} per started month).",
     "zuschlagPflicht": "The filing deadline {{frist}} passed {{tage}} days ago. Since {{pflichtAb}} the tax office must set a late-filing surcharge (§ 152 (2) AO): at least {{mindestsatz}} per started month — file soon.",
     "freiwillig": "Voluntary return: you have until {{bis}} (31 Dec of the fourth following year). The sooner you file, the sooner the refund arrives.",
-    "unklar": "Whether you have to file, we will work out from your answers. The mandatory deadline would be {{frist}}."
+    "unklar": "Whether you have to file, we will work out from your answers. The mandatory deadline would be {{frist}}.",
+    "ladefehler": "Your filing deadline could not be loaded."
   },
   "shared": {
     "saveFailed": "At least one entry was not saved. Check your connection and enter it again — or tap again to continue anyway."

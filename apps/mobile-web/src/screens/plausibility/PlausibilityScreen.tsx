@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { Button, useTheme, useBreakpoint, type UiTheme } from '@steuereule/ui'
 import { APP_NS } from '../../i18n/resources'
 import { CURRENT_TAX_YEAR } from '../../config/taxYear'
-import { LoadingState, ErrorState } from '../shared/ScreenState'
+import { LoadingState, LoadFailedState } from '../shared/ScreenState'
 import { BackButton, BackButtonSpacer } from '../shared/BackButton'
 import { usePlausibility } from './usePlausibility'
 import { useBlockingConflictHaptic } from './useBlockingConflictHaptic'
@@ -27,15 +27,7 @@ export function PlausibilityScreen({ onBack, onDone, taxYear = CURRENT_TAX_YEAR 
     return <LoadingState bp={bp} label={tr('plausibilitaet.loading')} />
   }
   if (plausibility.status === 'error') {
-    return (
-      <ErrorState
-        bp={bp}
-        heading={tr('plausibilitaet.loadError.heading')}
-        message={tr('plausibilitaet.loadError.message')}
-        retryLabel={tr('plausibilitaet.loadError.retry')}
-        onRetry={plausibility.retry}
-      />
-    )
+    return <LoadFailedState bp={bp} error={plausibility.error} onRetry={plausibility.retry} />
   }
 
   const { conflicts, notices, missingForPrintout, printoutHints } = plausibility
