@@ -449,6 +449,69 @@
     "errLocked": "Zu viele Fehlversuche — dein Konto ist vorübergehend gesperrt. Versuch es später noch mal."
   },
   "bestaetigung": {
+    "veraendert": "Seit du die Werte gesehen hast, hat sich etwas geändert. Prüf sie bitte noch einmal.",
+    "unbenanntesFeld": "Weitere Angabe",
+    "aendernIn": "Ändern: {{maske}}",
+    "instanz": {
+      "kind": "Kind: {{name}}",
+      "kindOhne": "Kind (ohne Namen)",
+      "vermietung": "Mietobjekt: {{name}}",
+      "vermietungOhne": "Mietobjekt (ohne Adresse)",
+      "sonst": "{{name}}",
+      "sonstOhne": "Eintrag"
+    },
+    "werte": {
+      "ja": "Ja",
+      "nein": "Nein",
+      "filingType": {
+        "einzel": "Einzelveranlagung",
+        "zusammen": "Zusammenveranlagung"
+      },
+      "wochentage": {
+        "mo": "Mo",
+        "di": "Di",
+        "mi": "Mi",
+        "do": "Do",
+        "fr": "Fr",
+        "sa": "Sa",
+        "so": "So"
+      }
+    },
+    "masken": {
+      "profil": "Profil",
+      "stammdaten": "Stammdaten",
+      "kopplung": "Veranlagungsart und Partner",
+      "interview": "Interview",
+      "lstb": "Lohnsteuerbescheinigung",
+      "commute": "Arbeitsweg",
+      "chLohnausweis": "Lohnausweis Schweiz",
+      "rente": "Rente",
+      "kapital": "Kapitalerträge",
+      "vermietung": "Vermietung",
+      "kind": "Kinder",
+      "assessment": "Bescheid",
+      "buchung": "Buchung"
+    },
+    "fragen": {
+      "job": "Woher dein Geld kam",
+      "rente-selbststaendig": "Nebenbei selbstständig in der Rente",
+      "beruf": "Berufsgruppe",
+      "ausland": "Arbeit im Ausland",
+      "de-job": "Zusätzlich ein Job in Deutschland",
+      "kinder": "Kinder",
+      "familienstand": "Familienstand",
+      "partner-job": "Einkommen deines Partners",
+      "partner-ausland": "Arbeit deines Partners im Ausland",
+      "partner-de-job": "Job deines Partners in Deutschland",
+      "partner": "Partner im Haushalt",
+      "homeoffice": "Homeoffice",
+      "weg": "Entfernung zur Arbeit (km)",
+      "tage": "Arbeitstage im Jahr",
+      "ch-wohnsitz": "Wohnsitz (Grenzgänger)",
+      "gewerbe": "Hinweis zur Selbstständigkeit gelesen",
+      "ch-only": "Hinweis zur Arbeit nur im Ausland gelesen",
+      "ch-nichtrueckkehrtage": "Nichtrückkehrtage"
+    },
     "title": "Prüfen & bestätigen {{jahr}}",
     "back": "Zurück",
     "intro": "Diese Werte hast du nicht selbst eingetragen. Prüf sie je Anlage: bestätigen oder einzeln ändern. Erst danach kannst du ausdrucken und bezahlen.",
@@ -494,6 +557,7 @@
     },
     "anlagen": {
       "hauptvordruck": "Hauptvordruck (ESt 1 A)",
+      "bescheid": "Bescheid",
       "anlageN": "Anlage N",
       "anlageNGre": "Anlage N-Gre",
       "anlageR": "Anlage R",

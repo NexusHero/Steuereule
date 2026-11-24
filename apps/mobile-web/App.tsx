@@ -19,7 +19,8 @@ import { RegistrationScreen } from './src/screens/RegistrationScreen'
 import { carryAssistantSignIn } from './src/auth/assistant-sign-in'
 import { OnboardingScreen } from './src/screens/OnboardingScreen'
 import { LstbScreen } from './src/screens/lstb/LstbScreen'
-import { CatalogScreen } from './src/screens/catalog/CatalogScreen'
+import { CatalogScreen, type CatalogScreenEntry } from './src/screens/catalog/CatalogScreen'
+import { locateQuestion } from '@steuereule/core'
 import { CapitalScreen } from './src/screens/capital/CapitalScreen'
 import { RentalScreen } from './src/screens/rental/RentalScreen'
 import { CrossBorderScreen } from './src/screens/cross-border/CrossBorderScreen'
@@ -35,6 +36,7 @@ import { ConfirmationScreen, type ConfirmationForm } from './src/screens/confirm
 import { PasswordResetScreen } from './src/screens/PasswordResetScreen'
 import { OauthConsentScreen } from './src/screens/oauth/OauthConsentScreen'
 import { ChildrenScreen } from './src/screens/children/ChildrenScreen'
+import { AssessmentScreen } from './src/screens/assessment/AssessmentScreen'
 import { CURRENT_TAX_YEAR } from './src/config/taxYear'
 import {
   rememberPendingPath,
@@ -304,14 +306,38 @@ function PrintoutRoute({ navigation, route }: NativeStackScreenProps<RootStackPa
   )
 }
 
+/**
+ * „Einzeln ändern“ (H2-2, WEB-18): every mask a value can live on opens its own screen, and coming back returns to
+ * „Prüfen & bestätigen“. The profile is a tab of its own, so it is opened there.
+ */
 function ConfirmationRoute({ navigation, route }: NativeStackScreenProps<RootStackParamList, 'Confirmation'>) {
-  const [screen, setScreen] = useState<ConfirmationForm | null>(null)
+  const [open, setOpen] = useState<{ screen: ConfirmationForm; field: string | undefined } | null>(null)
+  const screen = open?.screen ?? null
   const year = Number(route.params?.year)
   useEffect(() => {
     if (!Number.isInteger(year)) navigation.replace('App')
   }, [year, navigation])
+  useEffect(() => {
+    if (screen !== 'profil') return
+    setOpen(null)
+    navigation.navigate('App', { screen: 'Profile', params: { screen: 'ProfileHome' } })
+  }, [screen, navigation])
   if (!Number.isInteger(year)) return null
-  const back = () => setScreen(null)
+  const back = () => setOpen(null)
+  if (screen === 'stammdaten' || screen === 'kopplung') return <MasterDataScreen taxYear={year} onBack={back} />
+  if (screen === 'commute') return <WorkdaysScreen taxYear={year} onDone={back} onBack={back} />
+  if (screen === 'chLohnausweis') return <CrossBorderScreen taxYear={year} onDone={back} />
+  if (screen === 'kind') return <ChildrenScreen taxYear={year} onDone={back} onBack={back} />
+  if (screen === 'assessment') return <AssessmentScreen taxYear={year} onDone={back} onBack={back} />
+  if (screen === 'interview') {
+    // The interview is several pages; the field says which one holds the question (#488).
+    const located = open?.field ? locateQuestion(open.field) : null
+    return located ? (
+      <CatalogScreen entry={located.entry as CatalogScreenEntry} focusStep={located.step} taxYear={year} revisit onDone={back} onBack={back} />
+    ) : (
+      <CatalogScreen entry="minimal-gate" taxYear={year} revisit onDone={back} onBack={back} />
+    )
+  }
   if (screen === 'lstb') {
     return (
       <LstbScreen
@@ -329,7 +355,7 @@ function ConfirmationRoute({ navigation, route }: NativeStackScreenProps<RootSta
     <ConfirmationScreen
       year={year}
       onBack={() => (navigation.canGoBack() ? navigation.goBack() : navigation.replace('App'))}
-      onOpenScreen={setScreen}
+      onOpenScreen={(next, field) => setOpen({ screen: next, field })}
     />
   )
 }
