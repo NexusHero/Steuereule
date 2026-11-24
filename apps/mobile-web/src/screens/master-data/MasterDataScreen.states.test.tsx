@@ -56,7 +56,7 @@ describe('StammdatenScreen failures', () => {
     let healthy = false
     server.use(http.get('*/v1/stammdaten', () => (healthy ? HttpResponse.json(LEER) : HttpResponse.json(null, { status: 500 }))))
     renderScreen()
-    expect(await screen.findByText('Deine Angaben konnten nicht geladen werden.')).toBeTruthy()
+    expect(await screen.findByText('Das konnte nicht geladen werden.')).toBeTruthy()
     healthy = true
     fireEvent.click(screen.getByText('Noch mal versuchen'))
     expect(await screen.findByText('Alles da für den Ausdruck.')).toBeTruthy()

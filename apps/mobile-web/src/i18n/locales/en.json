@@ -733,6 +733,15 @@
     "telefon": "Phone for queries (optional)",
     "speichern": "Save",
     "gespeichert": "Saved.",
+    "kopplungStand": {
+      "loading": "Loading the type of assessment …",
+      "loadError": "The type of assessment could not be loaded. Until it is, nothing is chosen or saved here.",
+      "statusLoadError": "Whether you are linked as a couple could not be loaded.",
+      "personBGespeichert": "Partner details saved.",
+      "personBUnveraendert": "There is nothing new to save.",
+      "codeUnbekannt": "We do not know this code. Check the spelling."
+    },
+    "ungespeichertZurueck": "Your changes are not saved yet. Tap “Save” – or go back again to discard them.",
     "fehlendHinweis": "{{anzahl}} details still missing for the printout.",
     "vollstaendig": "Everything there for the printout.",
     "saveError": {

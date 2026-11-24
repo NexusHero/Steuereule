@@ -733,6 +733,15 @@
     "telefon": "Telefon für Rückfragen (optional)",
     "speichern": "Speichern",
     "gespeichert": "Gespeichert.",
+    "kopplungStand": {
+      "loading": "Die Veranlagungsart wird geladen …",
+      "loadError": "Die Veranlagungsart konnte nicht geladen werden. Solange wählen und übernehmen wir hier nichts.",
+      "statusLoadError": "Ob ihr als Paar verknüpft seid, konnte nicht geladen werden.",
+      "personBGespeichert": "Partner-Angaben übernommen.",
+      "personBUnveraendert": "Es gibt nichts Neues zu übernehmen.",
+      "codeUnbekannt": "Diesen Code kennen wir nicht. Prüf die Schreibweise."
+    },
+    "ungespeichertZurueck": "Deine Änderungen sind noch nicht gespeichert. Tipp „Speichern“ – oder noch einmal zurück, um sie zu verwerfen.",
     "fehlendHinweis": "Für den Ausdruck fehlen noch {{anzahl}} Angaben.",
     "vollstaendig": "Alles da für den Ausdruck.",
     "saveError": {
