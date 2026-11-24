@@ -342,11 +342,11 @@ describe('the connected owl screen (no copilot bridge)', () => {
 
   it('WEB-48 / NR-03: a session that cannot be read is a failure with a retry, never an empty chat', async () => {
     recordRoutes()
-    let calls = 0
+    let sessionCalls = 0
     server.use(
       http.get('*/v1/steuerjahre/:jahr/advisor/session', () => {
-        calls += 1
-        return calls === 1 ? HttpResponse.json({ message: 'down' }, { status: 500 }) : HttpResponse.json(session())
+        sessionCalls += 1
+        return sessionCalls === 1 ? HttpResponse.json({ message: 'down' }, { status: 500 }) : HttpResponse.json(session())
       }),
     )
     renderConnected()

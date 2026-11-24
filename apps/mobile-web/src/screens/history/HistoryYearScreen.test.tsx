@@ -236,9 +236,9 @@ describe('HistoryYearScreen', () => {
 
   it('NR-21: an address that names no year (/app/verlauf/abc → NaN) never shows "NaN"', async () => {
     renderYear(Number('abc'))
-    const text = await found('verlauf-jahr-unbekannt')
-    expect(text).toContain('Diese Adresse nennt kein Steuerjahr')
-    expect(text).not.toContain('NaN')
+    const shown = await found('verlauf-jahr-unbekannt')
+    expect(shown).toContain('Diese Adresse nennt kein Steuerjahr')
+    expect(shown).not.toContain('NaN')
   })
 
   it('speaks English', async () => {
