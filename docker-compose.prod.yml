@@ -104,6 +104,12 @@ services:
         # Dockerfile's own comment) — API_ORIGIN, the SAME value the api service's
         # BETTER_AUTH_URL above uses, never a second, independently-typed copy.
         EXPO_PUBLIC_API_BASE_URL: ${API_ORIGIN}
+        # Operator details for the Impressum (WEB-2); empty on a local stack, set them in .env to see the real page.
+        EXPO_PUBLIC_BETREIBER_NAME: ${EXPO_PUBLIC_BETREIBER_NAME:-}
+        EXPO_PUBLIC_BETREIBER_ANSCHRIFT: ${EXPO_PUBLIC_BETREIBER_ANSCHRIFT:-}
+        EXPO_PUBLIC_BETREIBER_EMAIL: ${EXPO_PUBLIC_BETREIBER_EMAIL:-}
+        EXPO_PUBLIC_BETREIBER_VERTRETEN: ${EXPO_PUBLIC_BETREIBER_VERTRETEN:-}
+        EXPO_PUBLIC_BETREIBER_USTID: ${EXPO_PUBLIC_BETREIBER_USTID:-}
     ports:
       - '${WEB_PORT:-8080}:8080'
     depends_on:
