@@ -446,6 +446,9 @@
     "errWrongCode": "Dieser Code ist nicht richtig. Prüf die App und versuch es noch mal.",
     "errWrongPassword": "Das Passwort ist nicht richtig.",
     "errTooManyAttempts": "Zu viele Versuche. Bitte fordere einen neuen Code an.",
+    "errChallengeExpired": "Die Abfrage des zweiten Faktors ist abgelaufen. Melde dich bitte noch einmal mit E-Mail und Passwort an.",
+    "cancel": "Abbrechen",
+    "sessionUnknown": "Wir konnten gerade nicht prüfen, ob du angemeldet bist. Versuch es gleich noch mal.",
     "errLocked": "Zu viele Fehlversuche — dein Konto ist vorübergehend gesperrt. Versuch es später noch mal."
   },
   "bestaetigung": {
@@ -2557,6 +2560,8 @@
     "deny": "Ablehnen",
     "loading": "Wird geladen …",
     "processing": "Wird verarbeitet …",
+    "expired": "Diese Freigabe ist abgelaufen oder nicht mehr gültig. Starte die Verbindung in deinem Assistenten neu.",
+    "lookupFailed": "Wir konnten nicht prüfen, welcher Assistent das ist. Erlauben geht erst, wenn das klappt.",
     "error": "Fehler bei der Autorisierung. Bitte versuchen Sie es erneut."
   },
   "eule": {

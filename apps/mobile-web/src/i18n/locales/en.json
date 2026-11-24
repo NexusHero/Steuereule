@@ -446,6 +446,9 @@
     "errWrongCode": "That code isn't right. Check the app and try again.",
     "errWrongPassword": "That password isn't right.",
     "errTooManyAttempts": "Too many attempts. Please request a new code.",
+    "errChallengeExpired": "The second-factor check has expired. Please sign in again with your email and password.",
+    "cancel": "Cancel",
+    "sessionUnknown": "We could not check right now whether you are signed in. Please try again in a moment.",
     "errLocked": "Too many failed attempts — your account is temporarily locked. Try again later."
   },
   "bestaetigung": {
@@ -2557,6 +2560,8 @@
     "deny": "Decline",
     "loading": "Loading …",
     "processing": "Processing …",
+    "expired": "This approval has expired or is no longer valid. Start the connection again in your assistant.",
+    "lookupFailed": "We could not check which assistant this is. Allowing works only once that succeeds.",
     "error": "Authorization failed. Please try again."
   },
   "eule": {

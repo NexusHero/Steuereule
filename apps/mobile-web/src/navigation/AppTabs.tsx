@@ -8,10 +8,11 @@ import {
   type TabNavigationState,
 } from '@react-navigation/native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { OwlGlyph, TabBar, TAB_ICON_PATHS, inkOnFunke, tabBarClearance, useTheme, type TabItem } from '@steuereule/ui'
+import { OwlGlyph, TabBar, TAB_ICON_PATHS, inkOnFunke, tabBarClearance, useBreakpoint, useTheme, type TabItem } from '@steuereule/ui'
 import { APP_NS } from '../i18n/resources'
 import { TabIcon } from '../icons/TabIcon'
 import { useAccountSession } from '../auth/useAccountSession'
+import { ErrorState, LoadingState } from '../screens/shared/ScreenState'
 import { OwlModeScreen } from '../screens/advisor/OwlModeScreen'
 import { ReceiptsScreen } from '../screens/receipts/ReceiptsScreen'
 import { CockpitStack } from './CockpitStack'
@@ -134,7 +135,23 @@ function FloatingTabBar({ state, navigation, insets }: BottomTabBarProps) {
 
 function OwlRoute({ navigation }: BottomTabScreenProps<AppTabParamList, 'Owl'>) {
   const { taxYear, onRegister, onLogin } = useShellState()
-  const { state: sessionState } = useAccountSession()
+  const { state: sessionState, retry } = useAccountSession()
+  const bp = useBreakpoint()
+  const { t: tr } = useTranslation(APP_NS)
+  // NR-16: while the session is checked the guest gate must not flash, and a check that failed (offline/5xx)
+  // is not "Dafür brauchst du ein Konto" for a signed-in user.
+  if (sessionState.status === 'loading') return <LoadingState bp={bp} label={tr('eule.loading')} />
+  if (sessionState.status === 'unknown') {
+    return (
+      <ErrorState
+        bp={bp}
+        heading={tr('apiFehler.loadHeading')}
+        message={tr(sessionState.reason === 'unreachable' ? 'apiFehler.offline' : 'apiFehler.server')}
+        retryLabel={tr('apiFehler.retry')}
+        onRetry={() => void retry()}
+      />
+    )
+  }
   return (
     <OwlModeScreen
       taxYear={taxYear}

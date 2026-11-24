@@ -5,7 +5,8 @@ import { Button, Card, Feld, Pill, useTheme, useBreakpoint, type UiTheme } from 
 import { useDeviceControllerGetPending, useDeviceControllerApprove } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
 import { parseUserAgent, resolveRegionName, formatRequestedAt } from './deviceContext'
-import { LoadingState, ErrorState, SuccessState } from '../shared/ScreenState'
+import { LoadingState, ErrorState, LoadFailedState, SuccessState } from '../shared/ScreenState'
+import { classifyApiFailure, useApiFailureMessage } from '../../net/apiFailure'
 
 export interface DeviceApprovalScreenProps {
   readonly userCode: string
@@ -19,18 +20,24 @@ export function DeviceApprovalScreen({ userCode }: DeviceApprovalScreenProps) {
   const { t: tr, i18n } = useTranslation(APP_NS)
   const styles = makeStyles(t)
   const [approveState, setApproveState] = useState<ApproveState>('idle')
+  const [approveError, setApproveError] = useState<unknown>(null)
+  const failureMessage = useApiFailureMessage()
 
   const pendingQuery = useDeviceControllerGetPending({ userCode })
   const approveMutation = useDeviceControllerApprove()
-
-  const pendingStatus = pendingQuery.data ? (pendingQuery.data as { status: number }).status : undefined
 
   if (pendingQuery.isPending) {
     return <LoadingState bp={bp} label={tr('device.approval.loading')} />
   }
 
-  if (pendingQuery.isError || pendingStatus !== 200) {
-    return <ErrorState bp={bp} heading={tr('device.approval.error.heading')} message={tr('device.approval.error.body')} testID="geraet-code-ungueltig" />
+  if (pendingQuery.isError) {
+    // NR-11: only an unknown or malformed code is "ungültig oder abgelaufen"; a server or network failure is a
+    // load failure with a retry, so nobody requests a new code for nothing.
+    const kind = classifyApiFailure(pendingQuery.error).kind
+    if (kind === 'not-found' || kind === 'validation') {
+      return <ErrorState bp={bp} heading={tr('device.approval.error.heading')} message={tr('device.approval.error.body')} testID="geraet-code-ungueltig" />
+    }
+    return <LoadFailedState bp={bp} error={pendingQuery.error} onRetry={() => void pendingQuery.refetch()} />
   }
 
   const pending = pendingQuery.data.data
@@ -40,10 +47,11 @@ export function DeviceApprovalScreen({ userCode }: DeviceApprovalScreenProps) {
     approveMutation.mutate(
       { data: { userCode } },
       {
-        onSuccess: (response) => {
-          setApproveState(response.status === 200 ? 'approved' : 'error')
+        onSuccess: () => setApproveState('approved'),
+        onError: (error) => {
+          setApproveError(error)
+          setApproveState('error')
         },
-        onError: () => setApproveState('error'),
       },
     )
   }
@@ -89,7 +97,7 @@ export function DeviceApprovalScreen({ userCode }: DeviceApprovalScreenProps) {
 
       {approveState === 'error' ? (
         <Text style={styles.approveErrorText} accessibilityRole="alert">
-          {tr('device.approval.approveError')}
+          {failureMessage(approveError, { server: tr('device.approval.approveError'), unknown: tr('device.approval.approveError'), forbidden: tr('device.approval.approveError') })}
         </Text>
       ) : null}
 
