@@ -372,6 +372,37 @@ describe('scrubDocumentTextPii keeps its lines after the backtracking fix', () =
     expect(performance.now() - started).toBeLessThan(200)
   })
 
+  // The analyser reports both labelled-line patterns as possibly super-linear (S8786). These are the inputs that
+  // would show it: blanks, blank lines and unclosed parts behind every label the patterns know. Eight times the
+  // input may take about eight times as long; a quadratic pattern would take sixty-four times.
+  it.each<[string, (size: number) => string]>([
+    ['blank lines behind a postcode line', (n) => `12345 Abc${'\n'.repeat(n)}x`],
+    ['postcode lines, each followed by blank lines', (n) => '12345 Abc \n\n\n\n'.repeat(n / 16)],
+    ['blanks behind a postcode line', (n) => `12345 Abc${' '.repeat(n)}x`],
+    ['a second word and blanks, no line end', (n) => `12345 Abc${' '.repeat(40)}Def${' '.repeat(40)}x\n`.repeat(n / 100)],
+    ['blanks and line ends in turn', (n) => `12345 Abc${' \n'.repeat(n / 2)}x`],
+    ['PLZ, blanks, slash', (n) => `PLZ${' '.repeat(n)}/${' '.repeat(10)}x`],
+    ['an unclosed parenthesis behind every Arbeitgeber', (n) => 'Arbeitgeber ('.repeat(n / 13)],
+    ['blanks behind every label', (n) => `Arbeitgeber${' '.repeat(50)}\n`.repeat(n / 62)],
+    ['a label with a comma and blank lines', (n) => `Name, ${'\n'.repeat(20)}`.repeat(n / 26)],
+    ['Steuerklasse, blanks, slash, blanks', (n) => `Steuerklasse${' '.repeat(30)}/${' '.repeat(30)}x\n`.repeat(n / 75)],
+    ['Zahl and line ends', (n) => `Zahl${'\n'.repeat(n)}x`],
+    ['a label alone on every line', (n) => 'Name:\n'.repeat(n / 6)],
+  ])('grows linearly: %s', (_name, make) => {
+    const fastest = (text: string) =>
+      Math.min(
+        ...[1, 2, 3].map(() => {
+          const started = performance.now()
+          scrubDocumentTextPii(text)
+          return performance.now() - started
+        }),
+      )
+    const small = fastest(make(40_000))
+    const large = fastest(make(320_000))
+    // A floor for the small run keeps a sub-millisecond measurement from deciding the ratio.
+    expect(large / Math.max(small, 1)).toBeLessThan(24)
+  })
+
   it('handles long runs of blanks quickly', () => {
     const blanks = ' '.repeat(50_000)
     const started = performance.now()
