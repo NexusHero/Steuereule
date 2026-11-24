@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { useLeaveGuard } from './leaveGuard'
 
 /**
  * Tracks in-flight saves so leaving a mask (`onDone` / `onBack` / closing a sheet / „Später weiter“) waits for
@@ -71,6 +72,9 @@ export function usePendingMutations() {
     }
     void Promise.allSettled(pending.current).then(leaveOrWarn)
   }, [])
+
+  // WEB-40: the sheet's X / backdrop / Escape and the browser's back wait for these saves too.
+  useLeaveGuard(flushThen)
 
   /** Resolves once every tracked save settled; true when none of them failed since the last exit. */
   const settled = useCallback(async (): Promise<boolean> => {
