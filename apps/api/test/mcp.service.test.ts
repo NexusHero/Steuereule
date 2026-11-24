@@ -28,6 +28,7 @@ import { FakeTaxYearRepository } from './fakes/fake-tax-year.repository.js'
 import { FakeOwlSettingRepository, FakeOwlCardDismissalRepository } from './fakes/fake-owl-mode.repository.js'
 import type { AssessmentRepository } from '../src/assessment/assessment.repository.js'
 import { RagKiAdapter } from '../src/ki/ki.adapter.js'
+import { ConflictError } from '../src/common/domain-error.js'
 import { AssistantTaskService } from '../src/assistant-task/assistant-task.service.js'
 import { FakeAssistantTaskRepository } from './fakes/fake-assistant-task.repository.js'
 import type { UnlockRepository } from '../src/unlock/unlock.repository.js'
@@ -370,7 +371,7 @@ describe('McpService (ADR-0052 §3 / §5 / §8 / §12)', () => {
       const client = await clientWith(children)
       const res = await client.callTool({ name: 'kind_anlegen', arguments: { taxYear: YEAR, firstName: 'Zeynep', lastName: 'Sevinc', geburtsdatum: '2022-06-14' } })
       expect(JSON.parse(getText(res))).toMatchObject({ ok: true, instance: 'kind-1' })
-      expect(children.create).toHaveBeenCalledWith(USER, YEAR, { firstName: 'Zeynep', lastName: 'Sevinc', geburtsdatum: '2022-06-14' })
+      expect(children.create).toHaveBeenCalledWith(USER, YEAR, { firstName: 'Zeynep', lastName: 'Sevinc', geburtsdatum: '2022-06-14' }, 12)
     })
 
     it('kind_anlegen does not create the same child twice, it returns the one already there', async () => {
@@ -390,6 +391,16 @@ describe('McpService (ADR-0052 §3 / §5 / §8 / §12)', () => {
       expect((res as { isError?: boolean }).isError).toBe(true)
       expect(getText(res)).toContain('TOO_MANY')
       expect(create).not.toHaveBeenCalled()
+    })
+
+  it('kind_anlegen refuses when the year filled up between its count and its create', async () => {
+      // Two calls together both read eleven; the create itself holds the cap and refuses the one that came second.
+      const kinder = Array.from({ length: 11 }, (_, i) => ({ id: `kind-${i}`, sequenceNumber: i + 1, firstName: `Kind${i}`, lastName: 'S', geburtsdatum: '2015-01-01' }))
+      const create = vi.fn(async () => { throw new ConflictError('TOO_MANY_CHILDREN', 'full') })
+      const client = await clientWith({ list: async () => ({ kinder }), create, delete: vi.fn() })
+      const res = await client.callTool({ name: 'kind_anlegen', arguments: { taxYear: YEAR, firstName: 'Dreizehn', lastName: 'S', geburtsdatum: '2020-01-01' } })
+      expect((res as { isError?: boolean }).isError).toBe(true)
+      expect(getText(res)).toContain('TOO_MANY')
     })
 
   it('kind_anlegen needs the write scope', async () => {

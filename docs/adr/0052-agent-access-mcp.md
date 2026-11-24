@@ -365,7 +365,9 @@ is in a pull request of its own.)
 
 1. **Children:** `kind_anlegen` had no upper bound, unlike `vermietung_anlegen` (10 objects). An
    assistant now creates a child only while the tax year holds fewer than 12
-   (`MAX_CHILDREN_BY_ASSISTANT`); more are added by the user in the app.
+   (`MAX_CHILDREN_BY_ASSISTANT`); more are added by the user in the app. The repository counts and
+   inserts under one advisory lock per account and year, so calls arriving together cannot pass the cap
+   (the same lock also keeps their sequence numbers apart).
 2. **SSE session and client:** `POST /mcp/messages` checked that a session belongs to the caller's
    user, not to the caller's client. The server behind a session carries the scopes of the client
    that opened it, so another assistant of the same user, granted less, could have acted through it
@@ -382,3 +384,8 @@ is in a pull request of its own.)
 5. Cost: with Redis, every tool call that passes the process window adds one round trip to it, and the
    storage opens a connection per call. If Redis does not answer, the call waits for the storage's
    timeout (400 ms) and is then counted in the process.
+6. Known bound: the shared storage counts in fixed windows (a key expires one window after its first
+   increment), as it does for the sign-in limits of ADR-0106. Around a window boundary several instances
+   together can let through up to twice the limit within one rolling window. Each process still holds its
+   own sliding window. The limits bound abuse, not billing, so this is accepted here rather than giving
+   the MCP its own counter.

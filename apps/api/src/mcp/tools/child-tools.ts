@@ -1,6 +1,8 @@
 import { z } from 'zod'
 import { provenanceKey } from '@steuereule/core'
 import { assertScope, json, provenanceOf, refused, type McpDeps, type McpSession } from '../mcp-session.js'
+import { ConflictError } from '../../common/domain-error.js'
+import { TOO_MANY_CHILDREN } from '../../children/children.service.js'
 import { ownRecord } from '../own-record.js'
 import { ageAtYearEnd } from '../read-view.js'
 
@@ -42,9 +44,16 @@ export function registerChildTools(session: McpSession, deps: McpDeps): void {
       // The same child twice would count its allowance twice; a repeated call returns the one already there.
       const same = existing.find((k) => k.firstName.trim().toLowerCase() === firstName.trim().toLowerCase() && k.geburtsdatum === geburtsdatum)
       if (same) return json({ ok: true, instance: same.id, nummer: same.sequenceNumber, bereitsVorhanden: true, hinweis: 'Dieses Kind gibt es schon; weitere Angaben mit maske_eintragen und dieser instance.' })
-      if (existing.length >= MAX_CHILDREN_BY_ASSISTANT) return refused(`TOO_MANY: Mehr als ${MAX_CHILDREN_BY_ASSISTANT} Kinder legt nur der Nutzer in der App an.`)
+      const tooMany = () => refused(`TOO_MANY: Mehr als ${MAX_CHILDREN_BY_ASSISTANT} Kinder legt nur der Nutzer in der App an.`)
+      if (existing.length >= MAX_CHILDREN_BY_ASSISTANT) return tooMany()
       const before = new Set(existing.map((k) => k.id))
-      const after = (await children.create(userId, taxYear, { firstName, lastName, geburtsdatum })).kinder
+      // The cap goes with the create: the count above can be stale when two calls arrive together.
+      const response = await children.create(userId, taxYear, { firstName, lastName, geburtsdatum }, MAX_CHILDREN_BY_ASSISTANT).catch((error: unknown) => {
+        if (error instanceof ConflictError && error.code === TOO_MANY_CHILDREN) return null
+        throw error
+      })
+      if (response === null) return tooMany()
+      const after = response.kinder
       await deps.audit.append({ userId, action: 'WRITE', resource: 'kind_anlegen' })
       const created = after.find((k) => !before.has(k.id))
       // Name and birth date are the assistant's entry like any other: unconfirmed, and so removable by it.

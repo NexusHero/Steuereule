@@ -1,4 +1,4 @@
-import type { ChildDetails, ChildRecord, ChildRepository } from '../../src/children/child.repository.js'
+import type { ChildDetails, ChildRecord, ChildRepository, CreateChildData } from '../../src/children/child.repository.js'
 
 function key(userId: string, taxYear: number): string {
   return `${userId}::${taxYear}`
@@ -25,19 +25,12 @@ export class FakeChildRepository implements ChildRepository {
     )
   }
 
-  create(
-    userId: string,
-    taxYear: number,
-    data: {
-      firstName: string
-      lastName: string
-      geburtsdatum: string
-      taxId?: string | null
-      childBenefitClaimEur?: string | null
-    } & Partial<ChildDetails>,
-  ): Promise<ChildRecord> {
-    this.counter += 1
+  create(userId: string, taxYear: number, data: CreateChildData): Promise<ChildRecord>
+  create(userId: string, taxYear: number, data: CreateChildData, maxRows: number): Promise<ChildRecord | null>
+  create(userId: string, taxYear: number, data: CreateChildData, maxRows?: number): Promise<ChildRecord | null> {
     const current = [...this.store.values()].filter((r) => key(r.userId, r.taxYear) === key(userId, taxYear))
+    if (maxRows !== undefined && current.length >= maxRows) return Promise.resolve(null)
+    this.counter += 1
     const record: ChildRecord = {
       id: `fake-kind-${this.counter}`,
       userId,

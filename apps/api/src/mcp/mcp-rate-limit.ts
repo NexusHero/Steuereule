@@ -53,11 +53,14 @@ export class McpRateLimiter {
    * shared counter it is `takeToolCall` alone.
    */
   async takeToolCallEverywhere(userId: string): Promise<ToolCallGate> {
+    // Read before the local take: a call the process lets through clears `blocked`, and a stretch the shared
+    // counter keeps refusing would otherwise look new on every retry and be audited each time.
+    const alreadyBlocked = this.blocked.has(userId)
     const local = this.takeToolCall(userId)
     if (!local.ok || !this.shared) return local
     const decision = await this.shared.consume(`mcp-tool-calls:${userId}`, { window: WINDOW_MS / 1000, max: this.limits.toolCallsPerMinute })
     if (decision.allowed) return local
-    const first = !this.blocked.has(userId)
+    const first = !alreadyBlocked
     this.blocked.add(userId)
     return { ok: false, retryAfterSeconds: Math.max(1, decision.retryAfter ?? WINDOW_MS / 1000), first }
   }

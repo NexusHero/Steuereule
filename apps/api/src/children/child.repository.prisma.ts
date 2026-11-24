@@ -1,6 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common'
 import { ENCRYPTED_PRISMA, type EncryptedPrismaClient } from '../prisma/encrypted-prisma.provider.js'
-import type { ChildDetails, ChildRecord, ChildRepository } from './child.repository.js'
+import type { ChildDetails, ChildRecord, ChildRepository, CreateChildData } from './child.repository.js'
 
 function toRecord(row: {
   id: string
@@ -67,20 +67,16 @@ export class PrismaChildRepository implements ChildRepository {
     return rows.map(toRecord)
   }
 
-  async create(
-    userId: string,
-    taxYear: number,
-    data: {
-      firstName: string
-      lastName: string
-      geburtsdatum: string
-      taxId?: string | null
-      childBenefitClaimEur?: string | null
-    } & Partial<ChildDetails>,
-  ): Promise<ChildRecord> {
-    const count = await this.prisma.child.count({ where: { userId, taxYear } })
-    const [row] = await this.prisma.$transaction([
-      this.prisma.child.create({
+  create(userId: string, taxYear: number, data: CreateChildData): Promise<ChildRecord>
+  create(userId: string, taxYear: number, data: CreateChildData, maxRows: number): Promise<ChildRecord | null>
+  async create(userId: string, taxYear: number, data: CreateChildData, maxRows?: number): Promise<ChildRecord | null> {
+    // The lock per account and year makes "count, then create" one step: without it, calls in parallel read the
+    // same count, pass the same cap and take the same sequence number. It is released with the transaction.
+    return this.prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`child-rows:${userId}:${taxYear}`}, 0))`
+      const count = await tx.child.count({ where: { userId, taxYear } })
+      if (maxRows !== undefined && count >= maxRows) return null
+      const row = await tx.child.create({
         data: {
           userId,
           taxYear,
@@ -112,12 +108,10 @@ export class PrismaChildRepository implements ChildRepository {
           swissFamilyAllowancePayer: data.swissFamilyAllowancePayer ?? null,
           healthInsuranceAbroad: data.healthInsuranceAbroad ?? null,
         },
-      }),
-      this.prisma.taxDataAccessLog.create({
-        data: { userId, action: 'WRITE', resource: 'kind' },
-      }),
-    ])
-    return toRecord(row)
+      })
+      await tx.taxDataAccessLog.create({ data: { userId, action: 'WRITE', resource: 'kind' } })
+      return toRecord(row)
+    })
   }
 
   async update(

@@ -66,6 +66,8 @@ describe('McpRateLimiter with a shared counter', () => {
 
     expect(gates.map((gate) => gate.ok)).toEqual([true, true, true, true, false, false])
     expect(gates[4]).toMatchObject({ ok: false, first: true })
+    // The process still has budget of its own, so only the shared counter refuses: the stretch is audited once.
+    expect(await one.takeToolCallEverywhere('u1')).toMatchObject({ ok: false, first: false })
     // Another user is not held up.
     expect((await two.takeToolCallEverywhere('u2')).ok).toBe(true)
   })
