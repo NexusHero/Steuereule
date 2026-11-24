@@ -1592,7 +1592,8 @@
       "geburtsdatum": "Geburtsdatum (TT.MM.JJJJ)",
       "fehlt": "Bitte Vorname und Geburtsdatum eintragen.",
       "datumFalsch": "Bitte das Geburtsdatum als TT.MM.JJJJ eintragen.",
-      "fehler": "Das hat nicht geklappt. Prüf die Verbindung und versuch es noch mal."
+      "fehler": "Das hat nicht geklappt. Prüf die Verbindung und versuch es noch mal.",
+      "ladefehler": "Die Angaben zu deinem Partner konnten nicht geladen werden."
     },
     "alleinerziehend": {
       "titel": "Alleinerziehend"
@@ -1620,6 +1621,7 @@
       "nachzahlung": "Voraussichtliche Nachzahlung",
       "ergebnis": "Voraussichtliches Ergebnis",
       "ohneSchaetzung": "Die Schätzung kommt, sobald deine Lohnangaben da sind.",
+      "schaetzungLadefehler": "Die Schätzung konnte nicht geladen werden.",
       "uebernommen": "In deine Erklärung übernommen",
       "offen": "Noch offen",
       "abgabe": "Abgabe vorbereiten",

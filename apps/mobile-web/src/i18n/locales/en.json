@@ -1592,7 +1592,8 @@
       "geburtsdatum": "Date of birth (DD.MM.YYYY)",
       "fehlt": "Please enter first name and date of birth.",
       "datumFalsch": "Please enter the date of birth as DD.MM.YYYY.",
-      "fehler": "That did not work. Check the connection and try again."
+      "fehler": "That did not work. Check the connection and try again.",
+      "ladefehler": "Your partner's details could not be loaded."
     },
     "alleinerziehend": {
       "titel": "Single parent"
@@ -1620,6 +1621,7 @@
       "nachzahlung": "Expected back payment",
       "ergebnis": "Expected result",
       "ohneSchaetzung": "The estimate follows as soon as your wage details are in.",
+      "schaetzungLadefehler": "The estimate could not be loaded.",
       "uebernommen": "Taken into your return",
       "offen": "Still open",
       "abgabe": "Prepare the submission",
