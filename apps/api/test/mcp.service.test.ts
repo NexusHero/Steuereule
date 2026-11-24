@@ -31,31 +31,13 @@ import { RagKiAdapter } from '../src/ki/ki.adapter.js'
 import { ConflictError } from '../src/common/domain-error.js'
 import { AssistantTaskService } from '../src/assistant-task/assistant-task.service.js'
 import { FakeAssistantTaskRepository } from './fakes/fake-assistant-task.repository.js'
-import type { UnlockRepository } from '../src/unlock/unlock.repository.js'
-import type { PaymentProvider } from '../src/unlock/payment-provider.js'
+import { FakeUnlockRepository, stubPaymentProvider } from './fakes/fake-unlock.repository.js'
 import type { CommuteRepository } from '../src/commute/commute.repository.js'
 import { taxCaseReaderOver } from '../src/tax-case/repository-tax-case.reader.js'
 
 const USER = 'user-mcp-1'
 const YEAR = 2025
 
-class FakeUnlockRepository implements UnlockRepository {
-  private paid = new Set<string>()
-  async isPaid(userId: string, taxYear: number): Promise<boolean> {
-    return this.paid.has(`${userId}:${taxYear}`)
-  }
-  async createOpenOnes(): Promise<void> {}
-  async markPaid(): Promise<void> {}
-}
-
-class FakePaymentProvider implements PaymentProvider {
-  async createCheckout(): Promise<{ id: string; url: string }> {
-    return { id: 'cs_test_123', url: 'https://checkout.stripe.com/c/pay/cs_test_123' }
-  }
-  verifyEvent() {
-    return { kind: 'bezahlt' as const, sessionId: 'cs_test_123', amountCents: 3900 }
-  }
-}
 
 class FakeCommuteRepository implements CommuteRepository {
   async findForUserAndYear() {
@@ -130,7 +112,7 @@ describe('McpService (ADR-0052 §3 / §5 / §8 / §12)', () => {
 
     cockpitService = new CockpitService(taxYearRepo, taxCaseReaderOver({ wageTaxCertificate: lstbRepo, interview: interviewRepo, pension: pensionRepo, capital: capitalRepo, rental: rentalRepo, salaryStatement: chSalaryRepo }), markingsRepo)
 
-    unlockService = new UnlockService(new FakeUnlockRepository(), new FakePaymentProvider(), 'http://localhost:8081')
+    unlockService = new UnlockService(new FakeUnlockRepository(), stubPaymentProvider('cs_test_123', 'https://checkout.stripe.com/c/pay/cs_test_123'), 'http://localhost:8081')
 
     printoutService = new PrintoutService(taxCaseReaderOver({ profile: profileRepo, masterData: masterDataRepo, wageTaxCertificate: lstbRepo, pension: pensionRepo, capital: capitalRepo, rental: rentalRepo, salaryStatement: chSalaryRepo, children: childRepo, coupling: linkRepo, interview: interviewRepo, commute: new FakeCommuteRepository() }), markingsRepo, unlockService, auditService, new URL('../../assets/vordrucke/', import.meta.url))
 

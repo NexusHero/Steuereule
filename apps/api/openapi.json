@@ -6279,7 +6279,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Stripe Checkout at the self-employment price (STRIPE_PRICE_ID_SELBSTSTAENDIG).",
+            "description": "Stripe Checkout at the self-employment price (STRIPE_PRICE_ID_SELBSTSTAENDIG); an open session is handed out again.",
             "content": {
               "application/json": {
                 "schema": {
@@ -6310,6 +6310,19 @@
                 }
               }
             }
+          },
+          "409": {
+            "description": "ALREADY_PAID (the year is unlocked) or PAYMENT_PENDING (a payment is still being settled).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessErrorDto"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many checkout starts for this account."
           },
           "503": {
             "description": "PAYMENT_NOT_CONFIGURED or PAYMENT_TIER_NOT_CONFIGURED.",
@@ -6463,8 +6476,14 @@
           "401": {
             "description": "Guest session — this endpoint requires a signed-in account."
           },
+          "409": {
+            "description": "`ALREADY_PAID`: the year is unlocked already; `PAYMENT_PENDING`: a payment is still being settled."
+          },
           "422": {
             "description": "`fehlend`: the printout could not be delivered yet, so payment is not offered."
+          },
+          "429": {
+            "description": "Too many checkout starts for this account."
           },
           "503": {
             "description": "Payment is not configured on this environment."
@@ -17492,6 +17511,25 @@
           "checkoutUrl"
         ]
       },
+      "UnlockPriceDto": {
+        "type": "object",
+        "properties": {
+          "amountCents": {
+            "type": "number",
+            "example": 3499,
+            "description": "Gross amount in cents, VAT included."
+          },
+          "currency": {
+            "type": "string",
+            "example": "eur",
+            "description": "ISO 4217 currency code, lower case as Stripe writes it."
+          }
+        },
+        "required": [
+          "amountCents",
+          "currency"
+        ]
+      },
       "UnlockStatusDto": {
         "type": "object",
         "properties": {
@@ -17519,6 +17557,16 @@
               "elster-ausfuellhilfe"
             ],
             "description": "How the year is filed: the paper printout, or Mein ELSTER with the fill-in help (self-employment, ADR-0101 §16); always sent."
+          },
+          "price": {
+            "nullable": true,
+            "description": "What the checkout of this year would charge, read from the same price the checkout uses; sent while `offen`, null when it cannot be read.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/UnlockPriceDto"
+              }
+            ]
           }
         },
         "required": [

@@ -960,7 +960,8 @@ model Unlock {
   id                      String    @id @default(uuid())
   userId                  String
   taxYear                 Int       @map("steuerjahr")
-  /// "offen" until the webhook confirms payment, then "bezahlt".
+  /// "offen" until the webhook confirms payment, then "bezahlt"; "abgelaufen" when the session closed
+  /// unpaid; "erstattet" / "angefochten" after a full refund / an opened dispute. Only "bezahlt" unlocks.
   status                  String    @default("offen")
   stripeCheckoutSessionId String    @unique
   /// Which price was paid (ADR-0101 §21): "standard" or "selbststaendig"; a year with self-employment

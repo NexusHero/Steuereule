@@ -303,9 +303,19 @@ export type printoutControllerCheckoutResponse401 = {
   status: 401
 }
 
+export type printoutControllerCheckoutResponse409 = {
+  data: void
+  status: 409
+}
+
 export type printoutControllerCheckoutResponse422 = {
   data: void
   status: 422
+}
+
+export type printoutControllerCheckoutResponse429 = {
+  data: void
+  status: 429
 }
 
 export type printoutControllerCheckoutResponse503 = {
@@ -316,7 +326,7 @@ export type printoutControllerCheckoutResponse503 = {
 export type printoutControllerCheckoutResponseSuccess = (printoutControllerCheckoutResponse200) & {
   headers: Headers;
 };
-export type printoutControllerCheckoutResponseError = (printoutControllerCheckoutResponse401 | printoutControllerCheckoutResponse422 | printoutControllerCheckoutResponse503) & {
+export type printoutControllerCheckoutResponseError = (printoutControllerCheckoutResponse401 | printoutControllerCheckoutResponse409 | printoutControllerCheckoutResponse422 | printoutControllerCheckoutResponse429 | printoutControllerCheckoutResponse503) & {
   headers: Headers;
 };
 
