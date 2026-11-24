@@ -105,6 +105,9 @@ export class UserContextGuard implements CanActivate {
     const request = context.switchToHttp().getRequest<RequestWithUserId>()
     const reply = context.switchToHttp().getResponse<FastifyReply>()
 
+    // The guest sweep rides on any guarded request (ADR-0109); it runs at most once an hour per process.
+    this.guestActivity?.seen()
+
     const authHeader = request.headers?.authorization
     if (typeof authHeader === 'string' && authHeader.startsWith('Bearer ')) {
       // An assistant's token is good for the MCP endpoint only (ADR-0052 amendment 4): on any other

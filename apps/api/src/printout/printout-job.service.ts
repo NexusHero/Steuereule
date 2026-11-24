@@ -19,7 +19,11 @@ interface InternalJob {
 /** A job nobody asks about is dropped after this long; one whose result was read after `FETCHED_GRACE_MS`. */
 export const PRINTOUT_JOB_TTL_MS = 10 * 60_000
 const FETCHED_GRACE_MS = 60_000
-/** Jobs one account may hold at once (running or waiting to be read); each runs Chromium. */
+/**
+ * Jobs one account may hold at once on this instance (running or waiting to be read); each runs Chromium. The
+ * jobs live in the process, so the cap does too; across instances the shared throttle on the start route bounds
+ * an account (10 starts per 10 minutes).
+ */
 export const MAX_PRINTOUT_JOBS_PER_USER = 3
 
 /**

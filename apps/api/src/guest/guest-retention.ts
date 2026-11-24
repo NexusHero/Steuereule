@@ -13,13 +13,19 @@ export const GUEST_ACTIVITY_RECORDER = Symbol('GUEST_ACTIVITY_RECORDER')
 
 export interface GuestActivityRecorder {
   touch(guestUserId: string): Promise<void>
+  /** Any request passed the guard: lets the sweep ride on ordinary traffic, not only on guest writes. */
+  seen(): void
 }
 
 export class GuestActivityNotes implements GuestActivityRecorder {
   private readonly lastTouch = new Map<string, number>()
 
-  /** Called after a successful touch; the retention service hangs its sweep here (ADR-0029: it rides on traffic). */
+  /** Called on every guarded request; the retention service hangs its sweep here (ADR-0029: it rides on traffic). */
   afterTouch: (() => void) | undefined
+
+  seen(): void {
+    this.afterTouch?.()
+  }
 
   constructor(private readonly repository: GuestActivityRepository) {}
 
@@ -59,13 +65,17 @@ export async function sweepInactiveGuests({ repository, erase, onError }: GuestS
   let erased = 0
   let heldBack = 0
   let failed = 0
+  const claimedTo = new Date(cutoff.getTime() + CLAIM_RETRY_MS)
   for (const userId of await repository.dueBefore(cutoff, GUEST_SWEEP_BATCH)) {
-    if (!(await repository.claim(userId, cutoff, new Date(cutoff.getTime() + CLAIM_RETRY_MS)))) continue
+    if (!(await repository.claim(userId, cutoff, claimedTo))) continue
     try {
       if (await repository.isAccount(userId)) {
         await repository.drop(userId)
         continue
       }
+      // A guest who came back and wrote after the claim moved the clock to now: that guest is active again
+      // and keeps the data. Checked right before the erasure, which cannot be taken back.
+      if (!(await repository.stillClaimed(userId, claimedTo))) continue
       const result = await erase(userId)
       if (result.retainedUnderLegalHold > 0) {
         // Held data stays; the clock starts over and the hold is looked at again in 30 days.
