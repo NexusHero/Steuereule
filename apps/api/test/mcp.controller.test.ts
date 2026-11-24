@@ -62,6 +62,30 @@ describe('McpController limits (ADR-0052 amendment 6)', () => {
   })
 })
 
+// ADR-0052 amendment 9: the server behind an SSE session carries the scopes of the client that opened it.
+// Another assistant of the same user, granted less, could send to it with the session id.
+describe('McpController SSE sessions belong to the client that opened them', () => {
+  const requestOf = (clientId: string, query?: object) => ({ [USER_ID_REQUEST_KEY]: 'user-1', [AUTH_CONTEXT_REQUEST_KEY]: { source: 'assistent', clientId, clientName: 'Claude', scopes: [] }, query })
+  const replyOf = () => ({ header: vi.fn(), hijack: vi.fn(), raw: { writeHead: vi.fn().mockReturnThis(), write: vi.fn(), end: vi.fn(), on: vi.fn() } })
+
+  it('refuses a message from another client of the same user with 403, and takes the opener\'s', async () => {
+    const connect = vi.fn()
+    const ctl = new McpController({ createServer: () => ({ connect }) } as never, bundle, new McpRateLimiter())
+    await ctl.sse(requestOf('client-a') as never, replyOf() as never)
+    const sessionId = [...(ctl as unknown as { sessions: Map<string, unknown> }).sessions.keys()][0]!
+
+    const foreign = replyOf()
+    await ctl.messages(requestOf('client-b', { sessionId }) as never, foreign as never)
+    expect(foreign.raw.writeHead).toHaveBeenCalledWith(403, { 'Content-Type': 'text/plain' })
+    expect(foreign.raw.end).toHaveBeenCalledWith('Session belongs to another assistant')
+    expect(foreign.hijack).not.toHaveBeenCalled()
+
+    const own = replyOf()
+    await ctl.messages(requestOf('client-a', { sessionId }) as never, own as never).catch(() => undefined)
+    expect(own.hijack).toHaveBeenCalled()
+  })
+})
+
 describe('McpController Streamable HTTP (stateless, POST /mcp)', () => {
   let http: Server | null = null
   afterEach(async () => {

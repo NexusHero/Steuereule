@@ -5,7 +5,8 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js'
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js'
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
-import { limitToolCalls, MCP_LIMITS, McpRateLimiter } from '../src/mcp/mcp-rate-limit.js'
+import { createResettableRateLimitStorage } from '../src/auth/rate-limit-storage.js'
+import { limitToolCalls, MCP_CHECKOUT_LINK_LIMIT, MCP_LIMITS, McpRateLimiter } from '../src/mcp/mcp-rate-limit.js'
 
 function clock(start = 1_000_000) {
   let now = start
@@ -49,6 +50,51 @@ describe('McpRateLimiter', () => {
     expect(limiter.openSession('u2', 's5')).toBe(true)
     limiter.closeSession('u1', 's2')
     expect(limiter.openSession('u1', 's4')).toBe(true)
+  })
+})
+
+// ADR-0052 amendment 9: the window in the process let every instance count alone, so three instances gave a
+// user three times the limit. With a shared counter the instances hold one limit together.
+describe('McpRateLimiter with a shared counter', () => {
+  it('two instances together let the limit through once, not once each', async () => {
+    const shared = createResettableRateLimitStorage({ redisUrl: '' })
+    const limits = { toolCallsPerMinute: 4, openSessionsPerUser: 3 }
+    const [one, two] = [new McpRateLimiter(Date.now, limits, shared), new McpRateLimiter(Date.now, limits, shared)]
+
+    const gates = []
+    for (let i = 0; i < 3; i += 1) gates.push(await one.takeToolCallEverywhere('u1'), await two.takeToolCallEverywhere('u1'))
+
+    expect(gates.map((gate) => gate.ok)).toEqual([true, true, true, true, false, false])
+    expect(gates[4]).toMatchObject({ ok: false, first: true })
+    // The process still has budget of its own, so only the shared counter refuses: the stretch is audited once.
+    expect(await one.takeToolCallEverywhere('u1')).toMatchObject({ ok: false, first: false })
+    // Another user is not held up.
+    expect((await two.takeToolCallEverywhere('u2')).ok).toBe(true)
+  })
+
+  it('without a shared counter it is the window of the process alone', async () => {
+    const limiter = new McpRateLimiter(Date.now, { toolCallsPerMinute: 1, openSessionsPerUser: 3 })
+    expect((await limiter.takeToolCallEverywhere('u1')).ok).toBe(true)
+    expect(await limiter.takeToolCallEverywhere('u1')).toMatchObject({ ok: false, first: true })
+  })
+})
+
+describe('checkout links per account (ADR-0052 amendment 9)', () => {
+  it('gives five an hour and refuses the sixth with the wait, per account', async () => {
+    const time = clock()
+    const limiter = new McpRateLimiter(time.now)
+    for (let i = 0; i < MCP_CHECKOUT_LINK_LIMIT.max; i += 1) expect((await limiter.takeCheckoutLink('u1')).ok).toBe(true)
+    expect(await limiter.takeCheckoutLink('u1')).toEqual({ ok: false, retryAfterSeconds: 3600 })
+    expect((await limiter.takeCheckoutLink('u2')).ok).toBe(true)
+    time.advance(60 * 60 * 1000)
+    expect((await limiter.takeCheckoutLink('u1')).ok).toBe(true)
+  })
+
+  it('counts in the shared counter across instances', async () => {
+    const shared = createResettableRateLimitStorage({ redisUrl: '' })
+    const [one, two] = [new McpRateLimiter(Date.now, MCP_LIMITS, shared), new McpRateLimiter(Date.now, MCP_LIMITS, shared)]
+    for (let i = 0; i < MCP_CHECKOUT_LINK_LIMIT.max; i += 1) expect((await (i % 2 ? one : two).takeCheckoutLink('u1')).ok).toBe(true)
+    expect((await one.takeCheckoutLink('u1')).ok).toBe(false)
   })
 })
 

@@ -62,8 +62,8 @@ export class McpService {
     /** One per process, shared by every connection: the limit holds across a user's sessions. */
     @Optional() @Inject(McpRateLimiter) limiter?: McpRateLimiter,
   ) {
-    this.deps = { cockpit, printout, confirmation, owlMode, receipts, unlock, profiles, masterData, audit, report, link, children, deadlines, rentals, tasks, business }
     this.limiter = limiter ?? new McpRateLimiter()
+    this.deps = { cockpit, printout, confirmation, owlMode, receipts, unlock, profiles, masterData, audit, limiter: this.limiter, report, link, children, deadlines, rentals, tasks, business }
   }
 
   createServer(userId: string, assistant: AssistantSessionInfo): McpServer {
