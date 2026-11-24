@@ -72,7 +72,16 @@ export async function runScenario23(browser, webOrigin) {
   await saveButton.waitFor({ state: 'visible', timeout: 10_000 })
   await saveButton.click()
 
-  // 5. Verify rememberedPendingPath ('ch') automatically opens CrossBorderScreen after Onboarding!
+  await saveButton.waitFor({ state: 'detached', timeout: 10_000 })
+
+  // Sign-up returns no session (ADR-0109): the onboarding above ran as the guest, and the path behind the
+  // Konto-Wand stays closed until the address is verified and the account signs in. That first verified
+  // sign-in, with the guest cookie still in this browser, moves the guest's answers and profile to the
+  // account (ADR-0012); the reload lets the app see the session.
+  await verifyAndSignInAccount(page, { email, password: TEST_PASSWORD, apiOrigin, webOrigin, callerLabel: 'scenario-23' })
+  await page.reload({ waitUntil: 'networkidle' })
+
+  // 5. Verify rememberedPendingPath ('ch') automatically opens CrossBorderScreen once the account is signed in.
   await page.locator('[data-testid="ch-wohnsitz-deutschland"]').waitFor({ state: 'visible', timeout: 15_000 })
   console.log('[Scenario 23] Verified: Guest-to-Account upgrade automatically resumed CrossBorderScreen (rememberedPendingPath).')
 
@@ -80,13 +89,6 @@ export async function runScenario23(browser, webOrigin) {
   await page.locator('[data-testid="sheet-schliessen"]').click()
   await page.locator('[data-testid="sheet-schliessen"]').waitFor({ state: 'detached', timeout: 10_000 })
   await page.locator('[data-testid="cockpit-erstattung"]').waitFor({ state: 'visible', timeout: 10_000 })
-
-  // Sign-up returns no session (ADR-0109): until the address is verified and the account signs in, the guest
-  // carries on. The first verified sign-in, with the guest cookie still in this browser, moves the guest's
-  // answers and profile to the account (ADR-0012) — which is what steps 6 and on then read back.
-  await verifyAndSignInAccount(page, { email, password: TEST_PASSWORD, apiOrigin, webOrigin, callerLabel: 'scenario-23' })
-  await page.reload({ waitUntil: 'networkidle' })
-  await page.locator('[data-testid="cockpit-erstattung"]').waitFor({ state: 'visible', timeout: 15_000 })
 
   // 6. Multi-Tax-Year Isolation (the guest starts on the last completed year since UX review K2): 2025 (migrated from Guest with CH path) vs 2026 (fresh year)
   await selectTaxYear(page, 2025)
