@@ -28,10 +28,9 @@ export class FakeUnlockRepository implements UnlockRepository {
   }
 
   async openSessions(userId: string, taxYear: number, tier: UnlockTier): Promise<string[]> {
-    return this.rows
-      .filter((row) => row.userId === userId && row.taxYear === taxYear && row.tier === tier && row.status === 'offen')
-      .map((row) => row.sessionId)
-      .reverse()
+    const open = this.rows.filter((row) => row.userId === userId && row.taxYear === taxYear && row.tier === tier && row.status === 'offen')
+    // Newest first, as the real repository orders by creation.
+    return open.map((_, i) => open[open.length - 1 - i]!.sessionId)
   }
 
   async countSessions(userId: string, taxYear: number, tier: UnlockTier): Promise<number> {
