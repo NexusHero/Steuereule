@@ -1,4 +1,6 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common'
+import { Inject, Injectable, NotFoundException, Optional } from '@nestjs/common'
+import { BETTER_AUTH_BUNDLE, type BetterAuthBundle } from '../auth/auth.tokens.js'
+import { createResettableRateLimitStorage, type ResettableRateLimitStorage } from '../auth/rate-limit-storage.js'
 import { TooManyRequestsError } from '../common/domain-error.js'
 import crypto from 'node:crypto'
 import { PrintoutJobDto, type PrintoutJobStatus } from './dto/printout.dto.js'
@@ -20,11 +22,13 @@ interface InternalJob {
 export const PRINTOUT_JOB_TTL_MS = 10 * 60_000
 const FETCHED_GRACE_MS = 60_000
 /**
- * Jobs one account may hold at once on this instance (running or waiting to be read); each runs Chromium. The
- * jobs live in the process, so the cap does too; across instances the shared throttle on the start route bounds
- * an account (10 starts per 10 minutes).
+ * Jobs one account may hold at once (running or waiting to be read); each runs Chromium. The jobs live in the
+ * process, their count in the shared storage, so an account whose requests reach several instances still holds
+ * three in all (ADR-0109).
  */
 export const MAX_PRINTOUT_JOBS_PER_USER = 3
+
+const placesOf = (userId: string): string => `printout-jobs:${userId}`
 
 /**
  * Manages asynchronous PDF rendering jobs (ADR-0056: Fault Isolation).
@@ -34,16 +38,23 @@ export const MAX_PRINTOUT_JOBS_PER_USER = 3
 export class PrintoutJobService {
   private readonly jobs = new Map<string, InternalJob>()
 
-  constructor(@Inject(PrintoutService) private readonly printoutService: PrintoutService) {}
+  private readonly places: ResettableRateLimitStorage
+
+  constructor(
+    @Inject(PrintoutService) private readonly printoutService: PrintoutService,
+    @Optional() @Inject(BETTER_AUTH_BUNDLE) bundle?: BetterAuthBundle,
+  ) {
+    // Without the bundle (a unit test) the count lives in this process, like the jobs.
+    this.places = bundle?.rateLimitStorage ?? createResettableRateLimitStorage({ redisUrl: '' })
+  }
 
   async queueExport(userId: string, year: number, options: { editable?: boolean }): Promise<PrintoutJobDto> {
     return withSpan('printout_job.queue', async () => {
       this.evictExpired()
-      const held = [...this.jobs.values()].filter((job) => job.userId === userId).length
-      if (held >= MAX_PRINTOUT_JOBS_PER_USER) {
+      const jobId = `job_${crypto.randomUUID()}`
+      if (!(await this.places.hold(placesOf(userId), jobId, PRINTOUT_JOB_TTL_MS / 1000, MAX_PRINTOUT_JOBS_PER_USER))) {
         throw new TooManyRequestsError('PRINTOUT_JOBS_BUSY', 'Es laufen schon mehrere Ausdrucke. Warte, bis sie fertig sind, und versuch es noch mal.', { retryAfterSeconds: 15 })
       }
-      const jobId = `job_${crypto.randomUUID()}`
       const statusUrl = `/v1/steuerjahre/${year}/ausdruck/jobs/${jobId}`
       const downloadUrl = `/v1/steuerjahre/${year}/ausdruck${options.editable ? '?bearbeitbar=true' : ''}`
 
@@ -77,7 +88,10 @@ export class PrintoutJobService {
       throw new NotFoundException(`Printout job ${jobId} not found`)
     }
     // The result was read: the job stays a minute for a retry whose answer got lost, then goes.
-    if (job.status === 'completed' || job.status === 'failed') job.expiresAt = Math.min(job.expiresAt, Date.now() + FETCHED_GRACE_MS)
+    if (job.status === 'completed' || job.status === 'failed') {
+      job.expiresAt = Math.min(job.expiresAt, Date.now() + FETCHED_GRACE_MS)
+      await this.places.release(placesOf(userId), job.id, FETCHED_GRACE_MS / 1000)
+    }
 
     const result: PrintoutJobDto = {
       jobId: job.id,

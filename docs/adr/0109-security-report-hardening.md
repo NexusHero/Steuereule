@@ -48,8 +48,8 @@ The review read code. Nothing here was measured under load or tried against a de
    access-log entries and says so; the JSON export stays complete, because it answers Art. 15 and 20 GDPR, and is
    read in batches and sent as a stream.
    The PDF renderer queue holds at most 8 waiting renders, a render times out after 60 seconds. Asynchronous
-   printout jobs are throttled (10 per 10 minutes), limited to 3 held jobs per account and dropped after
-   10 minutes; a job no longer keeps its PDF in memory.
+   printout jobs are throttled (10 per 10 minutes), limited to 3 held jobs per account (counted in the
+   shared storage, so the cap holds across instances) and dropped after 10 minutes; a job no longer keeps its PDF in memory.
 5. **`/api/auth/*` refuses bodies over 64 KiB** with 413, by `Content-Length` and while reading.
 6. **Model calls have a daily cap across all users** (`AI_DAILY_CALL_LIMIT`, default 10,000, counted per
    chat turn, summary and vision read). When it is spent the owl answers from its rules, as it does when no
@@ -129,8 +129,6 @@ The review read code. Nothing here was measured under load or tried against a de
 
 - **Field-encrypted columns share one key.** Per-user keys are proposed in
   [ADR-0110](0110-per-user-field-keys.md) and not built here.
-- **The printout job cap is per instance**, because the jobs live in the process; the shared throttle on the
-  start route bounds an account across instances.
 - **Model providers are in the United States.** Covered by consent (ADR-0091); no EU endpoint is configured.
 
 ## Consequences

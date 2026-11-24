@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from 'vitest'
 import { PrintoutJobService } from '../src/printout/printout-job.service.js'
 import type { PrintoutService } from '../src/printout/printout.service.js'
+import type { BetterAuthBundle } from '../src/auth/auth.tokens.js'
+import { createResettableRateLimitStorage } from '../src/auth/rate-limit-storage.js'
 
 describe('PrintoutJobService (ADR-0056: Async PDF Fault Isolation)', () => {
   it('enqueues a job immediately with 202-ready payload and returns statusUrl', async () => {
@@ -40,6 +42,27 @@ describe('PrintoutJobService bounds (ADR-0109)', () => {
     for (let i = 0; i < 3; i += 1) await service.queueExport('u1', 2025, {})
     await expect(service.queueExport('u1', 2025, {})).rejects.toMatchObject({ code: 'PRINTOUT_JOBS_BUSY', details: { retryAfterSeconds: 15 } })
     await expect(service.queueExport('u2', 2025, {})).resolves.toBeDefined()
+  })
+
+  it('counts the held jobs of an account across instances, and frees a place once a result was read', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    try {
+      // Two services on one storage: two instances behind the load balancer.
+      const bundle = { rateLimitStorage: createResettableRateLimitStorage({ redisUrl: '' }) } as unknown as BetterAuthBundle
+      const [one, two] = [new PrintoutJobService(finished(), bundle), new PrintoutJobService(finished(), bundle)]
+      const first = await one.queueExport('u1', 2025, {})
+      await two.queueExport('u1', 2025, {})
+      await one.queueExport('u1', 2025, {})
+      await expect(two.queueExport('u1', 2025, {})).rejects.toMatchObject({ code: 'PRINTOUT_JOBS_BUSY' })
+      await settle()
+      await one.getJobStatus('u1', 2025, first.jobId)
+      // Still held for the minute in which a lost answer may be asked for again.
+      await expect(two.queueExport('u1', 2025, {})).rejects.toMatchObject({ code: 'PRINTOUT_JOBS_BUSY' })
+      vi.setSystemTime(Date.now() + 61_000)
+      await expect(two.queueExport('u1', 2025, {})).resolves.toBeDefined()
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('forgets a job whose result was read after a short grace, and one nobody read after the TTL', async () => {

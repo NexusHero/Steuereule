@@ -20,6 +20,24 @@ suite('rate-limit storage on Redis', () => {
     b.close?.()
   })
 
+  it('holds places across two storages and gives one back on release', async () => {
+    const a = createResettableRateLimitStorage({ redisUrl: url })
+    const b = createResettableRateLimitStorage({ redisUrl: url })
+    const key = `it:${Math.random().toString(36).slice(2)}`
+    expect(await a.hold(key, 'j1', 30, 2)).toBe(true)
+    expect(await b.hold(key, 'j2', 30, 2)).toBe(true)
+    expect(await a.hold(key, 'j3', 30, 2)).toBe(false)
+    // Renewing a place one already holds is not a new place.
+    expect(await b.hold(key, 'j1', 30, 2)).toBe(true)
+    // A delayed release keeps the place for now and never lengthens it.
+    await a.release(key, 'j2', 20)
+    expect(await a.hold(key, 'j3', 30, 2)).toBe(false)
+    await b.release(key, 'j1')
+    expect(await a.hold(key, 'j3', 30, 2)).toBe(true)
+    a.close?.()
+    b.close?.()
+  })
+
   it('does not use up the budget with a refused amount', async () => {
     const s = createResettableRateLimitStorage({ redisUrl: url })
     const key = `it:${Math.random().toString(36).slice(2)}`
