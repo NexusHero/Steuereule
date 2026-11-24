@@ -2,10 +2,11 @@ import { useState } from 'react'
 import { ScrollView, View, Text, Pressable, ActivityIndicator } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
-import { Button, Card, Pill, useTheme, useBreakpoint } from '@steuereule/ui'
+import { Button, Card, Feld, Input, Pill, useTheme, useBreakpoint } from '@steuereule/ui'
 import { useAccountDeletionControllerDeleteAccount } from '@steuereule/api-client'
 import { APP_NS } from '../i18n/resources'
 import { useAccountSession } from '../auth/useAccountSession'
+import { useStepUp } from '../auth/useStepUp'
 import { downloadAccountExport, type ExportFormat } from './privacy/exportDownload'
 import { ExportSection, type ExportButtonState } from './privacy/ExportSection'
 import { DeleteSection, type DeleteFlow } from './privacy/DeleteSection'
@@ -25,21 +26,45 @@ export function PrivacyScreen({ onBack, onAccountDeleted }: PrivacyScreenProps) 
   const deleteAccountMutation = useAccountDeletionControllerDeleteAccount()
 
   const { state: sessionState, retry: retrySession } = useAccountSession()
+  const stepUp = useStepUp()
 
   const [exportState, setExportState] = useState<Record<ExportFormat, ExportButtonState>>({ json: 'idle', pdf: 'idle' })
   const [deleteFlow, setDeleteFlow] = useState<DeleteFlow>({ kind: 'closed' })
   const [password, setPassword] = useState('')
+  // The export needs fresh auth (ADR-0107 L1): a non-null value means we are prompting for the
+  // password before retrying the export of that format, instead of showing a dead-end error.
+  const [exportStepUp, setExportStepUp] = useState<{ format: ExportFormat; error: string; busy: boolean } | null>(null)
 
   async function runExport(format: ExportFormat) {
     setExportState((s) => ({ ...s, [format]: 'loading' }))
     try {
       const result = await downloadAccountExport(format)
+      if (!result.ok && result.stepUp) {
+        setExportState((s) => ({ ...s, [format]: 'idle' }))
+        setPassword('')
+        setExportStepUp({ format, error: '', busy: false })
+        return false
+      }
       setExportState((s) => ({ ...s, [format]: result.ok ? 'success' : 'error' }))
       return result.ok
     } catch {
       setExportState((s) => ({ ...s, [format]: 'error' }))
       return false
     }
+  }
+
+  async function confirmExportStepUp() {
+    if (!exportStepUp || !password) return
+    const format = exportStepUp.format
+    setExportStepUp((s) => (s ? { ...s, busy: true, error: '' } : s))
+    const error = await stepUp.verifyPassword(password)
+    if (error) {
+      setExportStepUp((s) => (s ? { ...s, busy: false, error } : s))
+      return
+    }
+    setExportStepUp(null)
+    setPassword('')
+    await runExport(format)
   }
 
   async function submitDelete(withPassword: string | undefined) {
@@ -96,6 +121,40 @@ export function PrivacyScreen({ onBack, onAccountDeleted }: PrivacyScreenProps) 
       ) : (
         <>
           <ExportSection tr={tr} state={exportState} onExport={runExport} />
+          {exportStepUp ? (
+            <Card>
+              <Text style={styles.offerHeading}>{tr('datenschutz.export.stepUp.heading')}</Text>
+              <Text style={styles.warningBody}>{tr('datenschutz.export.stepUp.body')}</Text>
+              <Feld label={tr('datenschutz.export.stepUp.label')}>
+                <Input
+                  type="password"
+                  value={password}
+                  onChange={setPassword}
+                  accessibilityLabel={tr('datenschutz.export.stepUp.label')}
+                  autoComplete="current-password"
+                  testID="export-stepup-passwort"
+                />
+              </Feld>
+              {exportStepUp.error ? (
+                <Text style={styles.errorNote} accessibilityRole="alert">{exportStepUp.error}</Text>
+              ) : null}
+              <Button
+                variant="ghost"
+                onPress={() => void confirmExportStepUp()}
+                disabled={exportStepUp.busy || !password}
+                testID="export-stepup-bestaetigen"
+              >
+                {tr('datenschutz.export.stepUp.confirm')}
+              </Button>
+              <Button
+                variant="ghost"
+                onPress={() => { setExportStepUp(null); setPassword('') }}
+                testID="export-stepup-abbrechen"
+              >
+                {tr('datenschutz.export.stepUp.cancel')}
+              </Button>
+            </Card>
+          ) : null}
           <DeleteSection
             tr={tr}
             flow={deleteFlow}

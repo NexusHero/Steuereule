@@ -99,6 +99,28 @@ describe('downloadAccountExport', () => {
     expect(click).not.toHaveBeenCalled()
   })
 
+  it('flags a fresh-auth 400 as step-up so the screen can prompt for the password (ADR-0107 L1)', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () =>
+      new Response(JSON.stringify({ statusCode: 400, code: 'FRESH_AUTH_REQUIRED' }), {
+        status: 400,
+        headers: { 'content-type': 'application/json' },
+      }),
+    ))
+
+    expect(await downloadAccountExport('json')).toEqual({ ok: false, status: 400, stepUp: true })
+  })
+
+  it('does not treat an ordinary 400 as step-up', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () =>
+      new Response(JSON.stringify({ statusCode: 400, error: 'Bad Request' }), {
+        status: 400,
+        headers: { 'content-type': 'application/json' },
+      }),
+    ))
+
+    expect(await downloadAccountExport('json')).toEqual({ ok: false, status: 400 })
+  })
+
   it('propagates a genuine network failure (the caller distinguishes it from an honest HTTP status)', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => { throw new Error('network down') }))
 

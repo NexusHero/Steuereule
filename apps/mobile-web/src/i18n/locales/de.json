@@ -878,7 +878,14 @@
       "pdfHint": "Zum Lesen, Ausdrucken oder Ablegen.",
       "preparing": "Wird erstellt …",
       "success": "Heruntergeladen.",
-      "error": "Der Export hat gerade nicht geklappt. Versuch es noch mal."
+      "error": "Der Export hat gerade nicht geklappt. Versuch es noch mal.",
+      "stepUp": {
+        "heading": "Bitte bestätige dein Passwort",
+        "body": "Zum Schutz deiner Daten brauchen wir dein Passwort noch einmal, bevor wir den Export erstellen.",
+        "label": "Passwort",
+        "confirm": "Bestätigen und exportieren",
+        "cancel": "Abbrechen"
+      }
     },
     "delete": {
       "title": "Löschen",

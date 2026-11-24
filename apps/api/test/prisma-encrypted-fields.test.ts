@@ -111,6 +111,10 @@ const EXPECTED_ENCRYPTED_FIELDS: ExpectedEncryptedField[] = [
   { model: 'MasterData', field: 'kontoinhaber', encrypt: true, strictDecryption: true },
   { model: 'MasterData', field: 'finanzamt', encrypt: true, strictDecryption: true },
   { model: 'MasterData', field: 'telefon', encrypt: true, strictDecryption: true },
+  // ADR-0107 H3: the legal name is now field-encrypted too (non-strict — pre-existing columns, so
+  // reads decrypt-or-pass-through during migration, unlike the strict steuerId/steuernummer).
+  { model: 'Profile', field: 'firstName', encrypt: true, strictDecryption: false },
+  { model: 'Profile', field: 'lastName', encrypt: true, strictDecryption: false },
   { model: 'Profile', field: 'steuerId', encrypt: true, strictDecryption: true },
   { model: 'Profile', field: 'steuernummer', encrypt: true, strictDecryption: true },
   { model: 'InterviewAnswer', field: 'value', encrypt: true, strictDecryption: true },

@@ -117,6 +117,128 @@ describe('PII Masking (ADR-0052 §8 — Personenbezogene Daten: schreiben ja, le
       expect(output).toContain('[KONTAKT-GESCHÜTZT]')
       expect(output).toContain('1.250 € Fortbildung')
     })
+
+    // Regression for the live pentest of 2026-11-23 (ADR-0107 H2): the chat path used to send street
+    // addresses, birthdates, employer names and honorific-prefixed third-party names to the LLM
+    // provider in cleartext, while the document path masked them.
+    it('masks addresses, birthdates, inline employers and honorific third-party names in free-text chat', () => {
+      const input =
+        'Ich wohne Lindenstraße 42, geboren am 12.03.1980, mein Vermieter ist Herr Konrad Bauer, Arbeitgeber Siemens AG.'
+      const output = scrubUserMessagePii(input, ['Alice', 'Victim'])
+      expect(output).not.toContain('Lindenstraße 42')
+      expect(output).not.toContain('12.03.1980')
+      expect(output).not.toContain('Konrad Bauer')
+      expect(output).not.toContain('Siemens AG')
+      expect(output).toContain('[ADRESSE-GESCHÜTZT]')
+      expect(output).toContain('[ALTER: ca. ')
+      expect(output).toContain('[NAME-GESCHÜTZT]')
+      expect(output).toContain('[ARBEITGEBER-GESCHÜTZT]')
+    })
+
+    it('masks a birthdate written before the keyword too ("… 12.03.1980 geboren", ADR-0107 H2 review)', () => {
+      const output = scrubUserMessagePii('Ich bin am 12.03.1980 geboren.', [])
+      expect(output).not.toContain('12.03.1980')
+      expect(output).toContain('[ALTER: ca. ')
+    })
+
+    it('leaves ordinary tax chat and euro amounts untouched (no over-masking)', () => {
+      const benign = 'Kann ich meine Fahrtkosten absetzen? Ich zahle 1200 Euro Miete und arbeite montags im Büro.'
+      expect(scrubUserMessagePii(benign, [])).toBe(benign)
+    })
+
+    // Second-round H2 review (ADR-0107): the regex narrowed but still leaked bare employers, honorific-less
+    // third-party names and non-dotted birthdates, while over-masking commute distances and legal-form
+    // questions. These close those residuals.
+    it('masks an employer named by context word without a legal form', () => {
+      expect(scrubUserMessagePii('Ich arbeite bei Siemens, 60000 brutto.', [])).not.toContain('Siemens')
+      expect(scrubUserMessagePii('Mein Arbeitgeber ist die Deutsche Bahn.', [])).not.toContain('Deutsche Bahn')
+      expect(scrubUserMessagePii('Ich arbeite bei Siemens.', [])).toContain('[ARBEITGEBER-GESCHÜTZT]')
+    })
+
+    it('masks a honorific-less third-party name named by relationship', () => {
+      const output = scrubUserMessagePii('Mein Vermieter Konrad Bauer erhöht die Miete.', ['Alice'])
+      expect(output).not.toContain('Konrad Bauer')
+      expect(output).toContain('Vermieter [NAME-GESCHÜTZT]')
+    })
+
+    it('masks birthdates written with a month name or slashes', () => {
+      expect(scrubUserMessagePii('Ich bin am 12. März 1980 geboren.', [])).not.toContain('12. März 1980')
+      expect(scrubUserMessagePii('Geboren 12/03/1980, wie viel Steuer?', [])).not.toContain('12/03/1980')
+    })
+
+    it('does NOT over-mask commute distances, legal-form questions or "bei <noun>" phrases', () => {
+      for (const kept of [
+        'Ich fahre den Radweg 5 km zur Arbeit.',
+        'Ich habe 20 km Arbeitsweg.',
+        'Ich will eine KG gründen, lohnt sich das?',
+        'Eine GmbH gründen — lohnt sich das?',
+        'Ich zahle bei Bedarf extra.',
+      ]) {
+        expect(scrubUserMessagePii(kept, [])).toBe(kept)
+      }
+    })
+
+    // Review of ADR-0107 H2: German capitalises every noun, so the first version of these patterns took
+    // tax vocabulary for names, employers and addresses and the model never saw the question. Each sentence
+    // here was masked before the fix; none carries personal data.
+    it.each([
+      'Kann meine Frau Kinderbetreuungskosten absetzen?',
+      'Meine Frau Steuerklasse 5, ich Steuerklasse 3 - lohnt sich das?',
+      'Meine Partnerin ist Beamtin, ich bin angestellt.',
+      'Mein Partner ist Rentner und ich bin Grenzgänger.',
+      'Mein Partner Elterngeld bezieht, was heißt das für uns?',
+      'Mein Chef Homeoffice erlaubt, kann ich die Pauschale ansetzen?',
+      'Kann ich die Arzt Rechnung absetzen?',
+      'Mein Vermieter Nebenkosten abrechnet, was davon ist absetzbar?',
+      'Vom Arbeitgeber Fahrtkostenzuschuss erhalten, steuerfrei?',
+      'Arbeitgeber Zuschuss Kita absetzbar?',
+      'Die Firma Dienstwagen stellt, gilt die 1 Prozent Regelung?',
+      'Ich zahle für den Stellplatz 50 Euro im Monat.',
+      'Mein Heimarbeitsplatz 5 Tage die Woche.',
+      'Mein Arbeitsweg 23 Kilometer einfach.',
+      'Ich bin Kommanditist einer GmbH & Co. KG.',
+      'Lohnt sich eine Holding GmbH?',
+      'Ich verdiene 12000 Euro im Jahr 2024.',
+    ])('leaves the tax question untouched: %s', (question) => {
+      expect(scrubUserMessagePii(question, [])).toBe(question)
+    })
+
+    it('keeps the honorific and masks only the name, so the model still knows whose income it is', () => {
+      expect(scrubUserMessagePii('Meine Frau Anna verdient 3000 Euro.', [])).toBe('Meine Frau [NAME-GESCHÜTZT] verdient 3000 Euro.')
+      expect(scrubUserMessagePii('Mein Arzt Dr. Schmidt hat 200 Euro berechnet.', [])).toBe(
+        'Mein Arzt Dr. [NAME-GESCHÜTZT] hat 200 Euro berechnet.',
+      )
+    })
+
+    it('masks an employer when the verb opens the sentence, and a hyphenated legal form', () => {
+      expect(scrubUserMessagePii('Arbeite bei Siemens seit 2020.', [])).toBe('Arbeite bei [ARBEITGEBER-GESCHÜTZT] seit 2020.')
+      expect(scrubUserMessagePii('Ich arbeite bei der Siemens-AG.', [])).not.toContain('Siemens')
+      expect(scrubUserMessagePii('Ich arbeite bei der Müller GmbH & Co. KG.', [])).not.toContain('Müller')
+    })
+
+    it('masks an address whose street has no street ending, by its postcode and town', () => {
+      expect(scrubUserMessagePii('Ich wohne Am Hang 7, 10115 Berlin.', [])).toBe('Ich wohne [ADRESSE-GESCHÜTZT].')
+    })
+
+    // The day of birth identifies a person; the age is what the answer needs (a child under 14, the start of
+    // a pension). So a birthdate leaves as a rough age, counted from the year alone.
+    it('replaces a birth year or birthdate with the rough age in years', () => {
+      expect(scrubUserMessagePii('Geboren 1980 in Hamburg.', [], 2026)).toBe('Geboren [ALTER: ca. 46 Jahre] in Hamburg.')
+      expect(scrubUserMessagePii('Ich bin 1980 geboren.', [], 2026)).toBe('Ich bin [ALTER: ca. 46 Jahre] geboren.')
+      expect(scrubUserMessagePii('Jahrgang 1975, wann gehe ich in Rente?', [], 2026)).toBe('Jahrgang [ALTER: ca. 51 Jahre], wann gehe ich in Rente?')
+      expect(scrubUserMessagePii('Mein Sohn, geboren am 03.05.2015, geht in den Hort.', [], 2026)).toBe('Mein Sohn, [ALTER: ca. 11 Jahre], geht in den Hort.')
+      expect(scrubUserMessagePii('Ich bin am 12. März 1980 geboren.', [], 2026)).toBe('Ich bin am [ALTER: ca. 46 Jahre] geboren.')
+    })
+
+    it('reads a two-digit year as the most recent one that is not in the future', () => {
+      expect(scrubUserMessagePii('geb. 12.03.80', [], 2026)).toBe('[ALTER: ca. 46 Jahre]')
+      expect(scrubUserMessagePii('geb. 12.03.15', [], 2026)).toBe('[ALTER: ca. 11 Jahre]')
+    })
+
+    it('keeps the plain placeholder when the year gives no plausible age', () => {
+      expect(scrubUserMessagePii('Geboren 2090 laut Formular.', [], 2026)).toBe('Geboren [GEBURTSDATUM-GESCHÜTZT] laut Formular.')
+      expect(scrubUserMessagePii('geboren am 12.03.198', [], 2026)).toBe('[GEBURTSDATUM-GESCHÜTZT]')
+    })
   })
 
   describe('scrubDocumentTextPii', () => {

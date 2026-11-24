@@ -878,7 +878,14 @@
       "pdfHint": "For reading, printing, or filing.",
       "preparing": "Preparing …",
       "success": "Downloaded.",
-      "error": "That export didn't work just now. Try again."
+      "error": "That export didn't work just now. Try again.",
+      "stepUp": {
+        "heading": "Please confirm your password",
+        "body": "To protect your data we need your password again before preparing the export.",
+        "label": "Password",
+        "confirm": "Confirm and export",
+        "cancel": "Cancel"
+      }
     },
     "delete": {
       "title": "Delete",

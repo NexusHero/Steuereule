@@ -196,4 +196,32 @@ describe('REQ-011 — DSGVO data export (Art. 15/20), against the real server', 
     const response = await fetch(`${baseUrl}/v1/account/export`)
     expect(response.status).toBe(404)
   })
+
+  // Found live in the pentest of 2026-11-23 (ADR-0107 L1): the full DSGVO export had no fresh-auth,
+  // asymmetric with account deletion — a stale stolen cookie exfiltrated everything with no re-auth.
+  it('requires fresh auth: a stale session is refused (400), and succeeds again after /verify-password', async () => {
+    const { cookie, userId } = await signUpAndSaveProfile('acceptance-freshauth@example.com')
+
+    // A freshly signed-up session is still fresh — export works.
+    expect((await fetch(`${baseUrl}/v1/account/export`, { headers: { cookie } })).status).toBe(200)
+
+    // Age the session past the fresh window; the stolen-cookie scenario.
+    await prisma.session.updateMany({
+      where: { userId },
+      data: { createdAt: new Date(Date.now() - 10 * 60 * 1000) },
+    })
+
+    const staleExport = await fetch(`${baseUrl}/v1/account/export`, { headers: { cookie } })
+    expect(staleExport.status).toBe(400)
+
+    // Re-entering the password records a step-up grant for this session (ADR-0106 D2) — export works again.
+    const verify = await fetch(`${baseUrl}/api/auth/verify-password`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', cookie, ...TRUSTED_ORIGIN_HEADERS },
+      body: JSON.stringify({ password: 'a-fine-strong-password-1' }),
+    })
+    expect(verify.status).toBe(200)
+
+    expect((await fetch(`${baseUrl}/v1/account/export`, { headers: { cookie } })).status).toBe(200)
+  })
 })

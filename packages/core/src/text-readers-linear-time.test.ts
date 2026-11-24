@@ -18,11 +18,17 @@ const MAX_GROWTH = 9
  * at the large size; the linear ones take a few milliseconds.
  */
 const FLOOR_MS = 50
+/** One chat message of the maximum length may cost the scrubber this much; see the budget test below. */
+const CHAT_SCRUB_BUDGET_MS = 250
 
 const SHAPES: Record<string, string> = {
   dots: '1.',
   letters: 'a',
   hyphen: 'a-',
+  capitalHyphen: 'A-',
+  capitalDot: 'A.',
+  capitalWords: 'Ab ',
+  capitalAmpersand: "A&A'",
   spaceDigit: ' 1',
   comma: '1,',
   at: 'a@',
@@ -79,5 +85,14 @@ describe('text readers stay linear in the length of their input (ADR-0106 D1)', 
       }
     }
     expect(quadratic).toEqual([])
+  })
+
+  // The growth check above cannot see a reader that is linear but slow. The employer pattern of the chat
+  // scrubber took 1 ms per character on "A-A-A-…": 8 s for one message of the maximum length, twice per chat
+  // turn, with the event loop blocked (review of ADR-0107 H2). So the chat scrubber also has an absolute
+  // budget at the message limit; it needs a few milliseconds, the budget leaves room for a slow runner.
+  it.each(Object.entries(SHAPES))('scrubUserMessagePii handles a full-length message of shape "%s" within its budget', (_shape, unit) => {
+    const message = fill(unit, core.ADVISOR_MESSAGE_MAX_CHARS)
+    expect(fastest(core.scrubUserMessagePii as Reader, message)).toBeLessThan(CHAT_SCRUB_BUDGET_MS)
   })
 })

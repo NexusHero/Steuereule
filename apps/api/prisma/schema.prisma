@@ -34,8 +34,14 @@ model Profile {
   /// Scoping key. Never read from the request body/query/path — only ever set
   /// from the trusted userId the UserContextGuard produced (ADR-0007).
   userId       String   @unique
-  firstName    String
-  lastName     String
+  /// The taxpayer's legal name. Field-encrypted at rest (ADR-0107 H3, pentest 2026-11-23):
+  /// it used to sit in cleartext next to the encrypted steuerId, so a DB read / backup harvested
+  /// every user's real name joinable to their (encrypted) Steuer-ID and income. Non-strict
+  /// `@encrypted` (not `mode=strict` like steuerId): these are pre-existing columns that may still
+  /// hold plaintext in non-prod, so reads decrypt-or-pass-through and every write re-encrypts —
+  /// a zero-downtime switch. Tighten to `mode=strict` once a backfill has re-encrypted all rows.
+  firstName    String /// @encrypted
+  lastName     String /// @encrypted
   /// Steuerliche Identifikationsnummer — exactly 11 digits (validated server-side
   /// via @steuereule/core's isValidSteuerId before this is ever written). Nullable
   /// since ADR-0045 (value-first funnel): a user may save their name now and add the

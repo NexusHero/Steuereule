@@ -6,6 +6,7 @@ import { execFileSync } from 'node:child_process'
 import { readFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { PrismaClient } from '@prisma/client'
 
 function keystoreUrl(env) {
@@ -53,3 +54,11 @@ run(['migrate', 'deploy', '--schema', 'prisma/keystore/schema.prisma'], {
   ...process.env,
   KEYSTORE_DATABASE_URL: keystore.url,
 })
+
+// ADR-0107 H3: re-encrypt any Profile name rows still in cleartext at rest. Non-strict field
+// encryption only encrypts on the next write, so pre-deployment rows need this one-time, idempotent
+// backfill — run here so the rollout cannot forget it (same rationale as the keystore step above).
+// Invoked through tsx because it reuses the app's own key resolver (TypeScript); the production image
+// already boots with `node --import tsx` (ADR-0010a).
+const backfillScript = path.join(path.dirname(fileURLToPath(import.meta.url)), 'backfill-profile-name-encryption.ts')
+execFileSync(process.execPath, ['--import', 'tsx', backfillScript], { stdio: 'inherit', env: process.env })
