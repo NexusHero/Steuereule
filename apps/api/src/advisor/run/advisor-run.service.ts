@@ -89,9 +89,7 @@ export class AdvisorRunService implements OnApplicationShutdown {
 
   /** An answer whose run no instance knows any more (crash, deploy) can never finish: mark it failed. */
   private async reconcileOrphans(userId: string, taxYear: number): Promise<void> {
-    const messages = await this.advisorRepo.listForUserAndYear(userId, taxYear)
-    for (const message of messages) {
-      if (message.status !== 'streaming') continue
+    for (const message of await this.advisorRepo.listStreamingForUserAndYear(userId, taxYear)) {
       if (message.runId !== null && (await this.log.info(message.runId)) !== null) continue
       // Without a shared log (no Redis) an unknown run may simply live on another instance. No run
       // outlasts the turn budget, so only an answer older than that is certainly lost.
