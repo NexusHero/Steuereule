@@ -62,7 +62,9 @@ Stripe account (test mode for staging and the beta); the operator details for th
      consent to the terms and refuses without it);
    - `STRIPE_SECRET_KEY` (`sk_test_…` for the beta);
    - a webhook endpoint `https://api.<domain>/v1/zahlung/stripe/webhook` with the events
-     `checkout.session.completed` and `checkout.session.async_payment_succeeded`; store its `STRIPE_WEBHOOK_SECRET`.
+     `checkout.session.completed`, `checkout.session.async_payment_succeeded`, `charge.refunded`,
+     `charge.dispute.created` and `charge.dispute.closed` (refunds and disputes revoke the unlock); store its
+     `STRIPE_WEBHOOK_SECRET`.
 10. Optional: Google login (`GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, redirect URI
     `https://api.<domain>/api/auth/callback/google`).
 11. Operator details: `EXPO_PUBLIC_BETREIBER_NAME`, `_ANSCHRIFT`, `_EMAIL` (required), `_VERTRETEN`, `_USTID`.
