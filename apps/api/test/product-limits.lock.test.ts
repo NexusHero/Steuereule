@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
-import { MODEL_PROVIDERS, PRODUCT_LIMITS, RETENTION } from '@steuereule/core'
+import { HOSTING, MODEL_PROVIDERS, PRODUCT_LIMITS, RETENTION } from '@steuereule/core'
 import { MAX_CONVERSATIONS_PER_YEAR } from '../src/advisor/advisor-shared.js'
 import { AdvisorController } from '../src/advisor/advisor.controller.js'
 import { SESSION_ABSOLUTE_MAX_AGE_MS, SESSION_IDLE_EXPIRES_IN_SECONDS } from '../src/auth/session-lifetime.js'
@@ -45,6 +45,11 @@ describe('the figures the texts print are the figures the API enforces', () => {
     // The tax-data instance comes first in main.tf, the receipt key store second.
     expect(backups).toEqual([RETENTION.databaseBackups, RETENTION.keystoreBackups])
     expect(pitr).toEqual([RETENTION.databasePitrDays, RETENTION.keystorePitrDays])
+  })
+
+  it('hosting region matches the Terraform default', () => {
+    const variables = readFileSync(new URL('../../../infra/gcp/variables.tf', import.meta.url), 'utf8')
+    expect(/variable "region" \{[^}]*default\s*=\s*"([^"]+)"/.exec(variables)?.[1]).toBe(HOSTING.region)
   })
 
   it('model providers: every provider the runtime config can resolve is named', () => {

@@ -49,6 +49,9 @@ export const RETENTION = {
   legalHoldFilingVersionYears: 4,
 } as const
 
+/** Where servers and database run (`infra/gcp/variables.tf`, default of `region`). */
+export const HOSTING = { provider: 'Google Cloud', region: 'europe-west4', country: 'Niederlande' } as const
+
 /** Who can receive data from a model call, as the privacy text and the owl consent name them. */
 export interface ModelProvider {
   readonly id: 'google-genai' | 'anthropic' | 'openai'
