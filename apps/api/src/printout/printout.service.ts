@@ -33,6 +33,7 @@ import { printoutValues, type ChildGapField, type CommuteFacts, type ChSalaryCer
 import {
   FIELD_SETS,
   FORM_ORDER,
+  findOverflows,
   forYear,
   loadAcroFormTemplateBytes,
   renderForms,
@@ -103,20 +104,23 @@ export class PrintoutService {
     return state?.kind === 'spanne' && state.result !== undefined && state.result.to < 0
   }
 
+  /** The same placement as the renderer, without rendering (API-6): this runs on every open of the check. */
   private async tooLong(year: number, values: FieldValues, instances: Record<string, readonly FieldValues[]> | undefined): Promise<string[]> {
-    try {
-      await this.render(year, values, instances, false)
-      return []
-    } catch (error) {
-      if (error instanceof OverflowError) return [...new Set(error.fields)]
-      throw error
-    }
+    const overflows = await findOverflows(FIELD_SETS[year]!, forYear(year, values), {
+      templatesDirectory: new URL(`${year}/`, this.templatesBase),
+      instances: this.instancesForYear(year, instances),
+    })
+    return [...new Set(overflows)]
+  }
+
+  private instancesForYear(year: number, instances: Record<string, readonly FieldValues[]> | undefined): Record<string, readonly FieldValues[]> | undefined {
+    return instances ? Object.fromEntries(Object.entries(instances).map(([form, list]) => [form, list.map((v) => forYear(year, v))])) : instances
   }
 
   private render(year: number, values: FieldValues, instances: Record<string, readonly FieldValues[]> | undefined, editable: boolean): Promise<Uint8Array> {
     return renderForms(FIELD_SETS[year]!, forYear(year, values), {
       templatesDirectory: new URL(`${year}/`, this.templatesBase),
-      instances: instances ? Object.fromEntries(Object.entries(instances).map(([form, list]) => [form, list.map((v) => forYear(year, v))])) : instances,
+      instances: this.instancesForYear(year, instances),
       editable,
     })
   }

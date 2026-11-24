@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { AMOUNT_LATER } from '@steuereule/core'
 import { PDFDocument } from 'pdf-lib'
 import { AuditService } from '../src/audit/audit.service.js'
@@ -86,6 +86,20 @@ describe('PrintoutService check before payment (ADR-0085)', () => {
   it('names a value too long for its box before the user pays', async () => {
     const service = await serviceWith('Beispielstadt-Nord, Industriegebiet Am Langen Graben, Halle 7, Tor 3, Hintereingang', 2025)
     expect((await service.check('u2', 2025)).missing).toContain('zuLang.anlN.wegOrt')
+  })
+
+  it('finds the overflow without writing a PDF: the check runs on every open of the screen (API-6)', async () => {
+    const service = await serviceWith('Beispielstadt-Nord, Industriegebiet Am Langen Graben, Halle 7, Tor 3, Hintereingang', 2025)
+    const save = vi.spyOn(PDFDocument.prototype, 'save')
+    const copyPages = vi.spyOn(PDFDocument.prototype, 'copyPages')
+    try {
+      expect((await service.check('u2', 2025)).missing).toEqual(['zuLang.anlN.wegOrt'])
+      expect(save).not.toHaveBeenCalled()
+      expect(copyPages).not.toHaveBeenCalled()
+    } finally {
+      save.mockRestore()
+      copyPages.mockRestore()
+    }
   })
 
   it('checks a 2024 return on the 2024 forms', async () => {
