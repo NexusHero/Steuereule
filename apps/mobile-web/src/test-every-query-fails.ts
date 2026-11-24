@@ -48,7 +48,7 @@ export async function expectFailureShown(): Promise<void> {
  * the assertion is about requests, not about the press.
  */
 export async function pokeEverything(): Promise<void> {
-  for (const input of [...document.querySelectorAll<HTMLInputElement | HTMLTextAreaElement>('input, textarea')]) {
+  for (const input of document.querySelectorAll<HTMLInputElement | HTMLTextAreaElement>('input, textarea')) {
     if (input.disabled || input.readOnly) continue
     try {
       fireEvent.focus(input)

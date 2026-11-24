@@ -19,7 +19,7 @@ function sourceFiles(dir: string): string[] {
   for (const name of readdirSync(dir)) {
     const path = join(dir, name)
     if (statSync(path).isDirectory()) out.push(...sourceFiles(path))
-    else if (/\.tsx?$/.test(name) && !/\.test\.tsx?$/.test(name) && !/^test-/.test(name)) out.push(path)
+    else if (/\.tsx?$/.test(name) && !/\.test\.tsx?$/.test(name) && !name.startsWith('test-')) out.push(path)
   }
   return out
 }
