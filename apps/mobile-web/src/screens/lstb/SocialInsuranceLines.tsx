@@ -13,16 +13,17 @@ import {
 } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
 import { watchSaveResult } from '../shared/saveFeedback'
+import { InlineLoadFailure } from '../shared/InlineLoadFailure'
+import { eurosWithCentsOrUnreadable } from '../shared/amountField'
+import { parseGermanAmount } from '../shared/germanNumber'
 import { LineInput, makeStyles } from './ChurchTaxLines'
 
 type WholeLine = 'rvArbeitgeber' | 'rvArbeitnehmer' | 'kvArbeitnehmer' | 'pvArbeitnehmer' | 'avArbeitnehmer' | 'zuschussPv'
 const WHOLE_LINES: readonly WholeLine[] = ['rvArbeitgeber', 'rvArbeitnehmer', 'kvArbeitnehmer', 'pvArbeitnehmer', 'avArbeitnehmer', 'zuschussPv']
 
-/** Euros with cents from a text field; comma or point as the decimal sign. Empty or malformed is not a value. */
+/** Euros with cents from a text field, typed the German way (WEB-46). Empty or malformed is not a value. */
 export function euroCentsFrom(text: string): number | null {
-  const trimmed = text.trim()
-  if (!/^\d+([.,]\d{1,2})?$/.test(trimmed)) return null
-  return Number(trimmed.replace(',', '.'))
+  return parseGermanAmount(text)
 }
 
 export interface SocialInsuranceLinesProps {
@@ -41,7 +42,7 @@ export function SocialInsuranceLines({ taxYear, params, track }: SocialInsurance
   const save = useLstbControllerSetLines()
 
   if (query.isPending) return <Text style={s.help}>{tr('lstb.zeilen.loading')}</Text>
-  if (query.isError || query.data.status !== 200) return <Text style={s.error}>{tr('lstb.zeilen.loadError')}</Text>
+  if (query.isError) return <InlineLoadFailure what={tr('lstb.zeilen.loadError')} error={query.error} onRetry={() => void query.refetch()} testID="lstb-zeilen-ladefehler" />
   const stored = query.data.data
 
   function commit(line: keyof LstbLinesDto, value: number | null) {
@@ -88,19 +89,23 @@ function EuroCentsInput({ label, stored, onCommit, testID }: { label: string; st
   const { t: tr } = useTranslation(APP_NS)
   const format = (v: number | null) => (v === null ? '' : String(v).replace('.', ','))
   const [text, setText] = useState(format(stored))
+  const [unreadable, setUnreadable] = useState(false)
   useEffect(() => setText(format(stored)), [stored])
   const commit = () => {
-    if (text.trim() === '') return onCommit(null)
-    const value = euroCentsFrom(text)
-    if (value !== null) onCommit(value)
+    const value = eurosWithCentsOrUnreadable(text)
+    setUnreadable(value === 'unreadable')
+    if (value !== 'unreadable') onCommit(value)
   }
   return (
-    <Feld label={label}>
+    <Feld label={label} {...(unreadable ? { error: tr('betrag.unlesbar') } : {})}>
       <Input
         type="numeric"
         mono
         value={text}
-        onChange={setText}
+        onChange={(next) => {
+          setText(next)
+          setUnreadable(false)
+        }}
         placeholder={tr('lstb.feld.placeholder')}
         onSubmit={commit}
         onBlur={commit}

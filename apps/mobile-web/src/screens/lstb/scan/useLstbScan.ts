@@ -17,6 +17,7 @@ import {
   useLstbScanControllerConfirmScan,
 } from '@steuereule/api-client'
 import { APP_NS } from '../../../i18n/resources'
+import { classifyApiFailure, useApiFailureMessage } from '../../../net/apiFailure'
 import type { AssignmentQuestionDto } from '@steuereule/api-client'
 import { printedPersonDetails, receiptFilingYear } from '@steuereule/core'
 import { captureReceipt, type CapturePhase } from '../../../lib/receipts/captureReceipt'
@@ -86,6 +87,7 @@ export interface LstbScanState {
  */
 export function useLstbScan({ taxYear, person }: { readonly taxYear: number; readonly person: 'A' | 'B' }): LstbScanState {
   const { t: tr } = useTranslation(APP_NS)
+  const failureMessage = useApiFailureMessage()
   const queryClient = useQueryClient()
   const params = person === 'B' ? ({ person: 'B' } as const) : undefined
   const confirmScan = useLstbScanControllerConfirmScan()
@@ -117,8 +119,9 @@ export function useLstbScan({ taxYear, person }: { readonly taxYear: number; rea
   // Rehydrate a pending staged scan across reloads without touching LStB storage.
   useEffect(() => {
     if (stagedScan !== null || locallyDismissed) return
-    if (advisorSessionQuery.data?.status !== 200) return
-    const rehydrated = rehydrateDraftFromAdvisorMessages(advisorSessionQuery.data.data.messages, person)
+    const session = advisorSessionQuery.data?.data
+    if (session === undefined) return
+    const rehydrated = rehydrateDraftFromAdvisorMessages(session.messages, person)
     if (rehydrated !== null) setStagedScan(rehydrated)
   }, [advisorSessionQuery.data, person, locallyDismissed, stagedScan])
 
@@ -263,9 +266,14 @@ export function useLstbScan({ taxYear, person }: { readonly taxYear: number; rea
     setLocallyDismissed(true)
     setStagedScan(null)
     setOverwriteConflict(false)
+    let failure: unknown = null
     for (const actionId of actionIds) {
-      await dismissAction.mutateAsync({ jahr: taxYear, actionId }).catch(() => {})
+      await dismissAction.mutateAsync({ jahr: taxYear, actionId }).catch((error: unknown) => {
+        failure = error
+      })
     }
+    // The draft is gone here; a dismissal the server did not take would bring it back on reload — say so.
+    if (failure !== null) setError(failureMessage(failure))
     void queryClient.invalidateQueries({ queryKey: getAdvisorControllerGetSessionQueryKey(taxYear) })
   }
 
@@ -279,7 +287,7 @@ export function useLstbScan({ taxYear, person }: { readonly taxYear: number; rea
 
     setError(null)
     try {
-      const res = await confirmScan.mutateAsync({
+      await confirmScan.mutateAsync({
         jahr: taxYear,
         ...(params ? { params } : {}),
         data: {
@@ -294,28 +302,26 @@ export function useLstbScan({ taxYear, person }: { readonly taxYear: number; rea
           ...(addToExisting ? { addToExisting: true } : {}),
         },
       })
-      if (res.status === 200) {
-        setLocallyDismissed(true)
-        setStagedScan(null)
-        setOverwriteConflict(false)
-        setSameCertificate(false)
-        await Promise.all([
-          queryClient.invalidateQueries({ queryKey: getLstbControllerGetLstbQueryKey(taxYear, params) }),
-          // The further lines were written with the three values: the mask's sections show them.
-          queryClient.invalidateQueries({ queryKey: getLstbControllerGetLinesQueryKey(taxYear, params) }),
-          queryClient.invalidateQueries({ queryKey: getLstbControllerGetChurchTaxQueryKey(taxYear, params) }),
-          queryClient.invalidateQueries({ queryKey: getLstbControllerGetSubsidiesQueryKey(taxYear, params) }),
-          queryClient.invalidateQueries({ queryKey: getLstbControllerGetEmployerQueryKey(taxYear, params) }),
-          queryClient.invalidateQueries({ queryKey: getCockpitControllerGetCockpitSummaryQueryKey(taxYear) }),
-          queryClient.invalidateQueries({ queryKey: getTaxEstimateControllerGetQueryKey(taxYear) }),
-          queryClient.invalidateQueries({ queryKey: getConfirmationControllerGetQueryKey(taxYear) }),
-          queryClient.invalidateQueries({ queryKey: getReceiptControllerListQueryKey() }),
-          queryClient.invalidateQueries({ queryKey: getAdvisorControllerGetSessionQueryKey(taxYear) }),
-        ])
-        return
-      }
-      if ((res.status as number) === 409) {
-        if ((res.data as { code?: string } | undefined)?.code === 'LSTB_SAME_CERTIFICATE') {
+      setLocallyDismissed(true)
+      setStagedScan(null)
+      setOverwriteConflict(false)
+      setSameCertificate(false)
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: getLstbControllerGetLstbQueryKey(taxYear, params) }),
+        // The further lines were written with the three values: the mask's sections show them.
+        queryClient.invalidateQueries({ queryKey: getLstbControllerGetLinesQueryKey(taxYear, params) }),
+        queryClient.invalidateQueries({ queryKey: getLstbControllerGetChurchTaxQueryKey(taxYear, params) }),
+        queryClient.invalidateQueries({ queryKey: getLstbControllerGetSubsidiesQueryKey(taxYear, params) }),
+        queryClient.invalidateQueries({ queryKey: getLstbControllerGetEmployerQueryKey(taxYear, params) }),
+        queryClient.invalidateQueries({ queryKey: getCockpitControllerGetCockpitSummaryQueryKey(taxYear) }),
+        queryClient.invalidateQueries({ queryKey: getTaxEstimateControllerGetQueryKey(taxYear) }),
+        queryClient.invalidateQueries({ queryKey: getConfirmationControllerGetQueryKey(taxYear) }),
+        queryClient.invalidateQueries({ queryKey: getReceiptControllerListQueryKey() }),
+        queryClient.invalidateQueries({ queryKey: getAdvisorControllerGetSessionQueryKey(taxYear) }),
+      ])
+    } catch (error) {
+      if (classifyApiFailure(error).kind === 'conflict') {
+        if (classifyApiFailure(error).code === 'LSTB_SAME_CERTIFICATE') {
           setSameCertificate(true)
           return
         }
@@ -323,9 +329,8 @@ export function useLstbScan({ taxYear, person }: { readonly taxYear: number; rea
         setOverwriteConflict(true)
         return
       }
-      setError(tr('lstb.scan.error.confirmFailed'))
-    } catch {
-      setError(tr('lstb.scan.error.confirmFailed'))
+      // NM-07 / WEB-10: a 401, 429 or lost connection says what it is; the draft stays to try again.
+      setError(failureMessage(error, { server: tr('lstb.scan.error.confirmFailed'), unknown: tr('lstb.scan.error.confirmFailed') }))
     }
   }
 
