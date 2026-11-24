@@ -2530,7 +2530,9 @@
     "herkunftRegelEinzel": "§32a EStG basic tariff + Soli §4 SolZG",
     "herkunftRegelZusammen": "§32a §5 splitting + Soli §4 SolZG",
     "herkunftRechenweg": "zvE basis: {{zveA}} + {{zveB}} (income — not a real zvE yet)",
-    "progressionsvorbehaltHinweis": "Honestly: the progression clause (wage-replacement benefits) is not yet factored in here."
+    "progressionsvorbehaltHinweis": "Honestly: the progression clause (wage-replacement benefits) is not yet factored in here.",
+    "ungueltig": "That is not an amount. Write it like “40.000” or “40.000,50”.",
+    "familienstandUnbekannt": "Whether you are married could not be loaded just now. Please choose it yourself."
   },
   "oauthConsent": {
     "stepUpTitle": "Confirm your password",

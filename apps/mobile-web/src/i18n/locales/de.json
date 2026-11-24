@@ -2530,7 +2530,9 @@
     "herkunftRegelEinzel": "§32a EStG Grundtarif + Soli §4 SolZG",
     "herkunftRegelZusammen": "§32a Abs. 5 Splitting + Soli §4 SolZG",
     "herkunftRechenweg": "zvE-Basis: {{zveA}} + {{zveB}} (Einnahmen — noch kein echtes zvE)",
-    "progressionsvorbehaltHinweis": "Ehrlich: der Progressionsvorbehalt (Lohnersatz) ist hier noch nicht berücksichtigt."
+    "progressionsvorbehaltHinweis": "Ehrlich: der Progressionsvorbehalt (Lohnersatz) ist hier noch nicht berücksichtigt.",
+    "ungueltig": "Das ist kein Betrag. Schreib ihn wie „40.000“ oder „40.000,50“.",
+    "familienstandUnbekannt": "Ob du verheiratet bist, konnte gerade nicht geladen werden. Wähl es bitte selbst aus."
   },
   "oauthConsent": {
     "stepUpTitle": "Passwort bestätigen",

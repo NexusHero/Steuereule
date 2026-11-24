@@ -7,6 +7,7 @@ import { useLinkControllerGet, useMasterDataControllerRead, useUnlockControllerS
 import type { Answers, Conflict, Notice } from '@steuereule/core'
 import { CURRENT_TAX_YEAR, isRunningTaxYear } from '../../config/taxYear'
 import { APP_NS } from '../../i18n/resources'
+import { useApiFailureMessage } from '../../net/apiFailure'
 import { useShellState } from '../../navigation/ShellState'
 import { usePlausibility } from '../plausibility/usePlausibility'
 import { useBlockingConflictHaptic } from '../plausibility/useBlockingConflictHaptic'
@@ -37,19 +38,34 @@ export function SubmissionScreen({
   const styles = makeStyles(t)
   const { t: tr } = useTranslation(APP_NS)
   const { confirmNotices, areNoticesConfirmed } = useShellState()
+  const failureMessage = useApiFailureMessage()
   const plausibility = usePlausibility(taxYear)
   const unlock = useUnlockControllerStatus(taxYear, { query: { enabled: onOpenElsterHelp !== undefined } })
-  const viaElster = onOpenElsterHelp !== undefined && unlock.data?.status === 200 && unlock.data.data.filingPath === 'elster-ausfuellhilfe'
+  const viaElster = onOpenElsterHelp !== undefined && unlock.data?.data.filingPath === 'elster-ausfuellhilfe'
   const masterDataQuery = useMasterDataControllerRead()
-  const isMarried =
-    masterDataQuery.data?.status === 200 && masterDataQuery.data.data.familienstand === 'verheiratet'
+  const isMarried = masterDataQuery.data?.data.familienstand === 'verheiratet'
   const linkQuery = useLinkControllerGet(taxYear, { query: { enabled: isMarried } })
   const [comparisonOpen, setComparisonOpen] = useState(false)
   const hasBlockingConflict = plausibility.status === 'ready' && plausibility.conflicts.length > 0
   useBlockingConflictHaptic(taxYear, hasBlockingConflict)
 
-  if (plausibility.status === 'loading' || masterDataQuery.isPending || (isMarried && linkQuery.isPending)) {
+  const unlockRead = onOpenElsterHelp !== undefined
+  if (plausibility.status === 'loading' || masterDataQuery.isPending || (isMarried && linkQuery.isPending) || (unlockRead && unlock.isPending)) {
     return <LoadingState bp={bp} label={tr('abgabe.loading')} />
+  }
+  // NC-18: the unlock decides between printout and ELSTER help, the master data and the coupling whether a
+  // couple gets the comparison: a failed read is a failed page, never the wrong way.
+  const pathFailure = (unlockRead && unlock.isError ? unlock : null) ?? (masterDataQuery.isError ? masterDataQuery : null) ?? (isMarried && linkQuery.isError ? linkQuery : null)
+  if (pathFailure !== null) {
+    return (
+      <ErrorState
+        bp={bp}
+        heading={tr('abgabe.loadError.heading')}
+        message={failureMessage(pathFailure.error, { offline: tr('abgabe.loadError.message') })}
+        retryLabel={tr('abgabe.loadError.retry')}
+        onRetry={() => void pathFailure.refetch()}
+      />
+    )
   }
   if (plausibility.status === 'error') {
     return (
@@ -68,7 +84,7 @@ export function SubmissionScreen({
   const noticesConfirmed = areNoticesConfirmed(taxYear, notices)
   const step1Passed = !hasConflicts && noticesConfirmed
   const isJointFiling =
-    isMarried && linkQuery.data?.status === 200 && linkQuery.data.data.filingType === 'zusammen'
+    isMarried && linkQuery.data?.data.filingType === 'zusammen'
   const isRunningYear = isRunningTaxYear(taxYear)
   // The filing type is recorded with the partner (Kopplung): the comparison is an extra, never a gate.
   const canOpenPrintout = !isRunningYear && step1Passed
