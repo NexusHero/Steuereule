@@ -1,6 +1,7 @@
 import { View, Text, type ViewStyle, type TextStyle } from 'react-native'
 import { Children, cloneElement, isValidElement, type ReactNode } from 'react'
 import { useTheme } from '../theme/useTheme'
+import { Input, type InputProps } from './Input'
 
 export interface FieldProps {
   readonly label: string
@@ -9,11 +10,12 @@ export interface FieldProps {
 }
 
 /**
- * The visible label is also the control's accessible name (WEB-19): a single child that has no
+ * The visible label is also the input's accessible name (WEB-19): a single `Input` child without an
  * `accessibilityLabel` of its own gets the label, so a screen reader never meets a nameless field.
+ * Composite children (pickers, amount rows) name their own controls and are left alone.
  */
 function namedByLabel(children: ReactNode, label: string): ReactNode {
-  if (Children.count(children) !== 1 || !isValidElement<{ accessibilityLabel?: string }>(children)) return children
+  if (Children.count(children) !== 1 || !isValidElement<InputProps>(children) || children.type !== Input) return children
   if (children.props.accessibilityLabel !== undefined) return children
   return cloneElement(children, { accessibilityLabel: label })
 }
