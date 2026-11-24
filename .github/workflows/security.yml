@@ -1,4 +1,4 @@
-# Security pipeline: secret scan, SAST, IaC/Dockerfile scan and workflow lint. Container and SBOM scans stay
+# Security pipeline: secret scan, SAST, dependency audit, IaC/Dockerfile scan and workflow lint. Container and SBOM scans stay
 # with the image build in ci.yml. Each tool is its own job/check (ADR-0105) so a failure names the tool
 # instead of hiding inside one bundled "DevSecOps Static" check. Blocking on HIGH/CRITICAL findings.
 name: Security
@@ -31,6 +31,26 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITLEAKS_CONFIG: .gitleaks.toml
+
+  dependency-audit:
+    name: 'security: dependency audit (production deps)'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - name: Set up pnpm
+        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+      - name: Set up Node
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: 24
+          # Nothing is installed here, so there is no store to cache; the post step failed on the missing path.
+          package-manager-cache: false
+      # `pnpm audit` reads pnpm-lock.yaml, so no install is needed. Fails on high/critical advisories
+      # in production dependencies; the few accepted paths carry a reason and an expiry date in the script.
+      - name: Audit production dependencies (high and critical block)
+        run: |
+          node --test scripts/checks/dependency-audit.test.mjs
+          node scripts/checks/dependency-audit.mjs
 
   dockerfiles:
     name: 'security: dockerfile lint (hadolint)'

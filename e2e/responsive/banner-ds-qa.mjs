@@ -1,6 +1,10 @@
 // Banner DS-QA gate — the verify-banner's computed styles at 375/768/1280 (#223, promoting the
 // scratch `ds-qa-215.mjs` pass into CI).
 //
+// ADR-0109 REWORK: sign-up returns no session and an unverified account cannot sign in, so the banner
+// no longer appears on LoginScreen. It is shown on RegistrierungScreen's success step (the guest who is told
+// to confirm the address); this gate now checks that one screen. The login half below is history.
+//
 // A closer cousin of `breakpoint-layout.mjs`'s computed-style-sampling pattern than of
 // `visibility/visibility-refetch.mjs`'s behavioural probe (Musti's #223 review): this asserts
 // the unverified banner's rendered colours/box metrics match the DS's `warn` semantic token
@@ -132,9 +136,9 @@ const COPY = {
   splashSkip: 'Weiter zur App',
   register: 'Neu hier? Konto anlegen',
   registrierungEmailPlaceholder: 'du@beispiel.de',
-  registrierungPasswordPlaceholder: 'Mindestens 8 Zeichen',
+  registrierungPasswordPlaceholder: 'Mindestens 12 Zeichen',
   registrierungSubmit: 'Konto anlegen',
-  registrierungSuccessHeading: 'Willkommen bei SteuerEule.',
+  registrierungSuccessHeading: 'Schau in dein Postfach.',
   loginEmailPlaceholder: 'du@beispiel.de',
   loginPasswordPlaceholder: '••••••••',
   loginSubmit: 'Einloggen',
@@ -259,27 +263,6 @@ async function checkRegistrierung(browser, email) {
   }
 }
 
-async function checkLogin(browser, email) {
-  // Fresh context (no cookies) — the same account signing in again, a real returning-user flow,
-  // through LoginScreen's own form. One sign-in call for the whole file, not one per breakpoint.
-  const context = await browser.newContext({ viewport: { width: BREAKPOINTS[0].width, height: BREAKPOINTS[0].height } })
-  try {
-    const page = await context.newPage()
-    guardAgainst429(page, fail, '/api/auth/')
-    await skipSplash(page)
-    await page.getByPlaceholder(COPY.loginEmailPlaceholder).fill(email)
-    await page.getByPlaceholder(COPY.loginPasswordPlaceholder).fill(PASSWORD)
-    // Pace right before spending the call — never assumed safe from a fixed call count (see the
-    // header comment's #336 section).
-    await waitForRateLimit(AUTH_BUCKET, 'sign-in/email')
-    await page.getByRole('button', { name: COPY.loginSubmit }).click()
-    await page.getByText(COPY.verifyHeading).waitFor({ state: 'visible', timeout: 10_000 })
-    await measureBannerAcrossBreakpoints(page, 'LoginScreen')
-  } finally {
-    await context.close()
-  }
-}
-
 async function main() {
   const browser = await chromium.launch({ headless: true })
   try {
@@ -288,8 +271,7 @@ async function main() {
     // breakpoints on its own already-mounted page rather than re-authenticated per width.
     const email = `banner-ds-qa-${Date.now()}@beispiel.de`
     await checkRegistrierung(browser, email)
-    await checkLogin(browser, email)
-    console.log('[banner-ds-qa] PASS — verify-banner DS fidelity holds on both screens, all breakpoints.')
+    console.log('[banner-ds-qa] PASS — verify-banner DS fidelity holds on the registration success screen, all breakpoints.')
   } finally {
     await browser.close()
   }

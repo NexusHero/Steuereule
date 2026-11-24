@@ -104,7 +104,10 @@ export class EnvelopeCryptoService {
       const iv = randomBytes(GCM_IV_LENGTH_BYTES)
       const cipher = createCipheriv('aes-256-gcm', dek, iv)
       cipher.setAAD(Buffer.from(`${input.userId}:${input.receiptId}`, 'utf8'))
-      const cipherBytes = Buffer.concat([cipher.update(input.plainBytes), cipher.final()])
+      // GCM's final() is empty: skip the concat, which would copy a file of up to 10 MB once more.
+      const head = cipher.update(input.plainBytes)
+      const tail = cipher.final()
+      const cipherBytes = tail.length === 0 ? head : Buffer.concat([head, tail])
       const authTag = cipher.getAuthTag()
       const macKey = Buffer.from(hkdfSync('sha256', dek, KEK_SALT, 'content-mac', DEK_LENGTH_BYTES))
       const contentMac = createHmac('sha256', macKey).update(input.plainBytes).digest('hex')

@@ -30,22 +30,15 @@ function renderRegistration(opts: { lng?: 'de' | 'en'; onDone?: () => void } = {
   )
 }
 
-function fillCredentials(email = 'neu@beispiel.de', password = 'geheim-123') {
+function fillCredentials(email = 'neu@beispiel.de', password = 'geheim-123-lang') {
   fireEvent.change(screen.getByPlaceholderText('du@beispiel.de'), { target: { value: email } })
-  fireEvent.change(screen.getByPlaceholderText('Mindestens 8 Zeichen'), { target: { value: password } })
+  fireEvent.change(screen.getByPlaceholderText('Mindestens 12 Zeichen'), { target: { value: password } })
 }
 
-/** Sign-up succeeds; as always, the fresh account (neu@beispiel.de) starts out unverified. */
+/** Sign-up answers without a session, for a new and for a taken address alike (ADR-0109). */
 function unverifiedSignUp() {
   return http.post(`${BASE_URL}/api/auth/sign-up/email`, () =>
-    HttpResponse.json({ token: 'tok_1', user: { id: 'u1', email: 'neu@beispiel.de', emailVerified: false, name: '' } }),
-  )
-}
-
-/** `get-session` answers with a session of the given user. */
-function sessionOf(user: Record<string, unknown>, sessionId = 's1') {
-  return http.get(`${BASE_URL}/api/auth/get-session`, () =>
-    HttpResponse.json({ user, session: { id: sessionId, createdAt: new Date().toISOString() } }),
+    HttpResponse.json({ token: null, user: { id: 'u1', email: 'neu@beispiel.de', emailVerified: false, name: '' } }),
   )
 }
 
@@ -104,7 +97,7 @@ describe('RegistrierungScreen', () => {
     renderRegistration()
     fireEvent.change(screen.getByPlaceholderText('du@beispiel.de'), { target: { value: 'a@b.de' } })
     fireEvent.click(screen.getByText('Konto anlegen'))
-    expect(screen.getByText('Mindestens 8 Zeichen fürs Passwort.')).toBeTruthy()
+    expect(screen.getByText('Mindestens 12 Zeichen fürs Passwort.')).toBeTruthy()
   })
 
   it('signs up against the real better-auth client (POST /api/auth/sign-up/email) with the entered credentials', async () => {
@@ -122,8 +115,8 @@ describe('RegistrierungScreen', () => {
     fillCredentials()
     fireEvent.click(screen.getByText('Konto anlegen'))
 
-    await screen.findByText('Willkommen bei SteuerEule.')
-    expect(receivedBody).toMatchObject({ email: 'neu@beispiel.de', password: 'geheim-123' })
+    await screen.findByText('Schau in dein Postfach.')
+    expect(receivedBody).toMatchObject({ email: 'neu@beispiel.de', password: 'geheim-123-lang' })
   })
 
   it('shows the honest generic error on a genuine network failure (not just a server-returned error)', async () => {
@@ -135,21 +128,15 @@ describe('RegistrierungScreen', () => {
 
     await screen.findByText('Das hat gerade nicht geklappt. Prüf die Verbindung und versuch es noch mal.')
     expect(onDone).not.toHaveBeenCalled()
-    expect(screen.queryByText('Willkommen bei SteuerEule.')).toBeNull()
+    expect(screen.queryByText('Schau in dein Postfach.')).toBeNull()
   })
 
-  it('shows an honest inline error when the email is already taken (better-auth USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL)', async () => {
-    server.use(
-      http.post(`${BASE_URL}/api/auth/sign-up/email`, () =>
-        HttpResponse.json({ code: 'USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL', message: 'exists' }, { status: 422 }),
-      ),
-    )
+  it('shows no short-password error for a 12 character password, and one for 11', () => {
     renderRegistration()
-    fillCredentials()
+    fireEvent.change(screen.getByPlaceholderText('du@beispiel.de'), { target: { value: 'a@b.de' } })
+    fireEvent.change(screen.getByPlaceholderText('Mindestens 12 Zeichen'), { target: { value: 'x'.repeat(11) } })
     fireEvent.click(screen.getByText('Konto anlegen'))
-
-    await screen.findByText('Für diese E-Mail gibt es schon ein Konto.')
-    expect(screen.queryByText('Willkommen bei SteuerEule.')).toBeNull()
+    expect(screen.getByText('Mindestens 12 Zeichen fürs Passwort.')).toBeTruthy()
   })
 
   it('shows an honest inline error when the password is a known breach (better-auth PASSWORD_COMPROMISED, REQ-010)', async () => {
@@ -165,200 +152,96 @@ describe('RegistrierungScreen', () => {
     expect(await screen.findByText('Dieses Passwort ist in einem bekannten Datenleck aufgetaucht — wähl bitte ein anderes.')).toBeTruthy()
   })
 
-  // REQ-005 — the account works immediately; while unverified, the success step shows an honest
-  // banner rather than the DS demo's plain "Konto steht ✓" implying everything (including
-  // verification) is done. It must NOT block continuing to onboarding.
-  it('shows the honest unverified-email banner on the success step when the new account is unverified', async () => {
+  // ADR-0109 — sign-up answers a new and a taken address alike and returns no session: the success step says
+  // only that a mail is on its way, and never claims the account is ready.
+  it('says a mail is on its way and that the guest carries on, without claiming the account is ready', async () => {
     server.use(unverifiedSignUp())
-    const onDone = vi.fn()
-    renderRegistration({ onDone })
+    renderRegistration()
     fillCredentials()
     fireEvent.click(screen.getByText('Konto anlegen'))
 
-    await screen.findByText('Willkommen bei SteuerEule.')
+    await screen.findByText('Schau in dein Postfach.')
     expect(screen.getByText('Bitte bestätige noch deine E-Mail.')).toBeTruthy()
-    expect(
-      screen.getByText('Wir haben einen Bestätigungslink an neu@beispiel.de geschickt. Du kannst schon loslegen — bestätige, wenn du Zeit hast.'),
-    ).toBeTruthy()
-
-    fireEvent.click(screen.getByText('Weiter zum Onboarding →'))
-    // `onDone` fires synchronously off this click, but under CI's parallel CPU load the
-    // click->handler round trip through RN-Web's Pressable response system can land a tick later
-    // than a bare synchronous `expect` allows for — `waitFor` tolerates that settle without
-    // changing what's actually being asserted (still exactly one call).
-    await waitFor(() => expect(onDone).toHaveBeenCalledOnce())
+    expect(screen.getByText(/Wir haben eine E-Mail an neu@beispiel.de geschickt/)).toBeTruthy()
+    expect(screen.getByText(/machst du als Gast weiter/)).toBeTruthy()
+    expect(screen.queryByText('E-Mail bestätigt ✓')).toBeNull()
+    expect(screen.queryByText('Willkommen bei SteuerEule.')).toBeNull()
   })
 
-  // Same F8 class as the form title's own test above, on the success step's heading
-  // (`Registrierung.jsx:31`'s `<h1>` — "Willkommen bei SteuerEule."). Its own test, not folded
-  // into the banner test above, so it still runs (and can still go red on its own) regardless
-  // of which banner variant the success step happens to be showing.
+  // Live, never a snapshot: once a session for THIS address reports it verified (signed in on another tab after
+  // following the link), the banner turns verified. The signed-out guest never sees it, so a taken address
+  // shows nothing different (ADR-0109).
+  it('turns the banner verified once the session of this address reports it verified', async () => {
+    let signedIn = false
+    server.use(
+      unverifiedSignUp(),
+      http.get(`${BASE_URL}/api/auth/get-session`, () =>
+        HttpResponse.json(
+          signedIn ? { user: { id: 'u1', email: 'neu@beispiel.de', emailVerified: true, name: '' }, session: { id: 's1', createdAt: new Date().toISOString() } } : null,
+        ),
+      ),
+    )
+    renderRegistration()
+    fillCredentials()
+    fireEvent.click(screen.getByText('Konto anlegen'))
+    await screen.findByText('Schau in dein Postfach.')
+    expect(screen.getByText('Bitte bestätige noch deine E-Mail.')).toBeTruthy()
+
+    signedIn = true
+    act(() => {
+      document.dispatchEvent(new Event('visibilitychange'))
+    })
+    await screen.findByText('E-Mail bestätigt ✓')
+    expect(screen.queryByText('Bitte bestätige noch deine E-Mail.')).toBeNull()
+  })
+
+  it('does not turn verified for a session of a different account', async () => {
+    server.use(
+      unverifiedSignUp(),
+      http.get(`${BASE_URL}/api/auth/get-session`, () =>
+        HttpResponse.json({ user: { id: 'u2', email: 'jemand-anderes@beispiel.de', emailVerified: true, name: '' }, session: { id: 's2', createdAt: new Date().toISOString() } }),
+      ),
+    )
+    renderRegistration()
+    fillCredentials()
+    fireEvent.click(screen.getByText('Konto anlegen'))
+    await screen.findByText('Schau in dein Postfach.')
+    expect(screen.getByText('Bitte bestätige noch deine E-Mail.')).toBeTruthy()
+    expect(screen.queryByText('E-Mail bestätigt ✓')).toBeNull()
+  })
+
+  it('shows the same success step when the server answers for a taken address (no session, no error)', async () => {
+    server.use(
+      http.post(`${BASE_URL}/api/auth/sign-up/email`, () =>
+        HttpResponse.json({ token: null, user: { id: 'other-id', email: 'neu@beispiel.de', emailVerified: false, name: '' } }),
+      ),
+    )
+    renderRegistration()
+    fillCredentials()
+    fireEvent.click(screen.getByText('Konto anlegen'))
+
+    await screen.findByText('Schau in dein Postfach.')
+    expect(screen.queryByText('Für diese E-Mail gibt es schon ein Konto.')).toBeNull()
+  })
+
   it('gives the success-step heading real heading semantics too (#298 F8 class)', async () => {
     server.use(unverifiedSignUp())
     renderRegistration()
     fillCredentials()
     fireEvent.click(screen.getByText('Konto anlegen'))
 
-    await screen.findByText('Willkommen bei SteuerEule.')
-    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Willkommen bei SteuerEule.')
+    await screen.findByText('Schau in dein Postfach.')
+    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Schau in dein Postfach.')
   })
 
-  // Musti's T1: signUp.email() never actually returns `emailVerified: true` (better-auth.ts:146,
-  // asserted false at req-005-email-signup.test.ts:61) — a signup response fabricating that value
-  // proved nothing about the real "already verified" branch, which is driven by the session, not
-  // the signup call. Drives the state through a mocked `GET /api/auth/get-session` instead (#194).
-  it('shows the verified confirmation on the success step when the session reports the account already verified', async () => {
-    server.use(
-      unverifiedSignUp(),
-      sessionOf({ id: 'u1', email: 'neu@beispiel.de', emailVerified: true, name: '' }),
-    )
-    renderRegistration()
-    fillCredentials()
-    fireEvent.click(screen.getByText('Konto anlegen'))
-
-    await screen.findByText('Willkommen bei SteuerEule.')
-    await screen.findByText('E-Mail bestätigt ✓')
-    expect(screen.queryByText('Bitte bestätige noch deine E-Mail.')).toBeNull()
-  })
-
-  // Musti's T1 (post-review): `sessionData` can be a *different*, already-verified session
-  // still resolving right after `signUp.email()` (or the atom's stale last-known `data` from
-  // before this account existed) — not the account this screen just created. Reading
-  // `emailVerified: true` off any session, without matching it to `stage.email`, would show
-  // the confirmation for an account that is definitionally unverified.
-  it('does not show the verified confirmation when the session belongs to a different account', async () => {
-    server.use(
-      unverifiedSignUp(),
-      sessionOf({ id: 'u2', email: 'jemand-anderes@beispiel.de', emailVerified: true, name: '' }, 's2'),
-    )
-    renderRegistration()
-    fillCredentials()
-    fireEvent.click(screen.getByText('Konto anlegen'))
-
-    await screen.findByText('Willkommen bei SteuerEule.')
-    expect(screen.getByText('Bitte bestätige noch deine E-Mail.')).toBeTruthy()
-    expect(screen.queryByText('E-Mail bestätigt ✓')).toBeNull()
-  })
-
-  // #194 — the actual regression. `stage` used to snapshot `emailVerified` at signup and never
-  // re-read it, so this tab never learned that verification had genuinely completed out of band
-  // (the mail client, possibly a different device) unless the user reloaded. This must fail
-  // under today's (pre-#194) code — confirmed by running it against that code directly, not
-  // assumed. better-auth's session atom re-fetches on tab focus by default (auth-client.ts),
-  // which subscribes `document`'s `visibilitychange` — the same event the real mail-app -> browser
-  // return produces; jsdom's `visibilityState` is already `'visible'` here, and the atom's
-  // internal focus-rate-limit window starts at 0, so this first dispatch always clears it.
-  it('clears the unverified banner without a reload once the session reports verification (out-of-band verify, #194)', async () => {
-    let verified = false
-    server.use(
-      unverifiedSignUp(),
-      http.get(`${BASE_URL}/api/auth/get-session`, () =>
-        HttpResponse.json({
-          user: { id: 'u1', email: 'neu@beispiel.de', emailVerified: verified, name: '' },
-          session: { id: 's1', createdAt: new Date().toISOString() },
-        }),
-      ),
-    )
-    renderRegistration()
-    fillCredentials()
-    fireEvent.click(screen.getByText('Konto anlegen'))
-
-    await screen.findByText('Willkommen bei SteuerEule.')
-    expect(screen.getByText('Bitte bestätige noch deine E-Mail.')).toBeTruthy()
-
-    // The verification itself happened elsewhere (mail client / another device) — nothing on
-    // this tab caused it. Only the tab regaining focus/visibility should make it notice.
-    verified = true
-    act(() => {
-      document.dispatchEvent(new Event('visibilitychange'))
-    })
-
-    await screen.findByText('E-Mail bestätigt ✓')
-    expect(screen.queryByText('Bitte bestätige noch deine E-Mail.')).toBeNull()
-  })
-
-  // Fail-closed (#194, Musti's T1 F2): a session-fetch error must never be read as "verified".
-  // better-auth's atom keeps whatever `data` it last had on a non-401 error rather than clearing
-  // it (session-atom.mjs) — here there never was a successful load, so `data` stays `null`
-  // throughout; the banner must still show rather than defaulting open on the missing answer.
-  // Note (#227, mirroring LoginScreen.test.tsx:344-347): this fixture alone kills nothing — with
-  // `data` null the account-scoping clause already returns false first, so a genuinely fail-open
-  // hook (`emailVerified !== false`) would pass this test too. The next test below is what
-  // actually exercises the fail-closed clause; keep this one anyway, it's cheap and locks the
-  // no-data path.
-  it('keeps the unverified banner when the session fetch fails, rather than assuming verified', async () => {
-    server.use(
-      unverifiedSignUp(),
-      http.get(`${BASE_URL}/api/auth/get-session`, () => HttpResponse.json({ message: 'Internal Server Error' }, { status: 500 })),
-    )
-    renderRegistration()
-    fillCredentials()
-    fireEvent.click(screen.getByText('Konto anlegen'))
-
-    await screen.findByText('Willkommen bei SteuerEule.')
-    expect(screen.getByText('Bitte bestätige noch deine E-Mail.')).toBeTruthy()
-    expect(screen.queryByText('E-Mail bestätigt ✓')).toBeNull()
-  })
-
-  // Fail-closed, the load-bearing case (#227, Musti's mutation-test finding on #225's review): a
-  // session that loads *successfully for this account* but doesn't positively answer —
-  // `user.email` matches, `emailVerified` absent — is the shape a degraded or non-conforming
-  // response leaves behind (better-auth 1.6.24 types the field as required, which is precisely
-  // why a fail-closed guard must not depend on it). It's the case the hook's own fail-closed
-  // comment claims to guard (`sessionData?.user.emailVerified === true`, not `!== false`).
-  // Mirrors LoginScreen.test.tsx:368-386 exactly; verified both directions: fails (shows the
-  // verified confirmation) on a fail-open mutant that preserves the optional chain
-  // (`sessionData?.user.emailVerified !== false && sessionData?.user.email === email`), passes on
-  // this hook. `KONTO_EMAIL` is shared between both mocks on purpose, structurally — not a
-  // coincidence of two literals — so the two can't silently drift apart.
-  it('keeps the unverified banner when the session for this account never positively answers emailVerified', async () => {
-    const ACCOUNT_EMAIL = 'neu@beispiel.de'
-    server.use(
-      http.post(`${BASE_URL}/api/auth/sign-up/email`, () =>
-        HttpResponse.json({ token: 'tok_1', user: { id: 'u1', email: ACCOUNT_EMAIL, emailVerified: false, name: '' } }),
-      ),
-      sessionOf({ id: 'u1', email: ACCOUNT_EMAIL, name: '' }),
-    )
-    renderRegistration()
-    fillCredentials()
-    fireEvent.click(screen.getByText('Konto anlegen'))
-
-    await screen.findByText('Willkommen bei SteuerEule.')
-    expect(screen.getByText('Bitte bestätige noch deine E-Mail.')).toBeTruthy()
-    expect(screen.queryByText('E-Mail bestätigt ✓')).toBeNull()
-  })
-
-  it('lets the user resend the verification email from the success step, and shows an honest error if that fails', async () => {
-    let resendCalls = 0
-    server.use(
-      unverifiedSignUp(),
-      http.post(`${BASE_URL}/api/auth/send-verification-email`, () => {
-        resendCalls += 1
-        return HttpResponse.error()
-      }),
-    )
-    renderRegistration()
-    fillCredentials()
-    fireEvent.click(screen.getByText('Konto anlegen'))
-
-    await screen.findByText('Willkommen bei SteuerEule.')
-    fireEvent.click(screen.getByText('Mail erneut senden'))
-
-    await screen.findByText('Das hat gerade nicht geklappt. Versuch es gleich noch mal.')
-    expect(resendCalls).toBe(1)
-  })
-
-  it('completes to onboarding via onDone from the success step CTA', async () => {
-    // No fabricated `emailVerified: true` here (#194) — the CTA must work regardless of
-    // verification state, so the honest signup response (always `false`, better-auth.ts:146)
-    // is enough to prove the point without implying anything about the session.
+  it('continues to onboarding as a guest via onDone from the success step CTA', async () => {
     server.use(unverifiedSignUp())
     const onDone = vi.fn()
     renderRegistration({ onDone })
     fillCredentials()
     fireEvent.click(screen.getByText('Konto anlegen'))
 
-    await screen.findByText('Willkommen bei SteuerEule.')
+    await screen.findByText('Schau in dein Postfach.')
     fireEvent.click(screen.getByText('Weiter zum Onboarding →'))
     await waitFor(() => expect(onDone).toHaveBeenCalledOnce())
   })

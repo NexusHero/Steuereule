@@ -34,8 +34,9 @@ export function useAcceptanceServer(options: AcceptanceServerOptions): void {
     app = await buildApp()
     await app.listen(0, '127.0.0.1')
     baseUrl = await app.getUrl()
-    const { PrismaService } = await import('../../src/prisma/prisma.service.js')
-    prisma = app.get(PrismaService)
+    // The encrypted client, like the app: e-mail lookups in the suites go through the hash (ADR-0109).
+    const { ENCRYPTED_PRISMA } = await import('../../src/prisma/encrypted-prisma.provider.js')
+    prisma = app.get<PrismaClient>(ENCRYPTED_PRISMA)
   })
 
   afterEach(async () => {
@@ -49,20 +50,40 @@ export function useAcceptanceServer(options: AcceptanceServerOptions): void {
 }
 
 /**
- * Signs up a fresh account over real HTTP and returns its session cookie and userId. Node's
- * fetch() sends Sec-Fetch-Mode, so the call carries the allowed Origin like a real browser.
+ * Marks an address verified, as the link in the mail would, and signs the account in (sign-up returns no
+ * session, ADR-0109). Returns the sign-in response. Suites that boot their own server pass its `server`.
+ */
+export async function verifyAndSignIn(
+  email: string,
+  password: string,
+  options: { readonly origin?: string; readonly headers?: Record<string, string>; readonly server?: { readonly baseUrl: string; readonly prisma: PrismaClient } } = {},
+): Promise<Response> {
+  const target = options.server ?? { baseUrl, prisma }
+  await target.prisma.user.update({ where: { email }, data: { emailVerified: true } })
+  return fetch(`${target.baseUrl}/api/auth/sign-in/email`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', origin: options.origin ?? process.env.CORS_ALLOWED_ORIGINS!, ...options.headers },
+    body: JSON.stringify({ email, password }),
+  })
+}
+
+/**
+ * Creates a fresh, verified account over real HTTP and returns its session cookie and userId. Node's
+ * fetch() sends Sec-Fetch-Mode, so the calls carry the allowed Origin like a real browser.
  */
 export async function signUp(
   email: string,
   account: { readonly password?: string; readonly name?: string } = {},
 ): Promise<{ cookie: string; userId: string }> {
-  const response = await fetch(`${baseUrl}/api/auth/sign-up/email`, {
+  const password = account.password ?? 'a-fine-strong-password-1'
+  const created = await fetch(`${baseUrl}/api/auth/sign-up/email`, {
     method: 'POST',
     headers: { 'content-type': 'application/json', origin: process.env.CORS_ALLOWED_ORIGINS! },
-    body: JSON.stringify({ email, password: account.password ?? 'a-fine-strong-password-1', name: account.name ?? 'Test User' }),
+    body: JSON.stringify({ email, password, name: account.name ?? 'Test User' }),
   })
+  expect(created.status).toBe(200)
+  const response = await verifyAndSignIn(email, password)
   expect(response.status).toBe(200)
-  const body = (await response.json()) as { user: { id: string } }
-  const cookie = response.headers.get('set-cookie')!.split(';')[0]!
-  return { cookie, userId: body.user.id }
+  const user = await prisma.user.findUniqueOrThrow({ where: { email } })
+  return { cookie: response.headers.get('set-cookie')!.split(';')[0]!, userId: user.id }
 }

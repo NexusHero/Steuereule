@@ -41,6 +41,9 @@ export class DomainErrorFilter implements ExceptionFilter<DomainError> {
     }
 
     this.log(error, status, request)
+    // A refusal that says when to come back (an upload cap, a daily budget) carries the standard header.
+    const retryAfter = error.details?.retryAfterSeconds
+    if (typeof retryAfter === 'number' && retryAfter > 0) void reply.header('Retry-After', String(Math.ceil(retryAfter)))
     void reply.status(status).send(body)
   }
 

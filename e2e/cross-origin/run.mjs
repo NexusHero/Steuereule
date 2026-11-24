@@ -22,6 +22,8 @@
 // sleeps, no soft-fail: this is a merge gate, not a report.
 import { randomBytes } from 'node:crypto'
 import { chromium } from 'playwright-core'
+import { makeSql } from '../harness/stack.mjs'
+import { verifyEmailSql } from '../harness/email-hash.mjs'
 
 const WEB_ORIGIN = requireEnv('WEB_ORIGIN')
 const API_ORIGIN = requireEnv('API_ORIGIN')
@@ -210,10 +212,20 @@ async function main() {
       path: '/api/auth/sign-up/email',
       body: { email, password, name: 'Cross Origin Smoke' },
     })
-    console.log('[cross-origin-smoke] signup: cross-origin readable, cookie set')
+    console.log('[cross-origin-smoke] signup: cross-origin readable (no session yet, ADR-0109)')
+
+    // Sign-up returns no session: the address is verified out of band, as the mail's link would, then the
+    // account signs in and the cookie is set.
+    makeSql(requireEnv('DATABASE_URL'))(verifyEmailSql(email))
+    await credentialedFetch(page, {
+      method: 'POST',
+      path: '/api/auth/sign-in/email',
+      body: { email, password },
+    })
+    console.log('[cross-origin-smoke] first login: cross-origin readable, cookie set')
 
     await credentialedFetch(page, { method: 'GET', path: '/api/auth/get-session' })
-    console.log('[cross-origin-smoke] get-session (post-signup): cross-origin readable')
+    console.log('[cross-origin-smoke] get-session (post-login): cross-origin readable')
 
     await credentialedFetch(page, { method: 'POST', path: '/api/auth/sign-out' })
     console.log('[cross-origin-smoke] sign-out: cross-origin readable')

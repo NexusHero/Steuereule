@@ -33,8 +33,8 @@ describe('REQ-014 task 0 — device-authorization plugin registration, against t
     app = await buildApp()
     await app.listen(0, '127.0.0.1')
     baseUrl = await app.getUrl()
-    const { PrismaService } = await import('../../src/prisma/prisma.service.js')
-    prisma = app.get(PrismaService)
+    const { ENCRYPTED_PRISMA } = await import('../../src/prisma/encrypted-prisma.provider.js')
+    prisma = app.get<PrismaClient>(ENCRYPTED_PRISMA)
     // The shared dev Postgres this suite runs against may already carry rows from a
     // manual boot/curl session against the same DATABASE_URL — start from a clean
     // table rather than assuming one.

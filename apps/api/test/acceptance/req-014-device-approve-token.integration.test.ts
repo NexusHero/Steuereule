@@ -24,6 +24,7 @@ process.env.GUEST_SESSION_SECRET = 'req-014-approve-token-secret'
 process.env.BETTER_AUTH_SECRET = 'req-014-approve-token-better-auth-secret-0123'
 process.env.BETTER_AUTH_URL = 'http://127.0.0.1:0' // overwritten to the real ephemeral URL below
 
+import { verifyAndSignIn } from '../support/acceptance-server.js'
 const ALLOWED_ORIGIN = 'https://allowed.example.com'
 process.env.CORS_ALLOWED_ORIGINS = ALLOWED_ORIGIN
 const TRUSTED_ORIGIN_HEADERS = { origin: ALLOWED_ORIGIN }
@@ -50,8 +51,8 @@ describe('REQ-014 task 2 — /v1/device/{pending,approve,token}, against the rea
     app = await buildApp()
     await app.listen(0, '127.0.0.1')
     baseUrl = await app.getUrl()
-    const { PrismaService } = await import('../../src/prisma/prisma.service.js')
-    prisma = app.get(PrismaService)
+    const { ENCRYPTED_PRISMA } = await import('../../src/prisma/encrypted-prisma.provider.js')
+    prisma = app.get<PrismaClient>(ENCRYPTED_PRISMA)
   })
 
   afterEach(async () => {
@@ -73,7 +74,8 @@ describe('REQ-014 task 2 — /v1/device/{pending,approve,token}, against the rea
       body: JSON.stringify({ email, password: 'a-fine-strong-password-1', name: 'Phone' }),
     })
     expect(response.status).toBe(200)
-    return extractCookie(response.headers.get('set-cookie'))
+    const signedIn = await verifyAndSignIn(email, 'a-fine-strong-password-1', { origin: ALLOWED_ORIGIN, server: { baseUrl, prisma } })
+    return extractCookie(signedIn.headers.get('set-cookie'))
   }
 
   async function mintCode(userAgent: string): Promise<DeviceCodeResponse> {

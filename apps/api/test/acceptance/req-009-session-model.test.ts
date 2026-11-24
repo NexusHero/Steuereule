@@ -4,7 +4,7 @@
 // cors.acceptance.test.ts). Boots via the *actual* `buildApp()` from src/main.ts —
 // not a re-assembled copy — so this can never silently drift from production wiring.
 import { beforeAll, describe, expect, it } from 'vitest'
-import { baseUrl, prisma, useAcceptanceServer } from '../support/acceptance-server.js'
+import { baseUrl, prisma, useAcceptanceServer, verifyAndSignIn } from '../support/acceptance-server.js'
 
 const ALLOWED_ORIGIN = 'https://allowed.example.com'
 
@@ -51,7 +51,10 @@ describe('REQ-009 — session/token storage model, against the real server', () 
     })
     expect(response.status).toBe(200)
 
-    const setCookie = response.headers.get('set-cookie')
+    // Sign-up itself sets no cookie (ADR-0109); the session cookie comes with the first sign-in.
+    expect(response.headers.get('set-cookie')).toBeNull()
+    const signedIn = await verifyAndSignIn(SIGNUP_PAYLOAD.email, SIGNUP_PAYLOAD.password)
+    const setCookie = signedIn.headers.get('set-cookie')
     expect(setCookie).toBeTruthy()
     expect(setCookie).toMatch(/HttpOnly/i)
     expect(setCookie).toMatch(/Secure/i)
@@ -59,12 +62,13 @@ describe('REQ-009 — session/token storage model, against the real server', () 
   })
 
   it('the session is server-side, DB-backed and revocable: server-side revoke invalidates the token on its next use', async () => {
-    const signUp = await fetch(`${baseUrl}/api/auth/sign-up/email`, {
+    await fetch(`${baseUrl}/api/auth/sign-up/email`, {
       method: 'POST',
       headers: { 'content-type': 'application/json', ...TRUSTED_ORIGIN_HEADERS },
       body: JSON.stringify({ ...SIGNUP_PAYLOAD, email: 'req009-revoke@example.com' }),
     })
-    const cookie = signUp.headers.get('set-cookie')!.split(';')[0]!
+    const signIn = await verifyAndSignIn('req009-revoke@example.com', SIGNUP_PAYLOAD.password)
+    const cookie = signIn.headers.get('set-cookie')!.split(';')[0]!
 
     const beforeRevoke = await fetch(`${baseUrl}/api/auth/get-session`, { headers: { cookie } })
     expect(await beforeRevoke.json()).not.toBeNull()
@@ -84,7 +88,8 @@ describe('REQ-009 — session/token storage model, against the real server', () 
       body: JSON.stringify({ ...SIGNUP_PAYLOAD, email: 'req009-guard@example.com' }),
     })
     const body = (await signUp.json()) as { user: { id: string } }
-    const cookie = signUp.headers.get('set-cookie')!.split(';')[0]!
+    const signIn = await verifyAndSignIn('req009-guard@example.com', SIGNUP_PAYLOAD.password)
+    const cookie = signIn.headers.get('set-cookie')!.split(';')[0]!
 
     const put = await fetch(`${baseUrl}/v1/profile`, {
       method: 'PUT',

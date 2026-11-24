@@ -28,7 +28,10 @@ function fail(message) {
 
 const browser = await chromium.launch({ headless: true })
 try {
-  const context = await browser.newContext()
+  // This gate injects its own copy of the OCR library to check the self-hosted assets, which the page's
+  // Content-Security-Policy (ADR-0109) rightly refuses for an inline script. The app's own scripts load
+  // under the policy in every other gate.
+  const context = await browser.newContext({ bypassCSP: true })
   const requested = []
   context.on('request', (request) => requested.push(request.url()))
   const page = await context.newPage()

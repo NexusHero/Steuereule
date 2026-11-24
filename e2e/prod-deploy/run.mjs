@@ -70,7 +70,7 @@ const COPY = {
   steuerNrLater: 'Hab ich nicht zur Hand — später',
   onboardingLoadErrorHeading: 'Das hat nicht geklappt.', // the stakeholder's own quoted words
   registrierungEmailPlaceholder: 'du@beispiel.de',
-  registrierungPasswordPlaceholder: 'Mindestens 8 Zeichen',
+  registrierungPasswordPlaceholder: 'Mindestens 12 Zeichen',
   registrierungSubmit: 'Konto anlegen',
   registrierungSuccessCta: 'Weiter zum Onboarding →',
   // ADR-0045 (value-first funnel): the guest lands in the Minimal-Gate, then the Konto-Wand.
@@ -86,6 +86,7 @@ const COPY = {
   tabCockpit: 'Cockpit',
   errGeneric: 'Das hat gerade nicht geklappt. Prüf die Verbindung und versuch es noch mal.',
   errInvalidCredentials: 'E-Mail oder Passwort stimmen nicht.',
+  errEmailNotVerified: 'Bitte bestätige zuerst deine E-Mail-Adresse. Wir haben dir einen neuen Link geschickt.',
 }
 
 function fail(message) {
@@ -193,8 +194,9 @@ async function registrationFlow(browser, webOrigin, target) {
     await page.getByPlaceholder(COPY.registrierungPasswordPlaceholder).fill(password)
     await page.getByRole('button', { name: COPY.registrierungSubmit }).click()
 
+    // Sign-up returns no session (ADR-0109): the success step only says a mail is on its way.
     await page.getByRole('button', { name: COPY.registrierungSuccessCta }).waitFor({ state: 'visible', timeout: 15_000 })
-    console.log(`[prod-deploy] PASS — registration created a real account (${email}) against ${target.apiPhrase}.`)
+    console.log(`[prod-deploy] PASS — registration was accepted for a new account (${email}) against ${target.apiPhrase}.`)
     return { email, password }
   } finally {
     await context.close()
@@ -224,20 +226,25 @@ async function loginFlow(browser, webOrigin, { email, password }, target) {
     await page.getByPlaceholder(COPY.loginPasswordPlaceholder).fill(password)
     await page.getByRole('button', { name: COPY.loginSubmit }).click()
 
+    // The account was just registered and its address cannot be verified here (the mail goes to a real inbox),
+    // so the honest answer is "confirm your address first" (ADR-0109): the API knows the account and the
+    // password, and refuses only for the missing verification. A wrong-credentials or generic error is a fail.
     const invalidCreds = page.getByText(COPY.errInvalidCredentials)
     const genericErr = page.getByText(COPY.errGeneric)
+    const notVerified = page.getByText(COPY.errEmailNotVerified)
     const loginGone = page.getByRole('button', { name: COPY.loginSubmit }).waitFor({ state: 'hidden', timeout: 15_000 })
     await Promise.race([
       invalidCreds.waitFor({ state: 'visible', timeout: 15_000 }).catch(() => {}),
       genericErr.waitFor({ state: 'visible', timeout: 15_000 }).catch(() => {}),
+      notVerified.waitFor({ state: 'visible', timeout: 15_000 }).catch(() => {}),
       loginGone.catch(() => {}),
     ])
     if (await invalidCreds.count()) fail(`Login flow: got "${COPY.errInvalidCredentials}" for the account registrationFlow() just created.`)
     if (await genericErr.count()) fail(`Login flow: got "${COPY.errGeneric}" — the browser could not reach the API.`)
-    if (await page.getByRole('button', { name: COPY.loginSubmit }).count()) {
+    if (!(await notVerified.count()) && (await page.getByRole('button', { name: COPY.loginSubmit }).count())) {
       fail('Login flow: the Einloggen button is still on screen 15s after submit — login neither succeeded nor surfaced a named error.')
     }
-    console.log(`[prod-deploy] PASS — login succeeded against ${target.apiPhrase} with the account just registered.`)
+    console.log(`[prod-deploy] PASS — login reached ${target.apiPhrase} and was refused only for the unverified address.`)
   } finally {
     await context.close()
   }

@@ -32,6 +32,7 @@ import { PrintoutScreen } from './src/screens/printout/PrintoutScreen'
 import { usePlausibility } from './src/screens/plausibility/usePlausibility'
 import { LoadingState } from './src/screens/shared/ScreenState'
 import { ConfirmationScreen, type ConfirmationForm } from './src/screens/confirmation/ConfirmationScreen'
+import { PasswordResetScreen } from './src/screens/PasswordResetScreen'
 import { OauthConsentScreen } from './src/screens/oauth/OauthConsentScreen'
 import { ChildrenScreen } from './src/screens/children/ChildrenScreen'
 import { CURRENT_TAX_YEAR } from './src/config/taxYear'
@@ -177,6 +178,7 @@ function RootNavigator() {
         <RootStack.Screen name="Legal" component={LegalRoute} />
         <RootStack.Screen name="Printout" component={PrintoutRoute} />
         <RootStack.Screen name="Confirmation" component={ConfirmationRoute} />
+        <RootStack.Screen name="PasswordReset" component={PasswordResetRoute} />
         <RootStack.Screen name="OauthConsent" component={OauthConsentRoute} />
       </RootStack.Navigator>
     </NavigationContainer>
@@ -187,9 +189,10 @@ function SplashRoute({ navigation }: NativeStackScreenProps<RootStackParamList, 
   return <SplashScreen onAdvance={() => navigation.replace('Login')} />
 }
 
-function LoginRoute({ navigation }: NativeStackScreenProps<RootStackParamList, 'Login'>) {
+function LoginRoute({ navigation, route }: NativeStackScreenProps<RootStackParamList, 'Login'>) {
   return (
     <LoginScreen
+      startWithForgot={Boolean(route.params?.forgot)}
       onDone={() => navigation.replace('App')}
       onGuest={() => navigation.replace('App', { start: 'interview' })}
       onRegister={() => carryAssistantSignIn('/registrierung') || navigation.replace('Registration')}
@@ -333,6 +336,24 @@ function ConfirmationRoute({ navigation, route }: NativeStackScreenProps<RootSta
 
 function DeviceRoute({ route }: NativeStackScreenProps<RootStackParamList, 'Device'>) {
   return <DeviceScreen userCode={route.params?.user_code} />
+}
+
+function PasswordResetRoute({ navigation, route }: NativeStackScreenProps<RootStackParamList, 'PasswordReset'>) {
+  // The token is read once into state and taken out of the address, so it neither stays in the
+  // browser history nor gets copied along with the URL.
+  const [token] = useState(() => route.params?.token)
+  useEffect(() => {
+    if (route.params?.token !== undefined || route.params?.error !== undefined) {
+      navigation.setParams({ token: undefined, error: undefined })
+    }
+  }, [navigation, route.params?.token, route.params?.error])
+  return (
+    <PasswordResetScreen
+      token={token}
+      onDone={() => navigation.replace('Login')}
+      onRequestNew={() => navigation.replace('Login', { forgot: true })}
+    />
+  )
 }
 
 function OauthConsentRoute({ route }: NativeStackScreenProps<RootStackParamList, 'OauthConsent'>) {

@@ -139,6 +139,7 @@ import {
 } from '../harness/browser.mjs'
 import { startStack } from '../harness/stack.mjs'
 import { fail, waitForBucketHeadroom } from '../harness/rate-limit.mjs'
+import { verifyEmailSql } from '../harness/email-hash.mjs'
 
 // `shared: true` on AUTH_BUCKET: the sign-up/sign-in bucket is spent by every other script in the
 // `Browser gates` job (same API process, one in-memory bucket), so this process cannot read its
@@ -223,15 +224,9 @@ async function skipSplash(page, webOrigin) {
   }
 }
 
-// SALIH — fixed after this run's own AC-5 finding (see PR #239 comment): better-auth's
-// sign-up/email autoSignIns, which mints and persists a real `Session` row for the out-of-band
-// call itself (`userAgent: 'node'`) — a phantom third row on B's OWN device list that this
-// script's earlier version never accounted for. Left alone, it turns "the non-current row" into
-// an ambiguous choice between two non-current rows (the phantom AND A's real one), which is
-// exactly what caused this script to pick the wrong one and revoke B's OWN session by accident
-// (reported, not hidden — see this file's PR comment). Revoking the phantom immediately, using
-// the very session it minted (Set-Cookie from this exact response, never B's real UI cookie jar),
-// keeps B's own device list to the two rows this flow actually cares about.
+// Sign-up returns no session since ADR-0109 (a taken address must answer like a free one), so it leaves no
+// phantom `Session` row on B's device list: B's own list holds exactly the two rows this flow cares about.
+// (Before, the auto sign-in minted one, and the script had to revoke it again.)
 async function signUpOutOfBand(apiOrigin, webOrigin, email, password) {
   const res = await fetch(`${apiOrigin}/api/auth/sign-up/email`, {
     method: 'POST',
@@ -239,15 +234,7 @@ async function signUpOutOfBand(apiOrigin, webOrigin, email, password) {
     body: JSON.stringify({ name: '', email, password }),
   })
   if (!res.ok) fail(`out-of-band sign-up failed for ${email}: ${res.status} ${await res.text()}`)
-  const body = await res.json()
-  const setCookie = res.headers.get('set-cookie')
-  if (!setCookie) fail('out-of-band sign-up: no Set-Cookie on the response — cannot clean up its own phantom session.')
-  const revokeRes = await fetch(`${apiOrigin}/api/auth/revoke-session`, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json', origin: webOrigin, cookie: setCookie.split(';')[0] },
-    body: JSON.stringify({ token: body.token }),
-  })
-  if (!revokeRes.ok) fail(`out-of-band sign-up: could not revoke its own phantom session (${body.token}): ${revokeRes.status} ${await revokeRes.text()}`)
+  if (res.headers.get('set-cookie')) fail('out-of-band sign-up set a cookie: sign-up must not create a session (ADR-0109).')
 }
 
 /**
@@ -325,7 +312,7 @@ async function main() {
     // a fresh unverified sign-up; verifying here keeps the flow on its own critical path instead
     // of detouring through LoginScreen's unrelated unverified-banner stage (already covered by
     // visibility-refetch.mjs) on the way to Onboarding → Profil.
-    sql(`UPDATE "User" SET "emailVerified" = true WHERE email = '${email}'`)
+    sql(verifyEmailSql(email))
 
     const signInRequests = countRequestsTo(pageB, 'POST', '/api/auth/sign-in/email')
     await skipSplash(pageB, webOrigin)
@@ -445,7 +432,18 @@ async function main() {
     const sessionToken = decodeURIComponent(sessionCookie.value).split('.').slice(0, -1).join('.')
     const sessionRow = sql(`SELECT "ipAddress", "userAgent" FROM "Session" WHERE token = '${sessionToken}'`)
     if (!sessionRow) fail(`Post-poll: no Session row found for A's own token.`)
-    const [sessionIp, sessionUserAgent] = sessionRow.split('|')
+    // Address and user agent are ciphertext at rest (ADR-0109), so the row proves only that both are stored
+    // encrypted; what they say is read the way the app reads it, from A's own session list.
+    const [storedIp, storedUserAgent] = sessionRow.split('|')
+    for (const [column, value] of [['ipAddress', storedIp], ['userAgent', storedUserAgent]]) {
+      if (value && !/^v\d+\.aesgcm256\./.test(value)) fail(`Post-poll: Session.${column} is stored in plain text (${JSON.stringify(value)}).`)
+    }
+    const listed = await contextA.request.get(`${apiOrigin}/api/auth/list-sessions`, { headers: { origin: webOrigin } })
+    if (!listed.ok()) fail(`Post-poll: A could not list its own sessions (${listed.status()}).`)
+    const own = (await listed.json()).find((session) => session.token === sessionToken)
+    if (!own) fail(`Post-poll: A's session list does not contain A's own session.`)
+    const sessionIp = own.ipAddress
+    const sessionUserAgent = own.userAgent
     if (!sessionUserAgent || !sessionUserAgent.includes('Chrome/')) {
       fail(`Post-poll: Session.userAgent (${JSON.stringify(sessionUserAgent)}) does not reflect A's real Chromium User-Agent.`)
     }

@@ -2,9 +2,10 @@
 import { createRequire } from 'node:module'
 import fs from 'node:fs/promises'
 import { launchBrowser, closeBrowser, newContextAtBreakpoint, guardAgainst429 } from '../../harness/browser.mjs'
-import { startStack } from '../../harness/stack.mjs'
+import { startStack as bootStack, makeSql } from '../../harness/stack.mjs'
 import { fail, waitForBucketHeadroom } from '../../harness/rate-limit.mjs'
 import { skipSplash } from '../../harness/flows.mjs'
+import { verifyEmailSql, whereEmail } from '../../harness/email-hash.mjs'
 
 const require = createRequire(import.meta.url)
 const { PDFDocument } = require('../../../apps/api/node_modules/pdf-lib')
@@ -12,19 +13,34 @@ const { PDFDocument } = require('../../../apps/api/node_modules/pdf-lib')
 export const AUTH_BUCKET = { windowMs: 11_000, max: 2, shared: true }
 export const TEST_PASSWORD = 'Sicheres-Passwort-1!'
 
+// The stack a scenario runs on: `registerAndOnboard` needs its database to verify the new address, which a
+// real user does with the link in the mail (ADR-0109). Remembered here so no scenario has to thread it through.
+let stackSql = null
+
+/** Boots or attaches the stack like `harness/stack.mjs` and remembers its database for `registerAndOnboard`. */
+export async function startStack(...args) {
+  const stack = await bootStack(...args)
+  stackSql = stack.sql
+  return stack
+}
+
 export {
   launchBrowser,
   closeBrowser,
   newContextAtBreakpoint,
   guardAgainst429,
-  startStack,
   fail,
   waitForBucketHeadroom,
   skipSplash,
   PDFDocument,
 }
 
-/** Registers a new user account through RegistrationScreen, then completes OnboardingScreen. */
+/**
+ * Registers a new user account through RegistrationScreen, completes OnboardingScreen as the guest the sign-up
+ * leaves (sign-up returns no session, ADR-0109), then does what the mail's link and the login would: verifies the
+ * address in the database and signs in, which moves the guest's data to the account (ADR-0012). The page is
+ * reloaded as the signed-in account and waits for the Cockpit again.
+ */
 export async function registerAndOnboard(
   page,
   { email, password = TEST_PASSWORD, firstName, lastName, taxId, taxNumber },
@@ -46,7 +62,10 @@ export async function registerAndOnboard(
   await emailInput.waitFor({ state: 'visible', timeout: 10_000 })
   await emailInput.fill(email)
   await page.locator('[data-testid="registrierung-passwort"]').fill(password)
+  // The API origin is whatever the page's sign-up call goes to: no scenario has to pass it in.
+  const signUpRequest = page.waitForRequest((request) => request.url().endsWith('/api/auth/sign-up/email'), { timeout: 10_000 })
   await page.locator('[data-testid="registrierung-submit"]').click()
+  const apiOrigin = new URL((await signUpRequest).url()).origin
 
   // Registration success screen
   const continueButton = page.locator('[data-testid="registrierung-success-weiter"]')
@@ -77,6 +96,26 @@ export async function registerAndOnboard(
 
   // Wait for Cockpit to load
   await page.locator('[data-testid="cockpit-interview"]').waitFor({ state: 'visible', timeout: 15_000 })
+
+  await verifyAndSignInAccount(page, { email, password, apiOrigin, webOrigin, callerLabel })
+  await page.reload({ waitUntil: 'networkidle' })
+  await page.locator('[data-testid="cockpit-interview"]').waitFor({ state: 'visible', timeout: 15_000 })
+}
+
+/**
+ * Marks the address verified (the mail's link) and signs the browser context in through the API, with the
+ * guest cookie still in the context so the guest's data moves to the account. Cookies set by the API land
+ * in the context's jar, so the next page load is the account.
+ */
+export async function verifyAndSignInAccount(page, { email, password = TEST_PASSWORD, apiOrigin, webOrigin, callerLabel = 'scenario' }) {
+  const sql = stackSql ?? makeSql(process.env.DATABASE_URL)
+  sql(verifyEmailSql(email))
+  await waitForBucketHeadroom(AUTH_BUCKET, 'sign-in/email', callerLabel)
+  const response = await page.context().request.post(`${apiOrigin}/api/auth/sign-in/email`, {
+    data: { email, password },
+    headers: { origin: webOrigin },
+  })
+  if (!response.ok()) fail(`${callerLabel}: sign-in after verification failed (${response.status()}): ${(await response.text()).slice(0, 200)}`)
 }
 
 const TILE_READY_CSS = {
@@ -333,7 +372,7 @@ export async function assertCockpitEstimate(page, label, { direction, minAmount,
 
 /** Unlocks a tax year directly in the database for payment-free e2e printout access. */
 export function unlockTaxYearInDb(sql, email, year) {
-  const userId = sql(`SELECT id FROM "User" WHERE email = '${email}';`).trim()
+  const userId = sql(`SELECT id FROM "User" WHERE ${whereEmail(email)};`).trim()
   if (!userId) fail(`unlockTaxYearInDb: user with email ${email} not found in database`)
   sql(
     `INSERT INTO "Freischaltung" ("id", "userId", "steuerjahr", "status", "stripeCheckoutSessionId", "createdAt", "updatedAt") ` +

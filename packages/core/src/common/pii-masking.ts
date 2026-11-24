@@ -194,9 +194,10 @@ const TRANSFERTICKET_REGEX = /\bTransferticket\s*(?:[:-]\s*)?[A-Za-z0-9_-]{6,}/g
 const SVNR_TEXT_REGEX = /\b\d{2}[\s.-]?\d{6}[\s.-]?[A-Z][\s.-]?\d{3}\b/g
 // The label is followed by a blank, or by „:“/„-“ and a blank: the same lines as „\s*[:-]?\s+“, without the
 // overlapping quantifiers that let a long run of blanks backtrack. The indent before the label stays on its
-// line: „^\s*“ ran from every line start over all blank lines below it (Sonar S8786).
+// line: „^\s*“ ran from every line start over all blank lines below it (Sonar S8786). The parenthesis behind
+// „Arbeitgeber“ closes on its line: unclosed, it was searched for to the end of the document from every label.
 const LABELED_PII_LINE_REGEX =
-  /^[^\S\r\n]*(?:Arbeitgeber(?:\s*\([^)]*\))?|Arbeitnehmer(?:in)?|Name(?:,?\s*Vorname)?|Vorname|Nachname|Familienname|Anschrift|Adresse|Straße|Strasse|Geburtsdatum|geb\.?\s*am|Identifikationsnummer|IdNr|Steuer-?ID|Steueridentifikationsnummer|Steuernummer|Transferticket|Personal-?Nr\.?|Mandanten-?Nr\.?|Arbeitnehmernummer|Sozialversicherungsnummer|Versicherungsnummer|Finanzamt|AGS|Bundesland|Steuerklasse(?:\s*(?:\/\s*)?Faktor)?|Zahl\s+der\s+Kinderfreibeträge|Kirchensteuermerkmal)(?:\s|[:-]\s).*$/gim
+  /^[^\S\r\n]*(?:Arbeitgeber(?:\s*\([^)\r\n]*\))?|Arbeitnehmer(?:in)?|Name(?:,?\s*Vorname)?|Vorname|Nachname|Familienname|Anschrift|Adresse|Straße|Strasse|Geburtsdatum|geb\.?\s*am|Identifikationsnummer|IdNr|Steuer-?ID|Steueridentifikationsnummer|Steuernummer|Transferticket|Personal-?Nr\.?|Mandanten-?Nr\.?|Arbeitnehmernummer|Sozialversicherungsnummer|Versicherungsnummer|Finanzamt|AGS|Bundesland|Steuerklasse(?:\s*(?:\/\s*)?Faktor)?|Zahl\s+der\s+Kinderfreibeträge|Kirchensteuermerkmal)(?:\s|[:-]\s).*$/gim // NOSONAR typescript:S8786 — measured linear, see the growth test in pii-masking.test.ts
 // German capitalises every noun, so "a capitalised word behind a trigger" is not yet a name: "meine Frau
 // Kinderbetreuungskosten", "Partnerin ist Beamtin", "Arbeitgeber Fahrtkostenzuschuss" and "Stellplatz 50 Euro"
 // were all masked, and the model never saw the question (review of ADR-0107 H2). A candidate is therefore
@@ -296,7 +297,8 @@ const RELATED_PERSON_NAME_REGEX = new RegExp(
 const EMPLOYER_LINE_REGEX =
   /^(?!.*\b(?:Bruttoarbeitslohn|Lohnsteuer|Rentenversicherung|Krankenversicherung|Pflegeversicherung|Arbeitslosenversicherung)\b).*\b(?:GmbH|mbH|UG|OHG|KGaA|GmbH\s*&\s*Co\.?\s*KG|Co\.?\s*KG|AG|SE)\b.*$/gm
 // A second word of the town and trailing blanks no longer compete for the same blanks (Sonar S8786).
-const LABELED_PLZ_LINE_REGEX = /^[^\S\r\n]*(?:PLZ\s*(?:\/\s*)?Ort\s*|D-\d{5}\s*|DE-\d{5}\s*|\d{5}\s+[A-ZÄÖÜ][a-zäöüß-]+(?:\s+(?:[A-ZÄÖÜ][a-zäöüß-]+\s*)?)?)$/gm
+// The same lines as before, with the trailing blanks taken once at the end instead of inside every branch.
+const LABELED_PLZ_LINE_REGEX = /^[^\S\r\n]*(?:PLZ\s*(?:\/\s*)?Ort|D-\d{5}|DE-\d{5}|\d{5}\s+[A-ZÄÖÜ][a-zäöüß-]+(?:\s+[A-ZÄÖÜ][a-zäöüß-]+)?)\s*$/gm // NOSONAR typescript:S8786 — measured linear, see the growth test in pii-masking.test.ts
 
 /**
  * Scrubs uploaded/OCR document text (e.g. Lohnsteuerbescheinigung) before any external AI fallback.

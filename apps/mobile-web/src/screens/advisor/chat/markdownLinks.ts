@@ -24,18 +24,55 @@ export function sourceFromLink(href: string): OwlSourceId | null {
   return ADVISOR_LEGAL_SOURCES[id] ? id : null
 }
 
+/** Official sources the app itself cites; a link to one of these opens on tap. Subdomains count. */
+const TRUSTED_HOSTS: readonly string[] = [
+  'gesetze-im-internet.de',
+  'bundesfinanzministerium.de',
+  'bmf-steuerrechner.de',
+  'formulare-bfinv.de',
+  'elster.de',
+  'bzst.de',
+  'bundesbank.de',
+]
+
+/** Longest query + fragment a model link may carry; more could be smuggled data, not a page address. */
+export const MAX_LINK_QUERY_LENGTH = 200
+
+export type LinkClass =
+  /** Not a link a user may follow: rendered as plain text. */
+  | { readonly kind: 'plain' }
+  /** An official source: opens on tap. */
+  | { readonly kind: 'trusted'; readonly url: string; readonly host: string }
+  /** Any other destination: opens only after the user saw where it goes and confirmed. */
+  | { readonly kind: 'confirm'; readonly url: string; readonly host: string }
+
+function isTrustedHost(host: string): boolean {
+  return TRUSTED_HOSTS.some((trusted) => host === trusted || host.endsWith(`.${trusted}`))
+}
+
 /**
- * Only http(s) and mailto links may open; anything else (javascript:, data:, file:, intent: …)
- * renders as plain text. Model output is untrusted.
+ * Model output is untrusted, and with personal-data consent the model sees real data: a link it
+ * writes could carry some of it out. So only http(s) and mailto links are links at all; one with
+ * credentials in the address or a long query is text; and only an official source opens without
+ * the user first confirming the destination host. Nothing ever opens by itself.
  */
-export function safeLinkTarget(href: string): string | null {
+export function classifyLink(href: string): LinkClass {
   let url: URL
   try {
     url = new URL(href.trim())
   } catch {
-    return null
+    return { kind: 'plain' }
   }
-  return url.protocol === 'https:' || url.protocol === 'http:' || url.protocol === 'mailto:' ? url.toString() : null
+  if (url.username !== '' || url.password !== '') return { kind: 'plain' }
+  if (url.search.length + url.hash.length > MAX_LINK_QUERY_LENGTH) return { kind: 'plain' }
+  if (url.protocol === 'mailto:') {
+    return url.pathname === '' ? { kind: 'plain' } : { kind: 'confirm', url: url.toString(), host: url.pathname }
+  }
+  if (url.protocol !== 'https:' && url.protocol !== 'http:') return { kind: 'plain' }
+  const host = url.hostname.replace(/\.$/, '')
+  if (host === '') return { kind: 'plain' }
+  const kind = url.protocol === 'https:' && isTrustedHost(host) ? 'trusted' : 'confirm'
+  return { kind, url: url.toString(), host: url.host }
 }
 
 /** What „Kopieren“ puts on the clipboard: the Markdown text, citations spelled out. */

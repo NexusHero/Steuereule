@@ -81,7 +81,7 @@ export type AppTabParamList = {
 
 export type RootStackParamList = {
   Splash: undefined
-  Login: undefined
+  Login: { forgot?: boolean } | undefined
   Registration: undefined
   Onboarding: undefined
   App: { start?: 'interview' } | (NavigatorScreenParams<AppTabParamList> & { start?: 'interview' }) | undefined
@@ -90,5 +90,6 @@ export type RootStackParamList = {
   // `zahlung` is the query parameter in the Stripe return URL; it stays as the API writes it.
   Printout: { year: string; payment?: string }
   Confirmation: { year: string }
+  PasswordReset: { token?: string | undefined; error?: string | undefined } | undefined
   OauthConsent: { client_id?: string; scope?: string } | undefined
 }

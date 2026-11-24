@@ -20,6 +20,8 @@ const CODE_TO_KEY: ReadonlyMap<string, string> = new Map([
   ['ACCESS_DENIED', 'errGeneric'],
   // Per-account sign-in limit (ADR-0106 D9).
   ['SIGN_IN_ATTEMPTS_EXCEEDED', 'errTooManyAttempts'],
+  // Sign-in needs a verified address (ADR-0109); the server has just sent a new link.
+  ['EMAIL_NOT_VERIFIED', 'errEmailNotVerified'],
 ])
 
 export function authErrorKey(error: AuthErrorLike | null | undefined): string {

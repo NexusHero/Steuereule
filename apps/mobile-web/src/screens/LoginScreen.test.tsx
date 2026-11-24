@@ -83,20 +83,6 @@ function fillCredentials(email = 'a@b.de', password = 'geheim-123') {
   fireEvent.change(screen.getByPlaceholderText('••••••••'), { target: { value: password } })
 }
 
-/** Sign-in succeeds, but the server reports the account (a@b.de) as not yet verified. */
-function unverifiedSignIn() {
-  return http.post(`${BASE_URL}/api/auth/sign-in/email`, () =>
-    HttpResponse.json({ token: 'tok_1', user: { id: 'u1', email: 'a@b.de', emailVerified: false, name: '' } }),
-  )
-}
-
-/** `get-session` answers with a session of the given user. */
-function sessionOf(user: Record<string, unknown>, sessionId = 's1') {
-  return http.get(`${BASE_URL}/api/auth/get-session`, () =>
-    HttpResponse.json({ user, session: { id: sessionId, createdAt: new Date().toISOString() } }),
-  )
-}
-
 describe('LoginScreen', () => {
   it('renders the German login by default (brand, email form, guest mode)', () => {
     renderLogin()
@@ -158,14 +144,12 @@ describe('LoginScreen', () => {
     expect(await screen.findByText('oder mit E-Mail')).toBeTruthy()
   })
 
-  // Honesty item #2 (Salih finding #1) — "Passwort vergessen?" has no real flow, no REQ-ID and
-  // no DS artifact; a dead Pressable doesn't ship, so it's hidden rather than left as a no-op
-  // link. Regression test: fails if a "forgot password" affordance is re-added before a real
-  // reset flow exists to back it.
-  it('does not render a dead "forgot password" affordance', () => {
+  // The "forgot password" link is backed by a real reset flow (see login/ForgotPassword.test.tsx);
+  // it must lead somewhere, never be a dead affordance.
+  it('renders a "forgot password" link that opens the request form', () => {
     renderLogin()
-    expect(screen.queryByText('Passwort vergessen?')).toBeNull()
-    expect(screen.queryByText('Forgot password?')).toBeNull()
+    fireEvent.click(screen.getByText('Passwort vergessen?'))
+    expect(screen.getByTestId('passwort-vergessen-email')).toBeTruthy()
   })
 
   it('shows an email error for an invalid address', () => {
@@ -521,186 +505,21 @@ describe('LoginScreen', () => {
     })
   })
 
-  // REQ-005 — "while unverified, the UI honestly shows a 'please verify' state without
-  // blocking basic use": the account IS real and signed in, so the honest banner is shown
-  // inline instead of silently claiming success; the user can still continue on their own.
-  it('shows the honest unverified-email banner instead of silently continuing, when the account is unverified', async () => {
-    server.use(unverifiedSignIn())
-    const onDone = vi.fn()
-    renderLogin({ onDone })
-    fillCredentials()
-    fireEvent.click(screen.getByText('Einloggen'))
-
-    await screen.findByText('Bitte bestätige noch deine E-Mail.')
-    expect(screen.getByText('Wir haben einen Bestätigungslink an a@b.de geschickt. Du kannst schon loslegen — bestätige, wenn du Zeit hast.')).toBeTruthy()
-    // Doesn't block basic use — sign-in still succeeded, but onDone only fires once the user
-    // acknowledges via the explicit continue action (never auto-advances past an honest banner).
-    expect(onDone).not.toHaveBeenCalled()
-
-    fireEvent.click(screen.getByText('Weiter'))
-    expect(onDone).toHaveBeenCalledOnce()
-  })
-
-  it('lets the user resend the verification email from the unverified banner', async () => {
-    let resendCalls = 0
+  // ADR-0109 — an unverified account cannot sign in: the server answers 403 EMAIL_NOT_VERIFIED (and mails a new
+  // link), and the screen says so instead of a generic error. There is no signed-in-but-unverified state.
+  it('tells an unverified account to confirm the address first, and does not continue', async () => {
     server.use(
-      unverifiedSignIn(),
-      http.post(`${BASE_URL}/api/auth/send-verification-email`, () => {
-        resendCalls += 1
-        return HttpResponse.json({ status: true })
-      }),
-    )
-    renderLogin()
-    fillCredentials()
-    fireEvent.click(screen.getByText('Einloggen'))
-
-    await screen.findByText('Bitte bestätige noch deine E-Mail.')
-    fireEvent.click(screen.getByText('Mail erneut senden'))
-
-    await screen.findByText('Ist raus — schau in dein Postfach.')
-    expect(resendCalls).toBe(1)
-  })
-
-  it('shows an honest error when resending the verification email fails', async () => {
-    server.use(
-      unverifiedSignIn(),
-      http.post(`${BASE_URL}/api/auth/send-verification-email`, () => HttpResponse.error()),
-    )
-    renderLogin()
-    fillCredentials()
-    fireEvent.click(screen.getByText('Einloggen'))
-
-    await screen.findByText('Bitte bestätige noch deine E-Mail.')
-    fireEvent.click(screen.getByText('Mail erneut senden'))
-
-    expect(await screen.findByText('Das hat gerade nicht geklappt. Versuch es gleich noch mal.')).toBeTruthy()
-  })
-
-  // Musti's #217 T1: mirrors RegistrierungScreen.test.tsx's four verified-flip tests via the
-  // shared useEmailVerified hook (#194/#217, ADR-0012 amendment). The stakeholder's (b) ruling
-  // on #217: the banner becomes a confirmation, the user taps the existing continue button —
-  // no auto-navigate.
-  it('shows the verified confirmation on the unverified stage when the session reports the account already verified', async () => {
-    server.use(
-      unverifiedSignIn(),
-      sessionOf({ id: 'u1', email: 'a@b.de', emailVerified: true, name: '' }),
-    )
-    const onDone = vi.fn()
-    renderLogin({ onDone })
-    fillCredentials()
-    fireEvent.click(screen.getByText('Einloggen'))
-
-    await screen.findByText('E-Mail bestätigt ✓')
-    expect(screen.queryByText('Bitte bestätige noch deine E-Mail.')).toBeNull()
-    // (b), not (a): the confirmation is shown, but the app doesn't navigate on its own.
-    expect(onDone).not.toHaveBeenCalled()
-
-    fireEvent.click(screen.getByText('Weiter'))
-    expect(onDone).toHaveBeenCalledOnce()
-  })
-
-  // Musti's T1: a stale or different account's verified session on the shared atom is a routine
-  // path here, not a race — LoginScreen is where a second person on a shared device signs in.
-  // Comparator must be `sessionData.user.email === stage.email` (the server value), never `mail`.
-  it('does not show the verified confirmation when the session belongs to a different account', async () => {
-    server.use(
-      unverifiedSignIn(),
-      sessionOf({ id: 'u2', email: 'jemand-anderes@beispiel.de', emailVerified: true, name: '' }, 's2'),
-    )
-    renderLogin()
-    fillCredentials()
-    fireEvent.click(screen.getByText('Einloggen'))
-
-    await screen.findByText('Bitte bestätige noch deine E-Mail.')
-    expect(screen.queryByText('E-Mail bestätigt ✓')).toBeNull()
-  })
-
-  // #217 — the actual regression, narrower sibling of #194: `stage` used to snapshot
-  // `emailVerified` once at sign-in and never re-read it, so this tab never learned that
-  // verification had genuinely completed out of band (mail client, possibly a different
-  // device) unless the user reloaded. Confirmed red against pre-#217 code by running this
-  // test before the fix landed — not assumed. Same visibilitychange mechanism as #194's
-  // RegistrierungScreen test (auth-client.ts's `refetchOnWindowFocus`).
-  it('clears the unverified banner without a reload once the session reports verification (out-of-band verify, #217)', async () => {
-    let verified = false
-    server.use(
-      unverifiedSignIn(),
-      http.get(`${BASE_URL}/api/auth/get-session`, () =>
-        HttpResponse.json({
-          user: { id: 'u1', email: 'a@b.de', emailVerified: verified, name: '' },
-          session: { id: 's1', createdAt: new Date().toISOString() },
-        }),
+      http.post(`${BASE_URL}/api/auth/sign-in/email`, () =>
+        HttpResponse.json({ code: 'EMAIL_NOT_VERIFIED', message: 'Email not verified' }, { status: 403 }),
       ),
     )
-    renderLogin()
+    const onDone = vi.fn()
+    renderLogin({ onDone })
     fillCredentials()
     fireEvent.click(screen.getByText('Einloggen'))
 
-    await screen.findByText('Bitte bestätige noch deine E-Mail.')
-
-    // The verification itself happened elsewhere (mail client / another device) — nothing on
-    // this tab caused it. Only the tab regaining focus/visibility should make it notice.
-    verified = true
-    act(() => {
-      document.dispatchEvent(new Event('visibilitychange'))
-    })
-
-    await screen.findByText('E-Mail bestätigt ✓')
-    expect(screen.queryByText('Bitte bestätige noch deine E-Mail.')).toBeNull()
-  })
-
-  // Fail-closed (#194/#217): a session-fetch error must never be read as "verified".
-  // better-auth's atom keeps whatever `data` it last had on a non-401 error rather than clearing
-  // it (session-atom.mjs) — here there never was a successful load, so `data` stays `null`
-  // throughout; the banner must still show rather than defaulting open on the missing answer.
-  // Note (Musti's #217 review): this fixture alone kills nothing — with `data` null the
-  // account-scoping clause already returns false first, so a genuinely fail-open hook
-  // (`emailVerified !== false`) would pass this test too. The next test below is what actually
-  // exercises the fail-closed clause; keep this one anyway, it's cheap and locks the no-data path.
-  it('keeps the unverified banner when the session fetch fails, rather than assuming verified', async () => {
-    server.use(
-      unverifiedSignIn(),
-      http.get(`${BASE_URL}/api/auth/get-session`, () => HttpResponse.json({ message: 'Internal Server Error' }, { status: 500 })),
-    )
-    renderLogin()
-    fillCredentials()
-    fireEvent.click(screen.getByText('Einloggen'))
-
-    await screen.findByText('Bitte bestätige noch deine E-Mail.')
-    expect(screen.queryByText('E-Mail bestätigt ✓')).toBeNull()
-  })
-
-  // Fail-closed, the load-bearing case (Musti's #217 review): a session that loads
-  // *successfully for this account* but doesn't positively answer — `user.email` matches,
-  // `emailVerified` absent — is the shape a partial or errored read actually leaves behind, and
-  // it's the case the hook's own fail-closed comment claims to guard. Verified in review both
-  // directions: fails on a fail-open mutant (`emailVerified !== false`), passes on this hook.
-  it('keeps the unverified banner when the session for this account never positively answers emailVerified', async () => {
-    server.use(
-      unverifiedSignIn(),
-      sessionOf({ id: 'u1', email: 'a@b.de', name: '' }),
-    )
-    renderLogin()
-    fillCredentials()
-    fireEvent.click(screen.getByText('Einloggen'))
-
-    await screen.findByText('Bitte bestätige noch deine E-Mail.')
-    expect(screen.queryByText('E-Mail bestätigt ✓')).toBeNull()
-  })
-
-  // The resend affordance disappears with the banner it lives in, mirroring RegistrierungScreen's
-  // success stage — once verified, there's nothing left to resend.
-  it('drops the resend affordance once the verified confirmation replaces the banner', async () => {
-    server.use(
-      unverifiedSignIn(),
-      sessionOf({ id: 'u1', email: 'a@b.de', emailVerified: true, name: '' }),
-    )
-    renderLogin()
-    fillCredentials()
-    fireEvent.click(screen.getByText('Einloggen'))
-
-    await screen.findByText('E-Mail bestätigt ✓')
-    expect(screen.queryByText('Mail erneut senden')).toBeNull()
+    await screen.findByText('Bitte bestätige zuerst deine E-Mail-Adresse. Wir haben dir einen neuen Link geschickt.')
+    expect(onDone).not.toHaveBeenCalled()
   })
 
   // REQ-008 — Google social sign-in: calls better-auth's signIn.social({ provider: 'google' })

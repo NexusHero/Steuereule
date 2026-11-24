@@ -42,7 +42,15 @@ const ZEILE = /^\d{1,3}[a-z]?$/
 const KZ = /^\d{3}$/
 
 // The 2022 Umsatzsteuer form runs dot leaders from the label to the box; they are layout, not text.
-const tidy = (label) => label.replace(/(?:\s*\.){3,}/g, '').replace(/\s+([).,;])/g, '$1').trim()
+// Written without a blank run in front of an optional follower, which would retry from every blank (Sonar S8786):
+// the leader starts at its first dot, and a run of blanks goes when a dot leader or a closing mark follows it.
+const DOT_LEADER = '\u0000'
+const tidy = (label) =>
+  label
+    .replace(/\.(?:\s*\.){2,}/g, DOT_LEADER)
+    .replace(/\s+/g, (blanks, at, text) => (`${DOT_LEADER}).,;`.includes(text[at + blanks.length] ?? ' ') ? '' : blanks))
+    .replaceAll(DOT_LEADER, '')
+    .trim()
 const mid = (w) => (w.y0 + w.y1) / 2
 
 /** Words with the same baseline form a physical line; split further where the horizontal gap is wide. */

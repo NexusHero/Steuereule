@@ -9,6 +9,7 @@ import { launchBrowser, closeBrowser, newContextAtBreakpoint, guardAgainst429 } 
 import { startStack } from '../harness/stack.mjs'
 import { fail, waitForBucketHeadroom } from '../harness/rate-limit.mjs'
 import { skipSplash, signUpOutOfBand, submitLogin } from '../harness/flows.mjs'
+import { verifyEmailSql } from '../harness/email-hash.mjs'
 
 const AUTH_BUCKET = { windowMs: 10_000, max: 3, shared: true }
 const TEST_PASSWORD = 'Sicheres-Passwort-1!'
@@ -149,7 +150,7 @@ async function main() {
     const email = `chat-experience-e2e-${Date.now()}@beispiel.de`
     await waitForBucketHeadroom(AUTH_BUCKET, 'sign-up/email', TAG)
     await signUpOutOfBand(apiOrigin, webOrigin, email, TEST_PASSWORD)
-    sql(`UPDATE "User" SET "emailVerified" = true WHERE email = '${email}'`)
+    sql(verifyEmailSql(email))
 
     await desktopRows(browser, webOrigin, email)
     await reducedMotionRow(browser, webOrigin, email)

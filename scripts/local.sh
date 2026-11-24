@@ -57,8 +57,8 @@ cmd_up() {
 cmd_dev() {
   require_docker
   require_pnpm_install
-  info "Postgres und Postfach starten"
-  "${DEV_STACK[@]}" up -d --wait postgres mailpit
+  info "Postgres, Redis und Postfach starten"
+  "${DEV_STACK[@]}" up -d --wait postgres mailpit redis
   local pg_port
   pg_port="$("${DEV_STACK[@]}" port postgres 5432 | sed 's/.*://')"
 
@@ -70,6 +70,11 @@ cmd_dev() {
   export WEB_APP_URL="http://localhost:8081"
   export EMAIL_DELIVERY=smtp
   export SMTP_URL="smtp://127.0.0.1:1025"
+  # Same path as production: Redis for the answer runs and the rate limiter. An empty REDIS_URL
+  # in the environment (or .env) switches back to in-process.
+  local redis_port
+  redis_port="$("${DEV_STACK[@]}" port redis 6379 | sed 's/.*://')"
+  export REDIS_URL="${REDIS_URL-redis://localhost:${redis_port}}"
 
   info "Migrationen anwenden"
   pnpm --filter @steuereule/api migrate:deploy >/dev/null

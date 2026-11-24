@@ -88,16 +88,21 @@ function toNote(row: { id: string; userId: string; taxYear: number; text: string
   return { ...row, author: row.author === 'user' ? 'user' : 'owl' }
 }
 
+/** Messages one conversation or year hands back, the newest of them (ADR-0109): a chat lives long, a screen shows the end of it. */
+export const MAX_HISTORY_MESSAGES = 2_000
+
 @Injectable()
 export class PrismaAdvisorRepository implements AdvisorRepository {
   constructor(@Inject(ENCRYPTED_PRISMA) private readonly prisma: EncryptedPrismaClient) {}
 
+  /** The newest rows of a query ordered newest first, handed back oldest first as every caller reads them. */
+  private async newest(query: Promise<Parameters<typeof toRecord>[0][]>): Promise<AdvisorChatMessageRecord[]> {
+    const rows = await query
+    return rows.map((_, index) => toRecord(rows[rows.length - 1 - index]!))
+  }
+
   async listForUserAndYear(userId: string, taxYear: number): Promise<AdvisorChatMessageRecord[]> {
-    const rows = await this.prisma.advisorChatMessage.findMany({
-      where: { userId, taxYear },
-      orderBy: { createdAt: 'asc' },
-    })
-    return rows.map(toRecord)
+    return this.newest(this.prisma.advisorChatMessage.findMany({ where: { userId, taxYear }, orderBy: { createdAt: 'desc' }, take: MAX_HISTORY_MESSAGES }))
   }
 
   async listReceiptDrafts(userId: string): Promise<ReceiptDraftRecord[]> {
@@ -135,8 +140,7 @@ export class PrismaAdvisorRepository implements AdvisorRepository {
   }
 
   async listForConversation(conversationId: string, userId: string): Promise<AdvisorChatMessageRecord[]> {
-    const rows = await this.prisma.advisorChatMessage.findMany({ where: { conversationId, userId }, orderBy: { createdAt: 'asc' } })
-    return rows.map(toRecord)
+    return this.newest(this.prisma.advisorChatMessage.findMany({ where: { conversationId, userId }, orderBy: { createdAt: 'desc' }, take: MAX_HISTORY_MESSAGES }))
   }
 
   async listAllConversations(userId: string): Promise<AdvisorConversationRecord[]> {

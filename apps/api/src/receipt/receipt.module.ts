@@ -11,11 +11,12 @@ import { ReceiptReassignService } from './receipt-reassign.service.js'
 import { ReceiptStorageModule } from './receipt-storage.module.js'
 import { ReceiptController } from './receipt.controller.js'
 import { ReceiptService } from './receipt.service.js'
+import { UploadAdmission } from './upload-admission.js'
 
 @Module({
   imports: [PrismaModule, ReceiptStorageModule, AuditModule, KiModule, AdvisorModule],
   controllers: [ReceiptController, ReceiptParseController],
-  providers: [ReceiptService, ReceiptParseService, ReceiptReassignService, DocumentParseRegistry, AutoReceiptParseStrategy],
+  providers: [UploadAdmission, ReceiptService, ReceiptParseService, ReceiptReassignService, DocumentParseRegistry, AutoReceiptParseStrategy],
   exports: [ReceiptStorageModule, ReceiptService, DocumentParseRegistry],
 })
 export class ReceiptModule {}

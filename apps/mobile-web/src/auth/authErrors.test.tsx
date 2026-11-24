@@ -6,6 +6,10 @@ describe('authErrorKey', () => {
     expect(authErrorKey({ code: 'INVALID_EMAIL_OR_PASSWORD', status: 401 })).toBe('errInvalidCredentials')
   })
 
+  it('maps EMAIL_NOT_VERIFIED (sign-in before the link was followed, ADR-0109)', () => {
+    expect(authErrorKey({ code: 'EMAIL_NOT_VERIFIED', status: 403 })).toBe('errEmailNotVerified')
+  })
+
   it('maps USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL (better-auth sign-up) to the taken-email key', () => {
     expect(authErrorKey({ code: 'USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL', status: 422 })).toBe('errEmailTaken')
   })

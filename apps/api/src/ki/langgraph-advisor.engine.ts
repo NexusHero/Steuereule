@@ -366,6 +366,11 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
       if (!(await this.runtimeConfig.isKillSwitchActive())) {
         slotConfig = withDepth(await this.chatSlotFor(request), request.depth)
         chatModel = this.resolveChatModel(slotConfig)
+        // The day's model calls across all users are spent (ADR-0109): the rules answer, and say why.
+        if (chatModel && slotConfig.enabled && slotConfig.provider !== 'deterministic' && slotConfig.provider !== 'fake' && !(await this.runtimeConfig.takeCallBudget?.() ?? true)) {
+          yield* this.emitFallbackTurn(request, undefined, { reason: 'unavailable', detail: 'Tageslimit der SteuerEule' })
+          return
+        }
       }
     } catch {
       chatModel = null
@@ -723,6 +728,7 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
       if (await this.runtimeConfig.isKillSwitchActive()) return null
       const slotConfig = await this.runtimeConfig.resolveSlot('advisor_chat')
       if (!slotConfig.enabled || slotConfig.provider === 'deterministic' || slotConfig.provider === 'fake') return null
+      if (!((await this.runtimeConfig.takeCallBudget?.()) ?? true)) return null
       // A summary needs no line of thought: the plain, quick variant of the same model.
       const { reasoning: _reasoning, reasoningBudgetTokens: _budget, ...plain } = slotConfig
       const model = this.resolveChatModel({ ...plain, thinkingLevel: 'low' })

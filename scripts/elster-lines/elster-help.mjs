@@ -19,7 +19,7 @@ export const HELP_SOURCES = {
 
 const decode = (s) =>
   s
-    .replace(/<[^>]+>/g, '')
+    .replace(/<[^<>]+>/g, '')
     .replaceAll('&nbsp;', ' ')
     .replaceAll('&quot;', '"')
     .replaceAll('&lt;', '<')

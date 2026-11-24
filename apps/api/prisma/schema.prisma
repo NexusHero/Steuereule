@@ -60,6 +60,16 @@ model Profile {
   updatedAt    DateTime @updatedAt
 }
 
+/// When a guest (an id without a User row, ADR-0007) last wrote anything. The guest-retention sweep
+/// deletes all data of a guest id 30 days after this moment (ADR-0109). Written by UserContextGuard on a
+/// guest's state-changing requests, at most once an hour per guest.
+model GuestActivity {
+  userId      String   @id
+  lastWriteAt DateTime
+
+  @@index([lastWriteAt])
+}
+
 /// Append-only audit trail of who touched a user's sensitive tax/profile fields, and
 /// when (ADR-0008, REQ-004, DSGVO Art. 30 accountability). Deliberately carries no
 /// value column — not the plaintext, not the ciphertext — only who/what/when. Never
@@ -102,8 +112,12 @@ enum AuditAction {
 /// type change, and REQ-006's guest->account upgrade just re-keys the FK value.
 model User {
   id                 String              @id @default(uuid())
-  name               String
-  email              String              @unique
+  name               String              /// @encrypted?mode=strict
+  // ADR-0109: stored as ciphertext, found by `emailHash` (the extension rewrites `where: { email }`).
+  // The unique index stays until the contract step: it holds for the plaintext rows of the migration window
+  // and cannot clash on ciphertext, so it costs nothing and drops nothing.
+  email              String              @unique /// @encrypted?mode=strict
+  emailHash          String?             @unique /// @encryption:hash(email)?normalize=lowercase&normalize=trim
   emailVerified      Boolean             @default(false)
   image              String?
   /// Opt-in TOTP 2FA flag (REQ-007). Written only by better-auth's `two-factor`
@@ -133,8 +147,8 @@ model Session {
   token              String              @unique
   createdAt          DateTime            @default(now())
   updatedAt          DateTime            @updatedAt
-  ipAddress          String?
-  userAgent          String?
+  ipAddress          String?             /// @encrypted?mode=strict
+  userAgent          String?             /// @encrypted?mode=strict
   userId             String
   user               User                @relation(fields: [userId], references: [id], onDelete: Cascade)
   oauthAccessTokens  OauthAccessToken[]

@@ -5,6 +5,12 @@ import { EnvelopeCryptoService } from './envelope-crypto.service.js'
 import type { AllowedReceiptMimeType } from './magic-bytes.js'
 import type { PutReceiptFileInput, StoragePort, StoredContentKey, StoredReceiptMeta, StoredReceiptObject, StoredReceiptUsage } from './storage.port.js'
 
+/**
+ * Prisma types bytes as `Uint8Array<ArrayBuffer>`, which a Node Buffer is at runtime (never shared memory); the
+ * cast keeps the ciphertext of up to 10 MB from being copied once more per upload.
+ */
+const asBytes = (buffer: Buffer): Uint8Array<ArrayBuffer> => buffer as Uint8Array<ArrayBuffer>
+
 @Injectable()
 export class PostgresByteaStorageAdapter implements StoragePort {
   constructor(
@@ -36,9 +42,9 @@ export class PostgresByteaStorageAdapter implements StoragePort {
         mimeType: input.mimeType,
         byteLength: input.buffer.length,
         contentMac: encrypted.contentMac,
-        iv: new Uint8Array(encrypted.iv),
-        authTag: new Uint8Array(encrypted.authTag),
-        cipherBytes: new Uint8Array(encrypted.cipherBytes),
+        iv: asBytes(encrypted.iv),
+        authTag: asBytes(encrypted.authTag),
+        cipherBytes: asBytes(encrypted.cipherBytes),
         keyVersion,
       },
       create: {
@@ -47,9 +53,9 @@ export class PostgresByteaStorageAdapter implements StoragePort {
         mimeType: input.mimeType,
         byteLength: input.buffer.length,
         contentMac: encrypted.contentMac,
-        iv: new Uint8Array(encrypted.iv),
-        authTag: new Uint8Array(encrypted.authTag),
-        cipherBytes: new Uint8Array(encrypted.cipherBytes),
+        iv: asBytes(encrypted.iv),
+        authTag: asBytes(encrypted.authTag),
+        cipherBytes: asBytes(encrypted.cipherBytes),
         keyVersion,
       },
     })

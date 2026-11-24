@@ -6,7 +6,7 @@ import { resolveAppleClientId, resolveAppleClientSecret, resolveAppleSignInEnabl
 import type { EmailSender } from '../src/auth/email-sender.js'
 
 function fakeEmailSender(): EmailSender {
-  return { sendVerificationEmail: vi.fn(), sendPasswordResetEmail: vi.fn() }
+  return { sendVerificationEmail: vi.fn(), sendPasswordResetEmail: vi.fn(), sendExistingAccountNotice: vi.fn() }
 }
 
 describe('resolveBetterAuthSecret', () => {
@@ -236,9 +236,12 @@ describe('createBetterAuth — session-security hardening (ADR-0103)', () => {
     expect(options.emailAndPassword?.minPasswordLength).toBe(12)
   })
 
-  it('keeps sign-up open to unverified accounts (guest-first onboarding, ADR-0012) — the gate is at the sensitive action', () => {
+  it('requires a verified address to sign in, so sign-up answers a taken address like a free one (ADR-0109)', () => {
     const options = createBetterAuth(base).auth.options
-    expect(options.emailAndPassword?.requireEmailVerification).toBe(false)
+    expect(options.emailAndPassword?.requireEmailVerification).toBe(true)
+    expect(options.emailAndPassword?.onExistingUserSignUp).toBeTypeOf('function')
+    // A verification link must not sign anyone in: whoever clicks it may not have chosen the password.
+    expect(options.emailVerification?.autoSignInAfterVerification).toBeFalsy()
   })
 
   it('pins the sliding idle window and keeps freshAge 0 (ADR-0027) (vulnerability 2)', () => {

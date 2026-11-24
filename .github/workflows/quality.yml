@@ -94,6 +94,8 @@ jobs:
       # keep every worker on its own core, so a timeout means a slow test, not a crowded runner.
       - name: Test + coverage gates (includes DevMLOps Golden Dataset, Red-Team & PII Fuzzing suites)
         run: pnpm -r --workspace-concurrency=1 test --coverage
+      - name: Web server headers (CSP, HSTS, framing) — node tests of e2e/cross-origin/static-server.mjs
+        run: node --test e2e/cross-origin/static-server.test.mjs
       - name: Upload the coverage reports for SonarQube Cloud
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:

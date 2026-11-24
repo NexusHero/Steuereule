@@ -157,7 +157,8 @@ set_secret() {
 set_var() {
   local name="$1" value="$2"
   if command -v gh >/dev/null 2>&1 && gh auth status >/dev/null 2>&1; then
-    if gh variable set "$name" --body "$value" >/dev/null 2>&1; then
+    # GH_ENVIRONMENT set: a variable of that GitHub environment (production), not a repository one.
+    if gh variable set "$name" --body "$value" ${GH_ENVIRONMENT:+--env "$GH_ENVIRONMENT"} >/dev/null 2>&1; then
       printf '  %s✓ set%s GitHub variable %s\n' "$GREEN" "$RESET" "$name"
       return
     fi
@@ -189,11 +190,22 @@ finish() {
 # Non-secret answers are remembered in infra/gcp/.env.beta (git-ignored). Secret values are
 # generated or pasted here and go straight into Secret Manager; they never touch a file.
 
+# Environment of this run (ADR-0109): "beta" is the first stack and keeps its resource names; it serves as
+# staging. For a second stack run e.g. TF_ENVIRONMENT=production GH_ENVIRONMENT=production, each in its own
+# GCP project. GH_ENVIRONMENT makes the GitHub variables environment-scoped instead of repository-wide.
+TF_ENVIRONMENT="${TF_ENVIRONMENT:-beta}"
+GH_ENVIRONMENT="${GH_ENVIRONMENT:-}"
+case "$TF_ENVIRONMENT" in
+  beta) TF_GITHUB_ENVIRONMENTS='["staging","beta"]' ;;
+  staging|production) TF_GITHUB_ENVIRONMENTS="[\"$TF_ENVIRONMENT\"]" ;;
+  *) echo "TF_ENVIRONMENT must be beta, staging or production." >&2; exit 1 ;;
+esac
+
 TOTAL_STAGES=12
-ENV_FILE="infra/gcp/.env.beta"
+ENV_FILE="infra/gcp/.env.$TF_ENVIRONMENT"
 REGION="europe-west4"
-SQL_INSTANCE_NAME="steuereule-beta"
-KEYSTORE_SQL_INSTANCE_NAME="steuereule-beta-keystore"
+SQL_INSTANCE_NAME="steuereule-$TF_ENVIRONMENT"
+KEYSTORE_SQL_INSTANCE_NAME="steuereule-$TF_ENVIRONMENT-keystore"
 TOFU_DIR="infra/gcp"
 
 TOFU="$(command -v tofu || command -v terraform || true)"
@@ -269,12 +281,14 @@ fi
 write_env STATE_BUCKET "$STATE_BUCKET"
 
 stage "Infrastruktur anlegen (OpenTofu)"
-say "Legt an: Cloud SQL (Postgres 16), Artifact Registry, leere Secrets, Service-Accounts,"
+say "Legt an: Cloud SQL (Postgres 16, nur private IP im VPC), Artifact Registry, leere Secrets, Service-Accounts,"
 say "GitHub-Zugang per Workload Identity und einen Budget-Alarm bei 20 € im Monat."
-"$TOFU" -chdir="$TOFU_DIR" init -input=false -reconfigure -backend-config="bucket=$STATE_BUCKET" >/dev/null
-TOFU_VARS=(-var "project_id=$GCP_PROJECT_ID" -var "billing_account_id=$BILLING_ACCOUNT_ID" -var "region=$REGION")
+"$TOFU" -chdir="$TOFU_DIR" init -input=false -reconfigure -backend-config="bucket=$STATE_BUCKET" \
+  -backend-config="prefix=steuereule/$TF_ENVIRONMENT" >/dev/null
+TOFU_VARS=(-var "project_id=$GCP_PROJECT_ID" -var "billing_account_id=$BILLING_ACCOUNT_ID" -var "region=$REGION" \
+  -var "environment=$TF_ENVIRONMENT" -var "github_environments=$TF_GITHUB_ENVIRONMENTS")
 "$TOFU" -chdir="$TOFU_DIR" plan -input=false "${TOFU_VARS[@]}" -out=beta.tfplan
-warn "Cloud SQL kostet ab jetzt ca. 10–12 € im Monat (in der Testphase vom Guthaben)."
+warn "Cloud SQL (zwei Instanzen) kostet ab jetzt ca. 20 € im Monat in beta/staging, in production mit eigenem Kern ca. 100 € (mit Hochverfügbarkeit ca. 200 €); Richtwerte."
 if confirm "Plan anwenden?"; then
   "$TOFU" -chdir="$TOFU_DIR" apply -input=false beta.tfplan
   rm -f "$TOFU_DIR/beta.tfplan"
@@ -297,6 +311,8 @@ warn "Vorhandene Werte bleiben unangetastet — ein neuer PRISMA_FIELD_ENCRYPTIO
 ensure_generated_secret GUEST_SESSION_SECRET "$(openssl rand -base64 48)"
 ensure_generated_secret BETTER_AUTH_SECRET "$(openssl rand -base64 48)"
 ensure_generated_secret PRISMA_FIELD_ENCRYPTION_KEY "k1.aesgcm256.$(openssl rand -base64 32)"
+# Salt of the e-mail lookup hash (ADR-0109): like the key above, a new value would lock every account out.
+ensure_generated_secret PRISMA_FIELD_ENCRYPTION_HASH_SALT "$(openssl rand -base64 48)"
 ensure_generated_secret KEYSTORE_MASTER_KEY "$(openssl rand -base64 48)"
 pause
 
@@ -359,6 +375,8 @@ else
 fi
 
 stage "GitHub-Variablen für den Deploy"
+# Production's GitHub environment must carry its own values; the deploy refuses to run without this marker.
+[[ "$TF_ENVIRONMENT" != production ]] || set_var GCP_ENVIRONMENT production
 set_var GCP_PROJECT_ID "$GCP_PROJECT_ID"
 set_var GCP_REGION "$REGION"
 set_var GCP_WIF_PROVIDER "$(tofu_output workload_identity_provider)"
@@ -367,19 +385,24 @@ set_var GCP_RUNTIME_SA "$(tofu_output api_runtime_service_account)"
 set_var GCP_WEB_SA "$(tofu_output web_runtime_service_account)"
 set_var GCP_SQL_INSTANCE "$SQL_CONNECTION"
 set_var GCP_KEYSTORE_SQL_INSTANCE "$KEYSTORE_SQL_CONNECTION"
+# Cloud SQL and Redis have private addresses only; the deploy joins this network (Direct VPC egress).
+set_var GCP_VPC_NETWORK "$(tofu_output vpc_network)"
+set_var GCP_VPC_SUBNET "$(tofu_output vpc_subnet)"
 set_var APP_DOMAIN "$APP_DOMAIN"
 set_var EMAIL_FROM "$EMAIL_FROM"
 pause
 
 stage "Erster Deploy"
+DEPLOY_TARGET=staging
+[[ "$TF_ENVIRONMENT" != production ]] || DEPLOY_TARGET=production
 say "Baut beide Images, migriert die Datenbank und rollt API und Web aus (ca. 10–15 Minuten)."
 if confirm "Deploy-Workflow auf main starten?"; then
-  gh workflow run deploy.yml --ref main
+  gh workflow run deploy.yml --ref main -f environment="$DEPLOY_TARGET"
   sleep 5
   gh run watch "$(gh run list --workflow deploy.yml --limit 1 --json databaseId --jq '.[0].databaseId')" --exit-status \
     || { warn "Deploy fehlgeschlagen — Log: gh run view --log-failed"; exit 1; }
 else
-  SKIPPED+=("Deploy starten: gh workflow run deploy.yml --ref main")
+  SKIPPED+=("Deploy starten: gh workflow run deploy.yml --ref main -f environment=$DEPLOY_TARGET")
 fi
 
 stage "Domain verknüpfen"

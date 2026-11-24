@@ -1,4 +1,4 @@
-import type { VerificationEmail } from './email-sender.js'
+import type { ExistingAccountNotice, VerificationEmail } from './email-sender.js'
 
 export interface EmailContent {
   subject: string
@@ -6,7 +6,7 @@ export interface EmailContent {
   html: string
 }
 
-export type EmailPurpose = 'verification' | 'password-reset'
+export type EmailPurpose = 'verification' | 'password-reset' | 'existing-account'
 
 const COPY: Record<EmailPurpose, { intro: string; action: string }> = {
   verification: {
@@ -17,10 +17,14 @@ const COPY: Record<EmailPurpose, { intro: string; action: string }> = {
     intro: 'Du hast angefordert, dein Passwort zurückzusetzen. Wenn das nicht du warst, ignoriere diese E-Mail.',
     action: 'Neues Passwort festlegen',
   },
+  'existing-account': {
+    intro: 'Jemand hat versucht, mit deiner E-Mail-Adresse ein SteuerEule-Konto anzulegen. Du hast schon eines: melde dich an oder setze dein Passwort zurück. Warst du das nicht, kannst du diese E-Mail ignorieren.',
+    action: 'Zur Anmeldung',
+  },
 }
 
 /** The one wording of every transactional email, shared by all delivery channels. */
-export function renderEmail(email: VerificationEmail, purpose: EmailPurpose): EmailContent {
+export function renderEmail(email: Pick<VerificationEmail | ExistingAccountNotice, 'subject' | 'url'>, purpose: EmailPurpose): EmailContent {
   const { intro, action } = COPY[purpose]
   return {
     subject: email.subject,

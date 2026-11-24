@@ -17,9 +17,9 @@ export interface ProfileResponseDto {
 }
 
 export interface PutProfileDto {
-  /** Non-empty first name. */
+  /** Non-empty first name, at most 100 characters. */
   firstName: string;
-  /** Non-empty last name. */
+  /** Non-empty last name, at most 100 characters. */
   lastName: string;
   /** Steuerliche Identifikationsnummer — exactly 11 digits if present. Optional since ADR-0045 (value-first funnel): omitted = not given yet, stored as null. */
   steuerId?: string;

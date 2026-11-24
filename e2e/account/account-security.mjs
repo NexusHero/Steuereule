@@ -9,6 +9,10 @@
 //           MCP endpoint; revoking the assistant in the profile → the token is refused.
 //   Row E — Konto löschen, both ways: „Erst exportieren“ (a file is downloaded) and „Ohne Export
 //           weiter“; afterwards the sign-in fails.
+//   Row F — Passwort vergessen: request the reset from the login screen (neutral confirmation), take
+//           the one-time token from the Verification table (this stack logs the mail instead of
+//           sending it), follow the link the mail carries (the API callback, which redirects to
+//           /passwort-zuruecksetzen), set a new password, sign in with it; the used link is refused.
 // The e-mail verification banner has its own gate (e2e/visibility/visibility-refetch.mjs).
 import { createHash, createHmac, randomBytes } from 'node:crypto'
 import { request as playwrightRequest } from 'playwright-core'
@@ -16,6 +20,7 @@ import { launchBrowser, closeBrowser, newContextAtBreakpoint, guardAgainst429 } 
 import { startStack } from '../harness/stack.mjs'
 import { fail, waitForBucketHeadroom } from '../harness/rate-limit.mjs'
 import { FLOW_COPY, skipSplash, signUpOutOfBand, submitLogin } from '../harness/flows.mjs'
+import { verifyEmailSql, whereEmail } from '../harness/email-hash.mjs'
 
 const AUTH_BUCKET = { windowMs: 10_000, max: 3, shared: true }
 const PASSWORD = 'Sicheres-Passwort-1!'
@@ -26,7 +31,7 @@ async function account(apiOrigin, webOrigin, sql, label) {
   const email = `account-${label}-${Date.now()}@beispiel.de`
   await waitForBucketHeadroom(AUTH_BUCKET, 'sign-up/email', TAG)
   await signUpOutOfBand(apiOrigin, webOrigin, email, PASSWORD)
-  sql(`UPDATE "User" SET "emailVerified" = true WHERE email = '${email}'`)
+  sql(verifyEmailSql(email))
   return email
 }
 
@@ -260,7 +265,65 @@ async function main() {
       console.log(`[${TAG}] ✅ Row E — deleted (${way}); the sign-in fails afterwards`)
     }
 
-    console.log(`[${TAG}] PASS — profile, 2FA, devices, OAuth/MCP and account deletion verified.`)
+    // Row F — password reset by e-mail. The stack's mail sender only logs, so the token the mail
+    // carries is read from the Verification table (identifier `reset-password:<token>`, value = user id).
+    {
+      const email = await account(apiOrigin, webOrigin, sql, 'reset')
+      const NEW_PASSWORD = 'Ganz-Neues-Passwort-2!'
+      const ctx = await newContextAtBreakpoint(browser, 'l')
+      const page = await ctx.newPage()
+      guardAgainst429(page, fail, '/api/auth/')
+      await skipSplash(page, webOrigin)
+      await page.locator('[data-testid="login-passwort-vergessen"]').click()
+      await page.locator('[data-testid="passwort-vergessen-email"]').fill(email)
+      await waitForBucketHeadroom(AUTH_BUCKET, 'request-password-reset', TAG)
+      await page.locator('[data-testid="passwort-vergessen-senden"]').click()
+      const confirmation = page.locator('[data-testid="passwort-vergessen-bestaetigung"]')
+      await confirmation.waitFor({ state: 'visible', timeout: 10_000 })
+      if (!(await confirmation.innerText()).includes('Wenn es zu dieser Adresse ein Konto gibt')) {
+        fail('Row F: the request must answer with the neutral confirmation')
+      }
+
+      let token = ''
+      for (let i = 0; i < 20 && token === ''; i++) {
+        token = sql(
+          `SELECT replace(identifier, 'reset-password:', '') FROM "Verification" WHERE identifier LIKE 'reset-password:%' AND value = (SELECT id FROM "User" WHERE ${whereEmail(email)}) ORDER BY "createdAt" DESC LIMIT 1`,
+        )
+        if (token === '') await page.waitForTimeout(500)
+      }
+      if (token === '') fail('Row F: the request must leave a reset token for the account')
+      const mailLink = `${apiOrigin}/api/auth/reset-password/${token}?callbackURL=${encodeURIComponent(`${webOrigin}/passwort-zuruecksetzen`)}`
+
+      await page.goto(mailLink, { waitUntil: 'networkidle' })
+      await page.locator('[data-testid="passwort-reset-neu"]').waitFor({ state: 'visible', timeout: 15_000 })
+      if (new URL(page.url()).pathname !== '/passwort-zuruecksetzen') fail(`Row F: the mail link must land on /passwort-zuruecksetzen, got ${page.url()}`)
+      // The token is taken out of the address once the screen has read it.
+      await page.waitForFunction(() => !window.location.search.includes('token'), undefined, { timeout: 10_000 }).catch(() => {
+        fail(`Row F: the token must not stay in the address, got ${page.url()}`)
+      })
+      await page.locator('[data-testid="passwort-reset-neu"]').fill(NEW_PASSWORD)
+      await page.locator('[data-testid="passwort-reset-wiederholen"]').fill(NEW_PASSWORD)
+      await page.locator('[data-testid="passwort-reset-speichern"]').click()
+      await page.locator('[data-testid="passwort-reset-erfolg"]').waitFor({ state: 'visible', timeout: 15_000 })
+      await page.locator('[data-testid="passwort-reset-zum-login"]').click()
+      await waitForBucketHeadroom(AUTH_BUCKET, 'sign-in/email', TAG)
+      await submitLogin(page, email, NEW_PASSWORD)
+      await page.waitForURL((u) => u.pathname === '/app', { timeout: 15_000 })
+
+      // The old password is gone, and the used link is refused.
+      const old = await apiSignIn(apiOrigin, webOrigin, email)
+      if (old.res.ok()) fail('Row F: the old password must not sign in after the reset')
+      await old.api.dispose()
+      await page.goto(mailLink, { waitUntil: 'networkidle' })
+      await page.locator('[data-testid="passwort-reset-ungueltig"]').waitFor({ state: 'visible', timeout: 15_000 })
+      await page.locator('[data-testid="passwort-reset-neuer-link"]').click()
+      await page.locator('[data-testid="passwort-vergessen-zurueck"]').click()
+      await page.locator('[data-testid="login-passwort-vergessen"]').waitFor({ state: 'visible', timeout: 10_000 })
+      await ctx.close()
+      console.log(`[${TAG}] ✅ Row F — reset requested, mail link followed, new password set and signed in; old password and used link refused`)
+    }
+
+    console.log(`[${TAG}] PASS — profile, 2FA, devices, OAuth/MCP, account deletion and password reset verified.`)
   } finally {
     await closeBrowser(browser)
     await stop()

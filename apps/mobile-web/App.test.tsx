@@ -45,10 +45,11 @@ async function signUpFromSplash() {
 
   expect(await screen.findByText('Konto anlegen')).toBeTruthy()
   fireEvent.change(screen.getByPlaceholderText('du@beispiel.de'), { target: { value: 'neu@beispiel.de' } })
-  fireEvent.change(screen.getByPlaceholderText('Mindestens 8 Zeichen'), { target: { value: 'geheim-123' } })
+  fireEvent.change(screen.getByPlaceholderText('Mindestens 12 Zeichen'), { target: { value: 'geheim-123-lang' } })
   fireEvent.click(screen.getByText('Konto anlegen'))
 
-  await screen.findByText('Willkommen bei SteuerEule.')
+  // Sign-up returns no session (ADR-0109): the guest carries on into Onboarding.
+  await screen.findByText('Schau in dein Postfach.')
   fireEvent.click(screen.getByText('Weiter zum Onboarding →'))
 }
 
@@ -117,7 +118,7 @@ describe('App', () => {
     async () => {
       server.use(
         http.post(`${API_BASE_URL}/api/auth/sign-up/email`, () =>
-          HttpResponse.json({ token: 'tok_1', user: { id: 'u1', email: 'neu@beispiel.de', emailVerified: true, name: '' } }),
+          HttpResponse.json({ token: null, user: { id: 'u1', email: 'neu@beispiel.de', emailVerified: false, name: '' } }),
         ),
       )
       const { default: App } = await import('./App')

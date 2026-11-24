@@ -1,105 +1,85 @@
-# Production image for @steuereule/api (#76 — "true single-command docker compose up",
-# the stakeholder's own local reproduction that #76/#246 named but never built).
+# Production image for @steuereule/api, two stages: `build` compiles with every dependency, `runtime`
+# carries production dependencies only (ADR-0109). Build context is the repository root: this is a pnpm
+# workspace and @steuereule/api depends on @steuereule/core (workspace:*).
 #
-# BUILD CONTEXT IS THE REPO ROOT, not apps/api/ — this is a pnpm workspace and
-# @steuereule/api depends on @steuereule/core (workspace:*), so `pnpm install
-# --frozen-lockfile` needs the whole monorepo's manifests to resolve. docker-compose.prod.yml
-# sets `build.context: .` accordingly; don't try to build this Dockerfile with
-# `apps/api` as context, it will fail resolving the workspace dependency.
+# BOOT: `node --import tsx dist/main.js` is the only boot path proven over real HTTP (ADR-0010a, CI smoke).
+# packages/core ships TypeScript source (#75, unresolved), so `tsx` is a production dependency of apps/api
+# and the workspace layout (/repo/apps/api, /repo/packages/core, node_modules symlinks) is kept as is.
 #
-# BOOT MECHANISM — reused, not reinvented, and NOT a resolution of #75:
-# `packages/core/package.json` ships TypeScript source directly (`main: ./src/index.ts`,
-# no compiled JS, no `exports` map) — `node dist/main.js` alone dies with
-# ERR_MODULE_NOT_FOUND trying to resolve it. ADR-0010a's own bridge (`node --import tsx
-# dist/main.js`) is the ONLY boot path this repo has ever proven working over real HTTP —
-# CI's `smoke` and `cross-origin-smoke` jobs already boot exactly this way. This image
-# reuses that SAME proven bridge rather than inventing a second, unproven one for
-# production specifically. It still boots the *compiled* `dist/` (a real `tsc` build,
-# not raw `src/`), so a real dist-wiring regression is still caught — see ADR-0010a's own
-# reasoning for why that distinction matters.
-#
-# This is deliberately NOT #75's eventual answer (a real compiled/bundled
-# @steuereule/core with no TS-loader in the boot path — an architecture decision
-# reserved for Musti + the stakeholder, ADR-0010a's own "escalated, not settled here").
-# Read this Dockerfile as "the same smoke-tier bridge, now also serving a container",
-# not as #75 resolved.
-FROM node:24-bookworm-slim
+# The same image has a second role: docker-compose.prod.yml and the Cloud Run migrate job override CMD with
+# `cd /repo/apps/api && node scripts/migrate-deploy.mjs` (prisma CLI + schema + migrations are in the image).
 
+FROM node:24-bookworm-slim AS base
 RUN corepack enable
-
+# openssl must be installed BEFORE `prisma generate`: Prisma picks the query-engine binary target from the
+# openssl it finds, and a generate without it picks debian-openssl-1.1.x while the runtime finds 3.0.x.
+RUN apt-get update && apt-get install -y --no-install-recommends openssl && rm -rf /var/lib/apt/lists/*
 WORKDIR /repo
 
-# openssl MUST be installed BEFORE `pnpm install`/`prisma generate` below — this is the actual
-# defect, not just a nice-to-have ordering (Musti's #274 review, re-opened by the coordinator
-# once this fix's own CI run crashed the api container at boot): apps/api/package.json's own
-# `postinstall` hook runs `prisma generate` as PART OF `pnpm install --frozen-lockfile`, and this
-# repo also runs it explicitly again below. Prisma's query-engine generator probes the ACTUAL
-# environment it's running in to pick a binary target under `"native"` (the default, and what
-# this schema uses — no `binaryTargets` override). With openssl installed AFTER generate, as
-# this file had it in its first version, generate ran in an environment with NO openssl at all,
-# could not detect a version, and silently defaulted to `debian-openssl-1.1.x` — while the
-# RUNTIME container (after that first version's now-later openssl install) correctly detects
-# `debian-openssl-3.0.x`. Two wrong things happened to cancel out: no openssl meant a wrong
-# guess at generate time, and that wrong guess happened to match a runtime that ALSO had no
-# openssl to detect correctly (both defaulted to the same wrong value) — this file's own first
-# version's "OpenSSL warning, never a real failure" was true right up until openssl was actually
-# installed and the two sides stopped agreeing by accident. `PrismaClientInitializationError:
-# ...could not locate the Query Engine for runtime "debian-openssl-3.0.x"...was generated for
-# "debian-openssl-1.1.x"` is the exact, real crash this reordering fixes — confirmed via the
-# real `docker compose ... up` in CI's `prod-deploy-smoke` job, not guessed. Adding
-# `binaryTargets = ["native", "debian-openssl-3.0.x"]` to schema.prisma (Prisma's own suggested
-# fix in that error message) was considered and rejected: it would cure THIS symptom while
-# leaving the actual defect (generate and runtime seeing different environments) in place as a
-# second, independently-drifting truth to keep in sync by hand — exactly the class of doubled
-# maintenance this whole PR exists to remove elsewhere. Fixing the order fixes the cause once;
-# `"native"` then resolves correctly on its own, on whatever platform actually builds this image
-# (relevant to #274's own still-open arm64 question — Prisma ships distinct engine binaries per
-# architecture too, so `"native"` only resolves correctly if generate sees the real target
-# environment there as well, which this ordering fix now guarantees for any platform, not just
-# amd64 — still unverified ON arm64 specifically, since building for it is blocked in this
-# session; see README.md's own note).
-RUN apt-get update && apt-get install -y --no-install-recommends openssl && rm -rf /var/lib/apt/lists/*
-
-# Every workspace, not a pruned subset — `turbo prune` / a pnpm deploy manifest are real,
-# separate image-size follow-up work, out of scope for "make it boot correctly, now". Named
-# explicitly, so nothing outside the workspace (docs, infra, local notes) can end up in a layer;
-# `e2e` is a workspace member and the frozen lockfile needs its manifest.
+# -- build: all dependencies, compile ------------------------------------------------------------
+FROM base AS build
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.base.json turbo.json ./
 COPY apps ./apps
 COPY packages ./packages
+# `e2e` is a workspace member; the frozen lockfile needs its manifest.
 COPY e2e ./e2e
-
 RUN pnpm install --frozen-lockfile
-
-# Explicit, mirroring CI's own `smoke`/`cross-origin-smoke` steps exactly (belt-and-
-# suspenders alongside apps/api/package.json's own `postinstall` hook) — both now run AFTER
-# openssl is installed above, so both see the real runtime environment.
 RUN pnpm --filter @steuereule/api prisma:generate \
   && pnpm --filter @steuereule/api build
+# The workspace manifests alone (same paths), for the production install below.
+RUN mkdir /manifests \
+  && find apps packages e2e -maxdepth 2 -name package.json -not -path '*/node_modules/*' -exec cp --parents {} /manifests \;
 
-# REQ-011 (Musti's #274 review, F1) — `pdf-renderer.playwright.ts`'s own header comment states
-# the requirement plainly: "the API's production image must bundle the Chromium binary", named
-# there as a tracked follow-up rather than a blocker only because no production image existed
-# yet to bundle it into. This is that image, so the follow-up is due now. Without this,
-# `PlaywrightPdfRenderer.onModuleInit()` swallows the launch failure so boot survives, and
-# `renderPdf()` retries lazily — the failure is POSTPONED to a real user's first export click
-# against this exact image, not avoided. Verbatim the same install CI's own `smoke`/`integration`
-# jobs already run. Kept as its OWN step, not combined with the openssl `apt-get` above (an
-# earlier version of this file combined them into one `RUN`/one `apt-get`, per Musti's original
-# review) — needs `node_modules` already installed (`pnpm --filter ... exec`), so it cannot run
-# before `pnpm install`, and openssl now genuinely must.
+# -- runtime: production dependencies only -------------------------------------------------------
+# Everything pnpm does for the production tree happens here; the final image carries neither pnpm nor npm.
+FROM base AS prod
+COPY --from=build /manifests ./
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.base.json ./
+# Scripts are off here and run on purpose below: apps/api's postinstall needs sources that are not copied yet.
+RUN pnpm install --prod --frozen-lockfile --ignore-scripts --filter "@steuereule/api..."
+
+# Only what the app reads at runtime. The backfills the migrate role runs are TypeScript and import from
+# src/, so the sources go along (read by tsx, like packages/core).
+COPY packages/core ./packages/core
+COPY apps/api/prisma ./apps/api/prisma
+COPY apps/api/assets ./apps/api/assets
+COPY apps/api/src ./apps/api/src
+COPY apps/api/scripts/migrate-deploy.mjs apps/api/scripts/backfill-profile-name-encryption.ts apps/api/scripts/backfill-identity.ts ./apps/api/scripts/
+COPY --from=build /repo/apps/api/dist ./apps/api/dist
+
+# Install scripts of the dependencies that need them (engine binaries), then both Prisma clients (main +
+# keystore, generated into node_modules). Fails the build when the schema engine is missing, instead of the
+# migrate job failing on a read-only filesystem later.
+RUN pnpm rebuild @prisma/engines @prisma/client prisma esbuild \
+  && pnpm --filter @steuereule/api prisma:generate \
+  && test -n "$(find /repo/node_modules/.pnpm -name 'schema-engine-*' -print -quit)"
+
+# better-auth and others name vitest and typescript as optional peers, and pnpm resolves those to the
+# workspace's dev dependencies, so a `--prod` install still brings the test runner, its bundler and the
+# compiler. Nothing imports them at runtime (the import check below proves the app loads without them).
+RUN cd node_modules/.pnpm \
+  && rm -rf vitest@* @vitest+* vite@* vite-node@* tinypool@* typescript@* @typescript+* esbuild@0.21.* @esbuild+*@0.21.*
+
+# Static check that the production tree has everything the app imports (a devDependency used at runtime
+# fails here, not at the first request). Imports only; nothing connects to a database.
+RUN cd apps/api && node --import tsx --input-type=module -e "await import('@steuereule/core'); await import('@prisma-keystore/client'); await import('@fastify/cors'); await import('./dist/app.module.js'); await import('./src/auth/identity-backfill.prisma.js')"
+
+FROM node:24-bookworm-slim AS runtime
 ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
-RUN pnpm --filter @steuereule/api exec playwright-core install chromium --with-deps \
-  && chown -R node:node /repo /ms-playwright
+WORKDIR /repo
+# Root-owned: `node` can read but not write the code.
+COPY --from=prod /repo /repo
+
+# openssl for the Prisma engines, Chromium with its system libraries for the PDF export (REQ-011), started
+# with plain node. npm and corepack leave the image: nothing here installs packages, and their bundled
+# dependencies were most of what the container scan reported.
+RUN apt-get update && apt-get install -y --no-install-recommends openssl \
+  && node apps/api/node_modules/playwright-core/cli.js install chromium --with-deps \
+  && rm -rf /var/lib/apt/lists/* /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack \
+     /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack /root/.cache /root/.npm
 
 ENV NODE_ENV=production
 EXPOSE 3000
-
 WORKDIR /repo/apps/api
-
 USER node
-
-# Same bridge CI's own smoke job boots (ADR-0010a). docker-compose.prod.yml's one-shot
-# `migrate` service overrides this CMD to run `prisma migrate deploy` instead — same
-# image, two roles, no second Dockerfile to keep in sync.
 CMD ["node", "--import", "tsx", "dist/main.js"]

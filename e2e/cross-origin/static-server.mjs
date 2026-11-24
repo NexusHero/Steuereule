@@ -28,12 +28,66 @@ const MIME_TYPES = {
 
 const COMPRESSIBLE_EXTENSIONS = new Set(['.html', '.js', '.mjs', '.css', '.json', '.svg', '.map', '.wasm'])
 
+// Hosts the on-device dictation downloads its model from (src/lib/dictation/modelStore.ts); the file
+// hosts redirect to the CDN names below.
+const MODEL_HOSTS = ['https://huggingface.co', 'https://*.huggingface.co', 'https://*.hf.co']
+
+/**
+ * Headers every response carries. The Content-Security-Policy is only sent when the API origin is known
+ * (production: the Dockerfile and the deploy pass it): without it the page cannot be told which origin
+ * it may call, and the local E2E servers that start without it keep running unrestricted.
+ *
+ * Why each source (index.html has no inline script, the bundle no eval):
+ *  - style-src 'unsafe-inline': react-native-web writes its styles into <style> tags at runtime.
+ *  - script-src 'wasm-unsafe-eval': Tesseract (OCR) and onnxruntime (dictation) compile WebAssembly.
+ *  - worker-src 'self' blob:: workers are served from /ocr and /dictation; the OCR library may wrap one in a blob.
+ *  - connect-src: the API origin, plus the model host for the dictation download.
+ *  - img-src data: blob:: inlined icons and receipt previews.
+ */
+export function securityHeaders(apiOrigin) {
+  const headers = {
+    'strict-transport-security': 'max-age=31536000; includeSubDomains',
+    'x-content-type-options': 'nosniff',
+    'x-frame-options': 'DENY',
+    'referrer-policy': 'strict-origin-when-cross-origin',
+    'permissions-policy': 'camera=(self), microphone=(self), geolocation=(), payment=()',
+  }
+  if (apiOrigin) {
+    headers['content-security-policy'] = [
+      "default-src 'self'",
+      "script-src 'self' 'wasm-unsafe-eval'",
+      "style-src 'self' 'unsafe-inline'",
+      "img-src 'self' data: blob:",
+      "font-src 'self' data:",
+      `connect-src 'self' ${apiOrigin} ${MODEL_HOSTS.join(' ')}`,
+      "worker-src 'self' blob:",
+      "media-src 'self' blob:",
+      "object-src 'none'",
+      "base-uri 'self'",
+      "form-action 'self'",
+      "frame-ancestors 'none'",
+    ].join('; ')
+  }
+  return headers
+}
+
+/** The origin of a URL ("https://api.example.org/x" -> "https://api.example.org"), or null when it is none. */
+export function originOf(value) {
+  if (!value) return null
+  try {
+    return new URL(value).origin
+  } catch {
+    return null
+  }
+}
+
 /**
  * Starts a static file server rooted at `rootDir`, falling back to `index.html` for any
  * path that doesn't resolve to a real file (Expo's web export is a single-page bundle).
  * Resolves once the server is actually listening.
  */
-export function startStaticServer(rootDir, port, host = '127.0.0.1') {
+export function startStaticServer(rootDir, port, host = '127.0.0.1', options = {}) {
+  const baseHeaders = securityHeaders(originOf(options.apiOrigin))
   const fileCache = new Map()
 
   async function loadAsset(filePath) {
@@ -67,7 +121,7 @@ export function startStaticServer(rootDir, port, host = '127.0.0.1') {
         asset = await loadAsset(join(rootDir, 'index.html'))
       }
       if (!asset) {
-        res.writeHead(404, { 'content-type': 'text/plain' })
+        res.writeHead(404, { ...baseHeaders, 'content-type': 'text/plain' })
         res.end('Not found')
         return
       }
@@ -76,6 +130,7 @@ export function startStaticServer(rootDir, port, host = '127.0.0.1') {
 
       if (req.headers['if-none-match'] === asset.etag) {
         res.writeHead(304, {
+          ...baseHeaders,
           etag: asset.etag,
           'cache-control': cacheControl,
         })
@@ -88,6 +143,7 @@ export function startStaticServer(rootDir, port, host = '127.0.0.1') {
       const payload = useGzip ? asset.gzipBody : asset.body
 
       const headers = {
+        ...baseHeaders,
         'content-type': asset.contentType,
         'content-length': payload.length,
         'cache-control': cacheControl,
@@ -105,7 +161,7 @@ export function startStaticServer(rootDir, port, host = '127.0.0.1') {
       }
       res.end(payload)
     } catch (error) {
-      res.writeHead(500, { 'content-type': 'text/plain' })
+      res.writeHead(500, { ...baseHeaders, 'content-type': 'text/plain' })
       res.end(`Internal error: ${String(error)}`)
     }
   })
@@ -116,7 +172,8 @@ export function startStaticServer(rootDir, port, host = '127.0.0.1') {
   })
 }
 
-// CLI entry point — `node static-server.mjs --root <dir> --port <n> [--host <h>]`.
+// CLI entry point — `node static-server.mjs --root <dir> --port <n> [--host <h>] [--api-origin <url>]`.
+// The API origin (for the CSP connect-src) may also come from the env API_ORIGIN.
 // Used by CI/local scripts to boot the exported web bundle as its own background
 // process (pidfile-tracked), symmetric with how the compiled API is booted, so both
 // halves of the cross-origin pair are killed by PID only (#114), never a blanket kill.
@@ -132,9 +189,15 @@ if (isMain) {
   const port = Number(getArg('--port', '4173'))
   const host = getArg('--host', '127.0.0.1')
 
-  startStaticServer(root, port, host)
+  const apiOrigin = getArg('--api-origin', process.env.API_ORIGIN)
+  if (apiOrigin && !originOf(apiOrigin)) {
+    console.error(`[static-server] API origin is not a URL: ${apiOrigin}`)
+    process.exit(1)
+  }
+
+  startStaticServer(root, port, host, { apiOrigin })
     .then(() => {
-      console.log(`[static-server] serving ${root} at http://${host}:${port}`)
+      console.log(`[static-server] serving ${root} at http://${host}:${port}${apiOrigin ? ` (CSP for API ${originOf(apiOrigin)})` : ' (no CSP: API origin unknown)'}`)
     })
     .catch((error) => {
       console.error(`[static-server] failed to start: ${String(error)}`)

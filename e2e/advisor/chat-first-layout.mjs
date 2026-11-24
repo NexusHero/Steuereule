@@ -26,6 +26,7 @@ import { launchBrowser, closeBrowser, newContextAtBreakpoint, guardAgainst429 } 
 import { startStack } from '../harness/stack.mjs'
 import { fail, waitForBucketHeadroom } from '../harness/rate-limit.mjs'
 import { skipSplash, signUpOutOfBand, submitLogin } from '../harness/flows.mjs'
+import { verifyEmailSql, whereEmail } from '../harness/email-hash.mjs'
 
 const AUTH_BUCKET = { windowMs: 10_000, max: 3, shared: true }
 const TEST_PASSWORD = 'Sicheres-Passwort-1!'
@@ -119,7 +120,7 @@ async function main() {
     const email = `chat-first-e2e-${Date.now()}@beispiel.de`
     await waitForBucketHeadroom(AUTH_BUCKET, 'sign-up/email', TAG)
     await signUpOutOfBand(apiOrigin, webOrigin, email, TEST_PASSWORD)
-    sql(`UPDATE "User" SET "emailVerified" = true WHERE email = '${email}'`)
+    sql(verifyEmailSql(email))
 
     const ctx = await newContextAtBreakpoint(browser, 'l')
     const page = await ctx.newPage()
@@ -183,7 +184,7 @@ async function main() {
     await byId(page, 'advisor-feedback-reason-unklar').first().click()
     await reasonStored.catch(() => fail('Row C: choosing a reason should store it'))
     await see(page, 'advisor-feedback-thanks', 'Row C')
-    const stored = sql(`SELECT bewertung || ':' || coalesce("bewertungGrund", '') FROM "BeraterNachricht" m JOIN "User" u ON u.id = m."userId" WHERE u.email = '${email}' AND m.rolle = 'assistant'`)
+    const stored = sql(`SELECT bewertung || ':' || coalesce("bewertungGrund", '') FROM "BeraterNachricht" m JOIN "User" u ON u.id = m."userId" WHERE u.${whereEmail(email)} AND m.rolle = 'assistant'`)
     if (!String(stored).includes('down:unklar')) fail(`Row C: the rating should be stored as down/unklar, the database says "${String(stored).trim()}"`)
     console.log(`[${TAG}] ✅ Row C — thumbs up, then down with a reason; stored with the answer`)
 
@@ -284,7 +285,7 @@ async function main() {
     await deleteOther()
     await byId(page, 'eule-conversation-delete-confirm').click()
     await rowCountIs(1, 'the deleted conversation should leave the list')
-    const left = sql(`SELECT count(*) FROM "BeraterGespraech" g JOIN "User" u ON u.id = g."userId" WHERE u.email = '${email}'`)
+    const left = sql(`SELECT count(*) FROM "BeraterGespraech" g JOIN "User" u ON u.id = g."userId" WHERE u.${whereEmail(email)}`)
     if (String(left).trim() !== '1') fail(`Row G: one conversation should be left in the database, found ${String(left).trim()}`)
     console.log(`[${TAG}] ✅ Row G — new conversation, own messages each, named after the first question, rename, switch, search, delete after a second step`)
 
@@ -305,7 +306,7 @@ async function main() {
     await byId(page, 'eule-note-input').fill('Fahrtenbuch ist nachgereicht.')
     await byId(page, 'eule-note-save').click()
     await page.waitForFunction(() => document.querySelector('[data-testid="eule-note-row"]')?.textContent?.includes('ist nachgereicht'), null, { timeout: 10_000 }).catch(() => fail('Row H: the changed text should show'))
-    const storedNotes = sql(`SELECT count(*) FROM "BeraterNotiz" n JOIN "User" u ON u.id = n."userId" WHERE u.email = '${email}'`)
+    const storedNotes = sql(`SELECT count(*) FROM "BeraterNotiz" n JOIN "User" u ON u.id = n."userId" WHERE u.${whereEmail(email)}`)
     if (String(storedNotes).trim() !== '1') fail(`Row H: the note should be stored once, found ${String(storedNotes).trim()}`)
     await page.route('**/advisor/notes/*', async (route) => {
       if (route.request().method() === 'DELETE') await route.fulfill({ status: 500, contentType: 'application/json', body: '{"code":"INTERNAL"}' })
@@ -331,7 +332,7 @@ async function main() {
     await page.unroute('**/advisor/situation')
     await byId(page, 'eule-situation-save').click()
     await see(page, 'eule-situation-saved', 'Row U')
-    const storedSituations = sql(`SELECT count(*) FROM "BeraterSituation" s JOIN "User" u ON u.id = s."userId" WHERE u.email = '${email}'`)
+    const storedSituations = sql(`SELECT count(*) FROM "BeraterSituation" s JOIN "User" u ON u.id = s."userId" WHERE u.${whereEmail(email)}`)
     if (String(storedSituations).trim() !== '1') fail(`Row U: the situation should be stored once, found ${String(storedSituations).trim()}`)
     await page.keyboard.press('Escape')
     await gone(page, 'eule-situation-sheet', 'Row U')

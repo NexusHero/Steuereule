@@ -17,6 +17,7 @@
     "openapi:spec": "tsx scripts/generate-openapi-spec.ts",
     "streets:fetch": "tsx scripts/fetch-street-data.ts",
     "skills:generate": "tsx scripts/generate-skills.ts",
+    "backfill:identity": "tsx scripts/backfill-identity.ts",
     "laws:check": "tsx scripts/check-law-changes.ts",
     "seed:year-history": "tsx prisma/seed-year-history.ts",
     "seed:selbststaendig": "tsx prisma/seed-selbststaendig.ts"
@@ -29,6 +30,7 @@
     "@better-auth/passkey": "^1.7.15",
     "@better-auth/prisma-adapter": "1.7.15",
     "@fastify/cookie": "^11.1.2",
+    "@fastify/cors": "^11.2.0",
     "@fastify/helmet": "^13.1.0",
     "@fastify/multipart": "^10.1.8",
     "@fastify/static": "^10.1.1",
@@ -54,14 +56,15 @@
     "nodemailer": "^10.6.1",
     "pdf-lib": "1.17.1",
     "playwright-core": "1.56.1",
+    "prisma": "6.19.3",
     "prisma-field-encryption": "^1.6.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2",
     "stripe": "23.0.0",
+    "tsx": "^4.19.2",
     "zod": "^4.6.7"
   },
   "devDependencies": {
-    "@fastify/cors": "^11.2.0",
     "@fastify/proxy-addr": "^5.1.0",
     "@levischuck/tiny-cbor": "^0.2.11",
     "@nestjs/testing": "^11.1.28",
@@ -69,8 +72,6 @@
     "@types/node": "^22.10.5",
     "@types/nodemailer": "^8.0.2",
     "light-my-request": "^6.6.0",
-    "prisma": "6.19.3",
-    "tsx": "^4.19.2",
     "typescript": "^7.0.0",
     "unplugin-swc": "^1.5.9"
   }

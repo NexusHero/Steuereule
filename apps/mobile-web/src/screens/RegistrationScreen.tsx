@@ -8,7 +8,7 @@ import { authErrorKey } from '../auth/authErrors'
 import { useEmailVerified } from '../auth/useEmailVerified'
 import { SocialSignInSection } from './shared/SocialSignInSection'
 import { EmailVerificationBanner } from './shared/EmailVerificationBanner'
-import { MIN_PASSWORD_LENGTH } from '../auth/password-policy'
+import { NEW_PASSWORD_MIN_LENGTH } from '../auth/password-policy'
 
 export interface RegistrationScreenProps {
   readonly onDone: () => void
@@ -31,9 +31,12 @@ export function RegistrationScreen({ onDone, onLogin }: RegistrationScreenProps)
   const [pass, setPass] = useState('')
   const [errorMessage, setError] = useState('')
   const [stage, setStage] = useState<Stage>({ kind: 'form' })
+
+  // Live: true only once a session for this very address reports it verified (signed in on another tab or
+  // device after following the link). A guest, and a taken address, never see it: no oracle.
   const verifiedForThisAccount = useEmailVerified(stage.kind === 'success' ? stage.email : undefined)
 
-  const ok = mail.includes('@') && pass.length >= MIN_PASSWORD_LENGTH
+  const ok = mail.includes('@') && pass.length >= NEW_PASSWORD_MIN_LENGTH
 
   async function create() {
     if (!ok) {
@@ -49,7 +52,9 @@ export function RegistrationScreen({ onDone, onLogin }: RegistrationScreenProps)
         setError(tr(`auth.${authErrorKey(error)}`))
         return
       }
-      setStage({ kind: 'success', email: data.user.email })
+      // The answer is the same for a new and a taken address and carries no session (ADR-0109): say only
+      // that a mail is on its way. The guest carries on; the data moves at the first verified sign-in.
+      setStage({ kind: 'success', email: mail })
     } catch {
       setStage({ kind: 'form' })
       setError(tr('auth.errGeneric'))
@@ -63,8 +68,6 @@ export function RegistrationScreen({ onDone, onLogin }: RegistrationScreenProps)
         <Text style={styles.successHeading} role="heading" aria-level={1}>
           {tr('registrierung.success.heading')}
         </Text>
-        <Text style={styles.successSubtitle}>{tr('registrierung.success.subtitle')}</Text>
-
         <EmailVerificationBanner email={stage.email} verified={verifiedForThisAccount} />
 
         <Button onPress={onDone} style={styles.cta} testID="registrierung-success-weiter">

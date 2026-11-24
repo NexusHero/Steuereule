@@ -17,7 +17,7 @@
 import { PrismaClient } from '@prisma/client'
 import { describe, expect, it } from 'vitest'
 import { resolveGuestSessionSecret, verifyGuestSession } from '../../src/auth/guest-session.js'
-import { baseUrl, prisma, useAcceptanceServer } from '../support/acceptance-server.js'
+import { baseUrl, prisma, useAcceptanceServer, verifyAndSignIn } from '../support/acceptance-server.js'
 
 const ALLOWED_ORIGIN = 'https://allowed.example.com'
 const TRUSTED_ORIGIN_HEADERS = { origin: ALLOWED_ORIGIN }
@@ -231,7 +231,8 @@ describe('REQ-004 — immutable audit log of tax-data access, against the real s
       })
       expect(signUp.status).toBe(200)
       const body = (await signUp.json()) as { user: { id: string } }
-      const cookie = signUp.headers.get('set-cookie')!.split(';')[0]!
+      const signedIn = await verifyAndSignIn(email, 'a-fine-strong-password-1')
+      const cookie = signedIn.headers.get('set-cookie')!.split(';')[0]!
 
       const put = await fetch(`${baseUrl}/v1/profile`, {
         method: 'PUT',

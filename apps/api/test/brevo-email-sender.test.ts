@@ -48,6 +48,18 @@ describe('BrevoEmailSender', () => {
   })
 })
 
+describe('BrevoEmailSender existing-account notice', () => {
+  it('mails the owner a sign-in link and no token', async () => {
+    const { calls, impl } = recordingFetch()
+    await new BrevoEmailSender(config, impl).sendExistingAccountNotice({ to: 'nutzer@example.de', subject: 'Hinweis', url: 'https://app.steuereule.de/login' })
+    const body = JSON.parse(String(calls[0]!.init.body))
+    expect(body.to).toEqual([{ email: 'nutzer@example.de' }])
+    expect(body.textContent).toContain('https://app.steuereule.de/login')
+    expect(body.textContent).toContain('Passwort zurück')
+    expect(body.textContent).not.toContain('token')
+  })
+})
+
 describe('resolveBrevoConfig', () => {
   it('returns the config when key and sender are set', () => {
     expect(resolveBrevoConfig({ BREVO_API_KEY: 'k', EMAIL_FROM: 'a@b.de' })).toEqual({

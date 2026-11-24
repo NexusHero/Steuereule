@@ -107,6 +107,7 @@ export function buildExportReportHtml(document: ExportDocument): string {
     ${renderTaxDataSection(document.taxData)}
 
     <h2>Zugriffsprotokoll (eigene Zugriffe)</h2>
+    ${document.accessLogNewestOnly === undefined ? '' : `<p>Dieser Bericht zeigt die letzten ${document.accessLogNewestOnly} Zugriffe. Das vollständige Protokoll enthält der Export als JSON-Datei.</p>`}
     <table>
       <thead><tr><th>Aktion</th><th>Ressource</th><th>Zeitpunkt</th></tr></thead>
       <tbody>${renderAccessLogRows(document.accessLog)}</tbody>

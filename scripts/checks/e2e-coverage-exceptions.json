@@ -7,6 +7,10 @@
     "gesundheit-gate=*": "HOUSEHOLD_AND_HEALTH_BOOSTERS is false, see haushalt-gate=*"
   },
   "testIds": {
+    "md-link-confirm": "the confirm step for a link the model wrote to a host outside the official sources: the fake KiPort of the browser gate never writes an external Markdown link and the answer text cannot be scripted from a gate; covered by MarkdownMessage.test.tsx (shows the host, opens only after „Link öffnen“, nothing on „Abbrechen“) and markdownLinks.test.tsx (classification)",
+    "md-link-host": "see md-link-confirm",
+    "md-link-open": "see md-link-confirm",
+    "md-link-cancel": "see md-link-confirm",
     "microphone": "not a testID: the name of the icon in DictationBar's `isRecording ? 'stop' : 'microphone'`, picked up by the ternary scan next to a testID",
     "stop": "not a testID: icon name, see microphone",
     "eule-inline-mask-unplaced": "the notice for a question that is on no page of the workbench: every question the owl may draft is placed (locate-question.test.ts checks that every question of the interview has a page), so the browser can never reach it; it is covered by OwlInlineMask.test.tsx (#488)",

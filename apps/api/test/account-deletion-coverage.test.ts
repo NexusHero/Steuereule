@@ -21,6 +21,7 @@ const HANDLED_ELSEWHERE: Record<string, string> = {
   OauthAccessToken: 'cascades off User',
   OauthConsent: 'cascades off User',
   DeviceCode: 'deleted by its own step',
+  GuestActivity: 'the guest retention clock; the sweep drops it with the guest (ADR-0109)',
   LegalHold: 'the retention record itself — must outlive the erasure it justifies',
 }
 

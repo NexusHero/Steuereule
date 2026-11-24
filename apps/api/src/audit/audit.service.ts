@@ -10,7 +10,11 @@ export class AuditService {
     return this.repository.append(entry)
   }
 
-  findOwnRows(userId: string): Promise<AuditLogRow[]> {
-    return this.repository.findOwnRows(userId)
+  findOwnRows(userId: string, options?: { newest?: number }): Promise<AuditLogRow[]> {
+    return this.repository.findOwnRows(userId, options)
+  }
+
+  streamOwnRows(userId: string, options: { batchSize: number; before: Date }): AsyncIterable<AuditLogRow[]> {
+    return this.repository.streamOwnRows(userId, options)
   }
 }

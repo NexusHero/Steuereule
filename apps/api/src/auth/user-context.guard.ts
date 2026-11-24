@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto'
-import { ForbiddenException, Inject, Injectable, UnauthorizedException, type CanActivate, type ExecutionContext } from '@nestjs/common'
+import { ForbiddenException, Inject, Injectable, Optional, UnauthorizedException, type CanActivate, type ExecutionContext } from '@nestjs/common'
 import { fromNodeHeaders } from 'better-auth/node'
 import type { FastifyReply, FastifyRequest } from 'fastify'
 import { ACCEPTS_ASSISTANT_TOKEN } from './accepts-assistant-token.js'
@@ -10,6 +10,7 @@ import { verifyJwsAccessToken } from 'better-auth/oauth2'
 import { authIssuer, mcpResourceUrls } from './mcp-oauth.js'
 import { isSessionWithinAbsoluteCap } from './session-lifetime.js'
 import { TooManyRequestsError } from '../common/domain-error.js'
+import { GUEST_ACTIVITY_RECORDER, type GuestActivityRecorder } from '../guest/guest-retention.js'
 
 type JwksFetch = Extract<Parameters<typeof verifyJwsAccessToken>[1]['jwksFetch'], () => unknown>
 
@@ -58,6 +59,7 @@ export class UserContextGuard implements CanActivate {
   constructor(
     @Inject(BETTER_AUTH_BUNDLE) private readonly betterAuth: BetterAuthBundle,
     @Inject(BEARER_TOKEN_REPOSITORY) private readonly tokens: BearerTokenRepository,
+    @Optional() @Inject(GUEST_ACTIVITY_RECORDER) private readonly guestActivity?: GuestActivityRecorder,
   ) {}
 
   /**
@@ -102,6 +104,9 @@ export class UserContextGuard implements CanActivate {
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest<RequestWithUserId>()
     const reply = context.switchToHttp().getResponse<FastifyReply>()
+
+    // The guest sweep rides on any guarded request (ADR-0109); it runs at most once an hour per process.
+    this.guestActivity?.seen()
 
     const authHeader = request.headers?.authorization
     if (typeof authHeader === 'string' && authHeader.startsWith('Bearer ')) {
@@ -178,6 +183,9 @@ export class UserContextGuard implements CanActivate {
       if (!decision.allowed) {
         throw new TooManyRequestsError('GUEST_WRITE_LIMIT', 'Zu viele Änderungen ohne Konto. Lege ein Konto an oder versuch es später noch mal.')
       }
+      // The retention clock (ADR-0109): 30 days after the last write the guest's data is erased. A failed
+      // note must not fail the write; the guest then simply is not swept until the next one succeeds.
+      await this.guestActivity?.touch(userId).catch(() => undefined)
     }
 
     request[USER_ID_REQUEST_KEY] = userId

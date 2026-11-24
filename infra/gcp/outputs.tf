@@ -37,3 +37,18 @@ output "redis_host" {
   description = "Private address of the Redis instance; empty while enable_redis is false."
   value       = var.enable_redis ? google_redis_instance.runs[0].host : ""
 }
+
+output "redis_tls_ca_secret" {
+  description = "Secret Manager secret that holds the Redis server CA (env REDIS_TLS_CA of the API); empty while enable_redis is false."
+  value       = var.enable_redis ? google_secret_manager_secret.app["REDIS_TLS_CA"].secret_id : ""
+}
+
+output "vpc_network" {
+  description = "GitHub variable GCP_VPC_NETWORK: the network Cloud Run joins to reach Cloud SQL and Redis."
+  value       = data.google_compute_network.vpc.name
+}
+
+output "vpc_subnet" {
+  description = "GitHub variable GCP_VPC_SUBNET: the subnet for Direct VPC egress."
+  value       = var.vpc_subnet
+}

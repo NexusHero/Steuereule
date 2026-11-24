@@ -34,9 +34,16 @@
       "@huggingface/transformers>sharp": "-",
       "node-forge": "1.4.2",
       "effect": "3.22.5",
+      "@fastify/static": "^10.1.12",
+      "nodemailer": "^10.6.1",
       "undici": "^6.29.1",
+      "find-my-way": ">=9.10.2",
+      "fast-uri@>=3.0.0 <4.0.0": "^3.1.7",
+      "fast-uri@>=4.0.0": "^4.1.4",
+      "prisma-field-encryption>zod": "^4.6.7",
+      "source-map-js": "^1.2.2",
       "fastify": "^5.12.8",
-      "find-my-way": ">=9.10.2"
+      "nanoid@>=3.0.0 <4.0.0": "^3.3.18"
     },
     "onlyBuiltDependencies": [
       "@bundled-es-modules/glob",

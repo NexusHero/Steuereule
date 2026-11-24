@@ -1,5 +1,9 @@
-# Beta deployment to Google Cloud Run (ADR-0053). Runs after a green CI on main; until the
-# GCP_* repository variables exist, the deploy job skips with a named notice.
+# Deployment to Google Cloud Run (ADR-0053), two environments (ADR-0109):
+#   staging     every green CI on main, automatically.
+#   production  only by hand: Actions -> Deploy -> Run workflow -> environment "production". The job is
+#               bound to the GitHub environment "production", so required reviewers configured there
+#               must approve it, and the GCP side only accepts tokens of that environment.
+# Until the GCP_* variables exist, an automatic staging deploy skips with a named notice.
 name: Deploy
 
 on:
@@ -8,6 +12,15 @@ on:
     types: [completed]
     branches: [main]
   workflow_dispatch:
+    inputs:
+      environment:
+        description: Where to deploy. Production asks the reviewers of the GitHub environment "production" for approval.
+        type: choice
+        required: true
+        options:
+          - staging
+          - production
+        default: staging
   pull_request:
     paths:
       - "infra/**"
@@ -17,7 +30,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: deploy-beta
+  group: deploy-${{ github.event_name == 'workflow_dispatch' && inputs.environment || 'staging' }}
   cancel-in-progress: false
 
 env:
@@ -41,32 +54,49 @@ jobs:
           tofu fmt -check -recursive infra/gcp
 
   deploy:
-    name: Deploy beta (Cloud Run)
+    name: Deploy (Cloud Run)
     if: >-
       github.event_name == 'workflow_dispatch' ||
       (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' &&
        github.event.workflow_run.event == 'push' &&
        github.event.workflow_run.head_repository.full_name == github.repository)
     runs-on: ubuntu-latest
-    environment: beta
+    # Environment-level variables (GCP_*, APP_DOMAIN, ...) override the repository-level ones of the same
+    # name, so production can point at its own project. Staging keeps working with the repository ones.
+    environment: ${{ github.event_name == 'workflow_dispatch' && inputs.environment || 'staging' }}
     permissions:
       contents: read
       id-token: write
     env:
+      TARGET_ENV: ${{ github.event_name == 'workflow_dispatch' && inputs.environment || 'staging' }}
       PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
       APP_DOMAIN: ${{ vars.APP_DOMAIN }}
       EMAIL_FROM: ${{ vars.EMAIL_FROM }}
       TRUSTED_PROXIES: ${{ vars.TRUSTED_PROXIES || '169.254.0.0/16' }}
       SQL_INSTANCE: ${{ vars.GCP_SQL_INSTANCE }}
       KEYSTORE_SQL_INSTANCE: ${{ vars.GCP_KEYSTORE_SQL_INSTANCE }}
+      # Cloud SQL has a private address only (and Redis too): the service and the migrate job join this
+      # network with Direct VPC egress. Only private ranges go through it.
+      VPC_NETWORK: ${{ vars.GCP_VPC_NETWORK }}
+      VPC_SUBNET: ${{ vars.GCP_VPC_SUBNET }}
       API_SA: ${{ vars.GCP_RUNTIME_SA }}
       WEB_SA: ${{ vars.GCP_WEB_SA }}
     steps:
       - name: Configuration gate
         id: gate
         run: |
+          # Production must never fall back to the repository-level (staging) variables: its GitHub
+          # environment has to set GCP_ENVIRONMENT=production next to its own GCP_* values.
+          if [ "$TARGET_ENV" = "production" ] && [ "$GCP_ENVIRONMENT" != "production" ]; then
+            echo "::error::Environment 'production' has no variable GCP_ENVIRONMENT=production — refusing to deploy with repository-level (staging) values."
+            exit 1
+          fi
+          if [ "$TARGET_ENV" = "production" ] && [ "$GITHUB_REF" != "refs/heads/main" ]; then
+            echo "::error::Production deploys only from main (this run is on $GITHUB_REF)."
+            exit 1
+          fi
           missing=""
-          for name in GCP_PROJECT_ID GCP_WIF_PROVIDER GCP_DEPLOYER_SA GCP_RUNTIME_SA GCP_WEB_SA GCP_SQL_INSTANCE GCP_KEYSTORE_SQL_INSTANCE APP_DOMAIN EMAIL_FROM; do
+          for name in GCP_PROJECT_ID GCP_WIF_PROVIDER GCP_DEPLOYER_SA GCP_RUNTIME_SA GCP_WEB_SA GCP_SQL_INSTANCE GCP_KEYSTORE_SQL_INSTANCE GCP_VPC_NETWORK GCP_VPC_SUBNET APP_DOMAIN EMAIL_FROM; do
             [ -n "${!name}" ] || missing="$missing $name"
           done
           if [ -n "$missing" ]; then
@@ -74,12 +104,13 @@ jobs:
               echo "::error::Repository variables missing:$missing — run scripts/infra/gcp-setup.sh first."
               exit 1
             fi
-            echo "::notice::Beta deployment not configured yet (missing:$missing) — skipped."
+            echo "::notice::Deployment of $TARGET_ENV not configured yet (missing:$missing) — skipped."
             echo "ready=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
           echo "ready=true" >> "$GITHUB_OUTPUT"
         env:
+          GCP_ENVIRONMENT: ${{ vars.GCP_ENVIRONMENT }}
           GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
           GCP_WIF_PROVIDER: ${{ vars.GCP_WIF_PROVIDER }}
           GCP_DEPLOYER_SA: ${{ vars.GCP_DEPLOYER_SA }}
@@ -87,6 +118,8 @@ jobs:
           GCP_WEB_SA: ${{ vars.GCP_WEB_SA }}
           GCP_SQL_INSTANCE: ${{ vars.GCP_SQL_INSTANCE }}
           GCP_KEYSTORE_SQL_INSTANCE: ${{ vars.GCP_KEYSTORE_SQL_INSTANCE }}
+          GCP_VPC_NETWORK: ${{ vars.GCP_VPC_NETWORK }}
+          GCP_VPC_SUBNET: ${{ vars.GCP_VPC_SUBNET }}
           APP_DOMAIN: ${{ vars.APP_DOMAIN }}
           EMAIL_FROM: ${{ vars.EMAIL_FROM }}
 
@@ -127,14 +160,14 @@ jobs:
         if: steps.gate.outputs.ready == 'true'
         run: |
           secrets=""
-          for name in DATABASE_URL GUEST_SESSION_SECRET PRISMA_FIELD_ENCRYPTION_KEY KEYSTORE_DATABASE_URL KEYSTORE_MASTER_KEY BETTER_AUTH_SECRET BREVO_API_KEY \
+          for name in DATABASE_URL GUEST_SESSION_SECRET PRISMA_FIELD_ENCRYPTION_KEY PRISMA_FIELD_ENCRYPTION_HASH_SALT KEYSTORE_DATABASE_URL KEYSTORE_MASTER_KEY BETTER_AUTH_SECRET BREVO_API_KEY \
                       GOOGLE_CLIENT_ID GOOGLE_CLIENT_SECRET STRIPE_SECRET_KEY STRIPE_WEBHOOK_SECRET \
-                      GEMINI_API_KEY ANTHROPIC_API_KEY OPENAI_API_KEY REDIS_URL; do
+                      GEMINI_API_KEY ANTHROPIC_API_KEY OPENAI_API_KEY REDIS_URL REDIS_TLS_CA; do
             if [ -n "$(gcloud secrets versions list "$name" --filter=state=enabled --limit=1 --format='value(name)')" ]; then
               secrets="$secrets,$name=$name:latest"
             fi
           done
-          for required in DATABASE_URL GUEST_SESSION_SECRET PRISMA_FIELD_ENCRYPTION_KEY KEYSTORE_DATABASE_URL KEYSTORE_MASTER_KEY BETTER_AUTH_SECRET BREVO_API_KEY; do
+          for required in DATABASE_URL GUEST_SESSION_SECRET PRISMA_FIELD_ENCRYPTION_KEY PRISMA_FIELD_ENCRYPTION_HASH_SALT KEYSTORE_DATABASE_URL KEYSTORE_MASTER_KEY BETTER_AUTH_SECRET BREVO_API_KEY; do
             case "$secrets," in
               *",$required="*) ;;
               *) echo "::error::Secret $required has no enabled version — run scripts/infra/gcp-setup.sh."; exit 1 ;;
@@ -166,8 +199,9 @@ jobs:
             --image "$API_IMAGE" --region "$REGION" \
             --service-account "$API_SA" \
             --set-cloudsql-instances "$SQL_INSTANCE,$KEYSTORE_SQL_INSTANCE" \
-            --set-secrets "DATABASE_URL=DATABASE_URL:latest,KEYSTORE_DATABASE_URL=KEYSTORE_DATABASE_URL:latest" \
-            --command sh --args="-c,cd /repo && pnpm --filter @steuereule/api migrate:deploy" \
+            --network "$VPC_NETWORK" --subnet "$VPC_SUBNET" --vpc-egress private-ranges-only \
+            --set-secrets "DATABASE_URL=DATABASE_URL:latest,KEYSTORE_DATABASE_URL=KEYSTORE_DATABASE_URL:latest,PRISMA_FIELD_ENCRYPTION_KEY=PRISMA_FIELD_ENCRYPTION_KEY:latest,PRISMA_FIELD_ENCRYPTION_HASH_SALT=PRISMA_FIELD_ENCRYPTION_HASH_SALT:latest" \
+            --command sh --args="-c,cd /repo/apps/api && node scripts/migrate-deploy.mjs" \
             --max-retries 0 --task-timeout 600s \
             --execute-now --wait
 
@@ -177,16 +211,7 @@ jobs:
       # the instance that holds its run while there is no shared Redis.
       - name: Deploy API
         if: steps.gate.outputs.ready == 'true'
-        env:
-          VPC_NETWORK: ${{ vars.GCP_VPC_NETWORK }}
-          VPC_SUBNET: ${{ vars.GCP_VPC_SUBNET }}
         run: |
-          # A private Redis (Memorystore) is only reachable through the VPC; without the two
-          # repository variables the API keeps its public egress and runs without Redis.
-          vpc_flags=()
-          if [ -n "$VPC_NETWORK" ] && [ -n "$VPC_SUBNET" ]; then
-            vpc_flags=(--network "$VPC_NETWORK" --subnet "$VPC_SUBNET" --vpc-egress private-ranges-only)
-          fi
           gcloud run deploy steuereule-api \
             --image "$API_IMAGE" --region "$REGION" \
             --service-account "$API_SA" \
@@ -196,7 +221,7 @@ jobs:
             --cpu 1 --memory 2Gi --cpu-boost \
             --no-cpu-throttling --session-affinity \
             --min-instances 0 --max-instances 10 --concurrency 80 --timeout 120 \
-            "${vpc_flags[@]}" \
+            --network "$VPC_NETWORK" --subnet "$VPC_SUBNET" --vpc-egress private-ranges-only \
             --allow-unauthenticated
 
       - name: Build and push web image

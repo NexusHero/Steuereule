@@ -1,5 +1,8 @@
 import { Global, Module } from '@nestjs/common'
 import { APP_GUARD } from '@nestjs/core'
+import { PrismaGuestActivityRepository } from '../guest/guest-activity.repository.prisma.js'
+import { GUEST_ACTIVITY_RECORDER, GuestActivityNotes } from '../guest/guest-retention.js'
+import { ENCRYPTED_PRISMA, type EncryptedPrismaClient } from '../prisma/encrypted-prisma.provider.js'
 import { PrismaModule } from '../prisma/prisma.module.js'
 import { PrismaService } from '../prisma/prisma.service.js'
 import { resolveCorsOrigins } from '../cors/resolve-cors-origins.js'
@@ -28,10 +31,13 @@ import { OAuthDiscoveryController } from './oauth-discovery.controller.js'
       // Fails closed in production if no real provider is configured (ADR-0104 M1).
       useFactory: (): EmailSender => createEmailSender(),
     },
+    // The retention clock of guests (ADR-0109); the sweep that reads it lives in AccountModule.
+    { provide: GUEST_ACTIVITY_RECORDER, inject: [PrismaService], useFactory: (prisma: PrismaService) => new GuestActivityNotes(new PrismaGuestActivityRepository(prisma)) },
     {
       provide: BETTER_AUTH_BUNDLE,
-      inject: [PrismaService, EMAIL_SENDER],
-      useFactory: (prisma: PrismaService, emailSender: EmailSender) =>
+      // The encrypted client: name, e-mail and session address are ciphertext at rest (ADR-0109).
+      inject: [ENCRYPTED_PRISMA, EMAIL_SENDER, GUEST_ACTIVITY_RECORDER],
+      useFactory: (prisma: EncryptedPrismaClient, emailSender: EmailSender, recorder: GuestActivityNotes) =>
         createBetterAuth({
           prisma,
           secret: resolveBetterAuthSecret(),
@@ -39,6 +45,8 @@ import { OAuthDiscoveryController } from './oauth-discovery.controller.js'
           trustedOrigins: resolveCorsOrigins(),
           webAppUrl: resolveWebAppUrl(),
           emailSender,
+          // A sign-in or sign-up is traffic too: it gives the guest sweep a chance to run (ADR-0029, ADR-0109).
+          onSweepOpportunity: () => recorder.afterTouch?.(),
           googleClientId: resolveGoogleClientId(),
           googleClientSecret: resolveGoogleClientSecret(),
           appleSignInEnabled: resolveAppleSignInEnabled(),
@@ -54,6 +62,6 @@ import { OAuthDiscoveryController } from './oauth-discovery.controller.js'
     UserContextGuard,
     RequiresAccountGuard,
   ],
-  exports: [BETTER_AUTH_BUNDLE, EMAIL_SENDER, BEARER_TOKEN_REPOSITORY, UserContextGuard, RequiresAccountGuard, PrismaModule],
+  exports: [GUEST_ACTIVITY_RECORDER, BETTER_AUTH_BUNDLE, EMAIL_SENDER, BEARER_TOKEN_REPOSITORY, UserContextGuard, RequiresAccountGuard, PrismaModule],
 })
 export class AuthModule {}

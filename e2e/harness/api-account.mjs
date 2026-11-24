@@ -6,6 +6,7 @@ import { randomInt } from 'node:crypto'
 import { request as playwrightRequest } from 'playwright-core'
 import { fail, waitForBucketHeadroom } from './rate-limit.mjs'
 import { skipSplash, signUpOutOfBand, submitLogin } from './flows.mjs'
+import { verifyEmailSql } from './email-hash.mjs'
 
 export const PASSWORD = 'Sicheres-Passwort-1!'
 const AUTH_BUCKET = { windowMs: 10_000, max: 3, shared: true }
@@ -15,7 +16,7 @@ export async function createAccount({ apiOrigin, webOrigin, sql, tag }) {
   const email = `${tag}-${Date.now()}-${randomInt(1000)}@beispiel.de`
   await waitForBucketHeadroom(AUTH_BUCKET, 'sign-up/email', tag)
   await signUpOutOfBand(apiOrigin, webOrigin, email, PASSWORD)
-  sql(`UPDATE "User" SET "emailVerified" = true WHERE email = '${email}'`)
+  sql(verifyEmailSql(email))
   const api = await playwrightRequest.newContext({ baseURL: apiOrigin, extraHTTPHeaders: { origin: webOrigin } })
   await waitForBucketHeadroom(AUTH_BUCKET, 'sign-in/email', tag)
   const res = await api.post('/api/auth/sign-in/email', { data: { email, password: PASSWORD } })

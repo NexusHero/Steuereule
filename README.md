@@ -206,7 +206,7 @@ Steuereule is structured as a modular TypeScript monorepo powered by `pnpm` and 
 git clone https://github.com/NexusHero/Steuereule.git
 cd Steuereule
 
-# Spin up all containerized services (Postgres, Mailpit, NestJS API, Web UI)
+# Spin up all containerized services (Postgres, Redis, Mailpit, NestJS API, Web UI)
 scripts/local.sh
 
 # Or start in hot-reload development mode
@@ -217,6 +217,7 @@ scripts/local.sh dev
 * **Web Application:** [http://localhost:8080](http://localhost:8080) (or `8081` in dev mode)
 * **REST API:** `http://localhost:3000/v1`, Swagger UI at [http://localhost:3000/docs](http://localhost:3000/docs)
 * **Mailpit (Local Email Sandbox):** [http://localhost:8025](http://localhost:8025) (catches verification emails locally; zero external network egress)
+* **Redis:** `localhost:6379`, used by default in both modes (shared answer runs and rate limits, as in production). `REDIS_URL=` (empty) switches the API back to in-process.
 
 > [!NOTE]
 > **Apple Silicon (arm64) Native:** All container images, PostgreSQL instances, Prisma migrations, and headless Chromium PDF engines run natively on Apple Silicon.

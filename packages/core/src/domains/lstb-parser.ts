@@ -740,7 +740,8 @@ export function parseLstbTextDeterministically(rawText: string): LstbExtractionR
   })
 }
 
-const EMPLOYER_LABEL = /^(?:(?:name\s+(?:und\s+anschrift\s+)?|anschrift\s+(?:und\s+steuernummer\s+)?)des\s+arbeitgebers\s*:?|arbeitgeber\s*:)\s*(.*)$/i
+// The rest starts at a non-blank: with „\s*(.*)“ the blanks could be split between the two in many ways (Sonar S8786).
+const EMPLOYER_LABEL = /^(?:(?:name\s+(?:und\s+anschrift\s+)?|anschrift\s+(?:und\s+steuernummer\s+)?)des\s+arbeitgebers(?:\s*:)?|arbeitgeber\s*:)\s*(\S.*|)$/i
 
 /**
  * The employer as the certificate names it (ADR-0099 §8): the text after „Arbeitgeber:“ or „Anschrift (und

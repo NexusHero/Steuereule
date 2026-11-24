@@ -62,3 +62,9 @@ run(['migrate', 'deploy', '--schema', 'prisma/keystore/schema.prisma'], {
 // already boots with `node --import tsx` (ADR-0010a).
 const backfillScript = path.join(path.dirname(fileURLToPath(import.meta.url)), 'backfill-profile-name-encryption.ts')
 execFileSync(process.execPath, ['--import', 'tsx', backfillScript], { stdio: 'inherit', env: process.env })
+
+// ADR-0109: accounts are found by `emailHash` from this release on. Filling the hash here, before the release
+// takes traffic, is what keeps existing accounts able to sign in; the addresses themselves stay plaintext
+// until `backfill-identity.ts` is run without a phase after the release. Idempotent.
+const identityBackfill = path.join(path.dirname(fileURLToPath(import.meta.url)), 'backfill-identity.ts')
+execFileSync(process.execPath, ['--import', 'tsx', identityBackfill, '--phase=hash'], { stdio: 'inherit', env: process.env })

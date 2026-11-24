@@ -2,6 +2,7 @@
 // screen does, read everything a return stores back, flatten it so equal facts compare equal, read the
 // editable printout's form fields, and diff two households against each other and the fixture.
 import { createRequire } from 'node:module'
+import { whereEmail } from '../harness/email-hash.mjs'
 
 const require = createRequire(import.meta.url)
 const { PDFDocument } = require('../../apps/api/node_modules/pdf-lib')
@@ -272,7 +273,7 @@ export function diff(strom, chat, expected = {}) {
 
 /** Token counts of every owl answer of an account, as stored with the message (no content). */
 export function tokenUsage(sql, email, year) {
-  const raw = sql(`SELECT coalesce(string_agg(m."verbrauch", E'\\n' ORDER BY m."createdAt"), '') FROM "BeraterNachricht" m JOIN "User" u ON u.id = m."userId" WHERE u.email = '${email}' AND m."steuerjahr" = ${year} AND m."rolle" = 'assistant'`)
+  const raw = sql(`SELECT coalesce(string_agg(m."verbrauch", E'\\n' ORDER BY m."createdAt"), '') FROM "BeraterNachricht" m JOIN "User" u ON u.id = m."userId" WHERE u.${whereEmail(email)} AND m."steuerjahr" = ${year} AND m."rolle" = 'assistant'`)
   const turns = String(raw).split('\n').filter(Boolean).map((line) => {
     try {
       return JSON.parse(line)

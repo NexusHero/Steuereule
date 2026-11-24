@@ -4,6 +4,9 @@ import { AuditModule } from '../audit/audit.module.js'
 import { PrismaModule } from '../prisma/prisma.module.js'
 import { ProfileModule } from '../profile/profile.module.js'
 import { FreshAuthChecker } from '../auth/fresh-auth.js'
+import { GuestRetentionService } from './guest-retention.service.js'
+import { GUEST_ACTIVITY_REPOSITORY } from '../guest/guest-activity.repository.js'
+import { PrismaGuestActivityRepository } from '../guest/guest-activity.repository.prisma.js'
 import { STEP_UP_GRANT_REPOSITORY } from '../auth/step-up-grant.repository.js'
 import { PrismaStepUpGrantRepository } from '../auth/step-up-grant.repository.prisma.js'
 import { AccountDeletionController } from './account-deletion.controller.js'
@@ -24,6 +27,8 @@ import { PrismaTaxDataExportRepository } from './tax-data-export.repository.pris
   imports: [PrismaModule, AuditModule, ProfileModule, KeystoreModule, HouseholdCoreModule],
   controllers: [AccountDeletionController, AccountExportController],
   providers: [
+    GuestRetentionService,
+    { provide: GUEST_ACTIVITY_REPOSITORY, useClass: PrismaGuestActivityRepository },
     AccountDeletionService,
     AccountExportService,
     FreshAuthChecker,

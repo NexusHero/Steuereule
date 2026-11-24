@@ -1,7 +1,9 @@
 import { type EmailPurpose, renderEmail } from './email-content.js'
-import type { EmailSender, VerificationEmail } from './email-sender.js'
+import type { EmailSender, ExistingAccountNotice, VerificationEmail } from './email-sender.js'
 
 export const BREVO_SEND_URL = 'https://api.brevo.com/v3/smtp/email'
+
+const BREVO_TIMEOUT_MS = 10_000
 
 export interface BrevoConfig {
   apiKey: string
@@ -26,10 +28,16 @@ export class BrevoEmailSender implements EmailSender {
     await this.send(email, 'password-reset')
   }
 
-  private async send(email: VerificationEmail, purpose: EmailPurpose): Promise<void> {
+  async sendExistingAccountNotice(email: ExistingAccountNotice): Promise<void> {
+    await this.send(email, 'existing-account')
+  }
+
+  private async send(email: VerificationEmail | ExistingAccountNotice, purpose: EmailPurpose): Promise<void> {
     const { subject, text, html } = renderEmail(email, purpose)
     const response = await this.fetchImpl(BREVO_SEND_URL, {
       method: 'POST',
+      // A hung provider must not hold the sign-up or reset request open (ADR-0109).
+      signal: AbortSignal.timeout(BREVO_TIMEOUT_MS),
       headers: {
         'api-key': this.config.apiKey,
         'content-type': 'application/json',

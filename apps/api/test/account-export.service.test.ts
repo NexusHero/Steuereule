@@ -2,7 +2,7 @@
 // logic against in-memory fakes, isolated from HTTP/Nest wiring (that's
 // account.http.test.ts) and from real Postgres (that's account-export.integration.test.ts).
 import { describe, expect, it } from 'vitest'
-import { AccountExportService } from '../src/account/account-export.service.js'
+import { AccountExportService, EXPORT_ACCESS_LOG_BATCH } from '../src/account/account-export.service.js'
 import { AuditService } from '../src/audit/audit.service.js'
 import { FakeAccountIdentityRepository } from './fakes/fake-account-identity.repository.js'
 import { FakeAuditRepository } from './fakes/fake-audit.repository.js'
@@ -158,5 +158,81 @@ describe('AccountExportService.recordExportRead', () => {
     const rows = auditRepository.all()
     expect(rows).toHaveLength(1)
     expect(rows[0]).toMatchObject({ userId: 'user-1', action: 'READ', resource: 'export' })
+  })
+})
+
+describe('AccountExportService access-log bound (ADR-0109)', () => {
+  async function seeded(rows: number) {
+    const ctx = buildService()
+    ctx.accountIdentityRepository.seed('user-1', ACCOUNT_IDENTITY)
+    for (let i = 0; i < rows; i += 1) await ctx.auditRepository.append({ userId: 'user-1', action: 'READ', resource: `r${i}` })
+    return ctx
+  }
+
+  it('keeps the whole log in the JSON export', async () => {
+    const { service } = await seeded(5)
+    expect((await service.assemble('user-1'))!.accessLog).toHaveLength(5)
+  })
+
+  it('keeps only the newest entries for the PDF and says so', async () => {
+    const { service } = await seeded(5)
+    const document = (await service.assemble('user-1', { accessLogNewest: 3 }))!
+    expect(document.accessLog.map((e) => e.resource)).toEqual(['r2', 'r3', 'r4'])
+    expect(document.accessLogNewestOnly).toBe(3)
+  })
+
+  it('does not claim a cut when everything fits', async () => {
+    const { service } = await seeded(3)
+    const document = (await service.assemble('user-1', { accessLogNewest: 3 }))!
+    expect(document.accessLog).toHaveLength(3)
+    expect(document.accessLogNewestOnly).toBeUndefined()
+  })
+})
+
+describe('AccountExportService.assembleJsonStream (ADR-0109)', () => {
+  async function collect(chunks: AsyncIterable<string>): Promise<{ text: string; count: number }> {
+    let text = ''
+    let count = 0
+    for await (const chunk of chunks) {
+      text += chunk
+      count++
+    }
+    return { text, count }
+  }
+
+  it('writes a complete log of more rows than one batch, read batch by batch, never as one list', async () => {
+    const { service, accountIdentityRepository, auditRepository } = buildService()
+    accountIdentityRepository.seed('user-1', ACCOUNT_IDENTITY)
+    const total = EXPORT_ACCESS_LOG_BATCH * 2 + 345
+    for (let i = 0; i < total; i++) auditRepository.appendAt({ userId: 'user-1', action: 'READ', resource: `r${i}` }, new Date(Date.UTC(2026, 0, 1, 0, 0, 0, i)))
+
+    const stream = (await service.assembleJsonStream('user-1'))!
+    const { text, count } = await collect(stream.chunks)
+
+    const document = JSON.parse(text) as { account: { email: string }; accessLog: { resource: string }[] }
+    expect(document.account.email).toBe('anna@example.com')
+    expect(document.accessLog).toHaveLength(total)
+    expect(document.accessLog[0]!.resource).toBe('r0')
+    expect(document.accessLog[total - 1]!.resource).toBe(`r${total - 1}`)
+    expect(auditRepository.largestBatch).toBe(EXPORT_ACCESS_LOG_BATCH)
+    expect(auditRepository.findOwnRowsCalls).toBe(0)
+    // head + three batches + closing: written in pieces, not as one string.
+    expect(count).toBe(5)
+  })
+
+  it('is valid JSON for an empty log and equals the buffered document otherwise', async () => {
+    const { service, accountIdentityRepository, auditRepository } = buildService()
+    accountIdentityRepository.seed('user-1', ACCOUNT_IDENTITY)
+    expect(JSON.parse((await collect((await service.assembleJsonStream('user-1'))!.chunks)).text).accessLog).toEqual([])
+
+    auditRepository.appendAt({ userId: 'user-1', action: 'WRITE', resource: 'profile', source: 'Assistent: Claude' }, new Date('2026-01-01T00:00:00Z'))
+    const streamed = JSON.parse((await collect((await service.assembleJsonStream('user-1'))!.chunks)).text)
+    const buffered = JSON.parse(JSON.stringify((await service.assemble('user-1'))!))
+    expect({ ...streamed, exportedAt: 0 }).toEqual({ ...buffered, exportedAt: 0 })
+  })
+
+  it('is null for a caller without an account', async () => {
+    const { service } = buildService()
+    await expect(service.assembleJsonStream('a-guest')).resolves.toBeNull()
   })
 })
