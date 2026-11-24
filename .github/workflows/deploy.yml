@@ -161,7 +161,7 @@ jobs:
                       GOOGLE_CLIENT_ID GOOGLE_CLIENT_SECRET STRIPE_SECRET_KEY STRIPE_WEBHOOK_SECRET \
                       GEMINI_API_KEY ANTHROPIC_API_KEY OPENAI_API_KEY REDIS_URL REDIS_TLS_CA; do
             # Memorystore is private: without the VPC egress below the API could not reach it.
-            case "$name" in REDIS_*) [ -n "$VPC_NETWORK" ] && [ -n "$VPC_SUBNET" ] || continue ;; esac
+            case "$name" in REDIS_*) if [ -z "$VPC_NETWORK" ] || [ -z "$VPC_SUBNET" ]; then continue; fi ;; esac
             if [ -n "$(gcloud secrets versions list "$name" --filter=state=enabled --limit=1 --format='value(name)')" ]; then
               secrets="$secrets,$name=$name:latest"
             fi

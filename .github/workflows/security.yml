@@ -43,6 +43,8 @@ jobs:
         uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:
           node-version: 24
+          # Nothing is installed here, so there is no store to cache; the post step failed on the missing path.
+          package-manager-cache: false
       # `pnpm audit` reads pnpm-lock.yaml, so no install is needed. Fails on high/critical advisories
       # in production dependencies; the few accepted paths carry a reason and an expiry date in the script.
       - name: Audit production dependencies (high and critical block)
