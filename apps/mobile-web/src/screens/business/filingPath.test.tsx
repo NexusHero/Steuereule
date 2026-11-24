@@ -96,6 +96,7 @@ describe('back from the checkout', () => {
     useBusinessDefaults()
     useElsterForms()
     server.use(http.get(`${BASE_URL}/elster/anlage-euer`, () => HttpResponse.json({ form: 'anlage-euer', year: YEAR, status: 'published', note: null, sourceUrl: null, lineNumbersAvailable: true, lines: [] })))
+    server.use(http.get(`*/v1/steuerjahre/${YEAR}/freischaltung`, () => HttpResponse.json({ status: 'offen', tier: 'selbststaendig' })))
     renderBusiness('elster', { payment: 'abbruch' })
     expect(await screen.findByTestId('elster-abgebrochen')).toBeTruthy()
     expect(screen.queryByTestId('elster-freigeschaltet')).toBeNull()

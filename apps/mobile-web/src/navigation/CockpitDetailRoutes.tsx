@@ -16,7 +16,7 @@ import { useShellState } from './ShellState'
 import { RequiresAccount } from './RequiresAccount'
 import { CockpitSheet } from './CockpitSheet'
 import { useYearGuard } from './guards'
-import type { CockpitStackParamList, PartnerAreaParam } from './routes'
+import { paymentReturnOf, type CockpitStackParamList, type PartnerAreaParam } from './routes'
 
 const PARTNER_AREAS: readonly PartnerAreaParam[] = ['lstb', 'arbeitsweg', 'schweiz', 'rente']
 
@@ -201,7 +201,7 @@ export function BusinessRoute({ navigation, route }: Props<'Business'>) {
         person={person}
         business={business}
         page={page}
-        payment={route.params?.zahlung}
+        payment={paymentReturnOf(route.params)}
         onOpenPage={(next) => navigation.navigate('Business', { year, ...(next ? { page: next } : {}), ...own })}
         onBack={() => {
           if (!page) return home()

@@ -453,6 +453,7 @@ describe('the ELSTER fill-in help, by meaning and after the checkout', () => {
   it('refetches and says the year is unlocked when it is back from the checkout', async () => {
     let reads = 0
     server.use(http.get(`${BASE_URL}/elster/anlage-euer`, () => { reads += 1; return HttpResponse.json({ form: 'anlage-euer', year: 2025, status: 'published', note: null, sourceUrl: null, lineNumbersAvailable: true, lines: [] }) }))
+    server.use(http.get('*/v1/steuerjahre/2025/freischaltung', () => HttpResponse.json({ status: 'freigeschaltet', tier: 'selbststaendig' })))
     renderBusiness('elster', { payment: 'erfolg' })
     expect(await screen.findByTestId('elster-freigeschaltet')).toBeTruthy()
     await waitFor(() => expect(reads).toBeGreaterThanOrEqual(1))

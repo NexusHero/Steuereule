@@ -4310,5 +4310,22 @@
   },
   "betrag": {
     "unlesbar": "Das ist kein Betrag. Bitte so eingeben: 948 oder 948,60."
+  },
+  "zahlung": {
+    "wirdBestaetigt": "Deine Zahlung wird bestätigt. Das dauert meist nur Sekunden – du musst nichts weiter tun.",
+    "bestaetigt": "Zahlung bestätigt: {{year}} ist freigeschaltet.",
+    "abgebrochen": "Die Zahlung wurde abgebrochen, es wurde nichts bezahlt. Du kannst es jederzeit erneut versuchen.",
+    "zeitUeberschritten": "Die Bestätigung dauert länger als üblich. Hast du bezahlt, schalten wir {{year}} frei, sobald die Zahlung bei uns eingeht. Ein zweites Mal bezahlen musst du nicht.",
+    "erneutPruefen": "Erneut prüfen",
+    "schonBezahlt": "{{year}} ist schon freigeschaltet.",
+    "ausstehend": "Deine Zahlung ist noch in Bearbeitung, etwa eine Lastschrift. Sobald sie eingeht, schalten wir {{year}} frei.",
+    "zuVieleVersuche": "Zu viele Versuche in kurzer Zeit. Bitte warte ein paar Minuten.",
+    "preis": "Preis: {{preis}} einmalig für {{year}}, inklusive Umsatzsteuer.",
+    "preisUnbekannt": "Den Preis zeigt dir unser Zahlungsdienst Stripe auf der nächsten Seite, bevor du bezahlst."
+  },
+  "ausdruckPersonB": {
+    "titel": "Euren Ausdruck druckt die Person, die eingeladen hat",
+    "text": "Ihr gebt eine gemeinsame Erklärung ab. Sie wird einmal gedruckt und bezahlt – von der Person, die zur Zusammenveranlagung eingeladen hat. Du zahlst hier nichts. Prüf und bestätige deine Angaben, dann kann sie drucken.",
+    "bestaetigen": "Meine Angaben prüfen & bestätigen"
   }
 }

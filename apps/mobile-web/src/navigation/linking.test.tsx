@@ -1,6 +1,15 @@
 import { describe, expect, it } from 'vitest'
 import { getPathFromState, getStateFromPath } from '@react-navigation/native'
+import { PAYMENT_RETURN, paymentReturnUrl } from '@steuereule/core'
 import { formatDocumentTitle, linking } from './linking'
+import { paymentReturnOf } from './routes'
+
+/** The innermost route of a parsed state: the screen the URL opens. */
+function leaf(state: ReturnType<typeof getStateFromPath>): { name: string; params?: object } | undefined {
+  let route = state?.routes[state.routes.length - 1] as { name: string; params?: object; state?: typeof state } | undefined
+  while (route?.state) route = route.state.routes[route.state.routes.length - 1] as typeof route
+  return route
+}
 
 describe('navigation linking config (#443 slice 1)', () => {
   const cases: readonly { readonly path: string; readonly expectedPath?: string }[] = [
@@ -90,6 +99,19 @@ describe('navigation linking config (#443 slice 1)', () => {
 
     const confirmation = getStateFromPath('/app/steuerjahr/2025/bestaetigung', linking.config)
     expect(confirmation?.routes[0]?.name).toBe('Confirmation')
+  })
+
+  // WEB-1: the return URLs the API builds (with the shared contract) open a screen that reads the outcome.
+  it.each([
+    { base: '/app/steuerjahr/2025/ausdruck', screen: 'Printout' },
+    { base: '/app/steuerjahr/2025/selbststaendig/elster', screen: 'Business' },
+  ])('the Stripe return trip to $base is recognised for both outcomes', ({ base, screen }) => {
+    for (const outcome of [PAYMENT_RETURN.success, PAYMENT_RETURN.cancel]) {
+      const route = leaf(getStateFromPath(paymentReturnUrl(base, outcome), linking.config))
+      expect(route?.name).toBe(screen)
+      expect(paymentReturnOf(route?.params)).toBe(outcome)
+    }
+    expect(paymentReturnOf(leaf(getStateFromPath(base, linking.config))?.params)).toBeUndefined()
   })
 
   it('formats human-readable browser tab titles instead of raw route keys like CockpitHome', () => {

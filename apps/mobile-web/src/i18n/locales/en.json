@@ -4310,5 +4310,22 @@
   },
   "betrag": {
     "unlesbar": "That is not an amount. Please enter it like 948 or 948,60."
+  },
+  "zahlung": {
+    "wirdBestaetigt": "Your payment is being confirmed. This usually takes only seconds – you do not need to do anything.",
+    "bestaetigt": "Payment confirmed: {{year}} is unlocked.",
+    "abgebrochen": "The payment was cancelled, nothing was paid. You can try again at any time.",
+    "zeitUeberschritten": "Confirmation is taking longer than usual. If you paid, we unlock {{year}} as soon as the payment reaches us. You do not need to pay a second time.",
+    "erneutPruefen": "Check again",
+    "schonBezahlt": "{{year}} is already unlocked.",
+    "ausstehend": "Your payment is still being processed, for example a direct debit. As soon as it arrives, we unlock {{year}}.",
+    "zuVieleVersuche": "Too many attempts in a short time. Please wait a few minutes.",
+    "preis": "Price: {{preis}} once for {{year}}, VAT included.",
+    "preisUnbekannt": "Our payment service Stripe shows you the price on the next page, before you pay."
+  },
+  "ausdruckPersonB": {
+    "titel": "Your printout is printed by the person who sent the invitation",
+    "text": "You file one joint return. It is printed and paid for once – by the person who invited you to the joint assessment. You pay nothing here. Check and confirm your details, then they can print.",
+    "bestaetigen": "Check & confirm my details"
   }
 }

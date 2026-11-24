@@ -1,3 +1,4 @@
+import type { PaymentReturn } from '@steuereule/core'
 // Shared by the tests of the self-employed area: the render frame and honest default answers (contract-typed).
 import type { ReactNode } from 'react'
 import { render, type RenderResult } from '@testing-library/react'
@@ -62,7 +63,7 @@ export function useElsterForms(forms: ElsterFormEntryDto[] = BUSINESS_ELSTER_FOR
 
 export function renderBusiness(
   page: string | undefined,
-  handlers: { onOpenPage?: (p: string | undefined) => void; onBack?: () => void; onChangePerson?: (p: 'A' | 'B') => void; onChangeBusiness?: (b: number) => void; business?: number; payment?: string } = {},
+  handlers: { onOpenPage?: (p: string | undefined) => void; onBack?: () => void; onChangePerson?: (p: 'A' | 'B') => void; onChangeBusiness?: (b: number) => void; business?: number; payment?: PaymentReturn } = {},
 ): RenderResult {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
   const wrap = (node: ReactNode) => (
