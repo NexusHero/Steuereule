@@ -31,7 +31,8 @@ export function Chip({ variant = 'standard', active = false, onPress, style, chi
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    minHeight: 36,
+    // 44 pt is the smallest touch target (WCAG 2.5.5, Apple HIG) — WEB-23.
+    minHeight: 44,
     paddingVertical: 4,
     paddingHorizontal: 14,
     backgroundColor: bg,
