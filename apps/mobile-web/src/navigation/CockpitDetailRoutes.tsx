@@ -12,6 +12,8 @@ import { PensionerScreen } from '../screens/pension/PensionerScreen'
 import { BusinessScreen, isBusinessPage, parentPage } from '../screens/business/BusinessScreen'
 import { OfficialFormScreen } from '../screens/printout/OfficialFormScreen'
 import type { Screen } from '@steuereule/core'
+import { useLinkControllerGet } from '@steuereule/api-client'
+import { LoadFailedState } from '../screens/shared/ScreenState'
 import { useShellState } from './ShellState'
 import { RequiresAccount } from './RequiresAccount'
 import { CockpitSheet } from './CockpitSheet'
@@ -92,17 +94,34 @@ export function CockpitMasterDataRoute({ navigation, route }: Props<'CockpitMast
 
 export function PartnerRoute({ navigation, route }: Props<'Partner'>) {
   const year = useYearGuard(route.params?.year, navigation)
-  const { partner, setTaxYear } = useShellState()
+  const { partner, setPartner, setTaxYear } = useShellState()
   const rawArea = route.params?.area
   const validArea = PARTNER_AREAS.includes(rawArea) ? rawArea : null
   const activePartner = partner && validArea !== null && partner.area === validArea ? partner : null
+  // NM-12: after a reload or from a direct link the partner's name is not in memory; it is read from the
+  // year's link instead of sending the user to the Stammdaten.
+  const lookUp = year !== null && validArea !== null && activePartner === null
+  const link = useLinkControllerGet(year ?? 0, { query: { enabled: lookUp, retry: false } })
+  const stored = link.data?.data
+  const recordable = stored?.filingType === 'zusammen' && stored.personBHasOwnAccount !== true
+  const storedName = stored?.personB?.firstName?.trim() || 'deinem Partner'
 
   useEffect(() => {
-    if (year !== null && activePartner === null) {
+    if (year === null || activePartner !== null) return
+    if (validArea === null || (link.isSuccess && !recordable)) {
       navigation.replace('CockpitMasterData', { year })
+      return
     }
-  }, [year, activePartner, navigation])
+    if (link.isSuccess && recordable) setPartner({ area: validArea, name: storedName })
+  }, [year, activePartner, validArea, link.isSuccess, recordable, storedName, navigation, setPartner])
 
+  if (year !== null && lookUp && link.isError) {
+    return (
+      <CockpitSheet navigation={navigation}>
+        <LoadFailedState bp="s" error={link.error} onRetry={() => void link.refetch()} />
+      </CockpitSheet>
+    )
+  }
   if (year === null || activePartner === null) return null
   const cameFromMasterData = navigation.getState().routes.some((r) => r.name === 'CockpitMasterData')
   const closePartner = () =>
