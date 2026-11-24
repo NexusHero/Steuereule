@@ -29,9 +29,9 @@ function foldedList(yaml: string, key: string): string[] {
   lines.forEach((line, index) => {
     const match = new RegExp(`^(\\s*)${key}: >-\\s*$`).exec(line)
     if (!match) return
-    const indent = match[1].length
+    const indent = (match[1] ?? '').length
     for (let next = index + 1; next < lines.length; next += 1) {
-      const continuation = lines[next]
+      const continuation = lines[next] ?? ''
       if (continuation.trim() === '' || continuation.search(/\S/) <= indent) break
       words.push(...continuation.trim().split(/\s+/))
     }
@@ -42,7 +42,7 @@ function foldedList(yaml: string, key: string): string[] {
 /** The quoted strings of an HCL list `name = [ ... ]`. */
 function hclList(hcl: string, name: string): string[] {
   const body = new RegExp(`${name}\\s*=\\s*\\[([\\s\\S]*?)\\n\\s*\\]`).exec(hcl)?.[1] ?? ''
-  return [...body.matchAll(/^\s*"([A-Z0-9_]+)",?/gm)].map((match) => match[1])
+  return [...body.matchAll(/^\s*"([A-Z0-9_]+)",?/gm)].map((match) => match[1] ?? '')
 }
 
 function sorted(values: Iterable<string>): string[] {
@@ -58,10 +58,10 @@ describe('deployment wiring: every production value reaches the runtime (beta P1
   it('OPS-2: every workflow_run trigger names a workflow that exists', () => {
     const files = readdirSync(repoFile('.github/workflows')).filter((name) => name.endsWith('.yml'))
     const texts = files.map((name) => read(`.github/workflows/${name}`))
-    const names = new Set(texts.map((text) => /^name:\s*['"]?(.+?)['"]?\s*$/m.exec(text)?.[1]))
+    const names = new Set(texts.map((text) => /^name:\s*['"]?(.+?)['"]?\s*$/m.exec(text)?.[1] ?? ''))
     const referenced = texts.flatMap((text) =>
       [...text.matchAll(/workflow_run:\s*\n\s+workflows:\s*\[([^\]]*)\]/g)].flatMap((match) =>
-        match[1].split(',').map((entry) => entry.trim().replace(/^['"]|['"]$/g, '')),
+        (match[1] ?? '').split(',').map((entry) => entry.trim().replace(/^['"]|['"]$/g, '')),
       ),
     )
     expect(referenced).toContain('Build & E2E')
@@ -108,7 +108,7 @@ describe('deployment wiring: every production value reaches the runtime (beta P1
     for (const setting of API_PRODUCTION_SETTINGS.filter((candidate) => candidate.need === 'always' && candidate.source !== 'image')) {
       expect(apiEnv, setting.name).toMatch(new RegExp(`^\\s+${setting.name}:`, 'm'))
     }
-    const interpolated = [...composeProd.matchAll(/\$\{([A-Z_]+)\}/g)].map((match) => match[1])
+    const interpolated = [...composeProd.matchAll(/\$\{([A-Z_]+)\}/g)].map((match) => match[1] ?? '')
     for (const name of sorted(interpolated)) expect(envExample, `${name} used by docker-compose.prod.yml`).toMatch(new RegExp(`^${name}=`, 'm'))
   })
 
@@ -139,7 +139,7 @@ describe('deployment wiring: every production value reaches the runtime (beta P1
   })
 
   it('OPS-3: an unconfigured automatic run skips its jobs instead of succeeding, and a configured one never skips silently', () => {
-    const jobConditions = [...deployYml.matchAll(/\n {4}if: >-\n((?: {6}.*\n)+)/g)].map((match) => match[1])
+    const jobConditions = [...deployYml.matchAll(/\n {4}if: >-\n((?: {6}.*\n)+)/g)].map((match) => match[1] ?? '')
     expect(jobConditions).toHaveLength(2)
     for (const condition of jobConditions) expect(condition).toMatch(/vars\.DEPLOY_STAGING_AUTO == 'true'/)
     expect(deployYml).not.toMatch(/ready=false|steps\.gate\.outputs\.ready/)
@@ -173,10 +173,10 @@ describe('deployment wiring: every production value reaches the runtime (beta P1
   it('H2-32: every check docs/ci-pipeline.md lists as required is a job that reports under exactly that name', () => {
     const doc = read('docs/ci-pipeline.md')
     const section = doc.slice(doc.indexOf('## Required checks'), doc.indexOf('## Categories'))
-    const listed = [...section.matchAll(/^\| `([^`]+)` \|/gm)].map((match) => match[1])
+    const listed = [...section.matchAll(/^\| `([^`]+)` \|/gm)].map((match) => match[1] ?? '')
     const jobNames = readdirSync(repoFile('.github/workflows'))
       .filter((name) => name.endsWith('.yml'))
-      .flatMap((name) => [...read(`.github/workflows/${name}`).matchAll(/^ {4}name: '?(.+?)'?$/gm)].map((match) => match[1]))
+      .flatMap((name) => [...read(`.github/workflows/${name}`).matchAll(/^ {4}name: '?(.+?)'?$/gm)].map((match) => match[1] ?? ''))
       .flatMap((name) => (name.includes('${{ matrix.shard }}') ? ['1/4', '2/4', '3/4', '4/4'].map((shard) => name.replace('${{ matrix.shard }}', shard)) : [name]))
     expect(listed.length).toBeGreaterThanOrEqual(24)
     for (const check of listed.filter((name) => name !== 'SonarCloud Code Analysis')) expect(jobNames, check).toContain(check)

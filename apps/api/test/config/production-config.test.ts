@@ -1,6 +1,10 @@
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
+import { resolveBetterAuthSecret, resolveGoogleClientId, resolveGoogleClientSecret } from '../../src/auth/better-auth-env.js'
+import { resolveGuestSessionSecret } from '../../src/auth/guest-session.js'
+import { DEV_ONLY_KEYSTORE_SECRET } from '../../src/keystore/keystore-config.js'
+import { resolveEmailHashSalt, resolveFieldEncryptionKey } from '../../src/prisma/field-encryption-key.js'
 import {
   API_PRODUCTION_SETTINGS,
   assertProductionConfig,
@@ -82,6 +86,23 @@ describe('production configuration at boot (beta P1)', () => {
     }
     expect(checkProductionConfig({ NODE_ENV: 'development' }).problems).toEqual([])
     expect(checkProductionConfig({}).problems).toEqual([])
+  })
+
+  it('H2-33: refuses the development fallback of every resolver on a deployment', () => {
+    const outsideProduction: NodeJS.ProcessEnv = { NODE_ENV: 'development' }
+    const fallbacks: Record<string, string | undefined> = {
+      PRISMA_FIELD_ENCRYPTION_KEY: resolveFieldEncryptionKey(outsideProduction).encryptionKey,
+      PRISMA_FIELD_ENCRYPTION_HASH_SALT: resolveEmailHashSalt(outsideProduction),
+      KEYSTORE_MASTER_KEY: DEV_ONLY_KEYSTORE_SECRET,
+      GUEST_SESSION_SECRET: resolveGuestSessionSecret(outsideProduction),
+      BETTER_AUTH_SECRET: resolveBetterAuthSecret(outsideProduction),
+      GOOGLE_CLIENT_ID: resolveGoogleClientId(outsideProduction),
+      GOOGLE_CLIENT_SECRET: resolveGoogleClientSecret(outsideProduction),
+    }
+    for (const [name, fallback] of Object.entries(fallbacks)) {
+      expect(fallback, name).toBeTruthy()
+      expect(checkProductionConfig(deployment({ [name]: fallback })).problems.join('\n'), name).toMatch(new RegExp(`${name}: still a development value`))
+    }
   })
 
   it('H2-33: refuses the development field key and every value published in .env.example on a deployment', () => {

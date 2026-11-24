@@ -1,7 +1,7 @@
 import { createHmac, randomUUID, timingSafeEqual } from 'node:crypto'
 
 const ALGORITHM = 'sha256'
-export const DEV_ONLY_FALLBACK_SECRET = 'dev-only-insecure-guest-session-secret-do-not-use-in-production'
+const DEV_ONLY_FALLBACK_SECRET = 'dev-only-insecure-guest-session-secret-do-not-use-in-production'
 
 export function signGuestSession(userId: string, secret: string): string {
   const signature = createHmac(ALGORITHM, secret).update(userId).digest('hex')

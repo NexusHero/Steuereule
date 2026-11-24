@@ -70,6 +70,14 @@ const FIXTURE_ENV_CONTENT = [
   'BETTER_AUTH_URL=http://127.0.0.1:1',
   'CORS_ALLOWED_ORIGINS=http://127.0.0.1:1',
   'PORT=1',
+  // Not guarded by assertEnvNotFileSourced, but needed by the production configuration check that runs right
+  // after it (src/config/production-config.ts): a complete local stack (loopback origins only), so the cases that
+  // must get past both guards reach the database reachability guard.
+  'WEB_APP_URL=http://127.0.0.1:1',
+  'TRUSTED_PROXIES=none',
+  'KEYSTORE_DATABASE_URL=postgresql://robin-284-fixture:robin-284-fixture@127.0.0.1:1/robin-284-fixture-keystore',
+  'PRISMA_FIELD_ENCRYPTION_HASH_SALT=robin-284-fixture-email-hash-salt-0123456789',
+  'KEYSTORE_MASTER_KEY=robin-284-fixture-keystore-master-key-0123456789',
   '',
 ].join('\n')
 

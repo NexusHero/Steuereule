@@ -1,8 +1,4 @@
 import { existsSync } from 'node:fs'
-import { DEV_ONLY_FALLBACK_SECRET as DEV_BETTER_AUTH_SECRET, DEV_ONLY_GOOGLE_CLIENT_ID, DEV_ONLY_GOOGLE_CLIENT_SECRET } from '../auth/better-auth-env.js'
-import { DEV_ONLY_FALLBACK_SECRET as DEV_GUEST_SESSION_SECRET } from '../auth/guest-session.js'
-import { DEV_ONLY_KEYSTORE_SECRET } from '../keystore/keystore-config.js'
-import { DEV_ONLY_FALLBACK_HASH_SALT, DEV_ONLY_FALLBACK_KEY } from '../prisma/field-encryption-key.js'
 import { selfEmploymentEnabled } from './self-employment.js'
 import { resolveTrustedProxies } from './trusted-proxies.js'
 
@@ -52,6 +48,19 @@ interface CheckContext {
   readonly deployment: boolean
   readonly env: NodeJS.ProcessEnv
 }
+
+/**
+ * The development fallbacks of the resolvers (auth/better-auth-env.ts, auth/guest-session.ts,
+ * keystore/keystore-config.ts, prisma/field-encryption-key.ts), written out here so this module stays free of
+ * those modules. test/config/production-config.test.ts asks each resolver for its fallback and proves it is listed.
+ */
+const DEV_FIELD_KEY = 'k1.aesgcm256.MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY='
+const DEV_HASH_SALT = 'dev-only-email-hash-salt'
+const DEV_KEYSTORE_SECRET = 'steuereule-dev-only-keystore-master-key'
+const DEV_GUEST_SESSION_SECRET = 'dev-only-insecure-guest-session-secret-do-not-use-in-production'
+const DEV_BETTER_AUTH_SECRET = 'dev-only-insecure-better-auth-secret-do-not-use-in-production'
+const DEV_GOOGLE_CLIENT_ID = 'dev-only-google-client-id'
+const DEV_GOOGLE_CLIENT_SECRET = 'dev-only-google-client-secret'
 
 const MIN_SECRET_LENGTH = 32
 const FIELD_KEY_PATTERN = /^k1\.aesgcm256\.[A-Za-z0-9+/]{43}=$/
@@ -113,9 +122,9 @@ export const API_PRODUCTION_SETTINGS: readonly ProductionSetting[] = [
     format: 'k1.aesgcm256.<base64 of 32 bytes>',
     check: fieldKeys,
     secret: true,
-    knownDevValues: [DEV_ONLY_FALLBACK_KEY],
+    knownDevValues: [DEV_FIELD_KEY],
   },
-  { name: 'PRISMA_FIELD_DECRYPTION_KEYS', source: 'secret-manager', need: 'optional', format: 'comma-separated earlier field keys (rotation)', check: fieldKeys, secret: true, knownDevValues: [DEV_ONLY_FALLBACK_KEY] },
+  { name: 'PRISMA_FIELD_DECRYPTION_KEYS', source: 'secret-manager', need: 'optional', format: 'comma-separated earlier field keys (rotation)', check: fieldKeys, secret: true, knownDevValues: [DEV_FIELD_KEY] },
   {
     name: 'PRISMA_FIELD_ENCRYPTION_HASH_SALT',
     source: 'secret-manager',
@@ -123,10 +132,10 @@ export const API_PRODUCTION_SETTINGS: readonly ProductionSetting[] = [
     format: `random string, at least ${MIN_SECRET_LENGTH} characters; never changes once accounts exist`,
     check: minLength,
     secret: true,
-    knownDevValues: [DEV_ONLY_FALLBACK_HASH_SALT],
+    knownDevValues: [DEV_HASH_SALT],
   },
-  { name: 'KEYSTORE_MASTER_KEY', source: 'secret-manager', need: 'always', format: `random string, at least ${MIN_SECRET_LENGTH} characters`, check: minLength, secret: true, knownDevValues: [DEV_ONLY_KEYSTORE_SECRET] },
-  { name: 'KEYSTORE_MASTER_KEY_PREVIOUS', source: 'secret-manager', need: 'optional', format: 'comma-separated earlier master keys (rotation)', secret: true, knownDevValues: [DEV_ONLY_KEYSTORE_SECRET] },
+  { name: 'KEYSTORE_MASTER_KEY', source: 'secret-manager', need: 'always', format: `random string, at least ${MIN_SECRET_LENGTH} characters`, check: minLength, secret: true, knownDevValues: [DEV_KEYSTORE_SECRET] },
+  { name: 'KEYSTORE_MASTER_KEY_PREVIOUS', source: 'secret-manager', need: 'optional', format: 'comma-separated earlier master keys (rotation)', secret: true, knownDevValues: [DEV_KEYSTORE_SECRET] },
   { name: 'GUEST_SESSION_SECRET', source: 'secret-manager', need: 'always', format: `random string, at least ${MIN_SECRET_LENGTH} characters`, check: minLength, secret: true, knownDevValues: [DEV_GUEST_SESSION_SECRET] },
   { name: 'BETTER_AUTH_SECRET', source: 'secret-manager', need: 'always', format: `random string, at least ${MIN_SECRET_LENGTH} characters`, check: minLength, secret: true, knownDevValues: [DEV_BETTER_AUTH_SECRET] },
 
@@ -161,8 +170,8 @@ export const API_PRODUCTION_SETTINGS: readonly ProductionSetting[] = [
   { name: 'STRIPE_PRICE_ID_SELBSTSTAENDIG', source: 'secret-manager', need: 'optional', format: 'price_… of the self-employment tier; required while SELBSTSTAENDIGE_ENABLED is on', check: prefixed('price_') },
 
   // ── Login providers ────────────────────────────────────────────────────────────────────────
-  { name: 'GOOGLE_CLIENT_ID', source: 'secret-manager', need: 'optional', format: 'OAuth client id (*.apps.googleusercontent.com)', secret: true, knownDevValues: [DEV_ONLY_GOOGLE_CLIENT_ID] },
-  { name: 'GOOGLE_CLIENT_SECRET', source: 'secret-manager', need: 'optional', format: 'OAuth client secret', secret: true, knownDevValues: [DEV_ONLY_GOOGLE_CLIENT_SECRET] },
+  { name: 'GOOGLE_CLIENT_ID', source: 'secret-manager', need: 'optional', format: 'OAuth client id (*.apps.googleusercontent.com)', secret: true, knownDevValues: [DEV_GOOGLE_CLIENT_ID] },
+  { name: 'GOOGLE_CLIENT_SECRET', source: 'secret-manager', need: 'optional', format: 'OAuth client secret', secret: true, knownDevValues: [DEV_GOOGLE_CLIENT_SECRET] },
 
   // ── Shared state (OPS-7): without Redis every limit counts per instance ────────────────────
   {
@@ -279,7 +288,7 @@ const SOURCE_HINT: Record<SettingSource, string> = {
   'cloud-run': 'Cloud Run',
 }
 
-function value(env: NodeJS.ProcessEnv, name: string): string | undefined {
+function readSetting(env: NodeJS.ProcessEnv, name: string): string | undefined {
   const raw = env[name]?.trim()
   return raw && raw.length > 0 ? raw : undefined
 }
@@ -287,7 +296,7 @@ function value(env: NodeJS.ProcessEnv, name: string): string | undefined {
 export function checkProductionConfig(env: NodeJS.ProcessEnv = process.env): ConfigReport {
   const problems: string[] = []
   const warnings: string[] = []
-  const nodeEnv = value(env, 'NODE_ENV')
+  const nodeEnv = readSetting(env, 'NODE_ENV')
   if (nodeEnv !== undefined && !(ALLOWED_NODE_ENVS as readonly string[]).includes(nodeEnv)) {
     problems.push(`NODE_ENV: "${nodeEnv}" is not one of ${ALLOWED_NODE_ENVS.join(', ')} — any other name would run with the development fallbacks`)
   }
@@ -296,7 +305,7 @@ export function checkProductionConfig(env: NodeJS.ProcessEnv = process.env): Con
   const deployment = !isLocalProductionStack(env)
   const context: CheckContext = { deployment, env }
   for (const setting of API_PRODUCTION_SETTINGS) {
-    const current = value(env, setting.name)
+    const current = readSetting(env, setting.name)
     if (current === undefined) {
       if (setting.need === 'always' || (setting.need === 'deployment' && deployment)) {
         problems.push(`${setting.name}: not set (${setting.format}; from: ${SOURCE_HINT[setting.source]})`)
@@ -313,14 +322,14 @@ export function checkProductionConfig(env: NodeJS.ProcessEnv = process.env): Con
 
   // All or nothing, also on the local stack: a partial Stripe setup would fail at the first checkout.
   const stripe = ['STRIPE_SECRET_KEY', 'STRIPE_WEBHOOK_SECRET', 'STRIPE_PRICE_ID']
-  const stripeSet = stripe.filter((name) => value(env, name) !== undefined)
+  const stripeSet = stripe.filter((name) => readSetting(env, name) !== undefined)
   if (!deployment && stripeSet.length > 0 && stripeSet.length < stripe.length) {
     problems.push(`${stripe.filter((name) => !stripeSet.includes(name)).join(', ')}: not set, but ${stripeSet.join(', ')} is — Stripe needs all three`)
   }
-  if (stripeSet.length > 0 && selfEmploymentEnabled(env) && value(env, 'STRIPE_PRICE_ID_SELBSTSTAENDIG') === undefined) {
+  if (stripeSet.length > 0 && selfEmploymentEnabled(env) && readSetting(env, 'STRIPE_PRICE_ID_SELBSTSTAENDIG') === undefined) {
     problems.push('STRIPE_PRICE_ID_SELBSTSTAENDIG: not set while SELBSTSTAENDIGE_ENABLED is on — the self-employment tier could not be sold')
   }
-  const google = ['GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET'].filter((name) => value(env, name) !== undefined)
+  const google = ['GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET'].filter((name) => readSetting(env, name) !== undefined)
   if (google.length === 1) problems.push(`GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET: only ${google[0]} is set — Google login needs both`)
 
   return { deployment, problems, warnings }
