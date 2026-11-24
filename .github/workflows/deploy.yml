@@ -200,7 +200,7 @@ jobs:
             --service-account "$API_SA" \
             --set-cloudsql-instances "$SQL_INSTANCE,$KEYSTORE_SQL_INSTANCE" \
             --network "$VPC_NETWORK" --subnet "$VPC_SUBNET" --vpc-egress private-ranges-only \
-            --set-secrets "DATABASE_URL=DATABASE_URL:latest,KEYSTORE_DATABASE_URL=KEYSTORE_DATABASE_URL:latest" \
+            --set-secrets "DATABASE_URL=DATABASE_URL:latest,KEYSTORE_DATABASE_URL=KEYSTORE_DATABASE_URL:latest,PRISMA_FIELD_ENCRYPTION_KEY=PRISMA_FIELD_ENCRYPTION_KEY:latest,PRISMA_FIELD_ENCRYPTION_HASH_SALT=PRISMA_FIELD_ENCRYPTION_HASH_SALT:latest" \
             --command sh --args="-c,cd /repo/apps/api && node scripts/migrate-deploy.mjs" \
             --max-retries 0 --task-timeout 600s \
             --execute-now --wait

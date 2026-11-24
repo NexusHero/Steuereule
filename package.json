@@ -42,7 +42,8 @@
       "fast-uri@>=4.0.0": "^4.1.4",
       "prisma-field-encryption>zod": "^4.6.7",
       "source-map-js": "^1.2.2",
-      "fastify": "^5.12.8"
+      "fastify": "^5.12.8",
+      "nanoid@>=3.0.0 <4.0.0": "^3.3.18"
     },
     "onlyBuiltDependencies": [
       "@bundled-es-modules/glob",

@@ -45,6 +45,9 @@ FROM node:24-bookworm-slim AS runtime
 # the static server: one build arg feeds both, they cannot drift apart.
 ARG EXPO_PUBLIC_API_BASE_URL
 ENV API_ORIGIN=${EXPO_PUBLIC_API_BASE_URL}
+# The server is one stdlib-only file: npm and corepack are not needed, and their bundled dependencies were
+# what the container scan reported for this image.
+RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack
 WORKDIR /app
 COPY --from=build --chown=node:node /repo/apps/mobile-web/dist ./dist
 COPY --from=build --chown=node:node /repo/e2e/cross-origin/static-server.mjs ./static-server.mjs

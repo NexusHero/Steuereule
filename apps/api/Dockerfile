@@ -31,19 +31,20 @@ RUN mkdir /manifests \
   && find apps packages e2e -maxdepth 2 -name package.json -not -path '*/node_modules/*' -exec cp --parents {} /manifests \;
 
 # -- runtime: production dependencies only -------------------------------------------------------
-FROM base AS runtime
-ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
-
+# Everything pnpm does for the production tree happens here; the final image carries neither pnpm nor npm.
+FROM base AS prod
 COPY --from=build /manifests ./
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.base.json ./
 # Scripts are off here and run on purpose below: apps/api's postinstall needs sources that are not copied yet.
 RUN pnpm install --prod --frozen-lockfile --ignore-scripts --filter "@steuereule/api..."
 
-# Only what the app reads at runtime. Everything is owned by root: `node` can read but not write the code.
+# Only what the app reads at runtime. The backfills the migrate role runs are TypeScript and import from
+# src/, so the sources go along (read by tsx, like packages/core).
 COPY packages/core ./packages/core
 COPY apps/api/prisma ./apps/api/prisma
 COPY apps/api/assets ./apps/api/assets
-COPY apps/api/scripts/migrate-deploy.mjs ./apps/api/scripts/migrate-deploy.mjs
+COPY apps/api/src ./apps/api/src
+COPY apps/api/scripts/migrate-deploy.mjs apps/api/scripts/backfill-profile-name-encryption.ts apps/api/scripts/backfill-identity.ts ./apps/api/scripts/
 COPY --from=build /repo/apps/api/dist ./apps/api/dist
 
 # Install scripts of the dependencies that need them (engine binaries), then both Prisma clients (main +
@@ -53,12 +54,29 @@ RUN pnpm rebuild @prisma/engines @prisma/client prisma esbuild \
   && pnpm --filter @steuereule/api prisma:generate \
   && test -n "$(find /repo/node_modules/.pnpm -name 'schema-engine-*' -print -quit)"
 
-# Chromium for the PDF export (REQ-011). Root-owned like the code.
-RUN pnpm --filter @steuereule/api exec playwright-core install chromium --with-deps
+# better-auth and others name vitest and typescript as optional peers, and pnpm resolves those to the
+# workspace's dev dependencies, so a `--prod` install still brings the test runner, its bundler and the
+# compiler. Nothing imports them at runtime (the import check below proves the app loads without them).
+RUN cd node_modules/.pnpm \
+  && rm -rf vitest@* @vitest+* vite@* vite-node@* tinypool@* typescript@* @typescript+* esbuild@0.21.* @esbuild+*@0.21.*
 
 # Static check that the production tree has everything the app imports (a devDependency used at runtime
 # fails here, not at the first request). Imports only; nothing connects to a database.
-RUN cd apps/api && node --import tsx --input-type=module -e "await import('@steuereule/core'); await import('@prisma-keystore/client'); await import('@fastify/cors'); await import('./dist/app.module.js')"
+RUN cd apps/api && node --import tsx --input-type=module -e "await import('@steuereule/core'); await import('@prisma-keystore/client'); await import('@fastify/cors'); await import('./dist/app.module.js'); await import('./src/auth/identity-backfill.prisma.js')"
+
+FROM node:24-bookworm-slim AS runtime
+ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+WORKDIR /repo
+# Root-owned: `node` can read but not write the code.
+COPY --from=prod /repo /repo
+
+# openssl for the Prisma engines, Chromium with its system libraries for the PDF export (REQ-011), started
+# with plain node. npm and corepack leave the image: nothing here installs packages, and their bundled
+# dependencies were most of what the container scan reported.
+RUN apt-get update && apt-get install -y --no-install-recommends openssl \
+  && node apps/api/node_modules/playwright-core/cli.js install chromium --with-deps \
+  && rm -rf /var/lib/apt/lists/* /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack \
+     /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack /root/.cache /root/.npm
 
 ENV NODE_ENV=production
 EXPOSE 3000

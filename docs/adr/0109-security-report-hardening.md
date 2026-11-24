@@ -87,8 +87,9 @@ The review read code. Nothing here was measured under load or tried against a de
     with a unique index; the salt is its own secret (`PRISMA_FIELD_ENCRYPTION_HASH_SALT`, required in
     production) and cannot change without re-hashing every account. The library passes a value that is not
     ciphertext through on read, so old and new rows are served side by side and strict mode stays on.
-    Deploy order: set the salt, migrate, `backfill:identity --phase=hash`, release, `backfill:identity`.
-    Skipping the hash phase locks existing accounts out. The unique index on `User.email` stays until a
+    Deploy order: set the salt, migrate, hash phase, release, encrypt phase. The migrate role runs the hash
+    phase itself, so a release cannot go out with accounts it cannot find; the encrypt phase is run by hand
+    after the release (`node --import tsx scripts/backfill-identity.ts` in the image). The unique index on `User.email` stays until a
     later contract step. Prefix search and ordering by e-mail no longer work; nothing uses them. The
     sign-in limit still holds the address in the rate-limit storage for 15 minutes.
 13. **Links the model writes** open directly only for https links to a short list of official hosts. Any
@@ -100,10 +101,14 @@ The review read code. Nothing here was measured under load or tried against a de
 14. **Dependency gate.** `security: dependency audit (production deps)` fails on high and critical
     advisories in production dependencies. Exceptions carry a reason and an expiry date
     (`scripts/checks/dependency-audit.mjs`). There is no update bot (decision of the product owner).
-15. **The API image has two stages.** The runtime stage holds production dependencies only, owned by root.
-    The migrate role runs `node scripts/migrate-deploy.mjs` without pnpm. `.trivyignore` keeps its entries
-    until a scan of the new image shows which still apply; its comment no longer claims they are build-time
-    only.
+15. **The API image carries what the app runs and nothing that installs or builds.** Three stages: build,
+    a production tree made by pnpm, and a runtime stage that copies that tree and has neither pnpm nor npm
+    nor corepack. Optional peers (vitest, typescript) that pnpm resolves to the workspace's dev dependencies
+    are removed from the tree, and an import check proves the app loads without them. The sources of
+    `apps/api` are in the image because the migrate role's backfills are TypeScript. The migrate role runs
+    `node scripts/migrate-deploy.mjs` without pnpm. `.trivyignore` was rebuilt from a scan of the images'
+    SBOMs without it: of 63 HIGH/CRITICAL ids in the API image one remains, with its reason
+    (`deepmerge-ts` inside the Prisma CLI).
 16. **The web server sends security headers.** HSTS, `nosniff`, `X-Frame-Options: DENY`, a referrer and a
     permissions policy always; a Content-Security-Policy when it knows the API origin (`API_ORIGIN`). The
     local E2E servers pass none, so the policy is enforced in the production-image job only.
@@ -124,7 +129,6 @@ The review read code. Nothing here was measured under load or tried against a de
 
 - **Field-encrypted columns share one key.** Per-user keys are proposed in
   [ADR-0110](0110-per-user-field-keys.md) and not built here.
-- **`.trivyignore` keeps its entries** until CI has scanned the new image.
 - **The printout job cap is per instance**, because the jobs live in the process; the shared throttle on the
   start route bounds an account across instances.
 - **Model providers are in the United States.** Covered by consent (ADR-0091); no EU endpoint is configured.
