@@ -1260,6 +1260,8 @@
     "heading": "Kapital & Depot",
     "help": "Übertrag deine Kapitalerträge aus der Jahressteuerbescheinigung deiner Bank.",
     "loading": "Deine Kapitalerträge werden geladen …",
+    "inhaberLadefehler": "Ob ihr gemeinsam veranlagt werdet, konnte nicht geladen werden – deshalb fehlt hier die Frage, wem das Depot gehört.",
+    "guenstigerpruefungLadefehler": "Die Günstigerprüfung konnte nicht geladen werden.",
     "loadError": {
       "heading": "Das hat nicht geklappt.",
       "message": "Deine Kapitalerträge konnten nicht geladen werden. Prüf die Verbindung und versuch es noch mal.",

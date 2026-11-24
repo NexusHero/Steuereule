@@ -1260,6 +1260,8 @@
     "heading": "Capital & brokerage",
     "help": "Copy your capital income from your bank’s annual tax certificate (Jahressteuerbescheinigung).",
     "loading": "Loading your capital income …",
+    "inhaberLadefehler": "Whether you are assessed jointly could not be loaded, so the question who owns the depot is missing here.",
+    "guenstigerpruefungLadefehler": "The most-favourable check could not be loaded.",
     "loadError": {
       "heading": "That didn't work.",
       "message": "Your capital income couldn't be loaded. Check your connection and try again.",
