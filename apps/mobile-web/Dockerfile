@@ -22,6 +22,21 @@ RUN pnpm install --frozen-lockfile
 # trusting another).
 ARG EXPO_PUBLIC_API_BASE_URL
 ENV EXPO_PUBLIC_API_BASE_URL=${EXPO_PUBLIC_API_BASE_URL}
+# Operator details for the Impressum, the privacy notice and the terms (§ 5 DDG, ADR-0050), inlined the same way
+# (WEB-2). Without name, address and e-mail the Impressum says "noch nicht hinterlegt"; deploy.yml refuses to
+# build without them, the local stack may leave them empty. Line breaks in the address as \n.
+ARG EXPO_PUBLIC_BETREIBER_NAME=""
+ARG EXPO_PUBLIC_BETREIBER_ANSCHRIFT=""
+ARG EXPO_PUBLIC_BETREIBER_EMAIL=""
+ARG EXPO_PUBLIC_BETREIBER_VERTRETEN=""
+ARG EXPO_PUBLIC_BETREIBER_USTID=""
+ENV EXPO_PUBLIC_BETREIBER_NAME=${EXPO_PUBLIC_BETREIBER_NAME} \
+    EXPO_PUBLIC_BETREIBER_ANSCHRIFT=${EXPO_PUBLIC_BETREIBER_ANSCHRIFT} \
+    EXPO_PUBLIC_BETREIBER_EMAIL=${EXPO_PUBLIC_BETREIBER_EMAIL} \
+    EXPO_PUBLIC_BETREIBER_VERTRETEN=${EXPO_PUBLIC_BETREIBER_VERTRETEN} \
+    EXPO_PUBLIC_BETREIBER_USTID=${EXPO_PUBLIC_BETREIBER_USTID}
+# Without the API origin the bundle would call http://localhost:3000 and the server would send no CSP.
+RUN test -n "$EXPO_PUBLIC_API_BASE_URL" || { echo "build arg EXPO_PUBLIC_API_BASE_URL is required" >&2; exit 1; }
 
 # `--clear` is load-bearing here, not defensive (e2e/harness/README.md's own documented
 # environment truth, and Kaan's #239 finding on the stakeholder's own report): Metro's
@@ -45,6 +60,8 @@ FROM node:24-bookworm-slim AS runtime
 # the static server: one build arg feeds both, they cannot drift apart.
 ARG EXPO_PUBLIC_API_BASE_URL
 ENV API_ORIGIN=${EXPO_PUBLIC_API_BASE_URL}
+# The static server refuses to start without a CSP under NODE_ENV=production (WEB-21).
+ENV NODE_ENV=production
 # The server is one stdlib-only file: npm and corepack are not needed, and their bundled dependencies were
 # what the container scan reported for this image.
 RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack

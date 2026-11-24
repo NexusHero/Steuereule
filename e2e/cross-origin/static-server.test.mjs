@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict'
+import { spawnSync } from 'node:child_process'
 import { mkdtemp, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import test from 'node:test'
 import { originOf, securityHeaders, startStaticServer } from './static-server.mjs'
 
@@ -56,4 +58,34 @@ test('the CSP names the API origin in connect-src and forbids framing, objects a
 test('without an API origin there is no CSP (local E2E servers) but the other headers stay', async () => {
   assert.equal(securityHeaders(null)['content-security-policy'], undefined)
   assert.equal(securityHeaders(null)['x-frame-options'], 'DENY')
+})
+
+test('WEB-34: the CSP lets the receipt preview frame its own blob: URL', async () => {
+  const csp = securityHeaders('https://api.example.org')['content-security-policy']
+  assert.match(csp, /frame-src 'self' blob:(;|$)/)
+  assert.match(csp, /child-src 'self' blob:(;|$)/)
+})
+
+test('WEB-21: a malformed percent-encoding is a 400 without internals, not a 500 with the error text', async () => {
+  const { server, url } = await serve({ apiOrigin: 'https://api.example.org' })
+  try {
+    const response = await fetch(`${url}/%E0%A4%A`)
+    assert.equal(response.status, 400)
+    const body = await response.text()
+    assert.doesNotMatch(body, /URIError|malformed/i)
+    assert.equal(response.headers.get('x-content-type-options'), 'nosniff')
+    assert.match(response.headers.get('content-security-policy'), /default-src 'self'/)
+  } finally {
+    server.close()
+  }
+})
+
+test('WEB-21: under NODE_ENV=production the server refuses to start without an API origin (no CSP)', () => {
+  const run = spawnSync(process.execPath, [fileURLToPath(new URL('./static-server.mjs', import.meta.url)), '--root', tmpdir(), '--port', '0'], {
+    env: { ...process.env, NODE_ENV: 'production', API_ORIGIN: '' },
+    encoding: 'utf8',
+    timeout: 10_000,
+  })
+  assert.equal(run.status, 1)
+  assert.match(run.stderr, /API origin.*required.*production/i)
 })

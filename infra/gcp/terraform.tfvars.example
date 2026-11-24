@@ -5,3 +5,4 @@ environment         = "staging"
 github_environments = ["staging"]
 alert_email         = "ops@example.org"
 api_hostname        = "api.staging.example.org"
+monthly_budget_eur  = 60

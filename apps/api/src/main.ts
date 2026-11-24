@@ -16,6 +16,7 @@ import { validationExceptionFactory } from './common/validation-exception-factor
 import { assertDatabaseMigrated, assertKeystoreMigrated } from './config/assert-database-migrated.js'
 import { assertDatabaseReachable } from './config/assert-database-reachable.js'
 import { assertEnvNotFileSourced } from './config/assert-env-not-file-sourced.js'
+import { assertProductionConfig } from './config/production-config.js'
 import { resolveTrustedProxies } from './config/trusted-proxies.js'
 import { resolveTraceId } from './common/request-id.js'
 import { buildCorsOptions } from './cors/build-cors-options.js'
@@ -96,6 +97,8 @@ async function bootstrap(): Promise<void> {
   // Stop accepting and let requests in flight finish before the process ends on an unknown rejection (ADR-0109).
   installProviderRejectionGuard({ drain: () => running?.close() ?? Promise.resolve() })
   assertEnvNotFileSourced()
+  // Every production value that is missing, malformed or a known dev value, named at once (beta P1).
+  assertProductionConfig()
   assertFakeKiNotInProduction()
 
   await assertDatabaseReachable()

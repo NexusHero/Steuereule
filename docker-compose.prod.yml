@@ -1,8 +1,7 @@
-# Production-shaped local stack (#76, the stakeholder's own local-testing complement to the
-# real cloud deployment — NOT that pipeline itself; it remains its own, start-gated, separate
-# ticket: #292, successor to #246, which was closed 2026-08-05 with the gap still open. Target
-# is k3s on Hetzner + managed Postgres per ADR-049; #246's own body was corrected to say so on
-# 2026-08-05, so the Fly.io framing this comment used to flag there is gone). Builds real images for the API and the exported web
+# Production-shaped local stack (#76, ADR-0026): the real API and web images on your own machine, with
+# NODE_ENV=production. It is not the cloud deployment, which runs on Google Cloud Run (ADR-0053,
+# infra/README.md). The API treats this stack as local only while every origin is localhost and it is not on
+# Cloud Run; then it accepts the synthetic values of .env.example with a warning. Builds real images for the API and the exported web
 # bundle — no more "postgres only, everything else by hand" — and wires them with the
 # SAME four env vars whose mismatch produced the stakeholder's own bug report (guest
 # browsing, registration, login and the QR code all failing identically, because the
@@ -104,6 +103,12 @@ services:
         # Dockerfile's own comment) — API_ORIGIN, the SAME value the api service's
         # BETTER_AUTH_URL above uses, never a second, independently-typed copy.
         EXPO_PUBLIC_API_BASE_URL: ${API_ORIGIN}
+        # Operator details for the Impressum (WEB-2); empty on a local stack, set them in .env to see the real page.
+        EXPO_PUBLIC_BETREIBER_NAME: ${EXPO_PUBLIC_BETREIBER_NAME:-}
+        EXPO_PUBLIC_BETREIBER_ANSCHRIFT: ${EXPO_PUBLIC_BETREIBER_ANSCHRIFT:-}
+        EXPO_PUBLIC_BETREIBER_EMAIL: ${EXPO_PUBLIC_BETREIBER_EMAIL:-}
+        EXPO_PUBLIC_BETREIBER_VERTRETEN: ${EXPO_PUBLIC_BETREIBER_VERTRETEN:-}
+        EXPO_PUBLIC_BETREIBER_USTID: ${EXPO_PUBLIC_BETREIBER_USTID:-}
     ports:
       - '${WEB_PORT:-8080}:8080'
     depends_on:

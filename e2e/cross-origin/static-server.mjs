@@ -35,7 +35,9 @@ const MODEL_HOSTS = ['https://huggingface.co', 'https://*.huggingface.co', 'http
 /**
  * Headers every response carries. The Content-Security-Policy is only sent when the API origin is known
  * (production: the Dockerfile and the deploy pass it): without it the page cannot be told which origin
- * it may call, and the local E2E servers that start without it keep running unrestricted.
+ * it may call, and the local E2E servers that start without it keep running unrestricted. Under
+ * NODE_ENV=production (the web image) the server refuses to start without it, so production never runs
+ * without a CSP (WEB-21).
  *
  * Why each source (index.html has no inline script, the bundle no eval):
  *  - style-src 'unsafe-inline': react-native-web writes its styles into <style> tags at runtime.
@@ -43,6 +45,7 @@ const MODEL_HOSTS = ['https://huggingface.co', 'https://*.huggingface.co', 'http
  *  - worker-src 'self' blob:: workers are served from /ocr and /dictation; the OCR library may wrap one in a blob.
  *  - connect-src: the API origin, plus the model host for the dictation download.
  *  - img-src data: blob:: inlined icons and receipt previews.
+ *  - frame-src / child-src 'self' blob:: the PDF preview of a receipt is an <iframe src="blob:…"> (WEB-34).
  */
 export function securityHeaders(apiOrigin) {
   const headers = {
@@ -62,6 +65,8 @@ export function securityHeaders(apiOrigin) {
       `connect-src 'self' ${apiOrigin} ${MODEL_HOSTS.join(' ')}`,
       "worker-src 'self' blob:",
       "media-src 'self' blob:",
+      "frame-src 'self' blob:",
+      "child-src 'self' blob:",
       "object-src 'none'",
       "base-uri 'self'",
       "form-action 'self'",
@@ -109,8 +114,17 @@ export function startStaticServer(rootDir, port, host = '127.0.0.1', options = {
   }
 
   const server = createServer(async (req, res) => {
+    let decodedPath
     try {
-      const requestPath = normalize(decodeURIComponent(new URL(req.url ?? '/', 'http://placeholder').pathname))
+      decodedPath = decodeURIComponent(new URL(req.url ?? '/', 'http://placeholder').pathname)
+    } catch {
+      // A malformed percent-encoding (`/%E0%A4%A`) is the client's error, not the server's (WEB-21).
+      res.writeHead(400, { ...baseHeaders, 'content-type': 'text/plain' })
+      res.end('Bad request')
+      return
+    }
+    try {
+      const requestPath = normalize(decodedPath)
       const safeSuffix = requestPath.replace(/^(\.\.[/\\])+/, '')
       const candidatePath = join(rootDir, safeSuffix)
 
@@ -161,8 +175,10 @@ export function startStaticServer(rootDir, port, host = '127.0.0.1', options = {
       }
       res.end(payload)
     } catch (error) {
+      // The cause goes to the log, never to the client.
+      console.error(`[static-server] ${req.method} ${req.url}: ${String(error)}`)
       res.writeHead(500, { ...baseHeaders, 'content-type': 'text/plain' })
-      res.end(`Internal error: ${String(error)}`)
+      res.end('Internal error')
     }
   })
 
@@ -192,6 +208,10 @@ if (isMain) {
   const apiOrigin = getArg('--api-origin', process.env.API_ORIGIN)
   if (apiOrigin && !originOf(apiOrigin)) {
     console.error(`[static-server] API origin is not a URL: ${apiOrigin}`)
+    process.exit(1)
+  }
+  if (!apiOrigin && process.env.NODE_ENV === 'production') {
+    console.error('[static-server] an API origin (--api-origin or API_ORIGIN) is required under NODE_ENV=production: without it there is no Content-Security-Policy')
     process.exit(1)
   }
 
