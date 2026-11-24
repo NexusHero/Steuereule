@@ -1108,6 +1108,8 @@ describe('App', () => {
 
     it('submission gate (§ 3.5–3.6): redirects /app/steuerjahr/2025/ausdruck to Submission on conflict', async () => {
       mockSignedInSession()
+      // The Abgabe reads the unlock to choose between printout and ELSTER help; a failed read is a failed page (NC-18).
+      server.use(http.get('*/v1/steuerjahre/2025/freischaltung', () => HttpResponse.json({ status: 'offen', filingPath: 'papier' })))
 
       window.history.pushState({}, '', '/app/steuerjahr/2025/ausdruck')
       const { default: App } = await import('./App')
