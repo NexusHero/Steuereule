@@ -74,6 +74,37 @@ describe('guest upload budget over HTTP', () => {
   })
 })
 
+describe('the budget of all guests together (ADR-0109)', () => {
+  let app: NestFastifyApplication
+
+  beforeEach(async () => {
+    process.env.GUEST_UPLOAD_BYTES_PER_DAY_TOTAL = '2000'
+    app = (await buildTestApp({ sessionsByToken: { 'tok-acc': 'user-acc' } })).app
+  })
+  afterEach(async () => {
+    delete process.env.GUEST_UPLOAD_BYTES_PER_DAY_TOTAL
+    await app.close()
+  })
+
+  const upload = (marker: string, cookie: Record<string, string> = {}, address?: string) => {
+    const m = multipart(pdf(marker, 1200), cookie)
+    return app.inject({ method: 'POST', url: '/v1/belege/upload', headers: m.headers, payload: m.body, ...(address ? { remoteAddress: address } : {}) })
+  }
+
+  it('refuses a guest from another address once all guests together used the day, and says to create an account', async () => {
+    expect((await upload('one', {}, '203.0.113.1')).statusCode).toBe(201)
+    const refused = await upload('two', {}, '203.0.113.2')
+    expect(refused.statusCode).toBe(429)
+    expect(refused.json()).toMatchObject({ code: 'GUEST_UPLOAD_CAPACITY', message: expect.stringContaining('Konto') })
+    expect(Number(refused.headers['retry-after'])).toBeGreaterThan(0)
+  })
+
+  it('does not stop a signed-in account', async () => {
+    expect((await upload('one', {}, '203.0.113.1')).statusCode).toBe(201)
+    expect((await upload('acc', { cookie: 'better-auth.session_token=tok-acc' }, '203.0.113.3')).statusCode).toBe(201)
+  })
+})
+
 describe('parse daily quota over HTTP (ADR-0109)', () => {
   let app: NestFastifyApplication
 

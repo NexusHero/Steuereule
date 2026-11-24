@@ -1,4 +1,5 @@
-import { Controller, Get, Inject, NotFoundException, Query, Res, UseGuards } from '@nestjs/common'
+import { Readable } from 'node:stream'
+import { Controller, Get, Inject, NotFoundException, Query, Res, StreamableFile, UseGuards } from '@nestjs/common'
 import { ApiNotFoundResponse, ApiOkResponse, ApiProduces, ApiQuery, ApiTags } from '@nestjs/swagger'
 import { Throttle, ThrottlerGuard } from '@nestjs/throttler'
 import type { FastifyReply } from 'fastify'
@@ -34,26 +35,25 @@ export class AccountExportController {
     @CurrentUser() userId: string,
     @Query() query: ExportQueryDto,
     @Res({ passthrough: true }) reply: FastifyReply,
-  ): Promise<ExportDocumentDto | Buffer> {
+  ): Promise<StreamableFile | Buffer> {
     const format: ExportFormat = query.format ?? 'json'
-    const document = await this.exportService.assemble(userId, format === 'pdf' ? { accessLogNewest: PDF_ACCESS_LOG_ENTRIES } : {})
-    if (!document) {
-      throw new NotFoundException('No account exists for this session to export.')
-    }
-
-    const filenameDate = document.exportedAt.slice(0, 10)
 
     if (format === 'pdf') {
+      const document = await this.exportService.assemble(userId, { accessLogNewest: PDF_ACCESS_LOG_ENTRIES })
+      if (!document) throw new NotFoundException('No account exists for this session to export.')
       const pdf = await this.exportService.renderPdf(document)
       await this.exportService.recordExportRead(userId)
-      reply.header('Content-Disposition', `attachment; filename="steuereule-export-${filenameDate}.pdf"`)
+      reply.header('Content-Disposition', `attachment; filename="steuereule-export-${document.exportedAt.slice(0, 10)}.pdf"`)
       reply.type('application/pdf')
       return pdf
     }
 
+    // Written as a stream: the access log is read and sent in batches, so memory stays flat (ADR-0109).
+    const stream = await this.exportService.assembleJsonStream(userId)
+    if (!stream) throw new NotFoundException('No account exists for this session to export.')
     await this.exportService.recordExportRead(userId)
-    reply.header('Content-Disposition', `attachment; filename="steuereule-export-${filenameDate}.json"`)
+    reply.header('Content-Disposition', `attachment; filename="steuereule-export-${stream.exportedAt.slice(0, 10)}.json"`)
     reply.type('application/json')
-    return document
+    return new StreamableFile(Readable.from(stream.chunks))
   }
 }

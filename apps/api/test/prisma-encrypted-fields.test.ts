@@ -254,13 +254,17 @@ const EXPECTED_ENCRYPTED_FIELDS: ExpectedEncryptedField[] = [
   { model: 'AdvisorSituation', field: 'text', encrypt: true, strictDecryption: true },
   { model: 'AdvisorInterview', field: 'progress', encrypt: true, strictDecryption: true },
   { model: 'AssistantTask', field: 'text', encrypt: true, strictDecryption: true },
+  // ADR-0109: who the customers are. A database leak alone must not say.
+  { model: 'User', field: 'name', encrypt: true, strictDecryption: true },
+  { model: 'User', field: 'email', encrypt: true, strictDecryption: true },
+  { model: 'Session', field: 'ipAddress', encrypt: true, strictDecryption: true },
+  { model: 'Session', field: 'userAgent', encrypt: true, strictDecryption: true },
 ].sort(byModelField)
 
 // prisma-field-encryption's hash annotation (`@encryption:hash(field)`, dist/dmmf.js:79)
-// has the same unanchored-regex shape per Musti's #325 ruling. None is in use today —
-// this list going non-empty without a matching schema.prisma change would be exactly
-// the kind of silent drift this test exists to catch.
-const EXPECTED_HASHED_FIELDS: ExpectedHashedField[] = []
+// has the same unanchored-regex shape per Musti's #325 ruling. Only the e-mail is hashed
+// (ADR-0109): it must be found by exact match, which random ciphertext cannot do.
+const EXPECTED_HASHED_FIELDS: ExpectedHashedField[] = [{ model: 'User', field: 'email', targetField: 'emailHash', algorithm: 'sha256' }]
 
 // `@encryption:cursor` (dist/dmmf.js:14) is the third annotation sharing the same
 // unanchored-substring shape. It doesn't encrypt anything, but it silently redirects

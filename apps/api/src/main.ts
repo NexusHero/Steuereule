@@ -92,7 +92,9 @@ export async function buildApp(): Promise<NestFastifyApplication> {
 }
 
 async function bootstrap(): Promise<void> {
-  installProviderRejectionGuard()
+  let running: NestFastifyApplication | undefined
+  // Stop accepting and let requests in flight finish before the process ends on an unknown rejection (ADR-0109).
+  installProviderRejectionGuard({ drain: () => running?.close() ?? Promise.resolve() })
   assertEnvNotFileSourced()
   assertFakeKiNotInProduction()
 
@@ -102,6 +104,7 @@ async function bootstrap(): Promise<void> {
   await assertKeystoreMigrated()
 
   const app = await buildApp()
+  running = app
   const port = Number(process.env.PORT ?? 3000)
   await app.listen(port, '0.0.0.0')
 }

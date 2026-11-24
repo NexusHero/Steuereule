@@ -1,10 +1,10 @@
 import { Inject, Injectable } from '@nestjs/common'
-import { PrismaService } from '../prisma/prisma.service.js'
+import { ENCRYPTED_PRISMA, type EncryptedPrismaClient } from '../prisma/encrypted-prisma.provider.js'
 import type { AccountIdentity, AccountIdentityRepository } from './account-identity.repository.js'
 
 @Injectable()
 export class PrismaAccountIdentityRepository implements AccountIdentityRepository {
-  constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
+  constructor(@Inject(ENCRYPTED_PRISMA) private readonly prisma: EncryptedPrismaClient) {}
 
   async findByUserId(userId: string): Promise<AccountIdentity | null> {
     const user = await this.prisma.user.findUnique({ where: { id: userId } })

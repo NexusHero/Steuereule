@@ -2,6 +2,7 @@ import { Global, Module } from '@nestjs/common'
 import { APP_GUARD } from '@nestjs/core'
 import { PrismaGuestActivityRepository } from '../guest/guest-activity.repository.prisma.js'
 import { GUEST_ACTIVITY_RECORDER, GuestActivityNotes } from '../guest/guest-retention.js'
+import { ENCRYPTED_PRISMA, type EncryptedPrismaClient } from '../prisma/encrypted-prisma.provider.js'
 import { PrismaModule } from '../prisma/prisma.module.js'
 import { PrismaService } from '../prisma/prisma.service.js'
 import { resolveCorsOrigins } from '../cors/resolve-cors-origins.js'
@@ -34,8 +35,9 @@ import { OAuthDiscoveryController } from './oauth-discovery.controller.js'
     { provide: GUEST_ACTIVITY_RECORDER, inject: [PrismaService], useFactory: (prisma: PrismaService) => new GuestActivityNotes(new PrismaGuestActivityRepository(prisma)) },
     {
       provide: BETTER_AUTH_BUNDLE,
-      inject: [PrismaService, EMAIL_SENDER, GUEST_ACTIVITY_RECORDER],
-      useFactory: (prisma: PrismaService, emailSender: EmailSender, recorder: GuestActivityNotes) =>
+      // The encrypted client: name, e-mail and session address are ciphertext at rest (ADR-0109).
+      inject: [ENCRYPTED_PRISMA, EMAIL_SENDER, GUEST_ACTIVITY_RECORDER],
+      useFactory: (prisma: EncryptedPrismaClient, emailSender: EmailSender, recorder: GuestActivityNotes) =>
         createBetterAuth({
           prisma,
           secret: resolveBetterAuthSecret(),

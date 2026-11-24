@@ -51,8 +51,8 @@ describe('REQ-014 task 2 — /v1/device/{pending,approve,token}, against the rea
     app = await buildApp()
     await app.listen(0, '127.0.0.1')
     baseUrl = await app.getUrl()
-    const { PrismaService } = await import('../../src/prisma/prisma.service.js')
-    prisma = app.get(PrismaService)
+    const { ENCRYPTED_PRISMA } = await import('../../src/prisma/encrypted-prisma.provider.js')
+    prisma = app.get<PrismaClient>(ENCRYPTED_PRISMA)
   })
 
   afterEach(async () => {

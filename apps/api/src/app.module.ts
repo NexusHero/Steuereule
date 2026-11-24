@@ -43,6 +43,7 @@ import { AdvisorModule } from './advisor/advisor.module.js'
 import { McpModule } from './mcp/mcp.module.js'
 import { BETTER_AUTH_BUNDLE, type BetterAuthBundle } from './auth/auth.tokens.js'
 import { SharedThrottlerStorage } from './rate-limit/shared-throttler-storage.js'
+import { UnexpectedErrorFilter } from './common/unexpected-error.filter.js'
 import { DomainErrorFilter } from './common/domain-error.filter.js'
 
 @Module({
@@ -96,6 +97,10 @@ import { DomainErrorFilter } from './common/domain-error.filter.js'
     AdvisorModule,
     McpModule,
   ],
-  providers: [{ provide: APP_FILTER, useClass: DomainErrorFilter }],
+  // The catch-all is registered first: Nest tries the specific DomainErrorFilter before it.
+  providers: [
+    { provide: APP_FILTER, useClass: UnexpectedErrorFilter },
+    { provide: APP_FILTER, useClass: DomainErrorFilter },
+  ],
 })
 export class AppModule {}

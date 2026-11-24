@@ -22,4 +22,9 @@ export interface AuditRepository {
   append(entry: AuditEntry): Promise<void>
   /** Oldest first. `newest` keeps only the most recent that many rows (still oldest first among them). */
   findOwnRows(userId: string, options?: { newest?: number }): Promise<AuditLogRow[]>
+  /**
+   * Every row strictly before `before`, oldest first, in batches of at most `batchSize`. Reads one batch at a time (keyset
+   * on createdAt, id), so memory stays flat however long the log is — the complete JSON export (Art. 15/20 GDPR).
+   */
+  streamOwnRows(userId: string, options: { batchSize: number; before: Date }): AsyncIterable<AuditLogRow[]>
 }

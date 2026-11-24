@@ -24,3 +24,27 @@ export function resolveFieldEncryptionKey(env: NodeJS.ProcessEnv = process.env):
 
   return { encryptionKey, decryptionKeys }
 }
+
+const DEV_ONLY_FALLBACK_HASH_SALT = 'dev-only-email-hash-salt'
+
+/**
+ * Salt of the e-mail lookup hash (ADR-0109). Without a secret salt the hash would be a dictionary of
+ * known addresses. It cannot rotate without re-hashing every row, so it is a separate setting from the
+ * rotatable encryption key. Published to the env var the extension reads when it parses the schema.
+ */
+export function resolveEmailHashSalt(env: NodeJS.ProcessEnv = process.env): string {
+  const salt = env.PRISMA_FIELD_ENCRYPTION_HASH_SALT
+  if (salt && salt.length > 0) return salt
+  if (env.NODE_ENV === 'production') {
+    throw new Error(
+      'PRISMA_FIELD_ENCRYPTION_HASH_SALT must be set in production — an unsalted e-mail hash can be reversed ' +
+        'with a list of addresses (ADR-0109).',
+    )
+  }
+  return DEV_ONLY_FALLBACK_HASH_SALT
+}
+
+/** The extension reads the salt from the process env when it is created, so it has to be there first. */
+export function publishEmailHashSalt(env: NodeJS.ProcessEnv = process.env): void {
+  env.PRISMA_FIELD_ENCRYPTION_HASH_SALT = resolveEmailHashSalt(env)
+}

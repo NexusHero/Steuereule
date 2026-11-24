@@ -1,8 +1,9 @@
 import { Inject, Injectable } from '@nestjs/common'
+import type { AuditLogRow } from '../audit/audit.repository.js'
 import { AuditService } from '../audit/audit.service.js'
 import { PROFILE_REPOSITORY, type ProfileRepository } from '../profile/profile.repository.js'
 import { ACCOUNT_IDENTITY_REPOSITORY, type AccountIdentityRepository } from './account-identity.repository.js'
-import type { ExportDocument } from './export/export-document.js'
+import type { ExportAccessLogEntry, ExportDocument } from './export/export-document.js'
 import { buildExportReportHtml } from './export/export-report-template.js'
 import { PDF_RENDERER, type PdfRenderer } from './export/pdf-renderer.js'
 import { TAX_DATA_EXPORT_REPOSITORY, type TaxDataExportRepository } from './tax-data-export.repository.js'
@@ -12,6 +13,33 @@ import { TAX_DATA_EXPORT_REPOSITORY, type TaxDataExportRepository } from './tax-
  * rows only cost the renderer memory and time. The JSON export keeps the whole log (Art. 15/20 DSGVO, ADR-0109).
  */
 export const PDF_ACCESS_LOG_ENTRIES = 1000
+
+/** Rows read from the database, and written to the response, at a time in the JSON export. */
+export const EXPORT_ACCESS_LOG_BATCH = 1000
+
+export type ExportHead = Omit<ExportDocument, 'accessLog' | 'accessLogNewestOnly'>
+
+const toExportEntry = (row: AuditLogRow): ExportAccessLogEntry => ({
+  action: row.action,
+  resource: row.resource,
+  ...(row.source ? { source: row.source } : {}),
+  createdAt: row.createdAt.toISOString(),
+})
+
+/**
+ * The export as JSON text, the access log written batch by batch. Same bytes as `JSON.stringify` of the
+ * whole document (the log is its last key), but never more than one batch of the log in memory.
+ */
+export async function* streamExportJson(head: ExportHead, batches: AsyncIterable<AuditLogRow[]>): AsyncGenerator<string> {
+  yield `${JSON.stringify(head).slice(0, -1)},"accessLog":[`
+  let first = true
+  for await (const batch of batches) {
+    if (batch.length === 0) continue
+    yield (first ? '' : ',') + batch.map((row) => JSON.stringify(toExportEntry(row))).join(',')
+    first = false
+  }
+  yield ']}'
+}
 
 /** Assembles the DSGVO export document exactly once. */
 @Injectable()
@@ -25,17 +53,34 @@ export class AccountExportService {
   ) {}
 
   async assemble(userId: string, options: { accessLogNewest?: number } = {}): Promise<ExportDocument | null> {
+    const limit = options.accessLogNewest
+    const head = await this.assembleHead(userId)
+    if (!head) return null
+    // One more than shown, to know whether the PDF leaves entries out.
+    const accessLog = await this.auditService.findOwnRows(userId, limit === undefined ? {} : { newest: limit + 1 })
+    return {
+      ...head,
+      ...(limit !== undefined && accessLog.length > limit ? { accessLogNewestOnly: limit } : {}),
+      accessLog: (limit === undefined ? accessLog : accessLog.slice(-limit)).map(toExportEntry),
+    }
+  }
+
+  /** The complete JSON export as a stream; the access log is read in keyset batches (ADR-0109). */
+  async assembleJsonStream(userId: string): Promise<{ exportedAt: string; chunks: AsyncGenerator<string> } | null> {
+    const head = await this.assembleHead(userId)
+    if (!head) return null
+    // Rows up to now: the READ entry of this export itself is written after, as before.
+    const batches = this.auditService.streamOwnRows(userId, { batchSize: EXPORT_ACCESS_LOG_BATCH, before: new Date(head.exportedAt) })
+    return { exportedAt: head.exportedAt, chunks: streamExportJson(head, batches) }
+  }
+
+  private async assembleHead(userId: string): Promise<ExportHead | null> {
     const account = await this.accountIdentityRepository.findByUserId(userId)
     if (!account) return null
-    const limit = options.accessLogNewest
-
-    const [profileRecord, accessLog, taxData] = await Promise.all([
+    const [profileRecord, taxData] = await Promise.all([
       this.profileRepository.findByUserId(userId),
-      // One more than shown, to know whether the PDF leaves entries out.
-      this.auditService.findOwnRows(userId, limit === undefined ? {} : { newest: limit + 1 }),
       this.taxDataExportRepository.findAllForUser(userId),
     ])
-
     return {
       schemaVersion: '1.0',
       exportedAt: new Date().toISOString(),
@@ -57,13 +102,6 @@ export class AccountExportService {
           }
         : null,
       taxData,
-      ...(limit !== undefined && accessLog.length > limit ? { accessLogNewestOnly: limit } : {}),
-      accessLog: (limit === undefined ? accessLog : accessLog.slice(-limit)).map((row) => ({
-        action: row.action,
-        resource: row.resource,
-        ...(row.source ? { source: row.source } : {}),
-        createdAt: row.createdAt.toISOString(),
-      })),
     }
   }
 

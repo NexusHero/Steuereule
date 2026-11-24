@@ -34,8 +34,9 @@ export function useAcceptanceServer(options: AcceptanceServerOptions): void {
     app = await buildApp()
     await app.listen(0, '127.0.0.1')
     baseUrl = await app.getUrl()
-    const { PrismaService } = await import('../../src/prisma/prisma.service.js')
-    prisma = app.get(PrismaService)
+    // The encrypted client, like the app: e-mail lookups in the suites go through the hash (ADR-0109).
+    const { ENCRYPTED_PRISMA } = await import('../../src/prisma/encrypted-prisma.provider.js')
+    prisma = app.get<PrismaClient>(ENCRYPTED_PRISMA)
   })
 
   afterEach(async () => {

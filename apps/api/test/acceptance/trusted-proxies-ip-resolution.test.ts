@@ -17,8 +17,8 @@ async function bootApp(port: number): Promise<{ app: NestFastifyApplication; bas
   const app = await buildApp()
   await app.listen(port, '127.0.0.1')
   const baseUrl = await app.getUrl()
-  const { PrismaService } = await import('../../src/prisma/prisma.service.js')
-  const prisma = app.get(PrismaService)
+  const { ENCRYPTED_PRISMA } = await import('../../src/prisma/encrypted-prisma.provider.js')
+  const prisma = app.get<PrismaClient>(ENCRYPTED_PRISMA)
   return { app, baseUrl, prisma }
 }
 

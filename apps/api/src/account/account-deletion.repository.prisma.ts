@@ -1,13 +1,13 @@
 import { Inject, Injectable } from '@nestjs/common'
 import { USER_KEY_STORE, type UserKeyStore } from '../keystore/user-key-store.js'
-import { PrismaService } from '../prisma/prisma.service.js'
+import { ENCRYPTED_PRISMA, type EncryptedPrismaClient } from '../prisma/encrypted-prisma.provider.js'
 import type { AccountDeletionRepository, DeleteAccountResult } from './account-deletion.repository.js'
 import { deleteAccountTransaction } from './delete-account-transaction.prisma.js'
 
 @Injectable()
 export class PrismaAccountDeletionRepository implements AccountDeletionRepository {
   constructor(
-    @Inject(PrismaService) private readonly prisma: PrismaService,
+    @Inject(ENCRYPTED_PRISMA) private readonly prisma: EncryptedPrismaClient,
     @Inject(USER_KEY_STORE) private readonly keys: UserKeyStore,
   ) {}
 

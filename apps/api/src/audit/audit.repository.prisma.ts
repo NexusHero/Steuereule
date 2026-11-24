@@ -17,4 +17,25 @@ export class PrismaAuditRepository implements AuditRepository {
     // Oldest first again, without Array#reverse (the lint rule wants toReversed, which this lib target lacks).
     return newest.map((_, index) => newest[newest.length - 1 - index]!)
   }
+
+  async *streamOwnRows(userId: string, options: { batchSize: number; before: Date }): AsyncGenerator<AuditLogRow[]> {
+    let after: { createdAt: Date; id: string } | undefined
+    for (;;) {
+      const page = await this.prisma.taxDataAccessLog.findMany({
+        where: {
+          userId,
+          createdAt: { lt: options.before },
+          ...(after ? { OR: [{ createdAt: { gt: after.createdAt } }, { createdAt: after.createdAt, id: { gt: after.id } }] } : {}),
+        },
+        orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+        take: options.batchSize,
+        select: { id: true, action: true, resource: true, source: true, createdAt: true },
+      })
+      if (page.length === 0) return
+      const last = page[page.length - 1]!
+      after = { createdAt: last.createdAt, id: last.id }
+      yield page.map(({ action, resource, source, createdAt }) => ({ action, resource, source, createdAt }))
+      if (page.length < options.batchSize) return
+    }
+  }
 }
