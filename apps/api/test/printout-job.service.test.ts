@@ -3,6 +3,7 @@ import { PrintoutJobService } from '../src/printout/printout-job.service.js'
 import type { PrintoutService } from '../src/printout/printout.service.js'
 import type { BetterAuthBundle } from '../src/auth/auth.tokens.js'
 import { createResettableRateLimitStorage } from '../src/auth/rate-limit-storage.js'
+import { InvalidInputError } from '../src/common/domain-error.js'
 
 describe('PrintoutJobService (ADR-0056: Async PDF Fault Isolation)', () => {
   it('enqueues a job immediately with 202-ready payload and returns statusUrl', async () => {
@@ -30,6 +31,33 @@ describe('PrintoutJobService (ADR-0056: Async PDF Fault Isolation)', () => {
 
     // Attacker trying to view another user's job
     await expect(service.getJobStatus('user_attacker', 2025, job.jobId)).rejects.toThrow('not found')
+  })
+})
+
+describe('PrintoutJobService failure (API-5)', () => {
+  const settle = () => new Promise((resolve) => setImmediate(resolve))
+
+  it('a failed job reports a machine code, never the raw error message', async () => {
+    const failing = { create: vi.fn().mockRejectedValue(new Error('ENOENT: /srv/forms/secret-path.pdf')) } as unknown as PrintoutService
+    const service = new PrintoutJobService(failing)
+
+    const job = await service.queueExport('u', 2025, {})
+    await settle()
+    const status = await service.getJobStatus('u', 2025, job.jobId)
+
+    expect(status.status).toBe('failed')
+    expect(status.error).toBe('PRINTOUT_FAILED')
+    expect(JSON.stringify(status)).not.toContain('secret-path')
+  })
+
+  it('a DomainError keeps its own code', async () => {
+    const failing = { create: vi.fn().mockRejectedValue(new InvalidInputError('MASTER_DATA_INCOMPLETE', 'Stammdaten fehlen: iban')) } as unknown as PrintoutService
+    const service = new PrintoutJobService(failing)
+
+    const job = await service.queueExport('u', 2025, {})
+    await settle()
+
+    expect((await service.getJobStatus('u', 2025, job.jobId)).error).toBe('MASTER_DATA_INCOMPLETE')
   })
 })
 

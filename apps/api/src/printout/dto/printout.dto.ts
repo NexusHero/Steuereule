@@ -62,8 +62,8 @@ export class PrintoutJobDto {
   @ApiProperty({
     type: String,
     required: false,
-    example: 'Error during PDF synthesis',
-    description: 'Error explanation if job failed.',
+    example: 'PRINTOUT_FAILED',
+    description: 'Machine code if the job failed: a DomainError code, else PRINTOUT_FAILED. Never a raw message (API-5).',
   })
   error?: string
 }
