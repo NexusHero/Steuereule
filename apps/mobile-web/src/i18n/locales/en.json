@@ -1323,6 +1323,8 @@
     "heading": "Your rental property",
     "help": "Enter your year-round rented objects — one Anlage V each, with linear depreciation.",
     "loading": "Loading your rental property …",
+    "anteilLadefehler": "Whether you are assessed jointly could not be loaded, so the question about your share in the property is missing here.",
+    "leerenNichtMoeglich": "This field cannot be left empty once a value is saved. Enter 0 if there was nothing.",
     "loadError": {
       "heading": "That didn't work.",
       "message": "Your rental property couldn't be loaded. Check your connection and try again.",

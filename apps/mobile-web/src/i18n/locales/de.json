@@ -1323,6 +1323,8 @@
     "heading": "Deine Vermietung",
     "help": "Erfass deine ganzjährig vermieteten Objekte — je Objekt eine Anlage V mit linearer AfA.",
     "loading": "Deine Vermietung wird geladen …",
+    "anteilLadefehler": "Ob ihr gemeinsam veranlagt werdet, konnte nicht geladen werden – deshalb fehlt hier die Frage nach deinem Anteil am Objekt.",
+    "leerenNichtMoeglich": "Leer lassen geht hier nicht, wenn schon ein Wert gespeichert ist. Trag 0 ein, wenn es nichts gab.",
     "loadError": {
       "heading": "Das hat nicht geklappt.",
       "message": "Deine Vermietung konnte nicht geladen werden. Prüf die Verbindung und versuch es noch mal.",

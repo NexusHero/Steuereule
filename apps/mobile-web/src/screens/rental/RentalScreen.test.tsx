@@ -13,6 +13,12 @@ import { createAppI18n } from '../../i18n/app-i18n'
 import { RentalScreen } from './RentalScreen'
 import { server } from '../../test-msw-server'
 
+/** Types a value and leaves the field — the way the mask saves (WEB-39). */
+function commit(field: HTMLElement, value: string) {
+  fireEvent.change(field, { target: { value } })
+  fireEvent.blur(field)
+}
+
 const TAX_YEAR = 2026
 const RENTAL_URL = `*/v1/steuerjahre/${TAX_YEAR}/vermietung`
 
@@ -146,8 +152,9 @@ describe('VermietungScreen', () => {
       }),
     )
     renderRental()
-    fireEvent.change(await screen.findByLabelText('Umlagen / Nebenkosten, die die Mieter gezahlt haben (€ im Jahr)'), { target: { value: '4200' } })
-    fireEvent.change(screen.getByLabelText('Schuldzinsen für das Objekt, ohne Tilgung (€ im Jahr)'), { target: { value: '6100' } })
+    // WEB-39: a field is saved once it is left, not on every keystroke; German thousands are read (4.200).
+    commit(await screen.findByLabelText('Umlagen / Nebenkosten, die die Mieter gezahlt haben (€ im Jahr)'), '4.200')
+    commit(screen.getByLabelText('Schuldzinsen für das Objekt, ohne Tilgung (€ im Jahr)'), '6100')
     await waitFor(() => expect(bodies).toEqual([{ umlagen: '4200' }, { schuldzinsen: '6100' }]))
     expect(screen.queryByLabelText('Dein Anteil am Objekt in % (der Rest gehört deinem Partner)')).toBeNull()
   })
@@ -198,7 +205,7 @@ describe('VermietungScreen', () => {
       }),
     )
     renderRental()
-    fireEvent.change(await screen.findByTestId('vermietung-0-plz'), { target: { value: '01067' } })
+    commit(await screen.findByTestId('vermietung-0-plz'), '01067')
     await waitFor(() => expect(bodies).toContainEqual({ plz: '01067', city: 'Dresden' }))
   })
 
