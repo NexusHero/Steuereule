@@ -31,13 +31,27 @@ async function main() {
     await browserLogin(page, webOrigin, user.email, TAG)
     await page.goto(`${webOrigin}/app/steuerjahr/${YEAR}/ausdruck`, { waitUntil: 'networkidle' })
 
-    // Locked until paid: the download button is disabled, paying is offered.
+    // Back from a cancelled checkout: the page says nothing was paid (WEB-1: the app reads the API's parameter).
+    // The parameter name and values are PAYMENT_RETURN_PARAM / PAYMENT_RETURN in packages/core (payment-return.ts).
+    await page.goto(`${webOrigin}/app/steuerjahr/${YEAR}/ausdruck?zahlung=abbruch`, { waitUntil: 'networkidle' })
+    await page.getByText('Die Zahlung wurde abgebrochen, es wurde nichts bezahlt.', { exact: false }).waitFor({ state: 'visible', timeout: 15_000 })
+    console.log(`[${TAG}] ✅ abbruch — the cancelled return trip says nothing was paid`)
+
+    // Locked until paid: the download button is absent, paying is offered with the price (WEB-16).
     const pay = page.locator('[data-testid="ausdruck-bezahlen"]')
     await pay.waitFor({ state: 'visible', timeout: 15_000 })
     if ((await page.locator('[data-testid="ausdruck-herunterladen"]').count()) !== 0) fail('before paying there must be no download button')
+    const priceText = (await page.locator('[data-testid="ausdruck-preis"]').textContent())?.replace(/\u00a0/g, ' ') ?? ''
+    if (!priceText.includes('34,99 €')) fail(`the price must be shown before the redirect (fake provider: 34,99 €), got "${priceText}"`)
     await pay.click()
     await page.waitForURL((u) => u.pathname.endsWith(`/ausdruck`) && u.search.includes('zahlung=erfolg'), { timeout: 15_000 })
     console.log(`[${TAG}] ✅ ausdruck-bezahlen — checkout returned to the success URL`)
+
+    // The webhook is late: the page says the payment is being confirmed, and paying again is not possible.
+    await page.getByText('Deine Zahlung wird bestätigt.', { exact: false }).waitFor({ state: 'visible', timeout: 15_000 })
+    if ((await pay.getAttribute('aria-disabled')) !== 'true') fail('while the payment is being confirmed the pay button must be disabled')
+    if ((await page.getByText('Zahlung bestätigt', { exact: false }).count()) !== 0) fail('before the webhook the page must not say the payment is confirmed')
+    console.log(`[${TAG}] ✅ erfolg, webhook late — "Zahlung wird bestätigt", pay button disabled`)
 
     // The paid event arrives like Stripe's: signed, on the real webhook endpoint.
     const sessionId = sql(`SELECT "stripeCheckoutSessionId" FROM "Freischaltung" ORDER BY "createdAt" DESC LIMIT 1`).trim()
@@ -50,7 +64,16 @@ async function main() {
     await until(async () => (await call(api, 'GET', `/v1/steuerjahre/${YEAR}/freischaltung`)).status, 'freigeschaltet', 'the paid event must unlock the year')
     console.log(`[${TAG}] ✅ webhook — a wrong signature is refused, the signed paid event unlocks the year`)
 
-    await page.reload({ waitUntil: 'networkidle' })
+    // Without a reload the page polls and turns to "paid" with the download.
+    await page.getByText(`Zahlung bestätigt: ${YEAR} ist freigeschaltet.`).waitFor({ state: 'visible', timeout: 20_000 })
+    if ((await page.getByText('Deine Zahlung wird bestätigt.', { exact: false }).count()) !== 0) fail('once paid the confirming text must be gone')
+    console.log(`[${TAG}] ✅ erfolg — the page turned to "Zahlung bestätigt" without a reload`)
+
+    // API-4: a second checkout for the paid year is refused.
+    const again = await api.post(`/v1/steuerjahre/${YEAR}/ausdruck/checkout`)
+    if (again.status() !== 409) fail(`a checkout for a paid year must be refused with 409, got ${again.status()}`)
+    console.log(`[${TAG}] ✅ checkout — refused for a paid year`)
+
     const download = page.locator('[data-testid="ausdruck-herunterladen"]')
     await download.waitFor({ state: 'visible', timeout: 15_000 })
     const [file] = await Promise.all([page.waitForEvent('download', { timeout: 30_000 }), download.click()])
@@ -63,6 +86,12 @@ async function main() {
     const [editableFile] = await Promise.all([page.waitForEvent('download', { timeout: 30_000 }), editable.click()])
     if (editableFile.suggestedFilename() !== `steuererklaerung-${YEAR}-bearbeitbar.pdf`) fail(`unexpected editable file name ${editableFile.suggestedFilename()}`)
     console.log(`[${TAG}] ✅ ausdruck-herunterladen-bearbeitbar — ${editableFile.suggestedFilename()}`)
+
+    // API-4: a refund takes the unlock back.
+    const refund = await api.post('/v1/zahlung/stripe/webhook', { data: { sessionId, kind: 'erstattet' }, headers: { 'stripe-signature': FAKE_SIGNATURE } })
+    if (!refund.ok()) fail(`the refund event must be accepted, got ${refund.status()}`)
+    await until(async () => (await call(api, 'GET', `/v1/steuerjahre/${YEAR}/freischaltung`)).status, 'offen', 'a refund must take the unlock back')
+    console.log(`[${TAG}] ✅ refund — the unlock is taken back`)
 
     await ctx.close()
     await api.dispose()
