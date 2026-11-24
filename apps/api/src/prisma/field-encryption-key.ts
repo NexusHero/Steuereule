@@ -3,7 +3,7 @@ export interface FieldEncryptionKeys {
   decryptionKeys: string[]
 }
 
-const DEV_ONLY_FALLBACK_KEY = 'k1.aesgcm256.MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY='
+export const DEV_ONLY_FALLBACK_KEY = 'k1.aesgcm256.MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY='
 
 export function resolveFieldEncryptionKey(env: NodeJS.ProcessEnv = process.env): FieldEncryptionKeys {
   const encryptionKey = env.PRISMA_FIELD_ENCRYPTION_KEY
@@ -25,7 +25,7 @@ export function resolveFieldEncryptionKey(env: NodeJS.ProcessEnv = process.env):
   return { encryptionKey, decryptionKeys }
 }
 
-const DEV_ONLY_FALLBACK_HASH_SALT = 'dev-only-email-hash-salt'
+export const DEV_ONLY_FALLBACK_HASH_SALT = 'dev-only-email-hash-salt'
 
 /**
  * Salt of the e-mail lookup hash (ADR-0109). Without a secret salt the hash would be a dictionary of

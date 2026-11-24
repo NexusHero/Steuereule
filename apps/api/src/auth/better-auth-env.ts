@@ -1,9 +1,9 @@
-const DEV_ONLY_FALLBACK_SECRET = 'dev-only-insecure-better-auth-secret-do-not-use-in-production'
+export const DEV_ONLY_FALLBACK_SECRET = 'dev-only-insecure-better-auth-secret-do-not-use-in-production'
 const DEV_ONLY_FALLBACK_URL = 'http://localhost:3000'
 const DEV_ONLY_FALLBACK_WEB_APP_URL = 'http://localhost:8081'
 
-const DEV_ONLY_GOOGLE_CLIENT_ID = 'dev-only-google-client-id'
-const DEV_ONLY_GOOGLE_CLIENT_SECRET = 'dev-only-google-client-secret'
+export const DEV_ONLY_GOOGLE_CLIENT_ID = 'dev-only-google-client-id'
+export const DEV_ONLY_GOOGLE_CLIENT_SECRET = 'dev-only-google-client-secret'
 
 export function resolveBetterAuthSecret(env: NodeJS.ProcessEnv = process.env): string {
   const secret = env.BETTER_AUTH_SECRET

@@ -28,7 +28,7 @@ export interface KeystoreMasterKeys {
   readonly previous: readonly Buffer[]
 }
 
-const DEV_ONLY_KEYSTORE_SECRET = 'steuereule-dev-only-keystore-master-key'
+export const DEV_ONLY_KEYSTORE_SECRET = 'steuereule-dev-only-keystore-master-key'
 
 function deriveMasterKey(secret: string): Buffer {
   return Buffer.from(hkdfSync('sha256', Buffer.from(secret, 'utf8'), Buffer.from('steuereule-keystore-v1'), 'kek-master', 32))
