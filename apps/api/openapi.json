@@ -8316,7 +8316,8 @@
                 "anlageKap",
                 "anlageV",
                 "anlageKind",
-                "anlageEuer"
+                "anlageEuer",
+                "bescheid"
               ],
               "type": "string"
             }
@@ -8332,9 +8333,19 @@
             }
           }
         ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfirmAnnexDto"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
-            "description": "All values of the Anlage are confirmed; the remaining overview.",
+            "description": "The values of the Anlage the user was shown are confirmed; the remaining overview.",
             "content": {
               "application/json": {
                 "schema": {
@@ -8345,6 +8356,9 @@
           },
           "401": {
             "description": "Guest session — this endpoint requires a signed-in account."
+          },
+          "409": {
+            "description": "CONFIRMATION_STALE: a value changed since it was shown, or one came in; nothing was confirmed."
           }
         },
         "tags": [
@@ -21729,6 +21743,16 @@
             "nullable": true,
             "description": "Instanz (Vermietungsobjekt, Kind) oder null."
           },
+          "instanceLabel": {
+            "type": "string",
+            "nullable": true,
+            "example": "Mia",
+            "description": "Which record the value belongs to, as the user knows it: the child’s first name, the object’s address. Null without an instance or without a name."
+          },
+          "version": {
+            "type": "string",
+            "description": "What the user is shown of this value; confirming an Anlage sends it back (MCP-4)."
+          },
           "field": {
             "type": "string",
             "example": "bruttoarbeitslohn"
@@ -21766,6 +21790,8 @@
           "key",
           "screen",
           "instance",
+          "instanceLabel",
+          "version",
           "field",
           "value",
           "provenance",
@@ -21786,7 +21812,8 @@
               "anlageKap",
               "anlageV",
               "anlageKind",
-              "anlageEuer"
+              "anlageEuer",
+              "bescheid"
             ],
             "example": "anlageN"
           },
@@ -21868,6 +21895,44 @@
         "required": [
           "annexes",
           "tasks"
+        ]
+      },
+      "ShownValueDto": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string",
+            "example": "lstb.bruttoarbeitslohn"
+          },
+          "version": {
+            "type": "string",
+            "description": "The `version` of the value as the overview gave it."
+          },
+          "person": {
+            "type": "string",
+            "enum": [
+              "B"
+            ],
+            "description": "Set for a value of Person B, as in the overview."
+          }
+        },
+        "required": [
+          "key",
+          "version"
+        ]
+      },
+      "ConfirmAnnexDto": {
+        "type": "object",
+        "properties": {
+          "values": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ShownValueDto"
+            }
+          }
+        },
+        "required": [
+          "values"
         ]
       },
       "ProposalDecisionDto": {

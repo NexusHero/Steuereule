@@ -136,17 +136,6 @@ export class PrismaMarkingRepository implements ProvenanceRepository {
     return count
   }
 
-  async confirmAnnex(userId: string, taxYears: readonly number[], annex: Annex): Promise<number> {
-    const [{ count }] = await this.prisma.$transaction([
-      this.prisma.marking.updateMany({
-        where: { userId, taxYear: { in: [...taxYears] }, annex, confirmed: false },
-        data: { confirmed: true },
-      }),
-      this.prisma.taxDataAccessLog.create({ data: { userId, action: 'WRITE', resource: 'kennzeichnung' } }),
-    ])
-    return count
-  }
-
   async confirmKeys(userId: string, taxYears: readonly number[], annex: Annex, keys: readonly string[]): Promise<number> {
     if (keys.length === 0) return 0
     const [{ count }] = await this.prisma.$transaction([
@@ -156,12 +145,6 @@ export class PrismaMarkingRepository implements ProvenanceRepository {
       }),
       this.prisma.taxDataAccessLog.create({ data: { userId, action: 'WRITE', resource: 'kennzeichnung' } }),
     ])
-    return count
-  }
-
-  async removeByKeyPrefix(userId: string, taxYear: number, prefix: string): Promise<number> {
-    const { count } = await this.prisma.marking.deleteMany({ where: { userId, taxYear, itemKey: { startsWith: prefix } } })
-    if (count > 0) await this.prisma.taxDataAccessLog.create({ data: { userId, action: 'WRITE', resource: 'kennzeichnung' } })
     return count
   }
 }

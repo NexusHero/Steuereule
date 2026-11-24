@@ -37,17 +37,6 @@ export class FakeMarkingRepository implements ProvenanceRepository {
     return Promise.resolve(count)
   }
 
-  confirmAnnex(userId: string, taxYears: readonly number[], annex: Annex): Promise<number> {
-    let count = 0
-    for (const [k, r] of this.store) {
-      if (r.userId === userId && taxYears.includes(r.taxYear) && annexOf(r.key) === annex && !r.confirmed) {
-        this.clock += 1
-        this.store.set(k, { ...r, confirmed: true, updatedAt: new Date(this.clock) })
-        count += 1
-      }
-    }
-    return Promise.resolve(count)
-  }
 
   confirmKeys(userId: string, taxYears: readonly number[], annex: Annex, keys: readonly string[]): Promise<number> {
     let count = 0
@@ -61,16 +50,6 @@ export class FakeMarkingRepository implements ProvenanceRepository {
     return Promise.resolve(count)
   }
 
-  removeByKeyPrefix(userId: string, taxYear: number, prefix: string): Promise<number> {
-    let count = 0
-    for (const [k, r] of this.store) {
-      if (r.userId === userId && r.taxYear === taxYear && r.key.startsWith(prefix)) {
-        this.store.delete(k)
-        count += 1
-      }
-    }
-    return Promise.resolve(count)
-  }
 
   /** Test seam: every stored record, as the tests compare it (without the moment it changed). */
   all(): ProvenanceRecord[] {

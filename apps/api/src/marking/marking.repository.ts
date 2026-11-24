@@ -14,9 +14,6 @@ export interface ProvenanceRepository {
   find(userId: string, taxYear: number, key: string): Promise<ProvenanceRecord | null>
   save(userId: string, taxYear: number, marking: Omit<Marking, 'value'>): Promise<ProvenanceRecord>
   remove(userId: string, taxYear: number, keys: readonly string[]): Promise<number>
-  confirmAnnex(userId: string, taxYears: readonly number[], annex: Annex): Promise<number>
   /** Confirms exactly these unconfirmed markings of the Anlage (MCP-4): what the user saw, nothing written since. */
   confirmKeys(userId: string, taxYears: readonly number[], annex: Annex, keys: readonly string[]): Promise<number>
-  /** Drops every marking of the year whose key starts so (the drafts of a business that is gone). */
-  removeByKeyPrefix(userId: string, taxYear: number, prefix: string): Promise<number>
 }
