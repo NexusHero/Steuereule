@@ -6,6 +6,7 @@ import { CHILD_RELATIONSHIPS, OTHER_PARENT_STATUSES, type GermanState } from '@s
 import { todayIso } from '../shared/today'
 import { TaxIdHint } from '../shared/TaxIdHint'
 import { APP_NS } from '../../i18n/resources'
+import { useApiFailureMessage } from '../../net/apiFailure'
 import { type makeStyles } from './ChildrenScreen.styles'
 import { KINSHIP_LABEL, OTHER_PARENT_LABEL } from './childrenModel'
 import { ChildFormMoreDetails } from './ChildFormMoreDetails'
@@ -26,6 +27,7 @@ export interface ChildFormCardProps {
 
 export function ChildFormCard({ form, styles, t, taxYear, married, partnerName, suggestedLastName, addressState }: ChildFormCardProps) {
   const { t: tr } = useTranslation(APP_NS)
+  const failureMessage = useApiFailureMessage()
   const {
     kinder,
     firstName,
@@ -212,7 +214,9 @@ export function ChildFormCard({ form, styles, t, taxYear, married, partnerName, 
       {moreOpen ? <ChildFormMoreDetails form={form} styles={styles} t={t} married={married} {...(partnerName ? { partnerName } : {})} /> : null}
       {saveError !== null ? (
         <Text style={{ ...t.type.small, color: t.color.fehler, marginTop: t.space.s2 }} accessibilityRole="alert" testID="kind-speichern-fehler">
-          {tr(saveError === 'pflicht' ? 'kinder.pflichtFehlt' : saveError === 'datum' ? 'kinder.datumFalsch' : 'kinder.speichernFehler')}
+          {saveError === 'server'
+            ? `${tr('kinder.nichtGespeichert')} ${failureMessage(form.saveFailure, { validation: tr('kinder.speichernFehler') })}`
+            : tr(saveError === 'pflicht' ? 'kinder.pflichtFehlt' : 'kinder.datumFalsch')}
         </Text>
       ) : null}
       <Button onPress={handleSave} disabled={saving} style={styles.addButton} testID="kind-speichern">

@@ -2515,6 +2515,11 @@
     "pflichtFehlt": "Please enter first name, last name and date of birth.",
     "datumFalsch": "Please enter the date of birth as DD.MM.YYYY.",
     "speichernFehler": "The child was not saved. Check the details and the connection and try again.",
+    "nichtGespeichert": "The child was not saved.",
+    "loeschenFehler": "The child was not deleted.",
+    "formOffen": "The child is not saved yet. Tap “Save child” – or “Next” again to discard what you typed.",
+    "familienstandLadefehler": "Your marital status could not be loaded, so the questions about the single-parent relief are missing here.",
+    "haushaltLadefehler": "The children of the household could not be loaded.",
     "kinderzulageAusLohnausweis": "The same figure as in the Swiss salary certificate (“child and family allowances”): {{betrag}} of it fall to this child. Enter something here only if it is a different amount.",
     "kinderzulageHinweis": "The same figure as “child and family allowances” in the Swiss salary certificate. If it is entered there already, leave this field empty: the amount is taken from there."
   },

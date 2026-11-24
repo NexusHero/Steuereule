@@ -1,4 +1,4 @@
-import { type ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 import { HouseholdChildrenSection } from './HouseholdChildrenSection'
 import { CatalogScreen } from '../catalog/CatalogScreen'
 import { ScrollView, Text, View } from 'react-native'
@@ -8,7 +8,9 @@ import { type GermanState } from '@steuereule/core'
 import { APP_NS } from '../../i18n/resources'
 import { CURRENT_TAX_YEAR } from '../../config/taxYear'
 import { BackButton, BackButtonSpacer } from '../shared/BackButton'
-import { ErrorState, LoadingState } from '../shared/ScreenState'
+import { LoadFailedState, LoadingState } from '../shared/ScreenState'
+import { InlineLoadFailure } from '../shared/InlineLoadFailure'
+import { useApiFailureMessage } from '../../net/apiFailure'
 import { SaveFailedNotice } from '../shared/SaveFailedNotice'
 import { makeStyles } from './ChildrenScreen.styles'
 import { type ChildInput, type ChildItem } from './childrenModel'
@@ -57,6 +59,8 @@ function ConnectedKinderScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TA
     ownLastName,
     addressState,
     married,
+    maritalStatusFailed,
+    masterData,
     partnerName,
     householdQuestions,
     setHouseholdQuestions,
@@ -71,17 +75,7 @@ function ConnectedKinderScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TA
   if (query.isPending) {
     return <LoadingState bp={bp} label={tr('kinder.loading', 'Kinder werden geladen …')} />
   }
-  if (query.isError || query.data.status !== 200) {
-    return (
-      <ErrorState
-        bp={bp}
-        heading={tr('kinder.loadError.heading', 'Das hat nicht geklappt.')}
-        message={tr('kinder.loadError.message', 'Deine Kinder konnten nicht geladen werden.')}
-        retryLabel={tr('kinder.loadError.retry', 'Noch mal versuchen')}
-        onRetry={() => void query.refetch()}
-      />
-    )
-  }
+  if (query.isError) return <LoadFailedState bp={bp} error={query.error} onRetry={() => void query.refetch()} />
 
   if (householdQuestions) {
     return (
@@ -106,11 +100,19 @@ function ConnectedKinderScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TA
       onSaveChild={onSaveChild}
       onDeleteChild={onDeleteChild}
       onSingleParentQuestions={() => setHouseholdQuestions(true)}
-      married={married}
+      // Unknown is not unmarried: the single-parent questions stay hidden until the marital status loaded.
+      married={married || maritalStatusFailed}
       {...(partnerName ? { partnerName } : {})}
       suggestedLastName={ownLastName}
       addressState={addressState}
-      householdSlot={<HouseholdChildrenSection taxYear={taxYear} onChanged={invalidate} />}
+      householdSlot={
+        <>
+          {maritalStatusFailed ? (
+            <InlineLoadFailure what={tr('kinder.familienstandLadefehler')} error={masterData.error} onRetry={() => void masterData.refetch()} testID="kinder-familienstand-ladefehler" />
+          ) : null}
+          <HouseholdChildrenSection taxYear={taxYear} onChanged={invalidate} />
+        </>
+      }
     />
     </>
   )
@@ -137,7 +139,20 @@ function KinderScreenView({
   const { t: tr } = useTranslation(APP_NS)
 
   const form = useChildForm({ taxYear, initialKinder, onAddChild, onSaveChild, onDeleteChild, married, suggestedLastName, addressState })
-  const { kinder, foldStatus, formOpen, setFormOpen, savedName, fillForm, handleDelete } = form
+  const { kinder, foldStatus, formOpen, setFormOpen, savedName, fillForm, handleDelete, deleteFailure } = form
+  const failureMessage = useApiFailureMessage()
+  // NM-10: „Weiter“ with a typed, unsaved child asks once instead of dropping it.
+  const [leaveWarned, setLeaveWarned] = useState(false)
+  // A save on its way is not an unsaved child: leaving waits for it (flushThen).
+  const formTyped = formOpen && !form.saving && (form.firstName.trim() !== '' || form.geburtsdatum.trim() !== '' || form.edited !== null)
+  const leaveOrWarn = (leave: () => void) => {
+    if (formTyped && !leaveWarned) {
+      setLeaveWarned(true)
+      return
+    }
+    setLeaveWarned(false)
+    leave()
+  }
 
   return (
     <ScrollView contentContainerStyle={bp === 's' ? styles.screen : styles.wideScreen} testID="kinder-screen">
@@ -158,6 +173,11 @@ function KinderScreenView({
         <ChildrenSummaryCard styles={styles} foldStatus={foldStatus} />
       )}
 
+      {deleteFailure !== null ? (
+        <Text style={{ ...t.type.small, color: t.color.fehler }} accessibilityRole="alert" testID="kind-loeschen-fehler">
+          {`${tr('kinder.loeschenFehler')} ${failureMessage(deleteFailure)}`}
+        </Text>
+      ) : null}
       {kinder.map((k, index) => (
         <ChildCard
           key={k.id}
@@ -211,7 +231,12 @@ function KinderScreenView({
         </Button>
       ) : null}
 
-      <Button onPress={() => onDone()} style={styles.cta} testID="kinder-weiter">
+      {leaveWarned ? (
+        <Text style={{ ...t.type.small, color: t.color.fehler }} accessibilityRole="alert" testID="kinder-formular-offen">
+          {tr('kinder.formOffen')}
+        </Text>
+      ) : null}
+      <Button onPress={() => leaveOrWarn(onDone)} style={styles.cta} testID="kinder-weiter">
         {tr('kinder.done', 'Weiter')}
       </Button>
     </ScrollView>

@@ -2515,6 +2515,11 @@
     "pflichtFehlt": "Bitte Vorname, Nachname und Geburtsdatum eintragen.",
     "datumFalsch": "Bitte das Geburtsdatum als TT.MM.JJJJ eintragen.",
     "speichernFehler": "Das Kind wurde nicht gespeichert. Prüf die Angaben und die Verbindung und versuch es noch mal.",
+    "nichtGespeichert": "Das Kind wurde nicht gespeichert.",
+    "loeschenFehler": "Das Kind wurde nicht gelöscht.",
+    "formOffen": "Das Kind ist noch nicht gespeichert. Tipp „Kind speichern“ – oder noch einmal „Weiter“, um die Eingaben zu verwerfen.",
+    "familienstandLadefehler": "Dein Familienstand konnte nicht geladen werden – deshalb fehlen hier die Fragen zum Entlastungsbetrag.",
+    "haushaltLadefehler": "Die Kinder aus dem Haushalt konnten nicht geladen werden.",
     "kinderzulageAusLohnausweis": "Dieselbe Angabe wie im Schweizer Lohnausweis („Kinder- und Familienzulagen“): Von dort entfallen {{betrag}} auf dieses Kind. Trag hier nur etwas ein, wenn es ein anderer Betrag ist.",
     "kinderzulageHinweis": "Dieselbe Angabe wie „Kinder- und Familienzulagen“ im Schweizer Lohnausweis. Steht sie dort schon, lass das Feld leer: Der Betrag wird von dort übernommen."
   },
