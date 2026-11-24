@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { Pressable, Text, View, type TextStyle, type ViewStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
-import { Card, hapticSuccess, useBreakpoint, useTheme, type UiTheme } from '@steuereule/ui'
+import { Button, Card, hapticSuccess, useBreakpoint, useTheme, type UiTheme } from '@steuereule/ui'
+import { useQueryClient } from '@tanstack/react-query'
 import { GERMAN_JOB_TOO, type Answers, type Conflict, type Notice } from '@steuereule/core'
 import {
   useBusinessControllerProfile,
@@ -52,8 +53,21 @@ export function useCockpitTileFacts(
   if (!active || path === null) return null
 
   // Tiles whose query is still loading or failed: their status is unknown, so none is shown (honest states).
+  // A failed one is also named as failed (WEB-45, NC-06): never „offen“, never the next step.
   const unknown = (q: { readonly isPending: boolean; readonly isError: boolean }) => q.isPending || q.isError
   const pendingTiles = new Set<TileId>()
+  const failedTiles = new Set<TileId>()
+  const failed = (id: TileId, on: boolean, q: { readonly isError: boolean }) => {
+    if (on && q.isError) failedTiles.add(id)
+  }
+  failed('lstb', path === 'angestellte' || path === 'ch', lstb)
+  failed('ch', path === 'ch', ch)
+  failed('rente', path === 'rente', pension)
+  failed('arbeitsweg', path !== 'rente', commute)
+  failed('kapital', true, capital)
+  failed('vermietung', true, rental)
+  failed('kinder', hasChildren, children)
+  failed('selbststaendig', selfEmployment, business)
   if ((path === 'angestellte' || path === 'ch') && unknown(lstb)) pendingTiles.add('lstb')
   if (path === 'ch' && unknown(ch)) pendingTiles.add('ch')
   if (path === 'rente' && unknown(pension)) pendingTiles.add('rente')
@@ -61,22 +75,23 @@ export function useCockpitTileFacts(
   if (unknown(capital)) pendingTiles.add('kapital')
   if (unknown(rental)) pendingTiles.add('vermietung')
   if (hasChildren && unknown(children)) pendingTiles.add('kinder')
-  if (selfEmployment && business.isPending) pendingTiles.add('selbststaendig')
+  if (selfEmployment && unknown(business)) pendingTiles.add('selbststaendig')
 
   return {
     path,
     answers,
     masterData: masterData ?? null,
     ...(pendingTiles.size > 0 ? { pendingTiles } : {}),
-    lstb: lstb.data?.status === 200 ? lstb.data.data : null,
-    ch: ch.data?.status === 200 ? ch.data.data : null,
-    pension: pension.data?.status === 200 ? pension.data.data : null,
-    commute: commute.data?.status === 200 ? commute.data.data : null,
-    capital: capital.data?.status === 200 ? capital.data.data : null,
-    rental: rental.data?.status === 200 ? rental.data.data : null,
-    children: children.data?.status === 200 ? children.data.data : null,
+    ...(failedTiles.size > 0 ? { failedTiles } : {}),
+    lstb: lstb.data?.data ?? null,
+    ch: ch.data?.data ?? null,
+    pension: pension.data?.data ?? null,
+    commute: commute.data?.data ?? null,
+    capital: capital.data?.data ?? null,
+    rental: rental.data?.data ?? null,
+    children: children.data?.data ?? null,
     partner,
-    ...(selfEmployment ? { selfEmployment: true, business: business.data?.status === 200 ? business.data.data : null } : {}),
+    ...(selfEmployment ? { selfEmployment: true, business: business.data?.data ?? null } : {}),
   }
 }
 
@@ -87,7 +102,7 @@ export function useCockpitTileFacts(
  */
 function usePartnerFacts(year: number, married: boolean, answers: Answers): PartnerFacts | null | undefined {
   const link = useLinkControllerGet(year, { query: { enabled: married } })
-  const linkData = link.data?.status === 200 ? link.data.data : null
+  const linkData = link.data?.data ?? null
   const joint = linkData !== null && linkData.filingType === 'zusammen' && !linkData.personBHasOwnAccount
   const job = answers['partner-job']
   const employed = married && joint && job === 'Angestellt'
@@ -98,20 +113,37 @@ function usePartnerFacts(year: number, married: boolean, answers: Answers): Part
   const ch = useChSalaryCertificateControllerGet(year, B, { query: { enabled: swiss } })
   const pension = usePensionControllerGet(year, B, { query: { enabled: married && joint && job === 'Rente' } })
   if (!married) return undefined
-  if (link.isPending || link.isError) return { joint: false, name: null, birthDate: null, pending: true }
+  if (link.isPending || link.isError) return { joint: false, name: null, birthDate: null, pending: true, ...(link.isError ? { failed: true } : {}) }
   if (!joint) return null
   const unknown = (q: { readonly isPending: boolean; readonly isError: boolean }, on: boolean) => on && (q.isPending || q.isError)
   const pending = unknown(lstb, employed) || unknown(commute, employed) || unknown(ch, swiss) || unknown(pension, married && job === 'Rente')
+  const failedB = (employed && (lstb.isError || commute.isError)) || (swiss && ch.isError) || (married && job === 'Rente' && pension.isError)
   return {
     joint: true,
     name: linkData.personB?.firstName ?? null,
     birthDate: linkData.personB?.geburtsdatum ?? null,
     ...(pending ? { pending: true } : {}),
-    lstb: lstb.data?.status === 200 ? lstb.data.data : null,
-    commute: commute.data?.status === 200 ? commute.data.data : null,
-    ch: ch.data?.status === 200 ? ch.data.data : null,
-    pension: pension.data?.status === 200 ? pension.data.data : null,
+    ...(failedB ? { failed: true } : {}),
+    lstb: lstb.data?.data ?? null,
+    commute: commute.data?.data ?? null,
+    ch: ch.data?.data ?? null,
+    pension: pension.data?.data ?? null,
   }
+}
+
+/** Some areas could not be read: said once above the tiles, with a retry of exactly the failed reads. */
+function FailedAreasNotice() {
+  const t = useTheme()
+  const { t: tr } = useTranslation(APP_NS)
+  const queryClient = useQueryClient()
+  return (
+    <View accessibilityRole="alert" style={{ marginBottom: t.space.s3, gap: t.space.s2 }} testID="cockpit-bereiche-fehler">
+      <Text style={{ ...t.type.body, color: t.color.fehler }}>{tr('cockpit.bereicheFehler')}</Text>
+      <Button variant="ghost" onPress={() => void queryClient.refetchQueries({ type: 'active', predicate: (q) => q.state.status === 'error' })} testID="cockpit-bereiche-erneut">
+        {tr('apiFehler.retry')}
+      </Button>
+    </View>
+  )
 }
 
 export function tileRevisitFlag(tile: TileDefinition, answers: Answers): boolean {
@@ -208,6 +240,15 @@ export function CockpitTiles({
 
   /** The status pill of a tile, the same on a card and on a row; none while the tile's data is still loading. */
   function renderBadge(tile: TileDefinition, status: TileStatus, isOptional: boolean) {
+    if (facts.failedTiles?.has(tile.id)) {
+      return (
+        <View style={statusPillStyle('offen', styles)} testID={`cockpit-kachel-${tile.id}-badge`}>
+          <Text style={styles.hintBlocker} testID={`cockpit-kachel-${tile.id}-fehler`}>
+            {tr('cockpit.kachel.status.fehler')}
+          </Text>
+        </View>
+      )
+    }
     if (facts.pendingTiles?.has(tile.id)) return null
     return (
       <View style={isOptional ? styles.statusPillOptional : statusPillStyle(status, styles)} testID={`cockpit-kachel-${tile.id}-badge`}>
@@ -297,8 +338,10 @@ export function CockpitTiles({
     )
   }
 
+  const anyFailed = (facts.failedTiles?.size ?? 0) > 0 || facts.partner?.failed === true
   return (
     <View style={styles.section} testID="cockpit-kacheln">
+      {anyFailed ? <FailedAreasNotice /> : null}
       {isJointMarried ? (
         <Text style={styles.sectionHeading} testID="cockpit-bereich-du">
           {tr('cockpit.bereich.du')}

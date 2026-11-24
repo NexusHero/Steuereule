@@ -1775,6 +1775,7 @@
   "cockpit": {
     "appbarTitle": "Steuerjahr",
     "loading": "Dein Cockpit wird geladen …",
+    "bereicheFehler": "Einige Bereiche konnten gerade nicht geladen werden. Ihr Stand ist unbekannt, nicht offen.",
     "loadError": {
       "heading": "Das hat nicht geklappt.",
       "message": "Dein Cockpit konnte nicht geladen werden. Prüf die Verbindung und versuch es noch mal.",
@@ -1814,7 +1815,8 @@
         "erledigt": "Erledigt",
         "keinThema": "Trifft nicht zu",
         "betragOffen": "⏳ Betrag offen",
-        "optional": "Optional"
+        "optional": "Optional",
+        "fehler": "Nicht geladen"
       },
       "hinweis": {
         "blocker": "Muss vor der Abgabe geklärt werden",
@@ -1937,6 +1939,7 @@
         "kirchgeld-unbekannt": "Kirchensteuer offen: Für dein Bundesland haben wir keine amtliche Kirchgeld-Tabelle."
       },
       "kirchensteuerKappung": "Bei hohem Einkommen kann deine Kirche die Kirchensteuer auf Antrag kappen.",
+      "ladefehler": "Die Schätzung konnte gerade nicht geladen werden.",
       "veranlagungsartOffen": "Ihr seid verheiratet: Leg in „Angaben für die Erklärung“ die Zusammenveranlagung an – dann rechnen wir für euch beide.",
       "offen_one": "Für die Schätzung fehlt noch 1 Angabe.",
       "offen_other": "Für die Schätzung fehlen noch {{count}} Angaben.",

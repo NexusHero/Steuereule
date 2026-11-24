@@ -1775,6 +1775,7 @@
   "cockpit": {
     "appbarTitle": "Tax year",
     "loading": "Loading your Cockpit …",
+    "bereicheFehler": "Some areas could not be loaded just now. Their state is unknown, not open.",
     "loadError": {
       "heading": "That didn't work.",
       "message": "Your Cockpit couldn't be loaded. Check your connection and try again.",
@@ -1814,7 +1815,8 @@
         "erledigt": "Done",
         "keinThema": "Does not apply",
         "betragOffen": "⏳ Amount open",
-        "optional": "Optional"
+        "optional": "Optional",
+        "fehler": "Not loaded"
       },
       "hinweis": {
         "blocker": "Must be resolved before filing",
@@ -1937,6 +1939,7 @@
         "kirchgeld-unbekannt": "Church tax open: we have no official Kirchgeld table for your state."
       },
       "kirchensteuerKappung": "With a high income your church can cap the church tax on application.",
+      "ladefehler": "The estimate could not be loaded just now.",
       "veranlagungsartOffen": "You are married: set up the joint return under “Details for your return” – then we calculate for both of you.",
       "offen_one": "The estimate still needs 1 detail.",
       "offen_other": "The estimate still needs {{count}} details.",
