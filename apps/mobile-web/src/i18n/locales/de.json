@@ -1373,6 +1373,32 @@
   "shared": {
     "saveFailed": "Mindestens eine Eingabe wurde nicht gespeichert. Prüf deine Verbindung und gib sie noch einmal ein – oder tipp noch einmal, um trotzdem weiterzugehen."
   },
+  "apiFehler": {
+    "sessionExpired": "Deine Anmeldung ist abgelaufen. Melde dich neu an – danach geht es genau hier weiter.",
+    "sessionExpiredBanner": "Deine Anmeldung ist abgelaufen. Melde dich neu an, dann bringen wir dich zurück, wo du warst.",
+    "accountRequired": "Dafür brauchst du ein kostenloses Konto. Als Gast geht das nicht.",
+    "receiptParseAccountRequired": "Der Beleg ist gespeichert. Auslesen lassen kannst du ihn mit einem kostenlosen Konto – oder du trägst die Beträge selbst ein.",
+    "stepUp": "Bitte bestätige zuerst dein Passwort, dann klappt es.",
+    "forbidden": "Das darfst du hier nicht ändern.",
+    "notFound": "Das gibt es nicht mehr. Lade die Seite neu.",
+    "conflict": "Das wurde inzwischen an anderer Stelle geändert. Lade neu und prüf den aktuellen Stand.",
+    "tooLarge": "Die Datei ist zu groß. Erlaubt sind höchstens 10 MB.",
+    "rateLimitedSeconds": "Gerade kommen zu viele Anfragen. Versuch es in {{seconds}} Sekunden noch mal.",
+    "rateLimitedMinutes": "Gerade kommen zu viele Anfragen. Versuch es in {{minutes}} Minuten noch mal.",
+    "rateLimited": "Gerade kommen zu viele Anfragen. Versuch es in ein paar Minuten noch mal.",
+    "validation": "Bitte prüf die markierten Eingaben.",
+    "offline": "Keine Verbindung zum Server. Prüf dein Internet und versuch es noch mal.",
+    "server": "Bei uns ist gerade etwas schiefgelaufen. Versuch es gleich noch mal.",
+    "unknown": "Das hat nicht geklappt. Versuch es noch mal.",
+    "loadHeading": "Das konnte nicht geladen werden.",
+    "saveHeading": "Nicht gespeichert.",
+    "saveKept": "Deine Eingabe ist noch da.",
+    "retry": "Noch mal versuchen",
+    "signIn": "Neu anmelden",
+    "createAccount": "Konto anlegen",
+    "pendingSave": "Wird noch gespeichert …",
+    "unsavedLeave": "Eine Eingabe ist noch nicht gespeichert. Tipp noch einmal, um trotzdem zu gehen."
+  },
   "katalog": {
     "fuerWen": {
       "label": "Diese Fragen beantwortest du für:",

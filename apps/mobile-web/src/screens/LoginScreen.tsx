@@ -26,6 +26,8 @@ export interface LoginScreenProps {
   readonly onLegal?: (page: LegalPage) => void
   /** Opens on the „Passwort vergessen“ form (from an expired reset link). */
   readonly startWithForgot?: boolean
+  /** The session ran out mid-work (WEB-24): say so; after signing in the app returns to that place. */
+  readonly sessionExpired?: boolean
 }
 
 type Stage =
@@ -34,7 +36,7 @@ type Stage =
   | { readonly kind: 'two-factor'; readonly email: string }
   | { readonly kind: 'forgot' }
 
-export function LoginScreen({ onDone, onGuest, onRegister, showDeviceQr = true, onLegal, startWithForgot = false }: LoginScreenProps) {
+export function LoginScreen({ onDone, onGuest, onRegister, showDeviceQr = true, onLegal, startWithForgot = false, sessionExpired = false }: LoginScreenProps) {
   const t = useTheme()
   const bp = useBreakpoint()
   const { t: tr } = useTranslation(APP_NS)
@@ -120,6 +122,12 @@ export function LoginScreen({ onDone, onGuest, onRegister, showDeviceQr = true, 
         onError={setError}
         showUnknownFallback={anySurfaceUnreachable}
       />
+
+      {sessionExpired ? (
+        <View style={styles.outageBanner} accessibilityRole="alert" testID="anmeldung-abgelaufen">
+          <Text style={styles.outageBody}>{tr('apiFehler.sessionExpiredBanner')}</Text>
+        </View>
+      ) : null}
 
       {apiUnreachable ? (
         <View style={styles.outageBanner} accessibilityRole="alert">

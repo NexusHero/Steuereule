@@ -30,6 +30,29 @@ describe('usePendingMutations', () => {
     expect(result.current.saveFailed).toBe(false)
   })
 
+  it('WEB-12: a failed save is visible at once, before the user presses „Weiter“', async () => {
+    const { result } = renderHook(() => usePendingMutations())
+    const failure = new Error('HTTP 500')
+    act(() => {
+      result.current.track(Promise.reject(failure))
+    })
+    expect(result.current.isSaving).toBe(true)
+    await waitFor(() => expect(result.current.saveError).toBe(failure))
+    expect(result.current.isSaving).toBe(false)
+    expect(result.current.saveFailed).toBe(false)
+  })
+
+  it('settled() waits for every pending save and reports whether one failed', async () => {
+    const { result } = renderHook(() => usePendingMutations())
+    let resolve: () => void = () => undefined
+    act(() => {
+      result.current.track(new Promise<void>((r) => { resolve = r }))
+    })
+    const done = result.current.settled()
+    resolve()
+    await expect(done).resolves.toBe(true)
+  })
+
   it('treats an HTTP error answer as a failed save', async () => {
     await expect(watchSaveResult(Promise.resolve({ status: 409 }))).rejects.toBeInstanceOf(SaveFailedError)
   })

@@ -81,7 +81,7 @@ export type AppTabParamList = {
 
 export type RootStackParamList = {
   Splash: undefined
-  Login: { forgot?: boolean } | undefined
+  Login: { forgot?: boolean; expired?: boolean } | undefined
   Registration: undefined
   Onboarding: undefined
   App: { start?: 'interview' } | (NavigatorScreenParams<AppTabParamList> & { start?: 'interview' }) | undefined

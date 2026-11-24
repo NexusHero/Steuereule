@@ -1373,6 +1373,32 @@
   "shared": {
     "saveFailed": "At least one entry was not saved. Check your connection and enter it again — or tap again to continue anyway."
   },
+  "apiFehler": {
+    "sessionExpired": "Your sign-in has expired. Sign in again – you will continue right here.",
+    "sessionExpiredBanner": "Your sign-in has expired. Sign in again and we will take you back to where you were.",
+    "accountRequired": "This needs a free account. It does not work as a guest.",
+    "receiptParseAccountRequired": "The receipt is saved. Reading it automatically needs a free account – or enter the amounts yourself.",
+    "stepUp": "Please confirm your password first, then it will work.",
+    "forbidden": "You cannot change this here.",
+    "notFound": "This no longer exists. Reload the page.",
+    "conflict": "This was changed elsewhere in the meantime. Reload and check the current state.",
+    "tooLarge": "The file is too large. The limit is 10 MB.",
+    "rateLimitedSeconds": "Too many requests right now. Try again in {{seconds}} seconds.",
+    "rateLimitedMinutes": "Too many requests right now. Try again in {{minutes}} minutes.",
+    "rateLimited": "Too many requests right now. Try again in a few minutes.",
+    "validation": "Please check the marked entries.",
+    "offline": "No connection to the server. Check your internet and try again.",
+    "server": "Something went wrong on our side. Try again in a moment.",
+    "unknown": "That did not work. Try again.",
+    "loadHeading": "This could not be loaded.",
+    "saveHeading": "Not saved.",
+    "saveKept": "Your entry is still here.",
+    "retry": "Try again",
+    "signIn": "Sign in again",
+    "createAccount": "Create account",
+    "pendingSave": "Still saving …",
+    "unsavedLeave": "An entry is not saved yet. Tap again to leave anyway."
+  },
   "katalog": {
     "fuerWen": {
       "label": "You are answering these questions for:",
