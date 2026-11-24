@@ -17,7 +17,7 @@ import {
 import { APP_NS } from '../../i18n/resources'
 import { SELECTABLE_TAX_YEARS, isRunningTaxYear } from '../../config/taxYear'
 import { makeInterviewStyles } from './styles'
-import { PostErrorNotice, type PostErrorKind } from './PostErrorNotice'
+import { PostErrorNotice, type PostError } from './PostErrorNotice'
 import { StepIndicator } from '../shared/StepIndicator'
 import { BackButton, BackButtonSpacer } from '../shared/BackButton'
 
@@ -115,7 +115,7 @@ interface QuestionScreenProps {
   readonly onAnswer: (value: string) => void
   readonly onBack: () => void
   readonly bp: Breakpoint
-  readonly notice: PostErrorKind | null
+  readonly notice: PostError | null
   readonly taxYear: number
   /** K2: lets the user switch the tax year from the first question; absent → no switch. */
   readonly onChangeYear?: (year: number) => void
@@ -147,7 +147,7 @@ export function QuestionScreen({ questionId, answers = {}, canGoBack, onAnswer, 
         </View>
       </View>
 
-      <PostErrorNotice kind={notice} />
+      <PostErrorNotice notice={notice} />
 
       <Text style={styles.heading}>
         {tr(`${copy.titleKey}.titleBefore`)}

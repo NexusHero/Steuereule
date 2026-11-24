@@ -941,7 +941,8 @@
     "postError": {
       "conflict": "Your answer didn't match what was already saved. We've refreshed your progress.",
       "invalid": "That answer wasn't accepted. We've refreshed your progress.",
-      "network": "Your answer couldn't be saved. Check your connection and try again."
+      "network": "Your answer couldn't be saved. Check your connection and try again.",
+      "failed": "Your answer was not saved, so the question is shown again."
     },
     "anderesJahr": "Other year",
     "job": {

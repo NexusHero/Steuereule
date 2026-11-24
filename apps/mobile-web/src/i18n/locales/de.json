@@ -941,7 +941,8 @@
     "postError": {
       "conflict": "Deine Antwort passte nicht zum gespeicherten Stand. Wir haben deinen Fortschritt aktualisiert.",
       "invalid": "Diese Antwort wurde nicht akzeptiert. Wir haben deinen Fortschritt aktualisiert.",
-      "network": "Deine Antwort konnte nicht gespeichert werden. Prüf die Verbindung und versuch es noch mal."
+      "network": "Deine Antwort konnte nicht gespeichert werden. Prüf die Verbindung und versuch es noch mal.",
+      "failed": "Deine Antwort ist nicht gespeichert, die Frage steht deshalb noch einmal da."
     },
     "anderesJahr": "Anderes Jahr",
     "job": {
