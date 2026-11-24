@@ -54,7 +54,7 @@ jobs:
           tofu fmt -check -recursive infra/gcp
 
   deploy:
-    name: Deploy ${{ github.event_name == 'workflow_dispatch' && inputs.environment || 'staging' }} (Cloud Run)
+    name: Deploy (Cloud Run)
     if: >-
       github.event_name == 'workflow_dispatch' ||
       (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' &&
@@ -160,14 +160,14 @@ jobs:
         if: steps.gate.outputs.ready == 'true'
         run: |
           secrets=""
-          for name in DATABASE_URL GUEST_SESSION_SECRET PRISMA_FIELD_ENCRYPTION_KEY KEYSTORE_DATABASE_URL KEYSTORE_MASTER_KEY BETTER_AUTH_SECRET BREVO_API_KEY \
+          for name in DATABASE_URL GUEST_SESSION_SECRET PRISMA_FIELD_ENCRYPTION_KEY PRISMA_FIELD_ENCRYPTION_HASH_SALT KEYSTORE_DATABASE_URL KEYSTORE_MASTER_KEY BETTER_AUTH_SECRET BREVO_API_KEY \
                       GOOGLE_CLIENT_ID GOOGLE_CLIENT_SECRET STRIPE_SECRET_KEY STRIPE_WEBHOOK_SECRET \
                       GEMINI_API_KEY ANTHROPIC_API_KEY OPENAI_API_KEY REDIS_URL REDIS_TLS_CA; do
             if [ -n "$(gcloud secrets versions list "$name" --filter=state=enabled --limit=1 --format='value(name)')" ]; then
               secrets="$secrets,$name=$name:latest"
             fi
           done
-          for required in DATABASE_URL GUEST_SESSION_SECRET PRISMA_FIELD_ENCRYPTION_KEY KEYSTORE_DATABASE_URL KEYSTORE_MASTER_KEY BETTER_AUTH_SECRET BREVO_API_KEY; do
+          for required in DATABASE_URL GUEST_SESSION_SECRET PRISMA_FIELD_ENCRYPTION_KEY PRISMA_FIELD_ENCRYPTION_HASH_SALT KEYSTORE_DATABASE_URL KEYSTORE_MASTER_KEY BETTER_AUTH_SECRET BREVO_API_KEY; do
             case "$secrets," in
               *",$required="*) ;;
               *) echo "::error::Secret $required has no enabled version — run scripts/infra/gcp-setup.sh."; exit 1 ;;

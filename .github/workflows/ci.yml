@@ -130,6 +130,7 @@ jobs:
       # resolveFieldEncryptionKey refuse a guessable default under NODE_ENV=production).
       GUEST_SESSION_SECRET: ci-smoke-test-secret
       PRISMA_FIELD_ENCRYPTION_KEY: k1.aesgcm256.MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=
+      PRISMA_FIELD_ENCRYPTION_HASH_SALT: ci-only-email-hash-salt
       # Synthetic, dev-only (ADR-0012) — same story as the two secrets above:
       # production requires both set explicitly (resolveBetterAuthSecret /
       # resolveBetterAuthUrl refuse a guessable default under NODE_ENV=production).
@@ -392,6 +393,7 @@ jobs:
     env:
       GUEST_SESSION_SECRET: ci-cross-origin-smoke-secret
       PRISMA_FIELD_ENCRYPTION_KEY: k1.aesgcm256.MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=
+      PRISMA_FIELD_ENCRYPTION_HASH_SALT: ci-only-email-hash-salt
       BETTER_AUTH_SECRET: ci-cross-origin-smoke-better-auth-secret-0123456789
       # The two origins are genuinely distinct (different ports — different from the
       # `smoke` job's :3000/:8081 pair on purpose, so a reader never conflates the two
@@ -765,6 +767,7 @@ jobs:
     env:
       GUEST_SESSION_SECRET: ci-e2e-shard-secret
       PRISMA_FIELD_ENCRYPTION_KEY: k1.aesgcm256.MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=
+      PRISMA_FIELD_ENCRYPTION_HASH_SALT: ci-only-email-hash-salt
       BETTER_AUTH_SECRET: ci-e2e-shard-better-auth-secret-0123456789
       API_ORIGIN: http://localhost:3301
       WEB_ORIGIN: http://localhost:4173
@@ -866,6 +869,7 @@ jobs:
     env:
       GUEST_SESSION_SECRET: ci-e2e-09b-secret
       PRISMA_FIELD_ENCRYPTION_KEY: k1.aesgcm256.MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=
+      PRISMA_FIELD_ENCRYPTION_HASH_SALT: ci-only-email-hash-salt
       BETTER_AUTH_SECRET: ci-e2e-09b-better-auth-secret-0123456789
       API_ORIGIN: http://localhost:3301
       WEB_ORIGIN: http://localhost:4173

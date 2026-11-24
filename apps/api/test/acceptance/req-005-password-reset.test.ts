@@ -26,6 +26,8 @@ describe('password reset by e-mail', () => {
       await prisma.account.deleteMany()
       await prisma.verification.deleteMany()
       await prisma.user.deleteMany()
+      // The next suite reads the whole access log; leave none behind.
+      await prisma.$executeRawUnsafe(`DELETE FROM "TaxDataAccessLog"`)
     },
   })
 

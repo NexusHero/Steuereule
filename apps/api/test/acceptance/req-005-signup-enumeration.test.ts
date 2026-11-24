@@ -23,6 +23,8 @@ describe('REQ-005 — sign-up is not an account-existence oracle', () => {
       await prisma.account.deleteMany()
       await prisma.verification.deleteMany()
       await prisma.user.deleteMany()
+      // The next suite reads the whole access log; leave none behind.
+      await prisma.$executeRawUnsafe(`DELETE FROM "TaxDataAccessLog"`)
     },
   })
 

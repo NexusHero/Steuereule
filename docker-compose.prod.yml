@@ -29,6 +29,8 @@ x-api-env: &api-env
   DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
   GUEST_SESSION_SECRET: ${GUEST_SESSION_SECRET}
   PRISMA_FIELD_ENCRYPTION_KEY: ${PRISMA_FIELD_ENCRYPTION_KEY}
+  # Salt of the e-mail lookup hash (ADR-0109); must never change once accounts exist.
+  PRISMA_FIELD_ENCRYPTION_HASH_SALT: ${PRISMA_FIELD_ENCRYPTION_HASH_SALT}
   # Receipt-file keys live in their own database (ADR-0059). This local stack keeps it on the
   # same Postgres server for simplicity; the real deployment uses a separate Cloud SQL
   # instance with a shorter backup retention, which is what makes crypto-shredding reach backups.

@@ -51,6 +51,7 @@ jobs:
       # Synthetic, throwaway values (ADR-0012): this job only talks to its own service container.
       GUEST_SESSION_SECRET: ci-load-guest-secret
       PRISMA_FIELD_ENCRYPTION_KEY: k1.aesgcm256.MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=
+      PRISMA_FIELD_ENCRYPTION_HASH_SALT: ci-only-email-hash-salt
       BETTER_AUTH_SECRET: ci-load-better-auth-secret-0123456789
       BETTER_AUTH_URL: http://localhost:3302
       API_ORIGIN: http://localhost:3302

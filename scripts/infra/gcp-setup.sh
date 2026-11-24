@@ -311,6 +311,8 @@ warn "Vorhandene Werte bleiben unangetastet — ein neuer PRISMA_FIELD_ENCRYPTIO
 ensure_generated_secret GUEST_SESSION_SECRET "$(openssl rand -base64 48)"
 ensure_generated_secret BETTER_AUTH_SECRET "$(openssl rand -base64 48)"
 ensure_generated_secret PRISMA_FIELD_ENCRYPTION_KEY "k1.aesgcm256.$(openssl rand -base64 32)"
+# Salt of the e-mail lookup hash (ADR-0109): like the key above, a new value would lock every account out.
+ensure_generated_secret PRISMA_FIELD_ENCRYPTION_HASH_SALT "$(openssl rand -base64 48)"
 ensure_generated_secret KEYSTORE_MASTER_KEY "$(openssl rand -base64 48)"
 pause
 

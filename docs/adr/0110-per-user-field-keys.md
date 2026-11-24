@@ -1,6 +1,6 @@
 # ADR-0110 — Per-user keys for the field-encrypted columns
 
-- **Status:** Proposed
+- **Status:** Accepted
 - **Date:** 2026-11-24
 - **Deciders:** the product owner (goal, keystore durability, timing); engineering (design).
 - **Builds on** [ADR-0008](0008-profile-persistence-encryption.md) (field encryption),
@@ -23,7 +23,7 @@ The keystore already holds one wrapped data key per user in a separate database 
 key and short backup retention. Every model with an encrypted column has a `userId`. One column has a
 companion hash for lookup. The library cannot choose a key per row.
 
-## Decision (proposed)
+## Decision
 
 Decided by the product owner on 2026-11-24:
 
@@ -33,24 +33,29 @@ Decided by the product owner on 2026-11-24:
    regional replica, because after this change losing it loses all tax data, not only the documents.
 3. **Work starts after PRs 577 to 580 are merged and the security audit has been repeated**, on a clean
    `main`. It needs a running instance to verify (the throwaway production instance), not only tests.
+4. **The change will be built** (confirmed after weighing it against leaving one key), and it must not depend
+   on a cloud key service: the master key stays a secret the API loads at start, as `KEYSTORE_MASTER_KEY` is
+   today, so the same design runs on Cloud Run and on a host without a key service. An offline copy of the
+   master key is kept outside the platform. A key service (Cloud KMS, or OpenBao where there is none) can
+   replace the secret later without changing the stored data; see the variant below.
 
 Design:
 
-4. **The row owner's key encrypts the row.** A Prisma client extension of our own replaces
+5. **The row owner's key encrypts the row.** A Prisma client extension of our own replaces
    `prisma-field-encryption`. On write it takes the `userId` of the row, on read the `userId` the row
    carries. The key is a subkey derived (HKDF, label `field-encryption`) from the user's keystore key, as
    the receipt MAC key already is. Rows a spouse reads through `householdOwner` decrypt with the owner's
    key, because the key follows the row, not the caller.
-5. **The annotations stay.** `/// @encrypted` keeps marking the columns, so the schema, the existing
+6. **The annotations stay.** `/// @encrypted` keeps marking the columns, so the schema, the existing
    guard test (`prisma-encrypted-fields.test.ts`) and the list of columns do not change.
-6. **Ciphertext says which scheme wrote it.** New values carry their own prefix. During the migration the
+7. **Ciphertext says which scheme wrote it.** New values carry their own prefix. During the migration the
    extension reads both: the old prefix with the global key, the new one with the user's key. It writes the
    new scheme only.
-7. **Keys are fetched once per request and user** and cached in the process for a short time; a cache
+8. **Keys are fetched once per request and user** and cached in the process for a short time; a cache
    entry dies with the key on deletion.
-8. **Guests get a key** on their first write, like accounts. The guest sweep (ADR-0109) destroys it.
-9. **A legal hold keeps the key**, as it does today for documents.
-10. **Lookup hashes** use a key derived from the keystore master key, not from the user's key, so the one
+9. **Guests get a key** on their first write, like accounts. The guest sweep (ADR-0109) destroys it.
+10. **A legal hold keeps the key**, as it does today for documents.
+11. **Lookup hashes** use a key derived from the keystore master key, not from the user's key, so the one
     hashed column stays searchable without knowing the owner.
 
 Migration, each step its own change:
@@ -77,6 +82,16 @@ Migration, each step its own change:
 - The backup of a deleted account cannot be restored, also not on request.
 - Between step 2 and step 4 the database holds both schemes; a rollback to the library is possible until
   step 4 only if writes are switched back first and migrated rows are converted back.
+
+## Variant, later: the master key in a key service
+
+Moving `KEYSTORE_MASTER_KEY` from Secret Manager into Cloud KMS answers the two costs above. The key cannot
+leave the service, only wrap and unwrap; the service is regional and has its own availability promise; a
+destroyed key version can be restored for at least 24 hours. With unwrapped user keys cached in the process
+for a few minutes, a short outage of the key service stops new sessions but not the ones in progress. The
+price is one more service and a network call on the first access per user and instance. It is not part of
+the first build (decision 4). The unwrap step sits behind one interface, so the secret can be swapped for a
+key service without touching the rows.
 
 ## Open questions
 
