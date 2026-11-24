@@ -1,11 +1,46 @@
-import { Pressable, Text, View } from 'react-native'
+import { Text, View, type GestureResponderEvent, type TextProps } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useTheme } from '@steuereule/ui'
 import { APP_NS } from '../../i18n/resources'
 import { LEGAL_PAGES, PAGE_TITLES, type LegalPage } from './texts'
 
+/** The app's own route of a legal page (`linking.ts`: `rechtliches/:page`). */
+export const legalHref = (page: LegalPage): string => `/rechtliches/${page}`
+
+export interface LegalLinkProps {
+  readonly page: LegalPage
+  /** In-app navigation; without it the link is followed as a plain web link to `legalHref(page)`. */
+  readonly onPage?: ((page: LegalPage) => void) | undefined
+  readonly style?: TextProps['style']
+  readonly children?: string
+}
+
+/**
+ * One legal page as a real link (WEB-7): on the web an `<a href="/rechtliches/…">`, so it works from
+ * every screen and is announced as a link. With `onPage` the click stays inside the app's navigation.
+ */
+export function LegalLink({ page, onPage, style, children }: LegalLinkProps) {
+  const onPress = onPage
+    ? (event: GestureResponderEvent) => {
+        event.preventDefault()
+        onPage(page)
+      }
+    : undefined
+  return (
+    <Text
+      accessibilityRole="link"
+      {...({ href: legalHref(page) } as object)}
+      {...(onPress ? { onPress } : {})}
+      style={style}
+      testID={`rechtliches-link-${page}`}
+    >
+      {children ?? PAGE_TITLES[page]}
+    </Text>
+  )
+}
+
 export interface LegalLinksProps {
-  readonly onPage: (page: LegalPage) => void
+  readonly onPage?: ((page: LegalPage) => void) | undefined
   readonly current?: LegalPage
 }
 
@@ -26,9 +61,7 @@ export function LegalLinks({ onPage, current }: LegalLinksProps) {
             {PAGE_TITLES[page]}
           </Text>
         ) : (
-          <Pressable key={page} accessibilityRole="link" onPress={() => onPage(page)} testID={`rechtliches-link-${page}`}>
-            <Text style={{ ...text, textDecorationLine: 'underline' }}>{PAGE_TITLES[page]}</Text>
-          </Pressable>
+          <LegalLink key={page} page={page} onPage={onPage} style={{ ...text, textDecorationLine: 'underline', paddingVertical: t.space.s3 }} />
         ),
       )}
     </View>

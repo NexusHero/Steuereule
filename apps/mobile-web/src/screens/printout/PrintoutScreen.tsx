@@ -12,6 +12,8 @@ import { APP_NS } from '../../i18n/resources'
 import { isRunningTaxYear } from '../../config/taxYear'
 import { makePrivacyStyles } from '../privacy/styles'
 import { ErrorState, LoadingState } from '../shared/ScreenState'
+import { BetaNotice } from '../shared/BetaNotice'
+import { LegalLinks } from '../legal/LegalLinks'
 import { GlassFormPreview } from './GlassFormPreview'
 import { loadPrintout } from './printoutDownload'
 
@@ -270,6 +272,8 @@ export function PrintoutScreen({ year, payment, onBack, onCompleteDetails, onCom
             {t('ausdruck.freischalten')}
           </Button>
           <Text style={styles.hint}>{t('ausdruck.freischaltenHinweis')}</Text>
+          <BetaNotice />
+          <LegalLinks />
         </View>
       ) : null}
 

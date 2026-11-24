@@ -8,6 +8,8 @@ import { BusinessFrame, Note, Section } from './BusinessFrame'
 import type { ApiProblem } from './businessKit'
 import { attempt } from './useBusiness'
 import type { BusinessPageProps } from './BusinessScreen'
+import { LegalLinks } from '../legal/LegalLinks'
+import { BetaNotice } from '../shared/BetaNotice'
 
 /** Unlocking the year at the self-employment tier (ADR-0101 §21): fill-in help and exports are part of it. */
 export function CheckoutPage({ taxYear, onBack, openCheckout = (url) => window.location.assign(url) }: BusinessPageProps & { readonly openCheckout?: (url: string) => void }) {
@@ -39,6 +41,8 @@ export function CheckoutPage({ taxYear, onBack, openCheckout = (url) => window.l
         <Button onPress={() => void pay()} testID="checkout-selbststaendig">
           {tr('business.freischalten.knopf')}
         </Button>
+        <BetaNotice />
+        <LegalLinks />
       </Section>
     </BusinessFrame>
   )
