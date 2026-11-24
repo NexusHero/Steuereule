@@ -3,8 +3,10 @@
 // the one-time backfill re-encrypts such rows and is idempotent on already-encrypted ones. Real
 // Postgres (DATABASE_URL + migrations), like the other *.integration.test.ts.
 import { PrismaClient } from '@prisma/client'
+import { fieldEncryptionExtension } from 'prisma-field-encryption'
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest'
 import { backfillProfileNameEncryption } from '../scripts/backfill-profile-name-encryption.js'
+import { resolveFieldEncryptionKey } from '../src/prisma/field-encryption-key.js'
 
 const ENVELOPE = /^v\d+\.aesgcm256\./
 
@@ -52,22 +54,43 @@ describe('backfill: profile name encryption (ADR-0107 H3)', () => {
     expect(after.firstName).toMatch(ENVELOPE)
     expect(after.lastName).toMatch(ENVELOPE)
 
-    // Read-back through the encrypted client returns the original plaintext.
-    const profile = await prisma.profile.findFirst({ where: { userId: 'backfill-test-cleartext' } })
-    // NOTE: `prisma` here is the raw client; decrypt via a fresh raw query would show ciphertext,
-    // so we assert the envelope above and trust the client round-trip covered by profile.integration.
-    expect(profile).not.toBeNull()
+    // Read-back through the encrypted client returns the original plaintext: the backfill encrypted the
+    // name it found, under the key the application reads with.
+    const encrypted = prisma.$extends(fieldEncryptionExtension(resolveFieldEncryptionKey(process.env)))
+    const profile = await encrypted.profile.findFirst({ where: { userId: 'backfill-test-cleartext' } })
+    expect(profile).toMatchObject({ firstName: 'Hans', lastName: 'Klartext' })
   })
 
-  it('is idempotent: a second run re-encrypts nothing for an already-encrypted row', async () => {
+  it('is idempotent: a second run leaves an already-encrypted row exactly as it is', async () => {
     await insertPlaintextProfile('backfill-test-idem', 'Erika', 'Doppelt')
     await backfillProfileNameEncryption(new PrismaClient())
+    const first = await rawName('backfill-test-idem')
+    expect(first.firstName).toMatch(ENVELOPE)
 
-    const second = await backfillProfileNameEncryption(new PrismaClient())
-    // The idem row is already an envelope; a second pass may still see other test rows, but this row
-    // must not be counted again — assert its ciphertext is a stable envelope and nothing errored.
-    const after = await rawName('backfill-test-idem')
+    await backfillProfileNameEncryption(new PrismaClient())
+
+    // Every encryption draws a fresh IV, so a row written again would hold a different ciphertext. The same
+    // bytes after the second run prove the row was skipped — whatever other rows the shared database holds.
+    expect(await rawName('backfill-test-idem')).toEqual(first)
+  })
+
+  it('finishes a half-migrated row: one name already encrypted, the other still in cleartext', async () => {
+    await insertPlaintextProfile('backfill-test-half', 'Greta', 'Halb')
+    const encrypted = prisma.$extends(fieldEncryptionExtension(resolveFieldEncryptionKey(process.env)))
+    await encrypted.profile.update({ where: { userId: 'backfill-test-half' }, data: { firstName: 'Greta' } })
+    await prisma.$executeRawUnsafe(`UPDATE "Profile" SET "lastName" = 'Halb' WHERE "userId" = 'backfill-test-half'`)
+    const before = await rawName('backfill-test-half')
+    expect(before.firstName).toMatch(ENVELOPE)
+    expect(before.lastName).toBe('Halb')
+
+    await backfillProfileNameEncryption(new PrismaClient())
+
+    const after = await rawName('backfill-test-half')
     expect(after.firstName).toMatch(ENVELOPE)
-    expect(second.scanned).toBeGreaterThanOrEqual(1)
+    expect(after.lastName).toMatch(ENVELOPE)
+    expect(await encrypted.profile.findFirst({ where: { userId: 'backfill-test-half' } })).toMatchObject({
+      firstName: 'Greta',
+      lastName: 'Halb',
+    })
   })
 })

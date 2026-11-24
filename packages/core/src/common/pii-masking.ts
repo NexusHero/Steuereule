@@ -97,15 +97,17 @@ const PHONE_TEXT_REGEX = /(?:\+(?:49|41|43)[\s/-]?\d{2,4}|0\d{2,4})[\s/-]?\d{3,4
 /**
  * Scrubs free-text user chat messages before sending them to an external LLM.
  * Replaces known profile names, 11-digit tax IDs, tax numbers, IBANs, emails, phone numbers,
- * and — added after the live pentest of 2026-11-23 (ADR-0107 H2) — street addresses, birthdates,
+ * and — added after the live pentest of 2026-11-23 (ADR-0107 H2) — street addresses, birthdates (replaced
+ * by a rough age in years, counted from `referenceYear`),
  * inline employer names and honorific-prefixed third-party names, so a typed chat message leaks no
  * more PII to the provider than an uploaded document does. Every added pattern uses bounded
- * quantifiers, so this stays linear in the message length (ADR-0106 D1; timed by
- * text-readers-linear-time.test.ts).
+ * quantifiers and unambiguous separators, so this stays linear and fast in the message length
+ * (ADR-0106 D1; timed by text-readers-linear-time.test.ts).
  */
 export function scrubUserMessagePii(
   text: string,
   knownNames: readonly string[] = [],
+  referenceYear: number = new Date().getFullYear(),
 ): string {
   if (!text) return ''
 
@@ -121,9 +123,15 @@ export function scrubUserMessagePii(
 
   // 2. Free-text PII the system prompt promises to protect ("Geburtsdaten, Adressen") but the
   // document-only patterns used to miss on the chat path (pentest 2026-11-23, ADR-0107 H2).
+  scrubbed = scrubbed.replace(ADDRESS_WITH_POSTCODE_REGEX, '[ADRESSE-GESCHÜTZT]')
   scrubbed = scrubbed.replace(STREET_AND_NUMBER_REGEX, '[ADRESSE-GESCHÜTZT]')
-  scrubbed = scrubbed.replace(DOB_VALUE_REGEX, '[GEBURTSDATUM-GESCHÜTZT]')
-  scrubbed = scrubbed.replace(DOB_BEFORE_KEYWORD_REGEX, '[GEBURTSDATUM-GESCHÜTZT]')
+  // A birthdate leaves as a rough age: the day identifies a person, the age is what the tax answer needs
+  // (a child under 14, the year a pension starts).
+  const roughAge = (date: string): string => roughAgeFor(date, referenceYear)
+  scrubbed = scrubbed.replace(DOB_VALUE_REGEX, roughAge)
+  scrubbed = scrubbed.replace(DOB_BEFORE_KEYWORD_REGEX, roughAge)
+  scrubbed = scrubbed.replace(BIRTH_YEAR_REGEX, (match: string, keyword: string) => keyword + roughAge(match))
+  scrubbed = scrubbed.replace(BIRTH_YEAR_BEFORE_KEYWORD_REGEX, roughAge)
   scrubbed = scrubbed.replace(EMPLOYER_INLINE_REGEX, '[ARBEITGEBER-GESCHÜTZT]')
   scrubbed = scrubbed.replace(EMPLOYER_CONTEXT_REGEX, '$1[ARBEITGEBER-GESCHÜTZT]')
 
@@ -132,9 +140,31 @@ export function scrubUserMessagePii(
 
   // 4. Only AFTER the known-name pass: third-party names still in the clear — by honorific or by
   // relationship word — are people a profile-derived list can never hold (landlord, doctor). Running
-  // this last keeps "Herr <known name>" as "Herr [MANDANT]" instead of swallowing the whole phrase.
+  // this last keeps "Herr <known name>" as "Herr [MANDANT]". The honorific and the relationship word
+  // stay ($1): "meine Frau [NAME-GESCHÜTZT]" still tells the model whose income the question is about.
   scrubbed = scrubbed.replace(RELATED_PERSON_NAME_REGEX, '$1[NAME-GESCHÜTZT]')
-  return scrubbed.replace(HONORIFIC_NAME_REGEX, '[NAME-GESCHÜTZT]')
+  return scrubbed.replace(HONORIFIC_NAME_REGEX, '$1[NAME-GESCHÜTZT]')
+}
+
+const BIRTHDATE_PLACEHOLDER = '[GEBURTSDATUM-GESCHÜTZT]'
+const OLDEST_PLAUSIBLE_AGE = 120
+
+/**
+ * The stand-in for a birthdate in chat: the age in whole years, counted from the year alone ("ca.", because
+ * the birthday within the year is not looked at). A two-digit year is read as the most recent year that is
+ * not in the future. A date whose year gives no plausible age keeps the plain placeholder.
+ */
+function roughAgeFor(date: string, referenceYear: number): string {
+  const digits = /(\d{2,4})\D*$/.exec(date)?.[1]
+  if (digits === undefined || digits.length === 3) return BIRTHDATE_PLACEHOLDER
+  let year = Number(digits)
+  if (digits.length === 2) {
+    const century = Math.floor(referenceYear / 100) * 100
+    year = century + year > referenceYear ? century - 100 + year : century + year
+  }
+  const age = referenceYear - year
+  if (age < 0 || age > OLDEST_PLAUSIBLE_AGE) return BIRTHDATE_PLACEHOLDER
+  return `[ALTER: ca. ${age} Jahre]`
 }
 
 /**
@@ -167,10 +197,49 @@ const SVNR_TEXT_REGEX = /\b\d{2}[\s.-]?\d{6}[\s.-]?[A-Z][\s.-]?\d{3}\b/g
 // line: „^\s*“ ran from every line start over all blank lines below it (Sonar S8786).
 const LABELED_PII_LINE_REGEX =
   /^[^\S\r\n]*(?:Arbeitgeber(?:\s*\([^)]*\))?|Arbeitnehmer(?:in)?|Name(?:,?\s*Vorname)?|Vorname|Nachname|Familienname|Anschrift|Adresse|Straße|Strasse|Geburtsdatum|geb\.?\s*am|Identifikationsnummer|IdNr|Steuer-?ID|Steueridentifikationsnummer|Steuernummer|Transferticket|Personal-?Nr\.?|Mandanten-?Nr\.?|Arbeitnehmernummer|Sozialversicherungsnummer|Versicherungsnummer|Finanzamt|AGS|Bundesland|Steuerklasse(?:\s*(?:\/\s*)?Faktor)?|Zahl\s+der\s+Kinderfreibeträge|Kirchensteuermerkmal)(?:\s|[:-]\s).*$/gim
-// Street + house number. The trailing negative lookahead keeps a commute distance ("Radweg 5 km",
-// "Fußweg 10 min") from being mistaken for an address — the over-masking the H2 review flagged (ADR-0107).
-const STREET_AND_NUMBER_REGEX =
-  /\b[A-ZÄÖÜ][a-zäöüß-]{2,60}(?:straße|strasse|str\.|weg|allee|platz|ring|gasse|damm|ufer)\s+\d{1,4}[a-zA-Z]?\b(?!\s*(?:km|m|meter|kilometer|min|minuten)\b)/gi
+// German capitalises every noun, so "a capitalised word behind a trigger" is not yet a name: "meine Frau
+// Kinderbetreuungskosten", "Partnerin ist Beamtin", "Arbeitgeber Fahrtkostenzuschuss" and "Stellplatz 50 Euro"
+// were all masked, and the model never saw the question (review of ADR-0107 H2). A candidate is therefore
+// refused when it reads as a common noun: a word from the tax vocabulary, a word with a noun ending, or a
+// compound longer than a name gets. Word ends are tested with LETTER_END, not `\b`: `\b` treats ä/ö/ü/ß as
+// a boundary and would cut "Kostenübernahme" after "Kosten".
+const LETTER_END = '(?![\\p{L}\\p{N}])'
+const COMMON_NOUN_WORDS = [
+  'Beamt(?:er|in|e|en)', 'Rentner(?:in)?', 'Pensionär(?:in)?', 'Student(?:in)?', 'Schüler(?:in)?', 'Azubi',
+  'Angestellte[rn]?', 'Arbeitnehmer(?:in)?', 'Freiberufler(?:in)?', 'Grenzgänger(?:in)?', 'Selbst?ständige?[rn]?',
+  'Minijobber(?:in)?', 'Hausfrau', 'Hausmann', 'Arbeitslos(?:e|er|en)?', 'Kita', 'Kind(?:er|ern|es)?', 'Eltern',
+  'Elternzeit', 'Teilzeit', 'Vollzeit', 'Kurzarbeit', 'Homeoffice', 'Brutto', 'Netto', 'Anteil(?:e)?', 'Miete',
+  'Zuschuss', 'Zuschüsse', 'Bonus', 'Prämie', 'Abfindung', 'Gehalt', 'Lohn', 'Rente', 'Pension', 'Kosten',
+  'Dr', 'Prof', 'Aktien', 'Fonds', 'Zinsen', 'Dividende(?:n)?', 'Urlaub', 'Jobticket', 'Dienstrad', 'Laptop', 'Handy',
+].join('|')
+const COMMON_NOUN_PREFIXES =
+  'Steuer|Arbeits|Fahrt|Kinder(?!mann)|Kranken|Renten|Lohn|Sozial|Pflege|Werbungs|Sonder|Kapital|Einkommen|Umsatz|Gewerbe|Miet|Unterhalts|Spenden|Pendler|Entfernungs|Dienst|Eltern|Betreuungs|Haushalts|Handwerker|Neben|Betriebs|Vorsorge|Kirchen|Wohn|Immobilien|Versicherungs|Fortbildungs|Weiterbildungs|Umzugs|Reise'
+const COMMON_NOUN_SUFFIXES =
+  'ung|ungen|kosten|geld|gelder|steuer|steuern|klasse|pauschale|betrag|beträge|zuschuss|zuschüsse|schaft|tion|tionen|heit|keit|beitrag|beiträge|office|wagen|ticket|rente|gehalt|zulage|bescheid|vertrag|miete|zinsen|kredit|darlehen|konto|nachweis|zimmer|anteil|anteile|prämie|regelung|erklärung'
+const NOT_A_COMMON_NOUN =
+  `(?!(?:${COMMON_NOUN_WORDS})${LETTER_END})` +
+  `(?!(?:${COMMON_NOUN_PREFIXES})[a-zäöüß]{3,40}${LETTER_END})` +
+  `(?![A-ZÄÖÜ][a-zäöüß]{2,28}(?:${COMMON_NOUN_SUFFIXES})${LETTER_END})` +
+  '(?![A-ZÄÖÜ][a-zäöüß]{14})'
+/** One capitalised word that can be a person's name. */
+const NAME_WORD = `${NOT_A_COMMON_NOUN}[A-ZÄÖÜ][a-zäöüß]{1,30}`
+
+// Street + house number. Two guards against over-masking (review of ADR-0107 H2): a number followed by a
+// unit is a quantity, not a house number ("Radweg 5 km", "Stellplatz 50 Euro", "Heimarbeitsplatz 5 Tage"),
+// and the everyday nouns that merely end like a street ("Arbeitsplatz", "Arbeitsweg", "Käufer") are no streets.
+const STREET_LOOKALIKES =
+  'arbeitsplatz|stellplatz|parkplatz|kitaplatz|krippenplatz|hortplatz|studienplatz|ausbildungsplatz|heimplatz|pflegeplatz|sitzplatz|arbeitsweg|fahrtweg|fahrweg|schulweg|hinweg|rückweg|heimweg|umweg|käufer|ehering'
+const QUANTITY_UNITS =
+  'km|m|meter|kilometer|min|minuten|euro|eur|€|cent|tage?n?|stunden?|std|prozent|%|jahre?n?|monate?n?|wochen?|mal|x|qm|m²|quadratmeter|personen|kinder|kindern|uhr'
+const STREET_AND_NUMBER_REGEX = new RegExp(
+  `\\b(?![a-zäöüß-]{0,40}(?:${STREET_LOOKALIKES})\\s)[A-ZÄÖÜ][a-zäöüß-]{2,60}(?:straße|strasse|str\\.|weg|allee|platz|ring|gasse|damm|ufer)\\s+\\d{1,4}[a-zA-Z]?\\b(?!\\s*(?:${QUANTITY_UNITS})(?![\\p{L}\\p{N}]))`,
+  'giu',
+)
+// A postal address whose street has no street ending ("Am Hang 7, 10115 Berlin"): one to three capitalised
+// words, a house number, then postcode and town. The postcode and town are required, so a plain number
+// behind a noun is left alone. Every part is bounded (ADR-0106 D1).
+const ADDRESS_WITH_POSTCODE_REGEX =
+  /(?<![\p{L}\p{N}])(?:[A-ZÄÖÜ][\p{L}.-]{1,40}\s){1,3}\d{1,4}[a-zA-Z]?,?\s\d{5}\s[A-ZÄÖÜ][\p{L}-]{1,40}/gu
 // Birthdate: a birth keyword plus a date in any common German shape — dotted/slashed numeric
 // (12.03.1980, 12/03/1980) or a spelled-out month (12. März 1980). The keyword stays required so plain
 // dates (deadlines, periods) are not masked. Bounded alternation → linear (ADR-0107 H2 review).
@@ -181,27 +250,49 @@ const DOB_VALUE_REGEX = new RegExp(
 )
 // The reversed word order — "… am 12.03.1980 geboren". Lookahead on the keyword so only the date is replaced.
 const DOB_BEFORE_KEYWORD_REGEX = new RegExp(`\\b${DOB_DATE}(?=\\s+geboren\\b)`, 'gi')
+// A birth year alone, by keyword ("Geboren 1980", "Jahrgang 1975", "bin 1980 geboren"). The keyword is kept.
+const BIRTH_YEAR_REGEX = /\b((?:geboren|geb\.?|Jahrgang|Geburtsjahr)[:\s]\s{0,3}(?:(?:im\s+Jahre?|in|am)\s+)?)(?:19|20)\d{2}\b/gi
+const BIRTH_YEAR_BEFORE_KEYWORD_REGEX = /\b(?:19|20)\d{2}(?=\s+geboren\b)/gi
 // Inline employer: a capitalised company token (up to four words) followed by a German legal form.
-// Bounded quantifiers only (ADR-0106 D1); case-sensitive on the legal form so prose words like "gegen"
-// cannot match. The leading negative lookahead keeps a sentence-initial determiner out ("Eine KG gründen"
-// is a generic legal-form question, not an employer — the over-masking the H2 review flagged).
-const EMPLOYER_INLINE_REGEX =
-  /\b(?!(?:Eine?|Der|Die|Das|Dem|Den|Meine?|Keine?|Deine?|Seine?|Ihre|Unsere|Diese|Jede|Welche|Solche|Als)\s)[A-ZÄÖÜ][\p{L}0-9.&'-]{0,40}(?:[\s-]+[A-ZÄÖÜ0-9][\p{L}0-9.&'-]{0,40}){0,3}[\s-]+(?:AG|GmbH|mbH|gGmbH|UG|OHG|KGaA|KG|SE)\b/gu
+// Case-sensitive on the legal form so prose words like "gegen" cannot match. The leading negative lookahead
+// keeps out what is no company name: a determiner ("Eine KG gründen"), a legal form or "Co." itself
+// ("Kommanditist einer GmbH & Co. KG") and the generic kinds of company ("Holding GmbH") — all questions
+// about a legal form, not an employer.
+// Words are separated by blanks only; a hyphen belongs to the word ("Müller-Meier GmbH"), and one hyphen may
+// tie the legal form on ("Siemens-AG"). With `[\s-]+` between the words, the hyphen was both a word character
+// and a separator: "A-A-A-…" could be split in 41⁴ ways from every start, 1 ms per character, 8 s for one
+// message of the maximum length (review of ADR-0107 H2, ADR-0106 D1).
+const NOT_A_COMPANY_NAME =
+  "(?!(?:Eine?|Der|Die|Das|Dem|Den|Meine?|Keine?|Deine?|Seine?|Ihre|Unsere|Diese|Jede|Welche|Solche|Als|Co\\.?|AG|GmbH|mbH|gGmbH|UG|OHG|KGaA|KG|SE|Holding|Familien|Immobilien|Ein-Mann|Einmann|Komplementär|Vorrats|Tochter|Mutter|Beteiligungs|Vermögensverwaltende|Gemeinnützige)[\\s-])"
+const EMPLOYER_INLINE_REGEX = new RegExp(
+  `\\b${NOT_A_COMPANY_NAME}[A-ZÄÖÜ][\\p{L}0-9.&'-]{0,40}(?:\\s{1,3}[A-ZÄÖÜ0-9][\\p{L}0-9.&'-]{0,40}){0,3}(?:\\s{1,3}|-)(?:AG|GmbH|mbH|gGmbH|UG|OHG|KGaA|KG|SE)\\b`,
+  'gu',
+)
 // Employer named by context word, no legal form ("arbeite bei Siemens", "Arbeitgeber ist die Deutsche Bahn",
 // "Firma Müller") — the bare-brand leak the H2 review flagged. The trigger is captured ($1) and kept; only
 // the company name is masked. Plain "bei <Noun>" is deliberately NOT a trigger (German capitalises every
-// noun, so it would clobber "bei Bedarf"); the trigger must name employment.
-const EMPLOYER_CONTEXT_REGEX =
-  /\b((?:(?:arbeite|angestellt|beschäftigt|tätig)\s+bei|Arbeitgeber(?:in)?|Firma)\s+(?:(?:ist|der|dem|die|das)\s+){0,2})[A-ZÄÖÜ][\p{L}0-9.&'-]{1,40}(?:[\s-]+[A-ZÄÖÜ][\p{L}0-9.&'-]{1,40}){0,2}/gu
+// noun, so it would clobber "bei Bedarf"); the trigger must name employment. The verb may open the sentence
+// ("Arbeite bei Siemens"). What follows the trigger must not read as a common noun: "Arbeitgeber
+// Fahrtkostenzuschuss" and "Firma Dienstwagen" name a benefit, not a company.
+const EMPLOYER_CONTEXT_REGEX = new RegExp(
+  `\\b((?:(?:[Aa]rbeite|[Aa]ngestellt|[Bb]eschäftigt|[Tt]ätig)\\s+bei|Arbeitgeber(?:in)?|Firma)\\s+(?:(?:ist|der|dem|die|das)\\s+){0,2})${NOT_A_COMMON_NOUN}[A-ZÄÖÜ][\\p{L}0-9.&'-]{1,40}(?:\\s{1,3}${NOT_A_COMMON_NOUN}[A-ZÄÖÜ][\\p{L}0-9.&'-]{1,40}){0,2}`,
+  'gu',
+)
 // Honorific-prefixed third-party names a profile-derived name list can never hold (landlord, doctor,
-// accountant): "Herr Konrad Bauer", "Frau Dr. Schmidt". Bounded to three capitalised name words.
-const HONORIFIC_NAME_REGEX =
-  /\b(?:Herrn?|Frau|Dr\.|Prof\.)(?:\s+(?:Dr\.|Prof\.|med\.))?\s+[A-ZÄÖÜ][a-zäöüß]{1,30}(?:[\s-]+[A-ZÄÖÜ][a-zäöüß]{1,30}){0,2}/gu
+// accountant): "Herr Konrad Bauer", "Frau Dr. Schmidt". Bounded to three name words; the honorific is
+// captured ($1) and kept.
+const HONORIFIC_NAME_REGEX = new RegExp(
+  `\\b((?:Herrn?|Frau|Dr\\.|Prof\\.)(?:\\s+(?:Dr\\.|Prof\\.|med\\.))?\\s+)${NAME_WORD}(?:[\\s-]{1,3}${NAME_WORD}){0,2}`,
+  'gu',
+)
 // Third-party name by relationship word, without an honorific ("mein Vermieter Konrad Bauer"). Captures the
 // relationship ($1) and masks only the name. Applied after the known-name pass, so "[MANDANT]" (which does
-// not start with a capital letter) is never swallowed.
-const RELATED_PERSON_NAME_REGEX =
-  /\b((?:Vermieter(?:in)?|Mieter(?:in)?|Nachbar(?:in|n)?|Arzt|Ärztin|Zahnarzt|Hausarzt|Steuerberater(?:in)?|Makler(?:in)?|Anwalt|Anwältin|Chef(?:in)?|Partner(?:in)?)\s+(?:ist\s+|heißt\s+)?)[A-ZÄÖÜ][a-zäöüß]{1,30}(?:[\s-]+[A-ZÄÖÜ][a-zäöüß]{1,30}){0,2}/gu
+// not start with a capital letter) is never swallowed. "ist" is no link to a name: what follows it is what
+// the person is ("Partnerin ist Beamtin"), which the answer depends on.
+const RELATED_PERSON_NAME_REGEX = new RegExp(
+  `\\b((?:Vermieter(?:in)?|Mieter(?:in)?|Nachbar(?:in|n)?|Arzt|Ärztin|Zahnarzt|Hausarzt|Steuerberater(?:in)?|Makler(?:in)?|Anwalt|Anwältin|Chef(?:in)?|Partner(?:in)?)\\s+(?:heißt\\s+)?)${NAME_WORD}(?:[\\s-]{1,3}${NAME_WORD}){0,2}`,
+  'gu',
+)
 const EMPLOYER_LINE_REGEX =
   /^(?!.*\b(?:Bruttoarbeitslohn|Lohnsteuer|Rentenversicherung|Krankenversicherung|Pflegeversicherung|Arbeitslosenversicherung)\b).*\b(?:GmbH|mbH|UG|OHG|KGaA|GmbH\s*&\s*Co\.?\s*KG|Co\.?\s*KG|AG|SE)\b.*$/gm
 // A second word of the town and trailing blanks no longer compete for the same blanks (Sonar S8786).
