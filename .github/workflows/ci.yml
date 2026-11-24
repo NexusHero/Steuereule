@@ -1060,7 +1060,7 @@ jobs:
             -d '{"email":"prod-deploy-pdf-smoke@example.com","password":"a-fine-strong-password-1","name":"Prod Deploy PDF Smoke"}' \
             > /dev/null
           # Sign-up returns no session (ADR-0109): verify the address as the mail's link would, then sign in.
-          PGPASSWORD=steuereule psql -h localhost -U steuereule -d steuereule -c "$(PRISMA_FIELD_ENCRYPTION_HASH_SALT="$(sed -n 's/^PRISMA_FIELD_ENCRYPTION_HASH_SALT=//p' .env)" node e2e/harness/email-hash.mjs prod-deploy-pdf-smoke@example.com)"
+          PGPASSWORD="$(sed -n 's/^POSTGRES_PASSWORD=//p' .env)" psql -h localhost -U "$(sed -n 's/^POSTGRES_USER=//p' .env)" -d "$(sed -n 's/^POSTGRES_DB=//p' .env)" -c "$(PRISMA_FIELD_ENCRYPTION_HASH_SALT="$(sed -n 's/^PRISMA_FIELD_ENCRYPTION_HASH_SALT=//p' .env)" node e2e/harness/email-hash.mjs prod-deploy-pdf-smoke@example.com)"
           curl --fail --silent --show-error -c "$JAR" -b "$JAR" \
             -H "Content-Type: application/json" -H "Origin: http://localhost:8080" \
             -X POST http://localhost:3000/api/auth/sign-in/email \

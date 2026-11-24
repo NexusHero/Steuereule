@@ -79,7 +79,9 @@ export function evaluate(report, today = new Date().toISOString().slice(0, 10), 
 }
 
 function main() {
-  const run = spawnSync('pnpm', ['audit', '--prod', '--json'], { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 })
+  // pnpm is the repository's own package manager, found on PATH like every other command of the pipeline; the
+  // arguments are fixed and no shell is involved.
+  const run = spawnSync('pnpm', ['audit', '--prod', '--json'], { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 }) // NOSONAR javascript:S4036
   // pnpm exits non-zero whenever it finds anything; the JSON on stdout is the result.
   let report
   try {
