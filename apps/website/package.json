@@ -2,13 +2,19 @@
   "name": "@steuereule/website",
   "version": "0.0.0",
   "private": true,
+  "type": "module",
   "scripts": {
-    "build": "vite build",
-    "dev": "vite",
-    "test": "vitest run"
+    "build": "tsx build.ts",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@steuereule/core": "workspace:*",
+    "@steuereule/tokens": "workspace:*"
   },
   "devDependencies": {
-    "vite": "^5.4.11",
+    "@types/node": "^22.10.5",
+    "tsx": "^4.19.2",
     "vitest": "^2.1.8"
   }
 }
