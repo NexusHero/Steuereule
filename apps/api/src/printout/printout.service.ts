@@ -125,16 +125,24 @@ export class PrintoutService {
    * The values of every printed copy for the live form view. Shown before payment: only the PDF is
    * paid (ADR-0050); the check before payment (ADR-0085) shows what is missing the same way.
    */
-  async liveValues(userId: string, year: number): Promise<{ forms: LiveFormWithLines[] }> {
+  async liveValues(
+    userId: string,
+    year: number,
+    /** The user's assistant reads its own figures line by line (`vordruck_zeilen`); the user's form view does not show unconfirmed ones. */
+    options: { readonly withUnconfirmed?: boolean } = {},
+  ): Promise<{ forms: LiveFormWithLines[]; unconfirmed: string[] }> {
     const fieldSet = FIELD_SETS[year]
     if (!fieldSet) throw new NotFoundError('VORDRUCKE_MISSING', `No Vordrucke are available for tax year ${year} yet.`)
     const { coupling: link } = await this.cases.read(userId, year, ['coupling'])
     // ADR-0054: Person A prints the couple's return; Person B has no copy of their own to show.
-    if (link?.filingType === 'zusammen' && link.personAUserId !== userId) return { forms: [] }
+    if (link?.filingType === 'zusammen' && link.personAUserId !== userId) return { forms: [], unconfirmed: [] }
+    // Unconfirmed values count as open (ADR-0052 §6, MCP-24): the form view shows none of them until the user confirmed.
+    const unconfirmed = await this.unconfirmed(userId, year, link?.filingType === 'zusammen' && link.personBUserId ? link.personBUserId : null)
+    if (unconfirmed.length > 0 && options.withUnconfirmed !== true) return { forms: [], unconfirmed }
     const { values, instances, entityIds } = await this.collectValues(userId, year)
     await this.audit.append({ userId, action: 'READ', resource: 'ausdruck-werte' })
     const forms = liveForms(year, fieldSet, values, instances, entityIds)
-    return { forms: forms.map((form) => ({ ...form, instances: form.instances.map((copy) => ({ ...copy, lines: lineNumbersOf(year, copy.values) })) })) }
+    return { forms: forms.map((form) => ({ ...form, instances: form.instances.map((copy) => ({ ...copy, lines: lineNumbersOf(year, copy.values) })) })), unconfirmed }
   }
 
   /**
@@ -142,12 +150,15 @@ export class PrintoutService {
    * facts and the same `printoutValues`, for every year the app offers, printed or not. The records
    * behind per-record copies are named so the help can tell two Anlagen Kind apart.
    */
-  async fillInValues(userId: string, year: number): Promise<{ forms: LiveForm[]; names: Readonly<Record<string, string | null>> }> {
+  async fillInValues(userId: string, year: number): Promise<{ forms: LiveForm[]; names: Readonly<Record<string, string | null>>; unconfirmed: string[] }> {
     const { coupling: link } = await this.cases.read(userId, year, ['coupling'])
     // ADR-0054: Person A files the couple's return; Person B has no return of their own to type in.
-    if (link?.filingType === 'zusammen' && link.personAUserId !== userId) return { forms: [], names: {} }
+    if (link?.filingType === 'zusammen' && link.personAUserId !== userId) return { forms: [], names: {}, unconfirmed: [] }
+    // What the user types into ELSTER is what the printout would print (MCP-24): nothing unconfirmed, as for the PDF.
+    const unconfirmed = await this.unconfirmed(userId, year, link?.filingType === 'zusammen' && link.personBUserId ? link.personBUserId : null)
+    if (unconfirmed.length > 0) return { forms: [], names: {}, unconfirmed }
     const { values, instances, entityIds, names } = await this.collectValues(userId, year)
-    return { forms: fillInForms(year, values, instances, entityIds), names }
+    return { forms: fillInForms(year, values, instances, entityIds), names, unconfirmed }
   }
 
   /** The Vordruck a field id belongs to in a tax year, or null when that year has no such field. */

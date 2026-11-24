@@ -48,7 +48,7 @@ export function registerComfortTools(session: McpSession, deps: McpDeps): void {
     async ({ taxYear }) => {
       assertScope(assistant, 'steuerdaten:read')
       await deps.audit.append({ userId, action: 'READ', resource: 'vordruck_zeilen' })
-      const { forms } = await deps.printout.liveValues(userId, taxYear)
+      const { forms } = await deps.printout.liveValues(userId, taxYear, { withUnconfirmed: true })
       return json({
         taxYear,
         formulare: forms.flatMap((form) =>

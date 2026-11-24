@@ -17262,11 +17262,22 @@
             "items": {
               "$ref": "#/components/schemas/ElsterFormEntryDto"
             }
+          },
+          "unconfirmed": {
+            "example": [
+              "unbestaetigt.anlageN"
+            ],
+            "description": "Anlagen with values the user has not confirmed; the return's forms are left out until they are (MCP-24).",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           }
         },
         "required": [
           "year",
-          "forms"
+          "forms",
+          "unconfirmed"
         ]
       },
       "ElsterLineDto": {
@@ -17675,10 +17686,21 @@
             "items": {
               "$ref": "#/components/schemas/LiveFormDto"
             }
+          },
+          "unconfirmed": {
+            "example": [
+              "unbestaetigt.anlageN"
+            ],
+            "description": "Anlagen with values the user has not confirmed; while there are any, no form is shown (MCP-24).",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           }
         },
         "required": [
-          "forms"
+          "forms",
+          "unconfirmed"
         ]
       },
       "CheckoutResponseDto": {

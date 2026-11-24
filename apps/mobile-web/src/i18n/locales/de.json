@@ -4070,7 +4070,8 @@
         "exemplar": "{{number}}. Exemplar"
       },
       "spalte": "Spalte: {{column}}",
-      "keineFormulare": "Für {{year}} hat die App noch keine Werte, die du in Mein ELSTER einträgst."
+      "keineFormulare": "Für {{year}} hat die App noch keine Werte, die du in Mein ELSTER einträgst.",
+      "unbestaetigt": "Dein Assistent hat Werte eingetragen, die du noch nicht bestätigt hast. Die Formulare der Erklärung zeigt die Ausfüllhilfe erst, wenn du sie unter „Prüfen & bestätigen“ bestätigt hast."
     },
     "export": {
       "nichtFreigeschaltet": "Der Export für {{year}} ist noch nicht freigeschaltet.",

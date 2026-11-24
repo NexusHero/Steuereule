@@ -91,6 +91,8 @@ export function ElsterPage({ taxYear, person, business = 1, onBack, onOpenPage, 
         {chips('business')}
         {chips('income-tax')}
       </View>
+      {/* Unconfirmed values are no values to type in (MCP-24): the return's forms wait for „Prüfen & bestätigen“. */}
+      {list.data?.status === 200 && (list.data.data.unconfirmed ?? []).length > 0 ? <Note testID="elster-unbestaetigt">{tr('business.elster.unbestaetigt')}</Note> : null}
       {payment === 'abbruch' ? <Note testID="elster-abgebrochen">{tr('business.elster.abgebrochen')}</Note> : null}
       {paid ? <Note testID="elster-freigeschaltet">{tr('business.elster.freigeschaltet', { year: taxYear })}</Note> : null}
       {children}

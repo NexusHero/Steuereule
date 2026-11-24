@@ -597,6 +597,13 @@ describe('the ELSTER fill-in help over the whole return (ADR-0101 §16)', () => 
     expect(screen.getByTestId('elster-wert-anlKind.kz42Von').textContent).toBe('01.01.')
   })
 
+  it('says why the return’s forms wait while the assistant’s values are unconfirmed (MCP-24)', async () => {
+    useElsterForms(FORMS.slice(0, 1), ['unbestaetigt.anlageN'])
+    server.use(http.get(`${BASE_URL}/elster/anlage-euer`, () => HttpResponse.json(empty('anlage-euer'))))
+    renderBusiness('elster')
+    expect((await screen.findByTestId('elster-unbestaetigt')).textContent).toContain('Prüfen & bestätigen')
+  })
+
   it('says so when no form has a value yet', async () => {
     useElsterForms([])
     renderBusiness('elster')
