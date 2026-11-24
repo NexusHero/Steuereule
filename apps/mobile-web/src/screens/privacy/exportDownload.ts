@@ -24,6 +24,8 @@ export function triggerBrowserDownload(blob: Blob, filename: string): void {
 export interface DownloadExportResult {
   readonly ok: boolean
   readonly status: number
+  /** The export needs a fresh sign-in or a re-entered password (ADR-0107 L1) — prompt and retry. */
+  readonly stepUp?: boolean
 }
 
 export async function downloadAccountExport(format: ExportFormat): Promise<DownloadExportResult> {
@@ -31,6 +33,16 @@ export async function downloadAccountExport(format: ExportFormat): Promise<Downl
     credentials: 'include',
   })
   if (!response.ok) {
+    if (response.status === 400) {
+      try {
+        const body = (await response.clone().json()) as { code?: unknown }
+        if (body?.code === 'FRESH_AUTH_REQUIRED') {
+          return { ok: false, status: response.status, stepUp: true }
+        }
+      } catch {
+        // non-JSON body — not a step-up response
+      }
+    }
     return { ok: false, status: response.status }
   }
   const blob = await response.blob()

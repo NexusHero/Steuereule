@@ -17,6 +17,15 @@ export class PrismaAccountDeletionRepository implements AccountDeletionRepositor
     // transaction below fail, the files are already unreadable and a retry finishes the job —
     // never the reverse (rows gone, key alive, backups decryptable forever). A legal hold on
     // tax data keeps the key, because the held files must stay readable.
+    //
+    // Scope (pentest 2026-11-23, ADR-0107 H4): crypto-shredding here makes only the keystore-wrapped
+    // data irrecoverable from backups — receipt file bytes and HouseholdPerson.sealed, each under a
+    // per-user/per-person DEK destroyed above. The `@encrypted` Prisma COLUMNS (steuerId, name, Lstb
+    // income, advisor chat, …) are removed by the row deletion in deleteAccountTransaction, NOT
+    // crypto-shredded: they share one global PRISMA_FIELD_ENCRYPTION_KEY (ADR-0008) that is not
+    // rotated on deletion, so a pre-deletion backup still decrypts them until that backup's retention
+    // window expires. Backup retention is the compensating control for those columns; true per-user
+    // field keys are the architectural follow-up if Art. 17 must reach backups for them too.
     const taxDataHeld =
       (await this.prisma.legalHold.count({ where: { userId, resource: 'taxData', holdUntil: { gt: new Date() } } })) > 0
     if (!taxDataHeld) {

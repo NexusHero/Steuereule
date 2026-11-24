@@ -18,6 +18,11 @@ export const STEP_UP_PATHS: ReadonlySet<string> = new Set([
   '/passkey/generate-register-options',
   '/passkey/verify-registration',
   '/oauth2/consent',
+  // A pre-existing consent must not be widened (e.g. adding offline_access), nor an authorize flow
+  // resumed, from a stale stolen session either (pentest 2026-11-23, ADR-0107 L2): the oauth-provider
+  // plugin exposes these alongside /oauth2/consent, and D2 only gated the fresh-grant path.
+  '/oauth2/update-consent',
+  '/oauth2/continue',
   '/link-social',
 ])
 
