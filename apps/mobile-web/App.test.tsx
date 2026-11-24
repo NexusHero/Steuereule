@@ -1119,7 +1119,7 @@ describe('App', () => {
       await waitFor(() => expect(window.location.pathname).toBe('/app/steuerjahr/2025/abgabe'))
     })
 
-    it('submission gate (§ 3.4–3.5): unconfirmed notices redirect Printout to Submission, confirming unlocks, reload resets', async () => {
+    it('submission gate (§ 3.4–3.5): unconfirmed notices redirect Printout to Submission, confirming unlocks, a reload keeps it (WEB-9)', async () => {
       mockSignedInSession()
       server.use(
         ...printoutReadyHandlers('offen'),
@@ -1141,11 +1141,12 @@ describe('App', () => {
       expect(await screen.findByText('Ausdruck 2025')).toBeTruthy()
       firstMount.unmount()
 
-      // Simulated reload: in-memory notice confirmation is gone, Printout redirects back to Submission
-      window.history.pushState({}, '', '/app/steuerjahr/2025/ausdruck')
+      // Simulated reload, as the return from Stripe is one: the confirmation survives in the tab, Printout stays.
+      window.history.pushState({}, '', '/app/steuerjahr/2025/ausdruck?zahlung=erfolg')
       render(<App />)
-      expect(await screen.findByTestId('gate-warnung-bestaetigen')).toBeTruthy()
-      expect(screen.queryByText('Ausdruck 2025')).toBeNull()
+      expect(await screen.findByText('Ausdruck 2025')).toBeTruthy()
+      expect(screen.queryByTestId('gate-warnung-bestaetigen')).toBeNull()
+      expect(window.location.search).toBe('?zahlung=erfolg')
     })
 
     it('allows Stripe payment return URL on Printout when submission gate passes', async () => {
