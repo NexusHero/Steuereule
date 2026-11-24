@@ -15,11 +15,31 @@ export interface ResettableRateLimitStorage extends BetterAuthRateLimitStorage {
 
 export interface RateLimitStorageOptions {
   redisUrl?: string | undefined
+  /**
+   * Called every time a Redis error/timeout forces the bounded in-memory fallback (ADR-0107 H5).
+   * The fallback is per-process and evictable, so a shared Redis outage silently degrades every
+   * better-auth limit, the per-account sign-in limit (D9) and the guest-write limit (D8) at once —
+   * operators must see it. Defaults to a throttled console.warn when not provided.
+   */
+  onDegraded?: (error: unknown) => void
 }
 
 const SWEEP_THRESHOLD = 1_000
 const MAX_STORE_ENTRIES = 10_000
 const REDIS_TIMEOUT_MS = 400
+const DEGRADED_WARN_INTERVAL_MS = 60_000
+
+function makeThrottledDegradedWarning(): (error: unknown) => void {
+  let lastWarnedAt = 0
+  return (error: unknown) => {
+    const now = Date.now()
+    if (now - lastWarnedAt < DEGRADED_WARN_INTERVAL_MS) return
+    lastWarnedAt = now
+    const reason = error instanceof Error ? error.message : String(error)
+    // Not fail-closed on purpose (a Redis blip must not lock everyone out), but never silent either.
+    console.warn(`[rate-limit] Redis unavailable — degraded to per-process in-memory limits: ${reason}`)
+  }
+}
 
 function retryAfter(lastRequest: number, windowSeconds: number): number {
   return Math.ceil((lastRequest + windowSeconds * 1000 - Date.now()) / 1000)
@@ -63,6 +83,7 @@ export function createResettableRateLimitStorage(
   const store = new Map<string, { key: string; count: number; lastRequest: number; expiresAt: number }>()
   const configuredRedisUrl = (options.redisUrl ?? process.env.REDIS_URL)?.trim()
   const redis = configuredRedisUrl ? createRedisClient(configuredRedisUrl) : null
+  const signalDegraded = options.onDegraded ?? makeThrottledDegradedWarning()
 
   function sweepExpired(now: number): void {
     if (store.size < SWEEP_THRESHOLD) return
@@ -103,8 +124,10 @@ export function createResettableRateLimitStorage(
       if (redis) {
         try {
           return await consumeViaRedis(redis, key, rule, amount)
-        } catch {
-          // Graceful degradation: fall back to bounded in-memory limiter if Redis is unreachable.
+        } catch (error) {
+          // Graceful degradation: fall back to the bounded in-memory limiter if Redis is unreachable,
+          // but signal it (ADR-0107 H5) — the fallback is per-process and weaker, never a silent drop.
+          signalDegraded(error)
         }
       }
       return consumeInMemory(key, rule, amount)

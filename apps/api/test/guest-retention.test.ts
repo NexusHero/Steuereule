@@ -20,6 +20,7 @@ function fakeRepository(rows: Record<string, Date>, accounts: string[] = []): Gu
       rows[id] = to
       return true
     },
+    stillClaimed: async (id, to) => rows[id]?.getTime() === to.getTime(),
     restart: async (id, at) => void (rows[id] = at),
     drop: async (id) => void delete rows[id],
     isAccount: async (id) => accounts.includes(id),
@@ -34,6 +35,32 @@ describe('sweepInactiveGuests', () => {
     expect(erased).toEqual(['old'])
     expect(result).toEqual({ erased: 1, heldBack: 0, failed: 0 })
     expect(Object.keys(rows)).toEqual(['recent'])
+  })
+
+  it('keeps a guest who wrote again between the claim and the erasure', async () => {
+    const rows: Record<string, Date> = { back: new Date(NOW.getTime() - 40 * DAY) }
+    const repository = fakeRepository(rows)
+    const claim = repository.claim
+    // The guest's write lands right after the sweep claimed the row.
+    repository.claim = async (...args) => {
+      const got = await claim(...args)
+      rows.back = NOW
+      return got
+    }
+    const erase = async () => {
+      throw new Error('must not run')
+    }
+    const result = await sweepInactiveGuests({ repository, erase }, NOW)
+    expect(result).toEqual({ erased: 0, heldBack: 0, failed: 0 })
+    expect(rows.back).toEqual(NOW)
+  })
+
+  it('lets the sweep ride on any request, not only on a guest write', () => {
+    const recorder = new GuestActivityNotes(fakeRepository({}))
+    let runs = 0
+    recorder.afterTouch = () => void (runs += 1)
+    recorder.seen()
+    expect(runs).toBe(1)
   })
 
   it('never erases an id that has a User row: it is an account, only its clock row goes', async () => {

@@ -21,4 +21,6 @@ regexes = [
   '''pentest-guest-secret-0123456789''',
   # A line item key ("postenKey: 'vermietung-obj-1'"), flagged by the generic rule in commit b6292309c.
   '''vermietung-obj-1''',
+  # Sign-up password typed in RegistrationScreen.test.tsx, flagged by the generic rule.
+  '''geheim-123-lang''',
 ]

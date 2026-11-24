@@ -46,20 +46,21 @@ function userIdFromCookie(cookie: string): string {
   return userId
 }
 
-/** Raw-SQL read of a Profile column, bypassing any Prisma client extension entirely. */
+/** Raw-SQL read of a Profile column, bypassing any Prisma client extension entirely.
+ * The column name is a fixed literal chosen from a whitelist (never interpolated from input),
+ * so there is no injection surface. */
 async function rawProfileColumn(
   prisma: PrismaClient,
   userId: string,
-  column: 'steuerId' | 'steuernummer',
+  column: 'steuerId' | 'steuernummer' | 'firstName' | 'lastName',
 ): Promise<string | null> {
-  const rows =
-    column === 'steuerId'
-      ? await prisma.$queryRaw<{ value: string | null }[]>`
-          SELECT "steuerId" AS value FROM "Profile" WHERE "userId" = ${userId}
-        `
-      : await prisma.$queryRaw<{ value: string | null }[]>`
-          SELECT "steuernummer" AS value FROM "Profile" WHERE "userId" = ${userId}
-        `
+  const queryByColumn = {
+    steuerId: () => prisma.$queryRaw<{ value: string | null }[]>`SELECT "steuerId" AS value FROM "Profile" WHERE "userId" = ${userId}`,
+    steuernummer: () => prisma.$queryRaw<{ value: string | null }[]>`SELECT "steuernummer" AS value FROM "Profile" WHERE "userId" = ${userId}`,
+    firstName: () => prisma.$queryRaw<{ value: string | null }[]>`SELECT "firstName" AS value FROM "Profile" WHERE "userId" = ${userId}`,
+    lastName: () => prisma.$queryRaw<{ value: string | null }[]>`SELECT "lastName" AS value FROM "Profile" WHERE "userId" = ${userId}`,
+  } as const
+  const rows = await queryByColumn[column]()
   return rows[0]?.value ?? null
 }
 
@@ -211,6 +212,27 @@ describe('PROFILE /v1/profile — real Postgres', () => {
       expect(rawTaxNumber).not.toBeNull()
       expect(rawTaxNumber).not.toBe(VALID_PAYLOAD.steuernummer)
       expect(rawTaxNumber).toMatch(/^v\d+\.aesgcm256\./)
+    })
+
+    it('ADR-0107 H3: firstName/lastName are ciphertext at rest, not the plaintext name (pentest 2026-11-23)', async () => {
+      const put = await app.inject({ method: 'PUT', url: '/v1/profile', payload: VALID_PAYLOAD })
+      expect(put.statusCode).toBe(200)
+      const cookie = extractSessionCookie(put.headers['set-cookie'])!
+      const userId = userIdFromCookie(cookie)
+
+      const rawFirst = await rawProfileColumn(prisma, userId, 'firstName')
+      const rawLast = await rawProfileColumn(prisma, userId, 'lastName')
+
+      // The legal name used to sit in cleartext next to the encrypted steuerId — a DB read / backup
+      // harvested every user's real name joinable to their tax data. Now field-encrypted at rest.
+      expect(rawFirst).not.toBe(VALID_PAYLOAD.firstName)
+      expect(rawLast).not.toBe(VALID_PAYLOAD.lastName)
+      expect(rawFirst).toMatch(/^v\d+\.aesgcm256\./)
+      expect(rawLast).toMatch(/^v\d+\.aesgcm256\./)
+
+      // Read-your-writes still returns the plaintext name through the encrypted client.
+      const get = await app.inject({ method: 'GET', url: '/v1/profile', headers: { cookie } })
+      expect(get.json()).toMatchObject({ firstName: VALID_PAYLOAD.firstName, lastName: VALID_PAYLOAD.lastName })
     })
 
     it('REQ-003.3 randomized: two userIds with the same Steuer-ID have different ciphertext at rest', async () => {

@@ -356,7 +356,8 @@ export class PrismaBusinessRepository implements BusinessRepository {
     if (fresh.length === 0) return 0
     // One book holds this many transactions at most (a year of a busy account is a few thousand), so the list
     // and the import stay bounded however often a file is uploaded (ADR-0109).
-    if (known.size + fresh.length > MAX_BANK_TRANSACTIONS_PER_BOOK) {
+    // `known` already holds the fresh fingerprints: it is the book after the import.
+    if (known.size > MAX_BANK_TRANSACTIONS_PER_BOOK) {
       throw new ConflictError('BANK_TRANSACTIONS_LIMIT', 'In diesem Buch sind schon sehr viele Kontoumsätze. Weitere kann die SteuerEule nicht aufnehmen.')
     }
     const { count } = await this.prisma.bankTransaction.createMany({

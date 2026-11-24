@@ -20,6 +20,10 @@ export class PrismaGuestActivityRepository implements GuestActivityRepository {
     return count === 1
   }
 
+  async stillClaimed(guestUserId: string, to: Date): Promise<boolean> {
+    return (await this.prisma.guestActivity.count({ where: { userId: guestUserId, lastWriteAt: to } })) === 1
+  }
+
   async restart(guestUserId: string, at: Date): Promise<void> {
     await this.prisma.guestActivity.updateMany({ where: { userId: guestUserId }, data: { lastWriteAt: at } })
   }
