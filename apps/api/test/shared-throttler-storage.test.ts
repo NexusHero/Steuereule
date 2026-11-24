@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { createResettableRateLimitStorage } from '../src/auth/rate-limit-storage.js'
 import { SharedThrottlerStorage } from '../src/rate-limit/shared-throttler-storage.js'
 import { redisTlsOptions } from '../src/redis/redis-options.js'
@@ -21,6 +21,40 @@ describe('SharedThrottlerStorage (ADR-0109)', () => {
     await storage.increment('k', 60_000, 1, 0, 'default')
     expect((await storage.increment('other', 60_000, 1, 0, 'default')).isBlocked).toBe(false)
     expect((await storage.increment('k', 60_000, 1, 0, 'second')).isBlocked).toBe(false)
+  })
+})
+
+describe('the window of the in-memory fallback', () => {
+  it('starts with the first call and ends one window later, however steadily the caller goes on', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    try {
+      const storage = createResettableRateLimitStorage({ redisUrl: '' })
+      const rule = { window: 60, max: 15 }
+      // Twelve a minute for five minutes never reaches fifteen in a window. The window used to restart with
+      // every allowed call, so a caller who never paused for sixty seconds was refused from the sixteenth on.
+      for (let call = 0; call < 60; call += 1) {
+        expect((await storage.consume('steady', rule)).allowed).toBe(true)
+        vi.setSystemTime(Date.now() + 5_000)
+      }
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('refuses the call over the limit and says when the window ends', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    try {
+      const storage = createResettableRateLimitStorage({ redisUrl: '' })
+      const rule = { window: 60, max: 2 }
+      await storage.consume('k', rule)
+      vi.setSystemTime(Date.now() + 40_000)
+      await storage.consume('k', rule)
+      expect(await storage.consume('k', rule)).toEqual({ allowed: false, retryAfter: 20 })
+      vi.setSystemTime(Date.now() + 20_000)
+      expect((await storage.consume('k', rule)).allowed).toBe(true)
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })
 

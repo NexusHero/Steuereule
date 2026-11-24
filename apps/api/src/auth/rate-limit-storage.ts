@@ -49,10 +49,6 @@ function makeThrottledDegradedWarning(): (error: unknown) => void {
   }
 }
 
-function retryAfter(lastRequest: number, windowSeconds: number): number {
-  return Math.ceil((lastRequest + windowSeconds * 1000 - Date.now()) / 1000)
-}
-
 /** Refuses without counting when the call would pass `max`: an over-budget upload must not burn the budget. */
 const LUA_RATE_LIMIT_SCRIPT = `
 local cur = tonumber(redis.call("GET", KEYS[1]) or "0")
@@ -122,23 +118,27 @@ export function createResettableRateLimitStorage(
     }
   }
 
+  /**
+   * A fixed window from the first call, as the Redis script counts (the key expires one window after its first
+   * increment). It used to restart with every allowed call, so a caller that never paused for a whole window
+   * stayed refused for good: a steady 12 a minute against a limit of 15 was cut off after the fifteenth.
+   */
   function consumeInMemory(key: string, rule: RateLimitRule, amount: number): RateLimitDecision {
     const now = Date.now()
     const windowMs = rule.window * 1000
     const data = store.get(key)
 
-    if (!data || now - data.lastRequest > windowMs) {
+    if (!data || now >= data.expiresAt) {
       if (amount > rule.max) return { allowed: false, retryAfter: rule.window }
       sweepExpired(now)
       store.set(key, { key, count: amount, lastRequest: now, expiresAt: now + windowMs })
       return { allowed: true, retryAfter: null }
     }
     if (data.count + amount > rule.max) {
-      return { allowed: false, retryAfter: retryAfter(data.lastRequest, rule.window) }
+      return { allowed: false, retryAfter: Math.max(1, Math.ceil((data.expiresAt - now) / 1000)) }
     }
     data.count += amount
     data.lastRequest = now
-    data.expiresAt = now + windowMs
     return { allowed: true, retryAfter: null }
   }
 
