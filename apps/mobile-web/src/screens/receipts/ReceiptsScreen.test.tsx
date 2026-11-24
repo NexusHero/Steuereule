@@ -18,6 +18,7 @@ import { server } from '../../test-msw-server'
 import { ShellStateProvider, useShellState } from '../../navigation/ShellState'
 import type { AssignmentQuestionDto, ParseReceiptResponseDto, ReceiptResponseDto } from '@steuereule/api-client'
 import { receiptInboxHandler, receiptPage } from '../../test-receipt-inbox'
+import { expectFailsClosed, failEveryRequest } from '../../test-every-query-fails'
 
 // The device reading (PDF text layer / OCR) is the one seam replaced here: everything after it is the real pipeline.
 const { mockExtractDocumentText } = vi.hoisted(() => ({ mockExtractDocumentText: vi.fn() }))
@@ -288,7 +289,8 @@ describe('BelegeScreen', () => {
     const imgFile = new File([new Uint8Array([0xff, 0xd8, 0xff])], 'foto.jpg', { type: 'image/jpeg' })
     fireEvent.change(screen.getByTestId('belege-file-input'), { target: { files: [imgFile] } })
 
-    expect(await screen.findByText('Der Upload hat nicht geklappt. Prüf die Verbindung und versuch es noch mal.')).toBeTruthy()
+    // WEB-10: a 500 is the server's fault, not the connection.
+    expect(await screen.findByText('Bei uns ist gerade etwas schiefgelaufen. Versuch es gleich noch mal.')).toBeTruthy()
   })
 
   it('opens ReceiptFileModal for PDF and image files and strictly revokes ObjectURLs on close', async () => {
@@ -565,8 +567,8 @@ describe('BelegeScreen', () => {
     mockReceiptsError()
     renderReceipts()
 
-    await screen.findByText('Das hat nicht geklappt.')
-    expect(screen.getByText('Deine Belege konnten nicht geladen werden. Prüf die Verbindung und versuch es noch mal.')).toBeTruthy()
+    await screen.findByText('Das konnte nicht geladen werden.')
+    expect(screen.getByText('Keine Verbindung zum Server. Prüf dein Internet und versuch es noch mal.')).toBeTruthy()
 
     mockReceipts([ASSIGNED])
     fireEvent.click(screen.getByText('Noch mal versuchen'))
@@ -576,7 +578,7 @@ describe('BelegeScreen', () => {
   it('treats a non-200 response as an honest error, not a silent empty fallthrough', async () => {
     server.use(http.get(RECEIPTS_URL, () => HttpResponse.json([], { status: 500 })))
     renderReceipts()
-    expect(await screen.findByText('Das hat nicht geklappt.')).toBeTruthy()
+    expect(await screen.findByText('Das konnte nicht geladen werden.')).toBeTruthy()
   })
 
   it('switches to English when the locale changes (ADR-0006)', async () => {
@@ -650,6 +652,19 @@ describe('BelegeScreen', () => {
       fireEvent.click(chip)
       fireEvent.click(await screen.findByTestId('beleg-inhaber-wahl-b-offen-A'))
       expect((await screen.findByTestId('beleg-inhaber-ergebnis-b-offen')).textContent).toContain('nicht geklappt')
+    })
+
+    it('NR-09: a household that did not load says so with a retry, never only "Person A"', async () => {
+      server.use(
+        http.get('*/v1/profile', () => HttpResponse.json({ firstName: 'Elias', lastName: 'Sommer', steuerId: null, steuernummer: null })),
+        http.get('*/v1/steuerjahre/2025/kopplung', () => HttpResponse.json({ statusCode: 500 }, { status: 500 })),
+        http.get('*/v1/steuerjahre/2025/kinder', () => HttpResponse.json({ kinder: [], count: 0, childBenefitSum: 0, totalAllowance: 0, swissFamilyAllowanceSum: 0 })),
+      )
+      mockReceipts([{ ...CONFLICT, id: 'b-offen', holders: [], holderTaxYear: 2025 }])
+      renderReceipts()
+      fireEvent.click(await screen.findByTestId('beleg-inhaber-b-offen'))
+      expect(await screen.findByTestId('beleg-inhaber-ladefehler-b-offen')).toBeTruthy()
+      expect(screen.queryByTestId('beleg-inhaber-wahl-b-offen-A')).toBeNull()
     })
   })
 
@@ -909,5 +924,64 @@ describe('BelegeScreen', () => {
       expect((await screen.findByTestId('belege-bescheid-check-status')).textContent).toContain('gelesen')
       expect(parseBodies).toEqual([expect.objectContaining({ receiptId: 'b-bescheid', stageDraft: true })])
     })
+  })
+})
+
+describe('BelegeScreen — failures say what happened (WEB-10, WEB-11, NR-08, WEB-28)', () => {
+  function upload() {
+    const pdfFile = new File(['%PDF-1.4\ntest'], 'beleg.pdf', { type: 'application/pdf' })
+    fireEvent.change(screen.getByTestId('belege-file-input'), { target: { files: [pdfFile] } })
+  }
+
+  it('names the 10 MB limit before and after a 413', async () => {
+    mockReceipts([])
+    server.use(http.post('*/v1/belege/upload', () => HttpResponse.json({ statusCode: 413 }, { status: 413 })))
+    renderReceipts()
+    await screen.findByTestId('belege-file-input')
+    expect(screen.getByTestId('belege-upload-grenze').textContent).toContain('10 MB')
+    upload()
+    expect(await screen.findByText('Die Datei ist zu groß. Erlaubt sind höchstens 10 MB.')).toBeTruthy()
+  })
+
+  it('reads Retry-After on a 429 (the guest quota) instead of blaming the connection', async () => {
+    mockReceipts([])
+    server.use(http.post('*/v1/belege/upload', () => HttpResponse.json({ statusCode: 429 }, { status: 429, headers: { 'Retry-After': '30' } })))
+    renderReceipts()
+    await screen.findByTestId('belege-file-input')
+    upload()
+    expect(await screen.findByText('Gerade kommen zu viele Anfragen. Versuch es in 30 Sekunden noch mal.')).toBeTruthy()
+  })
+
+  it('WEB-11: a guest whose upload is stored hears that reading needs an account', async () => {
+    let list: ReceiptResponseDto[] = []
+    mockExtractDocumentText.mockResolvedValue({ kind: 'pdf', mimeType: 'application/pdf', text: 'Spendenbescheinigung 50,00 EUR', usedOcrFallback: false, pagesProcessed: 1 })
+    server.use(
+      receiptInboxHandler(() => list),
+      http.post('*/v1/belege/upload', () => {
+        list = [ASSIGNED]
+        return HttpResponse.json(ASSIGNED, { status: 201 })
+      }),
+      http.post('*/v1/belege/parse', () => HttpResponse.json({ statusCode: 403, code: 'ACCOUNT_REQUIRED' }, { status: 403 })),
+    )
+    renderReceipts()
+    await screen.findByText('Noch keine Belege.')
+    upload()
+    expect(
+      await screen.findByText('Der Beleg ist gespeichert. Auslesen lassen kannst du ihn mit einem kostenlosen Konto – oder du trägst die Beträge selbst ein.'),
+    ).toBeTruthy()
+  })
+
+  it('NR-08: a failed year assignment is said on screen, not only a vibration', async () => {
+    mockReceipts([PROPOSED])
+    server.use(http.post('*/v1/belege/:id/zuordnung', () => HttpResponse.json({ statusCode: 500 }, { status: 500 })))
+    renderReceipts()
+    fireEvent.click(await screen.findByText('Zuordnen zu 2026'))
+    expect((await screen.findByTestId('speichern-fehlgeschlagen')).textContent).toContain('Bei uns ist gerade etwas schiefgelaufen.')
+  })
+
+  it('fails closed: every request answering 500 shows a failure and sends no write', async () => {
+    const failing = failEveryRequest()
+    renderReceipts()
+    await expectFailsClosed(failing)
   })
 })

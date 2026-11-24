@@ -1,7 +1,7 @@
 // captureReceipt's entry context and failure paths: what is passed on to the server, and what the
 // user is told when the upload, the reading or the parsing goes wrong (ADR-0092, ADR-0097, ADR-0101).
 import { describe, expect, it, vi } from 'vitest'
-import type { ParseReceiptDto } from '@steuereule/api-client'
+import { ApiError, type ParseReceiptDto } from '@steuereule/api-client'
 import { captureReceipt, type CaptureReceiptDeps } from './captureReceipt'
 
 const TEXT = 'Ausdruck der elektronischen Lohnsteuerbescheinigung für 2025\n3. Bruttoarbeitslohn 48.000,00'
@@ -72,19 +72,23 @@ describe('captureReceipt — failures', () => {
     expect(deps.parse.mock.calls[0]![0]).not.toHaveProperty('receiptId')
   })
 
-  it('still reads and parses when the server refuses the upload', async () => {
-    const deps = makeDeps({ upload: vi.fn(async () => ({ ok: false, status: 413 })) })
-    expect(await captureReceipt(pdf, { taxYear: 2025, deps })).toMatchObject({ ok: true, receiptId: null })
+  it('still reads and parses when the server refuses the upload, and says why it was refused (WEB-10)', async () => {
+    const deps = makeDeps({ upload: vi.fn(async () => ({ ok: false, status: 413, data: null, headers: new Headers() })) })
+    const result = await captureReceipt(pdf, { taxYear: 2025, deps })
+    expect(result).toMatchObject({ ok: true, receiptId: null })
+    expect((result as { uploadError?: unknown }).uploadError).toMatchObject({ status: 413 })
   })
 
-  it('reports a parse the server answers with an error status as parse_failed', async () => {
-    const deps = makeDeps({ parse: vi.fn(async () => ({ status: 500, data: {}, headers: new Headers() })) })
-    expect(await captureReceipt(pdf, { taxYear: 2025, deps })).toEqual({ ok: false, failure: 'parse_failed' })
+  it('reports a parse the server answers with an error status as parse_failed, carrying the error (WEB-11)', async () => {
+    const refusal = new ApiError(401, { code: 'ACCOUNT_REQUIRED' })
+    const deps = makeDeps({ parse: vi.fn(async () => Promise.reject(refusal)) })
+    expect(await captureReceipt(pdf, { taxYear: 2025, deps })).toEqual({ ok: false, failure: 'parse_failed', error: refusal })
   })
 
   it('reports a parse that throws as parse_failed', async () => {
-    const deps = makeDeps({ parse: vi.fn(async () => Promise.reject(new Error('network'))) })
-    expect(await captureReceipt(pdf, { taxYear: 2025, deps })).toEqual({ ok: false, failure: 'parse_failed' })
+    const thrown = new Error('network')
+    const deps = makeDeps({ parse: vi.fn(async () => Promise.reject(thrown)) })
+    expect(await captureReceipt(pdf, { taxYear: 2025, deps })).toEqual({ ok: false, failure: 'parse_failed', error: thrown })
   })
 
   it('records an unreadable file on the stored Beleg and returns the state the server recorded', async () => {

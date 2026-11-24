@@ -2065,7 +2065,8 @@
     "binIch": {
       "ja": "Yes, that’s me",
       "nein": "No, someone else",
-      "nameUebernehmen": "Take the name into my profile"
+      "nameUebernehmen": "Take the name into my profile",
+      "nameFehler": "Your name could not be copied into your profile. The receipt is still assigned to you – please enter the name in your profile."
     },
     "anlegen": {
       "alsB": "Add as Person B",
@@ -2117,6 +2118,7 @@
       "success": "Document saved. It is being read now.",
       "errorUnsupported": "Please select a PDF, JPEG, PNG, or WebP file.",
       "errorFailed": "Upload didn't work. Check your connection and try again.",
+      "limit": "PDF, JPG, PNG or WebP, at most 10 MB per file.",
       "fileAttached": "Original file stored encrypted"
     },
     "preview": {

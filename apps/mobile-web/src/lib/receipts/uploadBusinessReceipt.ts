@@ -12,8 +12,13 @@ export const uploadBusinessReceipt =
     form.append('file', input.file, input.fileName ?? 'beleg')
     form.append('direction', direction)
     const response = await fetch(`${getApiClientBaseUrl()}/v1/belege/upload`, { method: 'POST', body: form, credentials: 'include' })
-    const text = response.status === 204 ? '' : await response.text()
-    const parsed: unknown = text === '' ? null : JSON.parse(text)
-    if (response.status === 201) return { ok: true, status: 201, data: parsed as ReceiptResponseDto, headers: response.headers }
+    const text = await response.text()
+    let parsed: unknown = null
+    try {
+      parsed = text === '' ? null : JSON.parse(text)
+    } catch {
+      parsed = null // a proxy's HTML error page: the status says enough (WEB-10)
+    }
+    if (response.ok && parsed !== null) return { ok: true, status: 201, data: parsed as ReceiptResponseDto, headers: response.headers }
     return { ok: false, status: response.status, data: (parsed as { code?: string; message?: string } | null) ?? null, headers: response.headers }
   }
