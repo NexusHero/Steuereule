@@ -2419,6 +2419,7 @@
     "back": "Back",
     "weiter": "Continue",
     "loading": "Loading your details …",
+    "antwortZurueck": "Your answer was not saved, so the question is shown again.",
     "loadError": {
       "heading": "That didn't work.",
       "message": "Your details couldn't be loaded. Check your connection and try again.",
