@@ -9,6 +9,7 @@ import { server } from '../../../test-msw-server'
 import { BASE_PROFILE } from '../../business/businessTestKit'
 import { makeStyles } from '../AdvisorChatPanel.styles'
 import { BookingDraftCard } from './BookingDraftCard'
+import { ApiError } from '@steuereule/api-client'
 
 const DRAFT = {
   date: '2025-03-01',
@@ -86,7 +87,7 @@ describe('the booking draft card in its other states', () => {
   })
 
   it('shows the reason the booking was refused, in the words of the refusal', async () => {
-    const onApply = vi.fn().mockRejectedValue(new Error('Der Zeitraum ist gesperrt.'))
+    const onApply = vi.fn().mockRejectedValue(new ApiError(422, { code: 'PERIOD_LOCKED', message: 'Der Zeitraum ist gesperrt.' }))
     renderInApp(<Card action={action()} onApply={onApply} />)
     fireEvent.click(screen.getByTestId('buchung-entwurf-uebernehmen'))
     expect((await screen.findByTestId('buchung-entwurf-fehler')).textContent).toBe('Der Zeitraum ist gesperrt.')

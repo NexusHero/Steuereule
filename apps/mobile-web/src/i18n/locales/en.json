@@ -2726,6 +2726,8 @@
         "tooLong": "Your message is too long ({{used}} of {{max}} characters). Please split it up."
       },
       "applyFailed": "The proposal could not be applied. Please enter the value in the screen itself.",
+      "conflictBatch": "A value was changed by hand in the meantime. Please check it or take over with the current state.",
+      "conflictSingle": "The value was changed by hand in the meantime.",
       "reconnecting": "Restoring the connection …",
       "failed": "not finished",
       "emptyTitle": "What can the owl help with?",

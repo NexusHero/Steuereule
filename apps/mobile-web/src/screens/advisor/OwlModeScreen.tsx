@@ -38,7 +38,8 @@ export interface OwlModeScreenProps {
   /** The interview's occupation group; null = not chosen yet, undefined = no picker (not loaded). */
   readonly profession?: Profession | null | undefined
   readonly onChooseProfession?: ((profession: Profession) => Promise<void> | void) | undefined
-  readonly onSendMessage?: ((text: string, options?: ChatSendOptions) => Promise<void> | void) | undefined
+  /** Resolves `false` when the message did not reach the owl (WEB-14). */
+  readonly onSendMessage?: ((text: string, options?: ChatSendOptions) => Promise<boolean | void> | boolean | void) | undefined
   readonly onApplyAction?: ((actionId: string) => Promise<void> | void) | undefined
   readonly onUndoAction?: ((actionId: string) => Promise<void> | void) | undefined
   /** Refuses a pending draft (ADR-0073 Nachtrag). */

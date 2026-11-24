@@ -12,11 +12,14 @@ import {
   getOwlModeControllerGetCardsQueryKey,
   getOwlModeControllerGetSettingQueryKey,
   type SendAdvisorMessageResponseDto,
+  ApiError,
 } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
 import { createFrameBatcher } from './chat/frameBatcher'
 import { apiErrorText } from './chat/apiErrorText'
 import { followRun, type RunFrame } from './chat/runStream'
+import { advisorFailureText } from './chat/advisorFailureText'
+import { watchForSessionExpiry } from '../../net/sessionExpiry'
 import type { AbortedTurn, AdvisorPlanView, SendStreamingOptions, StreamOutcome } from './CopilotBridge.types'
 import {
   IDLE_STREAM,
@@ -238,7 +241,11 @@ export function useCopilotBridgeStreams({ taxYear, isAuthenticated, onSwitchYear
         if (result.kind === 'aborted') return await endAborted()
         if (result.kind === 'http-error') {
           // Always in words: a refusal the user cannot read helps nobody (real-data run, finding 5).
-          setChatError(apiErrorText(result.body) ?? tr('advisor.chat.requestRefused'))
+          // WEB-14: a 429 says when to retry, a 5xx is ours, a lapsed session is handled centrally; never raw text.
+          const refusal = new ApiError(result.status, result.body)
+          // The stream is a raw fetch, outside the api client: a lapsed session is reported here (WEB-24).
+          watchForSessionExpiry(refusal)
+          setChatError(advisorFailureText(refusal, tr, { unknown: tr('advisor.chat.requestRefused'), validation: tr('advisor.chat.requestRefused') }))
           return null
         }
         if (result.kind === 'lost') {
@@ -264,7 +271,8 @@ export function useCopilotBridgeStreams({ taxYear, isAuthenticated, onSwitchYear
         return []
       } catch (error) {
         if (controller.signal.aborted) return await endAborted()
-        setChatError(error instanceof Error ? error.message : tr('advisor.chat.connectionLost'))
+        // WEB-14: never "Failed to fetch" in the German UI.
+        setChatError(advisorFailureText(error, tr, { unknown: tr('advisor.chat.connectionLost') }))
         return null
       } finally {
         textBatcher.cancel()
@@ -336,7 +344,7 @@ export function useCopilotBridgeStreams({ taxYear, isAuthenticated, onSwitchYear
         if (runId === null) {
           // Stopped before the first event arrived: the session knows which answer is running.
           const session = await advisorControllerGetSession(taxYear, key === PENDING_CONVERSATION ? undefined : { conversationId: key })
-          const running = session.status === 200 ? session.data.messages.find((m) => m.status === 'streaming') : undefined
+          const running = session.data.messages.find((m) => m.status === 'streaming')
           runId = running?.runId ?? null
         }
         if (runId !== null) await advisorControllerStopRun(taxYear, runId)

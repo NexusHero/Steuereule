@@ -6,6 +6,7 @@ import { http, HttpResponse } from 'msw'
 import { ThemeProvider } from '@steuereule/ui'
 import { createAppI18n } from '../../i18n/app-i18n'
 import { server } from '../../test-msw-server'
+import { expectFailsClosed, failEveryRequest } from '../../test-every-query-fails'
 import { OwlModeScreen } from './OwlModeScreen'
 
 // The owl screen without a copilot bridge: every action of the view must become the request the
@@ -152,6 +153,17 @@ describe('the connected owl screen (no copilot bridge)', () => {
     await waitFor(() => expect(callTo('POST', 'chat')?.body).toMatchObject({ message: 'Was gilt für Fahrtkosten?' }))
   })
 
+  it('WEB-14: a message that could not be sent stays in the composer, with the reason in words', async () => {
+    recordRoutes()
+    refuse.add('POST chat')
+    renderConnected()
+    await screen.findByTestId('advisor-chat-input')
+    fireEvent.change(screen.getByTestId('advisor-chat-input'), { target: { value: 'Was gilt für Fahrtkosten?' } })
+    fireEvent.click(screen.getByTestId('advisor-chat-send'))
+    expect((await screen.findByTestId('speichern-fehlgeschlagen')).textContent).toContain('Bei uns ist gerade etwas schiefgelaufen.')
+    await waitFor(() => expect((screen.getByTestId('advisor-chat-input') as HTMLInputElement).value).toBe('Was gilt für Fahrtkosten?'))
+  })
+
   it('stores a new situation and a new note, and changes and deletes the note', async () => {
     recordRoutes()
     renderConnected()
@@ -207,6 +219,25 @@ describe('the connected owl screen (no copilot bridge)', () => {
     fireEvent.click(await screen.findByTestId('eule-settings-btn'))
     fireEvent.click(screen.getByTestId('eulen-modus-opt-in'))
     await waitFor(() => expect(callTo('PUT', 'einstellung')).toBeDefined())
+  })
+
+  it('NR-05: a refused opt-in switch or new conversation says so instead of failing silently', async () => {
+    recordRoutes()
+    refuse.add('PUT einstellung')
+    refuse.add('POST conversations')
+    renderConnected()
+    fireEvent.click(await screen.findByTestId('eule-settings-btn'))
+    fireEvent.click(screen.getByTestId('eulen-modus-opt-in'))
+    expect((await screen.findByTestId('speichern-fehlgeschlagen')).textContent).toContain('Bei uns ist gerade etwas schiefgelaufen.')
+  })
+
+  it('NR-05: a refused "Neues Gespräch" says so', async () => {
+    recordRoutes()
+    refuse.add('POST conversations')
+    renderConnected()
+    await screen.findByTestId('eule-project-sidebar')
+    fireEvent.click(screen.getByTestId('eule-conversation-new'))
+    expect((await screen.findByTestId('speichern-fehlgeschlagen')).textContent).toContain('Bei uns ist gerade etwas schiefgelaufen.')
   })
 
   it('stores the chosen occupation group and the model picked for the conversation', async () => {
@@ -309,12 +340,26 @@ describe('the connected owl screen (no copilot bridge)', () => {
     expect(await screen.findByTestId('beruf-picker')).toBeDefined()
   })
 
-  it('opens without a session when the session cannot be read, and still lets the user begin', async () => {
+  it('WEB-48 / NR-03: a session that cannot be read is a failure with a retry, never an empty chat', async () => {
     recordRoutes()
-    server.use(http.get('*/v1/steuerjahre/:jahr/advisor/session', () => HttpResponse.json({ message: 'down' }, { status: 500 })))
+    let calls = 0
+    server.use(
+      http.get('*/v1/steuerjahre/:jahr/advisor/session', () => {
+        calls += 1
+        return calls === 1 ? HttpResponse.json({ message: 'down' }, { status: 500 }) : HttpResponse.json(session())
+      }),
+    )
     renderConnected()
+    expect(await screen.findByTestId('fehler-zustand')).toBeDefined()
+    expect(screen.queryByTestId('advisor-chat-input')).toBeNull()
+    fireEvent.click(screen.getByTestId('fehler-erneut-versuchen'))
     expect(await screen.findByTestId('advisor-chat-input')).toBeDefined()
-    expect(screen.queryByTestId('eule-situation-chip')).toBeNull()
+  })
+
+  it('fails closed: every request answering 500 shows a failure and sends no write', async () => {
+    const failing = failEveryRequest()
+    renderConnected()
+    await expectFailsClosed(failing)
   })
 
   it('offers a hint with two paths with both of them', async () => {

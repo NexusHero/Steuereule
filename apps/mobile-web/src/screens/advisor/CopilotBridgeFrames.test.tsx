@@ -95,10 +95,16 @@ describe('the frames of an answer', () => {
   })
 
   it('says it in words when the request is refused, with or without words of the server', async () => {
-    server.use(http.post('*/v1/steuerjahre/:jahr/advisor/stream', () => HttpResponse.json({ message: 'Tageslimit erreicht.' }, { status: 429 })))
+    // The owl's daily limit is a DomainError with a German message: it is said as the server says it.
+    server.use(http.post('*/v1/steuerjahre/:jahr/advisor/stream', () => HttpResponse.json({ code: 'ADVISOR_DAILY_LIMIT_EXCEEDED', message: 'Tageslimit erreicht.' }, { status: 429 })))
     mount()
     await send()
     expect(screen.getByTestId('error').textContent).toContain('Tageslimit erreicht.')
+
+    // WEB-14: a throttler 429 without a code carries English text; the shared wording reads Retry-After instead.
+    server.use(http.post('*/v1/steuerjahre/:jahr/advisor/stream', () => HttpResponse.json({ message: 'ThrottlerException: Too Many Requests' }, { status: 429 })))
+    await send()
+    expect(screen.getByTestId('error').textContent).toBe('Gerade kommen zu viele Anfragen. Versuch es in ein paar Minuten noch mal.')
 
     server.use(http.post('*/v1/steuerjahre/:jahr/advisor/stream', () => new HttpResponse('', { status: 500 })))
     await send()

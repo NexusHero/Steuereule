@@ -2726,6 +2726,8 @@
         "tooLong": "Deine Nachricht ist zu lang ({{used}} von {{max}} Zeichen). Teile sie bitte auf."
       },
       "applyFailed": "Der Vorschlag konnte nicht übernommen werden. Trag den Wert bitte direkt in der Maske ein.",
+      "conflictBatch": "Ein Wert wurde zwischenzeitlich manuell geändert. Bitte prüfen oder mit neuem Stand übernehmen.",
+      "conflictSingle": "Wert wurde zwischenzeitlich manuell geändert.",
       "reconnecting": "Verbindung wird wiederhergestellt …",
       "failed": "nicht fertig geworden",
       "emptyTitle": "Womit kann die Eule helfen?",
