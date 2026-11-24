@@ -3,7 +3,6 @@ import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { Button, Card, useBreakpoint, useTheme } from '@steuereule/ui'
-import { formatEuro, formatEuroCents, parseBookingDraft, toGermanDate } from '@steuereule/core'
 import {
   useConfirmationControllerConfirmAnnex,
   useConfirmationControllerDecideProposal,
@@ -18,18 +17,19 @@ import { APP_NS } from '../../i18n/resources'
 import { makePrivacyStyles } from '../privacy/styles'
 import { ErrorState, LoadingState } from '../shared/ScreenState'
 import { triggerSaveErrorHaptic } from '../shared/saveFeedback'
+import { fieldLabelText, instanceText, valueText } from './confirmationText'
 
 export type ConfirmationForm = FieldProvenanceDto['screen']
 
 export interface ConfirmationScreenProps {
   readonly year: number
   readonly onBack: () => void
-  readonly onOpenScreen: (screen: ConfirmationForm) => void
+  /** Opens the mask a value lives on; `field` says which one (the interview's page). */
+  readonly onOpenScreen: (screen: ConfirmationForm, field?: string) => void
 }
 
 type Tr = ReturnType<typeof useTranslation>['t']
 
-const NO_AMOUNTS = new Set(['rente.rentenbeginnJahr', 'rente.alterBeiRentenbeginn', 'rente.rentenart', 'vermietung.baujahr'])
 
 function provenanceText(tr: Tr, h: ProvenanceDto): string {
   switch (h.kind) {
@@ -44,34 +44,8 @@ function provenanceText(tr: Tr, h: ProvenanceDto): string {
   }
 }
 
-function fieldLabel(tr: Tr, w: FieldProvenanceDto): string {
-  if (w.screen === 'buchung') return tr('bestaetigung.buchung.label')
-  if (w.screen === 'kapital' && w.field === 'kapitalertraege') return tr('kapital.feld.label')
-  if (w.screen === 'rente' && w.field === 'rentenart') return tr('bestaetigung.felder.rentenart')
-  if (w.screen === 'lstb' || w.screen === 'rente' || w.screen === 'kapital' || w.screen === 'vermietung') {
-    return tr(`${w.screen}.felder.${w.field}`, { defaultValue: w.field })
-  }
-  return w.field
-}
 
-/** A booking draft (#549) as one line: date, text, document number and the booked sum, never its JSON. */
-function bookingText(tr: Tr, value: string): string {
-  const parsed = parseBookingDraft(value)
-  if (!parsed.ok) return tr('bestaetigung.buchung.unlesbar')
-  const { date, text, documentNumber, lines } = parsed.draft
-  const sumCents = lines.filter((line) => line.side === 'debit').reduce((sum, line) => sum + line.amount, 0)
-  return tr('bestaetigung.buchung.zeile', { datum: toGermanDate(date) ?? date, text, beleg: documentNumber, summe: formatEuroCents(sumCents / 100) })
-}
 
-function valueText(tr: Tr, w: FieldProvenanceDto, value: string | null): string {
-  if (value === null) return tr('bestaetigung.leererWert')
-  if (w.screen === 'buchung') return bookingText(tr, value)
-  if (value === 'unklar') return tr('bestaetigung.unklar')
-  if (w.screen === 'rente' && w.field === 'rentenart') return tr(`rente.arten.${value}`, { defaultValue: value })
-  const amount = Number(value)
-  if (NO_AMOUNTS.has(`${w.screen}.${w.field}`) || !Number.isFinite(amount)) return value
-  return formatEuro(amount)
-}
 
 export function ConfirmationScreen({ year, onBack, onOpenScreen }: ConfirmationScreenProps) {
   const bp = useBreakpoint()
@@ -84,6 +58,7 @@ export function ConfirmationScreen({ year, onBack, onOpenScreen }: ConfirmationS
   const decide = useConfirmationControllerDecideProposal()
   const decideTask = useConfirmationControllerDecideTask()
   const [error, setError] = useState(false)
+  const [stale, setStale] = useState(false)
 
   if (overview.isPending) return <LoadingState bp={bp} label={t('bestaetigung.loading')} />
   if (overview.data?.status !== 200) {
@@ -103,9 +78,14 @@ export function ConfirmationScreen({ year, onBack, onOpenScreen }: ConfirmationS
 
   const afterChange = async (action: () => Promise<{ status: number }>) => {
     setError(false)
+    setStale(false)
     try {
       const result = await action()
-      if (result.status !== 200) {
+      // A value changed after the screen was drawn (MCP-4): nothing was confirmed, the user looks again.
+      if (result.status === 409) {
+        triggerSaveErrorHaptic()
+        setStale(true)
+      } else if (result.status !== 200) {
         triggerSaveErrorHaptic()
         setError(true)
       }
@@ -133,6 +113,11 @@ export function ConfirmationScreen({ year, onBack, onOpenScreen }: ConfirmationS
       {error ? (
         <Text style={styles.hint} accessibilityLiveRegion="polite">
           {t('bestaetigung.fehler')}
+        </Text>
+      ) : null}
+      {stale ? (
+        <Text style={styles.hint} accessibilityLiveRegion="polite" testID="bestaetigung-veraendert">
+          {t('bestaetigung.veraendert')}
         </Text>
       ) : null}
 
@@ -171,7 +156,9 @@ export function ConfirmationScreen({ year, onBack, onOpenScreen }: ConfirmationS
 
       {annexes.map((annex: AnnexConfirmationDto) => {
         const annexName = t(`bestaetigung.anlagen.${annex.annex}`)
-        const firstScreen = annex.values[0]?.screen
+        // Every mask the Anlage's values live on (the Hauptvordruck holds several): one way to each (H2-2, WEB-18).
+        const masks = annex.values.filter((w, i, all) => w.screen !== 'buchung' && all.findIndex((other) => other.screen === w.screen) === i)
+        const shown = annex.values.filter((w) => !w.confirmed).map((w) => ({ key: w.key, version: w.version, ...(w.person === 'B' ? { person: 'B' as const } : {}) }))
         return (
           <Card key={annex.annex} style={{ marginBottom: theme.space.s4 }} testID={`anlage-${annex.annex}`}>
             <Text style={styles.sectionTitle}>{annexName}</Text>
@@ -187,7 +174,8 @@ export function ConfirmationScreen({ year, onBack, onOpenScreen }: ConfirmationS
               return (
               <View key={id} style={{ gap: theme.space.s1, marginTop: theme.space.s3 }}>
                 {w.person === 'B' ? <Text style={styles.hint}>{t('bestaetigung.personB')}</Text> : null}
-                <Text style={styles.sectionBody}>{fieldLabel(t, w)}</Text>
+                {instanceText(t, w) ? <Text style={styles.hint} testID={`instanz-${id}`}>{instanceText(t, w)}</Text> : null}
+                <Text style={styles.sectionBody}>{fieldLabelText(t, w)}</Text>
                 {draftOnly ? null : (
                   <>
                     <Text style={styles.sectionTitle}>{valueText(t, w, w.value)}</Text>
@@ -233,17 +221,17 @@ export function ConfirmationScreen({ year, onBack, onOpenScreen }: ConfirmationS
                 <Button
                   disabled={confirm.isPending}
                   testID={`bestaetige-${annex.annex}`}
-                  onPress={() => void afterChange(() => confirm.mutateAsync({ jahr: year, anlage: annex.annex }))}
+                  onPress={() => void afterChange(() => confirm.mutateAsync({ jahr: year, anlage: annex.annex, data: { values: shown } }))}
                 >
                   {t('bestaetigung.anlageBestaetigen', { anlage: annexName })}
                 </Button>
               ) : null}
               {/* A booking is changed by taking or dropping its draft here; there is no mask to open for it. */}
-              {firstScreen && firstScreen !== 'buchung' ? (
-                <Button variant="ghost" testID={`aendern-${annex.annex}`} onPress={() => onOpenScreen(firstScreen)}>
-                  {t('bestaetigung.einzelnAendern')}
+              {masks.map((w) => (
+                <Button key={w.screen} variant="ghost" testID={`aendern-${annex.annex}-${w.screen}`} onPress={() => onOpenScreen(w.screen, w.field)}>
+                  {masks.length === 1 ? t('bestaetigung.einzelnAendern') : t('bestaetigung.aendernIn', { maske: t(`bestaetigung.masken.${w.screen}`) })}
                 </Button>
-              ) : null}
+              ))}
             </View>
           </Card>
         )

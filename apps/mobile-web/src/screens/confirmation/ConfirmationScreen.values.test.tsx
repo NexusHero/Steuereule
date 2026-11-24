@@ -29,7 +29,7 @@ function renderScreen() {
   return { onBack, onOpenScreen }
 }
 
-const value = (over: object) => ({ key: 'k', screen: 'lstb', instance: null, field: 'lohnsteuer', value: '1', provenance: { kind: 'nutzer' }, confirmed: false, proposal: null, ...over })
+const value = (over: object) => ({ key: 'k', screen: 'lstb', instance: null, instanceLabel: null, version: 'v1', field: 'lohnsteuer', value: '1', provenance: { kind: 'nutzer' }, confirmed: false, proposal: null, ...over })
 const serve = (data: ConfirmationResponseDto) => server.use(http.get(URL_OVERVIEW, () => HttpResponse.json(data)))
 
 describe('ConfirmationScreen loading', () => {
@@ -100,7 +100,8 @@ describe('ConfirmationScreen values', () => {
 
     expect(await screen.findByText(/Kapitalerträge vor Abzug des Sparer-Pauschbetrags/)).toBeTruthy()
     expect(screen.getByText('1.200 €')).toBeTruthy()
-    expect(screen.getByText('firstName')).toBeTruthy()
+    expect(screen.getByText('Vorname')).toBeTruthy()
+    expect(screen.queryByText('firstName')).toBeNull()
     expect(screen.getByText('2 Werte unbestätigt')).toBeTruthy()
   })
 

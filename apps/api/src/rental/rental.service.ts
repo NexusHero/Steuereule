@@ -15,10 +15,8 @@ import {
   type Answers,
   type RentalFieldId,
   type RentalFieldState,
-  provenanceKey,
 } from '@steuereule/core'
 import { AuditService } from '../audit/audit.service.js'
-import { PROVENANCE_REPOSITORY, type ProvenanceRepository } from '../marking/marking.repository.js'
 import {
   INTERVIEW_ANSWER_REPOSITORY,
   type InterviewAnswerRepository,
@@ -131,7 +129,6 @@ export class RentalService {
     @Inject(RENTAL_REPOSITORY) private readonly repository: RentalRepository,
     @Inject(INTERVIEW_ANSWER_REPOSITORY) private readonly interviewRepository: InterviewAnswerRepository,
     @Inject(AuditService) private readonly auditService: AuditService,
-    @Inject(PROVENANCE_REPOSITORY) private readonly markings: ProvenanceRepository,
   ) {}
 
   private async answers(userId: string, taxYear: number): Promise<Answers> {
@@ -198,7 +195,6 @@ export class RentalService {
     if (record === null) {
       throw new NotFoundError('VERMIETUNGSOBJEKT_NOT_FOUND', 'No such Vermietungsobjekt for this account and tax year.')
     }
-    await this.markings.remove(userId, taxYear, [provenanceKey('vermietung', field, propertyId)])
     const data = dataFromRecord(record)
     setRentalField(data, field, state)
     const records = await this.repository.listForUserAndYear(userId, taxYear)

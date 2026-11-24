@@ -15,10 +15,8 @@ import {
   type PensionData,
   type PensionFieldId,
   type PensionFieldState,
-  provenanceKey,
 } from '@steuereule/core'
 import { AuditService } from '../audit/audit.service.js'
-import { PROVENANCE_REPOSITORY, type ProvenanceRepository } from '../marking/marking.repository.js'
 import {
   INTERVIEW_ANSWER_REPOSITORY,
   type InterviewAnswerRepository,
@@ -75,7 +73,6 @@ export class PensionService {
     @Inject(PENSION_REPOSITORY) private readonly repository: PensionRepository,
     @Inject(INTERVIEW_ANSWER_REPOSITORY) private readonly interviewRepository: InterviewAnswerRepository,
     @Inject(AuditService) private readonly auditService: AuditService,
-    @Inject(PROVENANCE_REPOSITORY) private readonly markings: ProvenanceRepository,
   ) {}
 
   private async answers(userId: string, taxYear: number): Promise<Answers> {
@@ -131,7 +128,6 @@ export class PensionService {
     const state = stateFromDto(dto)
     setPensionField(data, field, state)
     const next = await this.repository.setField(userId, taxYear, field, serializePensionField(state))
-    await this.markings.remove(userId, taxYear, [provenanceKey('rente', field)])
     return this.toResponse(userId, taxYear, next)
   }
 
@@ -141,7 +137,6 @@ export class PensionService {
       throw new InvalidInputError('RENTENART_UNKNOWN', 'art must be one of the five Rentenarten, or null.')
     }
     const record = await this.repository.setPensionKind(userId, taxYear, kind)
-    await this.markings.remove(userId, taxYear, [provenanceKey('rente', 'rentenart')])
     return this.toResponse(userId, taxYear, record)
   }
 }

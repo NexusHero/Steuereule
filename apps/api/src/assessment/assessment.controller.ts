@@ -21,6 +21,7 @@ import {
   SetAppealDto,
   SetAppealOutcomeDto,
 } from './dto/assessment-response.dto.js'
+import { UserWrite } from '../common/user-write.decorator.js'
 
 @ApiTags('bescheid')
 @Controller('v1/steuerjahre')
@@ -38,6 +39,7 @@ export class AssessmentController {
   }
 
   @Put(':jahr/bescheid/feld/:feld')
+  @UserWrite('assessment')
   @HttpCode(200)
   @RequiresAccount()
   @ApiParam({ name: 'jahr', type: Number, example: 2026, description: 'The tax year (Steuerjahr).' })
@@ -54,6 +56,7 @@ export class AssessmentController {
   }
 
   @Put(':jahr/bescheid/datum')
+  @UserWrite('assessment')
   @HttpCode(200)
   @RequiresAccount()
   @ApiParam({ name: 'jahr', type: Number, example: 2026, description: 'The tax year (Steuerjahr).' })
@@ -68,6 +71,7 @@ export class AssessmentController {
   }
 
   @Put(':jahr/bescheid/status')
+  @UserWrite('assessment')
   @HttpCode(200)
   @RequiresAccount()
   @ApiParam({ name: 'jahr', type: Number, example: 2026, description: 'The tax year (Steuerjahr).' })
@@ -82,6 +86,7 @@ export class AssessmentController {
   }
 
   @Put(':jahr/bescheid/einspruch')
+  @UserWrite('assessment')
   @HttpCode(200)
   @RequiresAccount()
   @ApiParam({ name: 'jahr', type: Number, example: 2026, description: 'The tax year (Steuerjahr).' })
@@ -96,6 +101,7 @@ export class AssessmentController {
   }
 
   @Put(':jahr/bescheid/einspruch/ergebnis')
+  @UserWrite('assessment')
   @HttpCode(200)
   @RequiresAccount()
   @ApiParam({ name: 'jahr', type: Number, example: 2026, description: 'The tax year (Steuerjahr).' })

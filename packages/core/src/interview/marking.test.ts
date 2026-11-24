@@ -45,7 +45,7 @@ describe('anlageVon — every mask belongs to exactly one Anlage', () => {
     ['vermietung:o1.mieteinnahmen', 'anlageV'],
     ['kind:k1.vorname', 'anlageKind'],
     ['commute.oneWayKm', 'anlageN'],
-    ['assessment.festgesetzteSteuer', 'hauptvordruck'],
+    ['assessment.festgesetzteSteuer', 'bescheid'],
   ])('%s → %s', (key, annex) => {
     expect(annexOf(key)).toBe(annex)
   })
@@ -116,6 +116,12 @@ describe('bestaetigeAnlage / fehlendeBestaetigungen — unbestätigt wirkt wie o
   it('an open proposal on a confirmed value does not block the printout', () => {
     const withProposal: Marking = { key: 'lstb.lohnsteuer', provenance: { kind: 'nutzer' }, confirmed: true, value: '700', proposal: { value: '720', provenance: CLAUDE } }
     expect(missingConfirmations([withProposal])).toEqual([])
+  })
+
+  it('an unconfirmed Bescheid value is confirmed on its own and never holds back the return (H2-1)', () => {
+    const notice = unconfirmed('assessment.festgesetzteSteuer', '4200')
+    expect(missingConfirmations([notice])).toEqual([])
+    expect(confirmAnnex([notice, unconfirmed('profil.firstName', 'Ada')], 'hauptvordruck').find((k) => k.key === notice.key)?.confirmed).toBe(false)
   })
 })
 

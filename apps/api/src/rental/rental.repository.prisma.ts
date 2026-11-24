@@ -134,6 +134,8 @@ export class PrismaRentalRepository implements RentalRepository {
     if (existing === null) return false
     await this.prisma.$transaction([
       this.prisma.rentalProperty.delete({ where: { id: propertyId } }),
+      // The object's markings and proposals go with it (API-21).
+      this.prisma.marking.deleteMany({ where: { userId, taxYear, itemKey: { startsWith: `vermietung:${propertyId}.` } } }),
       this.prisma.taxDataAccessLog.create({ data: { userId, action: 'WRITE', resource: 'vermietung' } }),
     ])
     return true

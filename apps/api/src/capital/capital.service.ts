@@ -21,10 +21,8 @@ import {
   type CapitalDepotClassification,
   type ChurchTaxFactor,
   type Item,
-  provenanceKey,
 } from '@steuereule/core'
 import { AuditService } from '../audit/audit.service.js'
-import { PROVENANCE_REPOSITORY, type ProvenanceRepository } from '../marking/marking.repository.js'
 import {
   INTERVIEW_ANSWER_REPOSITORY,
   type InterviewAnswerRepository,
@@ -147,7 +145,6 @@ export class CapitalService {
     @Inject(INTERVIEW_ANSWER_REPOSITORY) private readonly interviewRepository: InterviewAnswerRepository,
     @Inject(TAX_YEAR_REPOSITORY) private readonly taxYearRepository: TaxYearRepository,
     @Inject(AuditService) private readonly auditService: AuditService,
-    @Inject(PROVENANCE_REPOSITORY) private readonly markings: ProvenanceRepository,
     @Inject(HOUSEHOLD_ESTIMATE) private readonly estimates: HouseholdEstimate,
   ) {}
 
@@ -194,7 +191,6 @@ export class CapitalService {
     const state = stateFromDto(dto)
     setCapitalField(data, field, state)
     const next = await this.repository.setField(userId, taxYear, field, serializeCapitalField(state))
-    await this.markings.remove(userId, taxYear, [provenanceKey('kapital', field)])
     return this.toResponse(userId, taxYear, next)
   }
 

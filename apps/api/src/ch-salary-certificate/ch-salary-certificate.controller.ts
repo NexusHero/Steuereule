@@ -20,6 +20,7 @@ import { PutSalaryCertificateFieldDto } from './dto/salary-certificate-field.dto
 import { PutExchangeRateDto } from './dto/exchange-rate.dto.js'
 import { PutRemarksDto, PutProvisionDto, PutNGreDto } from './dto/ch-item.dto.js'
 import { ChSalaryCertificateResponseDto } from './dto/ch-salary-certificate-response.dto.js'
+import { UserWrite } from '../common/user-write.decorator.js'
 
 @ApiTags('ch-lohnausweis')
 @Controller('v1/steuerjahre')
@@ -50,6 +51,7 @@ export class ChSalaryCertificateController {
   }
 
   @Put(':jahr/ch-lohnausweis/:feld')
+  @UserWrite('chLohnausweis')
   @HttpCode(200)
   @RequiresAccount()
   @ApiParam({
@@ -79,6 +81,7 @@ export class ChSalaryCertificateController {
   }
 
   @Put(':jahr/ch-lohnausweis/bemerkungen')
+  @UserWrite('chLohnausweis')
   @HttpCode(200)
   @RequiresAccount()
   @ApiParam({ name: 'jahr', type: Number, example: 2026, description: 'The tax year (Steuerjahr).' })
@@ -95,6 +98,7 @@ export class ChSalaryCertificateController {
   }
 
   @Put(':jahr/ch-lohnausweis/vorsorge')
+  @UserWrite('chLohnausweis')
   @HttpCode(200)
   @RequiresAccount()
   @ApiParam({ name: 'jahr', type: Number, example: 2026, description: 'The tax year (Steuerjahr).' })
@@ -111,6 +115,7 @@ export class ChSalaryCertificateController {
   }
 
   @Put(':jahr/ch-lohnausweis/n-gre')
+  @UserWrite('chLohnausweis')
   @HttpCode(200)
   @RequiresAccount()
   @ApiParam({ name: 'jahr', type: Number, example: 2025, description: 'The tax year (Steuerjahr).' })
@@ -127,6 +132,7 @@ export class ChSalaryCertificateController {
   }
 
   @Put(':jahr/ch-lohnausweis/wechselkurs')
+  @UserWrite('chLohnausweis')
   @HttpCode(200)
   @RequiresAccount()
   @ApiParam({ name: 'jahr', type: Number, example: 2026, description: 'The tax year (Steuerjahr).' })
@@ -143,6 +149,7 @@ export class ChSalaryCertificateController {
   }
 
   @Put(':jahr/ch-lohnausweis/grenzgaenger')
+  @UserWrite('chLohnausweis')
   @HttpCode(200)
   @RequiresAccount()
   @ApiParam({ name: 'jahr', type: Number, example: 2025, description: 'The tax year (Steuerjahr).' })

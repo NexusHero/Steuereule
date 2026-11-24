@@ -455,6 +455,69 @@
     "errLocked": "Too many failed attempts — your account is temporarily locked. Try again later."
   },
   "bestaetigung": {
+    "veraendert": "Something changed since you saw these values. Please check them again.",
+    "unbenanntesFeld": "Further detail",
+    "aendernIn": "Change: {{maske}}",
+    "instanz": {
+      "kind": "Child: {{name}}",
+      "kindOhne": "Child (no name)",
+      "vermietung": "Rental property: {{name}}",
+      "vermietungOhne": "Rental property (no address)",
+      "sonst": "{{name}}",
+      "sonstOhne": "Entry"
+    },
+    "werte": {
+      "ja": "Yes",
+      "nein": "No",
+      "filingType": {
+        "einzel": "Separate assessment",
+        "zusammen": "Joint assessment"
+      },
+      "wochentage": {
+        "mo": "Mon",
+        "di": "Tue",
+        "mi": "Wed",
+        "do": "Thu",
+        "fr": "Fri",
+        "sa": "Sat",
+        "so": "Sun"
+      }
+    },
+    "masken": {
+      "profil": "Profile",
+      "stammdaten": "Personal details",
+      "kopplung": "Filing type and partner",
+      "interview": "Interview",
+      "lstb": "Wage tax certificate",
+      "commute": "Commute",
+      "chLohnausweis": "Swiss salary certificate",
+      "rente": "Pension",
+      "kapital": "Capital income",
+      "vermietung": "Rental",
+      "kind": "Children",
+      "assessment": "Tax assessment",
+      "buchung": "Booking"
+    },
+    "fragen": {
+      "job": "Where your money came from",
+      "rente-selbststaendig": "Self-employed alongside the pension",
+      "beruf": "Occupational group",
+      "ausland": "Work abroad",
+      "de-job": "Also a job in Germany",
+      "kinder": "Children",
+      "familienstand": "Marital status",
+      "partner-job": "Your partner’s income",
+      "partner-ausland": "Your partner’s work abroad",
+      "partner-de-job": "Your partner’s job in Germany",
+      "partner": "Partner in the household",
+      "homeoffice": "Home office",
+      "weg": "Distance to work (km)",
+      "tage": "Working days in the year",
+      "ch-wohnsitz": "Residence (cross-border)",
+      "gewerbe": "Note on self-employment read",
+      "ch-only": "Note on working only abroad read",
+      "ch-nichtrueckkehrtage": "Days without return"
+    },
     "title": "Review & confirm {{jahr}}",
     "back": "Back",
     "intro": "You did not enter these values yourself. Review them per form: confirm, or change them one by one. Only then can you print and pay.",
@@ -500,6 +563,7 @@
     },
     "anlagen": {
       "hauptvordruck": "Main form (ESt 1 A)",
+      "bescheid": "Tax assessment",
       "anlageN": "Anlage N",
       "anlageNGre": "Anlage N-Gre",
       "anlageR": "Anlage R",
@@ -4367,7 +4431,8 @@
         "exemplar": "Copy {{number}}"
       },
       "spalte": "Column: {{column}}",
-      "keineFormulare": "For {{year}} the app has no values yet to enter in Mein ELSTER."
+      "keineFormulare": "For {{year}} the app has no values yet to enter in Mein ELSTER.",
+      "unbestaetigt": "Your assistant entered values you have not confirmed yet. The fill-in help shows the return's forms once you confirmed them under “Review & confirm”."
     },
     "export": {
       "nichtFreigeschaltet": "The export for {{year}} is not unlocked yet.",

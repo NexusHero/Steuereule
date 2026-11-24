@@ -2051,6 +2051,8 @@ export interface ElsterFormListDto {
   year: number;
   /** The forms with at least one value, business forms first, then the return in the order of the paper printout. */
   forms: ElsterFormEntryDto[];
+  /** Anlagen with values the user has not confirmed; the return's forms are left out until they are (MCP-24). */
+  unconfirmed: string[];
 }
 
 export type ElsterHelpDtoStatus = typeof ElsterHelpDtoStatus[keyof typeof ElsterHelpDtoStatus];

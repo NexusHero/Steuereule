@@ -565,6 +565,9 @@ export class ElsterFormListDto {
   @ApiProperty({ type: Number }) year!: number
   @ApiProperty({ type: [ElsterFormEntryDto], description: 'The forms with at least one value, business forms first, then the return in the order of the paper printout.' })
   forms!: readonly ElsterFormEntryDto[]
+
+  @ApiProperty({ type: [String], example: ['unbestaetigt.anlageN'], description: 'Anlagen with values the user has not confirmed; the return\'s forms are left out until they are (MCP-24).' })
+  unconfirmed!: readonly string[]
 }
 
 export class ElsterHelpDto {

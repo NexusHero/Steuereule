@@ -57,8 +57,8 @@ export const BUSINESS_ELSTER_FORMS: ElsterFormEntryDto[] = [
 ]
 
 /** The ELSTER page reads its form list first; a test names the forms it is about. */
-export function useElsterForms(forms: ElsterFormEntryDto[] = BUSINESS_ELSTER_FORMS) {
-  server.use(http.get(`${BASE_URL}/elster`, () => HttpResponse.json({ year: YEAR, forms })))
+export function useElsterForms(forms: ElsterFormEntryDto[] = BUSINESS_ELSTER_FORMS, unconfirmed: string[] = []) {
+  server.use(http.get(`${BASE_URL}/elster`, () => HttpResponse.json({ year: YEAR, forms, unconfirmed })))
 }
 
 export function renderBusiness(

@@ -17,6 +17,7 @@ export const AnnexConfirmationDtoAnnex = {
   anlageV: 'anlageV',
   anlageKind: 'anlageKind',
   anlageEuer: 'anlageEuer',
+  bescheid: 'bescheid',
 } as const;
 
 export type FieldProvenanceDtoScreen = typeof FieldProvenanceDtoScreen[keyof typeof FieldProvenanceDtoScreen];
@@ -85,6 +86,13 @@ export interface FieldProvenanceDto {
      * @nullable
      */
   instance: string | null;
+  /**
+     * Which record the value belongs to, as the user knows it: the child’s first name, the object’s address. Null without an instance or without a name.
+     * @nullable
+     */
+  instanceLabel: string | null;
+  /** What the user is shown of this value; confirming an Anlage sends it back (MCP-4). */
+  version: string;
   field: string;
   /**
      * Der aktuell gespeicherte Feld-Wert (null = offen, "unklar").
@@ -132,6 +140,28 @@ export interface ConfirmationResponseDto {
   annexes: AnnexConfirmationDto[];
   /** The open tasks the user's assistant left for this tax year. */
   tasks: AssistantTaskDto[];
+}
+
+/**
+ * Set for a value of Person B, as in the overview.
+ */
+export type ShownValueDtoPerson = typeof ShownValueDtoPerson[keyof typeof ShownValueDtoPerson];
+
+
+export const ShownValueDtoPerson = {
+  B: 'B',
+} as const;
+
+export interface ShownValueDto {
+  key: string;
+  /** The `version` of the value as the overview gave it. */
+  version: string;
+  /** Set for a value of Person B, as in the overview. */
+  person?: ShownValueDtoPerson;
+}
+
+export interface ConfirmAnnexDto {
+  values: ShownValueDto[];
 }
 
 export type ProposalDecisionDtoDecision = typeof ProposalDecisionDtoDecision[keyof typeof ProposalDecisionDtoDecision];

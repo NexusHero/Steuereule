@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common'
-import { PrismaService } from '../prisma/prisma.service.js'
+import { ENCRYPTED_PRISMA, type EncryptedPrismaClient } from '../prisma/encrypted-prisma.provider.js'
 import type { PartnerCouplingRecord, PartnerCouplingRepository } from './link.repository.js'
 
 function toRecord(row: {
@@ -22,9 +22,14 @@ function toRecord(row: {
   }
 }
 
+/**
+ * The transaction-aware client (MCP-22): a write to the Kopplung joins the surrounding `TransactionRunner.run`,
+ * so a simulated Veranlagungsart (`auswirkung_simulieren`) is rolled back with everything else. The row holds no
+ * encrypted field, so the encryption extension changes nothing for it.
+ */
 @Injectable()
 export class PrismaLinkRepository implements PartnerCouplingRepository {
-  constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
+  constructor(@Inject(ENCRYPTED_PRISMA) private readonly prisma: EncryptedPrismaClient) {}
 
   async findByUserAndYear(userId: string, taxYear: number): Promise<PartnerCouplingRecord | null> {
     const row = await this.prisma.taxYearLink.findFirst({

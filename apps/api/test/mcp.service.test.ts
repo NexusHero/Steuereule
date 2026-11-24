@@ -34,6 +34,7 @@ import { FakeAssistantTaskRepository } from './fakes/fake-assistant-task.reposit
 import { FakeUnlockRepository, stubPaymentProvider } from './fakes/fake-unlock.repository.js'
 import type { CommuteRepository } from '../src/commute/commute.repository.js'
 import { taxCaseReaderOver } from '../src/tax-case/repository-tax-case.reader.js'
+import { confirmAsShown } from './support/confirm-as-shown.js'
 
 const USER = 'user-mcp-1'
 const YEAR = 2025
@@ -487,7 +488,7 @@ describe('McpService (ADR-0052 §3 / §5 / §8 / §12)', () => {
       const refused = await client.callTool({ name: 'kind_entfernen', arguments: { taxYear: YEAR, instance: own.id } })
       expect((refused as { isError?: boolean }).isError).toBe(true)
       const created = JSON.parse(getText(await client.callTool({ name: 'kind_anlegen', arguments: { taxYear: YEAR, firstName: 'Zeynep', lastName: 'Sevinc', geburtsdatum: '2022-06-14' } })))
-      await confirmationService.confirmAnnex(USER, YEAR, 'anlageKind')
+      await confirmAsShown(confirmationService, USER, YEAR, 'anlageKind')
       const confirmed = await client.callTool({ name: 'kind_entfernen', arguments: { taxYear: YEAR, instance: created.instance } })
       expect((confirmed as { isError?: boolean }).isError).toBe(true)
       expect(await childRepo.listForUserAndYear(USER, YEAR)).toHaveLength(2)

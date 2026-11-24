@@ -21,6 +21,7 @@ import { LstbChurchTaxDto } from './dto/lstb-church-tax.dto.js'
 import { LstbSubsidiesDto } from './dto/lstb-subsidies.dto.js'
 import { LstbEmployerDto } from './dto/lstb-employer.dto.js'
 import { LstbLinesDto, LstbLinesResponseDto } from './dto/lstb-lines.dto.js'
+import { UserWrite } from '../common/user-write.decorator.js'
 
 @ApiTags('lstb')
 @Controller('v1/steuerjahre')
@@ -51,6 +52,7 @@ export class LstbController {
   }
 
   @Put(':jahr/lstb/:feld')
+  @UserWrite('lstb')
   @HttpCode(200)
   @RequiresAccount()
   @ApiParam({
@@ -94,6 +96,7 @@ export class LstbController {
   }
 
   @Put(':jahr/lstb-kirchensteuer')
+  @UserWrite('lstb')
   @HttpCode(200)
   @RequiresAccount()
   @ApiParam({ name: 'jahr', type: Number, example: 2026, description: 'The tax year (Steuerjahr).' })
@@ -125,6 +128,7 @@ export class LstbController {
   }
 
   @Put(':jahr/lstb-zeilen')
+  @UserWrite('lstb')
   @HttpCode(200)
   @RequiresAccount()
   @ApiParam({ name: 'jahr', type: Number, example: 2026, description: 'The tax year (Steuerjahr).' })
@@ -156,6 +160,7 @@ export class LstbController {
   }
 
   @Put(':jahr/lstb-arbeitgeber')
+  @UserWrite('lstb')
   @HttpCode(200)
   @RequiresAccount()
   @ApiParam({ name: 'jahr', type: Number, example: 2026, description: 'The tax year (Steuerjahr).' })
@@ -187,6 +192,7 @@ export class LstbController {
   }
 
   @Put(':jahr/lstb-zuschuesse')
+  @UserWrite('lstb')
   @HttpCode(200)
   @RequiresAccount()
   @ApiParam({ name: 'jahr', type: Number, example: 2026, description: 'The tax year (Steuerjahr).' })

@@ -1,12 +1,12 @@
 import { Body, Controller, Get, Inject, Param, Put, UseGuards } from '@nestjs/common'
-import { ApiBody, ApiNotFoundResponse, ApiOkResponse, ApiParam, ApiTags, ApiUnauthorizedResponse } from '@nestjs/swagger'
+import { ApiBody, ApiConflictResponse, ApiNotFoundResponse, ApiOkResponse, ApiParam, ApiTags, ApiUnauthorizedResponse } from '@nestjs/swagger'
 import { ANNEXES, type Annex } from '@steuereule/core'
 import { CurrentUser } from '../auth/current-user.decorator.js'
 import { RequiresAccount } from '../auth/requires-account.guard.js'
 import { UserContextGuard } from '../auth/user-context.guard.js'
 import { ParseTaxYearPipe } from '../common/parse-tax-year.pipe.js'
 import { ConfirmationService } from './confirmation.service.js'
-import { ConfirmationResponseDto, ProposalDecisionDto, TaskDecisionDto } from './dto/confirmation.dto.js'
+import { ConfirmAnnexDto, ConfirmationResponseDto, ProposalDecisionDto, TaskDecisionDto } from './dto/confirmation.dto.js'
 
 const YEAR_PARAM = { name: 'jahr', type: Number, example: 2025, description: 'The tax year (ParseSteuerjahrPipe, same as Cockpit).' }
 
@@ -29,14 +29,17 @@ export class ConfirmationController {
   @RequiresAccount()
   @ApiParam(YEAR_PARAM)
   @ApiParam({ name: 'anlage', type: String, enum: ANNEXES })
-  @ApiOkResponse({ type: ConfirmationResponseDto, description: 'All values of the Anlage are confirmed; the remaining overview.' })
+  @ApiBody({ type: ConfirmAnnexDto })
+  @ApiOkResponse({ type: ConfirmationResponseDto, description: 'The values of the Anlage the user was shown are confirmed; the remaining overview.' })
+  @ApiConflictResponse({ description: 'CONFIRMATION_STALE: a value changed since it was shown, or one came in; nothing was confirmed.' })
   @ApiUnauthorizedResponse({ description: 'Guest session — this endpoint requires a signed-in account.' })
   confirmAnnex(
     @CurrentUser() userId: string,
     @Param('jahr', ParseTaxYearPipe) year: number,
     @Param('anlage') annex: string,
+    @Body() body: ConfirmAnnexDto,
   ): Promise<ConfirmationResponseDto> {
-    return this.service.confirmAnnex(userId, year, annex as Annex)
+    return this.service.confirmAnnex(userId, year, annex as Annex, body.values)
   }
 
   @Put(':jahr/bestaetigung/vorschlaege/:key')

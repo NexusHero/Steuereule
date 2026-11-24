@@ -111,6 +111,8 @@ export function ElsterPage({ taxYear, person, business = 1, onBack, onOpenPage, 
         {chips('income-tax')}
       </View>
       <PaymentNote phase={phase} year={taxYear} onRecheck={recheck} />
+      {/* Unconfirmed values are no values to type in (MCP-24): the return's forms wait for „Prüfen & bestätigen“. */}
+      {list.data?.status === 200 && (list.data.data.unconfirmed ?? []).length > 0 ? <Note testID="elster-unbestaetigt">{tr('business.elster.unbestaetigt')}</Note> : null}
       {children}
     </BusinessFrame>
   )

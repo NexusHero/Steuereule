@@ -20,6 +20,7 @@ import { PutCapitalFieldDto, PutCapitalOwnerDto } from './dto/capital-field.dto.
 import { CapitalResponseDto } from './dto/capital-response.dto.js'
 import { MostFavourableCheckDto, MostFavourableCheckSourceDto } from './dto/most-favourable-check-response.dto.js'
 import { UncertaintyDto } from '../filing-type-comparison/dto/filing-type-comparison-response.dto.js'
+import { UserWrite } from '../common/user-write.decorator.js'
 
 const CHURCH_TAX_FACTORS: readonly ChurchTaxFactor[] = [0, 0.08, 0.09]
 
@@ -53,6 +54,7 @@ export class CapitalController {
   }
 
   @Put(':jahr/kapital/inhaber')
+  @UserWrite('kapital')
   @HttpCode(200)
   @RequiresAccount()
   @ApiParam({ name: 'jahr', type: Number, example: 2025, description: 'The tax year (Steuerjahr).' })
@@ -68,6 +70,7 @@ export class CapitalController {
   }
 
   @Put(':jahr/kapital/:feld')
+  @UserWrite('kapital')
   @HttpCode(200)
   @RequiresAccount()
   @ApiParam({ name: 'jahr', type: Number, example: 2026, description: 'The tax year (Steuerjahr).' })

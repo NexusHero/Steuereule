@@ -8,6 +8,7 @@ import { accountKeyedTracker, LINK_JOIN_THROTTLE } from '../rate-limit/rate-limi
 import { ParseTaxYearPipe } from '../common/parse-tax-year.pipe.js'
 import { LinkService } from './link.service.js'
 import { LinkPersonBDto, LinkResponseDto, SetLinkDto } from './dto/link.dto.js'
+import { UserWrite } from '../common/user-write.decorator.js'
 
 @ApiTags('kopplung')
 @Controller('v1/steuerjahre')
@@ -25,6 +26,7 @@ export class LinkController {
   }
 
   @Put(':jahr/kopplung')
+  @UserWrite('kopplung')
   @HttpCode(200)
   @RequiresAccount()
   @ApiParam({ name: 'jahr', type: Number, example: 2025 })
@@ -41,6 +43,7 @@ export class LinkController {
   }
 
   @Put(':jahr/kopplung/person-b')
+  @UserWrite('profil', 'stammdaten')
   @HttpCode(200)
   @RequiresAccount()
   @ApiParam({ name: 'jahr', type: Number, example: 2025 })
@@ -57,6 +60,7 @@ export class LinkController {
   }
 
   @Post(':jahr/kopplung/beitreten/:code')
+  @UserWrite('kopplung')
   @HttpCode(200)
   @RequiresAccount()
   @Throttle({ default: { ...LINK_JOIN_THROTTLE, getTracker: accountKeyedTracker } })

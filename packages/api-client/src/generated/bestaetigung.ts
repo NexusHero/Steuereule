@@ -25,6 +25,7 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  ConfirmAnnexDto,
   ConfirmationResponseDto,
   ProposalDecisionDto,
   TaskDecisionDto
@@ -176,17 +177,22 @@ export type confirmationControllerConfirmAnnexResponse401 = {
   status: 401
 }
 
+export type confirmationControllerConfirmAnnexResponse409 = {
+  data: void
+  status: 409
+}
+
 export type confirmationControllerConfirmAnnexResponseSuccess = (confirmationControllerConfirmAnnexResponse200) & {
   headers: Headers;
 };
-export type confirmationControllerConfirmAnnexResponseError = (confirmationControllerConfirmAnnexResponse401) & {
+export type confirmationControllerConfirmAnnexResponseError = (confirmationControllerConfirmAnnexResponse401 | confirmationControllerConfirmAnnexResponse409) & {
   headers: Headers;
 };
 
 export type confirmationControllerConfirmAnnexResponse = (confirmationControllerConfirmAnnexResponseSuccess | confirmationControllerConfirmAnnexResponseError)
 
 export const getConfirmationControllerConfirmAnnexUrl = (jahr: number,
-    anlage: 'hauptvordruck' | 'anlageN' | 'anlageNGre' | 'anlageR' | 'anlageKap' | 'anlageV' | 'anlageKind' | 'anlageEuer',) => {
+    anlage: 'hauptvordruck' | 'anlageN' | 'anlageNGre' | 'anlageR' | 'anlageKap' | 'anlageV' | 'anlageKind' | 'anlageEuer' | 'bescheid',) => {
 
 
 
@@ -195,14 +201,15 @@ export const getConfirmationControllerConfirmAnnexUrl = (jahr: number,
 }
 
 export const confirmationControllerConfirmAnnex = async (jahr: number,
-    anlage: 'hauptvordruck' | 'anlageN' | 'anlageNGre' | 'anlageR' | 'anlageKap' | 'anlageV' | 'anlageKind' | 'anlageEuer', options?: RequestInit): Promise<confirmationControllerConfirmAnnexResponse> => {
+    anlage: 'hauptvordruck' | 'anlageN' | 'anlageNGre' | 'anlageR' | 'anlageKap' | 'anlageV' | 'anlageKind' | 'anlageEuer' | 'bescheid',
+    confirmAnnexDto: ConfirmAnnexDto, options?: RequestInit): Promise<confirmationControllerConfirmAnnexResponse> => {
 
   return httpClient<confirmationControllerConfirmAnnexResponse>(getConfirmationControllerConfirmAnnexUrl(jahr,anlage),
   {
     ...options,
-    method: 'PUT'
-
-
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(confirmAnnexDto)
   }
 );}
 
@@ -211,8 +218,8 @@ export const confirmationControllerConfirmAnnex = async (jahr: number,
 
 
 export const getConfirmationControllerConfirmAnnexMutationOptions = <TError = void,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof confirmationControllerConfirmAnnex>>, TError,{jahr: number;anlage: 'hauptvordruck' | 'anlageN' | 'anlageNGre' | 'anlageR' | 'anlageKap' | 'anlageV' | 'anlageKind' | 'anlageEuer'}, TContext>, request?: SecondParameter<typeof httpClient>}
-): UseMutationOptions<Awaited<ReturnType<typeof confirmationControllerConfirmAnnex>>, TError,{jahr: number;anlage: 'hauptvordruck' | 'anlageN' | 'anlageNGre' | 'anlageR' | 'anlageKap' | 'anlageV' | 'anlageKind' | 'anlageEuer'}, TContext> => {
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof confirmationControllerConfirmAnnex>>, TError,{jahr: number;anlage: 'hauptvordruck' | 'anlageN' | 'anlageNGre' | 'anlageR' | 'anlageKap' | 'anlageV' | 'anlageKind' | 'anlageEuer' | 'bescheid';data: ConfirmAnnexDto}, TContext>, request?: SecondParameter<typeof httpClient>}
+): UseMutationOptions<Awaited<ReturnType<typeof confirmationControllerConfirmAnnex>>, TError,{jahr: number;anlage: 'hauptvordruck' | 'anlageN' | 'anlageNGre' | 'anlageR' | 'anlageKap' | 'anlageV' | 'anlageKind' | 'anlageEuer' | 'bescheid';data: ConfirmAnnexDto}, TContext> => {
 
 const mutationKey = ['confirmationControllerConfirmAnnex'];
 const {mutation: mutationOptions, request: requestOptions} = options ?
@@ -224,10 +231,10 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof confirmationControllerConfirmAnnex>>, {jahr: number;anlage: 'hauptvordruck' | 'anlageN' | 'anlageNGre' | 'anlageR' | 'anlageKap' | 'anlageV' | 'anlageKind' | 'anlageEuer'}> = (props) => {
-          const {jahr,anlage} = props ?? {};
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof confirmationControllerConfirmAnnex>>, {jahr: number;anlage: 'hauptvordruck' | 'anlageN' | 'anlageNGre' | 'anlageR' | 'anlageKap' | 'anlageV' | 'anlageKind' | 'anlageEuer' | 'bescheid';data: ConfirmAnnexDto}> = (props) => {
+          const {jahr,anlage,data} = props ?? {};
 
-          return  confirmationControllerConfirmAnnex(jahr,anlage,requestOptions)
+          return  confirmationControllerConfirmAnnex(jahr,anlage,data,requestOptions)
         }
 
 
@@ -238,15 +245,15 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
   return  { mutationFn, ...mutationOptions }}
 
     export type ConfirmationControllerConfirmAnnexMutationResult = NonNullable<Awaited<ReturnType<typeof confirmationControllerConfirmAnnex>>>
-
+    export type ConfirmationControllerConfirmAnnexMutationBody = ConfirmAnnexDto
     export type ConfirmationControllerConfirmAnnexMutationError = void
 
     export const useConfirmationControllerConfirmAnnex = <TError = void,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof confirmationControllerConfirmAnnex>>, TError,{jahr: number;anlage: 'hauptvordruck' | 'anlageN' | 'anlageNGre' | 'anlageR' | 'anlageKap' | 'anlageV' | 'anlageKind' | 'anlageEuer'}, TContext>, request?: SecondParameter<typeof httpClient>}
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof confirmationControllerConfirmAnnex>>, TError,{jahr: number;anlage: 'hauptvordruck' | 'anlageN' | 'anlageNGre' | 'anlageR' | 'anlageKap' | 'anlageV' | 'anlageKind' | 'anlageEuer' | 'bescheid';data: ConfirmAnnexDto}, TContext>, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof confirmationControllerConfirmAnnex>>,
         TError,
-        {jahr: number;anlage: 'hauptvordruck' | 'anlageN' | 'anlageNGre' | 'anlageR' | 'anlageKap' | 'anlageV' | 'anlageKind' | 'anlageEuer'},
+        {jahr: number;anlage: 'hauptvordruck' | 'anlageN' | 'anlageNGre' | 'anlageR' | 'anlageKap' | 'anlageV' | 'anlageKind' | 'anlageEuer' | 'bescheid';data: ConfirmAnnexDto},
         TContext
       > => {
       return useMutation(getConfirmationControllerConfirmAnnexMutationOptions(options), queryClient);

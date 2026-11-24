@@ -161,14 +161,6 @@ describe('LstbService', () => {
     })
   })
 
-  it('ADR-0052 §6: a user write drops the marker of exactly that field — changing it is confirming it', async () => {
-    await markings.save('user-1', 2025, { key: 'lstb.lohnsteuer', provenance: { kind: 'assistent', name: 'Claude' }, confirmed: false, proposal: null })
-    await markings.save('user-1', 2025, { key: 'lstb.bruttoarbeitslohn', provenance: { kind: 'assistent', name: 'Claude' }, confirmed: false, proposal: null })
-
-    await service.setField('user-1', 2025, 'lohnsteuer', { kind: 'erfasst', value: 700 })
-
-    expect(markings.all().map((k) => k.key)).toEqual(['lstb.bruttoarbeitslohn'])
-  })
 
   describe('applyScannedValues — confirmed scan values with Beleg provenance (#444)', () => {
     const scanned = { bruttoarbeitslohn: 54320, lohnsteuer: 9840, sozialversicherung: 10912 }

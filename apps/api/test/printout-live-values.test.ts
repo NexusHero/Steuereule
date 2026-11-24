@@ -50,11 +50,21 @@ async function setup() {
   const paymentProvider: PaymentProvider = stubPaymentProvider('cs_1')
   const commute: CommuteRepository = { findForUserAndYear: async () => null, save: async (_u, _y, e) => e }
 
-  const service = new PrintoutService(taxCaseReaderOver({ profile, masterData, wageTaxCertificate: lstb, pension: new FakePensionRepository(), capital: new FakeCapitalRepository(), rental, salaryStatement: new FakeChSalaryCertificateRepository(), children, coupling: new FakeLinkRepository(), interview: new FakeInterviewAnswerRepository(), commute }), new FakeMarkingRepository(), new UnlockService(unlockRepo, paymentProvider, 'http://localhost:8081'), new AuditService(audit), TEMPLATES_BASE)
-  return { service, audit, mia, ben }
+  const markings = new FakeMarkingRepository()
+  const service = new PrintoutService(taxCaseReaderOver({ profile, masterData, wageTaxCertificate: lstb, pension: new FakePensionRepository(), capital: new FakeCapitalRepository(), rental, salaryStatement: new FakeChSalaryCertificateRepository(), children, coupling: new FakeLinkRepository(), interview: new FakeInterviewAnswerRepository(), commute }), markings, new UnlockService(unlockRepo, paymentProvider, 'http://localhost:8081'), new AuditService(audit), TEMPLATES_BASE)
+  return { service, audit, mia, ben, markings }
 }
 
 describe('PrintoutService.liveValues (live form view)', () => {
+  it('shows no form while a value is unconfirmed, as the printout would not print it (MCP-24); the assistant still reads its lines', async () => {
+    const { service, markings } = await setup()
+    await markings.save('u1', 2025, { key: 'lstb.bruttoarbeitslohn', provenance: { kind: 'assistent', name: 'Claude' }, confirmed: false, proposal: null })
+
+    expect(await service.liveValues('u1', 2025)).toEqual({ forms: [], unconfirmed: ['unbestaetigt.anlageN'] })
+    expect((await service.liveValues('u1', 2025, { withUnconfirmed: true })).forms.length).toBeGreaterThan(0)
+    expect(await service.fillInValues('u1', 2025)).toEqual({ forms: [], names: {}, unconfirmed: ['unbestaetigt.anlageN'] })
+  })
+
   it('returns the values of every form instance before the printout is paid', async () => {
     const { service } = await setup()
 

@@ -137,6 +137,7 @@
   "confirmation -> marking",
   "confirmation -> master-data",
   "confirmation -> pension",
+  "confirmation -> prisma",
   "confirmation -> profile",
   "confirmation -> rental",
   "deadlines -> auth",
