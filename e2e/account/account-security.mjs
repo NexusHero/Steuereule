@@ -20,6 +20,7 @@ import { launchBrowser, closeBrowser, newContextAtBreakpoint, guardAgainst429 } 
 import { startStack } from '../harness/stack.mjs'
 import { fail, waitForBucketHeadroom } from '../harness/rate-limit.mjs'
 import { FLOW_COPY, skipSplash, signUpOutOfBand, submitLogin } from '../harness/flows.mjs'
+import { verifyEmailSql, whereEmail } from '../harness/email-hash.mjs'
 
 const AUTH_BUCKET = { windowMs: 10_000, max: 3, shared: true }
 const PASSWORD = 'Sicheres-Passwort-1!'
@@ -30,7 +31,7 @@ async function account(apiOrigin, webOrigin, sql, label) {
   const email = `account-${label}-${Date.now()}@beispiel.de`
   await waitForBucketHeadroom(AUTH_BUCKET, 'sign-up/email', TAG)
   await signUpOutOfBand(apiOrigin, webOrigin, email, PASSWORD)
-  sql(`UPDATE "User" SET "emailVerified" = true WHERE email = '${email}'`)
+  sql(verifyEmailSql(email))
   return email
 }
 
@@ -280,7 +281,7 @@ async function main() {
       let token = ''
       for (let i = 0; i < 20 && token === ''; i++) {
         token = sql(
-          `SELECT replace(identifier, 'reset-password:', '') FROM "Verification" WHERE identifier LIKE 'reset-password:%' AND value = (SELECT id FROM "User" WHERE email = '${email}') ORDER BY "createdAt" DESC LIMIT 1`,
+          `SELECT replace(identifier, 'reset-password:', '') FROM "Verification" WHERE identifier LIKE 'reset-password:%' AND value = (SELECT id FROM "User" WHERE ${whereEmail(email)}) ORDER BY "createdAt" DESC LIMIT 1`,
         )
         if (token === '') await page.waitForTimeout(500)
       }

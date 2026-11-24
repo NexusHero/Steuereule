@@ -247,7 +247,7 @@ jobs:
             -d '{"email":"ci-smoke-export@example.com","password":"a-fine-strong-password-1","name":"CI Smoke Export"}' \
             > /dev/null
           # Sign-up returns no session (ADR-0109): verify the address as the mail's link would, then sign in.
-          psql "$DATABASE_URL" -c "UPDATE \"User\" SET \"emailVerified\" = true WHERE email = 'ci-smoke-export@example.com'"
+          psql "$DATABASE_URL" -c "$(node e2e/harness/email-hash.mjs ci-smoke-export@example.com)"
           curl --fail --silent --show-error -c "$JAR" -b "$JAR" \
             -H "Content-Type: application/json" -H "Origin: ${CORS_ALLOWED_ORIGINS}" \
             -X POST http://localhost:3000/api/auth/sign-in/email \
@@ -1060,7 +1060,7 @@ jobs:
             -d '{"email":"prod-deploy-pdf-smoke@example.com","password":"a-fine-strong-password-1","name":"Prod Deploy PDF Smoke"}' \
             > /dev/null
           # Sign-up returns no session (ADR-0109): verify the address as the mail's link would, then sign in.
-          PGPASSWORD=steuereule psql -h localhost -U steuereule -d steuereule -c "UPDATE \"User\" SET \"emailVerified\" = true WHERE email = 'prod-deploy-pdf-smoke@example.com'"
+          PGPASSWORD=steuereule psql -h localhost -U steuereule -d steuereule -c "$(node e2e/harness/email-hash.mjs prod-deploy-pdf-smoke@example.com)"
           curl --fail --silent --show-error -c "$JAR" -b "$JAR" \
             -H "Content-Type: application/json" -H "Origin: http://localhost:8080" \
             -X POST http://localhost:3000/api/auth/sign-in/email \

@@ -156,6 +156,7 @@
 import { chromium } from 'playwright-core'
 import { execSync } from 'node:child_process'
 import { waitForBucketHeadroom } from '../harness/rate-limit.mjs'
+import { verifyEmailSql } from '../harness/email-hash.mjs'
 
 const WEB_ORIGIN = requireEnv('WEB_ORIGIN')
 const API_ORIGIN = requireEnv('API_ORIGIN')
@@ -360,7 +361,7 @@ async function assertBannerDoesNotFlip(page) {
 }
 
 async function assertBannerFlipsAfterVerifyAndSignIn(context, page, email, password) {
-  sql(`UPDATE "User" SET "emailVerified" = true WHERE email = '${email}'`)
+  sql(verifyEmailSql(email))
   await signInOnSecondPage(context, email, password)
   const dispatchedAt = Date.now()
   await dispatchVisibilityChange(page)
@@ -539,7 +540,7 @@ async function testRegistrierungScreen(browser) {
     // and replaces the session in the shared jar; page1's banner must revert, it is about ITS address only.
     await waitForRateLimitHeadroom('/sign-up/email')
     await signUpOutOfBand(foreignEmail, TEST_PASSWORD)
-    sql(`UPDATE "User" SET "emailVerified" = true WHERE email = '${foreignEmail}'`)
+    sql(verifyEmailSql(foreignEmail))
     await waitOutFocusRefetchRateLimit(positiveDispatchAt)
     await assertBannerRevertsOnForeignAccountSession(context, page, email, foreignEmail, TEST_PASSWORD)
     console.log('[visibility-refetch] RegistrierungScreen: banner reverted once a foreign verified account signed in (account-scoping)')

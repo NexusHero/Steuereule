@@ -17,6 +17,7 @@ import { startStack } from '../harness/stack.mjs'
 import { fail } from '../harness/rate-limit.mjs'
 import { createAccount, call, answer, browserLogin, until } from '../harness/api-account.mjs'
 import { waitForNetworkQuiet } from '../scenarios/helpers/scenario-harness.mjs'
+import { whereEmail } from '../harness/email-hash.mjs'
 
 const TAG = 'scan-flows'
 const HERE = dirname(fileURLToPath(import.meta.url))
@@ -132,7 +133,7 @@ async function main() {
     await confirmPending()
     await apply.click()
     await until(async () => (await lstb()).bruttoarbeitslohn?.value, 54_320, 'the confirmed draft must be stored', 20_000)
-    const receiptId = sql(`SELECT id FROM "Beleg" WHERE "userId" = (SELECT id FROM "User" WHERE email = '${user.email}') ORDER BY "createdAt" DESC LIMIT 1`).trim()
+    const receiptId = sql(`SELECT id FROM "Beleg" WHERE "userId" = (SELECT id FROM "User" WHERE ${whereEmail(user.email)}) ORDER BY "createdAt" DESC LIMIT 1`).trim()
     await page.goto(`${webOrigin}/app/belege`, { waitUntil: 'networkidle' })
     await page.locator(`[data-testid="receipt-delete-${receiptId}"]`).click()
     // The receipt filled the LStB, so the app asks whether its values go too (ADR-0097); keep them here.

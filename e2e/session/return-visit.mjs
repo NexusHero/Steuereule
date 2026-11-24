@@ -135,6 +135,7 @@ import { launchBrowser, closeBrowser, newContextAtBreakpoint, guardAgainst429, s
 import { startStack } from '../harness/stack.mjs'
 import { fail, waitForBucketHeadroom } from '../harness/rate-limit.mjs'
 import { FLOW_COPY, skipSplash, signUpOutOfBand } from '../harness/flows.mjs'
+import { verifyEmailSql } from '../harness/email-hash.mjs'
 
 // `shared: true`: the sign-up/sign-in bucket is spent by every other script in the `Browser gates`
 // job (same API process, one in-memory bucket), so this process cannot read its live state and
@@ -381,7 +382,7 @@ async function testSignedInReload(browser, apiOrigin, webOrigin, sql) {
 
     await waitForRateLimit(AUTH_BUCKET, 'sign-up/email')
     await signUpOutOfBand(apiOrigin, webOrigin, email, TEST_PASSWORD)
-    sql(`UPDATE "User" SET "emailVerified" = true WHERE email = '${email}'`)
+    sql(verifyEmailSql(email))
 
     await skipSplash(page, webOrigin)
     await waitForRateLimit(AUTH_BUCKET, 'sign-in/email')
@@ -449,7 +450,7 @@ async function testCloseAndReopenReLogin(apiOrigin, webOrigin, sql) {
   const email = `return-visit-reopen-${Date.now()}@beispiel.de`
   await waitForRateLimit(AUTH_BUCKET, 'sign-up/email')
   await signUpOutOfBand(apiOrigin, webOrigin, email, TEST_PASSWORD)
-  sql(`UPDATE "User" SET "emailVerified" = true WHERE email = '${email}'`)
+  sql(verifyEmailSql(email))
 
   const profileDir = await mkdtemp(join(tmpdir(), 'steuereule-return-visit-profile-'))
   try {

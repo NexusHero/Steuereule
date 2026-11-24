@@ -12,6 +12,7 @@
 // row needs no second browser round through the consent page. No route mocks. Invented data only.
 import { createHash, randomBytes } from 'node:crypto'
 import { putPrintableBasics, putLstb } from '../../harness/api-account.mjs'
+import { whereEmail } from '../../harness/email-hash.mjs'
 
 const ASSISTANT_NAME = 'E2E-Assistent'
 const TASK_DONE_TEXT = 'Bitte trag deine Konfession in den Angaben für die Erklärung ein.'
@@ -19,7 +20,7 @@ const TASK_DROP_TEXT = 'Bitte reich die Spendenquittung im Belege-Tab nach.'
 
 /** An assistant client of the user with an opaque bearer token, as the OAuth server would store it. */
 function seedAssistantToken(sql, email) {
-  const userId = sql(`SELECT id FROM "User" WHERE email = '${email}';`).trim()
+  const userId = sql(`SELECT id FROM "User" WHERE ${whereEmail(email)};`).trim()
   if (!userId) throw new Error(`no user for ${email}`)
   const clientId = `e2e-client-${randomBytes(6).toString('hex')}`
   const rawToken = `e2e-token-${randomBytes(24).toString('hex')}`

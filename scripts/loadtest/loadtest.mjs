@@ -8,6 +8,7 @@
 import { randomBytes, randomInt } from 'node:crypto'
 import { execFileSync } from 'node:child_process'
 import { performance } from 'node:perf_hooks'
+import { verifyEmailSql } from '../../e2e/harness/email-hash.mjs'
 
 const args = process.argv.slice(2)
 const concurrencyIndex = args.indexOf('--concurrency')
@@ -44,7 +45,7 @@ const PASSWORD = 'LoadTest-Password-2026!'
 function verifyAddress(email) {
   const databaseUrl = process.env.DATABASE_URL
   if (!databaseUrl) throw new Error('DATABASE_URL is required to verify the load-test accounts (sign-up returns no session).')
-  execFileSync('psql', [databaseUrl, '-q', '-c', `UPDATE "User" SET "emailVerified" = true WHERE email = '${email}'`], { stdio: 'pipe' })
+  execFileSync('psql', [databaseUrl, '-q', '-c', verifyEmailSql(email)], { stdio: 'pipe' })
 }
 
 async function post(path, body) {

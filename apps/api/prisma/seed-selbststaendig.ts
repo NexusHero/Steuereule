@@ -21,7 +21,7 @@ import { composeBusinessService } from '../src/business/business.composition.js'
 import { DEMO_ANSWERS, DEMO_YEARS, seedDemoHousehold } from '../src/business/demo-household.js'
 import { HebesatzDirectory } from '../src/business/hebesatz.js'
 import { PrismaInterviewAnswerRepository } from '../src/interview/interview-answer.repository.prisma.js'
-import { resolveFieldEncryptionKey } from '../src/prisma/field-encryption-key.js'
+import { publishEmailHashSalt, resolveFieldEncryptionKey } from '../src/prisma/field-encryption-key.js'
 import { transactionAwareClient } from '../src/prisma/transaction.js'
 
 if (process.env.NODE_ENV === 'production') {
@@ -37,6 +37,8 @@ if (email === '') {
 process.env.SELBSTSTAENDIGE_ENABLED = 'true'
 
 const basePrisma = new PrismaClient()
+// The account is found by its e-mail hash (ADR-0109); the extension reads the salt when it is created.
+publishEmailHashSalt()
 const { encryptionKey, decryptionKeys } = resolveFieldEncryptionKey()
 const prisma = transactionAwareClient(basePrisma.$extends(fieldEncryptionExtension({ encryptionKey, decryptionKeys })) as unknown as PrismaClient)
 
@@ -45,7 +47,7 @@ const repository = new PrismaBusinessRepository(prisma)
 const business = composeBusinessService(repository, new PrismaInterviewAnswerRepository(prisma), new AuditService(silentAudit), new HebesatzDirectory())
 
 async function main(): Promise<void> {
-  const user = await basePrisma.user.findUnique({ where: { email } })
+  const user = await prisma.user.findUnique({ where: { email } })
   if (!user) throw new Error(`No account with the e-mail ${email}; sign up in the app first.`)
   const userId = user.id
   for (const year of DEMO_YEARS) {

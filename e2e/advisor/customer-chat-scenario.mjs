@@ -16,6 +16,7 @@ import { request as playwrightRequest } from 'playwright-core'
 import { launchBrowser, closeBrowser, newContextAtBreakpoint } from '../harness/browser.mjs'
 import { startStack } from '../harness/stack.mjs'
 import { skipSplash, signUpOutOfBand, submitLogin } from '../harness/flows.mjs'
+import { verifyEmailSql, whereEmail } from '../harness/email-hash.mjs'
 
 const PASSWORD = 'Sicheres-Passwort-1!'
 // The cockpit opens on the last completed year since UX review K2 (2025 on 2026-11-14).
@@ -40,7 +41,7 @@ async function main() {
   const { apiOrigin, webOrigin, sql } = await startStack()
   const email = `kunde-${Date.now()}@beispiel.de`
   await signUpOutOfBand(apiOrigin, webOrigin, email, PASSWORD)
-  sql(`UPDATE "User" SET "emailVerified" = true WHERE email = '${email}'`)
+  sql(verifyEmailSql(email))
   const api = await playwrightRequest.newContext({ baseURL: apiOrigin, extraHTTPHeaders: { origin: webOrigin } })
   await api.post('/api/auth/sign-in/email', { data: { email, password: PASSWORD } })
   const get = async (path) => {
@@ -122,7 +123,7 @@ async function main() {
     estimate: await get(`/v1/steuerjahre/${YEAR}/steuerschaetzung`),
     cockpit: await get(`/v1/steuerjahre/${YEAR}/cockpit`),
   }
-  const usage = sql(`SELECT string_agg(coalesce("status",'') || ' ' || coalesce("verbrauch",'-'), E'\\n' ORDER BY m."createdAt") FROM "BeraterNachricht" m JOIN "User" u ON u.id = m."userId" WHERE u.email = '${email}' AND m."rolle" = 'assistant'`)
+  const usage = sql(`SELECT string_agg(coalesce("status",'') || ' ' || coalesce("verbrauch",'-'), E'\\n' ORDER BY m."createdAt") FROM "BeraterNachricht" m JOIN "User" u ON u.id = m."userId" WHERE u.${whereEmail(email)} AND m."rolle" = 'assistant'`)
   await writeFile(`${OUT}/result.json`, JSON.stringify({ email, log, state, usage: String(usage) }, null, 2))
   console.log(`[scenario] written to ${OUT}/result.json`)
   await closeBrowser(browser)

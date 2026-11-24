@@ -8,6 +8,7 @@ import { launchBrowser, closeBrowser, newContextAtBreakpoint, guardAgainst429 } 
 import { startStack } from '../harness/stack.mjs'
 import { fail, waitForBucketHeadroom } from '../harness/rate-limit.mjs'
 import { FLOW_COPY, openCockpitTopic, skipSplash, signUpOutOfBand, submitLogin } from '../harness/flows.mjs'
+import { verifyEmailSql } from '../harness/email-hash.mjs'
 
 const AUTH_BUCKET = { windowMs: 10_000, max: 3, shared: true }
 const TEST_PASSWORD = 'Sicheres-Passwort-1!'
@@ -37,7 +38,7 @@ async function main() {
     const email = `dark-mode-e2e-${Date.now()}@beispiel.de`
     await waitForBucketHeadroom(AUTH_BUCKET, 'sign-up/email', 'dark-mode')
     await signUpOutOfBand(apiOrigin, webOrigin, email, TEST_PASSWORD)
-    sql(`UPDATE "User" SET "emailVerified" = true WHERE email = '${email}'`)
+    sql(verifyEmailSql(email))
 
     const ctx = await newContextAtBreakpoint(browser, 'm', { colorScheme: 'dark' })
     const page = await ctx.newPage()

@@ -1,6 +1,6 @@
 // REQ-006 — guest -> account upgrade, atomic data carry-over (ADR-0012 §4). Real
 // Postgres, real HTTP against the actual `buildApp()` boot (never `.inject()`).
-import { describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it } from 'vitest'
 import { baseUrl, prisma, useAcceptanceServer, verifyAndSignIn } from '../support/acceptance-server.js'
 
 const GUEST_SESSION_SECRET = 'req-006-secret'
@@ -29,6 +29,12 @@ describe('REQ-006 — guest -> account upgrade, against the real server', () => 
       await prisma.taxYear.deleteMany()
       await prisma.$executeRawUnsafe(`DELETE FROM "TaxDataAccessLog"`)
     },
+  })
+
+  // The cases read the whole access log, and suites before this one write to it (every first verified
+  // sign-in records the guest upgrade): start each case from an empty log.
+  beforeEach(async () => {
+    await prisma.$executeRawUnsafe(`DELETE FROM "TaxDataAccessLog"`)
   })
 
   /** Mints a guest cookie exactly as UserContextGuard would, and seeds a Profile (+ a

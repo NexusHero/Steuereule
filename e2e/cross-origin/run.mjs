@@ -23,6 +23,7 @@
 import { randomBytes } from 'node:crypto'
 import { chromium } from 'playwright-core'
 import { makeSql } from '../harness/stack.mjs'
+import { verifyEmailSql } from '../harness/email-hash.mjs'
 
 const WEB_ORIGIN = requireEnv('WEB_ORIGIN')
 const API_ORIGIN = requireEnv('API_ORIGIN')
@@ -215,7 +216,7 @@ async function main() {
 
     // Sign-up returns no session: the address is verified out of band, as the mail's link would, then the
     // account signs in and the cookie is set.
-    makeSql(requireEnv('DATABASE_URL'))(`UPDATE "User" SET "emailVerified" = true WHERE email = '${email}'`)
+    makeSql(requireEnv('DATABASE_URL'))(verifyEmailSql(email))
     await credentialedFetch(page, {
       method: 'POST',
       path: '/api/auth/sign-in/email',

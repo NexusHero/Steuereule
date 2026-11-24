@@ -139,6 +139,7 @@ import {
 } from '../harness/browser.mjs'
 import { startStack } from '../harness/stack.mjs'
 import { fail, waitForBucketHeadroom } from '../harness/rate-limit.mjs'
+import { verifyEmailSql } from '../harness/email-hash.mjs'
 
 // `shared: true` on AUTH_BUCKET: the sign-up/sign-in bucket is spent by every other script in the
 // `Browser gates` job (same API process, one in-memory bucket), so this process cannot read its
@@ -311,7 +312,7 @@ async function main() {
     // a fresh unverified sign-up; verifying here keeps the flow on its own critical path instead
     // of detouring through LoginScreen's unrelated unverified-banner stage (already covered by
     // visibility-refetch.mjs) on the way to Onboarding → Profil.
-    sql(`UPDATE "User" SET "emailVerified" = true WHERE email = '${email}'`)
+    sql(verifyEmailSql(email))
 
     const signInRequests = countRequestsTo(pageB, 'POST', '/api/auth/sign-in/email')
     await skipSplash(pageB, webOrigin)

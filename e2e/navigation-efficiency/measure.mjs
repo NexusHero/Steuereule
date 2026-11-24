@@ -20,6 +20,7 @@ import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { createMeter } from './instrument.mjs'
 import { openCockpitTopic } from '../harness/flows.mjs'
+import { verifyEmailSql, whereEmail } from '../harness/email-hash.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const VARIANT = process.env.NAV_VARIANT ?? 'neu'
@@ -122,7 +123,7 @@ async function login(page, webOrigin, email) {
 async function measurePersona(browser, stack, persona) {
   const results = {}
   const meter = createMeter()
-  if (persona.fixed) stack.sql(`DELETE FROM "User" WHERE email = '${persona.fixed}'`)
+  if (persona.fixed) stack.sql(`DELETE FROM "User" WHERE ${whereEmail(persona.fixed)}`)
 
   // 1 — the scenario script of this commit, metered as a whole.
   const scenario = await import(pathToFileURL(join(ROOT, 'e2e/scenarios', persona.scenario)).href)
@@ -131,7 +132,7 @@ async function measurePersona(browser, stack, persona) {
   results['erster-durchlauf'] = meter.read()
   const email = persona.fixed ?? meter.lastEmail()
   if (!email) throw new Error(`${persona.key}: could not tell which account the scenario created`)
-  stack.sql(`UPDATE "User" SET "emailVerified" = true WHERE email = '${email}'`)
+  stack.sql(verifyEmailSql(email))
 
   const fresh = async () => {
     const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 } })

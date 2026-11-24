@@ -5,6 +5,7 @@ import { launchBrowser, closeBrowser, newContextAtBreakpoint, guardAgainst429 } 
 import { startStack as bootStack, makeSql } from '../../harness/stack.mjs'
 import { fail, waitForBucketHeadroom } from '../../harness/rate-limit.mjs'
 import { skipSplash } from '../../harness/flows.mjs'
+import { verifyEmailSql, whereEmail } from '../../harness/email-hash.mjs'
 
 const require = createRequire(import.meta.url)
 const { PDFDocument } = require('../../../apps/api/node_modules/pdf-lib')
@@ -108,7 +109,7 @@ export async function registerAndOnboard(
  */
 export async function verifyAndSignInAccount(page, { email, password = TEST_PASSWORD, apiOrigin, webOrigin, callerLabel = 'scenario' }) {
   const sql = stackSql ?? makeSql(process.env.DATABASE_URL)
-  sql(`UPDATE "User" SET "emailVerified" = true WHERE email = '${email}'`)
+  sql(verifyEmailSql(email))
   await waitForBucketHeadroom(AUTH_BUCKET, 'sign-in/email', callerLabel)
   const response = await page.context().request.post(`${apiOrigin}/api/auth/sign-in/email`, {
     data: { email, password },
@@ -371,7 +372,7 @@ export async function assertCockpitEstimate(page, label, { direction, minAmount,
 
 /** Unlocks a tax year directly in the database for payment-free e2e printout access. */
 export function unlockTaxYearInDb(sql, email, year) {
-  const userId = sql(`SELECT id FROM "User" WHERE email = '${email}';`).trim()
+  const userId = sql(`SELECT id FROM "User" WHERE ${whereEmail(email)};`).trim()
   if (!userId) fail(`unlockTaxYearInDb: user with email ${email} not found in database`)
   sql(
     `INSERT INTO "Freischaltung" ("id", "userId", "steuerjahr", "status", "stripeCheckoutSessionId", "createdAt", "updatedAt") ` +

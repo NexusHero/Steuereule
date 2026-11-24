@@ -27,7 +27,7 @@
 import { PrismaClient } from '@prisma/client'
 import { fieldEncryptionExtension } from 'prisma-field-encryption'
 import { employeeLumpSum, splittingTariff, incomeTax, type AssessmentPositionValues } from '@steuereule/core'
-import { resolveFieldEncryptionKey } from '../src/prisma/field-encryption-key.js'
+import { publishEmailHashSalt, resolveFieldEncryptionKey } from '../src/prisma/field-encryption-key.js'
 
 if (process.env.NODE_ENV === 'production') {
   console.error('seed-year-history is a dev seed and refuses to run with NODE_ENV=production.')
@@ -41,6 +41,8 @@ if (email === '') {
 }
 
 const basePrisma = new PrismaClient()
+// The account is found by its e-mail hash (ADR-0109); the extension reads the salt when it is created.
+publishEmailHashSalt()
 const { encryptionKey, decryptionKeys } = resolveFieldEncryptionKey()
 const prisma = basePrisma.$extends(fieldEncryptionExtension({ encryptionKey, decryptionKeys }))
 
@@ -116,7 +118,7 @@ const s = (v: number | undefined) => (v === undefined ? null : String(v))
 const assessmentData = (p: AssessmentPositionValues) => Object.fromEntries(Object.entries(p).map(([k, v]) => [k, s(v)]))
 
 async function main(): Promise<void> {
-  const user = await basePrisma.user.findUnique({ where: { email } })
+  const user = await prisma.user.findUnique({ where: { email } })
   if (!user) throw new Error(`No account with the email "${email}" — sign up first, then seed.`)
   const userId = user.id
   const spouse = (year: number) => `spouse_${userId}_${year}`

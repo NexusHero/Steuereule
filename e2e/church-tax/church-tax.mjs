@@ -14,6 +14,7 @@ import { startStack } from '../harness/stack.mjs'
 import { fail, waitForBucketHeadroom } from '../harness/rate-limit.mjs'
 import { skipSplash, signUpOutOfBand, submitLogin } from '../harness/flows.mjs'
 import { call } from '../harness/api-account.mjs'
+import { verifyEmailSql } from '../harness/email-hash.mjs'
 
 const AUTH_BUCKET = { windowMs: 10_000, max: 3, shared: true }
 const PASSWORD = 'Sicheres-Passwort-1!'
@@ -25,7 +26,7 @@ async function account(apiOrigin, webOrigin, sql, label) {
   const email = `church-${label}-${Date.now()}@beispiel.de`
   await waitForBucketHeadroom(AUTH_BUCKET, 'sign-up/email', TAG)
   await signUpOutOfBand(apiOrigin, webOrigin, email, PASSWORD)
-  sql(`UPDATE "User" SET "emailVerified" = true WHERE email = '${email}'`)
+  sql(verifyEmailSql(email))
   const api = await playwrightRequest.newContext({ baseURL: apiOrigin, extraHTTPHeaders: { origin: webOrigin } })
   await waitForBucketHeadroom(AUTH_BUCKET, 'sign-in/email', TAG)
   const res = await api.post('/api/auth/sign-in/email', { data: { email, password: PASSWORD } })

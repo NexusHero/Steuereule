@@ -10,6 +10,7 @@ import { join } from 'node:path'
 import { request as playwrightRequest } from 'playwright-core'
 import { startStack } from '../harness/stack.mjs'
 import { signUpOutOfBand } from '../harness/flows.mjs'
+import { verifyEmailSql } from '../harness/email-hash.mjs'
 
 const PASSWORD = 'Sicheres-Passwort-1!'
 const YEAR = 2026
@@ -106,7 +107,7 @@ async function main() {
     const email = `cov-${persona.id}-${Date.now()}@beispiel.de`
     await sleep(4000)
     await signUpOutOfBand(apiOrigin, webOrigin, email, PASSWORD)
-    sql(`UPDATE "User" SET "emailVerified" = true WHERE email = '${email}'`)
+    sql(verifyEmailSql(email))
     const api = await playwrightRequest.newContext({ baseURL: apiOrigin, extraHTTPHeaders: { origin: webOrigin } })
     await sleep(4000)
     await api.post('/api/auth/sign-in/email', { data: { email, password: PASSWORD } })
