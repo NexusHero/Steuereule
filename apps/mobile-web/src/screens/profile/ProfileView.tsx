@@ -11,6 +11,8 @@ import { AssistantsListSection } from './AssistentenListSection'
 import { DeviceListSection } from '../device/DeviceListSection'
 import { useKnownEmployers } from '../master-data/employersStore'
 import type { OnboardingProfile } from '../onboarding/profileMapping'
+import { LegalLinks } from '../legal/LegalLinks'
+import { BetaNotice } from '../shared/BetaNotice'
 
 interface ProfileViewProps {
   readonly profile: OnboardingProfile
@@ -123,6 +125,9 @@ export function ProfileView({ profile, onEdit, justSaved, bp, onOpenPrivacy, onO
       <AssistantsListSection />
 
       <DeviceListSection onCurrentSessionRevoked={onSignedOut} />
+
+      <BetaNotice />
+      <LegalLinks />
     </ScrollView>
   )
 }

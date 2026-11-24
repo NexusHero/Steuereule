@@ -1,4 +1,4 @@
-import { BANK_CODE_SOURCE, POSTAL_CODE_SOURCE, TAX_OFFICE_SOURCE } from '@steuereule/core'
+import { BANK_CODE_SOURCE, HOSTING, POSTAL_CODE_SOURCE, RETENTION, TAX_OFFICE_SOURCE, modelProviderList } from '@steuereule/core'
 export type LegalPage = 'impressum' | 'datenschutz' | 'agb' | 'hinweise'
 
 export const LEGAL_PAGES: readonly LegalPage[] = ['impressum', 'datenschutz', 'agb', 'hinweise']
@@ -39,7 +39,7 @@ export function legalNotice(operator: Operator | null): readonly Section[] {
     return [
       {
         title: 'Angaben gemäß § 5 DDG',
-        paragraphs: ['Die Anbieterangaben sind auf dieser Umgebung noch nicht hinterlegt.'],
+        paragraphs: ['Die Anbieterangaben sind noch nicht hinterlegt.'],
       },
     ]
   }
@@ -64,33 +64,41 @@ export function legalNotice(operator: Operator | null): readonly Section[] {
   ]
 }
 
+/** „1 Tag“, „30 Tage“. */
+const days = (count: number) => (count === 1 ? '1 Tag' : `${count} Tage`)
+
 export function privacy(operator: Operator | null): readonly Section[] {
   const responsible = operator
     ? `${operator.name}, ${operator.postalAddress.replaceAll('\n', ', ')}, E-Mail: ${operator.email}`
-    : 'Die Angaben zum Verantwortlichen sind auf dieser Umgebung noch nicht hinterlegt (siehe Impressum).'
+    : 'Die Angaben zum Verantwortlichen sind noch nicht hinterlegt (siehe Impressum).'
   return [
     { title: '1. Verantwortlicher', paragraphs: [responsible] },
     {
       title: '2. Welche Daten wir verarbeiten',
       paragraphs: [
-        'Gastmodus: Du kannst ohne Konto starten. Wir setzen dafür ein technisch notwendiges Cookie mit einer zufälligen Kennung und speichern deine Interview-Antworten zu dieser Kennung.',
-        'Konto: E-Mail-Adresse, Name, Passwort (nur als Hash gespeichert), optional Passkeys und Zwei-Faktor-Daten sowie Sitzungsdaten (Zeitpunkt, IP-Adresse, Browser) zur Absicherung deines Kontos.',
-        'Steuerdaten: die Angaben, die du für deine Steuererklärung einträgst (z. B. Lohnsteuerbescheinigung, Renten, Kapitalerträge, Vermietung, Bescheide, Belegnamen) sowie deine Steuer-ID und Steuernummer. Diese Werte speichern wir feldweise verschlüsselt (AES-256-GCM).',
+        'Gastmodus: Du kannst ohne Konto starten. Ein technisch notwendiges Cookie („se_guest_session“) mit einer zufälligen, signierten Kennung hält deine Angaben zusammen. Alles, was du als Gast einträgst oder hochlädst (Antworten, Angaben in den Masken, Belege), speichern wir verschlüsselt auf unseren Servern zu dieser Kennung, nicht nur auf deinem Gerät.',
+        'Konto: E-Mail-Adresse, Name, Passwort (nur als Hash gespeichert), optional Passkeys und Zwei-Faktor-Daten sowie Sitzungsdaten (Zeitpunkt, IP-Adresse, Browser und Gerätetyp) zur Absicherung deines Kontos.',
+        'Steuerdaten: die Angaben, die du für deine Steuererklärung einträgst (z. B. Lohnsteuerbescheinigung, Renten, Kapitalerträge, Vermietung, Bescheide, Belege) sowie deine Steuer-ID und Steuernummer. Diese Werte speichern wir feldweise verschlüsselt (AES-256-GCM).',
+        'Angaben über andere Personen: Für deine Erklärung trägst du auch Daten anderer Menschen ein: über deine Ehe- oder Lebenspartnerin bzw. deinen Ehe- oder Lebenspartner, auch wenn sie oder er kein eigenes Konto hat (z. B. Name, Geburtsdatum, Steuer-ID, Religionszugehörigkeit, Beruf, Einkünfte), über deine Kinder (z. B. Name, Geburtsdatum, Steuer-ID, Familienkasse, Betreuungskosten), über den anderen Elternteil eines Kindes (Name, Geburtsdatum, Anschrift) und über deinen Arbeitgeber (Name, Anschrift). Wir speichern sie wie deine eigenen Steuerdaten verschlüsselt in deinem Konto und verwenden sie nur für deine Erklärung. Bitte sag diesen Personen, dass du ihre Angaben in SteuerEule einträgst, und verweise sie auf diese Datenschutzerklärung.',
         'KI-Assistenten (optional): Verbindest du einen eigenen KI-Assistenten über unsere Schnittstelle (Model Context Protocol / OAuth 2.1), erteilst du diesem Zugriff auf ausgewählte Datenbereiche. Beim Auslesen sensibler Daten (Steuer-ID, IBAN, Name, Adresse, Telefon) werden diese automatisch pseudonymisiert bzw. maskiert, bevor sie an den Assistenten übertragen werden.',
-        'Eule (Chat in der App): Was du der Eule schreibst, die Steuerdaten, die sie für ihre Antwort braucht, und der Text von Belegen, die du ihr gibst, werden an ein Sprachmodell übermittelt. Ohne deine Einwilligung entfernen wir vorher Namen, Steuer-ID, Geburtsdaten, Anschriften, IBAN und ähnliche Kennungen. Willigst du ein („Eule und persönliche Daten“), übermitteln wir auch diese Angaben, damit die Eule sie für dich eintragen kann – einschließlich deiner Religionszugehörigkeit als besonderer Kategorie nach Art. 9 DSGVO. Deine Gespräche speichern wir verschlüsselt in deinem Konto.',
-        'Zugriffsprotokoll: Jeder Lese- und Schreibzugriff auf deine Steuerdaten wird protokolliert (wer, was, wann – ohne die Werte selbst, inklusive verbundener KI-Assistenten). Du siehst dieses Protokoll in deinem Datenexport.',
+        'Eule (Chat in der App): Was du der Eule schreibst, die Steuerdaten, die sie für ihre Antwort braucht, und der Text von Belegen, die du ihr gibst, gehen an ein Sprachmodell. Deine Frage geht außerdem an ein kleines Sprachmodell, das prüft, ob sie ein Steuerthema betrifft. Ohne deine Einwilligung entfernen wir vorher Namen, Steuer-ID, Geburtsdaten, Anschriften, IBAN, E-Mail-Adressen, Telefonnummern und ähnliche Kennungen. Willigst du ein („Eule und persönliche Daten“), übermitteln wir auch diese Angaben, damit die Eule sie für dich eintragen kann – einschließlich deiner Religionszugehörigkeit als besonderer Kategorie nach Art. 9 DSGVO. Die Einwilligung gilt für jeden unter 4. genannten Modellanbieter, denn welcher die Antwort erzeugt, hängt von der Einstellung, deiner Modellwahl im Chat und von Ausfällen ab. Deine Gespräche speichern wir verschlüsselt in deinem Konto.',
+        'Turbo-Modus der Eule: Schaltest du im Chat den Turbo-Modus ein, übernimmt die Eule ihre Änderungen selbst in deine Angaben und beschreibt sie; jede lässt sich an ihrer Karte rückgängig machen. Ohne Turbo-Modus übernimmst du jede Änderung selbst.',
+        'Auslesen von Dokumenten: Lohnsteuerbescheinigungen, Schweizer Lohnausweise und andere Schreiben, Steuerbescheide und Belege im Beleg-Posteingang liest dein Browser per Texterkennung; ein PDF mit Textebene wird direkt gelesen. Den erkannten Text werten wir zuerst nach festen Regeln aus. Bleiben Werte offen, geht ein Ausschnitt des Textes, auch außerhalb des Chats, an ein Sprachmodell, das die Werte zuordnet (bei der Lohnsteuerbescheinigung nur die Zeilen 3, 4 und 23 bis 27). Vorher entfernen wir die Namen deines Haushalts und Kennungen wie Steuer-ID und IBAN; bleibt eine Kennung erkennbar, geht der Text nicht hinaus. Das Bild oder die Datei selbst geht an kein Sprachmodell.',
+        'Zugriffsprotokoll: Lese- und Schreibzugriffe auf deine Steuerdaten protokollieren wir (wer, was, wann – ohne die Werte selbst), auch die verbundener KI-Assistenten. Du siehst dieses Protokoll in deinem Datenexport.',
         'Selbstständige (Buchhaltung in der App): Führst du im Bereich „Selbstständig“ ein Buch, speichern wir deine Buchungen, Belege und E-Rechnungen (auch als XML-Datei), importierte Kontoumsätze, Anlagen, Abschlüsse, Umsatzsteuer- und Gewerbesteuerangaben sowie Lohnläufe. Darin stehen auch Daten Dritter: Namen und IBAN deiner Geschäftspartner aus den Kontoumsätzen, Anschriften und Umsatzsteuer-Identifikationsnummern deiner Kunden und Lieferanten auf Belegen und die Lohndaten deiner Beschäftigten, einschließlich ihrer Kirchensteuer (Religionszugehörigkeit, Art. 9 DSGVO). Auch diese Werte speichern wir feldweise verschlüsselt; Buchungen und ihr Protokoll lassen sich nach GoBD nicht nachträglich ändern.',
         'Zahlungen: Für die Freischaltung des Formular-Ausdrucks bzw. der Funktionen für Selbstständige (Ausfüllhilfe, Exporte) speichern wir Steuerjahr, Stufe, Betrag, Zahlungsstatus und die Kennung des Zahlungsvorgangs. Zahlungsdaten (Karte, Konto) erhält ausschließlich unser Zahlungsdienstleister.',
+        'Server-Protokolle: Beim Aufruf der App und der Schnittstelle schreibt unsere Hosting-Plattform technische Protokolle (Zeitpunkt, aufgerufene Adresse, IP-Adresse, Browser). Unerwartete Fehler melden wir mit Fehlerart, Programmstelle, Anfragekennung und der Route ohne konkrete Adresse, ohne Inhalte, Cookies oder Zugangsdaten.',
       ],
     },
     {
       title: '3. Zwecke und Rechtsgrundlagen',
       paragraphs: [
         'Bereitstellung der App und Vorbereitung deiner Steuererklärung: Art. 6 Abs. 1 lit. b DSGVO (Vertrag).',
+        'Angaben über andere Personen in deiner Erklärung (Partnerin oder Partner, Kinder, anderer Elternteil, Arbeitgeber): Art. 6 Abs. 1 lit. b DSGVO (für deinen Vertrag mit uns erforderlich) und Art. 6 Abs. 1 lit. f DSGVO (berechtigtes Interesse dieser Personen und von dir an einer vollständigen, gemeinsamen bzw. richtigen Erklärung).',
         'Nutzung externer KI-Assistenten auf deine Veranlassung: Art. 6 Abs. 1 lit. a DSGVO (Einwilligung) bzw. Art. 6 Abs. 1 lit. b DSGVO (Vertragserfüllung).',
-        'Antworten der Eule ohne persönliche Kennungen: Art. 6 Abs. 1 lit. b DSGVO (Vertrag). Übermittlung persönlicher Daten an das Sprachmodell: Art. 6 Abs. 1 lit. a DSGVO, für die Religionszugehörigkeit Art. 9 Abs. 2 lit. a DSGVO (ausdrückliche Einwilligung). Du kannst die Einwilligung jederzeit mit Wirkung für die Zukunft unter „Profil → Datenschutz → Eule und persönliche Daten“ widerrufen; danach entfernen wir diese Angaben wieder, bevor etwas an das Sprachmodell geht.',
-        'Absicherung deines Kontos (Sitzungen, Anmeldeschutz, Prüfung auf bekannte geleakte Passwörter): Art. 6 Abs. 1 lit. f DSGVO (berechtigtes Interesse an einem sicheren Dienst).',
-        'Rechnungen und Aufbewahrung von Geschäftsunterlagen: Art. 6 Abs. 1 lit. c DSGVO i. V. m. § 147 AO und § 257 HGB.',
+        'Antworten der Eule und Auslesen von Dokumenten ohne persönliche Kennungen: Art. 6 Abs. 1 lit. b DSGVO (Vertrag). Übermittlung persönlicher Daten an die Sprachmodelle: Art. 6 Abs. 1 lit. a DSGVO, für die Religionszugehörigkeit Art. 9 Abs. 2 lit. a DSGVO (ausdrückliche Einwilligung). Du kannst die Einwilligung jederzeit mit Wirkung für die Zukunft unter „Profil → Datenschutz → Eule und persönliche Daten“ widerrufen; danach entfernen wir diese Angaben wieder, bevor etwas an ein Sprachmodell geht.',
+        'Absicherung deines Kontos und des Dienstes (Sitzungen, Anmeldeschutz, Prüfung auf bekannte geleakte Passwörter, Server-Protokolle, Fehlerberichte): Art. 6 Abs. 1 lit. f DSGVO (berechtigtes Interesse an einem sicheren, funktionierenden Dienst).',
+        'Rechnungen und Aufbewahrung von Geschäftsunterlagen: Art. 6 Abs. 1 lit. c DSGVO i. V. m. § 147 AO und § 257 HGB. Aufbewahrung eingereichter Fassungen als Nachweis bis zum Ablauf der Festsetzungsfrist: Art. 6 Abs. 1 lit. f DSGVO.',
         'Daten Dritter in deiner Buchhaltung: Für die Daten deiner Geschäftspartner, Kunden und Beschäftigten bist du als Selbstständiger selbst verantwortlich (Art. 4 Nr. 7 DSGVO); wir verarbeiten sie nur in deinem Auftrag und nach deiner Weisung als Auftragsverarbeiter (Art. 28 DSGVO). Die Vereinbarung dazu steht in den AGB (§ 7). Die Kirchensteuer deiner Beschäftigten verarbeitest du für die Lohnsteuer (Art. 9 Abs. 2 lit. b DSGVO).',
         'Es gibt kein Tracking, keine Analyse- oder Werbe-Cookies und keine Weitergabe zu Werbezwecken.',
       ],
@@ -98,13 +106,15 @@ export function privacy(operator: Operator | null): readonly Section[] {
     {
       title: '4. Empfänger',
       paragraphs: [
-        'Hosting: Unsere Server und die Datenbank betreibt ein Rechenzentrumsanbieter in der EU als Auftragsverarbeiter.',
+        `Hosting: Unsere Server, die Datenbank, der Zwischenspeicher und die Protokolle betreibt ${HOSTING.provider} (Google) als Auftragsverarbeiter in der Region ${HOSTING.region} (${HOSTING.country}).`,
+        `Server-Protokolle und Fehlerberichte: Sie landen in Google Cloud Logging und Google Cloud Error Reporting, ebenfalls bei ${HOSTING.provider} als Auftragsverarbeiter.`,
         'E-Mail-Versand: Bestätigungs- und Passwort-Links versenden wir über Brevo (Sendinblue SAS, Frankreich) als Auftragsverarbeiter.',
         'Zahlungen: Stripe Payments Europe Ltd. (Irland) wickelt Zahlungen ab und ist dafür eigenständig verantwortlich.',
         'Anmeldung mit Google (nur wenn du sie wählst): Google Ireland Ltd. erhält die für die Anmeldung nötigen Daten.',
-        'Sprachmodell der Eule: Die Antworten der Eule erzeugt in der Regel Google (Gemini-Schnittstelle). Fällt dieser Anbieter aus oder wählst du im Chat ein anderes Modell, erzeugt sie Anthropic (Claude) bzw. OpenAI. Alle drei sind dafür unsere Auftragsverarbeiter, erhalten die oben unter „Eule“ genannten Daten und dürfen sie nicht für eigene Zwecke verwenden. Anthropic und OpenAI sitzen in den USA, auch Google kann außerhalb der EU verarbeiten; die Übermittlung erfolgt dann auf Grundlage des EU-US Data Privacy Framework bzw. der Standardvertragsklauseln.',
+        `Sprachmodelle (Eule, Themenprüfung, Auslesen von Dokumenten): Die Modelle stellen ${modelProviderList()} bereit. Welcher Anbieter eine Aufgabe übernimmt, hängt von der Einstellung des Betreibers, deiner Modellwahl im Chat und von Ausfällen ab; jeder von ihnen kann die oben unter „Eule“ und „Auslesen von Dokumenten“ genannten Daten erhalten. Sie sind dafür unsere Auftragsverarbeiter. Die Verarbeitung kann in den USA stattfinden; die Übermittlung erfolgt auf Grundlage des EU-US Data Privacy Framework bzw. der Standardvertragsklauseln.`,
         'Eigener KI-Assistent (nur wenn du ihn verbindest): Verknüpfst du einen externen Assistenten (z. B. Anthropic Claude, OpenAI), werden Daten auf deine Weisung an den jeweiligen Anbieter übertragen. Bei Anbietern in Drittländern (z. B. USA) erfolgt die Übermittlung auf Grundlage deiner ausdrücklichen Einwilligung (Art. 49 Abs. 1 lit. a DSGVO) bzw. von Angemessenheitsbeschlüssen. Du kannst die Verknüpfung jederzeit mit sofortiger Wirkung unter „Profil → Verbundene Assistenten“ widerrufen.',
         'Sprachmodell für das Diktieren (nur wenn du zustimmst): Für das Diktieren im Chat lädt die App einmalig ein Sprachmodell von Hugging Face, Inc. (USA) bzw. dessen Download-Servern (hf.co). Dabei erhält Hugging Face deine IP-Adresse und den Zeitpunkt des Abrufs, sonst nichts: Dein Ton und der erkannte Text bleiben auf deinem Gerät. Die Übermittlung in die USA erfolgt auf Grundlage deiner ausdrücklichen Einwilligung (Art. 6 Abs. 1 lit. a und Art. 49 Abs. 1 lit. a DSGVO), die du im Dialog vor dem Download gibst. Das Modell bleibt im Speicher deines Browsers, enthält keine Daten von dir und lässt sich unter „Profil → Sprachmodell löschen“ entfernen.',
+        'Texterkennung: Die Programme und Sprachdaten für die Texterkennung in deinem Browser liefert unser eigener Server aus; dafür wird kein anderer Anbieter angefragt.',
         'Passwortprüfung: Bei der Registrierung prüfen wir dein Passwort gegen die Datenbank „Have I Been Pwned“. Dabei verlassen nur die ersten fünf Zeichen eines Hash-Werts unseren Server, nie dein Passwort.',
         'Deine Einkommensteuererklärung übermitteln wir nicht an das Finanzamt. Du druckst die Formulare aus und reichst sie selbst ein; die Ausfüllhilfe für Selbstständige tippst du selbst in Mein ELSTER ab.',
         'E-Bilanz (nur Selbstständige mit Bilanz, nur wenn du sie ausdrücklich absendest und der Betreiber die Übermittlung eingerichtet hat): Die Bilanz und Gewinn- und Verlustrechnung samt deiner Steuernummer und deinem Namen gehen über die ELSTER-Schnittstelle an die Finanzverwaltung (§ 5b EStG, Art. 6 Abs. 1 lit. c DSGVO). Wir behalten das Übertragungsprotokoll in deinem Buch.',
@@ -113,14 +123,20 @@ export function privacy(operator: Operator | null): readonly Section[] {
     {
       title: '5. Speicherdauer',
       paragraphs: [
-        'Deine Daten speichern wir, solange du dein Konto nutzt. Löschst du dein Konto, entfernen wir Konto, Profil und alle Steuerdaten sofort; das Zugriffsprotokoll wird anonymisiert. Daten, die wir aus gesetzlichen Gründen aufbewahren müssen, sperren wir bis zum Fristablauf.',
+        'Konto: Deine Daten speichern wir, solange du dein Konto nutzt. Löschst du dein Konto, entfernen wir Konto, Profil und Steuerdaten sofort aus der Datenbank, ausgenommen die gesperrten Daten unten.',
+        `Gastmodus: Änderst du als Gast ${days(RETENTION.guestDataDays)} lang nichts, löschen wir alle Daten zu deiner Gast-Kennung. Das Gast-Cookie läuft nach ${days(RETENTION.guestCookieDays)} ab. Legst du ein Konto an, übernehmen wir deine Angaben in das Konto.`,
+        `Anmeldungen: Eine Sitzung endet ${days(RETENTION.sessionIdleDays)} nach ihrer letzten Nutzung, spätestens ${days(RETENTION.sessionAbsoluteDays)} nach der Anmeldung. Den Eintrag der Sitzung mit IP-Adresse und Gerätetyp löschen wir, wenn du dich abmeldest, die Sitzung in deiner Geräteliste beendest oder dein Konto löschst; eine abgelaufene Sitzung gewährt keinen Zugang mehr.`,
+        `Sicherungen: Die Datenbank sichern wir täglich und bewahren die letzten ${RETENTION.databaseBackups} Sicherungen sowie eine Wiederherstellung auf jeden Zeitpunkt der letzten ${days(RETENTION.databasePitrDays)} auf. Gelöschte Daten verschwinden aus den Sicherungen deshalb spätestens nach dieser Zeit. Die Schlüssel zu deinen Belegdateien liegen in einer eigenen Datenbank mit ${RETENTION.keystoreBackups} Sicherungen und ${days(RETENTION.keystorePitrDays)} Wiederherstellungszeitraum; sind sie gelöscht, lassen sich auch gesicherte Belegdateien nicht mehr lesen.`,
+        'Zugriffsprotokoll: Löschst du dein Konto, entfernen wir deine Kennung aus dem Zugriffsprotokoll. Die anonymisierten Einträge bewahren wir ohne feste Frist als Nachweis auf; sie lassen sich niemandem mehr zuordnen.',
+        `Gesetzliche Aufbewahrung: Daten über Zahlungen (Steuerjahr, Stufe, Betrag, Status, Kennung des Zahlungsvorgangs) sperren wir bei einer Kontolöschung und bewahren sie ${RETENTION.legalHoldPaymentYears} Jahre ab Ende des Zahlungsjahres auf (§ 147 AO, § 257 HGB). Eingereichte Fassungen deiner Erklärung sperren wir bis zum Ablauf der regulären Festsetzungsfrist, ${RETENTION.legalHoldFilingVersionYears} Jahre ab Ende des Jahres der Einreichung (§ 169, § 170 AO). Gesperrte Daten nutzen wir für nichts anderes und löschen sie, wenn die Frist endet.`,
+        'Server-Protokolle und Fehlerberichte bewahrt Google Cloud Logging nach seiner Standardeinstellung 30 Tage auf.',
         'Selbstständige: Bücher, Belege und Buchungsprotokolle musst du selbst zehn Jahre aufbewahren (§ 147 AO, GoBD). Löschst du dein Konto, löschen wir auch dein Buch. Lade dir vorher den GoBD-Export und die Verfahrensdokumentation herunter; danach können wir sie nicht wiederherstellen.',
       ],
     },
     {
       title: '6. Deine Rechte',
       paragraphs: [
-        'Du hast das Recht auf Auskunft (Art. 15), Berichtigung (Art. 16), Löschung (Art. 17), Einschränkung (Art. 18), Datenübertragbarkeit (Art. 20) und Widerspruch (Art. 21 DSGVO). Export und Löschung kannst du jederzeit selbst unter „Profil → Datenschutz“ auslösen.',
+        'Du hast das Recht auf Auskunft (Art. 15), Berichtigung (Art. 16), Löschung (Art. 17), Einschränkung (Art. 18), Datenübertragbarkeit (Art. 20) und Widerspruch (Art. 21 DSGVO). Mit Konto kannst du Export und Löschung jederzeit selbst unter „Profil → Datenschutz“ auslösen. Als Gast gibt es dort keinen Export und keine Löschung; schreib uns dafür (Kontakt siehe Impressum) oder leg ein Konto an.',
         'Du kannst dich bei einer Datenschutz-Aufsichtsbehörde beschweren, insbesondere in dem Bundesland deines Wohnsitzes.',
       ],
     },

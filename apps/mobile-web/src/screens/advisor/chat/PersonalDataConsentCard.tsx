@@ -8,6 +8,7 @@ import {
   useOwlModeControllerGetPersonalDataConsent,
   useOwlModeControllerSetPersonalDataConsent,
 } from '@steuereule/api-client'
+import { modelProviderList } from '@steuereule/core'
 import { APP_NS } from '../../../i18n/resources'
 
 /**
@@ -19,16 +20,13 @@ export interface PersonalDataConsentCardProps {
   /** Called once the consent is stored: the chat answers the user's last message again, now with it. */
   readonly onGranted?: (() => void) | undefined
   /**
-   * The provider of the model this conversation asks (`google-genai`, `anthropic`, `openai`): the card
-   * names who receives the data. Null or absent when none is configured or known.
+   * The provider of the model this conversation asks. The card no longer names only this one: the
+   * consent is one for every provider the API can call (fallback, model choice), and the card says so.
    */
   readonly provider?: string | null | undefined
 }
 
-/** The providers the card can name; anything else is named without a company. */
-const NAMED_PROVIDERS: ReadonlySet<string> = new Set(['google-genai', 'anthropic', 'openai'])
-
-export function PersonalDataConsentCard({ onGranted, provider }: PersonalDataConsentCardProps = {}) {
+export function PersonalDataConsentCard({ onGranted }: PersonalDataConsentCardProps = {}) {
   const { t: tr } = useTranslation(APP_NS)
   const theme = useTheme()
   const queryClient = useQueryClient()
@@ -81,7 +79,7 @@ export function PersonalDataConsentCard({ onGranted, provider }: PersonalDataCon
   return (
     <View style={box} accessibilityRole="alert" accessibilityLabel={tr('owlPersonalData.card.title')}>
       <Text style={title}>{tr('owlPersonalData.card.title')}</Text>
-      <Text style={body}>{tr('owlPersonalData.card.body', { processor: tr(`owlPersonalData.card.processor.${provider && NAMED_PROVIDERS.has(provider) ? provider : 'other'}`) })}</Text>
+      <Text style={body}>{tr('owlPersonalData.card.body', { providers: modelProviderList() })}</Text>
       {failed ? <Text style={body}>{tr('owlPersonalData.card.error')}</Text> : null}
       <View style={actions}>
         <Button variant="primaer" onPress={() => void allow()} disabled={setConsent.isPending}>

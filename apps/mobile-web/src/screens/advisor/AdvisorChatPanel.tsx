@@ -1,6 +1,7 @@
 import { ScrollView, Text, View } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { AiChip, useTheme } from '@steuereule/ui'
+import { modelCompanyList } from '@steuereule/core'
 import { browserDictationEngine } from '../../lib/dictation/engine'
 import { SummaryDivider } from './chat/ContextRing'
 import { OwlMark } from '../../marks/OwlMark'
@@ -136,8 +137,16 @@ export function AdvisorChatPanel({
   ) : null
   const quickChipRow = <AdvisorChatQuickChips chat={chat} quickChips={quickChips} opening={opening} variant={variant} styles={styles} />
 
+  // Said before the first message leaves (WEB-25): who receives it and what is removed first.
+  const privacyNotice = isEmpty ? (
+    <Text style={styles.streamStepText} testID="advisor-privacy-notice">
+      {tr('advisor.chat.privacyNotice', { providers: modelCompanyList() })}
+    </Text>
+  ) : null
+
   const body = (
     <>
+      {privacyNotice}
       {/* On the page the quick starts sit under the centred input of an empty chat. */}
       {variant === 'page' ? null : quickChipRow}
 

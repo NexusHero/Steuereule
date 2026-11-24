@@ -91,6 +91,15 @@ describe('AusdruckScreen (ADR-0050)', () => {
     await waitFor(() => expect(openCheckout).toHaveBeenCalledWith('https://checkout.stripe.com/c/pay/cs_test_1'))
   })
 
+  it('before the payment: the beta notice and real links to terms, withdrawal and privacy policy (WEB-7, WEB-20)', async () => {
+    mock('offen')
+    renderScreen()
+    await screen.findByTestId('ausdruck-bezahlen')
+    expect(screen.getByTestId('beta-hinweis')).toBeTruthy()
+    expect(screen.getByTestId('rechtliches-link-agb').getAttribute('href')).toBe('/rechtliches/agb')
+    expect(screen.getByTestId('rechtliches-link-datenschutz').getAttribute('href')).toBe('/rechtliches/datenschutz')
+  })
+
   it('back from Stripe with "erfolg" but not yet confirmed: a waiting state, never a download, no second payment', async () => {
     mock('offen')
     renderScreen({ payment: 'erfolg' })
@@ -208,10 +217,10 @@ describe('AusdruckScreen (ADR-0050)', () => {
     expect(screen.queryByText(/Noch nicht bestätigt/)).toBeNull()
   })
 
-  it('payment not configured on this environment: says so, offers nothing to click', async () => {
+  it('payment not configured: says so without developer wording, offers nothing to click', async () => {
     mock('nicht-verfuegbar')
     renderScreen()
-    expect(await screen.findByText('Die Bezahlung ist auf dieser Umgebung noch nicht eingerichtet.')).toBeTruthy()
+    expect(await screen.findByText('Die Bezahlung ist gerade nicht möglich. Bitte versuch es später noch einmal.')).toBeTruthy()
     expect(screen.queryByTestId('ausdruck-bezahlen')).toBeNull()
   })
   it('names what is really missing for the Anlage Kind, not everything that could be', async () => {

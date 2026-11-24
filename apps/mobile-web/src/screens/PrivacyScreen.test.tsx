@@ -251,8 +251,9 @@ describe('DatenschutzScreen', () => {
       fireEvent.click(screen.getByText('Konto & Daten löschen'))
 
       await screen.findByText('Bevor du löschst')
-      expect(screen.getByText(/anonymisiert erhalten/)).toBeTruthy()
-      expect(screen.getByText(/Löschschutz/)).toBeTruthy()
+      expect(screen.getByText(/anonymisiert als Nachweis erhalten/)).toBeTruthy()
+      // Backup and legal-hold periods print from @steuereule/core (LEGAL-4).
+      expect(screen.getByText(/spätestens nach 7 Tagen.*Zahlungen 8 Jahre, eingereichte Fassungen 4 Jahre/)).toBeTruthy()
       // A single, explicit assertion against the actual current wording — not a `getByText(a)
       // ?? getByText(b)` "either" that can never actually fall through to `b` (`getByText`
       // throws instead of returning null on no match, per Musti's T1, F5).
@@ -507,7 +508,7 @@ describe('DatenschutzScreen', () => {
       await screen.findByText('Anmeldungen & Geräte')
       expect(
         screen.getByText(
-          'Bei jeder Anmeldung speichern wir die IP-Adresse und den Gerätetyp (User-Agent) der jeweiligen Sitzung — das war schon immer so. Neu ist: Wenn du dich per QR-Code von einem neuen Gerät aus anmeldest, siehst du diese Angaben jetzt selbst — als Vergleichshilfe auf dem Bestätigungsbildschirm und in deiner eigenen Geräte-Liste in Profil, wo du jede Sitzung einzeln abmelden kannst.',
+          'Bei jeder Anmeldung speichern wir die IP-Adresse und den Gerätetyp (User-Agent) der Sitzung. Meldest du dich per QR-Code von einem neuen Gerät an, siehst du diese Angaben auf dem Bestätigungsbildschirm und in deiner Geräte-Liste im Profil, wo du jede Sitzung einzeln abmelden kannst.',
         ),
       ).toBeTruthy()
     })
@@ -532,7 +533,7 @@ describe('DatenschutzScreen', () => {
     it('renders both disclosures and the attribution in English too (ADR-0006)', async () => {
       renderPrivacy({ lng: 'en' })
       await screen.findByText('Sign-ins & devices')
-      expect(screen.getByText(/QR code, you now see that data yourself/)).toBeTruthy()
+      expect(screen.getByText(/via QR code, you see that data on the confirmation screen/)).toBeTruthy()
       expect(screen.getByText(/never leaves our infrastructure/)).toBeTruthy()
       expect(screen.getByText('Country data: DB-IP.com, licensed CC BY 4.0.')).toBeTruthy()
     })

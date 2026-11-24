@@ -12,6 +12,8 @@ import { APP_NS } from '../../i18n/resources'
 import { isRunningTaxYear } from '../../config/taxYear'
 import { makePrivacyStyles } from '../privacy/styles'
 import { ErrorState, LoadingState } from '../shared/ScreenState'
+import { BetaNotice } from '../shared/BetaNotice'
+import { LegalLinks } from '../legal/LegalLinks'
 import { GlassFormPreview } from './GlassFormPreview'
 import { loadPrintout } from './printoutDownload'
 import { checkoutRefusalOf, priceText, usePaymentConfirmation } from '../shared/usePaymentConfirmation'
@@ -312,6 +314,8 @@ export function PrintoutScreen({ year, payment, onBack, onCompleteDetails, onCom
           <Text style={styles.hint} testID="ausdruck-preis">
             {price ? t('zahlung.preis', { preis: price, year }) : t('zahlung.preisUnbekannt')}
           </Text>
+          <BetaNotice />
+          <LegalLinks />
         </View>
       ) : null}
 

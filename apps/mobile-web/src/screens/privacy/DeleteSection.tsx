@@ -1,5 +1,6 @@
 import { View, Text, ActivityIndicator } from 'react-native'
 import { Button, Card, Feld, Input, useTheme } from '@steuereule/ui'
+import { RETENTION } from '@steuereule/core'
 import { makePrivacyStyles } from './styles'
 
 export type DeleteFlow =
@@ -11,7 +12,7 @@ export type DeleteFlow =
   | { readonly kind: 'guestBlocked' }
 
 interface DeleteSectionProps {
-  readonly tr: (key: string) => string
+  readonly tr: (key: string, options?: Readonly<Record<string, string | number>>) => string
   readonly flow: DeleteFlow
   readonly password: string
   readonly onPasswordChange: (value: string) => void
@@ -54,7 +55,11 @@ export function DeleteSection({
       {flow.kind === 'offer' ? (
         <View>
           <Text style={styles.offerHeading}>{tr('datenschutz.delete.offer.heading')}</Text>
-          <Text style={styles.warningBody}>{tr('datenschutz.delete.offer.warning1')}</Text>
+          <Text style={styles.warningBody}>{tr('datenschutz.delete.offer.warning1', {
+            backupDays: RETENTION.databasePitrDays,
+            paymentYears: RETENTION.legalHoldPaymentYears,
+            filingYears: RETENTION.legalHoldFilingVersionYears,
+          })}</Text>
           <Text style={styles.warningBody}>{tr('datenschutz.delete.offer.warning2')}</Text>
           <View style={styles.buttonSpacer}>
             <Button variant="leise" onPress={onExportFirst} testID="konto-loeschen-erst-exportieren">

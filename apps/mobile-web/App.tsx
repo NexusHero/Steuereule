@@ -206,6 +206,7 @@ function RegistrationRoute({ navigation }: NativeStackScreenProps<RootStackParam
     <RegistrationScreen
       onDone={() => navigation.replace('Onboarding')}
       onLogin={() => carryAssistantSignIn('/login') || navigation.replace('Login')}
+      onLegal={(page) => navigation.navigate('Legal', { page })}
     />
   )
 }

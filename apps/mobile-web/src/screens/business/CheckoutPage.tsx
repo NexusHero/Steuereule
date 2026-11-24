@@ -9,6 +9,8 @@ import type { ApiProblem } from './businessKit'
 import { attempt } from './useBusiness'
 import type { BusinessPageProps } from './BusinessScreen'
 import { checkoutRefusalOf, priceText } from '../shared/usePaymentConfirmation'
+import { LegalLinks } from '../legal/LegalLinks'
+import { BetaNotice } from '../shared/BetaNotice'
 
 /** Unlocking the year at the self-employment tier (ADR-0101 §21): fill-in help and exports are part of it. */
 export function CheckoutPage({ taxYear, onBack, onOpenPage, openCheckout = (url) => window.location.assign(url) }: BusinessPageProps & { readonly openCheckout?: (url: string) => void }) {
@@ -58,6 +60,8 @@ export function CheckoutPage({ taxYear, onBack, onOpenPage, openCheckout = (url)
         <Button onPress={() => void pay()} disabled={checkout.isPending || refusal === 'already-paid'} testID="checkout-selbststaendig">
           {tr('business.freischalten.knopf')}
         </Button>
+        <BetaNotice />
+        <LegalLinks />
       </Section>
     </BusinessFrame>
   )

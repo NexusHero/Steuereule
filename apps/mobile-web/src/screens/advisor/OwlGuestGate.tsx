@@ -34,9 +34,7 @@ export function GuestOwlGate({ onDone = () => {}, onBack, onRegister, onLogin }:
             {tr('eule.heroBody', 'Sie kennt dein Steuerjahr und sagt dir, wo Geld liegen bleibt — mit Rechtsgrundlage, damit du selbst entscheidest.')}
           </Text>
           <View style={styles.privacyBadge} testID="eule-privacy-badge">
-            <Text style={styles.privacyBadgeText}>
-              🔒 Mandantengeheimnis aktiv — Keine Klarnamen, Steuer-IDs oder IBANs an KI
-            </Text>
+            <Text style={styles.privacyBadgeText}>{tr('eule.guest.privacyBadge')}</Text>
           </View>
         </View>
       </View>

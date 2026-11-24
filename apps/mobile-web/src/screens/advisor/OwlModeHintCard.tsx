@@ -22,13 +22,8 @@ export function OwlModeHintCard({ owl, onAcceptPath, styles }: OwlModeHintCardPr
       {cards.length === 0 ? (
         <Card style={styles.emptyCard}>
           <Text style={styles.emptyTitle}>{tr('eule.emptyTitle', 'Alles geprüft. Keine offenen Fragen!')}</Text>
-          <Text style={styles.emptyHelp}>
-            {tr(
-              'eule.emptyHelp',
-              'Deine Angaben sind schlüssig. Sobald neue Belege oder Gesetzesänderungen vorliegen, meldet sich die Eule wieder.',
-            )}
-          </Text>
-          <Text style={styles.rechtsstand}>{tr('eule.rechtsstand', 'Rechtsstand: 01.01.2025 · Zuletzt geprüft: heute')}</Text>
+          <Text style={styles.emptyHelp}>{tr('eule.emptyHelp')}</Text>
+          <Text style={styles.rechtsstand}>{tr('eule.rechtsstand')}</Text>
         </Card>
       ) : activeCard ? (
         <View>
