@@ -47,6 +47,7 @@ import {
 } from '@steuereule/core'
 import { HOUSEHOLD_AND_HEALTH_BOOSTERS } from '../config/features.js'
 import { AuditService } from '../audit/audit.service.js'
+import { PERSON_B_CONSENT_MISSING } from '../common/partner-consent-missing.js'
 import { appendReadAudit, jointPartnerOf } from '../common/read-audit.js'
 import type { CommuteInputs } from '../commute/commute.repository.js'
 import type { MasterDataRecord } from '../master-data/master-data.repository.js'
@@ -346,6 +347,9 @@ export class TaxEstimateService {
   private async marriedCouple(userId: string, year: number, boostersEnabled: boolean): Promise<TaxEstimateStatus> {
     const { coupling: link } = await this.cases.read(userId, year, ['coupling'])
     if (!link || link.filingType !== 'zusammen') return { kind: 'offen', missing: ['veranlagungsart'] }
+    // Decision 3: a couple's figure needs both; without Person B's consent for the year there is none, rather
+    // than one that counts B as having no income.
+    if (link.personBWithheld) return { kind: 'offen', missing: [PERSON_B_CONSENT_MISSING] }
     const [a, b] = await Promise.all([
       this.income(link.personAUserId, year, boostersEnabled),
       link.personBUserId ? this.income(link.personBUserId, year, boostersEnabled) : Promise.resolve(null),

@@ -37,7 +37,32 @@ const sql = readdirSync(migrationsDir)
 const tablesWith = (pattern: RegExp): Set<string> => new Set([...sql.matchAll(pattern)].map((match) => match[1]!))
 const enabled = tablesWith(/ALTER TABLE "([^"]+)" ENABLE ROW LEVEL SECURITY/g)
 const forced = tablesWith(/ALTER TABLE "([^"]+)" FORCE ROW LEVEL SECURITY/g)
-const withPolicy = tablesWith(/CREATE POLICY \w+ ON "([^"]+)"/g)
+/** Replays CREATE and DROP POLICY in migration order: a table has a policy if one created is still in place. */
+function tablesWithPolicy(migrationSql: string): Set<string> {
+  const policies = new Map<string, Set<string>>()
+  for (const match of migrationSql.matchAll(/(CREATE|DROP) POLICY (?:IF EXISTS )?(\w+) ON "([^"]+)"/g)) {
+    const [, verb, policy, table] = match as unknown as [string, string, string, string]
+    const current = policies.get(table) ?? new Set<string>()
+    if (verb === 'CREATE') current.add(policy)
+    else current.delete(policy)
+    policies.set(table, current)
+  }
+  return new Set([...policies].filter(([, names]) => names.size > 0).map(([table]) => table))
+}
+const withPolicy = tablesWithPolicy(sql)
+
+/** The policy statements in place on each table after every migration ran: table → statement text. */
+function policiesInPlace(migrationSql: string): Map<string, string[]> {
+  const byTable = new Map<string, Map<string, string>>()
+  for (const match of migrationSql.matchAll(/(CREATE|DROP) POLICY (?:IF EXISTS )?(\w+) ON "([^"]+)"[^;]*;/g)) {
+    const [statement, verb, policy, table] = match as unknown as [string, string, string, string]
+    const current = byTable.get(table) ?? new Map<string, string>()
+    if (verb === 'CREATE') current.set(policy, statement)
+    else current.delete(policy)
+    byTable.set(table, current)
+  }
+  return new Map([...byTable].map(([table, policies]) => [table, [...policies.values()]]))
+}
 const disabled = tablesWith(/ALTER TABLE "([^"]+)" (?:DISABLE|NO FORCE) ROW LEVEL SECURITY/g)
 
 const models = Prisma.dmmf.datamodel.models.map((model) => ({ name: model.name, table: model.dbName ?? model.name }))
@@ -69,10 +94,57 @@ describe('row-level security covers every table with personal data', () => {
     expect(KeystorePrisma.dmmf.datamodel.models.map((model) => model.name).sort()).toEqual([...KEYSTORE_RESIDUAL].sort())
   })
 
+  // Decision 3 (API-3): Person A reaches Person B's rows of a year only when B agreed to that year. A table whose
+  // rows carry a tax year and are owned through "userId" asks for the agreed year, not for "some agreed year".
+  it('a table with a tax year lets Person A reach Person B only for the years B agreed to', () => {
+    const inPlace = policiesInPlace(sql)
+    const yearTables = Prisma.dmmf.datamodel.models
+      .filter((model) => model.fields.some((field) => (field.dbName ?? field.name) === 'steuerjahr') && model.fields.some((field) => field.name === 'userId'))
+      .map((model) => model.dbName ?? model.name)
+    expect(yearTables.length).toBeGreaterThan(20)
+    const offenders = yearTables.filter((table) => (inPlace.get(table) ?? []).some((statement) => statement.includes('visible_owners()') || !statement.includes('agreed_partner_years()')))
+    expect(offenders, 'use the condition of 20261206090000_review_partner_consent_per_year').toEqual([])
+  })
+
+  it('no policy lets every row through', () => {
+    expect(sql).not.toMatch(/(?:USING|WITH CHECK)\s*\(\s*true\s*\)/i)
+  })
+
+  it('a policy dropped by a later migration no longer counts; one replaced does', () => {
+    expect([...tablesWithPolicy('CREATE POLICY a ON "T" USING (x); DROP POLICY IF EXISTS a ON "T";')]).toEqual([])
+    expect([...tablesWithPolicy('CREATE POLICY a ON "T" USING (x); DROP POLICY a ON "T"; CREATE POLICY b ON "T" USING (y);')]).toEqual(['T'])
+  })
+
   it('the runtime role owns nothing and bypasses nothing', () => {
     expect(sql).toMatch(/CREATE ROLE steuereule_app NOLOGIN NOSUPERUSER NOBYPASSRLS/)
     expect(sql).not.toMatch(/ALTER (?:TABLE|SCHEMA) [^;]* OWNER TO steuereule_app/)
     expect(sql).not.toMatch(/ALTER ROLE steuereule_app[^;]*BYPASSRLS/)
+  })
+})
+
+describe('row-level security lock: the role model', () => {
+  const migrations = readdirSync(migrationsDir, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => entry.name)
+    .sort()
+    .map((name) => readFileSync(path.join(migrationsDir, name, 'migration.sql'), 'utf8'))
+
+  it('the append-only exception for re-encryption asks who owns the table, never for a role name', () => {
+    const definitions = migrations.flatMap((text) => [...text.matchAll(/CREATE OR REPLACE FUNCTION steuereule_append_only\(\)[\s\S]*?\$\$ LANGUAGE plpgsql;/g)].map((match) => match[0]))
+    const current = definitions.at(-1) ?? ''
+    expect(current).toContain("pg_has_role(current_user, (SELECT c.relowner FROM pg_class c WHERE c.oid = TG_RELID), 'USAGE')")
+    expect(current).not.toMatch(/current_user\s*(?:<>|!=|=)\s*'/)
+    expect(current).not.toMatch(/SECURITY DEFINER/)
+  })
+
+  it('no migration hands the app role or PUBLIC ownership, CREATE on a schema, or a way around the policies', () => {
+    const all = migrations.join('\n')
+    expect(all).toMatch(/REVOKE CREATE ON SCHEMA public FROM PUBLIC;/)
+    expect(all).not.toMatch(/GRANT (?:ALL|CREATE)[^;]* ON SCHEMA [^;]* TO (?:steuereule_app|PUBLIC)/i)
+    expect(all).not.toMatch(/OWNER TO steuereule_app/)
+    expect(all).not.toMatch(/SECURITY DEFINER/i)
+    expect(all).not.toMatch(/NO FORCE ROW LEVEL SECURITY|DISABLE ROW LEVEL SECURITY/)
+    expect(all).not.toMatch(/(?:CREATE|ALTER) ROLE [^;]*\bLOGIN\b/)
   })
 })
 
@@ -131,8 +203,16 @@ describe('every bypass of the row-level policies is listed', () => {
       if (reason === 'test-fixture') expect(used.has(reason)).toBe(false)
       else expect(used.has(reason), `reason ${reason} is unused: strike it`).toBe(true)
     }
-    const fixtureCallers = sources.filter(({ text }) => text.includes('useTestFixtureIdentityOutsideRequests')).map(({ file }) => file)
-    expect(fixtureCallers).toEqual([IDENTITY_MODULE])
+  })
+
+  it('nothing in src runs a query as test-fixture or without a request by default', () => {
+    // The identity comes from a request, a named system path, or nothing (no rows). No module-level fallback.
+    const identity = readFileSync(path.join(apiRoot, IDENTITY_MODULE), 'utf8')
+    expect(identity).toMatch(/return identityStore\.getStore\(\)\n/)
+    expect(identity).not.toMatch(/process\.env\.VITEST|let \w+: DatabaseIdentity/)
+    for (const { file, text } of sources) {
+      if (file !== IDENTITY_MODULE) expect(text, file).not.toMatch(/['"]test-fixture['"]/)
+    }
   })
 
   it('only the Prisma layer sets the identity settings', () => {
@@ -144,6 +224,11 @@ describe('every bypass of the row-level policies is listed', () => {
     for (const { file, text } of sources) {
       // database-url.ts picks the runtime role and says in its comment why that role has no BYPASSRLS.
       const code = file === 'src/config/database-url.ts' ? text.replace(/\/\*\*[\s\S]*?\*\//g, '') : text
+      if (file === 'src/config/assert-database-role.ts') {
+        // The boot check reads these attributes of its own login in order to refuse them; it changes nothing.
+        expect(/\$executeRaw|\$queryRawUnsafe|row_security\s*=\s*off/.test(text), file).toBe(false)
+        continue
+      }
       expect(/SET\s+(?:LOCAL\s+)?ROLE|row_security\s*=\s*off|BYPASSRLS/i.test(code), file).toBe(false)
     }
   })

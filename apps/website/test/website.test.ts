@@ -41,6 +41,15 @@ function urls(html: string): string[] {
   return [...attributes, ...css, ...imports]
 }
 
+/**
+ * Euro amounts the page may print because they are no price of ours: the example refund in the mock, and the
+ * employee lump sum the build prints from the tax parameters. Anything else with a currency fails.
+ */
+function notAPrice(html: string): string[] {
+  const lumpSum = /Arbeitnehmer-Pauschbetrag von ([\d.]+\s€)/.exec(html)?.[1]
+  return ['1.300 – 1.600 €', ...(lumpSum ? [lumpSum] : [])]
+}
+
 const isAbsolute = (url: string) => /^(?:[a-z]+:)?\/\//i.test(url)
 
 function build(appOrigin: string): { dir: string; html: string } {
@@ -102,8 +111,15 @@ describe('website build', () => {
     expect(limits).toContain(`${PRODUCT_LIMITS.advisorMessagesPerMinute} Nachrichten pro Minute`)
     expect(limits).toContain(`${PRODUCT_LIMITS.advisorConversationsPerYear} Gespräche`)
     expect(html).toContain(`nach ${RETENTION.guestDataDays} Tagen ohne Änderung`)
-    // The amount lives in the Stripe price: the page names no price of its own.
+    // The amount lives in the Stripe price: the page names no price of its own (ADR-0111 decision 1), in any
+    // spelling, and that includes "0 €". The price section carries no amount at all; elsewhere the only euro
+    // amounts are tax figures that are no price: the example refund in the mock and allowances from the law.
     expect(html).not.toMatch(/\d+,\d\d\s*€/)
+    const priceSection = html.slice(html.indexOf('class="preis"'))
+    expect(priceSection.length).toBeGreaterThan(0)
+    expect(priceSection.slice(0, priceSection.indexOf('</section>'))).not.toMatch(/€|&euro;|\bEUR\b|\bEuro\b/i)
+    const amounts = [...html.replace(/<[^>]+>/g, ' ').matchAll(/[\d.,–\s-]*\d\s*(?:€|EUR\b|Euro\b)/g)].map((match) => match[0].trim())
+    expect(amounts.filter((amount) => !notAPrice(html).includes(amount))).toEqual([])
   })
 
   it('keeps none of the claims the code contradicts (SITE-3, SITE-5, SITE-6, SITE-7, H2-38)', () => {

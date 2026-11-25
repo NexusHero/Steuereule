@@ -21,6 +21,7 @@ export class PrismaAccountIdentityRepository implements AccountIdentityRepositor
       name: user.name,
       emailVerified: user.emailVerified,
       createdAt: user.createdAt,
+      unverifiedWarningSentAt: user.unverifiedWarningSentAt ?? null,
       authProviders,
     }
   }

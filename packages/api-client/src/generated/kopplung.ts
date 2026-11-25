@@ -169,6 +169,11 @@ export type linkControllerSetResponse200 = {
   status: 200
 }
 
+export type linkControllerSetResponse400 = {
+  data: void
+  status: 400
+}
+
 export type linkControllerSetResponse401 = {
   data: void
   status: 401
@@ -182,7 +187,7 @@ export type linkControllerSetResponse403 = {
 export type linkControllerSetResponseSuccess = (linkControllerSetResponse200) & {
   headers: Headers;
 };
-export type linkControllerSetResponseError = (linkControllerSetResponse401 | linkControllerSetResponse403) & {
+export type linkControllerSetResponseError = (linkControllerSetResponse400 | linkControllerSetResponse401 | linkControllerSetResponse403) & {
   headers: Headers;
 };
 
@@ -504,5 +509,92 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
         TContext
       > => {
       return useMutation(getLinkControllerConsentMutationOptions(options), queryClient);
+    }
+
+export type linkControllerWithdrawConsentResponse200 = {
+  data: LinkResponseDto
+  status: 200
+}
+
+export type linkControllerWithdrawConsentResponse401 = {
+  data: void
+  status: 401
+}
+
+export type linkControllerWithdrawConsentResponse404 = {
+  data: void
+  status: 404
+}
+
+export type linkControllerWithdrawConsentResponseSuccess = (linkControllerWithdrawConsentResponse200) & {
+  headers: Headers;
+};
+export type linkControllerWithdrawConsentResponseError = (linkControllerWithdrawConsentResponse401 | linkControllerWithdrawConsentResponse404) & {
+  headers: Headers;
+};
+
+export const getLinkControllerWithdrawConsentUrl = (jahr: number,) => {
+
+
+
+
+  return `/v1/steuerjahre/${jahr}/kopplung/zustimmung`
+}
+
+export const linkControllerWithdrawConsent = async (jahr: number, options?: RequestInit): Promise<linkControllerWithdrawConsentResponseSuccess> => {
+
+  return httpClient<linkControllerWithdrawConsentResponseSuccess>(getLinkControllerWithdrawConsentUrl(jahr),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getLinkControllerWithdrawConsentMutationOptions = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof linkControllerWithdrawConsent>>, TError,{jahr: number}, TContext>, request?: SecondParameter<typeof httpClient>}
+): UseMutationOptions<Awaited<ReturnType<typeof linkControllerWithdrawConsent>>, TError,{jahr: number}, TContext> => {
+
+const mutationKey = ['linkControllerWithdrawConsent'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof linkControllerWithdrawConsent>>, {jahr: number}> = (props) => {
+          const {jahr} = props ?? {};
+
+          return  linkControllerWithdrawConsent(jahr,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type LinkControllerWithdrawConsentMutationResult = NonNullable<Awaited<ReturnType<typeof linkControllerWithdrawConsent>>>
+
+    export type LinkControllerWithdrawConsentMutationError = void
+
+    export const useLinkControllerWithdrawConsent = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof linkControllerWithdrawConsent>>, TError,{jahr: number}, TContext>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof linkControllerWithdrawConsent>>,
+        TError,
+        {jahr: number},
+        TContext
+      > => {
+      return useMutation(getLinkControllerWithdrawConsentMutationOptions(options), queryClient);
     }
 

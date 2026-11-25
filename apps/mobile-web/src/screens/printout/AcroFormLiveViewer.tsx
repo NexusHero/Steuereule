@@ -1,3 +1,4 @@
+import { apiFetch } from '../../net/apiFetch'
 import { useEffect, useRef, useState } from 'react'
 import { Platform, Pressable, Text, TextInput, View, type TextStyle, type ViewStyle } from 'react-native'
 import { ApiError, getApiClientBaseUrl, type LiveFormDto, type LiveFormInstanceDto } from '@steuereule/api-client'
@@ -68,7 +69,7 @@ export const OFFICIAL_VORDRUCKE: ReadonlyArray<{ readonly id: string; readonly t
 
 async function defaultLoadPdfTemplate(year: number, formular: string): Promise<PdfDocumentProxy> {
   const url = `${getApiClientBaseUrl()}/v1/steuerjahre/${year}/ausdruck/vorlage/${formular}`
-  const res = await fetch(url, { credentials: 'include' })
+  const res = await apiFetch(url, { credentials: 'include' })
   if (!res.ok) {
     // NC-12: a refusal is an ApiError, said in the shared wording, never „HTTP 404“.
     throw new ApiError(res.status, await res.json().catch(() => null), res.headers)

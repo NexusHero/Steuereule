@@ -4,6 +4,8 @@ import { http, HttpResponse } from 'msw'
 import type { LinkResponseDto, MasterDataResponseDto } from '@steuereule/api-client'
 import { server } from '../../test-msw-server'
 import { MasterDataScreen } from './MasterDataScreen'
+import { AuthClientProvider } from '../../auth/AuthClientProvider'
+import { createAppAuthClient } from '../../auth/auth-client'
 import { confirmAction } from '../../test-confirm'
 import { makeTestQueryClient, renderWithQuery } from '../../test-render'
 
@@ -27,7 +29,12 @@ const LEER: MasterDataResponseDto = {
 
 function renderScreen(taxYear?: number) {
   const queryClient = makeTestQueryClient()
-  renderWithQuery(<MasterDataScreen onBack={() => {}} taxYear={taxYear ?? 2026} />, { client: queryClient })
+  renderWithQuery(
+    <AuthClientProvider client={createAppAuthClient('http://localhost:3000')}>
+      <MasterDataScreen onBack={() => {}} taxYear={taxYear ?? 2026} />
+    </AuthClientProvider>,
+    { client: queryClient },
+  )
 }
 
 function input(testId: string, value: string) {
@@ -172,6 +179,25 @@ describe('StammdatenScreen (ADR-0050)', () => {
       expect(await screen.findByText(/Veranlagungsart 2025/)).toBeTruthy()
       fireEvent.click(screen.getByTestId('kopplung-zusammen'))
       await waitFor(() => expect(set).toEqual(['2025']))
+    })
+
+    it('a new invitation code on an older session asks for the step-up first, not an error', async () => {
+      let attempts = 0
+      server.use(
+        http.get('*/v1/stammdaten', () => HttpResponse.json(MARRIED)),
+        http.get('*/v1/steuerjahre/:jahr/kopplung', () => HttpResponse.json({ ...JOINT, invitationCode: null, invitationCodeValidUntil: null })),
+        http.put('*/v1/steuerjahre/:jahr/kopplung', () => {
+          attempts++
+          return HttpResponse.json({ code: 'FRESH_AUTH_REQUIRED', message: 'x' }, { status: 400 })
+        }),
+        http.get('*/api/auth/list-accounts', () => HttpResponse.json([{ providerId: 'credential' }])),
+        http.get('*/api/auth/passkey/list-user-passkeys', () => HttpResponse.json([])),
+      )
+      renderScreen(2025)
+      fireEvent.click(await screen.findByTestId('kopplung-einladung-erstellen'))
+      expect(await screen.findByTestId('kopplung-einladung-stepup')).toBeTruthy()
+      expect(attempts).toBe(1)
+      expect(screen.queryByTestId('kopplung-art-fehler')).toBeNull()
     })
 
     it('lets the invited partner redeem the code, and says plainly when it is unknown', async () => {

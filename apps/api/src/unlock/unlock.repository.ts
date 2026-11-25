@@ -9,9 +9,9 @@ export const UNLOCK_REPOSITORY = Symbol('UNLOCK_REPOSITORY')
 export type UnlockTier = 'standard' | 'selbststaendig'
 
 /**
- * A row's life: `offen` (session created) → `bezahlt` (webhook); `offen` → `abgelaufen` (the session
- * closed unpaid); `bezahlt` → `erstattet` | `angefochten` (refund, dispute); `angefochten` → `bezahlt`
- * (dispute won). Only `bezahlt` unlocks.
+ * `offen` (session created), `abgelaufen` (closed unpaid), `bezahlt`, `erstattet` (full refund), `angefochten`
+ * (dispute pending). Only `bezahlt` unlocks. The status is computed from the stored facts
+ * (`unlock-lifecycle.ts`), so the provider's events may arrive in any order and more than once.
  */
 export type UnlockRowStatus = 'offen' | 'bezahlt' | 'abgelaufen' | 'erstattet' | 'angefochten'
 
@@ -27,12 +27,15 @@ export interface UnlockRepository {
    * the row is rebuilt from `owner`, so a payment never lands without a record (API-4).
    */
   markPaid(sessionId: string, amountCents: number | null, am: Date, owner?: SessionOwner): Promise<void>
-  /** An open session that closed unpaid. */
+  /** A session that closed unpaid (expired, or its asynchronous payment failed). */
   markClosed(sessionId: string): Promise<void>
-  /** A paid session refunded or disputed: it no longer unlocks. */
-  revoke(sessionId: string, reason: 'erstattet' | 'angefochten'): Promise<void>
-  /** A disputed session whose dispute was won: it unlocks again. */
-  restore(sessionId: string): Promise<void>
+  /**
+   * A session refunded in full or disputed: it does not unlock, also when this arrives before the payment's
+   * own event. Like `markPaid`, a missing row is rebuilt from `owner`.
+   */
+  revoke(sessionId: string, reason: 'erstattet' | 'angefochten', owner?: SessionOwner): Promise<void>
+  /** The dispute was won: the session unlocks again once (or if) it is paid and not refunded. */
+  restore(sessionId: string, owner?: SessionOwner): Promise<void>
   /** Paid for at least `tier` (default `standard`). */
   isPaid(userId: string, taxYear: number, tier?: UnlockTier): Promise<boolean>
 }

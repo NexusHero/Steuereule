@@ -4,7 +4,7 @@ import type { PrismaClient } from '@prisma/client'
 import type { DeleteAccountResult, RetainedHold } from './account-deletion.repository.js'
 import { allowErasure } from '../personal-data/erasure.prisma.js'
 import { delegateName, genericDeletionEntries, PERSONAL_DATA_REGISTRY, type DeletionStep, type PersonalDataEntry } from '../personal-data/personal-data-registry.js'
-import { personIds, shadowIdOf } from '../common/shadow-id.js'
+import { personIds, shadowIdOf } from '../common/person-ids.js'
 
 export interface DeleteAccountTestHooks {
   simulateFailureAfterProfileStep?: () => void
@@ -170,9 +170,9 @@ export async function deleteAccountTransaction(
   prisma: PrismaClient,
   userId: string,
   hooks: DeleteAccountTestHooks = {},
+  now: Date = new Date(),
 ): Promise<DeleteAccountResult> {
   return prisma.$transaction(async (tx) => {
-    const now = new Date()
     const ids = personIds(userId, now)
     const [user, activeHolds] = await Promise.all([
       tx.user.findUnique({ where: { id: userId } }),

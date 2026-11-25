@@ -1,3 +1,4 @@
+import { apiFetch } from '../../net/apiFetch'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
@@ -19,7 +20,6 @@ import { createFrameBatcher } from './chat/frameBatcher'
 import { apiErrorText } from './chat/apiErrorText'
 import { followRun, type RunFrame } from './chat/runStream'
 import { advisorFailureText } from './chat/advisorFailureText'
-import { watchForSessionExpiry } from '../../net/sessionExpiry'
 import type { AbortedTurn, AdvisorPlanView, SendStreamingOptions, StreamOutcome } from './CopilotBridge.types'
 import {
   IDLE_STREAM,
@@ -225,7 +225,7 @@ export function useCopilotBridgeStreams({ taxYear, isAuthenticated, onSwitchYear
         const result = await followRun({
           open: () => open(controller.signal),
           resume: (runId, afterSeq) =>
-            fetch(`${getApiClientBaseUrl()}${getAdvisorControllerRunEventsUrl(taxYear, runId)}`, {
+            apiFetch(`${getApiClientBaseUrl()}${getAdvisorControllerRunEventsUrl(taxYear, runId)}`, {
               signal: controller.signal,
               credentials: 'include',
               headers: { Accept: 'text/event-stream', 'Last-Event-ID': String(afterSeq) },
@@ -243,8 +243,6 @@ export function useCopilotBridgeStreams({ taxYear, isAuthenticated, onSwitchYear
           // Always in words: a refusal the user cannot read helps nobody (real-data run, finding 5).
           // WEB-14: a 429 says when to retry, a 5xx is ours, a lapsed session is handled centrally; never raw text.
           const refusal = new ApiError(result.status, result.body)
-          // The stream is a raw fetch, outside the api client: a lapsed session is reported here (WEB-24).
-          watchForSessionExpiry(refusal)
           setChatError(advisorFailureText(refusal, tr, { unknown: tr('advisor.chat.requestRefused'), validation: tr('advisor.chat.requestRefused') }))
           return null
         }
@@ -294,7 +292,7 @@ export function useCopilotBridgeStreams({ taxYear, isAuthenticated, onSwitchYear
     async (message: string, activeScreen?: Screen, options?: SendStreamingOptions): Promise<StreamOutcome> => {
       if (!isAuthenticated) return null
       return followAnswer(message, (signal) =>
-        fetch(`${getApiClientBaseUrl()}${getAdvisorControllerStreamMessageUrl(taxYear)}`, {
+        apiFetch(`${getApiClientBaseUrl()}${getAdvisorControllerStreamMessageUrl(taxYear)}`, {
           method: 'POST',
           signal,
           credentials: 'include',
@@ -317,7 +315,7 @@ export function useCopilotBridgeStreams({ taxYear, isAuthenticated, onSwitchYear
       return followAnswer(
         null,
         (signal) =>
-          fetch(`${getApiClientBaseUrl()}${getAdvisorControllerRunEventsUrl(taxYear, runId)}`, {
+          apiFetch(`${getApiClientBaseUrl()}${getAdvisorControllerRunEventsUrl(taxYear, runId)}`, {
             signal,
             credentials: 'include',
             headers: { Accept: 'text/event-stream' },

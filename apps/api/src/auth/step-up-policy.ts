@@ -24,6 +24,8 @@ export type SensitiveAction =
   | 'grants-third-party'
   | 'exposes-other-person'
   | 'ends-account'
+  /** A consent that was given with the step-up is taken back with it (decision 3: Person B's year). */
+  | 'changes-consent'
   /** Not one of the rule's four, but the same proof since ADR-0107 L1: the whole account in one download. */
   | 'exports-account'
 
@@ -127,4 +129,46 @@ export function needsStepUp(path: string | undefined): boolean {
 
 export function isFreshSession(createdAt: Date | string | number, now = Date.now()): boolean {
   return now - new Date(createdAt).getTime() < STEP_UP_WINDOW_MS
+}
+
+/** The better-auth session a step-up decision is made for. */
+export interface StepUpSession {
+  readonly id: string
+  readonly userId: string
+  readonly createdAt: Date | string | number
+}
+
+/** `no-session`: nobody is signed in. `other-user`: the session is not the caller's. `stale`: neither fresh nor granted. */
+export type StepUpRefusal = 'no-session' | 'other-user' | 'stale'
+
+/** Thrown by {@link assertStepUp}; each caller turns the reason into the error of its transport. */
+export class StepUpRefusedError extends Error {
+  constructor(readonly reason: StepUpRefusal) {
+    super(`step-up refused: ${reason}`)
+    this.name = 'StepUpRefusedError'
+  }
+}
+
+export interface StepUpCheck {
+  /** The session read from the request; null or undefined when there is none. */
+  readonly session: StepUpSession | null | undefined
+  /** The user the request was established for, where a guard already did that; the session must be theirs. */
+  readonly expectedUserId?: string
+  /** Whether a step-up grant is recorded for this session and still valid. */
+  readonly hasGrant: (sessionId: string) => Promise<boolean>
+  readonly now?: number
+}
+
+/**
+ * THE step-up decision. The `/v1` guard, the export, the account deletion and the better-auth plugin all call
+ * this one function (`test/step-up-policy.test.ts` fails for a second copy), so they cannot disagree. It fails
+ * closed: without a session, or with a session of another user, nothing passes. Returns the session that passed.
+ */
+export async function assertStepUp(check: StepUpCheck): Promise<StepUpSession> {
+  const { session } = check
+  if (session === null || session === undefined || session.id.length === 0) throw new StepUpRefusedError('no-session')
+  if (check.expectedUserId !== undefined && check.expectedUserId !== session.userId) throw new StepUpRefusedError('other-user')
+  if (isFreshSession(session.createdAt, check.now)) return session
+  if (await check.hasGrant(session.id)) return session
+  throw new StepUpRefusedError('stale')
 }

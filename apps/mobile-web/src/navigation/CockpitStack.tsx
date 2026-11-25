@@ -3,15 +3,14 @@ import { createNativeStackNavigator, type NativeStackScreenProps } from '@react-
 import { CockpitScreen } from '../screens/cockpit/CockpitScreen'
 import { useAccountSession } from '../auth/useAccountSession'
 import { InterviewScreen } from '../screens/interview/InterviewScreen'
-import { LeaveGuardProvider } from '../screens/shared/leaveGuard'
-import { useRemovalGuard } from './useRemovalGuard'
 import { StromScreen } from '../screens/strom/StromScreen'
 import { slugOf } from '../screens/strom/stromPlan'
 import { AccountWallScreen, pathFromAnswers } from '../screens/funnel/KontoWandScreen'
 import { readPendingVerification } from '../auth/pendingVerification'
 import { useShellState } from './ShellState'
 import { RequiresAccount } from './RequiresAccount'
-import { renderActiveStackRoute, useYearGuard } from './guards'
+import { useYearGuard } from './guards'
+import { guardedStackRoute } from './guardedRoute'
 import {
   CatalogRoute,
   CrossBorderRoute,
@@ -112,8 +111,6 @@ function InterviewRoute({ navigation, route }: Props<'Interview'>) {
 }
 
 function StromRoute({ navigation, route }: Props<'Strom'>) {
-  // NM-05: „Später weiter“ and the browser's back wait for the mask's pending saves, as the sheets do.
-  const guard = useRemovalGuard(navigation)
   const year = useYearGuard(route.params?.year, navigation)
   const { setFunnelPath, setPendingPath } = useShellState()
   const { state: sessionState } = useAccountSession()
@@ -135,9 +132,9 @@ function StromRoute({ navigation, route }: Props<'Strom'>) {
       }}
     />
   )
-  const guarded = <LeaveGuardProvider host={guard}>{screen}</LeaveGuardProvider>
+  // NM-05: „Später weiter“ and the browser's back wait for the mask's pending saves (the stack's guardedStackRoute).
   // Only the basis page is open to guests; every other step needs an account (as the masks do).
-  return route.params?.step === 'basis' ? guarded : <RequiresAccount>{guarded}</RequiresAccount>
+  return route.params?.step === 'basis' ? screen : <RequiresAccount>{screen}</RequiresAccount>
 }
 
 function AccountWallRoute({ navigation }: Props<'AccountWall'>) {
@@ -155,7 +152,7 @@ function AccountWallRoute({ navigation }: Props<'AccountWall'>) {
 
 export function CockpitStack() {
   return (
-    <Stack.Navigator initialRouteName="CockpitHome" screenOptions={{ headerShown: false }} screenLayout={renderActiveStackRoute}>
+    <Stack.Navigator initialRouteName="CockpitHome" screenOptions={{ headerShown: false }} screenLayout={guardedStackRoute}>
       <Stack.Screen name="CockpitHome" component={CockpitHomeRoute} />
       <Stack.Screen name="Interview" component={InterviewRoute} />
       <Stack.Screen name="Strom" component={StromRoute} getId={({ params }) => `${params.year}-${params.step}`} />

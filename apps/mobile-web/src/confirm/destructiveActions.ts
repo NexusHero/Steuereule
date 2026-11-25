@@ -59,6 +59,8 @@ export const DESTRUCTIVE_ACTIONS = {
     calledFrom: ['src/screens/advisor/OwlModeScreen.connected.tsx'],
   },
   assistantRevoke: { tone: 'destructive', screen: 'src/screens/profile/AssistentenListSection.tsx', trigger: 'assistent-widerrufen-', mutations: ['useAssistantsControllerRevoke'] },
+  // Decision 3: Person B takes the consent of a year back
+  partnerConsentWithdraw: { tone: 'destructive', screen: 'src/screens/master-data/PartnerYearConsent.tsx', trigger: 'kopplung-zustimmung-zuruecknehmen', mutations: ['useLinkControllerWithdrawConsent'] },
 } as const satisfies Record<string, DestructiveAction>
 
 export type DestructiveActionId = keyof typeof DESTRUCTIVE_ACTIONS

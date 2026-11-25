@@ -60,4 +60,13 @@ describe('the figures the texts print are the figures the API enforces', () => {
     const real = [...kinds.matchAll(/'([^']+)'/g)].map((m) => m[1]).filter((k) => k !== 'deterministic' && k !== 'fake')
     expect(real.sort()).toEqual(MODEL_PROVIDERS.map((p) => p.id).sort())
   })
+
+  it('sign-in providers: every provider the auth setup can switch on is a named recipient in the privacy text', () => {
+    const auth = readFileSync(new URL('../src/auth/better-auth.ts', import.meta.url), 'utf8')
+    const privacy = readFileSync(new URL('../../mobile-web/src/screens/legal/texts.ts', import.meta.url), 'utf8')
+    const providers = [...new Set([...auth.matchAll(/socialProviders\.([a-z]+)\s*=/g)].map((match) => match[1] ?? ''))].sort()
+    expect(providers).toEqual(['apple', 'google'])
+    const recipient: Record<string, string> = { apple: 'Apple Distribution International Ltd.', google: 'Google Ireland Ltd.' }
+    for (const provider of providers) expect(privacy, provider).toContain(recipient[provider] ?? `no recipient known for ${provider}`)
+  })
 })

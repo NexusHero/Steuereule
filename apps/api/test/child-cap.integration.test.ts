@@ -8,6 +8,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest'
 import { AppModule } from '../src/app.module.js'
 import { CHILD_REPOSITORY, type ChildRepository } from '../src/children/child.repository.js'
 import { PrismaService } from '../src/prisma/prisma.service.js'
+import { asDatabaseUser, fixtureClient } from './support/database-fixture.js'
 
 const YEAR = 2025
 const child = (i: number) => ({ firstName: `Kind${i}`, lastName: 'Test', geburtsdatum: '2015-01-01' })
@@ -20,7 +21,7 @@ describe('PrismaChildRepository.create with a cap, real Postgres', () => {
   beforeAll(async () => {
     app = await NestFactory.create<NestFastifyApplication>(AppModule, new FastifyAdapter(), { logger: false })
     await app.init()
-    prisma = app.get(PrismaService)
+    prisma = fixtureClient(app.get(PrismaService))
     repository = app.get<ChildRepository>(CHILD_REPOSITORY)
   })
 
@@ -36,19 +37,19 @@ describe('PrismaChildRepository.create with a cap, real Postgres', () => {
   it('creates in parallel stop exactly at the cap and take distinct sequence numbers', async () => {
     const cap = 3
 
-    const results = await Promise.all(Array.from({ length: 12 }, (_, i) => repository.create('child-cap-user', YEAR, child(i), cap)))
+    const results = await Promise.all(Array.from({ length: 12 }, (_, i) => asDatabaseUser('child-cap-user', repository).create('child-cap-user', YEAR, child(i), cap)))
 
     const created = results.filter((record) => record !== null)
     expect(created).toHaveLength(cap)
     expect(created.map((record) => record.sequenceNumber).sort()).toEqual([1, 2, 3])
     expect(await prisma.child.count({ where: { userId: 'child-cap-user', taxYear: YEAR } })).toBe(cap)
     // Another account, and another year of the same account, have their own count.
-    expect(await repository.create('child-cap-other', YEAR, child(0), cap)).not.toBeNull()
-    expect(await repository.create('child-cap-user', YEAR + 1, child(0), cap)).not.toBeNull()
+    expect(await asDatabaseUser('child-cap-other', repository).create('child-cap-other', YEAR, child(0), cap)).not.toBeNull()
+    expect(await asDatabaseUser('child-cap-user', repository).create('child-cap-user', YEAR + 1, child(0), cap)).not.toBeNull()
   })
 
   it('without a cap it creates as before', async () => {
-    const records = await Promise.all(Array.from({ length: 4 }, (_, i) => repository.create('child-cap-user', YEAR, child(i))))
+    const records = await Promise.all(Array.from({ length: 4 }, (_, i) => asDatabaseUser('child-cap-user', repository).create('child-cap-user', YEAR, child(i))))
     expect(records.map((record) => record.sequenceNumber).sort()).toEqual([1, 2, 3, 4])
   })
 })

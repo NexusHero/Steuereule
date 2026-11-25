@@ -253,3 +253,31 @@ describe('every status branch ends in its outcome (WEB-28)', () => {
     })
   })
 })
+
+// WEB-24: a request that bypasses both the generated client and `net/apiFetch.ts` never tells the app that the
+// session expired; the API has cleared the cookie by then, and the next request continues as a new guest.
+describe('requests outside the generated client go through net/apiFetch (WEB-24)', () => {
+  const APP_ROOT = join(SRC, '..', 'App.tsx')
+  const bareFetch = /(?<![\w.$])fetch\(/
+
+  it('no source file calls fetch itself', () => {
+    const offenders = [...sourceFiles(SRC), APP_ROOT]
+      .filter((file) => relative(SRC, file) !== join('net', 'apiFetch.ts'))
+      .flatMap((file) =>
+        readFileSync(file, 'utf8')
+          .split('\n')
+          .map((line, index) => ({ line, index }))
+          .filter(({ line }) => !/^\s*(\/\/|\*)/.test(line) && bareFetch.test(line))
+          .map(({ index }) => `${relative(SRC, file)}:${index + 1}`),
+      )
+    expect(offenders).toEqual([])
+  })
+
+  it('the rule sees a bare call and not a method of that name', () => {
+    expect(bareFetch.test('const response = await fetch(url)')).toBe(true)
+    expect(bareFetch.test('  fetch(`${base}/v1/x`, {')).toBe(true)
+    expect(bareFetch.test('await apiFetch(url)')).toBe(false)
+    expect(bareFetch.test('await client.$fetch("/x")')).toBe(false)
+    expect(bareFetch.test('void query.refetch()')).toBe(false)
+  })
+})

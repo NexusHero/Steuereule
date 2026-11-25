@@ -26,6 +26,7 @@ import type {
 
 import type {
   AccountExportControllerExportAccountParams,
+  AccountVerificationDto,
   DeleteAccountRequestDto,
   DeleteAccountResponseDto,
   ExportDocumentDto
@@ -262,6 +263,118 @@ export function useAccountExportControllerExportAccount<TData = Awaited<ReturnTy
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
   const queryOptions = getAccountExportControllerExportAccountQueryOptions(params,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export type accountVerificationControllerVerificationResponse200 = {
+  data: AccountVerificationDto
+  status: 200
+}
+
+export type accountVerificationControllerVerificationResponse404 = {
+  data: void
+  status: 404
+}
+
+export type accountVerificationControllerVerificationResponseSuccess = (accountVerificationControllerVerificationResponse200) & {
+  headers: Headers;
+};
+export type accountVerificationControllerVerificationResponseError = (accountVerificationControllerVerificationResponse404) & {
+  headers: Headers;
+};
+
+export const getAccountVerificationControllerVerificationUrl = () => {
+
+
+
+
+  return `/v1/account/verification`
+}
+
+export const accountVerificationControllerVerification = async ( options?: RequestInit): Promise<accountVerificationControllerVerificationResponseSuccess> => {
+
+  return httpClient<accountVerificationControllerVerificationResponseSuccess>(getAccountVerificationControllerVerificationUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getAccountVerificationControllerVerificationQueryKey = () => {
+    return [
+    `/v1/account/verification`
+    ] as const;
+    }
+
+
+export const getAccountVerificationControllerVerificationQueryOptions = <TData = Awaited<ReturnType<typeof accountVerificationControllerVerification>>, TError = void>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof accountVerificationControllerVerification>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getAccountVerificationControllerVerificationQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof accountVerificationControllerVerification>>> = ({ signal }) => accountVerificationControllerVerification({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof accountVerificationControllerVerification>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type AccountVerificationControllerVerificationQueryResult = NonNullable<Awaited<ReturnType<typeof accountVerificationControllerVerification>>>
+export type AccountVerificationControllerVerificationQueryError = void
+
+
+export function useAccountVerificationControllerVerification<TData = Awaited<ReturnType<typeof accountVerificationControllerVerification>>, TError = void>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof accountVerificationControllerVerification>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof accountVerificationControllerVerification>>,
+          TError,
+          Awaited<ReturnType<typeof accountVerificationControllerVerification>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useAccountVerificationControllerVerification<TData = Awaited<ReturnType<typeof accountVerificationControllerVerification>>, TError = void>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof accountVerificationControllerVerification>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof accountVerificationControllerVerification>>,
+          TError,
+          Awaited<ReturnType<typeof accountVerificationControllerVerification>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useAccountVerificationControllerVerification<TData = Awaited<ReturnType<typeof accountVerificationControllerVerification>>, TError = void>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof accountVerificationControllerVerification>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+
+export function useAccountVerificationControllerVerification<TData = Awaited<ReturnType<typeof accountVerificationControllerVerification>>, TError = void>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof accountVerificationControllerVerification>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getAccountVerificationControllerVerificationQueryOptions(options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 

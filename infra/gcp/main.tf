@@ -98,6 +98,23 @@ locals {
     # PEM of the Memorystore server CA; the API verifies the rediss:// connection with it.
     "REDIS_TLS_CA",
   ]
+
+  # Row-level security (P11): the login that owns the tables. Only the migrate job reads it; the API connects
+  # with DATABASE_URL, a login the migrate job creates without ownership (apps/api/scripts/runtime-database-login.mjs).
+  migrate_only_secrets = [
+    "MIGRATE_DATABASE_URL",
+  ]
+
+  # What the migrate job mounts (.github/workflows/deploy.yml, MIGRATE_SECRETS): both logins, the keystore, and
+  # the field keys its backfills and `rotate:field-key` read and write with.
+  migrate_job_secrets = [
+    "MIGRATE_DATABASE_URL",
+    "DATABASE_URL",
+    "KEYSTORE_DATABASE_URL",
+    "PRISMA_FIELD_ENCRYPTION_KEY",
+    "PRISMA_FIELD_ENCRYPTION_HASH_SALT",
+    "PRISMA_FIELD_DECRYPTION_KEYS",
+  ]
 }
 
 resource "google_project_service" "enabled" {
@@ -314,7 +331,7 @@ resource "google_sql_database" "keystore" {
 }
 
 resource "google_secret_manager_secret" "app" {
-  for_each  = toset(concat(local.required_secrets, local.optional_secrets))
+  for_each  = toset(concat(local.required_secrets, local.optional_secrets, local.migrate_only_secrets))
   secret_id = each.value
 
   replication {
@@ -333,6 +350,11 @@ resource "google_service_account" "api_runtime" {
   display_name = "Steuereule API runtime"
 }
 
+resource "google_service_account" "migrate" {
+  account_id   = "steuereule-migrate"
+  display_name = "Steuereule migrate job (owner of the database schema)"
+}
+
 resource "google_service_account" "web_runtime" {
   account_id   = "steuereule-web"
   display_name = "Steuereule web runtime (no roles)"
@@ -343,11 +365,25 @@ resource "google_service_account" "deployer" {
   display_name = "Steuereule GitHub Actions deployer"
 }
 
+# The API reads every secret except the migration login: with it the API could act as the owner of the tables.
 resource "google_secret_manager_secret_iam_member" "api_reads_secrets" {
-  for_each  = google_secret_manager_secret.app
+  for_each  = { for name, secret in google_secret_manager_secret.app : name => secret if !contains(local.migrate_only_secrets, name) }
   secret_id = each.value.id
   role      = "roles/secretmanager.secretAccessor"
   member    = "serviceAccount:${google_service_account.api_runtime.email}"
+}
+
+resource "google_secret_manager_secret_iam_member" "migrate_reads_secrets" {
+  for_each  = toset(local.migrate_job_secrets)
+  secret_id = google_secret_manager_secret.app[each.value].id
+  role      = "roles/secretmanager.secretAccessor"
+  member    = "serviceAccount:${google_service_account.migrate.email}"
+}
+
+resource "google_project_iam_member" "migrate_connects_to_sql" {
+  project = var.project_id
+  role    = "roles/cloudsql.client"
+  member  = "serviceAccount:${google_service_account.migrate.email}"
 }
 
 resource "google_project_iam_member" "api_connects_to_sql" {
@@ -390,8 +426,9 @@ resource "google_project_iam_member" "deployer_backs_up_sql" {
 
 resource "google_service_account_iam_member" "deployer_acts_as_runtime" {
   for_each = {
-    api = google_service_account.api_runtime.name
-    web = google_service_account.web_runtime.name
+    api     = google_service_account.api_runtime.name
+    migrate = google_service_account.migrate.name
+    web     = google_service_account.web_runtime.name
   }
   service_account_id = each.value
   role               = "roles/iam.serviceAccountUser"

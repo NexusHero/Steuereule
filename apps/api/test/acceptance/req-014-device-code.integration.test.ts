@@ -7,6 +7,7 @@ import type { NestFastifyApplication } from '@nestjs/platform-fastify'
 import { PrismaClient } from '@prisma/client'
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest'
 import { resetRateLimiters } from '../support/reset-rate-limiters.js'
+import { fixtureClient } from '../support/database-fixture.js'
 
 process.env.GUEST_SESSION_SECRET = 'req-014-secret'
 process.env.BETTER_AUTH_SECRET = 'req-014-better-auth-secret-0123456789'
@@ -34,7 +35,7 @@ describe('REQ-014 task 0 — device-authorization plugin registration, against t
     await app.listen(0, '127.0.0.1')
     baseUrl = await app.getUrl()
     const { ENCRYPTED_PRISMA } = await import('../../src/prisma/encrypted-prisma.provider.js')
-    prisma = app.get<PrismaClient>(ENCRYPTED_PRISMA)
+    prisma = fixtureClient(app.get<PrismaClient>(ENCRYPTED_PRISMA))
     // The shared dev Postgres this suite runs against may already carry rows from a
     // manual boot/curl session against the same DATABASE_URL — start from a clean
     // table rather than assuming one.

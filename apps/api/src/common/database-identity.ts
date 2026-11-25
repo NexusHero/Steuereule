@@ -23,7 +23,7 @@ export const SYSTEM_DATABASE_REASONS = {
   'step-up-grant': 'step-up grants live in better-auth\'s Verification table, which has no owner column',
   'payment-webhook': 'the payment provider webhook: resolves a checkout session to its account',
   'field-key-rotation': 'rotate:field-key re-encrypts every encrypted column of every user (operator script, never the server)',
-  'test-fixture': 'the DB test tier only: fixtures and service-level tests outside a request (never in a server)',
+  'test-fixture': "the DB test tier only: a suite's own seeding, cleanup and assertions (`test/support/database-fixture.ts`)",
 } as const
 
 export type SystemDatabaseReason = keyof typeof SYSTEM_DATABASE_REASONS
@@ -33,23 +33,10 @@ export type DatabaseIdentity =
   | { readonly kind: 'system'; readonly reason: SystemDatabaseReason }
 
 const identityStore = new AsyncLocalStorage<DatabaseIdentity>()
-let outsideRequestsForTests: DatabaseIdentity | undefined
 
 /** The identity the database client applies to a query issued now; undefined outside a request or bypass. */
 export function currentDatabaseIdentity(): DatabaseIdentity | undefined {
-  return identityStore.getStore() ?? outsideRequestsForTests
-}
-
-/**
- * The DB test tier (`test/support/database-test-identity.ts`) seeds rows for several users and calls services
- * outside a request; those run as `test-fixture`. A request still runs as its user, so the HTTP suites exercise
- * the policies. Refused outside Vitest; `main.ts` never starts a server under Vitest.
- */
-export function useTestFixtureIdentityOutsideRequests(): void {
-  if (process.env.VITEST !== 'true' || process.env.NODE_ENV === 'production') {
-    throw new Error('The test-fixture database identity exists for the Vitest DB tier only.')
-  }
-  outsideRequestsForTests = { kind: 'system', reason: 'test-fixture' }
+  return identityStore.getStore()
 }
 
 /** Runs `work` (and everything it starts) as `userId`: the policies let through that user's rows only. */

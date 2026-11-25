@@ -102,7 +102,7 @@ export class UnlockService {
     return { checkoutUrl: session.url }
   }
 
-  /** Signature-checked; every transition is idempotent, so a redelivered event changes nothing more. */
+  /** Signature-checked; each event stores one fact, so their order and a redelivery do not matter (`unlock-lifecycle.ts`). */
   async processWebhook(rawData: Buffer | undefined, signature: string | undefined, now = new Date()): Promise<void> {
     if (!this.provider) throw new UnavailableError('PAYMENT_NOT_CONFIGURED', 'Payment is not configured in this environment.')
     if (!rawData || !signature) throw new UnauthenticatedError('WEBHOOK_SIGNATURE_MISSING', 'The webhook signature is missing.')
@@ -123,10 +123,13 @@ export class UnlockService {
           await this.repository.markPaid(verified.sessionId, verified.amountCents, now, verified.owner)
           return
         case 'zurueckgenommen':
-          await this.repository.revoke(verified.sessionId, verified.reason)
+          await this.repository.revoke(verified.sessionId, verified.reason, verified.owner)
           return
         case 'wiederhergestellt':
-          await this.repository.restore(verified.sessionId)
+          await this.repository.restore(verified.sessionId, verified.owner)
+          return
+        case 'geschlossen':
+          await this.repository.markClosed(verified.sessionId)
           return
         case 'ignoriert':
           return

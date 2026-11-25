@@ -199,6 +199,14 @@ function joinOuterTransaction(tx: object) {
   }
 }
 
+/**
+ * Runs `work` so that the repositories and adapters it calls join `tx`, an interactive transaction the caller
+ * opened on a client of `PrismaModule` itself: their writes commit or roll back with the caller's own.
+ */
+export function joinTransaction<T>(tx: object, work: () => Promise<T>): Promise<T> {
+  return activeTransaction.run({ client: tx, identity: currentDatabaseIdentity() }, work)
+}
+
 interface InteractiveTransactionClient {
   $transaction<R>(
     work: (tx: object) => Promise<R>,

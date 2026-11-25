@@ -2,7 +2,7 @@ import { readdirSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
-import { isShadowId, ownerOf, personIds, shadowIdOf } from '../src/common/shadow-id.js'
+import { isShadowId, ownerOf, personIds, shadowIdOf } from '../src/common/person-ids.js'
 import { maxTaxYear, MIN_TAX_YEAR } from '../src/common/tax-year.js'
 
 const SRC = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../src')
@@ -36,6 +36,6 @@ describe('the shadow id of a Person B without an own login', () => {
     const spelled = sourceFiles(SRC)
       .filter((file) => /['"]spouse_/.test(readFileSync(file, 'utf8')))
       .map((file) => path.relative(SRC, file))
-    expect(spelled).toEqual(['common/shadow-id.ts'])
+    expect(spelled).toEqual(['common/person-ids.ts'])
   })
 })

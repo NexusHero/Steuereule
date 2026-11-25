@@ -19,6 +19,7 @@ import { PrismaService } from '../src/prisma/prisma.service.js'
 import { INTERVIEW_ANSWER_REPOSITORY, type InterviewAnswerRepository } from '../src/interview/interview-answer.repository.js'
 import { WAGE_TAX_CERTIFICATE_REPOSITORY, type WageTaxCertificateRepository } from '../src/lstb/lstb.repository.js'
 import { extractSessionCookie } from './support/build-test-app.js'
+import { asDatabaseUser, fixtureClient } from './support/database-fixture.js'
 
 /** Recovers the trusted userId the app minted, from the raw `Set-Cookie`/`Cookie` pair. */
 function userIdFromCookie(cookie: string): string {
@@ -51,7 +52,7 @@ describe('GET /v1/steuerjahre/:jahr/cockpit — real Postgres (REQ-001 + ticket 
     )
     await app.init()
     await app.getHttpAdapter().getInstance().ready()
-    prisma = app.get(PrismaService)
+    prisma = fixtureClient(app.get(PrismaService))
     // The encryption-aware seams — the LStB/InterviewAnswer figures are field-encrypted at rest
     // (ADR-0008), so seeding them via raw Prisma would write plaintext the strict-mode read
     // would reject; the repositories' own upserts are the honest seeding paths.
@@ -83,8 +84,8 @@ describe('GET /v1/steuerjahre/:jahr/cockpit — real Postgres (REQ-001 + ticket 
 
     // Seed through the real seams: job=Angestellt (writes the TaxYear projection), then only the
     // Bruttoarbeitslohn — lohnsteuer + sozialversicherung stay open (honest, never a fabricated 0).
-    await interviewRepository.write({ userId, taxYear: 2026, questionId: 'job', value: 'Angestellt', openItems: 2 })
-    await lstbRepository.setField(userId, 2026, 'bruttoarbeitslohn', '50000')
+    await asDatabaseUser(userId, interviewRepository).write({ userId, taxYear: 2026, questionId: 'job', value: 'Angestellt', openItems: 2 })
+    await asDatabaseUser(userId, lstbRepository).setField(userId, 2026, 'bruttoarbeitslohn', '50000')
 
     const response = await app.inject({
       method: 'GET',
@@ -110,7 +111,7 @@ describe('GET /v1/steuerjahre/:jahr/cockpit — real Postgres (REQ-001 + ticket 
     const cookieA = extractSessionCookie(first.headers['set-cookie'])!
     const userIdA = userIdFromCookie(cookieA)
 
-    await interviewRepository.write({ userId: userIdA, taxYear: 2026, questionId: 'job', value: 'Angestellt', openItems: 2 })
+    await asDatabaseUser(userIdA, interviewRepository).write({ userId: userIdA, taxYear: 2026, questionId: 'job', value: 'Angestellt', openItems: 2 })
 
     // A fresh request with no cookie is a brand-new guest session per the guard.
     const userBResponse = await app.inject({ method: 'GET', url: '/v1/steuerjahre/2026/cockpit' })
@@ -138,7 +139,7 @@ describe('GET /v1/steuerjahre/:jahr/cockpit — real Postgres (REQ-001 + ticket 
     const cookie = extractSessionCookie(first.headers['set-cookie'])!
     const userId = userIdFromCookie(cookie)
 
-    await interviewRepository.write({ userId, taxYear: 2026, questionId: 'job', value: 'Angestellt', openItems: 2 })
+    await asDatabaseUser(userId, interviewRepository).write({ userId, taxYear: 2026, questionId: 'job', value: 'Angestellt', openItems: 2 })
 
     const response = await app.inject({
       method: 'GET',
@@ -155,10 +156,10 @@ describe('GET /v1/steuerjahre/:jahr/cockpit — real Postgres (REQ-001 + ticket 
     const cookie = extractSessionCookie(first.headers['set-cookie'])!
     const userId = userIdFromCookie(cookie)
 
-    await interviewRepository.write({ userId, taxYear: 2026, questionId: 'job', value: 'Angestellt', openItems: 2 })
-    await lstbRepository.setField(userId, 2026, 'bruttoarbeitslohn', '50000')
-    await lstbRepository.setField(userId, 2026, 'lohnsteuer', '8000')
-    await lstbRepository.setField(userId, 2026, 'sozialversicherung', '9000')
+    await asDatabaseUser(userId, interviewRepository).write({ userId, taxYear: 2026, questionId: 'job', value: 'Angestellt', openItems: 2 })
+    await asDatabaseUser(userId, lstbRepository).setField(userId, 2026, 'bruttoarbeitslohn', '50000')
+    await asDatabaseUser(userId, lstbRepository).setField(userId, 2026, 'lohnsteuer', '8000')
+    await asDatabaseUser(userId, lstbRepository).setField(userId, 2026, 'sozialversicherung', '9000')
 
     const response = await app.inject({
       method: 'GET',

@@ -2,7 +2,7 @@
 // lists drifting apart is exactly how "taxData: []" survived while data existed.
 import { describe, expect, it } from 'vitest'
 import { PERSONAL_DATA_REGISTRY } from '../src/personal-data/personal-data-registry.js'
-import { shadowIdOf } from '../src/common/shadow-id.js'
+import { shadowIdOf } from '../src/common/person-ids.js'
 import { EXPORT_SECTIONS, PrismaTaxDataExportRepository, toExportEntry } from '../src/account/tax-data-export.repository.prisma.js'
 
 describe('PrismaTaxDataExportRepository', () => {
@@ -98,6 +98,14 @@ describe('toExportEntry', () => {
       taxYear: 2025,
       fields: { kapitalertraege: '1200', updatedAt: '2026-02-01T09:30:00.000Z' },
     })
+  })
+
+  it('never exports a live partner invitation code: whoever holds the file could join the year with it', () => {
+    const entry = toExportEntry('Steuerjahr-Kopplung', 'TaxYearLink', {
+      id: 'k1', personAUserId: 'a', personBUserId: 'spouse_a_2025', taxYear: 2025, filingType: 'zusammen',
+      invitationCode: '9F3A0C71B2E4D658', invitationCodeValidUntil: new Date('2026-03-01T00:00:00.000Z'),
+    })
+    expect(JSON.stringify(entry)).not.toContain('9F3A0C71B2E4D658')
   })
 
   it('names each figure by its database column, so the download keeps its German keys', () => {

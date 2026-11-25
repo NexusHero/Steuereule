@@ -25,6 +25,7 @@ process.env.BETTER_AUTH_SECRET = 'req-014-approve-token-better-auth-secret-0123'
 process.env.BETTER_AUTH_URL = 'http://127.0.0.1:0' // overwritten to the real ephemeral URL below
 
 import { verifyAndSignIn } from '../support/acceptance-server.js'
+import { fixtureClient } from '../support/database-fixture.js'
 const ALLOWED_ORIGIN = 'https://allowed.example.com'
 process.env.CORS_ALLOWED_ORIGINS = ALLOWED_ORIGIN
 const TRUSTED_ORIGIN_HEADERS = { origin: ALLOWED_ORIGIN }
@@ -52,7 +53,7 @@ describe('REQ-014 task 2 — /v1/device/{pending,approve,token}, against the rea
     await app.listen(0, '127.0.0.1')
     baseUrl = await app.getUrl()
     const { ENCRYPTED_PRISMA } = await import('../../src/prisma/encrypted-prisma.provider.js')
-    prisma = app.get<PrismaClient>(ENCRYPTED_PRISMA)
+    prisma = fixtureClient(app.get<PrismaClient>(ENCRYPTED_PRISMA))
   })
 
   afterEach(async () => {

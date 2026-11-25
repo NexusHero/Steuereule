@@ -11,6 +11,8 @@ import { CHILD_REPOSITORY, type ChildRepository } from '../src/children/child.re
 import { PROVENANCE_REPOSITORY, type ProvenanceRepository } from '../src/marking/marking.repository.js'
 import { PrismaService } from '../src/prisma/prisma.service.js'
 import { RENTAL_REPOSITORY, type RentalRepository } from '../src/rental/rental.repository.js'
+import { runAsDatabaseUser } from '../src/common/database-identity.js'
+import { fixtureClient } from './support/database-fixture.js'
 
 const YEAR = 2025
 const CLAUDE = { kind: 'assistent', name: 'Claude' } as const
@@ -26,7 +28,7 @@ describe('deleting a record deletes its markings — real Postgres', () => {
   beforeAll(async () => {
     app = await NestFactory.create<NestFastifyApplication>(AppModule, new FastifyAdapter(), { logger: false })
     await app.init()
-    prisma = app.get(PrismaService)
+    prisma = fixtureClient(app.get(PrismaService))
     markings = app.get(PROVENANCE_REPOSITORY)
     children = app.get(CHILD_REPOSITORY)
     rentals = app.get(RENTAL_REPOSITORY)
@@ -53,24 +55,28 @@ describe('deleting a record deletes its markings — real Postgres', () => {
 
   it('a deleted child leaves no marking or proposal, and the other child keeps hers', async () => {
     const userId = newUser()
-    const gone = (await children.create(userId, YEAR, { firstName: 'Mia', lastName: 'Muster', geburtsdatum: '2018-04-01' }))!
-    const stays = (await children.create(userId, YEAR, { firstName: 'Ben', lastName: 'Muster', geburtsdatum: '2020-04-01' }))!
-    await markings.save(userId, YEAR, { key: `kind:${gone.id}.childcareEur`, provenance: CLAUDE, confirmed: false, proposal: null })
-    await markings.save(userId, YEAR, { key: `kind:${gone.id}.firstName`, provenance: { kind: 'nutzer' }, confirmed: true, proposal: { value: 'Mila', provenance: CLAUDE } })
-    await markings.save(userId, YEAR, { key: `kind:${stays.id}.childcareEur`, provenance: CLAUDE, confirmed: false, proposal: null })
+    await runAsDatabaseUser(userId, async () => {
+      const gone = (await children.create(userId, YEAR, { firstName: 'Mia', lastName: 'Muster', geburtsdatum: '2018-04-01' }))!
+      const stays = (await children.create(userId, YEAR, { firstName: 'Ben', lastName: 'Muster', geburtsdatum: '2020-04-01' }))!
+      await markings.save(userId, YEAR, { key: `kind:${gone.id}.childcareEur`, provenance: CLAUDE, confirmed: false, proposal: null })
+      await markings.save(userId, YEAR, { key: `kind:${gone.id}.firstName`, provenance: { kind: 'nutzer' }, confirmed: true, proposal: { value: 'Mila', provenance: CLAUDE } })
+      await markings.save(userId, YEAR, { key: `kind:${stays.id}.childcareEur`, provenance: CLAUDE, confirmed: false, proposal: null })
 
-    expect(await children.delete(userId, YEAR, gone.id)).toBe(true)
+      expect(await children.delete(userId, YEAR, gone.id)).toBe(true)
 
-    expect((await markings.listForUserAndYears(userId, [YEAR])).map((m) => m.key)).toEqual([`kind:${stays.id}.childcareEur`])
+      expect((await markings.listForUserAndYears(userId, [YEAR])).map((m) => m.key)).toEqual([`kind:${stays.id}.childcareEur`])
+    })
   })
 
   it('a deleted rental object leaves no marking', async () => {
     const userId = newUser()
-    const property = await rentals.create(userId, YEAR)
-    await markings.save(userId, YEAR, { key: `vermietung:${property.id}.mieteinnahmen`, provenance: CLAUDE, confirmed: false, proposal: null })
+    await runAsDatabaseUser(userId, async () => {
+      const property = await rentals.create(userId, YEAR)
+      await markings.save(userId, YEAR, { key: `vermietung:${property.id}.mieteinnahmen`, provenance: CLAUDE, confirmed: false, proposal: null })
 
-    expect(await rentals.delete(userId, YEAR, property.id)).toBe(true)
+      expect(await rentals.delete(userId, YEAR, property.id)).toBe(true)
 
-    expect(await markings.listForUserAndYears(userId, [YEAR])).toEqual([])
+      expect(await markings.listForUserAndYears(userId, [YEAR])).toEqual([])
+    })
   })
 })

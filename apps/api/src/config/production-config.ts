@@ -115,6 +115,15 @@ function fieldKeys(value: string): string | undefined {
   return bad.length === 0 ? undefined : 'not of the form k1.aesgcm256.<44 base64 characters> (`npx cloak generate`)'
 }
 
+/** One `@`, a local part, and a domain with a dot that is neither first nor last; no whitespace. Linear, no regex. */
+export function isEmailAddress(value: string): boolean {
+  const at = value.indexOf('@')
+  if (at <= 0 || at !== value.lastIndexOf('@') || /\s/u.test(value)) return false
+  const domain = value.slice(at + 1)
+  const dot = domain.indexOf('.')
+  return dot > 0 && !domain.endsWith('.')
+}
+
 function prefixed(...prefixes: string[]) {
   return (value: string): string | undefined =>
     prefixes.some((prefix) => value.startsWith(prefix)) ? undefined : `must start with ${prefixes.join(' or ')}`
@@ -222,7 +231,7 @@ export const API_PRODUCTION_SETTINGS: readonly ProductionSetting[] = [
 
   // ── E-mail ─────────────────────────────────────────────────────────────────────────────────
   { name: 'BREVO_API_KEY', source: 'secret-manager', need: 'deployment', format: 'Brevo API key', secret: true },
-  { name: 'EMAIL_FROM', source: 'deploy-env', need: 'deployment', format: 'sender address on the authenticated Brevo domain', check: (value) => (/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(value) ? undefined : 'not an e-mail address') },
+  { name: 'EMAIL_FROM', source: 'deploy-env', need: 'deployment', format: 'sender address on the authenticated Brevo domain', check: (value) => (isEmailAddress(value) ? undefined : 'not an e-mail address') },
 
   // ── Payment (ADR-0101): all or nothing; required on a deployment, so the last step never dead-ends ──
   { name: 'STRIPE_SECRET_KEY', source: 'secret-manager', need: 'deployment', format: 'sk_test_… / sk_live_… (or a restricted rk_ key)', check: prefixed('sk_test_', 'sk_live_', 'rk_test_', 'rk_live_'), secret: true },
@@ -287,8 +296,8 @@ export const API_PRODUCTION_SETTINGS: readonly ProductionSetting[] = [
   { name: 'AI_GUARD_PROVIDER', source: 'operator', need: 'optional', format: `one of ${AI_PROVIDERS.join(', ')} (default: AI_ADVISOR_PROVIDER)`, check: aiProvider },
   { name: 'AI_GUARD_MODEL', source: 'operator', need: 'optional', format: "model id of the topic guard (default: the provider's small model)", check: modelId },
   { name: 'AI_GUARD_API_KEY', source: 'secret-manager', need: 'optional', format: 'API key of the topic guard slot', check: providerKey, secret: true, knownDevValues: EXAMPLE_PROVIDER_KEYS },
-  { name: 'AI_BASE_URL', source: 'operator', need: 'optional', format: 'https URL of an OpenAI-compatible endpoint (default: the provider endpoint)', check: httpsUrl },
-  { name: 'OPENAI_BASE_URL', source: 'operator', need: 'optional', format: 'https URL, read when AI_BASE_URL is unset', check: httpsUrl },
+  { name: 'AI_BASE_URL', source: 'operator', need: 'optional', format: 'https URL of an OpenAI-compatible endpoint, local stack only: refused on a deployment (ADR-0111 decision 4)', check: httpsUrl },
+  { name: 'OPENAI_BASE_URL', source: 'operator', need: 'optional', format: 'https URL, read when AI_BASE_URL is unset; local stack only, refused on a deployment', check: httpsUrl },
 
   // ── Model behaviour and cost limits (ADR-0109) ─────────────────────────────────────────────
   { name: 'AI_KILL_SWITCH', source: 'operator', need: 'optional', format: 'on/off switch: on answers every model slot from the rules (default off)', check: onOff },
@@ -378,6 +387,7 @@ export const DEPLOY_VARIABLES: readonly DeployVariable[] = [
   { name: 'GCP_WIF_PROVIDER', need: 'required', purpose: 'OpenTofu output workload_identity_provider' },
   { name: 'GCP_DEPLOYER_SA', need: 'required', purpose: 'OpenTofu output deployer_service_account' },
   { name: 'GCP_RUNTIME_SA', need: 'required', purpose: 'OpenTofu output api_runtime_service_account' },
+  { name: 'GCP_MIGRATE_SA', need: 'required', purpose: 'OpenTofu output migrate_service_account (the migrate job; alone reads MIGRATE_DATABASE_URL)' },
   { name: 'GCP_WEB_SA', need: 'required', purpose: 'OpenTofu output web_runtime_service_account' },
   { name: 'GCP_SQL_INSTANCE', need: 'required', purpose: 'OpenTofu output sql_connection_name' },
   { name: 'GCP_KEYSTORE_SQL_INSTANCE', need: 'required', purpose: 'OpenTofu output keystore_sql_connection_name' },
@@ -405,6 +415,9 @@ export const WEB_BUILD_ARGS: readonly string[] = [
 
 /** The values NODE_ENV may take. Anything else (prod, staging) would silently run with the dev fallbacks (OPS-9). */
 export const ALLOWED_NODE_ENVS = ['production', 'development', 'test'] as const
+
+/** The variables `AiRuntimeConfigService` reads to point a model provider's client at another endpoint. */
+export const MODEL_BASE_URL_OVERRIDES = ['AI_BASE_URL', 'OPENAI_BASE_URL'] as const
 
 /** Words that mark a value as written for development, CI or an example, never generated for a deployment. */
 const DEV_MARKER = /(^|[-_.])(dev-only|change-me|local-only|local-stack-only|local-prod-test|ci|unit-test|example|placeholder)([-_.]|$)/i
@@ -542,6 +555,14 @@ function groupProblems(value: KnownValue, deployment: boolean, env: NodeJS.Proce
     problems.push(`${apple.join(', ')}: not set while APPLE_SIGN_IN_ENABLED is true — the Apple button would not appear`)
   }
 
+  // Decision 4 of ADR-0111: the consent and the privacy text name every model provider and country the code can
+  // call (MODEL_PROVIDERS). A base URL sends the same requests to any other endpoint, which no text names.
+  for (const name of MODEL_BASE_URL_OVERRIDES) {
+    if (deployment && set(name)) {
+      problems.push(`${name}: must not be set on a deployment — it would send model requests to a recipient the consent and the privacy text do not name`)
+    }
+  }
+
   if (value('EMAIL_DELIVERY') === 'smtp' && !set('SMTP_URL')) problems.push('SMTP_URL: not set while EMAIL_DELIVERY is smtp')
 
   const elster = ['ELSTER_ERIC_CLI', 'ELSTER_CERT_PATH', 'ELSTER_CERT_PIN', 'ELSTER_HERSTELLER_ID']
@@ -560,6 +581,11 @@ export function checkProductionConfig(env: NodeJS.ProcessEnv = process.env): Con
   const nodeEnv = readSetting(env, 'NODE_ENV')
   if (nodeEnv !== undefined && !(ALLOWED_NODE_ENVS as readonly string[]).includes(nodeEnv)) {
     problems.push(`NODE_ENV: "${nodeEnv}" is not one of ${ALLOWED_NODE_ENVS.join(', ')} — any other name would run with the development fallbacks`)
+  }
+  // Cloud Run names its service in K_SERVICE. There, anything but production (also no NODE_ENV at all) would run
+  // a public deployment with the development fallbacks and skip every check below (OPS-9).
+  if (nodeEnv !== 'production' && readSetting(env, 'K_SERVICE') !== undefined) {
+    problems.push(`NODE_ENV: "${nodeEnv ?? ''}" on Cloud Run (K_SERVICE is set) — a deployment runs with NODE_ENV=production only`)
   }
   if (nodeEnv !== 'production') return { deployment: false, problems, warnings }
 

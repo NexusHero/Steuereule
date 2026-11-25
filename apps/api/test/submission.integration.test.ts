@@ -10,6 +10,7 @@ import { AppModule } from '../src/app.module.js'
 import { FILING_VERSION_REPOSITORY, type FilingVersionRepository } from '../src/assessment/filing-version.repository.js'
 import { PrismaService } from '../src/prisma/prisma.service.js'
 import { SUBMISSION_REPOSITORY, type SubmissionRepository } from '../src/submission/submission.repository.js'
+import { asDatabaseUser, fixtureClient } from './support/database-fixture.js'
 
 const USER = 'submission-integration-user'
 const YEAR = 2025
@@ -23,9 +24,10 @@ describe('PrismaSubmissionRepository — real Postgres (ADR-0098 §8)', () => {
   beforeAll(async () => {
     app = await NestFactory.create<NestFastifyApplication>(AppModule, new FastifyAdapter(), { logger: false })
     await app.init()
-    prisma = app.get(PrismaService)
-    submissions = app.get(SUBMISSION_REPOSITORY)
-    versions = app.get(FILING_VERSION_REPOSITORY)
+    prisma = fixtureClient(app.get(PrismaService))
+    // As USER's requests reach them (P11).
+    submissions = asDatabaseUser(USER, app.get(SUBMISSION_REPOSITORY))
+    versions = asDatabaseUser(USER, app.get(FILING_VERSION_REPOSITORY))
   })
 
   afterEach(async () => {

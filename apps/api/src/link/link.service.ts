@@ -12,29 +12,21 @@ import {
   type MasterDataRepository,
 } from '../master-data/master-data.repository.js'
 import { PARTNER_COUPLING_REPOSITORY, type PartnerCouplingRepository, type PartnerCouplingRecord } from './link.repository.js'
-import { isShadowId, shadowIdOf } from '../common/shadow-id.js'
+import { shadowIdOf } from '../common/person-ids.js'
+import { personBConsentPending, personBHasOwnAccount } from './partner-consent.js'
 import type { LinkPersonBDto, LinkResponseDto, SetLinkDto } from './dto/link.dto.js'
 
-function hasOwnAccount(row: PartnerCouplingRecord): boolean {
-  return row.personBUserId !== '' && !isShadowId(row.personBUserId)
-}
-
-/**
- * Decision 3 (API-3): Person B with an own account agrees per tax year, in B's own app. Until then Person A
- * sees nothing of B for that year. A shadow B (no account) is A's own record and needs no consent.
- */
-function personBConsentPending(row: PartnerCouplingRecord): boolean {
-  return hasOwnAccount(row) && (row.personBConsentedAt ?? null) === null
-}
-
 const INVITATION_VALID_MS = 14 * 24 * 60 * 60 * 1000
+
+/** Proves the caller may grant a third party access now (the step-up); throws when not. */
+export type InvitationAuthorizer = () => Promise<void>
 
 /**
  * The Person B whose figures this user keeps in a year (ADR-0054): B without an own account, under A's
  * link. B with an own account keeps their own data, which no one else reads (ADR-0098 §5).
  */
 export function recordedSpouseUserId(row: PartnerCouplingRecord | null, userId: string): string | null {
-  if (row === null || row.personAUserId !== userId || row.personBUserId === '' || hasOwnAccount(row)) return null
+  if (row === null || row.personAUserId !== userId || row.personBUserId === '' || personBHasOwnAccount(row)) return null
   return row.personBUserId
 }
 
@@ -80,7 +72,7 @@ export class LinkService {
       return { filingType: 'keine' }
     }
 
-    const pending = row.filingType === 'zusammen' && personBConsentPending(row)
+    const pending = personBConsentPending(row)
     const callerIsA = row.personAUserId === userId
     let personB: LinkPersonBDto | null = null
     if (row.filingType === 'zusammen' && row.personBUserId && !(callerIsA && pending)) {
@@ -105,10 +97,11 @@ export class LinkService {
       personBUserId: row.personBUserId,
       invitationCode: row.invitationCode,
       invitationCodeValidUntil: row.invitationCodeValidUntil?.toISOString() ?? null,
-      personBHasOwnAccount: hasOwnAccount(row),
+      personBHasOwnAccount: personBHasOwnAccount(row),
       personB,
       personBConsentPending: pending,
       consentRequestedFromMe: pending && !callerIsA,
+      consentGivenByMe: !callerIsA && row.filingType === 'zusammen' && row.personBUserId === userId && !pending,
     }
   }
 
@@ -126,7 +119,7 @@ export class LinkService {
     if (row.personAUserId !== userId) {
       throw new ForbiddenError('ONLY_PERSON_A_RECORDS_FOR_B', 'Only person A records data for person B.')
     }
-    if (hasOwnAccount(row)) {
+    if (personBHasOwnAccount(row)) {
       throw new ForbiddenError('PERSON_B_OWNS_DATA', 'Person B maintains their data in their own account.')
     }
     return row.personBUserId
@@ -135,7 +128,7 @@ export class LinkService {
   /** Every Person B this user records data for (joint returns without B's own account), over all years. */
   async recordedPartnerUserIds(userId: string): Promise<readonly string[]> {
     const rows = await this.repository.listForPersonA(userId)
-    return [...new Set(rows.filter((row) => row.filingType === 'zusammen' && row.personBUserId !== '' && !hasOwnAccount(row)).map((row) => row.personBUserId))]
+    return [...new Set(rows.filter((row) => row.filingType === 'zusammen' && row.personBUserId !== '' && !personBHasOwnAccount(row)).map((row) => row.personBUserId))]
   }
 
   /**
@@ -155,13 +148,19 @@ export class LinkService {
     const profile = await this.profileRepository.findByUserId(spouseUserId)
     return {
       spouseUserId,
-      recordable: row.personAUserId === userId && !hasOwnAccount(row),
+      recordable: row.personAUserId === userId && !personBHasOwnAccount(row),
       firstName: profile?.firstName || null,
       lastName: profile?.lastName || null,
     }
   }
 
-  async set(userId: string, taxYear: number, dto: SetLinkDto, now = new Date()): Promise<LinkResponseDto> {
+  /**
+   * Chooses the Veranlagungsart. A new invitation code lets whoever holds it join the year and reach Person A's
+   * data, so it is minted only after `authorizeInvitation` (the step-up rule, 'grants-third-party') passed; a
+   * caller without one (the confirmation path, the interview's „Verheiratet“) sets up the joint return with a
+   * Person B placeholder and no code, which the mask then asks for.
+   */
+  async set(userId: string, taxYear: number, dto: SetLinkDto, now = new Date(), authorizeInvitation?: InvitationAuthorizer): Promise<LinkResponseDto> {
     const existing = await this.repository.findByUserAndYear(userId, taxYear)
     if (existing && existing.personAUserId !== userId) {
       throw new ForbiddenError('VERANLAGUNGSART_OWNED_BY_PERSON_A', 'Only person A can choose the Veranlagungsart.')
@@ -182,12 +181,16 @@ export class LinkService {
         return this.get(userId, taxYear)
       }
       const remains = existing?.filingType === 'zusammen' && existing.personBUserId !== ''
+      const keeps = remains && (personBHasOwnAccount(existing) || invitationValid(existing, now))
+      if (!keeps && authorizeInvitation) await authorizeInvitation()
       const invitation =
-        remains && hasOwnAccount(existing)
+        remains && personBHasOwnAccount(existing)
           ? { invitationCode: null, invitationCodeValidUntil: null }
           : remains && invitationValid(existing, now)
             ? { invitationCode: existing.invitationCode, invitationCodeValidUntil: existing.invitationCodeValidUntil }
-            : newInvitation(now)
+            : authorizeInvitation
+              ? newInvitation(now)
+              : { invitationCode: null, invitationCodeValidUntil: null }
       await this.repository.upsert(userId, taxYear, {
         filingType: 'zusammen',
         personBUserId: remains ? existing.personBUserId : shadowIdOf(userId, taxYear),
@@ -229,7 +232,7 @@ export class LinkService {
     if (!row || row.filingType !== 'zusammen' || !row.personBUserId) {
       throw new InvalidInputError('NO_ACTIVE_ZUSAMMENVERANLAGUNG', 'There is no active Zusammenveranlagung.')
     }
-    if (row.personAUserId !== userId || hasOwnAccount(row)) {
+    if (row.personAUserId !== userId || personBHasOwnAccount(row)) {
       throw new ForbiddenError('PERSON_B_OWNS_DATA', 'Person B maintains their data in their own account.')
     }
     if (data.religion && data.religionConsent !== true) {
@@ -241,8 +244,9 @@ export class LinkService {
     if (data.firstName !== undefined || data.lastName !== undefined || data.steuerId !== undefined) {
       const existing = await this.profileRepository.findByUserId(spouseUserId)
       await this.profileRepository.upsert(spouseUserId, {
-        firstName: data.firstName ?? existing?.firstName ?? '',
-        lastName: data.lastName ?? existing?.lastName ?? '',
+        // One rule for every field (WEB-29): absent keeps what is stored, null clears it.
+        firstName: data.firstName !== undefined ? (data.firstName ?? '') : (existing?.firstName ?? ''),
+        lastName: data.lastName !== undefined ? (data.lastName ?? '') : (existing?.lastName ?? ''),
         steuerId: data.steuerId !== undefined ? data.steuerId : existing?.steuerId ?? null,
         steuernummer: existing?.steuernummer ?? null,
       })
@@ -253,8 +257,8 @@ export class LinkService {
       const religion = data.religion !== undefined ? data.religion : previous.religion
       await this.masterDataRepository.save(spouseUserId, {
         ...previous,
-        geburtsdatum: data.geburtsdatum ?? previous.geburtsdatum,
-        beruf: data.beruf ?? previous.beruf,
+        geburtsdatum: data.geburtsdatum !== undefined ? data.geburtsdatum : previous.geburtsdatum,
+        beruf: data.beruf !== undefined ? data.beruf : previous.beruf,
         religion,
         familienstand: 'verheiratet',
         religionEinwilligungAm:
@@ -291,7 +295,7 @@ export class LinkService {
     // spouse account joined it, it is only a placeholder: joining the partner's return replaces it.
     const own = await this.repository.findByUserAndYear(userId, taxYear)
     const ownPlaceholder = own !== null && own.id !== row.id && own.personAUserId === userId
-    if (ownPlaceholder && hasOwnAccount(own)) {
+    if (ownPlaceholder && personBHasOwnAccount(own)) {
       throw new InvalidInputError('ALREADY_COUPLED', 'This year is already coupled with another account.')
     }
     // One code, one redeemer (API-8): the claim is a compare-and-set; a concurrent second redeemer loses.
@@ -308,6 +312,20 @@ export class LinkService {
       throw new NotFoundError('NO_CONSENT_REQUESTED', 'Für dieses Jahr wartet keine Zusammenveranlagung auf deine Zustimmung.')
     }
     if (personBConsentPending(row)) await this.repository.recordPersonBConsent(row.id, userId, now)
+    return this.get(userId, taxYear)
+  }
+
+  /**
+   * Person B takes the consent for this year back, in B's own app (decision 3). From the next request on, A sees
+   * nothing of B for the year: the app withholds B's id (`couplingVisibleTo`) and the database policy asks for
+   * the agreed year. The joint year itself stays; B can agree again.
+   */
+  async withdrawConsentForYear(userId: string, taxYear: number): Promise<LinkResponseDto> {
+    const row = await this.repository.findByUserAndYear(userId, taxYear)
+    if (!row || row.filingType !== 'zusammen' || row.personBUserId !== userId || row.personAUserId === userId || personBConsentPending(row)) {
+      throw new NotFoundError('NO_CONSENT_GIVEN', 'Für dieses Jahr hast du keine Zustimmung gegeben, die du zurücknehmen kannst.')
+    }
+    await this.repository.withdrawPersonBConsent(row.id, userId)
     return this.get(userId, taxYear)
   }
 

@@ -10,6 +10,7 @@ import {
   assertProductionConfig,
   checkProductionConfig,
   isLocalProductionStack,
+  MODEL_BASE_URL_OVERRIDES,
 } from '../../src/config/production-config.js'
 
 const repoFile = (path: string) => fileURLToPath(new URL(`../../../../${path}`, import.meta.url))
@@ -87,6 +88,24 @@ describe('production configuration at boot (beta P1)', () => {
     }
     expect(checkProductionConfig({ NODE_ENV: 'development' }).problems).toEqual([])
     expect(checkProductionConfig({}).problems).toEqual([])
+  })
+
+  it('OPS-9: on Cloud Run nothing but production starts, also not a missing NODE_ENV', () => {
+    for (const env of [{ K_SERVICE: 'steuereule-api' }, { K_SERVICE: 'steuereule-api', NODE_ENV: 'development' }, { K_SERVICE: 'steuereule-api', NODE_ENV: 'test' }]) {
+      expect(checkProductionConfig(env).problems.join(), JSON.stringify(env)).toMatch(/NODE_ENV: ".*" on Cloud Run/)
+      expect(() => assertProductionConfig(env)).toThrow(/Refusing to start/)
+    }
+  })
+
+  it('decision 4: a deployment refuses a model base URL, which would reach a provider no text names', () => {
+    const ai = readFileSync(fileURLToPath(new URL('../../src/ki/ai-runtime-config.service.ts', import.meta.url)), 'utf8')
+    // Every base-URL variable the model configuration reads is one the check refuses.
+    const read = [...ai.matchAll(/this\.env\.([A-Z_]*BASE_URL)\b/g)].map((match) => match[1] ?? '')
+    expect([...new Set(read)].sort()).toEqual([...MODEL_BASE_URL_OVERRIDES].sort())
+    for (const name of MODEL_BASE_URL_OVERRIDES) {
+      const onDeployment = checkProductionConfig({ NODE_ENV: 'production', BETTER_AUTH_URL: 'https://api.example.org', [name]: 'https://models.example.com/v1' })
+      expect(onDeployment.problems.join(), name).toContain(`${name}: must not be set on a deployment`)
+    }
   })
 
   it('H2-33: refuses the development fallback of every resolver on a deployment', () => {

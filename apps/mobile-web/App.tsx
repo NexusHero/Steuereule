@@ -14,7 +14,7 @@ import { createAppAuthClient } from './src/auth/auth-client'
 import { AuthClientProvider } from './src/auth/AuthClientProvider'
 import { APP_QUERY_DEFAULTS } from './src/query-client'
 import { SplashScreen } from './src/screens/SplashScreen'
-import { LoginScreen } from './src/screens/LoginScreen'
+import { ACCOUNT_REMOVED_ERROR, LoginScreen } from './src/screens/LoginScreen'
 import { RegistrationScreen } from './src/screens/RegistrationScreen'
 import { carryAssistantSignIn } from './src/auth/assistant-sign-in'
 import { OnboardingScreen } from './src/screens/OnboardingScreen'
@@ -56,9 +56,14 @@ import { formatDocumentTitle, linking } from './src/navigation/linking'
 import { ShellStateProvider, useShellState } from './src/navigation/ShellState'
 import { SubmissionGateProvider, useSubmissionGate } from './src/navigation/SubmissionGateContext'
 import { AppTabs } from './src/navigation/AppTabs'
+import { UnverifiedAccountBanner } from './src/screens/shared/UnverifiedAccountBanner'
 import { AppearanceProvider, resolveThemeMode, useAppearance } from './src/lib/appearance'
 import { syncHapticsPreferenceFromStorage } from './src/lib/hapticsPreference'
-import { onSessionExpired, resetSessionExpiry, watchForSessionExpiry } from './src/net/sessionExpiry'
+import { resetSessionExpiry, watchForSessionExpiry } from './src/net/sessionExpiry'
+import { leaveOnSessionExpiry } from './src/navigation/sessionExpiryExit'
+import { guardedRoute } from './src/navigation/guardedRoute'
+import { warnBeforeUnloadWithUnsavedWork } from './src/navigation/unsavedWork'
+import { leaveWithoutGuards } from './src/screens/shared/leaveGuard'
 
 const i18n = createAppI18n('de')
 const queryClient = new QueryClient({ defaultOptions: APP_QUERY_DEFAULTS })
@@ -73,17 +78,23 @@ const authClient = createAppAuthClient(apiBaseUrl)
 const RootStack = createNativeStackNavigator<RootStackParamList>()
 const rootNavigation = createNavigationContainerRef<RootStackParamList>()
 
-/** WEB-24: an expired session opens the sign-in and remembers the place to come back to. */
+/** WEB-24: an expired session opens the sign-in, remembers the place and drops the signed-in state. */
 function useSessionExpiryRedirect(): void {
+  const { resetSubmissionGate } = useSubmissionGate()
   useEffect(
     () =>
-      onSessionExpired(() => {
-        if (RN.Platform.OS === 'web' && typeof window !== 'undefined') {
-          rememberReturnTo(`${window.location.pathname}${window.location.search}`)
-        }
-        if (rootNavigation.isReady()) rootNavigation.reset({ index: 0, routes: [{ name: 'Login', params: { expired: true } }] })
+      leaveOnSessionExpiry({
+        currentPath: () => (RN.Platform.OS === 'web' && typeof window !== 'undefined' ? `${window.location.pathname}${window.location.search}` : null),
+        forgetSignedInState: () => {
+          resetSubmissionGate()
+          queryClient.clear()
+        },
+        openSignIn: () => {
+          // Every pending save fails with 401 now; a mask must not hold the user back (WEB-40 guard).
+          if (rootNavigation.isReady()) leaveWithoutGuards(() => rootNavigation.reset({ index: 0, routes: [{ name: 'Login', params: { expired: true } }] }))
+        },
       }),
-    [],
+    [resetSubmissionGate],
   )
 }
 
@@ -91,6 +102,8 @@ export default function App() {
   useEffect(() => {
     syncHapticsPreferenceFromStorage()
   }, [])
+  // WEB-40: closing or reloading the tab with a save on its way or typed input asks first.
+  useEffect(() => (RN.Platform.OS === 'web' && typeof window !== 'undefined' ? warnBeforeUnloadWithUnsavedWork(window) : undefined), [])
 
   return (
     <SafeAreaProvider>
@@ -197,7 +210,7 @@ function RootNavigator() {
         formatter: (_options, route) => formatDocumentTitle(route?.name),
       }}
     >
-      <RootStack.Navigator screenOptions={{ headerShown: false }}>
+      <RootStack.Navigator screenOptions={{ headerShown: false }} screenLayout={guardedRoute}>
         <RootStack.Screen name="Splash" component={SplashRoute} />
         <RootStack.Screen name="Login" component={LoginRoute} />
         <RootStack.Screen name="Registration" component={RegistrationRoute} />
@@ -230,7 +243,8 @@ function LoginRoute({ navigation, route }: NativeStackScreenProps<RootStackParam
       startWithForgot={Boolean(route.params?.forgot)}
       sessionExpired={Boolean(route.params?.expired)}
       emailVerified={route.params?.bestaetigt === '1'}
-      verificationFailed={Boolean(route.params?.error) && route.params?.sozial !== '1'}
+      accountRemoved={route.params?.error === ACCOUNT_REMOVED_ERROR}
+      verificationFailed={Boolean(route.params?.error) && route.params?.error !== ACCOUNT_REMOVED_ERROR && route.params?.sozial !== '1'}
       socialSignInFailed={Boolean(route.params?.error) && route.params?.sozial === '1'}
       onDone={() => {
         clearPendingVerification()
@@ -353,6 +367,13 @@ function PrintoutRoute({ navigation, route }: NativeStackScreenProps<RootStackPa
  * „Einzeln ändern“ (H2-2, WEB-18): every mask a value can live on opens its own screen, and coming back returns to
  * „Prüfen & bestätigen“. The profile is a tab of its own, so it is opened there.
  */
+/**
+ * Compile-time lock of „Einzeln ändern“: only the profile (opened in its tab) and "nothing open" may reach the
+ * confirmation screen itself. A mask added to `ConfirmationForm` without a branch in `ConfirmationRoute` does not
+ * type-check here, instead of silently showing „Prüfen & bestätigen“ again (H2-2).
+ */
+function everyMaskHasItsScreen(_remaining: 'profil' | null): void {}
+
 function ConfirmationRoute({ navigation, route }: NativeStackScreenProps<RootStackParamList, 'Confirmation'>) {
   const [open, setOpen] = useState<{ screen: ConfirmationForm; field: string | undefined } | null>(null)
   const screen = open?.screen ?? null
@@ -394,6 +415,7 @@ function ConfirmationRoute({ navigation, route }: NativeStackScreenProps<RootSta
   if (screen === 'rente') return <PensionerScreen taxYear={year} onDone={back} onBack={back} />
   if (screen === 'kapital') return <CapitalScreen taxYear={year} onDone={back} onBack={back} />
   if (screen === 'vermietung') return <RentalScreen taxYear={year} onDone={back} onBack={back} />
+  everyMaskHasItsScreen(screen)
   return (
     <ConfirmationScreen
       year={year}
@@ -512,7 +534,11 @@ function TabbedShell() {
       onSwitchYear={setTaxYear}
       isAuthenticated={sessionState.status === 'signed-in'}
     >
-      <AppTabs />
+      <RN.View style={{ flex: 1 }}>
+        {/* API-16 (ADR-0030): a never-verified account is told on every screen when it will be deleted. */}
+        <UnverifiedAccountBanner onOpenExport={() => linkTo('/app/profil/datenschutz')} />
+        <AppTabs />
+      </RN.View>
     </CopilotBridgeProvider>
   )
 }

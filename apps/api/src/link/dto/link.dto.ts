@@ -92,4 +92,10 @@ export class LinkResponseDto {
     description: 'The caller is Person B and is asked to agree to share this year with Person A (decision 3).',
   })
   consentRequestedFromMe?: boolean
+
+  @ApiPropertyOptional({
+    type: Boolean,
+    description: 'The caller is Person B and has agreed to share this year; B can take it back (DELETE …/kopplung/zustimmung).',
+  })
+  consentGivenByMe?: boolean
 }

@@ -194,6 +194,55 @@ describe('UnlockService', () => {
     })
   })
 
+  describe('the provider delivers events in any order and more than once', () => {
+    const owner = { userId: 'u1', taxYear: 2025, tier: 'standard' as const }
+    const send = async (event: PaymentEvent) => {
+      provider.nextEvent = event
+      await service.processWebhook(Buffer.from('{}'), 'sig')
+    }
+
+    it('a refund that overtakes the completion event leaves the year locked', async () => {
+      await service.startCheckout('u1', 2025)
+      await send({ kind: 'zurueckgenommen', sessionId: 'cs_1', reason: 'erstattet' })
+      await pay()
+      await expect(service.status('u1', 2025)).resolves.toBe('offen')
+      expect(repository.rows[0]!.status).toBe('erstattet')
+    })
+
+    it('a refund that overtakes the completion of a session without a local row is kept too', async () => {
+      await send({ kind: 'zurueckgenommen', sessionId: 'cs_lost', reason: 'erstattet', owner })
+      await send({ kind: 'bezahlt', sessionId: 'cs_lost', amountCents: 3499, owner })
+      await expect(service.status('u1', 2025)).resolves.toBe('offen')
+      expect(repository.rows.map((row) => row.status)).toEqual(['erstattet'])
+    })
+
+    it('a dispute that overtakes the completion event locks until it is won', async () => {
+      await service.startCheckout('u1', 2025)
+      await send({ kind: 'zurueckgenommen', sessionId: 'cs_1', reason: 'angefochten' })
+      await pay()
+      await expect(service.status('u1', 2025)).resolves.toBe('offen')
+      await send({ kind: 'wiederhergestellt', sessionId: 'cs_1' })
+      await expect(service.status('u1', 2025)).resolves.toBe('freigeschaltet')
+    })
+
+    it('a redelivered "dispute opened" after the dispute was won does not lock a paying customer out', async () => {
+      await service.startCheckout('u1', 2025)
+      await pay()
+      await send({ kind: 'zurueckgenommen', sessionId: 'cs_1', reason: 'angefochten' })
+      await send({ kind: 'wiederhergestellt', sessionId: 'cs_1' })
+      await send({ kind: 'zurueckgenommen', sessionId: 'cs_1', reason: 'angefochten' })
+      await expect(service.status('u1', 2025)).resolves.toBe('freigeschaltet')
+    })
+
+    it('a failed asynchronous payment closes the session, so a new attempt can start', async () => {
+      await service.startCheckout('u1', 2025)
+      provider.lookups.set('cs_1', { state: 'pending' })
+      await expect(service.startCheckout('u1', 2025)).rejects.toMatchObject({ code: 'PAYMENT_PENDING' })
+      await send({ kind: 'geschlossen', sessionId: 'cs_1' })
+      await expect(service.startCheckout('u1', 2025)).resolves.toMatchObject({ checkoutUrl: expect.stringContaining('cs_2') })
+    })
+  })
+
   describe('WEB-16: the price before the redirect', () => {
     it('comes from the provider for the tier the checkout would charge', async () => {
       await expect(service.price('u1', 2025)).resolves.toEqual({ amountCents: 3499, currency: 'eur' })

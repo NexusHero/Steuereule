@@ -991,6 +991,10 @@ model Unlock {
   tier                    String    @default("standard") @map("stufe")
   amountCents             Int?      @map("betragCent")
   paidAt                  DateTime? @map("bezahltAm")
+  /// The facts the status is computed from (`unlock/unlock-lifecycle.ts`): the provider's events arrive in any
+  /// order, so each is stored once and only moves forward. A full refund; a dispute "offen" or "gewonnen".
+  refundedAt              DateTime? @map("erstattetAm")
+  dispute                 String?   @map("anfechtung")
   createdAt               DateTime  @default(now())
   updatedAt               DateTime  @updatedAt
 

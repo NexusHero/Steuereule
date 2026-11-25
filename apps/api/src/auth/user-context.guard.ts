@@ -39,6 +39,11 @@ export interface UserAuthContext {
 
 export type AuthContext = AssistantAuthContext | UserAuthContext
 
+interface AssistantIdentity {
+  readonly userId: string
+  readonly context: AssistantAuthContext
+}
+
 /** Lifetime of the guest cookie, printed in the privacy text through `RETENTION.guestCookieDays`. */
 export const COOKIE_MAX_AGE_SECONDS = RETENTION.guestCookieDays * 24 * 60 * 60
 
@@ -81,7 +86,7 @@ export class UserContextGuard implements CanActivate {
    * connection itself is checked too: revoking deletes the consent, and that stops the token at once
    * (ADR-0052 §10). Client-credentials tokens carry no user and are refused.
    */
-  private async acceptJwtAccessToken(request: RequestWithUserId, rawToken: string): Promise<boolean> {
+  private async resolveJwtAccessToken(rawToken: string): Promise<AssistantIdentity> {
     // The bundle is typed with better-auth's base API; the jwt plugin adds getJwks at runtime.
     const auth = this.betterAuth.auth as unknown as { api: { getJwks: JwksFetch }; options: { baseURL?: unknown } }
     const baseUrl = String(auth.options.baseURL)
@@ -100,18 +105,15 @@ export class UserContextGuard implements CanActivate {
     const [client, consented] = await Promise.all([this.tokens.findClient(clientId), this.tokens.hasConsent(userId, clientId)])
     if (!client || client.disabled) throw new UnauthorizedException('OAuth client has been disabled.')
     if (!consented) throw new UnauthorizedException('Bearer token has been revoked.')
-    request[USER_ID_REQUEST_KEY] = userId
-    request[USER_ID_KIND_REQUEST_KEY] = 'bearer'
-    request[AUTH_CONTEXT_REQUEST_KEY] = {
-      source: 'assistent',
-      clientId,
-      clientName: clientDisplayName(client.name),
-      scopes: typeof claims.scope === 'string' ? claims.scope.split(' ').filter((scope) => scope.length > 0) : [],
+    return {
+      userId,
+      context: {
+        source: 'assistent',
+        clientId,
+        clientName: clientDisplayName(client.name),
+        scopes: typeof claims.scope === 'string' ? claims.scope.split(' ').filter((scope) => scope.length > 0) : [],
+      },
     }
-    // An assistant acts for an account that completed OAuth consent; it cannot verify an email itself, so
-    // it is not subject to the verified-email gate (ADR-0103).
-    request[EMAIL_VERIFIED_REQUEST_KEY] = true
-    return true
   }
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -147,11 +149,15 @@ export class UserContextGuard implements CanActivate {
 
   /** The challenge of the MCP endpoint the request went to (RFC 6750 §3, RFC 9728 §5.1), optionally naming the error. */
   private setChallenge(request: RequestWithUserId, reply: FastifyReply, error?: string): void {
+    reply.header('WWW-Authenticate', this.challengeFor(request, error))
+  }
+
+  private challengeFor(request: FastifyRequest, error?: string): string {
     const path = (request.url ?? '').split('?')[0] ?? ''
     // /mcp (Streamable HTTP) is a resource of its own; the SSE transport (/mcp/sse, /mcp/messages) is the older one.
     const resource = path === MCP_STREAMABLE_PATH || path === `${MCP_STREAMABLE_PATH}/` ? MCP_STREAMABLE_PATH : MCP_RESOURCE_PATH
     const challenge = mcpBearerChallenge(String(this.betterAuth.auth.options.baseURL), resource)
-    reply.header('WWW-Authenticate', error === undefined ? challenge : `${challenge}, error="${error}"`)
+    return error === undefined ? challenge : `${challenge}, error="${error}"`
   }
 
   /** A refused token on the MCP endpoint carries `invalid_token`, so a client refreshes or signs in again (MCP-14). */
@@ -165,11 +171,27 @@ export class UserContextGuard implements CanActivate {
   }
 
   private async acceptBearer(request: RequestWithUserId, authHeader: string): Promise<boolean> {
+    const { userId, context } = await this.resolveBearer(authHeader)
+    request[USER_ID_REQUEST_KEY] = userId
+    request[USER_ID_KIND_REQUEST_KEY] = 'bearer'
+    request[AUTH_CONTEXT_REQUEST_KEY] = context
+    // An assistant acts for an account that completed OAuth consent; it cannot verify an email itself, so
+    // it is not subject to the verified-email gate (ADR-0103).
+    request[EMAIL_VERIFIED_REQUEST_KEY] = true
+    return true
+  }
+
+  /**
+   * The one bearer decision: a JWT for the MCP endpoint or an opaque token of a client that is not disabled, of
+   * a user who still consents to that client (revoking deletes the consent and stops every token of it at once,
+   * ADR-0052 §10). Throws UnauthorizedException when the token does not pass.
+   */
+  private async resolveBearer(authHeader: string): Promise<AssistantIdentity> {
     const rawToken = authHeader.slice(7).trim()
     if (!rawToken) {
       throw new UnauthorizedException('Missing bearer token.')
     }
-    if (rawToken.split('.').length === 3) return this.acceptJwtAccessToken(request, rawToken)
+    if (rawToken.split('.').length === 3) return this.resolveJwtAccessToken(rawToken)
     const tokenHash = createHash('sha256').update(rawToken).digest('base64url')
     const tokenRecord = await this.tokens.findOpaqueToken(tokenHash)
     if (!tokenRecord || !tokenRecord.userId) {
@@ -184,16 +206,31 @@ export class UserContextGuard implements CanActivate {
     if (tokenRecord.client.disabled) {
       throw new UnauthorizedException('OAuth client has been disabled.')
     }
-    request[USER_ID_REQUEST_KEY] = tokenRecord.userId
-    request[USER_ID_KIND_REQUEST_KEY] = 'bearer'
-    request[AUTH_CONTEXT_REQUEST_KEY] = {
-      source: 'assistent',
-      clientId: tokenRecord.clientId,
-      clientName: clientDisplayName(tokenRecord.client.name),
-      scopes: [...tokenRecord.scopes],
+    if (!(await this.tokens.hasConsent(tokenRecord.userId, tokenRecord.clientId))) {
+      throw new UnauthorizedException('Bearer token has been revoked.')
     }
-    request[EMAIL_VERIFIED_REQUEST_KEY] = true
-    return true
+    return {
+      userId: tokenRecord.userId,
+      context: { source: 'assistent', clientId: tokenRecord.clientId, clientName: clientDisplayName(tokenRecord.client.name), scopes: [...tokenRecord.scopes] },
+    }
+  }
+
+  /**
+   * The bearer check of an MCP message whose body is larger than the default limit, made before Fastify reads
+   * the body (`mcp/mcp-body-limit.ts`): only a caller with a valid assistant token may make the server buffer
+   * up to 15 MB. Returns null when the token passes, else the WWW-Authenticate challenge for the 401. The guard
+   * decides the request itself again once the body is read.
+   */
+  async refuseBearerBeforeBody(request: FastifyRequest): Promise<string | null> {
+    const authHeader = request.headers.authorization
+    if (typeof authHeader !== 'string' || !authHeader.startsWith('Bearer ')) return this.challengeFor(request)
+    try {
+      await this.resolveBearer(authHeader)
+      return null
+    } catch (error) {
+      if (error instanceof UnauthorizedException) return this.challengeFor(request, 'invalid_token')
+      throw error
+    }
   }
 
   private async acceptCookieOrGuest(request: RequestWithUserId, reply: FastifyReply): Promise<boolean> {

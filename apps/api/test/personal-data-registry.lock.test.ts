@@ -7,7 +7,7 @@ import { Prisma as KeystorePrisma } from '@prisma-keystore/client'
 import { describe, expect, it } from 'vitest'
 import { DELETION_STEPS, taxDataTables } from '../src/account/delete-account-transaction.prisma.js'
 import { genericDeletionEntries, PERSONAL_DATA_REGISTRY } from '../src/personal-data/personal-data-registry.js'
-import { ownerOf, personIds, shadowIdOf } from '../src/common/shadow-id.js'
+import { ownerOf, personIds, shadowIdOf } from '../src/common/person-ids.js'
 
 const models = [
   ...Prisma.dmmf.datamodel.models.map((model) => model.name),

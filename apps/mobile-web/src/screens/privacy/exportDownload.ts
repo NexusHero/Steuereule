@@ -1,3 +1,4 @@
+import { apiFetch } from '../../net/apiFetch'
 import { getApiClientBaseUrl } from '@steuereule/api-client'
 
 export type ExportFormat = 'json' | 'pdf'
@@ -29,7 +30,7 @@ export interface DownloadExportResult {
 }
 
 export async function downloadAccountExport(format: ExportFormat): Promise<DownloadExportResult> {
-  const response = await fetch(`${getApiClientBaseUrl()}/v1/account/export?format=${format}`, {
+  const response = await apiFetch(`${getApiClientBaseUrl()}/v1/account/export?format=${format}`, {
     credentials: 'include',
   })
   if (!response.ok) {

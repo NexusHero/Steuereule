@@ -2,6 +2,7 @@
 // seen red: a verified account survives, an account inside the period survives, the boundary, the warning goes out
 // before the deletion, and an account whose warning was never sent survives (§3a).
 import { describe, expect, it, vi } from 'vitest'
+import type { DeleteAccountResult } from '../src/account/account-deletion.repository.js'
 import { sweepEndedLegalHolds, sweepUnverifiedAccounts } from '../src/account/lifecycle-sweeps.prisma.js'
 
 const DAY = 24 * 60 * 60 * 1000
@@ -140,12 +141,44 @@ describe('sweepEndedLegalHolds', () => {
       user: { findMany: async () => [{ id: 'living-user' }] },
     }
     const erased: string[] = []
-    const result = await sweepEndedLegalHolds(db as never, async (id) => {
+    const result = await sweepEndedLegalHolds(db as never, async (id, at) => {
       erased.push(id)
+      // The erasure judges holds by the sweep's clock, not the wall clock (a later run must not keep rows the
+      // sweep found ended).
+      expect(at).toBe(NOW)
       return { deleted: { profile: false, account: true }, retainedAnonymisedAuditRows: 0, retainedUnderLegalHold: 0, legalHolds: [] }
     }, NOW)
     expect(removed).toEqual(['h1', 'h2', 'h3'])
     expect(erased).toEqual(['deleted-user'])
     expect(result).toEqual({ released: 3, erasedFor: 1 })
+  })
+
+  it('keeps the hold of an account whose erasure failed, so the next run finds its rows again (API-24)', async () => {
+    const holds = [
+      { id: 'h1', userId: 'breaks' },
+      { id: 'h2', userId: 'deleted-user' },
+    ]
+    const removed: string[] = []
+    const db = {
+      legalHold: {
+        findMany: async () => holds,
+        deleteMany: async ({ where }: { where: { id: { in: string[] } } }) => {
+          removed.push(...where.id.in)
+          return { count: where.id.in.length }
+        },
+      },
+      user: { findMany: async () => [] },
+    }
+    const order: string[] = []
+    const erase = async (id: string): Promise<DeleteAccountResult> => {
+      order.push(`erase:${id}`)
+      if (id === 'breaks') throw new Error('database unavailable')
+      // The hold is still there while the erasure runs: it is deleted only afterwards.
+      expect(removed).not.toContain('h2')
+      return { deleted: { profile: false, account: true }, retainedAnonymisedAuditRows: 0, retainedUnderLegalHold: 0, legalHolds: [] }
+    }
+    await expect(sweepEndedLegalHolds(db as never, erase, NOW)).rejects.toThrow(/1 account\(s\) could not be erased/)
+    expect(order).toEqual(['erase:breaks', 'erase:deleted-user'])
+    expect(removed).toEqual(['h2'])
   })
 })

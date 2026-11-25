@@ -491,10 +491,17 @@ async function testCloseAndReopenReLogin(apiOrigin, webOrigin, sql) {
       guardAgainst429(page, fail, '/v1/device/')
       await waitForRateLimit(DEVICE_CODE_BUCKET, 'device-code')
       await skipSplash(page, webOrigin)
-      // Splash always leads to Login today (App.tsx's own comment: no boot-time session-detection
-      // yet, REQ-009 pending) — an already-documented gap, not asserted here as new. The
-      // stakeholder's own next step is what this row actually tests: re-entering the same
-      // credentials on the screen that's actually shown.
+      // A session that survived the close goes straight to the app from `/` (WEB-6, the former REQ-009 gap):
+      // same account, no second sign-in.
+      await page.getByRole('tab', { name: COPY.profilTab }).waitFor({ state: 'visible', timeout: 10_000 })
+      const identityAfterReopen = await getSessionEmail(page, apiOrigin)
+      if (identityAfterReopen !== email) {
+        fail(`Row C (session 2): opening / after the reopen should land in the app as ${email}, get-session read ${JSON.stringify(identityAfterReopen)}.`)
+      }
+      console.log('[return-visit] Row C: session 2 — the surviving session opens the app directly, as the same account.')
+      // Re-entering the credentials is still a real path (switching accounts, a stale tab): on the sign-in page
+      // itself the screen must be honest and the sign-in clean.
+      await page.goto(`${webOrigin}/login`, { waitUntil: 'networkidle' })
       await assertLoginScreenHonest(page, apiOrigin, { expectHealthy: true, label: 'Row C (session 2, before re-login)' })
       await waitForRateLimit(AUTH_BUCKET, 'sign-in/email')
       await assertLoginSubmitHonest(page, email, TEST_PASSWORD, { expectHealthy: true, label: 'Row C (session 2, re-login)' })

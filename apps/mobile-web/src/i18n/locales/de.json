@@ -51,6 +51,11 @@
       "heading": "Dieser Bestätigungslink gilt nicht mehr.",
       "body": "Er ist abgelaufen oder wurde schon benutzt. Melde dich mit E-Mail und Passwort an – ist die Adresse noch nicht bestätigt, schicken wir dir sofort einen neuen Link."
     },
+    "accountRemoved": {
+      "heading": "Dieses Konto gibt es nicht mehr.",
+      "body": "Die E-Mail-Adresse wurde nie bestätigt, deshalb haben wir das Konto nach 30 Tagen gelöscht (oder du hast es selbst gelöscht). Du kannst dich jederzeit neu registrieren.",
+      "register": "Neu registrieren"
+    },
     "errEmail": "Das sieht noch nicht nach einer E-Mail aus.",
     "errPass": "Das Passwort ist zu kurz. Neue Passwörter brauchen mindestens 12 Zeichen.",
     "apiUnreachable": {
@@ -97,6 +102,11 @@
       "resendSending": "Wird gesendet …",
       "resendSent": "Ist raus — schau in dein Postfach.",
       "resendError": "Das hat gerade nicht geklappt. Versuch es gleich noch mal."
+    },
+    "unverifiedAccount": {
+      "heading": "Bitte bestätige deine E-Mail-Adresse.",
+      "body": "Ein Konto, das nie bestätigt wird, löschen wir: deines frühestens am {{date}}. Den Link findest du in der Mail an {{email}}.",
+      "export": "Vorher deine Daten exportieren"
     },
     "verifiedBanner": {
       "heading": "E-Mail bestätigt ✓"
@@ -662,6 +672,7 @@
     "fehlendTitel": "Dafür fehlt noch etwas",
     "fehlendAngaben": "Ergänze zuerst deine Angaben für die Steuererklärung.",
     "fehlendEhegatte": "Leg in den Stammdaten fest, ob ihr zusammen oder einzeln veranlagt werdet.",
+    "fehlendZustimmungPersonB": "Dein Partner hat der gemeinsamen Erklärung für {{jahr}} noch nicht zugestimmt. Er stimmt in seiner eigenen App unter „Angaben für die Erklärung“ zu; bis dahin siehst du keine seiner Angaben und kannst nicht drucken.",
     "fehlendRiester": "Für deinen Riester-Vertrag fehlen noch Angaben für die Anlage AV: ob du selbst oder über deinen Ehepartner begünstigt bist, und gegebenenfalls deine beitragspflichtigen Einnahmen im Vorjahr.",
     "riesterErgaenzen": "Riester-Angaben ergänzen",
     "fehlendKinder": "Für die Anlage Kind fehlen noch Angaben zu deinen Kindern: Steuer-ID, Kindschaftsverhältnis, Familienkasse, Wohnsitz und gegebenenfalls der andere Elternteil.",
@@ -1127,7 +1138,9 @@
     "kopplungZustimmung": {
       "frage": "Dein Partner möchte {{year}} mit dir zusammen abgeben. Erst wenn du zustimmst, sieht er deine Angaben für {{year}} (Steuer-ID, Geburtsdatum, Religion, Beruf).",
       "zustimmen": "{{year}} zusammen abgeben – zustimmen",
-      "wartet": "Dein Partner hat {{year}} noch nicht zugestimmt. Bis dahin siehst du keine seiner Angaben für {{year}}."
+      "wartet": "Dein Partner hat {{year}} noch nicht zugestimmt. Bis dahin siehst du keine seiner Angaben für {{year}}.",
+      "gegeben": "Du hast zugestimmt, {{year}} zusammen abzugeben. Dein Partner sieht deine Angaben für {{year}}.",
+      "zuruecknehmen": "Zustimmung für {{year}} zurücknehmen"
     },
     "kopplungStand": {
       "loading": "Die Veranlagungsart wird geladen …",
@@ -1135,7 +1148,8 @@
       "statusLoadError": "Ob ihr als Paar verknüpft seid, konnte nicht geladen werden.",
       "personBGespeichert": "Partner-Angaben übernommen.",
       "personBUnveraendert": "Es gibt nichts Neues zu übernehmen.",
-      "codeUnbekannt": "Diesen Code kennen wir nicht. Prüf die Schreibweise."
+      "codeUnbekannt": "Diesen Code kennen wir nicht. Prüf die Schreibweise.",
+      "einladungErstellen": "Einladungscode für deinen Partner erstellen"
     },
     "ungespeichertZurueck": "Deine Änderungen sind noch nicht gespeichert. Tipp „Speichern“ – oder noch einmal zurück, um sie zu verwerfen.",
     "fehlendHinweis": "Für den Ausdruck fehlen noch {{anzahl}} Angaben.",
@@ -2333,7 +2347,8 @@
         "rente": "Rentenbetrag",
         "lohnersatz-betrag": "Betrag der Lohnersatzleistungen",
         "selbststaendig": "Angaben zur Selbstständigkeit",
-        "einkommen": "Angaben zum Einkommen"
+        "einkommen": "Angaben zum Einkommen",
+        "zustimmung": "Zustimmung zur gemeinsamen Erklärung für dieses Jahr"
       },
       "grund": {
         "verheiratet": "Für Verheiratete rechnen wir die Erstattung noch nicht.",
@@ -4794,6 +4809,11 @@
       "titel": "Aufgabe verwerfen?",
       "text": "Die Aufgabe verschwindet aus deiner Liste.",
       "bestaetigen": "Verwerfen"
+    },
+    "partnerConsentWithdraw": {
+      "titel": "Zustimmung für {{jahr}} zurücknehmen?",
+      "text": "Dein Partner sieht deine Angaben für {{jahr}} ab sofort nicht mehr und kann {{jahr}} nicht mehr mit deinen Zahlen zusammen abgeben. Du kannst später wieder zustimmen.",
+      "bestaetigen": "Zustimmung zurücknehmen"
     },
     "submissionWithdraw": {
       "titel": "Abgabe {{jahr}} zurücknehmen?",

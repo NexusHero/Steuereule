@@ -1,11 +1,10 @@
 import { MIN_TAX_YEAR, maxTaxYear } from './tax-year.js'
 
-/**
- * The id of a Person B kept in A's account without an own login (ADR-0054): `spouse_<userId>_<year>`.
- * The coupling writes it, and deletion, export, takeover, the read audit and the household read it; all of
- * them take the format from here, so a row written under a shadow id is always found again.
- */
-const SHADOW_PREFIX = 'spouse_'
+// The ids one person's rows are kept under (ADR-0054): the account id, and one shadow id per tax year for a
+// Person B kept in that account without a login of their own. Deletion, export, guest takeover
+// (`personal-data/personal-data-registry.ts`) and the access log read the same set from here.
+
+export const SHADOW_PREFIX = 'spouse_'
 
 export function shadowIdOf(userId: string, taxYear: number): string {
   return `${SHADOW_PREFIX}${userId}_${taxYear}`
@@ -25,8 +24,9 @@ export function ownerOf(id: string): string {
 
 /**
  * The person's id set: the id itself and every shadow id of a Person B the person may keep (one per tax
- * year a route accepts). Shadow ids are deterministic, so no row has to remember them: a shadow left behind
- * by a switch to a single return, or by B joining with an own account, is still found here.
+ * year a route accepts, by the same clock as the route: `maxTaxYear`). Shadow ids are deterministic, so no row
+ * has to remember them: a shadow left behind by a switch to a single return, or by B joining with an own
+ * account, is still found here.
  */
 export function personIds(userId: string, now = new Date()): string[] {
   if (isShadowId(userId)) return [userId]

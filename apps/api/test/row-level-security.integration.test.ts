@@ -39,6 +39,10 @@ beforeAll(async () => {
     for (const userId of [A, B, C, shadowOfA, lookalike]) {
       await tx.$executeRaw`INSERT INTO "Profile" ("id", "userId", "firstName", "lastName", "updatedAt") VALUES (${randomUUID()}, ${userId}, 'x', 'y', now())`
     }
+    // C's years 2025 and 2026: the per-year rule lets B reach only the year C agreed to.
+    for (const year of [2025, 2026]) {
+      await tx.$executeRaw`INSERT INTO "TaxYear" ("id", "userId", "steuerjahr", "baseEstimate", "openItems", "updatedAt") VALUES (${randomUUID()}, ${C}, ${year}, 0, 0, now())`
+    }
     // B and C file jointly (C has an own account); A files alone.
     await tx.$executeRaw`INSERT INTO "SteuerjahrKopplung" ("id", "personAUserId", "personBUserId", "steuerjahr", "veranlagungsart", "updatedAt") VALUES (${randomUUID()}, ${B}, ${C}, 2025, 'zusammen', now())`
   })
@@ -48,6 +52,7 @@ afterAll(async () => {
   await owner.$transaction(async (tx) => {
     await tx.$executeRaw`SELECT set_config('steuereule.system', 'test-fixture', true)`
     await tx.$executeRaw`DELETE FROM "Profile" WHERE "userId" LIKE ${`%${run}%`}`
+    await tx.$executeRaw`DELETE FROM "TaxYear" WHERE "userId" LIKE ${`%${run}%`}`
     await tx.$executeRaw`DELETE FROM "SteuerjahrKopplung" WHERE "personAUserId" LIKE ${`%${run}%`}`
   })
   await Promise.all([owner.$disconnect(), runtime.$disconnect()])
@@ -114,6 +119,28 @@ describe('user A against user B, through raw SQL', () => {
     expect(await as({ userId: A }, ownersSeen)).not.toContain(B)
     expect(await as({ userId: A }, ownersSeen)).not.toContain(C)
   })
+
+  // Decision 3 per year: B agreed to the joint year 2025 only. A table with a tax year shows Person A (B here)
+  // Person B's (C's) row of 2025 and not of 2026; a withdrawal takes it away from the next statement on.
+  it('Person A reaches Person B only in the year B agreed to, and no longer after B withdrew', async () => {
+    const consent = (at: Date | null) =>
+      owner.$transaction(async (tx) => {
+        await tx.$executeRaw`SELECT set_config('steuereule.system', 'test-fixture', true)`
+        await tx.$executeRaw`UPDATE "SteuerjahrKopplung" SET "personBZustimmungAm" = ${at} WHERE "personAUserId" = ${B} AND "personBUserId" = ${C}`
+      })
+    const yearsOfC = (tx: Prisma.TransactionClient) =>
+      tx.$queryRaw<{ steuerjahr: number }[]>`SELECT "steuerjahr" FROM "TaxYear" WHERE "userId" = ${C} ORDER BY "steuerjahr"`.then((rows) => rows.map((row) => row.steuerjahr))
+
+    await consent(new Date())
+    expect(await as({ userId: B }, yearsOfC)).toEqual([2025])
+    expect(await as({ userId: C }, yearsOfC)).toEqual([2025, 2026])
+    const written = await as({ userId: B }, (tx) => tx.$executeRaw`UPDATE "TaxYear" SET "openItems" = 9 WHERE "userId" = ${C} AND "steuerjahr" = 2026`)
+    expect(written).toBe(0)
+
+    await consent(null)
+    expect(await as({ userId: B }, yearsOfC)).toEqual([])
+    expect(await as({ userId: C }, yearsOfC)).toEqual([2025, 2026])
+  })
 })
 
 describe('fail closed', () => {
@@ -154,5 +181,72 @@ describe("the API's client against Postgres", () => {
   it("an interactive transaction of A cannot reach B's row", async () => {
     const seen = await runAsDatabaseUser(A, () => client.$transaction(async (tx) => tx.profile.findFirst({ where: { userId: B } })))
     expect(seen).toBeNull()
+  })
+})
+
+// The role model: the API's own login, as the migrate job creates it, against the real roles of this database.
+describe('the runtime login', () => {
+  const role = `rls_api_${run}`
+  const password = `runtime-${randomUUID()}`
+  const loginUrl = (() => {
+    const parsed = new URL(url)
+    parsed.username = role
+    parsed.password = password
+    return parsed.toString()
+  })()
+  let login: PrismaClient
+
+  beforeAll(async () => {
+    // @ts-expect-error — a plain .mjs script of the migrate job, without type declarations
+    const { provisionRuntimeLogin, runtimeLoginPlan } = await import('../scripts/runtime-database-login.mjs')
+    await provisionRuntimeLogin(owner, runtimeLoginPlan({ DATABASE_URL: url, RUNTIME_DATABASE_URL: loginUrl }))
+    login = new PrismaClient({ datasources: { db: { url: withRuntimeDatabaseRole(loginUrl) } } })
+  })
+
+  afterAll(async () => {
+    await login.$disconnect()
+    await owner.$executeRawUnsafe(`DROP ROLE IF EXISTS "${role}"`)
+  })
+
+  it('passes the boot check, and the login of the migrations does not', async () => {
+    const { assertDatabaseRole } = await import('../src/config/assert-database-role.js')
+    await expect(assertDatabaseRole({ env: { NODE_ENV: 'production', DATABASE_URL: loginUrl } })).resolves.toBeUndefined()
+    await expect(assertDatabaseRole({ env: { NODE_ENV: 'production', DATABASE_URL: url } })).rejects.toThrow(/Refusing to start/)
+  })
+
+  it('works under the policies like the app role: its own rows with an identity, nothing without', async () => {
+    expect(await login.profile.count({ where: { userId: { contains: run } } })).toBe(0)
+    const seen = await login.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT set_config('steuereule.user_id', ${A}, true)`
+      return ownersSeen(tx)
+    })
+    expect(seen).toEqual([A, shadowOfA].sort())
+  })
+
+  it('cannot step around the policies, with or without the role option in its URL', async () => {
+    const bare = new PrismaClient({ datasources: { db: { url: loginUrl } } })
+    try {
+      for (const client of [login, bare]) {
+        await expect(client.$executeRawUnsafe('ALTER TABLE "Profile" DISABLE ROW LEVEL SECURITY')).rejects.toThrow(/must be owner/)
+        await expect(client.$executeRawUnsafe('DROP POLICY p11_owner ON "Profile"')).rejects.toThrow(/must be owner/)
+        await expect(client.$executeRawUnsafe('CREATE OR REPLACE FUNCTION app_rls.is_system() RETURNS boolean LANGUAGE sql AS $fn$ SELECT true $fn$')).rejects.toThrow(/must be owner|permission denied/)
+        await expect(client.$executeRawUnsafe('CREATE TABLE public.rls_probe (id int)')).rejects.toThrow(/permission denied/)
+        const [me] = await owner.$queryRaw<{ name: string }[]>`SELECT session_user::text AS name`
+        await expect(client.$executeRawUnsafe(`SET ROLE "${me!.name}"`)).rejects.toThrow(/permission denied/)
+        expect(await client.profile.count({ where: { userId: { contains: run } } })).toBe(0)
+      }
+    } finally {
+      await bare.$disconnect()
+    }
+  })
+
+  it('is not the party the append-only tables let re-encrypt; the owner of the tables is', async () => {
+    const mayReencrypt = Prisma.sql`SELECT pg_has_role(current_user, (SELECT c.relowner FROM pg_class c WHERE c.relname = 'Buchung' AND c.relnamespace = 'public'::regnamespace), 'USAGE') AS allowed`
+    expect(await login.$queryRaw<{ allowed: boolean }[]>(mayReencrypt)).toEqual([{ allowed: false }])
+    expect(await runtime.$queryRaw<{ allowed: boolean }[]>(mayReencrypt)).toEqual([{ allowed: false }])
+    expect(await owner.$queryRaw<{ allowed: boolean }[]>(mayReencrypt)).toEqual([{ allowed: true }])
+    const [fn] = await owner.$queryRaw<{ src: string }[]>`SELECT prosrc AS src FROM pg_proc WHERE proname = 'steuereule_append_only'`
+    expect(fn!.src).toContain("pg_has_role(current_user, (SELECT c.relowner FROM pg_class c WHERE c.oid = TG_RELID), 'USAGE')")
+    expect(fn!.src).not.toContain("current_user <> 'steuereule_app'")
   })
 })

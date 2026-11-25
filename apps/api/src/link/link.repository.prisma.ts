@@ -2,7 +2,7 @@ import { Inject, Injectable } from '@nestjs/common'
 import { ENCRYPTED_PRISMA, type EncryptedPrismaClient } from '../prisma/encrypted-prisma.provider.js'
 import type { PartnerCouplingRecord, PartnerCouplingRepository } from './link.repository.js'
 import { moveShadowDataToAccount } from '../personal-data/person-data-move.prisma.js'
-import { isShadowId } from '../common/shadow-id.js'
+import { isShadowId } from '../common/person-ids.js'
 
 function toRecord(row: {
   id: string
@@ -121,6 +121,13 @@ export class PrismaLinkRepository implements PartnerCouplingRepository {
 
   async recordPersonBConsent(id: string, personBUserId: string, now: Date): Promise<PartnerCouplingRecord | null> {
     const updated = await this.prisma.taxYearLink.updateMany({ where: { id, personBUserId }, data: { personBConsentedAt: now } })
+    if (updated.count !== 1) return null
+    await this.prisma.taxDataAccessLog.create({ data: { userId: personBUserId, action: 'WRITE', resource: 'kopplung' } })
+    return toRecord(await this.prisma.taxYearLink.findUniqueOrThrow({ where: { id } }))
+  }
+
+  async withdrawPersonBConsent(id: string, personBUserId: string): Promise<PartnerCouplingRecord | null> {
+    const updated = await this.prisma.taxYearLink.updateMany({ where: { id, personBUserId }, data: { personBConsentedAt: null } })
     if (updated.count !== 1) return null
     await this.prisma.taxDataAccessLog.create({ data: { userId: personBUserId, action: 'WRITE', resource: 'kopplung' } })
     return toRecord(await this.prisma.taxYearLink.findUniqueOrThrow({ where: { id } }))

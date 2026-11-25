@@ -8,6 +8,7 @@ import { ADVISOR_REPOSITORY, type AdvisorRepository } from '../src/advisor/advis
 import { AdvisorService } from '../src/advisor/advisor.service.js'
 import { AppModule } from '../src/app.module.js'
 import { PrismaService } from '../src/prisma/prisma.service.js'
+import { asDatabaseUser, fixtureClient } from './support/database-fixture.js'
 
 const YEAR = 2025
 
@@ -21,9 +22,10 @@ describe('conversations in the database (#481)', () => {
   beforeAll(async () => {
     app = await NestFactory.create<NestFastifyApplication>(AppModule, new FastifyAdapter(), { logger: false })
     await app.init()
-    prisma = app.get(PrismaService)
-    repo = app.get<AdvisorRepository>(ADVISOR_REPOSITORY)
-    service = app.get(AdvisorService)
+    prisma = fixtureClient(app.get(PrismaService))
+    // The repository and the service as the user's requests reach them (P11).
+    repo = asDatabaseUser(userId, app.get<AdvisorRepository>(ADVISOR_REPOSITORY))
+    service = asDatabaseUser(userId, app.get(AdvisorService))
   })
 
   afterAll(async () => {
@@ -48,9 +50,9 @@ describe('conversations in the database (#481)', () => {
     for (let round = 0; round < 10; round++) {
       const fresh = `${userId}-concurrent-${round}`
       try {
-        const opened = await Promise.all(Array.from({ length: 12 }, () => repo.defaultConversation(fresh, YEAR)))
+        const opened = await Promise.all(Array.from({ length: 12 }, () => asDatabaseUser(fresh, app.get<AdvisorRepository>(ADVISOR_REPOSITORY)).defaultConversation(fresh, YEAR)))
         expect(new Set(opened.map((conversation) => conversation.id)).size).toBe(1)
-        expect(await repo.listConversations(fresh, YEAR)).toHaveLength(1)
+        expect(await asDatabaseUser(fresh, app.get<AdvisorRepository>(ADVISOR_REPOSITORY)).listConversations(fresh, YEAR)).toHaveLength(1)
       } finally {
         await prisma.advisorConversation.deleteMany({ where: { userId: fresh } })
       }

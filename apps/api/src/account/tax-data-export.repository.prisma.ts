@@ -5,7 +5,7 @@ import { ENCRYPTED_PRISMA, type EncryptedPrismaClient } from '../prisma/encrypte
 import type { ExportTaxDataEntry, ExportTaxDataValue } from './export/export-document.js'
 import type { ExportReceiptFileMeta, TaxDataExportRepository } from './tax-data-export.repository.js'
 import { delegateName, entriesWhere, PERSONAL_DATA_REGISTRY, type ExportSection } from '../personal-data/personal-data-registry.js'
-import { isShadowId, personIds } from '../common/shadow-id.js'
+import { isShadowId, personIds } from '../common/person-ids.js'
 
 const OMITTED_FIELDS = new Set([
   'id',
@@ -32,6 +32,8 @@ const OMITTED_FIELDS = new Set([
   'userCode',
   'rotationReplayResponse',
   'confirmation',
+  // A live partner invitation lets whoever holds the file join the year and reach the person's data.
+  'invitationCode',
 ])
 
 /**

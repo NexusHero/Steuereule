@@ -31,9 +31,11 @@ export interface SessionOwner {
 export type PaymentEvent =
   | { kind: 'bezahlt'; sessionId: string; amountCents: number | null; owner?: SessionOwner }
   /** A full refund or an opened dispute: the money is gone again, so is the unlock (API-4). */
-  | { kind: 'zurueckgenommen'; sessionId: string; reason: 'erstattet' | 'angefochten' }
+  | { kind: 'zurueckgenommen'; sessionId: string; reason: 'erstattet' | 'angefochten'; owner?: SessionOwner }
   /** A dispute closed in the seller's favour: the unlock it took back returns. */
-  | { kind: 'wiederhergestellt'; sessionId: string }
+  | { kind: 'wiederhergestellt'; sessionId: string; owner?: SessionOwner }
+  /** The session ended without a payment (its asynchronous payment failed): a new attempt may start. */
+  | { kind: 'geschlossen'; sessionId: string }
   | { kind: 'ignoriert' }
 
 /** What became of an earlier checkout session (API-4: reuse it, or learn it was paid before the webhook came). */

@@ -4,7 +4,7 @@
 //   WEB-8  a sign-out of its own and a password change in the app.
 //   WEB-50 an account without a password confirms with its passkey instead.
 //   API-3  Person B is asked to agree to a year; Person A sees that it waits.
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import type { ReactNode } from 'react'
 import { http, HttpResponse } from 'msw'
 import { screen, fireEvent, waitFor } from '@testing-library/react'
@@ -149,6 +149,46 @@ describe('API-3: the year waits for Person B', () => {
     renderWithQuery(wrap(<PartnerYearConsent taxYear={2026} current={{ filingType: 'zusammen', personBConsentPending: true, consentRequestedFromMe: true }} onChanged={() => {}} />))
     fireEvent.click(screen.getByTestId('kopplung-zustimmen'))
     expect(await screen.findByTestId('kopplung-zustimmung-stepup')).toBeTruthy()
+  })
+
+  it('Person B takes the consent back after the confirmation, with the step-up when the session is stale', async () => {
+    let withdrawn = 0
+    let fresh = false
+    server.use(
+      http.delete(`${BASE_URL}/v1/steuerjahre/2026/kopplung/zustimmung`, () => {
+        if (!fresh) {
+          fresh = true
+          return HttpResponse.json({ code: 'FRESH_AUTH_REQUIRED', message: 'x' }, { status: 400 })
+        }
+        withdrawn += 1
+        return HttpResponse.json({ filingType: 'zusammen', personBConsentPending: true, consentRequestedFromMe: true, consentGivenByMe: false })
+      }),
+      http.get(`${BASE_URL}/api/auth/list-accounts`, () => HttpResponse.json([{ providerId: 'credential' }])),
+      http.get(`${BASE_URL}/api/auth/passkey/list-user-passkeys`, () => HttpResponse.json([])),
+    )
+    const onChanged = vi.fn()
+    renderWithQuery(wrap(<PartnerYearConsent taxYear={2026} current={{ filingType: 'zusammen', personBConsentPending: false, consentRequestedFromMe: false, consentGivenByMe: true }} onChanged={onChanged} />))
+    fireEvent.click(screen.getByTestId('kopplung-zustimmung-zuruecknehmen'))
+    // Nothing is sent before the confirmation.
+    expect(await screen.findByTestId('rueckfrage-partnerConsentWithdraw')).toBeTruthy()
+    expect(withdrawn).toBe(0)
+    fireEvent.click(screen.getByText('Zustimmung zurücknehmen'))
+    expect(await screen.findByTestId('kopplung-zustimmung-stepup')).toBeTruthy()
+    expect(withdrawn).toBe(0)
+  })
+
+  it('Person B takes the consent back once confirmed, and the screen reloads the year', async () => {
+    server.use(
+      http.delete(`${BASE_URL}/v1/steuerjahre/2026/kopplung/zustimmung`, () =>
+        HttpResponse.json({ filingType: 'zusammen', personBConsentPending: true, consentRequestedFromMe: true, consentGivenByMe: false }),
+      ),
+    )
+    const onChanged = vi.fn()
+    renderWithQuery(wrap(<PartnerYearConsent taxYear={2026} current={{ filingType: 'zusammen', personBConsentPending: false, consentGivenByMe: true }} onChanged={onChanged} />))
+    expect(screen.getByTestId('kopplung-zustimmung-gegeben')).toBeTruthy()
+    fireEvent.click(screen.getByTestId('kopplung-zustimmung-zuruecknehmen'))
+    fireEvent.click(await screen.findByText('Zustimmung zurücknehmen'))
+    await waitFor(() => expect(onChanged).toHaveBeenCalledTimes(1))
   })
 
   it('Person A sees that the year waits', () => {

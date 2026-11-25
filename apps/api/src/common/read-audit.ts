@@ -1,4 +1,4 @@
-import { isShadowId } from './shadow-id.js'
+import { isShadowId } from './person-ids.js'
 
 /** The one method of AuditService a read needs; structural, so common/ stays free of the audit module. */
 interface AuditTrail {
