@@ -102,6 +102,40 @@ E2E, integration (database) and load tiers run in CI.
   device codes after 30 days, the access log after three years, expired holds.
 - Every read of tax data writes its audit row, also for a read of Person B's data.
 
+### Account security
+
+- Step-up is a rule (`apps/api/src/auth/step-up-policy.ts`), not a list: every action that creates a session or
+  credential, links an identity, grants access to a third party or reaches another person's data needs a fresh
+  session or a step-up grant. `/v1` routes carry `@RequiresStepUp`; a lock test classifies every Nest route and
+  every better-auth endpoint. Accounts without a password prove themselves with a passkey or a fresh sign-in at
+  their provider.
+- A session created by the device flow takes over the approver's creation time, so it is never fresh and never
+  extends the 30-day cap.
+- Person B agrees per tax year (`POST /v1/steuerjahre/:jahr/kopplung/zustimmung`); redeeming an invitation counts
+  for that year. Years that exist today keep their consent. The row-level policy reaches B's rows only through a
+  joint year B agreed to. One invitation code has one redeemer.
+- Google and Apple tokens are not stored; nothing uses them.
+- After registration the account wall says "Bestätige deine E-Mail"; the verification link lands on the sign-in
+  page with a note. The profile has its own sign-out and a password change.
+
+### Masks
+
+- Destructive and final actions ask through one confirm dialog that says what is lost; a lock test checks every
+  destructive mutation against a registry.
+- A booking identical to the last one from the same source within 30 seconds returns the first entry and posts
+  nothing.
+- The running tax year comes from the server clock (Europe/Berlin) through `GET /v1/capabilities`.
+
+### Row-level security
+
+- Every table with personal data (54) has row-level security enabled and forced. Queries run as the role
+  `steuereule_app` (no `BYPASSRLS`, owns no table); the request's identity is a transaction-local setting set
+  with the first query. Without a setting a query sees nothing.
+- Paths that cross users (sweeps, account deletion, guest takeover, the payment webhook, better-auth lookups,
+  the device flow, invitations) run under a named system reason; a lock test lists every call site.
+- Residual: partners may read and write each other's rows in the database, narrowing stays with the app; the
+  keystore database has no policies; row-level security does not protect against SQL injection.
+
 ### Configuration and deployment
 
 - `apps/api/src/config/production-config.ts` declares every production value. A deployment refuses to start
