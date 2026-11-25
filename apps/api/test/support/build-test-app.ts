@@ -242,7 +242,8 @@ export async function buildTestApp(options?: {
                 if (entry) {
                   const userId = typeof entry === 'string' ? entry : entry.userId
                   const emailVerified = typeof entry === 'string' ? true : entry.emailVerified ?? true
-                  return { user: { id: userId, emailVerified }, session: { id: `sess-${token}` } }
+                  // A session that has just signed in: fresh for the step-up rule, inside the absolute cap.
+                  return { user: { id: userId, emailVerified }, session: { id: `sess-${token}`, createdAt: new Date() } }
                 }
               }
             }
