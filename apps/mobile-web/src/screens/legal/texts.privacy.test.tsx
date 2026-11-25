@@ -47,7 +47,10 @@ describe('privacy policy: retention (LEGAL-4)', () => {
     expect(text).toContain(`${RETENTION.keystoreBackups} Sicherungen und ${RETENTION.keystorePitrDays === 1 ? '1 Tag' : `${RETENTION.keystorePitrDays} Tage`}`)
     expect(text).toContain(`${RETENTION.legalHoldPaymentYears} Jahre ab Ende des Zahlungsjahres`)
     expect(text).toContain(`${RETENTION.legalHoldFilingVersionYears} Jahre ab Ende des Jahres der Einreichung`)
-    expect(text).toContain('anonymisierten Einträge bewahren wir ohne feste Frist')
+    // P7: the code deletes access-log rows, ended login records and never-verified accounts after these periods.
+    expect(text).toContain(`Jeden Eintrag löschen wir ${RETENTION.auditLogYears} Jahre nach dem Zugriff`)
+    expect(text).toContain(`löschen wir ${RETENTION.endedLoginRecordDays} Tage nach ihrem Ende`)
+    expect(text).toContain(`frühestens ${RETENTION.unverifiedAccountDays} Tage nach der Registrierung und frühestens ${RETENTION.unverifiedWarningDays} Tage nach unserer Warnung`)
   })
 
   it('states no period that the shared constants do not hold', () => {
