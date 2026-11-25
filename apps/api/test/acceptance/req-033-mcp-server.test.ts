@@ -57,6 +57,9 @@ describe('REQ-033 — MCP-Server mit fachlichen Werkzeugen (ADR-0052 §3 / §5 /
       },
     })
 
+    // The user consented to the assistant: every bearer request re-checks that the consent still exists (ADR-0052 §10).
+    await prisma.oauthConsent.create({ data: { clientId, userId, scopes, resources: [], requestedUserInfoClaims: [] } })
+
     await prisma.oauthAccessToken.create({
       data: {
         token: tokenHash,

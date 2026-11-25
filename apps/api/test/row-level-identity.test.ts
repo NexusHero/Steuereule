@@ -141,3 +141,17 @@ describe('DatabaseIdentityInterceptor', () => {
     expect(seen).toBeUndefined()
   })
 })
+
+describe('systemDatabaseClient over a repository', () => {
+  it('calls the methods on the repository itself, so they keep their `this`, under the reason', async () => {
+    class Repository {
+      private readonly seen: unknown[] = []
+      async record(): Promise<unknown[]> {
+        this.seen.push(currentDatabaseIdentity())
+        return this.seen
+      }
+    }
+    const wrapped = systemDatabaseClient(new Repository(), 'payment-webhook')
+    await expect(wrapped.record()).resolves.toEqual([{ kind: 'system', reason: 'payment-webhook' }])
+  })
+})

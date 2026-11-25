@@ -7,6 +7,7 @@ import { provenanceKey } from '@steuereule/core'
 import { describe, expect, it } from 'vitest'
 import { app, baseUrl, signUp, useAcceptanceServer } from '../../support/acceptance-server.js'
 import { GRENZGAENGER_PAAR, type CaseYear, type Document } from './grenzgaenger-paar.case.js'
+import { runAsDatabaseUser } from '../../../src/common/database-identity.js'
 
 const ALLOWED_ORIGIN = 'https://allowed.example.com'
 
@@ -63,19 +64,21 @@ describe('Echtfall: Grenzgänger-Ehepaar mit Kind, 2024 und 2025 (ADR-0094)', ()
     const { ConfirmationService } = await import('../../../src/confirmation/confirmation.service.js')
     const { LinkService } = await import('../../../src/link/link.service.js')
     const confirmation = app.get(ConfirmationService)
-    const spouse = await app.get(LinkService).spouseForAdvisor(userId, y)
+    // Called as the owl's requests call them: as Person A (P11). A records Person B's figures under B's shadow id.
+    const asA = <T>(work: () => Promise<T>) => runAsDatabaseUser(userId, work)
+    const spouse = await asA(() => app.get(LinkService).spouseForAdvisor(userId, y))
     expect(spouse, 'Person B is linked').not.toBeNull()
 
     // The interview first: it opens the masks the documents and the answers fill.
     const household = (answer: CaseYear['answers'][number]) => answer.screen === 'interview' && !answer.person
     for (const a of c.answers.filter(household)) {
-      await confirmation.writeConfirmedByAdvisor(userId, y, provenanceKey('interview', a.field), a.value, undefined, { kind: 'nutzer' }, { personalDataConsent: true })
+      await asA(() => confirmation.writeConfirmedByAdvisor(userId, y, provenanceKey('interview', a.field), a.value, undefined, { kind: 'nutzer' }, { personalDataConsent: true }))
     }
     for (const doc of c.documents) await upload(cookie, y, doc)
     for (const a of c.answers.filter((answer) => !household(answer))) {
       const dataUserId = a.person === 'B' ? spouse!.spouseUserId : userId
       const key = provenanceKey(a.screen as never, a.field, a.child ? child.id : undefined)
-      await confirmation.writeConfirmedByAdvisor(dataUserId, y, key, a.value, undefined, { kind: 'nutzer' }, { personalDataConsent: true })
+      await asA(() => confirmation.writeConfirmedByAdvisor(dataUserId, y, key, a.value, undefined, { kind: 'nutzer' }, { personalDataConsent: true }))
     }
     return (await call(cookie, 'GET', `/v1/steuerjahre/${y}/steuerschaetzung`)) as unknown as Estimate
   }

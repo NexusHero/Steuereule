@@ -90,7 +90,8 @@ export function systemDatabaseClient<T extends object>(client: T, reason: System
     get(target, prop) {
       const value: unknown = withSystemDatabaseAccess(reason, () => Reflect.get(target, prop, target))
       if (typeof value !== 'function') return value
-      return (...args: unknown[]) => withSystemDatabaseAccess(reason, () => (value as (...a: unknown[]) => unknown)(...args))
+      // Called on the target, so a repository's methods keep their `this`.
+      return (...args: unknown[]) => withSystemDatabaseAccess(reason, () => (value as (...a: unknown[]) => unknown).apply(target, args))
     },
   })
 }
