@@ -1,4 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common'
+import { withSystemDatabaseAccess } from '../common/database-identity.js'
 import { PrismaService } from '../prisma/prisma.service.js'
 import { clientDisplayName } from '../auth/oauth-client-name.js'
 import type { AssistantRepository, ClientInfo, ConnectedAssistant } from './assistenten.repository.js'
@@ -49,10 +50,14 @@ export class PrismaAssistantsRepository implements AssistantRepository {
   }
 
   async findClientInfo(clientId: string): Promise<ClientInfo | null> {
-    const client = await this.prisma.oauthClient.findFirst({
-      where: { clientId },
-      select: { clientId: true, name: true, uri: true, icon: true, redirectUris: true },
-    })
+    // A public route (H2-17): the consent screen asks before anyone is signed in, so the lookup has no user. It
+    // reads one client's public metadata and runs under its own named reason.
+    const client = await withSystemDatabaseAccess('oauth-client-info', () =>
+      this.prisma.oauthClient.findFirst({
+        where: { clientId },
+        select: { clientId: true, name: true, uri: true, icon: true, redirectUris: true },
+      }),
+    )
 
     if (!client) return null
 
