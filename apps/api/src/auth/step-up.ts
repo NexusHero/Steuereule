@@ -1,7 +1,7 @@
 import { APIError, createAuthMiddleware, getSessionFromCtx } from 'better-auth/api'
 import type { BetterAuthPlugin } from 'better-auth'
 
-import { BETTER_AUTH_STEP_UP, isFreshSession, needsStepUp, STEP_UP_WINDOW_MS } from './step-up-policy.js'
+import { assertStepUp, BETTER_AUTH_STEP_UP, isFreshSession, needsStepUp, StepUpRefusedError, STEP_UP_WINDOW_MS } from './step-up-policy.js'
 
 /**
  * Step-up authentication for the better-auth endpoints the step-up rule names (`step-up-policy.ts`, ADR-0106
@@ -33,16 +33,24 @@ export const stepUpPlugin: BetterAuthPlugin = {
         handler: createAuthMiddleware(async (ctx) => {
           // Declining an assistant takes nothing away from the account: only approving it needs the step-up.
           if (ctx.path === '/oauth2/consent' && (ctx.body as { accept?: unknown } | undefined)?.accept !== true) return
-          const session = await getSessionFromCtx(ctx)
-          // Without a session the endpoint answers 401 itself.
-          if (!session) return
-          if (isFreshSession(session.session.createdAt)) return
-          const record = await ctx.context.internalAdapter.findVerificationValue(stepUpIdentifier(session.session.id))
-          if (record && new Date(record.expiresAt).getTime() > Date.now()) return
-          throw new APIError('FORBIDDEN', {
-            code: STEP_UP_REQUIRED_CODE,
-            message: 'Bitte bestätige, dass du es bist, bevor du das änderst.',
-          })
+          const found = await getSessionFromCtx(ctx)
+          try {
+            await assertStepUp({
+              session: found ? { id: found.session.id, userId: found.user.id, createdAt: found.session.createdAt } : null,
+              hasGrant: async (sessionId) => {
+                const record = await ctx.context.internalAdapter.findVerificationValue(stepUpIdentifier(sessionId))
+                return record !== null && record !== undefined && new Date(record.expiresAt).getTime() > Date.now()
+              },
+            })
+          } catch (error) {
+            if (!(error instanceof StepUpRefusedError)) throw error
+            // Every endpoint under the rule needs a session; refusing here does not rely on each of them saying so.
+            if (error.reason !== 'stale') throw new APIError('UNAUTHORIZED', { message: 'Dafür musst du angemeldet sein.' })
+            throw new APIError('FORBIDDEN', {
+              code: STEP_UP_REQUIRED_CODE,
+              message: 'Bitte bestätige, dass du es bist, bevor du das änderst.',
+            })
+          }
         }),
       },
     ],

@@ -5,9 +5,9 @@ import { Throttle, ThrottlerGuard } from '@nestjs/throttler'
 import type { FastifyReply, FastifyRequest } from 'fastify'
 import { BETTER_AUTH_BUNDLE, type BetterAuthBundle } from '../auth/auth.tokens.js'
 import { ACCOUNT_EXPORT_THROTTLE, accountKeyedTracker } from '../rate-limit/rate-limit.js'
-import { CurrentUser } from '../auth/current-user.decorator.js'
+import { CurrentUser, CurrentUserKind } from '../auth/current-user.decorator.js'
 import { FreshAuthChecker } from '../auth/fresh-auth.js'
-import { UserContextGuard } from '../auth/user-context.guard.js'
+import { UserContextGuard, type UserIdKind } from '../auth/user-context.guard.js'
 import { AccountExportService, PDF_ACCESS_LOG_ENTRIES } from './account-export.service.js'
 import { EXPORT_FORMATS, type ExportFormat, ExportQueryDto } from './dto/export-query.dto.js'
 import { ExportDocumentDto } from './dto/export-response.dto.js'
@@ -39,10 +39,13 @@ export class AccountExportController {
   @ApiNotFoundResponse({ description: 'The caller has no better-auth account yet (a guest that never signed up).' })
   async exportAccount(
     @CurrentUser() userId: string,
+    @CurrentUserKind() kind: UserIdKind,
     @Query() query: ExportQueryDto,
     @Req() request: FastifyRequest,
     @Res({ passthrough: true }) reply: FastifyReply,
   ): Promise<StreamableFile | Buffer> {
+    // A guest that never signed up has no account to export; said before the step-up, which a guest cannot pass.
+    if (kind === 'guest') throw new NotFoundException('No account exists for this session to export.')
     // Bulk PII leaves only behind a fresh session or a recent password re-entry (ADR-0107 L1),
     // the same bar the account deletion sets — a stale stolen cookie cannot export everything.
     await this.freshAuthChecker.assertFreshSessionOrStepUp(this.betterAuth, request.headers, userId)

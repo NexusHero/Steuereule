@@ -4,7 +4,7 @@ import { APIError } from 'better-auth'
 import type { IncomingHttpHeaders } from 'node:http'
 import type { BetterAuthBundle } from './auth.tokens.js'
 import { STEP_UP_GRANT_REPOSITORY, type StepUpGrantRepository } from './step-up-grant.repository.js'
-import { isFreshSession, STEP_UP_WINDOW_MS } from './step-up-policy.js'
+import { assertStepUp, StepUpRefusedError, STEP_UP_WINDOW_MS } from './step-up-policy.js'
 
 export const ACCOUNT_DELETE_FRESH_WINDOW_MS = STEP_UP_WINDOW_MS
 
@@ -40,51 +40,47 @@ export class FreshAuthChecker {
   ) {}
 
   /**
-   * Fresh-auth gate for a GET that returns bulk PII (the DSGVO export, ADR-0107 L1): a stolen session
-   * that is still within its absolute cap must not exfiltrate everything without re-auth, matching the
-   * deletion path. Since a GET carries no password body, this accepts either a fresh session or an
-   * existing step-up grant (recorded by /verify-password within the window, ADR-0106 D2). A guest with
-   * no better-auth account is left alone — the export itself answers 404 for it.
+   * The step-up for a GET that returns bulk PII (the DSGVO export, ADR-0107 L1): a stolen session that is
+   * still within its absolute cap must not exfiltrate everything without re-auth. A GET carries no password
+   * body, so the proof is a fresh session or a step-up grant. Fails closed: without a session of
+   * `expectedUserId` nothing passes (a guest, who has no account to export, is answered before this is asked).
    */
-  async assertFreshSessionOrStepUp(
-    betterAuth: BetterAuthBundle,
-    headers: IncomingHttpHeaders,
-    expectedUserId: string,
-  ): Promise<void> {
-    const session = await betterAuth.auth.api.getSession({ headers: fromNodeHeaders(headers) })
-    if (!session || session.user.id !== expectedUserId) return
-
-    if (isFreshSession(session.session.createdAt)) return
-
-    if (await this.stepUpGrants.hasValidGrant(session.session.id)) return
-
-    throw new FreshAuthRequiredError()
+  async assertFreshSessionOrStepUp(betterAuth: BetterAuthBundle, headers: IncomingHttpHeaders, expectedUserId: string): Promise<void> {
+    try {
+      await this.decide(betterAuth, fromNodeHeaders(headers), expectedUserId)
+    } catch (error) {
+      if (!(error instanceof StepUpRefusedError)) throw error
+      if (error.reason === 'stale') throw new FreshAuthRequiredError()
+      throw new UnauthorizedException('Dafür musst du angemeldet sein.')
+    }
   }
 
-  async assertFreshAuth(
-    betterAuth: BetterAuthBundle,
-    headers: IncomingHttpHeaders,
-    expectedUserId: string,
-    password: string | undefined,
-  ): Promise<void> {
+  /** The step-up for the account deletion: as above, or the password in the body of this one request. */
+  async assertFreshAuth(betterAuth: BetterAuthBundle, headers: IncomingHttpHeaders, expectedUserId: string, password: string | undefined): Promise<void> {
     const fetchHeaders = fromNodeHeaders(headers)
-    const session = await betterAuth.auth.api.getSession({ headers: fetchHeaders })
-
-    if (!session) throw new GuestSessionCannotDeleteAccountError()
-
-    if (session.user.id !== expectedUserId) throw new GuestSessionCannotDeleteAccountError()
-
-    if (isFreshSession(session.session.createdAt)) return
-    // A step-up grant counts too: an account without a password has no password to send (WEB-50).
-    if (await this.stepUpGrants.hasValidGrant(session.session.id)) return
-
+    try {
+      await this.decide(betterAuth, fetchHeaders, expectedUserId)
+      return
+    } catch (error) {
+      if (!(error instanceof StepUpRefusedError)) throw error
+      if (error.reason !== 'stale') throw new GuestSessionCannotDeleteAccountError()
+    }
+    // Stale, and the session is the caller's: the password sent along is the proof.
     if (!password) throw new FreshAuthRequiredError()
-
     try {
       await betterAuth.auth.api.verifyPassword({ headers: fetchHeaders, body: { password } })
     } catch (error) {
       if (error instanceof APIError) throw new FreshAuthFailedError()
       throw error
     }
+  }
+
+  private async decide(betterAuth: BetterAuthBundle, headers: Headers, expectedUserId: string): Promise<void> {
+    const found = await betterAuth.auth.api.getSession({ headers })
+    await assertStepUp({
+      session: found ? { id: found.session.id, userId: found.user.id, createdAt: found.session.createdAt } : null,
+      expectedUserId,
+      hasGrant: (sessionId) => this.stepUpGrants.hasValidGrant(sessionId),
+    })
   }
 }
