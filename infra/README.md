@@ -53,12 +53,22 @@ Stripe account (test mode for staging and the beta); the operator details for th
    `monthly_budget_eur`. Creates everything listed above. Costs start here.
 6. Generated secrets: `GUEST_SESSION_SECRET`, `BETTER_AUTH_SECRET`, `PRISMA_FIELD_ENCRYPTION_KEY`,
    `PRISMA_FIELD_ENCRYPTION_HASH_SALT` (before the first migration, ADR-0109 §12), `KEYSTORE_MASTER_KEY`.
-7. Database users and both connection URLs (`DATABASE_URL`, `KEYSTORE_DATABASE_URL`).
-   Row-level security (P11): the migration `…_p11_row_level_security` creates the role `steuereule_app` (no
-   login, no superuser, no BYPASSRLS) and grants it to the `DATABASE_URL` user, which therefore needs CREATEROLE
-   (a Cloud SQL user created with `gcloud sql users create` has it). The API switches to that role at connection
-   start (`options=-c role=steuereule_app`, added in code); migrations and operator scripts keep the login user,
-   and `migrate-deploy.mjs` runs them as the system path `migration`. No extra secret or user is needed.
+7. Database users (row-level security, P11). Three secrets, two logins on the tax-data instance:
+   - `MIGRATE_DATABASE_URL`: the user `steuereule`, created with `gcloud sql users create`. It owns the tables
+     and runs migrations, backfills and `rotate:field-key`. Only the migrate job reads this secret; it runs as
+     its own service account (`steuereule-migrate`), and the API's account has no access to it.
+   - `DATABASE_URL`: the user `steuereule_api`, what the API connects as. The wizard only generates its password
+     and stores the URL; the migrate job creates the login from it on every run (`RUNTIME_DATABASE_URL` in the
+     job, `apps/api/scripts/runtime-database-login.mjs`): no SUPERUSER, BYPASSRLS, CREATEROLE or CREATEDB,
+     owner of nothing, member of `steuereule_app` and of nothing else. Do not create it with `gcloud sql users
+     create`: such a user is a member of `cloudsqlsuperuser`, and the API refuses to start as it.
+   - `KEYSTORE_DATABASE_URL`: the keystore instance keeps one user for now (see "Residuals" in ADR-0111).
+   The migration `…_p11_row_level_security` creates the role `steuereule_app` (no login) that holds the table
+   rights; the policies bind it. In production the API checks its login at boot and refuses to start as the
+   owner, as a role with one of the attributes above, or as a member of any other role.
+   To rotate the API's password: store a new version of `DATABASE_URL` with a new password and deploy; the
+   migrate job sets it before the new revision starts. A setup from before this split (where `DATABASE_URL`
+   held the owner) is converted by running the wizard again.
 8. Brevo: authenticate the sender domain by DNS, store `BREVO_API_KEY`.
 9. Stripe (required on a deployment, so the printout never ends in "payment not set up"):
    - two products with a one-time price each, the standard printout and the printout with self-employment;
@@ -67,7 +77,8 @@ Stripe account (test mode for staging and the beta); the operator details for th
      consent to the terms and refuses without it);
    - `STRIPE_SECRET_KEY` (`sk_test_…` for the beta);
    - a webhook endpoint `https://api.<domain>/v1/zahlung/stripe/webhook` with the events
-     `checkout.session.completed`, `checkout.session.async_payment_succeeded`, `charge.refunded`,
+     `checkout.session.completed`, `checkout.session.async_payment_succeeded`,
+     `checkout.session.async_payment_failed`, `charge.refunded`,
      `charge.dispute.created` and `charge.dispute.closed` (refunds and disputes revoke the unlock); store its
      `STRIPE_WEBHOOK_SECRET`.
 10. Optional: Google login (`GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, redirect URI
@@ -78,7 +89,7 @@ Stripe account (test mode for staging and the beta); the operator details for th
     environment reviewers), do it by hand before the first deploy: Settings, Environments, New environment;
     Deployment branches and tags: Selected, `main`; for production: Required reviewers.
 13. GitHub environment variables: `GCP_ENVIRONMENT`, `GCP_PROJECT_ID`, `GCP_REGION`, `GCP_WIF_PROVIDER`,
-    `GCP_DEPLOYER_SA`, `GCP_RUNTIME_SA`, `GCP_WEB_SA`, `GCP_SQL_INSTANCE`, `GCP_KEYSTORE_SQL_INSTANCE`,
+    `GCP_DEPLOYER_SA`, `GCP_RUNTIME_SA`, `GCP_MIGRATE_SA`, `GCP_WEB_SA`, `GCP_SQL_INSTANCE`, `GCP_KEYSTORE_SQL_INSTANCE`,
     `GCP_VPC_NETWORK`, `GCP_VPC_SUBNET`, `APP_DOMAIN`, `EMAIL_FROM`, `TRUSTED_PROXIES` and the operator details.
 14. First deploy (`gh workflow run deploy.yml --ref main -f environment=<staging|production>`): builds the three
     images, backs up the database, runs the migrate job (hash phase), deploys API and web, smoke-tests them.
@@ -112,9 +123,9 @@ and the e-mail hash alone, and is idempotent and resumable.
    `PRISMA_FIELD_DECRYPTION_KEYS` (comma-separated, keep earlier ones that are still in use), then make the new
    key the new version of `PRISMA_FIELD_ENCRYPTION_KEY`.
 2. Deploy. API and migrate job both carry the decryption keys; new writes use the new key.
-3. Re-encrypt the rest in the migrate job, which runs as the migration login (the tables' owner). The API's
-   runtime role `steuereule_app` cannot rewrite the book's append-only rows; this job can, and only their
-   encrypted columns:
+3. Re-encrypt the rest in the migrate job, which connects as the migration login (the tables' owner). The API's
+   login cannot rewrite the book's append-only rows (the trigger lets only the owner of the table through);
+   this job can, and only their encrypted columns:
    `gcloud run jobs execute steuereule-migrate --region <region> --wait --args="-c,cd /repo/apps/api && node --import tsx scripts/rotate-field-encryption-key.ts"`
 4. Check: the same command with `rotate-field-encryption-key.ts --check` must end with "every encrypted value
    is under the current key". It exits 1 while values remain under a retired key, or when a value is under a

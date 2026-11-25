@@ -43,6 +43,11 @@ describe('StripeZahlungsanbieter.verifiziereEreignis', () => {
     await expect(provider.verifyEvent(later.body, later.signature)).resolves.toMatchObject({ kind: 'bezahlt' })
   })
 
+  it('a failed asynchronous payment closes the session', async () => {
+    const failed = signed(sessionEvent('checkout.session.async_payment_failed', 'unpaid'))
+    await expect(provider.verifyEvent(failed.body, failed.signature)).resolves.toMatchObject({ kind: 'geschlossen' })
+  })
+
   it('refuses a tampered body', async () => {
     const { signature } = signed(sessionEvent('checkout.session.completed', 'paid'))
     const forged = Buffer.from(JSON.stringify(sessionEvent('checkout.session.completed', 'paid')).replace('1999', '1'))
@@ -71,6 +76,17 @@ function chargeEvent(type: string, object: Record<string, unknown>) {
 }
 
 describe('refunds and disputes take the unlock back (API-4)', () => {
+  it('a refund names the owner from the session metadata, so it can be recorded before the completion event', async () => {
+    const owned = vi.fn().mockResolvedValue({ data: [{ id: 'cs_test_1', metadata: { userId: 'u1', steuerjahr: '2025', stufe: 'standard' } }] })
+    const { body, signature } = signed(chargeEvent('charge.refunded', { id: 'ch_1', object: 'charge', refunded: true, payment_intent: 'pi_1' }))
+    await expect(new StripePaymentProvider(config, stubbed({ list: owned })).verifyEvent(body, signature)).resolves.toEqual({
+      kind: 'zurueckgenommen',
+      sessionId: 'cs_test_1',
+      reason: 'erstattet',
+      owner: { userId: 'u1', taxYear: 2025, tier: 'standard' },
+    })
+  })
+
   const list = vi.fn().mockResolvedValue({ data: [{ id: 'cs_test_1' }] })
   const withList = new StripePaymentProvider(config, stubbed({ list }))
 

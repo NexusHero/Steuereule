@@ -352,13 +352,31 @@ ensure_generated_secret KEYSTORE_MASTER_KEY "$(openssl rand -base64 48)"
 pause
 
 stage "Datenbank-Benutzer"
-if secret_has_value DATABASE_URL; then
-  note "DATABASE_URL ist bereits gesetzt, Benutzer bleibt unverändert."
+# Two logins (row-level security, P11). MIGRATE_DATABASE_URL: "steuereule", created here, owns the tables and is
+# read by the migrate job only. DATABASE_URL: "steuereule_api", what the API connects as; the migrate job creates
+# it from this URL, without ownership and without the rights a user created by gcloud has.
+if secret_has_value MIGRATE_DATABASE_URL; then
+  note "MIGRATE_DATABASE_URL ist bereits gesetzt, der Migrations-Benutzer bleibt unverändert."
+elif secret_has_value DATABASE_URL; then
+  # A setup from before the split: DATABASE_URL still holds the owner. It becomes the migration login, and the
+  # API gets a login of its own below.
+  put_secret MIGRATE_DATABASE_URL "$(gcloud secrets versions access latest --secret DATABASE_URL --project "$GCP_PROJECT_ID")"
+  API_DB_PASSWORD="$(openssl rand -hex 24)"
+  put_secret DATABASE_URL "postgresql://steuereule_api:${API_DB_PASSWORD}@localhost/steuereule?host=/cloudsql/${SQL_CONNECTION}&connection_limit=5"
+  unset API_DB_PASSWORD
+  note "DATABASE_URL enthielt den Besitzer der Tabellen; er ist jetzt MIGRATE_DATABASE_URL, die API bekommt den Benutzer steuereule_api."
 else
   DB_PASSWORD="$(openssl rand -hex 24)"
   gcloud sql users create steuereule --instance "$SQL_INSTANCE_NAME" --project "$GCP_PROJECT_ID" --password "$DB_PASSWORD" >/dev/null
-  put_secret DATABASE_URL "postgresql://steuereule:${DB_PASSWORD}@localhost/steuereule?host=/cloudsql/${SQL_CONNECTION}&connection_limit=5"
+  put_secret MIGRATE_DATABASE_URL "postgresql://steuereule:${DB_PASSWORD}@localhost/steuereule?host=/cloudsql/${SQL_CONNECTION}&connection_limit=2"
   unset DB_PASSWORD
+fi
+if secret_has_value DATABASE_URL; then
+  note "DATABASE_URL ist bereits gesetzt, der Benutzer der API bleibt unverändert."
+else
+  API_DB_PASSWORD="$(openssl rand -hex 24)"
+  put_secret DATABASE_URL "postgresql://steuereule_api:${API_DB_PASSWORD}@localhost/steuereule?host=/cloudsql/${SQL_CONNECTION}&connection_limit=5"
+  unset API_DB_PASSWORD
 fi
 # Keystore (ADR-0059): own instance, own user, own password — never the tax-data credentials.
 if secret_has_value KEYSTORE_DATABASE_URL; then
@@ -394,7 +412,7 @@ open_url "https://dashboard.stripe.com/apikeys"
 ask_stored_secret STRIPE_SECRET_KEY "Secret Key einfügen (sk_test_… für die Beta):" '^(sk|rk)_(test|live)_'
 open_url "https://dashboard.stripe.com/webhooks"
 step "Webhook-Endpunkt anlegen: https://api.$APP_DOMAIN/v1/zahlung/stripe/webhook"
-step "Ereignisse auswählen: checkout.session.completed, checkout.session.async_payment_succeeded, charge.refunded, charge.dispute.created und charge.dispute.closed"
+step "Ereignisse auswählen: checkout.session.completed, checkout.session.async_payment_succeeded, checkout.session.async_payment_failed, charge.refunded, charge.dispute.created und charge.dispute.closed"
 ask_stored_secret STRIPE_WEBHOOK_SECRET "Signing Secret des Webhooks einfügen (whsec_…):" '^whsec_'
 
 stage "Optional: Google-Login"
@@ -447,6 +465,7 @@ set_var GCP_REGION "$REGION"
 set_var GCP_WIF_PROVIDER "$(tofu_output workload_identity_provider)"
 set_var GCP_DEPLOYER_SA "$(tofu_output deployer_service_account)"
 set_var GCP_RUNTIME_SA "$(tofu_output api_runtime_service_account)"
+set_var GCP_MIGRATE_SA "$(tofu_output migrate_service_account)"
 set_var GCP_WEB_SA "$(tofu_output web_runtime_service_account)"
 set_var GCP_SQL_INSTANCE "$SQL_CONNECTION"
 set_var GCP_KEYSTORE_SQL_INSTANCE "$KEYSTORE_SQL_CONNECTION"

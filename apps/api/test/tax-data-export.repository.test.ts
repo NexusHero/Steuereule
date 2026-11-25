@@ -67,6 +67,14 @@ describe('toExportEntry', () => {
     })
   })
 
+  it('never exports a live partner invitation code: whoever holds the file could join the year with it', () => {
+    const entry = toExportEntry('Steuerjahr-Kopplung', 'TaxYearLink', {
+      id: 'k1', personAUserId: 'a', personBUserId: 'spouse_a_2025', taxYear: 2025, filingType: 'zusammen',
+      invitationCode: '9F3A0C71B2E4D658', invitationCodeValidUntil: new Date('2026-03-01T00:00:00.000Z'),
+    })
+    expect(JSON.stringify(entry)).not.toContain('9F3A0C71B2E4D658')
+  })
+
   it('names each figure by its database column, so the download keeps its German keys', () => {
     const entry = toExportEntry('Kind', 'Child', { id: 'c', userId: 'u', taxYear: 2025, firstName: 'Mia', lastName: 'Beispiel' })
     expect(entry.fields).toEqual({ vorname: 'Mia', nachname: 'Beispiel' })

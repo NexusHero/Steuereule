@@ -1,6 +1,7 @@
 import { readdirSync, readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
+import { STRIPE_WEBHOOK_EVENTS } from '../../src/unlock/stripe-payment-provider.js'
 import { API_PRODUCTION_SETTINGS, DEPLOY_VARIABLES, WEB_BUILD_ARGS } from '../../src/config/production-config.js'
 
 /**
@@ -192,6 +193,72 @@ describe('deployment wiring: every production value reaches the runtime (beta P1
     for (const name of sorted(interpolated)) expect(envExample, `${name} used by docker-compose.prod.yml`).toMatch(new RegExp(`^${name}=`, 'm'))
   })
 
+  describe('P11: the API never holds the login that owns the tables', () => {
+    const migrateOnly = hclList(mainTf, 'migrate_only_secrets')
+    const migrateSecrets = /migrate="([^"]+)"/.exec(deployYml)?.[1] ?? ''
+    const migrateDeploy = deployYml.slice(deployYml.indexOf('gcloud run jobs deploy steuereule-migrate'), deployYml.indexOf('--execute-now'))
+    const apiDeploy = deployYml.slice(deployYml.indexOf('gcloud run deploy steuereule-api'), deployYml.indexOf('- name: Build and push web image'))
+
+    it('the owner URL is a secret of its own that the deploy requires and never mounts into the API', () => {
+      expect(migrateOnly).toEqual(['MIGRATE_DATABASE_URL'])
+      expect(foldedList(deployYml, 'MIGRATE_ONLY_SECRETS')).toEqual(migrateOnly)
+      for (const name of migrateOnly) {
+        expect([...foldedList(deployYml, 'REQUIRED_SECRETS'), ...foldedList(deployYml, 'OPTIONAL_SECRETS')], `${name} would be mounted into the API`).not.toContain(name)
+        expect(API_PRODUCTION_SETTINGS.map((setting) => setting.name)).not.toContain(name)
+        expect(apiDeploy).not.toContain(name)
+      }
+      // The API mounts exactly the secrets collected from the two API lists.
+      expect(deployYml).toMatch(/for name in \$REQUIRED_SECRETS \$OPTIONAL_SECRETS; do/)
+      expect(deployYml).toMatch(/for required in \$MIGRATE_ONLY_SECRETS; do/)
+    })
+
+    it('the migrate job connects as the owner and is told which login to create for the API', () => {
+      expect(migrateSecrets).toContain('DATABASE_URL=MIGRATE_DATABASE_URL:latest')
+      expect(migrateSecrets).toContain('RUNTIME_DATABASE_URL=DATABASE_URL:latest')
+      expect(migrateDeploy).toMatch(/--service-account "\$MIGRATE_SA"/)
+      expect(migrateDeploy).toMatch(/--set-secrets "\$MIGRATE_SECRETS"/)
+      expect(apiDeploy).toMatch(/--service-account "\$API_SA"/)
+      expect(deployYml).toMatch(/MIGRATE_SA: \$\{\{ vars\.GCP_MIGRATE_SA \}\}/)
+    })
+
+    it('Secret Manager lets only the migrate job read the owner URL, and the job read what it mounts', () => {
+      expect(mainTf).toMatch(/resource "google_secret_manager_secret_iam_member" "api_reads_secrets" \{\n\s+for_each\s+= \{ for name, secret in google_secret_manager_secret\.app : name => secret if !contains\(local\.migrate_only_secrets, name\) \}/)
+      expect(mainTf).toMatch(/resource "google_secret_manager_secret_iam_member" "migrate_reads_secrets" \{\n\s+for_each\s+= toset\(local\.migrate_job_secrets\)[\s\S]*?member\s+= "serviceAccount:\$\{google_service_account\.migrate\.email\}"/)
+      const mounted = sorted(migrateSecrets.split(',').map((pair) => pair.slice(pair.indexOf('=') + 1).replace(':latest', '')))
+      const optional = [...deployYml.matchAll(/migrate="\$migrate,[A-Z_]+=([A-Z_]+):latest"/g)].map((match) => match[1] ?? '')
+      expect(sorted([...mounted, ...optional])).toEqual(sorted(hclList(mainTf, 'migrate_job_secrets')))
+      expect(mainTf).toMatch(/migrate = google_service_account\.migrate\.name/)
+      expect(read('infra/gcp/outputs.tf')).toMatch(/output "migrate_service_account"/)
+    })
+
+    it('the wizard creates the owner with gcloud and leaves the API login to the migrate job', () => {
+      expect(wizard).toMatch(/gcloud sql users create steuereule --instance/)
+      expect(wizard).not.toMatch(/gcloud sql users create steuereule_api/)
+      expect(wizard).toMatch(/put_secret MIGRATE_DATABASE_URL "postgresql:\/\/steuereule:/)
+      expect(wizard).toMatch(/put_secret DATABASE_URL "postgresql:\/\/steuereule_api:/)
+      expect(wizard).not.toMatch(/put_secret DATABASE_URL "postgresql:\/\/steuereule:/)
+    })
+
+    it('the local production-shaped stack runs the same two logins', () => {
+      const apiEnv = composeProd.slice(composeProd.indexOf('x-api-env'), composeProd.indexOf('\nservices:'))
+      const migrate = composeProd.slice(composeProd.indexOf('\n  migrate:'), composeProd.indexOf('\n  api:'))
+      expect(apiEnv).toMatch(/^\s+DATABASE_URL: postgresql:\/\/\$\{POSTGRES_APP_USER\}:\$\{POSTGRES_APP_PASSWORD\}@/m)
+      expect(apiEnv).not.toMatch(/RUNTIME_DATABASE_URL/)
+      expect(migrate).toMatch(/^\s+DATABASE_URL: postgresql:\/\/\$\{POSTGRES_USER\}:\$\{POSTGRES_PASSWORD\}@/m)
+      expect(migrate).toMatch(/^\s+RUNTIME_DATABASE_URL: postgresql:\/\/\$\{POSTGRES_APP_USER\}:\$\{POSTGRES_APP_PASSWORD\}@/m)
+    })
+
+    it('the image carries every script the migrate job and infra/README.md run', () => {
+      const readme = read('infra/README.md')
+      const scripts = sorted([...`${deployYml}\n${readme}\n${composeProd}`.matchAll(/node (?:--import tsx )?scripts\/([\w.-]+\.(?:mjs|ts))/g)].map((match) => match[1] ?? ''))
+      expect(scripts).toEqual(expect.arrayContaining(['migrate-deploy.mjs', 'rotate-field-encryption-key.ts', 'backfill-identity.ts']))
+      const copied = /^COPY ((?:apps\/api\/scripts\/\S+ )+)\.\/apps\/api\/scripts\/$/m.exec(apiDockerfile)?.[1] ?? ''
+      for (const script of [...scripts, 'runtime-database-login.mjs', 'backfill-profile-name-encryption.ts']) {
+        expect(copied, `apps/api/Dockerfile copies scripts/${script}`).toContain(`apps/api/scripts/${script} `)
+      }
+    })
+  })
+
   it('WEB-2: every web build arg reaches expo export from the deploy, the compose stack and .env.example', () => {
     const buildStage = webDockerfile.slice(0, webDockerfile.indexOf('RUN pnpm --filter @steuereule/mobile-web exec expo export'))
     const webArgs = composeProd.slice(composeProd.indexOf('dockerfile: apps/mobile-web/Dockerfile'))
@@ -258,8 +325,12 @@ describe('deployment wiring: every production value reaches the runtime (beta P1
       expect(inputs).toContain(name)
       expect(wizard, `-var ${name}`).toMatch(new RegExp(`-var "${name}=`))
     }
-    expect(wizard).toMatch(/checkout\.session\.completed/)
-    expect(wizard).toMatch(/checkout\.session\.async_payment_succeeded/)
+    // Every event the webhook handles is one the operator is told to subscribe to, in each place that says so.
+    for (const event of STRIPE_WEBHOOK_EVENTS) {
+      for (const [name, text] of [['the wizard', wizard], ['infra/README.md', read('infra/README.md')], ['ADR-0111', read('docs/adr/0111-beta-readiness.md')]] as const) {
+        expect(text, `${name} names ${event}`).toContain(event)
+      }
+    }
     expect(wizard).toMatch(/rechtliches\/agb/)
     expect(wizard).toMatch(/repos\/\$GITHUB_REPOSITORY\/environments\/\$GH_ENVIRONMENT/)
   })

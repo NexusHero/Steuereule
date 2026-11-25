@@ -226,6 +226,7 @@ export const DEPLOY_VARIABLES: readonly DeployVariable[] = [
   { name: 'GCP_WIF_PROVIDER', need: 'required', purpose: 'OpenTofu output workload_identity_provider' },
   { name: 'GCP_DEPLOYER_SA', need: 'required', purpose: 'OpenTofu output deployer_service_account' },
   { name: 'GCP_RUNTIME_SA', need: 'required', purpose: 'OpenTofu output api_runtime_service_account' },
+  { name: 'GCP_MIGRATE_SA', need: 'required', purpose: 'OpenTofu output migrate_service_account (the migrate job; alone reads MIGRATE_DATABASE_URL)' },
   { name: 'GCP_WEB_SA', need: 'required', purpose: 'OpenTofu output web_runtime_service_account' },
   { name: 'GCP_SQL_INSTANCE', need: 'required', purpose: 'OpenTofu output sql_connection_name' },
   { name: 'GCP_KEYSTORE_SQL_INSTANCE', need: 'required', purpose: 'OpenTofu output keystore_sql_connection_name' },

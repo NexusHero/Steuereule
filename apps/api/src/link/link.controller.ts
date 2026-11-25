@@ -1,7 +1,10 @@
-import { Body, Controller, Get, HttpCode, Inject, Param, Post, Put, UseGuards } from '@nestjs/common'
-import { ApiBody, ApiForbiddenResponse, ApiOkResponse, ApiParam, ApiTags, ApiUnauthorizedResponse } from '@nestjs/swagger'
+import { Body, Controller, Get, HttpCode, Inject, Param, Post, Put, Req, UseGuards } from '@nestjs/common'
+import { ApiBadRequestResponse, ApiBody, ApiForbiddenResponse, ApiOkResponse, ApiParam, ApiTags, ApiUnauthorizedResponse } from '@nestjs/swagger'
 import { Throttle, ThrottlerGuard } from '@nestjs/throttler'
+import type { FastifyRequest } from 'fastify'
+import { BETTER_AUTH_BUNDLE, type BetterAuthBundle } from '../auth/auth.tokens.js'
 import { CurrentUser } from '../auth/current-user.decorator.js'
+import { FreshAuthChecker } from '../auth/fresh-auth.js'
 import { RequiresAccount } from '../auth/requires-account.guard.js'
 import { RequiresStepUp } from '../auth/requires-step-up.js'
 import { UserContextGuard } from '../auth/user-context.guard.js'
@@ -15,7 +18,11 @@ import { UserWrite } from '../common/user-write.decorator.js'
 @Controller('v1/steuerjahre')
 @UseGuards(UserContextGuard)
 export class LinkController {
-  constructor(@Inject(LinkService) private readonly linkService: LinkService) {}
+  constructor(
+    @Inject(LinkService) private readonly linkService: LinkService,
+    @Inject(FreshAuthChecker) private readonly freshAuth: FreshAuthChecker,
+    @Inject(BETTER_AUTH_BUNDLE) private readonly betterAuth: BetterAuthBundle,
+  ) {}
 
   @Get(':jahr/kopplung')
   @RequiresAccount()
@@ -35,12 +42,15 @@ export class LinkController {
   @ApiOkResponse({ type: LinkResponseDto })
   @ApiUnauthorizedResponse({ description: 'Requires account.' })
   @ApiForbiddenResponse({ description: 'Only Person A sets the Veranlagungsart.' })
+  @ApiBadRequestResponse({ description: 'FRESH_AUTH_REQUIRED: a new invitation code grants access to a third party and needs the step-up.' })
   set(
     @CurrentUser() userId: string,
     @Param('jahr', ParseTaxYearPipe) year: number,
     @Body() dto: SetLinkDto,
+    @Req() request: FastifyRequest,
   ): Promise<LinkResponseDto> {
-    return this.linkService.set(userId, year, dto)
+    // Minting an invitation code grants whoever holds it access to this year (step-up rule, 'grants-third-party').
+    return this.linkService.set(userId, year, dto, new Date(), () => this.freshAuth.assertFreshSessionOrStepUp(this.betterAuth, request.headers, userId))
   }
 
   @Put(':jahr/kopplung/person-b')

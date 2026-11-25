@@ -117,6 +117,7 @@ export class StripePaymentProvider implements PaymentProvider {
   }
 
   async verifyEvent(rawData: Buffer, signature: string): Promise<PaymentEvent> {
+    // The cases below are STRIPE_WEBHOOK_EVENTS; the deployment docs subscribe the endpoint to exactly these.
     const event = this.stripe.webhooks.constructEvent(rawData, signature, this.config.webhookSecret)
     switch (event.type) {
       case 'checkout.session.completed':
@@ -126,39 +127,58 @@ export class StripePaymentProvider implements PaymentProvider {
         const owner = ownerOf(session.metadata)
         return { kind: 'bezahlt', sessionId: session.id, amountCents: session.amount_total ?? null, ...(owner ? { owner } : {}) }
       }
+      case 'checkout.session.async_payment_failed':
+        // Without this a bounced direct debit leaves the row open, and every new attempt answers "pending".
+        return { kind: 'geschlossen', sessionId: event.data.object.id }
       case 'charge.refunded': {
         // Only a full refund takes the unlock back; a partial one is a goodwill gesture.
         const charge = event.data.object
         if (!charge.refunded) return { kind: 'ignoriert' }
-        const sessionId = await this.sessionOfPaymentIntent(charge.payment_intent)
-        return sessionId ? { kind: 'zurueckgenommen', sessionId, reason: 'erstattet' } : { kind: 'ignoriert' }
+        const session = await this.sessionOfPaymentIntent(charge.payment_intent)
+        return session ? { kind: 'zurueckgenommen', reason: 'erstattet', ...session } : { kind: 'ignoriert' }
       }
       case 'charge.dispute.created': {
-        const sessionId = await this.sessionOfPaymentIntent(event.data.object.payment_intent)
-        return sessionId ? { kind: 'zurueckgenommen', sessionId, reason: 'angefochten' } : { kind: 'ignoriert' }
+        const session = await this.sessionOfPaymentIntent(event.data.object.payment_intent)
+        return session ? { kind: 'zurueckgenommen', reason: 'angefochten', ...session } : { kind: 'ignoriert' }
       }
       case 'charge.dispute.closed': {
         if (event.data.object.status !== 'won') return { kind: 'ignoriert' }
-        const sessionId = await this.sessionOfPaymentIntent(event.data.object.payment_intent)
-        return sessionId ? { kind: 'wiederhergestellt', sessionId } : { kind: 'ignoriert' }
+        const session = await this.sessionOfPaymentIntent(event.data.object.payment_intent)
+        return session ? { kind: 'wiederhergestellt', ...session } : { kind: 'ignoriert' }
       }
       default:
         return { kind: 'ignoriert' }
     }
   }
 
-  /** Refunds and disputes name the payment, not the checkout session; Stripe says which session it was. */
-  private async sessionOfPaymentIntent(paymentIntent: string | Stripe.PaymentIntent | null): Promise<string | null> {
+  /**
+   * Refunds and disputes name the payment, not the checkout session; Stripe says which session it was, and
+   * whose (its metadata), so the event can be recorded even when it overtakes the session's own event.
+   */
+  private async sessionOfPaymentIntent(paymentIntent: string | Stripe.PaymentIntent | null): Promise<{ sessionId: string; owner?: SessionOwner } | null> {
     const id = typeof paymentIntent === 'string' ? paymentIntent : (paymentIntent?.id ?? null)
     if (id === null) return null
     try {
       const sessions = await this.stripe.checkout.sessions.list({ payment_intent: id, limit: 1 })
-      return sessions.data[0]?.id ?? null
+      const session = sessions.data[0]
+      if (!session) return null
+      const owner = ownerOf(session.metadata)
+      return { sessionId: session.id, ...(owner ? { owner } : {}) }
     } catch (error) {
       throw new PaymentProviderUnavailableError('Stripe could not say which checkout session the payment belongs to.', { cause: error })
     }
   }
 }
+
+/** The events the webhook endpoint must be subscribed to (`test/config/deployment-wiring.test.ts` keeps the docs equal). */
+export const STRIPE_WEBHOOK_EVENTS = [
+  'checkout.session.completed',
+  'checkout.session.async_payment_succeeded',
+  'checkout.session.async_payment_failed',
+  'charge.refunded',
+  'charge.dispute.created',
+  'charge.dispute.closed',
+] as const
 
 function ownerOf(metadata: Stripe.Metadata | null): SessionOwner | undefined {
   const userId = metadata?.userId

@@ -1,4 +1,4 @@
-import type { FastifyInstance } from 'fastify'
+import type { FastifyInstance, FastifyRequest } from 'fastify'
 
 /** Fastify's default body limit, kept for every request that carries no assistant token. */
 export const DEFAULT_BODY_LIMIT_BYTES = 1024 * 1024
@@ -10,12 +10,17 @@ export const MCP_BODY_LIMIT_BYTES = 15 * 1024 * 1024
 
 const MCP_MESSAGE_ROUTES = new Set(['/mcp', '/mcp/messages'])
 
+/** The bearer check made before the body is read: null when the token passes, else the 401 challenge. */
+export type BearerBeforeBody = (request: FastifyRequest) => Promise<string | null>
+
 /**
- * Raises the body limit of the MCP message routes. A request without a bearer token is turned away before its
- * body is read when it would be larger than the default, so the higher limit is open to assistants only (the
- * guard checks the token itself later). Must run before the routes are registered.
+ * Raises the body limit of the MCP message routes, for assistants only. A POST whose body may be larger than
+ * the default (a content-length above it, or none) is read only after its bearer token passed the guard's own
+ * check (`UserContextGuard.refuseBearerBeforeBody`); otherwise it is answered 401 with the challenge before a
+ * byte of the body is buffered. A header that merely starts with "Bearer " no longer opens the 15 MB limit.
+ * Must run before the routes are registered.
  */
-export function installMcpBodyLimit(fastify: FastifyInstance): void {
+export function installMcpBodyLimit(fastify: FastifyInstance, bearerBeforeBody: BearerBeforeBody): void {
   fastify.addHook('onRoute', (route) => {
     const methods = Array.isArray(route.method) ? route.method : [route.method]
     if (!MCP_MESSAGE_ROUTES.has(route.url) || !methods.includes('POST')) return
@@ -24,12 +29,15 @@ export function installMcpBodyLimit(fastify: FastifyInstance): void {
     route.onRequest = [
       async (request, reply) => {
         if (request.method !== 'POST') return
-        const bearer = typeof request.headers.authorization === 'string' && request.headers.authorization.startsWith('Bearer ')
-        if (bearer) return
         const length = Number(request.headers['content-length'] ?? Number.NaN)
-        if (!Number.isFinite(length) || length > DEFAULT_BODY_LIMIT_BYTES) {
-          await reply.code(413).header('content-type', 'application/json').send({ statusCode: 413, code: 'MCP_BODY_TOO_LARGE', message: 'Ohne Assistenten-Token nimmt der MCP-Endpunkt höchstens 1 MB.' })
-        }
+        if (Number.isFinite(length) && length <= DEFAULT_BODY_LIMIT_BYTES) return
+        const challenge = await bearerBeforeBody(request)
+        if (challenge === null) return
+        await reply
+          .code(401)
+          .header('WWW-Authenticate', challenge)
+          .header('content-type', 'application/json')
+          .send({ statusCode: 401, code: 'MCP_BEARER_REQUIRED', message: 'Mehr als 1 MB nimmt der MCP-Endpunkt nur mit gültigem Assistenten-Token.' })
       },
       ...own,
     ]

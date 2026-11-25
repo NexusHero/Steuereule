@@ -1163,7 +1163,8 @@
       "statusLoadError": "Ob ihr als Paar verknüpft seid, konnte nicht geladen werden.",
       "personBGespeichert": "Partner-Angaben übernommen.",
       "personBUnveraendert": "Es gibt nichts Neues zu übernehmen.",
-      "codeUnbekannt": "Diesen Code kennen wir nicht. Prüf die Schreibweise."
+      "codeUnbekannt": "Diesen Code kennen wir nicht. Prüf die Schreibweise.",
+      "einladungErstellen": "Einladungscode für deinen Partner erstellen"
     },
     "ungespeichertZurueck": "Deine Änderungen sind noch nicht gespeichert. Tipp „Speichern“ – oder noch einmal zurück, um sie zu verwerfen.",
     "fehlendHinweis": "Für den Ausdruck fehlen noch {{anzahl}} Angaben.",

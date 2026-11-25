@@ -13,6 +13,7 @@
 import type { NestFastifyApplication } from '@nestjs/platform-fastify'
 import type { PrismaClient } from '@prisma/client'
 import { afterAll, afterEach, beforeAll, expect } from 'vitest'
+import { fixtureClient } from './database-fixture.js'
 import { resetRateLimiters } from './reset-rate-limiters.js'
 
 export let app: NestFastifyApplication
@@ -34,9 +35,10 @@ export function useAcceptanceServer(options: AcceptanceServerOptions): void {
     app = await buildApp()
     await app.listen(0, '127.0.0.1')
     baseUrl = await app.getUrl()
-    // The encrypted client, like the app: e-mail lookups in the suites go through the hash (ADR-0109).
+    // The encrypted client, like the app: e-mail lookups in the suites go through the hash (ADR-0109). The
+    // suite's own seeding, cleanup and assertions run as `test-fixture`; its requests run as their user (P11).
     const { ENCRYPTED_PRISMA } = await import('../../src/prisma/encrypted-prisma.provider.js')
-    prisma = app.get<PrismaClient>(ENCRYPTED_PRISMA)
+    prisma = fixtureClient(app.get<PrismaClient>(ENCRYPTED_PRISMA))
   })
 
   afterEach(async () => {

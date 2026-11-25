@@ -29,6 +29,10 @@ const SENSITIVE: Readonly<Record<string, { readonly action: SensitiveAction; rea
   },
   'LinkController.joinWithCode': { action: 'exposes-other-person' },
   'LinkController.consent': { action: 'exposes-other-person' },
+  'LinkController.set': {
+    action: 'grants-third-party',
+    mechanism: 'LinkService.set mints a new invitation code only after FreshAuthChecker.assertFreshSessionOrStepUp; choosing the Veranlagungsart alone needs none, and a caller without the check (confirmation path, interview) gets no code.',
+  },
   'AccountDeletionController.deleteAccount': { action: 'ends-account', mechanism: 'FreshAuthChecker.assertFreshAuth: fresh session, step-up grant or the password in the body.' },
   'AccountExportController.exportAccount': { action: 'exports-account', mechanism: 'FreshAuthChecker.assertFreshSessionOrStepUp (ADR-0107 L1).' },
 }
@@ -77,8 +81,8 @@ const ORDINARY_CONTROLLERS: Readonly<Record<string, string>> = {
 const ORDINARY_ROUTES: Readonly<Record<string, { readonly why: string; readonly handlers: readonly string[] }>> = {
   DeviceController: { why: 'Mints a code (no session) or shows what is pending to the claiming phone.', handlers: ['requestCode', 'getPending'] },
   LinkController: {
-    why: 'Person A reads the year (B’s data only with B’s consent, API-3), sets the Veranlagungsart, or records a B without an account.',
-    handlers: ['get', 'set', 'updatePersonB'],
+    why: 'Person A reads the year (B’s data only with B’s consent, API-3) or records a B without an account.',
+    handlers: ['get', 'updatePersonB'],
   },
   AssistantsController: { why: 'Lists or revokes grants, or shows a client’s public name.', handlers: ['listConnected', 'revoke', 'getClientInfo'] },
 }

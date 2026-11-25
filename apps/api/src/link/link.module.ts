@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common'
+import { FreshAuthChecker } from '../auth/fresh-auth.js'
 import { AuditModule } from '../audit/audit.module.js'
 import { PrismaModule } from '../prisma/prisma.module.js'
 import { ProfileModule } from '../profile/profile.module.js'
@@ -14,6 +15,7 @@ import { PrismaLinkRepository } from './link.repository.prisma.js'
   controllers: [LinkController],
   providers: [
     LinkService,
+    FreshAuthChecker,
     {
       provide: PARTNER_COUPLING_REPOSITORY,
       useClass: PrismaLinkRepository,

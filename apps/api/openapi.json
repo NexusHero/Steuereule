@@ -774,6 +774,9 @@
               }
             }
           },
+          "400": {
+            "description": "FRESH_AUTH_REQUIRED: a new invitation code grants access to a third party and needs the step-up."
+          },
           "401": {
             "description": "Requires account."
           },

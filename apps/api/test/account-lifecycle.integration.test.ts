@@ -15,12 +15,16 @@ import { ENCRYPTED_PRISMA, type EncryptedPrismaClient } from '../src/prisma/encr
 import { PostgresByteaStorageAdapter } from '../src/receipt/storage/postgres-bytea-storage.adapter.js'
 import { SUBMISSION_REPOSITORY, type SubmissionRepository } from '../src/submission/submission.repository.js'
 import { UNLOCK_REPOSITORY, type UnlockRepository } from '../src/unlock/unlock.repository.js'
+import { asDatabaseUser, asFixture, fixtureClient } from './support/database-fixture.js'
 
 const YEAR = 2025
 const YEARS = 365 * 24 * 60 * 60 * 1000
 
 describe('account lifecycle — real Postgres (P7)', () => {
   let app: NestFastifyApplication
+  /** The app's own client, handed to the system paths under test as the server hands it. */
+  let appPrisma: EncryptedPrismaClient
+  /** The suite's seeding, cleanup and assertions (`test-fixture`). */
   let prisma: EncryptedPrismaClient
   let deletion: AccountDeletionRepository
   let unlocks: UnlockRepository
@@ -31,12 +35,20 @@ describe('account lifecycle — real Postgres (P7)', () => {
   beforeAll(async () => {
     app = await NestFactory.create<NestFastifyApplication>(AppModule, new FastifyAdapter(), { logger: false })
     await app.init()
-    prisma = app.get(ENCRYPTED_PRISMA)
+    appPrisma = app.get(ENCRYPTED_PRISMA)
+    prisma = fixtureClient(appPrisma)
     deletion = app.get(ACCOUNT_DELETION_REPOSITORY)
     unlocks = app.get(UNLOCK_REPOSITORY)
     submissions = app.get(SUBMISSION_REPOSITORY)
     files = app.get(PostgresByteaStorageAdapter, { strict: false })
   })
+
+  /** What the user's own checkout and unlock requests do, as that user. */
+  const checkoutOf = (userId: string) => asDatabaseUser(userId, unlocks)
+  /** What the payment webhook does, as a system path (`payment-webhook` in the service that calls it). */
+  const webhook = () => fixtureClient(unlocks)
+  /** Receipt files as their owner reaches them. */
+  const filesOf = (userId: string) => asDatabaseUser(userId, files)
 
   afterEach(async () => {
     for (const id of ids.splice(0)) {
@@ -106,13 +118,39 @@ describe('account lifecycle — real Postgres (P7)', () => {
     expect(await prisma.householdPerson.findUnique({ where: { id: child.id } })).not.toBeNull()
   })
 
+  it('a refund that arrives before the completion event keeps the year locked, and the payment still gets its hold', async () => {
+    const a = await newAccount()
+    await checkoutOf(a).createOpenOnes(a, YEAR, `cs_${a}`)
+    await webhook().revoke(`cs_${a}`, 'erstattet')
+    await webhook().markPaid(`cs_${a}`, 2_900, new Date('2026-03-01T10:00:00Z'))
+    // The same for a session whose local row was never written: the refund rebuilds it from the owner.
+    await webhook().revoke(`cs_lost_${a}`, 'erstattet', { userId: a, taxYear: YEAR, tier: 'standard' })
+    await webhook().markPaid(`cs_lost_${a}`, 2_900, new Date('2026-03-01T10:00:00Z'), { userId: a, taxYear: YEAR, tier: 'standard' })
+
+    expect(await checkoutOf(a).isPaid(a, YEAR)).toBe(false)
+    const rows = await prisma.unlock.findMany({ where: { userId: a } })
+    expect(rows.map((row) => row.status)).toEqual(['erstattet', 'erstattet'])
+    expect(await prisma.legalHold.count({ where: { userId: a, resource: 'unlock' } })).toBe(2)
+  })
+
+  it('a redelivered "dispute opened" after a won dispute leaves the year unlocked', async () => {
+    const a = await newAccount()
+    await checkoutOf(a).createOpenOnes(a, YEAR, `cs_${a}`)
+    await webhook().markPaid(`cs_${a}`, 2_900, new Date('2026-03-01T10:00:00Z'))
+    await webhook().revoke(`cs_${a}`, 'angefochten')
+    expect(await checkoutOf(a).isPaid(a, YEAR)).toBe(false)
+    await webhook().restore(`cs_${a}`)
+    await webhook().revoke(`cs_${a}`, 'angefochten')
+    expect(await checkoutOf(a).isPaid(a, YEAR)).toBe(true)
+  })
+
   it('API-24: a paid unlock and a submitted version outlive the deletion until their hold ends, then the sweep deletes them', async () => {
     const a = await newAccount()
-    await unlocks.createOpenOnes(a, YEAR, `cs_${a}`)
-    await unlocks.markPaid(`cs_${a}`, 2_900, new Date('2026-03-01T10:00:00Z'))
-    await unlocks.createOpenOnes(a, YEAR, `cs_open_${a}`)
+    await checkoutOf(a).createOpenOnes(a, YEAR, `cs_${a}`)
+    await webhook().markPaid(`cs_${a}`, 2_900, new Date('2026-03-01T10:00:00Z'))
+    await checkoutOf(a).createOpenOnes(a, YEAR, `cs_open_${a}`)
     await prisma.taxYear.create({ data: { userId: a, taxYear: YEAR, baseEstimate: 0, openItems: 0 } })
-    await submissions.record({ userId: a, taxYear: YEAR, filingType: 'einzel', submittedOn: '2026-03-14', positions: { bruttoarbeitslohnA: 40_000 }, estimateAtSubmission: null })
+    await asDatabaseUser(a, submissions).record({ userId: a, taxYear: YEAR, filingType: 'einzel', submittedOn: '2026-03-14', positions: { bruttoarbeitslohnA: 40_000 }, estimateAtSubmission: null })
 
     const result = await deletion.deleteAccount(a)
 
@@ -127,11 +165,11 @@ describe('account lifecycle — real Postgres (P7)', () => {
     expect(await prisma.taxYear.count({ where: { userId: a } })).toBe(0)
 
     // Five years on: the version's hold has ended, the payment's has not.
-    await sweepEndedLegalHolds(prisma as never, (id, at) => deletion.deleteAccount(id, at), new Date(Date.now() + 5 * YEARS + YEARS))
+    await asFixture(() => sweepEndedLegalHolds(appPrisma as never, (id, at) => deletion.deleteAccount(id, at), new Date(Date.now() + 5 * YEARS + YEARS)))
     expect(await prisma.filingVersion.count({ where: { userId: a } })).toBe(0)
     expect(await prisma.unlock.count({ where: { userId: a } })).toBe(1)
     // Ten years on: nothing is left.
-    await sweepEndedLegalHolds(prisma as never, (id, at) => deletion.deleteAccount(id, at), new Date(Date.now() + 10 * YEARS + YEARS))
+    await asFixture(() => sweepEndedLegalHolds(appPrisma as never, (id, at) => deletion.deleteAccount(id, at), new Date(Date.now() + 10 * YEARS + YEARS)))
     expect(await prisma.unlock.count({ where: { userId: a } })).toBe(0)
     expect(await prisma.legalHold.count({ where: { userId: a } })).toBe(0)
   })
@@ -140,15 +178,58 @@ describe('account lifecycle — real Postgres (P7)', () => {
     const guest = newGuest()
     const account = await newAccount()
     const receipt = await prisma.receipt.create({ data: { userId: guest, fileName: 'quittung.pdf' } })
-    await files.put({ userId: guest, receiptId: receipt.id, buffer: Buffer.from('%PDF-1.4 beleg'), mimeType: 'application/pdf' })
+    await filesOf(guest).put({ userId: guest, receiptId: receipt.id, buffer: Buffer.from('%PDF-1.4 beleg'), mimeType: 'application/pdf' })
     await prisma.profile.create({ data: { userId: guest, firstName: 'Gast', lastName: 'Beispiel', steuerId: null, steuernummer: null } })
 
-    await upgradeGuestToAccount(prisma as never, guest, account, files)
+    await upgradeGuestToAccount(appPrisma as never, guest, account, files)
 
     expect(await prisma.receipt.findUnique({ where: { id: receipt.id } })).toMatchObject({ userId: account })
-    const stored = await files.get(account, receipt.id)
+    const stored = await filesOf(account).get(account, receipt.id)
     expect(stored?.buffer.toString()).toBe('%PDF-1.4 beleg')
-    expect(await files.get(guest, receipt.id)).toBeNull()
+    expect(await filesOf(guest).get(guest, receipt.id)).toBeNull()
     expect(await prisma.profile.count({ where: { userId: account } })).toBe(1)
+  })
+
+  it('API-20: a receipt whose file cannot be stored for the account stays with the guest, row and file, and a second run moves it', async () => {
+    const guest = newGuest()
+    const account = await newAccount()
+    const receipt = await prisma.receipt.create({ data: { userId: guest, fileName: 'quittung.pdf' } })
+    await filesOf(guest).put({ userId: guest, receiptId: receipt.id, buffer: Buffer.from('%PDF-1.4 beleg'), mimeType: 'application/pdf' })
+
+    const failing = { move: async () => Promise.reject(new Error('keystore unavailable')) }
+    await expect(upgradeGuestToAccount(appPrisma as never, guest, account, failing)).resolves.toEqual({ complete: false, receiptsLeftBehind: [receipt.id] })
+    expect(await prisma.receipt.findUnique({ where: { id: receipt.id } })).toMatchObject({ userId: guest })
+    expect((await filesOf(guest).get(guest, receipt.id))?.buffer.toString()).toBe('%PDF-1.4 beleg')
+
+    await expect(upgradeGuestToAccount(appPrisma as never, guest, account, files)).resolves.toMatchObject({ complete: true })
+    expect(await prisma.receipt.findUnique({ where: { id: receipt.id } })).toMatchObject({ userId: account })
+    expect((await filesOf(account).get(account, receipt.id))?.buffer.toString()).toBe('%PDF-1.4 beleg')
+  })
+
+  it('API-20: a file written for the account is rolled back when the receipt row cannot move', async () => {
+    const guest = newGuest()
+    const account = await newAccount()
+    const receipt = await prisma.receipt.create({ data: { userId: guest, fileName: 'quittung.pdf' } })
+    await filesOf(guest).put({ userId: guest, receiptId: receipt.id, buffer: Buffer.from('%PDF-1.4 beleg'), mimeType: 'application/pdf' })
+
+    // The real file move, then a failure before the row moves: the transaction takes the file back.
+    const thenFails = { move: async (from: string, to: string, id: string) => (await files.move(from, to, id), Promise.reject(new Error('interrupted'))) }
+    await expect(upgradeGuestToAccount(appPrisma as never, guest, account, thenFails)).resolves.toMatchObject({ complete: false })
+    expect((await filesOf(guest).get(guest, receipt.id))?.buffer.toString()).toBe('%PDF-1.4 beleg')
+    expect(await filesOf(account).get(account, receipt.id)).toBeNull()
+  })
+
+  it('API-20: what the guest recorded for Person B moves to the account\'s shadow id of the year', async () => {
+    const guest = newGuest()
+    const account = await newAccount()
+    await prisma.taxYear.create({ data: { userId: guest, taxYear: YEAR, baseEstimate: 0, openItems: 0 } })
+    await prisma.taxYearLink.create({ data: { personAUserId: guest, taxYear: YEAR, filingType: 'zusammen', personBUserId: shadowIdOf(guest, YEAR) } })
+    await prisma.profile.create({ data: { userId: shadowIdOf(guest, YEAR), firstName: 'Person', lastName: 'B', steuerId: null, steuernummer: null } })
+
+    await upgradeGuestToAccount(appPrisma as never, guest, account, files)
+
+    expect(await prisma.taxYearLink.findUnique({ where: { personAUserId_taxYear: { personAUserId: account, taxYear: YEAR } } })).toMatchObject({ personBUserId: shadowIdOf(account, YEAR) })
+    expect(await prisma.profile.findUnique({ where: { userId: shadowIdOf(account, YEAR) } })).toMatchObject({ lastName: 'B' })
+    expect(await prisma.profile.count({ where: { userId: shadowIdOf(guest, YEAR) } })).toBe(0)
   })
 })

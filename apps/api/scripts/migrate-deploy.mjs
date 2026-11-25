@@ -8,6 +8,7 @@ import { createRequire } from 'node:module'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { PrismaClient } from '@prisma/client'
+import { provisionRuntimeLogin, runtimeLoginPlan } from './runtime-database-login.mjs'
 
 function keystoreUrl(env) {
   if (env.KEYSTORE_DATABASE_URL?.trim()) return { url: env.KEYSTORE_DATABASE_URL.trim(), derived: false }
@@ -47,10 +48,11 @@ const prismaPackage = require.resolve('prisma/package.json')
 const prismaCli = path.join(path.dirname(prismaPackage), JSON.parse(readFileSync(prismaPackage, 'utf8')).bin.prisma)
 const run = (args, env) => execFileSync(process.execPath, [prismaCli, ...args], { stdio: 'inherit', env })
 
-// P11: the tables are FORCEd for row-level security, so the policies bind the owner too. On Cloud SQL the login
-// role owns the tables without being a superuser: a data migration or backfill there would see no rows. This
-// one job runs as the named system path `migration` (`app_rls.is_system()`); the API never does (it runs as
-// `steuereule_app`, see src/config/database-url.ts).
+// P11: this job connects as the migration login, the owner of the tables (`DATABASE_URL` of this job). The tables
+// are FORCEd for row-level security, so the policies bind the owner too; a data migration or backfill under a
+// non-superuser owner (Cloud SQL) would see no rows. This one job runs as the named system path `migration`
+// (`app_rls.is_system()`). The API has another login, which this job creates below (`RUNTIME_DATABASE_URL`,
+// scripts/runtime-database-login.mjs) and which owns nothing.
 function asMigration(url) {
   if (!url) return url
   const parsed = new URL(url.trim())
@@ -60,9 +62,19 @@ function asMigration(url) {
   parsed.searchParams.set('options', `${existing} ${option}`)
   return parsed.toString()
 }
+// Decided before anything is changed: a production run without a separate runtime login stops here.
+const runtimeLogin = runtimeLoginPlan(process.env)
 const migrationEnv = { ...process.env, DATABASE_URL: asMigration(process.env.DATABASE_URL) }
 
 run(['migrate', 'deploy'], migrationEnv)
+if (runtimeLogin.kind === 'provision') {
+  const owner = new PrismaClient()
+  try {
+    await provisionRuntimeLogin(owner, runtimeLogin)
+  } finally {
+    await owner.$disconnect()
+  }
+}
 const keystore = keystoreUrl(process.env)
 if (keystore.derived || sameServer(keystore.url, process.env.DATABASE_URL)) await ensureDatabaseExists(keystore.url)
 run(['migrate', 'deploy', '--schema', 'prisma/keystore/schema.prisma'], {

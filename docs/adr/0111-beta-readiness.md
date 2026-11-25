@@ -82,8 +82,9 @@ E2E, integration (database) and load tiers run in CI.
   lock. `steuerjahre_auflisten`, `beleg_zuruecknehmen`, `aufgabe_zuruecknehmen` are new; the server sends
   instructions and tool annotations.
 - `beleg_hochladen` takes the file as base64 through the REST upload's service (type by content, 10 MB,
-  quota); its rate limit is a counter of its own. The two MCP message routes accept 15 MB when the request
-  carries an `Authorization: Bearer` header; the token itself is checked after the body was read.
+  quota); its rate limit is a counter of its own. The two MCP message routes accept 15 MB only with a valid
+  bearer token, checked by the guard's own decision before the body is read (a larger body without one gets
+  401 with the challenge); an opaque token also needs the consent to still exist.
 - `zahllink:write` replaces `zahllink:read`, which is still accepted for existing refresh tokens and no
   longer advertised.
 - A request to the MCP endpoint without a token gets 401 with a challenge before any guest identity exists.
@@ -155,10 +156,27 @@ E2E, integration (database) and load tiers run in CI.
   migrations, so a policy dropped later or one whose condition is `true` fails it. Queries run as the role
   `steuereule_app` (no `BYPASSRLS`, owns no table); the request's identity is a transaction-local setting set
   with the first query. Without a setting a query sees nothing.
+- Two logins. The migration login owns the schema and runs migrations, backfills and the field-key rotation;
+  only the migrate job has its URL (`MIGRATE_DATABASE_URL`, read by the job's own service account). The API
+  connects with a runtime login that the migrate job creates from `RUNTIME_DATABASE_URL`: member of
+  `steuereule_app` and of nothing else, owner of nothing, none of SUPERUSER, BYPASSRLS, CREATEROLE, CREATEDB.
+  In production the API checks this at boot and refuses to start otherwise
+  (`apps/api/src/config/assert-database-role.ts`). The append-only tables let only their owner re-encrypt.
+  A developer's database and the test tiers keep one login; there the per-connection switch to
+  `steuereule_app` binds the policies.
 - Paths that cross users (sweeps, account deletion, guest takeover, the payment webhook, better-auth lookups,
   the device flow, invitations) run under a named system reason; a lock test lists every call site.
 - Residual: partners may read and write each other's rows in the database, narrowing stays with the app; the
-  keystore database has no policies; row-level security does not protect against SQL injection.
+  keystore database has no policies and one login (its rows are keys wrapped under `KEYSTORE_MASTER_KEY`, which
+  the database never holds); the two identity settings are plain session settings, so row-level security does
+  not protect against SQL injection or against code that names a system reason. In particular, whoever holds
+  the runtime login's password can set `steuereule.system` (or `steuereule.erasure`) and pass every policy
+  and the append-only erasure exception; the two logins keep such a caller from changing the schema, the
+  policies or the triggers and from the re-encryption exception, not from the rows. Row-level security is a
+  guard against bugs in the app (a query for the wrong user), not against a stolen runtime password.
+- Outside a request a query has no identity, in the test tiers too: the DB tier runs its own seeding and
+  assertions as `test-fixture` (`apps/api/test/support/database-fixture.ts`) and the app's repositories and
+  services as the user a request would carry.
 
 ### Configuration and deployment
 
@@ -217,7 +235,8 @@ E2E, integration (database) and load tiers run in CI.
   `security: dependency audit (production deps)`, `performance: load (many users, seeded accounts, think times)`
   and `static: opentofu validate`, and sets `DEPLOY_STAGING_AUTO` and `AI_EVAL_ENABLED` when ready.
 - The first deployment follows `infra/README.md` step by step; the Stripe webhook subscribes to
-  `checkout.session.completed`, `checkout.session.async_payment_succeeded`, `charge.refunded`,
+  `checkout.session.completed`, `checkout.session.async_payment_succeeded`,
+  `checkout.session.async_payment_failed`, `charge.refunded`,
   `charge.dispute.created` and `charge.dispute.closed`.
 - E2E scenarios that confirm an Anlage without the new body, or rely on the old payment parameter, fail until
   adjusted.

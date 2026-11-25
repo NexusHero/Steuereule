@@ -9,6 +9,7 @@ import type { PrismaClient } from '@prisma/client'
 import Stripe from 'stripe'
 import type { AccountDeletionRepository } from '../../src/account/account-deletion.repository.js'
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest'
+import { fixtureClient } from '../support/database-fixture.js'
 
 const WEBHOOK_SECRET = 'whsec_acceptance_only'
 process.env.STRIPE_SECRET_KEY = 'sk_test_acceptance_only'
@@ -26,7 +27,7 @@ describe('Freischaltung — Stripe webhook against the real server (ADR-0050)', 
     await app.listen(0, '127.0.0.1')
     baseUrl = await app.getUrl()
     const { PrismaService } = await import('../../src/prisma/prisma.service.js')
-    prisma = app.get(PrismaService)
+    prisma = fixtureClient(app.get(PrismaService))
   })
 
   afterEach(async () => {

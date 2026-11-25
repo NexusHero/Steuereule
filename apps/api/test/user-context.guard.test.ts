@@ -262,7 +262,7 @@ describe('UserContextGuard', () => {
         revoked: null,
         client: { clientId: 'client-1', name: 'Claude Assistant', disabled: false },
       }
-      const tokens = fakeTokens({ findOpaqueToken: vi.fn().mockResolvedValue(tokenRecord) })
+      const tokens = fakeTokens({ findOpaqueToken: vi.fn().mockResolvedValue(tokenRecord), hasConsent: vi.fn().mockResolvedValue(true) })
 
       const guard = new UserContextGuard(makeBetterAuthBundle(vi.fn()), tokens)
       const { context, request, setCookie } = makeContext({}, { authorization: `Bearer ${rawToken}` })
@@ -278,6 +278,22 @@ describe('UserContextGuard', () => {
       })
       expect(setCookie).not.toHaveBeenCalled()
       expect(tokens.findOpaqueToken).toHaveBeenCalledWith(hashed)
+    })
+
+    it('an opaque token whose consent was deleted is refused at once, like a JWT (ADR-0052 §10)', async () => {
+      const tokenRecord = {
+        userId: 'oauth-user-id',
+        clientId: 'client-1',
+        scopes: ['openid'],
+        expiresAt: new Date(Date.now() + 60_000),
+        revoked: null,
+        client: { clientId: 'client-1', name: 'Claude', disabled: false },
+      }
+      const tokens = fakeTokens({ findOpaqueToken: vi.fn().mockResolvedValue(tokenRecord), hasConsent: vi.fn().mockResolvedValue(false) })
+      const guard = new UserContextGuard(makeBetterAuthBundle(vi.fn()), tokens)
+      const { context } = makeContext({}, { authorization: 'Bearer opaque-without-consent' })
+      await expect(guard.canActivate(context)).rejects.toThrow(UnauthorizedException)
+      expect(tokens.hasConsent).toHaveBeenCalledWith('oauth-user-id', 'client-1')
     })
 
     it('an expired bearer token throws UnauthorizedException (never falls back to guest)', async () => {
