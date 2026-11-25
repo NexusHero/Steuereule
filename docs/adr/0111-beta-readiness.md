@@ -133,8 +133,9 @@ E2E, integration (database) and load tiers run in CI.
   session or a step-up grant. `/v1` routes carry `@RequiresStepUp`; a lock test classifies every better-auth
   endpoint and every Nest controller, and single routes only in the controllers that hold a sensitive one.
   Accounts without a password prove themselves with a passkey or a fresh sign-in at their provider.
-  Not covered: choosing a joint return creates the invitation code without a step-up
-  (`PUT /v1/steuerjahre/:jahr/kopplung`).
+  A new invitation code is minted only after a step-up (`PUT /v1/steuerjahre/:jahr/kopplung`, rule
+  'grants-third-party'); a path without one (the interview's „Verheiratet“, the confirmation) sets up the joint
+  return with a Person B placeholder and no code.
 - A session created by the device flow takes over the approver's creation time, so it is never fresh and never
   extends the 30-day cap.
 - Person B agrees per tax year (`POST /v1/steuerjahre/:jahr/kopplung/zustimmung`, with step-up); redeeming an
