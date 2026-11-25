@@ -996,6 +996,10 @@ jobs:
         run: pnpm --filter @steuereule/e2e exec playwright-core install chromium --with-deps
       - name: The one env file — copy the example verbatim (the point of #76's single-source .env)
         run: cp .env.example .env
+      - name: TLS certificate of the local inbox (mail is never sent in clear text, not even to Mailpit)
+        # The same script scripts/local.sh runs: a CA and a Mailpit certificate in .local/mail-tls, generated here
+        # and never committed. Mailpit takes SMTP only over TLS; the API verifies it against this CA (SMTP_CA_CERT).
+        run: scripts/mail-tls.sh
       - name: Build + boot the real production stack (Postgres -> migrate -> api; web independently)
         run: docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
       - name: Wait for both published origins to answer (poll, no sleep — ADR-0004)
@@ -1026,7 +1030,11 @@ jobs:
           DB_PASSWORD: steuereule
           DB_NAME: steuereule
         run: DATABASE_URL="postgresql://${DB_USER}:${DB_PASSWORD}@localhost:5432/${DB_NAME}" node e2e/prod-deploy/run.mjs
-      - name: Registration mail reached the local inbox (Mailpit, SMTP)
+      - name: Mailpit's SMTP port speaks TLS with the certificate of the local CA
+        # Fails if the port answers in clear text or with a certificate the CA did not sign for 127.0.0.1.
+        run: openssl s_client -connect 127.0.0.1:1025 -CAfile .local/mail-tls/ca/ca.pem -verify_ip 127.0.0.1 -verify_return_error -brief </dev/null
+      - name: Registration mail reached the local inbox (Mailpit, SMTP over TLS)
+        # The API has no clear-text path, so a mail in the inbox went over TLS with a verified certificate.
         run: |
           curl --fail --silent --show-error --retry 10 --retry-delay 2 --retry-all-errors \
             "http://localhost:8025/api/v1/message/latest" | grep -q 'verify-email'

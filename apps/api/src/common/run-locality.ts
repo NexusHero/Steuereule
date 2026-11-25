@@ -23,8 +23,3 @@ export function isLocalProductionStack(env: NodeJS.ProcessEnv): boolean {
   const origins = [env.BETTER_AUTH_URL, env.WEB_APP_URL, ...(env.CORS_ALLOWED_ORIGINS ?? '').split(',').map((entry) => entry.trim()).filter(Boolean)]
   return origins.every(isLoopbackUrl)
 }
-
-/** A run nobody beyond this machine depends on: development, tests, or the local production-shaped stack. */
-export function isLocalRun(env: NodeJS.ProcessEnv): boolean {
-  return env.NODE_ENV !== 'production' || isLocalProductionStack(env)
-}

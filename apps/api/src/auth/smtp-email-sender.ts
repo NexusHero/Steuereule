@@ -1,5 +1,5 @@
+import { readFileSync } from 'node:fs'
 import { createTransport } from 'nodemailer'
-import { isLocalRun } from '../common/run-locality.js'
 import { type EmailPurpose, renderEmail } from './email-content.js'
 import type { EmailSender, ExistingAccountNotice, UnverifiedAccountWarning, VerificationEmail } from './email-sender.js'
 
@@ -7,8 +7,8 @@ export interface SmtpConfig {
   url: string
   senderEmail: string
   senderName: string
-  /** Development, tests or the local production-shaped stack: only then may a local inbox take plain SMTP. */
-  localRun: boolean
+  /** PEM of a private CA that signed the server certificate (`SMTP_CA_CERT`), e.g. the local Mailpit's. */
+  caCert?: string
 }
 
 export interface SmtpTransport {
@@ -17,49 +17,76 @@ export interface SmtpTransport {
 
 const LOCAL_SENDER = 'noreply@steuereule.localhost'
 
+/**
+ * The only shape of nodemailer options this module builds. The literal types make a transport without TLS a type
+ * error: `requireTLS` and `rejectUnauthorized` cannot be anything but true.
+ */
 export interface SmtpTransportOptions {
   host: string
   port: number
-  /** Implicit TLS from the first byte (`smtps:`). */
+  /** Implicit TLS from the first byte (`smtps:`); otherwise the connection upgrades with STARTTLS. */
   secure: boolean
-  /** STARTTLS is required; without it the mail is not sent. */
-  requireTLS: boolean
+  /** STARTTLS is required: a server that does not offer it gets no mail. */
+  requireTLS: true
+  tls: {
+    /** The server certificate is verified against the system CAs, or only against `ca` when that is set. */
+    rejectUnauthorized: true
+    minVersion: 'TLSv1.2'
+    ca?: string
+  }
   auth?: { user: string; pass: string }
 }
 
-/** Loopback, or a single-label name such as the compose service `mailpit`: the local test inbox. */
-function isLocalHost(host: string): boolean {
-  return host === 'localhost' || host === '127.0.0.1' || host === '[::1]' || host === '::1' || !host.includes('.')
-}
-
 /**
- * The transport for an SMTP URL. A login link travels in these mails, so TLS is required, implicitly with the smtps
- * scheme or by STARTTLS. The one exception is the local test inbox, and only in a run that is local (`localRun`):
- * a host name alone proves nothing, a single-label name can resolve to a server elsewhere on a deployment
- * (Sonar S5332).
+ * The transport for an SMTP URL. A login link travels in these mails, so every connection is encrypted and the
+ * server certificate is verified, on every host and in every run: implicit TLS with the smtps scheme, required
+ * STARTTLS with the smtp scheme. A private CA (the local Mailpit's) is trusted through `caCert`, never by
+ * switching verification off.
  */
-export function smtpTransportOptions(url: string, { localRun }: { localRun: boolean }): SmtpTransportOptions {
+export function smtpTransportOptions(url: string, { caCert }: { caCert?: string | undefined } = {}): SmtpTransportOptions {
   const parsed = new URL(url)
   if (parsed.protocol !== 'smtp:' && parsed.protocol !== 'smtps:') {
     throw new Error(`SMTP_URL must use the smtp or smtps scheme (got ${parsed.protocol}).`)
   }
   const secure = parsed.protocol === 'smtps:'
+  const tls: SmtpTransportOptions['tls'] = { rejectUnauthorized: true, minVersion: 'TLSv1.2' }
+  if (caCert) tls.ca = caCert
   const options: SmtpTransportOptions = {
     host: parsed.hostname,
     port: parsed.port ? Number(parsed.port) : secure ? 465 : 587,
     secure,
-    requireTLS: secure || !(localRun && isLocalHost(parsed.hostname)),
+    requireTLS: true,
+    tls,
   }
   if (parsed.username) options.auth = { user: decodeURIComponent(parsed.username), pass: decodeURIComponent(parsed.password) }
   return options
 }
 
-/** EmailSender over plain SMTP — locally against Mailpit, so every mail is visible in a real inbox. */
+/**
+ * The one place a nodemailer transport is created. The options are spelled out here, with `requireTLS: true` and
+ * the verifying `tls` options at the call, so the TLS-only shape is visible where the connection is opened.
+ */
+export function createTlsTransport({ host, port, secure, tls, auth }: SmtpTransportOptions): SmtpTransport {
+  return createTransport({ host, port, secure, requireTLS: true, tls: { ...tls, rejectUnauthorized: true }, ...(auth ? { auth } : {}) })
+}
+
+/** Reads the PEM file `SMTP_CA_CERT` names; a path that cannot be read stops the boot instead of the first mail. */
+function readCaCert(path: string): string {
+  let pem: string
+  try {
+    pem = readFileSync(path, 'utf8')
+  } catch (error) {
+    throw new Error(`SMTP_CA_CERT: cannot read ${path}.`, { cause: error })
+  }
+  if (!pem.includes('-----BEGIN CERTIFICATE-----')) throw new Error(`SMTP_CA_CERT: ${path} holds no PEM certificate.`)
+  return pem
+}
+
+/** EmailSender over SMTP with TLS — locally against Mailpit, so every mail is visible in a real inbox. */
 export class SmtpEmailSender implements EmailSender {
   constructor(
     private readonly config: SmtpConfig,
-    // smtpTransportOptions requires TLS except towards the local inbox in a local run (tested).
-    private readonly transport: SmtpTransport = createTransport(smtpTransportOptions(config.url, { localRun: config.localRun })),
+    private readonly transport: SmtpTransport = createTlsTransport(smtpTransportOptions(config.url, { caCert: config.caCert })),
   ) {}
 
   async sendVerificationEmail(email: VerificationEmail): Promise<void> {
@@ -91,12 +118,14 @@ export function resolveSmtpConfig(env: NodeJS.ProcessEnv = process.env): SmtpCon
   if (env.EMAIL_DELIVERY !== 'smtp') return undefined
   const url = env.SMTP_URL?.trim()
   if (!url) {
-    throw new Error('EMAIL_DELIVERY=smtp needs SMTP_URL (the local Mailpit listens on mailpit:1025).')
+    throw new Error('EMAIL_DELIVERY=smtp needs SMTP_URL (the local Mailpit takes smtps://mailpit:1025).')
   }
-  return {
+  const caPath = env.SMTP_CA_CERT?.trim()
+  const config: SmtpConfig = {
     url,
     senderEmail: env.EMAIL_FROM?.trim() || LOCAL_SENDER,
     senderName: env.EMAIL_FROM_NAME?.trim() || 'SteuerEule',
-    localRun: isLocalRun(env),
   }
+  if (caPath) config.caCert = readCaCert(caPath)
+  return config
 }

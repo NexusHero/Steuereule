@@ -1,5 +1,5 @@
 import { isLocalProductionStack } from '../common/run-locality.js'
-import { existsSync, statSync } from 'node:fs'
+import { existsSync, readFileSync, statSync } from 'node:fs'
 import { selfEmploymentEnabled } from './self-employment.js'
 import { resolveTrustedProxies } from './trusted-proxies.js'
 
@@ -85,19 +85,18 @@ function postgresUrl(value: string): string | undefined {
 
 
 /**
- * A login link travels in the mail, so a deployment sends only over implicit TLS (the smtps scheme). A run on this
- * machine may also use the plain local inbox (Mailpit); the transport still requires TLS for any other host.
+ * A login link travels in the mail. The transport (auth/smtp-email-sender.ts) encrypts every connection and verifies
+ * the server certificate with either scheme: implicit TLS with smtps, required STARTTLS with smtp. So both schemes
+ * are fine on every run, and anything else is refused.
  */
-function smtpUrl(value: string, { deployment }: CheckContext): string | undefined {
+function smtpUrl(value: string): string | undefined {
   let protocol: string
   try {
     protocol = new URL(value).protocol
   } catch {
     return 'not a URL'
   }
-  if (protocol === 'smtps:') return undefined
-  if (protocol === 'smtp:') return deployment ? 'a deployment sends mail only over implicit TLS: use the smtps scheme' : undefined
-  return 'not an SMTP URL'
+  return protocol === 'smtps:' || protocol === 'smtp:' ? undefined : 'not an SMTP URL (smtps or smtp scheme)'
 }
 
 function webUrl(value: string, { deployment }: CheckContext): string | undefined {
@@ -174,6 +173,19 @@ function httpsUrl(value: string): string | undefined {
 
 function existingFile(value: string): string | undefined {
   return existsSync(value) && statSync(value).isFile() ? undefined : `file ${value} does not exist`
+}
+
+/** The trust anchor of a private SMTP CA: a readable file that holds a PEM certificate. */
+function pemFile(value: string): string | undefined {
+  const missing = existingFile(value)
+  if (missing) return missing
+  let pem: string
+  try {
+    pem = readFileSync(value, 'utf8')
+  } catch {
+    return `file ${value} is not readable`
+  }
+  return pem.includes('-----BEGIN CERTIFICATE-----') ? undefined : `file ${value} holds no PEM certificate`
 }
 
 function existingDirectory(value: string): string | undefined {
@@ -286,7 +298,14 @@ export const API_PRODUCTION_SETTINGS: readonly ProductionSetting[] = [
       return value === 'smtp' ? undefined : 'must be "smtp" or unset'
     },
   },
-  { name: 'SMTP_URL', source: 'operator', need: 'optional', format: 'SMTP URL with implicit TLS (smtps scheme); required while EMAIL_DELIVERY is smtp', check: smtpUrl },
+  { name: 'SMTP_URL', source: 'operator', need: 'optional', format: 'SMTP URL, smtps (implicit TLS) or smtp (STARTTLS required); required while EMAIL_DELIVERY is smtp', check: smtpUrl },
+  {
+    name: 'SMTP_CA_CERT',
+    source: 'operator',
+    need: 'optional',
+    format: 'path to a PEM file with the CA of a private SMTP server (the local Mailpit); unset verifies against the system CAs',
+    check: pemFile,
+  },
   { name: 'EMAIL_FROM_NAME', source: 'operator', need: 'optional', format: 'sender name (default "SteuerEule")' },
 
   // ── Model providers (ADR-0064): the owl answers from the rules until one key is set ────────

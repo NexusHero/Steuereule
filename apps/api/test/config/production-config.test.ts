@@ -1,4 +1,6 @@
-import { readFileSync } from 'node:fs'
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import { resolveBetterAuthSecret, resolveGoogleClientId, resolveGoogleClientSecret } from '../../src/auth/better-auth-env.js'
@@ -62,7 +64,7 @@ function localStackFromEnvExample(): NodeJS.ProcessEnv {
     WEB_APP_URL: example.WEB_ORIGIN,
     TRUSTED_PROXIES: 'none',
     EMAIL_DELIVERY: 'smtp',
-    SMTP_URL: 'smtp://mailpit:1025',
+    SMTP_URL: 'smtps://mailpit:1025',
     REDIS_URL: 'redis://redis:6379',
   }
 }
@@ -243,9 +245,18 @@ describe('the settings an operator sets by hand are checked at boot, not at firs
     expect(problemsOf({ APPLE_CLIENT_ID: 'com.example.signin' }).join()).toMatch(/APPLE_CLIENT_SECRET: not set, but the other Apple value is/)
     expect(problemsOf({ APPLE_SIGN_IN_ENABLED: 'true' }).join()).toMatch(/APPLE_SIGN_IN_ENABLED is true/)
     expect(problemsOf({ EMAIL_DELIVERY: 'smtp' }).join()).toMatch(/SMTP_URL: not set while EMAIL_DELIVERY is smtp/)
-    // A login link travels in the mail: a deployment sends only over implicit TLS (Sonar S5332).
-    expect(problemsOf({ EMAIL_DELIVERY: 'smtp', SMTP_URL: 'smtp://relay.example.de:587' }).join()).toMatch(/SMTP_URL: .*implicit TLS/)
+    // A login link travels in the mail: the transport requires TLS with either scheme, so both pass (Sonar S5332).
+    expect(problemsOf({ EMAIL_DELIVERY: 'smtp', SMTP_URL: 'smtp://relay.example.de:587' }).join()).not.toMatch(/SMTP_URL/)
     expect(problemsOf({ EMAIL_DELIVERY: 'smtp', SMTP_URL: 'smtps://relay.example.de' }).join()).not.toMatch(/SMTP_URL/)
+    expect(problemsOf({ EMAIL_DELIVERY: 'smtp', SMTP_URL: 'http://relay.example.de' }).join()).toMatch(/SMTP_URL: not an SMTP URL/)
+    // The trust anchor of a private CA: a readable PEM file, checked at boot.
+    expect(problemsOf({ SMTP_CA_CERT: '/nowhere/ca.pem' }).join()).toMatch(/SMTP_CA_CERT: file \/nowhere\/ca.pem does not exist/)
+    const caDir = mkdtempSync(join(tmpdir(), 'smtp-ca-config-'))
+    writeFileSync(join(caDir, 'ca.pem'), '-----BEGIN CERTIFICATE-----\nMIIBfake\n-----END CERTIFICATE-----\n')
+    writeFileSync(join(caDir, 'notes.txt'), 'no certificate here')
+    expect(problemsOf({ SMTP_CA_CERT: join(caDir, 'notes.txt') }).join()).toMatch(/SMTP_CA_CERT: .*holds no PEM certificate/)
+    expect(problemsOf({ SMTP_CA_CERT: join(caDir, 'ca.pem') }).join()).not.toMatch(/SMTP_CA_CERT/)
+    rmSync(caDir, { recursive: true, force: true })
     expect(problemsOf({ EMAIL_DELIVERY: 'log' }).join()).toMatch(/EMAIL_DELIVERY: .*refused in production/)
     expect(problemsOf({ ELSTER_TRANSMISSION_ENABLED: 'on', ELSTER_HERSTELLER_ID: '12345' }).join()).toMatch(/ELSTER_ERIC_CLI, ELSTER_CERT_PATH, ELSTER_CERT_PIN: not set while ELSTER_TRANSMISSION_ENABLED is on/)
     expect(problemsOf({ ELSTER_CERT_PATH: '/nowhere/cert.pfx' }).join()).toMatch(/ELSTER_CERT_PATH: .*does not exist/)
