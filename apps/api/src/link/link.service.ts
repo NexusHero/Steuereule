@@ -11,25 +11,13 @@ import {
   type MasterDataRecord,
   type MasterDataRepository,
 } from '../master-data/master-data.repository.js'
-import { PARTNER_COUPLING_REPOSITORY, type PartnerCouplingRepository, type PartnerCouplingRecord } from './link.repository.js'
+import { PARTNER_COUPLING_REPOSITORY, personBConsentPending, personBHasOwnAccount, type PartnerCouplingRepository, type PartnerCouplingRecord } from './link.repository.js'
 import type { LinkPersonBDto, LinkResponseDto, SetLinkDto } from './dto/link.dto.js'
 
 const SHADOW_PREFIX = 'spouse_'
 
 function shadowId(userId: string, taxYear: number): string {
   return `${SHADOW_PREFIX}${userId}_${taxYear}`
-}
-
-function hasOwnAccount(row: PartnerCouplingRecord): boolean {
-  return row.personBUserId !== '' && !row.personBUserId.startsWith(SHADOW_PREFIX)
-}
-
-/**
- * Decision 3 (API-3): Person B with an own account agrees per tax year, in B's own app. Until then Person A
- * sees nothing of B for that year. A shadow B (no account) is A's own record and needs no consent.
- */
-function personBConsentPending(row: PartnerCouplingRecord): boolean {
-  return hasOwnAccount(row) && (row.personBConsentedAt ?? null) === null
 }
 
 const INVITATION_VALID_MS = 14 * 24 * 60 * 60 * 1000
@@ -39,7 +27,7 @@ const INVITATION_VALID_MS = 14 * 24 * 60 * 60 * 1000
  * link. B with an own account keeps their own data, which no one else reads (ADR-0098 §5).
  */
 export function recordedSpouseUserId(row: PartnerCouplingRecord | null, userId: string): string | null {
-  if (row === null || row.personAUserId !== userId || row.personBUserId === '' || hasOwnAccount(row)) return null
+  if (row === null || row.personAUserId !== userId || row.personBUserId === '' || personBHasOwnAccount(row)) return null
   return row.personBUserId
 }
 
@@ -110,7 +98,7 @@ export class LinkService {
       personBUserId: row.personBUserId,
       invitationCode: row.invitationCode,
       invitationCodeValidUntil: row.invitationCodeValidUntil?.toISOString() ?? null,
-      personBHasOwnAccount: hasOwnAccount(row),
+      personBHasOwnAccount: personBHasOwnAccount(row),
       personB,
       personBConsentPending: pending,
       consentRequestedFromMe: pending && !callerIsA,
@@ -131,7 +119,7 @@ export class LinkService {
     if (row.personAUserId !== userId) {
       throw new ForbiddenError('ONLY_PERSON_A_RECORDS_FOR_B', 'Only person A records data for person B.')
     }
-    if (hasOwnAccount(row)) {
+    if (personBHasOwnAccount(row)) {
       throw new ForbiddenError('PERSON_B_OWNS_DATA', 'Person B maintains their data in their own account.')
     }
     return row.personBUserId
@@ -140,7 +128,7 @@ export class LinkService {
   /** Every Person B this user records data for (joint returns without B's own account), over all years. */
   async recordedPartnerUserIds(userId: string): Promise<readonly string[]> {
     const rows = await this.repository.listForPersonA(userId)
-    return [...new Set(rows.filter((row) => row.filingType === 'zusammen' && row.personBUserId !== '' && !hasOwnAccount(row)).map((row) => row.personBUserId))]
+    return [...new Set(rows.filter((row) => row.filingType === 'zusammen' && row.personBUserId !== '' && !personBHasOwnAccount(row)).map((row) => row.personBUserId))]
   }
 
   /**
@@ -160,7 +148,7 @@ export class LinkService {
     const profile = await this.profileRepository.findByUserId(spouseUserId)
     return {
       spouseUserId,
-      recordable: row.personAUserId === userId && !hasOwnAccount(row),
+      recordable: row.personAUserId === userId && !personBHasOwnAccount(row),
       firstName: profile?.firstName || null,
       lastName: profile?.lastName || null,
     }
@@ -188,7 +176,7 @@ export class LinkService {
       }
       const remains = existing?.filingType === 'zusammen' && existing.personBUserId !== ''
       const invitation =
-        remains && hasOwnAccount(existing)
+        remains && personBHasOwnAccount(existing)
           ? { invitationCode: null, invitationCodeValidUntil: null }
           : remains && invitationValid(existing, now)
             ? { invitationCode: existing.invitationCode, invitationCodeValidUntil: existing.invitationCodeValidUntil }
@@ -234,7 +222,7 @@ export class LinkService {
     if (!row || row.filingType !== 'zusammen' || !row.personBUserId) {
       throw new InvalidInputError('NO_ACTIVE_ZUSAMMENVERANLAGUNG', 'There is no active Zusammenveranlagung.')
     }
-    if (row.personAUserId !== userId || hasOwnAccount(row)) {
+    if (row.personAUserId !== userId || personBHasOwnAccount(row)) {
       throw new ForbiddenError('PERSON_B_OWNS_DATA', 'Person B maintains their data in their own account.')
     }
     if (data.religion && data.religionConsent !== true) {
@@ -292,7 +280,7 @@ export class LinkService {
     // spouse account joined it, it is only a placeholder: joining the partner's return replaces it.
     const own = await this.repository.findByUserAndYear(userId, taxYear)
     const ownPlaceholder = own !== null && own.id !== row.id && own.personAUserId === userId
-    if (ownPlaceholder && hasOwnAccount(own)) {
+    if (ownPlaceholder && personBHasOwnAccount(own)) {
       throw new InvalidInputError('ALREADY_COUPLED', 'This year is already coupled with another account.')
     }
     // One code, one redeemer (API-8): the claim is a compare-and-set; a concurrent second redeemer loses.

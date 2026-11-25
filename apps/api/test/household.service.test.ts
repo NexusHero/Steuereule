@@ -23,12 +23,16 @@ let children: FakeChildRepository
 let links: FakeLinkRepository
 let keys: InMemoryUserKeyStore
 let service: HouseholdService
+let profiles: FakeProfileRepository
+let masterData: FakeMasterDataRepository
 
 beforeEach(() => {
   repo = new InMemoryHouseholdRepository()
   children = new FakeChildRepository()
   links = new FakeLinkRepository()
   keys = new InMemoryUserKeyStore()
+  profiles = new FakeProfileRepository()
+  masterData = new FakeMasterDataRepository()
   const crypto = new EnvelopeCryptoService(() => resolveKeystoreMasterKeys({ KEYSTORE_MASTER_KEY: 'test-master' } as NodeJS.ProcessEnv))
   const seal = new PersonSealService(keys, crypto)
   service = new HouseholdService(
@@ -36,8 +40,8 @@ beforeEach(() => {
     seal,
     children,
     links,
-    new FakeProfileRepository(),
-    new FakeMasterDataRepository(),
+    profiles,
+    masterData,
     new AuditService(new FakeAuditRepository()),
     new HouseholdAccessService(repo, seal),
   )
@@ -135,6 +139,29 @@ describe('leaving and deleting (decision 6, AC 5)', () => {
     // Even a leftover copy of the sealed facts is unreadable now.
     const seal = new PersonSealService(keys, new EnvelopeCryptoService(() => resolveKeystoreMasterKeys({ KEYSTORE_MASTER_KEY: 'test-master' } as NodeJS.ProcessEnv)))
     expect(await seal.unseal(personId, sealed)).toBeNull()
+  })
+})
+
+describe('Person B’s consent per tax year (decision 3)', () => {
+  async function personBWithAccount(personBConsentedAt: Date | null) {
+    await profiles.upsert(B, { firstName: 'Ben', lastName: 'Richter', steuerId: null, steuernummer: null })
+    await masterData.save(B, { geburtsdatum: '1988-02-01' } as never)
+    await links.upsert(A, 2025, { personBUserId: B, filingType: 'zusammen', personBConsentedAt })
+  }
+
+  it('the migration learns nothing of B and links nobody for a year B has not agreed to', async () => {
+    await personBWithAccount(null)
+    await service.migrate(A, A)
+    expect((await repo.listPersons(A)).filter((p) => p.kind === 'spouse')).toEqual([])
+    expect(await repo.findPartnerLinkByPersonA(A)).toBeNull()
+    expect(await service.householdOwner(B, 2025)).toBe(B)
+  })
+
+  it('after B agreed, the migration records B and links the household', async () => {
+    await personBWithAccount(new Date('2026-01-10T10:00:00Z'))
+    await service.migrate(A, A)
+    expect((await repo.listPersons(A)).filter((p) => p.kind === 'spouse')).toHaveLength(1)
+    expect(await repo.findPartnerLinkByPersonA(A)).toMatchObject({ personBUserId: B })
   })
 })
 
