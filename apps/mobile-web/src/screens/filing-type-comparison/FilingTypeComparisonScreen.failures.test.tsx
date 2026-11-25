@@ -1,30 +1,18 @@
 // WEB-46 / NC-07: the partner income is read the German way; NC-08: no failure beside „Lädt“; C-30: a
 // failed master-data read preselects nothing; WEB-28: with every request failing the screen says so.
 import { describe, it, expect } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
-import { I18nextProvider } from 'react-i18next'
-import { ThemeProvider } from '@steuereule/ui'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { screen, fireEvent, waitFor } from '@testing-library/react'
 import { http, HttpResponse, delay } from 'msw'
-import { createAppI18n } from '../../i18n/app-i18n'
 import { server } from '../../test-msw-server'
 import { expectFailsClosed, failEveryRequest } from '../../test-every-query-fails'
 import { FilingTypeComparisonScreen } from './FilingTypeComparisonScreen'
+import { renderWithQuery } from '../../test-render'
 
 const URL_COMPARISON = '*/v1/steuerjahre/2026/veranlagungsartenvergleich'
 const VERDICT = { kind: 'eindeutig', recommendation: 'zusammen', single: 10, joint: 5, delta: 5, uncertainty: { kind: 'bestimmt', upperLimit: 0 }, provenance: { zveA: 1, zveB: 2, components: [] } }
 
 function renderScreen() {
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-  return render(
-    <QueryClientProvider client={queryClient}>
-      <I18nextProvider i18n={createAppI18n('de')}>
-        <ThemeProvider mode="light">
-          <FilingTypeComparisonScreen taxYear={2026} />
-        </ThemeProvider>
-      </I18nextProvider>
-    </QueryClientProvider>,
-  )
+  return renderWithQuery(<FilingTypeComparisonScreen taxYear={2026} />)
 }
 
 describe('the partner income is read the German way (WEB-46, NC-07)', () => {

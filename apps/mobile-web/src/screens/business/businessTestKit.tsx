@@ -1,15 +1,11 @@
 import type { PaymentReturn } from '@steuereule/core'
 // Shared by the tests of the self-employed area: the render frame and honest default answers (contract-typed).
-import type { ReactNode } from 'react'
-import { render, type RenderResult } from '@testing-library/react'
-import { I18nextProvider } from 'react-i18next'
-import { ThemeProvider } from '@steuereule/ui'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import type { RenderResult } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import type { BookDto, BusinessProfileDto, ElsterFormEntryDto } from '@steuereule/api-client'
-import { createAppI18n } from '../../i18n/app-i18n'
 import { server } from '../../test-msw-server'
 import { BusinessScreen } from './BusinessScreen'
+import { renderWithQuery } from '../../test-render'
 
 export const YEAR = 2025
 export const BASE_URL = `*/v1/steuerjahre/${YEAR}/selbststaendig`
@@ -65,28 +61,18 @@ export function renderBusiness(
   page: string | undefined,
   handlers: { onOpenPage?: (p: string | undefined) => void; onBack?: () => void; onChangePerson?: (p: 'A' | 'B') => void; onChangeBusiness?: (b: number) => void; business?: number; payment?: PaymentReturn } = {},
 ): RenderResult {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
-  const wrap = (node: ReactNode) => (
-    <QueryClientProvider client={client}>
-      <I18nextProvider i18n={createAppI18n('de')}>
-        <ThemeProvider mode="light">{node}</ThemeProvider>
-      </I18nextProvider>
-    </QueryClientProvider>
-  )
-  return render(
-    wrap(
-      <BusinessScreen
-        taxYear={YEAR}
-        person="A"
-        {...(handlers.business ? { business: handlers.business } : {})}
-        page={page}
-        payment={handlers.payment}
-        onBack={handlers.onBack ?? (() => {})}
-        onOpenPage={handlers.onOpenPage ?? (() => {})}
-        {...(handlers.onChangePerson ? { onChangePerson: handlers.onChangePerson } : {})}
-        {...(handlers.onChangeBusiness ? { onChangeBusiness: handlers.onChangeBusiness } : {})}
-      />,
-    ),
+  return renderWithQuery(
+    <BusinessScreen
+      taxYear={YEAR}
+      person="A"
+      {...(handlers.business ? { business: handlers.business } : {})}
+      page={page}
+      payment={handlers.payment}
+      onBack={handlers.onBack ?? (() => {})}
+      onOpenPage={handlers.onOpenPage ?? (() => {})}
+      {...(handlers.onChangePerson ? { onChangePerson: handlers.onChangePerson } : {})}
+      {...(handlers.onChangeBusiness ? { onChangeBusiness: handlers.onChangeBusiness } : {})}
+    />,
   )
 }
 

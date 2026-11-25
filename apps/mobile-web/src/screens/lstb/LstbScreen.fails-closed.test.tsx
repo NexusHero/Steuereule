@@ -2,28 +2,16 @@
 // (WEB-12); an amount the app cannot read is named, not dropped (WEB-12); typing after „Kann ich nicht lesen“
 // shows what is typed and saves it (WEB-13).
 import { describe, expect, it } from 'vitest'
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
-import { I18nextProvider } from 'react-i18next'
-import { ThemeProvider } from '@steuereule/ui'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import type { LstbResponseDto } from '@steuereule/api-client'
-import { createAppI18n } from '../../i18n/app-i18n'
 import { EMPTY_LSTB_RESPONSE, server } from '../../test-msw-server'
 import { expectFailsClosed, failEveryRequest } from '../../test-every-query-fails'
 import { LstbScreen } from './LstbScreen'
+import { renderWithQuery } from '../../test-render'
 
 function renderLstb(partnerName?: string) {
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
-  return render(
-    <QueryClientProvider client={queryClient}>
-      <I18nextProvider i18n={createAppI18n('de')}>
-        <ThemeProvider mode="light">
-          <LstbScreen taxYear={2026} {...(partnerName ? { partnerName } : {})} />
-        </ThemeProvider>
-      </I18nextProvider>
-    </QueryClientProvider>,
-  )
+  return renderWithQuery(<LstbScreen taxYear={2026} {...(partnerName ? { partnerName } : {})} />)
 }
 
 function recordFieldPuts(status = 200) {

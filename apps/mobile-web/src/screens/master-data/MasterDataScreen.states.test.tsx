@@ -2,16 +2,13 @@
 // retried, a lost connection while saving, choosing the Veranlagungsart, saving Person B and a code
 // that cannot be redeemed because the network is down.
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { I18nextProvider } from 'react-i18next'
-import { ThemeProvider } from '@steuereule/ui'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import type { LinkResponseDto, MasterDataResponseDto } from '@steuereule/api-client'
-import { createAppI18n } from '../../i18n/app-i18n'
 import { server } from '../../test-msw-server'
 import { MasterDataScreen } from './MasterDataScreen'
 import { confirmAction } from '../../test-confirm'
+import { renderWithQuery } from '../../test-render'
 
 const LEER: MasterDataResponseDto = {
   geburtsdatum: null,
@@ -32,16 +29,7 @@ const LEER: MasterDataResponseDto = {
 } as MasterDataResponseDto
 
 function renderScreen() {
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
-  render(
-    <QueryClientProvider client={queryClient}>
-      <I18nextProvider i18n={createAppI18n('de')}>
-        <ThemeProvider mode="light">
-          <MasterDataScreen onBack={() => {}} taxYear={2025} />
-        </ThemeProvider>
-      </I18nextProvider>
-    </QueryClientProvider>,
-  )
+  renderWithQuery(<MasterDataScreen onBack={() => {}} taxYear={2025} />)
 }
 
 beforeEach(() => {

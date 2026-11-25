@@ -1,26 +1,15 @@
 // WEB-3 (Blocker): a failed load of the commute showed an empty Mo–Fr form whose „Weiter“ PUT the blanks over the
 // stored commute. With every request answering 500 the mask shows the failure and sends nothing.
 import { describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { I18nextProvider } from 'react-i18next'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
-import { ThemeProvider } from '@steuereule/ui'
-import { createAppI18n } from '../../i18n/app-i18n'
 import { server } from '../../test-msw-server'
 import { expectFailsClosed, failEveryRequest } from '../../test-every-query-fails'
 import { WorkdaysScreen } from './WorkdaysScreen'
+import { renderWithQuery } from '../../test-render'
 
 function renderWorkdays(props: { partnerName?: string; onDone?: () => void } = {}) {
-  return render(
-    <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
-      <I18nextProvider i18n={createAppI18n('de')}>
-        <ThemeProvider mode="light">
-          <WorkdaysScreen taxYear={2026} {...props} />
-        </ThemeProvider>
-      </I18nextProvider>
-    </QueryClientProvider>,
-  )
+  return renderWithQuery(<WorkdaysScreen taxYear={2026} {...props} />)
 }
 
 describe('Arbeitstage fails closed (WEB-3)', () => {

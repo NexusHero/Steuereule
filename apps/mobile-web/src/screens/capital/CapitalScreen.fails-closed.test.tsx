@@ -1,16 +1,13 @@
 // The Kapital mask after WEB-28: a failed load writes nothing; a failed link load says why the owner question is
 // missing instead of filing the depot under Person A silently (NM-15).
 import { describe, expect, it } from 'vitest'
-import { render, screen } from '@testing-library/react'
-import { I18nextProvider } from 'react-i18next'
-import { ThemeProvider } from '@steuereule/ui'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { screen } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import type { KapitalResponseDto } from '@steuereule/api-client'
-import { createAppI18n } from '../../i18n/app-i18n'
 import { server } from '../../test-msw-server'
 import { expectFailsClosed, failEveryRequest } from '../../test-every-query-fails'
 import { CapitalScreen } from './CapitalScreen'
+import { renderWithQuery } from '../../test-render'
 
 const BASE: KapitalResponseDto = {
   kapitalertraege: { kind: 'offen' },
@@ -26,15 +23,7 @@ const BASE: KapitalResponseDto = {
 } as KapitalResponseDto
 
 function renderCapital() {
-  return render(
-    <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })}>
-      <I18nextProvider i18n={createAppI18n('de')}>
-        <ThemeProvider mode="light">
-          <CapitalScreen taxYear={2026} />
-        </ThemeProvider>
-      </I18nextProvider>
-    </QueryClientProvider>,
-  )
+  return renderWithQuery(<CapitalScreen taxYear={2026} />)
 }
 
 describe('Kapital fails closed', () => {

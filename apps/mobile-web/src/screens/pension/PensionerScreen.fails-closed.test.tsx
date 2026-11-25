@@ -1,16 +1,13 @@
 // The Rente mask after WEB-28: a failed load writes nothing; typing after „Kann ich nicht lesen“ shows and saves
 // the typed amount (WEB-13, UnclearableNumberField); an amount typed with thousands is read as such (WEB-46).
 import { describe, expect, it } from 'vitest'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { I18nextProvider } from 'react-i18next'
-import { ThemeProvider } from '@steuereule/ui'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import type { PensionResponseDto } from '@steuereule/api-client'
-import { createAppI18n } from '../../i18n/app-i18n'
 import { server } from '../../test-msw-server'
 import { expectFailsClosed, failEveryRequest } from '../../test-every-query-fails'
 import { PensionerScreen } from './PensionerScreen'
+import { renderWithQuery } from '../../test-render'
 
 const UNCLEAR: PensionResponseDto = {
   kind: 'GesetzlicheRente',
@@ -22,15 +19,7 @@ const UNCLEAR: PensionResponseDto = {
 } as PensionResponseDto
 
 function renderPension(partnerName?: string) {
-  return render(
-    <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })}>
-      <I18nextProvider i18n={createAppI18n('de')}>
-        <ThemeProvider mode="light">
-          <PensionerScreen taxYear={2026} {...(partnerName ? { partnerName } : {})} />
-        </ThemeProvider>
-      </I18nextProvider>
-    </QueryClientProvider>,
-  )
+  return renderWithQuery(<PensionerScreen taxYear={2026} {...(partnerName ? { partnerName } : {})} />)
 }
 
 describe('Rente fails closed', () => {

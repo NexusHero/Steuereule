@@ -7,11 +7,7 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import type { ReactNode } from 'react'
 import { http, HttpResponse } from 'msw'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { I18nextProvider } from 'react-i18next'
-import { ThemeProvider } from '@steuereule/ui'
-import { createAppI18n } from '../i18n/app-i18n'
+import { screen, fireEvent, waitFor } from '@testing-library/react'
 import { createAppAuthClient } from '../auth/auth-client'
 import { AuthClientProvider } from '../auth/AuthClientProvider'
 import { server } from '../test-msw-server'
@@ -22,18 +18,13 @@ import { ChangePasswordSection } from './security/ChangePasswordSection'
 import { StepUpChoices } from '../auth/StepUpOptions'
 import { PartnerYearConsent } from './master-data/PartnerYearConsent'
 import { clearPendingVerification, readPendingVerification, rememberPendingVerification } from '../auth/pendingVerification'
+import { renderWithQuery } from '../test-render'
 
 const BASE_URL = 'http://localhost:3000'
 
 function wrap(children: ReactNode) {
   return (
-    <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
-      <I18nextProvider i18n={createAppI18n('de')}>
-        <ThemeProvider mode="light">
-          <AuthClientProvider client={createAppAuthClient(BASE_URL)}>{children}</AuthClientProvider>
-        </ThemeProvider>
-      </I18nextProvider>
-    </QueryClientProvider>
+    <AuthClientProvider client={createAppAuthClient(BASE_URL)}>{children}</AuthClientProvider>
   )
 }
 
@@ -42,26 +33,26 @@ beforeEach(() => clearPendingVerification())
 describe('WEB-4: after a registration the wall asks to confirm the address', () => {
   it('shows „Bestätige deine E-Mail“ with the address and no second „Konto anlegen“', () => {
     rememberPendingVerification('kim@beispiel.de')
-    render(wrap(<AccountWallScreen path="angestellte" onRegister={() => {}} onLogin={() => {}} onLater={() => {}} pendingVerificationEmail={readPendingVerification()} />))
+    renderWithQuery(wrap(<AccountWallScreen path="angestellte" onRegister={() => {}} onLogin={() => {}} onLater={() => {}} pendingVerificationEmail={readPendingVerification()} />))
     expect(screen.getByText('Bestätige deine E-Mail')).toBeTruthy()
     expect(screen.getByText(/kim@beispiel\.de/)).toBeTruthy()
     expect(screen.queryByText('Konto anlegen')).toBeNull()
   })
 
   it('offers both ways when nothing waits', () => {
-    render(wrap(<AccountWallScreen path="angestellte" onRegister={() => {}} onLogin={() => {}} onLater={() => {}} pendingVerificationEmail={readPendingVerification()} />))
+    renderWithQuery(wrap(<AccountWallScreen path="angestellte" onRegister={() => {}} onLogin={() => {}} onLater={() => {}} pendingVerificationEmail={readPendingVerification()} />))
     expect(screen.queryByText('Bestätige deine E-Mail')).toBeNull()
   })
 })
 
 describe('WEB-5: the sign-in page after the verification link', () => {
   it('says the address is confirmed', () => {
-    render(wrap(<LoginScreen onDone={() => {}} showDeviceQr={false} emailVerified />))
+    renderWithQuery(wrap(<LoginScreen onDone={() => {}} showDeviceQr={false} emailVerified />))
     expect(screen.getByTestId('email-bestaetigt')).toBeTruthy()
   })
 
   it('says an expired link no longer works and how to get a new one', () => {
-    render(wrap(<LoginScreen onDone={() => {}} showDeviceQr={false} emailVerified verificationFailed />))
+    renderWithQuery(wrap(<LoginScreen onDone={() => {}} showDeviceQr={false} emailVerified verificationFailed />))
     expect(screen.getByTestId('email-link-abgelaufen')).toBeTruthy()
     expect(screen.queryByTestId('email-bestaetigt')).toBeNull()
   })
@@ -71,7 +62,7 @@ describe('WEB-8: sign out and change the password in the app', () => {
   it('signs out with its own button', async () => {
     server.use(http.post(`${BASE_URL}/api/auth/sign-out`, () => HttpResponse.json({ success: true })))
     let signedOut = false
-    render(wrap(<SignOutSection onSignedOut={() => (signedOut = true)} />))
+    renderWithQuery(wrap(<SignOutSection onSignedOut={() => (signedOut = true)} />))
     fireEvent.click(screen.getByTestId('profil-abmelden'))
     await waitFor(() => expect(signedOut).toBe(true))
   })
@@ -79,7 +70,7 @@ describe('WEB-8: sign out and change the password in the app', () => {
   it('says when signing out failed, and stays', async () => {
     server.use(http.post(`${BASE_URL}/api/auth/sign-out`, () => HttpResponse.json({}, { status: 500 })))
     let signedOut = false
-    render(wrap(<SignOutSection onSignedOut={() => (signedOut = true)} />))
+    renderWithQuery(wrap(<SignOutSection onSignedOut={() => (signedOut = true)} />))
     fireEvent.click(screen.getByTestId('profil-abmelden'))
     expect(await screen.findByText(/Das Abmelden hat nicht geklappt/)).toBeTruthy()
     expect(signedOut).toBe(false)
@@ -94,7 +85,7 @@ describe('WEB-8: sign out and change the password in the app', () => {
         return HttpResponse.json({ token: null })
       }),
     )
-    render(wrap(<ChangePasswordSection />))
+    renderWithQuery(wrap(<ChangePasswordSection />))
     fireEvent.change(await screen.findByTestId('passwort-aktuell'), { target: { value: 'old-password-123' } })
     fireEvent.change(screen.getByTestId('passwort-neu'), { target: { value: 'a-new-password-456' } })
     fireEvent.change(screen.getByTestId('passwort-wiederholen'), { target: { value: 'a-new-password-456' } })
@@ -105,7 +96,7 @@ describe('WEB-8: sign out and change the password in the app', () => {
 
   it('is not offered to an account without a password', async () => {
     server.use(http.get(`${BASE_URL}/api/auth/list-accounts`, () => HttpResponse.json([{ providerId: 'google' }])))
-    render(wrap(<ChangePasswordSection />))
+    renderWithQuery(wrap(<ChangePasswordSection />))
     await new Promise((resolve) => setTimeout(resolve, 50))
     expect(screen.queryByTestId('passwort-aendern')).toBeNull()
   })
@@ -117,7 +108,7 @@ describe('WEB-50: an account without a password confirms without one', () => {
       http.get(`${BASE_URL}/api/auth/list-accounts`, () => HttpResponse.json([{ providerId: 'google' }])),
       http.get(`${BASE_URL}/api/auth/passkey/list-user-passkeys`, () => HttpResponse.json([{ id: 'pk1' }])),
     )
-    render(wrap(<StepUpChoices onConfirmed={() => {}} testID="probe"><span>password-field</span></StepUpChoices>))
+    renderWithQuery(wrap(<StepUpChoices onConfirmed={() => {}} testID="probe"><span>password-field</span></StepUpChoices>))
     expect(await screen.findByTestId('probe-passkey')).toBeTruthy()
     expect(screen.getByTestId('probe-google')).toBeTruthy()
     expect(screen.queryByText('password-field')).toBeNull()
@@ -128,7 +119,7 @@ describe('WEB-50: an account without a password confirms without one', () => {
       http.get(`${BASE_URL}/api/auth/list-accounts`, () => HttpResponse.json([{ providerId: 'credential' }])),
       http.get(`${BASE_URL}/api/auth/passkey/list-user-passkeys`, () => HttpResponse.json([])),
     )
-    render(wrap(<StepUpChoices onConfirmed={() => {}} testID="probe"><span>password-field</span></StepUpChoices>))
+    renderWithQuery(wrap(<StepUpChoices onConfirmed={() => {}} testID="probe"><span>password-field</span></StepUpChoices>))
     expect(await screen.findByText('password-field')).toBeTruthy()
     await new Promise((resolve) => setTimeout(resolve, 50))
     expect(screen.queryByTestId('probe-passkey')).toBeNull()
@@ -144,7 +135,7 @@ describe('API-3: the year waits for Person B', () => {
         return HttpResponse.json({ filingType: 'zusammen', personBConsentPending: false, consentRequestedFromMe: false })
       }),
     )
-    render(wrap(<PartnerYearConsent taxYear={2026} current={{ filingType: 'zusammen', personBConsentPending: true, consentRequestedFromMe: true }} onChanged={() => {}} />))
+    renderWithQuery(wrap(<PartnerYearConsent taxYear={2026} current={{ filingType: 'zusammen', personBConsentPending: true, consentRequestedFromMe: true }} onChanged={() => {}} />))
     fireEvent.click(screen.getByTestId('kopplung-zustimmen'))
     await waitFor(() => expect(agreed).toBe(true))
   })
@@ -155,13 +146,13 @@ describe('API-3: the year waits for Person B', () => {
       http.get(`${BASE_URL}/api/auth/list-accounts`, () => HttpResponse.json([{ providerId: 'credential' }])),
       http.get(`${BASE_URL}/api/auth/passkey/list-user-passkeys`, () => HttpResponse.json([])),
     )
-    render(wrap(<PartnerYearConsent taxYear={2026} current={{ filingType: 'zusammen', personBConsentPending: true, consentRequestedFromMe: true }} onChanged={() => {}} />))
+    renderWithQuery(wrap(<PartnerYearConsent taxYear={2026} current={{ filingType: 'zusammen', personBConsentPending: true, consentRequestedFromMe: true }} onChanged={() => {}} />))
     fireEvent.click(screen.getByTestId('kopplung-zustimmen'))
     expect(await screen.findByTestId('kopplung-zustimmung-stepup')).toBeTruthy()
   })
 
   it('Person A sees that the year waits', () => {
-    render(wrap(<PartnerYearConsent taxYear={2026} current={{ filingType: 'zusammen', personBConsentPending: true, consentRequestedFromMe: false }} onChanged={() => {}} />))
+    renderWithQuery(wrap(<PartnerYearConsent taxYear={2026} current={{ filingType: 'zusammen', personBConsentPending: true, consentRequestedFromMe: false }} onChanged={() => {}} />))
     expect(screen.getByTestId('kopplung-zustimmung-ausstehend')).toBeTruthy()
   })
 })

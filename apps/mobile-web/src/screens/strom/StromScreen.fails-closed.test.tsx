@@ -1,32 +1,19 @@
 // The Strom after WEB-28: a failed load writes nothing, on the basis page, on a mask step and on the partner page;
 // a 500 on a page save is not called a conflict (NM-07); the partner page never shows empty fields for a link that
 // did not load (NM-15).
-import type { ReactNode } from 'react'
 import { describe, expect, it } from 'vitest'
-import { render, renderHook, screen } from '@testing-library/react'
-import { I18nextProvider } from 'react-i18next'
-import { ThemeProvider } from '@steuereule/ui'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { renderHook, screen } from '@testing-library/react'
+import { QueryClientProvider } from '@tanstack/react-query'
 import { http, HttpResponse } from 'msw'
-import { createAppI18n } from '../../i18n/app-i18n'
 import { server } from '../../test-msw-server'
 import { expectFailsClosed, failEveryRequest } from '../../test-every-query-fails'
 import { StromScreen } from './StromScreen'
 import { PartnerPage } from './PartnerPage'
 import { useStromSave } from './useStromSave'
-
-function wrap(children: ReactNode) {
-  return render(
-    <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })}>
-      <I18nextProvider i18n={createAppI18n('de')}>
-        <ThemeProvider mode="light">{children}</ThemeProvider>
-      </I18nextProvider>
-    </QueryClientProvider>,
-  )
-}
+import { makeTestQueryClient, renderWithQuery } from '../../test-render'
 
 function renderStrom(slug: string) {
-  return wrap(<StromScreen taxYear={2025} slug={slug} isSignedIn onGo={() => {}} onExit={() => {}} onOpenSubmission={() => {}} onGuestBasisDone={() => {}} />)
+  return renderWithQuery(<StromScreen taxYear={2025} slug={slug} isSignedIn onGo={() => {}} onExit={() => {}} onOpenSubmission={() => {}} onGuestBasisDone={() => {}} />)
 }
 
 describe('Strom fails closed', () => {
@@ -44,7 +31,7 @@ describe('Strom fails closed', () => {
 
   it('the partner page shows the load failure, not empty fields, and writes nothing (NM-15)', async () => {
     const failing = failEveryRequest()
-    wrap(<PartnerPage taxYear={2025} onSaved={() => {}} />)
+    renderWithQuery(<PartnerPage taxYear={2025} onSaved={() => {}} />)
     expect(await screen.findByTestId('strom-partner-ladefehler')).toBeTruthy()
     expect(screen.queryByTestId('strom-partner-vorname')).toBeNull()
     await expectFailsClosed(failing)
@@ -53,7 +40,7 @@ describe('Strom fails closed', () => {
 
 describe('Strom saves (NM-07)', () => {
   function useSaveHook() {
-    const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
+    const client = makeTestQueryClient()
     return renderHook(() => useStromSave(2025), {
       wrapper: ({ children }) => <QueryClientProvider client={client}>{children}</QueryClientProvider>,
     })

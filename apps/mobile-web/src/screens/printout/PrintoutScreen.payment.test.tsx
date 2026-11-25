@@ -2,16 +2,13 @@
 // text the user reads, not only the page. Plus the price before the redirect (WEB-16), the refusals of
 // a second checkout (API-4) and Person B of a joint return (WEB-15).
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { I18nextProvider } from 'react-i18next'
-import { ThemeProvider } from '@steuereule/ui'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
-import { createAppI18n } from '../../i18n/app-i18n'
 import { server } from '../../test-msw-server'
 import { manualPaymentClock } from '../../test-payment-clock'
 import { PaymentClockProvider } from '../shared/usePaymentConfirmation'
 import { PrintoutScreen, type PrintoutScreenProps } from './PrintoutScreen'
+import { renderWithQuery } from '../../test-render'
 
 vi.mock('./GlassFormPreview', () => ({ GlassFormPreview: () => null }))
 
@@ -32,29 +29,22 @@ function statusSequence(...answers: readonly object[]) {
 }
 
 function renderScreen(props: Partial<PrintoutScreenProps> = {}, clock = manualPaymentClock()) {
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
   const onConfirm = vi.fn()
-  render(
-    <QueryClientProvider client={queryClient}>
-      <I18nextProvider i18n={createAppI18n('de')}>
-        <ThemeProvider mode="light">
-          <PaymentClockProvider value={clock}>
-            <PrintoutScreen
-              year={2025}
-              onBack={() => {}}
-              onCompleteDetails={() => {}}
-              onCompleteRiester={() => {}}
-              onCompleteChildren={() => {}}
-              onCompleteRental={() => {}}
-              onCompleteCapital={() => {}}
-              onCompleteCrossBorder={() => {}}
-              onConfirm={onConfirm}
-              {...props}
-            />
-          </PaymentClockProvider>
-        </ThemeProvider>
-      </I18nextProvider>
-    </QueryClientProvider>,
+  renderWithQuery(
+    <PaymentClockProvider value={clock}>
+      <PrintoutScreen
+        year={2025}
+        onBack={() => {}}
+        onCompleteDetails={() => {}}
+        onCompleteRiester={() => {}}
+        onCompleteChildren={() => {}}
+        onCompleteRental={() => {}}
+        onCompleteCapital={() => {}}
+        onCompleteCrossBorder={() => {}}
+        onConfirm={onConfirm}
+        {...props}
+      />
+    </PaymentClockProvider>,
   )
   return { onConfirm }
 }

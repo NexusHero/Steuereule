@@ -2,18 +2,15 @@
 // lock): the page never says "unlocked" and "not unlocked" at once, and offers no second payment while
 // the payment is being confirmed. Plus the price before the redirect on the unlock page (WEB-16).
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { I18nextProvider } from 'react-i18next'
-import { ThemeProvider } from '@steuereule/ui'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import type { PaymentReturn } from '@steuereule/core'
-import { createAppI18n } from '../../i18n/app-i18n'
 import { server } from '../../test-msw-server'
 import { manualPaymentClock, type ManualPaymentClock } from '../../test-payment-clock'
 import { BASE_URL, renderBusiness, useElsterForms } from './businessTestKit'
 import { PaymentClockProvider } from '../shared/usePaymentConfirmation'
 import { ElsterPage } from './ElsterPage'
+import { renderWithQuery } from '../../test-render'
 
 const CONFIRMING = 'Deine Zahlung wird bestätigt. Das dauert meist nur Sekunden – du musst nichts weiter tun.'
 const PAID = 'Zahlung bestätigt: 2025 ist freigeschaltet.'
@@ -38,18 +35,11 @@ function webhookAfter(lateBy: number) {
 }
 
 function renderElster(payment: PaymentReturn | undefined, clock: ManualPaymentClock = manualPaymentClock()) {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
   const onOpenPage = vi.fn()
-  render(
-    <QueryClientProvider client={client}>
-      <I18nextProvider i18n={createAppI18n('de')}>
-        <ThemeProvider mode="light">
-          <PaymentClockProvider value={clock}>
-            <ElsterPage taxYear={2025} person="A" onBack={() => {}} onOpenPage={onOpenPage} payment={payment} />
-          </PaymentClockProvider>
-        </ThemeProvider>
-      </I18nextProvider>
-    </QueryClientProvider>,
+  const { client } = renderWithQuery(
+    <PaymentClockProvider value={clock}>
+      <ElsterPage taxYear={2025} person="A" onBack={() => {}} onOpenPage={onOpenPage} payment={payment} />
+    </PaymentClockProvider>,
   )
   return { onOpenPage, client }
 }
