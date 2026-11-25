@@ -202,5 +202,5 @@ export type AcroSaveOutcome =
   | { readonly kind: 'saved' }
   | { readonly kind: 'cleared' }
   | { readonly kind: 'invalid'; readonly reason: InvalidReason }
-  | { readonly kind: 'failed' }
+  | { readonly kind: 'failed'; readonly error?: unknown }
   | { readonly kind: 'not-editable' }

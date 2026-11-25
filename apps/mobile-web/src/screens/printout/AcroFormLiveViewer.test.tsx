@@ -6,7 +6,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { ThemeProvider } from '@steuereule/ui'
 import { I18nextProvider } from 'react-i18next'
 import { http, HttpResponse } from 'msw'
-import type { LiveFormDto } from '@steuereule/api-client'
+import { ApiError, type LiveFormDto } from '@steuereule/api-client'
 import { createAppI18n } from '../../i18n/app-i18n'
 import { server } from '../../test-msw-server'
 import { AcroFormLiveViewer, type AcroAnnotationBox, type AcroFormPdfLoader } from './AcroFormLiveViewer'
@@ -118,15 +118,19 @@ describe('AcroFormLiveViewer — reading', () => {
     expect(await screen.findByLabelText(/: Noah/)).toBeTruthy()
   })
 
-  it('says why the Vordruck could not be loaded', async () => {
-    const loader = { loadTemplate: vi.fn(async () => Promise.reject(new Error('Vordruck anlage-n (2025) konnte nicht geladen werden (HTTP 503)'))) }
-    renderViewer({ loader })
-    expect(await screen.findByText('Vordruck anlage-n (2025) konnte nicht geladen werden (HTTP 503)')).toBeTruthy()
+  it('says why the Vordruck could not be loaded in the shared wording, never „HTTP 503“, and loads again on retry (NC-12)', async () => {
+    const loadTemplate = vi.fn(async () => Promise.reject(new ApiError(503, null)))
+    renderViewer({ loader: { loadTemplate } })
+    expect(await screen.findByText('Der Vordruck konnte nicht geladen werden. Bei uns ist gerade etwas schiefgelaufen. Versuch es gleich noch mal.')).toBeTruthy()
+    expect(screen.queryByText(/HTTP/)).toBeNull()
+    const calls = loadTemplate.mock.calls.length
+    fireEvent.click(screen.getByTestId('acro-vorlage-erneut'))
+    await waitFor(() => expect(loadTemplate.mock.calls.length).toBeGreaterThan(calls))
   })
 
   it('falls back to a generic message for an error without text', async () => {
     renderViewer({ loader: { loadTemplate: vi.fn(async () => Promise.reject('boom')) } })
-    expect(await screen.findByText('Vordruck konnte nicht geladen werden.')).toBeTruthy()
+    expect(await screen.findByText('Der Vordruck konnte nicht geladen werden.')).toBeTruthy()
   })
 
   it('asks the API for the template when no loader is given and reports a refusal', async () => {
@@ -138,7 +142,7 @@ describe('AcroFormLiveViewer — reading', () => {
         </ThemeProvider>
       </I18nextProvider>,
     )
-    expect(await screen.findByText('Vordruck anlage-n (2025) konnte nicht geladen werden (HTTP 404)')).toBeTruthy()
+    expect(await screen.findByText('Der Vordruck konnte nicht geladen werden. Diesen Vordruck gibt es für dieses Jahr nicht.')).toBeTruthy()
   })
 })
 

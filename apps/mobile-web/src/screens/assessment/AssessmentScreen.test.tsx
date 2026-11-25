@@ -107,7 +107,7 @@ describe('BescheidScreen', () => {
     renderAssessment()
     await screen.findByText('Dein Steuerbescheid')
     expect(screen.getByText('Einspruchsfrist')).toBeTruthy()
-    expect(screen.getByText(/Noch 31 Tage — bis 2026-04-15/)).toBeTruthy()
+    expect(screen.getByText(/Noch 31 Tage — bis 15.04.2026/)).toBeTruthy()
   })
 
   it('offers the Einspruch flow (Grund-Auswahl) only when the server allows geprüft → einspruch-eingelegt', async () => {

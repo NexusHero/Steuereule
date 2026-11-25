@@ -4,9 +4,9 @@ import { useTranslation } from 'react-i18next'
 import { Button, useTheme } from '@steuereule/ui'
 import { useBusinessControllerCheckout } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
-import { BusinessFrame, Note, Section } from './BusinessFrame'
+import { BusinessFrame, Note, ProblemNote, Section } from './BusinessFrame'
 import type { ApiProblem } from './businessKit'
-import { attempt } from './useBusiness'
+import { attempt, useSingleFlight } from './useBusiness'
 import type { BusinessPageProps } from './BusinessScreen'
 
 /** Unlocking the year at the self-employment tier (ADR-0101 §21): fill-in help and exports are part of it. */
@@ -15,6 +15,8 @@ export function CheckoutPage({ taxYear, onBack, openCheckout = (url) => window.l
   const { t: tr } = useTranslation(APP_NS)
   const checkout = useBusinessControllerCheckout()
   const [problem, setProblem] = useState<ApiProblem | null>(null)
+  // API-4: one checkout per tap, not one per double tap.
+  const flight = useSingleFlight()
 
   async function pay() {
     setProblem(null)
@@ -32,11 +34,9 @@ export function CheckoutPage({ taxYear, onBack, openCheckout = (url) => window.l
             {tr('business.freischalten.nichtEingerichtet')}
           </Note>
         ) : problem !== null ? (
-          <Note tone="error" testID="business-speichern-fehler">
-            {problem.message ?? tr('business.speichernFehler')}
-          </Note>
+          <ProblemNote problem={problem} testID="business-speichern-fehler" />
         ) : null}
-        <Button onPress={() => void pay()} testID="checkout-selbststaendig">
+        <Button onPress={() => void flight.run(pay)} disabled={flight.busy} testID="checkout-selbststaendig">
           {tr('business.freischalten.knopf')}
         </Button>
       </Section>

@@ -4,11 +4,11 @@ import { useTranslation } from 'react-i18next'
 import type { TFunction } from 'i18next'
 import { Button, Chip, useTheme } from '@steuereule/ui'
 import { formatNumber } from '@steuereule/core'
-import { useBusinessControllerElster, useBusinessControllerElsterForms, type ElsterFormEntryDto, type ElsterLineDto } from '@steuereule/api-client'
+import { apiErrorStatus, useBusinessControllerElster, useBusinessControllerElsterForms, type ElsterFormEntryDto, type ElsterLineDto } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
 import { copyText } from '../../lib/clipboard'
 import { BusinessFrame, BusinessQueryState, Note, Section } from './BusinessFrame'
-import { personParams } from './businessKit'
+import { personParams, problemOf } from './businessKit'
 import { queryProblem } from './useBusiness'
 import type { BusinessPageProps } from './BusinessScreen'
 
@@ -55,7 +55,7 @@ export function ElsterPage({ taxYear, person, business = 1, onBack, onOpenPage, 
   const [chosen, setChosen] = useState<string | null>(null)
   const [copied, setCopied] = useState<string | null>(null)
   const list = useBusinessControllerElsterForms(taxYear, personParams(person, business))
-  const entries = list.data?.status === 200 ? list.data.data.forms : []
+  const entries = list.data?.data.forms ?? []
   const entry = entries.find((e) => entryKey(e) === chosen) ?? entries[0]
   const form = entry?.form ?? 'anlage-euer'
   const query = useBusinessControllerElster(taxYear, form, { ...personParams(person, business), ...(entry?.instance ? { instanz: entry.instance.id } : {}) }, { query: { enabled: entry !== undefined } })
@@ -98,7 +98,7 @@ export function ElsterPage({ taxYear, person, business = 1, onBack, onOpenPage, 
   )
 
   // The fill-in help is part of the self-employment tier: 402 says so and leads to the checkout.
-  if (list.data?.status === 402 || query.data?.status === 402) {
+  if (apiErrorStatus(list.error) === 402 || apiErrorStatus(query.error) === 402) {
     return frame(
       <Section testID="elster-nicht-freigeschaltet">
         <Text style={{ ...t.type.body, color: t.color.tinte }}>{tr('business.elster.nichtFreigeschaltet', { year: taxYear })}</Text>
@@ -120,7 +120,7 @@ export function ElsterPage({ taxYear, person, business = 1, onBack, onOpenPage, 
   }
   if (query.isPending) return frame(<BusinessQueryState pending problem={null} onRetry={() => undefined} />)
   const problem = queryProblem(query)
-  if (problem !== null || query.data?.status !== 200) return frame(<BusinessQueryState pending={false} problem={problem ?? { status: 0, code: null, message: null }} onRetry={() => void query.refetch()} />)
+  if (problem !== null || query.data === undefined) return frame(<BusinessQueryState pending={false} problem={problem ?? problemOf(undefined)} onRetry={() => void query.refetch()} />)
 
   const help = query.data.data
   if (help.status === 'not_published') {

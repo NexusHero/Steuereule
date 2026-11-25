@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
 import { Platform, Pressable, Text, TextInput, View, type TextStyle, type ViewStyle } from 'react-native'
-import { getApiClientBaseUrl, type LiveFormDto, type LiveFormInstanceDto } from '@steuereule/api-client'
+import { ApiError, getApiClientBaseUrl, type LiveFormDto, type LiveFormInstanceDto } from '@steuereule/api-client'
 import type { Screen } from '@steuereule/core'
 import { useTranslation } from 'react-i18next'
 import type { TFunction } from 'i18next'
 import { Card, Chip, useTheme, type UiTheme } from '@steuereule/ui'
 import { APP_NS } from '../../i18n/resources'
+import { useApiFailureMessage } from '../../net/apiFailure'
 import { maskTargetForAcroField } from '../shared/formLineMapping'
 import { acroEditSpec, type AcroEditSpec, type AcroInstanceContext, type AcroSaveOutcome, type EditableAcroField } from './acroFieldEditing'
 import type { SaveAcroField } from './useAcroFieldSaver'
@@ -69,7 +70,8 @@ async function defaultLoadPdfTemplate(year: number, formular: string): Promise<P
   const url = `${getApiClientBaseUrl()}/v1/steuerjahre/${year}/ausdruck/vorlage/${formular}`
   const res = await fetch(url, { credentials: 'include' })
   if (!res.ok) {
-    throw new Error(`Vordruck ${formular} (${year}) konnte nicht geladen werden (HTTP ${res.status})`)
+    // NC-12: a refusal is an ApiError, said in the shared wording, never „HTTP 404“.
+    throw new ApiError(res.status, await res.json().catch(() => null), res.headers)
   }
   const bytes = new Uint8Array(await res.arrayBuffer())
   const workerMod = await import('pdfjs-dist/legacy/build/pdf.worker.min.mjs')
@@ -114,7 +116,9 @@ export function AcroFormLiveViewer({
   const [copyIndex, setCopyIndex] = useState(0)
   const { t: tr } = useTranslation(APP_NS)
   const [loading, setLoading] = useState<boolean>(false)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<unknown>(null)
+  const [reload, setReload] = useState(0)
+  const failureMessage = useApiFailureMessage()
   const canvasHostRef = useRef<View | null>(null)
 
   useEffect(() => {
@@ -175,14 +179,14 @@ export function AcroFormLiveViewer({
       })
       .catch((err: unknown) => {
         if (cancelled) return
-        setError(err instanceof Error ? err.message : 'Vordruck konnte nicht geladen werden.')
+        setError(err ?? new Error('template'))
         setLoading(false)
       })
 
     return () => {
       cancelled = true
     }
-  }, [year, selectedForm, pageNumber, zoom, loader])
+  }, [year, selectedForm, pageNumber, zoom, loader, reload])
 
   const activeFormMeta = OFFICIAL_VORDRUCKE.find((f) => f.id === selectedForm) ?? OFFICIAL_VORDRUCKE[0]!
   const copies = liveForms.find((form) => form.formular === selectedForm)?.instances ?? []
@@ -245,7 +249,8 @@ export function AcroFormLiveViewer({
       case 'invalid':
         return tr(`ausdruck.direkteingabe.ungueltig.${outcome.reason}`)
       case 'failed':
-        return tr('ausdruck.direkteingabe.fehler')
+        // C-33: a 429 names its wait, a lost session says so; the previous value stays.
+        return outcome.error === undefined ? tr('ausdruck.direkteingabe.fehler') : `${tr('ausdruck.direkteingabe.fehler')} ${failureMessage(outcome.error, { unknown: '' })}`.trim()
       case 'not-editable':
         return tr('ausdruck.direkteingabe.nurMaske')
     }
@@ -399,7 +404,16 @@ export function AcroFormLiveViewer({
       ) : null}
 
       {loading ? <Text style={styles.statusText}>Lade hochauflösenden AcroForm-Vordruck …</Text> : null}
-      {error ? <Text style={styles.errorText}>{error}</Text> : null}
+      {error !== null ? (
+        <View accessibilityRole="alert" testID="acro-vorlage-fehler">
+          <Text style={styles.errorText}>
+            {`${tr('ausdruck.vorlageLadefehler')} ${failureMessage(error, { 'not-found': tr('ausdruck.vorlageUnbekannt'), unknown: '' })}`.trim()}
+          </Text>
+          <Pressable accessibilityRole="button" onPress={() => setReload((n) => n + 1)} testID="acro-vorlage-erneut">
+            <Text style={styles.errorText}>{tr('apiFehler.retry')}</Text>
+          </Pressable>
+        </View>
+      ) : null}
 
       {onSaveAcroField ? (
         <View style={styles.legendRow} testID="acro-legend">

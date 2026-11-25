@@ -83,6 +83,8 @@ export interface PartnerFacts {
   readonly birthDate: string | null
   /** A query for B is still loading or failed: no step or count is suggested rather than a wrong one. */
   readonly pending?: boolean | undefined
+  /** A query for B failed: said so, not shown as open (WEB-45). */
+  readonly failed?: boolean | undefined
   readonly lstb?: LstbResponseDto | null | undefined
   readonly ch?: ChSalaryCertificateResponseDto | null | undefined
   readonly pension?: PensionResponseDto | null | undefined
@@ -95,6 +97,8 @@ export interface TileFacts {
   readonly masterData?: MasterDataResponseDto | null | undefined
   readonly boosterEnabled?: boolean | undefined
   readonly pendingTiles?: ReadonlySet<TileId> | undefined
+  /** Tiles whose read failed (also in `pendingTiles`): shown as failed, never as „offen“ (WEB-45). */
+  readonly failedTiles?: ReadonlySet<TileId> | undefined
   readonly lstb?: LstbResponseDto | null | undefined
   readonly ch?: ChSalaryCertificateResponseDto | null | undefined
   readonly pension?: PensionResponseDto | null | undefined

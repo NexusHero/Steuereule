@@ -128,7 +128,8 @@ describe('AusdruckScreen — payment', () => {
     const openCheckout = vi.fn()
     renderScreen({ openCheckout })
     fireEvent.click(await screen.findByTestId('ausdruck-bezahlen'))
-    expect(await screen.findByText('Das hat nicht geklappt. Bitte versuch es noch mal.')).toBeTruthy()
+    // The shared wording (WEB-10): a server failure says so, never the server's text.
+    expect(await screen.findByText('Bei uns ist gerade etwas schiefgelaufen. Versuch es gleich noch mal.')).toBeTruthy()
     expect(openCheckout).not.toHaveBeenCalled()
   })
 
@@ -137,7 +138,7 @@ describe('AusdruckScreen — payment', () => {
     server.use(http.post('*/v1/steuerjahre/2025/ausdruck/checkout', () => HttpResponse.error()))
     renderScreen()
     fireEvent.click(await screen.findByTestId('ausdruck-bezahlen'))
-    expect(await screen.findByText('Das hat nicht geklappt. Bitte versuch es noch mal.')).toBeTruthy()
+    expect(await screen.findByText('Keine Verbindung zum Server. Prüf dein Internet und versuch es noch mal.')).toBeTruthy()
   })
 
   it('names a cancelled payment and offers to pay again', async () => {
@@ -200,7 +201,15 @@ describe('AusdruckScreen — download', () => {
     server.use(http.get('*/v1/steuerjahre/2025/ausdruck', () => HttpResponse.error()))
     renderScreen()
     fireEvent.click(await screen.findByTestId('ausdruck-herunterladen'))
-    expect(await screen.findByText('Das hat nicht geklappt. Bitte versuch es noch mal.')).toBeTruthy()
+    expect(await screen.findByText('Keine Verbindung zum Server. Prüf dein Internet und versuch es noch mal.')).toBeTruthy()
+  })
+
+  it('names the wait of a rate-limited checkout (WEB-10)', async () => {
+    mock('offen')
+    server.use(http.post('*/v1/steuerjahre/2025/ausdruck/checkout', () => HttpResponse.json({ statusCode: 429 }, { status: 429, headers: { 'Retry-After': '30' } })))
+    renderScreen()
+    fireEvent.click(await screen.findByTestId('ausdruck-bezahlen'))
+    expect(await screen.findByText('Gerade kommen zu viele Anfragen. Versuch es in 30 Sekunden noch mal.')).toBeTruthy()
   })
 })
 

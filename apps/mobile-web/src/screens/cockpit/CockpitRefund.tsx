@@ -23,10 +23,17 @@ export function Refund({ year, hideRange = false, partnerName, onOpenMissing }: 
   const styles = makeStyles(t)
   const { t: tr, i18n } = useTranslation(APP_NS)
   const query = useTaxEstimateControllerGet(year)
-  const estimate: TaxEstimateDto | null = query.data?.status === 200 ? query.data.data : null
+  const estimate: TaxEstimateDto | null = query.data?.data ?? null
   return (
     <>
-      {hideRange ? null : <Text style={styles.refundLater} testID="cockpit-erstattung">{refundText(estimate, tr, i18n.language)}</Text>}
+      {/* C-05: a failed estimate says so, not „kommt später“. */}
+      {hideRange ? null : query.isError ? (
+        <Text style={styles.refundLater} accessibilityRole="alert" testID="cockpit-erstattung-fehler">
+          {tr('cockpit.erstattung.ladefehler')}
+        </Text>
+      ) : (
+        <Text style={styles.refundLater} testID="cockpit-erstattung">{refundText(estimate, tr, i18n.language)}</Text>
+      )}
       {/* A count alone leaves the user searching (Echtdatenlauf 4): each missing detail is named, with its mask. */}
       {estimateMissingItems(estimate).map((item) => {
         const target = item.target

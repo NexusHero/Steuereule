@@ -11,6 +11,7 @@ import {
   type CockpitSubmissionDto,
 } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
+import { useApiFailureMessage } from '../../net/apiFailure'
 import { todayIso } from '../shared/today'
 import { triggerSaveErrorHaptic } from '../shared/saveFeedback'
 
@@ -35,6 +36,7 @@ export function SubmissionMarker({ year, submission }: SubmissionMarkerProps) {
   const withdraw = useSubmissionControllerWithdraw()
   const [dateText, setDateText] = useState(() => isoDateToGerman(todayIso()))
   const [feedback, setFeedback] = useState<Feedback>(null)
+  const failureMessage = useApiFailureMessage()
 
   const refresh = () =>
     Promise.all([
@@ -51,40 +53,30 @@ export function SubmissionMarker({ year, submission }: SubmissionMarkerProps) {
     setFeedback(null)
     const submittedOn = germanDateToIso(dateText)
     if (submittedOn === null) return fail(tr('cockpit.abgabeMarke.datumUngueltig'))
+    let res
     try {
-      const res = await submit.mutateAsync({ jahr: year, data: { submittedOn } })
-      if (res.status === 200) {
-        await refresh()
-        setFeedback({ kind: 'ok', text: res.data.replacedPrevious ? tr('cockpit.abgabeMarke.ersetzt') : tr('cockpit.abgabeMarke.gespeichert') })
-        return
-      }
-      if (res.status === 400) return fail(tr('cockpit.abgabeMarke.datumAusserhalb', { jahr: year }))
-      if (res.status === 409) return fail(tr('cockpit.abgabeMarke.schonBescheid', { jahr: year }))
-      return fail(tr('cockpit.abgabeMarke.fehler'))
-    } catch {
-      return fail(tr('cockpit.abgabeMarke.fehler'))
+      res = await submit.mutateAsync({ jahr: year, data: { submittedOn } })
+    } catch (error) {
+      return fail(failureMessage(error, { validation: tr('cockpit.abgabeMarke.datumAusserhalb', { jahr: year }), conflict: tr('cockpit.abgabeMarke.schonBescheid', { jahr: year }), unknown: tr('cockpit.abgabeMarke.fehler') }))
     }
+    await refresh()
+    setFeedback({ kind: 'ok', text: res.data.replacedPrevious ? tr('cockpit.abgabeMarke.ersetzt') : tr('cockpit.abgabeMarke.gespeichert') })
   }
 
   async function undo() {
     setFeedback(null)
     try {
-      const res = await withdraw.mutateAsync({ jahr: year })
-      if (res.status === 204) {
-        await refresh()
-        setFeedback({ kind: 'ok', text: tr('cockpit.abgabeMarke.zurueckgenommen') })
-        return
-      }
-      if (res.status === 409) return fail(tr('cockpit.abgabeMarke.zuruecknehmenBescheid'))
-      return fail(tr('cockpit.abgabeMarke.fehler'))
-    } catch {
-      return fail(tr('cockpit.abgabeMarke.fehler'))
+      await withdraw.mutateAsync({ jahr: year })
+    } catch (error) {
+      return fail(failureMessage(error, { conflict: tr('cockpit.abgabeMarke.zuruecknehmenBescheid'), unknown: tr('cockpit.abgabeMarke.fehler') }))
     }
+    await refresh()
+    setFeedback({ kind: 'ok', text: tr('cockpit.abgabeMarke.zurueckgenommen') })
   }
 
   const status =
     feedback === null ? null : (
-      <Text style={feedback.kind === 'ok' ? s.ok : s.error} accessibilityLiveRegion="polite" testID="cockpit-abgabe-marke-status">
+      <Text style={feedback.kind === 'ok' ? s.ok : s.error} accessibilityLiveRegion="polite" {...(feedback.kind === 'error' ? { accessibilityRole: 'alert' as const } : {})} testID="cockpit-abgabe-marke-status">
         {feedback.text}
       </Text>
     )

@@ -1,6 +1,9 @@
 import { useState } from 'react'
-import { View } from 'react-native'
-import { useTheme } from '@steuereule/ui'
+import { Text, View } from 'react-native'
+import { useTranslation } from 'react-i18next'
+import { Button, useTheme } from '@steuereule/ui'
+import { APP_NS } from '../../i18n/resources'
+import { useApiFailureMessage } from '../../net/apiFailure'
 import type { Screen } from '@steuereule/core'
 import { AcroFormLiveViewer, type AcroFormPdfLoader } from './AcroFormLiveViewer'
 import { useGlassFormPreview } from './useGlassFormPreview'
@@ -86,8 +89,12 @@ function GlassFormPreviewBody({
 }) {
   const t = useTheme()
   const styles = makeStyles(t)
-  const { liveForms, expertMode, saveAcroField, partnerName, sections, totalRows, visibleSections } =
+  const { loadFailure, liveForms, expertMode, saveAcroField, partnerName, sections, totalRows, visibleSections } =
     useGlassFormPreview(year, activeFilter)
+  const { t: tr } = useTranslation(APP_NS)
+  const failureMessage = useApiFailureMessage()
+  // WEB-28: no direct entry over values whose read failed — the field would show a blank, not the stored value.
+  const directEntry = expertMode && loadFailure === null
 
   return (
     <View style={styles.container} testID="glass-form-preview">
@@ -100,6 +107,15 @@ function GlassFormPreviewBody({
         onCollapse={onCollapse}
       />
 
+      {loadFailure !== null ? (
+        <View accessibilityRole="alert" style={{ gap: t.space.s2, marginBottom: t.space.s3 }} testID="glass-form-ladefehler">
+          <Text style={{ ...t.type.body, color: t.color.fehler }}>{`${tr('ausdruck.vorschauLadefehler')} ${failureMessage(loadFailure.error)}`}</Text>
+          <Button variant="ghost" onPress={loadFailure.retry} testID="glass-form-erneut">
+            {tr('apiFehler.retry')}
+          </Button>
+        </View>
+      ) : null}
+
       {viewMode === 'acroform' ? (
         <AcroFormLiveViewer
           year={year}
@@ -108,7 +124,7 @@ function GlassFormPreviewBody({
           highlightedFieldId={highlightedAcroFieldId}
           loader={acroFormLoader}
           onInspectField={onInspectField}
-          {...(expertMode ? { onSaveAcroField: saveAcroField } : {})}
+          {...(directEntry ? { onSaveAcroField: saveAcroField } : {})}
         />
       ) : null}
 

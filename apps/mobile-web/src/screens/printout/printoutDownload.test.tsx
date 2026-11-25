@@ -37,17 +37,17 @@ describe('loadPrintout', () => {
 
   it('reports what is still missing when the server refuses with 422', async () => {
     server.use(http.get('*/v1/steuerjahre/2025/ausdruck', () => HttpResponse.json({ missing: ['iban', 'kinder'] }, { status: 422 })))
-    expect(await loadPrintout(2025)).toEqual({ ok: false, status: 422, missing: ['iban', 'kinder'] })
+    expect(await loadPrintout(2025)).toMatchObject({ ok: false, status: 422, missing: ['iban', 'kinder'] })
     expect(download).not.toHaveBeenCalled()
   })
 
   it('reports a 422 without a readable body as failed without a list', async () => {
     server.use(http.get('*/v1/steuerjahre/2025/ausdruck', () => new HttpResponse('nope', { status: 422 })))
-    expect(await loadPrintout(2025)).toEqual({ ok: false, status: 422 })
+    expect(await loadPrintout(2025)).toMatchObject({ ok: false, status: 422 })
   })
 
   it('does not read the body of any other failure', async () => {
     server.use(http.get('*/v1/steuerjahre/2025/ausdruck', () => HttpResponse.json({ missing: ['x'] }, { status: 500 })))
-    expect(await loadPrintout(2025)).toEqual({ ok: false, status: 500 })
+    expect(await loadPrintout(2025)).toMatchObject({ ok: false, status: 500 })
   })
 })

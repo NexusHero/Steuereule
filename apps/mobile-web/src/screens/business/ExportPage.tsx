@@ -12,10 +12,10 @@ import {
   useBusinessControllerSaveProcedureDoc,
 } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
-import { BusinessFrame, Note, Section } from './BusinessFrame'
-import { personParams, type ApiProblem } from './businessKit'
+import { BusinessFrame, Note, ProblemNote, Section } from './BusinessFrame'
+import { personParams, problemOf, type ApiProblem } from './businessKit'
 import { downloadBusinessFile } from './businessDownload'
-import { attempt, useRefreshBusiness } from './useBusiness'
+import { attempt, useRefreshBusiness, useSingleFlight } from './useBusiness'
 import type { BusinessPageProps } from './BusinessScreen'
 
 /** Exports: the GoBD data export for an audit, the Verfahrensdokumentation, and the E-Bilanz data set (not sent). */
@@ -31,6 +31,7 @@ export function ExportPage({ taxYear, person, business = 1, onBack, onOpenPage }
   const [values, setValues] = useState<Readonly<Record<string, string>>>({})
   const transmit = useBusinessControllerTransmitEBilanz()
   const [transmission, setTransmission] = useState<EBilanzTransmissionDto | null>(null)
+  const flight = useSingleFlight()
 
   async function send(mode: 'validieren' | 'senden') {
     setProblem(null)
@@ -56,8 +57,8 @@ export function ExportPage({ taxYear, person, business = 1, onBack, onOpenPage }
     } else setProblem(result.problem)
   }
 
-  const docData = doc.data?.status === 200 ? doc.data.data : null
-  const xbrl = bilanz.data?.status === 200 ? bilanz.data.data : null
+  const docData = doc.data?.data ?? null
+  const xbrl = bilanz.data?.data ?? null
   return (
     <BusinessFrame title={tr('business.seite.export')} onBack={onBack} testID="export-seite">
       {problem?.status === 402 ? (
@@ -68,9 +69,7 @@ export function ExportPage({ taxYear, person, business = 1, onBack, onOpenPage }
           </Button>
         </Section>
       ) : problem !== null ? (
-        <Note tone="error" testID={problem.code === 'BOOK_INTEGRITY_BROKEN' ? 'buch-integritaet-fehler' : 'business-speichern-fehler'}>
-          {problem.message ?? tr('business.speichernFehler')}
-        </Note>
+        <ProblemNote problem={problem} testID={problem.code === 'BOOK_INTEGRITY_BROKEN' ? 'buch-integritaet-fehler' : 'business-speichern-fehler'} />
       ) : null}
 
       <Section title={tr('business.export.gobd')}>
@@ -81,7 +80,17 @@ export function ExportPage({ taxYear, person, business = 1, onBack, onOpenPage }
       </Section>
 
       <Section title={tr('business.export.verfahren')} testID="export-verfahren">
-        {docData === null ? <Note>{tr('business.laden')}</Note> : null}
+        {/* NC-10: a failed read says so and offers a retry, never „Lade …“ for good. */}
+        {docData === null && doc.isError ? (
+          <>
+            <ProblemNote problem={problemOf(doc.error)} testID="verfahren-ladefehler" />
+            <Button variant="ghost" onPress={() => void doc.refetch()} testID="verfahren-erneut">
+              {tr('apiFehler.retry')}
+            </Button>
+          </>
+        ) : docData === null ? (
+          <Note>{tr('business.laden')}</Note>
+        ) : null}
         {docData !== null && docData.missing.length === 0 ? <Note testID="verfahren-vollstaendig">{tr('business.export.verfahrenVollstaendig')}</Note> : null}
         {docData?.missing.map((key) => (
           <Feld key={key} label={tr(`business.export.platzhalter.${key}`, { defaultValue: key })}>
@@ -89,7 +98,7 @@ export function ExportPage({ taxYear, person, business = 1, onBack, onOpenPage }
           </Feld>
         ))}
         {docData !== null && docData.missing.length > 0 ? (
-          <Button variant="ghost" onPress={() => void saveValues()} testID="verfahren-speichern">
+          <Button variant="ghost" onPress={() => void flight.run(saveValues)} disabled={flight.busy} testID="verfahren-speichern">
             {tr('business.export.verfahrenSpeichern')}
           </Button>
         ) : null}
@@ -100,16 +109,24 @@ export function ExportPage({ taxYear, person, business = 1, onBack, onOpenPage }
           {tr('business.export.ebilanzNichtUebermittelt')}
         </Text>
         {xbrl?.note ? <Note>{xbrl.note}</Note> : null}
+        {bilanz.isError ? (
+          <>
+            <ProblemNote problem={problemOf(bilanz.error)} testID="ebilanz-ladefehler" />
+            <Button variant="ghost" onPress={() => void bilanz.refetch()} testID="ebilanz-erneut">
+              {tr('apiFehler.retry')}
+            </Button>
+          </>
+        ) : null}
         <View style={{ marginTop: t.space.s2, gap: t.space.s2 }}>
           <Button variant="ghost" disabled={xbrl === null} onPress={() => void download(getBusinessControllerEBilanzFileUrl(taxYear, params), `e-bilanz-${taxYear}.xbrl`)} testID="ebilanz-datei">
             {tr('business.export.ebilanzDatei')}
           </Button>
           {xbrl?.transmissionReady ? (
             <>
-              <Button variant="ghost" onPress={() => void send('validieren')} testID="ebilanz-pruefen">
+              <Button variant="ghost" onPress={() => void flight.run(() => send('validieren'))} disabled={flight.busy} testID="ebilanz-pruefen">
                 {tr('business.export.ebilanzPruefen')}
               </Button>
-              <Button onPress={() => void send('senden')} testID="ebilanz-senden">
+              <Button onPress={() => void flight.run(() => send('senden'))} disabled={flight.busy} testID="ebilanz-senden">
                 {tr('business.export.ebilanzSenden')}
               </Button>
             </>

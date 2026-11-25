@@ -4,11 +4,14 @@ import { useTranslation } from 'react-i18next'
 import { Button, Card, useBreakpoint, useTheme } from '@steuereule/ui'
 import type { Screen } from '@steuereule/core'
 import {
+  apiErrorStatus,
+  NetworkError,
   usePrintoutControllerCheckout,
   usePrintoutControllerCheck,
   useUnlockControllerStatus,
 } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
+import { useApiFailureMessage } from '../../net/apiFailure'
 import { isRunningTaxYear } from '../../config/taxYear'
 import { makePrivacyStyles } from '../privacy/styles'
 import { ErrorState, LoadingState } from '../shared/ScreenState'
@@ -40,6 +43,7 @@ export function PrintoutScreen({ year, payment, onBack, onCompleteDetails, onCom
   const checkout = usePrintoutControllerCheckout()
   const [message, setMessage] = useState<{ kind: 'ok' | 'fehler'; text: string } | null>(null)
   const [loading, setLoading] = useState(false)
+  const failureMessage = useApiFailureMessage()
 
   if (isRunningTaxYear(year)) {
     // K2: the running year has no official forms yet — name when filing opens, up front.
@@ -54,7 +58,7 @@ export function PrintoutScreen({ year, payment, onBack, onCompleteDetails, onCom
     )
   }
   if (status.isPending || check.isPending) return <LoadingState bp={bp} label={t('ausdruck.loading')} />
-  if (check.data?.status === 404) {
+  if (apiErrorStatus(check.error) === 404) {
     return (
       <ErrorState
         bp={bp}
@@ -65,12 +69,12 @@ export function PrintoutScreen({ year, payment, onBack, onCompleteDetails, onCom
       />
     )
   }
-  if (status.data?.status !== 200 || check.data?.status !== 200) {
+  if (status.isError || check.isError) {
     return (
       <ErrorState
         bp={bp}
         heading={t('ausdruck.loadError.heading')}
-        message={t('ausdruck.loadError.message')}
+        message={failureMessage(status.error ?? check.error, { offline: t('ausdruck.loadError.message') })}
         retryLabel={t('ausdruck.loadError.retry')}
         onRetry={() => {
           void status.refetch()
@@ -104,11 +108,9 @@ export function PrintoutScreen({ year, payment, onBack, onCompleteDetails, onCom
     checkout.mutate(
       { jahr: year },
       {
-        onSuccess: (response) => {
-          if (response.status === 200) openCheckout(response.data.checkoutUrl)
-          else setMessage({ kind: 'fehler', text: t('ausdruck.fehler') })
-        },
-        onError: () => setMessage({ kind: 'fehler', text: t('ausdruck.fehler') }),
+        onSuccess: (response) => openCheckout(response.data.checkoutUrl),
+        // WEB-10: a 429 names its wait, a lost session says so; the rest in the shared wording.
+        onError: (error) => setMessage({ kind: 'fehler', text: failureMessage(error, { unknown: t('ausdruck.fehler') }) }),
       },
     )
   }
@@ -118,10 +120,10 @@ export function PrintoutScreen({ year, payment, onBack, onCompleteDetails, onCom
     setMessage(null)
     try {
       const result = await loadPrintout(year, { editable })
-      setMessage(result.ok ? { kind: 'ok', text: t('ausdruck.heruntergeladen') } : { kind: 'fehler', text: t('ausdruck.fehler') })
+      setMessage(result.ok ? { kind: 'ok', text: t('ausdruck.heruntergeladen') } : { kind: 'fehler', text: failureMessage(result.error, { validation: t('ausdruck.fehler'), unknown: t('ausdruck.fehler') }) })
       if (!result.ok && result.status === 422) void check.refetch()
-    } catch {
-      setMessage({ kind: 'fehler', text: t('ausdruck.fehler') })
+    } catch (error) {
+      setMessage({ kind: 'fehler', text: failureMessage(new NetworkError(error)) })
     } finally {
       setLoading(false)
     }
@@ -286,7 +288,7 @@ export function PrintoutScreen({ year, payment, onBack, onCompleteDetails, onCom
       ) : null}
 
       {message ? (
-        <Text style={message.kind === 'ok' ? styles.successNote : styles.errorNote} accessibilityLiveRegion="polite">
+        <Text style={message.kind === 'ok' ? styles.successNote : styles.errorNote} accessibilityLiveRegion="polite" {...(message.kind === 'fehler' ? { accessibilityRole: 'alert' as const } : {})}>
           {message.text}
         </Text>
       ) : null}
