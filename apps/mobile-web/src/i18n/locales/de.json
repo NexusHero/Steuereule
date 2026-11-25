@@ -29,7 +29,6 @@
     "passwordLabel": "Passwort",
     "submit": "Einloggen",
     "submitting": "Wird geprüft …",
-    "continue": "Weiter",
     "register": "Neu hier? Konto anlegen",
     "guest": "Erstmal als Gast umschauen",
     "guestNote": "Gast-Modus: deine Angaben werden sicher verschlüsselt gespeichert.",
@@ -153,8 +152,6 @@
     "success": {
       "badge": "Mail unterwegs ✓",
       "heading": "Schau in dein Postfach.",
-      "subtitle": "Wir haben eine E-Mail an {{email}} geschickt. Darin steht, wie es weitergeht.",
-      "guestNote": "Bis du bestätigt hast, machst du als Gast weiter. Nach der Bestätigung meldest du dich an, dann übernehmen wir deine Eingaben.",
       "cta": "Weiter zum Onboarding →"
     },
     "legal": {
@@ -301,11 +298,6 @@
     "namePlaceholder": "Noch kein Name gespeichert",
     "emptyNote": "Noch keine Angaben gespeichert.",
     "cardLabel": "Deine Angaben",
-    "rowFirstName": "Vorname",
-    "rowLastName": "Nachname",
-    "rowSteuerId": "Steuer-ID",
-    "rowSteuerNr": "Steuernummer",
-    "steuerNrEmpty": "nicht angegeben",
     "edit": "Bearbeiten",
     "editHeading": "Angaben bearbeiten",
     "firstNameLabel": "Vorname",
@@ -1111,11 +1103,6 @@
     "back": "Zurück",
     "intro": "Diese Angaben stehen auf Seite 1 deiner Steuererklärung. Wir speichern sie verschlüsselt.",
     "loading": "Deine Angaben werden geladen …",
-    "loadError": {
-      "heading": "Das hat nicht geklappt.",
-      "message": "Deine Angaben konnten nicht geladen werden.",
-      "retry": "Noch mal versuchen"
-    },
     "geburtsdatum": "Geburtsdatum (TT.MM.JJJJ)",
     "strasse": "Straße",
     "hausnummer": "Hausnummer",
@@ -1155,7 +1142,6 @@
     "vollstaendig": "Alles da für den Ausdruck.",
     "saveError": {
       "validation": "Bitte prüf deine Eingaben — z. B. Datum, Postleitzahl oder IBAN.",
-      "einwilligung": "Ohne deine Einwilligung können wir die Religion nicht speichern.",
       "network": "Speichern hat nicht geklappt. Prüf die Verbindung."
     },
     "familienstaende": {
@@ -1333,11 +1319,6 @@
   "interview": {
     "back": "Zurück zur Frage",
     "loading": "Deine Antworten werden geladen …",
-    "loadError": {
-      "heading": "Das hat nicht geklappt.",
-      "message": "Deine Antworten konnten nicht geladen werden. Prüf die Verbindung und versuch es noch mal.",
-      "retry": "Noch mal versuchen"
-    },
     "postError": {
       "conflict": "Deine Antwort passte nicht zum gespeicherten Stand. Wir haben deinen Fortschritt aktualisiert.",
       "invalid": "Diese Antwort wurde nicht akzeptiert. Wir haben deinen Fortschritt aktualisiert.",
@@ -1483,11 +1464,6 @@
     "headingPartner": "Lohnsteuerbescheinigung von {{name}}",
     "help": "Übertrag die drei Werte aus deiner Lohnsteuerbescheinigung — Feld für Feld, in der Reihenfolge des Papiers.",
     "loading": "Deine Lohnsteuerbescheinigung wird geladen …",
-    "loadError": {
-      "heading": "Das hat nicht geklappt.",
-      "message": "Deine Lohnsteuerbescheinigung konnte nicht geladen werden. Prüf die Verbindung und versuch es noch mal.",
-      "retry": "Noch mal versuchen"
-    },
     "felder": {
       "bruttoarbeitslohn": "Bruttoarbeitslohn (Zeile 3)",
       "lohnsteuer": "Einbehaltene Lohnsteuer (Zeile 4)",
@@ -2130,11 +2106,9 @@
     "zurKachel": "Öffnen: {{titel}}",
     "warnungenBestaetigen": "Gelesen, trotzdem weiter",
     "schrittVergleich": "Veranlagungsartenvergleich",
-    "vergleichUeberspringen": "Überspringen",
     "zusammenErfasst": "Ihr gebt gemeinsam ab (Zusammenveranlagung). So ist es in „Angaben für die Erklärung“ erfasst.",
     "vergleichOeffnen": "Mit getrennter Abgabe vergleichen",
     "vergleichSchliessen": "Vergleich schließen",
-    "schrittAusdruck": "Ausdruck",
     "zumAusdruck": "Weiter zum Ausdruck",
     "elsterHinweis": "Ein Jahr mit Selbstständigkeit gibst du über Mein ELSTER ab – wir füllen dir aus, was du dort einträgst.",
     "zurAusfuellhilfe": "Zur ELSTER-Ausfüllhilfe"
@@ -2375,7 +2349,6 @@
     "checkVermietung": "Vermietung prüfen",
     "checkKinder": "Kinder verwalten",
     "amtlichesFormular": "Amtliches Formular ansehen",
-    "eulenModus": "Eulen-Modus",
     "berater": {
       "title": "Deine Eule berät dich",
       "body": "Sie prüft dein Steuerjahr auf Geld, das du liegen lässt, und sagt dir, was du dieses Jahr noch tun kannst.",
@@ -3008,8 +2981,6 @@
     "heroTitle": "Deine Eule",
     "heroBody": "Sie kennt dein Steuerjahr und sagt dir, wo Geld liegen bleibt — mit Rechtsgrundlage, damit du selbst entscheidest.",
     "optInLabel": "Eulen-Modus aktivieren (proaktive Hinweise ab 50 €, keine personenbezogenen Daten an KI)",
-    "tabFragen": "Fragen an die Eule",
-    "tabEule": "Eule fragt dich",
     "emptyTitle": "Alles geprüft. Keine offenen Fragen!",
     "emptyHelp": "Deine Angaben sind schlüssig. Kommen neue Belege oder Angaben dazu, prüft die Eule beim nächsten Öffnen erneut.",
     "rechtsstand": "Geprüft nach den Regeln der App für dieses Steuerjahr, jedes Mal wenn du die Eule öffnest.",
@@ -3034,7 +3005,6 @@
     "workspace": {
       "topbar": {
         "title": "Die Eule",
-        "privacy": "Datenschutz",
         "privacyAria": "Datenschutz-Hinweis anzeigen",
         "privacyTitle": "So schützt die Eule deine Daten",
         "privacyBody": "Was du schreibst, und Zahlen aus deiner Akte, zum Beispiel Bruttolohn oder Arbeitstage, gehen an ein Sprachmodell. Ohne deine Einwilligung „Eule und persönliche Daten“ entfernen wir vorher Namen, Steuer-IDs, IBANs, E-Mail-Adressen und Telefonnummern; mit Einwilligung gehen sie mit. Der Chatverlauf wird verschlüsselt gespeichert. Ohne Turbo-Modus übernimmst du jede Änderung selbst; mit Turbo-Modus übernimmt die Eule sie und du kannst jede rückgängig machen.",
@@ -3045,17 +3015,14 @@
         "hintsAria": "Hinweise und Entwürfe der Eule öffnen",
         "drafts_one": "{{count}} Entwurf",
         "drafts_other": "{{count}} Entwürfe",
-        "conversations": "Gespräche",
         "conversationsAria": "Gespräche dieses Steuerjahres anzeigen",
         "conversationsClose": "Schließen",
-        "settings": "Einstellungen",
         "settingsAria": "Einstellungen der Eule öffnen",
         "settingsTitle": "Einstellungen der Eule",
         "settingsClose": "Schließen",
         "legalStatus": "Antworten nennen die Rechtsgrundlage · Rechtsstand {{date}}",
         "panelTitle": "Werkbank",
-        "panelClose": "Werkbank schließen",
-        "chatOpen": "Chat öffnen"
+        "panelClose": "Werkbank schließen"
       },
       "draftStageTitle": "Vorbereitete Änderungen ({{count}})",
       "applyAll": "✓ {{count}} Änderungen übernehmen",
@@ -3074,13 +3041,6 @@
       "maskUnplaced": "Diese Angabe steht im Interview. Öffne dort die passende Frage.",
       "manualNotice": "Diese Maske enthält Stammdaten und ist für automatische KI-Änderungen gesperrt (Manuelle Eingabe).",
       "inspectMask": "Maske ansehen →",
-      "chatShow": "💬 Chat einblenden",
-      "chatHide": "Chat ausblenden",
-      "tabletChatOpen": "🦉 Chat",
-      "tabletChatClose": "✕ Schließen",
-      "maximize": "⤢ Maximieren",
-      "minimize": "▾ Verkleinern",
-      "dockPlaceholder": "Kurze Frage an die Eule …",
       "receiptResultTitle": "Beleg geprüft: {{fileName}}",
       "receiptBlocked": "⚠️ Sensibler Inhalt geschwärzt (Mandantengeheimnis)",
       "pauschbetragBadge": "Im Pauschbetrag (1.230 €)",
@@ -3093,8 +3053,6 @@
   },
   "advisor": {
     "dictation": {
-      "start": "🎙 Diktieren",
-      "stop": "■ Fertig",
       "startAria": "Diktat starten",
       "stopAria": "Diktat beenden und in Text umwandeln",
       "recording": "Ich höre zu … Tipp auf „Fertig“, wenn du fertig bist.",
@@ -3249,7 +3207,6 @@
       ],
       "basisMode": "Basis-Modus: Die KI ist gerade nicht erreichbar, diese Antwort stammt aus den festen Regeln der Eule.",
       "choicesCaption": "Schnellantwort wählen:",
-      "legalSourceAria": "Rechtsquelle {{paragraph}}",
       "legalSourceCloseAria": "Rechtsquelle schließen",
       "legalSourceClose": "✕ Schließen",
       "legalStatus": "Rechtsstand: {{date}}",
@@ -3278,11 +3235,6 @@
       "receiptPasteText": "Stattdessen Text einfügen",
       "receiptPrivacy": "Der Text wird auf deinem Gerät gelesen. Das Bild geht an keine KI; das Original liegt verschlüsselt in deinen Belegen.",
       "receiptNativeHint": "Kamera-Scan folgt in der App — lade im Web ein PDF oder Foto hoch.",
-      "certificateWhose": "Der Name auf diesem Lohnausweis passt zu keiner Person in deiner Erklärung. Wessen Lohnausweis ist das? Es wurde noch nichts übernommen.",
-      "letterWhose": "Der Name auf diesem Schreiben passt zu keiner Person in deiner Erklärung. Für wen ist es? Es wurde noch nichts übernommen.",
-      "certificateOwnerA": "Meiner",
-      "certificateOwnerB": "Von Person B",
-      "lstbWhose": "Der Name auf dieser Lohnsteuerbescheinigung passt zu keiner Person in deiner Erklärung. Wessen Bescheinigung ist das? Es wurde noch nichts übernommen.",
       "lstbPersonBOwnAccount": "Das ist die Lohnsteuerbescheinigung von Person B. Person B hat ein eigenes Konto und lädt sie dort hoch; hier wurde nichts übernommen.",
       "certificatePersonBOwnAccount": "Das ist der Lohnausweis von Person B. Person B hat ein eigenes Konto und lädt ihn dort hoch; hier wurde nichts übernommen.",
       "receiptProgress": {
@@ -3455,25 +3407,6 @@
         "cancel": "Abbrechen"
       },
       "privacyNotice": "Was du hier schreibst, geht an ein Sprachmodell von {{providers}}; die Verarbeitung kann in den USA stattfinden. Ohne deine Einwilligung entfernen wir vorher Namen, Steuer-ID, IBAN und ähnliche Angaben."
-    },
-    "companion": {
-      "triggerTitle": "Eule zu dieser Maske fragen",
-      "triggerHint": "Kanzlei-Begleiter öffnen ▾",
-      "sheetTitle": "Deine Eule · Direkt-Beratung an der Maske",
-      "closeAria": "Begleiter einklappen",
-      "closeButton": "Einklappen ▴",
-      "privacyNotice": "🔒 Mandantengeheimnis aktiv — Werte werden erst nach deinem Klick auf „✓ Jetzt übernehmen“ direkt in diese Maske eingetragen.",
-      "greeting": "Frag mich direkt zu diesem Formularbereich. Ich rechne dir vorab die genaue Steuerwirkung aus.",
-      "chips": {
-        "homeofficeCheck": "Homeoffice vs. Arbeitszimmer prüfen",
-        "trainingTravel": "Fortbildung & Reisekosten klären",
-        "workEquipment": "Arbeitsmittel & Laptop absetzen",
-        "healthInsuranceCh": "Krankenkasse (z. B. 4.200 CHF) eintragen",
-        "homeofficeLumpSum": "Homeoffice-Pauschale prüfen",
-        "finalReview": "Kanzlei-Endprüfung starten",
-        "priorDonations": "Spenden aus dem Vorjahr prüfen",
-        "childcareCosts": "Kinderbetreuungskosten (Kita/Hort) prüfen"
-      }
     }
   },
   "sheet": {
@@ -3544,7 +3477,6 @@
       "fristA11y_other": "Einspruch möglich bis {{datum}}, noch {{count}} Tage.",
       "fristVorbei": "Einspruchsfrist vorbei",
       "fristVorbeiA11y": "Einspruchsfrist endete am {{datum}}.",
-      "wirkungA11y": "Wirkung auf die Erstattung: {{wert}}",
       "wirkungUnbekannt": "nicht berechenbar",
       "zeileA11y": "{{position}}: erklärt {{erklaert}}, Bescheid {{festgesetzt}}, Wirkung auf die Erstattung {{wirkung}}.",
       "wiederTage": "{{jahr}} wieder {{tage}} erklärt",
@@ -4000,7 +3932,6 @@
         "rente": "Rente"
       },
       "mehr": "Deine Bereiche",
-      "nichtErfasst": "noch nicht erfasst",
       "vorauszahlungen": {
         "titel": "Nachzahlung nach Vorauszahlungen",
         "sub": "Abschlusszahlung laut Bescheid je Jahr: Erstattung über der Linie, Nachzahlung darunter.",
@@ -4214,7 +4145,6 @@
       "steuerschluessel": "Steuerschlüssel",
       "formularFehler": "Bitte fülle alle Felder aus, mit einem Betrag über 0.",
       "buchen": "Buchen",
-      "belegHochladen": "Beleg hochladen",
       "festschreiben": "Festschreiben",
       "festBis": "Fest bis {{datum}}",
       "nichtFest": "Noch nichts festgeschrieben.",
@@ -4376,7 +4306,6 @@
       "vorsteuer": "Abziehbare Vorsteuer",
       "jahr": "Umsatzsteuer des Jahres",
       "vorauszahlungen": "Vorauszahlungen",
-      "saldo": "Ergebnis",
       "erstattung": "Erstattung",
       "nachzahlung": "Nachzahlung",
       "vorauszahlungenTitel": "Vorauszahlungen",
