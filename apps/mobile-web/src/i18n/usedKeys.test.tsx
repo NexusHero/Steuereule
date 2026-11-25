@@ -90,6 +90,13 @@ describe('texts that state figures take them from @steuereule/core', () => {
     }
   })
 
+  it('no text writes a file size of its own; the receipt limit is the `receiptFileSize` placeholder', () => {
+    for (const locale of [de, en]) {
+      expect(JSON.stringify(locale)).not.toMatch(/\d\s?(MB|GB)\b/)
+      expect((locale as Tree as { apiFehler: { tooLarge: string } }).apiFehler.tooLarge).toContain('{{receiptFileSize}}')
+    }
+  })
+
   it('the deletion warning prints backup and hold periods through placeholders (LEGAL-4)', () => {
     const text = de.datenschutz.delete.offer.warning1
     for (const placeholder of ['{{backupDays}}', '{{paymentYears}}', '{{filingYears}}']) expect(text).toContain(placeholder)

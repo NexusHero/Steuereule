@@ -1783,7 +1783,7 @@
     "forbidden": "Das darfst du hier nicht ändern.",
     "notFound": "Das gibt es nicht mehr. Lade die Seite neu.",
     "conflict": "Das wurde inzwischen an anderer Stelle geändert. Lade neu und prüf den aktuellen Stand.",
-    "tooLarge": "Die Datei ist zu groß. Erlaubt sind höchstens 10 MB.",
+    "tooLarge": "Die Datei ist zu groß. Erlaubt sind höchstens {{receiptFileSize}}.",
     "rateLimitedSeconds": "Gerade kommen zu viele Anfragen. Versuch es in {{seconds}} Sekunden noch mal.",
     "rateLimitedMinutes": "Gerade kommen zu viele Anfragen. Versuch es in {{minutes}} Minuten noch mal.",
     "rateLimited": "Gerade kommen zu viele Anfragen. Versuch es in ein paar Minuten noch mal.",
@@ -2510,7 +2510,7 @@
       "success": "Beleg gespeichert. Er wird jetzt gelesen.",
       "errorUnsupported": "Bitte wähle eine PDF-, JPEG-, PNG- oder WebP-Datei aus.",
       "errorFailed": "Der Upload hat nicht geklappt. Prüf die Verbindung und versuch es noch mal.",
-      "limit": "PDF, JPG, PNG oder WebP, höchstens 10 MB je Datei.",
+      "limit": "PDF, JPG, PNG oder WebP, höchstens {{receiptFileSize}} je Datei.",
       "fileAttached": "Originaldatei verschlüsselt hinterlegt"
     },
     "preview": {
@@ -2985,7 +2985,7 @@
     "scopesHeading": "Der Assistent erhält Zugriff auf:",
     "scopeSteuerdatenRead": "Steuerdaten lesen (maskiert)",
     "scopeSteuerdatenWrite": "Steuerfakten ausfüllen (bleibt unbestätigt bis zu Ihrer Prüfung)",
-    "scopeBelegeWrite": "Belege samt Datei hochladen (PDF oder Bild, höchstens 10 MB) und selbst hochgeladene wieder zurücknehmen",
+    "scopeBelegeWrite": "Belege samt Datei hochladen (PDF oder Bild, höchstens {{receiptFileSize}}) und selbst hochgeladene wieder zurücknehmen",
     "scopeZahllinkRead": "Zahllink anfordern: legt einen Bezahlvorgang beim Zahlungsanbieter an; bezahlen können nur Sie",
     "scopeZahllinkWrite": "Zahllink anfordern: legt einen Bezahlvorgang beim Zahlungsanbieter an; bezahlen können nur Sie",
     "scopeNone": "keine Rechte angefragt",

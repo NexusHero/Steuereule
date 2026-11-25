@@ -1783,7 +1783,7 @@
     "forbidden": "You cannot change this here.",
     "notFound": "This no longer exists. Reload the page.",
     "conflict": "This was changed elsewhere in the meantime. Reload and check the current state.",
-    "tooLarge": "The file is too large. The limit is 10 MB.",
+    "tooLarge": "The file is too large. The limit is {{receiptFileSize}}.",
     "rateLimitedSeconds": "Too many requests right now. Try again in {{seconds}} seconds.",
     "rateLimitedMinutes": "Too many requests right now. Try again in {{minutes}} minutes.",
     "rateLimited": "Too many requests right now. Try again in a few minutes.",
@@ -2510,7 +2510,7 @@
       "success": "Document saved. It is being read now.",
       "errorUnsupported": "Please select a PDF, JPEG, PNG, or WebP file.",
       "errorFailed": "Upload didn't work. Check your connection and try again.",
-      "limit": "PDF, JPG, PNG or WebP, at most 10 MB per file.",
+      "limit": "PDF, JPG, PNG or WebP, at most {{receiptFileSize}} per file.",
       "fileAttached": "Original file stored encrypted"
     },
     "preview": {
@@ -2985,7 +2985,7 @@
     "scopesHeading": "The assistant will receive access to:",
     "scopeSteuerdatenRead": "Read tax facts (masked)",
     "scopeSteuerdatenWrite": "Fill tax facts (remains unconfirmed until your review)",
-    "scopeBelegeWrite": "Upload receipts with their file (PDF or image, at most 10 MB) and take back its own uploads",
+    "scopeBelegeWrite": "Upload receipts with their file (PDF or image, at most {{receiptFileSize}}) and take back its own uploads",
     "scopeZahllinkRead": "Request a payment link: opens a checkout at the payment provider; only you can pay",
     "scopeZahllinkWrite": "Request a payment link: opens a checkout at the payment provider; only you can pay",
     "scopeNone": "no permissions requested",
