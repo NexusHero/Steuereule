@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger'
-import { IsIn, IsNumber, IsOptional, IsString, Min } from 'class-validator'
+import { IsIn, IsNumber, IsOptional, IsString, MaxLength, Min } from 'class-validator'
 
 /** The CHF→EUR Wechselkurs — `amtlich` (BMF monthly), `jahresdurchschnitt` (annual average on Anlage N-Gre) or `tatsaechlich`. */
 export class ExchangeRateDto {
@@ -20,6 +20,7 @@ export class ExchangeRateDto {
 export class PutExchangeRateDto {
   @ApiProperty({ type: String, example: '2026-01', description: 'yyyy-mm the rate applies to; yyyy for the Jahresdurchschnittskurs.' })
   @IsString()
+  @MaxLength(7)
   month!: string
 
   @ApiProperty({ type: Number, example: 0.9412, description: 'EUR per 1 CHF, strictly positive.' })
@@ -34,5 +35,6 @@ export class PutExchangeRateDto {
   @ApiPropertyOptional({ type: String, description: 'Beleg id — required iff modus === "tatsaechlich".' })
   @IsOptional()
   @IsString()
+  @MaxLength(100)
   receiptId?: string
 }

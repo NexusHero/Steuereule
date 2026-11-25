@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger'
-import { IsIn, IsNotEmpty, IsOptional, IsString, Matches } from 'class-validator'
+import { IsIn, IsNotEmpty, IsOptional, IsString, Matches, MaxLength } from 'class-validator'
 import { ISO_DATE_PATTERN, RECEIPT_TYPES, type ReceiptType } from '@steuereule/core'
 
 /** `type:` given explicitly on every. */
@@ -11,6 +11,8 @@ export class CreateReceiptDto {
   })
   @IsString()
   @IsNotEmpty()
+  // The same bound as the upload's file name (API-14, the REST side of MCP-6).
+  @MaxLength(255)
   fileName!: string
 
   @ApiPropertyOptional({

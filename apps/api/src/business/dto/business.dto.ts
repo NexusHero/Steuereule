@@ -3,6 +3,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger'
 import { ArrayMaxSize, IsArray, IsBoolean, IsIn, IsInt, IsObject, IsOptional, IsString, Length, Matches, Max, MaxLength, Min, ValidateNested } from 'class-validator'
 import { Type } from 'class-transformer'
+import { BoundedRecord } from '../../common/bounded-record.validator.js'
 import { USEFUL_LIVES } from '@steuereule/core'
 import { BookIntegrityDto, CsvMappingDto, LossFactsDto, PartnershipShareDto, ProfessionAnswersDto, TradeTaxInputsDto, VatPeriodFactsDto, DisposalFactsDto, RetainedFactsDto } from './business-results.dto.js'
 
@@ -71,6 +72,7 @@ export class BookingDraftDto {
   @ApiPropertyOptional({ type: String, description: 'Reference to a stored receipt (Beleg id).' })
   @IsOptional()
   @IsString()
+  @MaxLength(200)
   receiptRef?: string | undefined
 
   @ApiProperty({ type: [BookingLineDto] })
@@ -110,6 +112,7 @@ export class ReversalDto {
 export class QuickTotalDto {
   @ApiProperty({ type: String, example: 'ausgaben_telekommunikation', description: 'Core EuerKey.' })
   @IsString()
+  @MaxLength(64)
   key!: string
 
   @ApiProperty({ type: Number, example: 48000, description: 'Integer cents.' })
@@ -260,6 +263,7 @@ export class BusinessProfileInputDto {
   @ApiPropertyOptional({ type: [PartnershipShareDto], nullable: true, description: 'Shares from partnerships (Feststellungsbescheid). Replaced as a whole.' })
   @IsOptional()
   @IsArray()
+  @ArrayMaxSize(20)
   @ValidateNested({ each: true })
   @Type(() => PartnershipShareDto)
   partnershipShares?: readonly PartnershipShareDto[] | null | undefined
@@ -448,6 +452,7 @@ export class AcceptBankTransactionDto {
   @ApiPropertyOptional({ type: String })
   @IsOptional()
   @IsString()
+  @MaxLength(20)
   taxKey?: string | undefined
 
   @ApiPropertyOptional({ type: String })
@@ -481,7 +486,7 @@ export class BuildingFactsDto {
 
 /** The § 7g EStG Sonder-AfA (Abs. 5) and cut of the cost (Abs. 2). */
 export class SpecialDepreciationDto {
-  @ApiProperty({ type: 'object', additionalProperties: { type: 'integer' }, description: 'Year → Sonder-AfA in cents, the acquisition year and the four after it.' }) @IsObject() byYear!: Record<string, number>
+  @ApiProperty({ type: 'object', additionalProperties: { type: 'integer' }, description: 'Year → Sonder-AfA in cents, the acquisition year and the four after it.' }) @IsObject() @BoundedRecord({ maxKeys: 10, maxKeyLength: 4, maxValueLength: 0 }) byYear!: Record<string, number>
   @ApiPropertyOptional({ type: Number, description: 'Cut of the cost by the IAB added back, cents (§ 7g Abs. 2).' }) @IsOptional() @IsInt() @Min(0) costReduction?: number | undefined
   @ApiPropertyOptional({ type: Number, description: 'Profit of the business year before the acquisition, euros (§ 7g Abs. 6 Nr. 1: at most 200.000 €).' }) @IsOptional() @Min(-100_000_000) @Max(100_000_000) priorYearProfitEur?: number | undefined
 }
@@ -490,7 +495,7 @@ export class SpecialDepreciationDto {
 export class VatCorrectionDto {
   @ApiProperty({ type: Number, description: 'Input VAT on the acquisition cost, cents.' }) @IsInt() @Min(0) inputVatCents!: number
   @ApiProperty({ type: Number, description: 'Share originally deducted, 0–1.' }) @Min(0) @Max(1) originalShare!: number
-  @ApiProperty({ type: 'object', additionalProperties: { type: 'number' }, description: 'Year → deductible share as it turned out, 0–1.' }) @IsObject() shareByYear!: Record<string, number>
+  @ApiProperty({ type: 'object', additionalProperties: { type: 'number' }, description: 'Year → deductible share as it turned out, 0–1.' }) @IsObject() @BoundedRecord({ maxKeys: 10, maxKeyLength: 4, maxValueLength: 0 }) shareByYear!: Record<string, number>
   @ApiPropertyOptional({ type: Number, description: 'The share the sale or Entnahme allows (1 taxable, 0 tax-free); dated by the disposal.' }) @IsOptional() @Min(0) @Max(1) disposalShare?: number | undefined
 }
 
@@ -528,6 +533,8 @@ export class AssetDisposalDto {
 export class ProcedureDocInputDto {
   @ApiProperty({ type: Object, description: 'Values of the Verfahrensdokumentation placeholders (core VERFAHRENSDOKU_PLACEHOLDERS).' })
   @IsObject()
+  // The placeholders are a few dozen; a text of each is a paragraph, not a book (H2-13).
+  @BoundedRecord({ maxKeys: 50, maxKeyLength: 64, maxValueLength: 5_000 })
   values!: Record<string, string>
 }
 
