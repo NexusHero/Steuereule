@@ -24,3 +24,33 @@ export function resolveDatabaseUrl(env: NodeJS.ProcessEnv = process.env): string
 
   return raw
 }
+
+/**
+ * The role the API queries as (P11, migration `…_p11_row_level_security`): it owns no table and has neither
+ * SUPERUSER nor BYPASSRLS, so the row-level policies bind every query of the app, also where the login role
+ * of `DATABASE_URL` is the superuser of a container (compose, CI) or the owner of the tables (Cloud SQL).
+ * Migrations, seeds and operator scripts keep the login role.
+ */
+export const RUNTIME_DATABASE_ROLE = 'steuereule_app'
+
+/** `DATABASE_URL` with `options=-c role=steuereule_app`, merged into any `options` the URL already carries. */
+export function withRuntimeDatabaseRole(databaseUrl: string): string {
+  const trimmed = databaseUrl.trim()
+  let parsed: URL
+  try {
+    parsed = new URL(trimmed)
+  } catch {
+    return databaseUrl
+  }
+  const existing = parsed.searchParams.get('options')
+  if (existing !== null && /(^|\s)-c\s*role=/.test(existing)) {
+    throw new Error('DATABASE_URL sets a role in its options; the API chooses its role itself (P11, row-level security).')
+  }
+  const roleOption = `-c role=${RUNTIME_DATABASE_ROLE}`
+  if (existing === null) {
+    // Appended as text: re-serialising the URL would re-encode the Cloud SQL socket path and the password.
+    return `${trimmed}${trimmed.includes('?') ? '&' : '?'}options=${encodeURIComponent(roleOption)}`
+  }
+  parsed.searchParams.set('options', existing === '' ? roleOption : `${existing} ${roleOption}`)
+  return parsed.toString()
+}

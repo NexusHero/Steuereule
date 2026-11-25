@@ -3,14 +3,15 @@ import { encryptedPrismaProvider, ENCRYPTED_PRISMA, type EncryptedPrismaClient }
 import { PrismaService } from './prisma.service.js'
 import { KEYED_LOCK } from '../common/keyed-lock.js'
 import { TRANSACTION_RUNNER } from '../common/transaction-runner.js'
-import { PrismaKeyedLock, PrismaTransactionRunner } from './transaction.js'
+import { PrismaKeyedLock, PrismaTransactionRunner, transactionAwareClient } from './transaction.js'
 import { FIELD_ENCRYPTION_KEYS } from '../common/field-encryption-keys.js'
 import { resolveFieldEncryptionKey } from './field-encryption-key.js'
 
 /** Shared infrastructure module. */
 @Module({
   providers: [
-    PrismaService,
+    // The plain client gives each query the row-level identity too (P11); it never joined a `run`.
+    { provide: PrismaService, useFactory: () => transactionAwareClient(new PrismaService(), { joinTransactions: false }) },
     encryptedPrismaProvider,
     {
       provide: TRANSACTION_RUNNER,
