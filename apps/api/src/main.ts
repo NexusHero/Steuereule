@@ -20,6 +20,7 @@ import { assertProductionConfig } from './config/production-config.js'
 import { resolveTrustedProxies } from './config/trusted-proxies.js'
 import { resolveTraceId } from './common/request-id.js'
 import { buildCorsOptions } from './cors/build-cors-options.js'
+import { installMcpBodyLimit } from './mcp/mcp-body-limit.js'
 import { registerHelmet } from './security/register-helmet.js'
 
 export async function buildApp(): Promise<NestFastifyApplication> {
@@ -40,6 +41,8 @@ export async function buildApp(): Promise<NestFastifyApplication> {
   // Before every route: better-auth keys its rate limits and session IPs on the address Fastify resolved
   // (ADR-0106 D3/D4), never on a client-supplied X-Forwarded-For.
   installClientIpHeader(fastifyAdapter.getInstance())
+  // Before the routes exist: the MCP message routes take a receipt file as base64 (beta P4, decision 6).
+  installMcpBodyLimit(fastifyAdapter.getInstance())
 
   fastifyAdapter.getInstance().addHook('onSend', async (request, reply) => {
     if (request.id) {

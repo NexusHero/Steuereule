@@ -29,6 +29,8 @@ export interface ReceiptRecord {
   draftsTaxYear?: number | null
   /** A business receipt (ADR-0101 §6): expense or income; absent for every other Beleg. */
   direction?: ReceiptDirection | null
+  /** The assistant (OAuth client id) that uploaded it over MCP; absent for the user's own uploads. */
+  uploadedByClientId?: string | null
   createdAt: Date
   updatedAt: Date
 }
@@ -58,6 +60,7 @@ export interface CreateReceiptData {
   zahlungsdatum?: string
   paymentDate?: string
   direction?: ReceiptDirection
+  uploadedByClientId?: string
 }
 
 /** The one assignment write: confirm a year, optionally dismissing a contradicting suggestion. */

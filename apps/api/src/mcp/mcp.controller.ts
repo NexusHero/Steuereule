@@ -28,6 +28,7 @@ import { AuditService } from '../audit/audit.service.js'
 import { BETTER_AUTH_BUNDLE } from '../auth/auth.tokens.js'
 import type { BetterAuthBundle } from '../auth/better-auth.js'
 import { MCP_RESOURCE_PATH, MCP_STREAMABLE_PATH, mcpBearerChallenge } from '../auth/mcp-oauth.js'
+import { assistantAuditSource } from '../audit/audit-source.js'
 import { McpRateLimiter } from './mcp-rate-limit.js'
 import { McpService, type AssistantSessionInfo } from './mcp.service.js'
 
@@ -77,6 +78,13 @@ export class McpController {
     return { userId, assistant: { clientId, clientName, scopes } }
   }
 
+  /** A refused message as JSON-RPC error with a code and the next step, not as bare text (H2-29). */
+  private refuseMessage(reply: FastifyReply, status: 404 | 403, code: string, message: string, nextStep: string): void {
+    reply.raw
+      .writeHead(status, { 'Content-Type': 'application/json' })
+      .end(JSON.stringify({ jsonrpc: '2.0', error: { code: -32001, message: `${code}: ${message}`, data: { code, naechsterSchritt: nextStep } }, id: null }))
+  }
+
   /** Streamable HTTP, stateless: each JSON-RPC request gets its own server and transport, closed with the response. */
   @Post()
   @ApiExcludeEndpoint()
@@ -116,7 +124,7 @@ export class McpController {
     const transport = new SSEServerTransport('/mcp/messages', reply.raw)
     const sessionId = transport.sessionId
     if (!this.limiter.openSession(userId, sessionId)) {
-      await this.audit?.append({ userId, action: 'READ', resource: 'mcp_sessions_limited' })
+      await this.audit?.append({ userId, action: 'READ', resource: 'mcp_sessions_limited', source: assistantAuditSource(assistant.clientId) })
       throw new HttpException(
         `RATE_LIMITED: Es sind schon höchstens ${this.limiter.limits.openSessionsPerUser} MCP-Verbindungen für dieses Konto offen. Schließe eine andere Verbindung oder nutze den Endpunkt /mcp.`,
         HttpStatus.TOO_MANY_REQUESTS,
@@ -146,20 +154,20 @@ export class McpController {
     const sessionId = query?.sessionId
 
     if (!sessionId || !this.sessions.has(sessionId)) {
-      reply.raw.writeHead(404, { 'Content-Type': 'text/plain' }).end('MCP session not found or expired')
-      return
+      // Sessions live in one instance (ADR-0052 amendment 6 no. 4): a message that lands elsewhere is told where to go.
+      return this.refuseMessage(reply, 404, 'MCP_SESSION_NOT_FOUND', 'Die SSE-Sitzung gibt es auf diesem Server nicht (abgelaufen oder auf einer anderen Instanz).', 'Verbinde dich über den Endpunkt /mcp (Streamable HTTP); er braucht keine Sitzung.')
     }
 
     const session = this.sessions.get(sessionId)!
     if (session.userId !== userId) {
-      reply.raw.writeHead(403, { 'Content-Type': 'text/plain' }).end('Session belongs to another user account')
-      return
+      await this.audit?.append({ userId, action: 'READ', resource: 'mcp_session_other_account', source: assistantAuditSource(assistant.clientId) })
+      return this.refuseMessage(reply, 403, 'MCP_SESSION_OTHER_ACCOUNT', 'Diese Sitzung gehört zu einem anderen Konto.', 'Öffne mit deinem eigenen Token eine neue Verbindung über /mcp.')
     }
     // The server behind the session carries the scopes of the client that opened it. Another assistant of
-    // the same user, granted less, must not act through it (ADR-0052 amendment 9).
+    // the same user, granted less, must not act through it (ADR-0052 amendment 9); the attempt is audited (H2-29).
     if (session.clientId !== assistant.clientId) {
-      reply.raw.writeHead(403, { 'Content-Type': 'text/plain' }).end('Session belongs to another assistant')
-      return
+      await this.audit?.append({ userId, action: 'READ', resource: 'mcp_session_other_client', source: assistantAuditSource(assistant.clientId) })
+      return this.refuseMessage(reply, 403, 'MCP_SESSION_OTHER_CLIENT', 'Diese Sitzung hat ein anderer Assistent geöffnet.', 'Öffne eine eigene Verbindung über /mcp.')
     }
 
     reply.hijack()

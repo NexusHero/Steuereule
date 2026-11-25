@@ -30,6 +30,13 @@ export class FakeAssistantTaskRepository implements AssistantTaskRepository {
     return Promise.resolve({ ...record })
   }
 
+  withdraw(userId: string, taxYear: number, taskId: string, clientId: string): Promise<boolean> {
+    const index = this.rows.findIndex((r) => r.id === taskId && r.userId === userId && r.taxYear === taxYear && r.clientId === clientId && r.status === 'offen')
+    if (index === -1) return Promise.resolve(false)
+    this.rows.splice(index, 1)
+    return Promise.resolve(true)
+  }
+
   decide(userId: string, taxYear: number, taskId: string, decision: AssistantTaskDecision): Promise<AssistantTaskRecord | null> {
     const row = this.rows.find((r) => r.id === taskId && r.userId === userId && r.taxYear === taxYear && r.status === 'offen')
     if (row === undefined) return Promise.resolve(null)

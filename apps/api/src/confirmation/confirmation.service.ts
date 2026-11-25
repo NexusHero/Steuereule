@@ -286,6 +286,11 @@ export class ConfirmationService {
     return this.repository.listForUserAndYears(userId, [taxYear, YEAR_INDEPENDENT])
   }
 
+  /** The markings of several tax years in one read (the MCP take-back of a receipt looks for every entry naming it). */
+  async listForYears(userId: string, taxYears: readonly number[]): Promise<ProvenanceRecord[]> {
+    return this.repository.listForUserAndYears(userId, taxYears)
+  }
+
   async missing(userId: string, taxYear: number): Promise<string[]> {
     return missingConfirmations((await this.list(userId, taxYear)).map((r) => ({ ...r, value: null })))
   }
