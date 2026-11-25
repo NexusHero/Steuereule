@@ -1,5 +1,6 @@
 import { RETENTION } from '@steuereule/core'
 import type { PrismaClient } from '@prisma/client'
+import { runningTaxYear } from '../common/tax-year.js'
 
 // Legal holds on single rows (P7, stakeholder decision 2). The privacy text (`screens/legal/texts.ts`, § 5) and
 // the deletion dialog print `RETENTION.legalHold*`; the periods below are those constants, so the code keeps
@@ -27,19 +28,31 @@ export const HOLD_REASON = {
   filingVersion: '§ 169, § 170 AO',
 } as const
 
-/** The first instant after `years` full calendar years following the end of `year` (UTC). */
+/**
+ * The first day after `years` full calendar years following the end of `year`, as a UTC date. German midnight is
+ * an hour or two earlier, so the hold never ends before the period does.
+ */
 export function endOfPeriodAfterYear(year: number, years: number): Date {
   return new Date(Date.UTC(year + years + 1, 0, 1))
 }
 
+/**
+ * The calendar year a moment falls in where the books are kept: German time. A payment at 00:30 on 1 January in
+ * Berlin is still 31 December in UTC, and belongs to the new year (§ 147 Abs. 4 AO counts from the end of the
+ * calendar year of the booking).
+ */
+function calendarYear(at: Date): number {
+  return runningTaxYear(at)
+}
+
 export function paymentHoldUntil(paidAt: Date): Date {
-  return endOfPeriodAfterYear(paidAt.getUTCFullYear(), RETENTION.legalHoldPaymentYears)
+  return endOfPeriodAfterYear(calendarYear(paidAt), RETENTION.legalHoldPaymentYears)
 }
 
 /** `submittedOn` is the ISO day (yyyy-mm-dd) the user says it was submitted. */
 export function filingVersionHoldUntil(submittedOn: string, fallback: Date): Date {
   const year = Number(submittedOn.slice(0, 4))
-  return endOfPeriodAfterYear(Number.isInteger(year) && year >= 2000 ? year : fallback.getUTCFullYear(), RETENTION.legalHoldFilingVersionYears)
+  return endOfPeriodAfterYear(Number.isInteger(year) && year >= 2000 ? year : calendarYear(fallback), RETENTION.legalHoldFilingVersionYears)
 }
 
 /** Creates the hold, or moves an existing one later (never earlier). */

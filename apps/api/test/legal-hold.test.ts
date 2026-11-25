@@ -20,7 +20,13 @@ describe('legal hold periods', () => {
   it('a payment is held 8 years from the end of the payment year (§ 147 AO)', () => {
     expect(RETENTION.legalHoldPaymentYears).toBe(8)
     expect(paymentHoldUntil(new Date('2026-03-14T10:00:00Z')).toISOString()).toBe('2035-01-01T00:00:00.000Z')
-    expect(paymentHoldUntil(new Date('2026-12-31T23:59:00Z')).toISOString()).toBe('2035-01-01T00:00:00.000Z')
+    expect(paymentHoldUntil(new Date('2026-12-31T22:59:00Z')).toISOString()).toBe('2035-01-01T00:00:00.000Z')
+  })
+
+  it('the payment year is the calendar year in Germany, where the books are kept', () => {
+    // 23:30 UTC on 31 December is 00:30 on 1 January in Berlin: the payment belongs to 2027.
+    expect(paymentHoldUntil(new Date('2026-12-31T23:30:00Z')).toISOString()).toBe('2036-01-01T00:00:00.000Z')
+    expect(filingVersionHoldUntil('', new Date('2026-12-31T23:30:00Z')).toISOString()).toBe('2032-01-01T00:00:00.000Z')
   })
 
   it('a submitted version is held 4 years from the end of the submission year (§ 169, § 170 AO)', () => {

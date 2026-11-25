@@ -148,4 +148,33 @@ describe('sweepEndedLegalHolds', () => {
     expect(erased).toEqual(['deleted-user'])
     expect(result).toEqual({ released: 3, erasedFor: 1 })
   })
+
+  it('keeps the hold of an account whose erasure failed, so the next run finds its rows again (API-24)', async () => {
+    const holds = [
+      { id: 'h1', userId: 'breaks' },
+      { id: 'h2', userId: 'deleted-user' },
+    ]
+    const removed: string[] = []
+    const db = {
+      legalHold: {
+        findMany: async () => holds,
+        deleteMany: async ({ where }: { where: { id: { in: string[] } } }) => {
+          removed.push(...where.id.in)
+          return { count: where.id.in.length }
+        },
+      },
+      user: { findMany: async () => [] },
+    }
+    const order: string[] = []
+    const erase = async (id: string) => {
+      order.push(`erase:${id}`)
+      if (id === 'breaks') throw new Error('database unavailable')
+      // The hold is still there while the erasure runs: it is deleted only afterwards.
+      expect(removed).not.toContain('h2')
+      return { deleted: { profile: false, account: true }, retainedAnonymisedAuditRows: 0, retainedUnderLegalHold: 0, legalHolds: [] }
+    }
+    await expect(sweepEndedLegalHolds(db as never, erase, NOW)).rejects.toThrow(/1 account\(s\) could not be erased/)
+    expect(order).toEqual(['erase:breaks', 'erase:deleted-user'])
+    expect(removed).toEqual(['h2'])
+  })
 })
