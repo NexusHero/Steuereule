@@ -276,3 +276,15 @@ describe('the partner row of a read is the one cross-user write (P11)', () => {
     ])
   })
 })
+
+describe('partnerSourceFor: the marker of a row in somebody else\'s trail', () => {
+  it("is 'partner' only when the request's user writes into another person's trail", async () => {
+    const { partnerSourceFor } = await import('../src/common/read-audit.js')
+    expect(runAsDatabaseUser('person-b', () => partnerSourceFor('person-a'))).toBe('partner')
+    expect(runAsDatabaseUser('person-a', () => partnerSourceFor('person-a'))).toBeNull()
+    // A Person B kept under A's shadow id is A's own row.
+    expect(runAsDatabaseUser('person-a', () => partnerSourceFor('spouse_person-a_2025'))).toBeNull()
+    // Outside a user (a system path) nothing is marked: the system path is the writer.
+    expect(partnerSourceFor('person-a')).toBeNull()
+  })
+})

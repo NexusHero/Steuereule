@@ -185,9 +185,10 @@ E2E, integration (database) and load tiers run in CI.
   without a session (the consent screen's client lookup; with a session it runs as that user). An anonymous query
   carries neither a user nor a system reason, so it passes only what a policy grants to everyone. A query with no
   identity at all is refused (`MissingDatabaseIdentityError`).
-- A read of Person B's data writes a READ row into B's own access trail. The access-log policy allows exactly that
-  cross-user row (action READ, source `partner`, for a partner the coupling joins, consent included), not a
-  system path.
+- Two access-log rows land in another person's trail on purpose: a read of Person B's data writes a READ row into
+  B's trail, and a linked spouse who edits a child of the shared household writes a WRITE row into the owner's.
+  The access-log policy allows exactly such a row (source `partner`, for a partner the coupling joins, consent
+  included), not a system path; `partnerSourceFor` marks it.
 - Partners: Person B reaches Person A's rows of every year. Person A reaches Person B's rows of a table with a
   tax year (29 tables) only for the years B agreed to (`app_rls.agreed_partner_years()`), and of a table
   without one (profile, master data, owl settings) while B agreed to some year; the app checks the year for

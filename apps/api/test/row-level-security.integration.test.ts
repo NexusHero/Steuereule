@@ -144,8 +144,9 @@ describe('user A against user B, through raw SQL', () => {
   })
 })
 
-describe("a READ row in the partner's own access trail", () => {
-  // B is Person A of the joint year with C. A read of C's data by B writes a READ row marked `partner` into C's trail.
+describe("an access-log row in the partner's own trail", () => {
+  // B is Person A of the joint year with C. A read of C's data (or an edit of a shared child) by B writes a row
+  // marked `partner` into C's trail.
   const append = (writer: string, trailOwner: string, action: 'READ' | 'WRITE', source: string | null) =>
     as({ userId: writer }, (tx) =>
       tx.$executeRaw`INSERT INTO "TaxDataAccessLog" ("id", "userId", "action", "resource", "source") VALUES (${randomUUID()}, ${trailOwner}, ${action}::"AuditAction", 'lstb', ${source})`,
@@ -156,12 +157,12 @@ describe("a READ row in the partner's own access trail", () => {
       await tx.$executeRaw`UPDATE "SteuerjahrKopplung" SET "personBZustimmungAm" = ${at} WHERE "personAUserId" = ${B} AND "personBUserId" = ${C}`
     })
 
-  it('is allowed for a coupled partner after the consent, as READ marked partner, and nothing else', async () => {
+  it('is allowed for a coupled partner after the consent, marked partner, and nothing else', async () => {
     await consent(new Date())
     await expect(append(B, C, 'READ', 'partner')).resolves.toBe(1)
     // Person B (C) reaches Person A (B) without a consent of its own.
     await expect(append(C, B, 'READ', 'partner')).resolves.toBe(1)
-    await expect(append(B, C, 'WRITE', 'partner')).rejects.toThrow(/row-level security/)
+    await expect(append(B, C, 'WRITE', 'partner')).resolves.toBe(1)
     await expect(append(B, C, 'READ', null)).rejects.toThrow(/row-level security/)
     await expect(append(B, C, 'READ', 'assistent:x')).rejects.toThrow(/row-level security/)
     // An uncoupled user writes into nobody's trail.

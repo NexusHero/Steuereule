@@ -1,4 +1,5 @@
-import { isShadowId } from './person-ids.js'
+import { currentDatabaseIdentity } from './database-identity.js'
+import { isShadowId, ownerOf } from './person-ids.js'
 
 /** The one method of AuditService a read needs; structural, so common/ stays free of the audit module. */
 interface AuditTrail {
@@ -32,4 +33,16 @@ export async function appendReadAudit(
   // Person B's row lands in B's own trail. The access-log policy allows exactly this cross-user write: a READ row
   // marked `partner` for a partner the coupling joins (consent included), and nothing else.
   for (const userId of accounts) await audit.append({ userId, action: 'READ', resource, source: 'partner' })
+}
+
+/**
+ * The `source` of an access-log row in `trailOwner`'s trail: `partner` when the request's user writes it into
+ * somebody else's trail (a linked spouse editing a child of the shared household, decision 7), nothing for an own
+ * row or a row under an own Person B shadow id (null: the column's "no source"). The access-log policy allows a cross-user row only so marked, and
+ * only for a partner the coupling joins.
+ */
+export function partnerSourceFor(trailOwner: string): 'partner' | null {
+  const identity = currentDatabaseIdentity()
+  if (identity?.kind !== 'user') return null
+  return ownerOf(trailOwner) === identity.userId ? null : 'partner'
 }

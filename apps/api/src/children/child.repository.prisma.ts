@@ -1,4 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common'
+import { partnerSourceFor } from '../common/read-audit.js'
 import { ENCRYPTED_PRISMA, type EncryptedPrismaClient } from '../prisma/encrypted-prisma.provider.js'
 import type { ChildDetails, ChildRecord, ChildRepository, CreateChildData } from './child.repository.js'
 
@@ -109,7 +110,7 @@ export class PrismaChildRepository implements ChildRepository {
           healthInsuranceAbroad: data.healthInsuranceAbroad ?? null,
         },
       })
-      await tx.taxDataAccessLog.create({ data: { userId, action: 'WRITE', resource: 'kind' } })
+      await tx.taxDataAccessLog.create({ data: { userId, action: 'WRITE', resource: 'kind', source: partnerSourceFor(userId) } })
       return toRecord(row)
     })
   }
@@ -138,7 +139,7 @@ export class PrismaChildRepository implements ChildRepository {
     const [row] = await this.prisma.$transaction([
       this.prisma.child.update({ where: { id }, data: updateData }),
       this.prisma.taxDataAccessLog.create({
-        data: { userId, action: 'WRITE', resource: 'kind' },
+        data: { userId, action: 'WRITE', resource: 'kind', source: partnerSourceFor(userId) },
       }),
     ])
     return toRecord(row)
@@ -154,7 +155,7 @@ export class PrismaChildRepository implements ChildRepository {
       // the owl's undo, the assistant — an unconfirmed value of a child that is gone must not block the printout.
       this.prisma.marking.deleteMany({ where: { userId, taxYear, itemKey: { startsWith: `kind:${id}.` } } }),
       this.prisma.taxDataAccessLog.create({
-        data: { userId, action: 'WRITE', resource: 'kind' },
+        data: { userId, action: 'WRITE', resource: 'kind', source: partnerSourceFor(userId) },
       }),
     ])
     return true
