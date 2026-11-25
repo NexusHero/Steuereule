@@ -151,6 +151,55 @@ describe('BusinessService (ADR-0101)', () => {
     expect(book.entries[0]?.reversedBy).toBe(2)
   })
 
+  it('WEB-38: the same booking sent twice in a row is posted once; the second request gets the first entry', async () => {
+    const { service } = setup()
+    const first = await service.post('u', YEAR, A1, sale)
+    const repeated = await service.post('u', YEAR, A1, sale)
+    expect(repeated).toEqual(first)
+    const book = await service.getBook('u', YEAR, A1)
+    expect(book.entries).toHaveLength(1)
+    expect(book.integrity).toMatchObject({ ok: true, entries: 1 })
+  })
+
+  it('WEB-38: the same booking after the window, after another booking or after its Storno is a new booking', async () => {
+    const repository = new FakeBusinessRepository()
+    const interview = new FakeInterviewAnswerRepository()
+    interview.seed('u', YEAR, { job: 'Selbstständig' })
+    let now = Date.parse('2026-11-19T10:00:00.000Z')
+    const unlock = { status: async () => 'freigeschaltet' } as unknown as UnlockService
+    const service = composeBusinessService(repository, interview, new AuditService(new FakeAuditRepository()), new HebesatzDirectory(), unlock, () => new Date(now).toISOString())
+    await service.post('u', YEAR, A1, sale)
+    now += 31_000
+    expect((await service.post('u', YEAR, A1, sale)).number).toBe(2)
+    await service.post('u', YEAR, A1, supplies)
+    expect((await service.post('u', YEAR, A1, sale)).number).toBe(4)
+    await service.reverse('u', YEAR, A1, 4, { date: '2024-03-06', documentNumber: 'ST-4' })
+    expect((await service.post('u', YEAR, A1, sale)).number).toBe(6)
+  })
+
+  it('WEB-38: the quick path sent twice books its totals once', async () => {
+    const { service } = setup()
+    const totals = [
+      { key: 'einnahmen_umsatzsteuerpflichtig', amountCents: 5_000_000 },
+      { key: 'ausgaben_telekommunikation', amountCents: 120_000 },
+    ]
+    const first = await service.quickEntry('u', YEAR, A1, totals)
+    const repeated = await service.quickEntry('u', YEAR, A1, totals)
+    expect(repeated.map((e) => e.number)).toEqual(first.map((e) => e.number))
+    expect((await service.getBook('u', YEAR, A1)).entries).toHaveLength(2)
+  })
+
+  it('WEB-38: a bank row is booked once, even when a second request passed the status check', async () => {
+    const { service } = setup()
+    await service.importBank('u', 2025, A1, { format: 'csv', content: SPARKASSE, preset: 'sparkasse' })
+    const income = (await service.listBank('u', 2025, A1)).find((t) => t.transaction.amount === 119_000)!
+    const ledger = (service as unknown as { ledger: { post: (...args: unknown[]) => Promise<unknown> } }).ledger
+    await service.acceptBank('u', 2025, A1, income.id, { account: '8400', taxKey: 'ust19' })
+    // The second request read the row while it was still open; the book itself refuses the second posting.
+    const draft = { date: income.transaction.bookingDate, documentNumber: 'Bank-zweit', text: 'zweit', lines: [{ account: '1200', side: 'debit', amount: 119_000 }, { account: '8400', side: 'credit', amount: 119_000 }] }
+    await expect(ledger.post('u', 2025, A1, draft, `bank:${income.id}`)).rejects.toMatchObject({ code: 'BANK_TRANSACTION_DONE' })
+  })
+
   it('Festschreibung blocks bookings in the period and never moves back', async () => {
     const { service } = setup()
     await service.lock('u', YEAR, A1, '2024-03-31')

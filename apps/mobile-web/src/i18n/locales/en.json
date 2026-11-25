@@ -4853,6 +4853,109 @@
   "betrag": {
     "unlesbar": "That is not an amount. Please enter it like 948 or 948,60."
   },
+  "rueckfrage": {
+    "abbrechen": "Cancel",
+    "singleAssessment": {
+      "titel": "Choose separate assessment for {{jahr}}?",
+      "text": "For {{jahr}} you then file separate returns. The link with person B for {{jahr}} is released: what you entered for person B no longer belongs to your return, and an open invitation code stops working.",
+      "bestaetigen": "Choose separate assessment"
+    },
+    "endPartnerLink": {
+      "titel": "End the link from {{jahr}}?",
+      "text": "From {{jahr}} your partner no longer belongs to your household and you can no longer file a joint return. The years before stay as they are.",
+      "bestaetigen": "End link"
+    },
+    "householdLeave": {
+      "titel": "{{name}} no longer part from {{jahr}}?",
+      "text": "{{name}} no longer belongs to your household from {{jahr}}. The details on {{name}} from {{jahr}} are deleted; earlier years stay.",
+      "bestaetigen": "No longer part"
+    },
+    "householdDelete": {
+      "titel": "Delete {{name}} for good?",
+      "text": "{{name}} disappears from every tax year, closed ones too. This cannot be undone.",
+      "bestaetigen": "Delete for good"
+    },
+    "lstbDiscardDraft": {
+      "titel": "Discard the values read?",
+      "text": "The values the owl read from your wage tax certificate are lost. Your saved details for {{jahr}} stay unchanged.",
+      "bestaetigen": "Discard"
+    },
+    "rentalRemoveRepair": {
+      "titel": "Remove maintenance cost {{nummer}}?",
+      "text": "The amount and its distribution are deleted from this property and no longer count as expenses.",
+      "bestaetigen": "Remove"
+    },
+    "childDelete": {
+      "titel": "Delete {{name}}?",
+      "text": "{{name}} and every detail on the child are deleted from {{jahr}}: child benefit, childcare costs and allowances drop out of your return.",
+      "bestaetigen": "Delete child"
+    },
+    "bookingReverse": {
+      "titel": "Reverse booking {{nummer}}?",
+      "text": "A counter-entry is posted. This is final: the booking and its reversal stay in the journal and cannot be deleted.",
+      "bestaetigen": "Reverse for good"
+    },
+    "bookLock": {
+      "titel": "Lock the book through {{datum}}?",
+      "text": "This is final: bookings up to {{datum}} can then neither be changed nor reversed, and the lock cannot be lifted.",
+      "bestaetigen": "Lock for good"
+    },
+    "assetDispose": {
+      "titel": "Post the disposal of {{name}}?",
+      "text": "The asset counts as retired from the disposal date; the next depreciation run posts its remaining book value. This is final: only a reversal corrects it.",
+      "bestaetigen": "Post disposal"
+    },
+    "depreciationBook": {
+      "titel": "Post the depreciation for {{jahr}}?",
+      "text": "The year's depreciation and disposals are posted to the journal. This is final: only a reversal corrects it.",
+      "bestaetigen": "Post depreciation"
+    },
+    "openingBalance": {
+      "titel": "Post the opening balance {{folgejahr}}?",
+      "text": "The closing balance {{jahr}} is carried into {{folgejahr}} as the opening entry. This is final: it posts only once and only a reversal corrects it.",
+      "bestaetigen": "Post opening balance"
+    },
+    "eBilanzSend": {
+      "titel": "Transmit the E-Bilanz {{jahr}} to ELSTER?",
+      "text": "The E-Bilanz goes to your tax office. This is final: a transmitted E-Bilanz cannot be recalled, only replaced by a new one.",
+      "bestaetigen": "Transmit for good"
+    },
+    "bankIgnore": {
+      "titel": "Ignore this transaction?",
+      "text": "The bank transaction is not booked and leaves the open list. A new import does not bring it back.",
+      "bestaetigen": "Ignore"
+    },
+    "shareRemove": {
+      "titel": "Remove the share {{name}}?",
+      "text": "The share and its figures from the assessment notice are deleted and no longer count in your return.",
+      "bestaetigen": "Remove"
+    },
+    "proposalDiscard": {
+      "titel": "Discard the proposal?",
+      "text": "The proposed value is lost; your current value stays.",
+      "bestaetigen": "Discard"
+    },
+    "taskDiscard": {
+      "titel": "Discard the task?",
+      "text": "The task leaves your list.",
+      "bestaetigen": "Discard"
+    },
+    "submissionWithdraw": {
+      "titel": "Withdraw the filing {{jahr}}?",
+      "text": "The frozen version of your filed return {{jahr}} is released and the return counts as open again. Nothing changes at the tax office.",
+      "bestaetigen": "Withdraw filing"
+    },
+    "noteDelete": {
+      "titel": "Delete the note?",
+      "text": "The note is gone; the owl no longer knows it in this conversation.",
+      "bestaetigen": "Delete"
+    },
+    "assistantRevoke": {
+      "titel": "Disconnect {{name}}?",
+      "text": "{{name}} loses access to your tax data at once. To connect again you have to grant access anew.",
+      "bestaetigen": "Disconnect"
+    }
+  },
   "zahlung": {
     "wirdBestaetigt": "Your payment is being confirmed. This usually takes only seconds – you do not need to do anything.",
     "bestaetigt": "Payment confirmed: {{year}} is unlocked.",

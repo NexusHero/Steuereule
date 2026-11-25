@@ -8,6 +8,7 @@ import type { HouseholdPersonDto, HouseholdResponseDto } from '@steuereule/api-c
 import { createAppI18n } from '../../i18n/app-i18n'
 import { server } from '../../test-msw-server'
 import { HouseholdChildrenSection } from './HouseholdChildrenSection'
+import { confirmAction } from '../../confirm/confirmInTest'
 
 const person = (over: Partial<HouseholdPersonDto>): HouseholdPersonDto => ({
   personId: 'p1',
@@ -105,10 +106,10 @@ describe('HouseholdChildrenSection (#452 slice 3)', () => {
     renderSection()
     expect((await screen.findByTestId('haushalt-geaendert-0')).textContent).toContain('geändert von deinem Partner')
     fireEvent.click(screen.getByTestId('haushalt-loeschen-0'))
-    expect(screen.getByTestId('haushalt-loeschen-warnung').textContent).toContain('aus allen Steuerjahren')
+    expect(screen.getByTestId('rueckfrage-householdDelete-body').textContent).toContain('aus allen Steuerjahren')
     expect(deletes).toBe(0)
     await act(async () => {
-      fireEvent.click(screen.getByTestId('haushalt-loeschen-bestaetigen'))
+      confirmAction('householdDelete')
     })
     await waitFor(() => expect(deletes).toBe(1))
   })

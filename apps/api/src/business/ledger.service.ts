@@ -25,6 +25,18 @@ import { BusinessContext } from './business-context.js'
 import { LABEL_ONLY_TAX_KEYS, ledgerCall, taxKeyOfAccount } from './business-helpers.js'
 import type { BookView } from './views.js'
 
+/**
+ * A repeated identical booking request inside this window is the same request (a double tap, a retry after
+ * a lost answer): it gets the entry posted the first time, and nothing is posted twice (WEB-38).
+ */
+export const DUPLICATE_BOOKING_WINDOW_MS = 30_000
+
+/** What makes two entries the same booking: everything but their number. */
+function bookingContent(entry: JournalEntry): string {
+  const { number: _number, ...content } = entry
+  return JSON.stringify(content)
+}
+
 /** One draft to post, with the source its entry is filed under and, for an accepted draft, its own text. */
 export interface PostingDraft {
   readonly draft: BookingDraft
@@ -70,6 +82,22 @@ export class LedgerService {
     if (!integrity.ok) throw new ConflictError('BOOK_INTEGRITY_BROKEN', integrity.reason)
   }
 
+  /**
+   * The entries a request would post when the book already ends with the same entries, from the same sources,
+   * posted within `DUPLICATE_BOOKING_WINDOW_MS`, and none of them reversed: then the request was sent twice.
+   */
+  private recentDuplicate(book: LoadedBook, candidates: readonly { entry: JournalEntry; source: string }[]): JournalEntry[] | null {
+    const count = candidates.length
+    const tail = book.ledger.entries.slice(-count)
+    if (count === 0 || tail.length !== count) return null
+    const same = tail.every((existing, i) => bookingContent(existing) === bookingContent(candidates[i]!.entry) && book.sources.get(existing.number) === candidates[i]!.source)
+    if (!same || book.ledger.entries.some((e) => e.reversalOf !== null && tail.some((t) => t.number === e.reversalOf))) return null
+    const postedAt = book.log.filter((r) => r.kind === 'entry').at(-1)?.at
+    if (postedAt === undefined) return null
+    const age = Date.parse(this.context.now()) - Date.parse(postedAt)
+    return age >= 0 && age <= DUPLICATE_BOOKING_WINDOW_MS ? tail : null
+  }
+
   /** Posts drafts in order, each with its log record; validation errors come back in German. */
   private postAll(book: LoadedBook, year: number, profile: BusinessProfileRecord | null, drafts: readonly PostingDraft[]): { ledger: Ledger; append: BookAppend; posted: JournalEntry[] } {
     this.assertIntact(book)
@@ -87,6 +115,8 @@ export class LedgerService {
       posted.push(result.entry)
       entries.push({ entry: result.entry, source, ...(keepDraft !== undefined ? { draft: keepDraft } : {}) })
     }
+    const duplicate = this.recentDuplicate(book, entries)
+    if (duplicate !== null) return { ledger: book.ledger, posted: duplicate, append: {} }
     return { ledger, posted, append: { entries, log: log.slice(book.log.length) } }
   }
 
@@ -114,7 +144,11 @@ export class LedgerService {
     const { chart, mode, profile } = await this.context.frame(userId, year, ref)
     const entry = await this.repository.changeBook(userId, year, ref, { chart, mode }, (book) => {
       if (keepDraft !== undefined && [...book.sources.values()].includes(source)) throw new ConflictError('BOOKING_DRAFT_POSTED', 'Dieser Buchungsentwurf ist schon gebucht.')
+      // A bank row is booked once, also when two requests for it pass the status check at the same time.
+      if (source.startsWith('bank:') && [...book.sources.values()].includes(source)) throw new ConflictError('BANK_TRANSACTION_DONE', 'Dieser Kontoumsatz ist schon erledigt.')
       const { posted, append } = this.postAll(book, year, profile, [{ draft, source, ...(keepDraft !== undefined ? { keepDraft } : {}) }])
+      // A repeated request appends nothing; its asset is registered already.
+      if (append.entries === undefined) return { result: posted[0]!, append }
       const asset = draft.asset !== undefined && draft.asset.method !== 'sofort' ? this.assetOf(year, ref, chart, posted[0]!, draft) : null
       return { result: posted[0]!, append: asset === null ? append : { ...append, assets: [asset] } }
     })

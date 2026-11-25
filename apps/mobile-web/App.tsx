@@ -37,7 +37,8 @@ import { PasswordResetScreen } from './src/screens/PasswordResetScreen'
 import { OauthConsentScreen } from './src/screens/oauth/OauthConsentScreen'
 import { ChildrenScreen } from './src/screens/children/ChildrenScreen'
 import { AssessmentScreen } from './src/screens/assessment/AssessmentScreen'
-import { CURRENT_TAX_YEAR } from './src/config/taxYear'
+import { runningTaxYear } from './src/config/taxYear'
+import { useServerTaxYearSync } from './src/config/useServerTaxYearSync'
 import {
   rememberPendingPath,
   rememberReturnTo,
@@ -94,6 +95,7 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <QueryClientProvider client={queryClient}>
+        <ServerTaxYearSync />
         <I18nextProvider i18n={i18n}>
           <AppearanceProvider>
             <ThemeBridge>
@@ -110,6 +112,12 @@ export default function App() {
       </QueryClientProvider>
     </SafeAreaProvider>
   )
+}
+
+/** OPS-16: the running tax year follows the server's clock. */
+function ServerTaxYearSync(): null {
+  useServerTaxYearSync()
+  return null
 }
 
 function ThemeBridge({ children }: { readonly children: ReactNode }) {
@@ -276,7 +284,7 @@ function PrintoutRoute({ navigation, route }: NativeStackScreenProps<RootStackPa
   const { t: tr } = useTranslation(APP_NS)
   const year = Number(route.params?.year)
   const validYear = Number.isInteger(year)
-  const plausibility = usePlausibility(validYear ? year : CURRENT_TAX_YEAR, { enabled: validYear })
+  const plausibility = usePlausibility(validYear ? year : runningTaxYear(), { enabled: validYear })
   const { areNoticesConfirmed } = useSubmissionGate()
 
   const gateBlocked =
@@ -301,7 +309,8 @@ function PrintoutRoute({ navigation, route }: NativeStackScreenProps<RootStackPa
   if (!validYear) return null
   if (plausibility.status === 'loading') return <LoadingState bp={bp} label={tr('abgabe.loading')} />
   if (gateBlocked || plausibility.status !== 'ready') return null
-  if (view === 'stammdaten') return <MasterDataScreen onBack={() => setView('ausdruck')} />
+  // WEB-43: the master data of a printout are the return's year, never a default.
+  if (view === 'stammdaten') return <MasterDataScreen taxYear={year} onBack={() => setView('ausdruck')} />
   if (view === 'grenzgaenger') return <CrossBorderScreen taxYear={year} onDone={() => setView('ausdruck')} />
   if (view === 'kapital') return <CapitalScreen taxYear={year} onDone={() => setView('ausdruck')} onBack={() => setView('ausdruck')} />
   if (view === 'vermietung') return <RentalScreen taxYear={year} onDone={() => setView('ausdruck')} onBack={() => setView('ausdruck')} />

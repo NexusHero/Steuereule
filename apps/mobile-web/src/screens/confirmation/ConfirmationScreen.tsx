@@ -14,6 +14,7 @@ import {
   type FieldProvenanceDto,
 } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
+import { useConfirmAction } from '../../confirm/useConfirmAction'
 import { makePrivacyStyles } from '../privacy/styles'
 import { ErrorState, LoadingState } from '../shared/ScreenState'
 import { triggerSaveErrorHaptic } from '../shared/saveFeedback'
@@ -58,6 +59,8 @@ export function ConfirmationScreen({ year, onBack, onOpenScreen }: ConfirmationS
   const confirm = useConfirmationControllerConfirmAnnex()
   const decide = useConfirmationControllerDecideProposal()
   const decideTask = useConfirmationControllerDecideTask()
+  const confirmProposalDiscard = useConfirmAction('proposalDiscard')
+  const confirmTaskDiscard = useConfirmAction('taskDiscard')
   const [error, setError] = useState<unknown>(null)
   const [stale, setStale] = useState(false)
   const failureMessage = useApiFailureMessage()
@@ -142,7 +145,7 @@ export function ConfirmationScreen({ year, onBack, onOpenScreen }: ConfirmationS
                   variant="ghost"
                   disabled={decideTask.isPending}
                   testID={`aufgabe-verwerfen-${task.id}`}
-                  onPress={() => void afterChange(() => decideTask.mutateAsync({ jahr: year, id: task.id, data: { decision: 'verworfen' } }))}
+                  onPress={() => confirmTaskDiscard.ask(() => void afterChange(() => decideTask.mutateAsync({ jahr: year, id: task.id, data: { decision: 'verworfen' } })))}
                 >
                   {t('bestaetigung.aufgaben.verwerfen')}
                 </Button>
@@ -204,7 +207,7 @@ export function ConfirmationScreen({ year, onBack, onOpenScreen }: ConfirmationS
                         variant="ghost"
                         disabled={decide.isPending}
                         testID={`vorschlag-verwerfen-${id}`}
-                        onPress={() => void afterChange(() => decide.mutateAsync({ jahr: year, key: w.key, data: decision('verwerfen') }))}
+                        onPress={() => confirmProposalDiscard.ask(() => void afterChange(() => decide.mutateAsync({ jahr: year, key: w.key, data: decision('verwerfen') })))}
                       >
                         {t('bestaetigung.vorschlagVerwerfen')}
                       </Button>
@@ -234,6 +237,8 @@ export function ConfirmationScreen({ year, onBack, onOpenScreen }: ConfirmationS
           </Card>
         )
       })}
+      {confirmProposalDiscard.dialog}
+      {confirmTaskDiscard.dialog}
     </ScrollView>
   )
 }

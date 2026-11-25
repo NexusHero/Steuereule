@@ -12,6 +12,7 @@ import { getCockpitControllerGetCockpitSummaryQueryKey, getTaxEstimateController
 import { createAppI18n } from '../../i18n/app-i18n'
 import { RentalScreen } from './RentalScreen'
 import { server } from '../../test-msw-server'
+import { confirmAction } from '../../confirm/confirmInTest'
 
 /** Types a value and leaves the field — the way the mask saves (WEB-39). */
 function commit(field: HTMLElement, value: string) {
@@ -192,6 +193,7 @@ describe('VermietungScreen', () => {
     fireEvent.change(screen.getByTestId('vermietung-0-erhaltung-1-datum'), { target: { value: '15.05.2026' } })
     await waitFor(() => expect(bodies.at(-1)).toEqual({ erhaltungsaufwand: [{ betrag: 800, datum: null }, { betrag: 12300, datum: '2026-05-15' }] }))
     fireEvent.click(screen.getByRole('button', { name: 'Rechnung 1 entfernen' }))
+    confirmAction('rentalRemoveRepair')
     await waitFor(() => expect(bodies.at(-1)).toEqual({ erhaltungsaufwand: [{ betrag: 12300, datum: '2026-05-15' }] }))
   })
 

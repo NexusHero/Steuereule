@@ -5,6 +5,7 @@ import { http, HttpResponse } from 'msw'
 import type { BookDto, ElsterHelpDto, JournalEntryDto } from '@steuereule/api-client'
 import { server } from '../../test-msw-server'
 import { BASE_PROFILE, BASE_URL, EMPTY_BOOK, renderBusiness, useBusinessDefaults, useElsterForms, YEAR } from './businessTestKit'
+import { confirmAction } from '../../confirm/confirmInTest'
 
 const SMALL_OK = { eligible: true, priorYearLimitEur: 25_000, currentYearLimitEur: 100_000, crossed: null, foundingYear: false, priorYearKnown: true, turnoverEur: 0, matchesProfile: true }
 
@@ -155,6 +156,7 @@ describe('the book', () => {
     const row = await screen.findByTestId('buch-eintrag-1')
     expect(within(row).getByText('1 · Bürobedarf')).toBeTruthy()
     fireEvent.click(screen.getByTestId('buch-storno-1'))
+    confirmAction('bookingReverse')
     await waitFor(() => expect(url).not.toBe(''))
     expect(body).toMatchObject({ documentNumber: 'Storno-1' })
   })
@@ -171,6 +173,7 @@ describe('the book', () => {
     server.use(http.post(`${BASE_URL}/buchungen/1/storno`, () => HttpResponse.json({ statusCode: 409, code: 'BOOK_INTEGRITY_BROKEN', message: 'Das Buch ist verändert worden.' }, { status: 409 })))
     renderBusiness('buch')
     fireEvent.click(await screen.findByTestId('buch-storno-1'))
+    confirmAction('bookingReverse')
     expect(await screen.findByTestId('buch-integritaet-fehler')).toBeTruthy()
     expect(screen.getByText('Das Buch ist verändert worden.')).toBeTruthy()
   })
@@ -285,6 +288,7 @@ describe('the bank', () => {
     fireEvent.click(screen.getByTestId('bank-buchen-u1'))
     await waitFor(() => expect(accepted).toEqual({ remember: true }))
     fireEvent.click(screen.getByTestId('bank-ignorieren-u2'))
+    confirmAction('bankIgnore')
     await waitFor(() => expect(ignored).toBe(true))
   })
 })
@@ -305,6 +309,7 @@ describe('the assets and the closing', () => {
     renderBusiness('abschluss')
     expect((await screen.findByTestId('abschluss-gewinn')).textContent).toBe('+2.500,00\u00a0€')
     fireEvent.click(screen.getByTestId('abschluss-eroeffnung'))
+    confirmAction('openingBalance')
     expect(await screen.findByText('Die Eröffnungsbilanz 2026 ist schon gebucht.')).toBeTruthy()
   })
 

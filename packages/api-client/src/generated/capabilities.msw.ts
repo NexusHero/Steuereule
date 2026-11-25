@@ -22,7 +22,7 @@ import type {
 } from './capabilities.schemas';
 
 
-export const getCapabilitiesControllerGetCapabilitiesResponseMock = (overrideResponse: Partial<Extract<AppCapabilitiesDto, object>> = {}): AppCapabilitiesDto => ({selbststaendig: faker.datatype.boolean(), ...overrideResponse})
+export const getCapabilitiesControllerGetCapabilitiesResponseMock = (overrideResponse: Partial<Extract<AppCapabilitiesDto, object>> = {}): AppCapabilitiesDto => ({selbststaendig: faker.datatype.boolean(), runningTaxYear: faker.number.float({fractionDigits: 2}), ...overrideResponse})
 
 
 export const getCapabilitiesControllerGetCapabilitiesMockHandler = (overrideResponse?: AppCapabilitiesDto | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<AppCapabilitiesDto> | AppCapabilitiesDto), options?: RequestHandlerOptions) => {

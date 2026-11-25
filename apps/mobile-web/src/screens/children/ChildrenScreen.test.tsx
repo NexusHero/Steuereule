@@ -1,3 +1,4 @@
+import { confirmAction } from '../../confirm/confirmInTest'
 import { describe, expect, it, vi } from 'vitest'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { I18nextProvider } from 'react-i18next'
@@ -429,6 +430,10 @@ describe('KinderScreen', () => {
 
     const deleteBtn = screen.getByLabelText('Kind Lina löschen')
     fireEvent.click(deleteBtn)
+    // WEB-18: nothing is deleted until the user confirms, and the dialog names the child and the year.
+    expect(screen.getByTestId('rueckfrage-childDelete-body').textContent).toContain('Lina Muster')
+    expect(onDelete).not.toHaveBeenCalled()
+    confirmAction('childDelete')
 
     await waitFor(() => {
       expect(onDelete).toHaveBeenCalledWith('kind-1')

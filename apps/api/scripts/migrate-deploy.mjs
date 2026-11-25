@@ -47,7 +47,22 @@ const prismaPackage = require.resolve('prisma/package.json')
 const prismaCli = path.join(path.dirname(prismaPackage), JSON.parse(readFileSync(prismaPackage, 'utf8')).bin.prisma)
 const run = (args, env) => execFileSync(process.execPath, [prismaCli, ...args], { stdio: 'inherit', env })
 
-run(['migrate', 'deploy'], process.env)
+// P11: the tables are FORCEd for row-level security, so the policies bind the owner too. On Cloud SQL the login
+// role owns the tables without being a superuser: a data migration or backfill there would see no rows. This
+// one job runs as the named system path `migration` (`app_rls.is_system()`); the API never does (it runs as
+// `steuereule_app`, see src/config/database-url.ts).
+function asMigration(url) {
+  if (!url) return url
+  const parsed = new URL(url.trim())
+  const option = '-c steuereule.system=migration'
+  const existing = parsed.searchParams.get('options')
+  if (existing === null) return `${url.trim()}${url.includes('?') ? '&' : '?'}options=${encodeURIComponent(option)}`
+  parsed.searchParams.set('options', `${existing} ${option}`)
+  return parsed.toString()
+}
+const migrationEnv = { ...process.env, DATABASE_URL: asMigration(process.env.DATABASE_URL) }
+
+run(['migrate', 'deploy'], migrationEnv)
 const keystore = keystoreUrl(process.env)
 if (keystore.derived || sameServer(keystore.url, process.env.DATABASE_URL)) await ensureDatabaseExists(keystore.url)
 run(['migrate', 'deploy', '--schema', 'prisma/keystore/schema.prisma'], {
@@ -61,10 +76,10 @@ run(['migrate', 'deploy', '--schema', 'prisma/keystore/schema.prisma'], {
 // Invoked through tsx because it reuses the app's own key resolver (TypeScript); the production image
 // already boots with `node --import tsx` (ADR-0010a).
 const backfillScript = path.join(path.dirname(fileURLToPath(import.meta.url)), 'backfill-profile-name-encryption.ts')
-execFileSync(process.execPath, ['--import', 'tsx', backfillScript], { stdio: 'inherit', env: process.env })
+execFileSync(process.execPath, ['--import', 'tsx', backfillScript], { stdio: 'inherit', env: migrationEnv })
 
 // ADR-0109: accounts are found by `emailHash` from this release on. Filling the hash here, before the release
 // takes traffic, is what keeps existing accounts able to sign in; the addresses themselves stay plaintext
 // until `backfill-identity.ts` is run without a phase after the release. Idempotent.
 const identityBackfill = path.join(path.dirname(fileURLToPath(import.meta.url)), 'backfill-identity.ts')
-execFileSync(process.execPath, ['--import', 'tsx', identityBackfill, '--phase=hash'], { stdio: 'inherit', env: process.env })
+execFileSync(process.execPath, ['--import', 'tsx', identityBackfill, '--phase=hash'], { stdio: 'inherit', env: migrationEnv })

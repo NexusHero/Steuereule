@@ -8,6 +8,7 @@ import type { ConfirmationResponseDto } from '@steuereule/api-client'
 import { createAppI18n } from '../../i18n/app-i18n'
 import { server } from '../../test-msw-server'
 import { ConfirmationScreen } from './ConfirmationScreen'
+import { confirmAction } from '../../confirm/confirmInTest'
 
 const WITH_VALUES: ConfirmationResponseDto = {
   annexes: [
@@ -128,6 +129,7 @@ describe('BestaetigungScreen (REQ-032, ADR-0052 §6/§7)', () => {
     fireEvent.click(await screen.findByTestId('vorschlag-annehmen-lstb.bruttoarbeitslohn'))
     await waitFor(() => expect(decisions).toEqual([{ key: 'lstb.bruttoarbeitslohn', body: { decision: 'annehmen' } }]))
     fireEvent.click(screen.getByTestId('vorschlag-verwerfen-lstb.bruttoarbeitslohn'))
+    confirmAction('proposalDiscard')
     await waitFor(() => expect(decisions[1]).toEqual({ key: 'lstb.bruttoarbeitslohn', body: { decision: 'verwerfen' } }))
   })
 
@@ -199,6 +201,7 @@ describe('BestaetigungScreen (REQ-032, ADR-0052 §6/§7)', () => {
       renderScreen()
 
       fireEvent.click(await screen.findByTestId('aufgabe-verwerfen-task-1'))
+      confirmAction('taskDiscard')
 
       expect(await screen.findByText('Alles bestätigt. Es gibt nichts mehr zu prüfen.')).toBeTruthy()
       expect(decisions).toEqual([{ decision: 'verworfen' }])

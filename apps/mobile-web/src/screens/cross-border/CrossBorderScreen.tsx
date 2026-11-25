@@ -2,7 +2,7 @@ import { useTranslation } from 'react-i18next'
 import { useBreakpoint } from '@steuereule/ui'
 import { ENTRIES, nextStepFor } from '@steuereule/core'
 import { APP_NS } from '../../i18n/resources'
-import { CURRENT_TAX_YEAR } from '../../config/taxYear'
+import { runningTaxYear } from '../../config/taxYear'
 import { Text } from 'react-native'
 import { useTheme } from '@steuereule/ui'
 import { LoadingState, LoadFailedState } from '../shared/ScreenState'
@@ -21,7 +21,7 @@ export interface CrossBorderScreenProps {
 
 const SEGMENT_CH = ENTRIES['segment-ch']
 
-export function CrossBorderScreen({ onDone, onBack, taxYear = CURRENT_TAX_YEAR, partnerName }: CrossBorderScreenProps) {
+export function CrossBorderScreen({ onDone, onBack, taxYear = runningTaxYear(), partnerName }: CrossBorderScreenProps) {
   const bp = useBreakpoint()
   const { t: tr } = useTranslation(APP_NS)
   const forPartner = partnerName !== undefined

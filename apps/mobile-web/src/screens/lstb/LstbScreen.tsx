@@ -14,7 +14,7 @@ import {
 } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
 import { formatCalculation } from '../../lib/lstb/formatCalculation'
-import { CURRENT_TAX_YEAR } from '../../config/taxYear'
+import { runningTaxYear } from '../../config/taxYear'
 import { LoadingState, LoadFailedState } from '../shared/ScreenState'
 import { BackButton, BackButtonSpacer } from '../shared/BackButton'
 import { screenHeaderStyles, unclearableFieldStyles } from '../shared/screenStyles'
@@ -42,7 +42,7 @@ export interface LstbScreenProps {
   readonly onSwitchTaxYear?: (year: number) => void
 }
 
-export function LstbScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TAX_YEAR, partnerName, onSwitchTaxYear }: LstbScreenProps) {
+export function LstbScreen({ onDone = () => {}, onBack, taxYear = runningTaxYear(), partnerName, onSwitchTaxYear }: LstbScreenProps) {
   const params = partnerName === undefined ? undefined : ({ person: 'B' } as const)
   const expectedPerson: 'A' | 'B' = partnerName === undefined ? 'A' : 'B'
   const bp = useBreakpoint()

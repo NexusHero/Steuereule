@@ -2,6 +2,7 @@ import { Global, Module } from '@nestjs/common'
 import { APP_GUARD } from '@nestjs/core'
 import { PrismaGuestActivityRepository } from '../guest/guest-activity.repository.prisma.js'
 import { GUEST_ACTIVITY_RECORDER, GuestActivityNotes } from '../guest/guest-retention.js'
+import { systemDatabaseClient } from '../common/database-identity.js'
 import { ENCRYPTED_PRISMA, type EncryptedPrismaClient } from '../prisma/encrypted-prisma.provider.js'
 import { PrismaModule } from '../prisma/prisma.module.js'
 import { PrismaService } from '../prisma/prisma.service.js'
@@ -44,14 +45,15 @@ import { PrismaStepUpGrantRepository } from './step-up-grant.repository.prisma.j
       inject: [ENCRYPTED_PRISMA, EMAIL_SENDER, GUEST_ACTIVITY_RECORDER, PostgresByteaStorageAdapter],
       useFactory: (prisma: EncryptedPrismaClient, emailSender: EmailSender, recorder: GuestActivityNotes, receiptFiles: PostgresByteaStorageAdapter) =>
         createBetterAuth({
-          prisma,
+          // better-auth's adapter and hooks look rows up across accounts (e-mail hash, session token): a system path (P11).
+          prisma: systemDatabaseClient(prisma, 'better-auth'),
           secret: resolveBetterAuthSecret(),
           baseUrl: resolveBetterAuthUrl(),
           trustedOrigins: resolveCorsOrigins(),
           webAppUrl: resolveWebAppUrl(),
           emailSender,
           // A sign-in or sign-up is traffic too: it gives the guest sweep a chance to run (ADR-0029, ADR-0109).
-          onSweepOpportunity: () => recorder.afterTouch?.(),
+          onSweepOpportunity: () => recorder.seen(),
           // A guest's receipt files are re-encrypted for the account at the first sign-in (API-20).
           receiptFiles,
           googleClientId: resolveGoogleClientId(),

@@ -12,6 +12,7 @@ import { createAppI18n } from '../../i18n/app-i18n'
 import { server } from '../../test-msw-server'
 import { CheckoutPage } from './CheckoutPage'
 import { BASE_PROFILE, BASE_URL, CATALOGUES, renderBusiness, useBusinessDefaults, useCatalogues, YEAR } from './businessTestKit'
+import { confirmAction } from '../../confirm/confirmInTest'
 
 const SMALL_OK = { eligible: true, priorYearLimitEur: 25_000, currentYearLimitEur: 100_000, crossed: null, foundingYear: false, priorYearKnown: true, turnoverEur: 0, matchesProfile: true }
 
@@ -617,6 +618,7 @@ describe('the partnership shares', () => {
     expect(row.textContent).toContain('Alt GbR · Gewerbe')
     expect(row.textContent).toContain('−1.500,00')
     fireEvent.click(screen.getByTestId('beteiligung-entfernen-0'))
+    confirmAction('shareRemove')
     fireEvent.change(screen.getByTestId('beteiligung-name'), { target: { value: 'Neu OHG' } })
     fireEvent.change(screen.getByTestId('beteiligung-gewinn'), { target: { value: '8000,5' } })
     fireEvent.click(screen.getByTestId('beteiligung-art-gewerbe'))

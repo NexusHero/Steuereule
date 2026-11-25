@@ -10,6 +10,7 @@ import { http, HttpResponse } from 'msw'
 import { createAppI18n } from '../../i18n/app-i18n'
 import { server } from '../../test-msw-server'
 import { ChildrenScreen, type ChildItem } from './ChildrenScreen'
+import { confirmAction } from '../../confirm/confirmInTest'
 
 const LINA: ChildItem = { id: 'kind-1', sequenceNumber: 1, firstName: 'Lina', lastName: 'Muster', geburtsdatum: '2016-05-12', taxId: '12345678901', childBenefitClaimEur: '3000' }
 
@@ -75,6 +76,7 @@ describe('KinderScreen (connected)', () => {
     await waitFor(() => expect(calls).toContain('PUT kind-1 Lena'))
 
     fireEvent.click(await screen.findByLabelText(/Kind .* löschen/))
+    confirmAction('childDelete')
     await waitFor(() => expect(calls).toContain('DELETE kind-1'))
   })
 
@@ -158,6 +160,7 @@ describe('KinderScreen — a save that fails', () => {
     const onDelete = vi.fn().mockRejectedValue(new Error('offline'))
     renderView({ onDeleteChild: onDelete })
     fireEvent.click(screen.getByLabelText('Kind Lina löschen'))
+    confirmAction('childDelete')
     await waitFor(() => expect(onDelete).toHaveBeenCalledWith('kind-1'))
     expect(screen.getByText('1. Lina Muster')).toBeTruthy()
   })
@@ -177,6 +180,7 @@ describe('KinderScreen — a save that fails', () => {
     fireEvent.click(screen.getByTestId('kind-speichern'))
     expect(await screen.findByText('1. Noah Muster')).toBeTruthy()
     fireEvent.click(screen.getByLabelText('Kind Noah löschen'))
+    confirmAction('childDelete')
     await waitFor(() => expect(screen.queryByText('1. Noah Muster')).toBeNull())
   })
 })

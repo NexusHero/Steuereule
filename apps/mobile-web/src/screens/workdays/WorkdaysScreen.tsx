@@ -28,7 +28,7 @@ import {
 } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
 import { MaskLessonHint } from '../history/MaskLessonHint'
-import { CURRENT_TAX_YEAR } from '../../config/taxYear'
+import { runningTaxYear } from '../../config/taxYear'
 import { BackButton, BackButtonSpacer } from '../shared/BackButton'
 import { LoadFailedState, LoadingState } from '../shared/ScreenState'
 import { integerFrom } from '../shared/integer'
@@ -47,7 +47,7 @@ export interface WorkdaysScreenProps {
   readonly partnerName?: string
 }
 
-export function WorkdaysScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TAX_YEAR, partnerName }: WorkdaysScreenProps) {
+export function WorkdaysScreen({ onDone = () => {}, onBack, taxYear = runningTaxYear(), partnerName }: WorkdaysScreenProps) {
   const bp = useBreakpoint()
   const { t: tr } = useTranslation(APP_NS)
   const query = useCommuteControllerGet(taxYear, partnerName === undefined ? undefined : { person: 'B' })

@@ -107,6 +107,8 @@ export async function run(ctx) {
   await page.locator(`[data-testid="aufgabe-${done.id}"]`).waitFor({ state: 'detached', timeout: 15_000 }).catch(() => fail('Row T2: the done task should leave the list'))
   decided = decide()
   await page.locator('[data-testid^="aufgabe-verwerfen-"]').first().click()
+  // WEB-37/WEB-38: the action asks first; confirm it.
+  await page.locator('[data-testid="rueckfrage-taskDiscard-confirm"]').click()
   if (!(await decided).ok()) fail('Row T2: discarding the task should succeed')
   await page.locator(tid('aufgaben')).waitFor({ state: 'detached', timeout: 15_000 }).catch(() => fail('Row T2: with no open task the card should go'))
   const status = (id) => sql(`SELECT status FROM "AssistentAufgabe" WHERE id = '${id}';`).trim()

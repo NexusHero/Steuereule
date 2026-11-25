@@ -14,6 +14,7 @@ import {
   type HouseholdResponseDto,
 } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
+import { useConfirmAction } from '../../confirm/useConfirmAction'
 import { isoToGerman } from '../master-data/masterDataMapping'
 import { useApiFailureMessage } from '../../net/apiFailure'
 import { InlineLoadFailure } from '../shared/InlineLoadFailure'
@@ -40,7 +41,8 @@ export function HouseholdChildrenSection({ taxYear, onChanged }: HouseholdChildr
   const leave = useHouseholdControllerLeave()
   const remove = useHouseholdControllerDelete()
   const [selected, setSelected] = useState<ReadonlySet<string>>(new Set())
-  const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
+  const confirmLeave = useConfirmAction('householdLeave')
+  const confirmDelete = useConfirmAction('householdDelete')
   const [failed, setFailed] = useState<unknown>(null)
   const failureMessage = useApiFailureMessage()
 
@@ -144,34 +146,13 @@ export function HouseholdChildrenSection({ taxYear, onChanged }: HouseholdChildr
               ) : null}
               {p.asksForEducation ? <Text style={styles.hint}>{tr('haushalt.kinder.ausbildungHinweis')}</Text> : null}
               <View style={styles.row}>
-                <Pressable accessibilityRole="button" onPress={() => void run(() => leave.mutateAsync({ jahr: taxYear, personId: p.personId }))} testID={`haushalt-nicht-mehr-dabei-${index}`}>
+                <Pressable accessibilityRole="button" onPress={() => confirmLeave.ask(() => void run(() => leave.mutateAsync({ jahr: taxYear, personId: p.personId })), { name: p.firstName, jahr: taxYear })} testID={`haushalt-nicht-mehr-dabei-${index}`}>
                   <Text style={styles.link}>{tr('haushalt.nichtMehrDabei', { year: taxYear })}</Text>
                 </Pressable>
-                <Pressable accessibilityRole="button" onPress={() => setConfirmDelete(p.personId)} testID={`haushalt-loeschen-${index}`}>
+                <Pressable accessibilityRole="button" onPress={() => confirmDelete.ask(() => void run(() => remove.mutateAsync({ jahr: taxYear, personId: p.personId })), { name: p.firstName })} testID={`haushalt-loeschen-${index}`}>
                   <Text style={styles.danger}>{tr('haushalt.loeschen')}</Text>
                 </Pressable>
               </View>
-              {confirmDelete === p.personId ? (
-                <View style={styles.warning} accessibilityRole="alert" testID="haushalt-loeschen-warnung">
-                  <Text style={styles.text}>{tr('haushalt.loeschenWarnung', { name: p.firstName })}</Text>
-                  <View style={styles.row}>
-                    <Button
-                      variant="nacht"
-                      onPress={() => {
-                        setConfirmDelete(null)
-                        void run(() => remove.mutateAsync({ jahr: taxYear, personId: p.personId }))
-                      }}
-                      style={styles.button}
-                      testID="haushalt-loeschen-bestaetigen"
-                    >
-                      {tr('haushalt.loeschenBestaetigen')}
-                    </Button>
-                    <Button variant="ghost" onPress={() => setConfirmDelete(null)} style={styles.button} testID="haushalt-loeschen-abbrechen">
-                      {tr('haushalt.abbrechen')}
-                    </Button>
-                  </View>
-                </View>
-              ) : null}
             </View>
           ))}
         </View>
@@ -183,6 +164,8 @@ export function HouseholdChildrenSection({ taxYear, onChanged }: HouseholdChildr
           {failureMessage(failed, { unknown: tr('haushalt.fehler') })}
         </Text>
       ) : null}
+      {confirmLeave.dialog}
+      {confirmDelete.dialog}
     </Card>
   )
 }
@@ -197,7 +180,6 @@ function makeStyles(t: UiTheme) {
     choice: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: t.space.s2, paddingVertical: t.space.s1 } as ViewStyle,
     check: { ...t.type.emphasis, color: t.color.tinte } as TextStyle,
     present: { gap: t.space.s1, paddingVertical: t.space.s2, borderTopWidth: 1, borderTopColor: t.color.linieWeich } as ViewStyle,
-    warning: { gap: t.space.s2, padding: t.space.s3, borderRadius: t.radius.m, backgroundColor: t.color.fehlerWeich } as ViewStyle,
     button: { width: 'auto', flexGrow: 1 } as ViewStyle,
     text: { ...t.type.body, color: t.color.tinte, flexShrink: 1 } as TextStyle,
     hint: { ...t.type.caption, color: t.color.tinte2 } as TextStyle,

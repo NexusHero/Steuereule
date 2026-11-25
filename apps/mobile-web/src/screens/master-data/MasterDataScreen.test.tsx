@@ -8,6 +8,7 @@ import type { LinkResponseDto, MasterDataResponseDto } from '@steuereule/api-cli
 import { createAppI18n } from '../../i18n/app-i18n'
 import { server } from '../../test-msw-server'
 import { MasterDataScreen } from './MasterDataScreen'
+import { confirmAction } from '../../confirm/confirmInTest'
 
 const LEER: MasterDataResponseDto = {
   geburtsdatum: null,
@@ -33,7 +34,7 @@ function renderScreen(taxYear?: number) {
     <QueryClientProvider client={queryClient}>
       <I18nextProvider i18n={createAppI18n('de')}>
         <ThemeProvider mode="light">
-          <MasterDataScreen onBack={() => {}} {...(taxYear ? { taxYear } : {})} />
+          <MasterDataScreen onBack={() => {}} taxYear={taxYear ?? 2026} />
         </ThemeProvider>
       </I18nextProvider>
     </QueryClientProvider>,
@@ -583,6 +584,7 @@ describe('StammdatenScreen small helpers (#452 slice 5)', () => {
     renderScreen(2026)
     expect((await screen.findByTestId('kopplung-verknuepft')).textContent).toContain('seit 2025')
     fireEvent.click(screen.getByTestId('kopplung-beenden'))
+    confirmAction('endPartnerLink')
     await waitFor(() => expect(ended).toBe(1))
   })
 

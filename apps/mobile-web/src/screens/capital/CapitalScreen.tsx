@@ -22,7 +22,7 @@ import { APP_NS } from '../../i18n/resources'
 import { UnclearableNumberField } from '../shared/UnclearableNumberField'
 import { screenHeaderStyles } from '../shared/screenStyles'
 import { ItemNotice } from '../shared/ItemNotice'
-import { CURRENT_TAX_YEAR } from '../../config/taxYear'
+import { runningTaxYear } from '../../config/taxYear'
 import { missingItems } from '../cockpit/estimateMissing'
 import { CatalogScreen } from '../catalog/CatalogScreen'
 import { LoadingState, LoadFailedState } from '../shared/ScreenState'
@@ -39,7 +39,7 @@ export interface CapitalScreenProps {
   readonly taxYear?: number
 }
 
-export function CapitalScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TAX_YEAR }: CapitalScreenProps) {
+export function CapitalScreen({ onDone = () => {}, onBack, taxYear = runningTaxYear() }: CapitalScreenProps) {
   const bp = useBreakpoint()
   const t = useTheme()
   const styles = makeStyles(t)

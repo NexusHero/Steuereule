@@ -18,6 +18,9 @@ export const uiResources = {
       sheet: {
         schliessen: 'Schließen',
       },
+      confirm: {
+        abbrechen: 'Abbrechen',
+      },
     },
   },
   en: {
@@ -36,6 +39,9 @@ export const uiResources = {
       },
       sheet: {
         schliessen: 'Close',
+      },
+      confirm: {
+        abbrechen: 'Cancel',
       },
     },
   },

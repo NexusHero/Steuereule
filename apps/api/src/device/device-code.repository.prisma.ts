@@ -1,5 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common'
 import { ENCRYPTED_PRISMA, type EncryptedPrismaClient } from '../prisma/encrypted-prisma.provider.js'
+import { systemDatabaseClient } from '../common/database-identity.js'
 import type {
   DeviceCodeRepository,
   DeviceCodeRequestContext,
@@ -12,7 +13,12 @@ import type {
  */
 @Injectable()
 export class PrismaDeviceCodeRepository implements DeviceCodeRepository {
-  constructor(@Inject(ENCRYPTED_PRISMA) private readonly prisma: EncryptedPrismaClient) {}
+  private readonly prisma: EncryptedPrismaClient
+
+  constructor(@Inject(ENCRYPTED_PRISMA) prisma: EncryptedPrismaClient) {
+    // A system path as a whole (P11): device-flow. It also stamps the minted session (API-1).
+    this.prisma = systemDatabaseClient(prisma, 'device-flow')
+  }
 
   async recordRequestContext(deviceCode: string, context: DeviceCodeRequestContext): Promise<void> {
     await this.prisma.deviceCode.update({

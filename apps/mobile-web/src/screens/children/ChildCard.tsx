@@ -2,6 +2,7 @@
 import { Pressable, Text, View } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { Card } from '@steuereule/ui'
+import { useConfirmAction } from '../../confirm/useConfirmAction'
 import { formatEuro } from '@steuereule/core'
 import { isoToGerman } from '../master-data/masterDataMapping'
 import { APP_NS } from '../../i18n/resources'
@@ -20,6 +21,8 @@ export interface ChildCardProps {
 
 export function ChildCard({ k, index, taxYear, styles, onEdit, onDelete }: ChildCardProps) {
   const { t: tr } = useTranslation(APP_NS)
+  // WEB-18: deleting a child asks first and says what goes with it.
+  const confirmDelete = useConfirmAction('childDelete')
   return (
     <Card style={styles.kindCard}>
       <View style={styles.kindHeader}>
@@ -37,7 +40,8 @@ export function ChildCard({ k, index, taxYear, styles, onEdit, onDelete }: Child
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={`Kind ${k.firstName} löschen`}
-            onPress={onDelete}
+            onPress={() => confirmDelete.ask(onDelete, { name: `${k.firstName} ${k.lastName}`.trim(), jahr: taxYear })}
+            testID={`kind-loeschen-${k.id}`}
           >
             <Text style={styles.deleteButton}>{tr('kinder.delete', 'Löschen')}</Text>
           </Pressable>
@@ -75,6 +79,7 @@ export function ChildCard({ k, index, taxYear, styles, onEdit, onDelete }: Child
           })}
         </Text>
       ) : null}
+      {confirmDelete.dialog}
     </Card>
   )
 }

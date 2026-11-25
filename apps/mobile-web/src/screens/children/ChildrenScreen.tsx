@@ -6,7 +6,7 @@ import { useTranslation } from 'react-i18next'
 import { Button, useBreakpoint, useTheme } from '@steuereule/ui'
 import { type GermanState } from '@steuereule/core'
 import { APP_NS } from '../../i18n/resources'
-import { CURRENT_TAX_YEAR } from '../../config/taxYear'
+import { runningTaxYear } from '../../config/taxYear'
 import { BackButton, BackButtonSpacer } from '../shared/BackButton'
 import { LoadFailedState, LoadingState } from '../shared/ScreenState'
 import { InlineLoadFailure } from '../shared/InlineLoadFailure'
@@ -51,7 +51,7 @@ export function ChildrenScreen(props: ChildrenScreenProps) {
   return <ConnectedKinderScreen {...props} />
 }
 
-function ConnectedKinderScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TAX_YEAR }: ChildrenScreenProps) {
+function ConnectedKinderScreen({ onDone = () => {}, onBack, taxYear = runningTaxYear() }: ChildrenScreenProps) {
   const bp = useBreakpoint()
   const { t: tr } = useTranslation(APP_NS)
   const {
@@ -122,7 +122,7 @@ function KinderScreenView({
   householdSlot = null,
   onDone = () => {},
   onBack,
-  taxYear = CURRENT_TAX_YEAR,
+  taxYear = runningTaxYear(),
   initialKinder = [],
   onAddChild,
   onSaveChild,

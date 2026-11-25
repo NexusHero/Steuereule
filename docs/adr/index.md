@@ -129,6 +129,7 @@ boot-ordering invariant are detailed in [`docs/arc42/README.md`](../arc42/README
 | 0108 | Hardening from the post-merge review (fileless receipt-row cap, per-account /verify-password limit) | Accepted |
 | 0109 | Hardening after the security report of 2026-11-24 (shared limits, Redis by default, upload admission, guest retention, password reset, sign-up without an account oracle, dependency gate, two-stage image, alerting, staging and production) | Accepted |
 | 0110 | Per-user keys for the field-encrypted columns (own Prisma extension, keystore key per row owner, staged migration) | Accepted |
+| 0111 | Beta readiness after the completeness audit of 2026-11-24 (throwing API client and partial saves, central user-wins path, MCP tool gate and upload, payment contract and refunds, personal-data registry and legal holds, declared production configuration, route and DTO locks, rewritten website) | Accepted |
 
 See also the [Tech Radar](./tech-radar.md).
 

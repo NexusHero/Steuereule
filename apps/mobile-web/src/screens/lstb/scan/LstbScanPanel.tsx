@@ -2,6 +2,7 @@ import { View, Text, type TextStyle, type ViewStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { Button, Card, Chip, useTheme, type UiTheme } from '@steuereule/ui'
 import { APP_NS } from '../../../i18n/resources'
+import { useConfirmAction } from '../../../confirm/useConfirmAction'
 import { DocumentAssignmentCard } from '../../receipts/DocumentAssignmentCard'
 import { ReceiptFileModal } from '../../receipts/ReceiptFileModal'
 import { ReceiptPickerButton } from '../../shared/ReceiptPickerButton'
@@ -20,6 +21,7 @@ export function LstbScanPanel({ scan, taxYear, onSwitchTaxYear }: LstbScanPanelP
   const styles = makeStyles(t)
   const { t: tr } = useTranslation(APP_NS)
   const { stagedScan, evaluation } = scan
+  const confirmDiscard = useConfirmAction('lstbDiscardDraft')
 
   return (
     <>
@@ -192,7 +194,7 @@ export function LstbScanPanel({ scan, taxYear, onSwitchTaxYear }: LstbScanPanelP
           )}
           <Button
             variant="leise"
-            onPress={() => void scan.discardDraft()}
+            onPress={() => confirmDiscard.ask(() => void scan.discardDraft(), { jahr: taxYear })}
             style={styles.compactButton}
             testID="lstb-scan-discard"
           >
@@ -209,6 +211,7 @@ export function LstbScanPanel({ scan, taxYear, onSwitchTaxYear }: LstbScanPanelP
         onClose={() => scan.setPreviewOpen(false)}
       />
     )}
+    {confirmDiscard.dialog}
     </>
   )
 }

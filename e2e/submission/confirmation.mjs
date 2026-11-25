@@ -56,6 +56,8 @@ async function main() {
     // Dismiss another: the confirmed value stays, the proposal disappears.
     const before = await lstbValue(dismissKey)
     await page.locator(`[data-testid="vorschlag-verwerfen-${dismissKey}"]`).click()
+    // WEB-37/WEB-38: the action asks first; confirm it.
+    await page.locator('[data-testid="rueckfrage-proposalDiscard-confirm"]').click()
     await page.locator(`[data-testid="vorschlag-verwerfen-${dismissKey}"]`).waitFor({ state: 'detached', timeout: 10_000 })
     if ((await lstbValue(dismissKey)) !== before) fail('dismissing a proposal must keep the confirmed value')
     console.log(`[${TAG}] ✅ vorschlag-verwerfen — ${field(dismissKey)} kept ${before?.value ?? before}`)

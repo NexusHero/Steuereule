@@ -2,7 +2,7 @@ import { ScrollView, View, Text, type ViewStyle, type TextStyle } from 'react-na
 import { useTranslation } from 'react-i18next'
 import { Button, useTheme, useBreakpoint, type UiTheme } from '@steuereule/ui'
 import { APP_NS } from '../../i18n/resources'
-import { CURRENT_TAX_YEAR } from '../../config/taxYear'
+import { runningTaxYear } from '../../config/taxYear'
 import { LoadingState, LoadFailedState } from '../shared/ScreenState'
 import { BackButton, BackButtonSpacer } from '../shared/BackButton'
 import { usePlausibility } from './usePlausibility'
@@ -14,7 +14,7 @@ export interface PlausibilityScreenProps {
   readonly taxYear?: number
 }
 
-export function PlausibilityScreen({ onBack, onDone, taxYear = CURRENT_TAX_YEAR }: PlausibilityScreenProps) {
+export function PlausibilityScreen({ onBack, onDone, taxYear = runningTaxYear() }: PlausibilityScreenProps) {
   const bp = useBreakpoint()
   const t = useTheme()
   const styles = makeStyles(t)

@@ -12,7 +12,7 @@ import {
   type CockpitSummaryDto,
 } from '@steuereule/api-client'
 import type { APP_NS } from '../../i18n/resources'
-import { CURRENT_TAX_YEAR } from '../../config/taxYear'
+import { runningTaxYear } from '../../config/taxYear'
 import { pathFromAnswers } from '../funnel/KontoWandScreen'
 import { usePlausibility } from '../plausibility/usePlausibility'
 import { tileRevisitFlag, useCockpitTileFacts } from './CockpitTiles'
@@ -41,7 +41,7 @@ export type CockpitView =
 /** The Cockpit's reads and everything derived from them; the screen only picks the view. */
 export function useCockpit(
   {
-    taxYear = CURRENT_TAX_YEAR,
+    taxYear = runningTaxYear(),
     isSignedIn = true,
     sessionPending = false,
     onOpenInterview = () => {},

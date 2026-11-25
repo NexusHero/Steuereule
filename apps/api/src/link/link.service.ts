@@ -2,6 +2,7 @@ import { Inject, Injectable, Optional } from '@nestjs/common'
 import { HouseholdAccessService, linkActiveIn } from '../household-core/household-access.service.js'
 import { ForbiddenError, InvalidInputError, NotFoundError } from '../common/domain-error.js'
 import { randomBytes } from 'node:crypto'
+import { withSystemDatabaseAccess } from '../common/database-identity.js'
 import { AuditService } from '../audit/audit.service.js'
 import { PROFILE_REPOSITORY, type ProfileRepository } from '../profile/profile.repository.js'
 import {
@@ -270,6 +271,13 @@ export class LinkService {
   }
 
   async joinWithCode(userId: string, taxYear: number, code: string, now = new Date()): Promise<LinkResponseDto> {
+    // The code sits on person A's row, and redeeming it moves A's shadow data to B and links A's household:
+    // rows of another account, so a system path (P11). Reading the result afterwards runs as B again.
+    await withSystemDatabaseAccess('partner-invitation', () => this.redeemInvitation(userId, taxYear, code, now))
+    return this.get(userId, taxYear)
+  }
+
+  private async redeemInvitation(userId: string, taxYear: number, code: string, now: Date): Promise<void> {
     const row = await this.repository.findByInvitationCode(code)
     if (!row || row.taxYear !== taxYear) {
       throw new NotFoundError('INVITATION_CODE_INVALID', 'The invitation code is invalid.')
@@ -292,7 +300,6 @@ export class LinkService {
     if (!claimed) throw new NotFoundError('INVITATION_CODE_INVALID', 'The invitation code is invalid.')
     if (ownPlaceholder) await this.repository.delete(userId, taxYear)
     await this.household?.linkPartner(row.personAUserId, userId, taxYear)
-    return this.get(userId, taxYear)
   }
 
   /** Person B agrees, in B's own app, to share this year with Person A (decision 3, API-3). */
