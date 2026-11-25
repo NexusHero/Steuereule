@@ -267,6 +267,7 @@ const NEXT_STEPS: Readonly<Record<string, string>> = {
   PRINTOUT_BUDGET: 'Arbeite zuerst die Lücken ab und prüfe danach noch einmal; steuerbericht und pruefen nennen dieselben Lücken.',
   USER_ONLY: 'Das trägt nur der Nutzer in der App ein; hinterlasse ihm eine Aufgabe mit aufgabe_fuer_nutzer.',
   PAYMENT_NOT_CONFIGURED: 'Sage dem Nutzer, dass die Bezahlung gerade nicht verfügbar ist.',
+  UPLOAD_BUSY: 'Warte ein paar Sekunden und lade den Beleg dann noch einmal hoch. Lade Belege nacheinander hoch, nicht mehrere gleichzeitig.',
 }
 
 const NEXT_BY_KIND: Readonly<Record<DomainErrorKind, string>> = {

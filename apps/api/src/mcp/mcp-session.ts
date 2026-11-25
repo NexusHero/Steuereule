@@ -53,8 +53,8 @@ export interface McpDeps {
   readonly locks: KeyedLock
   /** Check and delete of an own record in one transaction (H2-28). */
   readonly transactions: TransactionRunner
-  /** The upload admission of the REST route: a few uploads at once per instance, one per account. */
-  readonly admission?: Pick<UploadAdmission, 'acquire'> | undefined
+  /** The upload admission of the REST route: a few uploads at once per instance, one per account (ADR-0109). */
+  readonly admission: Pick<UploadAdmission, 'acquire'>
   readonly report?: McpReportService | undefined
   /** The joint return (ADR-0054): whose data a value for Person B goes to. */
   readonly link?: Pick<LinkService, 'spouseForAdvisor' | 'dataUser'> | undefined

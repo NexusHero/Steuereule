@@ -4,11 +4,13 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js'
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js'
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { AuditService } from '../../src/audit/audit.service.js'
+import { createResettableRateLimitStorage } from '../../src/auth/rate-limit-storage.js'
 import { inProcessKeyedLock } from '../../src/common/keyed-lock.js'
 import { passThroughTransactionRunner } from '../../src/common/transaction-runner.js'
 import { McpRateLimiter } from '../../src/mcp/mcp-rate-limit.js'
 import type { AssistantSessionInfo, McpDeps, McpSession } from '../../src/mcp/mcp-session.js'
 import { McpService } from '../../src/mcp/mcp.service.js'
+import { UploadAdmission } from '../../src/receipt/upload-admission.js'
 import { installToolGate, MCP_SCOPE } from '../../src/mcp/tool-kit.js'
 import { FakeAuditRepository } from '../fakes/fake-audit.repository.js'
 
@@ -30,9 +32,12 @@ function notGiven(name: string): never {
   ) as never
 }
 
+/** The upload admission of the REST route (ADR-0109), counting in this process. */
+export const uploadAdmission = (): UploadAdmission => new UploadAdmission({ rateLimitStorage: createResettableRateLimitStorage({ redisUrl: '' }) } as never)
+
 /**
- * The collaborators of the tools: what the test gives, an audit log, lock and transaction runner that work in
- * memory, and for every other required one a stand-in that fails when a tool reaches it.
+ * The collaborators of the tools: what the test gives, an audit log, lock, transaction runner and upload
+ * admission that work in memory, and for every other required one a stand-in that fails when a tool reaches it.
  */
 export function mcpTestDeps(overrides: Partial<McpDeps> = {}): McpDeps {
   return {
@@ -47,6 +52,7 @@ export function mcpTestDeps(overrides: Partial<McpDeps> = {}): McpDeps {
     audit: new AuditService(new FakeAuditRepository()),
     locks: inProcessKeyedLock(),
     transactions: passThroughTransactionRunner,
+    admission: uploadAdmission(),
     ...overrides,
   }
 }

@@ -13,11 +13,12 @@ import { installToolGate, MCP_SCOPE, normalisedResult } from '../src/mcp/tool-ki
 import { MAX_CHILDREN_BY_ASSISTANT, registerChildTools } from '../src/mcp/tools/child-tools.js'
 import { registerComfortTools } from '../src/mcp/tools/comfort-tools.js'
 import { MAX_RENTAL_OBJECTS_BY_ASSISTANT, registerRentalTools } from '../src/mcp/tools/rental-tools.js'
+import { registerReceiptTools } from '../src/mcp/tools/receipt-tools.js'
 import { registerReportTools, registerStatusTools } from '../src/mcp/tools/status-tools.js'
 import { registerTaskTools } from '../src/mcp/tools/task-tools.js'
 import { FakeAssistantTaskRepository } from './fakes/fake-assistant-task.repository.js'
 import { FakeAuditRepository } from './fakes/fake-audit.repository.js'
-import { connectMcpTools } from './support/mcp-client.js'
+import { connectMcpTools, uploadAdmission } from './support/mcp-client.js'
 
 const USER = 'u-p4'
 const YEAR = 2025
@@ -107,6 +108,71 @@ describe('caps under a lock (MCP-23, H2-20, H2-28)', () => {
     expect((await call('aufgabe_zuruecknehmen', { taxYear: YEAR, id: own })).body).toMatchObject({ ok: true, entfernt: own })
     expect((await call('aufgabe_zuruecknehmen', { taxYear: YEAR, id: own })).body).toMatchObject({ code: 'NO_RECORD' })
     expect((await tasks.listOpen(USER, YEAR)).length).toBe(19)
+  })
+})
+
+describe('beleg_hochladen takes the upload admission of the REST route (ADR-0109)', () => {
+  const upload = { dateiBase64: Buffer.from('%PDF-1.4\n%%EOF').toString('base64'), fileName: 'beleg.pdf' }
+  const uploader: AssistantSessionInfo = { clientId: 'client-p4', clientName: 'Claude', scopes: [MCP_SCOPE.receipts] }
+
+  /** Uploads that stay in flight until the test lets them through. */
+  function heldUploads() {
+    const waiting: (() => void)[] = []
+    let stored = 0
+    const receipts = {
+      upload: async () => {
+        await new Promise<void>((resolve) => waiting.push(resolve))
+        stored += 1
+        return { id: `beleg-${stored}`, kind: null, mimeType: 'application/pdf', duplicateOf: null }
+      },
+    }
+    return { receipts, waiting, inFlight: async (count: number) => vi.waitFor(() => expect(waiting).toHaveLength(count)) }
+  }
+
+  it('refuses a second upload of the same account while the first is in flight, as the route does, and takes the next one after it', async () => {
+    const admission = uploadAdmission()
+    const { receipts, waiting, inFlight } = heldUploads()
+    const connect = (userId: string) => connectMcpTools(registerReceiptTools, { userId, assistant: uploader, deps: { receipts: receipts as never, admission } })
+    const { call } = await connect(USER)
+
+    const first = call('beleg_hochladen', upload)
+    await inFlight(1)
+    const second = await call('beleg_hochladen', upload)
+    // The refusal of the route: the same code and reason `UploadAdmission.acquire` gives a second request.
+    const busy = (() => {
+      try {
+        admission.acquire(USER)
+        return null
+      } catch (error) {
+        return error as { code: string; message: string }
+      }
+    })()
+    expect(busy?.code).toBe('UPLOAD_BUSY')
+    expect(second.isError).toBe(true)
+    expect(second.body).toMatchObject({ ok: false, code: 'UPLOAD_BUSY', error: `UPLOAD_BUSY: ${busy!.message}`, naechsterSchritt: expect.stringContaining('nacheinander') })
+    expect(waiting).toHaveLength(1)
+
+    // Another account is not held up by this one.
+    const other = (await connect('u-p4-other')).call('beleg_hochladen', upload)
+    await inFlight(2)
+
+    for (const letThrough of waiting) letThrough()
+    expect((await first).body).toMatchObject({ belegId: 'beleg-1', status: 'hochgeladen' })
+    expect((await other).isError).toBe(false)
+
+    const third = call('beleg_hochladen', upload)
+    await inFlight(3)
+    waiting[2]!()
+    expect((await third).isError).toBe(false)
+  })
+
+  it('gives the slot back when the upload fails', async () => {
+    const admission = uploadAdmission()
+    const receipts = { upload: vi.fn().mockRejectedValueOnce(new Error('storage down')).mockResolvedValue({ id: 'beleg-1', kind: null, mimeType: 'application/pdf', duplicateOf: null }) }
+    const { call } = await connectMcpTools(registerReceiptTools, { userId: USER, assistant: uploader, deps: { receipts: receipts as never, admission } })
+
+    expect((await call('beleg_hochladen', upload)).body).toMatchObject({ code: 'INTERNAL_ERROR' })
+    expect((await call('beleg_hochladen', upload)).body).toMatchObject({ belegId: 'beleg-1' })
   })
 })
 

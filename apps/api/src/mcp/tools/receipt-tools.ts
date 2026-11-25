@@ -40,8 +40,9 @@ export function registerReceiptTools(session: McpSession, deps: McpDeps): void {
     async ({ dateiBase64, fileName, kind, taxYear, belegdatum, zahlungsdatum }) => {
       const buffer = decodeBase64(dateiBase64)
       if (buffer === null) return refused('RECEIPT_FILE_INVALID: `dateiBase64` ist kein gültiges Base64.', 'Kodiere die Datei als Standard-Base64 (RFC 4648) ohne Präfix wie „data:…;base64,“.')
-      // The REST route's admission: a few uploads at once per instance, one per account (ADR-0109).
-      const release = deps.admission?.acquire(userId) ?? (() => undefined)
+      // The REST route's admission: a few uploads at once per instance, one per account (ADR-0109). A call
+      // over it is refused with UPLOAD_BUSY, as on the route.
+      const release = deps.admission.acquire(userId)
       try {
         const created = await deps.receipts.upload(userId, { buffer, fileName, kind, belegdatum, zahlungsdatum, uploadedByClientId: assistant.clientId })
         if (taxYear !== undefined) await deps.receipts.setAssignment(userId, created.id, { taxYear })
