@@ -358,13 +358,24 @@ stage "Datenbank-Benutzer"
 if secret_has_value MIGRATE_DATABASE_URL; then
   note "MIGRATE_DATABASE_URL ist bereits gesetzt, der Migrations-Benutzer bleibt unverändert."
 elif secret_has_value DATABASE_URL; then
-  # A setup from before the split: DATABASE_URL still holds the owner. It becomes the migration login, and the
-  # API gets a login of its own below.
-  put_secret MIGRATE_DATABASE_URL "$(gcloud secrets versions access latest --secret DATABASE_URL --project "$GCP_PROJECT_ID")"
+  # A setup from before the split: DATABASE_URL still holds the owner, and the API's service account can read every
+  # version of that secret. The owner gets a new password that only MIGRATE_DATABASE_URL holds, the API gets a
+  # login of its own, and the old versions of DATABASE_URL (with the owner's old password) are destroyed.
+  OWNER_DB_USER="$(gcloud secrets versions access latest --secret DATABASE_URL --project "$GCP_PROJECT_ID" | sed -E 's#^postgres(ql)?://([^:@/]+).*#\2#')"
+  [[ "$OWNER_DB_USER" =~ ^[a-z_][a-z0-9_]*$ ]] || { warn "DATABASE_URL nennt keinen lesbaren Benutzer; bitte von Hand umstellen (infra/README.md)."; exit 1; }
+  DB_PASSWORD="$(openssl rand -hex 24)"
+  gcloud sql users set-password "$OWNER_DB_USER" --instance "$SQL_INSTANCE_NAME" --project "$GCP_PROJECT_ID" --password "$DB_PASSWORD" >/dev/null
+  put_secret MIGRATE_DATABASE_URL "postgresql://${OWNER_DB_USER}:${DB_PASSWORD}@localhost/steuereule?host=/cloudsql/${SQL_CONNECTION}&connection_limit=2"
+  unset DB_PASSWORD
+  OLD_VERSIONS="$(gcloud secrets versions list DATABASE_URL --project "$GCP_PROJECT_ID" --filter='state!=destroyed' --format='value(name)')"
   API_DB_PASSWORD="$(openssl rand -hex 24)"
   put_secret DATABASE_URL "postgresql://steuereule_api:${API_DB_PASSWORD}@localhost/steuereule?host=/cloudsql/${SQL_CONNECTION}&connection_limit=5"
   unset API_DB_PASSWORD
-  note "DATABASE_URL enthielt den Besitzer der Tabellen; er ist jetzt MIGRATE_DATABASE_URL, die API bekommt den Benutzer steuereule_api."
+  for version in $OLD_VERSIONS; do
+    gcloud secrets versions destroy "${version##*/}" --secret DATABASE_URL --project "$GCP_PROJECT_ID" --quiet >/dev/null
+  done
+  unset OLD_VERSIONS OWNER_DB_USER
+  note "DATABASE_URL enthielt den Besitzer der Tabellen: Er hat ein neues Passwort (nur in MIGRATE_DATABASE_URL), die alten Versionen von DATABASE_URL sind gelöscht, die API bekommt den Benutzer steuereule_api."
 else
   DB_PASSWORD="$(openssl rand -hex 24)"
   gcloud sql users create steuereule --instance "$SQL_INSTANCE_NAME" --project "$GCP_PROJECT_ID" --password "$DB_PASSWORD" >/dev/null

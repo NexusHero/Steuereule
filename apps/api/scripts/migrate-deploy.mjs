@@ -8,7 +8,7 @@ import { createRequire } from 'node:module'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { PrismaClient } from '@prisma/client'
-import { provisionRuntimeLogin, runtimeLoginPlan } from './runtime-database-login.mjs'
+import { keystoreLoginPlan, provisionKeystoreLogin, provisionRuntimeLogin, runtimeLoginPlan } from './runtime-database-login.mjs'
 
 function keystoreUrl(env) {
   if (env.KEYSTORE_DATABASE_URL?.trim()) return { url: env.KEYSTORE_DATABASE_URL.trim(), derived: false }
@@ -64,6 +64,7 @@ function asMigration(url) {
 }
 // Decided before anything is changed: a production run without a separate runtime login stops here.
 const runtimeLogin = runtimeLoginPlan(process.env)
+const keystoreLogin = keystoreLoginPlan(process.env)
 const migrationEnv = { ...process.env, DATABASE_URL: asMigration(process.env.DATABASE_URL) }
 
 run(['migrate', 'deploy'], migrationEnv)
@@ -81,6 +82,15 @@ run(['migrate', 'deploy', '--schema', 'prisma/keystore/schema.prisma'], {
   ...process.env,
   KEYSTORE_DATABASE_URL: keystore.url,
 })
+// A keystore on the tax-data server gets a login of its own (the API must not reach it as the server's owner).
+if (keystoreLogin.kind === 'provision') {
+  const keystoreOwner = new PrismaClient({ datasources: { db: { url: keystore.url } } })
+  try {
+    await provisionKeystoreLogin(keystoreOwner, keystoreLogin)
+  } finally {
+    await keystoreOwner.$disconnect()
+  }
+}
 
 // ADR-0107 H3: re-encrypt any Profile name rows still in cleartext at rest. Non-strict field
 // encryption only encrypts on the next write, so pre-deployment rows need this one-time, idempotent

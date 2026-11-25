@@ -36,7 +36,9 @@ x-api-env: &api-env
   # Receipt-file keys live in their own database (ADR-0059). This local stack keeps it on the
   # same Postgres server for simplicity; the real deployment uses a separate Cloud SQL
   # instance with a shorter backup retention, which is what makes crypto-shredding reach backups.
-  KEYSTORE_DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}_keystore
+  # It has a login of its own, which the migrate job creates: on the server's superuser the API would own the
+  # tax-data tables too, and row-level security would mean nothing in this stack.
+  KEYSTORE_DATABASE_URL: postgresql://${POSTGRES_KEYSTORE_USER}:${POSTGRES_KEYSTORE_PASSWORD}@postgres:5432/${POSTGRES_DB}_keystore
   KEYSTORE_MASTER_KEY: ${KEYSTORE_MASTER_KEY}
   BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET}
   # The API's OWN origin — same value it listens on (PORT below), used to build absolute
@@ -82,6 +84,9 @@ services:
       # This job is the owner of the tables (migrations, backfills); it creates the login of RUNTIME_DATABASE_URL.
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       RUNTIME_DATABASE_URL: postgresql://${POSTGRES_APP_USER}:${POSTGRES_APP_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      # The keystore's owner runs its migrations here and creates the API's keystore login.
+      KEYSTORE_DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}_keystore
+      KEYSTORE_RUNTIME_DATABASE_URL: postgresql://${POSTGRES_KEYSTORE_USER}:${POSTGRES_KEYSTORE_PASSWORD}@postgres:5432/${POSTGRES_DB}_keystore
     depends_on:
       postgres:
         condition: service_healthy

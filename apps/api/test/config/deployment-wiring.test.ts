@@ -237,6 +237,12 @@ describe('deployment wiring: every production value reaches the runtime (beta P1
       expect(wizard).toMatch(/put_secret MIGRATE_DATABASE_URL "postgresql:\/\/steuereule:/)
       expect(wizard).toMatch(/put_secret DATABASE_URL "postgresql:\/\/steuereule_api:/)
       expect(wizard).not.toMatch(/put_secret DATABASE_URL "postgresql:\/\/steuereule:/)
+      // Converting a single-login setup: the owner gets a new password, and the API's account can no longer read
+      // the owner's old one in an earlier version of DATABASE_URL.
+      const conversion = wizard.slice(wizard.indexOf('elif secret_has_value DATABASE_URL; then'), wizard.indexOf('\nelse\n', wizard.indexOf('elif secret_has_value DATABASE_URL; then')))
+      expect(conversion).toMatch(/gcloud sql users set-password "\$OWNER_DB_USER"/)
+      expect(conversion).not.toMatch(/put_secret MIGRATE_DATABASE_URL "\$\(gcloud secrets versions access/)
+      expect(conversion).toMatch(/gcloud secrets versions destroy "\$\{version##\*\/\}" --secret DATABASE_URL/)
     })
 
     it('the local production-shaped stack runs the same two logins', () => {
@@ -246,6 +252,10 @@ describe('deployment wiring: every production value reaches the runtime (beta P1
       expect(apiEnv).not.toMatch(/RUNTIME_DATABASE_URL/)
       expect(migrate).toMatch(/^\s+DATABASE_URL: postgresql:\/\/\$\{POSTGRES_USER\}:\$\{POSTGRES_PASSWORD\}@/m)
       expect(migrate).toMatch(/^\s+RUNTIME_DATABASE_URL: postgresql:\/\/\$\{POSTGRES_APP_USER\}:\$\{POSTGRES_APP_PASSWORD\}@/m)
+      // The keystore shares this server: the API reaches it with a login of its own, never the superuser.
+      expect(apiEnv).toMatch(/^\s+KEYSTORE_DATABASE_URL: postgresql:\/\/\$\{POSTGRES_KEYSTORE_USER\}:\$\{POSTGRES_KEYSTORE_PASSWORD\}@/m)
+      expect(migrate).toMatch(/^\s+KEYSTORE_RUNTIME_DATABASE_URL: postgresql:\/\/\$\{POSTGRES_KEYSTORE_USER\}:\$\{POSTGRES_KEYSTORE_PASSWORD\}@/m)
+      expect(migrate).toMatch(/^\s+KEYSTORE_DATABASE_URL: postgresql:\/\/\$\{POSTGRES_USER\}:\$\{POSTGRES_PASSWORD\}@/m)
     })
 
     it('the image carries every script the migrate job and infra/README.md run', () => {

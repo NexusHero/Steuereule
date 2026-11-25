@@ -101,4 +101,66 @@ export async function assertDatabaseRole(options: AssertDatabaseRoleOptions = {}
         'tables belongs to the migrate job only (row-level security, P11; infra/README.md, "Database users").',
     )
   }
+  const keystore = await keystoreLoginFacts(createClient, env)
+  const keystoreProblems = keystore ? keystoreLoginProblems(keystore) : []
+  if (keystoreProblems.length > 0) {
+    throw new Error(
+      `Refusing to start: the keystore login "${keystore?.login ?? '?'}" of KEYSTORE_DATABASE_URL ${keystoreProblems.join('; ')}. ` +
+        'On the tax-data server the keystore needs a login of its own (KEYSTORE_RUNTIME_DATABASE_URL of the migrate job).',
+    )
+  }
+}
+
+/** The keystore's login as the tax-data server sees it (only where both databases share one server). */
+export interface KeystoreLoginFacts {
+  readonly login: string
+  readonly rolsuper: boolean
+  readonly rolbypassrls: boolean
+  readonly rolcreaterole: boolean
+  /** Whether the login owns, or can become a role that owns, a table of the tax data. */
+  readonly reaches_tax_data_owner: boolean
+}
+
+/** Why the keystore login must not be used; empty when it is a login of its own without power over the tax data. */
+export function keystoreLoginProblems(facts: KeystoreLoginFacts): string[] {
+  const problems: string[] = []
+  if (facts.rolsuper) problems.push('has SUPERUSER')
+  if (facts.rolbypassrls) problems.push('has BYPASSRLS')
+  if (facts.rolcreaterole) problems.push('has CREATEROLE')
+  if (facts.reaches_tax_data_owner) problems.push('owns the tax-data tables or can become their owner')
+  return problems
+}
+
+function sameServer(a: string, b: string): boolean {
+  const [x, y] = [new URL(a), new URL(b)]
+  return x.hostname === y.hostname && (x.port || '5432') === (y.port || '5432')
+}
+
+/**
+ * Where the keystore shares the tax-data server (the local production-shaped stack), its login is read through
+ * the tax-data connection: roles belong to the server, not to a database. A keystore on a server of its own (Cloud
+ * SQL) cannot reach the tax data through its login and is not probed.
+ */
+async function keystoreLoginFacts(createClient: (url: string) => DatabaseRoleClient, env: NodeJS.ProcessEnv): Promise<KeystoreLoginFacts | null> {
+  const keystoreUrl = env.KEYSTORE_DATABASE_URL?.trim()
+  const databaseUrl = resolveDatabaseUrl(env)
+  if (!keystoreUrl || !sameServer(keystoreUrl, databaseUrl)) return null
+  const login = decodeURIComponent(new URL(keystoreUrl).username)
+  const client = createClient(databaseUrl)
+  try {
+    const rows = await withTimeout(
+      client.$queryRaw<KeystoreLoginFacts[]>`
+        SELECT r.rolname::text AS login, r.rolsuper, r.rolbypassrls, r.rolcreaterole,
+               EXISTS (SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+                        WHERE n.nspname = 'public' AND c.relkind IN ('r', 'p') AND pg_has_role(r.oid, c.relowner, 'MEMBER')) AS reaches_tax_data_owner
+          FROM pg_roles r WHERE r.rolname = ${login}`,
+      PROBE_TIMEOUT_MS,
+    )
+    return rows[0] ?? { login, rolsuper: false, rolbypassrls: false, rolcreaterole: false, reaches_tax_data_owner: false }
+  } catch (rawCause) {
+    // oxlint-disable-next-line eslint/preserve-caught-error
+    throw new Error('Cannot read which role KEYSTORE_DATABASE_URL connects as — refusing to start.', { cause: redactCause(rawCause) })
+  } finally {
+    await disconnectQuietly(client)
+  }
 }

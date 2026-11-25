@@ -68,3 +68,34 @@ describe('assertDatabaseRole', () => {
     await expect(assertDatabaseRole({ env: { NODE_ENV: 'development', DATABASE_URL: production.DATABASE_URL }, createClient: never })).resolves.toBeUndefined()
   })
 })
+
+describe('the keystore login on the tax-data server', () => {
+  const keystoreOn = (host: string) => ({ ...production, KEYSTORE_DATABASE_URL: `postgresql://steuereule_keystore_api:pw@${host}:5432/steuereule_keystore` })
+  const sequence = (...answers: unknown[][]) => {
+    const queue = [...answers]
+    return (): DatabaseRoleClient => ({ $queryRaw: <T>() => Promise.resolve(queue.shift() as T), $disconnect: async () => undefined })
+  }
+  const keystoreFacts = (change: Record<string, unknown> = {}) => ({ login: 'steuereule_keystore_api', rolsuper: false, rolbypassrls: false, rolcreaterole: false, reaches_tax_data_owner: false, ...change })
+
+  it('accepts a keystore login of its own', async () => {
+    await expect(assertDatabaseRole({ env: keystoreOn('db.internal'), createClient: sequence([runtime], [keystoreFacts()]) })).resolves.toBeUndefined()
+  })
+
+  it.each([
+    ['the server superuser', { rolsuper: true }, /SUPERUSER/],
+    ['the owner of the tax-data tables', { reaches_tax_data_owner: true }, /owner/],
+    ['a role that can create roles', { rolcreaterole: true }, /CREATEROLE/],
+  ])('refuses %s', async (_, change, expected) => {
+    await expect(assertDatabaseRole({ env: keystoreOn('db.internal'), createClient: sequence([runtime], [keystoreFacts(change)]) })).rejects.toThrow(expected)
+  })
+
+  it('does not probe a keystore on a server of its own (Cloud SQL)', async () => {
+    let clients = 0
+    const createClient = () => {
+      clients++
+      return clientReturning(Promise.resolve([runtime]))
+    }
+    await expect(assertDatabaseRole({ env: keystoreOn('keystore.internal'), createClient })).resolves.toBeUndefined()
+    expect(clients).toBe(1)
+  })
+})

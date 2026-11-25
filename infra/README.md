@@ -68,7 +68,12 @@ Stripe account (test mode for staging and the beta); the operator details for th
    owner, as a role with one of the attributes above, or as a member of any other role.
    To rotate the API's password: store a new version of `DATABASE_URL` with a new password and deploy; the
    migrate job sets it before the new revision starts. A setup from before this split (where `DATABASE_URL`
-   held the owner) is converted by running the wizard again.
+   held the owner) is converted by running the wizard again: it gives the owner a new password, which only
+   `MIGRATE_DATABASE_URL` holds, and destroys the earlier versions of `DATABASE_URL`, which the API's service
+   account could read. The migrate job must run (deploy) before the API starts again: until then the API has
+   no valid login. In the local production-shaped stack the keystore shares the server and gets a login of its
+   own (`KEYSTORE_RUNTIME_DATABASE_URL` of the migrate service); the API refuses to start if its keystore login
+   there is a superuser or can become the owner of the tax-data tables.
 8. Brevo: authenticate the sender domain by DNS, store `BREVO_API_KEY`.
 9. Stripe (required on a deployment, so the printout never ends in "payment not set up"):
    - two products with a one-time price each, the standard printout and the printout with self-employment;

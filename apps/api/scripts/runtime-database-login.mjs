@@ -141,3 +141,52 @@ export async function provisionRuntimeLogin(client, plan) {
     throw new Error(`The runtime login "${role}" ${problems.join('; ')}. Fix the role by hand; the API refuses to start as it.`)
   }
 }
+
+/**
+ * The keystore's own login where the keystore shares the tax-data server (the local production-shaped stack). Without
+ * it the API reached the keystore as the server's superuser, the owner of the tax-data tables, and row-level
+ * security meant nothing there. `KEYSTORE_RUNTIME_DATABASE_URL` names it; the migrate job, connected to the keystore
+ * database as its owner, creates it with no attributes and the four row rights on the keystore's tables. On Cloud SQL
+ * the keystore is an instance of its own with its own user and this is not set.
+ */
+export function keystoreLoginPlan(env) {
+  const keystoreUrl = env.KEYSTORE_RUNTIME_DATABASE_URL?.trim()
+  if (!keystoreUrl) return { kind: 'none' }
+  const login = credentials('KEYSTORE_RUNTIME_DATABASE_URL', keystoreUrl)
+  if (!ROLE_NAME.test(login.user) || isReservedRole(login.user)) {
+    throw new Error(`KEYSTORE_RUNTIME_DATABASE_URL: "${login.user}" is not a role name this script creates.`)
+  }
+  const owner = env.DATABASE_URL?.trim() ? credentials('DATABASE_URL', env.DATABASE_URL.trim()) : null
+  const runtime = env.RUNTIME_DATABASE_URL?.trim() ? credentials('RUNTIME_DATABASE_URL', env.RUNTIME_DATABASE_URL.trim()) : null
+  if (login.user === owner?.user || login.user === runtime?.user) {
+    throw new Error('KEYSTORE_RUNTIME_DATABASE_URL must name a login of its own, neither the owner nor the API login.')
+  }
+  if (login.password.length < 1) throw new Error('KEYSTORE_RUNTIME_DATABASE_URL: the password is empty.')
+  return { kind: 'provision', role: login.user, database: login.database, verifier: scramVerifier(login.password) }
+}
+
+/** Creates or updates the keystore login; `client` is connected to the keystore database as its owner. */
+export async function provisionKeystoreLogin(client, plan) {
+  if (plan.kind !== 'provision') return
+  const { role, database, verifier } = plan
+  if (!ROLE_NAME.test(role) || isReservedRole(role) || !VERIFIER.test(verifier) || !ROLE_NAME.test(database)) {
+    throw new Error('Refusing to build a role statement from unexpected input.')
+  }
+  const existing = await client.$queryRaw`SELECT 1 FROM pg_roles WHERE rolname = ${role}`
+  if (existing.length === 0) {
+    await client.$executeRawUnsafe(`CREATE ROLE "${role}" LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS PASSWORD '${verifier}'`)
+  } else {
+    await client.$executeRawUnsafe(`ALTER ROLE "${role}" LOGIN PASSWORD '${verifier}'`)
+  }
+  await client.$executeRawUnsafe(`GRANT CONNECT ON DATABASE "${database}" TO "${role}"`)
+  await client.$executeRawUnsafe(`GRANT USAGE ON SCHEMA public TO "${role}"`)
+  await client.$executeRawUnsafe(`GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO "${role}"`)
+  await client.$executeRawUnsafe(`GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO "${role}"`)
+  const rows = await client.$queryRaw`
+    SELECT r.rolsuper, r.rolbypassrls, r.rolcreaterole, r.rolcreatedb, r.rolreplication,
+           ARRAY(SELECT g.rolname::text FROM pg_roles g WHERE g.oid <> r.oid AND pg_has_role(r.oid, g.oid, 'MEMBER') ORDER BY g.rolname) AS member_of
+      FROM pg_roles r WHERE r.rolname = ${role}`
+  const row = rows[0]
+  const problems = row ? [...FORBIDDEN_ATTRIBUTES.filter(([attribute]) => row[attribute]).map(([, label]) => `has ${label}`), ...(row.member_of.length > 0 ? [`is a member of ${row.member_of.join(', ')}`] : [])] : ['does not exist']
+  if (problems.length > 0) throw new Error(`The keystore login "${role}" ${problems.join('; ')}. Fix the role by hand.`)
+}
