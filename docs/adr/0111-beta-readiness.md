@@ -145,7 +145,14 @@ E2E, integration (database) and load tiers run in CI.
 - Residual: partners may read and write each other's rows in the database, narrowing stays with the app; the
   keystore database has no policies and one login (its rows are keys wrapped under `KEYSTORE_MASTER_KEY`, which
   the database never holds); the two identity settings are plain session settings, so row-level security does
-  not protect against SQL injection or against code that names a system reason.
+  not protect against SQL injection or against code that names a system reason. In particular, whoever holds
+  the runtime login's password can set `steuereule.system` (or `steuereule.erasure`) and pass every policy
+  and the append-only erasure exception; the two logins keep such a caller from changing the schema, the
+  policies or the triggers and from the re-encryption exception, not from the rows. Row-level security is a
+  guard against bugs in the app (a query for the wrong user), not against a stolen runtime password.
+- Outside a request a query has no identity, in the test tiers too: the DB tier runs its own seeding and
+  assertions as `test-fixture` (`apps/api/test/support/database-fixture.ts`) and the app's repositories and
+  services as the user a request would carry.
 
 ### Configuration and deployment
 
