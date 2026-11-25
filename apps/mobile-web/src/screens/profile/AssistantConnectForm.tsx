@@ -14,7 +14,8 @@ const PRESETS = {
 type Kind = keyof typeof PRESETS
 const KINDS = Object.keys(PRESETS) as Kind[]
 
-const MCP_PATH = '/mcp/sse'
+/** The Streamable HTTP endpoint (ADR-0052 amendment 6); `/mcp/sse` stays for older clients but is not offered (MCP-11). */
+export const MCP_PATH = '/mcp'
 /** https anywhere, plain http only on this machine (RFC 8252 loopback redirect). */
 const REDIRECT_PATTERN = /^(https:\/\/[^\s]+|http:\/\/(localhost|127\.0\.0\.1)(:\d+)?(\/[^\s]*)?)$/
 

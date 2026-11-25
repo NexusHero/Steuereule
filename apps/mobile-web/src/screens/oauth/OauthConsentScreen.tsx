@@ -58,9 +58,11 @@ export function OauthConsentScreen({
   const [stepUp, setStepUp] = useState<{ readonly error: string } | null>(null)
   const [password, setPassword] = useState('')
 
-  const clientName = clientInfoQuery.data?.status === 200
-    ? clientInfoQuery.data.data.name
-    : params.clientId || 'KI-Assistent'
+  // Only a looked-up client is named; the client_id of the URL is no name to show in bold (MCP-17).
+  const clientInfo = clientInfoQuery.data?.status === 200 ? clientInfoQuery.data.data : null
+  const clientKnown = clientInfo !== null
+  const clientName = clientInfo?.name ?? tr('oauthConsent.clientUnknown')
+  const lookupFailed = !clientKnown && !clientInfoQuery.isLoading && !clientInfoQuery.isFetching
 
   // The name is the assistant's own claim; where the approval leads is what it registered (see consentDestination).
   const destinations = clientInfoQuery.data?.status === 200
@@ -199,8 +201,11 @@ export function OauthConsentScreen({
             {scopes.includes('offline_access') ? (
               <Text style={styles.scopeItem}>✓ {tr('oauthConsent.scopeOfflineAccess')}</Text>
             ) : null}
-            {scopes.length === 0 ? (
-              <Text style={styles.scopeItem}>✓ {tr('oauthConsent.scopeSteuerdatenRead')}</Text>
+            {scopes.includes('zahllink:write') ? (
+              <Text style={styles.scopeItem}>✓ {tr('oauthConsent.scopeZahllinkWrite')}</Text>
+            ) : null}
+            {scopes.filter((scope) => scope !== 'openid').length === 0 ? (
+              <Text style={styles.scopeItem} testID="oauth-keine-rechte">{tr('oauthConsent.scopeNone')}</Text>
             ) : null}
           </View>
         </View>
@@ -209,6 +214,12 @@ export function OauthConsentScreen({
           <Text style={styles.warningHeading}>{tr('oauthConsent.drittlandHeading')}</Text>
           <Text style={styles.warningBody}>{tr('oauthConsent.drittlandNotice')}</Text>
         </View>
+
+        {lookupFailed ? (
+          <Text style={styles.errorText} accessibilityRole="alert" testID="oauth-client-unbekannt">
+            {tr('oauthConsent.clientLookupFailed')}
+          </Text>
+        ) : null}
 
         {errorMessage ? (
           <Text style={styles.errorText} accessibilityRole="alert">
@@ -232,7 +243,7 @@ export function OauthConsentScreen({
         <View style={styles.actionRow}>
           <Button
             variant="primaer"
-            disabled={submitting || lookingUpClient}
+            disabled={submitting || lookingUpClient || !clientKnown}
             onPress={() => void handleDecision(true)}
             style={styles.actionBtn}
             testID="oauth-erlauben"
