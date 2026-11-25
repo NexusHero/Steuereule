@@ -5,6 +5,7 @@ import { AuditService } from '../audit/audit.service.js'
 import { ConflictError, ForbiddenError, InvalidInputError, NotFoundError } from '../common/domain-error.js'
 import { CHILD_REPOSITORY, type ChildRecord, type ChildRepository } from '../children/child.repository.js'
 import { PARTNER_COUPLING_REPOSITORY, type PartnerCouplingRepository } from '../link/link.repository.js'
+import { couplingVisibleTo } from '../link/partner-consent.js'
 import { MASTER_DATA_REPOSITORY, type MasterDataRepository } from '../master-data/master-data.repository.js'
 import { PROFILE_REPOSITORY, type ProfileRepository } from '../profile/profile.repository.js'
 import { HOUSEHOLD_REPOSITORY, type HouseholdPersonRecord, type HouseholdRepository, type MembershipRecord } from '../household-core/household.repository.js'
@@ -86,9 +87,10 @@ export class HouseholdService {
         .map((c) => ({ entry: { key: c.id, firstName: c.firstName, lastName: c.lastName, birthDate: c.geburtsdatum }, taxYear: c.taxYear, taxId: c.taxId, childId: c.id, spouseUserId: null })),
     )
 
-    const spouseRows = (await this.links.listForPersonA(householdUserId)).filter(
-      (l) => l.filingType === 'zusammen' && l.personBUserId !== '' && !linkedSpouseYears.has(`${l.personBUserId}:${l.taxYear}`),
-    )
+    // Decision 3: a year Person B has not agreed to copies nothing of B into this household.
+    const spouseRows = (await this.links.listForPersonA(householdUserId))
+      .map((l) => couplingVisibleTo(l, householdUserId) ?? l)
+      .filter((l) => l.filingType === 'zusammen' && l.personBUserId !== '' && !linkedSpouseYears.has(`${l.personBUserId}:${l.taxYear}`))
     const spouseInputs = []
     for (const row of spouseRows) {
       const [profile, md] = await Promise.all([this.profiles.findByUserId(row.personBUserId), this.masterData.findByUserId(row.personBUserId)])

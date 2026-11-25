@@ -218,6 +218,23 @@ describe('SteuerschaetzungService', () => {
     expect(status.kind === 'offen' && status.missing.some((f) => f.startsWith('personB.'))).toBe(true)
   })
 
+  it('gives no figure for a joint year Person B has not agreed to, and one once B agreed (decision 3)', async () => {
+    const { lstb, interview, stammdaten: masterData, kopplung: link, service } = setup()
+    interview.seed('a', 2025, EMPLOYED)
+    interview.seed('b', 2025, EMPLOYED)
+    await masterData.save('a', { familienstand: 'verheiratet' } as MasterDataRecord)
+    lstb.seed({ userId: 'a', taxYear: 2025, bruttoarbeitslohn: '82000', lohnsteuer: '9890', sozialversicherung: '15473' })
+    lstb.seed({ userId: 'b', taxYear: 2025, bruttoarbeitslohn: '48000', lohnsteuer: '5000', sozialversicherung: '10008' })
+
+    // B has an account of their own and has not agreed to 2025: A's estimate must not be built from B's figures,
+    // nor pretend B earns nothing.
+    await link.upsert('a', 2025, { personBUserId: 'b', filingType: 'zusammen', personBConsentedAt: null })
+    expect(await service.getState('a', 2025)).toEqual({ kind: 'offen', missing: ['personB.zustimmung'] })
+
+    await link.upsert('a', 2025, { personBUserId: 'b', filingType: 'zusammen', personBConsentedAt: new Date('2026-01-10T09:00:00Z') })
+    expect(await service.getState('a', 2025)).toMatchObject({ kind: 'spanne' })
+  })
+
   it('estimates a Grenzgänger from the Lohnausweis against the Quellensteuer', async () => {
     const { interview, ch, service } = setup()
     interview.seed('u', 2025, { ...EMPLOYED, ausland: 'Ja, in die Schweiz', 'ch-wohnsitz': 'Deutschland', 'ch-nichtrueckkehrtage': '0' })

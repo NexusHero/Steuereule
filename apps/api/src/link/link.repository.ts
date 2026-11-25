@@ -8,6 +8,11 @@ export interface PartnerCouplingRecord {
   invitationCodeValidUntil: Date | null
   /** When Person B (own account) agreed to share this year with A (decision 3, API-3); null while not. */
   personBConsentedAt?: Date | null
+  /**
+   * Set only on a row handed out by `couplingVisibleTo`: the year is joint, Person B has an own account and has
+   * not agreed to it yet, so `personBUserId` is left empty for Person A. Never stored.
+   */
+  personBWithheld?: true
 }
 
 export const PARTNER_COUPLING_REPOSITORY = Symbol('PARTNER_COUPLING_REPOSITORY')

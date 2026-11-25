@@ -5,6 +5,7 @@ import { AuditService } from '../audit/audit.service.js'
 import { CROSS_BORDER_SALARY_STATEMENT_REPOSITORY, type CrossBorderSalaryStatementRepository } from '../ch-salary-certificate/ch-salary-certificate.repository.js'
 import { HouseholdAccessService } from '../household-core/household-access.service.js'
 import { PARTNER_COUPLING_REPOSITORY, type PartnerCouplingRepository } from '../link/link.repository.js'
+import { couplingVisibleTo } from '../link/partner-consent.js'
 import { CHILD_REPOSITORY, type ChildRecord, type ChildRepository } from './child.repository.js'
 import { childAllowancesEur } from './swiss-allowance.js'
 import type { CreateChildDto, ChildrenResponseDto, ChildResponseDto, UpdateChildDto } from './dto/child.dto.js'
@@ -90,7 +91,7 @@ export class ChildrenService {
   private async allowancesEur(userId: string, year: number, records: readonly ChildRecord[]): Promise<(number | null)[]> {
     if (!this.chSalaryCertificate || records.length === 0) return records.map(() => null)
     const own = await this.chSalaryCertificate.findForUserAndYear(userId, year)
-    const k = this.link ? await this.link.findByUserAndYear(userId, year) : null
+    const k = this.link ? couplingVisibleTo(await this.link.findByUserAndYear(userId, year), userId) : null
     const spouse = k?.filingType === 'zusammen' && k.personBUserId ? await this.chSalaryCertificate.findForUserAndYear(k.personBUserId, year) : null
     return childAllowancesEur(records, own, spouse)
   }
