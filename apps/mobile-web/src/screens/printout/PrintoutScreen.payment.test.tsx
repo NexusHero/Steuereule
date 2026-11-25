@@ -68,15 +68,30 @@ describe('printout: back from Stripe', () => {
   })
 
   it('success, webhook late: confirming with the pay button disabled, then paid without a reload', async () => {
-    const reads = statusSequence({ status: 'offen', price: { amountCents: 3499, currency: 'eur' } }, { status: 'offen' }, { status: 'freigeschaltet' })
-    renderScreen({ payment: 'erfolg' })
+    // The webhook arrives when the test says so, not after a number of polls: the confirming state lasts
+    // until it was asserted, however slowly React renders on the runner.
+    let webhookArrived = false
+    let reads = 0
+    server.use(
+      http.get('*/v1/steuerjahre/2025/freischaltung', () => {
+        reads += 1
+        return HttpResponse.json(webhookArrived ? { status: 'freigeschaltet' } : { status: 'offen', price: { amountCents: 3499, currency: 'eur' } })
+      }),
+      http.get('*/v1/steuerjahre/2025/ausdruck/pruefung', () => HttpResponse.json({ missing: [] })),
+    )
+    // The confirmation gives up long after this test is done: the timeout has a case of its own below.
+    renderScreen({ payment: 'erfolg', confirmTiming: { intervalMs: 20, timeoutMs: 60_000 } })
     expect(await screen.findByText(CONFIRMING)).toBeTruthy()
     expect(screen.getByTestId('ausdruck-bezahlen').getAttribute('aria-disabled')).toBe('true')
     expect(screen.queryByText(PAID)).toBeNull()
+    // It keeps asking while it waits.
+    await waitFor(() => expect(reads).toBeGreaterThanOrEqual(2))
+    expect(screen.getByText(CONFIRMING)).toBeTruthy()
 
+    webhookArrived = true
     expect(await screen.findByText(PAID)).toBeTruthy()
-    expect(reads()).toBeGreaterThanOrEqual(3)
     expect(screen.getByTestId('ausdruck-herunterladen')).toBeTruthy()
+    expect(screen.queryByTestId('ausdruck-bezahlen')).toBeNull()
     for (const hint of NOT_UNLOCKED_HINTS) expect(screen.queryByText(hint)).toBeNull()
   })
 
