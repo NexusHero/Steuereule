@@ -112,3 +112,28 @@ describe('RedisAdvisorRunLog encryption (H2-9)', () => {
     expect((await drain(rotated)).map((entry) => entry.seq)).toEqual([1, 2])
   })
 })
+
+describe('the sealed run info (owner of the run)', () => {
+  it('is not stored in clear, and reads back', async () => {
+    const redis = new FakeRedis()
+    const log = new RedisAdvisorRunLog(redis as never, KEYS)
+    await log.open(info)
+    const raw = [...redis.strings.values()].join(' ')
+    expect(raw).not.toContain('u1')
+    expect(raw).not.toContain('m2')
+    expect(await log.info(info.runId)).toEqual(info)
+  })
+
+  it('an info written or swapped by someone else counts as no run: a changed owner is never believed', async () => {
+    const redis = new FakeRedis()
+    const log = new RedisAdvisorRunLog(redis as never, KEYS)
+    await log.open(info)
+    await log.open({ ...info, runId: 'run-2', userId: 'attacker' })
+    const key = (runId: string) => `steuereule:advisor:run:${runId}:info`
+    // The sealed info of another run, moved under this run's key, does not open here.
+    redis.strings.set(key(info.runId), redis.strings.get(key('run-2'))!)
+    expect(await log.info(info.runId)).toBeNull()
+    redis.strings.set(key(info.runId), JSON.stringify({ ...info, userId: 'attacker' }))
+    expect(await log.info(info.runId)).toBeNull()
+  })
+})

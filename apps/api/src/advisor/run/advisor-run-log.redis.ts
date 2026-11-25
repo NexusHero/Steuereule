@@ -15,13 +15,15 @@ const streamKey = (runId: string): string => `steuereule:advisor:run:${runId}`
 const infoKey = (runId: string): string => `steuereule:advisor:run:${runId}:info`
 /** What a sealed event is bound to: its run and its place in the run. */
 const entryLabel = (runId: string, seq: number): string => `${runId}:${seq}`
+/** What the sealed run info is bound to: its run. Its owner decides who may read or stop the run. */
+const infoLabel = (runId: string): string => `${runId}:info`
 
 /**
  * Run log on Redis Streams: one stream per run, the entry id `<seq>-0` is the sequence number, a
  * final `end` entry closes it. Stop requests travel over pub/sub, so any instance can stop a run
  * that another one executes. Event payloads are transient and expire with the stream; they carry the
  * chat text, so each is sealed (AES-256-GCM, key derived from the field-encryption key) before it is
- * written and opened on read (H2-9). An entry that does not open is skipped.
+ * written and opened on read (H2-9); so is the run info with its owner. An entry that does not open is skipped.
  */
 export class RedisAdvisorRunLog implements AdvisorRunLog {
   readonly shared = true
@@ -41,12 +43,17 @@ export class RedisAdvisorRunLog implements AdvisorRunLog {
 
   async open(info: AdvisorRunInfo): Promise<void> {
     this.seqByRun.set(info.runId, 0)
-    await this.redis.set(infoKey(info.runId), JSON.stringify(info), 'EX', OPEN_RUN_TTL_SECONDS)
+    // Sealed like the events: the owner in it decides who may read or stop the run, so it must not be writable
+    // by whoever can write to Redis, and it names the user and the tax year.
+    await this.redis.set(infoKey(info.runId), this.cipher.seal(JSON.stringify(info), infoLabel(info.runId)), 'EX', OPEN_RUN_TTL_SECONDS)
   }
 
   async info(runId: string): Promise<AdvisorRunInfo | null> {
     const raw = await this.redis.get(infoKey(runId))
-    return raw ? (JSON.parse(raw) as AdvisorRunInfo) : null
+    if (!raw) return null
+    // An entry that was not sealed here, was changed, or belongs to another run counts as no run.
+    const opened = this.cipher.open(raw, infoLabel(runId))
+    return opened === null ? null : (JSON.parse(opened) as AdvisorRunInfo)
   }
 
   async append(runId: string, event: AdvisorStreamEvent): Promise<number> {
