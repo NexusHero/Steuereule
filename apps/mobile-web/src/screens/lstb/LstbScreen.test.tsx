@@ -17,6 +17,7 @@ import type {
   ParseReceiptResponseDto,
   ReceiptResponseDto,
 } from '@steuereule/api-client'
+import { confirmAction } from '../../confirm/confirmInTest'
 
 const { mockExtractDocumentText } = vi.hoisted(() => ({
   mockExtractDocumentText: vi.fn(),
@@ -942,6 +943,7 @@ describe('LstbScreen', () => {
 
       // Discard staged draft
       fireEvent.click(screen.getByTestId('lstb-scan-discard'))
+      confirmAction('lstbDiscardDraft')
       await waitFor(() => expect(screen.queryByTestId('lstb-scan-draft-banner')).toBeNull())
       expect(dismissedIds).toEqual(['act-d1', 'act-d2'])
     } finally {

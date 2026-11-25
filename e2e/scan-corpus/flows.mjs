@@ -82,6 +82,8 @@ async function main() {
     await banner.waitFor({ state: 'visible', timeout: 15_000 })
     console.log(`[${TAG}] ✅ Eule chat — the LStB draft card shows three fields, "Maske prüfen" opens the staged mask`)
     await page.locator('[data-testid="lstb-scan-discard"]').click()
+    // WEB-37/WEB-38: the action asks first; confirm it.
+    await page.locator('[data-testid="rueckfrage-lstbDiscardDraft-confirm"]').click()
     await banner.waitFor({ state: 'detached', timeout: 15_000 })
 
     // --- An OCR photo: confirm field by field --------------------------------------------------------

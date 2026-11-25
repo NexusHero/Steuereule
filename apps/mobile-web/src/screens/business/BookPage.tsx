@@ -17,6 +17,7 @@ import { APP_NS } from '../../i18n/resources'
 import { BusinessFrame, BusinessQueryState, Note, ProblemNote, Section } from './BusinessFrame'
 import { domainReasonOf, eurosToCents, germanDay, personParams, plainCents, todayIso, type ApiProblem } from './businessKit'
 import { attempt, queryProblem, useRefreshBusiness, useSingleFlight } from './useBusiness'
+import { useConfirmAction } from '../../confirm/useConfirmAction'
 import { BusinessReceiptUpload } from './BusinessReceiptUpload'
 import type { BusinessPageProps } from './BusinessScreen'
 
@@ -57,6 +58,8 @@ export function BookPage({ taxYear, person, business = 1, onBack }: BusinessPage
   const [formError, setFormError] = useState(false)
   const [lockDate, setLockDate] = useState('')
   const flight = useSingleFlight()
+  const confirmReverse = useConfirmAction('bookingReverse')
+  const confirmLock = useConfirmAction('bookLock')
 
   const loadProblem = queryProblem(query)
   if (query.isPending || loadProblem !== null || query.data === undefined) {
@@ -135,7 +138,7 @@ export function BookPage({ taxYear, person, business = 1, onBack }: BusinessPage
                 {[germanDay(entry.date), entry.documentNumber, entry.reversalOf !== null ? tr('business.buch.stornoZu', { nummer: entry.reversalOf }) : null, reversed ? tr('business.buch.storniert') : null].filter(Boolean).join(' · ')}
               </Text>
               {entry.reversalOf === null && !reversed ? (
-                <Button variant="ghost" disabled={flight.busy} onPress={() => void flight.run(() => storno(entry))} testID={`buch-storno-${entry.number}`}>
+                <Button variant="ghost" disabled={flight.busy} onPress={() => confirmReverse.ask(() => void flight.run(() => storno(entry)), { nummer: entry.number })} testID={`buch-storno-${entry.number}`}>
                   {tr('business.buch.stornieren')}
                 </Button>
               ) : null}
@@ -195,10 +198,12 @@ export function BookPage({ taxYear, person, business = 1, onBack }: BusinessPage
         <Feld label={tr('business.buch.festBisLabel')}>
           <DateInput value={lockDate} onChange={setLockDate} min={`${taxYear}-01-01`} max={`${taxYear}-12-31`} calendarLabel={tr('datum.kalender')} accessibilityLabel={tr('business.buch.festBisLabel')} testID="buch-fest-datum" />
         </Feld>
-        <Button variant="ghost" disabled={lockDate.length !== 10 || flight.busy} onPress={() => void flight.run(lockThrough)} testID="buch-festschreiben">
+        <Button variant="ghost" disabled={lockDate.length !== 10 || flight.busy} onPress={() => (germanDateToIso(lockDate) === null ? setFormError(true) : confirmLock.ask(() => void flight.run(lockThrough), { datum: lockDate }))} testID="buch-festschreiben">
           {tr('business.buch.festschreiben')}
         </Button>
       </Section>
+      {confirmReverse.dialog}
+      {confirmLock.dialog}
     </BusinessFrame>
   )
 }

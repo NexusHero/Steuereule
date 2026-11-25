@@ -18,6 +18,7 @@ import {
   type LinkResponseDto,
 } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
+import { useConfirmAction } from '../../confirm/useConfirmAction'
 import { CURRENT_TAX_YEAR } from '../../config/taxYear'
 import { makePrivacyStyles } from '../privacy/styles'
 import { LoadFailedState, LoadingState } from '../shared/ScreenState'
@@ -355,6 +356,7 @@ function LoadedLinkSection({
   const [code, setCode] = useState('')
   const [joinError, setJoinError] = useState<string | null>(null)
   const [kindError, setKindError] = useState<string | null>(null)
+  const confirmSingle = useConfirmAction('singleAssessment')
 
   const filingType = current.filingType
   const personB = current.personB ?? null
@@ -423,7 +425,7 @@ function LoadedLinkSection({
           <Chip active={filingType === 'zusammen'} onPress={() => selectKind('zusammen')} testID="kopplung-zusammen">
             Zusammenveranlagung
           </Chip>
-          <Chip active={filingType === 'einzel'} onPress={() => selectKind('einzel')} testID="kopplung-einzel">
+          <Chip active={filingType === 'einzel'} onPress={() => (filingType === 'zusammen' ? confirmSingle.ask(() => selectKind('einzel'), { jahr: taxYear }) : selectKind('einzel'))} testID="kopplung-einzel">
             Einzelveranlagung
           </Chip>
         </View>
@@ -433,6 +435,7 @@ function LoadedLinkSection({
           </Text>
         ) : null}
       </Feld>
+      {confirmSingle.dialog}
       <PartnerLinkStatus taxYear={taxYear} onChanged={invalidate} />
       {filingType === 'zusammen' && current.personBHasOwnAccount ? (
         <Text style={{ ...theme.type.small, color: theme.color.tinte2 }}>

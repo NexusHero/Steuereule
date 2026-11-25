@@ -16,6 +16,7 @@ import { APP_NS } from '../../i18n/resources'
 import { BusinessFrame, BusinessQueryState, Note, ProblemNote, Section } from './BusinessFrame'
 import { germanDay, localProblem, personParams, signedCents, type ApiProblem } from './businessKit'
 import { attempt, queryProblem, useRefreshBusiness, useSingleFlight } from './useBusiness'
+import { useConfirmAction } from '../../confirm/useConfirmAction'
 import { buildMapping, EMPTY_MAPPING, MappingForm, type MappingState } from './BankMapping'
 import type { BusinessPageProps } from './BusinessScreen'
 
@@ -38,6 +39,7 @@ export function BankPage({ taxYear, person, business = 1, onBack }: BusinessPage
   const [problem, setProblem] = useState<ApiProblem | null>(null)
   const inputRef = useRef<HTMLInputElement | null>(null)
   const flight = useSingleFlight()
+  const confirmIgnore = useConfirmAction('bankIgnore')
 
   const loadProblem = queryProblem(query)
   if (query.isPending || loadProblem !== null || query.data === undefined) {
@@ -120,9 +122,10 @@ export function BankPage({ taxYear, person, business = 1, onBack }: BusinessPage
       <Section title={tr('business.bank.vorschlaege', { count: open.length })}>
         {open.length === 0 ? <Note testID="bank-leer">{tr('business.bank.leer')}</Note> : null}
         {open.map((row) => (
-          <BankRow key={row.id} row={row} busy={flight.busy} onTake={(data) => void flight.run(() => take(row, data))} onSkip={() => void flight.run(() => skip(row))} />
+          <BankRow key={row.id} row={row} busy={flight.busy} onTake={(data) => void flight.run(() => take(row, data))} onSkip={() => confirmIgnore.ask(() => void flight.run(() => skip(row)))} />
         ))}
       </Section>
+      {confirmIgnore.dialog}
     </BusinessFrame>
   )
 }

@@ -8,6 +8,7 @@ import {
 } from '@steuereule/api-client'
 import { useQueryClient } from '@tanstack/react-query'
 import { APP_NS } from '../../i18n/resources'
+import { useConfirmAction } from '../../confirm/useConfirmAction'
 import { formatRequestedAt } from '../device/deviceContext'
 import { useApiFailureMessage } from '../../net/apiFailure'
 import { AssistantConnectForm } from './AssistantConnectForm'
@@ -25,6 +26,7 @@ export function AssistantsListSection() {
   const [revokeError, setRevokeError] = useState<string | null>(null)
   const [connecting, setConnecting] = useState(false)
   const failureMessage = useApiFailureMessage()
+  const confirmRevoke = useConfirmAction('assistantRevoke')
 
   function handleRevoke(clientId: string) {
     setRevokeError(null)
@@ -111,7 +113,7 @@ export function AssistantsListSection() {
                 {tr('profil.assistenten.revoking')}
               </Button>
             ) : (
-              <Chip onPress={() => handleRevoke(assistant.clientId)} testID={`assistent-widerrufen-${assistant.clientId}`}>{tr('profil.assistenten.revoke')}</Chip>
+              <Chip onPress={() => confirmRevoke.ask(() => handleRevoke(assistant.clientId), { name: assistant.name })} testID={`assistent-widerrufen-${assistant.clientId}`}>{tr('profil.assistenten.revoke')}</Chip>
             )}
           </View>
         )
@@ -128,6 +130,7 @@ export function AssistantsListSection() {
           {tr('profil.assistenten.verbinden.oeffnen')}
         </Button>
       )}
+      {confirmRevoke.dialog}
     </Card>
   )
 }

@@ -8,6 +8,7 @@ import { createAppI18n } from '../../i18n/app-i18n'
 import { AssistantsListSection } from './AssistentenListSection'
 import { server } from '../../test-msw-server'
 import { expectFailsClosed, failEveryRequest } from '../../test-every-query-fails'
+import { confirmAction } from '../../confirm/confirmInTest'
 
 const BASE_URL = 'http://localhost:3000'
 
@@ -63,6 +64,9 @@ describe('AssistentenListSection (ADR-0052 §10)', () => {
 
     const disconnectBtn = screen.getByText('Trennen')
     fireEvent.click(disconnectBtn)
+    expect(screen.getByTestId('rueckfrage-assistantRevoke-body').textContent).toContain('Claude Desktop verliert sofort den Zugriff')
+    expect(revokeCalled).toBe(false)
+    confirmAction('assistantRevoke')
 
     await waitFor(() => {
       expect(revokeCalled).toBe(true)
@@ -107,6 +111,7 @@ describe('AssistentenListSection: failures (WEB-49, NR-04)', () => {
     )
     renderAssistantsList()
     fireEvent.click(await screen.findByText('Trennen'))
+    confirmAction('assistantRevoke')
     expect(await screen.findByText(message)).toBeTruthy()
     expect(screen.getByText('Claude Desktop')).toBeTruthy()
   })

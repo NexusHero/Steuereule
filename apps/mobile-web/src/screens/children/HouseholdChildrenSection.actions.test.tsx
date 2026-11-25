@@ -10,6 +10,7 @@ import type { HouseholdPersonDto, HouseholdResponseDto } from '@steuereule/api-c
 import { createAppI18n } from '../../i18n/app-i18n'
 import { server } from '../../test-msw-server'
 import { HouseholdChildrenSection } from './HouseholdChildrenSection'
+import { confirmAction } from '../../confirm/confirmInTest'
 
 const person = (over: Partial<HouseholdPersonDto>): HouseholdPersonDto => ({
   personId: 'p1',
@@ -102,12 +103,16 @@ describe('HouseholdChildrenSection — actions', () => {
     expect(screen.queryByTestId('haushalt-geaendert-0')).toBeNull()
 
     fireEvent.click(screen.getByTestId('haushalt-loeschen-0'))
-    expect(screen.getByTestId('haushalt-loeschen-warnung')).toBeTruthy()
-    fireEvent.click(screen.getByTestId('haushalt-loeschen-abbrechen'))
-    expect(screen.queryByTestId('haushalt-loeschen-warnung')).toBeNull()
+    expect(screen.getByTestId('rueckfrage-householdDelete')).toBeTruthy()
+    fireEvent.click(screen.getByTestId('rueckfrage-householdDelete-cancel'))
+    expect(screen.queryByTestId('rueckfrage-householdDelete')).toBeNull()
 
+    fireEvent.click(screen.getByTestId('haushalt-nicht-mehr-dabei-0'))
+    // NM-03: leaving deletes the child's details from this year on; it asks first.
+    expect(screen.getByTestId('rueckfrage-householdLeave-body').textContent).toContain('ab 2026')
+    expect(left).toBe(0)
     await act(async () => {
-      fireEvent.click(screen.getByTestId('haushalt-nicht-mehr-dabei-0'))
+      confirmAction('householdLeave')
     })
     await waitFor(() => expect(left).toBe(1))
   })
@@ -118,7 +123,7 @@ describe('HouseholdChildrenSection — actions', () => {
     const { onChanged } = renderSection()
     fireEvent.click(await screen.findByTestId('haushalt-loeschen-0'))
     await act(async () => {
-      fireEvent.click(screen.getByTestId('haushalt-loeschen-bestaetigen'))
+      confirmAction('householdDelete')
     })
     expect(await screen.findByTestId('haushalt-fehler')).toBeTruthy()
     expect(onChanged).not.toHaveBeenCalled()

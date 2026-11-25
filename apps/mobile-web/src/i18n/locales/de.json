@@ -4808,6 +4808,109 @@
   "betrag": {
     "unlesbar": "Das ist kein Betrag. Bitte so eingeben: 948 oder 948,60."
   },
+  "rueckfrage": {
+    "abbrechen": "Abbrechen",
+    "singleAssessment": {
+      "titel": "Einzelveranlagung für {{jahr}} wählen?",
+      "text": "Für {{jahr}} gebt ihr dann getrennte Erklärungen ab. Die Kopplung mit Person B für {{jahr}} wird gelöst: Was du für Person B erfasst hast, gehört nicht mehr zu deiner Erklärung, und ein offener Einladungscode gilt nicht mehr.",
+      "bestaetigen": "Einzelveranlagung wählen"
+    },
+    "endPartnerLink": {
+      "titel": "Verknüpfung ab {{jahr}} beenden?",
+      "text": "Ab {{jahr}} gehört dein Partner nicht mehr zu deinem Haushalt, und ihr könnt keine gemeinsame Erklärung mehr abgeben. Die Jahre davor bleiben, wie sie sind.",
+      "bestaetigen": "Verknüpfung beenden"
+    },
+    "householdLeave": {
+      "titel": "{{name}} ab {{jahr}} nicht mehr dabei?",
+      "text": "{{name}} gehört ab {{jahr}} nicht mehr zu deinem Haushalt. Die Angaben zu {{name}} ab {{jahr}} werden gelöscht; frühere Jahre bleiben.",
+      "bestaetigen": "Nicht mehr dabei"
+    },
+    "householdDelete": {
+      "titel": "{{name}} endgültig löschen?",
+      "text": "Damit verschwindet {{name}} aus allen Steuerjahren, auch aus abgeschlossenen. Das lässt sich nicht rückgängig machen.",
+      "bestaetigen": "Endgültig löschen"
+    },
+    "lstbDiscardDraft": {
+      "titel": "Gelesene Werte verwerfen?",
+      "text": "Die Werte, die die Eule aus deiner Lohnsteuerbescheinigung gelesen hat, gehen verloren. Deine gespeicherten Angaben für {{jahr}} bleiben unverändert.",
+      "bestaetigen": "Verwerfen"
+    },
+    "rentalRemoveRepair": {
+      "titel": "Erhaltungsaufwand {{nummer}} entfernen?",
+      "text": "Der Betrag und seine Verteilung werden aus diesem Objekt gelöscht und zählen nicht mehr als Werbungskosten.",
+      "bestaetigen": "Entfernen"
+    },
+    "childDelete": {
+      "titel": "{{name}} löschen?",
+      "text": "{{name}} und alle Angaben zu dem Kind werden aus {{jahr}} gelöscht: Kindergeld, Betreuungskosten und Freibeträge entfallen in deiner Erklärung.",
+      "bestaetigen": "Kind löschen"
+    },
+    "bookingReverse": {
+      "titel": "Buchung {{nummer}} stornieren?",
+      "text": "Es entsteht eine Gegenbuchung. Das ist endgültig: Buchung und Storno bleiben im Journal stehen und lassen sich nicht mehr löschen.",
+      "bestaetigen": "Endgültig stornieren"
+    },
+    "bookLock": {
+      "titel": "Bis {{datum}} festschreiben?",
+      "text": "Das ist endgültig: Buchungen bis zum {{datum}} lassen sich danach weder ändern noch stornieren, und die Festschreibung lässt sich nicht zurücknehmen.",
+      "bestaetigen": "Endgültig festschreiben"
+    },
+    "assetDispose": {
+      "titel": "Abgang von {{name}} buchen?",
+      "text": "Das Anlagegut gilt ab dem Abgangsdatum als ausgeschieden; mit der nächsten AfA-Buchung wird der Restbuchwert gebucht. Das ist endgültig: Korrigieren lässt es sich nur noch per Storno.",
+      "bestaetigen": "Abgang buchen"
+    },
+    "depreciationBook": {
+      "titel": "Abschreibungen {{jahr}} buchen?",
+      "text": "Die AfA und die Abgänge des Jahres werden ins Journal gebucht. Das ist endgültig: Eine Korrektur geht nur noch per Storno.",
+      "bestaetigen": "AfA buchen"
+    },
+    "openingBalance": {
+      "titel": "Eröffnungsbilanz {{folgejahr}} buchen?",
+      "text": "Die Schlussbilanz {{jahr}} wird als Eröffnungsbuchung in {{folgejahr}} übernommen. Das ist endgültig: Sie lässt sich nur einmal buchen und nur per Storno korrigieren.",
+      "bestaetigen": "Eröffnungsbilanz buchen"
+    },
+    "eBilanzSend": {
+      "titel": "E-Bilanz {{jahr}} an ELSTER übermitteln?",
+      "text": "Die E-Bilanz geht an dein Finanzamt. Das ist endgültig: Eine übermittelte E-Bilanz lässt sich nicht zurückholen, nur durch eine neue ersetzen.",
+      "bestaetigen": "Endgültig übermitteln"
+    },
+    "bankIgnore": {
+      "titel": "Umsatz ignorieren?",
+      "text": "Der Kontoumsatz wird nicht gebucht und verschwindet aus der offenen Liste. Ein erneuter Import holt ihn nicht zurück.",
+      "bestaetigen": "Ignorieren"
+    },
+    "shareRemove": {
+      "titel": "Beteiligung {{name}} entfernen?",
+      "text": "Die Beteiligung und ihre Zahlen aus dem Feststellungsbescheid werden gelöscht und zählen nicht mehr in deiner Erklärung.",
+      "bestaetigen": "Entfernen"
+    },
+    "proposalDiscard": {
+      "titel": "Vorschlag verwerfen?",
+      "text": "Der vorgeschlagene Wert geht verloren; dein bisheriger Wert bleibt.",
+      "bestaetigen": "Verwerfen"
+    },
+    "taskDiscard": {
+      "titel": "Aufgabe verwerfen?",
+      "text": "Die Aufgabe verschwindet aus deiner Liste.",
+      "bestaetigen": "Verwerfen"
+    },
+    "submissionWithdraw": {
+      "titel": "Abgabe {{jahr}} zurücknehmen?",
+      "text": "Die eingefrorene Fassung deiner abgegebenen Erklärung {{jahr}} wird gelöst, und die Erklärung gilt wieder als offen. Beim Finanzamt ändert das nichts.",
+      "bestaetigen": "Abgabe zurücknehmen"
+    },
+    "noteDelete": {
+      "titel": "Notiz löschen?",
+      "text": "Die Notiz ist danach weg; die Eule kennt sie in diesem Gespräch nicht mehr.",
+      "bestaetigen": "Löschen"
+    },
+    "assistantRevoke": {
+      "titel": "{{name}} trennen?",
+      "text": "{{name}} verliert sofort den Zugriff auf deine Steuerdaten. Zum erneuten Verbinden musst du den Zugriff neu freigeben.",
+      "bestaetigen": "Trennen"
+    }
+  },
   "zahlung": {
     "wirdBestaetigt": "Deine Zahlung wird bestätigt. Das dauert meist nur Sekunden – du musst nichts weiter tun.",
     "bestaetigt": "Zahlung bestätigt: {{year}} ist freigeschaltet.",

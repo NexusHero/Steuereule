@@ -11,6 +11,7 @@ import { renderInApp } from '../../test-render'
 import { server } from '../../test-msw-server'
 import { todayIso } from '../shared/today'
 import { SubmissionMarker, type SubmissionMarkerProps } from './SubmissionMarker'
+import { confirmAction } from '../../confirm/confirmInTest'
 
 const URL = '*/v1/steuerjahre/2025/abgabe'
 
@@ -72,6 +73,7 @@ describe('SubmissionMarker', () => {
     renderMarker({ year: 2025, submission: { status: 'eingereicht', submittedOn: '2026-03-10', withdrawable: true } })
     expect(screen.getByTestId('cockpit-abgabe-marke-stand').textContent).toBe('Eingereicht am 10.03.2026 · wartet auf Bescheid')
     fireEvent.click(screen.getByTestId('cockpit-abgabe-zuruecknehmen'))
+    confirmAction('submissionWithdraw')
     expect((await screen.findByTestId('cockpit-abgabe-marke-status')).textContent).toBe('Die Abgabe ist zurückgenommen; das Jahr ist wieder offen.')
     expect(deleted).toBe(true)
   })
@@ -80,6 +82,7 @@ describe('SubmissionMarker', () => {
     server.use(http.delete(URL, () => HttpResponse.json({ code: 'SUBMISSION_HAS_ASSESSMENT' }, { status: 409 })))
     const { unmount } = renderMarker({ year: 2025, submission: { status: 'eingereicht', submittedOn: '2026-03-10', withdrawable: true } })
     fireEvent.click(screen.getByTestId('cockpit-abgabe-zuruecknehmen'))
+    confirmAction('submissionWithdraw')
     expect((await screen.findByTestId('cockpit-abgabe-marke-status')).textContent).toBe('Es ist schon ein Bescheid erfasst; die Abgabe bleibt bestehen.')
     unmount()
     renderMarker({ year: 2025, submission: { status: 'bescheid', submittedOn: '2026-03-10', withdrawable: false } })

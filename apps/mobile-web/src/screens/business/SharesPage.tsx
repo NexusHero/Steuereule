@@ -9,6 +9,7 @@ import { BusinessFrame, BusinessQueryState, Figure, Note, ProblemNote, Section }
 import { parseGermanAmount, parseSignedGermanAmount } from '../shared/germanNumber'
 import { signedEuro } from './businessKit'
 import { useProfileEditor } from './useProfileEditor'
+import { useConfirmAction } from '../../confirm/useConfirmAction'
 import type { BusinessPageProps } from './BusinessScreen'
 
 /** An amount typed the German way (WEB-46): undefined when empty, null when it is no amount. */
@@ -24,6 +25,7 @@ export function SharesPage({ taxYear, person, business = 1, onBack }: BusinessPa
   const { query, profile, loadProblem, save, problem, saving } = useProfileEditor(taxYear, person, business)
   const [form, setForm] = useState({ name: '', kind: 'freiberuf' as PartnershipShareDto['kind'], profit: '', base: '', tax: '' })
   const [invalid, setInvalid] = useState(false)
+  const confirmRemove = useConfirmAction('shareRemove')
 
   if (query.isPending || profile === null || loadProblem !== null) {
     return (
@@ -54,7 +56,7 @@ export function SharesPage({ taxYear, person, business = 1, onBack }: BusinessPa
         {shares.map((share, index) => (
           <View key={`${share.name}-${index}`} testID={`beteiligung-${index}`}>
             <Figure label={`${share.name} · ${tr(`business.art.${share.kind}`)}`} value={signedEuro(share.profitEur)} />
-            <Button variant="ghost" disabled={saving} onPress={() => void save({ partnershipShares: shares.filter((_, i) => i !== index) })} testID={`beteiligung-entfernen-${index}`}>
+            <Button variant="ghost" disabled={saving} onPress={() => confirmRemove.ask(() => void save({ partnershipShares: shares.filter((_, i) => i !== index) }), { name: share.name })} testID={`beteiligung-entfernen-${index}`}>
               {tr('business.beteiligungen.entfernen')}
             </Button>
           </View>
@@ -90,6 +92,7 @@ export function SharesPage({ taxYear, person, business = 1, onBack }: BusinessPa
           {tr('business.beteiligungen.hinzufuegen')}
         </Button>
       </Section>
+      {confirmRemove.dialog}
     </BusinessFrame>
   )
 }

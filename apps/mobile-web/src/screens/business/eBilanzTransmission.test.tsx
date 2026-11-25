@@ -4,6 +4,7 @@ import { screen, fireEvent } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import { server } from '../../test-msw-server'
 import { BASE_URL, renderBusiness, useBusinessDefaults } from './businessTestKit'
+import { confirmAction } from '../../confirm/confirmInTest'
 
 function setUp(ready: boolean, answer: Record<string, unknown> = { status: 'ok', mode: 'senden', ticket: 'TK-9', protocol: null }) {
   useBusinessDefaults()
@@ -26,6 +27,7 @@ describe('E-Bilanz to ELSTER', () => {
     setUp(true)
     renderBusiness('export')
     fireEvent.click(await screen.findByTestId('ebilanz-senden'))
+    confirmAction('eBilanzSend')
     expect((await screen.findByTestId('ebilanz-ok')).textContent).toContain('TK-9')
   })
 

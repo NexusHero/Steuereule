@@ -313,9 +313,13 @@ async function main() {
       else await route.fallback()
     })
     await byId(page, 'eule-note-delete').click()
+    // WEB-37/WEB-38: the action asks first; confirm it.
+    await byId(page, 'rueckfrage-noteDelete-confirm').click()
     await see(page, 'eule-note-failed', 'Row H')
     await page.unroute('**/advisor/notes/*')
     await byId(page, 'eule-note-delete').click()
+    // WEB-37/WEB-38: the action asks first; confirm it.
+    await byId(page, 'rueckfrage-noteDelete-confirm').click()
     await see(page, 'eule-notes-empty', 'Row H')
     console.log(`[${TAG}] ✅ Row H — a note added, changed and deleted by hand; a failed delete says so`)
 

@@ -12,6 +12,7 @@ import { createAppI18n } from '../../i18n/app-i18n'
 import { server } from '../../test-msw-server'
 import { expectFailsClosed, failEveryRequest } from '../../test-every-query-fails'
 import { MasterDataScreen } from './MasterDataScreen'
+import { confirmAction } from '../../confirm/confirmInTest'
 
 const MARRIED: MasterDataResponseDto = {
   geburtsdatum: null,
@@ -171,6 +172,7 @@ describe('Kopplung failures are said, not only felt (NM-02)', () => {
     )
     renderScreen()
     fireEvent.click(await screen.findByTestId('kopplung-beenden'))
+    confirmAction('endPartnerLink')
     expect((await screen.findByTestId('kopplung-beenden-fehler')).textContent).toContain('Keine Verbindung')
   })
 

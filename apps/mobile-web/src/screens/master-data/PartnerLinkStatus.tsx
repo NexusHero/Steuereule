@@ -12,6 +12,7 @@ import { APP_NS } from '../../i18n/resources'
 import { useApiFailureMessage } from '../../net/apiFailure'
 import { InlineLoadFailure } from '../shared/InlineLoadFailure'
 import { triggerSaveErrorHaptic } from '../shared/saveFeedback'
+import { useConfirmAction } from '../../confirm/useConfirmAction'
 
 /**
  * The spouse link without a year (#452 decision 2, ADR-0062 §3): shown while it is active, with
@@ -25,6 +26,7 @@ export function PartnerLinkStatus({ taxYear, onChanged }: { readonly taxYear: nu
   const end = useHouseholdControllerEndPartner()
   const failureMessage = useApiFailureMessage()
   const [endError, setEndError] = useState<unknown>(null)
+  const confirmEnd = useConfirmAction('endPartnerLink')
   // NM-15: a failed load says so; it does not look like „not linked“.
   if (query.isError) {
     return <InlineLoadFailure what={tr('stammdaten.kopplungStand.statusLoadError')} error={query.error} onRetry={() => void query.refetch()} testID="kopplung-status-ladefehler" />
@@ -59,7 +61,7 @@ export function PartnerLinkStatus({ taxYear, onChanged }: { readonly taxYear: nu
       ) : (
         <Pressable
           accessibilityRole="button"
-          onPress={endLink}
+          onPress={() => confirmEnd.ask(endLink, { jahr: taxYear })}
           disabled={end.isPending}
           testID="kopplung-beenden"
         >
@@ -71,6 +73,7 @@ export function PartnerLinkStatus({ taxYear, onChanged }: { readonly taxYear: nu
           {`${tr('apiFehler.saveHeading')} ${failureMessage(endError)}`}
         </Text>
       ) : null}
+      {confirmEnd.dialog}
     </View>
   )
 }

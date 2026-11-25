@@ -11,6 +11,7 @@ import {
   type CockpitSubmissionDto,
 } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
+import { useConfirmAction } from '../../confirm/useConfirmAction'
 import { useApiFailureMessage } from '../../net/apiFailure'
 import { todayIso } from '../shared/today'
 import { triggerSaveErrorHaptic } from '../shared/saveFeedback'
@@ -34,6 +35,7 @@ export function SubmissionMarker({ year, submission }: SubmissionMarkerProps) {
   const queryClient = useQueryClient()
   const submit = useSubmissionControllerSubmit()
   const withdraw = useSubmissionControllerWithdraw()
+  const confirmWithdraw = useConfirmAction('submissionWithdraw')
   const [dateText, setDateText] = useState(() => isoDateToGerman(todayIso()))
   const [feedback, setFeedback] = useState<Feedback>(null)
   const failureMessage = useApiFailureMessage()
@@ -91,12 +93,13 @@ export function SubmissionMarker({ year, submission }: SubmissionMarkerProps) {
             {tr(assessed ? 'cockpit.abgabeMarke.eingereichtMitBescheid' : 'cockpit.abgabeMarke.eingereicht', { datum: isoDateToGerman(submission.submittedOn) })}
           </Text>
           {submission.withdrawable ? (
-            <Button variant="ghost" onPress={() => void undo()} disabled={withdraw.isPending} testID="cockpit-abgabe-zuruecknehmen">
+            <Button variant="ghost" onPress={() => confirmWithdraw.ask(() => void undo(), { jahr: year })} disabled={withdraw.isPending} testID="cockpit-abgabe-zuruecknehmen">
               {tr('cockpit.abgabeMarke.zuruecknehmen')}
             </Button>
           ) : null}
           {status}
         </View>
+        {confirmWithdraw.dialog}
       </Card>
     )
   }
