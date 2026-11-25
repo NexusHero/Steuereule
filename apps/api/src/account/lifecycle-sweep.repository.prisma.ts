@@ -9,7 +9,7 @@ import { sweepEndedLegalHolds, sweepEndedLoginRecords, sweepOldAuditRows, sweepU
 export class PrismaLifecycleSweepRepository implements LifecycleSweepRepository {
   constructor(@Inject(ENCRYPTED_PRISMA) private readonly prisma: EncryptedPrismaClient) {}
 
-  sweepEndedLegalHolds(erase: (userId: string) => Promise<DeleteAccountResult>, now: Date) {
+  sweepEndedLegalHolds(erase: (userId: string, now: Date) => Promise<DeleteAccountResult>, now: Date) {
     return sweepEndedLegalHolds(this.prisma as never, erase, now)
   }
 

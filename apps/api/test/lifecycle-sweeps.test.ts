@@ -141,8 +141,11 @@ describe('sweepEndedLegalHolds', () => {
       user: { findMany: async () => [{ id: 'living-user' }] },
     }
     const erased: string[] = []
-    const result = await sweepEndedLegalHolds(db as never, async (id) => {
+    const result = await sweepEndedLegalHolds(db as never, async (id, at) => {
       erased.push(id)
+      // The erasure judges holds by the sweep's clock, not the wall clock (a later run must not keep rows the
+      // sweep found ended).
+      expect(at).toBe(NOW)
       return { deleted: { profile: false, account: true }, retainedAnonymisedAuditRows: 0, retainedUnderLegalHold: 0, legalHolds: [] }
     }, NOW)
     expect(removed).toEqual(['h1', 'h2', 'h3'])

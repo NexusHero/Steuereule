@@ -21,7 +21,11 @@ export interface DeleteAccountResult {
 
 /** The persistence seam for account teardown. */
 export interface AccountDeletionRepository {
-  deleteAccount(userId: string): Promise<DeleteAccountResult>
+  /**
+   * `now` is the moment a hold is judged against. A sweep passes its own, so the deletion and the sweep agree on
+   * which holds have ended; everyone else deletes as of the call.
+   */
+  deleteAccount(userId: string, now?: Date): Promise<DeleteAccountResult>
   /**
    * ADR-0030: erases a never-verified account, or nothing when it was verified meanwhile (null). The keys are
    * destroyed only after the rows are gone, so a verification that wins the race keeps its receipt files.

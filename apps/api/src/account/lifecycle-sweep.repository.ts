@@ -5,7 +5,7 @@ export const LIFECYCLE_SWEEP_REPOSITORY = Symbol('LIFECYCLE_SWEEP_REPOSITORY')
 
 /** The persistence seam of the lifecycle sweeps (P7); the sweeps themselves are in lifecycle-sweeps.prisma.ts. */
 export interface LifecycleSweepRepository {
-  sweepEndedLegalHolds(erase: (userId: string) => Promise<DeleteAccountResult>, now: Date): Promise<{ released: number; erasedFor: number }>
+  sweepEndedLegalHolds(erase: (userId: string, now: Date) => Promise<DeleteAccountResult>, now: Date): Promise<{ released: number; erasedFor: number }>
   sweepUnverifiedAccounts(deps: UnverifiedSweepDeps, now: Date): Promise<UnverifiedSweepResult>
   sweepEndedLoginRecords(now: Date): Promise<number>
   sweepOldAuditRows(now: Date): Promise<number>

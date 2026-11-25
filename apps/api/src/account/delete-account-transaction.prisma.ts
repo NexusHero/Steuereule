@@ -111,9 +111,9 @@ export async function deleteAccountTransaction(
   prisma: PrismaClient,
   userId: string,
   hooks: DeleteAccountTestHooks = {},
+  now: Date = new Date(),
 ): Promise<DeleteAccountResult> {
   return prisma.$transaction(async (tx) => {
-    const now = new Date()
     const ids = personIds(userId, now)
     const [user, activeHolds] = await Promise.all([
       tx.user.findUnique({ where: { id: userId } }),
