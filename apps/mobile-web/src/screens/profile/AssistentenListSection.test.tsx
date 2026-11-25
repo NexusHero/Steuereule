@@ -8,7 +8,7 @@ import { createAppI18n } from '../../i18n/app-i18n'
 import { AssistantsListSection } from './AssistentenListSection'
 import { server } from '../../test-msw-server'
 import { expectFailsClosed, failEveryRequest } from '../../test-every-query-fails'
-import { confirmAction } from '../../confirm/confirmInTest'
+import { confirmAction } from '../../test-confirm'
 
 const BASE_URL = 'http://localhost:3000'
 

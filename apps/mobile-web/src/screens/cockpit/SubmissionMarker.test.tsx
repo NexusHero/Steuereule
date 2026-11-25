@@ -11,7 +11,7 @@ import { renderInApp } from '../../test-render'
 import { server } from '../../test-msw-server'
 import { todayIso } from '../shared/today'
 import { SubmissionMarker, type SubmissionMarkerProps } from './SubmissionMarker'
-import { confirmAction } from '../../confirm/confirmInTest'
+import { confirmAction } from '../../test-confirm'
 
 const URL = '*/v1/steuerjahre/2025/abgabe'
 

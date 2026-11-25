@@ -4,7 +4,7 @@ import { I18nextProvider } from 'react-i18next'
 import { ThemeProvider } from '@steuereule/ui'
 import { createAppI18n } from '../../../i18n/app-i18n'
 import { NoteChangeHints, ProjectNotes, type NoteChangeHintsProps, type ProjectNotesProps } from './ProjectNotes'
-import { confirmAction } from '../../../confirm/confirmInTest'
+import { confirmAction } from '../../../test-confirm'
 
 const wrap = (node: React.ReactNode) =>
   render(

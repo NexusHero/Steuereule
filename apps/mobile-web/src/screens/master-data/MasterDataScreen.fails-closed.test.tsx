@@ -12,7 +12,7 @@ import { createAppI18n } from '../../i18n/app-i18n'
 import { server } from '../../test-msw-server'
 import { expectFailsClosed, failEveryRequest } from '../../test-every-query-fails'
 import { MasterDataScreen } from './MasterDataScreen'
-import { confirmAction } from '../../confirm/confirmInTest'
+import { confirmAction } from '../../test-confirm'
 
 const MARRIED: MasterDataResponseDto = {
   geburtsdatum: null,

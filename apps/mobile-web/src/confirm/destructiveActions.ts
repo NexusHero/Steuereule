@@ -62,6 +62,5 @@ export const UNCONFIRMED_DESTRUCTIVE_MUTATIONS: Readonly<Record<string, string>>
   useOwlModeControllerDismissCard: 'Hides a hint card; nothing stored is lost.',
   useReceiptControllerDelete: 'The receipt inbox asks with its own confirmation (ReceiptsScreen).',
   useBusinessControllerPost: 'An ordinary booking; a mistake is reversed by Storno, which asks.',
-  useBusinessControllerRemoveBusiness: 'Not wired to any screen.',
   useSubmissionControllerSubmit: 'Marks the return as filed; it can be withdrawn while no Bescheid exists.',
 }

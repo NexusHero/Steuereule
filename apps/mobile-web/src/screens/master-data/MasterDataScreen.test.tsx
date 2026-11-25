@@ -8,7 +8,7 @@ import type { LinkResponseDto, MasterDataResponseDto } from '@steuereule/api-cli
 import { createAppI18n } from '../../i18n/app-i18n'
 import { server } from '../../test-msw-server'
 import { MasterDataScreen } from './MasterDataScreen'
-import { confirmAction } from '../../confirm/confirmInTest'
+import { confirmAction } from '../../test-confirm'
 
 const LEER: MasterDataResponseDto = {
   geburtsdatum: null,

@@ -20,8 +20,8 @@ function sourceFiles(dir: string): string[] {
 
 const FILES = [...sourceFiles(join(APP_ROOT, 'src')), join(APP_ROOT, 'App.tsx')].map((path) => ({ path: relative(APP_ROOT, path), text: readFileSync(path, 'utf8') }))
 
-/** Generated mutation hooks whose name says they remove, end or finalise something. */
-const DESTRUCTIVE_HOOK = /\buse[A-Z]\w*Controller(?:\w*(?:Delete|Remove|Reverse|Lock|Dispose|Ignore|Leave|EndPartner|Revoke|Withdraw|Decide|Clear|Dismiss|CarryForward|Transmit|BookDepreciation|Submit)\w*)\b/g
+/** Generated mutations (the hook or the plain function) whose name says they remove, end or finalise something. */
+const DESTRUCTIVE_HOOK = /\b(?:use[A-Z]|[a-z])\w*Controller(?:\w*(?:Delete|Remove|Reverse|Lock|Dispose|Ignore|Leave|EndPartner|Revoke|Withdraw|Decide|Clear|Dismiss|CarryForward|Transmit|BookDepreciation|Submit)\w*)\b/g
 
 const ids = Object.keys(DESTRUCTIVE_ACTIONS) as DestructiveActionId[]
 
@@ -58,8 +58,14 @@ describe('destructive mask actions ask first (WEB-37, WEB-38)', () => {
     expect(unlisted).toEqual([])
   })
 
+  // The registry names the hooks itself, so it is no evidence that a screen uses one.
+  const screens = FILES.filter((f) => f.path !== 'src/confirm/destructiveActions.ts').map((f) => f.text).join('\n')
+
   it('a registered mutation hook is used where its screen asks (or the screen it is passed into)', () => {
-    const all = FILES.map((f) => f.text).join('\n')
-    for (const id of ids) for (const hook of DESTRUCTIVE_ACTIONS[id].mutations) expect(all, `${id} → ${hook}`).toContain(hook)
+    for (const id of ids) for (const hook of DESTRUCTIVE_ACTIONS[id].mutations) expect(screens, `${id} → ${hook}`).toContain(hook)
+  })
+
+  it('an excused mutation is one a screen really uses', () => {
+    expect(Object.keys(UNCONFIRMED_DESTRUCTIVE_MUTATIONS).filter((hook) => !screens.includes(hook))).toEqual([])
   })
 })

@@ -10,7 +10,7 @@ import { http, HttpResponse } from 'msw'
 import { createAppI18n } from '../../i18n/app-i18n'
 import { server } from '../../test-msw-server'
 import { ChildrenScreen, type ChildItem } from './ChildrenScreen'
-import { confirmAction } from '../../confirm/confirmInTest'
+import { confirmAction } from '../../test-confirm'
 
 const LINA: ChildItem = { id: 'kind-1', sequenceNumber: 1, firstName: 'Lina', lastName: 'Muster', geburtsdatum: '2016-05-12', taxId: '12345678901', childBenefitClaimEur: '3000' }
 

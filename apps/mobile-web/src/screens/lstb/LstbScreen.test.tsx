@@ -17,7 +17,7 @@ import type {
   ParseReceiptResponseDto,
   ReceiptResponseDto,
 } from '@steuereule/api-client'
-import { confirmAction } from '../../confirm/confirmInTest'
+import { confirmAction } from '../../test-confirm'
 
 const { mockExtractDocumentText } = vi.hoisted(() => ({
   mockExtractDocumentText: vi.fn(),

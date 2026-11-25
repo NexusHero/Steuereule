@@ -8,7 +8,7 @@ import { findAccount } from '@steuereule/core'
 import type { BookDto, JournalEntryDto } from '@steuereule/api-client'
 import { server } from '../../test-msw-server'
 import { BASE_PROFILE, BASE_URL, CATALOGUES, EMPTY_BOOK, renderBusiness, useBusinessDefaults, useCatalogues, YEAR } from './businessTestKit'
-import { confirmAction } from '../../confirm/confirmInTest'
+import { confirmAction, confirmDialogOf } from '../../test-confirm'
 
 afterEach(() => vi.restoreAllMocks())
 
@@ -255,8 +255,9 @@ describe('the book', () => {
     renderBusiness('buch')
     fireEvent.change(await screen.findByTestId('buch-fest-datum'), { target: { value: '99.99.2025' } })
     fireEvent.click(screen.getByTestId('buch-festschreiben'))
-    confirmAction('bookLock')
-    await waitFor(() => expect(lock).not.toHaveBeenCalled())
+    // An unreadable date is refused before anything is asked.
+    expect(confirmDialogOf('bookLock')).toBeNull()
+    expect(lock).not.toHaveBeenCalled()
   })
 })
 
@@ -373,7 +374,7 @@ describe('the assets', () => {
     renderBusiness('anlagen')
     fireEvent.click(await screen.findByTestId('anlage-abgang-a1'))
     fireEvent.click(screen.getByTestId('anlage-abgang-buchen'))
-    confirmAction('assetDispose')
+    expect(confirmDialogOf('assetDispose')).toBeNull()
     expect(await screen.findByText('Bitte prüfe die Angaben.')).toBeTruthy()
     fireEvent.change(screen.getByTestId('anlage-abgang-datum'), { target: { value: '30.06.2025' } })
     fireEvent.change(screen.getByTestId('anlage-abgang-erloes'), { target: { value: '300,50' } })

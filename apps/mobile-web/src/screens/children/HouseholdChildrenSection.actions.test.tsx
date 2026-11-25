@@ -10,7 +10,7 @@ import type { HouseholdPersonDto, HouseholdResponseDto } from '@steuereule/api-c
 import { createAppI18n } from '../../i18n/app-i18n'
 import { server } from '../../test-msw-server'
 import { HouseholdChildrenSection } from './HouseholdChildrenSection'
-import { confirmAction } from '../../confirm/confirmInTest'
+import { confirmAction } from '../../test-confirm'
 
 const person = (over: Partial<HouseholdPersonDto>): HouseholdPersonDto => ({
   personId: 'p1',

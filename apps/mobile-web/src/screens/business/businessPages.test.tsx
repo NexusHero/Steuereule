@@ -5,7 +5,7 @@ import { http, HttpResponse } from 'msw'
 import type { BookDto, ElsterHelpDto, JournalEntryDto } from '@steuereule/api-client'
 import { server } from '../../test-msw-server'
 import { BASE_PROFILE, BASE_URL, EMPTY_BOOK, renderBusiness, useBusinessDefaults, useElsterForms, YEAR } from './businessTestKit'
-import { confirmAction } from '../../confirm/confirmInTest'
+import { confirmAction } from '../../test-confirm'
 
 const SMALL_OK = { eligible: true, priorYearLimitEur: 25_000, currentYearLimitEur: 100_000, crossed: null, foundingYear: false, priorYearKnown: true, turnoverEur: 0, matchesProfile: true }
 

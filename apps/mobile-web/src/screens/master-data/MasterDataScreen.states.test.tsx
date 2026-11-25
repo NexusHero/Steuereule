@@ -11,7 +11,7 @@ import type { LinkResponseDto, MasterDataResponseDto } from '@steuereule/api-cli
 import { createAppI18n } from '../../i18n/app-i18n'
 import { server } from '../../test-msw-server'
 import { MasterDataScreen } from './MasterDataScreen'
-import { confirmAction } from '../../confirm/confirmInTest'
+import { confirmAction } from '../../test-confirm'
 
 const LEER: MasterDataResponseDto = {
   geburtsdatum: null,
@@ -85,7 +85,8 @@ describe('the partner section', () => {
     const kinds: unknown[] = []
     server.use(
       http.get('*/v1/stammdaten', () => HttpResponse.json(LEER)),
-      http.get('*/v1/steuerjahre/:jahr/kopplung', () => HttpResponse.json(NO_LINK)),
+      // The stored link answers the reload after each choice, as the API does.
+      http.get('*/v1/steuerjahre/:jahr/kopplung', () => HttpResponse.json(kinds.length === 0 ? NO_LINK : JOINT)),
       http.put('*/v1/steuerjahre/2025/kopplung', async ({ request }) => {
         kinds.push(await request.json())
         return HttpResponse.json(JOINT)
@@ -94,6 +95,8 @@ describe('the partner section', () => {
     renderScreen()
     fireEvent.click(await screen.findByTestId('kopplung-zusammen'))
     await waitFor(() => expect(kinds).toEqual([{ filingType: 'zusammen' }]))
+    // Leaving the joint assessment asks first; the question exists once the mask shows the joint year.
+    await screen.findByTestId('personb-vorname')
     fireEvent.click(screen.getByTestId('kopplung-einzel'))
     confirmAction('singleAssessment')
     await waitFor(() => expect(kinds[1]).toEqual({ filingType: 'einzel' }))

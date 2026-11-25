@@ -12,7 +12,7 @@ import { createAppI18n } from '../../i18n/app-i18n'
 import { server } from '../../test-msw-server'
 import { CheckoutPage } from './CheckoutPage'
 import { BASE_PROFILE, BASE_URL, CATALOGUES, renderBusiness, useBusinessDefaults, useCatalogues, YEAR } from './businessTestKit'
-import { confirmAction } from '../../confirm/confirmInTest'
+import { confirmAction } from '../../test-confirm'
 
 const SMALL_OK = { eligible: true, priorYearLimitEur: 25_000, currentYearLimitEur: 100_000, crossed: null, foundingYear: false, priorYearKnown: true, turnoverEur: 0, matchesProfile: true }
 

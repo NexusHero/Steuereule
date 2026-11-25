@@ -12,7 +12,7 @@ import { getCockpitControllerGetCockpitSummaryQueryKey, getTaxEstimateController
 import { createAppI18n } from '../../i18n/app-i18n'
 import { RentalScreen } from './RentalScreen'
 import { server } from '../../test-msw-server'
-import { confirmAction } from '../../confirm/confirmInTest'
+import { confirmAction } from '../../test-confirm'
 
 /** Types a value and leaves the field — the way the mask saves (WEB-39). */
 function commit(field: HTMLElement, value: string) {

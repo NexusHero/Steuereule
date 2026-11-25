@@ -8,7 +8,7 @@ import { createAppI18n } from '../../i18n/app-i18n'
 import { server } from '../../test-msw-server'
 import { expectFailsClosed, failEveryRequest } from '../../test-every-query-fails'
 import { OwlModeScreen } from './OwlModeScreen'
-import { confirmAction } from '../../confirm/confirmInTest'
+import { confirmAction } from '../../test-confirm'
 
 // The owl screen without a copilot bridge: every action of the view must become the request the
 // API contract names, and a refusal must show as a failure instead of a silent success.

@@ -8,7 +8,7 @@ import type { ConfirmationResponseDto } from '@steuereule/api-client'
 import { createAppI18n } from '../../i18n/app-i18n'
 import { server } from '../../test-msw-server'
 import { ConfirmationScreen } from './ConfirmationScreen'
-import { confirmAction } from '../../confirm/confirmInTest'
+import { confirmAction } from '../../test-confirm'
 
 const WITH_VALUES: ConfirmationResponseDto = {
   annexes: [
