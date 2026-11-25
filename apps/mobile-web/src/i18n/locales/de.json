@@ -446,6 +446,9 @@
     "errWrongCode": "Dieser Code ist nicht richtig. Prüf die App und versuch es noch mal.",
     "errWrongPassword": "Das Passwort ist nicht richtig.",
     "errTooManyAttempts": "Zu viele Versuche. Bitte fordere einen neuen Code an.",
+    "errChallengeExpired": "Die Abfrage des zweiten Faktors ist abgelaufen. Melde dich bitte noch einmal mit E-Mail und Passwort an.",
+    "cancel": "Abbrechen",
+    "sessionUnknown": "Wir konnten gerade nicht prüfen, ob du angemeldet bist. Versuch es gleich noch mal.",
     "errLocked": "Zu viele Fehlversuche — dein Konto ist vorübergehend gesperrt. Versuch es später noch mal."
   },
   "bestaetigung": {
@@ -2071,7 +2074,8 @@
     "binIch": {
       "ja": "Ja, das bin ich",
       "nein": "Nein, jemand anderes",
-      "nameUebernehmen": "Namen in mein Profil übernehmen"
+      "nameUebernehmen": "Namen in mein Profil übernehmen",
+      "nameFehler": "Dein Name konnte nicht ins Profil übernommen werden. Der Beleg ist dir trotzdem zugeordnet – trag den Namen bitte im Profil ein."
     },
     "anlegen": {
       "alsB": "Als Person B anlegen",
@@ -2123,6 +2127,7 @@
       "success": "Beleg gespeichert. Er wird jetzt gelesen.",
       "errorUnsupported": "Bitte wähle eine PDF-, JPEG-, PNG- oder WebP-Datei aus.",
       "errorFailed": "Der Upload hat nicht geklappt. Prüf die Verbindung und versuch es noch mal.",
+      "limit": "PDF, JPG, PNG oder WebP, höchstens 10 MB je Datei.",
       "fileAttached": "Originaldatei verschlüsselt hinterlegt"
     },
     "preview": {
@@ -2563,6 +2568,8 @@
     "deny": "Ablehnen",
     "loading": "Wird geladen …",
     "processing": "Wird verarbeitet …",
+    "expired": "Diese Freigabe ist abgelaufen oder nicht mehr gültig. Starte die Verbindung in deinem Assistenten neu.",
+    "lookupFailed": "Wir konnten nicht prüfen, welcher Assistent das ist. Erlauben geht erst, wenn das klappt.",
     "error": "Fehler bei der Autorisierung. Bitte versuchen Sie es erneut."
   },
   "eule": {
@@ -2732,6 +2739,8 @@
         "tooLong": "Deine Nachricht ist zu lang ({{used}} von {{max}} Zeichen). Teile sie bitte auf."
       },
       "applyFailed": "Der Vorschlag konnte nicht übernommen werden. Trag den Wert bitte direkt in der Maske ein.",
+      "conflictBatch": "Ein Wert wurde zwischenzeitlich manuell geändert. Bitte prüfen oder mit neuem Stand übernehmen.",
+      "conflictSingle": "Wert wurde zwischenzeitlich manuell geändert.",
       "reconnecting": "Verbindung wird wiederhergestellt …",
       "failed": "nicht fertig geworden",
       "emptyTitle": "Womit kann die Eule helfen?",
@@ -3461,6 +3470,7 @@
     "jahr": {
       "unbekannt": {
         "titel": "{{jahr}} steht nicht im Verlauf",
+        "titelOhneJahr": "Diese Adresse nennt kein Steuerjahr aus deinem Verlauf",
         "text": "Für dieses Jahr gibt es weder eine Erklärung noch einen Bescheid. Zurück im Verlauf kannst du alte Jahre mit ihrem Bescheid ergänzen."
       },
       "satz": {

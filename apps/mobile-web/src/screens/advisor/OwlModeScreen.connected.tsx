@@ -43,7 +43,9 @@ import {
 import { APP_NS } from '../../i18n/resources'
 import { useDraftOwners } from './useDraftOwners'
 import { CURRENT_TAX_YEAR } from '../../config/taxYear'
-import { ErrorState, LoadingState } from '../shared/ScreenState'
+import { LoadFailedState, LoadingState } from '../shared/ScreenState'
+import { SaveFailedNotice } from '../shared/SaveFailedNotice'
+import { apiErrorStatus } from '@steuereule/api-client'
 import { sendOptionsToDto } from './AdvisorChatPanel'
 
 /** What the client sends to open a conversation; the server replaces it with its own placeholder. */
@@ -52,12 +54,6 @@ import { invalidateAllTaxQueries, useOptionalCopilotBridge } from './CopilotBrid
 import { OwlModeScreenView } from './OwlModeScreen'
 import type { OwlModeScreenProps } from './OwlModeScreen'
 import type { ConnectionView } from './chat/ConnectionStatus'
-
-/** The answer when the API said 200; otherwise it throws, so the caller's failure state shows. */
-export function expectOk<R extends { readonly status: number }>(response: R, what: string): Extract<R, { readonly status: 200 }> {
-  if (response.status !== 200) throw new Error(`${what} (HTTP ${response.status})`)
-  return response as Extract<R, { readonly status: 200 }>
-}
 
 export function professionFrom(value: string | undefined): Profession | null {
   return (PROFESSION_VALUES as readonly string[]).includes(value ?? '') ? (value as Profession) : null
@@ -77,29 +73,29 @@ export function ConnectedOwlModeScreen({ onDone = () => {}, onBack, taxYear = CU
   const sessionQuery = useAdvisorControllerGetSession(taxYear, conversationId ? { conversationId } : undefined, { query: { retry: false } })
   const { partnerName, ownName, jointReturn } = useDraftOwners(
     taxYear,
-    sessionQuery.data?.status === 200 ? (sessionQuery.data.data.messages as unknown as readonly AdvisorChatMessageView[]) : undefined,
+    sessionQuery.data?.data.messages as unknown as readonly AdvisorChatMessageView[] | undefined,
   )
   // The server decided which conversation is open: the bridge files this conversation's answer under its id.
   const adoptConversationId = bridge?.adoptConversationId
-  const openConversationId = sessionQuery.data?.status === 200 ? sessionQuery.data.data.conversationId : undefined
+  const openConversationId = sessionQuery.data?.data.conversationId
   useEffect(() => {
     if (adoptConversationId && openConversationId !== undefined) adoptConversationId(openConversationId)
   }, [adoptConversationId, openConversationId])
   const searchConversations = useCallback(
     async (query: string) => {
-      const response = expectOk(await advisorControllerSearch(taxYear, { q: query }), 'search failed')
+      const response = await advisorControllerSearch(taxYear, { q: query })
       return response.data
     },
     [taxYear],
   )
   // A new, empty conversation: the owl opens it herself when the case changed since her last opening (ADR-0067 §11).
-  const openSession = sessionQuery.data?.status === 200 ? sessionQuery.data.data : undefined
+  const openSession = sessionQuery.data?.data
   const openIsEmpty = openSession !== undefined && openSession.messages.length === 0 && !(bridge?.streaming ?? false)
   // Asked per conversation: each new one is opened (or not) by the state of the case at that moment.
   const openingQuery = useAdvisorControllerOpening(taxYear, {
     query: { queryKey: [...getAdvisorControllerOpeningQueryKey(taxYear), openSession?.conversationId ?? null], retry: false, enabled: openIsEmpty, staleTime: 0 },
   })
-  const openingState = openingQuery.data?.status === 200 ? openingQuery.data.data : undefined
+  const openingState = openingQuery.data?.data
   const openedConversationsRef = useRef(new Set<string>())
   const sendStreaming = bridge?.sendStreamingMessage
   const openConversationIdForOpening = openSession?.conversationId
@@ -114,11 +110,9 @@ export function ConnectedOwlModeScreen({ onDone = () => {}, onBack, taxYear = CU
   const connectionQuery = useAdvisorControllerConnection(taxYear, { query: { retry: false, refetchInterval: 60_000, refetchOnWindowFocus: true } })
   const connectionView: ConnectionView = connectionQuery.isError
     ? { kind: 'offline' }
-    : connectionQuery.data?.status === 200
+    : connectionQuery.isSuccess
       ? { kind: 'model', connection: connectionQuery.data.data as AdvisorConnection }
-      : connectionQuery.isPending
-        ? { kind: 'checking' }
-        : { kind: 'offline' }
+      : { kind: 'checking' }
   const createConversationMutation = useAdvisorControllerCreateConversation()
   const renameConversationMutation = useAdvisorControllerRenameConversation()
   // ADR-0096: the models the user may pick, with their measured cost; the pick belongs to the conversation.
@@ -141,19 +135,36 @@ export function ConnectedOwlModeScreen({ onDone = () => {}, onBack, taxYear = CU
   const dismissCard = useOwlModeControllerDismissCard()
   const interviewQuery = useInterviewControllerGetInterview(taxYear)
   const postAnswer = useInterviewControllerPostAnswer()
-  const interviewAnswers = interviewQuery.data?.status === 200 ? (interviewQuery.data.data.answers as Record<string, string>) : undefined
+  const interviewAnswers = interviewQuery.data?.data.answers as Record<string, string> | undefined
+  // NR-05: actions that used to fail silently (opt-in, hiding a card, model pick, new conversation, dismissing
+  // a draft) put their failure here, shown above the screen in the shared wording.
+  const [actionError, setActionError] = useState<unknown>(null)
+  const reported =
+    <A extends unknown[]>(work: (...args: A) => Promise<void>, { rethrow = false } = {}) =>
+    async (...args: A): Promise<void> => {
+      setActionError(null)
+      try {
+        await work(...args)
+      } catch (error) {
+        setActionError(error)
+        if (rethrow) throw error
+      }
+    }
 
   if (settingQuery.isPending || cardsQuery.isPending) {
     return <LoadingState bp={bp} label={tr('eule.loading', 'Eulen-Modus wird geladen …')} />
   }
-  if (settingQuery.isError || cardsQuery.isError || settingQuery.data.status !== 200 || cardsQuery.data.status !== 200) {
+  const loadError = settingQuery.error ?? cardsQuery.error ?? sessionQuery.error
+  // WEB-48 / NR-03: a conversation that did not load is a failure with a retry — never an empty chat whose
+  // missing list and notes look like a deleted history.
+  if (settingQuery.isError || cardsQuery.isError || sessionQuery.isError) {
     return (
-      <ErrorState
+      <LoadFailedState
         bp={bp}
-        heading={tr('eule.loadError.heading', 'Das hat nicht geklappt.')}
-        message={tr('eule.loadError.message', 'Der Eulen-Modus konnte nicht geladen werden.')}
-        retryLabel={tr('eule.loadError.retry', 'Noch mal versuchen')}
+        error={loadError}
         onRetry={() => {
+          // A conversation that is gone (deleted elsewhere): back to the one used last.
+          if (sessionQuery.isError && conversationId !== null && apiErrorStatus(sessionQuery.error) === 404) selectConversation(null)
           void settingQuery.refetch()
           void cardsQuery.refetch()
           void sessionQuery.refetch()
@@ -181,10 +192,12 @@ export function ConnectedOwlModeScreen({ onDone = () => {}, onBack, taxYear = CU
     ...(k.paths && k.paths.length === 2 ? { paths: [k.paths[0]!, k.paths[1]!] as const } : { paths: undefined }),
   }))
 
-  const session = sessionQuery.data?.status === 200 ? sessionQuery.data.data : undefined
+  const session = sessionQuery.data?.data
   const serverMessages = session ? (session.messages as unknown as readonly AdvisorChatMessageView[]) : undefined
 
   return (
+    <>
+    <SaveFailedNotice visible={actionError !== null} error={actionError} />
     <OwlModeScreenView
       onDone={onDone}
       {...(onBack ? { onBack } : {})}
@@ -195,55 +208,57 @@ export function ConnectedOwlModeScreen({ onDone = () => {}, onBack, taxYear = CU
       ownName={ownName}
       jointReturn={jointReturn}
       optInEnabled={settingQuery.data.data.enabled}
-      onToggleOptIn={async (enabled) => {
+      onToggleOptIn={reported(async (enabled: boolean) => {
         await setSetting.mutateAsync({ data: { enabled } })
         await invalidate()
-      }}
-      onDismissCard={async (fingerprint) => {
-        await dismissCard.mutateAsync({ jahr: taxYear, fingerprint })
-        await invalidate()
-      }}
+      })}
+      onDismissCard={reported(
+        async (fingerprint: string) => {
+          await dismissCard.mutateAsync({ jahr: taxYear, fingerprint })
+          await invalidate()
+        },
+        { rethrow: true },
+      )}
       {...(onAcceptPath ? { onAcceptPath } : {})}
       profession={interviewAnswers === undefined ? undefined : professionFrom(interviewAnswers['beruf'])}
       onChooseProfession={async (profession) => {
-        expectOk(await postAnswer.mutateAsync({ jahr: taxYear, data: { questionId: 'beruf', value: profession } }), 'profession not stored')
+        await postAnswer.mutateAsync({ jahr: taxYear, data: { questionId: 'beruf', value: profession } })
         await invalidate()
       }}
       onRateMessage={async (messageId, rating, reason) => {
-        const response = await setFeedbackMutation.mutateAsync({
+        await setFeedbackMutation.mutateAsync({
           jahr: taxYear,
           messageId,
           data: { rating, ...(reason !== undefined ? { reason } : {}) },
         })
-        if (response.status !== 200) throw new Error(`rating not stored (HTTP ${response.status})`)
         await queryClient.invalidateQueries({ queryKey: getAdvisorControllerGetSessionQueryKey(taxYear) })
       }}
       context={session?.context}
       onSummarize={async () => {
         if (!session) return
-        expectOk(await summarizeConversationMutation.mutateAsync({ jahr: taxYear, conversationId: session.conversationId }), 'conversation not summarised')
+        await summarizeConversationMutation.mutateAsync({ jahr: taxYear, conversationId: session.conversationId })
         await invalidate()
       }}
       notes={session?.notes}
       onAddNote={async (text) => {
-        expectOk(await createNoteMutation.mutateAsync({ jahr: taxYear, data: { text } }), 'note not stored')
+        await createNoteMutation.mutateAsync({ jahr: taxYear, data: { text } })
         await invalidate()
       }}
       onEditNote={async (id, text) => {
-        expectOk(await updateNoteMutation.mutateAsync({ jahr: taxYear, noteId: id, data: { text } }), 'note not changed')
+        await updateNoteMutation.mutateAsync({ jahr: taxYear, noteId: id, data: { text } })
         await invalidate()
       }}
       onDeleteNote={async (id) => {
-        expectOk(await deleteNoteMutation.mutateAsync({ jahr: taxYear, noteId: id }), 'note not deleted')
+        await deleteNoteMutation.mutateAsync({ jahr: taxYear, noteId: id })
         await invalidate()
       }}
       onUndoNoteChange={async (messageId, index) => {
-        expectOk(await undoNoteChangeMutation.mutateAsync({ jahr: taxYear, messageId, index }), 'note change not undone')
+        await undoNoteChangeMutation.mutateAsync({ jahr: taxYear, messageId, index })
         await invalidate()
       }}
       situation={session ? (session.situation?.text ?? '') : undefined}
       onSaveSituation={async (text) => {
-        expectOk(await saveSituationMutation.mutateAsync({ jahr: taxYear, data: { text } }), 'situation not stored')
+        await saveSituationMutation.mutateAsync({ jahr: taxYear, data: { text } })
         await invalidate()
       }}
       opening={
@@ -259,17 +274,14 @@ export function ConnectedOwlModeScreen({ onDone = () => {}, onBack, taxYear = CU
       connection={connectionView}
       onRecheckConnection={() => connectionQuery.refetch()}
       conversations={session?.conversations}
-      models={modelsQuery.data?.status === 200 ? modelsQuery.data.data : null}
+      models={modelsQuery.data?.data ?? null}
       chatModel={session?.conversations?.find((c) => c.id === session.conversationId)?.chatModel ?? null}
       onPickModel={
         session
-          ? async (model) => {
-              expectOk(
-                await setConversationModelMutation.mutateAsync({ jahr: taxYear, conversationId: session.conversationId, data: model ?? { provider: null, model: null } }),
-                'conversation model not saved',
-              )
+          ? reported(async (model: Parameters<NonNullable<OwlModeScreenProps['onPickModel']>>[0]) => {
+              await setConversationModelMutation.mutateAsync({ jahr: taxYear, conversationId: session.conversationId, data: model ?? { provider: null, model: null } })
               await invalidate()
-            }
+            })
           : undefined
       }
       onSearchConversations={searchConversations}
@@ -277,33 +289,39 @@ export function ConnectedOwlModeScreen({ onDone = () => {}, onBack, taxYear = CU
       onSelectConversation={(id) => selectConversation(id)}
       projects={session?.projects}
       onSelectConversationInYear={bridge ? (year, id) => bridge.openConversationInYear(year, id) : undefined}
-      onNewConversation={async () => {
-        const response = expectOk(await createConversationMutation.mutateAsync({ jahr: taxYear }), 'conversation not created')
+      onNewConversation={reported(async () => {
+        const response = await createConversationMutation.mutateAsync({ jahr: taxYear })
         selectConversation(response.data.id)
         await invalidate()
-      }}
+      })}
       onRenameConversation={async (id, title) => {
-        expectOk(await renameConversationMutation.mutateAsync({ jahr: taxYear, conversationId: id, data: { title } }), 'conversation not renamed')
+        await renameConversationMutation.mutateAsync({ jahr: taxYear, conversationId: id, data: { title } })
         await invalidate()
       }}
       onDeleteConversation={async (id) => {
-        expectOk(await deleteConversationMutation.mutateAsync({ jahr: taxYear, conversationId: id }), 'conversation not deleted')
+        await deleteConversationMutation.mutateAsync({ jahr: taxYear, conversationId: id })
         // The open one is gone: back to whichever was used last.
         if (id === session?.conversationId) selectConversation(null)
         await invalidate()
       }}
       onClearConversation={async () => {
-        expectOk(await clearConversationMutation.mutateAsync({ jahr: taxYear, ...(session ? { params: { conversationId: session.conversationId } } : {}) }), 'conversation not cleared')
+        await clearConversationMutation.mutateAsync({ jahr: taxYear, ...(session ? { params: { conversationId: session.conversationId } } : {}) })
         await invalidate()
       }}
       onSendMessage={async (text, options) => {
         if (bridge) {
           const activeScreen = bridge.owlViewMode.kind === 'mask' ? bridge.owlViewMode.screen : undefined
-          await bridge.sendStreamingMessage(text, activeScreen, options)
-          return
+          // null: the request failed (the chat error says why) — the composer keeps the text (WEB-14).
+          return (await bridge.sendStreamingMessage(text, activeScreen, options)) !== null
         }
-        await sendMessageMutation.mutateAsync({ jahr: taxYear, data: { message: text, ...sendOptionsToDto(options) } })
+        try {
+          await sendMessageMutation.mutateAsync({ jahr: taxYear, data: { message: text, ...sendOptionsToDto(options) } })
+        } catch (error) {
+          setActionError(error)
+          return false
+        }
         await invalidate()
+        return true
       }}
       onApplyAction={async (actionId) => {
         if (bridge) {
@@ -313,10 +331,13 @@ export function ConnectedOwlModeScreen({ onDone = () => {}, onBack, taxYear = CU
         await applyActionMutation.mutateAsync({ jahr: taxYear, actionId })
         await invalidate()
       }}
-      onDismissAction={async (actionId) => {
-        await dismissActionMutation.mutateAsync({ jahr: taxYear, actionId })
-        await invalidate()
-      }}
+      onDismissAction={reported(
+        async (actionId: string) => {
+          await dismissActionMutation.mutateAsync({ jahr: taxYear, actionId })
+          await invalidate()
+        },
+        { rethrow: true },
+      )}
       onUndoAction={async (actionId) => {
         if (bridge) {
           await bridge.undoSingleAction(actionId)
@@ -326,5 +347,6 @@ export function ConnectedOwlModeScreen({ onDone = () => {}, onBack, taxYear = CU
         await invalidate()
       }}
     />
+    </>
   )
 }

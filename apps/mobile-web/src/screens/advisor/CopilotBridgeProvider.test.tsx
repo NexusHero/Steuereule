@@ -673,7 +673,7 @@ describe('Slice 4: CopilotBridgeProvider & 3-Breakpoint OwlMode Workspace', () =
     const modeChanges: CopilotMode[] = []
     server.use(
       http.post('*/v1/steuerjahre/2025/advisor/stream', () =>
-        HttpResponse.json({ message: 'KI-Limit erreicht' }, { status: 429 }),
+        HttpResponse.json({ code: 'ADVISOR_DAILY_LIMIT_EXCEEDED', message: 'KI-Limit erreicht' }, { status: 429 }),
       ),
       http.post('*/v1/steuerjahre/2025/advisor/actions/apply-batch', () =>
         HttpResponse.json({ message: 'Validierung fehlgeschlagen' }, { status: 422 }),
@@ -758,7 +758,8 @@ describe('Slice 4: CopilotBridgeProvider & 3-Breakpoint OwlMode Workspace', () =
 
     // 5. Parse receipt HTTP 500 & network throws
     fireEvent.click(screen.getByText('edge-parse'))
-    await waitFor(() => expect(screen.getByTestId('edge-err').textContent).toContain('HTTP 500'))
+    // NR-06: a 500 in the shared wording, never "HTTP 500".
+    await waitFor(() => expect(screen.getByTestId('edge-err').textContent).toBe('Bei uns ist gerade etwas schiefgelaufen. Versuch es gleich noch mal.'))
 
     server.use(
       http.post('*/v1/steuerjahre/2025/advisor/stream', () => HttpResponse.error()),

@@ -59,17 +59,14 @@ export function PersonalDataConsentCard({ onGranted, provider }: PersonalDataCon
     )
   }
 
-  const granted = consent.data?.status === 200 && consent.data.data.granted
-  if (dismissed || granted || consent.data?.status !== 200) return null
+  const granted = consent.data?.data.granted === true
+  // Not loaded (or failed): the card asks nothing — the chat says so when an answer needs the consent.
+  if (dismissed || granted || !consent.isSuccess) return null
 
   async function allow() {
     setFailed(false)
     try {
-      const result = await setConsent.mutateAsync({ data: { granted: true } })
-      if (result.status !== 200) {
-        setFailed(true)
-        return
-      }
+      await setConsent.mutateAsync({ data: { granted: true } })
       setJustGranted(true)
       await queryClient.invalidateQueries({ queryKey: getOwlModeControllerGetPersonalDataConsentQueryKey() })
       onGranted?.()

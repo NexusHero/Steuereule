@@ -6,6 +6,7 @@ import { useTheme, type UiTheme } from '@steuereule/ui'
 import { APP_NS } from '../../../i18n/resources'
 import { storedReceiptFile } from '../../../lib/receipts/storedReceiptFile'
 import { useReceiptInbox } from '../../../lib/receipts/useReceiptInbox'
+import { useApiFailureMessage } from '../../../net/apiFailure'
 
 export interface StoredReceiptPickerProps {
   /** Reads the stored original for the owl; resolves when it is done. */
@@ -30,6 +31,7 @@ export function StoredReceiptPicker({ onRead, disabled = false, onOpenReceipts }
   const [busyId, setBusyId] = useState<string | null>(null)
   const [failedId, setFailedId] = useState<string | null>(null)
   const query = useReceiptInbox({ enabled: open })
+  const failureMessage = useApiFailureMessage()
   const stored = (query.data?.pages.flatMap((page) => page.items) ?? []).filter((receipt) => receipt.hasFile)
 
   async function read(receipt: ReceiptResponseDto) {
@@ -61,7 +63,18 @@ export function StoredReceiptPicker({ onRead, disabled = false, onOpenReceipts }
       {open ? (
         <View style={styles.list}>
           {query.isPending ? <Text style={styles.hint}>{tr('belege.loading')}</Text> : null}
-          {!query.isPending && stored.length === 0 ? <Text style={styles.hint}>{tr('advisor.chat.storedReceipts.empty')}</Text> : null}
+          {/* NR-07: a failed load is never "In deinen Belegen liegt noch keine Datei." */}
+          {query.isError ? (
+            <View style={styles.list} testID="advisor-stored-receipts-ladefehler">
+              <Text style={styles.hint} accessibilityRole="alert">
+                {failureMessage(query.error)}
+              </Text>
+              <Pressable accessibilityRole="button" onPress={() => void query.refetch()} style={styles.toggle} testID="advisor-stored-receipts-erneut">
+                <Text style={styles.toggleText}>{tr('apiFehler.retry')}</Text>
+              </Pressable>
+            </View>
+          ) : null}
+          {query.isSuccess && stored.length === 0 ? <Text style={styles.hint}>{tr('advisor.chat.storedReceipts.empty')}</Text> : null}
           {stored.slice(0, SHOWN).map((receipt) => (
             <Pressable
               key={receipt.id}

@@ -31,7 +31,8 @@ export function MaskLessonHint({ taxYear, screen, field, person, enabled = true 
   const { t: tr } = useTranslation(APP_NS)
   const label = usePositionLabel()
   const query = useYearHistoryControllerGet({ query: { enabled, staleTime: 5 * 60_000, retry: false } })
-  const data = query.data?.status === 200 ? query.data.data.maskLessons : null
+  // A hint only: a failed load shows nothing extra (the mask itself is unaffected).
+  const data = query.data?.data.maskLessons ?? null
   if (!data || data.year !== taxYear) return null
   const lesson = data.lessons.find((l) => l.mask?.screen === screen && l.mask.field === field && (person === undefined || l.person === null || l.person === person))
   if (!lesson) return null

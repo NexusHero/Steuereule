@@ -446,6 +446,9 @@
     "errWrongCode": "That code isn't right. Check the app and try again.",
     "errWrongPassword": "That password isn't right.",
     "errTooManyAttempts": "Too many attempts. Please request a new code.",
+    "errChallengeExpired": "The second-factor check has expired. Please sign in again with your email and password.",
+    "cancel": "Cancel",
+    "sessionUnknown": "We could not check right now whether you are signed in. Please try again in a moment.",
     "errLocked": "Too many failed attempts — your account is temporarily locked. Try again later."
   },
   "bestaetigung": {
@@ -2071,7 +2074,8 @@
     "binIch": {
       "ja": "Yes, that’s me",
       "nein": "No, someone else",
-      "nameUebernehmen": "Take the name into my profile"
+      "nameUebernehmen": "Take the name into my profile",
+      "nameFehler": "Your name could not be copied into your profile. The receipt is still assigned to you – please enter the name in your profile."
     },
     "anlegen": {
       "alsB": "Add as Person B",
@@ -2123,6 +2127,7 @@
       "success": "Document saved. It is being read now.",
       "errorUnsupported": "Please select a PDF, JPEG, PNG, or WebP file.",
       "errorFailed": "Upload didn't work. Check your connection and try again.",
+      "limit": "PDF, JPG, PNG or WebP, at most 10 MB per file.",
       "fileAttached": "Original file stored encrypted"
     },
     "preview": {
@@ -2563,6 +2568,8 @@
     "deny": "Decline",
     "loading": "Loading …",
     "processing": "Processing …",
+    "expired": "This approval has expired or is no longer valid. Start the connection again in your assistant.",
+    "lookupFailed": "We could not check which assistant this is. Allowing works only once that succeeds.",
     "error": "Authorization failed. Please try again."
   },
   "eule": {
@@ -2732,6 +2739,8 @@
         "tooLong": "Your message is too long ({{used}} of {{max}} characters). Please split it up."
       },
       "applyFailed": "The proposal could not be applied. Please enter the value in the screen itself.",
+      "conflictBatch": "A value was changed by hand in the meantime. Please check it or take over with the current state.",
+      "conflictSingle": "The value was changed by hand in the meantime.",
       "reconnecting": "Restoring the connection …",
       "failed": "not finished",
       "emptyTitle": "What can the owl help with?",
@@ -3461,6 +3470,7 @@
     "jahr": {
       "unbekannt": {
         "titel": "{{jahr}} is not in the history",
+        "titelOhneJahr": "This address names no tax year of your history",
         "text": "This year has neither a return nor an assessment. Back in the history you can add old years with their assessment."
       },
       "satz": {

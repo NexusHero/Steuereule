@@ -10,6 +10,7 @@ import { detectDocumentMimeType } from '../../lib/documentOcr'
 import { storeReceipt } from '../../lib/receipts/storeReceipt'
 import { useReceiptReader } from '../../lib/receipts/useReceiptReader'
 import { triggerSaveErrorHaptic } from '../shared/saveFeedback'
+import { useApiFailureMessage } from '../../net/apiFailure'
 import { useReceiptStatusText } from '../receipts/ReceiptOutcomeLines'
 import { usePositionLabel } from './positionLabels'
 import { germanDate, joinList } from './historyFormat'
@@ -37,6 +38,7 @@ export function AssessmentUploadEntry({ openYear, document = 'steuerbescheid', t
   const { t: tr } = useTranslation(APP_NS)
   const queryClient = useQueryClient()
   const statusText = useReceiptStatusText()
+  const failureMessage = useApiFailureMessage()
   const reader = useReceiptReader({ taxYear: openYear, context: document === 'steuerbescheid' ? { kind: 'steuerbescheid', expectedKind: 'steuerbescheid' } : { kind: 'lstb', expectedKind: 'lstb' } })
   const [key, setKey] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
@@ -55,9 +57,10 @@ export function AssessmentUploadEntry({ openYear, document = 'steuerbescheid', t
     setBusy(true)
     try {
       const stored = await storeReceipt(file, document === 'steuerbescheid' ? CreateReceiptDtoKind.Steuerbescheid : CreateReceiptDtoKind.Sonstiges)
-      if (stored === null) {
+      if (!stored.ok) {
+        // WEB-10: 413 / 429 / an account requirement in the shared wording, the connection only when offline.
         triggerSaveErrorHaptic()
-        setError(tr('belege.upload.errorFailed'))
+        setError(failureMessage(stored.error, { offline: tr('belege.upload.errorFailed') }))
         return
       }
       setKey(stored.id)

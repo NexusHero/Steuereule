@@ -55,6 +55,9 @@ export function DeviceListSection({ onCurrentSessionRevoked }: DeviceListSection
         <Text style={styles.help} accessibilityRole="alert">
           {tr(`profil.devices.loadError.${reasonOf(sessionsQuery.error)}`)}
         </Text>
+        <Button variant="ghost" onPress={() => void sessionsQuery.refetch()} testID="geraete-erneut-laden">
+          {tr('apiFehler.retry')}
+        </Button>
       </Card>
     )
   }

@@ -10,6 +10,7 @@ import { ProfileDictationModelSection } from './ProfileDictationModelSection'
 import { AssistantsListSection } from './AssistentenListSection'
 import { DeviceListSection } from '../device/DeviceListSection'
 import { useKnownEmployers } from '../master-data/employersStore'
+import { useAccountSession } from '../../auth/useAccountSession'
 import type { OnboardingProfile } from '../onboarding/profileMapping'
 
 interface ProfileViewProps {
@@ -28,6 +29,7 @@ export function ProfileView({ profile, onEdit, justSaved, bp, onOpenPrivacy, onO
   const { t: tr } = useTranslation(APP_NS)
   const styles = makeProfileStyles(t)
   const employers = useKnownEmployers()
+  const { state: sessionState } = useAccountSession()
   const fullName = `${profile.firstName} ${profile.lastName}`.trim()
   const initialSource = profile.firstName.trim() || profile.lastName.trim()
   const initial = initialSource ? initialSource[0]?.toUpperCase() : '?'
@@ -120,9 +122,18 @@ export function ProfileView({ profile, onEdit, justSaved, bp, onOpenPrivacy, onO
       <ProfileExpertModeSection />
       <ProfileDictationModelSection />
 
-      <AssistantsListSection />
-
-      <DeviceListSection onCurrentSessionRevoked={onSignedOut} />
+      {sessionState.status === 'signed-out' ? (
+        // NR-18: a guest has no assistants and no devices to list; say that an account is needed instead of an
+        // empty list with a "Verbinden" that can only fail.
+        <Card style={styles.datenCard} testID="profil-konto-noetig">
+          <Text style={{ ...t.type.body, color: t.color.tinte2, padding: t.space.s3 }}>{tr('apiFehler.accountRequired')}</Text>
+        </Card>
+      ) : (
+        <>
+          <AssistantsListSection />
+          <DeviceListSection onCurrentSessionRevoked={onSignedOut} />
+        </>
+      )}
     </ScrollView>
   )
 }

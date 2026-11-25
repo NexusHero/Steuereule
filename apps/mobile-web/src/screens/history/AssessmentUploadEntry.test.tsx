@@ -66,12 +66,19 @@ describe('AssessmentUploadEntry', () => {
     expect((await screen.findByTestId('upload-fehler')).textContent).toBe('Bitte wähle eine PDF-, JPEG-, PNG- oder WebP-Datei aus.')
   })
 
-  it('says so when the document could not be stored', async () => {
+  it('says so when the document could not be stored — a 500 is our fault, not the connection (WEB-10)', async () => {
     server.use(http.post('*/v1/belege/upload', () => HttpResponse.json({ message: 'no' }, { status: 500 })))
     setup()
     choose(pdf())
-    expect((await screen.findByTestId('upload-fehler')).textContent).toBe('Der Upload hat nicht geklappt. Prüf die Verbindung und versuch es noch mal.')
+    expect((await screen.findByTestId('upload-fehler')).textContent).toBe('Bei uns ist gerade etwas schiefgelaufen. Versuch es gleich noch mal.')
     expect(screen.getByTestId('upload-cta').textContent).toBe('Bescheid hochladen')
+  })
+
+  it('names the 10 MB limit on a 413 (WEB-10)', async () => {
+    server.use(http.post('*/v1/belege/upload', () => HttpResponse.json({ statusCode: 413 }, { status: 413 })))
+    setup()
+    choose(pdf())
+    expect((await screen.findByTestId('upload-fehler')).textContent).toBe('Die Datei ist zu groß. Erlaubt sind höchstens 10 MB.')
   })
 
   it('names what the reading found on the Bescheid and leads to the waiting drafts', async () => {
