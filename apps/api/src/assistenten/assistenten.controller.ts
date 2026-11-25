@@ -1,5 +1,5 @@
 import { Controller, Delete, Get, HttpCode, Inject, NotFoundException, Param, Query, UseGuards } from '@nestjs/common'
-import { ApiOkResponse, ApiParam, ApiTags, ApiUnauthorizedResponse, ApiForbiddenResponse } from '@nestjs/swagger'
+import { ApiOkResponse, ApiParam, ApiQuery, ApiTags, ApiUnauthorizedResponse, ApiForbiddenResponse } from '@nestjs/swagger'
 import { Throttle, ThrottlerGuard } from '@nestjs/throttler'
 import { CurrentUser } from '../auth/current-user.decorator.js'
 import { PublicRoute } from '../auth/public-route.js'
@@ -52,6 +52,7 @@ export class AssistantsController {
   @PublicRoute()
   @Throttle({ default: OAUTH_CLIENT_INFO_THROTTLE })
   @UseGuards(ThrottlerGuard)
+  @ApiQuery({ name: 'clientId', type: String, required: true, example: 'client_xyz' })
   @ApiOkResponse({ type: OauthClientInfoDto, description: 'Public client metadata for the OAuth consent screen.' })
   async getClientInfo(@Query() query: OauthClientInfoQueryDto): Promise<OauthClientInfoDto> {
     const info = await this.service.getClientInfo(query.clientId)

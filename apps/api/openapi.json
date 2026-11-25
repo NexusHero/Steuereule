@@ -8770,7 +8770,17 @@
     "/v1/oauth/client-info": {
       "get": {
         "operationId": "AssistantsController_getClientInfo",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "clientId",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "example": "client_xyz",
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Public client metadata for the OAuth consent screen.",

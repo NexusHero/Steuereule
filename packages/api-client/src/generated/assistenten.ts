@@ -25,6 +25,7 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  AssistantsControllerGetClientInfoParams,
   ConnectedAssistantDto,
   OauthClientInfoDto,
   RevokeAssistantResponseDto
@@ -266,17 +267,24 @@ export type assistantsControllerGetClientInfoResponseSuccess = (assistantsContro
 };
 ;
 
-export const getAssistantsControllerGetClientInfoUrl = () => {
+export const getAssistantsControllerGetClientInfoUrl = (params: AssistantsControllerGetClientInfoParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
 
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
 
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/v1/oauth/client-info`
+  return stringifiedParams.length > 0 ? `/v1/oauth/client-info?${stringifiedParams}` : `/v1/oauth/client-info`
 }
 
-export const assistantsControllerGetClientInfo = async ( options?: RequestInit): Promise<assistantsControllerGetClientInfoResponseSuccess> => {
+export const assistantsControllerGetClientInfo = async (params: AssistantsControllerGetClientInfoParams, options?: RequestInit): Promise<assistantsControllerGetClientInfoResponseSuccess> => {
 
-  return httpClient<assistantsControllerGetClientInfoResponseSuccess>(getAssistantsControllerGetClientInfoUrl(),
+  return httpClient<assistantsControllerGetClientInfoResponseSuccess>(getAssistantsControllerGetClientInfoUrl(params),
   {
     ...options,
     method: 'GET'
@@ -289,23 +297,23 @@ export const assistantsControllerGetClientInfo = async ( options?: RequestInit):
 
 
 
-export const getAssistantsControllerGetClientInfoQueryKey = () => {
+export const getAssistantsControllerGetClientInfoQueryKey = (params?: AssistantsControllerGetClientInfoParams,) => {
     return [
-    `/v1/oauth/client-info`
+    `/v1/oauth/client-info`, ...(params ? [params] : [])
     ] as const;
     }
 
 
-export const getAssistantsControllerGetClientInfoQueryOptions = <TData = Awaited<ReturnType<typeof assistantsControllerGetClientInfo>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof assistantsControllerGetClientInfo>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+export const getAssistantsControllerGetClientInfoQueryOptions = <TData = Awaited<ReturnType<typeof assistantsControllerGetClientInfo>>, TError = unknown>(params: AssistantsControllerGetClientInfoParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof assistantsControllerGetClientInfo>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getAssistantsControllerGetClientInfoQueryKey();
+  const queryKey =  queryOptions?.queryKey ?? getAssistantsControllerGetClientInfoQueryKey(params);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof assistantsControllerGetClientInfo>>> = ({ signal }) => assistantsControllerGetClientInfo({ signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof assistantsControllerGetClientInfo>>> = ({ signal }) => assistantsControllerGetClientInfo(params, { signal, ...requestOptions });
 
 
 
@@ -319,7 +327,7 @@ export type AssistantsControllerGetClientInfoQueryError = unknown
 
 
 export function useAssistantsControllerGetClientInfo<TData = Awaited<ReturnType<typeof assistantsControllerGetClientInfo>>, TError = unknown>(
-  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof assistantsControllerGetClientInfo>>, TError, TData>> & Pick<
+ params: AssistantsControllerGetClientInfoParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof assistantsControllerGetClientInfo>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
           Awaited<ReturnType<typeof assistantsControllerGetClientInfo>>,
           TError,
@@ -329,7 +337,7 @@ export function useAssistantsControllerGetClientInfo<TData = Awaited<ReturnType<
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useAssistantsControllerGetClientInfo<TData = Awaited<ReturnType<typeof assistantsControllerGetClientInfo>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof assistantsControllerGetClientInfo>>, TError, TData>> & Pick<
+ params: AssistantsControllerGetClientInfoParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof assistantsControllerGetClientInfo>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
           Awaited<ReturnType<typeof assistantsControllerGetClientInfo>>,
           TError,
@@ -339,16 +347,16 @@ export function useAssistantsControllerGetClientInfo<TData = Awaited<ReturnType<
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useAssistantsControllerGetClientInfo<TData = Awaited<ReturnType<typeof assistantsControllerGetClientInfo>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof assistantsControllerGetClientInfo>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+ params: AssistantsControllerGetClientInfoParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof assistantsControllerGetClientInfo>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 
 export function useAssistantsControllerGetClientInfo<TData = Awaited<ReturnType<typeof assistantsControllerGetClientInfo>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof assistantsControllerGetClientInfo>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+ params: AssistantsControllerGetClientInfoParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof assistantsControllerGetClientInfo>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
-  const queryOptions = getAssistantsControllerGetClientInfoQueryOptions(options)
+  const queryOptions = getAssistantsControllerGetClientInfoQueryOptions(params,options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 

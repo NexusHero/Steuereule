@@ -42,3 +42,7 @@ export interface OauthClientInfoDto {
   redirectTargets: OauthRedirectTargetDto[];
 }
 
+export type AssistantsControllerGetClientInfoParams = {
+clientId: string;
+};
+
