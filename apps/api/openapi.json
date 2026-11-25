@@ -24988,10 +24988,16 @@
             "type": "boolean",
             "description": "SELBSTSTAENDIGE_ENABLED (ADR-0101 §20): the self-employment path is on. Off, the interview stops „Selbstständig“ at the Gewerbe-Gate.",
             "example": true
+          },
+          "runningTaxYear": {
+            "type": "number",
+            "description": "OPS-16: the running tax year by the server clock (Europe/Berlin). The client derives the selectable years and the default year from it; ParseTaxYearPipe accepts up to this year plus one.",
+            "example": 2026
           }
         },
         "required": [
-          "selbststaendig"
+          "selbststaendig",
+          "runningTaxYear"
         ]
       },
       "ComparisonSourceDto": {

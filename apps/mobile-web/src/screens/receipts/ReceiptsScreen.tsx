@@ -29,7 +29,7 @@ import { canReadAgain, filledFieldsByYear, outcomeOfReceipt } from '../../lib/re
 import { useReceiptInbox } from '../../lib/receipts/useReceiptInbox'
 import { useReceiptReader, type ReceiptReader } from '../../lib/receipts/useReceiptReader'
 import { receiptFolderOfKind, toGermanDate, type ReceiptFolder } from '@steuereule/core'
-import { DEFAULT_TAX_YEAR } from '../../config/taxYear'
+import { defaultTaxYear } from '../../config/taxYear'
 import { makeStyles } from './ReceiptsScreen.styles'
 
 const KIND_LABEL_KEYS: Readonly<Record<string, string>> = {
@@ -75,7 +75,7 @@ export function ReceiptsScreen() {
   const queryClient = useQueryClient()
   const setAssignment = useReceiptControllerSetAssignment()
   const deleteReceipt = useReceiptControllerDelete()
-  const openYear = useOptionalShellTaxYear() ?? DEFAULT_TAX_YEAR
+  const openYear = useOptionalShellTaxYear() ?? defaultTaxYear()
   // Every Beleg is read after its upload (ADR-0097 §4): the reader keeps each one's progress and question.
   const reader = useReceiptReader({ taxYear: openYear })
 
@@ -330,7 +330,7 @@ function UploadCard({ reader }: { readonly reader: ReceiptReader }) {
   const [uploading, setUploading] = useState(false)
   const [statusMessage, setStatusMessage] = useState<{ readonly kind: 'ok' | 'error'; readonly text: string } | null>(null)
   const isWeb = typeof document !== 'undefined'
-  const uploadYear = useOptionalShellTaxYear() ?? DEFAULT_TAX_YEAR
+  const uploadYear = useOptionalShellTaxYear() ?? defaultTaxYear()
   const failureMessage = useApiFailureMessage()
 
   async function handleFileSelected(file: File | undefined) {
@@ -430,7 +430,7 @@ function ReceiptCard({
   const { t: tr } = useTranslation(APP_NS)
   const s = makeStyles(t)
   const shellYear = useOptionalShellTaxYear()
-  const holderYear = receipt.holderTaxYear ?? shellYear ?? (receipt.assignment.kind === 'zugeordnet' ? receipt.assignment.taxYear : null) ?? DEFAULT_TAX_YEAR
+  const holderYear = receipt.holderTaxYear ?? shellYear ?? (receipt.assignment.kind === 'zugeordnet' ? receipt.assignment.taxYear : null) ?? defaultTaxYear()
   const kindKey = receipt.kind === null ? undefined : KIND_LABEL_KEYS[receipt.kind]
   const kindLabel = kindKey !== undefined ? tr(kindKey) : receipt.kind === null ? tr('belege.art.generic') : receipt.kind
   const folderCategory = receiptFolderOfKind(receipt.kind)

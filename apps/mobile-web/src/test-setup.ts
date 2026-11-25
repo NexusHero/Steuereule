@@ -187,3 +187,9 @@ clearStorageAfterEach(() => {
     // no storage in this environment
   }
 })
+
+// OPS-16: the running tax year comes from the server's clock. The suite answers as a server in 2026 does,
+// so fixtures keyed by year stay stable across New Year; the clock tests set their own year.
+import { beforeEach as pinTaxYearBeforeEach } from 'vitest'
+import { setServerRunningTaxYear } from './config/taxYear'
+pinTaxYearBeforeEach(() => setServerRunningTaxYear(2026))

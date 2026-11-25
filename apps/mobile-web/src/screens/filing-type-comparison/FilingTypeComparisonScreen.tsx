@@ -11,7 +11,7 @@ import {
   type FilingTypeComparisonDto,
 } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
-import { CURRENT_TAX_YEAR } from '../../config/taxYear'
+import { runningTaxYear } from '../../config/taxYear'
 import { LoadingState, ErrorState } from '../shared/ScreenState'
 import { useApiFailureMessage } from '../../net/apiFailure'
 import { parseGermanAmount } from '../shared/germanNumber'
@@ -29,7 +29,7 @@ export interface FilingTypeComparisonScreenProps {
 export function FilingTypeComparisonScreen({
   onBack,
   onDone,
-  taxYear = CURRENT_TAX_YEAR,
+  taxYear = runningTaxYear(),
   embedded = false,
   marriedKnown = false,
 }: FilingTypeComparisonScreenProps) {

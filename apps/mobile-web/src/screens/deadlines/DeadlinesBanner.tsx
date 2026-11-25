@@ -11,7 +11,7 @@ import {
 } from '@steuereule/core'
 import { useDeadlinesControllerGetDeadlines, type DeadlinesResponseDto } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
-import { CURRENT_TAX_YEAR } from '../../config/taxYear'
+import { runningTaxYear } from '../../config/taxYear'
 import { InlineLoadFailure } from '../shared/InlineLoadFailure'
 
 function formatDate(iso: string): string {
@@ -25,7 +25,7 @@ export interface DeadlinesBannerProps {
   readonly answers: Answers | null
 }
 
-export function DeadlinesBanner({ taxYear = CURRENT_TAX_YEAR, answers }: DeadlinesBannerProps) {
+export function DeadlinesBanner({ taxYear = runningTaxYear(), answers }: DeadlinesBannerProps) {
   const query = useDeadlinesControllerGetDeadlines(taxYear)
   const { t: tr } = useTranslation(APP_NS)
 

@@ -34,7 +34,7 @@ function renderScreen(taxYear?: number) {
     <QueryClientProvider client={queryClient}>
       <I18nextProvider i18n={createAppI18n('de')}>
         <ThemeProvider mode="light">
-          <MasterDataScreen onBack={() => {}} {...(taxYear ? { taxYear } : {})} />
+          <MasterDataScreen onBack={() => {}} taxYear={taxYear ?? 2026} />
         </ThemeProvider>
       </I18nextProvider>
     </QueryClientProvider>,

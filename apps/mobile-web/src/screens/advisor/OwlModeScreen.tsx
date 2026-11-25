@@ -4,7 +4,7 @@ import { useTheme } from '@steuereule/ui'
 import type { AdvisorChatModelRefDto, AdvisorModelsDto } from '@steuereule/api-client'
 import type { AdvisorChatMessageView, AdvisorFeedbackRating, AdvisorFeedbackReason, OwlCardsDisplay, Profession, Screen } from '@steuereule/core'
 import { APP_NS } from '../../i18n/resources'
-import { CURRENT_TAX_YEAR } from '../../config/taxYear'
+import { runningTaxYear } from '../../config/taxYear'
 import { OwlTopBar } from './OwlTopBar'
 import type { AdvisorChatOpening, AdvisorChatPanelProps, ChatSendOptions } from './AdvisorChatPanel'
 import type { ConversationProject, ConversationSearchHit, ConversationSummary } from './chat/ConversationList'
@@ -109,7 +109,7 @@ export function OwlModeScreen(props: OwlModeScreenProps) {
 export function OwlModeScreenView({
   onDone = () => {},
   onBack,
-  taxYear = CURRENT_TAX_YEAR,
+  taxYear = runningTaxYear(),
   initialCards = [],
   initialMessages,
   onDismissCard,

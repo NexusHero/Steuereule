@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { act, render, screen } from '@testing-library/react'
 import { Text } from 'react-native'
 import { ShellStateProvider, useShellState } from './ShellState'
-import { CURRENT_TAX_YEAR, DEFAULT_TAX_YEAR, isRunningTaxYear } from '../config/taxYear'
+import { defaultTaxYear, isRunningTaxYear, runningTaxYear } from '../config/taxYear'
 
 afterEach(() => sessionStorage.clear())
 
@@ -26,23 +26,23 @@ function renderShell() {
 
 describe('ShellState tax year', () => {
   it('defaults to the last completed year', () => {
-    expect(DEFAULT_TAX_YEAR).toBe(CURRENT_TAX_YEAR - 1)
+    expect(defaultTaxYear()).toBe(runningTaxYear() - 1)
     renderShell()
-    expect(screen.getByTestId('year').textContent).toBe(String(DEFAULT_TAX_YEAR))
+    expect(screen.getByTestId('year').textContent).toBe(String(defaultTaxYear()))
   })
 
   it('keeps a year the user chose explicitly, the running year included', () => {
     const first = renderShell()
-    act(() => setYear?.(CURRENT_TAX_YEAR))
-    expect(screen.getByTestId('year').textContent).toBe(String(CURRENT_TAX_YEAR))
+    act(() => setYear?.(runningTaxYear()))
+    expect(screen.getByTestId('year').textContent).toBe(String(runningTaxYear()))
     first.unmount()
 
     renderShell()
-    expect(screen.getByTestId('year').textContent).toBe(String(CURRENT_TAX_YEAR))
+    expect(screen.getByTestId('year').textContent).toBe(String(runningTaxYear()))
   })
 
   it('names the running year', () => {
-    expect(isRunningTaxYear(CURRENT_TAX_YEAR)).toBe(true)
-    expect(isRunningTaxYear(DEFAULT_TAX_YEAR)).toBe(false)
+    expect(isRunningTaxYear(runningTaxYear())).toBe(true)
+    expect(isRunningTaxYear(defaultTaxYear())).toBe(false)
   })
 })

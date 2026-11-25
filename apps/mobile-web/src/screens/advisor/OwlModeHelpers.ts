@@ -1,10 +1,10 @@
 import type { AdvisorActionProposal, AdvisorChatMessageView, CaseDigest, OwlCardsDisplay } from '@steuereule/core'
 import { formatDraftValue, withoutAlternativesOf } from '@steuereule/core'
-import { CURRENT_TAX_YEAR } from '../../config/taxYear'
+import { runningTaxYear } from '../../config/taxYear'
 import { OWL_CHAT_MIN_WIDTH, OWL_PANEL_WIDTHS } from '../../lib/owlSidebarPreference'
 
 export const DEFAULT_LOCAL_DIGEST: CaseDigest = {
-  taxYear: CURRENT_TAX_YEAR,
+  taxYear: runningTaxYear(),
   filingStatus: 'einzel',
   lstbPersonA: { grossWageEur: 62000, wageTaxEur: 11800, socialSecurityEur: 11400 },
   crossBorder: {

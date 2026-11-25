@@ -23,7 +23,7 @@ import { APP_NS } from '../../i18n/resources'
 import { useConfirmAction } from '../../confirm/useConfirmAction'
 import { UnclearableNumberField } from '../shared/UnclearableNumberField'
 import { screenHeaderStyles } from '../shared/screenStyles'
-import { CURRENT_TAX_YEAR } from '../../config/taxYear'
+import { runningTaxYear } from '../../config/taxYear'
 import { CatalogScreen } from '../catalog/CatalogScreen'
 import { LoadingState, LoadFailedState } from '../shared/ScreenState'
 import { InlineLoadFailure } from '../shared/InlineLoadFailure'
@@ -44,7 +44,7 @@ export interface RentalScreenProps {
   readonly taxYear?: number
 }
 
-export function RentalScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TAX_YEAR }: RentalScreenProps) {
+export function RentalScreen({ onDone = () => {}, onBack, taxYear = runningTaxYear() }: RentalScreenProps) {
   const bp = useBreakpoint()
   const t = useTheme()
   const styles = makeStyles(t)
@@ -163,7 +163,7 @@ function PropertyCard({
   onSend,
   onSendAddress,
   paar = false,
-  taxYear = CURRENT_TAX_YEAR,
+  taxYear = runningTaxYear(),
 }: {
   readonly paar?: boolean
   readonly taxYear?: number

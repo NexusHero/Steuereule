@@ -31,7 +31,7 @@ interface Case {
   readonly page: string
   readonly path: string
   readonly prepare?: () => void
-  readonly press: () => Promise<void>
+  readonly press: () => Promise<unknown>
 }
 
 const CASES: readonly Case[] = [

@@ -3,7 +3,8 @@ import { ProfileScreen } from '../screens/ProfileScreen'
 import { PrivacyScreen } from '../screens/PrivacyScreen'
 import { SecurityScreen } from '../screens/security/SecurityScreen'
 import { MasterDataScreen } from '../screens/master-data/MasterDataScreen'
-import { useShellState } from './ShellState'
+import { useOptionalShellTaxYear, useShellState } from './ShellState'
+import { defaultTaxYear } from '../config/taxYear'
 import { RequiresAccount } from './RequiresAccount'
 import { renderActiveStackRoute } from './guards'
 import type { ProfileStackParamList } from './routes'
@@ -38,9 +39,11 @@ function SecurityRoute({ navigation }: Props<'Security'>) {
 }
 
 function ProfileMasterDataRoute({ navigation }: Props<'ProfileMasterData'>) {
+  // WEB-43: the profile opens the master data of the year selected in the app, never a fixed default.
+  const taxYear = useOptionalShellTaxYear() ?? defaultTaxYear()
   return (
     <RequiresAccount>
-      <MasterDataScreen onBack={() => navigation.navigate('ProfileHome', undefined, { pop: true })} />
+      <MasterDataScreen taxYear={taxYear} onBack={() => navigation.navigate('ProfileHome', undefined, { pop: true })} />
     </RequiresAccount>
   )
 }

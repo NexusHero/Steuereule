@@ -11,7 +11,7 @@ import {
   getTaxEstimateControllerGetQueryKey,
 } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
-import { CURRENT_TAX_YEAR } from '../../config/taxYear'
+import { runningTaxYear } from '../../config/taxYear'
 import { QuestionScreen } from './QuestionScreen'
 import { GateScreen } from './GateScreen'
 import { type PostError } from './PostErrorNotice'
@@ -43,7 +43,7 @@ export interface InterviewScreenProps {
   readonly onChangeYear?: (year: number) => void
 }
 
-export function InterviewScreen({ onDone, taxYear = CURRENT_TAX_YEAR, onChangeYear }: InterviewScreenProps) {
+export function InterviewScreen({ onDone, taxYear = runningTaxYear(), onChangeYear }: InterviewScreenProps) {
   const bp = useBreakpoint()
   const { t: tr } = useTranslation(APP_NS)
   const queryClient = useQueryClient()

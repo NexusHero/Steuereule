@@ -19,7 +19,6 @@ import {
 } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
 import { useConfirmAction } from '../../confirm/useConfirmAction'
-import { CURRENT_TAX_YEAR } from '../../config/taxYear'
 import { makePrivacyStyles } from '../privacy/styles'
 import { LoadFailedState, LoadingState } from '../shared/ScreenState'
 import { InlineLoadFailure } from '../shared/InlineLoadFailure'
@@ -37,7 +36,8 @@ import { useKnownEmployers } from './employersStore'
 export interface MasterDataScreenProps {
   readonly onBack: () => void
   /** The Veranlagungsart and the partner belong to one tax year — the one the cockpit shows. */
-  readonly taxYear?: number
+  /** The tax year of the context (WEB-43): required, so no caller falls back to a default year. */
+  readonly taxYear: number
   /** Opens a regular mask for the partner's figures — only while the partner has no own account. */
   readonly onRecordPartner?: (area: 'lstb' | 'arbeitsweg' | 'schweiz' | 'rente', name: string) => void
 }
@@ -55,7 +55,7 @@ const MASTER_DATA_AUTOFILL: Partial<Record<TextField, InputAutoComplete>> = {
 /** Shows the grouping the mask produces; zeros so nobody mistakes it for a real account. */
 const IBAN_PLACEHOLDER = 'DE00 0000 0000 0000 0000 00'
 
-export function MasterDataScreen({ onBack, taxYear = CURRENT_TAX_YEAR, onRecordPartner }: MasterDataScreenProps) {
+export function MasterDataScreen({ onBack, taxYear, onRecordPartner }: MasterDataScreenProps) {
   const bp = useBreakpoint()
   const theme = useTheme()
   const styles = makePrivacyStyles(theme)

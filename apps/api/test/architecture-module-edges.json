@@ -73,6 +73,7 @@
   "business -> rate-limit",
   "business -> receipt",
   "business -> unlock",
+  "capabilities -> common",
   "capabilities -> config",
   "capital -> audit",
   "capital -> auth",
