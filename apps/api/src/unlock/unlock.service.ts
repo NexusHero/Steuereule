@@ -126,7 +126,7 @@ export class UnlockService {
           await this.repository.revoke(verified.sessionId, verified.reason, verified.owner)
           return
         case 'wiederhergestellt':
-          await this.repository.restore(verified.sessionId, verified.owner)
+          await this.repository.restore(verified.sessionId, verified.disputeId, verified.owner)
           return
         case 'geschlossen':
           await this.repository.markClosed(verified.sessionId)

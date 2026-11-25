@@ -172,7 +172,7 @@ describe('UnlockService', () => {
     it('a refund takes the unlock back; a redelivery changes nothing more', async () => {
       await service.startCheckout('u1', 2025)
       await pay()
-      provider.nextEvent = { kind: 'zurueckgenommen', sessionId: 'cs_1', reason: 'erstattet' }
+      provider.nextEvent = { kind: 'zurueckgenommen', sessionId: 'cs_1', reason: { kind: 'erstattet' } }
       await service.processWebhook(Buffer.from('{}'), 'sig')
       await service.processWebhook(Buffer.from('{}'), 'sig')
       await expect(service.status('u1', 2025)).resolves.toBe('offen')
@@ -185,10 +185,10 @@ describe('UnlockService', () => {
     it('a dispute takes the unlock back; a dispute won returns it', async () => {
       await service.startCheckout('u1', 2025)
       await pay()
-      provider.nextEvent = { kind: 'zurueckgenommen', sessionId: 'cs_1', reason: 'angefochten' }
+      provider.nextEvent = { kind: 'zurueckgenommen', sessionId: 'cs_1', reason: { kind: 'angefochten', disputeId: 'dp_1' } }
       await service.processWebhook(Buffer.from('{}'), 'sig')
       await expect(service.status('u1', 2025)).resolves.toBe('offen')
-      provider.nextEvent = { kind: 'wiederhergestellt', sessionId: 'cs_1' }
+      provider.nextEvent = { kind: 'wiederhergestellt', sessionId: 'cs_1', disputeId: 'dp_1' }
       await service.processWebhook(Buffer.from('{}'), 'sig')
       await expect(service.status('u1', 2025)).resolves.toBe('freigeschaltet')
     })
@@ -203,14 +203,14 @@ describe('UnlockService', () => {
 
     it('a refund that overtakes the completion event leaves the year locked', async () => {
       await service.startCheckout('u1', 2025)
-      await send({ kind: 'zurueckgenommen', sessionId: 'cs_1', reason: 'erstattet' })
+      await send({ kind: 'zurueckgenommen', sessionId: 'cs_1', reason: { kind: 'erstattet' } })
       await pay()
       await expect(service.status('u1', 2025)).resolves.toBe('offen')
       expect(repository.rows[0]!.status).toBe('erstattet')
     })
 
     it('a refund that overtakes the completion of a session without a local row is kept too', async () => {
-      await send({ kind: 'zurueckgenommen', sessionId: 'cs_lost', reason: 'erstattet', owner })
+      await send({ kind: 'zurueckgenommen', sessionId: 'cs_lost', reason: { kind: 'erstattet' }, owner })
       await send({ kind: 'bezahlt', sessionId: 'cs_lost', amountCents: 3499, owner })
       await expect(service.status('u1', 2025)).resolves.toBe('offen')
       expect(repository.rows.map((row) => row.status)).toEqual(['erstattet'])
@@ -218,19 +218,30 @@ describe('UnlockService', () => {
 
     it('a dispute that overtakes the completion event locks until it is won', async () => {
       await service.startCheckout('u1', 2025)
-      await send({ kind: 'zurueckgenommen', sessionId: 'cs_1', reason: 'angefochten' })
+      await send({ kind: 'zurueckgenommen', sessionId: 'cs_1', reason: { kind: 'angefochten', disputeId: 'dp_1' } })
       await pay()
       await expect(service.status('u1', 2025)).resolves.toBe('offen')
-      await send({ kind: 'wiederhergestellt', sessionId: 'cs_1' })
+      await send({ kind: 'wiederhergestellt', sessionId: 'cs_1', disputeId: 'dp_1' })
       await expect(service.status('u1', 2025)).resolves.toBe('freigeschaltet')
     })
 
     it('a redelivered "dispute opened" after the dispute was won does not lock a paying customer out', async () => {
       await service.startCheckout('u1', 2025)
       await pay()
-      await send({ kind: 'zurueckgenommen', sessionId: 'cs_1', reason: 'angefochten' })
-      await send({ kind: 'wiederhergestellt', sessionId: 'cs_1' })
-      await send({ kind: 'zurueckgenommen', sessionId: 'cs_1', reason: 'angefochten' })
+      await send({ kind: 'zurueckgenommen', sessionId: 'cs_1', reason: { kind: 'angefochten', disputeId: 'dp_1' } })
+      await send({ kind: 'wiederhergestellt', sessionId: 'cs_1', disputeId: 'dp_1' })
+      await send({ kind: 'zurueckgenommen', sessionId: 'cs_1', reason: { kind: 'angefochten', disputeId: 'dp_1' } })
+      await expect(service.status('u1', 2025)).resolves.toBe('freigeschaltet')
+    })
+
+    it('a second, distinct dispute after a won one locks the year again until it is won too', async () => {
+      await service.startCheckout('u1', 2025)
+      await pay()
+      await send({ kind: 'zurueckgenommen', sessionId: 'cs_1', reason: { kind: 'angefochten', disputeId: 'dp_1' } })
+      await send({ kind: 'wiederhergestellt', sessionId: 'cs_1', disputeId: 'dp_1' })
+      await send({ kind: 'zurueckgenommen', sessionId: 'cs_1', reason: { kind: 'angefochten', disputeId: 'dp_2' } })
+      await expect(service.status('u1', 2025)).resolves.toBe('offen')
+      await send({ kind: 'wiederhergestellt', sessionId: 'cs_1', disputeId: 'dp_2' })
       await expect(service.status('u1', 2025)).resolves.toBe('freigeschaltet')
     })
 

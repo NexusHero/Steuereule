@@ -135,16 +135,16 @@ export class StripePaymentProvider implements PaymentProvider {
         const charge = event.data.object
         if (!charge.refunded) return { kind: 'ignoriert' }
         const session = await this.sessionOfPaymentIntent(charge.payment_intent)
-        return session ? { kind: 'zurueckgenommen', reason: 'erstattet', ...session } : { kind: 'ignoriert' }
+        return session ? { kind: 'zurueckgenommen', reason: { kind: 'erstattet' }, ...session } : { kind: 'ignoriert' }
       }
       case 'charge.dispute.created': {
         const session = await this.sessionOfPaymentIntent(event.data.object.payment_intent)
-        return session ? { kind: 'zurueckgenommen', reason: 'angefochten', ...session } : { kind: 'ignoriert' }
+        return session ? { kind: 'zurueckgenommen', reason: { kind: 'angefochten', disputeId: event.data.object.id }, ...session } : { kind: 'ignoriert' }
       }
       case 'charge.dispute.closed': {
         if (event.data.object.status !== 'won') return { kind: 'ignoriert' }
         const session = await this.sessionOfPaymentIntent(event.data.object.payment_intent)
-        return session ? { kind: 'wiederhergestellt', ...session } : { kind: 'ignoriert' }
+        return session ? { kind: 'wiederhergestellt', disputeId: event.data.object.id, ...session } : { kind: 'ignoriert' }
       }
       default:
         return { kind: 'ignoriert' }

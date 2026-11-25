@@ -28,12 +28,15 @@ export interface SessionOwner {
   tier: UnlockTier
 }
 
+/** A full refund, or a dispute named by the provider's id (a payment can be disputed more than once). */
+export type RevokeReason = { readonly kind: 'erstattet' } | { readonly kind: 'angefochten'; readonly disputeId: string }
+
 export type PaymentEvent =
   | { kind: 'bezahlt'; sessionId: string; amountCents: number | null; owner?: SessionOwner }
   /** A full refund or an opened dispute: the money is gone again, so is the unlock (API-4). */
-  | { kind: 'zurueckgenommen'; sessionId: string; reason: 'erstattet' | 'angefochten'; owner?: SessionOwner }
+  | { kind: 'zurueckgenommen'; sessionId: string; reason: RevokeReason; owner?: SessionOwner }
   /** A dispute closed in the seller's favour: the unlock it took back returns. */
-  | { kind: 'wiederhergestellt'; sessionId: string; owner?: SessionOwner }
+  | { kind: 'wiederhergestellt'; sessionId: string; disputeId: string; owner?: SessionOwner }
   /** The session ended without a payment (its asynchronous payment failed): a new attempt may start. */
   | { kind: 'geschlossen'; sessionId: string }
   | { kind: 'ignoriert' }

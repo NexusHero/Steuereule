@@ -65,14 +65,14 @@ describe('PrismaUnlockRepository: the hold of a payment', () => {
     const { repository, holds } = database()
     await repository.markPaid('cs_1', 2_900, new Date('2020-03-10T10:00:00Z'))
     expect(holds[0]!.holdUntil.toISOString()).toBe('2029-01-01T00:00:00.000Z')
-    await repository.revoke('cs_1', 'erstattet')
+    await repository.revoke('cs_1', { kind: 'erstattet' })
     expect(holds[0]!.holdUntil.getTime()).toBeGreaterThan(new Date('2029-01-01T00:00:00Z').getTime())
   })
 
   it('a dispute leaves the hold as it is', async () => {
     const { repository, holds } = database()
     await repository.markPaid('cs_1', 2_900, new Date('2026-03-10T10:00:00Z'))
-    await repository.revoke('cs_1', 'angefochten')
+    await repository.revoke('cs_1', { kind: 'angefochten', disputeId: 'dp_1' })
     expect(holds.map((hold) => hold.holdUntil.toISOString())).toEqual(['2035-01-01T00:00:00.000Z'])
   })
 })

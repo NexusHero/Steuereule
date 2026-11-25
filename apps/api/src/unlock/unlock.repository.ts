@@ -1,4 +1,4 @@
-import type { SessionOwner } from './payment-provider.js'
+import type { RevokeReason, SessionOwner } from './payment-provider.js'
 
 export const UNLOCK_REPOSITORY = Symbol('UNLOCK_REPOSITORY')
 
@@ -33,9 +33,9 @@ export interface UnlockRepository {
    * A session refunded in full or disputed: it does not unlock, also when this arrives before the payment's
    * own event. Like `markPaid`, a missing row is rebuilt from `owner`.
    */
-  revoke(sessionId: string, reason: 'erstattet' | 'angefochten', owner?: SessionOwner): Promise<void>
-  /** The dispute was won: the session unlocks again once (or if) it is paid and not refunded. */
-  restore(sessionId: string, owner?: SessionOwner): Promise<void>
+  revoke(sessionId: string, reason: RevokeReason, owner?: SessionOwner): Promise<void>
+  /** That dispute was won: the session unlocks again once (or if) it is paid, not refunded, and no other dispute is open. */
+  restore(sessionId: string, disputeId: string, owner?: SessionOwner): Promise<void>
   /** Paid for at least `tier` (default `standard`). */
   isPaid(userId: string, taxYear: number, tier?: UnlockTier): Promise<boolean>
 }

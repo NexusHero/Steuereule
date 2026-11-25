@@ -992,9 +992,10 @@ model Unlock {
   amountCents             Int?      @map("betragCent")
   paidAt                  DateTime? @map("bezahltAm")
   /// The facts the status is computed from (`unlock/unlock-lifecycle.ts`): the provider's events arrive in any
-  /// order, so each is stored once and only moves forward. A full refund; a dispute "offen" or "gewonnen".
+  /// order, so each is stored once and only moves forward. A full refund; each dispute by the provider's id,
+  /// "offen" or "gewonnen" (a payment can be disputed again after a won dispute).
   refundedAt              DateTime? @map("erstattetAm")
-  dispute                 String?   @map("anfechtung")
+  disputes                Json      @default("{}") @map("anfechtungen")
   createdAt               DateTime  @default(now())
   updatedAt               DateTime  @updatedAt
 

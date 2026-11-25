@@ -1,4 +1,4 @@
-import type { PaymentProvider, SessionOwner } from '../../src/unlock/payment-provider.js'
+import type { PaymentProvider, RevokeReason, SessionOwner } from '../../src/unlock/payment-provider.js'
 import { applyUnlockFact, unlockFactsOf, unlockStatusOf, type UnlockFact } from '../../src/unlock/unlock-lifecycle.js'
 import type { UnlockRepository, UnlockRowStatus, UnlockTier } from '../../src/unlock/unlock.repository.js'
 
@@ -11,7 +11,7 @@ export interface FakeUnlockRow {
   amountCents: number | null
   paidAt?: Date | null
   refundedAt?: Date | null
-  dispute?: string | null
+  disputes?: Readonly<Record<string, string>>
 }
 
 /** In-memory twin of PrismaUnlockRepository: the same facts and the same status function (`unlock-lifecycle.ts`). */
@@ -49,12 +49,12 @@ export class FakeUnlockRepository implements UnlockRepository {
     this.record(sessionId, { kind: 'closed' })
   }
 
-  async revoke(sessionId: string, reason: 'erstattet' | 'angefochten', owner?: SessionOwner): Promise<void> {
-    this.record(sessionId, reason === 'erstattet' ? { kind: 'refunded', at: new Date() } : { kind: 'disputed' }, owner)
+  async revoke(sessionId: string, reason: RevokeReason, owner?: SessionOwner): Promise<void> {
+    this.record(sessionId, reason.kind === 'erstattet' ? { kind: 'refunded', at: new Date() } : { kind: 'disputed', disputeId: reason.disputeId }, owner)
   }
 
-  async restore(sessionId: string, owner?: SessionOwner): Promise<void> {
-    this.record(sessionId, { kind: 'dispute-won' }, owner)
+  async restore(sessionId: string, disputeId: string, owner?: SessionOwner): Promise<void> {
+    this.record(sessionId, { kind: 'dispute-won', disputeId }, owner)
   }
 
   private record(sessionId: string, fact: UnlockFact, owner?: SessionOwner, amountCents: number | null = null): void {
@@ -64,8 +64,8 @@ export class FakeUnlockRepository implements UnlockRepository {
       row = { userId: owner.userId, taxYear: owner.taxYear, sessionId, status: 'offen', tier: owner.tier, amountCents: null }
       this.rows.push(row)
     }
-    const facts = applyUnlockFact(unlockFactsOf({ status: row.status, paidAt: row.paidAt ?? null, refundedAt: row.refundedAt ?? null, dispute: row.dispute ?? null }), fact)
-    Object.assign(row, { status: unlockStatusOf(facts), paidAt: facts.paidAt, refundedAt: facts.refundedAt, dispute: facts.dispute })
+    const facts = applyUnlockFact(unlockFactsOf({ status: row.status, paidAt: row.paidAt ?? null, refundedAt: row.refundedAt ?? null, disputes: row.disputes ?? {} }), fact)
+    Object.assign(row, { status: unlockStatusOf(facts), paidAt: facts.paidAt, refundedAt: facts.refundedAt, disputes: facts.disputes })
     if (fact.kind === 'paid' && row.amountCents === null) row.amountCents = amountCents
   }
 

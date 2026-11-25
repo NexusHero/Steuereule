@@ -82,7 +82,7 @@ describe('refunds and disputes take the unlock back (API-4)', () => {
     await expect(new StripePaymentProvider(config, stubbed({ list: owned })).verifyEvent(body, signature)).resolves.toEqual({
       kind: 'zurueckgenommen',
       sessionId: 'cs_test_1',
-      reason: 'erstattet',
+      reason: { kind: 'erstattet' },
       owner: { userId: 'u1', taxYear: 2025, tier: 'standard' },
     })
   })
@@ -92,7 +92,7 @@ describe('refunds and disputes take the unlock back (API-4)', () => {
 
   it('a full refund is "zurueckgenommen" for the session of its payment', async () => {
     const { body, signature } = signed(chargeEvent('charge.refunded', { id: 'ch_1', object: 'charge', refunded: true, payment_intent: 'pi_1' }))
-    await expect(withList.verifyEvent(body, signature)).resolves.toEqual({ kind: 'zurueckgenommen', sessionId: 'cs_test_1', reason: 'erstattet' })
+    await expect(withList.verifyEvent(body, signature)).resolves.toEqual({ kind: 'zurueckgenommen', sessionId: 'cs_test_1', reason: { kind: 'erstattet' } })
     expect(list).toHaveBeenCalledWith({ payment_intent: 'pi_1', limit: 1 })
   })
 
@@ -103,9 +103,9 @@ describe('refunds and disputes take the unlock back (API-4)', () => {
 
   it('an opened dispute takes it back, a dispute won returns it, a lost one changes nothing more', async () => {
     const opened = signed(chargeEvent('charge.dispute.created', { id: 'dp_1', object: 'dispute', status: 'needs_response', payment_intent: 'pi_1' }))
-    await expect(withList.verifyEvent(opened.body, opened.signature)).resolves.toEqual({ kind: 'zurueckgenommen', sessionId: 'cs_test_1', reason: 'angefochten' })
+    await expect(withList.verifyEvent(opened.body, opened.signature)).resolves.toEqual({ kind: 'zurueckgenommen', sessionId: 'cs_test_1', reason: { kind: 'angefochten', disputeId: 'dp_1' } })
     const won = signed(chargeEvent('charge.dispute.closed', { id: 'dp_1', object: 'dispute', status: 'won', payment_intent: 'pi_1' }))
-    await expect(withList.verifyEvent(won.body, won.signature)).resolves.toEqual({ kind: 'wiederhergestellt', sessionId: 'cs_test_1' })
+    await expect(withList.verifyEvent(won.body, won.signature)).resolves.toEqual({ kind: 'wiederhergestellt', sessionId: 'cs_test_1', disputeId: 'dp_1' })
     const lost = signed(chargeEvent('charge.dispute.closed', { id: 'dp_1', object: 'dispute', status: 'lost', payment_intent: 'pi_1' }))
     await expect(withList.verifyEvent(lost.body, lost.signature)).resolves.toEqual({ kind: 'ignoriert' })
   })

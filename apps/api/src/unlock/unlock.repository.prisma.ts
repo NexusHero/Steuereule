@@ -2,7 +2,7 @@ import { Inject, Injectable } from '@nestjs/common'
 import { Prisma } from '@prisma/client'
 import { PrismaService } from '../prisma/prisma.service.js'
 import { holdPaidUnlock, holdRefundedUnlock } from '../account/legal-hold.prisma.js'
-import type { SessionOwner } from './payment-provider.js'
+import type { RevokeReason, SessionOwner } from './payment-provider.js'
 import { applyUnlockFact, unlockFactsOf, unlockStatusOf, type UnlockFact } from './unlock-lifecycle.js'
 import type { UnlockRepository, UnlockTier } from './unlock.repository.js'
 
@@ -41,12 +41,12 @@ export class PrismaUnlockRepository implements UnlockRepository {
     return this.record(sessionId, { kind: 'closed' }, now)
   }
 
-  revoke(sessionId: string, reason: 'erstattet' | 'angefochten', owner?: SessionOwner, now = new Date()): Promise<void> {
-    return this.record(sessionId, reason === 'erstattet' ? { kind: 'refunded', at: now } : { kind: 'disputed' }, now, owner)
+  revoke(sessionId: string, reason: RevokeReason, owner?: SessionOwner, now = new Date()): Promise<void> {
+    return this.record(sessionId, reason.kind === 'erstattet' ? { kind: 'refunded', at: now } : { kind: 'disputed', disputeId: reason.disputeId }, now, owner)
   }
 
-  restore(sessionId: string, owner?: SessionOwner, now = new Date()): Promise<void> {
-    return this.record(sessionId, { kind: 'dispute-won' }, now, owner)
+  restore(sessionId: string, disputeId: string, owner?: SessionOwner, now = new Date()): Promise<void> {
+    return this.record(sessionId, { kind: 'dispute-won', disputeId }, now, owner)
   }
 
   /**
@@ -74,7 +74,7 @@ export class PrismaUnlockRepository implements UnlockRepository {
             status: unlockStatusOf(facts),
             paidAt: facts.paidAt,
             refundedAt: facts.refundedAt,
-            dispute: facts.dispute,
+            disputes: facts.disputes,
             ...(fact.kind === 'paid' && row.amountCents === null ? { amountCents } : {}),
           },
         })

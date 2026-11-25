@@ -121,10 +121,10 @@ describe('account lifecycle — real Postgres (P7)', () => {
   it('a refund that arrives before the completion event keeps the year locked, and the payment still gets its hold', async () => {
     const a = await newAccount()
     await checkoutOf(a).createOpenOnes(a, YEAR, `cs_${a}`)
-    await webhook().revoke(`cs_${a}`, 'erstattet')
+    await webhook().revoke(`cs_${a}`, { kind: 'erstattet' })
     await webhook().markPaid(`cs_${a}`, 2_900, new Date('2026-03-01T10:00:00Z'))
     // The same for a session whose local row was never written: the refund rebuilds it from the owner.
-    await webhook().revoke(`cs_lost_${a}`, 'erstattet', { userId: a, taxYear: YEAR, tier: 'standard' })
+    await webhook().revoke(`cs_lost_${a}`, { kind: 'erstattet' }, { userId: a, taxYear: YEAR, tier: 'standard' })
     await webhook().markPaid(`cs_lost_${a}`, 2_900, new Date('2026-03-01T10:00:00Z'), { userId: a, taxYear: YEAR, tier: 'standard' })
 
     expect(await checkoutOf(a).isPaid(a, YEAR)).toBe(false)
@@ -137,11 +137,14 @@ describe('account lifecycle — real Postgres (P7)', () => {
     const a = await newAccount()
     await checkoutOf(a).createOpenOnes(a, YEAR, `cs_${a}`)
     await webhook().markPaid(`cs_${a}`, 2_900, new Date('2026-03-01T10:00:00Z'))
-    await webhook().revoke(`cs_${a}`, 'angefochten')
+    await webhook().revoke(`cs_${a}`, { kind: 'angefochten', disputeId: 'dp_1' })
     expect(await checkoutOf(a).isPaid(a, YEAR)).toBe(false)
-    await webhook().restore(`cs_${a}`)
-    await webhook().revoke(`cs_${a}`, 'angefochten')
+    await webhook().restore(`cs_${a}`, 'dp_1')
+    await webhook().revoke(`cs_${a}`, { kind: 'angefochten', disputeId: 'dp_1' })
     expect(await checkoutOf(a).isPaid(a, YEAR)).toBe(true)
+    // A second, distinct dispute of the same payment locks the year again.
+    await webhook().revoke(`cs_${a}`, { kind: 'angefochten', disputeId: 'dp_2' })
+    expect(await checkoutOf(a).isPaid(a, YEAR)).toBe(false)
   })
 
   it('API-24: a paid unlock and a submitted version outlive the deletion until their hold ends, then the sweep deletes them', async () => {

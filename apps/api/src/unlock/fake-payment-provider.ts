@@ -46,7 +46,9 @@ export class FakePaymentProvider implements PaymentProvider {
     if (signature !== FAKE_PAYMENT_SIGNATURE) throw new Error('invalid fake payment signature')
     const parsed = JSON.parse(rawData.toString('utf8')) as { sessionId?: unknown; kind?: unknown }
     if (typeof parsed.sessionId !== 'string' || parsed.sessionId === '') throw new Error('the fake paid event needs a sessionId')
-    if (parsed.kind === 'erstattet' || parsed.kind === 'angefochten') return { kind: 'zurueckgenommen', sessionId: parsed.sessionId, reason: parsed.kind }
+    if (parsed.kind === 'erstattet') return { kind: 'zurueckgenommen', sessionId: parsed.sessionId, reason: { kind: 'erstattet' } }
+    // One dispute per fake session: its id is the session's.
+    if (parsed.kind === 'angefochten') return { kind: 'zurueckgenommen', sessionId: parsed.sessionId, reason: { kind: 'angefochten', disputeId: `dp_${parsed.sessionId}` } }
     return { kind: 'bezahlt', sessionId: parsed.sessionId, amountCents: null }
   }
 }

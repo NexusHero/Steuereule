@@ -9,8 +9,9 @@ const FACTS: Record<string, UnlockFact> = {
   paid: { kind: 'paid', at },
   closed: { kind: 'closed' },
   refunded: { kind: 'refunded', at },
-  disputed: { kind: 'disputed' },
-  won: { kind: 'dispute-won' },
+  disputed: { kind: 'disputed', disputeId: 'dp_1' },
+  won: { kind: 'dispute-won', disputeId: 'dp_1' },
+  disputedAgain: { kind: 'disputed', disputeId: 'dp_2' },
 }
 
 function permutations<T>(items: readonly T[]): T[][] {
@@ -37,9 +38,20 @@ describe('unlock lifecycle', () => {
 
   it('only a payment that is neither refunded nor under a pending dispute unlocks', () => {
     for (const set of subsets(Object.keys(FACTS))) {
-      const unlocks = set.includes('paid') && !set.includes('refunded') && (!set.includes('disputed') || set.includes('won'))
+      const unlocks = set.includes('paid') && !set.includes('refunded') && (!set.includes('disputed') || set.includes('won')) && !set.includes('disputedAgain')
       expect(statusAfter(set) === 'bezahlt', set.join(', ')).toBe(unlocks)
     }
+  })
+
+  it('a second, distinct dispute after a won one locks the year again; a redelivered first one does not', () => {
+    expect(statusAfter(['paid', 'disputed', 'won', 'disputed'])).toBe('bezahlt')
+    expect(statusAfter(['paid', 'disputed', 'won', 'disputedAgain'])).toBe('angefochten')
+  })
+
+  it('a dispute stored before ids were kept is closed by the next won dispute', () => {
+    const legacy = { paidAt: at, refundedAt: null, disputes: { legacy: 'offen' as const }, closed: false }
+    expect(unlockStatusOf(legacy)).toBe('angefochten')
+    expect(unlockStatusOf(applyUnlockFact(legacy, { kind: 'dispute-won', disputeId: 'dp_9' }))).toBe('bezahlt')
   })
 
   it('names what happened', () => {
