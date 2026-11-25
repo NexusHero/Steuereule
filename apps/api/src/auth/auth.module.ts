@@ -21,6 +21,9 @@ import { AuthCapabilitiesController } from './auth-capabilities.controller.js'
 import { OAuthDiscoveryController } from './oauth-discovery.controller.js'
 import { ReceiptStorageModule } from '../receipt/receipt-storage.module.js'
 import { PostgresByteaStorageAdapter } from '../receipt/storage/postgres-bytea-storage.adapter.js'
+import { StepUpGuard } from './requires-step-up.js'
+import { STEP_UP_GRANT_REPOSITORY } from './step-up-grant.repository.js'
+import { PrismaStepUpGrantRepository } from './step-up-grant.repository.prisma.js'
 
 /** The auth wiring seam: builds the one shared better-auth instance off the existing PrismaService connection. */
 @Global()
@@ -65,7 +68,10 @@ import { PostgresByteaStorageAdapter } from '../receipt/storage/postgres-bytea-s
     { provide: APP_GUARD, useClass: OriginCsrfGuard },
     UserContextGuard,
     RequiresAccountGuard,
+    // The step-up rule on `/v1` routes (`@RequiresStepUp`, step-up-policy.ts).
+    { provide: STEP_UP_GRANT_REPOSITORY, useClass: PrismaStepUpGrantRepository },
+    StepUpGuard,
   ],
-  exports: [GUEST_ACTIVITY_RECORDER, BETTER_AUTH_BUNDLE, EMAIL_SENDER, BEARER_TOKEN_REPOSITORY, UserContextGuard, RequiresAccountGuard, PrismaModule],
+  exports: [GUEST_ACTIVITY_RECORDER, BETTER_AUTH_BUNDLE, EMAIL_SENDER, BEARER_TOKEN_REPOSITORY, UserContextGuard, RequiresAccountGuard, STEP_UP_GRANT_REPOSITORY, StepUpGuard, PrismaModule],
 })
 export class AuthModule {}

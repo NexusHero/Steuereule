@@ -9,6 +9,15 @@ export const DEVICE_PENDING_THROTTLE = { ttl: 60_000, limit: 10 } as const
 /** Approving a device by its user code; unthrottled it answered ~250 guesses a second (ADR-0106 D11). */
 export const DEVICE_APPROVE_THROTTLE = { ttl: 60_000, limit: 10 } as const
 
+/**
+ * Exchanging an approved device code (H2-16). A device polls every 5 s for at most the code's 2 minutes, so
+ * 60 a minute per address leaves room for five desktops behind one address and stops anything faster.
+ */
+export const DEVICE_TOKEN_THROTTLE = { ttl: 60_000, limit: 60 } as const
+
+/** The consent screen's client lookup (H2-17): public, so bounded per address. */
+export const OAUTH_CLIENT_INFO_THROTTLE = { ttl: 60_000, limit: 30 } as const
+
 /** The DSGVO export reads the whole account and may start Chromium (ADR-0109). */
 export const ACCOUNT_EXPORT_THROTTLE = { ttl: 60 * 60_000, limit: 5 } as const
 

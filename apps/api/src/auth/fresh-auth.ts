@@ -4,8 +4,9 @@ import { APIError } from 'better-auth'
 import type { IncomingHttpHeaders } from 'node:http'
 import type { BetterAuthBundle } from './auth.tokens.js'
 import { STEP_UP_GRANT_REPOSITORY, type StepUpGrantRepository } from './step-up-grant.repository.js'
+import { isFreshSession, STEP_UP_WINDOW_MS } from './step-up-policy.js'
 
-export const ACCOUNT_DELETE_FRESH_WINDOW_MS = 5 * 60 * 1000
+export const ACCOUNT_DELETE_FRESH_WINDOW_MS = STEP_UP_WINDOW_MS
 
 export class GuestSessionCannotDeleteAccountError extends ForbiddenException {
   constructor() {
@@ -53,8 +54,7 @@ export class FreshAuthChecker {
     const session = await betterAuth.auth.api.getSession({ headers: fromNodeHeaders(headers) })
     if (!session || session.user.id !== expectedUserId) return
 
-    const createdAt = new Date(session.session.createdAt).getTime()
-    if (Date.now() - createdAt < ACCOUNT_DELETE_FRESH_WINDOW_MS) return
+    if (isFreshSession(session.session.createdAt)) return
 
     if (await this.stepUpGrants.hasValidGrant(session.session.id)) return
 
@@ -74,9 +74,9 @@ export class FreshAuthChecker {
 
     if (session.user.id !== expectedUserId) throw new GuestSessionCannotDeleteAccountError()
 
-    const createdAt = new Date(session.session.createdAt).getTime()
-    const isFresh = Date.now() - createdAt < ACCOUNT_DELETE_FRESH_WINDOW_MS
-    if (isFresh) return
+    if (isFreshSession(session.session.createdAt)) return
+    // A step-up grant counts too: an account without a password has no password to send (WEB-50).
+    if (await this.stepUpGrants.hasValidGrant(session.session.id)) return
 
     if (!password) throw new FreshAuthRequiredError()
 

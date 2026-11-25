@@ -147,7 +147,9 @@ describe('REQ-014 — device list session freshness (list-sessions must not requ
   // `providerId` — the selector is now the local `account.id` (`accountId: z.string()`,
   // `account.mjs:262`, "Remove `providerId` from every account selector" in the 1.7 upgrade
   // guide). The body below sends that local id, not the provider-side `accountId`.
-  it('[regression guard, ADR-0027] session.freshAge: 0 also removes /unlink-account\'s freshness requirement — asserted, not merely stated', async () => {
+  // P6 (H2-19): the step-up rule now gates /unlink-account itself, so freshAge: 0 no longer leaves it open: an
+  // aged session is refused with FRESH_AUTH_REQUIRED and passes after a re-entered password.
+  it('[regression guard, ADR-0027 + H2-19] /unlink-account on an aged session needs the step-up, then succeeds', async () => {
     const signUp = await fetch(`${baseUrl}/api/auth/sign-up/email`, {
       method: 'POST',
       headers: { 'content-type': 'application/json', ...TRUSTED_ORIGIN_HEADERS },
@@ -182,11 +184,24 @@ describe('REQ-014 — device list session freshness (list-sessions must not requ
       where: { user: { email: 'req014-unlink@example.com' } },
     })
 
-    const unlink = await fetch(`${baseUrl}/api/auth/unlink-account`, {
+    const unlinkRequest = (): Promise<Response> =>
+      fetch(`${baseUrl}/api/auth/unlink-account`, {
+        method: 'POST',
+        headers: { cookie, 'content-type': 'application/json', ...TRUSTED_ORIGIN_HEADERS },
+        body: JSON.stringify({ accountId: linkedAccount.id }),
+      })
+    const refused = await unlinkRequest()
+    expect(refused.status).toBe(403)
+    expect(((await refused.json()) as { code?: string }).code).toBe('FRESH_AUTH_REQUIRED')
+
+    const stepUp = await fetch(`${baseUrl}/api/auth/verify-password`, {
       method: 'POST',
       headers: { cookie, 'content-type': 'application/json', ...TRUSTED_ORIGIN_HEADERS },
-      body: JSON.stringify({ accountId: linkedAccount.id }),
+      body: JSON.stringify({ password: 'a-fine-strong-password-1' }),
     })
+    expect(stepUp.status).toBe(200)
+
+    const unlink = await unlinkRequest()
     expect(unlink.status).toBe(200)
     expect(await unlink.json()).toEqual({ status: true })
   })
