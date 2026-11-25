@@ -430,17 +430,20 @@ async function main() {
     const sessionCookie = aCookies.find((c) => c.httpOnly)
     if (!sessionCookie) fail('Post-poll: Context A has no httpOnly session cookie on the API origin.')
     const sessionToken = decodeURIComponent(sessionCookie.value).split('.').slice(0, -1).join('.')
-    const sessionRow = sql(`SELECT "ipAddress", "userAgent" FROM "Session" WHERE token = '${sessionToken}'`)
+    const sessionRow = sql(`SELECT "id", "ipAddress", "userAgent" FROM "Session" WHERE token = '${sessionToken.replace(/'/g, "''")}'`)
     if (!sessionRow) fail(`Post-poll: no Session row found for A's own token.`)
     // Address and user agent are ciphertext at rest (ADR-0109), so the row proves only that both are stored
     // encrypted; what they say is read the way the app reads it, from A's own session list.
-    const [storedIp, storedUserAgent] = sessionRow.split('|')
+    const [sessionId, storedIp, storedUserAgent] = sessionRow.split('|')
     for (const [column, value] of [['ipAddress', storedIp], ['userAgent', storedUserAgent]]) {
       if (value && !/^v\d+\.aesgcm256\./.test(value)) fail(`Post-poll: Session.${column} is stored in plain text (${JSON.stringify(value)}).`)
     }
     const listed = await contextA.request.get(`${apiOrigin}/api/auth/list-sessions`, { headers: { origin: webOrigin } })
     if (!listed.ok()) fail(`Post-poll: A could not list its own sessions (${listed.status()}).`)
-    const own = (await listed.json()).find((session) => session.token === sessionToken)
+    const sessions = await listed.json()
+    // The list identifies sessions by id and never hands a session token to the page (WEB-22).
+    if (sessions.some((session) => 'token' in session)) fail('Post-poll: the session list exposes session tokens to JavaScript.')
+    const own = sessions.find((session) => session.id === sessionId)
     if (!own) fail(`Post-poll: A's session list does not contain A's own session.`)
     const sessionIp = own.ipAddress
     const sessionUserAgent = own.userAgent
@@ -470,38 +473,27 @@ async function main() {
     // --- AC-5 (the revocation half): from B's own device list, revoke A's session; A's next
     // request is rejected while B's own keeps succeeding. ---
     await pageB.getByRole('tab', { name: COPY.profilTab }).click()
-    await pageB.getByText(COPY.devicesSignOut).first().waitFor({ state: 'visible', timeout: 5_000 })
-    // FIXED after this run's own finding (see PR #239 comment): a single `.locator('..')` from
-    // the "Abmelden" text lands on the Chip's own inner wrapper, NOT `DeviceListSection.tsx`'s
-    // `deviceRow` View — "Dieses Gerät" is a SIBLING of the Chip inside `deviceRow`, two DOM
-    // levels up, not an ancestor of the Chip itself. The old single-level scope silently never
-    // saw the badge at all, for EITHER row — confirmed empirically (`xpath=../..`, verified
-    // against a real render, contains exactly one row's Browser/OS/lastActive/badge/Abmelden
-    // text and nothing from its neighbour).
-    const rows = pageB.locator('text=' + COPY.devicesSignOut).locator('xpath=../..')
+    await pageB.locator('[data-testid^="geraet-zeile"]').first().waitFor({ state: 'visible', timeout: 5_000 })
+    // Rows by their own testID: the profile has a separate "Abmelden" button now (WEB-8), so the copy no
+    // longer identifies a device row.
+    const rows = pageB.locator('[data-testid^="geraet-zeile"]')
     const rowCountBefore = await rows.count()
     if (rowCountBefore !== 2) fail(`AC-5 revoke: expected exactly 2 device rows (B's own + A's QR-authorized one), found ${rowCountBefore}.`)
 
-    // The non-current row is A's — B's own carries the "Dieses Gerät" badge. FIXED after this
-    // run's own finding (see PR #239 comment): the earlier version picked the row by DOM
-    // POSITION (`nth(rowCountBefore - 1)`), on the unstated assumption that the device list
-    // renders newest-first-or-last in a stable, predictable order. It does not — `listSessions()`
-    // carries no documented ordering guarantee this screen relies on, and in a live run it put
-    // B's OWN row last, not A's — the earlier script clicked the wrong "Abmelden", revoked B's
-    // own current session, and got B redirected straight to `/login`
-    // (`DeviceListSection.tsx`'s `onCurrentSessionRevoked` firing `ProfilScreen`'s `onSignedOut`
-    // exactly as designed for a self-revoke — the MECHANISM is correct, my SELECTOR was wrong).
-    // Selecting by the ABSENCE of the "Dieses Gerät" badge is order-independent and matches what
-    // a real human does (reads the badge, not row position).
+    // The non-current row is A's. Rows carry their own testID (`geraet-zeile-aktuell` for this device), so the
+    // choice does not depend on list order — `listSessions()` guarantees none, and picking by position once revoked
+    // B's own session. The visible badge must agree with the testID.
     const currentBadgeCount = await pageB.getByText(COPY.devicesCurrentBadge).count()
     if (currentBadgeCount !== 1) fail(`AC-5 revoke: expected exactly one row marked "${COPY.devicesCurrentBadge}", found ${currentBadgeCount}.`)
 
-    const nonCurrentRow = rows.filter({ hasNotText: COPY.devicesCurrentBadge })
+    const nonCurrentRow = pageB.locator('[data-testid="geraet-zeile"]')
     if ((await nonCurrentRow.count()) !== 1) {
       fail(`AC-5 revoke: expected exactly 1 non-current device row (A's), found ${await nonCurrentRow.count()}.`)
     }
-    await nonCurrentRow.getByText(COPY.devicesSignOut).click()
-    await pageB.waitForTimeout(1_000)
+    if ((await nonCurrentRow.getByText(COPY.devicesCurrentBadge).count()) !== 0) fail('AC-5 revoke: the non-current row carries the current-device badge.')
+    await nonCurrentRow.locator('[data-testid="geraet-abmelden"]').click()
+    // The revoked row leaves the list once the revoke is through; wait for that instead of a fixed pause.
+    await nonCurrentRow.waitFor({ state: 'detached', timeout: 10_000 })
 
     // A hard guard against the exact class of accident this run caught: if B's own session got
     // revoked instead of A's, B is redirected to /login by `onSignedOut` — assert that did NOT

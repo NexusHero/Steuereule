@@ -75,7 +75,7 @@ export function DeviceListSection({ onCurrentSessionRevoked }: DeviceListSection
         const lastActive = formatRequestedAt(session.updatedAt, i18n.language)
         const isRevoking = revokingId === session.id && revokeMutation.isPending
         return (
-          <View key={session.id} style={styles.deviceRow}>
+          <View key={session.id} style={styles.deviceRow} testID={session.isCurrent ? 'geraet-zeile-aktuell' : 'geraet-zeile'}>
             <View style={styles.deviceInfo}>
               <Feld label={tr('profil.devices.browser')}>
                 <Text style={styles.deviceValue}>{browser ?? tr('profil.devices.unknownBrowser')}</Text>
