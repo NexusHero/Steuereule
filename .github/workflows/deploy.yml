@@ -33,9 +33,13 @@ on:
 permissions:
   contents: read
 
+# A pull-request run only validates and deploys nothing: it gets a group of its own per pull request, so it never
+# queues behind a running deploy and never displaces a pending one. Deploys of one environment run one at a time.
 concurrency:
-  group: deploy-${{ github.event_name == 'workflow_dispatch' && inputs.environment || 'staging' }}
-  cancel-in-progress: false
+  group: >-
+    ${{ github.event_name == 'pull_request' && format('deploy-validate-{0}', github.ref)
+    || format('deploy-{0}', github.event_name == 'workflow_dispatch' && inputs.environment || 'staging') }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   validate:
@@ -262,14 +266,21 @@ jobs:
       # OPS-12: --update-env-vars / --update-secrets MERGE into the service. The values below are owned by this
       # workflow and rewritten on every deploy; anything an operator set by hand (AI_KILL_SWITCH, model choice,
       # daily limits) survives. Remove a hand-set value with `gcloud run services update --remove-env-vars`.
+      #
+      # The list is split on "|" (gcloud's ^|^ syntax): the values hold "," (TRUSTED_PROXIES), ":" and "/" (origins)
+      # and "@" (EMAIL_FROM), so none of those can separate them. A value that held a "|" would be cut in two and
+      # set a wrong value without an error, so the step refuses it first.
       - name: Deploy API
         run: |
+          for value in "$API_ORIGIN" "$WEB_ORIGIN" "$TRUSTED_PROXIES" "$EMAIL_FROM"; do
+            case "$value" in *'|'*) echo "::error::A deploy value contains '|', the separator of --update-env-vars: $value"; exit 1 ;; esac
+          done
           gcloud run deploy steuereule-api \
             --image "$API_IMAGE" --region "$REGION" \
             --service-account "$API_SA" \
             --add-cloudsql-instances "$SQL_INSTANCE,$KEYSTORE_SQL_INSTANCE" \
             --update-secrets "$API_SECRETS" \
-            --update-env-vars "^@^NODE_ENV=production@BETTER_AUTH_URL=$API_ORIGIN@CORS_ALLOWED_ORIGINS=$WEB_ORIGIN@WEB_APP_URL=$WEB_ORIGIN@TRUSTED_PROXIES=$TRUSTED_PROXIES@EMAIL_FROM=$EMAIL_FROM" \
+            --update-env-vars "^|^NODE_ENV=production|BETTER_AUTH_URL=$API_ORIGIN|CORS_ALLOWED_ORIGINS=$WEB_ORIGIN|WEB_APP_URL=$WEB_ORIGIN|TRUSTED_PROXIES=$TRUSTED_PROXIES|EMAIL_FROM=$EMAIL_FROM" \
             --cpu 1 --memory 2Gi --cpu-boost \
             --no-cpu-throttling --session-affinity \
             --min-instances 0 --max-instances 10 --concurrency 80 --timeout 120 \
@@ -342,6 +353,12 @@ jobs:
           web_headers="$(curl -fsS --retry 5 --retry-delay 5 --retry-all-errors -D - -o /dev/null "$web_url/" | tr -d '\r')"
           echo "$web_headers" | grep -qi "^content-security-policy: .*frame-src 'self' blob:" || {
             echo "::error::The web app answers without its Content-Security-Policy"
+            exit 1
+          }
+          site_url="$(gcloud run services describe steuereule-website --region "$REGION" --format='value(status.url)')"
+          site_headers="$(curl -fsS --retry 5 --retry-delay 5 --retry-all-errors -D - -o /dev/null "$site_url/" | tr -d '\r')"
+          echo "$site_headers" | grep -qi "^content-security-policy: " || {
+            echo "::error::The marketing site answers without its Content-Security-Policy"
             exit 1
           }
           echo "::notice::Deployed $API_IMAGE ($APP_VERSION) → $API_ORIGIN, $WEB_IMAGE → $WEB_ORIGIN"

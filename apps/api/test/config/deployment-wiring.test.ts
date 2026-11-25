@@ -49,6 +49,51 @@ function sorted(values: Iterable<string>): string[] {
   return [...new Set(values)].sort()
 }
 
+/**
+ * The workflow names under `workflow_run: workflows:` of one workflow file, in inline (`[a, b]`) or block (`- a`)
+ * form. Comment lines and other keys may stand between `workflow_run:` and `workflows:`.
+ */
+function workflowRunNames(yaml: string): string[] {
+  const lines = yaml.split('\n').filter((line) => line.trim() !== '' && !line.trim().startsWith('#'))
+  const indentOf = (line: string | undefined) => (line ?? '').search(/\S/)
+  const start = lines.findIndex((line) => /^\s+workflow_run:\s*$/.test(line))
+  if (start < 0) return []
+  const names: string[] = []
+  for (let index = start + 1; index < lines.length && indentOf(lines[index]) > indentOf(lines[start]); index += 1) {
+    const key = /^(\s+)workflows:\s*(.*)$/.exec(lines[index] ?? '')
+    if (!key) continue
+    const inline = /^\[(.*)\]/.exec(key[2] ?? '')
+    if (inline) {
+      const entries = [...(inline[1] ?? '').matchAll(/'([^']*)'|"([^"]*)"|([^,\s][^,]*)/g)]
+      names.push(...entries.map((entry) => (entry[1] ?? entry[2] ?? entry[3] ?? '').trim()))
+      continue
+    }
+    for (let item = index + 1; item < lines.length && indentOf(lines[item]) > (key[1] ?? '').length; item += 1) {
+      const entry = /^\s+-\s+(?:'([^']*)'|"([^"]*)"|([^#]+))/.exec(lines[item] ?? '')
+      if (entry) names.push((entry[1] ?? entry[2] ?? entry[3] ?? '').trim())
+    }
+  }
+  return names
+}
+
+/**
+ * What `gcloud --update-env-vars "^<sep>^K=V<sep>K=V"` sets: gcloud splits the list on the separator named between
+ * the carets, then each pair on its first "=". Throws for a piece without "=", as gcloud does.
+ */
+function gcloudEnvPairs(flagValue: string): Record<string, string> {
+  const custom = /^\^([^^]+)\^([\s\S]*)$/.exec(flagValue)
+  const pieces = (custom ? (custom[2] ?? '') : flagValue).split(custom ? (custom[1] ?? ',') : ',')
+  return Object.fromEntries(
+    pieces.map((piece) => {
+      if (!piece.includes('=')) throw new Error(`"${piece}" is not KEY=VALUE`)
+      return [piece.slice(0, piece.indexOf('=')), piece.slice(piece.indexOf('=') + 1)]
+    }),
+  )
+}
+
+/** The value of the API deploy's --update-env-vars flag, as written in the workflow. */
+const apiEnvFlag = /gcloud run deploy steuereule-api[\s\S]*?--update-env-vars "([^"]+)"/.exec(deployYml)?.[1] ?? ''
+
 const secretSettings = API_PRODUCTION_SETTINGS.filter((setting) => setting.source === 'secret-manager')
 /** Needed on every deployment: always/deployment, plus the self-employment price (the switch is on by default). */
 const requiredOnDeployment = (name: string) =>
@@ -56,16 +101,24 @@ const requiredOnDeployment = (name: string) =>
 
 describe('deployment wiring: every production value reaches the runtime (beta P1)', () => {
   it('OPS-2: every workflow_run trigger names a workflow that exists', () => {
-    const files = readdirSync(repoFile('.github/workflows')).filter((name) => name.endsWith('.yml'))
-    const texts = files.map((name) => read(`.github/workflows/${name}`))
-    const names = new Set(texts.map((text) => /^name:\s*['"]?(.+?)['"]?\s*$/m.exec(text)?.[1] ?? ''))
-    const referenced = texts.flatMap((text) =>
-      [...text.matchAll(/workflow_run:\s*\n\s+workflows:\s*\[([^\]]*)\]/g)].flatMap((match) =>
-        (match[1] ?? '').split(',').map((entry) => entry.trim().replace(/^['"]|['"]$/g, '')),
-      ),
-    )
-    expect(referenced).toContain('Build & E2E')
-    for (const name of referenced) expect(names, `workflow_run names "${name}"`).toContain(name)
+    const files = readdirSync(repoFile('.github/workflows')).filter((name) => /\.ya?ml$/.test(name))
+    const texts = new Map(files.map((name) => [name, read(`.github/workflows/${name}`)]))
+    const names = new Set([...texts.values()].map((text) => /^name:\s*['"]?(.+?)['"]?\s*$/m.exec(text)?.[1] ?? ''))
+    const waiting = [...texts].filter(([, text]) => /^\s+workflow_run:/m.test(text))
+    expect(waiting.map(([file]) => file)).toContain('deploy.yml')
+    for (const [file, text] of waiting) {
+      const referenced = workflowRunNames(text)
+      // A trigger this test cannot read is a failure, not a pass: that is how deploy.yml went unchecked.
+      expect(referenced.length, `${file}: workflow_run without readable workflows`).toBeGreaterThan(0)
+      for (const name of referenced) expect(names, `${file} waits for "${name}"`).toContain(name)
+    }
+    expect(workflowRunNames(texts.get('deploy.yml') ?? '')).toEqual(['Build & E2E'])
+  })
+
+  it('OPS-2: the trigger reader sees inline lists, block lists and comments between the keys', () => {
+    expect(workflowRunNames("on:\n  workflow_run:\n    # why\n    workflows: ['A & B', \"C\"]\n    types: [completed]\n")).toEqual(['A & B', 'C'])
+    expect(workflowRunNames('on:\n  workflow_run:\n    types: [completed]\n    workflows:\n      - A\n      - "B, C" # note\n  push:\n')).toEqual(['A', 'B, C'])
+    expect(workflowRunNames('on:\n  workflow_run:\n    types: [completed]\n  push:\n    workflows: [X]\n')).toEqual([])
   })
 
   it('OPS-10: Secret Manager, the deploy and the declared list name the same secrets, with the same required ones', () => {
@@ -81,10 +134,37 @@ describe('deployment wiring: every production value reaches the runtime (beta P1
   })
 
   it('OPS-10: every value the deploy sets is declared, and every declared deploy value is set', () => {
-    const line = /--update-env-vars "\^@\^([^"]+)"/.exec(deployYml)?.[1] ?? ''
-    const setByDeploy = sorted(line.split('@').map((pair) => pair.slice(0, pair.indexOf('='))))
+    const setByDeploy = sorted(Object.keys(gcloudEnvPairs(apiEnvFlag)))
     const declared = API_PRODUCTION_SETTINGS.filter((setting) => setting.source === 'deploy-env').map((setting) => setting.name)
     expect(setByDeploy).toEqual(sorted([...declared, 'NODE_ENV']))
+  })
+
+  it('the deploy sets each value whole: an address with "@", proxies with ",", origins with ":" survive the list', () => {
+    // What the values really look like. With "@" as the separator, EMAIL_FROM was cut at its "@" and the rest had
+    // no "=", so gcloud refused the deploy after the migration had already run.
+    const samples: Record<string, string> = {
+      API_ORIGIN: 'https://api.example.org',
+      WEB_ORIGIN: 'https://www.example.org',
+      TRUSTED_PROXIES: '169.254.0.0/16,35.191.0.0/16,2600:1901::/48',
+      EMAIL_FROM: 'SteuerEule <noreply@example.org>',
+    }
+    const expanded = apiEnvFlag.replace(/\$([A-Z_]+)/g, (_match, name: string) => {
+      expect(samples, `sample for $${name}`).toHaveProperty(name)
+      return samples[name] ?? ''
+    })
+    expect(gcloudEnvPairs(expanded)).toEqual({
+      NODE_ENV: 'production',
+      BETTER_AUTH_URL: samples.API_ORIGIN,
+      CORS_ALLOWED_ORIGINS: samples.WEB_ORIGIN,
+      WEB_APP_URL: samples.WEB_ORIGIN,
+      TRUSTED_PROXIES: samples.TRUSTED_PROXIES,
+      EMAIL_FROM: samples.EMAIL_FROM,
+    })
+    // The step refuses a value that holds the separator before gcloud runs.
+    const separator = /^\^([^^]+)\^/.exec(apiEnvFlag)?.[1] ?? ''
+    const deployStep = deployYml.slice(deployYml.indexOf('- name: Deploy API'), deployYml.indexOf('gcloud run deploy steuereule-api'))
+    expect(deployStep).toContain(`*'${separator}'*) echo "::error::`)
+    for (const name of Object.keys(samples)) expect(deployStep, name).toContain(`"$${name}"`)
   })
 
   it('OPS-12: the API service is updated, never replaced, so hand-set values survive a deploy', () => {
@@ -133,6 +213,9 @@ describe('deployment wiring: every production value reaches the runtime (beta P1
     expect(deployYml).toMatch(/--build-arg "WEBSITE_APP_ORIGIN=\$WEB_ORIGIN"/)
     expect(deployYml).toMatch(/--build-arg "API_ORIGIN=\$API_ORIGIN"/)
     expect(deployYml).toMatch(/gcloud run deploy steuereule-website/)
+    // Deployed is not reachable: the wizard maps the bare domain to it, and the smoke test asks it for its CSP.
+    expect(wizard).toContain('"$APP_DOMAIN:steuereule-website"')
+    expect(deployYml).toMatch(/gcloud run services describe steuereule-website/)
   })
 
   it('OPS-13: every deploy variable is read in the environment-bound job, required ones are gated, none has a fallback', () => {
