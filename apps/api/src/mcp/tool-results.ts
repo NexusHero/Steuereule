@@ -42,6 +42,7 @@ const NEXT_BY_KIND: Readonly<Record<DomainErrorKind, string>> = {
   unauthenticated: 'Starte die Anmeldung bei SteuerEule neu.',
   unavailable: 'Versuch es später noch einmal und sage es dem Nutzer.',
   'rate-limited': NEXT_STEPS.RATE_LIMITED!,
+  'too-large': 'Die Datei ist zu groß; bitte den Nutzer um eine kleinere Datei (höchstens 10 MB).',
 }
 
 const DEFAULT_NEXT_STEP = 'Lies die Begründung, korrigiere die Angaben oder frage den Nutzer.'

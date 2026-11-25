@@ -377,7 +377,7 @@ function UploadCard({ reader }: { readonly reader: ReceiptReader }) {
       )}
 
       {statusMessage !== null && (
-        <Text style={statusMessage.kind === 'ok' ? s.uploadOkText : s.uploadErrText} accessibilityLiveRegion="polite">
+        <Text style={statusMessage.kind === 'ok' ? s.uploadOkText : s.uploadErrText} accessibilityLiveRegion="polite" testID="belege-upload-status">
           {statusMessage.text}
         </Text>
       )}
