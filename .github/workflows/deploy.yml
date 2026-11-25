@@ -216,6 +216,13 @@ jobs:
             exit 1
           fi
           echo "API_SECRETS=${secrets#,}" >> "$GITHUB_ENV"
+          # The migrate job reads encrypted columns too (the backfills, `rotate:field-key`): during a key
+          # rotation it needs the retired keys the API reads with, or it would treat their ciphertext as text.
+          migrate="DATABASE_URL=DATABASE_URL:latest,KEYSTORE_DATABASE_URL=KEYSTORE_DATABASE_URL:latest,PRISMA_FIELD_ENCRYPTION_KEY=PRISMA_FIELD_ENCRYPTION_KEY:latest,PRISMA_FIELD_ENCRYPTION_HASH_SALT=PRISMA_FIELD_ENCRYPTION_HASH_SALT:latest"
+          case "$secrets," in
+            *",PRISMA_FIELD_DECRYPTION_KEYS="*) migrate="$migrate,PRISMA_FIELD_DECRYPTION_KEYS=PRISMA_FIELD_DECRYPTION_KEYS:latest" ;;
+          esac
+          echo "MIGRATE_SECRETS=$migrate" >> "$GITHUB_ENV"
 
       - name: Capture current Cloud Run revisions for rollback safety
         id: revisions
@@ -242,7 +249,7 @@ jobs:
             --service-account "$API_SA" \
             --set-cloudsql-instances "$SQL_INSTANCE,$KEYSTORE_SQL_INSTANCE" \
             --network "$VPC_NETWORK" --subnet "$VPC_SUBNET" --vpc-egress private-ranges-only \
-            --set-secrets "DATABASE_URL=DATABASE_URL:latest,KEYSTORE_DATABASE_URL=KEYSTORE_DATABASE_URL:latest,PRISMA_FIELD_ENCRYPTION_KEY=PRISMA_FIELD_ENCRYPTION_KEY:latest,PRISMA_FIELD_ENCRYPTION_HASH_SALT=PRISMA_FIELD_ENCRYPTION_HASH_SALT:latest" \
+            --set-secrets "$MIGRATE_SECRETS" \
             --command sh --args="-c,cd /repo/apps/api && node scripts/migrate-deploy.mjs" \
             --max-retries 0 --task-timeout 600s \
             --execute-now --wait

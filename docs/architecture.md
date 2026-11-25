@@ -434,7 +434,7 @@ Because the API runs on up to ten instances, any state in process memory is sepa
 | Fields marked `/// @encrypted` in the Prisma schema (190 markers as of 2026-11-22) | AES-256-GCM through `prisma-field-encryption`, installed in `prisma/encrypted-prisma.provider.ts` | one application key, `PRISMA_FIELD_ENCRYPTION_KEY`; earlier keys in `PRISMA_FIELD_DECRYPTION_KEYS` stay readable |
 | Receipt files | envelope encryption in `receipt/storage/envelope-crypto.service.ts` | one key per user in the keystore |
 
-Not every field is encrypted. Plaintext are, for example, the status of a tax year, commuting distances and payment amounts. Rotating a key does not re-encrypt existing values; that happens when a value is next written.
+Not every field is encrypted. Plaintext are, for example, the status of a tax year, commuting distances and payment amounts. A new key re-encrypts a value when it is next written; `rotate:field-key` (`apps/api/scripts/rotate-field-encryption-key.ts`, procedure in `infra/README.md`) re-encrypts the rest, so the old key can be dropped.
 
 ## 8.3 The boundary to the language models
 
