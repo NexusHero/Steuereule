@@ -2,6 +2,7 @@
 // seen red: a verified account survives, an account inside the period survives, the boundary, the warning goes out
 // before the deletion, and an account whose warning was never sent survives (§3a).
 import { describe, expect, it, vi } from 'vitest'
+import type { DeleteAccountResult } from '../src/account/account-deletion.repository.js'
 import { sweepEndedLegalHolds, sweepUnverifiedAccounts } from '../src/account/lifecycle-sweeps.prisma.js'
 
 const DAY = 24 * 60 * 60 * 1000
@@ -166,7 +167,7 @@ describe('sweepEndedLegalHolds', () => {
       user: { findMany: async () => [] },
     }
     const order: string[] = []
-    const erase = async (id: string) => {
+    const erase = async (id: string): Promise<DeleteAccountResult> => {
       order.push(`erase:${id}`)
       if (id === 'breaks') throw new Error('database unavailable')
       // The hold is still there while the erasure runs: it is deleted only afterwards.
