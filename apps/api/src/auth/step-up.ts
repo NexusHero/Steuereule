@@ -1,7 +1,7 @@
 import { APIError, createAuthMiddleware, getSessionFromCtx } from 'better-auth/api'
 import type { BetterAuthPlugin } from 'better-auth'
 
-import { BETTER_AUTH_STEP_UP, isFreshSession, needsStepUp, STEP_UP_WINDOW_MS } from './step-up-policy.js'
+import { isFreshSession, needsStepUp, STEP_UP_WINDOW_MS } from './step-up-policy.js'
 
 /**
  * Step-up authentication for the better-auth endpoints the step-up rule names (`step-up-policy.ts`, ADR-0106
@@ -13,9 +13,6 @@ import { BETTER_AUTH_STEP_UP, isFreshSession, needsStepUp, STEP_UP_WINDOW_MS } f
  * session.
  */
 export { isFreshSession, STEP_UP_WINDOW_MS }
-
-/** The gated paths, derived from the rule; kept as a set for the callers that only ask for membership. */
-export const STEP_UP_PATHS: ReadonlySet<string> = new Set(Object.keys(BETTER_AUTH_STEP_UP))
 
 export const VERIFY_PASSWORD_PATH = '/verify-password'
 export const STEP_UP_REQUIRED_CODE = 'FRESH_AUTH_REQUIRED'
