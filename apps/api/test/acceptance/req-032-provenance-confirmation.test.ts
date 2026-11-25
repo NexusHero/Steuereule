@@ -5,6 +5,7 @@
 // everything is scoped to the caller, ciphertext at rest and part of the Art. 15/20 export.
 import { describe, expect, it } from 'vitest'
 import { app, baseUrl, prisma, signUp, useAcceptanceServer } from '../support/acceptance-server.js'
+import { confirmAnnexOverHttp } from '../support/confirm-annex-over-http.js'
 
 const ALLOWED_ORIGIN = 'https://allowed.example.com'
 
@@ -97,7 +98,7 @@ describe('REQ-032 — Herkunft und Bestätigung (ADR-0052 §6/§7), against the 
     expect(lstbAfter.bruttoarbeitslohn).toEqual({ kind: 'erfasst', value: 50000 })
 
     // Confirm Anlage N → its block goes, Anlage KAP's stays.
-    expect((await put(cookie, `${YEAR}/bestaetigung/anlagen/anlageN`)).status).toBe(200)
+    expect((await confirmAnnexOverHttp(baseUrl, cookie, YEAR, 'anlageN')).status).toBe(200)
     const afterN = await missing(cookie)
     expect(afterN).not.toContain('unbestaetigt.anlageN')
     expect(afterN).toContain('unbestaetigt.anlageKap')
@@ -141,7 +142,7 @@ describe('REQ-032 — Herkunft und Bestätigung (ADR-0052 §6/§7), against the 
     await lastYearAndOwnValue(a.cookie)
 
     expect(await overview(b.cookie)).toEqual({ annexes: [], tasks: [] })
-    expect((await put(b.cookie, `${YEAR}/bestaetigung/anlagen/anlageN`)).status).toBe(200)
+    expect((await confirmAnnexOverHttp(baseUrl, b.cookie, YEAR, 'anlageN')).status).toBe(200)
     expect((await put(b.cookie, `${YEAR}/bestaetigung/vorschlaege/lstb.bruttoarbeitslohn`, { decision: 'annehmen' })).status).toBe(404)
 
     expect(await missing(a.cookie)).toContain('unbestaetigt.anlageN')

@@ -9,6 +9,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { http, HttpResponse } from 'msw'
 import { createAppI18n } from '../../i18n/app-i18n'
 import { server } from '../../test-msw-server'
+import { manualPaymentClock } from '../../test-payment-clock'
 import { PrintoutScreen, type PrintoutScreenProps } from './PrintoutScreen'
 
 vi.mock('./GlassFormPreview', () => ({ GlassFormPreview: () => null }))
@@ -46,7 +47,7 @@ function renderScreen(props: Partial<PrintoutScreenProps> = {}) {
             onCompleteCapital={() => {}}
             onCompleteCrossBorder={() => {}}
             onConfirm={onConfirm}
-            confirmTiming={{ intervalMs: 20, timeoutMs: 400 }}
+            confirmTiming={{ clock: manualPaymentClock() }}
             {...props}
           />
         </ThemeProvider>
@@ -68,15 +69,33 @@ describe('printout: back from Stripe', () => {
   })
 
   it('success, webhook late: confirming with the pay button disabled, then paid without a reload', async () => {
-    const reads = statusSequence({ status: 'offen', price: { amountCents: 3499, currency: 'eur' } }, { status: 'offen' }, { status: 'freigeschaltet' })
-    renderScreen({ payment: 'erfolg' })
+    // The test moves the clock and lets the webhook arrive: the confirming state lasts until it was asserted,
+    // however slowly React renders on the runner.
+    const clock = manualPaymentClock()
+    let webhookArrived = false
+    let reads = 0
+    server.use(
+      http.get('*/v1/steuerjahre/2025/freischaltung', () => {
+        reads += 1
+        return HttpResponse.json(webhookArrived ? { status: 'freigeschaltet' } : { status: 'offen', price: { amountCents: 3499, currency: 'eur' } })
+      }),
+      http.get('*/v1/steuerjahre/2025/ausdruck/pruefung', () => HttpResponse.json({ missing: [] })),
+    )
+    renderScreen({ payment: 'erfolg', confirmTiming: { clock } })
     expect(await screen.findByText(CONFIRMING)).toBeTruthy()
     expect(screen.getByTestId('ausdruck-bezahlen').getAttribute('aria-disabled')).toBe('true')
     expect(screen.queryByText(PAID)).toBeNull()
+    // It keeps asking while it waits.
+    const before = reads
+    clock.poll()
+    await waitFor(() => expect(reads).toBeGreaterThan(before))
+    expect(screen.getByText(CONFIRMING)).toBeTruthy()
 
+    webhookArrived = true
+    clock.poll()
     expect(await screen.findByText(PAID)).toBeTruthy()
-    expect(reads()).toBeGreaterThanOrEqual(3)
     expect(screen.getByTestId('ausdruck-herunterladen')).toBeTruthy()
+    expect(screen.queryByTestId('ausdruck-bezahlen')).toBeNull()
     for (const hint of NOT_UNLOCKED_HINTS) expect(screen.queryByText(hint)).toBeNull()
   })
 
@@ -90,10 +109,13 @@ describe('printout: back from Stripe', () => {
   })
 
   it('timeout: says so plainly, never "paid", and offers to check again', async () => {
+    const clock = manualPaymentClock()
     const reads = statusSequence({ status: 'offen' })
-    renderScreen({ payment: 'erfolg' })
+    renderScreen({ payment: 'erfolg', confirmTiming: { clock } })
     expect(await screen.findByText(CONFIRMING)).toBeTruthy()
-    expect(await screen.findByText(TIMEOUT, undefined, { timeout: 3_000 })).toBeTruthy()
+    clock.expire()
+    expect(await screen.findByText(TIMEOUT)).toBeTruthy()
+    expect(clock.polling).toBe(false)
     expect(screen.queryByText(CONFIRMING)).toBeNull()
     expect(screen.queryByText(PAID)).toBeNull()
     // After the timeout paying is possible again: the API hands out the same session or reports it paid.
@@ -103,6 +125,8 @@ describe('printout: back from Stripe', () => {
     fireEvent.click(screen.getByTestId('zahlung-erneut-pruefen'))
     expect(await screen.findByText(CONFIRMING)).toBeTruthy()
     await waitFor(() => expect(reads()).toBeGreaterThan(before))
+    // A fresh window: it polls again until the unlock arrives or it runs out.
+    expect(clock.polling).toBe(true)
   })
 
   it('no return trip: no payment message at all', async () => {

@@ -102,10 +102,14 @@ describe('REQ-003 — Cryptographic field-encryption key rotation (k1 -> k2) aga
     })
     expect(lstbUnderRotation?.bruttoarbeitslohn).toBe('72000')
 
-    // 4. Re-save Profile under rotated client -> migrates ciphertext to K2
+    // 4. Re-save every encrypted field of the Profile under the rotated client -> migrates the row to K2.
+    // A field not written keeps its K1 ciphertext (the names are encrypted too since ADR-0107 H3), so
+    // retiring K1 needs the whole row re-encrypted, as the backfill does.
     await clientRotated.profile.update({
       where: { userId: testUserId },
       data: {
+        firstName: 'Rotation',
+        lastName: 'Test',
         steuerId: '02476291358',
         steuernummer: '18181508155',
       },
@@ -129,7 +133,6 @@ describe('REQ-003 — Cryptographic field-encryption key rotation (k1 -> k2) aga
     const readAfterRetiringK1 = await clientK2Only.profile.findUnique({
       where: { userId: testUserId },
     })
-    expect(readAfterRetiringK1?.steuerId).toBe('02476291358')
-    expect(readAfterRetiringK1?.steuernummer).toBe('18181508155')
+    expect(readAfterRetiringK1).toMatchObject({ firstName: 'Rotation', lastName: 'Test', steuerId: '02476291358', steuernummer: '18181508155' })
   })
 })

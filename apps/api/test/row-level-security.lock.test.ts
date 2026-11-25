@@ -88,6 +88,7 @@ const BYPASS_SITES: Readonly<Record<string, readonly string[]>> = {
   'src/link/link.service.ts': ['partner-invitation'],
   'src/device/device-code.repository.prisma.ts': ['device-flow'],
   'src/unlock/unlock.service.ts': ['payment-webhook'],
+  'src/prisma/field-key-rotation.ts': ['field-key-rotation'],
 }
 
 function sourceFiles(dir: string): string[] {

@@ -100,6 +100,32 @@ Stripe account (test mode for staging and the beta); the operator details for th
     `node --import tsx scripts/backfill-identity.ts` (ADR-0109 §12).
 19. Ask a repository admin to add the four missing required checks (`docs/ci-pipeline.md`, Required checks).
 
+### Rotating the field key (ADR-0008, REQ-003)
+
+`PRISMA_FIELD_ENCRYPTION_KEY` encrypts every column the schema marks `/// @encrypted`. The API writes with it
+and reads with it and with every key in `PRISMA_FIELD_DECRYPTION_KEYS`. A new key alone moves a value only when
+the app next writes it, so the old key may be dropped only after `rotate:field-key` has re-encrypted the rest.
+It takes the columns from the schema annotations, rewrites only values under a retired key, leaves `updatedAt`
+and the e-mail hash alone, and is idempotent and resumable.
+
+1. Generate a key (`k1.aesgcm256.$(openssl rand -base64 32)`). Add the current key to
+   `PRISMA_FIELD_DECRYPTION_KEYS` (comma-separated, keep earlier ones that are still in use), then make the new
+   key the new version of `PRISMA_FIELD_ENCRYPTION_KEY`.
+2. Deploy. API and migrate job both carry the decryption keys; new writes use the new key.
+3. Re-encrypt the rest in the migrate job, which runs as the migration login (the tables' owner). The API's
+   runtime role `steuereule_app` cannot rewrite the book's append-only rows; this job can, and only their
+   encrypted columns:
+   `gcloud run jobs execute steuereule-migrate --region <region> --wait --args="-c,cd /repo/apps/api && node --import tsx scripts/rotate-field-encryption-key.ts"`
+4. Check: the same command with `rotate-field-encryption-key.ts --check` must end with "every encrypted value
+   is under the current key". It exits 1 while values remain under a retired key, or when a value is under a
+   key that is not configured (fix that before going on: such a value is unreadable to the API too).
+5. Remove the old key from `PRISMA_FIELD_DECRYPTION_KEYS` (or disable the secret's version when it held only
+   that key) and deploy again.
+
+Backups taken before step 3 still hold values under the old key: keep the old key offline until the last such
+backup has expired. Receipt files and `HouseholdPerson.sealed` use the keystore keys, not this one
+(`KEYSTORE_MASTER_KEY_PREVIOUS`); they are not part of this procedure.
+
 ### Decisions behind the deploy
 
 - **The deploy merges, it does not replace (OPS-12).** The API service is updated with `--update-env-vars` and

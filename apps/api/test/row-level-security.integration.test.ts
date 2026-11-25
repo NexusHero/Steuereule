@@ -95,9 +95,24 @@ describe('user A against user B, through raw SQL', () => {
     await expect(as({ userId: A }, (tx) => tx.$executeRaw`UPDATE "Profile" SET "userId" = ${B} WHERE "userId" = ${A}`)).rejects.toThrow(/row-level security/)
   })
 
-  it('coupled partners reach each other (the app decides which rows); an uncoupled user does not', async () => {
+  // API-3 (decision 3, P6): Person B (C here) reaches A's household through the joint year; Person A (B here)
+  // reaches B's rows only once B agreed to a joint year in B's own app. An uncoupled user (A) sees neither.
+  it('coupled partners: Person B reaches Person A at once, Person A reaches Person B only after B agreed; an uncoupled user does neither', async () => {
+    const consent = (at: Date | null) =>
+      owner.$transaction(async (tx) => {
+        await tx.$executeRaw`SELECT set_config('steuereule.system', 'test-fixture', true)`
+        await tx.$executeRaw`UPDATE "SteuerjahrKopplung" SET "personBZustimmungAm" = ${at} WHERE "personAUserId" = ${B} AND "personBUserId" = ${C}`
+      })
+
+    await consent(null)
+    expect(await as({ userId: C }, ownersSeen)).toEqual([B, C].sort())
+    expect(await as({ userId: B }, ownersSeen)).toEqual([B])
+
+    await consent(new Date())
     expect(await as({ userId: C }, ownersSeen)).toEqual([B, C].sort())
     expect(await as({ userId: B }, ownersSeen)).toEqual([B, C].sort())
+    expect(await as({ userId: A }, ownersSeen)).not.toContain(B)
+    expect(await as({ userId: A }, ownersSeen)).not.toContain(C)
   })
 })
 

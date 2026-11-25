@@ -12,7 +12,7 @@ import { BusinessFrame, BusinessQueryState, Note, Section } from './BusinessFram
 import { personParams, problemOf } from './businessKit'
 import { queryProblem } from './useBusiness'
 import type { BusinessPageProps } from './BusinessScreen'
-import { usePaymentConfirmation, type PaymentPhase } from '../shared/usePaymentConfirmation'
+import { usePaymentConfirmation, type PaymentConfirmationTiming, type PaymentPhase } from '../shared/usePaymentConfirmation'
 
 
 /** A chip's stable id: the form, and the copy's number where the form has several (two Anlagen Kind). */
@@ -60,7 +60,7 @@ export interface ElsterPageProps extends BusinessPageProps {
   /** Back from the checkout of the self-employment tier (the shared return contract, WEB-1). */
   readonly payment?: PaymentReturn | undefined
   /** How often and how long the unlock is awaited after a successful return; the defaults outside tests. */
-  readonly confirmTiming?: { readonly intervalMs: number; readonly timeoutMs: number }
+  readonly confirmTiming?: PaymentConfirmationTiming
 }
 
 /** The ELSTER fill-in help: per form, line by line, what to enter in Mein ELSTER, with a copy action per value. */
