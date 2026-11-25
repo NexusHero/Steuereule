@@ -4,6 +4,7 @@ import type { AuditLogRow } from '../audit/audit.repository.js'
 import { AuditService } from '../audit/audit.service.js'
 import { PROFILE_REPOSITORY, type ProfileRepository } from '../profile/profile.repository.js'
 import { ACCOUNT_IDENTITY_REPOSITORY, type AccountIdentityRepository } from './account-identity.repository.js'
+import { keepDatabaseIdentity } from '../common/database-identity.js'
 import type { ExportAccessLogEntry, ExportDocument, ExportReceiptFile } from './export/export-document.js'
 import { buildExportReportHtml } from './export/export-report-template.js'
 import { PDF_RENDERER, type PdfRenderer } from './export/pdf-renderer.js'
@@ -86,7 +87,8 @@ export class AccountExportService {
     // Rows up to now: the READ entry of this export itself is written after, as before.
     const batches = this.auditService.streamOwnRows(userId, { batchSize: EXPORT_ACCESS_LOG_BATCH, before: new Date(head.exportedAt) })
     const { receiptFiles, ...rest } = head
-    return { exportedAt: head.exportedAt, chunks: streamExportJson(rest, this.readFiles(userId, receiptFiles), batches) }
+    // The response pulls the chunks after the handler returned: they keep the caller's database identity (P11).
+    return { exportedAt: head.exportedAt, chunks: keepDatabaseIdentity(streamExportJson(rest, this.readFiles(userId, receiptFiles), batches)) }
   }
 
   /** One decrypted file at a time, so a 2 GiB account never sits in memory at once. */
