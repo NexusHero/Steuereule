@@ -6618,6 +6618,9 @@
           },
           "422": {
             "description": "`fehlend`: what the Hauptvordruck still needs; `zuLang`: a value too long for its field."
+          },
+          "429": {
+            "description": "Too many printouts for this account; the asynchronous export has its own queue."
           }
         },
         "tags": [
@@ -7867,6 +7870,9 @@
           },
           "409": {
             "description": "Too short to summarise, or an answer is still running."
+          },
+          "429": {
+            "description": "Too many summaries for this account, or the day's messages are used up."
           }
         },
         "summary": "Summarise the older part of a conversation now, before its context is full",

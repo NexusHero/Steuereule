@@ -126,6 +126,7 @@ export class AdvisorRunService implements OnApplicationShutdown {
 
   async summarizeConversation(userId: string, taxYear: number, conversationId: string): Promise<AdvisorContextDto> {
     await this.refuseWhileAnswering(userId, taxYear, conversationId, 'das Gespräch zusammenfasst')
+    await this.turn.takeSummaryAllowance(userId)
     return this.conversations.summarizeConversation(userId, taxYear, conversationId)
   }
 

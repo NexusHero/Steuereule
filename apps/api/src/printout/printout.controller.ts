@@ -17,7 +17,7 @@ import {
 } from '@nestjs/swagger'
 import { Throttle, ThrottlerGuard } from '@nestjs/throttler'
 import type { FastifyReply } from 'fastify'
-import { CHECKOUT_THROTTLE, PRINTOUT_JOB_THROTTLE, accountKeyedTracker } from '../rate-limit/rate-limit.js'
+import { AccountThrottle, CHECKOUT_THROTTLE, PRINTOUT_JOB_THROTTLE, SYNC_PRINTOUT_THROTTLE, accountKeyedTracker } from '../rate-limit/rate-limit.js'
 import { CurrentUser } from '../auth/current-user.decorator.js'
 import { RequiresAccount } from '../auth/requires-account.guard.js'
 import { UserContextGuard } from '../auth/user-context.guard.js'
@@ -125,6 +125,8 @@ export class PrintoutController {
 
   @Get(':jahr/ausdruck')
   @RequiresAccount()
+  @AccountThrottle(SYNC_PRINTOUT_THROTTLE)
+  @ApiTooManyRequestsResponse({ description: 'Too many printouts for this account; the asynchronous export has its own queue.' })
   @ApiParam({ name: 'jahr', type: Number, example: 2025 })
   @ApiProduces('application/pdf')
   @ApiQuery({

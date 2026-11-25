@@ -1,4 +1,5 @@
-import type { ThrottlerGetTrackerFunction } from '@nestjs/throttler'
+import { applyDecorators, UseGuards } from '@nestjs/common'
+import { Throttle, ThrottlerGuard, type ThrottlerGetTrackerFunction } from '@nestjs/throttler'
 import { USER_ID_REQUEST_KEY, type RequestWithUserId } from '../auth/user-context.guard.js'
 
 export const DEVICE_CODE_THROTTLE = { ttl: 60_000, limit: 10 } as const
@@ -26,4 +27,27 @@ export const ADDRESS_SEARCH_THROTTLE = { ttl: 60_000, limit: 120 } as const
 export const accountKeyedTracker: ThrottlerGetTrackerFunction = (req) => {
   const userId = (req as RequestWithUserId)[USER_ID_REQUEST_KEY]
   return userId ?? (req as { ip?: string }).ip ?? 'no-ip'
+}
+
+/** The synchronous printout: every call renders the whole return as a PDF on the request (API-6). */
+export const SYNC_PRINTOUT_THROTTLE = { ttl: 10 * 60_000, limit: 10 } as const
+
+/** A bank statement import parses up to 900,000 characters of CSV or camt per call (H2-14). */
+export const BANK_IMPORT_THROTTLE = { ttl: 10 * 60_000, limit: 20 } as const
+
+/** The GoBD ZIP and the E-Bilanz XBRL are built from the whole book on every call (H2-14). */
+export const BUSINESS_EXPORT_THROTTLE = { ttl: 10 * 60_000, limit: 30 } as const
+
+/** Validating or sending the E-Bilanz starts the ERiC sidecar on every call (H2-14). */
+export const ERIC_THROTTLE = { ttl: 10 * 60_000, limit: 10 } as const
+
+/** „Jetzt zusammenfassen“ asks the model (H2-12); the day's message cap counts it as well. */
+export const SUMMARIZE_THROTTLE = { ttl: 10 * 60_000, limit: 10 } as const
+
+/**
+ * A per-account limit on the shared throttler storage (ADR-0109 §1). The class's UserContextGuard runs first, so
+ * the account is known; a guest counts by address.
+ */
+export function AccountThrottle(policy: { readonly ttl: number; readonly limit: number }): MethodDecorator & ClassDecorator {
+  return applyDecorators(Throttle({ default: { ...policy, getTracker: accountKeyedTracker } }), UseGuards(ThrottlerGuard))
 }

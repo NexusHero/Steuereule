@@ -115,6 +115,15 @@ describe('AdvisorRunService: answers detached from the connection (#476)', () =>
     expect(streaming).toHaveBeenCalledWith(USER, YEAR)
   })
 
+  it('refuses „Jetzt zusammenfassen“ once the day\'s messages are used up: it asks the model too (H2-12)', async () => {
+    const { runs, advisorRepo } = build([])
+    for (let i = 0; i < 50; i += 1) {
+      await advisorRepo.createMessage({ userId: USER, taxYear: YEAR, role: 'user', content: 'q', meta: null })
+    }
+    const { conversationId } = await runs.getSession(USER, YEAR)
+    await expect(runs.summarizeConversation(USER, YEAR, conversationId)).rejects.toMatchObject({ kind: 'rate-limited' })
+  })
+
   it('marks an answer failed whose run no instance knows any more', async () => {
     const { runs, advisorRepo } = build([])
     await advisorRepo.createMessage({ userId: USER, taxYear: YEAR, role: 'user', content: 'q', meta: null })
