@@ -15,6 +15,9 @@ import { FakeMasterDataRepository } from './fakes/fake-master-data.repository.js
 import { FakeProfileRepository } from './fakes/fake-profile.repository.js'
 import { InMemoryUserKeyStore } from './fakes/in-memory-user-key-store.js'
 
+/** The mask's call on a session that passed the step-up (a new invitation code grants a third party access). */
+const STEPPED_UP = async (): Promise<void> => {}
+
 const A = 'user-thomas'
 const B = 'user-sabine'
 
@@ -38,38 +41,38 @@ beforeEach(() => {
 
 describe('spouse linked once (#452 decision 2, AC 2)', () => {
   it('keeps a spouse with an own account linked in the next year without a new invitation code', async () => {
-    const y2025 = await link.set(A, 2025, { filingType: 'zusammen' })
+    const y2025 = await link.set(A, 2025, { filingType: 'zusammen' }, new Date(), STEPPED_UP)
     await link.joinWithCode(B, 2025, y2025.invitationCode!)
 
-    const y2026 = await link.set(A, 2026, { filingType: 'zusammen' })
+    const y2026 = await link.set(A, 2026, { filingType: 'zusammen' }, new Date(), STEPPED_UP)
     expect(y2026.personBUserId).toBe(B)
     expect(y2026.personBHasOwnAccount).toBe(true)
     expect(y2026.invitationCode).toBeNull()
   })
 
   it('keeps the link across a switch to separate filing and back (PO decision 10.11.2026)', async () => {
-    const y2025 = await link.set(A, 2025, { filingType: 'zusammen' })
+    const y2025 = await link.set(A, 2025, { filingType: 'zusammen' }, new Date(), STEPPED_UP)
     await link.joinWithCode(B, 2025, y2025.invitationCode!)
     await link.set(A, 2026, { filingType: 'einzel' })
-    const back = await link.set(A, 2026, { filingType: 'zusammen' })
+    const back = await link.set(A, 2026, { filingType: 'zusammen' }, new Date(), STEPPED_UP)
     expect(back.personBUserId).toBe(B)
     expect(back.invitationCode).toBeNull()
   })
 
   it('prefills a spouse without an account in the next year from the household', async () => {
-    await link.set(A, 2025, { filingType: 'zusammen' })
+    await link.set(A, 2025, { filingType: 'zusammen' }, new Date(), STEPPED_UP)
     await link.updatePersonB(A, 2025, { firstName: 'Sabine', lastName: 'Weber', steuerId: '12345678903', geburtsdatum: '1986-04-02' })
     await household.view(A, 2025) // the household migration picks the spouse up
 
-    const y2026 = await link.set(A, 2026, { filingType: 'zusammen' })
+    const y2026 = await link.set(A, 2026, { filingType: 'zusammen' }, new Date(), STEPPED_UP)
     expect(y2026.personB).toMatchObject({ firstName: 'Sabine', lastName: 'Weber', steuerId: '12345678903', geburtsdatum: '1986-04-02' })
   })
 
   it('ends with „ab Jahr X nicht mehr dabei“ (e.g. divorce from 2026)', async () => {
-    const y2025 = await link.set(A, 2025, { filingType: 'zusammen' })
+    const y2025 = await link.set(A, 2025, { filingType: 'zusammen' }, new Date(), STEPPED_UP)
     await link.joinWithCode(B, 2025, y2025.invitationCode!)
     await household.endPartnerLink(A, 2026)
-    const y2026 = await link.set(A, 2026, { filingType: 'zusammen' })
+    const y2026 = await link.set(A, 2026, { filingType: 'zusammen' }, new Date(), STEPPED_UP)
     expect(y2026.personBUserId).not.toBe(B)
     expect(y2026.invitationCode).not.toBeNull()
   })
@@ -79,11 +82,11 @@ describe('spouse linked once (#452 decision 2, AC 2)', () => {
 describe('per-year consent of Person B (decision 3, API-3)', () => {
   it('a later year of the link shows A nothing of B until B agrees; B is asked in B’s own app', async () => {
     await profiles.upsert(B, { firstName: 'Sabine', lastName: 'Muster', steuerId: '12345678901', steuernummer: null })
-    const y2025 = await link.set(A, 2025, { filingType: 'zusammen' })
+    const y2025 = await link.set(A, 2025, { filingType: 'zusammen' }, new Date(), STEPPED_UP)
     await link.joinWithCode(B, 2025, y2025.invitationCode!)
     expect((await link.get(A, 2025)).personB?.firstName).toBe('Sabine')
 
-    const y2026 = await link.set(A, 2026, { filingType: 'zusammen' })
+    const y2026 = await link.set(A, 2026, { filingType: 'zusammen' }, new Date(), STEPPED_UP)
     expect(y2026.personB).toBeNull()
     expect(y2026.personBConsentPending).toBe(true)
     expect(await link.spouseForAdvisor(A, 2026)).toBeNull()
@@ -96,21 +99,21 @@ describe('per-year consent of Person B (decision 3, API-3)', () => {
   })
 
   it('only Person B can agree, and only to a year that waits for it', async () => {
-    const y2025 = await link.set(A, 2025, { filingType: 'zusammen' })
+    const y2025 = await link.set(A, 2025, { filingType: 'zusammen' }, new Date(), STEPPED_UP)
     await expect(link.consentForYear(A, 2025)).rejects.toMatchObject({ code: 'NO_CONSENT_REQUESTED' })
     await link.joinWithCode(B, 2025, y2025.invitationCode!)
     await expect(link.consentForYear('someone-else', 2025)).rejects.toMatchObject({ code: 'NO_CONSENT_REQUESTED' })
   })
 
   it('a code redeemed once cannot be redeemed by a second account (API-8)', async () => {
-    const y2025 = await link.set(A, 2025, { filingType: 'zusammen' })
+    const y2025 = await link.set(A, 2025, { filingType: 'zusammen' }, new Date(), STEPPED_UP)
     await link.joinWithCode(B, 2025, y2025.invitationCode!)
     await expect(link.joinWithCode('user-third', 2025, y2025.invitationCode!)).rejects.toMatchObject({ code: 'INVITATION_CODE_INVALID' })
     expect((await link.get(A, 2025)).personBUserId).toBe(B)
   })
 
   it('the linked partner cannot delete a household person across every year; Person A can', async () => {
-    const y2025 = await link.set(A, 2025, { filingType: 'zusammen' })
+    const y2025 = await link.set(A, 2025, { filingType: 'zusammen' }, new Date(), STEPPED_UP)
     await link.joinWithCode(B, 2025, y2025.invitationCode!)
     await household.view(A, 2025)
     const spouse = (await household.view(A, 2025)).persons[0]

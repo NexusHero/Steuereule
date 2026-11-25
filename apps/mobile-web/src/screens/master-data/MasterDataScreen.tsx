@@ -360,6 +360,8 @@ function LoadedLinkSection({
   // Joining shows the own data to Person A: on an older session it needs the step-up first (API-12).
   const [joinStepUp, setJoinStepUp] = useState(false)
   const [kindError, setKindError] = useState<string | null>(null)
+  // A new invitation code lets whoever holds it reach this year: on an older session it needs the step-up first.
+  const [kindStepUp, setKindStepUp] = useState<'zusammen' | null>(null)
   const confirmSingle = useConfirmAction('singleAssessment')
 
   const filingType = current.filingType
@@ -375,8 +377,12 @@ function LoadedLinkSection({
     setLink.mutate(
       { jahr: taxYear, data: { filingType: kind } },
       {
-        onSuccess: invalidate,
+        onSuccess: () => {
+          setKindStepUp(null)
+          invalidate()
+        },
         onError: (error) => {
+          if (kind === 'zusammen' && classifyApiFailure(error).kind === 'step-up') return setKindStepUp('zusammen')
           triggerSaveErrorHaptic()
           setKindError(failureMessage(error))
         },
@@ -439,6 +445,7 @@ function LoadedLinkSection({
             Einzelveranlagung
           </Chip>
         </View>
+        {kindStepUp ? <StepUpInline testID="kopplung-einladung-stepup" onConfirmed={() => selectKind('zusammen')} onCancel={() => setKindStepUp(null)} /> : null}
         {kindError ? (
           <Text style={{ ...theme.type.small, color: theme.color.tinte }} accessibilityRole="alert" testID="kopplung-art-fehler">
             {kindError}
@@ -458,6 +465,10 @@ function LoadedLinkSection({
             <Text style={{ ...theme.type.meta, color: theme.color.tinte2, marginBottom: theme.space.s2 }} testID="kopplung-code-anzeige">
               {invitationNotice(current.invitationCode, current.invitationCodeValidUntil ?? null)}
             </Text>
+          ) : !kindStepUp ? (
+            <Button variant="ghost" onPress={() => selectKind('zusammen')} disabled={setLink.isPending} testID="kopplung-einladung-erstellen">
+              {t('stammdaten.kopplungStand.einladungErstellen')}
+            </Button>
           ) : null}
           {/* Keyed by the stored values: the fields start from what is stored and follow it after a save. */}
           <PersonBForm key={JSON.stringify(personB)} taxYear={taxYear} personB={personB} onSaved={invalidate} />

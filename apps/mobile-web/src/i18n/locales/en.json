@@ -1162,7 +1162,8 @@
       "statusLoadError": "Whether you are linked as a couple could not be loaded.",
       "personBGespeichert": "Partner details saved.",
       "personBUnveraendert": "There is nothing new to save.",
-      "codeUnbekannt": "We do not know this code. Check the spelling."
+      "codeUnbekannt": "We do not know this code. Check the spelling.",
+      "einladungErstellen": "Create an invitation code for your partner"
     },
     "ungespeichertZurueck": "Your changes are not saved yet. Tap “Save” – or go back again to discard them.",
     "fehlendHinweis": "{{anzahl}} details still missing for the printout.",

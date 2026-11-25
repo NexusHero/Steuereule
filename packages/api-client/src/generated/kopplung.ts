@@ -169,6 +169,11 @@ export type linkControllerSetResponse200 = {
   status: 200
 }
 
+export type linkControllerSetResponse400 = {
+  data: void
+  status: 400
+}
+
 export type linkControllerSetResponse401 = {
   data: void
   status: 401
@@ -182,7 +187,7 @@ export type linkControllerSetResponse403 = {
 export type linkControllerSetResponseSuccess = (linkControllerSetResponse200) & {
   headers: Headers;
 };
-export type linkControllerSetResponseError = (linkControllerSetResponse401 | linkControllerSetResponse403) & {
+export type linkControllerSetResponseError = (linkControllerSetResponse400 | linkControllerSetResponse401 | linkControllerSetResponse403) & {
   headers: Headers;
 };
 
