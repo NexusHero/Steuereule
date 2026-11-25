@@ -58,8 +58,8 @@ export function registerStatusTools(session: McpSession, deps: McpDeps): void {
     { taxYear: taxYearArg() },
     async ({ taxYear }) => {
       // Every link is a new checkout session at the payment provider: a few an hour, not 120 a minute.
-      const gate = await deps.limiter?.takeCheckoutLink(userId)
-      if (gate && !gate.ok) {
+      const gate = await deps.limiter.takeCheckoutLink(userId)
+      if (!gate.ok) {
         return refused(`RATE_LIMITED: Für dieses Konto wurden in der letzten Stunde schon ${MCP_CHECKOUT_LINK_LIMIT.max} Zahllinks angefordert. Gib dem Nutzer den zuletzt erhaltenen Link, oder versuch es in ${Math.ceil(gate.retryAfterSeconds / 60)} Minuten wieder.`)
       }
       try {

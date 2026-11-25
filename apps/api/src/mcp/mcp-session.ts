@@ -48,7 +48,7 @@ export interface McpDeps {
   readonly masterData: MasterDataRepository
   readonly audit: AuditService
   /** The budgets of single tools: checkout links (ADR-0052 amendment 9) and receipt uploads. */
-  readonly limiter?: Pick<McpRateLimiter, 'takeCheckoutLink' | 'takeReceiptUpload'> | undefined
+  readonly limiter: Pick<McpRateLimiter, 'takeCheckoutLink' | 'takeReceiptUpload'>
   /** Caps counted and filled under one lock per account and year (MCP-23, H2-20). */
   readonly locks: KeyedLock
   /** Check and delete of an own record in one transaction (H2-28). */
