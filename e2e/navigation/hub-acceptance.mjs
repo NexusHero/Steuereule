@@ -68,14 +68,18 @@ async function main() {
       const el = document.querySelector('[data-testid="abgabe-zum-ausdruck"]')
       return el !== null && !el.hasAttribute('disabled') && el.getAttribute('aria-disabled') !== 'true'
     }, null, { timeout: 10_000 })
-    // A new warning: Werbungskosten above the wage (a small wage with a long way to work).
-    await lstb(user.api, 2_000, 0, 0)
-    await call(user.api, 'PUT', `/v1/steuerjahre/${YEAR}/arbeitsweg`, { ...COMMUTE, oneWayKm: 60 })
+    // WEB-9: the confirmation survives a reload of the tab (and so the return from Stripe).
+    await page.reload({ waitUntil: 'networkidle' })
+    await toPrintout.waitFor({ state: 'visible', timeout: 15_000 })
+    if (!(await isEnabled(toPrintout))) fail('AC 6 / WEB-9: a confirmed warning must stay confirmed after a reload')
+    if (await confirm.isVisible()) fail('AC 6 / WEB-9: a confirmed warning must not ask again after a reload')
+    // A new kind of warning: a severance that is recorded but not part of the estimate.
+    await answer(user.api, [['abfindung', 'Ja'], ['abfindung-betrag', '3000']])
     await page.reload({ waitUntil: 'networkidle' })
     await confirm.waitFor({ state: 'visible', timeout: 15_000 })
     if (await isEnabled(toPrintout)) fail('AC 6: a new warning must lock the printout again until it is confirmed')
     await confirm.click()
-    console.log(`[${TAG}] ✅ AC 6 — warnings unlock after one confirmation; a new warning locks again`)
+    console.log(`[${TAG}] ✅ AC 6 — warnings unlock after one confirmation that survives a reload; a new warning locks again`)
 
     // AC 7 — closing a sheet saves the amount typed without leaving the field: LStB, a catalog
     // amount and the Arbeitstage form (the last two lost it before #450 Teil 4).
