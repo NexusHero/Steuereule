@@ -7,6 +7,7 @@
 import type { NestFastifyApplication } from '@nestjs/platform-fastify'
 import type { PrismaClient } from '@prisma/client'
 import Stripe from 'stripe'
+import type { AccountDeletionRepository } from '../../src/account/account-deletion.repository.js'
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest'
 
 const WEBHOOK_SECRET = 'whsec_acceptance_only'
@@ -29,6 +30,7 @@ describe('Freischaltung — Stripe webhook against the real server (ADR-0050)', 
   })
 
   afterEach(async () => {
+    await prisma.legalHold.deleteMany({ where: { resource: 'unlock' } })
     await prisma.unlock.deleteMany()
     await prisma.user.deleteMany({ where: { email: { startsWith: 'freischaltung-' } } })
   })
@@ -101,9 +103,22 @@ describe('Freischaltung — Stripe webhook against the real server (ADR-0050)', 
     expect(rows[0]).toMatchObject({ status: 'bezahlt', taxYear: 2025, tier: 'standard', stripeCheckoutSessionId: 'cs_acceptance_lost' })
   })
 
-  it('the unlock cascades away with the account (Art. 17)', async () => {
+  // Art. 17 against § 147 AO (P7, stakeholder decision 2): the Unlock rows have no FK to User any more.
+  // Deleting the account deletes a session that never paid; the one the webhook paid is a Buchungsbeleg and
+  // stays, with the legal hold the webhook wrote, until the lifecycle sweep removes it when the hold ends.
+  it('account deletion deletes an unpaid unlock and keeps the one the webhook paid under its legal hold (Art. 17, § 147 AO)', async () => {
     const userId = await seedOpenUnlock()
-    await prisma.user.delete({ where: { id: userId } })
-    expect(await prisma.unlock.count({ where: { userId } })).toBe(0)
+    await prisma.unlock.create({ data: { userId, taxYear: 2024, stripeCheckoutSessionId: 'cs_acceptance_unpaid' } })
+    const signature = new Stripe('sk_test').webhooks.generateTestHeaderString({ payload: paidEvent, secret: WEBHOOK_SECRET })
+    expect((await postWebhook(paidEvent, signature)).status).toBe(200)
+
+    const { ACCOUNT_DELETION_REPOSITORY } = await import('../../src/account/account-deletion.repository.js')
+    const deletion = app.get<AccountDeletionRepository>(ACCOUNT_DELETION_REPOSITORY)
+    const result = await deletion.deleteAccount(userId)
+
+    expect(await prisma.user.count({ where: { id: userId } })).toBe(0)
+    expect((await prisma.unlock.findMany({ where: { userId } })).map((row) => row.stripeCheckoutSessionId)).toEqual(['cs_acceptance_1'])
+    expect(result.legalHolds).toEqual([expect.objectContaining({ resource: 'unlock', count: 1, reason: '§ 147 AO, § 257 HGB' })])
+    expect(await prisma.legalHold.count({ where: { userId, resource: 'unlock' } })).toBe(1)
   })
 })
