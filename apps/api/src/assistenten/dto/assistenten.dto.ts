@@ -10,8 +10,14 @@ export class ConnectedAssistantDto {
   @ApiProperty({ type: String, example: '2026-11-03T18:00:00.000Z' })
   linkedSince!: string
 
-  @ApiPropertyOptional({ type: String, example: '2026-11-03T19:30:00.000Z', nullable: true })
+  @ApiPropertyOptional({ type: String, example: '2026-11-03T19:30:00.000Z', nullable: true, description: 'The newest tool call of this assistant (audit log), or the newest token issued to it.' })
   lastUsed!: string | null
+
+  @ApiProperty({ type: [String], example: ['steuerdaten:read', 'steuerdaten:write'], description: 'The scopes the user granted.' })
+  scopes!: string[]
+
+  @ApiProperty({ type: [String], example: ['claude.ai'], description: 'Where its access goes: the hosts (or "localhost", an app scheme) of its registered redirect addresses.' })
+  destinations!: string[]
 }
 
 export class OauthRedirectTargetDto {

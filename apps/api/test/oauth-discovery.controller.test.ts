@@ -12,7 +12,8 @@ describe('OAuth discovery for MCP clients (ADR-0052 §2, RFC 9728, RFC 8414)', (
     expect(controller().protectedResource()).toEqual({
       resource: 'http://localhost:3501/mcp/sse',
       authorization_servers: ['http://localhost:3501/api/auth'],
-      scopes_supported: ['openid', 'steuerdaten:read', 'steuerdaten:write', 'belege:write', 'zahllink:read', 'offline_access'],
+      // H2-21: the payment scope is offered as a write; the old read name is honoured but no longer offered.
+      scopes_supported: ['openid', 'steuerdaten:read', 'steuerdaten:write', 'belege:write', 'zahllink:write', 'offline_access'],
       bearer_methods_supported: ['header'],
       resource_name: 'SteuerEule',
     })

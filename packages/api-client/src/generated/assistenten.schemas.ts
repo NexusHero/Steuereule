@@ -9,8 +9,15 @@ export interface ConnectedAssistantDto {
   clientId: string;
   name: string;
   linkedSince: string;
-  /** @nullable */
+  /**
+     * The newest tool call of this assistant (audit log), or the newest token issued to it.
+     * @nullable
+     */
   lastUsed?: string | null;
+  /** The scopes the user granted. */
+  scopes: string[];
+  /** Where its access goes: the hosts (or "localhost", an app scheme) of its registered redirect addresses. */
+  destinations: string[];
 }
 
 export interface RevokeAssistantResponseDto {

@@ -7,7 +7,8 @@ import { BETTER_AUTH_BUNDLE, type BetterAuthBundle } from './auth.tokens.js'
 import { newGuestUserId, resolveGuestSessionSecret, signGuestSession, verifyGuestSession } from './guest-session.js'
 import { BEARER_TOKEN_REPOSITORY, type BearerTokenRepository } from './bearer-token.repository.js'
 import { verifyJwsAccessToken } from 'better-auth/oauth2'
-import { authIssuer, mcpResourceUrls } from './mcp-oauth.js'
+import { authIssuer, MCP_RESOURCE_PATH, MCP_STREAMABLE_PATH, mcpBearerChallenge, mcpResourceUrls } from './mcp-oauth.js'
+import { clientDisplayName } from './oauth-client-name.js'
 import { isSessionWithinAbsoluteCap } from './session-lifetime.js'
 import { TooManyRequestsError } from '../common/domain-error.js'
 import { GUEST_ACTIVITY_RECORDER, type GuestActivityRecorder } from '../guest/guest-retention.js'
@@ -93,7 +94,7 @@ export class UserContextGuard implements CanActivate {
     request[AUTH_CONTEXT_REQUEST_KEY] = {
       source: 'assistent',
       clientId,
-      clientName: client.name ?? 'Assistent',
+      clientName: clientDisplayName(client.name),
       scopes: typeof claims.scope === 'string' ? claims.scope.split(' ').filter((scope) => scope.length > 0) : [],
     }
     // An assistant acts for an account that completed OAuth consent; it cannot verify an email itself, so
@@ -110,43 +111,77 @@ export class UserContextGuard implements CanActivate {
     this.guestActivity?.seen()
 
     const authHeader = request.headers?.authorization
+    const assistantEndpoint = Reflect.getMetadata(ACCEPTS_ASSISTANT_TOKEN, context.getClass()) === true
     if (typeof authHeader === 'string' && authHeader.startsWith('Bearer ')) {
       // An assistant's token is good for the MCP endpoint only (ADR-0052 amendment 4): on any other
       // controller it would pass for the user and walk around the tools' scopes and read view.
-      if (Reflect.getMetadata(ACCEPTS_ASSISTANT_TOKEN, context.getClass()) !== true) {
+      if (!assistantEndpoint) {
         throw new ForbiddenException('Ein Assistenten-Token gilt nur am MCP-Endpunkt.')
       }
-      const rawToken = authHeader.slice(7).trim()
-      if (!rawToken) {
-        throw new UnauthorizedException('Missing bearer token.')
-      }
-      if (rawToken.split('.').length === 3) return this.acceptJwtAccessToken(request, rawToken)
-      const tokenHash = createHash('sha256').update(rawToken).digest('base64url')
-      const tokenRecord = await this.tokens.findOpaqueToken(tokenHash)
-      if (!tokenRecord || !tokenRecord.userId) {
-        throw new UnauthorizedException('Invalid bearer token.')
-      }
-      if (tokenRecord.revoked !== null) {
-        throw new UnauthorizedException('Bearer token has been revoked.')
-      }
-      if (tokenRecord.expiresAt && tokenRecord.expiresAt < new Date()) {
-        throw new UnauthorizedException('Bearer token has expired.')
-      }
-      if (tokenRecord.client.disabled) {
-        throw new UnauthorizedException('OAuth client has been disabled.')
-      }
-      request[USER_ID_REQUEST_KEY] = tokenRecord.userId
-      request[USER_ID_KIND_REQUEST_KEY] = 'bearer'
-      request[AUTH_CONTEXT_REQUEST_KEY] = {
-        source: 'assistent',
-        clientId: tokenRecord.clientId,
-        clientName: tokenRecord.client.name ?? 'Assistent',
-        scopes: [...tokenRecord.scopes],
-      }
-      request[EMAIL_VERIFIED_REQUEST_KEY] = true
-      return true
+      return this.withChallenge(request, reply, () => this.acceptBearer(request, authHeader))
     }
 
+    // The MCP endpoint takes assistant tokens only: without one it answers 401 with the pointer to the sign-in,
+    // before any cookie or guest path, so no guest identity, cookie or guest-activity row is made (MCP-9, H2-27).
+    if (assistantEndpoint) {
+      this.setChallenge(request, reply)
+      throw new UnauthorizedException('Der MCP-Endpunkt ist nur für autorisierte KI-Assistenten mit OAuth-Bearer-Token zugänglich.')
+    }
+    return this.acceptCookieOrGuest(request, reply)
+  }
+
+  /** The challenge of the MCP endpoint the request went to (RFC 6750 §3, RFC 9728 §5.1), optionally naming the error. */
+  private setChallenge(request: RequestWithUserId, reply: FastifyReply, error?: string): void {
+    const path = (request.url ?? '').split('?')[0] ?? ''
+    // /mcp (Streamable HTTP) is a resource of its own; the SSE transport (/mcp/sse, /mcp/messages) is the older one.
+    const resource = path === MCP_STREAMABLE_PATH || path === `${MCP_STREAMABLE_PATH}/` ? MCP_STREAMABLE_PATH : MCP_RESOURCE_PATH
+    const challenge = mcpBearerChallenge(String(this.betterAuth.auth.options.baseURL), resource)
+    reply.header('WWW-Authenticate', error === undefined ? challenge : `${challenge}, error="${error}"`)
+  }
+
+  /** A refused token on the MCP endpoint carries `invalid_token`, so a client refreshes or signs in again (MCP-14). */
+  private async withChallenge(request: RequestWithUserId, reply: FastifyReply, accept: () => Promise<boolean>): Promise<boolean> {
+    try {
+      return await accept()
+    } catch (error) {
+      if (error instanceof UnauthorizedException) this.setChallenge(request, reply, 'invalid_token')
+      throw error
+    }
+  }
+
+  private async acceptBearer(request: RequestWithUserId, authHeader: string): Promise<boolean> {
+    const rawToken = authHeader.slice(7).trim()
+    if (!rawToken) {
+      throw new UnauthorizedException('Missing bearer token.')
+    }
+    if (rawToken.split('.').length === 3) return this.acceptJwtAccessToken(request, rawToken)
+    const tokenHash = createHash('sha256').update(rawToken).digest('base64url')
+    const tokenRecord = await this.tokens.findOpaqueToken(tokenHash)
+    if (!tokenRecord || !tokenRecord.userId) {
+      throw new UnauthorizedException('Invalid bearer token.')
+    }
+    if (tokenRecord.revoked !== null) {
+      throw new UnauthorizedException('Bearer token has been revoked.')
+    }
+    if (tokenRecord.expiresAt && tokenRecord.expiresAt < new Date()) {
+      throw new UnauthorizedException('Bearer token has expired.')
+    }
+    if (tokenRecord.client.disabled) {
+      throw new UnauthorizedException('OAuth client has been disabled.')
+    }
+    request[USER_ID_REQUEST_KEY] = tokenRecord.userId
+    request[USER_ID_KIND_REQUEST_KEY] = 'bearer'
+    request[AUTH_CONTEXT_REQUEST_KEY] = {
+      source: 'assistent',
+      clientId: tokenRecord.clientId,
+      clientName: clientDisplayName(tokenRecord.client.name),
+      scopes: [...tokenRecord.scopes],
+    }
+    request[EMAIL_VERIFIED_REQUEST_KEY] = true
+    return true
+  }
+
+  private async acceptCookieOrGuest(request: RequestWithUserId, reply: FastifyReply): Promise<boolean> {
     const cookies = request.cookies as Record<string, string | undefined> | undefined
 
     if (cookies?.[this.betterAuth.sessionCookieName]) {

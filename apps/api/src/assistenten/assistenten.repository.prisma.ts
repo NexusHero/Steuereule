@@ -1,5 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common'
 import { PrismaService } from '../prisma/prisma.service.js'
+import { clientDisplayName } from '../auth/oauth-client-name.js'
 import type { AssistantRepository, ClientInfo, ConnectedAssistant } from './assistenten.repository.js'
 
 @Injectable()
@@ -9,7 +10,7 @@ export class PrismaAssistantsRepository implements AssistantRepository {
   async findConnectedForUser(userId: string): Promise<ConnectedAssistant[]> {
     const consents = await this.prisma.oauthConsent.findMany({
       where: { userId },
-      include: { client: { select: { name: true } } },
+      include: { client: { select: { name: true, redirectUris: true } } },
       orderBy: { createdAt: 'desc' },
     })
     // One grouped query for every client instead of one lookup per consent.
@@ -22,9 +23,11 @@ export class PrismaAssistantsRepository implements AssistantRepository {
 
     return consents.map((consent) => ({
       clientId: consent.clientId,
-      name: consent.client?.name ?? 'Unbekannter Assistent',
+      name: clientDisplayName(consent.client?.name, 'Unbekannter Assistent'),
       linkedSince: consent.createdAt ?? new Date(),
       lastUsed: lastUsedByClient.get(consent.clientId) ?? null,
+      scopes: consent.scopes,
+      redirectUris: consent.client?.redirectUris ?? [],
     }))
   }
 
@@ -55,7 +58,7 @@ export class PrismaAssistantsRepository implements AssistantRepository {
 
     return {
       clientId: client.clientId,
-      name: client.name ?? 'Unbekannter Assistent',
+      name: clientDisplayName(client.name, 'Unbekannter Assistent'),
       uri: client.uri ?? null,
       icon: client.icon ?? null,
       redirectUris: client.redirectUris,

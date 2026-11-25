@@ -25,6 +25,8 @@ describe('AssistentenController (ADR-0052 §10)', () => {
         name: 'Claude Desktop',
         linkedSince: '2026-11-01T10:00:00.000Z',
         lastUsed: null,
+        scopes: [],
+        destinations: [],
       },
     ])
   })
