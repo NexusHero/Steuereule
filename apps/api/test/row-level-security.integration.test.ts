@@ -224,6 +224,14 @@ describe('who becomes Person B (coupling guard)', () => {
     await expect(as({ userId: A }, (tx) => tx.$executeRaw`UPDATE "SteuerjahrKopplung" SET "personBUserId" = '', "personBZustimmungAm" = NULL, "veranlagungsart" = 'einzel' WHERE "personAUserId" = ${A} AND "steuerjahr" = 2027`)).resolves.toBe(1)
     await expect(as({ userId: A }, (tx) => tx.$executeRaw`INSERT INTO "PartnerVerknuepfung" ("id", "personANutzerId", "personBNutzerId", "gueltigAb", "updatedAt") VALUES (${randomUUID()}, ${A}, ${D}, 2027, now())`)).rejects.toThrow(/only Person B or a named system path/)
   })
+
+  it('Person A ends the household link alone; an upsert that names B again is refused (the repository updates the end year)', async () => {
+    await as({ system: 'household-link' }, (tx) => tx.$executeRaw`INSERT INTO "PartnerVerknuepfung" ("id", "personANutzerId", "personBNutzerId", "gueltigAb", "updatedAt") VALUES (${randomUUID()}, ${A}, ${D}, 2027, now())`)
+    await expect(as({ userId: A }, (tx) => tx.$executeRaw`UPDATE "PartnerVerknuepfung" SET "beendetAb" = 2028 WHERE "personANutzerId" = ${A}`)).resolves.toBe(1)
+    await expect(
+      as({ userId: A }, (tx) => tx.$executeRaw`INSERT INTO "PartnerVerknuepfung" ("id", "personANutzerId", "personBNutzerId", "gueltigAb", "updatedAt") VALUES (${randomUUID()}, ${A}, ${D}, 2027, now()) ON CONFLICT ("personANutzerId") DO UPDATE SET "beendetAb" = 2029`),
+    ).rejects.toThrow(/only Person B or a named system path/)
+  })
 })
 
 describe('erasing the book (erasure grant)', () => {

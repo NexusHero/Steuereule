@@ -104,6 +104,12 @@ export class PrismaHouseholdRepository implements HouseholdRepository {
     })
   }
 
+  async endPartnerLink(personAUserId: string, endedFromYear: number): Promise<void> {
+    // A plain UPDATE of the end year: the row keeps its Person B, so the database guard on who names Person B
+    // (`app_rls.guard_person_b`) lets Person A do it. An upsert would be an INSERT … ON CONFLICT to the guard.
+    await this.prisma.partnerLink.updateMany({ where: { personAUserId }, data: { endedFromYear } })
+  }
+
   async listCandidates(householdUserId: string) {
     return (await this.prisma.householdMergeCandidate.findMany({ where: { householdUserId } })).map(toCandidate)
   }

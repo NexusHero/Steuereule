@@ -58,7 +58,10 @@ export interface HouseholdRepository {
 
   findPartnerLinkByPersonA(personAUserId: string): Promise<PartnerLinkRecord | null>
   findPartnerLinkByPersonB(personBUserId: string): Promise<PartnerLinkRecord | null>
+  /** Names Person B (redeeming an invitation, the household migration): a system path, guarded in the database. */
   upsertPartnerLink(personAUserId: string, data: Omit<PartnerLinkRecord, 'id' | 'personAUserId'>): Promise<PartnerLinkRecord>
+  /** Ends the link from a year on. Person A may do this alone; it changes nothing about who Person B is. */
+  endPartnerLink(personAUserId: string, endedFromYear: number): Promise<void>
 
   listCandidates(householdUserId: string): Promise<MergeCandidateRecord[]>
   /** Ignored when the pair is already known (either order). */
@@ -123,6 +126,10 @@ export class InMemoryHouseholdRepository implements HouseholdRepository {
     const record = { id: this.links.get(personAUserId)?.id ?? randomUUID(), personAUserId, ...data }
     this.links.set(personAUserId, record)
     return record
+  }
+  async endPartnerLink(personAUserId: string, endedFromYear: number) {
+    const link = this.links.get(personAUserId)
+    if (link) this.links.set(personAUserId, { ...link, endedFromYear })
   }
   async listCandidates(householdUserId: string) {
     return [...this.candidates.values()].filter((c) => c.householdUserId === householdUserId)

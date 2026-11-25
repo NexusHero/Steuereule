@@ -260,7 +260,7 @@ export class HouseholdService {
     await this.repo.updatePerson(personId, { leftFromYear: fromYear, updatedByUserId: userId })
     const link = await this.repo.findPartnerLinkByPersonA(owner)
     const person = await this.repo.findPerson(personId)
-    if (link && person?.kind === 'spouse') await this.repo.upsertPartnerLink(owner, { ...link, endedFromYear: fromYear })
+    if (link && person?.kind === 'spouse') await this.repo.endPartnerLink(owner, fromYear)
     await this.audit.append({ userId, action: 'WRITE', resource: 'haushalt' })
     return this.view(userId, fromYear)
   }
@@ -269,7 +269,7 @@ export class HouseholdService {
   async endPartnerLink(userId: string, fromYear: number): Promise<HouseholdView> {
     const owner = await this.householdOwner(userId, fromYear)
     const link = await this.repo.findPartnerLinkByPersonA(owner)
-    if (link) await this.repo.upsertPartnerLink(owner, { ...link, endedFromYear: fromYear })
+    if (link) await this.repo.endPartnerLink(owner, fromYear)
     for (const spouse of (await this.repo.listPersons(owner)).filter((p) => p.kind === 'spouse' && p.leftFromYear === null)) {
       await this.repo.updatePerson(spouse.id, { leftFromYear: fromYear, updatedByUserId: userId })
     }
