@@ -7,6 +7,7 @@
 // `?format=` branches, and that a client can never smuggle another user's id in.
 import type { NestFastifyApplication } from '@nestjs/platform-fastify'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { currentDatabaseIdentity } from '../src/common/database-identity.js'
 import { buildTestApp, extractSessionCookie } from './support/build-test-app.js'
 import type { FakeAccountIdentityRepository } from './fakes/fake-account-identity.repository.js'
 import type { FakeAuditRepository } from './fakes/fake-audit.repository.js'
@@ -79,6 +80,25 @@ describe('GET /v1/account/export', () => {
     const rows = auditRepository.all().filter((row) => row.userId === userId)
     expect(rows).toHaveLength(1)
     expect(rows[0]).toMatchObject({ userId, action: 'READ', resource: 'export' })
+  })
+
+  it('reads the access log as the caller while the response streams (P11: the batches are pulled after the handler returned)', async () => {
+    const { cookie, userId } = await mintCookieAndUserId()
+    accountIdentityRepository.seed(userId, ACCOUNT_IDENTITY)
+    auditRepository.appendAt({ userId, action: 'READ', resource: 'profile' }, new Date('2026-01-01T00:00:00Z'))
+    const seen: unknown[] = []
+    const stream = auditRepository.streamOwnRows.bind(auditRepository)
+    auditRepository.streamOwnRows = async function* (...args) {
+      for await (const batch of stream(...args)) {
+        seen.push(currentDatabaseIdentity())
+        yield batch
+      }
+    }
+
+    const response = await app.inject({ method: 'GET', url: '/v1/account/export', headers: { cookie } })
+
+    expect(response.json().accessLog).toHaveLength(1)
+    expect(seen).toEqual([{ kind: 'user', userId }])
   })
 
   it('format=pdf: returns application/pdf bytes from the PdfRenderer seam with a PDF Content-Disposition attachment', async () => {

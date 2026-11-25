@@ -63,6 +63,28 @@ export function withSystemDatabaseAccess<T>(reason: SystemDatabaseReason, work: 
   return identityStore.run({ kind: 'system', reason }, work)
 }
 
+/**
+ * `source`, pulled under the identity of the caller of this function. A generator handed to a streamed
+ * response is pulled after the handler returned, outside the request's identity; its queries would see
+ * nothing. Bound here, every pull runs as the request did.
+ */
+export function keepDatabaseIdentity<T>(source: AsyncIterable<T>): AsyncGenerator<T> {
+  const identity = identityStore.getStore()
+  const iterator = source[Symbol.asyncIterator]()
+  const pull = <R>(step: () => R): R => (identity === undefined ? step() : identityStore.run(identity, step))
+  return (async function* () {
+    try {
+      for (;;) {
+        const next = await pull(() => iterator.next())
+        if (next.done) return
+        yield next.value
+      }
+    } finally {
+      await pull(() => iterator.return?.())
+    }
+  })()
+}
+
 /** Whether the policies see `a` and `b` alike. Two system reasons do: inside one transaction no switch is needed. */
 export function sameDatabaseIdentity(a: DatabaseIdentity | undefined, b: DatabaseIdentity | undefined): boolean {
   if (a === undefined || b === undefined) return a === b
