@@ -2959,7 +2959,8 @@
         },
         "tags": [
           "selbststaendig"
-        ]
+        ],
+        "x-destructive": true
       }
     },
     "/v1/steuerjahre/{jahr}/selbststaendig/kataloge": {
@@ -3491,7 +3492,8 @@
         },
         "tags": [
           "selbststaendig"
-        ]
+        ],
+        "x-destructive": true
       }
     },
     "/v1/steuerjahre/{jahr}/selbststaendig/schnellerfassung": {
@@ -3686,7 +3688,8 @@
         },
         "tags": [
           "selbststaendig"
-        ]
+        ],
+        "x-destructive": true
       }
     },
     "/v1/steuerjahre/{jahr}/selbststaendig/bank/import": {
@@ -4049,7 +4052,8 @@
         },
         "tags": [
           "selbststaendig"
-        ]
+        ],
+        "x-destructive": true
       }
     },
     "/v1/steuerjahre/{jahr}/selbststaendig/anlagen": {
@@ -4417,7 +4421,8 @@
         },
         "tags": [
           "selbststaendig"
-        ]
+        ],
+        "x-destructive": true
       }
     },
     "/v1/steuerjahre/{jahr}/selbststaendig/anlagen/abschreibung": {
@@ -4506,7 +4511,8 @@
         },
         "tags": [
           "selbststaendig"
-        ]
+        ],
+        "x-destructive": true
       }
     },
     "/v1/steuerjahre/{jahr}/selbststaendig/abschluss": {
@@ -4668,7 +4674,8 @@
         },
         "tags": [
           "selbststaendig"
-        ]
+        ],
+        "x-destructive": true
       }
     },
     "/v1/steuerjahre/{jahr}/selbststaendig/firmenwagen": {
@@ -6176,7 +6183,8 @@
         },
         "tags": [
           "selbststaendig"
-        ]
+        ],
+        "x-destructive": true
       }
     },
     "/v1/steuerjahre/{jahr}/selbststaendig/e-bilanz/datei": {
@@ -8479,7 +8487,8 @@
         },
         "tags": [
           "bestaetigung"
-        ]
+        ],
+        "x-destructive": true
       }
     },
     "/v1/steuerjahre/{jahr}/bestaetigung/aufgaben/{id}": {
@@ -8536,7 +8545,8 @@
         },
         "tags": [
           "bestaetigung"
-        ]
+        ],
+        "x-destructive": true
       }
     },
     "/v1/verlauf": {
@@ -9311,7 +9321,8 @@
         },
         "tags": [
           "haushalt"
-        ]
+        ],
+        "x-destructive": true
       }
     },
     "/v1/steuerjahre/{jahr}/haushalt/partner/nicht-mehr-dabei": {
@@ -9343,7 +9354,8 @@
         },
         "tags": [
           "haushalt"
-        ]
+        ],
+        "x-destructive": true
       }
     },
     "/v1/steuerjahre/{jahr}/haushalt/personen/{personId}": {

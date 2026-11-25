@@ -1,15 +1,12 @@
 // The Rentner mask beyond the first happy path: the error state with a retry, every field the
 // Rentenart reveals (record + "unlesbar"), the save-failure notice, and a pension recorded for the partner.
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
-import { I18nextProvider } from 'react-i18next'
-import { ThemeProvider } from '@steuereule/ui'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { screen, fireEvent, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import type { PensionResponseDto } from '@steuereule/api-client'
-import { createAppI18n } from '../../i18n/app-i18n'
 import { PensionerScreen } from './PensionerScreen'
 import { server } from '../../test-msw-server'
+import { renderWithQuery } from '../../test-render'
 
 const PENSION_URL = '*/v1/steuerjahre/2026/rente'
 
@@ -26,16 +23,7 @@ function pension(over: Partial<PensionResponseDto>): PensionResponseDto {
 }
 
 function renderPension(props: { partnerName?: string; onDone?: () => void } = {}) {
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-  return render(
-    <QueryClientProvider client={queryClient}>
-      <I18nextProvider i18n={createAppI18n('de')}>
-        <ThemeProvider mode="light">
-          <PensionerScreen taxYear={2026} {...props} />
-        </ThemeProvider>
-      </I18nextProvider>
-    </QueryClientProvider>,
-  )
+  return renderWithQuery(<PensionerScreen taxYear={2026} {...props} />)
 }
 
 function captureBodies(path: string, reply: PensionResponseDto) {

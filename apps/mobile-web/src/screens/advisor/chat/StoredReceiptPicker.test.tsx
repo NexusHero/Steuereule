@@ -1,9 +1,8 @@
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { http, HttpResponse } from 'msw'
 import { server } from '../../../test-msw-server'
-import { renderInApp } from '../../../test-render'
+import { renderWithQuery } from '../../../test-render'
 import { StoredReceiptPicker } from './StoredReceiptPicker'
 import { receiptInboxHandler } from '../../../test-receipt-inbox'
 
@@ -11,11 +10,7 @@ const receipt = (id: string, fileName: string, hasFile = true) => ({ id, fileNam
 
 function renderPicker(props: Partial<Parameters<typeof StoredReceiptPicker>[0]> = {}) {
   const onRead = vi.fn().mockResolvedValue(undefined)
-  renderInApp(
-    <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
-      <StoredReceiptPicker onRead={onRead} {...props} />
-    </QueryClientProvider>,
-  )
+  renderWithQuery(<StoredReceiptPicker onRead={onRead} {...props} />)
   return { onRead }
 }
 

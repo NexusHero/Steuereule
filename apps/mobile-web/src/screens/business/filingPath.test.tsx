@@ -1,12 +1,8 @@
 // ADR-0101 §16: a year with self-employment is filed through Mein ELSTER. The pre-filing check follows the switch,
 // the cockpit and the Abgabe lead to the fill-in help, the checkout returns to it.
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
-import { I18nextProvider } from 'react-i18next'
-import { ThemeProvider } from '@steuereule/ui'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { screen, fireEvent, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
-import { createAppI18n } from '../../i18n/app-i18n'
 import { server } from '../../test-msw-server'
 import { ShellStateProvider } from '../../navigation/ShellState'
 import { SubmissionGateProvider } from '../../navigation/SubmissionGateContext'
@@ -14,6 +10,7 @@ import { SubmissionScreen } from '../submission/SubmissionScreen'
 import { CockpitScreen } from '../cockpit/CockpitScreen'
 import { usePlausibility } from '../plausibility/usePlausibility'
 import { renderBusiness, useBusinessDefaults, useElsterForms, BASE_URL } from './businessTestKit'
+import { renderWithQuery } from '../../test-render'
 
 const YEAR = 2025
 const ANSWERS = { job: 'Selbstständig', ausland: 'Nein', kinder: 'Nein', familienstand: 'Ledig' }
@@ -28,19 +25,12 @@ function mockYear(selbststaendig: boolean, filingPath: 'papier' | 'elster-ausfue
 }
 
 function wrap(node: React.ReactNode) {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-  return render(
-    <QueryClientProvider client={client}>
-      <I18nextProvider i18n={createAppI18n('de')}>
-        <ThemeProvider mode="light">
-          <SubmissionGateProvider>
-            <ShellStateProvider onRegister={() => {}} onLogin={() => {}} onSignedOut={() => {}}>
-              {node}
-            </ShellStateProvider>
-          </SubmissionGateProvider>
-        </ThemeProvider>
-      </I18nextProvider>
-    </QueryClientProvider>,
+  return renderWithQuery(
+    <SubmissionGateProvider>
+      <ShellStateProvider onRegister={() => {}} onLogin={() => {}} onSignedOut={() => {}}>
+        {node}
+      </ShellStateProvider>
+    </SubmissionGateProvider>,
   )
 }
 

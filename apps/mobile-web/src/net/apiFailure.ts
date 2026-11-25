@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import { isApiError, isNetworkError, type ApiFieldError } from '@steuereule/api-client'
+import { ApiError, NetworkError, isApiError, isNetworkError, type ApiFieldError } from '@steuereule/api-client'
 import { APP_NS } from '../i18n/resources'
 
 /**
@@ -63,6 +63,22 @@ export function classifyApiFailure(error: unknown): ApiFailure {
   }
   const offline = isNetworkError(error) || error instanceof TypeError
   return { kind: offline ? 'offline' : 'unknown', status: undefined, code: undefined, retryAfterSeconds: undefined, fieldErrors: [] }
+}
+
+/** A refusal answered outside the generated client: better-auth's `{ status, code }`. */
+export interface AnsweredRefusal {
+  readonly status?: number | undefined
+  readonly code?: string | undefined
+}
+
+/**
+ * A refusal from outside the generated client as the error this mapping reads, so a 429 or a 5xx from
+ * better-auth means the same as from any endpoint: an answer becomes an ApiError, a refusal without a status
+ * (the request got no answer) a NetworkError. Code-specific messages stay with the caller; this only decides
+ * what the status means.
+ */
+export function refusalError(refusal: AnsweredRefusal | null | undefined): ApiError | NetworkError {
+  return refusal?.status === undefined ? new NetworkError() : new ApiError(refusal.status, { code: refusal.code })
 }
 
 /** Whether a retry can help on its own (React Query retry policy): a dropped connection or a server hiccup. */

@@ -1,15 +1,13 @@
 import { describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen } from '@testing-library/react'
-import { I18nextProvider } from 'react-i18next'
-import { ThemeProvider } from '@steuereule/ui'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { fireEvent, screen } from '@testing-library/react'
+import type { QueryClient } from '@tanstack/react-query'
 import { http, HttpResponse } from 'msw'
-import { createAppI18n } from '../../i18n/app-i18n'
 import { server } from '../../test-msw-server'
 import { ShellStateProvider } from '../../navigation/ShellState'
 import { SubmissionGateProvider } from '../../navigation/SubmissionGateContext'
 import { SubmissionScreen } from './SubmissionScreen'
 import type { TileId } from '../cockpit/tiles'
+import { makeTestQueryClient, renderWithQuery } from '../../test-render'
 
 const TAX_YEAR = 2025
 const RUNNING_YEAR = 2026
@@ -56,31 +54,25 @@ function renderSubmission(
     taxYear?: number
   } = {},
 ) {
-  const i18n = createAppI18n('de')
-  const queryClient = props.queryClient ?? new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  const queryClient = props.queryClient ?? makeTestQueryClient()
   const onOpenTile = props.onOpenTile ?? vi.fn()
   const onOpenPrintout = props.onOpenPrintout ?? vi.fn()
   return {
     queryClient,
     onOpenTile,
     onOpenPrintout,
-    ...render(
-      <QueryClientProvider client={queryClient}>
-        <I18nextProvider i18n={i18n}>
-          <ThemeProvider mode="light">
-            <SubmissionGateProvider>
-              <ShellStateProvider onRegister={() => {}} onLogin={() => {}} onSignedOut={() => {}}>
-                <SubmissionScreen
-                  taxYear={props.taxYear ?? TAX_YEAR}
-                  {...(props.onBack ? { onBack: props.onBack } : {})}
-                  onOpenTile={onOpenTile}
-                  onOpenPrintout={onOpenPrintout}
-                />
-              </ShellStateProvider>
-            </SubmissionGateProvider>
-          </ThemeProvider>
-        </I18nextProvider>
-      </QueryClientProvider>,
+    ...renderWithQuery(
+      <SubmissionGateProvider>
+        <ShellStateProvider onRegister={() => {}} onLogin={() => {}} onSignedOut={() => {}}>
+          <SubmissionScreen
+            taxYear={props.taxYear ?? TAX_YEAR}
+            {...(props.onBack ? { onBack: props.onBack } : {})}
+            onOpenTile={onOpenTile}
+            onOpenPrintout={onOpenPrintout}
+          />
+        </ShellStateProvider>
+      </SubmissionGateProvider>,
+      { client: queryClient },
     ),
   }
 }

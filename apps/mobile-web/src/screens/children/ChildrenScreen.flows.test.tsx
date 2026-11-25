@@ -2,15 +2,12 @@
 // delete, household questions, married household), failing saves that keep the user's input,
 // the married form and the Swiss allowance payer.
 import { describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { I18nextProvider } from 'react-i18next'
-import { ThemeProvider } from '@steuereule/ui'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
-import { createAppI18n } from '../../i18n/app-i18n'
 import { server } from '../../test-msw-server'
 import { ChildrenScreen, type ChildItem } from './ChildrenScreen'
 import { confirmAction } from '../../test-confirm'
+import { renderInApp, renderWithQuery } from '../../test-render'
 
 const LINA: ChildItem = { id: 'kind-1', sequenceNumber: 1, firstName: 'Lina', lastName: 'Muster', geburtsdatum: '2016-05-12', taxId: '12345678901', childBenefitClaimEur: '3000' }
 
@@ -19,26 +16,11 @@ function listBody(kinder: ChildItem[]) {
 }
 
 function renderView(props: Partial<Parameters<typeof ChildrenScreen>[0]> = {}) {
-  return render(
-    <I18nextProvider i18n={createAppI18n('de')}>
-      <ThemeProvider mode="light">
-        <ChildrenScreen taxYear={2025} initialKinder={[LINA]} {...props} />
-      </ThemeProvider>
-    </I18nextProvider>,
-  )
+  return renderInApp(<ChildrenScreen taxYear={2025} initialKinder={[LINA]} {...props} />)
 }
 
 function renderConnected(props: Partial<Parameters<typeof ChildrenScreen>[0]> = {}) {
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
-  return render(
-    <QueryClientProvider client={queryClient}>
-      <I18nextProvider i18n={createAppI18n('de')}>
-        <ThemeProvider mode="light">
-          <ChildrenScreen taxYear={2025} {...props} />
-        </ThemeProvider>
-      </I18nextProvider>
-    </QueryClientProvider>,
-  )
+  return renderWithQuery(<ChildrenScreen taxYear={2025} {...props} />)
 }
 
 describe('KinderScreen (connected)', () => {

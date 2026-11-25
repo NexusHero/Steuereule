@@ -1,28 +1,16 @@
 // The catalogue's frame: a failed load that can be retried, a finished page that moves on without a
 // handler wired, and switching the asked person back and forth in a joint return (ADR-0088).
 import { describe, it, expect } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
-import { I18nextProvider } from 'react-i18next'
-import { ThemeProvider } from '@steuereule/ui'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { screen, fireEvent, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
-import { createAppI18n } from '../../i18n/app-i18n'
 import { CatalogScreen } from './CatalogScreen'
 import { server } from '../../test-msw-server'
+import { renderWithQuery } from '../../test-render'
 
 const INTERVIEW_URL = '*/v1/steuerjahre/2026/interview'
 
 function renderCatalog(entry: 'lebenslagen' | 'sonderausgaben') {
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-  return render(
-    <QueryClientProvider client={queryClient}>
-      <I18nextProvider i18n={createAppI18n('de')}>
-        <ThemeProvider mode="light">
-          <CatalogScreen entry={entry} taxYear={2026} />
-        </ThemeProvider>
-      </I18nextProvider>
-    </QueryClientProvider>,
-  )
+  return renderWithQuery(<CatalogScreen entry={entry} taxYear={2026} />)
 }
 
 describe('CatalogScreen frame', () => {

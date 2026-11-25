@@ -2,15 +2,12 @@
 // detour into the catalogue, the "unlesbar" answer, every address field, the joint-return share,
 // the date/repairs edge cases and the honest status block.
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
-import { I18nextProvider } from 'react-i18next'
-import { ThemeProvider } from '@steuereule/ui'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { screen, fireEvent, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import type { RentalPropertyDto, RentalResponseDto } from '@steuereule/api-client'
-import { createAppI18n } from '../../i18n/app-i18n'
 import { RentalScreen } from './RentalScreen'
 import { server } from '../../test-msw-server'
+import { renderWithQuery } from '../../test-render'
 
 /** Types a value and leaves the field — the way the mask saves (WEB-39). */
 function commit(field: HTMLElement, value: string) {
@@ -68,16 +65,7 @@ function recordAddressPuts() {
 }
 
 function renderRental(props: { onDone?: () => void; onBack?: () => void } = {}) {
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-  return render(
-    <QueryClientProvider client={queryClient}>
-      <I18nextProvider i18n={createAppI18n('de')}>
-        <ThemeProvider mode="light">
-          <RentalScreen taxYear={TAX_YEAR} {...props} />
-        </ThemeProvider>
-      </I18nextProvider>
-    </QueryClientProvider>,
-  )
+  return renderWithQuery(<RentalScreen taxYear={TAX_YEAR} {...props} />)
 }
 
 describe('VermietungScreen — load failure', () => {

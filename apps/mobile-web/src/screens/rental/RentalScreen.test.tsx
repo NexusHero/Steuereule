@@ -3,16 +3,13 @@
 // § 7 Abs. 4 Herkunft), POSTs new objects and PUTs whole euros. The Verkauf/möbliert gate is
 // named honestly (ADR-033). The client stays dumb: every number comes from the server.
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
-import { I18nextProvider } from 'react-i18next'
-import { ThemeProvider } from '@steuereule/ui'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { screen, fireEvent, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import { getCockpitControllerGetCockpitSummaryQueryKey, getTaxEstimateControllerGetQueryKey, type RentalResponseDto } from '@steuereule/api-client'
-import { createAppI18n } from '../../i18n/app-i18n'
 import { RentalScreen } from './RentalScreen'
 import { server } from '../../test-msw-server'
 import { confirmAction } from '../../test-confirm'
+import { makeTestQueryClient, renderWithQuery } from '../../test-render'
 
 /** Types a value and leaves the field — the way the mask saves (WEB-39). */
 function commit(field: HTMLElement, value: string) {
@@ -56,19 +53,10 @@ const FULL_PROPERTY: RentalResponseDto = {
   status: { kind: 'bestimmt', einnahmen: 12000, vorsorgeaufwand: 0, anrechnung: 0, werbungskosten: 1500, depreciation: 4000, openItems: 0, conflicts: 0 },
 }
 
-function renderRental(onDone: () => void = () => {}, queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } }), onBack?: () => void) {
-  const i18n = createAppI18n('de')
+function renderRental(onDone: () => void = () => {}, queryClient = makeTestQueryClient(), onBack?: () => void) {
   return {
     queryClient,
-    ...render(
-      <QueryClientProvider client={queryClient}>
-        <I18nextProvider i18n={i18n}>
-          <ThemeProvider mode="light">
-            <RentalScreen taxYear={TAX_YEAR} onDone={onDone} {...(onBack ? { onBack } : {})} />
-          </ThemeProvider>
-        </I18nextProvider>
-      </QueryClientProvider>,
-    ),
+    ...renderWithQuery(<RentalScreen taxYear={TAX_YEAR} onDone={onDone} {...(onBack ? { onBack } : {})} />, { client: queryClient }),
   }
 }
 

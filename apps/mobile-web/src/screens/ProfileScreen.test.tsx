@@ -3,25 +3,20 @@
 // established for the same live GET/PUT /v1/profile contract.
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { Platform } from 'react-native'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
-import { I18nextProvider } from 'react-i18next'
-import { ThemeProvider, isHapticsEnabled, setHapticsEnabled } from '@steuereule/ui'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { screen, fireEvent, waitFor } from '@testing-library/react'
+import { isHapticsEnabled, setHapticsEnabled } from '@steuereule/ui'
+import { QueryClient } from '@tanstack/react-query'
 import { http, HttpResponse } from 'msw'
 import { getProfileControllerGetProfileQueryKey } from '@steuereule/api-client'
-import { createAppI18n } from '../i18n/app-i18n'
 import { createAppAuthClient } from '../auth/auth-client'
 import { AuthClientProvider } from '../auth/AuthClientProvider'
 import { ProfileScreen } from './ProfileScreen'
 import { server, EMPTY_PROFILE_RESPONSE } from '../test-msw-server'
 import { stubStorageSetItem, assertNoStorageWrites } from '../test-storage-guard'
 import { expectFailsClosed, failEveryRequest } from '../test-every-query-fails'
+import { makeTestQueryClient, renderWithQuery } from '../test-render'
 
 const BASE_URL = 'http://localhost:3000'
-
-function makeTestQueryClient() {
-  return new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
-}
 
 function renderProfile(
   opts: {
@@ -33,24 +28,18 @@ function renderProfile(
     onSignedOut?: () => void
   } = {},
 ) {
-  const i18n = createAppI18n(opts.lng ?? 'de')
   const queryClient = opts.queryClient ?? makeTestQueryClient()
   const authClient = createAppAuthClient(BASE_URL)
-  return render(
-    <QueryClientProvider client={queryClient}>
-      <I18nextProvider i18n={i18n}>
-        <ThemeProvider mode="light">
-          <AuthClientProvider client={authClient}>
-            <ProfileScreen
-              onOpenPrivacy={opts.onOpenPrivacy ?? (() => {})}
-              onOpenSecurity={opts.onOpenSecurity ?? (() => {})}
-              {...(opts.onOpenMasterData ? { onOpenMasterData: opts.onOpenMasterData } : {})}
-              onSignedOut={opts.onSignedOut ?? (() => {})}
-            />
-          </AuthClientProvider>
-        </ThemeProvider>
-      </I18nextProvider>
-    </QueryClientProvider>,
+  return renderWithQuery(
+    <AuthClientProvider client={authClient}>
+      <ProfileScreen
+        onOpenPrivacy={opts.onOpenPrivacy ?? (() => {})}
+        onOpenSecurity={opts.onOpenSecurity ?? (() => {})}
+        {...(opts.onOpenMasterData ? { onOpenMasterData: opts.onOpenMasterData } : {})}
+        onSignedOut={opts.onSignedOut ?? (() => {})}
+      />
+    </AuthClientProvider>,
+    { client: queryClient, language: opts.lng ?? 'de' },
   )
 }
 

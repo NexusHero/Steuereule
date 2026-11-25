@@ -50,7 +50,7 @@ export function CheckoutPage({ taxYear, onBack, onOpenPage, openCheckout = (url)
           <Note tone="error" testID="checkout-zu-viele">
             {tr('zahlung.zuVieleVersuche')}
           </Note>
-        ) : problem?.code === 'PAYMENT_TIER_NOT_CONFIGURED' || problem?.status === 503 ? (
+        ) : refusal === 'not-configured' ? (
           <Note tone="error" testID="checkout-nicht-eingerichtet">
             {tr('business.freischalten.nichtEingerichtet')}
           </Note>

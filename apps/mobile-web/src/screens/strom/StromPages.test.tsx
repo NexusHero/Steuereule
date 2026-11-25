@@ -1,29 +1,19 @@
 // The Strom's own pages (ADR-0089): the basis page, the selection page and a topic page. Each one
 // answers through the same interview endpoint as the catalogues, in the order the server admits.
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
-import { I18nextProvider } from 'react-i18next'
-import { ThemeProvider } from '@steuereule/ui'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { screen, fireEvent, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import type { Answers } from '@steuereule/core'
-import { createAppI18n } from '../../i18n/app-i18n'
 import { server } from '../../test-msw-server'
 import { AuswahlPage, BasisPage, TopicPage } from './StromPages'
 import { effectOf, forgetEffects } from './stromEffects'
+import { renderWithQuery } from '../../test-render'
 
 const YEAR = 2025
 const BASIS: Answers = { job: 'Angestellt', ausland: 'Nein', kinder: 'Nein', familienstand: 'Ledig' }
 
 function wrap(ui: React.ReactElement) {
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-  return render(
-    <QueryClientProvider client={queryClient}>
-      <I18nextProvider i18n={createAppI18n('de')}>
-        <ThemeProvider mode="light">{ui}</ThemeProvider>
-      </I18nextProvider>
-    </QueryClientProvider>,
-  )
+  return renderWithQuery(ui)
 }
 
 /** Records every answer the page sends, in order. */

@@ -1,26 +1,13 @@
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
-import { I18nextProvider } from 'react-i18next'
-import { ThemeProvider } from '@steuereule/ui'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { screen, fireEvent, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
-import { createAppI18n } from '../i18n/app-i18n'
 import { OnboardingScreen } from './OnboardingScreen'
 import { server } from '../test-msw-server'
 import { expectFailsClosed, failEveryRequest } from '../test-every-query-fails'
+import { renderWithQuery } from '../test-render'
 
 function renderOnboarding(opts: { lng?: 'de' | 'en'; onDone?: () => void } = {}) {
-  const i18n = createAppI18n(opts.lng ?? 'de')
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
-  return render(
-    <QueryClientProvider client={queryClient}>
-      <I18nextProvider i18n={i18n}>
-        <ThemeProvider mode="light">
-          <OnboardingScreen onDone={opts.onDone ?? (() => {})} />
-        </ThemeProvider>
-      </I18nextProvider>
-    </QueryClientProvider>,
-  )
+  return renderWithQuery(<OnboardingScreen onDone={opts.onDone ?? (() => {})} />, { language: opts.lng ?? 'de' })
 }
 
 async function fillNameStep() {

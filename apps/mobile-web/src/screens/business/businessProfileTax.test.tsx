@@ -1,18 +1,14 @@
 // Profile, tax pages, export, checkout, profession and shares of the self-employed area (ADR-0101):
 // the paths a user takes when saving, and what the page says when the API refuses or the read fails.
 import { describe, it, expect, vi, afterEach } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
-import type { ReactNode } from 'react'
+import { screen, fireEvent, waitFor } from '@testing-library/react'
 import { Platform } from 'react-native'
-import { I18nextProvider } from 'react-i18next'
-import { ThemeProvider } from '@steuereule/ui'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { http, HttpResponse, delay } from 'msw'
-import { createAppI18n } from '../../i18n/app-i18n'
 import { server } from '../../test-msw-server'
 import { CheckoutPage } from './CheckoutPage'
 import { BASE_PROFILE, BASE_URL, CATALOGUES, renderBusiness, useBusinessDefaults, useCatalogues, YEAR } from './businessTestKit'
 import { confirmAction } from '../../test-confirm'
+import { renderWithQuery } from '../../test-render'
 
 const SMALL_OK = { eligible: true, priorYearLimitEur: 25_000, currentYearLimitEur: 100_000, crossed: null, foundingYear: false, priorYearKnown: true, turnoverEur: 0, matchesProfile: true }
 
@@ -480,15 +476,7 @@ describe('the export', () => {
 
 describe('the checkout', () => {
   function renderCheckout(openCheckout: (url: string) => void) {
-    const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
-    const wrap = (node: ReactNode) => (
-      <QueryClientProvider client={client}>
-        <I18nextProvider i18n={createAppI18n('de')}>
-          <ThemeProvider mode="light">{node}</ThemeProvider>
-        </I18nextProvider>
-      </QueryClientProvider>
-    )
-    return render(wrap(<CheckoutPage taxYear={YEAR} person="A" onBack={() => {}} onOpenPage={() => {}} openCheckout={openCheckout} />))
+    return renderWithQuery(<CheckoutPage taxYear={YEAR} person="A" onBack={() => {}} onOpenPage={() => {}} openCheckout={openCheckout} />)
   }
 
   it('hands the checkout address of the API to the browser', async () => {
@@ -516,11 +504,26 @@ describe('the checkout', () => {
     expect(open).not.toHaveBeenCalled()
   })
 
-  it('names a tier that is not set up by its code as well as by a 503', async () => {
+  it('names a tier that is not set up by its code, whatever the status', async () => {
     server.use(http.post(`${BASE_URL}/checkout`, () => refusal(400, 'x', 'PAYMENT_TIER_NOT_CONFIGURED')))
     renderCheckout(vi.fn())
     fireEvent.click(await screen.findByTestId('checkout-selbststaendig'))
     expect(await screen.findByTestId('checkout-nicht-eingerichtet')).toBeTruthy()
+  })
+
+  it('names payment that is not set up at all by its code', async () => {
+    server.use(http.post(`${BASE_URL}/checkout`, () => refusal(503, 'x', 'PAYMENT_NOT_CONFIGURED')))
+    renderCheckout(vi.fn())
+    fireEvent.click(await screen.findByTestId('checkout-selbststaendig'))
+    expect(await screen.findByTestId('checkout-nicht-eingerichtet')).toBeTruthy()
+  })
+
+  it('reads a 503 without such a code as the server failure it is, not as a missing setup', async () => {
+    server.use(http.post(`${BASE_URL}/checkout`, () => refusal(503, 'Gerade nicht erreichbar.', 'EXPORT_BUSY')))
+    renderCheckout(vi.fn())
+    fireEvent.click(await screen.findByTestId('checkout-selbststaendig'))
+    expect(await screen.findByTestId('business-speichern-fehler')).toBeTruthy()
+    expect(screen.queryByTestId('checkout-nicht-eingerichtet')).toBeNull()
   })
 
   it('leaves the page for the checkout through the browser by default', async () => {

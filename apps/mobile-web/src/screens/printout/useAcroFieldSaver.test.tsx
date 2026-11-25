@@ -1,14 +1,12 @@
 // useAcroFieldSaver — every editable Vordruck field goes back through the endpoint of its mask,
 // only HTTP 200 counts as stored, and a field with nothing safe to write to is refused.
 import { afterEach, describe, expect, it } from 'vitest'
-import { renderHook } from '@testing-library/react'
-import type { ReactNode } from 'react'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { http, HttpResponse } from 'msw'
 import type { MasterDataResponseDto } from '@steuereule/api-client'
 import { server } from '../../test-msw-server'
 import { useAcroFieldSaver } from './useAcroFieldSaver'
 import { SINGLE_COPY } from './acroFieldEditing'
+import { renderHookWithQuery } from '../../test-render'
 
 const YEAR = 2025
 const MASTER_DATA = {
@@ -30,9 +28,7 @@ const MASTER_DATA = {
 } as unknown as MasterDataResponseDto
 
 function setup(masterData: MasterDataResponseDto | null = MASTER_DATA) {
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
-  const wrapper = ({ children }: { children: ReactNode }) => <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
-  return renderHook(() => useAcroFieldSaver({ year: YEAR, masterData }), { wrapper }).result.current
+  return renderHookWithQuery(() => useAcroFieldSaver({ year: YEAR, masterData })).result.current
 }
 
 /** Records the body and the query string of every PUT/POST to a URL, and answers with `status`. */

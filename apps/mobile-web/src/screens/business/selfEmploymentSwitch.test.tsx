@@ -2,13 +2,9 @@
 // switch off the interview and the cockpit look exactly as before (their own suites pin that); with it
 // on, „Selbstständig“ and „Beides“ walk on and the cockpit offers the area as a tile.
 import { describe, it, expect } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
-import { I18nextProvider } from 'react-i18next'
-import { ThemeProvider } from '@steuereule/ui'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { screen, fireEvent } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import type { CockpitSummaryDto } from '@steuereule/api-client'
-import { createAppI18n } from '../../i18n/app-i18n'
 import { InterviewScreen } from '../interview/InterviewScreen'
 import { CockpitScreen } from '../cockpit/CockpitScreen'
 import { partitionTiles, TILES, tileById, type TileFacts } from '../cockpit/tiles'
@@ -16,6 +12,7 @@ import { server } from '../../test-msw-server'
 import { BasisPage } from '../strom/StromPages'
 import { StromOptionsContext } from '../strom/stromOptions'
 import { BASE_PROFILE } from './businessTestKit'
+import { renderWithQuery } from '../../test-render'
 
 const YEAR = 2026
 
@@ -30,14 +27,7 @@ function summary(selbststaendig: boolean): CockpitSummaryDto {
 }
 
 function mount(node: React.ReactNode) {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-  return render(
-    <QueryClientProvider client={client}>
-      <I18nextProvider i18n={createAppI18n('de')}>
-        <ThemeProvider mode="light">{node}</ThemeProvider>
-      </I18nextProvider>
-    </QueryClientProvider>,
-  )
+  return renderWithQuery(node)
 }
 
 describe('the self-employment switch in the interview', () => {

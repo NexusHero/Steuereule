@@ -4,12 +4,9 @@
 // confirm -> [password] -> success/failure per ADR-0013 §6's distinct status codes), and that
 // the corrected DSGVO copy (not the DS demo's wrong wording) is what actually renders.
 import { describe, it, expect, vi, afterEach } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
-import { I18nextProvider } from 'react-i18next'
-import { ThemeProvider } from '@steuereule/ui'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { screen, fireEvent, waitFor } from '@testing-library/react'
+import type { QueryClient } from '@tanstack/react-query'
 import { http, HttpResponse } from 'msw'
-import { createAppI18n } from '../i18n/app-i18n'
 import { createAppAuthClient, type AppAuthClient } from '../auth/auth-client'
 import { AuthClientProvider } from '../auth/AuthClientProvider'
 import { PrivacyScreen } from './PrivacyScreen'
@@ -23,6 +20,7 @@ vi.mock('./privacy/exportDownload', async () => {
   return { ...actual, downloadAccountExport: vi.fn() }
 })
 import { downloadAccountExport } from './privacy/exportDownload'
+import { makeTestQueryClient, renderWithQuery } from '../test-render'
 
 const mockedDownload = vi.mocked(downloadAccountExport)
 
@@ -36,24 +34,17 @@ function mockSession(session: typeof REAL_SESSION | null) {
 }
 
 function renderPrivacy(opts: { lng?: 'de' | 'en'; onBack?: () => void; onAccountDeleted?: () => void; queryClient?: QueryClient; authClient?: AppAuthClient } = {}) {
-  const i18n = createAppI18n(opts.lng ?? 'de')
   // Defaults to a fresh client per render, same as before — but a caller can pass its own,
   // already-constructed client (and reuse it across an unmount/re-mount) to prove F2: whether
   // "signed out" survives a re-mount depends on this client's session atom actually being
   // invalidated, not on component unmount timing (App.tsx constructs its auth client once,
   // outside the tree, so it stays alive across the stage change back to Login).
   const authClient = opts.authClient ?? createAppAuthClient(BASE_URL)
-  const queryClient = opts.queryClient ?? new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
-  return render(
-    <QueryClientProvider client={queryClient}>
-      <I18nextProvider i18n={i18n}>
-        <ThemeProvider mode="light">
-          <AuthClientProvider client={authClient}>
-            <PrivacyScreen onBack={opts.onBack ?? (() => {})} onAccountDeleted={opts.onAccountDeleted ?? (() => {})} />
-          </AuthClientProvider>
-        </ThemeProvider>
-      </I18nextProvider>
-    </QueryClientProvider>,
+  return renderWithQuery(
+    <AuthClientProvider client={authClient}>
+      <PrivacyScreen onBack={opts.onBack ?? (() => {})} onAccountDeleted={opts.onAccountDeleted ?? (() => {})} />
+    </AuthClientProvider>,
+    { client: opts.queryClient ?? makeTestQueryClient(), language: opts.lng ?? 'de' },
   )
 }
 
@@ -315,7 +306,7 @@ describe('DatenschutzScreen', () => {
           return HttpResponse.json({ deleted: { profile: true, account: true }, retainedAnonymisedAuditRows: 2, retainedUnderLegalHold: 0 }, { status: 200 })
         }),
       )
-      const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
+      const queryClient = makeTestQueryClient()
       const clearSpy = vi.spyOn(queryClient, 'clear')
       const onAccountDeleted = vi.fn()
       mockSession(REAL_SESSION)

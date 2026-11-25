@@ -3,16 +3,13 @@ import { describe, expect, it, vi } from 'vitest'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { I18nextProvider } from 'react-i18next'
 import { ThemeProvider } from '@steuereule/ui'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { http, HttpResponse } from 'msw'
-import {
-  getCockpitControllerGetCockpitSummaryQueryKey,
-  getTaxEstimateControllerGetQueryKey,
-} from '@steuereule/api-client'
+import { getCockpitControllerGetCockpitSummaryQueryKey, getTaxEstimateControllerGetQueryKey } from '@steuereule/api-client'
 import { CHILDCARE_PROVIDER_WIDTH_PT, fitsPrintBox } from '@steuereule/core'
 import { createAppI18n } from '../../i18n/app-i18n'
 import { server } from '../../test-msw-server'
 import { ChildrenScreen } from './ChildrenScreen'
+import { makeTestQueryClient, renderWithQuery } from '../../test-render'
 
 const KINDER_FIXTURE = [
   {
@@ -598,23 +595,14 @@ describe('KinderScreen', () => {
         )
       }),
     )
-    const i18n = createAppI18n('de')
-    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
+    const queryClient = makeTestQueryClient()
     const summaryKey = getCockpitControllerGetCockpitSummaryQueryKey(2025)
     const estimateKey = getTaxEstimateControllerGetQueryKey(2025)
     queryClient.setQueryData(summaryKey, { status: 200, data: null, headers: new Headers() })
     queryClient.setQueryData(estimateKey, { status: 200, data: { kind: 'offen' }, headers: new Headers() })
 
     const onDone = vi.fn()
-    render(
-      <QueryClientProvider client={queryClient}>
-        <I18nextProvider i18n={i18n}>
-          <ThemeProvider mode="light">
-            <ChildrenScreen taxYear={2025} onDone={onDone} />
-          </ThemeProvider>
-        </I18nextProvider>
-      </QueryClientProvider>,
-    )
+    renderWithQuery(<ChildrenScreen taxYear={2025} onDone={onDone} />, { client: queryClient })
 
     fireEvent.change(await screen.findByLabelText('Vorname'), { target: { value: 'Lina' } })
     fireEvent.change(screen.getByLabelText('Nachname'), { target: { value: 'Muster' } })

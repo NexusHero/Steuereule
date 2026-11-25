@@ -1,17 +1,14 @@
 // The Strom screen beyond routing: the load error with a retry, the masks it frames, the way back
 // and out of every page, the guest's basis, and the summary at the end with refund, taken and open steps.
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
-import { I18nextProvider } from 'react-i18next'
-import { ThemeProvider } from '@steuereule/ui'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { screen, fireEvent, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import type { Answers } from '@steuereule/core'
-import { createAppI18n } from '../../i18n/app-i18n'
 import { server } from '../../test-msw-server'
 import { StromScreen } from './StromScreen'
 import { forgetEffects, rememberEffect } from './stromEffects'
 import type { StromStep } from './stromPlan'
+import { renderWithQuery } from '../../test-render'
 
 const YEAR = 2025
 const PENSIONER: Answers = { job: 'Rente', ausland: 'Nein', kinder: 'Nein', familienstand: 'Ledig' }
@@ -38,23 +35,16 @@ interface Handlers {
 }
 
 function renderStrom(slug: string | undefined, h: Handlers = {}) {
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-  return render(
-    <QueryClientProvider client={queryClient}>
-      <I18nextProvider i18n={createAppI18n('de')}>
-        <ThemeProvider mode="light">
-          <StromScreen
-            taxYear={YEAR}
-            slug={slug}
-            isSignedIn={h.isSignedIn ?? true}
-            onGo={h.onGo ?? (() => {})}
-            onExit={h.onExit ?? (() => {})}
-            onOpenSubmission={h.onOpenSubmission ?? (() => {})}
-            onGuestBasisDone={(h.onGuestBasisDone ?? (() => {})) as never}
-          />
-        </ThemeProvider>
-      </I18nextProvider>
-    </QueryClientProvider>,
+  return renderWithQuery(
+    <StromScreen
+      taxYear={YEAR}
+      slug={slug}
+      isSignedIn={h.isSignedIn ?? true}
+      onGo={h.onGo ?? (() => {})}
+      onExit={h.onExit ?? (() => {})}
+      onOpenSubmission={h.onOpenSubmission ?? (() => {})}
+      onGuestBasisDone={(h.onGuestBasisDone ?? (() => {})) as never}
+    />,
   )
 }
 
