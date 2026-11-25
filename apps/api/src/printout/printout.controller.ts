@@ -43,7 +43,7 @@ export class PrintoutController {
   @ApiNotFoundResponse({ description: 'No measured templates exist for this tax year.' })
   @ApiUnauthorizedResponse({ description: 'Guest session — this endpoint requires a signed-in account.' })
   check(@CurrentUser() userId: string, @Param('jahr', ParseTaxYearPipe) year: number): Promise<PrintoutCheckDto> {
-    return this.service.check(userId, year)
+    return this.service.checkForUser(userId, year)
   }
 
   @Get(':jahr/ausdruck/werte')
