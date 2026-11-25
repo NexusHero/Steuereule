@@ -33,8 +33,11 @@ export const ROUTES = [
   { path: `/app/steuerjahr/${YEAR}/vermietung` },
   { path: `/app/steuerjahr/${YEAR}/kinder` },
   { path: `/app/steuerjahr/${YEAR}/stammdaten` },
-  { path: `/app/steuerjahr/${YEAR}/partner/lstb`, lands: `/app/steuerjahr/${YEAR}/stammdaten`, reason: 'ADR-0054: the partner is never in the URL; a deep link opens the partner choice (replace, no back trap)' },
-  { path: `/app/steuerjahr/${YEAR}/partner/arbeitsweg`, lands: `/app/steuerjahr/${YEAR}/stammdaten`, reason: 'ADR-0054: the partner is never in the URL; a deep link opens the partner choice (replace, no back trap)' },
+  // The couple below files jointly, so the year has a partner: the link opens that partner's mask, on load and on
+  // reload (NM-12). The partner's name never goes into the URL (ADR-0054); a year without a partner leads to the
+  // master data instead (AppShell.test.tsx).
+  { path: `/app/steuerjahr/${YEAR}/partner/lstb` },
+  { path: `/app/steuerjahr/${YEAR}/partner/arbeitsweg` },
   { path: '/app/eule' },
   { path: '/app/belege' },
   { path: '/app/profil' },
