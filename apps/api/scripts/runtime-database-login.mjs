@@ -129,10 +129,12 @@ export async function provisionRuntimeLogin(client, plan) {
   await client.$executeRawUnsafe(`GRANT ${APP_ROLE} TO "${role}"`)
   const rows = await client.$queryRaw`
     SELECT r.rolsuper, r.rolbypassrls, r.rolcreaterole, r.rolcreatedb, r.rolreplication,
-           ARRAY(SELECT g.rolname::text FROM pg_auth_members m JOIN pg_roles g ON g.oid = m.roleid WHERE m.member = r.oid) AS member_of,
+           -- Every role the login can reach through membership, not only the direct grants (as the API's boot check).
+           ARRAY(SELECT g.rolname::text FROM pg_roles g WHERE g.oid <> r.oid AND pg_has_role(r.oid, g.oid, 'MEMBER') ORDER BY g.rolname) AS member_of,
            ((SELECT count(*) FROM pg_class c WHERE c.relowner = r.oid)
              + (SELECT count(*) FROM pg_proc p WHERE p.proowner = r.oid)
-             + (SELECT count(*) FROM pg_namespace n WHERE n.nspowner = r.oid))::int AS owns
+             + (SELECT count(*) FROM pg_namespace n WHERE n.nspowner = r.oid)
+             + (SELECT count(*) FROM pg_database d WHERE d.datdba = r.oid))::int AS owns
       FROM pg_roles r WHERE r.rolname = ${role}`
   const problems = rows.length === 1 ? runtimeLoginProblems(rows[0]) : ['does not exist']
   if (problems.length > 0) {

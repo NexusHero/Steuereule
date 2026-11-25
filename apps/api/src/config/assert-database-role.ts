@@ -80,7 +80,8 @@ export async function assertDatabaseRole(options: AssertDatabaseRoleOptions = {}
                ARRAY(SELECT rolname::text FROM reachable ORDER BY rolname) AS member_of,
                ((SELECT count(*) FROM pg_class c WHERE c.relowner IN (SELECT oid FROM identities))
                  + (SELECT count(*) FROM pg_proc p WHERE p.proowner IN (SELECT oid FROM identities))
-                 + (SELECT count(*) FROM pg_namespace n WHERE n.nspowner IN (SELECT oid FROM identities)))::int AS owns,
+                 + (SELECT count(*) FROM pg_namespace n WHERE n.nspowner IN (SELECT oid FROM identities))
+                 + (SELECT count(*) FROM pg_database d WHERE d.datdba IN (SELECT oid FROM identities)))::int AS owns,
                (has_schema_privilege(session_user, 'public', 'CREATE') OR has_schema_privilege(session_user, 'app_rls', 'CREATE')) AS creates_in_schema
           FROM pg_roles r WHERE r.rolname = session_user`,
       PROBE_TIMEOUT_MS,
