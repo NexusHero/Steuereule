@@ -115,13 +115,17 @@ describe('RedisAdvisorRunLog encryption (H2-9)', () => {
 
 describe('the sealed run info (owner of the run)', () => {
   it('is not stored in clear, and reads back', async () => {
+    // Markers with '@' and ':' that a sealed value (a version, then base64) can never contain by chance; a short id
+    // such as 'u1' turns up in random base64 now and then, which made this check flaky.
+    const marked = { ...info, userId: 'owner@run:1', assistantMessageId: 'message@run:2' }
     const redis = new FakeRedis()
     const log = new RedisAdvisorRunLog(redis as never, KEYS)
-    await log.open(info)
+    await log.open(marked)
     const raw = [...redis.strings.values()].join(' ')
-    expect(raw).not.toContain('u1')
-    expect(raw).not.toContain('m2')
-    expect(await log.info(info.runId)).toEqual(info)
+    expect(raw).not.toContain(marked.userId)
+    expect(raw).not.toContain(marked.assistantMessageId)
+    expect(raw).not.toContain('userId')
+    expect(await log.info(marked.runId)).toEqual(marked)
   })
 
   it('an info written or swapped by someone else counts as no run: a changed owner is never believed', async () => {
