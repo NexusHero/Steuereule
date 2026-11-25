@@ -266,14 +266,18 @@ export class LinkService {
   }
 
   async joinWithCode(userId: string, taxYear: number, code: string, now = new Date()): Promise<LinkResponseDto> {
-    // The code sits on person A's row, and redeeming it moves A's shadow data to B and links A's household:
-    // rows of another account, so a system path (P11). Reading the result afterwards runs as B again.
-    await withSystemDatabaseAccess('partner-invitation', () => this.redeemInvitation(userId, taxYear, code, now))
+    await this.redeemInvitation(userId, taxYear, code, now)
     return this.get(userId, taxYear)
   }
 
+  /**
+   * The code sits on person A's row, and redeeming it moves A's shadow data to B and links A's household:
+   * rows of another account, so those three statements are a system path (P11). Everything else (B's own
+   * placeholder, the result) runs as B.
+   */
   private async redeemInvitation(userId: string, taxYear: number, code: string, now: Date): Promise<void> {
-    const row = await this.repository.findByInvitationCode(code)
+    const asSystem = <T>(work: () => Promise<T>): Promise<T> => withSystemDatabaseAccess('partner-invitation', work)
+    const row = await asSystem(() => this.repository.findByInvitationCode(code))
     if (!row || row.taxYear !== taxYear) {
       throw new NotFoundError('INVITATION_CODE_INVALID', 'The invitation code is invalid.')
     }
@@ -291,10 +295,10 @@ export class LinkService {
       throw new InvalidInputError('ALREADY_COUPLED', 'This year is already coupled with another account.')
     }
     // One code, one redeemer (API-8): the claim is a compare-and-set; a concurrent second redeemer loses.
-    const claimed = await this.repository.claimInvitation(code, taxYear, userId, now)
+    const claimed = await asSystem(() => this.repository.claimInvitation(code, taxYear, userId, now))
     if (!claimed) throw new NotFoundError('INVITATION_CODE_INVALID', 'The invitation code is invalid.')
     if (ownPlaceholder) await this.repository.delete(userId, taxYear)
-    await this.household?.linkPartner(row.personAUserId, userId, taxYear)
+    await asSystem(async () => this.household?.linkPartner(row.personAUserId, userId, taxYear))
   }
 
   /** Person B agrees, in B's own app, to share this year with Person A (decision 3, API-3). */

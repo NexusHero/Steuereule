@@ -2,6 +2,7 @@ import { plainToInstance } from 'class-transformer'
 import { validate } from 'class-validator'
 import { describe, expect, it } from 'vitest'
 import { LinkPersonBDto, SetLinkDto } from '../src/link/dto/link.dto.js'
+import { currentDatabaseIdentity, runAsDatabaseUser } from '../src/common/database-identity.js'
 import { LinkService } from '../src/link/link.service.js'
 import { FakeLinkRepository } from './fakes/fake-link.repository.js'
 import { FakeProfileRepository } from './fakes/fake-profile.repository.js'
@@ -92,6 +93,38 @@ describe('KopplungService', () => {
     const first = await service.set('user-a', year, { filingType: 'zusammen' }, created)
     const again = await service.set('user-a', year, { filingType: 'zusammen' }, new Date('2025-03-05T10:00:00Z'))
     expect(again.invitationCode).toBe(first.invitationCode)
+  })
+
+  it("redeeming a code reads and claims A's row and links A's household as the system, and nothing else (P11)", async () => {
+    const linkRepo = new FakeLinkRepository()
+    const identities: string[] = []
+    const whoAsks = (name: string) => {
+      const identity = currentDatabaseIdentity()
+      identities.push(`${name}: ${identity === undefined ? 'none' : identity.kind === 'user' ? identity.userId : identity.reason}`)
+    }
+    const watched = new Proxy(linkRepo, {
+      get(target, property, receiver) {
+        const value = Reflect.get(target, property, receiver) as unknown
+        if (typeof value !== 'function') return value
+        return (...args: unknown[]) => {
+          whoAsks(String(property))
+          return (value as (...inner: unknown[]) => unknown).apply(target, args)
+        }
+      },
+    })
+    const household = { linkPartner: async () => whoAsks('linkPartner'), partnerLink: async () => null, spouseFacts: async () => null }
+    const service = new LinkService(watched, new FakeProfileRepository(), new FakeMasterDataRepository(), new FakeAuditService() as never, household as never)
+    const { invitationCode } = await runAsDatabaseUser('user-a', () => service.set('user-a', year, { filingType: 'zusammen' }))
+
+    identities.length = 0
+    await runAsDatabaseUser('user-b', () => service.joinWithCode('user-b', year, invitationCode!))
+    expect(identities).toEqual([
+      'findByInvitationCode: partner-invitation',
+      'findByUserAndYear: user-b',
+      'claimInvitation: partner-invitation',
+      'linkPartner: partner-invitation',
+      'findByUserAndYear: user-b',
+    ])
   })
 
   it('mints an einladungsCode with at least 64 bits of entropy', async () => {
