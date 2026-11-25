@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useLeaveGuard } from './leaveGuard'
+import { savePending } from '../../navigation/unsavedWork'
 
 /**
  * Tracks in-flight saves so leaving a mask (`onDone` / `onBack` / closing a sheet / „Später weiter“) waits for
@@ -28,6 +29,8 @@ export function usePendingMutations() {
   const track = useCallback((promise: Promise<unknown>): void => {
     pending.current.add(promise)
     setPendingCount(pending.current.size)
+    // WEB-40: closing the tab while this save is on its way asks first.
+    const settledForUnload = savePending()
     void promise
       .then(
         () => undefined,
@@ -37,6 +40,7 @@ export function usePendingMutations() {
         },
       )
       .finally(() => {
+        settledForUnload()
         pending.current.delete(promise)
         if (mounted.current) setPendingCount(pending.current.size)
       })

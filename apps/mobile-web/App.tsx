@@ -60,6 +60,9 @@ import { AppearanceProvider, resolveThemeMode, useAppearance } from './src/lib/a
 import { syncHapticsPreferenceFromStorage } from './src/lib/hapticsPreference'
 import { resetSessionExpiry, watchForSessionExpiry } from './src/net/sessionExpiry'
 import { leaveOnSessionExpiry } from './src/navigation/sessionExpiryExit'
+import { guardedRoute } from './src/navigation/guardedRoute'
+import { warnBeforeUnloadWithUnsavedWork } from './src/navigation/unsavedWork'
+import { leaveWithoutGuards } from './src/screens/shared/leaveGuard'
 
 const i18n = createAppI18n('de')
 const queryClient = new QueryClient({ defaultOptions: APP_QUERY_DEFAULTS })
@@ -86,7 +89,8 @@ function useSessionExpiryRedirect(): void {
           queryClient.clear()
         },
         openSignIn: () => {
-          if (rootNavigation.isReady()) rootNavigation.reset({ index: 0, routes: [{ name: 'Login', params: { expired: true } }] })
+          // Every pending save fails with 401 now; a mask must not hold the user back (WEB-40 guard).
+          if (rootNavigation.isReady()) leaveWithoutGuards(() => rootNavigation.reset({ index: 0, routes: [{ name: 'Login', params: { expired: true } }] }))
         },
       }),
     [resetSubmissionGate],
@@ -97,6 +101,8 @@ export default function App() {
   useEffect(() => {
     syncHapticsPreferenceFromStorage()
   }, [])
+  // WEB-40: closing or reloading the tab with a save on its way or typed input asks first.
+  useEffect(() => (RN.Platform.OS === 'web' && typeof window !== 'undefined' ? warnBeforeUnloadWithUnsavedWork(window) : undefined), [])
 
   return (
     <SafeAreaProvider>
@@ -203,7 +209,7 @@ function RootNavigator() {
         formatter: (_options, route) => formatDocumentTitle(route?.name),
       }}
     >
-      <RootStack.Navigator screenOptions={{ headerShown: false }}>
+      <RootStack.Navigator screenOptions={{ headerShown: false }} screenLayout={guardedRoute}>
         <RootStack.Screen name="Splash" component={SplashRoute} />
         <RootStack.Screen name="Login" component={LoginRoute} />
         <RootStack.Screen name="Registration" component={RegistrationRoute} />

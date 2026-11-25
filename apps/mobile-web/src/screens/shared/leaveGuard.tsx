@@ -15,6 +15,26 @@ interface LeaveGuardRegistry {
 
 const LeaveGuardContext = createContext<LeaveGuardRegistry | null>(null)
 
+let suspended = false
+
+/**
+ * Leaves without waiting for any mask: for a departure the user cannot be held back from, such as the sign-in
+ * after an expired session, where every pending save fails with 401 and staying once would keep them on the mask.
+ * `leave` must dispatch synchronously.
+ */
+export function leaveWithoutGuards(leave: () => void): void {
+  suspended = true
+  try {
+    leave()
+  } finally {
+    suspended = false
+  }
+}
+
+export function leaveGuardsSuspended(): boolean {
+  return suspended
+}
+
 export interface LeaveGuardHost {
   readonly registry: LeaveGuardRegistry
   /** Runs every registered mask's flush in turn; `leave` only runs when all of them let go. */
