@@ -473,38 +473,27 @@ async function main() {
     // --- AC-5 (the revocation half): from B's own device list, revoke A's session; A's next
     // request is rejected while B's own keeps succeeding. ---
     await pageB.getByRole('tab', { name: COPY.profilTab }).click()
-    await pageB.getByText(COPY.devicesSignOut).first().waitFor({ state: 'visible', timeout: 5_000 })
-    // FIXED after this run's own finding (see PR #239 comment): a single `.locator('..')` from
-    // the "Abmelden" text lands on the Chip's own inner wrapper, NOT `DeviceListSection.tsx`'s
-    // `deviceRow` View — "Dieses Gerät" is a SIBLING of the Chip inside `deviceRow`, two DOM
-    // levels up, not an ancestor of the Chip itself. The old single-level scope silently never
-    // saw the badge at all, for EITHER row — confirmed empirically (`xpath=../..`, verified
-    // against a real render, contains exactly one row's Browser/OS/lastActive/badge/Abmelden
-    // text and nothing from its neighbour).
-    const rows = pageB.locator('text=' + COPY.devicesSignOut).locator('xpath=../..')
+    await pageB.locator('[data-testid^="geraet-zeile"]').first().waitFor({ state: 'visible', timeout: 5_000 })
+    // Rows by their own testID: the profile has a separate "Abmelden" button now (WEB-8), so the copy no
+    // longer identifies a device row.
+    const rows = pageB.locator('[data-testid^="geraet-zeile"]')
     const rowCountBefore = await rows.count()
     if (rowCountBefore !== 2) fail(`AC-5 revoke: expected exactly 2 device rows (B's own + A's QR-authorized one), found ${rowCountBefore}.`)
 
-    // The non-current row is A's — B's own carries the "Dieses Gerät" badge. FIXED after this
-    // run's own finding (see PR #239 comment): the earlier version picked the row by DOM
-    // POSITION (`nth(rowCountBefore - 1)`), on the unstated assumption that the device list
-    // renders newest-first-or-last in a stable, predictable order. It does not — `listSessions()`
-    // carries no documented ordering guarantee this screen relies on, and in a live run it put
-    // B's OWN row last, not A's — the earlier script clicked the wrong "Abmelden", revoked B's
-    // own current session, and got B redirected straight to `/login`
-    // (`DeviceListSection.tsx`'s `onCurrentSessionRevoked` firing `ProfilScreen`'s `onSignedOut`
-    // exactly as designed for a self-revoke — the MECHANISM is correct, my SELECTOR was wrong).
-    // Selecting by the ABSENCE of the "Dieses Gerät" badge is order-independent and matches what
-    // a real human does (reads the badge, not row position).
+    // The non-current row is A's. Rows carry their own testID (`geraet-zeile-aktuell` for this device), so the
+    // choice does not depend on list order — `listSessions()` guarantees none, and picking by position once revoked
+    // B's own session. The visible badge must agree with the testID.
     const currentBadgeCount = await pageB.getByText(COPY.devicesCurrentBadge).count()
     if (currentBadgeCount !== 1) fail(`AC-5 revoke: expected exactly one row marked "${COPY.devicesCurrentBadge}", found ${currentBadgeCount}.`)
 
-    const nonCurrentRow = rows.filter({ hasNotText: COPY.devicesCurrentBadge })
+    const nonCurrentRow = pageB.locator('[data-testid="geraet-zeile"]')
     if ((await nonCurrentRow.count()) !== 1) {
       fail(`AC-5 revoke: expected exactly 1 non-current device row (A's), found ${await nonCurrentRow.count()}.`)
     }
-    await nonCurrentRow.getByText(COPY.devicesSignOut).click()
-    await pageB.waitForTimeout(1_000)
+    if ((await nonCurrentRow.getByText(COPY.devicesCurrentBadge).count()) !== 0) fail('AC-5 revoke: the non-current row carries the current-device badge.')
+    await nonCurrentRow.locator('[data-testid="geraet-abmelden"]').click()
+    // The revoked row leaves the list once the revoke is through; wait for that instead of a fixed pause.
+    await nonCurrentRow.waitFor({ state: 'detached', timeout: 10_000 })
 
     // A hard guard against the exact class of accident this run caught: if B's own session got
     // revoked instead of A's, B is redirected to /login by `onSignedOut` — assert that did NOT
