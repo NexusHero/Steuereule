@@ -169,11 +169,6 @@
     "back": "Zurück",
     "weiter": "Weiter",
     "loading": "Deine Angaben werden geladen …",
-    "loadError": {
-      "heading": "Das hat nicht geklappt.",
-      "message": "Deine Angaben konnten nicht geladen werden. Prüf die Verbindung und versuch es noch mal.",
-      "retry": "Noch mal versuchen"
-    },
     "step1": {
       "titleBefore": "Wer bist ",
       "titleMark": "du",
@@ -303,11 +298,6 @@
       "failed": "Das Abmelden hat nicht geklappt. Prüf die Verbindung und versuch es noch mal."
     },
     "loading": "Dein Profil wird geladen …",
-    "loadError": {
-      "heading": "Das hat nicht geklappt.",
-      "message": "Dein Profil konnte nicht geladen werden. Prüf die Verbindung und versuch es noch mal.",
-      "retry": "Noch mal versuchen"
-    },
     "namePlaceholder": "Noch kein Name gespeichert",
     "emptyNote": "Noch keine Angaben gespeichert.",
     "cardLabel": "Deine Angaben",
@@ -1028,10 +1018,6 @@
     "bestaetigungOeffnen": "Prüfen & bestätigen",
     "nichtVerfuegbar": "Die Bezahlung ist gerade nicht möglich. Bitte versuch es später noch einmal.",
     "freischalten": "Freischalten und bezahlen",
-    "freischaltenHinweis": "Einmal pro Steuerjahr. Den Preis siehst du vor der Zahlung.",
-    "zahlungLaeuft": "Deine Zahlung wird bestätigt. Das dauert meist nur Sekunden.",
-    "zahlungAbgebrochen": "Die Zahlung wurde abgebrochen. Du kannst es jederzeit erneut versuchen.",
-    "aktualisieren": "Aktualisieren",
     "herunterladen": "PDF herunterladen",
     "herunterladenBearbeitbar": "Bearbeitbare PDF herunterladen",
     "bearbeitbarHinweis": "Zum Korrigieren vor dem Druck: Die Werte stehen in Formularfeldern. Was du dort änderst, weicht von deinen Angaben in der App ab – ändere besser dort und lade neu herunter.",
@@ -1227,9 +1213,6 @@
     "geaendertVonPartner": "geändert von deinem Partner am {{date}}",
     "nichtMehrDabei": "Ab {{year}} nicht mehr dabei",
     "loeschen": "Endgültig löschen",
-    "loeschenWarnung": "Damit verschwindet {{name}} aus allen Steuerjahren, auch aus abgeschlossenen. Das lässt sich nicht rückgängig machen.",
-    "loeschenBestaetigen": "Ja, endgültig löschen",
-    "abbrechen": "Abbrechen",
     "fehler": "Das hat nicht geklappt. Bitte versuch es noch mal.",
     "partner": {
       "verknuepftSeit": "Ihr seid seit {{year}} verknüpft. In jedem neuen Jahr bleibt die Verknüpfung, ein neuer Einladungscode ist nicht nötig.",
@@ -1251,8 +1234,6 @@
     "card": {
       "title": "Darf die Eule deine persönlichen Daten verarbeiten?",
       "body": "Damit die Eule auch Name, Steuer-ID, Geburtsdatum, Anschrift, Bankverbindung (IBAN), Familienstand, die Angaben zu Partnerin/Partner und Kindern sowie deine Religionszugehörigkeit eintragen kann, gehen diese Angaben an das Sprachmodell, das die Antwort erzeugt. Das kann ein Modell von {{providers}} sein, je nach Einstellung, deiner Modellwahl und bei Ausfällen; die Verarbeitung kann in den USA stattfinden. Deine Einwilligung gilt für alle diese Anbieter. Die Religionszugehörigkeit ist eine besondere Kategorie personenbezogener Daten (Art. 9 DSGVO); mit „Erlauben“ willigst du auch dafür ausdrücklich ein. Ohne Einwilligung macht die Eule diese Angaben unkenntlich und du trägst sie selbst in den Masken ein. Du kannst die Einwilligung jederzeit unter Profil → Datenschutz widerrufen.",
-      "processor": {
-      },
       "allow": "Erlauben",
       "deny": "Nicht erlauben",
       "saving": "Wird gespeichert …",
@@ -1641,11 +1622,6 @@
     "heading": "Deine Rente",
     "help": "Übertrag die Angaben aus deiner Rentenbezugsmitteilung — Rentenart, Jahresbetrag und Rentenbeginn.",
     "loading": "Deine Rente wird geladen …",
-    "loadError": {
-      "heading": "Das hat nicht geklappt.",
-      "message": "Deine Rente konnte nicht geladen werden. Prüf die Verbindung und versuch es noch mal.",
-      "retry": "Noch mal versuchen"
-    },
     "artHeading": "Welche Rente beziehst du?",
     "arten": {
       "GesetzlicheRente": "Gesetzliche Rente",
@@ -1682,11 +1658,6 @@
     "loading": "Deine Kapitalerträge werden geladen …",
     "inhaberLadefehler": "Ob ihr gemeinsam veranlagt werdet, konnte nicht geladen werden – deshalb fehlt hier die Frage, wem das Depot gehört.",
     "guenstigerpruefungLadefehler": "Die Günstigerprüfung konnte nicht geladen werden.",
-    "loadError": {
-      "heading": "Das hat nicht geklappt.",
-      "message": "Deine Kapitalerträge konnten nicht geladen werden. Prüf die Verbindung und versuch es noch mal.",
-      "retry": "Noch mal versuchen"
-    },
     "depot": {
       "deutscherBrokerOhneSteuer": "Deutsche Bank: Sie behält Abgeltungsteuer ein, sobald der Freistellungsauftrag ausgeschöpft ist. Trag unten ein, was laut Steuerbescheinigung einbehalten wurde (ggf. 0). Danach rechnen wir nach, ob die Abgeltungsteuer oder dein persönlicher Steuersatz günstiger ist.",
       "deutscherBroker": "Deine Bank hat Abgeltungsteuer einbehalten. Unten rechnen wir ehrlich nach, ob die Abgeltungsteuer oder dein persönlicher Steuersatz günstiger ist.",
@@ -1745,11 +1716,6 @@
     "loading": "Deine Vermietung wird geladen …",
     "anteilLadefehler": "Ob ihr gemeinsam veranlagt werdet, konnte nicht geladen werden – deshalb fehlt hier die Frage nach deinem Anteil am Objekt.",
     "leerenNichtMoeglich": "Leer lassen geht hier nicht, wenn schon ein Wert gespeichert ist. Trag 0 ein, wenn es nichts gab.",
-    "loadError": {
-      "heading": "Das hat nicht geklappt.",
-      "message": "Deine Vermietung konnte nicht geladen werden. Prüf die Verbindung und versuch es noch mal.",
-      "retry": "Noch mal versuchen"
-    },
     "einordnung": {
       "berechenbar": "Ganzjährig vermietete Objekte rechnen wir: je Objekt eine Anlage V, lineare AfA nach § 7 Abs. 4 EStG.",
       "verkaufOderMoebliert": "Verkauf oder möbliert-auf-Zeit bleibt in 1.0 ehrlich außen vor: Fristen und Abgrenzung rechnen wir noch nicht. Kein halbes Feature.",
@@ -1847,11 +1813,6 @@
     "einkuenfteBeantworten": "Frage jetzt beantworten",
     "back": "Zurück",
     "loading": "Wird geladen …",
-    "loadError": {
-      "heading": "Das hat nicht geklappt.",
-      "message": "Deine Angaben konnten nicht geladen werden. Prüf die Verbindung und versuch es noch mal.",
-      "retry": "Noch mal versuchen"
-    },
     "conflict": "Deine Antwort passte nicht zum gespeicherten Stand. Wir haben deinen Fortschritt aktualisiert.",
     "antwortZurueck": "Deine Antwort ist nicht gespeichert, die Frage steht deshalb noch einmal da.",
     "progress": "Frage {{done}} von {{total}}",
@@ -2119,7 +2080,6 @@
     "weiter": "Weiter",
     "loading": "Wird geladen …",
     "zahlUnlesbar": "Das ist keine ganze Zahl. Bitte nur Ziffern eingeben, z. B. 30.",
-    "speichernFehler": "Das hat nicht geklappt — deine Angaben sind noch nicht gespeichert. Versuch es noch mal.",
     "weg": {
       "titel": "Dein Weg zur Arbeit",
       "km": "Einfache Entfernung in km",
@@ -2182,11 +2142,6 @@
   "plausibilitaet": {
     "back": "Zurück",
     "loading": "Deine Prüfung wird geladen …",
-    "loadError": {
-      "heading": "Das hat nicht geklappt.",
-      "message": "Deine Prüfung konnte nicht geladen werden. Prüf die Verbindung und versuch es noch mal.",
-      "retry": "Noch mal versuchen"
-    },
     "heading": "Prüfung vor Abgabe",
     "einreichbar": "Alles klar — keine Widersprüche, nichts mehr offen.",
     "nichtEinreichbar": "Da ist noch etwas offen:",
@@ -2542,11 +2497,6 @@
       "laedt": "Lädt …"
     },
     "loading": "Deine Belege werden geladen …",
-    "loadError": {
-      "heading": "Das hat nicht geklappt.",
-      "message": "Deine Belege konnten nicht geladen werden. Prüf die Verbindung und versuch es noch mal.",
-      "retry": "Noch mal versuchen"
-    },
     "offen_one": "{{count}} offen",
     "offen_other": "{{count}} offen",
     "empty": {
@@ -2848,11 +2798,6 @@
     "weiter": "Weiter",
     "loading": "Deine Angaben werden geladen …",
     "antwortZurueck": "Deine Antwort ist nicht gespeichert, die Frage steht deshalb noch einmal da.",
-    "loadError": {
-      "heading": "Das hat nicht geklappt.",
-      "message": "Deine Angaben konnten nicht geladen werden. Prüf die Verbindung und versuch es noch mal.",
-      "retry": "Noch mal versuchen"
-    },
     "interview": {
       "wohnsitz": {
         "titleBefore": "Wo wohnst ",
@@ -2980,11 +2925,6 @@
     "zulageVonMir": "mir",
     "zulageVonPartner": "meinem Partner",
     "loading": "Kinder werden geladen …",
-    "loadError": {
-      "heading": "Das hat nicht geklappt.",
-      "message": "Deine Kinder konnten nicht geladen werden.",
-      "retry": "Noch mal versuchen"
-    },
     "back": "Zurück",
     "heading": "Kinder & Anlage Kind",
     "help": "Erfasse deine Kinder für die steuerliche Berücksichtigung (Kinderfreibetrag § 32 EStG, BEA-Freibetrag und Günstigerprüfung zum Kindergeld).",
@@ -3064,11 +3004,6 @@
   },
   "eule": {
     "loading": "Eulen-Modus wird geladen …",
-    "loadError": {
-      "heading": "Das hat nicht geklappt.",
-      "message": "Der Eulen-Modus konnte nicht geladen werden.",
-      "retry": "Noch mal versuchen"
-    },
     "back": "Zurück",
     "heroTitle": "Deine Eule",
     "heroBody": "Sie kennt dein Steuerjahr und sagt dir, wo Geld liegen bleibt — mit Rechtsgrundlage, damit du selbst entscheidest.",
@@ -3549,11 +3484,6 @@
     "eyebrow": "Alle Steuerjahre",
     "eyebrowZeitraum": "Alle Steuerjahre · {{zeitraum}}",
     "laden": "Dein Verlauf wird geladen …",
-    "fehler": {
-      "titel": "Das hat nicht geklappt.",
-      "text": "Der Verlauf konnte nicht geladen werden. Prüf die Verbindung und versuch es noch mal.",
-      "erneut": "Noch mal versuchen"
-    },
     "gast": {
       "titel": "Der Verlauf braucht ein Konto",
       "text": "Hier stehen alle deine Steuerjahre nebeneinander: was erklärt war, was das Finanzamt festgesetzt hat und wie sich Erstattung, Werbungskosten und Netto entwickeln. Dafür muss SteuerEule deine Jahre speichern dürfen.",
@@ -4178,14 +4108,12 @@
     "ja": "Ja",
     "nein": "Nein",
     "titel": "Selbstständig {{year}}",
-    "speichernFehler": "Das hat nicht geklappt. Versuch es bitte noch einmal.",
     "gesperrt": {
       "titel": "Noch nicht freigeschaltet",
       "text": "Die Selbstständigkeit ist für dieses Konto oder dieses Jahr nicht freigeschaltet. Gib im Interview „Selbstständig“ oder „Beides“ an."
     },
     "ladefehler": {
       "titel": "Das hat nicht geladen",
-      "text": "Versuch es bitte noch einmal.",
       "nochmal": "Nochmal versuchen"
     },
     "status": {
@@ -4532,8 +4460,6 @@
       "kopiert": "Kopiert",
       "kopierenA11y": "Wert kopieren: {{label}}",
       "weitere": "Weitere Zeilen ({{count}}) – leer lassen",
-      "freigeschaltet": "{{year}} ist freigeschaltet.",
-      "abgebrochen": "Freischalten abgebrochen. Du kannst es jederzeit noch einmal versuchen.",
       "gruppe": {
         "business": "Betrieb",
         "income-tax": "Einkommensteuererklärung"

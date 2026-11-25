@@ -169,11 +169,6 @@
     "back": "Back",
     "weiter": "Continue",
     "loading": "Loading your details …",
-    "loadError": {
-      "heading": "That didn't work.",
-      "message": "Your details couldn't be loaded. Check your connection and try again.",
-      "retry": "Try again"
-    },
     "step1": {
       "titleBefore": "Who are ",
       "titleMark": "you",
@@ -303,11 +298,6 @@
       "failed": "Signing out did not work. Check the connection and try again."
     },
     "loading": "Loading your profile …",
-    "loadError": {
-      "heading": "That didn't work.",
-      "message": "Your profile couldn't be loaded. Check your connection and try again.",
-      "retry": "Try again"
-    },
     "namePlaceholder": "No name saved yet",
     "emptyNote": "Nothing saved yet.",
     "cardLabel": "Your details",
@@ -1028,10 +1018,6 @@
     "bestaetigungOeffnen": "Review & confirm",
     "nichtVerfuegbar": "Payment isn’t possible right now. Please try again later.",
     "freischalten": "Unlock and pay",
-    "freischaltenHinweis": "Once per tax year. You see the price before paying.",
-    "zahlungLaeuft": "Your payment is being confirmed. This usually takes seconds.",
-    "zahlungAbgebrochen": "The payment was cancelled. You can try again any time.",
-    "aktualisieren": "Refresh",
     "herunterladen": "Download PDF",
     "herunterladenBearbeitbar": "Download editable PDF",
     "bearbeitbarHinweis": "For corrections before printing: the values sit in form fields. Changes there differ from your details in the app — better change them there and download again.",
@@ -1227,9 +1213,6 @@
     "geaendertVonPartner": "changed by your partner on {{date}}",
     "nichtMehrDabei": "No longer included from {{year}}",
     "loeschen": "Delete for good",
-    "loeschenWarnung": "{{name}} will disappear from every tax year, including finished ones. This cannot be undone.",
-    "loeschenBestaetigen": "Yes, delete for good",
-    "abbrechen": "Cancel",
     "fehler": "That did not work. Please try again.",
     "partner": {
       "verknuepftSeit": "You have been linked since {{year}}. The link stays in every new year; no new invitation code is needed.",
@@ -1251,8 +1234,6 @@
     "card": {
       "title": "May the owl process your personal data?",
       "body": "So that the owl can also enter your name, tax ID, date of birth, address, bank details (IBAN), marital status, the details about your partner and children, and your religious affiliation, these details are sent to the language model that writes the answer. That can be a model by {{providers}}, depending on the setup, your model choice and outages; processing may take place in the USA. Your consent covers all of these providers. Religious affiliation is a special category of personal data (Art. 9 GDPR); by choosing “Allow” you also expressly consent to this. Without consent the owl masks these details and you enter them yourself in the forms. You can withdraw your consent at any time under Profile → Privacy.",
-      "processor": {
-      },
       "allow": "Allow",
       "deny": "Do not allow",
       "saving": "Saving …",
@@ -1641,11 +1622,6 @@
     "heading": "Your pension",
     "help": "Copy the figures from your pension notification (Rentenbezugsmitteilung) — pension type, annual amount and start.",
     "loading": "Loading your pension …",
-    "loadError": {
-      "heading": "That didn't work.",
-      "message": "Your pension couldn't be loaded. Check your connection and try again.",
-      "retry": "Try again"
-    },
     "artHeading": "Which pension do you receive?",
     "arten": {
       "GesetzlicheRente": "Statutory pension",
@@ -1682,11 +1658,6 @@
     "loading": "Loading your capital income …",
     "inhaberLadefehler": "Whether you are assessed jointly could not be loaded, so the question who owns the depot is missing here.",
     "guenstigerpruefungLadefehler": "The most-favourable check could not be loaded.",
-    "loadError": {
-      "heading": "That didn't work.",
-      "message": "Your capital income couldn't be loaded. Check your connection and try again.",
-      "retry": "Try again"
-    },
     "depot": {
       "deutscherBrokerOhneSteuer": "German bank: it withholds Abgeltungsteuer once the exemption order is used up. Enter below what the certificate shows as withheld (0 if nothing). Then we compare it with your personal tax rate.",
       "deutscherBroker": "Your bank withheld withholding tax (Abgeltungsteuer). Below we honestly compare it with your personal tax rate.",
@@ -1745,11 +1716,6 @@
     "loading": "Loading your rental property …",
     "anteilLadefehler": "Whether you are assessed jointly could not be loaded, so the question about your share in the property is missing here.",
     "leerenNichtMoeglich": "This field cannot be left empty once a value is saved. Enter 0 if there was nothing.",
-    "loadError": {
-      "heading": "That didn't work.",
-      "message": "Your rental property couldn't be loaded. Check your connection and try again.",
-      "retry": "Try again"
-    },
     "einordnung": {
       "berechenbar": "Year-round rented objects we compute: one Anlage V each, linear depreciation per § 7 Abs. 4 EStG.",
       "verkaufOderMoebliert": "Sale or furnished short-term rental honestly stays out of 1.0: deadlines and delineation are not computed yet. No half feature.",
@@ -1847,11 +1813,6 @@
     "einkuenfteBeantworten": "Answer the question now",
     "back": "Back",
     "loading": "Loading …",
-    "loadError": {
-      "heading": "That didn't work.",
-      "message": "Your details couldn't be loaded. Check your connection and try again.",
-      "retry": "Try again"
-    },
     "conflict": "Your answer didn't match what was saved. We've updated your progress.",
     "antwortZurueck": "Your answer was not saved, so the question is shown again.",
     "progress": "Question {{done}} of {{total}}",
@@ -2119,7 +2080,6 @@
     "weiter": "Continue",
     "loading": "Loading …",
     "zahlUnlesbar": "That is not a whole number. Please type digits only, e.g. 30.",
-    "speichernFehler": "That did not work — your entries are not saved yet. Please try again.",
     "weg": {
       "titel": "Your way to work",
       "km": "One-way distance in km",
@@ -2182,11 +2142,6 @@
   "plausibilitaet": {
     "back": "Back",
     "loading": "Loading your check …",
-    "loadError": {
-      "heading": "That didn't work.",
-      "message": "Your check couldn't be loaded. Check your connection and try again.",
-      "retry": "Try again"
-    },
     "heading": "Check before filing",
     "einreichbar": "All clear — no contradictions, nothing left open.",
     "nichtEinreichbar": "Something is still open:",
@@ -2542,11 +2497,6 @@
       "laedt": "Loading …"
     },
     "loading": "Loading your receipts …",
-    "loadError": {
-      "heading": "That didn't work.",
-      "message": "Your receipts couldn't be loaded. Check your connection and try again.",
-      "retry": "Try again"
-    },
     "offen_one": "{{count}} open",
     "offen_other": "{{count}} open",
     "empty": {
@@ -2848,11 +2798,6 @@
     "weiter": "Continue",
     "loading": "Loading your details …",
     "antwortZurueck": "Your answer was not saved, so the question is shown again.",
-    "loadError": {
-      "heading": "That didn't work.",
-      "message": "Your details couldn't be loaded. Check your connection and try again.",
-      "retry": "Try again"
-    },
     "interview": {
       "wohnsitz": {
         "titleBefore": "Where do ",
@@ -2980,11 +2925,6 @@
     "zulageVonMir": "me",
     "zulageVonPartner": "my partner",
     "loading": "Loading children …",
-    "loadError": {
-      "heading": "That didn’t work.",
-      "message": "Your children could not be loaded.",
-      "retry": "Try again"
-    },
     "back": "Back",
     "heading": "Children & Anlage Kind",
     "help": "Record your children for tax purposes (child allowance § 32 EStG, care and education allowance, and the comparison with child benefit).",
@@ -3064,11 +3004,6 @@
   },
   "eule": {
     "loading": "Loading Owl Mode …",
-    "loadError": {
-      "heading": "Something went wrong.",
-      "message": "Owl Mode could not be loaded.",
-      "retry": "Try again"
-    },
     "back": "Back",
     "heroTitle": "Your Owl",
     "heroBody": "She knows your tax year and tells you where money is left on the table — with legal references so you decide for yourself.",
@@ -3549,11 +3484,6 @@
     "eyebrow": "All tax years",
     "eyebrowZeitraum": "All tax years · {{zeitraum}}",
     "laden": "Loading your history …",
-    "fehler": {
-      "titel": "That didn't work.",
-      "text": "Your history could not be loaded. Check the connection and try again.",
-      "erneut": "Try again"
-    },
     "gast": {
       "titel": "The history needs an account",
       "text": "Here all your tax years sit side by side: what was declared, what the tax office assessed and how refund, work expenses and net pay develop. For that SteuerEule must be allowed to keep your years.",
@@ -4178,14 +4108,12 @@
     "ja": "Yes",
     "nein": "No",
     "titel": "Self-employed {{year}}",
-    "speichernFehler": "That did not work. Please try again.",
     "gesperrt": {
       "titel": "Not unlocked yet",
       "text": "Self-employment is not unlocked for this account or year. Answer „Self-employed“ or „Both“ in the interview."
     },
     "ladefehler": {
       "titel": "That did not load",
-      "text": "Please try again.",
       "nochmal": "Try again"
     },
     "status": {
@@ -4532,8 +4460,6 @@
       "kopiert": "Copied",
       "kopierenA11y": "Copy value: {{label}}",
       "weitere": "Further lines ({{count}}) – leave empty",
-      "freigeschaltet": "{{year}} is unlocked.",
-      "abgebrochen": "Unlocking was cancelled. You can try again any time.",
       "gruppe": {
         "business": "Business",
         "income-tax": "Income tax return"
