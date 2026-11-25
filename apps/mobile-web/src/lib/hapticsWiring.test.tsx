@@ -269,7 +269,7 @@ describe('app haptics integration (Slice 7)', () => {
       http.put('*/v1/stammdaten', () => HttpResponse.json({ message: ['iban is not a valid IBAN'] }, { status: 400 })),
     )
 
-    wrap(<MasterDataScreen onBack={() => {}} />)
+    wrap(<MasterDataScreen taxYear={2026} onBack={() => {}} />)
     await screen.findByText('Für den Ausdruck fehlen noch 1 Angaben.')
     fireEvent.change(screen.getByTestId('stammdaten-iban'), { target: { value: 'DE00' } })
     fireEvent.click(screen.getByTestId('stammdaten-speichern'))

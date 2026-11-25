@@ -16,6 +16,7 @@ import { BusinessFrame, Note, ProblemNote, Section } from './BusinessFrame'
 import { personParams, problemOf, type ApiProblem } from './businessKit'
 import { downloadBusinessFile } from './businessDownload'
 import { attempt, useRefreshBusiness, useSingleFlight } from './useBusiness'
+import { useConfirmAction } from '../../confirm/useConfirmAction'
 import type { BusinessPageProps } from './BusinessScreen'
 
 /** Exports: the GoBD data export for an audit, the Verfahrensdokumentation, and the E-Bilanz data set (not sent). */
@@ -32,6 +33,7 @@ export function ExportPage({ taxYear, person, business = 1, onBack, onOpenPage }
   const transmit = useBusinessControllerTransmitEBilanz()
   const [transmission, setTransmission] = useState<EBilanzTransmissionDto | null>(null)
   const flight = useSingleFlight()
+  const confirmSend = useConfirmAction('eBilanzSend')
 
   async function send(mode: 'validieren' | 'senden') {
     setProblem(null)
@@ -126,7 +128,7 @@ export function ExportPage({ taxYear, person, business = 1, onBack, onOpenPage }
               <Button variant="ghost" onPress={() => void flight.run(() => send('validieren'))} disabled={flight.busy} testID="ebilanz-pruefen">
                 {tr('business.export.ebilanzPruefen')}
               </Button>
-              <Button onPress={() => void flight.run(() => send('senden'))} disabled={flight.busy} testID="ebilanz-senden">
+              <Button onPress={() => confirmSend.ask(() => void flight.run(() => send('senden')), { jahr: taxYear })} disabled={flight.busy} testID="ebilanz-senden">
                 {tr('business.export.ebilanzSenden')}
               </Button>
             </>
@@ -140,6 +142,7 @@ export function ExportPage({ taxYear, person, business = 1, onBack, onOpenPage }
         ) : null}
         {transmission?.status === 'nicht_eingerichtet' ? <Note tone="warn">{tr('business.export.ebilanzNichtEingerichtet')}</Note> : null}
       </Section>
+      {confirmSend.dialog}
     </BusinessFrame>
   )
 }

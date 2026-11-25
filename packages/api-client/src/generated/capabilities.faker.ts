@@ -14,5 +14,5 @@ import type {
 } from './capabilities.schemas';
 
 
-export const getCapabilitiesControllerGetCapabilitiesResponseMock = (overrideResponse: Partial<Extract<AppCapabilitiesDto, object>> = {}): AppCapabilitiesDto => ({selbststaendig: faker.datatype.boolean(), ...overrideResponse})
+export const getCapabilitiesControllerGetCapabilitiesResponseMock = (overrideResponse: Partial<Extract<AppCapabilitiesDto, object>> = {}): AppCapabilitiesDto => ({selbststaendig: faker.datatype.boolean(), runningTaxYear: faker.number.float({fractionDigits: 2}), ...overrideResponse})
 

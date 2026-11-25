@@ -22,6 +22,7 @@ export { Field as Feld, type FieldProps as FeldProps } from './components/Field'
 export { Chip, type ChipProps, type ChipVariant } from './components/Chip'
 export { Option, type OptionProps } from './components/Option'
 export { Sheet, type SheetProps } from './components/Sheet'
+export { ConfirmDialog, type ConfirmDialogProps, type ConfirmTone } from './components/ConfirmDialog'
 export { TabBar, TAB_BAR_HEIGHT, TAB_ICON_PATHS, tabBarClearance, type TabBarProps, type TabItem } from './components/TabBar'
 
 export { Gallery } from './gallery/Gallery'

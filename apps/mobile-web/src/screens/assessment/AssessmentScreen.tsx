@@ -23,7 +23,7 @@ import {
   type AppealDeadlineDto,
 } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
-import { CURRENT_TAX_YEAR } from '../../config/taxYear'
+import { runningTaxYear } from '../../config/taxYear'
 import { ErrorState, LoadingState } from '../shared/ScreenState'
 import { useApiFailureMessage } from '../../net/apiFailure'
 import { SaveFailedNotice } from '../shared/SaveFailedNotice'
@@ -57,7 +57,7 @@ export interface AssessmentScreenProps {
   readonly taxYear?: number
 }
 
-export function AssessmentScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TAX_YEAR }: AssessmentScreenProps) {
+export function AssessmentScreen({ onDone = () => {}, onBack, taxYear = runningTaxYear() }: AssessmentScreenProps) {
   const bp = useBreakpoint()
   const t = useTheme()
   const styles = makeStyles(t)

@@ -5,7 +5,7 @@ import type { TFunction } from 'i18next'
 import { Button, Card, useBreakpoint, useTheme, type UiTheme } from '@steuereule/ui'
 import { useLinkControllerGet, useMasterDataControllerRead, useUnlockControllerStatus } from '@steuereule/api-client'
 import type { Answers, Conflict, Notice } from '@steuereule/core'
-import { CURRENT_TAX_YEAR, isRunningTaxYear } from '../../config/taxYear'
+import { isRunningTaxYear, runningTaxYear } from '../../config/taxYear'
 import { APP_NS } from '../../i18n/resources'
 import { useApiFailureMessage } from '../../net/apiFailure'
 import { useShellState } from '../../navigation/ShellState'
@@ -27,7 +27,7 @@ export interface SubmissionScreenProps {
 }
 
 export function SubmissionScreen({
-  taxYear = CURRENT_TAX_YEAR,
+  taxYear = runningTaxYear(),
   onBack,
   onOpenTile,
   onOpenPrintout,

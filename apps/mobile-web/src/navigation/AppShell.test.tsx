@@ -3,7 +3,7 @@
 // stand-ins: this tests the wiring between them, not their content.
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { cleanup, screen, fireEvent, waitFor } from '@testing-library/react'
-import { DEFAULT_TAX_YEAR } from '../config/taxYear'
+import { defaultTaxYear } from '../config/taxYear'
 import { rememberedReturnTo } from '../screens/funnel/sessionMemory'
 import { TILES } from '../screens/cockpit/tiles'
 import { currentRoute, renderShell, signedIn } from './navigationTestKit'
@@ -66,17 +66,17 @@ describe('the cockpit home', () => {
   const home = () => open('/app')
 
   it.each([
-    ['onOpenInterview', [], 'Strom', { year: DEFAULT_TAX_YEAR, step: 'basis' }],
+    ['onOpenInterview', [], 'Strom', { year: defaultTaxYear(), step: 'basis' }],
     ['onOpenStrom', [{ kind: 'auswahl' }], 'Strom', { step: 'auswahl' }],
-    ['onOpenAssessment', [], 'Assessment', { year: DEFAULT_TAX_YEAR }],
-    ['onOpenCapital', [], 'Capital', { year: DEFAULT_TAX_YEAR }],
-    ['onOpenRental', [], 'Rental', { year: DEFAULT_TAX_YEAR }],
-    ['onOpenKinder', [], 'Children', { year: DEFAULT_TAX_YEAR }],
+    ['onOpenAssessment', [], 'Assessment', { year: defaultTaxYear() }],
+    ['onOpenCapital', [], 'Capital', { year: defaultTaxYear() }],
+    ['onOpenRental', [], 'Rental', { year: defaultTaxYear() }],
+    ['onOpenKinder', [], 'Children', { year: defaultTaxYear() }],
     ['onOpenOfficialForm', [2024], 'OfficialForm', { year: 2024 }],
-    ['onOpenMasterData', [], 'CockpitMasterData', { year: DEFAULT_TAX_YEAR }],
+    ['onOpenMasterData', [], 'CockpitMasterData', { year: defaultTaxYear() }],
     ['onOpenSubmission', [2024], 'Submission', { year: 2024 }],
     ['onOpenElsterHelp', [2024], 'Business', { year: 2024, page: 'elster' }],
-    ['onOpenPartner', ['lstb', 'Sabine'], 'Partner', { year: DEFAULT_TAX_YEAR, area: 'lstb' }],
+    ['onOpenPartner', ['lstb', 'Sabine'], 'Partner', { year: defaultTaxYear(), area: 'lstb' }],
   ] as const)('%s opens its route', async (callback, args, route, params) => {
     await home()
     press('cockpit', callback, ...args)
@@ -91,7 +91,7 @@ describe('the cockpit home', () => {
 
   it('takes the year and the path the user continues with, and hands the confirmation to the screen when the shell has one', async () => {
     await open('/app', { onOpenConfirmation: () => {} })
-    expect(propsOf('cockpit')).toMatchObject({ taxYear: DEFAULT_TAX_YEAR, isSignedIn: true })
+    expect(propsOf('cockpit')).toMatchObject({ taxYear: defaultTaxYear(), isSignedIn: true })
     press('cockpit', 'onYearChange', 2024)
     await waitFor(() => expect(propsOf('cockpit').taxYear).toBe(2024))
     press('cockpit', 'onContinuePath', 'ch')
@@ -116,7 +116,7 @@ describe('the cockpit home', () => {
   ])('a tile of %s leads to its route', async (screenName, route) => {
     await home()
     press('cockpit', 'onOpenTile', tileOf(screenName), false)
-    await at(route, { year: DEFAULT_TAX_YEAR })
+    await at(route, { year: defaultTaxYear() })
   })
 
   it('opens a catalogue tile, and marks it as a revisit when it is one', async () => {
@@ -483,6 +483,16 @@ describe('Profil', () => {
     await at('ProfileHome')
   })
 
+  it('WEB-43: the master data opened from the profile carry the year selected in the app, not a default', async () => {
+    await open('/app', { onOpenConfirmation: () => {} })
+    press('cockpit', 'onYearChange', 2023)
+    await waitFor(() => expect(propsOf('cockpit').taxYear).toBe(2023))
+    await open('/app/profil')
+    press('profile', 'onOpenMasterData')
+    await at('ProfileMasterData')
+    expect(propsOf('masterdata')).toMatchObject({ taxYear: 2023 })
+  })
+
   it('tells the shell when the user signed out or deleted the account', async () => {
     const onSignedOut = vi.fn()
     await open('/app/profil', { onSignedOut })
@@ -542,7 +552,7 @@ describe('Business', () => {
 describe('the owl tab and the tab bar', () => {
   it('leaves the owl for the cockpit when it is done, and tells it whether the user is a guest', async () => {
     await open('/app/eule')
-    expect(propsOf('owl')).toMatchObject({ isGuest: false, taxYear: DEFAULT_TAX_YEAR })
+    expect(propsOf('owl')).toMatchObject({ isGuest: false, taxYear: defaultTaxYear() })
     press('owl', 'onDone')
     await at('CockpitHome')
   })

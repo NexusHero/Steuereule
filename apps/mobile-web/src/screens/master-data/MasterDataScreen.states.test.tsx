@@ -11,6 +11,7 @@ import type { LinkResponseDto, MasterDataResponseDto } from '@steuereule/api-cli
 import { createAppI18n } from '../../i18n/app-i18n'
 import { server } from '../../test-msw-server'
 import { MasterDataScreen } from './MasterDataScreen'
+import { confirmAction } from '../../confirm/confirmInTest'
 
 const LEER: MasterDataResponseDto = {
   geburtsdatum: null,
@@ -94,6 +95,7 @@ describe('the partner section', () => {
     fireEvent.click(await screen.findByTestId('kopplung-zusammen'))
     await waitFor(() => expect(kinds).toEqual([{ filingType: 'zusammen' }]))
     fireEvent.click(screen.getByTestId('kopplung-einzel'))
+    confirmAction('singleAssessment')
     await waitFor(() => expect(kinds[1]).toEqual({ filingType: 'einzel' }))
   })
 

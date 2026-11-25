@@ -101,7 +101,8 @@ describe('tax estimate of the self-employed (ADR-0101)', () => {
     await expect(service.getState('u', 2025)).resolves.toEqual({ kind: 'offen', missing: ['rente'] })
     pension.seed({ userId: 'u', taxYear: 2025, rentenart: 'GesetzlicheRente', jahresbetrag: '18000', rentenbeginnJahr: '2019', alterBeiRentenbeginn: null })
     const small = await service.getState('u', 2025)
-    await business.quickEntry('u', 2025, A1, [{ key: 'einnahmen_umsatzsteuerpflichtig', amountCents: 2_000_000 }])
+    // A different total: the same one sent again at once is a repeated request and books nothing (WEB-38).
+    await business.quickEntry('u', 2025, A1, [{ key: 'einnahmen_umsatzsteuerpflichtig', amountCents: 2_500_000 }])
     const large = await service.getState('u', 2025)
     if (small.kind !== 'spanne' || large.kind !== 'spanne') throw new Error('expected ranges')
     expect(large.incomeTax.to).toBeGreaterThan(small.incomeTax.to)

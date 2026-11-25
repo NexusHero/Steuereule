@@ -16,7 +16,7 @@ import { APP_NS } from '../../i18n/resources'
 import { UnclearableNumberField } from '../shared/UnclearableNumberField'
 import { screenHeaderStyles } from '../shared/screenStyles'
 import { ItemNotice } from '../shared/ItemNotice'
-import { CURRENT_TAX_YEAR } from '../../config/taxYear'
+import { runningTaxYear } from '../../config/taxYear'
 import { LoadingState, LoadFailedState } from '../shared/ScreenState'
 import { BackButton, BackButtonSpacer } from '../shared/BackButton'
 import { usePendingMutations } from '../shared/usePendingMutations'
@@ -34,7 +34,7 @@ export interface PensionerScreenProps {
   readonly partnerName?: string
 }
 
-export function PensionerScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TAX_YEAR, partnerName }: PensionerScreenProps) {
+export function PensionerScreen({ onDone = () => {}, onBack, taxYear = runningTaxYear(), partnerName }: PensionerScreenProps) {
   const params = partnerName === undefined ? undefined : ({ person: 'B' } as const)
   const bp = useBreakpoint()
   const t = useTheme()

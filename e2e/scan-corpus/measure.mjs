@@ -223,6 +223,8 @@ async function main() {
       // Leave a clean slate for the next document.
       if (outcome.kind === 'draft') {
         await page.locator('[data-testid="lstb-scan-discard"]').click()
+        // WEB-37/WEB-38: the action asks first; confirm it.
+        await page.locator('[data-testid="rueckfrage-lstbDiscardDraft-confirm"]').click()
         await page.locator('[data-testid="lstb-scan-draft-banner"]').waitFor({ state: 'detached', timeout: 15_000 })
         // The banner goes at once, the server learns it field by field afterwards. Navigating on
         // before that aborted those requests and the draft came back with the next document.

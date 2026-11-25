@@ -7,6 +7,7 @@ import { APP_NS } from '../../i18n/resources'
 import { BusinessFrame, BusinessQueryState, Figure, Note, ProblemNote, Section } from './BusinessFrame'
 import { personParams, plainCents, signedCents, signedEuro, type ApiProblem } from './businessKit'
 import { attempt, queryProblem, useRefreshBusiness, useSingleFlight } from './useBusiness'
+import { useConfirmAction } from '../../confirm/useConfirmAction'
 import type { BusinessPageProps } from './BusinessScreen'
 
 /** The year's result: EÜR totals and profit, or GuV and Bilanz with the opening balance carried into the next year. */
@@ -19,6 +20,7 @@ export function ClosingPage({ taxYear, person, business = 1, onBack }: BusinessP
   const refresh = useRefreshBusiness(taxYear)
   const [problem, setProblem] = useState<ApiProblem | null>(null)
   const flight = useSingleFlight()
+  const confirmOpening = useConfirmAction('openingBalance')
   const [carried, setCarried] = useState(false)
 
   const loadProblem = queryProblem(query)
@@ -71,11 +73,12 @@ export function ClosingPage({ taxYear, person, business = 1, onBack }: BusinessP
           </Section>
           <ProblemNote problem={problem} testID="business-speichern-fehler" />
           {carried ? <Note testID="abschluss-uebertragen">{tr('business.abschluss.uebertragen', { year: taxYear + 1 })}</Note> : null}
-          <Button disabled={broken || flight.busy} onPress={() => void flight.run(carryForward)} testID="abschluss-eroeffnung">
+          <Button disabled={broken || flight.busy} onPress={() => confirmOpening.ask(() => void flight.run(carryForward), { jahr: taxYear, folgejahr: taxYear + 1 })} testID="abschluss-eroeffnung">
             {tr('business.abschluss.uebertragenButton', { year: taxYear + 1 })}
           </Button>
         </>
       )}
+      {confirmOpening.dialog}
     </BusinessFrame>
   )
 }

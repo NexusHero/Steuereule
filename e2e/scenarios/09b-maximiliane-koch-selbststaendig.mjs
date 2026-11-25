@@ -138,6 +138,8 @@ export async function runScenario09b(browser, webOrigin) {
   await byId('beteiligung-hinzufuegen').click()
   await see('beteiligung-0')
   await byId('beteiligung-entfernen-0').click()
+  // WEB-37/WEB-38: the action asks first; confirm it.
+  await byId('rueckfrage-shareRemove-confirm').click()
   await byId('business-zurueck').click()
   await byId('business-zurueck').click()
   await see('selbststaendig-uebersicht')
@@ -178,9 +180,13 @@ export async function runScenario09b(browser, webOrigin) {
   await byId('buch-buchen').click()
   await byPrefix('buch-eintrag-').nth(2).waitFor({ state: 'visible', timeout: 10_000 })
   await byId('buch-storno-1').click()
+  // WEB-37/WEB-38: the action asks first; confirm it.
+  await byId('rueckfrage-bookingReverse-confirm').click()
   await byPrefix('buch-eintrag-').nth(3).waitFor({ state: 'visible', timeout: 10_000 })
   await byId('buch-fest-datum').fill('31.01.2025')
   await byId('buch-festschreiben').click()
+  // WEB-37/WEB-38: the action asks first; confirm it.
+  await byId('rueckfrage-bookLock-confirm').click()
   await page.getByText('Fest bis 31.01.2025').waitFor({ state: 'visible', timeout: 10_000 })
   await page.route(`${API}/buch`, (route) => route.fulfill(json({ chart: 'SKR03', mode: 'euer', lockedThrough: null, integrity: { ok: false, reason: 'Eintrag 2 passt nicht zum Protokoll.', firstBadSeq: 2 }, entries: [] })))
   await go('buch')
@@ -226,6 +232,8 @@ export async function runScenario09b(browser, webOrigin) {
   await officeRow.locator('[data-testid^="bank-buchen-"]').click()
   await officeRow.waitFor({ state: 'detached', timeout: 10_000 })
   await page.locator('[data-testid^="bank-ignorieren-"]').first().click()
+  // WEB-37/WEB-38: the action asks first; confirm it.
+  await page.locator('[data-testid="rueckfrage-bankIgnore-confirm"]').click()
   await page.route(`${API}/bank`, (route) => route.fulfill(json([])))
   await go('bank')
   await see('bank-leer')
@@ -249,6 +257,8 @@ export async function runScenario09b(browser, webOrigin) {
   await byId('anlage-speichern').click()
   await byPrefix('anlage-abgang-').first().waitFor({ state: 'visible', timeout: 10_000 })
   await byId('anlage-afa-buchen').click()
+  // WEB-37/WEB-38: the action asks first; confirm it.
+  await byId('rueckfrage-depreciationBook-confirm').click()
   await byPrefix('anlage-abgang-').first().click()
   await see('anlage-abgang-datum')
   await see('anlage-abgang-erloes')
@@ -298,6 +308,8 @@ export async function runScenario09b(browser, webOrigin) {
   await see('abschluss-aktiva')
   await see('abschluss-passiva')
   await byId('abschluss-eroeffnung').click()
+  // WEB-37/WEB-38: the action asks first; confirm it.
+  await byId('rueckfrage-openingBalance-confirm').click()
   await see('abschluss-uebertragen')
   await page.unroute(`${API}/abschluss`)
   await page.unroute(`${API}/abschluss/eroeffnung`)
@@ -582,6 +594,8 @@ export async function runScenario09b(browser, webOrigin) {
   await page.route(`${API}/e-bilanz/uebermittlung`, (route) => route.fulfill(json({ status: 'ok', mode: 'senden', ticket: 'TK-1', protocol: null })))
   await go('export')
   await byId('ebilanz-senden').click()
+  // WEB-37/WEB-38: the action asks first; confirm it.
+  await byId('rueckfrage-eBilanzSend-confirm').click()
   await see('ebilanz-ok')
   await page.unroute(`${API}/e-bilanz/uebermittlung`)
   await page.route(`${API}/e-bilanz/uebermittlung`, (route) => route.fulfill(json({ status: 'abgelehnt', messages: ['Pflichtfeld fehlt'] })))

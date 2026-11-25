@@ -29,7 +29,7 @@ import { wholeEurosOrUnreadable } from '../shared/amountField'
 import { useLeaveGuard } from '../shared/leaveGuard'
 import { classifyApiFailure, useApiFailureMessage } from '../../net/apiFailure'
 import { MaskLessonHint } from '../history/MaskLessonHint'
-import { CURRENT_TAX_YEAR } from '../../config/taxYear'
+import { runningTaxYear } from '../../config/taxYear'
 import type { CatalogEntryParam } from '../../navigation/routes'
 import { LoadingState, LoadFailedState } from '../shared/ScreenState'
 import { BackButton, BackButtonSpacer } from '../shared/BackButton'
@@ -85,7 +85,7 @@ const JOINT_STEPS: readonly EntryStepId[] = ['spenden', 'spenden-betrag']
 const PERSONAL_ENTRIES: readonly CatalogScreenEntry[] = ['lebenslagen', 'sonderausgaben']
 
 export function CatalogScreen(props: CatalogScreenProps) {
-  const { entry, taxYear = CURRENT_TAX_YEAR } = props
+  const { entry, taxYear = runningTaxYear() } = props
   const t = useTheme()
   const bp = useBreakpoint()
   const { t: tr } = useTranslation(APP_NS)
@@ -120,7 +120,7 @@ function CatalogFlow({
   focusStep,
   onDone = () => {},
   onBack,
-  taxYear = CURRENT_TAX_YEAR,
+  taxYear = runningTaxYear(),
   revisit = false,
   person,
   partnerName = null,

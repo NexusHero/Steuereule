@@ -20,9 +20,10 @@ import {
   type RentalRepairDto,
 } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
+import { useConfirmAction } from '../../confirm/useConfirmAction'
 import { UnclearableNumberField } from '../shared/UnclearableNumberField'
 import { screenHeaderStyles } from '../shared/screenStyles'
-import { CURRENT_TAX_YEAR } from '../../config/taxYear'
+import { runningTaxYear } from '../../config/taxYear'
 import { CatalogScreen } from '../catalog/CatalogScreen'
 import { LoadingState, LoadFailedState } from '../shared/ScreenState'
 import { InlineLoadFailure } from '../shared/InlineLoadFailure'
@@ -43,7 +44,7 @@ export interface RentalScreenProps {
   readonly taxYear?: number
 }
 
-export function RentalScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TAX_YEAR }: RentalScreenProps) {
+export function RentalScreen({ onDone = () => {}, onBack, taxYear = runningTaxYear() }: RentalScreenProps) {
   const bp = useBreakpoint()
   const t = useTheme()
   const styles = makeStyles(t)
@@ -162,7 +163,7 @@ function PropertyCard({
   onSend,
   onSendAddress,
   paar = false,
-  taxYear = CURRENT_TAX_YEAR,
+  taxYear = runningTaxYear(),
 }: {
   readonly paar?: boolean
   readonly taxYear?: number
@@ -472,6 +473,7 @@ function WholeNumberAttribute({
 function RepairsList({ property, index, taxYear, onSend }: { readonly property: RentalPropertyDto; readonly index: number; readonly taxYear: number; readonly onSend: (repairs: RentalRepairDto[]) => void }) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
+  const confirmRemove = useConfirmAction('rentalRemoveRepair')
   const [drafts, setDrafts] = useState<RepairDraft[]>(() => property.erhaltungsaufwand.map((r, i) => ({ key: i, betrag: String(r.betrag), datum: isoDateToGerman(r.datum ?? '') })))
   const [nextKey, setNextKey] = useState(property.erhaltungsaufwand.length)
   const stored = JSON.stringify(property.erhaltungsaufwand.map((r) => ({ betrag: r.betrag, datum: r.datum ?? null })))
@@ -526,11 +528,16 @@ function RepairsList({ property, index, taxYear, onSend }: { readonly property: 
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={tr('vermietung.erhaltung.entfernenA11y', { nummer: i + 1 })}
-            onPress={() => {
-              const next = drafts.filter((x) => x.key !== d.key)
-              setDrafts(next)
-              commit(next)
-            }}
+            onPress={() =>
+              confirmRemove.ask(
+                () => {
+                  const next = drafts.filter((x) => x.key !== d.key)
+                  setDrafts(next)
+                  commit(next)
+                },
+                { nummer: i + 1 },
+              )
+            }
             style={{ minHeight: 44, justifyContent: 'center', alignSelf: 'flex-start' }}
             testID={`vermietung-${index}-erhaltung-${i}-entfernen`}
           >
@@ -548,6 +555,7 @@ function RepairsList({ property, index, taxYear, onSend }: { readonly property: 
       >
         {tr('vermietung.erhaltung.hinzufuegen')}
       </Button>
+      {confirmRemove.dialog}
     </View>
   )
 }

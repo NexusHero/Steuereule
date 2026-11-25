@@ -8,6 +8,7 @@ import { createAppI18n } from '../../i18n/app-i18n'
 import { server } from '../../test-msw-server'
 import { expectFailsClosed, failEveryRequest } from '../../test-every-query-fails'
 import { OwlModeScreen } from './OwlModeScreen'
+import { confirmAction } from '../../confirm/confirmInTest'
 
 // The owl screen without a copilot bridge: every action of the view must become the request the
 // API contract names, and a refusal must show as a failure instead of a silent success.
@@ -183,6 +184,7 @@ describe('the connected owl screen (no copilot bridge)', () => {
     await waitFor(() => expect(calls.some((c) => c.path === 'note' && c.method !== 'DELETE')).toBe(true))
 
     fireEvent.click(screen.getByTestId('eule-note-delete'))
+    confirmAction('noteDelete')
     await waitFor(() => expect(callTo('DELETE', 'note')).toBeDefined())
   })
 

@@ -42,7 +42,7 @@ import {
 } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
 import { useDraftOwners } from './useDraftOwners'
-import { CURRENT_TAX_YEAR } from '../../config/taxYear'
+import { runningTaxYear } from '../../config/taxYear'
 import { LoadFailedState, LoadingState } from '../shared/ScreenState'
 import { SaveFailedNotice } from '../shared/SaveFailedNotice'
 import { apiErrorStatus } from '@steuereule/api-client'
@@ -59,7 +59,7 @@ export function professionFrom(value: string | undefined): Profession | null {
   return (PROFESSION_VALUES as readonly string[]).includes(value ?? '') ? (value as Profession) : null
 }
 
-export function ConnectedOwlModeScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TAX_YEAR, onAcceptPath }: OwlModeScreenProps) {
+export function ConnectedOwlModeScreen({ onDone = () => {}, onBack, taxYear = runningTaxYear(), onAcceptPath }: OwlModeScreenProps) {
   const bp = useBreakpoint()
   const { t: tr } = useTranslation(APP_NS)
   const queryClient = useQueryClient()

@@ -228,6 +228,8 @@ async function main() {
       await page.goto(`${webOrigin}/app/profil`, { waitUntil: 'networkidle' })
       const revokedAssistant = page.waitForResponse((r) => r.url().includes(`/v1/assistenten/${client.client_id}`) && r.request().method() === 'DELETE', { timeout: 10_000 })
       await page.locator(`[data-testid="assistent-widerrufen-${client.client_id}"]`).click()
+      // NR-19: „Trennen“ asks first; confirm it.
+      await page.locator('[data-testid="rueckfrage-assistantRevoke-confirm"]').click()
       if (!(await revokedAssistant).ok()) fail('Row D: revoking the assistant must succeed')
       const after = await mcpStatus(apiOrigin, accessToken)
       if (after === 200) fail('Row D: after revoking the assistant its token must be refused')

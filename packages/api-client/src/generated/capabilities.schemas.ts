@@ -8,5 +8,7 @@
 export interface AppCapabilitiesDto {
   /** SELBSTSTAENDIGE_ENABLED (ADR-0101 §20): the self-employment path is on. Off, the interview stops „Selbstständig“ at the Gewerbe-Gate. */
   selbststaendig: boolean;
+  /** OPS-16: the running tax year by the server clock (Europe/Berlin). The client derives the selectable years and the default year from it; ParseTaxYearPipe accepts up to this year plus one. */
+  runningTaxYear: number;
 }
 

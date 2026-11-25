@@ -19,6 +19,7 @@ import { BusinessFrame, BusinessQueryState, Figure, Note, ProblemNote, Section }
 import { eurosToCents, personParams, plainCents, problemOf, type ApiProblem } from './businessKit'
 import { CatalogPicker } from './CatalogPicker'
 import { attempt, queryProblem, useRefreshBusiness, useSingleFlight } from './useBusiness'
+import { useConfirmAction } from '../../confirm/useConfirmAction'
 import { parseGermanAmount } from '../shared/germanNumber'
 import type { BusinessPageProps } from './BusinessScreen'
 
@@ -77,6 +78,8 @@ export function AssetsPage({ taxYear, person, business = 1, onBack }: BusinessPa
   const [disposalDate, setDisposalDate] = useState('')
   const [proceeds, setProceeds] = useState('')
   const flight = useSingleFlight()
+  const confirmDispose = useConfirmAction('assetDispose')
+  const confirmDepreciation = useConfirmAction('depreciationBook')
 
   const loadProblem = queryProblem(query)
   if (query.isPending || loadProblem !== null || query.data === undefined) {
@@ -172,19 +175,20 @@ export function AssetsPage({ taxYear, person, business = 1, onBack }: BusinessPa
     )
   }
 
-  function submitDisposal(id: string) {
+  function submitDisposal(id: string, label: string) {
     const date = germanDateToIso(disposalDate)
     const cents = proceeds.trim() === '' ? undefined : eurosToCents(proceeds)
     if (date === null || cents === null) return setInvalid(true)
     setInvalid(false)
-    void run(
+    // WEB-38: a disposal is final; it asks first and says so.
+    confirmDispose.ask(() => void run(
       () => dispose.mutateAsync({ jahr: taxYear, anlageId: id, data: { date, ...(cents !== undefined ? { proceedsCents: cents } : {}) }, ...(params ? { params } : {}) }),
       () => {
         setDisposing(null)
         setDisposalDate('')
         setProceeds('')
       },
-    )
+    ), { name: label })
   }
 
   return (
@@ -204,7 +208,7 @@ export function AssetsPage({ taxYear, person, business = 1, onBack }: BusinessPa
                 <Feld label={tr('business.anlagen.erloes')}>
                   <Input type="numeric" mono value={proceeds} onChange={setProceeds} placeholder="0,00" accessibilityLabel={tr('business.anlagen.erloes')} testID="anlage-abgang-erloes" />
                 </Feld>
-                <Button disabled={flight.busy} onPress={() => submitDisposal(row.id)} testID="anlage-abgang-buchen">
+                <Button disabled={flight.busy} onPress={() => submitDisposal(row.id, row.label)} testID="anlage-abgang-buchen">
                   {tr('business.anlagen.abgangSpeichern')}
                 </Button>
               </View>
@@ -321,9 +325,11 @@ export function AssetsPage({ taxYear, person, business = 1, onBack }: BusinessPa
         </Button>
       )}
 
-      <Button style={{ marginTop: t.space.s3 }} disabled={flight.busy} onPress={() => void run(() => depreciate.mutateAsync({ jahr: taxYear, ...(params ? { params } : {}) }))} testID="anlage-afa-buchen">
+      <Button style={{ marginTop: t.space.s3 }} disabled={flight.busy} onPress={() => confirmDepreciation.ask(() => void run(() => depreciate.mutateAsync({ jahr: taxYear, ...(params ? { params } : {}) })), { jahr: taxYear })} testID="anlage-afa-buchen">
         {tr('business.anlagen.afaBuchen')}
       </Button>
+      {confirmDispose.dialog}
+      {confirmDepreciation.dialog}
     </BusinessFrame>
   )
 }
