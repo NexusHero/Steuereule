@@ -379,37 +379,8 @@ export const NON_DATABASE_STORES: readonly { readonly store: string; readonly li
   { store: 'Error log (Cloud Logging)', lifecycle: '30 days (Google Cloud Logging default), no bodies (ADR-0109 §8)' },
 ]
 
-export const SHADOW_PREFIX = 'spouse_'
-/** The first tax year a route accepts (`ParseTaxYearPipe`). */
-const FIRST_TAX_YEAR = 2000
-
-export function shadowIdOf(userId: string, taxYear: number): string {
-  return `${SHADOW_PREFIX}${userId}_${taxYear}`
-}
-
-export function isShadowId(id: string): boolean {
-  return id.startsWith(SHADOW_PREFIX)
-}
-
-/** The account a shadow id belongs to (`spouse_<userId>_<year>` → userId); any other id is its own owner. */
-export function ownerOf(id: string): string {
-  if (!isShadowId(id)) return id
-  const rest = id.slice(SHADOW_PREFIX.length)
-  const cut = rest.lastIndexOf('_')
-  return cut > 0 ? rest.slice(0, cut) : rest
-}
-
-/**
- * The person's id set: the id itself and every shadow id of a Person B the person may keep (one per tax
- * year a route accepts). Shadow ids are deterministic, so no row has to remember them: a shadow left behind
- * by a switch to a single return, or by B joining with an own account, is still found here.
- */
-export function personIds(userId: string, now = new Date()): string[] {
-  if (isShadowId(userId)) return [userId]
-  const ids = [userId]
-  for (let year = FIRST_TAX_YEAR; year <= now.getUTCFullYear() + 1; year += 1) ids.push(shadowIdOf(userId, year))
-  return ids
-}
+// The ids one person's rows are kept under live in common/person-ids.ts (the access log reads them too).
+export { SHADOW_PREFIX, isShadowId, ownerOf, personIds, shadowIdOf } from '../common/person-ids.js'
 
 export function delegateName(model: string): string {
   return model.charAt(0).toLowerCase() + model.slice(1)

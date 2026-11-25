@@ -19,8 +19,20 @@ export const MAX_TASK_TEXT = 300
  * then writes it with a space.
  */
 export function containsLink(text: string): boolean {
-  return /[a-z][a-z0-9+.-]*:\/\/|\bwww\.|\b\d{1,3}(?:\.\d{1,3}){3}\b|[\p{L}\p{N}-]{2,}\.(?:xn--[a-z0-9-]+|\p{L}{2,24})(?![\p{L}\p{N}])/iu.test(text)
+  return LINK_PATTERNS.some((pattern) => pattern.test(text))
 }
+
+/**
+ * Each pattern runs in linear time on assistant-written text: no two quantifiers can claim the same characters,
+ * and the `name.tld` pattern may only start where a name starts (the lookbehind), so a long run of letters is
+ * read once, not once per position. Any `://` counts as a link; a task needs none.
+ */
+const LINK_PATTERNS: readonly RegExp[] = [
+  /:\/\//u,
+  /\bwww\./iu,
+  /\b\d{1,3}(?:\.\d{1,3}){3}\b/u,
+  /(?<![\p{L}\p{N}-])[\p{L}\p{N}-]{2,}\.(?:xn--[a-z0-9-]+|\p{L}{2,24})(?![\p{L}\p{N}])/iu,
+]
 
 export const MAX_OPEN_TASKS = 20
 

@@ -106,6 +106,15 @@ function fieldKeys(value: string): string | undefined {
   return bad.length === 0 ? undefined : 'not of the form k1.aesgcm256.<44 base64 characters> (`npx cloak generate`)'
 }
 
+/** One `@`, a local part, and a domain with a dot that is neither first nor last; no whitespace. Linear, no regex. */
+export function isEmailAddress(value: string): boolean {
+  const at = value.indexOf('@')
+  if (at <= 0 || at !== value.lastIndexOf('@') || /\s/u.test(value)) return false
+  const domain = value.slice(at + 1)
+  const dot = domain.indexOf('.')
+  return dot > 0 && !domain.endsWith('.')
+}
+
 function prefixed(...prefixes: string[]) {
   return (value: string): string | undefined =>
     prefixes.some((prefix) => value.startsWith(prefix)) ? undefined : `must start with ${prefixes.join(' or ')}`
@@ -161,7 +170,7 @@ export const API_PRODUCTION_SETTINGS: readonly ProductionSetting[] = [
 
   // ── E-mail ─────────────────────────────────────────────────────────────────────────────────
   { name: 'BREVO_API_KEY', source: 'secret-manager', need: 'deployment', format: 'Brevo API key', secret: true },
-  { name: 'EMAIL_FROM', source: 'deploy-env', need: 'deployment', format: 'sender address on the authenticated Brevo domain', check: (value) => (/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(value) ? undefined : 'not an e-mail address') },
+  { name: 'EMAIL_FROM', source: 'deploy-env', need: 'deployment', format: 'sender address on the authenticated Brevo domain', check: (value) => (isEmailAddress(value) ? undefined : 'not an e-mail address') },
 
   // ── Payment (ADR-0101): all or nothing; required on a deployment, so the last step never dead-ends ──
   { name: 'STRIPE_SECRET_KEY', source: 'secret-manager', need: 'deployment', format: 'sk_test_… / sk_live_… (or a restricted rk_ key)', check: prefixed('sk_test_', 'sk_live_', 'rk_test_', 'rk_live_'), secret: true },
@@ -246,6 +255,9 @@ export const WEB_BUILD_ARGS: readonly string[] = [
 /** The values NODE_ENV may take. Anything else (prod, staging) would silently run with the dev fallbacks (OPS-9). */
 export const ALLOWED_NODE_ENVS = ['production', 'development', 'test'] as const
 
+/** The variables `AiRuntimeConfigService` reads to point a model provider's client at another endpoint. */
+export const MODEL_BASE_URL_OVERRIDES = ['AI_BASE_URL', 'OPENAI_BASE_URL'] as const
+
 /** Words that mark a value as written for development, CI or an example, never generated for a deployment. */
 const DEV_MARKER = /(^|[-_.])(dev-only|change-me|local-only|local-stack-only|local-prod-test|ci|unit-test|example|placeholder)([-_.]|$)/i
 
@@ -301,6 +313,11 @@ export function checkProductionConfig(env: NodeJS.ProcessEnv = process.env): Con
   if (nodeEnv !== undefined && !(ALLOWED_NODE_ENVS as readonly string[]).includes(nodeEnv)) {
     problems.push(`NODE_ENV: "${nodeEnv}" is not one of ${ALLOWED_NODE_ENVS.join(', ')} — any other name would run with the development fallbacks`)
   }
+  // Cloud Run names its service in K_SERVICE. There, anything but production (also no NODE_ENV at all) would run
+  // a public deployment with the development fallbacks and skip every check below (OPS-9).
+  if (nodeEnv !== 'production' && readSetting(env, 'K_SERVICE') !== undefined) {
+    problems.push(`NODE_ENV: "${nodeEnv ?? ''}" on Cloud Run (K_SERVICE is set) — a deployment runs with NODE_ENV=production only`)
+  }
   if (nodeEnv !== 'production') return { deployment: false, problems, warnings }
 
   const deployment = !isLocalProductionStack(env)
@@ -329,6 +346,13 @@ export function checkProductionConfig(env: NodeJS.ProcessEnv = process.env): Con
   }
   if (stripeSet.length > 0 && selfEmploymentEnabled(env) && readSetting(env, 'STRIPE_PRICE_ID_SELBSTSTAENDIG') === undefined) {
     problems.push('STRIPE_PRICE_ID_SELBSTSTAENDIG: not set while SELBSTSTAENDIGE_ENABLED is on — the self-employment tier could not be sold')
+  }
+  // Decision 4 of ADR-0111: the consent and the privacy text name every model provider and country the code can
+  // call (MODEL_PROVIDERS). A base URL sends the same requests to any other endpoint, which no text names.
+  for (const name of MODEL_BASE_URL_OVERRIDES) {
+    if (deployment && readSetting(env, name) !== undefined) {
+      problems.push(`${name}: must not be set on a deployment — it would send model requests to a recipient the consent and the privacy text do not name`)
+    }
   }
   const google = ['GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET'].filter((name) => readSetting(env, name) !== undefined)
   if (google.length === 1) problems.push(`GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET: only ${google[0]} is set — Google login needs both`)

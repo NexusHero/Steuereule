@@ -108,7 +108,9 @@ export function PrintoutScreen({ year, payment, onBack, onCompleteDetails, onCom
   const personBUnconfirmed = missing.includes('unbestaetigt.personB')
   // Values too long for their box at the 10 pt the forms require (ADR-0085): named, to be shortened.
   const tooLong = missing.filter((key) => key.startsWith('zuLang.')).map((key) => key.slice('zuLang.'.length))
-  const ownWay = new Set(['ehegatte', 'riester', 'kinder', 'vermietung', 'kapital', 'grenzgaenger', 'personADruckt'])
+  // Decision 3: Person B (own account) has not agreed to this joint year; nothing of B may be read or printed.
+  const partnerConsentMissing = missing.includes('personB.zustimmung')
+  const ownWay = new Set(['ehegatte', 'riester', 'kinder', 'vermietung', 'kapital', 'grenzgaenger', 'personADruckt', 'personB.zustimmung'])
   const masterDataMissing = missing.some((key) => !ownWay.has(key) && !key.startsWith('anlage') && !key.startsWith('unbestaetigt.') && !key.startsWith('zuLang.'))
   const locked = missing.length > 0
   // ADR-0054: Person B of a joint return never prints or pays; Person A does (WEB-15).
@@ -209,6 +211,7 @@ export function PrintoutScreen({ year, payment, onBack, onCompleteDetails, onCom
           <Text style={styles.sectionTitle}>{t('ausdruck.fehlendTitel')}</Text>
           {masterDataMissing ? <Text style={styles.sectionBody}>{t('ausdruck.fehlendAngaben')}</Text> : null}
           {married ? <Text style={styles.sectionBody}>{t('ausdruck.fehlendEhegatte')}</Text> : null}
+          {partnerConsentMissing ? <Text style={styles.sectionBody} testID="ausdruck-zustimmung-person-b">{t('ausdruck.fehlendZustimmungPersonB', { jahr: year })}</Text> : null}
           {annexes.map((annex) => (
             <Text key={annex} style={styles.sectionBody}>
               {t('ausdruck.anlageNochNicht', { anlage: t(`ausdruck.anlagen.${annex}`) })}

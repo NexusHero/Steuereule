@@ -1,10 +1,10 @@
+import { apiFetch } from '../../net/apiFetch'
 import { useEffect, useState } from 'react'
 import { ActivityIndicator, ScrollView, Text, View, type TextStyle, type ViewStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { Button, Card, Feld, Input, useTheme, type UiTheme } from '@steuereule/ui'
 import { ApiError, useAssistantsControllerGetClientInfo, getApiClientBaseUrl } from '@steuereule/api-client'
 import { apiFailureMessage } from '../../net/apiFailure'
-import { watchForSessionExpiry } from '../../net/sessionExpiry'
 import { APP_NS } from '../../i18n/resources'
 import { STEP_UP_REQUIRED_CODE } from '../../auth/useStepUp'
 import { StepUpChoices } from '../../auth/StepUpOptions'
@@ -93,7 +93,7 @@ export function OauthConsentScreen({
 
     try {
       const baseUrl = getApiClientBaseUrl()
-      const response = await fetch(`${baseUrl}/api/auth/oauth2/consent`, {
+      const response = await apiFetch(`${baseUrl}/api/auth/oauth2/consent`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -118,7 +118,6 @@ export function OauthConsentScreen({
         // NR-13: the signed query lapses after 10 minutes (400), the session may have ended (401), or the
         // server throttles (429) — each says what to do instead of "Fehler bei der Autorisierung".
         const refusal = new ApiError(response.status, await response.json().catch(() => null), response.headers)
-        watchForSessionExpiry(refusal)
         setErrorMessage(
           apiFailureMessage(refusal, tr as unknown as Parameters<typeof apiFailureMessage>[1], {
             validation: tr('oauthConsent.expired'),
@@ -149,7 +148,7 @@ export function OauthConsentScreen({
     if (submitting || !password) return
     setSubmitting(true)
     try {
-      const response = await fetch(`${getApiClientBaseUrl()}/api/auth/verify-password`, {
+      const response = await apiFetch(`${getApiClientBaseUrl()}/api/auth/verify-password`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

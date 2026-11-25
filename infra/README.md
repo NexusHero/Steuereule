@@ -91,7 +91,7 @@ Stripe account (test mode for staging and the beta); the operator details for th
 13. GitHub environment variables: `GCP_ENVIRONMENT`, `GCP_PROJECT_ID`, `GCP_REGION`, `GCP_WIF_PROVIDER`,
     `GCP_DEPLOYER_SA`, `GCP_RUNTIME_SA`, `GCP_MIGRATE_SA`, `GCP_WEB_SA`, `GCP_SQL_INSTANCE`, `GCP_KEYSTORE_SQL_INSTANCE`,
     `GCP_VPC_NETWORK`, `GCP_VPC_SUBNET`, `APP_DOMAIN`, `EMAIL_FROM`, `TRUSTED_PROXIES` and the operator details.
-14. First deploy (`gh workflow run deploy.yml --ref main -f environment=<staging|production>`): builds both
+14. First deploy (`gh workflow run deploy.yml --ref main -f environment=<staging|production>`): builds the three
     images, backs up the database, runs the migrate job (hash phase), deploys API and web, smoke-tests them.
     For staging the wizard then offers to set `DEPLOY_STAGING_AUTO=true`.
 15. Domain: verify it in Search Console, create the Cloud Run domain mappings for `www.` (service `steuereule-web`,

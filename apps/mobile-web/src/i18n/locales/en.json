@@ -680,6 +680,7 @@
     "fehlendTitel": "Something is still missing",
     "fehlendAngaben": "Please complete your details for the tax return first.",
     "fehlendEhegatte": "Choose in your personal details whether you file jointly or separately.",
+    "fehlendZustimmungPersonB": "Your partner has not yet agreed to the joint return for {{jahr}}. They agree in their own app under “Details for the return”; until then you see none of their details and cannot print.",
     "fehlendRiester": "Your Riester contract still needs details for Anlage AV: whether you are eligible yourself or through your spouse, and if yourself, your contributory earnings of the previous year.",
     "riesterErgaenzen": "Complete Riester details",
     "fehlendKinder": "Anlage Kind still needs details about your children: tax ID, parent-child relationship, Familienkasse, residence and, if needed, the other parent.",
@@ -2405,7 +2406,8 @@
         "rente": "Pension amount",
         "lohnersatz-betrag": "Amount of wage replacement benefits",
         "selbststaendig": "Details on self-employment",
-        "einkommen": "Details on your income"
+        "einkommen": "Details on your income",
+        "zustimmung": "Consent to the joint return for this year"
       },
       "grund": {
         "verheiratet": "We do not estimate the refund for married couples yet.",

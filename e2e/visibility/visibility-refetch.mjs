@@ -381,7 +381,9 @@ async function signInOnSecondPage(context, signInEmail, password) {
     guardAgainst429(page2)
     const crossAccountSignIn = countRequestsTo(page2, '/api/auth/sign-in/email')
 
-    await skipSplash(page2)
+    // The shared jar already holds page1's session, and a signed-in visitor of `/` goes straight to the app
+    // (WEB-6). Switching accounts in the same browser means opening the sign-in page itself, as a person would.
+    await page2.goto(`${WEB_ORIGIN}/login`, { waitUntil: 'networkidle' })
     await page2.getByPlaceholder('du@beispiel.de').fill(signInEmail)
     await page2.getByPlaceholder('••••••••').fill(password)
     await waitForRateLimitHeadroom('/sign-in/email')

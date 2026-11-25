@@ -505,8 +505,9 @@ say "Google muss erst bestätigen, dass dir $APP_DOMAIN gehört (Search Console,
 gcloud domains verify "$APP_DOMAIN" >/dev/null 2>&1 || true
 step "Im geöffneten Search-Console-Fenster den TXT-Eintrag bei deinem Domain-Anbieter setzen und 'Bestätigen' klicken."
 pause "Domain bestätigt? Enter"
-for pair in "www:steuereule-web" "api:steuereule-api"; do
-  host="${pair%%:*}.$APP_DOMAIN"; service="${pair#*:}"
+# The app on www., the API on api., the marketing site on the bare domain (its links go to www.).
+for pair in "www.$APP_DOMAIN:steuereule-web" "api.$APP_DOMAIN:steuereule-api" "$APP_DOMAIN:steuereule-website"; do
+  host="${pair%%:*}"; service="${pair#*:}"
   if gcloud beta run domain-mappings describe --domain "$host" --region "$REGION" >/dev/null 2>&1; then
     note "$host ist bereits verknüpft."
   else
@@ -514,7 +515,7 @@ for pair in "www:steuereule-web" "api:steuereule-api"; do
   fi
 done
 say "Diese DNS-Einträge bei deinem Domain-Anbieter setzen:"
-for host in "www.$APP_DOMAIN" "api.$APP_DOMAIN"; do
+for host in "www.$APP_DOMAIN" "api.$APP_DOMAIN" "$APP_DOMAIN"; do
   gcloud beta run domain-mappings describe --domain "$host" --region "$REGION" \
     --format="table[box](status.resourceRecords.name,status.resourceRecords.type,status.resourceRecords.rrdata)"
 done

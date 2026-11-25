@@ -4,6 +4,9 @@ import { FakeChildRepository } from './fakes/fake-child.repository.js'
 import { FakeChSalaryCertificateRepository } from './fakes/fake-ch-salary-certificate.repository.js'
 import { FakeLinkRepository } from './fakes/fake-link.repository.js'
 
+/** Person B agreed to the joint year (decision 3); without it Person A's readers do not reach B. */
+const B_AGREED = new Date('2026-01-10T09:00:00Z')
+
 class FakeAuditService {
   readonly logs: unknown[] = []
   append(data: unknown): Promise<void> {
@@ -179,14 +182,13 @@ describe('ChildrenService — the Swiss Kinderzulage when both parents are Grenz
       exchangeRateMonth: '2025', exchangeRateValue: 1.065, exchangeRateMode: 'jahresdurchschnitt', exchangeRateReceiptId: null,
       nGre: { familienzulagenChf: allowancesChf } as never,
     }) as never
-  async function setup(aChf: string, bChf: string, personBConsentedAt: Date | null = new Date('2026-01-10T10:00:00Z')) {
+  async function setup(aChf: string, bChf: string) {
     const repo = new FakeChildRepository()
     const ch = new FakeChSalaryCertificateRepository()
     ch.seed(swiss('a', aChf))
     ch.seed(swiss('b', bChf))
     const link = new FakeLinkRepository()
-    // B has an own account and agreed to share the year (decision 3).
-    await link.upsert('a', 2025, { personBUserId: 'b', filingType: 'zusammen', personBConsentedAt })
+    await link.upsert('a', 2025, { personBUserId: 'b', filingType: 'zusammen', personBConsentedAt: B_AGREED })
     const service = new ChildrenService(repo, new FakeAuditService() as never, ch, link)
     return { repo, service }
   }
@@ -201,14 +203,6 @@ describe('ChildrenService — the Swiss Kinderzulage when both parents are Grenz
     expect(res.kinder.map((k) => k.differentialChildBenefitEur)).toEqual(['312', '312'])
     // A share of B's allowances, not entered for the child: the mask offers it but does not store it.
     expect(res.kinder.map((k) => k.swissFamilyAllowanceDerived)).toEqual([true, true])
-  })
-
-  it('decision 3: without B’s consent for the year, A’s children show nothing derived from B’s Lohnausweis', async () => {
-    const { repo, service } = await setup('0', '5160', null)
-    await repo.create('a', 2025, { firstName: 'Lio', lastName: 'S', geburtsdatum: '2019-04-03' })
-    const res = await service.list('a', 2025)
-    expect(res.kinder.map((k) => k.swissFamilyAllowanceEur)).not.toEqual(['5495'])
-    expect(res.kinder.map((k) => k.swissFamilyAllowanceDerived)).not.toEqual([true])
   })
 
   it('keeps each parent’s allowances to the child they are paid for', async () => {

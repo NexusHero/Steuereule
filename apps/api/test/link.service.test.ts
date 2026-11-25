@@ -228,3 +228,19 @@ describe('a new invitation code grants a third party access (step-up rule, grant
     expect(asked).toBe(1)
   })
 })
+
+describe('Person B is saved field by field (WEB-29)', () => {
+  it('keeps every field the request does not carry, and clears each one the request sets to null', async () => {
+    const { service } = setup()
+    await service.set('user-a', year, { filingType: 'zusammen' })
+    await service.updatePersonB('user-a', year, { firstName: 'Erika', lastName: 'Muster', steuerId: '02476291358', geburtsdatum: '1985-04-12', beruf: 'Ärztin' })
+
+    // A client that loaded nothing and sends one field deletes nothing else.
+    const afterOne = await service.updatePersonB('user-a', year, { beruf: 'Lehrerin' })
+    expect(afterOne.personB).toMatchObject({ firstName: 'Erika', lastName: 'Muster', steuerId: '02476291358', geburtsdatum: '1985-04-12', beruf: 'Lehrerin' })
+
+    // The same rule for every field: null is the user clearing it.
+    const cleared = await service.updatePersonB('user-a', year, { geburtsdatum: null, beruf: null, steuerId: null })
+    expect(cleared.personB).toMatchObject({ firstName: 'Erika', lastName: 'Muster', steuerId: null, geburtsdatum: null, beruf: null })
+  })
+})

@@ -7,6 +7,7 @@ import { PrintoutService } from '../printout/printout.service.js'
 import { FIRST_BUSINESS, type BusinessRef } from './business.repository.js'
 import { BusinessService } from './business.service.js'
 import type { ElsterHelp, ElsterLineValue } from './views.js'
+import { PERSON_B_CONSENT_MISSING } from '../common/partner-consent-missing.js'
 
 /** The forms of the business itself, before the income-tax return (ADR-0101 §16). */
 const BUSINESS_FORMS = ['anlage-euer', 'anlage-s', 'anlage-g', 'ust-2-a', 'gewst-1-a'] as const
@@ -115,6 +116,9 @@ export class ElsterHelpService {
     const person = ref
     await this.business.assertElsterOpen(userId, year)
     const { forms, names, unconfirmed } = await this.printout.fillInValues(userId, year)
+    if (unconfirmed.includes(PERSON_B_CONSENT_MISSING)) {
+      throw new ConflictError('PERSON_B_CONSENT_PENDING', 'Dein Partner hat der gemeinsamen Erklärung für dieses Jahr noch nicht zugestimmt. Bis dahin gibt es keine gemeinsamen Werte.', { missing: unconfirmed })
+    }
     if (unconfirmed.length > 0) {
       throw new ConflictError('ELSTER_UNCONFIRMED', 'Bestätige zuerst die Werte unter „Prüfen & bestätigen“: Unbestätigte Werte gehören noch nicht in die Erklärung.', { missing: unconfirmed })
     }

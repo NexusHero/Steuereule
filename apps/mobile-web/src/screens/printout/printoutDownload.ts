@@ -1,3 +1,4 @@
+import { apiFetch } from '../../net/apiFetch'
 import { ApiError, getApiClientBaseUrl } from '@steuereule/api-client'
 import { triggerBrowserDownload } from '../privacy/exportDownload'
 
@@ -11,7 +12,7 @@ export interface PrintoutResult {
 
 export async function loadPrintout(year: number, { editable = false }: { editable?: boolean } = {}): Promise<PrintoutResult> {
   const query = editable ? '?bearbeitbar=true' : ''
-  const response = await fetch(`${getApiClientBaseUrl()}/v1/steuerjahre/${year}/ausdruck${query}`, { credentials: 'include' })
+  const response = await apiFetch(`${getApiClientBaseUrl()}/v1/steuerjahre/${year}/ausdruck${query}`, { credentials: 'include' })
   if (!response.ok) {
     const body = (await response.json().catch(() => ({}))) as { missing?: string[] }
     const missing = response.status === 422 ? body.missing : undefined

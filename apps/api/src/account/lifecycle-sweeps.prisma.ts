@@ -35,17 +35,31 @@ export async function sweepEndedLegalHolds(
 ): Promise<{ released: number; erasedFor: number }> {
   const ended = await db.legalHold.findMany({ where: { holdUntil: { lte: now } }, select: { id: true, userId: true }, take: LIFECYCLE_BATCH })
   if (ended.length === 0) return { released: 0, erasedFor: 0 }
-  await db.legalHold.deleteMany({ where: { id: { in: ended.map((hold) => hold.id) } } })
   // A hold on a Person B row kept under a shadow id belongs to the account that keeps it.
   const userIds = [...new Set(ended.map((hold) => ownerOf(hold.userId)))]
   const living = new Set((await db.user.findMany({ where: { id: { in: userIds } }, select: { id: true } })).map((user) => user.id))
+  let released = 0
   let erasedFor = 0
+  const failures: unknown[] = []
   for (const userId of userIds) {
-    if (living.has(userId)) continue
-    await erase(userId)
-    erasedFor += 1
+    const holdIds = ended.filter((hold) => ownerOf(hold.userId) === userId).map((hold) => hold.id)
+    // The erasure comes first and the hold goes only after it succeeded: the hold is the one pointer to the rows
+    // it kept. Were it deleted first and the erasure failed, nothing would ever find those rows again. An ended
+    // hold no longer protects its row (the deletion asks for `holdUntil > now`), so the order is safe; a failed
+    // erasure leaves the hold for the next run.
+    try {
+      if (!living.has(userId)) {
+        await erase(userId)
+        erasedFor += 1
+      }
+      released += (await db.legalHold.deleteMany({ where: { id: { in: holdIds } } })).count
+    } catch (error) {
+      // One account that cannot be erased must not keep the others waiting; it is reported once all were tried.
+      failures.push(error)
+    }
   }
-  return { released: ended.length, erasedFor }
+  if (failures.length > 0) throw new AggregateError(failures, `Legal-hold sweep: ${failures.length} account(s) could not be erased; their holds stay for the next run.`)
+  return { released, erasedFor }
 }
 
 // --- Never-verified accounts (ADR-0030) ----------------------------------------------------------------

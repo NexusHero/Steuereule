@@ -680,6 +680,7 @@
     "fehlendTitel": "Dafür fehlt noch etwas",
     "fehlendAngaben": "Ergänze zuerst deine Angaben für die Steuererklärung.",
     "fehlendEhegatte": "Leg in den Stammdaten fest, ob ihr zusammen oder einzeln veranlagt werdet.",
+    "fehlendZustimmungPersonB": "Dein Partner hat der gemeinsamen Erklärung für {{jahr}} noch nicht zugestimmt. Er stimmt in seiner eigenen App unter „Angaben für die Erklärung“ zu; bis dahin siehst du keine seiner Angaben und kannst nicht drucken.",
     "fehlendRiester": "Für deinen Riester-Vertrag fehlen noch Angaben für die Anlage AV: ob du selbst oder über deinen Ehepartner begünstigt bist, und gegebenenfalls deine beitragspflichtigen Einnahmen im Vorjahr.",
     "riesterErgaenzen": "Riester-Angaben ergänzen",
     "fehlendKinder": "Für die Anlage Kind fehlen noch Angaben zu deinen Kindern: Steuer-ID, Kindschaftsverhältnis, Familienkasse, Wohnsitz und gegebenenfalls der andere Elternteil.",
@@ -2405,7 +2406,8 @@
         "rente": "Rentenbetrag",
         "lohnersatz-betrag": "Betrag der Lohnersatzleistungen",
         "selbststaendig": "Angaben zur Selbstständigkeit",
-        "einkommen": "Angaben zum Einkommen"
+        "einkommen": "Angaben zum Einkommen",
+        "zustimmung": "Zustimmung zur gemeinsamen Erklärung für dieses Jahr"
       },
       "grund": {
         "verheiratet": "Für Verheiratete rechnen wir die Erstattung noch nicht.",

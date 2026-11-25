@@ -24,6 +24,9 @@ import type { MasterDataRecord } from '../src/master-data/master-data.repository
 import { incomeTax, soliExemptionLimits, solidaritaetszuschlag, solidaritaetszuschlagInCents, splittingTariff } from '@steuereule/core'
 import { taxCaseReaderOver } from '../src/tax-case/repository-tax-case.reader.js'
 
+/** Person B agreed to the joint year (decision 3); without it Person A's readers do not reach B. */
+const B_AGREED = new Date('2026-01-10T09:00:00Z')
+
 const USER_ID = 'user-1'
 const TAX_YEAR = 2026
 const NO_COMMUTE: CommuteRepository = { findForUserAndYear: async () => null, save: async (_u, _y, e) => e }
@@ -197,7 +200,7 @@ describe('KapitalService', () => {
       interviewRepository.seed('a', YEAR, { ...BROKER, ...crossBorder, job: 'Angestellt', familienstand: 'Verheiratet', kinder: 'Nein', ausland: 'Ja, in die Schweiz' })
       interviewRepository.seed('b', YEAR, crossBorder)
       await masterData.save('a', { familienstand: 'verheiratet' } as MasterDataRecord)
-      await link.upsert('a', YEAR, { personBUserId: 'b', filingType: 'zusammen' })
+      await link.upsert('a', YEAR, { personBUserId: 'b', filingType: 'zusammen', personBConsentedAt: B_AGREED })
       ch.seed(swissCertificate('a', '90000', '4050'))
       ch.seed(swissCertificate('b', '60000', '2700'))
 

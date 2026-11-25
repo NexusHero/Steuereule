@@ -40,6 +40,9 @@ export function UnclearableNumberField({ label, state, placeholder, unclearLabel
     const value = whole ? wholeOrUnreadable(text) : wholeEurosOrUnreadable(text)
     // WEB-12: text the app cannot read is named at the field instead of silently not saved.
     setUnreadable(value === 'unreadable')
+    // An emptied field saves nothing (the answer is a value or „Kann ich nicht lesen“), so it shows the stored
+    // value again instead of looking cleared while the server keeps it.
+    if (value === null && stored !== null) setText(String(stored))
     if (value === null || value === 'unreadable') return
     if (stored === value) return
     onRecorded(value)

@@ -47,7 +47,7 @@ export function registerChildTools(session: McpSession, deps: McpDeps): void {
         const existing = (await children.list(userId, taxYear)).kinder
         // The same child twice would count its allowance twice; a repeated call returns the one already there.
         // This tells the caller whether its own household has a child of that first name and birth date — data
-        // of the account it acts for and may write (MCP-15, accepted: see the P4 report).
+        // of the account it acts for and may write (MCP-15, accepted: ADR-0052 amendment 10).
         const same = existing.find((k) => k.firstName.trim().toLowerCase() === firstName.trim().toLowerCase() && k.geburtsdatum === geburtsdatum)
         if (same) return json({ ok: true, instance: same.id, nummer: same.sequenceNumber, bereitsVorhanden: true, hinweis: 'Dieses Kind gibt es schon; weitere Angaben mit maske_eintragen und dieser instance.' })
         if (existing.length >= MAX_CHILDREN_BY_ASSISTANT) return tooMany()

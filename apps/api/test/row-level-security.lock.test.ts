@@ -37,7 +37,19 @@ const sql = readdirSync(migrationsDir)
 const tablesWith = (pattern: RegExp): Set<string> => new Set([...sql.matchAll(pattern)].map((match) => match[1]!))
 const enabled = tablesWith(/ALTER TABLE "([^"]+)" ENABLE ROW LEVEL SECURITY/g)
 const forced = tablesWith(/ALTER TABLE "([^"]+)" FORCE ROW LEVEL SECURITY/g)
-const withPolicy = tablesWith(/CREATE POLICY \w+ ON "([^"]+)"/g)
+/** Replays CREATE and DROP POLICY in migration order: a table has a policy if one created is still in place. */
+function tablesWithPolicy(migrationSql: string): Set<string> {
+  const policies = new Map<string, Set<string>>()
+  for (const match of migrationSql.matchAll(/(CREATE|DROP) POLICY (?:IF EXISTS )?(\w+) ON "([^"]+)"/g)) {
+    const [, verb, policy, table] = match as unknown as [string, string, string, string]
+    const current = policies.get(table) ?? new Set<string>()
+    if (verb === 'CREATE') current.add(policy)
+    else current.delete(policy)
+    policies.set(table, current)
+  }
+  return new Set([...policies].filter(([, names]) => names.size > 0).map(([table]) => table))
+}
+const withPolicy = tablesWithPolicy(sql)
 const disabled = tablesWith(/ALTER TABLE "([^"]+)" (?:DISABLE|NO FORCE) ROW LEVEL SECURITY/g)
 
 const models = Prisma.dmmf.datamodel.models.map((model) => ({ name: model.name, table: model.dbName ?? model.name }))
@@ -67,6 +79,15 @@ describe('row-level security covers every table with personal data', () => {
 
   it('names every keystore model as a residual', () => {
     expect(KeystorePrisma.dmmf.datamodel.models.map((model) => model.name).sort()).toEqual([...KEYSTORE_RESIDUAL].sort())
+  })
+
+  it('no policy lets every row through', () => {
+    expect(sql).not.toMatch(/(?:USING|WITH CHECK)\s*\(\s*true\s*\)/i)
+  })
+
+  it('a policy dropped by a later migration no longer counts; one replaced does', () => {
+    expect([...tablesWithPolicy('CREATE POLICY a ON "T" USING (x); DROP POLICY IF EXISTS a ON "T";')]).toEqual([])
+    expect([...tablesWithPolicy('CREATE POLICY a ON "T" USING (x); DROP POLICY a ON "T"; CREATE POLICY b ON "T" USING (y);')]).toEqual(['T'])
   })
 
   it('the runtime role owns nothing and bypasses nothing', () => {

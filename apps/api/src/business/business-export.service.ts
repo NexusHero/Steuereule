@@ -68,7 +68,8 @@ export class BusinessExportService {
       // What the app knows itself; the user's own values win.
       kontenrahmen: chart,
       gewinnermittlung: mode === 'euer' ? 'Einnahmenüberschussrechnung (§ 4 Abs. 3 EStG)' : 'Bestandsvergleich (Bilanz, § 4 Abs. 1, § 5 EStG)',
-      appVersion: process.env.APP_VERSION ?? 'aktuelle Fassung',
+      // The image sets APP_VERSION="" when it was built without the commit (compose, CI): empty is "not known" too.
+      appVersion: process.env.APP_VERSION?.trim() || 'aktuelle Fassung',
       verschluesselung: 'Feldverschlüsselung mit AES-256-GCM',
       ...(profile?.name ? { unternehmen: profile.name } : {}),
       ...(profile?.startDate ? { beginn: profile.startDate } : {}),
