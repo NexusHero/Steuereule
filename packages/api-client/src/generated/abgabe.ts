@@ -59,8 +59,6 @@ export type submissionControllerSubmitResponseError = (submissionControllerSubmi
   headers: Headers;
 };
 
-export type submissionControllerSubmitResponse = (submissionControllerSubmitResponseSuccess | submissionControllerSubmitResponseError)
-
 export const getSubmissionControllerSubmitUrl = (jahr: number,) => {
 
 
@@ -70,9 +68,9 @@ export const getSubmissionControllerSubmitUrl = (jahr: number,) => {
 }
 
 export const submissionControllerSubmit = async (jahr: number,
-    submitTaxReturnDto: SubmitTaxReturnDto, options?: RequestInit): Promise<submissionControllerSubmitResponse> => {
+    submitTaxReturnDto: SubmitTaxReturnDto, options?: RequestInit): Promise<submissionControllerSubmitResponseSuccess> => {
 
-  return httpClient<submissionControllerSubmitResponse>(getSubmissionControllerSubmitUrl(jahr),
+  return httpClient<submissionControllerSubmitResponseSuccess>(getSubmissionControllerSubmitUrl(jahr),
   {
     ...options,
     method: 'POST',
@@ -154,8 +152,6 @@ export type submissionControllerWithdrawResponseError = (submissionControllerWit
   headers: Headers;
 };
 
-export type submissionControllerWithdrawResponse = (submissionControllerWithdrawResponseSuccess | submissionControllerWithdrawResponseError)
-
 export const getSubmissionControllerWithdrawUrl = (jahr: number,) => {
 
 
@@ -164,9 +160,9 @@ export const getSubmissionControllerWithdrawUrl = (jahr: number,) => {
   return `/v1/steuerjahre/${jahr}/abgabe`
 }
 
-export const submissionControllerWithdraw = async (jahr: number, options?: RequestInit): Promise<submissionControllerWithdrawResponse> => {
+export const submissionControllerWithdraw = async (jahr: number, options?: RequestInit): Promise<submissionControllerWithdrawResponseSuccess> => {
 
-  return httpClient<submissionControllerWithdrawResponse>(getSubmissionControllerWithdrawUrl(jahr),
+  return httpClient<submissionControllerWithdrawResponseSuccess>(getSubmissionControllerWithdrawUrl(jahr),
   {
     ...options,
     method: 'DELETE'

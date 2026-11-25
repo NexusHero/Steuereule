@@ -185,6 +185,7 @@ jobs:
             echo "APP_VERSION=$tag"
             echo "API_IMAGE=$registry/api:$tag"
             echo "WEB_IMAGE=$registry/web:$tag"
+            echo "WEBSITE_IMAGE=$registry/website:$tag"
             echo "API_ORIGIN=https://api.$APP_DOMAIN"
             echo "WEB_ORIGIN=https://www.$APP_DOMAIN"
           } >> "$GITHUB_ENV"
@@ -280,6 +281,14 @@ jobs:
             -t "$WEB_IMAGE" .
           docker push "$WEB_IMAGE"
 
+      - name: Build and push website image
+        run: |
+          docker build -f apps/website/Dockerfile \
+            --build-arg "WEBSITE_APP_ORIGIN=$WEB_ORIGIN" \
+            --build-arg "API_ORIGIN=$API_ORIGIN" \
+            -t "$WEBSITE_IMAGE" .
+          docker push "$WEBSITE_IMAGE"
+
       - name: Generate CycloneDX Release SBOMs (CRA / BSI TR-03183)
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
@@ -301,6 +310,15 @@ jobs:
             --service-account "$WEB_SA" \
             --cpu 1 --memory 512Mi \
             --min-instances 0 --max-instances 10 --concurrency 160 \
+            --allow-unauthenticated
+
+      - name: Deploy website
+        run: |
+          gcloud run deploy steuereule-website \
+            --image "$WEBSITE_IMAGE" --region "$REGION" \
+            --service-account "$WEB_SA" \
+            --cpu 1 --memory 256Mi \
+            --min-instances 0 --max-instances 3 --concurrency 160 \
             --allow-unauthenticated
 
       - name: Post-deploy smoke test (Health + Auth Capabilities + CORS + Web)

@@ -14,6 +14,7 @@ import { createAppAuthClient, type AppAuthClient } from '../auth/auth-client'
 import { AuthClientProvider } from '../auth/AuthClientProvider'
 import { PrivacyScreen } from './PrivacyScreen'
 import { server } from '../test-msw-server'
+import { expectFailsClosed, failEveryRequest } from '../test-every-query-fails'
 
 const BASE_URL = 'http://localhost:3000'
 
@@ -546,5 +547,36 @@ describe('PrivacyScreen: owl consent section (ADR-0091)', () => {
     renderPrivacy()
     expect(await screen.findByText('Eule und persönliche Daten')).toBeTruthy()
     expect(await screen.findByText('Nicht erlaubt')).toBeTruthy()
+  })
+})
+
+describe('DatenschutzScreen — failures never reach a save (WEB-28, NR-20)', () => {
+  it('fails closed: every request answering 500 shows a failure and sends no write', async () => {
+    const failing = failEveryRequest()
+    renderPrivacy()
+    await expectFailsClosed(failing)
+  })
+
+  it('fails closed when signed in: the owl consent that did not load shows a failure and its switch sends nothing', async () => {
+    const failing = failEveryRequest()
+    mockSession(REAL_SESSION)
+    renderPrivacy()
+    expect(await screen.findByTestId('eulen-einwilligung-ladefehler')).toBeTruthy()
+    expect(screen.queryByText(/Wird geladen/)).toBeNull()
+    await expectFailsClosed(failing)
+  })
+
+  it('NR-20: the owl consent recovers on retry', async () => {
+    let calls = 0
+    mockSession(REAL_SESSION)
+    server.use(
+      http.get('*/v1/eulen-modus/personendaten-einwilligung', () => {
+        calls += 1
+        return calls === 1 ? HttpResponse.json({ statusCode: 500 }, { status: 500 }) : HttpResponse.json({ granted: false, grantedAt: null })
+      }),
+    )
+    renderPrivacy()
+    fireEvent.click(await screen.findByTestId('eulen-einwilligung-erneut'))
+    await waitFor(() => expect(screen.queryByTestId('eulen-einwilligung-ladefehler')).toBeNull())
   })
 })

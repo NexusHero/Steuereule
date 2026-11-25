@@ -131,7 +131,13 @@ export function useAdvisorChat({
     if (rawText === undefined) {
       setInputText('')
     }
-    await (quickAction ? send(text, { quickAction }) : send(text))
+    const sent = await (quickAction ? send(text, { quickAction }) : send(text))
+    if (rawText === undefined) keepIfNotSent(sent, text)
+  }
+
+  /** WEB-14: a message that did not reach the owl goes back into the composer (unless the user typed anew). */
+  function keepIfNotSent(sent: boolean | void, text: string) {
+    if (sent === false) setInputText((current) => (current === '' ? text : current))
   }
 
   const messages = visibleMessages(allMessages)
@@ -209,7 +215,10 @@ export function useAdvisorChat({
     setInputText('')
     const replaceFromMessageId = editingId
     setEditingId(null)
-    void (replaceFromMessageId ? send(text, { replaceFromMessageId }) : send(text))
+    void Promise.resolve(replaceFromMessageId ? send(text, { replaceFromMessageId }) : send(text)).then(
+      (sent) => keepIfNotSent(sent, text),
+      () => keepIfNotSent(false, text),
+    )
   }
 
   const isEmpty = messages.length === 0 && !isSending && abortedTurn === null

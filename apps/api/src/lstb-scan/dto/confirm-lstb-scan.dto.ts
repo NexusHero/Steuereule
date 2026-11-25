@@ -124,5 +124,6 @@ export class ConfirmLstbScanDto {
   @IsArray()
   @ArrayMaxSize(40)
   @IsString({ each: true })
+  @MaxLength(100, { each: true })
   actionIds?: string[]
 }

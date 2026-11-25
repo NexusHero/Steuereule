@@ -24,10 +24,13 @@ import {
 } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
 import { CURRENT_TAX_YEAR } from '../../config/taxYear'
-import { LoadingState, ErrorState } from '../shared/ScreenState'
+import { ErrorState, LoadingState } from '../shared/ScreenState'
+import { useApiFailureMessage } from '../../net/apiFailure'
+import { SaveFailedNotice } from '../shared/SaveFailedNotice'
+import { usePendingMutations } from '../shared/usePendingMutations'
 import { BackButton, BackButtonSpacer } from '../shared/BackButton'
 import { screenHeaderStyles, unclearableFieldStyles } from '../shared/screenStyles'
-import { triggerSaveErrorHaptic, warnOnHttpError } from '../shared/saveFeedback'
+import { triggerSaveErrorHaptic } from '../shared/saveFeedback'
 import { AssessmentDiffView } from '../history/AssessmentDiffView'
 
 type FieldId = 'einnahmen' | 'vorsorgeaufwand' | 'anrechnung' | 'festgesetzteSteuer' | 'erstattung'
@@ -66,16 +69,20 @@ export function AssessmentScreen({ onDone = () => {}, onBack, taxYear = CURRENT_
   const setStatus = useAssessmentControllerSetStatus()
   const setAppeal = useAssessmentControllerSetAppeal()
   const setAppealOutcome = useAssessmentControllerSetAppealOutcome()
+  // WEB-47, NC-09: a failed save is shown at once (not only a vibration), the typed value stays, and
+  // „Fertig“ / back wait for pending saves and warn once about a failed one.
+  const saves = usePendingMutations()
+  const failureMessage = useApiFailureMessage()
 
   if (query.isPending) {
     return <LoadingState bp={bp} label={tr('bescheid.loading')} />
   }
-  if (query.isError || query.data.status !== 200) {
+  if (query.isError) {
     return (
       <ErrorState
         bp={bp}
         heading={tr('bescheid.loadError.heading')}
-        message={tr('bescheid.loadError.message')}
+        message={failureMessage(query.error, { offline: tr('bescheid.loadError.message') })}
         retryLabel={tr('bescheid.loadError.retry')}
         onRetry={() => void query.refetch()}
       />
@@ -86,27 +93,35 @@ export function AssessmentScreen({ onDone = () => {}, onBack, taxYear = CURRENT_
 
   const refetch = () => void queryClient.invalidateQueries({ queryKey: getAssessmentControllerGetQueryKey(taxYear) })
 
-  const mutationCallbacks = {
-    onSuccess: (res: { readonly status: number }) => {
-      warnOnHttpError(res.status)
-      refetch()
-    },
-    onError: triggerSaveErrorHaptic,
+  /** Every save goes through here: tracked, refetched on success, shown on failure. */
+  function save(run: () => Promise<unknown>) {
+    const promise = run().then(
+      () => {
+        saves.clearSaveError()
+        refetch()
+      },
+      (error: unknown) => {
+        triggerSaveErrorHaptic()
+        throw error
+      },
+    )
+    saves.track(promise)
   }
 
   function sendField(field: FieldId, data: PutAssessmentFieldDto) {
-    setField.mutate({ jahr: taxYear, feld: field, data }, mutationCallbacks)
+    save(() => setField.mutateAsync({ jahr: taxYear, feld: field, data }))
   }
 
   return (
     <ScrollView contentContainerStyle={bp === 's' ? styles.screen : styles.wideScreen} testID="screen-container">
       <View style={styles.headerRow}>
-        {onBack ? <BackButton accessibilityLabel={tr('bescheid.back')} onPress={onBack} testID="bescheid-zurueck" /> : <BackButtonSpacer />}
+        {onBack ? <BackButton accessibilityLabel={tr('bescheid.back')} onPress={() => saves.flushThen(onBack)} testID="bescheid-zurueck" /> : <BackButtonSpacer />}
       </View>
       <Text style={styles.heading} testID="bescheid-heading">{tr('bescheid.heading')}</Text>
       <Text style={styles.help}>{tr('bescheid.help')}</Text>
 
       <FristBanner frist={response.frist} />
+      <SaveFailedNotice visible={saves.saveError !== null} error={saves.saveError} />
 
       {FIELDS.map((field) => (
         <AssessmentFieldEditor
@@ -119,7 +134,7 @@ export function AssessmentScreen({ onDone = () => {}, onBack, taxYear = CURRENT_
         />
       ))}
 
-      <DateEditor date={response.frist.assessmentDate} onSet={(date) => setDate.mutate({ jahr: taxYear, data: { date } }, mutationCallbacks)} />
+      <DateEditor date={response.frist.assessmentDate} onSet={(date) => save(() => setDate.mutateAsync({ jahr: taxYear, data: { date } }))} />
 
       {response.diff ? (
         <View style={styles.section}>
@@ -129,16 +144,21 @@ export function AssessmentScreen({ onDone = () => {}, onBack, taxYear = CURRENT_
         <ReconciliationSection response={response} />
       )}
 
-      <StatusSection response={response} onSetStatus={(status) => setStatus.mutate({ jahr: taxYear, data: { status } }, mutationCallbacks)} />
+      <StatusSection response={response} onSetStatus={(status) => save(() => setStatus.mutateAsync({ jahr: taxYear, data: { status } }))} />
 
       <AppealSection
         response={response}
-        onAppeal={(reason, date) => setAppeal.mutate({ jahr: taxYear, data: date === null ? { reason } : { reason, date } }, mutationCallbacks)}
-        onOutcome={(data) => setAppealOutcome.mutate({ jahr: taxYear, data }, mutationCallbacks)}
+        onAppeal={(reason, date) => save(() => setAppeal.mutateAsync({ jahr: taxYear, data: date === null ? { reason } : { reason, date } }))}
+        onOutcome={(data) => save(() => setAppealOutcome.mutateAsync({ jahr: taxYear, data }))}
       />
 
-      <Button onPress={onDone} style={styles.cta} testID="bescheid-fertig">
-        {tr('bescheid.done')}
+      {saves.saveFailed ? (
+        <Text style={styles.help} accessibilityRole="alert" testID="bescheid-ungespeichert">
+          {tr('apiFehler.unsavedLeave')}
+        </Text>
+      ) : null}
+      <Button onPress={() => saves.flushThen(onDone)} style={styles.cta} testID="bescheid-fertig">
+        {saves.isSaving ? tr('apiFehler.pendingSave') : tr('bescheid.done')}
       </Button>
     </ScrollView>
   )
@@ -166,9 +186,9 @@ function FristBanner({ frist }: { readonly frist: AssessmentResponseDto['frist']
     <Card variant="nacht">
       <Text style={s.fristHeading}>{tr('bescheid.frist.heading')}</Text>
       {expired ? (
-        <Text style={s.fristBody}>{tr('bescheid.frist.abgelaufen', { ende: frist.deadlineEnd })}</Text>
+        <Text style={s.fristBody}>{tr('bescheid.frist.abgelaufen', { ende: frist.deadlineEnd === null ? '' : isoDateToGerman(frist.deadlineEnd) })}</Text>
       ) : (
-        <Text style={s.fristBody}>{tr('bescheid.frist.verbleibend', { tage: frist.remainingDays, ende: frist.deadlineEnd })}</Text>
+        <Text style={s.fristBody}>{tr('bescheid.frist.verbleibend', { tage: frist.remainingDays, ende: frist.deadlineEnd === null ? '' : isoDateToGerman(frist.deadlineEnd) })}</Text>
       )}
     </Card>
   )
@@ -376,13 +396,13 @@ function AppealOutcome({ response, onOutcome }: { readonly response: AssessmentR
   const [amountText, setAmountText] = useState(response.appealOutcomeAmount === null ? '' : String(response.appealOutcomeAmount))
 
   function commitAmount() {
-    const trimmed = amountText.trim().replace(/^[−–]/, '-')
-    if (trimmed === '') {
+    if (amountText.trim() === '') {
       if (response.appealOutcomeAmount !== null) onOutcome({ outcome, amount: null })
       return
     }
-    if (!/^-?\d+$/.test(trimmed)) return
-    const amount = Number(trimmed)
+    // The shared German parser (WEB-46): „1.400“ is fourteen hundred, „−140,50“ is read too.
+    const amount = signedWholeAmountFrom(amountText)
+    if (amount === null) return
     if (amount !== response.appealOutcomeAmount) onOutcome({ outcome, amount })
   }
 

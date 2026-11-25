@@ -4,8 +4,8 @@ import { Feld, useTheme } from '@steuereule/ui'
 import { useBusinessControllerCatalogues, type ProfessionAnswersDto, type ProfessionAnswersDtoCatalogProfession, type ProfessionAnswersDtoFreeActivity } from '@steuereule/api-client'
 import { Choice } from './Choice'
 import { APP_NS } from '../../i18n/resources'
-import { BusinessFrame, BusinessQueryState, Note, Section } from './BusinessFrame'
-import { personParams } from './businessKit'
+import { BusinessFrame, BusinessQueryState, ProblemNote, Section } from './BusinessFrame'
+import { personParams, problemOf } from './businessKit'
 import { CatalogPicker } from './CatalogPicker'
 import { useProfileEditor } from './useProfileEditor'
 import type { BusinessPageProps } from './BusinessScreen'
@@ -14,7 +14,7 @@ import type { BusinessPageProps } from './BusinessScreen'
 export function ProfessionPage({ taxYear, person, business = 1, onBack }: BusinessPageProps) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
-  const { query, profile, loadProblem, save, problem } = useProfileEditor(taxYear, person, business)
+  const { query, profile, loadProblem, save, problem, saving } = useProfileEditor(taxYear, person, business)
   const catalogues = useBusinessControllerCatalogues(taxYear, personParams(person, business))
 
   if (query.isPending || profile === null || loadProblem !== null) {
@@ -24,14 +24,19 @@ export function ProfessionPage({ taxYear, person, business = 1, onBack }: Busine
       </BusinessFrame>
     )
   }
-  const catalog = catalogues.data?.status === 200 ? catalogues.data.data : null
+  const catalog = catalogues.data?.data ?? null
   const answers: ProfessionAnswersDto = profile.professionAnswers ?? {}
-  const change = (patch: ProfessionAnswersDto) => void save({ professionAnswers: { ...answers, ...patch } })
+  // The answers are replaced whole: a second change waits for the first, so none builds on a stale set (NC-15).
+  const change = (patch: ProfessionAnswersDto) => {
+    if (saving) return
+    void save({ professionAnswers: { ...answers, ...patch } })
+  }
   const prior = answers.priorAssessment ?? null
 
   return (
     <BusinessFrame title={tr('business.seite.beruf')} onBack={onBack} testID="beruf-seite">
-      {problem !== null ? <Note tone="error" testID="business-speichern-fehler">{problem.message ?? tr('business.speichernFehler')}</Note> : null}
+      <ProblemNote problem={problem} testID="business-speichern-fehler" />
+      {catalogues.isError ? <ProblemNote problem={problemOf(catalogues.error)} testID="beruf-katalog-fehler" /> : null}
       <Section>
         <Feld label={tr('business.beruf.bisher')}>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.space.s2 }}>

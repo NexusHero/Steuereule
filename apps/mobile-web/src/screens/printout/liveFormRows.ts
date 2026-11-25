@@ -7,6 +7,7 @@ import type { Screen } from '@steuereule/core'
 import type { LiveFormDto, LiveFormInstanceDto } from '@steuereule/api-client'
 import { maskTargetForAcroField } from '../shared/formLineMapping'
 import type { GlassFormRow } from './GlassFormPreview'
+import { parseSignedGermanAmount } from '../shared/germanNumber'
 
 type Person = 'A' | 'B'
 type Translate = (key: string, options?: Record<string, unknown>) => string
@@ -35,8 +36,8 @@ function text(copy: LiveFormInstanceDto, id: string): string | null {
 function amount(copy: LiveFormInstanceDto, id: string): number | null {
   const raw = text(copy, id)
   if (raw === null) return null
-  const number = Number(raw.replace(',', '.'))
-  return Number.isFinite(number) ? number : null
+  // The printed value is German („1.234,50“, „64000“, „-80“): the shared parser (WEB-46), never a dot as decimal point of thousands.
+  return parseSignedGermanAmount(raw)
 }
 
 /** „Zeile 34“, „Zeilen 34–36“, or the form's name while the API names no Zeile for the field. */

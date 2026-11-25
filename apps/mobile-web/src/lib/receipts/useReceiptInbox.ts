@@ -20,8 +20,8 @@ export function useReceiptInbox({ folder, limit = RECEIPT_PAGE_SIZE, enabled = t
     queryKey: [...getReceiptControllerListQueryKey(), 'pages', folder ?? 'alle', limit] as const,
     initialPageParam: undefined as string | undefined,
     queryFn: async ({ pageParam }): Promise<ReceiptPageResponseDto> => {
+      // A failure rejects with an ApiError (WEB-28); the screen reads it through net/apiFailure.
       const response = await receiptControllerList({ limit, ...(pageParam !== undefined ? { cursor: pageParam } : {}), ...(folder !== undefined ? { ordner: folder } : {}) })
-      if (response.status !== 200) throw new Error(`Belege konnten nicht geladen werden (${response.status}).`)
       return response.data
     },
     getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,

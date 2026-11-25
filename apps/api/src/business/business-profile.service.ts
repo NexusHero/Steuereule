@@ -110,6 +110,8 @@ export class BusinessProfileService {
     if (book && book.ledger.entries.length > 0 && ((input.chart !== undefined && input.chart !== book.book.chart) || (input.mode !== undefined && input.mode !== book.book.mode))) {
       throw new ConflictError('BOOK_FRAME_FIXED', 'Kontenrahmen und Gewinnermittlung stehen fest, sobald im Jahr gebucht wurde.')
     }
+    // The fact objects merge key by key (WEB-30/WEB-31), against what is stored for the person.
+    const stored = input.vatPeriodFacts || input.tradeTaxInputs || input.lossFacts ? await this.context.personRecord(userId, year, ref) : null
     const patch: BusinessProfilePatch = {
       ...(input.confirmedKind !== undefined ? { kind: input.confirmedKind } : {}),
       ...(input.professionAnswers !== undefined
@@ -128,11 +130,11 @@ export class BusinessProfileService {
       ...(input.multiplierOverride !== undefined ? { multiplierOverride: input.multiplierOverride === null ? null : String(input.multiplierOverride) } : {}),
       ...(input.startDate !== undefined ? { startDate: input.startDate } : {}),
       ...(input.vatPrepaymentsCents !== undefined ? { vatPrepayments: input.vatPrepaymentsCents === null ? null : String(input.vatPrepaymentsCents) } : {}),
-      ...(input.vatPeriodFacts !== undefined ? { vatPeriodFacts: input.vatPeriodFacts === null ? null : JSON.stringify(input.vatPeriodFacts) } : {}),
+      ...(input.vatPeriodFacts !== undefined ? { vatPeriodFacts: input.vatPeriodFacts === null ? null : mergeFacts(stored?.vatPeriodFacts, input.vatPeriodFacts) } : {}),
       ...(input.disposalFacts !== undefined ? { disposalFacts: input.disposalFacts === null ? null : JSON.stringify(input.disposalFacts) } : {}),
       ...(input.retainedFacts !== undefined ? { retainedFacts: input.retainedFacts === null ? null : JSON.stringify(input.retainedFacts) } : {}),
-      ...(input.tradeTaxInputs !== undefined ? { tradeTaxInputs: input.tradeTaxInputs === null ? null : JSON.stringify(input.tradeTaxInputs) } : {}),
-      ...(input.lossFacts !== undefined ? { lossFacts: input.lossFacts === null ? null : JSON.stringify(input.lossFacts) } : {}),
+      ...(input.tradeTaxInputs !== undefined ? { tradeTaxInputs: input.tradeTaxInputs === null ? null : mergeFacts(stored?.tradeTaxInputs, input.tradeTaxInputs) } : {}),
+      ...(input.lossFacts !== undefined ? { lossFacts: input.lossFacts === null ? null : mergeFacts(stored?.lossFacts, input.lossFacts) } : {}),
       ...(input.partnershipShares !== undefined ? { partnershipShares: input.partnershipShares === null ? null : JSON.stringify(input.partnershipShares) } : {}),
     }
     if (ref.business !== FIRST_BUSINESS) {
@@ -145,4 +147,14 @@ export class BusinessProfileService {
     await this.audit.append({ userId, action: 'WRITE', resource: 'selbststaendig' })
     return this.toView(await this.context.personRecord(userId, year, ref), ref, book !== null)
   }
+}
+
+/** Stored facts with a patch applied: a key in the patch replaces, `null` removes, a key left out stays. */
+function mergeFacts(stored: string | null | undefined, patch: object): string {
+  const merged: Record<string, unknown> = { ...parseJson<Record<string, unknown>>(stored ?? null, {}) }
+  for (const [key, value] of Object.entries(patch)) {
+    if (value === null) delete merged[key]
+    else if (value !== undefined) merged[key] = value
+  }
+  return JSON.stringify(merged)
 }

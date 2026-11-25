@@ -53,7 +53,8 @@ export interface AdvisorChatPanelProps {
     | undefined
   readonly chatError?: string | null | undefined
   readonly basisMode?: boolean | undefined
-  readonly onSendMessage: (text: string, options?: ChatSendOptions) => Promise<void> | void
+  /** Resolves `false` when the message did not reach the owl: the composer keeps the text (WEB-14). */
+  readonly onSendMessage: (text: string, options?: ChatSendOptions) => Promise<boolean | void> | boolean | void
   /** On-device dictation (#451 slice 5); the browser engine unless a test passes its own. */
   readonly dictationEngine?: DictationEngine | undefined
   /** The plan of the current or last answer (#451 slice 6). */

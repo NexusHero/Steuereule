@@ -11,6 +11,7 @@ import type { AssessmentResponseDto } from '@steuereule/api-client'
 import { createAppI18n } from '../../i18n/app-i18n'
 import { AssessmentScreen } from './AssessmentScreen'
 import { server } from '../../test-msw-server'
+import { expectFailsClosed, failEveryRequest } from '../../test-every-query-fails'
 
 const URL_BESCHEID = '*/v1/steuerjahre/2026/bescheid'
 
@@ -171,7 +172,7 @@ describe('AssessmentScreen deadline, Abgleich and status', () => {
   it('says the deadline has expired', async () => {
     serve(base({ frist: { assessmentDate: '2026-01-10', deadlineEnd: '2026-02-10', remainingDays: -4, running: false } }))
     renderScreen()
-    expect(await screen.findByText('Die Einspruchsfrist (bis 2026-02-10) ist abgelaufen.')).toBeTruthy()
+    expect(await screen.findByText('Die Einspruchsfrist (bis 10.02.2026) ist abgelaufen.')).toBeTruthy()
   })
 
   it('is honest that the Abgleich is provisional while the calculation is incomplete, and lists a positive deviation', async () => {
@@ -259,5 +260,59 @@ describe('AssessmentScreen filed Einspruch', () => {
     fireEvent.change(await screen.findByTestId('bescheid-einspruch-datum'), { target: { value: '12' } })
     fireEvent.click(screen.getByTestId('bescheid-einspruch-grund-beleg-nicht-beruecksichtigt'))
     await waitFor(() => expect(bodies).toEqual([{ reason: 'beleg-nicht-beruecksichtigt' }]))
+  })
+})
+
+describe('AssessmentScreen failed saves are visible (WEB-47, NC-09)', () => {
+  it('shows a failed save at once, keeps the typed value, and „Fertig“ warns once instead of leaving', async () => {
+    serve(base())
+    server.use(http.put(`${URL_BESCHEID}/feld/einnahmen`, () => HttpResponse.json({ statusCode: 500, message: 'Internal server error' }, { status: 500 })))
+    const onDone = vi.fn()
+    renderScreen({ onDone })
+    const field = await screen.findByTestId('bescheid-feld-einnahmen')
+    fireEvent.change(field, { target: { value: '40.000' } })
+    fireEvent.blur(field)
+    expect(await screen.findByTestId('speichern-fehlgeschlagen')).toBeTruthy()
+    expect(screen.getByTestId('speichern-fehlgeschlagen').textContent).toContain('Bei uns ist gerade etwas schiefgelaufen.')
+    expect((screen.getByTestId('bescheid-feld-einnahmen') as HTMLInputElement).value).toBe('40000')
+    fireEvent.click(screen.getByTestId('bescheid-fertig'))
+    expect(await screen.findByTestId('bescheid-ungespeichert')).toBeTruthy()
+    expect(onDone).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByTestId('bescheid-fertig'))
+    await waitFor(() => expect(onDone).toHaveBeenCalledOnce())
+  })
+
+  it('„Fertig“ waits for a save still on its way', async () => {
+    serve(base())
+    let release: () => void = () => {}
+    const held = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    const bodies: unknown[] = []
+    server.use(
+      http.put(`${URL_BESCHEID}/feld/einnahmen`, async ({ request }) => {
+        bodies.push(await request.json())
+        await held
+        return HttpResponse.json(base())
+      }),
+    )
+    const onDone = vi.fn()
+    renderScreen({ onDone })
+    const field = await screen.findByTestId('bescheid-feld-einnahmen')
+    fireEvent.change(field, { target: { value: '1.234' } })
+    fireEvent.blur(field)
+    await waitFor(() => expect(bodies).toEqual([{ kind: 'erfasst', value: 1234 }]))
+    fireEvent.click(screen.getByTestId('bescheid-fertig'))
+    expect(onDone).not.toHaveBeenCalled()
+    release()
+    await waitFor(() => expect(onDone).toHaveBeenCalledOnce())
+  })
+})
+
+describe('AssessmentScreen fails closed (WEB-28)', () => {
+  it('with every request failing it shows a failure and sends no write', async () => {
+    const failing = failEveryRequest()
+    renderScreen()
+    await expectFailsClosed(failing)
   })
 })

@@ -13,6 +13,7 @@ import { APP_NS } from '../../i18n/resources'
 import { captureReceipt, type CapturePhase, type CaptureReceiptOptions, type CaptureResult } from './captureReceipt'
 import { createHolderFromDocument, detailsFromDocument, takeNameIntoProfile, type NewHolderDetails } from './documentAssignment'
 import { outcomeOfFailure, outcomeOfParse, type ReceiptOutcome } from './receiptOutcome'
+import { apiFailureMessage } from '../../net/apiFailure'
 
 /** What one read of one Beleg left: its progress, its outcome, or the question whose it is (ADR-0092). */
 export interface ReceiptReadEntry {
@@ -69,7 +70,9 @@ export function useReceiptReader({ taxYear, context = {} }: { readonly taxYear: 
         ...(again ? { kind: again.kind, holder: again.holder } : { ...(ctx.kind !== undefined ? { kind: ctx.kind } : {}), ...(ctx.area !== undefined ? { area: ctx.area } : {}) }),
       }).catch((): CaptureResult => ({ ok: false, failure: 'parse_failed', receiptId: receiptId ?? null, processing: null }))
       if (!result.ok) {
-        patch(key, { phase: null, outcome: outcomeOfFailure(result.failure, result.processing), response: null })
+        // WEB-10 / WEB-11: a refused parse says why — a guest that reading needs an account, a 429 when to retry.
+        const error = result.error === undefined ? null : apiFailureMessage(result.error, tr as unknown as Parameters<typeof apiFailureMessage>[1], { 'account-required': tr('apiFehler.receiptParseAccountRequired') })
+        patch(key, { phase: null, outcome: outcomeOfFailure(result.failure, result.processing), response: null, error })
       } else {
         const question = result.response.assignment?.question ?? null
         const printed = question === null ? null : detailsFromDocument(printedPersonDetails(result.kind, result.rawText, question.printedName))
@@ -91,7 +94,7 @@ export function useReceiptReader({ taxYear, context = {} }: { readonly taxYear: 
       ])
       return result
     },
-    [patch, queryClient, taxYear],
+    [patch, queryClient, taxYear, tr],
   )
 
   const read = useCallback((key: string, file: File, receiptId?: string | null) => run(key, file, receiptId), [run])
@@ -124,10 +127,12 @@ export function useReceiptReader({ taxYear, context = {} }: { readonly taxYear: 
     async (key: string, takeName: boolean) => {
       const stored = files.current.get(key)
       if (stored === undefined) return
-      if (takeName && stored.printed !== null) await takeNameIntoProfile(stored.printed)
+      const taken = takeName && stored.printed !== null ? await takeNameIntoProfile(stored.printed) : 'kept'
       await run(key, stored.file, stored.receiptId, { holder: 'A', kind: stored.kind })
+      // WEB-32: a name that could not be written is said, not dropped silently (the Beleg is still assigned).
+      if (taken === 'failed') patch(key, { error: tr('belegZuordnung.binIch.nameFehler') })
     },
-    [run],
+    [patch, run, tr],
   )
 
   return { entries, read, choose, create, confirmSelf }

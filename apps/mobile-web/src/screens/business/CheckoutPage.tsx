@@ -4,9 +4,9 @@ import { useTranslation } from 'react-i18next'
 import { Button, useTheme } from '@steuereule/ui'
 import { useBusinessControllerCheckout, useUnlockControllerStatus } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
-import { BusinessFrame, Note, Section } from './BusinessFrame'
+import { BusinessFrame, Note, ProblemNote, Section } from './BusinessFrame'
 import type { ApiProblem } from './businessKit'
-import { attempt } from './useBusiness'
+import { attempt, useSingleFlight } from './useBusiness'
 import type { BusinessPageProps } from './BusinessScreen'
 import { checkoutRefusalOf, priceText } from '../shared/usePaymentConfirmation'
 import { LegalLinks } from '../legal/LegalLinks'
@@ -19,8 +19,10 @@ export function CheckoutPage({ taxYear, onBack, onOpenPage, openCheckout = (url)
   const checkout = useBusinessControllerCheckout()
   const status = useUnlockControllerStatus(taxYear)
   // WEB-16: the price the checkout charges, from the same Stripe price, before the redirect.
-  const price = priceText(status.data?.status === 200 ? status.data.data.price : null)
+  const price = priceText(status.data?.data.price ?? null)
   const [problem, setProblem] = useState<ApiProblem | null>(null)
+  // API-4: one checkout per tap, not one per double tap.
+  const flight = useSingleFlight()
   const refusal = problem === null ? null : checkoutRefusalOf(problem)
 
   async function pay() {
@@ -53,11 +55,9 @@ export function CheckoutPage({ taxYear, onBack, onOpenPage, openCheckout = (url)
             {tr('business.freischalten.nichtEingerichtet')}
           </Note>
         ) : problem !== null ? (
-          <Note tone="error" testID="business-speichern-fehler">
-            {problem.message ?? tr('business.speichernFehler')}
-          </Note>
+          <ProblemNote problem={problem} testID="business-speichern-fehler" />
         ) : null}
-        <Button onPress={() => void pay()} disabled={checkout.isPending || refusal === 'already-paid'} testID="checkout-selbststaendig">
+        <Button onPress={() => void flight.run(pay)} disabled={flight.busy || refusal === 'already-paid'} testID="checkout-selbststaendig">
           {tr('business.freischalten.knopf')}
         </Button>
         <BetaNotice />

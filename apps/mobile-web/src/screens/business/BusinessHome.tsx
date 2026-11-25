@@ -13,9 +13,9 @@ import {
 } from '@steuereule/api-client'
 import { Choice } from './Choice'
 import { APP_NS } from '../../i18n/resources'
-import { BusinessFrame, BusinessQueryState, Note, Section } from './BusinessFrame'
-import { personParams, plainEuro, type Person } from './businessKit'
-import { attempt, queryProblem, useRefreshBusiness } from './useBusiness'
+import { BusinessFrame, BusinessQueryState, Note, ProblemNote, Section } from './BusinessFrame'
+import { personParams, plainEuro, problemOf, type ApiProblem, type Person } from './businessKit'
+import { attempt, queryProblem, useRefreshBusiness, useSingleFlight } from './useBusiness'
 import type { BusinessPage, BusinessPageProps } from './BusinessScreen'
 
 interface LinkSpec {
@@ -56,23 +56,24 @@ export function BusinessHome({
   const { t: tr } = useTranslation(APP_NS)
   const params = personParams(person, business)
   const profile = useBusinessControllerProfile(taxYear, params)
-  const book = useBusinessControllerBook(taxYear, params, { query: { enabled: profile.data?.status === 200 } })
-  const closing = useBusinessControllerClosing(taxYear, params, { query: { enabled: profile.data?.status === 200, retry: false } })
-  const bank = useBusinessControllerBank(taxYear, params, { query: { enabled: profile.data?.status === 200 } })
+  const book = useBusinessControllerBook(taxYear, params, { query: { enabled: profile.isSuccess } })
+  const closing = useBusinessControllerClosing(taxYear, params, { query: { enabled: profile.isSuccess, retry: false } })
+  const bank = useBusinessControllerBank(taxYear, params, { query: { enabled: profile.isSuccess } })
   // A joint return keeps one business per spouse (`?person=`): the switch exists only for such a couple.
   const household = useLinkControllerGet(taxYear, { query: { enabled: onChangePerson !== undefined } })
-  const couple = household.data?.status === 200 && household.data.data.filingType === 'zusammen' && !household.data.data.personBHasOwnAccount
-  const partnerName = household.data?.status === 200 ? (household.data.data.personB?.firstName?.trim() || null) : null
+  const couple = household.data !== undefined && household.data.data.filingType === 'zusammen' && !household.data.data.personBHasOwnAccount
+  const partnerName = household.data?.data.personB?.firstName?.trim() || null
   // Several businesses of one person (ADR-0101 §22): a Freiberuf beside a Gewerbe, two Gewerbebetriebe.
-  const businesses = useBusinessControllerBusinesses(taxYear, personParams(person), { query: { enabled: onChangeBusiness !== undefined && profile.data?.status === 200 } })
+  const businesses = useBusinessControllerBusinesses(taxYear, personParams(person), { query: { enabled: onChangeBusiness !== undefined && profile.isSuccess } })
   const add = useBusinessControllerAddBusiness()
   const refresh = useRefreshBusiness(taxYear)
   const [newName, setNewName] = useState<string | null>(null)
-  const [addProblem, setAddProblem] = useState<string | null>(null)
+  const [addProblem, setAddProblem] = useState<ApiProblem | null>(null)
+  const flight = useSingleFlight()
   const problem = queryProblem(profile)
   const title = tr('business.titel', { year: taxYear })
 
-  if (profile.isPending || problem !== null || profile.data?.status !== 200) {
+  if (profile.isPending || problem !== null || profile.data === undefined) {
     return (
       <BusinessFrame title={title} onBack={onBack}>
         <BusinessQueryState pending={profile.isPending} problem={problem} onRetry={() => void profile.refetch()} />
@@ -81,8 +82,8 @@ export function BusinessHome({
   }
 
   const p = profile.data.data
-  const entries = book.data?.status === 200 ? book.data.data : null
-  const openBank = bank.data?.status === 200 ? bank.data.data.filter((x) => x.status === 'offen').length : 0
+  const entries = book.data?.data ?? null
+  const openBank = bank.data?.data.filter((x) => x.status === 'offen').length ?? 0
   const brokenChain = entries !== null && !entries.integrity.ok
   const kind = p.confirmedKind === null ? tr('business.status.nichtBestaetigt') : tr(`business.art.${p.confirmedKind}`)
   const mode = p.mode === 'euer' ? tr('business.modus.euer') : tr('business.modus.bilanz')
@@ -94,11 +95,27 @@ export function BusinessHome({
   if (openBank > 0) open.push({ key: 'bank', text: tr('business.offen.bank', { count: openBank }), page: 'bank' })
 
   // The one number of the area: the year's profit (or loss) as the book stands, in euros.
-  const closed = closing.data?.status === 200 ? closing.data.data : null
+  const closed = closing.data?.data ?? null
+  // NC-16: a link to a business that is not in the person's list (`?betrieb=99`) opens no phantom profile.
+  const knownBusinesses = businesses.data?.data
+  const unknownBusiness = business > 1 && knownBusinesses !== undefined && !knownBusinesses.some((b) => b.business === business)
+  if (unknownBusiness && onChangeBusiness) {
+    return (
+      <BusinessFrame title={title} onBack={onBack} testID="selbststaendig-uebersicht">
+        <Note tone="error" testID="business-betrieb-unbekannt">
+          {tr('business.betriebe.unbekannt', { nummer: business })}
+        </Note>
+        <Button onPress={() => onChangeBusiness(1)} testID="business-betrieb-zum-ersten">
+          {tr('business.betriebe.zumErsten')}
+        </Button>
+      </BusinessFrame>
+    )
+  }
   const profitEur = closed === null ? null : closed.euer !== null ? closed.euer.profit.profitEur : closed.bilanz !== null ? closed.bilanz.incomeStatement.profit / 100 : null
   const facts = { gewerbe: p.confirmedKind !== 'freiberuf', euer: p.mode === 'euer' }
   return (
     <BusinessFrame title={title} onBack={onBack} testID="selbststaendig-uebersicht">
+      {onChangePerson && household.isError ? <ProblemNote problem={problemOf(household.error)} testID="business-person-fehler" /> : null}
       {couple && onChangePerson ? (
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.space.s2, marginBottom: t.space.s3 }} testID="business-person">
           <Choice selected={person === 'A'} onPress={() => onChangePerson('A')} testID="business-person-A">
@@ -112,7 +129,7 @@ export function BusinessHome({
       {onChangeBusiness ? (
         <Section title={tr('business.betriebe.titel')} testID="business-betriebe">
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.space.s2 }}>
-            {(businesses.data?.status === 200 ? businesses.data.data : [{ business: 1, name: p.name, kind: p.confirmedKind, mode: p.mode }]).map((b) => (
+            {(knownBusinesses ?? [{ business: 1, name: p.name, kind: p.confirmedKind, mode: p.mode }]).map((b) => (
               <Choice key={b.business} selected={b.business === business} onPress={() => onChangeBusiness(b.business)} testID={`business-betrieb-${b.business}`}>
                 {b.name?.trim() || tr('business.betriebe.ohneName', { nummer: b.business })}
               </Choice>
@@ -123,29 +140,38 @@ export function BusinessHome({
               </Choice>
             ) : null}
           </View>
+          {/* NC-17: a failed list says so; the further businesses are not silently gone. */}
+          {businesses.isError ? (
+            <>
+              <ProblemNote problem={problemOf(businesses.error)} testID="business-betriebe-fehler" />
+              <Button variant="ghost" onPress={() => void businesses.refetch()} testID="business-betriebe-erneut">
+                {tr('apiFehler.retry')}
+              </Button>
+            </>
+          ) : null}
           {newName !== null ? (
             <View style={{ gap: t.space.s2, marginTop: t.space.s3 }}>
               <Feld label={tr('business.betriebe.name')}>
                 <Input value={newName} onChange={setNewName} accessibilityLabel={tr('business.betriebe.name')} testID="business-betrieb-name" />
               </Feld>
               <Button
-                disabled={newName.trim() === ''}
+                disabled={newName.trim() === '' || flight.busy}
                 onPress={() =>
-                  void (async () => {
+                  void flight.run(async () => {
                     setAddProblem(null)
                     const outcome = await attempt(() => add.mutateAsync({ jahr: taxYear, data: { name: newName.trim() }, ...(person === 'B' ? { params: { person: 'B' } } : {}) }))
-                    if (!outcome.ok) return setAddProblem(outcome.problem.message ?? tr('business.speichernFehler'))
+                    if (!outcome.ok) return setAddProblem(outcome.problem)
                     setNewName(null)
                     refresh()
                     const created = outcome.response.data as { readonly business?: number } | undefined
                     if (created?.business !== undefined) onChangeBusiness(created.business)
-                  })()
+                  })
                 }
                 testID="business-betrieb-anlegen"
               >
                 {tr('business.betriebe.anlegen')}
               </Button>
-              {addProblem !== null ? <Note tone="error">{addProblem}</Note> : null}
+              <ProblemNote problem={addProblem} />
             </View>
           ) : null}
         </Section>
@@ -160,8 +186,10 @@ export function BusinessHome({
           </Text>
         ) : null}
         <Text style={{ ...t.type.small, color: t.color.tinte2 }}>
-          {entries === null ? tr('business.status.buchLaedt') : tr('business.status.buchungen', { count: entries.entries.length })}
+          {entries !== null ? tr('business.status.buchungen', { count: entries.entries.length }) : book.isError ? '' : tr('business.status.buchLaedt')}
         </Text>
+        {book.isError ? <ProblemNote problem={problemOf(book.error)} testID="business-buch-fehler" /> : null}
+        {bank.isError ? <ProblemNote problem={problemOf(bank.error)} testID="business-bank-fehler" /> : null}
       </Section>
 
       <Section title={tr('business.offen.titel')} testID="business-offen">

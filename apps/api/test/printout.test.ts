@@ -13,7 +13,7 @@ import felder2024 from '../src/printout/felder-2024.json' with { type: 'json' }
 import felder2023 from '../src/printout/felder-2023.json' with { type: 'json' }
 import felder2022 from '../src/printout/felder-2022.json' with { type: 'json' }
 import manifest2024 from '../src/printout/vordrucke-2024.json' with { type: 'json' }
-import { FIELD_SETS, extractAcroFormWidgets, forYear, loadAcroFormTemplateBytes, renderForms, OverflowError, type FieldSet } from '../src/printout/form-renderer.js'
+import { FIELD_SETS, extractAcroFormWidgets, findOverflows, forYear, loadAcroFormTemplateBytes, renderForms, OverflowError, type FieldSet } from '../src/printout/form-renderer.js'
 
 const TEMPLATES = new URL('../assets/vordrucke/2025/', import.meta.url)
 const ACROFORM_TEMPLATES = new URL('../assets/vordrucke-acroform/2025/', import.meta.url)
@@ -1203,6 +1203,18 @@ describe('rendereVordrucke (real templates)', () => {
     await expect(renderForms(FIELD_SETS[2025]!, tooLong, { templatesDirectory: TEMPLATES })).rejects.toBeInstanceOf(
       OverflowError,
     )
+  })
+
+  it('names the same overflowing fields without rendering as the renderer refuses (API-6)', async () => {
+    const values = { ...printoutValues(FACTS).values, 'est1a.religion': 'VIEL ZU LANG FÜR DAS FELD', 'anlN.wegOrt': 'Beispielstadt-Nord, Industriegebiet Am Langen Graben, Halle 7, Tor 3, Hintereingang' }
+    const rendered = await renderForms(FIELD_SETS[2025]!, values, { templatesDirectory: TEMPLATES }).then(
+      () => [],
+      (error: unknown) => (error instanceof OverflowError ? error.fields : Promise.reject(error)),
+    )
+    expect(rendered.length).toBeGreaterThan(1)
+    expect(await findOverflows(FIELD_SETS[2025]!, values, { templatesDirectory: TEMPLATES })).toEqual(rendered)
+    expect(await findOverflows(FIELD_SETS[2025]!, printoutValues(FACTS).values, { templatesDirectory: TEMPLATES })).toEqual([])
+    await expect(findOverflows(FIELD_SETS[2025]!, { 'est1a.gibtsnicht': 'x' }, { templatesDirectory: TEMPLATES })).rejects.toThrow(/Unbekannte Feld-IDs/)
   })
 
   it('refuses an unknown field id (a typo must not vanish silently)', async () => {

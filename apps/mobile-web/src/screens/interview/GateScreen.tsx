@@ -4,7 +4,7 @@ import { Option, useTheme, type Breakpoint } from '@steuereule/ui'
 import { GATE_ACKNOWLEDGED, type GateId } from '@steuereule/core'
 import { APP_NS } from '../../i18n/resources'
 import { makeInterviewStyles } from './styles'
-import { PostErrorNotice, type PostErrorKind } from './PostErrorNotice'
+import { PostErrorNotice, type PostError } from './PostErrorNotice'
 
 interface GateScreenProps {
   readonly gateId: GateId
@@ -12,7 +12,7 @@ interface GateScreenProps {
   readonly onAcknowledge: (value: string) => void
   readonly onBack: () => void
   readonly bp: Breakpoint
-  readonly notice: PostErrorKind | null
+  readonly notice: PostError | null
 }
 
 export function GateScreen({ gateId, job, onAcknowledge, onBack, bp, notice }: GateScreenProps) {
@@ -33,7 +33,7 @@ function BusinessGate({
   readonly onAcknowledge: (value: string) => void
   readonly onBack: () => void
   readonly bp: Breakpoint
-  readonly notice: PostErrorKind | null
+  readonly notice: PostError | null
 }) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
@@ -42,7 +42,7 @@ function BusinessGate({
 
   return (
     <ScrollView contentContainerStyle={bp === 's' ? styles.gateScreen : styles.wideGateScreen} testID="screen-container">
-      <PostErrorNotice kind={notice} />
+      <PostErrorNotice notice={notice} />
       <Text style={styles.gateHeading}>{tr('interview.gewerbe.heading')}</Text>
       <Text style={styles.help}>{tr('interview.gewerbe.body1')}</Text>
       <Text style={styles.help}>{tr('interview.gewerbe.body2')}</Text>
@@ -67,7 +67,7 @@ function ChOnlyGate({
   readonly onAcknowledge: (value: string) => void
   readonly onBack: () => void
   readonly bp: Breakpoint
-  readonly notice: PostErrorKind | null
+  readonly notice: PostError | null
 }) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
@@ -75,7 +75,7 @@ function ChOnlyGate({
 
   return (
     <ScrollView contentContainerStyle={bp === 's' ? styles.gateScreen : styles.wideGateScreen} testID="screen-container">
-      <PostErrorNotice kind={notice} />
+      <PostErrorNotice notice={notice} />
       <Text style={styles.gateHeading}>{tr('interview.chOnly.heading')}</Text>
       <Text style={styles.help}>{tr('interview.chOnly.body1')}</Text>
       <Text style={styles.help}>{tr('interview.chOnly.body2')}</Text>

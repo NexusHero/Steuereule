@@ -47,22 +47,24 @@ export class AdvisorService {
 
   async getSession(userId: string, taxYear: number, conversationId?: string): Promise<AdvisorSessionResponseDto> {
     const conversation = await this.conversations.conversationFor(userId, taxYear, conversationId)
-    const [setting, cardsRes, history, conversations, notes] = await Promise.all([
+    // One round of independent reads (OPS-4): under load every sequential await waits its turn again.
+    const [setting, cardsRes, history, conversations, notes, allConversations, answeringIds, knownNames, situation] = await Promise.all([
       this.owlModeService.getSetting(userId),
       this.owlModeService.getCards(userId, taxYear),
       this.advisorRepo.listForConversation(conversation.id, userId),
       this.advisorRepo.listConversations(userId, taxYear),
       this.advisorRepo.listNotes(userId, taxYear),
+      this.advisorRepo.listAllConversations(userId),
+      this.advisorRepo.answeringConversationIds(userId, new Date(Date.now() - ANSWERING_WINDOW_MS)),
+      this.caseDigest.knownNamesForScrubbing(userId, taxYear),
+      this.notes.getSituation(userId),
+      this.auditService.append({
+        userId,
+        action: 'READ',
+        resource: 'berater_sitzung',
+      }),
     ])
-
-    await this.auditService.append({
-      userId,
-      action: 'READ',
-      resource: 'berater_sitzung',
-    })
-
-    const allConversations = await this.advisorRepo.listAllConversations(userId)
-    const answering = new Set(await this.advisorRepo.answeringConversationIds(userId, new Date(Date.now() - ANSWERING_WINDOW_MS)))
+    const answering = new Set(answeringIds)
     const openCount = cardsRes.cards.length
     const greeting =
       openCount > 0
@@ -76,9 +78,9 @@ export class AdvisorService {
       conversationId: conversation.id,
       conversations: conversations.map((c) => toConversationDto(c, answering.has(c.id))),
       projects: projectsOf(taxYear, allConversations, answering),
-      context: contextOf(conversation, history, await this.caseDigest.knownNamesForScrubbing(userId, taxYear)),
+      context: contextOf(conversation, history, knownNames),
       notes: notes.map(toNoteDto),
-      situation: await this.notes.getSituation(userId),
+      situation,
       messages: history.filter((m) => !m.meta?.replaced).map(toMessageDto),
       quickChips: [
         'Kanzlei-Endprüfung starten',

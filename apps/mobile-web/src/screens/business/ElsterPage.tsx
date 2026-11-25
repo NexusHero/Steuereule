@@ -9,7 +9,7 @@ import { useBusinessControllerElster, useBusinessControllerElsterForms, useUnloc
 import { APP_NS } from '../../i18n/resources'
 import { copyText } from '../../lib/clipboard'
 import { BusinessFrame, BusinessQueryState, Note, Section } from './BusinessFrame'
-import { personParams } from './businessKit'
+import { personParams, problemOf } from './businessKit'
 import { queryProblem } from './useBusiness'
 import type { BusinessPageProps } from './BusinessScreen'
 import { usePaymentConfirmation, type PaymentPhase } from '../shared/usePaymentConfirmation'
@@ -70,14 +70,14 @@ export function ElsterPage({ taxYear, person, business = 1, onBack, onOpenPage, 
   const [chosen, setChosen] = useState<string | null>(null)
   const [copied, setCopied] = useState<string | null>(null)
   const list = useBusinessControllerElsterForms(taxYear, personParams(person, business))
-  const entries = list.data?.status === 200 ? list.data.data.forms : []
+  const entries = list.data?.data.forms ?? []
   const entry = entries.find((e) => entryKey(e) === chosen) ?? entries[0]
   const form = entry?.form ?? 'anlage-euer'
   const query = useBusinessControllerElster(taxYear, form, { ...personParams(person, business), ...(entry?.instance ? { instanz: entry.instance.id } : {}) }, { query: { enabled: entry !== undefined } })
   const [showRest, setShowRest] = useState(false)
   // Only the return trip needs the unlock status: it decides between "being confirmed" and "paid" (WEB-35).
   const status = useUnlockControllerStatus(taxYear, { query: { enabled: payment !== undefined } })
-  const unlocked = status.data?.status === 200 ? status.data.data.status === 'freigeschaltet' : undefined
+  const unlocked = status.data === undefined ? undefined : status.data.data.status === 'freigeschaltet'
   const { phase, recheck } = usePaymentConfirmation({ outcome: payment, unlocked, refetch: status.refetch, ...confirmTiming })
   const refetchList = list.refetch
   // Once the payment is confirmed the help is read again: it answered 402 before.
@@ -112,7 +112,7 @@ export function ElsterPage({ taxYear, person, business = 1, onBack, onOpenPage, 
       </View>
       <PaymentNote phase={phase} year={taxYear} onRecheck={recheck} />
       {/* Unconfirmed values are no values to type in (MCP-24): the return's forms wait for „Prüfen & bestätigen“. */}
-      {list.data?.status === 200 && (list.data.data.unconfirmed ?? []).length > 0 ? <Note testID="elster-unbestaetigt">{tr('business.elster.unbestaetigt')}</Note> : null}
+      {(list.data?.data.unconfirmed ?? []).length > 0 ? <Note testID="elster-unbestaetigt">{tr('business.elster.unbestaetigt')}</Note> : null}
       {children}
     </BusinessFrame>
   )
@@ -142,7 +142,7 @@ export function ElsterPage({ taxYear, person, business = 1, onBack, onOpenPage, 
   }
   if (query.isPending) return frame(<BusinessQueryState pending problem={null} onRetry={() => undefined} />)
   const problem = queryProblem(query)
-  if (problem !== null || query.data?.status !== 200) return frame(<BusinessQueryState pending={false} problem={problem ?? { status: 0, code: null, message: null }} onRetry={() => void query.refetch()} />)
+  if (problem !== null || query.data === undefined) return frame(<BusinessQueryState pending={false} problem={problem ?? problemOf(undefined)} onRetry={() => void query.refetch()} />)
 
   const help = query.data.data
   if (help.status === 'not_published') {

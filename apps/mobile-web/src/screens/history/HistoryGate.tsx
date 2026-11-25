@@ -4,7 +4,8 @@ import { useTranslation } from 'react-i18next'
 import { Button, useBreakpoint, useTheme, type UiTheme } from '@steuereule/ui'
 import { useYearHistoryControllerGet, type YearHistoryResponseDto } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
-import { ErrorState, LoadingState } from '../shared/ScreenState'
+import { LoadFailedState, LoadingState } from '../shared/ScreenState'
+import { classifyApiFailure } from '../../net/apiFailure'
 import { historyStyles } from './historyStyles'
 
 export interface HistoryGateProps {
@@ -23,9 +24,10 @@ export function HistoryGate({ isGuest, onRegister, onLogin, children }: HistoryG
 
   if (isGuest) return <GuestState onRegister={onRegister} onLogin={onLogin} />
   if (query.isPending) return <LoadingState bp={bp} label={tr('verlauf.laden')} />
-  if (!query.isError && query.data.status === 401) return <GuestState onRegister={onRegister} onLogin={onLogin} />
-  if (query.isError || query.data.status !== 200) {
-    return <ErrorState bp={bp} heading={tr('verlauf.fehler.titel')} message={tr('verlauf.fehler.text')} retryLabel={tr('verlauf.fehler.erneut')} onRetry={() => void query.refetch()} testID="verlauf-fehler" />
+  if (query.isError) {
+    // A guest's 401 (ACCOUNT_REQUIRED) is the guest state; a lapsed session is handled centrally (WEB-24).
+    if (classifyApiFailure(query.error).kind === 'account-required') return <GuestState onRegister={onRegister} onLogin={onLogin} />
+    return <LoadFailedState bp={bp} error={query.error} onRetry={() => void query.refetch()} testID="verlauf-fehler" />
   }
   return <>{children(query.data.data)}</>
 }

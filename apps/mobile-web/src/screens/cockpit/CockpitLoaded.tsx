@@ -31,7 +31,7 @@ export function CockpitLoaded(props: CockpitLoadedProps) {
   const { openItems, status } = summary
   const hasOpenItems = openItems > 0
   const estimateQuery = useTaxEstimateControllerGet(year)
-  const estimate: TaxEstimateDto | null = estimateQuery.data?.status === 200 ? estimateQuery.data.data : null
+  const estimate: TaxEstimateDto | null = estimateQuery.data?.data ?? null
   // UX review H1: as soon as there is a range, the refund is the headline and the income the detail.
   const refundFirst = estimate?.kind === 'spanne'
 

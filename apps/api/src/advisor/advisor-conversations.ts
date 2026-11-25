@@ -7,7 +7,8 @@ import {
   summaryCut,
   transcriptForSummary,
 } from '@steuereule/core'
-import { Inject, Injectable } from '@nestjs/common'
+import { Inject, Injectable, Optional } from '@nestjs/common'
+import { ModelCallTiers } from './model-call-tier.js'
 import { AuditService } from '../audit/audit.service.js'
 import { ADVISOR_ENGINE } from '../ki/advisor-engine.token.js'
 import { ConflictError, NotFoundError } from '../common/domain-error.js'
@@ -25,6 +26,8 @@ export class AdvisorConversations {
     @Inject(ADVISOR_REPOSITORY) private readonly advisorRepo: AdvisorRepository,
     @Inject(AuditService) private readonly auditService: AuditService,
     @Inject(AdvisorCaseDigest) private readonly caseDigest: Pick<AdvisorCaseDigest, 'knownNamesForScrubbing'>,
+    /** Absent in tests that build it without: every summary is then a free call (H2-40). */
+    @Optional() @Inject(ModelCallTiers) private readonly callTiers?: Pick<ModelCallTiers, 'tierOf'>,
   ) {}
 
   /**
@@ -103,7 +106,7 @@ export class AdvisorConversations {
     if (cut === 0) return conversation
     const older = sources.slice(0, cut)
     const fromModel = this.advisorEngine?.summarize
-      ? await this.advisorEngine.summarize({ transcript: transcriptForSummary(older), previousSummary: conversation.summary, signal })
+      ? await this.advisorEngine.summarize({ transcript: transcriptForSummary(older), previousSummary: conversation.summary, signal, callTier: (await this.callTiers?.tierOf(userId, taxYear)) ?? 'free' })
       : null
     const summary = scrubUserMessagePii(fromModel ?? fallbackSummary(older, conversation.summary), knownNames)
     const updated = await this.advisorRepo.updateConversation(conversation.id, userId, { summary, summaryUntil: live[cut - 1]!.createdAt })

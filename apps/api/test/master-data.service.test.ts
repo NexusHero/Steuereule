@@ -86,10 +86,25 @@ describe('StammdatenService', () => {
     expect(repository.rows.get('u1')!.religionEinwilligungAm).toBeNull()
   })
 
-  it('PUT replaces: an omitted field is null afterwards, never a stale value; ledig carries no "seit" date', async () => {
-    await service.save('u1', { ...COMPLETE, telefon: '0351 1', familienstandSeit: '2020-01-01' })
-    const status = await service.save('u1', COMPLETE)
-    expect(status.telefon).toBeNull()
+  it('WEB-29: an omitted field keeps its stored value; an explicit null or blank clears it', async () => {
+    await service.save('u1', { ...COMPLETE, telefon: '0351 1', iban: 'DE89370400440532013000' })
+
+    const kept = await service.save('u1', { beruf: 'Ingenieurin' })
+    expect(kept).toMatchObject({ telefon: '0351 1', iban: 'DE89370400440532013000', religion: 'VD', beruf: 'Ingenieurin' })
+
+    const cleared = await service.save('u1', { telefon: null, iban: '  ' })
+    expect(cleared).toMatchObject({ telefon: null, iban: null, beruf: 'Ingenieurin' })
+  })
+
+  it('WEB-29: a save that leaves the religion out keeps it and its consent date', async () => {
+    await service.save('u1', COMPLETE, new Date('2026-01-01'))
+    await service.save('u1', { beruf: 'Lehrerin' }, new Date('2026-02-01'))
+    expect(repository.rows.get('u1')).toMatchObject({ religion: 'VD', religionEinwilligungAm: new Date('2026-01-01') })
+  })
+
+  it('ledig carries no "seit" date, also when only the status changes', async () => {
+    await service.save('u1', { ...COMPLETE, familienstand: 'verheiratet', familienstandSeit: '2020-01-01' })
+    const status = await service.save('u1', { familienstand: 'ledig' })
     expect(status.familienstandSeit).toBeNull()
   })
 

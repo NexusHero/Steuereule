@@ -24,6 +24,7 @@ import {
 } from '@steuereule/core'
 import { getTaxEstimateControllerGetQueryKey, taxEstimateControllerGet } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
+import { useApiFailureMessage } from '../../net/apiFailure'
 import { QUESTION_COPY } from '../interview/QuestionScreen'
 import { StromFields, type FieldCopy } from './StromFields'
 import { useStromSave, type SaveResult } from './useStromSave'
@@ -74,10 +75,13 @@ function useBasisCopy(taxYear: number, answers: Answers): FieldCopy {
 function SaveNotice({ result }: { readonly result: SaveResult | null }) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
+  const failureMessage = useApiFailureMessage()
   if (result === null || result === 'ok') return null
+  const text =
+    result === 'conflict' ? tr('strom.konflikt') : result === 'network' ? tr('strom.netzwerk') : `${tr('apiFehler.saveHeading')} ${failureMessage(result.error)} ${tr('apiFehler.saveKept')}`
   return (
-    <Text style={{ ...t.type.small, color: t.color.warn, marginBottom: t.space.s3 }} accessibilityLiveRegion="polite" testID="strom-speicherfehler">
-      {tr(result === 'conflict' ? 'strom.konflikt' : 'strom.netzwerk')}
+    <Text style={{ ...t.type.small, color: t.color.warn, marginBottom: t.space.s3 }} accessibilityLiveRegion="polite" accessibilityRole="alert" testID="strom-speicherfehler">
+      {text}
     </Text>
   )
 }
@@ -282,7 +286,7 @@ export function TopicPage({ taxYear, stored, prior, topic, slug, onSaved }: Topi
         queryFn: () => taxEstimateControllerGet(taxYear),
         staleTime: 0,
       })
-      return response.status === 200 ? estimateMidpoint(response.data) : null
+      return estimateMidpoint(response.data)
     } catch {
       return null
     }

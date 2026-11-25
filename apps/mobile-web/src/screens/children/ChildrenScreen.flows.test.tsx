@@ -50,7 +50,7 @@ describe('KinderScreen (connected)', () => {
       }),
     )
     renderConnected()
-    expect(await screen.findByText('Das hat nicht geklappt.')).toBeTruthy()
+    expect(await screen.findByText('Das konnte nicht geladen werden.')).toBeTruthy()
     fireEvent.click(screen.getByText('Noch mal versuchen'))
     expect(await screen.findByText('1. Lina Muster')).toBeTruthy()
   })

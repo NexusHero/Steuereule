@@ -11,6 +11,7 @@ export class RentalRepairDto {
   @ApiPropertyOptional({ type: String, nullable: true, example: '2026-05-02', description: 'When the work was done (ISO yyyy-mm-dd), within the tax year; absent or null when not known.' })
   @IsOptional()
   @IsString()
+  @MaxLength(10)
   datum?: string | null
 }
 
@@ -73,6 +74,7 @@ export class PutRentalAddressDto {
   @ApiPropertyOptional({ type: String, nullable: true, example: '2024-04-01', description: 'Date of purchase (ISO yyyy-mm-dd), not after the tax year; null clears it (ADR-0099 §8).' })
   @IsOptional()
   @IsString()
+  @MaxLength(10)
   anschaffungsdatum?: string | null
 
   @ApiPropertyOptional({ type: [RentalRepairDto], description: 'The Erhaltungsaufwand of this year, replacing the stored list; [] clears it (§ 6 Abs. 1 Nr. 1a EStG, ADR-0099 §8).' })

@@ -68,8 +68,6 @@ export type masterDataControllerReadResponseError = (masterDataControllerReadRes
   headers: Headers;
 };
 
-export type masterDataControllerReadResponse = (masterDataControllerReadResponseSuccess | masterDataControllerReadResponseError)
-
 export const getMasterDataControllerReadUrl = () => {
 
 
@@ -78,9 +76,9 @@ export const getMasterDataControllerReadUrl = () => {
   return `/v1/stammdaten`
 }
 
-export const masterDataControllerRead = async ( options?: RequestInit): Promise<masterDataControllerReadResponse> => {
+export const masterDataControllerRead = async ( options?: RequestInit): Promise<masterDataControllerReadResponseSuccess> => {
 
-  return httpClient<masterDataControllerReadResponse>(getMasterDataControllerReadUrl(),
+  return httpClient<masterDataControllerReadResponseSuccess>(getMasterDataControllerReadUrl(),
   {
     ...options,
     method: 'GET'
@@ -187,8 +185,6 @@ export type masterDataControllerSaveResponseError = (masterDataControllerSaveRes
   headers: Headers;
 };
 
-export type masterDataControllerSaveResponse = (masterDataControllerSaveResponseSuccess | masterDataControllerSaveResponseError)
-
 export const getMasterDataControllerSaveUrl = () => {
 
 
@@ -197,9 +193,9 @@ export const getMasterDataControllerSaveUrl = () => {
   return `/v1/stammdaten`
 }
 
-export const masterDataControllerSave = async (putMasterDataDto: PutMasterDataDto, options?: RequestInit): Promise<masterDataControllerSaveResponse> => {
+export const masterDataControllerSave = async (putMasterDataDto: PutMasterDataDto, options?: RequestInit): Promise<masterDataControllerSaveResponseSuccess> => {
 
-  return httpClient<masterDataControllerSaveResponse>(getMasterDataControllerSaveUrl(),
+  return httpClient<masterDataControllerSaveResponseSuccess>(getMasterDataControllerSaveUrl(),
   {
     ...options,
     method: 'PUT',

@@ -200,7 +200,8 @@ describe('reading a receipt for the chat', () => {
     server.use(http.post('*/v1/belege/parse', () => HttpResponse.json({ message: 'zu gross' }, { status: 413 })))
     mount()
     click('parse')
-    await waitFor(() => expect(screen.getByTestId('error').textContent).toContain('413'))
+    // WEB-10: the limit in words, never "HTTP 413".
+    await waitFor(() => expect(screen.getByTestId('error').textContent).toBe('Die Datei ist zu groß. Erlaubt sind höchstens 10 MB.'))
     click('clear-error')
     await waitFor(() => expect(screen.getByTestId('error').textContent).toBe('none'))
     server.use(http.post('*/v1/belege/parse', () => HttpResponse.error()))

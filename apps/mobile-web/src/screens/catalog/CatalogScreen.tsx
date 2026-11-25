@@ -25,10 +25,13 @@ import {
 } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
 import { integerFrom } from '../shared/integer'
+import { wholeEurosOrUnreadable } from '../shared/amountField'
+import { useLeaveGuard } from '../shared/leaveGuard'
+import { classifyApiFailure, useApiFailureMessage } from '../../net/apiFailure'
 import { MaskLessonHint } from '../history/MaskLessonHint'
 import { CURRENT_TAX_YEAR } from '../../config/taxYear'
 import type { CatalogEntryParam } from '../../navigation/routes'
-import { LoadingState, ErrorState } from '../shared/ScreenState'
+import { LoadingState, LoadFailedState } from '../shared/ScreenState'
 import { BackButton, BackButtonSpacer } from '../shared/BackButton'
 import { GlossaryHint } from '../shared/GlossaryHint'
 import { triggerSaveErrorHaptic } from '../shared/saveFeedback'
@@ -84,13 +87,17 @@ const PERSONAL_ENTRIES: readonly CatalogScreenEntry[] = ['lebenslagen', 'sondera
 export function CatalogScreen(props: CatalogScreenProps) {
   const { entry, taxYear = CURRENT_TAX_YEAR } = props
   const t = useTheme()
+  const bp = useBreakpoint()
   const { t: tr } = useTranslation(APP_NS)
   const personal = PERSONAL_ENTRIES.includes(entry)
   const link = useLinkControllerGet(taxYear, { query: { enabled: personal, retry: false } })
-  const coupling = link.data?.status === 200 ? link.data.data : null
+  const [person, setPerson] = useState<'A' | 'B'>('A')
+  // NM-15: whose answers these are depends on the link; a failed link would file the partner's answers under A.
+  if (personal && link.isPending) return <LoadingState bp={bp} label={tr('katalog.loading')} />
+  if (personal && link.isError) return <LoadFailedState bp={bp} error={link.error} onRetry={() => void link.refetch()} />
+  const coupling = link.data?.data ?? null
   const partnerFirstName = coupling?.personB?.firstName?.trim() || null
   const partnerName = coupling?.filingType === 'zusammen' && coupling.personBHasOwnAccount !== true ? partnerFirstName ?? tr('katalog.fuerWen.partnerFallback') : null
-  const [person, setPerson] = useState<'A' | 'B'>('A')
   if (!personal || partnerName === null) return <CatalogFlow {...props} person="A" />
   return (
     <>
@@ -129,7 +136,8 @@ function CatalogFlow({
   const interviewQuery = useInterviewControllerGetInterview(taxYear, params)
   // #452 slice 4: last year's amounts (Spenden, Riester), offered on a click.
   const priorQuery = useInterviewControllerGetInterview(taxYear - 1, params, { query: { retry: false } })
-  const priorAnswers = priorQuery.data?.status === 200 ? (priorQuery.data.data.answers as Answers) : {}
+  // Last year's amounts only offer a value; when they fail to load, nothing is offered.
+  const priorAnswers = (priorQuery.data?.data.answers ?? {}) as Answers
   const postAnswer = useInterviewControllerPostAnswer()
 
   const [answers, setAnswers] = useState<Answers>({})
@@ -138,10 +146,32 @@ function CatalogFlow({
   const [conflict, setConflict] = useState(false)
   const [pendingCount, setPendingCount] = useState(0)
   const mutationQueue = useRef<Promise<void>>(Promise.resolve())
+  // WEB-41: a refused or lost answer is said, not taken back silently.
+  const [saveError, setSaveError] = useState<string | null>(null)
+  const failureMessage = useApiFailureMessage()
+  // The stored answers the page was opened with: a revisited amount question shows its stored amount (NM-16).
+  const [storedAnswers, setStoredAnswers] = useState<Answers>({})
+  const inFlight = useRef(0)
+  const lastFailed = useRef(false)
+  const leaveWarned = useRef(false)
+  // WEB-40: closing the sheet while an answer is on its way waits for it, and stays once when it failed.
+  useLeaveGuard((leave) => {
+    const leaveOrStay = () => {
+      if (lastFailed.current && !leaveWarned.current) {
+        leaveWarned.current = true
+        return
+      }
+      leaveWarned.current = false
+      leave()
+    }
+    if (inFlight.current === 0) leaveOrStay()
+    else void mutationQueue.current.then(leaveOrStay)
+  })
 
   useEffect(() => {
-    if (!seeded && interviewQuery.isFetchedAfterMount && interviewQuery.data?.status === 200) {
+    if (!seeded && interviewQuery.isFetchedAfterMount && interviewQuery.isSuccess) {
       const loaded = interviewQuery.data.data.answers as Answers
+      setStoredAnswers(loaded)
       const walked = walkedStepsFor(ENTRIES[entry], loaded)
       const focusIndex = revisit && focusStep !== undefined ? walked.indexOf(focusStep) : -1
       if (focusIndex !== -1 && focusStep !== undefined) {
@@ -180,53 +210,51 @@ function CatalogFlow({
   if (interviewQuery.isPending) {
     return <LoadingState bp={bp} label={tr('katalog.loading')} />
   }
-  if (interviewQuery.isError || interviewQuery.data.status !== 200) {
-    return (
-      <ErrorState
-        bp={bp}
-        heading={tr('katalog.loadError.heading')}
-        message={tr('katalog.loadError.message')}
-        retryLabel={tr('katalog.loadError.retry')}
-        onRetry={() => void interviewQuery.refetch()}
-      />
-    )
-  }
+  if (interviewQuery.isError) return <LoadFailedState bp={bp} error={interviewQuery.error} onRetry={() => void interviewQuery.refetch()} />
   if (!seeded || current === null) {
     return <LoadingState bp={bp} label={tr('katalog.loading')} />
   }
 
   function answer(stepId: EntryStepId, value: string) {
     setConflict(false)
+    setSaveError(null)
     const previousAnswers = answers
     const previousHistory = history
     setHistory((h) => [...h, stepId])
     setAnswers((a) => ({ ...a, [stepId]: value }))
     setPendingCount((c) => c + 1)
+    inFlight.current += 1
 
     mutationQueue.current = mutationQueue.current
       .then(async () => {
         try {
-          const response = await postAnswer.mutateAsync({ jahr: taxYear, data: { questionId: stepId, value }, ...(person === 'B' ? { params: { person: 'B' as const } } : {}) })
-          if (response.status === 200) {
-            void queryClient.invalidateQueries({ queryKey: getCockpitControllerGetCockpitSummaryQueryKey(taxYear) })
-            void queryClient.invalidateQueries({ queryKey: getTaxEstimateControllerGetQueryKey(taxYear) })
-            void queryClient.invalidateQueries({ queryKey: getInterviewControllerGetInterviewQueryKey(taxYear), exact: true })
-            void queryClient.invalidateQueries({
-              queryKey: getInterviewControllerGetInterviewQueryKey(taxYear, params),
-              refetchType: 'none',
-            })
+          await postAnswer.mutateAsync({ jahr: taxYear, data: { questionId: stepId, value }, ...(person === 'B' ? { params: { person: 'B' as const } } : {}) })
+          lastFailed.current = false
+          void queryClient.invalidateQueries({ queryKey: getCockpitControllerGetCockpitSummaryQueryKey(taxYear) })
+          void queryClient.invalidateQueries({ queryKey: getTaxEstimateControllerGetQueryKey(taxYear) })
+          void queryClient.invalidateQueries({ queryKey: getInterviewControllerGetInterviewQueryKey(taxYear), exact: true })
+          void queryClient.invalidateQueries({
+            queryKey: getInterviewControllerGetInterviewQueryKey(taxYear, params),
+            refetchType: 'none',
+          })
+        } catch (error) {
+          triggerSaveErrorHaptic()
+          lastFailed.current = true
+          const failure = classifyApiFailure(error)
+          if (failure.kind === 'conflict' || failure.kind === 'validation') {
+            // The server and this page disagree about the answers: start again from the stored state.
+            setConflict(true)
+            setHistory([])
+            setSeeded(false)
+            void interviewQuery.refetch()
             return
           }
-          setConflict(true)
-          triggerSaveErrorHaptic()
-          setHistory([])
-          setSeeded(false)
-          void interviewQuery.refetch()
-        } catch {
-          triggerSaveErrorHaptic()
+          // NM-07: a 401, 429, 500 or a lost connection says what it is, and that the question is back.
           setAnswers(previousAnswers)
           setHistory(previousHistory)
+          setSaveError(`${failureMessage(error)} ${tr('katalog.antwortZurueck')}`)
         } finally {
+          inFlight.current -= 1
           setPendingCount((c) => c - 1)
         }
       })
@@ -262,7 +290,16 @@ function CatalogFlow({
         </Text>
       </View>
 
-      {conflict ? <Text style={styles.conflict}>{tr('katalog.conflict')}</Text> : null}
+      {conflict ? (
+        <Text style={styles.conflict} accessibilityRole="alert">
+          {tr('katalog.conflict')}
+        </Text>
+      ) : null}
+      {saveError !== null ? (
+        <Text style={styles.conflict} accessibilityRole="alert" testID="katalog-speichern-fehler">
+          {saveError}
+        </Text>
+      ) : null}
 
       {/* UX review H7: on the partner's side every question says whose answers these are. */}
       {person === 'B' && partnerName !== null ? (
@@ -290,6 +327,8 @@ function CatalogFlow({
         <IntegerFollowUp
           key={step}
           step={step}
+          whole={decl.form.max <= 999}
+          storedValue={storedAmount(storedAnswers[step])}
           onAnswer={(value) => answer(step, value)}
           priorYear={taxYear - 1}
           priorValue={PRIOR_YEAR_STEPS.has(step) ? priorAmount(priorAnswers[step]) : null}
@@ -302,6 +341,11 @@ function CatalogFlow({
 /** Amounts that rarely change and may be taken over from last year (#452 decision 8). */
 const PRIOR_YEAR_STEPS: ReadonlySet<EntryStepId> = new Set<EntryStepId>(['spenden-betrag', 'riester-betrag'])
 
+/** The stored answer of an amount question, shown when the page is revisited (NM-16). */
+function storedAmount(raw: string | undefined): string {
+  return raw === undefined || raw === AMOUNT_LATER || !/^\d+$/.test(raw) ? '' : raw
+}
+
 function priorAmount(raw: string | undefined): number | null {
   if (raw === undefined || raw === AMOUNT_LATER) return null
   const value = Number(raw)
@@ -310,11 +354,16 @@ function priorAmount(raw: string | undefined): number | null {
 
 function IntegerFollowUp({
   step,
+  whole = false,
+  storedValue = '',
   onAnswer,
   priorYear,
   priorValue = null,
 }: {
   readonly step: EntryStepId
+  /** A count (km, days): digits only. Otherwise a euro amount, typed the German way („1.200“). */
+  readonly whole?: boolean
+  readonly storedValue?: string
   readonly onAnswer: (value: string) => void
   readonly priorYear?: number
   readonly priorValue?: number | null
@@ -322,18 +371,24 @@ function IntegerFollowUp({
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const styles = makeStyles(t)
-  const [text, setText] = useState('')
+  const [text, setText] = useState(storedValue)
   const [takenOver, setTakenOver] = useState(false)
-  const rawValue = integerFrom(text)
+  const [unreadable, setUnreadable] = useState(false)
+  const parsed = whole ? (text.trim() === '' ? null : (integerFrom(text) ?? 'unreadable')) : wholeEurosOrUnreadable(text)
   const canEnterLater = LATER_ALLOWED_SET.has(step)
   // Leaving the field saves the amount (#443 AC 7: closing the sheet must not lose it); the button
   // and Enter save the same answer, so it is sent once.
   const sent = useRef(false)
 
   function submit() {
-    if (rawValue === null || sent.current) return
+    if (parsed === null || sent.current) return
+    // WEB-12: text the app cannot read is named, not silently ignored.
+    if (parsed === 'unreadable') {
+      setUnreadable(true)
+      return
+    }
     sent.current = true
-    onAnswer(String(rawValue))
+    onAnswer(String(parsed))
   }
 
   return (
@@ -363,6 +418,7 @@ function IntegerFollowUp({
         onChange={(next) => {
           setText(next)
           setTakenOver(false)
+          setUnreadable(false)
         }}
         placeholder={tr('katalog.amountPlaceholder')}
         onSubmit={submit}
@@ -370,7 +426,12 @@ function IntegerFollowUp({
         accessibilityLabel={`${tr(`katalog.questions.${step}`, { defaultValue: step })} (${tr('katalog.amountPlaceholder')})`}
         testID={`katalog-input-${step}`}
       />
-      <Button onPress={submit} disabled={rawValue === null} style={styles.weiter} testID={`katalog-submit-${step}`}>
+      {unreadable ? (
+        <Text style={styles.conflict} accessibilityRole="alert" testID={`katalog-unlesbar-${step}`}>
+          {tr(whole ? 'arbeitstage.zahlUnlesbar' : 'betrag.unlesbar')}
+        </Text>
+      ) : null}
+      <Button onPress={submit} disabled={parsed === null} style={styles.weiter} testID={`katalog-submit-${step}`}>
         {tr('katalog.weiter')}
       </Button>
       {canEnterLater ? (

@@ -43,16 +43,16 @@ export function useGlassFormPreview(year: number, activeFilter: string) {
   const expertMode = useExpertMode()
   const saveAcroField = useAcroFieldSaver({
     year,
-    masterData: masterDataQuery.data?.status === 200 ? masterDataQuery.data.data : null,
+    masterData: masterDataQuery.data?.data ?? null,
   })
   // What the printout would print, per copy (A/B, each child, each rental object), straight from the API.
   // Both views read it: the official form shows it in place, the structured rows name the same values.
   const liveValuesQuery = usePrintoutControllerLiveValues(year)
-  const liveForms = liveValuesQuery.data?.status === 200 ? liveValuesQuery.data.data.forms : []
+  const liveForms = liveValuesQuery.data?.data.forms ?? []
   // Without printed values (a year without Vordrucke, Person B's own account) the rows fall back to the masks' figures.
   const live: GlassLiveValues = { forms: liveForms, hasLive: liveForms.length > 0, settled: !liveValuesQuery.isPending }
 
-  const linkData = linkQuery.data?.status === 200 ? linkQuery.data.data : null
+  const linkData = linkQuery.data?.data ?? null
   const isJoint = linkData?.filingType === 'zusammen'
   const partnerName = linkData?.personB?.firstName?.trim() || 'Partner (Person B)'
 
@@ -66,27 +66,40 @@ export function useGlassFormPreview(year: number, activeFilter: string) {
     { query: { enabled: isJoint } },
   )
 
-  const provenanceByKey = provenanceIndex(confirmationQuery.data?.status === 200 ? confirmationQuery.data.data : null)
+  const provenanceByKey = provenanceIndex(confirmationQuery.data?.data ?? null)
   const prov = (screen: Screen, field?: string): string => {
     const found = field ? provenanceByKey.get(`${screen}.${field}`) : undefined
     return formatProvenanceBadge(found, tr)
   }
   const ctx: GlassRowContext = { year, isJoint, partnerName, tr: (key, options) => tr(key, options ?? {}), prov }
 
-  const md = masterDataQuery.data?.status === 200 ? masterDataQuery.data.data : null
-  const answers = (interviewQuery.data?.status === 200 ? interviewQuery.data.data.answers : {}) as Answers
-  const answersB = (interviewBQuery.data?.status === 200 ? interviewBQuery.data.data.answers : {}) as Answers
-  const lstb = lstbQuery.data?.status === 200 ? lstbQuery.data.data : null
-  const lstbB = lstbBQuery.data?.status === 200 ? lstbBQuery.data.data : null
-  const commute = commuteQuery.data?.status === 200 ? commuteQuery.data.data : null
-  const commuteB = commuteBQuery.data?.status === 200 ? commuteBQuery.data.data : null
-  const ch = chQuery.data?.status === 200 ? chQuery.data.data : null
-  const chB = chBQuery.data?.status === 200 ? chBQuery.data.data : null
-  const kinderData = childrenQuery.data?.status === 200 ? childrenQuery.data.data : null
-  const cap = capitalQuery.data?.status === 200 ? capitalQuery.data.data : null
-  const rental = rentalQuery.data?.status === 200 ? rentalQuery.data.data : null
-  const pension = pensionQuery.data?.status === 200 ? pensionQuery.data.data : null
-  const pensionB = pensionBQuery.data?.status === 200 ? pensionBQuery.data.data : null
+  const md = masterDataQuery.data?.data ?? null
+  const answers = (interviewQuery.data?.data.answers ?? {}) as Answers
+  const answersB = (interviewBQuery.data?.data.answers ?? {}) as Answers
+  const lstb = lstbQuery.data?.data ?? null
+  const lstbB = lstbBQuery.data?.data ?? null
+  const commute = commuteQuery.data?.data ?? null
+  const commuteB = commuteBQuery.data?.data ?? null
+  const ch = chQuery.data?.data ?? null
+  const chB = chBQuery.data?.data ?? null
+  const kinderData = childrenQuery.data?.data ?? null
+  const cap = capitalQuery.data?.data ?? null
+  const rental = rentalQuery.data?.data ?? null
+  const pension = pensionQuery.data?.data ?? null
+  const pensionB = pensionBQuery.data?.data ?? null
+
+  // C-32: a failed read leaves its rows empty; the preview says so and offers one retry of the failed reads.
+  const reads = [masterDataQuery, linkQuery, interviewQuery, lstbQuery, commuteQuery, chQuery, pensionQuery, capitalQuery, rentalQuery, childrenQuery, confirmationQuery, liveValuesQuery, lstbBQuery, commuteBQuery, chBQuery, pensionBQuery, interviewBQuery]
+  const failedReads = reads.filter((q) => q.isError)
+  const loadFailure =
+    failedReads.length === 0
+      ? null
+      : {
+          error: failedReads[0]?.error,
+          retry: () => {
+            for (const q of failedReads) void q.refetch()
+          },
+        }
 
   const sections: GlassFormSection[] = [
     est1aSection(md, linkData, answers, answersB, ctx),
@@ -101,6 +114,7 @@ export function useGlassFormPreview(year: number, activeFilter: string) {
   ].filter((section): section is GlassFormSection => section !== null)
 
   return {
+    loadFailure,
     liveForms,
     expertMode,
     saveAcroField,

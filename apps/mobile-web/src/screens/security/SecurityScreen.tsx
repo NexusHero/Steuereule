@@ -26,7 +26,7 @@ export function SecurityScreen({ onBack }: SecurityScreenProps) {
   const t = useTheme()
   const bp = useBreakpoint()
   const { t: tr } = useTranslation(APP_NS)
-  const { state: sessionState } = useAccountSession()
+  const { state: sessionState, retry: retrySession } = useAccountSession()
   const twoFactor = useTwoFactor()
   const passkey = usePasskey()
   const stepUp = useStepUp()
@@ -39,6 +39,8 @@ export function SecurityScreen({ onBack }: SecurityScreenProps) {
   const [passkeyError, setPasskeyError] = useState<string | null>(null)
   const [passkeyStatus, setPasskeyStatus] = useState<string | null>(null)
   const [passkeyBusy, setPasskeyBusy] = useState(false)
+  // NR-24: the list did not load — the pill must not say "Wird geladen …" for ever, and a retry is offered.
+  const [passkeyListFailed, setPasskeyListFailed] = useState(false)
 
   const twoFactorEnabled = sessionState.status === 'signed-in' ? readTwoFactorEnabled(sessionState.session) : false
   const styles = makeSecurityStyles(t)
@@ -48,8 +50,10 @@ export function SecurityScreen({ onBack }: SecurityScreenProps) {
     let cancelled = false
     void passkey.list().then((result) => {
       if (cancelled) return
-      if (typeof result === 'string') setPasskeyError(result)
-      else setPasskeys(result)
+      if (typeof result === 'string') {
+        setPasskeyError(result)
+        setPasskeyListFailed(true)
+      } else setPasskeys(result)
     })
     return () => {
       cancelled = true
@@ -59,8 +63,14 @@ export function SecurityScreen({ onBack }: SecurityScreenProps) {
 
   async function refreshPasskeys() {
     const result = await passkey.list()
-    if (typeof result === 'string') setPasskeyError(result)
-    else setPasskeys(result)
+    if (typeof result === 'string') {
+      setPasskeyError(result)
+      if (passkeys === null) setPasskeyListFailed(true)
+    } else {
+      setPasskeys(result)
+      setPasskeyListFailed(false)
+      setPasskeyError(null)
+    }
   }
 
   async function submitAddPasskey() {
@@ -157,7 +167,17 @@ export function SecurityScreen({ onBack }: SecurityScreenProps) {
 
       {sessionState.status === 'loading' ? (
         <ActivityIndicator size="large" color={t.color.tinte} accessibilityLabel={tr('sicherheit.loading')} />
-      ) : sessionState.status === 'unknown' || sessionState.status === 'signed-out' ? (
+      ) : sessionState.status === 'unknown' ? (
+        // NR-16: a session check that failed (offline/5xx) is not "only for a real account".
+        <Card>
+          <Text style={styles.sectionBody} accessibilityRole="alert" testID="sicherheit-sitzung-unbekannt">
+            {tr('sicherheit.sessionUnknown')}
+          </Text>
+          <Button variant="ghost" onPress={() => void retrySession()} testID="sicherheit-sitzung-erneut">
+            {tr('apiFehler.retry')}
+          </Button>
+        </Card>
+      ) : sessionState.status === 'signed-out' ? (
         <Card>
           <Text style={styles.sectionBody}>{tr('sicherheit.requiresAccount')}</Text>
         </Card>
@@ -238,15 +258,22 @@ export function SecurityScreen({ onBack }: SecurityScreenProps) {
           <Card style={styles.card}>
             <View style={styles.statusRow}>
               <Text style={styles.sectionTitle}>{tr('sicherheit.passkey.title')}</Text>
-              <Pill>{passkeys === null ? tr('sicherheit.passkey.loading') : tr('sicherheit.passkey.count', { count: passkeys.length })}</Pill>
+              {passkeyListFailed && passkeys === null ? null : (
+                <Pill>{passkeys === null ? tr('sicherheit.passkey.loading') : tr('sicherheit.passkey.count', { count: passkeys.length })}</Pill>
+              )}
             </View>
             <Text style={styles.sectionBody}>{tr('sicherheit.passkey.body')}</Text>
             <Text style={styles.sectionBody}>{tr('sicherheit.passkey.webOnly')}</Text>
 
             {passkeyError ? (
-              <Text style={styles.status} accessibilityLiveRegion="polite">
+              <Text style={styles.status} accessibilityLiveRegion="polite" {...(passkeyListFailed ? { accessibilityRole: 'alert' as const } : {})}>
                 {passkeyError}
               </Text>
+            ) : null}
+            {passkeyListFailed && passkeys === null ? (
+              <Button variant="ghost" onPress={() => void refreshPasskeys()} testID="passkey-liste-erneut">
+                {tr('apiFehler.retry')}
+              </Button>
             ) : null}
             {passkeyStatus ? (
               <Text style={styles.status} accessibilityLiveRegion="polite">
@@ -278,6 +305,17 @@ export function SecurityScreen({ onBack }: SecurityScreenProps) {
                 </Feld>
                 <Button onPress={() => void submitPasskeyPassword()} disabled={stage.busy || !password} testID="passkey-passwort-bestaetigen">
                   {stage.busy ? tr('sicherheit.busy') : tr('sicherheit.stepUp.confirm')}
+                </Button>
+                <Button
+                  variant="ghost"
+                  onPress={() => {
+                    setPassword('')
+                    setStage({ kind: 'idle' })
+                  }}
+                  disabled={stage.busy}
+                  testID="passkey-passwort-abbrechen"
+                >
+                  {tr('sicherheit.cancel')}
                 </Button>
               </View>
             ) : null}

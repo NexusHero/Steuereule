@@ -50,7 +50,7 @@ describe('CapitalScreen states', () => {
     server.use(http.get(CAPITAL_URL, () => (healthy ? HttpResponse.json(BASE, { status: 200 }) : HttpResponse.json(null, { status: 500 }))))
     renderCapital()
 
-    expect(await screen.findByText('Das hat nicht geklappt.')).toBeTruthy()
+    expect(await screen.findByText('Das konnte nicht geladen werden.')).toBeTruthy()
     healthy = true
     fireEvent.click(screen.getByText('Noch mal versuchen'))
 

@@ -76,12 +76,12 @@ describe('the profile', () => {
     expect(puts).toEqual([{ mode: 'bilanz' }, { chart: 'SKR04' }, { smallBusiness: true }, { vatMethod: 'soll' }, { confirmedKind: 'gewerbe' }])
   })
 
-  it('asks the § 148 AO exemption only with the Istversteuerung and keeps the other VAT facts (§ 20 Nr. 2 UStG)', async () => {
+  it('asks the § 148 AO exemption only with the Istversteuerung and sends only that VAT fact (§ 20 Nr. 2 UStG; the API merges)', async () => {
     useBusinessDefaults({ ...BASE_PROFILE, vatPeriodFacts: { extension: true } })
     const puts = recordPuts()
     renderBusiness('profil')
     fireEvent.click(await screen.findByTestId('profil-148-ja'))
-    await waitFor(() => expect(puts).toEqual([{ vatPeriodFacts: { extension: true, exemptFromBookkeeping: true } }]))
+    await waitFor(() => expect(puts).toEqual([{ vatPeriodFacts: { exemptFromBookkeeping: true } }]))
   })
 
   it('saves the start date once it is a full date, and clears it when emptied', async () => {
@@ -189,7 +189,7 @@ describe('the profile', () => {
       expect(await screen.findByTestId('profil-hebesatz-keiner')).toBeTruthy()
     })
 
-    it('saves a multiplier the user types, or none when the field is emptied or no number', async () => {
+    it('saves a multiplier the user types, none when the field is emptied, and refuses what is no number (WEB-46)', async () => {
       useBusinessDefaults({ ...BASE_PROFILE, confirmedKind: 'gewerbe', multiplierOverride: 380 })
       const puts = recordPuts()
       renderBusiness('profil')
@@ -205,8 +205,8 @@ describe('the profile', () => {
       await waitFor(() => expect(puts).toHaveLength(2))
       fireEvent.change(field, { target: { value: 'viel' } })
       fireEvent.blur(field)
-      await waitFor(() => expect(puts).toHaveLength(3))
-      expect(puts).toEqual([{ multiplierOverride: 450.5 }, { multiplierOverride: null }, { multiplierOverride: null }])
+      expect(await screen.findByText('Mindestens ein Betrag ist keine Zahl.')).toBeTruthy()
+      expect(puts).toEqual([{ multiplierOverride: 450.5 }, { multiplierOverride: null }])
     })
   })
 })
@@ -358,7 +358,7 @@ describe('Verluste', () => {
     await retryThenFind('verluste-seite')
   })
 
-  it('records the carried-forward loss, a second year\'s room and the carry-back, and keeps what the profile has', async () => {
+  it('records the carried-forward loss, a second year\'s room and the carry-back, each key on its own', async () => {
     useLosses(0, { ...BASE_PROFILE, lossFacts: { roomEur: [10, 20], carriedForwardEur: 5, carriedBackEur: 3 } })
     const puts = recordPuts()
     renderBusiness('verluste')
@@ -374,9 +374,10 @@ describe('Verluste', () => {
     fireEvent.change(back, { target: { value: '' } })
     fireEvent.blur(back)
     await waitFor(() => expect(puts).toHaveLength(3))
-    expect(puts[0]).toEqual({ lossFacts: { roomEur: [10, 20], carriedForwardEur: 1500.5, carriedBackEur: 3 } })
-    expect(puts[1]).toEqual({ lossFacts: { roomEur: [10, 300], carriedForwardEur: 5, carriedBackEur: 3 } })
-    expect(puts[2]).toEqual({ lossFacts: { roomEur: [10, 20], carriedForwardEur: 5, carriedBackEur: 0 } })
+    // WEB-30: only the changed key goes out; the API merges lossFacts key by key.
+    expect(puts[0]).toEqual({ lossFacts: { carriedForwardEur: 1500.5 } })
+    expect(puts[1]).toEqual({ lossFacts: { roomEur: [10, 300] } })
+    expect(puts[2]).toEqual({ lossFacts: { carriedBackEur: 0 } })
   })
 
   it('sends an emptied carry-forward as 0 and ignores what is no number', async () => {
@@ -466,13 +467,13 @@ describe('the export', () => {
     expect(onOpenPage).toHaveBeenCalledWith('freischalten')
   })
 
-  it('shows any other refusal of a download with its reason', async () => {
+  it('shows any other refusal of a download in the shared wording (WEB-44)', async () => {
     useDocs([])
     server.use(http.get(`${BASE_URL}/export/gobd`, () => refusal(500, 'Der Export ist ausgefallen.')))
     renderBusiness('export')
     fireEvent.click(await screen.findByTestId('gobd-export'))
     expect(await screen.findByTestId('business-speichern-fehler')).toBeTruthy()
-    expect(screen.getByText('Der Export ist ausgefallen.')).toBeTruthy()
+    expect(screen.getByText('Bei uns ist gerade etwas schiefgelaufen. Versuch es gleich noch mal.')).toBeTruthy()
   })
 })
 
@@ -620,6 +621,10 @@ describe('the partnership shares', () => {
     fireEvent.change(screen.getByTestId('beteiligung-gewinn'), { target: { value: '8000,5' } })
     fireEvent.click(screen.getByTestId('beteiligung-art-gewerbe'))
     fireEvent.change(screen.getByTestId('beteiligung-gewerbesteuer'), { target: { value: '90' } })
+    // NC-15: while the removal is on its way the list is not built on again from its stale state.
+    fireEvent.click(screen.getByTestId('beteiligung-hinzufuegen'))
+    await waitFor(() => expect(screen.getByTestId('beteiligung-hinzufuegen').getAttribute('aria-disabled')).not.toBe('true'))
+    expect(puts).toHaveLength(1)
     fireEvent.click(screen.getByTestId('beteiligung-hinzufuegen'))
     await waitFor(() => expect(puts).toHaveLength(2))
     expect(puts[0]).toEqual({ partnershipShares: [{ name: 'Zweite', kind: 'freiberuf', profitEur: 100 }] })
@@ -653,7 +658,8 @@ describe('the trade-tax inputs', () => {
     fireEvent.change(screen.getByTestId('gewerbedaten-otherDeductionsEur'), { target: { value: '12,5' } })
     fireEvent.click(screen.getByTestId('gewerbedaten-speichern'))
     expect(await screen.findByTestId('gewerbedaten-gespeichert')).toBeTruthy()
-    expect(puts[0]).toEqual({ tradeTaxInputs: { financing: {}, otherAdditionsEur: 10, otherDeductionsEur: 12.5 } })
+    // Only what changed goes out: the emptied field as null (removes it), the new one; the API merges.
+    expect(puts[0]).toEqual({ tradeTaxInputs: { einheitswertEur: null, otherDeductionsEur: 12.5 } })
     recordPuts(409)
     fireEvent.click(screen.getByTestId('gewerbedaten-speichern'))
     expect(await screen.findByText('Das Profil ist gesperrt.')).toBeTruthy()

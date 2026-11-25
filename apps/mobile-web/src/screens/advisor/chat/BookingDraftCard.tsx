@@ -8,6 +8,7 @@ import { useBusinessControllerProfile } from '@steuereule/api-client'
 import { APP_NS } from '../../../i18n/resources'
 import type { makeStyles } from '../AdvisorChatPanel'
 import { useOptionalCopilotBridge } from '../CopilotBridgeProvider'
+import { advisorFailureText } from './advisorFailureText'
 
 export function BookingDraftCard({
   action,
@@ -34,7 +35,7 @@ export function BookingDraftCard({
   const year = parsed.ok ? Number(parsed.draft.date.slice(0, 4)) : 0
   // The chart decides what an account number means: the label comes from the book's own chart.
   const profile = useBusinessControllerProfile(year, undefined, { query: { enabled: parsed.ok, retry: false } })
-  const chart: ChartOfAccounts | null = profile.data?.status === 200 ? profile.data.data.chart : null
+  const chart: ChartOfAccounts | null = profile.data?.data.chart ?? null
 
   async function run(handler: ((actionId: string) => Promise<void> | void) | undefined) {
     if (!handler || busy) return
@@ -43,7 +44,8 @@ export function BookingDraftCard({
     try {
       await handler(action.actionId)
     } catch (error) {
-      setThrown(error instanceof Error && error.message !== '' ? error.message : tr('advisor.chat.applyFailed', 'Das hat nicht geklappt.'))
+      // NR-06: never the raw `error.message` ("Failed to fetch") — the API's own words or the shared wording.
+      setThrown(advisorFailureText(error, tr, { server: tr('advisor.chat.applyFailed'), unknown: tr('advisor.chat.applyFailed') }))
     } finally {
       setBusy(false)
     }

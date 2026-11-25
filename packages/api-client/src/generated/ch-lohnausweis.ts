@@ -81,8 +81,6 @@ export type chSalaryCertificateControllerGetResponseError = (chSalaryCertificate
   headers: Headers;
 };
 
-export type chSalaryCertificateControllerGetResponse = (chSalaryCertificateControllerGetResponseSuccess | chSalaryCertificateControllerGetResponseError)
-
 export const getChSalaryCertificateControllerGetUrl = (jahr: number,
     params?: ChSalaryCertificateControllerGetParams,) => {
   const normalizedParams = new URLSearchParams();
@@ -100,9 +98,9 @@ export const getChSalaryCertificateControllerGetUrl = (jahr: number,
 }
 
 export const chSalaryCertificateControllerGet = async (jahr: number,
-    params?: ChSalaryCertificateControllerGetParams, options?: RequestInit): Promise<chSalaryCertificateControllerGetResponse> => {
+    params?: ChSalaryCertificateControllerGetParams, options?: RequestInit): Promise<chSalaryCertificateControllerGetResponseSuccess> => {
 
-  return httpClient<chSalaryCertificateControllerGetResponse>(getChSalaryCertificateControllerGetUrl(jahr,params),
+  return httpClient<chSalaryCertificateControllerGetResponseSuccess>(getChSalaryCertificateControllerGetUrl(jahr,params),
   {
     ...options,
     method: 'GET'
@@ -210,8 +208,6 @@ export type chSalaryCertificateControllerSetFieldResponseError = (chSalaryCertif
   headers: Headers;
 };
 
-export type chSalaryCertificateControllerSetFieldResponse = (chSalaryCertificateControllerSetFieldResponseSuccess | chSalaryCertificateControllerSetFieldResponseError)
-
 export const getChSalaryCertificateControllerSetFieldUrl = (jahr: number,
     feld: string,
     params?: ChSalaryCertificateControllerSetFieldParams,) => {
@@ -232,9 +228,9 @@ export const getChSalaryCertificateControllerSetFieldUrl = (jahr: number,
 export const chSalaryCertificateControllerSetField = async (jahr: number,
     feld: string,
     putSalaryCertificateFieldDto: PutSalaryCertificateFieldDto,
-    params?: ChSalaryCertificateControllerSetFieldParams, options?: RequestInit): Promise<chSalaryCertificateControllerSetFieldResponse> => {
+    params?: ChSalaryCertificateControllerSetFieldParams, options?: RequestInit): Promise<chSalaryCertificateControllerSetFieldResponseSuccess> => {
 
-  return httpClient<chSalaryCertificateControllerSetFieldResponse>(getChSalaryCertificateControllerSetFieldUrl(jahr,feld,params),
+  return httpClient<chSalaryCertificateControllerSetFieldResponseSuccess>(getChSalaryCertificateControllerSetFieldUrl(jahr,feld,params),
   {
     ...options,
     method: 'PUT',
@@ -299,8 +295,6 @@ export type chSalaryCertificateControllerSetRemarksResponseSuccess = (chSalaryCe
 };
 ;
 
-export type chSalaryCertificateControllerSetRemarksResponse = (chSalaryCertificateControllerSetRemarksResponseSuccess)
-
 export const getChSalaryCertificateControllerSetRemarksUrl = (jahr: number,
     params?: ChSalaryCertificateControllerSetRemarksParams,) => {
   const normalizedParams = new URLSearchParams();
@@ -319,9 +313,9 @@ export const getChSalaryCertificateControllerSetRemarksUrl = (jahr: number,
 
 export const chSalaryCertificateControllerSetRemarks = async (jahr: number,
     putRemarksDto: PutRemarksDto,
-    params?: ChSalaryCertificateControllerSetRemarksParams, options?: RequestInit): Promise<chSalaryCertificateControllerSetRemarksResponse> => {
+    params?: ChSalaryCertificateControllerSetRemarksParams, options?: RequestInit): Promise<chSalaryCertificateControllerSetRemarksResponseSuccess> => {
 
-  return httpClient<chSalaryCertificateControllerSetRemarksResponse>(getChSalaryCertificateControllerSetRemarksUrl(jahr,params),
+  return httpClient<chSalaryCertificateControllerSetRemarksResponseSuccess>(getChSalaryCertificateControllerSetRemarksUrl(jahr,params),
   {
     ...options,
     method: 'PUT',
@@ -386,8 +380,6 @@ export type chSalaryCertificateControllerSetProvisionResponseSuccess = (chSalary
 };
 ;
 
-export type chSalaryCertificateControllerSetProvisionResponse = (chSalaryCertificateControllerSetProvisionResponseSuccess)
-
 export const getChSalaryCertificateControllerSetProvisionUrl = (jahr: number,
     params?: ChSalaryCertificateControllerSetProvisionParams,) => {
   const normalizedParams = new URLSearchParams();
@@ -406,9 +398,9 @@ export const getChSalaryCertificateControllerSetProvisionUrl = (jahr: number,
 
 export const chSalaryCertificateControllerSetProvision = async (jahr: number,
     putProvisionDto: PutProvisionDto,
-    params?: ChSalaryCertificateControllerSetProvisionParams, options?: RequestInit): Promise<chSalaryCertificateControllerSetProvisionResponse> => {
+    params?: ChSalaryCertificateControllerSetProvisionParams, options?: RequestInit): Promise<chSalaryCertificateControllerSetProvisionResponseSuccess> => {
 
-  return httpClient<chSalaryCertificateControllerSetProvisionResponse>(getChSalaryCertificateControllerSetProvisionUrl(jahr,params),
+  return httpClient<chSalaryCertificateControllerSetProvisionResponseSuccess>(getChSalaryCertificateControllerSetProvisionUrl(jahr,params),
   {
     ...options,
     method: 'PUT',
@@ -473,8 +465,6 @@ export type chSalaryCertificateControllerSetNGreResponseSuccess = (chSalaryCerti
 };
 ;
 
-export type chSalaryCertificateControllerSetNGreResponse = (chSalaryCertificateControllerSetNGreResponseSuccess)
-
 export const getChSalaryCertificateControllerSetNGreUrl = (jahr: number,
     params?: ChSalaryCertificateControllerSetNGreParams,) => {
   const normalizedParams = new URLSearchParams();
@@ -493,9 +483,9 @@ export const getChSalaryCertificateControllerSetNGreUrl = (jahr: number,
 
 export const chSalaryCertificateControllerSetNGre = async (jahr: number,
     putNGreDto: PutNGreDto,
-    params?: ChSalaryCertificateControllerSetNGreParams, options?: RequestInit): Promise<chSalaryCertificateControllerSetNGreResponse> => {
+    params?: ChSalaryCertificateControllerSetNGreParams, options?: RequestInit): Promise<chSalaryCertificateControllerSetNGreResponseSuccess> => {
 
-  return httpClient<chSalaryCertificateControllerSetNGreResponse>(getChSalaryCertificateControllerSetNGreUrl(jahr,params),
+  return httpClient<chSalaryCertificateControllerSetNGreResponseSuccess>(getChSalaryCertificateControllerSetNGreUrl(jahr,params),
   {
     ...options,
     method: 'PUT',
@@ -560,8 +550,6 @@ export type chSalaryCertificateControllerSetExchangeRateResponseSuccess = (chSal
 };
 ;
 
-export type chSalaryCertificateControllerSetExchangeRateResponse = (chSalaryCertificateControllerSetExchangeRateResponseSuccess)
-
 export const getChSalaryCertificateControllerSetExchangeRateUrl = (jahr: number,
     params?: ChSalaryCertificateControllerSetExchangeRateParams,) => {
   const normalizedParams = new URLSearchParams();
@@ -580,9 +568,9 @@ export const getChSalaryCertificateControllerSetExchangeRateUrl = (jahr: number,
 
 export const chSalaryCertificateControllerSetExchangeRate = async (jahr: number,
     putExchangeRateDto: PutExchangeRateDto,
-    params?: ChSalaryCertificateControllerSetExchangeRateParams, options?: RequestInit): Promise<chSalaryCertificateControllerSetExchangeRateResponse> => {
+    params?: ChSalaryCertificateControllerSetExchangeRateParams, options?: RequestInit): Promise<chSalaryCertificateControllerSetExchangeRateResponseSuccess> => {
 
-  return httpClient<chSalaryCertificateControllerSetExchangeRateResponse>(getChSalaryCertificateControllerSetExchangeRateUrl(jahr,params),
+  return httpClient<chSalaryCertificateControllerSetExchangeRateResponseSuccess>(getChSalaryCertificateControllerSetExchangeRateUrl(jahr,params),
   {
     ...options,
     method: 'PUT',
@@ -647,8 +635,6 @@ export type chSalaryCertificateControllerSetCrossBorderFactsResponseSuccess = (c
 };
 ;
 
-export type chSalaryCertificateControllerSetCrossBorderFactsResponse = (chSalaryCertificateControllerSetCrossBorderFactsResponseSuccess)
-
 export const getChSalaryCertificateControllerSetCrossBorderFactsUrl = (jahr: number,
     params: ChSalaryCertificateControllerSetCrossBorderFactsParams,) => {
   const normalizedParams = new URLSearchParams();
@@ -667,9 +653,9 @@ export const getChSalaryCertificateControllerSetCrossBorderFactsUrl = (jahr: num
 
 export const chSalaryCertificateControllerSetCrossBorderFacts = async (jahr: number,
     putCrossBorderFactsDto: PutCrossBorderFactsDto,
-    params: ChSalaryCertificateControllerSetCrossBorderFactsParams, options?: RequestInit): Promise<chSalaryCertificateControllerSetCrossBorderFactsResponse> => {
+    params: ChSalaryCertificateControllerSetCrossBorderFactsParams, options?: RequestInit): Promise<chSalaryCertificateControllerSetCrossBorderFactsResponseSuccess> => {
 
-  return httpClient<chSalaryCertificateControllerSetCrossBorderFactsResponse>(getChSalaryCertificateControllerSetCrossBorderFactsUrl(jahr,params),
+  return httpClient<chSalaryCertificateControllerSetCrossBorderFactsResponseSuccess>(getChSalaryCertificateControllerSetCrossBorderFactsUrl(jahr,params),
   {
     ...options,
     method: 'PUT',
@@ -741,8 +727,6 @@ export type knownEmployersControllerListResponseError = (knownEmployersControlle
   headers: Headers;
 };
 
-export type knownEmployersControllerListResponse = (knownEmployersControllerListResponseSuccess | knownEmployersControllerListResponseError)
-
 export const getKnownEmployersControllerListUrl = () => {
 
 
@@ -751,9 +735,9 @@ export const getKnownEmployersControllerListUrl = () => {
   return `/v1/arbeitgeber`
 }
 
-export const knownEmployersControllerList = async ( options?: RequestInit): Promise<knownEmployersControllerListResponse> => {
+export const knownEmployersControllerList = async ( options?: RequestInit): Promise<knownEmployersControllerListResponseSuccess> => {
 
-  return httpClient<knownEmployersControllerListResponse>(getKnownEmployersControllerListUrl(),
+  return httpClient<knownEmployersControllerListResponseSuccess>(getKnownEmployersControllerListUrl(),
   {
     ...options,
     method: 'GET'

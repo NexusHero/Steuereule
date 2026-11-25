@@ -85,8 +85,6 @@ export type lstbControllerGetLstbResponseError = (lstbControllerGetLstbResponse4
   headers: Headers;
 };
 
-export type lstbControllerGetLstbResponse = (lstbControllerGetLstbResponseSuccess | lstbControllerGetLstbResponseError)
-
 export const getLstbControllerGetLstbUrl = (jahr: number,
     params?: LstbControllerGetLstbParams,) => {
   const normalizedParams = new URLSearchParams();
@@ -104,9 +102,9 @@ export const getLstbControllerGetLstbUrl = (jahr: number,
 }
 
 export const lstbControllerGetLstb = async (jahr: number,
-    params?: LstbControllerGetLstbParams, options?: RequestInit): Promise<lstbControllerGetLstbResponse> => {
+    params?: LstbControllerGetLstbParams, options?: RequestInit): Promise<lstbControllerGetLstbResponseSuccess> => {
 
-  return httpClient<lstbControllerGetLstbResponse>(getLstbControllerGetLstbUrl(jahr,params),
+  return httpClient<lstbControllerGetLstbResponseSuccess>(getLstbControllerGetLstbUrl(jahr,params),
   {
     ...options,
     method: 'GET'
@@ -214,8 +212,6 @@ export type lstbScanControllerConfirmScanResponseError = (lstbScanControllerConf
   headers: Headers;
 };
 
-export type lstbScanControllerConfirmScanResponse = (lstbScanControllerConfirmScanResponseSuccess | lstbScanControllerConfirmScanResponseError)
-
 export const getLstbScanControllerConfirmScanUrl = (jahr: number,
     params?: LstbScanControllerConfirmScanParams,) => {
   const normalizedParams = new URLSearchParams();
@@ -234,9 +230,9 @@ export const getLstbScanControllerConfirmScanUrl = (jahr: number,
 
 export const lstbScanControllerConfirmScan = async (jahr: number,
     confirmLstbScanDto: ConfirmLstbScanDto,
-    params?: LstbScanControllerConfirmScanParams, options?: RequestInit): Promise<lstbScanControllerConfirmScanResponse> => {
+    params?: LstbScanControllerConfirmScanParams, options?: RequestInit): Promise<lstbScanControllerConfirmScanResponseSuccess> => {
 
-  return httpClient<lstbScanControllerConfirmScanResponse>(getLstbScanControllerConfirmScanUrl(jahr,params),
+  return httpClient<lstbScanControllerConfirmScanResponseSuccess>(getLstbScanControllerConfirmScanUrl(jahr,params),
   {
     ...options,
     method: 'PUT',
@@ -308,8 +304,6 @@ export type lstbControllerSetFieldResponseError = (lstbControllerSetFieldRespons
   headers: Headers;
 };
 
-export type lstbControllerSetFieldResponse = (lstbControllerSetFieldResponseSuccess | lstbControllerSetFieldResponseError)
-
 export const getLstbControllerSetFieldUrl = (jahr: number,
     feld: string,
     params?: LstbControllerSetFieldParams,) => {
@@ -330,9 +324,9 @@ export const getLstbControllerSetFieldUrl = (jahr: number,
 export const lstbControllerSetField = async (jahr: number,
     feld: string,
     lstbFieldDto: LstbFieldDto,
-    params?: LstbControllerSetFieldParams, options?: RequestInit): Promise<lstbControllerSetFieldResponse> => {
+    params?: LstbControllerSetFieldParams, options?: RequestInit): Promise<lstbControllerSetFieldResponseSuccess> => {
 
-  return httpClient<lstbControllerSetFieldResponse>(getLstbControllerSetFieldUrl(jahr,feld,params),
+  return httpClient<lstbControllerSetFieldResponseSuccess>(getLstbControllerSetFieldUrl(jahr,feld,params),
   {
     ...options,
     method: 'PUT',
@@ -404,8 +398,6 @@ export type lstbControllerGetChurchTaxResponseError = (lstbControllerGetChurchTa
   headers: Headers;
 };
 
-export type lstbControllerGetChurchTaxResponse = (lstbControllerGetChurchTaxResponseSuccess | lstbControllerGetChurchTaxResponseError)
-
 export const getLstbControllerGetChurchTaxUrl = (jahr: number,
     params?: LstbControllerGetChurchTaxParams,) => {
   const normalizedParams = new URLSearchParams();
@@ -423,9 +415,9 @@ export const getLstbControllerGetChurchTaxUrl = (jahr: number,
 }
 
 export const lstbControllerGetChurchTax = async (jahr: number,
-    params?: LstbControllerGetChurchTaxParams, options?: RequestInit): Promise<lstbControllerGetChurchTaxResponse> => {
+    params?: LstbControllerGetChurchTaxParams, options?: RequestInit): Promise<lstbControllerGetChurchTaxResponseSuccess> => {
 
-  return httpClient<lstbControllerGetChurchTaxResponse>(getLstbControllerGetChurchTaxUrl(jahr,params),
+  return httpClient<lstbControllerGetChurchTaxResponseSuccess>(getLstbControllerGetChurchTaxUrl(jahr,params),
   {
     ...options,
     method: 'GET'
@@ -533,8 +525,6 @@ export type lstbControllerSetChurchTaxResponseError = (lstbControllerSetChurchTa
   headers: Headers;
 };
 
-export type lstbControllerSetChurchTaxResponse = (lstbControllerSetChurchTaxResponseSuccess | lstbControllerSetChurchTaxResponseError)
-
 export const getLstbControllerSetChurchTaxUrl = (jahr: number,
     params?: LstbControllerSetChurchTaxParams,) => {
   const normalizedParams = new URLSearchParams();
@@ -553,9 +543,9 @@ export const getLstbControllerSetChurchTaxUrl = (jahr: number,
 
 export const lstbControllerSetChurchTax = async (jahr: number,
     lstbChurchTaxDto: LstbChurchTaxDto,
-    params?: LstbControllerSetChurchTaxParams, options?: RequestInit): Promise<lstbControllerSetChurchTaxResponse> => {
+    params?: LstbControllerSetChurchTaxParams, options?: RequestInit): Promise<lstbControllerSetChurchTaxResponseSuccess> => {
 
-  return httpClient<lstbControllerSetChurchTaxResponse>(getLstbControllerSetChurchTaxUrl(jahr,params),
+  return httpClient<lstbControllerSetChurchTaxResponseSuccess>(getLstbControllerSetChurchTaxUrl(jahr,params),
   {
     ...options,
     method: 'PUT',
@@ -627,8 +617,6 @@ export type lstbControllerGetLinesResponseError = (lstbControllerGetLinesRespons
   headers: Headers;
 };
 
-export type lstbControllerGetLinesResponse = (lstbControllerGetLinesResponseSuccess | lstbControllerGetLinesResponseError)
-
 export const getLstbControllerGetLinesUrl = (jahr: number,
     params?: LstbControllerGetLinesParams,) => {
   const normalizedParams = new URLSearchParams();
@@ -646,9 +634,9 @@ export const getLstbControllerGetLinesUrl = (jahr: number,
 }
 
 export const lstbControllerGetLines = async (jahr: number,
-    params?: LstbControllerGetLinesParams, options?: RequestInit): Promise<lstbControllerGetLinesResponse> => {
+    params?: LstbControllerGetLinesParams, options?: RequestInit): Promise<lstbControllerGetLinesResponseSuccess> => {
 
-  return httpClient<lstbControllerGetLinesResponse>(getLstbControllerGetLinesUrl(jahr,params),
+  return httpClient<lstbControllerGetLinesResponseSuccess>(getLstbControllerGetLinesUrl(jahr,params),
   {
     ...options,
     method: 'GET'
@@ -756,8 +744,6 @@ export type lstbControllerSetLinesResponseError = (lstbControllerSetLinesRespons
   headers: Headers;
 };
 
-export type lstbControllerSetLinesResponse = (lstbControllerSetLinesResponseSuccess | lstbControllerSetLinesResponseError)
-
 export const getLstbControllerSetLinesUrl = (jahr: number,
     params?: LstbControllerSetLinesParams,) => {
   const normalizedParams = new URLSearchParams();
@@ -776,9 +762,9 @@ export const getLstbControllerSetLinesUrl = (jahr: number,
 
 export const lstbControllerSetLines = async (jahr: number,
     lstbLinesDto: LstbLinesDto,
-    params?: LstbControllerSetLinesParams, options?: RequestInit): Promise<lstbControllerSetLinesResponse> => {
+    params?: LstbControllerSetLinesParams, options?: RequestInit): Promise<lstbControllerSetLinesResponseSuccess> => {
 
-  return httpClient<lstbControllerSetLinesResponse>(getLstbControllerSetLinesUrl(jahr,params),
+  return httpClient<lstbControllerSetLinesResponseSuccess>(getLstbControllerSetLinesUrl(jahr,params),
   {
     ...options,
     method: 'PUT',
@@ -850,8 +836,6 @@ export type lstbControllerGetEmployerResponseError = (lstbControllerGetEmployerR
   headers: Headers;
 };
 
-export type lstbControllerGetEmployerResponse = (lstbControllerGetEmployerResponseSuccess | lstbControllerGetEmployerResponseError)
-
 export const getLstbControllerGetEmployerUrl = (jahr: number,
     params?: LstbControllerGetEmployerParams,) => {
   const normalizedParams = new URLSearchParams();
@@ -869,9 +853,9 @@ export const getLstbControllerGetEmployerUrl = (jahr: number,
 }
 
 export const lstbControllerGetEmployer = async (jahr: number,
-    params?: LstbControllerGetEmployerParams, options?: RequestInit): Promise<lstbControllerGetEmployerResponse> => {
+    params?: LstbControllerGetEmployerParams, options?: RequestInit): Promise<lstbControllerGetEmployerResponseSuccess> => {
 
-  return httpClient<lstbControllerGetEmployerResponse>(getLstbControllerGetEmployerUrl(jahr,params),
+  return httpClient<lstbControllerGetEmployerResponseSuccess>(getLstbControllerGetEmployerUrl(jahr,params),
   {
     ...options,
     method: 'GET'
@@ -979,8 +963,6 @@ export type lstbControllerSetEmployerResponseError = (lstbControllerSetEmployerR
   headers: Headers;
 };
 
-export type lstbControllerSetEmployerResponse = (lstbControllerSetEmployerResponseSuccess | lstbControllerSetEmployerResponseError)
-
 export const getLstbControllerSetEmployerUrl = (jahr: number,
     params?: LstbControllerSetEmployerParams,) => {
   const normalizedParams = new URLSearchParams();
@@ -999,9 +981,9 @@ export const getLstbControllerSetEmployerUrl = (jahr: number,
 
 export const lstbControllerSetEmployer = async (jahr: number,
     lstbEmployerDto: LstbEmployerDto,
-    params?: LstbControllerSetEmployerParams, options?: RequestInit): Promise<lstbControllerSetEmployerResponse> => {
+    params?: LstbControllerSetEmployerParams, options?: RequestInit): Promise<lstbControllerSetEmployerResponseSuccess> => {
 
-  return httpClient<lstbControllerSetEmployerResponse>(getLstbControllerSetEmployerUrl(jahr,params),
+  return httpClient<lstbControllerSetEmployerResponseSuccess>(getLstbControllerSetEmployerUrl(jahr,params),
   {
     ...options,
     method: 'PUT',
@@ -1073,8 +1055,6 @@ export type lstbControllerGetSubsidiesResponseError = (lstbControllerGetSubsidie
   headers: Headers;
 };
 
-export type lstbControllerGetSubsidiesResponse = (lstbControllerGetSubsidiesResponseSuccess | lstbControllerGetSubsidiesResponseError)
-
 export const getLstbControllerGetSubsidiesUrl = (jahr: number,
     params?: LstbControllerGetSubsidiesParams,) => {
   const normalizedParams = new URLSearchParams();
@@ -1092,9 +1072,9 @@ export const getLstbControllerGetSubsidiesUrl = (jahr: number,
 }
 
 export const lstbControllerGetSubsidies = async (jahr: number,
-    params?: LstbControllerGetSubsidiesParams, options?: RequestInit): Promise<lstbControllerGetSubsidiesResponse> => {
+    params?: LstbControllerGetSubsidiesParams, options?: RequestInit): Promise<lstbControllerGetSubsidiesResponseSuccess> => {
 
-  return httpClient<lstbControllerGetSubsidiesResponse>(getLstbControllerGetSubsidiesUrl(jahr,params),
+  return httpClient<lstbControllerGetSubsidiesResponseSuccess>(getLstbControllerGetSubsidiesUrl(jahr,params),
   {
     ...options,
     method: 'GET'
@@ -1202,8 +1182,6 @@ export type lstbControllerSetSubsidiesResponseError = (lstbControllerSetSubsidie
   headers: Headers;
 };
 
-export type lstbControllerSetSubsidiesResponse = (lstbControllerSetSubsidiesResponseSuccess | lstbControllerSetSubsidiesResponseError)
-
 export const getLstbControllerSetSubsidiesUrl = (jahr: number,
     params?: LstbControllerSetSubsidiesParams,) => {
   const normalizedParams = new URLSearchParams();
@@ -1222,9 +1200,9 @@ export const getLstbControllerSetSubsidiesUrl = (jahr: number,
 
 export const lstbControllerSetSubsidies = async (jahr: number,
     lstbSubsidiesDto: LstbSubsidiesDto,
-    params?: LstbControllerSetSubsidiesParams, options?: RequestInit): Promise<lstbControllerSetSubsidiesResponse> => {
+    params?: LstbControllerSetSubsidiesParams, options?: RequestInit): Promise<lstbControllerSetSubsidiesResponseSuccess> => {
 
-  return httpClient<lstbControllerSetSubsidiesResponse>(getLstbControllerSetSubsidiesUrl(jahr,params),
+  return httpClient<lstbControllerSetSubsidiesResponseSuccess>(getLstbControllerSetSubsidiesUrl(jahr,params),
   {
     ...options,
     method: 'PUT',

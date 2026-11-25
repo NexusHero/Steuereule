@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { Pressable, ScrollView, Text, View } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
@@ -13,13 +13,17 @@ import {
   useLinkControllerUpdatePersonB,
   useMasterDataControllerRead,
   useMasterDataControllerSave,
+  type LinkPersonBDto,
   type LinkPersonBDtoReligion,
+  type LinkResponseDto,
 } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
 import { CURRENT_TAX_YEAR } from '../../config/taxYear'
 import { makePrivacyStyles } from '../privacy/styles'
-import { ErrorState, LoadingState } from '../shared/ScreenState'
-import { triggerSaveErrorHaptic, warnOnHttpError } from '../shared/saveFeedback'
+import { LoadFailedState, LoadingState } from '../shared/ScreenState'
+import { InlineLoadFailure } from '../shared/InlineLoadFailure'
+import { triggerSaveErrorHaptic } from '../shared/saveFeedback'
+import { classifyApiFailure, useApiFailureMessage } from '../../net/apiFailure'
 import { germanToIso, isoToGerman, toDraft, zuPutDto, type MasterDataDraft } from './masterDataMapping'
 import { PostalCodeHint } from '../shared/PostalCodeHint'
 import { TaxIdHint } from '../shared/TaxIdHint'
@@ -61,24 +65,26 @@ export function MasterDataScreen({ onBack, taxYear = CURRENT_TAX_YEAR, onRecordP
   const [draft, setDraft] = useState<MasterDataDraft | null>(null)
   const [message, setMessage] = useState<{ kind: 'ok' | 'fehler'; text: string } | null>(null)
   const [cityPrefill, setCityPrefill] = useState<string | null>(null)
+  // NM-10: leaving with unsaved changes asks once instead of dropping them silently.
+  const [leaveWarned, setLeaveWarned] = useState(false)
+  const failureMessage = useApiFailureMessage()
 
   if (query.isPending) return <LoadingState bp={bp} label={t('stammdaten.loading')} />
-  if (query.isError || query.data?.status !== 200) {
-    return (
-      <ErrorState
-        bp={bp}
-        heading={t('stammdaten.loadError.heading')}
-        message={t('stammdaten.loadError.message')}
-        retryLabel={t('stammdaten.loadError.retry')}
-        onRetry={() => void query.refetch()}
-      />
-    )
-  }
+  if (query.isError) return <LoadFailedState bp={bp} error={query.error} onRetry={() => void query.refetch()} />
 
   const status = query.data.data
   const form = draft ?? toDraft(status)
+  const unsaved = draft !== null
+  const leaveOrWarn = (leave: () => void) => {
+    if (unsaved && !leaveWarned) {
+      setLeaveWarned(true)
+      return
+    }
+    leave()
+  }
   const set = (patch: Partial<MasterDataDraft>) => {
     setMessage(null)
+    setLeaveWarned(false)
     const next = { ...form, ...patch }
     // "12a" typed or pasted into the number belongs in two fields; a Zusatz already there is kept.
     const numberWithSuffix = patch.hausnummer !== undefined ? /^(\d+)\s*([a-zA-Z])$/.exec(patch.hausnummer.trim()) : null
@@ -134,19 +140,19 @@ export function MasterDataScreen({ onBack, taxYear = CURRENT_TAX_YEAR, onRecordP
       { data: zuPutDto(sent) },
       {
         onSuccess: (response) => {
-          if (response.status === 200) {
-            queryClient.setQueryData(query.queryKey, response)
-            setDraft(religionWaits ? { ...toDraft(response.data), religion: form.religion, religionConsent: false } : null)
-            if (religionWaits) triggerSaveErrorHaptic()
-            setMessage(religionWaits ? { kind: 'fehler', text: t('stammdaten.ohneReligion') } : { kind: 'ok', text: t('stammdaten.gespeichert') })
-          } else {
-            triggerSaveErrorHaptic()
-            setMessage({ kind: 'fehler', text: t('stammdaten.saveError.validation') })
-          }
+          queryClient.setQueryData(query.queryKey, response)
+          setDraft(religionWaits ? { ...toDraft(response.data), religion: form.religion, religionConsent: false } : null)
+          setLeaveWarned(false)
+          if (religionWaits) triggerSaveErrorHaptic()
+          setMessage(religionWaits ? { kind: 'fehler', text: t('stammdaten.ohneReligion') } : { kind: 'ok', text: t('stammdaten.gespeichert') })
         },
-        onError: () => {
+        onError: (error) => {
+          // NM-07: a 400 names the inputs, a dropped connection the connection; 401/429/500 say what they are.
           triggerSaveErrorHaptic()
-          setMessage({ kind: 'fehler', text: t('stammdaten.saveError.network') })
+          setMessage({
+            kind: 'fehler',
+            text: failureMessage(error, { validation: t('stammdaten.saveError.validation'), offline: t('stammdaten.saveError.network') }),
+          })
         },
       },
     )
@@ -155,11 +161,16 @@ export function MasterDataScreen({ onBack, taxYear = CURRENT_TAX_YEAR, onRecordP
   return (
     <ScrollView contentContainerStyle={bp === 's' ? styles.screen : styles.wideScreen} testID="screen-container">
       <View style={styles.appbar}>
-        <Pressable accessibilityRole="button" accessibilityLabel={t('stammdaten.back')} onPress={onBack} style={styles.backButton} testID="stammdaten-zurueck">
+        <Pressable accessibilityRole="button" accessibilityLabel={t('stammdaten.back')} onPress={() => leaveOrWarn(onBack)} style={styles.backButton} testID="stammdaten-zurueck">
           <Text style={styles.backGlyph}>←</Text>
         </Pressable>
         <Text style={styles.appbarTitle}>{t('stammdaten.title')}</Text>
       </View>
+      {leaveWarned ? (
+        <Text style={styles.errorNote} accessibilityRole="alert" testID="stammdaten-ungespeichert">
+          {t('stammdaten.ungespeichertZurueck')}
+        </Text>
+      ) : null}
       <Text style={styles.sectionBody}>{t('stammdaten.intro')}</Text>
       <Text style={styles.hint} accessibilityLiveRegion="polite">
         {status.missing.length === 0 ? t('stammdaten.vollstaendig') : t('stammdaten.fehlendHinweis', { anzahl: status.missing.length })}
@@ -212,7 +223,12 @@ export function MasterDataScreen({ onBack, taxYear = CURRENT_TAX_YEAR, onRecordP
         </View>
       </Feld>
       {form.familienstand !== null && form.familienstand !== 'ledig' ? dateField('familienstandSeit') : null}
-      {form.familienstand === 'verheiratet' ? <TaxYearLinkSection taxYear={taxYear} {...(onRecordPartner ? { onRecordPartner } : {})} /> : null}
+      {form.familienstand === 'verheiratet' ? (
+        <TaxYearLinkSection
+          taxYear={taxYear}
+          {...(onRecordPartner ? { onRecordPartner: (area: PartnerArea, name: string) => leaveOrWarn(() => onRecordPartner(area, name)) } : {})}
+        />
+      ) : null}
 
       <Feld label={t('stammdaten.religion')}>
         <Text style={styles.hint}>{t('stammdaten.religionHinweis')}</Text>
@@ -295,51 +311,69 @@ function invitationNotice(code: string, validUntil: string | null): string {
   return `Einladungscode für Partner-Account: ${code}${to}`
 }
 
+type PartnerArea = 'lstb' | 'arbeitsweg' | 'schweiz' | 'rente'
+
 function TaxYearLinkSection({
   taxYear,
   onRecordPartner,
 }: {
   readonly taxYear: number
-  readonly onRecordPartner?: (area: 'lstb' | 'arbeitsweg' | 'schweiz' | 'rente', name: string) => void
+  readonly onRecordPartner?: (area: PartnerArea, name: string) => void
+}) {
+  const theme = useTheme()
+  const { t } = useTranslation(APP_NS)
+  const linkQuery = useLinkControllerGet(taxYear)
+  const card = (children: ReactNode) => <Card style={{ marginVertical: theme.space.s3, padding: theme.space.s4 }}>{children}</Card>
+
+  if (linkQuery.isPending) {
+    return card(<Text style={{ ...theme.type.small, color: theme.color.tinte2 }}>{t('stammdaten.kopplungStand.loading')}</Text>)
+  }
+  // NM-02 / WEB-36: a failed load is not „keine Veranlagungsart“ with a choice to make — nothing is offered.
+  if (linkQuery.isError) {
+    return card(
+      <InlineLoadFailure what={t('stammdaten.kopplungStand.loadError')} error={linkQuery.error} onRetry={() => void linkQuery.refetch()} testID="kopplung-ladefehler" />,
+    )
+  }
+  return card(<LoadedLinkSection taxYear={taxYear} current={linkQuery.data.data} {...(onRecordPartner ? { onRecordPartner } : {})} />)
+}
+
+function LoadedLinkSection({
+  taxYear,
+  current,
+  onRecordPartner,
+}: {
+  readonly taxYear: number
+  readonly current: LinkResponseDto
+  readonly onRecordPartner?: (area: PartnerArea, name: string) => void
 }) {
   const theme = useTheme()
   const { t } = useTranslation(APP_NS)
   const queryClient = useQueryClient()
-  const linkQuery = useLinkControllerGet(taxYear)
+  const failureMessage = useApiFailureMessage()
   const setLink = useLinkControllerSet()
-  const updatePersonB = useLinkControllerUpdatePersonB()
   const join = useLinkControllerJoinWithCode()
   const [code, setCode] = useState('')
   const [joinError, setJoinError] = useState<string | null>(null)
+  const [kindError, setKindError] = useState<string | null>(null)
 
-  const current = linkQuery.data?.status === 200 ? linkQuery.data.data : null
-  const filingType = current?.filingType ?? 'keine'
-  const personB = current?.personB
+  const filingType = current.filingType
+  const personB = current.personB ?? null
   const partnerDisplayName = personB?.firstName || 'deinem Partner'
-
-  const [firstNameB, setFirstNameB] = useState(personB?.firstName ?? '')
-  const [lastNameB, setLastNameB] = useState(personB?.lastName ?? '')
-  const [taxIdB, setTaxIdB] = useState(personB?.steuerId ?? '')
-  const [birthDateB, setBirthDateB] = useState(personB?.geburtsdatum ?? '')
-  const [occupationB, setOccupationB] = useState(personB?.beruf ?? '')
-  // Person B's confession decides the church tax of the joint return (§ 51a EStG); Art. 9 DSGVO asks for consent.
-  const [religionB, setReligionB] = useState<string | null>(personB?.religion ?? null)
-  const [religionConsentB, setReligionConsentB] = useState(false)
-  const [religionConsentMissing, setReligionConsentMissing] = useState(false)
 
   const invalidate = () => {
     void queryClient.invalidateQueries({ queryKey: getLinkControllerGetQueryKey(taxYear) })
   }
 
   const selectKind = (kind: 'zusammen' | 'einzel') => {
+    setKindError(null)
     setLink.mutate(
       { jahr: taxYear, data: { filingType: kind } },
       {
-        onSuccess: (res) => {
-          warnOnHttpError(res.status)
-          invalidate()
+        onSuccess: invalidate,
+        onError: (error) => {
+          triggerSaveErrorHaptic()
+          setKindError(failureMessage(error))
         },
-        onError: triggerSaveErrorHaptic,
       },
     )
   }
@@ -351,48 +385,14 @@ function TaxYearLinkSection({
     join.mutate(
       { jahr: taxYear, code: cleaned },
       {
-        onSuccess: (answer) => {
-          if (answer.status === 200) {
-            setCode('')
-            invalidate()
-          } else {
-            triggerSaveErrorHaptic()
-            setJoinError(joinErrorText(answer.data))
-          }
-        },
-        onError: () => {
-          triggerSaveErrorHaptic()
-          setJoinError('Das hat nicht geklappt. Prüf die Verbindung und versuch es noch mal.')
-        },
-      },
-    )
-  }
-
-  const savePersonB = () => {
-    const religionChanged = religionB !== (personB?.religion ?? null)
-    if (religionChanged && religionB !== null && !religionConsentB) {
-      setReligionConsentMissing(true)
-      return
-    }
-    setReligionConsentMissing(false)
-    updatePersonB.mutate(
-      {
-        jahr: taxYear,
-        data: {
-          firstName: firstNameB || null,
-          lastName: lastNameB || null,
-          steuerId: taxIdB || null,
-          geburtsdatum: birthDateB ? germanToIso(birthDateB) : null,
-          beruf: occupationB || null,
-          ...(religionChanged ? { religion: religionB as LinkPersonBDtoReligion, ...(religionB !== null ? { religionConsent: true } : {}) } : {}),
-        },
-      },
-      {
-        onSuccess: (res) => {
-          warnOnHttpError(res.status)
+        onSuccess: () => {
+          setCode('')
           invalidate()
         },
-        onError: triggerSaveErrorHaptic,
+        onError: (error) => {
+          triggerSaveErrorHaptic()
+          setJoinError(joinErrorText(error, failureMessage, t('stammdaten.kopplungStand.codeUnbekannt')))
+        },
       },
     )
   }
@@ -405,15 +405,19 @@ function TaxYearLinkSection({
       <Feld label="Einladungscode deines Partners">
         <Input value={code} onChange={setCode} testID="kopplung-code" accessibilityLabel="Einladungscode deines Partners" />
       </Feld>
-      {joinError ? <Text style={{ ...theme.type.small, color: theme.color.tinte }}>{joinError}</Text> : null}
-      <Button variant="ghost" onPress={redeemCode} testID="kopplung-beitreten">
+      {joinError ? (
+        <Text style={{ ...theme.type.small, color: theme.color.tinte }} accessibilityRole="alert">
+          {joinError}
+        </Text>
+      ) : null}
+      <Button variant="ghost" onPress={redeemCode} disabled={join.isPending} testID="kopplung-beitreten">
         Einladung annehmen
       </Button>
     </View>
   )
 
   return (
-    <Card style={{ marginVertical: theme.space.s3, padding: theme.space.s4 }}>
+    <>
       <Feld label={`Veranlagungsart ${taxYear} & Partner (Person B, Zeile 19–24 ESt 1 A)`}>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.space.s2, marginBottom: theme.space.s3 }}>
           <Chip active={filingType === 'zusammen'} onPress={() => selectKind('zusammen')} testID="kopplung-zusammen">
@@ -423,87 +427,26 @@ function TaxYearLinkSection({
             Einzelveranlagung
           </Chip>
         </View>
+        {kindError ? (
+          <Text style={{ ...theme.type.small, color: theme.color.tinte }} accessibilityRole="alert" testID="kopplung-art-fehler">
+            {kindError}
+          </Text>
+        ) : null}
       </Feld>
       <PartnerLinkStatus taxYear={taxYear} onChanged={invalidate} />
-      {filingType === 'zusammen' && current?.personBHasOwnAccount ? (
+      {filingType === 'zusammen' && current.personBHasOwnAccount ? (
         <Text style={{ ...theme.type.small, color: theme.color.tinte2 }}>
           {`${[personB?.firstName, personB?.lastName].filter(Boolean).join(' ') || 'Person B'} pflegt die Angaben im eigenen Konto.`}
         </Text>
       ) : filingType === 'zusammen' ? (
         <View>
-          {current?.invitationCode ? (
+          {current.invitationCode ? (
             <Text style={{ ...theme.type.meta, color: theme.color.tinte2, marginBottom: theme.space.s2 }} testID="kopplung-code-anzeige">
               {invitationNotice(current.invitationCode, current.invitationCodeValidUntil ?? null)}
             </Text>
           ) : null}
-          <Feld label="Vorname Partner (Person B)">
-            <Input
-              value={firstNameB || (personB?.firstName ?? '')}
-              onChange={setFirstNameB}
-              autoComplete="off"
-              accessibilityLabel="Vorname Partner (Person B)"
-              testID="personb-vorname"
-            />
-          </Feld>
-          <Feld label="Nachname Partner (Person B)">
-            <Input
-              value={lastNameB || (personB?.lastName ?? '')}
-              onChange={setLastNameB}
-              autoComplete="off"
-              accessibilityLabel="Nachname Partner (Person B)"
-              testID="personb-nachname"
-            />
-          </Feld>
-          <Feld label="Steuer-ID Partner (11 Ziffern)">
-            <Input
-              type="numeric"
-              value={taxIdB || (personB?.steuerId ?? '')}
-              onChange={setTaxIdB}
-              accessibilityLabel="Steuer-ID Partner (11 Ziffern)"
-              testID="personb-steuerid"
-            />
-            <TaxIdHint value={taxIdB} testID="personb-steuerid-hinweis" />
-          </Feld>
-          <Feld label="Geburtsdatum Partner (TT.MM.JJJJ)">
-            <DateInput
-              value={birthDateB || isoToGerman(personB?.geburtsdatum ?? null)}
-              onChange={setBirthDateB}
-              calendarLabel={t('datum.kalender')}
-              max={todayIso()}
-              accessibilityLabel="Geburtsdatum Partner (TT.MM.JJJJ)"
-              testID="personb-geburtsdatum"
-            />
-          </Feld>
-          <Feld label="Beruf Partner">
-            <Input
-              value={occupationB || (personB?.beruf ?? '')}
-              onChange={setOccupationB}
-              accessibilityLabel="Beruf Partner"
-              testID="personb-beruf"
-            />
-          </Feld>
-          <Feld label={t('stammdaten.religionPartner')}>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.space.s2, marginTop: theme.space.s2 }}>
-              {RELIGION_KEYS.map((key) => (
-                <Chip key={key} active={religionB === key} onPress={() => setReligionB(key)} testID={`personb-religion-${key}`}>
-                  {t(`stammdaten.religionen.${key}`)}
-                </Chip>
-              ))}
-            </View>
-          </Feld>
-          {religionB !== null && religionB !== (personB?.religion ?? null) ? (
-            <Option selected={religionConsentB} onPress={() => setReligionConsentB(!religionConsentB)} testID="personb-einwilligung">
-              {t('stammdaten.einwilligungPartner')}
-            </Option>
-          ) : null}
-          {religionConsentMissing ? (
-            <Text style={{ ...theme.type.small, color: theme.color.warn }} accessibilityLiveRegion="polite" testID="personb-einwilligung-fehlt">
-              {t('stammdaten.einwilligungFehlt')}
-            </Text>
-          ) : null}
-          <Button variant="ghost" onPress={savePersonB} testID="personb-speichern">
-            Partner-Angaben übernehmen
-          </Button>
+          {/* Keyed by the stored values: the fields start from what is stored and follow it after a save. */}
+          <PersonBForm key={JSON.stringify(personB)} taxYear={taxYear} personB={personB} onSaved={invalidate} />
           {onRecordPartner ? (
             <>
               <Text style={{ ...theme.type.small, color: theme.color.tinte2, marginTop: theme.space.s3 }}>
@@ -529,16 +472,158 @@ function TaxYearLinkSection({
       ) : (
         joinBlock
       )}
-    </Card>
+    </>
+  )
+}
+
+type PersonB = NonNullable<LinkResponseDto['personB']>
+
+/**
+ * Person B's details, started from what is stored (NM-01). „Partner-Angaben übernehmen“ sends only what the
+ * user changed (WEB-29): the server keeps an absent field, so a Steuer-ID or confession the user never touched
+ * is never sent as null and wiped.
+ */
+function PersonBForm({ taxYear, personB, onSaved }: { readonly taxYear: number; readonly personB: PersonB | null; readonly onSaved: () => void }) {
+  const theme = useTheme()
+  const { t } = useTranslation(APP_NS)
+  const failureMessage = useApiFailureMessage()
+  const updatePersonB = useLinkControllerUpdatePersonB()
+  const stored = {
+    firstName: personB?.firstName ?? '',
+    lastName: personB?.lastName ?? '',
+    steuerId: personB?.steuerId ?? '',
+    geburtsdatum: isoToGerman(personB?.geburtsdatum ?? null),
+    beruf: personB?.beruf ?? '',
+    religion: personB?.religion ?? null,
+  }
+  const [firstNameB, setFirstNameB] = useState(stored.firstName)
+  const [lastNameB, setLastNameB] = useState(stored.lastName)
+  const [taxIdB, setTaxIdB] = useState(stored.steuerId)
+  const [birthDateB, setBirthDateB] = useState(stored.geburtsdatum)
+  const [occupationB, setOccupationB] = useState(stored.beruf)
+  // Person B's confession decides the church tax of the joint return (§ 51a EStG); Art. 9 DSGVO asks for consent.
+  const [religionB, setReligionB] = useState<string | null>(stored.religion)
+  const [religionConsentB, setReligionConsentB] = useState(false)
+  const [religionConsentMissing, setReligionConsentMissing] = useState(false)
+  const [message, setMessage] = useState<{ readonly kind: 'ok' | 'fehler'; readonly text: string } | null>(null)
+
+  const changedText = (typed: string, before: string): string | null | undefined => {
+    const value = typed.trim()
+    if (value === before.trim()) return undefined
+    return value === '' ? null : value
+  }
+
+  const savePersonB = () => {
+    setMessage(null)
+    const religionChanged = religionB !== stored.religion
+    if (religionChanged && religionB !== null && !religionConsentB) {
+      setReligionConsentMissing(true)
+      return
+    }
+    setReligionConsentMissing(false)
+    const data: LinkPersonBDto = {}
+    const firstName = changedText(firstNameB, stored.firstName)
+    const lastName = changedText(lastNameB, stored.lastName)
+    const steuerId = changedText(taxIdB, stored.steuerId)
+    const beruf = changedText(occupationB, stored.beruf)
+    const birth = changedText(birthDateB, stored.geburtsdatum)
+    if (firstName !== undefined) data.firstName = firstName
+    if (lastName !== undefined) data.lastName = lastName
+    if (steuerId !== undefined) data.steuerId = steuerId
+    if (beruf !== undefined) data.beruf = beruf
+    if (birth !== undefined) data.geburtsdatum = birth === null ? null : germanToIso(birth)
+    if (religionChanged) {
+      data.religion = religionB as LinkPersonBDtoReligion
+      if (religionB !== null) data.religionConsent = true
+    }
+    if (Object.keys(data).length === 0) {
+      setMessage({ kind: 'ok', text: t('stammdaten.kopplungStand.personBUnveraendert') })
+      return
+    }
+    updatePersonB.mutate(
+      { jahr: taxYear, data },
+      {
+        onSuccess: () => {
+          setMessage({ kind: 'ok', text: t('stammdaten.kopplungStand.personBGespeichert') })
+          onSaved()
+        },
+        onError: (error) => {
+          triggerSaveErrorHaptic()
+          setMessage({ kind: 'fehler', text: `${t('apiFehler.saveHeading')} ${failureMessage(error)} ${t('apiFehler.saveKept')}` })
+        },
+      },
+    )
+  }
+
+  return (
+    <>
+      <Feld label="Vorname Partner (Person B)">
+        <Input value={firstNameB} onChange={setFirstNameB} autoComplete="off" accessibilityLabel="Vorname Partner (Person B)" testID="personb-vorname" />
+      </Feld>
+      <Feld label="Nachname Partner (Person B)">
+        <Input value={lastNameB} onChange={setLastNameB} autoComplete="off" accessibilityLabel="Nachname Partner (Person B)" testID="personb-nachname" />
+      </Feld>
+      <Feld label="Steuer-ID Partner (11 Ziffern)">
+        <Input type="numeric" value={taxIdB} onChange={setTaxIdB} accessibilityLabel="Steuer-ID Partner (11 Ziffern)" testID="personb-steuerid" />
+        <TaxIdHint value={taxIdB} testID="personb-steuerid-hinweis" />
+      </Feld>
+      <Feld label="Geburtsdatum Partner (TT.MM.JJJJ)">
+        <DateInput
+          value={birthDateB}
+          onChange={setBirthDateB}
+          calendarLabel={t('datum.kalender')}
+          max={todayIso()}
+          accessibilityLabel="Geburtsdatum Partner (TT.MM.JJJJ)"
+          testID="personb-geburtsdatum"
+        />
+      </Feld>
+      <Feld label="Beruf Partner">
+        <Input value={occupationB} onChange={setOccupationB} accessibilityLabel="Beruf Partner" testID="personb-beruf" />
+      </Feld>
+      <Feld label={t('stammdaten.religionPartner')}>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.space.s2, marginTop: theme.space.s2 }}>
+          {RELIGION_KEYS.map((key) => (
+            <Chip key={key} active={religionB === key} onPress={() => setReligionB(key)} testID={`personb-religion-${key}`}>
+              {t(`stammdaten.religionen.${key}`)}
+            </Chip>
+          ))}
+        </View>
+      </Feld>
+      {religionB !== null && religionB !== stored.religion ? (
+        <Option selected={religionConsentB} onPress={() => setReligionConsentB(!religionConsentB)} testID="personb-einwilligung">
+          {t('stammdaten.einwilligungPartner')}
+        </Option>
+      ) : null}
+      {religionConsentMissing ? (
+        <Text style={{ ...theme.type.small, color: theme.color.warn }} accessibilityLiveRegion="polite" testID="personb-einwilligung-fehlt">
+          {t('stammdaten.einwilligungFehlt')}
+        </Text>
+      ) : null}
+      {message ? (
+        <Text
+          style={{ ...theme.type.small, color: message.kind === 'ok' ? theme.color.tinte2 : theme.color.tinte }}
+          {...(message.kind === 'fehler' ? { accessibilityRole: 'alert' as const } : { accessibilityLiveRegion: 'polite' as const })}
+          testID="personb-meldung"
+        >
+          {message.text}
+        </Text>
+      ) : null}
+      <Button variant="ghost" onPress={savePersonB} disabled={updatePersonB.isPending} testID="personb-speichern">
+        Partner-Angaben übernehmen
+      </Button>
+    </>
   )
 }
 
 /** The server names why a code did not work (KopplungService.joinWithCode); say it in plain words. */
-function joinErrorText(answer: unknown): string {
-  const code = typeof answer === 'object' && answer !== null && 'code' in answer ? String((answer as { code: unknown }).code) : ''
-  if (code === 'INVITATION_CODE_EXPIRED') return 'Der Code ist abgelaufen. Bitte deinen Partner um einen neuen.'
-  if (code === 'INVITATION_IS_OWN') return 'Das ist dein eigener Code – den gibst du an deinen Partner weiter.'
-  return 'Diesen Code kennen wir nicht. Prüf die Schreibweise.'
+function joinErrorText(error: unknown, failureMessage: (error: unknown) => string, unknownCode: string): string {
+  const failure = classifyApiFailure(error)
+  if (failure.code === 'INVITATION_CODE_EXPIRED') return 'Der Code ist abgelaufen. Bitte deinen Partner um einen neuen.'
+  if (failure.code === 'INVITATION_IS_OWN') return 'Das ist dein eigener Code – den gibst du an deinen Partner weiter.'
+  if (failure.kind === 'offline') return 'Das hat nicht geklappt. Prüf die Verbindung und versuch es noch mal.'
+  // NM-02: only an unknown or malformed code is „unknown“; a 409, 429 or 500 says what it is.
+  if (failure.kind === 'not-found' || failure.kind === 'validation') return unknownCode
+  return failureMessage(error)
 }
 
 /**

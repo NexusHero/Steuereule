@@ -34,7 +34,7 @@ describe('CatalogScreen frame', () => {
       ),
     )
     renderCatalog('sonderausgaben')
-    expect(await screen.findByText('Das hat nicht geklappt.')).toBeTruthy()
+    expect(await screen.findByText('Das konnte nicht geladen werden.')).toBeTruthy()
     healthy = true
     fireEvent.click(screen.getByText('Noch mal versuchen'))
     expect(await screen.findByTestId('katalog-option-spenden-Nein')).toBeTruthy()
@@ -64,6 +64,6 @@ describe('CatalogScreen frame', () => {
     server.use(http.get(INTERVIEW_URL, () => HttpResponse.json({ answers: { spenden: 'Nein', 'kv-pv': 'Nein', riester: 'Nein' }, nextStep: { kind: 'done' }, openItems: 0 })))
     renderCatalog('sonderausgaben')
     await waitFor(() => expect(screen.queryByLabelText(/geladen/)).toBeNull())
-    expect(screen.queryByText('Das hat nicht geklappt.')).toBeNull()
+    expect(screen.queryByText('Das konnte nicht geladen werden.')).toBeNull()
   })
 })

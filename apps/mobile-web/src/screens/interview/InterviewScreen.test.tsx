@@ -126,8 +126,8 @@ describe('InterviewScreen', () => {
     )
     renderInterview()
 
-    await screen.findByText('Das hat nicht geklappt.')
-    expect(screen.getByText('Deine Antworten konnten nicht geladen werden. Prüf die Verbindung und versuch es noch mal.')).toBeTruthy()
+    await screen.findByText('Das konnte nicht geladen werden.')
+    expect(screen.getByText('Keine Verbindung zum Server. Prüf dein Internet und versuch es noch mal.')).toBeTruthy()
 
     fireEvent.click(screen.getByText('Noch mal versuchen'))
     await onJobQuestion()
@@ -136,7 +136,7 @@ describe('InterviewScreen', () => {
   it('treats a non-200 GET response as an honest error, not a silent fallthrough', async () => {
     server.use(http.get(GET_URL, () => HttpResponse.json(null, { status: 401 })))
     renderInterview()
-    expect(await screen.findByText('Das hat nicht geklappt.')).toBeTruthy()
+    expect(await screen.findByText('Das konnte nicht geladen werden.')).toBeTruthy()
   })
 
   it('re-entry: opens on the step the stored answers actually resume at, not always the job question', async () => {
@@ -298,7 +298,8 @@ describe('InterviewScreen', () => {
       <QueryClientProvider client={queryClient}>
         <I18nextProvider i18n={i18n}>
           <ThemeProvider mode="light">
-            <InterviewScreen taxYear={TAX_YEAR} onDone={() => interviewView.unmount()} />
+            {/* The sheet closes after the render that finished the interview, not inside it. */}
+            <InterviewScreen taxYear={TAX_YEAR} onDone={() => setTimeout(() => interviewView.unmount(), 0)} />
           </ThemeProvider>
         </I18nextProvider>
       </QueryClientProvider>,

@@ -43,6 +43,8 @@ import { AdvisorRunService } from './run/advisor-run.service.js'
 import { Redis } from 'ioredis'
 import { redisTlsOptions } from '../redis/redis-options.js'
 import { FIELD_ENCRYPTION_KEYS, type FieldEncryptionKeySet } from '../common/field-encryption-keys.js'
+import { UnlockModule } from '../unlock/unlock.module.js'
+import { ModelCallTiers } from './model-call-tier.js'
 
 /**
  * With REDIS_URL the run log lives in Redis Streams, so any instance can serve a re-attaching
@@ -77,6 +79,7 @@ export function createAdvisorRunLog(keys: FieldEncryptionKeySet, env: NodeJS.Pro
     TaxEstimateModule,
     AssessmentModule,
     ReceiptStorageModule,
+    UnlockModule,
   ],
   controllers: [AdvisorController],
   providers: [
@@ -89,6 +92,7 @@ export function createAdvisorRunLog(keys: FieldEncryptionKeySet, env: NodeJS.Pro
     AdvisorOpening,
     AdvisorDocumentStaging,
     AdvisorTurn,
+    ModelCallTiers,
     // Each owning module provides the rows of its mask; a new mask with rows adds its source here.
     { provide: DRAFT_RECORDS, inject: [ChildDraftRecords, RentalDraftRecords], useFactory: (...sources: DraftRecordSource[]) => draftRecordRegistry(sources) },
     AdvisorRunService,

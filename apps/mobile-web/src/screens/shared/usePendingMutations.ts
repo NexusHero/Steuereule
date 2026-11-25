@@ -1,35 +1,69 @@
-import { useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { useLeaveGuard } from './leaveGuard'
 
 /**
- * Tracks in-flight saves so leaving a mask (`onDone` / `onBack` / closing a sheet) waits for pending PUTs.
- * A failed save keeps the user on the mask once and raises `saveFailed`, so the value is never lost
- * without them seeing it; pressing again leaves anyway (the server is the source of truth either way).
+ * Tracks in-flight saves so leaving a mask (`onDone` / `onBack` / closing a sheet / „Später weiter“) waits for
+ * pending PUTs.
+ *
+ * WEB-12: a failed save is visible the moment it fails (`saveError`), not first at „Weiter“. A failed save also
+ * keeps the user on the mask once (`saveFailed`), so the value is never lost without them seeing it; pressing
+ * again leaves anyway (the server is the source of truth either way).
  */
 export function usePendingMutations() {
   const pending = useRef(new Set<Promise<unknown>>())
   const failedSinceLastExit = useRef(false)
+  const warned = useRef(false)
+  const mounted = useRef(true)
   const [saveFailed, setSaveFailed] = useState(false)
+  const [saveError, setSaveError] = useState<unknown>(null)
+  const [pendingCount, setPendingCount] = useState(0)
 
-  function track(promise: Promise<unknown>): void {
+  useEffect(() => {
+    mounted.current = true
+    return () => {
+      mounted.current = false
+    }
+  }, [])
+
+  const track = useCallback((promise: Promise<unknown>): void => {
     pending.current.add(promise)
+    setPendingCount(pending.current.size)
     void promise
-      .catch(() => {
-        failedSinceLastExit.current = true
-      })
+      .then(
+        () => undefined,
+        (error: unknown) => {
+          failedSinceLastExit.current = true
+          if (mounted.current) setSaveError(error)
+        },
+      )
       .finally(() => {
         pending.current.delete(promise)
+        if (mounted.current) setPendingCount(pending.current.size)
       })
-  }
+  }, [])
 
-  function flushThen(callback?: () => void): void {
+  /** A later save of the same field succeeded: the notice may go. */
+  const clearSaveError = useCallback((): void => {
+    failedSinceLastExit.current = false
+    warned.current = false
+    setSaveError(null)
+    setSaveFailed(false)
+  }, [])
+
+  const flushThen = useCallback((callback?: () => void): void => {
     if (!callback) return
     const leaveOrWarn = () => {
-      if (failedSinceLastExit.current && !saveFailed) {
-        setSaveFailed(true)
+      if (failedSinceLastExit.current && !warned.current) {
+        warned.current = true
+        if (mounted.current) setSaveFailed(true)
         return
       }
       failedSinceLastExit.current = false
-      setSaveFailed(false)
+      warned.current = false
+      if (mounted.current) {
+        setSaveFailed(false)
+        setSaveError(null)
+      }
       callback()
     }
     if (pending.current.size === 0) {
@@ -37,7 +71,16 @@ export function usePendingMutations() {
       return
     }
     void Promise.allSettled(pending.current).then(leaveOrWarn)
-  }
+  }, [])
 
-  return { track, flushThen, saveFailed }
+  // WEB-40: the sheet's X / backdrop / Escape and the browser's back wait for these saves too.
+  useLeaveGuard(flushThen)
+
+  /** Resolves once every tracked save settled; true when none of them failed since the last exit. */
+  const settled = useCallback(async (): Promise<boolean> => {
+    await Promise.allSettled(pending.current)
+    return !failedSinceLastExit.current
+  }, [])
+
+  return { track, flushThen, settled, saveFailed, saveError, clearSaveError, isSaving: pendingCount > 0 }
 }

@@ -19,12 +19,24 @@ export interface DeletedSummaryDto {
   account: true;
 }
 
+export interface RetainedHoldDto {
+  /** "unlock" (payments), "filingVersion" (submitted versions), or an operator category hold ("profile", "taxData", "auditLog"). */
+  resource: string;
+  count: number;
+  /** When the hold ends; the rows are deleted after it. */
+  until: string;
+  /** @nullable */
+  reason: string | null;
+}
+
 export interface DeleteAccountResponseDto {
   deleted: DeletedSummaryDto;
   /** Count of TaxDataAccessLog rows anonymised (userId severed to an irreversible tombstone) by this call — retained as the Art. 30 accountability record, no longer person-linkable. */
   retainedAnonymisedAuditRows: number;
   /** Count of rows retained untouched — neither erased nor anonymised — because an active LegalHold exempted them. */
   retainedUnderLegalHold: number;
+  /** What the legal holds kept back and until when (P7); empty when nothing was held. */
+  legalHolds: RetainedHoldDto[];
 }
 
 export interface ExportAccountDto {
@@ -55,6 +67,16 @@ export interface ExportTaxDataEntryDto {
   fields: ExportTaxDataEntryDtoFields;
 }
 
+export interface ExportReceiptFileDto {
+  receiptId: string;
+  fileName: string;
+  mimeType: string;
+  byteLength: number;
+  uploadedAt: string;
+  /** The original file, base64 (JSON export only, H2-6). */
+  contentBase64?: string;
+}
+
 export interface ExportAccessLogEntryDto {
   action: string;
   resource: string;
@@ -69,6 +91,10 @@ export interface ExportDocumentDto {
   profile: ExportProfileDto | null;
   /** Every stored tax-data row, decrypted (Art. 15/20); empty when the caller has none. */
   taxData: ExportTaxDataEntryDto[];
+  /** Sessions (IP, browser), second factor status, passkeys, device logins, connected assistants with consents and token dates, legal holds (API-17). No secret is exported. */
+  accountData: ExportTaxDataEntryDto[];
+  /** The original receipt files; the JSON export carries their bytes. */
+  receiptFiles: ExportReceiptFileDto[];
   accessLog: ExportAccessLogEntryDto[];
 }
 

@@ -78,14 +78,14 @@ describe('the profession questions', () => {
 })
 
 describe('the trade-tax inputs', () => {
-  it('sends the complete tradeTaxInputs object', async () => {
+  it('sends only the changed key of tradeTaxInputs, the financing parts complete (the API merges key by key)', async () => {
     useBusinessDefaults({ ...BASE_PROFILE, tradeTaxInputs: { einheitswertEur: 50000, financing: { debtChargesEur: 1000 } } })
     const put = captureBody<{ tradeTaxInputs: unknown }>(BASE_URL)
     renderBusiness('gewerbedaten')
     fireEvent.change(await screen.findByTestId('gewerbedaten-rentImmovableEur'), { target: { value: '12000' } })
     fireEvent.click(screen.getByTestId('gewerbedaten-speichern'))
     await waitFor(() => expect(put.get()).not.toBeNull())
-    expect(put.get()!.tradeTaxInputs).toEqual({ financing: { debtChargesEur: 1000, rentImmovableEur: 12000 }, einheitswertEur: 50000 })
+    expect(put.get()!.tradeTaxInputs).toEqual({ financing: { debtChargesEur: 1000, rentImmovableEur: 12000 } })
   })
 
   it('refuses a value that is no number', async () => {

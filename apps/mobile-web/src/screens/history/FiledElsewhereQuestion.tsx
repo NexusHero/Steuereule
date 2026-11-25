@@ -4,6 +4,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useTheme, type UiTheme } from '@steuereule/ui'
 import { getYearHistoryControllerGetQueryKey, useFiledElsewhereControllerAnswer, type PutFiledElsewhereDtoAnswer } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
+import { useApiFailureMessage } from '../../net/apiFailure'
 
 export interface FiledElsewhereQuestionProps {
   readonly year: number
@@ -30,12 +31,11 @@ export function FiledElsewhereQuestion({ year, tone, testID }: FiledElsewhereQue
   const queryClient = useQueryClient()
   const answer = useFiledElsewhereControllerAnswer({
     mutation: {
-      onSuccess: (res) => {
-        if (res.status === 200) void queryClient.invalidateQueries({ queryKey: getYearHistoryControllerGetQueryKey() })
-      },
+      onSuccess: () => void queryClient.invalidateQueries({ queryKey: getYearHistoryControllerGetQueryKey() }),
     },
   })
-  const failed = answer.isError || (answer.data !== undefined && answer.data.status !== 200)
+  const failureMessage = useApiFailureMessage()
+  const failed = answer.isError
   return (
     <View style={s.wrap} testID={testID}>
       <View style={s.row} role="group" accessibilityLabel={tr('verlauf.frage.gruppe', { jahr: year })}>
@@ -55,7 +55,7 @@ export function FiledElsewhereQuestion({ year, tone, testID }: FiledElsewhereQue
       </View>
       {failed ? (
         <Text style={s.error} accessibilityRole="alert" testID={`${testID}-fehler`}>
-          {tr('verlauf.frage.fehler')}
+          {failureMessage(answer.error, { server: tr('verlauf.frage.fehler'), unknown: tr('verlauf.frage.fehler') })}
         </Text>
       ) : null}
     </View>

@@ -73,7 +73,8 @@ function YearLoaded({ data, year, onBack, onOpenYear, onPrepareAppeal, onOpenRec
         {back}
         <View style={s.card} testID="verlauf-jahr-unbekannt">
           <Text style={s.cardTitle} accessibilityRole="header">
-            {tr('verlauf.jahr.unbekannt.titel', { jahr: year })}
+            {/* NR-21: `/app/verlauf/abc` parses to NaN — never show "NaN" as a year. */}
+            {Number.isInteger(year) ? tr('verlauf.jahr.unbekannt.titel', { jahr: year }) : tr('verlauf.jahr.unbekannt.titelOhneJahr')}
           </Text>
           <Text style={s.muted}>{tr('verlauf.jahr.unbekannt.text')}</Text>
         </View>

@@ -1,13 +1,18 @@
 import { describe, expect, it, vi } from 'vitest'
+import { ApiError } from '@steuereule/api-client'
 import { createHolderFromDocument, detailsComplete, detailsFromDocument, holderTestId, takeNameIntoProfile } from './documentAssignment'
+
+const noLink = () => Promise.reject(new ApiError(404, {}))
+const rejects = (status: number) => vi.fn(async () => Promise.reject(new ApiError(status, {})))
 
 const details = { firstName: 'Nora', lastName: 'Sommer', birthDate: '1989-11-30', taxId: '31 000 007 919' }
 
 describe('creating the holder of a document (ADR-0092 §3)', () => {
   it('sets up the joint return and Person B with the document’s details', async () => {
+    const getLink = vi.fn(async () => ({ status: 200, data: { filingType: 'einzel' } }) as never)
     const setLink = vi.fn(async () => ({ status: 200 }) as never)
     const updatePersonB = vi.fn(async () => ({ status: 200 }) as never)
-    expect(await createHolderFromDocument(2025, 'B', details, { setLink, updatePersonB })).toBe('B')
+    expect(await createHolderFromDocument(2025, 'B', details, { getLink, setLink, updatePersonB })).toBe('B')
     expect(setLink).toHaveBeenCalledWith(2025, { filingType: 'zusammen' })
     expect(updatePersonB).toHaveBeenCalledWith(2025, { firstName: 'Nora', lastName: 'Sommer', geburtsdatum: '1989-11-30', steuerId: '31000007919' })
   })
@@ -18,9 +23,9 @@ describe('creating the holder of a document (ADR-0092 §3)', () => {
   })
 
   it('answers null when a step fails', async () => {
-    expect(await createHolderFromDocument(2025, 'B', details, { setLink: vi.fn(async () => ({ status: 400 }) as never) })).toBeNull()
-    expect(await createHolderFromDocument(2025, 'B', details, { setLink: vi.fn(async () => ({ status: 200 }) as never), updatePersonB: vi.fn(async () => ({ status: 403 }) as never) })).toBeNull()
-    expect(await createHolderFromDocument(2025, 'kind', details, { createChild: vi.fn(async () => ({ status: 400 }) as never) })).toBeNull()
+    expect(await createHolderFromDocument(2025, 'B', details, { getLink: noLink, setLink: rejects(400) })).toBeNull()
+    expect(await createHolderFromDocument(2025, 'B', details, { getLink: noLink, setLink: vi.fn(async () => ({ status: 200 }) as never), updatePersonB: rejects(403) })).toBeNull()
+    expect(await createHolderFromDocument(2025, 'kind', details, { createChild: rejects(400) })).toBeNull()
     expect(await createHolderFromDocument(2025, 'kind', details, { createChild: vi.fn(async () => ({ status: 201, data: { kinder: [] } }) as never) })).toBeNull()
     expect(await createHolderFromDocument(2025, 'kind', details, { createChild: vi.fn(async () => Promise.reject(new Error('offline'))) })).toBeNull()
   })
@@ -34,18 +39,18 @@ describe('creating the holder of a document (ADR-0092 §3)', () => {
 })
 
 describe('„Bist du …?“ — the name into the empty profile (N1)', () => {
-  it('writes the name and keeps a Steuer-ID already there', async () => {
+  it('writes only the name, so the Steuer-ID already there stays (absent keeps, WEB-28)', async () => {
     const put = vi.fn(async () => ({ status: 200 }) as never)
     const get = vi.fn(async () => ({ status: 200, data: { firstName: '', steuerId: '31000000000' } }) as never)
-    expect(await takeNameIntoProfile(details, { get, put })).toBe(true)
-    expect(put).toHaveBeenCalledWith({ firstName: 'Nora', lastName: 'Sommer', steuerId: '31000000000' })
+    expect(await takeNameIntoProfile(details, { get, put })).toBe('taken')
+    expect(put).toHaveBeenCalledWith({ firstName: 'Nora', lastName: 'Sommer' })
   })
 
   it('never overwrites a name, and needs both names', async () => {
     const put = vi.fn()
-    expect(await takeNameIntoProfile(details, { get: vi.fn(async () => ({ status: 200, data: { firstName: 'Elias' } }) as never), put })).toBe(false)
-    expect(await takeNameIntoProfile({ firstName: 'Nora', lastName: '' }, { put })).toBe(false)
-    expect(await takeNameIntoProfile(details, { get: vi.fn(async () => Promise.reject(new Error('x'))), put })).toBe(false)
+    expect(await takeNameIntoProfile(details, { get: vi.fn(async () => ({ status: 200, data: { firstName: 'Elias' } }) as never), put })).toBe('kept')
+    expect(await takeNameIntoProfile({ firstName: 'Nora', lastName: '' }, { put })).toBe('kept')
+    expect(await takeNameIntoProfile(details, { get: vi.fn(async () => Promise.reject(new Error('x'))), put })).toBe('failed')
     expect(put).not.toHaveBeenCalled()
   })
 })
@@ -54,7 +59,7 @@ describe('more of the holder and profile rules (ADR-0092 §3, N1)', () => {
   it('leaves a missing birth date and Steuer-ID out of Person B’s data', async () => {
     const setLink = vi.fn(async () => ({ status: 200 }) as never)
     const updatePersonB = vi.fn(async () => ({ status: 200 }) as never)
-    await createHolderFromDocument(2025, 'B', { firstName: ' Nora ', lastName: ' Sommer ', birthDate: '', taxId: '' }, { setLink, updatePersonB })
+    await createHolderFromDocument(2025, 'B', { firstName: ' Nora ', lastName: ' Sommer ', birthDate: '', taxId: '' }, { getLink: noLink, setLink, updatePersonB })
     expect(updatePersonB).toHaveBeenCalledWith(2025, { firstName: 'Nora', lastName: 'Sommer' })
   })
 
@@ -72,24 +77,36 @@ describe('more of the holder and profile rules (ADR-0092 §3, N1)', () => {
   it('does not take a name that is incomplete, nor overwrite a profile that has one', async () => {
     const put = vi.fn(async () => ({ status: 200 }) as never)
     const get = vi.fn(async () => ({ status: 200, data: { firstName: 'Nora' } }) as never)
-    expect(await takeNameIntoProfile({ firstName: '', lastName: 'S' }, { get, put })).toBe(false)
-    expect(await takeNameIntoProfile(details, { get, put })).toBe(false)
+    expect(await takeNameIntoProfile({ firstName: '', lastName: 'S' }, { get, put })).toBe('kept')
+    expect(await takeNameIntoProfile(details, { get, put })).toBe('kept')
     expect(put).not.toHaveBeenCalled()
   })
 
-  it('keeps the Steuer-ID and Steuernummer already there, and fills the name into an unreadable profile', async () => {
+  it.each([500, 429, 404])('WEB-32 / NR-02: a profile load answered %i writes nothing — the stored name and identifiers stay', async (status) => {
     const put = vi.fn(async () => ({ status: 200 }) as never)
-    const get = vi.fn(async () => ({ status: 200, data: { firstName: '', steuerId: '31000000000', steuernummer: '12/345/67890' } }) as never)
-    expect(await takeNameIntoProfile(details, { get, put })).toBe(true)
-    expect(put).toHaveBeenCalledWith({ firstName: 'Nora', lastName: 'Sommer', steuerId: '31000000000', steuernummer: '12/345/67890' })
-
-    const missing = vi.fn(async () => ({ status: 404 }) as never)
-    expect(await takeNameIntoProfile(details, { get: missing, put })).toBe(true)
+    expect(await takeNameIntoProfile(details, { get: rejects(status), put })).toBe('failed')
+    expect(put).not.toHaveBeenCalled()
   })
 
-  it('answers false when the profile cannot be written or read', async () => {
+  it('answers "failed" when the profile cannot be written or read', async () => {
     const get = vi.fn(async () => ({ status: 200, data: { firstName: '' } }) as never)
-    expect(await takeNameIntoProfile(details, { get, put: vi.fn(async () => ({ status: 500 }) as never) })).toBe(false)
-    expect(await takeNameIntoProfile(details, { get: vi.fn(async () => Promise.reject(new Error('x'))) })).toBe(false)
+    expect(await takeNameIntoProfile(details, { get, put: rejects(500) })).toBe('failed')
+    expect(await takeNameIntoProfile(details, { get: vi.fn(async () => Promise.reject(new Error('x'))) })).toBe('failed')
+  })
+})
+
+describe('NR-10: a failed Person B undoes the switch to the joint return', () => {
+  it('switches back to „einzel“ when Person B cannot be saved', async () => {
+    const setLink = vi.fn(async () => ({ status: 200 }) as never)
+    expect(await createHolderFromDocument(2025, 'B', details, { getLink: noLink, setLink, updatePersonB: rejects(500) })).toBeNull()
+    expect(setLink.mock.calls).toEqual([[2025, { filingType: 'zusammen' }], [2025, { filingType: 'einzel' }]])
+  })
+
+  it('leaves a year that already was joint alone, and does not guess when the link cannot be read', async () => {
+    const setLink = vi.fn(async () => ({ status: 200 }) as never)
+    const joint = vi.fn(async () => ({ status: 200, data: { filingType: 'zusammen' } }) as never)
+    expect(await createHolderFromDocument(2025, 'B', details, { getLink: joint, setLink, updatePersonB: rejects(500) })).toBeNull()
+    expect(await createHolderFromDocument(2025, 'B', details, { getLink: rejects(500), setLink, updatePersonB: vi.fn() })).toBeNull()
+    expect(setLink).not.toHaveBeenCalled()
   })
 })
