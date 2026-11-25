@@ -430,17 +430,20 @@ async function main() {
     const sessionCookie = aCookies.find((c) => c.httpOnly)
     if (!sessionCookie) fail('Post-poll: Context A has no httpOnly session cookie on the API origin.')
     const sessionToken = decodeURIComponent(sessionCookie.value).split('.').slice(0, -1).join('.')
-    const sessionRow = sql(`SELECT "ipAddress", "userAgent" FROM "Session" WHERE token = '${sessionToken}'`)
+    const sessionRow = sql(`SELECT "id", "ipAddress", "userAgent" FROM "Session" WHERE token = '${sessionToken.replace(/'/g, "''")}'`)
     if (!sessionRow) fail(`Post-poll: no Session row found for A's own token.`)
     // Address and user agent are ciphertext at rest (ADR-0109), so the row proves only that both are stored
     // encrypted; what they say is read the way the app reads it, from A's own session list.
-    const [storedIp, storedUserAgent] = sessionRow.split('|')
+    const [sessionId, storedIp, storedUserAgent] = sessionRow.split('|')
     for (const [column, value] of [['ipAddress', storedIp], ['userAgent', storedUserAgent]]) {
       if (value && !/^v\d+\.aesgcm256\./.test(value)) fail(`Post-poll: Session.${column} is stored in plain text (${JSON.stringify(value)}).`)
     }
     const listed = await contextA.request.get(`${apiOrigin}/api/auth/list-sessions`, { headers: { origin: webOrigin } })
     if (!listed.ok()) fail(`Post-poll: A could not list its own sessions (${listed.status()}).`)
-    const own = (await listed.json()).find((session) => session.token === sessionToken)
+    const sessions = await listed.json()
+    // The list identifies sessions by id and never hands a session token to the page (WEB-22).
+    if (sessions.some((session) => 'token' in session)) fail('Post-poll: the session list exposes session tokens to JavaScript.')
+    const own = sessions.find((session) => session.id === sessionId)
     if (!own) fail(`Post-poll: A's session list does not contain A's own session.`)
     const sessionIp = own.ipAddress
     const sessionUserAgent = own.userAgent
