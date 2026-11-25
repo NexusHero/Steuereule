@@ -10,7 +10,6 @@ import { clientDisplayName, isAcceptableClientName } from '../src/auth/oauth-cli
 import { MCP_PRINTOUT_CHECK_LIMIT, McpRateLimiter } from '../src/mcp/mcp-rate-limit.js'
 import type { AssistantSessionInfo, McpDeps } from '../src/mcp/mcp-session.js'
 import { MCP_SCOPE } from '../src/common/assistant-scopes.js'
-import { installToolGate } from '../src/mcp/tool-gate.js'
 import { normalisedResult } from '../src/mcp/tool-results.js'
 import { MAX_CHILDREN_BY_ASSISTANT, registerChildTools } from '../src/mcp/tools/child-tools.js'
 import { registerComfortTools } from '../src/mcp/tools/comfort-tools.js'
@@ -134,8 +133,8 @@ describe('beleg_hochladen takes the upload admission of the REST route (ADR-0109
   it('refuses a second upload of the same account while the first is in flight, as the route does, and takes the next one after it', async () => {
     const admission = uploadAdmission()
     const { receipts, waiting, inFlight } = heldUploads()
-    const connect = (userId: string) => connectMcpTools(registerReceiptTools, { userId, assistant: uploader, deps: { receipts: receipts as never, admission } })
-    const { call } = await connect(USER)
+    const connectAs = (userId: string) => connectMcpTools(registerReceiptTools, { userId, assistant: uploader, deps: { receipts: receipts as never, admission } })
+    const { call } = await connectAs(USER)
 
     const first = call('beleg_hochladen', upload)
     await inFlight(1)
@@ -155,7 +154,7 @@ describe('beleg_hochladen takes the upload admission of the REST route (ADR-0109
     expect(waiting).toHaveLength(1)
 
     // Another account is not held up by this one.
-    const other = (await connect('u-p4-other')).call('beleg_hochladen', upload)
+    const other = (await connectAs('u-p4-other')).call('beleg_hochladen', upload)
     await inFlight(2)
 
     for (const letThrough of waiting) letThrough()
