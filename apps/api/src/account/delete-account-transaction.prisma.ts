@@ -3,7 +3,7 @@ import type { PrismaClient } from '@prisma/client'
 
 import type { DeleteAccountResult, RetainedHold } from './account-deletion.repository.js'
 import { allowErasure } from '../personal-data/erasure.prisma.js'
-import { delegateName, genericDeletionEntries, type PersonalDataEntry } from '../personal-data/personal-data-registry.js'
+import { delegateName, genericDeletionEntries, PERSONAL_DATA_REGISTRY, type DeletionStep, type PersonalDataEntry } from '../personal-data/personal-data-registry.js'
 import { personIds, shadowIdOf } from '../common/shadow-id.js'
 
 export interface DeleteAccountTestHooks {
@@ -93,8 +93,77 @@ function summarise(holds: readonly { resource: string; holdUntil: Date; reason: 
   return [...byResource.values()].sort((a, b) => a.resource.localeCompare(b.resource))
 }
 
+/** What a step of the erasure works with, and what it reports back. */
+interface DeletionRun {
+  readonly tx: TransactionClient
+  readonly userId: string
+  readonly ids: string[]
+  readonly user: { readonly email: string } | null
+  readonly categoryHolds: ReadonlySet<string>
+  readonly hooks: DeleteAccountTestHooks
+  retain(resource: string, count: number): void
+  retainedAnonymisedAuditRows: number
+}
+
+/** The steps of the transaction; `keys` runs before it, in the keystore database (account-deletion.repository.prisma.ts). */
+export type TransactionDeletionStep = Exclude<DeletionStep, 'keys'>
+
+interface DeletionStepHandler {
+  /** The registry models the step removes or rewrites; the registry lock compares them with the entries naming the step. */
+  readonly models: readonly string[]
+  run(run: DeletionRun): Promise<void>
+}
+
+/** Every named step of the registry, each handled once. A step the registry names without a handler does not compile. */
+export const DELETION_STEPS: { readonly [S in TransactionDeletionStep]: DeletionStepHandler } = {
+  coupling: {
+    models: ['TaxYearLink'],
+    run: async ({ tx, userId, categoryHolds }) => {
+      if (!categoryHolds.has('taxData')) await deleteCoupling(tx, userId)
+    },
+  },
+  household: {
+    models: ['HouseholdMergeCandidate', 'HouseholdPerson', 'PartnerLink'],
+    run: async ({ tx, userId, categoryHolds }) => {
+      if (!categoryHolds.has('taxData')) await deleteHousehold(tx, userId)
+    },
+  },
+  deviceCodes: {
+    models: ['DeviceCode'],
+    run: async ({ tx, userId }) => {
+      await tx.deviceCode.deleteMany({ where: { userId } })
+    },
+  },
+  anonymiseAudit: {
+    models: ['TaxDataAccessLog'],
+    run: async (run) => {
+      const auditWhere = { userId: { in: run.ids } }
+      if (run.categoryHolds.has('auditLog')) {
+        run.retain('auditLog', await run.tx.taxDataAccessLog.count({ where: auditWhere }))
+        return
+      }
+      const { count } = await run.tx.taxDataAccessLog.updateMany({ where: auditWhere, data: { userId: `deleted:${randomUUID()}` } })
+      run.retainedAnonymisedAuditRows = count
+    },
+  },
+  user: {
+    models: ['Verification', 'User'],
+    run: async ({ tx, userId, user, hooks }) => {
+      if (!user) return
+      await tx.verification.deleteMany({ where: { identifier: user.email } })
+      if (hooks.onlyIfUnverified) {
+        const { count } = await tx.user.deleteMany({ where: { id: userId, emailVerified: false } })
+        if (count === 0) throw new AccountVerifiedMeanwhileError()
+      } else {
+        await tx.user.delete({ where: { id: userId } })
+      }
+    },
+  },
+}
+
 /**
- * The one deletion truth (ADR-0013 §3, ADR-0030 §3): every store of the registry, in one transaction.
+ * The one deletion truth (ADR-0013 §3, ADR-0030 §3): every store of the registry, in one transaction, in
+ * registry order — the generic rows entry by entry, a named step once, where it first appears.
  * Rows under an active legal hold stay; the answer says which, how many, and until when.
  */
 export async function deleteAccountTransaction(
@@ -114,25 +183,42 @@ export async function deleteAccountTransaction(
     const heldRowIds = (resource: string | undefined) =>
       activeHolds.filter((hold) => hold.resource === resource && hold.resourceId !== null).map((hold) => hold.resourceId!)
     const retained = new Map<string, number>()
-    const retain = (resource: string, count: number) => retained.set(resource, (retained.get(resource) ?? 0) + count)
+    const run: DeletionRun = {
+      tx,
+      userId,
+      ids,
+      user,
+      categoryHolds,
+      hooks,
+      retain: (resource, count) => retained.set(resource, (retained.get(resource) ?? 0) + count),
+      retainedAnonymisedAuditRows: 0,
+    }
 
-    const taxDataHeld = categoryHolds.has('taxData')
     // Before the first delete: the book's append-only trigger lets deletes through only with it (ADR-0101).
-    if (!taxDataHeld) await allowErasure(tx)
+    if (!categoryHolds.has('taxData')) await allowErasure(tx)
 
     let profileDeleted = false
-    for (const entry of genericDeletionEntries()) {
+    const stepsRun = new Set<DeletionStep>()
+    for (const entry of PERSONAL_DATA_REGISTRY) {
+      const { deletion } = entry
+      if (deletion.kind === 'step') {
+        if (deletion.step === 'keys' || stepsRun.has(deletion.step)) continue
+        stepsRun.add(deletion.step)
+        await DELETION_STEPS[deletion.step].run(run)
+        continue
+      }
+      if (deletion.kind !== 'rows' && deletion.kind !== 'rowsUnlessHeld') continue
       const table = tableOf(tx, entry)
       const where: IdWhere = { userId: { in: ids } }
       if ((entry.hold === 'taxData' || entry.hold === 'profile') && categoryHolds.has(entry.hold)) {
-        retain(entry.hold, await table.count({ where }))
+        run.retain(entry.hold, await table.count({ where }))
         if (entry.model === 'Profile') hooks.simulateFailureAfterProfileStep?.()
         continue
       }
-      if (entry.deletion.kind === 'rowsUnlessHeld') {
+      if (deletion.kind === 'rowsUnlessHeld') {
         const held = heldRowIds(entry.holdResource)
         if (held.length > 0) {
-          retain(entry.holdResource!, await table.count({ where: { userId: { in: ids }, id: { in: held } } }))
+          run.retain(entry.holdResource!, await table.count({ where: { userId: { in: ids }, id: { in: held } } }))
           where.id = { notIn: held }
         }
       }
@@ -143,35 +229,9 @@ export async function deleteAccountTransaction(
       }
     }
 
-    if (!taxDataHeld) {
-      await deleteCoupling(tx, userId)
-      await deleteHousehold(tx, userId)
-    }
-    await tx.deviceCode.deleteMany({ where: { userId } })
-
-    let retainedAnonymisedAuditRows = 0
-    const auditWhere = { userId: { in: ids } }
-    if (categoryHolds.has('auditLog')) {
-      retain('auditLog', await tx.taxDataAccessLog.count({ where: auditWhere }))
-    } else {
-      const tombstone = `deleted:${randomUUID()}`
-      const { count } = await tx.taxDataAccessLog.updateMany({ where: auditWhere, data: { userId: tombstone } })
-      retainedAnonymisedAuditRows = count
-    }
-
-    if (user) {
-      await tx.verification.deleteMany({ where: { identifier: user.email } })
-      if (hooks.onlyIfUnverified) {
-        const { count } = await tx.user.deleteMany({ where: { id: userId, emailVerified: false } })
-        if (count === 0) throw new AccountVerifiedMeanwhileError()
-      } else {
-        await tx.user.delete({ where: { id: userId } })
-      }
-    }
-
     return {
       deleted: { profile: profileDeleted, account: true },
-      retainedAnonymisedAuditRows,
+      retainedAnonymisedAuditRows: run.retainedAnonymisedAuditRows,
       retainedUnderLegalHold: [...retained.values()].reduce((sum, count) => sum + count, 0),
       legalHolds: summarise(activeHolds, retained),
     }

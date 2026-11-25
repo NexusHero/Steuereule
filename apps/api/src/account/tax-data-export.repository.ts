@@ -4,6 +4,8 @@ export const TAX_DATA_EXPORT_REPOSITORY = Symbol('TAX_DATA_EXPORT_REPOSITORY')
 
 /** A stored receipt file as the export lists it before it reads the bytes. */
 export interface ExportReceiptFileMeta {
+  /** Whose key opens the file: the person, or a Person B kept under a shadow id. Not part of the export. */
+  ownerId: string
   receiptId: string
   fileName: string
   mimeType: string
