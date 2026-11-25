@@ -1,5 +1,6 @@
 import type { PrismaClient } from '@prisma/client'
 import type { GenericEndpointContext } from 'better-auth'
+import { withSystemDatabaseAccess } from '../common/database-identity.js'
 import { delegateName, entriesWhere, shadowIdOf, type PersonalDataEntry } from '../account/personal-data-registry.js'
 import { resolveGuestSessionSecret, verifyGuestSession } from './guest-session.js'
 import { GUEST_SESSION_COOKIE } from './user-context.guard.js'
@@ -31,7 +32,11 @@ export async function upgradeGuestToAccount(
   files?: ReceiptFileMover,
 ): Promise<void> {
   if (guestUserId === accountUserId) return
+  // The guest's rows and the account's in one transaction: a path across two ids (P11).
+  return withSystemDatabaseAccess('guest-takeover', () => moveGuestData(prisma, guestUserId, accountUserId, files))
+}
 
+async function moveGuestData(prisma: PrismaClient, guestUserId: string, accountUserId: string, files?: ReceiptFileMover): Promise<void> {
   const movedReceipts = await prisma.$transaction(async (tx) => {
     const from = { userId: guestUserId }
     const to = { userId: accountUserId }

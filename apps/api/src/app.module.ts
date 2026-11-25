@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common'
-import { APP_FILTER } from '@nestjs/core'
+import { APP_FILTER, APP_INTERCEPTOR } from '@nestjs/core'
+import { DatabaseIdentityInterceptor } from './auth/database-identity.interceptor.js'
 import { ThrottlerModule } from '@nestjs/throttler'
 import { AccountModule } from './account/account.module.js'
 import { AssistantsModule } from './assistenten/assistenten.module.js'
@@ -99,6 +100,8 @@ import { DomainErrorFilter } from './common/domain-error.filter.js'
   ],
   // The catch-all is registered first: Nest tries the specific DomainErrorFilter before it.
   providers: [
+    // First global interceptor, so the outermost one: every handler and interceptor runs as the request's user (P11).
+    { provide: APP_INTERCEPTOR, useClass: DatabaseIdentityInterceptor },
     { provide: APP_FILTER, useClass: UnexpectedErrorFilter },
     { provide: APP_FILTER, useClass: DomainErrorFilter },
   ],

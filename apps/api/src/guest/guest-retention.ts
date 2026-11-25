@@ -1,3 +1,4 @@
+import { withSystemDatabaseAccess } from '../common/database-identity.js'
 import type { GuestActivityRepository } from './guest-activity.repository.js'
 
 /** A guest id with no write for this long is erased (ADR-0109, the stakeholder's retention decision). */
@@ -30,10 +31,16 @@ export class GuestActivityNotes implements GuestActivityRecorder {
   afterTouch: (() => void) | undefined
 
   seen(): void {
-    this.afterTouch?.()
+    this.runSweeps()
   }
 
   constructor(private readonly repository: GuestActivityRepository) {}
+
+  /** The sweeps cross every user, whatever request they ride on (P11): they never run as that request's user. */
+  private runSweeps(): void {
+    const sweeps = this.afterTouch
+    if (sweeps) withSystemDatabaseAccess('lifecycle-sweeps', sweeps)
+  }
 
   async touch(guestUserId: string, now = Date.now()): Promise<void> {
     const previous = this.lastTouch.get(guestUserId)
@@ -42,7 +49,7 @@ export class GuestActivityNotes implements GuestActivityRecorder {
     // Remembered only after the write succeeded, so a failed one is tried again by the next request.
     if (this.lastTouch.size >= 10_000) this.lastTouch.clear()
     this.lastTouch.set(guestUserId, now)
-    this.afterTouch?.()
+    this.runSweeps()
   }
 }
 

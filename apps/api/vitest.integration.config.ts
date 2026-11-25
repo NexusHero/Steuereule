@@ -23,7 +23,7 @@ export default defineConfig({
     // cross-file interference entirely; still fully parallel *within* a file.
     fileParallelism: false,
     // Encrypted JWKS keys from another suite's secret are unreadable here (ADR-0106 D6).
-    setupFiles: ['test/support/clear-jwks.ts'],
+    setupFiles: ['test/support/database-test-identity.ts', 'test/support/clear-jwks.ts'],
     hookTimeout: 30_000,
     testTimeout: 30_000,
     env: {

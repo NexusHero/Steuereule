@@ -1,3 +1,4 @@
+import { withSystemDatabaseAccess } from '../common/database-identity.js'
 import { Inject, Injectable, Optional } from '@nestjs/common'
 import { PAYMENT_RETURN, paymentReturnUrl } from '@steuereule/core'
 import { ConflictError, UnauthenticatedError, UnavailableError } from '../common/domain-error.js'
@@ -114,19 +115,23 @@ export class UnlockService {
       }
       throw new UnauthenticatedError('WEBHOOK_SIGNATURE_INVALID', 'The webhook signature is invalid.')
     }
-    switch (event.kind) {
-      case 'bezahlt':
-        await this.repository.markPaid(event.sessionId, event.amountCents, now, event.owner)
-        return
-      case 'zurueckgenommen':
-        await this.repository.revoke(event.sessionId, event.reason)
-        return
-      case 'wiederhergestellt':
-        await this.repository.restore(event.sessionId)
-        return
-      case 'ignoriert':
-        return
-    }
+    // Signed by the provider, keyed by its session id: the row may be any account's (P11). Only after the check.
+    const verified = event
+    await withSystemDatabaseAccess('payment-webhook', async () => {
+      switch (verified.kind) {
+        case 'bezahlt':
+          await this.repository.markPaid(verified.sessionId, verified.amountCents, now, verified.owner)
+          return
+        case 'zurueckgenommen':
+          await this.repository.revoke(verified.sessionId, verified.reason)
+          return
+        case 'wiederhergestellt':
+          await this.repository.restore(verified.sessionId)
+          return
+        case 'ignoriert':
+          return
+      }
+    })
   }
 }
 

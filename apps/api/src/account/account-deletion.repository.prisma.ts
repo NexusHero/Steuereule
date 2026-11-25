@@ -1,4 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common'
+import { systemDatabaseClient } from '../common/database-identity.js'
 import { USER_KEY_STORE, type UserKeyStore } from '../keystore/user-key-store.js'
 import { ENCRYPTED_PRISMA, type EncryptedPrismaClient } from '../prisma/encrypted-prisma.provider.js'
 import type { AccountDeletionRepository, DeleteAccountResult } from './account-deletion.repository.js'
@@ -6,10 +7,15 @@ import { AccountVerifiedMeanwhileError, deleteAccountTransaction, householdPerso
 
 @Injectable()
 export class PrismaAccountDeletionRepository implements AccountDeletionRepository {
+  private readonly prisma: EncryptedPrismaClient
+
   constructor(
-    @Inject(ENCRYPTED_PRISMA) private readonly prisma: EncryptedPrismaClient,
+    @Inject(ENCRYPTED_PRISMA) prisma: EncryptedPrismaClient,
     @Inject(USER_KEY_STORE) private readonly keys: UserKeyStore,
-  ) {}
+  ) {
+    // An erasure crosses rows of other ids (tombstones, both sides of a coupling, held rows): a system path (P11).
+    this.prisma = systemDatabaseClient(prisma, 'account-deletion')
+  }
 
   async deleteAccount(userId: string): Promise<DeleteAccountResult> {
     // Crypto-shredding (ADR-0059, Art. 17 DSGVO): the receipt key lives in the keystore
