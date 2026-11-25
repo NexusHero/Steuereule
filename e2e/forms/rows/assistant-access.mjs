@@ -11,7 +11,7 @@ const REDIRECT_URI = 'http://127.0.0.1:33418/callback'
 
 /** @param {any} ctx */
 export async function run(ctx) {
-  const { page, webOrigin, sql, tid, visible, gone, fail, until, TAG } = ctx
+  const { page, apiOrigin, webOrigin, sql, tid, visible, gone, fail, until, TAG } = ctx
 
   await page.goto(`${webOrigin}/app/profil`, { waitUntil: 'networkidle' })
   await visible(page, 'assistent-verbinden', ROW)
@@ -60,7 +60,12 @@ export async function run(ctx) {
   const shownId = (await page.locator(tid('assistent-client-id')).innerText()).trim()
   if (shownId !== issuedId) fail(`${ROW}: the shown client id should be the issued one, got "${shownId}" vs "${issuedId}"`)
   const serverAddress = (await page.locator(tid('assistent-server-adresse')).innerText()).trim()
-  if (!/^https?:\/\/[^\s/]+.*\/mcp\/sse$/.test(serverAddress)) fail(`${ROW}: the server address should be the API's MCP endpoint, got "${serverAddress}"`)
+  // The address to paste is the MCP resource the server itself advertises (RFC 9728, ADR-0052 amendment 6:
+  // Streamable HTTP at /mcp), so the app and the server cannot drift apart.
+  const metadata = await page.request.get(`${apiOrigin}/.well-known/oauth-protected-resource/mcp`)
+  if (!metadata.ok()) fail(`${ROW}: the MCP resource metadata should be served, got ${metadata.status()}`)
+  const advertised = (await metadata.json()).resource
+  if (serverAddress !== advertised) fail(`${ROW}: the server address should be the advertised MCP resource "${advertised}", got "${serverAddress}"`)
 
   // The client is stored with what the form sent.
   const quotedId = issuedId.replace(/'/g, "''")
