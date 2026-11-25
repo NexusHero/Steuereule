@@ -54,6 +54,11 @@ Stripe account (test mode for staging and the beta); the operator details for th
 6. Generated secrets: `GUEST_SESSION_SECRET`, `BETTER_AUTH_SECRET`, `PRISMA_FIELD_ENCRYPTION_KEY`,
    `PRISMA_FIELD_ENCRYPTION_HASH_SALT` (before the first migration, ADR-0109 §12), `KEYSTORE_MASTER_KEY`.
 7. Database users and both connection URLs (`DATABASE_URL`, `KEYSTORE_DATABASE_URL`).
+   Row-level security (P11): the migration `…_p11_row_level_security` creates the role `steuereule_app` (no
+   login, no superuser, no BYPASSRLS) and grants it to the `DATABASE_URL` user, which therefore needs CREATEROLE
+   (a Cloud SQL user created with `gcloud sql users create` has it). The API switches to that role at connection
+   start (`options=-c role=steuereule_app`, added in code); migrations and operator scripts keep the login user,
+   and `migrate-deploy.mjs` runs them as the system path `migration`. No extra secret or user is needed.
 8. Brevo: authenticate the sender domain by DNS, store `BREVO_API_KEY`.
 9. Stripe (required on a deployment, so the printout never ends in "payment not set up"):
    - two products with a one-time price each, the standard printout and the printout with self-employment;
