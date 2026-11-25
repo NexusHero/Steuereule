@@ -1,4 +1,4 @@
-import { Inject, Injectable, Optional } from '@nestjs/common'
+import { Inject, Injectable, Logger, Optional } from '@nestjs/common'
 import { YEAR_INDEPENDENT, decomposeProvenanceKey, isYearIndependent, provenanceKey, type Screen } from '@steuereule/core'
 import { LinkService } from '../link/link.service.js'
 import { PROVENANCE_REPOSITORY, type ProvenanceRecord, type ProvenanceRepository } from '../marking/marking.repository.js'
@@ -41,6 +41,8 @@ const sameMarking = (a: ProvenanceRecord, b: ProvenanceRecord): boolean =>
  */
 @Injectable()
 export class UserWriteMarkings {
+  private readonly logger = new Logger(UserWriteMarkings.name)
+
   constructor(
     @Inject(PROVENANCE_REPOSITORY) private readonly markings: ProvenanceRepository,
     @Inject(FIELD_ACCESS) private readonly access: FieldAccess,
@@ -51,11 +53,19 @@ export class UserWriteMarkings {
   /** Runs one user write and settles the markings it made stale. */
   async around<T>(userId: string, taxYear: number | null, screens: readonly Screen[], write: () => Promise<T>): Promise<T> {
     const snapshot = await this.snapshot(userId, taxYear, screens)
+    let result: T
     try {
-      return await write()
-    } finally {
-      await this.settle(snapshot)
+      result = await write()
+    } catch (error) {
+      // A refused write may still have changed part of the mask. The caller gets the write's own error,
+      // never a failure of the settling that follows it.
+      await this.settle(snapshot).catch((settleError: unknown) => {
+        this.logger.error(`Markings not settled after a failed write: ${settleError instanceof Error ? settleError.message : String(settleError)}`)
+      })
+      throw error
     }
+    await this.settle(snapshot)
+    return result
   }
 
   async snapshot(userId: string, taxYear: number | null, screens: readonly Screen[]): Promise<UserWriteSnapshot> {
