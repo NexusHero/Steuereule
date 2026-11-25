@@ -1,10 +1,16 @@
 import { Inject, Injectable } from '@nestjs/common'
 import { PrismaService } from '../prisma/prisma.service.js'
+import { systemDatabaseClient } from '../common/database-identity.js'
 import type { AssistantClient, BearerTokenRepository, OpaqueAccessToken } from './bearer-token.repository.js'
 
 @Injectable()
 export class PrismaBearerTokenRepository implements BearerTokenRepository {
-  constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
+  private readonly prisma: PrismaService
+
+  constructor(@Inject(PrismaService) prisma: PrismaService) {
+    // A system path as a whole (P11): bearer-token.
+    this.prisma = systemDatabaseClient(prisma, 'bearer-token')
+  }
 
   async findOpaqueToken(tokenHash: string): Promise<OpaqueAccessToken | null> {
     const row = await this.prisma.oauthAccessToken.findUnique({

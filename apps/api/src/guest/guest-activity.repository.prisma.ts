@@ -1,10 +1,16 @@
 import { Inject, Injectable } from '@nestjs/common'
 import { PrismaService } from '../prisma/prisma.service.js'
+import { systemDatabaseClient } from '../common/database-identity.js'
 import type { GuestActivityRepository } from './guest-activity.repository.js'
 
 @Injectable()
 export class PrismaGuestActivityRepository implements GuestActivityRepository {
-  constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
+  private readonly prisma: PrismaService
+
+  constructor(@Inject(PrismaService) prisma: PrismaService) {
+    // A system path as a whole (P11): guest-activity.
+    this.prisma = systemDatabaseClient(prisma, 'guest-activity')
+  }
 
   async touch(guestUserId: string, at: Date): Promise<void> {
     await this.prisma.guestActivity.upsert({ where: { userId: guestUserId }, create: { userId: guestUserId, lastWriteAt: at }, update: { lastWriteAt: at } })

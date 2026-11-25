@@ -1,5 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common'
 import { PrismaService } from '../prisma/prisma.service.js'
+import { systemDatabaseClient } from '../common/database-identity.js'
 import type {
   DeviceCodeRepository,
   DeviceCodeRequestContext,
@@ -8,7 +9,12 @@ import type {
 
 @Injectable()
 export class PrismaDeviceCodeRepository implements DeviceCodeRepository {
-  constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
+  private readonly prisma: PrismaService
+
+  constructor(@Inject(PrismaService) prisma: PrismaService) {
+    // A system path as a whole (P11): device-flow.
+    this.prisma = systemDatabaseClient(prisma, 'device-flow')
+  }
 
   async recordRequestContext(deviceCode: string, context: DeviceCodeRequestContext): Promise<void> {
     await this.prisma.deviceCode.update({
