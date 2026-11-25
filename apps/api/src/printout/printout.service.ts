@@ -20,6 +20,7 @@ import {
 import { waysToWork } from '../commute/ways-to-work.js'
 import type { CommuteInputs } from '../commute/commute.repository.js'
 import { AuditService } from '../audit/audit.service.js'
+import { appendReadAudit, jointPartnerOf } from '../common/read-audit.js'
 import type { CrossBorderSalaryStatementRecord } from '../ch-salary-certificate/ch-salary-certificate.repository.js'
 import { UnlockService } from '../unlock/unlock.service.js'
 import { PROVENANCE_REPOSITORY, type ProvenanceRepository } from '../marking/marking.repository.js'
@@ -95,6 +96,17 @@ export class PrintoutService {
     // nothing else is missing, it is named here, as „zuLang.<field>“, so the user shortens it first (ADR-0085).
     if (missing.length > 0) return { missing, missingChildFields, hints }
     return { missing: (await this.tooLong(year, values, instances)).map((id) => `zuLang.${id}`), missingChildFields, hints }
+  }
+
+  /**
+   * The check as the user reads it (the endpoint), with its READ row. `check` is also run inside the
+   * checkout, the owl's case digest and the MCP tools, which keep their own audit rows.
+   */
+  async checkForUser(userId: string, year: number): Promise<PrintoutCheck> {
+    const result = await this.check(userId, year)
+    const { coupling } = await this.cases.read(userId, year, ['coupling'])
+    await appendReadAudit(this.audit, userId, 'ausdruck-pruefung', [jointPartnerOf(coupling, userId)])
+    return result
   }
 
   /** Whether the estimate is a payment over its whole range; unknown or open counts as a possible refund. */

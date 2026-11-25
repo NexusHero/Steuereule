@@ -1,5 +1,7 @@
 import { scrubUserMessagePii, ADVISOR_NOTES_MAX, tidyNoteText, tidySituationText, type AdvisorNoteChange } from '@steuereule/core'
-import { Inject, Injectable } from '@nestjs/common'
+import { Inject, Injectable, Optional } from '@nestjs/common'
+import { AuditService } from '../audit/audit.service.js'
+import { appendReadAudit } from '../common/read-audit.js'
 import { ConflictError, InvalidInputError, NotFoundError } from '../common/domain-error.js'
 import { ADVISOR_REPOSITORY, type AdvisorNoteRecord, type AdvisorRepository } from './advisor.repository.js'
 import type { AdvisorChatMessageDto, AdvisorNoteDto, AdvisorSituationDto } from './dto/advisor.dto.js'
@@ -12,6 +14,7 @@ export class AdvisorProjectNotes {
   constructor(
     @Inject(ADVISOR_REPOSITORY) private readonly advisorRepo: AdvisorRepository,
     @Inject(AdvisorCaseDigest) private readonly caseDigest: Pick<AdvisorCaseDigest, 'knownNamesForScrubbing'>,
+    @Optional() @Inject(AuditService) private readonly audit?: AuditService,
   ) {}
 
   /** The user's own description of the situation; an empty text while nothing was written (#501). */
@@ -29,7 +32,9 @@ export class AdvisorProjectNotes {
   }
 
   async listNotes(userId: string, taxYear: number): Promise<AdvisorNoteDto[]> {
-    return (await this.advisorRepo.listNotes(userId, taxYear)).map(toNoteDto)
+    const notes = await this.advisorRepo.listNotes(userId, taxYear)
+    if (notes.length > 0) await appendReadAudit(this.audit, userId, 'berater_notiz')
+    return notes.map(toNoteDto)
   }
 
   /** A note text as it may be stored: one line, within the length, without names or identifiers. */

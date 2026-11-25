@@ -1,5 +1,5 @@
 import { type EmailPurpose, renderEmail } from './email-content.js'
-import type { EmailSender, ExistingAccountNotice, VerificationEmail } from './email-sender.js'
+import type { EmailSender, ExistingAccountNotice, UnverifiedAccountWarning, VerificationEmail } from './email-sender.js'
 
 export const BREVO_SEND_URL = 'https://api.brevo.com/v3/smtp/email'
 
@@ -32,7 +32,11 @@ export class BrevoEmailSender implements EmailSender {
     await this.send(email, 'existing-account')
   }
 
-  private async send(email: VerificationEmail | ExistingAccountNotice, purpose: EmailPurpose): Promise<void> {
+  async sendUnverifiedAccountWarning(email: UnverifiedAccountWarning): Promise<void> {
+    await this.send(email, email.final ? 'unverified-final' : 'unverified-warning')
+  }
+
+  private async send(email: VerificationEmail | ExistingAccountNotice | UnverifiedAccountWarning, purpose: EmailPurpose): Promise<void> {
     const { subject, text, html } = renderEmail(email, purpose)
     const response = await this.fetchImpl(BREVO_SEND_URL, {
       method: 'POST',

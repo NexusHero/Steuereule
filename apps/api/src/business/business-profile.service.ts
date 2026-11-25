@@ -73,6 +73,7 @@ export class BusinessProfileService {
   async listBusinesses(userId: string, year: number, person: BusinessPerson): Promise<readonly { business: number; name: string | null; kind: 'freiberuf' | 'gewerbe' | null; mode: BookkeepingMode }[]> {
     await this.context.assertOpen(userId, year)
     const profiles = await this.repository.listProfiles(userId, year, person)
+    if (profiles.length > 0) await this.audit.append({ userId, action: 'READ', resource: 'selbststaendig' })
     const listed = profiles.map((p) => ({ business: p.business, name: p.name, kind: p.kind, mode: p.mode }))
     return listed.some((b) => b.business === FIRST_BUSINESS) ? listed : [{ business: FIRST_BUSINESS, name: null, kind: null, mode: 'euer' as const }, ...listed]
   }

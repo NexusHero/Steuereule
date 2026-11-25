@@ -16,7 +16,7 @@ import { redirectVerificationToWebApp } from './verification-link.js'
 import { DEVICE_AUTHORIZATION_DISABLED_PATHS, assertDeviceAuthorizationDisabledPathsComplete } from './device-authorization-paths.js'
 import { deviceSessionCookiePlugin } from './device-session-cookie.js'
 import type { EmailSender } from './email-sender.js'
-import { createGuestAccountUpgradeHook } from './guest-account-upgrade.prisma.js'
+import { createGuestAccountUpgradeHook, type ReceiptFileMover } from './guest-account-upgrade.prisma.js'
 import { createResettableRateLimitStorage, type ResettableRateLimitStorage } from './rate-limit-storage.js'
 import { mergeTrustedOrigins } from './trusted-origins.js'
 import { SESSION_IDLE_EXPIRES_IN_SECONDS, SESSION_UPDATE_AGE_SECONDS } from './session-lifetime.js'
@@ -90,6 +90,8 @@ export interface CreateBetterAuthOptions {
   rateLimitStorage?: ResettableRateLimitStorage
   /** Called on a sign-in or sign-up: traffic the guest-retention sweep rides on (ADR-0109). */
   onSweepOpportunity?: () => void
+  /** Re-encrypts a guest's receipt files for the account at the takeover (API-20). */
+  receiptFiles?: ReceiptFileMover
 }
 
 export interface BetterAuthBundle {
@@ -114,6 +116,7 @@ function buildOptions(options: CreateBetterAuthOptions & { rateLimitStorage: Res
     appleClientSecret,
     rateLimitStorage,
     onSweepOpportunity,
+    receiptFiles,
   } = options
 
   const socialProviders: NonNullable<BetterAuthOptions['socialProviders']> = {}
@@ -304,7 +307,7 @@ function buildOptions(options: CreateBetterAuthOptions & { rateLimitStorage: Res
     databaseHooks: {
       session: {
         create: {
-          after: createGuestAccountUpgradeHook(prisma),
+          after: createGuestAccountUpgradeHook(prisma, receiptFiles),
         },
         update: {
           // Enforce the absolute cap at the better-auth boundary too (ADR-0103 vulnerability 2): clamp every

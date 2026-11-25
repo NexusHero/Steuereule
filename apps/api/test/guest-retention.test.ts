@@ -2,11 +2,12 @@
 import { describe, expect, it } from 'vitest'
 import type { DeleteAccountResult } from '../src/account/account-deletion.repository.js'
 import type { GuestActivityRepository } from '../src/guest/guest-activity.repository.js'
-import { GUEST_RETENTION_DAYS, GuestActivityNotes, sweepInactiveGuests } from '../src/guest/guest-retention.js'
+import { GUEST_RETENTION_DAYS, GUEST_SWEEP_MAX_PER_RUN, GuestActivityNotes, sweepInactiveGuests } from '../src/guest/guest-retention.js'
+import { GUEST_CREATION_LIMIT } from '../src/auth/user-context.guard.js'
 
 const DAY = 24 * 60 * 60 * 1000
 const NOW = new Date('2026-11-28T10:00:00Z')
-const ERASED: DeleteAccountResult = { deleted: { profile: true, account: true }, retainedAnonymisedAuditRows: 0, retainedUnderLegalHold: 0 }
+const ERASED: DeleteAccountResult = { deleted: { profile: true, account: true }, retainedAnonymisedAuditRows: 0, retainedUnderLegalHold: 0, legalHolds: [] }
 
 /** A table of clocks that honours what the Prisma repository promises. */
 function fakeRepository(rows: Record<string, Date>, accounts: string[] = []): GuestActivityRepository {
@@ -28,6 +29,18 @@ function fakeRepository(rows: Record<string, Date>, accounts: string[] = []): Gu
 }
 
 describe('sweepInactiveGuests', () => {
+  it('API-9: one run erases up to 500 due guests in batches, more than an address may create in an hour', async () => {
+    const rows: Record<string, Date> = {}
+    for (let i = 0; i < 600; i++) rows[`g${i}`] = new Date(NOW.getTime() - (GUEST_RETENTION_DAYS + 1) * DAY - i)
+    const result = await sweepInactiveGuests({ repository: fakeRepository(rows), erase: async () => ERASED }, NOW)
+    expect(GUEST_SWEEP_MAX_PER_RUN).toBe(500)
+    expect(result.erased).toBe(GUEST_SWEEP_MAX_PER_RUN)
+    expect(Object.keys(rows)).toHaveLength(100)
+    // The creation cap keeps one address far below one process's hourly erasure capacity.
+    expect(GUEST_CREATION_LIMIT).toEqual({ window: 3600, max: 20 })
+    expect(GUEST_SWEEP_MAX_PER_RUN / GUEST_CREATION_LIMIT.max).toBe(25)
+  })
+
   it('erases a guest idle for 30 days through the deletion path, and keeps a recent one', async () => {
     const rows = { old: new Date(NOW.getTime() - (GUEST_RETENTION_DAYS + 1) * DAY), recent: new Date(NOW.getTime() - 5 * DAY) }
     const erased: string[] = []

@@ -19,11 +19,13 @@ import { BEARER_TOKEN_REPOSITORY } from './bearer-token.repository.js'
 import { PrismaBearerTokenRepository } from './bearer-token.repository.prisma.js'
 import { AuthCapabilitiesController } from './auth-capabilities.controller.js'
 import { OAuthDiscoveryController } from './oauth-discovery.controller.js'
+import { ReceiptStorageModule } from '../receipt/receipt-storage.module.js'
+import { PostgresByteaStorageAdapter } from '../receipt/storage/postgres-bytea-storage.adapter.js'
 
 /** The auth wiring seam: builds the one shared better-auth instance off the existing PrismaService connection. */
 @Global()
 @Module({
-  imports: [PrismaModule],
+  imports: [PrismaModule, ReceiptStorageModule],
   controllers: [AuthCapabilitiesController, OAuthDiscoveryController],
   providers: [
     {
@@ -36,8 +38,8 @@ import { OAuthDiscoveryController } from './oauth-discovery.controller.js'
     {
       provide: BETTER_AUTH_BUNDLE,
       // The encrypted client: name, e-mail and session address are ciphertext at rest (ADR-0109).
-      inject: [ENCRYPTED_PRISMA, EMAIL_SENDER, GUEST_ACTIVITY_RECORDER],
-      useFactory: (prisma: EncryptedPrismaClient, emailSender: EmailSender, recorder: GuestActivityNotes) =>
+      inject: [ENCRYPTED_PRISMA, EMAIL_SENDER, GUEST_ACTIVITY_RECORDER, PostgresByteaStorageAdapter],
+      useFactory: (prisma: EncryptedPrismaClient, emailSender: EmailSender, recorder: GuestActivityNotes, receiptFiles: PostgresByteaStorageAdapter) =>
         createBetterAuth({
           prisma,
           secret: resolveBetterAuthSecret(),
@@ -47,6 +49,8 @@ import { OAuthDiscoveryController } from './oauth-discovery.controller.js'
           emailSender,
           // A sign-in or sign-up is traffic too: it gives the guest sweep a chance to run (ADR-0029, ADR-0109).
           onSweepOpportunity: () => recorder.afterTouch?.(),
+          // A guest's receipt files are re-encrypted for the account at the first sign-in (API-20).
+          receiptFiles,
           googleClientId: resolveGoogleClientId(),
           googleClientSecret: resolveGoogleClientSecret(),
           appleSignInEnabled: resolveAppleSignInEnabled(),

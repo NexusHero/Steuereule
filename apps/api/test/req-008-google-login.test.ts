@@ -14,7 +14,7 @@ import { createBetterAuth } from '../src/auth/better-auth.js'
 import type { EmailSender } from '../src/auth/email-sender.js'
 
 function fakeEmailSender(): EmailSender {
-  return { sendVerificationEmail: vi.fn(), sendPasswordResetEmail: vi.fn(), sendExistingAccountNotice: vi.fn() }
+  return { sendVerificationEmail: vi.fn(), sendPasswordResetEmail: vi.fn(), sendExistingAccountNotice: vi.fn(), sendUnverifiedAccountWarning: vi.fn() }
 }
 
 function fakePrisma(): PrismaClient {

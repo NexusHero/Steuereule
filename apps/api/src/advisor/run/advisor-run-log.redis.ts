@@ -1,6 +1,8 @@
 import type { AdvisorStreamEvent } from '@steuereule/core'
 import type { Redis } from 'ioredis'
+import type { FieldEncryptionKeySet } from '../../common/field-encryption-keys.js'
 import { RUN_RETENTION_MS, type AdvisorRunEntry, type AdvisorRunInfo, type AdvisorRunLog } from './advisor-run-log.js'
+import { RunEventCipher } from './run-event-cipher.js'
 
 const STOP_CHANNEL = 'steuereule:advisor:run:stop'
 /** A run that never closes (process died) must not live forever. */
@@ -11,11 +13,15 @@ const EVENT_FIELD = 'e'
 
 const streamKey = (runId: string): string => `steuereule:advisor:run:${runId}`
 const infoKey = (runId: string): string => `steuereule:advisor:run:${runId}:info`
+/** What a sealed event is bound to: its run and its place in the run. */
+const entryLabel = (runId: string, seq: number): string => `${runId}:${seq}`
 
 /**
  * Run log on Redis Streams: one stream per run, the entry id `<seq>-0` is the sequence number, a
  * final `end` entry closes it. Stop requests travel over pub/sub, so any instance can stop a run
- * that another one executes. Event payloads are transient and expire with the stream.
+ * that another one executes. Event payloads are transient and expire with the stream; they carry the
+ * chat text, so each is sealed (AES-256-GCM, key derived from the field-encryption key) before it is
+ * written and opened on read (H2-9). An entry that does not open is skipped.
  */
 export class RedisAdvisorRunLog implements AdvisorRunLog {
   readonly shared = true
@@ -23,11 +29,15 @@ export class RedisAdvisorRunLog implements AdvisorRunLog {
   private readonly seqByRun = new Map<string, number>()
   private readonly stopListeners = new Map<string, Set<() => void>>()
   private subscriber: Redis | null = null
+  private readonly cipher: RunEventCipher
 
   constructor(
     private readonly redis: Redis,
+    keys: FieldEncryptionKeySet,
     private readonly retentionMs: number = RUN_RETENTION_MS,
-  ) {}
+  ) {
+    this.cipher = new RunEventCipher(keys)
+  }
 
   async open(info: AdvisorRunInfo): Promise<void> {
     this.seqByRun.set(info.runId, 0)
@@ -45,7 +55,8 @@ export class RedisAdvisorRunLog implements AdvisorRunLog {
     const seq = current + 1
     this.seqByRun.set(runId, seq)
     const key = streamKey(runId)
-    await this.redis.multi().xadd(key, `${seq}-0`, EVENT_FIELD, JSON.stringify(event)).expire(key, OPEN_RUN_TTL_SECONDS).exec()
+    const sealed = this.cipher.seal(JSON.stringify(event), entryLabel(runId, seq))
+    await this.redis.multi().xadd(key, `${seq}-0`, EVENT_FIELD, sealed).expire(key, OPEN_RUN_TTL_SECONDS).exec()
     return seq
   }
 
@@ -93,7 +104,10 @@ export class RedisAdvisorRunLog implements AdvisorRunLog {
             if (fields[0] === END_FIELD) return
             const payload = fields[fields.indexOf(EVENT_FIELD) + 1]
             if (payload === undefined) continue
-            yield { seq: Number(id.split('-')[0]), event: JSON.parse(payload) as AdvisorStreamEvent }
+            const seq = Number(id.split('-')[0])
+            const opened = this.cipher.open(payload, entryLabel(runId, seq))
+            if (opened === null) continue
+            yield { seq, event: JSON.parse(opened) as AdvisorStreamEvent }
           }
         }
       }

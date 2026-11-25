@@ -1,6 +1,8 @@
 import { Inject, Injectable } from '@nestjs/common'
 import { ENCRYPTED_PRISMA, type EncryptedPrismaClient } from '../prisma/encrypted-prisma.provider.js'
 import type { PartnerCouplingRecord, PartnerCouplingRepository } from './link.repository.js'
+import { moveShadowDataToAccount } from '../account/person-data-move.prisma.js'
+import { isShadowId } from '../account/personal-data-registry.js'
 
 function toRecord(row: {
   id: string
@@ -94,11 +96,18 @@ export class PrismaLinkRepository implements PartnerCouplingRepository {
   }
 
   async setPersonB(id: string, personBUserId: string): Promise<PartnerCouplingRecord> {
-    const row = await this.prisma.taxYearLink.update({
-      where: { id },
-      data: { personBUserId, invitationCode: null, invitationCodeValidUntil: null },
+    return this.prisma.$transaction(async (tx) => {
+      const before = await tx.taxYearLink.findUnique({ where: { id }, select: { personBUserId: true, taxYear: true } })
+      const row = await tx.taxYearLink.update({
+        where: { id },
+        data: { personBUserId, invitationCode: null, invitationCodeValidUntil: null },
+      })
+      // What A recorded for B under the shadow id is B's from now on (API-2): no orphaned shadow rows.
+      if (before && isShadowId(before.personBUserId) && before.personBUserId !== personBUserId) {
+        await moveShadowDataToAccount(tx, before.personBUserId, personBUserId, before.taxYear)
+      }
+      return toRecord(row)
     })
-    return toRecord(row)
   }
 
   async delete(personAUserId: string, taxYear: number): Promise<boolean> {

@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto'
 import { Inject, Injectable } from '@nestjs/common'
 import { canonicalJson, type BookingTaxKey, type ChartOfAccounts, type BookkeepingMode, type JournalEntry, type JournalLine, type LogRecord } from '@steuereule/core'
 import { ConflictError } from '../common/domain-error.js'
+import { allowErasure } from '../account/delete-account-transaction.prisma.js'
 import { ENCRYPTED_PRISMA, type EncryptedPrismaClient } from '../prisma/encrypted-prisma.provider.js'
 import type {
   BankTransactionRecord,
@@ -195,9 +196,17 @@ export class PrismaBusinessRepository implements BusinessRepository {
     return toProfile(row)
   }
 
+  /**
+   * Profile and book of a further business go together or not at all (H2-8). The book's append-only
+   * trigger lets a DELETE through only under the transaction-local erasure flag; the `none` filters keep
+   * the guard, so only an empty book (no entries, log records or bank transactions) is ever deleted.
+   */
   async deleteProfile(userId: string, taxYear: number, ref: BusinessRef): Promise<void> {
-    await this.prisma.businessProfile.deleteMany({ where: { userId, taxYear, ...ref } })
-    await this.prisma.ledger.deleteMany({ where: { userId, taxYear, ...ref, entries: { none: {} }, logRecords: { none: {} }, bankTransactions: { none: {} } } })
+    await this.prisma.$transaction(async (tx) => {
+      await allowErasure(tx)
+      await tx.businessProfile.deleteMany({ where: { userId, taxYear, ...ref } })
+      await tx.ledger.deleteMany({ where: { userId, taxYear, ...ref, entries: { none: {} }, logRecords: { none: {} }, bankTransactions: { none: {} } } })
+    })
   }
 
   private async load(tx: Tx, book: BookRecord): Promise<LoadedBook> {

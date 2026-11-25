@@ -212,6 +212,7 @@ export class CapitalService {
       this.interviewRepository.findAllForUserAndYear(userId, taxYear),
     ])
 
+    if (capitalRecord !== null) await this.auditService.append({ userId, action: 'READ', resource: 'guenstigerpruefung' })
     const answers = answersFrom(interviewRows)
     const depot = classifyCapitalDepot(answers['kap-depot'])
     const data = dataFromRecord(capitalRecord)

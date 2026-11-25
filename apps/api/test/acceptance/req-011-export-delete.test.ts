@@ -90,8 +90,8 @@ describe('REQ-011 T1 — DELETE /v1/account, against the real server (ADR-0013)'
       retainedUnderLegalHold: number
     }
 
-    // Secrets-excluded, honest shape (ADR-0013 §8) — exactly these three top-level keys.
-    expect(Object.keys(result).sort()).toEqual(['deleted', 'retainedAnonymisedAuditRows', 'retainedUnderLegalHold'])
+    // Secrets-excluded, honest shape (ADR-0013 §8) — exactly these top-level keys; legalHolds says what a hold kept (P7).
+    expect(Object.keys(result).sort()).toEqual(['deleted', 'legalHolds', 'retainedAnonymisedAuditRows', 'retainedUnderLegalHold'])
     expect(result.deleted).toEqual({ profile: true, account: true })
     expect(result.retainedAnonymisedAuditRows).toBeGreaterThan(0)
     expect(result.retainedUnderLegalHold).toBe(0)

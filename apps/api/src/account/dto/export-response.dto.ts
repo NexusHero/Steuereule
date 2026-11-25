@@ -63,6 +63,16 @@ export class ExportTaxDataEntryDto {
   fields!: Record<string, string | number | boolean | null>
 }
 
+export class ExportReceiptFileDto {
+  @ApiProperty({ type: String }) receiptId!: string
+  @ApiProperty({ type: String }) fileName!: string
+  @ApiProperty({ type: String, example: 'application/pdf' }) mimeType!: string
+  @ApiProperty({ type: Number }) byteLength!: number
+  @ApiProperty({ type: String, format: 'date-time' }) uploadedAt!: string
+  @ApiProperty({ type: String, nullable: true, description: 'The original file, base64 (JSON export only, H2-6); null in the PDF and when the file can no longer be decrypted.' })
+  contentBase64!: string | null
+}
+
 export class ExportDocumentDto {
   @ApiProperty({ type: String, example: '1.0' })
   schemaVersion!: string
@@ -81,6 +91,15 @@ export class ExportDocumentDto {
     description: 'Every stored tax-data row, decrypted (Art. 15/20); empty when the caller has none.',
   })
   taxData!: ExportTaxDataEntryDto[]
+
+  @ApiProperty({
+    type: [ExportTaxDataEntryDto],
+    description: 'Sessions (IP, browser), second factor status, passkeys, device logins, connected assistants with consents and token dates, legal holds (API-17). No secret is exported.',
+  })
+  accountData!: ExportTaxDataEntryDto[]
+
+  @ApiProperty({ type: [ExportReceiptFileDto], description: 'The original receipt files; the JSON export carries their bytes.' })
+  receiptFiles!: ExportReceiptFileDto[]
 
   @ApiProperty({ type: [ExportAccessLogEntryDto] })
   accessLog!: ExportAccessLogEntryDto[]
