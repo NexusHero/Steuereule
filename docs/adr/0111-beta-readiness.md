@@ -58,9 +58,9 @@ E2E, integration (database) and load tiers run in CI.
   whose load failed shows an error with a retry, never an empty form. A shared test helper answers every
   request with 500 and asserts that no write is sent; it is called from a test per screen, and no test yet
   demands such a test for every screen.
-- An expired session answers 401 `SESSION_EXPIRED` instead of continuing as a guest. The app reacts when the
-  request went through the generated client; the downloads and uploads that call `fetch` themselves do not
-  report it.
+- An expired session answers 401 `SESSION_EXPIRED` instead of continuing as a guest. The app opens the
+  sign-in and remembers the place; requests outside the generated client go through `net/apiFetch.ts`, which
+  reports it too, and an architecture test forbids a bare `fetch` in the app.
 
 ### The user wins, in one place
 
@@ -204,8 +204,7 @@ E2E, integration (database) and load tiers run in CI.
 
 - The per-screen failure test, the step-up classification and the throttle classification rest on lists kept
   by hand; a new screen or a new route in a listed controller is not caught.
-- The session-expiry signal does not reach requests that call `fetch` directly; a sheet closed on a screen
-  outside the cockpit stack does not wait for a pending save.
+- A sheet closed on a screen outside the cockpit stack does not wait for a pending save.
 - Creating an invitation needs no step-up; the 15 MB body limit of the MCP routes applies before the token is
   checked.
 - Consent of years that existed before this change was set by migration, not given by Person B.
