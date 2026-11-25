@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { PaymentReturn } from '@steuereule/core'
+import { classifyApiFailure } from '../../net/apiFailure'
 
 /**
  * Where the user stands after the payment return trip (WEB-1, WEB-35), the same on the printout and on
@@ -88,19 +89,14 @@ export function usePaymentConfirmation({
   return { phase, recheck }
 }
 
-/**
- * Why a checkout start was refused, from either shape the API client has: a response `{ status, data }`
- * or a thrown error `{ status, body }` / `{ status, code }`. `other` for anything not named here.
- */
+/** Why a checkout start was refused, read from the rejected request. `other` for anything not named here. */
 export type CheckoutRefusal = 'already-paid' | 'pending' | 'throttled' | 'other'
 
-export function checkoutRefusalOf(source: unknown): CheckoutRefusal {
-  const record = source !== null && typeof source === 'object' ? (source as Record<string, unknown>) : {}
-  const body = (record.body ?? record.data) as Record<string, unknown> | null | undefined
-  const code = typeof record.code === 'string' ? record.code : body !== null && typeof body === 'object' && typeof body.code === 'string' ? body.code : null
-  if (code === 'ALREADY_PAID') return 'already-paid'
-  if (code === 'PAYMENT_PENDING') return 'pending'
-  if (record.status === 429) return 'throttled'
+export function checkoutRefusalOf(error: unknown): CheckoutRefusal {
+  const failure = classifyApiFailure(error)
+  if (failure.code === 'ALREADY_PAID') return 'already-paid'
+  if (failure.code === 'PAYMENT_PENDING') return 'pending'
+  if (failure.kind === 'rate-limited') return 'throttled'
   return 'other'
 }
 

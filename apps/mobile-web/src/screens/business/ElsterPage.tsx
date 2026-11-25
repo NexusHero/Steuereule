@@ -5,7 +5,7 @@ import type { TFunction } from 'i18next'
 import { Button, Chip, useTheme } from '@steuereule/ui'
 import { formatNumber } from '@steuereule/core'
 import type { PaymentReturn } from '@steuereule/core'
-import { useBusinessControllerElster, useBusinessControllerElsterForms, useUnlockControllerStatus, type ElsterFormEntryDto, type ElsterLineDto } from '@steuereule/api-client'
+import { apiErrorStatus, useBusinessControllerElster, useBusinessControllerElsterForms, useUnlockControllerStatus, type ElsterFormEntryDto, type ElsterLineDto } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
 import { copyText } from '../../lib/clipboard'
 import { BusinessFrame, BusinessQueryState, Note, Section } from './BusinessFrame'
@@ -47,13 +47,6 @@ export function valueText(value: ElsterLineDto['value']): string | null {
   if (value === null) return null
   if (typeof value === 'number') return Number.isInteger(value) ? formatNumber(value) : value.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
   return value
-}
-
-/** The HTTP status of a read, whether the client answered it as `{ status }` or threw it as an error with `status`. */
-function httpStatusOf(query: { readonly data?: { readonly status: number } | undefined; readonly error?: unknown }): number | undefined {
-  if (query.data !== undefined) return query.data.status
-  const error = query.error
-  return error !== null && typeof error === 'object' && typeof (error as { status?: unknown }).status === 'number' ? (error as { status: number }).status : undefined
 }
 
 export interface ElsterPageProps extends BusinessPageProps {
@@ -120,7 +113,7 @@ export function ElsterPage({ taxYear, person, business = 1, onBack, onOpenPage, 
   // While the payment is being confirmed, the help's 402 is stale: no "not unlocked" and no second payment (WEB-35).
   if (phase === 'confirming') return frame(null)
   // The fill-in help is part of the self-employment tier: 402 says so and leads to the checkout.
-  if (httpStatusOf(list) === 402 || httpStatusOf(query) === 402) {
+  if (apiErrorStatus(list.error) === 402 || apiErrorStatus(query.error) === 402) {
     return frame(
       <Section testID="elster-nicht-freigeschaltet">
         <Text style={{ ...t.type.body, color: t.color.tinte }}>{tr('business.elster.nichtFreigeschaltet', { year: taxYear })}</Text>

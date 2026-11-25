@@ -23,7 +23,7 @@ export function CheckoutPage({ taxYear, onBack, onOpenPage, openCheckout = (url)
   const [problem, setProblem] = useState<ApiProblem | null>(null)
   // API-4: one checkout per tap, not one per double tap.
   const flight = useSingleFlight()
-  const refusal = problem === null ? null : checkoutRefusalOf(problem)
+  const refusal = problem === null ? null : checkoutRefusalOf(problem.error)
 
   async function pay() {
     setProblem(null)

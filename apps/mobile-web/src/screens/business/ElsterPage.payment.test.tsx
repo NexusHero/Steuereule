@@ -48,10 +48,30 @@ function renderElster(payment: PaymentReturn | undefined, clock: ManualPaymentCl
       </I18nextProvider>
     </QueryClientProvider>,
   )
-  return { onOpenPage }
+  return { onOpenPage, client }
 }
 
 afterEach(() => server.resetHandlers())
+
+describe('ELSTER page: an unlock that was taken back', () => {
+  it('says "not unlocked" when a reload answers 402, although the help was loaded before (a refund)', async () => {
+    let refunded = false
+    server.use(
+      http.get('*/v1/steuerjahre/2025/freischaltung', () => HttpResponse.json({ status: refunded ? 'offen' : 'freigeschaltet', tier: 'selbststaendig' })),
+      http.get(`${BASE_URL}/elster`, () =>
+        refunded
+          ? HttpResponse.json({ code: 'SELF_EMPLOYMENT_NOT_UNLOCKED', message: 'x' }, { status: 402 })
+          : HttpResponse.json({ year: 2025, forms: [{ form: 'anlage-euer', group: 'business', instance: null }] }),
+      ),
+      http.get(`${BASE_URL}/elster/anlage-euer`, () => (refunded ? HttpResponse.json({ code: 'SELF_EMPLOYMENT_NOT_UNLOCKED', message: 'x' }, { status: 402 }) : HttpResponse.json(HELP))),
+    )
+    const { client } = renderElster(undefined)
+    expect(await screen.findByTestId('elster-zeilen')).toBeTruthy()
+    refunded = true
+    await client.refetchQueries()
+    expect(await screen.findByText(NOT_UNLOCKED)).toBeTruthy()
+  })
+})
 
 describe('ELSTER page: back from Stripe', () => {
   it('success, already paid: says the payment is confirmed and shows the help', async () => {
