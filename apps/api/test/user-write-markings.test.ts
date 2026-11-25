@@ -9,6 +9,7 @@ const YEAR = 2025
 const KEY = provenanceKey('rente', 'grossPensionEur')
 
 const marking: ProvenanceRecord = {
+  userId: USER,
   taxYear: YEAR,
   key: KEY,
   provenance: { kind: 'assistent', name: 'Claude', clientId: 'client-claude' },
@@ -26,7 +27,7 @@ function markingsFailingOnSettle(): Pick<ProvenanceRepository, 'listForUserAndYe
       if (listings > 1) throw new Error('marking store unavailable')
       return [marking]
     },
-    remove: async () => undefined,
+    remove: async () => 0,
   }
 }
 
