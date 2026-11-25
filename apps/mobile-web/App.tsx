@@ -58,7 +58,8 @@ import { SubmissionGateProvider, useSubmissionGate } from './src/navigation/Subm
 import { AppTabs } from './src/navigation/AppTabs'
 import { AppearanceProvider, resolveThemeMode, useAppearance } from './src/lib/appearance'
 import { syncHapticsPreferenceFromStorage } from './src/lib/hapticsPreference'
-import { onSessionExpired, resetSessionExpiry, watchForSessionExpiry } from './src/net/sessionExpiry'
+import { resetSessionExpiry, watchForSessionExpiry } from './src/net/sessionExpiry'
+import { leaveOnSessionExpiry } from './src/navigation/sessionExpiryExit'
 
 const i18n = createAppI18n('de')
 const queryClient = new QueryClient({ defaultOptions: APP_QUERY_DEFAULTS })
@@ -73,17 +74,22 @@ const authClient = createAppAuthClient(apiBaseUrl)
 const RootStack = createNativeStackNavigator<RootStackParamList>()
 const rootNavigation = createNavigationContainerRef<RootStackParamList>()
 
-/** WEB-24: an expired session opens the sign-in and remembers the place to come back to. */
+/** WEB-24: an expired session opens the sign-in, remembers the place and drops the signed-in state. */
 function useSessionExpiryRedirect(): void {
+  const { resetSubmissionGate } = useSubmissionGate()
   useEffect(
     () =>
-      onSessionExpired(() => {
-        if (RN.Platform.OS === 'web' && typeof window !== 'undefined') {
-          rememberReturnTo(`${window.location.pathname}${window.location.search}`)
-        }
-        if (rootNavigation.isReady()) rootNavigation.reset({ index: 0, routes: [{ name: 'Login', params: { expired: true } }] })
+      leaveOnSessionExpiry({
+        currentPath: () => (RN.Platform.OS === 'web' && typeof window !== 'undefined' ? `${window.location.pathname}${window.location.search}` : null),
+        forgetSignedInState: () => {
+          resetSubmissionGate()
+          queryClient.clear()
+        },
+        openSignIn: () => {
+          if (rootNavigation.isReady()) rootNavigation.reset({ index: 0, routes: [{ name: 'Login', params: { expired: true } }] })
+        },
       }),
-    [],
+    [resetSubmissionGate],
   )
 }
 
