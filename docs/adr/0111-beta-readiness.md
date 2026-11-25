@@ -203,7 +203,9 @@ E2E, integration (database) and load tiers run in CI.
   rows (opening a checkout `checkout-session`, the webhook, deletion, takeover). The access log is
   append-only for the user: a request adds entries under its own or its Person B shadow id; only a system
   path changes or deletes them.
-- Outside a request a query has no identity, in the test tiers too: the DB tier runs its own seeding and
+- A query without an identity (outside a request and outside a named system path) fails with
+  `MissingDatabaseIdentityError` instead of seeing no rows, so no existence check reads "none" by accident.
+  Outside a request a query has no identity, in the test tiers too: the DB tier runs its own seeding and
   assertions as `test-fixture` (`apps/api/test/support/database-fixture.ts`) and the app's repositories and
   services as the user a request would carry.
 

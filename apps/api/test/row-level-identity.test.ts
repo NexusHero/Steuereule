@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest'
 import { of, lastValueFrom } from 'rxjs'
 import { runAsDatabaseUser, systemDatabaseClient, withSystemDatabaseAccess } from '../src/common/database-identity.js'
 import { DatabaseIdentityInterceptor } from '../src/auth/database-identity.interceptor.js'
-import { currentDatabaseIdentity } from '../src/common/database-identity.js'
+import { currentDatabaseIdentity, MissingDatabaseIdentityError } from '../src/common/database-identity.js'
 import { PrismaTransactionRunner, transactionAwareClient } from '../src/prisma/transaction.js'
 
 interface Lazy {
@@ -45,11 +45,13 @@ const userSet = (id: string) => `set(steuereule.user_id,${id},steuereule.system,
 const systemSet = (reason: string) => `set(steuereule.user_id,,steuereule.system,${reason})`
 
 describe('the row-level identity of a query', () => {
-  it('without an identity, the query goes out alone: no setting, so the policies return nothing', async () => {
+  it('without an identity, a query and a transaction fail before anything goes out (fail closed, loudly)', async () => {
     const log: string[] = []
     const client = transactionAwareClient(fakeClient(log))
-    await client.profile.findMany({ where: { userId: 'a' } })
-    expect(log).toEqual(['root:findMany({"where":{"userId":"a"}})'])
+    await expect(client.profile.findMany({ where: { userId: 'a' } })).rejects.toBeInstanceOf(MissingDatabaseIdentityError)
+    await expect(client.$executeRaw`SELECT 1`).rejects.toBeInstanceOf(MissingDatabaseIdentityError)
+    await expect(client.$transaction(async () => 1)).rejects.toBeInstanceOf(MissingDatabaseIdentityError)
+    expect(log).toEqual([])
   })
 
   it("a user's query is one batch: set_config, then the query, on one connection", async () => {

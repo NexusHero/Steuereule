@@ -1,7 +1,7 @@
 import { AsyncLocalStorage } from 'node:async_hooks'
 import { Prisma } from '@prisma/client'
 import { ConflictError } from '../common/domain-error.js'
-import { currentDatabaseIdentity, sameDatabaseIdentity, type DatabaseIdentity } from '../common/database-identity.js'
+import { currentDatabaseIdentity, MissingDatabaseIdentityError, sameDatabaseIdentity, type DatabaseIdentity } from '../common/database-identity.js'
 import type { KeyedLock } from '../common/keyed-lock.js'
 import type { TransactionRunner } from '../common/transaction-runner.js'
 
@@ -98,6 +98,15 @@ function identifiedRoot(target: object, identity: DatabaseIdentity) {
   return { wrapQuery, transaction }
 }
 
+/** Outside a request and outside a named system path: every query and transaction is refused. */
+function refusingRoot(what: string) {
+  const refusal = (): Promise<never> => Promise.reject(new MissingDatabaseIdentityError(what))
+  // Lazy like a Prisma query: the query is never built, and it rejects only when awaited.
+  const wrapQuery = (_create: () => PromiseLike<unknown>) => new IdentifiedQuery<never>(Promise.resolve(undefined as never), refusal)
+  const transaction: TransactionMethod = () => Promise.reject(new MissingDatabaseIdentityError(what))
+  return { wrapQuery, transaction }
+}
+
 /** Inside a transaction opened for another identity: switch the setting for this one query, then back. */
 function switchedTransaction(tx: object, opened: DatabaseIdentity | undefined, identity: DatabaseIdentity) {
   const around = async <R>(work: () => PromiseLike<R>): Promise<R> => {
@@ -183,8 +192,8 @@ export function transactionAwareClient<T extends object>(root: T, options: Datab
         return typeof value === 'function' ? (value as (...args: unknown[]) => unknown).bind(active.client) : value
       }
       if (identity !== undefined) return Reflect.get(identified(target, identifiedRoot(target, identity)), prop)
-      const value: unknown = Reflect.get(target, prop, target)
-      return typeof value === 'function' ? (value as (...args: unknown[]) => unknown).bind(target) : value
+      // No identity: a query fails when it is built; the client's other methods ($connect, $disconnect, …) work.
+      return Reflect.get(identified(target, refusingRoot(String(prop))), prop)
     },
   })
 }

@@ -39,6 +39,18 @@ export type DatabaseIdentity =
 
 const identityStore = new AsyncLocalStorage<DatabaseIdentity>()
 
+/**
+ * A query was built with no identity: outside a request and outside a named system path. Under row-level security
+ * it would see no rows and write none, so an existence check ("is there a hold?", "is this paid?") would read
+ * "no" and the caller would go on as if that were true. It fails instead (fail closed, loudly).
+ */
+export class MissingDatabaseIdentityError extends Error {
+  constructor(what: string) {
+    super(`A database query (${what}) ran without an identity: run it inside a request, as a user, or under a named system reason.`)
+    this.name = 'MissingDatabaseIdentityError'
+  }
+}
+
 /** The identity the database client applies to a query issued now; undefined outside a request or bypass. */
 export function currentDatabaseIdentity(): DatabaseIdentity | undefined {
   return identityStore.getStore()
