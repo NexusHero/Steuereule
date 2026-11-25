@@ -61,6 +61,7 @@ function localStackFromEnvExample(): NodeJS.ProcessEnv {
     WEB_APP_URL: example.WEB_ORIGIN,
     TRUSTED_PROXIES: 'none',
     EMAIL_DELIVERY: 'smtp',
+    SMTP_URL: 'smtp://mailpit:1025',
     REDIS_URL: 'redis://redis:6379',
   }
 }
@@ -183,5 +184,48 @@ describe('production configuration at boot (beta P1)', () => {
     expect(isLocalProductionStack({ ...env, K_SERVICE: 'steuereule-api' })).toBe(false)
     expect(isLocalProductionStack({ ...env, WEB_APP_URL: 'https://www.steuereule.example' })).toBe(false)
     expect(checkProductionConfig({ ...env, K_SERVICE: 'steuereule-api' }).problems.join('\n')).toMatch(/PRISMA_FIELD_ENCRYPTION_KEY: still a development value/)
+  })
+})
+
+describe('the settings an operator sets by hand are checked at boot, not at first use (ADR-0111)', () => {
+  const problemsOf = (overrides: Record<string, string | undefined>) => checkProductionConfig(deployment(overrides)).problems
+
+  it('refuses the test doubles of the chat model and the payment provider', () => {
+    expect(problemsOf({ AI_FAKE_KI: 'true' }).join('\n')).toMatch(/^AI_FAKE_KI: switched on in production/m)
+    expect(problemsOf({ PAYMENT_FAKE_PROVIDER: '1' }).join('\n')).toMatch(/^PAYMENT_FAKE_PROVIDER: switched on in production/m)
+    expect(problemsOf({ AI_FAKE_KI: 'false', PAYMENT_FAKE_PROVIDER: 'off' })).toEqual([])
+  })
+
+  it('refuses a number, switch or choice the reading code would silently replace by its default', () => {
+    expect(problemsOf({ AI_DAILY_MESSAGE_LIMIT: '5000' }).join()).toMatch(/AI_DAILY_MESSAGE_LIMIT: .*from 1 to 1000/)
+    expect(problemsOf({ AI_PAID_RESERVE_PERCENT: '-1' }).join()).toMatch(/AI_PAID_RESERVE_PERCENT/)
+    expect(problemsOf({ AI_KILL_SWITCH: 'enabled' }).join()).toMatch(/AI_KILL_SWITCH: .*must be one of/)
+    expect(problemsOf({ AI_ADVISOR_PROVIDER: 'gemini' }).join()).toMatch(/AI_ADVISOR_PROVIDER: .*must be one of/)
+    expect(problemsOf({ AI_TEMPERATURE: '3' }).join()).toMatch(/AI_TEMPERATURE/)
+    expect(problemsOf({ AI_BASE_URL: 'http://models.example' }).join()).toMatch(/AI_BASE_URL: .*https/)
+    expect(problemsOf({ AI_DAILY_MESSAGE_LIMIT: '200', AI_PAID_RESERVE_PERCENT: '0', AI_KILL_SWITCH: 'on', AI_TEMPERATURE: '0.2' })).toEqual([])
+  })
+
+  it('refuses a model key copied from the documentation', () => {
+    expect(problemsOf({ ANTHROPIC_API_KEY: 'sk-ant-...' }).join()).toMatch(/ANTHROPIC_API_KEY/)
+    expect(problemsOf({ GEMINI_API_KEY: 'AIzaSyAbc…' }).join()).toMatch(/GEMINI_API_KEY: .*ellipsis/)
+    expect(problemsOf({ GEMINI_API_KEY: 'AIzaSyAbcdefghijklmnop' })).toEqual([])
+  })
+
+  it('a model slot needs a provider and a key that reaches it', () => {
+    expect(problemsOf({ AI_API_KEY: 'key-without-provider' }).join()).toMatch(/AI_API_KEY: set, but no provider is chosen/)
+    expect(problemsOf({ AI_VISION_MODEL: 'gemini-2.5-pro' }).join()).toMatch(/AI_VISION_MODEL: set, but the document slot has no provider/)
+    expect(problemsOf({ AI_ADVISOR_PROVIDER: 'anthropic', AI_ADVISOR_MODEL: 'claude-x' }).join()).toMatch(/no API key reaches the chat slot \(anthropic\)/)
+    expect(problemsOf({ AI_ADVISOR_PROVIDER: 'anthropic', AI_ADVISOR_MODEL: 'claude-x', ANTHROPIC_API_KEY: 'sk-ant-real' })).toEqual([])
+    expect(problemsOf({ AI_ADVISOR_PROVIDER: 'deterministic', AI_ADVISOR_MODEL: 'none' })).toEqual([])
+  })
+
+  it('values that only work together: Apple sign-in, SMTP delivery, the E-Bilanz transmission', () => {
+    expect(problemsOf({ APPLE_CLIENT_ID: 'com.example.signin' }).join()).toMatch(/APPLE_CLIENT_SECRET: not set, but the other Apple value is/)
+    expect(problemsOf({ APPLE_SIGN_IN_ENABLED: 'true' }).join()).toMatch(/APPLE_SIGN_IN_ENABLED is true/)
+    expect(problemsOf({ EMAIL_DELIVERY: 'smtp' }).join()).toMatch(/SMTP_URL: not set while EMAIL_DELIVERY is smtp/)
+    expect(problemsOf({ EMAIL_DELIVERY: 'log' }).join()).toMatch(/EMAIL_DELIVERY: .*refused in production/)
+    expect(problemsOf({ ELSTER_TRANSMISSION_ENABLED: 'on', ELSTER_HERSTELLER_ID: '12345' }).join()).toMatch(/ELSTER_ERIC_CLI, ELSTER_CERT_PATH, ELSTER_CERT_PIN: not set while ELSTER_TRANSMISSION_ENABLED is on/)
+    expect(problemsOf({ ELSTER_CERT_PATH: '/nowhere/cert.pfx' }).join()).toMatch(/ELSTER_CERT_PATH: .*does not exist/)
   })
 })

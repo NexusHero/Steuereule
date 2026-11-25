@@ -1,4 +1,4 @@
-import { existsSync } from 'node:fs'
+import { existsSync, statSync } from 'node:fs'
 import { selfEmploymentEnabled } from './self-employment.js'
 import { resolveTrustedProxies } from './trusted-proxies.js'
 
@@ -7,7 +7,11 @@ import { resolveTrustedProxies } from './trusted-proxies.js'
  *
  * Every entry says where the value comes from, so a value that has no way to reach the runtime is visible
  * here and in CI: `test/config/deployment-wiring.test.ts` compares this list with `.github/workflows/deploy.yml`,
- * `infra/gcp/main.tf`, the Dockerfiles, `docker-compose.prod.yml` and `.env.example`.
+ * `infra/gcp/main.tf`, the Dockerfiles, `docker-compose.prod.yml`, `.env.example` and `infra/README.md`.
+ *
+ * The list is complete: `test/config/environment-reads.test.ts` parses every source file of the API and fails
+ * for an environment variable that is read but neither declared here nor named in `NON_PRODUCTION_VARIABLES`,
+ * and for a declared one that nothing reads.
  *
  * `assertProductionConfig` runs first thing at boot. Under `NODE_ENV=production` it refuses to start and names
  * every value that is missing, malformed, or still a known development value.
@@ -23,6 +27,11 @@ export type SettingSource =
   | 'image'
   /** Injected by Cloud Run itself. */
   | 'cloud-run'
+  /**
+   * Set by hand on the service (`gcloud run services update steuereule-api --update-env-vars NAME=value`).
+   * The deploy merges, so the value survives it (OPS-12). Every one has a default in code; infra/README.md lists them.
+   */
+  | 'operator'
 
 /**
  * - `always`: needed by every production run, also the local production-shaped compose stack.
@@ -111,6 +120,58 @@ function prefixed(...prefixes: string[]) {
     prefixes.some((prefix) => value.startsWith(prefix)) ? undefined : `must start with ${prefixes.join(' or ')}`
 }
 
+/** A whole number within the bounds the reading code accepts; it would clamp or ignore anything else without a word. */
+function wholeNumber(min: number, max: number = Number.MAX_SAFE_INTEGER) {
+  return (value: string): string | undefined => {
+    const inRange = /^\d+$/.test(value) && Number(value) >= min && Number(value) <= max
+    if (inRange) return undefined
+    return max === Number.MAX_SAFE_INTEGER ? `not a whole number of at least ${min}` : `not a whole number from ${min} to ${max}`
+  }
+}
+
+function oneOf(...allowed: string[]) {
+  return (value: string): string | undefined => (allowed.includes(value.toLowerCase()) ? undefined : `must be one of ${allowed.join(', ')}`)
+}
+
+const SWITCH_WORDS = ['true', '1', 'yes', 'on', 'false', '0', 'no', 'off']
+/** An on/off switch. The readers treat every word they do not know as the default, so a typo would go unnoticed. */
+const onOff = oneOf(...SWITCH_WORDS)
+
+function isOn(value: string | undefined): boolean {
+  return value !== undefined && ['true', '1', 'yes', 'on'].includes(value.toLowerCase())
+}
+
+function httpsUrl(value: string): string | undefined {
+  try {
+    return new URL(value).protocol === 'https:' ? undefined : 'must be an https:// URL'
+  } catch {
+    return 'not a URL'
+  }
+}
+
+function existingFile(value: string): string | undefined {
+  return existsSync(value) && statSync(value).isFile() ? undefined : `file ${value} does not exist`
+}
+
+function existingDirectory(value: string): string | undefined {
+  return existsSync(value) && statSync(value).isDirectory() ? undefined : `directory ${value} does not exist`
+}
+
+/** A key copied from documentation is cut short with dots; a real one has no blanks and no ellipsis. */
+function providerKey(value: string): string | undefined {
+  if (/\s/.test(value)) return 'contains white space'
+  return /(\.\.\.|…)$/.test(value) ? 'ends in an ellipsis: a placeholder from the documentation, not a key' : undefined
+}
+
+function modelId(value: string): string | undefined {
+  return /^\S+$/.test(value) ? undefined : 'contains white space'
+}
+
+/** The placeholders `.env.example` shows for the model keys. */
+const EXAMPLE_PROVIDER_KEYS = ['sk-ant-...', 'AIzaSy...']
+const AI_PROVIDERS = ['google-genai', 'anthropic', 'openai', 'deterministic']
+const aiProvider = oneOf(...AI_PROVIDERS)
+
 export const API_PRODUCTION_SETTINGS: readonly ProductionSetting[] = [
   // ── Database and keys ──────────────────────────────────────────────────────────────────────
   { name: 'DATABASE_URL', source: 'secret-manager', need: 'always', format: 'postgresql:// URL', check: postgresUrl },
@@ -186,10 +247,91 @@ export const API_PRODUCTION_SETTINGS: readonly ProductionSetting[] = [
   },
   { name: 'REDIS_TLS_CA', source: 'secret-manager', need: 'optional', format: 'PEM of the Redis server CA', check: (value) => (value.includes('-----BEGIN CERTIFICATE-----') ? undefined : 'not a PEM certificate') },
 
+  // ── Login providers: Apple (REQ-008) stays off until the switch is on and both values are set ─────────
+  { name: 'APPLE_SIGN_IN_ENABLED', source: 'operator', need: 'optional', format: '"true" switches Apple sign-in on (default off); needs APPLE_CLIENT_ID and APPLE_CLIENT_SECRET', check: (value) => (value === 'true' || value === 'false' ? undefined : 'must be true or false') },
+  { name: 'APPLE_CLIENT_ID', source: 'secret-manager', need: 'optional', format: 'Apple Services ID' },
+  { name: 'APPLE_CLIENT_SECRET', source: 'secret-manager', need: 'optional', format: 'client secret (JWT) signed with the Apple key', secret: true },
+
+  // ── E-mail delivery of the local stack: Mailpit over SMTP instead of Brevo ─────────────────
+  {
+    name: 'EMAIL_DELIVERY',
+    source: 'operator',
+    need: 'optional',
+    format: '"smtp" sends through SMTP_URL; unset sends through Brevo',
+    check: (value) => {
+      if (value === 'log') return '"log" would write verification and reset links to the log; refused in production'
+      return value === 'smtp' ? undefined : 'must be "smtp" or unset'
+    },
+  },
+  { name: 'SMTP_URL', source: 'operator', need: 'optional', format: 'smtp:// or smtps:// URL; required while EMAIL_DELIVERY is smtp', check: (value) => (/^smtps?:\/\/\S+$/.test(value) ? undefined : 'not an smtp:// or smtps:// URL') },
+  { name: 'EMAIL_FROM_NAME', source: 'operator', need: 'optional', format: 'sender name (default "SteuerEule")' },
+
   // ── Model providers (ADR-0064): the owl answers from the rules until one key is set ────────
-  { name: 'GEMINI_API_KEY', source: 'secret-manager', need: 'optional', format: 'provider API key', secret: true },
-  { name: 'ANTHROPIC_API_KEY', source: 'secret-manager', need: 'optional', format: 'provider API key', secret: true },
-  { name: 'OPENAI_API_KEY', source: 'secret-manager', need: 'optional', format: 'provider API key', secret: true },
+  { name: 'GEMINI_API_KEY', source: 'secret-manager', need: 'optional', format: 'provider API key', check: providerKey, secret: true, knownDevValues: EXAMPLE_PROVIDER_KEYS },
+  { name: 'GOOGLE_API_KEY', source: 'secret-manager', need: 'optional', format: 'provider API key, read when GEMINI_API_KEY is unset', check: providerKey, secret: true, knownDevValues: EXAMPLE_PROVIDER_KEYS },
+  { name: 'ANTHROPIC_API_KEY', source: 'secret-manager', need: 'optional', format: 'provider API key', check: providerKey, secret: true, knownDevValues: EXAMPLE_PROVIDER_KEYS },
+  { name: 'OPENAI_API_KEY', source: 'secret-manager', need: 'optional', format: 'provider API key', check: providerKey, secret: true, knownDevValues: EXAMPLE_PROVIDER_KEYS },
+  { name: 'AI_API_KEY', source: 'secret-manager', need: 'optional', format: 'API key for the chosen provider when it has none of its own; needs AI_ADVISOR_PROVIDER', check: providerKey, secret: true, knownDevValues: EXAMPLE_PROVIDER_KEYS },
+
+  // ── Model slots: chat, document reading, fallback, topic guard. Each takes its own provider, model and key;
+  //    without them it uses AI_ADVISOR_PROVIDER, the provider's default model and the provider's key. ────
+  { name: 'AI_ADVISOR_PROVIDER', source: 'operator', need: 'optional', format: `one of ${AI_PROVIDERS.join(', ')} (default: the provider that has a key)`, check: aiProvider },
+  { name: 'AI_ADVISOR_MODEL', source: 'operator', need: 'optional', format: 'model id of the chat (default: the provider default)', check: modelId },
+  { name: 'AI_ADVISOR_API_KEY', source: 'secret-manager', need: 'optional', format: 'API key of the chat slot', check: providerKey, secret: true, knownDevValues: EXAMPLE_PROVIDER_KEYS },
+  { name: 'AI_VISION_PROVIDER', source: 'operator', need: 'optional', format: `one of ${AI_PROVIDERS.join(', ')} (default: AI_ADVISOR_PROVIDER)`, check: aiProvider },
+  { name: 'AI_VISION_MODEL', source: 'operator', need: 'optional', format: 'model id for reading documents (default: the provider default)', check: modelId },
+  { name: 'AI_VISION_API_KEY', source: 'secret-manager', need: 'optional', format: 'API key of the document slot', check: providerKey, secret: true, knownDevValues: EXAMPLE_PROVIDER_KEYS },
+  { name: 'AI_FALLBACK_PROVIDER', source: 'operator', need: 'optional', format: `one of ${AI_PROVIDERS.join(', ')} (default: AI_ADVISOR_PROVIDER)`, check: aiProvider },
+  { name: 'AI_FALLBACK_MODEL', source: 'operator', need: 'optional', format: 'model id of the fallback (default: the provider default)', check: modelId },
+  { name: 'AI_FALLBACK_API_KEY', source: 'secret-manager', need: 'optional', format: 'API key of the fallback slot', check: providerKey, secret: true, knownDevValues: EXAMPLE_PROVIDER_KEYS },
+  { name: 'AI_GUARD_PROVIDER', source: 'operator', need: 'optional', format: `one of ${AI_PROVIDERS.join(', ')} (default: AI_ADVISOR_PROVIDER)`, check: aiProvider },
+  { name: 'AI_GUARD_MODEL', source: 'operator', need: 'optional', format: "model id of the topic guard (default: the provider's small model)", check: modelId },
+  { name: 'AI_GUARD_API_KEY', source: 'secret-manager', need: 'optional', format: 'API key of the topic guard slot', check: providerKey, secret: true, knownDevValues: EXAMPLE_PROVIDER_KEYS },
+  { name: 'AI_BASE_URL', source: 'operator', need: 'optional', format: 'https URL of an OpenAI-compatible endpoint (default: the provider endpoint)', check: httpsUrl },
+  { name: 'OPENAI_BASE_URL', source: 'operator', need: 'optional', format: 'https URL, read when AI_BASE_URL is unset', check: httpsUrl },
+
+  // ── Model behaviour and cost limits (ADR-0109) ─────────────────────────────────────────────
+  { name: 'AI_KILL_SWITCH', source: 'operator', need: 'optional', format: 'on/off switch: on answers every model slot from the rules (default off)', check: onOff },
+  { name: 'AI_DAILY_CALL_LIMIT', source: 'operator', need: 'optional', format: 'model calls a day across all users', check: wholeNumber(1, 100_000_000) },
+  { name: 'AI_PAID_RESERVE_PERCENT', source: 'operator', need: 'optional', format: 'share of the daily calls kept for paid accounts, 0 to 90; 0 switches the reserve off', check: wholeNumber(0, 90) },
+  { name: 'AI_DAILY_MESSAGE_LIMIT', source: 'operator', need: 'optional', format: 'chat messages a day per account', check: wholeNumber(1, 1_000) },
+  { name: 'AI_TURN_TIMEOUT_MS', source: 'operator', need: 'optional', format: 'time limit of one answer in ms', check: wholeNumber(1, 120_000) },
+  { name: 'AI_MAX_TOOL_ROUNDS', source: 'operator', need: 'optional', format: 'tool rounds per answer', check: wholeNumber(1, 10) },
+  { name: 'AI_GUARD_TIMEOUT_MS', source: 'operator', need: 'optional', format: 'time limit of the topic guard in ms', check: wholeNumber(1, 20_000) },
+  {
+    name: 'AI_TEMPERATURE',
+    source: 'operator',
+    need: 'optional',
+    format: 'sampling temperature, 0 to 2 (default: the provider default)',
+    check: (value) => (/^\d+(\.\d+)?$/.test(value) && Number(value) <= 2 ? undefined : 'not a number from 0 to 2'),
+  },
+  { name: 'AI_ADVISOR_REASONING', source: 'operator', need: 'optional', format: '"off" hides the line of thought, "summary" shows it (default summary)', check: oneOf('off', 'summary') },
+  { name: 'AI_ADVISOR_REASONING_BUDGET', source: 'operator', need: 'optional', format: 'token budget of the line of thought', check: wholeNumber(1, 16_000) },
+  { name: 'AI_ADVISOR_THINKING_LEVEL', source: 'operator', need: 'optional', format: 'low, medium, high or auto (default medium)', check: oneOf('low', 'medium', 'high', 'auto') },
+
+  // ── Upload and parse limits (ADR-0109) ─────────────────────────────────────────────────────
+  { name: 'PARSE_DAILY_LIMIT', source: 'operator', need: 'optional', format: 'documents an account may have read per day', check: wholeNumber(1) },
+  { name: 'UPLOAD_MAX_IN_FLIGHT', source: 'operator', need: 'optional', format: 'uploads an instance takes at once', check: wholeNumber(1) },
+  { name: 'GUEST_UPLOAD_BYTES_PER_DAY', source: 'operator', need: 'optional', format: 'bytes a guest address may upload per day', check: wholeNumber(1) },
+  { name: 'GUEST_UPLOAD_BYTES_PER_DAY_TOTAL', source: 'operator', need: 'optional', format: 'bytes all guests together may upload per day', check: wholeNumber(1) },
+
+  // ── Self-employment (ADR-0101) ─────────────────────────────────────────────────────────────
+  { name: 'SELBSTSTAENDIGE_ENABLED', source: 'operator', need: 'optional', format: 'on/off switch of the self-employment path (default on)', check: oneOf(...SWITCH_WORDS, 'ja', 'nein') },
+  { name: 'ELSTER_SUPPLIED_LINES_DIR', source: 'operator', need: 'optional', format: 'directory of the Anlage S/G line files (default: the files in the image)', check: existingDirectory },
+  { name: 'ELSTER_TRANSMISSION_ENABLED', source: 'operator', need: 'optional', format: 'on/off switch of the E-Bilanz transmission (default off); on needs the four ELSTER values below', check: onOff },
+  { name: 'ELSTER_ERIC_CLI', source: 'operator', need: 'optional', format: 'path of the ERiC sidecar executable', check: existingFile },
+  { name: 'ELSTER_CERT_PATH', source: 'operator', need: 'optional', format: "path of the operator's ELSTER certificate", check: existingFile },
+  { name: 'ELSTER_CERT_PIN', source: 'secret-manager', need: 'optional', format: 'PIN of the ELSTER certificate', secret: true },
+  { name: 'ELSTER_HERSTELLER_ID', source: 'operator', need: 'optional', format: 'Hersteller-ID of the ELSTER registration' },
+
+  // ── Device list (ADR-0024): the region stays unknown until a geo-IP file is mounted (OPS-15) ──
+  {
+    name: 'GEOIP_DATABASE_PATH',
+    source: 'operator',
+    need: 'optional',
+    format: 'path of the geo-IP CSV; its manifest lies next to it as <path>.manifest.json',
+    check: (value) => existingFile(value) ?? existingFile(`${value}.manifest.json`),
+  },
 
   // ── Image ──────────────────────────────────────────────────────────────────────────────────
   { name: 'NODE_ENV', source: 'image', need: 'always', format: '"production"' },
@@ -201,6 +343,25 @@ export const API_PRODUCTION_SETTINGS: readonly ProductionSetting[] = [
     format: 'path of the street CSV baked into the image (ADR-0065)',
     check: (value) => (existsSync(value) ? undefined : `file ${value} does not exist`),
   },
+]
+
+/**
+ * Environment variables the API reads that are not production configuration. `production` says what a
+ * production run does with one: `refused` names it as a problem when it is switched on, `ignored` reads it
+ * without it being a setting anyone chooses.
+ */
+export interface NonProductionVariable {
+  readonly name: string
+  readonly production: 'refused' | 'ignored'
+  readonly reason: string
+}
+
+export const NON_PRODUCTION_VARIABLES: readonly NonProductionVariable[] = [
+  { name: 'K_SERVICE', production: 'ignored', reason: 'set by Cloud Run to the service name; tells a deployment from the local stack and names the service in error reports' },
+  { name: 'PATH', production: 'ignored', reason: 'of the operating system; handed to the ERiC sidecar process, which gets nothing else of the environment' },
+  { name: 'VITEST', production: 'ignored', reason: 'set by the test runner; keeps main.ts from starting a server and guards the test-fixture database identity' },
+  { name: 'AI_FAKE_KI', production: 'refused', reason: 'the scripted chat model of CI and tests; it must never answer a real user (#450 D8)' },
+  { name: 'PAYMENT_FAKE_PROVIDER', production: 'refused', reason: 'the payment provider of CI and tests; it would unlock the printout without payment (#450 D7)' },
 ]
 
 /** The GitHub environment variables deploy.yml reads. Each must be set in the environment it deploys to. */
@@ -286,11 +447,111 @@ const SOURCE_HINT: Record<SettingSource, string> = {
   'deploy-env': 'set by .github/workflows/deploy.yml from the GitHub environment variables',
   image: 'apps/api/Dockerfile',
   'cloud-run': 'Cloud Run',
+  operator: 'gcloud run services update steuereule-api --update-env-vars, infra/README.md',
 }
 
 function readSetting(env: NodeJS.ProcessEnv, name: string): string | undefined {
   const raw = env[name]?.trim()
   return raw && raw.length > 0 ? raw : undefined
+}
+
+/** Reads one known variable; a name that is in neither table is a mistake in this module. */
+type KnownValue = (name: string) => string | undefined
+
+/**
+ * The value of every declared and every non-production variable, read once. The checks below ask this
+ * snapshot, never the environment, so they cannot depend on a name that is in neither table.
+ */
+function readKnownValues(env: NodeJS.ProcessEnv): KnownValue {
+  const names = [...API_PRODUCTION_SETTINGS, ...NON_PRODUCTION_VARIABLES].map((entry) => entry.name)
+  const values = new Map<string, string | undefined>()
+  for (const name of names) values.set(name, readSetting(env, name))
+  return (name) => {
+    if (!values.has(name)) throw new Error(`${name} is neither in API_PRODUCTION_SETTINGS nor in NON_PRODUCTION_VARIABLES`)
+    return values.get(name)
+  }
+}
+
+const AI_PROVIDER_KEYS: Readonly<Record<string, readonly string[]>> = {
+  'google-genai': ['GEMINI_API_KEY', 'GOOGLE_API_KEY'],
+  anthropic: ['ANTHROPIC_API_KEY'],
+  openai: ['OPENAI_API_KEY'],
+}
+
+const AI_SLOTS = [
+  { title: 'chat', provider: 'AI_ADVISOR_PROVIDER', model: 'AI_ADVISOR_MODEL', key: 'AI_ADVISOR_API_KEY' },
+  { title: 'document', provider: 'AI_VISION_PROVIDER', model: 'AI_VISION_MODEL', key: 'AI_VISION_API_KEY' },
+  { title: 'fallback', provider: 'AI_FALLBACK_PROVIDER', model: 'AI_FALLBACK_MODEL', key: 'AI_FALLBACK_API_KEY' },
+  { title: 'topic guard', provider: 'AI_GUARD_PROVIDER', model: 'AI_GUARD_MODEL', key: 'AI_GUARD_API_KEY' },
+] as const
+
+/**
+ * A model slot works with a provider and a key that reaches it (ki/ai-runtime-config.service.ts); the model
+ * has a default. Anything else leaves the slot answering from the rules without a word: a key no provider
+ * uses, or a provider or model chosen for a slot no key reaches.
+ */
+function modelSlotProblems(value: KnownValue): string[] {
+  const problems: string[] = []
+  const provider = (name: string): string | undefined => {
+    const chosen = value(name)?.toLowerCase()
+    return chosen !== undefined && AI_PROVIDERS.includes(chosen) ? chosen : undefined
+  }
+  const withOwnKey = Object.keys(AI_PROVIDER_KEYS).find((candidate) => (AI_PROVIDER_KEYS[candidate] ?? []).some((key) => value(key) !== undefined))
+  const standard = provider('AI_ADVISOR_PROVIDER')
+  if (value('AI_API_KEY') !== undefined && standard === undefined && withOwnKey === undefined) {
+    problems.push('AI_API_KEY: set, but no provider is chosen for it — set AI_ADVISOR_PROVIDER')
+  }
+  for (const slot of AI_SLOTS) {
+    const own = [slot.provider, slot.model].filter((name) => value(name) !== undefined)
+    const resolved = provider(slot.provider) ?? standard ?? withOwnKey
+    if (resolved === 'deterministic') continue
+    if (resolved === undefined) {
+      const unused = [...own, ...(value(slot.key) !== undefined ? [slot.key] : [])]
+      if (unused.length > 0) problems.push(`${unused.join(', ')}: set, but the ${slot.title} slot has no provider — set ${slot.provider}${slot.provider === 'AI_ADVISOR_PROVIDER' ? '' : ' or AI_ADVISOR_PROVIDER'}`)
+      continue
+    }
+    const keys = [slot.key, ...(AI_PROVIDER_KEYS[resolved] ?? []), 'AI_API_KEY']
+    if (own.length > 0 && !keys.some((key) => value(key) !== undefined)) {
+      problems.push(`${own.join(', ')}: set, but no API key reaches the ${slot.title} slot (${resolved}) — set one of ${keys.join(', ')}`)
+    }
+  }
+  return problems
+}
+
+/** Values that only work together. Also on the local stack: half a setup fails at first use, not at boot. */
+function groupProblems(value: KnownValue, deployment: boolean, env: NodeJS.ProcessEnv): string[] {
+  const problems: string[] = []
+  const set = (name: string) => value(name) !== undefined
+
+  const stripe = ['STRIPE_SECRET_KEY', 'STRIPE_WEBHOOK_SECRET', 'STRIPE_PRICE_ID']
+  const stripeSet = stripe.filter(set)
+  if (!deployment && stripeSet.length > 0 && stripeSet.length < stripe.length) {
+    problems.push(`${stripe.filter((name) => !stripeSet.includes(name)).join(', ')}: not set, but ${stripeSet.join(', ')} is — Stripe needs all three`)
+  }
+  if (stripeSet.length > 0 && selfEmploymentEnabled(env) && !set('STRIPE_PRICE_ID_SELBSTSTAENDIG')) {
+    problems.push('STRIPE_PRICE_ID_SELBSTSTAENDIG: not set while SELBSTSTAENDIGE_ENABLED is on — the self-employment tier could not be sold')
+  }
+
+  const google = ['GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET'].filter(set)
+  if (google.length === 1) problems.push(`GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET: only ${google[0]} is set — Google login needs both`)
+
+  const apple = ['APPLE_CLIENT_ID', 'APPLE_CLIENT_SECRET']
+  const appleMissing = apple.filter((name) => !set(name))
+  if (appleMissing.length === 1) problems.push(`${appleMissing[0]}: not set, but the other Apple value is — Apple sign-in needs both`)
+  if (value('APPLE_SIGN_IN_ENABLED') === 'true' && appleMissing.length === apple.length) {
+    problems.push(`${apple.join(', ')}: not set while APPLE_SIGN_IN_ENABLED is true — the Apple button would not appear`)
+  }
+
+  if (value('EMAIL_DELIVERY') === 'smtp' && !set('SMTP_URL')) problems.push('SMTP_URL: not set while EMAIL_DELIVERY is smtp')
+
+  const elster = ['ELSTER_ERIC_CLI', 'ELSTER_CERT_PATH', 'ELSTER_CERT_PIN', 'ELSTER_HERSTELLER_ID']
+  const elsterMissing = elster.filter((name) => !set(name))
+  if (isOn(value('ELSTER_TRANSMISSION_ENABLED')) && elsterMissing.length > 0) {
+    problems.push(`${elsterMissing.join(', ')}: not set while ELSTER_TRANSMISSION_ENABLED is on — nothing could be transmitted`)
+  }
+
+  problems.push(...modelSlotProblems(value))
+  return problems
 }
 
 export function checkProductionConfig(env: NodeJS.ProcessEnv = process.env): ConfigReport {
@@ -304,8 +565,9 @@ export function checkProductionConfig(env: NodeJS.ProcessEnv = process.env): Con
 
   const deployment = !isLocalProductionStack(env)
   const context: CheckContext = { deployment, env }
+  const value = readKnownValues(env)
   for (const setting of API_PRODUCTION_SETTINGS) {
-    const current = readSetting(env, setting.name)
+    const current = value(setting.name)
     if (current === undefined) {
       if (setting.need === 'always' || (setting.need === 'deployment' && deployment)) {
         problems.push(`${setting.name}: not set (${setting.format}; from: ${SOURCE_HINT[setting.source]})`)
@@ -319,18 +581,10 @@ export function checkProductionConfig(env: NodeJS.ProcessEnv = process.env): Con
       else warnings.push(setting.name)
     }
   }
-
-  // All or nothing, also on the local stack: a partial Stripe setup would fail at the first checkout.
-  const stripe = ['STRIPE_SECRET_KEY', 'STRIPE_WEBHOOK_SECRET', 'STRIPE_PRICE_ID']
-  const stripeSet = stripe.filter((name) => readSetting(env, name) !== undefined)
-  if (!deployment && stripeSet.length > 0 && stripeSet.length < stripe.length) {
-    problems.push(`${stripe.filter((name) => !stripeSet.includes(name)).join(', ')}: not set, but ${stripeSet.join(', ')} is — Stripe needs all three`)
+  for (const variable of NON_PRODUCTION_VARIABLES) {
+    if (variable.production === 'refused' && isOn(value(variable.name))) problems.push(`${variable.name}: switched on in production — ${variable.reason}`)
   }
-  if (stripeSet.length > 0 && selfEmploymentEnabled(env) && readSetting(env, 'STRIPE_PRICE_ID_SELBSTSTAENDIG') === undefined) {
-    problems.push('STRIPE_PRICE_ID_SELBSTSTAENDIG: not set while SELBSTSTAENDIGE_ENABLED is on — the self-employment tier could not be sold')
-  }
-  const google = ['GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET'].filter((name) => readSetting(env, name) !== undefined)
-  if (google.length === 1) problems.push(`GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET: only ${google[0]} is set — Google login needs both`)
+  problems.push(...groupProblems(value, deployment, env))
 
   return { deployment, problems, warnings }
 }

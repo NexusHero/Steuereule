@@ -150,6 +150,27 @@ backup has expired. Receipt files and `HouseholdPerson.sealed` use the keystore 
 - **Payment on a deployment (OPS-6).** Stripe is required, so the dead end "payment not set up on this
   environment" cannot occur on a deployment; it remains only on a local stack without Stripe.
 
+### Values set by hand
+
+Each of these has a default in code and is set, when needed, with
+`gcloud run services update steuereule-api --update-env-vars NAME=value`; the deploy keeps it (OPS-12). The
+format and the production rule of each are in `apps/api/src/config/production-config.ts` (source `operator`),
+and the API refuses to start with a value it would otherwise ignore.
+
+- Model choice and limits: `AI_ADVISOR_PROVIDER`, `AI_ADVISOR_MODEL`, `AI_VISION_PROVIDER`, `AI_VISION_MODEL`,
+  `AI_FALLBACK_PROVIDER`, `AI_FALLBACK_MODEL`, `AI_GUARD_PROVIDER`, `AI_GUARD_MODEL`, `AI_BASE_URL`,
+  `OPENAI_BASE_URL`, `AI_KILL_SWITCH`, `AI_DAILY_CALL_LIMIT`, `AI_PAID_RESERVE_PERCENT`, `AI_DAILY_MESSAGE_LIMIT`,
+  `AI_TURN_TIMEOUT_MS`, `AI_MAX_TOOL_ROUNDS`, `AI_GUARD_TIMEOUT_MS`, `AI_TEMPERATURE`, `AI_ADVISOR_REASONING`,
+  `AI_ADVISOR_REASONING_BUDGET`, `AI_ADVISOR_THINKING_LEVEL`. The keys of the model slots are optional secrets.
+- Upload and parse limits: `PARSE_DAILY_LIMIT`, `UPLOAD_MAX_IN_FLIGHT`, `GUEST_UPLOAD_BYTES_PER_DAY`,
+  `GUEST_UPLOAD_BYTES_PER_DAY_TOTAL`.
+- Sign-in and e-mail: `APPLE_SIGN_IN_ENABLED` (with the secrets `APPLE_CLIENT_ID`, `APPLE_CLIENT_SECRET`),
+  `EMAIL_DELIVERY` (`smtp`; unset sends through Brevo), `SMTP_URL`, `EMAIL_FROM_NAME`.
+- Self-employment (ADR-0101): `SELBSTSTAENDIGE_ENABLED`, `ELSTER_SUPPLIED_LINES_DIR`,
+  `ELSTER_TRANSMISSION_ENABLED`, `ELSTER_ERIC_CLI`, `ELSTER_CERT_PATH`, `ELSTER_HERSTELLER_ID` (the PIN is the
+  secret `ELSTER_CERT_PIN`).
+- Device list: `GEOIP_DATABASE_PATH` (OPS-15, above).
+
 ### Network and database size (ADR-0109)
 
 **Private Cloud SQL.** Both instances (tax data and keystore) have a private address only, through

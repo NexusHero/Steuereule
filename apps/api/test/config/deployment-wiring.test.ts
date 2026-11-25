@@ -94,6 +94,16 @@ describe('deployment wiring: every production value reaches the runtime (beta P1
     expect(apiDeploy).not.toMatch(/--set-env-vars|--set-secrets/)
   })
 
+  it('OPS-12: every value set by hand is listed in infra/README.md, and the list names nothing else', () => {
+    const infraReadme = read('infra/README.md')
+    const section = infraReadme.slice(infraReadme.indexOf('### Values set by hand'), infraReadme.indexOf('### Network and database size'))
+    const operatorSettings = API_PRODUCTION_SETTINGS.filter((setting) => setting.source === 'operator').map((setting) => setting.name)
+    expect(operatorSettings.length).toBeGreaterThan(0)
+    const secretNames = new Set(secretSettings.map((setting) => setting.name))
+    const listed = [...section.matchAll(/`([A-Z][A-Z0-9_]+)`/g)].map((match) => match[1] ?? '').filter((name) => !secretNames.has(name))
+    expect(sorted(listed)).toEqual(sorted(operatorSettings))
+  })
+
   it('the image carries what is baked into it (NODE_ENV, APP_VERSION from the commit, the street data)', () => {
     for (const setting of API_PRODUCTION_SETTINGS.filter((candidate) => candidate.source === 'image')) {
       expect(apiDockerfile, setting.name).toMatch(new RegExp(`^ENV ${setting.name}=`, 'm'))
