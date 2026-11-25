@@ -89,6 +89,8 @@ model TaxDataAccessLog {
   createdAt DateTime    @default(now())
 
   @@index([userId])
+  /// The retention sweep deletes rows older than RETENTION.auditLogYears (P7, H2-7).
+  @@index([createdAt])
 }
 
 enum AuditAction {
@@ -125,13 +127,17 @@ model User {
   /// after the one-code confirmation), never by this app's own controllers — the
   /// plugin owns the field exactly as it owns `twoFactor.secret`.
   twoFactorEnabled   Boolean             @default(false)
+  /// ADR-0030 §3a: when the T-7 warning about the deletion of a never-verified account was sent.
+  /// The account is deletable only 7 days after this, never on age alone. Unknown to better-auth.
+  unverifiedWarningSentAt      DateTime? @map("unbestaetigtWarnungAm")
+  /// ADR-0030 §2: when the T-1 reminder was sent.
+  unverifiedFinalWarningSentAt DateTime? @map("unbestaetigtLetzteWarnungAm")
   createdAt          DateTime            @default(now())
   updatedAt          DateTime            @updatedAt
   sessions           Session[]
   accounts           Account[]
   twoFactors         TwoFactor[]
   passkeys           Passkey[]
-  unlocks            Unlock[]
   oauthClients       OauthClient[]
   oauthConsents      OauthConsent[]
   oauthAccessTokens  OauthAccessToken[]
@@ -447,9 +453,16 @@ model LegalHold {
   /// The hold is active while `holdUntil` is in the future; once past, the deletion
   /// transaction treats it as expired and proceeds normally.
   holdUntil DateTime
+  /// The one row held (P7): `Unlock.id` for resource "unlock", `FilingVersion.id` for "filingVersion".
+  /// Null holds the whole resource category ("profile", "taxData", "auditLog"), as an operator sets it.
+  resourceId String?
+  /// Why the row is held, e.g. "§ 147 AO" — the legal basis the deletion answer names.
+  reason     String?
   createdAt DateTime @default(now())
 
+  @@unique([resource, resourceId])
   @@index([userId])
+  @@index([holdUntil])
 }
 
 /// One row per uploaded receipt (ADR-007/008). Lands UNBOUND (no year): the user
@@ -953,9 +966,10 @@ model Marking {
 
 /// Paid unlock of one tax year's Formular-Ausdruck (ADR-0050: Papierweg, paid on print).
 /// One row per Stripe Checkout Session; `bezahlt` is set only by the signature-verified
-/// webhook, never by the browser's return redirect. Account-only (a guest cannot pay),
-/// so it carries a real FK and cascades with the User on Art. 17 erasure — Stripe keeps
-/// the accounting record (§ 147 AO) on its side, this row is only the entitlement.
+/// webhook, never by the browser's return redirect. Account-only (a guest cannot pay).
+/// No FK to User (P7): a paid row is a Buchungsbeleg under a legal hold (§ 147 AO, § 257 HGB)
+/// and must outlive the account's deletion until the hold ends; the deletion removes every
+/// row that is not held (`personal-data-registry.ts`).
 model Unlock {
   id                      String    @id @default(uuid())
   userId                  String
@@ -971,7 +985,6 @@ model Unlock {
   paidAt                  DateTime? @map("bezahltAm")
   createdAt               DateTime  @default(now())
   updatedAt               DateTime  @updatedAt
-  user                    User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, taxYear])
   @@map("Freischaltung")
