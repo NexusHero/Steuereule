@@ -291,15 +291,16 @@ const CODE_PATTERN = /^([A-Z][A-Z0-9_]{1,63}): ?([\s\S]*)$/
 
 /**
  * A refusal the assistant can act on, flagged as an error: `error` keeps the `CODE: reason` text tools gave
- * before, `code` is the code alone and `naechsterSchritt` says what to do instead.
+ * before, `code` is the code alone and `naechsterSchritt` says what to do instead. `details` are further
+ * fields of the refusal (what is missing, which values conflict); they never replace the three above.
  */
-export function refused(error: string, nextStep?: string): ToolResult {
+export function refused(error: string, nextStep?: string, details: Readonly<Record<string, unknown>> = {}): ToolResult {
   const match = CODE_PATTERN.exec(error.trim())
   const code = match?.[1] ?? 'REFUSED'
   const text = match ? error.trim() : `${code}: ${error.trim()}`
   return {
     isError: true,
-    content: [{ type: 'text', text: JSON.stringify({ ok: false, code, error: text, naechsterSchritt: nextStep ?? NEXT_STEPS[code] ?? DEFAULT_NEXT_STEP }, null, 2) }],
+    content: [{ type: 'text', text: JSON.stringify({ ...details, ok: false, code, error: text, naechsterSchritt: nextStep ?? NEXT_STEPS[code] ?? DEFAULT_NEXT_STEP }, null, 2) }],
   }
 }
 
@@ -324,26 +325,32 @@ export function refusalOfProtocolError(message: string): ToolResult {
   return refused(`INVALID_ARGUMENTS: ${reason}`)
 }
 
-/** A result a tool built as `{ ok: false, … }` without flagging it: flagged, with a code and a next step (MCP-19). */
+/** The JSON object a tool answered with; null for any other text. */
+function jsonObjectOf(text: string): Record<string, unknown> | null {
+  if (!text.trimStart().startsWith('{')) return null
+  try {
+    const parsed: unknown = JSON.parse(text)
+    return parsed !== null && typeof parsed === 'object' && !Array.isArray(parsed) ? (parsed as Record<string, unknown>) : null
+  } catch {
+    return null
+  }
+}
+
+/**
+ * A result a tool built as `{ ok: false, … }` without flagging it: flagged, with a code and a next step
+ * (MCP-19). What else the tool said about the refusal (`fehlt`, `konflikte` …) stays in the answer.
+ */
 export function normalisedResult(result: unknown): ToolResult {
   const candidate = result as ToolResult | undefined
   const text = candidate?.content?.[0]?.type === 'text' ? candidate.content[0].text : undefined
   if (candidate === undefined || text === undefined) return candidate ?? refused('INTERNAL_ERROR: Das Werkzeug gab nichts zurück.')
-  const looksRefused = candidate.isError === true || text.includes('"ok": false')
-  if (!looksRefused) return candidate
-  let body: Record<string, unknown> | null = null
-  try {
-    const parsed: unknown = JSON.parse(text)
-    body = parsed !== null && typeof parsed === 'object' ? (parsed as Record<string, unknown>) : null
-  } catch {
-    body = null
-  }
-  if (body === null) return refused(text)
+  const body = jsonObjectOf(text)
+  if (body === null) return candidate.isError === true ? refused(text) : candidate
   if (body.ok !== false && candidate.isError !== true) return candidate
   if (typeof body.code === 'string' && typeof body.naechsterSchritt === 'string') return { ...candidate, isError: true }
   const reason = [body.error, body.grund, body.reason, body.hinweis].find((value): value is string => typeof value === 'string') ?? 'Das ging nicht.'
   const code = typeof body.code === 'string' ? body.code : CODE_PATTERN.exec(reason)?.[1] ?? 'NOT_POSSIBLE'
-  return refused(CODE_PATTERN.test(reason) ? reason : `${code}: ${reason}`)
+  return refused(CODE_PATTERN.test(reason) ? reason : `${code}: ${reason}`, undefined, body)
 }
 
 // ---------------------------------------------------------------------------------------------------------

@@ -164,6 +164,17 @@ describe('smaller usability fixes', () => {
     expect(JSON.parse(result.content[0]!.text)).toMatchObject({ ok: false, code: 'NOT_POSSIBLE', naechsterSchritt: expect.any(String) })
   })
 
+  it('a refusal keeps what the tool said beyond its reason, however the tool serialised it', () => {
+    const result = normalisedResult({ content: [{ type: 'text', text: JSON.stringify({ ok: false, grund: 'offen', fehlt: ['lstb', 'stammdaten'] }) }] })
+    expect(result.isError).toBe(true)
+    expect(JSON.parse(result.content[0]!.text)).toMatchObject({ ok: false, code: 'NOT_POSSIBLE', error: 'NOT_POSSIBLE: offen', fehlt: ['lstb', 'stammdaten'] })
+  })
+
+  it('a result that only mentions "ok": false inside a value is no refusal', () => {
+    const answer = { content: [{ type: 'text' as const, text: JSON.stringify({ ok: true, notiz: 'Die Antwort war "ok": false.' }, null, 2) }] }
+    expect(normalisedResult(answer)).toBe(answer)
+  })
+
   it('an audit row inside a tool call carries the assistant even when a service writes it without one (MCP-3)', async () => {
     const repository = new FakeAuditRepository()
     const audit = new AuditService(repository)
