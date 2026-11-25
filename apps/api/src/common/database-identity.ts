@@ -24,6 +24,8 @@ export const SYSTEM_DATABASE_REASONS = {
   'payment-webhook': 'the payment provider webhook: resolves a checkout session to its account',
   'linked-partner-year': "a new year of a household link: Person A's coupling names Person B, whom the link already joined",
   'household-link': "the household link of a joint year Person B agreed to (the household migration names B)",
+  'legal-hold': "the submission's legal hold of the version in force: placed and released with the version (P7)",
+  'checkout-session': 'opening a checkout session writes its unlock row: unlock rows are never written by a request itself',
   'model-usage-stats': "the owl's model profiles: the usage column (tokens, timings, model) of every user's latest answers, nothing else",
   'field-key-rotation': 'rotate:field-key re-encrypts every encrypted column of every user (operator script, never the server)',
   'test-fixture': "the DB test tier only: a suite's own seeding, cleanup and assertions (`test/support/database-fixture.ts`)",

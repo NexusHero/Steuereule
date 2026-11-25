@@ -198,6 +198,11 @@ E2E, integration (database) and load tiers run in CI.
   changing B's consent, is allowed only to Person B or a named system path (the coupling guard trigger);
   the next year of a household link (`linked-partner-year`) and the household migration's link of a
   consented year (`household-link`) are such paths.
+- Records about a person that the person must not change are written by system paths only: legal holds
+  (the webhook, the submission's hold of the version in force `legal-hold`, deletion, sweeps) and unlock
+  rows (opening a checkout `checkout-session`, the webhook, deletion, takeover). The access log is
+  append-only for the user: a request adds entries under its own or its Person B shadow id; only a system
+  path changes or deletes them.
 - Outside a request a query has no identity, in the test tiers too: the DB tier runs its own seeding and
   assertions as `test-fixture` (`apps/api/test/support/database-fixture.ts`) and the app's repositories and
   services as the user a request would carry.

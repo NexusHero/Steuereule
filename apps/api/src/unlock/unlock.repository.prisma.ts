@@ -1,5 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common'
 import { Prisma } from '@prisma/client'
+import { withSystemDatabaseAccess } from '../common/database-identity.js'
 import { PrismaService } from '../prisma/prisma.service.js'
 import { holdPaidUnlock, holdRefundedUnlock } from '../account/legal-hold.prisma.js'
 import type { RevokeReason, SessionOwner } from './payment-provider.js'
@@ -11,12 +12,15 @@ export class PrismaUnlockRepository implements UnlockRepository {
   constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
 
   async createOpenOnes(userId: string, taxYear: number, sessionId: string, tier: UnlockTier = 'standard'): Promise<void> {
-    // The same session handed out twice (two tabs, a retry) is one row.
-    await this.prisma.unlock.upsert({
-      where: { stripeCheckoutSessionId: sessionId },
-      create: { userId, taxYear, stripeCheckoutSessionId: sessionId, tier },
-      update: {},
-    })
+    // The same session handed out twice (two tabs, a retry) is one row. Unlock rows are written by system
+    // paths only (P11): a request of the owner can never set its own row to paid. Opening a session is one.
+    await withSystemDatabaseAccess('checkout-session', () =>
+      this.prisma.unlock.upsert({
+        where: { stripeCheckoutSessionId: sessionId },
+        create: { userId, taxYear, stripeCheckoutSessionId: sessionId, tier },
+        update: {},
+      }),
+    )
   }
 
   async openSessions(userId: string, taxYear: number, tier: UnlockTier): Promise<string[]> {

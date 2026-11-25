@@ -102,8 +102,22 @@ describe('row-level security covers every table with personal data', () => {
       .filter((model) => model.fields.some((field) => (field.dbName ?? field.name) === 'steuerjahr') && model.fields.some((field) => field.name === 'userId'))
       .map((model) => model.dbName ?? model.name)
     expect(yearTables.length).toBeGreaterThan(20)
-    const offenders = yearTables.filter((table) => (inPlace.get(table) ?? []).some((statement) => statement.includes('visible_owners()') || !statement.includes('agreed_partner_years()')))
+    // A policy that names an owner asks for the agreed year; one for system paths alone names no owner.
+    const namesOwner = (statement: string) => statement.includes('"userId"')
+    const offenders = yearTables.filter((table) => (inPlace.get(table) ?? []).some((statement) => statement.includes('visible_owners()') || (namesOwner(statement) && !statement.includes('agreed_partner_years()'))))
     expect(offenders, 'use the condition of 20261206090000_review_partner_consent_per_year').toEqual([])
+  })
+
+  it('legal holds, unlocks and the access log are changed only by system paths; the user only appends to the log', () => {
+    const inPlace = policiesInPlace(sql)
+    for (const table of ['LegalHold', 'Freischaltung', 'TaxDataAccessLog']) {
+      const statements = inPlace.get(table) ?? []
+      expect(statements.some((statement) => /FOR ALL/.test(statement)), table).toBe(false)
+      for (const statement of statements.filter((text) => /FOR (?:UPDATE|DELETE)/.test(text))) expect(statement, table).not.toMatch(/"userId"/)
+      const inserts = statements.filter((text) => /FOR INSERT/.test(text))
+      expect(inserts, table).toHaveLength(1)
+      if (table !== 'TaxDataAccessLog') expect(inserts[0], table).not.toMatch(/"userId"/)
+    }
   })
 
   it('no policy lets every row through', () => {
@@ -182,6 +196,8 @@ const BYPASS_SITES: Readonly<Record<string, readonly string[]>> = {
   'src/unlock/unlock.service.ts': ['payment-webhook'],
   'src/prisma/field-key-rotation.ts': ['field-key-rotation'],
   'src/advisor/advisor.repository.prisma.ts': ['model-usage-stats'],
+  'src/submission/submission.repository.prisma.ts': ['legal-hold'],
+  'src/unlock/unlock.repository.prisma.ts': ['checkout-session'],
 }
 
 function sourceFiles(dir: string): string[] {
