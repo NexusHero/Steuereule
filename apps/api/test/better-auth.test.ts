@@ -6,7 +6,7 @@ import { resolveAppleClientId, resolveAppleClientSecret, resolveAppleSignInEnabl
 import type { EmailSender } from '../src/auth/email-sender.js'
 
 function fakeEmailSender(): EmailSender {
-  return { sendVerificationEmail: vi.fn(), sendPasswordResetEmail: vi.fn(), sendExistingAccountNotice: vi.fn() }
+  return { sendVerificationEmail: vi.fn(), sendPasswordResetEmail: vi.fn(), sendExistingAccountNotice: vi.fn(), sendUnverifiedAccountWarning: vi.fn() }
 }
 
 describe('resolveBetterAuthSecret', () => {

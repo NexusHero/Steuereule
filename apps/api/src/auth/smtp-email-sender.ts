@@ -1,6 +1,6 @@
 import { createTransport } from 'nodemailer'
 import { type EmailPurpose, renderEmail } from './email-content.js'
-import type { EmailSender, ExistingAccountNotice, VerificationEmail } from './email-sender.js'
+import type { EmailSender, ExistingAccountNotice, UnverifiedAccountWarning, VerificationEmail } from './email-sender.js'
 
 export interface SmtpConfig {
   url: string
@@ -70,7 +70,11 @@ export class SmtpEmailSender implements EmailSender {
     await this.send(email, 'existing-account')
   }
 
-  private async send(email: VerificationEmail | ExistingAccountNotice, purpose: EmailPurpose): Promise<void> {
+  async sendUnverifiedAccountWarning(email: UnverifiedAccountWarning): Promise<void> {
+    await this.send(email, email.final ? 'unverified-final' : 'unverified-warning')
+  }
+
+  private async send(email: VerificationEmail | ExistingAccountNotice | UnverifiedAccountWarning, purpose: EmailPurpose): Promise<void> {
     await this.transport.sendMail({
       from: { address: this.config.senderEmail, name: this.config.senderName },
       to: email.to,
