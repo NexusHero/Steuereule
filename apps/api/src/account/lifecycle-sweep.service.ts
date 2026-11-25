@@ -40,7 +40,7 @@ export class LifecycleSweepService implements OnModuleInit {
   async run(now = new Date()): Promise<void> {
     if (now.getTime() - this.lastHourly >= HOUR_MS) {
       this.lastHourly = now.getTime()
-      await this.step('legal holds', () => this.sweeps.sweepEndedLegalHolds((userId) => this.deletion.deleteAccount(userId), now))
+      await this.step('legal holds', () => this.sweeps.sweepEndedLegalHolds((userId, at) => this.deletion.deleteAccount(userId, at), now))
       await this.step('unverified accounts', () =>
         this.sweeps.sweepUnverifiedAccounts(
           {

@@ -17,7 +17,7 @@ export class PrismaAccountDeletionRepository implements AccountDeletionRepositor
     this.prisma = systemDatabaseClient(prisma, 'account-deletion')
   }
 
-  async deleteAccount(userId: string): Promise<DeleteAccountResult> {
+  async deleteAccount(userId: string, now: Date = new Date()): Promise<DeleteAccountResult> {
     // Crypto-shredding (ADR-0059, Art. 17 DSGVO): the receipt key lives in the keystore
     // database, so it cannot join the tax-data transaction. It is destroyed FIRST: should the
     // transaction below fail, the files are already unreadable and a retry finishes the job —
@@ -33,7 +33,7 @@ export class PrismaAccountDeletionRepository implements AccountDeletionRepositor
     // window expires. Backup retention is the compensating control for those columns; true per-user
     // field keys are the architectural follow-up if Art. 17 must reach backups for them too.
     const taxDataHeld =
-      (await this.prisma.legalHold.count({ where: { userId, resource: 'taxData', holdUntil: { gt: new Date() } } })) > 0
+      (await this.prisma.legalHold.count({ where: { userId, resource: 'taxData', holdUntil: { gt: now } } })) > 0
     if (!taxDataHeld) {
       await this.keys.destroy(userId)
       // ADR-0062: every household person has an own key; destroying it shreds their facts — the person's
@@ -41,7 +41,7 @@ export class PrismaAccountDeletionRepository implements AccountDeletionRepositor
       const persons = await this.prisma.householdPerson.findMany({ where: householdPersonsOfDeletion(userId), select: { id: true } })
       for (const person of persons) await this.keys.destroy(`household-person:${person.id}`)
     }
-    return deleteAccountTransaction(this.prisma, userId)
+    return deleteAccountTransaction(this.prisma, userId, {}, now)
   }
 
   async deleteUnverifiedAccount(userId: string): Promise<DeleteAccountResult | null> {

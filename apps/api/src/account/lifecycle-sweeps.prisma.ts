@@ -30,7 +30,7 @@ type Db = Pick<
  */
 export async function sweepEndedLegalHolds(
   db: Db,
-  erase: (userId: string) => Promise<DeleteAccountResult>,
+  erase: (userId: string, now: Date) => Promise<DeleteAccountResult>,
   now: Date,
 ): Promise<{ released: number; erasedFor: number }> {
   const ended = await db.legalHold.findMany({ where: { holdUntil: { lte: now } }, select: { id: true, userId: true }, take: LIFECYCLE_BATCH })
@@ -49,7 +49,8 @@ export async function sweepEndedLegalHolds(
     // erasure leaves the hold for the next run.
     try {
       if (!living.has(userId)) {
-        await erase(userId)
+        // The erasure judges holds by the sweep's clock: the ones this run found ended are ended for it too.
+        await erase(userId, now)
         erasedFor += 1
       }
       released += (await db.legalHold.deleteMany({ where: { id: { in: holdIds } } })).count

@@ -127,11 +127,11 @@ describe('account lifecycle — real Postgres (P7)', () => {
     expect(await prisma.taxYear.count({ where: { userId: a } })).toBe(0)
 
     // Five years on: the version's hold has ended, the payment's has not.
-    await sweepEndedLegalHolds(prisma as never, (id) => deletion.deleteAccount(id), new Date(Date.now() + 5 * YEARS + YEARS))
+    await sweepEndedLegalHolds(prisma as never, (id, at) => deletion.deleteAccount(id, at), new Date(Date.now() + 5 * YEARS + YEARS))
     expect(await prisma.filingVersion.count({ where: { userId: a } })).toBe(0)
     expect(await prisma.unlock.count({ where: { userId: a } })).toBe(1)
     // Ten years on: nothing is left.
-    await sweepEndedLegalHolds(prisma as never, (id) => deletion.deleteAccount(id), new Date(Date.now() + 10 * YEARS + YEARS))
+    await sweepEndedLegalHolds(prisma as never, (id, at) => deletion.deleteAccount(id, at), new Date(Date.now() + 10 * YEARS + YEARS))
     expect(await prisma.unlock.count({ where: { userId: a } })).toBe(0)
     expect(await prisma.legalHold.count({ where: { userId: a } })).toBe(0)
   })
