@@ -86,7 +86,7 @@ export function ConfirmationScreen({ year, onBack, onOpenScreen }: ConfirmationS
   const [error, setError] = useState(false)
 
   if (overview.isPending) return <LoadingState bp={bp} label={t('bestaetigung.loading')} />
-  if (overview.data?.status !== 200) {
+  if (overview.isError || overview.data === undefined) {
     return (
       <ErrorState
         bp={bp}
@@ -104,11 +104,8 @@ export function ConfirmationScreen({ year, onBack, onOpenScreen }: ConfirmationS
   const afterChange = async (action: () => Promise<{ status: number }>) => {
     setError(false)
     try {
-      const result = await action()
-      if (result.status !== 200) {
-        triggerSaveErrorHaptic()
-        setError(true)
-      }
+      // A refusal rejects with an ApiError (WEB-28); a resolved action succeeded.
+      await action()
     } catch {
       triggerSaveErrorHaptic()
       setError(true)
