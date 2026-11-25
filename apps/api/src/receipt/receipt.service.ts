@@ -43,6 +43,8 @@ export interface UploadReceiptInput {
   readonly zahlungsdatum?: string | undefined
   /** A business receipt (ADR-0101 §6): `ausgabe` or `einnahme`; files the Beleg as a Geschäftsbeleg. */
   readonly direction?: string | undefined
+  /** The user's assistant that uploads it over MCP (its OAuth client id), so that it alone may take it back. */
+  readonly uploadedByClientId?: string | undefined
 }
 
 export interface DownloadedReceiptFile {
@@ -176,6 +178,11 @@ export class ReceiptService {
     return (await this.repository.findByIdForUser(userId, id)) !== null
   }
 
+  /** The caller's own Beleg as stored, or null (the MCP take-back reads who uploaded it). */
+  findOwn(userId: string, id: string): Promise<ReceiptRecord | null> {
+    return this.repository.findByIdForUser(userId, id)
+  }
+
   async list(userId: string): Promise<ReceiptResponseDto[]> {
     const rows = await this.repository.findAllForUser(userId)
     if (rows.length === 0) return []
@@ -258,6 +265,7 @@ export class ReceiptService {
       ...(direction !== undefined ? { direction } : {}),
       ...(belegdatum !== undefined ? { belegdatum } : {}),
       ...(zahlungsdatum !== undefined ? { zahlungsdatum } : {}),
+      ...(input.uploadedByClientId !== undefined ? { uploadedByClientId: input.uploadedByClientId } : {}),
     }, MAX_RECEIPTS_PER_ACCOUNT)
     if (record === null) throw receiptQuotaExceeded()
 

@@ -2,7 +2,7 @@ import { Inject, Injectable } from '@nestjs/common'
 import { USER_KEY_STORE, type UserKeyStore } from '../keystore/user-key-store.js'
 import { ENCRYPTED_PRISMA, type EncryptedPrismaClient } from '../prisma/encrypted-prisma.provider.js'
 import type { AccountDeletionRepository, DeleteAccountResult } from './account-deletion.repository.js'
-import { deleteAccountTransaction } from './delete-account-transaction.prisma.js'
+import { AccountVerifiedMeanwhileError, deleteAccountTransaction, householdPersonsOfDeletion } from './delete-account-transaction.prisma.js'
 
 @Injectable()
 export class PrismaAccountDeletionRepository implements AccountDeletionRepository {
@@ -30,10 +30,27 @@ export class PrismaAccountDeletionRepository implements AccountDeletionRepositor
       (await this.prisma.legalHold.count({ where: { userId, resource: 'taxData', holdUntil: { gt: new Date() } } })) > 0
     if (!taxDataHeld) {
       await this.keys.destroy(userId)
-      // ADR-0062: every household person has an own key; destroying it shreds their facts.
-      const persons = await this.prisma.householdPerson.findMany({ where: { householdUserId: userId }, select: { id: true } })
+      // ADR-0062: every household person has an own key; destroying it shreds their facts — the person's
+      // household, and the copies of the person's own facts in a partner's household (API-23).
+      const persons = await this.prisma.householdPerson.findMany({ where: householdPersonsOfDeletion(userId), select: { id: true } })
       for (const person of persons) await this.keys.destroy(`household-person:${person.id}`)
     }
     return deleteAccountTransaction(this.prisma, userId)
+  }
+
+  async deleteUnverifiedAccount(userId: string): Promise<DeleteAccountResult | null> {
+    const persons = await this.prisma.householdPerson.findMany({ where: householdPersonsOfDeletion(userId), select: { id: true } })
+    let result: DeleteAccountResult
+    try {
+      result = await deleteAccountTransaction(this.prisma, userId, { onlyIfUnverified: true })
+    } catch (error) {
+      if (error instanceof AccountVerifiedMeanwhileError) return null
+      throw error
+    }
+    if (!result.legalHolds.some((hold) => hold.resource === 'taxData')) {
+      await this.keys.destroy(userId)
+      for (const person of persons) await this.keys.destroy(`household-person:${person.id}`)
+    }
+    return result
   }
 }

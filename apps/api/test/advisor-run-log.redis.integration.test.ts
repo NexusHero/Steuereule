@@ -3,6 +3,7 @@
 import { Redis } from 'ioredis'
 import { afterAll, describe, expect, it } from 'vitest'
 import { RedisAdvisorRunLog } from '../src/advisor/run/advisor-run-log.redis.js'
+import { resolveFieldEncryptionKey } from '../src/prisma/field-encryption-key.js'
 import type { AdvisorRunEntry } from '../src/advisor/run/advisor-run-log.js'
 
 const url = process.env.REDIS_URL?.trim()
@@ -14,7 +15,7 @@ suite('RedisAdvisorRunLog (#476)', () => {
   const create = (): RedisAdvisorRunLog => {
     const redis = new Redis(url!, { maxRetriesPerRequest: 2 })
     connections.push(redis)
-    const log = new RedisAdvisorRunLog(redis, 2_000)
+    const log = new RedisAdvisorRunLog(redis, resolveFieldEncryptionKey({}), 2_000)
     logs.push(log)
     return log
   }

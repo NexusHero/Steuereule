@@ -47,6 +47,18 @@ export const RETENTION = {
    */
   legalHoldPaymentYears: 8,
   legalHoldFilingVersionYears: 4,
+  /**
+   * Every access-log row is deleted this long after it was written (`AUDIT_LOG_RETENTION_YEARS`), the
+   * anonymised rows of deleted accounts included: the regular limitation period (§ 195, § 199 BGB) within
+   * which an access may be questioned, rounded up to whole years from the row's date.
+   */
+  auditLogYears: 3,
+  /** Expired sessions, expired or revoked assistant tokens and expired device logins are deleted this long after they ended. */
+  endedLoginRecordDays: 30,
+  /** ADR-0030: a never-verified account is deleted no sooner than this long after registration … */
+  unverifiedAccountDays: 30,
+  /** … and no sooner than this long after the warning e-mail went out (§3a). */
+  unverifiedWarningDays: 7,
 } as const
 
 /** Where servers and database run (`infra/gcp/variables.tf`, default of `region`). */

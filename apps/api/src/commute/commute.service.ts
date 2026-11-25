@@ -1,6 +1,8 @@
-import { Inject, Injectable } from '@nestjs/common'
+import { Inject, Injectable, Optional } from '@nestjs/common'
 import { calculateWorkdays, effectivePublicHolidays } from '@steuereule/core'
 import { InvalidInputError } from '../common/domain-error.js'
+import { AuditService } from '../audit/audit.service.js'
+import { appendReadAudit } from '../common/read-audit.js'
 import { COMMUTE_REPOSITORY, type CommuteInputs, type CommuteRepository } from './commute.repository.js'
 import { allowanceOverWays, assertTravelDaysFit, travelDaysOverWays } from './ways-to-work.js'
 
@@ -13,10 +15,15 @@ export interface CommuteStatus {
 /** Stores the commute facts and derives Pendlertage and Entfernungspauschale from the core. */
 @Injectable()
 export class CommuteService {
-  constructor(@Inject(COMMUTE_REPOSITORY) private readonly repository: CommuteRepository) {}
+  constructor(
+    @Inject(COMMUTE_REPOSITORY) private readonly repository: CommuteRepository,
+    @Optional() @Inject(AuditService) private readonly audit?: AuditService,
+  ) {}
 
-  async getState(userId: string, taxYear: number): Promise<CommuteStatus> {
+  /** `readBy` is who asked: Person A reading a Person B kept in A's account (ADR-0054) gets the audit row. */
+  async getState(userId: string, taxYear: number, readBy: string = userId): Promise<CommuteStatus> {
     const inputs = await this.repository.findForUserAndYear(userId, taxYear)
+    if (inputs !== null) await appendReadAudit(this.audit, readBy, 'arbeitsweg', [userId])
     return inputs === null ? { inputs: null, workdays: null, commuterAllowance: null } : status(taxYear, inputs)
   }
 

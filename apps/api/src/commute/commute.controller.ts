@@ -31,7 +31,7 @@ export class CommuteController {
     @Param('jahr', ParseTaxYearPipe) year: number,
     @Query('person', ParsePersonPipe) person: 'A' | 'B',
   ): Promise<CommuteResponseDto> {
-    return this.service.getState(await this.link.dataUser(userId, year, person), year)
+    return this.service.getState(await this.link.dataUser(userId, year, person), year, userId)
   }
 
   @Put(':jahr/arbeitsweg')

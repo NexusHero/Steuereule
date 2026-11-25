@@ -56,7 +56,13 @@ export class BusinessExportService {
 
   async procedureDoc(userId: string, year: number, ref: BusinessRef) {
     await this.context.assertOpen(userId, year)
-    const { chart, mode, profile } = await this.context.frame(userId, year, ref)
+    const frame = await this.context.frame(userId, year, ref)
+    if (frame.profile) await this.audit.append({ userId, action: 'READ', resource: 'selbststaendig' })
+    return this.procedureDocOf(year, frame)
+  }
+
+  /** The Verfahrensdokumentation from the book's frame; the save answers with it without a further READ row. */
+  private procedureDocOf(year: number, { chart, mode, profile }: Awaited<ReturnType<BusinessContext['frame']>>) {
     const stored = parseJson<Partial<Record<VerfahrensdokuPlaceholder, string>>>(profile?.procedureDoc ?? null, {})
     const values = {
       // What the app knows itself; the user's own values win.
@@ -75,7 +81,7 @@ export class BusinessExportService {
     await this.context.assertOpen(userId, year)
     await this.repository.saveProfile(userId, year, ref, { procedureDoc: JSON.stringify(values) })
     await this.audit.append({ userId, action: 'WRITE', resource: 'selbststaendig' })
-    return this.procedureDoc(userId, year, ref)
+    return this.procedureDocOf(year, await this.context.frame(userId, year, ref))
   }
 
   /** The E-Bilanz as XBRL, not transmitted (ADR-0101 §17); `download` is gated by the tier. */

@@ -252,12 +252,19 @@ export class PrismaAdvisorRepository implements AdvisorRepository {
   }
 
   async updateNote(id: string, userId: string, text: string, author: AdvisorNoteAuthor): Promise<AdvisorNoteRecord | null> {
-    const { count } = await this.prisma.advisorNote.updateMany({ where: { id, userId }, data: { text, author, updatedAt: new Date() } })
+    // The change and its WRITE row in one transaction, as createNote does (H2-11). The callers look the note up first.
+    const [{ count }] = await this.prisma.$transaction([
+      this.prisma.advisorNote.updateMany({ where: { id, userId }, data: { text, author, updatedAt: new Date() } }),
+      this.prisma.taxDataAccessLog.create({ data: { userId, action: 'WRITE', resource: 'berater_notiz' } }),
+    ])
     return count === 1 ? this.findNote(id, userId) : null
   }
 
   async deleteNote(id: string, userId: string): Promise<boolean> {
-    const { count } = await this.prisma.advisorNote.deleteMany({ where: { id, userId } })
+    const [{ count }] = await this.prisma.$transaction([
+      this.prisma.advisorNote.deleteMany({ where: { id, userId } }),
+      this.prisma.taxDataAccessLog.create({ data: { userId, action: 'WRITE', resource: 'berater_notiz' } }),
+    ])
     return count === 1
   }
 

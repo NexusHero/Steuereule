@@ -17,6 +17,7 @@ import { UploadAdmission } from './upload-admission.js'
   imports: [PrismaModule, ReceiptStorageModule, AuditModule, KiModule, AdvisorModule],
   controllers: [ReceiptController, ReceiptParseController],
   providers: [UploadAdmission, ReceiptService, ReceiptParseService, ReceiptReassignService, DocumentParseRegistry, AutoReceiptParseStrategy],
-  exports: [ReceiptStorageModule, ReceiptService, DocumentParseRegistry],
+  // UploadAdmission: the MCP upload (beleg_hochladen) takes the same slots as the REST route.
+  exports: [ReceiptStorageModule, ReceiptService, DocumentParseRegistry, UploadAdmission],
 })
 export class ReceiptModule {}

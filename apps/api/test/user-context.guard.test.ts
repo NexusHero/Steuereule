@@ -35,11 +35,14 @@ class OrdinaryController {
   readonly kind = 'ordinary'
 }
 
-function makeContext(cookies: Record<string, string | undefined>, headers: Record<string, string | undefined> = {}, controller: object = McpLikeController) {
-  const request: Record<string, unknown> = { cookies, headers }
+// A bearer token is only looked at on the MCP endpoint; cookies and guests are tested on an ordinary controller,
+// because the MCP endpoint refuses every request without a token (beta P4, MCP-9).
+function makeContext(cookies: Record<string, string | undefined>, headers: Record<string, string | undefined> = {}, controller: object = headers.authorization ? McpLikeController : OrdinaryController, url = '/mcp') {
+  const request: Record<string, unknown> = { cookies, headers, url }
   const setCookie = vi.fn()
+  const header = vi.fn()
   const clearCookie = vi.fn()
-  const reply = { setCookie, clearCookie }
+  const reply = { setCookie, header, clearCookie }
   const context = {
     getClass: () => controller,
     switchToHttp: () => ({
@@ -47,14 +50,14 @@ function makeContext(cookies: Record<string, string | undefined>, headers: Recor
       getResponse: () => reply,
     }),
   } as unknown as ExecutionContext
-  return { context, request, setCookie, clearCookie }
+  return { context, request, setCookie, header, clearCookie }
 }
 
 function makeBetterAuthBundle(getSession: ReturnType<typeof vi.fn>): BetterAuthBundle {
   return {
     // Only `api.getSession` is ever called by the guard — the rest of `Auth` is
     // irrelevant to this unit test, so it's deliberately left out of the fake shape.
-    auth: { api: { getSession } } as unknown as BetterAuthBundle['auth'],
+    auth: { api: { getSession }, options: { baseURL: 'https://api.example.test' } } as unknown as BetterAuthBundle['auth'],
     sessionCookieName: SESSION_COOKIE_NAME,
     // The guard never reads this; it belongs to the capability probe (REQ-008).
     enabledSocialProviders: [],
@@ -66,6 +69,33 @@ describe('UserContextGuard', () => {
   beforeEach(() => {
     process.env.GUEST_SESSION_SECRET = SECRET
     process.env.NODE_ENV = 'test'
+  })
+
+  // MCP-9, H2-27: an MCP client before sign-in gets the pointer to the sign-in, never a guest identity.
+  it('on the MCP endpoint answers a request without a token with 401 and WWW-Authenticate, and makes no guest', async () => {
+    const touch = vi.fn().mockResolvedValue(undefined)
+    const getSession = vi.fn()
+    const guard = new UserContextGuard(makeBetterAuthBundle(getSession), fakeTokens(), { seen: vi.fn(), touch } as never)
+    for (const [url, resource] of [['/mcp', '/mcp'], ['/mcp/messages?sessionId=x', '/mcp/sse'], ['/mcp/sse', '/mcp/sse']] as const) {
+      const { context, request, setCookie, header } = makeContext({}, {}, McpLikeController, url)
+      await expect(guard.canActivate(context)).rejects.toBeInstanceOf(UnauthorizedException)
+      expect(header).toHaveBeenCalledWith('WWW-Authenticate', `Bearer resource_metadata="https://api.example.test/.well-known/oauth-protected-resource${resource}"`)
+      expect(setCookie).not.toHaveBeenCalled()
+      expect(request[USER_ID_REQUEST_KEY]).toBeUndefined()
+    }
+    // Not even a session cookie of the user's browser makes it a user request there.
+    const withCookie = makeContext({ [SESSION_COOKIE_NAME]: 'sess' }, {}, McpLikeController)
+    await expect(guard.canActivate(withCookie.context)).rejects.toBeInstanceOf(UnauthorizedException)
+    expect(getSession).not.toHaveBeenCalled()
+    expect(touch).not.toHaveBeenCalled()
+  })
+
+  // MCP-14: an invalid or expired token on the MCP endpoint says so in the challenge, so a client refreshes.
+  it('names invalid_token in the challenge when the MCP endpoint refuses a token', async () => {
+    const guard = new UserContextGuard(makeBetterAuthBundle(vi.fn()), fakeTokens())
+    const { context, header } = makeContext({}, { authorization: 'Bearer nonexistent-token' })
+    await expect(guard.canActivate(context)).rejects.toBeInstanceOf(UnauthorizedException)
+    expect(header).toHaveBeenCalledWith('WWW-Authenticate', expect.stringContaining('error="invalid_token"'))
   })
 
   it('trusts a valid signed guest cookie and does not mint a new one (no better-auth session cookie present)', async () => {
@@ -392,5 +422,25 @@ describe('UserContextGuard', () => {
       const machine = new UserContextGuard(bundle(), tokensFor())
       await expect(machine.canActivate(makeContext({}, { authorization: `Bearer ${jwt({ ...valid, sub: 'client-1' })}` }).context)).rejects.toBeInstanceOf(UnauthorizedException)
     })
+  })
+})
+
+describe('UserContextGuard — new guests per address (API-9)', () => {
+  beforeEach(() => {
+    process.env.GUEST_SESSION_SECRET = SECRET
+    process.env.NODE_ENV = 'test'
+  })
+
+  it('lets one address start at most 20 guests with data an hour; a known guest keeps writing', async () => {
+    const guard = new UserContextGuard(makeBetterAuthBundle(vi.fn().mockResolvedValue(null)), fakeTokens())
+    const write = (cookies: Record<string, string | undefined>) => {
+      const { context, request } = makeContext(cookies, {}, OrdinaryController)
+      request.method = 'PUT'
+      request.ip = '198.51.100.9'
+      return guard.canActivate(context)
+    }
+    for (let i = 0; i < 20; i++) await expect(write({})).resolves.toBe(true)
+    await expect(write({})).rejects.toThrow('Zu viele Änderungen ohne Konto')
+    await expect(write({ [GUEST_SESSION_COOKIE]: signGuestSession('known-guest', SECRET) })).resolves.toBe(true)
   })
 })

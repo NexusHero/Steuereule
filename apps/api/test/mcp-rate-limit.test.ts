@@ -6,7 +6,8 @@ import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js'
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
 import { createResettableRateLimitStorage } from '../src/auth/rate-limit-storage.js'
-import { limitToolCalls, MCP_CHECKOUT_LINK_LIMIT, MCP_LIMITS, McpRateLimiter } from '../src/mcp/mcp-rate-limit.js'
+import { MCP_CHECKOUT_LINK_LIMIT, MCP_LIMITS, McpRateLimiter } from '../src/mcp/mcp-rate-limit.js'
+import { installToolGate, MCP_SCOPE } from '../src/mcp/tool-kit.js'
 
 function clock(start = 1_000_000) {
   let now = start
@@ -98,7 +99,7 @@ describe('checkout links per account (ADR-0052 amendment 9)', () => {
   })
 })
 
-describe('limitToolCalls', () => {
+describe('the tool gate: call limit', () => {
   async function connect(server: McpServer) {
     const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair()
     await server.connect(serverTransport)
@@ -114,20 +115,22 @@ describe('limitToolCalls', () => {
     let ran = 0
     const make = () => {
       const server = new McpServer({ name: 't', version: '1' })
-      limitToolCalls(server, limiter, 'u1', (resource) => void refusals.push(resource))
-      server.tool('ping', 'ping', { n: z.number().optional() }, async () => {
+      const audit = { append: async (entry: { resource: string }) => void (entry.resource === 'mcp_rate_limited' && refusals.push(entry.resource)) }
+      installToolGate(server, { userId: 'u1', assistant: { clientId: 'c', clientName: 'C', scopes: [MCP_SCOPE.read] }, limiter, audit })
+      // Two real tool names, so both have a policy; the handlers are stand-ins.
+      server.tool('wechselkurs', 'ping', { n: z.number().min(0).max(1).optional() }, async () => {
         ran += 1
         return { content: [{ type: 'text' as const, text: 'pong' }] }
       })
-      server.tool('pong', 'no args', async () => ({ content: [{ type: 'text' as const, text: 'ok' }] }))
+      server.tool('feld_finden', 'no args', {}, async () => ({ content: [{ type: 'text' as const, text: 'ok' }] }))
       return server
     }
     const first = await connect(make())
     const second = await connect(make())
-    await first.callTool({ name: 'ping', arguments: {} })
-    await second.callTool({ name: 'pong', arguments: {} })
-    const refused = await second.callTool({ name: 'ping', arguments: {} })
-    await first.callTool({ name: 'ping', arguments: {} })
+    await first.callTool({ name: 'wechselkurs', arguments: {} })
+    await second.callTool({ name: 'feld_finden', arguments: {} })
+    const refused = await second.callTool({ name: 'wechselkurs', arguments: {} })
+    await first.callTool({ name: 'wechselkurs', arguments: {} })
 
     expect(ran).toBe(1)
     expect((refused as { isError?: boolean }).isError).toBe(true)
@@ -137,7 +140,7 @@ describe('limitToolCalls', () => {
     expect(refusals).toEqual(['mcp_rate_limited'])
 
     time.advance(60_000)
-    await first.callTool({ name: 'ping', arguments: {} })
+    await first.callTool({ name: 'wechselkurs', arguments: {} })
     expect(ran).toBe(2)
   })
 })

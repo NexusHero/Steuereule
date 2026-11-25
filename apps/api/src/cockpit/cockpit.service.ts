@@ -22,6 +22,8 @@ import { LinkService } from '../link/link.service.js'
 import { SubmissionService } from '../submission/submission.service.js'
 import { filingPathOf, interviewOptions, selfEmploymentEnabled } from '../config/self-employment.js'
 import { BusinessService } from '../business/business.service.js'
+import { AuditService } from '../audit/audit.service.js'
+import { appendReadAudit } from '../common/read-audit.js'
 
 function recordedValue(raw: string | null): number | null {
   if (raw === null || raw === 'unklar') return null
@@ -105,6 +107,7 @@ export class CockpitService {
     @Optional() @Inject(SubmissionService) private readonly submissions?: SubmissionService,
     /** The book of the self-employed (ADR-0101); absent in tests that build the cockpit without it. */
     @Optional() @Inject(BusinessService) private readonly business?: BusinessService,
+    @Optional() @Inject(AuditService) private readonly audit?: AuditService,
   ) {}
 
   /** The year's Gewinneinkünfte of one person from the book (Anlage S plus G), 0 without one or with the switch off. */
@@ -219,6 +222,7 @@ export class CockpitService {
     })
 
     const submission = this.submissions ? await this.submissions.state(userId, taxYear) : null
+    await appendReadAudit(this.audit, userId, 'cockpit', [partnerId])
 
     return {
       taxYear: record.taxYear,

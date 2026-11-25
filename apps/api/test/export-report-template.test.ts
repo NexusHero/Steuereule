@@ -23,6 +23,8 @@ function baseDocument(overrides: Partial<ExportDocument> = {}): ExportDocument {
   return {
     schemaVersion: '1.0',
     exportedAt: '2026-01-15T09:30:00.000Z',
+    accountData: [],
+    receiptFiles: [],
     account: {
       email: 'anna@example.com',
       name: 'Anna Beispiel',

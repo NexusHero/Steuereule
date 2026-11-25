@@ -51,6 +51,14 @@ function renderTaxDataSection(entries: ExportDocument['taxData']): string {
     .join('')
 }
 
+function renderReceiptFiles(files: ExportDocument['receiptFiles']): string {
+  if (files.length === 0) return '<p class="honest-note">Es sind keine Belegdateien gespeichert.</p>'
+  const rows = files
+    .map((file) => `<tr><td>${escapeHtml(file.fileName)}</td><td>${escapeHtml(file.mimeType)}</td><td>${file.byteLength}</td><td>${formatGermanTimestamp(file.uploadedAt)}</td></tr>`)
+    .join('')
+  return `<p>Die Originaldateien selbst enthält der Export als JSON-Datei.</p><table><thead><tr><th>Datei</th><th>Typ</th><th>Bytes</th><th>Hochgeladen</th></tr></thead><tbody>${rows}</tbody></table>`
+}
+
 function renderAccessLogRows(entries: ExportDocument['accessLog']): string {
   if (entries.length === 0) {
     return '<tr><td colspan="3">Keine Zugriffe protokolliert.</td></tr>'
@@ -105,6 +113,12 @@ export function buildExportReportHtml(document: ExportDocument): string {
 
     <h2>Steuerliche Daten</h2>
     ${renderTaxDataSection(document.taxData)}
+
+    <h2>Anmeldungen, Geräte und verbundene Assistenten</h2>
+    ${renderTaxDataSection(document.accountData)}
+
+    <h2>Belegdateien</h2>
+    ${renderReceiptFiles(document.receiptFiles)}
 
     <h2>Zugriffsprotokoll (eigene Zugriffe)</h2>
     ${document.accessLogNewestOnly === undefined ? '' : `<p>Dieser Bericht zeigt die letzten ${document.accessLogNewestOnly} Zugriffe. Das vollständige Protokoll enthält der Export als JSON-Datei.</p>`}

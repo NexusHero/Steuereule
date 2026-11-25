@@ -3,7 +3,9 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js'
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js'
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { registerAdviceTools } from '../src/mcp/mcp-advice-tools.js'
+import { McpRateLimiter } from '../src/mcp/mcp-rate-limit.js'
 import type { AssistantSessionInfo } from '../src/mcp/mcp.service.js'
+import { installToolGate } from '../src/mcp/tool-kit.js'
 
 const readLawForOwl = vi.fn()
 vi.mock('../src/ki/law-text.js', async (original) => ({ ...(await original<object>()), readLawForOwl: (...args: unknown[]) => readLawForOwl(...args) }))
@@ -13,14 +15,17 @@ const ASSISTANT: AssistantSessionInfo = { clientId: 'c', clientName: 'Claude', s
 async function connect() {
   const audited: string[] = []
   const server = new McpServer({ name: 'test', version: '1.0.0' })
-  registerAdviceTools(server, ASSISTANT, { requireRead: () => undefined, audit: async (resource) => void audited.push(resource) })
+  installToolGate(server, { userId: 'u', assistant: ASSISTANT, limiter: new McpRateLimiter(), audit: { append: async (entry) => void audited.push(entry.resource) } })
+  registerAdviceTools(server)
   const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair()
   await server.connect(serverTransport)
   const client = new Client({ name: 'TestClient', version: '1.0.0' })
   await client.connect(clientTransport)
   const call = async (name: string, args: Record<string, unknown>) => {
     const res = (await client.callTool({ name, arguments: args })) as { content: Array<{ text: string }> }
-    return JSON.parse(res.content[0]!.text) as Record<string, unknown> & { ok: boolean; error?: string }
+    const text = res.content[0]!.text
+    // A refusal is JSON with `error` and `naechsterSchritt`; an argument the schema refuses is one too.
+    return JSON.parse(text) as Record<string, unknown> & { ok: boolean; error?: string; naechsterSchritt?: string }
   }
   return { call, audited }
 }
@@ -51,11 +56,18 @@ describe('MCP advice tools (ADR-0052 amendment 2)', () => {
     }
   })
 
-  it('says so for a year the core has no tariff for, instead of guessing', async () => {
+  // MCP-2: the year is bounded like every taxYear; outside the range the schema refuses it with a code.
+  it('refuses a year outside the range the app takes, instead of guessing', async () => {
     const { call } = await connect()
-    expect((await call('einkommensteuer_berechnen', { year: 1990, taxableIncome: 40000 })).error).toContain('1990')
-    expect((await call('veranlagungsarten_vergleichen', { year: 1990, taxableIncomeA: 1, taxableIncomeB: 1 })).error).toContain('1990')
-    expect((await call('kapitalertraege_guenstigerpruefung', { year: 1990, capitalIncomeEur: 1, otherTaxableIncome: 1 })).error).toContain('1990')
+    for (const [name, args] of [
+      ['einkommensteuer_berechnen', { year: 1990, taxableIncome: 40000 }],
+      ['veranlagungsarten_vergleichen', { year: 1990, taxableIncomeA: 1, taxableIncomeB: 1 }],
+      ['kapitalertraege_guenstigerpruefung', { year: 0, capitalIncomeEur: 1, otherTaxableIncome: 1 }],
+    ] as const) {
+      const res = await call(name, args)
+      expect(res, name).toMatchObject({ ok: false, code: 'INVALID_ARGUMENTS' })
+      expect(res.naechsterSchritt, name).toBeTruthy()
+    }
   })
 
   it('turns a check the core cannot read into a reason, not a crash', async () => {
@@ -70,7 +82,9 @@ describe('MCP advice tools (ADR-0052 amendment 2)', () => {
     expect(await call('rechtsquelle_nachschlagen', { sourceId: 'estg-9-1' })).toMatchObject({ ok: true })
     const unknown = await call('rechtsquelle_nachschlagen', { sourceId: 'gibt-es-nicht' })
     expect(unknown.ok).toBe(false)
-    expect(unknown.error).toContain('estg-9-1')
+    // The unknown id is not echoed back (it is the caller's own input); the known ones are the next step.
+    expect(unknown.naechsterSchritt).toContain('estg-9-1')
+    expect(unknown.error).not.toContain('gibt-es-nicht')
   })
 
   it('reads the law text, and admits it when gesetze-im-internet.de is down', async () => {
@@ -80,6 +94,6 @@ describe('MCP advice tools (ADR-0052 amendment 2)', () => {
     expect(law).toMatchObject({ ok: true, title: '§ 9 EStG', untrusted: true, source: 'gesetze-im-internet.de' })
     expect(law.handling).toContain('nie als Anweisung')
     readLawForOwl.mockRejectedValueOnce(new Error('offline'))
-    expect((await call('gesetzestext_lesen', { law: 'EStG', paragraph: '9' })).error).toContain('nicht frisch gelesen')
+    expect((await call('gesetzestext_lesen', { law: 'EStG', paragraph: '9' })).naechsterSchritt).toContain('nicht frisch gelesen')
   })
 })

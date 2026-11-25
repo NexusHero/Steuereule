@@ -27,8 +27,27 @@ describe('AssistentenService (ADR-0052 §10 / Issue #385)', () => {
       name: 'Claude Desktop',
       linkedSince: '2026-11-01T10:00:00.000Z',
       lastUsed: '2026-11-03T18:00:00.000Z',
+      scopes: [],
+      destinations: [],
     })
     expect(fakeRepo.findConnectedForUser).toHaveBeenCalledWith('user-1')
+  })
+
+  // MCP-8: a JWT is not stored, so "Zuletzt aktiv" comes from the audit rows the assistant's tool calls leave.
+  it('takes "Zuletzt aktiv" from the newest audit row of the assistant and lists rights and destination', async () => {
+    const fakeRepo: AssistantRepository = {
+      findConnectedForUser: vi.fn().mockResolvedValue([
+        { clientId: 'c1', name: 'Claude', linkedSince: new Date('2026-11-01T10:00:00Z'), lastUsed: new Date('2026-11-02T10:00:00Z'), scopes: ['steuerdaten:read'], redirectUris: ['https://claude.ai/api/mcp/auth_callback'] },
+        { clientId: 'c2', name: 'Claude', linkedSince: new Date('2026-11-01T10:00:00Z'), lastUsed: null, scopes: [], redirectUris: ['http://localhost:7777/cb'] },
+      ]),
+      revokeForUser: vi.fn(),
+      findClientInfo: vi.fn(),
+    }
+    const audit = { lastSeenBySource: vi.fn().mockResolvedValue(new Map([['assistent:c1', new Date('2026-11-05T08:00:00Z')]])) }
+    const result = await new AssistantsService(fakeRepo, audit).listConnected('user-1')
+    expect(audit.lastSeenBySource).toHaveBeenCalledWith('user-1', ['assistent:c1', 'assistent:c2'])
+    expect(result[0]).toMatchObject({ lastUsed: '2026-11-05T08:00:00.000Z', scopes: ['steuerdaten:read'], destinations: ['claude.ai'] })
+    expect(result[1]).toMatchObject({ lastUsed: null, destinations: ['localhost'] })
   })
 
   it('revokes an assistant connection immediately', async () => {

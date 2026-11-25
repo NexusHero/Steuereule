@@ -406,3 +406,12 @@ granted; each let one that was granted access do more than intended.
    together can let through up to twice the limit within one rolling window. Each process still holds its
    own sliding window. The limits bound abuse, not billing, so this is accepted here rather than giving
    the MCP its own counter.
+
+## Amendment 10 (2026-11-25) — One gate for every tool, file upload, write scope for payment links
+
+Recorded in [ADR-0111](0111-beta-readiness.md) §"Agent access". In short: every tool passes one gate (policy,
+bounded arguments with `taxYear` 2000 to next year, audit row naming the assistant, one error shape); caps
+are counted under an advisory lock; `beleg_hochladen` uploads the file through the REST upload's checks;
+`zahllink:write` replaces `zahllink:read`, which stays accepted for existing refresh tokens; a request without
+a token gets 401 with a challenge before any guest identity exists. Unchanged: nothing verifies a client
+(amendment 8).

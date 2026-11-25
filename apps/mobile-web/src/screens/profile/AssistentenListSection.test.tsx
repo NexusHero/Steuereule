@@ -29,6 +29,24 @@ function renderAssistantsList() {
 }
 
 describe('AssistentenListSection (ADR-0052 §10)', () => {
+  // MCP-8, MCP-11: two assistants of one name are told apart by rights and destination; the /mcp address is shown.
+  it('shows each assistant with its rights and where its access goes, and the /mcp server address', async () => {
+    server.use(
+      http.get(`${BASE_URL}/v1/assistenten`, () =>
+        HttpResponse.json([
+          { clientId: 'a', name: 'Claude', linkedSince: '2026-11-01T12:00:00.000Z', lastUsed: null, scopes: ['openid', 'steuerdaten:read'], destinations: ['claude.ai'] },
+          { clientId: 'b', name: 'Claude', linkedSince: '2026-11-02T12:00:00.000Z', lastUsed: null, scopes: ['steuerdaten:write', 'zahllink:write'], destinations: ['evil.example'] },
+        ]),
+      ),
+    )
+    renderAssistantsList()
+    expect((await screen.findByTestId('assistent-ziel-a')).textContent).toBe('claude.ai')
+    expect(screen.getByTestId('assistent-ziel-b').textContent).toBe('evil.example')
+    expect(screen.getByTestId('assistent-rechte-a').textContent).toBe('Steuerdaten lesen (maskiert)')
+    expect(screen.getByTestId('assistent-rechte-b').textContent).toContain('Bezahlvorgang')
+    expect(screen.getByTestId('assistenten-server-adresse').textContent).toMatch(/\/mcp$/)
+  })
+
   it('renders empty notice when no assistants are connected', async () => {
     server.use(
       http.get(`${BASE_URL}/v1/assistenten`, () => HttpResponse.json([])),

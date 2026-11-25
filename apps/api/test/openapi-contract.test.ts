@@ -174,7 +174,7 @@ describe('OpenAPI contract for DELETE /v1/account (REQ-011, ADR-0013)', () => {
     expect(schema).toBeDefined()
     const properties = (schema as { properties?: Record<string, unknown> }).properties ?? {}
     expect(Object.keys(properties).sort()).toEqual(
-      ['deleted', 'retainedAnonymisedAuditRows', 'retainedUnderLegalHold'].sort(),
+      ['deleted', 'legalHolds', 'retainedAnonymisedAuditRows', 'retainedUnderLegalHold'].sort(),
     )
   })
 
@@ -204,7 +204,8 @@ describe('OpenAPI contract for GET /v1/account/export (REQ-011/ADR-0013)', () =>
     expect(schema).toBeDefined()
     const properties = (schema as { properties?: Record<string, unknown> }).properties ?? {}
     expect(Object.keys(properties).sort()).toEqual(
-      ['schemaVersion', 'exportedAt', 'account', 'profile', 'taxData', 'accessLog'].sort(),
+      // P7 extends the ADR-0013 contract additively: accountData (API-17) and receiptFiles (H2-6).
+      ['schemaVersion', 'exportedAt', 'account', 'profile', 'taxData', 'accountData', 'receiptFiles', 'accessLog'].sort(),
     )
   })
 

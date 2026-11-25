@@ -1,4 +1,4 @@
-import { Inject, Injectable } from '@nestjs/common'
+import { Inject, Injectable, Optional } from '@nestjs/common'
 import { InvalidInputError } from '../common/domain-error.js'
 import {
   employeeFromData,
@@ -12,6 +12,8 @@ import { TAX_YEAR_REPOSITORY, type TaxYearRepository } from '../tax-year/tax-yea
 import type { UncertaintyDto, FilingTypeComparisonDto, ComparisonSourceDto } from './dto/filing-type-comparison-response.dto.js'
 import { answersFrom } from '../interview/answers.js'
 import { wageTaxCertificateDataFrom } from '../lstb/lstb-data.js'
+import { AuditService } from '../audit/audit.service.js'
+import { appendReadAudit } from '../common/read-audit.js'
 
 function toDto(comparison: Vergleich): FilingTypeComparisonDto {
   const uncertainty: UncertaintyDto =
@@ -47,6 +49,7 @@ export class AssessmentComparisonService {
   constructor(
     @Inject(TAX_YEAR_REPOSITORY) private readonly taxYearRepository: TaxYearRepository,
     @Inject(TAX_CASE_READER) private readonly cases: TaxCaseReader,
+    @Optional() @Inject(AuditService) private readonly audit?: AuditService,
   ) {}
 
   async getComparison(
@@ -61,6 +64,7 @@ export class AssessmentComparisonService {
 
     const { wageTaxCertificate: lstbRecord, interviewRows } = await this.cases.read(userId, taxYear, ['wageTaxCertificate', 'interviewRows'])
 
+    await appendReadAudit(this.audit, userId, 'veranlagungsvergleich')
     const data = wageTaxCertificateDataFrom(lstbRecord)
     const answers = answersFrom(interviewRows)
 

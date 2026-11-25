@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common'
+import { AuditModule } from '../audit/audit.module.js'
 import { ConfirmationModule } from '../confirmation/confirmation.module.js'
 import { CapitalModule } from '../capital/capital.module.js'
 import { MarkingModule } from '../marking/marking.module.js'
@@ -12,7 +13,7 @@ import { TAX_YEAR_ROLLOVER_REPOSITORY } from './year-takeover.repository.js'
 import { PrismaYearTakeoverRepository } from './year-takeover.repository.prisma.js'
 
 @Module({
-  imports: [PrismaModule, MarkingModule, ConfirmationModule, LstbModule, PensionModule, CapitalModule, RentalModule],
+  imports: [PrismaModule, AuditModule, MarkingModule, ConfirmationModule, LstbModule, PensionModule, CapitalModule, RentalModule],
   controllers: [TakeoverController],
   providers: [
     TakeoverService,

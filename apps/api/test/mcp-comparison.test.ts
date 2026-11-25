@@ -95,8 +95,12 @@ describe('the comparison tools over MCP', () => {
     const { Client } = await import('@modelcontextprotocol/sdk/client/index.js')
     const { InMemoryTransport } = await import('@modelcontextprotocol/sdk/inMemory.js')
     const { registerComparisonTools } = await import('../src/mcp/tools/comparison-tools.js')
+    const { installToolGate } = await import('../src/mcp/tool-kit.js')
+    const { McpRateLimiter } = await import('../src/mcp/mcp-rate-limit.js')
     const server = new McpServer({ name: 't', version: '1' })
-    registerComparisonTools({ server, userId: 'u', assistant: { clientId: 'c', clientName: 'Claude', scopes } }, deps as never)
+    const assistant = { clientId: 'c', clientName: 'Claude', scopes }
+    installToolGate(server, { userId: 'u', assistant, limiter: new McpRateLimiter(), audit: deps.audit as never })
+    registerComparisonTools({ server, userId: 'u', assistant }, deps as never)
     const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair()
     await server.connect(serverTransport)
     const client = new Client({ name: 'TestClient', version: '1.0.0' })

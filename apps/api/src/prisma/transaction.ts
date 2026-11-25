@@ -1,6 +1,7 @@
 import { AsyncLocalStorage } from 'node:async_hooks'
 import { Prisma } from '@prisma/client'
 import { ConflictError } from '../common/domain-error.js'
+import type { KeyedLock } from '../common/keyed-lock.js'
 import type { TransactionRunner } from '../common/transaction-runner.js'
 
 const activeTransaction = new AsyncLocalStorage<object>()
@@ -38,6 +39,35 @@ interface InteractiveTransactionClient {
     work: (tx: object) => Promise<R>,
     options: { isolationLevel: Prisma.TransactionIsolationLevel; maxWait: number; timeout: number },
   ): Promise<R>
+}
+
+/**
+ * An advisory lock per key, held by a Read Committed transaction (not the Repeatable Read of the runner below:
+ * its snapshot would be taken by the lock statement itself, before the wait, and the count after it would miss
+ * what the previous holder committed). Repositories called in `work` join the transaction. Inside a running
+ * transaction the lock is taken there and released with it.
+ */
+export class PrismaKeyedLock implements KeyedLock {
+  constructor(private readonly client: InteractiveTransactionClient) {}
+
+  async withLock<T>(key: string, work: () => Promise<T>): Promise<T> {
+    const outer = activeTransaction.getStore() as LockingClient | undefined
+    if (outer !== undefined) {
+      await outer.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${key}, 0))`
+      return work()
+    }
+    return this.client.$transaction(
+      async (tx) => {
+        await (tx as LockingClient).$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${key}, 0))`
+        return activeTransaction.run(tx, work)
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted, maxWait: 5_000, timeout: 10_000 },
+    )
+  }
+}
+
+interface LockingClient {
+  $executeRaw(query: TemplateStringsArray, ...values: unknown[]): Promise<number>
 }
 
 export class PrismaTransactionRunner implements TransactionRunner {

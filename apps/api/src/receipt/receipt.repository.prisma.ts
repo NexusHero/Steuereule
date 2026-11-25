@@ -24,6 +24,7 @@ function toRecord(row: {
   readReason?: string | null
   draftsTaxYear?: number | null
   direction?: string | null
+  uploadedByClientId?: string | null
   file?: { mimeType: string; byteLength: number } | null
   createdAt: Date
   updatedAt: Date
@@ -35,6 +36,7 @@ function toRecord(row: {
     ...(row.kind !== null ? { kind: (isReceiptType(row.kind) ? row.kind : (() => { throw new Error(`corrupt Beleg.art: ${row.kind}`) })()) } : {}),
     ...(row.belegdatum !== null ? { belegdatum: toIsoDate(row.belegdatum) } : {}),
     ...(row.direction === 'ausgabe' || row.direction === 'einnahme' ? { direction: row.direction } : {}),
+    ...(row.uploadedByClientId ? { uploadedByClientId: row.uploadedByClientId } : {}),
     ...(row.zahlungsdatum !== null ? { zahlungsdatum: toIsoDate(row.zahlungsdatum) } : {}),
     taxYear: row.taxYear,
     proposalDismissed: row.proposalDismissed,
@@ -176,6 +178,7 @@ export class PrismaReceiptRepository implements ReceiptRepository {
           ...(data.belegdatum !== undefined ? { belegdatum: fromIsoDate(data.belegdatum) } : {}),
           ...(data.zahlungsdatum !== undefined ? { zahlungsdatum: fromIsoDate(data.zahlungsdatum) } : {}),
           ...(data.direction !== undefined ? { direction: data.direction } : {}),
+          ...(data.uploadedByClientId !== undefined ? { uploadedByClientId: data.uploadedByClientId } : {}),
         },
         include: FILE_META_INCLUDE,
       })

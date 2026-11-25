@@ -24483,6 +24483,37 @@
           "account"
         ]
       },
+      "RetainedHoldDto": {
+        "type": "object",
+        "properties": {
+          "resource": {
+            "type": "string",
+            "example": "unlock",
+            "description": "\"unlock\" (payments), \"filingVersion\" (submitted versions), or an operator category hold (\"profile\", \"taxData\", \"auditLog\")."
+          },
+          "count": {
+            "type": "number",
+            "example": 1
+          },
+          "until": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2035-01-01T00:00:00.000Z",
+            "description": "When the hold ends; the rows are deleted after it."
+          },
+          "reason": {
+            "type": "string",
+            "nullable": true,
+            "example": "§ 147 AO, § 257 HGB"
+          }
+        },
+        "required": [
+          "resource",
+          "count",
+          "until",
+          "reason"
+        ]
+      },
       "DeleteAccountResponseDto": {
         "type": "object",
         "properties": {
@@ -24498,12 +24529,20 @@
             "type": "number",
             "example": 0,
             "description": "Count of rows retained untouched — neither erased nor anonymised — because an active LegalHold exempted them."
+          },
+          "legalHolds": {
+            "description": "What the legal holds kept back and until when (P7); empty when nothing was held.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RetainedHoldDto"
+            }
           }
         },
         "required": [
           "deleted",
           "retainedAnonymisedAuditRows",
-          "retainedUnderLegalHold"
+          "retainedUnderLegalHold",
+          "legalHolds"
         ]
       },
       "ExportAccountDto": {
@@ -24622,6 +24661,41 @@
           "fields"
         ]
       },
+      "ExportReceiptFileDto": {
+        "type": "object",
+        "properties": {
+          "receiptId": {
+            "type": "string"
+          },
+          "fileName": {
+            "type": "string"
+          },
+          "mimeType": {
+            "type": "string",
+            "example": "application/pdf"
+          },
+          "byteLength": {
+            "type": "number"
+          },
+          "uploadedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "contentBase64": {
+            "type": "string",
+            "nullable": true,
+            "description": "The original file, base64 (JSON export only, H2-6); null in the PDF and when the file can no longer be decrypted."
+          }
+        },
+        "required": [
+          "receiptId",
+          "fileName",
+          "mimeType",
+          "byteLength",
+          "uploadedAt",
+          "contentBase64"
+        ]
+      },
       "ExportAccessLogEntryDto": {
         "type": "object",
         "properties": {
@@ -24674,6 +24748,20 @@
               "$ref": "#/components/schemas/ExportTaxDataEntryDto"
             }
           },
+          "accountData": {
+            "description": "Sessions (IP, browser), second factor status, passkeys, device logins, connected assistants with consents and token dates, legal holds (API-17). No secret is exported.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ExportTaxDataEntryDto"
+            }
+          },
+          "receiptFiles": {
+            "description": "The original receipt files; the JSON export carries their bytes.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ExportReceiptFileDto"
+            }
+          },
           "accessLog": {
             "type": "array",
             "items": {
@@ -24687,6 +24775,8 @@
           "account",
           "profile",
           "taxData",
+          "accountData",
+          "receiptFiles",
           "accessLog"
         ]
       },
@@ -24708,13 +24798,37 @@
           "lastUsed": {
             "type": "string",
             "example": "2026-11-03T19:30:00.000Z",
-            "nullable": true
+            "nullable": true,
+            "description": "The newest tool call of this assistant (audit log), or the newest token issued to it."
+          },
+          "scopes": {
+            "example": [
+              "steuerdaten:read",
+              "steuerdaten:write"
+            ],
+            "description": "The scopes the user granted.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "destinations": {
+            "example": [
+              "claude.ai"
+            ],
+            "description": "Where its access goes: the hosts (or \"localhost\", an app scheme) of its registered redirect addresses.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           }
         },
         "required": [
           "clientId",
           "name",
-          "linkedSince"
+          "linkedSince",
+          "scopes",
+          "destinations"
         ]
       },
       "RevokeAssistantResponseDto": {
