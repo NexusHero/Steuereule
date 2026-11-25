@@ -10,6 +10,7 @@ import {
 } from '@faker-js/faker';
 
 import type {
+  AccountVerificationDto,
   DeleteAccountResponseDto,
   ExportDocumentDto
 } from './account.schemas';
@@ -26,4 +27,6 @@ export const getAccountExportControllerExportAccountResponseMock = (overrideResp
       }})), accountData: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({area: faker.string.alpha({length: {min: 10, max: 20}}), taxYear: faker.helpers.arrayElement([faker.number.float({fractionDigits: 2}), null]), fields: {
         [faker.string.alphanumeric(5)]: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),faker.number.float({fractionDigits: 2}),faker.datatype.boolean(),])
       }})), receiptFiles: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({receiptId: faker.string.alpha({length: {min: 10, max: 20}}), fileName: faker.string.alpha({length: {min: 10, max: 20}}), mimeType: faker.string.alpha({length: {min: 10, max: 20}}), byteLength: faker.number.float({fractionDigits: 2}), uploadedAt: faker.date.past().toISOString().slice(0, 19) + 'Z', contentBase64: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null])})), accessLog: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({action: faker.string.alpha({length: {min: 10, max: 20}}), resource: faker.string.alpha({length: {min: 10, max: 20}}), createdAt: faker.string.alpha({length: {min: 10, max: 20}})})), ...overrideResponse}]))
+
+export const getAccountVerificationControllerVerificationResponseMock = (overrideResponse: Partial<Extract<AccountVerificationDto, object>> = {}): AccountVerificationDto => ({emailVerified: faker.datatype.boolean(), deletionNotBefore: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + 'Z', null]), ...overrideResponse})
 

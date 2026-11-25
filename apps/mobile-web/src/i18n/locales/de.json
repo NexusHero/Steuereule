@@ -52,6 +52,11 @@
       "heading": "Dieser Bestätigungslink gilt nicht mehr.",
       "body": "Er ist abgelaufen oder wurde schon benutzt. Melde dich mit E-Mail und Passwort an – ist die Adresse noch nicht bestätigt, schicken wir dir sofort einen neuen Link."
     },
+    "accountRemoved": {
+      "heading": "Dieses Konto gibt es nicht mehr.",
+      "body": "Die E-Mail-Adresse wurde nie bestätigt, deshalb haben wir das Konto nach 30 Tagen gelöscht (oder du hast es selbst gelöscht). Du kannst dich jederzeit neu registrieren.",
+      "register": "Neu registrieren"
+    },
     "errEmail": "Das sieht noch nicht nach einer E-Mail aus.",
     "errPass": "Das Passwort ist zu kurz. Neue Passwörter brauchen mindestens 12 Zeichen.",
     "apiUnreachable": {
@@ -98,6 +103,11 @@
       "resendSending": "Wird gesendet …",
       "resendSent": "Ist raus — schau in dein Postfach.",
       "resendError": "Das hat gerade nicht geklappt. Versuch es gleich noch mal."
+    },
+    "unverifiedAccount": {
+      "heading": "Bitte bestätige deine E-Mail-Adresse.",
+      "body": "Ein Konto, das nie bestätigt wird, löschen wir: deines frühestens am {{date}}. Den Link findest du in der Mail an {{email}}.",
+      "export": "Vorher deine Daten exportieren"
     },
     "verifiedBanner": {
       "heading": "E-Mail bestätigt ✓"

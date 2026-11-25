@@ -8700,6 +8700,30 @@
         ]
       }
     },
+    "/v1/account/verification": {
+      "get": {
+        "operationId": "AccountVerificationController_verification",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "ADR-0030: the banner of a never-verified account shows the date no sooner than which it is deleted.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccountVerificationDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "A guest: there is no account to confirm."
+          }
+        },
+        "tags": [
+          "account"
+        ]
+      }
+    },
     "/v1/assistenten": {
       "get": {
         "operationId": "AssistantsController_listConnected",
@@ -24820,6 +24844,26 @@
           "accountData",
           "receiptFiles",
           "accessLog"
+        ]
+      },
+      "AccountVerificationDto": {
+        "type": "object",
+        "properties": {
+          "emailVerified": {
+            "type": "boolean",
+            "example": false
+          },
+          "deletionNotBefore": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "example": "2026-12-01T10:00:00.000Z",
+            "description": "For a never-verified account: no sooner than this moment the sweep deletes it (30 days after registration, 7 days after the warning; a floor, the sweep runs on traffic). Null once verified."
+          }
+        },
+        "required": [
+          "emailVerified",
+          "deletionNotBefore"
         ]
       },
       "ConnectedAssistantDto": {

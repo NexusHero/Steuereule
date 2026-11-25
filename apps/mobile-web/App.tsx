@@ -14,7 +14,7 @@ import { createAppAuthClient } from './src/auth/auth-client'
 import { AuthClientProvider } from './src/auth/AuthClientProvider'
 import { APP_QUERY_DEFAULTS } from './src/query-client'
 import { SplashScreen } from './src/screens/SplashScreen'
-import { LoginScreen } from './src/screens/LoginScreen'
+import { ACCOUNT_REMOVED_ERROR, LoginScreen } from './src/screens/LoginScreen'
 import { RegistrationScreen } from './src/screens/RegistrationScreen'
 import { carryAssistantSignIn } from './src/auth/assistant-sign-in'
 import { OnboardingScreen } from './src/screens/OnboardingScreen'
@@ -56,6 +56,7 @@ import { formatDocumentTitle, linking } from './src/navigation/linking'
 import { ShellStateProvider, useShellState } from './src/navigation/ShellState'
 import { SubmissionGateProvider, useSubmissionGate } from './src/navigation/SubmissionGateContext'
 import { AppTabs } from './src/navigation/AppTabs'
+import { UnverifiedAccountBanner } from './src/screens/shared/UnverifiedAccountBanner'
 import { AppearanceProvider, resolveThemeMode, useAppearance } from './src/lib/appearance'
 import { syncHapticsPreferenceFromStorage } from './src/lib/hapticsPreference'
 import { resetSessionExpiry, watchForSessionExpiry } from './src/net/sessionExpiry'
@@ -242,7 +243,8 @@ function LoginRoute({ navigation, route }: NativeStackScreenProps<RootStackParam
       startWithForgot={Boolean(route.params?.forgot)}
       sessionExpired={Boolean(route.params?.expired)}
       emailVerified={route.params?.bestaetigt === '1'}
-      verificationFailed={Boolean(route.params?.error) && route.params?.sozial !== '1'}
+      accountRemoved={route.params?.error === ACCOUNT_REMOVED_ERROR}
+      verificationFailed={Boolean(route.params?.error) && route.params?.error !== ACCOUNT_REMOVED_ERROR && route.params?.sozial !== '1'}
       socialSignInFailed={Boolean(route.params?.error) && route.params?.sozial === '1'}
       onDone={() => {
         clearPendingVerification()
@@ -532,7 +534,11 @@ function TabbedShell() {
       onSwitchYear={setTaxYear}
       isAuthenticated={sessionState.status === 'signed-in'}
     >
-      <AppTabs />
+      <RN.View style={{ flex: 1 }}>
+        {/* API-16 (ADR-0030): a never-verified account is told on every screen when it will be deleted. */}
+        <UnverifiedAccountBanner onOpenExport={() => linkTo('/app/profil/datenschutz')} />
+        <AppTabs />
+      </RN.View>
     </CopilotBridgeProvider>
   )
 }

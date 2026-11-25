@@ -50,6 +50,7 @@ const COSTLY: Readonly<Record<string, { readonly effect: Effect; readonly limite
 
 /** Controllers none of whose routes is costly. Mail is sent only by better-auth, which has its own limiter. */
 const CHEAP_CONTROLLERS: Readonly<Record<string, string>> = {
+  AccountVerificationController: 'One user row.',
   AssessmentController: 'Bescheid fields from the database.',
   AuthCapabilitiesController: 'Static.',
   CapabilitiesController: 'Static.',

@@ -35,7 +35,12 @@ export interface LoginScreenProps {
   readonly verificationFailed?: boolean
   /** A Google/Apple sign-in came back with an error (WEB-33). */
   readonly socialSignInFailed?: boolean
+  /** Arrived from the verification link of an account that no longer exists (`?error=ACCOUNT_REMOVED`, ADR-0030 §5). */
+  readonly accountRemoved?: boolean
 }
+
+/** The `error` the API puts on a verification link whose account was removed (`removed-account-link.ts`). */
+export const ACCOUNT_REMOVED_ERROR = 'ACCOUNT_REMOVED'
 
 type Stage =
   | { readonly kind: 'form' }
@@ -43,7 +48,7 @@ type Stage =
   | { readonly kind: 'two-factor'; readonly email: string }
   | { readonly kind: 'forgot' }
 
-export function LoginScreen({ onDone, onGuest, onRegister, showDeviceQr = true, onLegal, startWithForgot = false, sessionExpired = false, emailVerified = false, verificationFailed = false, socialSignInFailed = false }: LoginScreenProps) {
+export function LoginScreen({ onDone, onGuest, onRegister, showDeviceQr = true, onLegal, startWithForgot = false, sessionExpired = false, emailVerified = false, verificationFailed = false, socialSignInFailed = false, accountRemoved = false }: LoginScreenProps) {
   const t = useTheme()
   const bp = useBreakpoint()
   const { t: tr } = useTranslation(APP_NS)
@@ -135,6 +140,14 @@ export function LoginScreen({ onDone, onGuest, onRegister, showDeviceQr = true, 
         <View style={styles.outageBanner} accessibilityRole="alert" testID="email-bestaetigt">
           <Text style={styles.outageHeading}>{tr('login.verified.heading')}</Text>
           <Text style={styles.outageBody}>{tr('login.verified.body')}</Text>
+        </View>
+      ) : null}
+
+      {accountRemoved ? (
+        <View style={styles.outageBanner} accessibilityRole="alert" testID="konto-entfernt">
+          <Text style={styles.outageHeading}>{tr('login.accountRemoved.heading')}</Text>
+          <Text style={styles.outageBody}>{tr('login.accountRemoved.body')}</Text>
+          {onRegister ? <Button variant="ghost" onPress={onRegister} testID="konto-entfernt-registrieren">{tr('login.accountRemoved.register')}</Button> : null}
         </View>
       ) : null}
 

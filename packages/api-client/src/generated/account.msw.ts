@@ -18,6 +18,7 @@ import type {
 } from 'msw';
 
 import type {
+  AccountVerificationDto,
   DeleteAccountResponseDto,
   ExportDocumentDto
 } from './account.schemas';
@@ -34,6 +35,8 @@ export const getAccountExportControllerExportAccountResponseMock = (overrideResp
       }})), accountData: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({area: faker.string.alpha({length: {min: 10, max: 20}}), taxYear: faker.helpers.arrayElement([faker.number.float({fractionDigits: 2}), null]), fields: {
         [faker.string.alphanumeric(5)]: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),faker.number.float({fractionDigits: 2}),faker.datatype.boolean(),])
       }})), receiptFiles: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({receiptId: faker.string.alpha({length: {min: 10, max: 20}}), fileName: faker.string.alpha({length: {min: 10, max: 20}}), mimeType: faker.string.alpha({length: {min: 10, max: 20}}), byteLength: faker.number.float({fractionDigits: 2}), uploadedAt: faker.date.past().toISOString().slice(0, 19) + 'Z', contentBase64: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null])})), accessLog: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({action: faker.string.alpha({length: {min: 10, max: 20}}), resource: faker.string.alpha({length: {min: 10, max: 20}}), createdAt: faker.string.alpha({length: {min: 10, max: 20}})})), ...overrideResponse}]))
+
+export const getAccountVerificationControllerVerificationResponseMock = (overrideResponse: Partial<Extract<AccountVerificationDto, object>> = {}): AccountVerificationDto => ({emailVerified: faker.datatype.boolean(), deletionNotBefore: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + 'Z', null]), ...overrideResponse})
 
 
 export const getAccountDeletionControllerDeleteAccountMockHandler = (overrideResponse?: DeleteAccountResponseDto | ((info: Parameters<Parameters<typeof http.delete>[1]>[0]) => Promise<DeleteAccountResponseDto> | DeleteAccountResponseDto), options?: RequestHandlerOptions) => {
@@ -63,7 +66,20 @@ export const getAccountExportControllerExportAccountMockHandler = (overrideRespo
       })
   }, options)
 }
+
+export const getAccountVerificationControllerVerificationMockHandler = (overrideResponse?: AccountVerificationDto | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<AccountVerificationDto> | AccountVerificationDto), options?: RequestHandlerOptions) => {
+  return http.get('*/v1/account/verification', async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getAccountVerificationControllerVerificationResponseMock(),
+      { status: 200
+      })
+  }, options)
+}
 export const getSteuerEuleAPIMock = () => [
   getAccountDeletionControllerDeleteAccountMockHandler(),
-  getAccountExportControllerExportAccountMockHandler()
+  getAccountExportControllerExportAccountMockHandler(),
+  getAccountVerificationControllerVerificationMockHandler()
 ]

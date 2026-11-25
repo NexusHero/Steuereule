@@ -14,6 +14,8 @@ import { STEP_UP_GRANT_REPOSITORY } from '../auth/step-up-grant.repository.js'
 import { PrismaStepUpGrantRepository } from '../auth/step-up-grant.repository.prisma.js'
 import { AccountDeletionController } from './account-deletion.controller.js'
 import { AccountExportController } from './account-export.controller.js'
+import { AccountVerificationController } from './account-verification.controller.js'
+import { AccountVerificationService } from './account-verification.service.js'
 import { KeystoreModule } from '../keystore/keystore.module.js'
 import { ReceiptStorageModule } from '../receipt/receipt-storage.module.js'
 import { PrismaAccountDeletionRepository } from './account-deletion.repository.prisma.js'
@@ -29,7 +31,7 @@ import { PrismaTaxDataExportRepository } from './tax-data-export.repository.pris
 
 @Module({
   imports: [PrismaModule, AuditModule, ProfileModule, KeystoreModule, HouseholdCoreModule, ReceiptStorageModule],
-  controllers: [AccountDeletionController, AccountExportController],
+  controllers: [AccountDeletionController, AccountExportController, AccountVerificationController],
   providers: [
     GuestRetentionService,
     LifecycleSweepService,
@@ -37,6 +39,7 @@ import { PrismaTaxDataExportRepository } from './tax-data-export.repository.pris
     { provide: GUEST_ACTIVITY_REPOSITORY, useClass: PrismaGuestActivityRepository },
     AccountDeletionService,
     AccountExportService,
+    AccountVerificationService,
     FreshAuthChecker,
     { provide: STEP_UP_GRANT_REPOSITORY, useClass: PrismaStepUpGrantRepository },
     { provide: ACCOUNT_DELETION_REPOSITORY, useClass: PrismaAccountDeletionRepository },

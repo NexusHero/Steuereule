@@ -52,6 +52,11 @@
       "heading": "This confirmation link is no longer valid.",
       "body": "It has expired or was already used. Sign in with e-mail and password – if the address is not confirmed yet, we send you a new link right away."
     },
+    "accountRemoved": {
+      "heading": "This account no longer exists.",
+      "body": "The e-mail address was never confirmed, so we deleted the account after 30 days (or you deleted it yourself). You can register again at any time.",
+      "register": "Register again"
+    },
     "errEmail": "That doesn't look like an email yet.",
     "errPass": "The password is too short. New passwords need at least 12 characters.",
     "apiUnreachable": {
@@ -98,6 +103,11 @@
       "resendSending": "Sending …",
       "resendSent": "Sent — check your inbox.",
       "resendError": "That didn't work just now. Try again in a moment."
+    },
+    "unverifiedAccount": {
+      "heading": "Please confirm your e-mail address.",
+      "body": "An account that is never confirmed is deleted: yours no sooner than {{date}}. The link is in the mail to {{email}}.",
+      "export": "Export your data first"
     },
     "verifiedBanner": {
       "heading": "Email verified ✓"
