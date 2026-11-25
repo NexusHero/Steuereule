@@ -93,7 +93,7 @@ export class AccountExportService {
   private async *readFiles(userId: string, files: readonly ExportReceiptFile[]): AsyncGenerator<ExportReceiptFile> {
     for (const file of files) {
       const stored = this.files ? await this.files.get(userId, file.receiptId) : null
-      yield stored ? { ...file, contentBase64: stored.buffer.toString('base64') } : file
+      yield { ...file, contentBase64: stored ? stored.buffer.toString('base64') : null }
     }
   }
 

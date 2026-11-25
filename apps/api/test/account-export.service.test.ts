@@ -225,7 +225,7 @@ describe('AccountExportService.assembleJsonStream (ADR-0109)', () => {
     const accountIdentityRepository = new FakeAccountIdentityRepository()
     const auditRepository = new FakeAuditRepository()
     const taxDataExportRepository = new FakeTaxDataExportRepository()
-    const file = { receiptId: 'r-1', fileName: 'quittung.pdf', mimeType: 'application/pdf', byteLength: 3, uploadedAt: '2026-01-02T00:00:00.000Z' }
+    const file = { receiptId: 'r-1', fileName: 'quittung.pdf', mimeType: 'application/pdf', byteLength: 3, uploadedAt: '2026-01-02T00:00:00.000Z', contentBase64: null }
     taxDataExportRepository.listReceiptFiles = async () => [file]
     taxDataExportRepository.findAccountDataForUser = async () => [{ area: 'Sitzung', taxYear: null, fields: { ipAddress: '203.0.113.7', userAgent: 'Firefox' } }]
     const reads: string[] = []

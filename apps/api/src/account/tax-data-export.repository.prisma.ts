@@ -176,6 +176,6 @@ export class PrismaTaxDataExportRepository implements TaxDataExportRepository {
       select: { receiptId: true, mimeType: true, byteLength: true, createdAt: true, receipt: { select: { fileName: true } } },
       orderBy: { createdAt: 'asc' },
     })
-    return files.map(({ receipt, createdAt, ...file }) => ({ ...file, fileName: receipt.fileName, uploadedAt: createdAt.toISOString() }))
+    return files.map(({ receipt, createdAt, ...file }) => ({ ...file, fileName: receipt.fileName, uploadedAt: createdAt.toISOString(), contentBase64: null }))
   }
 }

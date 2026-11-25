@@ -69,8 +69,8 @@ export class ExportReceiptFileDto {
   @ApiProperty({ type: String, example: 'application/pdf' }) mimeType!: string
   @ApiProperty({ type: Number }) byteLength!: number
   @ApiProperty({ type: String, format: 'date-time' }) uploadedAt!: string
-  @ApiProperty({ type: String, required: false, description: 'The original file, base64 (JSON export only, H2-6).' })
-  contentBase64?: string
+  @ApiProperty({ type: String, nullable: true, description: 'The original file, base64 (JSON export only, H2-6); null in the PDF and when the file can no longer be decrypted.' })
+  contentBase64!: string | null
 }
 
 export class ExportDocumentDto {

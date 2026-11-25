@@ -73,8 +73,11 @@ export interface ExportReceiptFileDto {
   mimeType: string;
   byteLength: number;
   uploadedAt: string;
-  /** The original file, base64 (JSON export only, H2-6). */
-  contentBase64?: string;
+  /**
+     * The original file, base64 (JSON export only, H2-6); null in the PDF and when the file can no longer be decrypted.
+     * @nullable
+     */
+  contentBase64: string | null;
 }
 
 export interface ExportAccessLogEntryDto {

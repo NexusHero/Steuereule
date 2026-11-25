@@ -9,6 +9,8 @@ export interface ExportReceiptFileMeta {
   mimeType: string
   byteLength: number
   uploadedAt: string
+  /** Always null here: the bytes are read one file at a time by the export service. */
+  contentBase64: null
 }
 
 /** Read seam for the DSGVO export; which tables it reads comes from `personal-data-registry.ts`. */

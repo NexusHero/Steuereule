@@ -38,8 +38,8 @@ export interface ExportReceiptFile {
   mimeType: string
   byteLength: number
   uploadedAt: string
-  /** Base64 of the original file: JSON export only. Absent when the file can no longer be decrypted. */
-  contentBase64?: string
+  /** Base64 of the original file: JSON export only; null in the PDF and when the file can no longer be decrypted. */
+  contentBase64: string | null
 }
 
 export interface ExportDocument {

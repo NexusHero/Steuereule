@@ -24683,7 +24683,8 @@
           },
           "contentBase64": {
             "type": "string",
-            "description": "The original file, base64 (JSON export only, H2-6)."
+            "nullable": true,
+            "description": "The original file, base64 (JSON export only, H2-6); null in the PDF and when the file can no longer be decrypted."
           }
         },
         "required": [
@@ -24691,7 +24692,8 @@
           "fileName",
           "mimeType",
           "byteLength",
-          "uploadedAt"
+          "uploadedAt",
+          "contentBase64"
         ]
       },
       "ExportAccessLogEntryDto": {
