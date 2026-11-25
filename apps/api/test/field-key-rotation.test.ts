@@ -9,7 +9,7 @@ import { decryptStringSync, encryptStringSync, generateKey, getMessageKeyFingerp
 import { Prisma } from '@prisma/client'
 import { analyseDMMF } from 'prisma-field-encryption/dist/dmmf.js'
 import { describe, expect, it } from 'vitest'
-import { reEncrypt, rotateFieldEncryption, rotationKeys, rotationTargets, valueState, type RotationStore, type RotationTarget } from '../src/prisma/field-key-rotation.js'
+import { prismaRotationStore, reEncrypt, rotateFieldEncryption, rotationKeys, rotationTargets, valueState, type RotationStore, type RotationTarget } from '../src/prisma/field-key-rotation.js'
 
 const OLD = generateKey()
 const NEW = generateKey()
@@ -164,5 +164,38 @@ describe('a run', () => {
     await rotateFieldEncryption(memoryStore({ Profile: rows }), keys, { ownerIds: ['u2'] }, [target])
     expect(valueState(rows[0]!.firstName, keys)).toBe('retired')
     expect(valueState(rows[1]!.firstName, keys)).toBe('current')
+  })
+})
+
+describe('the SQL the store sends (no unsafe raw SQL)', () => {
+  const target: RotationTarget = rotationTargets().find((t) => t.columns.length > 0)!
+
+  function capturingClient() {
+    const sent: Prisma.Sql[] = []
+    const tx = {
+      $queryRaw: async (sql: Prisma.Sql) => (sent.push(sql), []),
+      $executeRaw: async (sql: Prisma.Sql | TemplateStringsArray) => (Array.isArray(sql) ? undefined : sent.push(sql as Prisma.Sql), 1),
+    }
+    const client = { $transaction: async (work: (t: typeof tx) => Promise<unknown>) => work(tx) }
+    return { sent, client: client as unknown as Parameters<typeof prismaRotationStore>[0] }
+  }
+
+  it('binds every value as a parameter and names only schema identifiers', async () => {
+    const { sent, client } = capturingClient()
+    const store = prismaRotationStore(client)
+    const hostile = "x'; DROP TABLE \"User\"; --"
+    await store.page(target, hostile, 50, [hostile])
+    await store.write(target, hostile, { [target.columns[0]!]: { from: hostile, to: hostile } })
+    expect(sent).toHaveLength(2)
+    for (const sql of sent) {
+      expect(sql.sql).not.toContain('DROP TABLE')
+      expect(sql.values).toContain(hostile)
+    }
+  })
+
+  it('refuses a column that is not an encrypted column of the target', async () => {
+    const { client } = capturingClient()
+    const store = prismaRotationStore(client)
+    await expect(store.write(target, 'id', { 'not_a_column"; --': { from: 'a', to: 'b' } })).rejects.toThrow(/Only encrypted columns/)
   })
 })

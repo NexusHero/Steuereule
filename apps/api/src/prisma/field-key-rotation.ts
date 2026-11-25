@@ -149,48 +149,43 @@ export async function rotateFieldEncryption(store: RotationStore, keys: KeysConf
   return counts
 }
 
-const quote = (identifier: string) => `"${identifier.replaceAll('"', '""')}"`
-
 /**
- * Raw SQL through a client that is NOT the encrypted one, so it sees the stored ciphertext. It crosses every user,
- * so it runs for the system reason `field-key-rotation` (row-level security, P11); a write also sets
- * `steuereule.reencryption`, which the append-only triggers honour for the encrypted columns only, and only for a
- * login other than the API's runtime role.
+ * Table and column names cannot be bound as parameters, so they enter the statement as identifiers. Each one must
+ * be a name the Prisma schema declares for this target (`rotationTargets` derives them from the DMMF), never a
+ * caller's string, and is quoted on top of that. Every value stays a bound parameter.
  */
+function identifier(target: RotationTarget, name: string): Prisma.Sql {
+  const known = name === target.table || name === target.idColumn || name === target.ownerColumn || target.columns.includes(name)
+  if (!known || !/^[A-Za-z_][A-Za-z0-9_]*$/.test(name)) throw new Error(`"${name}" is not a schema name of ${target.table}.`)
+  return Prisma.raw(`"${name}"`)
+}
+
 export function prismaRotationStore(prisma: PrismaClient): RotationStore {
   const client = transactionAwareClient(prisma)
   return {
     page: (target, afterId, limit, ownerIds) =>
       withSystemDatabaseAccess('field-key-rotation', () => client.$transaction(async (tx) => {
-        const params: unknown[] = []
-        const where: string[] = []
-        if (afterId !== null) {
-          params.push(afterId)
-          where.push(`${quote(target.idColumn)} > $${params.length}`)
-        }
-        if (ownerIds !== undefined) {
-          params.push([...ownerIds])
-          where.push(`${quote(target.ownerColumn)} = ANY($${params.length}::text[])`)
-        }
-        params.push(limit)
-        const columns = [target.idColumn, ...target.columns].map(quote).join(', ')
-        const sql = `SELECT ${columns} FROM ${quote(target.table)}${where.length > 0 ? ` WHERE ${where.join(' AND ')}` : ''} ORDER BY ${quote(target.idColumn)} LIMIT $${params.length}`
-        return tx.$queryRawUnsafe<Record<string, string | null>[]>(sql, ...params)
+        const id = identifier(target, target.idColumn)
+        const where: Prisma.Sql[] = []
+        if (afterId !== null) where.push(Prisma.sql`${id} > ${afterId}`)
+        if (ownerIds !== undefined) where.push(Prisma.sql`${identifier(target, target.ownerColumn)} = ANY(${[...ownerIds]}::text[])`)
+        const columns = Prisma.join([target.idColumn, ...target.columns].map((column) => identifier(target, column)))
+        const filter = where.length > 0 ? Prisma.sql`WHERE ${Prisma.join(where, ' AND ')}` : Prisma.empty
+        return tx.$queryRaw<Record<string, string | null>[]>(
+          Prisma.sql`SELECT ${columns} FROM ${identifier(target, target.table)} ${filter} ORDER BY ${id} LIMIT ${limit}`,
+        )
       })),
     write: async (target, id, changes) => {
       const columns = Object.keys(changes)
       if (columns.some((column) => !target.columns.includes(column))) throw new Error(`Only encrypted columns of ${target.table} are rewritten.`)
       return withSystemDatabaseAccess('field-key-rotation', () => client.$transaction(async (tx) => {
         await tx.$executeRaw`SELECT set_config('steuereule.reencryption', 'on', true)`
-        const params: unknown[] = []
-        const param = (value: unknown) => {
-          params.push(value)
-          return `$${params.length}`
-        }
-        const assignments = columns.map((column) => `${quote(column)} = ${param(changes[column]!.to)}`).join(', ')
-        const unchanged = columns.map((column) => `${quote(column)} = ${param(changes[column]!.from)}`).join(' AND ')
-        const sql = `UPDATE ${quote(target.table)} SET ${assignments} WHERE ${quote(target.idColumn)} = ${param(id)} AND ${unchanged}`
-        return (await tx.$executeRawUnsafe(sql, ...params)) === 1
+        const assignments = Prisma.join(columns.map((column) => Prisma.sql`${identifier(target, column)} = ${changes[column]!.to}`))
+        const unchanged = Prisma.join(columns.map((column) => Prisma.sql`${identifier(target, column)} = ${changes[column]!.from}`), ' AND ')
+        const updated = await tx.$executeRaw(
+          Prisma.sql`UPDATE ${identifier(target, target.table)} SET ${assignments} WHERE ${identifier(target, target.idColumn)} = ${id} AND ${unchanged}`,
+        )
+        return updated === 1
       }))
     },
   }
