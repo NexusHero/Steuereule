@@ -8,7 +8,7 @@
 //
 // The tasks come from the MCP tool `aufgabe_fuer_nutzer`, called on the real `POST /mcp` endpoint with an
 // assistant token. The OAuth consent flow that issues such a token is covered by e2e/account; here the
-// client and its token are written straight into the database (as REQ-033's acceptance test does), so the
+// client, the user's consent and the token are written straight into the database (as REQ-033's acceptance test does), so the
 // row needs no second browser round through the consent page. No route mocks. Invented data only.
 import { createHash, randomBytes } from 'node:crypto'
 import { putPrintableBasics, putLstb } from '../../harness/api-account.mjs'
@@ -30,6 +30,12 @@ function seedAssistantToken(sql, email) {
   sql(
     `INSERT INTO "OauthClient" ("id", "clientId", "name", "userId", "scopes", "redirectUris", "contacts", "postLogoutRedirectUris", "grantTypes", "responseTypes") ` +
       `VALUES (gen_random_uuid()::text, '${clientId}', '${ASSISTANT_NAME}', '${userId}', ${scopes}, ARRAY['http://localhost:8081/callback'], ${none}, ${none}, ${none}, ${none});`,
+  )
+  // The user consented to the assistant: every bearer request re-checks that the consent still exists, for an
+  // opaque token as for a JWT (ADR-0052 §10), so a token without one is refused like a revoked one.
+  sql(
+    `INSERT INTO "OauthConsent" ("id", "clientId", "userId", "scopes", "resources", "requestedUserInfoClaims") ` +
+      `VALUES (gen_random_uuid()::text, '${clientId}', '${userId}', ${scopes}, ${none}, ${none});`,
   )
   sql(
     `INSERT INTO "OauthAccessToken" ("id", "token", "clientId", "userId", "scopes", "resources", "requestedUserInfoClaims", "expiresAt") ` +

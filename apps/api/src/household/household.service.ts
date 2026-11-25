@@ -10,6 +10,7 @@ import { couplingVisibleTo } from '../link/partner-consent.js'
 import { MASTER_DATA_REPOSITORY, type MasterDataRepository } from '../master-data/master-data.repository.js'
 import { PROFILE_REPOSITORY, type ProfileRepository } from '../profile/profile.repository.js'
 import { HOUSEHOLD_REPOSITORY, type HouseholdPersonRecord, type HouseholdRepository, type MembershipRecord } from '../household-core/household.repository.js'
+import { isShadowId } from '../common/person-ids.js'
 import { HouseholdAccessService } from '../household-core/household-access.service.js'
 import { PersonSealService, type PersonFacts } from '../household-core/person-seal.service.js'
 
@@ -45,7 +46,6 @@ export interface HouseholdView {
   readonly partnerLink: { readonly validFromYear: number; readonly endedFromYear: number | null; readonly ownAccount: boolean } | null
 }
 
-const isShadow = (userId: string) => userId.startsWith('spouse_')
 
 /**
  * Household at account level (#452, ADR-0062). Expand only: the yearly Kind rows and the
@@ -102,13 +102,13 @@ export class HouseholdService {
         taxId: profile.steuerId,
         childId: null,
         spouseUserId: row.personBUserId,
-        linkedUserId: isShadow(row.personBUserId) ? null : row.personBUserId,
+        linkedUserId: isShadowId(row.personBUserId) ? null : row.personBUserId,
       })
     }
     await this.migrateKind(householdUserId, actorUserId, 'spouse', persons, facts, spouseInputs)
 
     const link = await this.repo.findPartnerLinkByPersonA(householdUserId)
-    const ownAccount = spouseRows.find((r) => !isShadow(r.personBUserId))
+    const ownAccount = spouseRows.find((r) => !isShadowId(r.personBUserId))
     if (!link && ownAccount) {
       // Only a year B agreed to reaches here (decision 3); naming B in the link is a system path in the database.
       await withSystemDatabaseAccess('household-link', () =>

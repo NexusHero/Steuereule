@@ -4,7 +4,8 @@
 // The marking is settled in one place (`UserWriteMarkings`), not by the masks' services.
 import type { NestFastifyApplication } from '@nestjs/platform-fastify'
 import type { Provenance } from '@steuereule/core'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { currentDatabaseIdentity } from '../src/common/database-identity.js'
 import { CHILD_REPOSITORY, type ChildRepository } from '../src/children/child.repository.js'
 import { ConfirmationService } from '../src/confirmation/confirmation.service.js'
 import { UserWriteMarkings } from '../src/confirmation/user-write-markings.js'
@@ -68,6 +69,20 @@ describe('a user write on a mask clears the assistant’s marking of the fields 
   it('Profil (MCP-1)', async () => {
     await send('PUT', '/v1/profile', { firstName: 'Ada', lastName: 'Lovelace' })
     await userWins('profil.steuernummer', '1234567890', () => send('PUT', '/v1/profile', { firstName: 'Ada', lastName: 'Lovelace', steuernummer: '9876543210' }), '1234567890')
+  })
+
+  it('the booted app runs the user write inside the database identity of the user (interceptor order, P11)', async () => {
+    // The write's transaction takes the identity it is opened under: DatabaseIdentityInterceptor must wrap
+    // UserWriteInterceptor, or the write and its settling would run with no identity at all.
+    const userWrites = app.get(UserWriteMarkings)
+    const seen: unknown[] = []
+    const around = userWrites.around.bind(userWrites)
+    vi.spyOn(userWrites, 'around').mockImplementation((...args: Parameters<UserWriteMarkings['around']>) => {
+      seen.push(currentDatabaseIdentity())
+      return around(...args)
+    })
+    await send('PUT', '/v1/profile', { firstName: 'Ada', lastName: 'Lovelace' })
+    expect(seen).toEqual([{ kind: 'user', userId: USER }])
   })
 
   it('Interview (MCP-1)', async () => {

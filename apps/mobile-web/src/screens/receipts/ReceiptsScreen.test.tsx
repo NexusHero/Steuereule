@@ -6,10 +6,7 @@
 // suggestion is confirmed by a tap, a conflicting year is VISIBLE (ADR-008) instead of silently
 // overwritten, and the upload affordance is the honest "Scan folgt" placeholder (ADR-032 §2).
 import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
-import { I18nextProvider } from 'react-i18next'
-import { ThemeProvider } from '@steuereule/ui'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { screen, fireEvent, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import { Text } from 'react-native'
 import { createAppI18n } from '../../i18n/app-i18n'
@@ -19,6 +16,7 @@ import { ShellStateProvider, useShellState } from '../../navigation/ShellState'
 import type { AssignmentQuestionDto, ParseReceiptResponseDto, ReceiptResponseDto } from '@steuereule/api-client'
 import { receiptInboxHandler, receiptPage } from '../../test-receipt-inbox'
 import { expectFailsClosed, failEveryRequest } from '../../test-every-query-fails'
+import { renderWithQuery } from '../../test-render'
 
 // The device reading (PDF text layer / OCR) is the one seam replaced here: everything after it is the real pipeline.
 const { mockExtractDocumentText } = vi.hoisted(() => ({ mockExtractDocumentText: vi.fn() }))
@@ -110,26 +108,16 @@ function YearProbe() {
 }
 
 function renderReceipts(opts: { lng?: 'de' | 'en'; shell?: boolean } = {}) {
-  const i18n = createAppI18n(opts.lng ?? 'de')
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-  const content = (
-    <ThemeProvider mode="light">
+  return renderWithQuery(
+    opts.shell ? (
+      <ShellStateProvider onRegister={() => {}} onLogin={() => {}} onSignedOut={() => {}}>
+        <YearProbe />
+        <ReceiptsScreen />
+      </ShellStateProvider>
+    ) : (
       <ReceiptsScreen />
-    </ThemeProvider>
-  )
-  return render(
-    <QueryClientProvider client={queryClient}>
-      <I18nextProvider i18n={i18n}>
-        {opts.shell ? (
-          <ShellStateProvider onRegister={() => {}} onLogin={() => {}} onSignedOut={() => {}}>
-            <YearProbe />
-            {content}
-          </ShellStateProvider>
-        ) : (
-          content
-        )}
-      </I18nextProvider>
-    </QueryClientProvider>,
+    ),
+    { language: opts.lng ?? 'de' },
   )
 }
 

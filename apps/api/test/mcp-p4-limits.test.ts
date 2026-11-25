@@ -1,26 +1,25 @@
 // Beta P4: the caps of the creating tools hold when calls arrive together, a create commits with its mark,
 // the printout-rendering tools have a budget of their own, and the smaller usability fixes.
 import { describe, expect, it, vi } from 'vitest'
-import { Client } from '@modelcontextprotocol/sdk/client/index.js'
-import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js'
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
+import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { containsLink } from '../src/assistant-task/assistant-task.service.js'
 import { AssistantTaskService } from '../src/assistant-task/assistant-task.service.js'
 import { assistantAuditSource, runWithAuditSource } from '../src/audit/audit-source.js'
 import { AuditService } from '../src/audit/audit.service.js'
 import { clientDisplayName, isAcceptableClientName } from '../src/auth/oauth-client-name.js'
-import { inProcessKeyedLock } from '../src/common/keyed-lock.js'
-import { passThroughTransactionRunner } from '../src/common/transaction-runner.js'
 import { MCP_PRINTOUT_CHECK_LIMIT, McpRateLimiter } from '../src/mcp/mcp-rate-limit.js'
 import type { AssistantSessionInfo, McpDeps } from '../src/mcp/mcp-session.js'
-import { installToolGate, MCP_SCOPE, normalisedResult } from '../src/mcp/tool-kit.js'
+import { MCP_SCOPE } from '../src/common/assistant-scopes.js'
+import { normalisedResult } from '../src/mcp/tool-results.js'
 import { MAX_CHILDREN_BY_ASSISTANT, registerChildTools } from '../src/mcp/tools/child-tools.js'
 import { registerComfortTools } from '../src/mcp/tools/comfort-tools.js'
 import { MAX_RENTAL_OBJECTS_BY_ASSISTANT, registerRentalTools } from '../src/mcp/tools/rental-tools.js'
+import { registerReceiptTools } from '../src/mcp/tools/receipt-tools.js'
 import { registerReportTools, registerStatusTools } from '../src/mcp/tools/status-tools.js'
 import { registerTaskTools } from '../src/mcp/tools/task-tools.js'
 import { FakeAssistantTaskRepository } from './fakes/fake-assistant-task.repository.js'
 import { FakeAuditRepository } from './fakes/fake-audit.repository.js'
+import { connectMcpTools, uploadAdmission } from './support/mcp-client.js'
 
 const USER = 'u-p4'
 const YEAR = 2025
@@ -29,20 +28,13 @@ const ASSISTANT: AssistantSessionInfo = { clientId: 'client-p4', clientName: 'Cl
 const tick = () => new Promise((resolve) => setTimeout(resolve, 0))
 
 async function connect(register: (server: McpServer, deps: McpDeps) => void, deps: Partial<McpDeps>, limiter = new McpRateLimiter()) {
-  const audit = new AuditService(new FakeAuditRepository())
-  const server = new McpServer({ name: 't', version: '1' })
-  const full = { audit, locks: inProcessKeyedLock(), transactions: passThroughTransactionRunner, confirmation: { markUnconfirmed: vi.fn(), list: vi.fn(async () => []) }, ...deps } as unknown as McpDeps
-  installToolGate(server, { userId: USER, assistant: ASSISTANT, limiter, audit })
-  register(server, full)
-  const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair()
-  await server.connect(serverTransport)
-  const client = new Client({ name: 'c', version: '1' })
-  await client.connect(clientTransport)
+  const confirmation = { markUnconfirmed: vi.fn(), list: vi.fn(async () => []) } as never
+  const connected = await connectMcpTools(({ server }, full) => register(server, full), { userId: USER, assistant: ASSISTANT, limiter, deps: { confirmation, ...deps } })
   const call = async (name: string, args: Record<string, unknown>) => {
-    const res = (await client.callTool({ name, arguments: args })) as { isError?: boolean; content: { text: string }[] }
-    return { isError: res.isError === true, body: JSON.parse(res.content[0]!.text) as Record<string, unknown> }
+    const { isError, body } = await connected.call(name, args)
+    return { isError, body }
   }
-  return { call, deps: full }
+  return { call, deps: connected.deps }
 }
 
 describe('caps under a lock (MCP-23, H2-20, H2-28)', () => {
@@ -120,6 +112,71 @@ describe('caps under a lock (MCP-23, H2-20, H2-28)', () => {
   })
 })
 
+describe('beleg_hochladen takes the upload admission of the REST route (ADR-0109)', () => {
+  const upload = { dateiBase64: Buffer.from('%PDF-1.4\n%%EOF').toString('base64'), fileName: 'beleg.pdf' }
+  const uploader: AssistantSessionInfo = { clientId: 'client-p4', clientName: 'Claude', scopes: [MCP_SCOPE.receipts] }
+
+  /** Uploads that stay in flight until the test lets them through. */
+  function heldUploads() {
+    const waiting: (() => void)[] = []
+    let stored = 0
+    const receipts = {
+      upload: async () => {
+        await new Promise<void>((resolve) => waiting.push(resolve))
+        stored += 1
+        return { id: `beleg-${stored}`, kind: null, mimeType: 'application/pdf', duplicateOf: null }
+      },
+    }
+    return { receipts, waiting, inFlight: async (count: number) => vi.waitFor(() => expect(waiting).toHaveLength(count)) }
+  }
+
+  it('refuses a second upload of the same account while the first is in flight, as the route does, and takes the next one after it', async () => {
+    const admission = uploadAdmission()
+    const { receipts, waiting, inFlight } = heldUploads()
+    const connectAs = (userId: string) => connectMcpTools(registerReceiptTools, { userId, assistant: uploader, deps: { receipts: receipts as never, admission } })
+    const { call } = await connectAs(USER)
+
+    const first = call('beleg_hochladen', upload)
+    await inFlight(1)
+    const second = await call('beleg_hochladen', upload)
+    // The refusal of the route: the same code and reason `UploadAdmission.acquire` gives a second request.
+    const busy = (() => {
+      try {
+        admission.acquire(USER)
+        return null
+      } catch (error) {
+        return error as { code: string; message: string }
+      }
+    })()
+    expect(busy?.code).toBe('UPLOAD_BUSY')
+    expect(second.isError).toBe(true)
+    expect(second.body).toMatchObject({ ok: false, code: 'UPLOAD_BUSY', error: `UPLOAD_BUSY: ${busy!.message}`, naechsterSchritt: expect.stringContaining('nacheinander') })
+    expect(waiting).toHaveLength(1)
+
+    // Another account is not held up by this one.
+    const other = (await connectAs('u-p4-other')).call('beleg_hochladen', upload)
+    await inFlight(2)
+
+    for (const letThrough of waiting) letThrough()
+    expect((await first).body).toMatchObject({ belegId: 'beleg-1', status: 'hochgeladen' })
+    expect((await other).isError).toBe(false)
+
+    const third = call('beleg_hochladen', upload)
+    await inFlight(3)
+    waiting[2]!()
+    expect((await third).isError).toBe(false)
+  })
+
+  it('gives the slot back when the upload fails', async () => {
+    const admission = uploadAdmission()
+    const receipts = { upload: vi.fn().mockRejectedValueOnce(new Error('storage down')).mockResolvedValue({ id: 'beleg-1', kind: null, mimeType: 'application/pdf', duplicateOf: null }) }
+    const { call } = await connectMcpTools(registerReceiptTools, { userId: USER, assistant: uploader, deps: { receipts: receipts as never, admission } })
+
+    expect((await call('beleg_hochladen', upload)).body).toMatchObject({ code: 'INTERNAL_ERROR' })
+    expect((await call('beleg_hochladen', upload)).body).toMatchObject({ belegId: 'beleg-1' })
+  })
+})
+
 describe('the printout-rendering tools have a budget of their own (H2-26)', () => {
   it(`ausdruck_vorpruefung, steuerbericht and pruefen share ${MCP_PRINTOUT_CHECK_LIMIT.max} a minute`, async () => {
     const check = vi.fn(async () => ({ missing: [] }))
@@ -162,6 +219,17 @@ describe('smaller usability fixes', () => {
     const result = normalisedResult({ content: [{ type: 'text', text: JSON.stringify({ ok: false, grund: 'Keine Person B.' }, null, 2) }] })
     expect(result.isError).toBe(true)
     expect(JSON.parse(result.content[0]!.text)).toMatchObject({ ok: false, code: 'NOT_POSSIBLE', naechsterSchritt: expect.any(String) })
+  })
+
+  it('a refusal keeps what the tool said beyond its reason, however the tool serialised it', () => {
+    const result = normalisedResult({ content: [{ type: 'text', text: JSON.stringify({ ok: false, grund: 'offen', fehlt: ['lstb', 'stammdaten'] }) }] })
+    expect(result.isError).toBe(true)
+    expect(JSON.parse(result.content[0]!.text)).toMatchObject({ ok: false, code: 'NOT_POSSIBLE', error: 'NOT_POSSIBLE: offen', fehlt: ['lstb', 'stammdaten'] })
+  })
+
+  it('a result that only mentions "ok": false inside a value is no refusal', () => {
+    const answer = { content: [{ type: 'text' as const, text: JSON.stringify({ ok: true, notiz: 'Die Antwort war "ok": false.' }, null, 2) }] }
+    expect(normalisedResult(answer)).toBe(answer)
   })
 
   it('an audit row inside a tool call carries the assistant even when a service writes it without one (MCP-3)', async () => {

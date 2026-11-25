@@ -119,7 +119,7 @@ export function OauthConsentScreen({
         // server throttles (429) — each says what to do instead of "Fehler bei der Autorisierung".
         const refusal = new ApiError(response.status, await response.json().catch(() => null), response.headers)
         setErrorMessage(
-          apiFailureMessage(refusal, tr as unknown as Parameters<typeof apiFailureMessage>[1], {
+          apiFailureMessage(refusal, tr, {
             validation: tr('oauthConsent.expired'),
             'not-found': tr('oauthConsent.expired'),
             'account-required': tr('apiFehler.sessionExpired'),

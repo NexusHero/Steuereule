@@ -1,31 +1,19 @@
 // WEB-45 / NC-06: a failed read in the Cockpit shows as failed, never as „offen“ or as a cockpit „wie neu“.
 // The whole Cockpit (with its one write, the SubmissionMarker) fails closed when every request answers 500.
 import { describe, expect, it } from 'vitest'
-import { fireEvent, render, screen } from '@testing-library/react'
-import { I18nextProvider } from 'react-i18next'
-import { ThemeProvider } from '@steuereule/ui'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { fireEvent, screen } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
-import { createAppI18n } from '../../i18n/app-i18n'
 import { server } from '../../test-msw-server'
 import { expectFailsClosed, failEveryRequest } from '../../test-every-query-fails'
 import { CockpitScreen } from './CockpitScreen'
+import { renderWithQuery } from '../../test-render'
 
 const TAX_YEAR = 2026
 const SUMMARY = { taxYear: TAX_YEAR, openItems: 0, status: { kind: 'bestimmt' as const, value: 48000 }, submission: { status: 'eingereicht', submittedOn: '2027-03-10', withdrawable: true } }
 const fail = () => HttpResponse.json({ statusCode: 500, message: 'Internal server error' }, { status: 500 })
 
 function renderCockpit() {
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
-  return render(
-    <QueryClientProvider client={queryClient}>
-      <I18nextProvider i18n={createAppI18n('de')}>
-        <ThemeProvider mode="light">
-          <CockpitScreen taxYear={TAX_YEAR} isSignedIn={true} onOpenInterview={() => {}} onOpenPrintout={() => {}} />
-        </ThemeProvider>
-      </I18nextProvider>
-    </QueryClientProvider>,
-  )
+  return renderWithQuery(<CockpitScreen taxYear={TAX_YEAR} isSignedIn={true} onOpenInterview={() => {}} onOpenPrintout={() => {}} />)
 }
 
 function useLoadedCockpit(answers: Record<string, string>) {

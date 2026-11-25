@@ -7,6 +7,7 @@ import { ParseTaxYearPipe } from '../common/parse-tax-year.pipe.js'
 import { AdoptChildrenDto, AnswerCandidateDto, HouseholdResponseDto } from './dto/household.dto.js'
 import { HouseholdService } from './household.service.js'
 import { UserWrite } from '../common/user-write.decorator.js'
+import { Destructive } from '../common/destructive.decorator.js'
 
 /** Household at account level (#452, ADR-0062). */
 @ApiTags('haushalt')
@@ -36,6 +37,7 @@ export class HouseholdController {
   }
 
   @Post(':jahr/haushalt/personen/:personId/nicht-mehr-dabei')
+  @Destructive()
   @UserWrite('kind')
   @HttpCode(200)
   @RequiresAccount()
@@ -47,6 +49,7 @@ export class HouseholdController {
   }
 
   @Post(':jahr/haushalt/partner/nicht-mehr-dabei')
+  @Destructive()
   @UserWrite('kopplung')
   @HttpCode(200)
   @RequiresAccount()

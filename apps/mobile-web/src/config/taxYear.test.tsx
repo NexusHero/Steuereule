@@ -1,18 +1,15 @@
 // OPS-16: the running tax year comes from the server's clock, not from a year written into the client.
 // The suite pins the server answer to 2026 (test-setup.ts); these tests move it to 2027.
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { act, render, screen, waitFor } from '@testing-library/react'
+import { act, screen, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { I18nextProvider } from 'react-i18next'
-import { ThemeProvider } from '@steuereule/ui'
 import { server } from '../test-msw-server'
-import { createAppI18n } from '../i18n/app-i18n'
 import { Appbar } from '../screens/cockpit/CockpitHeader'
 import { ShellStateProvider, useShellState } from '../navigation/ShellState'
 import { isSelectableYear } from '../navigation/guards'
 import { defaultTaxYear, isRunningTaxYear, runningTaxYear, selectableTaxYears, setServerRunningTaxYear } from './taxYear'
 import { useServerTaxYearSync } from './useServerTaxYearSync'
+import { renderWithQuery } from '../test-render'
 
 afterEach(() => {
   vi.useRealTimers()
@@ -37,16 +34,7 @@ function Synced({ withShell = false }: { readonly withShell?: boolean }) {
 }
 
 function renderSynced(withShell = false) {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-  return render(
-    <QueryClientProvider client={client}>
-      <I18nextProvider i18n={createAppI18n('de')}>
-        <ThemeProvider mode="light">
-          <Synced withShell={withShell} />
-        </ThemeProvider>
-      </I18nextProvider>
-    </QueryClientProvider>,
-  )
+  return renderWithQuery(<Synced withShell={withShell} />)
 }
 
 describe('the tax-year clock (OPS-16)', () => {

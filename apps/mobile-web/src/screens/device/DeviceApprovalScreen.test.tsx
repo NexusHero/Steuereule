@@ -1,28 +1,16 @@
 import { describe, it, expect } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
-import { I18nextProvider } from 'react-i18next'
-import { ThemeProvider } from '@steuereule/ui'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { screen, fireEvent, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
-import { createAppI18n } from '../../i18n/app-i18n'
 import { DeviceApprovalScreen } from './DeviceApprovalScreen'
 import { server } from '../../test-msw-server'
 import { expectFailsClosed, failEveryRequest } from '../../test-every-query-fails'
+import { makeTestQueryClient, renderWithQuery } from '../../test-render'
 
 const BASE_URL = 'http://localhost:3000'
 
 function renderApproval(opts: { lng?: 'de' | 'en'; userCode?: string } = {}) {
-  const i18n = createAppI18n(opts.lng ?? 'de')
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
-  return render(
-    <QueryClientProvider client={queryClient}>
-      <I18nextProvider i18n={i18n}>
-        <ThemeProvider mode="light">
-          <DeviceApprovalScreen userCode={opts.userCode ?? 'K7QX-9F2M'} />
-        </ThemeProvider>
-      </I18nextProvider>
-    </QueryClientProvider>,
-  )
+  const queryClient = makeTestQueryClient()
+  return renderWithQuery(<DeviceApprovalScreen userCode={opts.userCode ?? 'K7QX-9F2M'} />, { client: queryClient, language: opts.lng ?? 'de' })
 }
 
 function mockPending(overrides: Partial<{ userCode: string; status: string; userAgent: string | null; region: string | null; requestedAt: string | null }> = {}) {

@@ -1,4 +1,4 @@
-import { Inject, Injectable, Logger, Optional } from '@nestjs/common'
+import { Inject, Injectable, Logger } from '@nestjs/common'
 import { appealDeadline, ASSESSMENT_POSITIONS, buildRecordHandles, ENTRY_RULE_CODES, fieldsOfScreen, filingTypeComparison, progressionClauseFrom, provenanceKey, QUESTIONS, SCREENS, type AdvisorEstimateReading, type Answers, type EntryStepId, type Screen } from '@steuereule/core'
 import { estimateReadingFrom } from '../advisor/advisor-case-digest.js'
 import { describePrintoutGap } from '../advisor/advisor-printout-gaps.js'
@@ -79,7 +79,7 @@ export class McpReportService {
     @Inject(PrintoutService) private readonly printout: PrintoutService,
     @Inject(ConfirmationService) private readonly confirmation: ConfirmationService,
     @Inject(InterviewService) private readonly interview: InterviewService,
-    @Optional() @Inject(TRANSACTION_RUNNER) private readonly transactions?: TransactionRunner,
+    @Inject(TRANSACTION_RUNNER) private readonly transactions: TransactionRunner,
   ) {}
 
   async report(userId: string, taxYear: number): Promise<AssistantReport> {
@@ -355,7 +355,7 @@ export class McpReportService {
     // The write is rolled back only by a runner that says it rolls back, and never inside a transaction
     // already running (its commit would keep the write).
     const transactions = this.transactions
-    if (!transactions?.rollsBack || transactions.isActive()) return { ok: false, reason: 'Die Simulation steht in dieser Umgebung nicht zur Verfügung.' }
+    if (!transactions.rollsBack || transactions.isActive()) return { ok: false, reason: 'Die Simulation steht in dieser Umgebung nicht zur Verfügung.' }
     // § 35a and § 33 are left out of the estimate while their boosters are off: 0 € would read as "brings nothing".
     for (const entry of entries) {
       const leftOut = effectLeftOutOfEstimate({ screen: entry.screen, instance: entry.instance ?? null, values: [[entry.field, entry.value]] }, HOUSEHOLD_AND_HEALTH_BOOSTERS)

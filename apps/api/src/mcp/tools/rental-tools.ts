@@ -1,7 +1,8 @@
 import { provenanceKey } from '@steuereule/core'
 import { provenanceOf, type McpDeps, type McpSession } from '../mcp-session.js'
 import { ownRecord } from '../own-record.js'
-import { instanceArg, json, refused, taxYearArg } from '../tool-kit.js'
+import { instanceArg, taxYearArg } from '../tool-args.js'
+import { json, refused } from '../tool-results.js'
 
 export const MAX_RENTAL_OBJECTS_BY_ASSISTANT = 10
 /** The field whose marking says "the assistant created this object". */

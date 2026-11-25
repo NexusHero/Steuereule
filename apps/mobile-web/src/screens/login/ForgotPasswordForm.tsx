@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { Button, Input, Feld, inkOnFunke, useTheme } from '@steuereule/ui'
 import { APP_NS } from '../../i18n/resources'
 import { useAuthClient } from '../../auth/AuthClientProvider'
+import { classifyApiFailure, refusalError } from '../../net/apiFailure'
 import { makeLoginStyles } from './loginStyles'
 
 export interface ForgotPasswordFormProps {
@@ -41,13 +42,14 @@ export function ForgotPasswordForm({ onBack }: ForgotPasswordFormProps) {
     setStage('submitting')
     try {
       const { error: authError } = await authClient.requestPasswordReset({ email: mail.trim(), redirectTo: resetRedirectUrl() })
-      if (authError?.status === 429) {
+      const failure = authError ? classifyApiFailure(refusalError(authError)).kind : null
+      if (failure === 'rate-limited') {
         setStage('form')
         setError(tr('passwortReset.request.rateLimited'))
         return
       }
       // A server failure is not "sent"; everything else reads the same, the server does not tell.
-      if (authError && authError.status >= 500) {
+      if (failure === 'server') {
         setStage('form')
         setError(tr('passwortReset.request.error'))
         return

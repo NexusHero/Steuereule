@@ -1,5 +1,6 @@
-import { Inject, Injectable, Optional } from '@nestjs/common'
+import { Inject, Injectable, Logger, Optional } from '@nestjs/common'
 import { YEAR_INDEPENDENT, decomposeProvenanceKey, isYearIndependent, provenanceKey, type Screen } from '@steuereule/core'
+import { KEYED_LOCK, type KeyedLock } from '../common/keyed-lock.js'
 import { LinkService } from '../link/link.service.js'
 import { PROVENANCE_REPOSITORY, type ProvenanceRecord, type ProvenanceRepository } from '../marking/marking.repository.js'
 import { FIELD_ACCESS, type FieldAccess } from './field-access.js'
@@ -38,24 +39,43 @@ const sameMarking = (a: ProvenanceRecord, b: ProvenanceRecord): boolean =>
  *
  * Only a marking the write itself left untouched is settled: a write that sets its own provenance (a
  * scanned certificate's „Aus Beleg“) keeps it, and so does a marking someone else changed meanwhile.
+ *
+ * Snapshot, write and settling are one transaction, one user write per account at a time (the keyed lock:
+ * a Read Committed transaction under an advisory lock). A crash or a failed settling between the write and
+ * its settling can no longer leave the user's value standing under the assistant's marking, and two writes
+ * of the same account cannot compare against each other's half-finished state.
  */
 @Injectable()
 export class UserWriteMarkings {
+  private readonly logger = new Logger(UserWriteMarkings.name)
+
   constructor(
     @Inject(PROVENANCE_REPOSITORY) private readonly markings: ProvenanceRepository,
     @Inject(FIELD_ACCESS) private readonly access: FieldAccess,
+    @Inject(KEYED_LOCK) private readonly locks: KeyedLock,
     /** Whose figures the user records as Person B (ADR-0054): a write with `?person=B` changes hers. */
     @Optional() @Inject(LinkService) private readonly link?: Pick<LinkService, 'spouseForAdvisor'>,
   ) {}
 
-  /** Runs one user write and settles the markings it made stale. */
-  async around<T>(userId: string, taxYear: number | null, screens: readonly Screen[], write: () => Promise<T>): Promise<T> {
-    const snapshot = await this.snapshot(userId, taxYear, screens)
-    try {
-      return await write()
-    } finally {
+  /** Runs one user write and settles the markings it made stale, in the write's transaction. */
+  around<T>(userId: string, taxYear: number | null, screens: readonly Screen[], write: () => Promise<T>): Promise<T> {
+    return this.locks.withLock(`user-write:${userId}`, async () => {
+      const snapshot = await this.snapshot(userId, taxYear, screens)
+      let result: T
+      try {
+        result = await write()
+      } catch (error) {
+        // A refused write may have changed part of the mask where nothing rolls it back. The caller gets the
+        // write's own error, never a failure of the settling that follows it.
+        await this.settle(snapshot).catch((settleError: unknown) => {
+          this.logger.error(`Markings not settled after a failed write: ${settleError instanceof Error ? settleError.message : String(settleError)}`)
+        })
+        throw error
+      }
+      // A failed settling fails the write too: the transaction takes the user's value back with it.
       await this.settle(snapshot)
-    }
+      return result
+    })
   }
 
   async snapshot(userId: string, taxYear: number | null, screens: readonly Screen[]): Promise<UserWriteSnapshot> {

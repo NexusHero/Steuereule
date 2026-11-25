@@ -21,7 +21,7 @@ import { PrismaBearerTokenRepository } from './bearer-token.repository.prisma.js
 import { AuthCapabilitiesController } from './auth-capabilities.controller.js'
 import { OAuthDiscoveryController } from './oauth-discovery.controller.js'
 import { ReceiptStorageModule } from '../receipt/receipt-storage.module.js'
-import { PostgresByteaStorageAdapter } from '../receipt/storage/postgres-bytea-storage.adapter.js'
+import { STORAGE_PORT, type StoragePort } from '../receipt/storage/storage.port.js'
 import { StepUpGuard } from './requires-step-up.js'
 import { STEP_UP_GRANT_REPOSITORY } from './step-up-grant.repository.js'
 import { PrismaStepUpGrantRepository } from './step-up-grant.repository.prisma.js'
@@ -42,8 +42,8 @@ import { PrismaStepUpGrantRepository } from './step-up-grant.repository.prisma.j
     {
       provide: BETTER_AUTH_BUNDLE,
       // The encrypted client: name, e-mail and session address are ciphertext at rest (ADR-0109).
-      inject: [ENCRYPTED_PRISMA, EMAIL_SENDER, GUEST_ACTIVITY_RECORDER, PostgresByteaStorageAdapter],
-      useFactory: (prisma: EncryptedPrismaClient, emailSender: EmailSender, recorder: GuestActivityNotes, receiptFiles: PostgresByteaStorageAdapter) =>
+      inject: [ENCRYPTED_PRISMA, EMAIL_SENDER, GUEST_ACTIVITY_RECORDER, STORAGE_PORT],
+      useFactory: (prisma: EncryptedPrismaClient, emailSender: EmailSender, recorder: GuestActivityNotes, receiptFiles: StoragePort) =>
         createBetterAuth({
           // better-auth's adapter and hooks look rows up across accounts (e-mail hash, session token): a system path (P11).
           prisma: systemDatabaseClient(prisma, 'better-auth'),

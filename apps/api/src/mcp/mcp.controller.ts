@@ -5,7 +5,6 @@ import {
   HttpException,
   HttpStatus,
   Inject,
-  Optional,
   Post,
   Req,
   Res,
@@ -52,16 +51,14 @@ interface McpSseSession {
 @UseGuards(UserContextGuard)
 export class McpController {
   private readonly sessions = new Map<string, McpSseSession>()
-  private readonly limiter: McpRateLimiter
 
   constructor(
     @Inject(McpService) private readonly mcpService: McpService,
     @Inject(BETTER_AUTH_BUNDLE) private readonly betterAuth: BetterAuthBundle,
-    @Optional() @Inject(McpRateLimiter) limiter?: McpRateLimiter,
-    @Optional() @Inject(AuditService) private readonly audit?: AuditService,
-  ) {
-    this.limiter = limiter ?? new McpRateLimiter()
-  }
+    /** The limiter of the process, the same one the tool gate counts in. */
+    @Inject(McpRateLimiter) private readonly limiter: McpRateLimiter,
+    @Inject(AuditService) private readonly audit: AuditService,
+  ) {}
 
   /** No assistant token: 401 with the pointer to the sign-in, so an MCP client can start the OAuth flow (RFC 9728 §5.1). */
   private challenge(reply: FastifyReply, resourcePath: string = MCP_RESOURCE_PATH): never {
@@ -124,7 +121,7 @@ export class McpController {
     const transport = new SSEServerTransport('/mcp/messages', reply.raw)
     const sessionId = transport.sessionId
     if (!this.limiter.openSession(userId, sessionId)) {
-      await this.audit?.append({ userId, action: 'READ', resource: 'mcp_sessions_limited', source: assistantAuditSource(assistant.clientId) })
+      await this.audit.append({ userId, action: 'READ', resource: 'mcp_sessions_limited', source: assistantAuditSource(assistant.clientId) })
       throw new HttpException(
         `RATE_LIMITED: Es sind schon höchstens ${this.limiter.limits.openSessionsPerUser} MCP-Verbindungen für dieses Konto offen. Schließe eine andere Verbindung oder nutze den Endpunkt /mcp.`,
         HttpStatus.TOO_MANY_REQUESTS,
@@ -160,13 +157,13 @@ export class McpController {
 
     const session = this.sessions.get(sessionId)!
     if (session.userId !== userId) {
-      await this.audit?.append({ userId, action: 'READ', resource: 'mcp_session_other_account', source: assistantAuditSource(assistant.clientId) })
+      await this.audit.append({ userId, action: 'READ', resource: 'mcp_session_other_account', source: assistantAuditSource(assistant.clientId) })
       return this.refuseMessage(reply, 403, 'MCP_SESSION_OTHER_ACCOUNT', 'Diese Sitzung gehört zu einem anderen Konto.', 'Öffne mit deinem eigenen Token eine neue Verbindung über /mcp.')
     }
     // The server behind the session carries the scopes of the client that opened it. Another assistant of
     // the same user, granted less, must not act through it (ADR-0052 amendment 9); the attempt is audited (H2-29).
     if (session.clientId !== assistant.clientId) {
-      await this.audit?.append({ userId, action: 'READ', resource: 'mcp_session_other_client', source: assistantAuditSource(assistant.clientId) })
+      await this.audit.append({ userId, action: 'READ', resource: 'mcp_session_other_client', source: assistantAuditSource(assistant.clientId) })
       return this.refuseMessage(reply, 403, 'MCP_SESSION_OTHER_CLIENT', 'Diese Sitzung hat ein anderer Assistent geöffnet.', 'Öffne eine eigene Verbindung über /mcp.')
     }
 

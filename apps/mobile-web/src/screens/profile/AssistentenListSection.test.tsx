@@ -1,31 +1,16 @@
 import { describe, expect, it } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
-import { I18nextProvider } from 'react-i18next'
-import { ThemeProvider } from '@steuereule/ui'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { screen, fireEvent, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
-import { createAppI18n } from '../../i18n/app-i18n'
 import { AssistantsListSection } from './AssistentenListSection'
 import { server } from '../../test-msw-server'
 import { expectFailsClosed, failEveryRequest } from '../../test-every-query-fails'
-import { confirmAction } from '../../confirm/confirmInTest'
+import { confirmAction } from '../../test-confirm'
+import { renderWithQuery } from '../../test-render'
 
 const BASE_URL = 'http://localhost:3000'
 
 function renderAssistantsList() {
-  const i18n = createAppI18n('de')
-  const queryClient = new QueryClient({
-    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
-  })
-  return render(
-    <QueryClientProvider client={queryClient}>
-      <I18nextProvider i18n={i18n}>
-        <ThemeProvider mode="light">
-          <AssistantsListSection />
-        </ThemeProvider>
-      </I18nextProvider>
-    </QueryClientProvider>,
-  )
+  return renderWithQuery(<AssistantsListSection />)
 }
 
 describe('AssistentenListSection (ADR-0052 §10)', () => {

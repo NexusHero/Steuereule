@@ -1,16 +1,13 @@
 // The Strom screen decides where each page leads (ADR-0089): the next step is worked out from the
 // fresh answers after a save, and an unknown address continues where the user left off.
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
-import { I18nextProvider } from 'react-i18next'
-import { ThemeProvider } from '@steuereule/ui'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { screen, fireEvent, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import type { Answers } from '@steuereule/core'
-import { createAppI18n } from '../../i18n/app-i18n'
 import { server } from '../../test-msw-server'
 import { StromScreen } from './StromScreen'
 import type { StromStep } from './stromPlan'
+import { renderWithQuery } from '../../test-render'
 
 const YEAR = 2025
 const BASIS: Answers = { job: 'Rente', ausland: 'Nein', kinder: 'Nein', familienstand: 'Ledig' }
@@ -32,16 +29,7 @@ function serve(initial: Answers) {
 }
 
 function renderStrom(slug: string | undefined, onGo: (step: StromStep) => void) {
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-  return render(
-    <QueryClientProvider client={queryClient}>
-      <I18nextProvider i18n={createAppI18n('de')}>
-        <ThemeProvider mode="light">
-          <StromScreen taxYear={YEAR} slug={slug} isSignedIn onGo={onGo} onExit={() => {}} onOpenSubmission={() => {}} onGuestBasisDone={() => {}} />
-        </ThemeProvider>
-      </I18nextProvider>
-    </QueryClientProvider>,
-  )
+  return renderWithQuery(<StromScreen taxYear={YEAR} slug={slug} isSignedIn onGo={onGo} onExit={() => {}} onOpenSubmission={() => {}} onGuestBasisDone={() => {}} />)
 }
 
 describe('StromScreen', () => {

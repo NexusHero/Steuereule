@@ -3,15 +3,13 @@
 import { describe, expect, it } from 'vitest'
 import { screen } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { renderInApp } from '../../test-render'
+import { renderWithQuery } from '../../test-render'
 import { server } from '../../test-msw-server'
 import { HISTORY_RESPONSE, LESSONS_2024 } from '../../test-history-fixture'
 import { MaskLessonHint } from './MaskLessonHint'
 
 function renderHint(node: React.ReactNode) {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-  return renderInApp(<QueryClientProvider client={client}>{node}</QueryClientProvider>)
+  return renderWithQuery(node)
 }
 
 describe('MaskLessonHint', () => {

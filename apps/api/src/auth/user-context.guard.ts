@@ -1,3 +1,4 @@
+import { RETENTION } from '@steuereule/core'
 import { createHash } from 'node:crypto'
 import { ForbiddenException, Inject, Injectable, Optional, UnauthorizedException, type CanActivate, type ExecutionContext } from '@nestjs/common'
 import { fromNodeHeaders } from 'better-auth/node'
@@ -44,7 +45,7 @@ interface AssistantIdentity {
 }
 
 /** Lifetime of the guest cookie, printed in the privacy text through `RETENTION.guestCookieDays`. */
-export const COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 180
+export const COOKIE_MAX_AGE_SECONDS = RETENTION.guestCookieDays * 24 * 60 * 60
 
 /**
  * Writes by guests per client address (ADR-0106 D8). A guest needs no account, and every guest write may

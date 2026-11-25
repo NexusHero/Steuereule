@@ -8,23 +8,30 @@ export interface ManualPaymentClock extends PaymentClock {
   expire(): void
   /** Whether a confirmation window is open (it polls). */
   readonly polling: boolean
+  /** Every delay the hook asked for, in the order it asked: the poll intervals and the timeouts. */
+  readonly requested: { readonly every: readonly number[]; readonly after: readonly number[] }
 }
 
 /**
  * The payment confirmation's clock, moved by the test (WEB-1, WEB-35): polls and the timeout happen when the
  * test says, never after an amount of wall clock, so a slow runner cannot skip a state the test asserts.
+ * The delays the hook asks for are recorded, so the length of the window is asserted without waiting for it.
  */
 export function manualPaymentClock(): ManualPaymentClock {
   const polls = new Set<() => void>()
   const timeouts = new Set<() => void>()
+  const requested = { every: [] as number[], after: [] as number[] }
   return {
-    every: (_ms, run) => {
+    requested,
+    every: (ms, run) => {
+      requested.every.push(ms)
       polls.add(run)
       return () => {
         polls.delete(run)
       }
     },
-    after: (_ms, run) => {
+    after: (ms, run) => {
+      requested.after.push(ms)
       timeouts.add(run)
       return () => {
         timeouts.delete(run)

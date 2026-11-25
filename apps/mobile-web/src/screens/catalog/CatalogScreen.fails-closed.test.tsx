@@ -2,28 +2,17 @@
 // (WEB-41 / NM-06); a 500 is not called a conflict (NM-07); a failed link does not file the partner's answers
 // under Person A (NM-15); a revisited amount question shows its stored amount (NM-16).
 import { describe, expect, it } from 'vitest'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { I18nextProvider } from 'react-i18next'
-import { ThemeProvider } from '@steuereule/ui'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
-import { createAppI18n } from '../../i18n/app-i18n'
 import { server } from '../../test-msw-server'
 import { expectFailsClosed, failEveryRequest } from '../../test-every-query-fails'
 import { CatalogScreen } from './CatalogScreen'
+import { renderWithQuery } from '../../test-render'
 
 const INTERVIEW_URL = '*/v1/steuerjahre/2026/interview'
 
 function renderCatalog(entry: 'lebenslagen' | 'sonderausgaben' | 'gesundheit', revisit = false) {
-  return render(
-    <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })}>
-      <I18nextProvider i18n={createAppI18n('de')}>
-        <ThemeProvider mode="light">
-          <CatalogScreen entry={entry} taxYear={2026} revisit={revisit} />
-        </ThemeProvider>
-      </I18nextProvider>
-    </QueryClientProvider>,
-  )
+  return renderWithQuery(<CatalogScreen entry={entry} taxYear={2026} revisit={revisit} />)
 }
 
 describe('Katalog fails closed', () => {

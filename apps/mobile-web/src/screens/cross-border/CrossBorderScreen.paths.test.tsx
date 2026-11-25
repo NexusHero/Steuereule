@@ -2,15 +2,12 @@
 // answer, leaving the interview, the partner's way back, the live Bruttolohn sum, the missing
 // fields drawer, the N-Gre details, the Wechselkurs validation and the failing upload.
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
-import { I18nextProvider } from 'react-i18next'
-import { ThemeProvider } from '@steuereule/ui'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { screen, fireEvent, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import type { InterviewStateDto, ChSalaryCertificateResponseDto } from '@steuereule/api-client'
-import { createAppI18n } from '../../i18n/app-i18n'
 import { CrossBorderScreen } from './CrossBorderScreen'
 import { EMPTY_CH_SALARY_CERTIFICATE_RESPONSE, server } from '../../test-msw-server'
+import { renderWithQuery } from '../../test-render'
 
 const { mockExtractDocumentText } = vi.hoisted(() => ({ mockExtractDocumentText: vi.fn() }))
 vi.mock('../../lib/documentOcr', async (importOriginal) => {
@@ -28,16 +25,7 @@ const EMPTY_INTERVIEW: InterviewStateDto = { answers: {}, nextStep: { kind: 'que
 const DONE_INTERVIEW: InterviewStateDto = { answers: { 'ch-wohnsitz': 'Deutschland', 'ch-nichtrueckkehrtage': '10' }, nextStep: { kind: 'done' }, openItems: 0 }
 
 function renderScreen(props: { onDone?: () => void; onBack?: () => void; partnerName?: string } = {}) {
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
-  return render(
-    <QueryClientProvider client={queryClient}>
-      <I18nextProvider i18n={createAppI18n('de')}>
-        <ThemeProvider mode="light">
-          <CrossBorderScreen onDone={props.onDone ?? (() => {})} taxYear={TAX_YEAR} {...(props.onBack ? { onBack: props.onBack } : {})} {...(props.partnerName ? { partnerName: props.partnerName } : {})} />
-        </ThemeProvider>
-      </I18nextProvider>
-    </QueryClientProvider>,
-  )
+  return renderWithQuery(<CrossBorderScreen onDone={props.onDone ?? (() => {})} taxYear={TAX_YEAR} {...(props.onBack ? { onBack: props.onBack } : {})} {...(props.partnerName ? { partnerName: props.partnerName } : {})} />)
 }
 
 function openMask(certificate: ChSalaryCertificateResponseDto = EMPTY_CH) {

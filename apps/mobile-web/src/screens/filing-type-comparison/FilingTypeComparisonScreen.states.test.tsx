@@ -1,28 +1,16 @@
 // The Veranlagungsartenvergleich around its verdicts: the way back, the embedded form, the loading
 // and error states with a retry, the "no income yet" gate and rejecting a nonsensical partner income.
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
-import { I18nextProvider } from 'react-i18next'
-import { ThemeProvider } from '@steuereule/ui'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { screen, fireEvent, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
-import { createAppI18n } from '../../i18n/app-i18n'
 import { FilingTypeComparisonScreen, type FilingTypeComparisonScreenProps } from './FilingTypeComparisonScreen'
 import { server } from '../../test-msw-server'
+import { renderWithQuery } from '../../test-render'
 
 const URL_COMPARISON = '*/v1/steuerjahre/2026/veranlagungsartenvergleich'
 
 function renderScreen(props: FilingTypeComparisonScreenProps = {}) {
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-  return render(
-    <QueryClientProvider client={queryClient}>
-      <I18nextProvider i18n={createAppI18n('de')}>
-        <ThemeProvider mode="light">
-          <FilingTypeComparisonScreen taxYear={2026} {...props} />
-        </ThemeProvider>
-      </I18nextProvider>
-    </QueryClientProvider>,
-  )
+  return renderWithQuery(<FilingTypeComparisonScreen taxYear={2026} {...props} />)
 }
 
 const married = (zveB: string) => {

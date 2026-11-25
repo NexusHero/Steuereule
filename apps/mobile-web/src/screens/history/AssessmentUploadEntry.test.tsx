@@ -1,14 +1,11 @@
 // „2020 oder früher ergänzen“ — the way into the Belege pipeline from the Verlauf: what is refused,
 // what the reading found on the Bescheid, and the way on to the waiting drafts.
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { I18nextProvider } from 'react-i18next'
-import { ThemeProvider } from '@steuereule/ui'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
-import { createAppI18n } from '../../i18n/app-i18n'
 import { server } from '../../test-msw-server'
 import { AssessmentUploadEntry, type AssessmentUploadEntryProps } from './AssessmentUploadEntry'
+import { renderWithQuery } from '../../test-render'
 
 const { extract } = vi.hoisted(() => ({ extract: vi.fn() }))
 vi.mock('../../lib/documentOcr', async (importOriginal) => {
@@ -33,16 +30,7 @@ function parseBody(notice: object | null) {
 }
 
 function setup(props: Partial<AssessmentUploadEntryProps> = {}) {
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-  render(
-    <QueryClientProvider client={queryClient}>
-      <I18nextProvider i18n={createAppI18n('de')}>
-        <ThemeProvider mode="light">
-          <AssessmentUploadEntry openYear={2026} title="2020 oder früher ergänzen" body="Lade einen alten Bescheid hoch." cta="Bescheid hochladen" testID="upload" {...props} />
-        </ThemeProvider>
-      </I18nextProvider>
-    </QueryClientProvider>,
-  )
+  renderWithQuery(<AssessmentUploadEntry openYear={2026} title="2020 oder früher ergänzen" body="Lade einen alten Bescheid hoch." cta="Bescheid hochladen" testID="upload" {...props} />)
 }
 
 function choose(file: File) {

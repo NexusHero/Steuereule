@@ -2,7 +2,8 @@ import { z } from 'zod'
 import { ASSISTANT_TASK_KINDS } from '../../assistant-task/assistant-task.repository.js'
 import { MAX_OPEN_TASKS, MAX_TASK_TEXT } from '../../assistant-task/assistant-task.service.js'
 import type { McpDeps, McpSession } from '../mcp-session.js'
-import { instanceArg, json, refused, taxYearArg } from '../tool-kit.js'
+import { instanceArg, taxYearArg } from '../tool-args.js'
+import { json, refused } from '../tool-results.js'
 
 /** What only the user can do in the app, left as a task the Cockpit shows (#547). */
 export function registerTaskTools(session: McpSession, deps: McpDeps): void {

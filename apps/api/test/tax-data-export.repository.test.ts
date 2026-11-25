@@ -1,8 +1,9 @@
 // Art. 15/20: the export must read every table the Art. 17 erasure deletes — the two
 // lists drifting apart is exactly how "taxData: []" survived while data existed.
 import { describe, expect, it } from 'vitest'
-import { PERSONAL_DATA_REGISTRY, shadowIdOf } from '../src/account/personal-data-registry.js'
-import { PrismaTaxDataExportRepository, toExportEntry } from '../src/account/tax-data-export.repository.prisma.js'
+import { PERSONAL_DATA_REGISTRY } from '../src/personal-data/personal-data-registry.js'
+import { shadowIdOf } from '../src/common/person-ids.js'
+import { EXPORT_SECTIONS, PrismaTaxDataExportRepository, toExportEntry } from '../src/account/tax-data-export.repository.prisma.js'
 
 describe('PrismaTaxDataExportRepository', () => {
   it('reads every table the registry exports as rows, over the own id and every Person B shadow id (API-2)', async () => {
@@ -48,6 +49,38 @@ describe('PrismaTaxDataExportRepository', () => {
       ['Kapitalerträge', 2025],
       ['Beleg', null],
     ])
+  })
+})
+
+describe('the export sections come from the registry', () => {
+  it('every model the registry exports in a section is one that section shows, and the section shows no other', () => {
+    const declared = new Map<string, string[]>()
+    for (const entry of PERSONAL_DATA_REGISTRY) {
+      if (entry.export.kind === 'section') declared.set(entry.export.section, [...(declared.get(entry.export.section) ?? []), entry.model])
+    }
+    const shown = Object.fromEntries(Object.entries(EXPORT_SECTIONS).map(([section, spec]) => [section, [...spec.models].sort()]))
+    expect(Object.fromEntries([...declared].map(([section, models]) => [section, models.sort()]))).toEqual(shown)
+  })
+
+  it('reads the account data over the own id and every Person B shadow id', async () => {
+    const wheres = new Map<string, unknown>()
+    const delegate = (model: string) => ({
+      findMany: async (args: { where: unknown }) => {
+        wheres.set(model, args.where)
+        return []
+      },
+      findUnique: async () => null,
+      count: async (args: { where: unknown }) => {
+        wheres.set(model, args.where)
+        return 0
+      },
+    })
+    const prisma = new Proxy({}, { get: (_t, model) => delegate(String(model)) })
+    const entries = await new PrismaTaxDataExportRepository(prisma as never).findAccountDataForUser('user-1')
+    expect(entries.map((entry) => entry.area)).toEqual(['Zwei-Faktor-Anmeldung'])
+    for (const model of ['session', 'twoFactor', 'passkey', 'deviceCode', 'oauthClient', 'oauthConsent', 'oauthAccessToken', 'oauthRefreshToken', 'legalHold']) {
+      expect((wheres.get(model) as { userId: { in: string[] } } | undefined)?.userId.in, model).toContain(shadowIdOf('user-1', 2025))
+    }
   })
 })
 

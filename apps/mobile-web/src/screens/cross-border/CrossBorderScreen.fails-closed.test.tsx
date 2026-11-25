@@ -1,29 +1,18 @@
 // Grenzgänger after WEB-28: a failed load writes nothing (also for the partner); an interview answer that did not
 // stick is said where the question is asked again, not only felt (WEB-41 / NM-06).
 import { describe, expect, it } from 'vitest'
-import { fireEvent, render, screen } from '@testing-library/react'
-import { I18nextProvider } from 'react-i18next'
-import { ThemeProvider } from '@steuereule/ui'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { fireEvent, screen } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import type { InterviewStateDto } from '@steuereule/api-client'
-import { createAppI18n } from '../../i18n/app-i18n'
 import { server } from '../../test-msw-server'
 import { expectFailsClosed, failEveryRequest } from '../../test-every-query-fails'
 import { CrossBorderScreen } from './CrossBorderScreen'
+import { renderWithQuery } from '../../test-render'
 
 const EMPTY_INTERVIEW: InterviewStateDto = { answers: {}, nextStep: { kind: 'question', id: 'ch-wohnsitz' }, openItems: 2 }
 
 function renderScreen(partnerName?: string) {
-  return render(
-    <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })}>
-      <I18nextProvider i18n={createAppI18n('de')}>
-        <ThemeProvider mode="light">
-          <CrossBorderScreen onDone={() => {}} taxYear={2026} {...(partnerName ? { partnerName } : {})} />
-        </ThemeProvider>
-      </I18nextProvider>
-    </QueryClientProvider>,
-  )
+  return renderWithQuery(<CrossBorderScreen onDone={() => {}} taxYear={2026} {...(partnerName ? { partnerName } : {})} />)
 }
 
 describe('Grenzgänger fails closed', () => {

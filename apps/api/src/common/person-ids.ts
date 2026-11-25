@@ -2,7 +2,7 @@ import { MIN_TAX_YEAR, maxTaxYear } from './tax-year.js'
 
 // The ids one person's rows are kept under (ADR-0054): the account id, and one shadow id per tax year for a
 // Person B kept in that account without a login of their own. Deletion, export, guest takeover
-// (`account/personal-data-registry.ts`) and the access log read the same set from here.
+// (`personal-data/personal-data-registry.ts`) and the access log read the same set from here.
 
 export const SHADOW_PREFIX = 'spouse_'
 

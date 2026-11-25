@@ -1,10 +1,9 @@
+import { isShadowId } from '../common/person-ids.js'
 import type { PartnerCouplingRecord } from './link.repository.js'
-
-const SHADOW_PREFIX = 'spouse_'
 
 /** Person B has an account of their own (not a shadow record kept by Person A). */
 export function personBHasOwnAccount(row: Pick<PartnerCouplingRecord, 'personBUserId'>): boolean {
-  return row.personBUserId !== '' && !row.personBUserId.startsWith(SHADOW_PREFIX)
+  return row.personBUserId !== '' && !isShadowId(row.personBUserId)
 }
 
 /**

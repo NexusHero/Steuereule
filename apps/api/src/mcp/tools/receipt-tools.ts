@@ -2,7 +2,8 @@ import { ISO_DATE_PATTERN, RECEIPT_TYPES } from '@steuereule/core'
 import { z } from 'zod'
 import { MAX_RECEIPT_FILE_BYTES } from '../../receipt/storage/magic-bytes.js'
 import type { McpDeps, McpSession } from '../mcp-session.js'
-import { instanceArg, json, maxTaxYear, MIN_TAX_YEAR, refused, taxYearArg } from '../tool-kit.js'
+import { instanceArg, maxTaxYear, MIN_TAX_YEAR, taxYearArg } from '../tool-args.js'
+import { json, refused } from '../tool-results.js'
 
 /** The base64 text of the largest file the upload takes (10 MB), with room for line breaks some clients insert. */
 export const MAX_RECEIPT_BASE64_LENGTH = Math.ceil(MAX_RECEIPT_FILE_BYTES / 3) * 4 + 300_000
@@ -20,7 +21,7 @@ const isoDateArg = (description: string) => z.string().max(10).regex(ISO_DATE_PA
 /**
  * The receipt inbox (ADR-0052 §11, beta decision 6): the assistant uploads the file itself, and the upload takes
  * the same way as the app's (`ReceiptService.upload`: type by magic bytes, 10 MB, the account's quota, the
- * name cut to 255, dates checked) with the same admission and budget. Only the assistant that uploaded a
+ * name cut to 255, dates checked) with the same admission; the gate takes its upload budget. Only the assistant that uploaded a
  * receipt may take it back, and only while no entry names it as its source.
  */
 export function registerReceiptTools(session: McpSession, deps: McpDeps): void {
@@ -38,12 +39,11 @@ export function registerReceiptTools(session: McpSession, deps: McpDeps): void {
       zahlungsdatum: isoDateArg('Zahlungsdatum im Format YYYY-MM-DD').optional(),
     },
     async ({ dateiBase64, fileName, kind, taxYear, belegdatum, zahlungsdatum }) => {
-      const budget = await deps.limiter?.takeReceiptUpload(userId)
-      if (budget && !budget.ok) return refused(`RATE_LIMITED: Über diesen Zugang wurden gerade viele Belege hochgeladen. Versuch es in ${Math.ceil(budget.retryAfterSeconds / 60)} Minuten wieder.`)
       const buffer = decodeBase64(dateiBase64)
       if (buffer === null) return refused('RECEIPT_FILE_INVALID: `dateiBase64` ist kein gültiges Base64.', 'Kodiere die Datei als Standard-Base64 (RFC 4648) ohne Präfix wie „data:…;base64,“.')
-      // The REST route's admission: a few uploads at once per instance, one per account (ADR-0109).
-      const release = deps.admission?.acquire(userId) ?? (() => undefined)
+      // The REST route's admission: a few uploads at once per instance, one per account (ADR-0109). A call
+      // over it is refused with UPLOAD_BUSY, as on the route.
+      const release = deps.admission.acquire(userId)
       try {
         const created = await deps.receipts.upload(userId, { buffer, fileName, kind, belegdatum, zahlungsdatum, uploadedByClientId: assistant.clientId })
         if (taxYear !== undefined) await deps.receipts.setAssignment(userId, created.id, { taxYear })

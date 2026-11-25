@@ -36,6 +36,13 @@ describe('useTwoFactor — refusals in words', () => {
     expect(await setup({ status: 503 }).disable('pw')).toBe('Bei uns ist gerade etwas schiefgelaufen. Versuch es gleich noch mal.')
   })
 
+  it("better-auth's own code wins over the status; another answer reads the status through the shared mapping", async () => {
+    const t = createAppI18n('de').getFixedT('de', 'app')
+    expect(await setup({ code: 'INVALID_CODE', status: 429 }).verifyTotp('123456')).toBe(t('sicherheit.errWrongCode'))
+    expect(await setup({ status: 502 }).verifyTotp('123456')).toBe(t('apiFehler.server'))
+    expect(await setup({ status: 400 }).verifyTotp('123456')).toBe(t('auth.errGeneric'))
+  })
+
   it('only a request that got no answer blames the connection', async () => {
     expect(await setup(null, true).verifyBackupCode('abc')).toBe('Das hat gerade nicht geklappt. Prüf die Verbindung und versuch es noch mal.')
   })

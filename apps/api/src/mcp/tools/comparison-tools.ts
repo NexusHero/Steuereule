@@ -1,5 +1,6 @@
 import type { McpDeps, McpSession } from '../mcp-session.js'
-import { json, taxYearArg } from '../tool-kit.js'
+import { taxYearArg } from '../tool-args.js'
+import { json } from '../tool-results.js'
 
 /**
  * Comparisons from the case itself (#548): joint against separate assessment from the recorded figures of

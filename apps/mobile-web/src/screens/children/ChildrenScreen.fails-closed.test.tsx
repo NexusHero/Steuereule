@@ -3,16 +3,13 @@
 // questions (NM-15); a failed save names its reason (NM-07); „Weiter“ with a typed or changed child asks once, an
 // opened but unchanged one leaves at once (NM-10).
 import { describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { I18nextProvider } from 'react-i18next'
-import { ThemeProvider } from '@steuereule/ui'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import type { HouseholdResponseDto } from '@steuereule/api-client'
-import { createAppI18n } from '../../i18n/app-i18n'
 import { server } from '../../test-msw-server'
 import { expectFailsClosed, failEveryRequest } from '../../test-every-query-fails'
 import { ChildrenScreen } from './ChildrenScreen'
+import { renderWithQuery } from '../../test-render'
 
 const LINA = { id: 'kind-1', sequenceNumber: 1, firstName: 'Lina', lastName: 'Muster', geburtsdatum: '2016-05-12' }
 const list = (kinder: unknown[]) => ({ kinder, count: kinder.length, childBenefitSum: 0, totalAllowance: 0, swissFamilyAllowanceSum: 0, differentialChildBenefitSum: 0 })
@@ -42,15 +39,7 @@ const OFFERED: HouseholdResponseDto = {
 } as HouseholdResponseDto
 
 function renderChildren(onDone: () => void = () => {}) {
-  return render(
-    <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })}>
-      <I18nextProvider i18n={createAppI18n('de')}>
-        <ThemeProvider mode="light">
-          <ChildrenScreen taxYear={2026} onDone={onDone} />
-        </ThemeProvider>
-      </I18nextProvider>
-    </QueryClientProvider>,
-  )
+  return renderWithQuery(<ChildrenScreen taxYear={2026} onDone={onDone} />)
 }
 
 describe('Kinder fails closed', () => {

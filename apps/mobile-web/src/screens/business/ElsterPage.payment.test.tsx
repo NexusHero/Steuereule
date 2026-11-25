@@ -2,17 +2,15 @@
 // lock): the page never says "unlocked" and "not unlocked" at once, and offers no second payment while
 // the payment is being confirmed. Plus the price before the redirect on the unlock page (WEB-16).
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { I18nextProvider } from 'react-i18next'
-import { ThemeProvider } from '@steuereule/ui'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import type { PaymentReturn } from '@steuereule/core'
-import { createAppI18n } from '../../i18n/app-i18n'
 import { server } from '../../test-msw-server'
 import { manualPaymentClock, type ManualPaymentClock } from '../../test-payment-clock'
 import { BASE_URL, renderBusiness, useElsterForms } from './businessTestKit'
+import { PaymentClockProvider } from '../shared/usePaymentConfirmation'
 import { ElsterPage } from './ElsterPage'
+import { renderWithQuery } from '../../test-render'
 
 const CONFIRMING = 'Deine Zahlung wird bestätigt. Das dauert meist nur Sekunden – du musst nichts weiter tun.'
 const PAID = 'Zahlung bestätigt: 2025 ist freigeschaltet.'
@@ -37,21 +35,36 @@ function webhookAfter(lateBy: number) {
 }
 
 function renderElster(payment: PaymentReturn | undefined, clock: ManualPaymentClock = manualPaymentClock()) {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
   const onOpenPage = vi.fn()
-  render(
-    <QueryClientProvider client={client}>
-      <I18nextProvider i18n={createAppI18n('de')}>
-        <ThemeProvider mode="light">
-          <ElsterPage taxYear={2025} person="A" onBack={() => {}} onOpenPage={onOpenPage} payment={payment} confirmTiming={{ clock }} />
-        </ThemeProvider>
-      </I18nextProvider>
-    </QueryClientProvider>,
+  const { client } = renderWithQuery(
+    <PaymentClockProvider value={clock}>
+      <ElsterPage taxYear={2025} person="A" onBack={() => {}} onOpenPage={onOpenPage} payment={payment} />
+    </PaymentClockProvider>,
   )
-  return { onOpenPage }
+  return { onOpenPage, client }
 }
 
 afterEach(() => server.resetHandlers())
+
+describe('ELSTER page: an unlock that was taken back', () => {
+  it('says "not unlocked" when a reload answers 402, although the help was loaded before (a refund)', async () => {
+    let refunded = false
+    server.use(
+      http.get('*/v1/steuerjahre/2025/freischaltung', () => HttpResponse.json({ status: refunded ? 'offen' : 'freigeschaltet', tier: 'selbststaendig' })),
+      http.get(`${BASE_URL}/elster`, () =>
+        refunded
+          ? HttpResponse.json({ code: 'SELF_EMPLOYMENT_NOT_UNLOCKED', message: 'x' }, { status: 402 })
+          : HttpResponse.json({ year: 2025, forms: [{ form: 'anlage-euer', group: 'business', instance: null }] }),
+      ),
+      http.get(`${BASE_URL}/elster/anlage-euer`, () => (refunded ? HttpResponse.json({ code: 'SELF_EMPLOYMENT_NOT_UNLOCKED', message: 'x' }, { status: 402 }) : HttpResponse.json(HELP))),
+    )
+    const { client } = renderElster(undefined)
+    expect(await screen.findByTestId('elster-zeilen')).toBeTruthy()
+    refunded = true
+    await client.refetchQueries()
+    expect(await screen.findByText(NOT_UNLOCKED)).toBeTruthy()
+  })
+})
 
 describe('ELSTER page: back from Stripe', () => {
   it('success, already paid: says the payment is confirmed and shows the help', async () => {

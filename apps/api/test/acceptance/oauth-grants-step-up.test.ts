@@ -86,7 +86,7 @@ describe('assistant connections and step-up (ADR-0106 D2/D5)', () => {
   // ADR-0107 L2 (post-merge review): step-up gates /oauth2/consent, and also /oauth2/update-consent,
   // /oauth2/continue and /link-social. Those three had only a set-membership unit test; this is the HTTP
   // breaking-then-passing assertion that the exact-string matcher actually fires for each path from a stale
-  // session. Removing a path from STEP_UP_PATHS makes its case fall through to the handler (not 403).
+  // session. Removing a path from BETTER_AUTH_STEP_UP makes its case fall through to the handler (not 403).
   it('refuses consent-widening, authorize-continuation and social-linking from a stale session (L2)', async () => {
     const { cookie, userId } = await signUp('oauth-stepup-siblings@example.com')
     await prisma.session.updateMany({ where: { userId }, data: { createdAt: new Date(Date.now() - 10 * 60 * 1000) } })

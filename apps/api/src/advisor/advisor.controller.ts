@@ -1,3 +1,4 @@
+import { PRODUCT_LIMITS } from '@steuereule/core'
 import {
   applyDecorators,
   Body,
@@ -220,7 +221,7 @@ export class AdvisorController {
   @HttpCode(200)
   @OwlRoute()
   @UseGuards(FastifyThrottlerGuard)
-  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @Throttle({ default: { limit: PRODUCT_LIMITS.advisorMessagesPerMinute, ttl: 60_000 } })
   @ApiBody({ type: SendAdvisorMessageDto })
   @ApiOkResponse({ type: SendAdvisorMessageResponseDto })
   @ApiUnauthorizedResponse({ description: 'Requires account.' })

@@ -1,27 +1,15 @@
 import { modelProviderList } from '@steuereule/core'
 import { describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { I18nextProvider } from 'react-i18next'
-import { ThemeProvider } from '@steuereule/ui'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
-import { createAppI18n } from '../../../i18n/app-i18n'
 import { server } from '../../../test-msw-server'
 import { PersonalDataConsentCard } from './PersonalDataConsentCard'
+import { renderWithQuery } from '../../../test-render'
 
 const URL_PATTERN = '*/v1/eulen-modus/personendaten-einwilligung'
 
 function renderCard(onGranted?: () => void, provider?: string | null) {
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
-  return render(
-    <QueryClientProvider client={queryClient}>
-      <I18nextProvider i18n={createAppI18n('de')}>
-        <ThemeProvider mode="light">
-          <PersonalDataConsentCard onGranted={onGranted} {...(provider !== undefined ? { provider } : {})} />
-        </ThemeProvider>
-      </I18nextProvider>
-    </QueryClientProvider>,
-  )
+  return renderWithQuery(<PersonalDataConsentCard onGranted={onGranted} {...(provider !== undefined ? { provider } : {})} />)
 }
 
 describe('PersonalDataConsentCard (ADR-0091)', () => {

@@ -27,6 +27,17 @@ export const MCP_PRINTOUT_CHECK_LIMIT = { window: 60, max: 10 } as const
  */
 export const MCP_RECEIPT_UPLOAD_LIMIT = { window: 10 * 60, max: 60 } as const
 
+/** The budgets a single tool can have besides the call limit; a tool names its own in `TOOL_POLICIES`. */
+export type ToolBudget = 'printout' | 'checkoutLink' | 'receiptUpload'
+
+/** Per budget: the key it is counted under (shared by all instances) and its window in seconds. */
+export const MCP_TOOL_BUDGETS: Readonly<Record<ToolBudget, { readonly key: string; readonly window: number; readonly max: number }>> = {
+  printout: { key: 'mcp-printout-check', ...MCP_PRINTOUT_CHECK_LIMIT },
+  checkoutLink: { key: 'mcp-checkout-link', ...MCP_CHECKOUT_LINK_LIMIT },
+  receiptUpload: { key: 'mcp-receipt-upload', ...MCP_RECEIPT_UPLOAD_LIMIT },
+}
+const LONGEST_BUDGET_WINDOW_MS = Math.max(...Object.values(MCP_TOOL_BUDGETS).map((rule) => rule.window)) * 1000
+
 export type Budget = { readonly ok: true } | { readonly ok: false; readonly retryAfterSeconds: number }
 
 /** A counter all instances share (the rate-limit storage of ADR-0106); it falls back to this process without Redis. */
@@ -78,23 +89,12 @@ export class McpRateLimiter {
     return { ok: false, retryAfterSeconds: Math.max(1, decision.retryAfter ?? WINDOW_MS / 1000), first }
   }
 
-  /** Whether the account may get one more checkout link this hour; counted in this process without a shared counter. */
-  takeCheckoutLink(userId: string): Promise<Budget> {
-    return this.takeBudget('mcp-checkout-link', userId, MCP_CHECKOUT_LINK_LIMIT)
-  }
-
-  /** Whether the account may run one more printout-rendering check this minute (H2-26). */
-  takePrintoutCheck(userId: string): Promise<Budget> {
-    return this.takeBudget('mcp-printout-check', userId, MCP_PRINTOUT_CHECK_LIMIT)
-  }
-
-  /** Whether the account may upload one more receipt through the MCP endpoint in this window. */
-  takeReceiptUpload(userId: string): Promise<Budget> {
-    return this.takeBudget('mcp-receipt-upload', userId, MCP_RECEIPT_UPLOAD_LIMIT)
-  }
-
-  /** A budget per account and kind: in the shared counter when there is one, else a sliding window in this process. */
-  private async takeBudget(kind: string, userId: string, rule: { readonly window: number; readonly max: number }): Promise<Budget> {
+  /**
+   * Whether the account may use one more of a tool budget in its window: counted in the shared counter when
+   * there is one, else in a sliding window of this process.
+   */
+  async takeBudget(budget: ToolBudget, userId: string): Promise<Budget> {
+    const { key: kind, ...rule } = MCP_TOOL_BUDGETS[budget]
     if (this.shared) {
       const decision = await this.shared.consume(`${kind}:${userId}`, rule)
       return decision.allowed ? { ok: true } : { ok: false, retryAfterSeconds: Math.max(1, decision.retryAfter ?? rule.window) }
@@ -152,9 +152,9 @@ export class McpRateLimiter {
         this.blocked.delete(userId)
       }
     }
-    // The longest budget window is an hour: a key whose last entry is older holds nothing any more.
+    // A key whose last entry is older than the longest budget window holds nothing any more.
     for (const [key, times] of this.budgets) {
-      if ((times.at(-1) ?? 0) <= now - MCP_CHECKOUT_LINK_LIMIT.window * 1000) this.budgets.delete(key)
+      if ((times.at(-1) ?? 0) <= now - LONGEST_BUDGET_WINDOW_MS) this.budgets.delete(key)
     }
   }
 }

@@ -6,20 +6,23 @@
  * stays valid forever under active use. We keep the sliding *idle* window but add a hard cap measured from
  * `session.createdAt`, enforced in `UserContextGuard` (better-auth's config cannot express it).
  */
+import { RETENTION } from '@steuereule/core'
+
+const DAY_SECONDS = 24 * 60 * 60
 
 /**
  * The sliding idle window (better-auth `session.expiresIn`): a session dies this long after it was last
  * used. Kept at better-auth's own default — this is the inactivity timeout, not the gap this ADR closes —
  * but pinned explicitly so the value is a reviewed decision rather than an inherited library default.
  */
-export const SESSION_IDLE_EXPIRES_IN_SECONDS = 60 * 60 * 24 * 7 // 7 days
+export const SESSION_IDLE_EXPIRES_IN_SECONDS = RETENTION.sessionIdleDays * DAY_SECONDS
 
 /**
  * How often the idle window is slid forward on use (better-auth `session.updateAge`): at most once per day,
  * so the hot authenticated path is not writing the session row on every request. Equals better-auth's
  * default, pinned for the same reason as above.
  */
-export const SESSION_UPDATE_AGE_SECONDS = 60 * 60 * 24 // 1 day
+export const SESSION_UPDATE_AGE_SECONDS = DAY_SECONDS
 
 /**
  * The absolute maximum age of a session from the moment it was created, independent of the sliding window.
@@ -29,7 +32,7 @@ export const SESSION_UPDATE_AGE_SECONDS = 60 * 60 * 24 // 1 day
  * stolen `SameSite=None` cookie (ADR-0011): well beyond the 7-day idle window so an ordinary active user is
  * never surprised mid-session, yet a hard ceiling rather than the unbounded renewal better-auth allows.
  */
-export const SESSION_ABSOLUTE_MAX_AGE_MS = 60 * 60 * 24 * 30 * 1000 // 30 days
+export const SESSION_ABSOLUTE_MAX_AGE_MS = RETENTION.sessionAbsoluteDays * DAY_SECONDS * 1000
 
 /**
  * Whether a session created at `createdAt` is still within the absolute cap. An absent or unparseable

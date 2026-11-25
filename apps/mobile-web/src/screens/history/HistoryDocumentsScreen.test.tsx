@@ -5,8 +5,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen, within } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { renderInApp } from '../../test-render'
+import { renderWithQuery } from '../../test-render'
 import { server } from '../../test-msw-server'
 import { EMPTY_HISTORY_RESPONSE, HISTORY_RESPONSE } from '../../test-history-fixture'
 import { HistoryDocumentsScreen } from './HistoryDocumentsScreen'
@@ -14,14 +13,8 @@ import { HistoryDocumentsScreen } from './HistoryDocumentsScreen'
 const text = (id: string) => (screen.getByTestId(id).textContent ?? '').replace(/\u00a0/g, ' ')
 
 function renderDocuments(language: 'de' | 'en' = 'de') {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   const handlers = { onBack: vi.fn() }
-  renderInApp(
-    <QueryClientProvider client={client}>
-      <HistoryDocumentsScreen isGuest={false} {...handlers} />
-    </QueryClientProvider>,
-    { language },
-  )
+  renderWithQuery(<HistoryDocumentsScreen isGuest={false} {...handlers} />, { language })
   return handlers
 }
 

@@ -37,20 +37,18 @@ import {
   restrictResetLinkToWebApp,
 } from './password-reset.js'
 import { OAUTH_GRANT_MODELS } from './step-up.js'
+import { ASSISTANT_SCOPES, LEGACY_PAYMENT_SCOPE } from '../common/assistant-scopes.js'
 
 const resetMailLogger = new Logger('PasswordReset')
 const signUpMailLogger = new Logger('SignUpMail')
 
+/** Every scope the authorization server knows: sign-in, the assistant scopes of the MCP gate, refresh. */
 export const OAUTH_SCOPES = [
   'openid',
-  'steuerdaten:read',
-  'steuerdaten:write',
-  'belege:write',
-  // Opens a checkout session at the payment provider: a write, named as one (beta P4, H2-21).
-  'zahllink:write',
+  ...ASSISTANT_SCOPES,
   // The name before beta P4. Kept so grants made with it (their refresh tokens carry it) still refresh; the MCP
   // gate accepts it for zahllink_anfordern, and the discovery no longer offers it (DEPRECATED_OAUTH_SCOPES).
-  'zahllink:read',
+  LEGACY_PAYMENT_SCOPE,
   // Refresh tokens for the assistant: access tokens last 15 minutes, the connection until revoked (ADR-0052 §10).
   'offline_access',
 ] as const
@@ -58,7 +56,7 @@ export const OAUTH_SCOPES = [
 export type OAuthScope = (typeof OAUTH_SCOPES)[number]
 
 /** Scopes still honoured but no longer offered to new clients. */
-export const DEPRECATED_OAUTH_SCOPES: readonly OAuthScope[] = ['zahllink:read']
+export const DEPRECATED_OAUTH_SCOPES: readonly OAuthScope[] = [LEGACY_PAYMENT_SCOPE]
 
 /** What the protected-resource metadata offers: every scope except the deprecated ones. */
 export const ADVERTISED_OAUTH_SCOPES: readonly OAuthScope[] = OAUTH_SCOPES.filter((scope) => !DEPRECATED_OAUTH_SCOPES.includes(scope))

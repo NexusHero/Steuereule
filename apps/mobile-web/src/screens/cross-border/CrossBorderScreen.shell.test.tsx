@@ -1,14 +1,11 @@
 // Grenzgänger — after the Lohnausweis upload, inside the app shell: the button label while the
 // document is read, the way to the waiting drafts and the switch to the tax year they sit in.
 import { describe, it, expect, vi, afterEach } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
-import { I18nextProvider } from 'react-i18next'
-import { ThemeProvider } from '@steuereule/ui'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { screen, fireEvent, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
-import { createAppI18n } from '../../i18n/app-i18n'
 import { CrossBorderScreen } from './CrossBorderScreen'
 import { EMPTY_CH_SALARY_CERTIFICATE_RESPONSE, server } from '../../test-msw-server'
+import { renderWithQuery } from '../../test-render'
 
 const { switchToTab, setTaxYear, extract } = vi.hoisted(() => ({ switchToTab: vi.fn(), setTaxYear: vi.fn(), extract: vi.fn() }))
 vi.mock('../../navigation/ShellState', () => ({
@@ -45,15 +42,7 @@ function setup(parse: () => Promise<Response> | Response) {
     http.post('*/v1/belege/parse', parse),
   )
   extract.mockResolvedValue({ kind: 'pdf', mimeType: 'application/pdf', text: 'Lohnausweis - Certificat de salaire', usedOcrFallback: false, pagesProcessed: 1 })
-  render(
-    <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
-      <I18nextProvider i18n={createAppI18n('de')}>
-        <ThemeProvider mode="light">
-          <CrossBorderScreen onDone={() => {}} taxYear={TAX_YEAR} />
-        </ThemeProvider>
-      </I18nextProvider>
-    </QueryClientProvider>,
-  )
+  renderWithQuery(<CrossBorderScreen onDone={() => {}} taxYear={TAX_YEAR} />)
 }
 
 async function upload() {

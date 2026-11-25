@@ -16,6 +16,7 @@ import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fa
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { AppModule } from '../src/app.module.js'
 import { AUDIT_REPOSITORY } from '../src/audit/audit.repository.js'
+import { inProcessKeyedLock, KEYED_LOCK } from '../src/common/keyed-lock.js'
 import { validationExceptionFactory } from '../src/common/validation-exception-factory.js'
 import { buildCorsOptions } from '../src/cors/build-cors-options.js'
 import { ENCRYPTED_PRISMA } from '../src/prisma/encrypted-prisma.provider.js'
@@ -45,6 +46,9 @@ async function bootRealServer(): Promise<{ app: NestFastifyApplication; baseUrl:
     .useValue({})
     .overrideProvider(ENCRYPTED_PRISMA)
     .useValue({})
+    // A user write runs under the account's keyed lock; without a database it is the in-process one.
+    .overrideProvider(KEYED_LOCK)
+    .useValue(inProcessKeyedLock())
     .compile()
 
   const app = moduleRef.createNestApplication<NestFastifyApplication>(new FastifyAdapter(), {

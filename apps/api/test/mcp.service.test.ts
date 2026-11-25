@@ -1,7 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { Client } from '@modelcontextprotocol/sdk/client/index.js'
-import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js'
-import { McpService, type AssistantSessionInfo } from '../src/mcp/mcp.service.js'
+import { McpRateLimiter } from '../src/mcp/mcp-rate-limit.js'
+import type { AssistantSessionInfo, McpDeps } from '../src/mcp/mcp-session.js'
 import { ConfirmationService } from '../src/confirmation/confirmation.service.js'
 import { fieldAccessFrom } from '../src/confirmation/field-access.js'
 import { CockpitService } from '../src/cockpit/cockpit.service.js'
@@ -35,6 +34,7 @@ import { FakeUnlockRepository, stubPaymentProvider } from './fakes/fake-unlock.r
 import type { CommuteRepository } from '../src/commute/commute.repository.js'
 import { taxCaseReaderOver } from '../src/tax-case/repository-tax-case.reader.js'
 import { confirmAsShown } from './support/confirm-as-shown.js'
+import { connectMcpService } from './support/mcp-client.js'
 
 const USER = 'user-mcp-1'
 const YEAR = 2025
@@ -72,7 +72,7 @@ describe('McpService (ADR-0052 §3 / §5 / §8 / §12)', () => {
   let owlModeService: OwlModeService
   let receiptService: ReceiptService
   let unlockService: UnlockService
-  let mcpService: McpService
+  let limiter: McpRateLimiter
 
   const ALL_SCOPES_ASSISTANT: AssistantSessionInfo = {
     clientId: 'client-claude',
@@ -131,28 +131,16 @@ describe('McpService (ADR-0052 §3 / §5 / §8 / §12)', () => {
 
     receiptService = new ReceiptService(receiptRepo, auditService, new InMemoryStorageAdapter())
 
-    mcpService = new McpService(
-      cockpitService,
-      printoutService,
-      confirmationService,
-      owlModeService,
-      receiptService,
-      unlockService,
-      profileRepo,
-      masterDataRepo,
-      auditService,
-    )
+    limiter = new McpRateLimiter()
   })
 
-  async function connectClient(assistant: AssistantSessionInfo = ALL_SCOPES_ASSISTANT) {
-    const server = mcpService.createServer(USER, assistant)
-    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair()
-    await server.connect(serverTransport)
-
-    const client = new Client({ name: 'TestClient', version: '1.0.0' })
-    await client.connect(clientTransport)
-    return client
+  /** The server over the services above plus what a test adds, for one assistant; every connection of a test counts in one limiter. */
+  async function connectWith(overrides: Partial<McpDeps> = {}, assistant: AssistantSessionInfo = ALL_SCOPES_ASSISTANT) {
+    const deps: Partial<McpDeps> = { cockpit: cockpitService, printout: printoutService, confirmation: confirmationService, owlMode: owlModeService, receipts: receiptService, unlock: unlockService, profiles: profileRepo, masterData: masterDataRepo, audit: auditService, ...overrides }
+    return (await connectMcpService({ userId: USER, assistant, deps, limiter })).client
   }
+
+  const connectClient = (assistant: AssistantSessionInfo = ALL_SCOPES_ASSISTANT) => connectWith({}, assistant)
 
   function getText(res: unknown): string {
     const content = (res as { content: Array<{ type: string; text: string }> }).content
@@ -238,12 +226,7 @@ describe('McpService (ADR-0052 §3 / §5 / §8 / §12)', () => {
       openQuestions: async () => ({ openQuestions: 2, next: { id: 'job', kind: 'question', answers: ['Angestellt'] } }),
       simulateEntries: async () => ({ ok: true, beforeRefundEur: 100, afterRefundEur: 250, deltaEur: 150 }),
     }
-    const withReport = new McpService(cockpitService, printoutService, confirmationService, owlModeService, receiptService, unlockService, profileRepo, masterDataRepo, auditService, report as never)
-    const server = withReport.createServer(USER, ALL_SCOPES_ASSISTANT)
-    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair()
-    await server.connect(serverTransport)
-    const client = new Client({ name: 'TestClient', version: '1.0.0' })
-    await client.connect(clientTransport)
+    const client = await connectWith({ report: report as never })
 
     expect(JSON.parse(getText(await client.callTool({ name: 'steuerbericht', arguments: { taxYear: YEAR } }))).taxYear).toBe(YEAR)
     expect(JSON.parse(getText(await client.callTool({ name: 'offene_fragen', arguments: { taxYear: YEAR } }))).next.id).toBe('job')
@@ -253,12 +236,7 @@ describe('McpService (ADR-0052 §3 / §5 / §8 / §12)', () => {
 
   it('auswirkung_simulieren writes on trial, so it needs the write scope and refuses a read-only assistant', async () => {
     const report = { simulateEntries: vi.fn() }
-    const withReport = new McpService(cockpitService, printoutService, confirmationService, owlModeService, receiptService, unlockService, profileRepo, masterDataRepo, auditService, report as never)
-    const server = withReport.createServer(USER, { ...ALL_SCOPES_ASSISTANT, scopes: ['steuerdaten:read'] })
-    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair()
-    await server.connect(serverTransport)
-    const client = new Client({ name: 'TestClient', version: '1.0.0' })
-    await client.connect(clientTransport)
+    const client = await connectWith({ report: report as never }, { ...ALL_SCOPES_ASSISTANT, scopes: ['steuerdaten:read'] })
     const res = await client.callTool({ name: 'auswirkung_simulieren', arguments: { taxYear: YEAR, screen: 'lstb', field: 'bruttoarbeitslohn', value: '50000' } })
     expect((res as { isError?: boolean }).isError).toBe(true)
     expect(getText(res)).toContain('steuerdaten:write')
@@ -268,12 +246,7 @@ describe('McpService (ADR-0052 §3 / §5 / §8 / §12)', () => {
   it('szenario_simulieren hands every checked entry to one simulation, Person B’s in her data', async () => {
     const report = { simulateEntries: vi.fn().mockResolvedValue({ ok: true, beforeRefundEur: 0, afterRefundEur: 10, deltaEur: 10 }) }
     const link = { spouseForAdvisor: async () => ({ spouseUserId: 'shadow-b', recordable: true, firstName: null, lastName: null }), dataUser: async () => 'shadow-b' }
-    const svc = new McpService(cockpitService, printoutService, confirmationService, owlModeService, receiptService, unlockService, profileRepo, masterDataRepo, auditService, report as never, link as never)
-    const server = svc.createServer(USER, ALL_SCOPES_ASSISTANT)
-    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair()
-    await server.connect(serverTransport)
-    const client = new Client({ name: 'TestClient', version: '1.0.0' })
-    await client.connect(clientTransport)
+    const client = await connectWith({ report: report as never, link: link as never })
     const eintraege = [{ screen: 'chLohnausweis', field: 'krankenkasseChf', value: '3.593', person: 'A' }, { screen: 'chLohnausweis', field: 'krankenkasseChf', value: '3593', person: 'B' }]
     expect(JSON.parse(getText(await client.callTool({ name: 'szenario_simulieren', arguments: { taxYear: YEAR, eintraege } }))).deltaEur).toBe(10)
     expect(report.simulateEntries).toHaveBeenCalledWith(USER, YEAR, [expect.objectContaining({ field: 'krankenkasseChf', value: '3593', dataUserId: USER }), expect.objectContaining({ dataUserId: 'shadow-b' })])
@@ -283,12 +256,7 @@ describe('McpService (ADR-0052 §3 / §5 / §8 / §12)', () => {
 
   it('auswirkung_simulieren refuses a target the advisor would refuse and stores nothing', async () => {
     const report = { simulateEntries: async () => { throw new Error('must not run') } }
-    const withReport = new McpService(cockpitService, printoutService, confirmationService, owlModeService, receiptService, unlockService, profileRepo, masterDataRepo, auditService, report as never)
-    const server = withReport.createServer(USER, ALL_SCOPES_ASSISTANT)
-    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair()
-    await server.connect(serverTransport)
-    const client = new Client({ name: 'TestClient', version: '1.0.0' })
-    await client.connect(clientTransport)
+    const client = await connectWith({ report: report as never })
     const res = await client.callTool({ name: 'auswirkung_simulieren', arguments: { taxYear: YEAR, screen: 'lstb', field: 'gibtEsNicht', value: '1' } })
     expect(JSON.parse(getText(res)).ok).toBe(false)
   })
@@ -296,13 +264,7 @@ describe('McpService (ADR-0052 §3 / §5 / §8 / §12)', () => {
   describe('maske_eintragen for Person B (ADR-0054, ADR-0052 amendment 2)', () => {
     const SHADOW_B = 'shadow-b-mcp'
     async function clientWith(link: unknown) {
-      const svc = new McpService(cockpitService, printoutService, confirmationService, owlModeService, receiptService, unlockService, profileRepo, masterDataRepo, auditService, undefined, link as never)
-      const server = svc.createServer(USER, ALL_SCOPES_ASSISTANT)
-      const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair()
-      await server.connect(serverTransport)
-      const client = new Client({ name: 'TestClient', version: '1.0.0' })
-      await client.connect(clientTransport)
-      return client
+      return connectWith({ link: link as never })
     }
     const recordedB = {
       spouseForAdvisor: async () => ({ spouseUserId: SHADOW_B, recordable: true, firstName: null, lastName: null }),
@@ -334,13 +296,7 @@ describe('McpService (ADR-0052 §3 / §5 / §8 / §12)', () => {
 
   describe('children (ADR-0052 amendment 2)', () => {
     async function clientWith(children: unknown, scopes = ALL_SCOPES_ASSISTANT.scopes) {
-      const svc = new McpService(cockpitService, printoutService, confirmationService, owlModeService, receiptService, unlockService, profileRepo, masterDataRepo, auditService, undefined, undefined, children as never)
-      const server = svc.createServer(USER, { ...ALL_SCOPES_ASSISTANT, scopes })
-      const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair()
-      await server.connect(serverTransport)
-      const client = new Client({ name: 'TestClient', version: '1.0.0' })
-      await client.connect(clientTransport)
-      return client
+      return connectWith({ children: children as never }, { ...ALL_SCOPES_ASSISTANT, scopes })
     }
     const zeynep = { id: 'kind-1', sequenceNumber: 1, firstName: 'Zeynep', lastName: 'Sevinc', geburtsdatum: '2022-06-14' }
 
@@ -440,13 +396,7 @@ describe('McpService (ADR-0052 §3 / §5 / §8 / §12)', () => {
           return { kinder: await childRepo.listForUserAndYear(u, y) }
         },
       }
-      const svc = new McpService(cockpitService, printoutService, confirmationService, owlModeService, receiptService, unlockService, profileRepo, masterDataRepo, auditService, undefined, undefined, children as never)
-      const server = svc.createServer(USER, ALL_SCOPES_ASSISTANT)
-      const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair()
-      await server.connect(serverTransport)
-      const client = new Client({ name: 'TestClient', version: '1.0.0' })
-      await client.connect(clientTransport)
-      return client
+      return connectWith({ children: children as never })
     }
 
     it('a second client that only shares the name is another assistant: it neither takes the entry back nor reads it as its own', async () => {
@@ -500,13 +450,7 @@ describe('McpService (ADR-0052 §3 / §5 / §8 / §12)', () => {
 
   describe('rental objects as records (#549)', () => {
     async function clientWithRentals() {
-      const svc = new McpService(cockpitService, printoutService, confirmationService, owlModeService, receiptService, unlockService, profileRepo, masterDataRepo, auditService, undefined, undefined, undefined, undefined, rentalRepo)
-      const server = svc.createServer(USER, ALL_SCOPES_ASSISTANT)
-      const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair()
-      await server.connect(serverTransport)
-      const client = new Client({ name: 'TestClient', version: '1.0.0' })
-      await client.connect(clientTransport)
-      return client
+      return connectWith({ rentals: rentalRepo })
     }
 
     it('vermietung_anlegen creates an object the assistant can fill, list and remove again', async () => {
@@ -543,13 +487,7 @@ describe('McpService (ADR-0052 §3 / §5 / §8 / §12)', () => {
     let tasks: AssistantTaskService
 
     async function clientWithTasks(assistant: AssistantSessionInfo = ALL_SCOPES_ASSISTANT) {
-      const svc = new McpService(cockpitService, printoutService, confirmationService, owlModeService, receiptService, unlockService, profileRepo, masterDataRepo, auditService, undefined, undefined, undefined, undefined, undefined, tasks)
-      const server = svc.createServer(USER, assistant)
-      const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair()
-      await server.connect(serverTransport)
-      const client = new Client({ name: 'TestClient', version: '1.0.0' })
-      await client.connect(clientTransport)
-      return client
+      return connectWith({ tasks }, assistant)
     }
 
     beforeEach(() => {
@@ -946,12 +884,7 @@ describe('McpService (ADR-0052 §3 / §5 / §8 / §12)', () => {
   // was the 120 tool calls a minute.
   it('zahllink_anfordern gives five links an hour per account and refuses the sixth without asking the provider', async () => {
     const startCheckout = vi.fn(async () => ({ checkoutUrl: 'https://checkout.example/session' }))
-    const svc = new McpService(cockpitService, printoutService, confirmationService, owlModeService, receiptService, { startCheckout } as never, profileRepo, masterDataRepo, auditService)
-    const server = svc.createServer(USER, ALL_SCOPES_ASSISTANT)
-    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair()
-    await server.connect(serverTransport)
-    const client = new Client({ name: 'TestClient', version: '1.0.0' })
-    await client.connect(clientTransport)
+    const client = await connectWith({ unlock: { startCheckout } as never })
 
     for (let i = 0; i < 5; i += 1) expect(getText(await client.callTool({ name: 'zahllink_anfordern', arguments: { taxYear: YEAR } }))).toContain('checkout.example')
     const sixth = await client.callTool({ name: 'zahllink_anfordern', arguments: { taxYear: YEAR } })

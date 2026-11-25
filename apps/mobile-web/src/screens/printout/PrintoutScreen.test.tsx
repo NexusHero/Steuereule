@@ -1,12 +1,9 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { I18nextProvider } from 'react-i18next'
-import { ThemeProvider } from '@steuereule/ui'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
-import { createAppI18n } from '../../i18n/app-i18n'
 import { server } from '../../test-msw-server'
 import { PrintoutScreen } from './PrintoutScreen'
+import { renderWithQuery } from '../../test-render'
 
 
 function mock(status: string, missing: string[] = []) {
@@ -17,7 +14,6 @@ function mock(status: string, missing: string[] = []) {
 }
 
 function renderScreen(props: { payment?: 'erfolg' | 'abbruch'; openCheckout?: (url: string) => void; year?: number } = {}) {
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
   const onCompleteDetails = vi.fn()
   const onCompleteRiester = vi.fn()
   const onCompleteChildren = vi.fn()
@@ -25,25 +21,19 @@ function renderScreen(props: { payment?: 'erfolg' | 'abbruch'; openCheckout?: (u
   const onCompleteCapital = vi.fn()
   const onCompleteCrossBorder = vi.fn()
   const onConfirm = vi.fn()
-  render(
-    <QueryClientProvider client={queryClient}>
-      <I18nextProvider i18n={createAppI18n('de')}>
-        <ThemeProvider mode="light">
-          <PrintoutScreen
-            year={2025}
-            onBack={() => {}}
-            onCompleteDetails={onCompleteDetails}
-            onCompleteRiester={onCompleteRiester}
-            onCompleteChildren={onCompleteChildren}
-            onCompleteRental={onCompleteRental}
-            onCompleteCapital={onCompleteCapital}
-            onCompleteCrossBorder={onCompleteCrossBorder}
-            onConfirm={onConfirm}
-            {...props}
-          />
-        </ThemeProvider>
-      </I18nextProvider>
-    </QueryClientProvider>,
+  renderWithQuery(
+    <PrintoutScreen
+      year={2025}
+      onBack={() => {}}
+      onCompleteDetails={onCompleteDetails}
+      onCompleteRiester={onCompleteRiester}
+      onCompleteChildren={onCompleteChildren}
+      onCompleteRental={onCompleteRental}
+      onCompleteCapital={onCompleteCapital}
+      onCompleteCrossBorder={onCompleteCrossBorder}
+      onConfirm={onConfirm}
+      {...props}
+    />,
   )
   return { onCompleteDetails, onCompleteRiester, onCompleteChildren, onCompleteRental, onCompleteCapital, onCompleteCrossBorder, onConfirm }
 }

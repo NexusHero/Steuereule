@@ -117,3 +117,13 @@ The two folder cycles are removed. The modules `domains` used from above now sit
 The core test gained a third rule: no year compared with a bare literal outside `math/tax-parameters.ts`. Of the 36 lines with such a comparison in the core, 35 now read named years (`RULE_CHANGE_YEARS`, `appliesFrom`) or year steps (`valueForYear`) from there; the calendar guard in `common/workdays.ts` (2000 to 2100, not a tax rule) uses two named constants in its own file. The API holds no such rule; its only year switches are demo data in `business/demo-household.ts`.
 
 Proof: constructed violations for each rule run with every test run (five upward imports, one cycle, six year comparisons, seven lines that must pass). On 2026-11-23 the rules were also broken once in real code, with an import from `domains/childcare.ts` into `engine` and a `year >= 2025` in the same file: both tests went red, and green again after removal.
+
+## Update 2026-11-25: module cycles in the API are measured
+
+The API test computes the strongly connected groups of the module graph. One group of 28 modules imports
+itself round in a circle; it is listed in `MODULES_ON_A_CYCLE` and can only shrink. `account` left it:
+the personal-data registry, the legal holds, the erasure flag and the move of a Person B's shadow data
+moved into the module `personal-data`, which imports only `common` and `prisma`, so `auth`, `business`,
+`link`, `submission` and `unlock` no longer import `account`. The guest takeover reaches the receipt files
+through `StoragePort.move` instead of the Postgres adapter class.
+
