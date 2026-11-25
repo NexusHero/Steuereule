@@ -243,6 +243,9 @@ describe('the settings an operator sets by hand are checked at boot, not at firs
     expect(problemsOf({ APPLE_CLIENT_ID: 'com.example.signin' }).join()).toMatch(/APPLE_CLIENT_SECRET: not set, but the other Apple value is/)
     expect(problemsOf({ APPLE_SIGN_IN_ENABLED: 'true' }).join()).toMatch(/APPLE_SIGN_IN_ENABLED is true/)
     expect(problemsOf({ EMAIL_DELIVERY: 'smtp' }).join()).toMatch(/SMTP_URL: not set while EMAIL_DELIVERY is smtp/)
+    // A login link travels in the mail: a deployment sends only over implicit TLS (Sonar S5332).
+    expect(problemsOf({ EMAIL_DELIVERY: 'smtp', SMTP_URL: 'smtp://relay.example.de:587' }).join()).toMatch(/SMTP_URL: .*implicit TLS/)
+    expect(problemsOf({ EMAIL_DELIVERY: 'smtp', SMTP_URL: 'smtps://relay.example.de' }).join()).not.toMatch(/SMTP_URL/)
     expect(problemsOf({ EMAIL_DELIVERY: 'log' }).join()).toMatch(/EMAIL_DELIVERY: .*refused in production/)
     expect(problemsOf({ ELSTER_TRANSMISSION_ENABLED: 'on', ELSTER_HERSTELLER_ID: '12345' }).join()).toMatch(/ELSTER_ERIC_CLI, ELSTER_CERT_PATH, ELSTER_CERT_PIN: not set while ELSTER_TRANSMISSION_ENABLED is on/)
     expect(problemsOf({ ELSTER_CERT_PATH: '/nowhere/cert.pfx' }).join()).toMatch(/ELSTER_CERT_PATH: .*does not exist/)

@@ -1,4 +1,5 @@
 import { createTransport } from 'nodemailer'
+import { isLocalRun } from '../common/run-locality.js'
 import { type EmailPurpose, renderEmail } from './email-content.js'
 import type { EmailSender, ExistingAccountNotice, UnverifiedAccountWarning, VerificationEmail } from './email-sender.js'
 
@@ -6,6 +7,8 @@ export interface SmtpConfig {
   url: string
   senderEmail: string
   senderName: string
+  /** Development, tests or the local production-shaped stack: only then may a local inbox take plain SMTP. */
+  localRun: boolean
 }
 
 export interface SmtpTransport {
@@ -30,21 +33,22 @@ function isLocalHost(host: string): boolean {
 }
 
 /**
- * The transport for an SMTP URL. Plain SMTP is only for the local Mailpit; any other server must
- * speak TLS, implicitly with `smtps:` or by STARTTLS, so no mail with a login link crosses a
- * network in clear text (Sonar S5332).
+ * The transport for an SMTP URL. A login link travels in these mails, so TLS is required, implicitly with the smtps
+ * scheme or by STARTTLS. The one exception is the local test inbox, and only in a run that is local (`localRun`):
+ * a host name alone proves nothing, a single-label name can resolve to a server elsewhere on a deployment
+ * (Sonar S5332).
  */
-export function smtpTransportOptions(url: string): SmtpTransportOptions {
+export function smtpTransportOptions(url: string, { localRun }: { localRun: boolean }): SmtpTransportOptions {
   const parsed = new URL(url)
   if (parsed.protocol !== 'smtp:' && parsed.protocol !== 'smtps:') {
-    throw new Error(`SMTP_URL must start with smtp:// or smtps:// (got ${parsed.protocol}).`)
+    throw new Error(`SMTP_URL must use the smtp or smtps scheme (got ${parsed.protocol}).`)
   }
   const secure = parsed.protocol === 'smtps:'
   const options: SmtpTransportOptions = {
     host: parsed.hostname,
     port: parsed.port ? Number(parsed.port) : secure ? 465 : 587,
     secure,
-    requireTLS: secure || !isLocalHost(parsed.hostname),
+    requireTLS: secure || !(localRun && isLocalHost(parsed.hostname)),
   }
   if (parsed.username) options.auth = { user: decodeURIComponent(parsed.username), pass: decodeURIComponent(parsed.password) }
   return options
@@ -54,8 +58,8 @@ export function smtpTransportOptions(url: string): SmtpTransportOptions {
 export class SmtpEmailSender implements EmailSender {
   constructor(
     private readonly config: SmtpConfig,
-    // smtpTransportOptions allows plain SMTP only towards the local Mailpit and requires TLS for every other host (tested).
-    private readonly transport: SmtpTransport = createTransport(smtpTransportOptions(config.url)), // NOSONAR typescript:S5332 — TLS enforced for non-local hosts in smtpTransportOptions
+    // smtpTransportOptions requires TLS except towards the local inbox in a local run (tested).
+    private readonly transport: SmtpTransport = createTransport(smtpTransportOptions(config.url, { localRun: config.localRun })),
   ) {}
 
   async sendVerificationEmail(email: VerificationEmail): Promise<void> {
@@ -87,11 +91,12 @@ export function resolveSmtpConfig(env: NodeJS.ProcessEnv = process.env): SmtpCon
   if (env.EMAIL_DELIVERY !== 'smtp') return undefined
   const url = env.SMTP_URL?.trim()
   if (!url) {
-    throw new Error('EMAIL_DELIVERY=smtp needs SMTP_URL (e.g. smtp://mailpit:1025).')
+    throw new Error('EMAIL_DELIVERY=smtp needs SMTP_URL (the local Mailpit listens on mailpit:1025).')
   }
   return {
     url,
     senderEmail: env.EMAIL_FROM?.trim() || LOCAL_SENDER,
     senderName: env.EMAIL_FROM_NAME?.trim() || 'SteuerEule',
+    localRun: isLocalRun(env),
   }
 }

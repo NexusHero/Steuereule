@@ -132,6 +132,7 @@
   "commute -> common",
   "commute -> link",
   "commute -> prisma",
+  "config -> common",
   "config -> keystore",
   "confirmation -> assessment",
   "confirmation -> assistant-task",

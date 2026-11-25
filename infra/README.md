@@ -181,7 +181,8 @@ and the API refuses to start with a value it would otherwise ignore.
 - Upload and parse limits: `PARSE_DAILY_LIMIT`, `UPLOAD_MAX_IN_FLIGHT`, `GUEST_UPLOAD_BYTES_PER_DAY`,
   `GUEST_UPLOAD_BYTES_PER_DAY_TOTAL`.
 - Sign-in and e-mail: `APPLE_SIGN_IN_ENABLED` (with the secrets `APPLE_CLIENT_ID`, `APPLE_CLIENT_SECRET`),
-  `EMAIL_DELIVERY` (`smtp`; unset sends through Brevo), `SMTP_URL`, `EMAIL_FROM_NAME`.
+  `EMAIL_DELIVERY` (`smtp`; unset sends through Brevo), `SMTP_URL` (a deployment accepts only the `smtps` scheme,
+  implicit TLS, because the mails carry login links), `EMAIL_FROM_NAME`.
 - Self-employment (ADR-0101): `SELBSTSTAENDIGE_ENABLED`, `ELSTER_SUPPLIED_LINES_DIR`,
   `ELSTER_TRANSMISSION_ENABLED`, `ELSTER_ERIC_CLI`, `ELSTER_CERT_PATH`, `ELSTER_HERSTELLER_ID` (the PIN is the
   secret `ELSTER_CERT_PIN`).

@@ -1,3 +1,4 @@
+import { isLocalProductionStack } from '../common/run-locality.js'
 import { existsSync, statSync } from 'node:fs'
 import { selfEmploymentEnabled } from './self-employment.js'
 import { resolveTrustedProxies } from './trusted-proxies.js'
@@ -82,8 +83,21 @@ function postgresUrl(value: string): string | undefined {
   return /^postgres(ql)?:\/\//.test(value) ? undefined : 'not a postgresql:// URL'
 }
 
-function isLoopbackHost(hostname: string): boolean {
-  return hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '[::1]'
+
+/**
+ * A login link travels in the mail, so a deployment sends only over implicit TLS (the smtps scheme). A run on this
+ * machine may also use the plain local inbox (Mailpit); the transport still requires TLS for any other host.
+ */
+function smtpUrl(value: string, { deployment }: CheckContext): string | undefined {
+  let protocol: string
+  try {
+    protocol = new URL(value).protocol
+  } catch {
+    return 'not a URL'
+  }
+  if (protocol === 'smtps:') return undefined
+  if (protocol === 'smtp:') return deployment ? 'a deployment sends mail only over implicit TLS: use the smtps scheme' : undefined
+  return 'not an SMTP URL'
 }
 
 function webUrl(value: string, { deployment }: CheckContext): string | undefined {
@@ -272,7 +286,7 @@ export const API_PRODUCTION_SETTINGS: readonly ProductionSetting[] = [
       return value === 'smtp' ? undefined : 'must be "smtp" or unset'
     },
   },
-  { name: 'SMTP_URL', source: 'operator', need: 'optional', format: 'smtp:// or smtps:// URL; required while EMAIL_DELIVERY is smtp', check: (value) => (/^smtps?:\/\/\S+$/.test(value) ? undefined : 'not an smtp:// or smtps:// URL') },
+  { name: 'SMTP_URL', source: 'operator', need: 'optional', format: 'SMTP URL with implicit TLS (smtps scheme); required while EMAIL_DELIVERY is smtp', check: smtpUrl },
   { name: 'EMAIL_FROM_NAME', source: 'operator', need: 'optional', format: 'sender name (default "SteuerEule")' },
 
   // ── Model providers (ADR-0064): the owl answers from the rules until one key is set ────────
@@ -428,26 +442,7 @@ export function isKnownDevValue(setting: ProductionSetting, value: string): bool
   return setting.secret === true && DEV_MARKER.test(value)
 }
 
-function isLoopbackUrl(value: string | undefined): boolean {
-  if (!value) return false
-  try {
-    return isLoopbackHost(new URL(value).hostname)
-  } catch {
-    return false
-  }
-}
-
-/**
- * The local production-shaped compose stack (ADR-0026) runs `NODE_ENV=production` on localhost with synthetic
- * values. It counts as local only when the API is not on Cloud Run (`K_SERVICE` unset) and every origin it
- * serves is a loopback address: nothing beyond the machine can reach it, so a published key protects nothing
- * that matters. Any public origin makes the run a deployment, with every check below.
- */
-export function isLocalProductionStack(env: NodeJS.ProcessEnv): boolean {
-  if (env.K_SERVICE) return false
-  const origins = [env.BETTER_AUTH_URL, env.WEB_APP_URL, ...(env.CORS_ALLOWED_ORIGINS ?? '').split(',').map((entry) => entry.trim()).filter(Boolean)]
-  return origins.every(isLoopbackUrl)
-}
+export { isLocalProductionStack }
 
 export interface ConfigReport {
   readonly deployment: boolean
