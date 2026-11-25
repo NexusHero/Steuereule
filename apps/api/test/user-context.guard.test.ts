@@ -397,3 +397,23 @@ describe('UserContextGuard', () => {
     })
   })
 })
+
+describe('UserContextGuard — new guests per address (API-9)', () => {
+  beforeEach(() => {
+    process.env.GUEST_SESSION_SECRET = SECRET
+    process.env.NODE_ENV = 'test'
+  })
+
+  it('lets one address start at most 20 guests with data an hour; a known guest keeps writing', async () => {
+    const guard = new UserContextGuard(makeBetterAuthBundle(vi.fn().mockResolvedValue(null)), fakeTokens())
+    const write = (cookies: Record<string, string | undefined>) => {
+      const { context, request } = makeContext(cookies, {}, OrdinaryController)
+      request.method = 'PUT'
+      request.ip = '198.51.100.9'
+      return guard.canActivate(context)
+    }
+    for (let i = 0; i < 20; i++) await expect(write({})).resolves.toBe(true)
+    await expect(write({})).rejects.toThrow('Zu viele Änderungen ohne Konto')
+    await expect(write({ [GUEST_SESSION_COOKIE]: signGuestSession('known-guest', SECRET) })).resolves.toBe(true)
+  })
+})

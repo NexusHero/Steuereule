@@ -4,8 +4,14 @@ import type { GuestActivityRepository } from './guest-activity.repository.js'
 export const GUEST_RETENTION_DAYS = 30
 const DAY_MS = 24 * 60 * 60 * 1000
 export const GUEST_SWEEP_INTERVAL_MS = 60 * 60 * 1000
-/** Erasures per run: each is a transaction over ~40 tables, and a run rides on a request. */
+/** Erasures per batch: each is a transaction over ~40 tables, and a run rides on a request. */
 export const GUEST_SWEEP_BATCH = 25
+/**
+ * Batches per run (API-9): a run goes on while guests are due, up to 20 batches = 500 erasures an hour per
+ * process, against at most GUEST_CREATION_LIMIT (20) new guests an hour per address.
+ */
+export const GUEST_SWEEP_MAX_BATCHES = 20
+export const GUEST_SWEEP_MAX_PER_RUN = GUEST_SWEEP_BATCH * GUEST_SWEEP_MAX_BATCHES
 const CLAIM_RETRY_MS = 60 * 60 * 1000
 
 /** Written by `UserContextGuard` when a guest changes something; at most one DB write an hour per guest. */
@@ -62,34 +68,50 @@ export interface GuestSweepResult {
  */
 export async function sweepInactiveGuests({ repository, erase, onError }: GuestSweepDeps, now = new Date()): Promise<GuestSweepResult> {
   const cutoff = new Date(now.getTime() - GUEST_RETENTION_DAYS * DAY_MS)
-  let erased = 0
-  let heldBack = 0
-  let failed = 0
+  const counts = { erased: 0, heldBack: 0, failed: 0 }
   const claimedTo = new Date(cutoff.getTime() + CLAIM_RETRY_MS)
-  for (const userId of await repository.dueBefore(cutoff, GUEST_SWEEP_BATCH)) {
-    if (!(await repository.claim(userId, cutoff, claimedTo))) continue
-    try {
-      if (await repository.isAccount(userId)) {
-        await repository.drop(userId)
-        continue
-      }
-      // A guest who came back and wrote after the claim moved the clock to now: that guest is active again
-      // and keeps the data. Checked right before the erasure, which cannot be taken back.
-      if (!(await repository.stillClaimed(userId, claimedTo))) continue
-      const result = await erase(userId)
-      if (result.retainedUnderLegalHold > 0) {
-        // Held data stays; the clock starts over and the hold is looked at again in 30 days.
-        await repository.restart(userId, now)
-        heldBack += 1
-      } else {
-        await repository.drop(userId)
-        erased += 1
-      }
-    } catch (error) {
-      onError?.(error)
-      // The claim already moved the clock an hour ahead: the next run retries it.
-      failed += 1
+  for (let batch = 0; batch < GUEST_SWEEP_MAX_BATCHES; batch += 1) {
+    // A claimed guest's clock moved past the cutoff, so the next page holds the next guests.
+    const due = await repository.dueBefore(cutoff, GUEST_SWEEP_BATCH)
+    let claimed = 0
+    for (const userId of due) {
+      if (!(await repository.claim(userId, cutoff, claimedTo))) continue
+      claimed += 1
+      await sweepOne(userId, { repository, erase, onError }, claimedTo, now, counts)
     }
+    // A short page is the last one; a page another instance claimed would only repeat itself.
+    if (due.length < GUEST_SWEEP_BATCH || claimed === 0) break
   }
-  return { erased, heldBack, failed }
+  return counts
+}
+
+async function sweepOne(
+  userId: string,
+  { repository, erase, onError }: GuestSweepDeps,
+  claimedTo: Date,
+  now: Date,
+  counts: { erased: number; heldBack: number; failed: number },
+): Promise<void> {
+  try {
+    if (await repository.isAccount(userId)) {
+      await repository.drop(userId)
+      return
+    }
+    // A guest who came back and wrote after the claim moved the clock to now: that guest is active again
+    // and keeps the data. Checked right before the erasure, which cannot be taken back.
+    if (!(await repository.stillClaimed(userId, claimedTo))) return
+    const result = await erase(userId)
+    if (result.retainedUnderLegalHold > 0) {
+      // Held data stays; the clock starts over and the hold is looked at again in 30 days.
+      await repository.restart(userId, now)
+      counts.heldBack += 1
+    } else {
+      await repository.drop(userId)
+      counts.erased += 1
+    }
+  } catch (error) {
+    onError?.(error)
+    // The claim already moved the clock an hour ahead: the next run retries it.
+    counts.failed += 1
+  }
 }

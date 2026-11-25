@@ -43,6 +43,13 @@ export const COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 180
  * this; a script filling the database does not.
  */
 export const GUEST_WRITE_LIMIT = { window: 60 * 60, max: 300 } as const
+/**
+ * New guests that store something, per address and hour (API-9). A write without a guest cookie starts a new
+ * guest with data the sweep must erase 30 days later; 300 writes an hour could each start one. With this cap
+ * an address adds at most 20 guests an hour, and one sweep run per process and hour erases up to
+ * GUEST_SWEEP_MAX_PER_RUN (500): one instance keeps up with 25 such addresses at full rate.
+ */
+export const GUEST_CREATION_LIMIT = { window: 60 * 60, max: 20 } as const
 const STATE_CHANGING_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE'])
 
 export type UserIdKind = 'session' | 'guest' | 'bearer'
@@ -183,6 +190,12 @@ export class UserContextGuard implements CanActivate {
       const decision = await this.betterAuth.rateLimitStorage.consume(`guest-write:${request.ip ?? 'no-ip'}`, GUEST_WRITE_LIMIT)
       if (!decision.allowed) {
         throw new TooManyRequestsError('GUEST_WRITE_LIMIT', 'Zu viele Änderungen ohne Konto. Lege ein Konto an oder versuch es später noch mal.')
+      }
+      if (!verifiedUserId) {
+        const created = await this.betterAuth.rateLimitStorage.consume(`guest-new:${request.ip ?? 'no-ip'}`, GUEST_CREATION_LIMIT)
+        if (!created.allowed) {
+          throw new TooManyRequestsError('GUEST_WRITE_LIMIT', 'Zu viele Änderungen ohne Konto. Lege ein Konto an oder versuch es später noch mal.')
+        }
       }
       // The retention clock (ADR-0109): 30 days after the last write the guest's data is erased. A failed
       // note must not fail the write; the guest then simply is not swept until the next one succeeds.
