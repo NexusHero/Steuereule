@@ -10,7 +10,7 @@
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { newContextAtBreakpoint, guardAgainst429, fail, runStandaloneScenario } from './helpers/scenario-harness.mjs'
-import { createAccount, call, answer, browserLogin, until } from '../harness/api-account.mjs'
+import { createAccount, call, answer, browserLogin, until, chooseJointReturn } from '../harness/api-account.mjs'
 
 const TAG = 'scenario-26'
 const Y = 2025
@@ -45,7 +45,7 @@ export async function runScenario26(browser, webOrigin, sql) {
   await call(api, 'PUT', '/v1/stammdaten', { familienstand: 'verheiratet', religion: 'VD', religionConsent: true, plz: '79539' })
   await answer(api, Y, [['job', 'Angestellt'], ['ausland', 'Ja, in die Schweiz'], ['de-job', 'Nur in der Schweiz'], ['kinder', '2 oder mehr'], ['familienstand', 'Verheiratet'], ['partner-job', 'Rente']])
   await answer(api, Y, [['ch-wohnsitz', 'Deutschland'], ['ch-nichtrueckkehrtage', '0']])
-  await call(api, 'PUT', `/v1/steuerjahre/${Y}/kopplung`, { filingType: 'zusammen' })
+  await chooseJointReturn(api, Y)
   await call(api, 'PUT', `/v1/steuerjahre/${Y}/kopplung/person-b`, { firstName: 'Ute', lastName: 'Brandt' })
   await swissRecord(api, '', { gross: 96_000, ahv: 6_144, bvg: 4_800, qst: 4_320, allowancesChf: 5_160 })
   for (const [firstName, geburtsdatum] of [['Paul', '2016-05-02'], ['Greta', '2019-09-14']]) {
@@ -131,7 +131,7 @@ export async function runScenario26(browser, webOrigin, sql) {
   const owner = await createAccount({ apiOrigin, webOrigin, sql, tag: `${TAG}-e` })
   await call(owner.api, 'PUT', '/v1/stammdaten', { familienstand: 'verheiratet', religion: 'VD', religionConsent: true, plz: '79539' })
   await answer(owner.api, Y, [['job', 'Angestellt'], ['ausland', 'Nein'], ['kinder', 'Nein'], ['familienstand', 'Verheiratet'], ['partner-job', 'Angestellt'], ['partner-ausland', 'Ja, in die Schweiz'], ['partner-de-job', 'Nur in der Schweiz']])
-  await call(owner.api, 'PUT', `/v1/steuerjahre/${Y}/kopplung`, { filingType: 'zusammen' })
+  await chooseJointReturn(owner.api, Y)
   for (const [field, value] of [['bruttoarbeitslohn', 52_000], ['lohnsteuer', 8_400], ['sozialversicherung', 10_600]]) {
     await call(owner.api, 'PUT', `/v1/steuerjahre/${Y}/lstb/${field}`, { kind: 'erfasst', value })
   }

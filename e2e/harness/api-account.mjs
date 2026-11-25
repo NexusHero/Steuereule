@@ -69,3 +69,24 @@ export async function until(read, expected, message, timeoutMs = 10_000) {
   }
   fail(`${message}, got ${JSON.stringify(value)}`)
 }
+
+const VERIFY_PASSWORD_BUCKET = { windowMs: 10_000, max: 3, shared: true }
+
+/**
+ * Chooses the joint return for `year` as a user of the mask does. A new invitation code lets whoever holds it join
+ * the year, so the API asks an older session for the step-up first (400 FRESH_AUTH_REQUIRED, step-up rule
+ * 'grants-third-party'); the user then re-enters the password, which the web's inline step-up sends to
+ * `/api/auth/verify-password`, and chooses again. Returns the coupling the second answer carries.
+ */
+export async function chooseJointReturn(api, year, password = PASSWORD, tag = 'joint-return') {
+  const choose = () => api.fetch(`/v1/steuerjahre/${year}/kopplung`, { method: 'PUT', data: { filingType: 'zusammen' } })
+  let res = await choose()
+  if (res.status() === 400 && (await res.json().catch(() => ({}))).code === 'FRESH_AUTH_REQUIRED') {
+    await waitForBucketHeadroom(VERIFY_PASSWORD_BUCKET, 'verify-password', tag)
+    const verified = await api.post('/api/auth/verify-password', { data: { password } })
+    if (!verified.ok()) fail(`the step-up (verify-password) answered ${verified.status()}: ${(await verified.text()).slice(0, 200)}`)
+    res = await choose()
+  }
+  if (!res.ok()) fail(`PUT /v1/steuerjahre/${year}/kopplung answered ${res.status()}: ${(await res.text()).slice(0, 200)}`)
+  return res.json()
+}

@@ -15,7 +15,7 @@ import { launchBrowser, closeBrowser, newContextAtBreakpoint, guardAgainst429 } 
 import { startStack } from '../harness/stack.mjs'
 import { fail, waitForBucketHeadroom } from '../harness/rate-limit.mjs'
 import { skipSplash, signUpOutOfBand, submitLogin } from '../harness/flows.mjs'
-import { call } from '../harness/api-account.mjs'
+import { call, chooseJointReturn } from '../harness/api-account.mjs'
 import { verifyEmailSql } from '../harness/email-hash.mjs'
 
 const AUTH_BUCKET = { windowMs: 10_000, max: 3, shared: true }
@@ -57,7 +57,7 @@ async function main() {
     await call(a.api, 'POST', '/v1/steuerjahre/2024/kinder', { firstName: 'Milla', lastName: 'Weber', geburtsdatum: '2019-05-12' })
     await call(a.api, 'POST', '/v1/steuerjahre/2025/kinder', { firstName: 'Mila', lastName: 'Weber', geburtsdatum: '2019-05-12', taxId: '86095742719', kinship: '1' })
     await call(a.api, 'POST', '/v1/steuerjahre/2025/kinder', { firstName: 'Jonas', lastName: 'Weber', geburtsdatum: '1999-03-01', kinship: '1' })
-    const link2025 = await call(a.api, 'PUT', '/v1/steuerjahre/2025/kopplung', { filingType: 'zusammen' })
+    const link2025 = await chooseJointReturn(a.api, 2025, PASSWORD)
     await call(b.api, 'POST', `/v1/steuerjahre/2025/kopplung/beitreten/${link2025.invitationCode}`)
 
     // Row A — the migration changes no result.
@@ -87,7 +87,7 @@ async function main() {
     console.log(`[${TAG}] ✅ Row C — 2026: Mila preselected „aus 2025“, Jonas (over 25) not; adopted with name, birth date, Steuer-ID`)
 
     // Row D — linked once, linked every year.
-    const link2026 = await call(a.api, 'PUT', '/v1/steuerjahre/2026/kopplung', { filingType: 'zusammen' })
+    const link2026 = await chooseJointReturn(a.api, 2026, PASSWORD)
     if (!link2026.personBHasOwnAccount || link2026.invitationCode !== null) fail(`Row D: 2026 should keep the spouse without a new code, got ${JSON.stringify(link2026)}`)
     console.log(`[${TAG}] ✅ Row D — 2026 keeps the spouse with own account, no new invitation code`)
 
@@ -102,7 +102,7 @@ async function main() {
 
     // Row F — divorce from 2027.
     await call(a.api, 'POST', '/v1/steuerjahre/2027/haushalt/partner/nicht-mehr-dabei')
-    const link2027 = await call(a.api, 'PUT', '/v1/steuerjahre/2027/kopplung', { filingType: 'zusammen' })
+    const link2027 = await chooseJointReturn(a.api, 2027, PASSWORD)
     if (link2027.personBHasOwnAccount || link2027.invitationCode === null) fail(`Row F: after ending the link, 2027 must not reuse the spouse, got ${JSON.stringify(link2027)}`)
     const keep2026 = await call(a.api, 'GET', '/v1/steuerjahre/2026/kopplung')
     if (!keep2026.personBHasOwnAccount) fail('Row F: ending the link from 2027 must leave 2026 linked')

@@ -482,3 +482,19 @@ export async function runStandaloneScenario(title, fn) {
     }
   }
 }
+
+/**
+ * The step-up as a user meets it in a screen (`StepUpInline`): an action on an older session that grants a third
+ * party access answers FRESH_AUTH_REQUIRED and the screen asks for the password inline. Waits until either `doneTestId`
+ * shows (the session was fresh enough) or the step-up block `stepUpTestId` does; then types the password and confirms,
+ * which retries the action, and waits for `doneTestId`.
+ */
+export async function confirmStepUpIfAsked(page, { stepUpTestId, doneTestId, password = TEST_PASSWORD, timeout = 10_000 }) {
+  const done = page.locator(`[data-testid="${doneTestId}"]`)
+  const stepUp = page.locator(`[data-testid="${stepUpTestId}"]`)
+  await done.or(stepUp).first().waitFor({ state: 'visible', timeout })
+  if (await done.isVisible()) return
+  await page.locator(`[data-testid="${stepUpTestId}-passwort"]`).fill(password)
+  await page.locator(`[data-testid="${stepUpTestId}-bestaetigen"]`).click()
+  await done.waitFor({ state: 'visible', timeout })
+}
