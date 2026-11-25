@@ -50,8 +50,10 @@ function mockSessions(sessions: ReadonlyArray<{ token: string; userAgent: string
     http.get(`${BASE_URL}/api/auth/get-session`, () => HttpResponse.json(CURRENT_SESSION)),
     http.get(`${BASE_URL}/api/auth/list-sessions`, () =>
       HttpResponse.json(
-        sessions.map((s, i) => ({
-          id: `session-${i}`,
+        // WEB-22: the server answers without tokens; a row is named by its session id. The fixture's `token` names
+        // the row: 'current-token' is this session (id 's-current'), any other value becomes that row's id.
+        sessions.map(({ token, ...s }) => ({
+          id: token === 'current-token' ? 's-current' : token,
           userId: 'u1',
           createdAt: '2026-08-01T14:32:00.000Z',
           expiresAt: '2026-08-08T14:32:00.000Z',
@@ -182,7 +184,7 @@ describe('DeviceListSection (#238, Decision 6)', () => {
   // The property itself — revocation actually revoking, one session rejected while another
   // keeps working — is proven server-side (see this file's header). What belongs here: the
   // real call is made with *this* session's own token, not a guessed or hard-coded one.
-  it("revoking a device POSTs the real /api/auth/revoke-session with that exact session's token", async () => {
+  it("revoking a device POSTs the real /api/auth/revoke-session with that exact session's id, never a token (WEB-22)", async () => {
     mockSessions([
       { token: 'current-token', userAgent: CHROME_WINDOWS_UA, updatedAt: '2026-08-01T14:32:00.000Z' },
       { token: 'other-token', userAgent: FIREFOX_ANDROID_UA, updatedAt: '2026-07-01T10:00:00.000Z' },
@@ -218,9 +220,8 @@ describe('DeviceListSection (#238, Decision 6)', () => {
       http.get(`${BASE_URL}/api/auth/list-sessions`, () =>
         HttpResponse.json([
           {
-            id: 'session-0',
+            id: 's-current',
             userId: 'u1',
-            token: 'current-token',
             userAgent: CHROME_WINDOWS_UA,
             updatedAt: '2026-08-01T14:32:00.000Z',
             createdAt: '2026-08-01T14:32:00.000Z',

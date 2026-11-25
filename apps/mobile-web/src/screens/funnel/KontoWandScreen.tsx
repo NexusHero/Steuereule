@@ -17,6 +17,8 @@ export interface AccountWallScreenProps {
   readonly onRegister: () => void
   readonly onLogin: () => void
   readonly onLater: () => void
+  /** A registration from this browser that waits for its verification link (WEB-4). */
+  readonly pendingVerificationEmail?: string | null
 }
 
 const STEPS: Record<FunnelPath, readonly string[]> = {
@@ -25,7 +27,7 @@ const STEPS: Record<FunnelPath, readonly string[]> = {
   ch: ['lohnausweis', 'nichtrueckkehrtage'],
 }
 
-export function AccountWallScreen({ path, onRegister, onLogin, onLater }: AccountWallScreenProps) {
+export function AccountWallScreen({ path, onRegister, onLogin, onLater, pendingVerificationEmail = null }: AccountWallScreenProps) {
   const t = useTheme()
   const bp = useBreakpoint()
   const { t: tr } = useTranslation(APP_NS)
@@ -53,12 +55,24 @@ export function AccountWallScreen({ path, onRegister, onLogin, onLater }: Accoun
 
       <Text style={styles.honest}>{tr('funnel.kontoWand.honest')}</Text>
 
-      <Button onPress={onRegister} style={styles.cta}>
-        {tr('funnel.kontoWand.register')}
-      </Button>
-      <Button variant="ghost" onPress={onLogin} style={styles.secondaryCta}>
-        {tr('funnel.kontoWand.login')}
-      </Button>
+      {pendingVerificationEmail !== null ? (
+        <Card testID="konto-wand-bestaetigen">
+          <Text style={styles.cardLabel} accessibilityRole="header">{tr('funnel.kontoWand.verify.heading')}</Text>
+          <Text style={styles.help}>{tr('funnel.kontoWand.verify.body', { email: pendingVerificationEmail })}</Text>
+          <Button onPress={onLogin} style={styles.cta} testID="konto-wand-bestaetigt-anmelden">
+            {tr('funnel.kontoWand.verify.login')}
+          </Button>
+        </Card>
+      ) : (
+        <>
+          <Button onPress={onRegister} style={styles.cta}>
+            {tr('funnel.kontoWand.register')}
+          </Button>
+          <Button variant="ghost" onPress={onLogin} style={styles.secondaryCta}>
+            {tr('funnel.kontoWand.login')}
+          </Button>
+        </>
+      )}
       <View style={styles.laterRow}>
         <Chip onPress={onLater} testID="konto-wand-spaeter">{tr('funnel.kontoWand.later')}</Chip>
       </View>

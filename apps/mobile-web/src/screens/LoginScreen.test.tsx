@@ -162,7 +162,7 @@ describe('LoginScreen', () => {
     renderLogin()
     fireEvent.change(screen.getByPlaceholderText('du@beispiel.de'), { target: { value: 'a@b.de' } })
     fireEvent.click(screen.getByText('Einloggen'))
-    expect(screen.getByText('Mindestens 8 Zeichen fürs Passwort.')).toBeTruthy()
+    expect(screen.getByText('Das Passwort ist zu kurz. Neue Passwörter brauchen mindestens 12 Zeichen.')).toBeTruthy()
   })
 
   it('calls onGuest from the guest chip', () => {

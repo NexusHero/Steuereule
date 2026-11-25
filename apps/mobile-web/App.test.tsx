@@ -376,6 +376,10 @@ describe('App', () => {
     })
 
     it('an unmapped path falls back to Splash, not to whichever screen happened to render last', async () => {
+      // Signed out: a signed-in person opening `/` goes on to the app (WEB-6, next test). A fresh module, so no
+      // session of an earlier test is cached in the shared client (see the device-authorization block below).
+      vi.resetModules()
+      server.use(http.get(`${API_BASE_URL}/api/auth/get-session`, () => HttpResponse.json(null)))
       window.history.pushState({}, '', '/nonexistent')
       const { default: App } = await import('./App')
       render(<App />)
@@ -384,6 +388,23 @@ describe('App', () => {
       expect(screen.queryByText('Konto anlegen')).toBeNull()
       expect(screen.queryByPlaceholderText('Kim')).toBeNull()
       expect(screen.queryByText('Cockpit')).toBeNull()
+    })
+
+    it('WEB-6: a signed-in person opening / goes straight to the app, not to the sign-in form', async () => {
+      vi.resetModules()
+      server.use(
+        http.get(`${API_BASE_URL}/api/auth/get-session`, () =>
+          HttpResponse.json({
+            user: { id: 'u1', email: 'lena@beispiel.de', emailVerified: true, name: '' },
+            session: { id: 's1', createdAt: '2026-08-01T14:32:00.000Z', updatedAt: '2026-08-01T14:32:00.000Z' },
+          }),
+        ),
+      )
+      window.history.pushState({}, '', '/')
+      const { default: App } = await import('./App')
+      render(<App />)
+      expect(await screen.findByText('Cockpit')).toBeTruthy()
+      expect(screen.queryByText('Einloggen')).toBeNull()
     })
   })
 
@@ -1222,7 +1243,7 @@ describe('App', () => {
       fireEvent.click(screen.getByTestId('sheet-schliessen'))
       fireEvent.click(await screen.findByRole('tab', { name: 'Profil' }))
       await screen.findByText('Dieses Gerät')
-      fireEvent.click(screen.getByText('Abmelden'))
+      fireEvent.click(screen.getByTestId('geraet-abmelden-aktuell'))
 
       await screen.findByText('Einloggen')
       expect(window.sessionStorage.getItem('steuereule.returnTo')).toBeNull()

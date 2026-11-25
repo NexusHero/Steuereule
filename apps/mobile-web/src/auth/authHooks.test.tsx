@@ -123,7 +123,9 @@ describe('useSocialSignIn', () => {
       outcome = await result.current.signIn('google')
     })
     expect(outcome).toBeNull()
-    expect(social).toHaveBeenCalledWith({ provider: 'google', callbackURL: '/' })
+    // WEB-33: absolute addresses on the web app's origin, never a path better-auth resolves against the API.
+    const origin = window.location.origin
+    expect(social).toHaveBeenCalledWith({ provider: 'google', callbackURL: `${origin}/`, errorCallbackURL: `${origin}/login?sozial=1` })
     expect(result.current.isSubmitting).toBe(false)
   })
 
