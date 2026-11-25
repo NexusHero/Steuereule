@@ -1,6 +1,6 @@
 // The figures the product promises to its users: limits, retention periods and the AI recipients. The
 // API enforces them, the privacy text and the marketing website print them; all three read this one
-// module, and `apps/api/src/common/product-limits.lock.test.ts` fails when an enforcing constant drifts
+// module, and `apps/api/test/product-limits.lock.test.ts` fails when an enforcing constant drifts
 // away from it. Prices are not here: the amount lives in the Stripe price (`STRIPE_PRICE_ID`) and is
 // shown on Stripe's checkout page before payment, so no text states a figure of its own.
 

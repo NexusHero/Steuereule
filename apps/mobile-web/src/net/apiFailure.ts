@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import { isApiError, isNetworkError, type ApiFieldError } from '@steuereule/api-client'
+import { ApiError, NetworkError, isApiError, isNetworkError, type ApiFieldError } from '@steuereule/api-client'
 import { APP_NS } from '../i18n/resources'
 
 /**
@@ -65,6 +65,22 @@ export function classifyApiFailure(error: unknown): ApiFailure {
   return { kind: offline ? 'offline' : 'unknown', status: undefined, code: undefined, retryAfterSeconds: undefined, fieldErrors: [] }
 }
 
+/** A refusal answered outside the generated client: better-auth's `{ status, code }`. */
+export interface AnsweredRefusal {
+  readonly status?: number | undefined
+  readonly code?: string | undefined
+}
+
+/**
+ * A refusal from outside the generated client as the error this mapping reads, so a 429 or a 5xx from
+ * better-auth means the same as from any endpoint: an answer becomes an ApiError, a refusal without a status
+ * (the request got no answer) a NetworkError. Code-specific messages stay with the caller; this only decides
+ * what the status means.
+ */
+export function refusalError(refusal: AnsweredRefusal | null | undefined): ApiError | NetworkError {
+  return refusal?.status === undefined ? new NetworkError() : new ApiError(refusal.status, { code: refusal.code })
+}
+
 /** Whether a retry can help on its own (React Query retry policy): a dropped connection or a server hiccup. */
 export function isTransientFailure(error: unknown): boolean {
   const { kind } = classifyApiFailure(error)
@@ -73,12 +89,19 @@ export function isTransientFailure(error: unknown): boolean {
 
 type Translate = (key: string, options?: Record<string, unknown>) => string
 
+/**
+ * Any i18next `t`, whichever namespace it was typed for: its overloads do not fit one plain signature, so
+ * `apiFailureMessage` takes it as it is and narrows it here, once, instead of every caller casting.
+ */
+export type AnyTranslate = (...args: never[]) => unknown
+
 /** The German sentence for a failure. `overrides` lets a screen say something more specific for one kind. */
 export function apiFailureMessage(
   error: unknown,
-  t: Translate,
+  translate: AnyTranslate,
   overrides: Partial<Record<ApiFailureKind, string>> = {},
 ): string {
+  const t = translate as unknown as Translate
   const failure = classifyApiFailure(error)
   const override = overrides[failure.kind]
   if (override !== undefined) return override
@@ -126,5 +149,5 @@ export function fieldErrorsOf(error: unknown): Readonly<Record<string, string>> 
 /** `(error) => German message`, bound to the app's language. */
 export function useApiFailureMessage(): (error: unknown, overrides?: Partial<Record<ApiFailureKind, string>>) => string {
   const { t } = useTranslation(APP_NS)
-  return (error, overrides) => apiFailureMessage(error, t as Translate, overrides)
+  return (error, overrides) => apiFailureMessage(error, t, overrides)
 }

@@ -17,6 +17,7 @@ import { firstBusinessOf, type BusinessPerson, type BusinessRef } from './busine
 import { BusinessService } from './business.service.js'
 import type { LossFacts, PartnershipShare, TradeTaxInputs } from './views.js'
 import { ElsterHelpService } from './elster-help.service.js'
+import { Destructive } from '../common/destructive.decorator.js'
 import {
   AcceptBankTransactionDto,
   AssetDisposalDto,
@@ -128,6 +129,7 @@ export class BusinessController {
   }
 
   @Post(':jahr/selbststaendig/betriebe/:nummer/entfernen')
+  @Destructive()
   @HttpCode(204)
   @ApiParam({ name: 'nummer', type: Number, description: 'The business number, from 2.' })
   @RequiresAccount()
@@ -191,6 +193,7 @@ export class BusinessController {
   }
 
   @Post(':jahr/selbststaendig/buchungen/:nummer/storno')
+  @Destructive()
   @HttpCode(201)
   @RequiresAccount()
   @ApiParam({ name: 'nummer', type: Number })
@@ -219,6 +222,7 @@ export class BusinessController {
   }
 
   @Post(':jahr/selbststaendig/festschreibung')
+  @Destructive()
   @HttpCode(200)
   @RequiresAccount()
   @ApiBody({ type: LockDto })
@@ -264,6 +268,7 @@ export class BusinessController {
   }
 
   @Post(':jahr/selbststaendig/bank/:umsatzId/ignorieren')
+  @Destructive()
   @HttpCode(204)
   @RequiresAccount()
   @ApiParam({ name: 'umsatzId', type: String })
@@ -300,6 +305,7 @@ export class BusinessController {
   }
 
   @Post(':jahr/selbststaendig/anlagen/:anlageId/abgang')
+  @Destructive()
   @HttpCode(200)
   @RequiresAccount()
   @ApiParam({ name: 'anlageId', type: String })
@@ -311,6 +317,7 @@ export class BusinessController {
   }
 
   @Post(':jahr/selbststaendig/anlagen/abschreibung')
+  @Destructive()
   @HttpCode(201)
   @RequiresAccount()
   @ApiOkResponse({ type: [JournalEntryDto], description: 'Books the year’s depreciation and disposals, once per asset and year.' })
@@ -327,6 +334,7 @@ export class BusinessController {
   }
 
   @Post(':jahr/selbststaendig/abschluss/eroeffnung')
+  @Destructive()
   @HttpCode(201)
   @RequiresAccount()
   @ApiOkResponse({ type: JournalEntryDto, description: 'The Eröffnungsbilanz entry posted into the next year’s book.' })
@@ -481,6 +489,7 @@ export class BusinessController {
   }
 
   @Post(':jahr/selbststaendig/e-bilanz/uebermittlung')
+  @Destructive()
   @AccountThrottle(ERIC_THROTTLE)
   @HttpCode(200)
   @RequiresAccount()

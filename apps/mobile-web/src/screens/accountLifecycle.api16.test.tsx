@@ -4,14 +4,11 @@
 import { describe, expect, it, vi } from 'vitest'
 import type { ReactNode } from 'react'
 import { http, HttpResponse } from 'msw'
-import { fireEvent, render, screen } from '@testing-library/react'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { I18nextProvider } from 'react-i18next'
-import { ThemeProvider } from '@steuereule/ui'
-import { createAppI18n } from '../i18n/app-i18n'
+import { fireEvent, screen } from '@testing-library/react'
 import { createAppAuthClient } from '../auth/auth-client'
 import { AuthClientProvider } from '../auth/AuthClientProvider'
 import { server } from '../test-msw-server'
+import { renderWithQuery } from '../test-render'
 
 const session = vi.hoisted(() => ({ state: { status: 'loading' } as unknown }))
 vi.mock('../auth/useAccountSession', () => ({ useAccountSession: () => ({ state: session.state }) }))
@@ -22,15 +19,7 @@ import { UnverifiedAccountBanner, deletionDateText } from './shared/UnverifiedAc
 const signedIn = (emailVerified: boolean) => ({ status: 'signed-in', session: { user: { email: 'kim@beispiel.de', emailVerified } } })
 
 function wrap(children: ReactNode) {
-  return (
-    <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
-      <I18nextProvider i18n={createAppI18n('de')}>
-        <ThemeProvider mode="light">
-          <AuthClientProvider client={createAppAuthClient('http://localhost:3000')}>{children}</AuthClientProvider>
-        </ThemeProvider>
-      </I18nextProvider>
-    </QueryClientProvider>
-  )
+  return <AuthClientProvider client={createAppAuthClient('http://localhost:3000')}>{children}</AuthClientProvider>
 }
 
 describe('the banner of a never-verified account (ADR-0030 §2)', () => {
@@ -38,7 +27,7 @@ describe('the banner of a never-verified account (ADR-0030 §2)', () => {
     session.state = signedIn(false)
     server.use(http.get('*/v1/account/verification', () => HttpResponse.json({ emailVerified: false, deletionNotBefore: '2026-12-01T10:00:00.000Z' })))
     const onOpenExport = vi.fn()
-    render(wrap(<UnverifiedAccountBanner onOpenExport={onOpenExport} />))
+    renderWithQuery(wrap(<UnverifiedAccountBanner onOpenExport={onOpenExport} />))
     expect(await screen.findByText(/frühestens am 1\. Dezember 2026/)).toBeTruthy()
     expect(screen.getByText(/kim@beispiel\.de/)).toBeTruthy()
     fireEvent.click(screen.getByText('Vorher deine Daten exportieren'))
@@ -52,7 +41,7 @@ describe('the banner of a never-verified account (ADR-0030 §2)', () => {
       asked()
       return HttpResponse.json({ emailVerified: true, deletionNotBefore: null })
     }))
-    render(wrap(<UnverifiedAccountBanner onOpenExport={() => {}} />))
+    renderWithQuery(wrap(<UnverifiedAccountBanner onOpenExport={() => {}} />))
     expect(screen.queryByTestId('konto-unbestaetigt')).toBeNull()
     expect(asked).not.toHaveBeenCalled()
   })
@@ -66,7 +55,7 @@ describe('the verification link of a removed account (ADR-0030 §5)', () => {
   it('says the account is gone and offers a new registration instead of "link expired"', () => {
     session.state = { status: 'signed-out' }
     const onRegister = vi.fn()
-    render(wrap(<LoginScreen onDone={() => {}} onRegister={onRegister} showDeviceQr={false} accountRemoved />))
+    renderWithQuery(wrap(<LoginScreen onDone={() => {}} onRegister={onRegister} showDeviceQr={false} accountRemoved />))
     expect(screen.getByTestId('konto-entfernt')).toBeTruthy()
     expect(screen.queryByTestId('email-link-abgelaufen')).toBeNull()
     fireEvent.click(screen.getByTestId('konto-entfernt-registrieren'))

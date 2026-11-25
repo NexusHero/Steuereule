@@ -29,7 +29,6 @@
     "passwordLabel": "Password",
     "submit": "Log in",
     "submitting": "Checking …",
-    "continue": "Continue",
     "register": "New here? Create account",
     "guest": "Look around as a guest",
     "guestNote": "Guest mode: your details are saved securely, encrypted.",
@@ -163,8 +162,6 @@
     "success": {
       "badge": "Mail on its way ✓",
       "heading": "Check your inbox.",
-      "subtitle": "We sent an email to {{email}}. It says how to go on.",
-      "guestNote": "Until you confirm, you carry on as a guest. After confirming, sign in and we move your entries over.",
       "cta": "Continue to onboarding →"
     },
     "legal": {
@@ -179,11 +176,6 @@
     "back": "Back",
     "weiter": "Continue",
     "loading": "Loading your details …",
-    "loadError": {
-      "heading": "That didn't work.",
-      "message": "Your details couldn't be loaded. Check your connection and try again.",
-      "retry": "Try again"
-    },
     "step1": {
       "titleBefore": "Who are ",
       "titleMark": "you",
@@ -313,19 +305,9 @@
       "failed": "Signing out did not work. Check the connection and try again."
     },
     "loading": "Loading your profile …",
-    "loadError": {
-      "heading": "That didn't work.",
-      "message": "Your profile couldn't be loaded. Check your connection and try again.",
-      "retry": "Try again"
-    },
     "namePlaceholder": "No name saved yet",
     "emptyNote": "Nothing saved yet.",
     "cardLabel": "Your details",
-    "rowFirstName": "First name",
-    "rowLastName": "Last name",
-    "rowSteuerId": "Steuer-ID",
-    "rowSteuerNr": "Steuernummer",
-    "steuerNrEmpty": "not provided",
     "edit": "Edit",
     "editHeading": "Edit details",
     "firstNameLabel": "First name",
@@ -1039,10 +1021,6 @@
     "bestaetigungOeffnen": "Review & confirm",
     "nichtVerfuegbar": "Payment isn’t possible right now. Please try again later.",
     "freischalten": "Unlock and pay",
-    "freischaltenHinweis": "Once per tax year. You see the price before paying.",
-    "zahlungLaeuft": "Your payment is being confirmed. This usually takes seconds.",
-    "zahlungAbgebrochen": "The payment was cancelled. You can try again any time.",
-    "aktualisieren": "Refresh",
     "herunterladen": "Download PDF",
     "herunterladenBearbeitbar": "Download editable PDF",
     "bearbeitbarHinweis": "For corrections before printing: the values sit in form fields. Changes there differ from your details in the app — better change them there and download again.",
@@ -1136,11 +1114,6 @@
     "back": "Back",
     "intro": "These details go on page 1 of your tax return. We store them encrypted.",
     "loading": "Loading your details …",
-    "loadError": {
-      "heading": "That did not work.",
-      "message": "Your details could not be loaded.",
-      "retry": "Try again"
-    },
     "geburtsdatum": "Date of birth (DD.MM.YYYY)",
     "strasse": "Street",
     "hausnummer": "House number",
@@ -1183,7 +1156,6 @@
     "vollstaendig": "Everything there for the printout.",
     "saveError": {
       "validation": "Please check your entries — e.g. date, postcode or IBAN.",
-      "einwilligung": "Without your consent we cannot store your religion.",
       "network": "Saving failed. Check your connection."
     },
     "familienstaende": {
@@ -1241,9 +1213,6 @@
     "geaendertVonPartner": "changed by your partner on {{date}}",
     "nichtMehrDabei": "No longer included from {{year}}",
     "loeschen": "Delete for good",
-    "loeschenWarnung": "{{name}} will disappear from every tax year, including finished ones. This cannot be undone.",
-    "loeschenBestaetigen": "Yes, delete for good",
-    "abbrechen": "Cancel",
     "fehler": "That did not work. Please try again.",
     "partner": {
       "verknuepftSeit": "You have been linked since {{year}}. The link stays in every new year; no new invitation code is needed.",
@@ -1265,8 +1234,6 @@
     "card": {
       "title": "May the owl process your personal data?",
       "body": "So that the owl can also enter your name, tax ID, date of birth, address, bank details (IBAN), marital status, the details about your partner and children, and your religious affiliation, these details are sent to the language model that writes the answer. That can be a model by {{providers}}, depending on the setup, your model choice and outages; processing may take place in the USA. Your consent covers all of these providers. Religious affiliation is a special category of personal data (Art. 9 GDPR); by choosing “Allow” you also expressly consent to this. Without consent the owl masks these details and you enter them yourself in the forms. You can withdraw your consent at any time under Profile → Privacy.",
-      "processor": {
-      },
       "allow": "Allow",
       "deny": "Do not allow",
       "saving": "Saving …",
@@ -1366,11 +1333,6 @@
   "interview": {
     "back": "Back to the question",
     "loading": "Loading your answers …",
-    "loadError": {
-      "heading": "That didn't work.",
-      "message": "Your answers couldn't be loaded. Check your connection and try again.",
-      "retry": "Try again"
-    },
     "postError": {
       "conflict": "Your answer didn't match what was already saved. We've refreshed your progress.",
       "invalid": "That answer wasn't accepted. We've refreshed your progress.",
@@ -1516,11 +1478,6 @@
     "headingPartner": "Wage tax certificate of {{name}}",
     "help": "Copy the three figures from your wage tax statement (Lohnsteuerbescheinigung) — field by field, in the paper’s own order.",
     "loading": "Loading your wage tax statement …",
-    "loadError": {
-      "heading": "That didn't work.",
-      "message": "Your wage tax statement couldn't be loaded. Check your connection and try again.",
-      "retry": "Try again"
-    },
     "felder": {
       "bruttoarbeitslohn": "Gross pay (line 3)",
       "lohnsteuer": "Withheld income tax (line 4)",
@@ -1655,11 +1612,6 @@
     "heading": "Your pension",
     "help": "Copy the figures from your pension notification (Rentenbezugsmitteilung) — pension type, annual amount and start.",
     "loading": "Loading your pension …",
-    "loadError": {
-      "heading": "That didn't work.",
-      "message": "Your pension couldn't be loaded. Check your connection and try again.",
-      "retry": "Try again"
-    },
     "artHeading": "Which pension do you receive?",
     "arten": {
       "GesetzlicheRente": "Statutory pension",
@@ -1696,11 +1648,6 @@
     "loading": "Loading your capital income …",
     "inhaberLadefehler": "Whether you are assessed jointly could not be loaded, so the question who owns the depot is missing here.",
     "guenstigerpruefungLadefehler": "The most-favourable check could not be loaded.",
-    "loadError": {
-      "heading": "That didn't work.",
-      "message": "Your capital income couldn't be loaded. Check your connection and try again.",
-      "retry": "Try again"
-    },
     "depot": {
       "deutscherBrokerOhneSteuer": "German bank: it withholds Abgeltungsteuer once the exemption order is used up. Enter below what the certificate shows as withheld (0 if nothing). Then we compare it with your personal tax rate.",
       "deutscherBroker": "Your bank withheld withholding tax (Abgeltungsteuer). Below we honestly compare it with your personal tax rate.",
@@ -1759,11 +1706,6 @@
     "loading": "Loading your rental property …",
     "anteilLadefehler": "Whether you are assessed jointly could not be loaded, so the question about your share in the property is missing here.",
     "leerenNichtMoeglich": "This field cannot be left empty once a value is saved. Enter 0 if there was nothing.",
-    "loadError": {
-      "heading": "That didn't work.",
-      "message": "Your rental property couldn't be loaded. Check your connection and try again.",
-      "retry": "Try again"
-    },
     "einordnung": {
       "berechenbar": "Year-round rented objects we compute: one Anlage V each, linear depreciation per § 7 Abs. 4 EStG.",
       "verkaufOderMoebliert": "Sale or furnished short-term rental honestly stays out of 1.0: deadlines and delineation are not computed yet. No half feature.",
@@ -1831,7 +1773,7 @@
     "forbidden": "You cannot change this here.",
     "notFound": "This no longer exists. Reload the page.",
     "conflict": "This was changed elsewhere in the meantime. Reload and check the current state.",
-    "tooLarge": "The file is too large. The limit is 10 MB.",
+    "tooLarge": "The file is too large. The limit is {{receiptFileSize}}.",
     "rateLimitedSeconds": "Too many requests right now. Try again in {{seconds}} seconds.",
     "rateLimitedMinutes": "Too many requests right now. Try again in {{minutes}} minutes.",
     "rateLimited": "Too many requests right now. Try again in a few minutes.",
@@ -1861,11 +1803,6 @@
     "einkuenfteBeantworten": "Answer the question now",
     "back": "Back",
     "loading": "Loading …",
-    "loadError": {
-      "heading": "That didn't work.",
-      "message": "Your details couldn't be loaded. Check your connection and try again.",
-      "retry": "Try again"
-    },
     "conflict": "Your answer didn't match what was saved. We've updated your progress.",
     "antwortZurueck": "Your answer was not saved, so the question is shown again.",
     "progress": "Question {{done}} of {{total}}",
@@ -2133,7 +2070,6 @@
     "weiter": "Continue",
     "loading": "Loading …",
     "zahlUnlesbar": "That is not a whole number. Please type digits only, e.g. 30.",
-    "speichernFehler": "That did not work — your entries are not saved yet. Please try again.",
     "weg": {
       "titel": "Your way to work",
       "km": "One-way distance in km",
@@ -2184,11 +2120,9 @@
     "zurKachel": "Open: {{titel}}",
     "warnungenBestaetigen": "Read, continue anyway",
     "schrittVergleich": "Assessment comparison",
-    "vergleichUeberspringen": "Skip",
     "zusammenErfasst": "You file together (joint assessment). That is what “Details for your return” records.",
     "vergleichOeffnen": "Compare with separate returns",
     "vergleichSchliessen": "Close comparison",
-    "schrittAusdruck": "Printout",
     "zumAusdruck": "Continue to printout",
     "elsterHinweis": "A year with self-employment is filed through Mein ELSTER – we show you what to enter there.",
     "zurAusfuellhilfe": "To the ELSTER fill-in help"
@@ -2196,11 +2130,6 @@
   "plausibilitaet": {
     "back": "Back",
     "loading": "Loading your check …",
-    "loadError": {
-      "heading": "That didn't work.",
-      "message": "Your check couldn't be loaded. Check your connection and try again.",
-      "retry": "Try again"
-    },
     "heading": "Check before filing",
     "einreichbar": "All clear — no contradictions, nothing left open.",
     "nichtEinreichbar": "Something is still open:",
@@ -2435,7 +2364,6 @@
     "checkVermietung": "Review rental property",
     "checkKinder": "Manage children",
     "amtlichesFormular": "View official form",
-    "eulenModus": "Owl Mode",
     "berater": {
       "title": "Your owl advises you",
       "body": "It checks your tax year for money you are leaving on the table and tells you what you can still do this year.",
@@ -2557,11 +2485,6 @@
       "laedt": "Loading …"
     },
     "loading": "Loading your receipts …",
-    "loadError": {
-      "heading": "That didn't work.",
-      "message": "Your receipts couldn't be loaded. Check your connection and try again.",
-      "retry": "Try again"
-    },
     "offen_one": "{{count}} open",
     "offen_other": "{{count}} open",
     "empty": {
@@ -2575,7 +2498,7 @@
       "success": "Document saved. It is being read now.",
       "errorUnsupported": "Please select a PDF, JPEG, PNG, or WebP file.",
       "errorFailed": "Upload didn't work. Check your connection and try again.",
-      "limit": "PDF, JPG, PNG or WebP, at most 10 MB per file.",
+      "limit": "PDF, JPG, PNG or WebP, at most {{receiptFileSize}} per file.",
       "fileAttached": "Original file stored encrypted"
     },
     "preview": {
@@ -2863,11 +2786,6 @@
     "weiter": "Continue",
     "loading": "Loading your details …",
     "antwortZurueck": "Your answer was not saved, so the question is shown again.",
-    "loadError": {
-      "heading": "That didn't work.",
-      "message": "Your details couldn't be loaded. Check your connection and try again.",
-      "retry": "Try again"
-    },
     "interview": {
       "wohnsitz": {
         "titleBefore": "Where do ",
@@ -2995,11 +2913,6 @@
     "zulageVonMir": "me",
     "zulageVonPartner": "my partner",
     "loading": "Loading children …",
-    "loadError": {
-      "heading": "That didn’t work.",
-      "message": "Your children could not be loaded.",
-      "retry": "Try again"
-    },
     "back": "Back",
     "heading": "Children & Anlage Kind",
     "help": "Record your children for tax purposes (child allowance § 32 EStG, care and education allowance, and the comparison with child benefit).",
@@ -3060,7 +2973,7 @@
     "scopesHeading": "The assistant will receive access to:",
     "scopeSteuerdatenRead": "Read tax facts (masked)",
     "scopeSteuerdatenWrite": "Fill tax facts (remains unconfirmed until your review)",
-    "scopeBelegeWrite": "Upload receipts with their file (PDF or image, at most 10 MB) and take back its own uploads",
+    "scopeBelegeWrite": "Upload receipts with their file (PDF or image, at most {{receiptFileSize}}) and take back its own uploads",
     "scopeZahllinkRead": "Request a payment link: opens a checkout at the payment provider; only you can pay",
     "scopeZahllinkWrite": "Request a payment link: opens a checkout at the payment provider; only you can pay",
     "scopeNone": "no permissions requested",
@@ -3079,17 +2992,10 @@
   },
   "eule": {
     "loading": "Loading Owl Mode …",
-    "loadError": {
-      "heading": "Something went wrong.",
-      "message": "Owl Mode could not be loaded.",
-      "retry": "Try again"
-    },
     "back": "Back",
     "heroTitle": "Your Owl",
     "heroBody": "She knows your tax year and tells you where money is left on the table — with legal references so you decide for yourself.",
     "optInLabel": "Enable Owl Mode (proactive hints from €50, no personal data sent to AI)",
-    "tabFragen": "Ask the Owl",
-    "tabEule": "Owl asks you",
     "emptyTitle": "All reviewed. No open questions!",
     "emptyHelp": "Your information is consistent. When you add receipts or details, the owl checks again the next time you open it.",
     "rechtsstand": "Checked against the app’s rules for this tax year every time you open the owl.",
@@ -3114,7 +3020,6 @@
     "workspace": {
       "topbar": {
         "title": "The Owl",
-        "privacy": "Privacy",
         "privacyAria": "Show the privacy note",
         "privacyTitle": "How the owl protects your data",
         "privacyBody": "What you write, and figures from your file such as gross wage or working days, go to a language model. Without your consent “Owl and personal data” we first remove names, tax IDs, IBANs, e-mail addresses and phone numbers; with consent they are sent too. The conversation is stored encrypted. Without turbo mode you apply every change yourself; with turbo mode the owl applies them and you can undo each one.",
@@ -3125,17 +3030,14 @@
         "hintsAria": "Open the owl’s hints and drafts",
         "drafts_one": "{{count}} draft",
         "drafts_other": "{{count}} drafts",
-        "conversations": "Conversations",
         "conversationsAria": "Show the conversations of this tax year",
         "conversationsClose": "Close",
-        "settings": "Settings",
         "settingsAria": "Open the owl’s settings",
         "settingsTitle": "Owl settings",
         "settingsClose": "Close",
         "legalStatus": "Answers name their legal basis · Legal status {{date}}",
         "panelTitle": "Workbench",
-        "panelClose": "Close the workbench",
-        "chatOpen": "Open chat"
+        "panelClose": "Close the workbench"
       },
       "draftStageTitle": "Staged changes ({{count}})",
       "applyAll": "✓ Apply {{count}} changes",
@@ -3154,13 +3056,6 @@
       "maskUnplaced": "This entry is part of the interview. Open the matching question there.",
       "manualNotice": "This form contains master data and is locked for automatic AI edits (manual entry only).",
       "inspectMask": "Inspect form →",
-      "chatShow": "💬 Show chat",
-      "chatHide": "Hide chat",
-      "tabletChatOpen": "🦉 Chat",
-      "tabletChatClose": "✕ Close",
-      "maximize": "⤢ Maximize",
-      "minimize": "▾ Minimize",
-      "dockPlaceholder": "Quick question for the Owl …",
       "receiptResultTitle": "Receipt checked: {{fileName}}",
       "receiptBlocked": "⚠️ Sensitive details redacted (client privilege)",
       "pauschbetragBadge": "Within €1,230 lump sum",
@@ -3173,8 +3068,6 @@
   },
   "advisor": {
     "dictation": {
-      "start": "🎙 Dictate",
-      "stop": "■ Done",
       "startAria": "Start dictation",
       "stopAria": "Stop dictation and turn it into text",
       "recording": "Listening … tap “Done” when you are finished.",
@@ -3329,7 +3222,6 @@
       ],
       "basisMode": "Basic mode: the AI is unavailable right now, this answer comes from the Owl’s fixed rules.",
       "choicesCaption": "Choose a quick reply:",
-      "legalSourceAria": "Legal source {{paragraph}}",
       "legalSourceCloseAria": "Close legal source",
       "legalSourceClose": "✕ Close",
       "legalStatus": "Legal status: {{date}}",
@@ -3358,11 +3250,6 @@
       "receiptPasteText": "Paste text instead",
       "receiptPrivacy": "The text is read on your device. The image never goes to an AI; the original is stored encrypted in your receipts.",
       "receiptNativeHint": "Camera scan is coming to the app — upload a PDF or photo on the web.",
-      "certificateWhose": "The name on this salary certificate fits nobody in your return. Whose certificate is it? Nothing was taken over yet.",
-      "letterWhose": "The name on this letter fits nobody in your return. Whose is it? Nothing was taken over yet.",
-      "certificateOwnerA": "Mine",
-      "certificateOwnerB": "Person B’s",
-      "lstbWhose": "The name on this wage tax certificate fits nobody in your return. Whose certificate is it? Nothing was taken over yet.",
       "lstbPersonBOwnAccount": "This is Person B’s wage tax certificate. Person B has an own account and uploads it there; nothing was taken over here.",
       "certificatePersonBOwnAccount": "This is Person B’s salary certificate. Person B has an own account and uploads it there; nothing was taken over here.",
       "receiptProgress": {
@@ -3535,25 +3422,6 @@
         "cancel": "Cancel"
       },
       "privacyNotice": "What you write here goes to a language model by {{providers}}; processing may take place in the USA. Without your consent we first remove names, tax ID, IBAN and similar details."
-    },
-    "companion": {
-      "triggerTitle": "Ask Owl about this screen",
-      "triggerHint": "Open advisor companion ▾",
-      "sheetTitle": "Your Owl · In-screen tax advisory",
-      "closeAria": "Collapse companion",
-      "closeButton": "Collapse ▴",
-      "privacyNotice": "🔒 Client privilege active — Values are only entered into this form once you click “✓ Apply now”.",
-      "greeting": "Ask me directly about this form section. I’ll calculate the exact tax effect for you in advance.",
-      "chips": {
-        "homeofficeCheck": "Check home office vs. dedicated study",
-        "trainingTravel": "Clarify training & travel expenses",
-        "workEquipment": "Deduct work equipment & laptop",
-        "healthInsuranceCh": "Enter health insurance (e.g. 4,200 CHF)",
-        "homeofficeLumpSum": "Check home office lump sum",
-        "finalReview": "Start tax firm final review",
-        "priorDonations": "Check prior-year donations",
-        "childcareCosts": "Check childcare costs (daycare/after-school)"
-      }
     }
   },
   "sheet": {
@@ -3564,11 +3432,6 @@
     "eyebrow": "All tax years",
     "eyebrowZeitraum": "All tax years · {{zeitraum}}",
     "laden": "Loading your history …",
-    "fehler": {
-      "titel": "That didn't work.",
-      "text": "Your history could not be loaded. Check the connection and try again.",
-      "erneut": "Try again"
-    },
     "gast": {
       "titel": "The history needs an account",
       "text": "Here all your tax years sit side by side: what was declared, what the tax office assessed and how refund, work expenses and net pay develop. For that SteuerEule must be allowed to keep your years.",
@@ -3629,7 +3492,6 @@
       "fristA11y_other": "Objection possible until {{datum}}, {{count}} days left.",
       "fristVorbei": "Objection period over",
       "fristVorbeiA11y": "The objection period ended on {{datum}}.",
-      "wirkungA11y": "Effect on the refund: {{wert}}",
       "wirkungUnbekannt": "not computable",
       "zeileA11y": "{{position}}: declared {{erklaert}}, assessed {{festgesetzt}}, effect on the refund {{wirkung}}.",
       "wiederTage": "{{jahr}} again declared {{tage}}",
@@ -4085,7 +3947,6 @@
         "rente": "Pension"
       },
       "mehr": "Your areas",
-      "nichtErfasst": "not recorded yet",
       "vorauszahlungen": {
         "titel": "Back payments after prepayments",
         "sub": "Final payment according to the assessment per year: refund above the line, back payment below.",
@@ -4193,14 +4054,12 @@
     "ja": "Yes",
     "nein": "No",
     "titel": "Self-employed {{year}}",
-    "speichernFehler": "That did not work. Please try again.",
     "gesperrt": {
       "titel": "Not unlocked yet",
       "text": "Self-employment is not unlocked for this account or year. Answer „Self-employed“ or „Both“ in the interview."
     },
     "ladefehler": {
       "titel": "That did not load",
-      "text": "Please try again.",
       "nochmal": "Try again"
     },
     "status": {
@@ -4301,7 +4160,6 @@
       "steuerschluessel": "Tax key",
       "formularFehler": "Please fill in every field, with an amount above 0.",
       "buchen": "Book",
-      "belegHochladen": "Upload receipt",
       "festschreiben": "Lock period",
       "festBis": "Locked through {{datum}}",
       "nichtFest": "Nothing locked yet.",
@@ -4463,7 +4321,6 @@
       "vorsteuer": "Deductible input VAT",
       "jahr": "VAT of the year",
       "vorauszahlungen": "Prepayments",
-      "saldo": "Result",
       "erstattung": "Refund",
       "nachzahlung": "To pay",
       "vorauszahlungenTitel": "Prepayments",
@@ -4547,8 +4404,6 @@
       "kopiert": "Copied",
       "kopierenA11y": "Copy value: {{label}}",
       "weitere": "Further lines ({{count}}) – leave empty",
-      "freigeschaltet": "{{year}} is unlocked.",
-      "abgebrochen": "Unlocking was cancelled. You can try again any time.",
       "gruppe": {
         "business": "Business",
         "income-tax": "Income tax return"

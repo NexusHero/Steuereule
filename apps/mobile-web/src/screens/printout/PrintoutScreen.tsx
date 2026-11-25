@@ -20,7 +20,7 @@ import { BetaNotice } from '../shared/BetaNotice'
 import { LegalLinks } from '../legal/LegalLinks'
 import { GlassFormPreview } from './GlassFormPreview'
 import { loadPrintout } from './printoutDownload'
-import { checkoutRefusalOf, priceText, usePaymentConfirmation, type PaymentConfirmationTiming } from '../shared/usePaymentConfirmation'
+import { checkoutRefusalOf, priceText, usePaymentConfirmation } from '../shared/usePaymentConfirmation'
 
 export interface PrintoutScreenProps {
   readonly year: number
@@ -35,11 +35,9 @@ export interface PrintoutScreenProps {
   readonly onConfirm: () => void
   readonly onInspectField?: (screen: Screen, field?: string) => void
   readonly openCheckout?: (url: string) => void
-  /** How often and how long the unlock is awaited after a successful return; the defaults outside tests. */
-  readonly confirmTiming?: PaymentConfirmationTiming
 }
 
-export function PrintoutScreen({ year, payment, onBack, onCompleteDetails, onCompleteRiester, onCompleteChildren, onCompleteRental, onCompleteCapital, onCompleteCrossBorder, onConfirm, onInspectField, openCheckout = (url) => window.location.assign(url), confirmTiming }: PrintoutScreenProps) {
+export function PrintoutScreen({ year, payment, onBack, onCompleteDetails, onCompleteRiester, onCompleteChildren, onCompleteRental, onCompleteCapital, onCompleteCrossBorder, onConfirm, onInspectField, openCheckout = (url) => window.location.assign(url) }: PrintoutScreenProps) {
   const bp = useBreakpoint()
   const theme = useTheme()
   const styles = makePrivacyStyles(theme)
@@ -51,7 +49,7 @@ export function PrintoutScreen({ year, payment, onBack, onCompleteDetails, onCom
   const [loading, setLoading] = useState(false)
   const failureMessage = useApiFailureMessage()
   const unlocked = status.data === undefined ? undefined : status.data.data.status === 'freigeschaltet'
-  const { phase, recheck } = usePaymentConfirmation({ outcome: payment, unlocked, refetch: status.refetch, ...confirmTiming })
+  const { phase, recheck } = usePaymentConfirmation({ outcome: payment, unlocked, refetch: status.refetch })
 
   if (isRunningTaxYear(year)) {
     // K2: the running year has no official forms yet — name when filing opens, up front.

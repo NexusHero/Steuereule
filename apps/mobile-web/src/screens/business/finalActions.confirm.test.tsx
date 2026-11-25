@@ -6,7 +6,7 @@ import { http, HttpResponse } from 'msw'
 import type { BookDto, JournalEntryDto } from '@steuereule/api-client'
 import { server } from '../../test-msw-server'
 import { BASE_URL, EMPTY_BOOK, renderBusiness, useBusinessDefaults, BASE_PROFILE } from './businessTestKit'
-import type { DestructiveActionId } from '../../confirm/destructiveActions'
+import { DESTRUCTIVE_ACTIONS, type DestructiveActionId } from '../../confirm/destructiveActions'
 
 const ENTRY: JournalEntryDto = {
   number: 3,
@@ -24,6 +24,7 @@ const ENTRY: JournalEntryDto = {
 const BOOK: BookDto = { ...EMPTY_BOOK, entries: [ENTRY] }
 const BILANZ = { mode: 'bilanz', integrity: { ok: true }, euer: null, bilanz: { incomeStatement: { profit: 250000 }, balanceSheet: { totalAktiva: 900000, totalPassiva: 900000 } } }
 const REGISTER = { register: { rows: [] }, records: [] }
+const REGISTER_WITH_ASSET = { register: { rows: [{ id: 'a1', label: 'Laptop', acquisitionCost: 120000, closingBookValue: 80000 }], totals: {} }, records: [] }
 
 interface Case {
   readonly name: string
@@ -53,6 +54,21 @@ const CASES: readonly Case[] = [
       const date = (await screen.findByTestId('buch-fest-datum')) as HTMLInputElement
       fireEvent.change(date, { target: { value: '30.06.2025' } })
       fireEvent.click(screen.getByTestId('buch-festschreiben'))
+    },
+  },
+  {
+    name: 'Abgang buchen',
+    id: 'assetDispose',
+    page: 'anlagen',
+    path: '/anlagen/a1/abgang',
+    prepare: () => {
+      useBusinessDefaults()
+      server.use(http.get(`${BASE_URL}/anlagen`, () => HttpResponse.json(REGISTER_WITH_ASSET)))
+    },
+    press: async () => {
+      fireEvent.click(await screen.findByTestId('anlage-abgang-a1'))
+      fireEvent.change(screen.getByTestId('anlage-abgang-datum'), { target: { value: '30.06.2025' } })
+      fireEvent.click(screen.getByTestId('anlage-abgang-buchen'))
     },
   },
   {
@@ -103,6 +119,11 @@ function countPosts(path: string): { readonly calls: () => number } {
   )
   return { calls: () => calls }
 }
+
+it('every final action of the registry has a case here', () => {
+  const finals = (Object.keys(DESTRUCTIVE_ACTIONS) as DestructiveActionId[]).filter((id) => DESTRUCTIVE_ACTIONS[id].tone === 'final')
+  expect(finals.filter((id) => !CASES.some((c) => c.id === id))).toEqual([])
+})
 
 describe.each(CASES)('$name (WEB-38)', ({ id, page, path, prepare, press }) => {
   it('asks first and says it is final; „Abbrechen“ sends nothing', async () => {

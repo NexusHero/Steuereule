@@ -19,7 +19,6 @@ import type { UnlockService } from '../unlock/unlock.service.js'
 import type { KeyedLock } from '../common/keyed-lock.js'
 import type { TransactionRunner } from '../common/transaction-runner.js'
 import type { UploadAdmission } from '../receipt/upload-admission.js'
-import type { McpRateLimiter } from './mcp-rate-limit.js'
 import type { YearHistoryRepository } from '../year-history/year-history.repository.js'
 import type { McpReportService } from './mcp-report.service.js'
 
@@ -36,6 +35,9 @@ export interface McpSession {
   readonly assistant: AssistantSessionInfo
 }
 
+/** The injection token of `McpDeps`: one object gathered by `mcpDepsProvider`, so `McpService` takes it whole. */
+export const MCP_DEPS = Symbol('MCP_DEPS')
+
 /** The services the tool groups work with; optional ones switch their tools off when absent. */
 export interface McpDeps {
   readonly cockpit: CockpitService
@@ -47,14 +49,12 @@ export interface McpDeps {
   readonly profiles: ProfileRepository
   readonly masterData: MasterDataRepository
   readonly audit: AuditService
-  /** The budgets of single tools: checkout links (ADR-0052 amendment 9) and receipt uploads. */
-  readonly limiter?: Pick<McpRateLimiter, 'takeCheckoutLink' | 'takeReceiptUpload'> | undefined
   /** Caps counted and filled under one lock per account and year (MCP-23, H2-20). */
   readonly locks: KeyedLock
   /** Check and delete of an own record in one transaction (H2-28). */
   readonly transactions: TransactionRunner
-  /** The upload admission of the REST route: a few uploads at once per instance, one per account. */
-  readonly admission?: Pick<UploadAdmission, 'acquire'> | undefined
+  /** The upload admission of the REST route: a few uploads at once per instance, one per account (ADR-0109). */
+  readonly admission: Pick<UploadAdmission, 'acquire'>
   readonly report?: McpReportService | undefined
   /** The joint return (ADR-0054): whose data a value for Person B goes to. */
   readonly link?: Pick<LinkService, 'spouseForAdvisor' | 'dataUser'> | undefined

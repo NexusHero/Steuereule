@@ -6,8 +6,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen, within } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { renderInApp } from '../../test-render'
+import { renderWithQuery } from '../../test-render'
 import { server } from '../../test-msw-server'
 import { expectFailsClosed, failEveryRequest } from '../../test-every-query-fails'
 import { HISTORY_ALL_GROUPS_RESPONSE, HISTORY_GAP_RESPONSE, HISTORY_RESPONSE } from '../../test-history-fixture'
@@ -20,14 +19,8 @@ const found = async (id: string) => {
 }
 
 function renderYear(year: number, language: 'de' | 'en' = 'de') {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   const handlers = { onBack: vi.fn(), onOpenYear: vi.fn(), onPrepareAppeal: vi.fn(), onOpenReceipts: vi.fn() }
-  renderInApp(
-    <QueryClientProvider client={client}>
-      <HistoryYearScreen year={year} isGuest={false} {...handlers} />
-    </QueryClientProvider>,
-    { language },
-  )
+  renderWithQuery(<HistoryYearScreen year={year} isGuest={false} {...handlers} />, { language })
   return handlers
 }
 

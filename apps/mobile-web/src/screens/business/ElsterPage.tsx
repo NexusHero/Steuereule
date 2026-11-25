@@ -5,14 +5,14 @@ import type { TFunction } from 'i18next'
 import { Button, Chip, useTheme } from '@steuereule/ui'
 import { formatNumber } from '@steuereule/core'
 import type { PaymentReturn } from '@steuereule/core'
-import { useBusinessControllerElster, useBusinessControllerElsterForms, useUnlockControllerStatus, type ElsterFormEntryDto, type ElsterLineDto } from '@steuereule/api-client'
+import { apiErrorStatus, useBusinessControllerElster, useBusinessControllerElsterForms, useUnlockControllerStatus, type ElsterFormEntryDto, type ElsterLineDto } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
 import { copyText } from '../../lib/clipboard'
 import { BusinessFrame, BusinessQueryState, Note, Section } from './BusinessFrame'
 import { personParams, problemOf } from './businessKit'
 import { queryProblem } from './useBusiness'
 import type { BusinessPageProps } from './BusinessScreen'
-import { usePaymentConfirmation, type PaymentConfirmationTiming, type PaymentPhase } from '../shared/usePaymentConfirmation'
+import { usePaymentConfirmation, type PaymentPhase } from '../shared/usePaymentConfirmation'
 
 
 /** A chip's stable id: the form, and the copy's number where the form has several (two Anlagen Kind). */
@@ -49,22 +49,13 @@ export function valueText(value: ElsterLineDto['value']): string | null {
   return value
 }
 
-/** The HTTP status of a read, whether the client answered it as `{ status }` or threw it as an error with `status`. */
-function httpStatusOf(query: { readonly data?: { readonly status: number } | undefined; readonly error?: unknown }): number | undefined {
-  if (query.data !== undefined) return query.data.status
-  const error = query.error
-  return error !== null && typeof error === 'object' && typeof (error as { status?: unknown }).status === 'number' ? (error as { status: number }).status : undefined
-}
-
 export interface ElsterPageProps extends BusinessPageProps {
   /** Back from the checkout of the self-employment tier (the shared return contract, WEB-1). */
   readonly payment?: PaymentReturn | undefined
-  /** How often and how long the unlock is awaited after a successful return; the defaults outside tests. */
-  readonly confirmTiming?: PaymentConfirmationTiming
 }
 
 /** The ELSTER fill-in help: per form, line by line, what to enter in Mein ELSTER, with a copy action per value. */
-export function ElsterPage({ taxYear, person, business = 1, onBack, onOpenPage, payment, confirmTiming }: ElsterPageProps) {
+export function ElsterPage({ taxYear, person, business = 1, onBack, onOpenPage, payment }: ElsterPageProps) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const [chosen, setChosen] = useState<string | null>(null)
@@ -78,7 +69,7 @@ export function ElsterPage({ taxYear, person, business = 1, onBack, onOpenPage, 
   // Only the return trip needs the unlock status: it decides between "being confirmed" and "paid" (WEB-35).
   const status = useUnlockControllerStatus(taxYear, { query: { enabled: payment !== undefined } })
   const unlocked = status.data === undefined ? undefined : status.data.data.status === 'freigeschaltet'
-  const { phase, recheck } = usePaymentConfirmation({ outcome: payment, unlocked, refetch: status.refetch, ...confirmTiming })
+  const { phase, recheck } = usePaymentConfirmation({ outcome: payment, unlocked, refetch: status.refetch })
   const refetchList = list.refetch
   // Once the payment is confirmed the help is read again: it answered 402 before.
   useEffect(() => {
@@ -120,7 +111,7 @@ export function ElsterPage({ taxYear, person, business = 1, onBack, onOpenPage, 
   // While the payment is being confirmed, the help's 402 is stale: no "not unlocked" and no second payment (WEB-35).
   if (phase === 'confirming') return frame(null)
   // The fill-in help is part of the self-employment tier: 402 says so and leads to the checkout.
-  if (httpStatusOf(list) === 402 || httpStatusOf(query) === 402) {
+  if (apiErrorStatus(list.error) === 402 || apiErrorStatus(query.error) === 402) {
     return frame(
       <Section testID="elster-nicht-freigeschaltet">
         <Text style={{ ...t.type.body, color: t.color.tinte }}>{tr('business.elster.nichtFreigeschaltet', { year: taxYear })}</Text>

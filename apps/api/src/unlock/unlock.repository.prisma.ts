@@ -1,7 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common'
 import { Prisma } from '@prisma/client'
 import { PrismaService } from '../prisma/prisma.service.js'
-import { holdPaidUnlock, holdRefundedUnlock } from '../account/legal-hold.prisma.js'
+import { holdPaidUnlock, holdRefundedUnlock } from '../personal-data/legal-hold.prisma.js'
 import type { RevokeReason, SessionOwner } from './payment-provider.js'
 import { applyUnlockFact, unlockFactsOf, unlockStatusOf, type UnlockFact } from './unlock-lifecycle.js'
 import type { UnlockRepository, UnlockTier } from './unlock.repository.js'

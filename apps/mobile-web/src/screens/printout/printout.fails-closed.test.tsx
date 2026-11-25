@@ -1,16 +1,14 @@
 // The WEB-28 lock for the printout: the Ausdruck page and the official form (with direct entry in the expert
 // mode) show a failure when every request answers 500, and nothing they offer sends a write.
 import { afterEach, describe, it, vi } from 'vitest'
-import { render } from '@testing-library/react'
-import { I18nextProvider } from 'react-i18next'
-import { ThemeProvider } from '@steuereule/ui'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { createAppI18n } from '../../i18n/app-i18n'
 import { writeExpertMode } from '../../lib/expertModePreference'
 import { expectFailsClosed, failEveryRequest } from '../../test-every-query-fails'
+import { manualPaymentClock } from '../../test-payment-clock'
+import { PaymentClockProvider } from '../shared/usePaymentConfirmation'
 import type { AcroFormPdfLoader } from './AcroFormLiveViewer'
 import { OfficialFormScreen } from './OfficialFormScreen'
 import { PrintoutScreen } from './PrintoutScreen'
+import { renderWithQuery } from '../../test-render'
 
 const loader: AcroFormPdfLoader = {
   loadTemplate: vi.fn().mockResolvedValue({
@@ -23,23 +21,12 @@ const loader: AcroFormPdfLoader = {
   }),
 }
 
-function wrap(node: React.ReactNode) {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
-  return render(
-    <QueryClientProvider client={client}>
-      <I18nextProvider i18n={createAppI18n('de')}>
-        <ThemeProvider mode="light">{node}</ThemeProvider>
-      </I18nextProvider>
-    </QueryClientProvider>,
-  )
-}
-
 afterEach(() => writeExpertMode(false))
 
 describe('the printout fails closed (WEB-28)', () => {
   it('Ausdruck: a failed load shows a failure and sends no write', async () => {
     const failing = failEveryRequest()
-    wrap(
+    renderWithQuery(
       <PrintoutScreen
         year={2025}
         onBack={() => {}}
@@ -58,29 +45,36 @@ describe('the printout fails closed (WEB-28)', () => {
 
   it.each(['erfolg', 'abbruch'] as const)('Ausdruck back from the payment (%s): a failed load sends no write (P5 return states)', async (payment) => {
     const failing = failEveryRequest()
-    wrap(
-      <PrintoutScreen
-        year={2025}
-        payment={payment}
-        confirmTiming={{ intervalMs: 5, timeoutMs: 30 }}
-        onBack={() => {}}
-        onCompleteDetails={() => {}}
-        onCompleteRiester={() => {}}
-        onCompleteChildren={() => {}}
-        onCompleteRental={() => {}}
-        onCompleteCapital={() => {}}
-        onCompleteCrossBorder={() => {}}
-        onConfirm={() => {}}
-        openCheckout={() => {}}
-      />,
+    const clock = manualPaymentClock()
+    renderWithQuery(
+      <PaymentClockProvider value={clock}>
+        <PrintoutScreen
+          year={2025}
+          payment={payment}
+          onBack={() => {}}
+          onCompleteDetails={() => {}}
+          onCompleteRiester={() => {}}
+          onCompleteChildren={() => {}}
+          onCompleteRental={() => {}}
+          onCompleteCapital={() => {}}
+          onCompleteCrossBorder={() => {}}
+          onConfirm={() => {}}
+          openCheckout={() => {}}
+        />
+      </PaymentClockProvider>,
     )
+    // While the confirmation window is open (it polls a status that keeps failing) ...
+    await expectFailsClosed(failing)
+    clock.poll()
+    // ... and after it ran out, where the page offers to check again.
+    clock.expire()
     await expectFailsClosed(failing)
   })
 
   it('official form in the expert mode: failed reads are named and no field can be written', async () => {
     writeExpertMode(true)
     const failing = failEveryRequest()
-    wrap(<OfficialFormScreen taxYear={2025} initialForm="anlage-n" onBack={() => {}} acroFormLoader={loader} />)
+    renderWithQuery(<OfficialFormScreen taxYear={2025} initialForm="anlage-n" onBack={() => {}} acroFormLoader={loader} />)
     await expectFailsClosed(failing)
   })
 })

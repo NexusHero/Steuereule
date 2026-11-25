@@ -8,7 +8,7 @@ import { keepDatabaseIdentity } from '../common/database-identity.js'
 import type { ExportAccessLogEntry, ExportDocument, ExportReceiptFile } from './export/export-document.js'
 import { buildExportReportHtml } from './export/export-report-template.js'
 import { PDF_RENDERER, type PdfRenderer } from './export/pdf-renderer.js'
-import { TAX_DATA_EXPORT_REPOSITORY, type TaxDataExportRepository } from './tax-data-export.repository.js'
+import { TAX_DATA_EXPORT_REPOSITORY, type ExportReceiptFileMeta, type TaxDataExportRepository } from './tax-data-export.repository.js'
 
 /**
  * The PDF report shows the newest this-many access-log entries: it is read by a person, and thousands of table
@@ -69,8 +69,9 @@ export class AccountExportService {
 
   async assemble(userId: string, options: { accessLogNewest?: number } = {}): Promise<ExportDocument | null> {
     const limit = options.accessLogNewest
-    const head = await this.assembleHead(userId)
-    if (!head) return null
+    const assembled = await this.assembleHead(userId)
+    if (!assembled) return null
+    const { head } = assembled
     // One more than shown, to know whether the PDF leaves entries out.
     const accessLog = await this.auditService.findOwnRows(userId, limit === undefined ? {} : { newest: limit + 1 })
     return {
@@ -82,24 +83,25 @@ export class AccountExportService {
 
   /** The complete JSON export as a stream; the access log is read in keyset batches (ADR-0109). */
   async assembleJsonStream(userId: string): Promise<{ exportedAt: string; chunks: AsyncGenerator<string> } | null> {
-    const head = await this.assembleHead(userId)
-    if (!head) return null
+    const assembled = await this.assembleHead(userId)
+    if (!assembled) return null
+    const { head, files } = assembled
     // Rows up to now: the READ entry of this export itself is written after, as before.
     const batches = this.auditService.streamOwnRows(userId, { batchSize: EXPORT_ACCESS_LOG_BATCH, before: new Date(head.exportedAt) })
-    const { receiptFiles, ...rest } = head
+    const { receiptFiles: _listed, ...rest } = head
     // The response pulls the chunks after the handler returned: they keep the caller's database identity (P11).
-    return { exportedAt: head.exportedAt, chunks: keepDatabaseIdentity(streamExportJson(rest, this.readFiles(userId, receiptFiles), batches)) }
+    return { exportedAt: head.exportedAt, chunks: keepDatabaseIdentity(streamExportJson(rest, this.readFiles(files), batches)) }
   }
 
-  /** One decrypted file at a time, so a 2 GiB account never sits in memory at once. */
-  private async *readFiles(userId: string, files: readonly ExportReceiptFile[]): AsyncGenerator<ExportReceiptFile> {
-    for (const file of files) {
-      const stored = this.files ? await this.files.get(userId, file.receiptId) : null
+  /** One decrypted file at a time, so a 2 GiB account never sits in memory at once; each opened with its owner's key. */
+  private async *readFiles(files: readonly ExportReceiptFileMeta[]): AsyncGenerator<ExportReceiptFile> {
+    for (const { ownerId, ...file } of files) {
+      const stored = this.files ? await this.files.get(ownerId, file.receiptId) : null
       yield { ...file, contentBase64: stored ? stored.buffer.toString('base64') : null }
     }
   }
 
-  private async assembleHead(userId: string): Promise<ExportHead | null> {
+  private async assembleHead(userId: string): Promise<{ head: ExportHead; files: ExportReceiptFileMeta[] } | null> {
     const account = await this.accountIdentityRepository.findByUserId(userId)
     if (!account) return null
     const [profileRecord, taxData, accountData, receiptFiles] = await Promise.all([
@@ -108,7 +110,7 @@ export class AccountExportService {
       this.taxDataExportRepository.findAccountDataForUser(userId),
       this.taxDataExportRepository.listReceiptFiles(userId),
     ])
-    return {
+    const head: ExportHead = {
       schemaVersion: '1.0',
       exportedAt: new Date().toISOString(),
       account: {
@@ -130,8 +132,9 @@ export class AccountExportService {
         : null,
       taxData,
       accountData,
-      receiptFiles,
+      receiptFiles: receiptFiles.map(({ ownerId: _owner, ...file }) => file),
     }
+    return { head, files: receiptFiles }
   }
 
   renderPdf(document: ExportDocument): Promise<Buffer> {

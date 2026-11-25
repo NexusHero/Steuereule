@@ -3,7 +3,7 @@ import type { TaxYearStatus } from '@steuereule/core'
 import { encodeFilingPositions } from '../assessment/filing-version.repository.prisma.js'
 import { ENCRYPTED_PRISMA, type EncryptedPrismaClient } from '../prisma/encrypted-prisma.provider.js'
 import { statusOf } from '../year-history/year-history.repository.prisma.js'
-import { holdFilingVersion, releaseFilingVersionHolds } from '../account/legal-hold.prisma.js'
+import { holdFilingVersion, releaseFilingVersionHolds } from '../personal-data/legal-hold.prisma.js'
 import type { NewFilingVersion, SubmissionRepository } from './submission.repository.js'
 
 const AUDIT = { action: 'WRITE', resource: 'abgabe' } as const
@@ -24,7 +24,7 @@ export class PrismaSubmissionRepository implements SubmissionRepository {
       const replaced = await tx.filingVersion.findMany({ where: { userId, taxYear }, select: { id: true } })
       // One version per year: a corrected return replaces the earlier one, its number counts the filings.
       await tx.filingVersion.deleteMany({ where: { userId, taxYear } })
-      // The legal hold (§ 169, § 170 AO) moves to the version in force (P7, account/legal-hold.ts).
+      // The legal hold (§ 169, § 170 AO) moves to the version in force (P7, personal-data/legal-hold.prisma.ts).
       await releaseFilingVersionHolds(tx, replaced.map((row) => row.id))
       const created = await tx.filingVersion.create({
         data: {

@@ -1,28 +1,15 @@
 import { describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { I18nextProvider } from 'react-i18next'
-import { ThemeProvider } from '@steuereule/ui'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
-import { createAppI18n } from '../../i18n/app-i18n'
 import { server } from '../../test-msw-server'
 import { CatalogScreen } from './CatalogScreen'
 import type { CatalogEntryParam } from '../../navigation/routes'
+import { renderWithQuery } from '../../test-render'
 
 const TAX_YEAR = 2025
 
 function renderCatalog(entry: CatalogEntryParam, opts: { onDone?: () => void } = {}) {
-  const i18n = createAppI18n('de')
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-  return render(
-    <QueryClientProvider client={queryClient}>
-      <I18nextProvider i18n={i18n}>
-        <ThemeProvider mode="light">
-          <CatalogScreen entry={entry} taxYear={TAX_YEAR} onDone={opts.onDone ?? (() => {})} />
-        </ThemeProvider>
-      </I18nextProvider>
-    </QueryClientProvider>,
-  )
+  return renderWithQuery(<CatalogScreen entry={entry} taxYear={TAX_YEAR} onDone={opts.onDone ?? (() => {})} />)
 }
 
 /**

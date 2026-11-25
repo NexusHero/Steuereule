@@ -104,9 +104,10 @@ E2E, integration (database) and load tiers run in CI.
 
 ### Lifecycle and data protection
 
-- `apps/api/src/account/personal-data-registry.ts` lists every model with how it is tied to a person and how
+- `apps/api/src/personal-data/personal-data-registry.ts` lists every model with how it is tied to a person and how
   deletion, export, guest takeover and holds treat it. Deletion, export and takeover iterate it for the
-  rows tied to a person id; the export sections and deletion steps it names are written by hand. A lock test
+  rows tied to a person id; the deletion steps and export sections it names dispatch to the handler maps
+  `DELETION_STEPS` and `EXPORT_SECTIONS`, each naming the models it handles. A lock test
   fails for a model that is not in it.
 - Holds are written with the payment and with the submission. On deletion the held `Unlock` and
   `FilingVersion` rows stay under the account id until the hold ends; the hourly sweep then erases them and

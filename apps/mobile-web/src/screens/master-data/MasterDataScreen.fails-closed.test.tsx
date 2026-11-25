@@ -2,17 +2,14 @@
 // partner section never offers a choice it could not load (WEB-36 / NM-02); „Partner-Angaben übernehmen“ sends
 // only what the user changed, so Person B's Steuer-ID and confession survive a direct open (WEB-29 / NM-01).
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { I18nextProvider } from 'react-i18next'
-import { ThemeProvider } from '@steuereule/ui'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { delay, http, HttpResponse } from 'msw'
 import type { LinkResponseDto, MasterDataResponseDto } from '@steuereule/api-client'
-import { createAppI18n } from '../../i18n/app-i18n'
 import { server } from '../../test-msw-server'
 import { expectFailsClosed, failEveryRequest } from '../../test-every-query-fails'
 import { MasterDataScreen } from './MasterDataScreen'
-import { confirmAction } from '../../confirm/confirmInTest'
+import { confirmAction } from '../../test-confirm'
+import { renderWithQuery } from '../../test-render'
 
 const MARRIED: MasterDataResponseDto = {
   geburtsdatum: null,
@@ -40,16 +37,7 @@ const JOINT: LinkResponseDto = {
 } as LinkResponseDto
 
 function renderScreen(onBack: () => void = () => {}) {
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
-  render(
-    <QueryClientProvider client={queryClient}>
-      <I18nextProvider i18n={createAppI18n('de')}>
-        <ThemeProvider mode="light">
-          <MasterDataScreen onBack={onBack} taxYear={2025} />
-        </ThemeProvider>
-      </I18nextProvider>
-    </QueryClientProvider>,
-  )
+  renderWithQuery(<MasterDataScreen onBack={onBack} taxYear={2025} />)
 }
 
 beforeEach(() => {

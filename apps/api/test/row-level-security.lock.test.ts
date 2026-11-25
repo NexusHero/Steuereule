@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url'
 import { Prisma } from '@prisma/client'
 import { Prisma as KeystorePrisma } from '@prisma-keystore/client'
 import { describe, expect, it } from 'vitest'
-import { PERSONAL_DATA_REGISTRY } from '../src/account/personal-data-registry.js'
+import { PERSONAL_DATA_REGISTRY } from '../src/personal-data/personal-data-registry.js'
 import { SYSTEM_DATABASE_REASONS } from '../src/common/database-identity.js'
 
 const apiRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')

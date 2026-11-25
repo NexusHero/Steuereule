@@ -8,6 +8,7 @@
 // `test` job (ADR-0004).
 import fastifyCookie from '@fastify/cookie'
 import fastifyMultipart from '@fastify/multipart'
+import { MULTIPART_LIMITS } from '../../src/common/multipart-limits.js'
 import { ValidationPipe } from '@nestjs/common'
 import { Test } from '@nestjs/testing'
 import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fastify'
@@ -32,6 +33,7 @@ import { OWL_CARD_DISMISSAL_REPOSITORY, OWL_SETTING_REPOSITORY } from '../../src
 import { ENCRYPTED_PRISMA } from '../../src/prisma/encrypted-prisma.provider.js'
 import { PrismaService } from '../../src/prisma/prisma.service.js'
 import { passThroughTransactionRunner, TRANSACTION_RUNNER } from '../../src/common/transaction-runner.js'
+import { inProcessKeyedLock, KEYED_LOCK } from '../../src/common/keyed-lock.js'
 import { PROFILE_REPOSITORY } from '../../src/profile/profile.repository.js'
 import { TAX_YEAR_REPOSITORY } from '../../src/tax-year/tax-year.repository.js'
 import { INTERVIEW_ANSWER_REPOSITORY } from '../../src/interview/interview-answer.repository.js'
@@ -217,6 +219,9 @@ export async function buildTestApp(options?: {
     .useValue(auditRepository)
     .overrideProvider(TRANSACTION_RUNNER)
     .useValue(passThroughTransactionRunner)
+    // The in-memory repositories have no transaction to join; a user write still runs one at a time per account.
+    .overrideProvider(KEYED_LOCK)
+    .useValue(inProcessKeyedLock())
     .overrideProvider(PrismaService)
     .useValue({})
     .overrideProvider(ENCRYPTED_PRISMA)
@@ -262,13 +267,7 @@ export async function buildTestApp(options?: {
   })
 
   await app.register(fastifyCookie)
-  await app.register(fastifyMultipart, {
-    limits: {
-      fileSize: 10 * 1024 * 1024,
-      files: 1,
-      fields: 10,
-    },
-  })
+  await app.register(fastifyMultipart, { limits: MULTIPART_LIMITS })
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,

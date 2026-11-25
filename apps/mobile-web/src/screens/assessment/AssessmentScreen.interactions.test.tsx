@@ -2,16 +2,13 @@
 // record / "unlesbar" path (incl. a negative Erstattung), the expired deadline, the incomplete
 // Abgleich, marking as checked, leaving, the filed Einspruch's amount, and failed saves.
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
-import { I18nextProvider } from 'react-i18next'
-import { ThemeProvider } from '@steuereule/ui'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { screen, fireEvent, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import type { AssessmentResponseDto } from '@steuereule/api-client'
-import { createAppI18n } from '../../i18n/app-i18n'
 import { AssessmentScreen } from './AssessmentScreen'
 import { server } from '../../test-msw-server'
 import { expectFailsClosed, failEveryRequest } from '../../test-every-query-fails'
+import { renderWithQuery } from '../../test-render'
 
 const URL_BESCHEID = '*/v1/steuerjahre/2026/bescheid'
 
@@ -41,16 +38,7 @@ function base(over: Partial<AssessmentResponseDto> = {}): AssessmentResponseDto 
 }
 
 function renderScreen(props: { onDone?: () => void; onBack?: () => void } = {}) {
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-  return render(
-    <QueryClientProvider client={queryClient}>
-      <I18nextProvider i18n={createAppI18n('de')}>
-        <ThemeProvider mode="light">
-          <AssessmentScreen taxYear={2026} {...props} />
-        </ThemeProvider>
-      </I18nextProvider>
-    </QueryClientProvider>,
-  )
+  return renderWithQuery(<AssessmentScreen taxYear={2026} {...props} />)
 }
 
 const serve = (data: AssessmentResponseDto) => server.use(http.get(URL_BESCHEID, () => HttpResponse.json(data, { status: 200 })))

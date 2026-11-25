@@ -2,15 +2,13 @@
 // Minimal-Gate: renders the first Lebenslage question from GET ?eintrag=lebenslagen, posts the
 // answer, and advances to the amount follow-up (a numeric input, never free text).
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
-import { I18nextProvider } from 'react-i18next'
-import { ThemeProvider } from '@steuereule/ui'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { screen, fireEvent, waitFor } from '@testing-library/react'
+import { QueryClient } from '@tanstack/react-query'
 import { http, HttpResponse } from 'msw'
 import { getInterviewControllerGetInterviewQueryKey } from '@steuereule/api-client'
-import { createAppI18n } from '../../i18n/app-i18n'
 import { CatalogScreen } from './CatalogScreen'
 import { server } from '../../test-msw-server'
+import { makeTestQueryClient, renderWithQuery } from '../../test-render'
 
 const TAX_YEAR = 2026
 
@@ -18,22 +16,16 @@ function renderCatalog(
   entry: 'lebenslagen' | 'einkuenfte' | 'sonderausgaben' | 'alleinerziehend',
   opts: { onDone?: () => void; onBack?: () => void; revisit?: boolean; queryClient?: QueryClient } = {},
 ) {
-  const i18n = createAppI18n('de')
-  const queryClient = opts.queryClient ?? new QueryClient({ defaultOptions: { queries: { retry: false } } })
-  return render(
-    <QueryClientProvider client={queryClient}>
-      <I18nextProvider i18n={i18n}>
-        <ThemeProvider mode="light">
-          <CatalogScreen
-            entry={entry}
-            taxYear={TAX_YEAR}
-            onDone={opts.onDone ?? (() => {})}
-            {...(opts.onBack ? { onBack: opts.onBack } : {})}
-            {...(opts.revisit !== undefined ? { revisit: opts.revisit } : {})}
-          />
-        </ThemeProvider>
-      </I18nextProvider>
-    </QueryClientProvider>,
+  const queryClient = opts.queryClient ?? makeTestQueryClient()
+  return renderWithQuery(
+    <CatalogScreen
+      entry={entry}
+      taxYear={TAX_YEAR}
+      onDone={opts.onDone ?? (() => {})}
+      {...(opts.onBack ? { onBack: opts.onBack } : {})}
+      {...(opts.revisit !== undefined ? { revisit: opts.revisit } : {})}
+    />,
+    { client: queryClient },
   )
 }
 
@@ -130,7 +122,7 @@ describe('KatalogScreen', () => {
   })
 
   it('skips questions answered on an earlier visit, even when an older empty state is still cached', async () => {
-    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    const queryClient = makeTestQueryClient()
     queryClient.setQueryData(getInterviewControllerGetInterviewQueryKey(TAX_YEAR, { eintrag: 'lebenslagen' }), {
       data: { answers: {}, nextStep: { kind: 'question', id: 'dhf' }, openItems: 5 },
       status: 200,

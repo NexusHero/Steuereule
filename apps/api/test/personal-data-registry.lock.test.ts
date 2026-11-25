@@ -5,8 +5,9 @@
 import { Prisma } from '@prisma/client'
 import { Prisma as KeystorePrisma } from '@prisma-keystore/client'
 import { describe, expect, it } from 'vitest'
-import { taxDataTables } from '../src/account/delete-account-transaction.prisma.js'
-import { genericDeletionEntries, ownerOf, PERSONAL_DATA_REGISTRY, personIds, shadowIdOf } from '../src/account/personal-data-registry.js'
+import { DELETION_STEPS, taxDataTables } from '../src/account/delete-account-transaction.prisma.js'
+import { genericDeletionEntries, PERSONAL_DATA_REGISTRY } from '../src/personal-data/personal-data-registry.js'
+import { ownerOf, personIds, shadowIdOf } from '../src/common/person-ids.js'
 
 const models = [
   ...Prisma.dmmf.datamodel.models.map((model) => model.name),
@@ -18,7 +19,7 @@ const fieldsOf = (name: string) => Prisma.dmmf.datamodel.models.find((model) => 
 describe('the personal-data registry covers every model', () => {
   it.each(models)('%s is declared', (model) => {
     const entry = byModel.get(model)
-    expect(entry, `${model} is missing from PERSONAL_DATA_REGISTRY (apps/api/src/account/personal-data-registry.ts)`).toBeDefined()
+    expect(entry, `${model} is missing from PERSONAL_DATA_REGISTRY (apps/api/src/personal-data/personal-data-registry.ts)`).toBeDefined()
     if (!entry!.personalData) {
       // "No personal data" needs a reason in every column.
       for (const treatment of [entry!.deletion, entry!.export, entry!.takeover]) {
@@ -71,6 +72,23 @@ describe('the personal-data registry covers every model', () => {
     expect(tables.indexOf('advisorChatMessage')).toBeLessThan(tables.indexOf('advisorConversation'))
     expect(tables.indexOf('receiptFile')).toBeLessThan(tables.indexOf('receipt'))
     expect(tables.indexOf('ledger')).toBeLessThan(tables.indexOf('businessProfile'))
+  })
+
+  it('every model a deletion step is declared for is one its handler removes, and the handler names no other', () => {
+    const declared = new Map<string, string[]>()
+    for (const entry of PERSONAL_DATA_REGISTRY) {
+      if (entry.deletion.kind === 'step') declared.set(entry.deletion.step, [...(declared.get(entry.deletion.step) ?? []), entry.model])
+    }
+    // The one step outside the transaction: the keystore keys, destroyed first (ADR-0059).
+    expect(declared.get('keys')).toEqual(['keystore.UserDataKey'])
+    declared.delete('keys')
+    const handled = Object.fromEntries(Object.entries(DELETION_STEPS).map(([step, handler]) => [step, [...handler.models].sort()]))
+    expect(Object.fromEntries([...declared].map(([step, names]) => [step, names.sort()]))).toEqual(handled)
+  })
+
+  it('the access log is anonymised before the user row goes, so its cascade cannot take the rows with it', () => {
+    const firstOf = (step: string) => PERSONAL_DATA_REGISTRY.findIndex((entry) => entry.deletion.kind === 'step' && entry.deletion.step === step)
+    expect(firstOf('anonymiseAudit')).toBeLessThan(firstOf('user'))
   })
 
   it('control proof: a paid unlock is held by row, not cascaded with the account', () => {

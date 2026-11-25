@@ -1,18 +1,15 @@
 // The Belege tab reading a stored original again, leading to the drafts, and answering "Für wen?"
 // with "that is me" or by creating the person the document names (ADR-0092, ADR-0097).
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
-import { I18nextProvider } from 'react-i18next'
-import { ThemeProvider } from '@steuereule/ui'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { screen, fireEvent, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import { Text } from 'react-native'
-import { createAppI18n } from '../../i18n/app-i18n'
 import { ReceiptsScreen } from './ReceiptsScreen'
 import { server } from '../../test-msw-server'
 import { ShellStateProvider, useShellState } from '../../navigation/ShellState'
 import type { AssignmentQuestionDto, ReceiptResponseDto } from '@steuereule/api-client'
 import { receiptInboxHandler, receiptPage } from '../../test-receipt-inbox'
+import { renderWithQuery } from '../../test-render'
 
 const { mockExtract } = vi.hoisted(() => ({ mockExtract: vi.fn() }))
 vi.mock('../../lib/documentOcr', async (importOriginal) => ({ ...(await importOriginal<typeof import('../../lib/documentOcr')>()), extractDocumentTextOnDevice: mockExtract }))
@@ -48,25 +45,15 @@ function YearProbe() {
 }
 
 function renderReceipts(shell = false) {
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-  const content = (
-    <ThemeProvider mode="light">
+  return renderWithQuery(
+    shell ? (
+      <ShellStateProvider onRegister={() => {}} onLogin={() => {}} onSignedOut={() => {}}>
+        <YearProbe />
+        <ReceiptsScreen />
+      </ShellStateProvider>
+    ) : (
       <ReceiptsScreen />
-    </ThemeProvider>
-  )
-  return render(
-    <QueryClientProvider client={queryClient}>
-      <I18nextProvider i18n={createAppI18n('de')}>
-        {shell ? (
-          <ShellStateProvider onRegister={() => {}} onLogin={() => {}} onSignedOut={() => {}}>
-            <YearProbe />
-            {content}
-          </ShellStateProvider>
-        ) : (
-          content
-        )}
-      </I18nextProvider>
-    </QueryClientProvider>,
+    ),
   )
 }
 

@@ -1,14 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { I18nextProvider } from 'react-i18next'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
-import { ThemeProvider } from '@steuereule/ui'
-import { createAppI18n } from '../../i18n/app-i18n'
 import { server } from '../../test-msw-server'
 import { expectFailsClosed, failEveryRequest } from '../../test-every-query-fails'
 import { OwlModeScreen } from './OwlModeScreen'
-import { confirmAction } from '../../confirm/confirmInTest'
+import { confirmAction } from '../../test-confirm'
+import { renderWithQuery } from '../../test-render'
 
 // The owl screen without a copilot bridge: every action of the view must become the request the
 // API contract names, and a refusal must show as a failure instead of a silent success.
@@ -85,16 +82,7 @@ function setViewportWidth(width: number) {
 }
 
 function renderConnected(props: Partial<Parameters<typeof OwlModeScreen>[0]> = {}) {
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-  return render(
-    <QueryClientProvider client={queryClient}>
-      <I18nextProvider i18n={createAppI18n('de')}>
-        <ThemeProvider mode="light">
-          <OwlModeScreen taxYear={2026} {...props} />
-        </ThemeProvider>
-      </I18nextProvider>
-    </QueryClientProvider>,
-  )
+  return renderWithQuery(<OwlModeScreen taxYear={2026} {...props} />)
 }
 
 const callTo = (method: string, path: string) => calls.find((c) => c.method === method && c.path === path)

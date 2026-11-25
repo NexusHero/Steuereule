@@ -3,14 +3,11 @@
 // Werbungskosten (account fees) and the Anlage Vorsorgeaufwand. A couple of two Grenzgänger; Person A
 // also had a German employer for part of the year (first way 0 km, second way to Switzerland).
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { I18nextProvider } from 'react-i18next'
-import { ThemeProvider } from '@steuereule/ui'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
-import { createAppI18n } from '../../i18n/app-i18n'
 import { server } from '../../test-msw-server'
 import { GlassFormPreview, type GlassFormPreviewProps } from './GlassFormPreview'
+import { renderWithQuery } from '../../test-render'
 
 const YEAR = 2024
 const BASE = `*/v1/steuerjahre/${YEAR}`
@@ -142,16 +139,7 @@ const FULL = [
 ]
 
 function renderPreview(props: Partial<GlassFormPreviewProps> = {}) {
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-  render(
-    <QueryClientProvider client={queryClient}>
-      <I18nextProvider i18n={createAppI18n('de')}>
-        <ThemeProvider mode="light">
-          <GlassFormPreview year={YEAR} defaultOpen {...props} />
-        </ThemeProvider>
-      </I18nextProvider>
-    </QueryClientProvider>,
-  )
+  renderWithQuery(<GlassFormPreview year={YEAR} defaultOpen {...props} />)
 }
 
 const row = (id: string) => screen.findByTestId(`glass-row-${id}`)

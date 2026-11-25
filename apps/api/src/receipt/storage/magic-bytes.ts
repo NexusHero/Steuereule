@@ -1,6 +1,7 @@
 import { InvalidInputError } from '../../common/domain-error.js'
+import { PRODUCT_LIMITS } from '@steuereule/core'
 
-export const MAX_RECEIPT_FILE_BYTES = 10 * 1024 * 1024 // 10 MB
+export const MAX_RECEIPT_FILE_BYTES = PRODUCT_LIMITS.receiptFileBytes
 
 export const ALLOWED_RECEIPT_FILE_MIME_TYPES = [
   'application/pdf',

@@ -2,7 +2,8 @@ import { z } from 'zod'
 import { decomposeProvenanceKey, fieldsOfScreen, PERSON_B_INTERVIEW_FIELDS, PERSON_B_SCREENS, provenanceKey, type FieldSpec, type Provenance, type Screen } from '@steuereule/core'
 import { OWN_TOOL_SCREENS } from '../../ki/advisor-safety.js'
 import { isOwnProvenance, type AssistantSessionInfo, type McpDeps, type McpSession } from '../mcp-session.js'
-import { instanceArg, json, personArg, refused, screenArg, taxYearArg } from '../tool-kit.js'
+import { instanceArg, personArg, screenArg, taxYearArg } from '../tool-args.js'
+import { json, refused } from '../tool-results.js'
 import { ageAtYearEnd, churchTaxLiableFrom, readView, stateOfPostalCode } from '../read-view.js'
 
 /** Where a value came from, as a kind; another assistant's name stays out (ADR-0052 amendment 3). */

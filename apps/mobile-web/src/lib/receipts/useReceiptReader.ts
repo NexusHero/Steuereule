@@ -71,7 +71,7 @@ export function useReceiptReader({ taxYear, context = {} }: { readonly taxYear: 
       }).catch((): CaptureResult => ({ ok: false, failure: 'parse_failed', receiptId: receiptId ?? null, processing: null }))
       if (!result.ok) {
         // WEB-10 / WEB-11: a refused parse says why — a guest that reading needs an account, a 429 when to retry.
-        const error = result.error === undefined ? null : apiFailureMessage(result.error, tr as unknown as Parameters<typeof apiFailureMessage>[1], { 'account-required': tr('apiFehler.receiptParseAccountRequired') })
+        const error = result.error === undefined ? null : apiFailureMessage(result.error, tr, { 'account-required': tr('apiFehler.receiptParseAccountRequired') })
         patch(key, { phase: null, outcome: outcomeOfFailure(result.failure, result.processing), response: null, error })
       } else {
         const question = result.response.assignment?.question ?? null

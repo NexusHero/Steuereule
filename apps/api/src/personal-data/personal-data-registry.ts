@@ -47,6 +47,12 @@ export type DeletionTreatment =
   | { readonly kind: 'kept'; readonly reason: string }
   | { readonly kind: 'none'; readonly reason: string }
 
+/**
+ * A named step of the erasure. Each runs once, where its first entry stands in the registry, so the
+ * registry order is the deletion order for steps too. `keys` runs in the keystore database before the
+ * transaction (crypto-shredding first, ADR-0059); the others are `DELETION_STEPS` of
+ * `account/delete-account-transaction.prisma.ts`.
+ */
 export type DeletionStep = 'anonymiseAudit' | 'user' | 'deviceCodes' | 'coupling' | 'household' | 'keys'
 
 /** What the DSGVO export (Art. 15/20) shows. */
@@ -59,7 +65,6 @@ export type ExportTreatment =
 
 export type ExportSection =
   | 'identity'
-  | 'profile'
   | 'accessLog'
   | 'sessions'
   | 'security'
@@ -271,15 +276,6 @@ export const PERSONAL_DATA_REGISTRY: readonly PersonalDataEntry[] = [
   },
   { model: 'Session', personalData: true, tie: 'userId', deletion: cascadeUser, export: { kind: 'section', section: 'sessions' }, takeover: ACCOUNT_ONLY, hold: 'none' },
   { model: 'Account', personalData: true, tie: 'userId', deletion: cascadeUser, export: { kind: 'section', section: 'identity' }, takeover: ACCOUNT_ONLY, hold: 'none' },
-  {
-    model: 'Verification',
-    personalData: true,
-    tie: 'emailIdentifier',
-    deletion: { kind: 'step', step: 'user' },
-    export: { kind: 'none', reason: 'one-time tokens that expire within 30 minutes; exporting them would hand out a way in' },
-    takeover: ACCOUNT_ONLY,
-    hold: 'none',
-  },
   { model: 'TwoFactor', personalData: true, tie: 'userId', deletion: cascadeUser, export: { kind: 'section', section: 'security' }, takeover: ACCOUNT_ONLY, hold: 'none', note: 'export says whether 2FA is on, never the secret or backup codes' },
   { model: 'Passkey', personalData: true, tie: 'userId', deletion: cascadeUser, export: { kind: 'section', section: 'security' }, takeover: ACCOUNT_ONLY, hold: 'none' },
   { model: 'OauthClient', personalData: true, tie: 'optionalUserId', deletion: cascadeUser, export: { kind: 'section', section: 'assistants' }, takeover: ACCOUNT_ONLY, hold: 'none', note: 'a client without userId registered itself (RFC 7591); swept after 7 days without consent' },
@@ -343,6 +339,16 @@ export const PERSONAL_DATA_REGISTRY: readonly PersonalDataEntry[] = [
     hold: 'none',
   },
   {
+    model: 'Verification',
+    personalData: true,
+    tie: 'emailIdentifier',
+    deletion: { kind: 'step', step: 'user' },
+    export: { kind: 'none', reason: 'one-time tokens that expire within 30 minutes; exporting them would hand out a way in' },
+    takeover: ACCOUNT_ONLY,
+    hold: 'none',
+    note: 'deleted with the user (step `user`), after the access log is anonymised',
+  },
+  {
     model: 'User',
     personalData: true,
     tie: 'userPrimaryKey',
@@ -378,9 +384,6 @@ export const NON_DATABASE_STORES: readonly { readonly store: string; readonly li
   { store: 'Telemetry spans (user.id attribute)', lifecycle: 'no exporter registered in src (telemetry/tracer.ts)' },
   { store: 'Error log (Cloud Logging)', lifecycle: '30 days (Google Cloud Logging default), no bodies (ADR-0109 §8)' },
 ]
-
-// The ids one person's rows are kept under live in common/person-ids.ts (the access log reads them too).
-export { SHADOW_PREFIX, isShadowId, ownerOf, personIds, shadowIdOf } from '../common/person-ids.js'
 
 export function delegateName(model: string): string {
   return model.charAt(0).toLowerCase() + model.slice(1)

@@ -226,7 +226,7 @@ describe('AccountExportService.assembleJsonStream (ADR-0109)', () => {
     const auditRepository = new FakeAuditRepository()
     const taxDataExportRepository = new FakeTaxDataExportRepository()
     const file = { receiptId: 'r-1', fileName: 'quittung.pdf', mimeType: 'application/pdf', byteLength: 3, uploadedAt: '2026-01-02T00:00:00.000Z', contentBase64: null }
-    taxDataExportRepository.listReceiptFiles = async () => [file]
+    taxDataExportRepository.listReceiptFiles = async () => [{ ...file, ownerId: 'user-1' }, { ...file, receiptId: 'r-b', ownerId: 'spouse_user-1_2025' }]
     taxDataExportRepository.findAccountDataForUser = async () => [{ area: 'Sitzung', taxYear: null, fields: { ipAddress: '203.0.113.7', userAgent: 'Firefox' } }]
     const reads: string[] = []
     const files = {
@@ -240,13 +240,15 @@ describe('AccountExportService.assembleJsonStream (ADR-0109)', () => {
 
     const { text } = await collect((await service.assembleJsonStream('user-1'))!.chunks)
     const document = JSON.parse(text) as { receiptFiles: { contentBase64: string; fileName: string }[]; accountData: { area: string; fields: Record<string, unknown> }[] }
-    expect(document.receiptFiles).toEqual([{ ...file, contentBase64: Buffer.from('PDF').toString('base64') }])
-    expect(reads).toEqual(['user-1:r-1'])
+    // A Person B file kept under the shadow id is opened with that id's key; the owner is not part of the export.
+    const content = Buffer.from('PDF').toString('base64')
+    expect(document.receiptFiles).toEqual([{ ...file, contentBase64: content }, { ...file, receiptId: 'r-b', contentBase64: content }])
+    expect(reads).toEqual(['user-1:r-1', 'spouse_user-1_2025:r-b'])
     expect(document.accountData[0]).toMatchObject({ area: 'Sitzung', fields: { ipAddress: '203.0.113.7' } })
 
     // The PDF names the file but carries no bytes.
     const pdfDocument = (await service.assemble('user-1', { accessLogNewest: 10 }))!
-    expect(pdfDocument.receiptFiles).toEqual([file])
+    expect(pdfDocument.receiptFiles).toEqual([file, { ...file, receiptId: 'r-b' }])
   })
 
   it('is valid JSON for an empty log and equals the buffered document otherwise', async () => {

@@ -5,6 +5,7 @@ import { MAX_CONVERSATIONS_PER_YEAR } from '../src/advisor/advisor-shared.js'
 import { AdvisorController } from '../src/advisor/advisor.controller.js'
 import { SESSION_ABSOLUTE_MAX_AGE_MS, SESSION_IDLE_EXPIRES_IN_SECONDS } from '../src/auth/session-lifetime.js'
 import { COOKIE_MAX_AGE_SECONDS } from '../src/auth/user-context.guard.js'
+import { MULTIPART_LIMITS } from '../src/common/multipart-limits.js'
 import { GUEST_RETENTION_DAYS } from '../src/guest/guest-retention.js'
 import { DEFAULT_PARSE_DAILY_LIMIT } from '../src/receipt/receipt-parse.controller.js'
 import { MAX_RECEIPT_BYTES_PER_ACCOUNT, MAX_RECEIPT_FILES_PER_ACCOUNT, MAX_RECEIPTS_PER_ACCOUNT } from '../src/receipt/receipt.service.js'
@@ -18,6 +19,7 @@ const DAY_SECONDS = 24 * 60 * 60
 describe('the figures the texts print are the figures the API enforces', () => {
   it('receipt limits', () => {
     expect(MAX_RECEIPT_FILE_BYTES).toBe(PRODUCT_LIMITS.receiptFileBytes)
+    expect(MULTIPART_LIMITS.fileSize).toBe(PRODUCT_LIMITS.receiptFileBytes)
     expect(MAX_RECEIPT_FILES_PER_ACCOUNT).toBe(PRODUCT_LIMITS.receiptFilesPerAccount)
     expect(MAX_RECEIPT_BYTES_PER_ACCOUNT).toBe(PRODUCT_LIMITS.receiptBytesPerAccount)
     expect(MAX_RECEIPTS_PER_ACCOUNT).toBe(PRODUCT_LIMITS.receiptsPerAccount)

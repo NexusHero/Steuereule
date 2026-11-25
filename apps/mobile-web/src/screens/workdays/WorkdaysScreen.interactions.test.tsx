@@ -1,27 +1,15 @@
 // Arbeitstage mask: the weekday pattern as the user toggles it, the shortest-route confirmation of the
 // second way, a failed save that keeps the user here, leaving without handlers, and the partner's mask.
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
-import { I18nextProvider } from 'react-i18next'
-import { ThemeProvider } from '@steuereule/ui'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { screen, fireEvent, waitFor } from '@testing-library/react'
 import { weekdaysInYear } from '@steuereule/core'
 import { http, HttpResponse } from 'msw'
-import { createAppI18n } from '../../i18n/app-i18n'
 import { server } from '../../test-msw-server'
 import { WorkdaysScreen, type WorkdaysScreenProps } from './WorkdaysScreen'
+import { renderWithQuery } from '../../test-render'
 
 function renderWorkdays(props: WorkdaysScreenProps = {}) {
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-  return render(
-    <QueryClientProvider client={queryClient}>
-      <I18nextProvider i18n={createAppI18n('de')}>
-        <ThemeProvider mode="light">
-          <WorkdaysScreen taxYear={2026} {...props} />
-        </ThemeProvider>
-      </I18nextProvider>
-    </QueryClientProvider>,
-  )
+  return renderWithQuery(<WorkdaysScreen taxYear={2026} {...props} />)
 }
 
 function recordPuts(status = 200) {

@@ -28,6 +28,8 @@ export interface MigrationRecordClient {
 
 export interface AssertDatabaseMigratedOptions {
   env?: NodeJS.ProcessEnv
+  /** The database to probe; without it the one of `env` (DATABASE_URL). */
+  databaseUrl?: string
   expected?: readonly string[]
   createClient?: (databaseUrl: string) => MigrationRecordClient
 }
@@ -37,7 +39,7 @@ const REFUSAL_ADVICE =
   'process; it refuses rather than listening and failing every request on first access.'
 
 export async function assertDatabaseMigrated(options: AssertDatabaseMigratedOptions = {}): Promise<void> {
-  const databaseUrl = resolveDatabaseUrl(options.env ?? process.env)
+  const databaseUrl = options.databaseUrl ?? resolveDatabaseUrl(options.env ?? process.env)
   const expected = options.expected ?? listExpectedMigrations()
   const createClient =
     options.createClient ??
@@ -80,7 +82,7 @@ const KEYSTORE_MIGRATIONS_DIR = new URL('../../prisma/keystore/migrations/', imp
  */
 export async function assertKeystoreMigrated(env: NodeJS.ProcessEnv = process.env): Promise<void> {
   await assertDatabaseMigrated({
-    env: { ...env, DATABASE_URL: resolveKeystoreDatabaseUrl(env) },
+    databaseUrl: resolveKeystoreDatabaseUrl(env),
     expected: listExpectedMigrations(KEYSTORE_MIGRATIONS_DIR),
   })
 }

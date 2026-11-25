@@ -1,14 +1,11 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen } from '@testing-library/react'
-import { I18nextProvider } from 'react-i18next'
-import { ThemeProvider } from '@steuereule/ui'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { fireEvent, screen } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
-import { createAppI18n } from '../../i18n/app-i18n'
 import { readExpertMode, writeExpertMode } from '../../lib/expertModePreference'
 import { server } from '../../test-msw-server'
 import type { AcroFormPdfLoader } from './AcroFormLiveViewer'
 import { OfficialFormScreen } from './OfficialFormScreen'
+import { renderWithQuery } from '../../test-render'
 
 const loader: AcroFormPdfLoader = {
   loadTemplate: vi.fn().mockResolvedValue({
@@ -27,15 +24,7 @@ function renderScreen(onBack = vi.fn()) {
       HttpResponse.json({ forms: [{ formular: 'anlage-n', instances: [{ person: 'A', entityId: null, values: { 'anlN.kz110': '64000' } }] }] }),
     ),
   )
-  render(
-    <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
-      <I18nextProvider i18n={createAppI18n('de')}>
-        <ThemeProvider mode="light">
-          <OfficialFormScreen taxYear={2025} initialForm="anlage-n" onBack={onBack} acroFormLoader={loader} />
-        </ThemeProvider>
-      </I18nextProvider>
-    </QueryClientProvider>,
-  )
+  renderWithQuery(<OfficialFormScreen taxYear={2025} initialForm="anlage-n" onBack={onBack} acroFormLoader={loader} />)
   return onBack
 }
 

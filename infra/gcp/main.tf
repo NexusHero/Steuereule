@@ -79,10 +79,22 @@ locals {
     "KEYSTORE_MASTER_KEY_PREVIOUS",
     "GOOGLE_CLIENT_ID",
     "GOOGLE_CLIENT_SECRET",
+    # Apple sign-in (REQ-008) stays off until APPLE_SIGN_IN_ENABLED is set and both have a value.
+    "APPLE_CLIENT_ID",
+    "APPLE_CLIENT_SECRET",
     # The owl answers from the built-in rules until one provider key has a value (ADR-0064).
     "GEMINI_API_KEY",
+    "GOOGLE_API_KEY",
     "ANTHROPIC_API_KEY",
     "OPENAI_API_KEY",
+    # A key for the chosen provider, and one per model slot (chat, documents, fallback, topic guard).
+    "AI_API_KEY",
+    "AI_ADVISOR_API_KEY",
+    "AI_VISION_API_KEY",
+    "AI_FALLBACK_API_KEY",
+    "AI_GUARD_API_KEY",
+    # PIN of the operator's ELSTER certificate; read only while ELSTER_TRANSMISSION_ENABLED is on.
+    "ELSTER_CERT_PIN",
     # PEM of the Memorystore server CA; the API verifies the rediss:// connection with it.
     "REDIS_TLS_CA",
   ]

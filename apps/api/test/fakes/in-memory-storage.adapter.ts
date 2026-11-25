@@ -107,6 +107,14 @@ export class InMemoryStorageAdapter implements StoragePort {
     return this.blobs.delete(this.key(userId, receiptId))
   }
 
+  /** As the Postgres adapter: decrypted and stored again under the new owner, the old owner's copy gone. */
+  async move(fromUserId: string, toUserId: string, receiptId: string): Promise<void> {
+    const stored = await this.get(fromUserId, receiptId)
+    if (stored === null) return
+    await this.put({ userId: toUserId, receiptId, buffer: stored.buffer, mimeType: stored.meta.mimeType })
+    this.blobs.delete(this.key(fromUserId, receiptId))
+  }
+
   /** Simulates Art. 17 crypto-shredding: deletes per-user DEK while leaving raw ciphertext blobs intact. */
   async cryptoShredUser(userId: string): Promise<void> {
     await this.keys.destroy(userId)

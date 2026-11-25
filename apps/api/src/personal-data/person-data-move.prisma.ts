@@ -1,5 +1,5 @@
 import { Prisma, type PrismaClient } from '@prisma/client'
-import { allowErasure } from './delete-account-transaction.prisma.js'
+import { allowErasure } from './erasure.prisma.js'
 import { delegateName, genericDeletionEntries } from './personal-data-registry.js'
 
 type TransactionClient = Parameters<Parameters<PrismaClient['$transaction']>[0]>[0]

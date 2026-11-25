@@ -7,16 +7,13 @@
 // right session's own token and reacts honestly to what it answers — not to re-derive a
 // server property a frontend unit test has no way to check for real.
 import { describe, it, expect } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
-import { I18nextProvider } from 'react-i18next'
-import { ThemeProvider } from '@steuereule/ui'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { screen, fireEvent, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
-import { createAppI18n } from '../../i18n/app-i18n'
 import { createAppAuthClient } from '../../auth/auth-client'
 import { AuthClientProvider } from '../../auth/AuthClientProvider'
 import { DeviceListSection } from './DeviceListSection'
 import { server } from '../../test-msw-server'
+import { renderWithQuery } from '../../test-render'
 
 const BASE_URL = 'http://localhost:3000'
 
@@ -24,19 +21,11 @@ const CHROME_WINDOWS_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit
 const FIREFOX_ANDROID_UA = 'Mozilla/5.0 (Android 14; Mobile; rv:126.0) Gecko/126.0 Firefox/126.0'
 
 function renderDeviceList(opts: { onCurrentSessionRevoked?: () => void } = {}) {
-  const i18n = createAppI18n('de')
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
   const authClient = createAppAuthClient(BASE_URL)
-  return render(
-    <QueryClientProvider client={queryClient}>
-      <I18nextProvider i18n={i18n}>
-        <ThemeProvider mode="light">
-          <AuthClientProvider client={authClient}>
-            <DeviceListSection onCurrentSessionRevoked={opts.onCurrentSessionRevoked ?? (() => {})} />
-          </AuthClientProvider>
-        </ThemeProvider>
-      </I18nextProvider>
-    </QueryClientProvider>,
+  return renderWithQuery(
+    <AuthClientProvider client={authClient}>
+      <DeviceListSection onCurrentSessionRevoked={opts.onCurrentSessionRevoked ?? (() => {})} />
+    </AuthClientProvider>,
   )
 }
 
@@ -285,19 +274,12 @@ describe('DeviceListSection (#238, Decision 6)', () => {
 
   it('switches to English (ADR-0006)', async () => {
     mockSessions([{ token: 'current-token', userAgent: CHROME_WINDOWS_UA, updatedAt: '2026-08-01T14:32:00.000Z' }])
-    const i18n = createAppI18n('en')
-    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
     const authClient = createAppAuthClient(BASE_URL)
-    render(
-      <QueryClientProvider client={queryClient}>
-        <I18nextProvider i18n={i18n}>
-          <ThemeProvider mode="light">
-            <AuthClientProvider client={authClient}>
-              <DeviceListSection onCurrentSessionRevoked={() => {}} />
-            </AuthClientProvider>
-          </ThemeProvider>
-        </I18nextProvider>
-      </QueryClientProvider>,
+    renderWithQuery(
+      <AuthClientProvider client={authClient}>
+        <DeviceListSection onCurrentSessionRevoked={() => {}} />
+      </AuthClientProvider>,
+      { language: 'en' },
     )
     expect(await screen.findByText('Signed-in devices')).toBeTruthy()
     expect(screen.getByText('Sign out')).toBeTruthy()

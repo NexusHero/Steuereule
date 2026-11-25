@@ -1,12 +1,8 @@
 // LStB-Masken-Screen (REQ-016) — renders the three fields from GET, sends whole-euro values via
 // PUT, and shows a named widerspruch (ADR-008), never a silent fix. Honest loading/error states.
 import { describe, it, expect, vi, afterEach } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
-import { I18nextProvider } from 'react-i18next'
-import { ThemeProvider } from '@steuereule/ui'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { screen, fireEvent, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
-import { createAppI18n } from '../../i18n/app-i18n'
 import { LstbScreen } from './LstbScreen'
 import { EMPTY_LSTB_RESPONSE, server } from '../../test-msw-server'
 import { pendingLstbScanAction } from '../../test-lstb-fixtures'
@@ -17,7 +13,8 @@ import type {
   ParseReceiptResponseDto,
   ReceiptResponseDto,
 } from '@steuereule/api-client'
-import { confirmAction } from '../../confirm/confirmInTest'
+import { confirmAction } from '../../test-confirm'
+import { renderWithQuery } from '../../test-render'
 
 const { mockExtractDocumentText } = vi.hoisted(() => ({
   mockExtractDocumentText: vi.fn(),
@@ -51,21 +48,14 @@ function renderLstb(
   opts: string | { readonly partnerName?: string; readonly onSwitchTaxYear?: (year: number) => void; readonly onDone?: () => void; readonly lng?: 'de' | 'en' } = {},
 ) {
   const resolved = typeof opts === 'string' ? { partnerName: opts } : opts
-  const i18n = createAppI18n(resolved.lng ?? 'de')
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-  return render(
-    <QueryClientProvider client={queryClient}>
-      <I18nextProvider i18n={i18n}>
-        <ThemeProvider mode="light">
-          <LstbScreen
-            taxYear={TAX_YEAR}
-            onDone={resolved.onDone ?? (() => {})}
-            {...(resolved.partnerName ? { partnerName: resolved.partnerName } : {})}
-            {...(resolved.onSwitchTaxYear ? { onSwitchTaxYear: resolved.onSwitchTaxYear } : {})}
-          />
-        </ThemeProvider>
-      </I18nextProvider>
-    </QueryClientProvider>,
+  return renderWithQuery(
+    <LstbScreen
+      taxYear={TAX_YEAR}
+      onDone={resolved.onDone ?? (() => {})}
+      {...(resolved.partnerName ? { partnerName: resolved.partnerName } : {})}
+      {...(resolved.onSwitchTaxYear ? { onSwitchTaxYear: resolved.onSwitchTaxYear } : {})}
+    />,
+    { language: resolved.lng ?? 'de' },
   )
 }
 

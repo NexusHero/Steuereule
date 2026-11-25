@@ -16,6 +16,7 @@ import {
   type AdvisorPreviewTarget,
   ADVISOR_MODEL_PROVIDERS,
   type AdvisorModelProvider,
+  PRODUCT_LIMITS,
 } from '@steuereule/core'
 import { type AdvisorChatMessageRecord, type AdvisorConversationRecord, type AdvisorNoteRecord } from './advisor.repository.js'
 import type { AdvisorChatMessageDto, AdvisorContextDto, AdvisorConversationDto, AdvisorNoteDto, AdvisorProjectDto, SendAdvisorMessageDto } from './dto/advisor.dto.js'
@@ -109,7 +110,7 @@ export interface PreparedAdvisorTurn {
 /** An answer older than this that is still `streaming` is an orphan, not a running answer: it must not block its conversation. */
 export const ANSWERING_WINDOW_MS = 5 * 60_000
 
-export const MAX_CONVERSATIONS_PER_YEAR = 50
+export const MAX_CONVERSATIONS_PER_YEAR = PRODUCT_LIMITS.advisorConversationsPerYear
 
 export const TITLE_MAX_LENGTH = 60
 

@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react'
 import type { PaymentReturn } from '@steuereule/core'
+import { classifyApiFailure } from '../../net/apiFailure'
 
 /**
  * Where the user stands after the payment return trip (WEB-1, WEB-35), the same on the printout and on
@@ -29,14 +30,14 @@ export const REAL_PAYMENT_CLOCK: PaymentClock = {
   },
 }
 
-/** How often and how long the unlock is awaited after a successful return, and on which clock. */
-export interface PaymentConfirmationTiming {
-  readonly intervalMs?: number
-  readonly timeoutMs?: number
-  readonly clock?: PaymentClock
-}
+/**
+ * The clock the payment confirmation schedules on: the real one unless a provider further up supplies another.
+ * The screens take no clock; whoever needs to move time wraps them in `PaymentClockProvider`.
+ */
+const PaymentClockContext = createContext<PaymentClock>(REAL_PAYMENT_CLOCK)
+export const PaymentClockProvider = PaymentClockContext.Provider
 
-export interface PaymentConfirmationOptions extends PaymentConfirmationTiming {
+export interface PaymentConfirmationOptions {
   /** The outcome the route carried, from the shared return contract. */
   readonly outcome: PaymentReturn | undefined
   /** Whether the year is unlocked; undefined while the status is still loading. */
@@ -45,18 +46,13 @@ export interface PaymentConfirmationOptions extends PaymentConfirmationTiming {
   readonly refetch: () => unknown
 }
 
+/** How often the unlock status is read again after a successful return, and how long it is awaited. */
 export const PAYMENT_POLL_INTERVAL_MS = 2_000
 export const PAYMENT_CONFIRM_TIMEOUT_MS = 60_000
 
 /** The phase, and `recheck` to start a fresh confirmation window (after a timeout). */
-export function usePaymentConfirmation({
-  outcome,
-  unlocked,
-  refetch,
-  intervalMs = PAYMENT_POLL_INTERVAL_MS,
-  timeoutMs = PAYMENT_CONFIRM_TIMEOUT_MS,
-  clock = REAL_PAYMENT_CLOCK,
-}: PaymentConfirmationOptions): { readonly phase: PaymentPhase; readonly recheck: () => void } {
+export function usePaymentConfirmation({ outcome, unlocked, refetch }: PaymentConfirmationOptions): { readonly phase: PaymentPhase; readonly recheck: () => void } {
+  const clock = useContext(PaymentClockContext)
   const [timedOut, setTimedOut] = useState(false)
   const [round, setRound] = useState(0)
   const refetchRef = useRef(refetch)
@@ -68,13 +64,13 @@ export function usePaymentConfirmation({
 
   useEffect(() => {
     if (!waiting) return
-    const stopPolling = clock.every(intervalMs, () => void refetchRef.current())
-    const stopTimeout = clock.after(timeoutMs, () => setTimedOut(true))
+    const stopPolling = clock.every(PAYMENT_POLL_INTERVAL_MS, () => void refetchRef.current())
+    const stopTimeout = clock.after(PAYMENT_CONFIRM_TIMEOUT_MS, () => setTimedOut(true))
     return () => {
       stopPolling()
       stopTimeout()
     }
-  }, [waiting, intervalMs, timeoutMs, clock, round])
+  }, [waiting, clock, round])
 
   const recheck = useCallback(() => {
     setTimedOut(false)
@@ -88,19 +84,18 @@ export function usePaymentConfirmation({
   return { phase, recheck }
 }
 
-/**
- * Why a checkout start was refused, from either shape the API client has: a response `{ status, data }`
- * or a thrown error `{ status, body }` / `{ status, code }`. `other` for anything not named here.
- */
-export type CheckoutRefusal = 'already-paid' | 'pending' | 'throttled' | 'other'
+/** Why a checkout start was refused, read from the rejected request. `other` for anything not named here. */
+export type CheckoutRefusal = 'already-paid' | 'pending' | 'throttled' | 'not-configured' | 'other'
 
-export function checkoutRefusalOf(source: unknown): CheckoutRefusal {
-  const record = source !== null && typeof source === 'object' ? (source as Record<string, unknown>) : {}
-  const body = (record.body ?? record.data) as Record<string, unknown> | null | undefined
-  const code = typeof record.code === 'string' ? record.code : body !== null && typeof body === 'object' && typeof body.code === 'string' ? body.code : null
-  if (code === 'ALREADY_PAID') return 'already-paid'
-  if (code === 'PAYMENT_PENDING') return 'pending'
-  if (record.status === 429) return 'throttled'
+/** The codes of the API's 503 when payment, or the tier asked for, is not set up in this environment. */
+const NOT_CONFIGURED = new Set(['PAYMENT_NOT_CONFIGURED', 'PAYMENT_TIER_NOT_CONFIGURED'])
+
+export function checkoutRefusalOf(error: unknown): CheckoutRefusal {
+  const failure = classifyApiFailure(error)
+  if (failure.code === 'ALREADY_PAID') return 'already-paid'
+  if (failure.code === 'PAYMENT_PENDING') return 'pending'
+  if (failure.kind === 'rate-limited') return 'throttled'
+  if (failure.code !== undefined && NOT_CONFIGURED.has(failure.code)) return 'not-configured'
   return 'other'
 }
 

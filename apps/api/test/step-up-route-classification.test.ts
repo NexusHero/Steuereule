@@ -14,8 +14,7 @@ import { ModulesContainer } from '@nestjs/core'
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import { createBetterAuth } from '../src/auth/better-auth.js'
 import { STEP_UP_ACTION_METADATA, StepUpGuard } from '../src/auth/requires-step-up.js'
-import { BETTER_AUTH_NO_STEP_UP, BETTER_AUTH_SERVER_ONLY_PREFIXES, BETTER_AUTH_STEP_UP, type SensitiveAction } from '../src/auth/step-up-policy.js'
-import { STEP_UP_PATHS } from '../src/auth/step-up.js'
+import { BETTER_AUTH_NO_STEP_UP, BETTER_AUTH_SERVER_ONLY_PREFIXES, BETTER_AUTH_STEP_UP, needsStepUp, type SensitiveAction } from '../src/auth/step-up-policy.js'
 import { buildTestApp } from './support/build-test-app.js'
 
 process.env.GUEST_SESSION_SECRET = 'step-up-route-classification-secret'
@@ -192,9 +191,9 @@ describe('better-auth: every endpoint the configured instance serves is decided'
   })
 
   it('the step-up plugin gates exactly the sensitive endpoints, including the ones H2-19 found open', () => {
-    expect([...STEP_UP_PATHS].sort()).toEqual(Object.keys(BETTER_AUTH_STEP_UP).sort())
+    expect(httpPaths.filter((path) => needsStepUp(path)).sort()).toEqual(Object.keys(BETTER_AUTH_STEP_UP).sort())
     for (const path of ['/token', '/oauth2/create-client', '/oauth2/client/rotate-secret', '/unlink-account', '/passkey/delete-passkey']) {
-      expect(STEP_UP_PATHS.has(path), path).toBe(true)
+      expect(needsStepUp(path), path).toBe(true)
     }
   })
 

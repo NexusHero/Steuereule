@@ -5,7 +5,8 @@ import { checkCapitalTaxation, compareFilingTypes, computeIncomeTax } from '../k
 import { TOOL_ARG_SCHEMAS } from '../ki/advisor-tools.js'
 import { readLawForOwl, type LawId } from '../ki/law-text.js'
 import { ADVISOR_KNOWLEDGE } from '../ki/skills.generated.js'
-import { json, refused, taxYearArg } from './tool-kit.js'
+import { taxYearArg } from './tool-args.js'
+import { json, refused } from './tool-results.js'
 
 type AdviceArgs<Name extends keyof typeof TOOL_ARG_SCHEMAS> = z.infer<(typeof TOOL_ARG_SCHEMAS)[Name]>
 type Shape = Readonly<Record<string, z.ZodType>>

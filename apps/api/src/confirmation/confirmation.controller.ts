@@ -7,6 +7,7 @@ import { UserContextGuard } from '../auth/user-context.guard.js'
 import { ParseTaxYearPipe } from '../common/parse-tax-year.pipe.js'
 import { ConfirmationService } from './confirmation.service.js'
 import { ConfirmAnnexDto, ConfirmationResponseDto, ProposalDecisionDto, TaskDecisionDto } from './dto/confirmation.dto.js'
+import { Destructive } from '../common/destructive.decorator.js'
 
 const YEAR_PARAM = { name: 'jahr', type: Number, example: 2025, description: 'The tax year (ParseSteuerjahrPipe, same as Cockpit).' }
 
@@ -43,6 +44,7 @@ export class ConfirmationController {
   }
 
   @Put(':jahr/bestaetigung/vorschlaege/:key')
+  @Destructive()
   @RequiresAccount()
   @ApiParam(YEAR_PARAM)
   @ApiParam({ name: 'key', type: String, example: 'lstb.bruttoarbeitslohn' })
@@ -60,6 +62,7 @@ export class ConfirmationController {
   }
 
   @Put(':jahr/bestaetigung/aufgaben/:id')
+  @Destructive()
   @RequiresAccount()
   @ApiParam(YEAR_PARAM)
   @ApiParam({ name: 'id', type: String, description: 'The id of a task from the overview.' })

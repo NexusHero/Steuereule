@@ -1,28 +1,16 @@
 // The consent screen when it is opened by the OAuth redirect itself (parameters from the address bar),
 // with every scope wording, a failing client lookup and the ways the consent call can fail.
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
-import { I18nextProvider } from 'react-i18next'
-import { ThemeProvider } from '@steuereule/ui'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { screen, fireEvent, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
-import { createAppI18n } from '../../i18n/app-i18n'
 import { OauthConsentScreen, type OauthConsentScreenProps } from './OauthConsentScreen'
 import { server } from '../../test-msw-server'
+import { renderWithQuery } from '../../test-render'
 
 const BASE_URL = 'http://localhost:3000'
 
 function renderScreen(props: OauthConsentScreenProps = {}) {
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
-  return render(
-    <QueryClientProvider client={queryClient}>
-      <I18nextProvider i18n={createAppI18n('de')}>
-        <ThemeProvider mode="light">
-          <OauthConsentScreen {...props} />
-        </ThemeProvider>
-      </I18nextProvider>
-    </QueryClientProvider>,
-  )
+  return renderWithQuery(<OauthConsentScreen {...props} />)
 }
 
 afterEach(() => window.history.replaceState({}, '', '/'))

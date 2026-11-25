@@ -1,28 +1,15 @@
 import { describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen } from '@testing-library/react'
-import { I18nextProvider } from 'react-i18next'
-import { ThemeProvider } from '@steuereule/ui'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { fireEvent, screen } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
-import { createAppI18n } from '../../i18n/app-i18n'
 import { server, EMPTY_CH_SALARY_CERTIFICATE_RESPONSE } from '../../test-msw-server'
 import { CockpitScreen, type CockpitScreenProps } from './CockpitScreen'
 import { missingItems } from './estimateMissing'
+import { renderWithQuery } from '../../test-render'
 
 const TAX_YEAR = 2025
 
 function renderCockpit(props: Partial<CockpitScreenProps> = {}) {
-  const i18n = createAppI18n('de')
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-  return render(
-    <QueryClientProvider client={queryClient}>
-      <I18nextProvider i18n={i18n}>
-        <ThemeProvider mode="light">
-          <CockpitScreen taxYear={TAX_YEAR} isSignedIn={true} {...props} />
-        </ThemeProvider>
-      </I18nextProvider>
-    </QueryClientProvider>,
-  )
+  return renderWithQuery(<CockpitScreen taxYear={TAX_YEAR} isSignedIn={true} {...props} />)
 }
 
 /** A Swiss certificate the tile reads as done: folded and with a rate, but without the pension fund contribution. */

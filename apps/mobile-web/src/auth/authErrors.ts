@@ -1,3 +1,5 @@
+import { classifyApiFailure, refusalError } from '../net/apiFailure'
+
 export interface AuthErrorLike {
   readonly code?: string | undefined
   readonly status?: number | undefined
@@ -28,6 +30,6 @@ export function authErrorKey(error: AuthErrorLike | null | undefined): string {
   const code = error?.code
   const key = code === undefined ? undefined : CODE_TO_KEY.get(code)
   // better-auth's own per-address limiter answers 429 without a code.
-  if (key === undefined && error?.status === 429) return 'errTooManyAttempts'
+  if (key === undefined && classifyApiFailure(refusalError(error)).kind === 'rate-limited') return 'errTooManyAttempts'
   return key ?? 'errGeneric'
 }

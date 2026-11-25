@@ -8,15 +8,18 @@ import { AUTH_CONTEXT_REQUEST_KEY, USER_ID_REQUEST_KEY } from '../src/auth/user-
 import { AuditService } from '../src/audit/audit.service.js'
 import { McpController } from '../src/mcp/mcp.controller.js'
 import { McpRateLimiter } from '../src/mcp/mcp-rate-limit.js'
-import { McpService } from '../src/mcp/mcp.service.js'
 import { FakeAuditRepository } from './fakes/fake-audit.repository.js'
+import { mcpTestService } from './support/mcp-client.js'
 
 const BASE = 'http://localhost:3501'
 const bundle = { auth: { options: { baseURL: BASE } } } as never
 
-function controller() {
-  return new McpController({ createServer: vi.fn() } as never, bundle)
+/** The controller over a stand-in service, with the limiter and audit log of the process unless a test gives its own. */
+function controllerOver(mcp: object, limiter = new McpRateLimiter(), audit = new AuditService(new FakeAuditRepository())) {
+  return new McpController(mcp as never, bundle, limiter, audit)
 }
+
+const controller = () => controllerOver({ createServer: vi.fn() })
 
 describe('McpController sign-in challenge (ADR-0052 §2, RFC 9728 §5.1)', () => {
   it('answers a request without an assistant token with 401 and points to the protected-resource metadata', async () => {
@@ -49,7 +52,7 @@ describe('McpController limits (ADR-0052 amendment 6)', () => {
     for (const id of ['a', 'b', 'c']) limiter.openSession('user-1', id)
     const audit = new FakeAuditRepository()
     const mcp = { createServer: vi.fn() }
-    const ctl = new McpController(mcp as never, bundle, limiter, new AuditService(audit))
+    const ctl = controllerOver(mcp, limiter, new AuditService(audit))
     const reply = { header: vi.fn(), hijack: vi.fn(), raw: { writeHead: vi.fn(), write: vi.fn(), on: vi.fn() } }
     const request = { [USER_ID_REQUEST_KEY]: 'user-1', [AUTH_CONTEXT_REQUEST_KEY]: { source: 'assistent', clientId: 'c', clientName: 'Claude', scopes: [] } }
     const refused = await ctl.sse(request as never, reply as never).catch((error: unknown) => error)
@@ -70,7 +73,7 @@ describe('McpController SSE sessions belong to the client that opened them', () 
 
   it('refuses a message from another client of the same user with 403, and takes the opener\'s', async () => {
     const connect = vi.fn()
-    const ctl = new McpController({ createServer: () => ({ connect }) } as never, bundle, new McpRateLimiter())
+    const ctl = controllerOver({ createServer: () => ({ connect }) })
     await ctl.sse(requestOf('client-a') as never, replyOf() as never)
     const sessionId = [...(ctl as unknown as { sessions: Map<string, unknown> }).sessions.keys()][0]!
 
@@ -92,7 +95,7 @@ describe('McpController SSE sessions belong to the client that opened them', () 
   it('answers an unknown session with a code and the pointer to /mcp, and audits a foreign client', async () => {
     const audit = new AuditService(new FakeAuditRepository())
     const appended = vi.spyOn(audit, 'append')
-    const ctl = new McpController({ createServer: () => ({ connect: vi.fn() }) } as never, bundle, new McpRateLimiter(), audit)
+    const ctl = controllerOver({ createServer: () => ({ connect: vi.fn() }) }, new McpRateLimiter(), audit)
     const missing = replyOf()
     await ctl.messages(requestOf('client-a', { sessionId: 'elsewhere' }) as never, missing as never)
     expect(missing.raw.writeHead).toHaveBeenCalledWith(404, { 'Content-Type': 'application/json' })
@@ -133,17 +136,14 @@ describe('McpController Streamable HTTP (stateless, POST /mcp)', () => {
     return new URL(`http://127.0.0.1:${(http!.address() as AddressInfo).port}/mcp`)
   }
 
-  function realService(audit: AuditService, limiter: McpRateLimiter): McpService {
-    const none = {} as never
-    return new McpService(none, none, none, none, none, none, none, none, audit, undefined, undefined, undefined, undefined, undefined, undefined, undefined, limiter)
-  }
+  const realService = (audit: AuditService, limiter: McpRateLimiter) => mcpTestService({ deps: { audit }, limiter }).service
 
   const ASSISTANT = { source: 'assistent', clientId: 'client-claude', clientName: 'Claude', scopes: ['steuerdaten:read'] }
 
   it('initializes and calls a tool over the new endpoint, each request with a fresh server', async () => {
     const audit = new FakeAuditRepository()
     const auditService = new AuditService(audit)
-    const ctl = new McpController(realService(auditService, new McpRateLimiter()), bundle, new McpRateLimiter(), auditService)
+    const ctl = controllerOver(realService(auditService, new McpRateLimiter()), new McpRateLimiter(), auditService)
     const url = await serve(ctl, ASSISTANT)
     const client = new Client({ name: 'TestClient', version: '1.0.0' })
     await client.connect(new StreamableHTTPClientTransport(url))
@@ -158,7 +158,7 @@ describe('McpController Streamable HTTP (stateless, POST /mcp)', () => {
   it('holds the tool-call limit on the new endpoint too', async () => {
     const auditService = new AuditService(new FakeAuditRepository())
     const limiter = new McpRateLimiter(Date.now, { toolCallsPerMinute: 1, openSessionsPerUser: 3 })
-    const ctl = new McpController(realService(auditService, limiter), bundle, limiter, auditService)
+    const ctl = controllerOver(realService(auditService, limiter), limiter, auditService)
     const client = new Client({ name: 'TestClient', version: '1.0.0' })
     await client.connect(new StreamableHTTPClientTransport(await serve(ctl, ASSISTANT)))
     await client.callTool({ name: 'wechselkurs', arguments: { taxYear: 2024 } })
@@ -169,7 +169,7 @@ describe('McpController Streamable HTTP (stateless, POST /mcp)', () => {
   })
 
   it('answers 401 with the challenge without an assistant token', async () => {
-    const ctl = new McpController({ createServer: vi.fn() } as never, bundle)
+    const ctl = controller()
     const url = await serve(ctl, undefined)
     const res = await fetch(url, { method: 'POST', headers: { 'content-type': 'application/json', accept: 'application/json, text/event-stream' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'initialize', params: {} }) })
     expect(res.status).toBe(401)
@@ -177,7 +177,7 @@ describe('McpController Streamable HTTP (stateless, POST /mcp)', () => {
   })
 
   it('answers GET and DELETE on /mcp with 405: the stateless endpoint keeps no stream and no session', async () => {
-    const ctl = new McpController({ createServer: vi.fn() } as never, bundle)
+    const ctl = controller()
     const url = await serve(ctl, ASSISTANT)
     expect((await fetch(url, { method: 'GET' })).status).toBe(405)
     expect((await fetch(url, { method: 'DELETE' })).status).toBe(405)

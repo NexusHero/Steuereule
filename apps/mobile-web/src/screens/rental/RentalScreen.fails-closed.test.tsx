@@ -2,16 +2,13 @@
 // when left (WEB-39 / NM-04); „Objekt hinzufügen“ creates one property per tap (NM-13); a link that does not
 // load says why the share question is missing (NM-15).
 import { describe, expect, it } from 'vitest'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { I18nextProvider } from 'react-i18next'
-import { ThemeProvider } from '@steuereule/ui'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { delay, http, HttpResponse } from 'msw'
 import type { RentalPropertyDto, RentalResponseDto } from '@steuereule/api-client'
-import { createAppI18n } from '../../i18n/app-i18n'
 import { server } from '../../test-msw-server'
 import { expectFailsClosed, failEveryRequest } from '../../test-every-query-fails'
 import { RentalScreen } from './RentalScreen'
+import { renderWithQuery } from '../../test-render'
 
 const RENTAL_URL = '*/v1/steuerjahre/2026/vermietung'
 
@@ -44,15 +41,7 @@ const RESPONSE: RentalResponseDto = {
 } as RentalResponseDto
 
 function renderRental() {
-  return render(
-    <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })}>
-      <I18nextProvider i18n={createAppI18n('de')}>
-        <ThemeProvider mode="light">
-          <RentalScreen taxYear={2026} />
-        </ThemeProvider>
-      </I18nextProvider>
-    </QueryClientProvider>,
-  )
+  return renderWithQuery(<RentalScreen taxYear={2026} />)
 }
 
 function recordAddressPuts() {

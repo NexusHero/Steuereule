@@ -3,16 +3,12 @@
 // raw English text never reaches the page and a lost account leads to the sign-in (WEB-44); a double tap books
 // once (NC-03); a failed secondary read says so (NC-10, NC-17); a link to an unknown business opens none (NC-16).
 import { describe, it, expect, vi } from 'vitest'
-import { screen, fireEvent, waitFor, render } from '@testing-library/react'
-import type { ReactNode } from 'react'
-import { I18nextProvider } from 'react-i18next'
-import { ThemeProvider } from '@steuereule/ui'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { screen, fireEvent, waitFor } from '@testing-library/react'
 import { http, HttpResponse, delay } from 'msw'
-import { createAppI18n } from '../../i18n/app-i18n'
 import { server } from '../../test-msw-server'
 import { BusinessScreen } from './BusinessScreen'
 import { BASE_PROFILE, BASE_URL, EMPTY_BOOK, renderBusiness, useBusinessDefaults, YEAR } from './businessTestKit'
+import { renderWithQuery } from '../../test-render'
 
 const LOSSES = { facts: {}, rules: {}, businessProfitEur: -100, year: { newLossEur: 500, carryForwardDeductedEur: 0, remainingCarryForwardEur: 0 }, carryBack: null }
 const VA = { period: 'quartal', periodSource: 'vorjahressteuer', extension: false, specialPrepaymentEur: null, periods: [], totalEur: 0, ecSalesList: { period: 'quartal', reports: [] } }
@@ -103,15 +99,7 @@ describe('Voranmeldungen waits for the profile it edits (WEB-31)', () => {
 
 describe('the area speaks the shared wording and leads to an account (WEB-44, NC-05)', () => {
   function renderWithAccount(page: string | undefined, account: { onSignIn: () => void; onCreateAccount: () => void }) {
-    const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
-    const wrap = (node: ReactNode) => (
-      <QueryClientProvider client={client}>
-        <I18nextProvider i18n={createAppI18n('de')}>
-          <ThemeProvider mode="light">{node}</ThemeProvider>
-        </I18nextProvider>
-      </QueryClientProvider>
-    )
-    return render(wrap(<BusinessScreen taxYear={YEAR} person="A" page={page} account={account} onBack={() => {}} onOpenPage={() => {}} />))
+    return renderWithQuery(<BusinessScreen taxYear={YEAR} person="A" page={page} account={account} onBack={() => {}} onOpenPage={() => {}} />)
   }
 
   it('never shows "Internal server error"; says it in German with a retry', async () => {

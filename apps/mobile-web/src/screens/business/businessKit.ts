@@ -2,12 +2,11 @@ import { formatEuroCents, toGermanDate } from '@steuereule/core'
 import { useTranslation } from 'react-i18next'
 import { isApiError } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
-import { apiFailureMessage, classifyApiFailure, type ApiFailureKind } from '../../net/apiFailure'
+import { apiFailureMessage, classifyApiFailure, type AnyTranslate, type ApiFailureKind } from '../../net/apiFailure'
 import { parseGermanCents } from '../shared/germanNumber'
 
 export type Person = 'A' | 'B'
 
-/** The `?person=` query of the self-employment endpoints: none for A (the default). */
 /** The query of a business page: the spouse's business (`person=B`) and a further business (`betrieb`, ADR-0101 §22). */
 export function personParams(person: Person, business = 1): { readonly person?: 'B'; readonly betrieb?: number } | undefined {
   if (person !== 'B' && business === 1) return undefined
@@ -81,10 +80,8 @@ export function domainReasonOf(error: unknown): string | undefined {
   return typeof message === 'string' && message.trim() !== '' ? message : undefined
 }
 
-type Translate = (key: string, options?: Record<string, unknown>) => string
-
 /** The German sentence for a problem: the page's own reason, the API's domain reason, or the shared wording. */
-export function problemText(problem: ApiProblem, t: Translate): string {
+export function problemText(problem: ApiProblem, t: AnyTranslate): string {
   if (problem.local !== null) return problem.local
   const reason = domainReasonOf(problem.error)
   if (reason !== undefined) return reason
@@ -94,7 +91,7 @@ export function problemText(problem: ApiProblem, t: Translate): string {
 /** `problemText` bound to the app's language. */
 export function useProblemText(): (problem: ApiProblem) => string {
   const { t } = useTranslation(APP_NS)
-  return (problem) => problemText(problem, t as Translate)
+  return (problem) => problemText(problem, t)
 }
 
 /** A number somewhere inside an untyped answer (`a.b.c`); null when it is not there. */

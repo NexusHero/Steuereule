@@ -1,5 +1,5 @@
 import Stripe from 'stripe'
-import { PaymentProviderUnavailableError, type CheckoutLookup, type CheckoutRequest, type CheckoutSession, type PaymentEvent, type PaymentProvider, type Price, type SessionOwner } from './payment-provider.js'
+import { PaymentProviderUnavailableError, PriceNotConfiguredError, type CheckoutLookup, type CheckoutRequest, type CheckoutSession, type PaymentEvent, type PaymentProvider, type Price, type SessionOwner } from './payment-provider.js'
 import type { UnlockTier } from './unlock.repository.js'
 
 export interface StripeConfig {
@@ -64,7 +64,7 @@ export class StripePaymentProvider implements PaymentProvider {
   async createCheckout(request: CheckoutRequest): Promise<CheckoutSession> {
     const tier = request.tier ?? 'standard'
     const price = this.priceIdOf(tier)
-    if (!price) throw new Error('STRIPE_PRICE_ID_SELBSTSTAENDIG is not set: the self-employment tier cannot be sold here.')
+    if (!price) throw new PriceNotConfiguredError(tier)
     const session = await this.stripe.checkout.sessions.create(
       {
         mode: 'payment',

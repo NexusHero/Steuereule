@@ -2,10 +2,7 @@
 // on „Prüfen & bestätigen“ by a name, never its id; values read as their field type; the record a value belongs
 // to is named; and „Einzeln ändern“ opens the mask of every screen.
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen } from '@testing-library/react'
-import { I18nextProvider } from 'react-i18next'
-import { ThemeProvider } from '@steuereule/ui'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { fireEvent, screen } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import { FIELD_CATALOG, SCREENS, annexOf, provenanceKey } from '@steuereule/core'
 import type { ConfirmationResponseDto, FieldProvenanceDto } from '@steuereule/api-client'
@@ -14,6 +11,7 @@ import { APP_NS } from '../../i18n/resources'
 import { server } from '../../test-msw-server'
 import { ConfirmationScreen } from './ConfirmationScreen'
 import { fieldLabelText, instanceText, valueText } from './confirmationText'
+import { renderWithQuery } from '../../test-render'
 
 const i18n = createAppI18n('de')
 const t = i18n.getFixedT('de', APP_NS)
@@ -34,17 +32,8 @@ const value = (over: Partial<FieldProvenanceDto>): FieldProvenanceDto => ({
 })
 
 function renderScreen() {
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
   const onOpenScreen = vi.fn()
-  render(
-    <QueryClientProvider client={queryClient}>
-      <I18nextProvider i18n={i18n}>
-        <ThemeProvider mode="light">
-          <ConfirmationScreen year={2025} onBack={vi.fn()} onOpenScreen={onOpenScreen} />
-        </ThemeProvider>
-      </I18nextProvider>
-    </QueryClientProvider>,
-  )
+  renderWithQuery(<ConfirmationScreen year={2025} onBack={vi.fn()} onOpenScreen={onOpenScreen} />)
   return onOpenScreen
 }
 
