@@ -58,7 +58,8 @@ import { SubmissionGateProvider, useSubmissionGate } from './src/navigation/Subm
 import { AppTabs } from './src/navigation/AppTabs'
 import { AppearanceProvider, resolveThemeMode, useAppearance } from './src/lib/appearance'
 import { syncHapticsPreferenceFromStorage } from './src/lib/hapticsPreference'
-import { onSessionExpired, resetSessionExpiry, watchForSessionExpiry } from './src/net/sessionExpiry'
+import { resetSessionExpiry, watchForSessionExpiry } from './src/net/sessionExpiry'
+import { leaveOnSessionExpiry } from './src/navigation/sessionExpiryExit'
 
 const i18n = createAppI18n('de')
 const queryClient = new QueryClient({ defaultOptions: APP_QUERY_DEFAULTS })
@@ -73,17 +74,22 @@ const authClient = createAppAuthClient(apiBaseUrl)
 const RootStack = createNativeStackNavigator<RootStackParamList>()
 const rootNavigation = createNavigationContainerRef<RootStackParamList>()
 
-/** WEB-24: an expired session opens the sign-in and remembers the place to come back to. */
+/** WEB-24: an expired session opens the sign-in, remembers the place and drops the signed-in state. */
 function useSessionExpiryRedirect(): void {
+  const { resetSubmissionGate } = useSubmissionGate()
   useEffect(
     () =>
-      onSessionExpired(() => {
-        if (RN.Platform.OS === 'web' && typeof window !== 'undefined') {
-          rememberReturnTo(`${window.location.pathname}${window.location.search}`)
-        }
-        if (rootNavigation.isReady()) rootNavigation.reset({ index: 0, routes: [{ name: 'Login', params: { expired: true } }] })
+      leaveOnSessionExpiry({
+        currentPath: () => (RN.Platform.OS === 'web' && typeof window !== 'undefined' ? `${window.location.pathname}${window.location.search}` : null),
+        forgetSignedInState: () => {
+          resetSubmissionGate()
+          queryClient.clear()
+        },
+        openSignIn: () => {
+          if (rootNavigation.isReady()) rootNavigation.reset({ index: 0, routes: [{ name: 'Login', params: { expired: true } }] })
+        },
       }),
-    [],
+    [resetSubmissionGate],
   )
 }
 
@@ -353,6 +359,13 @@ function PrintoutRoute({ navigation, route }: NativeStackScreenProps<RootStackPa
  * „Einzeln ändern“ (H2-2, WEB-18): every mask a value can live on opens its own screen, and coming back returns to
  * „Prüfen & bestätigen“. The profile is a tab of its own, so it is opened there.
  */
+/**
+ * Compile-time lock of „Einzeln ändern“: only the profile (opened in its tab) and "nothing open" may reach the
+ * confirmation screen itself. A mask added to `ConfirmationForm` without a branch in `ConfirmationRoute` does not
+ * type-check here, instead of silently showing „Prüfen & bestätigen“ again (H2-2).
+ */
+function everyMaskHasItsScreen(_remaining: 'profil' | null): void {}
+
 function ConfirmationRoute({ navigation, route }: NativeStackScreenProps<RootStackParamList, 'Confirmation'>) {
   const [open, setOpen] = useState<{ screen: ConfirmationForm; field: string | undefined } | null>(null)
   const screen = open?.screen ?? null
@@ -394,6 +407,7 @@ function ConfirmationRoute({ navigation, route }: NativeStackScreenProps<RootSta
   if (screen === 'rente') return <PensionerScreen taxYear={year} onDone={back} onBack={back} />
   if (screen === 'kapital') return <CapitalScreen taxYear={year} onDone={back} onBack={back} />
   if (screen === 'vermietung') return <RentalScreen taxYear={year} onDone={back} onBack={back} />
+  everyMaskHasItsScreen(screen)
   return (
     <ConfirmationScreen
       year={year}

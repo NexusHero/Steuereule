@@ -38,9 +38,11 @@ export class PrismaUnlockRepository implements UnlockRepository {
       data: { status: 'bezahlt', amountCents, paidAt: am },
     })
     if (updated.count > 0) return this.holdIfPaid(sessionId, am)
-    if (!owner) return
     const known = await this.prisma.unlock.findUnique({ where: { stripeCheckoutSessionId: sessionId }, select: { id: true } })
-    if (known) return
+    // The event came again (Stripe repeats it until it is answered): the row is paid already. Its hold is made
+    // sure of here too, so a first delivery that failed between the two writes is repaired by the next one.
+    if (known) return this.holdIfPaid(sessionId, am)
+    if (!owner) return
     // The row was never written (API-4): rebuild it from the session's metadata, if the account still exists.
     const user = await this.prisma.user.findUnique({ where: { id: owner.userId }, select: { id: true } })
     if (!user) return
@@ -65,11 +67,13 @@ export class PrismaUnlockRepository implements UnlockRepository {
   async revoke(sessionId: string, reason: 'erstattet' | 'angefochten'): Promise<void> {
     // A refund also ends a dispute's limbo; a dispute never overrides a refund.
     const from = reason === 'erstattet' ? ['bezahlt', 'angefochten'] : ['bezahlt']
-    const { count } = await this.prisma.unlock.updateMany({ where: { stripeCheckoutSessionId: sessionId, status: { in: from } }, data: { status: reason } })
-    if (count === 0 || reason !== 'erstattet') return
+    await this.prisma.unlock.updateMany({ where: { stripeCheckoutSessionId: sessionId, status: { in: from } }, data: { status: reason } })
+    if (reason !== 'erstattet') return
     // The refund ends the entitlement, not the record: the hold stays and counts from the refund year if later.
-    const row = await this.prisma.unlock.findUnique({ where: { stripeCheckoutSessionId: sessionId }, select: { id: true, userId: true, paidAt: true } })
-    if (row) await holdRefundedUnlock(this.prisma, row, new Date())
+    // Read from the row as it stands, not from this call's update: a repeated event repairs a hold that the
+    // first delivery did not get to write.
+    const row = await this.prisma.unlock.findUnique({ where: { stripeCheckoutSessionId: sessionId }, select: { id: true, userId: true, paidAt: true, status: true } })
+    if (row?.status === 'erstattet') await holdRefundedUnlock(this.prisma, row, new Date())
   }
 
   async restore(sessionId: string): Promise<void> {

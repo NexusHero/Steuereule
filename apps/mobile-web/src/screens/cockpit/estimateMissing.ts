@@ -36,7 +36,8 @@ const HOLDER: Readonly<Record<string, { readonly tile: TileId; readonly partner:
 }
 
 /** Ids with a wording of their own but no single mask to send the user to. */
-const KNOWN_WITHOUT_HOLDER = new Set(['einkommen'])
+// `zustimmung`: Person B (own account) has not agreed to the joint year (decision 3); B gives it in B's own app.
+const KNOWN_WITHOUT_HOLDER = new Set(['einkommen', 'zustimmung'])
 
 const PERSON_B = 'personB.'
 

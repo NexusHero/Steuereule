@@ -197,3 +197,15 @@ describe('printout: Person B of a joint return (WEB-15)', () => {
     expect(onConfirm).toHaveBeenCalled()
   })
 })
+
+describe('printout: a joint year Person B has not agreed to (decision 3, API-3)', () => {
+  it('says that the partner has to agree in their own app, and does not send Person A to their own master data', async () => {
+    server.use(
+      http.get('*/v1/steuerjahre/2025/freischaltung', () => HttpResponse.json({ status: 'offen' })),
+      http.get('*/v1/steuerjahre/2025/ausdruck/pruefung', () => HttpResponse.json({ missing: ['personB.zustimmung'] })),
+    )
+    renderScreen()
+    expect((await screen.findByTestId('ausdruck-zustimmung-person-b')).textContent).toContain('noch nicht zugestimmt')
+    expect(screen.queryByText('Ergänze zuerst deine Angaben für die Steuererklärung.')).toBeNull()
+  })
+})

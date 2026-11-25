@@ -12,6 +12,7 @@ import {
   type MasterDataRepository,
 } from '../master-data/master-data.repository.js'
 import { PARTNER_COUPLING_REPOSITORY, type PartnerCouplingRepository, type PartnerCouplingRecord } from './link.repository.js'
+import { personBConsentPending, personBHasOwnAccount } from './partner-consent.js'
 import type { LinkPersonBDto, LinkResponseDto, SetLinkDto } from './dto/link.dto.js'
 
 const SHADOW_PREFIX = 'spouse_'
@@ -20,17 +21,7 @@ function shadowId(userId: string, taxYear: number): string {
   return `${SHADOW_PREFIX}${userId}_${taxYear}`
 }
 
-function hasOwnAccount(row: PartnerCouplingRecord): boolean {
-  return row.personBUserId !== '' && !row.personBUserId.startsWith(SHADOW_PREFIX)
-}
-
-/**
- * Decision 3 (API-3): Person B with an own account agrees per tax year, in B's own app. Until then Person A
- * sees nothing of B for that year. A shadow B (no account) is A's own record and needs no consent.
- */
-function personBConsentPending(row: PartnerCouplingRecord): boolean {
-  return hasOwnAccount(row) && (row.personBConsentedAt ?? null) === null
-}
+const hasOwnAccount = personBHasOwnAccount
 
 const INVITATION_VALID_MS = 14 * 24 * 60 * 60 * 1000
 
@@ -85,7 +76,7 @@ export class LinkService {
       return { filingType: 'keine' }
     }
 
-    const pending = row.filingType === 'zusammen' && personBConsentPending(row)
+    const pending = personBConsentPending(row)
     const callerIsA = row.personAUserId === userId
     let personB: LinkPersonBDto | null = null
     if (row.filingType === 'zusammen' && row.personBUserId && !(callerIsA && pending)) {
@@ -246,8 +237,9 @@ export class LinkService {
     if (data.firstName !== undefined || data.lastName !== undefined || data.steuerId !== undefined) {
       const existing = await this.profileRepository.findByUserId(spouseUserId)
       await this.profileRepository.upsert(spouseUserId, {
-        firstName: data.firstName ?? existing?.firstName ?? '',
-        lastName: data.lastName ?? existing?.lastName ?? '',
+        // One rule for every field (WEB-29): absent keeps what is stored, null clears it.
+        firstName: data.firstName !== undefined ? (data.firstName ?? '') : (existing?.firstName ?? ''),
+        lastName: data.lastName !== undefined ? (data.lastName ?? '') : (existing?.lastName ?? ''),
         steuerId: data.steuerId !== undefined ? data.steuerId : existing?.steuerId ?? null,
         steuernummer: existing?.steuernummer ?? null,
       })
@@ -258,8 +250,8 @@ export class LinkService {
       const religion = data.religion !== undefined ? data.religion : previous.religion
       await this.masterDataRepository.save(spouseUserId, {
         ...previous,
-        geburtsdatum: data.geburtsdatum ?? previous.geburtsdatum,
-        beruf: data.beruf ?? previous.beruf,
+        geburtsdatum: data.geburtsdatum !== undefined ? data.geburtsdatum : previous.geburtsdatum,
+        beruf: data.beruf !== undefined ? data.beruf : previous.beruf,
         religion,
         familienstand: 'verheiratet',
         religionEinwilligungAm:

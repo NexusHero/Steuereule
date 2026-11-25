@@ -37,10 +37,10 @@ async function main() {
     await card.waitFor({ state: 'visible', timeout: 15_000 })
 
     // Einzeln ändern: the button opens the mask behind the first value.
-    const change = page.locator('[data-testid="aendern-anlageN"]')
+    const change = page.locator('[data-testid="aendern-anlageN-lstb"]')
     await change.click()
     await page.locator('[data-testid="lstb-bruttoarbeitslohn"]').waitFor({ state: 'visible', timeout: 10_000 })
-    console.log(`[${TAG}] ✅ aendern-anlageN — opens the LStB mask`)
+    console.log(`[${TAG}] ✅ aendern-anlageN-lstb — opens the LStB mask`)
     await page.goto(`${webOrigin}/app/steuerjahr/${YEAR}/bestaetigung`, { waitUntil: 'networkidle' })
     await card.waitFor({ state: 'visible', timeout: 15_000 })
 

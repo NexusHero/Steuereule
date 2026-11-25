@@ -4,6 +4,9 @@ import { FakeChildRepository } from './fakes/fake-child.repository.js'
 import { FakeChSalaryCertificateRepository } from './fakes/fake-ch-salary-certificate.repository.js'
 import { FakeLinkRepository } from './fakes/fake-link.repository.js'
 
+/** Person B agreed to the joint year (decision 3); without it Person A's readers do not reach B. */
+const B_AGREED = new Date('2026-01-10T09:00:00Z')
+
 class FakeAuditService {
   readonly logs: unknown[] = []
   append(data: unknown): Promise<void> {
@@ -185,7 +188,7 @@ describe('ChildrenService — the Swiss Kinderzulage when both parents are Grenz
     ch.seed(swiss('a', aChf))
     ch.seed(swiss('b', bChf))
     const link = new FakeLinkRepository()
-    await link.upsert('a', 2025, { personBUserId: 'b', filingType: 'zusammen' })
+    await link.upsert('a', 2025, { personBUserId: 'b', filingType: 'zusammen', personBConsentedAt: B_AGREED })
     const service = new ChildrenService(repo, new FakeAuditService() as never, ch, link)
     return { repo, service }
   }
