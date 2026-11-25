@@ -1,3 +1,4 @@
+import { withSystemDatabaseAccess } from './database-identity.js'
 import { isShadowId } from './person-ids.js'
 
 /** The one method of AuditService a read needs; structural, so common/ stays free of the audit module. */
@@ -29,5 +30,9 @@ export async function appendReadAudit(
   if (!audit) return
   await audit.append({ userId: callerId, action: 'READ', resource })
   const accounts = new Set(otherPersons.filter((id): id is string => !!id && id !== callerId && !isShadowId(id)))
-  for (const userId of accounts) await audit.append({ userId, action: 'READ', resource, source: 'partner' })
+  // Person B's row lands in B's own trail, which the caller may not write (only its own rows, P11): it is the one
+  // cross-user write of a read and runs under its own named reason.
+  for (const userId of accounts) {
+    await withSystemDatabaseAccess('partner-read-audit', () => audit.append({ userId, action: 'READ', resource, source: 'partner' }))
+  }
 }
