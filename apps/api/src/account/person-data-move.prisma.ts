@@ -19,7 +19,7 @@ const HAS_TAX_YEAR = new Set(Prisma.dmmf.datamodel.models.filter((model) => mode
  * table of the registry, in its order; the access-log rows of those figures move with them.
  */
 export async function moveShadowDataToAccount(tx: TransactionClient, shadowId: string, accountId: string, taxYear: number): Promise<void> {
-  await allowErasure(tx)
+  await allowErasure(tx, [shadowId])
   const from = { userId: shadowId }
   for (const entry of genericDeletionEntries()) {
     const table = (tx as unknown as Record<string, Table>)[delegateName(entry.model)]!

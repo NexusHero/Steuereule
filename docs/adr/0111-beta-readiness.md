@@ -187,10 +187,17 @@ E2E, integration (database) and load tiers run in CI.
 - Residual: the keystore database has no policies and one login (its rows are keys wrapped under
   `KEYSTORE_MASTER_KEY`, which the database never holds); the two identity settings are plain session settings, so row-level security does
   not protect against SQL injection or against code that names a system reason. In particular, whoever holds
-  the runtime login's password can set `steuereule.system` (or `steuereule.erasure`) and pass every policy
-  and the append-only erasure exception; the two logins keep such a caller from changing the schema, the
-  policies or the triggers and from the re-encryption exception, not from the rows. Row-level security is a
-  guard against bugs in the app (a query for the wrong user), not against a stolen runtime password.
+  the runtime login's password can set `steuereule.system` or `steuereule.user_id` and pass the policies;
+  the two logins keep such a caller from changing the schema, the policies or the triggers and from the
+  re-encryption exception, not from the rows. Row-level security is a guard against bugs in the app (a
+  query for the wrong user), not against a stolen runtime password.
+- Two decisions no longer rest on a setting. Deleting booked rows needs a grant that only the definer-rights
+  function `app_rls.allow_erasure(owners)` (owned by the migration login) writes: it refuses while the
+  owners' tax data are under a legal hold and binds the grant to one transaction and those owners; an empty
+  book needs none. Naming an own-account Person B on `SteuerjahrKopplung` or `PartnerVerknuepfung`, or
+  changing B's consent, is allowed only to Person B or a named system path (the coupling guard trigger);
+  the next year of a household link (`linked-partner-year`) and the household migration's link of a
+  consented year (`household-link`) are such paths.
 - Outside a request a query has no identity, in the test tiers too: the DB tier runs its own seeding and
   assertions as `test-fixture` (`apps/api/test/support/database-fixture.ts`) and the app's repositories and
   services as the user a request would carry.

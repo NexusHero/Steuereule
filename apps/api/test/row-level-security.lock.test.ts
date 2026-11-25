@@ -129,6 +129,20 @@ describe('row-level security lock: the role model', () => {
     .sort()
     .map((name) => readFileSync(path.join(migrationsDir, name, 'migration.sql'), 'utf8'))
 
+  it('the append-only triggers let a delete through only with the erasure grant, never with a setting', () => {
+    const last = (name: string) => migrations.flatMap((text) => [...text.matchAll(new RegExp(`CREATE OR REPLACE FUNCTION ${name}\\(\\)[\\s\\S]*?\\$\\$ LANGUAGE plpgsql;`, 'g'))].map((match) => match[0])).at(-1) ?? ''
+    for (const name of ['steuereule_append_only', 'steuereule_ledger_guard']) {
+      expect(last(name), name).toContain('app_rls.erasure_granted(OLD."userId")')
+      expect(last(name), name).not.toMatch(/steuereule\.erasure/)
+    }
+  })
+
+  it('the coupling guard watches who becomes Person B on both link tables', () => {
+    const all = migrations.join('\n')
+    expect(all).toMatch(/BEFORE INSERT OR UPDATE ON "SteuerjahrKopplung"\s+FOR EACH ROW EXECUTE FUNCTION app_rls\.guard_person_b\('personBUserId', 'personBZustimmungAm'\)/)
+    expect(all).toMatch(/BEFORE INSERT OR UPDATE ON "PartnerVerknuepfung"\s+FOR EACH ROW EXECUTE FUNCTION app_rls\.guard_person_b\('personBNutzerId'\)/)
+  })
+
   it('the append-only exception for re-encryption asks who owns the table, never for a role name', () => {
     const definitions = migrations.flatMap((text) => [...text.matchAll(/CREATE OR REPLACE FUNCTION steuereule_append_only\(\)[\s\S]*?\$\$ LANGUAGE plpgsql;/g)].map((match) => match[0]))
     const current = definitions.at(-1) ?? ''
@@ -142,7 +156,12 @@ describe('row-level security lock: the role model', () => {
     expect(all).toMatch(/REVOKE CREATE ON SCHEMA public FROM PUBLIC;/)
     expect(all).not.toMatch(/GRANT (?:ALL|CREATE)[^;]* ON SCHEMA [^;]* TO (?:steuereule_app|PUBLIC)/i)
     expect(all).not.toMatch(/OWNER TO steuereule_app/)
-    expect(all).not.toMatch(/SECURITY DEFINER/i)
+    // One definer function, the erasure grant: it runs as the owner and writes the grant the triggers read.
+    const definers = [...all.matchAll(/CREATE OR REPLACE FUNCTION ([\w.]+)\([^)]*\)[^$]*?SECURITY DEFINER/gi)].map((match) => match[1])
+    expect(definers).toEqual(['app_rls.allow_erasure'])
+    expect(all.match(/SECURITY DEFINER/gi)).toHaveLength(1)
+    expect(all).toMatch(/REVOKE ALL ON FUNCTION app_rls\.allow_erasure\(text\[\]\) FROM PUBLIC;/)
+    expect(all).not.toMatch(/GRANT (?:INSERT|UPDATE|DELETE|ALL)[^;]* ON app_rls\.erasure_grant/i)
     expect(all).not.toMatch(/NO FORCE ROW LEVEL SECURITY|DISABLE ROW LEVEL SECURITY/)
     expect(all).not.toMatch(/(?:CREATE|ALTER) ROLE [^;]*\bLOGIN\b/)
   })
@@ -157,7 +176,8 @@ const BYPASS_SITES: Readonly<Record<string, readonly string[]>> = {
   'src/guest/guest-activity.repository.prisma.ts': ['guest-activity'],
   'src/guest/guest-retention.ts': ['lifecycle-sweeps'],
   'src/account/account-deletion.repository.prisma.ts': ['account-deletion'],
-  'src/link/link.service.ts': ['partner-invitation'],
+  'src/link/link.service.ts': ['linked-partner-year', 'partner-invitation'],
+  'src/household/household.service.ts': ['household-link'],
   'src/device/device-code.repository.prisma.ts': ['device-flow'],
   'src/unlock/unlock.service.ts': ['payment-webhook'],
   'src/prisma/field-key-rotation.ts': ['field-key-rotation'],

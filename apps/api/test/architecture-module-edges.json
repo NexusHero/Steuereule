@@ -67,7 +67,6 @@
   "auth -> prisma",
   "auth -> receipt",
   "auth -> redis",
-  "business -> account",
   "business -> advisor",
   "business -> audit",
   "business -> auth",

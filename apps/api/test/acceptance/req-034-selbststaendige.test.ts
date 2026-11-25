@@ -3,7 +3,7 @@
 // DELETE refused, the Festschreibung only forward), the erasure path that the trigger lets through,
 // ciphertext at rest, the hash chain over the stored rows, the switch, and the self-employment tier.
 //
-// The cleanup removes only the rows of the accounts this file created (under the erasure flag), never
+// The cleanup removes only the rows of the accounts this file created (under the erasure grant), never
 // anything else in the database it runs against.
 import { generateKey, getMessageKeyFingerprint, parseKeySync } from '@47ng/cloak'
 import { Prisma, PrismaClient } from '@prisma/client'
@@ -43,7 +43,8 @@ describe('REQ-034 — Selbstständige (ADR-0101) against the real server and dat
       if (created.length === 0) return
       const ids = created.splice(0)
       await prisma.$transaction(async (tx) => {
-        await tx.$executeRaw`SELECT set_config('steuereule.erasure', 'on', true)`
+        // The only way past the book's append-only triggers: the database's own erasure grant for these owners.
+        await tx.$executeRaw`SELECT app_rls.allow_erasure(${ids}::text[])`
         await tx.journalLine.deleteMany({ where: { userId: { in: ids } } })
         await tx.journalEntry.deleteMany({ where: { userId: { in: ids } } })
         await tx.ledgerLogRecord.deleteMany({ where: { userId: { in: ids } } })
@@ -144,7 +145,7 @@ describe('REQ-034 — Selbstständige (ADR-0101) against the real server and dat
     expect(book.entries[0]?.text).toBe('Honorar Projekt A')
   })
 
-  it('account deletion removes the book despite the trigger (erasure flag), nothing of it survives', async () => {
+  it('account deletion removes the book despite the trigger (erasure grant), nothing of it survives', async () => {
     const { cookie, userId } = await selfEmployed('req029-delete@example.com')
     await call(cookie, 'POST', '/buchungen', sale)
     const response = await fetch(`${baseUrl}/v1/account`, { method: 'DELETE', headers: { cookie, origin: ALLOWED_ORIGIN, 'content-type': 'application/json' }, body: JSON.stringify({ confirm: true }) })

@@ -3,7 +3,7 @@
 import { describe, expect, it } from 'vitest'
 
 describe('account deletion and the append-only book (ADR-0101)', () => {
-  it('turns the erasure flag on before it deletes a single tax-data row', async () => {
+  it('asks the database for the erasure grant of the person\'s ids before it deletes a single tax-data row', async () => {
     const { deleteAccountTransaction } = await import('../src/account/delete-account-transaction.prisma.js')
     const calls: string[] = []
     const table = (name: string) => ({
@@ -28,7 +28,8 @@ describe('account deletion and the append-only book (ADR-0101)', () => {
     )
     const prisma = { $transaction: (fn: (t: unknown) => Promise<unknown>) => fn(tx) }
     await deleteAccountTransaction(prisma as never, 'user-1')
-    const flag = calls.findIndex((c) => c.startsWith('raw:') && c.includes('set_config') && c.includes('steuereule.erasure'))
+    const flag = calls.findIndex((c) => c.startsWith('raw:') && c.includes('app_rls.allow_erasure') && c.includes('user-1'))
+    expect(calls.some((c) => c.includes('steuereule.erasure'))).toBe(false)
     const firstBookDelete = calls.indexOf('delete:journalLine')
     expect(flag).toBeGreaterThanOrEqual(0)
     expect(firstBookDelete).toBeGreaterThan(flag)

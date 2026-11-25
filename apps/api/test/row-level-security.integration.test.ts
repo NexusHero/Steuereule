@@ -168,6 +168,63 @@ describe('the system setting', () => {
   })
 })
 
+describe('who becomes Person B (coupling guard)', () => {
+  const D = `rls-d-${run}`
+  afterAll(async () => {
+    await owner.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT set_config('steuereule.system', 'test-fixture', true)`
+      await tx.$executeRaw`DELETE FROM "SteuerjahrKopplung" WHERE "personAUserId" = ${A}`
+      await tx.$executeRaw`DELETE FROM "PartnerVerknuepfung" WHERE "personANutzerId" = ${A}`
+    })
+  })
+
+  it('Person A cannot name another account as Person B, nor give B\'s consent; B and a system path can', async () => {
+    const insertAs = (settings: { userId?: string; system?: string }, b: string) =>
+      as(settings, (tx) => tx.$executeRaw`INSERT INTO "SteuerjahrKopplung" ("id", "personAUserId", "personBUserId", "steuerjahr", "veranlagungsart", "updatedAt") VALUES (${randomUUID()}, ${A}, ${b}, 2027, 'zusammen', now())`)
+    await expect(insertAs({ userId: A }, D)).rejects.toThrow(/only Person B or a named system path/)
+    // A shadow Person B is A's own record.
+    await expect(insertAs({ userId: A }, shadowOfA.replace('2025', '2027'))).resolves.toBe(1)
+    await expect(as({ userId: A }, (tx) => tx.$executeRaw`UPDATE "SteuerjahrKopplung" SET "personBUserId" = ${D} WHERE "personAUserId" = ${A} AND "steuerjahr" = 2027`)).rejects.toThrow(/only Person B or a named system path/)
+    await expect(as({ system: 'partner-invitation' }, (tx) => tx.$executeRaw`UPDATE "SteuerjahrKopplung" SET "personBUserId" = ${D} WHERE "personAUserId" = ${A} AND "steuerjahr" = 2027`)).resolves.toBe(1)
+    await expect(as({ userId: A }, (tx) => tx.$executeRaw`UPDATE "SteuerjahrKopplung" SET "personBZustimmungAm" = now() WHERE "personAUserId" = ${A} AND "steuerjahr" = 2027`)).rejects.toThrow(/only Person B gives or withdraws/)
+    await expect(as({ userId: D }, (tx) => tx.$executeRaw`UPDATE "SteuerjahrKopplung" SET "personBZustimmungAm" = now() WHERE "personAUserId" = ${A} AND "steuerjahr" = 2027`)).resolves.toBe(1)
+    // A may still end the joint return: B leaves the row.
+    await expect(as({ userId: A }, (tx) => tx.$executeRaw`UPDATE "SteuerjahrKopplung" SET "personBUserId" = '', "personBZustimmungAm" = NULL, "veranlagungsart" = 'einzel' WHERE "personAUserId" = ${A} AND "steuerjahr" = 2027`)).resolves.toBe(1)
+    await expect(as({ userId: A }, (tx) => tx.$executeRaw`INSERT INTO "PartnerVerknuepfung" ("id", "personANutzerId", "personBNutzerId", "gueltigAb", "updatedAt") VALUES (${randomUUID()}, ${A}, ${D}, 2027, now())`)).rejects.toThrow(/only Person B or a named system path/)
+  })
+})
+
+describe('erasing the book (erasure grant)', () => {
+  const holdId = randomUUID()
+  afterAll(async () => {
+    await owner.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT set_config('steuereule.system', 'test-fixture', true)`
+      await tx.$executeRaw`DELETE FROM "LegalHold" WHERE "id" = ${holdId}`
+    })
+  })
+
+  it('only the database function writes a grant, bound to this transaction, and never under a tax-data hold', async () => {
+    await expect(as({ system: 'account-deletion' }, (tx) => tx.$executeRaw`INSERT INTO app_rls.erasure_grant (txid, owner_ids) VALUES (txid_current(), ARRAY[${A}])`)).rejects.toThrow(/permission denied/)
+    const granted = await as({ system: 'account-deletion' }, async (tx) => {
+      await tx.$executeRaw`SELECT app_rls.allow_erasure(ARRAY[${A}]::text[])`
+      return tx.$queryRaw<{ ok: boolean }[]>`SELECT app_rls.erasure_granted(${A}) AS ok, app_rls.erasure_granted(${B}) AS other`
+    })
+    expect(granted).toEqual([{ ok: true, other: false }])
+    // Another transaction has no grant.
+    expect(await as({ system: 'account-deletion' }, (tx) => tx.$queryRaw<{ ok: boolean }[]>`SELECT app_rls.erasure_granted(${A}) AS ok`)).toEqual([{ ok: false }])
+    // The session setting no longer opens anything.
+    expect(await as({ system: 'account-deletion' }, async (tx) => {
+      await tx.$executeRaw`SELECT set_config('steuereule.erasure', 'on', true)`
+      return tx.$queryRaw<{ ok: boolean }[]>`SELECT app_rls.erasure_granted(${A}) AS ok`
+    })).toEqual([{ ok: false }])
+    await owner.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT set_config('steuereule.system', 'test-fixture', true)`
+      await tx.$executeRaw`INSERT INTO "LegalHold" ("id", "userId", "resource", "holdUntil") VALUES (${holdId}, ${A}, 'taxData', now() + interval '1 year')`
+    })
+    await expect(as({ system: 'account-deletion' }, (tx) => tx.$executeRaw`SELECT app_rls.allow_erasure(ARRAY[${A}]::text[])`)).rejects.toThrow(/legal hold/)
+  })
+})
+
 describe("the API's client against Postgres", () => {
   const client = transactionAwareClient(runtime)
 

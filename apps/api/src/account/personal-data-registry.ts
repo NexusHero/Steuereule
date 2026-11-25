@@ -188,7 +188,7 @@ export const PERSONAL_DATA_REGISTRY: readonly PersonalDataEntry[] = [
   taxTable('AdvisorInterview', 'Steuerberater-Chat (Stand des Interviews)'),
   taxTable('AssistantTask', 'Aufgabe vom Assistenten'),
   // ADR-0101: lines before their entries, entries, log and bank transactions before their book (FKs). The
-  // append-only trigger lets these deletes through only under the erasure flag (`allowErasure`).
+  // append-only trigger lets these deletes through only with the database's erasure grant (`allowErasure`).
   taxTable('JournalLine', 'Buchungszeile'),
   taxTable('JournalEntry', 'Buchung'),
   taxTable('LedgerLogRecord', 'Buchungsprotokoll'),

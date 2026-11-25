@@ -176,13 +176,17 @@ export class LinkService {
       const partner = await this.household?.partnerLink(userId)
       if (partner && partner.personBUserId !== '' && linkActiveIn(partner, taxYear) && !(existing?.filingType === 'zusammen' && existing.personBUserId !== '')) {
         // A new year of the link: B is asked in B's own app before A sees anything of B (decision 3, API-3).
-        await this.repository.upsert(userId, taxYear, {
-          filingType: 'zusammen',
-          personBUserId: partner.personBUserId,
-          invitationCode: null,
-          invitationCodeValidUntil: null,
-          personBConsentedAt: null,
-        })
+        // Naming an own-account Person B is a system path in the database (the coupling guard): the household
+        // link, which B agreed to, is what lets A name B here.
+        await withSystemDatabaseAccess('linked-partner-year', () =>
+          this.repository.upsert(userId, taxYear, {
+            filingType: 'zusammen',
+            personBUserId: partner.personBUserId,
+            invitationCode: null,
+            invitationCodeValidUntil: null,
+            personBConsentedAt: null,
+          }),
+        )
         return this.get(userId, taxYear)
       }
       const remains = existing?.filingType === 'zusammen' && existing.personBUserId !== ''

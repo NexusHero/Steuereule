@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto'
 import { Inject, Injectable } from '@nestjs/common'
 import { asksForEducation, isPreselectedForYear, planHouseholdMerge, type HouseholdEntry } from '@steuereule/core'
 import { AuditService } from '../audit/audit.service.js'
+import { withSystemDatabaseAccess } from '../common/database-identity.js'
 import { ConflictError, ForbiddenError, InvalidInputError, NotFoundError } from '../common/domain-error.js'
 import { CHILD_REPOSITORY, type ChildRecord, type ChildRepository } from '../children/child.repository.js'
 import { PARTNER_COUPLING_REPOSITORY, type PartnerCouplingRepository } from '../link/link.repository.js'
@@ -109,7 +110,10 @@ export class HouseholdService {
     const link = await this.repo.findPartnerLinkByPersonA(householdUserId)
     const ownAccount = spouseRows.find((r) => !isShadow(r.personBUserId))
     if (!link && ownAccount) {
-      await this.repo.upsertPartnerLink(householdUserId, { personBUserId: ownAccount.personBUserId, spousePersonId: null, validFromYear: ownAccount.taxYear, endedFromYear: null })
+      // Only a year B agreed to reaches here (decision 3); naming B in the link is a system path in the database.
+      await withSystemDatabaseAccess('household-link', () =>
+        this.repo.upsertPartnerLink(householdUserId, { personBUserId: ownAccount.personBUserId, spousePersonId: null, validFromYear: ownAccount.taxYear, endedFromYear: null }),
+      )
     }
   }
 
