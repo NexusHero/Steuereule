@@ -11,6 +11,7 @@ import {
   type AdvisorMessageMeta,
   type AdvisorMessageStatus,
 } from '@steuereule/core'
+import { withSystemDatabaseAccess } from '../common/database-identity.js'
 import { ENCRYPTED_PRISMA, type EncryptedPrismaClient } from '../prisma/encrypted-prisma.provider.js'
 import {
   matchesActionId,
@@ -122,13 +123,16 @@ export class PrismaAdvisorRepository implements AdvisorRepository {
   }
 
   async recentUsage(limit: number): Promise<AdvisorMessageUsage[]> {
-    // Only the plain usage column (tokens, timings, model): no text, no user id leaves this query.
-    const rows = await this.prisma.advisorChatMessage.findMany({
-      where: { role: 'assistant', usageJson: { not: null } },
-      orderBy: { createdAt: 'desc' },
-      take: limit,
-      select: { usageJson: true },
-    })
+    // Only the plain usage column (tokens, timings, model): no text, no user id leaves this query. The model
+    // profiles are measured over every user's answers, so the query crosses users under its own reason.
+    const rows = await withSystemDatabaseAccess('model-usage-stats', () =>
+      this.prisma.advisorChatMessage.findMany({
+        where: { role: 'assistant', usageJson: { not: null } },
+        orderBy: { createdAt: 'desc' },
+        take: limit,
+        select: { usageJson: true },
+      }),
+    )
     return rows.flatMap((row) => {
       const usage = parseJson<AdvisorMessageUsage>(row.usageJson)
       return usage ? [usage] : []

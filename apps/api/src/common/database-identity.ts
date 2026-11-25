@@ -22,6 +22,7 @@ export const SYSTEM_DATABASE_REASONS = {
   'device-flow': 'the device login: the desktop has no identity while it waits for the phone to approve',
   'step-up-grant': 'step-up grants live in better-auth\'s Verification table, which has no owner column',
   'payment-webhook': 'the payment provider webhook: resolves a checkout session to its account',
+  'model-usage-stats': "the owl's model profiles: the usage column (tokens, timings, model) of every user's latest answers, nothing else",
   'field-key-rotation': 'rotate:field-key re-encrypts every encrypted column of every user (operator script, never the server)',
   'test-fixture': "the DB test tier only: a suite's own seeding, cleanup and assertions (`test/support/database-fixture.ts`)",
 } as const
