@@ -2,7 +2,8 @@ import { ISO_DATE_PATTERN, RECEIPT_TYPES } from '@steuereule/core'
 import { z } from 'zod'
 import { MAX_RECEIPT_FILE_BYTES } from '../../receipt/storage/magic-bytes.js'
 import type { McpDeps, McpSession } from '../mcp-session.js'
-import { instanceArg, json, maxTaxYear, MIN_TAX_YEAR, refused, taxYearArg } from '../tool-kit.js'
+import { instanceArg, maxTaxYear, MIN_TAX_YEAR, taxYearArg } from '../tool-args.js'
+import { json, refused } from '../tool-results.js'
 
 /** The base64 text of the largest file the upload takes (10 MB), with room for line breaks some clients insert. */
 export const MAX_RECEIPT_BASE64_LENGTH = Math.ceil(MAX_RECEIPT_FILE_BYTES / 3) * 4 + 300_000

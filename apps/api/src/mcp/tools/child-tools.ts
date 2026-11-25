@@ -5,7 +5,8 @@ import { ConflictError } from '../../common/domain-error.js'
 import { TOO_MANY_CHILDREN } from '../../children/children.service.js'
 import { ownRecord } from '../own-record.js'
 import { ageAtYearEnd } from '../read-view.js'
-import { instanceArg, json, refused, taxYearArg } from '../tool-kit.js'
+import { instanceArg, taxYearArg } from '../tool-args.js'
+import { json, refused } from '../tool-results.js'
 
 /** More children than this in one tax year only the user adds in the app: a household has few, a runaway assistant many. */
 export const MAX_CHILDREN_BY_ASSISTANT = 12

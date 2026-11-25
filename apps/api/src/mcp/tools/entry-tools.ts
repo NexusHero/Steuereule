@@ -5,7 +5,8 @@ import { DomainError } from '../../common/domain-error.js'
 import { isAiWritable } from '../../confirmation/ai-write-policy.js'
 import { checkStageValue, OWN_TOOL_SCREENS, validateStageTarget } from '../../ki/advisor-safety.js'
 import { dataUserFor, isOwnProvenance, isOwnReceipt, provenanceOf, type McpDeps, type McpSession } from '../mcp-session.js'
-import { boundedRecord, fieldArg, instanceArg, json, MAX_FIELD_LENGTH, personArg, reasonOfError, receiptIdArg, refused, screenArg, taxYearArg, valueArg } from '../tool-kit.js'
+import { boundedRecord, fieldArg, instanceArg, MAX_FIELD_LENGTH, personArg, receiptIdArg, screenArg, taxYearArg, valueArg } from '../tool-args.js'
+import { json, reasonOfError, refused } from '../tool-results.js'
 
 /**
  * The catalogue's hints are written for the in-app advisor and name its tools; the user's assistant has

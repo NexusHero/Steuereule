@@ -11,7 +11,8 @@ import { McpRateLimiter } from '../../src/mcp/mcp-rate-limit.js'
 import type { AssistantSessionInfo, McpDeps, McpSession } from '../../src/mcp/mcp-session.js'
 import { McpService } from '../../src/mcp/mcp.service.js'
 import { UploadAdmission } from '../../src/receipt/upload-admission.js'
-import { installToolGate, MCP_SCOPE } from '../../src/mcp/tool-kit.js'
+import { MCP_SCOPE } from '../../src/common/assistant-scopes.js'
+import { installToolGate } from '../../src/mcp/tool-gate.js'
 import { FakeAuditRepository } from '../fakes/fake-audit.repository.js'
 
 /** An assistant granted every scope the endpoint advertises. */

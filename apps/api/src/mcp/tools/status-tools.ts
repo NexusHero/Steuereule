@@ -4,7 +4,8 @@ import { ConflictError } from '../../common/domain-error.js'
 import { checkStageValue, validateStageTarget } from '../../ki/advisor-safety.js'
 import type { SimulationEntry } from '../mcp-report.service.js'
 import { dataUserFor, type McpDeps, type McpSession } from '../mcp-session.js'
-import { fieldArg, instanceArg, json, MIN_TAX_YEAR, maxTaxYear, personArg, refused, screenArg, taxYearArg, valueArg } from '../tool-kit.js'
+import { fieldArg, instanceArg, MIN_TAX_YEAR, maxTaxYear, personArg, screenArg, taxYearArg, valueArg } from '../tool-args.js'
+import { json, refused } from '../tool-results.js'
 
 /** Where the return stands: the years, printout pre-check, owl hints, payment link (ADR-0052 §3, §5, §8, §12). */
 export function registerStatusTools(session: McpSession, deps: McpDeps): void {

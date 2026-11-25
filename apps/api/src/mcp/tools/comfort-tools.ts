@@ -3,7 +3,8 @@ import { ANNUAL_AVERAGE_RATES, describeFieldForPrompt, fieldsOfScreen, SCREENS }
 import { isAiWritable } from '../../confirmation/ai-write-policy.js'
 import { OWN_TOOL_SCREENS } from '../../ki/advisor-safety.js'
 import type { McpDeps, McpSession } from '../mcp-session.js'
-import { json, refused, taxYearArg } from '../tool-kit.js'
+import { taxYearArg } from '../tool-args.js'
+import { json, refused } from '../tool-results.js'
 import { forExternalAssistant, isUserOnly } from './entry-tools.js'
 
 /** A line of a form the assistant may see: a Kennzahl with a plain amount, never a name, an id or an address. */

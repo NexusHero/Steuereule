@@ -4,7 +4,8 @@ import { describe, expect, it } from 'vitest'
 import { z } from 'zod'
 import { createResettableRateLimitStorage } from '../src/auth/rate-limit-storage.js'
 import { MCP_CHECKOUT_LINK_LIMIT, MCP_LIMITS, MCP_TOOL_BUDGETS, McpRateLimiter, type ToolBudget } from '../src/mcp/mcp-rate-limit.js'
-import { MCP_SCOPE, TOOL_POLICIES } from '../src/mcp/tool-kit.js'
+import { MCP_SCOPE } from '../src/common/assistant-scopes.js'
+import { TOOL_POLICIES } from '../src/mcp/tool-policies.js'
 import { connectMcpTools } from './support/mcp-client.js'
 
 function clock(start = 1_000_000) {
