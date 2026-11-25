@@ -68,7 +68,7 @@ describe('StromScreen loading', () => {
       ),
     )
     renderStrom('auswahl')
-    expect(await screen.findByText('Das hat nicht geklappt.')).toBeTruthy()
+    expect(await screen.findByText('Das konnte nicht geladen werden.')).toBeTruthy()
     healthy = true
     fireEvent.click(screen.getByText('Noch mal versuchen'))
     expect(await screen.findByTestId('strom-schritt-auswahl')).toBeTruthy()

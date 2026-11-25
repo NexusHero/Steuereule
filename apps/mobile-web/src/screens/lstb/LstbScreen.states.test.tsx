@@ -31,7 +31,8 @@ describe('LstbScreen frame', () => {
     let healthy = false
     server.use(http.get(LSTB_URL, () => (healthy ? HttpResponse.json(EMPTY_LSTB_RESPONSE) : HttpResponse.json(null, { status: 500 }))))
     renderLstb()
-    expect(await screen.findByText('Deine Lohnsteuerbescheinigung konnte nicht geladen werden. Prüf die Verbindung und versuch es noch mal.')).toBeTruthy()
+    expect(await screen.findByText('Das konnte nicht geladen werden.')).toBeTruthy()
+    expect(screen.getByText('Bei uns ist gerade etwas schiefgelaufen. Versuch es gleich noch mal.')).toBeTruthy()
     healthy = true
     fireEvent.click(screen.getByText('Noch mal versuchen'))
     expect(await screen.findByText('Bruttoarbeitslohn (Zeile 3)')).toBeTruthy()

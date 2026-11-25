@@ -15,6 +15,8 @@ import {
 } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
 import { isoToGerman } from '../master-data/masterDataMapping'
+import { useApiFailureMessage } from '../../net/apiFailure'
+import { InlineLoadFailure } from '../shared/InlineLoadFailure'
 
 export interface HouseholdChildrenSectionProps {
   readonly taxYear: number
@@ -39,9 +41,10 @@ export function HouseholdChildrenSection({ taxYear, onChanged }: HouseholdChildr
   const remove = useHouseholdControllerDelete()
   const [selected, setSelected] = useState<ReadonlySet<string>>(new Set())
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
-  const [failed, setFailed] = useState(false)
+  const [failed, setFailed] = useState<unknown>(null)
+  const failureMessage = useApiFailureMessage()
 
-  const view: HouseholdResponseDto | null = query.data?.status === 200 ? query.data.data : null
+  const view: HouseholdResponseDto | null = query.data?.data ?? null
   const children = view?.persons.filter((p) => p.kind === 'child') ?? []
   const offered = children.filter((p) => !p.inThisYear && p.selectable)
   const present = children.filter((p) => p.inThisYear)
@@ -52,16 +55,22 @@ export function HouseholdChildrenSection({ taxYear, onChanged }: HouseholdChildr
     setSelected(new Set(offeredKey.split('|').flatMap((entry) => (entry.endsWith(':1') ? [entry.slice(0, -2)] : []))))
   }, [offeredKey])
 
+  // NM-15: a household that does not load says so instead of vanishing.
+  if (query.isError) {
+    return <InlineLoadFailure what={tr('kinder.haushaltLadefehler')} error={query.error} onRetry={() => void query.refetch()} testID="haushalt-ladefehler" />
+  }
   if (!view || (offered.length === 0 && present.length === 0 && view.candidates.length === 0)) return null
 
-  async function run(task: () => Promise<{ status: number }>) {
-    setFailed(false)
-    const res = await task().catch(() => ({ status: 0 }))
-    if (res.status !== 200) {
-      setFailed(true)
+  async function run(task: () => Promise<unknown>) {
+    setFailed(null)
+    try {
+      await task()
+    } catch (error) {
+      setFailed(error)
       return
     }
     await queryClient.invalidateQueries({ queryKey: getHouseholdControllerGetQueryKey(taxYear) })
+    // WEB-42: the mask's child list follows (useChildForm re-reads the stored list when it changes).
     await onChanged()
   }
 
@@ -168,9 +177,10 @@ export function HouseholdChildrenSection({ taxYear, onChanged }: HouseholdChildr
         </View>
       ) : null}
 
-      {failed ? (
+      {failed !== null ? (
         <Text style={styles.danger} role="alert" testID="haushalt-fehler">
-          {tr('haushalt.fehler')}
+          {/* NM-07: the reason, not one text for every status. */}
+          {failureMessage(failed, { unknown: tr('haushalt.fehler') })}
         </Text>
       ) : null}
     </Card>

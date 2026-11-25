@@ -34,6 +34,8 @@ export interface PlausibilityHookResult {
   readonly printoutHints: readonly string[]
   readonly answers: Answers
   readonly retry: () => void
+  /** With `status: 'error'`: the failed read, for the shared wording of why (WEB-28). */
+  readonly error?: unknown
 }
 
 function dataFromResponse(r: LstbResponseDto): WageTaxCertificateData {
@@ -97,19 +99,16 @@ export function usePlausibility(
     return { status: 'loading', conflicts: [], notices: [], missingForPrintout: null, printoutHints: [], answers: {}, retry }
   }
 
-  if (
-    lstbQuery.isError ||
-    lstbQuery.data?.status !== 200 ||
-    interviewQuery.isError ||
-    interviewQuery.data?.status !== 200
-  ) {
-    return { status: 'error', conflicts: [], notices: [], missingForPrintout: null, printoutHints: [], answers: {}, retry }
+  if (lstbQuery.isError || interviewQuery.isError) {
+    const error: unknown = lstbQuery.error ?? interviewQuery.error
+    return { status: 'error', conflicts: [], notices: [], missingForPrintout: null, printoutHints: [], answers: {}, retry, error }
   }
 
   const data = dataFromResponse(lstbQuery.data.data)
   const answers = interviewQuery.data.data.answers as Answers
   const result = checkPlausibility(foldInputs(data, answers, capability.enabled), { selfEmployment: capability.enabled })
-  const printout = printoutQuery.data?.status === 200 ? printoutQuery.data.data : null
+  // The printout check only adds hints; when it fails, the count of missing details stays unknown (null).
+  const printout = printoutQuery.data?.data ?? null
 
   return {
     status: 'ready',

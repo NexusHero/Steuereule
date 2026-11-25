@@ -8,6 +8,8 @@ import { rememberedReturnTo } from '../screens/funnel/sessionMemory'
 import { TILES } from '../screens/cockpit/tiles'
 import { currentRoute, renderShell, signedIn } from './navigationTestKit'
 import { stubArgs } from './stubScreen'
+import { http, HttpResponse } from 'msw'
+import { server } from '../test-msw-server'
 
 vi.mock('../screens/cockpit/CockpitScreen', async () => ({ CockpitScreen: (await import('./stubScreen')).stubScreen('cockpit') }))
 vi.mock('../screens/interview/InterviewScreen', async () => ({ InterviewScreen: (await import('./stubScreen')).stubScreen('interview') }))
@@ -393,6 +395,17 @@ describe('the master data and the partner', () => {
   it('sends a partner link without a recorded partner to the master data', async () => {
     renderShell('/app/steuerjahr/2025/partner/lstb')
     await at('CockpitMasterData', { year: YEAR })
+  })
+
+  it('opens a reloaded partner link with the name of the year’s partner (NM-12)', async () => {
+    server.use(
+      http.get('*/v1/steuerjahre/:jahr/kopplung', () =>
+        HttpResponse.json({ filingType: 'zusammen', personBUserId: 'b', personBHasOwnAccount: false, personB: { firstName: 'Bea' } }),
+      ),
+    )
+    renderShell('/app/steuerjahr/2025/partner/lstb')
+    await at('Partner', { area: 'lstb' })
+    await waitFor(() => expect(propsOf('lstb')).toMatchObject({ partnerName: 'Bea' }))
   })
 })
 

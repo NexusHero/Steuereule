@@ -72,7 +72,7 @@ describe('saving', () => {
 
     fireEvent.click(screen.getByTestId('arbeitstage-weiter'))
 
-    expect(await screen.findByText(/noch nicht gespeichert/)).toBeTruthy()
+    expect(await screen.findByText(/Nicht gespeichert/)).toBeTruthy()
     expect(onDone).not.toHaveBeenCalled()
   })
 
@@ -84,7 +84,7 @@ describe('saving', () => {
 
     fireEvent.click(screen.getByTestId('arbeitstage-weiter'))
 
-    expect(await screen.findByText(/noch nicht gespeichert/)).toBeTruthy()
+    expect(await screen.findByText(/Nicht gespeichert/)).toBeTruthy()
     expect(onDone).not.toHaveBeenCalled()
   })
 

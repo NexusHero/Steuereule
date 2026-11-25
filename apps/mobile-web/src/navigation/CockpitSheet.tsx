@@ -4,6 +4,8 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import { Sheet } from '@steuereule/ui'
 import { APP_NS } from '../i18n/resources'
 import { blurActiveInput } from '../lib/blurActiveInput'
+import { LeaveGuardProvider } from '../screens/shared/leaveGuard'
+import { useRemovalGuard } from './useRemovalGuard'
 import type { CockpitStackParamList } from './routes'
 
 export interface CockpitSheetProps {
@@ -13,6 +15,8 @@ export interface CockpitSheetProps {
 
 export function CockpitSheet({ navigation, children }: CockpitSheetProps) {
   const { t: tr } = useTranslation(APP_NS)
+  // WEB-40 / NM-05: the X, the backdrop, Escape and the browser's back wait for the mask's pending saves.
+  const host = useRemovalGuard(navigation)
 
   function close() {
     blurActiveInput()
@@ -27,7 +31,7 @@ export function CockpitSheet({ navigation, children }: CockpitSheetProps) {
   return (
     // Every cockpit sheet holds a mask (LStB, Kapital, Kinder …): a reading column, not a wide panel.
     <Sheet onClose={close} closeLabel={tr('sheet.schliessen')} width="flow">
-      {children}
+      <LeaveGuardProvider host={host}>{children}</LeaveGuardProvider>
     </Sheet>
   )
 }

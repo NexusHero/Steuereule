@@ -739,6 +739,15 @@
     "telefon": "Phone for queries (optional)",
     "speichern": "Save",
     "gespeichert": "Saved.",
+    "kopplungStand": {
+      "loading": "Loading the type of assessment …",
+      "loadError": "The type of assessment could not be loaded. Until it is, nothing is chosen or saved here.",
+      "statusLoadError": "Whether you are linked as a couple could not be loaded.",
+      "personBGespeichert": "Partner details saved.",
+      "personBUnveraendert": "There is nothing new to save.",
+      "codeUnbekannt": "We do not know this code. Check the spelling."
+    },
+    "ungespeichertZurueck": "Your changes are not saved yet. Tap “Save” – or go back again to discard them.",
     "fehlendHinweis": "{{anzahl}} details still missing for the printout.",
     "vollstaendig": "Everything there for the printout.",
     "saveError": {
@@ -938,7 +947,8 @@
     "postError": {
       "conflict": "Your answer didn't match what was already saved. We've refreshed your progress.",
       "invalid": "That answer wasn't accepted. We've refreshed your progress.",
-      "network": "Your answer couldn't be saved. Check your connection and try again."
+      "network": "Your answer couldn't be saved. Check your connection and try again.",
+      "failed": "Your answer was not saved, so the question is shown again."
     },
     "anderesJahr": "Other year",
     "job": {
@@ -1257,6 +1267,8 @@
     "heading": "Capital & brokerage",
     "help": "Copy your capital income from your bank’s annual tax certificate (Jahressteuerbescheinigung).",
     "loading": "Loading your capital income …",
+    "inhaberLadefehler": "Whether you are assessed jointly could not be loaded, so the question who owns the depot is missing here.",
+    "guenstigerpruefungLadefehler": "The most-favourable check could not be loaded.",
     "loadError": {
       "heading": "That didn't work.",
       "message": "Your capital income couldn't be loaded. Check your connection and try again.",
@@ -1318,6 +1330,8 @@
     "heading": "Your rental property",
     "help": "Enter your year-round rented objects — one Anlage V each, with linear depreciation.",
     "loading": "Loading your rental property …",
+    "anteilLadefehler": "Whether you are assessed jointly could not be loaded, so the question about your share in the property is missing here.",
+    "leerenNichtMoeglich": "This field cannot be left empty once a value is saved. Enter 0 if there was nothing.",
     "loadError": {
       "heading": "That didn't work.",
       "message": "Your rental property couldn't be loaded. Check your connection and try again.",
@@ -1374,7 +1388,8 @@
     "abgelaufen": "The deadline {{frist}} has passed. The tax office may set a late-filing surcharge — from {{pflichtAb}} it must (at least {{mindestsatz}} per started month).",
     "zuschlagPflicht": "The filing deadline {{frist}} passed {{tage}} days ago. Since {{pflichtAb}} the tax office must set a late-filing surcharge (§ 152 (2) AO): at least {{mindestsatz}} per started month — file soon.",
     "freiwillig": "Voluntary return: you have until {{bis}} (31 Dec of the fourth following year). The sooner you file, the sooner the refund arrives.",
-    "unklar": "Whether you have to file, we will work out from your answers. The mandatory deadline would be {{frist}}."
+    "unklar": "Whether you have to file, we will work out from your answers. The mandatory deadline would be {{frist}}.",
+    "ladefehler": "Your filing deadline could not be loaded."
   },
   "shared": {
     "saveFailed": "At least one entry was not saved. Check your connection and enter it again — or tap again to continue anyway."
@@ -1424,6 +1439,7 @@
       "retry": "Try again"
     },
     "conflict": "Your answer didn't match what was saved. We've updated your progress.",
+    "antwortZurueck": "Your answer was not saved, so the question is shown again.",
     "progress": "Question {{done}} of {{total}}",
     "amountPlaceholder": "Whole euros",
     "amountLater": "Enter amount later",
@@ -1583,7 +1599,8 @@
       "geburtsdatum": "Date of birth (DD.MM.YYYY)",
       "fehlt": "Please enter first name and date of birth.",
       "datumFalsch": "Please enter the date of birth as DD.MM.YYYY.",
-      "fehler": "That did not work. Check the connection and try again."
+      "fehler": "That did not work. Check the connection and try again.",
+      "ladefehler": "Your partner's details could not be loaded."
     },
     "alleinerziehend": {
       "titel": "Single parent"
@@ -1611,6 +1628,7 @@
       "nachzahlung": "Expected back payment",
       "ergebnis": "Expected result",
       "ohneSchaetzung": "The estimate follows as soon as your wage details are in.",
+      "schaetzungLadefehler": "The estimate could not be loaded.",
       "uebernommen": "Taken into your return",
       "offen": "Still open",
       "abgabe": "Prepare the submission",
@@ -1686,6 +1704,7 @@
     "widerspruchBody": "More vacation/sick days than work days — check your entries.",
     "weiter": "Continue",
     "loading": "Loading …",
+    "zahlUnlesbar": "That is not a whole number. Please type digits only, e.g. 30.",
     "speichernFehler": "That did not work — your entries are not saved yet. Please try again.",
     "weg": {
       "titel": "Your way to work",
@@ -2414,6 +2433,7 @@
     "back": "Back",
     "weiter": "Continue",
     "loading": "Loading your details …",
+    "antwortZurueck": "Your answer was not saved, so the question is shown again.",
     "loadError": {
       "heading": "That didn't work.",
       "message": "Your details couldn't be loaded. Check your connection and try again.",
@@ -2509,6 +2529,11 @@
     "pflichtFehlt": "Please enter first name, last name and date of birth.",
     "datumFalsch": "Please enter the date of birth as DD.MM.YYYY.",
     "speichernFehler": "The child was not saved. Check the details and the connection and try again.",
+    "nichtGespeichert": "The child was not saved.",
+    "loeschenFehler": "The child was not deleted.",
+    "formOffen": "The child is not saved yet. Tap “Save child” – or “Next” again to discard what you typed.",
+    "familienstandLadefehler": "Your marital status could not be loaded, so the questions about the single-parent relief are missing here.",
+    "haushaltLadefehler": "The children of the household could not be loaded.",
     "kinderzulageAusLohnausweis": "The same figure as in the Swiss salary certificate (“child and family allowances”): {{betrag}} of it fall to this child. Enter something here only if it is a different amount.",
     "kinderzulageHinweis": "The same figure as “child and family allowances” in the Swiss salary certificate. If it is entered there already, leave this field empty: the amount is taken from there."
   },

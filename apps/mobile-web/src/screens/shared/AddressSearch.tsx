@@ -58,7 +58,7 @@ export function AddressSearch({ postalCode, onPick, testIDPrefix }: AddressSearc
       addressControllerSearch({ query: trimmed, ...(/^\d{5}$/.test(postalCode) ? { postalCode } : {}) })
         .then((response) => {
           if (request !== latestRequest.current) return
-          if (response.status !== 200 || !response.data.available) setState({ kind: 'unavailable' })
+          if (!response.data.available) setState({ kind: 'unavailable' })
           else if (response.data.hits.length === 0) setState({ kind: 'none' })
           else setState({ kind: 'found', hits: response.data.hits, houseNumber: response.data.houseNumber })
         })

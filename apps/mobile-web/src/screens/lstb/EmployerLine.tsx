@@ -6,6 +6,7 @@ import { Feld, Input, useTheme } from '@steuereule/ui'
 import { getLstbControllerGetEmployerQueryKey, getYearHistoryControllerGetQueryKey, useLstbControllerGetEmployer, useLstbControllerSetEmployer } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
 import { watchSaveResult } from '../shared/saveFeedback'
+import { InlineLoadFailure } from '../shared/InlineLoadFailure'
 import { makeStyles } from './ChurchTaxLines'
 
 export interface EmployerLineProps {
@@ -25,12 +26,12 @@ export function EmployerLine({ taxYear, params, track }: EmployerLineProps) {
   const queryClient = useQueryClient()
   const query = useLstbControllerGetEmployer(taxYear, params)
   const save = useLstbControllerSetEmployer()
-  const stored = query.data?.status === 200 ? (query.data.data.arbeitgeber ?? '') : ''
+  const stored = query.data?.data.arbeitgeber ?? ''
   const [text, setText] = useState(stored)
   useEffect(() => setText(stored), [stored])
 
   if (query.isPending) return <Text style={s.help}>{tr('lstb.arbeitgeber.loading')}</Text>
-  if (query.isError || query.data.status !== 200) return <Text style={s.error}>{tr('lstb.arbeitgeber.loadError')}</Text>
+  if (query.isError) return <InlineLoadFailure what={tr('lstb.arbeitgeber.loadError')} error={query.error} onRetry={() => void query.refetch()} testID="lstb-arbeitgeber-ladefehler" />
 
   function commit() {
     const value = text.trim()

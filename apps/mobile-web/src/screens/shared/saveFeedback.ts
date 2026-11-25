@@ -10,26 +10,13 @@ export function warnOnHttpError(status: number): void {
   }
 }
 
-/** An HTTP answer ≥ 400 to a save: the value did not reach the server. */
-export class SaveFailedError extends Error {
-  constructor(readonly status: number) {
-    super(`save failed with HTTP ${status}`)
-  }
-}
-
-/** Rejects on an HTTP error too, so callers that track saves see every failure, not only network errors. */
-export function watchSaveResult<T extends { readonly status: number }>(promise: Promise<T>): Promise<T> {
-  return promise.then(
-    (res) => {
-      if (res.status >= 400) {
-        void hapticWarning()
-        throw new SaveFailedError(res.status)
-      }
-      return res
-    },
-    (error) => {
-      void hapticWarning()
-      throw error
-    },
-  )
+/**
+ * Buzzes when a save fails and passes the failure on, so a caller that tracks saves (usePendingMutations) shows
+ * it. Every HTTP status >= 400 already rejects with an ApiError (WEB-28); there is no status to read here.
+ */
+export function watchSaveResult<T>(promise: Promise<T>): Promise<T> {
+  return promise.catch((error: unknown) => {
+    void hapticWarning()
+    throw error
+  })
 }

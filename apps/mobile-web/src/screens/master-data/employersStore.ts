@@ -19,6 +19,7 @@ function idOf(name: string): string {
  */
 export function useKnownEmployers(enabled = true): readonly KnownEmployer[] {
   const query = useKnownEmployersControllerList({ query: { enabled, retry: false } })
-  const list = query.data?.status === 200 ? query.data.data : []
+  // Suggestions only: a failed load offers none, it changes nothing that is stored.
+  const list = query.data?.data ?? []
   return list.map((employer) => ({ id: idOf(employer.name), name: employer.name, strasse: employer.strasse, plzOrt: employer.plzOrt }))
 }

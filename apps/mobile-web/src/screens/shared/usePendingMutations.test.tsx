@@ -1,7 +1,8 @@
 import { describe, expect, it, vi } from 'vitest'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { usePendingMutations } from './usePendingMutations'
-import { SaveFailedError, watchSaveResult } from './saveFeedback'
+import { ApiError } from '@steuereule/api-client'
+import { watchSaveResult } from './saveFeedback'
 
 describe('usePendingMutations', () => {
   it('leaves the mask once every pending save succeeded', async () => {
@@ -19,7 +20,7 @@ describe('usePendingMutations', () => {
     const { result } = renderHook(() => usePendingMutations())
     const leave = vi.fn()
     act(() => {
-      result.current.track(watchSaveResult(Promise.resolve({ status: 500 })))
+      result.current.track(watchSaveResult(Promise.reject(new ApiError(500, {}))))
       result.current.flushThen(leave)
     })
     await waitFor(() => expect(result.current.saveFailed).toBe(true))
@@ -53,7 +54,7 @@ describe('usePendingMutations', () => {
     await expect(done).resolves.toBe(true)
   })
 
-  it('treats an HTTP error answer as a failed save', async () => {
-    await expect(watchSaveResult(Promise.resolve({ status: 409 }))).rejects.toBeInstanceOf(SaveFailedError)
+  it('treats an HTTP error (a rejected ApiError since WEB-28) as a failed save', async () => {
+    await expect(watchSaveResult(Promise.reject(new ApiError(409, {})))).rejects.toBeInstanceOf(ApiError)
   })
 })

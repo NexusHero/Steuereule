@@ -19,6 +19,14 @@ export interface ChildFormOptions {
 
 export function useChildForm({ taxYear, initialKinder, onAddChild, onSaveChild, onDeleteChild, married, suggestedLastName, addressState }: ChildFormOptions) {
   const [kinder, setKinder] = useState<readonly ChildItem[]>(initialKinder)
+  // WEB-42 / NM-08: the list follows the stored one when it changes from outside (children taken over from last
+  // year or deleted in the household section), instead of staying as it was when the mask opened.
+  const storedKey = JSON.stringify(initialKinder)
+  useEffect(() => {
+    setKinder(initialKinder)
+    // initialKinder is compared by content: a caller passing a fresh, equal array does not reset the list.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [storedKey])
   const [firstName, setFirstName] = useState('')
   const [lastName, setLastName] = useState(suggestedLastName)
   /** Which sibling the form was filled from, to say so until the user saves. */
@@ -40,6 +48,9 @@ export function useChildForm({ taxYear, initialKinder, onAddChild, onSaveChild, 
   /** Set the moment a save starts: `saving` is state and reaches this closure only after a render, so two taps dispatched before it would both save. */
   const saveInFlight = useRef(false)
   const [saveError, setSaveError] = useState<'pflicht' | 'datum' | 'server' | null>(null)
+  /** Why the server refused or never got the save (NM-07): a 401, 429 or lost connection is named as such. */
+  const [saveFailure, setSaveFailure] = useState<unknown>(null)
+  const [deleteFailure, setDeleteFailure] = useState<unknown>(null)
   /** The child the last save stored, named where the form was. */
   const [savedName, setSavedName] = useState<string | null>(null)
   const [childcareFrom, setChildcareFrom] = useState('')
@@ -180,9 +191,10 @@ export function useChildForm({ taxYear, initialKinder, onAddChild, onSaveChild, 
       } else if (onAddChild) {
         stored = await onAddChild(payload)
       }
-    } catch {
+    } catch (error) {
       // The save did not reach the server or was refused: keep the form open with the user's input, and say so here.
       setSaveError('server')
+      setSaveFailure(error)
       return
     } finally {
       saveInFlight.current = false
@@ -202,9 +214,12 @@ export function useChildForm({ taxYear, initialKinder, onAddChild, onSaveChild, 
   }
 
   async function handleDelete(id: string) {
+    setDeleteFailure(null)
     try {
       if (onDeleteChild) await onDeleteChild(id)
-    } catch {
+    } catch (error) {
+      // NM-10: a failed delete is said; the child stays in the list.
+      setDeleteFailure(error)
       return
     }
     setKinder(kinder.filter((k) => k.id !== id))
@@ -242,6 +257,8 @@ export function useChildForm({ taxYear, initialKinder, onAddChild, onSaveChild, 
     setProviderFull,
     saving,
     saveError,
+    saveFailure,
+    deleteFailure,
     savedName,
     childcareFrom,
     setChildcareFrom,

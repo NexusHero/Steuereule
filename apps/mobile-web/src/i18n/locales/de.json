@@ -739,6 +739,15 @@
     "telefon": "Telefon für Rückfragen (optional)",
     "speichern": "Speichern",
     "gespeichert": "Gespeichert.",
+    "kopplungStand": {
+      "loading": "Die Veranlagungsart wird geladen …",
+      "loadError": "Die Veranlagungsart konnte nicht geladen werden. Solange wählen und übernehmen wir hier nichts.",
+      "statusLoadError": "Ob ihr als Paar verknüpft seid, konnte nicht geladen werden.",
+      "personBGespeichert": "Partner-Angaben übernommen.",
+      "personBUnveraendert": "Es gibt nichts Neues zu übernehmen.",
+      "codeUnbekannt": "Diesen Code kennen wir nicht. Prüf die Schreibweise."
+    },
+    "ungespeichertZurueck": "Deine Änderungen sind noch nicht gespeichert. Tipp „Speichern“ – oder noch einmal zurück, um sie zu verwerfen.",
     "fehlendHinweis": "Für den Ausdruck fehlen noch {{anzahl}} Angaben.",
     "vollstaendig": "Alles da für den Ausdruck.",
     "saveError": {
@@ -938,7 +947,8 @@
     "postError": {
       "conflict": "Deine Antwort passte nicht zum gespeicherten Stand. Wir haben deinen Fortschritt aktualisiert.",
       "invalid": "Diese Antwort wurde nicht akzeptiert. Wir haben deinen Fortschritt aktualisiert.",
-      "network": "Deine Antwort konnte nicht gespeichert werden. Prüf die Verbindung und versuch es noch mal."
+      "network": "Deine Antwort konnte nicht gespeichert werden. Prüf die Verbindung und versuch es noch mal.",
+      "failed": "Deine Antwort ist nicht gespeichert, die Frage steht deshalb noch einmal da."
     },
     "anderesJahr": "Anderes Jahr",
     "job": {
@@ -1257,6 +1267,8 @@
     "heading": "Kapital & Depot",
     "help": "Übertrag deine Kapitalerträge aus der Jahressteuerbescheinigung deiner Bank.",
     "loading": "Deine Kapitalerträge werden geladen …",
+    "inhaberLadefehler": "Ob ihr gemeinsam veranlagt werdet, konnte nicht geladen werden – deshalb fehlt hier die Frage, wem das Depot gehört.",
+    "guenstigerpruefungLadefehler": "Die Günstigerprüfung konnte nicht geladen werden.",
     "loadError": {
       "heading": "Das hat nicht geklappt.",
       "message": "Deine Kapitalerträge konnten nicht geladen werden. Prüf die Verbindung und versuch es noch mal.",
@@ -1318,6 +1330,8 @@
     "heading": "Deine Vermietung",
     "help": "Erfass deine ganzjährig vermieteten Objekte — je Objekt eine Anlage V mit linearer AfA.",
     "loading": "Deine Vermietung wird geladen …",
+    "anteilLadefehler": "Ob ihr gemeinsam veranlagt werdet, konnte nicht geladen werden – deshalb fehlt hier die Frage nach deinem Anteil am Objekt.",
+    "leerenNichtMoeglich": "Leer lassen geht hier nicht, wenn schon ein Wert gespeichert ist. Trag 0 ein, wenn es nichts gab.",
     "loadError": {
       "heading": "Das hat nicht geklappt.",
       "message": "Deine Vermietung konnte nicht geladen werden. Prüf die Verbindung und versuch es noch mal.",
@@ -1374,7 +1388,8 @@
     "abgelaufen": "Die Frist {{frist}} ist vorbei. Das Finanzamt kann einen Verspätungszuschlag festsetzen — ab dem {{pflichtAb}} muss es das (mindestens {{mindestsatz}} je angefangenem Monat).",
     "zuschlagPflicht": "Die Abgabefrist {{frist}} ist um {{tage}} Tage überschritten. Seit dem {{pflichtAb}} muss das Finanzamt einen Verspätungszuschlag festsetzen (§ 152 Abs. 2 AO): mindestens {{mindestsatz}} je angefangenem Monat — reich die Erklärung bald ein.",
     "freiwillig": "Freiwillige Erklärung: Du hast Zeit bis {{bis}} (31.12. des vierten Folgejahres). Je früher, desto früher kommt die Erstattung.",
-    "unklar": "Ob du abgeben musst, klären wir mit deinen Antworten. Pflicht-Frist wäre der {{frist}}."
+    "unklar": "Ob du abgeben musst, klären wir mit deinen Antworten. Pflicht-Frist wäre der {{frist}}.",
+    "ladefehler": "Deine Abgabefrist konnte nicht geladen werden."
   },
   "shared": {
     "saveFailed": "Mindestens eine Eingabe wurde nicht gespeichert. Prüf deine Verbindung und gib sie noch einmal ein – oder tipp noch einmal, um trotzdem weiterzugehen."
@@ -1424,6 +1439,7 @@
       "retry": "Noch mal versuchen"
     },
     "conflict": "Deine Antwort passte nicht zum gespeicherten Stand. Wir haben deinen Fortschritt aktualisiert.",
+    "antwortZurueck": "Deine Antwort ist nicht gespeichert, die Frage steht deshalb noch einmal da.",
     "progress": "Frage {{done}} von {{total}}",
     "amountPlaceholder": "Ganzzahlige Euro",
     "amountLater": "Betrag später eintragen",
@@ -1583,7 +1599,8 @@
       "geburtsdatum": "Geburtsdatum (TT.MM.JJJJ)",
       "fehlt": "Bitte Vorname und Geburtsdatum eintragen.",
       "datumFalsch": "Bitte das Geburtsdatum als TT.MM.JJJJ eintragen.",
-      "fehler": "Das hat nicht geklappt. Prüf die Verbindung und versuch es noch mal."
+      "fehler": "Das hat nicht geklappt. Prüf die Verbindung und versuch es noch mal.",
+      "ladefehler": "Die Angaben zu deinem Partner konnten nicht geladen werden."
     },
     "alleinerziehend": {
       "titel": "Alleinerziehend"
@@ -1611,6 +1628,7 @@
       "nachzahlung": "Voraussichtliche Nachzahlung",
       "ergebnis": "Voraussichtliches Ergebnis",
       "ohneSchaetzung": "Die Schätzung kommt, sobald deine Lohnangaben da sind.",
+      "schaetzungLadefehler": "Die Schätzung konnte nicht geladen werden.",
       "uebernommen": "In deine Erklärung übernommen",
       "offen": "Noch offen",
       "abgabe": "Abgabe vorbereiten",
@@ -1686,6 +1704,7 @@
     "widerspruchBody": "Mehr Urlaubs-/Krankheitstage als Werktage — prüf deine Eingaben.",
     "weiter": "Weiter",
     "loading": "Wird geladen …",
+    "zahlUnlesbar": "Das ist keine ganze Zahl. Bitte nur Ziffern eingeben, z. B. 30.",
     "speichernFehler": "Das hat nicht geklappt — deine Angaben sind noch nicht gespeichert. Versuch es noch mal.",
     "weg": {
       "titel": "Dein Weg zur Arbeit",
@@ -2414,6 +2433,7 @@
     "back": "Zurück",
     "weiter": "Weiter",
     "loading": "Deine Angaben werden geladen …",
+    "antwortZurueck": "Deine Antwort ist nicht gespeichert, die Frage steht deshalb noch einmal da.",
     "loadError": {
       "heading": "Das hat nicht geklappt.",
       "message": "Deine Angaben konnten nicht geladen werden. Prüf die Verbindung und versuch es noch mal.",
@@ -2509,6 +2529,11 @@
     "pflichtFehlt": "Bitte Vorname, Nachname und Geburtsdatum eintragen.",
     "datumFalsch": "Bitte das Geburtsdatum als TT.MM.JJJJ eintragen.",
     "speichernFehler": "Das Kind wurde nicht gespeichert. Prüf die Angaben und die Verbindung und versuch es noch mal.",
+    "nichtGespeichert": "Das Kind wurde nicht gespeichert.",
+    "loeschenFehler": "Das Kind wurde nicht gelöscht.",
+    "formOffen": "Das Kind ist noch nicht gespeichert. Tipp „Kind speichern“ – oder noch einmal „Weiter“, um die Eingaben zu verwerfen.",
+    "familienstandLadefehler": "Dein Familienstand konnte nicht geladen werden – deshalb fehlen hier die Fragen zum Entlastungsbetrag.",
+    "haushaltLadefehler": "Die Kinder aus dem Haushalt konnten nicht geladen werden.",
     "kinderzulageAusLohnausweis": "Dieselbe Angabe wie im Schweizer Lohnausweis („Kinder- und Familienzulagen“): Von dort entfallen {{betrag}} auf dieses Kind. Trag hier nur etwas ein, wenn es ein anderer Betrag ist.",
     "kinderzulageHinweis": "Dieselbe Angabe wie „Kinder- und Familienzulagen“ im Schweizer Lohnausweis. Steht sie dort schon, lass das Feld leer: Der Betrag wird von dort übernommen."
   },
