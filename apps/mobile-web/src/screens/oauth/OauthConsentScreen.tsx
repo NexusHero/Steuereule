@@ -120,7 +120,7 @@ export function OauthConsentScreen({
         const refusal = new ApiError(response.status, await response.json().catch(() => null), response.headers)
         watchForSessionExpiry(refusal)
         setErrorMessage(
-          apiFailureMessage(refusal, tr as unknown as Parameters<typeof apiFailureMessage>[1], {
+          apiFailureMessage(refusal, tr, {
             validation: tr('oauthConsent.expired'),
             'not-found': tr('oauthConsent.expired'),
             'account-required': tr('apiFehler.sessionExpired'),

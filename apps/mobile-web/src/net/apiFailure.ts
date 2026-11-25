@@ -73,12 +73,19 @@ export function isTransientFailure(error: unknown): boolean {
 
 type Translate = (key: string, options?: Record<string, unknown>) => string
 
+/**
+ * Any i18next `t`, whichever namespace it was typed for: its overloads do not fit one plain signature, so
+ * `apiFailureMessage` takes it as it is and narrows it here, once, instead of every caller casting.
+ */
+export type AnyTranslate = (...args: never[]) => unknown
+
 /** The German sentence for a failure. `overrides` lets a screen say something more specific for one kind. */
 export function apiFailureMessage(
   error: unknown,
-  t: Translate,
+  translate: AnyTranslate,
   overrides: Partial<Record<ApiFailureKind, string>> = {},
 ): string {
+  const t = translate as unknown as Translate
   const failure = classifyApiFailure(error)
   const override = overrides[failure.kind]
   if (override !== undefined) return override
@@ -126,5 +133,5 @@ export function fieldErrorsOf(error: unknown): Readonly<Record<string, string>> 
 /** `(error) => German message`, bound to the app's language. */
 export function useApiFailureMessage(): (error: unknown, overrides?: Partial<Record<ApiFailureKind, string>>) => string {
   const { t } = useTranslation(APP_NS)
-  return (error, overrides) => apiFailureMessage(error, t as Translate, overrides)
+  return (error, overrides) => apiFailureMessage(error, t, overrides)
 }
