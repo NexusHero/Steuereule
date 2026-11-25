@@ -14,9 +14,10 @@ DELETE FROM "DeviceCode" WHERE "expiresAt" < NOW();
 -- created under the link B accepted, and B has seen them shared: they keep that consent. Every year created from
 -- now on starts without one, so A sees nothing of B for it until B agrees in B's own app.
 ALTER TABLE "SteuerjahrKopplung" ADD COLUMN "personBZustimmungAm" TIMESTAMP(3);
+-- An empty id marks "no Person B yet"; length() says that without an empty-string comparison.
 UPDATE "SteuerjahrKopplung"
    SET "personBZustimmungAm" = "updatedAt"
- WHERE "personBUserId" <> '' AND "personBUserId" NOT LIKE 'spouse\_%';
+ WHERE length("personBUserId") > 0 AND "personBUserId" NOT LIKE 'spouse\_%';
 
 -- API-18: provider tokens of Google/Apple sign-ins are not used and no longer stored.
 -- The columns have no default, so DEFAULT clears them; only rows that still hold a token are touched.
