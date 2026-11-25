@@ -50,6 +50,19 @@ function tablesWithPolicy(migrationSql: string): Set<string> {
   return new Set([...policies].filter(([, names]) => names.size > 0).map(([table]) => table))
 }
 const withPolicy = tablesWithPolicy(sql)
+
+/** The policy statements in place on each table after every migration ran: table → statement text. */
+function policiesInPlace(migrationSql: string): Map<string, string[]> {
+  const byTable = new Map<string, Map<string, string>>()
+  for (const match of migrationSql.matchAll(/(CREATE|DROP) POLICY (?:IF EXISTS )?(\w+) ON "([^"]+)"[^;]*;/g)) {
+    const [statement, verb, policy, table] = match as unknown as [string, string, string, string]
+    const current = byTable.get(table) ?? new Map<string, string>()
+    if (verb === 'CREATE') current.set(policy, statement)
+    else current.delete(policy)
+    byTable.set(table, current)
+  }
+  return new Map([...byTable].map(([table, policies]) => [table, [...policies.values()]]))
+}
 const disabled = tablesWith(/ALTER TABLE "([^"]+)" (?:DISABLE|NO FORCE) ROW LEVEL SECURITY/g)
 
 const models = Prisma.dmmf.datamodel.models.map((model) => ({ name: model.name, table: model.dbName ?? model.name }))
@@ -79,6 +92,18 @@ describe('row-level security covers every table with personal data', () => {
 
   it('names every keystore model as a residual', () => {
     expect(KeystorePrisma.dmmf.datamodel.models.map((model) => model.name).sort()).toEqual([...KEYSTORE_RESIDUAL].sort())
+  })
+
+  // Decision 3 (API-3): Person A reaches Person B's rows of a year only when B agreed to that year. A table whose
+  // rows carry a tax year and are owned through "userId" asks for the agreed year, not for "some agreed year".
+  it('a table with a tax year lets Person A reach Person B only for the years B agreed to', () => {
+    const inPlace = policiesInPlace(sql)
+    const yearTables = Prisma.dmmf.datamodel.models
+      .filter((model) => model.fields.some((field) => (field.dbName ?? field.name) === 'steuerjahr') && model.fields.some((field) => field.name === 'userId'))
+      .map((model) => model.dbName ?? model.name)
+    expect(yearTables.length).toBeGreaterThan(20)
+    const offenders = yearTables.filter((table) => (inPlace.get(table) ?? []).some((statement) => statement.includes('visible_owners()') || !statement.includes('agreed_partner_years()')))
+    expect(offenders, 'use the condition of 20261206090000_review_partner_consent_per_year').toEqual([])
   })
 
   it('no policy lets every row through', () => {

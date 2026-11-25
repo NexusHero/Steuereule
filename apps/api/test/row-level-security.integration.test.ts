@@ -39,6 +39,10 @@ beforeAll(async () => {
     for (const userId of [A, B, C, shadowOfA, lookalike]) {
       await tx.$executeRaw`INSERT INTO "Profile" ("id", "userId", "firstName", "lastName", "updatedAt") VALUES (${randomUUID()}, ${userId}, 'x', 'y', now())`
     }
+    // C's years 2025 and 2026: the per-year rule lets B reach only the year C agreed to.
+    for (const year of [2025, 2026]) {
+      await tx.$executeRaw`INSERT INTO "TaxYear" ("id", "userId", "steuerjahr", "baseEstimate", "openItems", "updatedAt") VALUES (${randomUUID()}, ${C}, ${year}, 0, 0, now())`
+    }
     // B and C file jointly (C has an own account); A files alone.
     await tx.$executeRaw`INSERT INTO "SteuerjahrKopplung" ("id", "personAUserId", "personBUserId", "steuerjahr", "veranlagungsart", "updatedAt") VALUES (${randomUUID()}, ${B}, ${C}, 2025, 'zusammen', now())`
   })
@@ -48,6 +52,7 @@ afterAll(async () => {
   await owner.$transaction(async (tx) => {
     await tx.$executeRaw`SELECT set_config('steuereule.system', 'test-fixture', true)`
     await tx.$executeRaw`DELETE FROM "Profile" WHERE "userId" LIKE ${`%${run}%`}`
+    await tx.$executeRaw`DELETE FROM "TaxYear" WHERE "userId" LIKE ${`%${run}%`}`
     await tx.$executeRaw`DELETE FROM "SteuerjahrKopplung" WHERE "personAUserId" LIKE ${`%${run}%`}`
   })
   await Promise.all([owner.$disconnect(), runtime.$disconnect()])
@@ -113,6 +118,28 @@ describe('user A against user B, through raw SQL', () => {
     expect(await as({ userId: B }, ownersSeen)).toEqual([B, C].sort())
     expect(await as({ userId: A }, ownersSeen)).not.toContain(B)
     expect(await as({ userId: A }, ownersSeen)).not.toContain(C)
+  })
+
+  // Decision 3 per year: B agreed to the joint year 2025 only. A table with a tax year shows Person A (B here)
+  // Person B's (C's) row of 2025 and not of 2026; a withdrawal takes it away from the next statement on.
+  it('Person A reaches Person B only in the year B agreed to, and no longer after B withdrew', async () => {
+    const consent = (at: Date | null) =>
+      owner.$transaction(async (tx) => {
+        await tx.$executeRaw`SELECT set_config('steuereule.system', 'test-fixture', true)`
+        await tx.$executeRaw`UPDATE "SteuerjahrKopplung" SET "personBZustimmungAm" = ${at} WHERE "personAUserId" = ${B} AND "personBUserId" = ${C}`
+      })
+    const yearsOfC = (tx: Prisma.TransactionClient) =>
+      tx.$queryRaw<{ steuerjahr: number }[]>`SELECT "steuerjahr" FROM "TaxYear" WHERE "userId" = ${C} ORDER BY "steuerjahr"`.then((rows) => rows.map((row) => row.steuerjahr))
+
+    await consent(new Date())
+    expect(await as({ userId: B }, yearsOfC)).toEqual([2025])
+    expect(await as({ userId: C }, yearsOfC)).toEqual([2025, 2026])
+    const written = await as({ userId: B }, (tx) => tx.$executeRaw`UPDATE "TaxYear" SET "openItems" = 9 WHERE "userId" = ${C} AND "steuerjahr" = 2026`)
+    expect(written).toBe(0)
+
+    await consent(null)
+    expect(await as({ userId: B }, yearsOfC)).toEqual([])
+    expect(await as({ userId: C }, yearsOfC)).toEqual([2025, 2026])
   })
 })
 
