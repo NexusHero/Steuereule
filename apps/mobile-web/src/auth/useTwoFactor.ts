@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import { APP_NS } from '../i18n/resources'
+import { apiFailureMessage, classifyApiFailure, refusalError } from '../net/apiFailure'
 import { useAuthClient } from './AuthClientProvider'
 import type { AuthErrorLike } from './authErrors'
 
@@ -38,13 +39,14 @@ export function useTwoFactor(): UseTwoFactorResult {
   const authClient = useAuthClient() as unknown as TwoFactorClientSurface
   const { t } = useTranslation(APP_NS)
 
-  /** An answered refusal in words (WEB-10): a known code, a 429 as "too many requests", a 5xx as ours. */
+  /** An answered refusal in words (WEB-10): a known code; a limit or a server failure in the shared wording. */
   function translate(error: AuthErrorLike | null | undefined): string {
     const code = error?.code
     const key = code === undefined ? undefined : CODE_TO_KEY.get(code)
     if (key !== undefined) return t(key)
-    if (error?.status === 429) return t('apiFehler.rateLimited')
-    if (error?.status !== undefined && error.status >= 500) return t('apiFehler.server')
+    const failure = refusalError(error)
+    const { kind } = classifyApiFailure(failure)
+    if (kind === 'rate-limited' || kind === 'server') return apiFailureMessage(failure, t)
     return t('auth.errGeneric')
   }
 

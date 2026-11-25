@@ -504,11 +504,26 @@ describe('the checkout', () => {
     expect(open).not.toHaveBeenCalled()
   })
 
-  it('names a tier that is not set up by its code as well as by a 503', async () => {
+  it('names a tier that is not set up by its code, whatever the status', async () => {
     server.use(http.post(`${BASE_URL}/checkout`, () => refusal(400, 'x', 'PAYMENT_TIER_NOT_CONFIGURED')))
     renderCheckout(vi.fn())
     fireEvent.click(await screen.findByTestId('checkout-selbststaendig'))
     expect(await screen.findByTestId('checkout-nicht-eingerichtet')).toBeTruthy()
+  })
+
+  it('names payment that is not set up at all by its code', async () => {
+    server.use(http.post(`${BASE_URL}/checkout`, () => refusal(503, 'x', 'PAYMENT_NOT_CONFIGURED')))
+    renderCheckout(vi.fn())
+    fireEvent.click(await screen.findByTestId('checkout-selbststaendig'))
+    expect(await screen.findByTestId('checkout-nicht-eingerichtet')).toBeTruthy()
+  })
+
+  it('reads a 503 without such a code as the server failure it is, not as a missing setup', async () => {
+    server.use(http.post(`${BASE_URL}/checkout`, () => refusal(503, 'Gerade nicht erreichbar.', 'EXPORT_BUSY')))
+    renderCheckout(vi.fn())
+    fireEvent.click(await screen.findByTestId('checkout-selbststaendig'))
+    expect(await screen.findByTestId('business-speichern-fehler')).toBeTruthy()
+    expect(screen.queryByTestId('checkout-nicht-eingerichtet')).toBeNull()
   })
 
   it('leaves the page for the checkout through the browser by default', async () => {

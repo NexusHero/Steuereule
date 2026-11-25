@@ -39,8 +39,9 @@ function readDeviceTokenErrorCode(data: unknown): string | undefined {
 
 /** A rejected request (WEB-28): an answer is `server` or `rate-limited`, no answer at all `unreachable`. */
 function reasonOf(error: unknown): DeviceQrErrorReason {
-  if (!isApiError(error)) return 'unreachable'
-  return classifyApiFailure(error).kind === 'rate-limited' ? 'rate-limited' : 'server'
+  const failure = classifyApiFailure(error)
+  if (failure.status === undefined) return 'unreachable'
+  return failure.kind === 'rate-limited' ? 'rate-limited' : 'server'
 }
 
 export function useDeviceQrCode(onApproved: () => void, enabled: boolean): UseDeviceQrCodeResult {

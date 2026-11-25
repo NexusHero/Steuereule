@@ -85,13 +85,17 @@ export function usePaymentConfirmation({ outcome, unlocked, refetch }: PaymentCo
 }
 
 /** Why a checkout start was refused, read from the rejected request. `other` for anything not named here. */
-export type CheckoutRefusal = 'already-paid' | 'pending' | 'throttled' | 'other'
+export type CheckoutRefusal = 'already-paid' | 'pending' | 'throttled' | 'not-configured' | 'other'
+
+/** The codes of the API's 503 when payment, or the tier asked for, is not set up in this environment. */
+const NOT_CONFIGURED = new Set(['PAYMENT_NOT_CONFIGURED', 'PAYMENT_TIER_NOT_CONFIGURED'])
 
 export function checkoutRefusalOf(error: unknown): CheckoutRefusal {
   const failure = classifyApiFailure(error)
   if (failure.code === 'ALREADY_PAID') return 'already-paid'
   if (failure.code === 'PAYMENT_PENDING') return 'pending'
   if (failure.kind === 'rate-limited') return 'throttled'
+  if (failure.code !== undefined && NOT_CONFIGURED.has(failure.code)) return 'not-configured'
   return 'other'
 }
 

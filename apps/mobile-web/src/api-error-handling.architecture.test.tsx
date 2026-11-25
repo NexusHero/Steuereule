@@ -20,7 +20,7 @@ import { http, HttpResponse, type JsonBodyType } from 'msw'
 import { profileControllerGetProfile } from '@steuereule/api-client'
 import { createAppI18n } from './i18n/app-i18n'
 import * as failureMapping from './net/apiFailure'
-import { apiFailureMessage, classifyApiFailure, type ApiFailureKind } from './net/apiFailure'
+import { apiFailureMessage, classifyApiFailure, refusalError, type ApiFailureKind } from './net/apiFailure'
 import { server } from './test-msw-server'
 
 const SRC = join(__dirname)
@@ -35,7 +35,10 @@ function sourceFiles(dir: string): string[] {
   return out
 }
 
-const RULES: ReadonlyArray<{ readonly what: string; readonly pattern: RegExp }> = [
+/** The one file that may read a status by hand: the shared mapping itself. */
+const MAPPING_FILE = join('net', 'apiFailure.ts')
+
+const RULES: ReadonlyArray<{ readonly what: string; readonly pattern: RegExp; readonly home?: string }> = [
   {
     what: 'branch on a 2xx status — a generated hook only ever resolves with success; read `.data?.data` and render `isError`',
     pattern: /\.status\s*[!=]==?\s*20[0-9]\b|\b20[0-9]\s*[!=]==?\s*[\w.?]*\.status\b/,
@@ -43,6 +46,11 @@ const RULES: ReadonlyArray<{ readonly what: string; readonly pattern: RegExp }> 
   {
     what: 'status range check on a response — failures reject with an ApiError now; catch it and classify it with net/apiFailure',
     pattern: /\.status\s*(>=|<)\s*(300|400)\b/,
+  },
+  {
+    what: 'a 429 or a 5xx read by hand — classify the failure with net/apiFailure (a better-auth answer through refusalError)',
+    pattern: /\bstatus\s*(?:[!=]==?|>=?)\s*(?:429|499|5\d\d)\b|\b(?:429|5\d\d)\s*(?:[!=]==?|<=?)\s*[\w.?]*status\b/,
+    home: MAPPING_FILE,
   },
 ]
 
@@ -61,7 +69,7 @@ function violations(): { readonly found: string[]; readonly matchedAllowed: Set<
     lines.forEach((line, i) => {
       if (/^\s*(\/\/|\*)/.test(line)) return
       for (const rule of RULES) {
-        if (!rule.pattern.test(line)) continue
+        if (!rule.pattern.test(line) || rule.home === rel) continue
         if (ALLOWED[rel] !== undefined) {
           matchedAllowed.add(rel)
           continue
@@ -82,6 +90,13 @@ describe('API error handling (WEB-28)', () => {
 
   it('every allowed exception still needs its row', () => {
     expect(Object.keys(ALLOWED).filter((file) => !matchedAllowed.has(file))).toEqual([])
+  })
+
+  it('the rule for a 429 or a 5xx catches each way of writing it, and the mapping is where it is read', () => {
+    const byHand = RULES.find((rule) => rule.home === MAPPING_FILE)!
+    for (const line of ['if (error?.status === 429)', 'error.status >= 500', 'status > 499', 'authError.status !== 503', '503 === problem?.status']) expect(byHand.pattern.test(line), line).toBe(true)
+    for (const line of ["failure.kind === 'rate-limited'", 'status === 404', 'retryAfterSeconds >= 500']) expect(byHand.pattern.test(line), line).toBe(false)
+    expect(byHand.pattern.test(MAPPING_SOURCE)).toBe(true)
   })
 })
 
@@ -191,6 +206,14 @@ describe('every status branch ends in its outcome (WEB-28)', () => {
   it.each(RESOLUTIONS)('$status resolves with its status', async ({ status, data }) => {
     answer(status, data)
     await expect(profileControllerGetProfile()).resolves.toMatchObject({ status, data })
+  })
+
+  it('a refusal from outside the generated client (better-auth) reads like the same answer', () => {
+    expect(classifyApiFailure(refusalError({ status: 429 })).kind).toBe('rate-limited')
+    expect(classifyApiFailure(refusalError({ status: 502, code: 'INVALID_CODE' })).kind).toBe('server')
+    expect(classifyApiFailure(refusalError({ status: 400 })).kind).toBe('validation')
+    expect(classifyApiFailure(refusalError(null)).kind).toBe('offline')
+    expect(apiFailureMessage(refusalError({ status: 429 }), t)).toBe(t('apiFehler.rateLimited'))
   })
 
   describe('a new branch has a row', () => {
