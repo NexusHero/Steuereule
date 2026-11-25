@@ -17,11 +17,12 @@ import { UnclearableNumberField } from '../shared/UnclearableNumberField'
 import { screenHeaderStyles } from '../shared/screenStyles'
 import { ItemNotice } from '../shared/ItemNotice'
 import { CURRENT_TAX_YEAR } from '../../config/taxYear'
-import { LoadingState, ErrorState } from '../shared/ScreenState'
+import { LoadingState, LoadFailedState } from '../shared/ScreenState'
 import { BackButton, BackButtonSpacer } from '../shared/BackButton'
 import { usePendingMutations } from '../shared/usePendingMutations'
 import { SaveFailedNotice } from '../shared/SaveFailedNotice'
 import { watchSaveResult } from '../shared/saveFeedback'
+import { useTrackField } from '../shared/useTrackField'
 
 type FieldId = 'jahresbetrag' | 'rentenbeginnJahr' | 'alterBeiRentenbeginn'
 
@@ -43,22 +44,13 @@ export function PensionerScreen({ onDone = () => {}, onBack, taxYear = CURRENT_T
   const query = usePensionControllerGet(taxYear, params)
   const setKind = usePensionControllerSetPensionKind()
   const setField = usePensionControllerSetField()
-  const { track, flushThen, saveFailed } = usePendingMutations()
+  const { track, flushThen, saveFailed, saveError, clearSaveError } = usePendingMutations()
+  const trackField = useTrackField(track, clearSaveError)
 
   if (query.isPending) {
     return <LoadingState bp={bp} label={tr('rente.loading')} />
   }
-  if (query.isError || query.data.status !== 200) {
-    return (
-      <ErrorState
-        bp={bp}
-        heading={tr('rente.loadError.heading')}
-        message={tr('rente.loadError.message')}
-        retryLabel={tr('rente.loadError.retry')}
-        onRetry={() => void query.refetch()}
-      />
-    )
-  }
+  if (query.isError) return <LoadFailedState bp={bp} error={query.error} onRetry={() => void query.refetch()} />
 
   const response = query.data.data
 
@@ -69,11 +61,11 @@ export function PensionerScreen({ onDone = () => {}, onBack, taxYear = CURRENT_T
   }
 
   function sendKind(kind: PensionType | null) {
-    track(watchSaveResult(setKind.mutateAsync({ jahr: taxYear, data: { kind }, ...(params ? { params } : {}) })).then(invalidate))
+    trackField('kind', watchSaveResult(setKind.mutateAsync({ jahr: taxYear, data: { kind }, ...(params ? { params } : {}) })).then(invalidate))
   }
 
   function send(field: FieldId, data: PensionFieldDto) {
-    track(watchSaveResult(setField.mutateAsync({ jahr: taxYear, feld: field, data, ...(params ? { params } : {}) })).then(invalidate))
+    trackField(field, watchSaveResult(setField.mutateAsync({ jahr: taxYear, feld: field, data, ...(params ? { params } : {}) })).then(invalidate))
   }
 
   const showsPensionStartYear = response.kind !== null && response.kind !== 'PrivateRentenversicherung'
@@ -111,6 +103,7 @@ export function PensionerScreen({ onDone = () => {}, onBack, taxYear = CURRENT_T
       {showsPensionStartYear ? (
         <UnclearableNumberField
           label={tr('rente.felder.rentenbeginnJahr')}
+          whole
           state={response.rentenbeginnJahr}
           placeholder={tr('rente.feld.placeholder')}
           unclearLabel={tr('rente.feld.unklar')}
@@ -121,6 +114,7 @@ export function PensionerScreen({ onDone = () => {}, onBack, taxYear = CURRENT_T
       {showsAlter ? (
         <UnclearableNumberField
           label={tr('rente.felder.alterBeiRentenbeginn')}
+          whole
           state={response.alterBeiRentenbeginn}
           placeholder={tr('rente.feld.placeholder')}
           unclearLabel={tr('rente.feld.unklar')}
@@ -136,7 +130,7 @@ export function PensionerScreen({ onDone = () => {}, onBack, taxYear = CURRENT_T
         source={response.items[0]?.provenance ?? ''}
       />
 
-      <SaveFailedNotice visible={saveFailed} />
+      <SaveFailedNotice visible={saveFailed || saveError !== null} error={saveError} />
       <Button onPress={() => flushThen(onDone)} style={styles.cta}>
         {tr('rente.weiter')}
       </Button>

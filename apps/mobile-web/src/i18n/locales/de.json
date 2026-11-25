@@ -457,6 +457,9 @@
     "errWrongCode": "Dieser Code ist nicht richtig. Prüf die App und versuch es noch mal.",
     "errWrongPassword": "Das Passwort ist nicht richtig.",
     "errTooManyAttempts": "Zu viele Versuche. Bitte fordere einen neuen Code an.",
+    "errChallengeExpired": "Die Abfrage des zweiten Faktors ist abgelaufen. Melde dich bitte noch einmal mit E-Mail und Passwort an.",
+    "cancel": "Abbrechen",
+    "sessionUnknown": "Wir konnten gerade nicht prüfen, ob du angemeldet bist. Versuch es gleich noch mal.",
     "errLocked": "Zu viele Fehlversuche — dein Konto ist vorübergehend gesperrt. Versuch es später noch mal."
   },
   "bestaetigung": {
@@ -1011,6 +1014,9 @@
       "Belege nur beilegen, wenn ein Vordruck ausdrücklich danach fragt."
     ],
     "hinweisEdaten": "Lohnsteuer, Sozialversicherung und andere „e“-Zeilen liegen dem Finanzamt bereits vom Arbeitgeber vor und bleiben leer. Nur den Bruttoarbeitslohn (Anlage N, Zeile 5) tragen wir zur Kontrolle ein.",
+    "vorlageLadefehler": "Der Vordruck konnte nicht geladen werden.",
+    "vorlageUnbekannt": "Diesen Vordruck gibt es für dieses Jahr nicht.",
+    "vorschauLadefehler": "Ein Teil deiner Angaben konnte nicht geladen werden; die Zeilen unten sind unvollständig.",
     "glasErklaerung": {
       "zeilen": {
         "zeile": "Zeile {{zeile}}",
@@ -1114,6 +1120,15 @@
     "telefon": "Telefon für Rückfragen (optional)",
     "speichern": "Speichern",
     "gespeichert": "Gespeichert.",
+    "kopplungStand": {
+      "loading": "Die Veranlagungsart wird geladen …",
+      "loadError": "Die Veranlagungsart konnte nicht geladen werden. Solange wählen und übernehmen wir hier nichts.",
+      "statusLoadError": "Ob ihr als Paar verknüpft seid, konnte nicht geladen werden.",
+      "personBGespeichert": "Partner-Angaben übernommen.",
+      "personBUnveraendert": "Es gibt nichts Neues zu übernehmen.",
+      "codeUnbekannt": "Diesen Code kennen wir nicht. Prüf die Schreibweise."
+    },
+    "ungespeichertZurueck": "Deine Änderungen sind noch nicht gespeichert. Tipp „Speichern“ – oder noch einmal zurück, um sie zu verwerfen.",
     "fehlendHinweis": "Für den Ausdruck fehlen noch {{anzahl}} Angaben.",
     "vollstaendig": "Alles da für den Ausdruck.",
     "saveError": {
@@ -1309,7 +1324,8 @@
     "postError": {
       "conflict": "Deine Antwort passte nicht zum gespeicherten Stand. Wir haben deinen Fortschritt aktualisiert.",
       "invalid": "Diese Antwort wurde nicht akzeptiert. Wir haben deinen Fortschritt aktualisiert.",
-      "network": "Deine Antwort konnte nicht gespeichert werden. Prüf die Verbindung und versuch es noch mal."
+      "network": "Deine Antwort konnte nicht gespeichert werden. Prüf die Verbindung und versuch es noch mal.",
+      "failed": "Deine Antwort ist nicht gespeichert, die Frage steht deshalb noch einmal da."
     },
     "anderesJahr": "Anderes Jahr",
     "job": {
@@ -1628,6 +1644,8 @@
     "heading": "Kapital & Depot",
     "help": "Übertrag deine Kapitalerträge aus der Jahressteuerbescheinigung deiner Bank.",
     "loading": "Deine Kapitalerträge werden geladen …",
+    "inhaberLadefehler": "Ob ihr gemeinsam veranlagt werdet, konnte nicht geladen werden – deshalb fehlt hier die Frage, wem das Depot gehört.",
+    "guenstigerpruefungLadefehler": "Die Günstigerprüfung konnte nicht geladen werden.",
     "loadError": {
       "heading": "Das hat nicht geklappt.",
       "message": "Deine Kapitalerträge konnten nicht geladen werden. Prüf die Verbindung und versuch es noch mal.",
@@ -1689,6 +1707,8 @@
     "heading": "Deine Vermietung",
     "help": "Erfass deine ganzjährig vermieteten Objekte — je Objekt eine Anlage V mit linearer AfA.",
     "loading": "Deine Vermietung wird geladen …",
+    "anteilLadefehler": "Ob ihr gemeinsam veranlagt werdet, konnte nicht geladen werden – deshalb fehlt hier die Frage nach deinem Anteil am Objekt.",
+    "leerenNichtMoeglich": "Leer lassen geht hier nicht, wenn schon ein Wert gespeichert ist. Trag 0 ein, wenn es nichts gab.",
     "loadError": {
       "heading": "Das hat nicht geklappt.",
       "message": "Deine Vermietung konnte nicht geladen werden. Prüf die Verbindung und versuch es noch mal.",
@@ -1746,10 +1766,37 @@
     "abgelaufen": "Die Frist {{frist}} ist vorbei. Das Finanzamt kann einen Verspätungszuschlag festsetzen — ab dem {{pflichtAb}} muss es das (mindestens {{mindestsatz}} je angefangenem Monat).",
     "zuschlagPflicht": "Die Abgabefrist {{frist}} ist um {{tage}} Tage überschritten. Seit dem {{pflichtAb}} muss das Finanzamt einen Verspätungszuschlag festsetzen (§ 152 Abs. 2 AO): mindestens {{mindestsatz}} je angefangenem Monat — reich die Erklärung bald ein.",
     "freiwillig": "Freiwillige Erklärung: Du hast Zeit bis {{bis}} (31.12. des vierten Folgejahres). Je früher, desto früher kommt die Erstattung.",
-    "unklar": "Ob du abgeben musst, klären wir mit deinen Antworten. Pflicht-Frist wäre der {{frist}}."
+    "unklar": "Ob du abgeben musst, klären wir mit deinen Antworten. Pflicht-Frist wäre der {{frist}}.",
+    "ladefehler": "Deine Abgabefrist konnte nicht geladen werden."
   },
   "shared": {
     "saveFailed": "Mindestens eine Eingabe wurde nicht gespeichert. Prüf deine Verbindung und gib sie noch einmal ein – oder tipp noch einmal, um trotzdem weiterzugehen."
+  },
+  "apiFehler": {
+    "sessionExpired": "Deine Anmeldung ist abgelaufen. Melde dich neu an – danach geht es genau hier weiter.",
+    "sessionExpiredBanner": "Deine Anmeldung ist abgelaufen. Melde dich neu an, dann bringen wir dich zurück, wo du warst.",
+    "accountRequired": "Dafür brauchst du ein kostenloses Konto. Als Gast geht das nicht.",
+    "receiptParseAccountRequired": "Der Beleg ist gespeichert. Auslesen lassen kannst du ihn mit einem kostenlosen Konto – oder du trägst die Beträge selbst ein.",
+    "stepUp": "Bitte bestätige zuerst dein Passwort, dann klappt es.",
+    "forbidden": "Das darfst du hier nicht ändern.",
+    "notFound": "Das gibt es nicht mehr. Lade die Seite neu.",
+    "conflict": "Das wurde inzwischen an anderer Stelle geändert. Lade neu und prüf den aktuellen Stand.",
+    "tooLarge": "Die Datei ist zu groß. Erlaubt sind höchstens 10 MB.",
+    "rateLimitedSeconds": "Gerade kommen zu viele Anfragen. Versuch es in {{seconds}} Sekunden noch mal.",
+    "rateLimitedMinutes": "Gerade kommen zu viele Anfragen. Versuch es in {{minutes}} Minuten noch mal.",
+    "rateLimited": "Gerade kommen zu viele Anfragen. Versuch es in ein paar Minuten noch mal.",
+    "validation": "Bitte prüf die markierten Eingaben.",
+    "offline": "Keine Verbindung zum Server. Prüf dein Internet und versuch es noch mal.",
+    "server": "Bei uns ist gerade etwas schiefgelaufen. Versuch es gleich noch mal.",
+    "unknown": "Das hat nicht geklappt. Versuch es noch mal.",
+    "loadHeading": "Das konnte nicht geladen werden.",
+    "saveHeading": "Nicht gespeichert.",
+    "saveKept": "Deine Eingabe ist noch da.",
+    "retry": "Noch mal versuchen",
+    "signIn": "Neu anmelden",
+    "createAccount": "Konto anlegen",
+    "pendingSave": "Wird noch gespeichert …",
+    "unsavedLeave": "Eine Eingabe ist noch nicht gespeichert. Tipp noch einmal, um trotzdem zu gehen."
   },
   "katalog": {
     "fuerWen": {
@@ -1770,6 +1817,7 @@
       "retry": "Noch mal versuchen"
     },
     "conflict": "Deine Antwort passte nicht zum gespeicherten Stand. Wir haben deinen Fortschritt aktualisiert.",
+    "antwortZurueck": "Deine Antwort ist nicht gespeichert, die Frage steht deshalb noch einmal da.",
     "progress": "Frage {{done}} von {{total}}",
     "amountPlaceholder": "Ganzzahlige Euro",
     "amountLater": "Betrag später eintragen",
@@ -1929,7 +1977,8 @@
       "geburtsdatum": "Geburtsdatum (TT.MM.JJJJ)",
       "fehlt": "Bitte Vorname und Geburtsdatum eintragen.",
       "datumFalsch": "Bitte das Geburtsdatum als TT.MM.JJJJ eintragen.",
-      "fehler": "Das hat nicht geklappt. Prüf die Verbindung und versuch es noch mal."
+      "fehler": "Das hat nicht geklappt. Prüf die Verbindung und versuch es noch mal.",
+      "ladefehler": "Die Angaben zu deinem Partner konnten nicht geladen werden."
     },
     "alleinerziehend": {
       "titel": "Alleinerziehend"
@@ -1957,6 +2006,7 @@
       "nachzahlung": "Voraussichtliche Nachzahlung",
       "ergebnis": "Voraussichtliches Ergebnis",
       "ohneSchaetzung": "Die Schätzung kommt, sobald deine Lohnangaben da sind.",
+      "schaetzungLadefehler": "Die Schätzung konnte nicht geladen werden.",
       "uebernommen": "In deine Erklärung übernommen",
       "offen": "Noch offen",
       "abgabe": "Abgabe vorbereiten",
@@ -2032,6 +2082,7 @@
     "widerspruchBody": "Mehr Urlaubs-/Krankheitstage als Werktage — prüf deine Eingaben.",
     "weiter": "Weiter",
     "loading": "Wird geladen …",
+    "zahlUnlesbar": "Das ist keine ganze Zahl. Bitte nur Ziffern eingeben, z. B. 30.",
     "speichernFehler": "Das hat nicht geklappt — deine Angaben sind noch nicht gespeichert. Versuch es noch mal.",
     "weg": {
       "titel": "Dein Weg zur Arbeit",
@@ -2127,6 +2178,7 @@
   "cockpit": {
     "appbarTitle": "Steuerjahr",
     "loading": "Dein Cockpit wird geladen …",
+    "bereicheFehler": "Einige Bereiche konnten gerade nicht geladen werden. Ihr Stand ist unbekannt, nicht offen.",
     "loadError": {
       "heading": "Das hat nicht geklappt.",
       "message": "Dein Cockpit konnte nicht geladen werden. Prüf die Verbindung und versuch es noch mal.",
@@ -2166,7 +2218,8 @@
         "erledigt": "Erledigt",
         "keinThema": "Trifft nicht zu",
         "betragOffen": "⏳ Betrag offen",
-        "optional": "Optional"
+        "optional": "Optional",
+        "fehler": "Nicht geladen"
       },
       "hinweis": {
         "blocker": "Muss vor der Abgabe geklärt werden",
@@ -2289,6 +2342,7 @@
         "kirchgeld-unbekannt": "Kirchensteuer offen: Für dein Bundesland haben wir keine amtliche Kirchgeld-Tabelle."
       },
       "kirchensteuerKappung": "Bei hohem Einkommen kann deine Kirche die Kirchensteuer auf Antrag kappen.",
+      "ladefehler": "Die Schätzung konnte gerade nicht geladen werden.",
       "veranlagungsartOffen": "Ihr seid verheiratet: Leg in „Angaben für die Erklärung“ die Zusammenveranlagung an – dann rechnen wir für euch beide.",
       "offen_one": "Für die Schätzung fehlt noch 1 Angabe.",
       "offen_other": "Für die Schätzung fehlen noch {{count}} Angaben.",
@@ -2417,7 +2471,8 @@
     "binIch": {
       "ja": "Ja, das bin ich",
       "nein": "Nein, jemand anderes",
-      "nameUebernehmen": "Namen in mein Profil übernehmen"
+      "nameUebernehmen": "Namen in mein Profil übernehmen",
+      "nameFehler": "Dein Name konnte nicht ins Profil übernommen werden. Der Beleg ist dir trotzdem zugeordnet – trag den Namen bitte im Profil ein."
     },
     "anlegen": {
       "alsB": "Als Person B anlegen",
@@ -2469,6 +2524,7 @@
       "success": "Beleg gespeichert. Er wird jetzt gelesen.",
       "errorUnsupported": "Bitte wähle eine PDF-, JPEG-, PNG- oder WebP-Datei aus.",
       "errorFailed": "Der Upload hat nicht geklappt. Prüf die Verbindung und versuch es noch mal.",
+      "limit": "PDF, JPG, PNG oder WebP, höchstens 10 MB je Datei.",
       "fileAttached": "Originaldatei verschlüsselt hinterlegt"
     },
     "preview": {
@@ -2755,6 +2811,7 @@
     "back": "Zurück",
     "weiter": "Weiter",
     "loading": "Deine Angaben werden geladen …",
+    "antwortZurueck": "Deine Antwort ist nicht gespeichert, die Frage steht deshalb noch einmal da.",
     "loadError": {
       "heading": "Das hat nicht geklappt.",
       "message": "Deine Angaben konnten nicht geladen werden. Prüf die Verbindung und versuch es noch mal.",
@@ -2850,6 +2907,11 @@
     "pflichtFehlt": "Bitte Vorname, Nachname und Geburtsdatum eintragen.",
     "datumFalsch": "Bitte das Geburtsdatum als TT.MM.JJJJ eintragen.",
     "speichernFehler": "Das Kind wurde nicht gespeichert. Prüf die Angaben und die Verbindung und versuch es noch mal.",
+    "nichtGespeichert": "Das Kind wurde nicht gespeichert.",
+    "loeschenFehler": "Das Kind wurde nicht gelöscht.",
+    "formOffen": "Das Kind ist noch nicht gespeichert. Tipp „Kind speichern“ – oder noch einmal „Weiter“, um die Eingaben zu verwerfen.",
+    "familienstandLadefehler": "Dein Familienstand konnte nicht geladen werden – deshalb fehlen hier die Fragen zum Entlastungsbetrag.",
+    "haushaltLadefehler": "Die Kinder aus dem Haushalt konnten nicht geladen werden.",
     "kinderzulageAusLohnausweis": "Dieselbe Angabe wie im Schweizer Lohnausweis („Kinder- und Familienzulagen“): Von dort entfallen {{betrag}} auf dieses Kind. Trag hier nur etwas ein, wenn es ein anderer Betrag ist.",
     "kinderzulageHinweis": "Dieselbe Angabe wie „Kinder- und Familienzulagen“ im Schweizer Lohnausweis. Steht sie dort schon, lass das Feld leer: Der Betrag wird von dort übernommen.",
     "edit": "Bearbeiten",
@@ -2926,7 +2988,9 @@
     "herkunftRegelEinzel": "§32a EStG Grundtarif + Soli §4 SolZG",
     "herkunftRegelZusammen": "§32a Abs. 5 Splitting + Soli §4 SolZG",
     "herkunftRechenweg": "zvE-Basis: {{zveA}} + {{zveB}} (Einnahmen — noch kein echtes zvE)",
-    "progressionsvorbehaltHinweis": "Ehrlich: der Progressionsvorbehalt (Lohnersatz) ist hier noch nicht berücksichtigt."
+    "progressionsvorbehaltHinweis": "Ehrlich: der Progressionsvorbehalt (Lohnersatz) ist hier noch nicht berücksichtigt.",
+    "ungueltig": "Das ist kein Betrag. Schreib ihn wie „40.000“ oder „40.000,50“.",
+    "familienstandUnbekannt": "Ob du verheiratet bist, konnte gerade nicht geladen werden. Wähl es bitte selbst aus."
   },
   "oauthConsent": {
     "stepUpTitle": "Passwort bestätigen",
@@ -2958,6 +3022,8 @@
     "deny": "Ablehnen",
     "loading": "Wird geladen …",
     "processing": "Wird verarbeitet …",
+    "expired": "Diese Freigabe ist abgelaufen oder nicht mehr gültig. Starte die Verbindung in deinem Assistenten neu.",
+    "lookupFailed": "Wir konnten nicht prüfen, welcher Assistent das ist. Erlauben geht erst, wenn das klappt.",
     "error": "Fehler bei der Autorisierung. Bitte versuchen Sie es erneut."
   },
   "eule": {
@@ -3130,6 +3196,8 @@
         "tooLong": "Deine Nachricht ist zu lang ({{used}} von {{max}} Zeichen). Teile sie bitte auf."
       },
       "applyFailed": "Der Vorschlag konnte nicht übernommen werden. Trag den Wert bitte direkt in der Maske ein.",
+      "conflictBatch": "Ein Wert wurde zwischenzeitlich manuell geändert. Bitte prüfen oder mit neuem Stand übernehmen.",
+      "conflictSingle": "Wert wurde zwischenzeitlich manuell geändert.",
       "reconnecting": "Verbindung wird wiederhergestellt …",
       "failed": "nicht fertig geworden",
       "emptyTitle": "Womit kann die Eule helfen?",
@@ -3860,6 +3928,7 @@
     "jahr": {
       "unbekannt": {
         "titel": "{{jahr}} steht nicht im Verlauf",
+        "titelOhneJahr": "Diese Adresse nennt kein Steuerjahr aus deinem Verlauf",
         "text": "Für dieses Jahr gibt es weder eine Erklärung noch einen Bescheid. Zurück im Verlauf kannst du alte Jahre mit ihrem Bescheid ergänzen."
       },
       "satz": {
@@ -4551,7 +4620,9 @@
       "ohneName": "Betrieb {{nummer}}",
       "neu": "+ Weiterer Betrieb",
       "name": "Wie heißt der Betrieb?",
-      "anlegen": "Betrieb anlegen"
+      "anlegen": "Betrieb anlegen",
+      "unbekannt": "Den Betrieb {{nummer}} gibt es in diesem Jahr nicht.",
+      "zumErsten": "Zum ersten Betrieb"
     },
     "kfz": {
       "hinweis": "Nutzt du ein Fahrzeug aus dem Betrieb auch privat, ist der private Anteil eine Entnahme. Die App rechnet ihn und bucht ihn auf Wunsch zum 31.12.",

@@ -9,7 +9,9 @@ import {
   getAdvisorControllerGetSessionQueryKey,
 } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
+import { apiErrorStatus, isApiError } from '@steuereule/api-client'
 import { apiErrorText } from './chat/apiErrorText'
+import { advisorFailureText } from './chat/advisorFailureText'
 import type { CockpitBannerState, CopilotMode, OwlViewMode, StaleConflictState, TileProvenanceKind } from './CopilotBridge.types'
 import { acknowledgedValuesFor, bestProvenance, extractStaleConflicts, provenanceAfterApply } from './CopilotBridgeHelpers'
 import { invalidateAllTaxQueries } from './CopilotBridgeQueries'
@@ -58,46 +60,39 @@ export function useCopilotBridgeActions({ taxYear, isAuthenticated, onModeChange
           }),
         })
 
-        if (res.status === 200) {
-          const applied = res.data.actions as unknown as readonly AdvisorActionProposal[]
-          recordAppliedActions(applied)
-          const screens = [...new Set(applied.map((a) => a.screen))]
-          const lastDeltaEur = applied.reduce((sum, a) => sum + (a.deltaEur ?? 0), 0)
-          setCockpitBanner({
-            appliedCount: applied.length,
-            screens,
-            lastDeltaEur,
-            timestamp: Date.now(),
-          })
-          await invalidateAllTaxQueries(queryClient, taxYear)
-          setOwlViewMode({ kind: 'stage' })
-          // From the owl's workbench the user stays in the conversation; the cockpit shows the result when they go there.
-          if (!options?.stay) onModeChange('cockpit')
-          return true
-        }
-
-        if ((res.status as number) === 409) {
+        const applied = res.data.actions as unknown as readonly AdvisorActionProposal[]
+        recordAppliedActions(applied)
+        const screens = [...new Set(applied.map((a) => a.screen))]
+        const lastDeltaEur = applied.reduce((sum, a) => sum + (a.deltaEur ?? 0), 0)
+        setCockpitBanner({
+          appliedCount: applied.length,
+          screens,
+          lastDeltaEur,
+          timestamp: Date.now(),
+        })
+        await invalidateAllTaxQueries(queryClient, taxYear)
+        setOwlViewMode({ kind: 'stage' })
+        // From the owl's workbench the user stays in the conversation; the cockpit shows the result when they go there.
+        if (!options?.stay) onModeChange('cockpit')
+        return true
+      } catch (error) {
+        if (apiErrorStatus(error) === 409 && isApiError(error)) {
           setStaleConflict({
             actionIds: drafts.map((d) => d.actionId),
-            message:
-              apiErrorText(res.data) ??
-              'Ein Wert wurde zwischenzeitlich manuell geändert. Bitte prüfen oder mit neuem Stand übernehmen.',
-            conflicts: extractStaleConflicts(res.data),
+            message: apiErrorText(error.body) ?? tr('advisor.chat.conflictBatch'),
+            conflicts: extractStaleConflicts(error.body),
           })
           await queryClient.invalidateQueries({ queryKey: getAdvisorControllerGetSessionQueryKey(taxYear) })
           return false
         }
-
-        setOpenChatError(apiErrorText(res.data) ?? `Übernahme fehlgeschlagen (HTTP ${res.status}).`)
-        return false
-      } catch (error) {
-        setOpenChatError(error instanceof Error ? error.message : 'Übernahme fehlgeschlagen.')
+        // NR-06: never "Übernahme fehlgeschlagen (HTTP 500)" or "Failed to fetch".
+        setOpenChatError(advisorFailureText(error, tr))
         return false
       } finally {
         setBatchApplying(false)
       }
     },
-    [isAuthenticated, onModeChange, queryClient, recordAppliedActions, taxYear],
+    [isAuthenticated, onModeChange, queryClient, recordAppliedActions, taxYear, tr],
   )
 
   const [applyFailure, setApplyFailure] = useState<{ readonly actionId: string; readonly message: string } | null>(null)
@@ -109,28 +104,23 @@ export function useCopilotBridgeActions({ taxYear, isAuthenticated, onModeChange
       setOpenChatError(null)
       try {
         const res = await advisorControllerApplyAction(taxYear, actionId)
-        if (res.status === 200) {
-          const action = res.data.action as unknown as AdvisorActionProposal
-          recordAppliedActions([action])
-          await invalidateAllTaxQueries(queryClient, taxYear)
-          return true
-        }
-        if ((res.status as number) === 409) {
+        const action = res.data.action as unknown as AdvisorActionProposal
+        recordAppliedActions([action])
+        await invalidateAllTaxQueries(queryClient, taxYear)
+        return true
+      } catch (error) {
+        if (apiErrorStatus(error) === 409 && isApiError(error)) {
           setStaleConflict({
             actionIds: [actionId],
-            message: apiErrorText(res.data) ?? 'Wert wurde zwischenzeitlich manuell geändert.',
-            conflicts: extractStaleConflicts(res.data),
+            message: apiErrorText(error.body) ?? tr('advisor.chat.conflictSingle'),
+            conflicts: extractStaleConflicts(error.body),
           })
           return false
         }
         // A draft that cannot be written must say so; a button that does nothing is the worst answer.
-        const reason = apiErrorText(res.data) ?? tr('advisor.chat.applyFailed')
+        const reason = advisorFailureText(error, tr, { server: tr('advisor.chat.applyFailed'), unknown: tr('advisor.chat.applyFailed') })
         setApplyFailure({ actionId, message: reason })
         setOpenChatError(reason)
-        return false
-      } catch {
-        setApplyFailure({ actionId, message: tr('advisor.chat.applyFailed') })
-        setOpenChatError(tr('advisor.chat.applyFailed'))
         return false
       }
     },
@@ -141,19 +131,16 @@ export function useCopilotBridgeActions({ taxYear, isAuthenticated, onModeChange
     async (actionId: string): Promise<boolean> => {
       if (!isAuthenticated) return false
       try {
-        const res = await advisorControllerUndoAction(taxYear, actionId)
-        if (res.status === 200) {
-          await invalidateAllTaxQueries(queryClient, taxYear)
-          return true
-        }
-        // A manual edit after the apply wins over the undo; tell the user instead of failing silently.
-        setOpenChatError(apiErrorText(res.data) ?? `Rückgängig machen fehlgeschlagen (HTTP ${res.status}).`)
-        return false
-      } catch {
+        await advisorControllerUndoAction(taxYear, actionId)
+        await invalidateAllTaxQueries(queryClient, taxYear)
+        return true
+      } catch (error) {
+        // A manual edit after the apply wins over the undo (409); tell the user instead of failing silently.
+        setOpenChatError(advisorFailureText(error, tr))
         return false
       }
     },
-    [isAuthenticated, queryClient, taxYear],
+    [isAuthenticated, queryClient, taxYear, tr],
   )
 
   const bestTileProvenance = useCallback(

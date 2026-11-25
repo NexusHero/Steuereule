@@ -87,13 +87,33 @@ describe('BusinessService (ADR-0101)', () => {
     expect(saved.confirmedKind).toBe('freiberuf')
   })
 
-  it('PUT merges: a field left out keeps its value, null clears it, a nested object is replaced as a whole', async () => {
+  it('PUT merges: a field left out keeps its value, null clears it, a fact object merges key by key', async () => {
     const { service } = setup()
     await service.saveProfile('u', YEAR, A1, { name: 'Büro Muster', startDate: '2021-04-01', tradeTaxInputs: { financing: { debtChargesEur: 1000 }, einheitswertEur: 5000 } })
     const merged = await service.saveProfile('u', YEAR, A1, { smallBusiness: true, tradeTaxInputs: { einheitswertEur: 7000 } })
-    expect(merged).toMatchObject({ name: 'Büro Muster', startDate: '2021-04-01', smallBusiness: true, tradeTaxInputs: { einheitswertEur: 7000 } })
-    expect(merged.tradeTaxInputs.financing).toBeUndefined()
+    expect(merged).toMatchObject({ name: 'Büro Muster', startDate: '2021-04-01', smallBusiness: true, tradeTaxInputs: { einheitswertEur: 7000, financing: { debtChargesEur: 1000 } } })
+    const cleared = await service.saveProfile('u', YEAR, A1, { tradeTaxInputs: { financing: null } })
+    expect(cleared.tradeTaxInputs).toEqual({ einheitswertEur: 7000 })
     expect((await service.saveProfile('u', YEAR, A1, { name: null })).name).toBeNull()
+  })
+
+  it('WEB-30: changing one loss field keeps Vortrag, Platz der Vorjahre, Rücktrag and Verzicht', async () => {
+    const { service } = setup()
+    await service.saveProfile('u', YEAR, A1, { lossFacts: { carriedForwardEur: 10_000, roomEur: [5_000, 2_000], carriedBackEur: 300, waiveCarryBack: true } })
+
+    const saved = await service.saveProfile('u', YEAR, A1, { lossFacts: { carriedForwardEur: 12_000 } })
+
+    expect(saved.lossFacts).toEqual({ carriedForwardEur: 12_000, roomEur: [5_000, 2_000], carriedBackEur: 300, waiveCarryBack: true })
+    expect((await service.saveProfile('u', YEAR, A1, { lossFacts: { carriedBackEur: null } })).lossFacts).not.toHaveProperty('carriedBackEur')
+  })
+
+  it('WEB-31: a click on the period keeps § 148 exemption, Dauerfrist, Sondervorauszahlung and Monatswahl', async () => {
+    const { service } = setup()
+    await service.saveProfile('u', YEAR, A1, { vatPeriodFacts: { exemptFromBookkeeping: true, extension: true, specialPrepaymentEur: 800, chooseMonthly: true } })
+
+    const saved = await service.saveProfile('u', YEAR, A1, { vatPeriodFacts: { period: 'quartal' } })
+
+    expect(saved.vatPeriodFacts).toEqual({ exemptFromBookkeeping: true, extension: true, specialPrepaymentEur: 800, chooseMonthly: true, period: 'quartal' })
   })
 
   it('posts entries with VAT lines, numbers them gaplessly and keeps an intact hash chain', async () => {

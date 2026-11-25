@@ -3,7 +3,7 @@ import * as RN from 'react-native'
 import { StatusBar } from 'expo-status-bar'
 import { I18nextProvider, useTranslation } from 'react-i18next'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { DarkTheme, DefaultTheme, NavigationContainer, useLinkTo } from '@react-navigation/native'
+import { DarkTheme, DefaultTheme, NavigationContainer, createNavigationContainerRef, useLinkTo } from '@react-navigation/native'
 import { createNativeStackNavigator, type NativeStackScreenProps } from '@react-navigation/native-stack'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 import { ThemeProvider, useBreakpoint, useTheme } from '@steuereule/ui'
@@ -56,6 +56,7 @@ import { SubmissionGateProvider, useSubmissionGate } from './src/navigation/Subm
 import { AppTabs } from './src/navigation/AppTabs'
 import { AppearanceProvider, resolveThemeMode, useAppearance } from './src/lib/appearance'
 import { syncHapticsPreferenceFromStorage } from './src/lib/hapticsPreference'
+import { onSessionExpired, resetSessionExpiry, watchForSessionExpiry } from './src/net/sessionExpiry'
 
 const i18n = createAppI18n('de')
 const queryClient = new QueryClient({ defaultOptions: APP_QUERY_DEFAULTS })
@@ -63,11 +64,26 @@ followNativeAppFocus()
 syncHapticsPreferenceFromStorage()
 
 const apiBaseUrl = process.env.EXPO_PUBLIC_API_BASE_URL ?? 'http://localhost:3000'
-configureApiClient({ baseUrl: apiBaseUrl })
+configureApiClient({ baseUrl: apiBaseUrl, onApiError: watchForSessionExpiry })
 
 const authClient = createAppAuthClient(apiBaseUrl)
 
 const RootStack = createNativeStackNavigator<RootStackParamList>()
+const rootNavigation = createNavigationContainerRef<RootStackParamList>()
+
+/** WEB-24: an expired session opens the sign-in and remembers the place to come back to. */
+function useSessionExpiryRedirect(): void {
+  useEffect(
+    () =>
+      onSessionExpired(() => {
+        if (RN.Platform.OS === 'web' && typeof window !== 'undefined') {
+          rememberReturnTo(`${window.location.pathname}${window.location.search}`)
+        }
+        if (rootNavigation.isReady()) rootNavigation.reset({ index: 0, routes: [{ name: 'Login', params: { expired: true } }] })
+      }),
+    [],
+  )
+}
 
 export default function App() {
   useEffect(() => {
@@ -146,6 +162,7 @@ function ThemedShellFrame({ children }: { readonly children: ReactNode }) {
 }
 
 function RootNavigator() {
+  useSessionExpiryRedirect()
   const t = useTheme()
   const baseNavTheme = t.mode === 'dark' ? DarkTheme : DefaultTheme
   const navTheme = {
@@ -164,6 +181,7 @@ function RootNavigator() {
 
   return (
     <NavigationContainer
+      ref={rootNavigation}
       linking={linking}
       theme={navTheme}
       documentTitle={{
@@ -195,7 +213,11 @@ function LoginRoute({ navigation, route }: NativeStackScreenProps<RootStackParam
   return (
     <LoginScreen
       startWithForgot={Boolean(route.params?.forgot)}
-      onDone={() => navigation.replace('App')}
+      sessionExpired={Boolean(route.params?.expired)}
+      onDone={() => {
+        resetSessionExpiry()
+        navigation.replace('App')
+      }}
       onGuest={() => navigation.replace('App', { start: 'interview' })}
       onRegister={() => carryAssistantSignIn('/registrierung') || navigation.replace('Registration')}
       onLegal={(page) => navigation.navigate('Legal', { page })}

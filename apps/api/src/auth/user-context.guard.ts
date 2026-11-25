@@ -10,7 +10,7 @@ import { verifyJwsAccessToken } from 'better-auth/oauth2'
 import { authIssuer, MCP_RESOURCE_PATH, MCP_STREAMABLE_PATH, mcpBearerChallenge, mcpResourceUrls } from './mcp-oauth.js'
 import { clientDisplayName } from './oauth-client-name.js'
 import { isSessionWithinAbsoluteCap } from './session-lifetime.js'
-import { TooManyRequestsError } from '../common/domain-error.js'
+import { TooManyRequestsError, UnauthenticatedError } from '../common/domain-error.js'
 import { GUEST_ACTIVITY_RECORDER, type GuestActivityRecorder } from '../guest/guest-retention.js'
 
 type JwksFetch = Extract<Parameters<typeof verifyJwsAccessToken>[1]['jwksFetch'], () => unknown>
@@ -21,6 +21,8 @@ export const USER_ID_KIND_REQUEST_KEY = 'userIdKind'
 export const AUTH_CONTEXT_REQUEST_KEY = 'authContext'
 /** Whether the established identity's email is verified — read by `RequiresVerifiedEmailGuard` (ADR-0103). */
 export const EMAIL_VERIFIED_REQUEST_KEY = 'emailVerified'
+/** The 401 code of a session cookie that no longer verifies (WEB-24); the client sends the user to sign in. */
+export const SESSION_EXPIRED_CODE = 'SESSION_EXPIRED'
 
 export interface AssistantAuthContext {
   readonly source: 'assistent'
@@ -197,6 +199,11 @@ export class UserContextGuard implements CanActivate {
         request[EMAIL_VERIFIED_REQUEST_KEY] = session.user.emailVerified === true
         return true
       }
+      // WEB-24: a session that expired, was revoked or is past the absolute cap (ADR-0103) is refused with a
+      // 401 the client can act on, instead of letting a signed-in user's next save land in a fresh guest
+      // account. The stale cookie is cleared, so the request after this one is an ordinary guest request.
+      void reply.clearCookie(this.betterAuth.sessionCookieName, { path: '/' })
+      throw new UnauthenticatedError(SESSION_EXPIRED_CODE, 'Die Anmeldung ist abgelaufen. Bitte melde dich neu an.')
     }
 
     const secret = resolveGuestSessionSecret()

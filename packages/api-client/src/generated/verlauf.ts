@@ -69,8 +69,6 @@ export type yearHistoryControllerGetResponseError = (yearHistoryControllerGetRes
   headers: Headers;
 };
 
-export type yearHistoryControllerGetResponse = (yearHistoryControllerGetResponseSuccess | yearHistoryControllerGetResponseError)
-
 export const getYearHistoryControllerGetUrl = () => {
 
 
@@ -79,9 +77,9 @@ export const getYearHistoryControllerGetUrl = () => {
   return `/v1/verlauf`
 }
 
-export const yearHistoryControllerGet = async ( options?: RequestInit): Promise<yearHistoryControllerGetResponse> => {
+export const yearHistoryControllerGet = async ( options?: RequestInit): Promise<yearHistoryControllerGetResponseSuccess> => {
 
-  return httpClient<yearHistoryControllerGetResponse>(getYearHistoryControllerGetUrl(),
+  return httpClient<yearHistoryControllerGetResponseSuccess>(getYearHistoryControllerGetUrl(),
   {
     ...options,
     method: 'GET'
@@ -193,8 +191,6 @@ export type filedElsewhereControllerAnswerResponseError = (filedElsewhereControl
   headers: Headers;
 };
 
-export type filedElsewhereControllerAnswerResponse = (filedElsewhereControllerAnswerResponseSuccess | filedElsewhereControllerAnswerResponseError)
-
 export const getFiledElsewhereControllerAnswerUrl = (jahr: number,) => {
 
 
@@ -204,9 +200,9 @@ export const getFiledElsewhereControllerAnswerUrl = (jahr: number,) => {
 }
 
 export const filedElsewhereControllerAnswer = async (jahr: number,
-    putFiledElsewhereDto: PutFiledElsewhereDto, options?: RequestInit): Promise<filedElsewhereControllerAnswerResponse> => {
+    putFiledElsewhereDto: PutFiledElsewhereDto, options?: RequestInit): Promise<filedElsewhereControllerAnswerResponseSuccess> => {
 
-  return httpClient<filedElsewhereControllerAnswerResponse>(getFiledElsewhereControllerAnswerUrl(jahr),
+  return httpClient<filedElsewhereControllerAnswerResponseSuccess>(getFiledElsewhereControllerAnswerUrl(jahr),
   {
     ...options,
     method: 'PUT',

@@ -153,7 +153,8 @@ describe('the book', () => {
     fireEvent.click(await screen.findByTestId('buch-storno-3'))
     vi.useRealTimers()
     expect(await screen.findByTestId('business-speichern-fehler')).toBeTruthy()
-    expect(screen.getByText('Das Jahr ist festgeschrieben.')).toBeTruthy()
+    // A 403 is said in the shared wording, never the server's text (WEB-44).
+    expect(screen.getByText('Das darfst du hier nicht ändern.')).toBeTruthy()
     expect(body!.date).toBe(`${YEAR}-12-31`)
   })
 
@@ -326,7 +327,8 @@ describe('the bank', () => {
     fireEvent.click(await screen.findByTestId('bank-buchen-u1'))
     expect(await screen.findByText('Schon gebucht.')).toBeTruthy()
     fireEvent.click(screen.getByTestId('bank-ignorieren-u1'))
-    expect(await screen.findByText('Server hat sich verschluckt.')).toBeTruthy()
+    // A 500 is said in the shared wording, never the server's text (WEB-44).
+    expect(await screen.findByText('Bei uns ist gerade etwas schiefgelaufen. Versuch es gleich noch mal.')).toBeTruthy()
   })
 
   it('says the file import works in the browser when it does not run on the web', async () => {

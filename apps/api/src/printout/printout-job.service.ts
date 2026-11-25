@@ -1,7 +1,7 @@
-import { Inject, Injectable, NotFoundException, Optional } from '@nestjs/common'
+import { Inject, Injectable, Logger, NotFoundException, Optional } from '@nestjs/common'
 import { BETTER_AUTH_BUNDLE, type BetterAuthBundle } from '../auth/auth.tokens.js'
 import { createResettableRateLimitStorage, type ResettableRateLimitStorage } from '../auth/rate-limit-storage.js'
-import { TooManyRequestsError } from '../common/domain-error.js'
+import { DomainError, TooManyRequestsError } from '../common/domain-error.js'
 import crypto from 'node:crypto'
 import { PrintoutJobDto, type PrintoutJobStatus } from './dto/printout.dto.js'
 import { PrintoutService } from './printout.service.js'
@@ -34,8 +34,12 @@ const placesOf = (userId: string): string => `printout-jobs:${userId}`
  * Manages asynchronous PDF rendering jobs (ADR-0056: Fault Isolation).
  * Decouples heavy Headless Chromium generation from the synchronous HTTP request-response cycle.
  */
+/** The code of a failed job whose cause is not a DomainError of its own. */
+export const PRINTOUT_FAILED_CODE = 'PRINTOUT_FAILED'
+
 @Injectable()
 export class PrintoutJobService {
+  private readonly logger = new Logger(PrintoutJobService.name)
   private readonly jobs = new Map<string, InternalJob>()
 
   private readonly places: ResettableRateLimitStorage
@@ -114,7 +118,9 @@ export class PrintoutJobService {
       job.status = 'completed'
     } catch (err) {
       job.status = 'failed'
-      job.error = err instanceof Error ? err.message : String(err)
+      // API-5: the client gets a machine code, never the raw message (it can name internals); the log keeps it.
+      job.error = err instanceof DomainError ? err.code : PRINTOUT_FAILED_CODE
+      this.logger.error(`printout job ${job.id} failed: ${err instanceof Error ? err.message : String(err)}`)
     }
   }
 

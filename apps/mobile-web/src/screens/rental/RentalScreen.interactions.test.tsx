@@ -12,6 +12,12 @@ import { createAppI18n } from '../../i18n/app-i18n'
 import { RentalScreen } from './RentalScreen'
 import { server } from '../../test-msw-server'
 
+/** Types a value and leaves the field — the way the mask saves (WEB-39). */
+function commit(field: HTMLElement, value: string) {
+  fireEvent.change(field, { target: { value } })
+  fireEvent.blur(field)
+}
+
 const TAX_YEAR = 2026
 const RENTAL_URL = `*/v1/steuerjahre/${TAX_YEAR}/vermietung`
 
@@ -85,7 +91,7 @@ describe('VermietungScreen — load failure', () => {
     )
     renderRental()
 
-    expect(await screen.findByText('Das hat nicht geklappt.')).toBeTruthy()
+    expect(await screen.findByText('Das konnte nicht geladen werden.')).toBeTruthy()
     fireEvent.click(screen.getByText('Noch mal versuchen'))
 
     expect(await screen.findByText('Objekt 1')).toBeTruthy()
@@ -127,26 +133,27 @@ describe('VermietungScreen — field answers', () => {
     serve(response())
     const bodies = recordAddressPuts()
     renderRental()
-    fireEvent.change(await screen.findByTestId('vermietung-0-adresse'), { target: { value: 'Neue Allee 7b' } })
+    commit(await screen.findByTestId('vermietung-0-adresse'), 'Neue Allee 7b')
     await waitFor(() => expect(bodies).toContainEqual({ strasse: 'Neue Allee', hausnummer: '7b' }))
   })
 
-  it('sends a street without a house number as the street alone', async () => {
+  it('sends a street without a house number as the street alone, clearing the number', async () => {
     serve(response())
     const bodies = recordAddressPuts()
     renderRental()
-    fireEvent.change(await screen.findByTestId('vermietung-0-adresse'), { target: { value: 'Ringstraße' } })
-    await waitFor(() => expect(bodies).toContainEqual({ strasse: 'Ringstraße' }))
+    commit(await screen.findByTestId('vermietung-0-adresse'), 'Ringstraße')
+    await waitFor(() => expect(bodies).toContainEqual({ strasse: 'Ringstraße', hausnummer: '' }))
   })
 
   it('saves the Ort, the living area and the unit count; refuses a non-numeric unit count', async () => {
     serve(response())
     const bodies = recordAddressPuts()
     renderRental()
-    fireEvent.change(await screen.findByTestId('vermietung-0-ort'), { target: { value: 'Bonn' } })
-    fireEvent.change(screen.getByTestId('vermietung-0-wohnflaeche'), { target: { value: '90' } })
-    fireEvent.change(screen.getByTestId('vermietung-0-einheiten'), { target: { value: 'zwei' } })
-    fireEvent.change(screen.getByTestId('vermietung-0-einheiten'), { target: { value: ' 3 ' } })
+    commit(await screen.findByTestId('vermietung-0-ort'), 'Bonn')
+    commit(screen.getByTestId('vermietung-0-wohnflaeche'), '90')
+    commit(screen.getByTestId('vermietung-0-einheiten'), 'zwei')
+    expect(await screen.findByText(/keine ganze Zahl/)).toBeTruthy()
+    commit(screen.getByTestId('vermietung-0-einheiten'), ' 3 ')
 
     await waitFor(() => expect(bodies).toEqual([{ city: 'Bonn' }, { livingArea: '90' }, { einheiten: '3' }]))
   })
@@ -172,7 +179,7 @@ describe('VermietungScreen — field answers', () => {
     server.use(http.get('*/v1/steuerjahre/:jahr/kopplung', () => HttpResponse.json({ filingType: 'zusammen', personBUserId: null, invitationCode: null, personB: null }, { status: 200 })))
     const bodies = recordAddressPuts()
     renderRental()
-    fireEvent.change(await screen.findByTestId('vermietung-0-anteilA'), { target: { value: '60' } })
+    commit(await screen.findByTestId('vermietung-0-anteilA'), '60')
     await waitFor(() => expect(bodies).toEqual([{ anteilA: '60' }]))
   })
 

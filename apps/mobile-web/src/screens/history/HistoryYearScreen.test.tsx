@@ -9,6 +9,7 @@ import { http, HttpResponse } from 'msw'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { renderInApp } from '../../test-render'
 import { server } from '../../test-msw-server'
+import { expectFailsClosed, failEveryRequest } from '../../test-every-query-fails'
 import { HISTORY_ALL_GROUPS_RESPONSE, HISTORY_GAP_RESPONSE, HISTORY_RESPONSE } from '../../test-history-fixture'
 import { HistoryYearScreen } from './HistoryYearScreen'
 
@@ -233,8 +234,23 @@ describe('HistoryYearScreen', () => {
     expect(await found('verlauf-jahr-unbekannt')).toContain('1999 steht nicht im Verlauf')
   })
 
+  it('NR-21: an address that names no year (/app/verlauf/abc → NaN) never shows "NaN"', async () => {
+    renderYear(Number('abc'))
+    const shown = await found('verlauf-jahr-unbekannt')
+    expect(shown).toContain('Diese Adresse nennt kein Steuerjahr')
+    expect(shown).not.toContain('NaN')
+  })
+
   it('speaks English', async () => {
     renderYear(2021, 'en')
     expect(await found('verlauf-jahr-satz')).toBe('Only the notice. The return was not made in SteuerEule, so there is nothing to compare.')
+  })
+})
+
+describe('HistoryYearScreen — fails closed (WEB-28)', () => {
+  it('every request answering 500 shows a failure and sends no write (FiledElsewhereQuestion, uploads)', async () => {
+    const failing = failEveryRequest()
+    renderYear(2022)
+    await expectFailsClosed(failing)
   })
 })

@@ -144,6 +144,8 @@ export interface AdvisorRepository {
   listReceiptDrafts(userId: string): Promise<ReceiptDraftRecord[]>
   /** Every message of the year, across all its conversations: drafts belong to the return. */
   listForUserAndYear(userId: string, taxYear: number): Promise<AdvisorChatMessageRecord[]>
+  /** The answers of the year still marked as being written, oldest first: what the orphan check looks at. */
+  listStreamingForUserAndYear(userId: string, taxYear: number): Promise<AdvisorChatMessageRecord[]>
   /** The messages of one conversation, oldest first. */
   listForConversation(conversationId: string, userId: string): Promise<AdvisorChatMessageRecord[]>
   /** Most recently used first. */
@@ -331,6 +333,12 @@ export class InMemoryAdvisorRepository implements AdvisorRepository {
   async listForUserAndYear(userId: string, taxYear: number): Promise<AdvisorChatMessageRecord[]> {
     return this.rows
       .filter((r) => r.userId === userId && r.taxYear === taxYear)
+      .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())
+  }
+
+  async listStreamingForUserAndYear(userId: string, taxYear: number): Promise<AdvisorChatMessageRecord[]> {
+    return this.rows
+      .filter((r) => r.userId === userId && r.taxYear === taxYear && r.status === 'streaming')
       .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())
   }
 

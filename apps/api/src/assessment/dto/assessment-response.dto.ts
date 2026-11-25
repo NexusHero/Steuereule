@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger'
-import { IsIn, IsInt, IsOptional, IsString } from 'class-validator'
+import { IsIn, IsInt, IsOptional, IsString, MaxLength } from 'class-validator'
 import { AssessmentFieldDto } from './assessment-field.dto.js'
 import { AssessmentDiffDto } from './assessment-diff.dto.js'
 
@@ -96,6 +96,7 @@ export class SetAssessmentDateDto {
   @ApiPropertyOptional({ type: String, nullable: true, example: '2026-04-15', description: 'Bescheiddatum (ISO yyyy-mm-dd).' })
   @IsOptional()
   @IsString()
+  @MaxLength(10)
   date?: string | null
 }
 
@@ -108,6 +109,7 @@ export class SetAppealDto {
   @ApiPropertyOptional({ type: String, example: '2026-07-03', description: 'The day the Einspruch was lodged (ISO yyyy-mm-dd); today when absent (ADR-0099 §8).' })
   @IsOptional()
   @IsString()
+  @MaxLength(10)
   date?: string
 }
 
@@ -115,6 +117,7 @@ export class SetAppealDto {
 export class SetAppealOutcomeDto {
   @ApiProperty({ type: String, enum: ['offen', 'stattgegeben', 'teilweise', 'abgelehnt', 'zurueckgenommen'], description: 'The outcome (closed set).' })
   @IsString()
+  @MaxLength(32)
   outcome!: string
 
   @ApiPropertyOptional({ type: Number, nullable: true, example: 140, description: 'What it changed the refund by, whole euros (negative = less); null or absent when not known.' })

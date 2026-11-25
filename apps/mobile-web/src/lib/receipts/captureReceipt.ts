@@ -9,6 +9,7 @@ import {
 } from '@steuereule/api-client'
 import { classifyDocumentKind, type DetectedDocumentKind } from '@steuereule/core'
 import { detectDocumentMimeType, extractDocumentTextOnDevice, type OcrStage } from '../documentOcr'
+import { thrownUploadError, uploadFailureError } from './uploadFailure'
 
 /** Visible progress of one receipt capture. */
 export type CapturePhase = 'uploading' | OcrStage | 'parsing'
@@ -26,6 +27,8 @@ export type CaptureResult =
       /** The text read on the device: kept only in memory, to read the document again for someone else. */
       readonly rawText: string
       readonly textSource: 'pdf_text' | 'ocr' | 'einvoice'
+      /** Why the original could not be stored (WEB-10: a 413/429 is said, the reading went on without it). */
+      readonly uploadError?: unknown
     }
   | {
       readonly ok: false
@@ -34,6 +37,9 @@ export type CaptureResult =
       readonly receiptId?: string | null | undefined
       /** The Beleg's state after the failure was recorded; absent when nothing could be recorded. */
       readonly processing?: ParsedReceiptProcessingDto | null | undefined
+      /** The rejected parse (an ApiError or NetworkError), for `net/apiFailure` — e.g. a guest needs an account (WEB-11). */
+      readonly error?: unknown
+      readonly uploadError?: unknown
     }
 
 export interface CaptureReceiptOptions {
@@ -101,15 +107,19 @@ export async function captureReceipt(file: File, options: CaptureReceiptOptions)
   }
 
   let receiptId: string | null = options.receiptId ?? null
+  let uploadError: unknown = undefined
   if (options.receiptId === undefined) {
     options.onPhase?.('uploading')
     try {
       const uploaded = await deps.upload({ file, fileName: file.name, kind: 'Sonstiges' })
       if (uploaded.ok) receiptId = uploaded.data.id
-    } catch {
+      else uploadError = uploadFailureError(uploaded)
+    } catch (thrown) {
       // Reading and parsing still help without the stored original (e.g. offline upload error).
+      uploadError = thrownUploadError(thrown)
     }
   }
+  const withUploadError = uploadError === undefined ? {} : { uploadError }
 
   let extracted: Awaited<ReturnType<CaptureReceiptDeps['extractText']>>
   try {
@@ -149,10 +159,9 @@ export async function captureReceipt(file: File, options: CaptureReceiptOptions)
   options.onPhase?.('parsing')
   try {
     const parsed = await deps.parse(payload)
-    if (parsed.status !== 200) return { ok: false, failure: 'parse_failed' }
-    return { ok: true, kind: kind as DetectedDocumentKind, receiptId, response: parsed.data, rawText: extracted.text, textSource: payload.textSource ?? 'ocr' }
-  } catch {
-    return { ok: false, failure: 'parse_failed' }
+    return { ok: true, kind: kind as DetectedDocumentKind, receiptId, response: parsed.data, rawText: extracted.text, textSource: payload.textSource ?? 'ocr', ...withUploadError }
+  } catch (error) {
+    return { ok: false, failure: 'parse_failed', error, ...withUploadError }
   }
 }
 
@@ -173,7 +182,7 @@ async function deviceFailure(
       deviceReadFailure: DEVICE_READ_FAILURES[failure],
       ...(options.inChat === true ? { inChat: true } : {}),
     })
-    return { ok: false, failure, receiptId, processing: recorded.status === 200 ? (recorded.data.processing ?? null) : null }
+    return { ok: false, failure, receiptId, processing: recorded.data.processing ?? null }
   } catch {
     return { ok: false, failure, receiptId, processing: null }
   }

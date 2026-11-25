@@ -10,6 +10,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useApiBaseUrl } from '../../auth/AuthClientProvider'
 import { APP_NS } from '../../i18n/resources'
 import { formatRequestedAt } from '../device/deviceContext'
+import { useApiFailureMessage } from '../../net/apiFailure'
 import { AssistantConnectForm, MCP_PATH } from './AssistantConnectForm'
 
 /** The consent screen's label of each scope; a scope it does not know is shown as is. */
@@ -35,6 +36,7 @@ export function AssistantsListSection() {
   const [revokingId, setRevokingId] = useState<string | null>(null)
   const [revokeError, setRevokeError] = useState<string | null>(null)
   const [connecting, setConnecting] = useState(false)
+  const failureMessage = useApiFailureMessage()
 
   function handleRevoke(clientId: string) {
     setRevokeError(null)
@@ -46,9 +48,12 @@ export function AssistantsListSection() {
           setRevokingId(null)
           await queryClient.invalidateQueries({ queryKey: ['/v1/assistenten'] })
         },
-        onError: () => {
+        // WEB-49 / NR-04: a refused or failed "Trennen" says so (in the shared wording) and the list reloads, so
+        // a still-connected assistant never looks disconnected.
+        onError: async (error) => {
           setRevokingId(null)
-          setRevokeError(tr('profil.assistenten.revokeError'))
+          setRevokeError(failureMessage(error, { server: tr('profil.assistenten.revokeError'), unknown: tr('profil.assistenten.revokeError') }))
+          await queryClient.invalidateQueries({ queryKey: ['/v1/assistenten'] })
         },
       },
     )
@@ -66,7 +71,22 @@ export function AssistantsListSection() {
     )
   }
 
-  const assistants = listQuery.data?.status === 200 ? listQuery.data.data : []
+  // WEB-49 / NR-04: a failed load is never "Keine Assistenten verbunden" — an assistant may well have access.
+  if (listQuery.isError) {
+    return (
+      <Card style={styles.card}>
+        <Text style={styles.sectionTitle}>{tr('profil.assistenten.heading')}</Text>
+        <Text style={styles.revokeErrorText} accessibilityRole="alert" testID="assistenten-ladefehler">
+          {failureMessage(listQuery.error)}
+        </Text>
+        <Button variant="ghost" onPress={() => void listQuery.refetch()} testID="assistenten-erneut-laden">
+          {tr('apiFehler.retry')}
+        </Button>
+      </Card>
+    )
+  }
+
+  const assistants = listQuery.data.data
 
   return (
     <Card style={styles.card}>

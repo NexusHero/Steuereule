@@ -6618,6 +6618,9 @@
           },
           "422": {
             "description": "`fehlend`: what the Hauptvordruck still needs; `zuLang`: a value too long for its field."
+          },
+          "429": {
+            "description": "Too many printouts for this account; the asynchronous export has its own queue."
           }
         },
         "tags": [
@@ -7867,6 +7870,9 @@
           },
           "409": {
             "description": "Too short to summarise, or an answer is still running."
+          },
+          "429": {
+            "description": "Too many summaries for this account, or the day's messages are used up."
           }
         },
         "summary": "Summarise the older part of a conversation now, before its context is full",
@@ -9498,12 +9504,14 @@
           "steuerId": {
             "type": "string",
             "example": "02476291358",
-            "description": "Steuerliche Identifikationsnummer — exactly 11 digits if present. Optional since ADR-0045 (value-first funnel): omitted = not given yet, stored as null."
+            "nullable": true,
+            "description": "Steuerliche Identifikationsnummer — exactly 11 digits if present. Omitted = keep the stored value; null = clear it (ADR-0045: a profile may have none yet)."
           },
           "steuernummer": {
             "type": "string",
             "example": "18181508155",
-            "description": "Steuernummer — optional; 1-13 digits (no separators) if present."
+            "nullable": true,
+            "description": "Steuernummer — 1-13 digits (no separators) if present. Omitted = keep the stored value; null = clear it."
           }
         },
         "required": [
@@ -13786,22 +13794,27 @@
               "quartal",
               "befreit"
             ],
+            "nullable": true,
             "description": "The period the office set; absent = derived from the year before."
           },
           "extension": {
             "type": "boolean",
+            "nullable": true,
             "description": "Dauerfristverlängerung (§ 46 UStDV)."
           },
           "specialPrepaymentEur": {
             "type": "number",
-            "description": "The Sondervorauszahlung as paid; absent = 1/11 of last year (§ 47 UStDV)."
+            "description": "The Sondervorauszahlung as paid; absent = 1/11 of last year (§ 47 UStDV).",
+            "nullable": true
           },
           "chooseMonthly": {
             "type": "boolean",
+            "nullable": true,
             "description": "Monthly by choice after a refund above the limit (§ 18 Abs. 2a UStG)."
           },
           "exemptFromBookkeeping": {
             "type": "boolean",
+            "nullable": true,
             "description": "Freed from keeping books by the office (§ 148 AO): Istversteuerung whatever the turnover (§ 20 Satz 1 Nr. 2 UStG)."
           }
         }
@@ -13912,23 +13925,33 @@
         "type": "object",
         "properties": {
           "financing": {
-            "$ref": "#/components/schemas/FinancingComponentsDto"
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FinancingComponentsDto"
+              }
+            ]
           },
           "otherAdditionsEur": {
             "type": "number",
-            "description": "Further additions (§ 8 Nr. 4–12 GewStG), euros."
+            "description": "Further additions (§ 8 Nr. 4–12 GewStG), euros.",
+            "nullable": true
           },
           "einheitswertEur": {
             "type": "number",
-            "description": "Einheitswert of the business land for § 9 Nr. 1 GewStG, euros."
+            "description": "Einheitswert of the business land for § 9 Nr. 1 GewStG, euros.",
+            "nullable": true
           },
           "otherDeductionsEur": {
             "type": "number",
-            "description": "Further deductions (§ 9 Nr. 2–10), euros."
+            "description": "Further deductions (§ 9 Nr. 2–10), euros.",
+            "nullable": true
           },
           "lossCarriedForwardEur": {
             "type": "number",
-            "description": "Gewerbeverlust carried forward (§ 10a GewStG), euros."
+            "description": "Gewerbeverlust carried forward (§ 10a GewStG), euros.",
+            "nullable": true
           }
         }
       },
@@ -13937,13 +13960,16 @@
         "properties": {
           "carriedForwardEur": {
             "type": "number",
-            "description": "Verbleibender Verlustvortrag of the last Feststellungsbescheid, euros."
+            "description": "Verbleibender Verlustvortrag of the last Feststellungsbescheid, euros.",
+            "nullable": true
           },
           "waiveCarryBack": {
             "type": "boolean",
+            "nullable": true,
             "description": "§ 10d Abs. 1 Satz 5: waive the Rücktrag (as a whole)."
           },
           "roomEur": {
+            "nullable": true,
             "description": "What the GdE of the year before and the second year before still offers, euros: [y−1, y−2].",
             "type": "array",
             "items": {
@@ -13952,7 +13978,8 @@
           },
           "carriedBackEur": {
             "type": "number",
-            "description": "A later year’s loss carried back into this year, euros."
+            "description": "A later year’s loss carried back into this year, euros.",
+            "nullable": true
           }
         }
       },
@@ -14339,7 +14366,7 @@
           },
           "vatPeriodFacts": {
             "nullable": true,
-            "description": "The Voranmeldung facts. Replaced as a whole.",
+            "description": "The Voranmeldung facts. Merged key by key: a key left out stays, null removes it.",
             "type": "object",
             "allOf": [
               {
@@ -14369,7 +14396,7 @@
           },
           "tradeTaxInputs": {
             "nullable": true,
-            "description": "Gewerbesteuer inputs, euros. Replaced as a whole: send the complete object.",
+            "description": "Gewerbesteuer inputs, euros. Merged key by key: a key left out stays, null removes it.",
             "type": "object",
             "allOf": [
               {
@@ -14379,7 +14406,7 @@
           },
           "lossFacts": {
             "nullable": true,
-            "description": "§ 10d facts, euros. Replaced as a whole.",
+            "description": "§ 10d facts, euros. Merged key by key: a key left out stays, null removes it.",
             "type": "object",
             "allOf": [
               {
@@ -17794,8 +17821,8 @@
           },
           "error": {
             "type": "string",
-            "example": "Error during PDF synthesis",
-            "description": "Error explanation if job failed."
+            "example": "PRINTOUT_FAILED",
+            "description": "Machine code if the job failed: a DomainError code, else PRINTOUT_FAILED. Never a raw message (API-5)."
           }
         },
         "required": [

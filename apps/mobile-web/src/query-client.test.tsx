@@ -13,7 +13,8 @@
 // that the thing you care about has to be the thing you measure.
 import { describe, it, expect } from 'vitest'
 import { QueryClient } from '@tanstack/react-query'
-import { APP_QUERY_DEFAULTS, QUERY_RETRY_COUNT, maxRetryDelayBudgetMs, retryDelayMs } from './query-client'
+import { ApiError } from '@steuereule/api-client'
+import { APP_QUERY_DEFAULTS, QUERY_RETRY_COUNT, maxRetryDelayBudgetMs, retryDelayMs, shouldRetryQuery } from './query-client'
 
 /** TanStack Query's own default backoff, from its docs: 1s, 2s, 4s … capped at 30s. */
 function tanstackDefaultDelayMs(attempt: number): number {
@@ -140,5 +141,14 @@ describe('#450 5E — a save while offline fails instead of hanging', () => {
     } finally {
       onlineManager.setOnline(true)
     }
+  })
+})
+
+describe('WEB-28 — an HTTP refusal is not retried, a transient failure is', () => {
+  it('retries a network failure and a 5xx, never a 4xx answer', () => {
+    expect(shouldRetryQuery(0, new TypeError('Failed to fetch'))).toBe(true)
+    expect(shouldRetryQuery(0, new ApiError(503, null))).toBe(true)
+    for (const status of [400, 401, 403, 404, 409, 413, 429]) expect(shouldRetryQuery(0, new ApiError(status, null))).toBe(false)
+    expect(shouldRetryQuery(QUERY_RETRY_COUNT, new ApiError(500, null))).toBe(false)
   })
 })

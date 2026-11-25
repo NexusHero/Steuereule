@@ -38,10 +38,11 @@ class OrdinaryController {
 // A bearer token is only looked at on the MCP endpoint; cookies and guests are tested on an ordinary controller,
 // because the MCP endpoint refuses every request without a token (beta P4, MCP-9).
 function makeContext(cookies: Record<string, string | undefined>, headers: Record<string, string | undefined> = {}, controller: object = headers.authorization ? McpLikeController : OrdinaryController, url = '/mcp') {
-  const request: Record<string, unknown> = { cookies, headers, url, method: 'POST' }
+  const request: Record<string, unknown> = { cookies, headers, url }
   const setCookie = vi.fn()
   const header = vi.fn()
-  const reply = { setCookie, header }
+  const clearCookie = vi.fn()
+  const reply = { setCookie, header, clearCookie }
   const context = {
     getClass: () => controller,
     switchToHttp: () => ({
@@ -49,7 +50,7 @@ function makeContext(cookies: Record<string, string | undefined>, headers: Recor
       getResponse: () => reply,
     }),
   } as unknown as ExecutionContext
-  return { context, request, setCookie, header }
+  return { context, request, setCookie, header, clearCookie }
 }
 
 function makeBetterAuthBundle(getSession: ReturnType<typeof vi.fn>): BetterAuthBundle {
@@ -182,39 +183,35 @@ describe('UserContextGuard', () => {
       expect(getSession).toHaveBeenCalledOnce()
     })
 
-    it('an expired/revoked session (getSession resolves null) falls through to the guest path', async () => {
+    it('WEB-24: an expired/revoked session is refused with 401 SESSION_EXPIRED and its cookie cleared, never turned into a guest', async () => {
       const getSession = vi.fn().mockResolvedValue(null)
       const guard = new UserContextGuard(makeBetterAuthBundle(getSession), fakeTokens())
-      const { context, request, setCookie } = makeContext({
+      const { context, request, setCookie, clearCookie } = makeContext({
         [SESSION_COOKIE_NAME]: 'a-revoked-session-cookie-value',
       })
 
-      await expect(guard.canActivate(context)).resolves.toBe(true)
-      expect(request[USER_ID_REQUEST_KEY]).not.toBe('real-account-id')
-      // No guest cookie existed either, so a fresh one is minted — the revoked
-      // session must never leave the request without *some* trusted userId.
-      expect(setCookie).toHaveBeenCalledOnce()
-      // #318 — a revoked session must fall all the way through to 'guest', never be
-      // left as (or mistaken for) 'session' — that would let @RequiresAccount() admit
-      // a caller whose session just failed to verify.
-      expect(request[USER_ID_KIND_REQUEST_KEY]).toBe('guest')
+      await expect(guard.canActivate(context)).rejects.toMatchObject({ code: 'SESSION_EXPIRED', kind: 'unauthenticated' })
+      // A signed-in user's save must not silently land in a freshly minted guest account.
+      expect(setCookie).not.toHaveBeenCalled()
+      expect(request[USER_ID_REQUEST_KEY]).toBeUndefined()
+      expect(request[USER_ID_KIND_REQUEST_KEY]).toBeUndefined()
+      expect(clearCookie).toHaveBeenCalledWith(SESSION_COOKIE_NAME, { path: '/' })
     })
   })
 
   // --- ADR-0103 §2: an absolute cap on session age (freshAge stays 0, ADR-0027) ---
   describe('absolute session cap', () => {
-    it('refuses a session older than the absolute cap, falling through to the guest path (never left as "session")', async () => {
+    it('refuses a session older than the absolute cap with 401 SESSION_EXPIRED (never left as "session")', async () => {
       const createdAt = new Date(Date.now() - (SESSION_ABSOLUTE_MAX_AGE_MS + 60_000))
       const getSession = vi.fn().mockResolvedValue({ user: { id: 'real-account-id', emailVerified: true }, session: { createdAt } })
       const guard = new UserContextGuard(makeBetterAuthBundle(getSession), fakeTokens())
-      const { context, request, setCookie } = makeContext({ [SESSION_COOKIE_NAME]: 'an-indefinitely-renewed-cookie' })
+      const { context, request } = makeContext({ [SESSION_COOKIE_NAME]: 'an-indefinitely-renewed-cookie' })
 
-      await expect(guard.canActivate(context)).resolves.toBe(true)
+      await expect(guard.canActivate(context)).rejects.toMatchObject({ code: 'SESSION_EXPIRED' })
       // An over-cap session must never leave the request as 'session' — that would admit a stolen,
       // forever-renewed cookie past @RequiresAccount().
-      expect(request[USER_ID_KIND_REQUEST_KEY]).toBe('guest')
-      expect(request[USER_ID_REQUEST_KEY]).not.toBe('real-account-id')
-      expect(setCookie).toHaveBeenCalledOnce()
+      expect(request[USER_ID_KIND_REQUEST_KEY]).toBeUndefined()
+      expect(request[USER_ID_REQUEST_KEY]).toBeUndefined()
     })
 
     it('accepts a session created within the cap and stashes emailVerified', async () => {

@@ -1,5 +1,7 @@
 import { randomUUID } from 'node:crypto'
-import { Inject, Injectable, Logger } from '@nestjs/common'
+import { Inject, Injectable, Optional, Logger } from '@nestjs/common'
+import { ModelCallTiers } from './model-call-tier.js'
+import { BETTER_AUTH_BUNDLE, type BetterAuthBundle } from '../auth/auth.tokens.js'
 import {
   PERSON_B_HANDLE,
   advisorContextUsage,
@@ -97,7 +99,43 @@ export class AdvisorTurn {
     @Inject(LinkService) private readonly link: LinkService,
     @Inject(PROFILE_REPOSITORY) private readonly profileRepo: ProfileRepository,
     @Inject(CHILD_REPOSITORY) private readonly childRepo: ChildRepository,
+    /** Absent in tests that build the turn without it: every call is then a free one (H2-40). */
+    @Optional() @Inject(ModelCallTiers) private readonly callTiers?: ModelCallTiers,
+    /** The shared counters (ADR-0109 §1); absent in tests: a summary then only checks the message cap. */
+    @Optional() @Inject(BETTER_AUTH_BUNDLE) private readonly shared?: Pick<BetterAuthBundle, 'rateLimitStorage'>,
   ) {}
+
+  /** The user's messages to the owl today against the daily cap; throws once it is reached. */
+  private async remainingToday(userId: string): Promise<{ readonly limit: number; readonly remaining: number }> {
+    const { dailyMessageLimit } = await this.runtimeConfig.resolveLimits()
+    const startOfDayUtc = new Date()
+    startOfDayUtc.setUTCHours(0, 0, 0, 0)
+    const todayCount = await this.advisorRepo.countUserMessagesSince(userId, startOfDayUtc)
+    if (todayCount >= dailyMessageLimit) {
+      throw new TooManyRequestsError(
+        'ADVISOR_DAILY_LIMIT_EXCEEDED',
+        `Du hast dein Tageskontingent von ${dailyMessageLimit} Nachrichten an die SteuerEule erreicht. Morgen früh steht dir deine Eule wieder frisch zur Verfügung.`,
+      )
+    }
+    return { limit: dailyMessageLimit, remaining: dailyMessageLimit - todayCount }
+  }
+
+  /**
+   * „Jetzt zusammenfassen“ asks the model too (H2-12): it is refused once the day's messages are used up, and
+   * each summary takes one of the messages still left today, counted on the shared storage.
+   */
+  async takeSummaryAllowance(userId: string): Promise<void> {
+    const { limit, remaining } = await this.remainingToday(userId)
+    if (!this.shared) return
+    const day = new Date().toISOString().slice(0, 10)
+    const decision = await this.shared.rateLimitStorage.consume(`advisor-summaries:${day}:${userId}`, { window: 24 * 60 * 60, max: remaining })
+    if (!decision.allowed) {
+      throw new TooManyRequestsError(
+        'ADVISOR_DAILY_LIMIT_EXCEEDED',
+        `Du hast dein Tageskontingent von ${limit} Nachrichten an die SteuerEule erreicht. Morgen früh steht dir deine Eule wieder frisch zur Verfügung.`,
+      )
+    }
+  }
 
   async sendMessage(
     userId: string,
@@ -122,16 +160,7 @@ export class AdvisorTurn {
    * Both messages exist afterwards: the question, and the answer as `streaming` (#476).
    */
   async prepareTurn(userId: string, taxYear: number, dto: SendAdvisorMessageDto): Promise<PreparedAdvisorTurn> {
-    const { dailyMessageLimit } = await this.runtimeConfig.resolveLimits()
-    const startOfDayUtc = new Date()
-    startOfDayUtc.setUTCHours(0, 0, 0, 0)
-    const todayCount = await this.advisorRepo.countUserMessagesSince(userId, startOfDayUtc)
-    if (todayCount >= dailyMessageLimit) {
-      throw new TooManyRequestsError(
-        'ADVISOR_DAILY_LIMIT_EXCEEDED',
-        `Du hast dein Tageskontingent von ${dailyMessageLimit} Nachrichten an die SteuerEule erreicht. Morgen früh steht dir deine Eule wieder frisch zur Verfügung.`,
-      )
-    }
+    await this.remainingToday(userId)
 
     // Ensure Eulen-Modus is enabled when user actively chats with the Eule
     const setting = await this.owlModeService.getSetting(userId)
@@ -372,6 +401,7 @@ export class AdvisorTurn {
       const task = dto.quickAction === 'savings_plan' ? ('savings-plan' as const) : dto.quickAction === 'assessment_check' ? ('assessment-check' as const) : undefined
       const request: AdvisorTurnRequest = {
         message: scrubbedUserText,
+        callTier: (await this.callTiers?.tierOf(userId, taxYear)) ?? 'free',
         activeScreen: dto.activeScreen,
         digest,
         history,

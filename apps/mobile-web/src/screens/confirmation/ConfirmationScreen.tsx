@@ -18,6 +18,7 @@ import { makePrivacyStyles } from '../privacy/styles'
 import { ErrorState, LoadingState } from '../shared/ScreenState'
 import { triggerSaveErrorHaptic } from '../shared/saveFeedback'
 import { fieldLabelText, instanceText, valueText } from './confirmationText'
+import { classifyApiFailure, useApiFailureMessage } from '../../net/apiFailure'
 
 export type ConfirmationForm = FieldProvenanceDto['screen']
 
@@ -57,11 +58,12 @@ export function ConfirmationScreen({ year, onBack, onOpenScreen }: ConfirmationS
   const confirm = useConfirmationControllerConfirmAnnex()
   const decide = useConfirmationControllerDecideProposal()
   const decideTask = useConfirmationControllerDecideTask()
-  const [error, setError] = useState(false)
+  const [error, setError] = useState<unknown>(null)
   const [stale, setStale] = useState(false)
+  const failureMessage = useApiFailureMessage()
 
   if (overview.isPending) return <LoadingState bp={bp} label={t('bestaetigung.loading')} />
-  if (overview.data?.status !== 200) {
+  if (overview.isError || overview.data === undefined) {
     return (
       <ErrorState
         bp={bp}
@@ -76,22 +78,18 @@ export function ConfirmationScreen({ year, onBack, onOpenScreen }: ConfirmationS
   // An API of before #547 answers without tasks.
   const tasks: readonly AssistantTaskDto[] = overview.data.data.tasks ?? []
 
-  const afterChange = async (action: () => Promise<{ status: number }>) => {
-    setError(false)
+  const afterChange = async (action: () => Promise<unknown>) => {
+    setError(null)
     setStale(false)
     try {
-      const result = await action()
-      // A value changed after the screen was drawn (MCP-4): nothing was confirmed, the user looks again.
-      if (result.status === 409) {
-        triggerSaveErrorHaptic()
-        setStale(true)
-      } else if (result.status !== 200) {
-        triggerSaveErrorHaptic()
-        setError(true)
-      }
-    } catch {
+      // A refusal rejects with an ApiError (WEB-28); a resolved action succeeded.
+      await action()
+    } catch (failure) {
       triggerSaveErrorHaptic()
-      setError(true)
+      // A value changed after the screen was drawn (MCP-4, 409 CONFIRMATION_STALE): nothing was confirmed,
+      // the user looks again. Every other failure in the shared wording.
+      if (classifyApiFailure(failure).kind === 'conflict') setStale(true)
+      else setError(failure)
     }
     await queryClient.invalidateQueries()
   }
@@ -110,9 +108,9 @@ export function ConfirmationScreen({ year, onBack, onOpenScreen }: ConfirmationS
       ) : tasks.length === 0 ? (
         <Text style={styles.sectionBody}>{t('bestaetigung.leer')}</Text>
       ) : null}
-      {error ? (
-        <Text style={styles.hint} accessibilityLiveRegion="polite">
-          {t('bestaetigung.fehler')}
+      {error !== null ? (
+        <Text style={styles.hint} accessibilityLiveRegion="polite" accessibilityRole="alert" testID="bestaetigung-fehler">
+          {failureMessage(error, { unknown: t('bestaetigung.fehler') })}
         </Text>
       ) : null}
       {stale ? (

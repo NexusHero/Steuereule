@@ -3,6 +3,8 @@ import { createNativeStackNavigator, type NativeStackScreenProps } from '@react-
 import { CockpitScreen } from '../screens/cockpit/CockpitScreen'
 import { useAccountSession } from '../auth/useAccountSession'
 import { InterviewScreen } from '../screens/interview/InterviewScreen'
+import { LeaveGuardProvider } from '../screens/shared/leaveGuard'
+import { useRemovalGuard } from './useRemovalGuard'
 import { StromScreen } from '../screens/strom/StromScreen'
 import { slugOf } from '../screens/strom/stromPlan'
 import { AccountWallScreen, pathFromAnswers } from '../screens/funnel/KontoWandScreen'
@@ -109,6 +111,8 @@ function InterviewRoute({ navigation, route }: Props<'Interview'>) {
 }
 
 function StromRoute({ navigation, route }: Props<'Strom'>) {
+  // NM-05: „Später weiter“ and the browser's back wait for the mask's pending saves, as the sheets do.
+  const guard = useRemovalGuard(navigation)
   const year = useYearGuard(route.params?.year, navigation)
   const { setFunnelPath, setPendingPath } = useShellState()
   const { state: sessionState } = useAccountSession()
@@ -130,8 +134,9 @@ function StromRoute({ navigation, route }: Props<'Strom'>) {
       }}
     />
   )
+  const guarded = <LeaveGuardProvider host={guard}>{screen}</LeaveGuardProvider>
   // Only the basis page is open to guests; every other step needs an account (as the masks do).
-  return route.params?.step === 'basis' ? screen : <RequiresAccount>{screen}</RequiresAccount>
+  return route.params?.step === 'basis' ? guarded : <RequiresAccount>{guarded}</RequiresAccount>
 }
 
 function AccountWallRoute({ navigation }: Props<'AccountWall'>) {

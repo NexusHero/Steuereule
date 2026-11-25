@@ -15,6 +15,7 @@ import { AuthClientProvider } from '../auth/AuthClientProvider'
 import { ProfileScreen } from './ProfileScreen'
 import { server, EMPTY_PROFILE_RESPONSE } from '../test-msw-server'
 import { stubStorageSetItem, assertNoStorageWrites } from '../test-storage-guard'
+import { expectFailsClosed, failEveryRequest } from '../test-every-query-fails'
 
 const BASE_URL = 'http://localhost:3000'
 
@@ -130,8 +131,8 @@ describe('ProfilScreen', () => {
     )
     renderProfile()
 
-    await screen.findByText('Das hat nicht geklappt.')
-    expect(screen.getByText('Dein Profil konnte nicht geladen werden. Prüf die Verbindung und versuch es noch mal.')).toBeTruthy()
+    await screen.findByText('Das konnte nicht geladen werden.')
+    expect(screen.getByText('Keine Verbindung zum Server. Prüf dein Internet und versuch es noch mal.')).toBeTruthy()
 
     fireEvent.click(screen.getByText('Noch mal versuchen'))
     await screen.findByText('Anna Beispiel')
@@ -208,7 +209,8 @@ describe('ProfilScreen', () => {
     fireEvent.click(screen.getByText('Speichern'))
 
     await screen.findByText('Anna Neu')
-    expect(receivedBody).toEqual({ firstName: 'Anna', lastName: 'Neu', steuerId: '02476291358', steuernummer: '1234567890' })
+    // WEB-28: the identifiers were not touched, so they are not sent — the server keeps what is absent.
+    expect(receivedBody).toEqual({ firstName: 'Anna', lastName: 'Neu' })
     expect(screen.getByText('Gespeichert.')).toBeTruthy()
   })
 
@@ -427,5 +429,76 @@ describe('ProfilScreen — Haptik (Slice 7)', () => {
     renderProfile({ lng: 'en' })
     await screen.findByText('Anna Beispiel')
     expect(screen.getByText('Haptic feedback')).toBeTruthy()
+  })
+})
+
+describe('ProfilScreen — failures never reach a save (WEB-28, NR-01, NR-22, NR-18)', () => {
+  const SIGNED_IN = {
+    user: { id: 'u1', email: 'anna@beispiel.de', emailVerified: true, name: 'Anna' },
+    session: { id: 's1', token: 't1', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+  }
+
+  it.each([500, 429])('a profile load answered %i shows a failure state, not an empty profile', async (status) => {
+    server.use(http.get('*/v1/profile', () => HttpResponse.json({ statusCode: status }, { status })))
+    renderProfile()
+    expect(await screen.findByTestId('fehler-zustand')).toBeTruthy()
+    expect(screen.queryByText('Noch keine Angaben gespeichert.')).toBeNull()
+    expect(screen.queryByText('Bearbeiten')).toBeNull()
+  })
+
+  it('fails closed: every request answering 500 shows a failure and sends no write', async () => {
+    const failing = failEveryRequest()
+    renderProfile()
+    await expectFailsClosed(failing)
+  })
+
+  it('fails closed with the profile loaded: the assistants and devices that did not load send no write either', async () => {
+    const failing = failEveryRequest()
+    mockSavedProfile()
+    server.use(http.get('*/api/auth/get-session', () => HttpResponse.json(SIGNED_IN)))
+    renderProfile()
+    await screen.findByText('Anna Beispiel')
+    expect(await screen.findByTestId('assistenten-ladefehler')).toBeTruthy()
+    await expectFailsClosed(failing)
+  })
+
+  it('clearing a stored Steuer-ID sends null for it — the only way the server clears it', async () => {
+    mockSavedProfile()
+    let body: unknown
+    server.use(
+      http.put('*/v1/profile', async ({ request }) => {
+        body = await request.json()
+        return HttpResponse.json({ firstName: 'Anna', lastName: 'Beispiel', steuerId: null, steuernummer: '1234567890' })
+      }),
+    )
+    renderProfile()
+    await screen.findByText('Anna Beispiel')
+    fireEvent.click(screen.getByText('Bearbeiten'))
+    fireEvent.change(screen.getByDisplayValue('02 476 291 358'), { target: { value: '' } })
+    fireEvent.click(screen.getByText('Speichern'))
+    await screen.findByText('Gespeichert.')
+    expect(body).toEqual({ firstName: 'Anna', lastName: 'Beispiel', steuerId: null })
+  })
+
+  it.each([
+    [500, 'Bei uns ist gerade etwas schiefgelaufen. Versuch es gleich noch mal.'],
+    [429, 'Gerade kommen zu viele Anfragen. Versuch es in ein paar Minuten noch mal.'],
+  ])('a save answered %i says what happened, not "prüf die Steuer-ID"', async (status, message) => {
+    mockSavedProfile()
+    server.use(http.put('*/v1/profile', () => HttpResponse.json({ statusCode: status }, { status })))
+    renderProfile()
+    await screen.findByText('Anna Beispiel')
+    fireEvent.click(screen.getByText('Bearbeiten'))
+    fireEvent.click(screen.getByText('Speichern'))
+    expect(await screen.findByText(message)).toBeTruthy()
+    expect(screen.queryByText(/prüf die Steuer-ID/)).toBeNull()
+  })
+
+  it('a guest sees that assistants and devices need an account, not an empty list', async () => {
+    mockSavedProfile()
+    renderProfile()
+    await screen.findByText('Anna Beispiel')
+    expect(await screen.findByTestId('profil-konto-noetig')).toBeTruthy()
+    expect(screen.queryByText('Keine Assistenten verbunden.')).toBeNull()
   })
 })

@@ -10,6 +10,11 @@
 // production code importing `@steuereule/api-client` never pulls in msw/faker.
 import { defineConfig } from 'orval'
 
+// WEB-28: the mutator throws an ApiError for every status >= 400 (and a NetworkError when the
+// request never got an answer), so the generated response types carry only the success variants
+// and React Query reports `isError` instead of handing an error body to the screen as data.
+const THROW_ON_ERROR = { forceSuccessResponse: true } as const
+
 export default defineConfig({
   profile: {
     input: { target: '../../apps/api/openapi.json', filters: { tags: ['profile'] } },
@@ -21,6 +26,7 @@ export default defineConfig({
       mock: true,
       override: {
         mutator: { path: './src/http-client.ts', name: 'httpClient' },
+        fetch: THROW_ON_ERROR,
       },
     },
   },
@@ -38,6 +44,7 @@ export default defineConfig({
       mock: true,
       override: {
         mutator: { path: './src/http-client.ts', name: 'httpClient' },
+        fetch: THROW_ON_ERROR,
       },
     },
   },
@@ -52,6 +59,7 @@ export default defineConfig({
       mock: true,
       override: {
         mutator: { path: './src/http-client.ts', name: 'httpClient' },
+        fetch: THROW_ON_ERROR,
       },
     },
   },
@@ -65,6 +73,7 @@ export default defineConfig({
       mock: true,
       override: {
         mutator: { path: './src/http-client.ts', name: 'httpClient' },
+        fetch: THROW_ON_ERROR,
         // `CockpitStandDto`'s optional fields are genuinely absent on most variants (kind fixes
         // which ones are present), so orval's default faker would emit `arrayElement([value,
         // undefined])` and fail under `exactOptionalPropertyTypes: true` (TS2375). `mock.required:
@@ -86,6 +95,7 @@ export default defineConfig({
       mock: true,
       override: {
         mutator: { path: './src/http-client.ts', name: 'httpClient' },
+        fetch: THROW_ON_ERROR,
       },
     },
   },
@@ -102,6 +112,7 @@ export default defineConfig({
       mock: true,
       override: {
         mutator: { path: './src/http-client.ts', name: 'httpClient' },
+        fetch: THROW_ON_ERROR,
       },
     },
   },
@@ -117,6 +128,7 @@ export default defineConfig({
       mock: true,
       override: {
         mutator: { path: './src/http-client.ts', name: 'httpClient' },
+        fetch: THROW_ON_ERROR,
         // `StepDto.id` (@ApiPropertyOptional — genuinely absent when kind is "done", not
         // nullable) is the first response schema in this API with a truly optional,
         // non-nullable property. orval's default faker output for that shape is
@@ -146,6 +158,7 @@ export default defineConfig({
       mock: true,
       override: {
         mutator: { path: './src/http-client.ts', name: 'httpClient' },
+        fetch: THROW_ON_ERROR,
         // `ZuordnungDto`'s optional fields (`steuerjahr`/`vorschlagsJahr`/`herkunft`) are
         // genuinely absent on some variants, so orval's default faker would emit
         // `arrayElement([value, undefined])` and fail under `exactOptionalPropertyTypes: true`
@@ -169,6 +182,7 @@ export default defineConfig({
       mock: true,
       override: {
         mutator: { path: './src/http-client.ts', name: 'httpClient' },
+        fetch: THROW_ON_ERROR,
         // `LstbFeldDto.wert`/`LstbZustandDto`'s optional fields are genuinely absent on
         // some variants, so orval's default faker would emit `arrayElement([value, undefined])`
         // and fail under `exactOptionalPropertyTypes: true` (TS2375). `mock.required: true`
@@ -191,6 +205,7 @@ export default defineConfig({
       mock: true,
       override: {
         mutator: { path: './src/http-client.ts', name: 'httpClient' },
+        fetch: THROW_ON_ERROR,
         // `LohnausweisFeldDto.wert`, `ChPostenDto.ziffer`, `WechselkursDto.belegId` and the
         // `BerechnungsstandDto`'s offen-variant fields are genuinely absent on some responses, so
         // orval's default faker would emit `arrayElement([value, undefined])` and fail under
@@ -213,6 +228,7 @@ export default defineConfig({
       mock: true,
       override: {
         mutator: { path: './src/http-client.ts', name: 'httpClient' },
+        fetch: THROW_ON_ERROR,
         mock: { required: true },
       },
     },
@@ -227,6 +243,7 @@ export default defineConfig({
       mock: true,
       override: {
         mutator: { path: './src/http-client.ts', name: 'httpClient' },
+        fetch: THROW_ON_ERROR,
         mock: { required: true },
       },
     },
@@ -244,6 +261,7 @@ export default defineConfig({
       mock: true,
       override: {
         mutator: { path: './src/http-client.ts', name: 'httpClient' },
+        fetch: THROW_ON_ERROR,
         mock: { required: true },
       },
     },
@@ -258,6 +276,7 @@ export default defineConfig({
       mock: true,
       override: {
         mutator: { path: './src/http-client.ts', name: 'httpClient' },
+        fetch: THROW_ON_ERROR,
         mock: { required: true },
       },
     },
@@ -272,6 +291,7 @@ export default defineConfig({
       mock: true,
       override: {
         mutator: { path: './src/http-client.ts', name: 'httpClient' },
+        fetch: THROW_ON_ERROR,
         mock: { required: true },
       },
     },
@@ -286,6 +306,7 @@ export default defineConfig({
       mock: true,
       override: {
         mutator: { path: './src/http-client.ts', name: 'httpClient' },
+        fetch: THROW_ON_ERROR,
         mock: { required: true },
       },
     },
@@ -303,6 +324,7 @@ export default defineConfig({
       mock: true,
       override: {
         mutator: { path: './src/http-client.ts', name: 'httpClient' },
+        fetch: THROW_ON_ERROR,
         // `VermietungFeldDto.wert` and the nullable fakten fields (`einnahmen`/`werbungskosten`/
         // `afa` are `| null`, never `undefined` — nullable, not optional) need every mocked
         // property populated — same override the interview/rente targets carry.
@@ -323,6 +345,7 @@ export default defineConfig({
       mock: true,
       override: {
         mutator: { path: './src/http-client.ts', name: 'httpClient' },
+        fetch: THROW_ON_ERROR,
         // Nullable fields (`| null`) and optional ones need every mocked property populated, as for vermietung.
         mock: { required: true },
       },
@@ -340,6 +363,7 @@ export default defineConfig({
       mock: true,
       override: {
         mutator: { path: './src/http-client.ts', name: 'httpClient' },
+        fetch: THROW_ON_ERROR,
         mock: { required: true },
       },
     },
@@ -356,6 +380,7 @@ export default defineConfig({
       mock: true,
       override: {
         mutator: { path: './src/http-client.ts', name: 'httpClient' },
+        fetch: THROW_ON_ERROR,
         mock: { required: true },
       },
     },
@@ -372,6 +397,7 @@ export default defineConfig({
       mock: true,
       override: {
         mutator: { path: './src/http-client.ts', name: 'httpClient' },
+        fetch: THROW_ON_ERROR,
         mock: { required: true },
       },
     },
@@ -388,6 +414,7 @@ export default defineConfig({
       mock: true,
       override: {
         mutator: { path: './src/http-client.ts', name: 'httpClient' },
+        fetch: THROW_ON_ERROR,
         mock: { required: true },
       },
     },
@@ -403,6 +430,7 @@ export default defineConfig({
       mock: true,
       override: {
         mutator: { path: './src/http-client.ts', name: 'httpClient' },
+        fetch: THROW_ON_ERROR,
         mock: { required: true },
       },
     },
@@ -418,6 +446,7 @@ export default defineConfig({
       mock: true,
       override: {
         mutator: { path: './src/http-client.ts', name: 'httpClient' },
+        fetch: THROW_ON_ERROR,
         mock: { required: true },
       },
     },
@@ -434,6 +463,7 @@ export default defineConfig({
       mock: true,
       override: {
         mutator: { path: './src/http-client.ts', name: 'httpClient' },
+        fetch: THROW_ON_ERROR,
         mock: { required: true },
       },
     },
@@ -448,6 +478,7 @@ export default defineConfig({
       mock: true,
       override: {
         mutator: { path: './src/http-client.ts', name: 'httpClient' },
+        fetch: THROW_ON_ERROR,
         mock: { required: true },
       },
     },
@@ -462,6 +493,7 @@ export default defineConfig({
       mock: true,
       override: {
         mutator: { path: './src/http-client.ts', name: 'httpClient' },
+        fetch: THROW_ON_ERROR,
         mock: { required: true },
       },
     },
@@ -476,6 +508,7 @@ export default defineConfig({
       mock: true,
       override: {
         mutator: { path: './src/http-client.ts', name: 'httpClient' },
+        fetch: THROW_ON_ERROR,
         mock: { required: true },
       },
     },
@@ -490,6 +523,7 @@ export default defineConfig({
       mock: true,
       override: {
         mutator: { path: './src/http-client.ts', name: 'httpClient' },
+        fetch: THROW_ON_ERROR,
         mock: { required: true },
       },
     },
@@ -504,6 +538,7 @@ export default defineConfig({
       mock: true,
       override: {
         mutator: { path: './src/http-client.ts', name: 'httpClient' },
+        fetch: THROW_ON_ERROR,
         mock: { required: true },
       },
     },
@@ -520,6 +555,7 @@ export default defineConfig({
       mock: true,
       override: {
         mutator: { path: './src/http-client.ts', name: 'httpClient' },
+        fetch: THROW_ON_ERROR,
         mock: { required: true },
       },
     },
@@ -536,6 +572,7 @@ export default defineConfig({
       mock: true,
       override: {
         mutator: { path: './src/http-client.ts', name: 'httpClient' },
+        fetch: THROW_ON_ERROR,
         mock: { required: true },
       },
     },

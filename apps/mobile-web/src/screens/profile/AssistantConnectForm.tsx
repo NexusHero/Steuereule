@@ -59,7 +59,11 @@ export function AssistantConnectForm({ onCreated }: AssistantConnectFormProps) {
         method: 'POST',
         body: { client_name: clientName, redirect_uris: redirectUris, token_endpoint_auth_method: 'none', grant_types: ['authorization_code', 'refresh_token'], response_types: ['code'] },
       })
-      if (failed || !data?.client_id) setError(tr('profil.assistenten.verbinden.errGeneric'))
+      // WEB-10: a throttled or account-less request says so; anything else stays the form's own sentence.
+      const failedStatus = (failed as { status?: number } | null | undefined)?.status
+      if (failedStatus === 429) setError(tr('apiFehler.rateLimited'))
+      else if (failedStatus === 401) setError(tr('apiFehler.accountRequired'))
+      else if (failed || !data?.client_id) setError(tr('profil.assistenten.verbinden.errGeneric'))
       else {
         setClientId(data.client_id)
         onCreated?.()

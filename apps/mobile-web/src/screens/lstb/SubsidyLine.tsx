@@ -12,6 +12,7 @@ import {
 } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
 import { watchSaveResult } from '../shared/saveFeedback'
+import { InlineLoadFailure } from '../shared/InlineLoadFailure'
 import { LineInput, makeStyles } from './ChurchTaxLines'
 
 export interface SubsidyLineProps {
@@ -34,9 +35,10 @@ export function SubsidyLine({ taxYear, params, track }: SubsidyLineProps) {
   const lines = useLstbControllerGetLines(taxYear, params)
 
   if (query.isPending) return <Text style={s.help}>{tr('lstb.zuschuesse.loading')}</Text>
-  if (query.isError || query.data.status !== 200) return <Text style={s.error}>{tr('lstb.zuschuesse.loadError')}</Text>
+  if (query.isError) return <InlineLoadFailure what={tr('lstb.zuschuesse.loadError')} error={query.error} onRetry={() => void query.refetch()} testID="lstb-zuschuesse-ladefehler" />
   const stored = query.data.data.zuschuesseKvPv
-  const subsidyOpen = lines.data?.status === 200 && lines.data.data.subsidyOpen
+  // A failed lines query only hides this hint; the field itself is the subsidies' own query.
+  const subsidyOpen = lines.data?.data.subsidyOpen === true
 
   function commit(value: number | null) {
     if (stored === value) return

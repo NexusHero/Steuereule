@@ -157,8 +157,6 @@ export type businessControllerBusinessesResponseError = (businessControllerBusin
   headers: Headers;
 };
 
-export type businessControllerBusinessesResponse = (businessControllerBusinessesResponseSuccess | businessControllerBusinessesResponseError)
-
 export const getBusinessControllerBusinessesUrl = (jahr: number,
     params?: BusinessControllerBusinessesParams,) => {
   const normalizedParams = new URLSearchParams();
@@ -176,9 +174,9 @@ export const getBusinessControllerBusinessesUrl = (jahr: number,
 }
 
 export const businessControllerBusinesses = async (jahr: number,
-    params?: BusinessControllerBusinessesParams, options?: RequestInit): Promise<businessControllerBusinessesResponse> => {
+    params?: BusinessControllerBusinessesParams, options?: RequestInit): Promise<businessControllerBusinessesResponseSuccess> => {
 
-  return httpClient<businessControllerBusinessesResponse>(getBusinessControllerBusinessesUrl(jahr,params),
+  return httpClient<businessControllerBusinessesResponseSuccess>(getBusinessControllerBusinessesUrl(jahr,params),
   {
     ...options,
     method: 'GET'
@@ -296,8 +294,6 @@ export type businessControllerAddBusinessResponseError = (businessControllerAddB
   headers: Headers;
 };
 
-export type businessControllerAddBusinessResponse = (businessControllerAddBusinessResponseSuccess | businessControllerAddBusinessResponseError)
-
 export const getBusinessControllerAddBusinessUrl = (jahr: number,
     params?: BusinessControllerAddBusinessParams,) => {
   const normalizedParams = new URLSearchParams();
@@ -316,9 +312,9 @@ export const getBusinessControllerAddBusinessUrl = (jahr: number,
 
 export const businessControllerAddBusiness = async (jahr: number,
     newBusinessDto: NewBusinessDto,
-    params?: BusinessControllerAddBusinessParams, options?: RequestInit): Promise<businessControllerAddBusinessResponse> => {
+    params?: BusinessControllerAddBusinessParams, options?: RequestInit): Promise<businessControllerAddBusinessResponseSuccess> => {
 
-  return httpClient<businessControllerAddBusinessResponse>(getBusinessControllerAddBusinessUrl(jahr,params),
+  return httpClient<businessControllerAddBusinessResponseSuccess>(getBusinessControllerAddBusinessUrl(jahr,params),
   {
     ...options,
     method: 'POST',
@@ -503,8 +499,6 @@ export type businessControllerCataloguesResponseError = (businessControllerCatal
   headers: Headers;
 };
 
-export type businessControllerCataloguesResponse = (businessControllerCataloguesResponseSuccess | businessControllerCataloguesResponseError)
-
 export const getBusinessControllerCataloguesUrl = (jahr: number,
     params?: BusinessControllerCataloguesParams,) => {
   const normalizedParams = new URLSearchParams();
@@ -522,9 +516,9 @@ export const getBusinessControllerCataloguesUrl = (jahr: number,
 }
 
 export const businessControllerCatalogues = async (jahr: number,
-    params?: BusinessControllerCataloguesParams, options?: RequestInit): Promise<businessControllerCataloguesResponse> => {
+    params?: BusinessControllerCataloguesParams, options?: RequestInit): Promise<businessControllerCataloguesResponseSuccess> => {
 
-  return httpClient<businessControllerCataloguesResponse>(getBusinessControllerCataloguesUrl(jahr,params),
+  return httpClient<businessControllerCataloguesResponseSuccess>(getBusinessControllerCataloguesUrl(jahr,params),
   {
     ...options,
     method: 'GET'
@@ -642,8 +636,6 @@ export type businessControllerProfileResponseError = (businessControllerProfileR
   headers: Headers;
 };
 
-export type businessControllerProfileResponse = (businessControllerProfileResponseSuccess | businessControllerProfileResponseError)
-
 export const getBusinessControllerProfileUrl = (jahr: number,
     params?: BusinessControllerProfileParams,) => {
   const normalizedParams = new URLSearchParams();
@@ -661,9 +653,9 @@ export const getBusinessControllerProfileUrl = (jahr: number,
 }
 
 export const businessControllerProfile = async (jahr: number,
-    params?: BusinessControllerProfileParams, options?: RequestInit): Promise<businessControllerProfileResponse> => {
+    params?: BusinessControllerProfileParams, options?: RequestInit): Promise<businessControllerProfileResponseSuccess> => {
 
-  return httpClient<businessControllerProfileResponse>(getBusinessControllerProfileUrl(jahr,params),
+  return httpClient<businessControllerProfileResponseSuccess>(getBusinessControllerProfileUrl(jahr,params),
   {
     ...options,
     method: 'GET'
@@ -786,8 +778,6 @@ export type businessControllerSaveProfileResponseError = (businessControllerSave
   headers: Headers;
 };
 
-export type businessControllerSaveProfileResponse = (businessControllerSaveProfileResponseSuccess | businessControllerSaveProfileResponseError)
-
 export const getBusinessControllerSaveProfileUrl = (jahr: number,
     params?: BusinessControllerSaveProfileParams,) => {
   const normalizedParams = new URLSearchParams();
@@ -806,9 +796,9 @@ export const getBusinessControllerSaveProfileUrl = (jahr: number,
 
 export const businessControllerSaveProfile = async (jahr: number,
     businessProfileInputDto: BusinessProfileInputDto,
-    params?: BusinessControllerSaveProfileParams, options?: RequestInit): Promise<businessControllerSaveProfileResponse> => {
+    params?: BusinessControllerSaveProfileParams, options?: RequestInit): Promise<businessControllerSaveProfileResponseSuccess> => {
 
-  return httpClient<businessControllerSaveProfileResponse>(getBusinessControllerSaveProfileUrl(jahr,params),
+  return httpClient<businessControllerSaveProfileResponseSuccess>(getBusinessControllerSaveProfileUrl(jahr,params),
   {
     ...options,
     method: 'PUT',
@@ -890,8 +880,6 @@ export type businessControllerBookResponseError = (businessControllerBookRespons
   headers: Headers;
 };
 
-export type businessControllerBookResponse = (businessControllerBookResponseSuccess | businessControllerBookResponseError)
-
 export const getBusinessControllerBookUrl = (jahr: number,
     params?: BusinessControllerBookParams,) => {
   const normalizedParams = new URLSearchParams();
@@ -909,9 +897,9 @@ export const getBusinessControllerBookUrl = (jahr: number,
 }
 
 export const businessControllerBook = async (jahr: number,
-    params?: BusinessControllerBookParams, options?: RequestInit): Promise<businessControllerBookResponse> => {
+    params?: BusinessControllerBookParams, options?: RequestInit): Promise<businessControllerBookResponseSuccess> => {
 
-  return httpClient<businessControllerBookResponse>(getBusinessControllerBookUrl(jahr,params),
+  return httpClient<businessControllerBookResponseSuccess>(getBusinessControllerBookUrl(jahr,params),
   {
     ...options,
     method: 'GET'
@@ -1034,8 +1022,6 @@ export type businessControllerPostResponseError = (businessControllerPostRespons
   headers: Headers;
 };
 
-export type businessControllerPostResponse = (businessControllerPostResponseSuccess | businessControllerPostResponseError)
-
 export const getBusinessControllerPostUrl = (jahr: number,
     params?: BusinessControllerPostParams,) => {
   const normalizedParams = new URLSearchParams();
@@ -1054,9 +1040,9 @@ export const getBusinessControllerPostUrl = (jahr: number,
 
 export const businessControllerPost = async (jahr: number,
     bookingDraftDto: BookingDraftDto,
-    params?: BusinessControllerPostParams, options?: RequestInit): Promise<businessControllerPostResponse> => {
+    params?: BusinessControllerPostParams, options?: RequestInit): Promise<businessControllerPostResponseSuccess> => {
 
-  return httpClient<businessControllerPostResponse>(getBusinessControllerPostUrl(jahr,params),
+  return httpClient<businessControllerPostResponseSuccess>(getBusinessControllerPostUrl(jahr,params),
   {
     ...options,
     method: 'POST',
@@ -1148,8 +1134,6 @@ export type businessControllerReverseResponseError = (businessControllerReverseR
   headers: Headers;
 };
 
-export type businessControllerReverseResponse = (businessControllerReverseResponseSuccess | businessControllerReverseResponseError)
-
 export const getBusinessControllerReverseUrl = (jahr: number,
     nummer: number,
     params?: BusinessControllerReverseParams,) => {
@@ -1170,9 +1154,9 @@ export const getBusinessControllerReverseUrl = (jahr: number,
 export const businessControllerReverse = async (jahr: number,
     nummer: number,
     reversalDto: ReversalDto,
-    params?: BusinessControllerReverseParams, options?: RequestInit): Promise<businessControllerReverseResponse> => {
+    params?: BusinessControllerReverseParams, options?: RequestInit): Promise<businessControllerReverseResponseSuccess> => {
 
-  return httpClient<businessControllerReverseResponse>(getBusinessControllerReverseUrl(jahr,nummer,params),
+  return httpClient<businessControllerReverseResponseSuccess>(getBusinessControllerReverseUrl(jahr,nummer,params),
   {
     ...options,
     method: 'POST',
@@ -1259,8 +1243,6 @@ export type businessControllerQuickEntryResponseError = (businessControllerQuick
   headers: Headers;
 };
 
-export type businessControllerQuickEntryResponse = (businessControllerQuickEntryResponseSuccess | businessControllerQuickEntryResponseError)
-
 export const getBusinessControllerQuickEntryUrl = (jahr: number,
     params?: BusinessControllerQuickEntryParams,) => {
   const normalizedParams = new URLSearchParams();
@@ -1279,9 +1261,9 @@ export const getBusinessControllerQuickEntryUrl = (jahr: number,
 
 export const businessControllerQuickEntry = async (jahr: number,
     quickEntryDto: QuickEntryDto,
-    params?: BusinessControllerQuickEntryParams, options?: RequestInit): Promise<businessControllerQuickEntryResponse> => {
+    params?: BusinessControllerQuickEntryParams, options?: RequestInit): Promise<businessControllerQuickEntryResponseSuccess> => {
 
-  return httpClient<businessControllerQuickEntryResponse>(getBusinessControllerQuickEntryUrl(jahr,params),
+  return httpClient<businessControllerQuickEntryResponseSuccess>(getBusinessControllerQuickEntryUrl(jahr,params),
   {
     ...options,
     method: 'POST',
@@ -1368,8 +1350,6 @@ export type businessControllerLockResponseError = (businessControllerLockRespons
   headers: Headers;
 };
 
-export type businessControllerLockResponse = (businessControllerLockResponseSuccess | businessControllerLockResponseError)
-
 export const getBusinessControllerLockUrl = (jahr: number,
     params?: BusinessControllerLockParams,) => {
   const normalizedParams = new URLSearchParams();
@@ -1388,9 +1368,9 @@ export const getBusinessControllerLockUrl = (jahr: number,
 
 export const businessControllerLock = async (jahr: number,
     lockDto: LockDto,
-    params?: BusinessControllerLockParams, options?: RequestInit): Promise<businessControllerLockResponse> => {
+    params?: BusinessControllerLockParams, options?: RequestInit): Promise<businessControllerLockResponseSuccess> => {
 
-  return httpClient<businessControllerLockResponse>(getBusinessControllerLockUrl(jahr,params),
+  return httpClient<businessControllerLockResponseSuccess>(getBusinessControllerLockUrl(jahr,params),
   {
     ...options,
     method: 'POST',
@@ -1472,8 +1452,6 @@ export type businessControllerImportBankResponseError = (businessControllerImpor
   headers: Headers;
 };
 
-export type businessControllerImportBankResponse = (businessControllerImportBankResponseSuccess | businessControllerImportBankResponseError)
-
 export const getBusinessControllerImportBankUrl = (jahr: number,
     params?: BusinessControllerImportBankParams,) => {
   const normalizedParams = new URLSearchParams();
@@ -1492,9 +1470,9 @@ export const getBusinessControllerImportBankUrl = (jahr: number,
 
 export const businessControllerImportBank = async (jahr: number,
     bankImportDto: BankImportDto,
-    params?: BusinessControllerImportBankParams, options?: RequestInit): Promise<businessControllerImportBankResponse> => {
+    params?: BusinessControllerImportBankParams, options?: RequestInit): Promise<businessControllerImportBankResponseSuccess> => {
 
-  return httpClient<businessControllerImportBankResponse>(getBusinessControllerImportBankUrl(jahr,params),
+  return httpClient<businessControllerImportBankResponseSuccess>(getBusinessControllerImportBankUrl(jahr,params),
   {
     ...options,
     method: 'POST',
@@ -1576,8 +1554,6 @@ export type businessControllerBankResponseError = (businessControllerBankRespons
   headers: Headers;
 };
 
-export type businessControllerBankResponse = (businessControllerBankResponseSuccess | businessControllerBankResponseError)
-
 export const getBusinessControllerBankUrl = (jahr: number,
     params?: BusinessControllerBankParams,) => {
   const normalizedParams = new URLSearchParams();
@@ -1595,9 +1571,9 @@ export const getBusinessControllerBankUrl = (jahr: number,
 }
 
 export const businessControllerBank = async (jahr: number,
-    params?: BusinessControllerBankParams, options?: RequestInit): Promise<businessControllerBankResponse> => {
+    params?: BusinessControllerBankParams, options?: RequestInit): Promise<businessControllerBankResponseSuccess> => {
 
-  return httpClient<businessControllerBankResponse>(getBusinessControllerBankUrl(jahr,params),
+  return httpClient<businessControllerBankResponseSuccess>(getBusinessControllerBankUrl(jahr,params),
   {
     ...options,
     method: 'GET'
@@ -1725,8 +1701,6 @@ export type businessControllerAcceptBankResponseError = (businessControllerAccep
   headers: Headers;
 };
 
-export type businessControllerAcceptBankResponse = (businessControllerAcceptBankResponseSuccess | businessControllerAcceptBankResponseError)
-
 export const getBusinessControllerAcceptBankUrl = (jahr: number,
     umsatzId: string,
     params?: BusinessControllerAcceptBankParams,) => {
@@ -1747,9 +1721,9 @@ export const getBusinessControllerAcceptBankUrl = (jahr: number,
 export const businessControllerAcceptBank = async (jahr: number,
     umsatzId: string,
     acceptBankTransactionDto: AcceptBankTransactionDto,
-    params?: BusinessControllerAcceptBankParams, options?: RequestInit): Promise<businessControllerAcceptBankResponse> => {
+    params?: BusinessControllerAcceptBankParams, options?: RequestInit): Promise<businessControllerAcceptBankResponseSuccess> => {
 
-  return httpClient<businessControllerAcceptBankResponse>(getBusinessControllerAcceptBankUrl(jahr,umsatzId,params),
+  return httpClient<businessControllerAcceptBankResponseSuccess>(getBusinessControllerAcceptBankUrl(jahr,umsatzId,params),
   {
     ...options,
     method: 'POST',
@@ -1934,8 +1908,6 @@ export type businessControllerAssetsResponseError = (businessControllerAssetsRes
   headers: Headers;
 };
 
-export type businessControllerAssetsResponse = (businessControllerAssetsResponseSuccess | businessControllerAssetsResponseError)
-
 export const getBusinessControllerAssetsUrl = (jahr: number,
     params?: BusinessControllerAssetsParams,) => {
   const normalizedParams = new URLSearchParams();
@@ -1953,9 +1925,9 @@ export const getBusinessControllerAssetsUrl = (jahr: number,
 }
 
 export const businessControllerAssets = async (jahr: number,
-    params?: BusinessControllerAssetsParams, options?: RequestInit): Promise<businessControllerAssetsResponse> => {
+    params?: BusinessControllerAssetsParams, options?: RequestInit): Promise<businessControllerAssetsResponseSuccess> => {
 
-  return httpClient<businessControllerAssetsResponse>(getBusinessControllerAssetsUrl(jahr,params),
+  return httpClient<businessControllerAssetsResponseSuccess>(getBusinessControllerAssetsUrl(jahr,params),
   {
     ...options,
     method: 'GET'
@@ -2073,8 +2045,6 @@ export type businessControllerCreateAssetResponseError = (businessControllerCrea
   headers: Headers;
 };
 
-export type businessControllerCreateAssetResponse = (businessControllerCreateAssetResponseSuccess | businessControllerCreateAssetResponseError)
-
 export const getBusinessControllerCreateAssetUrl = (jahr: number,
     params?: BusinessControllerCreateAssetParams,) => {
   const normalizedParams = new URLSearchParams();
@@ -2093,9 +2063,9 @@ export const getBusinessControllerCreateAssetUrl = (jahr: number,
 
 export const businessControllerCreateAsset = async (jahr: number,
     fixedAssetInputDto: FixedAssetInputDto,
-    params?: BusinessControllerCreateAssetParams, options?: RequestInit): Promise<businessControllerCreateAssetResponse> => {
+    params?: BusinessControllerCreateAssetParams, options?: RequestInit): Promise<businessControllerCreateAssetResponseSuccess> => {
 
-  return httpClient<businessControllerCreateAssetResponse>(getBusinessControllerCreateAssetUrl(jahr,params),
+  return httpClient<businessControllerCreateAssetResponseSuccess>(getBusinessControllerCreateAssetUrl(jahr,params),
   {
     ...options,
     method: 'POST',
@@ -2182,8 +2152,6 @@ export type businessControllerSetAssetFactsResponseError = (businessControllerSe
   headers: Headers;
 };
 
-export type businessControllerSetAssetFactsResponse = (businessControllerSetAssetFactsResponseSuccess | businessControllerSetAssetFactsResponseError)
-
 export const getBusinessControllerSetAssetFactsUrl = (jahr: number,
     anlageId: string,
     params?: BusinessControllerSetAssetFactsParams,) => {
@@ -2204,9 +2172,9 @@ export const getBusinessControllerSetAssetFactsUrl = (jahr: number,
 export const businessControllerSetAssetFacts = async (jahr: number,
     anlageId: string,
     assetFactsDto: AssetFactsDto,
-    params?: BusinessControllerSetAssetFactsParams, options?: RequestInit): Promise<businessControllerSetAssetFactsResponse> => {
+    params?: BusinessControllerSetAssetFactsParams, options?: RequestInit): Promise<businessControllerSetAssetFactsResponseSuccess> => {
 
-  return httpClient<businessControllerSetAssetFactsResponse>(getBusinessControllerSetAssetFactsUrl(jahr,anlageId,params),
+  return httpClient<businessControllerSetAssetFactsResponseSuccess>(getBusinessControllerSetAssetFactsUrl(jahr,anlageId,params),
   {
     ...options,
     method: 'PUT',
@@ -2293,8 +2261,6 @@ export type businessControllerDisposeAssetResponseError = (businessControllerDis
   headers: Headers;
 };
 
-export type businessControllerDisposeAssetResponse = (businessControllerDisposeAssetResponseSuccess | businessControllerDisposeAssetResponseError)
-
 export const getBusinessControllerDisposeAssetUrl = (jahr: number,
     anlageId: string,
     params?: BusinessControllerDisposeAssetParams,) => {
@@ -2315,9 +2281,9 @@ export const getBusinessControllerDisposeAssetUrl = (jahr: number,
 export const businessControllerDisposeAsset = async (jahr: number,
     anlageId: string,
     assetDisposalDto: AssetDisposalDto,
-    params?: BusinessControllerDisposeAssetParams, options?: RequestInit): Promise<businessControllerDisposeAssetResponse> => {
+    params?: BusinessControllerDisposeAssetParams, options?: RequestInit): Promise<businessControllerDisposeAssetResponseSuccess> => {
 
-  return httpClient<businessControllerDisposeAssetResponse>(getBusinessControllerDisposeAssetUrl(jahr,anlageId,params),
+  return httpClient<businessControllerDisposeAssetResponseSuccess>(getBusinessControllerDisposeAssetUrl(jahr,anlageId,params),
   {
     ...options,
     method: 'POST',
@@ -2404,8 +2370,6 @@ export type businessControllerBookDepreciationResponseError = (businessControlle
   headers: Headers;
 };
 
-export type businessControllerBookDepreciationResponse = (businessControllerBookDepreciationResponseSuccess | businessControllerBookDepreciationResponseError)
-
 export const getBusinessControllerBookDepreciationUrl = (jahr: number,
     params?: BusinessControllerBookDepreciationParams,) => {
   const normalizedParams = new URLSearchParams();
@@ -2423,9 +2387,9 @@ export const getBusinessControllerBookDepreciationUrl = (jahr: number,
 }
 
 export const businessControllerBookDepreciation = async (jahr: number,
-    params?: BusinessControllerBookDepreciationParams, options?: RequestInit): Promise<businessControllerBookDepreciationResponse> => {
+    params?: BusinessControllerBookDepreciationParams, options?: RequestInit): Promise<businessControllerBookDepreciationResponseSuccess> => {
 
-  return httpClient<businessControllerBookDepreciationResponse>(getBusinessControllerBookDepreciationUrl(jahr,params),
+  return httpClient<businessControllerBookDepreciationResponseSuccess>(getBusinessControllerBookDepreciationUrl(jahr,params),
   {
     ...options,
     method: 'POST'
@@ -2507,8 +2471,6 @@ export type businessControllerClosingResponseError = (businessControllerClosingR
   headers: Headers;
 };
 
-export type businessControllerClosingResponse = (businessControllerClosingResponseSuccess | businessControllerClosingResponseError)
-
 export const getBusinessControllerClosingUrl = (jahr: number,
     params?: BusinessControllerClosingParams,) => {
   const normalizedParams = new URLSearchParams();
@@ -2526,9 +2488,9 @@ export const getBusinessControllerClosingUrl = (jahr: number,
 }
 
 export const businessControllerClosing = async (jahr: number,
-    params?: BusinessControllerClosingParams, options?: RequestInit): Promise<businessControllerClosingResponse> => {
+    params?: BusinessControllerClosingParams, options?: RequestInit): Promise<businessControllerClosingResponseSuccess> => {
 
-  return httpClient<businessControllerClosingResponse>(getBusinessControllerClosingUrl(jahr,params),
+  return httpClient<businessControllerClosingResponseSuccess>(getBusinessControllerClosingUrl(jahr,params),
   {
     ...options,
     method: 'GET'
@@ -2651,8 +2613,6 @@ export type businessControllerCarryForwardResponseError = (businessControllerCar
   headers: Headers;
 };
 
-export type businessControllerCarryForwardResponse = (businessControllerCarryForwardResponseSuccess | businessControllerCarryForwardResponseError)
-
 export const getBusinessControllerCarryForwardUrl = (jahr: number,
     params?: BusinessControllerCarryForwardParams,) => {
   const normalizedParams = new URLSearchParams();
@@ -2670,9 +2630,9 @@ export const getBusinessControllerCarryForwardUrl = (jahr: number,
 }
 
 export const businessControllerCarryForward = async (jahr: number,
-    params?: BusinessControllerCarryForwardParams, options?: RequestInit): Promise<businessControllerCarryForwardResponse> => {
+    params?: BusinessControllerCarryForwardParams, options?: RequestInit): Promise<businessControllerCarryForwardResponseSuccess> => {
 
-  return httpClient<businessControllerCarryForwardResponse>(getBusinessControllerCarryForwardUrl(jahr,params),
+  return httpClient<businessControllerCarryForwardResponseSuccess>(getBusinessControllerCarryForwardUrl(jahr,params),
   {
     ...options,
     method: 'POST'
@@ -2754,8 +2714,6 @@ export type businessControllerCompanyCarResponseError = (businessControllerCompa
   headers: Headers;
 };
 
-export type businessControllerCompanyCarResponse = (businessControllerCompanyCarResponseSuccess | businessControllerCompanyCarResponseError)
-
 export const getBusinessControllerCompanyCarUrl = (jahr: number,
     params?: BusinessControllerCompanyCarParams,) => {
   const normalizedParams = new URLSearchParams();
@@ -2774,9 +2732,9 @@ export const getBusinessControllerCompanyCarUrl = (jahr: number,
 
 export const businessControllerCompanyCar = async (jahr: number,
     companyCarInputDto: CompanyCarInputDto,
-    params?: BusinessControllerCompanyCarParams, options?: RequestInit): Promise<businessControllerCompanyCarResponse> => {
+    params?: BusinessControllerCompanyCarParams, options?: RequestInit): Promise<businessControllerCompanyCarResponseSuccess> => {
 
-  return httpClient<businessControllerCompanyCarResponse>(getBusinessControllerCompanyCarUrl(jahr,params),
+  return httpClient<businessControllerCompanyCarResponseSuccess>(getBusinessControllerCompanyCarUrl(jahr,params),
   {
     ...options,
     method: 'POST',
@@ -2863,8 +2821,6 @@ export type businessControllerBookCompanyCarResponseError = (businessControllerB
   headers: Headers;
 };
 
-export type businessControllerBookCompanyCarResponse = (businessControllerBookCompanyCarResponseSuccess | businessControllerBookCompanyCarResponseError)
-
 export const getBusinessControllerBookCompanyCarUrl = (jahr: number,
     params?: BusinessControllerBookCompanyCarParams,) => {
   const normalizedParams = new URLSearchParams();
@@ -2883,9 +2839,9 @@ export const getBusinessControllerBookCompanyCarUrl = (jahr: number,
 
 export const businessControllerBookCompanyCar = async (jahr: number,
     companyCarInputDto: CompanyCarInputDto,
-    params?: BusinessControllerBookCompanyCarParams, options?: RequestInit): Promise<businessControllerBookCompanyCarResponse> => {
+    params?: BusinessControllerBookCompanyCarParams, options?: RequestInit): Promise<businessControllerBookCompanyCarResponseSuccess> => {
 
-  return httpClient<businessControllerBookCompanyCarResponse>(getBusinessControllerBookCompanyCarUrl(jahr,params),
+  return httpClient<businessControllerBookCompanyCarResponseSuccess>(getBusinessControllerBookCompanyCarUrl(jahr,params),
   {
     ...options,
     method: 'POST',
@@ -2967,8 +2923,6 @@ export type businessControllerPayrollResponseError = (businessControllerPayrollR
   headers: Headers;
 };
 
-export type businessControllerPayrollResponse = (businessControllerPayrollResponseSuccess | businessControllerPayrollResponseError)
-
 export const getBusinessControllerPayrollUrl = (jahr: number,
     params?: BusinessControllerPayrollParams,) => {
   const normalizedParams = new URLSearchParams();
@@ -2986,9 +2940,9 @@ export const getBusinessControllerPayrollUrl = (jahr: number,
 }
 
 export const businessControllerPayroll = async (jahr: number,
-    params?: BusinessControllerPayrollParams, options?: RequestInit): Promise<businessControllerPayrollResponse> => {
+    params?: BusinessControllerPayrollParams, options?: RequestInit): Promise<businessControllerPayrollResponseSuccess> => {
 
-  return httpClient<businessControllerPayrollResponse>(getBusinessControllerPayrollUrl(jahr,params),
+  return httpClient<businessControllerPayrollResponseSuccess>(getBusinessControllerPayrollUrl(jahr,params),
   {
     ...options,
     method: 'GET'
@@ -3111,8 +3065,6 @@ export type businessControllerAddPayrollRunResponseError = (businessControllerAd
   headers: Headers;
 };
 
-export type businessControllerAddPayrollRunResponse = (businessControllerAddPayrollRunResponseSuccess | businessControllerAddPayrollRunResponseError)
-
 export const getBusinessControllerAddPayrollRunUrl = (jahr: number,
     params?: BusinessControllerAddPayrollRunParams,) => {
   const normalizedParams = new URLSearchParams();
@@ -3131,9 +3083,9 @@ export const getBusinessControllerAddPayrollRunUrl = (jahr: number,
 
 export const businessControllerAddPayrollRun = async (jahr: number,
     payrollRunInputDto: PayrollRunInputDto,
-    params?: BusinessControllerAddPayrollRunParams, options?: RequestInit): Promise<businessControllerAddPayrollRunResponse> => {
+    params?: BusinessControllerAddPayrollRunParams, options?: RequestInit): Promise<businessControllerAddPayrollRunResponseSuccess> => {
 
-  return httpClient<businessControllerAddPayrollRunResponse>(getBusinessControllerAddPayrollRunUrl(jahr,params),
+  return httpClient<businessControllerAddPayrollRunResponseSuccess>(getBusinessControllerAddPayrollRunUrl(jahr,params),
   {
     ...options,
     method: 'POST',
@@ -3215,8 +3167,6 @@ export type businessControllerSpecialTariffsResponseError = (businessControllerS
   headers: Headers;
 };
 
-export type businessControllerSpecialTariffsResponse = (businessControllerSpecialTariffsResponseSuccess | businessControllerSpecialTariffsResponseError)
-
 export const getBusinessControllerSpecialTariffsUrl = (jahr: number,
     params?: BusinessControllerSpecialTariffsParams,) => {
   const normalizedParams = new URLSearchParams();
@@ -3234,9 +3184,9 @@ export const getBusinessControllerSpecialTariffsUrl = (jahr: number,
 }
 
 export const businessControllerSpecialTariffs = async (jahr: number,
-    params?: BusinessControllerSpecialTariffsParams, options?: RequestInit): Promise<businessControllerSpecialTariffsResponse> => {
+    params?: BusinessControllerSpecialTariffsParams, options?: RequestInit): Promise<businessControllerSpecialTariffsResponseSuccess> => {
 
-  return httpClient<businessControllerSpecialTariffsResponse>(getBusinessControllerSpecialTariffsUrl(jahr,params),
+  return httpClient<businessControllerSpecialTariffsResponseSuccess>(getBusinessControllerSpecialTariffsUrl(jahr,params),
   {
     ...options,
     method: 'GET'
@@ -3354,8 +3304,6 @@ export type businessControllerVatPrepaymentsResponseError = (businessControllerV
   headers: Headers;
 };
 
-export type businessControllerVatPrepaymentsResponse = (businessControllerVatPrepaymentsResponseSuccess | businessControllerVatPrepaymentsResponseError)
-
 export const getBusinessControllerVatPrepaymentsUrl = (jahr: number,
     params?: BusinessControllerVatPrepaymentsParams,) => {
   const normalizedParams = new URLSearchParams();
@@ -3373,9 +3321,9 @@ export const getBusinessControllerVatPrepaymentsUrl = (jahr: number,
 }
 
 export const businessControllerVatPrepayments = async (jahr: number,
-    params?: BusinessControllerVatPrepaymentsParams, options?: RequestInit): Promise<businessControllerVatPrepaymentsResponse> => {
+    params?: BusinessControllerVatPrepaymentsParams, options?: RequestInit): Promise<businessControllerVatPrepaymentsResponseSuccess> => {
 
-  return httpClient<businessControllerVatPrepaymentsResponse>(getBusinessControllerVatPrepaymentsUrl(jahr,params),
+  return httpClient<businessControllerVatPrepaymentsResponseSuccess>(getBusinessControllerVatPrepaymentsUrl(jahr,params),
   {
     ...options,
     method: 'GET'
@@ -3493,8 +3441,6 @@ export type businessControllerVatResponseError = (businessControllerVatResponse4
   headers: Headers;
 };
 
-export type businessControllerVatResponse = (businessControllerVatResponseSuccess | businessControllerVatResponseError)
-
 export const getBusinessControllerVatUrl = (jahr: number,
     params?: BusinessControllerVatParams,) => {
   const normalizedParams = new URLSearchParams();
@@ -3512,9 +3458,9 @@ export const getBusinessControllerVatUrl = (jahr: number,
 }
 
 export const businessControllerVat = async (jahr: number,
-    params?: BusinessControllerVatParams, options?: RequestInit): Promise<businessControllerVatResponse> => {
+    params?: BusinessControllerVatParams, options?: RequestInit): Promise<businessControllerVatResponseSuccess> => {
 
-  return httpClient<businessControllerVatResponse>(getBusinessControllerVatUrl(jahr,params),
+  return httpClient<businessControllerVatResponseSuccess>(getBusinessControllerVatUrl(jahr,params),
   {
     ...options,
     method: 'GET'
@@ -3632,8 +3578,6 @@ export type businessControllerTradeTaxResponseError = (businessControllerTradeTa
   headers: Headers;
 };
 
-export type businessControllerTradeTaxResponse = (businessControllerTradeTaxResponseSuccess | businessControllerTradeTaxResponseError)
-
 export const getBusinessControllerTradeTaxUrl = (jahr: number,
     params?: BusinessControllerTradeTaxParams,) => {
   const normalizedParams = new URLSearchParams();
@@ -3651,9 +3595,9 @@ export const getBusinessControllerTradeTaxUrl = (jahr: number,
 }
 
 export const businessControllerTradeTax = async (jahr: number,
-    params?: BusinessControllerTradeTaxParams, options?: RequestInit): Promise<businessControllerTradeTaxResponse> => {
+    params?: BusinessControllerTradeTaxParams, options?: RequestInit): Promise<businessControllerTradeTaxResponseSuccess> => {
 
-  return httpClient<businessControllerTradeTaxResponse>(getBusinessControllerTradeTaxUrl(jahr,params),
+  return httpClient<businessControllerTradeTaxResponseSuccess>(getBusinessControllerTradeTaxUrl(jahr,params),
   {
     ...options,
     method: 'GET'
@@ -3771,8 +3715,6 @@ export type businessControllerHebesatzResponseError = (businessControllerHebesat
   headers: Headers;
 };
 
-export type businessControllerHebesatzResponse = (businessControllerHebesatzResponseSuccess | businessControllerHebesatzResponseError)
-
 export const getBusinessControllerHebesatzUrl = (jahr: number,
     params: BusinessControllerHebesatzParams,) => {
   const normalizedParams = new URLSearchParams();
@@ -3790,9 +3732,9 @@ export const getBusinessControllerHebesatzUrl = (jahr: number,
 }
 
 export const businessControllerHebesatz = async (jahr: number,
-    params: BusinessControllerHebesatzParams, options?: RequestInit): Promise<businessControllerHebesatzResponse> => {
+    params: BusinessControllerHebesatzParams, options?: RequestInit): Promise<businessControllerHebesatzResponseSuccess> => {
 
-  return httpClient<businessControllerHebesatzResponse>(getBusinessControllerHebesatzUrl(jahr,params),
+  return httpClient<businessControllerHebesatzResponseSuccess>(getBusinessControllerHebesatzUrl(jahr,params),
   {
     ...options,
     method: 'GET'
@@ -3910,8 +3852,6 @@ export type businessControllerLossesResponseError = (businessControllerLossesRes
   headers: Headers;
 };
 
-export type businessControllerLossesResponse = (businessControllerLossesResponseSuccess | businessControllerLossesResponseError)
-
 export const getBusinessControllerLossesUrl = (jahr: number,
     params?: BusinessControllerLossesParams,) => {
   const normalizedParams = new URLSearchParams();
@@ -3929,9 +3869,9 @@ export const getBusinessControllerLossesUrl = (jahr: number,
 }
 
 export const businessControllerLosses = async (jahr: number,
-    params?: BusinessControllerLossesParams, options?: RequestInit): Promise<businessControllerLossesResponse> => {
+    params?: BusinessControllerLossesParams, options?: RequestInit): Promise<businessControllerLossesResponseSuccess> => {
 
-  return httpClient<businessControllerLossesResponse>(getBusinessControllerLossesUrl(jahr,params),
+  return httpClient<businessControllerLossesResponseSuccess>(getBusinessControllerLossesUrl(jahr,params),
   {
     ...options,
     method: 'GET'
@@ -4064,8 +4004,6 @@ export type businessControllerElsterFormsResponseError = (businessControllerElst
   headers: Headers;
 };
 
-export type businessControllerElsterFormsResponse = (businessControllerElsterFormsResponseSuccess | businessControllerElsterFormsResponseError)
-
 export const getBusinessControllerElsterFormsUrl = (jahr: number,
     params?: BusinessControllerElsterFormsParams,) => {
   const normalizedParams = new URLSearchParams();
@@ -4083,9 +4021,9 @@ export const getBusinessControllerElsterFormsUrl = (jahr: number,
 }
 
 export const businessControllerElsterForms = async (jahr: number,
-    params?: BusinessControllerElsterFormsParams, options?: RequestInit): Promise<businessControllerElsterFormsResponse> => {
+    params?: BusinessControllerElsterFormsParams, options?: RequestInit): Promise<businessControllerElsterFormsResponseSuccess> => {
 
-  return httpClient<businessControllerElsterFormsResponse>(getBusinessControllerElsterFormsUrl(jahr,params),
+  return httpClient<businessControllerElsterFormsResponseSuccess>(getBusinessControllerElsterFormsUrl(jahr,params),
   {
     ...options,
     method: 'GET'
@@ -4218,8 +4156,6 @@ export type businessControllerElsterResponseError = (businessControllerElsterRes
   headers: Headers;
 };
 
-export type businessControllerElsterResponse = (businessControllerElsterResponseSuccess | businessControllerElsterResponseError)
-
 export const getBusinessControllerElsterUrl = (jahr: number,
     formular: string,
     params?: BusinessControllerElsterParams,) => {
@@ -4239,9 +4175,9 @@ export const getBusinessControllerElsterUrl = (jahr: number,
 
 export const businessControllerElster = async (jahr: number,
     formular: string,
-    params?: BusinessControllerElsterParams, options?: RequestInit): Promise<businessControllerElsterResponse> => {
+    params?: BusinessControllerElsterParams, options?: RequestInit): Promise<businessControllerElsterResponseSuccess> => {
 
-  return httpClient<businessControllerElsterResponse>(getBusinessControllerElsterUrl(jahr,formular,params),
+  return httpClient<businessControllerElsterResponseSuccess>(getBusinessControllerElsterUrl(jahr,formular,params),
   {
     ...options,
     method: 'GET'
@@ -4375,8 +4311,6 @@ export type businessControllerGobdResponseError = (businessControllerGobdRespons
   headers: Headers;
 };
 
-export type businessControllerGobdResponse = (businessControllerGobdResponseSuccess | businessControllerGobdResponseError)
-
 export const getBusinessControllerGobdUrl = (jahr: number,
     params?: BusinessControllerGobdParams,) => {
   const normalizedParams = new URLSearchParams();
@@ -4394,9 +4328,9 @@ export const getBusinessControllerGobdUrl = (jahr: number,
 }
 
 export const businessControllerGobd = async (jahr: number,
-    params?: BusinessControllerGobdParams, options?: RequestInit): Promise<businessControllerGobdResponse> => {
+    params?: BusinessControllerGobdParams, options?: RequestInit): Promise<businessControllerGobdResponseSuccess> => {
 
-  return httpClient<businessControllerGobdResponse>(getBusinessControllerGobdUrl(jahr,params),
+  return httpClient<businessControllerGobdResponseSuccess>(getBusinessControllerGobdUrl(jahr,params),
   {
     ...options,
     method: 'GET'
@@ -4514,8 +4448,6 @@ export type businessControllerProcedureDocResponseError = (businessControllerPro
   headers: Headers;
 };
 
-export type businessControllerProcedureDocResponse = (businessControllerProcedureDocResponseSuccess | businessControllerProcedureDocResponseError)
-
 export const getBusinessControllerProcedureDocUrl = (jahr: number,
     params?: BusinessControllerProcedureDocParams,) => {
   const normalizedParams = new URLSearchParams();
@@ -4533,9 +4465,9 @@ export const getBusinessControllerProcedureDocUrl = (jahr: number,
 }
 
 export const businessControllerProcedureDoc = async (jahr: number,
-    params?: BusinessControllerProcedureDocParams, options?: RequestInit): Promise<businessControllerProcedureDocResponse> => {
+    params?: BusinessControllerProcedureDocParams, options?: RequestInit): Promise<businessControllerProcedureDocResponseSuccess> => {
 
-  return httpClient<businessControllerProcedureDocResponse>(getBusinessControllerProcedureDocUrl(jahr,params),
+  return httpClient<businessControllerProcedureDocResponseSuccess>(getBusinessControllerProcedureDocUrl(jahr,params),
   {
     ...options,
     method: 'GET'
@@ -4653,8 +4585,6 @@ export type businessControllerSaveProcedureDocResponseError = (businessControlle
   headers: Headers;
 };
 
-export type businessControllerSaveProcedureDocResponse = (businessControllerSaveProcedureDocResponseSuccess | businessControllerSaveProcedureDocResponseError)
-
 export const getBusinessControllerSaveProcedureDocUrl = (jahr: number,
     params?: BusinessControllerSaveProcedureDocParams,) => {
   const normalizedParams = new URLSearchParams();
@@ -4673,9 +4603,9 @@ export const getBusinessControllerSaveProcedureDocUrl = (jahr: number,
 
 export const businessControllerSaveProcedureDoc = async (jahr: number,
     procedureDocInputDto: ProcedureDocInputDto,
-    params?: BusinessControllerSaveProcedureDocParams, options?: RequestInit): Promise<businessControllerSaveProcedureDocResponse> => {
+    params?: BusinessControllerSaveProcedureDocParams, options?: RequestInit): Promise<businessControllerSaveProcedureDocResponseSuccess> => {
 
-  return httpClient<businessControllerSaveProcedureDocResponse>(getBusinessControllerSaveProcedureDocUrl(jahr,params),
+  return httpClient<businessControllerSaveProcedureDocResponseSuccess>(getBusinessControllerSaveProcedureDocUrl(jahr,params),
   {
     ...options,
     method: 'PUT',
@@ -4762,8 +4692,6 @@ export type businessControllerEBilanzResponseError = (businessControllerEBilanzR
   headers: Headers;
 };
 
-export type businessControllerEBilanzResponse = (businessControllerEBilanzResponseSuccess | businessControllerEBilanzResponseError)
-
 export const getBusinessControllerEBilanzUrl = (jahr: number,
     params?: BusinessControllerEBilanzParams,) => {
   const normalizedParams = new URLSearchParams();
@@ -4781,9 +4709,9 @@ export const getBusinessControllerEBilanzUrl = (jahr: number,
 }
 
 export const businessControllerEBilanz = async (jahr: number,
-    params?: BusinessControllerEBilanzParams, options?: RequestInit): Promise<businessControllerEBilanzResponse> => {
+    params?: BusinessControllerEBilanzParams, options?: RequestInit): Promise<businessControllerEBilanzResponseSuccess> => {
 
-  return httpClient<businessControllerEBilanzResponse>(getBusinessControllerEBilanzUrl(jahr,params),
+  return httpClient<businessControllerEBilanzResponseSuccess>(getBusinessControllerEBilanzUrl(jahr,params),
   {
     ...options,
     method: 'GET'
@@ -4911,8 +4839,6 @@ export type businessControllerTransmitEBilanzResponseError = (businessController
   headers: Headers;
 };
 
-export type businessControllerTransmitEBilanzResponse = (businessControllerTransmitEBilanzResponseSuccess | businessControllerTransmitEBilanzResponseError)
-
 export const getBusinessControllerTransmitEBilanzUrl = (jahr: number,
     params?: BusinessControllerTransmitEBilanzParams,) => {
   const normalizedParams = new URLSearchParams();
@@ -4931,9 +4857,9 @@ export const getBusinessControllerTransmitEBilanzUrl = (jahr: number,
 
 export const businessControllerTransmitEBilanz = async (jahr: number,
     eBilanzTransmitDto: EBilanzTransmitDto,
-    params?: BusinessControllerTransmitEBilanzParams, options?: RequestInit): Promise<businessControllerTransmitEBilanzResponse> => {
+    params?: BusinessControllerTransmitEBilanzParams, options?: RequestInit): Promise<businessControllerTransmitEBilanzResponseSuccess> => {
 
-  return httpClient<businessControllerTransmitEBilanzResponse>(getBusinessControllerTransmitEBilanzUrl(jahr,params),
+  return httpClient<businessControllerTransmitEBilanzResponseSuccess>(getBusinessControllerTransmitEBilanzUrl(jahr,params),
   {
     ...options,
     method: 'POST',
@@ -5025,8 +4951,6 @@ export type businessControllerEBilanzFileResponseError = (businessControllerEBil
   headers: Headers;
 };
 
-export type businessControllerEBilanzFileResponse = (businessControllerEBilanzFileResponseSuccess | businessControllerEBilanzFileResponseError)
-
 export const getBusinessControllerEBilanzFileUrl = (jahr: number,
     params?: BusinessControllerEBilanzFileParams,) => {
   const normalizedParams = new URLSearchParams();
@@ -5044,9 +4968,9 @@ export const getBusinessControllerEBilanzFileUrl = (jahr: number,
 }
 
 export const businessControllerEBilanzFile = async (jahr: number,
-    params?: BusinessControllerEBilanzFileParams, options?: RequestInit): Promise<businessControllerEBilanzFileResponse> => {
+    params?: BusinessControllerEBilanzFileParams, options?: RequestInit): Promise<businessControllerEBilanzFileResponseSuccess> => {
 
-  return httpClient<businessControllerEBilanzFileResponse>(getBusinessControllerEBilanzFileUrl(jahr,params),
+  return httpClient<businessControllerEBilanzFileResponseSuccess>(getBusinessControllerEBilanzFileUrl(jahr,params),
   {
     ...options,
     method: 'GET'
@@ -5179,8 +5103,6 @@ export type businessControllerCheckoutResponseError = (businessControllerCheckou
   headers: Headers;
 };
 
-export type businessControllerCheckoutResponse = (businessControllerCheckoutResponseSuccess | businessControllerCheckoutResponseError)
-
 export const getBusinessControllerCheckoutUrl = (jahr: number,
     params?: BusinessControllerCheckoutParams,) => {
   const normalizedParams = new URLSearchParams();
@@ -5198,9 +5120,9 @@ export const getBusinessControllerCheckoutUrl = (jahr: number,
 }
 
 export const businessControllerCheckout = async (jahr: number,
-    params?: BusinessControllerCheckoutParams, options?: RequestInit): Promise<businessControllerCheckoutResponse> => {
+    params?: BusinessControllerCheckoutParams, options?: RequestInit): Promise<businessControllerCheckoutResponseSuccess> => {
 
-  return httpClient<businessControllerCheckoutResponse>(getBusinessControllerCheckoutUrl(jahr,params),
+  return httpClient<businessControllerCheckoutResponseSuccess>(getBusinessControllerCheckoutUrl(jahr,params),
   {
     ...options,
     method: 'POST'

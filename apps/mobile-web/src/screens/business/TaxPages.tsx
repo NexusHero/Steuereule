@@ -13,10 +13,14 @@ import {
 } from '@steuereule/api-client'
 import { Choice } from './Choice'
 import { APP_NS } from '../../i18n/resources'
-import { BusinessFrame, BusinessQueryState, Figure, Note, Section } from './BusinessFrame'
-import { eurosToCents, personParams, plainEuro, signedEuro, type ApiProblem } from './businessKit'
+import { BusinessFrame, BusinessQueryState, Figure, Note, ProblemNote, Section } from './BusinessFrame'
+import { eurosToCents, localProblem, personParams, plainEuro, signedEuro, type ApiProblem } from './businessKit'
+import { parseGermanAmount } from '../shared/germanNumber'
 import { attempt, queryProblem, useRefreshBusiness } from './useBusiness'
 import type { BusinessPageProps } from './BusinessScreen'
+
+/** A stored euro amount as the field shows it (`1500,5`); empty when there is none. */
+const germanNumber = (n: number | null | undefined): string => (n === null || n === undefined ? '' : String(n).replace('.', ','))
 
 /** The Umsatzsteuer-Jahreserklärung from the book; the prepayments are one sum the user enters. */
 export function VatPage({ taxYear, person, business = 1, onBack }: BusinessPageProps) {
@@ -29,23 +33,31 @@ export function VatPage({ taxYear, person, business = 1, onBack }: BusinessPageP
   const [prepayments, setPrepayments] = useState<string | null>(null)
   const [problem, setProblem] = useState<ApiProblem | null>(null)
 
-  const loadProblem = queryProblem(query)
-  if (query.isPending || loadProblem !== null || query.data?.status !== 200) {
+  // The prepayments field edits the profile: the page waits for it too, so a failed read never shows an empty field (WEB-28).
+  const loadProblem = queryProblem(query) ?? queryProblem(profile)
+  if (query.isPending || profile.isPending || loadProblem !== null || query.data === undefined || profile.data === undefined) {
     return (
       <BusinessFrame title={tr('business.seite.umsatzsteuer')} onBack={onBack}>
-        <BusinessQueryState pending={query.isPending} problem={loadProblem} onRetry={() => void query.refetch()} />
+        <BusinessQueryState
+          pending={query.isPending || profile.isPending}
+          problem={loadProblem}
+          onRetry={() => {
+            if (query.isError) void query.refetch()
+            if (profile.isError) void profile.refetch()
+          }}
+        />
       </BusinessFrame>
     )
   }
   const vat = query.data.data
-  const stored = profile.data?.status === 200 ? profile.data.data.vatPrepaymentsCents : null
-  const small = profile.data?.status === 200 && profile.data.data.smallBusiness
+  const stored = profile.data.data.vatPrepaymentsCents
+  const small = profile.data.data.smallBusiness
 
   async function commit() {
     if (prepayments === null) return
     setProblem(null)
     const cents = prepayments.trim() === '' ? null : eurosToCents(prepayments)
-    if (prepayments.trim() !== '' && cents === null) return setProblem({ status: 0, code: null, message: tr('business.erfassung.ungueltig') })
+    if (prepayments.trim() !== '' && cents === null) return setProblem(localProblem(tr('business.erfassung.ungueltig')))
     const outcome = await attempt(() => save.mutateAsync({ jahr: taxYear, data: { vatPrepaymentsCents: cents }, ...(params ? { params } : {}) }))
     if (outcome.ok) refresh()
     else setProblem(outcome.problem)
@@ -98,7 +110,7 @@ export function VatPage({ taxYear, person, business = 1, onBack }: BusinessPageP
             testID="ust-vorauszahlungen"
           />
         </Feld>
-        {problem !== null ? <Note tone="error">{problem.message ?? tr('business.speichernFehler')}</Note> : null}
+        <ProblemNote problem={problem} />
       </Section>
     </BusinessFrame>
   )
@@ -110,7 +122,7 @@ export function TradeTaxPage({ taxYear, person, business = 1, onBack, onOpenPage
   const { t: tr } = useTranslation(APP_NS)
   const query = useBusinessControllerTradeTax(taxYear, personParams(person, business))
   const loadProblem = queryProblem(query)
-  if (query.isPending || loadProblem !== null || query.data?.status !== 200) {
+  if (query.isPending || loadProblem !== null || query.data === undefined) {
     return (
       <BusinessFrame title={tr('business.seite.gewerbesteuer')} onBack={onBack}>
         <BusinessQueryState pending={query.isPending} problem={loadProblem} onRetry={() => void query.refetch()} />
@@ -168,29 +180,46 @@ export function LossesPage({ taxYear, person, business = 1, onBack }: BusinessPa
   const [carried, setCarried] = useState<string | null>(null)
   const [room, setRoom] = useState<Readonly<Record<string, string>>>({})
 
-  const loadProblem = queryProblem(query)
-  if (query.isPending || loadProblem !== null || query.data?.status !== 200) {
+  // WEB-30: the fields edit the profile's lossFacts; until the profile is loaded nothing is shown or sent.
+  const loadProblem = queryProblem(query) ?? queryProblem(profile)
+  if (query.isPending || profile.isPending || loadProblem !== null || query.data === undefined || profile.data === undefined) {
     return (
       <BusinessFrame title={tr('business.seite.verluste')} onBack={onBack}>
-        <BusinessQueryState pending={query.isPending} problem={loadProblem} onRetry={() => void query.refetch()} />
+        <BusinessQueryState
+          pending={query.isPending || profile.isPending}
+          problem={loadProblem}
+          onRetry={() => {
+            if (query.isError) void query.refetch()
+            if (profile.isError) void profile.refetch()
+          }}
+        />
       </BusinessFrame>
     )
   }
   const data = query.data.data
-  const facts: LossFactsDto = profile.data?.status === 200 ? profile.data.data.lossFacts : {}
+  const facts: LossFactsDto = profile.data.data.lossFacts
   const newLoss = data.year.newLossEur
   const waived = facts.waiveCarryBack === true
 
+  /** Sends only the key that changed: the API merges lossFacts key by key (WEB-30, NC-15). */
   async function patch(next: LossFactsDto) {
     setProblem(null)
-    const outcome = await attempt(() => save.mutateAsync({ jahr: taxYear, data: { lossFacts: { ...facts, ...next } satisfies LossFactsDto }, ...(params ? { params } : {}) }))
+    const outcome = await attempt(() => save.mutateAsync({ jahr: taxYear, data: { lossFacts: next }, ...(params ? { params } : {}) }))
     if (outcome.ok) refresh()
     else setProblem(outcome.problem)
   }
 
+  /** An entry of whole or decimal euros typed the German way; empty is 0; null (and a visible note) when it is no amount. */
+  function amountOf(raw: string): number | null {
+    if (raw.trim() === '') return 0
+    const n = parseGermanAmount(raw)
+    if (n === null) setProblem(localProblem(tr('business.erfassung.ungueltig')))
+    return n
+  }
+
   return (
     <BusinessFrame title={tr('business.seite.verluste')} onBack={onBack} testID="verluste-seite">
-      {problem !== null ? <Note tone="error">{problem.message ?? tr('business.speichernFehler')}</Note> : null}
+      <ProblemNote problem={problem} />
       <Section>
         <Figure label={tr('business.verluste.gewinn')} value={signedEuro(data.businessProfitEur)} />
         <Figure label={tr('business.verluste.vortragGenutzt')} value={plainEuro(data.year.carryForwardDeductedEur)} />
@@ -202,14 +231,14 @@ export function LossesPage({ taxYear, person, business = 1, onBack }: BusinessPa
           <Input
             type="numeric"
             mono
-            value={carried ?? String(facts.carriedForwardEur ?? '')}
+            value={carried ?? germanNumber(facts.carriedForwardEur)}
             onChange={setCarried}
             placeholder="0"
             accessibilityLabel={tr('business.verluste.vortragFeld')}
             onBlur={() => {
               if (carried === null) return
-              const value = Number(carried.replace(',', '.'))
-              if (carried.trim() === '' || Number.isFinite(value)) void patch({ carriedForwardEur: carried.trim() === '' ? 0 : value })
+              const value = amountOf(carried)
+              if (value !== null) void patch({ carriedForwardEur: value })
             }}
             testID="verluste-vortrag"
           />
@@ -221,15 +250,15 @@ export function LossesPage({ taxYear, person, business = 1, onBack }: BusinessPa
             <Input
               type="numeric"
               mono
-              value={room[i] ?? String(facts.roomEur?.[i] ?? '')}
+              value={room[i] ?? germanNumber(facts.roomEur?.[i])}
               onChange={(v) => setRoom((r) => ({ ...r, [i]: v }))}
               placeholder="0"
               accessibilityLabel={tr(i === 0 ? 'business.verluste.platzVorjahr' : 'business.verluste.platzJahrDavor')}
               onBlur={() => {
                 const raw = room[i]
                 if (raw === undefined) return
-                const n = raw.trim() === '' ? 0 : Number(raw.replace(',', '.'))
-                if (!Number.isFinite(n)) return
+                const n = amountOf(raw)
+                if (n === null) return
                 const next: number[] = [facts.roomEur?.[0] ?? 0, facts.roomEur?.[1] ?? 0]
                 next[i] = n
                 void patch({ roomEur: next })
@@ -242,14 +271,14 @@ export function LossesPage({ taxYear, person, business = 1, onBack }: BusinessPa
           <Input
             type="numeric"
             mono
-            value={room.back ?? String(facts.carriedBackEur ?? '')}
+            value={room.back ?? germanNumber(facts.carriedBackEur)}
             onChange={(v) => setRoom((r) => ({ ...r, back: v }))}
             placeholder="0"
             accessibilityLabel={tr('business.verluste.zurueckgetragen')}
             onBlur={() => {
               if (room.back === undefined) return
-              const n = room.back.trim() === '' ? 0 : Number(room.back.replace(',', '.'))
-              if (Number.isFinite(n)) void patch({ carriedBackEur: n })
+              const n = amountOf(room.back)
+              if (n !== null) void patch({ carriedBackEur: n })
             }}
             testID="verluste-zurueckgetragen"
           />

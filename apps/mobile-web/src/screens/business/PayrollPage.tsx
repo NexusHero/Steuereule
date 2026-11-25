@@ -4,10 +4,11 @@ import { useTranslation } from 'react-i18next'
 import { Button, Feld, Input, useTheme } from '@steuereule/ui'
 import { PayrollRunInputDtoChurch, useBusinessControllerAddPayrollRun, useBusinessControllerPayroll, type PayrollRunInputDto } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
-import { BusinessFrame, BusinessQueryState, Figure, Note, Section } from './BusinessFrame'
+import { BusinessFrame, BusinessQueryState, Figure, Note, ProblemNote, Section } from './BusinessFrame'
 import { Choice } from './Choice'
 import { personParams, plainEuro, type ApiProblem } from './businessKit'
-import { attempt, queryProblem, useRefreshBusiness } from './useBusiness'
+import { attempt, queryProblem, useRefreshBusiness, useSingleFlight } from './useBusiness'
+import { parseGermanAmount } from '../shared/germanNumber'
 import type { BusinessPageProps } from './BusinessScreen'
 
 const KZ_FIRST = ['86', '90', '42', '41', '44', '45', '48', '49', '47', '61', '62'] as const
@@ -24,8 +25,8 @@ const OTHER_CHURCHES = Object.values(PayrollRunInputDtoChurch).filter((c) => c !
 const dateDe = (iso: string) => `${iso.slice(8, 10)}.${iso.slice(5, 7)}.${iso.slice(0, 4)}`
 const euro = (raw: string | undefined): number | undefined | null => {
   if (raw === undefined || raw.trim() === '') return undefined
-  const n = Number(raw.replace(/\./g, '').replace(',', '.'))
-  return Number.isFinite(n) && n >= 0 ? n : null
+  // The shared German parser (WEB-46): „1.234,56“ and „40.000“ as typed, „1.2.3“ refused.
+  return parseGermanAmount(raw)
 }
 
 /**
@@ -48,9 +49,10 @@ export function PayrollPage({ taxYear, person, business = 1, onBack }: BusinessP
   const [values, setValues] = useState<Readonly<Record<string, string>>>({})
   const [invalid, setInvalid] = useState(false)
   const [problem, setProblem] = useState<ApiProblem | null>(null)
+  const flight = useSingleFlight()
 
   const loadProblem = queryProblem(query)
-  if (query.isPending || loadProblem !== null || query.data?.status !== 200) {
+  if (query.isPending || loadProblem !== null || query.data === undefined) {
     return (
       <BusinessFrame title={tr('business.seite.lohn')} onBack={onBack}>
         <BusinessQueryState pending={query.isPending} problem={loadProblem} onRetry={() => void query.refetch()} />
@@ -154,8 +156,8 @@ export function PayrollPage({ taxYear, person, business = 1, onBack }: BusinessP
           </View>
         )}
         {invalid ? <Note tone="error">{tr('business.lohn.ungueltig')}</Note> : null}
-        {problem !== null ? <Note tone="error">{problem.message ?? tr('business.speichernFehler')}</Note> : null}
-        <Button onPress={() => void submit()} testID="lohn-buchen">
+        <ProblemNote problem={problem} />
+        <Button onPress={() => void flight.run(submit)} disabled={flight.busy} testID="lohn-buchen">
           {tr('business.lohn.buchen')}
         </Button>
       </Section>

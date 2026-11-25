@@ -166,7 +166,14 @@ export function useOwlModeScreen({
   }
 
   async function handleDismiss(fingerprint: string) {
-    if (onDismissCard) await onDismissCard(fingerprint)
+    // NR-05: a card the server did not hide stays (the failure is reported by the caller).
+    if (onDismissCard) {
+      try {
+        await onDismissCard(fingerprint)
+      } catch {
+        return
+      }
+    }
     const fresh = cards.filter((k) => k.fingerprint !== fingerprint)
     setCards(fresh)
     if (activeIndex >= fresh.length && fresh.length > 0) {
@@ -174,12 +181,12 @@ export function useOwlModeScreen({
     }
   }
 
-  async function handleSendChat(text: string, options?: ChatSendOptions) {
+  /** False when the message did not reach the owl, so the composer keeps it (WEB-14). */
+  async function handleSendChat(text: string, options?: ChatSendOptions): Promise<boolean> {
     setIsSending(true)
     try {
       if (onSendMessage) {
-        await onSendMessage(text, options)
-        return
+        return (await onSendMessage(text, options)) !== false
       }
       // Regenerate / edit locally: the replaced turn leaves the chat before the new one is added.
       const replaceFrom = options?.replaceFromMessageId
@@ -193,10 +200,10 @@ export function useOwlModeScreen({
           options,
         )
         // A stopped answer stays stopped: no local stand-in reply (#451 decision 2).
-        if (res === 'aborted') return
+        if (res === 'aborted') return true
         if (res && res.length > 0) {
           setLocalMessages((prev) => [...prev, ...res])
-          return
+          return true
         }
       }
       const userMsg: AdvisorChatMessageView = {
@@ -218,6 +225,7 @@ export function useOwlModeScreen({
         createdAt: new Date().toISOString(),
       }
       setLocalMessages((prev) => [...prev, userMsg, assistantMsg])
+      return true
     } finally {
       setIsSending(false)
     }
@@ -258,7 +266,14 @@ export function useOwlModeScreen({
   }
 
   async function handleDismissAction(actionId: string) {
-    if (onDismissAction) await onDismissAction(actionId)
+    // NR-05: a draft the server did not dismiss stays open (the failure is reported by the caller).
+    if (onDismissAction) {
+      try {
+        await onDismissAction(actionId)
+      } catch {
+        return
+      }
+    }
     setLocalMessages((prev) => prev.map((m) => updateActionStatusInMessage(m, actionId, 'dismissed')))
   }
 

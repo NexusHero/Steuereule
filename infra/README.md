@@ -78,8 +78,9 @@ Stripe account (test mode for staging and the beta); the operator details for th
 14. First deploy (`gh workflow run deploy.yml --ref main -f environment=<staging|production>`): builds both
     images, backs up the database, runs the migrate job (hash phase), deploys API and web, smoke-tests them.
     For staging the wizard then offers to set `DEPLOY_STAGING_AUTO=true`.
-15. Domain: verify it in Search Console, create the Cloud Run domain mappings for `www.` and `api.`, set the DNS
-    records the wizard prints, wait for the certificate (up to about an hour).
+15. Domain: verify it in Search Console, create the Cloud Run domain mappings for `www.` (service `steuereule-web`,
+    the app), `api.` (`steuereule-api`) and the bare domain (`steuereule-website`, the marketing site, whose links
+    go to `www.`), set the DNS records the wizard prints, wait for the certificates (up to about an hour).
 16. Check on the real system (OPS-5; none of this has been run against a deployment yet):
     - `https://api.<domain>/v1/health/ready` answers, the web app loads, sign-up mail arrives;
     - the API log shows no rate-limiter degradation warning (Redis over TLS with `REDIS_TLS_CA` works);

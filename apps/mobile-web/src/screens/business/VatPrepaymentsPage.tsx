@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { useTheme } from '@steuereule/ui'
 import { useBusinessControllerVatPrepayments, type VatPeriodFactsDto } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
-import { BusinessFrame, BusinessQueryState, Figure, Note, Section } from './BusinessFrame'
+import { BusinessFrame, BusinessQueryState, Figure, Note, ProblemNote, Section } from './BusinessFrame'
 import { Choice } from './Choice'
 import { personParams, plainEuro } from './businessKit'
 import { queryProblem } from './useBusiness'
@@ -25,24 +25,36 @@ export function VatPrepaymentsPage({ taxYear, person, business = 1, onBack }: Bu
   const { t: tr } = useTranslation(APP_NS)
   const query = useBusinessControllerVatPrepayments(taxYear, personParams(person, business))
   const editor = useProfileEditor(taxYear, person, business)
-  const loadProblem = queryProblem(query)
-  if (query.isPending || loadProblem !== null || query.data?.status !== 200) {
+  // WEB-31: the choices edit the profile's vatPeriodFacts; until the profile is loaded none is offered.
+  const loadProblem = queryProblem(query) ?? editor.loadProblem
+  if (query.isPending || editor.query.isPending || loadProblem !== null || query.data === undefined || editor.profile === null) {
     return (
       <BusinessFrame title={tr('business.seite.voranmeldungen')} onBack={onBack}>
-        <BusinessQueryState pending={query.isPending} problem={loadProblem} onRetry={() => void query.refetch()} />
+        <BusinessQueryState
+          pending={query.isPending || editor.query.isPending}
+          problem={loadProblem}
+          onRetry={() => {
+            if (query.isError) void query.refetch()
+            if (editor.query.isError) void editor.query.refetch()
+          }}
+        />
       </BusinessFrame>
     )
   }
   const va = query.data.data
-  const facts: VatPeriodFactsDto = editor.profile?.vatPeriodFacts ?? {}
-  const setFacts = (next: VatPeriodFactsDto) => void editor.save({ vatPeriodFacts: next })
+  const facts: VatPeriodFactsDto = editor.profile.vatPeriodFacts
+  /** Sends only the key that changed: the API merges vatPeriodFacts key by key, null removes one (WEB-31). */
+  const setFacts = (change: VatPeriodFactsDto) => {
+    if (editor.saving) return
+    void editor.save({ vatPeriodFacts: change })
+  }
   const chosen = facts.period ?? 'auto'
   const row = { flexDirection: 'row' as const, flexWrap: 'wrap' as const, gap: t.space.s2, marginBottom: t.space.s3 }
 
   return (
     <BusinessFrame title={tr('business.seite.voranmeldungen')} onBack={onBack} testID="voranmeldungen-seite">
       <Note>{tr('business.va.hinweis')}</Note>
-      {editor.problem !== null ? <Note tone="error">{editor.problem.message ?? tr('business.speichernFehler')}</Note> : null}
+      <ProblemNote problem={editor.problem} />
       <Section title={tr('business.va.zeitraum')}>
         <Text style={{ ...t.type.body, color: t.color.tinte }} testID="va-zeitraum">
           {tr(`business.va.periode.${va.period}`)} · {tr(`business.va.quelle.${va.periodSource}`)}
@@ -52,10 +64,7 @@ export function VatPrepaymentsPage({ taxYear, person, business = 1, onBack }: Bu
             <Choice
               key={p}
               selected={chosen === p}
-              onPress={() => {
-                const { period: _old, ...rest } = facts
-                setFacts(p === 'auto' ? rest : { ...rest, period: p })
-              }}
+              onPress={() => setFacts({ period: p === 'auto' ? null : p })}
               testID={`va-periode-${p}`}
             >
               {tr(`business.va.wahl.${p}`)}
@@ -63,7 +72,7 @@ export function VatPrepaymentsPage({ taxYear, person, business = 1, onBack }: Bu
           ))}
         </View>
         <View style={row}>
-          <Choice selected={va.extension} onPress={() => setFacts({ ...facts, extension: !va.extension })} testID="va-dauerfrist">
+          <Choice selected={va.extension} onPress={() => setFacts({ extension: !va.extension })} testID="va-dauerfrist">
             {tr('business.va.dauerfrist')}
           </Choice>
         </View>

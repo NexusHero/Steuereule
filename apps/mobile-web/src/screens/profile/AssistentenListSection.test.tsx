@@ -7,6 +7,7 @@ import { http, HttpResponse } from 'msw'
 import { createAppI18n } from '../../i18n/app-i18n'
 import { AssistantsListSection } from './AssistentenListSection'
 import { server } from '../../test-msw-server'
+import { expectFailsClosed, failEveryRequest } from '../../test-every-query-fails'
 
 const BASE_URL = 'http://localhost:3000'
 
@@ -92,5 +93,45 @@ describe('AssistentenListSection: connecting an assistant (ADR-0052 amendment 4)
     server.use(http.get(`${BASE_URL}/v1/assistenten`, () => HttpResponse.json([])))
     renderAssistantsList()
     expect(await screen.findByTestId('assistent-verbinden')).toBeTruthy()
+  })
+})
+
+describe('AssistentenListSection: failures (WEB-49, NR-04)', () => {
+  const ONE = [{ clientId: 'claude-desktop', name: 'Claude Desktop', linkedSince: '2026-11-01T12:00:00.000Z', lastUsed: null }]
+
+  it('a failed load says so with a retry, never "Keine Assistenten verbunden"', async () => {
+    let calls = 0
+    server.use(
+      http.get(`${BASE_URL}/v1/assistenten`, () => {
+        calls += 1
+        return calls === 1 ? HttpResponse.json({ statusCode: 500 }, { status: 500 }) : HttpResponse.json(ONE)
+      }),
+    )
+    renderAssistantsList()
+    expect(await screen.findByText('Bei uns ist gerade etwas schiefgelaufen. Versuch es gleich noch mal.')).toBeTruthy()
+    expect(screen.queryByText('Keine Assistenten verbunden.')).toBeNull()
+    expect(screen.queryByTestId('assistent-verbinden')).toBeNull()
+    fireEvent.click(screen.getByTestId('assistenten-erneut-laden'))
+    expect(await screen.findByText('Claude Desktop')).toBeTruthy()
+  })
+
+  it.each([
+    [403, 'Das darfst du hier nicht ändern.'],
+    [500, 'Trennen fehlgeschlagen. Bitte erneut versuchen.'],
+  ])('a "Trennen" answered %i says it did not disconnect and keeps the assistant listed', async (status, message) => {
+    server.use(
+      http.get(`${BASE_URL}/v1/assistenten`, () => HttpResponse.json(ONE)),
+      http.delete(`${BASE_URL}/v1/assistenten/claude-desktop`, () => HttpResponse.json({ statusCode: status }, { status })),
+    )
+    renderAssistantsList()
+    fireEvent.click(await screen.findByText('Trennen'))
+    expect(await screen.findByText(message)).toBeTruthy()
+    expect(screen.getByText('Claude Desktop')).toBeTruthy()
+  })
+
+  it('fails closed: every request answering 500 shows a failure and sends no write', async () => {
+    const failing = failEveryRequest()
+    renderAssistantsList()
+    await expectFailsClosed(failing)
   })
 })

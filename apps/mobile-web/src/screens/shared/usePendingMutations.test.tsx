@@ -1,7 +1,8 @@
 import { describe, expect, it, vi } from 'vitest'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { usePendingMutations } from './usePendingMutations'
-import { SaveFailedError, watchSaveResult } from './saveFeedback'
+import { ApiError } from '@steuereule/api-client'
+import { watchSaveResult } from './saveFeedback'
 
 describe('usePendingMutations', () => {
   it('leaves the mask once every pending save succeeded', async () => {
@@ -19,7 +20,7 @@ describe('usePendingMutations', () => {
     const { result } = renderHook(() => usePendingMutations())
     const leave = vi.fn()
     act(() => {
-      result.current.track(watchSaveResult(Promise.resolve({ status: 500 })))
+      result.current.track(watchSaveResult(Promise.reject(new ApiError(500, {}))))
       result.current.flushThen(leave)
     })
     await waitFor(() => expect(result.current.saveFailed).toBe(true))
@@ -30,7 +31,30 @@ describe('usePendingMutations', () => {
     expect(result.current.saveFailed).toBe(false)
   })
 
-  it('treats an HTTP error answer as a failed save', async () => {
-    await expect(watchSaveResult(Promise.resolve({ status: 409 }))).rejects.toBeInstanceOf(SaveFailedError)
+  it('WEB-12: a failed save is visible at once, before the user presses „Weiter“', async () => {
+    const { result } = renderHook(() => usePendingMutations())
+    const failure = new Error('HTTP 500')
+    act(() => {
+      result.current.track(Promise.reject(failure))
+    })
+    expect(result.current.isSaving).toBe(true)
+    await waitFor(() => expect(result.current.saveError).toBe(failure))
+    expect(result.current.isSaving).toBe(false)
+    expect(result.current.saveFailed).toBe(false)
+  })
+
+  it('settled() waits for every pending save and reports whether one failed', async () => {
+    const { result } = renderHook(() => usePendingMutations())
+    let resolve: () => void = () => undefined
+    act(() => {
+      result.current.track(new Promise<void>((r) => { resolve = r }))
+    })
+    const done = result.current.settled()
+    resolve()
+    await expect(done).resolves.toBe(true)
+  })
+
+  it('treats an HTTP error (a rejected ApiError since WEB-28) as a failed save', async () => {
+    await expect(watchSaveResult(Promise.reject(new ApiError(409, {})))).rejects.toBeInstanceOf(ApiError)
   })
 })

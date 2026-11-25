@@ -113,6 +113,19 @@ describe('DeviceListSection (#238, Decision 6)', () => {
     expect(screen.queryByText('Deine Geräte konnten nicht geladen werden. Prüf die Verbindung und versuch es noch mal.')).toBeNull()
   })
 
+  it('offers a retry after a failed load (WEB-8, R-34)', async () => {
+    let calls = 0
+    server.use(
+      http.get(`${BASE_URL}/api/auth/list-sessions`, () => {
+        calls += 1
+        return calls === 1 ? HttpResponse.json({}, { status: 500 }) : HttpResponse.json([])
+      }),
+    )
+    renderDeviceList()
+    fireEvent.click(await screen.findByTestId('geraete-erneut-laden'))
+    expect(await screen.findByText('Keine weiteren Geräte angemeldet.')).toBeTruthy()
+  })
+
   it('names the server, not the connection, on the 403 the stakeholder actually hit (#306)', async () => {
     server.use(http.get(`${BASE_URL}/api/auth/list-sessions`, () => HttpResponse.json({ code: 'SESSION_NOT_FRESH' }, { status: 403 })))
     renderDeviceList()

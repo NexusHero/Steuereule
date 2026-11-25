@@ -72,8 +72,6 @@ export type assessmentControllerGetResponseError = (assessmentControllerGetRespo
   headers: Headers;
 };
 
-export type assessmentControllerGetResponse = (assessmentControllerGetResponseSuccess | assessmentControllerGetResponseError)
-
 export const getAssessmentControllerGetUrl = (jahr: number,) => {
 
 
@@ -82,9 +80,9 @@ export const getAssessmentControllerGetUrl = (jahr: number,) => {
   return `/v1/steuerjahre/${jahr}/bescheid`
 }
 
-export const assessmentControllerGet = async (jahr: number, options?: RequestInit): Promise<assessmentControllerGetResponse> => {
+export const assessmentControllerGet = async (jahr: number, options?: RequestInit): Promise<assessmentControllerGetResponseSuccess> => {
 
-  return httpClient<assessmentControllerGetResponse>(getAssessmentControllerGetUrl(jahr),
+  return httpClient<assessmentControllerGetResponseSuccess>(getAssessmentControllerGetUrl(jahr),
   {
     ...options,
     method: 'GET'
@@ -179,8 +177,6 @@ export type assessmentControllerSetFieldResponseSuccess = (assessmentControllerS
 };
 ;
 
-export type assessmentControllerSetFieldResponse = (assessmentControllerSetFieldResponseSuccess)
-
 export const getAssessmentControllerSetFieldUrl = (jahr: number,
     feld: string,) => {
 
@@ -192,9 +188,9 @@ export const getAssessmentControllerSetFieldUrl = (jahr: number,
 
 export const assessmentControllerSetField = async (jahr: number,
     feld: string,
-    putAssessmentFieldDto: PutAssessmentFieldDto, options?: RequestInit): Promise<assessmentControllerSetFieldResponse> => {
+    putAssessmentFieldDto: PutAssessmentFieldDto, options?: RequestInit): Promise<assessmentControllerSetFieldResponseSuccess> => {
 
-  return httpClient<assessmentControllerSetFieldResponse>(getAssessmentControllerSetFieldUrl(jahr,feld),
+  return httpClient<assessmentControllerSetFieldResponseSuccess>(getAssessmentControllerSetFieldUrl(jahr,feld),
   {
     ...options,
     method: 'PUT',
@@ -259,8 +255,6 @@ export type assessmentControllerSetDateResponseSuccess = (assessmentControllerSe
 };
 ;
 
-export type assessmentControllerSetDateResponse = (assessmentControllerSetDateResponseSuccess)
-
 export const getAssessmentControllerSetDateUrl = (jahr: number,) => {
 
 
@@ -270,9 +264,9 @@ export const getAssessmentControllerSetDateUrl = (jahr: number,) => {
 }
 
 export const assessmentControllerSetDate = async (jahr: number,
-    setAssessmentDateDto: SetAssessmentDateDto, options?: RequestInit): Promise<assessmentControllerSetDateResponse> => {
+    setAssessmentDateDto: SetAssessmentDateDto, options?: RequestInit): Promise<assessmentControllerSetDateResponseSuccess> => {
 
-  return httpClient<assessmentControllerSetDateResponse>(getAssessmentControllerSetDateUrl(jahr),
+  return httpClient<assessmentControllerSetDateResponseSuccess>(getAssessmentControllerSetDateUrl(jahr),
   {
     ...options,
     method: 'PUT',
@@ -337,8 +331,6 @@ export type assessmentControllerSetStatusResponseSuccess = (assessmentController
 };
 ;
 
-export type assessmentControllerSetStatusResponse = (assessmentControllerSetStatusResponseSuccess)
-
 export const getAssessmentControllerSetStatusUrl = (jahr: number,) => {
 
 
@@ -348,9 +340,9 @@ export const getAssessmentControllerSetStatusUrl = (jahr: number,) => {
 }
 
 export const assessmentControllerSetStatus = async (jahr: number,
-    setAssessmentStatusDto: SetAssessmentStatusDto, options?: RequestInit): Promise<assessmentControllerSetStatusResponse> => {
+    setAssessmentStatusDto: SetAssessmentStatusDto, options?: RequestInit): Promise<assessmentControllerSetStatusResponseSuccess> => {
 
-  return httpClient<assessmentControllerSetStatusResponse>(getAssessmentControllerSetStatusUrl(jahr),
+  return httpClient<assessmentControllerSetStatusResponseSuccess>(getAssessmentControllerSetStatusUrl(jahr),
   {
     ...options,
     method: 'PUT',
@@ -415,8 +407,6 @@ export type assessmentControllerSetAppealResponseSuccess = (assessmentController
 };
 ;
 
-export type assessmentControllerSetAppealResponse = (assessmentControllerSetAppealResponseSuccess)
-
 export const getAssessmentControllerSetAppealUrl = (jahr: number,) => {
 
 
@@ -426,9 +416,9 @@ export const getAssessmentControllerSetAppealUrl = (jahr: number,) => {
 }
 
 export const assessmentControllerSetAppeal = async (jahr: number,
-    setAppealDto: SetAppealDto, options?: RequestInit): Promise<assessmentControllerSetAppealResponse> => {
+    setAppealDto: SetAppealDto, options?: RequestInit): Promise<assessmentControllerSetAppealResponseSuccess> => {
 
-  return httpClient<assessmentControllerSetAppealResponse>(getAssessmentControllerSetAppealUrl(jahr),
+  return httpClient<assessmentControllerSetAppealResponseSuccess>(getAssessmentControllerSetAppealUrl(jahr),
   {
     ...options,
     method: 'PUT',
@@ -500,8 +490,6 @@ export type assessmentControllerSetAppealOutcomeResponseError = (assessmentContr
   headers: Headers;
 };
 
-export type assessmentControllerSetAppealOutcomeResponse = (assessmentControllerSetAppealOutcomeResponseSuccess | assessmentControllerSetAppealOutcomeResponseError)
-
 export const getAssessmentControllerSetAppealOutcomeUrl = (jahr: number,) => {
 
 
@@ -511,9 +499,9 @@ export const getAssessmentControllerSetAppealOutcomeUrl = (jahr: number,) => {
 }
 
 export const assessmentControllerSetAppealOutcome = async (jahr: number,
-    setAppealOutcomeDto: SetAppealOutcomeDto, options?: RequestInit): Promise<assessmentControllerSetAppealOutcomeResponse> => {
+    setAppealOutcomeDto: SetAppealOutcomeDto, options?: RequestInit): Promise<assessmentControllerSetAppealOutcomeResponseSuccess> => {
 
-  return httpClient<assessmentControllerSetAppealOutcomeResponse>(getAssessmentControllerSetAppealOutcomeUrl(jahr),
+  return httpClient<assessmentControllerSetAppealOutcomeResponseSuccess>(getAssessmentControllerSetAppealOutcomeUrl(jahr),
   {
     ...options,
     method: 'PUT',

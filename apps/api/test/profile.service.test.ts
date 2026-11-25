@@ -106,4 +106,27 @@ describe('ProfileService', () => {
     )
     expect(repository.userCount()).toBe(2)
   })
+
+  it('WEB-28: a save carrying only the name leaves the stored Steuer-ID and Steuernummer untouched', async () => {
+    await service.saveProfile('user-a', validPayload())
+
+    await service.saveProfile('user-a', { firstName: 'Anna', lastName: 'Neu' })
+
+    await expect(service.getProfile('user-a')).resolves.toEqual({
+      firstName: 'Anna',
+      lastName: 'Neu',
+      steuerId: '02476291358',
+      steuernummer: '18181508155',
+    })
+  })
+
+  it('WEB-28: an explicit null still clears an identifier (absent is not null)', async () => {
+    await service.saveProfile('user-a', validPayload())
+
+    await service.saveProfile('user-a', { firstName: 'Anna', lastName: 'Beispiel', steuerId: null })
+
+    await expect(service.getProfile('user-a')).resolves.toEqual(
+      expect.objectContaining({ steuerId: null, steuernummer: '18181508155' }),
+    )
+  })
 })

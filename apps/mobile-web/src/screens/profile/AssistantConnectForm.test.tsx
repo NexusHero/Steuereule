@@ -54,4 +54,12 @@ describe('AssistantConnectForm (ADR-0052 amendment 4: the signed-in user registe
     fireEvent.click(screen.getByTestId('assistent-anlegen'))
     expect(await screen.findByText('Der Assistent konnte nicht angelegt werden. Bitte erneut versuchen.')).toBeTruthy()
   })
+
+  it('WEB-10: a throttled registration (429) says to wait, not "Bitte erneut versuchen" at once', async () => {
+    const $fetch = vi.fn().mockResolvedValue({ data: null, error: { status: 429 } })
+    renderForm($fetch)
+    fireEvent.click(screen.getByTestId('assistent-art-claude'))
+    fireEvent.click(screen.getByTestId('assistent-anlegen'))
+    expect(await screen.findByText('Gerade kommen zu viele Anfragen. Versuch es in ein paar Minuten noch mal.')).toBeTruthy()
+  })
 })

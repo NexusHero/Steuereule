@@ -4,9 +4,9 @@ import { useTranslation } from 'react-i18next'
 import { Button, Feld, Input, useTheme } from '@steuereule/ui'
 import { useBusinessControllerClosing, useBusinessControllerQuickEntry } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
-import { BusinessFrame, BusinessQueryState, Figure, Note, Section } from './BusinessFrame'
+import { BusinessFrame, BusinessQueryState, Figure, Note, ProblemNote, Section } from './BusinessFrame'
 import { eurosToCents, personParams, plainCents, signedEuro, type ApiProblem } from './businessKit'
-import { attempt, queryProblem, useRefreshBusiness } from './useBusiness'
+import { attempt, queryProblem, useRefreshBusiness, useSingleFlight } from './useBusiness'
 import type { BusinessPageProps } from './BusinessScreen'
 
 /** The EÜR lines most businesses book as one total; every other line is booked in the Buch. */
@@ -39,9 +39,10 @@ export function QuickEntryPage({ taxYear, person, business = 1, onBack }: Busine
   const [problem, setProblem] = useState<ApiProblem | null>(null)
   const [invalid, setInvalid] = useState(false)
   const [done, setDone] = useState(false)
+  const flight = useSingleFlight()
 
   const loadProblem = queryProblem(closing)
-  if (closing.isPending || loadProblem !== null || closing.data?.status !== 200) {
+  if (closing.isPending || loadProblem !== null || closing.data === undefined) {
     return (
       <BusinessFrame title={tr('business.seite.erfassung')} onBack={onBack}>
         <BusinessQueryState pending={closing.isPending} problem={loadProblem} onRetry={() => void closing.refetch()} />
@@ -93,9 +94,9 @@ export function QuickEntryPage({ taxYear, person, business = 1, onBack }: Busine
           <Section title={tr('business.erfassung.einnahmenTitel')}>{INCOME_KEYS.map(field)}</Section>
           <Section title={tr('business.erfassung.ausgabenTitel')}>{EXPENSE_KEYS.map(field)}</Section>
           {invalid ? <Note tone="error">{tr('business.erfassung.ungueltig')}</Note> : null}
-          {problem !== null ? <Note tone="error" testID="business-speichern-fehler">{problem.message ?? tr('business.speichernFehler')}</Note> : null}
+          <ProblemNote problem={problem} testID="business-speichern-fehler" />
           {done ? <Text style={{ ...t.type.body, color: t.color.ok }} testID="erfassung-gebucht">{tr('business.erfassung.gebucht')}</Text> : null}
-          <Button onPress={() => void submit()} testID="erfassung-buchen">
+          <Button onPress={() => void flight.run(submit)} disabled={flight.busy} testID="erfassung-buchen">
             {tr('business.erfassung.buchen')}
           </Button>
         </>

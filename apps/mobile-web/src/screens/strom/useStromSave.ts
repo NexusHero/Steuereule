@@ -7,8 +7,10 @@ import {
   getTaxEstimateControllerGetQueryKey,
 } from '@steuereule/api-client'
 import { triggerSaveErrorHaptic } from '../shared/saveFeedback'
+import { classifyApiFailure } from '../../net/apiFailure'
 
-export type SaveResult = 'ok' | 'conflict' | 'network'
+/** `failed` carries the error of a 401, 429, 500 … so the page names it (NM-07), not „conflict“. */
+export type SaveResult = 'ok' | 'conflict' | 'network' | { readonly kind: 'failed'; readonly error: unknown }
 
 /**
  * Sends a Strom page's answers one after another — each only after the one it follows, as the
@@ -21,16 +23,16 @@ export function useStromSave(taxYear: number): { readonly save: (posts: readonly
   async function save(posts: readonly StromPost[]): Promise<SaveResult> {
     try {
       for (const post of posts) {
-        const response = await postAnswer.mutateAsync({ jahr: taxYear, data: { questionId: post.questionId, value: post.value } })
-        if (response.status !== 200) {
-          triggerSaveErrorHaptic()
-          await queryClient.invalidateQueries({ queryKey: getInterviewControllerGetInterviewQueryKey(taxYear) })
-          return 'conflict'
-        }
+        await postAnswer.mutateAsync({ jahr: taxYear, data: { questionId: post.questionId, value: post.value } })
       }
-    } catch {
+    } catch (error) {
       triggerSaveErrorHaptic()
-      return 'network'
+      const { kind } = classifyApiFailure(error)
+      if (kind === 'conflict' || kind === 'validation') {
+        await queryClient.invalidateQueries({ queryKey: getInterviewControllerGetInterviewQueryKey(taxYear) })
+        return 'conflict'
+      }
+      return kind === 'offline' ? 'network' : { kind: 'failed', error }
     }
     if (posts.length > 0) {
       await Promise.all([

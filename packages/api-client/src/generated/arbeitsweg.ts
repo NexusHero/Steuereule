@@ -70,8 +70,6 @@ export type commuteControllerGetResponseError = (commuteControllerGetResponse401
   headers: Headers;
 };
 
-export type commuteControllerGetResponse = (commuteControllerGetResponseSuccess | commuteControllerGetResponseError)
-
 export const getCommuteControllerGetUrl = (jahr: number,
     params?: CommuteControllerGetParams,) => {
   const normalizedParams = new URLSearchParams();
@@ -89,9 +87,9 @@ export const getCommuteControllerGetUrl = (jahr: number,
 }
 
 export const commuteControllerGet = async (jahr: number,
-    params?: CommuteControllerGetParams, options?: RequestInit): Promise<commuteControllerGetResponse> => {
+    params?: CommuteControllerGetParams, options?: RequestInit): Promise<commuteControllerGetResponseSuccess> => {
 
-  return httpClient<commuteControllerGetResponse>(getCommuteControllerGetUrl(jahr,params),
+  return httpClient<commuteControllerGetResponseSuccess>(getCommuteControllerGetUrl(jahr,params),
   {
     ...options,
     method: 'GET'
@@ -199,8 +197,6 @@ export type commuteControllerPutResponseError = (commuteControllerPutResponse401
   headers: Headers;
 };
 
-export type commuteControllerPutResponse = (commuteControllerPutResponseSuccess | commuteControllerPutResponseError)
-
 export const getCommuteControllerPutUrl = (jahr: number,
     params?: CommuteControllerPutParams,) => {
   const normalizedParams = new URLSearchParams();
@@ -219,9 +215,9 @@ export const getCommuteControllerPutUrl = (jahr: number,
 
 export const commuteControllerPut = async (jahr: number,
     commuteInputsDto: CommuteInputsDto,
-    params?: CommuteControllerPutParams, options?: RequestInit): Promise<commuteControllerPutResponse> => {
+    params?: CommuteControllerPutParams, options?: RequestInit): Promise<commuteControllerPutResponseSuccess> => {
 
-  return httpClient<commuteControllerPutResponse>(getCommuteControllerPutUrl(jahr,params),
+  return httpClient<commuteControllerPutResponseSuccess>(getCommuteControllerPutUrl(jahr,params),
   {
     ...options,
     method: 'PUT',

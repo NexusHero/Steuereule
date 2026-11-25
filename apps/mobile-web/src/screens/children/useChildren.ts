@@ -26,12 +26,15 @@ export function useChildren(taxYear: number) {
   const deleteChild = useChildrenControllerDelete()
   const masterData = useMasterDataControllerRead()
   const profile = useProfileControllerGetProfile()
-  const ownLastName = profile.data?.status === 200 ? (profile.data.data.lastName ?? '') : ''
-  const ownAddress = masterData.data?.status === 200 ? masterData.data.data : null
+  // Suggestions only (the last name of a new child, the Familienkasse): a failed read suggests nothing.
+  const ownLastName = profile.data?.data.lastName ?? ''
+  const ownAddress = masterData.data?.data ?? null
   const addressState = ownAddress?.plz ? stateForAddress(ownAddress.plz, ownAddress.wohnort ?? '') : null
-  const married = masterData.data?.status === 200 && masterData.data.data.familienstand === 'verheiratet'
+  const married = masterData.data?.data.familienstand === 'verheiratet'
+  // NM-15: without the marital status a married user would be asked the single-parent questions.
+  const maritalStatusFailed = masterData.isError
   const link = useLinkControllerGet(taxYear, { query: { enabled: married, retry: false } })
-  const partnerName = link.data?.status === 200 ? link.data.data.personB?.firstName?.trim() || undefined : undefined
+  const partnerName = link.data?.data.personB?.firstName?.trim() || undefined
   const [householdQuestions, setHouseholdQuestions] = useState(false)
   const { track, flushThen, saveFailed } = usePendingMutations()
 
@@ -47,7 +50,7 @@ export function useChildren(taxYear: number) {
     const task = (async () => {
       const created = await watchSaveResult(createChild.mutateAsync({ jahr: taxYear, data }))
       await invalidate()
-      return created.status === 201 ? (created.data.kinder as readonly ChildItem[]) : undefined
+      return created.data.kinder as readonly ChildItem[]
     })()
     track(task)
     return task
@@ -57,7 +60,7 @@ export function useChildren(taxYear: number) {
     const task = (async () => {
       const updated = await watchSaveResult(updateChild.mutateAsync({ jahr: taxYear, id, data }))
       await invalidate()
-      return updated.status === 200 ? (updated.data.kinder as readonly ChildItem[]) : undefined
+      return updated.data.kinder as readonly ChildItem[]
     })()
     track(task)
     return task
@@ -77,6 +80,8 @@ export function useChildren(taxYear: number) {
     ownLastName,
     addressState,
     married,
+    maritalStatusFailed,
+    masterData,
     partnerName,
     householdQuestions,
     setHouseholdQuestions,

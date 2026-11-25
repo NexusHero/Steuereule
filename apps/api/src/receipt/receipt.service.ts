@@ -200,12 +200,12 @@ export class ReceiptService {
     const after = query.cursor === undefined ? undefined : decodeReceiptCursor(query.cursor)
     const facts = await this.repository.listFactsForUser(userId)
     if (facts.length === 0) return { items: [], nextCursor: null, counts: countsOf([], new Map()) }
-    await this.auditService.append({ userId, action: 'READ', resource: 'beleg' })
-
+    // The audit row joins the reads: one round instead of two (OPS-4).
     const [drafts, keys, rows] = await Promise.all([
       this.draftsPerReceipt(userId),
       this.storage.listContentKeys(userId),
       this.repository.findPageForUser(userId, { limit: query.limit + 1, ...(after ? { after } : {}), ...(query.folder ? { folder: query.folder } : {}) }),
+      this.auditService.append({ userId, action: 'READ', resource: 'beleg' }),
     ])
     const page = rows.slice(0, query.limit)
     const last = page[page.length - 1]

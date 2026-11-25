@@ -124,6 +124,17 @@ describe('deployment wiring: every production value reaches the runtime (beta P1
     }
   })
 
+  it('SITE-1: the marketing site is built with the app origin, served with a CSP, and deployed', () => {
+    const websiteDockerfile = read('apps/website/Dockerfile')
+    expect(websiteDockerfile).toMatch(/ARG WEBSITE_APP_ORIGIN/)
+    expect(websiteDockerfile).toMatch(/ARG API_ORIGIN/)
+    expect(websiteDockerfile).toMatch(/static-server\.mjs/)
+    expect(deployYml).toMatch(/-f apps\/website\/Dockerfile/)
+    expect(deployYml).toMatch(/--build-arg "WEBSITE_APP_ORIGIN=\$WEB_ORIGIN"/)
+    expect(deployYml).toMatch(/--build-arg "API_ORIGIN=\$API_ORIGIN"/)
+    expect(deployYml).toMatch(/gcloud run deploy steuereule-website/)
+  })
+
   it('OPS-13: every deploy variable is read in the environment-bound job, required ones are gated, none has a fallback', () => {
     const scoped = foldedList(deployYml, 'DEPLOY_VARIABLES')
     const required = foldedList(deployYml, 'REQUIRED_VARIABLES')

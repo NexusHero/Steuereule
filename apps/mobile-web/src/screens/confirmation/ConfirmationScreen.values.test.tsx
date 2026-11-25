@@ -143,11 +143,11 @@ describe('ConfirmationScreen failing saves', () => {
     )
     renderScreen()
     fireEvent.click(await screen.findByTestId('bestaetige-anlageN'))
-    expect(await screen.findByText('Das hat nicht geklappt. Versuch es noch mal.')).toBeTruthy()
+    expect(await screen.findByText('Bei uns ist gerade etwas schiefgelaufen. Versuch es gleich noch mal.')).toBeTruthy()
 
     ok = true
     fireEvent.click(screen.getByTestId('bestaetige-anlageN'))
-    await waitFor(() => expect(screen.queryByText('Das hat nicht geklappt. Versuch es noch mal.')).toBeNull())
+    await waitFor(() => expect(screen.queryByText('Bei uns ist gerade etwas schiefgelaufen. Versuch es gleich noch mal.')).toBeNull())
   })
 
   it('says so when the network fails while confirming', async () => {
@@ -157,7 +157,7 @@ describe('ConfirmationScreen failing saves', () => {
     )
     renderScreen()
     fireEvent.click(await screen.findByTestId('bestaetige-anlageN'))
-    expect(await screen.findByText('Das hat nicht geklappt. Versuch es noch mal.')).toBeTruthy()
+    expect(await screen.findByText('Keine Verbindung zum Server. Prüf dein Internet und versuch es noch mal.')).toBeTruthy()
   })
 })
 

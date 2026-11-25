@@ -63,8 +63,6 @@ export type taxEstimateControllerGetResponseError = (taxEstimateControllerGetRes
   headers: Headers;
 };
 
-export type taxEstimateControllerGetResponse = (taxEstimateControllerGetResponseSuccess | taxEstimateControllerGetResponseError)
-
 export const getTaxEstimateControllerGetUrl = (jahr: number,) => {
 
 
@@ -73,9 +71,9 @@ export const getTaxEstimateControllerGetUrl = (jahr: number,) => {
   return `/v1/steuerjahre/${jahr}/steuerschaetzung`
 }
 
-export const taxEstimateControllerGet = async (jahr: number, options?: RequestInit): Promise<taxEstimateControllerGetResponse> => {
+export const taxEstimateControllerGet = async (jahr: number, options?: RequestInit): Promise<taxEstimateControllerGetResponseSuccess> => {
 
-  return httpClient<taxEstimateControllerGetResponse>(getTaxEstimateControllerGetUrl(jahr),
+  return httpClient<taxEstimateControllerGetResponseSuccess>(getTaxEstimateControllerGetUrl(jahr),
   {
     ...options,
     method: 'GET'

@@ -10,7 +10,7 @@ import { createAppI18n } from '../../i18n/app-i18n'
 const mocks = vi.hoisted(() => ({
   captureReceipt: vi.fn(),
   createHolderFromDocument: vi.fn(),
-  takeNameIntoProfile: vi.fn(async () => true),
+  takeNameIntoProfile: vi.fn(async (): Promise<'taken' | 'kept' | 'failed'> => 'taken'),
 }))
 vi.mock('./captureReceipt', () => ({ captureReceipt: mocks.captureReceipt }))
 vi.mock('./documentAssignment', async (importOriginal) => ({
@@ -197,5 +197,19 @@ describe('the question "Für wen?"', () => {
       await result.current.confirmSelf('a', true)
     })
     expect(mocks.takeNameIntoProfile).toHaveBeenCalledOnce()
+  })
+
+  it('WEB-32: says so when the name could not go into the profile, and still assigns the Beleg', async () => {
+    mocks.captureReceipt.mockResolvedValue(ASKING)
+    mocks.takeNameIntoProfile.mockResolvedValueOnce('failed')
+    const { result } = setup()
+    await act(async () => {
+      await result.current.read('a', file)
+    })
+    await act(async () => {
+      await result.current.confirmSelf('a', true)
+    })
+    expect(mocks.captureReceipt.mock.calls[1]![1]).toMatchObject({ holder: 'A' })
+    expect(result.current.entries['a']?.error).toBe('Dein Name konnte nicht ins Profil übernommen werden. Der Beleg ist dir trotzdem zugeordnet – trag den Namen bitte im Profil ein.')
   })
 })

@@ -56,8 +56,6 @@ export type authCapabilitiesControllerGetCapabilitiesResponseSuccess = (authCapa
 };
 ;
 
-export type authCapabilitiesControllerGetCapabilitiesResponse = (authCapabilitiesControllerGetCapabilitiesResponseSuccess)
-
 export const getAuthCapabilitiesControllerGetCapabilitiesUrl = () => {
 
 
@@ -66,9 +64,9 @@ export const getAuthCapabilitiesControllerGetCapabilitiesUrl = () => {
   return `/v1/auth/capabilities`
 }
 
-export const authCapabilitiesControllerGetCapabilities = async ( options?: RequestInit): Promise<authCapabilitiesControllerGetCapabilitiesResponse> => {
+export const authCapabilitiesControllerGetCapabilities = async ( options?: RequestInit): Promise<authCapabilitiesControllerGetCapabilitiesResponseSuccess> => {
 
-  return httpClient<authCapabilitiesControllerGetCapabilitiesResponse>(getAuthCapabilitiesControllerGetCapabilitiesUrl(),
+  return httpClient<authCapabilitiesControllerGetCapabilitiesResponseSuccess>(getAuthCapabilitiesControllerGetCapabilitiesUrl(),
   {
     ...options,
     method: 'GET'

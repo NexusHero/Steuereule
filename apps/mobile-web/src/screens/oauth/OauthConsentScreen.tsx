@@ -2,7 +2,9 @@ import { useEffect, useState } from 'react'
 import { ActivityIndicator, ScrollView, Text, View, type TextStyle, type ViewStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { Button, Card, Feld, Input, useTheme, type UiTheme } from '@steuereule/ui'
-import { useAssistantsControllerGetClientInfo, getApiClientBaseUrl } from '@steuereule/api-client'
+import { ApiError, useAssistantsControllerGetClientInfo, getApiClientBaseUrl } from '@steuereule/api-client'
+import { apiFailureMessage } from '../../net/apiFailure'
+import { watchForSessionExpiry } from '../../net/sessionExpiry'
 import { APP_NS } from '../../i18n/resources'
 import { STEP_UP_REQUIRED_CODE } from '../../auth/useStepUp'
 import { consentDestinations } from './consentDestination'
@@ -59,18 +61,22 @@ export function OauthConsentScreen({
   const [password, setPassword] = useState('')
 
   // Only a looked-up client is named; the client_id of the URL is no name to show in bold (MCP-17).
-  const clientInfo = clientInfoQuery.data?.status === 200 ? clientInfoQuery.data.data : null
+  const clientInfo = clientInfoQuery.data?.data ?? null
   const clientKnown = clientInfo !== null
   const clientName = clientInfo?.name ?? tr('oauthConsent.clientUnknown')
-  const lookupFailed = !clientKnown && !clientInfoQuery.isLoading && !clientInfoQuery.isFetching
+  // Without a client to look up (no client_id), there is nothing to check either: approving stays off.
+  const noClientToCheck = !clientKnown && !clientInfoQuery.isLoading && !clientInfoQuery.isFetching && !clientInfoQuery.isError
 
   // The name is the assistant's own claim; where the approval leads is what it registered (see consentDestination).
-  const destinations = clientInfoQuery.data?.status === 200
+  const destinations = clientInfoQuery.data
     ? consentDestinations(clientInfoQuery.data.data.redirectTargets ?? [], params.oauthQuery)
     : []
   // While the lookup runs the destination is not on the screen yet, so approving waits for it: a slow
   // lookup must not let the user approve before seeing where the access goes.
   const lookingUpClient = clientInfoQuery.isLoading
+  // MCP-17 (here only the part in this file): a lookup that failed leaves "Erlauben" off — the user would
+  // approve without seeing where the access goes.
+  const lookupFailed = clientInfoQuery.isError
   const destinationLabel = (destination: string): string => {
     if (destination === 'localhost') return tr('oauthConsent.destinationDevice')
     if (destination.endsWith('://')) return tr('oauthConsent.destinationApp', { scheme: destination })
@@ -108,7 +114,22 @@ export function OauthConsentScreen({
         }
       }
       if (!response.ok) {
-        throw new Error(`Consent endpoint returned ${response.status}`)
+        // NR-13: the signed query lapses after 10 minutes (400), the session may have ended (401), or the
+        // server throttles (429) — each says what to do instead of "Fehler bei der Autorisierung".
+        const refusal = new ApiError(response.status, await response.json().catch(() => null), response.headers)
+        watchForSessionExpiry(refusal)
+        setErrorMessage(
+          apiFailureMessage(refusal, tr as unknown as Parameters<typeof apiFailureMessage>[1], {
+            validation: tr('oauthConsent.expired'),
+            'not-found': tr('oauthConsent.expired'),
+            'account-required': tr('apiFehler.sessionExpired'),
+            forbidden: tr('oauthConsent.error'),
+            server: tr('oauthConsent.error'),
+            unknown: tr('oauthConsent.error'),
+          }),
+        )
+        setSubmitting(false)
+        return
       }
 
       const data = (await response.json()) as { redirect?: boolean; url?: string }
@@ -216,6 +237,16 @@ export function OauthConsentScreen({
         </View>
 
         {lookupFailed ? (
+          <View style={styles.section} testID="oauth-lookup-fehler">
+            <Text style={styles.errorText} accessibilityRole="alert" testID="oauth-client-unbekannt">
+              {tr('oauthConsent.lookupFailed')}
+            </Text>
+            <Button variant="ghost" onPress={() => void clientInfoQuery.refetch()} testID="oauth-lookup-erneut">
+              {tr('apiFehler.retry')}
+            </Button>
+          </View>
+        ) : null}
+        {noClientToCheck ? (
           <Text style={styles.errorText} accessibilityRole="alert" testID="oauth-client-unbekannt">
             {tr('oauthConsent.clientLookupFailed')}
           </Text>
@@ -243,7 +274,7 @@ export function OauthConsentScreen({
         <View style={styles.actionRow}>
           <Button
             variant="primaer"
-            disabled={submitting || lookingUpClient || !clientKnown}
+            disabled={submitting || lookingUpClient || lookupFailed || !clientKnown}
             onPress={() => void handleDecision(true)}
             style={styles.actionBtn}
             testID="oauth-erlauben"

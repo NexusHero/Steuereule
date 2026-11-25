@@ -7,6 +7,7 @@ import { http, HttpResponse } from 'msw'
 import { createAppI18n } from '../../i18n/app-i18n'
 import { DeviceApprovalScreen } from './DeviceApprovalScreen'
 import { server } from '../../test-msw-server'
+import { expectFailsClosed, failEveryRequest } from '../../test-every-query-fails'
 
 const BASE_URL = 'http://localhost:3000'
 
@@ -150,10 +151,32 @@ describe('GeraetefreigabeScreen (#238)', () => {
     expect(screen.queryByText('Ja, das ist mein Code')).toBeNull()
   })
 
-  it('shows the same honest error state when the pending request is rate-limited (429)', async () => {
-    server.use(http.get(`${BASE_URL}/v1/device/pending`, () => HttpResponse.json({}, { status: 429 })))
+  it('WEB-10 / NR-11: a rate-limited lookup (429) says to wait, not that the code is invalid', async () => {
+    server.use(http.get(`${BASE_URL}/v1/device/pending`, () => HttpResponse.json({}, { status: 429, headers: { 'Retry-After': '20' } })))
     renderApproval()
-    expect(await screen.findByText('Code ungültig oder abgelaufen')).toBeTruthy()
+    expect(await screen.findByText('Gerade kommen zu viele Anfragen. Versuch es in 20 Sekunden noch mal.')).toBeTruthy()
+    expect(screen.queryByText('Code ungültig oder abgelaufen')).toBeNull()
+  })
+
+  it('NR-11: a server or network failure is a load failure with a retry, not "Code ungültig"', async () => {
+    let calls = 0
+    server.use(
+      http.get(`${BASE_URL}/v1/device/pending`, () => {
+        calls += 1
+        return calls === 1 ? HttpResponse.json({}, { status: 500 }) : HttpResponse.json({ userCode: 'K7QX-9F2M', status: 'pending', userAgent: null, region: null, requestedAt: null })
+      }),
+    )
+    renderApproval()
+    expect(await screen.findByTestId('fehler-zustand')).toBeTruthy()
+    expect(screen.queryByText('Code ungültig oder abgelaufen')).toBeNull()
+    fireEvent.click(screen.getByTestId('fehler-erneut-versuchen'))
+    expect(await screen.findByText('Ja, das ist mein Code')).toBeTruthy()
+  })
+
+  it('fails closed: every request answering 500 shows a failure and sends no write', async () => {
+    const failing = failEveryRequest()
+    renderApproval()
+    await expectFailsClosed(failing)
   })
 
   it('shows the approved confirmation directly when the request was already approved elsewhere', async () => {

@@ -2,7 +2,7 @@ import { applyDecorators, Body, Controller, Get, HttpCode, Inject, Param, ParseI
 import { ApiBody, ApiOkResponse, ApiParam, ApiQuery, ApiResponse, ApiTags, ApiUnauthorizedResponse } from '@nestjs/swagger'
 import { Throttle, ThrottlerGuard } from '@nestjs/throttler'
 import type { FastifyReply } from 'fastify'
-import { CHECKOUT_THROTTLE, accountKeyedTracker } from '../rate-limit/rate-limit.js'
+import { AccountThrottle, BANK_IMPORT_THROTTLE, BUSINESS_EXPORT_THROTTLE, CHECKOUT_THROTTLE, ERIC_THROTTLE, accountKeyedTracker } from '../rate-limit/rate-limit.js'
 import type { BankCsvPreset, BookingTaxKey, ProfessionAnswers, VerfahrensdokuPlaceholder } from '@steuereule/core'
 import { BANK_CSV_PRESETS, CATALOG_PROFESSIONS, FREE_ACTIVITIES, FREE_ACTIVITY_LABELS, PROFESSION_LABELS, USEFUL_LIVES, parseBookingDraft } from '@steuereule/core'
 import { InvalidInputError } from '../common/domain-error.js'
@@ -228,6 +228,7 @@ export class BusinessController {
   }
 
   @Post(':jahr/selbststaendig/bank/import')
+  @AccountThrottle(BANK_IMPORT_THROTTLE)
   @HttpCode(201)
   @RequiresAccount()
   @ApiBody({ type: BankImportDto })
@@ -441,6 +442,7 @@ export class BusinessController {
   }
 
   @Get(':jahr/selbststaendig/export/gobd')
+  @AccountThrottle(BUSINESS_EXPORT_THROTTLE)
   @RequiresAccount()
   // The 200 is a zip; the errors stay JSON (no ApiProduces, which would type them as zip too).
   @ApiOkResponse({ description: 'Z3 data export (§ 147 Abs. 6 AO): index.xml, buchungen.csv, konten.csv, protokoll.csv.', content: { 'application/zip': { schema: { type: 'string', format: 'binary' } } } })
@@ -469,6 +471,7 @@ export class BusinessController {
   }
 
   @Get(':jahr/selbststaendig/e-bilanz')
+  @AccountThrottle(BUSINESS_EXPORT_THROTTLE)
   @RequiresAccount()
   @ApiOkResponse({ type: EBilanzDto, description: 'Preview of the XBRL data set; not transmitted (ADR-0101 §17).' })
   @Errors(409)
@@ -477,6 +480,7 @@ export class BusinessController {
   }
 
   @Post(':jahr/selbststaendig/e-bilanz/uebermittlung')
+  @AccountThrottle(ERIC_THROTTLE)
   @HttpCode(200)
   @RequiresAccount()
   @ApiBody({ type: EBilanzTransmitDto })
@@ -487,6 +491,7 @@ export class BusinessController {
   }
 
   @Get(':jahr/selbststaendig/e-bilanz/datei')
+  @AccountThrottle(BUSINESS_EXPORT_THROTTLE)
   @RequiresAccount()
   @ApiOkResponse({ description: 'The XBRL instance as a file (not transmitted).', content: { 'application/xml': { schema: { type: 'string' } } } })
   @Errors(402, 409)

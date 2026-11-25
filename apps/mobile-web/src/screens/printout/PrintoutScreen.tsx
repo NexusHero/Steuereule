@@ -4,11 +4,15 @@ import { useTranslation } from 'react-i18next'
 import { Button, Card, useBreakpoint, useTheme } from '@steuereule/ui'
 import type { Screen } from '@steuereule/core'
 import {
+  apiErrorStatus,
+  isApiError,
+  NetworkError,
   usePrintoutControllerCheckout,
   usePrintoutControllerCheck,
   useUnlockControllerStatus,
 } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
+import { useApiFailureMessage } from '../../net/apiFailure'
 import { isRunningTaxYear } from '../../config/taxYear'
 import { makePrivacyStyles } from '../privacy/styles'
 import { ErrorState, LoadingState } from '../shared/ScreenState'
@@ -45,7 +49,8 @@ export function PrintoutScreen({ year, payment, onBack, onCompleteDetails, onCom
   const checkout = usePrintoutControllerCheckout()
   const [message, setMessage] = useState<{ kind: 'ok' | 'fehler'; text: string } | null>(null)
   const [loading, setLoading] = useState(false)
-  const unlocked = status.data?.status === 200 ? status.data.data.status === 'freigeschaltet' : undefined
+  const failureMessage = useApiFailureMessage()
+  const unlocked = status.data === undefined ? undefined : status.data.data.status === 'freigeschaltet'
   const { phase, recheck } = usePaymentConfirmation({ outcome: payment, unlocked, refetch: status.refetch, ...confirmTiming })
 
   if (isRunningTaxYear(year)) {
@@ -61,7 +66,7 @@ export function PrintoutScreen({ year, payment, onBack, onCompleteDetails, onCom
     )
   }
   if (status.isPending || check.isPending) return <LoadingState bp={bp} label={t('ausdruck.loading')} />
-  if (check.data?.status === 404) {
+  if (apiErrorStatus(check.error) === 404) {
     return (
       <ErrorState
         bp={bp}
@@ -72,12 +77,12 @@ export function PrintoutScreen({ year, payment, onBack, onCompleteDetails, onCom
       />
     )
   }
-  if (status.data?.status !== 200 || check.data?.status !== 200) {
+  if (status.isError || check.isError) {
     return (
       <ErrorState
         bp={bp}
         heading={t('ausdruck.loadError.heading')}
-        message={t('ausdruck.loadError.message')}
+        message={failureMessage(status.error ?? check.error, { offline: t('ausdruck.loadError.message') })}
         retryLabel={t('ausdruck.loadError.retry')}
         onRetry={() => {
           void status.refetch()
@@ -115,8 +120,9 @@ export function PrintoutScreen({ year, payment, onBack, onCompleteDetails, onCom
       setMessage({ kind: 'ok', text: t('zahlung.schonBezahlt', { year }) })
       void status.refetch()
     } else if (refusal === 'pending') setMessage({ kind: 'fehler', text: t('zahlung.ausstehend', { year }) })
-    else if (refusal === 'throttled') setMessage({ kind: 'fehler', text: t('zahlung.zuVieleVersuche') })
-    else setMessage({ kind: 'fehler', text: t('ausdruck.fehler') })
+    // A 429 that names its wait says it (WEB-10); without Retry-After P5's general wait text.
+    else if (refusal === 'throttled') setMessage({ kind: 'fehler', text: isApiError(source) && source.retryAfterSeconds !== undefined ? failureMessage(source) : t('zahlung.zuVieleVersuche') })
+    else setMessage({ kind: 'fehler', text: failureMessage(source, { unknown: t('ausdruck.fehler') }) })
   }
 
   function pay() {
@@ -124,10 +130,8 @@ export function PrintoutScreen({ year, payment, onBack, onCompleteDetails, onCom
     checkout.mutate(
       { jahr: year },
       {
-        onSuccess: (response) => {
-          if (response.status === 200) openCheckout(response.data.checkoutUrl)
-          else refused(response)
-        },
+        onSuccess: (response) => openCheckout(response.data.checkoutUrl),
+        // P5's refusals (already paid, pending, throttled) first; the rest in the shared wording (WEB-10).
         onError: refused,
       },
     )
@@ -138,10 +142,10 @@ export function PrintoutScreen({ year, payment, onBack, onCompleteDetails, onCom
     setMessage(null)
     try {
       const result = await loadPrintout(year, { editable })
-      setMessage(result.ok ? { kind: 'ok', text: t('ausdruck.heruntergeladen') } : { kind: 'fehler', text: t('ausdruck.fehler') })
+      setMessage(result.ok ? { kind: 'ok', text: t('ausdruck.heruntergeladen') } : { kind: 'fehler', text: failureMessage(result.error, { validation: t('ausdruck.fehler'), unknown: t('ausdruck.fehler') }) })
       if (!result.ok && result.status === 422) void check.refetch()
-    } catch {
-      setMessage({ kind: 'fehler', text: t('ausdruck.fehler') })
+    } catch (error) {
+      setMessage({ kind: 'fehler', text: failureMessage(new NetworkError(error)) })
     } finally {
       setLoading(false)
     }
@@ -332,7 +336,7 @@ export function PrintoutScreen({ year, payment, onBack, onCompleteDetails, onCom
       ) : null}
 
       {message ? (
-        <Text style={message.kind === 'ok' ? styles.successNote : styles.errorNote} accessibilityLiveRegion="polite">
+        <Text style={message.kind === 'ok' ? styles.successNote : styles.errorNote} accessibilityLiveRegion="polite" {...(message.kind === 'fehler' ? { accessibilityRole: 'alert' as const } : {})}>
           {message.text}
         </Text>
       ) : null}

@@ -11,6 +11,7 @@ import {
 import { modelProviderList } from '@steuereule/core'
 import { APP_NS } from '../../i18n/resources'
 import { makePrivacyStyles } from './styles'
+import { useApiFailureMessage } from '../../net/apiFailure'
 
 /** Datenschutz section: the owl's consent to process personal data (ADR-0091), revocable at any time. */
 export function OwlPersonalDataSection() {
@@ -19,23 +20,36 @@ export function OwlPersonalDataSection() {
   const queryClient = useQueryClient()
   const consent = useOwlModeControllerGetPersonalDataConsent()
   const setConsent = useOwlModeControllerSetPersonalDataConsent()
-  const [failed, setFailed] = useState(false)
+  const [saveError, setSaveError] = useState<unknown>(null)
+  const failureMessage = useApiFailureMessage()
 
-  const loaded = consent.data?.status === 200 ? consent.data.data : null
+  const loaded = consent.data?.data ?? null
   const granted = loaded?.granted === true
 
   async function update(next: boolean) {
-    setFailed(false)
+    setSaveError(null)
     try {
-      const result = await setConsent.mutateAsync({ data: { granted: next } })
-      if (result.status !== 200) {
-        setFailed(true)
-        return
-      }
-      await queryClient.invalidateQueries({ queryKey: getOwlModeControllerGetPersonalDataConsentQueryKey() })
-    } catch {
-      setFailed(true)
+      await setConsent.mutateAsync({ data: { granted: next } })
+    } catch (error) {
+      setSaveError(error)
     }
+    // Either way the section shows what the server holds now.
+    await queryClient.invalidateQueries({ queryKey: getOwlModeControllerGetPersonalDataConsentQueryKey() })
+  }
+
+  // NR-20: a failed load is a failure with a retry, not a "Wird geladen …" that never ends (and no way to revoke).
+  if (consent.isError) {
+    return (
+      <Card>
+        <Text style={styles.sectionTitle}>{tr('owlPersonalData.section.title')}</Text>
+        <Text style={styles.hint} accessibilityRole="alert" testID="eulen-einwilligung-ladefehler">
+          {failureMessage(consent.error)}
+        </Text>
+        <Button variant="ghost" onPress={() => void consent.refetch()} testID="eulen-einwilligung-erneut">
+          {tr('apiFehler.retry')}
+        </Button>
+      </Card>
+    )
   }
 
   const since = granted && loaded?.grantedAt
@@ -52,7 +66,11 @@ export function OwlPersonalDataSection() {
       <Text style={styles.sectionTitle}>{tr('owlPersonalData.section.title')}</Text>
       <Text style={styles.sectionBody}>{tr('owlPersonalData.section.body', { providers: modelProviderList() })}</Text>
       <Text style={styles.sectionTitle} accessibilityRole="text">{stateText}</Text>
-      {failed ? <Text style={styles.hint}>{tr('owlPersonalData.section.error')}</Text> : null}
+      {saveError !== null ? (
+        <Text style={styles.hint} accessibilityRole="alert">
+          {failureMessage(saveError, { server: tr('owlPersonalData.section.error'), unknown: tr('owlPersonalData.section.error') })}
+        </Text>
+      ) : null}
       {loaded !== null ? (
         <Button variant={granted ? 'ghost' : 'primaer'} onPress={() => void update(!granted)} disabled={setConsent.isPending}>
           {granted ? tr('owlPersonalData.section.revoke') : tr('owlPersonalData.section.allow')}

@@ -192,3 +192,17 @@ describe('SubmissionScreen (§ 3.4)', () => {
     expect((screen.getByTestId('abgabe-zum-ausdruck') as HTMLButtonElement).disabled).toBe(true)
   })
 })
+
+describe('SubmissionScreen — a read that decides the way fails visibly (NC-18)', () => {
+  it('a failed master-data read is a failed page with a retry, not a couple without the comparison', async () => {
+    mockCompleteMarriedCase('zusammen')
+    let healthy = false
+    server.use(http.get('*/v1/stammdaten', () => (healthy ? HttpResponse.json({ missing: [], familienstand: 'verheiratet' }) : HttpResponse.json({ statusCode: 500 }, { status: 500 }))))
+    renderSubmission()
+    expect(await screen.findByText('Bei uns ist gerade etwas schiefgelaufen. Versuch es gleich noch mal.')).toBeTruthy()
+    expect(screen.queryByTestId('abgabe-zum-ausdruck')).toBeNull()
+    healthy = true
+    fireEvent.click(screen.getByTestId('fehler-erneut-versuchen'))
+    expect(await screen.findByTestId('abgabe-veranlagungsart')).toBeTruthy()
+  })
+})

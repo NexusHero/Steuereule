@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import { useBreakpoint } from '@steuereule/ui'
 import { APP_NS } from '../../i18n/resources'
+import { useApiFailureMessage } from '../../net/apiFailure'
 import { LoadingState, ErrorState } from '../shared/ScreenState'
 import { CockpitEmpty } from './CockpitEmpty'
 import { CockpitLoaded } from './CockpitLoaded'
@@ -13,6 +14,7 @@ export function CockpitScreen(props: CockpitScreenProps) {
   const bp = useBreakpoint()
   const { t: tr } = useTranslation(APP_NS)
   const view = useCockpit(props, bp, tr)
+  const failureMessage = useApiFailureMessage()
 
   if (view.kind === 'pending') {
     return <LoadingState bp={bp} label={tr('cockpit.loading')} />
@@ -22,7 +24,7 @@ export function CockpitScreen(props: CockpitScreenProps) {
       <ErrorState
         bp={bp}
         heading={tr('cockpit.loadError.heading')}
-        message={tr('cockpit.loadError.message')}
+        message={failureMessage(view.error, { offline: tr('cockpit.loadError.message') })}
         retryLabel={tr('cockpit.loadError.retry')}
         onRetry={view.onRetry}
       />

@@ -57,8 +57,6 @@ export type filingTypeComparisonControllerGetComparisonResponseSuccess = (filing
 };
 ;
 
-export type filingTypeComparisonControllerGetComparisonResponse = (filingTypeComparisonControllerGetComparisonResponseSuccess)
-
 export const getFilingTypeComparisonControllerGetComparisonUrl = (jahr: number,
     params?: FilingTypeComparisonControllerGetComparisonParams,) => {
   const normalizedParams = new URLSearchParams();
@@ -76,9 +74,9 @@ export const getFilingTypeComparisonControllerGetComparisonUrl = (jahr: number,
 }
 
 export const filingTypeComparisonControllerGetComparison = async (jahr: number,
-    params?: FilingTypeComparisonControllerGetComparisonParams, options?: RequestInit): Promise<filingTypeComparisonControllerGetComparisonResponse> => {
+    params?: FilingTypeComparisonControllerGetComparisonParams, options?: RequestInit): Promise<filingTypeComparisonControllerGetComparisonResponseSuccess> => {
 
-  return httpClient<filingTypeComparisonControllerGetComparisonResponse>(getFilingTypeComparisonControllerGetComparisonUrl(jahr,params),
+  return httpClient<filingTypeComparisonControllerGetComparisonResponseSuccess>(getFilingTypeComparisonControllerGetComparisonUrl(jahr,params),
   {
     ...options,
     method: 'GET'

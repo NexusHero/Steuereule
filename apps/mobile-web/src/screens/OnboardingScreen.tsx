@@ -9,10 +9,11 @@ import { formatTaxId, sanitizeTaxNumberInput, countDigits } from './onboarding/f
 import { toOnboardingProfile, toPutProfileDto, type OnboardingProfile } from './onboarding/profileMapping'
 import { makeOnboardingStyles } from './onboarding/styles'
 import { OnboardingSummary } from './onboarding/OnboardingSummary'
-import { LoadingState, ErrorState } from './shared/ScreenState'
+import { LoadingState, LoadFailedState } from './shared/ScreenState'
 import { StepIndicator } from './shared/StepIndicator'
 import { BackButton, BackButtonSpacer } from './shared/BackButton'
 import { triggerSaveErrorHaptic } from './shared/saveFeedback'
+import { useProfileSaveFailureMessage } from './onboarding/profileSaveFailure'
 
 export interface OnboardingScreenProps {
   readonly onDone: () => void
@@ -31,27 +32,27 @@ export function OnboardingScreen({ onDone }: OnboardingScreenProps) {
   const [profile, setProfile] = useState<OnboardingProfile | null>(null)
   const [step, setStep] = useState(0)
   const [submitError, setSubmitError] = useState<string | null>(null)
+  const saveFailureMessage = useProfileSaveFailureMessage('onboarding.summary.submitError')
 
+  // WEB-28 / NR-01: the form starts only from a profile that loaded. A failed load is a failure state with a
+  // retry — never an empty form whose save would clear the stored Steuer-ID and Steuernummer.
+  const loaded = profileQuery.isSuccess ? toOnboardingProfile(profileQuery.data.data) : null
+  const loadedKey = loaded === null ? null : JSON.stringify(loaded)
   useEffect(() => {
-    if (profile === null && profileQuery.data !== undefined) {
-      setProfile(toOnboardingProfile(profileQuery.data.data))
-    }
-  }, [profileQuery.data, profile])
+    if (profile === null && loadedKey !== null) setProfile(JSON.parse(loadedKey) as OnboardingProfile)
+  }, [loadedKey, profile])
 
   if (profileQuery.isPending) {
     return <LoadingState bp={bp} label={tr('onboarding.loading')} />
   }
-  if (profileQuery.isError || profile === null) {
-    return (
-      <ErrorState
-        bp={bp}
-        heading={tr('onboarding.loadError.heading')}
-        message={tr('onboarding.loadError.message')}
-        retryLabel={tr('onboarding.loadError.retry')}
-        onRetry={() => void profileQuery.refetch()}
-      />
-    )
+  if (loaded === null) {
+    return <LoadFailedState bp={bp} error={profileQuery.error} onRetry={() => void profileQuery.refetch()} />
   }
+  if (profile === null) {
+    return <LoadingState bp={bp} label={tr('onboarding.loading')} />
+  }
+  // "später" skips a step without touching the stored value (it used to clear it).
+  const stored: OnboardingProfile = loaded
 
   const set = (key: keyof OnboardingProfile) => (value: string) =>
     setProfile((p) => (p ? { ...p, [key]: value } : p))
@@ -70,19 +71,12 @@ export function OnboardingScreen({ onDone }: OnboardingScreenProps) {
     if (profile === null) return
     setSubmitError(null)
     putProfile.mutate(
-      { data: toPutProfileDto(profile) },
+      { data: toPutProfileDto(profile, stored) },
       {
-        onSuccess: (response) => {
-          if (response.status === 200) {
-            onDone()
-          } else {
-            triggerSaveErrorHaptic()
-            setSubmitError(tr('onboarding.summary.submitError.validation'))
-          }
-        },
-        onError: () => {
+        onSuccess: () => onDone(),
+        onError: (error) => {
           triggerSaveErrorHaptic()
-          setSubmitError(tr('onboarding.summary.submitError.network'))
+          setSubmitError(saveFailureMessage(error))
         },
       },
     )
@@ -167,7 +161,7 @@ export function OnboardingScreen({ onDone }: OnboardingScreenProps) {
             <Pill>{tr('onboarding.step2.counter', { count: idDigits })}</Pill>
             {taxIdOk ? <Sticker>{tr('onboarding.step2.confirmed')}</Sticker> : null}
           </View>
-          <Chip style={{ marginTop: t.space.s3 }} onPress={() => { set('steuerId')(''); next(); }}>{tr('onboarding.step2.later')}</Chip>
+          <Chip style={{ marginTop: t.space.s3 }} onPress={() => { set('steuerId')(stored.steuerId); next(); }}>{tr('onboarding.step2.later')}</Chip>
         </>
       ) : null}
 
@@ -190,7 +184,7 @@ export function OnboardingScreen({ onDone }: OnboardingScreenProps) {
               testID="onboarding-steuernummer"
             />
           </Feld>
-          <Chip onPress={() => { set('taxNumber')(''); next(); }}>{tr('onboarding.step3.later')}</Chip>
+          <Chip onPress={() => { set('taxNumber')(stored.taxNumber); next(); }}>{tr('onboarding.step3.later')}</Chip>
         </>
       ) : null}
 
