@@ -13,6 +13,9 @@ import { FakeMasterDataRepository } from './fakes/fake-master-data.repository.js
 import { FakeRentalRepository } from './fakes/fake-rental.repository.js'
 import { taxCaseReaderOver } from '../src/tax-case/repository-tax-case.reader.js'
 
+/** Person B agreed to the joint year (decision 3); without it Person A's readers do not reach B. */
+const B_AGREED = new Date('2026-01-10T09:00:00Z')
+
 function range(status: TaxEstimateStatus) {
   if (status.kind !== 'spanne') throw new Error(`expected spanne, got ${status.kind}`)
   return status
@@ -104,7 +107,7 @@ describe('TaxEstimateService — § 35a & § 33 boosters and ADR-0032 feature fl
     const coupleBase = setup()
     coupleBase.interview.seed('a', 2025, { job: 'Angestellt', ausland: 'Nein', kinder: 'Nein', familienstand: 'Verheiratet' })
     await coupleBase.masterData.save('a', { familienstand: 'verheiratet', religion: 'VD' } as MasterDataRecord)
-    await coupleBase.link.upsert('a', 2025, { personBUserId: 'b', filingType: 'zusammen' })
+    await coupleBase.link.upsert('a', 2025, { personBUserId: 'b', filingType: 'zusammen', personBConsentedAt: B_AGREED })
     coupleBase.lstb.seed({ userId: 'a', taxYear: 2025, bruttoarbeitslohn: '80000', lohnsteuer: '14000', sozialversicherung: '14000' })
     coupleBase.lstb.seed({ userId: 'b', taxYear: 2025, bruttoarbeitslohn: '40000', lohnsteuer: '6000', sozialversicherung: '8000' })
     const cBase = range(await coupleBase.service.getState('a', 2025, true))
@@ -121,7 +124,7 @@ describe('TaxEstimateService — § 35a & § 33 boosters and ADR-0032 feature fl
       'gesundheit-betrag': '9000',
     })
     await coupleBoosted.masterData.save('a', { familienstand: 'verheiratet', religion: 'VD' } as MasterDataRecord)
-    await coupleBoosted.link.upsert('a', 2025, { personBUserId: 'b', filingType: 'zusammen' })
+    await coupleBoosted.link.upsert('a', 2025, { personBUserId: 'b', filingType: 'zusammen', personBConsentedAt: B_AGREED })
     coupleBoosted.lstb.seed({ userId: 'a', taxYear: 2025, bruttoarbeitslohn: '80000', lohnsteuer: '14000', sozialversicherung: '14000' })
     coupleBoosted.lstb.seed({ userId: 'b', taxYear: 2025, bruttoarbeitslohn: '40000', lohnsteuer: '6000', sozialversicherung: '8000' })
     const cBoosted = range(await coupleBoosted.service.getState('a', 2025, true))
