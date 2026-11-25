@@ -92,7 +92,7 @@ export class LedgerService {
     if (count === 0 || tail.length !== count) return null
     const same = tail.every((existing, i) => bookingContent(existing) === bookingContent(candidates[i]!.entry) && book.sources.get(existing.number) === candidates[i]!.source)
     if (!same || book.ledger.entries.some((e) => e.reversalOf !== null && tail.some((t) => t.number === e.reversalOf))) return null
-    const postedAt = [...book.log].reverse().find((r) => r.kind === 'entry')?.at
+    const postedAt = book.log.filter((r) => r.kind === 'entry').at(-1)?.at
     if (postedAt === undefined) return null
     const age = Date.parse(this.context.now()) - Date.parse(postedAt)
     return age >= 0 && age <= DUPLICATE_BOOKING_WINDOW_MS ? tail : null
