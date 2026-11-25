@@ -42,6 +42,7 @@ const BOUNDARIES: readonly Boundary[] = [
       'auth/auth.module.ts',
       'auth/better-auth.ts',
       'config/assert-database-migrated.ts',
+      'config/assert-database-role.ts',
       'config/assert-database-reachable.ts',
       'health/health.module.ts',
       'health/pooled-database-reachability-check.ts',
