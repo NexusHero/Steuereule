@@ -1,8 +1,9 @@
 import { withSystemDatabaseAccess } from '../common/database-identity.js'
 import type { GuestActivityRepository } from './guest-activity.repository.js'
+import { RETENTION } from '@steuereule/core'
 
 /** A guest id with no write for this long is erased (ADR-0109, the stakeholder's retention decision). */
-export const GUEST_RETENTION_DAYS = 30
+export const GUEST_RETENTION_DAYS = RETENTION.guestDataDays
 const DAY_MS = 24 * 60 * 60 * 1000
 export const GUEST_SWEEP_INTERVAL_MS = 60 * 60 * 1000
 /** Erasures per batch: each is a transaction over ~40 tables, and a run rides on a request. */

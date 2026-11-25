@@ -4,6 +4,7 @@ import { installProviderRejectionGuard } from './ki/provider-rejections.js'
 import 'reflect-metadata'
 import fastifyCookie from '@fastify/cookie'
 import fastifyMultipart from '@fastify/multipart'
+import { MULTIPART_LIMITS } from './common/multipart-limits.js'
 import { ValidationPipe } from '@nestjs/common'
 import { NestFactory } from '@nestjs/core'
 import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fastify'
@@ -56,13 +57,7 @@ export async function buildApp(): Promise<NestFastifyApplication> {
   app.enableShutdownHooks()
 
   await app.register(fastifyCookie)
-  await app.register(fastifyMultipart, {
-    limits: {
-      fileSize: 10 * 1024 * 1024, // 10 MB max receipt upload
-      files: 1,
-      fields: 10,
-    },
-  })
+  await app.register(fastifyMultipart, { limits: MULTIPART_LIMITS })
 
   await registerHelmet(app)
 

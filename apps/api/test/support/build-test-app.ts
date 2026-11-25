@@ -8,6 +8,7 @@
 // `test` job (ADR-0004).
 import fastifyCookie from '@fastify/cookie'
 import fastifyMultipart from '@fastify/multipart'
+import { MULTIPART_LIMITS } from '../../src/common/multipart-limits.js'
 import { ValidationPipe } from '@nestjs/common'
 import { Test } from '@nestjs/testing'
 import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fastify'
@@ -261,13 +262,7 @@ export async function buildTestApp(options?: {
   })
 
   await app.register(fastifyCookie)
-  await app.register(fastifyMultipart, {
-    limits: {
-      fileSize: 10 * 1024 * 1024,
-      files: 1,
-      fields: 10,
-    },
-  })
+  await app.register(fastifyMultipart, { limits: MULTIPART_LIMITS })
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,

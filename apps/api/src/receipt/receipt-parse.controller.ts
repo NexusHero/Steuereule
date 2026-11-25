@@ -1,3 +1,4 @@
+import { PRODUCT_LIMITS } from '@steuereule/core'
 import { Body, Controller, HttpCode, Inject, Param, Post, UseGuards } from '@nestjs/common'
 import { ApiBody, ApiOkResponse, ApiParam, ApiTags, ApiUnauthorizedResponse } from '@nestjs/swagger'
 import { Throttle } from '@nestjs/throttler'
@@ -14,7 +15,7 @@ import { ReceiptParseService } from './receipt-parse.service.js'
 import { ReceiptReassignService } from './receipt-reassign.service.js'
 
 /** Receipt reads a day per account: a year's whole shoebox in one sitting fits, a script does not (ADR-0109). */
-export const DEFAULT_PARSE_DAILY_LIMIT = 300
+export const DEFAULT_PARSE_DAILY_LIMIT = PRODUCT_LIMITS.receiptReadsPerDay
 
 @ApiTags('eulen-modus')
 @Controller('v1/belege')
