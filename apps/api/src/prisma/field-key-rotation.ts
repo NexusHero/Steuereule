@@ -54,7 +54,7 @@ export function rotationTargets(dmmf: typeof Prisma.dmmf = Prisma.dmmf): Rotatio
     const owner = model.fields.find((f) => f.name === 'userId')
     const ownerColumn = owner ? (owner.dbName ?? owner.name) : model.name === 'User' ? idColumn : undefined
     if (ownerColumn === undefined) throw new Error(`${model.name} has encrypted columns but no userId to scope a rotation by.`)
-    targets.push({ model: model.name, table: model.dbName ?? model.name, idColumn, ownerColumn, columns: encrypted.map(column).sort() })
+    targets.push({ model: model.name, table: model.dbName ?? model.name, idColumn, ownerColumn, columns: encrypted.map(column).sort((a, b) => a.localeCompare(b)) })
   }
   return targets.sort((a, b) => a.model.localeCompare(b.model))
 }

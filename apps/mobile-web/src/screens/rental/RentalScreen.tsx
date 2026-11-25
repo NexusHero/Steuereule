@@ -88,7 +88,7 @@ export function RentalScreen({ onDone = () => {}, onBack, taxYear = runningTaxYe
   }
 
   function sendAddress(propertyId: string, data: PutRentalAddressDto) {
-    trackField(`${propertyId}:${Object.keys(data).sort().join(',')}`, watchSaveResult(setAddress.mutateAsync({ jahr: taxYear, objektId: propertyId, data })).then(invalidate))
+    trackField(`${propertyId}:${Object.keys(data).sort((a, b) => a.localeCompare(b)).join(',')}`, watchSaveResult(setAddress.mutateAsync({ jahr: taxYear, objektId: propertyId, data })).then(invalidate))
   }
 
   function addProperty() {
