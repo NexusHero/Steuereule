@@ -31,6 +31,8 @@ const OMITTED_FIELDS = new Set([
   'userCode',
   'rotationReplayResponse',
   'confirmation',
+  // A live partner invitation lets whoever holds the file join the year and reach the person's data.
+  'invitationCode',
 ])
 
 /**
