@@ -8,6 +8,7 @@ import {
   useOwlModeControllerGetPersonalDataConsent,
   useOwlModeControllerSetPersonalDataConsent,
 } from '@steuereule/api-client'
+import { modelProviderList } from '@steuereule/core'
 import { APP_NS } from '../../i18n/resources'
 import { makePrivacyStyles } from './styles'
 import { useApiFailureMessage } from '../../net/apiFailure'
@@ -63,7 +64,7 @@ export function OwlPersonalDataSection() {
   return (
     <Card>
       <Text style={styles.sectionTitle}>{tr('owlPersonalData.section.title')}</Text>
-      <Text style={styles.sectionBody}>{tr('owlPersonalData.section.body')}</Text>
+      <Text style={styles.sectionBody}>{tr('owlPersonalData.section.body', { providers: modelProviderList() })}</Text>
       <Text style={styles.sectionTitle} accessibilityRole="text">{stateText}</Text>
       {saveError !== null ? (
         <Text style={styles.hint} accessibilityRole="alert">

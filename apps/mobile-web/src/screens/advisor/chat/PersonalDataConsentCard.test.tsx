@@ -1,3 +1,4 @@
+import { modelProviderList } from '@steuereule/core'
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { I18nextProvider } from 'react-i18next'
@@ -24,24 +25,20 @@ function renderCard(onGranted?: () => void, provider?: string | null) {
 }
 
 describe('PersonalDataConsentCard (ADR-0091)', () => {
-  it('names the provider that is actually configured, never a fixed one (real-data run)', async () => {
-    const first = renderCard(undefined, 'anthropic')
-    expect(await screen.findByText(/Claude \(Anthropic als Auftragsverarbeiter\)/)).toBeTruthy()
-    expect(screen.queryByText(/Google/)).toBeNull()
-    first.unmount()
-    const second = renderCard(undefined, 'openai')
-    expect(await screen.findByText(/OpenAI \(OpenAI als Auftragsverarbeiter\)/)).toBeTruthy()
-    second.unmount()
-    // No model configured, or one the app does not know by name: nothing is claimed about who gets the data.
-    renderCard(undefined, null)
-    expect(await screen.findByText(/das Sprachmodell, das für die Eule eingerichtet ist/)).toBeTruthy()
-    expect(screen.queryByText(/Google|Gemini/)).toBeNull()
+  it('names every provider the API can call, whatever model this conversation asks (LEGAL-2)', async () => {
+    // One consent covers all providers: a fallback or a model choice may send the data to another one.
+    for (const provider of ['anthropic', 'openai', 'google-genai', null]) {
+      const view = renderCard(undefined, provider)
+      expect(await screen.findByText(new RegExp(modelProviderList().replace(/[()]/g, '\\$&')))).toBeTruthy()
+      expect(screen.getByText(/Deine Einwilligung gilt für alle diese Anbieter/)).toBeTruthy()
+      view.unmount()
+    }
   })
 
   it('asks for consent while it is not granted', async () => {
     renderCard(undefined, 'google-genai')
     expect(await screen.findByText('Darf die Eule deine persönlichen Daten verarbeiten?')).toBeTruthy()
-    expect(screen.getByText(/Google Gemini/)).toBeTruthy()
+    expect(screen.getByText(/Google \(Gemini, USA\)/)).toBeTruthy()
     expect(screen.getByText(/Art\. 9 DSGVO/)).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Erlauben' })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Nicht erlauben' })).toBeTruthy()

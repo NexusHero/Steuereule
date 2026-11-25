@@ -19,6 +19,8 @@ const WITH_VALUES: ConfirmationResponseDto = {
           key: 'lstb.bruttoarbeitslohn',
           screen: 'lstb',
           instance: null,
+          instanceLabel: null,
+          version: 'v-brutto',
           field: 'bruttoarbeitslohn',
           value: '4750',
           provenance: { kind: 'nutzer' },
@@ -29,6 +31,8 @@ const WITH_VALUES: ConfirmationResponseDto = {
           key: 'lstb.lohnsteuer',
           screen: 'lstb',
           instance: null,
+          instanceLabel: null,
+          version: 'v-lohnsteuer',
           field: 'lohnsteuer',
           value: '700',
           provenance: { kind: 'uebernahme', lastYear: 2024 },
@@ -75,12 +79,12 @@ describe('BestaetigungScreen (REQ-032, ADR-0052 §6/§7)', () => {
     expect(screen.getByText('Assistent: Claude schlägt 4.800 € statt 4.750 € vor.')).toBeTruthy()
   })
 
-  it('confirming the Anlage calls the endpoint and shows the honest empty state afterwards', async () => {
-    let confirmed = false
+  it('confirming the Anlage sends exactly the unconfirmed values shown, with their versions (MCP-4)', async () => {
+    let confirmed: unknown = null
     server.use(
       http.get('*/v1/steuerjahre/2025/bestaetigung', () => HttpResponse.json(confirmed ? { annexes: [] } : WITH_VALUES)),
-      http.put('*/v1/steuerjahre/2025/bestaetigung/anlagen/anlageN', () => {
-        confirmed = true
+      http.put('*/v1/steuerjahre/2025/bestaetigung/anlagen/anlageN', async ({ request }) => {
+        confirmed = await request.json()
         return HttpResponse.json({ annexes: [] })
       }),
     )
@@ -89,7 +93,25 @@ describe('BestaetigungScreen (REQ-032, ADR-0052 §6/§7)', () => {
     fireEvent.click(await screen.findByTestId('bestaetige-anlageN'))
 
     expect(await screen.findByText('Alles bestätigt. Es gibt nichts mehr zu prüfen.')).toBeTruthy()
-    expect(confirmed).toBe(true)
+    expect(confirmed).toEqual({ values: [{ key: 'lstb.lohnsteuer', version: 'v-lohnsteuer' }] })
+  })
+
+  it('says so when a value changed since it was shown, and shows the values again (MCP-4)', async () => {
+    let reads = 0
+    server.use(
+      http.get('*/v1/steuerjahre/2025/bestaetigung', () => {
+        reads += 1
+        return HttpResponse.json(WITH_VALUES)
+      }),
+      http.put('*/v1/steuerjahre/2025/bestaetigung/anlagen/anlageN', () => HttpResponse.json({ statusCode: 409, code: 'CONFIRMATION_STALE' }, { status: 409 })),
+    )
+    renderScreen()
+
+    fireEvent.click(await screen.findByTestId('bestaetige-anlageN'))
+
+    expect(await screen.findByText('Seit du die Werte gesehen hast, hat sich etwas geändert. Prüf sie bitte noch einmal.')).toBeTruthy()
+    await waitFor(() => expect(reads).toBeGreaterThan(1))
+    expect(screen.queryByText('Das hat nicht geklappt. Versuch es noch mal.')).toBeNull()
   })
 
   it('accepting or discarding a proposal sends the decision for exactly that field', async () => {
@@ -113,8 +135,8 @@ describe('BestaetigungScreen (REQ-032, ADR-0052 §6/§7)', () => {
     server.use(http.get('*/v1/steuerjahre/2025/bestaetigung', () => HttpResponse.json(WITH_VALUES)))
     const { onMaskeOeffnen: onOpenScreen } = renderScreen()
 
-    fireEvent.click(await screen.findByTestId('aendern-anlageN'))
-    expect(onOpenScreen).toHaveBeenCalledWith('lstb')
+    fireEvent.click(await screen.findByTestId('aendern-anlageN-lstb'))
+    expect(onOpenScreen).toHaveBeenCalledWith('lstb', 'bruttoarbeitslohn')
   })
 
   it('speaks English too', async () => {

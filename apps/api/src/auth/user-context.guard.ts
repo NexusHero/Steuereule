@@ -36,7 +36,8 @@ export interface UserAuthContext {
 
 export type AuthContext = AssistantAuthContext | UserAuthContext
 
-const COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 180
+/** Lifetime of the guest cookie, printed in the privacy text through `RETENTION.guestCookieDays`. */
+export const COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 180
 
 /**
  * Writes by guests per client address (ADR-0106 D8). A guest needs no account, and every guest write may

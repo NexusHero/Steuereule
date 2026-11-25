@@ -56,6 +56,27 @@ describe('the printout fails closed (WEB-28)', () => {
     await expectFailsClosed(failing)
   })
 
+  it.each(['erfolg', 'abbruch'] as const)('Ausdruck back from the payment (%s): a failed load sends no write (P5 return states)', async (payment) => {
+    const failing = failEveryRequest()
+    wrap(
+      <PrintoutScreen
+        year={2025}
+        payment={payment}
+        confirmTiming={{ intervalMs: 5, timeoutMs: 30 }}
+        onBack={() => {}}
+        onCompleteDetails={() => {}}
+        onCompleteRiester={() => {}}
+        onCompleteChildren={() => {}}
+        onCompleteRental={() => {}}
+        onCompleteCapital={() => {}}
+        onCompleteCrossBorder={() => {}}
+        onConfirm={() => {}}
+        openCheckout={() => {}}
+      />,
+    )
+    await expectFailsClosed(failing)
+  })
+
   it('official form in the expert mode: failed reads are named and no field can be written', async () => {
     writeExpertMode(true)
     const failing = failEveryRequest()

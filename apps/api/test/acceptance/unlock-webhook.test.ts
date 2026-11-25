@@ -82,6 +82,25 @@ describe('Freischaltung — Stripe webhook against the real server (ADR-0050)', 
     expect(await prisma.unlock.findFirstOrThrow({ where: { userId } })).toMatchObject({ status: 'offen' })
   })
 
+  it('API-4: a paid session whose local row was never written is rebuilt from the session metadata', async () => {
+    const user = await prisma.user.create({ data: { name: 'Test', email: `freischaltung-${Date.now()}@example.com` } })
+    const lostEvent = JSON.stringify({
+      id: 'evt_acceptance_lost',
+      object: 'event',
+      type: 'checkout.session.completed',
+      data: { object: { id: 'cs_acceptance_lost', object: 'checkout.session', payment_status: 'paid', amount_total: 1999, metadata: { userId: user.id, steuerjahr: '2025', stufe: 'standard' } } },
+    })
+    const signature = new Stripe('sk_test').webhooks.generateTestHeaderString({ payload: lostEvent, secret: WEBHOOK_SECRET })
+
+    expect((await postWebhook(lostEvent, signature)).status).toBe(200)
+    // Redelivered: still one row.
+    expect((await postWebhook(lostEvent, signature)).status).toBe(200)
+
+    const rows = await prisma.unlock.findMany({ where: { userId: user.id } })
+    expect(rows).toHaveLength(1)
+    expect(rows[0]).toMatchObject({ status: 'bezahlt', taxYear: 2025, tier: 'standard', stripeCheckoutSessionId: 'cs_acceptance_lost' })
+  })
+
   it('the unlock cascades away with the account (Art. 17)', async () => {
     const userId = await seedOpenUnlock()
     await prisma.user.delete({ where: { id: userId } })

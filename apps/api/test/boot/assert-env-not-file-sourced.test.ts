@@ -41,6 +41,17 @@ const ALL_GUARDED_VARS_EXPLICITLY_SUPPLIED = {
   PORT: '1',
 }
 
+/** The rest of a complete local production stack (loopback origins), for the configuration check that runs right
+ *  after this guard (src/config/production-config.ts): without it rows 2 and 3 would stop there, not at the
+ *  database reachability guard. */
+const REST_OF_LOCAL_PRODUCTION_CONFIG = {
+  WEB_APP_URL: 'http://127.0.0.1:1',
+  TRUSTED_PROXIES: 'none',
+  KEYSTORE_DATABASE_URL: 'postgresql://explicit-operator:explicit-operator@127.0.0.1:1/explicit-operator-keystore',
+  PRISMA_FIELD_ENCRYPTION_HASH_SALT: 'explicit-operator-email-hash-salt-0123456789',
+  KEYSTORE_MASTER_KEY: 'explicit-operator-keystore-master-key-0123456789',
+}
+
 const REFUSAL_PATTERN = /Refusing to start/
 
 describe('assertEnvNotFileSourced — the real entry point, both generated-client states', () => {
@@ -102,6 +113,7 @@ describe('assertEnvNotFileSourced — the real entry point, both generated-clien
           NODE_ENV: 'production',
           TSX_TSCONFIG_PATH: fixtures.withEnvTsconfigPath,
           ...ALL_GUARDED_VARS_EXPLICITLY_SUPPLIED,
+          ...REST_OF_LOCAL_PRODUCTION_CONFIG,
         },
         CASE_TIMEOUT_MS,
         { entryPath: fixtures.withEnvEntryPath },
@@ -124,6 +136,7 @@ describe('assertEnvNotFileSourced — the real entry point, both generated-clien
           NODE_ENV: 'production',
           TSX_TSCONFIG_PATH: fixtures.withoutEnvTsconfigPath,
           ...ALL_GUARDED_VARS_EXPLICITLY_SUPPLIED,
+          ...REST_OF_LOCAL_PRODUCTION_CONFIG,
         },
         CASE_TIMEOUT_MS,
         { entryPath: fixtures.withoutEnvEntryPath },

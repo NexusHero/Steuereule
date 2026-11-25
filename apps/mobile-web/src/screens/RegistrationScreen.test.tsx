@@ -46,7 +46,11 @@ describe('RegistrierungScreen', () => {
   it('renders the German "create account" form by default', () => {
     renderRegistration()
     expect(screen.getByText('Konto anlegen')).toBeTruthy()
-    expect(screen.getByText('Mit dem Anlegen akzeptierst du AGB & Datenschutz.')).toBeTruthy()
+    // The consent sentence links terms and privacy policy as real links (WEB-7), above the beta notice (WEB-20).
+    expect(screen.getByTestId('registrierung-rechtliches').textContent).toBe('Mit dem Anlegen akzeptierst du die AGB. Wie wir deine Daten verarbeiten, steht in der Datenschutzerklärung.')
+    expect(screen.getAllByTestId('rechtliches-link-agb')[0]!.getAttribute('href')).toBe('/rechtliches/agb')
+    expect(screen.getAllByTestId('rechtliches-link-datenschutz')[0]!.getAttribute('href')).toBe('/rechtliches/datenschutz')
+    expect(screen.getByTestId('beta-hinweis')).toBeTruthy()
   })
 
   it('switches to English (ADR-0006)', () => {

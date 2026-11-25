@@ -7,6 +7,7 @@ import { UnlockService } from '../src/unlock/unlock.service.js'
 import type { CommuteRepository } from '../src/commute/commute.repository.js'
 import type { PaymentProvider } from '../src/unlock/payment-provider.js'
 import type { UnlockRepository } from '../src/unlock/unlock.repository.js'
+import { fixedUnlockRepository, stubPaymentProvider } from './fakes/fake-unlock.repository.js'
 import { FakeAuditRepository } from './fakes/fake-audit.repository.js'
 import { FakeCapitalRepository } from './fakes/fake-capital.repository.js'
 import { FakeChSalaryCertificateRepository } from './fakes/fake-ch-salary-certificate.repository.js'
@@ -46,15 +47,8 @@ describe('PrintoutService with AMOUNT_LATER', () => {
     await interviewRepo.write({ userId: 'u1', taxYear: 2025, questionId: 'spenden', value: 'Ja', openItems: 0 })
     await interviewRepo.write({ userId: 'u1', taxYear: 2025, questionId: 'spenden-betrag', value: AMOUNT_LATER, openItems: 0 })
 
-    const unlockRepo: UnlockRepository = {
-      isPaid: async () => true,
-      createOpenOnes: async () => {},
-      markPaid: async () => {},
-    }
-    const paymentProvider: PaymentProvider = {
-      createCheckout: async () => ({ id: 'cs_1', url: 'https://example.test' }),
-      verifyEvent: () => ({ kind: 'bezahlt', sessionId: 'cs_1', amountCents: 3900 }),
-    }
+    const unlockRepo: UnlockRepository = fixedUnlockRepository(true)
+    const paymentProvider: PaymentProvider = stubPaymentProvider('cs_1')
     const commuteRepo: CommuteRepository = {
       findForUserAndYear: async () => null,
       save: async (_u, _y, e) => e,
@@ -84,8 +78,8 @@ describe('PrintoutService check before payment (ADR-0085)', () => {
       findForUserAndYear: async () => ({ workdays: [1, 2, 3, 4, 5], vacationDays: 30, sickDays: 0, homeOfficeDays: 0, oneWayKm: 12, transport: 'pkw', workplace, publicHolidays: null, publicHolidayRegion: null }),
       save: async (_u, _y, e) => e,
     }
-    const unlockRepo: UnlockRepository = { isPaid: async () => false, createOpenOnes: async () => {}, markPaid: async () => {} }
-    const paymentProvider: PaymentProvider = { createCheckout: async () => ({ id: 'cs_2', url: 'https://example.test' }), verifyEvent: () => ({ kind: 'bezahlt', sessionId: 'cs_2', amountCents: 3900 }) }
+    const unlockRepo: UnlockRepository = fixedUnlockRepository(false)
+    const paymentProvider: PaymentProvider = stubPaymentProvider('cs_2')
     return new PrintoutService(taxCaseReaderOver({ profile: profileRepo, masterData: masterDataRepo, wageTaxCertificate: lstbRepo, pension: new FakePensionRepository(), capital: new FakeCapitalRepository(), rental: new FakeRentalRepository(), salaryStatement: new FakeChSalaryCertificateRepository(), children: new FakeChildRepository(), coupling: new FakeLinkRepository(), interview: new FakeInterviewAnswerRepository(), commute: commuteRepo }), new FakeMarkingRepository(), new UnlockService(unlockRepo, paymentProvider, 'http://localhost:8081'), new AuditService(new FakeAuditRepository()), TEMPLATES_BASE)
   }
 
@@ -113,8 +107,8 @@ describe('PrintoutService check: the IBAN is only needed for a refund', () => {
     } as never)
     lstbRepo.seed({ userId: 'u3', taxYear: 2025, bruttoarbeitslohn: '42000', lohnsteuer: '6000', sozialversicherung: '8000' })
     const commuteRepo: CommuteRepository = { findForUserAndYear: async () => null, save: async (_u, _y, e) => e }
-    const unlockRepo: UnlockRepository = { isPaid: async () => false, createOpenOnes: async () => {}, markPaid: async () => {} }
-    const paymentProvider: PaymentProvider = { createCheckout: async () => ({ id: 'cs_3', url: 'https://example.test' }), verifyEvent: () => ({ kind: 'bezahlt', sessionId: 'cs_3', amountCents: 3900 }) }
+    const unlockRepo: UnlockRepository = fixedUnlockRepository(false)
+    const paymentProvider: PaymentProvider = stubPaymentProvider('cs_3')
     const estimate = { getState: async () => (result === null ? { kind: 'offen' as const } : { kind: 'spanne' as const, result }) }
     return new PrintoutService(taxCaseReaderOver({ profile: profileRepo, masterData: masterDataRepo, wageTaxCertificate: lstbRepo, pension: new FakePensionRepository(), capital: new FakeCapitalRepository(), rental: new FakeRentalRepository(), salaryStatement: new FakeChSalaryCertificateRepository(), children: new FakeChildRepository(), coupling: new FakeLinkRepository(), interview: new FakeInterviewAnswerRepository(), commute: commuteRepo }), new FakeMarkingRepository(), new UnlockService(unlockRepo, paymentProvider, 'http://localhost:8081'), new AuditService(new FakeAuditRepository()), TEMPLATES_BASE, undefined, estimate as never)
   }

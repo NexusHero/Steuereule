@@ -498,6 +498,13 @@ describe('the checkout', () => {
     await waitFor(() => expect(open).toHaveBeenCalledWith('https://pay.example/session/1'))
   })
 
+  it('links terms and privacy policy before the payment (WEB-7)', async () => {
+    renderCheckout(vi.fn())
+    await screen.findByTestId('checkout-selbststaendig')
+    expect(screen.getByTestId('rechtliches-link-agb').getAttribute('href')).toBe('/rechtliches/agb')
+    expect(screen.getByTestId('beta-hinweis')).toBeTruthy()
+  })
+
   it('shows the refusal of the API when it is no unconfigured tier', async () => {
     server.use(http.post(`${BASE_URL}/checkout`, () => refusal(409, 'Das Jahr ist schon freigeschaltet.')))
     const open = vi.fn()

@@ -23,7 +23,7 @@ export const getPrintoutControllerLiveValuesResponseMock = (overrideResponse: Pa
         [faker.string.alphanumeric(5)]: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),faker.helpers.arrayElement([true] as const),])
       }, lines: {
         [faker.string.alphanumeric(5)]: faker.string.alpha({length: {min: 10, max: 20}})
-      }}))})), ...overrideResponse})
+      }}))})), unconfirmed: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => (faker.string.alpha({length: {min: 10, max: 20}}))), ...overrideResponse})
 
 export const getPrintoutControllerCheckoutResponseMock = (overrideResponse: Partial<Extract<CheckoutResponseDto, object>> = {}): CheckoutResponseDto => ({checkoutUrl: faker.string.alpha({length: {min: 10, max: 20}}), ...overrideResponse})
 

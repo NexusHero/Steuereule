@@ -113,4 +113,7 @@ export class LiveFormDto {
 export class LiveFormValuesDto {
   @ApiProperty({ type: [LiveFormDto], description: 'The filled Vordrucke in print order; Vordrucke without values are left out.' })
   readonly forms!: readonly LiveFormDto[]
+
+  @ApiProperty({ type: [String], example: ['unbestaetigt.anlageN'], description: 'Anlagen with values the user has not confirmed; while there are any, no form is shown (MCP-24).' })
+  readonly unconfirmed!: readonly string[]
 }

@@ -1,10 +1,11 @@
 import { Inject, Injectable, Optional } from '@nestjs/common'
-import { UnauthenticatedError, UnavailableError } from '../common/domain-error.js'
+import { PAYMENT_RETURN, paymentReturnUrl } from '@steuereule/core'
+import { ConflictError, UnauthenticatedError, UnavailableError } from '../common/domain-error.js'
 import { declaresSelfEmployment, filingPathOf, selfEmploymentEnabled, type FilingPath } from '../config/self-employment.js'
 import { answersFrom } from '../interview/answers.js'
 import { INTERVIEW_ANSWER_REPOSITORY, type InterviewAnswerRepository } from '../interview/interview-answer.repository.js'
 import { UNLOCK_REPOSITORY, type UnlockRepository, type UnlockTier } from './unlock.repository.js'
-import { PAYMENT_PROVIDER, type PaymentProvider } from './payment-provider.js'
+import { PAYMENT_PROVIDER, PaymentProviderUnavailableError, type PaymentProvider, type Price } from './payment-provider.js'
 
 export const WEB_APP_URL_TOKEN = Symbol('WEB_APP_URL')
 
@@ -42,21 +43,53 @@ export class UnlockService {
     return this.provider ? 'offen' : 'nicht-verfuegbar'
   }
 
-  async startCheckout(userId: string, taxYear: number): Promise<{ checkoutUrl: string }> {
+  /** The price the year's checkout would charge, read from the provider's own price (WEB-16); null when unknown. */
+  async price(userId: string, taxYear: number): Promise<Price | null> {
+    if (!this.provider) return null
+    try {
+      return await this.provider.priceOf(await this.requiredTier(userId, taxYear))
+    } catch {
+      return null
+    }
+  }
+
+  /**
+   * One payable session per year and tier (API-4): a paid year is refused, an open session is handed out
+   * again, a session paid before its webhook is recorded here, and a new one is only created when none is
+   * left. The provider gets one idempotency key per attempt, so two tabs at once, or a retry after the
+   * local row could not be written, get the same session; a paid session without a row is rebuilt by the
+   * webhook from the session's metadata.
+   */
+  async startCheckout(userId: string, taxYear: number, now = new Date()): Promise<{ checkoutUrl: string }> {
     if (!this.provider) {
       throw new UnavailableError('PAYMENT_NOT_CONFIGURED', 'Payment is not configured in this environment.')
     }
     const tier = await this.requiredTier(userId, taxYear)
+    if (await this.repository.isPaid(userId, taxYear, tier)) throw alreadyPaid()
+    for (const sessionId of await this.repository.openSessions(userId, taxYear, tier)) {
+      const found = await this.provider.lookupCheckout(sessionId)
+      if (found.state === 'open') return { checkoutUrl: found.url }
+      if (found.state === 'paid') {
+        await this.repository.markPaid(sessionId, found.amountCents, now)
+        throw alreadyPaid()
+      }
+      if (found.state === 'pending') {
+        throw new ConflictError('PAYMENT_PENDING', 'Eine Zahlung für dieses Steuerjahr wird noch bestätigt.')
+      }
+      await this.repository.markClosed(sessionId)
+    }
     // The self-employed come back to the fill-in help they paid for, everyone else to the printout.
     const returnTrip = tier === 'selbststaendig' ? `${this.webAppUrl}/app/steuerjahr/${taxYear}/selbststaendig/elster` : `${this.webAppUrl}/app/steuerjahr/${taxYear}/ausdruck`
+    const attempt = await this.repository.countSessions(userId, taxYear, tier)
     let session
     try {
       session = await this.provider.createCheckout({
-      userId,
-      taxYear,
-      tier,
-      successUrl: `${returnTrip}?zahlung=erfolg`,
-      cancelUrl: `${returnTrip}?zahlung=abbruch`,
+        userId,
+        taxYear,
+        tier,
+        successUrl: paymentReturnUrl(returnTrip, PAYMENT_RETURN.success),
+        cancelUrl: paymentReturnUrl(returnTrip, PAYMENT_RETURN.cancel),
+        idempotencyKey: `checkout:${userId}:${taxYear}:${tier}:${attempt}`,
       })
     } catch (error) {
       if (tier === 'selbststaendig' && error instanceof Error && error.message.includes('STRIPE_PRICE_ID_SELBSTSTAENDIG')) {
@@ -68,17 +101,35 @@ export class UnlockService {
     return { checkoutUrl: session.url }
   }
 
+  /** Signature-checked; every transition is idempotent, so a redelivered event changes nothing more. */
   async processWebhook(rawData: Buffer | undefined, signature: string | undefined, now = new Date()): Promise<void> {
     if (!this.provider) throw new UnavailableError('PAYMENT_NOT_CONFIGURED', 'Payment is not configured in this environment.')
     if (!rawData || !signature) throw new UnauthenticatedError('WEBHOOK_SIGNATURE_MISSING', 'The webhook signature is missing.')
     let event
     try {
-      event = this.provider.verifyEvent(rawData, signature)
-    } catch {
+      event = await this.provider.verifyEvent(rawData, signature)
+    } catch (error) {
+      if (error instanceof PaymentProviderUnavailableError) {
+        throw new UnavailableError('PAYMENT_PROVIDER_UNAVAILABLE', 'The payment provider could not be reached; the event will be redelivered.')
+      }
       throw new UnauthenticatedError('WEBHOOK_SIGNATURE_INVALID', 'The webhook signature is invalid.')
     }
-    if (event.kind === 'bezahlt') {
-      await this.repository.markPaid(event.sessionId, event.amountCents, now)
+    switch (event.kind) {
+      case 'bezahlt':
+        await this.repository.markPaid(event.sessionId, event.amountCents, now, event.owner)
+        return
+      case 'zurueckgenommen':
+        await this.repository.revoke(event.sessionId, event.reason)
+        return
+      case 'wiederhergestellt':
+        await this.repository.restore(event.sessionId)
+        return
+      case 'ignoriert':
+        return
     }
   }
+}
+
+function alreadyPaid(): ConflictError {
+  return new ConflictError('ALREADY_PAID', 'Dieses Steuerjahr ist schon freigeschaltet.')
 }

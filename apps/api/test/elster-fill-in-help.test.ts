@@ -70,10 +70,11 @@ async function household(years: readonly number[], { unlocked = true } = {}) {
   const commute: CommuteRepository = { findForUserAndYear: async () => null, save: async (_u, _y, e) => e }
   const audit = new AuditService(new FakeAuditRepository())
   const unlock = { status: async () => (unlocked ? 'freigeschaltet' : 'offen') } as unknown as UnlockService
-  const printout = new PrintoutService(taxCaseReaderOver({ profile, masterData, wageTaxCertificate: lstb, pension: new FakePensionRepository(), capital: new FakeCapitalRepository(), rental, salaryStatement: new FakeChSalaryCertificateRepository(), children, coupling: new FakeLinkRepository(), interview, commute }), new FakeMarkingRepository(), unlock, audit, TEMPLATES_BASE)
+  const markings = new FakeMarkingRepository()
+  const printout = new PrintoutService(taxCaseReaderOver({ profile, masterData, wageTaxCertificate: lstb, pension: new FakePensionRepository(), capital: new FakeCapitalRepository(), rental, salaryStatement: new FakeChSalaryCertificateRepository(), children, coupling: new FakeLinkRepository(), interview, commute }), markings, unlock, audit, TEMPLATES_BASE)
   const business = composeBusinessService(new FakeBusinessRepository(), interview, audit, new HebesatzDirectory(), unlock, () => '2026-11-20T10:00:00.000Z')
   for (const year of years) await business.post(USER, year, A1, fee(year))
-  return { help: new ElsterHelpService(business, printout, audit), printout, business }
+  return { help: new ElsterHelpService(business, printout, audit), printout, business, markings }
 }
 
 /** The printout's value of a field as the help shows it: a ticked box reads „Ja“. */
@@ -202,6 +203,20 @@ describe('ELSTER fill-in help over the whole return (ADR-0101 §16)', () => {
     expect(n).toMatchObject({ status: 'not_published', lineNumbersAvailable: false })
     expect(n.note).toMatch(/noch nicht veröffentlicht \(zuletzt 2025\)/)
     expect(n.lines.find((l) => l.id === 'anlN.kz110')).toMatchObject({ zeile: null, kennzahlen: [], value: '38000' })
+  })
+
+  it('an unconfirmed value of the assistant is no value to type into ELSTER (MCP-24): the return waits, the book does not', async () => {
+    const { help, markings } = await household([2025])
+    await markings.save(USER, 2025, { key: 'lstb.lohnsteuer', provenance: { kind: 'assistent', name: 'Claude' }, confirmed: false, proposal: null })
+
+    const list = await help.forms(USER, 2025, A1)
+    expect(list.unconfirmed).toEqual(['unbestaetigt.anlageN'])
+    expect(list.forms.filter((f) => f.group === 'income-tax')).toEqual([])
+    expect(list.forms.some((f) => f.group === 'business')).toBe(true)
+    await expect(help.help(USER, 2025, A1, 'anlage-n', undefined)).rejects.toMatchObject({ code: 'ELSTER_UNCONFIRMED' })
+
+    await markings.save(USER, 2025, { key: 'lstb.lohnsteuer', provenance: { kind: 'assistent', name: 'Claude' }, confirmed: true, proposal: null })
+    expect((await help.forms(USER, 2025, A1)).forms.some((f) => f.form === 'anlage-n')).toBe(true)
   })
 
   it('stays behind the self-employment tier and refuses an unknown copy', async () => {

@@ -21,8 +21,10 @@ import { buildCorsOptions } from '../src/cors/build-cors-options.js'
 import { ENCRYPTED_PRISMA } from '../src/prisma/encrypted-prisma.provider.js'
 import { PrismaService } from '../src/prisma/prisma.service.js'
 import { PROFILE_REPOSITORY } from '../src/profile/profile.repository.js'
+import { PROVENANCE_REPOSITORY } from '../src/marking/marking.repository.js'
 import { FakeAuditRepository } from './fakes/fake-audit.repository.js'
 import { FakeProfileRepository } from './fakes/fake-profile.repository.js'
+import { FakeMarkingRepository } from './fakes/fake-marking.repository.js'
 
 const ALLOWED_ORIGIN = 'https://allowed.example.com'
 const DISALLOWED_ORIGIN = 'https://not-allowed.example.com'
@@ -36,6 +38,9 @@ async function bootRealServer(): Promise<{ app: NestFastifyApplication; baseUrl:
     .useValue(new FakeProfileRepository())
     .overrideProvider(AUDIT_REPOSITORY)
     .useValue(new FakeAuditRepository())
+    // A user write settles its markings (`UserWriteMarkings`), which needs the marking store too.
+    .overrideProvider(PROVENANCE_REPOSITORY)
+    .useValue(new FakeMarkingRepository())
     .overrideProvider(PrismaService)
     .useValue({})
     .overrideProvider(ENCRYPTED_PRISMA)

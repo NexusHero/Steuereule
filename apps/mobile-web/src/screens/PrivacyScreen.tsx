@@ -21,7 +21,7 @@ export interface PrivacyScreenProps {
 export function PrivacyScreen({ onBack, onAccountDeleted }: PrivacyScreenProps) {
   const bp = useBreakpoint()
   const { t } = useTranslation(APP_NS)
-  const tr = (key: string): string => t(key)
+  const tr = (key: string, options?: Readonly<Record<string, string | number>>): string => (options ? t(key, options) : t(key))
   const queryClient = useQueryClient()
   const deleteAccountMutation = useAccountDeletionControllerDeleteAccount()
 

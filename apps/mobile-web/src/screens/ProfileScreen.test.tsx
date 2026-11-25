@@ -79,6 +79,16 @@ describe('ProfilScreen', () => {
     expect(screen.getByText('A')).toBeTruthy() // avatar initial
   })
 
+  it('reaches the legal pages and shows the beta notice (WEB-7, WEB-20)', async () => {
+    mockSavedProfile()
+    renderProfile()
+    await screen.findByText('Anna Beispiel')
+    expect(screen.getByTestId('beta-hinweis')).toBeTruthy()
+    for (const page of ['impressum', 'datenschutz', 'agb', 'hinweise']) {
+      expect(screen.getByTestId(`rechtliches-link-${page}`).getAttribute('href')).toBe(`/rechtliches/${page}`)
+    }
+  })
+
   it('shows an honest empty state for a brand-new profile (never mock data)', async () => {
     renderProfile() // default MSW handler resolves the all-null profile
     await screen.findByText('Noch keine Angaben gespeichert.')

@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { SCREENS, type Screen } from '@steuereule/core'
+import { ConflictError } from '../../common/domain-error.js'
 import { checkStageValue, validateStageTarget } from '../../ki/advisor-safety.js'
 import type { SimulationEntry } from '../mcp-report.service.js'
 import { MCP_CHECKOUT_LINK_LIMIT } from '../mcp-rate-limit.js'
@@ -61,7 +62,14 @@ export function registerStatusTools(session: McpSession, deps: McpDeps): void {
       }
       await deps.audit.append({ userId, action: 'READ', resource: 'zahllink_anfordern' })
 
-      const { checkoutUrl } = await deps.unlock.startCheckout(userId, taxYear)
+      let checkoutUrl: string
+      try {
+        ;({ checkoutUrl } = await deps.unlock.startCheckout(userId, taxYear))
+      } catch (error) {
+        // API-4: a paid year or a payment still settling is said as such, not as a failure.
+        if (error instanceof ConflictError) return refused(`${error.code}: ${error.message}`)
+        throw error
+      }
       return json({
                 steuerjahr: taxYear,
                 checkoutUrl,

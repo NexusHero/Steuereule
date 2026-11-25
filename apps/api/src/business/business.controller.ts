@@ -1,6 +1,8 @@
 import { applyDecorators, Body, Controller, Get, HttpCode, Inject, Param, ParseIntPipe, Post, Put, Query, Res, UseGuards } from '@nestjs/common'
 import { ApiBody, ApiOkResponse, ApiParam, ApiQuery, ApiResponse, ApiTags, ApiUnauthorizedResponse } from '@nestjs/swagger'
+import { Throttle, ThrottlerGuard } from '@nestjs/throttler'
 import type { FastifyReply } from 'fastify'
+import { CHECKOUT_THROTTLE, accountKeyedTracker } from '../rate-limit/rate-limit.js'
 import type { BankCsvPreset, BookingTaxKey, ProfessionAnswers, VerfahrensdokuPlaceholder } from '@steuereule/core'
 import { BANK_CSV_PRESETS, CATALOG_PROFESSIONS, FREE_ACTIVITIES, FREE_ACTIVITY_LABELS, PROFESSION_LABELS, USEFUL_LIVES, parseBookingDraft } from '@steuereule/core'
 import { InvalidInputError } from '../common/domain-error.js'
@@ -498,7 +500,11 @@ export class BusinessController {
   @Post(':jahr/selbststaendig/checkout')
   @HttpCode(201)
   @RequiresAccount()
-  @ApiOkResponse({ type: BusinessCheckoutResponseDto, description: 'Stripe Checkout at the self-employment price (STRIPE_PRICE_ID_SELBSTSTAENDIG).' })
+  @Throttle({ default: { ...CHECKOUT_THROTTLE, getTracker: accountKeyedTracker } })
+  @UseGuards(ThrottlerGuard)
+  @ApiOkResponse({ type: BusinessCheckoutResponseDto, description: 'Stripe Checkout at the self-employment price (STRIPE_PRICE_ID_SELBSTSTAENDIG); an open session is handed out again.' })
+  @ApiResponse({ status: 409, type: BusinessErrorDto, description: 'ALREADY_PAID (the year is unlocked) or PAYMENT_PENDING (a payment is still being settled).' })
+  @ApiResponse({ status: 429, description: 'Too many checkout starts for this account.' })
   @Errors(503)
   checkout(@CurrentUser() userId: string, @Param('jahr', ParseTaxYearPipe) year: number): Promise<BusinessCheckoutResponseDto> {
     return this.unlock.startCheckout(userId, year)

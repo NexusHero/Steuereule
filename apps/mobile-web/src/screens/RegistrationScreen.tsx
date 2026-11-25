@@ -9,10 +9,15 @@ import { useEmailVerified } from '../auth/useEmailVerified'
 import { SocialSignInSection } from './shared/SocialSignInSection'
 import { EmailVerificationBanner } from './shared/EmailVerificationBanner'
 import { NEW_PASSWORD_MIN_LENGTH } from '../auth/password-policy'
+import { LegalLink, LegalLinks } from './legal/LegalLinks'
+import type { LegalPage } from './legal/texts'
+import { BetaNotice } from './shared/BetaNotice'
 
 export interface RegistrationScreenProps {
   readonly onDone: () => void
   readonly onLogin?: () => void
+  /** Opens a legal page inside the app; without it the legal links are plain web links. */
+  readonly onLegal?: (page: LegalPage) => void
 }
 
 type Stage =
@@ -20,7 +25,7 @@ type Stage =
   | { readonly kind: 'submitting' }
   | { readonly kind: 'success'; readonly email: string }
 
-export function RegistrationScreen({ onDone, onLogin }: RegistrationScreenProps) {
+export function RegistrationScreen({ onDone, onLogin, onLegal }: RegistrationScreenProps) {
   const t = useTheme()
   const bp = useBreakpoint()
   const { t: tr } = useTranslation(APP_NS)
@@ -79,6 +84,7 @@ export function RegistrationScreen({ onDone, onLogin }: RegistrationScreenProps)
 
   return (
     <ScrollView contentContainerStyle={bp === 's' ? styles.screen : styles.wideScreen} keyboardShouldPersistTaps="handled" testID="screen-container">
+      <BetaNotice />
       <Text style={styles.heading} role="heading" aria-level={1}>
         {tr('registrierung.titleBefore')}
         <Text style={{ color: t.color.funkeTinte }}>{tr('registrierung.titleMark')}</Text>
@@ -112,7 +118,17 @@ export function RegistrationScreen({ onDone, onLogin }: RegistrationScreenProps)
           tr('registrierung.submit')
         )}
       </Button>
-      <Text style={styles.legalNote}>{tr('registrierung.legalNote')}</Text>
+      <Text style={styles.legalNote} testID="registrierung-rechtliches">
+        {tr('registrierung.legal.beforeTerms')}
+        <LegalLink page="agb" onPage={onLegal} style={styles.legalLink}>
+          {tr('registrierung.legal.terms')}
+        </LegalLink>
+        {tr('registrierung.legal.beforePrivacy')}
+        <LegalLink page="datenschutz" onPage={onLegal} style={styles.legalLink}>
+          {tr('registrierung.legal.privacy')}
+        </LegalLink>
+        {tr('registrierung.legal.after')}
+      </Text>
 
       {onLogin ? (
         <View style={styles.linksRow}>
@@ -121,6 +137,7 @@ export function RegistrationScreen({ onDone, onLogin }: RegistrationScreenProps)
           </Pressable>
         </View>
       ) : null}
+      <LegalLinks onPage={onLegal} />
     </ScrollView>
   )
 }
@@ -135,6 +152,7 @@ function makeStyles(t: UiTheme) {
   const submittingRow: ViewStyle = { flexDirection: 'row', alignItems: 'center', gap: t.space.s2 }
   const submittingLabel: TextStyle = { ...t.type.button, color: inkOnFunke(t) }
   const legalNote: TextStyle = { ...t.type.caption, color: t.color.tinte2, textAlign: 'center', marginTop: t.space.s3 }
+  const legalLink: TextStyle = { ...t.type.caption, color: t.color.tinte, textDecorationLine: 'underline' }
   const successBadge: ViewStyle = { alignSelf: 'center', marginBottom: t.space.s4 }
   const successHeading: TextStyle = { ...t.type.title, color: t.color.tinte, textAlign: 'center', marginBottom: t.space.s2 }
   const successSubtitle: TextStyle = { ...t.type.body, color: t.color.tinte2, textAlign: 'center', marginBottom: t.space.s5 }
@@ -152,6 +170,7 @@ function makeStyles(t: UiTheme) {
     submittingRow,
     submittingLabel,
     legalNote,
+    legalLink,
     successBadge,
     successHeading,
     successSubtitle,

@@ -13,6 +13,8 @@ export const ACCOUNT_EXPORT_THROTTLE = { ttl: 60 * 60_000, limit: 5 } as const
 
 /** Starting a printout renders PDFs in Chromium (ADR-0109). */
 export const PRINTOUT_JOB_THROTTLE = { ttl: 10 * 60_000, limit: 10 } as const
+/** Checkout starts per account (API-4): an open session is reused, so a few are plenty. */
+export const CHECKOUT_THROTTLE = { ttl: 10 * 60_000, limit: 10 } as const
 
 export const VERIFY_PASSWORD_THROTTLE = { ttl: 10_000, limit: 3 } as const
 

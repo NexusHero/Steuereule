@@ -6,6 +6,7 @@ import { UserContextGuard } from '../auth/user-context.guard.js'
 import { ParseTaxYearPipe } from '../common/parse-tax-year.pipe.js'
 import { AdoptChildrenDto, AnswerCandidateDto, HouseholdResponseDto } from './dto/household.dto.js'
 import { HouseholdService } from './household.service.js'
+import { UserWrite } from '../common/user-write.decorator.js'
 
 /** Household at account level (#452, ADR-0062). */
 @ApiTags('haushalt')
@@ -24,6 +25,7 @@ export class HouseholdController {
   }
 
   @Post(':jahr/haushalt/kinder/uebernehmen')
+  @UserWrite('kind')
   @HttpCode(200)
   @RequiresAccount()
   @ApiParam({ name: 'jahr', type: Number, example: 2026 })
@@ -34,6 +36,7 @@ export class HouseholdController {
   }
 
   @Post(':jahr/haushalt/personen/:personId/nicht-mehr-dabei')
+  @UserWrite('kind')
   @HttpCode(200)
   @RequiresAccount()
   @ApiParam({ name: 'jahr', type: Number, example: 2026, description: 'The first year without the person.' })
@@ -44,6 +47,7 @@ export class HouseholdController {
   }
 
   @Post(':jahr/haushalt/partner/nicht-mehr-dabei')
+  @UserWrite('kopplung')
   @HttpCode(200)
   @RequiresAccount()
   @ApiParam({ name: 'jahr', type: Number, example: 2026, description: 'The first year without the spouse link.' })
@@ -53,6 +57,7 @@ export class HouseholdController {
   }
 
   @Delete(':jahr/haushalt/personen/:personId')
+  @UserWrite('kind')
   @HttpCode(200)
   @RequiresAccount()
   @ApiParam({ name: 'jahr', type: Number, example: 2026 })
@@ -63,6 +68,7 @@ export class HouseholdController {
   }
 
   @Post(':jahr/haushalt/dubletten/:id')
+  @UserWrite('kind')
   @HttpCode(200)
   @RequiresAccount()
   @ApiParam({ name: 'jahr', type: Number, example: 2026 })

@@ -187,21 +187,27 @@ finish() {
 
 # Beta setup on Google Cloud (ADR-0053). Run from the repo root:
 #   scripts/infra/gcp-setup.sh
-# Non-secret answers are remembered in infra/gcp/.env.beta (git-ignored). Secret values are
+# Non-secret answers are remembered in infra/gcp/.env.<environment> (git-ignored). Secret values are
 # generated or pasted here and go straight into Secret Manager; they never touch a file.
+# What the runtime needs is declared in apps/api/src/config/production-config.ts; the API refuses to start on
+# a deployment while anything there is missing. infra/README.md lists the same steps in order.
 
 # Environment of this run (ADR-0109): "beta" is the first stack and keeps its resource names; it serves as
-# staging. For a second stack run e.g. TF_ENVIRONMENT=production GH_ENVIRONMENT=production, each in its own
-# GCP project. GH_ENVIRONMENT makes the GitHub variables environment-scoped instead of repository-wide.
+# staging. For the second stack run TF_ENVIRONMENT=production, in its own GCP project. Every GitHub variable
+# goes into the GitHub environment GH_ENVIRONMENT (staging or production), never to repository level: the
+# deploy refuses repository-level deploy variables (OPS-13).
 TF_ENVIRONMENT="${TF_ENVIRONMENT:-beta}"
-GH_ENVIRONMENT="${GH_ENVIRONMENT:-}"
 case "$TF_ENVIRONMENT" in
-  beta) TF_GITHUB_ENVIRONMENTS='["staging","beta"]' ;;
-  staging|production) TF_GITHUB_ENVIRONMENTS="[\"$TF_ENVIRONMENT\"]" ;;
+  beta) TF_GITHUB_ENVIRONMENTS='["staging","beta"]'; GH_ENVIRONMENT="${GH_ENVIRONMENT:-staging}" ;;
+  staging|production) TF_GITHUB_ENVIRONMENTS="[\"$TF_ENVIRONMENT\"]"; GH_ENVIRONMENT="${GH_ENVIRONMENT:-$TF_ENVIRONMENT}" ;;
   *) echo "TF_ENVIRONMENT must be beta, staging or production." >&2; exit 1 ;;
 esac
+case "$GH_ENVIRONMENT" in
+  staging|production) ;;
+  *) echo "GH_ENVIRONMENT must be staging or production (the environments .github/workflows/deploy.yml deploys to)." >&2; exit 1 ;;
+esac
 
-TOTAL_STAGES=12
+TOTAL_STAGES=14
 ENV_FILE="infra/gcp/.env.$TF_ENVIRONMENT"
 REGION="europe-west4"
 SQL_INSTANCE_NAME="steuereule-$TF_ENVIRONMENT"
@@ -229,17 +235,33 @@ ensure_generated_secret() {
   fi
 }
 
+# ask_stored_secret NAME "Prompt" PATTERN: asks for a pasted value unless the secret already has one (or the human
+# wants to replace it), checks it against PATTERN and stores it.
+ask_stored_secret() {
+  local name="$1" prompt="$2" pattern="$3"
+  if secret_has_value "$name" && ! confirm "$name ist schon gesetzt. Ersetzen?"; then
+    note "$name unverändert."
+    return
+  fi
+  ask_secret SECRET_INPUT "$prompt"
+  [[ "$SECRET_INPUT" =~ $pattern ]] || { warn "$name hat nicht die erwartete Form ($pattern)."; exit 1; }
+  put_secret "$name" "$SECRET_INPUT"
+  unset SECRET_INPUT
+}
+
 tofu_output() { "$TOFU" -chdir="$TOFU_DIR" output -raw "$1"; }
 
-banner "SteuerEule Beta auf Google Cloud einrichten"
+banner "SteuerEule auf Google Cloud einrichten ($TF_ENVIRONMENT → GitHub-Umgebung $GH_ENVIRONMENT)"
 
 stage "Werkzeuge und Anmeldung"
-for tool in gcloud gh openssl curl; do
+for tool in gcloud gh openssl curl jq; do
   command -v "$tool" >/dev/null 2>&1 || { warn "$tool fehlt — bitte installieren und neu starten."; exit 1; }
 done
 [[ -n "$TOFU" ]] || { warn "OpenTofu (tofu) oder Terraform fehlt — 'brew install opentofu'."; exit 1; }
 say "Benutzt: $TOFU"
 gh auth status >/dev/null 2>&1 || { warn "gh ist nicht angemeldet — 'gh auth login' ausführen."; exit 1; }
+GITHUB_REPOSITORY="$(gh repo view --json nameWithOwner --jq .nameWithOwner)"
+say "Repository: $GITHUB_REPOSITORY"
 say "Gleich öffnet sich zweimal der Browser für die Google-Anmeldung:"
 step "einmal für die gcloud-CLI, einmal für OpenTofu (Application Default Credentials)."
 pause "Bereit?"
@@ -259,7 +281,7 @@ write_env GCP_PROJECT_ID "$GCP_PROJECT_ID"
 if gcloud projects describe "$GCP_PROJECT_ID" >/dev/null 2>&1; then
   note "Projekt $GCP_PROJECT_ID existiert bereits."
 elif confirm "Projekt $GCP_PROJECT_ID jetzt anlegen?"; then
-  gcloud projects create "$GCP_PROJECT_ID" --name "SteuerEule Beta"
+  gcloud projects create "$GCP_PROJECT_ID" --name "SteuerEule $TF_ENVIRONMENT"
 else
   warn "Ohne Projekt geht es nicht weiter."; exit 1
 fi
@@ -267,6 +289,22 @@ gcloud billing projects link "$GCP_PROJECT_ID" --billing-account "$BILLING_ACCOU
 gcloud config set project "$GCP_PROJECT_ID" >/dev/null
 gcloud auth application-default set-quota-project "$GCP_PROJECT_ID" >/dev/null 2>&1 || true
 say "Projekt ist mit dem Rechnungskonto verknüpft."
+
+stage "Domain, Absender und Alarme"
+say "Web läuft unter www.<domain>, die API unter api.<domain> (ADR-0053: gleiche Site für Cookies)."
+ask APP_DOMAIN "Deine Domain ohne www (z. B. steuereule.de):"
+ask EMAIL_FROM "Absender für Bestätigungsmails (z. B. noreply@$APP_DOMAIN):"
+say "Alarme (API down, Fehlerrate, Latenz, Budget) gehen per E-Mail an eine Adresse (OPS-14)."
+ask ALERT_EMAIL "E-Mail-Adresse für Alarme:"
+[[ -n "$ALERT_EMAIL" ]] || { warn "Ohne Alarm-Adresse entstehen weder Alarme noch Uptime-Check."; exit 1; }
+DEFAULT_BUDGET=60
+[[ "$TF_ENVIRONMENT" != production ]] || DEFAULT_BUDGET=250
+ask MONTHLY_BUDGET_EUR "Monatsbudget in EUR für den Budget-Alarm (Enter = $DEFAULT_BUDGET):"
+MONTHLY_BUDGET_EUR="${MONTHLY_BUDGET_EUR:-$DEFAULT_BUDGET}"
+write_env APP_DOMAIN "$APP_DOMAIN"
+write_env EMAIL_FROM "$EMAIL_FROM"
+write_env ALERT_EMAIL "$ALERT_EMAIL"
+write_env MONTHLY_BUDGET_EUR "$MONTHLY_BUDGET_EUR"
 
 stage "Speicher für den OpenTofu-State"
 STATE_BUCKET="${GCP_PROJECT_ID}-tfstate"
@@ -281,14 +319,17 @@ fi
 write_env STATE_BUCKET "$STATE_BUCKET"
 
 stage "Infrastruktur anlegen (OpenTofu)"
-say "Legt an: Cloud SQL (Postgres 16, nur private IP im VPC), Artifact Registry, leere Secrets, Service-Accounts,"
-say "GitHub-Zugang per Workload Identity und einen Budget-Alarm bei 20 € im Monat."
+say "Legt an: Cloud SQL (Postgres 16, nur private IP im VPC), Redis (Memorystore, TLS), Artifact Registry,"
+say "leere Secrets, Service-Accounts, GitHub-Zugang per Workload Identity, Alarme an $ALERT_EMAIL,"
+say "einen Uptime-Check auf https://api.$APP_DOMAIN und einen Budget-Alarm bei $MONTHLY_BUDGET_EUR € im Monat."
 "$TOFU" -chdir="$TOFU_DIR" init -input=false -reconfigure -backend-config="bucket=$STATE_BUCKET" \
   -backend-config="prefix=steuereule/$TF_ENVIRONMENT" >/dev/null
 TOFU_VARS=(-var "project_id=$GCP_PROJECT_ID" -var "billing_account_id=$BILLING_ACCOUNT_ID" -var "region=$REGION" \
-  -var "environment=$TF_ENVIRONMENT" -var "github_environments=$TF_GITHUB_ENVIRONMENTS")
+  -var "environment=$TF_ENVIRONMENT" -var "github_environments=$TF_GITHUB_ENVIRONMENTS" \
+  -var "alert_email=$ALERT_EMAIL" -var "api_hostname=api.$APP_DOMAIN" -var "monthly_budget_eur=$MONTHLY_BUDGET_EUR")
 "$TOFU" -chdir="$TOFU_DIR" plan -input=false "${TOFU_VARS[@]}" -out=beta.tfplan
-warn "Cloud SQL (zwei Instanzen) kostet ab jetzt ca. 20 € im Monat in beta/staging, in production mit eigenem Kern ca. 100 € (mit Hochverfügbarkeit ca. 200 €); Richtwerte."
+warn "Ab jetzt laufen Kosten: Cloud SQL (zwei Instanzen) ca. 20 € im Monat in beta/staging, in production mit eigenem"
+warn "Kern ca. 100 € (mit Hochverfügbarkeit ca. 200 €), dazu Redis ca. 35 €; Richtwerte, kein Angebot."
 if confirm "Plan anwenden?"; then
   "$TOFU" -chdir="$TOFU_DIR" apply -input=false beta.tfplan
   rm -f "$TOFU_DIR/beta.tfplan"
@@ -298,13 +339,6 @@ fi
 SQL_CONNECTION="$(tofu_output sql_connection_name)"
 KEYSTORE_SQL_CONNECTION="$(tofu_output keystore_sql_connection_name)"
 
-stage "Domain und Absender"
-say "Web läuft unter www.<domain>, die API unter api.<domain> (ADR-0053: gleiche Site für Cookies)."
-ask APP_DOMAIN "Deine Domain ohne www (z. B. steuereule.de):"
-ask EMAIL_FROM "Absender für Bestätigungsmails (z. B. noreply@$APP_DOMAIN):"
-write_env APP_DOMAIN "$APP_DOMAIN"
-write_env EMAIL_FROM "$EMAIL_FROM"
-
 stage "App-Secrets erzeugen"
 say "Werden lokal mit openssl erzeugt und direkt in Secret Manager geschrieben."
 warn "Vorhandene Werte bleiben unangetastet — ein neuer PRISMA_FIELD_ENCRYPTION_KEY würde gespeicherte Daten unlesbar machen."
@@ -312,6 +346,7 @@ ensure_generated_secret GUEST_SESSION_SECRET "$(openssl rand -base64 48)"
 ensure_generated_secret BETTER_AUTH_SECRET "$(openssl rand -base64 48)"
 ensure_generated_secret PRISMA_FIELD_ENCRYPTION_KEY "k1.aesgcm256.$(openssl rand -base64 32)"
 # Salt of the e-mail lookup hash (ADR-0109): like the key above, a new value would lock every account out.
+# It must exist before the first migration, which hashes the stored addresses with it.
 ensure_generated_secret PRISMA_FIELD_ENCRYPTION_HASH_SALT "$(openssl rand -base64 48)"
 ensure_generated_secret KEYSTORE_MASTER_KEY "$(openssl rand -base64 48)"
 pause
@@ -340,16 +375,29 @@ stage "Brevo (Bestätigungsmails)"
 open_url "https://app.brevo.com"
 step "Domain $APP_DOMAIN als Absender-Domain authentifizieren; Brevo zeigt dir die DNS-Einträge dafür."
 step "Unter den SMTP-/API-Einstellungen einen API-Schlüssel erzeugen und kopieren."
-if secret_has_value BREVO_API_KEY && ! confirm "BREVO_API_KEY ist schon gesetzt. Ersetzen?"; then
-  note "BREVO_API_KEY unverändert."
-else
-  ask_secret BREVO_KEY_INPUT "API-Schlüssel einfügen:"
-  [[ -n "$BREVO_KEY_INPUT" ]] || { warn "Ohne Brevo-Schlüssel startet die API in Produktion nicht."; exit 1; }
-  put_secret BREVO_API_KEY "$BREVO_KEY_INPUT"
-  unset BREVO_KEY_INPUT
-fi
+note "Ohne Brevo-Schlüssel startet die API auf einem Deployment nicht."
+ask_stored_secret BREVO_API_KEY "API-Schlüssel einfügen:" '^.{20,}$'
 
-stage "Optional: Google-Login und Stripe"
+stage "Stripe (Bezahlung beim Ausdruck)"
+say "Auf einem Deployment ist die Bezahlung Pflicht: ohne sie startet die API nicht (OPS-6, OPS-10)."
+say "Für staging und die Beta den Testmodus nehmen (sk_test_…)."
+open_url "https://dashboard.stripe.com/products"
+step "Zwei Produkte mit je einem einmaligen Preis anlegen: der Ausdruck (Standard) und der Ausdruck mit Selbstständigkeit."
+step "Die Preis-IDs (price_…) kopieren; die Beträge müssen zu den Preisen in der App passen."
+ask_stored_secret STRIPE_PRICE_ID "Preis-ID Standard (price_…):" '^price_'
+ask_stored_secret STRIPE_PRICE_ID_SELBSTSTAENDIG "Preis-ID mit Selbstständigkeit (price_…):" '^price_'
+open_url "https://dashboard.stripe.com/settings/public"
+step "Unter 'Public details' die AGB-URL eintragen: https://www.$APP_DOMAIN/rechtliches/agb"
+note "Der Checkout verlangt die Zustimmung zu den AGB (consent_collection); ohne diese URL lehnt Stripe ihn ab."
+pause "AGB-URL eingetragen? Enter"
+open_url "https://dashboard.stripe.com/apikeys"
+ask_stored_secret STRIPE_SECRET_KEY "Secret Key einfügen (sk_test_… für die Beta):" '^(sk|rk)_(test|live)_'
+open_url "https://dashboard.stripe.com/webhooks"
+step "Webhook-Endpunkt anlegen: https://api.$APP_DOMAIN/v1/zahlung/stripe/webhook"
+step "Ereignisse auswählen: checkout.session.completed, checkout.session.async_payment_succeeded, charge.refunded, charge.dispute.created und charge.dispute.closed"
+ask_stored_secret STRIPE_WEBHOOK_SECRET "Signing Secret des Webhooks einfügen (whsec_…):" '^whsec_'
+
+stage "Optional: Google-Login"
 if confirm "Google-Login (OAuth) jetzt einrichten?"; then
   open_url "https://console.cloud.google.com/apis/credentials?project=$GCP_PROJECT_ID"
   step "OAuth-Client-ID vom Typ 'Webanwendung' anlegen."
@@ -360,23 +408,40 @@ if confirm "Google-Login (OAuth) jetzt einrichten?"; then
   put_secret GOOGLE_CLIENT_SECRET "$GOOGLE_SECRET_INPUT"
   unset GOOGLE_ID_INPUT GOOGLE_SECRET_INPUT
 else
-  note "Übersprungen — Google-Login bleibt aus, bis die Secrets gesetzt sind."
-fi
-if confirm "Stripe (Bezahlung beim Ausdruck) jetzt einrichten?"; then
-  open_url "https://dashboard.stripe.com/apikeys"
-  ask_secret STRIPE_KEY_INPUT "Secret Key einfügen (sk_test_… für die Beta):"
-  step "Webhook-Endpunkt anlegen: https://api.$APP_DOMAIN/v1/zahlung/stripe/webhook"
-  ask_secret STRIPE_WEBHOOK_INPUT "Signing Secret des Webhooks einfügen (whsec_…):"
-  put_secret STRIPE_SECRET_KEY "$STRIPE_KEY_INPUT"
-  put_secret STRIPE_WEBHOOK_SECRET "$STRIPE_WEBHOOK_INPUT"
-  unset STRIPE_KEY_INPUT STRIPE_WEBHOOK_INPUT
-else
-  note "Übersprungen — der Ausdruck meldet 'Zahlung nicht eingerichtet'."
+  note "Übersprungen — Google-Login bleibt aus, bis beide Secrets gesetzt sind."
 fi
 
-stage "GitHub-Variablen für den Deploy"
-# Production's GitHub environment must carry its own values; the deploy refuses to run without this marker.
-[[ "$TF_ENVIRONMENT" != production ]] || set_var GCP_ENVIRONMENT production
+stage "Anbieterangaben für das Impressum"
+say "Name, Anschrift und E-Mail des Betreibers stehen im Impressum, in der Datenschutzerklärung und in den AGB"
+say "(§ 5 DDG). Der Deploy baut die Web-App nicht ohne sie (WEB-2). Zeilenumbrüche in der Anschrift als \\n."
+ask EXPO_PUBLIC_BETREIBER_NAME "Name des Betreibers:"
+ask EXPO_PUBLIC_BETREIBER_ANSCHRIFT "Ladungsfähige Anschrift (z. B. Musterstraße 1\\n12345 Musterstadt):"
+ask EXPO_PUBLIC_BETREIBER_EMAIL "E-Mail-Adresse für das Impressum:"
+ask EXPO_PUBLIC_BETREIBER_VERTRETEN "Vertreten durch (nur Gesellschaften, sonst Enter):"
+ask EXPO_PUBLIC_BETREIBER_USTID "USt-IdNr. (falls vorhanden, sonst Enter):"
+for key in EXPO_PUBLIC_BETREIBER_NAME EXPO_PUBLIC_BETREIBER_ANSCHRIFT EXPO_PUBLIC_BETREIBER_EMAIL; do
+  [[ -n "${!key}" ]] || { warn "$key ist Pflicht."; exit 1; }
+  write_env "$key" "${!key}"
+done
+
+stage "GitHub-Umgebung und Variablen"
+say "Alle Deploy-Variablen kommen in die GitHub-Umgebung '$GH_ENVIRONMENT', keine ins Repository (OPS-13)."
+ME_ID="$(gh api user --jq .id)"
+if [[ "$GH_ENVIRONMENT" == production ]]; then
+  # Required reviewers (you) and deployments from main only (H2-31).
+  ENV_BODY="{\"reviewers\":[{\"type\":\"User\",\"id\":$ME_ID}],\"deployment_branch_policy\":{\"protected_branches\":false,\"custom_branch_policies\":true}}"
+else
+  ENV_BODY='{"deployment_branch_policy":{"protected_branches":false,"custom_branch_policies":true}}'
+fi
+if printf '%s' "$ENV_BODY" | gh api -X PUT "repos/$GITHUB_REPOSITORY/environments/$GH_ENVIRONMENT" --input - >/dev/null 2>&1; then
+  say "GitHub-Umgebung $GH_ENVIRONMENT angelegt (Deploys nur von main$([[ "$GH_ENVIRONMENT" == production ]] && printf ', Freigabe durch dich'))."
+  gh api -X POST "repos/$GITHUB_REPOSITORY/environments/$GH_ENVIRONMENT/deployment-branch-policies" \
+    -f name=main -f type=branch >/dev/null 2>&1 || note "Branch-Regel 'main' bestand schon."
+else
+  SKIPPED+=("GitHub-Umgebung $GH_ENVIRONMENT von Hand anlegen: Settings → Environments → New environment; Deployment branches: nur main; für production Required reviewers (infra/README.md)")
+  warn "Konnte die GitHub-Umgebung nicht anlegen (Rechte oder Plan); bitte von Hand, siehe Zusammenfassung."
+fi
+set_var GCP_ENVIRONMENT "$GH_ENVIRONMENT"
 set_var GCP_PROJECT_ID "$GCP_PROJECT_ID"
 set_var GCP_REGION "$REGION"
 set_var GCP_WIF_PROVIDER "$(tofu_output workload_identity_provider)"
@@ -390,19 +455,30 @@ set_var GCP_VPC_NETWORK "$(tofu_output vpc_network)"
 set_var GCP_VPC_SUBNET "$(tofu_output vpc_subnet)"
 set_var APP_DOMAIN "$APP_DOMAIN"
 set_var EMAIL_FROM "$EMAIL_FROM"
+# Cloud Run direct ingress (domain mapping, *.run.app): Google's front end is the peer, in 169.254.0.0/16 (OPS-8).
+# Behind an external HTTPS load balancer add its ranges (35.191.0.0/16,130.211.0.0/22), see infra/README.md.
+set_var TRUSTED_PROXIES "169.254.0.0/16"
+set_var EXPO_PUBLIC_BETREIBER_NAME "$EXPO_PUBLIC_BETREIBER_NAME"
+set_var EXPO_PUBLIC_BETREIBER_ANSCHRIFT "$EXPO_PUBLIC_BETREIBER_ANSCHRIFT"
+set_var EXPO_PUBLIC_BETREIBER_EMAIL "$EXPO_PUBLIC_BETREIBER_EMAIL"
+[[ -z "$EXPO_PUBLIC_BETREIBER_VERTRETEN" ]] || set_var EXPO_PUBLIC_BETREIBER_VERTRETEN "$EXPO_PUBLIC_BETREIBER_VERTRETEN"
+[[ -z "$EXPO_PUBLIC_BETREIBER_USTID" ]] || set_var EXPO_PUBLIC_BETREIBER_USTID "$EXPO_PUBLIC_BETREIBER_USTID"
 pause
 
 stage "Erster Deploy"
-DEPLOY_TARGET=staging
-[[ "$TF_ENVIRONMENT" != production ]] || DEPLOY_TARGET=production
-say "Baut beide Images, migriert die Datenbank und rollt API und Web aus (ca. 10–15 Minuten)."
-if confirm "Deploy-Workflow auf main starten?"; then
-  gh workflow run deploy.yml --ref main -f environment="$DEPLOY_TARGET"
+say "Baut beide Images, sichert und migriert die Datenbank und rollt API und Web aus (ca. 10–15 Minuten)."
+if confirm "Deploy-Workflow auf main nach $GH_ENVIRONMENT starten?"; then
+  gh workflow run deploy.yml --ref main -f environment="$GH_ENVIRONMENT"
   sleep 5
   gh run watch "$(gh run list --workflow deploy.yml --limit 1 --json databaseId --jq '.[0].databaseId')" --exit-status \
     || { warn "Deploy fehlgeschlagen — Log: gh run view --log-failed"; exit 1; }
+  if [[ "$GH_ENVIRONMENT" == staging ]] && confirm "Ab jetzt jede grüne CI auf main automatisch nach staging ausrollen?"; then
+    # The one repository-level switch: without it the automatic deploy skips (OPS-3).
+    gh variable set DEPLOY_STAGING_AUTO --body true >/dev/null && say "DEPLOY_STAGING_AUTO=true gesetzt."
+  fi
 else
-  SKIPPED+=("Deploy starten: gh workflow run deploy.yml --ref main -f environment=$DEPLOY_TARGET")
+  SKIPPED+=("Deploy starten: gh workflow run deploy.yml --ref main -f environment=$GH_ENVIRONMENT")
+  [[ "$GH_ENVIRONMENT" != staging ]] || SKIPPED+=("Nach dem ersten grünen Deploy: gh variable set DEPLOY_STAGING_AUTO --body true")
 fi
 
 stage "Domain verknüpfen"
@@ -435,6 +511,9 @@ if curl -fsS --retry 30 --retry-delay 20 --retry-all-errors "https://api.$APP_DO
 else
   SKIPPED+=("https://api.$APP_DOMAIN antwortet noch nicht — DNS/Zertifikat später erneut prüfen")
 fi
-note "TRUSTED_PROXIES: in den Cloud-Run-Logs prüfen, welche Peer-Adresse die API sieht (ADR-0053)."
+say "Noch von Hand am echten System prüfen (infra/README.md, 'First deployment'):"
+step "TRUSTED_PROXIES: in den Cloud-Run-Logs die Peer-Adresse ablesen (ADR-0053)."
+step "Redis über TLS, Alarmfilter, Upload-Zulassung, ein Testkauf mit Stripe-Testkarte (OPS-5)."
+SKIPPED+=("Prüfungen am echten System: infra/README.md, Abschnitt 'First deployment', Schritte nach dem Deploy")
 
 finish

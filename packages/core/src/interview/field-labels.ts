@@ -1,5 +1,6 @@
 // What a field is called where the user reads it: on a draft card („Wird mit eingetragen“), in the owl's
 // text and in the workbench, instead of the app's field id („pkArbeitnehmerChf“). German, as on the masks.
+import { ASSESSMENT_POSITIONS } from '../domains/assessment'
 import type { Screen } from './marking'
 
 const LABELS: Readonly<Partial<Record<Screen, Readonly<Record<string, string>>>>> = {
@@ -58,8 +59,23 @@ const LABELS: Readonly<Partial<Record<Screen, Readonly<Record<string, string>>>>
     workEquipmentEur: 'Arbeitsmittel',
     accountFeesEur: 'Kontoführungsgebühren',
     otherWorkExpensesEur: 'Weitere Werbungskosten',
+    publicHolidays: 'Feiertage an Arbeitstagen',
+    publicHolidayRegion: 'Bundesland der Feiertage',
+    professionalBodiesNote: 'Berufsverband (Notiz)',
+    workEquipmentNote: 'Arbeitsmittel (Notiz)',
+    otherWorkExpensesNote: 'Weitere Werbungskosten (Notiz)',
+    secondFrom: 'Zweiter Arbeitsweg von',
+    secondTo: 'Zweiter Arbeitsweg bis',
   },
   chLohnausweis: {
+    lohn: 'Lohn (Ziffer 1)',
+    gehaltsnebenleistungen: 'Gehaltsnebenleistungen (Ziffer 2)',
+    'unregelmaessige-leistungen': 'Unregelmäßige Leistungen (Ziffer 3)',
+    kapitalleistungen: 'Kapitalleistungen (Ziffer 4)',
+    beteiligungsrechte: 'Beteiligungsrechte (Ziffer 5)',
+    sitzungsgelder: 'Verwaltungsratsentschädigungen (Ziffer 6)',
+    spesen: 'Spesenvergütungen (Ziffer 13)',
+    'weitere-nebenleistungen': 'Weitere Gehaltsnebenleistungen (Ziffer 14)',
     'bruttolohn-total': 'Bruttolohn (Ziffer 8)',
     'ahv-beitraege': 'AHV/IV/EO/ALV/NBUV (Ziffer 9)',
     'berufliche-vorsorge': 'Berufliche Vorsorge (Ziffer 10)',
@@ -108,6 +124,13 @@ const LABELS: Readonly<Partial<Record<Screen, Readonly<Record<string, string>>>>
     livingArea: 'Wohnfläche',
     schuldzinsen: 'Schuldzinsen',
     umlagen: 'Umlagen',
+    strasse: 'Straße des Mietobjekts',
+    hausnummer: 'Hausnummer des Mietobjekts',
+    plz: 'Postleitzahl des Mietobjekts',
+    city: 'Ort des Mietobjekts',
+    einheiten: 'Wohneinheiten',
+    depreciationAsLastYear: 'Abschreibung wie im Vorjahr',
+    anteilA: 'Dein Anteil am Objekt (%)',
   },
   kind: {
     firstName: 'Vorname',
@@ -137,6 +160,18 @@ const LABELS: Readonly<Partial<Record<Screen, Readonly<Record<string, string>>>>
     childcareFrom: 'Betreuung von',
     childcareTo: 'Betreuung bis',
   },
+  assessment: {
+    einnahmen: 'Summe der Einkünfte laut Bescheid',
+    vorsorgeaufwand: 'Vorsorgeaufwendungen laut Bescheid',
+    anrechnung: 'Anrechenbare Steuern laut Bescheid',
+    festgesetzteSteuer: 'Festgesetzte Einkommensteuer',
+    erstattung: 'Erstattung oder Nachzahlung laut Bescheid',
+    // The Besteuerungsgrundlagen carry their own names (ADR-0098 §8).
+    ...Object.fromEntries(ASSESSMENT_POSITIONS.filter((p) => !['vorsorgeaufwand', 'anrechnung', 'festgesetzteSteuer'].includes(p.id)).map((p) => [p.id, p.label])),
+    assessmentDate: 'Datum des Bescheids',
+    erlaeuterungen: 'Erläuterungen des Bescheids',
+  },
+  buchung: { entry: 'Buchung' },
 }
 
 /** The field's name as the user reads it, or null when the app has none for it. */

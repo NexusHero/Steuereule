@@ -21,6 +21,7 @@ import { FakeChildRepository } from './fakes/fake-child.repository.js'
 import { AuditService } from '../src/audit/audit.service.js'
 import { AssistantTaskService } from '../src/assistant-task/assistant-task.service.js'
 import { FakeAssistantTaskRepository } from './fakes/fake-assistant-task.repository.js'
+import { confirmAsShown } from './support/confirm-as-shown.js'
 
 const USER = 'user-1'
 const YEAR = 2025
@@ -109,15 +110,57 @@ describe('BestaetigungService', () => {
             key: 'lstb.bruttoarbeitslohn',
             screen: 'lstb',
             instance: null,
+            instanceLabel: null,
             field: 'bruttoarbeitslohn',
             value: '4750',
             provenance: { kind: 'nutzer' },
             confirmed: true,
             proposal: { value: '4800', provenance: { kind: 'assistent', name: 'Claude' } },
+            version: expect.any(String),
           },
         ],
       },
     ])
+  })
+
+  it('reads, decides and writes a non-user value inside one transaction (MCP-16)', async () => {
+    let inside = false
+    const seen: boolean[] = []
+    const runner = { rollsBack: true, isActive: () => inside, run: async <T>(work: () => Promise<T>) => { inside = true; try { return await work() } finally { inside = false } } }
+    const recordingLstb = new Proxy(lstb, { get: (target, prop, receiver) => { const value = Reflect.get(target, prop, receiver); return typeof value === 'function' ? (...args: unknown[]) => { seen.push(inside); return (value as (...a: unknown[]) => unknown).apply(target, args) } : value } })
+    const access = fieldAccessFrom({ lstb: recordingLstb, pension, capital: new FakeCapitalRepository(), rental })
+    const transactional = new ConfirmationService(markings, access, new AuditService(new FakeAuditRepository()), undefined, undefined, runner)
+
+    expect(await transactional.write(USER, YEAR, 'lstb.lohnsteuer', '700', CLAUDE)).toBe('geschrieben')
+
+    expect(seen.length).toBeGreaterThanOrEqual(2)
+    expect(seen.every(Boolean)).toBe(true)
+  })
+
+  describe('confirming binds to what the user saw (MCP-4)', () => {
+    it('refuses when the assistant wrote another value after the screen was drawn, and confirms nothing', async () => {
+      await service.write(USER, YEAR, 'lstb.lohnsteuer', '700', CLAUDE)
+      const shown = (await service.overview(USER, YEAR)).annexes[0]!.values.map((v) => ({ key: v.key, version: v.version }))
+      await service.write(USER, YEAR, 'lstb.lohnsteuer', '7000', CLAUDE)
+
+      await expect(service.confirmAnnex(USER, YEAR, 'anlageN', shown)).rejects.toMatchObject({ code: 'CONFIRMATION_STALE' })
+      expect(await service.missing(USER, YEAR)).toEqual(['unbestaetigt.anlageN'])
+    })
+
+    it('refuses when a value came in that the screen did not show', async () => {
+      await service.write(USER, YEAR, 'lstb.lohnsteuer', '700', CLAUDE)
+      const shown = (await service.overview(USER, YEAR)).annexes[0]!.values.map((v) => ({ key: v.key, version: v.version }))
+      await service.write(USER, YEAR, 'lstb.bruttoarbeitslohn', '48000', CLAUDE)
+
+      await expect(service.confirmAnnex(USER, YEAR, 'anlageN', shown)).rejects.toMatchObject({ code: 'CONFIRMATION_STALE' })
+      expect(markings.all().every((m) => !m.confirmed)).toBe(true)
+    })
+
+    it('names the record a value belongs to: the child by first name', async () => {
+      const created = await child.create(USER, YEAR, { firstName: 'Mia', lastName: 'Muster', geburtsdatum: '2018-04-01' })
+      await service.write(USER, YEAR, `kind:${created!.id}.childcareEur`, '2400', CLAUDE)
+      expect((await service.overview(USER, YEAR)).annexes[0]!.values[0]).toMatchObject({ instance: created!.id, instanceLabel: 'Mia' })
+    })
   })
 
   it('confirming an Anlage lifts its block and only its block', async () => {
@@ -125,7 +168,7 @@ describe('BestaetigungService', () => {
     await service.write(USER, YEAR, 'rente.jahresbetrag', '12000', { kind: 'uebernahme', lastYear: 2024 })
     expect(await service.missing(USER, YEAR)).toEqual(['unbestaetigt.anlageN', 'unbestaetigt.anlageR'])
 
-    await service.confirmAnnex(USER, YEAR, 'anlageR')
+    await confirmAsShown(service, USER, YEAR, 'anlageR')
 
     expect(await service.missing(USER, YEAR)).toEqual(['unbestaetigt.anlageN'])
     expect((await service.overview(USER, YEAR)).annexes.map((a) => a.annex)).toEqual(['anlageN'])
@@ -166,7 +209,7 @@ describe('BestaetigungService', () => {
       const svc = withSpouse(true)
       await svc.write(SHADOW_B, YEAR, 'chLohnausweis.krankenkasseChf', '3593', CLAUDE)
       const [annex] = (await svc.overview(USER, YEAR)).annexes
-      await svc.confirmAnnex(USER, YEAR, annex!.annex)
+      await confirmAsShown(svc, USER, YEAR, annex!.annex)
       expect(await svc.missing(SHADOW_B, YEAR)).toEqual([])
       expect((await svc.overview(USER, YEAR)).annexes).toEqual([])
     })
@@ -211,7 +254,7 @@ describe('BestaetigungService', () => {
       await service.write(USER, YEAR, 'lstb.bruttoarbeitslohn', '5000', OTHER)
       await expect(service.withdrawAssistantEntry(USER, YEAR, 'lstb.bruttoarbeitslohn', (p) => p?.kind === 'assistent' && p.name === 'Claude')).rejects.toMatchObject({ code: 'NOT_OWN_ENTRY' })
       await service.write(USER, YEAR, 'rente.jahresbetrag', '1', CLAUDE)
-      await service.confirmAnnex(USER, YEAR, 'anlageR')
+      await confirmAsShown(service, USER, YEAR, 'anlageR')
       await expect(service.withdrawAssistantEntry(USER, YEAR, 'rente.jahresbetrag', (p) => p?.kind === 'assistent' && p.name === 'Claude')).rejects.toMatchObject({ code: 'NOT_OWN_ENTRY' })
     })
 
@@ -234,7 +277,7 @@ describe('BestaetigungService', () => {
   })
 
   it('an unknown Anlage is a 400, never a silent no-op', async () => {
-    await expect(service.confirmAnnex(USER, YEAR, 'anlageX' as never)).rejects.toMatchObject({ code: 'ANLAGE_UNKNOWN' })
+    await expect(service.confirmAnnex(USER, YEAR, 'anlageX' as never, [])).rejects.toMatchObject({ code: 'ANLAGE_UNKNOWN' })
   })
 
   it('writes into a Vermietungsobjekt by instance and refuses an object of another user', async () => {

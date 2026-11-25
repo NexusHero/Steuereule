@@ -1,3 +1,4 @@
+import type { PaymentReturn } from '@steuereule/core'
 import { useTranslation } from 'react-i18next'
 import { APP_NS } from '../../i18n/resources'
 import { BusinessHome } from './BusinessHome'
@@ -47,8 +48,8 @@ export interface BusinessPageProps {
 
 export interface BusinessScreenProps extends BusinessPageProps {
   readonly page: string | undefined
-  /** Back from the checkout of the self-employment tier: `?zahlung=erfolg` or `abbruch`. */
-  readonly payment?: string | undefined
+  /** Back from the checkout of the self-employment tier, by the shared return contract (WEB-1). */
+  readonly payment?: PaymentReturn | undefined
   /** A couple records one business per person; the area's overview switches between A and B. */
   readonly onChangePerson?: (person: Person) => void
   /** Several businesses of one person: the overview switches between them and adds one. */

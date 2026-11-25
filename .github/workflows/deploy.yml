@@ -1,14 +1,20 @@
 # Deployment to Google Cloud Run (ADR-0053), two environments (ADR-0109):
-#   staging     every green CI on main, automatically.
+#   staging     every green "Build & E2E" run on main, automatically, once the repository variable
+#               DEPLOY_STAGING_AUTO is "true" (scripts/infra/gcp-setup.sh sets it after the first deploy).
+#               Until then the automatic run skips its jobs: the run shows "skipped", not "success", and no
+#               deployment record is created (OPS-3).
 #   production  only by hand: Actions -> Deploy -> Run workflow -> environment "production". The job is
 #               bound to the GitHub environment "production", so required reviewers configured there
 #               must approve it, and the GCP side only accepts tokens of that environment.
-# Until the GCP_* variables exist, an automatic staging deploy skips with a named notice.
+# Every deploy variable lives in its GitHub environment, none at repository level: a repository-level value
+# would silently fill in for an environment that lacks it (OPS-13). The list of what the runtime needs is
+# apps/api/src/config/production-config.ts; test/config/deployment-wiring.test.ts keeps this file in step with it.
 name: Deploy
 
 on:
   workflow_run:
-    workflows: [CI]
+    # The name of .github/workflows/ci.yml. deployment-wiring.test.ts checks that every name here exists (OPS-2).
+    workflows: ['Build & E2E']
     types: [completed]
     branches: [main]
   workflow_dispatch:
@@ -21,10 +27,8 @@ on:
           - staging
           - production
         default: staging
+  # On every pull request, so "static: opentofu validate" can be a required check (H2-32).
   pull_request:
-    paths:
-      - "infra/**"
-      - ".github/workflows/deploy.yml"
 
 permissions:
   contents: read
@@ -33,12 +37,9 @@ concurrency:
   group: deploy-${{ github.event_name == 'workflow_dispatch' && inputs.environment || 'staging' }}
   cancel-in-progress: false
 
-env:
-  REGION: ${{ vars.GCP_REGION || 'europe-west4' }}
-
 jobs:
   validate:
-    name: OpenTofu validate
+    name: 'static: opentofu validate'
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
@@ -53,26 +54,64 @@ jobs:
           done
           tofu fmt -check -recursive infra/gcp
 
-  deploy:
-    name: Deploy (Cloud Run)
+  # Runs without a GitHub environment, so `vars` holds the repository-level variables only. Any deploy
+  # variable found here would fill in for an environment that lacks it; the deploy job refuses that (OPS-13).
+  variable-scope:
+    name: Deploy variables are environment-scoped
     if: >-
       github.event_name == 'workflow_dispatch' ||
       (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' &&
        github.event.workflow_run.event == 'push' &&
-       github.event.workflow_run.head_repository.full_name == github.repository)
+       github.event.workflow_run.head_repository.full_name == github.repository &&
+       vars.DEPLOY_STAGING_AUTO == 'true')
     runs-on: ubuntu-latest
-    # Environment-level variables (GCP_*, APP_DOMAIN, ...) override the repository-level ones of the same
-    # name, so production can point at its own project. Staging keeps working with the repository ones.
+    outputs:
+      repository_level: ${{ steps.scan.outputs.names }}
+    steps:
+      - name: Find deploy variables set at repository level
+        id: scan
+        env:
+          REPOSITORY_VARS: ${{ toJSON(vars) }}
+          DEPLOY_VARIABLES: >-
+            GCP_ENVIRONMENT GCP_PROJECT_ID GCP_REGION GCP_WIF_PROVIDER GCP_DEPLOYER_SA GCP_RUNTIME_SA GCP_WEB_SA
+            GCP_SQL_INSTANCE GCP_KEYSTORE_SQL_INSTANCE GCP_VPC_NETWORK GCP_VPC_SUBNET APP_DOMAIN EMAIL_FROM
+            TRUSTED_PROXIES EXPO_PUBLIC_BETREIBER_NAME EXPO_PUBLIC_BETREIBER_ANSCHRIFT EXPO_PUBLIC_BETREIBER_EMAIL
+            EXPO_PUBLIC_BETREIBER_VERTRETEN EXPO_PUBLIC_BETREIBER_USTID
+        run: |
+          names=""
+          for name in $DEPLOY_VARIABLES; do
+            if jq -e --arg name "$name" 'has($name)' <<<"$REPOSITORY_VARS" >/dev/null; then
+              names="$names $name"
+            fi
+          done
+          echo "names=${names# }" >> "$GITHUB_OUTPUT"
+
+  deploy:
+    name: Deploy (Cloud Run)
+    needs: variable-scope
+    # The same condition as variable-scope: an automatic run before DEPLOY_STAGING_AUTO skips both jobs.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.event == 'push' &&
+       github.event.workflow_run.head_repository.full_name == github.repository &&
+       vars.DEPLOY_STAGING_AUTO == 'true')
+    runs-on: ubuntu-latest
+    # Environment-level variables apply from here on (job env and steps), never at workflow level.
     environment: ${{ github.event_name == 'workflow_dispatch' && inputs.environment || 'staging' }}
     permissions:
       contents: read
       id-token: write
     env:
       TARGET_ENV: ${{ github.event_name == 'workflow_dispatch' && inputs.environment || 'staging' }}
+      REGION: ${{ vars.GCP_REGION }}
       PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
       APP_DOMAIN: ${{ vars.APP_DOMAIN }}
       EMAIL_FROM: ${{ vars.EMAIL_FROM }}
-      TRUSTED_PROXIES: ${{ vars.TRUSTED_PROXIES || '169.254.0.0/16' }}
+      # Cloud Run direct ingress (*.run.app and domain mappings): the container's peer is Google's front end in
+      # 169.254.0.0/16, which appends the client address to X-Forwarded-For. Behind an external load balancer the
+      # LB ranges must be added, or every user shares one rate-limit bucket (OPS-8, infra/README.md).
+      TRUSTED_PROXIES: ${{ vars.TRUSTED_PROXIES }}
       SQL_INSTANCE: ${{ vars.GCP_SQL_INSTANCE }}
       KEYSTORE_SQL_INSTANCE: ${{ vars.GCP_KEYSTORE_SQL_INSTANCE }}
       # Cloud SQL has a private address only (and Redis too): the service and the migrate job join this
@@ -81,119 +120,122 @@ jobs:
       VPC_SUBNET: ${{ vars.GCP_VPC_SUBNET }}
       API_SA: ${{ vars.GCP_RUNTIME_SA }}
       WEB_SA: ${{ vars.GCP_WEB_SA }}
+      # Operator details for the Impressum, baked into the web bundle at build time (WEB-2).
+      EXPO_PUBLIC_BETREIBER_NAME: ${{ vars.EXPO_PUBLIC_BETREIBER_NAME }}
+      EXPO_PUBLIC_BETREIBER_ANSCHRIFT: ${{ vars.EXPO_PUBLIC_BETREIBER_ANSCHRIFT }}
+      EXPO_PUBLIC_BETREIBER_EMAIL: ${{ vars.EXPO_PUBLIC_BETREIBER_EMAIL }}
+      EXPO_PUBLIC_BETREIBER_VERTRETEN: ${{ vars.EXPO_PUBLIC_BETREIBER_VERTRETEN }}
+      EXPO_PUBLIC_BETREIBER_USTID: ${{ vars.EXPO_PUBLIC_BETREIBER_USTID }}
+      # Secrets the API refuses to start without on a deployment, and those that switch a feature on.
+      REQUIRED_SECRETS: >-
+        DATABASE_URL GUEST_SESSION_SECRET PRISMA_FIELD_ENCRYPTION_KEY PRISMA_FIELD_ENCRYPTION_HASH_SALT
+        KEYSTORE_DATABASE_URL KEYSTORE_MASTER_KEY BETTER_AUTH_SECRET BREVO_API_KEY
+        STRIPE_SECRET_KEY STRIPE_WEBHOOK_SECRET STRIPE_PRICE_ID STRIPE_PRICE_ID_SELBSTSTAENDIG REDIS_URL
+      OPTIONAL_SECRETS: >-
+        PRISMA_FIELD_DECRYPTION_KEYS KEYSTORE_MASTER_KEY_PREVIOUS GOOGLE_CLIENT_ID GOOGLE_CLIENT_SECRET
+        GEMINI_API_KEY ANTHROPIC_API_KEY OPENAI_API_KEY REDIS_TLS_CA
     steps:
       - name: Configuration gate
-        id: gate
+        env:
+          REPOSITORY_LEVEL: ${{ needs.variable-scope.outputs.repository_level }}
+          ENVIRONMENT_VARS: ${{ toJSON(vars) }}
+          REQUIRED_VARIABLES: >-
+            GCP_ENVIRONMENT GCP_PROJECT_ID GCP_REGION GCP_WIF_PROVIDER GCP_DEPLOYER_SA GCP_RUNTIME_SA GCP_WEB_SA
+            GCP_SQL_INSTANCE GCP_KEYSTORE_SQL_INSTANCE GCP_VPC_NETWORK GCP_VPC_SUBNET APP_DOMAIN EMAIL_FROM
+            TRUSTED_PROXIES EXPO_PUBLIC_BETREIBER_NAME EXPO_PUBLIC_BETREIBER_ANSCHRIFT EXPO_PUBLIC_BETREIBER_EMAIL
         run: |
-          # Production must never fall back to the repository-level (staging) variables: its GitHub
-          # environment has to set GCP_ENVIRONMENT=production next to its own GCP_* values.
-          if [ "$TARGET_ENV" = "production" ] && [ "$GCP_ENVIRONMENT" != "production" ]; then
-            echo "::error::Environment 'production' has no variable GCP_ENVIRONMENT=production — refusing to deploy with repository-level (staging) values."
+          if [ -n "$REPOSITORY_LEVEL" ]; then
+            echo "::error::Deploy variables set at repository level: $REPOSITORY_LEVEL — move them into the GitHub environment '$TARGET_ENV' (Settings -> Environments). At repository level they silently fill in for any environment that lacks them."
             exit 1
           fi
-          if [ "$TARGET_ENV" = "production" ] && [ "$GITHUB_REF" != "refs/heads/main" ]; then
-            echo "::error::Production deploys only from main (this run is on $GITHUB_REF)."
+          if [ "$GITHUB_REF" != "refs/heads/main" ]; then
+            echo "::error::Deploys run only from main (this run is on $GITHUB_REF); the GCP side refuses other refs too."
             exit 1
           fi
           missing=""
-          for name in GCP_PROJECT_ID GCP_WIF_PROVIDER GCP_DEPLOYER_SA GCP_RUNTIME_SA GCP_WEB_SA GCP_SQL_INSTANCE GCP_KEYSTORE_SQL_INSTANCE GCP_VPC_NETWORK GCP_VPC_SUBNET APP_DOMAIN EMAIL_FROM; do
-            [ -n "${!name}" ] || missing="$missing $name"
+          for name in $REQUIRED_VARIABLES; do
+            jq -e --arg name "$name" '(.[$name] // "") != ""' <<<"$ENVIRONMENT_VARS" >/dev/null || missing="$missing $name"
           done
           if [ -n "$missing" ]; then
-            if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-              echo "::error::Repository variables missing:$missing — run scripts/infra/gcp-setup.sh first."
-              exit 1
-            fi
-            echo "::notice::Deployment of $TARGET_ENV not configured yet (missing:$missing) — skipped."
-            echo "ready=false" >> "$GITHUB_OUTPUT"
-            exit 0
+            echo "::error::Variables missing in the GitHub environment '$TARGET_ENV':$missing — run scripts/infra/gcp-setup.sh (infra/README.md)."
+            exit 1
           fi
-          echo "ready=true" >> "$GITHUB_OUTPUT"
-        env:
-          GCP_ENVIRONMENT: ${{ vars.GCP_ENVIRONMENT }}
-          GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
-          GCP_WIF_PROVIDER: ${{ vars.GCP_WIF_PROVIDER }}
-          GCP_DEPLOYER_SA: ${{ vars.GCP_DEPLOYER_SA }}
-          GCP_RUNTIME_SA: ${{ vars.GCP_RUNTIME_SA }}
-          GCP_WEB_SA: ${{ vars.GCP_WEB_SA }}
-          GCP_SQL_INSTANCE: ${{ vars.GCP_SQL_INSTANCE }}
-          GCP_KEYSTORE_SQL_INSTANCE: ${{ vars.GCP_KEYSTORE_SQL_INSTANCE }}
-          GCP_VPC_NETWORK: ${{ vars.GCP_VPC_NETWORK }}
-          GCP_VPC_SUBNET: ${{ vars.GCP_VPC_SUBNET }}
-          APP_DOMAIN: ${{ vars.APP_DOMAIN }}
-          EMAIL_FROM: ${{ vars.EMAIL_FROM }}
+          marker="$(jq -r '.GCP_ENVIRONMENT' <<<"$ENVIRONMENT_VARS")"
+          if [ "$marker" != "$TARGET_ENV" ]; then
+            echo "::error::GCP_ENVIRONMENT is '$marker' in the GitHub environment '$TARGET_ENV' — refusing to deploy values meant for another environment."
+            exit 1
+          fi
 
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-        if: steps.gate.outputs.ready == 'true'
         with:
           ref: ${{ github.event.workflow_run.head_sha || github.sha }}
 
       - uses: google-github-actions/auth@c200f3691d83b41bf9bbd8638997a462592937ed # v2
-        if: steps.gate.outputs.ready == 'true'
         with:
           workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
           service_account: ${{ vars.GCP_DEPLOYER_SA }}
 
       - uses: google-github-actions/setup-gcloud@e427ad8a34f8676edf47cf7d7925499adf3eb74f # v2
-        if: steps.gate.outputs.ready == 'true'
 
       - name: Resolve images and origins
-        if: steps.gate.outputs.ready == 'true'
         run: |
           registry="$REGION-docker.pkg.dev/$PROJECT_ID/steuereule"
           tag="$(git rev-parse --short=12 HEAD)"
           {
+            echo "APP_VERSION=$tag"
             echo "API_IMAGE=$registry/api:$tag"
             echo "WEB_IMAGE=$registry/web:$tag"
+            echo "WEBSITE_IMAGE=$registry/website:$tag"
             echo "API_ORIGIN=https://api.$APP_DOMAIN"
             echo "WEB_ORIGIN=https://www.$APP_DOMAIN"
           } >> "$GITHUB_ENV"
           gcloud auth configure-docker "$REGION-docker.pkg.dev" --quiet
 
       - name: Build and push API image
-        if: steps.gate.outputs.ready == 'true'
         run: |
-          docker build -f apps/api/Dockerfile -t "$API_IMAGE" .
+          docker build -f apps/api/Dockerfile --build-arg "APP_VERSION=$APP_VERSION" -t "$API_IMAGE" .
           docker push "$API_IMAGE"
 
       - name: Collect secrets that have a value
-        if: steps.gate.outputs.ready == 'true'
         run: |
           secrets=""
-          for name in DATABASE_URL GUEST_SESSION_SECRET PRISMA_FIELD_ENCRYPTION_KEY PRISMA_FIELD_ENCRYPTION_HASH_SALT KEYSTORE_DATABASE_URL KEYSTORE_MASTER_KEY BETTER_AUTH_SECRET BREVO_API_KEY \
-                      GOOGLE_CLIENT_ID GOOGLE_CLIENT_SECRET STRIPE_SECRET_KEY STRIPE_WEBHOOK_SECRET \
-                      GEMINI_API_KEY ANTHROPIC_API_KEY OPENAI_API_KEY REDIS_URL REDIS_TLS_CA; do
+          for name in $REQUIRED_SECRETS $OPTIONAL_SECRETS; do
             if [ -n "$(gcloud secrets versions list "$name" --filter=state=enabled --limit=1 --format='value(name)')" ]; then
               secrets="$secrets,$name=$name:latest"
             fi
           done
-          for required in DATABASE_URL GUEST_SESSION_SECRET PRISMA_FIELD_ENCRYPTION_KEY PRISMA_FIELD_ENCRYPTION_HASH_SALT KEYSTORE_DATABASE_URL KEYSTORE_MASTER_KEY BETTER_AUTH_SECRET BREVO_API_KEY; do
+          missing=""
+          for required in $REQUIRED_SECRETS; do
             case "$secrets," in
               *",$required="*) ;;
-              *) echo "::error::Secret $required has no enabled version — run scripts/infra/gcp-setup.sh."; exit 1 ;;
+              *) missing="$missing $required" ;;
             esac
           done
+          if [ -n "$missing" ]; then
+            echo "::error::Secrets without an enabled version:$missing — run scripts/infra/gcp-setup.sh (infra/README.md). The API refuses to start without them."
+            exit 1
+          fi
           echo "API_SECRETS=${secrets#,}" >> "$GITHUB_ENV"
 
       - name: Capture current Cloud Run revisions for rollback safety
-        if: steps.gate.outputs.ready == 'true'
+        id: revisions
         run: |
           prev_api="$(gcloud run services describe steuereule-api --region "$REGION" --format='value(status.latestReadyRevisionName)' 2>/dev/null || true)"
           prev_web="$(gcloud run services describe steuereule-web --region "$REGION" --format='value(status.latestReadyRevisionName)' 2>/dev/null || true)"
           echo "PREV_API_REVISION=$prev_api" >> "$GITHUB_ENV"
           echo "PREV_WEB_REVISION=$prev_web" >> "$GITHUB_ENV"
 
+      # Needs the deployer's custom role "Steuereule pre-deploy backup" (infra/gcp/main.tf, OPS-11).
       - name: Create pre-migration Cloud SQL on-demand backup
-        if: steps.gate.outputs.ready == 'true'
         run: |
           sql_instance_name="${SQL_INSTANCE##*:}"
           gcloud sql backups create \
             --instance="$sql_instance_name" \
-            --description="Pre-deploy backup for $(git rev-parse --short=12 HEAD)" \
+            --description="Pre-deploy backup for $APP_VERSION" \
             --quiet
 
+      # The migrate job belongs to this workflow entirely, so its secrets are set, not merged.
       - name: Run database migrations
-        if: steps.gate.outputs.ready == 'true'
         run: |
           gcloud run jobs deploy steuereule-migrate \
             --image "$API_IMAGE" --region "$REGION" \
@@ -209,15 +251,18 @@ jobs:
       # reader that left). `--no-cpu-throttling` keeps the CPU allocated for that; with throttling
       # the run would freeze the moment the request ends. `--session-affinity` keeps a client on
       # the instance that holds its run while there is no shared Redis.
+      #
+      # OPS-12: --update-env-vars / --update-secrets MERGE into the service. The values below are owned by this
+      # workflow and rewritten on every deploy; anything an operator set by hand (AI_KILL_SWITCH, model choice,
+      # daily limits) survives. Remove a hand-set value with `gcloud run services update --remove-env-vars`.
       - name: Deploy API
-        if: steps.gate.outputs.ready == 'true'
         run: |
           gcloud run deploy steuereule-api \
             --image "$API_IMAGE" --region "$REGION" \
             --service-account "$API_SA" \
             --add-cloudsql-instances "$SQL_INSTANCE,$KEYSTORE_SQL_INSTANCE" \
-            --set-secrets "$API_SECRETS" \
-            --set-env-vars "^@^NODE_ENV=production@BETTER_AUTH_URL=$API_ORIGIN@CORS_ALLOWED_ORIGINS=$WEB_ORIGIN@WEB_APP_URL=$WEB_ORIGIN@TRUSTED_PROXIES=$TRUSTED_PROXIES@EMAIL_FROM=$EMAIL_FROM" \
+            --update-secrets "$API_SECRETS" \
+            --update-env-vars "^@^NODE_ENV=production@BETTER_AUTH_URL=$API_ORIGIN@CORS_ALLOWED_ORIGINS=$WEB_ORIGIN@WEB_APP_URL=$WEB_ORIGIN@TRUSTED_PROXIES=$TRUSTED_PROXIES@EMAIL_FROM=$EMAIL_FROM" \
             --cpu 1 --memory 2Gi --cpu-boost \
             --no-cpu-throttling --session-affinity \
             --min-instances 0 --max-instances 10 --concurrency 80 --timeout 120 \
@@ -225,13 +270,26 @@ jobs:
             --allow-unauthenticated
 
       - name: Build and push web image
-        if: steps.gate.outputs.ready == 'true'
         run: |
-          docker build -f apps/mobile-web/Dockerfile --build-arg "EXPO_PUBLIC_API_BASE_URL=$API_ORIGIN" -t "$WEB_IMAGE" .
+          docker build -f apps/mobile-web/Dockerfile \
+            --build-arg "EXPO_PUBLIC_API_BASE_URL=$API_ORIGIN" \
+            --build-arg "EXPO_PUBLIC_BETREIBER_NAME=$EXPO_PUBLIC_BETREIBER_NAME" \
+            --build-arg "EXPO_PUBLIC_BETREIBER_ANSCHRIFT=$EXPO_PUBLIC_BETREIBER_ANSCHRIFT" \
+            --build-arg "EXPO_PUBLIC_BETREIBER_EMAIL=$EXPO_PUBLIC_BETREIBER_EMAIL" \
+            --build-arg "EXPO_PUBLIC_BETREIBER_VERTRETEN=$EXPO_PUBLIC_BETREIBER_VERTRETEN" \
+            --build-arg "EXPO_PUBLIC_BETREIBER_USTID=$EXPO_PUBLIC_BETREIBER_USTID" \
+            -t "$WEB_IMAGE" .
           docker push "$WEB_IMAGE"
 
+      - name: Build and push website image
+        run: |
+          docker build -f apps/website/Dockerfile \
+            --build-arg "WEBSITE_APP_ORIGIN=$WEB_ORIGIN" \
+            --build-arg "API_ORIGIN=$API_ORIGIN" \
+            -t "$WEBSITE_IMAGE" .
+          docker push "$WEBSITE_IMAGE"
+
       - name: Generate CycloneDX Release SBOMs (CRA / BSI TR-03183)
-        if: steps.gate.outputs.ready == 'true'
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           image-ref: ${{ env.API_IMAGE }}
@@ -239,7 +297,6 @@ jobs:
           output: sbom-release-api.cdx.json
 
       - name: Upload CycloneDX Release SBOM artifact
-        if: steps.gate.outputs.ready == 'true'
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: release-cyclonedx-sbom
@@ -247,7 +304,6 @@ jobs:
           retention-days: 90
 
       - name: Deploy web
-        if: steps.gate.outputs.ready == 'true'
         run: |
           gcloud run deploy steuereule-web \
             --image "$WEB_IMAGE" --region "$REGION" \
@@ -256,8 +312,16 @@ jobs:
             --min-instances 0 --max-instances 10 --concurrency 160 \
             --allow-unauthenticated
 
+      - name: Deploy website
+        run: |
+          gcloud run deploy steuereule-website \
+            --image "$WEBSITE_IMAGE" --region "$REGION" \
+            --service-account "$WEB_SA" \
+            --cpu 1 --memory 256Mi \
+            --min-instances 0 --max-instances 3 --concurrency 160 \
+            --allow-unauthenticated
+
       - name: Post-deploy smoke test (Health + Auth Capabilities + CORS + Web)
-        if: steps.gate.outputs.ready == 'true'
         run: |
           api_url="$(gcloud run services describe steuereule-api --region "$REGION" --format='value(status.url)')"
           web_url="$(gcloud run services describe steuereule-web --region "$REGION" --format='value(status.url)')"
@@ -268,11 +332,15 @@ jobs:
             echo "::error::Post-deploy CORS verification failed for Origin $WEB_ORIGIN"
             exit 1
           }
-          curl -fsS --retry 5 --retry-delay 5 --retry-all-errors -o /dev/null "$web_url/"
-          echo "::notice::Deployed $API_IMAGE → $API_ORIGIN, $WEB_IMAGE → $WEB_ORIGIN"
+          web_headers="$(curl -fsS --retry 5 --retry-delay 5 --retry-all-errors -D - -o /dev/null "$web_url/" | tr -d '\r')"
+          echo "$web_headers" | grep -qi "^content-security-policy: .*frame-src 'self' blob:" || {
+            echo "::error::The web app answers without its Content-Security-Policy"
+            exit 1
+          }
+          echo "::notice::Deployed $API_IMAGE ($APP_VERSION) → $API_ORIGIN, $WEB_IMAGE → $WEB_ORIGIN"
 
       - name: Automatic Cloud Run Traffic Rollback (on deploy or smoke failure)
-        if: failure() && steps.gate.outputs.ready == 'true'
+        if: failure() && steps.revisions.outcome == 'success'
         run: |
           echo "::warning::Deployment or post-deploy smoke test failed! Rolling back Cloud Run traffic to previous revisions..."
           if [ -n "${PREV_API_REVISION:-}" ]; then

@@ -5,6 +5,7 @@ import { RequiresAccount } from '../auth/requires-account.guard.js'
 import { UserContextGuard } from '../auth/user-context.guard.js'
 import { PutMasterDataDto, MasterDataResponseDto } from './dto/master-data.dto.js'
 import { MasterDataService } from './master-data.service.js'
+import { UserWrite } from '../common/user-write.decorator.js'
 
 @ApiTags('stammdaten')
 @Controller('v1/stammdaten')
@@ -21,6 +22,7 @@ export class MasterDataController {
   }
 
   @Put()
+  @UserWrite('stammdaten')
   @HttpCode(200)
   @RequiresAccount()
   @ApiBody({ type: PutMasterDataDto })

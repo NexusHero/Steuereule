@@ -5081,6 +5081,16 @@ export type businessControllerCheckoutResponse403 = {
   status: 403
 }
 
+export type businessControllerCheckoutResponse409 = {
+  data: BusinessErrorDto
+  status: 409
+}
+
+export type businessControllerCheckoutResponse429 = {
+  data: void
+  status: 429
+}
+
 export type businessControllerCheckoutResponse503 = {
   data: BusinessErrorDto
   status: 503
@@ -5089,7 +5099,7 @@ export type businessControllerCheckoutResponse503 = {
 export type businessControllerCheckoutResponseSuccess = (businessControllerCheckoutResponse200) & {
   headers: Headers;
 };
-export type businessControllerCheckoutResponseError = (businessControllerCheckoutResponse400 | businessControllerCheckoutResponse401 | businessControllerCheckoutResponse403 | businessControllerCheckoutResponse503) & {
+export type businessControllerCheckoutResponseError = (businessControllerCheckoutResponse400 | businessControllerCheckoutResponse401 | businessControllerCheckoutResponse403 | businessControllerCheckoutResponse409 | businessControllerCheckoutResponse429 | businessControllerCheckoutResponse503) & {
   headers: Headers;
 };
 

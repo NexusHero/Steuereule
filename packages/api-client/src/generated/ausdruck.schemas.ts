@@ -75,6 +75,8 @@ export interface LiveFormDto {
 export interface LiveFormValuesDto {
   /** The filled Vordrucke in print order; Vordrucke without values are left out. */
   forms: LiveFormDto[];
+  /** Anlagen with values the user has not confirmed; while there are any, no form is shown (MCP-24). */
+  unconfirmed: string[];
 }
 
 export interface CheckoutResponseDto {

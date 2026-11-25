@@ -22,6 +22,8 @@
 # this distinction matters for.
 apps/api/dist
 apps/mobile-web/dist
+# Downloaded street data of local development; the API image fetches its own pinned copy.
+apps/api/data
 **/coverage
 **/.turbo
 **/.expo

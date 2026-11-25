@@ -453,6 +453,7 @@ describe('the ELSTER fill-in help, by meaning and after the checkout', () => {
   it('refetches and says the year is unlocked when it is back from the checkout', async () => {
     let reads = 0
     server.use(http.get(`${BASE_URL}/elster/anlage-euer`, () => { reads += 1; return HttpResponse.json({ form: 'anlage-euer', year: 2025, status: 'published', note: null, sourceUrl: null, lineNumbersAvailable: true, lines: [] }) }))
+    server.use(http.get('*/v1/steuerjahre/2025/freischaltung', () => HttpResponse.json({ status: 'freigeschaltet', tier: 'selbststaendig' })))
     renderBusiness('elster', { payment: 'erfolg' })
     expect(await screen.findByTestId('elster-freigeschaltet')).toBeTruthy()
     await waitFor(() => expect(reads).toBeGreaterThanOrEqual(1))
@@ -595,6 +596,13 @@ describe('the ELSTER fill-in help over the whole return (ADR-0101 §16)', () => 
     expect(within(row).getByText('Zeile 45 · Kz 42')).toBeTruthy()
     expect(within(row).getByText('Spalte: vom')).toBeTruthy()
     expect(screen.getByTestId('elster-wert-anlKind.kz42Von').textContent).toBe('01.01.')
+  })
+
+  it('says why the return’s forms wait while the assistant’s values are unconfirmed (MCP-24)', async () => {
+    useElsterForms(FORMS.slice(0, 1), ['unbestaetigt.anlageN'])
+    server.use(http.get(`${BASE_URL}/elster/anlage-euer`, () => HttpResponse.json(empty('anlage-euer'))))
+    renderBusiness('elster')
+    expect((await screen.findByTestId('elster-unbestaetigt')).textContent).toContain('Prüfen & bestätigen')
   })
 
   it('says so when no form has a value yet', async () => {

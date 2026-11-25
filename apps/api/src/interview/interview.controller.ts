@@ -18,6 +18,7 @@ import { InterviewStateDto } from './dto/interview-state.dto.js'
 import { PostAnswerDto } from './dto/post-answer.dto.js'
 import { PostAnswerResponseDto } from './dto/post-answer-response.dto.js'
 import { InterviewService, PERSONAL_ENTRY_IDS } from './interview.service.js'
+import { UserWrite } from '../common/user-write.decorator.js'
 
 @ApiTags('interview')
 @Controller('v1/steuerjahre')
@@ -59,6 +60,7 @@ export class InterviewController {
   }
 
   @Post(':jahr/interview/antworten')
+  @UserWrite('interview', 'stammdaten', 'kopplung')
   @HttpCode(200)
   @ApiParam({
     name: 'jahr',

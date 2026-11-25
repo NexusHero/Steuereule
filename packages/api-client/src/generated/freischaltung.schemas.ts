@@ -39,6 +39,13 @@ export const UnlockStatusDtoFilingPath = {
   'elster-ausfuellhilfe': 'elster-ausfuellhilfe',
 } as const;
 
+export interface UnlockPriceDto {
+  /** Gross amount in cents, VAT included. */
+  amountCents: number;
+  /** ISO 4217 currency code, lower case as Stripe writes it. */
+  currency: string;
+}
+
 export interface UnlockStatusDto {
   /** freigeschaltet = paid for this tax year; offen = payable; nicht-verfuegbar = payment is not configured on this environment. */
   status: UnlockStatusDtoStatus;
@@ -46,5 +53,10 @@ export interface UnlockStatusDto {
   tier?: UnlockStatusDtoTier;
   /** How the year is filed: the paper printout, or Mein ELSTER with the fill-in help (self-employment, ADR-0101 §16); always sent. */
   filingPath?: UnlockStatusDtoFilingPath;
+  /**
+     * What the checkout of this year would charge, read from the same price the checkout uses; sent while `offen`, null when it cannot be read.
+     * @nullable
+     */
+  price?: UnlockPriceDto | null;
 }
 

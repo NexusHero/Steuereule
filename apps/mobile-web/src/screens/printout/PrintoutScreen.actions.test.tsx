@@ -144,7 +144,7 @@ describe('AusdruckScreen — payment', () => {
   it('names a cancelled payment and offers to pay again', async () => {
     mock('offen')
     renderScreen({ payment: 'abbruch' })
-    expect(await screen.findByText('Die Zahlung wurde abgebrochen. Du kannst es jederzeit erneut versuchen.')).toBeTruthy()
+    expect(await screen.findByText('Die Zahlung wurde abgebrochen, es wurde nichts bezahlt. Du kannst es jederzeit erneut versuchen.')).toBeTruthy()
     expect(screen.getByTestId('ausdruck-bezahlen')).toBeTruthy()
   })
 
@@ -152,10 +152,10 @@ describe('AusdruckScreen — payment', () => {
     mock('freigeschaltet')
     renderScreen({ payment: 'abbruch' })
     await screen.findByTestId('ausdruck-herunterladen')
-    expect(screen.queryByText('Die Zahlung wurde abgebrochen. Du kannst es jederzeit erneut versuchen.')).toBeNull()
+    expect(screen.queryByText('Die Zahlung wurde abgebrochen, es wurde nichts bezahlt. Du kannst es jederzeit erneut versuchen.')).toBeNull()
   })
 
-  it('asks the server again for the payment state on "Aktualisieren"', async () => {
+  it('asks the server again for the payment state while the payment is being confirmed', async () => {
     let reads = 0
     server.use(
       http.get('*/v1/steuerjahre/2025/freischaltung', () => {
@@ -164,9 +164,8 @@ describe('AusdruckScreen — payment', () => {
       }),
       http.get('*/v1/steuerjahre/2025/ausdruck/pruefung', () => HttpResponse.json({ missing: [] })),
     )
-    renderScreen({ payment: 'erfolg' })
-    fireEvent.click(await screen.findByText('Aktualisieren'))
-    await waitFor(() => expect(reads).toBeGreaterThanOrEqual(2))
+    renderScreen({ payment: 'erfolg', confirmTiming: { intervalMs: 20, timeoutMs: 5_000 } })
+    await waitFor(() => expect(reads).toBeGreaterThanOrEqual(3))
   })
 })
 

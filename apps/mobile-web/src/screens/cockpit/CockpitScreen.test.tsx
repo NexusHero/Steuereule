@@ -158,7 +158,7 @@ describe('CockpitScreen', () => {
     renderCockpit()
 
     expect(await screen.findByText('Ehrlich: dafür sind wir noch nicht gut genug.')).toBeTruthy()
-    expect(screen.getByText('Gewerbe kann SteuerEule in Version 1 noch nicht rechnen. Dein erfasstes Einkommen bleibt sichtbar — abgegeben wird erst, wenn alles drin ist.')).toBeTruthy()
+    expect(screen.getByText('Gewerbe kann SteuerEule noch nicht rechnen. Dein erfasstes Einkommen bleibt sichtbar — abgegeben wird erst, wenn alles drin ist.')).toBeTruthy()
   })
 
   it('shows the plural "N Fragen offen" copy read from the API', async () => {

@@ -5,6 +5,7 @@ import { UnlockService } from '../src/unlock/unlock.service.js'
 import type { CommuteRepository } from '../src/commute/commute.repository.js'
 import type { PaymentProvider } from '../src/unlock/payment-provider.js'
 import type { UnlockRepository } from '../src/unlock/unlock.repository.js'
+import { fixedUnlockRepository, stubPaymentProvider } from './fakes/fake-unlock.repository.js'
 import { FakeAuditRepository } from './fakes/fake-audit.repository.js'
 import { FakeCapitalRepository } from './fakes/fake-capital.repository.js'
 import { FakeChSalaryCertificateRepository } from './fakes/fake-ch-salary-certificate.repository.js'
@@ -45,18 +46,25 @@ async function setup() {
   rental.seed({ id: 'obj-9', userId: 'u1', taxYear: 2025, mieteinnahmen: '9600', anschaffungskosten: null, baujahr: null, werbungskosten: null, strasse: 'Hafenweg', hausnummer: '3', plz: '01069', city: 'Dresden' })
 
   // Not paid: the live values must not depend on the unlock (only the PDF is paid, ADR-0050).
-  const unlockRepo: UnlockRepository = { isPaid: async () => false, createOpenOnes: async () => {}, markPaid: async () => {} }
-  const paymentProvider: PaymentProvider = {
-    createCheckout: async () => ({ id: 'cs_1', url: 'https://example.test' }),
-    verifyEvent: () => ({ kind: 'bezahlt', sessionId: 'cs_1', amountCents: 3900 }),
-  }
+  const unlockRepo: UnlockRepository = fixedUnlockRepository(false)
+  const paymentProvider: PaymentProvider = stubPaymentProvider('cs_1')
   const commute: CommuteRepository = { findForUserAndYear: async () => null, save: async (_u, _y, e) => e }
 
-  const service = new PrintoutService(taxCaseReaderOver({ profile, masterData, wageTaxCertificate: lstb, pension: new FakePensionRepository(), capital: new FakeCapitalRepository(), rental, salaryStatement: new FakeChSalaryCertificateRepository(), children, coupling: new FakeLinkRepository(), interview: new FakeInterviewAnswerRepository(), commute }), new FakeMarkingRepository(), new UnlockService(unlockRepo, paymentProvider, 'http://localhost:8081'), new AuditService(audit), TEMPLATES_BASE)
-  return { service, audit, mia, ben }
+  const markings = new FakeMarkingRepository()
+  const service = new PrintoutService(taxCaseReaderOver({ profile, masterData, wageTaxCertificate: lstb, pension: new FakePensionRepository(), capital: new FakeCapitalRepository(), rental, salaryStatement: new FakeChSalaryCertificateRepository(), children, coupling: new FakeLinkRepository(), interview: new FakeInterviewAnswerRepository(), commute }), markings, new UnlockService(unlockRepo, paymentProvider, 'http://localhost:8081'), new AuditService(audit), TEMPLATES_BASE)
+  return { service, audit, mia, ben, markings }
 }
 
 describe('PrintoutService.liveValues (live form view)', () => {
+  it('shows no form while a value is unconfirmed, as the printout would not print it (MCP-24); the assistant still reads its lines', async () => {
+    const { service, markings } = await setup()
+    await markings.save('u1', 2025, { key: 'lstb.bruttoarbeitslohn', provenance: { kind: 'assistent', name: 'Claude' }, confirmed: false, proposal: null })
+
+    expect(await service.liveValues('u1', 2025)).toEqual({ forms: [], unconfirmed: ['unbestaetigt.anlageN'] })
+    expect((await service.liveValues('u1', 2025, { withUnconfirmed: true })).forms.length).toBeGreaterThan(0)
+    expect(await service.fillInValues('u1', 2025)).toEqual({ forms: [], names: {}, unconfirmed: ['unbestaetigt.anlageN'] })
+  })
+
   it('returns the values of every form instance before the printout is paid', async () => {
     const { service } = await setup()
 

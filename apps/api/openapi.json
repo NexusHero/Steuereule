@@ -6279,7 +6279,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Stripe Checkout at the self-employment price (STRIPE_PRICE_ID_SELBSTSTAENDIG).",
+            "description": "Stripe Checkout at the self-employment price (STRIPE_PRICE_ID_SELBSTSTAENDIG); an open session is handed out again.",
             "content": {
               "application/json": {
                 "schema": {
@@ -6310,6 +6310,19 @@
                 }
               }
             }
+          },
+          "409": {
+            "description": "ALREADY_PAID (the year is unlocked) or PAYMENT_PENDING (a payment is still being settled).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessErrorDto"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many checkout starts for this account."
           },
           "503": {
             "description": "PAYMENT_NOT_CONFIGURED or PAYMENT_TIER_NOT_CONFIGURED.",
@@ -6463,8 +6476,14 @@
           "401": {
             "description": "Guest session — this endpoint requires a signed-in account."
           },
+          "409": {
+            "description": "`ALREADY_PAID`: the year is unlocked already; `PAYMENT_PENDING`: a payment is still being settled."
+          },
           "422": {
             "description": "`fehlend`: the printout could not be delivered yet, so payment is not offered."
+          },
+          "429": {
+            "description": "Too many checkout starts for this account."
           },
           "503": {
             "description": "Payment is not configured on this environment."
@@ -8316,7 +8335,8 @@
                 "anlageKap",
                 "anlageV",
                 "anlageKind",
-                "anlageEuer"
+                "anlageEuer",
+                "bescheid"
               ],
               "type": "string"
             }
@@ -8332,9 +8352,19 @@
             }
           }
         ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfirmAnnexDto"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
-            "description": "All values of the Anlage are confirmed; the remaining overview.",
+            "description": "The values of the Anlage the user was shown are confirmed; the remaining overview.",
             "content": {
               "application/json": {
                 "schema": {
@@ -8345,6 +8375,9 @@
           },
           "401": {
             "description": "Guest session — this endpoint requires a signed-in account."
+          },
+          "409": {
+            "description": "CONFIRMATION_STALE: a value changed since it was shown, or one came in; nothing was confirmed."
           }
         },
         "tags": [
@@ -17269,11 +17302,22 @@
             "items": {
               "$ref": "#/components/schemas/ElsterFormEntryDto"
             }
+          },
+          "unconfirmed": {
+            "example": [
+              "unbestaetigt.anlageN"
+            ],
+            "description": "Anlagen with values the user has not confirmed; the return's forms are left out until they are (MCP-24).",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           }
         },
         "required": [
           "year",
-          "forms"
+          "forms",
+          "unconfirmed"
         ]
       },
       "ElsterLineDto": {
@@ -17513,6 +17557,25 @@
           "checkoutUrl"
         ]
       },
+      "UnlockPriceDto": {
+        "type": "object",
+        "properties": {
+          "amountCents": {
+            "type": "number",
+            "example": 3499,
+            "description": "Gross amount in cents, VAT included."
+          },
+          "currency": {
+            "type": "string",
+            "example": "eur",
+            "description": "ISO 4217 currency code, lower case as Stripe writes it."
+          }
+        },
+        "required": [
+          "amountCents",
+          "currency"
+        ]
+      },
       "UnlockStatusDto": {
         "type": "object",
         "properties": {
@@ -17540,6 +17603,16 @@
               "elster-ausfuellhilfe"
             ],
             "description": "How the year is filed: the paper printout, or Mein ELSTER with the fill-in help (self-employment, ADR-0101 §16); always sent."
+          },
+          "price": {
+            "nullable": true,
+            "description": "What the checkout of this year would charge, read from the same price the checkout uses; sent while `offen`, null when it cannot be read.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/UnlockPriceDto"
+              }
+            ]
           }
         },
         "required": [
@@ -17682,10 +17755,21 @@
             "items": {
               "$ref": "#/components/schemas/LiveFormDto"
             }
+          },
+          "unconfirmed": {
+            "example": [
+              "unbestaetigt.anlageN"
+            ],
+            "description": "Anlagen with values the user has not confirmed; while there are any, no form is shown (MCP-24).",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           }
         },
         "required": [
-          "forms"
+          "forms",
+          "unconfirmed"
         ]
       },
       "CheckoutResponseDto": {
@@ -21750,6 +21834,16 @@
             "nullable": true,
             "description": "Instanz (Vermietungsobjekt, Kind) oder null."
           },
+          "instanceLabel": {
+            "type": "string",
+            "nullable": true,
+            "example": "Mia",
+            "description": "Which record the value belongs to, as the user knows it: the child’s first name, the object’s address. Null without an instance or without a name."
+          },
+          "version": {
+            "type": "string",
+            "description": "What the user is shown of this value; confirming an Anlage sends it back (MCP-4)."
+          },
           "field": {
             "type": "string",
             "example": "bruttoarbeitslohn"
@@ -21787,6 +21881,8 @@
           "key",
           "screen",
           "instance",
+          "instanceLabel",
+          "version",
           "field",
           "value",
           "provenance",
@@ -21807,7 +21903,8 @@
               "anlageKap",
               "anlageV",
               "anlageKind",
-              "anlageEuer"
+              "anlageEuer",
+              "bescheid"
             ],
             "example": "anlageN"
           },
@@ -21889,6 +21986,44 @@
         "required": [
           "annexes",
           "tasks"
+        ]
+      },
+      "ShownValueDto": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string",
+            "example": "lstb.bruttoarbeitslohn"
+          },
+          "version": {
+            "type": "string",
+            "description": "The `version` of the value as the overview gave it."
+          },
+          "person": {
+            "type": "string",
+            "enum": [
+              "B"
+            ],
+            "description": "Set for a value of Person B, as in the overview."
+          }
+        },
+        "required": [
+          "key",
+          "version"
+        ]
+      },
+      "ConfirmAnnexDto": {
+        "type": "object",
+        "properties": {
+          "values": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ShownValueDto"
+            }
+          }
+        },
+        "required": [
+          "values"
         ]
       },
       "ProposalDecisionDto": {
