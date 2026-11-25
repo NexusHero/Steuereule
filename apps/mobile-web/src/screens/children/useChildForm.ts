@@ -4,7 +4,7 @@ import { isoToGerman } from '../master-data/masterDataMapping'
 import { calculateChildrenStatus, type ChildRelationship, type GermanState, type OtherParentStatus } from '@steuereule/core'
 import { type ChildInput, type ChildItem } from './childrenModel'
 import { childStatusInputs, hasFurtherDetails, officeSuggestionsFor, typedOfficeOf } from './childrenDerive'
-import { childFormError, childPayload, otherParentKnown } from './childPayload'
+import { childFormError, childPayload, otherParentKnown, type ChildFormValues } from './childPayload'
 
 export interface ChildFormOptions {
   readonly taxYear: number
@@ -68,6 +68,8 @@ export function useChildForm({ taxYear, initialKinder, onAddChild, onSaveChild, 
   const [registered, setRegistered] = useState<boolean | null>(null)
   const [childBenefitToMe, setChildBenefitToMe] = useState<boolean | null>(null)
   const [edited, setEdited] = useState<string | null>(null)
+  /** The record the opened child would write unchanged; an edit differs from it only once the user changed a field. */
+  const [editBaseline, setEditBaseline] = useState<string | null>(null)
   // Married is known only once the master data has loaded: a new form then starts at the couple's
   // joint child too, not at „Keines“ (UX review H3, found in the browser retest).
   useEffect(() => {
@@ -82,37 +84,37 @@ export function useChildForm({ taxYear, initialKinder, onAddChild, onSaveChild, 
   const foldStatus = calculateChildrenStatus(childStatusInputs(kinder), taxYear)
 
   function fillForm(k: ChildItem | null) {
-    setFirstName(k?.firstName ?? '')
-    setLastName(k?.lastName ?? suggestedLastName)
+    const v = formValuesOf(k, suggestedLastName, married)
+    setFirstName(v.firstName)
+    setLastName(v.lastName)
     setCopiedFrom(null)
-    setBirthDate(isoToGerman(k?.geburtsdatum ?? null))
-    setTaxId(k?.taxId ?? '')
-    setChildBenefit(k?.childBenefitClaimEur ?? '')
-    // A share derived from a parent's Lohnausweis is shown as a hint, not stored as the child's own amount.
-    setSwissAllowance(k?.swissFamilyAllowanceDerived ? '' : (k?.swissFamilyAllowanceEur ?? ''))
+    setBirthDate(v.geburtsdatum)
+    setTaxId(v.taxId)
+    setChildBenefit(v.childBenefit)
+    setSwissAllowance(v.swissAllowance)
     setSwissDerived(k?.swissFamilyAllowanceDerived ? (k.swissFamilyAllowanceEur ?? null) : null)
-    setSwissPayer(k?.swissFamilyAllowancePayer ?? null)
-    setKvBasis(k?.healthBasicEur ?? '')
-    setPv(k?.careEur ?? '')
-    setHealthAbroad(k?.healthInsuranceAbroad === true)
-    setChildcare(k?.childcareEur ?? '')
-    setChildcareProvider(k?.childcareProvider ?? '')
-    setChildcareFrom(k?.childcareFrom ?? '')
-    setChildcareTo(k?.childcareTo ?? '')
-    setRelationship(k?.kinship ?? null)
-    // A couple's new child is usually theirs together (UX review H3): pre-select it, never „Keines“.
-    setRelationshipB(k ? (k.kinshipB ?? null) : married ? '1' : null)
-    setFamilyBenefitsOffice(k?.familyBenefitsOffice ?? '')
-    setInland(k?.domesticResidenceAllYear ?? null)
-    setAe(k?.otherParent ?? null)
-    setOpName(k?.otherParentName ?? '')
-    setOpBirthDate(isoToGerman(k?.otherParentBirthDate ?? null))
-    setOpAddress(k?.otherParentAddress ?? '')
-    setOpKind(k?.otherParentKind ?? null)
-    setOpDiedOn(isoToGerman(k?.otherParentDiedOn ?? null))
-    setRegistered(k?.registeredWithMeAllYear ?? null)
-    setChildBenefitToMe(k?.childBenefitToMeAllYear ?? null)
+    setSwissPayer(v.swissPayer)
+    setKvBasis(v.kvBasis)
+    setPv(v.pv)
+    setHealthAbroad(v.healthAbroad)
+    setChildcare(v.childcare)
+    setChildcareProvider(v.childcareProvider)
+    setChildcareFrom(v.childcareFrom)
+    setChildcareTo(v.childcareTo)
+    setRelationship(v.relationship)
+    setRelationshipB(v.relationshipB)
+    setFamilyBenefitsOffice(v.familyBenefitsOffice)
+    setInland(v.inland)
+    setAe(v.ae)
+    setOpName(v.opName)
+    setOpBirthDate(v.opBirthDate)
+    setOpAddress(v.opAddress)
+    setOpKind(v.opKind)
+    setOpDiedOn(v.opDiedOn)
+    setRegistered(v.registered)
+    setChildBenefitToMe(v.childBenefitToMe)
     setEdited(k?.id ?? null)
+    setEditBaseline(k ? JSON.stringify(childPayload(v)) : null)
     setMoreOpen(hasFurtherDetails(k, married))
   }
 
@@ -144,6 +146,37 @@ export function useChildForm({ taxYear, initialKinder, onAddChild, onSaveChild, 
     setCopiedFrom(k.firstName)
   }
 
+  const values: ChildFormValues = {
+    firstName,
+    lastName,
+    geburtsdatum,
+    taxId,
+    childBenefit,
+    relationship,
+    relationshipB,
+    familyBenefitsOffice,
+    inland,
+    ae,
+    opName,
+    opBirthDate,
+    opAddress,
+    opKind,
+    opDiedOn,
+    registered,
+    childBenefitToMe,
+    kvBasis,
+    pv,
+    healthAbroad,
+    swissAllowance,
+    swissPayer,
+    childcare,
+    childcareProvider,
+    childcareFrom,
+    childcareTo,
+  }
+  /** An opened child whose fields now say something else than what is stored (NM-10); opening it alone changes nothing. */
+  const unsavedEdit = edited !== null && JSON.stringify(childPayload(values)) !== editBaseline
+
   async function handleSave() {
     if (saveInFlight.current) return
     setSavedName(null)
@@ -153,34 +186,7 @@ export function useChildForm({ taxYear, initialKinder, onAddChild, onSaveChild, 
       setSaveError(formError)
       return
     }
-    const payload: ChildInput = childPayload({
-      firstName,
-      lastName,
-      geburtsdatum,
-      taxId,
-      childBenefit,
-      relationship,
-      relationshipB,
-      familyBenefitsOffice,
-      inland,
-      ae,
-      opName,
-      opBirthDate,
-      opAddress,
-      opKind,
-      opDiedOn,
-      registered,
-      childBenefitToMe,
-      kvBasis,
-      pv,
-      healthAbroad,
-      swissAllowance,
-      swissPayer,
-      childcare,
-      childcareProvider,
-      childcareFrom,
-      childcareTo,
-    })
+    const payload: ChildInput = childPayload(values)
     saveInFlight.current = true
     setSaving(true)
     setSaveError(null)
@@ -289,6 +295,7 @@ export function useChildForm({ taxYear, initialKinder, onAddChild, onSaveChild, 
     childBenefitToMe,
     setChildBenefitToMe,
     edited,
+    unsavedEdit,
     formOpen,
     setFormOpen,
     moreOpen,
@@ -301,6 +308,40 @@ export function useChildForm({ taxYear, initialKinder, onAddChild, onSaveChild, 
     copyFromSibling,
     handleSave,
     handleDelete,
+  }
+}
+
+/** The form's fields for a stored child, or for a new one (null): what `fillForm` puts in the form. */
+export function formValuesOf(k: ChildItem | null, suggestedLastName: string, married: boolean): ChildFormValues {
+  return {
+    firstName: k?.firstName ?? '',
+    lastName: k?.lastName ?? suggestedLastName,
+    geburtsdatum: isoToGerman(k?.geburtsdatum ?? null),
+    taxId: k?.taxId ?? '',
+    childBenefit: k?.childBenefitClaimEur ?? '',
+    // A share derived from a parent's Lohnausweis is shown as a hint, not stored as the child's own amount.
+    swissAllowance: k?.swissFamilyAllowanceDerived ? '' : (k?.swissFamilyAllowanceEur ?? ''),
+    swissPayer: k?.swissFamilyAllowancePayer ?? null,
+    kvBasis: k?.healthBasicEur ?? '',
+    pv: k?.careEur ?? '',
+    healthAbroad: k?.healthInsuranceAbroad === true,
+    childcare: k?.childcareEur ?? '',
+    childcareProvider: k?.childcareProvider ?? '',
+    childcareFrom: k?.childcareFrom ?? '',
+    childcareTo: k?.childcareTo ?? '',
+    relationship: k?.kinship ?? null,
+    // A couple's new child is usually theirs together (UX review H3): pre-select it, never „Keines“.
+    relationshipB: k ? (k.kinshipB ?? null) : married ? '1' : null,
+    familyBenefitsOffice: k?.familyBenefitsOffice ?? '',
+    inland: k?.domesticResidenceAllYear ?? null,
+    ae: k?.otherParent ?? null,
+    opName: k?.otherParentName ?? '',
+    opBirthDate: isoToGerman(k?.otherParentBirthDate ?? null),
+    opAddress: k?.otherParentAddress ?? '',
+    opKind: k?.otherParentKind ?? null,
+    opDiedOn: isoToGerman(k?.otherParentDiedOn ?? null),
+    registered: k?.registeredWithMeAllYear ?? null,
+    childBenefitToMe: k?.childBenefitToMeAllYear ?? null,
   }
 }
 
