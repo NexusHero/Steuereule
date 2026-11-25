@@ -19,7 +19,6 @@ import type { UnlockService } from '../unlock/unlock.service.js'
 import type { KeyedLock } from '../common/keyed-lock.js'
 import type { TransactionRunner } from '../common/transaction-runner.js'
 import type { UploadAdmission } from '../receipt/upload-admission.js'
-import type { McpRateLimiter } from './mcp-rate-limit.js'
 import type { YearHistoryRepository } from '../year-history/year-history.repository.js'
 import type { McpReportService } from './mcp-report.service.js'
 
@@ -47,8 +46,6 @@ export interface McpDeps {
   readonly profiles: ProfileRepository
   readonly masterData: MasterDataRepository
   readonly audit: AuditService
-  /** The budgets of single tools: checkout links (ADR-0052 amendment 9) and receipt uploads. */
-  readonly limiter: Pick<McpRateLimiter, 'takeCheckoutLink' | 'takeReceiptUpload'>
   /** Caps counted and filled under one lock per account and year (MCP-23, H2-20). */
   readonly locks: KeyedLock
   /** Check and delete of an own record in one transaction (H2-28). */

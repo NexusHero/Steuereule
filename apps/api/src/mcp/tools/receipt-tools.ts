@@ -20,7 +20,7 @@ const isoDateArg = (description: string) => z.string().max(10).regex(ISO_DATE_PA
 /**
  * The receipt inbox (ADR-0052 §11, beta decision 6): the assistant uploads the file itself, and the upload takes
  * the same way as the app's (`ReceiptService.upload`: type by magic bytes, 10 MB, the account's quota, the
- * name cut to 255, dates checked) with the same admission and budget. Only the assistant that uploaded a
+ * name cut to 255, dates checked) with the same admission; the gate takes its upload budget. Only the assistant that uploaded a
  * receipt may take it back, and only while no entry names it as its source.
  */
 export function registerReceiptTools(session: McpSession, deps: McpDeps): void {
@@ -38,8 +38,6 @@ export function registerReceiptTools(session: McpSession, deps: McpDeps): void {
       zahlungsdatum: isoDateArg('Zahlungsdatum im Format YYYY-MM-DD').optional(),
     },
     async ({ dateiBase64, fileName, kind, taxYear, belegdatum, zahlungsdatum }) => {
-      const budget = await deps.limiter.takeReceiptUpload(userId)
-      if (!budget.ok) return refused(`RATE_LIMITED: Über diesen Zugang wurden gerade viele Belege hochgeladen. Versuch es in ${Math.ceil(budget.retryAfterSeconds / 60)} Minuten wieder.`)
       const buffer = decodeBase64(dateiBase64)
       if (buffer === null) return refused('RECEIPT_FILE_INVALID: `dateiBase64` ist kein gültiges Base64.', 'Kodiere die Datei als Standard-Base64 (RFC 4648) ohne Präfix wie „data:…;base64,“.')
       // The REST route's admission: a few uploads at once per instance, one per account (ADR-0109).

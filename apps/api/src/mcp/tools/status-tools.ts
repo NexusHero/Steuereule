@@ -3,7 +3,6 @@ import { type Screen } from '@steuereule/core'
 import { ConflictError } from '../../common/domain-error.js'
 import { checkStageValue, validateStageTarget } from '../../ki/advisor-safety.js'
 import type { SimulationEntry } from '../mcp-report.service.js'
-import { MCP_CHECKOUT_LINK_LIMIT } from '../mcp-rate-limit.js'
 import { dataUserFor, type McpDeps, type McpSession } from '../mcp-session.js'
 import { fieldArg, instanceArg, json, MIN_TAX_YEAR, maxTaxYear, personArg, refused, screenArg, taxYearArg, valueArg } from '../tool-kit.js'
 
@@ -57,11 +56,6 @@ export function registerStatusTools(session: McpSession, deps: McpDeps): void {
     'Legt beim Zahlungsanbieter einen Bezahlvorgang für die Freischaltung des amtlichen Ausdrucks an und gibt den Link zurück (braucht die Berechtigung zahllink:write). Das Bezahlen selbst macht nur der Kontoinhaber im Browser. Ist das Jahr schon bezahlt oder läuft eine Zahlung, sagt die Antwort das.',
     { taxYear: taxYearArg() },
     async ({ taxYear }) => {
-      // Every link is a new checkout session at the payment provider: a few an hour, not 120 a minute.
-      const gate = await deps.limiter.takeCheckoutLink(userId)
-      if (!gate.ok) {
-        return refused(`RATE_LIMITED: Für dieses Konto wurden in der letzten Stunde schon ${MCP_CHECKOUT_LINK_LIMIT.max} Zahllinks angefordert. Gib dem Nutzer den zuletzt erhaltenen Link, oder versuch es in ${Math.ceil(gate.retryAfterSeconds / 60)} Minuten wieder.`)
-      }
       try {
         const { checkoutUrl } = await deps.unlock.startCheckout(userId, taxYear)
         return json({ steuerjahr: taxYear, checkoutUrl, hinweis: 'Der Bezahlvorgang muss vom Kontoinhaber im Browser abgeschlossen werden.' })

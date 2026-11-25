@@ -6,7 +6,7 @@ import { z } from 'zod'
 import { assistantAuditSource, runWithAuditSource } from '../audit/audit-source.js'
 import type { AuditService } from '../audit/audit.service.js'
 import { DomainError, type DomainErrorKind } from '../common/domain-error.js'
-import type { McpRateLimiter } from './mcp-rate-limit.js'
+import { MCP_CHECKOUT_LINK_LIMIT, type McpRateLimiter, type ToolBudget } from './mcp-rate-limit.js'
 import type { AssistantSessionInfo } from './mcp-session.js'
 
 /**
@@ -58,8 +58,12 @@ export interface ToolPolicy {
   readonly title: string
   readonly scope: McpScope
   readonly kind: ToolKind
-  /** Renders the printout to find what does not fit: a budget of its own besides the call limit (H2-26). */
-  readonly rendersPrintout?: true
+  /**
+   * A budget of its own besides the call limit, taken by the gate before the tool runs: `printout` for a tool
+   * that renders the printout to find what does not fit (H2-26), `checkoutLink` for one that opens a checkout
+   * session at the payment provider (ADR-0052 amendment 9), `receiptUpload` for one that stores a file.
+   */
+  readonly budget?: ToolBudget
   /** Reaches a third-party host (the law texts, the payment provider). */
   readonly openWorld?: true
 }
@@ -71,13 +75,13 @@ const remove = (title: string, extra: Partial<ToolPolicy> = {}): ToolPolicy => (
 /** Every tool the server offers. A tool without a row here cannot be registered. */
 export const TOOL_POLICIES: Readonly<Record<string, ToolPolicy>> = {
   steuerjahre_auflisten: read('Steuerjahre des Nutzers'),
-  ausdruck_vorpruefung: read('Vorprüfung des Ausdrucks', { rendersPrintout: true }),
+  ausdruck_vorpruefung: read('Vorprüfung des Ausdrucks', { budget: 'printout' }),
   eulen_hinweise: read('Eulen-Hinweise'),
-  zahllink_anfordern: { title: 'Zahllink anfordern', scope: MCP_SCOPE.payment, kind: 'write', openWorld: true },
-  steuerbericht: read('Stand der Erklärung', { rendersPrintout: true }),
+  zahllink_anfordern: { title: 'Zahllink anfordern', scope: MCP_SCOPE.payment, kind: 'write', openWorld: true, budget: 'checkoutLink' },
+  steuerbericht: read('Stand der Erklärung', { budget: 'printout' }),
   schaetzung_aufschluesseln: read('Rechenweg der Schätzung'),
   bescheid_abgleichen: read('Bescheid abgleichen'),
-  pruefen: read('Erklärung prüfen', { rendersPrintout: true }),
+  pruefen: read('Erklärung prüfen', { budget: 'printout' }),
   offene_fragen: read('Offene Interview-Fragen'),
   // Written on trial and always rolled back: nothing stays, but only an assistant that may write gets it.
   auswirkung_simulieren: { title: 'Wirkung eines Eintrags', scope: MCP_SCOPE.write, kind: 'read' },
@@ -89,7 +93,7 @@ export const TOOL_POLICIES: Readonly<Record<string, ToolPolicy>> = {
   maske_eintragen_stapel: write('Mehrere Werte eintragen'),
   maske_felder: read('Felder einer Maske'),
   eintrag_zuruecknehmen: remove('Eigenen Eintrag zurücknehmen'),
-  beleg_hochladen: { title: 'Beleg hochladen', scope: MCP_SCOPE.receipts, kind: 'write' },
+  beleg_hochladen: { title: 'Beleg hochladen', scope: MCP_SCOPE.receipts, kind: 'write', budget: 'receiptUpload' },
   beleg_zuruecknehmen: { title: 'Eigenen Beleg zurücknehmen', scope: MCP_SCOPE.receipts, kind: 'destructive' },
   einkommensteuer_berechnen: read('Einkommensteuer berechnen'),
   veranlagungsarten_vergleichen: read('Veranlagungsarten mit frei gewählten Zahlen vergleichen'),
@@ -359,7 +363,7 @@ export function normalisedResult(result: unknown): ToolResult {
 export interface ToolGateContext {
   readonly userId: string
   readonly assistant: AssistantSessionInfo
-  readonly limiter: Pick<McpRateLimiter, 'takeToolCallEverywhere' | 'takePrintoutCheck' | 'limits'>
+  readonly limiter: Pick<McpRateLimiter, 'takeToolCallEverywhere' | 'takeBudget' | 'limits'>
   readonly audit: Pick<AuditService, 'append'>
 }
 
@@ -370,7 +374,7 @@ const logger = new Logger('McpTools')
 /**
  * Every tool registered on this server from now on passes here (one place, so no tool can forget a step):
  * its policy and bounded arguments are checked when it is registered; each call is limited, audited with
- * the assistant, scope-checked and answered in one shape. Registration takes the four-argument form
+ * the assistant, scope-checked, counted against the budget its policy names and answered in one shape. Registration takes the four-argument form
  * `server.tool(name, description, shape, handler)`.
  */
 export function installToolGate(server: McpServer, context: ToolGateContext): void {
@@ -397,9 +401,9 @@ export function installToolGate(server: McpServer, context: ToolGateContext): vo
         if (!hasScope(assistant, policy.scope)) {
           return refused(`MISSING_SCOPE: Dem Assistenten wurde die Berechtigung „${policy.scope}“ nicht erteilt; ${name} braucht sie.`)
         }
-        if (policy.rendersPrintout) {
-          const budget = await limiter.takePrintoutCheck(userId)
-          if (!budget.ok) return refused(`PRINTOUT_BUDGET: Die Ausdruck-Prüfung lief in der letzten Minute schon oft. Versuch es in ${budget.retryAfterSeconds} Sekunden wieder.`)
+        if (policy.budget !== undefined) {
+          const budget = await limiter.takeBudget(policy.budget, userId)
+          if (!budget.ok) return refused(BUDGET_REFUSALS[policy.budget](budget.retryAfterSeconds))
         }
         return normalisedResult(await runWithAuditSource(source, () => handler(args, extra)))
       } catch (error) {
@@ -411,6 +415,17 @@ export function installToolGate(server: McpServer, context: ToolGateContext): vo
   server.tool = gated as unknown as McpServer['tool']
   // Arguments that fail the schema and unknown tools are answered by the SDK itself: in the same shape.
   ;(server as unknown as { createToolError: (message: string) => ToolResult }).createToolError = refusalOfProtocolError
+}
+
+const minutes = (seconds: number): number => Math.ceil(seconds / 60)
+
+/** The German refusal of a call whose tool budget is used up, as `CODE: reason`. */
+export const BUDGET_REFUSALS: Readonly<Record<ToolBudget, (retryAfterSeconds: number) => string>> = {
+  printout: (seconds) => `PRINTOUT_BUDGET: Die Ausdruck-Prüfung lief in der letzten Minute schon oft. Versuch es in ${seconds} Sekunden wieder.`,
+  // Every link is a new checkout session at the payment provider: a few an hour, not 120 a minute.
+  checkoutLink: (seconds) =>
+    `RATE_LIMITED: Für dieses Konto wurden in der letzten Stunde schon ${MCP_CHECKOUT_LINK_LIMIT.max} Zahllinks angefordert. Gib dem Nutzer den zuletzt erhaltenen Link, oder versuch es in ${minutes(seconds)} Minuten wieder.`,
+  receiptUpload: (seconds) => `RATE_LIMITED: Über diesen Zugang wurden gerade viele Belege hochgeladen. Versuch es in ${minutes(seconds)} Minuten wieder.`,
 }
 
 /** The German refusal of a call over the limit. */

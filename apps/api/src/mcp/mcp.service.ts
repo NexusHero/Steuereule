@@ -82,7 +82,6 @@ export class McpService {
       profiles,
       masterData,
       audit,
-      limiter: this.limiter,
       locks: locks ?? inProcessKeyedLock(),
       transactions: transactions ?? passThroughTransactionRunner,
       admission,
