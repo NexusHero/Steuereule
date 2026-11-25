@@ -100,7 +100,7 @@ describe('per-year consent of Person B (decision 3, API-3)', () => {
 
   it('Person B takes the consent of a year back; A sees nothing of B for it at once, and B can agree again', async () => {
     await profiles.upsert(B, { firstName: 'Sabine', lastName: 'Muster', steuerId: '12345678901', steuernummer: null })
-    const y2025 = await link.set(A, 2025, { filingType: 'zusammen' })
+    const y2025 = await link.set(A, 2025, { filingType: 'zusammen' }, new Date(), STEPPED_UP)
     await link.joinWithCode(B, 2025, y2025.invitationCode!)
     expect((await link.get(B, 2025)).consentGivenByMe).toBe(true)
 
@@ -116,7 +116,7 @@ describe('per-year consent of Person B (decision 3, API-3)', () => {
   })
 
   it('only Person B can take a consent back, and only one that was given', async () => {
-    const y2025 = await link.set(A, 2025, { filingType: 'zusammen' })
+    const y2025 = await link.set(A, 2025, { filingType: 'zusammen' }, new Date(), STEPPED_UP)
     await expect(link.withdrawConsentForYear(A, 2025)).rejects.toMatchObject({ code: 'NO_CONSENT_GIVEN' })
     await link.joinWithCode(B, 2025, y2025.invitationCode!)
     await expect(link.withdrawConsentForYear('someone-else', 2025)).rejects.toMatchObject({ code: 'NO_CONSENT_GIVEN' })
