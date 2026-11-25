@@ -2394,10 +2394,15 @@ export type advisorControllerSummarizeConversationResponse409 = {
   status: 409
 }
 
+export type advisorControllerSummarizeConversationResponse429 = {
+  data: void
+  status: 429
+}
+
 export type advisorControllerSummarizeConversationResponseSuccess = (advisorControllerSummarizeConversationResponse200) & {
   headers: Headers;
 };
-export type advisorControllerSummarizeConversationResponseError = (advisorControllerSummarizeConversationResponse404 | advisorControllerSummarizeConversationResponse409) & {
+export type advisorControllerSummarizeConversationResponseError = (advisorControllerSummarizeConversationResponse404 | advisorControllerSummarizeConversationResponse409 | advisorControllerSummarizeConversationResponse429) & {
   headers: Headers;
 };
 

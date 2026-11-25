@@ -102,6 +102,28 @@ describe('AdvisorRunService: answers detached from the connection (#476)', () =>
     await expect(runs.start(USER, YEAR, { message: 'Hi' })).rejects.toMatchObject({ kind: 'rate-limited' })
   })
 
+  it('opens the session without reading the whole year: only answers still being written are looked at (OPS-4)', async () => {
+    const { runs, advisorRepo } = build([])
+    for (let i = 0; i < 4; i += 1) await advisorRepo.createMessage({ userId: USER, taxYear: YEAR, role: 'user', content: `q${i}`, meta: null })
+    // The orphan check read every message of the year, decrypted, on each session open: 300 messages of a long
+    // chat were read twice per request, once here and once for the conversation itself.
+    const wholeYear = vi.spyOn(advisorRepo, 'listForUserAndYear')
+    const streaming = vi.spyOn(advisorRepo, 'listStreamingForUserAndYear')
+    const session = await runs.getSession(USER, YEAR)
+    expect(session.messages).toHaveLength(4)
+    expect(wholeYear).not.toHaveBeenCalled()
+    expect(streaming).toHaveBeenCalledWith(USER, YEAR)
+  })
+
+  it('refuses „Jetzt zusammenfassen“ once the day\'s messages are used up: it asks the model too (H2-12)', async () => {
+    const { runs, advisorRepo } = build([])
+    for (let i = 0; i < 50; i += 1) {
+      await advisorRepo.createMessage({ userId: USER, taxYear: YEAR, role: 'user', content: 'q', meta: null })
+    }
+    const { conversationId } = await runs.getSession(USER, YEAR)
+    await expect(runs.summarizeConversation(USER, YEAR, conversationId)).rejects.toMatchObject({ kind: 'rate-limited' })
+  })
+
   it('marks an answer failed whose run no instance knows any more', async () => {
     const { runs, advisorRepo } = build([])
     await advisorRepo.createMessage({ userId: USER, taxYear: YEAR, role: 'user', content: 'q', meta: null })

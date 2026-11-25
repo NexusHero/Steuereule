@@ -42,6 +42,8 @@ import { RedisAdvisorRunLog } from './run/advisor-run-log.redis.js'
 import { AdvisorRunService } from './run/advisor-run.service.js'
 import { Redis } from 'ioredis'
 import { redisTlsOptions } from '../redis/redis-options.js'
+import { UnlockModule } from '../unlock/unlock.module.js'
+import { ModelCallTiers } from './model-call-tier.js'
 
 /**
  * With REDIS_URL the run log lives in Redis Streams, so any instance can serve a re-attaching
@@ -75,6 +77,7 @@ export function createAdvisorRunLog(env: NodeJS.ProcessEnv = process.env): Advis
     TaxEstimateModule,
     AssessmentModule,
     ReceiptStorageModule,
+    UnlockModule,
   ],
   controllers: [AdvisorController],
   providers: [
@@ -87,6 +90,7 @@ export function createAdvisorRunLog(env: NodeJS.ProcessEnv = process.env): Advis
     AdvisorOpening,
     AdvisorDocumentStaging,
     AdvisorTurn,
+    ModelCallTiers,
     // Each owning module provides the rows of its mask; a new mask with rows adds its source here.
     { provide: DRAFT_RECORDS, inject: [ChildDraftRecords, RentalDraftRecords], useFactory: (...sources: DraftRecordSource[]) => draftRecordRegistry(sources) },
     AdvisorRunService,

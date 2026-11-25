@@ -157,11 +157,84 @@ export interface RendererOptions {
   editable?: boolean | undefined
 }
 
-export async function renderForms(fieldSet: FieldSet, values: FieldValues, options: RendererOptions): Promise<Uint8Array> {
-  const known = new Map(fieldSet.felder.map((field) => [field.id, field]))
-  const allValues = [values, ...Object.values(options.instances ?? {}).flat()]
+function assertKnownFields(fieldSet: FieldSet, values: FieldValues, instances: RendererOptions['instances']): void {
+  const known = new Set(fieldSet.felder.map((field) => field.id))
+  const allValues = [values, ...Object.values(instances ?? {}).flat()]
   const unknown = allValues.flatMap((w) => Object.keys(w)).filter((id) => !known.has(id))
   if (unknown.length > 0) throw new Error(`Unbekannte Feld-IDs: ${[...new Set(unknown)].join(', ')}`)
+}
+
+/** The copies of a Vordruck the printout prints: one per list instance, else one with the plain values. */
+function copiesOf(formular: string, values: FieldValues, instances: RendererOptions['instances']): readonly FieldValues[] {
+  const list = instances?.[formular]
+  return list && list.length > 0 ? list : [values]
+}
+
+/** The box a field is printed into: the AcroForm widget's rectangle where the template has one. */
+function resolveField(field: Field, widget: AcroFieldWidgetMeta | undefined): Field {
+  return widget
+    ? {
+        ...field,
+        kasten: { x: widget.rect.x, y: widget.rect.y, breite: widget.rect.width, hoehe: widget.rect.height },
+        ...(field.textAb !== undefined ? { textAb: widget.rect.x } : {}),
+      }
+    : field
+}
+
+/** What the overflow check needs of a template: its page count and widget boxes, never the pages themselves. */
+interface TemplateLayout {
+  readonly pageCount: number
+  readonly widgets: ReadonlyMap<string, AcroFieldWidgetMeta>
+}
+
+const templateLayoutCache = new Map<string, Promise<TemplateLayout>>()
+
+function templateLayout(url: URL): Promise<TemplateLayout> {
+  const key = url.href
+  const cached = templateLayoutCache.get(key)
+  if (cached) return cached
+  const pending = loadTemplateBytes(url)
+    .then((bytes) => PDFDocument.load(bytes))
+    .then(async (template) => ({ pageCount: template.getPageCount(), widgets: await extractAcroFormWidgets(template) }))
+  pending.catch(() => templateLayoutCache.delete(key))
+  templateLayoutCache.set(key, pending)
+  return pending
+}
+
+let measuringFont: Promise<PDFFont> | undefined
+
+/** Helvetica's metrics, the same the printout embeds; a scratch document holds it once per process. */
+function helveticaMetrics(): Promise<PDFFont> {
+  measuringFont ??= PDFDocument.create().then((document) => document.embedFont(StandardFonts.Helvetica))
+  return measuringFont
+}
+
+/**
+ * The fields whose value does not fit its box at the printout's font size: the same `place` the renderer
+ * applies, without copying a page or writing a PDF (API-6). The check before payment asks this on every
+ * open of the screen; it rendered the whole return for it before. Template layouts are cached per process.
+ */
+export async function findOverflows(fieldSet: FieldSet, values: FieldValues, options: Pick<RendererOptions, 'templatesDirectory' | 'instances'>): Promise<string[]> {
+  assertKnownFields(fieldSet, values, options.instances)
+  const font = await helveticaMetrics()
+  const overflows: string[] = []
+  for (const formular of ORDER) {
+    for (const copy of copiesOf(formular, values, options.instances)) {
+      const fields = fieldSet.felder.filter((field) => field.formular === formular && copy[field.id] !== undefined)
+      if (fields.length === 0) continue
+      const layout = await templateLayout(new URL(`${formular}.pdf`, options.templatesDirectory))
+      for (const field of fields) {
+        // The renderer places a field only on a page the template has.
+        if (field.seite < 1 || field.seite > layout.pageCount) continue
+        if (place(font, resolveField(field, layout.widgets.get(field.id)), copy[field.id]!) === null) overflows.push(field.id)
+      }
+    }
+  }
+  return overflows
+}
+
+export async function renderForms(fieldSet: FieldSet, values: FieldValues, options: RendererOptions): Promise<Uint8Array> {
+  assertKnownFields(fieldSet, values, options.instances)
 
   const output = await PDFDocument.create()
   const font = await output.embedFont(StandardFonts.Helvetica)
@@ -170,13 +243,7 @@ export async function renderForms(fieldSet: FieldSet, values: FieldValues, optio
   const instanceNumber = new Map<string, number>()
 
   for (const formular of ORDER) {
-    const listInstances = options.instances?.[formular]
-    const instancesToRender: readonly FieldValues[] =
-      listInstances && listInstances.length > 0
-        ? listInstances
-        : [values]
-
-    for (const instanceValues of instancesToRender) {
+    for (const instanceValues of copiesOf(formular, values, options.instances)) {
       const fields = fieldSet.felder.filter((field) => field.formular === formular && instanceValues[field.id] !== undefined)
       if (fields.length === 0 && formular !== 'est-1-a') continue
       const number = (instanceNumber.get(formular) ?? 0) + 1
@@ -195,14 +262,7 @@ export async function renderForms(fieldSet: FieldSet, values: FieldValues, optio
         output.addPage(page)
         for (const field of fields.filter((f) => f.seite === index + 1)) {
           const value = instanceValues[field.id]!
-          const widget = acroWidgets.get(field.id)
-          const resolvedField: Field = widget
-            ? {
-                ...field,
-                kasten: { x: widget.rect.x, y: widget.rect.y, breite: widget.rect.width, hoehe: widget.rect.height },
-                ...(field.textAb !== undefined ? { textAb: widget.rect.x } : {}),
-              }
-            : field
+          const resolvedField = resolveField(field, acroWidgets.get(field.id))
           const situation = place(font, resolvedField, value)
           if (situation === null) overflows.push(field.id)
           else if (form) setFormField(form, page, font, resolvedField, number === 1 ? field.id : `${field.id}#${number}`, value)

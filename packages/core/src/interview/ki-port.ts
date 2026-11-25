@@ -25,8 +25,16 @@ export interface AdvisorHistoryEntry {
   readonly content: string
 }
 
+/**
+ * Whose share of the day's model calls a call draws from (H2-40): a paid account may use the part of the
+ * budget kept back for paying users; every other call stops before it. Carries no identity.
+ */
+export type ModelCallTier = 'paid' | 'free'
+
 export interface AdvisorTurnRequest {
   readonly message: string
+  /** Absent counts as `free`. */
+  readonly callTier?: ModelCallTier | undefined
   /** The chat model of the conversation, when the user picked one (ADR-0094); else the operator's. */
   readonly chatChoice?: { readonly provider: AdvisorModelProvider; readonly model: string } | undefined
   /** Gründlich (the standard) or Max for this one message (ADR-0094). */
@@ -234,6 +242,8 @@ export interface AdvisorSummaryRequest {
   /** What an earlier summary of the same conversation says; the new one has to carry it on. */
   readonly previousSummary: string | null
   readonly signal?: AbortSignal | undefined
+  /** Absent counts as `free` (H2-40). */
+  readonly callTier?: ModelCallTier | undefined
 }
 
 export interface AdvisorEnginePort {

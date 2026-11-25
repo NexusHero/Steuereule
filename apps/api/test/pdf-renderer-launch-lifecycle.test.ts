@@ -40,9 +40,17 @@ function stubBrowser(): Browser {
     pdf: (): Promise<Buffer> => Promise.resolve(Buffer.from('%PDF-1.4 stub')),
     close: (): Promise<void> => Promise.resolve(),
   }
-  return {
+  return withContexts({
     newPage: (): Promise<typeof page> => Promise.resolve(page),
     close: (): Promise<void> => Promise.resolve(),
+  })
+}
+
+/** renderPdf opens each page in its own locked-down context (API-7); the context hands out the browser's pages. */
+function withContexts(browser: { newPage: () => Promise<unknown>; close: () => Promise<void> }): Browser {
+  return {
+    ...browser,
+    newContext: () => Promise.resolve({ route: () => Promise.resolve(), newPage: browser.newPage, close: () => Promise.resolve() }),
   } as unknown as Browser
 }
 
@@ -190,7 +198,7 @@ describe('PlaywrightPdfRenderer — launch caching lifecycle (#285)', () => {
     let maxObservedOpenPages = 0
     const pendingPdfDeferreds: Array<{ resolve: (buf: Buffer) => void; reject: (err: Error) => void }> = []
 
-    const browser = {
+    const browser = withContexts({
       newPage: () => {
         openPages += 1
         maxObservedOpenPages = Math.max(maxObservedOpenPages, openPages)
@@ -207,7 +215,7 @@ describe('PlaywrightPdfRenderer — launch caching lifecycle (#285)', () => {
         })
       },
       close: (): Promise<void> => Promise.resolve(),
-    } as unknown as Browser
+    })
 
     const renderer = new ScriptedLaunchRenderer(() => Promise.resolve(browser))
 

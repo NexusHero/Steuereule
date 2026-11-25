@@ -3,7 +3,7 @@
 // or `Eur` (euros as numbers, two decimals at most).
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger'
 import { Type } from 'class-transformer'
-import { IsBoolean, IsIn, IsInt, IsNumber, IsOptional, IsString, Matches, Max, MaxLength, Min, ValidateNested, IsArray } from 'class-validator'
+import { ArrayMaxSize, IsArray, IsBoolean, IsIn, IsInt, IsNumber, IsOptional, IsString, Matches, Max, MaxLength, Min, ValidateNested } from 'class-validator'
 import { BANK_CSV_PRESETS, CATALOG_PROFESSIONS, CHURCH_CODES, FREE_ACTIVITIES, USEFUL_LIVES, type ChurchCode } from '@steuereule/core'
 import type { InputVatCorrectionLine, PayrollOverview, VatPrepaymentOverview } from '../views.js'
 
@@ -82,7 +82,7 @@ export class LossFactsDto {
   @ApiPropertyOptional({ ...EUR, nullable: true, description: 'Verbleibender Verlustvortrag of the last Feststellungsbescheid, euros.' }) @IsOptional() @IsNumber() @Min(0) carriedForwardEur?: number | null | undefined
   @ApiPropertyOptional({ type: Boolean, nullable: true, description: '§ 10d Abs. 1 Satz 5: waive the Rücktrag (as a whole).' }) @IsOptional() @IsBoolean() waiveCarryBack?: boolean | null | undefined
   @ApiPropertyOptional({ type: [Number], nullable: true, description: 'What the GdE of the year before and the second year before still offers, euros: [y−1, y−2].' })
-  @IsOptional() @IsArray() @IsNumber({}, { each: true }) roomEur?: readonly [number, number] | null | undefined
+  @IsOptional() @IsArray() @ArrayMaxSize(2) @IsNumber({}, { each: true }) roomEur?: readonly [number, number] | null | undefined
   @ApiPropertyOptional({ ...EUR, nullable: true, description: 'A later year’s loss carried back into this year, euros.' }) @IsOptional() @IsNumber() @Min(0) carriedBackEur?: number | null | undefined
 }
 
@@ -113,7 +113,7 @@ export class CsvMappingDto {
   @ApiPropertyOptional({ type: CsvColumnDto, description: 'Unsigned credit (Haben) column, with `debit`.' }) @IsOptional() @ValidateNested() @Type(() => CsvColumnDto) credit?: CsvColumnDto | undefined
   @ApiPropertyOptional({ type: CsvColumnDto }) @IsOptional() @ValidateNested() @Type(() => CsvColumnDto) counterpartyName?: CsvColumnDto | undefined
   @ApiPropertyOptional({ type: CsvColumnDto }) @IsOptional() @ValidateNested() @Type(() => CsvColumnDto) counterpartyIban?: CsvColumnDto | undefined
-  @ApiProperty({ type: [CsvColumnDto], description: 'One or more columns, joined with a space.' }) @IsArray() @ValidateNested({ each: true }) @Type(() => CsvColumnDto) reference!: readonly CsvColumnDto[]
+  @ApiProperty({ type: [CsvColumnDto], description: 'One or more columns, joined with a space.' }) @IsArray() @ArrayMaxSize(10) @ValidateNested({ each: true }) @Type(() => CsvColumnDto) reference!: readonly CsvColumnDto[]
   @ApiPropertyOptional({ type: CsvColumnDto }) @IsOptional() @ValidateNested() @Type(() => CsvColumnDto) currency?: CsvColumnDto | undefined
   @ApiPropertyOptional({ type: CsvColumnDto }) @IsOptional() @ValidateNested() @Type(() => CsvColumnDto) endToEndId?: CsvColumnDto | undefined
   @ApiPropertyOptional({ type: CsvColumnDto }) @IsOptional() @ValidateNested() @Type(() => CsvColumnDto) accountIban?: CsvColumnDto | undefined

@@ -151,6 +151,23 @@ describe('YearHistoryService reads', () => {
     expect(batchCapital).toHaveBeenCalledTimes(1)
     expect(batchPension).toHaveBeenCalledTimes(1)
   })
+
+  it('reads none of the own per-year records of a year without data: yearsOf already found none (OPS-4)', async () => {
+    const { service, assessments, versions, lstb, interview } = setup()
+    const reads = [
+      vi.spyOn(assessments, 'findForUserAndYear'),
+      vi.spyOn(versions, 'findLatest'),
+      vi.spyOn(lstb, 'findForUserAndYear'),
+      vi.spyOn(interview, 'findAllForUserAndYear'),
+    ]
+    const history = await service.get(USER, TODAY)
+    // 2022 and 2023 are gap years of the Festsetzungsfrist: listed, but nothing of the user's own is read for them.
+    expect(history.list.filter((l) => !l.hasData).map((l) => l.year)).toEqual([2022, 2023])
+    for (const read of reads) {
+      const ownGapReads = read.mock.calls.filter(([user, year]) => user === USER && (year === 2022 || year === 2023))
+      expect(ownGapReads).toEqual([])
+    }
+  })
 })
 
 describe('YearHistoryService', () => {

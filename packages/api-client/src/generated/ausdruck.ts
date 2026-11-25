@@ -613,10 +613,15 @@ export type printoutControllerPrintoutResponse422 = {
   status: 422
 }
 
+export type printoutControllerPrintoutResponse429 = {
+  data: void
+  status: 429
+}
+
 export type printoutControllerPrintoutResponseSuccess = (printoutControllerPrintoutResponse200) & {
   headers: Headers;
 };
-export type printoutControllerPrintoutResponseError = (printoutControllerPrintoutResponse401 | printoutControllerPrintoutResponse402 | printoutControllerPrintoutResponse404 | printoutControllerPrintoutResponse422) & {
+export type printoutControllerPrintoutResponseError = (printoutControllerPrintoutResponse401 | printoutControllerPrintoutResponse402 | printoutControllerPrintoutResponse404 | printoutControllerPrintoutResponse422 | printoutControllerPrintoutResponse429) & {
   headers: Headers;
 };
 

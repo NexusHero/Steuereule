@@ -214,6 +214,10 @@ function buildOptions(options: CreateBetterAuthOptions & { rateLimitStorage: Res
       jwt({
         // One issuer for signing, the authorization-server metadata and our bearer check (ADR-0052 §2).
         jwt: { issuer: authIssuer(baseUrl) },
+        // Off: the hook signed a token on every `getSession` (one per guarded request: a key read, a decrypt,
+        // an EdDSA signature) for a `set-auth-jwt` header no client reads (OPS-4). Assistant tokens come
+        // from the OAuth provider and are not affected.
+        disableSettingJwtHeader: true,
       }),
       oauthProvider({
         scopes: [...OAUTH_SCOPES],

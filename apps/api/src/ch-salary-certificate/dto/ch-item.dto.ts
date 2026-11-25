@@ -47,6 +47,7 @@ export class PutRemarksDto {
   @ApiPropertyOptional({ type: String, nullable: true, description: 'The free-text remark, or null to clear.' })
   @IsOptional()
   @IsString()
+  @MaxLength(1000)
   text?: string | null
 }
 

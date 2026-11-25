@@ -105,6 +105,12 @@ export class PrismaAdvisorRepository implements AdvisorRepository {
     return this.newest(this.prisma.advisorChatMessage.findMany({ where: { userId, taxYear }, orderBy: { createdAt: 'desc' }, take: MAX_HISTORY_MESSAGES }))
   }
 
+  async listStreamingForUserAndYear(userId: string, taxYear: number): Promise<AdvisorChatMessageRecord[]> {
+    // Rarely more than one row: the orphan check must not decrypt the whole year to find them (OPS-4).
+    const rows = await this.prisma.advisorChatMessage.findMany({ where: { userId, taxYear, status: 'streaming' }, orderBy: { createdAt: 'asc' } })
+    return rows.map(toRecord)
+  }
+
   async listReceiptDrafts(userId: string): Promise<ReceiptDraftRecord[]> {
     // Only the drafts' metadata column of the owl's answers: the message text is never selected.
     const rows = await this.prisma.advisorChatMessage.findMany({
