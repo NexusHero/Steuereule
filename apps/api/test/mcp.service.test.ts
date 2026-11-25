@@ -38,6 +38,8 @@ import { confirmAsShown } from './support/confirm-as-shown.js'
 
 const USER = 'user-mcp-1'
 const YEAR = 2025
+/** The smallest file the upload takes: it starts with %PDF-. */
+const PDF_BASE64 = Buffer.from('%PDF-1.4\n%âãÏÓ\n1 0 obj<<>>endobj\ntrailer<<>>\n%%EOF').toString('base64')
 
 
 class FakeCommuteRepository implements CommuteRepository {
@@ -165,6 +167,7 @@ describe('McpService (ADR-0052 §3 / §5 / §8 / §12)', () => {
     expect(toolNames).toEqual([
       'ausdruck_vorpruefung',
       'beleg_hochladen',
+      'beleg_zuruecknehmen',
       'belege_auflisten',
       'einkommensteuer_berechnen',
       'eintrag_zuruecknehmen',
@@ -764,7 +767,7 @@ describe('McpService (ADR-0052 §3 / §5 / §8 / §12)', () => {
 
   it('belege_auflisten lists receipts without their file names', async () => {
     const client = await connectClient()
-    const created = JSON.parse(getText(await client.callTool({ name: 'beleg_hochladen', arguments: { fileName: 'Sevinc_Lohnausweis.pdf', taxYear: YEAR } })))
+    const created = JSON.parse(getText(await client.callTool({ name: 'beleg_hochladen', arguments: { dateiBase64: PDF_BASE64, fileName: 'Sevinc_Lohnausweis.pdf', taxYear: YEAR } })))
     await client.callTool({ name: 'maske_eintragen', arguments: { taxYear: YEAR, screen: 'lstb', field: 'lohnsteuer', value: '700', receiptId: created.belegId } })
     const text = getText(await client.callTool({ name: 'belege_auflisten', arguments: { taxYear: YEAR } }))
     expect(JSON.parse(text).belege).toEqual([expect.objectContaining({ belegId: created.belegId, steuerjahr: YEAR, felder: ['lstb.lohnsteuer'] })])
@@ -842,26 +845,62 @@ describe('McpService (ADR-0052 §3 / §5 / §8 / §12)', () => {
     expect(parsed.fehlend).toBeInstanceOf(Array)
   })
 
-  it('beleg_hochladen creates a receipt and assigns tax year', async () => {
+  // MCP-6, H2-23 (decision 6): a real upload through the REST upload's checks; no file name comes back.
+  it('beleg_hochladen stores the file through the upload path, assigns the year and returns no file name', async () => {
     const client = await connectClient()
     const res = await client.callTool({
       name: 'beleg_hochladen',
-      arguments: {
-        fileName: 'spendenquittung.pdf',
-        kind: 'Sonstiges',
-        taxYear: YEAR,
-        belegdatum: '2025-11-01',
-      },
+      arguments: { dateiBase64: PDF_BASE64, fileName: `  ${'x'.repeat(300)}.pdf  `, kind: 'Sonstiges', taxYear: YEAR, belegdatum: '2025-11-01' },
     })
     const parsed = JSON.parse(getText(res))
-
-    expect(parsed.dateiname).toBe('spendenquittung.pdf')
-    expect(parsed.steuerjahr).toBe(YEAR)
-    expect(parsed.status).toBe('erfasst')
+    expect(parsed).toMatchObject({ steuerjahr: YEAR, status: 'hochgeladen', dateityp: 'application/pdf' })
+    expect(getText(res)).not.toContain('xxxx')
+    expect(parsed.dateiname).toBeUndefined()
 
     const receipts = await receiptService.list(USER)
     expect(receipts).toHaveLength(1)
-    expect(receipts[0]?.fileName).toBe('spendenquittung.pdf')
+    expect(receipts[0]).toMatchObject({ hasFile: true, mimeType: 'application/pdf' })
+    expect(receipts[0]!.fileName.length).toBeLessThanOrEqual(255)
+  })
+
+  it('beleg_hochladen refuses what the REST upload refuses: no base64, a type by its bytes, a bad date', async () => {
+    const client = await connectClient()
+    const notBase64 = await client.callTool({ name: 'beleg_hochladen', arguments: { dateiBase64: '%%%%not-base64%%%%', fileName: 'a.pdf' } })
+    expect(notBase64.isError).toBe(true)
+    expect(getText(notBase64)).toContain('RECEIPT_FILE_INVALID')
+    const html = await client.callTool({ name: 'beleg_hochladen', arguments: { dateiBase64: Buffer.from('<html><script>x</script></html>').toString('base64'), fileName: 'a.pdf' } })
+    expect(html.isError).toBe(true)
+    expect(getText(html)).toMatch(/RECEIPT_FILE_/)
+    const date = await client.callTool({ name: 'beleg_hochladen', arguments: { dateiBase64: PDF_BASE64, fileName: 'a.pdf', belegdatum: '2025-13-45' } })
+    expect(date.isError).toBe(true)
+    expect(getText(date)).toContain('RECEIPT_DATE_INVALID')
+    expect(await receiptService.list(USER)).toHaveLength(0)
+  })
+
+  // H2-24: the assistant takes back its own upload, never the user's or one an entry names.
+  it('beleg_zuruecknehmen removes an own upload, and keeps the user’s and one an entry names as its source', async () => {
+    const client = await connectClient()
+    const own = JSON.parse(getText(await client.callTool({ name: 'beleg_hochladen', arguments: { dateiBase64: PDF_BASE64, fileName: 'a.pdf' } }))).belegId as string
+    const used = JSON.parse(getText(await client.callTool({ name: 'beleg_hochladen', arguments: { dateiBase64: PDF_BASE64, fileName: 'b.pdf' } }))).belegId as string
+    await client.callTool({ name: 'maske_eintragen', arguments: { taxYear: YEAR, screen: 'lstb', field: 'lohnsteuer', value: '700', receiptId: used } })
+    const users = await receiptService.upload(USER, { buffer: Buffer.from(PDF_BASE64, 'base64'), fileName: 'mine.pdf' })
+
+    expect(JSON.parse(getText(await client.callTool({ name: 'beleg_zuruecknehmen', arguments: { belegId: own } })))).toMatchObject({ ok: true, entfernt: own })
+    const inUse = await client.callTool({ name: 'beleg_zuruecknehmen', arguments: { belegId: used } })
+    expect(getText(inUse)).toContain('RECEIPT_IN_USE')
+    const foreign = await client.callTool({ name: 'beleg_zuruecknehmen', arguments: { belegId: users.id } })
+    expect(getText(foreign)).toContain('NOT_OWN_ENTRY')
+    expect((await receiptService.list(USER)).map((r) => r.id).sort()).toEqual([used, users.id].sort())
+  })
+
+  // H2-22: the origin "from receipt X" holds only for a receipt of the account.
+  it('maske_eintragen refuses a receiptId that is not one of the caller’s receipts', async () => {
+    const client = await connectClient()
+    const res = await client.callTool({ name: 'maske_eintragen', arguments: { taxYear: YEAR, screen: 'lstb', field: 'lohnsteuer', value: '700', receiptId: 'made-up' } })
+    expect(res.isError).toBe(true)
+    expect(getText(res)).toContain('RECEIPT_NOT_FOUND')
+    const batch = await client.callTool({ name: 'maske_eintragen_stapel', arguments: { taxYear: YEAR, screen: 'lstb', felder: { lohnsteuer: '700' }, receiptId: 'made-up' } })
+    expect(getText(batch)).toContain('RECEIPT_NOT_FOUND')
   })
 
   it('zahllink_anfordern returns Stripe checkout link for the user', async () => {
@@ -896,7 +935,11 @@ describe('McpService (ADR-0052 §3 / §5 / §8 / §12)', () => {
       },
     })
     expect(writeRes.isError).toBe(true)
-    expect(getText(writeRes)).toContain('Fehlender OAuth-Scope: steuerdaten:write')
+    // MCP-19: the code, the scope, and how to get it.
+    const refusal = JSON.parse(getText(writeRes))
+    expect(refusal).toMatchObject({ ok: false, code: 'MISSING_SCOPE' })
+    expect(refusal.error).toContain('steuerdaten:write')
+    expect(refusal.naechsterSchritt).toContain('Anmeldung')
   })
 
   // ADR-0052 amendment 9: every link is a new checkout session at the payment provider, and the only bound

@@ -64,6 +64,7 @@ export class FakeReceiptRepository implements ReceiptRepository {
       ...(data.belegdatum !== undefined ? { belegdatum: data.belegdatum } : {}),
       ...(data.zahlungsdatum !== undefined ? { zahlungsdatum: data.zahlungsdatum } : {}),
       ...(data.direction !== undefined ? { direction: data.direction } : {}),
+      ...(data.uploadedByClientId !== undefined ? { uploadedByClientId: data.uploadedByClientId } : {}),
       taxYear: null,
       proposalDismissed: false,
       fileMeta: null,

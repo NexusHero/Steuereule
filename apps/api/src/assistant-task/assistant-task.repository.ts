@@ -37,4 +37,6 @@ export interface AssistantTaskRepository {
   create(userId: string, taxYear: number, task: NewAssistantTask): Promise<AssistantTaskRecord>
   /** Settles or discards an open task; null when the account has no open task with this id in that year. */
   decide(userId: string, taxYear: number, taskId: string, decision: AssistantTaskDecision): Promise<AssistantTaskRecord | null>
+  /** Removes an open task its own assistant takes back (in one statement); false when there is no such task. */
+  withdraw(userId: string, taxYear: number, taskId: string, clientId: string): Promise<boolean>
 }

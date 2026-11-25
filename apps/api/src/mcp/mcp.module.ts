@@ -24,6 +24,8 @@ import { DeadlinesModule } from '../deadlines/deadlines.module.js'
 import { RentalModule } from '../rental/rental.module.js'
 import { AssistantTaskModule } from '../assistant-task/assistant-task.module.js'
 import { BusinessModule } from '../business/business.module.js'
+import { YEAR_HISTORY_REPOSITORY } from '../year-history/year-history.repository.js'
+import { PrismaYearHistoryRepository } from '../year-history/year-history.repository.prisma.js'
 
 @Module({
   imports: [
@@ -48,7 +50,11 @@ import { BusinessModule } from '../business/business.module.js'
     BusinessModule,
   ],
   controllers: [McpController],
-  providers: [McpService, McpReportService, 
+  providers: [
+    McpService,
+    McpReportService,
+    // Only the year list of the account (steuerjahre_auflisten); the Verlauf module itself is not needed here.
+    { provide: YEAR_HISTORY_REPOSITORY, useClass: PrismaYearHistoryRepository },
     // One limiter per process, counting in the storage all instances share (ADR-0052 amendment 9).
     { provide: McpRateLimiter, useFactory: (bundle: BetterAuthBundle) => new McpRateLimiter(Date.now, MCP_LIMITS, bundle.rateLimitStorage), inject: [BETTER_AUTH_BUNDLE] },
   ],

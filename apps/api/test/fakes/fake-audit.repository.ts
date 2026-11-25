@@ -39,6 +39,16 @@ export class FakeAuditRepository implements AuditRepository {
     }
   }
 
+  lastSeenBySource(userId: string, sources: readonly string[]): Promise<Map<string, Date>> {
+    const seen = new Map<string, Date>()
+    for (const row of this.rows) {
+      if (row.userId !== userId || !row.source || !sources.includes(row.source)) continue
+      const known = seen.get(row.source)
+      if (known === undefined || known < row.createdAt) seen.set(row.source, row.createdAt)
+    }
+    return Promise.resolve(seen)
+  }
+
   all(): readonly AuditEntry[] {
     return this.rows
   }

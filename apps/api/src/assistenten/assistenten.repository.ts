@@ -3,6 +3,10 @@ export interface ConnectedAssistant {
   name: string
   linkedSince: Date
   lastUsed: Date | null
+  /** What the user granted, as stored with the consent. */
+  scopes?: readonly string[]
+  /** The redirect addresses the client registered: where its access went. */
+  redirectUris?: readonly string[]
 }
 
 export interface ClientInfo {

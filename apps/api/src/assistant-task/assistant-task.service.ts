@@ -11,6 +11,17 @@ import {
 } from './assistant-task.repository.js'
 
 export const MAX_TASK_TEXT = 300
+
+/**
+ * Whether a text carries a web address in any form (MCP-12): a scheme, `www.`, an IP address, or any
+ * `name.tld` with a top-level domain of letters (not a fixed list of them: .eu, .info, .ly, .xyz and every
+ * other one count). A word glued to the next after a full stop ("erledigt.Bitte") counts too; the assistant
+ * then writes it with a space.
+ */
+export function containsLink(text: string): boolean {
+  return /[a-z][a-z0-9+.-]*:\/\/|\bwww\.|\b\d{1,3}(?:\.\d{1,3}){3}\b|[\p{L}\p{N}-]{2,}\.(?:xn--[a-z0-9-]+|\p{L}{2,24})(?![\p{L}\p{N}])/iu.test(text)
+}
+
 export const MAX_OPEN_TASKS = 20
 
 export type CreateTaskResult =
@@ -35,7 +46,7 @@ export class AssistantTaskService {
       return { ok: false, code: 'TEXT_INVALID', reason: `Der Text braucht 1 bis ${MAX_TASK_TEXT} Zeichen.` }
     }
     // The text stands in the app under its name: a link in it could send the user anywhere.
-    if (/https?:\/\/|www\.|\b[\w-]+\.(?:de|com|net|org|ch|io|app)\b/i.test(text)) {
+    if (containsLink(text)) {
       return { ok: false, code: 'TEXT_HAS_LINK', reason: 'Der Text darf keinen Link und keine Webadresse enthalten.' }
     }
     try {
@@ -65,6 +76,11 @@ export class AssistantTaskService {
   /** The tasks one assistant left, with their state: it sees its own, not another assistant's. */
   async listForAssistant(userId: string, taxYear: number, clientId: string): Promise<AssistantTaskRecord[]> {
     return (await this.repository.listForUserAndYear(userId, taxYear)).filter((t) => t.clientId === clientId)
+  }
+
+  /** An open task taken back by the assistant that left it; another's or a decided one stays. */
+  async withdrawOwn(userId: string, taxYear: number, taskId: string, clientId: string): Promise<boolean> {
+    return this.repository.withdraw(userId, taxYear, taskId, clientId)
   }
 
   async decide(userId: string, taxYear: number, taskId: string, decision: AssistantTaskDecision): Promise<AssistantTaskRecord> {

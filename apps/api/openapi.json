@@ -24708,13 +24708,37 @@
           "lastUsed": {
             "type": "string",
             "example": "2026-11-03T19:30:00.000Z",
-            "nullable": true
+            "nullable": true,
+            "description": "The newest tool call of this assistant (audit log), or the newest token issued to it."
+          },
+          "scopes": {
+            "example": [
+              "steuerdaten:read",
+              "steuerdaten:write"
+            ],
+            "description": "The scopes the user granted.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "destinations": {
+            "example": [
+              "claude.ai"
+            ],
+            "description": "Where its access goes: the hosts (or \"localhost\", an app scheme) of its registered redirect addresses.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           }
         },
         "required": [
           "clientId",
           "name",
-          "linkedSince"
+          "linkedSince",
+          "scopes",
+          "destinations"
         ]
       },
       "RevokeAssistantResponseDto": {

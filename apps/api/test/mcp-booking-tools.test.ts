@@ -10,6 +10,10 @@ import { ConfirmationService } from '../src/confirmation/confirmation.service.js
 import type { FieldAccess } from '../src/confirmation/field-access.js'
 import type { AssistantSessionInfo, McpDeps } from '../src/mcp/mcp-session.js'
 import { registerBookingTools } from '../src/mcp/tools/booking-tools.js'
+import { installToolGate } from '../src/mcp/tool-kit.js'
+import { McpRateLimiter } from '../src/mcp/mcp-rate-limit.js'
+import { inProcessKeyedLock } from '../src/common/keyed-lock.js'
+import { passThroughTransactionRunner } from '../src/common/transaction-runner.js'
 import { registerEntryTools } from '../src/mcp/tools/entry-tools.js'
 import { FakeAuditRepository } from './fakes/fake-audit.repository.js'
 import { FakeMarkingRepository } from './fakes/fake-marking.repository.js'
@@ -53,7 +57,8 @@ describe('booking drafts over MCP (#549)', () => {
   async function connect(assistant: AssistantSessionInfo = CLAUDE) {
     const server = new McpServer({ name: 'test', version: '1.0.0' })
     const auditService = new AuditService(audit)
-    const deps = { confirmation, audit: auditService, business } as unknown as McpDeps
+    const deps = { confirmation, audit: auditService, business, locks: inProcessKeyedLock(), transactions: passThroughTransactionRunner } as unknown as McpDeps
+    installToolGate(server, { userId: USER, assistant, limiter: new McpRateLimiter(), audit: auditService })
     registerBookingTools({ server, userId: USER, assistant }, deps)
     registerEntryTools({ server, userId: USER, assistant }, deps)
     const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair()

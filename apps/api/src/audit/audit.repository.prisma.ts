@@ -18,6 +18,12 @@ export class PrismaAuditRepository implements AuditRepository {
     return newest.map((_, index) => newest[newest.length - 1 - index]!)
   }
 
+  async lastSeenBySource(userId: string, sources: readonly string[]): Promise<Map<string, Date>> {
+    // One grouped query over the index (userId, source, createdAt), not a scan of the user's whole log.
+    const rows = await this.prisma.taxDataAccessLog.groupBy({ by: ['source'], where: { userId, source: { in: [...sources] } }, _max: { createdAt: true } })
+    return new Map(rows.flatMap((row) => (row.source !== null && row._max.createdAt !== null ? [[row.source, row._max.createdAt] as const] : [])))
+  }
+
   async *streamOwnRows(userId: string, options: { batchSize: number; before: Date }): AsyncGenerator<AuditLogRow[]> {
     let after: { createdAt: Date; id: string } | undefined
     for (;;) {

@@ -84,11 +84,13 @@ model TaxDataAccessLog {
   /// The resource/field-class touched, e.g. "profile". A short discriminator, never
   /// the sensitive value itself.
   resource  String
-  /// Optional actor / client source, e.g. "Assistent: Claude" for OAuth bearer token requests.
+  /// Optional actor / client source: "assistent:<clientId>" for an MCP tool call of the user's assistant.
   source    String?
   createdAt DateTime    @default(now())
 
   @@index([userId])
+  /// "Zuletzt aktiv" per connected assistant: the newest row of its source (beta P4, MCP-8).
+  @@index([userId, source, createdAt])
 }
 
 enum AuditAction {
@@ -512,6 +514,9 @@ model Receipt {
   draftsTaxYear     Int?         @map("entwurfSteuerjahr")
   /// A business receipt (ADR-0101 §6): "ausgabe" (an expense) or "einnahme" (an invoice the business wrote).
   direction         String?      @map("richtung")
+  /// The OAuth client id of the user's assistant that uploaded it through MCP (beta P4, H2-24): only that
+  /// assistant may take it back. Null for everything the user uploaded. An id, not a name: clear.
+  uploadedByClientId String?     @map("hochgeladenVonClient")
   createdAt         DateTime     @default(now())
   updatedAt         DateTime     @updatedAt
   file              ReceiptFile?

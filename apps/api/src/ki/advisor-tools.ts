@@ -157,13 +157,13 @@ export const TOOL_ARG_SCHEMAS = {
    * (accounts of its chart, tax key, balanced amounts, open period) before it is shown; posted on accept.
    */
   stage_booking_draft: z.object({
-    date: z.string().regex(ISO_DATE_PATTERN),
+    date: z.string().max(10).regex(ISO_DATE_PATTERN),
     documentNumber: z.string().min(1).max(40),
     text: z.string().min(1).max(200),
     lines: z
       .array(
         z.object({
-          account: z.string().regex(/^\d{4,8}$/),
+          account: z.string().max(8).regex(/^\d{4,8}$/),
           side: z.enum(['debit', 'credit']),
           amount: z.number().int().min(1).max(10_000_000_000),
           taxKey: z.string().max(20).optional(),
@@ -245,16 +245,16 @@ export const TOOL_ARG_SCHEMAS = {
   }),
   check_holding_period: z.object({
     kind: z.enum(PRIVATE_SALE_KINDS),
-    acquiredOn: z.string().regex(ISO_DATE_PATTERN),
-    soldOn: z.string().regex(ISO_DATE_PATTERN),
+    acquiredOn: z.string().max(10).regex(ISO_DATE_PATTERN),
+    soldOn: z.string().max(10).regex(ISO_DATE_PATTERN),
     ownUseThroughout: z.boolean().optional(),
     ownUseYearOfSaleAndTwoBefore: z.boolean().optional(),
     totalGainsOfYearEur: z.number().min(-100_000_000).max(100_000_000).optional(),
   }),
   check_rental_repairs: z.object({
-    acquiredOn: z.string().regex(ISO_DATE_PATTERN),
+    acquiredOn: z.string().max(10).regex(ISO_DATE_PATTERN),
     buildingCostEur: z.number().positive().max(100_000_000),
-    repairs: z.array(z.object({ doneOn: z.string().regex(ISO_DATE_PATTERN), netEur: z.number().min(0).max(100_000_000) })).max(30),
+    repairs: z.array(z.object({ doneOn: z.string().max(10).regex(ISO_DATE_PATTERN), netEur: z.number().min(0).max(100_000_000) })).max(30),
   }),
   compute_gift_tax: z.object({
     relation: z.enum(GIFT_TAX_RELATIONS),
@@ -277,9 +277,9 @@ export const TOOL_ARG_SCHEMAS = {
   }),
   read_law_text: z.object({
     law: z.enum(LAW_IDS as [string, ...string[]]),
-    paragraph: z.string().regex(/^\d{1,3}[a-z]{0,2}$/),
-    absatz: z.string().regex(/^\d{1,2}[a-z]?$/).optional(),
-    nummer: z.string().regex(/^\d{1,3}[a-z]?$/).optional(),
+    paragraph: z.string().max(5).regex(/^\d{1,3}[a-z]{0,2}$/),
+    absatz: z.string().max(3).regex(/^\d{1,2}[a-z]?$/).optional(),
+    nummer: z.string().max(4).regex(/^\d{1,3}[a-z]?$/).optional(),
   }),
   lookup_legal_source: z.object({
     sourceId: z.string().max(40),

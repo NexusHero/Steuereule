@@ -1,7 +1,8 @@
 import { z } from 'zod'
-import { decomposeProvenanceKey, fieldsOfScreen, PERSON_B_INTERVIEW_FIELDS, PERSON_B_SCREENS, provenanceKey, SCREENS, type FieldSpec, type Provenance, type Screen } from '@steuereule/core'
+import { decomposeProvenanceKey, fieldsOfScreen, PERSON_B_INTERVIEW_FIELDS, PERSON_B_SCREENS, provenanceKey, type FieldSpec, type Provenance, type Screen } from '@steuereule/core'
 import { OWN_TOOL_SCREENS } from '../../ki/advisor-safety.js'
-import { assertScope, isOwnProvenance, json, refused, type AssistantSessionInfo, type McpDeps, type McpSession } from '../mcp-session.js'
+import { isOwnProvenance, type AssistantSessionInfo, type McpDeps, type McpSession } from '../mcp-session.js'
+import { instanceArg, json, personArg, refused, screenArg, taxYearArg } from '../tool-kit.js'
 import { ageAtYearEnd, churchTaxLiableFrom, readView, stateOfPostalCode } from '../read-view.js'
 
 /** Where a value came from, as a kind; another assistant's name stays out (ADR-0052 amendment 3). */
@@ -34,19 +35,17 @@ export function registerReadTools(session: McpSession, deps: McpDeps): void {
     'maske_lesen',
     'Liest die eingetragenen Werte einer Maske zurück, je Feld mit Stand (bestaetigt, unbestaetigt, vorschlag-offen, leer) und Herkunft (nutzer, du, anderer-assistent, jahresuebernahme, beleg). Beträge und Auswahlwerte im Klartext; Persönliches nur abgeleitet (Alter, Bundesland, kirchensteuerpflichtig) oder als „gesetzt“. Nutze es, um eigene Einträge zu prüfen, bevor du den Nutzer bestätigen lässt.',
     {
-      taxYear: z.number().int().describe('Das Steuerjahr (z.B. 2024 oder 2025)'),
-      screen: z.enum(SCREENS).describe('Die Erfassungsmaske'),
-      instance: z.string().optional().describe('Instanz-ID bei mehrfachen Objekten (Kind: kinder_auflisten)'),
-      person: z.enum(['A', 'B']).optional().describe('B für die Angaben von Ehegatte oder Ehegattin, die der Nutzer führt; sonst A'),
+      taxYear: taxYearArg(),
+      screen: screenArg(),
+      instance: instanceArg('Datensatz-ID bei Masken mit mehreren Datensätzen (Kind: kinder_auflisten, Vermietung: vermietungen_auflisten)').optional(),
+      person: personArg('B für die Angaben von Ehegatte oder Ehegattin, die der Nutzer führt; sonst A').optional(),
       nurGefuellte: z.boolean().optional().describe('true: leere Felder weglassen'),
     },
     async ({ taxYear, screen, instance, person, nurGefuellte }) => {
-      assertScope(assistant, 'steuerdaten:read')
-      if (OWN_TOOL_SCREENS.has(screen)) return refused('Buchungen sind über diesen Zugang noch nicht lesbar.')
+      if (OWN_TOOL_SCREENS.has(screen)) return refused('USE_BOOKING_TOOL: Buchungen liest du mit buchungsentwuerfe_auflisten (nur deine offenen Entwürfe); gebuchte Buchungen sind über diesen Zugang nicht lesbar.')
       const reader = await readerFor(taxYear, screen, person)
       if (!reader.ok) return refused(reader.error)
       if (reader.specs.some((spec) => spec.perInstance) && instance === undefined) return refused('RECORD_REQUIRED: Diese Maske braucht `instance` (z. B. aus kinder_auflisten).')
-      await deps.audit.append({ userId, action: 'READ', resource: 'maske_lesen' })
 
       const keys = reader.specs.map((spec) => provenanceKey(screen, spec.field, instance))
       const [values, markings] = await Promise.all([deps.confirmation.readRawValues(reader.dataUserId, taxYear, keys), deps.confirmation.list(reader.dataUserId, taxYear)])
@@ -73,11 +72,9 @@ export function registerReadTools(session: McpSession, deps: McpDeps): void {
 
   server.tool(
     'haushalt_ueberblick',
-    'Der Haushalt auf einen Blick, ohne Namen und Kennungen: Veranlagung, je Person Alter am Jahresende, Bundesland, Familienstand, Berufsgruppe, Kirchensteuerpflicht und in welchem Land sie Lohn bezieht; Kinder als Nummer und Alter mit ihrer `instance`; Bearbeitungsstand. Zuerst aufrufen, um den Fall einzuordnen.',
-    { taxYear: z.number().int().describe('Das Steuerjahr (z.B. 2024 oder 2025)') },
+    'Der Haushalt auf einen Blick, ohne Namen und Kennungen: Veranlagung, je Person Alter am Jahresende, Bundesland, Familienstand, Berufsgruppe, Kirchensteuerpflicht und in welchem Land sie Lohn bezieht; Kinder als Nummer und Alter mit ihrer `instance`; Bearbeitungsstand. Nach steuerjahre_auflisten aufrufen, um den Fall einzuordnen.',
+    { taxYear: taxYearArg() },
     async ({ taxYear }) => {
-      assertScope(assistant, 'steuerdaten:read')
-      await deps.audit.append({ userId, action: 'READ', resource: 'haushalt_ueberblick' })
 
       const person = async (dataUserId: string, label: 'A' | 'B') => {
         const v = await deps.confirmation.readRawValues(dataUserId, taxYear, ['stammdaten.geburtsdatum', 'stammdaten.plz', 'stammdaten.familienstand', 'stammdaten.religion', 'stammdaten.kirchensteuerpflichtig', 'interview.beruf', 'lstb.bruttoarbeitslohn', 'chLohnausweis.bruttolohn-total'])
@@ -114,11 +111,9 @@ export function registerReadTools(session: McpSession, deps: McpDeps): void {
 
   server.tool(
     'belege_auflisten',
-    'Listet die Belege im Posteingang ohne Dateinamen: belegId, Art, Jahr, Belegdatum und die Felder, deren Herkunft der Beleg ist.',
-    { taxYear: z.number().int().describe('Das Steuerjahr (z.B. 2024 oder 2025)') },
+    'Listet die Belege im Posteingang ohne Dateinamen: belegId, Art, Jahr, Belegdatum, ob eine Datei dazu gespeichert ist (`hatDatei`) und die Felder, deren Herkunft der Beleg ist. Die belegId gibst du bei maske_eintragen als receiptId mit.',
+    { taxYear: taxYearArg() },
     async ({ taxYear }) => {
-      assertScope(assistant, 'steuerdaten:read')
-      await deps.audit.append({ userId, action: 'READ', resource: 'belege_auflisten' })
       const [receipts, markings] = await Promise.all([deps.receipts.list(userId), deps.confirmation.list(userId, taxYear)])
       const fieldsOf = (receiptId: string) =>
         markings.filter((m) => 'receiptId' in m.provenance && m.provenance.receiptId === receiptId).map((m) => {

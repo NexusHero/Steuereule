@@ -7,16 +7,28 @@ import {
   useAssistantsControllerRevoke,
 } from '@steuereule/api-client'
 import { useQueryClient } from '@tanstack/react-query'
+import { useApiBaseUrl } from '../../auth/AuthClientProvider'
 import { APP_NS } from '../../i18n/resources'
 import { formatRequestedAt } from '../device/deviceContext'
 import { useApiFailureMessage } from '../../net/apiFailure'
-import { AssistantConnectForm } from './AssistantConnectForm'
+import { AssistantConnectForm, MCP_PATH } from './AssistantConnectForm'
+
+/** The consent screen's label of each scope; a scope it does not know is shown as is. */
+const SCOPE_LABELS: Readonly<Record<string, string>> = {
+  'steuerdaten:read': 'oauthConsent.scopeSteuerdatenRead',
+  'steuerdaten:write': 'oauthConsent.scopeSteuerdatenWrite',
+  'belege:write': 'oauthConsent.scopeBelegeWrite',
+  'zahllink:write': 'oauthConsent.scopeZahllinkWrite',
+  'zahllink:read': 'oauthConsent.scopeZahllinkRead',
+  'offline_access': 'oauthConsent.scopeOfflineAccess',
+}
 
 export function AssistantsListSection() {
   const t = useTheme()
   const { t: tr, i18n } = useTranslation(APP_NS)
   const styles = makeStyles(t)
   const queryClient = useQueryClient()
+  const apiBaseUrl = useApiBaseUrl()
 
   const listQuery = useAssistantsControllerListConnected()
   const revokeMutation = useAssistantsControllerRevoke()
@@ -81,6 +93,10 @@ export function AssistantsListSection() {
       <Text style={styles.sectionTitle}>{tr('profil.assistenten.heading')}</Text>
       <Text style={styles.help}>{tr('profil.assistenten.subheading')}</Text>
 
+      {/* The address an assistant connects to, without first creating an access by hand (MCP-11). */}
+      <Text style={styles.help}>{tr('profil.assistenten.serverAdresseHinweis')}</Text>
+      <Text style={styles.code} selectable testID="assistenten-server-adresse">{`${apiBaseUrl}${MCP_PATH}`}</Text>
+
       {revokeError !== null ? (
         <Text style={styles.revokeErrorText} accessibilityRole="alert">
           {revokeError}
@@ -93,6 +109,9 @@ export function AssistantsListSection() {
           ? formatRequestedAt(assistant.lastUsed, i18n.language)
           : tr('profil.assistenten.neverActive')
         const isRevoking = revokingId === assistant.clientId && revokeMutation.isPending
+        // Rights and destination tell two assistants of the same name apart (MCP-8).
+        const granted = (assistant.scopes ?? []).filter((scope) => scope !== 'openid')
+        const destinations = assistant.destinations ?? []
 
         return (
           <View key={assistant.clientId} style={styles.assistantRow}>
@@ -103,6 +122,16 @@ export function AssistantsListSection() {
               </Feld>
               <Feld label={tr('profil.assistenten.lastActive')}>
                 <Pill>{lastActive ?? assistant.lastUsed ?? tr('profil.assistenten.neverActive')}</Pill>
+              </Feld>
+              <Feld label={tr('profil.assistenten.ziel')}>
+                <Text style={styles.valueText} testID={`assistent-ziel-${assistant.clientId}`}>
+                  {destinations.length > 0 ? destinations.join(', ') : tr('profil.assistenten.zielUnbekannt')}
+                </Text>
+              </Feld>
+              <Feld label={tr('profil.assistenten.rechte')}>
+                <Text style={styles.valueText} testID={`assistent-rechte-${assistant.clientId}`}>
+                  {granted.length > 0 ? granted.map((scope) => (SCOPE_LABELS[scope] ? tr(SCOPE_LABELS[scope]) : scope)).join(' · ') : tr('profil.assistenten.keineRechte')}
+                </Text>
               </Feld>
             </View>
 
@@ -164,6 +193,7 @@ function makeStyles(t: UiTheme) {
     color: t.color.tinte,
   }
   const revokeButton: ViewStyle = { flexShrink: 0 }
+  const code: TextStyle = { ...t.type.small, color: t.color.tinte, fontFamily: 'monospace', marginBottom: t.space.s4 }
   const revokeErrorText: TextStyle = {
     ...t.type.small,
     color: t.color.fehler,
@@ -185,6 +215,7 @@ function makeStyles(t: UiTheme) {
     assistantName,
     valueText,
     revokeButton,
+    code,
     revokeErrorText,
     emptyText,
   }

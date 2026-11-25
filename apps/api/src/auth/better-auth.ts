@@ -3,7 +3,8 @@ import type { PrismaClient } from '@prisma/client'
 import { prismaAdapter } from '@better-auth/prisma-adapter'
 import { passkey } from '@better-auth/passkey'
 import { oauthProvider } from '@better-auth/oauth-provider'
-import { createAuthMiddleware } from 'better-auth/api'
+import { APIError, createAuthMiddleware } from 'better-auth/api'
+import { isAcceptableClientName, MAX_CLIENT_NAME_LENGTH } from './oauth-client-name.js'
 import { authIssuer, mcpResourceUrls } from './mcp-oauth.js'
 import { ensureMcpResource, type ResourceAdapter } from './mcp-resource-seed.js'
 import { sweepUnusedClients, type SweepAdapter } from './oauth-client-sweep.js'
@@ -42,12 +43,22 @@ export const OAUTH_SCOPES = [
   'steuerdaten:read',
   'steuerdaten:write',
   'belege:write',
+  // Opens a checkout session at the payment provider: a write, named as one (beta P4, H2-21).
+  'zahllink:write',
+  // The name before beta P4. Kept so grants made with it (their refresh tokens carry it) still refresh; the MCP
+  // gate accepts it for zahllink_anfordern, and the discovery no longer offers it (DEPRECATED_OAUTH_SCOPES).
   'zahllink:read',
   // Refresh tokens for the assistant: access tokens last 15 minutes, the connection until revoked (ADR-0052 §10).
   'offline_access',
 ] as const
 
 export type OAuthScope = (typeof OAUTH_SCOPES)[number]
+
+/** Scopes still honoured but no longer offered to new clients. */
+export const DEPRECATED_OAUTH_SCOPES: readonly OAuthScope[] = ['zahllink:read']
+
+/** What the protected-resource metadata offers: every scope except the deprecated ones. */
+export const ADVERTISED_OAUTH_SCOPES: readonly OAuthScope[] = OAUTH_SCOPES.filter((scope) => !DEPRECATED_OAUTH_SCOPES.includes(scope))
 
 export const SESSION_COOKIE_ATTRIBUTES = {
   httpOnly: true,
@@ -273,7 +284,13 @@ function buildOptions(options: CreateBetterAuthOptions & { rateLimitStorage: Res
       // first OAuth request, not via the plugin's `resources` option, which seeds while the app boots.
       before: createAuthMiddleware(async (ctx) => {
         if (ctx.path.startsWith('/oauth2/')) await Promise.all(ensureResources.map((ensure) => ensure(ctx.context.adapter as unknown as ResourceAdapter)))
-        if (ctx.path === '/oauth2/register') await sweepClients(ctx.context.adapter as unknown as SweepAdapter)
+        if (ctx.path === '/oauth2/register') {
+          // The name a client picks stands on the consent screen and every origin line: bounded (MCP-13).
+          if (!isAcceptableClientName((ctx.body as { client_name?: unknown } | undefined)?.client_name)) {
+            throw new APIError('BAD_REQUEST', { error: 'invalid_client_metadata', error_description: `client_name must be a string of at most ${MAX_CLIENT_NAME_LENGTH} characters.` })
+          }
+          await sweepClients(ctx.context.adapter as unknown as SweepAdapter)
+        }
         if (ctx.path === '/sign-in/email' || ctx.path === '/sign-up/email') onSweepOpportunity?.()
         await enforceAccountSignInLimit(rateLimitStorage, ctx.path, ctx.body)
         await enforcePasswordResetRequest(rateLimitStorage, ctx.path, ctx.body, webAppUrl)

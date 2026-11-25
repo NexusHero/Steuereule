@@ -76,13 +76,32 @@ describe('McpController SSE sessions belong to the client that opened them', () 
 
     const foreign = replyOf()
     await ctl.messages(requestOf('client-b', { sessionId }) as never, foreign as never)
-    expect(foreign.raw.writeHead).toHaveBeenCalledWith(403, { 'Content-Type': 'text/plain' })
-    expect(foreign.raw.end).toHaveBeenCalledWith('Session belongs to another assistant')
+    // H2-29: a JSON-RPC error with a code and the next step, not bare text.
+    expect(foreign.raw.writeHead).toHaveBeenCalledWith(403, { 'Content-Type': 'application/json' })
+    const body = JSON.parse(foreign.raw.end.mock.calls[0]![0] as string) as { error: { message: string; data: { code: string; naechsterSchritt: string } } }
+    expect(body.error.data.code).toBe('MCP_SESSION_OTHER_CLIENT')
+    expect(body.error.data.naechsterSchritt).toContain('/mcp')
     expect(foreign.hijack).not.toHaveBeenCalled()
 
     const own = replyOf()
     await ctl.messages(requestOf('client-a', { sessionId }) as never, own as never).catch(() => undefined)
     expect(own.hijack).toHaveBeenCalled()
+  })
+
+  // H2-29: a session on another instance points to /mcp; the foreign client's attempt is in the audit log.
+  it('answers an unknown session with a code and the pointer to /mcp, and audits a foreign client', async () => {
+    const audit = new AuditService(new FakeAuditRepository())
+    const appended = vi.spyOn(audit, 'append')
+    const ctl = new McpController({ createServer: () => ({ connect: vi.fn() }) } as never, bundle, new McpRateLimiter(), audit)
+    const missing = replyOf()
+    await ctl.messages(requestOf('client-a', { sessionId: 'elsewhere' }) as never, missing as never)
+    expect(missing.raw.writeHead).toHaveBeenCalledWith(404, { 'Content-Type': 'application/json' })
+    expect(JSON.parse(missing.raw.end.mock.calls[0]![0] as string).error.data).toMatchObject({ code: 'MCP_SESSION_NOT_FOUND', naechsterSchritt: expect.stringContaining('/mcp') })
+
+    await ctl.sse(requestOf('client-a') as never, replyOf() as never)
+    const sessionId = [...(ctl as unknown as { sessions: Map<string, unknown> }).sessions.keys()][0]!
+    await ctl.messages(requestOf('client-b', { sessionId }) as never, replyOf() as never)
+    expect(appended).toHaveBeenCalledWith(expect.objectContaining({ resource: 'mcp_session_other_client', source: 'assistent:client-b' }))
   })
 })
 

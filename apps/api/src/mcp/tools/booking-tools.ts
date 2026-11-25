@@ -1,10 +1,9 @@
 import { randomUUID } from 'node:crypto'
-import { z } from 'zod'
 import { checkBookingDraft, decomposeProvenanceKey, parseBookingDraft, provenanceKey, serializeBookingDraft, type BookingDraft } from '@steuereule/core'
 import { OWN_FIRST_BUSINESS } from '../../business/business.repository.js'
-import { DomainError } from '../../common/domain-error.js'
 import { TOOL_ARG_SCHEMAS } from '../../ki/advisor-tools.js'
-import { assertScope, isOwnProvenance, json, provenanceOf, refused, type McpDeps, type McpSession } from '../mcp-session.js'
+import { isOwnProvenance, provenanceOf, type McpDeps, type McpSession } from '../mcp-session.js'
+import { json, refused, taxYearArg } from '../tool-kit.js'
 
 /** How many drafts of one assistant may wait for the user at once in a year. */
 export const MAX_OPEN_BOOKING_DRAFTS = 25
@@ -33,6 +32,18 @@ export function registerBookingTools(session: McpSession, deps: McpDeps): void {
   const { server, userId, assistant } = session
   const business = deps.business
   if (!business) return
+  const draftArgs = TOOL_ARG_SCHEMAS.stage_booking_draft.shape
+  // The parameters an external model reads (MCP-18); the in-app advisor's schema carries no descriptions.
+  const draftShape = {
+    ...draftArgs,
+    date: draftArgs.date.describe('Buchungsdatum YYYY-MM-DD, im Steuerjahr'),
+    documentNumber: draftArgs.documentNumber.describe('Belegnummer der Buchung'),
+    text: draftArgs.text.describe('Buchungstext, wie er im Buch steht'),
+    lines: draftArgs.lines.describe('Die Buchungszeilen (2 bis 20): Konto, debit (Soll) oder credit (Haben), Betrag in ganzen Cent, optional taxKey und amountIs (gross/net)'),
+    asset: draftArgs.asset.describe('Nur für ein Anlagegut: Bezeichnung und Abschreibungsart'),
+    label: draftArgs.label.describe('Kurzer Titel des Entwurfs, den der Nutzer unter „Prüfen & bestätigen“ sieht'),
+    reason: draftArgs.reason.describe('Warum du so buchst, in einem Satz (für dich; wird nicht gespeichert)'),
+  }
 
   /** The open drafts this assistant filed in the year, oldest key first. */
   async function ownOpenDrafts(taxYear: number): Promise<{ instance: string; draft: BookingDraft }[]> {
@@ -49,27 +60,24 @@ export function registerBookingTools(session: McpSession, deps: McpDeps): void {
   server.tool(
     'buchung_entwerfen',
     'Bereitet für Selbstständige eine Buchung als Entwurf vor. Gebucht wird nichts: Der Entwurf wartet in der App unter „Prüfen & bestätigen“, bis der Nutzer ihn übernimmt oder verwirft. Beträge in ganzen Cent, `side` debit (Soll) oder credit (Haben), Konten aus dem Kontenrahmen des Buchs, `taxKey` z. B. ust19, ust7, vst19, vst7, kleinunternehmer, none; Bruttobeträge teilt die App selbst auf. Für ein Anlagegut `asset` mit Abschreibung. Die App prüft Konten, Steuerschlüssel, Ausgleich von Soll und Haben und die Festschreibung und nennt sonst den Grund. Eigene offene Entwürfe: buchungsentwuerfe_auflisten; zurücknehmen mit eintrag_zuruecknehmen (Maske "buchung", Feld "entry", instance = entwurf).',
-    { taxYear: z.number().int().describe('Das Steuerjahr (z.B. 2024 oder 2025)'), ...TOOL_ARG_SCHEMAS.stage_booking_draft.shape },
+    { taxYear: taxYearArg(), ...draftShape },
     async ({ taxYear, label, reason: _reason, ...raw }) => {
-      assertScope(assistant, 'steuerdaten:write')
       if ((await business.digest(userId, taxYear)) === null) return refused('NO_BOOK: Für dieses Jahr gibt es kein Buch (keine Selbstständigkeit oder noch nicht freigeschaltet).')
       const parsed = parseBookingDraft(JSON.stringify(raw))
       if (!parsed.ok) return refused(`INVALID_BOOKING: ${parsed.reason}`)
       const target = await business.bookingTarget(userId, taxYear, OWN_FIRST_BUSINESS)
       const check = checkBookingDraft(parsed.draft, { chart: target.chart, mode: target.mode, year: taxYear, lockedThrough: target.lockedThrough, smallBusiness: target.smallBusiness })
       if (!check.ok) return refused(`${check.code.toUpperCase()}: ${check.reason}`)
-      if ((await ownOpenDrafts(taxYear)).length >= MAX_OPEN_BOOKING_DRAFTS) {
-        return refused(`TOO_MANY_DRAFTS: Es warten schon ${MAX_OPEN_BOOKING_DRAFTS} deiner Entwürfe auf den Nutzer. Er muss erst welche übernehmen oder verwerfen.`)
-      }
-      // Each draft is its own booking: its reference is the instance the confirmation path posts it under.
-      const instance = `entwurf-${randomUUID().slice(0, 12)}`
-      try {
+      // Count and file under one lock per assistant and year: calls in parallel stay under the cap (MCP-23).
+      const filed = await deps.locks.withLock(`mcp-booking:${userId}:${taxYear}:${assistant.clientId}`, async () => {
+        if ((await ownOpenDrafts(taxYear)).length >= MAX_OPEN_BOOKING_DRAFTS) return null
+        // Each draft is its own booking: its reference is the instance the confirmation path posts it under.
+        const instance = `entwurf-${randomUUID().slice(0, 12)}`
         await deps.confirmation.fileProposal(userId, taxYear, provenanceKey('buchung', BOOKING_FIELD, instance), serializeBookingDraft(parsed.draft), provenanceOf(assistant))
-      } catch (error) {
-        if (error instanceof DomainError) return refused(`${error.code}: ${error.message}`)
-        throw error
-      }
-      await deps.audit.append({ userId, action: 'WRITE', resource: 'buchung_entwerfen' })
+        return instance
+      })
+      if (filed === null) return refused(`TOO_MANY_DRAFTS: Es warten schon ${MAX_OPEN_BOOKING_DRAFTS} deiner Entwürfe auf den Nutzer. Er muss erst welche übernehmen oder verwerfen.`)
+      const instance = filed
       return json({
         ok: true,
         ergebnis: 'vorschlag',
@@ -84,10 +92,8 @@ export function registerBookingTools(session: McpSession, deps: McpDeps): void {
   server.tool(
     'buchungsentwuerfe_auflisten',
     'Listet deine Buchungsentwürfe des Steuerjahres, über die der Nutzer noch nicht entschieden hat (übernommene oder verworfene erscheinen nicht mehr).',
-    { taxYear: z.number().int().describe('Das Steuerjahr (z.B. 2024 oder 2025)') },
+    { taxYear: taxYearArg() },
     async ({ taxYear }) => {
-      assertScope(assistant, 'steuerdaten:read')
-      await deps.audit.append({ userId, action: 'READ', resource: 'buchungsentwuerfe_auflisten' })
       const drafts = await ownOpenDrafts(taxYear)
       return json({ taxYear, entwuerfe: drafts.map(({ instance, draft }) => describeDraft(instance, draft)) })
     },
