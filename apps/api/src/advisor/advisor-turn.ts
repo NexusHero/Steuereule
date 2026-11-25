@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto'
-import { Inject, Injectable, Logger } from '@nestjs/common'
+import { Inject, Injectable, Optional, Logger } from '@nestjs/common'
+import { ModelCallTiers } from './model-call-tier.js'
 import {
   PERSON_B_HANDLE,
   advisorContextUsage,
@@ -97,6 +98,8 @@ export class AdvisorTurn {
     @Inject(LinkService) private readonly link: LinkService,
     @Inject(PROFILE_REPOSITORY) private readonly profileRepo: ProfileRepository,
     @Inject(CHILD_REPOSITORY) private readonly childRepo: ChildRepository,
+    /** Absent in tests that build the turn without it: every call is then a free one (H2-40). */
+    @Optional() @Inject(ModelCallTiers) private readonly callTiers?: ModelCallTiers,
   ) {}
 
   async sendMessage(
@@ -372,6 +375,7 @@ export class AdvisorTurn {
       const task = dto.quickAction === 'savings_plan' ? ('savings-plan' as const) : dto.quickAction === 'assessment_check' ? ('assessment-check' as const) : undefined
       const request: AdvisorTurnRequest = {
         message: scrubbedUserText,
+        callTier: (await this.callTiers?.tierOf(userId, taxYear)) ?? 'free',
         activeScreen: dto.activeScreen,
         digest,
         history,
