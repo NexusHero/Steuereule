@@ -10,6 +10,11 @@ import type { PdfRenderer } from './pdf-renderer.js'
 
 const RETRY_AFTER_SECONDS = 30
 
+/** The only resources the export page may load: those written into the HTML itself. */
+export function isInlineResource(url: string): boolean {
+  return url.startsWith('data:') || url.startsWith('blob:')
+}
+
 @Injectable()
 export class PlaywrightPdfRenderer implements PdfRenderer, OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(PlaywrightPdfRenderer.name)
@@ -45,7 +50,11 @@ export class PlaywrightPdfRenderer implements PdfRenderer, OnModuleInit, OnModul
     const browser = this.browser ?? (await this.getOrLaunch())
     await this.acquireRenderSlot()
     try {
-      const page = await browser.newPage()
+      // Defence in depth (API-7): the export HTML is escaped, but should a value ever slip through, it runs no
+      // script and fetches nothing. Only inline data: and blob: resources load.
+      const context = await browser.newContext({ javaScriptEnabled: false, serviceWorkers: 'block' })
+      await context.route('**/*', (route) => (isInlineResource(route.request().url()) ? route.continue() : route.abort('blockedbyclient')))
+      const page = await context.newPage()
       let timer: NodeJS.Timeout | undefined
       try {
         const timeout = new Promise<never>((_, reject) => {
@@ -64,6 +73,7 @@ export class PlaywrightPdfRenderer implements PdfRenderer, OnModuleInit, OnModul
       } finally {
         clearTimeout(timer)
         await page.close().catch(() => undefined)
+        await context.close().catch(() => undefined)
       }
     } finally {
       this.releaseRenderSlot()
