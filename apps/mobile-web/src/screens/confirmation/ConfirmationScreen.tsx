@@ -21,7 +21,8 @@ import { triggerSaveErrorHaptic } from '../shared/saveFeedback'
 import { fieldLabelText, instanceText, valueText } from './confirmationText'
 import { classifyApiFailure, useApiFailureMessage } from '../../net/apiFailure'
 
-export type ConfirmationForm = FieldProvenanceDto['screen']
+/** The masks „Einzeln ändern“ can open. A booking has none: its draft is taken or dropped on this screen. */
+export type ConfirmationForm = Exclude<FieldProvenanceDto['screen'], 'buchung'>
 
 export interface ConfirmationScreenProps {
   readonly year: number
@@ -158,7 +159,9 @@ export function ConfirmationScreen({ year, onBack, onOpenScreen }: ConfirmationS
       {annexes.map((annex: AnnexConfirmationDto) => {
         const annexName = t(`bestaetigung.anlagen.${annex.annex}`)
         // Every mask the Anlage's values live on (the Hauptvordruck holds several): one way to each (H2-2, WEB-18).
-        const masks = annex.values.filter((w, i, all) => w.screen !== 'buchung' && all.findIndex((other) => other.screen === w.screen) === i)
+        const masks = annex.values
+          .filter((w, i, all) => all.findIndex((other) => other.screen === w.screen) === i)
+          .flatMap((w) => (w.screen === 'buchung' ? [] : [{ screen: w.screen, field: w.field }]))
         const shown = annex.values.filter((w) => !w.confirmed).map((w) => ({ key: w.key, version: w.version, ...(w.person === 'B' ? { person: 'B' as const } : {}) }))
         return (
           <Card key={annex.annex} style={{ marginBottom: theme.space.s4 }} testID={`anlage-${annex.annex}`}>
