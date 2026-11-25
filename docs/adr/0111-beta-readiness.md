@@ -59,7 +59,8 @@ E2E, integration (database) and load tiers run in CI.
   request with 500 and asserts that no write is sent; it is called from a test per screen, and no test yet
   demands such a test for every screen.
 - An expired session answers 401 `SESSION_EXPIRED` instead of continuing as a guest. The app opens the
-  sign-in and remembers the place; requests outside the generated client go through `net/apiFetch.ts`, which
+  sign-in, remembers the place and drops the query cache and the confirmed notices, as a sign-out does;
+  requests outside the generated client go through `net/apiFetch.ts`, which
   reports it too, and an architecture test forbids a bare `fetch` in the app.
 
 ### The user wins, in one place
@@ -150,7 +151,8 @@ E2E, integration (database) and load tiers run in CI.
 
 ### Row-level security
 
-- Every table with personal data (55) has row-level security enabled and forced. Queries run as the role
+- Every table with personal data (55) has row-level security enabled and forced; the lock test replays the
+  migrations, so a policy dropped later or one whose condition is `true` fails it. Queries run as the role
   `steuereule_app` (no `BYPASSRLS`, owns no table); the request's identity is a transaction-local setting set
   with the first query. Without a setting a query sees nothing.
 - Paths that cross users (sweeps, account deletion, guest takeover, the payment webhook, better-auth lookups,
