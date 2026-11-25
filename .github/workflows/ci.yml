@@ -883,6 +883,9 @@ jobs:
       # ADR-0101 §20: the default of the app. Scenario 09b walks the self-employment area end to end; the
       # shards above pin the switch off for scenario 09, so 09b gets this stack of its own (ATTACH mode).
       SELBSTSTAENDIGE_ENABLED: 'true'
+      # #450 D7: the fake payment provider (refused in production, no Stripe keys here), so 09b pays the
+      # self-employment tier through the real checkout and webhook (e2e/harness/fake-payment.mjs).
+      PAYMENT_FAKE_PROVIDER: '1'
     steps:
       # Built here rather than written out in the job env, so no connection string with
       # credentials sits in the workflow; every later step reads it from the environment.

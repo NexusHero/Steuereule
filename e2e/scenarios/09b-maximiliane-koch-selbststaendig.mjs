@@ -9,11 +9,13 @@
 // is not given this unit: scenario 09 pins the switch-off behaviour on the same stack). The profile, the quick entry,
 // the book and the bank import go to the real server. What the stack cannot produce on demand is served by route
 // mocks with the API's response shape: the ELSTER states (published / not published / by meaning / not paid), the
-// Bilanz closing, the losses and the refusals (409 chain, 402 tier, 503 tier not configured).
+// Bilanz closing, the losses and the refusals (409 chain, 402 tier, 503 tier not configured). The payment itself
+// is real: the API runs with PAYMENT_FAKE_PROVIDER=1 and the paid event goes to the real webhook (harness/fake-payment).
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { fail, leaveStrom, answerBasis, runStandaloneScenario, chooseTopics, fillTopic, waitForStromStep } from './helpers/scenario-harness.mjs'
 import { startPersona } from './helpers/persona-steps.mjs'
+import { deliverFakePaymentEvent, latestFakeCheckoutSession } from '../harness/fake-payment.mjs'
 
 const YEAR = 2025
 const API = `**/v1/steuerjahre/${YEAR}/selbststaendig`
@@ -24,7 +26,7 @@ const SPARKASSE_CSV = [
   'DE02100500000054540402;03.04.25;03.04.25;GUTSCHRIFT;Honorar Projekt Alpha;Kunde AG;DE12500105170648489890;INGDDEFFXXX;1190,00;EUR;',
 ].join('\n')
 
-export async function runScenario09b(browser, webOrigin) {
+export async function runScenario09b(browser, webOrigin, sql) {
   console.log('\n--- Scenario 09b: Maximiliane Koch (Selbstständig, switch on) ---')
   const { ctx, page } = await startPersona(browser, webOrigin, 'scenario-09b', {
     email: `du+maxi.koch.b.${Date.now()}@beispiel.de`, firstName: 'Maximiliane', lastName: 'Koch', taxId: '34827190562',
@@ -402,16 +404,11 @@ export async function runScenario09b(browser, webOrigin) {
   await see('elster-nicht-freigeschaltet')
   await byId('elster-freischalten').click()
   await see('freischalten-seite')
-  // Back from the checkout (`?zahlung=erfolg`) the area returns to the help, which says the year is unlocked —
-  // once the unlock status confirms it (WEB-35: the return alone proves nothing; until then it says "being
-  // confirmed"). Nothing is paid in this scenario, so the status read is answered as the webhook would leave it.
-  const unlockStatus = `**/v1/steuerjahre/${YEAR}/freischaltung`
-  await page.route(unlockStatus, (route) => route.fulfill(json({ status: 'freigeschaltet', tier: 'selbststaendig', filingPath: 'elster-ausfuellhilfe', price: null })))
-  await page.goto(`${webOrigin}/app/steuerjahr/${YEAR}/selbststaendig/elster?zahlung=erfolg`, { waitUntil: 'networkidle' })
-  await see('elster-freigeschaltet')
-  await page.unroute(unlockStatus)
+  // Back from a cancelled checkout (`?zahlung=abbruch`, the API's cancel URL) on the unpaid year: nothing was paid.
+  // The paid return trip is walked for real at the end of the scenario, once nothing else needs the unpaid year.
   await page.goto(`${webOrigin}/app/steuerjahr/${YEAR}/selbststaendig/elster?zahlung=abbruch`, { waitUntil: 'networkidle' })
   await see('elster-abgebrochen')
+  await gone('elster-freigeschaltet')
   // A year without any value to type says so instead of offering empty forms.
   await page.unroute(`${API}/elster`)
   await page.route(`${API}/elster`, (route) => route.fulfill(json({ year: YEAR, forms: [] })))
@@ -658,6 +655,25 @@ export async function runScenario09b(browser, webOrigin) {
   await see('business-speichern-fehler')
   await page.unroute(`${API}`)
   console.log('[09b] PASS: export, checkout and the honest error states')
+
+  // --- Paying unlocks the year: the real checkout (fake provider, no Stripe keys), the return trip, the signed webhook ---------
+  // The checkout returns to the ELSTER help with `?zahlung=erfolg`; the return alone unlocks nothing (WEB-35): the page
+  // says the payment is being confirmed until the paid event reaches the webhook, then turns to "unlocked" by itself.
+  const unlockStatus = async () => (await (await page.request.get(`${apiOrigin}/v1/steuerjahre/${YEAR}/freischaltung`)).json()).status
+  if ((await unlockStatus()) !== 'offen') fail('[09b] before paying the year should be "offen"')
+  await go('freischalten')
+  await byId('checkout-selbststaendig').click()
+  await page.waitForURL((u) => u.pathname.endsWith(`/selbststaendig/elster`) && u.search.includes('zahlung=erfolg'), { timeout: 15_000 })
+  await see('elster-zahlung-wird-bestaetigt')
+  await gone('elster-freigeschaltet')
+  if ((await unlockStatus()) !== 'offen') fail('[09b] the return trip alone must not unlock the year')
+  const sessionId = latestFakeCheckoutSession(sql, { taxYear: YEAR, tier: 'selbststaendig' }, fail)
+  const paid = await deliverFakePaymentEvent(page.request, apiOrigin, sessionId)
+  if (!paid.ok()) fail(`[09b] the paid event should be accepted, got ${paid.status()}`)
+  await see('elster-freigeschaltet')
+  await gone('elster-zahlung-wird-bestaetigt')
+  if ((await unlockStatus()) !== 'freigeschaltet') fail('[09b] after the paid event the year should be "freigeschaltet"')
+  console.log('[09b] PASS: checkout → "being confirmed" → signed paid event → the ELSTER help says the year is unlocked')
 
   await ctx.close()
 }

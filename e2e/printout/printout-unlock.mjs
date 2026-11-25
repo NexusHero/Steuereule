@@ -6,10 +6,10 @@ import { startStack } from '../harness/stack.mjs'
 import { fail } from '../harness/rate-limit.mjs'
 import { createAccount, call, answer, putLstb, putPrintableBasics, browserLogin, until } from '../harness/api-account.mjs'
 import { readFile } from 'node:fs/promises'
+import { deliverFakePaymentEvent, latestFakeCheckoutSession } from '../harness/fake-payment.mjs'
 
 const TAG = 'printout-unlock'
 const YEAR = 2025
-const FAKE_SIGNATURE = 'fake-payment-signature'
 
 async function main() {
   const { apiOrigin, webOrigin, sql, stop } = await startStack()
@@ -54,12 +54,11 @@ async function main() {
     console.log(`[${TAG}] ✅ erfolg, webhook late — "Zahlung wird bestätigt", pay button disabled`)
 
     // The paid event arrives like Stripe's: signed, on the real webhook endpoint.
-    const sessionId = sql(`SELECT "stripeCheckoutSessionId" FROM "Freischaltung" ORDER BY "createdAt" DESC LIMIT 1`).trim()
-    if (!sessionId.startsWith('fake_cs_')) fail(`expected a fake checkout session, got "${sessionId}"`)
-    const bad = await api.post('/v1/zahlung/stripe/webhook', { data: { sessionId }, headers: { 'stripe-signature': 'wrong' } })
+    const sessionId = latestFakeCheckoutSession(sql, { taxYear: YEAR, tier: 'standard' }, fail)
+    const bad = await deliverFakePaymentEvent(api, apiOrigin, sessionId, { signature: 'wrong' })
     if (bad.status() !== 401) fail(`a wrong signature must be refused with 401, got ${bad.status()}`)
     if ((await call(api, 'GET', `/v1/steuerjahre/${YEAR}/freischaltung`)).status !== 'offen') fail('a refused webhook must not unlock')
-    const good = await api.post('/v1/zahlung/stripe/webhook', { data: { sessionId }, headers: { 'stripe-signature': FAKE_SIGNATURE } })
+    const good = await deliverFakePaymentEvent(api, apiOrigin, sessionId)
     if (!good.ok()) fail(`the paid event must be accepted, got ${good.status()}`)
     await until(async () => (await call(api, 'GET', `/v1/steuerjahre/${YEAR}/freischaltung`)).status, 'freigeschaltet', 'the paid event must unlock the year')
     console.log(`[${TAG}] ✅ webhook — a wrong signature is refused, the signed paid event unlocks the year`)
@@ -88,7 +87,7 @@ async function main() {
     console.log(`[${TAG}] ✅ ausdruck-herunterladen-bearbeitbar — ${editableFile.suggestedFilename()}`)
 
     // API-4: a refund takes the unlock back.
-    const refund = await api.post('/v1/zahlung/stripe/webhook', { data: { sessionId, kind: 'erstattet' }, headers: { 'stripe-signature': FAKE_SIGNATURE } })
+    const refund = await deliverFakePaymentEvent(api, apiOrigin, sessionId, { kind: 'erstattet' })
     if (!refund.ok()) fail(`the refund event must be accepted, got ${refund.status()}`)
     await until(async () => (await call(api, 'GET', `/v1/steuerjahre/${YEAR}/freischaltung`)).status, 'offen', 'a refund must take the unlock back')
     console.log(`[${TAG}] ✅ refund — the unlock is taken back`)
