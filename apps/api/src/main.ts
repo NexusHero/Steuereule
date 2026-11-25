@@ -22,6 +22,7 @@ import { resolveTrustedProxies } from './config/trusted-proxies.js'
 import { resolveTraceId } from './common/request-id.js'
 import { buildCorsOptions } from './cors/build-cors-options.js'
 import { installMcpBodyLimit } from './mcp/mcp-body-limit.js'
+import { UserContextGuard } from './auth/user-context.guard.js'
 import { registerHelmet } from './security/register-helmet.js'
 
 export async function buildApp(): Promise<NestFastifyApplication> {
@@ -43,7 +44,8 @@ export async function buildApp(): Promise<NestFastifyApplication> {
   // (ADR-0106 D3/D4), never on a client-supplied X-Forwarded-For.
   installClientIpHeader(fastifyAdapter.getInstance())
   // Before the routes exist: the MCP message routes take a receipt file as base64 (beta P4, decision 6).
-  installMcpBodyLimit(fastifyAdapter.getInstance())
+  // The token is checked before a large body is read, with the guard's own decision.
+  installMcpBodyLimit(fastifyAdapter.getInstance(), (request) => app.get(UserContextGuard, { strict: false }).refuseBearerBeforeBody(request))
 
   fastifyAdapter.getInstance().addHook('onSend', async (request, reply) => {
     if (request.id) {

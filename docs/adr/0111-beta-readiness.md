@@ -72,7 +72,8 @@ E2E, integration (database) and load tiers run in CI.
   lock. `steuerjahre_auflisten`, `beleg_zuruecknehmen`, `aufgabe_zuruecknehmen` are new; the server sends
   instructions and tool annotations.
 - `beleg_hochladen` takes the file as base64 through the REST upload's checks; the two MCP message routes
-  accept 15 MB only with a bearer token.
+  accept 15 MB only with a valid bearer token, checked by the guard's own decision before the body is read
+  (a larger body without one gets 401 with the challenge); an opaque token also needs the consent to still exist.
 - `zahllink:write` replaces `zahllink:read`, which is still accepted for existing refresh tokens and no
   longer advertised.
 - A request to the MCP endpoint without a token gets 401 with a challenge before any guest identity exists.
