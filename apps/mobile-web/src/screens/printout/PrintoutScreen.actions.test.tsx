@@ -9,6 +9,7 @@ import { http, HttpResponse } from 'msw'
 import type { Screen } from '@steuereule/core'
 import { createAppI18n } from '../../i18n/app-i18n'
 import { server } from '../../test-msw-server'
+import { manualPaymentClock } from '../../test-payment-clock'
 import { PrintoutScreen, type PrintoutScreenProps } from './PrintoutScreen'
 
 const { download } = vi.hoisted(() => ({ download: vi.fn() }))
@@ -164,8 +165,13 @@ describe('AusdruckScreen — payment', () => {
       }),
       http.get('*/v1/steuerjahre/2025/ausdruck/pruefung', () => HttpResponse.json({ missing: [] })),
     )
-    renderScreen({ payment: 'erfolg', confirmTiming: { intervalMs: 20, timeoutMs: 5_000 } })
-    await waitFor(() => expect(reads).toBeGreaterThanOrEqual(3))
+    const clock = manualPaymentClock()
+    renderScreen({ payment: 'erfolg', confirmTiming: { clock } })
+    await waitFor(() => expect(reads).toBe(1))
+    for (const expected of [2, 3]) {
+      clock.poll()
+      await waitFor(() => expect(reads).toBe(expected))
+    }
   })
 })
 

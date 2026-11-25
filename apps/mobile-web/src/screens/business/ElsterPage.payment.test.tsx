@@ -10,6 +10,7 @@ import { http, HttpResponse } from 'msw'
 import type { PaymentReturn } from '@steuereule/core'
 import { createAppI18n } from '../../i18n/app-i18n'
 import { server } from '../../test-msw-server'
+import { manualPaymentClock, type ManualPaymentClock } from '../../test-payment-clock'
 import { BASE_URL, renderBusiness, useElsterForms } from './businessTestKit'
 import { ElsterPage } from './ElsterPage'
 
@@ -35,14 +36,14 @@ function webhookAfter(lateBy: number) {
   return () => reads
 }
 
-function renderElster(payment: PaymentReturn | undefined) {
+function renderElster(payment: PaymentReturn | undefined, clock: ManualPaymentClock = manualPaymentClock()) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
   const onOpenPage = vi.fn()
   render(
     <QueryClientProvider client={client}>
       <I18nextProvider i18n={createAppI18n('de')}>
         <ThemeProvider mode="light">
-          <ElsterPage taxYear={2025} person="A" onBack={() => {}} onOpenPage={onOpenPage} payment={payment} confirmTiming={{ intervalMs: 20, timeoutMs: 400 }} />
+          <ElsterPage taxYear={2025} person="A" onBack={() => {}} onOpenPage={onOpenPage} payment={payment} confirmTiming={{ clock }} />
         </ThemeProvider>
       </I18nextProvider>
     </QueryClientProvider>,
@@ -62,12 +63,19 @@ describe('ELSTER page: back from Stripe', () => {
   })
 
   it('success, webhook late: confirming, never "not unlocked" and no pay button, then paid and the help', async () => {
-    webhookAfter(3)
-    renderElster('erfolg')
+    // The test moves the clock: the webhook is in after the third status read, which the polls bring about.
+    const clock = manualPaymentClock()
+    const reads = webhookAfter(3)
+    renderElster('erfolg', clock)
     expect(await screen.findByText(CONFIRMING)).toBeTruthy()
     expect(screen.queryByText(NOT_UNLOCKED)).toBeNull()
     expect(screen.queryByTestId('elster-freischalten')).toBeNull()
 
+    while (reads() <= 3) {
+      const before = reads()
+      clock.poll()
+      await waitFor(() => expect(reads()).toBeGreaterThan(before))
+    }
     expect(await screen.findByText(PAID)).toBeTruthy()
     expect(await screen.findByTestId('elster-zeilen')).toBeTruthy()
     expect(screen.queryByText(CONFIRMING)).toBeNull()
@@ -83,10 +91,12 @@ describe('ELSTER page: back from Stripe', () => {
   })
 
   it('timeout: says so plainly and never "paid"; checking again reads the status again', async () => {
+    const clock = manualPaymentClock()
     const reads = webhookAfter(Number.POSITIVE_INFINITY)
-    renderElster('erfolg')
+    renderElster('erfolg', clock)
     expect(await screen.findByText(CONFIRMING)).toBeTruthy()
-    expect(await screen.findByText(TIMEOUT, undefined, { timeout: 3_000 })).toBeTruthy()
+    clock.expire()
+    expect(await screen.findByText(TIMEOUT)).toBeTruthy()
     expect(screen.queryByText(PAID)).toBeNull()
     const before = reads()
     fireEvent.click(screen.getByTestId('elster-zahlung-erneut-pruefen'))

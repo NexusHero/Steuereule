@@ -12,15 +12,37 @@ import type { PaymentReturn } from '@steuereule/core'
  */
 export type PaymentPhase = 'none' | 'confirming' | 'paid' | 'cancelled' | 'timeout'
 
-export interface PaymentConfirmationOptions {
+/** Schedules the status polls and the timeout; each call returns its cancel. The real clock outside tests. */
+export interface PaymentClock {
+  every(ms: number, run: () => void): () => void
+  after(ms: number, run: () => void): () => void
+}
+
+export const REAL_PAYMENT_CLOCK: PaymentClock = {
+  every: (ms, run) => {
+    const id = setInterval(run, ms)
+    return () => clearInterval(id)
+  },
+  after: (ms, run) => {
+    const id = setTimeout(run, ms)
+    return () => clearTimeout(id)
+  },
+}
+
+/** How often and how long the unlock is awaited after a successful return, and on which clock. */
+export interface PaymentConfirmationTiming {
+  readonly intervalMs?: number
+  readonly timeoutMs?: number
+  readonly clock?: PaymentClock
+}
+
+export interface PaymentConfirmationOptions extends PaymentConfirmationTiming {
   /** The outcome the route carried, from the shared return contract. */
   readonly outcome: PaymentReturn | undefined
   /** Whether the year is unlocked; undefined while the status is still loading. */
   readonly unlocked: boolean | undefined
   /** Reads the unlock status again. */
   readonly refetch: () => unknown
-  readonly intervalMs?: number
-  readonly timeoutMs?: number
 }
 
 export const PAYMENT_POLL_INTERVAL_MS = 2_000
@@ -33,6 +55,7 @@ export function usePaymentConfirmation({
   refetch,
   intervalMs = PAYMENT_POLL_INTERVAL_MS,
   timeoutMs = PAYMENT_CONFIRM_TIMEOUT_MS,
+  clock = REAL_PAYMENT_CLOCK,
 }: PaymentConfirmationOptions): { readonly phase: PaymentPhase; readonly recheck: () => void } {
   const [timedOut, setTimedOut] = useState(false)
   const [round, setRound] = useState(0)
@@ -45,13 +68,13 @@ export function usePaymentConfirmation({
 
   useEffect(() => {
     if (!waiting) return
-    const poll = setInterval(() => void refetchRef.current(), intervalMs)
-    const stop = setTimeout(() => setTimedOut(true), timeoutMs)
+    const stopPolling = clock.every(intervalMs, () => void refetchRef.current())
+    const stopTimeout = clock.after(timeoutMs, () => setTimedOut(true))
     return () => {
-      clearInterval(poll)
-      clearTimeout(stop)
+      stopPolling()
+      stopTimeout()
     }
-  }, [waiting, intervalMs, timeoutMs, round])
+  }, [waiting, intervalMs, timeoutMs, clock, round])
 
   const recheck = useCallback(() => {
     setTimedOut(false)
