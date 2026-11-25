@@ -33,6 +33,7 @@ import { OWL_CARD_DISMISSAL_REPOSITORY, OWL_SETTING_REPOSITORY } from '../../src
 import { ENCRYPTED_PRISMA } from '../../src/prisma/encrypted-prisma.provider.js'
 import { PrismaService } from '../../src/prisma/prisma.service.js'
 import { passThroughTransactionRunner, TRANSACTION_RUNNER } from '../../src/common/transaction-runner.js'
+import { inProcessKeyedLock, KEYED_LOCK } from '../../src/common/keyed-lock.js'
 import { PROFILE_REPOSITORY } from '../../src/profile/profile.repository.js'
 import { TAX_YEAR_REPOSITORY } from '../../src/tax-year/tax-year.repository.js'
 import { INTERVIEW_ANSWER_REPOSITORY } from '../../src/interview/interview-answer.repository.js'
@@ -218,6 +219,9 @@ export async function buildTestApp(options?: {
     .useValue(auditRepository)
     .overrideProvider(TRANSACTION_RUNNER)
     .useValue(passThroughTransactionRunner)
+    // The in-memory repositories have no transaction to join; a user write still runs one at a time per account.
+    .overrideProvider(KEYED_LOCK)
+    .useValue(inProcessKeyedLock())
     .overrideProvider(PrismaService)
     .useValue({})
     .overrideProvider(ENCRYPTED_PRISMA)
