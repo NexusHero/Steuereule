@@ -232,6 +232,14 @@ E2E, integration (database) and load tiers run in CI.
 - The marketing site is a third Cloud Run service; the setup wizard maps the bare domain to it. The app stays
   on `www.`, the API on `api.`.
 
+### Mail
+
+- Mail carries login links, so every SMTP connection is TLS with a verified certificate: implicit with the smtps
+  scheme or upgraded by STARTTLS, TLS 1.2 at least. There is no clear-text path, not even to the local test inbox.
+- The local stacks generate a local CA and a certificate for Mailpit (`scripts/mail-tls.sh`, gitignored under
+  `.local/mail-tls/`); Mailpit takes SMTP over implicit TLS only, and the API trusts that CA through `SMTP_CA_CERT`
+  (a PEM path). A public provider needs no extra trust anchor. Mailpit's web inbox stays local HTTP on loopback.
+
 ### Limits and load
 
 - A lock test lists every route; in the controllers named as costly, one that renders a PDF, calls a model,
