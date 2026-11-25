@@ -13,7 +13,7 @@
 // Every load failure is one read answered 503 by `page.route` (the server's own answer for a hiccup); the route
 // is removed before the retry, so the retry and what it shows are the real server's. The account, its business
 // in Bilanz mode and a second business are seeded through the real API. Invented data only.
-import { launchBrowser, closeBrowser, newContextAtBreakpoint, guardAgainst429 } from '../harness/browser.mjs'
+import { launchBrowser, closeBrowser, newContextAtBreakpoint, guardAgainst429, authoredText } from '../harness/browser.mjs'
 import { startStack } from '../harness/stack.mjs'
 import { fail, waitForBucketHeadroom } from '../harness/rate-limit.mjs'
 import { submitLogin } from '../harness/flows.mjs'
@@ -57,7 +57,7 @@ async function detached(page, id, what) {
 }
 
 async function textOf(page, id) {
-  return (await page.locator(tid(id)).first().innerText()).replace(/\s+/g, ' ').trim()
+  return authoredText(page.locator(tid(id)).first())
 }
 
 async function expectText(page, id, expected, what) {

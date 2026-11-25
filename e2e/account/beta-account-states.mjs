@@ -37,7 +37,7 @@
 // state and its wording are asserted, the route is removed and the retry must show the real data.
 import { createHash, createHmac, randomBytes } from 'node:crypto'
 import { request as playwrightRequest } from 'playwright-core'
-import { launchBrowser, closeBrowser, newContextAtBreakpoint, guardAgainst429 } from '../harness/browser.mjs'
+import { launchBrowser, closeBrowser, newContextAtBreakpoint, guardAgainst429, authoredText } from '../harness/browser.mjs'
 import { startStack } from '../harness/stack.mjs'
 import { fail, waitForBucketHeadroom } from '../harness/rate-limit.mjs'
 import { FLOW_COPY, skipSplash, submitLogin } from '../harness/flows.mjs'
@@ -113,7 +113,7 @@ const failReads = (webOrigin) => (route) =>
 async function seeText(page, id, expected, row) {
   const el = byId(page, id)
   await el.waitFor({ state: 'visible', timeout: 20_000 })
-  const text = (await el.innerText()).trim()
+  const text = await authoredText(el)
   if (!text.includes(expected)) fail(`${row}: [${id}] must say „${expected}“, got „${text}“`)
   return text
 }

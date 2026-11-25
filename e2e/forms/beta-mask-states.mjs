@@ -14,7 +14,7 @@
 // Every load failure is one read answered 503 by `page.route` (the server's own answer for a hiccup, retried by
 // the app's query policy until it gives up); the route is removed before the retry, so the retry and what it
 // shows are the real server's. Everything else is seeded through the real API. Invented data only.
-import { launchBrowser, closeBrowser, newContextAtBreakpoint, guardAgainst429 } from '../harness/browser.mjs'
+import { launchBrowser, closeBrowser, newContextAtBreakpoint, guardAgainst429, authoredText } from '../harness/browser.mjs'
 import { startStack } from '../harness/stack.mjs'
 import { fail } from '../harness/rate-limit.mjs'
 import { PASSWORD, createAccount, call, answer, putLstb, browserLogin, until, chooseJointReturn } from '../harness/api-account.mjs'
@@ -63,7 +63,7 @@ async function detached(page, id, what) {
 }
 
 async function textOf(page, id) {
-  return (await page.locator(tid(id)).first().innerText()).replace(/\s+/g, ' ').trim()
+  return authoredText(page.locator(tid(id)).first())
 }
 
 async function expectText(page, id, expected, what) {
@@ -256,7 +256,7 @@ async function main() {
       const hint = rpage.locator(`[data-testid="instanz-${id}"]`)
       await hint.waitFor({ state: 'visible', timeout: 15_000 }).catch(() => fail(`Confirmation: the taken-over ${value.key} should name its rental object`))
       const expected = value.instanceLabel?.trim() ? COPY.rentalObject(value.instanceLabel.trim()) : COPY.rentalObjectWithoutAddress
-      const shown = (await hint.innerText()).trim()
+      const shown = await authoredText(hint)
       if (shown !== expected) fail(`Confirmation: the object of ${value.key} should read „${expected}“, reads „${shown}“`)
     }
     console.log(`[${TAG}] ✅ instanz-<key> — ${withInstance.length} taken-over values each name their rental object`)

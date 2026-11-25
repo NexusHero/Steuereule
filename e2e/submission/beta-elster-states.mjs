@@ -16,7 +16,7 @@
 //     them once they are confirmed under „Prüfen & bestätigen“.
 //   * Load failures (asset catalogue, Verfahrensdokumentation): a 503 on exactly that read through `page.route`;
 //     the route is removed and the real data appears.
-import { launchBrowser, closeBrowser, newContextAtBreakpoint, guardAgainst429 } from '../harness/browser.mjs'
+import { launchBrowser, closeBrowser, newContextAtBreakpoint, guardAgainst429, authoredText } from '../harness/browser.mjs'
 import { startStack } from '../harness/stack.mjs'
 import { fail } from '../harness/rate-limit.mjs'
 import { createAccount, call, answer, browserLogin, until } from '../harness/api-account.mjs'
@@ -77,7 +77,7 @@ async function main() {
     const byId = (id) => page.locator(`[data-testid="${id}"]`)
     const see = (id) => byId(id).waitFor({ state: 'visible', timeout: 15_000 }).catch(() => fail(`${id} should be visible`))
     const gone = (id) => byId(id).waitFor({ state: 'detached', timeout: 15_000 }).catch(() => fail(`${id} should be gone`))
-    const textOf = async (id) => ((await byId(id).textContent()) ?? '').replace(/ /g, ' ').trim()
+    const textOf = (id) => authoredText(byId(id))
     const expectText = async (id, expected) => {
       await see(id)
       const text = await textOf(id)

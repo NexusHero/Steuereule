@@ -289,3 +289,30 @@ export function guardAgainst429(page, onFail, pathSubstring = '/api/auth/') {
     }
   })
 }
+
+/**
+ * The text of an element as the app wrote it, for comparing with the copy in de.json: what a user would read,
+ * minus what CSS only changes on screen. `innerText` applies `text-transform` (an uppercase heading reads
+ * „BESTÄTIGE …“); `textContent` runs neighbouring blocks together („…E-MailWir haben …“). This joins the text
+ * nodes, puts one space where a block ends, skips what is not rendered, and collapses whitespace.
+ */
+export async function authoredText(locator) {
+  return locator.evaluate((root) => {
+    const parts = []
+    const walk = (node) => {
+      if (node.nodeType === Node.TEXT_NODE) {
+        parts.push(node.data)
+        return
+      }
+      if (node.nodeType !== Node.ELEMENT_NODE) return
+      const style = getComputedStyle(node)
+      if (style.display === 'none' || style.visibility === 'hidden') return
+      const block = style.display !== 'inline' && style.display !== 'contents'
+      if (block) parts.push(' ')
+      for (const child of node.childNodes) walk(child)
+      if (block) parts.push(' ')
+    }
+    walk(root)
+    return parts.join('').replace(/\s+/g, ' ').trim()
+  })
+}

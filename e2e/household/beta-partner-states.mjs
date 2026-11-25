@@ -31,7 +31,7 @@
 //
 // Tax years: 2024 and 2025 are the years with printed forms (FIELD_SETS); 2023 is a selectable year without a
 // coupling, for the masks that do not need one.
-import { launchBrowser, closeBrowser, newContextAtBreakpoint, guardAgainst429 } from '../harness/browser.mjs'
+import { launchBrowser, closeBrowser, newContextAtBreakpoint, guardAgainst429, authoredText } from '../harness/browser.mjs'
 import { startStack } from '../harness/stack.mjs'
 import { fail, waitForBucketHeadroom } from '../harness/rate-limit.mjs'
 import { PASSWORD, createAccount, call, answer, browserLogin } from '../harness/api-account.mjs'
@@ -83,7 +83,7 @@ const pagesForSnapshot = []
 async function expectText(page, id, parts, row, timeout = 15_000) {
   const element = page.locator(tid(id))
   await element.waitFor({ state: 'visible', timeout })
-  const text = await element.innerText()
+  const text = await authoredText(element)
   for (const part of [parts].flat()) {
     if (!text.includes(part)) fail(`${row}: ${id} should say „${part}“, it says „${text}“`)
   }
@@ -194,7 +194,7 @@ async function main() {
     const createInvite = await expectText(pageA, 'kopplung-einladung-erstellen', COPY.inviteCreate, 'Row 2')
     await createInvite.click()
     await confirmStepUp(pageA, { block: 'kopplung-einladung-stepup', password: 'kopplung-einladung-stepup-passwort', confirm: 'kopplung-einladung-stepup-bestaetigen' }, 'Row 2')
-    const notice = await (await expectText(pageA, 'kopplung-code-anzeige', 'Einladungscode für Partner-Account:', 'Row 2')).innerText()
+    const notice = await authoredText(await expectText(pageA, 'kopplung-code-anzeige', 'Einladungscode für Partner-Account:', 'Row 2'))
     const invitationCode = notice.match(/([0-9A-F]{16})/i)?.[1]
     if (!invitationCode) fail(`Row 2: no invitation code in „${notice}“`)
     const withCode = await call(a.api, 'GET', `/v1/steuerjahre/${JOIN_YEAR}/kopplung`)
