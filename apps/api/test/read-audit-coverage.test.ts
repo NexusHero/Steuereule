@@ -6,6 +6,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { AuditService } from '../src/audit/audit.service.js'
 import type { AuditEntry } from '../src/audit/audit.repository.js'
 import { appendReadAudit } from '../src/common/read-audit.js'
+import { currentDatabaseIdentity, runAsDatabaseUser } from '../src/common/database-identity.js'
 import { CommuteService } from '../src/commute/commute.service.js'
 import { CockpitService } from '../src/cockpit/cockpit.service.js'
 import { TaxEstimateService } from '../src/tax-estimate/tax-estimate.service.js'
@@ -264,8 +265,6 @@ function certificate(userId: string, name: string): CrossBorderSalaryStatementRe
 
 describe('the partner row of a read is the one cross-user write (P11)', () => {
   it("writes the caller's row as the caller and Person B's row under partner-read-audit", async () => {
-    const { appendReadAudit } = await import('../src/common/read-audit.js')
-    const { currentDatabaseIdentity, runAsDatabaseUser } = await import('../src/common/database-identity.js')
     const written: { userId: string; identity: unknown }[] = []
     const audit = { append: async (entry: { userId: string }) => void written.push({ userId: entry.userId, identity: currentDatabaseIdentity() }) }
 
