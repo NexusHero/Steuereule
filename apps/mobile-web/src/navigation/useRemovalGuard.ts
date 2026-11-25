@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { useLeaveGuardHost, type LeaveGuardHost } from '../screens/shared/leaveGuard'
+import { leaveGuardsSuspended, useLeaveGuardHost, type LeaveGuardHost } from '../screens/shared/leaveGuard'
 import { blurActiveInput } from '../lib/blurActiveInput'
 
 interface RemovableNavigation {
@@ -13,7 +13,8 @@ interface RemovableNavigation {
 /**
  * WEB-40 / NM-05: every way a route holding a mask is removed — a sheet's X, backdrop or Escape, the
  * browser's back, „Später weiter“, the mask's own „Weiter“ — waits for the mask's pending saves and stays once
- * when one failed. The masks register through the returned host's `LeaveGuardProvider`.
+ * when one failed. The masks register through the returned host's `LeaveGuardProvider`. Every navigator applies
+ * it to every route through `guardedRoute` / `guardedStackRoute` (`guardedRoute.tsx`).
  */
 export function useRemovalGuard(navigation: RemovableNavigation): LeaveGuardHost {
   const host = useLeaveGuardHost()
@@ -22,7 +23,7 @@ export function useRemovalGuard(navigation: RemovableNavigation): LeaveGuardHost
   useEffect(
     () =>
       navigation.addListener('beforeRemove', (event) => {
-        if (leaving.current || !hasGuards()) return
+        if (leaving.current || leaveGuardsSuspended() || !hasGuards()) return
         event.preventDefault()
         // A focused field saves on blur; that save must be one of the pending ones.
         blurActiveInput()

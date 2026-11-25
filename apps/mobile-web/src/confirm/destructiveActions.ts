@@ -45,6 +45,8 @@ export const DESTRUCTIVE_ACTIONS = {
   // NR-19
   noteDelete: { tone: 'destructive', screen: 'src/screens/advisor/chat/ProjectNotes.tsx', trigger: 'eule-note-delete', mutations: [] },
   assistantRevoke: { tone: 'destructive', screen: 'src/screens/profile/AssistentenListSection.tsx', trigger: 'assistent-widerrufen-', mutations: ['useAssistantsControllerRevoke'] },
+  // Decision 3: Person B takes the consent of a year back
+  partnerConsentWithdraw: { tone: 'destructive', screen: 'src/screens/master-data/PartnerYearConsent.tsx', trigger: 'kopplung-zustimmung-zuruecknehmen', mutations: ['useLinkControllerWithdrawConsent'] },
 } as const satisfies Record<string, DestructiveAction>
 
 export type DestructiveActionId = keyof typeof DESTRUCTIVE_ACTIONS

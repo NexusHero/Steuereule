@@ -24,6 +24,8 @@ export type SensitiveAction =
   | 'grants-third-party'
   | 'exposes-other-person'
   | 'ends-account'
+  /** A consent that was given with the step-up is taken back with it (decision 3: Person B's year). */
+  | 'changes-consent'
   /** Not one of the rule's four, but the same proof since ADR-0107 L1: the whole account in one download. */
   | 'exports-account'
 

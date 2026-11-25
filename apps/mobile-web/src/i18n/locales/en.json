@@ -52,6 +52,11 @@
       "heading": "This confirmation link is no longer valid.",
       "body": "It has expired or was already used. Sign in with e-mail and password – if the address is not confirmed yet, we send you a new link right away."
     },
+    "accountRemoved": {
+      "heading": "This account no longer exists.",
+      "body": "The e-mail address was never confirmed, so we deleted the account after 30 days (or you deleted it yourself). You can register again at any time.",
+      "register": "Register again"
+    },
     "errEmail": "That doesn't look like an email yet.",
     "errPass": "The password is too short. New passwords need at least 12 characters.",
     "apiUnreachable": {
@@ -98,6 +103,11 @@
       "resendSending": "Sending …",
       "resendSent": "Sent — check your inbox.",
       "resendError": "That didn't work just now. Try again in a moment."
+    },
+    "unverifiedAccount": {
+      "heading": "Please confirm your e-mail address.",
+      "body": "An account that is never confirmed is deleted: yours no sooner than {{date}}. The link is in the mail to {{email}}.",
+      "export": "Export your data first"
     },
     "verifiedBanner": {
       "heading": "Email verified ✓"
@@ -1155,7 +1165,9 @@
     "kopplungZustimmung": {
       "frage": "Your partner wants to file {{year}} jointly with you. Only once you agree does your partner see your details for {{year}} (tax ID, birth date, religion, occupation).",
       "zustimmen": "File {{year}} jointly – agree",
-      "wartet": "Your partner has not agreed to {{year}} yet. Until then you see none of their details for {{year}}."
+      "wartet": "Your partner has not agreed to {{year}} yet. Until then you see none of their details for {{year}}.",
+      "gegeben": "You agreed to file {{year}} jointly. Your partner sees your details for {{year}}.",
+      "zuruecknehmen": "Take back the consent for {{year}}"
     },
     "kopplungStand": {
       "loading": "Loading the type of assessment …",
@@ -4942,6 +4954,11 @@
       "titel": "Discard the task?",
       "text": "The task leaves your list.",
       "bestaetigen": "Discard"
+    },
+    "partnerConsentWithdraw": {
+      "titel": "Take back the consent for {{jahr}}?",
+      "text": "From now on your partner no longer sees your details for {{jahr}} and cannot file {{jahr}} jointly with your figures. You can agree again later.",
+      "bestaetigen": "Take back consent"
     },
     "submissionWithdraw": {
       "titel": "Withdraw the filing {{jahr}}?",

@@ -106,6 +106,7 @@ export class LinkService {
       personB,
       personBConsentPending: pending,
       consentRequestedFromMe: pending && !callerIsA,
+      consentGivenByMe: !callerIsA && row.filingType === 'zusammen' && row.personBUserId === userId && !pending,
     }
   }
 
@@ -312,6 +313,20 @@ export class LinkService {
       throw new NotFoundError('NO_CONSENT_REQUESTED', 'Für dieses Jahr wartet keine Zusammenveranlagung auf deine Zustimmung.')
     }
     if (personBConsentPending(row)) await this.repository.recordPersonBConsent(row.id, userId, now)
+    return this.get(userId, taxYear)
+  }
+
+  /**
+   * Person B takes the consent for this year back, in B's own app (decision 3). From the next request on, A sees
+   * nothing of B for the year: the app withholds B's id (`couplingVisibleTo`) and the database policy asks for
+   * the agreed year. The joint year itself stays; B can agree again.
+   */
+  async withdrawConsentForYear(userId: string, taxYear: number): Promise<LinkResponseDto> {
+    const row = await this.repository.findByUserAndYear(userId, taxYear)
+    if (!row || row.filingType !== 'zusammen' || row.personBUserId !== userId || row.personAUserId === userId || personBConsentPending(row)) {
+      throw new NotFoundError('NO_CONSENT_GIVEN', 'Für dieses Jahr hast du keine Zustimmung gegeben, die du zurücknehmen kannst.')
+    }
+    await this.repository.withdrawPersonBConsent(row.id, userId)
     return this.get(userId, taxYear)
   }
 

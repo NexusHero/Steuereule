@@ -126,6 +126,13 @@ export class PrismaLinkRepository implements PartnerCouplingRepository {
     return toRecord(await this.prisma.taxYearLink.findUniqueOrThrow({ where: { id } }))
   }
 
+  async withdrawPersonBConsent(id: string, personBUserId: string): Promise<PartnerCouplingRecord | null> {
+    const updated = await this.prisma.taxYearLink.updateMany({ where: { id, personBUserId }, data: { personBConsentedAt: null } })
+    if (updated.count !== 1) return null
+    await this.prisma.taxDataAccessLog.create({ data: { userId: personBUserId, action: 'WRITE', resource: 'kopplung' } })
+    return toRecord(await this.prisma.taxYearLink.findUniqueOrThrow({ where: { id } }))
+  }
+
   async delete(personAUserId: string, taxYear: number): Promise<boolean> {
     const existing = await this.prisma.taxYearLink.findUnique({
       where: {

@@ -40,5 +40,7 @@ export interface PartnerCouplingRepository {
   claimInvitation(code: string, taxYear: number, personBUserId: string, now: Date): Promise<PartnerCouplingRecord | null>
   /** Person B agrees to share this year with A (decision 3). */
   recordPersonBConsent(id: string, personBUserId: string, now: Date): Promise<PartnerCouplingRecord | null>
+  /** Person B takes the consent for this year back (decision 3); A sees nothing of B for it from then on. */
+  withdrawPersonBConsent(id: string, personBUserId: string): Promise<PartnerCouplingRecord | null>
   delete(personAUserId: string, taxYear: number): Promise<boolean>
 }

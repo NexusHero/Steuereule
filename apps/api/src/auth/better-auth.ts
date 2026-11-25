@@ -13,6 +13,7 @@ import { getCookies } from 'better-auth/cookies'
 import { deviceAuthorization, haveIBeenPwned, jwt, twoFactor } from 'better-auth/plugins'
 import { hibpFailOpenPlugin } from './breach-check.js'
 import { redirectVerificationToWebApp } from './verification-link.js'
+import { removedAccountRedirect } from './removed-account-link.js'
 import { DEVICE_AUTHORIZATION_DISABLED_PATHS, assertDeviceAuthorizationDisabledPathsComplete } from './device-authorization-paths.js'
 import { deviceSessionCookiePlugin } from './device-session-cookie.js'
 import type { EmailSender } from './email-sender.js'
@@ -299,6 +300,11 @@ function buildOptions(options: CreateBetterAuthOptions & { rateLimitStorage: Res
           await sweepClients(ctx.context.adapter as unknown as SweepAdapter)
         }
         if (ctx.path === '/sign-in/email' || ctx.path === '/sign-up/email') onSweepOpportunity?.()
+        if (ctx.path === '/verify-email') {
+          // ADR-0030 §5: the link of a removed account says so instead of "expired".
+          const removed = await removedAccountRedirect(ctx.query ?? {}, ctx.context.secret, webAppUrl, async (email) => (await ctx.context.internalAdapter.findUserByEmail(email)) !== null)
+          if (removed) throw ctx.redirect(removed)
+        }
         await enforceAccountSignInLimit(rateLimitStorage, ctx.path, ctx.body)
         await enforcePasswordResetRequest(rateLimitStorage, ctx.path, ctx.body, webAppUrl)
         await enforceVerifyPasswordAccountLimit(rateLimitStorage, ctx)

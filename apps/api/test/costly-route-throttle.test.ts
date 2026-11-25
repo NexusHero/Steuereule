@@ -50,6 +50,7 @@ const COSTLY: Readonly<Record<string, { readonly effect: Effect; readonly limite
 
 /** Controllers none of whose routes is costly. Mail is sent only by better-auth, which has its own limiter. */
 const CHEAP_CONTROLLERS: Readonly<Record<string, string>> = {
+  AccountVerificationController: 'One user row.',
   AssessmentController: 'Bescheid fields from the database.',
   AuthCapabilitiesController: 'Static.',
   CapabilitiesController: 'Static.',
@@ -107,7 +108,7 @@ const CHEAP_ROUTES: Readonly<Record<string, { readonly why: string; readonly han
   ReceiptController: { why: 'Reads and assignments; the file download streams a stored blob.', handlers: ['list', 'downloadFile', 'setAssignment', 'delete'] },
   AssistantsController: { why: 'Lists and revokes assistant grants.', handlers: ['listConnected', 'revoke'] },
   McpController: { why: 'Ends or probes an MCP session.', handlers: ['streamableOther'] },
-  LinkController: { why: 'The coupling of the year and Person B’s facts.', handlers: ['get', 'set', 'updatePersonB', 'consent'] },
+  LinkController: { why: 'The coupling of the year and Person B’s facts.', handlers: ['get', 'set', 'updatePersonB', 'consent', 'withdrawConsent'] },
 }
 
 interface Route {

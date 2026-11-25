@@ -1,3 +1,4 @@
+import { guardedRoute } from './guardedRoute'
 import { useEffect, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { createBottomTabNavigator, type BottomTabBarProps, type BottomTabScreenProps } from '@react-navigation/bottom-tabs'
@@ -170,6 +171,7 @@ export function AppTabs() {
   return (
     <Tab.Navigator
       initialRouteName="Cockpit"
+      screenLayout={guardedRoute}
       layout={({ state, navigation, children }) => (
         <TabNavigatorSync state={state} navigation={navigation}>
           {children}

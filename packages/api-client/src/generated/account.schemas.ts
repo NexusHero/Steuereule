@@ -101,6 +101,15 @@ export interface ExportDocumentDto {
   accessLog: ExportAccessLogEntryDto[];
 }
 
+export interface AccountVerificationDto {
+  emailVerified: boolean;
+  /**
+     * For a never-verified account: no sooner than this moment the sweep deletes it (30 days after registration, 7 days after the warning; a floor, the sweep runs on traffic). Null once verified.
+     * @nullable
+     */
+  deletionNotBefore: string | null;
+}
+
 export type AccountExportControllerExportAccountParams = {
 /**
  * json (default) or pdf.

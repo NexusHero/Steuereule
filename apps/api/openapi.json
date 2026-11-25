@@ -911,6 +911,41 @@
         "tags": [
           "kopplung"
         ]
+      },
+      "delete": {
+        "operationId": "LinkController_withdrawConsent",
+        "parameters": [
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": 2026,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Person B takes back the consent for this tax year; Person A sees nothing of B for it from now on.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LinkResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Requires account."
+          },
+          "404": {
+            "description": "NO_CONSENT_GIVEN: the caller gave no consent for this year."
+          }
+        },
+        "tags": [
+          "kopplung"
+        ]
       }
     },
     "/v1/stammdaten": {
@@ -8703,6 +8738,30 @@
         ]
       }
     },
+    "/v1/account/verification": {
+      "get": {
+        "operationId": "AccountVerificationController_verification",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "ADR-0030: the banner of a never-verified account shows the date no sooner than which it is deleted.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccountVerificationDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "A guest: there is no account to confirm."
+          }
+        },
+        "tags": [
+          "account"
+        ]
+      }
+    },
     "/v1/assistenten": {
       "get": {
         "operationId": "AssistantsController_listConnected",
@@ -10169,6 +10228,10 @@
           "consentRequestedFromMe": {
             "type": "boolean",
             "description": "The caller is Person B and is asked to agree to share this year with Person A (decision 3)."
+          },
+          "consentGivenByMe": {
+            "type": "boolean",
+            "description": "The caller is Person B and has agreed to share this year; B can take it back (DELETE …/kopplung/zustimmung)."
           }
         },
         "required": [
@@ -24823,6 +24886,26 @@
           "accountData",
           "receiptFiles",
           "accessLog"
+        ]
+      },
+      "AccountVerificationDto": {
+        "type": "object",
+        "properties": {
+          "emailVerified": {
+            "type": "boolean",
+            "example": false
+          },
+          "deletionNotBefore": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "example": "2026-12-01T10:00:00.000Z",
+            "description": "For a never-verified account: no sooner than this moment the sweep deletes it (30 days after registration, 7 days after the warning; a floor, the sweep runs on traffic). Null once verified."
+          }
+        },
+        "required": [
+          "emailVerified",
+          "deletionNotBefore"
         ]
       },
       "ConnectedAssistantDto": {

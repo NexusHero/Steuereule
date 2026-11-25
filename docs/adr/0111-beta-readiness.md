@@ -115,9 +115,13 @@ E2E, integration (database) and load tiers run in CI.
   joint years keep their filing type.
 - The export adds sessions, passkeys, two-factor status, device codes, assistants and consents, and the
   receipt files themselves.
-- Sweeps: never-verified accounts per ADR-0030 (warning mails, then deletion; the in-app banner with the
-  export offer that ADR-0030 names is not built), ended sessions, tokens and device codes after 30 days, the
+- Sweeps: never-verified accounts per ADR-0030 (warning mails, then deletion), ended sessions, tokens and device codes after 30 days, the
   access log after three years, expired holds.
+- A never-verified account sees a banner on every screen of the app with the date no sooner than which it is
+  deleted (`GET /v1/account/verification`; 30 days after registration, 7 after the warning) and the way to the
+  export. The verification link of an account that no longer exists lands on the sign-in page with
+  `ACCOUNT_REMOVED`, which says so and offers a new registration (ADR-0030 §5); the API reads the address of a
+  token it signed whatever its age, since better-auth checks the expiry first.
 - Every read of tax data writes its audit row. A read of the figures of a Person B without an account is
   logged under B's shadow id; the access log and the export of the account that keeps B show those rows.
 
@@ -132,12 +136,17 @@ E2E, integration (database) and load tiers run in CI.
   (`PUT /v1/steuerjahre/:jahr/kopplung`).
 - A session created by the device flow takes over the approver's creation time, so it is never fresh and never
   extends the 30-day cap.
-- Person B agrees per tax year (`POST /v1/steuerjahre/:jahr/kopplung/zustimmung`); redeeming an invitation counts
-  for that year. Until then Person A's readers get the joint year without B's id (`couplingVisibleTo`, applied
-  by the tax-case reader for the estimate, the printout, the ELSTER help and the history); estimate and
-  printout name the missing consent. Years that exist today keep their consent, including years A created
-  under an existing link. The row-level policy reaches B's rows once B agreed to some joint year; the year is
-  the app's part. B cannot withdraw a consent. One invitation code has one redeemer.
+- Person B agrees per tax year (`POST /v1/steuerjahre/:jahr/kopplung/zustimmung`, with step-up); redeeming an
+  invitation counts for that year. Until then Person A's readers get the joint year without B's id
+  (`couplingVisibleTo`, applied by the tax-case reader for the estimate, the printout, the ELSTER help and the
+  history); estimate and printout name the missing consent. One invitation code has one redeemer.
+- Joint years that existed before this change keep their consent (NexusHero, 2026-11-25): B agreed to the
+  coupling when it was made. The migration records it for every existing joint year with an own-account B,
+  including years A created under an existing link. Every year created from now on needs B's consent.
+- Person B can withdraw the consent of any year at any time, in B's own app
+  (`DELETE /v1/steuerjahre/:jahr/kopplung/zustimmung`, after a confirmation and with step-up: a stolen session
+  must not cut a couple's year apart). The joint year stays and B can agree again. It holds from the next
+  request on, in the app (`couplingVisibleTo`) and in the database (see Row-level security).
 - Google and Apple tokens are not stored; nothing uses them.
 - After registration the account wall says "Bestätige deine E-Mail"; the verification link lands on the sign-in
   page with a note. The profile has its own sign-out and a password change.
@@ -149,6 +158,11 @@ E2E, integration (database) and load tiers run in CI.
 - A booking identical to the last one from the same source within 30 seconds returns the first entry and posts
   nothing.
 - The running tax year comes from the server clock (Europe/Berlin) through `GET /v1/capabilities`.
+- Leaving a mask by any way that removes its route (a sheet's X, the browser's back, „Später weiter“) waits for
+  its pending saves and stays once when one failed: every navigator gives each route a guard
+  (`navigation/guardedRoute.tsx`, its `screenLayout`), and a lock test fails for a navigator without it. An
+  expired session leaves without waiting. On the web, closing or reloading the tab asks first while a save is
+  on its way or a field holds typed input not yet committed (`navigation/unsavedWork.ts`).
 
 ### Row-level security
 
@@ -166,9 +180,12 @@ E2E, integration (database) and load tiers run in CI.
   `steuereule_app` binds the policies.
 - Paths that cross users (sweeps, account deletion, guest takeover, the payment webhook, better-auth lookups,
   the device flow, invitations) run under a named system reason; a lock test lists every call site.
-- Residual: partners may read and write each other's rows in the database, narrowing stays with the app; the
-  keystore database has no policies and one login (its rows are keys wrapped under `KEYSTORE_MASTER_KEY`, which
-  the database never holds); the two identity settings are plain session settings, so row-level security does
+- Partners: Person B reaches Person A's rows of every year. Person A reaches Person B's rows of a table with a
+  tax year (29 tables) only for the years B agreed to (`app_rls.agreed_partner_years()`), and of a table
+  without one (profile, master data, owl settings) while B agreed to some year; the app checks the year for
+  both. A lock test fails for a table with a tax year that keeps the year-blind condition.
+- Residual: the keystore database has no policies and one login (its rows are keys wrapped under
+  `KEYSTORE_MASTER_KEY`, which the database never holds); the two identity settings are plain session settings, so row-level security does
   not protect against SQL injection or against code that names a system reason. In particular, whoever holds
   the runtime login's password can set `steuereule.system` (or `steuereule.erasure`) and pass every policy
   and the append-only erasure exception; the two logins keep such a caller from changing the schema, the
@@ -224,10 +241,8 @@ E2E, integration (database) and load tiers run in CI.
 
 - The per-screen failure test, the step-up classification and the throttle classification rest on lists kept
   by hand; a new screen or a new route in a listed controller is not caught.
-- A sheet closed on a screen outside the cockpit stack does not wait for a pending save.
 - Creating an invitation needs no step-up; the 15 MB body limit of the MCP routes applies before the token is
   checked.
-- Consent of years that existed before this change was set by migration, not given by Person B.
 
 ## Consequences
 

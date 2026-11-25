@@ -52,6 +52,11 @@
       "heading": "Dieser Bestätigungslink gilt nicht mehr.",
       "body": "Er ist abgelaufen oder wurde schon benutzt. Melde dich mit E-Mail und Passwort an – ist die Adresse noch nicht bestätigt, schicken wir dir sofort einen neuen Link."
     },
+    "accountRemoved": {
+      "heading": "Dieses Konto gibt es nicht mehr.",
+      "body": "Die E-Mail-Adresse wurde nie bestätigt, deshalb haben wir das Konto nach 30 Tagen gelöscht (oder du hast es selbst gelöscht). Du kannst dich jederzeit neu registrieren.",
+      "register": "Neu registrieren"
+    },
     "errEmail": "Das sieht noch nicht nach einer E-Mail aus.",
     "errPass": "Das Passwort ist zu kurz. Neue Passwörter brauchen mindestens 12 Zeichen.",
     "apiUnreachable": {
@@ -98,6 +103,11 @@
       "resendSending": "Wird gesendet …",
       "resendSent": "Ist raus — schau in dein Postfach.",
       "resendError": "Das hat gerade nicht geklappt. Versuch es gleich noch mal."
+    },
+    "unverifiedAccount": {
+      "heading": "Bitte bestätige deine E-Mail-Adresse.",
+      "body": "Ein Konto, das nie bestätigt wird, löschen wir: deines frühestens am {{date}}. Den Link findest du in der Mail an {{email}}.",
+      "export": "Vorher deine Daten exportieren"
     },
     "verifiedBanner": {
       "heading": "E-Mail bestätigt ✓"
@@ -1155,7 +1165,9 @@
     "kopplungZustimmung": {
       "frage": "Dein Partner möchte {{year}} mit dir zusammen abgeben. Erst wenn du zustimmst, sieht er deine Angaben für {{year}} (Steuer-ID, Geburtsdatum, Religion, Beruf).",
       "zustimmen": "{{year}} zusammen abgeben – zustimmen",
-      "wartet": "Dein Partner hat {{year}} noch nicht zugestimmt. Bis dahin siehst du keine seiner Angaben für {{year}}."
+      "wartet": "Dein Partner hat {{year}} noch nicht zugestimmt. Bis dahin siehst du keine seiner Angaben für {{year}}.",
+      "gegeben": "Du hast zugestimmt, {{year}} zusammen abzugeben. Dein Partner sieht deine Angaben für {{year}}.",
+      "zuruecknehmen": "Zustimmung für {{year}} zurücknehmen"
     },
     "kopplungStand": {
       "loading": "Die Veranlagungsart wird geladen …",
@@ -4942,6 +4954,11 @@
       "titel": "Aufgabe verwerfen?",
       "text": "Die Aufgabe verschwindet aus deiner Liste.",
       "bestaetigen": "Verwerfen"
+    },
+    "partnerConsentWithdraw": {
+      "titel": "Zustimmung für {{jahr}} zurücknehmen?",
+      "text": "Dein Partner sieht deine Angaben für {{jahr}} ab sofort nicht mehr und kann {{jahr}} nicht mehr mit deinen Zahlen zusammen abgeben. Du kannst später wieder zustimmen.",
+      "bestaetigen": "Zustimmung zurücknehmen"
     },
     "submissionWithdraw": {
       "titel": "Abgabe {{jahr}} zurücknehmen?",

@@ -5,7 +5,7 @@ import { SecurityScreen } from '../screens/security/SecurityScreen'
 import { MasterDataScreen } from '../screens/master-data/MasterDataScreen'
 import { useShellState } from './ShellState'
 import { RequiresAccount } from './RequiresAccount'
-import { renderActiveStackRoute } from './guards'
+import { guardedStackRoute } from './guardedRoute'
 import type { ProfileStackParamList } from './routes'
 
 const Stack = createNativeStackNavigator<ProfileStackParamList>()
@@ -50,7 +50,7 @@ function ProfileMasterDataRoute({ navigation }: Props<'ProfileMasterData'>) {
 
 export function ProfileStack() {
   return (
-    <Stack.Navigator initialRouteName="ProfileHome" screenOptions={{ headerShown: false }} screenLayout={renderActiveStackRoute}>
+    <Stack.Navigator initialRouteName="ProfileHome" screenOptions={{ headerShown: false }} screenLayout={guardedStackRoute}>
       <Stack.Screen name="ProfileHome" component={ProfileHomeRoute} />
       <Stack.Screen name="Privacy" component={PrivacyRoute} />
       <Stack.Screen name="Security" component={SecurityRoute} />

@@ -33,12 +33,14 @@ const SENSITIVE: Readonly<Record<string, { readonly action: SensitiveAction; rea
     action: 'grants-third-party',
     mechanism: 'LinkService.set mints a new invitation code only after FreshAuthChecker.assertFreshSessionOrStepUp; choosing the Veranlagungsart alone needs none, and a caller without the check (confirmation path, interview) gets no code.',
   },
+  'LinkController.withdrawConsent': { action: 'changes-consent' },
   'AccountDeletionController.deleteAccount': { action: 'ends-account', mechanism: 'FreshAuthChecker.assertFreshAuth: fresh session, step-up grant or the password in the body.' },
   'AccountExportController.exportAccount': { action: 'exports-account', mechanism: 'FreshAuthChecker.assertFreshSessionOrStepUp (ADR-0107 L1).' },
 }
 
 /** Controllers none of whose routes is sensitive under the rule, with the reason. */
 const ORDINARY_CONTROLLERS: Readonly<Record<string, string>> = {
+  AccountVerificationController: 'Reads whether the caller’s own address is confirmed and the deletion floor (ADR-0030).',
   AddressController: 'Street search.',
   AdvisorController: 'The caller’s own conversations; the model providers get text only under the owl consent, which is not access for a third party to the account.',
   AssessmentController: 'The caller’s own Bescheid.',

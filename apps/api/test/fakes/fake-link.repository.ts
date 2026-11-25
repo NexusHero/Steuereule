@@ -67,6 +67,17 @@ export class FakeLinkRepository implements PartnerCouplingRepository {
     return Promise.resolve(null)
   }
 
+  withdrawPersonBConsent(id: string, personBUserId: string): Promise<PartnerCouplingRecord | null> {
+    for (const [k, r] of this.store.entries()) {
+      if (r.id === id && r.personBUserId === personBUserId) {
+        const updated = { ...r, personBConsentedAt: null }
+        this.store.set(k, updated)
+        return Promise.resolve(updated)
+      }
+    }
+    return Promise.resolve(null)
+  }
+
   recordPersonBConsent(id: string, personBUserId: string, now: Date): Promise<PartnerCouplingRecord | null> {
     for (const [k, r] of this.store.entries()) {
       if (r.id === id && r.personBUserId === personBUserId) {
