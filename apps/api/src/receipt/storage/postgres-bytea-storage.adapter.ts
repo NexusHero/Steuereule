@@ -39,6 +39,8 @@ export class PostgresByteaStorageAdapter implements StoragePort {
     await this.prisma.receiptFile.upsert({
       where: { receiptId: input.receiptId },
       update: {
+        // The row belongs to whoever it is encrypted for (a guest's file re-stored for the account, API-20).
+        userId: input.userId,
         mimeType: input.mimeType,
         byteLength: input.buffer.length,
         contentMac: encrypted.contentMac,
@@ -119,6 +121,16 @@ export class PostgresByteaStorageAdapter implements StoragePort {
   async listContentKeys(userId: string): Promise<StoredContentKey[]> {
     // Two clear columns only; the ciphertext is never loaded for this.
     return this.prisma.receiptFile.findMany({ where: { userId }, select: { receiptId: true, contentMac: true } })
+  }
+
+  /**
+   * Re-stores a file for another owner (guest → account, API-20): the bytes are bound to their owner by the
+   * key and the AAD, so they are decrypted and encrypted again; the row then belongs to the new owner.
+   */
+  async move(fromUserId: string, toUserId: string, receiptId: string): Promise<void> {
+    const stored = await this.get(fromUserId, receiptId)
+    if (stored === null) return
+    await this.put({ userId: toUserId, receiptId, buffer: stored.buffer, mimeType: stored.meta.mimeType })
   }
 
   async delete(userId: string, receiptId: string): Promise<boolean> {

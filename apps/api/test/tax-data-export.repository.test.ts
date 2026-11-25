@@ -1,18 +1,18 @@
 // Art. 15/20: the export must read every table the Art. 17 erasure deletes — the two
 // lists drifting apart is exactly how "taxData: []" survived while data existed.
 import { describe, expect, it } from 'vitest'
-import { taxDataTables } from '../src/account/delete-account-transaction.prisma.js'
+import { PERSONAL_DATA_REGISTRY, shadowIdOf } from '../src/account/personal-data-registry.js'
 import { PrismaTaxDataExportRepository, toExportEntry } from '../src/account/tax-data-export.repository.prisma.js'
 
 describe('PrismaTaxDataExportRepository', () => {
-  it('reads exactly the tables the account deletion erases', async () => {
-    const read = new Set<string>()
+  it('reads every table the registry exports as rows, over the own id and every Person B shadow id (API-2)', async () => {
+    const read = new Map<string, unknown>()
     const prisma = new Proxy(
       {},
       {
         get: (_target, model) => ({
-          findMany: async () => {
-            read.add(String(model))
+          findMany: async (args: { where: unknown }) => {
+            read.set(String(model), args.where)
             return []
           },
         }),
@@ -20,15 +20,19 @@ describe('PrismaTaxDataExportRepository', () => {
     )
     await new PrismaTaxDataExportRepository(prisma as never).findAllForUser('user-1')
 
-    const erased = new Set([
-      ...taxDataTables(new Proxy({}, { get: (_t, key) => String(key) }) as never).map(String),
-      'taxYearLink',
-      // ADR-0062: erased in the same transaction, outside taxDataTables (keyed by householdUserId / person A/B).
-      'householdPerson',
-      'householdMergeCandidate',
-      'partnerLink',
-    ])
-    expect([...read].sort()).toEqual([...erased].sort())
+    const exported = PERSONAL_DATA_REGISTRY.filter((entry) => entry.export.kind === 'rows').map((entry) => entry.model.charAt(0).toLowerCase() + entry.model.slice(1))
+    for (const model of [...exported, 'taxYearLink', 'partnerLink', 'householdPerson', 'householdMergeCandidate']) expect(read.has(model), model).toBe(true)
+    expect(read.has('unlock')).toBe(true)
+    const lstbWhere = read.get('lstb') as { userId: { in: string[] } }
+    expect(lstbWhere.userId.in).toContain('user-1')
+    expect(lstbWhere.userId.in).toContain(shadowIdOf('user-1', 2025))
+  })
+
+  it('marks a row kept for Person B under a shadow id', async () => {
+    const rows: Record<string, unknown[]> = { lstb: [{ id: 'l', userId: shadowIdOf('u', 2025), taxYear: 2025, bruttoarbeitslohn: '30000' }] }
+    const prisma = new Proxy({}, { get: (_t, model) => ({ findMany: async () => rows[String(model)] ?? [] }) })
+    const entries = await new PrismaTaxDataExportRepository(prisma as never).findAllForUser('u')
+    expect(entries.map((entry) => entry.area)).toEqual(['Lohnsteuerbescheinigung (Person B)'])
   })
 
   it('orders by tax year with yearless Belege last, then by area', async () => {
