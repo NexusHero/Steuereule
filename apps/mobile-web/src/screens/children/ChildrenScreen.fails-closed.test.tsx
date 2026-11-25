@@ -1,6 +1,7 @@
 // Kinder after WEB-28: a failed load writes nothing; taking over last year's children shows them in the mask's
 // list at once (WEB-42 / NM-08); a failed marital-status read does not ask a married user the single-parent
-// questions (NM-15); a failed save names its reason (NM-07); „Weiter“ with a typed child asks once (NM-10).
+// questions (NM-15); a failed save names its reason (NM-07); „Weiter“ with a typed or changed child asks once, an
+// opened but unchanged one leaves at once (NM-10).
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { I18nextProvider } from 'react-i18next'
@@ -105,5 +106,21 @@ describe('Kinder secondary reads and writes', () => {
     fireEvent.click(screen.getByTestId('kinder-weiter'))
     expect(await screen.findByTestId('kinder-formular-offen')).toBeTruthy()
     expect(onDone).not.toHaveBeenCalled()
+  })
+
+  it('leaves at once when a stored child was only opened, and asks once when it was changed (NM-10)', async () => {
+    server.use(http.get('*/v1/steuerjahre/2026/kinder', () => HttpResponse.json(list([LINA]))))
+    const onDone = vi.fn()
+    renderChildren(onDone)
+    fireEvent.click(await screen.findByLabelText('Kind Lina bearbeiten'))
+    expect(((await screen.findByLabelText('Vorname')) as HTMLInputElement).value).toBe('Lina')
+    fireEvent.click(screen.getByTestId('kinder-weiter'))
+    await waitFor(() => expect(onDone).toHaveBeenCalledTimes(1))
+    expect(screen.queryByTestId('kinder-formular-offen')).toBeNull()
+
+    fireEvent.change(screen.getByLabelText('Vorname'), { target: { value: 'Linda' } })
+    fireEvent.click(screen.getByTestId('kinder-weiter'))
+    expect(await screen.findByTestId('kinder-formular-offen')).toBeTruthy()
+    expect(onDone).toHaveBeenCalledTimes(1)
   })
 })

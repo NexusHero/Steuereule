@@ -3,20 +3,24 @@
 // The unit tests mock tesseract.js, and the bundle gate only proves the pinned files are in the
 // export. This gate proves the part neither can: that in a REAL Chromium, against the REAL static
 // server that ships the web bundle, the worker, the WASM core and the German language data load
-// from OUR origin and actually read text — and that not a single request leaves that origin.
+// from OUR origin and actually read text — and that not a single request goes to a third party.
+// The app shell itself talks to its own API (session check, capabilities) while the page is open;
+// that origin is first-party (API_ORIGIN) and allowed, but never for an OCR asset: those must come
+// from the web origin.
 //
 // It needs no account: it loads the exported app's origin, injects the very tesseract.js build the
 // app bundles (same node_modules package), and calls createWorker with the same self-hosted paths
 // as apps/mobile-web/src/lib/documentOcr.ts (selfHostedOcrPaths). The image is a rendered LStB
 // row, so the check is "a certificate line comes back as text", not just "files return 200".
 //
-//   WEB_ORIGIN=http://localhost:4173 node e2e/ocr/self-hosted-ocr.mjs
+//   WEB_ORIGIN=http://localhost:4173 API_ORIGIN=http://localhost:3301 node e2e/ocr/self-hosted-ocr.mjs
 import { readFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { fileURLToPath } from 'node:url'
 import { chromium } from 'playwright-core'
 
 const WEB_ORIGIN = (process.env.WEB_ORIGIN ?? 'http://localhost:4173').replace(/\/$/, '')
+const API_ORIGIN = process.env.API_ORIGIN ? new URL(process.env.API_ORIGIN).origin : null
 const appRequire = createRequire(fileURLToPath(new URL('../../apps/mobile-web/package.json', import.meta.url)))
 const TESSERACT_UMD = readFileSync(appRequire.resolve('tesseract.js/dist/tesseract.min.js'), 'utf8')
 const OCR_TIMEOUT_MS = 120_000
@@ -77,9 +81,16 @@ try {
     fail(`OCR did not read the certificate row back (got ${JSON.stringify(text)}).`)
   }
 
-  const foreign = requested.filter((url) => !url.startsWith('data:') && !url.startsWith('blob:') && new URL(url).origin !== WEB_ORIGIN)
+  const network = requested.filter((url) => !url.startsWith('data:') && !url.startsWith('blob:'))
+  const isFirstParty = (url) => {
+    const { origin, pathname } = new URL(url)
+    if (origin === WEB_ORIGIN) return true
+    // The app's own API is first-party, but an OCR asset served from there would bypass the bundle.
+    return API_ORIGIN !== null && origin === API_ORIGIN && !pathname.startsWith('/ocr/')
+  }
+  const foreign = network.filter((url) => !isFirstParty(url))
   if (foreign.length > 0) {
-    fail(`requests left the app origin (ADR-0060): ${[...new Set(foreign)].join(', ')}`)
+    fail(`requests left the app's own origins (ADR-0060): ${[...new Set(foreign)].join(', ')}`)
   }
 
   for (const expected of ['/ocr/worker.min.js', '/ocr/core/', '/ocr/lang/deu.traineddata.gz']) {
@@ -89,7 +100,7 @@ try {
   }
 
   console.log(
-    `[self-hosted-ocr] PASS — read ${JSON.stringify(text.trim())} with ${requested.filter((u) => u.includes('/ocr/')).length} same-origin OCR requests, 0 foreign requests.`,
+    `[self-hosted-ocr] PASS — read ${JSON.stringify(text.trim())} with ${requested.filter((u) => u.includes('/ocr/')).length} same-origin OCR requests, 0 third-party requests.`,
   )
 } finally {
   await browser.close()

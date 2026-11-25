@@ -143,8 +143,10 @@ function KinderScreenView({
   const failureMessage = useApiFailureMessage()
   // NM-10: „Weiter“ with a typed, unsaved child asks once instead of dropping it.
   const [leaveWarned, setLeaveWarned] = useState(false)
-  // A save on its way is not an unsaved child: leaving waits for it (flushThen).
-  const formTyped = formOpen && !form.saving && (form.firstName.trim() !== '' || form.geburtsdatum.trim() !== '' || form.edited !== null)
+  // A save on its way is not an unsaved child: leaving waits for it (flushThen). An opened child the user did not
+  // change is not unsaved either: only a new child with typed fields, or a changed one, asks.
+  const formTyped =
+    formOpen && !form.saving && (form.edited === null ? form.firstName.trim() !== '' || form.geburtsdatum.trim() !== '' : form.unsavedEdit)
   const leaveOrWarn = (leave: () => void) => {
     if (formTyped && !leaveWarned) {
       setLeaveWarned(true)

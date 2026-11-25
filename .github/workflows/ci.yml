@@ -480,9 +480,10 @@ jobs:
       - name: Cross-origin browser smoke — signup, login, get-session, PUT /v1/profile
         run: node e2e/cross-origin/run.mjs
       - name: Self-hosted OCR smoke (ADR-0060) — worker, WASM core and deu data load same-origin and read text
-        # Needs only WEB_ORIGIN: no account, no API. Injects the app's own tesseract.js build into
-        # the served origin and OCRs a rendered LStB row with the self-hosted paths; fails on any
-        # request that leaves the origin (the CDN fallback tesseract.js uses by default).
+        # Needs WEB_ORIGIN (and API_ORIGIN, which the app shell calls on load); no account. Injects the
+        # app's own tesseract.js build into the served origin and OCRs a rendered LStB row with the
+        # self-hosted paths; fails on any request to a third party (the CDN fallback tesseract.js
+        # uses by default) and on any OCR asset not served by the web origin.
         run: node e2e/ocr/self-hosted-ocr.mjs
       - name: Responsive breakpoint layout gate (ADR-0014) — real browser, s/m/l assertions
         # Shares this job's already-running API + statically-served web bundle (see the
@@ -882,6 +883,9 @@ jobs:
       # ADR-0101 §20: the default of the app. Scenario 09b walks the self-employment area end to end; the
       # shards above pin the switch off for scenario 09, so 09b gets this stack of its own (ATTACH mode).
       SELBSTSTAENDIGE_ENABLED: 'true'
+      # #450 D7: the fake payment provider (refused in production, no Stripe keys here), so 09b pays the
+      # self-employment tier through the real checkout and webhook (e2e/harness/fake-payment.mjs).
+      PAYMENT_FAKE_PROVIDER: '1'
     steps:
       # Built here rather than written out in the job env, so no connection string with
       # credentials sits in the workflow; every later step reads it from the environment.
