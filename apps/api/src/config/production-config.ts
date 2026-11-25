@@ -106,6 +106,15 @@ function fieldKeys(value: string): string | undefined {
   return bad.length === 0 ? undefined : 'not of the form k1.aesgcm256.<44 base64 characters> (`npx cloak generate`)'
 }
 
+/** One `@`, a local part, and a domain with a dot that is neither first nor last; no whitespace. Linear, no regex. */
+export function isEmailAddress(value: string): boolean {
+  const at = value.indexOf('@')
+  if (at <= 0 || at !== value.lastIndexOf('@') || /\s/u.test(value)) return false
+  const domain = value.slice(at + 1)
+  const dot = domain.indexOf('.')
+  return dot > 0 && !domain.endsWith('.')
+}
+
 function prefixed(...prefixes: string[]) {
   return (value: string): string | undefined =>
     prefixes.some((prefix) => value.startsWith(prefix)) ? undefined : `must start with ${prefixes.join(' or ')}`
@@ -161,7 +170,7 @@ export const API_PRODUCTION_SETTINGS: readonly ProductionSetting[] = [
 
   // ── E-mail ─────────────────────────────────────────────────────────────────────────────────
   { name: 'BREVO_API_KEY', source: 'secret-manager', need: 'deployment', format: 'Brevo API key', secret: true },
-  { name: 'EMAIL_FROM', source: 'deploy-env', need: 'deployment', format: 'sender address on the authenticated Brevo domain', check: (value) => (/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(value) ? undefined : 'not an e-mail address') },
+  { name: 'EMAIL_FROM', source: 'deploy-env', need: 'deployment', format: 'sender address on the authenticated Brevo domain', check: (value) => (isEmailAddress(value) ? undefined : 'not an e-mail address') },
 
   // ── Payment (ADR-0101): all or nothing; required on a deployment, so the last step never dead-ends ──
   { name: 'STRIPE_SECRET_KEY', source: 'secret-manager', need: 'deployment', format: 'sk_test_… / sk_live_… (or a restricted rk_ key)', check: prefixed('sk_test_', 'sk_live_', 'rk_test_', 'rk_live_'), secret: true },
