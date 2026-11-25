@@ -35,6 +35,9 @@ export interface McpSession {
   readonly assistant: AssistantSessionInfo
 }
 
+/** The injection token of `McpDeps`: one object gathered by `mcpDepsProvider`, so `McpService` takes it whole. */
+export const MCP_DEPS = Symbol('MCP_DEPS')
+
 /** The services the tool groups work with; optional ones switch their tools off when absent. */
 export interface McpDeps {
   readonly cockpit: CockpitService

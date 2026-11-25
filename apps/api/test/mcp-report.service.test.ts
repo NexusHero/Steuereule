@@ -19,12 +19,12 @@ const computed = (from: number, to: number) => ({
 /** The Prisma runner over a client stub: the only runner the simulation trusts to roll back. */
 const rollingBack: TransactionRunner = new PrismaTransactionRunner({ $transaction: async (work) => work({}) })
 
-function service(overrides: { estimate?: unknown; printout?: unknown; confirmation?: unknown; interview?: unknown; transactions?: TransactionRunner | undefined } = {}) {
+function service(overrides: { estimate?: unknown; printout?: unknown; confirmation?: unknown; interview?: unknown; transactions?: TransactionRunner } = {}) {
   const estimate = overrides.estimate ?? { getState: vi.fn().mockResolvedValue(computed(100, 100)) }
   const printout = overrides.printout ?? { check: vi.fn().mockResolvedValue({ missing: [] }) }
   const confirmation = overrides.confirmation ?? { overview: vi.fn().mockResolvedValue({ annexes: [] }), writeConfirmedByAdvisor: vi.fn(), readRawValues: vi.fn().mockResolvedValue({ 'stammdaten.kirchensteuerpflichtig': 'false' }) }
   const interview = overrides.interview ?? { getState: vi.fn().mockResolvedValue({ answers: {}, nextStep: { kind: 'done' }, openItems: 0 }) }
-  return new McpReportService(estimate as never, printout as never, confirmation as never, interview as never, 'transactions' in overrides ? overrides.transactions : rollingBack)
+  return new McpReportService(estimate as never, printout as never, confirmation as never, interview as never, overrides.transactions ?? rollingBack)
 }
 
 describe('McpReportService (ADR-0052 amendment 2)', () => {

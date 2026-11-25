@@ -3,17 +3,16 @@
 // bounded `taxYear`, annotations, every failure as `isError` with a code and a next step (never an internal
 // message), and an audit row that names the assistant. A new tool that misses one of them fails here.
 import { describe, expect, it } from 'vitest'
-import { Client } from '@modelcontextprotocol/sdk/client/index.js'
-import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js'
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import type { z } from 'zod'
 import { AuditService } from '../src/audit/audit.service.js'
 import { inProcessKeyedLock } from '../src/common/keyed-lock.js'
 import { passThroughTransactionRunner } from '../src/common/transaction-runner.js'
 import { MCP_TOOL_BUDGETS, McpRateLimiter, type ToolBudget } from '../src/mcp/mcp-rate-limit.js'
-import { McpService, type AssistantSessionInfo } from '../src/mcp/mcp.service.js'
+import type { AssistantSessionInfo, McpDeps } from '../src/mcp/mcp-session.js'
 import { annotationsOf, MCP_SCOPE, MIN_TAX_YEAR, maxTaxYear, TOOL_POLICIES, unboundedArguments } from '../src/mcp/tool-kit.js'
 import { FakeAuditRepository } from './fakes/fake-audit.repository.js'
+import { connectMcpClient, mcpTestService } from './support/mcp-client.js'
 
 const USER = 'user-contract'
 const SECRET = 'relation "Kennzeichnung" violates constraint at /srv/app/node_modules/.prisma'
@@ -28,11 +27,33 @@ function failing(): never {
   ) as never
 }
 
-function boot(audit: AuditService) {
-  const f = failing
-  // Every optional seam is given, so every conditional tool group registers.
-  return new McpService(f(), f(), f(), f(), f(), f(), f(), f(), audit, f(), f(), f(), f(), f(), f(), f(), new McpRateLimiter(), inProcessKeyedLock(), passThroughTransactionRunner, undefined, f())
+/** Every collaborator from `stand(name)`, with a real audit log, lock and transaction runner: every tool group registers. */
+function everyDep(stand: (name: keyof McpDeps) => never, audit: AuditService): Required<McpDeps> {
+  return {
+    cockpit: stand('cockpit'),
+    printout: stand('printout'),
+    confirmation: stand('confirmation'),
+    owlMode: stand('owlMode'),
+    receipts: stand('receipts'),
+    unlock: stand('unlock'),
+    profiles: stand('profiles'),
+    masterData: stand('masterData'),
+    audit,
+    locks: inProcessKeyedLock(),
+    transactions: passThroughTransactionRunner,
+    admission: { acquire: () => () => undefined },
+    report: stand('report'),
+    link: stand('link'),
+    children: stand('children'),
+    deadlines: stand('deadlines'),
+    rentals: stand('rentals'),
+    tasks: stand('tasks'),
+    business: stand('business'),
+    years: stand('years'),
+  }
 }
+
+const boot = (audit: AuditService) => mcpTestService({ deps: everyDep(failing, audit) }).service
 
 /**
  * A collaborator that answers every call and notes it as `name.method` in `seen`: what a tool reaches, whatever
@@ -59,11 +80,8 @@ const BUDGETED_OPERATIONS: Readonly<Record<string, ToolBudget>> = {
 }
 
 /** The server over recording collaborators: which of them a call reached is in `seen` afterwards. */
-function bootRecording(seen: Set<string>, limiter: McpRateLimiter) {
-  const r = (name: string) => recording(name, seen)
-  const admission = { acquire: () => () => undefined }
-  return new McpService(r('cockpit'), r('printout'), r('confirmation'), r('owlMode'), r('receipts'), r('unlock'), r('profiles'), r('masterData'), new AuditService(new FakeAuditRepository()), r('report'), r('link'), r('children'), r('deadlines'), r('rentals'), r('tasks'), r('business'), limiter, inProcessKeyedLock(), passThroughTransactionRunner, admission, r('years'))
-}
+const bootRecording = (seen: Set<string>, limiter: McpRateLimiter) =>
+  mcpTestService({ deps: everyDep((name) => recording(name, seen), new AuditService(new FakeAuditRepository())), limiter }).service
 
 /** Arguments that take a tool past its own checks to its collaborators: a year and a file. */
 const REACHING_ARGS = { taxYear: 2025, dateiBase64: Buffer.from('%PDF-1.4\n%%EOF').toString('base64'), fileName: 'beleg.pdf' }
@@ -97,11 +115,7 @@ describe('MCP tool contract (beta P4 lock)', () => {
   })
 
   it('every tool publishes its annotations and a title', async () => {
-    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair()
-    const server = boot(audit).createServer(USER, ALL)
-    await server.connect(serverTransport)
-    const client = new Client({ name: 'contract', version: '1' })
-    await client.connect(clientTransport)
+    const { client } = await connectMcpClient(boot(audit).createServer(USER, ALL))
     const listed = (await client.listTools()).tools
     expect(listed.map((t) => t.name).sort()).toEqual(names)
     for (const tool of listed) {
@@ -153,10 +167,7 @@ describe('MCP tool contract (beta P4 lock)', () => {
   })
 
   it('arguments the schema refuses come back in the same shape, through the protocol', async () => {
-    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair()
-    await boot(audit).createServer(USER, ALL).connect(serverTransport)
-    const client = new Client({ name: 'contract', version: '1' })
-    await client.connect(clientTransport)
+    const { client } = await connectMcpClient(boot(audit).createServer(USER, ALL))
     for (const name of names.filter((n) => tools[n]!.inputSchema?.shape.taxYear !== undefined)) {
       for (const taxYear of [0, 9999]) {
         const result = (await client.callTool({ name, arguments: { taxYear } })) as { isError?: boolean; content: { text: string }[] }

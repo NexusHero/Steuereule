@@ -1,11 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
-import { Client } from '@modelcontextprotocol/sdk/client/index.js'
-import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js'
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { registerAdviceTools } from '../src/mcp/mcp-advice-tools.js'
-import { McpRateLimiter } from '../src/mcp/mcp-rate-limit.js'
-import type { AssistantSessionInfo } from '../src/mcp/mcp.service.js'
-import { installToolGate } from '../src/mcp/tool-kit.js'
+import type { AssistantSessionInfo } from '../src/mcp/mcp-session.js'
+import { connectMcpTools } from './support/mcp-client.js'
 
 const readLawForOwl = vi.fn()
 vi.mock('../src/ki/law-text.js', async (original) => ({ ...(await original<object>()), readLawForOwl: (...args: unknown[]) => readLawForOwl(...args) }))
@@ -14,13 +10,8 @@ const ASSISTANT: AssistantSessionInfo = { clientId: 'c', clientName: 'Claude', s
 
 async function connect() {
   const audited: string[] = []
-  const server = new McpServer({ name: 'test', version: '1.0.0' })
-  installToolGate(server, { userId: 'u', assistant: ASSISTANT, limiter: new McpRateLimiter(), audit: { append: async (entry) => void audited.push(entry.resource) } })
-  registerAdviceTools(server)
-  const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair()
-  await server.connect(serverTransport)
-  const client = new Client({ name: 'TestClient', version: '1.0.0' })
-  await client.connect(clientTransport)
+  const audit = { append: async (entry: { resource: string }) => void audited.push(entry.resource) }
+  const { client } = await connectMcpTools(({ server }) => registerAdviceTools(server), { userId: 'u', assistant: ASSISTANT, deps: { audit: audit as never } })
   const call = async (name: string, args: Record<string, unknown>) => {
     const res = (await client.callTool({ name, arguments: args })) as { content: Array<{ text: string }> }
     const text = res.content[0]!.text

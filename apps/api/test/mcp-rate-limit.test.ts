@@ -1,13 +1,11 @@
 // ADR-0052 amendment 6: at most MCP_LIMITS.toolCallsPerMinute tool calls per user per minute over MCP and
 // at most MCP_LIMITS.openSessionsPerUser open SSE sessions, held in the process, never in the database.
 import { describe, expect, it } from 'vitest'
-import { Client } from '@modelcontextprotocol/sdk/client/index.js'
-import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js'
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
 import { createResettableRateLimitStorage } from '../src/auth/rate-limit-storage.js'
 import { MCP_CHECKOUT_LINK_LIMIT, MCP_LIMITS, MCP_TOOL_BUDGETS, McpRateLimiter, type ToolBudget } from '../src/mcp/mcp-rate-limit.js'
-import { installToolGate, MCP_SCOPE, TOOL_POLICIES } from '../src/mcp/tool-kit.js'
+import { MCP_SCOPE, TOOL_POLICIES } from '../src/mcp/tool-kit.js'
+import { connectMcpTools } from './support/mcp-client.js'
 
 function clock(start = 1_000_000) {
   let now = start
@@ -99,48 +97,42 @@ describe('checkout links per account (ADR-0052 amendment 9)', () => {
   })
 })
 
-describe('the tool gate: call limit', () => {
-  async function connect(server: McpServer) {
-    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair()
-    await server.connect(serverTransport)
-    const client = new Client({ name: 'TestClient', version: '1.0.0' })
-    await client.connect(clientTransport)
-    return client
-  }
+const pong = async () => ({ content: [{ type: 'text' as const, text: '{"ok":true}' }] })
 
+describe('the tool gate: call limit', () => {
   it('holds across two servers (sessions) of the same user, refuses in German and audits the refusal once', async () => {
     const time = clock()
     const limiter = new McpRateLimiter(time.now, { toolCallsPerMinute: 2, openSessionsPerUser: 3 })
     const refusals: string[] = []
     let ran = 0
-    const make = () => {
-      const server = new McpServer({ name: 't', version: '1' })
-      const audit = { append: async (entry: { resource: string }) => void (entry.resource === 'mcp_rate_limited' && refusals.push(entry.resource)) }
-      installToolGate(server, { userId: 'u1', assistant: { clientId: 'c', clientName: 'C', scopes: [MCP_SCOPE.read] }, limiter, audit })
-      // Two real tool names, so both have a policy; the handlers are stand-ins.
-      server.tool('wechselkurs', 'ping', { n: z.number().min(0).max(1).optional() }, async () => {
-        ran += 1
-        return { content: [{ type: 'text' as const, text: 'pong' }] }
-      })
-      server.tool('feld_finden', 'no args', {}, async () => ({ content: [{ type: 'text' as const, text: 'ok' }] }))
-      return server
-    }
-    const first = await connect(make())
-    const second = await connect(make())
-    await first.callTool({ name: 'wechselkurs', arguments: {} })
-    await second.callTool({ name: 'feld_finden', arguments: {} })
-    const refused = await second.callTool({ name: 'wechselkurs', arguments: {} })
-    await first.callTool({ name: 'wechselkurs', arguments: {} })
+    const audit = { append: async (entry: { resource: string }) => void (entry.resource === 'mcp_rate_limited' && refusals.push(entry.resource)) }
+    const connect = () =>
+      connectMcpTools(
+        ({ server }) => {
+          // Two real tool names, so both have a policy; the handlers are stand-ins.
+          server.tool('wechselkurs', 'ping', { n: z.number().min(0).max(1).optional() }, async () => {
+            ran += 1
+            return pong()
+          })
+          server.tool('feld_finden', 'no args', {}, pong)
+        },
+        { userId: 'u1', assistant: { clientId: 'c', clientName: 'C', scopes: [MCP_SCOPE.read] }, limiter, deps: { audit: audit as never } },
+      )
+    const first = await connect()
+    const second = await connect()
+    await first.call('wechselkurs')
+    await second.call('feld_finden')
+    const refused = await second.call('wechselkurs')
+    await first.call('wechselkurs')
 
     expect(ran).toBe(1)
-    expect((refused as { isError?: boolean }).isError).toBe(true)
-    const message = (refused as { content: { text: string }[] }).content[0]!.text
-    expect(message).toContain('RATE_LIMITED:')
-    expect(message).toMatch(/in 60 Sekunden wieder/)
+    expect(refused.isError).toBe(true)
+    expect(refused.text).toContain('RATE_LIMITED:')
+    expect(refused.text).toMatch(/in 60 Sekunden wieder/)
     expect(refusals).toEqual(['mcp_rate_limited'])
 
     time.advance(60_000)
-    await first.callTool({ name: 'wechselkurs', arguments: {} })
+    await first.call('wechselkurs')
     expect(ran).toBe(2)
   })
 })
@@ -161,36 +153,30 @@ describe('the tool gate: the budget a policy names', () => {
       // The call limit is out of the way: only the budget can refuse.
       const limiter = new McpRateLimiter(time.now, { toolCallsPerMinute: 10_000, openSessionsPerUser: 3 })
       const ran: string[] = []
-      const connect = async (userId: string) => {
-        const server = new McpServer({ name: 't', version: '1' })
-        installToolGate(server, { userId, assistant: { clientId: 'c', clientName: 'C', scopes: Object.values(MCP_SCOPE) }, limiter, audit: { append: async () => undefined } })
-        for (const name of names) {
-          server.tool(name, 'stand-in', {}, async () => {
-            ran.push(`${userId}:${name}`)
-            return { content: [{ type: 'text' as const, text: '{"ok":true}' }] }
-          })
-        }
-        const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair()
-        await server.connect(serverTransport)
-        const client = new Client({ name: 'TestClient', version: '1.0.0' })
-        await client.connect(clientTransport)
-        return async (name: string) => {
-          const result = (await client.callTool({ name, arguments: {} })) as { isError?: boolean; content: { text: string }[] }
-          return { isError: result.isError === true, body: JSON.parse(result.content[0]!.text) as { code?: string; error?: string; naechsterSchritt?: string } }
-        }
-      }
-      const call = await connect('u1')
+      const connect = (userId: string) =>
+        connectMcpTools(
+          ({ server }) => {
+            for (const name of names) {
+              server.tool(name, 'stand-in', {}, async () => {
+                ran.push(`${userId}:${name}`)
+                return pong()
+              })
+            }
+          },
+          { userId, limiter },
+        )
+      const { call } = await connect('u1')
 
       for (let i = 0; i < max; i += 1) expect((await call(names[i % names.length]!)).isError).toBe(false)
       const over = await call(names[0]!)
       expect(over.isError).toBe(true)
       expect(over.body.code).toBe(refusals[budget].code)
       for (const text of refusals[budget].says) expect(over.body.error).toContain(text)
-      expect(over.body.naechsterSchritt?.length ?? 0).toBeGreaterThan(10)
+      expect((over.body.naechsterSchritt as string).length).toBeGreaterThan(10)
       expect(ran).toHaveLength(max)
 
       // Another account has its own budget; this one opens again when the window has passed.
-      expect((await (await connect('u2'))(names[0]!)).isError).toBe(false)
+      expect((await (await connect('u2')).call(names[0]!)).isError).toBe(false)
       time.advance(window * 1000)
       expect((await call(names[0]!)).isError).toBe(false)
     })
@@ -198,14 +184,8 @@ describe('the tool gate: the budget a policy names', () => {
 
   it('a call the scope check refuses does not use the budget up', async () => {
     const limiter = new McpRateLimiter()
-    const server = new McpServer({ name: 't', version: '1' })
-    installToolGate(server, { userId: 'u1', assistant: { clientId: 'c', clientName: 'C', scopes: [] }, limiter, audit: { append: async () => undefined } })
-    server.tool('zahllink_anfordern', 'stand-in', {}, async () => ({ content: [{ type: 'text' as const, text: '{"ok":true}' }] }))
-    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair()
-    await server.connect(serverTransport)
-    const client = new Client({ name: 'TestClient', version: '1.0.0' })
-    await client.connect(clientTransport)
-    for (let i = 0; i < MCP_CHECKOUT_LINK_LIMIT.max + 1; i += 1) await client.callTool({ name: 'zahllink_anfordern', arguments: {} })
+    const { call } = await connectMcpTools(({ server }) => void server.tool('zahllink_anfordern', 'stand-in', {}, pong), { userId: 'u1', assistant: { clientId: 'c', clientName: 'C', scopes: [] }, limiter })
+    for (let i = 0; i < MCP_CHECKOUT_LINK_LIMIT.max + 1; i += 1) expect((await call('zahllink_anfordern')).body.code).toBe('MISSING_SCOPE')
     expect((await limiter.takeBudget('checkoutLink', 'u1')).ok).toBe(true)
   })
 })

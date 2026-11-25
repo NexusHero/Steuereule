@@ -1,16 +1,12 @@
 // Beta P4: the caps of the creating tools hold when calls arrive together, a create commits with its mark,
 // the printout-rendering tools have a budget of their own, and the smaller usability fixes.
 import { describe, expect, it, vi } from 'vitest'
-import { Client } from '@modelcontextprotocol/sdk/client/index.js'
-import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js'
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
+import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { containsLink } from '../src/assistant-task/assistant-task.service.js'
 import { AssistantTaskService } from '../src/assistant-task/assistant-task.service.js'
 import { assistantAuditSource, runWithAuditSource } from '../src/audit/audit-source.js'
 import { AuditService } from '../src/audit/audit.service.js'
 import { clientDisplayName, isAcceptableClientName } from '../src/auth/oauth-client-name.js'
-import { inProcessKeyedLock } from '../src/common/keyed-lock.js'
-import { passThroughTransactionRunner } from '../src/common/transaction-runner.js'
 import { MCP_PRINTOUT_CHECK_LIMIT, McpRateLimiter } from '../src/mcp/mcp-rate-limit.js'
 import type { AssistantSessionInfo, McpDeps } from '../src/mcp/mcp-session.js'
 import { installToolGate, MCP_SCOPE, normalisedResult } from '../src/mcp/tool-kit.js'
@@ -21,6 +17,7 @@ import { registerReportTools, registerStatusTools } from '../src/mcp/tools/statu
 import { registerTaskTools } from '../src/mcp/tools/task-tools.js'
 import { FakeAssistantTaskRepository } from './fakes/fake-assistant-task.repository.js'
 import { FakeAuditRepository } from './fakes/fake-audit.repository.js'
+import { connectMcpTools } from './support/mcp-client.js'
 
 const USER = 'u-p4'
 const YEAR = 2025
@@ -29,20 +26,13 @@ const ASSISTANT: AssistantSessionInfo = { clientId: 'client-p4', clientName: 'Cl
 const tick = () => new Promise((resolve) => setTimeout(resolve, 0))
 
 async function connect(register: (server: McpServer, deps: McpDeps) => void, deps: Partial<McpDeps>, limiter = new McpRateLimiter()) {
-  const audit = new AuditService(new FakeAuditRepository())
-  const server = new McpServer({ name: 't', version: '1' })
-  const full = { audit, locks: inProcessKeyedLock(), transactions: passThroughTransactionRunner, confirmation: { markUnconfirmed: vi.fn(), list: vi.fn(async () => []) }, ...deps } as unknown as McpDeps
-  installToolGate(server, { userId: USER, assistant: ASSISTANT, limiter, audit })
-  register(server, full)
-  const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair()
-  await server.connect(serverTransport)
-  const client = new Client({ name: 'c', version: '1' })
-  await client.connect(clientTransport)
+  const confirmation = { markUnconfirmed: vi.fn(), list: vi.fn(async () => []) } as never
+  const connected = await connectMcpTools(({ server }, full) => register(server, full), { userId: USER, assistant: ASSISTANT, limiter, deps: { confirmation, ...deps } })
   const call = async (name: string, args: Record<string, unknown>) => {
-    const res = (await client.callTool({ name, arguments: args })) as { isError?: boolean; content: { text: string }[] }
-    return { isError: res.isError === true, body: JSON.parse(res.content[0]!.text) as Record<string, unknown> }
+    const { isError, body } = await connected.call(name, args)
+    return { isError, body }
   }
-  return { call, deps: full }
+  return { call, deps: connected.deps }
 }
 
 describe('caps under a lock (MCP-23, H2-20, H2-28)', () => {
