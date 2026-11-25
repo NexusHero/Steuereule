@@ -19,10 +19,12 @@ UPDATE "SteuerjahrKopplung"
  WHERE "personBUserId" <> '' AND "personBUserId" NOT LIKE 'spouse\_%';
 
 -- API-18: provider tokens of Google/Apple sign-ins are not used and no longer stored.
+-- The columns have no default, so DEFAULT clears them; only rows that still hold a token are touched.
 UPDATE "Account"
-   SET "accessToken" = NULL, "refreshToken" = NULL, "idToken" = NULL,
-       "accessTokenExpiresAt" = NULL, "refreshTokenExpiresAt" = NULL
- WHERE "providerId" <> 'credential';
+   SET "accessToken" = DEFAULT, "refreshToken" = DEFAULT, "idToken" = DEFAULT,
+       "accessTokenExpiresAt" = DEFAULT, "refreshTokenExpiresAt" = DEFAULT
+ WHERE "providerId" <> 'credential'
+   AND ("accessToken" IS NOT NULL OR "refreshToken" IS NOT NULL OR "idToken" IS NOT NULL);
 
 -- API-3 (decision 3) in the database: Person A reaches Person B's rows only through a joint year B agreed to.
 -- The household link alone (PartnerVerknuepfung, which a later year is created from) no longer opens B's rows
