@@ -1,3 +1,4 @@
+import { withSystemDatabaseAccess } from '../common/database-identity.js'
 import type { PrismaService } from '../prisma/prisma.service.js'
 import type { DatabaseReachabilityCheck } from './health.service.js'
 
@@ -44,7 +45,9 @@ export function createPooledDatabaseReachabilityCheck(
       return cached.result
     }
 
-    const result = withTimeout(prisma.$queryRaw`SELECT 1`, timeoutMs).then(() => undefined)
+    // The probe runs outside any request, so it has no user identity; it reads no table and runs under its own
+    // named reason (a query without identity is refused).
+    const result = withTimeout(withSystemDatabaseAccess('readiness-probe', () => prisma.$queryRaw`SELECT 1`), timeoutMs).then(() => undefined)
     cached = { expiresAt: now + ttlMs, result }
     return result
   }

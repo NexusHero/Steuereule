@@ -28,6 +28,7 @@ export const SYSTEM_DATABASE_REASONS = {
   'checkout-session': 'opening a checkout session writes its unlock row: unlock rows are never written by a request itself',
   'model-usage-stats': "the owl's model profiles: the usage column (tokens, timings, model) of every user's latest answers, nothing else",
   'field-key-rotation': 'rotate:field-key re-encrypts every encrypted column of every user (operator script, never the server)',
+  'readiness-probe': 'the readiness probe: SELECT 1 on the pool, reads no table, runs outside any request',
   'test-fixture': "the DB test tier only: a suite's own seeding, cleanup and assertions (`test/support/database-fixture.ts`)",
 } as const
 

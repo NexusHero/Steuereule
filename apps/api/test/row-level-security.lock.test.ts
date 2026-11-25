@@ -198,6 +198,7 @@ const BYPASS_SITES: Readonly<Record<string, readonly string[]>> = {
   'src/advisor/advisor.repository.prisma.ts': ['model-usage-stats'],
   'src/submission/submission.repository.prisma.ts': ['legal-hold'],
   'src/unlock/unlock.repository.prisma.ts': ['checkout-session'],
+  'src/health/pooled-database-reachability-check.ts': ['readiness-probe'],
 }
 
 function sourceFiles(dir: string): string[] {
