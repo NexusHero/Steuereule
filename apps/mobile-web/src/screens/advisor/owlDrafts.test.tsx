@@ -1,12 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { renderHook, waitFor } from '@testing-library/react'
+import { waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
-import type { ReactNode } from 'react'
 import type { AdvisorActionProposal, AdvisorChatMessageView, AdvisorTwoPathsProposal } from '@steuereule/core'
 import { server } from '../../test-msw-server'
 import { extractAppliedDrafts, extractPendingDrafts, hasPersonScreenDraft, updateActionStatusInMessage } from './owlDrafts'
 import { useDraftOwners } from './useDraftOwners'
+import { renderHookWithQuery } from '../../test-render'
 
 const draft = (actionId: string, extra: Partial<AdvisorActionProposal> = {}): AdvisorActionProposal => ({
   actionId,
@@ -93,14 +92,9 @@ describe('marking a draft after a click', () => {
   })
 })
 
-function wrapper({ children }: { children: ReactNode }) {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-  return <QueryClientProvider client={client}>{children}</QueryClientProvider>
-}
-
 describe('useDraftOwners', () => {
   it('asks nobody while no draft needs a name', () => {
-    const { result } = renderHook(() => useDraftOwners(2026, [message('m1', { action: draft('a1') })]), { wrapper })
+    const { result } = renderHookWithQuery(() => useDraftOwners(2026, [message('m1', { action: draft('a1') })]))
     expect(result.current).toEqual({ partnerName: undefined, ownName: undefined, jointReturn: false })
   })
 
@@ -112,7 +106,7 @@ describe('useDraftOwners', () => {
       http.get('*/v1/profile', () => HttpResponse.json({ firstName: ' Jan ', lastName: null, steuerId: null, steuernummer: null }, { status: 200 })),
     )
     const messages = [message('m1', { action: draft('a1', { screen: 'lstb', person: 'B' }) })]
-    const { result } = renderHook(() => useDraftOwners(2026, messages), { wrapper })
+    const { result } = renderHookWithQuery(() => useDraftOwners(2026, messages))
     await waitFor(() => expect(result.current).toEqual({ partnerName: 'Mira', ownName: 'Jan', jointReturn: true }))
   })
 
@@ -121,7 +115,7 @@ describe('useDraftOwners', () => {
       http.get('*/v1/steuerjahre/:jahr/kopplung', () => HttpResponse.json({ filingType: 'zusammen', personB: null }, { status: 200 })),
     )
     const messages = [message('m1', { action: draft('a1', { screen: 'lstb' }) })]
-    const { result } = renderHook(() => useDraftOwners(2026, messages), { wrapper })
+    const { result } = renderHookWithQuery(() => useDraftOwners(2026, messages))
     await waitFor(() => expect(result.current.jointReturn).toBe(false))
     expect(result.current.partnerName).toBeUndefined()
   })

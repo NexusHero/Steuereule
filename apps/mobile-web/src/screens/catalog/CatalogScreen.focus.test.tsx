@@ -2,10 +2,9 @@
 // not at the last step of the page.
 import { describe, expect, it } from 'vitest'
 import { screen } from '@testing-library/react'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { http, HttpResponse } from 'msw'
 import type { EntryStepId } from '@steuereule/core'
-import { renderInApp } from '../../test-render'
+import { renderWithQuery } from '../../test-render'
 import { server } from '../../test-msw-server'
 import { CatalogScreen, type CatalogScreenEntry } from './CatalogScreen'
 
@@ -18,11 +17,7 @@ function renderCatalog(entry: CatalogScreenEntry, focusStep?: EntryStepId, answe
     http.get(`*/v1/steuerjahre/${TAX_YEAR}/interview`, () => HttpResponse.json({ answers, nextStep: { kind: 'done' }, openItems: 0 }, { status: 200 })),
     http.get(`*/v1/steuerjahre/${TAX_YEAR - 1}/interview`, () => HttpResponse.json({ answers: {}, nextStep: { kind: 'done' }, openItems: 0 }, { status: 200 })),
   )
-  return renderInApp(
-    <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
-      <CatalogScreen entry={entry} focusStep={focusStep} taxYear={TAX_YEAR} revisit />
-    </QueryClientProvider>,
-  )
+  return renderWithQuery(<CatalogScreen entry={entry} focusStep={focusStep} taxYear={TAX_YEAR} revisit />)
 }
 
 describe('CatalogScreen opened at a step (#488)', () => {

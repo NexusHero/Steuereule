@@ -1,30 +1,20 @@
 import { describe, it, expect } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
-import { I18nextProvider } from 'react-i18next'
-import { ThemeProvider } from '@steuereule/ui'
+import { screen, fireEvent, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { server } from '../../test-msw-server'
-import { createAppI18n } from '../../i18n/app-i18n'
 import { createAppAuthClient } from '../../auth/auth-client'
 import { AuthClientProvider } from '../../auth/AuthClientProvider'
 import { LoginScreen } from '../LoginScreen'
+import { renderWithQuery } from '../../test-render'
 
 const BASE_URL = 'http://localhost:3000'
 const NEUTRAL = 'Wenn es zu dieser Adresse ein Konto gibt, haben wir dir eine E-Mail geschickt.'
 
 function renderLogin(props: { startWithForgot?: boolean } = {}) {
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-  return render(
-    <QueryClientProvider client={queryClient}>
-      <I18nextProvider i18n={createAppI18n('de')}>
-        <ThemeProvider mode="light">
-          <AuthClientProvider client={createAppAuthClient(BASE_URL)}>
-            <LoginScreen onDone={() => {}} showDeviceQr={false} {...props} />
-          </AuthClientProvider>
-        </ThemeProvider>
-      </I18nextProvider>
-    </QueryClientProvider>,
+  return renderWithQuery(
+    <AuthClientProvider client={createAppAuthClient(BASE_URL)}>
+      <LoginScreen onDone={() => {}} showDeviceQr={false} {...props} />
+    </AuthClientProvider>,
   )
 }
 

@@ -5,16 +5,13 @@
 // rendered. The derived Grenzgänger-Status and the fold come from the server's response, never
 // recomputed in the client.
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
-import { I18nextProvider } from 'react-i18next'
-import { ThemeProvider } from '@steuereule/ui'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { screen, fireEvent, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import type { InterviewStateDto, ChSalaryCertificateResponseDto } from '@steuereule/api-client'
 import { SALARY_CERTIFICATE_FIELDS } from '@steuereule/core'
-import { createAppI18n } from '../../i18n/app-i18n'
 import { CrossBorderScreen } from './CrossBorderScreen'
 import { EMPTY_CH_SALARY_CERTIFICATE_RESPONSE, server } from '../../test-msw-server'
+import { renderWithQuery } from '../../test-render'
 
 const { mockExtractDocumentText } = vi.hoisted(() => ({ mockExtractDocumentText: vi.fn() }))
 vi.mock('../../lib/documentOcr', async (importOriginal) => {
@@ -27,22 +24,8 @@ const INTERVIEW_URL = `*/v1/steuerjahre/${TAX_YEAR}/interview`
 const POST_URL = `*/v1/steuerjahre/${TAX_YEAR}/interview/antworten`
 const CH_URL = `*/v1/steuerjahre/${TAX_YEAR}/ch-lohnausweis`
 
-function makeTestQueryClient() {
-  return new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
-}
-
 function renderScreen(onDone: () => void = () => {}, onBack?: () => void, partnerName?: string) {
-  const i18n = createAppI18n('de')
-  const queryClient = makeTestQueryClient()
-  return render(
-    <QueryClientProvider client={queryClient}>
-      <I18nextProvider i18n={i18n}>
-        <ThemeProvider mode="light">
-          <CrossBorderScreen onDone={onDone} {...(onBack ? { onBack } : {})} {...(partnerName ? { partnerName } : {})} taxYear={TAX_YEAR} />
-        </ThemeProvider>
-      </I18nextProvider>
-    </QueryClientProvider>,
-  )
+  return renderWithQuery(<CrossBorderScreen onDone={onDone} {...(onBack ? { onBack } : {})} {...(partnerName ? { partnerName } : {})} taxYear={TAX_YEAR} />)
 }
 
 /** The segment-ch re-entry state for a brand-new tax year (nothing answered yet). */

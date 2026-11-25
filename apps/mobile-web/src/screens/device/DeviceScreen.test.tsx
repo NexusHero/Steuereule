@@ -18,16 +18,13 @@
 // association to its `Input` (LoginScreen.tsx:302), so `getByLabelText('E-Mail')` would never
 // match it; that would have been a query bug wearing a passing assertion's clothes.
 import { describe, it, expect } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
-import { I18nextProvider } from 'react-i18next'
-import { ThemeProvider } from '@steuereule/ui'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { screen, fireEvent } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
-import { createAppI18n } from '../../i18n/app-i18n'
 import { createAppAuthClient } from '../../auth/auth-client'
 import { AuthClientProvider } from '../../auth/AuthClientProvider'
 import { DeviceScreen } from './DeviceScreen'
 import { server } from '../../test-msw-server'
+import { renderWithQuery } from '../../test-render'
 
 const BASE_URL = 'http://localhost:3000'
 
@@ -49,19 +46,12 @@ function mockSessionNetworkError() {
 }
 
 function renderDevice(opts: { lng?: 'de' | 'en'; userCode?: string } = {}) {
-  const i18n = createAppI18n(opts.lng ?? 'de')
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
   const authClient = createAppAuthClient(BASE_URL)
-  return render(
-    <QueryClientProvider client={queryClient}>
-      <I18nextProvider i18n={i18n}>
-        <ThemeProvider mode="light">
-          <AuthClientProvider client={authClient}>
-            <DeviceScreen userCode={opts.userCode ?? 'K7QX-9F2M'} />
-          </AuthClientProvider>
-        </ThemeProvider>
-      </I18nextProvider>
-    </QueryClientProvider>,
+  return renderWithQuery(
+    <AuthClientProvider client={authClient}>
+      <DeviceScreen userCode={opts.userCode ?? 'K7QX-9F2M'} />
+    </AuthClientProvider>,
+    { language: opts.lng ?? 'de' },
   )
 }
 

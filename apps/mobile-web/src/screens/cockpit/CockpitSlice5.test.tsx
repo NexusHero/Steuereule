@@ -1,11 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { I18nextProvider } from 'react-i18next'
-import { ThemeProvider } from '@steuereule/ui'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { NavigationContainer } from '@react-navigation/native'
 import { http, HttpResponse } from 'msw'
-import { createAppI18n } from '../../i18n/app-i18n'
 import { server } from '../../test-msw-server'
 import { ShellStateProvider } from '../../navigation/ShellState'
 import { CockpitStack } from '../../navigation/CockpitStack'
@@ -13,6 +9,7 @@ import { linking } from '../../navigation/linking'
 import { AuthClientProvider } from '../../auth/AuthClientProvider'
 import { createAppAuthClient } from '../../auth/auth-client'
 import { CockpitScreen, type CockpitScreenProps } from './CockpitScreen'
+import { renderWithQuery } from '../../test-render'
 
 const TAX_YEAR = 2026
 
@@ -22,17 +19,7 @@ const LOADED_SUMMARY = {
 }
 
 function renderCockpit(props: Partial<CockpitScreenProps> = {}) {
-  const i18n = createAppI18n('de')
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-  return render(
-    <QueryClientProvider client={queryClient}>
-      <I18nextProvider i18n={i18n}>
-        <ThemeProvider mode="light">
-          <CockpitScreen taxYear={TAX_YEAR} isSignedIn={true} {...props} />
-        </ThemeProvider>
-      </I18nextProvider>
-    </QueryClientProvider>,
-  )
+  return renderWithQuery(<CockpitScreen taxYear={TAX_YEAR} isSignedIn={true} {...props} />)
 }
 
 function mockDoneInterview(answers: Record<string, string>) {
@@ -246,27 +233,19 @@ describe('Cockpit Screen — Slice 5 Persona Boosters & Dual Cockpit', () => {
 
     const urls: string[] = []
     const authClient = createAppAuthClient('http://localhost:3000')
-    const i18n = createAppI18n('de')
-    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-    render(
-      <QueryClientProvider client={queryClient}>
-        <I18nextProvider i18n={i18n}>
-          <ThemeProvider mode="light">
-            <AuthClientProvider client={authClient}>
-              <ShellStateProvider onRegister={() => {}} onLogin={() => {}} onSignedOut={() => {}}>
-                <NavigationContainer
-                  linking={linking}
-                  onStateChange={(state) => {
-                    urls.push(JSON.stringify(state))
-                  }}
-                >
-                  <CockpitStack />
-                </NavigationContainer>
-              </ShellStateProvider>
-            </AuthClientProvider>
-          </ThemeProvider>
-        </I18nextProvider>
-      </QueryClientProvider>,
+    renderWithQuery(
+      <AuthClientProvider client={authClient}>
+        <ShellStateProvider onRegister={() => {}} onLogin={() => {}} onSignedOut={() => {}}>
+          <NavigationContainer
+            linking={linking}
+            onStateChange={(state) => {
+              urls.push(JSON.stringify(state))
+            }}
+          >
+            <CockpitStack />
+          </NavigationContainer>
+        </ShellStateProvider>
+      </AuthClientProvider>,
     )
 
     const partnerTile = await screen.findByTestId('partner-lstb')

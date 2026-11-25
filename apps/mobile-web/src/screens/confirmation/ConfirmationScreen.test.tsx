@@ -1,14 +1,11 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { I18nextProvider } from 'react-i18next'
-import { ThemeProvider } from '@steuereule/ui'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import type { ConfirmationResponseDto } from '@steuereule/api-client'
-import { createAppI18n } from '../../i18n/app-i18n'
 import { server } from '../../test-msw-server'
 import { ConfirmationScreen } from './ConfirmationScreen'
 import { confirmAction } from '../../test-confirm'
+import { renderWithQuery } from '../../test-render'
 
 const WITH_VALUES: ConfirmationResponseDto = {
   annexes: [
@@ -50,18 +47,9 @@ const TASK = { id: 'task-1', kind: 'konfession', text: 'Bitte trage deine Konfes
 const SECOND_TASK = { id: 'task-2', kind: 'beleg_nachreichen', text: '<b>Die Spendenquittung</b> fehlt noch.', assistant: 'Claude', createdAt: '2026-01-05T10:01:00.000Z' } as const
 
 function renderScreen(locale: 'de' | 'en' = 'de') {
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
   const onBack = vi.fn()
   const onOpenScreen = vi.fn()
-  render(
-    <QueryClientProvider client={queryClient}>
-      <I18nextProvider i18n={createAppI18n(locale)}>
-        <ThemeProvider mode="light">
-          <ConfirmationScreen year={2025} onBack={onBack} onOpenScreen={onOpenScreen} />
-        </ThemeProvider>
-      </I18nextProvider>
-    </QueryClientProvider>,
-  )
+  renderWithQuery(<ConfirmationScreen year={2025} onBack={onBack} onOpenScreen={onOpenScreen} />, { language: locale })
   return { onBack, onMaskeOeffnen: onOpenScreen }
 }
 

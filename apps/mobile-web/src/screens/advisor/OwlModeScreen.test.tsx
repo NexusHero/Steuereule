@@ -5,7 +5,7 @@ import { ThemeProvider } from '@steuereule/ui'
 import type { OwlCardsDisplay } from '@steuereule/core'
 import { createAppI18n } from '../../i18n/app-i18n'
 import { OwlModeScreen } from './OwlModeScreen'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { renderWithQuery } from '../../test-render'
 
 const CARDS_FIXTURE: readonly OwlCardsDisplay[] = [
   {
@@ -357,8 +357,6 @@ describe('EulenModusScreen', () => {
     })
 
     it('renders applied actions in the workbench as a clean log with Undo and field deep-link (no redundant Apply button), plus Session Summary', async () => {
-      const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-      const i18n = createAppI18n('de')
       const appliedMessages = [
         {
           id: 'm-turbo-1',
@@ -386,15 +384,7 @@ describe('EulenModusScreen', () => {
           },
         },
       ]
-      render(
-        <QueryClientProvider client={qc}>
-          <I18nextProvider i18n={i18n}>
-            <ThemeProvider mode="light">
-              <OwlModeScreen taxYear={2025} initialCards={CARDS_FIXTURE} initialMessages={appliedMessages} />
-            </ThemeProvider>
-          </I18nextProvider>
-        </QueryClientProvider>,
-      )
+      renderWithQuery(<OwlModeScreen taxYear={2025} initialCards={CARDS_FIXTURE} initialMessages={appliedMessages} />)
 
       // 1. Session Summary button in top bar opens readable Management-Summary
       fireEvent.click(screen.getByTestId('eule-session-summary-btn'))

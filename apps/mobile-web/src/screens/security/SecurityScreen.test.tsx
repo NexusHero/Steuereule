@@ -5,16 +5,13 @@
 // never from local state that could drift from a server-side revocation.
 import { describe, it, expect } from 'vitest'
 import { http, HttpResponse } from 'msw'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { I18nextProvider } from 'react-i18next'
-import { ThemeProvider } from '@steuereule/ui'
-import { createAppI18n } from '../../i18n/app-i18n'
+import { screen, fireEvent, waitFor } from '@testing-library/react'
 import { createAppAuthClient } from '../../auth/auth-client'
 import { AuthClientProvider } from '../../auth/AuthClientProvider'
 import { server } from '../../test-msw-server'
 import { expectFailsClosed, failEveryRequest } from '../../test-every-query-fails'
 import { SecurityScreen } from './SecurityScreen'
+import { renderWithQuery } from '../../test-render'
 
 const BASE_URL = 'http://localhost:3000'
 const TOTP_URI = 'otpauth://totp/SteuerEule:anna@example.com?secret=ABCDEFGHIJKLMNOP&issuer=SteuerEule'
@@ -35,18 +32,11 @@ function signedInSession(twoFactorEnabled: boolean) {
 }
 
 function renderSecurity() {
-  const queryClient = new QueryClient()
   const authClient = createAppAuthClient(BASE_URL)
-  return render(
-    <QueryClientProvider client={queryClient}>
-      <I18nextProvider i18n={createAppI18n('de')}>
-        <ThemeProvider mode="light">
-          <AuthClientProvider client={authClient}>
-            <SecurityScreen onBack={() => {}} />
-          </AuthClientProvider>
-        </ThemeProvider>
-      </I18nextProvider>
-    </QueryClientProvider>,
+  return renderWithQuery(
+    <AuthClientProvider client={authClient}>
+      <SecurityScreen onBack={() => {}} />
+    </AuthClientProvider>,
   )
 }
 

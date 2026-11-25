@@ -5,9 +5,8 @@
 import { describe, expect, it } from 'vitest'
 import { fireEvent, screen } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { isoDateToGerman } from '@steuereule/ui'
-import { renderInApp } from '../../test-render'
+import { renderWithQuery } from '../../test-render'
 import { server } from '../../test-msw-server'
 import { todayIso } from '../shared/today'
 import { SubmissionMarker, type SubmissionMarkerProps } from './SubmissionMarker'
@@ -16,12 +15,7 @@ import { confirmAction } from '../../test-confirm'
 const URL = '*/v1/steuerjahre/2025/abgabe'
 
 function renderMarker(props: SubmissionMarkerProps) {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-  return renderInApp(
-    <QueryClientProvider client={client}>
-      <SubmissionMarker {...props} />
-    </QueryClientProvider>,
-  )
+  return renderWithQuery(<SubmissionMarker {...props} />)
 }
 
 describe('SubmissionMarker', () => {

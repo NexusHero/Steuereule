@@ -1,29 +1,17 @@
 // The LStB mask's frame: a failed load that can be retried, leaving through Zurück and Weiter, and the
 // summary line under the three fields for an incomplete and a complete certificate.
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
-import { I18nextProvider } from 'react-i18next'
-import { ThemeProvider } from '@steuereule/ui'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { screen, fireEvent, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import type { LstbResponseDto } from '@steuereule/api-client'
-import { createAppI18n } from '../../i18n/app-i18n'
 import { EMPTY_LSTB_RESPONSE, server } from '../../test-msw-server'
 import { LstbScreen, type LstbScreenProps } from './LstbScreen'
+import { renderWithQuery } from '../../test-render'
 
 const LSTB_URL = '*/v1/steuerjahre/2026/lstb'
 
 function renderLstb(props: LstbScreenProps = {}) {
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-  return render(
-    <QueryClientProvider client={queryClient}>
-      <I18nextProvider i18n={createAppI18n('de')}>
-        <ThemeProvider mode="light">
-          <LstbScreen taxYear={2026} {...props} />
-        </ThemeProvider>
-      </I18nextProvider>
-    </QueryClientProvider>,
-  )
+  return renderWithQuery(<LstbScreen taxYear={2026} {...props} />)
 }
 
 describe('LstbScreen frame', () => {

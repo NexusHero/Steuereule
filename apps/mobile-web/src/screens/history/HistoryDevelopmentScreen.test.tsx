@@ -5,8 +5,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen, within } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { renderInApp } from '../../test-render'
+import { renderWithQuery } from '../../test-render'
 import { server } from '../../test-msw-server'
 import { EMPTY_HISTORY_RESPONSE, HISTORY_ALL_GROUPS_RESPONSE, HISTORY_RESPONSE } from '../../test-history-fixture'
 import { HistoryDevelopmentScreen } from './HistoryDevelopmentScreen'
@@ -19,14 +18,8 @@ function setViewportWidth(width: number) {
 }
 
 function renderDevelopment(language: 'de' | 'en' = 'de') {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   const handlers = { onBack: vi.fn(), onOpenYearDetail: vi.fn(), onOpenDrafts: vi.fn() }
-  renderInApp(
-    <QueryClientProvider client={client}>
-      <HistoryDevelopmentScreen isGuest={false} openYear={2025} {...handlers} />
-    </QueryClientProvider>,
-    { language },
-  )
+  renderWithQuery(<HistoryDevelopmentScreen isGuest={false} openYear={2025} {...handlers} />, { language })
   return handlers
 }
 

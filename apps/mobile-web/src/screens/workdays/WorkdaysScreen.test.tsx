@@ -2,30 +2,18 @@
 // pattern + vacation/sick/home-office days fold through `berechneWerktage` to a weekday/commute-day
 // count, and a contradiction (more vacation than work days) is named, never clamped.
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
-import { I18nextProvider } from 'react-i18next'
-import { ThemeProvider } from '@steuereule/ui'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { screen, fireEvent, waitFor } from '@testing-library/react'
 import { weekdaysInYear } from '@steuereule/core'
 import { http, HttpResponse } from 'msw'
 import { getCommuteControllerGetQueryKey, getCockpitControllerGetCockpitSummaryQueryKey, getTaxEstimateControllerGetQueryKey } from '@steuereule/api-client'
-import { createAppI18n } from '../../i18n/app-i18n'
 import { server } from '../../test-msw-server'
 import { WorkdaysScreen } from './WorkdaysScreen'
+import { makeTestQueryClient, renderWithQuery } from '../../test-render'
 
-function renderWorkdays(onDone: () => void = () => {}, taxYear = 2026, queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } }), onBack?: () => void) {
-  const i18n = createAppI18n('de')
+function renderWorkdays(onDone: () => void = () => {}, taxYear = 2026, queryClient = makeTestQueryClient(), onBack?: () => void) {
   return {
     queryClient,
-    ...render(
-      <QueryClientProvider client={queryClient}>
-        <I18nextProvider i18n={i18n}>
-          <ThemeProvider mode="light">
-            <WorkdaysScreen taxYear={taxYear} onDone={onDone} {...(onBack ? { onBack } : {})} />
-          </ThemeProvider>
-        </I18nextProvider>
-      </QueryClientProvider>,
-    ),
+    ...renderWithQuery(<WorkdaysScreen taxYear={taxYear} onDone={onDone} {...(onBack ? { onBack } : {})} />, { client: queryClient }),
   }
 }
 
@@ -52,16 +40,7 @@ describe('ArbeitstageScreen', () => {
   })
 
   it('asks about the partner by name, not „du“ (Echtdatentest 18.11.2026)', async () => {
-    const i18n = createAppI18n('de')
-    render(
-      <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
-        <I18nextProvider i18n={i18n}>
-          <ThemeProvider mode="light">
-            <WorkdaysScreen taxYear={2026} partnerName="Büsra" />
-          </ThemeProvider>
-        </I18nextProvider>
-      </QueryClientProvider>,
-    )
+    renderWithQuery(<WorkdaysScreen taxYear={2026} partnerName="Büsra" />)
     expect(await screen.findByText('An welchen Tagen arbeitet Büsra?')).toBeTruthy()
     expect(screen.queryByText('An welchen Tagen arbeitest du?')).toBeNull()
   })

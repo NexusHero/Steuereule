@@ -1,19 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { renderHook, waitFor } from '@testing-library/react'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
-import type { ReactNode } from 'react'
 import { server } from '../../test-msw-server'
 import { usePlausibility } from './usePlausibility'
+import { renderHookWithQuery } from '../../test-render'
 
 const TAX_YEAR = 2026
-
-function createWrapper() {
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-  return ({ children }: { readonly children: ReactNode }) => (
-    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
-  )
-}
 
 function mockCompleteLstb(year = TAX_YEAR) {
   server.use(
@@ -33,7 +25,7 @@ function mockCompleteLstb(year = TAX_YEAR) {
 
 describe('usePlausibility (§ 3.1)', () => {
   it('starts in loading status and resolves conflicts/notices when ready', async () => {
-    const { result } = renderHook(() => usePlausibility(TAX_YEAR), { wrapper: createWrapper() })
+    const { result } = renderHookWithQuery(() => usePlausibility(TAX_YEAR))
     expect(result.current.status).toBe('loading')
 
     await waitFor(() => expect(result.current.status).toBe('ready'))
@@ -58,7 +50,7 @@ describe('usePlausibility (§ 3.1)', () => {
       ),
     )
 
-    const { result } = renderHook(() => usePlausibility(TAX_YEAR), { wrapper: createWrapper() })
+    const { result } = renderHookWithQuery(() => usePlausibility(TAX_YEAR))
     await waitFor(() => expect(result.current.status).toBe('error'))
 
     fail = false
@@ -88,7 +80,7 @@ describe('usePlausibility (§ 3.1)', () => {
       ),
     )
 
-    const { result } = renderHook(() => usePlausibility(TAX_YEAR), { wrapper: createWrapper() })
+    const { result } = renderHookWithQuery(() => usePlausibility(TAX_YEAR))
     await waitFor(() => expect(result.current.status).toBe('ready'))
 
     expect(result.current.conflicts).toEqual([])
@@ -109,8 +101,7 @@ describe('usePlausibility (§ 3.1)', () => {
       ),
     )
 
-    const wrapper = createWrapper()
-    const { result } = renderHook(() => usePlausibility(TAX_YEAR), { wrapper })
+    const { result } = renderHookWithQuery(() => usePlausibility(TAX_YEAR))
     await waitFor(() => expect(result.current.status).toBe('ready'))
     expect(result.current.conflicts).toEqual([])
 
@@ -123,7 +114,7 @@ describe('usePlausibility (§ 3.1)', () => {
         }),
       ),
     )
-    const { result: chResult } = renderHook(() => usePlausibility(TAX_YEAR), { wrapper: createWrapper() })
+    const { result: chResult } = renderHookWithQuery(() => usePlausibility(TAX_YEAR))
     await waitFor(() => expect(chResult.current.status).toBe('ready'))
     expect(chResult.current.conflicts).toEqual([])
   })

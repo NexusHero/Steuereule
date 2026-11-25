@@ -1,32 +1,22 @@
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
-import { I18nextProvider } from 'react-i18next'
-import { ThemeProvider } from '@steuereule/ui'
+import { screen, fireEvent, waitFor, act } from '@testing-library/react'
 import { http, HttpResponse, delay } from 'msw'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { server, CAPABILITIES_WITH_GOOGLE, CAPABILITIES_WITHOUT_SOCIAL } from '../test-msw-server'
 import { getAuthCapabilitiesControllerGetCapabilitiesMockHandler } from '@steuereule/api-client/msw'
-import { createAppI18n } from '../i18n/app-i18n'
 import { createAppAuthClient } from '../auth/auth-client'
 import { AuthClientProvider } from '../auth/AuthClientProvider'
 import { RegistrationScreen } from './RegistrationScreen'
+import { renderWithQuery } from '../test-render'
 
 const BASE_URL = 'http://localhost:3000'
 
 function renderRegistration(opts: { lng?: 'de' | 'en'; onDone?: () => void } = {}) {
-  const i18n = createAppI18n(opts.lng ?? 'de')
   const authClient = createAppAuthClient(BASE_URL)
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-  return render(
-    <QueryClientProvider client={queryClient}>
-    <I18nextProvider i18n={i18n}>
-      <ThemeProvider mode="light">
-        <AuthClientProvider client={authClient}>
-          <RegistrationScreen onDone={opts.onDone ?? (() => {})} />
-        </AuthClientProvider>
-      </ThemeProvider>
-    </I18nextProvider>
-    </QueryClientProvider>,
+  return renderWithQuery(
+    <AuthClientProvider client={authClient}>
+      <RegistrationScreen onDone={opts.onDone ?? (() => {})} />
+    </AuthClientProvider>,
+    { language: opts.lng ?? 'de' },
   )
 }
 

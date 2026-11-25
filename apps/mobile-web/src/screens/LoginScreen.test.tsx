@@ -1,16 +1,13 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
-import { I18nextProvider } from 'react-i18next'
-import { ThemeProvider } from '@steuereule/ui'
+import { screen, fireEvent, waitFor, act } from '@testing-library/react'
 import { http, HttpResponse, delay } from 'msw'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { server, CAPABILITIES_WITH_GOOGLE, CAPABILITIES_WITHOUT_SOCIAL, DEVICE_CODE_RESPONSE } from '../test-msw-server'
 import { getAuthCapabilitiesControllerGetCapabilitiesMockHandler } from '@steuereule/api-client/msw'
-import { createAppI18n } from '../i18n/app-i18n'
 import { createAppAuthClient } from '../auth/auth-client'
 import { AuthClientProvider } from '../auth/AuthClientProvider'
 import { LoginScreen } from './LoginScreen'
 import type { LegalPage } from './legal/texts'
+import { renderWithQuery } from '../test-render'
 
 const BASE_URL = 'http://localhost:3000'
 
@@ -54,9 +51,7 @@ function renderLogin(
     onLegal?: (page: LegalPage) => void
   } = {},
 ) {
-  const i18n = createAppI18n(opts.lng ?? 'de')
   const authClient = createAppAuthClient(BASE_URL)
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   // `exactOptionalPropertyTypes` treats `prop={undefined}` differently from omitting `prop`
   // entirely — spreading only the keys that actually apply is what genuinely omits
   // onGuest/onRegister for the embedded-usage tests, not just sets them to `undefined`.
@@ -65,16 +60,11 @@ function renderLogin(
     ...(opts.showDeviceQr === undefined ? {} : { showDeviceQr: opts.showDeviceQr }),
     ...(opts.onLegal ? { onLegal: opts.onLegal } : {}),
   }
-  return render(
-    <QueryClientProvider client={queryClient}>
-    <I18nextProvider i18n={i18n}>
-      <ThemeProvider mode="light">
-        <AuthClientProvider client={authClient}>
-          <LoginScreen onDone={opts.onDone ?? (() => {})} {...optionalProps} />
-        </AuthClientProvider>
-      </ThemeProvider>
-    </I18nextProvider>
-    </QueryClientProvider>,
+  return renderWithQuery(
+    <AuthClientProvider client={authClient}>
+      <LoginScreen onDone={opts.onDone ?? (() => {})} {...optionalProps} />
+    </AuthClientProvider>,
+    { language: opts.lng ?? 'de' },
   )
 }
 

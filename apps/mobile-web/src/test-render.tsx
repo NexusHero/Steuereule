@@ -1,13 +1,13 @@
-import type { ReactNode } from 'react'
-import { render, type RenderResult } from '@testing-library/react'
+import { useState, type ReactNode } from 'react'
+import { render, renderHook, type RenderHookResult, type RenderResult } from '@testing-library/react'
 import { I18nextProvider } from 'react-i18next'
 import { ThemeProvider } from '@steuereule/ui'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createAppI18n } from './i18n/app-i18n'
 
 export interface RenderInAppOptions {
-  readonly language?: 'de' | 'en'
-  readonly mode?: 'light' | 'dark'
+  readonly language?: 'de' | 'en' | undefined
+  readonly mode?: 'light' | 'dark' | undefined
 }
 
 /** Renders a component the way the app shows it: with its language and its theme. For tests only. */
@@ -29,7 +29,37 @@ export function makeTestQueryClient(): QueryClient {
 
 export interface RenderWithQueryOptions extends RenderInAppOptions {
   /** The client to render with, when the test seeds or shares one; a fresh test client otherwise. */
-  readonly client?: QueryClient
+  readonly client?: QueryClient | undefined
+}
+
+export interface TestAppProvidersProps extends RenderInAppOptions {
+  readonly client: QueryClient
+  readonly children: ReactNode
+}
+
+/**
+ * The provider stack a screen that loads data runs in: a query client, the language and the theme. For a test
+ * harness that renders its own tree; a test renders with `renderWithQuery` or `renderHookWithQuery`.
+ */
+export function TestAppProviders({ client, language, mode, children }: TestAppProvidersProps) {
+  const [i18n] = useState(() => createAppI18n(language ?? 'de'))
+  return (
+    <QueryClientProvider client={client}>
+      <I18nextProvider i18n={i18n}>
+        <ThemeProvider mode={mode ?? 'light'}>{children}</ThemeProvider>
+      </I18nextProvider>
+    </QueryClientProvider>
+  )
+}
+
+function testWrapper(client: QueryClient, options: RenderInAppOptions) {
+  return function TestWrapper({ children }: { readonly children: ReactNode }) {
+    return (
+      <TestAppProviders client={client} language={options.language} mode={options.mode}>
+        {children}
+      </TestAppProviders>
+    )
+  }
 }
 
 /**
@@ -39,15 +69,20 @@ export interface RenderWithQueryOptions extends RenderInAppOptions {
  */
 export function renderWithQuery(node: ReactNode, options: RenderWithQueryOptions = {}): RenderResult & { readonly client: QueryClient } {
   const client = options.client ?? makeTestQueryClient()
-  const i18n = createAppI18n(options.language ?? 'de')
-  const result = render(node, {
-    wrapper: ({ children }: { readonly children: ReactNode }) => (
-      <QueryClientProvider client={client}>
-        <I18nextProvider i18n={i18n}>
-          <ThemeProvider mode={options.mode ?? 'light'}>{children}</ThemeProvider>
-        </I18nextProvider>
-      </QueryClientProvider>
-    ),
-  })
+  const result = render(node, { wrapper: testWrapper(client, options) })
+  return { ...result, client }
+}
+
+export interface RenderHookWithQueryOptions<Props> extends RenderWithQueryOptions {
+  readonly initialProps?: Props | undefined
+}
+
+/** Renders a hook inside the same providers as `renderWithQuery`, and returns the client next to the result. */
+export function renderHookWithQuery<Result, Props>(
+  hook: (props: Props) => Result,
+  options: RenderHookWithQueryOptions<Props> = {},
+): RenderHookResult<Result, Props> & { readonly client: QueryClient } {
+  const client = options.client ?? makeTestQueryClient()
+  const result = renderHook(hook, { wrapper: testWrapper(client, options), initialProps: options.initialProps })
   return { ...result, client }
 }

@@ -1,11 +1,10 @@
 // ADR-0101 §18: a booking the owl drafts is shown as a readable booking and taken over or undone like any draft.
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { screen, fireEvent, waitFor } from '@testing-library/react'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { http, HttpResponse } from 'msw'
 import { useTheme } from '@steuereule/ui'
 import type { AdvisorActionProposal } from '@steuereule/core'
-import { renderInApp } from '../../../test-render'
+import { renderWithQuery } from '../../../test-render'
 import { server } from '../../../test-msw-server'
 import { BASE_PROFILE } from '../../business/businessTestKit'
 import { makeStyles } from '../AdvisorChatPanel.styles'
@@ -44,11 +43,7 @@ function action(overrides: Partial<AdvisorActionProposal> = {}, value: unknown =
 
 function Card(props: { readonly action: AdvisorActionProposal; readonly onApply?: () => void; readonly onUndo?: () => void }) {
   const styles = makeStyles(useTheme())
-  return (
-    <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
-      <ActionProposalCardView action={props.action} onSelectSource={vi.fn()} styles={styles} onApply={props.onApply} onUndo={props.onUndo} />
-    </QueryClientProvider>
-  )
+  return <ActionProposalCardView action={props.action} onSelectSource={vi.fn()} styles={styles} onApply={props.onApply} onUndo={props.onUndo} />
 }
 
 describe('the booking draft card', () => {
@@ -57,7 +52,7 @@ describe('the booking draft card', () => {
   })
 
   it('shows date, text, account number and label, Soll/Haben, tax key and amount', async () => {
-    renderInApp(<Card action={action()} />)
+    renderWithQuery(<Card action={action()} />)
     expect(screen.getByTestId('buchung-entwurf-karte')).toBeTruthy()
     expect(screen.getByTestId('buchung-entwurf-kopf').textContent).toBe('01.03.2025 · Druckerpapier · RE-17')
     // The label comes with the book's chart (SKR03), once the profile has loaded.
@@ -68,18 +63,18 @@ describe('the booking draft card', () => {
   it('takes the draft over and can undo it', () => {
     const onApply = vi.fn()
     const onUndo = vi.fn()
-    const view = renderInApp(<Card action={action()} onApply={onApply} />)
+    const view = renderWithQuery(<Card action={action()} onApply={onApply} />)
     fireEvent.click(screen.getByTestId('buchung-entwurf-uebernehmen'))
     expect(onApply).toHaveBeenCalledWith('act-b1')
     view.unmount()
-    renderInApp(<Card action={action({ status: 'applied' })} onUndo={onUndo} />)
+    renderWithQuery(<Card action={action({ status: 'applied' })} onUndo={onUndo} />)
     expect(screen.getByTestId('buchung-entwurf-gebucht')).toBeTruthy()
     fireEvent.click(screen.getByTestId('buchung-entwurf-rueckgaengig'))
     expect(onUndo).toHaveBeenCalledWith('act-b1')
   })
 
   it('says why a draft cannot be a booking (a regular payment without its year) and cannot be taken over', () => {
-    renderInApp(<Card action={action({}, { ...DRAFT, regularPayment: { dueDate: '2025-01-05' } })} onApply={vi.fn()} />)
+    renderWithQuery(<Card action={action({}, { ...DRAFT, regularPayment: { dueDate: '2025-01-05' } })} onApply={vi.fn()} />)
     expect(screen.getByTestId('buchung-entwurf-ungueltig').textContent).toContain('Fälligkeitsdatum und das Jahr')
     expect(screen.getByTestId('buchung-entwurf-uebernehmen').getAttribute('aria-disabled')).toBe('true')
   })

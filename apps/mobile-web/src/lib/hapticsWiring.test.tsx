@@ -1,10 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { I18nextProvider } from 'react-i18next'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
-import { ThemeProvider } from '@steuereule/ui'
-import { createAppI18n } from '../i18n/app-i18n'
 import { server } from '../test-msw-server'
 import { ShellStateProvider } from '../navigation/ShellState'
 import { SubmissionGateProvider } from '../navigation/SubmissionGateContext'
@@ -15,6 +11,7 @@ import { PlausibilityScreen } from '../screens/plausibility/PlausibilityScreen'
 import { WorkdaysScreen } from '../screens/workdays/WorkdaysScreen'
 import { CatalogScreen } from '../screens/catalog/CatalogScreen'
 import { MasterDataScreen } from '../screens/master-data/MasterDataScreen'
+import { renderWithQuery } from '../test-render'
 
 const hapticSpies = vi.hoisted(() => ({
   hapticSelection: vi.fn(),
@@ -51,18 +48,9 @@ vi.mock('@steuereule/ui', async (importOriginal) => {
   }
 })
 
-function wrap(ui: React.ReactNode, queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })) {
-  const i18n = createAppI18n('de')
-  return {
-    queryClient,
-    ...render(
-      <QueryClientProvider client={queryClient}>
-        <I18nextProvider i18n={i18n}>
-          <ThemeProvider mode="light">{ui}</ThemeProvider>
-        </I18nextProvider>
-      </QueryClientProvider>,
-    ),
-  }
+function wrap(ui: React.ReactNode) {
+  const { client, ...view } = renderWithQuery(ui)
+  return { queryClient: client, ...view }
 }
 
 describe('app haptics integration (Slice 7)', () => {

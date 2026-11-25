@@ -1,16 +1,13 @@
 // The Cockpit hero beyond the plain range: an even result, a result that may go either way, the line that
 // says what the last change did (and can be dismissed), and the year filed through Mein ELSTER.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
-import { I18nextProvider } from 'react-i18next'
-import { ThemeProvider } from '@steuereule/ui'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { screen, fireEvent, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import type { CockpitSummaryDto } from '@steuereule/api-client'
-import { createAppI18n } from '../../i18n/app-i18n'
 import { server } from '../../test-msw-server'
 import { CockpitScreen, type CockpitScreenProps } from './CockpitScreen'
 import { rememberOpenedArea, resetEffectMemory } from './effectMemory'
+import { makeTestQueryClient, renderWithQuery } from '../../test-render'
 
 const YEAR = 2026
 const SUMMARY: CockpitSummaryDto = { taxYear: YEAR, status: { kind: 'spanne', from: 49880, to: 50120, openItems: 0, conflicts: 0 }, openItems: 0, submission: null }
@@ -24,16 +21,8 @@ const serve = (summary: CockpitSummaryDto = SUMMARY) =>
 const estimate = (result: { from: number; to: number }) => server.use(http.get(ESTIMATE_URL, () => HttpResponse.json({ kind: 'spanne', result, churchTaxOpen: false })))
 
 function renderCockpit(props: Partial<CockpitScreenProps> = {}) {
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-  const view = render(
-    <QueryClientProvider client={queryClient}>
-      <I18nextProvider i18n={createAppI18n('de')}>
-        <ThemeProvider mode="light">
-          <CockpitScreen taxYear={YEAR} onOpenInterview={() => {}} {...props} />
-        </ThemeProvider>
-      </I18nextProvider>
-    </QueryClientProvider>,
-  )
+  const queryClient = makeTestQueryClient()
+  const view = renderWithQuery(<CockpitScreen taxYear={YEAR} onOpenInterview={() => {}} {...props} />, { client: queryClient })
   return { ...view, queryClient }
 }
 

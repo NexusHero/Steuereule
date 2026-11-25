@@ -2,15 +2,14 @@
 // a 500 on a page save is not called a conflict (NM-07); the partner page never shows empty fields for a link that
 // did not load (NM-15).
 import { describe, expect, it } from 'vitest'
-import { renderHook, screen } from '@testing-library/react'
-import { QueryClientProvider } from '@tanstack/react-query'
+import { screen } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import { server } from '../../test-msw-server'
 import { expectFailsClosed, failEveryRequest } from '../../test-every-query-fails'
 import { StromScreen } from './StromScreen'
 import { PartnerPage } from './PartnerPage'
 import { useStromSave } from './useStromSave'
-import { makeTestQueryClient, renderWithQuery } from '../../test-render'
+import { renderHookWithQuery, renderWithQuery } from '../../test-render'
 
 function renderStrom(slug: string) {
   return renderWithQuery(<StromScreen taxYear={2025} slug={slug} isSignedIn onGo={() => {}} onExit={() => {}} onOpenSubmission={() => {}} onGuestBasisDone={() => {}} />)
@@ -40,10 +39,7 @@ describe('Strom fails closed', () => {
 
 describe('Strom saves (NM-07)', () => {
   function useSaveHook() {
-    const client = makeTestQueryClient()
-    return renderHook(() => useStromSave(2025), {
-      wrapper: ({ children }) => <QueryClientProvider client={client}>{children}</QueryClientProvider>,
-    })
+    return renderHookWithQuery(() => useStromSave(2025))
   }
 
   it('a server error is a failure with its reason, not a conflict', async () => {

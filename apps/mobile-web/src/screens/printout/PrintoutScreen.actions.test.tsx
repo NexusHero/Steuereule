@@ -1,17 +1,14 @@
 // AusdruckScreen — payment and download failures, the retry, and where each "inspect" from the
 // preview leads. The preview itself is stubbed: it is tested in GlassFormPreview.test.tsx.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { I18nextProvider } from 'react-i18next'
-import { ThemeProvider } from '@steuereule/ui'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import type { Screen } from '@steuereule/core'
-import { createAppI18n } from '../../i18n/app-i18n'
 import { server } from '../../test-msw-server'
 import { manualPaymentClock } from '../../test-payment-clock'
 import { PaymentClockProvider } from '../shared/usePaymentConfirmation'
 import { PrintoutScreen, type PrintoutScreenProps } from './PrintoutScreen'
+import { renderWithQuery } from '../../test-render'
 
 const { download } = vi.hoisted(() => ({ download: vi.fn() }))
 vi.mock('../privacy/exportDownload', () => ({ triggerBrowserDownload: download }))
@@ -64,17 +61,10 @@ function handlers() {
 
 function renderScreen(props: Partial<PrintoutScreenProps> = {}, clock = manualPaymentClock()) {
   const h = handlers()
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
-  render(
-    <QueryClientProvider client={queryClient}>
-      <I18nextProvider i18n={createAppI18n('de')}>
-        <ThemeProvider mode="light">
-          <PaymentClockProvider value={clock}>
-            <PrintoutScreen year={2025} {...h} {...props} />
-          </PaymentClockProvider>
-        </ThemeProvider>
-      </I18nextProvider>
-    </QueryClientProvider>,
+  renderWithQuery(
+    <PaymentClockProvider value={clock}>
+      <PrintoutScreen year={2025} {...h} {...props} />
+    </PaymentClockProvider>,
   )
   return h
 }

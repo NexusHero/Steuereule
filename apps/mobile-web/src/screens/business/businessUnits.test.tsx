@@ -4,7 +4,6 @@ import { describe, it, expect, vi, afterEach } from 'vitest'
 import { act, render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { I18nextProvider } from 'react-i18next'
 import { ThemeProvider } from '@steuereule/ui'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { http, HttpResponse } from 'msw'
 import type { Answers } from '@steuereule/core'
 import { createAppI18n } from '../../i18n/app-i18n'
@@ -15,6 +14,7 @@ import { eurosToCents, germanDay, localProblem, numberAt, personParams, plainEur
 import { buildMapping, EMPTY_MAPPING, MappingForm, type MappingState } from './BankMapping'
 import { attempt, queryProblem } from './useBusiness'
 import { declaresSelfEmployment, useSelfEmploymentCapability } from './useSelfEmployment'
+import { makeTestQueryClient, renderWithQuery } from '../../test-render'
 
 afterEach(() => vi.restoreAllMocks())
 
@@ -200,23 +200,15 @@ describe('the self-employment switch of the server', () => {
     expect(declaresSelfEmployment({ job: 'Angestellt' } as Answers)).toBe(false)
   })
 
-  function Probe({ client }: { client: QueryClient }) {
-    return (
-      <QueryClientProvider client={client}>
-        <Capability />
-      </QueryClientProvider>
-    )
-  }
   function Capability() {
     const c = useSelfEmploymentCapability()
     return <span data-testid="cap">{c.pending ? 'pending' : c.enabled ? 'on' : 'off'}</span>
   }
   const capabilities = (body: unknown, status = 200) => server.use(http.get('*/v1/capabilities', () => HttpResponse.json(body as object, { status })))
-  const freshClient = () => new QueryClient({ defaultOptions: { queries: { retry: false } } })
 
   it('is on when the server says so, pending until it answered', async () => {
     capabilities({ selbststaendig: true })
-    render(<Probe client={freshClient()} />)
+    renderWithQuery(<Capability />)
     expect(screen.getByTestId('cap').textContent).toBe('pending')
     await waitFor(() => expect(screen.getByTestId('cap').textContent).toBe('on'))
   })
@@ -224,21 +216,21 @@ describe('the self-employment switch of the server', () => {
   it('is on for a new user whose year has no cockpit summary yet (09b in CI, 21.11.2026)', async () => {
     server.use(http.get('*/v1/steuerjahre/2025/cockpit', () => HttpResponse.json(null)))
     capabilities({ selbststaendig: true })
-    render(<Probe client={freshClient()} />)
+    renderWithQuery(<Capability />)
     await waitFor(() => expect(screen.getByTestId('cap').textContent).toBe('on'))
   })
 
   it('is off when the read answers with an error', async () => {
     capabilities({ statusCode: 500, message: 'x' }, 500)
-    render(<Probe client={freshClient()} />)
+    renderWithQuery(<Capability />)
     await waitFor(() => expect(screen.getByTestId('cap').textContent).toBe('off'))
   })
 
   it('reads the switch from the cache at once when it is already there', async () => {
-    const client = freshClient()
+    const client = makeTestQueryClient()
     const { getCapabilitiesControllerGetCapabilitiesQueryKey } = await import('@steuereule/api-client')
     client.setQueryData(getCapabilitiesControllerGetCapabilitiesQueryKey(), { status: 200, data: { selbststaendig: true } })
-    render(<Probe client={client} />)
+    renderWithQuery(<Capability />, { client })
     expect(screen.getByTestId('cap').textContent).toBe('on')
     await act(async () => {})
   })
