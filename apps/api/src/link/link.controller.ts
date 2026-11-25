@@ -1,5 +1,5 @@
-import { Body, Controller, Get, HttpCode, Inject, Param, Post, Put, UseGuards } from '@nestjs/common'
-import { ApiBody, ApiForbiddenResponse, ApiOkResponse, ApiParam, ApiTags, ApiUnauthorizedResponse } from '@nestjs/swagger'
+import { Body, Controller, Delete, Get, HttpCode, Inject, Param, Post, Put, UseGuards } from '@nestjs/common'
+import { ApiBody, ApiForbiddenResponse, ApiNotFoundResponse, ApiOkResponse, ApiParam, ApiTags, ApiUnauthorizedResponse } from '@nestjs/swagger'
 import { Throttle, ThrottlerGuard } from '@nestjs/throttler'
 import { CurrentUser } from '../auth/current-user.decorator.js'
 import { RequiresAccount } from '../auth/requires-account.guard.js'
@@ -91,5 +91,20 @@ export class LinkController {
   @ApiUnauthorizedResponse({ description: 'Requires account.' })
   consent(@CurrentUser() userId: string, @Param('jahr', ParseTaxYearPipe) year: number): Promise<LinkResponseDto> {
     return this.linkService.consentForYear(userId, year)
+  }
+
+  @Delete(':jahr/kopplung/zustimmung')
+  @UserWrite('kopplung')
+  @HttpCode(200)
+  @RequiresAccount()
+  // A consent given with the step-up is taken back with the same proof: a stolen session must not cut a couple's
+  // joint year apart (decision 3).
+  @RequiresStepUp('changes-consent')
+  @ApiParam({ name: 'jahr', type: Number, example: 2026 })
+  @ApiOkResponse({ type: LinkResponseDto, description: 'Person B takes back the consent for this tax year; Person A sees nothing of B for it from now on.' })
+  @ApiNotFoundResponse({ description: 'NO_CONSENT_GIVEN: the caller gave no consent for this year.' })
+  @ApiUnauthorizedResponse({ description: 'Requires account.' })
+  withdrawConsent(@CurrentUser() userId: string, @Param('jahr', ParseTaxYearPipe) year: number): Promise<LinkResponseDto> {
+    return this.linkService.withdrawConsentForYear(userId, year)
   }
 }

@@ -108,7 +108,7 @@ const CHEAP_ROUTES: Readonly<Record<string, { readonly why: string; readonly han
   ReceiptController: { why: 'Reads and assignments; the file download streams a stored blob.', handlers: ['list', 'downloadFile', 'setAssignment', 'delete'] },
   AssistantsController: { why: 'Lists and revokes assistant grants.', handlers: ['listConnected', 'revoke'] },
   McpController: { why: 'Ends or probes an MCP session.', handlers: ['streamableOther'] },
-  LinkController: { why: 'The coupling of the year and Person B’s facts.', handlers: ['get', 'set', 'updatePersonB', 'consent'] },
+  LinkController: { why: 'The coupling of the year and Person B’s facts.', handlers: ['get', 'set', 'updatePersonB', 'consent', 'withdrawConsent'] },
 }
 
 interface Route {

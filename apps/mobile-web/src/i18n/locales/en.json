@@ -1165,7 +1165,9 @@
     "kopplungZustimmung": {
       "frage": "Your partner wants to file {{year}} jointly with you. Only once you agree does your partner see your details for {{year}} (tax ID, birth date, religion, occupation).",
       "zustimmen": "File {{year}} jointly – agree",
-      "wartet": "Your partner has not agreed to {{year}} yet. Until then you see none of their details for {{year}}."
+      "wartet": "Your partner has not agreed to {{year}} yet. Until then you see none of their details for {{year}}.",
+      "gegeben": "You agreed to file {{year}} jointly. Your partner sees your details for {{year}}.",
+      "zuruecknehmen": "Take back the consent for {{year}}"
     },
     "kopplungStand": {
       "loading": "Loading the type of assessment …",
@@ -4951,6 +4953,11 @@
       "titel": "Discard the task?",
       "text": "The task leaves your list.",
       "bestaetigen": "Discard"
+    },
+    "partnerConsentWithdraw": {
+      "titel": "Take back the consent for {{jahr}}?",
+      "text": "From now on your partner no longer sees your details for {{jahr}} and cannot file {{jahr}} jointly with your figures. You can agree again later.",
+      "bestaetigen": "Take back consent"
     },
     "submissionWithdraw": {
       "titel": "Withdraw the filing {{jahr}}?",

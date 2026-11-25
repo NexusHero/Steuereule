@@ -29,6 +29,7 @@ const SENSITIVE: Readonly<Record<string, { readonly action: SensitiveAction; rea
   },
   'LinkController.joinWithCode': { action: 'exposes-other-person' },
   'LinkController.consent': { action: 'exposes-other-person' },
+  'LinkController.withdrawConsent': { action: 'changes-consent' },
   'AccountDeletionController.deleteAccount': { action: 'ends-account', mechanism: 'FreshAuthChecker.assertFreshAuth: fresh session, step-up grant or the password in the body.' },
   'AccountExportController.exportAccount': { action: 'exports-account', mechanism: 'FreshAuthChecker.assertFreshSessionOrStepUp (ADR-0107 L1).' },
 }

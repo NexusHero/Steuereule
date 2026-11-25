@@ -1165,7 +1165,9 @@
     "kopplungZustimmung": {
       "frage": "Dein Partner möchte {{year}} mit dir zusammen abgeben. Erst wenn du zustimmst, sieht er deine Angaben für {{year}} (Steuer-ID, Geburtsdatum, Religion, Beruf).",
       "zustimmen": "{{year}} zusammen abgeben – zustimmen",
-      "wartet": "Dein Partner hat {{year}} noch nicht zugestimmt. Bis dahin siehst du keine seiner Angaben für {{year}}."
+      "wartet": "Dein Partner hat {{year}} noch nicht zugestimmt. Bis dahin siehst du keine seiner Angaben für {{year}}.",
+      "gegeben": "Du hast zugestimmt, {{year}} zusammen abzugeben. Dein Partner sieht deine Angaben für {{year}}.",
+      "zuruecknehmen": "Zustimmung für {{year}} zurücknehmen"
     },
     "kopplungStand": {
       "loading": "Die Veranlagungsart wird geladen …",
@@ -4951,6 +4953,11 @@
       "titel": "Aufgabe verwerfen?",
       "text": "Die Aufgabe verschwindet aus deiner Liste.",
       "bestaetigen": "Verwerfen"
+    },
+    "partnerConsentWithdraw": {
+      "titel": "Zustimmung für {{jahr}} zurücknehmen?",
+      "text": "Dein Partner sieht deine Angaben für {{jahr}} ab sofort nicht mehr und kann {{jahr}} nicht mehr mit deinen Zahlen zusammen abgeben. Du kannst später wieder zustimmen.",
+      "bestaetigen": "Zustimmung zurücknehmen"
     },
     "submissionWithdraw": {
       "titel": "Abgabe {{jahr}} zurücknehmen?",
