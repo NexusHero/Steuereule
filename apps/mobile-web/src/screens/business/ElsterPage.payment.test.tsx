@@ -12,6 +12,7 @@ import { createAppI18n } from '../../i18n/app-i18n'
 import { server } from '../../test-msw-server'
 import { manualPaymentClock, type ManualPaymentClock } from '../../test-payment-clock'
 import { BASE_URL, renderBusiness, useElsterForms } from './businessTestKit'
+import { PaymentClockProvider } from '../shared/usePaymentConfirmation'
 import { ElsterPage } from './ElsterPage'
 
 const CONFIRMING = 'Deine Zahlung wird bestätigt. Das dauert meist nur Sekunden – du musst nichts weiter tun.'
@@ -43,7 +44,9 @@ function renderElster(payment: PaymentReturn | undefined, clock: ManualPaymentCl
     <QueryClientProvider client={client}>
       <I18nextProvider i18n={createAppI18n('de')}>
         <ThemeProvider mode="light">
-          <ElsterPage taxYear={2025} person="A" onBack={() => {}} onOpenPage={onOpenPage} payment={payment} confirmTiming={{ clock }} />
+          <PaymentClockProvider value={clock}>
+            <ElsterPage taxYear={2025} person="A" onBack={() => {}} onOpenPage={onOpenPage} payment={payment} />
+          </PaymentClockProvider>
         </ThemeProvider>
       </I18nextProvider>
     </QueryClientProvider>,

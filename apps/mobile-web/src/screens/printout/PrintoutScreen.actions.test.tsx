@@ -10,6 +10,7 @@ import type { Screen } from '@steuereule/core'
 import { createAppI18n } from '../../i18n/app-i18n'
 import { server } from '../../test-msw-server'
 import { manualPaymentClock } from '../../test-payment-clock'
+import { PaymentClockProvider } from '../shared/usePaymentConfirmation'
 import { PrintoutScreen, type PrintoutScreenProps } from './PrintoutScreen'
 
 const { download } = vi.hoisted(() => ({ download: vi.fn() }))
@@ -61,14 +62,16 @@ function handlers() {
   }
 }
 
-function renderScreen(props: Partial<PrintoutScreenProps> = {}) {
+function renderScreen(props: Partial<PrintoutScreenProps> = {}, clock = manualPaymentClock()) {
   const h = handlers()
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
   render(
     <QueryClientProvider client={queryClient}>
       <I18nextProvider i18n={createAppI18n('de')}>
         <ThemeProvider mode="light">
-          <PrintoutScreen year={2025} {...h} {...props} />
+          <PaymentClockProvider value={clock}>
+            <PrintoutScreen year={2025} {...h} {...props} />
+          </PaymentClockProvider>
         </ThemeProvider>
       </I18nextProvider>
     </QueryClientProvider>,
@@ -166,7 +169,7 @@ describe('AusdruckScreen — payment', () => {
       http.get('*/v1/steuerjahre/2025/ausdruck/pruefung', () => HttpResponse.json({ missing: [] })),
     )
     const clock = manualPaymentClock()
-    renderScreen({ payment: 'erfolg', confirmTiming: { clock } })
+    renderScreen({ payment: 'erfolg' }, clock)
     await waitFor(() => expect(reads).toBe(1))
     for (const expected of [2, 3]) {
       clock.poll()

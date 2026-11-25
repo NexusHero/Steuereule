@@ -10,6 +10,7 @@ import { http, HttpResponse } from 'msw'
 import { createAppI18n } from '../../i18n/app-i18n'
 import { server } from '../../test-msw-server'
 import { manualPaymentClock } from '../../test-payment-clock'
+import { PaymentClockProvider } from '../shared/usePaymentConfirmation'
 import { PrintoutScreen, type PrintoutScreenProps } from './PrintoutScreen'
 
 vi.mock('./GlassFormPreview', () => ({ GlassFormPreview: () => null }))
@@ -30,26 +31,27 @@ function statusSequence(...answers: readonly object[]) {
   return () => reads
 }
 
-function renderScreen(props: Partial<PrintoutScreenProps> = {}) {
+function renderScreen(props: Partial<PrintoutScreenProps> = {}, clock = manualPaymentClock()) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
   const onConfirm = vi.fn()
   render(
     <QueryClientProvider client={queryClient}>
       <I18nextProvider i18n={createAppI18n('de')}>
         <ThemeProvider mode="light">
-          <PrintoutScreen
-            year={2025}
-            onBack={() => {}}
-            onCompleteDetails={() => {}}
-            onCompleteRiester={() => {}}
-            onCompleteChildren={() => {}}
-            onCompleteRental={() => {}}
-            onCompleteCapital={() => {}}
-            onCompleteCrossBorder={() => {}}
-            onConfirm={onConfirm}
-            confirmTiming={{ clock: manualPaymentClock() }}
-            {...props}
-          />
+          <PaymentClockProvider value={clock}>
+            <PrintoutScreen
+              year={2025}
+              onBack={() => {}}
+              onCompleteDetails={() => {}}
+              onCompleteRiester={() => {}}
+              onCompleteChildren={() => {}}
+              onCompleteRental={() => {}}
+              onCompleteCapital={() => {}}
+              onCompleteCrossBorder={() => {}}
+              onConfirm={onConfirm}
+              {...props}
+            />
+          </PaymentClockProvider>
         </ThemeProvider>
       </I18nextProvider>
     </QueryClientProvider>,
@@ -81,7 +83,7 @@ describe('printout: back from Stripe', () => {
       }),
       http.get('*/v1/steuerjahre/2025/ausdruck/pruefung', () => HttpResponse.json({ missing: [] })),
     )
-    renderScreen({ payment: 'erfolg', confirmTiming: { clock } })
+    renderScreen({ payment: 'erfolg' }, clock)
     expect(await screen.findByText(CONFIRMING)).toBeTruthy()
     expect(screen.getByTestId('ausdruck-bezahlen').getAttribute('aria-disabled')).toBe('true')
     expect(screen.queryByText(PAID)).toBeNull()
@@ -111,7 +113,7 @@ describe('printout: back from Stripe', () => {
   it('timeout: says so plainly, never "paid", and offers to check again', async () => {
     const clock = manualPaymentClock()
     const reads = statusSequence({ status: 'offen' })
-    renderScreen({ payment: 'erfolg', confirmTiming: { clock } })
+    renderScreen({ payment: 'erfolg' }, clock)
     expect(await screen.findByText(CONFIRMING)).toBeTruthy()
     clock.expire()
     expect(await screen.findByText(TIMEOUT)).toBeTruthy()

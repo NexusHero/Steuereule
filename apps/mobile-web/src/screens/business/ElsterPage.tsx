@@ -12,7 +12,7 @@ import { BusinessFrame, BusinessQueryState, Note, Section } from './BusinessFram
 import { personParams, problemOf } from './businessKit'
 import { queryProblem } from './useBusiness'
 import type { BusinessPageProps } from './BusinessScreen'
-import { usePaymentConfirmation, type PaymentConfirmationTiming, type PaymentPhase } from '../shared/usePaymentConfirmation'
+import { usePaymentConfirmation, type PaymentPhase } from '../shared/usePaymentConfirmation'
 
 
 /** A chip's stable id: the form, and the copy's number where the form has several (two Anlagen Kind). */
@@ -52,12 +52,10 @@ export function valueText(value: ElsterLineDto['value']): string | null {
 export interface ElsterPageProps extends BusinessPageProps {
   /** Back from the checkout of the self-employment tier (the shared return contract, WEB-1). */
   readonly payment?: PaymentReturn | undefined
-  /** How often and how long the unlock is awaited after a successful return; the defaults outside tests. */
-  readonly confirmTiming?: PaymentConfirmationTiming
 }
 
 /** The ELSTER fill-in help: per form, line by line, what to enter in Mein ELSTER, with a copy action per value. */
-export function ElsterPage({ taxYear, person, business = 1, onBack, onOpenPage, payment, confirmTiming }: ElsterPageProps) {
+export function ElsterPage({ taxYear, person, business = 1, onBack, onOpenPage, payment }: ElsterPageProps) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const [chosen, setChosen] = useState<string | null>(null)
@@ -71,7 +69,7 @@ export function ElsterPage({ taxYear, person, business = 1, onBack, onOpenPage, 
   // Only the return trip needs the unlock status: it decides between "being confirmed" and "paid" (WEB-35).
   const status = useUnlockControllerStatus(taxYear, { query: { enabled: payment !== undefined } })
   const unlocked = status.data === undefined ? undefined : status.data.data.status === 'freigeschaltet'
-  const { phase, recheck } = usePaymentConfirmation({ outcome: payment, unlocked, refetch: status.refetch, ...confirmTiming })
+  const { phase, recheck } = usePaymentConfirmation({ outcome: payment, unlocked, refetch: status.refetch })
   const refetchList = list.refetch
   // Once the payment is confirmed the help is read again: it answered 402 before.
   useEffect(() => {

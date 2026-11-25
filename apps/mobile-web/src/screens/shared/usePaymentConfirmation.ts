@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react'
 import type { PaymentReturn } from '@steuereule/core'
 import { classifyApiFailure } from '../../net/apiFailure'
 
@@ -30,14 +30,14 @@ export const REAL_PAYMENT_CLOCK: PaymentClock = {
   },
 }
 
-/** How often and how long the unlock is awaited after a successful return, and on which clock. */
-export interface PaymentConfirmationTiming {
-  readonly intervalMs?: number
-  readonly timeoutMs?: number
-  readonly clock?: PaymentClock
-}
+/**
+ * The clock the payment confirmation schedules on: the real one unless a provider further up supplies another.
+ * The screens take no clock; whoever needs to move time wraps them in `PaymentClockProvider`.
+ */
+const PaymentClockContext = createContext<PaymentClock>(REAL_PAYMENT_CLOCK)
+export const PaymentClockProvider = PaymentClockContext.Provider
 
-export interface PaymentConfirmationOptions extends PaymentConfirmationTiming {
+export interface PaymentConfirmationOptions {
   /** The outcome the route carried, from the shared return contract. */
   readonly outcome: PaymentReturn | undefined
   /** Whether the year is unlocked; undefined while the status is still loading. */
@@ -46,18 +46,13 @@ export interface PaymentConfirmationOptions extends PaymentConfirmationTiming {
   readonly refetch: () => unknown
 }
 
+/** How often the unlock status is read again after a successful return, and how long it is awaited. */
 export const PAYMENT_POLL_INTERVAL_MS = 2_000
 export const PAYMENT_CONFIRM_TIMEOUT_MS = 60_000
 
 /** The phase, and `recheck` to start a fresh confirmation window (after a timeout). */
-export function usePaymentConfirmation({
-  outcome,
-  unlocked,
-  refetch,
-  intervalMs = PAYMENT_POLL_INTERVAL_MS,
-  timeoutMs = PAYMENT_CONFIRM_TIMEOUT_MS,
-  clock = REAL_PAYMENT_CLOCK,
-}: PaymentConfirmationOptions): { readonly phase: PaymentPhase; readonly recheck: () => void } {
+export function usePaymentConfirmation({ outcome, unlocked, refetch }: PaymentConfirmationOptions): { readonly phase: PaymentPhase; readonly recheck: () => void } {
+  const clock = useContext(PaymentClockContext)
   const [timedOut, setTimedOut] = useState(false)
   const [round, setRound] = useState(0)
   const refetchRef = useRef(refetch)
@@ -69,13 +64,13 @@ export function usePaymentConfirmation({
 
   useEffect(() => {
     if (!waiting) return
-    const stopPolling = clock.every(intervalMs, () => void refetchRef.current())
-    const stopTimeout = clock.after(timeoutMs, () => setTimedOut(true))
+    const stopPolling = clock.every(PAYMENT_POLL_INTERVAL_MS, () => void refetchRef.current())
+    const stopTimeout = clock.after(PAYMENT_CONFIRM_TIMEOUT_MS, () => setTimedOut(true))
     return () => {
       stopPolling()
       stopTimeout()
     }
-  }, [waiting, intervalMs, timeoutMs, clock, round])
+  }, [waiting, clock, round])
 
   const recheck = useCallback(() => {
     setTimedOut(false)

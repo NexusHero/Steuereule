@@ -8,6 +8,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createAppI18n } from '../../i18n/app-i18n'
 import { writeExpertMode } from '../../lib/expertModePreference'
 import { expectFailsClosed, failEveryRequest } from '../../test-every-query-fails'
+import { manualPaymentClock } from '../../test-payment-clock'
+import { PaymentClockProvider } from '../shared/usePaymentConfirmation'
 import type { AcroFormPdfLoader } from './AcroFormLiveViewer'
 import { OfficialFormScreen } from './OfficialFormScreen'
 import { PrintoutScreen } from './PrintoutScreen'
@@ -58,22 +60,29 @@ describe('the printout fails closed (WEB-28)', () => {
 
   it.each(['erfolg', 'abbruch'] as const)('Ausdruck back from the payment (%s): a failed load sends no write (P5 return states)', async (payment) => {
     const failing = failEveryRequest()
+    const clock = manualPaymentClock()
     wrap(
-      <PrintoutScreen
-        year={2025}
-        payment={payment}
-        confirmTiming={{ intervalMs: 5, timeoutMs: 30 }}
-        onBack={() => {}}
-        onCompleteDetails={() => {}}
-        onCompleteRiester={() => {}}
-        onCompleteChildren={() => {}}
-        onCompleteRental={() => {}}
-        onCompleteCapital={() => {}}
-        onCompleteCrossBorder={() => {}}
-        onConfirm={() => {}}
-        openCheckout={() => {}}
-      />,
+      <PaymentClockProvider value={clock}>
+        <PrintoutScreen
+          year={2025}
+          payment={payment}
+          onBack={() => {}}
+          onCompleteDetails={() => {}}
+          onCompleteRiester={() => {}}
+          onCompleteChildren={() => {}}
+          onCompleteRental={() => {}}
+          onCompleteCapital={() => {}}
+          onCompleteCrossBorder={() => {}}
+          onConfirm={() => {}}
+          openCheckout={() => {}}
+        />
+      </PaymentClockProvider>,
     )
+    // While the confirmation window is open (it polls a status that keeps failing) ...
+    await expectFailsClosed(failing)
+    clock.poll()
+    // ... and after it ran out, where the page offers to check again.
+    clock.expire()
     await expectFailsClosed(failing)
   })
 
