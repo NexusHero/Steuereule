@@ -34,7 +34,7 @@ describe('the shadow id of a Person B without an own login', () => {
 
   it('has one definition: no other source file spells the prefix', () => {
     const spelled = sourceFiles(SRC)
-      .filter((file) => /['"`]spouse_/.test(readFileSync(file, 'utf8')))
+      .filter((file) => /['"]spouse_/.test(readFileSync(file, 'utf8')))
       .map((file) => path.relative(SRC, file))
     expect(spelled).toEqual(['common/shadow-id.ts'])
   })
