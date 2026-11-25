@@ -42,7 +42,7 @@ describe('FakePaymentProvider', () => {
 
   it('a refund event takes the session back (API-4)', async () => {
     const body = Buffer.from(JSON.stringify({ sessionId: 'fake_cs_1', kind: 'erstattet' }))
-    await expect(provider.verifyEvent(body, FAKE_PAYMENT_SIGNATURE)).resolves.toEqual({ kind: 'zurueckgenommen', sessionId: 'fake_cs_1', reason: 'erstattet' })
+    await expect(provider.verifyEvent(body, FAKE_PAYMENT_SIGNATURE)).resolves.toEqual({ kind: 'zurueckgenommen', sessionId: 'fake_cs_1', reason: { kind: 'erstattet' } })
   })
 
   it('reuses a session by idempotency key, keeps it open for lookup and names a test price', async () => {
