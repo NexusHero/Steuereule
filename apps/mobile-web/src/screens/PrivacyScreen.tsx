@@ -7,6 +7,7 @@ import { apiErrorStatus, useAccountDeletionControllerDeleteAccount } from '@steu
 import { APP_NS } from '../i18n/resources'
 import { useAccountSession } from '../auth/useAccountSession'
 import { useStepUp } from '../auth/useStepUp'
+import { StepUpChoices } from '../auth/StepUpOptions'
 import { downloadAccountExport, type ExportFormat } from './privacy/exportDownload'
 import { ExportSection, type ExportButtonState } from './privacy/ExportSection'
 import { DeleteSection, type DeleteFlow } from './privacy/DeleteSection'
@@ -122,27 +123,37 @@ export function PrivacyScreen({ onBack, onAccountDeleted }: PrivacyScreenProps) 
             <Card>
               <Text style={styles.offerHeading}>{tr('datenschutz.export.stepUp.heading')}</Text>
               <Text style={styles.warningBody}>{tr('datenschutz.export.stepUp.body')}</Text>
-              <Feld label={tr('datenschutz.export.stepUp.label')}>
-                <Input
-                  type="password"
-                  value={password}
-                  onChange={setPassword}
-                  accessibilityLabel={tr('datenschutz.export.stepUp.label')}
-                  autoComplete="current-password"
-                  testID="export-stepup-passwort"
-                />
-              </Feld>
-              {exportStepUp.error ? (
-                <Text style={styles.errorNote} accessibilityRole="alert">{exportStepUp.error}</Text>
-              ) : null}
-              <Button
-                variant="ghost"
-                onPress={() => void confirmExportStepUp()}
-                disabled={exportStepUp.busy || !password}
-                testID="export-stepup-bestaetigen"
+              {/* WEB-50: without a password, the passkey or the provider confirms; then the export runs. */}
+              <StepUpChoices
+                testID="export-stepup-ohne-passwort"
+                onConfirmed={() => {
+                  const format = exportStepUp.format
+                  setExportStepUp(null)
+                  void runExport(format)
+                }}
               >
-                {tr('datenschutz.export.stepUp.confirm')}
-              </Button>
+                <Feld label={tr('datenschutz.export.stepUp.label')}>
+                  <Input
+                    type="password"
+                    value={password}
+                    onChange={setPassword}
+                    accessibilityLabel={tr('datenschutz.export.stepUp.label')}
+                    autoComplete="current-password"
+                    testID="export-stepup-passwort"
+                  />
+                </Feld>
+                {exportStepUp.error ? (
+                  <Text style={styles.errorNote} accessibilityRole="alert">{exportStepUp.error}</Text>
+                ) : null}
+                <Button
+                  variant="ghost"
+                  onPress={() => void confirmExportStepUp()}
+                  disabled={exportStepUp.busy || !password}
+                  testID="export-stepup-bestaetigen"
+                >
+                  {tr('datenschutz.export.stepUp.confirm')}
+                </Button>
+              </StepUpChoices>
               <Button
                 variant="ghost"
                 onPress={() => { setExportStepUp(null); setPassword('') }}
@@ -166,6 +177,7 @@ export function PrivacyScreen({ onBack, onAccountDeleted }: PrivacyScreenProps) 
             onCancel={() => { setDeleteFlow({ kind: 'closed' }); setPassword('') }}
             onConfirmDelete={() => void submitDelete(undefined)}
             onSubmitPassword={() => void submitDelete(password)}
+            onSteppedUp={() => void submitDelete(undefined)}
           />
         </>
       )}

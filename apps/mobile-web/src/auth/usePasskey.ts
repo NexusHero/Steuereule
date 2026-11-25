@@ -15,7 +15,8 @@ export interface UsePasskeyResult {
   readonly list: () => Promise<PasskeyInfo[] | string>
   /** `null` when added, a message to show, or the request for a re-entered password (ADR-0106 D2). */
   readonly add: (name: string) => Promise<string | null | StepUpRequired>
-  readonly remove: (id: string) => Promise<string | null>
+  /** Removing a passkey takes a sign-in method away: on an older session it needs the step-up too (H2-19). */
+  readonly remove: (id: string) => Promise<string | null | StepUpRequired>
 }
 
 /** The client surface this hook actually calls, typed structurally. */
@@ -65,9 +66,10 @@ export function usePasskey(): UsePasskeyResult {
     }
   }
 
-  async function remove(id: string): Promise<string | null> {
+  async function remove(id: string): Promise<string | null | StepUpRequired> {
     try {
       const { error } = await client.$fetch('/passkey/delete-passkey', { method: 'POST', body: { id } })
+      if (error?.code === STEP_UP_REQUIRED_CODE) return { stepUp: true }
       if (error) return translate(error.code)
       return null
     } catch {

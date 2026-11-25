@@ -18,6 +18,8 @@ import {
   type LinkResponseDto,
 } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
+import { PartnerYearConsent } from './PartnerYearConsent'
+import { StepUpInline } from '../../auth/StepUpInline'
 import { CURRENT_TAX_YEAR } from '../../config/taxYear'
 import { makePrivacyStyles } from '../privacy/styles'
 import { LoadFailedState, LoadingState } from '../shared/ScreenState'
@@ -354,6 +356,8 @@ function LoadedLinkSection({
   const join = useLinkControllerJoinWithCode()
   const [code, setCode] = useState('')
   const [joinError, setJoinError] = useState<string | null>(null)
+  // Joining shows the own data to Person A: on an older session it needs the step-up first (API-12).
+  const [joinStepUp, setJoinStepUp] = useState(false)
   const [kindError, setKindError] = useState<string | null>(null)
 
   const filingType = current.filingType
@@ -387,9 +391,11 @@ function LoadedLinkSection({
       {
         onSuccess: () => {
           setCode('')
+          setJoinStepUp(false)
           invalidate()
         },
         onError: (error) => {
+          if (classifyApiFailure(error).kind === 'step-up') return setJoinStepUp(true)
           triggerSaveErrorHaptic()
           setJoinError(joinErrorText(error, failureMessage, t('stammdaten.kopplungStand.codeUnbekannt')))
         },
@@ -410,9 +416,13 @@ function LoadedLinkSection({
           {joinError}
         </Text>
       ) : null}
-      <Button variant="ghost" onPress={redeemCode} disabled={join.isPending} testID="kopplung-beitreten">
-        Einladung annehmen
-      </Button>
+      {joinStepUp ? (
+        <StepUpInline testID="kopplung-beitreten-stepup" onConfirmed={redeemCode} onCancel={() => setJoinStepUp(false)} />
+      ) : (
+        <Button variant="ghost" onPress={redeemCode} disabled={join.isPending} testID="kopplung-beitreten">
+          Einladung annehmen
+        </Button>
+      )}
     </View>
   )
 
@@ -434,6 +444,7 @@ function LoadedLinkSection({
         ) : null}
       </Feld>
       <PartnerLinkStatus taxYear={taxYear} onChanged={invalidate} />
+      <PartnerYearConsent taxYear={taxYear} current={current} onChanged={invalidate} />
       {filingType === 'zusammen' && current.personBHasOwnAccount ? (
         <Text style={{ ...theme.type.small, color: theme.color.tinte2 }}>
           {`${[personB?.firstName, personB?.lastName].filter(Boolean).join(' ') || 'Person B'} pflegt die Angaben im eigenen Konto.`}

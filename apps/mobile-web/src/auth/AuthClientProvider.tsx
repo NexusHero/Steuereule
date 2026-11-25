@@ -30,3 +30,8 @@ export function useAuthClient(): AppAuthClient {
   }
   return client
 }
+
+/** The client where one is provided, else null: for parts that can do without it (the passwordless step-up). */
+export function useOptionalAuthClient(): AppAuthClient | null {
+  return useContext(AuthClientContext)
+}

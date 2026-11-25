@@ -7,6 +7,8 @@ import { useAccountSession } from '../../auth/useAccountSession'
 import { useTwoFactor, type TotpSetup } from '../../auth/useTwoFactor'
 import { usePasskey, type PasskeyInfo } from '../../auth/usePasskey'
 import { isStepUpRequired, useStepUp } from '../../auth/useStepUp'
+import { StepUpChoices } from '../../auth/StepUpOptions'
+import { ChangePasswordSection } from './ChangePasswordSection'
 import { QrMark } from '../../marks/QrMark'
 import { makeSecurityStyles } from './styles'
 
@@ -20,7 +22,7 @@ type Stage =
   | { readonly kind: 'enable-setup'; readonly setup: TotpSetup; readonly error: string; readonly busy: boolean }
   | { readonly kind: 'disable-password'; readonly error: string; readonly busy: boolean }
   /** Adding a passkey needs the password again on an older session (ADR-0106 D2). */
-  | { readonly kind: 'passkey-password'; readonly error: string; readonly busy: boolean }
+  | { readonly kind: 'passkey-password'; readonly error: string; readonly busy: boolean; readonly removeId?: string }
 
 export function SecurityScreen({ onBack }: SecurityScreenProps) {
   const t = useTheme()
@@ -94,14 +96,21 @@ export function SecurityScreen({ onBack }: SecurityScreenProps) {
   async function submitPasskeyPassword() {
     if (!password) return
     setStage((s) => (s.kind === 'passkey-password' ? { ...s, busy: true } : s))
+    const removeId = stage.kind === 'passkey-password' ? stage.removeId : undefined
     const error = await stepUp.verifyPassword(password)
     if (error) {
-      setStage({ kind: 'passkey-password', error, busy: false })
+      setStage({ kind: 'passkey-password', error, busy: false, ...(removeId !== undefined ? { removeId } : {}) })
       return
     }
     setPassword('')
+    await continueAfterStepUp(removeId)
+  }
+
+  /** After the step-up: the passkey action that asked for it runs again (WEB-50). */
+  async function continueAfterStepUp(removeId: string | undefined) {
     setStage({ kind: 'idle' })
-    await submitAddPasskey()
+    if (removeId !== undefined) await submitRemovePasskey(removeId)
+    else await submitAddPasskey()
   }
 
   async function submitRemovePasskey(id: string) {
@@ -110,6 +119,10 @@ export function SecurityScreen({ onBack }: SecurityScreenProps) {
     setPasskeyError(null)
     const error = await passkey.remove(id)
     setPasskeyBusy(false)
+    if (isStepUpRequired(error)) {
+      setStage({ kind: 'passkey-password', error: '', busy: false, removeId: id })
+      return
+    }
     if (error) {
       setPasskeyError(error)
       return
@@ -300,12 +313,14 @@ export function SecurityScreen({ onBack }: SecurityScreenProps) {
               <View>
                 <Text style={styles.sectionTitle}>{tr('sicherheit.stepUp.title')}</Text>
                 <Text style={styles.sectionBody}>{tr('sicherheit.stepUp.body')}</Text>
-                <Feld label={tr('sicherheit.password')} error={stage.error}>
-                  <Input type="password" value={password} onChange={setPassword} placeholder="••••••••" autoComplete="current-password" testID="passkey-passwort" onSubmit={() => void submitPasskeyPassword()} />
-                </Feld>
-                <Button onPress={() => void submitPasskeyPassword()} disabled={stage.busy || !password} testID="passkey-passwort-bestaetigen">
-                  {stage.busy ? tr('sicherheit.busy') : tr('sicherheit.stepUp.confirm')}
-                </Button>
+                <StepUpChoices testID="passkey-stepup-ohne-passwort" onConfirmed={() => void continueAfterStepUp(stage.removeId)}>
+                  <Feld label={tr('sicherheit.password')} error={stage.error}>
+                    <Input type="password" value={password} onChange={setPassword} placeholder="••••••••" autoComplete="current-password" testID="passkey-passwort" onSubmit={() => void submitPasskeyPassword()} />
+                  </Feld>
+                  <Button onPress={() => void submitPasskeyPassword()} disabled={stage.busy || !password} testID="passkey-passwort-bestaetigen">
+                    {stage.busy ? tr('sicherheit.busy') : tr('sicherheit.stepUp.confirm')}
+                  </Button>
+                </StepUpChoices>
                 <Button
                   variant="ghost"
                   onPress={() => {
@@ -324,6 +339,7 @@ export function SecurityScreen({ onBack }: SecurityScreenProps) {
               {passkeyBusy ? tr('sicherheit.busy') : tr('sicherheit.passkey.add')}
             </Button>
           </Card>
+          <ChangePasswordSection />
         </>
       )}
     </ScrollView>

@@ -7,6 +7,7 @@ import { apiFailureMessage } from '../../net/apiFailure'
 import { watchForSessionExpiry } from '../../net/sessionExpiry'
 import { APP_NS } from '../../i18n/resources'
 import { STEP_UP_REQUIRED_CODE } from '../../auth/useStepUp'
+import { StepUpChoices } from '../../auth/StepUpOptions'
 import { consentDestinations } from './consentDestination'
 
 export interface OauthConsentScreenProps {
@@ -262,12 +263,21 @@ export function OauthConsentScreen({
           <View style={styles.section} testID="oauth-stepup">
             <Text style={styles.sectionHeading}>{tr('oauthConsent.stepUpTitle')}</Text>
             <Text style={styles.help}>{tr('oauthConsent.stepUpBody')}</Text>
-            <Feld label={tr('oauthConsent.stepUpPassword')} error={stepUp.error}>
-              <Input type="password" value={password} onChange={setPassword} placeholder="••••••••" autoComplete="current-password" testID="oauth-stepup-passwort" onSubmit={() => void confirmPassword()} />
-            </Feld>
-            <Button variant="primaer" disabled={submitting || !password} onPress={() => void confirmPassword()} testID="oauth-stepup-bestaetigen">
-              {submitting ? tr('oauthConsent.processing') : tr('oauthConsent.stepUpConfirm')}
-            </Button>
+            {/* MCP-11: an account without a password confirms with its passkey or provider, without signing out. */}
+            <StepUpChoices
+              testID="oauth-stepup-ohne-passwort"
+              onConfirmed={() => {
+                setStepUp(null)
+                void handleDecision(true)
+              }}
+            >
+              <Feld label={tr('oauthConsent.stepUpPassword')} error={stepUp.error}>
+                <Input type="password" value={password} onChange={setPassword} placeholder="••••••••" autoComplete="current-password" testID="oauth-stepup-passwort" onSubmit={() => void confirmPassword()} />
+              </Feld>
+              <Button variant="primaer" disabled={submitting || !password} onPress={() => void confirmPassword()} testID="oauth-stepup-bestaetigen">
+                {submitting ? tr('oauthConsent.processing') : tr('oauthConsent.stepUpConfirm')}
+              </Button>
+            </StepUpChoices>
           </View>
         ) : null}
 
