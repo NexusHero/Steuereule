@@ -177,4 +177,47 @@ describe('account lifecycle — real Postgres (P7)', () => {
     expect(await files.get(guest, receipt.id)).toBeNull()
     expect(await prisma.profile.count({ where: { userId: account } })).toBe(1)
   })
+
+  it('API-20: a receipt whose file cannot be stored for the account stays with the guest, row and file, and a second run moves it', async () => {
+    const guest = newGuest()
+    const account = await newAccount()
+    const receipt = await prisma.receipt.create({ data: { userId: guest, fileName: 'quittung.pdf' } })
+    await files.put({ userId: guest, receiptId: receipt.id, buffer: Buffer.from('%PDF-1.4 beleg'), mimeType: 'application/pdf' })
+
+    const failing = { move: async () => Promise.reject(new Error('keystore unavailable')) }
+    await expect(upgradeGuestToAccount(prisma as never, guest, account, failing)).resolves.toEqual({ complete: false, receiptsLeftBehind: [receipt.id] })
+    expect(await prisma.receipt.findUnique({ where: { id: receipt.id } })).toMatchObject({ userId: guest })
+    expect((await files.get(guest, receipt.id))?.buffer.toString()).toBe('%PDF-1.4 beleg')
+
+    await expect(upgradeGuestToAccount(prisma as never, guest, account, files)).resolves.toMatchObject({ complete: true })
+    expect(await prisma.receipt.findUnique({ where: { id: receipt.id } })).toMatchObject({ userId: account })
+    expect((await files.get(account, receipt.id))?.buffer.toString()).toBe('%PDF-1.4 beleg')
+  })
+
+  it('API-20: a file written for the account is rolled back when the receipt row cannot move', async () => {
+    const guest = newGuest()
+    const account = await newAccount()
+    const receipt = await prisma.receipt.create({ data: { userId: guest, fileName: 'quittung.pdf' } })
+    await files.put({ userId: guest, receiptId: receipt.id, buffer: Buffer.from('%PDF-1.4 beleg'), mimeType: 'application/pdf' })
+
+    // The real file move, then a failure before the row moves: the transaction takes the file back.
+    const thenFails = { move: async (from: string, to: string, id: string) => (await files.move(from, to, id), Promise.reject(new Error('interrupted'))) }
+    await expect(upgradeGuestToAccount(prisma as never, guest, account, thenFails)).resolves.toMatchObject({ complete: false })
+    expect((await files.get(guest, receipt.id))?.buffer.toString()).toBe('%PDF-1.4 beleg')
+    expect(await files.get(account, receipt.id)).toBeNull()
+  })
+
+  it('API-20: what the guest recorded for Person B moves to the account\'s shadow id of the year', async () => {
+    const guest = newGuest()
+    const account = await newAccount()
+    await prisma.taxYear.create({ data: { userId: guest, taxYear: YEAR, baseEstimate: 0, openItems: 0 } })
+    await prisma.taxYearLink.create({ data: { personAUserId: guest, taxYear: YEAR, filingType: 'zusammen', personBUserId: shadowIdOf(guest, YEAR) } })
+    await prisma.profile.create({ data: { userId: shadowIdOf(guest, YEAR), firstName: 'Person', lastName: 'B', steuerId: null, steuernummer: null } })
+
+    await upgradeGuestToAccount(prisma as never, guest, account, files)
+
+    expect(await prisma.taxYearLink.findUnique({ where: { personAUserId_taxYear: { personAUserId: account, taxYear: YEAR } } })).toMatchObject({ personBUserId: shadowIdOf(account, YEAR) })
+    expect(await prisma.profile.findUnique({ where: { userId: shadowIdOf(account, YEAR) } })).toMatchObject({ lastName: 'B' })
+    expect(await prisma.profile.count({ where: { userId: shadowIdOf(guest, YEAR) } })).toBe(0)
+  })
 })
