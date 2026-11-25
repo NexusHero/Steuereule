@@ -419,12 +419,12 @@ model DeviceCode {
   // --- Our columns (ADR-0024) — nullable, additive, never read by the plugin ---
   /// The desktop's User-Agent at `/v1/device/code` request time — match-verification
   /// evidence (AC-3) for the phone's approval screen, never the approving phone's own.
-  requestUserAgent String?
+  requestUserAgent String? /// @encrypted?mode=strict
   /// The desktop's request IP at `/v1/device/code` time — the geo-IP resolver's
   /// input (task 0b); never persisted alongside a resolved region that could outlive
   /// its own accuracy guarantee (the resolver re-derives `requestRegion` once, at
   /// write time, from this same value).
-  requestIp        String?
+  requestIp        String? /// @encrypted?mode=strict
   /// Country-level result of resolving `requestIp` (task 0b) — `null` until
   /// resolved, "unknown" (never a guess) when the address is private/unroutable or
   /// the geo-IP database is stale (ADR-0021 control). Two consumers: the phone's
@@ -433,6 +433,9 @@ model DeviceCode {
   /// When the desktop's `/v1/device/code` request was made — distinct from
   /// `expiresAt`/`lastPolledAt`, which are the plugin's own protocol timestamps.
   requestedAt      DateTime?
+  /// `createdAt` of the session that approved this code (API-1). The session `/v1/device/token` mints takes
+  /// it over, so it is never fresh for step-up and never outlives the approver's absolute cap.
+  approvedSessionCreatedAt DateTime?
 
   @@index([userId])
 }
@@ -1088,6 +1091,9 @@ model TaxYearLink {
   invitationCode           String?   @unique @map("einladungsCode")
   /// The invite code links two accounts; it stops working after this moment.
   invitationCodeValidUntil DateTime? @map("einladungsCodeGueltigBis")
+  /// When Person B (own account) agreed, in B's own app, to share this year with Person A (decision 3, API-3).
+  /// Null while B has not: A then sees nothing of B for this year.
+  personBConsentedAt       DateTime? @map("personBZustimmungAm")
   createdAt                DateTime  @default(now())
   updatedAt                DateTime  @updatedAt
 

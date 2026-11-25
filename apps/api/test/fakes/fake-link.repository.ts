@@ -36,6 +36,7 @@ export class FakeLinkRepository implements PartnerCouplingRepository {
       filingType: 'einzel' | 'zusammen'
       invitationCode?: string | null
       invitationCodeValidUntil?: Date | null
+      personBConsentedAt?: Date | null
     },
   ): Promise<PartnerCouplingRecord> {
     const k = key(personAUserId, taxYear)
@@ -49,20 +50,32 @@ export class FakeLinkRepository implements PartnerCouplingRepository {
       filingType: data.filingType,
       invitationCode: data.invitationCode ?? null,
       invitationCodeValidUntil: data.invitationCodeValidUntil ?? null,
+      personBConsentedAt: data.personBConsentedAt !== undefined ? data.personBConsentedAt : existing?.personBUserId === data.personBUserId ? (existing.personBConsentedAt ?? null) : null,
     }
     this.store.set(k, record)
     return Promise.resolve(record)
   }
 
-  setPersonB(id: string, personBUserId: string): Promise<PartnerCouplingRecord> {
+  claimInvitation(code: string, taxYear: number, personBUserId: string, now: Date): Promise<PartnerCouplingRecord | null> {
     for (const [k, r] of this.store.entries()) {
-      if (r.id === id) {
-        const updated = { ...r, personBUserId, invitationCode: null, invitationCodeValidUntil: null }
+      if (r.invitationCode === code && r.taxYear === taxYear && r.invitationCodeValidUntil !== null && r.invitationCodeValidUntil > now) {
+        const updated = { ...r, personBUserId, invitationCode: null, invitationCodeValidUntil: null, personBConsentedAt: now }
         this.store.set(k, updated)
         return Promise.resolve(updated)
       }
     }
-    throw new Error('Not found')
+    return Promise.resolve(null)
+  }
+
+  recordPersonBConsent(id: string, personBUserId: string, now: Date): Promise<PartnerCouplingRecord | null> {
+    for (const [k, r] of this.store.entries()) {
+      if (r.id === id && r.personBUserId === personBUserId) {
+        const updated = { ...r, personBConsentedAt: now }
+        this.store.set(k, updated)
+        return Promise.resolve(updated)
+      }
+    }
+    return Promise.resolve(null)
   }
 
   delete(personAUserId: string, taxYear: number): Promise<boolean> {

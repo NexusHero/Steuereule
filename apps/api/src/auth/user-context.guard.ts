@@ -3,6 +3,7 @@ import { ForbiddenException, Inject, Injectable, Optional, UnauthorizedException
 import { fromNodeHeaders } from 'better-auth/node'
 import type { FastifyReply, FastifyRequest } from 'fastify'
 import { ACCEPTS_ASSISTANT_TOKEN } from './accepts-assistant-token.js'
+import { PUBLIC_ROUTE } from './public-route.js'
 import { BETTER_AUTH_BUNDLE, type BetterAuthBundle } from './auth.tokens.js'
 import { newGuestUserId, resolveGuestSessionSecret, signGuestSession, verifyGuestSession } from './guest-session.js'
 import { BEARER_TOKEN_REPOSITORY, type BearerTokenRepository } from './bearer-token.repository.js'
@@ -115,6 +116,10 @@ export class UserContextGuard implements CanActivate {
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest<RequestWithUserId>()
     const reply = context.switchToHttp().getResponse<FastifyReply>()
+
+    // A public route reads nobody's data: no identity, and above all no new guest (H2-17).
+    const handler = typeof context.getHandler === 'function' ? context.getHandler() : undefined
+    if (handler !== undefined && Reflect.getMetadata(PUBLIC_ROUTE, handler) === true) return true
 
     // The guest sweep rides on any guarded request (ADR-0109); it runs at most once an hour per process.
     this.guestActivity?.seen()

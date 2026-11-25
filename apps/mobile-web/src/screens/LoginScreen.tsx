@@ -29,6 +29,12 @@ export interface LoginScreenProps {
   readonly startWithForgot?: boolean
   /** The session ran out mid-work (WEB-24): say so; after signing in the app returns to that place. */
   readonly sessionExpired?: boolean
+  /** Arrived from the verification link: the address is confirmed, now sign in (WEB-5). */
+  readonly emailVerified?: boolean
+  /** Arrived from an expired or invalid verification link (`?error=`, WEB-5). */
+  readonly verificationFailed?: boolean
+  /** A Google/Apple sign-in came back with an error (WEB-33). */
+  readonly socialSignInFailed?: boolean
 }
 
 type Stage =
@@ -37,7 +43,7 @@ type Stage =
   | { readonly kind: 'two-factor'; readonly email: string }
   | { readonly kind: 'forgot' }
 
-export function LoginScreen({ onDone, onGuest, onRegister, showDeviceQr = true, onLegal, startWithForgot = false, sessionExpired = false }: LoginScreenProps) {
+export function LoginScreen({ onDone, onGuest, onRegister, showDeviceQr = true, onLegal, startWithForgot = false, sessionExpired = false, emailVerified = false, verificationFailed = false, socialSignInFailed = false }: LoginScreenProps) {
   const t = useTheme()
   const bp = useBreakpoint()
   const { t: tr } = useTranslation(APP_NS)
@@ -124,6 +130,26 @@ export function LoginScreen({ onDone, onGuest, onRegister, showDeviceQr = true, 
         onError={setError}
         showUnknownFallback={anySurfaceUnreachable}
       />
+
+      {emailVerified && !verificationFailed ? (
+        <View style={styles.outageBanner} accessibilityRole="alert" testID="email-bestaetigt">
+          <Text style={styles.outageHeading}>{tr('login.verified.heading')}</Text>
+          <Text style={styles.outageBody}>{tr('login.verified.body')}</Text>
+        </View>
+      ) : null}
+
+      {verificationFailed ? (
+        <View style={styles.outageBanner} accessibilityRole="alert" testID="email-link-abgelaufen">
+          <Text style={styles.outageHeading}>{tr('login.verifyFailed.heading')}</Text>
+          <Text style={styles.outageBody}>{tr('login.verifyFailed.body')}</Text>
+        </View>
+      ) : null}
+
+      {socialSignInFailed ? (
+        <View style={styles.outageBanner} accessibilityRole="alert" testID="sozial-anmeldung-fehlgeschlagen">
+          <Text style={styles.outageBody}>{tr('login.socialFailed')}</Text>
+        </View>
+      ) : null}
 
       {sessionExpired ? (
         <View style={styles.outageBanner} accessibilityRole="alert" testID="anmeldung-abgelaufen">

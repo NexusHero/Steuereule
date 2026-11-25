@@ -8,6 +8,7 @@ import { useRemovalGuard } from './useRemovalGuard'
 import { StromScreen } from '../screens/strom/StromScreen'
 import { slugOf } from '../screens/strom/stromPlan'
 import { AccountWallScreen, pathFromAnswers } from '../screens/funnel/KontoWandScreen'
+import { readPendingVerification } from '../auth/pendingVerification'
 import { useShellState } from './ShellState'
 import { RequiresAccount } from './RequiresAccount'
 import { renderActiveStackRoute, useYearGuard } from './guards'
@@ -147,6 +148,7 @@ function AccountWallRoute({ navigation }: Props<'AccountWall'>) {
       onRegister={onRegister}
       onLogin={onLogin}
       onLater={() => navigation.navigate('CockpitHome', undefined, { pop: true })}
+      pendingVerificationEmail={readPendingVerification()}
     />
   )
 }

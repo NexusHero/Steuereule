@@ -3,6 +3,7 @@ import { ScrollView, View, Text, Pressable, ActivityIndicator, type ViewStyle, t
 import { useTranslation } from 'react-i18next'
 import { Button, Input, Feld, Sticker, inkOnFunke, useTheme, useBreakpoint, type UiTheme } from '@steuereule/ui'
 import { APP_NS } from '../i18n/resources'
+import { rememberPendingVerification } from '../auth/pendingVerification'
 import { useAuthClient } from '../auth/AuthClientProvider'
 import { authErrorKey } from '../auth/authErrors'
 import { useEmailVerified } from '../auth/useEmailVerified'
@@ -59,6 +60,7 @@ export function RegistrationScreen({ onDone, onLogin, onLegal }: RegistrationScr
       }
       // The answer is the same for a new and a taken address and carries no session (ADR-0109): say only
       // that a mail is on its way. The guest carries on; the data moves at the first verified sign-in.
+      rememberPendingVerification(mail)
       setStage({ kind: 'success', email: mail })
     } catch {
       setStage({ kind: 'form' })

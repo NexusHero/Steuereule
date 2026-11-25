@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { Button, Card, Feld, Pill, useTheme, useBreakpoint, type UiTheme } from '@steuereule/ui'
 import { useDeviceControllerGetPending, useDeviceControllerApprove } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
+import { StepUpInline } from '../../auth/StepUpInline'
 import { parseUserAgent, resolveRegionName, formatRequestedAt } from './deviceContext'
 import { LoadingState, ErrorState, LoadFailedState, SuccessState } from '../shared/ScreenState'
 import { classifyApiFailure, useApiFailureMessage } from '../../net/apiFailure'
@@ -12,7 +13,7 @@ export interface DeviceApprovalScreenProps {
   readonly userCode: string
 }
 
-type ApproveState = 'idle' | 'approving' | 'approved' | 'error'
+type ApproveState = 'idle' | 'approving' | 'approved' | 'error' | 'step-up'
 
 export function DeviceApprovalScreen({ userCode }: DeviceApprovalScreenProps) {
   const t = useTheme()
@@ -49,6 +50,8 @@ export function DeviceApprovalScreen({ userCode }: DeviceApprovalScreenProps) {
       {
         onSuccess: () => setApproveState('approved'),
         onError: (error) => {
+          // Signing another device in needs a fresh sign-in or a step-up first (API-1).
+          if (classifyApiFailure(error).kind === 'step-up') return setApproveState('step-up')
           setApproveError(error)
           setApproveState('error')
         },
@@ -101,7 +104,11 @@ export function DeviceApprovalScreen({ userCode }: DeviceApprovalScreenProps) {
         </Text>
       ) : null}
 
-      <Button onPress={approve} disabled={approveState === 'approving'} style={styles.cta} testID="geraet-freigeben">
+      {approveState === 'step-up' ? (
+        <StepUpInline testID="geraet-freigeben-stepup" onConfirmed={approve} onCancel={() => setApproveState('idle')} />
+      ) : null}
+
+      <Button onPress={approve} disabled={approveState === 'approving' || approveState === 'step-up'} style={styles.cta} testID="geraet-freigeben">
         {approveState === 'approving' ? (
           <View style={styles.submittingRow}>
             <ActivityIndicator size="small" color={t.color.tinte} />

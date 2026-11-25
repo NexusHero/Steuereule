@@ -8,6 +8,7 @@ import { BANK_CSV_PRESETS, CATALOG_PROFESSIONS, FREE_ACTIVITIES, FREE_ACTIVITY_L
 import { InvalidInputError } from '../common/domain-error.js'
 import { toCoreMapping } from './csv-mapping.js'
 import { CurrentUser } from '../auth/current-user.decorator.js'
+import { RequiresVerifiedEmail } from '../auth/requires-verified-email.guard.js'
 import { RequiresAccount } from '../auth/requires-account.guard.js'
 import { UserContextGuard } from '../auth/user-context.guard.js'
 import { ParseTaxYearPipe } from '../common/parse-tax-year.pipe.js'
@@ -483,6 +484,8 @@ export class BusinessController {
   @AccountThrottle(ERIC_THROTTLE)
   @HttpCode(200)
   @RequiresAccount()
+  // Sent to the tax office under the operator's certificate: a verified address, as for the return (API-13, ADR-0103 §4).
+  @RequiresVerifiedEmail()
   @ApiBody({ type: EBilanzTransmitDto })
   @ApiOkResponse({ type: EBilanzTransmissionDto, description: 'Validates or sends the E-Bilanz through the operator’s ERiC sidecar; nicht_eingerichtet names what is missing.' })
   @Errors(402, 409)

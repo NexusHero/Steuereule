@@ -48,6 +48,7 @@ import {
 import { CopilotBridgeProvider } from './src/screens/advisor/CopilotBridgeProvider'
 import { operatorFromEnv, LEGAL_PAGES } from './src/screens/legal/texts'
 import { useAccountSession } from './src/auth/useAccountSession'
+import { clearPendingVerification } from './src/auth/pendingVerification'
 import { followNativeAppFocus } from './src/app-focus'
 import { viewAfterInterview } from './src/screens/funnel/afterTheInterview'
 import { paymentReturnOf, type RootStackParamList } from './src/navigation/routes'
@@ -214,7 +215,13 @@ function RootNavigator() {
 }
 
 function SplashRoute({ navigation }: NativeStackScreenProps<RootStackParamList, 'Splash'>) {
-  return <SplashScreen onAdvance={() => navigation.replace('Login')} />
+  // Someone already signed in who opens `/` goes to the app, not to the sign-in form (WEB-6).
+  const { state } = useAccountSession()
+  const signedIn = state.status === 'signed-in'
+  useEffect(() => {
+    if (signedIn) navigation.replace('App')
+  }, [signedIn, navigation])
+  return <SplashScreen onAdvance={() => navigation.replace(signedIn ? 'App' : 'Login')} />
 }
 
 function LoginRoute({ navigation, route }: NativeStackScreenProps<RootStackParamList, 'Login'>) {
@@ -222,7 +229,11 @@ function LoginRoute({ navigation, route }: NativeStackScreenProps<RootStackParam
     <LoginScreen
       startWithForgot={Boolean(route.params?.forgot)}
       sessionExpired={Boolean(route.params?.expired)}
+      emailVerified={route.params?.bestaetigt === '1'}
+      verificationFailed={Boolean(route.params?.error) && route.params?.sozial !== '1'}
+      socialSignInFailed={Boolean(route.params?.error) && route.params?.sozial === '1'}
       onDone={() => {
+        clearPendingVerification()
         resetSessionExpiry()
         navigation.replace('App')
       }}

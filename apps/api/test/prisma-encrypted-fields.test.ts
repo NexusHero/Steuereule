@@ -263,6 +263,9 @@ const EXPECTED_ENCRYPTED_FIELDS: ExpectedEncryptedField[] = [
   { model: 'User', field: 'email', encrypt: true, strictDecryption: true },
   { model: 'Session', field: 'ipAddress', encrypt: true, strictDecryption: true },
   { model: 'Session', field: 'userAgent', encrypt: true, strictDecryption: true },
+  // API-19: the desktop's address and browser of a device sign-in, like the session's own.
+  { model: 'DeviceCode', field: 'requestIp', encrypt: true, strictDecryption: true },
+  { model: 'DeviceCode', field: 'requestUserAgent', encrypt: true, strictDecryption: true },
 ].sort(byModelField)
 
 // prisma-field-encryption's hash annotation (`@encryption:hash(field)`, dist/dmmf.js:79)

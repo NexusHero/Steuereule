@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common'
-import { PrismaService } from '../prisma/prisma.service.js'
+import { ENCRYPTED_PRISMA, type EncryptedPrismaClient } from '../prisma/encrypted-prisma.provider.js'
 import { systemDatabaseClient } from '../common/database-identity.js'
 import type {
   DeviceCodeRepository,
@@ -7,12 +7,16 @@ import type {
   DevicePendingRecord,
 } from './device-code.repository.js'
 
+/**
+ * The encrypting client (API-19): the desktop's address and browser are ciphertext at rest, like the session's
+ * own (ADR-0109 §12). Rows that were never approved are swept after they expired (lifecycle sweep).
+ */
 @Injectable()
 export class PrismaDeviceCodeRepository implements DeviceCodeRepository {
-  private readonly prisma: PrismaService
+  private readonly prisma: EncryptedPrismaClient
 
-  constructor(@Inject(PrismaService) prisma: PrismaService) {
-    // A system path as a whole (P11): device-flow.
+  constructor(@Inject(ENCRYPTED_PRISMA) prisma: EncryptedPrismaClient) {
+    // A system path as a whole (P11): device-flow. It also stamps the minted session (API-1).
     this.prisma = systemDatabaseClient(prisma, 'device-flow')
   }
 
@@ -38,5 +42,21 @@ export class PrismaDeviceCodeRepository implements DeviceCodeRepository {
       region: row.requestRegion,
       requestedAt: row.requestedAt,
     }
+  }
+
+  async recordApprovalAnchor(userCode: string, userId: string, sessionCreatedAt: Date): Promise<void> {
+    await this.prisma.deviceCode.updateMany({ where: { userCode, userId, status: 'pending' }, data: { approvedSessionCreatedAt: sessionCreatedAt } })
+  }
+
+  async findApprovalAnchor(deviceCode: string): Promise<Date | null> {
+    const row = await this.prisma.deviceCode.findUnique({ where: { deviceCode }, select: { approvedSessionCreatedAt: true } })
+    return row?.approvedSessionCreatedAt ?? null
+  }
+
+  async anchorSession(sessionToken: string, createdAt: Date, latestExpiry: Date): Promise<void> {
+    const row = await this.prisma.session.findUnique({ where: { token: sessionToken }, select: { id: true, expiresAt: true } })
+    if (!row) return
+    const expiresAt = row.expiresAt.getTime() > latestExpiry.getTime() ? latestExpiry : row.expiresAt
+    await this.prisma.session.update({ where: { id: row.id }, data: { createdAt, expiresAt } })
   }
 }

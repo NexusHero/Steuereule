@@ -13,7 +13,6 @@ const ON_THE_PLAIN_CLIENT: Readonly<Record<string, string>> = {
   'auth/bearer-token.repository.prisma.ts': 'the guard reads tokens before any handler runs; no unit of work writes them',
   'auth/step-up-grant.repository.prisma.ts': 'step-up grants of the sign-in; outside every tax-data unit of work',
   'assistenten/assistenten.repository.prisma.ts': 'lists and revokes connected assistants; no simulation or batch reaches it',
-  'device/device-code.repository.prisma.ts': 'device sign-in codes; outside every tax-data unit of work',
   'guest/guest-activity.repository.prisma.ts': 'the guest sweep the guard starts; it must not wait for or roll back with a request',
   'owl-mode/owl-mode.repository.prisma.ts': 'owl settings and dismissed cards; no field write reaches it',
   'owl-mode/personal-data-consent.repository.prisma.ts': 'read before a write to know the consent; written only by its own route',

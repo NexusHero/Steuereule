@@ -82,7 +82,8 @@ export type AppTabParamList = {
 
 export type RootStackParamList = {
   Splash: undefined
-  Login: { forgot?: boolean; expired?: boolean } | undefined
+  /** `bestaetigt`/`error` arrive from the e-mail verification link (WEB-5); `sozial`+`error` from a failed provider sign-in (WEB-33). */
+  Login: { forgot?: boolean; expired?: boolean; bestaetigt?: string; error?: string; sozial?: string } | undefined
   Registration: undefined
   Onboarding: undefined
   App: { start?: 'interview' } | (NavigatorScreenParams<AppTabParamList> & { start?: 'interview' }) | undefined

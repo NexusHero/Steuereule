@@ -43,8 +43,17 @@
       "backupLabel": "Backup code",
       "submit": "Confirm"
     },
+    "socialFailed": "Signing in with the provider did not work or was cancelled. Try again or sign in with e-mail and password.",
+    "verified": {
+      "heading": "E-mail confirmed ✓",
+      "body": "Sign in now. We keep what you entered as a guest in this browser."
+    },
+    "verifyFailed": {
+      "heading": "This confirmation link is no longer valid.",
+      "body": "It has expired or was already used. Sign in with e-mail and password – if the address is not confirmed yet, we send you a new link right away."
+    },
     "errEmail": "That doesn't look like an email yet.",
-    "errPass": "At least 8 characters for the password.",
+    "errPass": "The password is too short. New passwords need at least 12 characters.",
     "apiUnreachable": {
       "heading": "Not reachable right now — that's on us.",
       "body": "Our servers aren't answering. Your data is safe, nothing is lost.",
@@ -218,6 +227,11 @@
   },
   "funnel": {
     "kontoWand": {
+      "verify": {
+        "heading": "Confirm your e-mail",
+        "body": "We sent a link to {{email}}. Follow it and then sign in – we keep what you entered as a guest.",
+        "login": "Confirmed? Sign in now"
+      },
       "sticker": "Path found",
       "titleBefore": "Your path: ",
       "titleAfter": "",
@@ -283,6 +297,11 @@
     }
   },
   "profil": {
+    "signOut": {
+      "button": "Sign out",
+      "busy": "Signing out …",
+      "failed": "Signing out did not work. Check the connection and try again."
+    },
     "loading": "Loading your profile …",
     "loadError": {
       "heading": "That didn't work.",
@@ -401,9 +420,21 @@
     }
   },
   "sicherheit": {
+    "changePassword": {
+      "heading": "Change password",
+      "body": "Afterwards you are signed out on every other device, and connected assistants need to be connected again.",
+      "current": "Current password",
+      "next": "New password",
+      "repeat": "Repeat new password",
+      "submit": "Change password",
+      "done": "Password changed ✓ Other devices and assistants are signed out.",
+      "errTooShort": "At least 12 characters for the new password.",
+      "errMismatch": "The two new passwords do not match.",
+      "errWrong": "The current password is not correct."
+    },
     "stepUp": {
       "title": "Confirm your password",
-      "body": "To protect your account, confirm your password before adding a passkey. If you sign in without a password (Google or passkey), sign out and back in — for five minutes afterwards this question is skipped.",
+      "body": "To protect your account, confirm it is you before adding or removing a passkey – with your password, your passkey or by signing in with your provider again. For five minutes afterwards this question is skipped.",
       "confirm": "Confirm and continue",
       "wrong": "That password is not correct."
     },
@@ -1120,6 +1151,11 @@
     "telefon": "Phone for queries (optional)",
     "speichern": "Save",
     "gespeichert": "Saved.",
+    "kopplungZustimmung": {
+      "frage": "Your partner wants to file {{year}} jointly with you. Only once you agree does your partner see your details for {{year}} (tax ID, birth date, religion, occupation).",
+      "zustimmen": "File {{year}} jointly – agree",
+      "wartet": "Your partner has not agreed to {{year}} yet. Until then you see none of their details for {{year}}."
+    },
     "kopplungStand": {
       "loading": "Loading the type of assessment …",
       "loadError": "The type of assessment could not be loaded. Until it is, nothing is chosen or saved here.",
@@ -2994,7 +3030,7 @@
   },
   "oauthConsent": {
     "stepUpTitle": "Confirm your password",
-    "stepUpBody": "To protect your account, confirm your password before connecting an assistant. If you sign in without a password (Google or passkey), sign out and back in.",
+    "stepUpBody": "To protect your account, confirm it is you before connecting an assistant – with your password, your passkey or by signing in with your provider again.",
     "stepUpPassword": "Password",
     "stepUpConfirm": "Confirm and allow",
     "stepUpWrong": "That password is not correct.",
@@ -4940,5 +4976,20 @@
   "beta": {
     "label": "Beta:",
     "notice": "SteuerEule is in testing. Features may change and errors are possible. Check every printout before you sign and file it."
+  },
+  "stepUp": {
+    "heading": "Confirm it is you",
+    "body": "To protect your account we ask again at this step.",
+    "password": "Password",
+    "confirm": "Confirm and continue",
+    "cancel": "Cancel",
+    "without": "Your account has no password. Confirm with your passkey or sign in with your provider again – you stay signed in.",
+    "orWithout": "Or without a password:",
+    "withPasskey": "Confirm with passkey",
+    "withProvider": {
+      "google": "Sign in with Google again",
+      "apple": "Sign in with Apple again"
+    },
+    "passkeyFailed": "The passkey did not confirm. Try again."
   }
 }

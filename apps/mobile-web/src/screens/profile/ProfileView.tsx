@@ -9,6 +9,7 @@ import { ProfileExpertModeSection } from './ProfileExpertModeSection'
 import { ProfileDictationModelSection } from './ProfileDictationModelSection'
 import { AssistantsListSection } from './AssistentenListSection'
 import { DeviceListSection } from '../device/DeviceListSection'
+import { SignOutSection } from './SignOutSection'
 import { useKnownEmployers } from '../master-data/employersStore'
 import { useAccountSession } from '../../auth/useAccountSession'
 import type { OnboardingProfile } from '../onboarding/profileMapping'
@@ -134,6 +135,7 @@ export function ProfileView({ profile, onEdit, justSaved, bp, onOpenPrivacy, onO
         <>
           <AssistantsListSection />
           <DeviceListSection onCurrentSessionRevoked={onSignedOut} />
+          <SignOutSection onSignedOut={onSignedOut} />
         </>
       )}
 

@@ -3,6 +3,7 @@ import { ApiBody, ApiForbiddenResponse, ApiOkResponse, ApiParam, ApiTags, ApiUna
 import { Throttle, ThrottlerGuard } from '@nestjs/throttler'
 import { CurrentUser } from '../auth/current-user.decorator.js'
 import { RequiresAccount } from '../auth/requires-account.guard.js'
+import { RequiresStepUp } from '../auth/requires-step-up.js'
 import { UserContextGuard } from '../auth/user-context.guard.js'
 import { accountKeyedTracker, LINK_JOIN_THROTTLE } from '../rate-limit/rate-limit.js'
 import { ParseTaxYearPipe } from '../common/parse-tax-year.pipe.js'
@@ -65,6 +66,8 @@ export class LinkController {
   @RequiresAccount()
   @Throttle({ default: { ...LINK_JOIN_THROTTLE, getTracker: accountKeyedTracker } })
   @UseGuards(ThrottlerGuard)
+  // Joining shows the joiner's Steuer-ID, birth date and religion to Person A (API-12).
+  @RequiresStepUp('exposes-other-person')
   @ApiParam({ name: 'jahr', type: Number, example: 2025 })
   @ApiParam({ name: 'code', type: String, example: '9F3A0C71B2E4D658' })
   @ApiOkResponse({ type: LinkResponseDto })
@@ -75,5 +78,18 @@ export class LinkController {
     @Param('code') code: string,
   ): Promise<LinkResponseDto> {
     return this.linkService.joinWithCode(userId, year, code)
+  }
+
+  @Post(':jahr/kopplung/zustimmung')
+  @UserWrite('kopplung')
+  @HttpCode(200)
+  @RequiresAccount()
+  // Agreeing shows the caller's data to Person A for this year (decision 3, API-3).
+  @RequiresStepUp('exposes-other-person')
+  @ApiParam({ name: 'jahr', type: Number, example: 2026 })
+  @ApiOkResponse({ type: LinkResponseDto, description: 'Person B agrees, in B’s own app, to share this tax year with Person A.' })
+  @ApiUnauthorizedResponse({ description: 'Requires account.' })
+  consent(@CurrentUser() userId: string, @Param('jahr', ParseTaxYearPipe) year: number): Promise<LinkResponseDto> {
+    return this.linkService.consentForYear(userId, year)
   }
 }

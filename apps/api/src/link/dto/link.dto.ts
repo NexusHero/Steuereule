@@ -80,4 +80,16 @@ export class LinkResponseDto {
 
   @ApiPropertyOptional({ type: LinkPersonBDto, nullable: true })
   personB?: LinkPersonBDto | null
+
+  @ApiPropertyOptional({
+    type: Boolean,
+    description: 'Person B (own account) has not yet agreed to share this year; until then Person A sees nothing of B for it (decision 3).',
+  })
+  personBConsentPending?: boolean
+
+  @ApiPropertyOptional({
+    type: Boolean,
+    description: 'The caller is Person B and is asked to agree to share this year with Person A (decision 3).',
+  })
+  consentRequestedFromMe?: boolean
 }

@@ -424,3 +424,85 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       return useMutation(getLinkControllerJoinWithCodeMutationOptions(options), queryClient);
     }
 
+export type linkControllerConsentResponse200 = {
+  data: LinkResponseDto
+  status: 200
+}
+
+export type linkControllerConsentResponse401 = {
+  data: void
+  status: 401
+}
+
+export type linkControllerConsentResponseSuccess = (linkControllerConsentResponse200) & {
+  headers: Headers;
+};
+export type linkControllerConsentResponseError = (linkControllerConsentResponse401) & {
+  headers: Headers;
+};
+
+export const getLinkControllerConsentUrl = (jahr: number,) => {
+
+
+
+
+  return `/v1/steuerjahre/${jahr}/kopplung/zustimmung`
+}
+
+export const linkControllerConsent = async (jahr: number, options?: RequestInit): Promise<linkControllerConsentResponseSuccess> => {
+
+  return httpClient<linkControllerConsentResponseSuccess>(getLinkControllerConsentUrl(jahr),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getLinkControllerConsentMutationOptions = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof linkControllerConsent>>, TError,{jahr: number}, TContext>, request?: SecondParameter<typeof httpClient>}
+): UseMutationOptions<Awaited<ReturnType<typeof linkControllerConsent>>, TError,{jahr: number}, TContext> => {
+
+const mutationKey = ['linkControllerConsent'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof linkControllerConsent>>, {jahr: number}> = (props) => {
+          const {jahr} = props ?? {};
+
+          return  linkControllerConsent(jahr,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type LinkControllerConsentMutationResult = NonNullable<Awaited<ReturnType<typeof linkControllerConsent>>>
+
+    export type LinkControllerConsentMutationError = void
+
+    export const useLinkControllerConsent = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof linkControllerConsent>>, TError,{jahr: number}, TContext>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof linkControllerConsent>>,
+        TError,
+        {jahr: number},
+        TContext
+      > => {
+      return useMutation(getLinkControllerConsentMutationOptions(options), queryClient);
+    }
+

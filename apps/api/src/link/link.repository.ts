@@ -6,6 +6,8 @@ export interface PartnerCouplingRecord {
   filingType: 'einzel' | 'zusammen'
   invitationCode: string | null
   invitationCodeValidUntil: Date | null
+  /** When Person B (own account) agreed to share this year with A (decision 3, API-3); null while not. */
+  personBConsentedAt?: Date | null
 }
 
 export const PARTNER_COUPLING_REPOSITORY = Symbol('PARTNER_COUPLING_REPOSITORY')
@@ -23,8 +25,15 @@ export interface PartnerCouplingRepository {
       filingType: 'einzel' | 'zusammen'
       invitationCode?: string | null
       invitationCodeValidUntil?: Date | null
+      personBConsentedAt?: Date | null
     },
   ): Promise<PartnerCouplingRecord>
-  setPersonB(id: string, personBUserId: string): Promise<PartnerCouplingRecord>
+  /**
+   * Redeems an invitation code for Person B, atomically (API-8): of two accounts redeeming the same code at once,
+   * exactly one gets the row; the other gets null. The redemption is B's consent for that year.
+   */
+  claimInvitation(code: string, taxYear: number, personBUserId: string, now: Date): Promise<PartnerCouplingRecord | null>
+  /** Person B agrees to share this year with A (decision 3). */
+  recordPersonBConsent(id: string, personBUserId: string, now: Date): Promise<PartnerCouplingRecord | null>
   delete(personAUserId: string, taxYear: number): Promise<boolean>
 }

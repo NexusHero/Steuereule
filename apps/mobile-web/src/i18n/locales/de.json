@@ -43,8 +43,17 @@
       "backupBody": "Gib einen der Wiederherstellungscodes ein, die du beim Einrichten erhalten hast. Jeder Code gilt nur einmal.",
       "backupLabel": "Wiederherstellungscode"
     },
+    "socialFailed": "Die Anmeldung beim Anbieter hat nicht geklappt oder wurde abgebrochen. Versuch es noch mal oder melde dich mit E-Mail und Passwort an.",
+    "verified": {
+      "heading": "E-Mail bestätigt ✓",
+      "body": "Melde dich jetzt an. Was du als Gast in diesem Browser eingegeben hast, übernehmen wir."
+    },
+    "verifyFailed": {
+      "heading": "Dieser Bestätigungslink gilt nicht mehr.",
+      "body": "Er ist abgelaufen oder wurde schon benutzt. Melde dich mit E-Mail und Passwort an – ist die Adresse noch nicht bestätigt, schicken wir dir sofort einen neuen Link."
+    },
     "errEmail": "Das sieht noch nicht nach einer E-Mail aus.",
-    "errPass": "Mindestens 8 Zeichen fürs Passwort.",
+    "errPass": "Das Passwort ist zu kurz. Neue Passwörter brauchen mindestens 12 Zeichen.",
     "apiUnreachable": {
       "heading": "Gerade nicht erreichbar — das liegt an uns.",
       "body": "Unsere Server antworten nicht. Deine Daten sind sicher, es ist nichts verloren.",
@@ -218,6 +227,11 @@
   },
   "funnel": {
     "kontoWand": {
+      "verify": {
+        "heading": "Bestätige deine E-Mail",
+        "body": "Wir haben dir an {{email}} einen Link geschickt. Folge ihm und melde dich danach an – deine Eingaben als Gast übernehmen wir.",
+        "login": "Bestätigt? Jetzt anmelden"
+      },
       "sticker": "Weg gefunden",
       "titleBefore": "Dein Weg: ",
       "titleAfter": "",
@@ -283,6 +297,11 @@
     }
   },
   "profil": {
+    "signOut": {
+      "button": "Abmelden",
+      "busy": "Wird abgemeldet …",
+      "failed": "Das Abmelden hat nicht geklappt. Prüf die Verbindung und versuch es noch mal."
+    },
     "loading": "Dein Profil wird geladen …",
     "loadError": {
       "heading": "Das hat nicht geklappt.",
@@ -401,9 +420,21 @@
     }
   },
   "sicherheit": {
+    "changePassword": {
+      "heading": "Passwort ändern",
+      "body": "Danach bist du auf allen anderen Geräten abgemeldet, und verbundene Assistenten musst du neu verbinden.",
+      "current": "Aktuelles Passwort",
+      "next": "Neues Passwort",
+      "repeat": "Neues Passwort wiederholen",
+      "submit": "Passwort ändern",
+      "done": "Passwort geändert ✓ Andere Geräte und Assistenten sind abgemeldet.",
+      "errTooShort": "Mindestens 12 Zeichen fürs neue Passwort.",
+      "errMismatch": "Die beiden neuen Passwörter stimmen nicht überein.",
+      "errWrong": "Das aktuelle Passwort stimmt nicht."
+    },
     "stepUp": {
       "title": "Passwort bestätigen",
-      "body": "Zum Schutz deines Kontos: Bestätige dein Passwort, bevor du einen Passkey hinzufügst. Meldest du dich ohne Passwort an (Google oder Passkey), melde dich ab und wieder an – danach geht es fünf Minuten lang ohne diese Frage.",
+      "body": "Zum Schutz deines Kontos: Bestätige, dass du es bist, bevor du einen Passkey hinzufügst oder entfernst – mit deinem Passwort, deinem Passkey oder einer neuen Anmeldung beim Anbieter. Danach geht es fünf Minuten lang ohne diese Frage.",
       "confirm": "Bestätigen und fortfahren",
       "wrong": "Das Passwort stimmt nicht."
     },
@@ -1120,6 +1151,11 @@
     "telefon": "Telefon für Rückfragen (optional)",
     "speichern": "Speichern",
     "gespeichert": "Gespeichert.",
+    "kopplungZustimmung": {
+      "frage": "Dein Partner möchte {{year}} mit dir zusammen abgeben. Erst wenn du zustimmst, sieht er deine Angaben für {{year}} (Steuer-ID, Geburtsdatum, Religion, Beruf).",
+      "zustimmen": "{{year}} zusammen abgeben – zustimmen",
+      "wartet": "Dein Partner hat {{year}} noch nicht zugestimmt. Bis dahin siehst du keine seiner Angaben für {{year}}."
+    },
     "kopplungStand": {
       "loading": "Die Veranlagungsart wird geladen …",
       "loadError": "Die Veranlagungsart konnte nicht geladen werden. Solange wählen und übernehmen wir hier nichts.",
@@ -2994,7 +3030,7 @@
   },
   "oauthConsent": {
     "stepUpTitle": "Passwort bestätigen",
-    "stepUpBody": "Zum Schutz Ihres Kontos: Bestätigen Sie Ihr Passwort, bevor Sie einen Assistenten verbinden. Melden Sie sich ohne Passwort an (Google oder Passkey), melden Sie sich ab und wieder an.",
+    "stepUpBody": "Zum Schutz Ihres Kontos: Bestätigen Sie, dass Sie es sind, bevor Sie einen Assistenten verbinden – mit Ihrem Passwort, Ihrem Passkey oder einer erneuten Anmeldung beim Anbieter.",
     "stepUpPassword": "Passwort",
     "stepUpConfirm": "Bestätigen und erlauben",
     "stepUpWrong": "Das Passwort stimmt nicht.",
@@ -4940,5 +4976,20 @@
   "beta": {
     "label": "Beta:",
     "notice": "SteuerEule ist in der Testphase. Funktionen können sich ändern und Fehler sind möglich. Prüfe jeden Ausdruck, bevor du ihn unterschreibst und einreichst."
+  },
+  "stepUp": {
+    "heading": "Bestätige, dass du es bist",
+    "body": "Zum Schutz deines Kontos fragen wir bei diesem Schritt noch einmal nach.",
+    "password": "Passwort",
+    "confirm": "Bestätigen und fortfahren",
+    "cancel": "Abbrechen",
+    "without": "Dein Konto hat kein Passwort. Bestätige mit deinem Passkey oder melde dich beim Anbieter noch einmal an – du bleibst dabei angemeldet.",
+    "orWithout": "Oder ohne Passwort:",
+    "withPasskey": "Mit Passkey bestätigen",
+    "withProvider": {
+      "google": "Mit Google erneut anmelden",
+      "apple": "Mit Apple erneut anmelden"
+    },
+    "passkeyFailed": "Der Passkey hat nicht bestätigt. Versuch es noch mal."
   }
 }

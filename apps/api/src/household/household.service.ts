@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto'
 import { Inject, Injectable } from '@nestjs/common'
 import { asksForEducation, isPreselectedForYear, planHouseholdMerge, type HouseholdEntry } from '@steuereule/core'
 import { AuditService } from '../audit/audit.service.js'
-import { ConflictError, InvalidInputError, NotFoundError } from '../common/domain-error.js'
+import { ConflictError, ForbiddenError, InvalidInputError, NotFoundError } from '../common/domain-error.js'
 import { CHILD_REPOSITORY, type ChildRecord, type ChildRepository } from '../children/child.repository.js'
 import { PARTNER_COUPLING_REPOSITORY, type PartnerCouplingRepository } from '../link/link.repository.js'
 import { MASTER_DATA_REPOSITORY, type MasterDataRepository } from '../master-data/master-data.repository.js'
@@ -274,6 +274,8 @@ export class HouseholdService {
   /** „Endgültig löschen“: every year's record goes, then the person's key (crypto-shredding, AC 5). */
   async deletePerson(userId: string, personId: string, taxYear: number): Promise<HouseholdView> {
     const owner = await this.householdOwner(userId, taxYear)
+    // It reaches every year, also those the linked partner never shared: only Person A may (API-3).
+    if (owner !== userId) throw new ForbiddenError('ONLY_HOUSEHOLD_OWNER_DELETES', 'Nur die Person, der der Haushalt gehört, kann jemanden endgültig löschen.')
     await this.ownedPerson(owner, personId)
     for (const m of (await this.repo.listMemberships(owner)).filter((x) => x.personId === personId)) {
       if (m.childId) await this.children.delete(owner, m.taxYear, m.childId)
