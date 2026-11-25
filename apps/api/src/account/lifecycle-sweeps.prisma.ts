@@ -1,7 +1,7 @@
 import { RETENTION } from '@steuereule/core'
 import type { PrismaClient } from '@prisma/client'
 import type { DeleteAccountResult } from './account-deletion.repository.js'
-import { ownerOf } from './personal-data-registry.js'
+import { ownerOf } from '../common/shadow-id.js'
 import type { UnverifiedSweepDeps as UnverifiedSweepPort, UnverifiedSweepResult } from './lifecycle-sweep.repository.js'
 
 export type UnverifiedSweepDeps = UnverifiedSweepPort & { readonly db: Db }

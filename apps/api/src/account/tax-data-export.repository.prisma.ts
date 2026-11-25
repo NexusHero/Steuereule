@@ -4,7 +4,8 @@ import { Prisma } from '@prisma/client'
 import { ENCRYPTED_PRISMA, type EncryptedPrismaClient } from '../prisma/encrypted-prisma.provider.js'
 import type { ExportTaxDataEntry, ExportTaxDataValue } from './export/export-document.js'
 import type { ExportReceiptFileMeta, TaxDataExportRepository } from './tax-data-export.repository.js'
-import { delegateName, entriesWhere, isShadowId, personIds } from './personal-data-registry.js'
+import { delegateName, entriesWhere } from './personal-data-registry.js'
+import { isShadowId, personIds } from '../common/shadow-id.js'
 
 const OMITTED_FIELDS = new Set([
   'id',

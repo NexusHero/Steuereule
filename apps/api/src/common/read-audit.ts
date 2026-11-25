@@ -1,10 +1,9 @@
+import { isShadowId } from './shadow-id.js'
+
 /** The one method of AuditService a read needs; structural, so common/ stays free of the audit module. */
 interface AuditTrail {
   append(entry: { userId: string; action: 'READ'; resource: string; source?: string }): Promise<void>
 }
-
-/** The id prefix of a Person B kept in A's account without an own login (ADR-0054). */
-const SHADOW_PREFIX = 'spouse_'
 
 /** The other person of a joint return, as the coupling names them; null without a joint return. */
 export function jointPartnerOf(
@@ -29,6 +28,6 @@ export async function appendReadAudit(
 ): Promise<void> {
   if (!audit) return
   await audit.append({ userId: callerId, action: 'READ', resource })
-  const accounts = new Set(otherPersons.filter((id): id is string => !!id && id !== callerId && !id.startsWith(SHADOW_PREFIX)))
+  const accounts = new Set(otherPersons.filter((id): id is string => !!id && id !== callerId && !isShadowId(id)))
   for (const userId of accounts) await audit.append({ userId, action: 'READ', resource, source: 'partner' })
 }

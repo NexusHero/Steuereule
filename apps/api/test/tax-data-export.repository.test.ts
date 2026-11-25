@@ -1,7 +1,8 @@
 // Art. 15/20: the export must read every table the Art. 17 erasure deletes — the two
 // lists drifting apart is exactly how "taxData: []" survived while data existed.
 import { describe, expect, it } from 'vitest'
-import { PERSONAL_DATA_REGISTRY, shadowIdOf } from '../src/account/personal-data-registry.js'
+import { PERSONAL_DATA_REGISTRY } from '../src/account/personal-data-registry.js'
+import { shadowIdOf } from '../src/common/shadow-id.js'
 import { PrismaTaxDataExportRepository, toExportEntry } from '../src/account/tax-data-export.repository.prisma.js'
 
 describe('PrismaTaxDataExportRepository', () => {

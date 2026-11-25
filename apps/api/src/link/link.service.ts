@@ -12,16 +12,11 @@ import {
   type MasterDataRepository,
 } from '../master-data/master-data.repository.js'
 import { PARTNER_COUPLING_REPOSITORY, type PartnerCouplingRepository, type PartnerCouplingRecord } from './link.repository.js'
+import { isShadowId, shadowIdOf } from '../common/shadow-id.js'
 import type { LinkPersonBDto, LinkResponseDto, SetLinkDto } from './dto/link.dto.js'
 
-const SHADOW_PREFIX = 'spouse_'
-
-function shadowId(userId: string, taxYear: number): string {
-  return `${SHADOW_PREFIX}${userId}_${taxYear}`
-}
-
 function hasOwnAccount(row: PartnerCouplingRecord): boolean {
-  return row.personBUserId !== '' && !row.personBUserId.startsWith(SHADOW_PREFIX)
+  return row.personBUserId !== '' && !isShadowId(row.personBUserId)
 }
 
 /**
@@ -195,10 +190,10 @@ export class LinkService {
             : newInvitation(now)
       await this.repository.upsert(userId, taxYear, {
         filingType: 'zusammen',
-        personBUserId: remains ? existing.personBUserId : shadowId(userId, taxYear),
+        personBUserId: remains ? existing.personBUserId : shadowIdOf(userId, taxYear),
         ...invitation,
       })
-      if (!remains) await this.prefillSpouseFromHousehold(userId, taxYear, shadowId(userId, taxYear))
+      if (!remains) await this.prefillSpouseFromHousehold(userId, taxYear, shadowIdOf(userId, taxYear))
     } else {
       await this.repository.upsert(userId, taxYear, {
         filingType: 'einzel',
