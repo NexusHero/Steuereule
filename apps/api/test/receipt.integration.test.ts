@@ -17,6 +17,7 @@ import { validationExceptionFactory } from '../src/common/validation-exception-f
 import { PrismaService } from '../src/prisma/prisma.service.js'
 import { RECEIPT_REPOSITORY, type ReceiptRepository } from '../src/receipt/receipt.repository.js'
 import { extractSessionCookie } from './support/build-test-app.js'
+import { asDatabaseUser, fixtureClient } from './support/database-fixture.js'
 
 /** Recovers the trusted userId the app minted, from the raw `Set-Cookie`/`Cookie` pair. */
 function userIdFromCookie(cookie: string): string {
@@ -47,7 +48,7 @@ describe('POST/GET /v1/belege — real Postgres (ADR-007/008)', () => {
     )
     await app.init()
     await app.getHttpAdapter().getInstance().ready()
-    prisma = app.get(PrismaService)
+    prisma = fixtureClient(app.get(PrismaService))
   })
 
   afterEach(async () => {
@@ -273,12 +274,12 @@ describe('POST/GET /v1/belege — real Postgres (ADR-007/008)', () => {
     const cap = 3
 
     const results = await Promise.all(
-      Array.from({ length: 12 }, (_, i) => repository.create('row-cap-user', { fileName: `parallel-${i}.pdf` }, cap)),
+      Array.from({ length: 12 }, (_, i) => asDatabaseUser('row-cap-user', repository).create('row-cap-user', { fileName: `parallel-${i}.pdf` }, cap)),
     )
 
     expect(results.filter((record) => record !== null)).toHaveLength(cap)
     expect(await prisma.receipt.count({ where: { userId: 'row-cap-user' } })).toBe(cap)
     // Another account has its own count and its own lock.
-    expect(await repository.create('row-cap-other', { fileName: 'other.pdf' }, cap)).not.toBeNull()
+    expect(await asDatabaseUser('row-cap-other', repository).create('row-cap-other', { fileName: 'other.pdf' }, cap)).not.toBeNull()
   })
 })

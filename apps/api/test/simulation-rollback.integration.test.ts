@@ -12,6 +12,8 @@ import { AppModule } from '../src/app.module.js'
 import { PARTNER_COUPLING_REPOSITORY, type PartnerCouplingRepository } from '../src/link/link.repository.js'
 import { McpReportService } from '../src/mcp/mcp-report.service.js'
 import { PrismaService } from '../src/prisma/prisma.service.js'
+import { runAsDatabaseUser } from '../src/common/database-identity.js'
+import { fixtureClient } from './support/database-fixture.js'
 
 const YEAR = 2025
 
@@ -27,7 +29,7 @@ describe('a simulation leaves the database as it was — real Postgres', () => {
   beforeAll(async () => {
     app = await NestFactory.create<NestFastifyApplication>(AppModule, new FastifyAdapter(), { logger: false })
     await app.init()
-    prisma = app.get(PrismaService)
+    prisma = fixtureClient(app.get(PrismaService))
     report = app.get(McpReportService)
     links = app.get(PARTNER_COUPLING_REPOSITORY)
   })
@@ -74,23 +76,25 @@ describe('a simulation leaves the database as it was — real Postgres', () => {
   it.each([['zusammen'], ['einzel']])('auswirkung_simulieren on kopplung.filingType = %s changes nothing', async (filingType) => {
     const userId = newUser()
     // A joint return the user has, with her placeholder Person B: „einzel“ on trial must not cut it.
-    if (filingType === 'einzel') await links.upsert(userId, YEAR, { personBUserId: `spouse_${userId}_${YEAR}`, filingType: 'zusammen', invitationCode: null, invitationCodeValidUntil: null })
+    if (filingType === 'einzel') await runAsDatabaseUser(userId, () => links.upsert(userId, YEAR, { personBUserId: `spouse_${userId}_${YEAR}`, filingType: 'zusammen', invitationCode: null, invitationCodeValidUntil: null }))
     const before = await snapshot(userId)
 
-    await report.simulate(userId, YEAR, 'kopplung', 'filingType', filingType)
+    await runAsDatabaseUser(userId, () => report.simulate(userId, YEAR, 'kopplung', 'filingType', filingType))
 
     expect(await snapshot(userId)).toEqual(before)
   })
 
   it('szenario_simulieren with several entries, the Kopplung among them, changes nothing', async () => {
     const userId = newUser()
-    const before = await snapshot(userId)
+    await runAsDatabaseUser(userId, async () => {
+      const before = await snapshot(userId)
 
-    await report.simulateEntries(userId, YEAR, [
-      { screen: 'kopplung', field: 'filingType', value: 'zusammen' },
-      { screen: 'lstb', field: 'bruttoarbeitslohn', value: '48000' },
-    ])
+      await report.simulateEntries(userId, YEAR, [
+        { screen: 'kopplung', field: 'filingType', value: 'zusammen' },
+        { screen: 'lstb', field: 'bruttoarbeitslohn', value: '48000' },
+      ])
 
-    expect(await snapshot(userId)).toEqual(before)
+      expect(await snapshot(userId)).toEqual(before)
+    })
   })
 })

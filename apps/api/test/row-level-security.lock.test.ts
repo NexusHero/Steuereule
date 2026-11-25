@@ -157,8 +157,16 @@ describe('every bypass of the row-level policies is listed', () => {
       if (reason === 'test-fixture') expect(used.has(reason)).toBe(false)
       else expect(used.has(reason), `reason ${reason} is unused: strike it`).toBe(true)
     }
-    const fixtureCallers = sources.filter(({ text }) => text.includes('useTestFixtureIdentityOutsideRequests')).map(({ file }) => file)
-    expect(fixtureCallers).toEqual([IDENTITY_MODULE])
+  })
+
+  it('nothing in src runs a query as test-fixture or without a request by default', () => {
+    // The identity comes from a request, a named system path, or nothing (no rows). No module-level fallback.
+    const identity = readFileSync(path.join(apiRoot, IDENTITY_MODULE), 'utf8')
+    expect(identity).toMatch(/return identityStore\.getStore\(\)\n/)
+    expect(identity).not.toMatch(/process\.env\.VITEST|let \w+: DatabaseIdentity/)
+    for (const { file, text } of sources) {
+      if (file !== IDENTITY_MODULE) expect(text, file).not.toMatch(/['"]test-fixture['"]/)
+    }
   })
 
   it('only the Prisma layer sets the identity settings', () => {

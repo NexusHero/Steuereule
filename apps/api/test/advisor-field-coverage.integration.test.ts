@@ -12,6 +12,8 @@ import { CHILD_REPOSITORY, type ChildRepository } from '../src/children/child.re
 import { ConfirmationService } from '../src/confirmation/confirmation.service.js'
 import { AI_WRITABLE_FIELDS, aiWritableFields } from '../src/ki/advisor-safety.js'
 import { PrismaService } from '../src/prisma/prisma.service.js'
+import { runAsDatabaseUser } from '../src/common/database-identity.js'
+import { fixtureClient } from './support/database-fixture.js'
 import { RENTAL_REPOSITORY, type RentalRepository } from '../src/rental/rental.repository.js'
 
 const YEAR = 2025
@@ -55,46 +57,49 @@ describe('every field the owl is told about can be written (#476)', () => {
   beforeAll(async () => {
     app = await NestFactory.create<NestFastifyApplication>(AppModule, new FastifyAdapter(), { logger: false })
     await app.init()
-    prisma = app.get(PrismaService)
+    prisma = fixtureClient(app.get(PrismaService))
     confirmation = app.get(ConfirmationService)
 
-    // Screens with several rows a year need one to write to (the owl creates them through a draft, ADR-0091).
-    const child = await app.get<ChildRepository>(CHILD_REPOSITORY).create(userId, YEAR, { firstName: 'Mila', lastName: 'Muster', geburtsdatum: '2019-05-12' })
-    const rental = await app.get<RentalRepository>(RENTAL_REPOSITORY).create(userId, YEAR)
-    const instances: Partial<Record<Screen, string>> = { kind: child.id, vermietung: rental.id }
+    // As the user, the way the owl's confirmations reach the screens (P11).
+    await runAsDatabaseUser(userId, async () => {
+      // Screens with several rows a year need one to write to (the owl creates them through a draft, ADR-0091).
+      const child = await app.get<ChildRepository>(CHILD_REPOSITORY).create(userId, YEAR, { firstName: 'Mila', lastName: 'Muster', geburtsdatum: '2019-05-12' })
+      const rental = await app.get<RentalRepository>(RENTAL_REPOSITORY).create(userId, YEAR)
+      const instances: Partial<Record<Screen, string>> = { kind: child.id, vermietung: rental.id }
 
-    // Every field the owl may be told about: with the consent to personal data that is all of them (ADR-0091).
-    for (const [screen, fields] of Object.entries(aiWritableFields(true)) as Array<[Screen, readonly string[]]>) {
-      for (const field of fields) {
-        const key = provenanceKey(screen, field, instances[screen])
-        let accepted: string | null = null
-        const reasons: string[] = []
-        for (const value of candidatesFor(screen, field)) {
-          try {
-            await confirmation.writeConfirmedByAdvisor(userId, YEAR, key, value, undefined, undefined, consent)
-            accepted = value
-            break
-          } catch (error) {
-            const reason = error instanceof Error ? ((error as { code?: string }).code ?? error.message.slice(0, 80)) : String(error)
-            if (!reasons.includes(reason)) reasons.push(reason)
+      // Every field the owl may be told about: with the consent to personal data that is all of them (ADR-0091).
+      for (const [screen, fields] of Object.entries(aiWritableFields(true)) as Array<[Screen, readonly string[]]>) {
+        for (const field of fields) {
+          const key = provenanceKey(screen, field, instances[screen])
+          let accepted: string | null = null
+          const reasons: string[] = []
+          for (const value of candidatesFor(screen, field)) {
+            try {
+              await confirmation.writeConfirmedByAdvisor(userId, YEAR, key, value, undefined, undefined, consent)
+              accepted = value
+              break
+            } catch (error) {
+              const reason = error instanceof Error ? ((error as { code?: string }).code ?? error.message.slice(0, 80)) : String(error)
+              if (!reasons.includes(reason)) reasons.push(reason)
+            }
           }
+          results.push({ key, accepted, reasons })
         }
-        results.push({ key, accepted, reasons })
       }
-    }
 
-    // The other direction, after every field holds a valid value: does a field refuse a value that
-    // cannot be right? One that stores it is restored at once, so later reads stay possible.
-    for (const result of results) {
-      if (result.accepted === null) continue
-      try {
-        await confirmation.writeConfirmedByAdvisor(userId, YEAR, result.key, NONSENSE, undefined, undefined, consent)
-        unguarded.push(result.key)
-        await confirmation.writeConfirmedByAdvisor(userId, YEAR, result.key, result.accepted, undefined, undefined, consent).catch(() => {})
-      } catch {
-        // refused, as it should be
+      // The other direction, after every field holds a valid value: does a field refuse a value that
+      // cannot be right? One that stores it is restored at once, so later reads stay possible.
+      for (const result of results) {
+        if (result.accepted === null) continue
+        try {
+          await confirmation.writeConfirmedByAdvisor(userId, YEAR, result.key, NONSENSE, undefined, undefined, consent)
+          unguarded.push(result.key)
+          await confirmation.writeConfirmedByAdvisor(userId, YEAR, result.key, result.accepted, undefined, undefined, consent).catch(() => {})
+        } catch {
+          // refused, as it should be
+        }
       }
-    }
+    })
   }, 120_000)
 
   afterAll(async () => {
