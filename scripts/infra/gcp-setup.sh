@@ -394,7 +394,7 @@ open_url "https://dashboard.stripe.com/apikeys"
 ask_stored_secret STRIPE_SECRET_KEY "Secret Key einfügen (sk_test_… für die Beta):" '^(sk|rk)_(test|live)_'
 open_url "https://dashboard.stripe.com/webhooks"
 step "Webhook-Endpunkt anlegen: https://api.$APP_DOMAIN/v1/zahlung/stripe/webhook"
-step "Ereignisse auswählen: checkout.session.completed, checkout.session.async_payment_succeeded, charge.refunded, charge.dispute.created und charge.dispute.closed"
+step "Ereignisse auswählen: checkout.session.completed, checkout.session.async_payment_succeeded, checkout.session.async_payment_failed, charge.refunded, charge.dispute.created und charge.dispute.closed"
 ask_stored_secret STRIPE_WEBHOOK_SECRET "Signing Secret des Webhooks einfügen (whsec_…):" '^whsec_'
 
 stage "Optional: Google-Login"

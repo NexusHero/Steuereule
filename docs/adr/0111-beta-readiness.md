@@ -178,7 +178,8 @@ E2E, integration (database) and load tiers run in CI.
   `security: dependency audit (production deps)`, `performance: load (many users, seeded accounts, think times)`
   and `static: opentofu validate`, and sets `DEPLOY_STAGING_AUTO` and `AI_EVAL_ENABLED` when ready.
 - The first deployment follows `infra/README.md` step by step; the Stripe webhook subscribes to
-  `checkout.session.completed`, `checkout.session.async_payment_succeeded`, `charge.refunded`,
+  `checkout.session.completed`, `checkout.session.async_payment_succeeded`,
+  `checkout.session.async_payment_failed`, `charge.refunded`,
   `charge.dispute.created` and `charge.dispute.closed`.
 - E2E scenarios that confirm an Anlage without the new body, or rely on the old payment parameter, fail until
   adjusted.

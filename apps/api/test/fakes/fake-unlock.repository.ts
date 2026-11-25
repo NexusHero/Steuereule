@@ -1,4 +1,5 @@
 import type { PaymentProvider, SessionOwner } from '../../src/unlock/payment-provider.js'
+import { applyUnlockFact, unlockFactsOf, unlockStatusOf, type UnlockFact } from '../../src/unlock/unlock-lifecycle.js'
 import type { UnlockRepository, UnlockRowStatus, UnlockTier } from '../../src/unlock/unlock.repository.js'
 
 export interface FakeUnlockRow {
@@ -8,9 +9,12 @@ export interface FakeUnlockRow {
   status: UnlockRowStatus
   tier: UnlockTier
   amountCents: number | null
+  paidAt?: Date | null
+  refundedAt?: Date | null
+  dispute?: string | null
 }
 
-/** In-memory twin of PrismaUnlockRepository with the same transitions (see UnlockRowStatus). */
+/** In-memory twin of PrismaUnlockRepository: the same facts and the same status function (`unlock-lifecycle.ts`). */
 export class FakeUnlockRepository implements UnlockRepository {
   rows: FakeUnlockRow[] = []
   /** Set to make the next createOpenOnes fail, as a database outage after the Stripe session would. */
@@ -37,30 +41,32 @@ export class FakeUnlockRepository implements UnlockRepository {
     return this.rows.filter((row) => row.userId === userId && row.taxYear === taxYear && row.tier === tier).length
   }
 
-  async markPaid(sessionId: string, amountCents: number | null, _am: Date, owner?: SessionOwner): Promise<void> {
-    const row = this.rows.find((r) => r.sessionId === sessionId)
-    if (row) {
-      if (row.status === 'offen' || row.status === 'abgelaufen') Object.assign(row, { status: 'bezahlt', amountCents })
-      return
-    }
-    if (owner && this.users.has(owner.userId)) {
-      this.rows.push({ userId: owner.userId, taxYear: owner.taxYear, sessionId, status: 'bezahlt', tier: owner.tier, amountCents })
-    }
+  async markPaid(sessionId: string, amountCents: number | null, am: Date, owner?: SessionOwner): Promise<void> {
+    this.record(sessionId, { kind: 'paid', at: am }, owner, amountCents)
   }
 
   async markClosed(sessionId: string): Promise<void> {
-    for (const row of this.rows) if (row.sessionId === sessionId && row.status === 'offen') row.status = 'abgelaufen'
+    this.record(sessionId, { kind: 'closed' })
   }
 
-  async revoke(sessionId: string, reason: 'erstattet' | 'angefochten'): Promise<void> {
-    for (const row of this.rows) {
-      if (row.sessionId !== sessionId) continue
-      if (row.status === 'bezahlt' || (reason === 'erstattet' && row.status === 'angefochten')) row.status = reason
+  async revoke(sessionId: string, reason: 'erstattet' | 'angefochten', owner?: SessionOwner): Promise<void> {
+    this.record(sessionId, reason === 'erstattet' ? { kind: 'refunded', at: new Date() } : { kind: 'disputed' }, owner)
+  }
+
+  async restore(sessionId: string, owner?: SessionOwner): Promise<void> {
+    this.record(sessionId, { kind: 'dispute-won' }, owner)
+  }
+
+  private record(sessionId: string, fact: UnlockFact, owner?: SessionOwner, amountCents: number | null = null): void {
+    let row = this.rows.find((r) => r.sessionId === sessionId)
+    if (!row) {
+      if (!owner || !this.users.has(owner.userId)) return
+      row = { userId: owner.userId, taxYear: owner.taxYear, sessionId, status: 'offen', tier: owner.tier, amountCents: null }
+      this.rows.push(row)
     }
-  }
-
-  async restore(sessionId: string): Promise<void> {
-    for (const row of this.rows) if (row.sessionId === sessionId && row.status === 'angefochten') row.status = 'bezahlt'
+    const facts = applyUnlockFact(unlockFactsOf({ status: row.status, paidAt: row.paidAt ?? null, refundedAt: row.refundedAt ?? null, dispute: row.dispute ?? null }), fact)
+    Object.assign(row, { status: unlockStatusOf(facts), paidAt: facts.paidAt, refundedAt: facts.refundedAt, dispute: facts.dispute })
+    if (fact.kind === 'paid' && row.amountCents === null) row.amountCents = amountCents
   }
 
   async isPaid(userId: string, taxYear: number, tier: UnlockTier = 'standard'): Promise<boolean> {

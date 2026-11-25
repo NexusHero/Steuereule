@@ -106,6 +106,32 @@ describe('account lifecycle — real Postgres (P7)', () => {
     expect(await prisma.householdPerson.findUnique({ where: { id: child.id } })).not.toBeNull()
   })
 
+  it('a refund that arrives before the completion event keeps the year locked, and the payment still gets its hold', async () => {
+    const a = await newAccount()
+    await unlocks.createOpenOnes(a, YEAR, `cs_${a}`)
+    await unlocks.revoke(`cs_${a}`, 'erstattet')
+    await unlocks.markPaid(`cs_${a}`, 2_900, new Date('2026-03-01T10:00:00Z'))
+    // The same for a session whose local row was never written: the refund rebuilds it from the owner.
+    await unlocks.revoke(`cs_lost_${a}`, 'erstattet', { userId: a, taxYear: YEAR, tier: 'standard' })
+    await unlocks.markPaid(`cs_lost_${a}`, 2_900, new Date('2026-03-01T10:00:00Z'), { userId: a, taxYear: YEAR, tier: 'standard' })
+
+    expect(await unlocks.isPaid(a, YEAR)).toBe(false)
+    const rows = await prisma.unlock.findMany({ where: { userId: a } })
+    expect(rows.map((row) => row.status)).toEqual(['erstattet', 'erstattet'])
+    expect(await prisma.legalHold.count({ where: { userId: a, resource: 'unlock' } })).toBe(2)
+  })
+
+  it('a redelivered "dispute opened" after a won dispute leaves the year unlocked', async () => {
+    const a = await newAccount()
+    await unlocks.createOpenOnes(a, YEAR, `cs_${a}`)
+    await unlocks.markPaid(`cs_${a}`, 2_900, new Date('2026-03-01T10:00:00Z'))
+    await unlocks.revoke(`cs_${a}`, 'angefochten')
+    expect(await unlocks.isPaid(a, YEAR)).toBe(false)
+    await unlocks.restore(`cs_${a}`)
+    await unlocks.revoke(`cs_${a}`, 'angefochten')
+    expect(await unlocks.isPaid(a, YEAR)).toBe(true)
+  })
+
   it('API-24: a paid unlock and a submitted version outlive the deletion until their hold ends, then the sweep deletes them', async () => {
     const a = await newAccount()
     await unlocks.createOpenOnes(a, YEAR, `cs_${a}`)

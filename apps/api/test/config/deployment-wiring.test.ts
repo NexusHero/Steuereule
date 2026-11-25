@@ -1,6 +1,7 @@
 import { readdirSync, readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
+import { STRIPE_WEBHOOK_EVENTS } from '../../src/unlock/stripe-payment-provider.js'
 import { API_PRODUCTION_SETTINGS, DEPLOY_VARIABLES, WEB_BUILD_ARGS } from '../../src/config/production-config.js'
 
 /**
@@ -175,8 +176,12 @@ describe('deployment wiring: every production value reaches the runtime (beta P1
       expect(inputs).toContain(name)
       expect(wizard, `-var ${name}`).toMatch(new RegExp(`-var "${name}=`))
     }
-    expect(wizard).toMatch(/checkout\.session\.completed/)
-    expect(wizard).toMatch(/checkout\.session\.async_payment_succeeded/)
+    // Every event the webhook handles is one the operator is told to subscribe to, in each place that says so.
+    for (const event of STRIPE_WEBHOOK_EVENTS) {
+      for (const [name, text] of [['the wizard', wizard], ['infra/README.md', read('infra/README.md')], ['ADR-0111', read('docs/adr/0111-beta-readiness.md')]] as const) {
+        expect(text, `${name} names ${event}`).toContain(event)
+      }
+    }
     expect(wizard).toMatch(/rechtliches\/agb/)
     expect(wizard).toMatch(/repos\/\$GITHUB_REPOSITORY\/environments\/\$GH_ENVIRONMENT/)
   })

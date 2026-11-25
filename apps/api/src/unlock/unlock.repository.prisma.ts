@@ -1,7 +1,9 @@
 import { Inject, Injectable } from '@nestjs/common'
+import { Prisma } from '@prisma/client'
 import { PrismaService } from '../prisma/prisma.service.js'
 import { holdPaidUnlock, holdRefundedUnlock } from '../account/legal-hold.prisma.js'
 import type { SessionOwner } from './payment-provider.js'
+import { applyUnlockFact, unlockFactsOf, unlockStatusOf, type UnlockFact } from './unlock-lifecycle.js'
 import type { UnlockRepository, UnlockTier } from './unlock.repository.js'
 
 @Injectable()
@@ -31,49 +33,63 @@ export class PrismaUnlockRepository implements UnlockRepository {
     return this.prisma.unlock.count({ where: { userId, taxYear, tier } })
   }
 
-  async markPaid(sessionId: string, amountCents: number | null, am: Date, owner?: SessionOwner): Promise<void> {
-    // A session that closed in our books can still settle late (an asynchronous payment).
-    const updated = await this.prisma.unlock.updateMany({
-      where: { stripeCheckoutSessionId: sessionId, status: { in: ['offen', 'abgelaufen'] } },
-      data: { status: 'bezahlt', amountCents, paidAt: am },
-    })
-    if (updated.count > 0) return this.holdIfPaid(sessionId, am)
-    if (!owner) return
-    const known = await this.prisma.unlock.findUnique({ where: { stripeCheckoutSessionId: sessionId }, select: { id: true } })
-    if (known) return
-    // The row was never written (API-4): rebuild it from the session's metadata, if the account still exists.
-    const user = await this.prisma.user.findUnique({ where: { id: owner.userId }, select: { id: true } })
-    if (!user) return
-    await this.prisma.unlock.upsert({
-      where: { stripeCheckoutSessionId: sessionId },
-      create: { userId: owner.userId, taxYear: owner.taxYear, tier: owner.tier, stripeCheckoutSessionId: sessionId, status: 'bezahlt', amountCents, paidAt: am },
-      update: {},
-    })
-    await this.holdIfPaid(sessionId, am)
+  markPaid(sessionId: string, amountCents: number | null, am: Date, owner?: SessionOwner): Promise<void> {
+    return this.record(sessionId, { kind: 'paid', at: am }, am, owner, amountCents)
   }
 
-  /** A confirmed payment is a Buchungsbeleg: it gets its legal hold (P7, `account/legal-hold.ts`). */
-  private async holdIfPaid(sessionId: string, now: Date): Promise<void> {
-    const row = await this.prisma.unlock.findUnique({ where: { stripeCheckoutSessionId: sessionId }, select: { id: true, userId: true, paidAt: true, status: true } })
-    if (row?.status === 'bezahlt') await holdPaidUnlock(this.prisma, row, now)
+  markClosed(sessionId: string, now = new Date()): Promise<void> {
+    return this.record(sessionId, { kind: 'closed' }, now)
   }
 
-  async markClosed(sessionId: string): Promise<void> {
-    await this.prisma.unlock.updateMany({ where: { stripeCheckoutSessionId: sessionId, status: 'offen' }, data: { status: 'abgelaufen' } })
+  revoke(sessionId: string, reason: 'erstattet' | 'angefochten', owner?: SessionOwner, now = new Date()): Promise<void> {
+    return this.record(sessionId, reason === 'erstattet' ? { kind: 'refunded', at: now } : { kind: 'disputed' }, now, owner)
   }
 
-  async revoke(sessionId: string, reason: 'erstattet' | 'angefochten'): Promise<void> {
-    // A refund also ends a dispute's limbo; a dispute never overrides a refund.
-    const from = reason === 'erstattet' ? ['bezahlt', 'angefochten'] : ['bezahlt']
-    const { count } = await this.prisma.unlock.updateMany({ where: { stripeCheckoutSessionId: sessionId, status: { in: from } }, data: { status: reason } })
-    if (count === 0 || reason !== 'erstattet') return
-    // The refund ends the entitlement, not the record: the hold stays and counts from the refund year if later.
-    const row = await this.prisma.unlock.findUnique({ where: { stripeCheckoutSessionId: sessionId }, select: { id: true, userId: true, paidAt: true } })
-    if (row) await holdRefundedUnlock(this.prisma, row, new Date())
+  restore(sessionId: string, owner?: SessionOwner, now = new Date()): Promise<void> {
+    return this.record(sessionId, { kind: 'dispute-won' }, now, owner)
   }
 
-  async restore(sessionId: string): Promise<void> {
-    await this.prisma.unlock.updateMany({ where: { stripeCheckoutSessionId: sessionId, status: 'angefochten' }, data: { status: 'bezahlt' } })
+  /**
+   * Stores one fact about the session and the status that follows from all facts, under the row's lock, with
+   * the legal hold of a payment in the same transaction (a paid row never exists without its hold). A session
+   * without a local row (it could not be written after the session was created, API-4) is rebuilt from `owner`,
+   * whichever event comes first: a refund that overtakes the completion must not be lost.
+   */
+  private async record(sessionId: string, fact: UnlockFact, now: Date, owner?: SessionOwner, amountCents: number | null = null): Promise<void> {
+    const once = () =>
+      this.prisma.$transaction(async (tx) => {
+        await tx.$queryRaw`SELECT 1 FROM "Freischaltung" WHERE "stripeCheckoutSessionId" = ${sessionId} FOR UPDATE`
+        let row = await tx.unlock.findUnique({ where: { stripeCheckoutSessionId: sessionId } })
+        if (!row) {
+          if (!owner) return
+          // Only for an account that still exists.
+          const user = await tx.user.findUnique({ where: { id: owner.userId }, select: { id: true } })
+          if (!user) return
+          row = await tx.unlock.create({ data: { userId: owner.userId, taxYear: owner.taxYear, tier: owner.tier, stripeCheckoutSessionId: sessionId } })
+        }
+        const facts = applyUnlockFact(unlockFactsOf(row), fact)
+        await tx.unlock.update({
+          where: { id: row.id },
+          data: {
+            status: unlockStatusOf(facts),
+            paidAt: facts.paidAt,
+            refundedAt: facts.refundedAt,
+            dispute: facts.dispute,
+            ...(fact.kind === 'paid' && row.amountCents === null ? { amountCents } : {}),
+          },
+        })
+        // A payment is a Buchungsbeleg and gets its hold (P7); a refund keeps it and may move it later.
+        const held = { id: row.id, userId: row.userId, paidAt: facts.paidAt }
+        if (facts.refundedAt !== null) await holdRefundedUnlock(tx, held, facts.refundedAt)
+        else if (facts.paidAt !== null) await holdPaidUnlock(tx, held, now)
+      })
+    try {
+      await once()
+    } catch (error) {
+      // Two events rebuilt the same missing row at once: the loser finds it on the second try.
+      if (!(error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002')) throw error
+      await once()
+    }
   }
 
   async isPaid(userId: string, taxYear: number, tier: UnlockTier = 'standard'): Promise<boolean> {
