@@ -15,6 +15,6 @@ import { STORAGE_PORT } from './storage/storage.port.js'
     { provide: STORAGE_PORT, useExisting: PostgresByteaStorageAdapter },
     { provide: RECEIPT_REPOSITORY, useClass: PrismaReceiptRepository },
   ],
-  exports: [RECEIPT_REPOSITORY, STORAGE_PORT, EnvelopeCryptoService, PostgresByteaStorageAdapter],
+  exports: [RECEIPT_REPOSITORY, STORAGE_PORT, EnvelopeCryptoService],
 })
 export class ReceiptStorageModule {}

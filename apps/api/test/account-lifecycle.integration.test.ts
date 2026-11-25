@@ -12,7 +12,7 @@ import { sweepEndedLegalHolds } from '../src/account/lifecycle-sweeps.prisma.js'
 import { personIds, shadowIdOf } from '../src/common/shadow-id.js'
 import { upgradeGuestToAccount } from '../src/auth/guest-account-upgrade.prisma.js'
 import { ENCRYPTED_PRISMA, type EncryptedPrismaClient } from '../src/prisma/encrypted-prisma.provider.js'
-import { PostgresByteaStorageAdapter } from '../src/receipt/storage/postgres-bytea-storage.adapter.js'
+import { STORAGE_PORT, type StoragePort } from '../src/receipt/storage/storage.port.js'
 import { SUBMISSION_REPOSITORY, type SubmissionRepository } from '../src/submission/submission.repository.js'
 import { UNLOCK_REPOSITORY, type UnlockRepository } from '../src/unlock/unlock.repository.js'
 
@@ -25,7 +25,7 @@ describe('account lifecycle — real Postgres (P7)', () => {
   let deletion: AccountDeletionRepository
   let unlocks: UnlockRepository
   let submissions: SubmissionRepository
-  let files: PostgresByteaStorageAdapter
+  let files: StoragePort
   const ids: string[] = []
 
   beforeAll(async () => {
@@ -35,7 +35,7 @@ describe('account lifecycle — real Postgres (P7)', () => {
     deletion = app.get(ACCOUNT_DELETION_REPOSITORY)
     unlocks = app.get(UNLOCK_REPOSITORY)
     submissions = app.get(SUBMISSION_REPOSITORY)
-    files = app.get(PostgresByteaStorageAdapter, { strict: false })
+    files = app.get<StoragePort>(STORAGE_PORT, { strict: false })
   })
 
   afterEach(async () => {

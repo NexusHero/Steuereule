@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto'
 import { Inject, Injectable } from '@nestjs/common'
 import { canonicalJson, type BookingTaxKey, type ChartOfAccounts, type BookkeepingMode, type JournalEntry, type JournalLine, type LogRecord } from '@steuereule/core'
 import { ConflictError } from '../common/domain-error.js'
-import { allowErasure } from '../account/delete-account-transaction.prisma.js'
+import { allowErasure } from '../personal-data/erasure.prisma.js'
 import { ENCRYPTED_PRISMA, type EncryptedPrismaClient } from '../prisma/encrypted-prisma.provider.js'
 import type {
   BankTransactionRecord,

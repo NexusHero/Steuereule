@@ -1,7 +1,7 @@
 // API-24: the periods of the legal holds are exactly the ones the privacy text prints (RETENTION, P9).
 import { RETENTION } from '@steuereule/core'
 import { describe, expect, it } from 'vitest'
-import { filingVersionHoldUntil, holdPaidUnlock, holdRefundedUnlock, paymentHoldUntil } from '../src/account/legal-hold.prisma.js'
+import { filingVersionHoldUntil, holdPaidUnlock, holdRefundedUnlock, paymentHoldUntil } from '../src/personal-data/legal-hold.prisma.js'
 
 function fakeHolds() {
   const rows: { id: string; userId: string; resource: string; resourceId: string; reason: string; holdUntil: Date }[] = []

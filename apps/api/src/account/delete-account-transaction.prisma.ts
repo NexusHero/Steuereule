@@ -2,7 +2,8 @@ import { randomUUID } from 'node:crypto'
 import type { PrismaClient } from '@prisma/client'
 
 import type { DeleteAccountResult, RetainedHold } from './account-deletion.repository.js'
-import { delegateName, genericDeletionEntries, type PersonalDataEntry } from './personal-data-registry.js'
+import { allowErasure } from '../personal-data/erasure.prisma.js'
+import { delegateName, genericDeletionEntries, type PersonalDataEntry } from '../personal-data/personal-data-registry.js'
 import { personIds, shadowIdOf } from '../common/shadow-id.js'
 
 export interface DeleteAccountTestHooks {
@@ -38,18 +39,6 @@ function tableOf(tx: TransactionClient, entry: PersonalDataEntry): UserKeyedTabl
 /** The tables the deletion removes row by row, in registry order (`personal-data-registry.ts`). */
 export function taxDataTables(tx: TransactionClient): UserKeyedTable[] {
   return genericDeletionEntries().map((entry) => tableOf(tx, entry))
-}
-
-/**
- * The transaction-local setting the append-only trigger of migration 20261120100000_self_employment
- * checks: only with it on may a journal entry, its lines, the log or the book be deleted. Art. 17
- * DSGVO wins over the GoBD retention for the app's copy; it is set only inside an erasure.
- */
-export const ERASURE_SETTING = 'steuereule.erasure'
-
-/** Turns the erasure flag on for the rest of this transaction only (`set_config(…, true)`). */
-export async function allowErasure(tx: Pick<TransactionClient, '$executeRaw'>): Promise<void> {
-  await tx.$executeRaw`SELECT set_config(${ERASURE_SETTING}, 'on', true)`
 }
 
 /** The household people a deletion of `userId` removes: the person's household and B's copies in A's (API-23). */

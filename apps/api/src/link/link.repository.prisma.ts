@@ -1,7 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common'
 import { ENCRYPTED_PRISMA, type EncryptedPrismaClient } from '../prisma/encrypted-prisma.provider.js'
 import type { PartnerCouplingRecord, PartnerCouplingRepository } from './link.repository.js'
-import { moveShadowDataToAccount } from '../account/person-data-move.prisma.js'
+import { moveShadowDataToAccount } from '../personal-data/person-data-move.prisma.js'
 import { isShadowId } from '../common/shadow-id.js'
 
 function toRecord(row: {

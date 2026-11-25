@@ -1,6 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common'
 import { PrismaService } from '../prisma/prisma.service.js'
-import { holdPaidUnlock, holdRefundedUnlock } from '../account/legal-hold.prisma.js'
+import { holdPaidUnlock, holdRefundedUnlock } from '../personal-data/legal-hold.prisma.js'
 import type { SessionOwner } from './payment-provider.js'
 import type { UnlockRepository, UnlockTier } from './unlock.repository.js'
 
@@ -52,7 +52,7 @@ export class PrismaUnlockRepository implements UnlockRepository {
     await this.holdIfPaid(sessionId, am)
   }
 
-  /** A confirmed payment is a Buchungsbeleg: it gets its legal hold (P7, `account/legal-hold.ts`). */
+  /** A confirmed payment is a Buchungsbeleg: it gets its legal hold (P7, `personal-data/legal-hold.prisma.ts`). */
   private async holdIfPaid(sessionId: string, now: Date): Promise<void> {
     const row = await this.prisma.unlock.findUnique({ where: { stripeCheckoutSessionId: sessionId }, select: { id: true, userId: true, paidAt: true, status: true } })
     if (row?.status === 'bezahlt') await holdPaidUnlock(this.prisma, row, now)

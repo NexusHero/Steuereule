@@ -190,6 +190,53 @@ function moduleEdges(imports: readonly SourceImport[]): string[] {
   return [...edges].sort()
 }
 
+/** The modules on a cycle of the module graph, one group per cycle (Tarjan's strongly connected components). */
+function moduleCycles(edges: readonly string[]): string[][] {
+  const next = new Map<string, string[]>()
+  for (const edge of edges) {
+    const [from, to] = edge.split(' -> ') as [string, string]
+    next.set(from, [...(next.get(from) ?? []), to])
+    if (!next.has(to)) next.set(to, [])
+  }
+  const index = new Map<string, number>()
+  const low = new Map<string, number>()
+  const stack: string[] = []
+  const onStack = new Set<string>()
+  const groups: string[][] = []
+  const visit = (node: string): void => {
+    index.set(node, index.size)
+    low.set(node, index.get(node)!)
+    stack.push(node)
+    onStack.add(node)
+    for (const target of next.get(node) ?? []) {
+      if (!index.has(target)) {
+        visit(target)
+        low.set(node, Math.min(low.get(node)!, low.get(target)!))
+      } else if (onStack.has(target)) low.set(node, Math.min(low.get(node)!, index.get(target)!))
+    }
+    if (low.get(node) !== index.get(node)) return
+    const group: string[] = []
+    for (let member = stack.pop(); member !== undefined; member = member === node ? undefined : stack.pop()) {
+      onStack.delete(member)
+      group.push(member)
+    }
+    if (group.length > 1) groups.push(group.sort())
+  }
+  for (const node of [...next.keys()].sort()) if (!index.has(node)) visit(node)
+  return groups.sort((a, b) => a[0]!.localeCompare(b[0]!))
+}
+
+/**
+ * The modules that still import each other round in a circle (ADR-0102). Shrink-only: a module that leaves
+ * the cycle is struck from here, and no module may join it. `account` and `personal-data` are off it: the
+ * registry, the legal holds and the erasure flag live in `personal-data`, which imports no feature module.
+ */
+const MODULES_ON_A_CYCLE: readonly string[] = [
+  'advisor', 'assessment', 'assistant-task', 'auth', 'business', 'capital', 'ch-salary-certificate', 'children', 'commute',
+  'confirmation', 'deadlines', 'filing-type-comparison', 'household-core', 'interview', 'ki', 'link', 'lstb', 'master-data',
+  'owl-mode', 'pension', 'printout', 'profile', 'rate-limit', 'receipt', 'rental', 'tax-case', 'tax-estimate', 'unlock',
+]
+
 describe('apps/api dependency rules', () => {
   const imports = scanImports()
 
@@ -250,6 +297,23 @@ describe('apps/api dependency rules', () => {
     ['the bootstrap creating the app', { from: 'main.ts', pkg: '@nestjs/core', file: null, names: ['NestFactory'] }],
   ] satisfies [string, SourceImport][])('accepts %s', (_case, allowed) => {
     expect(boundaryViolations([allowed])).toEqual([])
+  })
+
+  it('finds a cycle, and only a cycle', () => {
+    expect(moduleCycles(['a -> b', 'b -> c', 'c -> a', 'c -> d', 'd -> e'])).toEqual([['a', 'b', 'c']])
+    expect(moduleCycles(['a -> b', 'b -> c'])).toEqual([])
+  })
+
+  it('no module joins a cycle, and the account and personal-data modules are on none (ADR-0102)', () => {
+    const onACycle = moduleCycles(moduleEdges(imports)).flat().sort()
+    expect({ joined: onACycle.filter((name) => !MODULES_ON_A_CYCLE.includes(name)), left: MODULES_ON_A_CYCLE.filter((name) => !onACycle.includes(name)) }).toEqual({ joined: [], left: [] })
+    expect(onACycle).not.toContain('account')
+    expect(onACycle).not.toContain('personal-data')
+  })
+
+  it('personal-data is a leaf: it imports no feature module', () => {
+    const imported = moduleEdges(imports).filter((edge) => edge.startsWith('personal-data -> '))
+    expect(imported.filter((edge) => !['personal-data -> common', 'personal-data -> prisma'].includes(edge))).toEqual([])
   })
 
   it('the module → module imports are exactly the baseline (UPDATE_ARCHITECTURE_BASELINE=1 rewrites it)', () => {

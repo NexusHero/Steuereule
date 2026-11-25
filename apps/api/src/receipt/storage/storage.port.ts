@@ -50,4 +50,9 @@ export interface StoragePort {
   listContentKeys(userId: string): Promise<StoredContentKey[]>
   /** The user's stored files and bytes, for the per-account quota (ADR-0106 D7). */
   usage(userId: string): Promise<StoredReceiptUsage>
+  /**
+   * Re-stores a file for another owner (guest → account at the first sign-in, API-20). A file is bound to
+   * its owner by key and AAD, so it is decrypted and encrypted again; nothing happens when there is none.
+   */
+  move(fromUserId: string, toUserId: string, receiptId: string): Promise<void>
 }

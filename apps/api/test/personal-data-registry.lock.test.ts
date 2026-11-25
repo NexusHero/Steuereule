@@ -6,7 +6,7 @@ import { Prisma } from '@prisma/client'
 import { Prisma as KeystorePrisma } from '@prisma-keystore/client'
 import { describe, expect, it } from 'vitest'
 import { taxDataTables } from '../src/account/delete-account-transaction.prisma.js'
-import { genericDeletionEntries, PERSONAL_DATA_REGISTRY } from '../src/account/personal-data-registry.js'
+import { genericDeletionEntries, PERSONAL_DATA_REGISTRY } from '../src/personal-data/personal-data-registry.js'
 import { ownerOf, personIds, shadowIdOf } from '../src/common/shadow-id.js'
 
 const models = [
@@ -19,7 +19,7 @@ const fieldsOf = (name: string) => Prisma.dmmf.datamodel.models.find((model) => 
 describe('the personal-data registry covers every model', () => {
   it.each(models)('%s is declared', (model) => {
     const entry = byModel.get(model)
-    expect(entry, `${model} is missing from PERSONAL_DATA_REGISTRY (apps/api/src/account/personal-data-registry.ts)`).toBeDefined()
+    expect(entry, `${model} is missing from PERSONAL_DATA_REGISTRY (apps/api/src/personal-data/personal-data-registry.ts)`).toBeDefined()
     if (!entry!.personalData) {
       // "No personal data" needs a reason in every column.
       for (const treatment of [entry!.deletion, entry!.export, entry!.takeover]) {

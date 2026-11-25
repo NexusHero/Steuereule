@@ -1,7 +1,7 @@
 import type { PrismaClient } from '@prisma/client'
 import type { GenericEndpointContext } from 'better-auth'
 import { withSystemDatabaseAccess } from '../common/database-identity.js'
-import { delegateName, entriesWhere, type PersonalDataEntry } from '../account/personal-data-registry.js'
+import { delegateName, entriesWhere, type PersonalDataEntry } from '../personal-data/personal-data-registry.js'
 import { shadowIdOf } from '../common/shadow-id.js'
 import { resolveGuestSessionSecret, verifyGuestSession } from './guest-session.js'
 import { GUEST_SESSION_COOKIE } from './user-context.guard.js'

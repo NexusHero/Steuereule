@@ -91,7 +91,7 @@ E2E, integration (database) and load tiers run in CI.
 
 ### Lifecycle and data protection
 
-- `apps/api/src/account/personal-data-registry.ts` lists every model with how it is tied to a person and how
+- `apps/api/src/personal-data/personal-data-registry.ts` lists every model with how it is tied to a person and how
   deletion, export, guest takeover and holds treat it. Deletion, export and takeover read it; a lock test
   fails for a model that is not in it.
 - Person B's shadow rows are deleted and exported with the account; when B deletes her own account, A's
