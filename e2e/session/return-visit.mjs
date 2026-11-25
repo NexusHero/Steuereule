@@ -698,8 +698,20 @@ async function testDeviceCodeDoesNotSurviveReload(browser, webOrigin) {
  * `svg >> nth=0`/`nth=1` are reliably head/glasses — confirmed against a real render, not assumed
  * from source (see this row's own PR evidence).
  */
+// The splash owl's two animated layers, by their own test ids (not "the first SVG on the page", which any icon
+// added above the owl would take).
 function splashOwlLayers(page) {
-  return { head: page.locator('svg').nth(0).locator('xpath=..'), glasses: page.locator('svg').nth(1).locator('xpath=..') }
+  return { head: page.locator('[data-testid="owl-mark-funke-head-layer"]').first(), glasses: page.locator('[data-testid="owl-mark-funke-glasses-layer"]').first() }
+}
+
+// The entrance runs in the first ~0.8 s after the splash mounts (head, then glasses, 380 ms each). Sampling starts
+// as soon as the owl is in the DOM, not after the network is idle: how long the app's start-up requests take must
+// not decide whether the entrance is still running when the measurement begins.
+async function openSplashForSampling(page, webOrigin) {
+  await page.goto(webOrigin, { waitUntil: 'commit' })
+  const layers = splashOwlLayers(page)
+  await layers.head.waitFor({ state: 'attached', timeout: 15_000 })
+  return layers
 }
 
 function opacityProgressed(samples) {
@@ -730,8 +742,7 @@ async function testSplashEntranceReplaysHonestly(browser, webOrigin) {
   const normalCtx = await newContextAtBreakpoint(browser, 's')
   try {
     const page = await normalCtx.newPage()
-    await page.goto(webOrigin, { waitUntil: 'networkidle' })
-    const layers = splashOwlLayers(page)
+    const layers = await openSplashForSampling(page, webOrigin)
     const [headSamples, glassesSamples] = await Promise.all([
       sampleComputedStyleOverFrames(page, layers.head, ['opacity'], 90),
       sampleComputedStyleOverFrames(page, layers.glasses, ['opacity'], 90),
@@ -750,8 +761,7 @@ async function testSplashEntranceReplaysHonestly(browser, webOrigin) {
   const reducedCtx = await newReducedMotionContext(browser, { viewport: { width: 375, height: 812 } })
   try {
     const page = await reducedCtx.newPage()
-    await page.goto(webOrigin, { waitUntil: 'networkidle' })
-    const layers = splashOwlLayers(page)
+    const layers = await openSplashForSampling(page, webOrigin)
     const [headSamples, glassesSamples] = await Promise.all([
       sampleComputedStyleOverFrames(page, layers.head, ['opacity'], 90),
       sampleComputedStyleOverFrames(page, layers.glasses, ['opacity'], 90),
