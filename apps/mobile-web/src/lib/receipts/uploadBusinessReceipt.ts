@@ -1,3 +1,4 @@
+import { apiFetch } from '../../net/apiFetch'
 import { getApiClientBaseUrl, type ReceiptResponseDto, type uploadReceiptFile } from '@steuereule/api-client'
 
 /**
@@ -11,7 +12,7 @@ export const uploadBusinessReceipt =
     const form = new FormData()
     form.append('file', input.file, input.fileName ?? 'beleg')
     form.append('direction', direction)
-    const response = await fetch(`${getApiClientBaseUrl()}/v1/belege/upload`, { method: 'POST', body: form, credentials: 'include' })
+    const response = await apiFetch(`${getApiClientBaseUrl()}/v1/belege/upload`, { method: 'POST', body: form, credentials: 'include' })
     const text = await response.text()
     let parsed: unknown = null
     try {
