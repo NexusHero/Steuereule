@@ -23,6 +23,14 @@ function hasOwnAccount(row: PartnerCouplingRecord): boolean {
   return row.personBUserId !== '' && !row.personBUserId.startsWith(SHADOW_PREFIX)
 }
 
+/**
+ * Decision 3 (API-3): Person B with an own account agrees per tax year, in B's own app. Until then Person A
+ * sees nothing of B for that year. A shadow B (no account) is A's own record and needs no consent.
+ */
+function personBConsentPending(row: PartnerCouplingRecord): boolean {
+  return hasOwnAccount(row) && (row.personBConsentedAt ?? null) === null
+}
+
 const INVITATION_VALID_MS = 14 * 24 * 60 * 60 * 1000
 
 /**
@@ -76,8 +84,10 @@ export class LinkService {
       return { filingType: 'keine' }
     }
 
+    const pending = row.filingType === 'zusammen' && personBConsentPending(row)
+    const callerIsA = row.personAUserId === userId
     let personB: LinkPersonBDto | null = null
-    if (row.filingType === 'zusammen' && row.personBUserId) {
+    if (row.filingType === 'zusammen' && row.personBUserId && !(callerIsA && pending)) {
       const otherId = row.personAUserId === userId ? row.personBUserId : row.personAUserId
       const [prof, sd] = await Promise.all([
         this.profileRepository.findByUserId(otherId),
@@ -101,6 +111,8 @@ export class LinkService {
       invitationCodeValidUntil: row.invitationCodeValidUntil?.toISOString() ?? null,
       personBHasOwnAccount: hasOwnAccount(row),
       personB,
+      personBConsentPending: pending,
+      consentRequestedFromMe: pending && !callerIsA,
     }
   }
 
@@ -141,6 +153,8 @@ export class LinkService {
   ): Promise<{ spouseUserId: string; recordable: boolean; firstName: string | null; lastName: string | null } | null> {
     const row = await this.repository.findByUserAndYear(userId, taxYear)
     if (!row || row.filingType !== 'zusammen' || !row.personBUserId) return null
+    // Without B's consent for the year, A's owl knows nothing of B either (decision 3).
+    if (row.personAUserId === userId && personBConsentPending(row)) return null
     const spouseUserId = row.personAUserId === userId ? row.personBUserId : row.personAUserId
     const profile = await this.profileRepository.findByUserId(spouseUserId)
     return {
@@ -161,11 +175,13 @@ export class LinkService {
       // ADR-0062: a couple linked once stays linked in every later year — no new invitation (AC 2).
       const partner = await this.household?.partnerLink(userId)
       if (partner && partner.personBUserId !== '' && linkActiveIn(partner, taxYear) && !(existing?.filingType === 'zusammen' && existing.personBUserId !== '')) {
+        // A new year of the link: B is asked in B's own app before A sees anything of B (decision 3, API-3).
         await this.repository.upsert(userId, taxYear, {
           filingType: 'zusammen',
           personBUserId: partner.personBUserId,
           invitationCode: null,
           invitationCodeValidUntil: null,
+          personBConsentedAt: null,
         })
         return this.get(userId, taxYear)
       }
@@ -188,6 +204,7 @@ export class LinkService {
         personBUserId: '',
         invitationCode: null,
         invitationCodeValidUntil: null,
+        personBConsentedAt: null,
       })
     }
 
@@ -266,14 +283,25 @@ export class LinkService {
     // The interview may have set up this user's own joint return already (UX review H3). As long as no
     // spouse account joined it, it is only a placeholder: joining the partner's return replaces it.
     const own = await this.repository.findByUserAndYear(userId, taxYear)
-    if (own && own.id !== row.id && own.personAUserId === userId) {
-      if (hasOwnAccount(own)) {
-        throw new InvalidInputError('ALREADY_COUPLED', 'This year is already coupled with another account.')
-      }
-      await this.repository.delete(userId, taxYear)
+    const ownPlaceholder = own !== null && own.id !== row.id && own.personAUserId === userId
+    if (ownPlaceholder && hasOwnAccount(own)) {
+      throw new InvalidInputError('ALREADY_COUPLED', 'This year is already coupled with another account.')
     }
-    await this.repository.setPersonB(row.id, userId)
+    // One code, one redeemer (API-8): the claim is a compare-and-set; a concurrent second redeemer loses.
+    const claimed = await this.repository.claimInvitation(code, taxYear, userId, now)
+    if (!claimed) throw new NotFoundError('INVITATION_CODE_INVALID', 'The invitation code is invalid.')
+    if (ownPlaceholder) await this.repository.delete(userId, taxYear)
     await this.household?.linkPartner(row.personAUserId, userId, taxYear)
+    return this.get(userId, taxYear)
+  }
+
+  /** Person B agrees, in B's own app, to share this year with Person A (decision 3, API-3). */
+  async consentForYear(userId: string, taxYear: number, now = new Date()): Promise<LinkResponseDto> {
+    const row = await this.repository.findByUserAndYear(userId, taxYear)
+    if (!row || row.filingType !== 'zusammen' || row.personBUserId !== userId || row.personAUserId === userId) {
+      throw new NotFoundError('NO_CONSENT_REQUESTED', 'Für dieses Jahr wartet keine Zusammenveranlagung auf deine Zustimmung.')
+    }
+    if (personBConsentPending(row)) await this.repository.recordPersonBConsent(row.id, userId, now)
     return this.get(userId, taxYear)
   }
 

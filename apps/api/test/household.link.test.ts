@@ -74,3 +74,47 @@ describe('spouse linked once (#452 decision 2, AC 2)', () => {
     expect(y2026.invitationCode).not.toBeNull()
   })
 })
+
+// API-3 / decision 3: Person B agrees per tax year in B's own app; until then A sees nothing of B for that year.
+describe('per-year consent of Person B (decision 3, API-3)', () => {
+  it('a later year of the link shows A nothing of B until B agrees; B is asked in B’s own app', async () => {
+    await profiles.upsert(B, { firstName: 'Sabine', lastName: 'Muster', steuerId: '12345678901', steuernummer: null })
+    const y2025 = await link.set(A, 2025, { filingType: 'zusammen' })
+    await link.joinWithCode(B, 2025, y2025.invitationCode!)
+    expect((await link.get(A, 2025)).personB?.firstName).toBe('Sabine')
+
+    const y2026 = await link.set(A, 2026, { filingType: 'zusammen' })
+    expect(y2026.personB).toBeNull()
+    expect(y2026.personBConsentPending).toBe(true)
+    expect(await link.spouseForAdvisor(A, 2026)).toBeNull()
+    expect((await link.get(B, 2026)).consentRequestedFromMe).toBe(true)
+
+    await link.consentForYear(B, 2026)
+    const shared = await link.get(A, 2026)
+    expect(shared.personBConsentPending).toBe(false)
+    expect(shared.personB?.steuerId).toBe('12345678901')
+  })
+
+  it('only Person B can agree, and only to a year that waits for it', async () => {
+    const y2025 = await link.set(A, 2025, { filingType: 'zusammen' })
+    await expect(link.consentForYear(A, 2025)).rejects.toMatchObject({ code: 'NO_CONSENT_REQUESTED' })
+    await link.joinWithCode(B, 2025, y2025.invitationCode!)
+    await expect(link.consentForYear('someone-else', 2025)).rejects.toMatchObject({ code: 'NO_CONSENT_REQUESTED' })
+  })
+
+  it('a code redeemed once cannot be redeemed by a second account (API-8)', async () => {
+    const y2025 = await link.set(A, 2025, { filingType: 'zusammen' })
+    await link.joinWithCode(B, 2025, y2025.invitationCode!)
+    await expect(link.joinWithCode('user-third', 2025, y2025.invitationCode!)).rejects.toMatchObject({ code: 'INVITATION_CODE_INVALID' })
+    expect((await link.get(A, 2025)).personBUserId).toBe(B)
+  })
+
+  it('the linked partner cannot delete a household person across every year; Person A can', async () => {
+    const y2025 = await link.set(A, 2025, { filingType: 'zusammen' })
+    await link.joinWithCode(B, 2025, y2025.invitationCode!)
+    await household.view(A, 2025)
+    const spouse = (await household.view(A, 2025)).persons[0]
+    const personId = spouse?.personId ?? 'any-person'
+    await expect(household.deletePerson(B, personId, 2025)).rejects.toMatchObject({ code: 'ONLY_HOUSEHOLD_OWNER_DELETES' })
+  })
+})

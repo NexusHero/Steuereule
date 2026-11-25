@@ -74,6 +74,10 @@ export interface LinkResponseDto {
   personBHasOwnAccount?: boolean;
   /** @nullable */
   personB?: LinkPersonBDto | null;
+  /** Person B (own account) has not yet agreed to share this year; until then Person A sees nothing of B for it (decision 3). */
+  personBConsentPending?: boolean;
+  /** The caller is Person B and is asked to agree to share this year with Person A (decision 3). */
+  consentRequestedFromMe?: boolean;
 }
 
 export type SetLinkDtoFilingType = typeof SetLinkDtoFilingType[keyof typeof SetLinkDtoFilingType];

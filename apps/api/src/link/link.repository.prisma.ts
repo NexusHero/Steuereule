@@ -12,6 +12,7 @@ function toRecord(row: {
   filingType: string
   invitationCode: string | null
   invitationCodeValidUntil: Date | null
+  personBConsentedAt?: Date | null
 }): PartnerCouplingRecord {
   return {
     id: row.id,
@@ -21,6 +22,7 @@ function toRecord(row: {
     filingType: row.filingType as 'einzel' | 'zusammen',
     invitationCode: row.invitationCode,
     invitationCodeValidUntil: row.invitationCodeValidUntil,
+    personBConsentedAt: row.personBConsentedAt ?? null,
   }
 }
 
@@ -63,6 +65,7 @@ export class PrismaLinkRepository implements PartnerCouplingRepository {
       filingType: 'einzel' | 'zusammen'
       invitationCode?: string | null
       invitationCodeValidUntil?: Date | null
+      personBConsentedAt?: Date | null
     },
   ): Promise<PartnerCouplingRecord> {
     const [row] = await this.prisma.$transaction([
@@ -80,12 +83,14 @@ export class PrismaLinkRepository implements PartnerCouplingRepository {
           filingType: data.filingType,
           invitationCode: data.invitationCode ?? null,
           invitationCodeValidUntil: data.invitationCodeValidUntil ?? null,
+          personBConsentedAt: data.personBConsentedAt ?? null,
         },
         update: {
           personBUserId: data.personBUserId,
           filingType: data.filingType,
           ...(data.invitationCode !== undefined && { invitationCode: data.invitationCode }),
           ...(data.invitationCodeValidUntil !== undefined && { invitationCodeValidUntil: data.invitationCodeValidUntil }),
+          ...(data.personBConsentedAt !== undefined && { personBConsentedAt: data.personBConsentedAt }),
         },
       }),
       this.prisma.taxDataAccessLog.create({
@@ -95,19 +100,30 @@ export class PrismaLinkRepository implements PartnerCouplingRepository {
     return toRecord(row)
   }
 
-  async setPersonB(id: string, personBUserId: string): Promise<PartnerCouplingRecord> {
+  async claimInvitation(code: string, taxYear: number, personBUserId: string, now: Date): Promise<PartnerCouplingRecord | null> {
     return this.prisma.$transaction(async (tx) => {
-      const before = await tx.taxYearLink.findUnique({ where: { id }, select: { personBUserId: true, taxYear: true } })
-      const row = await tx.taxYearLink.update({
-        where: { id },
-        data: { personBUserId, invitationCode: null, invitationCodeValidUntil: null },
+      const before = await tx.taxYearLink.findUnique({ where: { invitationCode: code }, select: { id: true, personBUserId: true, taxYear: true } })
+      if (!before || before.taxYear !== taxYear) return null
+      // Compare-and-set on the code (API-8): the first redeemer clears it, a concurrent second one matches nothing.
+      const claimed = await tx.taxYearLink.updateMany({
+        where: { id: before.id, invitationCode: code, invitationCodeValidUntil: { gt: now } },
+        data: { personBUserId, invitationCode: null, invitationCodeValidUntil: null, personBConsentedAt: now },
       })
+      if (claimed.count !== 1) return null
       // What A recorded for B under the shadow id is B's from now on (API-2): no orphaned shadow rows.
-      if (before && isShadowId(before.personBUserId) && before.personBUserId !== personBUserId) {
+      if (isShadowId(before.personBUserId) && before.personBUserId !== personBUserId) {
         await moveShadowDataToAccount(tx, before.personBUserId, personBUserId, before.taxYear)
       }
-      return toRecord(row)
+      await tx.taxDataAccessLog.create({ data: { userId: personBUserId, action: 'WRITE', resource: 'kopplung' } })
+      return toRecord(await tx.taxYearLink.findUniqueOrThrow({ where: { id: before.id } }))
     })
+  }
+
+  async recordPersonBConsent(id: string, personBUserId: string, now: Date): Promise<PartnerCouplingRecord | null> {
+    const updated = await this.prisma.taxYearLink.updateMany({ where: { id, personBUserId }, data: { personBConsentedAt: now } })
+    if (updated.count !== 1) return null
+    await this.prisma.taxDataAccessLog.create({ data: { userId: personBUserId, action: 'WRITE', resource: 'kopplung' } })
+    return toRecord(await this.prisma.taxYearLink.findUniqueOrThrow({ where: { id } }))
   }
 
   async delete(personAUserId: string, taxYear: number): Promise<boolean> {
