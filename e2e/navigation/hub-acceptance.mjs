@@ -6,6 +6,7 @@ import { startStack } from '../harness/stack.mjs'
 import { fail, waitForBucketHeadroom } from '../harness/rate-limit.mjs'
 import { skipSplash, submitLogin } from '../harness/flows.mjs'
 import { PASSWORD, createAccount, call } from '../harness/api-account.mjs'
+import { snapshotPage } from '../harness/failure-snapshot.mjs'
 
 const AUTH_BUCKET = { windowMs: 10_000, max: 3, shared: true }
 const TAG = 'hub-acceptance'
@@ -27,6 +28,8 @@ async function isEnabled(locator) {
   return locator.evaluate((el) => !el.hasAttribute('disabled') && el.getAttribute('aria-disabled') !== 'true')
 }
 
+let pageForSnapshot = null
+
 async function main() {
   const { apiOrigin, webOrigin, sql, stop } = await startStack()
   const browser = await launchBrowser()
@@ -37,6 +40,7 @@ async function main() {
 
     const ctx = await newContextAtBreakpoint(browser, 'l')
     const page = await ctx.newPage()
+    pageForSnapshot = page
     guardAgainst429(page, fail, '/api/auth/')
     await skipSplash(page, webOrigin)
     await waitForBucketHeadroom(AUTH_BUCKET, 'sign-in/email', TAG)
@@ -141,6 +145,10 @@ async function main() {
     await ctx.close()
     await user.api.dispose()
     console.log(`[${TAG}] PASS — #443 AC 1, AC 6, AC 7 and the 375 px year chips verified in the browser.`)
+  } catch (error) {
+    // Before the browser closes: what the page showed when the step failed (log and artifact).
+    if (pageForSnapshot) await snapshotPage(pageForSnapshot, TAG)
+    throw error
   } finally {
     await closeBrowser(browser)
     await stop()
