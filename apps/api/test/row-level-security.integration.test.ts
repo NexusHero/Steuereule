@@ -54,6 +54,7 @@ afterAll(async () => {
     await tx.$executeRaw`DELETE FROM "Profile" WHERE "userId" LIKE ${`%${run}%`}`
     await tx.$executeRaw`DELETE FROM "TaxYear" WHERE "userId" LIKE ${`%${run}%`}`
     await tx.$executeRaw`DELETE FROM "SteuerjahrKopplung" WHERE "personAUserId" LIKE ${`%${run}%`}`
+    await tx.$executeRaw`DELETE FROM "TaxDataAccessLog" WHERE "userId" LIKE ${`%${run}%`}`
   })
   await Promise.all([owner.$disconnect(), runtime.$disconnect()])
 })
@@ -140,6 +141,36 @@ describe('user A against user B, through raw SQL', () => {
     await consent(null)
     expect(await as({ userId: B }, yearsOfC)).toEqual([])
     expect(await as({ userId: C }, yearsOfC)).toEqual([2025, 2026])
+  })
+})
+
+describe("a READ row in the partner's own access trail", () => {
+  // B is Person A of the joint year with C. A read of C's data by B writes a READ row marked `partner` into C's trail.
+  const append = (writer: string, trailOwner: string, action: 'READ' | 'WRITE', source: string | null) =>
+    as({ userId: writer }, (tx) =>
+      tx.$executeRaw`INSERT INTO "TaxDataAccessLog" ("id", "userId", "action", "resource", "source") VALUES (${randomUUID()}, ${trailOwner}, ${action}::"AuditAction", 'lstb', ${source})`,
+    )
+  const consent = (at: Date | null) =>
+    owner.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT set_config('steuereule.system', 'test-fixture', true)`
+      await tx.$executeRaw`UPDATE "SteuerjahrKopplung" SET "personBZustimmungAm" = ${at} WHERE "personAUserId" = ${B} AND "personBUserId" = ${C}`
+    })
+
+  it('is allowed for a coupled partner after the consent, as READ marked partner, and nothing else', async () => {
+    await consent(new Date())
+    await expect(append(B, C, 'READ', 'partner')).resolves.toBe(1)
+    // Person B (C) reaches Person A (B) without a consent of its own.
+    await expect(append(C, B, 'READ', 'partner')).resolves.toBe(1)
+    await expect(append(B, C, 'WRITE', 'partner')).rejects.toThrow(/row-level security/)
+    await expect(append(B, C, 'READ', null)).rejects.toThrow(/row-level security/)
+    await expect(append(B, C, 'READ', 'assistent:x')).rejects.toThrow(/row-level security/)
+    // An uncoupled user writes into nobody's trail.
+    await expect(append(A, C, 'READ', 'partner')).rejects.toThrow(/row-level security/)
+  })
+
+  it('is refused while Person B has not agreed', async () => {
+    await consent(null)
+    await expect(append(B, C, 'READ', 'partner')).rejects.toThrow(/row-level security/)
   })
 })
 

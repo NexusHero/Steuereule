@@ -264,7 +264,7 @@ function certificate(userId: string, name: string): CrossBorderSalaryStatementRe
 }
 
 describe('the partner row of a read is the one cross-user write (P11)', () => {
-  it("writes the caller's row as the caller and Person B's row under partner-read-audit", async () => {
+  it("writes both rows as the caller: the access-log policy, not a system path, allows B's partner row", async () => {
     const written: { userId: string; identity: unknown }[] = []
     const audit = { append: async (entry: { userId: string }) => void written.push({ userId: entry.userId, identity: currentDatabaseIdentity() }) }
 
@@ -272,7 +272,7 @@ describe('the partner row of a read is the one cross-user write (P11)', () => {
 
     expect(written).toEqual([
       { userId: 'person-a', identity: { kind: 'user', userId: 'person-a' } },
-      { userId: 'person-b', identity: { kind: 'system', reason: 'partner-read-audit' } },
+      { userId: 'person-b', identity: { kind: 'user', userId: 'person-a' } },
     ])
   })
 })

@@ -181,6 +181,13 @@ E2E, integration (database) and load tiers run in CI.
   `steuereule_app` binds the policies.
 - Paths that cross users (sweeps, account deletion, guest takeover, the payment webhook, better-auth lookups,
   the device flow, invitations) run under a named system reason; a lock test lists every call site.
+- What belongs to nobody runs anonymously, not as a system path: the readiness probe, and a public route called
+  without a session (the consent screen's client lookup; with a session it runs as that user). An anonymous query
+  carries neither a user nor a system reason, so it passes only what a policy grants to everyone. A query with no
+  identity at all is refused (`MissingDatabaseIdentityError`).
+- A read of Person B's data writes a READ row into B's own access trail. The access-log policy allows exactly that
+  cross-user row (action READ, source `partner`, for a partner the coupling joins, consent included), not a
+  system path.
 - Partners: Person B reaches Person A's rows of every year. Person A reaches Person B's rows of a table with a
   tax year (29 tables) only for the years B agreed to (`app_rls.agreed_partner_years()`), and of a table
   without one (profile, master data, owl settings) while B agreed to some year; the app checks the year for

@@ -4,8 +4,9 @@
 // transaction, and sends nothing extra without an identity (the policies then answer with no rows).
 import { describe, expect, it } from 'vitest'
 import { of, lastValueFrom } from 'rxjs'
-import { runAsDatabaseUser, systemDatabaseClient, withSystemDatabaseAccess } from '../src/common/database-identity.js'
+import { runAnonymouslyInDatabase, runAsDatabaseUser, systemDatabaseClient, withSystemDatabaseAccess } from '../src/common/database-identity.js'
 import { DatabaseIdentityInterceptor } from '../src/auth/database-identity.interceptor.js'
+import { PUBLIC_ROUTE } from '../src/auth/public-route.js'
 import { currentDatabaseIdentity, MissingDatabaseIdentityError } from '../src/common/database-identity.js'
 import { PrismaTransactionRunner, transactionAwareClient } from '../src/prisma/transaction.js'
 
@@ -128,8 +129,11 @@ describe('the row-level identity of a query', () => {
 })
 
 describe('DatabaseIdentityInterceptor', () => {
-  const contextFor = (userId: string | undefined) =>
-    ({ getType: () => 'http', switchToHttp: () => ({ getRequest: () => ({ userId }) }) }) as never
+  const ordinaryHandler = () => undefined
+  const publicHandler = () => undefined
+  Reflect.defineMetadata(PUBLIC_ROUTE, true, publicHandler)
+  const contextFor = (userId: string | undefined, handler: () => void = ordinaryHandler) =>
+    ({ getType: () => 'http', getHandler: () => handler, switchToHttp: () => ({ getRequest: () => ({ userId }) }) }) as never
 
   it("runs the handler as the user the guard established", async () => {
     const seen = await lastValueFrom(
@@ -141,6 +145,20 @@ describe('DatabaseIdentityInterceptor', () => {
   it('a request without a user runs with no identity', async () => {
     const seen = await lastValueFrom(new DatabaseIdentityInterceptor().intercept(contextFor(undefined), { handle: () => of(currentDatabaseIdentity()) }))
     expect(seen).toBeUndefined()
+  })
+
+  it('a public route without a session runs anonymously; with one it runs as that user', async () => {
+    const run = (userId: string | undefined) =>
+      lastValueFrom(new DatabaseIdentityInterceptor().intercept(contextFor(userId, publicHandler), { handle: () => of(currentDatabaseIdentity()) }))
+    expect(await run(undefined)).toEqual({ kind: 'anonymous', reason: 'public-route' })
+    expect(await run('user-a')).toEqual({ kind: 'user', userId: 'user-a' })
+  })
+
+  it('an anonymous query carries neither a user nor a system reason to Postgres', async () => {
+    const log: string[] = []
+    const client = transactionAwareClient(fakeClient(log) as never) as unknown as { profile: { findMany(args: unknown): PromiseLike<unknown> } }
+    await runAnonymouslyInDatabase('public-route', () => client.profile.findMany({}))
+    expect(log.some((entry) => entry.includes('set(steuereule.user_id,,steuereule.system,)'))).toBe(true)
   })
 })
 

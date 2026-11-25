@@ -120,9 +120,13 @@ export class UserContextGuard implements CanActivate {
     const request = context.switchToHttp().getRequest<RequestWithUserId>()
     const reply = context.switchToHttp().getResponse<FastifyReply>()
 
-    // A public route reads nobody's data: no identity, and above all no new guest (H2-17).
+    // A public route never creates a guest (H2-17). It runs as the signed-in user when a valid session comes with
+    // it (the consent screen of a client created in that user's profile), and anonymously otherwise.
     const handler = typeof context.getHandler === 'function' ? context.getHandler() : undefined
-    if (handler !== undefined && Reflect.getMetadata(PUBLIC_ROUTE, handler) === true) return true
+    if (handler !== undefined && Reflect.getMetadata(PUBLIC_ROUTE, handler) === true) {
+      await this.attachSessionIfValid(request)
+      return true
+    }
 
     // The guest sweep rides on any guarded request (ADR-0109); it runs at most once an hour per process.
     this.guestActivity?.seen()
@@ -231,6 +235,18 @@ export class UserContextGuard implements CanActivate {
       if (error instanceof UnauthorizedException) return this.challengeFor(request, 'invalid_token')
       throw error
     }
+  }
+
+  /** A public route's optional session: attached when valid, ignored otherwise; no guest, no cookie change, no 401. */
+  private async attachSessionIfValid(request: RequestWithUserId): Promise<void> {
+    const cookies = request.cookies as Record<string, string | undefined> | undefined
+    if (!cookies?.[this.betterAuth.sessionCookieName]) return
+    const session = await this.betterAuth.auth.api.getSession({ headers: fromNodeHeaders(request.headers) })
+    if (!session || !isSessionWithinAbsoluteCap(session.session?.createdAt)) return
+    request[USER_ID_REQUEST_KEY] = session.user.id
+    request[USER_ID_KIND_REQUEST_KEY] = 'session'
+    request[AUTH_CONTEXT_REQUEST_KEY] = { source: 'nutzer' }
+    request[EMAIL_VERIFIED_REQUEST_KEY] = session.user.emailVerified === true
   }
 
   private async acceptCookieOrGuest(request: RequestWithUserId, reply: FastifyReply): Promise<boolean> {

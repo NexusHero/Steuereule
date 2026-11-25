@@ -28,6 +28,7 @@ interface RawCapable {
   $executeRaw(query: TemplateStringsArray, ...values: unknown[]): PromiseLike<number>
 }
 
+// An anonymous identity sets both settings empty: the policies see neither a user nor a system path.
 function setIdentity(client: object, identity: DatabaseIdentity | undefined): PromiseLike<number> {
   const userId = identity?.kind === 'user' ? identity.userId : ''
   const system = identity?.kind === 'system' ? identity.reason : ''

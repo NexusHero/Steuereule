@@ -12,6 +12,7 @@ import {
   UserContextGuard,
 } from '../src/auth/user-context.guard.js'
 import { SESSION_ABSOLUTE_MAX_AGE_MS } from '../src/auth/session-lifetime.js'
+import { PUBLIC_ROUTE } from '../src/auth/public-route.js'
 import type { BetterAuthBundle } from '../src/auth/auth.tokens.js'
 import { createResettableRateLimitStorage } from '../src/auth/rate-limit-storage.js'
 import type { AssistantClient, BearerTokenRepository } from '../src/auth/bearer-token.repository.js'
@@ -196,6 +197,45 @@ describe('UserContextGuard', () => {
       expect(request[USER_ID_REQUEST_KEY]).toBeUndefined()
       expect(request[USER_ID_KIND_REQUEST_KEY]).toBeUndefined()
       expect(clearCookie).toHaveBeenCalledWith(SESSION_COOKIE_NAME, { path: '/' })
+    })
+  })
+
+  // --- A public route (H2-17): never a guest; the signed-in user when a valid session comes with it ---
+  describe('a public route', () => {
+    const publicHandler = () => undefined
+    Reflect.defineMetadata(PUBLIC_ROUTE, true, publicHandler)
+    const publicContext = (cookies: Record<string, string | undefined>) => {
+      const made = makeContext(cookies)
+      const context = { ...(made.context as object), getHandler: () => publicHandler } as unknown as ExecutionContext
+      return { ...made, context }
+    }
+
+    it('with a valid session runs as that user, and mints no guest cookie', async () => {
+      const getSession = vi.fn().mockResolvedValue({ user: { id: 'owner-id', emailVerified: true }, session: {} })
+      const guard = new UserContextGuard(makeBetterAuthBundle(getSession), fakeTokens())
+      const { context, request, setCookie } = publicContext({ [SESSION_COOKIE_NAME]: 'sess' })
+      await expect(guard.canActivate(context)).resolves.toBe(true)
+      expect(request[USER_ID_REQUEST_KEY]).toBe('owner-id')
+      expect(setCookie).not.toHaveBeenCalled()
+    })
+
+    it('without a session stays without a user: no guest, no cookie, no session lookup', async () => {
+      const getSession = vi.fn()
+      const guard = new UserContextGuard(makeBetterAuthBundle(getSession), fakeTokens())
+      const { context, request, setCookie } = publicContext({})
+      await expect(guard.canActivate(context)).resolves.toBe(true)
+      expect(request[USER_ID_REQUEST_KEY]).toBeUndefined()
+      expect(setCookie).not.toHaveBeenCalled()
+      expect(getSession).not.toHaveBeenCalled()
+    })
+
+    it('an expired session is ignored, not answered with 401: the route is public', async () => {
+      const getSession = vi.fn().mockResolvedValue(null)
+      const guard = new UserContextGuard(makeBetterAuthBundle(getSession), fakeTokens())
+      const { context, request, clearCookie } = publicContext({ [SESSION_COOKIE_NAME]: 'expired' })
+      await expect(guard.canActivate(context)).resolves.toBe(true)
+      expect(request[USER_ID_REQUEST_KEY]).toBeUndefined()
+      expect(clearCookie).not.toHaveBeenCalled()
     })
   })
 

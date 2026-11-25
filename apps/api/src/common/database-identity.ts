@@ -28,17 +28,27 @@ export const SYSTEM_DATABASE_REASONS = {
   'checkout-session': 'opening a checkout session writes its unlock row: unlock rows are never written by a request itself',
   'model-usage-stats': "the owl's model profiles: the usage column (tokens, timings, model) of every user's latest answers, nothing else",
   'field-key-rotation': 'rotate:field-key re-encrypts every encrypted column of every user (operator script, never the server)',
-  'partner-read-audit': "the READ row a read of Person B's data writes into B's own access trail (DSGVO Art. 15), nothing else",
-  'oauth-client-info': "the consent screen's client lookup: a client's public name, address and redirect hosts, before sign-in",
-  'readiness-probe': 'the readiness probe: SELECT 1 on the pool, reads no table, runs outside any request',
   'test-fixture': "the DB test tier only: a suite's own seeding, cleanup and assertions (`test/support/database-fixture.ts`)",
 } as const
 
 export type SystemDatabaseReason = keyof typeof SYSTEM_DATABASE_REASONS
 
+/**
+ * Queries that belong to nobody: they run with neither a user nor a system reason, so the policies let through only
+ * what a policy grants to everyone (the public metadata of a self-registered OAuth client) and tables without
+ * personal data. Unlike a system reason they pass no policy; they only say "no user here, on purpose".
+ */
+export const ANONYMOUS_DATABASE_REASONS = {
+  'readiness-probe': 'the readiness probe: SELECT 1 on the pool, outside any request',
+  'public-route': 'a public route (@PublicRoute) called without a session: the consent screen before sign-in',
+} as const
+
+export type AnonymousDatabaseReason = keyof typeof ANONYMOUS_DATABASE_REASONS
+
 export type DatabaseIdentity =
   | { readonly kind: 'user'; readonly userId: string }
   | { readonly kind: 'system'; readonly reason: SystemDatabaseReason }
+  | { readonly kind: 'anonymous'; readonly reason: AnonymousDatabaseReason }
 
 const identityStore = new AsyncLocalStorage<DatabaseIdentity>()
 
@@ -70,6 +80,11 @@ export function withSystemDatabaseAccess<T>(reason: SystemDatabaseReason, work: 
   return identityStore.run({ kind: 'system', reason }, work)
 }
 
+/** Runs `work` as nobody, on purpose: no user's rows and no system path, only what the policies grant to everyone. */
+export function runAnonymouslyInDatabase<T>(reason: AnonymousDatabaseReason, work: () => T): T {
+  return identityStore.run({ kind: 'anonymous', reason }, work)
+}
+
 /**
  * `source`, pulled under the identity of the caller of this function. A generator handed to a streamed
  * response is pulled after the handler returned, outside the request's identity; its queries would see
@@ -96,6 +111,7 @@ export function keepDatabaseIdentity<T>(source: AsyncIterable<T>): AsyncGenerato
 export function sameDatabaseIdentity(a: DatabaseIdentity | undefined, b: DatabaseIdentity | undefined): boolean {
   if (a === undefined || b === undefined) return a === b
   if (a.kind === 'user') return b.kind === 'user' && a.userId === b.userId
+  if (a.kind === 'anonymous') return b.kind === 'anonymous'
   return b.kind === 'system'
 }
 
