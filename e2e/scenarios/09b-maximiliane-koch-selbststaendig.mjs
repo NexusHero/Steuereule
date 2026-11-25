@@ -402,9 +402,14 @@ export async function runScenario09b(browser, webOrigin) {
   await see('elster-nicht-freigeschaltet')
   await byId('elster-freischalten').click()
   await see('freischalten-seite')
-  // Back from the checkout (`?zahlung=erfolg`) the area returns to the help, which says the year is unlocked.
+  // Back from the checkout (`?zahlung=erfolg`) the area returns to the help, which says the year is unlocked —
+  // once the unlock status confirms it (WEB-35: the return alone proves nothing; until then it says "being
+  // confirmed"). Nothing is paid in this scenario, so the status read is answered as the webhook would leave it.
+  const unlockStatus = `**/v1/steuerjahre/${YEAR}/freischaltung`
+  await page.route(unlockStatus, (route) => route.fulfill(json({ status: 'freigeschaltet', tier: 'selbststaendig', filingPath: 'elster-ausfuellhilfe', price: null })))
   await page.goto(`${webOrigin}/app/steuerjahr/${YEAR}/selbststaendig/elster?zahlung=erfolg`, { waitUntil: 'networkidle' })
   await see('elster-freigeschaltet')
+  await page.unroute(unlockStatus)
   await page.goto(`${webOrigin}/app/steuerjahr/${YEAR}/selbststaendig/elster?zahlung=abbruch`, { waitUntil: 'networkidle' })
   await see('elster-abgebrochen')
   // A year without any value to type says so instead of offering empty forms.
