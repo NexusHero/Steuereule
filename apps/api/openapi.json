@@ -876,6 +876,40 @@
         ]
       }
     },
+    "/v1/steuerjahre/{jahr}/kopplung/zustimmung": {
+      "post": {
+        "operationId": "LinkController_consent",
+        "parameters": [
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": 2026,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Person B agrees, in B’s own app, to share this tax year with Person A.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LinkResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Requires account."
+          }
+        },
+        "tags": [
+          "kopplung"
+        ]
+      }
+    },
     "/v1/stammdaten": {
       "get": {
         "operationId": "MasterDataController_read",
@@ -8736,17 +8770,7 @@
     "/v1/oauth/client-info": {
       "get": {
         "operationId": "AssistantsController_getClientInfo",
-        "parameters": [
-          {
-            "name": "clientId",
-            "required": true,
-            "in": "query",
-            "schema": {
-              "example": "client_xyz",
-              "type": "string"
-            }
-          }
-        ],
+        "parameters": [],
         "responses": {
           "200": {
             "description": "Public client metadata for the OAuth consent screen.",
@@ -10124,6 +10148,14 @@
                 "$ref": "#/components/schemas/LinkPersonBDto"
               }
             ]
+          },
+          "personBConsentPending": {
+            "type": "boolean",
+            "description": "Person B (own account) has not yet agreed to share this year; until then Person A sees nothing of B for it (decision 3)."
+          },
+          "consentRequestedFromMe": {
+            "type": "boolean",
+            "description": "The caller is Person B and is asked to agree to share this year with Person A (decision 3)."
           }
         },
         "required": [

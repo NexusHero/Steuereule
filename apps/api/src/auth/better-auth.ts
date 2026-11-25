@@ -22,6 +22,8 @@ import { mergeTrustedOrigins } from './trusted-origins.js'
 import { SESSION_IDLE_EXPIRES_IN_SECONDS, SESSION_UPDATE_AGE_SECONDS } from './session-lifetime.js'
 import { forceRevokeOtherSessionsOnPasswordChange } from './force-session-rotation.js'
 import { capSessionUpdateExpiry } from './session-absolute-cap.js'
+import { withoutProviderTokens } from './provider-tokens.js'
+import { sessionListRedactionPlugin } from './session-list-redaction.js'
 import { CLIENT_IP_HEADER } from './client-ip.js'
 import { revokeOauthGrantsOnPasswordChangePlugin, stepUpPlugin } from './step-up.js'
 import { enforceAccountSignInLimit, enforceVerifyPasswordAccountLimit } from './account-sign-in-limit.js'
@@ -223,6 +225,8 @@ function buildOptions(options: CreateBetterAuthOptions & { rateLimitStorage: Res
       // Passkey, assistant consent and social linking need a fresh sign-in or a re-entered password (ADR-0106 D2).
       stepUpPlugin,
       revokeOauthGrantsOnPasswordChangePlugin,
+      // The device list gets no session tokens (WEB-22).
+      sessionListRedactionPlugin,
       // The private key is stored encrypted under BETTER_AUTH_SECRET (the default): a database read alone no
       // longer lets anyone sign assistant tokens for any user (ADR-0106 D6).
       jwt({
@@ -305,6 +309,11 @@ function buildOptions(options: CreateBetterAuthOptions & { rateLimitStorage: Res
       }),
     },
     databaseHooks: {
+      // Provider tokens are not stored (API-18): every account write drops them.
+      account: {
+        create: { before: async (account) => withoutProviderTokens(account) },
+        update: { before: async (account) => withoutProviderTokens(account) },
+      },
       session: {
         create: {
           after: createGuestAccountUpgradeHook(prisma, receiptFiles),

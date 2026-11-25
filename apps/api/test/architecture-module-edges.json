@@ -57,6 +57,7 @@
   "assistenten -> audit",
   "assistenten -> auth",
   "assistenten -> prisma",
+  "assistenten -> rate-limit",
   "audit -> prisma",
   "auth -> account",
   "auth -> common",

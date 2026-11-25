@@ -39,6 +39,10 @@ const COSTLY: Readonly<Record<string, { readonly effect: Effect; readonly limite
   'DeviceController.requestCode': { effect: 'abuse' },
   'DeviceController.getPending': { effect: 'abuse' },
   'DeviceController.approve': { effect: 'abuse' },
+  // Polled by the device; bounded per address (H2-16).
+  'DeviceController.exchangeToken': { effect: 'abuse' },
+  // Public, unauthenticated (H2-17).
+  'AssistantsController.getClientInfo': { effect: 'abuse' },
   'McpController.streamable': { effect: 'model', limiter: 'McpRateLimiter: sessions per account and calls per tool (ADR-0052)' },
   'McpController.sse': { effect: 'model', limiter: 'McpRateLimiter: sessions per account and calls per tool (ADR-0052)' },
   'McpController.messages': { effect: 'model', limiter: 'McpRateLimiter: sessions per account and calls per tool (ADR-0052)' },
@@ -47,7 +51,6 @@ const COSTLY: Readonly<Record<string, { readonly effect: Effect; readonly limite
 /** Controllers none of whose routes is costly. Mail is sent only by better-auth, which has its own limiter. */
 const CHEAP_CONTROLLERS: Readonly<Record<string, string>> = {
   AssessmentController: 'Bescheid fields from the database.',
-  AssistantsController: 'Lists and revokes assistant grants.',
   AuthCapabilitiesController: 'Static.',
   CapabilitiesController: 'Static.',
   CapitalController: 'Mask rows.',
@@ -102,9 +105,9 @@ const CHEAP_ROUTES: Readonly<Record<string, { readonly why: string; readonly han
     handlers: ['check', 'liveValues', 'getJob', 'template'],
   },
   ReceiptController: { why: 'Reads and assignments; the file download streams a stored blob.', handlers: ['list', 'downloadFile', 'setAssignment', 'delete'] },
-  DeviceController: { why: 'Polled by the device every few seconds (RFC 8628); issuing the session is a database write.', handlers: ['exchangeToken'] },
+  AssistantsController: { why: 'Lists and revokes assistant grants.', handlers: ['listConnected', 'revoke'] },
   McpController: { why: 'Ends or probes an MCP session.', handlers: ['streamableOther'] },
-  LinkController: { why: 'The coupling of the year and Person B’s facts.', handlers: ['get', 'set', 'updatePersonB'] },
+  LinkController: { why: 'The coupling of the year and Person B’s facts.', handlers: ['get', 'set', 'updatePersonB', 'consent'] },
 }
 
 interface Route {

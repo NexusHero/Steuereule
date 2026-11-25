@@ -1,4 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger'
+import { IsNotEmpty, IsString, MaxLength } from 'class-validator'
 
 export class ConnectedAssistantDto {
   @ApiProperty({ type: String, example: 'client_xyz123' })
@@ -30,6 +31,14 @@ export class OauthRedirectTargetDto {
     description: 'Where that address leads, for the consent screen: the host of a web address, "localhost" for an app on the user\'s machine, or an app scheme such as "cursor://".',
   })
   destination!: string
+}
+
+export class OauthClientInfoQueryDto {
+  @ApiProperty({ type: String, example: 'client_xyz', maxLength: 128 })
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(128)
+  clientId!: string
 }
 
 export class OauthClientInfoDto {
