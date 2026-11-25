@@ -131,10 +131,20 @@ E2E, integration (database) and load tiers run in CI.
 - Every table with personal data (54) has row-level security enabled and forced. Queries run as the role
   `steuereule_app` (no `BYPASSRLS`, owns no table); the request's identity is a transaction-local setting set
   with the first query. Without a setting a query sees nothing.
+- Two logins. The migration login owns the schema and runs migrations, backfills and the field-key rotation;
+  only the migrate job has its URL (`MIGRATE_DATABASE_URL`, read by the job's own service account). The API
+  connects with a runtime login that the migrate job creates from `RUNTIME_DATABASE_URL`: member of
+  `steuereule_app` and of nothing else, owner of nothing, none of SUPERUSER, BYPASSRLS, CREATEROLE, CREATEDB.
+  In production the API checks this at boot and refuses to start otherwise
+  (`apps/api/src/config/assert-database-role.ts`). The append-only tables let only their owner re-encrypt.
+  A developer's database and the test tiers keep one login; there the per-connection switch to
+  `steuereule_app` binds the policies.
 - Paths that cross users (sweeps, account deletion, guest takeover, the payment webhook, better-auth lookups,
   the device flow, invitations) run under a named system reason; a lock test lists every call site.
 - Residual: partners may read and write each other's rows in the database, narrowing stays with the app; the
-  keystore database has no policies; row-level security does not protect against SQL injection.
+  keystore database has no policies and one login (its rows are keys wrapped under `KEYSTORE_MASTER_KEY`, which
+  the database never holds); the two identity settings are plain session settings, so row-level security does
+  not protect against SQL injection or against code that names a system reason.
 
 ### Configuration and deployment
 

@@ -13,6 +13,11 @@ output "api_runtime_service_account" {
   value       = google_service_account.api_runtime.email
 }
 
+output "migrate_service_account" {
+  description = "GitHub repo variable GCP_MIGRATE_SA: the migrate job's account, the only one that reads MIGRATE_DATABASE_URL."
+  value       = google_service_account.migrate.email
+}
+
 output "web_runtime_service_account" {
   description = "GitHub repo variable GCP_WEB_SA."
   value       = google_service_account.web_runtime.email

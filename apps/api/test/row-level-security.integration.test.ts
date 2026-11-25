@@ -156,3 +156,70 @@ describe("the API's client against Postgres", () => {
     expect(seen).toBeNull()
   })
 })
+
+// The role model: the API's own login, as the migrate job creates it, against the real roles of this database.
+describe('the runtime login', () => {
+  const role = `rls_api_${run}`
+  const password = `runtime-${randomUUID()}`
+  const loginUrl = (() => {
+    const parsed = new URL(url)
+    parsed.username = role
+    parsed.password = password
+    return parsed.toString()
+  })()
+  let login: PrismaClient
+
+  beforeAll(async () => {
+    // @ts-expect-error — a plain .mjs script of the migrate job, without type declarations
+    const { provisionRuntimeLogin, runtimeLoginPlan } = await import('../scripts/runtime-database-login.mjs')
+    await provisionRuntimeLogin(owner, runtimeLoginPlan({ DATABASE_URL: url, RUNTIME_DATABASE_URL: loginUrl }))
+    login = new PrismaClient({ datasources: { db: { url: withRuntimeDatabaseRole(loginUrl) } } })
+  })
+
+  afterAll(async () => {
+    await login.$disconnect()
+    await owner.$executeRawUnsafe(`DROP ROLE IF EXISTS "${role}"`)
+  })
+
+  it('passes the boot check, and the login of the migrations does not', async () => {
+    const { assertDatabaseRole } = await import('../src/config/assert-database-role.js')
+    await expect(assertDatabaseRole({ env: { NODE_ENV: 'production', DATABASE_URL: loginUrl } })).resolves.toBeUndefined()
+    await expect(assertDatabaseRole({ env: { NODE_ENV: 'production', DATABASE_URL: url } })).rejects.toThrow(/Refusing to start/)
+  })
+
+  it('works under the policies like the app role: its own rows with an identity, nothing without', async () => {
+    expect(await login.profile.count({ where: { userId: { contains: run } } })).toBe(0)
+    const seen = await login.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT set_config('steuereule.user_id', ${A}, true)`
+      return ownersSeen(tx)
+    })
+    expect(seen).toEqual([A, shadowOfA].sort())
+  })
+
+  it('cannot step around the policies, with or without the role option in its URL', async () => {
+    const bare = new PrismaClient({ datasources: { db: { url: loginUrl } } })
+    try {
+      for (const client of [login, bare]) {
+        await expect(client.$executeRawUnsafe('ALTER TABLE "Profile" DISABLE ROW LEVEL SECURITY')).rejects.toThrow(/must be owner/)
+        await expect(client.$executeRawUnsafe('DROP POLICY p11_owner ON "Profile"')).rejects.toThrow(/must be owner/)
+        await expect(client.$executeRawUnsafe('CREATE OR REPLACE FUNCTION app_rls.is_system() RETURNS boolean LANGUAGE sql AS $fn$ SELECT true $fn$')).rejects.toThrow(/must be owner|permission denied/)
+        await expect(client.$executeRawUnsafe('CREATE TABLE public.rls_probe (id int)')).rejects.toThrow(/permission denied/)
+        const [me] = await owner.$queryRaw<{ name: string }[]>`SELECT session_user::text AS name`
+        await expect(client.$executeRawUnsafe(`SET ROLE "${me!.name}"`)).rejects.toThrow(/permission denied/)
+        expect(await client.profile.count({ where: { userId: { contains: run } } })).toBe(0)
+      }
+    } finally {
+      await bare.$disconnect()
+    }
+  })
+
+  it('is not the party the append-only tables let re-encrypt; the owner of the tables is', async () => {
+    const mayReencrypt = Prisma.sql`SELECT pg_has_role(current_user, (SELECT c.relowner FROM pg_class c WHERE c.relname = 'Buchung' AND c.relnamespace = 'public'::regnamespace), 'USAGE') AS allowed`
+    expect(await login.$queryRaw<{ allowed: boolean }[]>(mayReencrypt)).toEqual([{ allowed: false }])
+    expect(await runtime.$queryRaw<{ allowed: boolean }[]>(mayReencrypt)).toEqual([{ allowed: false }])
+    expect(await owner.$queryRaw<{ allowed: boolean }[]>(mayReencrypt)).toEqual([{ allowed: true }])
+    const [fn] = await owner.$queryRaw<{ src: string }[]>`SELECT prosrc AS src FROM pg_proc WHERE proname = 'steuereule_append_only'`
+    expect(fn!.src).toContain("pg_has_role(current_user, (SELECT c.relowner FROM pg_class c WHERE c.oid = TG_RELID), 'USAGE')")
+    expect(fn!.src).not.toContain("current_user <> 'steuereule_app'")
+  })
+})

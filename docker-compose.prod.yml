@@ -25,7 +25,10 @@ x-api-env: &api-env
   # psql) uses `localhost:5432` instead (the published port). Two different consumers,
   # two different addresses for the same database — not a duplicated source of truth, the
   # same asymmetry ADR-0010's own e2e harness already documents.
-  DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+  #
+  # The API's own login (P11): it owns no table and cannot become the owner, so row-level security holds
+  # against whoever has this URL. The `migrate` service below creates it; only that service gets the owner.
+  DATABASE_URL: postgresql://${POSTGRES_APP_USER}:${POSTGRES_APP_PASSWORD}@postgres:5432/${POSTGRES_DB}
   GUEST_SESSION_SECRET: ${GUEST_SESSION_SECRET}
   PRISMA_FIELD_ENCRYPTION_KEY: ${PRISMA_FIELD_ENCRYPTION_KEY}
   # Salt of the e-mail lookup hash (ADR-0109); must never change once accounts exist.
@@ -74,7 +77,11 @@ services:
     # migrations and exit. Plain node, no pnpm: the runtime image has the Prisma CLI and the schema but
     # not the workspace tooling, and its user cannot write to /repo.
     command: ['sh', '-c', 'cd /repo/apps/api && node scripts/migrate-deploy.mjs']
-    environment: *api-env
+    environment:
+      <<: *api-env
+      # This job is the owner of the tables (migrations, backfills); it creates the login of RUNTIME_DATABASE_URL.
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      RUNTIME_DATABASE_URL: postgresql://${POSTGRES_APP_USER}:${POSTGRES_APP_PASSWORD}@postgres:5432/${POSTGRES_DB}
     depends_on:
       postgres:
         condition: service_healthy

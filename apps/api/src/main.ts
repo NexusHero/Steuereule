@@ -14,6 +14,7 @@ import { mountBetterAuthHandler } from './auth/mount-better-auth.js'
 import { installClientIpHeader } from './auth/client-ip.js'
 import { validationExceptionFactory } from './common/validation-exception-factory.js'
 import { assertDatabaseMigrated, assertKeystoreMigrated } from './config/assert-database-migrated.js'
+import { assertDatabaseRole } from './config/assert-database-role.js'
 import { assertDatabaseReachable } from './config/assert-database-reachable.js'
 import { assertEnvNotFileSourced } from './config/assert-env-not-file-sourced.js'
 import { assertProductionConfig } from './config/production-config.js'
@@ -107,6 +108,8 @@ async function bootstrap(): Promise<void> {
   await assertDatabaseReachable()
 
   await assertDatabaseMigrated()
+  // Production only: the login must be the runtime login, never the owner of the tables (P11).
+  await assertDatabaseRole()
   await assertKeystoreMigrated()
 
   const app = await buildApp()

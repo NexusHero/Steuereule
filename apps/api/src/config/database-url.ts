@@ -27,9 +27,13 @@ export function resolveDatabaseUrl(env: NodeJS.ProcessEnv = process.env): string
 
 /**
  * The role the API queries as (P11, migration `…_p11_row_level_security`): it owns no table and has neither
- * SUPERUSER nor BYPASSRLS, so the row-level policies bind every query of the app, also where the login role
- * of `DATABASE_URL` is the superuser of a container (compose, CI) or the owner of the tables (Cloud SQL).
- * Migrations, seeds and operator scripts keep the login role.
+ * SUPERUSER nor BYPASSRLS, so the row-level policies bind every query of the app.
+ *
+ * In production `DATABASE_URL` is the runtime login, which the migrate job creates as a member of this role
+ * and of nothing else (`scripts/runtime-database-login.mjs`); `assertDatabaseRole` refuses to start as any
+ * other login. The switch below is then a no-op in privileges and keeps `current_user` the same everywhere.
+ * Where one login serves migrations and the app (a developer's database, the test tiers) the switch is what
+ * binds the policies.
  */
 export const RUNTIME_DATABASE_ROLE = 'steuereule_app'
 
