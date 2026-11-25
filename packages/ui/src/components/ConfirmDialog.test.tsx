@@ -13,6 +13,7 @@ function dialog(overrides: Partial<Parameters<typeof ConfirmDialog>[0]> = {}) {
       confirmLabel="Löschen"
       onConfirm={onConfirm}
       onCancel={onCancel}
+      testID="confirm-dialog"
       {...overrides}
     />,
   )
@@ -54,7 +55,7 @@ describe('ConfirmDialog (WEB-37, WEB-38)', () => {
 
   it('speaks English when the interface is English', () => {
     const onCancel = vi.fn()
-    renderUi(<ConfirmDialog title="Delete?" body="Gone." confirmLabel="Delete" onConfirm={() => {}} onCancel={onCancel} />, { lng: 'en' })
+    renderUi(<ConfirmDialog title="Delete?" body="Gone." confirmLabel="Delete" onConfirm={() => {}} onCancel={onCancel} testID="confirm-dialog" />, { lng: 'en' })
     expect(screen.getByTestId('confirm-dialog-cancel').textContent).toBe('Cancel')
   })
 })

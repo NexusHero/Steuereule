@@ -10,7 +10,7 @@ import { useStepUp } from './useStepUp'
  * The step-up as a block inside a screen (P6): shown when an action answered `FRESH_AUTH_REQUIRED`. The password
  * where the account has one, the passkey or provider otherwise; `onConfirmed` retries the action.
  */
-export function StepUpInline({ onConfirmed, onCancel, testID = 'stepup' }: { readonly onConfirmed: () => void; readonly onCancel: () => void; readonly testID?: string }) {
+export function StepUpInline({ onConfirmed, onCancel, testID }: { readonly onConfirmed: () => void; readonly onCancel: () => void; readonly testID: string }) {
   const theme = useTheme()
   const { t } = useTranslation(APP_NS)
   const stepUp = useStepUp()

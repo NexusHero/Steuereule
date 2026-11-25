@@ -23,7 +23,8 @@ export interface ConfirmDialogProps {
   readonly tone?: ConfirmTone
   readonly onConfirm: () => void
   readonly onCancel: () => void
-  readonly testID?: string
+  /** Every dialog names its action (`rueckfrage-<id>`), so a gate and a reader can tell two dialogs apart. */
+  readonly testID: string
 }
 
 /**
@@ -31,7 +32,7 @@ export interface ConfirmDialogProps {
  * of the page: the focus starts on „Abbrechen“ (the safe choice), stays inside while it is open (the
  * platform modal traps it), Escape cancels, and the focus returns to the opener when it closes.
  */
-export function ConfirmDialog({ title, body, confirmLabel, cancelLabel, tone = 'destructive', onConfirm, onCancel, testID = 'confirm-dialog' }: ConfirmDialogProps) {
+export function ConfirmDialog({ title, body, confirmLabel, cancelLabel, tone = 'destructive', onConfirm, onCancel, testID }: ConfirmDialogProps) {
   const t = useTheme()
   const { t: tr } = useTranslation(UI_NS)
   const titleId = useId()
