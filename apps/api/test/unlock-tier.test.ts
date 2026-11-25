@@ -2,7 +2,7 @@
 // standard tier keeps working exactly as before for everyone else.
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { UnlockService } from '../src/unlock/unlock.service.js'
-import type { CheckoutLookup, CheckoutRequest, PaymentProvider, PaymentEvent } from '../src/unlock/payment-provider.js'
+import { PriceNotConfiguredError, type CheckoutLookup, type CheckoutRequest, type PaymentProvider, type PaymentEvent } from '../src/unlock/payment-provider.js'
 import type { UnlockTier } from '../src/unlock/unlock.repository.js'
 import { FakePaymentProvider } from '../src/unlock/fake-payment-provider.js'
 import { resolveStripeConfig, StripePaymentProvider } from '../src/unlock/stripe-payment-provider.js'
@@ -94,7 +94,15 @@ describe('unlock tiers (ADR-0101 §21)', () => {
       priceIdSelfEmployed: 'p2',
     })
     const stripe = new StripePaymentProvider({ secretKey: 'sk_test_unit', webhookSecret: 'wh', priceId: 'p1' })
-    await expect(stripe.createCheckout({ userId: 'u', taxYear: 2025, successUrl: 'https://a', cancelUrl: 'https://b', tier: 'selbststaendig' })).rejects.toThrow(/STRIPE_PRICE_ID_SELBSTSTAENDIG/)
+    await expect(stripe.createCheckout({ userId: 'u', taxYear: 2025, successUrl: 'https://a', cancelUrl: 'https://b', tier: 'selbststaendig' })).rejects.toBeInstanceOf(PriceNotConfiguredError)
+  })
+
+  it('a deployment without the self-employment price answers 503 PAYMENT_TIER_NOT_CONFIGURED at the checkout', async () => {
+    process.env.SELBSTSTAENDIGE_ENABLED = 'true'
+    const stripe = new StripePaymentProvider({ secretKey: 'sk_test_unit', webhookSecret: 'wh', priceId: 'p1' })
+    const service = new UnlockService(repository, stripe, 'https://app', interviewWith('Selbstständig'))
+    await expect(service.startCheckout('u1', 2025)).rejects.toMatchObject({ code: 'PAYMENT_TIER_NOT_CONFIGURED' })
+    expect(repository.rows).toEqual([])
   })
 
   it('the fake provider serves both tiers', async () => {

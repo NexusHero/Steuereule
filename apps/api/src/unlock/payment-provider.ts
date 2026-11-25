@@ -50,6 +50,14 @@ export interface Price {
   currency: string
 }
 
+/** No price is configured for the tier, so it cannot be sold in this environment. */
+export class PriceNotConfiguredError extends Error {
+  constructor(readonly tier: UnlockTier) {
+    super(`No Stripe price is configured for the tier "${tier}".`)
+    this.name = 'PriceNotConfiguredError'
+  }
+}
+
 /** The provider could not be asked while resolving a verified event: the webhook answers 503, so it is redelivered. */
 export class PaymentProviderUnavailableError extends Error {
   constructor(message: string, options?: { cause?: unknown }) {

@@ -6,7 +6,7 @@ import { declaresSelfEmployment, filingPathOf, selfEmploymentEnabled, type Filin
 import { answersFrom } from '../interview/answers.js'
 import { INTERVIEW_ANSWER_REPOSITORY, type InterviewAnswerRepository } from '../interview/interview-answer.repository.js'
 import { UNLOCK_REPOSITORY, type UnlockRepository, type UnlockTier } from './unlock.repository.js'
-import { PAYMENT_PROVIDER, PaymentProviderUnavailableError, type PaymentProvider, type Price } from './payment-provider.js'
+import { PAYMENT_PROVIDER, PaymentProviderUnavailableError, PriceNotConfiguredError, type PaymentProvider, type Price } from './payment-provider.js'
 
 export const WEB_APP_URL_TOKEN = Symbol('WEB_APP_URL')
 
@@ -93,7 +93,7 @@ export class UnlockService {
         idempotencyKey: `checkout:${userId}:${taxYear}:${tier}:${attempt}`,
       })
     } catch (error) {
-      if (tier === 'selbststaendig' && error instanceof Error && error.message.includes('STRIPE_PRICE_ID_SELBSTSTAENDIG')) {
+      if (error instanceof PriceNotConfiguredError && error.tier === 'selbststaendig') {
         throw new UnavailableError('PAYMENT_TIER_NOT_CONFIGURED', 'Die Freischaltung für Selbstständige ist hier noch nicht eingerichtet.')
       }
       throw error
