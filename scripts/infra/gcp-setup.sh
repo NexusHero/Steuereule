@@ -327,6 +327,9 @@ say "einen Uptime-Check auf https://api.$APP_DOMAIN und einen Budget-Alarm bei $
 TOFU_VARS=(-var "project_id=$GCP_PROJECT_ID" -var "billing_account_id=$BILLING_ACCOUNT_ID" -var "region=$REGION" \
   -var "environment=$TF_ENVIRONMENT" -var "github_environments=$TF_GITHUB_ENVIRONMENTS" \
   -var "alert_email=$ALERT_EMAIL" -var "api_hostname=api.$APP_DOMAIN" -var "monthly_budget_eur=$MONTHLY_BUDGET_EUR")
+# Staging stack: IMAGE_READERS='["serviceAccount:steuereule-deployer@<production project>.iam.gserviceaccount.com"]'
+# lets the production deployer pull the API image staging ran (ADR-0113). Set it once the production stack exists.
+[[ -z "${IMAGE_READERS:-}" ]] || TOFU_VARS+=(-var "image_readers=$IMAGE_READERS")
 "$TOFU" -chdir="$TOFU_DIR" plan -input=false "${TOFU_VARS[@]}" -out=beta.tfplan
 warn "Ab jetzt laufen Kosten: Cloud SQL (zwei Instanzen) ca. 20 € im Monat in beta/staging, in production mit eigenem"
 warn "Kern ca. 100 € (mit Hochverfügbarkeit ca. 200 €), dazu Redis ca. 35 €; Richtwerte, kein Angebot."
@@ -457,17 +460,20 @@ stage "GitHub-Umgebung und Variablen"
 say "Alle Deploy-Variablen kommen in die GitHub-Umgebung '$GH_ENVIRONMENT', keine ins Repository (OPS-13)."
 ME_ID="$(gh api user --jq .id)"
 if [[ "$GH_ENVIRONMENT" == production ]]; then
-  # Required reviewers (you) and deployments from main only (H2-31).
+  # Required reviewers (you), and deployments from release tags v* only: production is deployed by publishing a
+  # release (.github/workflows/release.yml, ADR-0113).
   ENV_BODY="{\"reviewers\":[{\"type\":\"User\",\"id\":$ME_ID}],\"deployment_branch_policy\":{\"protected_branches\":false,\"custom_branch_policies\":true}}"
+  POLICY_NAME='v*'; POLICY_TYPE=tag
 else
   ENV_BODY='{"deployment_branch_policy":{"protected_branches":false,"custom_branch_policies":true}}'
+  POLICY_NAME=main; POLICY_TYPE=branch
 fi
 if printf '%s' "$ENV_BODY" | gh api -X PUT "repos/$GITHUB_REPOSITORY/environments/$GH_ENVIRONMENT" --input - >/dev/null 2>&1; then
-  say "GitHub-Umgebung $GH_ENVIRONMENT angelegt (Deploys nur von main$([[ "$GH_ENVIRONMENT" == production ]] && printf ', Freigabe durch dich'))."
+  say "GitHub-Umgebung $GH_ENVIRONMENT angelegt (Deploys nur von $([[ "$GH_ENVIRONMENT" == production ]] && printf 'Release-Tags v*' || printf 'main')$([[ "$GH_ENVIRONMENT" == production ]] && printf ', Freigabe durch dich'))."
   gh api -X POST "repos/$GITHUB_REPOSITORY/environments/$GH_ENVIRONMENT/deployment-branch-policies" \
-    -f name=main -f type=branch >/dev/null 2>&1 || note "Branch-Regel 'main' bestand schon."
+    -f name="$POLICY_NAME" -f type="$POLICY_TYPE" >/dev/null 2>&1 || note "Regel '$POLICY_NAME' bestand schon."
 else
-  SKIPPED+=("GitHub-Umgebung $GH_ENVIRONMENT von Hand anlegen: Settings → Environments → New environment; Deployment branches: nur main; für production Required reviewers (infra/README.md)")
+  SKIPPED+=("GitHub-Umgebung $GH_ENVIRONMENT von Hand anlegen: Settings → Environments → New environment; Deployment branches and tags: $([[ "$GH_ENVIRONMENT" == production ]] && printf 'nur Tag-Regel v*' || printf 'nur main'); für production Required reviewers (infra/README.md)")
   warn "Konnte die GitHub-Umgebung nicht anlegen (Rechte oder Plan); bitte von Hand, siehe Zusammenfassung."
 fi
 set_var GCP_ENVIRONMENT "$GH_ENVIRONMENT"
@@ -483,6 +489,15 @@ set_var GCP_KEYSTORE_SQL_INSTANCE "$KEYSTORE_SQL_CONNECTION"
 # Cloud SQL and Redis have private addresses only; the deploy joins this network (Direct VPC egress).
 set_var GCP_VPC_NETWORK "$(tofu_output vpc_network)"
 set_var GCP_VPC_SUBNET "$(tofu_output vpc_subnet)"
+if [[ "$GH_ENVIRONMENT" == production ]]; then
+  # Production deploys the API image staging ran, it builds none (ADR-0113): where is staging's registry?
+  say "Production baut kein API-Image, es übernimmt das von staging. Das Staging-Projekt hält die Registry."
+  ask STAGING_PROJECT_ID "Projekt-ID des Staging-Projekts:"
+  [[ -n "$STAGING_PROJECT_ID" ]] || { warn "Ohne die Staging-Registry kann production nichts ausrollen."; exit 1; }
+  write_env STAGING_PROJECT_ID "$STAGING_PROJECT_ID"
+  set_var GCP_PROMOTE_FROM_REGISTRY "$REGION-docker.pkg.dev/$STAGING_PROJECT_ID/steuereule"
+  SKIPPED+=("Im Staging-Stack image_readers setzen und anwenden, damit production dort lesen darf: IMAGE_READERS='[\"serviceAccount:$(tofu_output deployer_service_account)\"]' scripts/infra/gcp-setup.sh (infra/README.md)")
+fi
 set_var APP_DOMAIN "$APP_DOMAIN"
 set_var EMAIL_FROM "$EMAIL_FROM"
 # Cloud Run direct ingress (domain mapping, *.run.app): Google's front end is the peer, in 169.254.0.0/16 (OPS-8).
@@ -496,19 +511,24 @@ set_var EXPO_PUBLIC_BETREIBER_EMAIL "$EXPO_PUBLIC_BETREIBER_EMAIL"
 pause
 
 stage "Erster Deploy"
-say "Baut beide Images, sichert und migriert die Datenbank und rollt API und Web aus (ca. 10–15 Minuten)."
-if confirm "Deploy-Workflow auf main nach $GH_ENVIRONMENT starten?"; then
-  gh workflow run deploy.yml --ref main -f environment="$GH_ENVIRONMENT"
-  sleep 5
-  gh run watch "$(gh run list --workflow deploy.yml --limit 1 --json databaseId --jq '.[0].databaseId')" --exit-status \
-    || { warn "Deploy fehlgeschlagen — Log: gh run view --log-failed"; exit 1; }
-  if [[ "$GH_ENVIRONMENT" == staging ]] && confirm "Ab jetzt jede grüne CI auf main automatisch nach staging ausrollen?"; then
-    # The one repository-level switch: without it the automatic deploy skips (OPS-3).
-    gh variable set DEPLOY_STAGING_AUTO --body true >/dev/null && say "DEPLOY_STAGING_AUTO=true gesetzt."
-  fi
+if [[ "$GH_ENVIRONMENT" == production ]]; then
+  say "Production wird durch einen GitHub-Release ausgerollt (ADR-0113), nicht von hier aus."
+  SKIPPED+=("Erster Production-Deploy: das Commit zuerst nach staging ausrollen, dann einen Release mit Tag vX.Y.Z auf main veröffentlichen (infra/README.md)")
 else
-  SKIPPED+=("Deploy starten: gh workflow run deploy.yml --ref main -f environment=$GH_ENVIRONMENT")
-  [[ "$GH_ENVIRONMENT" != staging ]] || SKIPPED+=("Nach dem ersten grünen Deploy: gh variable set DEPLOY_STAGING_AUTO --body true")
+  say "Baut die Images, sichert und migriert die Datenbank und rollt API und Web aus (ca. 10–15 Minuten)."
+  if confirm "Deploy-Workflow auf main nach $GH_ENVIRONMENT starten?"; then
+    gh workflow run deploy.yml --ref main
+    sleep 5
+    gh run watch "$(gh run list --workflow deploy.yml --limit 1 --json databaseId --jq '.[0].databaseId')" --exit-status \
+      || { warn "Deploy fehlgeschlagen — Log: gh run view --log-failed"; exit 1; }
+    if confirm "Ab jetzt jede grüne CI auf main automatisch nach staging ausrollen?"; then
+      # The one repository-level switch: without it the automatic deploy skips (OPS-3).
+      gh variable set DEPLOY_STAGING_AUTO --body true >/dev/null && say "DEPLOY_STAGING_AUTO=true gesetzt."
+    fi
+  else
+    SKIPPED+=("Deploy starten: gh workflow run deploy.yml --ref main")
+    SKIPPED+=("Nach dem ersten grünen Deploy: gh variable set DEPLOY_STAGING_AUTO --body true")
+  fi
 fi
 
 stage "Domain verknüpfen"

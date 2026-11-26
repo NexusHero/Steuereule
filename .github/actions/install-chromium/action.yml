@@ -16,6 +16,8 @@ runs:
       with:
         path: ~/.cache/ms-playwright
         key: playwright-chromium-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+    # `--with-deps` runs `apt-get update`; see the action for why that must not depend on third-party archives.
+    - uses: ./.github/actions/apt-ubuntu-only
     - name: Install Playwright's Chromium
       shell: bash
       run: pnpm --filter ${{ inputs.filter }} exec playwright-core install chromium --with-deps
