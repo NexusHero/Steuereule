@@ -30,7 +30,10 @@
 // Five checks, covering all FOUR of the stakeholder's own exact-worded symptoms plus the
 // account this whole gate proves end to end:
 //   1. Guest — "Erst mal als Gast umschauen" through onboarding to Cockpit, no error.
-//   2. Registration — a real account, created for real (Konto anlegen).
+//   2. Registration — a real account, created for real (Konto anlegen); then „Mail erneut senden“ on its success
+//      step: POST /send-verification-email answers 200 and a second verification mail reaches the compose
+//      stack's own inbox (Mailpit, over SMTP with TLS). This is the one gate that can see a mail arrive, because
+//      the gate stacks of the other CI jobs only log it. Needs MAILPIT_ORIGIN (default http://localhost:8025).
 //   3. Login — signing back in with that same account.
 //   4. The Google button — asserted inside loginFlow() (Musti's #274 review, F4): the
 //      stakeholder's own FIRST-quoted symptom ("Google-Button fehlt komplett") was, until
@@ -87,12 +90,43 @@ const COPY = {
   errGeneric: 'Das hat gerade nicht geklappt. Prüf die Verbindung und versuch es noch mal.',
   errInvalidCredentials: 'E-Mail oder Passwort stimmen nicht.',
   errEmailNotVerified: 'Bitte bestätige zuerst deine E-Mail-Adresse. Wir haben dir einen neuen Link geschickt.',
+  // The banner on the registration's success step (de.json auth.verifyBanner).
+  resendLink: 'Mail erneut senden',
+  resendSent: 'Ist raus — schau in dein Postfach.',
 }
+
+// The local inbox of the compose stack (Mailpit's HTTP API; the API reaches it over SMTP with TLS).
+const MAILPIT_ORIGIN = process.env.MAILPIT_ORIGIN ?? 'http://localhost:8025'
 
 function fail(message) {
   console.error(`::error::${message}`)
   process.exitCode = 1
   throw new Error(message)
+}
+
+/** Polls `read()` until it returns something other than `undefined`; fails with `message` at the deadline. */
+async function pollFor(read, message, timeoutMs = 20_000) {
+  const deadline = Date.now() + timeoutMs
+  while (Date.now() < deadline) {
+    const value = await read()
+    if (value !== undefined) return value
+    await new Promise((resolve) => setTimeout(resolve, 250))
+  }
+  return fail(message)
+}
+
+/** The messages in the local inbox addressed to `address`, newest first, each with its text body. */
+async function inboxMessagesFor(address) {
+  const search = await fetch(`${MAILPIT_ORIGIN}/api/v1/search?query=${encodeURIComponent(`to:"${address}"`)}`)
+  if (!search.ok) fail(`Mailpit search answered ${search.status} — is the local inbox at ${MAILPIT_ORIGIN} up (MAILPIT_ORIGIN)?`)
+  const { messages } = await search.json()
+  return Promise.all(
+    messages.map(async (message) => {
+      const full = await fetch(`${MAILPIT_ORIGIN}/api/v1/message/${message.ID}`)
+      if (!full.ok) fail(`Mailpit message ${message.ID} answered ${full.status}`)
+      return full.json()
+    }),
+  )
 }
 
 async function skipSplash(page, webOrigin) {
@@ -197,6 +231,25 @@ async function registrationFlow(browser, webOrigin, target) {
     // Sign-up returns no session (ADR-0109): the success step only says a mail is on its way.
     await page.getByRole('button', { name: COPY.registrierungSuccessCta }).waitFor({ state: 'visible', timeout: 15_000 })
     console.log(`[prod-deploy] PASS — registration was accepted for a new account (${email}) against ${target.apiPhrase}.`)
+
+    // POST /api/auth/send-verification-email, from its one caller (EmailVerificationBanner): „Mail erneut senden“.
+    // The response is the API's own, and a second mail reaches the inbox over SMTP: the sign-up sent the first.
+    await pollFor(async () => ((await inboxMessagesFor(email)).length === 1 ? true : undefined), `registration: the sign-up mail for ${email} did not reach the inbox`)
+    const resent = page.waitForResponse((r) => r.request().method() === 'POST' && r.url().endsWith('/api/auth/send-verification-email'), { timeout: 15_000 })
+    await page.getByText(COPY.resendLink, { exact: true }).click()
+    const response = await resent
+    if (response.status() !== 200) fail(`registration: „${COPY.resendLink}“ got ${response.status()} from /send-verification-email: ${(await response.text()).slice(0, 200)}`)
+    const body = await response.json()
+    if (body?.status !== true) fail(`registration: /send-verification-email must answer { status: true }, got ${JSON.stringify(body)}`)
+    await page.getByText(COPY.resendSent, { exact: true }).waitFor({ state: 'visible', timeout: 10_000 })
+    const mails = await pollFor(async () => {
+      const found = await inboxMessagesFor(email)
+      return found.length >= 2 ? found : undefined
+    }, `registration: no second verification mail for ${email} reached the inbox after „${COPY.resendLink}“`)
+    for (const mail of mails) {
+      if (!(mail.Text ?? '').includes('verify-email')) fail(`registration: a mail to ${email} carries no verification link: ${(mail.Text ?? '').slice(0, 200)}`)
+    }
+    console.log(`[prod-deploy] PASS — „${COPY.resendLink}“ sent POST /send-verification-email (200) and a second verification mail reached the local inbox (${mails.length} for ${email}).`)
     return { email, password }
   } finally {
     await context.close()
