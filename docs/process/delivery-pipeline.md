@@ -194,6 +194,15 @@ preview, the loop stops learning; nothing else supplies its input.
   keeps development *fast*: the board must stay deep enough in ready, independent slices that four
   parallel tracks never starve. Planned at a **sustainable pace** (the team gets its daily breather; no
   crunch).
+- **The shared contract is frozen per track before either dev starts (#70).** When a slice is split into a
+  frontend and a backend track, the OpenAPI contract both build against (request and response fields, error
+  shapes, and *when* persistence becomes real) is pinned at Planning and named in the slice's planning record, so
+  neither dev learns the shape from whoever finishes first. Slice 1 showed the cost: the Onboarding frontend was
+  built against an in-memory contract that changed under it once real `/v1/profile` persistence landed. A contract
+  change found mid-slice is flagged to the other track's owner **the same day it is decided**, in the ticket, not
+  discovered at rebase or integration time. Suhay facilitates; Musti makes the technical freeze call. Checked at the
+  next Planning (does the record name the frozen contract?) and the next Retrospective (did anyone report rework from
+  an unannounced change?).
 - **WIP limit: at most two slices in the review+test queue at once.** Four devs *build* in parallel, but
   **review (Musti) and test (Salih) are single-lane** — so building faster than they can drain just
   piles up unmergeable work (we once had five slices built and zero merged). Cap the number of slices
@@ -226,6 +235,27 @@ preview, the loop stops learning; nothing else supplies its input.
   **PlantUML source + exported SVG**, kept current (Musti owns it and asks himself "is the arc42
   updated?" on every completed task). The **stakeholder** then runs a hard product-acceptance pass on
   that artifact against the Requirements Register, and its findings become tickets.
+- **Before a merge, a completed CI run for the head SHA exists (#311).** Green checks on the PR are not enough on
+  their own: a PR whose checks were never created, or sat queued and were cancelled, looks the same as a green one
+  once it is closed. Before merging, confirm that a workflow run for exactly the head SHA has *completed* (not
+  queued, not cancelled, not skipped) with every required check green, and after the merge that the push run for the
+  new `main` tip does the same. If a run is missing, or stuck queued past ~15 minutes (the pattern seen during the
+  2026-08-06 runner outage, when four commits landed on `main` with no run at all), treat CI as unknown and
+  escalate; do not merge. **After a runner outage**, re-dispatch every PR whose run stalled or never appeared
+  (`gh workflow run` on its branch, or push an empty commit) and re-run `main`'s tip, so `main` again has a passing
+  run behind it. This is a human/agent step on purpose: an automated watchdog would queue on the same runner pool it
+  is meant to watch. The fail-closed backstop is the ruleset below.
+
+  *Required checks on `main` (ruleset `main`, read 2026-11-26 from `gh api repos/NexusHero/Steuereule/rulesets`;
+  re-read it rather than trusting this list, it is a snapshot):* `static: lint (oxlint)`, `static: validate compose`,
+  `static: docs consistency (register + adr)`, `static: vordrucke (form-field geometry)`, `correctness: unit tests
+  (no DB)`, `correctness: integration (postgres)`, `security: secret scan (gitleaks)`, `security: sast (semgrep)`,
+  `security: iac scan (trivy)`, `security: dockerfile lint (hadolint)`, `security: workflow lint (actionlint)`,
+  `supply-chain: build, SBOM, container scan & bundle gate`, `e2e: smoke (real /api/auth over HTTP)`, `e2e: browser
+  gates & a11y`, `e2e: production compose stack + OWASP ZAP DAST`, `e2e: scenarios (shard 1/4 .. 4/4)`, `SonarCloud
+  Code Analysis`. The ruleset has no bypass actors, requires thread resolution, and sets 0 required approving
+  reviews. The aggregator jobs (`e2e: browser gates & a11y`, `e2e: production compose stack + OWASP ZAP DAST`) keep
+  their names because the ruleset pins the name; a renamed job would wait forever.
 - **Nobody merges around the gates.** A PR reaches `ready` only once every gate it was owed has passed
   — Musti's review on the draft, and Salih's test where the tier calls for one; no approve on red CI;
   the stakeholder is the last gate. The stakeholder *can* merge a PR before the gates run, since he is

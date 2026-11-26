@@ -46,9 +46,9 @@
 // process on the same port instead. Both paths converge on the identical `DATABASE_URL` shape, so
 // nothing downstream (migrations, the API, this module's own `sql()`) needs to know which one ran.
 //
-// NOT EXERCISED IN THIS SESSION: docker was reachable here, so the native-fallback code path
-// below has been read-reviewed and syntax-checked (`node --check`) but not run for real against a
-// blocked registry. Said plainly rather than claimed — see this draft's own report.
+// As root the fallback drops to the unprivileged `postgres` account for initdb/pg_ctl (#264, see
+// native-postgres.mjs and README.md). The command construction is unit-tested; a full run in a root-uid
+// sandbox with a blocked registry has not been observed yet.
 import { execSync, spawn } from 'node:child_process'
 import { existsSync } from 'node:fs'
 import { mkdtemp, rm } from 'node:fs/promises'
@@ -57,15 +57,12 @@ import { join } from 'node:path'
 import { setTimeout as sleep } from 'node:timers/promises'
 import { fileURLToPath } from 'node:url'
 import { startStaticServer } from '../cross-origin/static-server.mjs'
+import { nativePostgresCommands, planPrivilege } from './native-postgres.mjs'
+import { resolveBootConfig } from './ports.mjs'
 
 const REPO_ROOT = fileURLToPath(new URL('../../', import.meta.url))
 
 const DEFAULTS = {
-  apiOrigin: 'http://localhost:3301',
-  webOrigin: 'http://localhost:4173',
-  apiPort: '3301',
-  webPort: 4173,
-  databaseUrl: 'postgres://steuereule:steuereule@localhost:5432/steuereule',
   postgresHealthTimeoutMs: 30_000,
 }
 
@@ -138,11 +135,13 @@ async function pgIsReady(databaseUrl) {
 
 /** BOOT MODE step 1 — Postgres, docker first, native fallback second. Returns a teardown fn. */
 async function startPostgres(databaseUrl) {
+  // docker-compose.yml publishes `${POSTGRES_PORT:-5432}`; the database URL's port is the one source of truth (#114).
+  const composeEnv = { ...process.env, POSTGRES_PORT: new URL(databaseUrl).port || '5432' }
   try {
-    run('docker compose -f docker-compose.yml -f docker-compose.e2e.yml up -d postgres')
+    run('docker compose -f docker-compose.yml -f docker-compose.e2e.yml up -d postgres', { env: composeEnv })
     await waitUntil(() => pgIsReady(databaseUrl), { timeoutMs: DEFAULTS.postgresHealthTimeoutMs, label: 'docker-compose postgres to become ready' })
     console.log('[stack] Postgres up via docker compose.')
-    return async () => run('docker compose -f docker-compose.yml -f docker-compose.e2e.yml down -v')
+    return async () => run('docker compose -f docker-compose.yml -f docker-compose.e2e.yml down -v', { env: composeEnv })
   } catch (dockerError) {
     console.warn(`[stack] docker compose postgres did not become healthy within ${DEFAULTS.postgresHealthTimeoutMs}ms — ` +
       `falling back to a native postgres binary (see this file's header comment). Docker error: ${dockerError.message}`)
@@ -156,25 +155,47 @@ async function startPostgres(databaseUrl) {
   }
 
   const url = new URL(databaseUrl)
+  const port = url.port || '5432'
+  // As root, initdb and pg_ctl are run as the unprivileged `postgres` account (#264, native-postgres.mjs); a root
+  // process with no such account fails here with an actionable message instead of an opaque initdb error.
+  const plan = planPrivilege({
+    euid: process.geteuid?.() ?? -1,
+    hasCommand: commandExists,
+    userExists: (name) => commandSucceeds(`id -u ${name}`),
+  })
+  const bin = { initdb: resolveBinary('initdb'), pg_ctl: resolveBinary('pg_ctl') }
   const dataDir = await mkdtemp(join(tmpdir(), 'steuereule-pg-'))
-  run(`initdb -D "${dataDir}" -U ${decodeURIComponent(url.username)} --auth=trust --no-locale --encoding=UTF8`)
-  run(`pg_ctl -D "${dataDir}" -l "${join(dataDir, 'postgres.log')}" -o "-p ${url.port || '5432'}" start`)
+  const commands = nativePostgresCommands({ plan, bin, dataDir, dbUser: decodeURIComponent(url.username), port })
+  // The temp directory is created by (and owned by) this process; the server's account must own it before initdb.
+  // cwd is the data directory too: the repository checkout may not be readable by that account.
+  if (commands.chown) run(commands.chown)
+  run(commands.initdb, { cwd: dataDir })
+  run(commands.start, { cwd: dataDir })
   await waitUntil(() => pgIsReady(databaseUrl), { timeoutMs: DEFAULTS.postgresHealthTimeoutMs, label: 'native postgres to become ready' })
-  run(`createdb -h ${url.hostname} -p ${url.port || '5432'} -U ${decodeURIComponent(url.username)} ${url.pathname.slice(1)}`)
-  console.log(`[stack] Postgres up via native binaries at ${dataDir} (docker was unreachable).`)
+  run(`createdb -h ${url.hostname} -p ${port} -U ${decodeURIComponent(url.username)} ${url.pathname.slice(1)}`)
+  console.log(`[stack] Postgres up via native binaries at ${dataDir} (docker was unreachable${plan.runAs ? `; initdb/pg_ctl run as ${plan.runAs.user} because this process is root` : ''}).`)
   return async () => {
-    run(`pg_ctl -D "${dataDir}" stop -m fast`)
+    run(commands.stop, { cwd: dataDir })
     await rm(dataDir, { recursive: true, force: true })
   }
 }
 
-function commandExists(binary) {
+function commandSucceeds(command) {
   try {
-    execSync(`command -v ${binary}`, { stdio: 'pipe' })
+    execSync(command, { stdio: 'pipe' })
     return true
   } catch {
     return false
   }
+}
+
+function commandExists(binary) {
+  return commandSucceeds(`command -v ${binary}`)
+}
+
+/** Absolute path of a binary: the unprivileged account may not have the distribution's versioned bin dir on PATH. */
+function resolveBinary(binary) {
+  return execSync(`command -v ${binary}`, { stdio: 'pipe', encoding: 'utf8' }).trim()
 }
 
 /** BOOT MODE step 2 — migrate + build + boot the compiled API. Returns a teardown fn. */
@@ -262,15 +283,14 @@ export async function startStack(options = {}) {
   }
 
   console.log('[stack] BOOT mode — starting Postgres, the API and the exported web bundle from scratch.')
-  const apiOrigin = options.apiOrigin ?? DEFAULTS.apiOrigin
-  const webOrigin = options.webOrigin ?? DEFAULTS.webOrigin
-  const databaseUrl = options.databaseUrl ?? DEFAULTS.databaseUrl
+  // Option > E2E_API_PORT / E2E_WEB_PORT / E2E_POSTGRES_PORT > default; origins and database URL follow the ports (#114).
+  const { apiOrigin, webOrigin, databaseUrl, apiPort, webPort } = resolveBootConfig(options)
 
   const teardowns = []
   try {
     teardowns.push(await startPostgres(databaseUrl))
-    teardowns.push(await startApi({ apiOrigin, apiPort: String(options.apiPort ?? DEFAULTS.apiPort), webOrigin, databaseUrl, env: options.apiEnv ?? {} }))
-    teardowns.push(await startWeb({ apiOrigin, webOrigin, webPort: options.webPort ?? DEFAULTS.webPort }))
+    teardowns.push(await startApi({ apiOrigin, apiPort: String(apiPort), webOrigin, databaseUrl, env: options.apiEnv ?? {} }))
+    teardowns.push(await startWeb({ apiOrigin, webOrigin, webPort }))
   } catch (error) {
     // Tear down whatever DID start before propagating — a failed boot must not leak a Postgres
     // container/native process or a bound port for the next run to trip over.

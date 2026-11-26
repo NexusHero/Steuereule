@@ -462,7 +462,10 @@
       "group": "static-ratchet",
       "name": "E2E gate list is sound — every gate in exactly one known group, every script exists, the matrix covers every group",
       "commands": [
-        "node --test e2e/run-gates.test.mjs"
+        "node --test e2e/run-gates.test.mjs",
+        "node --test e2e/harness/qr-readback.test.mjs",
+        "node --test e2e/harness/native-postgres.test.mjs",
+        "node --test e2e/harness/ports.test.mjs"
       ]
     }
   ]

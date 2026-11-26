@@ -22,6 +22,7 @@ jobs:
   secrets:
     name: 'security: secret scan (gitleaks)'
     runs-on: ubuntu-24.04
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
@@ -35,6 +36,7 @@ jobs:
   dependency-audit:
     name: 'security: dependency audit (production deps)'
     runs-on: ubuntu-24.04
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
       - name: Set up pnpm
@@ -55,6 +57,7 @@ jobs:
   dockerfiles:
     name: 'security: dockerfile lint (hadolint)'
     runs-on: ubuntu-24.04
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
       - name: Hadolint — Lint apps/api/Dockerfile
@@ -71,6 +74,7 @@ jobs:
   actions-lint:
     name: 'security: workflow lint (actionlint)'
     runs-on: ubuntu-24.04
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
       - name: Actionlint — Lint .github/workflows/*.yml
@@ -79,6 +83,7 @@ jobs:
   iac:
     name: 'security: iac scan (trivy — terraform, dockerfiles, compose, k8s)'
     runs-on: ubuntu-24.04
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
       - name: Trivy IaC Scan (Terraform, Dockerfiles, Compose & K8s — HIGH/CRITICAL)
@@ -93,6 +98,7 @@ jobs:
   sast:
     name: 'security: sast (semgrep — custom NestJS/DSGVO rules)'
     runs-on: ubuntu-24.04
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
       - name: Semgrep SAST Scan (.semgrep.yml custom NestJS/DSGVO rules)

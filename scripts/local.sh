@@ -7,7 +7,26 @@ cd "$(dirname "$0")/.."
 PROD_STACK=(docker compose -f docker-compose.yml -f docker-compose.prod.yml)
 DEV_STACK=(docker compose)
 DEV_API_LOG=".local/api.log"
-INBOX_URL="http://localhost:8025"
+
+# Ports: an exported variable wins, then a value in .env, then the default (#114). Two checkouts can run side by
+# side with e.g. `API_PORT=3100 WEB_PORT=8180 DEV_WEB_PORT=8181 MAILPIT_PORT=8125 POSTGRES_PORT=5532 scripts/local.sh dev`.
+# docker-compose reads the same names (docker-compose*.yml), so the containers and these URLs cannot disagree.
+setting() { # setting NAME DEFAULT
+  local value="${!1:-}"
+  if [[ -z "$value" && -f .env ]]; then value="$(sed -n "s/^$1=//p" .env | tail -n 1)"; fi
+  printf '%s' "${value:-$2}"
+}
+API_PORT="$(setting API_PORT 3000)"
+WEB_PORT="$(setting WEB_PORT 8080)"
+DEV_WEB_PORT="$(setting DEV_WEB_PORT 8081)"
+MAILPIT_PORT="$(setting MAILPIT_PORT 8025)"
+export API_PORT WEB_PORT MAILPIT_PORT
+POSTGRES_PORT="$(setting POSTGRES_PORT '')"
+if [[ -n "$POSTGRES_PORT" ]]; then export POSTGRES_PORT; fi
+API_URL="http://localhost:${API_PORT}"
+WEB_URL="http://localhost:${WEB_PORT}"
+DEV_WEB_URL="http://localhost:${DEV_WEB_PORT}"
+INBOX_URL="http://localhost:${MAILPIT_PORT}"
 
 if [[ -t 1 ]]; then BOLD=$'\e[1m'; GREEN=$'\e[32m'; YELLOW=$'\e[33m'; RESET=$'\e[0m'; else BOLD=""; GREEN=""; YELLOW=""; RESET=""; fi
 info() { printf '%s▸%s %s\n' "$GREEN" "$RESET" "$1"; }
@@ -60,11 +79,11 @@ cmd_up() {
   require_mail_tls
   info "Stack bauen und starten (das erste Mal dauert ein paar Minuten)"
   "${PROD_STACK[@]}" up --build -d
-  wait_for "http://localhost:3000/v1/health/ready" "API"
-  wait_for "http://localhost:8080/" "Web-App"
-  printf '\n%sLäuft.%s\n  Web:      http://localhost:8080\n  API:      http://localhost:3000\n  Postfach: %s\n' "$BOLD" "$RESET" "$INBOX_URL"
+  wait_for "$API_URL/v1/health/ready" "API"
+  wait_for "$WEB_URL/" "Web-App"
+  printf '\n%sLäuft.%s\n  Web:      %s\n  API:      %s\n  Postfach: %s\n' "$BOLD" "$RESET" "$WEB_URL" "$API_URL" "$INBOX_URL"
   printf '  Stoppen:  scripts/local.sh down\n\n'
-  open_in_browser "http://localhost:8080"
+  open_in_browser "$WEB_URL"
 }
 
 cmd_dev() {
@@ -78,10 +97,10 @@ cmd_dev() {
 
   local pg_user=steuereule pg_password=steuereule pg_db=steuereule
   export DATABASE_URL="postgresql://${pg_user}:${pg_password}@localhost:${pg_port}/${pg_db}"
-  export PORT=3000
-  export BETTER_AUTH_URL="http://localhost:3000"
-  export CORS_ALLOWED_ORIGINS="http://localhost:8081"
-  export WEB_APP_URL="http://localhost:8081"
+  export PORT="$API_PORT"
+  export BETTER_AUTH_URL="$API_URL"
+  export CORS_ALLOWED_ORIGINS="$DEV_WEB_URL"
+  export WEB_APP_URL="$DEV_WEB_URL"
   export EMAIL_DELIVERY=smtp
   export SMTP_URL="smtps://127.0.0.1:1025"
   export SMTP_CA_CERT="$PWD/.local/mail-tls/ca/ca.pem"
@@ -107,11 +126,11 @@ cmd_dev() {
   (cd apps/api && exec node --import tsx dist/main.js) >"$DEV_API_LOG" 2>&1 &
   local api_pid=$!
   trap 'kill "$api_pid" 2>/dev/null || true' EXIT INT TERM
-  wait_for "http://localhost:3000/v1/health/ready" "API"
+  wait_for "$API_URL/v1/health/ready" "API"
 
   info "Postfach für Bestätigungsmails: $INBOX_URL"
-  info "Web-App mit Hot Reload starten (http://localhost:8081, Strg-C beendet beides)"
-  EXPO_NO_TYPESCRIPT_SETUP=1 EXPO_PUBLIC_API_BASE_URL="http://localhost:3000" pnpm --filter @steuereule/mobile-web web
+  info "Web-App mit Hot Reload starten ($DEV_WEB_URL, Strg-C beendet beides)"
+  EXPO_NO_TYPESCRIPT_SETUP=1 EXPO_PUBLIC_API_BASE_URL="$API_URL" pnpm --filter @steuereule/mobile-web web --port "$DEV_WEB_PORT"
 }
 
 cmd_down() {
@@ -150,10 +169,10 @@ cmd_help() {
 ${BOLD}scripts/local.sh${RESET} <befehl>
 
   up       Alles in Containern starten, wie in Produktion (Standard)
-           Web http://localhost:8080 · API http://localhost:3000
+           Web http://localhost:8080 · API http://localhost:3000 (Ports: API_PORT, WEB_PORT)
   dev      Zum Entwickeln: Postgres im Container, API lokal, Web mit Hot Reload
-           Web http://localhost:8081 · API http://localhost:3000
-  mail     Lokales Postfach öffnen (alle Mails der App, http://localhost:8025)
+           Web http://localhost:8081 · API http://localhost:3000 (Ports: DEV_WEB_PORT, API_PORT)
+  mail     Lokales Postfach öffnen (alle Mails der App, http://localhost:8025, Port: MAILPIT_PORT)
   logs     API-Logs mitlesen (oder: logs web, logs postgres)
   status   Laufende Container anzeigen
   down     Alles stoppen, Daten bleiben

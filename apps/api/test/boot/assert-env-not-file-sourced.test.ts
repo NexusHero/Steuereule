@@ -26,6 +26,9 @@ import { failsafeFor, runServer } from './support/run-server.js'
 
 const CASE_TIMEOUT_MS = 30_000
 const SETUP_TIMEOUT_MS = 60_000
+const COMPILE_TIMEOUT_MS = 180_000
+// The Dockerfile's CMD: node runs the tsc output, tsx only loads packages/core's TypeScript source.
+const DIST_RUNNER_ARGS = ['--import', 'tsx']
 
 // Explicit, distinct-from-the-fixture's-own values — proves case 2/3 aren't merely
 // re-confirming the fixture's synthetic .env, but a genuinely operator-supplied
@@ -176,6 +179,48 @@ describe('assertEnvNotFileSourced — the real entry point, both generated-clien
     },
     CASE_TIMEOUT_MS,
   )
+
+  // #314 — rows 1 and 4 again, one level down: against the COMPILED output under plain node, which is what the
+  // Dockerfile runs (`node dist/main.js`). Rows 1-4 above run TypeScript source through tsx and would stay green if
+  // a tsconfig change, a TypeScript upgrade or a bundler reordered or dropped the side-effect import in the
+  // emitted JavaScript. (Booted as the image does, `node --import tsx dist/main.js`, not under bare node: tsx is
+  // required because packages/core ships TypeScript source.) Same fixtures, same assertions as rows 1 and 4; only the build step and the runtime differ.
+  describe('compiled with tsc, booted as the image does (#314)', () => {
+    let compiledEntries: { entryPath: string; brokenOrderingEntryPath: string }
+
+    beforeAll(() => {
+      compiledEntries = fixtures.compileWithEnv()
+    }, COMPILE_TIMEOUT_MS)
+
+    it(
+      'row 1 on dist — refuses, names the vars',
+      async () => {
+        const { code, output } = await runServer({ NODE_ENV: 'production' }, CASE_TIMEOUT_MS, {
+          entryPath: compiledEntries.entryPath,
+          runner: process.execPath,
+          runnerArgs: DIST_RUNNER_ARGS,
+        })
+        expect(code).not.toBe(0)
+        expect(output).toMatch(REFUSAL_PATTERN)
+        expect(output).toContain('DATABASE_URL')
+      },
+      CASE_TIMEOUT_MS,
+    )
+
+    it(
+      'row 4 on dist — control proof: the snapshot import below ./app.module.js makes the refusal disappear',
+      async () => {
+        const { output } = await runServer({ NODE_ENV: 'production' }, CASE_TIMEOUT_MS, {
+          entryPath: compiledEntries.brokenOrderingEntryPath,
+          runner: process.execPath,
+          runnerArgs: DIST_RUNNER_ARGS,
+        })
+        expect(output).not.toMatch(REFUSAL_PATTERN)
+        expect(output).toMatch(/Cannot reach the database at 127\.0\.0\.1:1/)
+      },
+      CASE_TIMEOUT_MS,
+    )
+  })
 })
 
 // failsafeFor is exercised end-to-end already by database-boot-guard.test.ts's own

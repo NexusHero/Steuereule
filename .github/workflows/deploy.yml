@@ -46,6 +46,7 @@ jobs:
     name: 'static: opentofu validate'
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - uses: opentofu/setup-opentofu@9d84900f3238fab8cd84ce47d658d25dd008be2f # v1
@@ -69,6 +70,7 @@ jobs:
        github.event.workflow_run.head_repository.full_name == github.repository &&
        vars.DEPLOY_STAGING_AUTO == 'true')
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     outputs:
       repository_level: ${{ steps.scan.outputs.names }}
     steps:
@@ -101,6 +103,7 @@ jobs:
        github.event.workflow_run.head_repository.full_name == github.repository &&
        vars.DEPLOY_STAGING_AUTO == 'true')
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     # Environment-level variables apply from here on (job env and steps), never at workflow level.
     environment: ${{ github.event_name == 'workflow_dispatch' && inputs.environment || 'staging' }}
     permissions:

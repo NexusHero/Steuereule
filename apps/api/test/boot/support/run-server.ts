@@ -214,13 +214,18 @@ registerExitCleanup(reapAllGroups)
 export function runServer(
   env: Record<string, string>,
   caseTimeoutMs: number,
-  options?: { cwd?: string; entryPath?: string },
+  options?: { cwd?: string; entryPath?: string; runner?: string; runnerArgs?: string[] },
 ): Promise<RunResult> {
   const failSafeMs = failsafeFor(caseTimeoutMs)
   const cwd = options?.cwd ?? apiRoot
   const entryPath = options?.entryPath ?? 'src/main.ts'
+  // `runner` defaults to tsx (TypeScript source). The compiled-output case passes `process.execPath` with
+  // `--import tsx`, the Dockerfile's own CMD (`node --import tsx dist/main.js`): the emitted JavaScript runs under
+  // node, and tsx is only there because packages/core ships TypeScript source (#314).
+  const runnerArgs = options?.runnerArgs ?? []
+  const runner = options?.runner ?? tsxBin
   return new Promise((resolve, reject) => {
-    const child: ChildProcessWithoutNullStreams = spawn(tsxBin, [entryPath], {
+    const child: ChildProcessWithoutNullStreams = spawn(runner, [...runnerArgs, entryPath], {
       cwd,
       // PATH (to find `node`, which tsx's shebang needs) and HOME (Node/tsx's own
       // cache lookups) are the only ambient values carried through; everything the
