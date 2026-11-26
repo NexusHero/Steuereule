@@ -3,9 +3,9 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
-import { server } from '../../test-msw-server'
+import { server } from '../../../test/test-msw-server'
 import { AssessmentUploadEntry, type AssessmentUploadEntryProps } from './AssessmentUploadEntry'
-import { renderWithQuery } from '../../test-render'
+import { renderWithQuery } from '../../../test/test-render'
 
 const { extract } = vi.hoisted(() => ({ extract: vi.fn() }))
 vi.mock('../../lib/documentOcr', async (importOriginal) => {

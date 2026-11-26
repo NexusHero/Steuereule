@@ -13,7 +13,7 @@ the environment truths that keep getting silently re-derived, written down once.
   `actions/setup-node@v5` to `node-version: 24` in every job that runs these scripts. A green run
   under a different local Node (22, in this session's own sandbox) is a false positive of exactly
   the shape Slice-1's retro named: Node 22 accepted a signal shape Node 24's bundled undici
-  rejects (`apps/mobile-web/src/test-setup.ts`'s own `AbortSignal` comment documents the same
+  rejects (`apps/mobile-web/test/test-setup.ts`'s own `AbortSignal` comment documents the same
   class on the frontend test side). Every report this harness's scripts produce should name the
   Node version the run actually used — `node --version` — not assume it matches CI's.
 

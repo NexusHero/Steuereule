@@ -1,11 +1,11 @@
 import { describe, expect, it, vi } from 'vitest'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { http } from 'msw'
-import { server } from '../../test-msw-server'
+import { server } from '../../../test/test-msw-server'
 import { AdvisorChatPanel, type AdvisorChatPanelProps } from './AdvisorChatPanel'
 import { abortPlan, useCopilotBridge } from './CopilotBridgeProvider'
-import { CopilotBridgeHarness } from '../../test-advisor'
-import { renderInApp } from '../../test-render'
+import { CopilotBridgeHarness } from '../../../test/test-advisor'
+import { renderInApp } from '../../../test/test-render'
 
 const encoder = new TextEncoder()
 const sse = (event: string, data: unknown) => encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`)

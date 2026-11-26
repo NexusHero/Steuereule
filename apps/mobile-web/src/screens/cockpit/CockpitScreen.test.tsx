@@ -11,10 +11,10 @@ import { CockpitScreen } from './CockpitScreen'
 import type { TileDefinition } from './tiles'
 import type { StromStep } from '../strom/stromPlan'
 import { STROM_TOPICS } from '@steuereule/core'
-import { server } from '../../test-msw-server'
+import { server } from '../../../test/test-msw-server'
 import type { CockpitSummaryDto, InterviewStateDto } from '@steuereule/api-client'
 import type { FunnelPath } from '../funnel/KontoWandScreen'
-import { renderWithQuery } from '../../test-render'
+import { renderWithQuery } from '../../../test/test-render'
 
 const TAX_YEAR = 2026
 const COCKPIT_URL = `*/v1/steuerjahre/${TAX_YEAR}/cockpit`

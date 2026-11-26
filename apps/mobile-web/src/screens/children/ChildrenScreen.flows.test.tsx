@@ -4,10 +4,10 @@
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
-import { server } from '../../test-msw-server'
+import { server } from '../../../test/test-msw-server'
 import { ChildrenScreen, type ChildItem } from './ChildrenScreen'
-import { confirmAction } from '../../test-confirm'
-import { renderInApp, renderWithQuery } from '../../test-render'
+import { confirmAction } from '../../../test/test-confirm'
+import { renderInApp, renderWithQuery } from '../../../test/test-render'
 
 const LINA: ChildItem = { id: 'kind-1', sequenceNumber: 1, firstName: 'Lina', lastName: 'Muster', geburtsdatum: '2016-05-12', taxId: '12345678901', childBenefitClaimEur: '3000' }
 

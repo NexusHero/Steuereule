@@ -2,9 +2,9 @@ import { modelProviderList } from '@steuereule/core'
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
-import { server } from '../../../test-msw-server'
+import { server } from '../../../../test/test-msw-server'
 import { PersonalDataConsentCard } from './PersonalDataConsentCard'
-import { renderWithQuery } from '../../../test-render'
+import { renderWithQuery } from '../../../../test/test-render'
 
 const URL_PATTERN = '*/v1/eulen-modus/personendaten-einwilligung'
 

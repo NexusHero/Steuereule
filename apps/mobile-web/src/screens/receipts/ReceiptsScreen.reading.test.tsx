@@ -5,11 +5,11 @@ import { screen, fireEvent, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import { Text } from 'react-native'
 import { ReceiptsScreen } from './ReceiptsScreen'
-import { server } from '../../test-msw-server'
+import { server } from '../../../test/test-msw-server'
 import { ShellStateProvider, useShellState } from '../../navigation/ShellState'
 import type { AssignmentQuestionDto, ReceiptResponseDto } from '@steuereule/api-client'
-import { receiptInboxHandler, receiptPage } from '../../test-receipt-inbox'
-import { renderWithQuery } from '../../test-render'
+import { receiptInboxHandler, receiptPage } from '../../../test/test-receipt-inbox'
+import { renderWithQuery } from '../../../test/test-render'
 
 const { mockExtract } = vi.hoisted(() => ({ mockExtract: vi.fn() }))
 vi.mock('../../lib/documentOcr', async (importOriginal) => ({ ...(await importOriginal<typeof import('../../lib/documentOcr')>()), extractDocumentTextOnDevice: mockExtract }))

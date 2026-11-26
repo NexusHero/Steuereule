@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { Situation, SituationSuggestions } from './Situation'
-import { renderInApp } from '../../../test-render'
+import { renderInApp } from '../../../../test/test-render'
 
 describe('Unsere Situation (#501)', () => {
   it('shows what is stored and saves only what changed', async () => {

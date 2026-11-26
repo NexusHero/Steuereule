@@ -8,10 +8,10 @@ import { FIELD_CATALOG, SCREENS, annexOf, provenanceKey } from '@steuereule/core
 import type { ConfirmationResponseDto, FieldProvenanceDto } from '@steuereule/api-client'
 import { createAppI18n } from '../../i18n/app-i18n'
 import { APP_NS } from '../../i18n/resources'
-import { server } from '../../test-msw-server'
+import { server } from '../../../test/test-msw-server'
 import { ConfirmationScreen } from './ConfirmationScreen'
 import { fieldLabelText, instanceText, valueText } from './confirmationText'
-import { renderWithQuery } from '../../test-render'
+import { renderWithQuery } from '../../../test/test-render'
 
 const i18n = createAppI18n('de')
 const t = i18n.getFixedT('de', APP_NS)

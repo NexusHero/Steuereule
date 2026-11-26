@@ -6,9 +6,9 @@ import { screen, fireEvent, waitFor } from '@testing-library/react'
 import { weekdaysInYear } from '@steuereule/core'
 import { http, HttpResponse } from 'msw'
 import { getCommuteControllerGetQueryKey, getCockpitControllerGetCockpitSummaryQueryKey, getTaxEstimateControllerGetQueryKey } from '@steuereule/api-client'
-import { server } from '../../test-msw-server'
+import { server } from '../../../test/test-msw-server'
 import { WorkdaysScreen } from './WorkdaysScreen'
-import { makeTestQueryClient, renderWithQuery } from '../../test-render'
+import { makeTestQueryClient, renderWithQuery } from '../../../test/test-render'
 
 function renderWorkdays(onDone: () => void = () => {}, taxYear = 2026, queryClient = makeTestQueryClient(), onBack?: () => void) {
   return {

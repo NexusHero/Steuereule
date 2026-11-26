@@ -5,10 +5,10 @@ import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import type { ParseReceiptResponseDto, ReceiptResponseDto } from '@steuereule/api-client'
-import { server } from '../../test-msw-server'
+import { server } from '../../../test/test-msw-server'
 import { CopilotBridgeProvider, useCopilotBridge, type CopilotMode } from './CopilotBridgeProvider'
 import { ChatReceiptResults } from './ChatReceiptResults'
-import { makeTestQueryClient, TestAppProviders } from '../../test-render'
+import { makeTestQueryClient, TestAppProviders } from '../../../test/test-render'
 
 const { mockExtractDocumentText } = vi.hoisted(() => ({ mockExtractDocumentText: vi.fn() }))
 vi.mock('../../lib/documentOcr', async (importOriginal) => {

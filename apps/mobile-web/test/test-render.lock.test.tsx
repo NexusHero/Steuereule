@@ -5,13 +5,15 @@ import { readdirSync, readFileSync, statSync } from 'node:fs'
 import { join, relative } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
-const SRC = join(__dirname)
+// Test code lives in `test/` and next to the sources in `src/`; both are scanned.
+const ROOT = join(__dirname, '..')
+const SCANNED = ['src', 'test']
 const OWN_CLIENT = /new\s+QueryClient\(|\bQueryClientProvider\b/
 
 /** Files that build a client for a reason of their own. */
 const ALLOWED: Readonly<Record<string, string>> = {
-  'test-render.tsx': 'the shared wrapper itself',
-  'query-client.test.tsx': "tests the app's own defaults (APP_QUERY_DEFAULTS), which a test client replaces",
+  'test/test-render.tsx': 'the shared wrapper itself',
+  'src/query-client.test.tsx': "tests the app's own defaults (APP_QUERY_DEFAULTS), which a test client replaces",
 }
 
 function files(dir: string): string[] {
@@ -25,16 +27,17 @@ function files(dir: string): string[] {
 }
 
 function isTestSupport(rel: string): boolean {
+  if (rel.startsWith('test/')) return true
   const name = rel.split('/').pop() ?? ''
   return /\.test\.tsx?$/.test(name) || name.startsWith('test-') || /TestKit\.tsx?$/.test(name)
 }
 
 describe('one test wrapper', () => {
-  const builders = files(SRC)
-    .map((file) => relative(SRC, file))
+  const builders = SCANNED.flatMap((dir) => files(join(ROOT, dir)))
+    .map((file) => relative(ROOT, file))
     // This file names the pattern it forbids.
-    .filter((rel) => rel !== relative(SRC, __filename))
-    .filter((rel) => isTestSupport(rel) && OWN_CLIENT.test(readFileSync(join(SRC, rel), 'utf8')))
+    .filter((rel) => rel !== relative(ROOT, __filename))
+    .filter((rel) => isTestSupport(rel) && OWN_CLIENT.test(readFileSync(join(ROOT, rel), 'utf8')))
     .sort()
 
   it('no test builds a query client or a provider of its own; it renders with renderWithQuery or takes makeTestQueryClient()', () => {

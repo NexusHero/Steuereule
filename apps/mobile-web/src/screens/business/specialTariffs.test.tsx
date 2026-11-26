@@ -2,7 +2,7 @@
 import { describe, it, expect } from 'vitest'
 import { screen, fireEvent, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
-import { server } from '../../test-msw-server'
+import { server } from '../../../test/test-msw-server'
 import { BASE_PROFILE, BASE_URL, renderBusiness, useBusinessDefaults } from './businessTestKit'
 
 describe('Betriebsaufgabe & Thesaurierung', () => {

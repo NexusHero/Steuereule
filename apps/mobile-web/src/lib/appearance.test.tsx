@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import { stubStorageSetItem, assertNoStorageWrites } from '../test-storage-guard'
+import { stubStorageSetItem, assertNoStorageWrites } from '../../test/test-storage-guard'
 import {
   APPEARANCE_STORAGE_KEY,
   readAppearancePreference,

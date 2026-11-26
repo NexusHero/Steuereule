@@ -4,7 +4,7 @@
 // group tabs only with data (§3, §7).
 import { describe, expect, it } from 'vitest'
 import { createAppI18n } from '../../i18n/app-i18n'
-import { EMPTY_HISTORY_RESPONSE, HISTORY_ALL_GROUPS_RESPONSE, HISTORY_GAP_RESPONSE, HISTORY_RESPONSE } from '../../test-history-fixture'
+import { EMPTY_HISTORY_RESPONSE, HISTORY_ALL_GROUPS_RESPONSE, HISTORY_GAP_RESPONSE, HISTORY_RESPONSE } from '../../../test/test-history-fixture'
 import { asksFiledElsewhere, coupleCopy, cutsOfYear, daysUntil, eventPhrase, eventsByYear, groupTabs, isLastChance, recurringLine, repeatedCutSentence } from './historyInsights'
 
 const tr = createAppI18n('de').t

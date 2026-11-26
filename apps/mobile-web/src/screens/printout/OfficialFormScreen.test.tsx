@@ -2,10 +2,10 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import { readExpertMode, writeExpertMode } from '../../lib/expertModePreference'
-import { server } from '../../test-msw-server'
+import { server } from '../../../test/test-msw-server'
 import type { AcroFormPdfLoader } from './AcroFormLiveViewer'
 import { OfficialFormScreen } from './OfficialFormScreen'
-import { renderWithQuery } from '../../test-render'
+import { renderWithQuery } from '../../../test/test-render'
 
 const loader: AcroFormPdfLoader = {
   loadTemplate: vi.fn().mockResolvedValue({

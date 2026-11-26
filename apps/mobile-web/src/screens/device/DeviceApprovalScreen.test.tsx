@@ -2,9 +2,9 @@ import { describe, it, expect } from 'vitest'
 import { screen, fireEvent, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import { DeviceApprovalScreen } from './DeviceApprovalScreen'
-import { server } from '../../test-msw-server'
-import { expectFailsClosed, failEveryRequest } from '../../test-every-query-fails'
-import { makeTestQueryClient, renderWithQuery } from '../../test-render'
+import { server } from '../../../test/test-msw-server'
+import { expectFailsClosed, failEveryRequest } from '../../../test/test-every-query-fails'
+import { makeTestQueryClient, renderWithQuery } from '../../../test/test-render'
 
 const BASE_URL = 'http://localhost:3000'
 

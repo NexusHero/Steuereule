@@ -6,8 +6,8 @@ import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import type { AdvisorChatMessageView } from '@steuereule/core'
 import { AdvisorChatPanel, type AdvisorChatPanelProps } from './AdvisorChatPanel'
-import { server } from '../../test-msw-server'
-import { renderWithQuery } from '../../test-render'
+import { server } from '../../../test/test-msw-server'
+import { renderWithQuery } from '../../../test/test-render'
 
 const CONSENT_URL = '*/v1/eulen-modus/personendaten-einwilligung'
 

@@ -2,8 +2,8 @@ import { useState, type ReactNode } from 'react'
 import { fireEvent, screen } from '@testing-library/react'
 import { vi } from 'vitest'
 import type { AdvisorChatMessageView } from '@steuereule/core'
-import { AdvisorChatPanel, type AdvisorChatPanelProps } from './screens/advisor/AdvisorChatPanel'
-import { CopilotBridgeProvider, type CopilotMode } from './screens/advisor/CopilotBridgeProvider'
+import { AdvisorChatPanel, type AdvisorChatPanelProps } from '../src/screens/advisor/AdvisorChatPanel'
+import { CopilotBridgeProvider, type CopilotMode } from '../src/screens/advisor/CopilotBridgeProvider'
 import { makeTestQueryClient, renderInApp, TestAppProviders } from './test-render'
 
 /** The providers a `useCopilotBridge` consumer needs, for tax year 2025 in Eulen-Modus. For tests only. */

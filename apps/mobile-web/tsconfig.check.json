@@ -10,5 +10,5 @@
     "verbatimModuleSyntax": false,
     "resolveJsonModule": true
   },
-  "include": ["App.tsx", "src"]
+  "include": ["App.tsx", "src", "test"]
 }

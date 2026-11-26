@@ -1,13 +1,13 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { screen, fireEvent, waitFor, act } from '@testing-library/react'
 import { http, HttpResponse, delay } from 'msw'
-import { server, CAPABILITIES_WITH_GOOGLE, CAPABILITIES_WITHOUT_SOCIAL, DEVICE_CODE_RESPONSE } from '../test-msw-server'
+import { server, CAPABILITIES_WITH_GOOGLE, CAPABILITIES_WITHOUT_SOCIAL, DEVICE_CODE_RESPONSE } from '../../test/test-msw-server'
 import { getAuthCapabilitiesControllerGetCapabilitiesMockHandler } from '@steuereule/api-client/msw'
 import { createAppAuthClient } from '../auth/auth-client'
 import { AuthClientProvider } from '../auth/AuthClientProvider'
 import { LoginScreen } from './LoginScreen'
 import type { LegalPage } from './legal/texts'
-import { renderWithQuery } from '../test-render'
+import { renderWithQuery } from '../../test/test-render'
 
 const BASE_URL = 'http://localhost:3000'
 

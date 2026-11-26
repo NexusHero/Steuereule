@@ -1,10 +1,10 @@
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
-import { server, EMPTY_CH_SALARY_CERTIFICATE_RESPONSE } from '../../test-msw-server'
+import { server, EMPTY_CH_SALARY_CERTIFICATE_RESPONSE } from '../../../test/test-msw-server'
 import { CockpitScreen, type CockpitScreenProps } from './CockpitScreen'
 import { missingItems } from './estimateMissing'
-import { renderWithQuery } from '../../test-render'
+import { renderWithQuery } from '../../../test/test-render'
 
 const TAX_YEAR = 2025
 

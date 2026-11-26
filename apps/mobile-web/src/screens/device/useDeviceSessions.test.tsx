@@ -17,8 +17,8 @@ import { createAppAuthClient } from '../../auth/auth-client'
 import { AuthClientProvider } from '../../auth/AuthClientProvider'
 import { useDeviceSessions } from './useDeviceSessions'
 import { RequestFailedError } from '../../net/failure-reason'
-import { server } from '../../test-msw-server'
-import { makeTestQueryClient, TestAppProviders } from '../../test-render'
+import { server } from '../../../test/test-msw-server'
+import { makeTestQueryClient, TestAppProviders } from '../../../test/test-render'
 
 const BASE_URL = 'http://localhost:3000'
 

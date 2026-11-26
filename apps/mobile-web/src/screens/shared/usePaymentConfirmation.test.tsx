@@ -5,7 +5,7 @@ import { join, relative } from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
 import { act, renderHook } from '@testing-library/react'
 import type { ReactNode } from 'react'
-import { manualPaymentClock } from '../../test-payment-clock'
+import { manualPaymentClock } from '../../../test/test-payment-clock'
 import { PAYMENT_CONFIRM_TIMEOUT_MS, PAYMENT_POLL_INTERVAL_MS, PaymentClockProvider, usePaymentConfirmation } from './usePaymentConfirmation'
 
 function confirmation(outcome: 'erfolg' | 'abbruch' | undefined, unlocked: boolean | undefined) {

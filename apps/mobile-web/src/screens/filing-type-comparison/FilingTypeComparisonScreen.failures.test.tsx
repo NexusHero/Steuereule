@@ -3,10 +3,10 @@
 import { describe, it, expect } from 'vitest'
 import { screen, fireEvent, waitFor } from '@testing-library/react'
 import { http, HttpResponse, delay } from 'msw'
-import { server } from '../../test-msw-server'
-import { expectFailsClosed, failEveryRequest } from '../../test-every-query-fails'
+import { server } from '../../../test/test-msw-server'
+import { expectFailsClosed, failEveryRequest } from '../../../test/test-every-query-fails'
 import { FilingTypeComparisonScreen } from './FilingTypeComparisonScreen'
-import { renderWithQuery } from '../../test-render'
+import { renderWithQuery } from '../../../test/test-render'
 
 const URL_COMPARISON = '*/v1/steuerjahre/2026/veranlagungsartenvergleich'
 const VERDICT = { kind: 'eindeutig', recommendation: 'zusammen', single: 10, joint: 5, delta: 5, uncertainty: { kind: 'bestimmt', upperLimit: 0 }, provenance: { zveA: 1, zveB: 2, components: [] } }

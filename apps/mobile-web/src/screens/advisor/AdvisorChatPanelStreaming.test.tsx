@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen } from '@testing-library/react'
 import { AdvisorChatPanel, type AdvisorChatPanelProps } from './AdvisorChatPanel'
-import { renderInApp } from '../../test-render'
+import { renderInApp } from '../../../test/test-render'
 
 function renderPanel(props: Partial<AdvisorChatPanelProps>) {
   return renderInApp(<AdvisorChatPanel messages={[]} onSendMessage={vi.fn()} {...props} />)

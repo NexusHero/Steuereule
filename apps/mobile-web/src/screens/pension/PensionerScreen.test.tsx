@@ -6,8 +6,8 @@ import { screen, fireEvent, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import { getCockpitControllerGetCockpitSummaryQueryKey, getTaxEstimateControllerGetQueryKey, type PensionResponseDto } from '@steuereule/api-client'
 import { PensionerScreen } from './PensionerScreen'
-import { server } from '../../test-msw-server'
-import { makeTestQueryClient, renderWithQuery } from '../../test-render'
+import { server } from '../../../test/test-msw-server'
+import { makeTestQueryClient, renderWithQuery } from '../../../test/test-render'
 
 const TAX_YEAR = 2026
 const PENSION_URL = `*/v1/steuerjahre/${TAX_YEAR}/rente`

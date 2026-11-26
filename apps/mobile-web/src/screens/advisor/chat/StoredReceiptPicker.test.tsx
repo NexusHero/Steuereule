@@ -1,10 +1,10 @@
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
-import { server } from '../../../test-msw-server'
-import { renderWithQuery } from '../../../test-render'
+import { server } from '../../../../test/test-msw-server'
+import { renderWithQuery } from '../../../../test/test-render'
 import { StoredReceiptPicker } from './StoredReceiptPicker'
-import { receiptInboxHandler } from '../../../test-receipt-inbox'
+import { receiptInboxHandler } from '../../../../test/test-receipt-inbox'
 
 const receipt = (id: string, fileName: string, hasFile = true) => ({ id, fileName, hasFile })
 

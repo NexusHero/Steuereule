@@ -8,7 +8,7 @@ import { I18nextProvider } from 'react-i18next'
 import { http, HttpResponse } from 'msw'
 import { ApiError, type LiveFormDto } from '@steuereule/api-client'
 import { createAppI18n } from '../../i18n/app-i18n'
-import { server } from '../../test-msw-server'
+import { server } from '../../../test/test-msw-server'
 import { AcroFormLiveViewer, type AcroAnnotationBox, type AcroFormPdfLoader } from './AcroFormLiveViewer'
 import type { SaveAcroField } from './useAcroFieldSaver'
 

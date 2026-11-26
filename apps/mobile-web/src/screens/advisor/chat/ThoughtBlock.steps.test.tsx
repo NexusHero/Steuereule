@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { fireEvent, screen } from '@testing-library/react'
 import type { AdvisorThoughtStep } from '@steuereule/core'
-import { renderInApp } from '../../../test-render'
+import { renderInApp } from '../../../../test/test-render'
 import { ThoughtBlock } from './ThoughtBlock'
 
 const tool = (name: string | undefined, extra: Partial<AdvisorThoughtStep> = {}): AdvisorThoughtStep => ({ kind: 'tool', tool: name, label: `Schritt ${name ?? 'ohne Namen'} …`, ...extra })

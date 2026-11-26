@@ -6,10 +6,10 @@ import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import type { HouseholdResponseDto } from '@steuereule/api-client'
-import { server } from '../../test-msw-server'
-import { expectFailsClosed, failEveryRequest } from '../../test-every-query-fails'
+import { server } from '../../../test/test-msw-server'
+import { expectFailsClosed, failEveryRequest } from '../../../test/test-every-query-fails'
 import { ChildrenScreen } from './ChildrenScreen'
-import { renderWithQuery } from '../../test-render'
+import { renderWithQuery } from '../../../test/test-render'
 
 const LINA = { id: 'kind-1', sequenceNumber: 1, firstName: 'Lina', lastName: 'Muster', geburtsdatum: '2016-05-12' }
 const list = (kinder: unknown[]) => ({ kinder, count: kinder.length, childBenefitSum: 0, totalAllowance: 0, swissFamilyAllowanceSum: 0, differentialChildBenefitSum: 0 })

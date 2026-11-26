@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { ConversationList, type ConversationListProps } from './ConversationList'
-import { renderInApp } from '../../../test-render'
+import { renderInApp } from '../../../../test/test-render'
 
 const conversations = [
   { id: 'c2', title: 'Vermietung Musterweg', createdAt: '2026-03-02T10:00:00.000Z', lastUsedAt: '2026-03-05T10:00:00.000Z' },

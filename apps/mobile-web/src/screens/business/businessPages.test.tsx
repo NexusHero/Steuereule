@@ -3,9 +3,9 @@ import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest'
 import { screen, fireEvent, waitFor, within } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import type { BookDto, ElsterHelpDto, JournalEntryDto } from '@steuereule/api-client'
-import { server } from '../../test-msw-server'
+import { server } from '../../../test/test-msw-server'
 import { BASE_PROFILE, BASE_URL, EMPTY_BOOK, renderBusiness, useBusinessDefaults, useElsterForms, YEAR } from './businessTestKit'
-import { confirmAction } from '../../test-confirm'
+import { confirmAction } from '../../../test/test-confirm'
 
 const SMALL_OK = { eligible: true, priorYearLimitEur: 25_000, currentYearLimitEur: 100_000, crossed: null, foundingYear: false, priorYearKnown: true, turnoverEur: 0, matchesProfile: true }
 

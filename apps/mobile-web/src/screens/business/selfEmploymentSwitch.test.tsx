@@ -8,11 +8,11 @@ import type { CockpitSummaryDto } from '@steuereule/api-client'
 import { InterviewScreen } from '../interview/InterviewScreen'
 import { CockpitScreen } from '../cockpit/CockpitScreen'
 import { partitionTiles, TILES, tileById, type TileFacts } from '../cockpit/tiles'
-import { server } from '../../test-msw-server'
+import { server } from '../../../test/test-msw-server'
 import { BasisPage } from '../strom/StromPages'
 import { StromOptionsContext } from '../strom/stromOptions'
 import { BASE_PROFILE } from './businessTestKit'
-import { renderWithQuery } from '../../test-render'
+import { renderWithQuery } from '../../../test/test-render'
 
 const YEAR = 2026
 

@@ -1,11 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
-import { server } from '../../test-msw-server'
-import { expectFailsClosed, failEveryRequest } from '../../test-every-query-fails'
+import { server } from '../../../test/test-msw-server'
+import { expectFailsClosed, failEveryRequest } from '../../../test/test-every-query-fails'
 import { OwlModeScreen } from './OwlModeScreen'
-import { confirmAction } from '../../test-confirm'
-import { renderWithQuery } from '../../test-render'
+import { confirmAction } from '../../../test/test-confirm'
+import { renderWithQuery } from '../../../test/test-render'
 
 // The owl screen without a copilot bridge: every action of the view must become the request the
 // API contract names, and a refusal must show as a failure instead of a silent success.

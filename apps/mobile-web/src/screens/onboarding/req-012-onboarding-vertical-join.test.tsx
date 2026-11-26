@@ -24,9 +24,9 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { screen, fireEvent, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import { OnboardingScreen } from '../OnboardingScreen'
-import { server } from '../../test-msw-server'
-import { stubStorageSetItem, assertNoStorageWrites } from '../../test-storage-guard'
-import { renderWithQuery } from '../../test-render'
+import { server } from '../../../test/test-msw-server'
+import { stubStorageSetItem, assertNoStorageWrites } from '../../../test/test-storage-guard'
+import { renderWithQuery } from '../../../test/test-render'
 
 function renderOnboarding(opts: { lng?: 'de' | 'en'; onDone?: () => void } = {}) {
   return renderWithQuery(<OnboardingScreen onDone={opts.onDone ?? (() => {})} />, { language: opts.lng ?? 'de' })

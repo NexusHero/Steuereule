@@ -2,10 +2,10 @@ import { describe, expect, it, vi } from 'vitest'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import type { HouseholdPersonDto, HouseholdResponseDto } from '@steuereule/api-client'
-import { server } from '../../test-msw-server'
+import { server } from '../../../test/test-msw-server'
 import { HouseholdChildrenSection } from './HouseholdChildrenSection'
-import { confirmAction } from '../../test-confirm'
-import { renderWithQuery } from '../../test-render'
+import { confirmAction } from '../../../test/test-confirm'
+import { renderWithQuery } from '../../../test/test-render'
 
 const person = (over: Partial<HouseholdPersonDto>): HouseholdPersonDto => ({
   personId: 'p1',

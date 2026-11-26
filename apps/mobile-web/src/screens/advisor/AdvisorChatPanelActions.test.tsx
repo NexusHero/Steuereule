@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import type { AdvisorChatMessageView } from '@steuereule/core'
 import { AdvisorChatPanel, type AdvisorChatPanelProps } from './AdvisorChatPanel'
-import { renderInApp } from '../../test-render'
+import { renderInApp } from '../../../test/test-render'
 
 const TURN: AdvisorChatMessageView[] = [
   { id: 'u1', role: 'user', content: 'Was ist mit Spenden?', meta: null, createdAt: '2026-11-10T10:00:00Z' },

@@ -4,7 +4,7 @@ import { describe, it, expect } from 'vitest'
 import { screen, fireEvent, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import type { BookDto, JournalEntryDto } from '@steuereule/api-client'
-import { server } from '../../test-msw-server'
+import { server } from '../../../test/test-msw-server'
 import { BASE_URL, EMPTY_BOOK, renderBusiness, useBusinessDefaults, BASE_PROFILE } from './businessTestKit'
 import { DESTRUCTIVE_ACTIONS, type DestructiveActionId } from '../../confirm/destructiveActions'
 

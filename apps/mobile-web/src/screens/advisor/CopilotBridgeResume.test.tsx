@@ -1,9 +1,9 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { act, render, screen, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
-import { server } from '../../test-msw-server'
+import { server } from '../../../test/test-msw-server'
 import { useCopilotBridge, type StreamOutcome } from './CopilotBridgeProvider'
-import { CopilotBridgeHarness } from '../../test-advisor'
+import { CopilotBridgeHarness } from '../../../test/test-advisor'
 
 const encoder = new TextEncoder()
 const frame = (id: number, event: string, data: unknown): Uint8Array => encoder.encode(`id: ${id}\nevent: ${event}\ndata: ${JSON.stringify(data)}\n\n`)

@@ -4,9 +4,9 @@ import { useState } from 'react'
 import { describe, expect, it, vi } from 'vitest'
 import { act, render, screen, waitFor } from '@testing-library/react'
 import { http } from 'msw'
-import { server } from '../../test-msw-server'
+import { server } from '../../../test/test-msw-server'
 import { CopilotBridgeProvider, useCopilotBridge, type CopilotMode } from './CopilotBridgeProvider'
-import { makeTestQueryClient, TestAppProviders } from '../../test-render'
+import { makeTestQueryClient, TestAppProviders } from '../../../test/test-render'
 
 const encoder = new TextEncoder()
 const sse = (event: string, data: unknown) => encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`)
