@@ -166,3 +166,43 @@ session list, but no run has yet shown it failing under that mutant, and by ADR-
 it has. The run is a CI change on a throwaway branch (set `freshAge` back, age the `Session.createdAt`/`updatedAt` row
 past 24h before the call, expect red), not something this amendment claims.
 
+
+### Follow-up to the amendment (2026-11-26) — the named gaps, closed by reading and extending the gates
+
+The table above is left as written; this paragraph corrects it. Reading `beta-account-states.mjs` and
+`account-security.mjs` again showed that two of the four "gaps" were walked already and only not asserted on the
+route itself. Every new assertion below is on what the booted stack answered; none intercepts the route under test.
+None of it has run in CI at the time of writing (it was written without a local stack, see the CI runs of the PR
+that carries it).
+
+| Route | Gate and assertion |
+|---|---|
+| `POST /send-verification-email` | `e2e/prod-deploy/run.mjs` clicks "Mail erneut senden" on the registration's success step (the caller, `EmailVerificationBanner`), asserts the 200 `{ status: true }` and that a second verification mail with the verify link reaches the compose stack's Mailpit. It is the only gate stack with an inbox; the other CI stacks log the mail. |
+| `GET /list-accounts` | `e2e/account/beta-account-states.mjs` Row D: the Sicherheit screen (`ChangePasswordSection`) reads it; the answer is a 200 listing the `credential` account. |
+| `POST /oauth2/consent` | `e2e/account/account-security.mjs` Row D already walked authorize, consent and code; it now asserts the consent answers: 200 with the `access_denied` redirect for "Ablehnen", 200 with the redirect carrying the code the client exchanges for "Erlauben". |
+| passkey ceremonies | `beta-account-states.mjs` Row D already ran register and authenticate through Chromium's virtual authenticator (CDP `WebAuthn`). The relying-party id is the host of `BETTER_AUTH_URL` and the origin is the web origin, both `localhost` in the gate stacks, which WebAuthn accepts over http. It now asserts the answers of `generate-register-options`, `verify-registration`, `list-user-passkeys` (a real 200 holding the passkey), `generate-authenticate-options`, `verify-authentication`, and `delete-passkey` (403 `FRESH_AUTH_REQUIRED` on the older session, then 200). |
+
+The control proof is now a permanent test instead of a throwaway branch:
+`apps/api/test/acceptance/adr-0027-fresh-age-control.test.ts`, which runs in the CI job "correctness: integration
+(postgres)". It signs a real account up, ages the session row past 24 hours, and calls `/list-sessions` on two
+instances over the same database and secret: the product's (`freshAge: 0`), which lists, and one built from the
+product's own options (`buildOptions`, exported for this test) with `session.freshAge` removed, which refuses with 403
+`SESSION_NOT_FRESH`. A control shows the second instance serves a session that is not aged. Still open: the browser
+gate `device-authorization.mjs` has not itself been run under the mutant; the acceptance test pins the mechanism it
+relies on, not that gate's reaction to it.
+
+**Follow-up, same day (review on #588): the browser gate is now proven against the mutant on every pull request.**
+The paragraph above left one thing open, and the review named a second: `device-authorization.mjs` asked for
+`/list-sessions` seconds after sign-in, which better-auth's default `freshAge` allows as well, so the gate could not
+have caught the setting being restored. Two changes close this:
+
+- The gate ages its own `Session` row by 25 hours before the request, so it asserts what this ADR promises: a
+  session older than a day reads its device list.
+- `e2e/control-proofs.json` holds the mutant (`freshAge: 0` removed from `apps/api/src/auth/better-auth.ts`), the gate
+  that must catch it and the message it must fail with. `Build & E2E` runs it as the matrix entry
+  `e2e: gates — control-proof-fresh-age-default`: it applies the mutation, rebuilds the API, boots the stack and passes
+  only if the gate fails with that message (`e2e/run-control-proofs.mjs`). A gate that passes on the mutant, or fails
+  for another reason, turns the pull request red. The entry is part of the required check `e2e: browser gates & a11y`.
+
+This is ADR-0021's control proof as a standing check, not a recorded one-off: the proof is repeated whenever the
+gate, the setting or better-auth changes.

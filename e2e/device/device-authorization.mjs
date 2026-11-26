@@ -449,8 +449,14 @@ async function main() {
     for (const [column, value] of [['ipAddress', storedIp], ['userAgent', storedUserAgent]]) {
       if (value && !/^v\d+\.aesgcm256\./.test(value)) fail(`Post-poll: Session.${column} is stored in plain text (${JSON.stringify(value)}).`)
     }
+    // ADR-0027 / #303: the device list must work for a session that is not new. better-auth's default freshAge
+    // refuses `/list-sessions` to a session older than a day, and the product sets `freshAge: 0` so it never does.
+    // A session this script created seconds ago passes under either setting, so the row is aged past the default
+    // first; with freshAge restored, the request below answers 403 and this gate fails.
+    if (!/^[A-Za-z0-9_-]+$/.test(sessionId)) fail(`Post-poll: unexpected Session.id shape (${JSON.stringify(sessionId)}).`)
+    sql(`UPDATE "Session" SET "createdAt" = now() - interval '25 hours', "updatedAt" = now() - interval '25 hours' WHERE "id" = '${sessionId}'`)
     const listed = await contextA.request.get(`${apiOrigin}/api/auth/list-sessions`, { headers: { origin: webOrigin } })
-    if (!listed.ok()) fail(`Post-poll: A could not list its own sessions (${listed.status()}).`)
+    if (!listed.ok()) fail(`Post-poll: A could not list its own sessions with a session older than a day (${listed.status()}); see ADR-0027 (session.freshAge).`)
     const sessions = await listed.json()
     // The list identifies sessions by id and never hands a session token to the page (WEB-22).
     if (sessions.some((session) => 'token' in session)) fail('Post-poll: the session list exposes session tokens to JavaScript.')

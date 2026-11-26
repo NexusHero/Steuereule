@@ -15,6 +15,10 @@ name. The names below are the job `name:` values exactly as they report. On 2026
 first twenty (read with `gh api`); the last five are not required yet and must be added by a repository admin
 (H2-32). Each of them runs on every pull request, so requiring it cannot leave a PR waiting.
 
+Since 2026-11-26 the ruleset also requires the branch to be up to date with `main` before merging: when `main`
+moves, an open pull request is updated and its checks run again against the new base. A merge queue is not
+available to a repository owned by a user account.
+
 | Check | Workflow | Required today |
 |---|---|---|
 | `static: validate compose` | `quality.yml` | yes |
@@ -93,11 +97,12 @@ check of its own.
 |---|---|---|
 | `quality: sonarqube cloud` | SonarQube quality gate (issues, hotspots, coverage on new code) | `quality.yml` |
 
-### Nightly (not a PR gate)
+### Scheduled (not a PR gate)
 | Gate | Proves | Workflow |
 |---|---|---|
 | `AI eval (nightly)` | The owl against the real model — amounts vs. core, StBerG, sources, prompt-injection, PII, consistency, TTFT | `ai-eval-nightly.yml` |
 | `Law watch (nightly)` | Cited norms still match gesetze-im-internet.de | `law-watch.yml` |
+| `Pipeline health (weekly)` | Reports, from the recorded runs of 28 days: wall time of green pull-request runs per workflow, time to green per commit, failed pushes to main, jobs that failed and then passed on a rerun. A report in the job summary, not a gate | `pipeline-health.yml` |
 
 ## How the browser gates are split (ADR-0112)
 
@@ -132,6 +137,20 @@ run `if: always()`, so a ruleset that pins the name never waits for a job that n
 
 The set-up shared by the jobs is in `.github/actions/` (`setup-workspace`, `prepare-database`, `install-chromium`,
 `boot-prod-stack`); long shell steps live in `e2e/smoke/`, `e2e/prod-deploy/`, `scripts/ci/` and `scripts/deploy/` (the two deploy steps that run before the checkout stay inline).
+
+### Control proofs: a gate must fail on its mutant
+
+`e2e/control-proofs.json` lists planted regressions, each with the gate that must catch it and the message that gate
+must fail with (ADR-0021). Every entry runs on every pull request as one more job of the gate matrix
+(`e2e: gates — control-proof-<id>`): the job applies the mutation to the API source, rebuilds the API, boots the
+stack and runs the gate. It passes only when the gate fails with the expected message. If the gate passes on the
+mutant, or is red for another reason, the job fails. A mutation is a literal find/replace that must match its file
+exactly once; when a refactoring moves the line, `e2e: plan` fails and names the proof. To add one: an entry in
+`control-proofs.json`, nothing in the workflow.
+
+| Proof | Mutant | Gate that must fail |
+|---|---|---|
+| `fresh-age-default` | `session.freshAge: 0` removed (ADR-0027) | `e2e/device/device-authorization.mjs` |
 
 ## The accessibility and DAST caveat
 

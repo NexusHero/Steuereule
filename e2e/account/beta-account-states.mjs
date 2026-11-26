@@ -11,7 +11,9 @@
 //           outlived the rule) sees the deletion warning on every screen; its link opens the export.
 //   Row D — Sicherheit: the session check and the passkey list fail and come back on retry; a passkey is added
 //           on a fresh session; on an older session removing it asks for the step-up, which is cancelled once
-//           and then confirmed with the passkey itself.
+//           and then confirmed with the passkey itself. The better-auth routes behind it are asserted on what the
+//           stack really answered (ADR-0027 amendment): list-accounts, the passkey register, list, authenticate and
+//           delete routes, and the 403 FRESH_AUTH_REQUIRED that asked for the step-up.
 //   Row E — OAuth consent: the client lookup fails (approving stays off) and comes back on retry; a request
 //           without rights says so; a consent page without a client cannot be approved; an approved assistant
 //           shows its rights and where its access goes in the profile.
@@ -98,6 +100,28 @@ const COPY = {
   passwordMismatch: 'Die beiden neuen Passwörter stimmen nicht überein.',
   passwordChanged: 'Passwort geändert ✓ Andere Geräte und Assistenten sind abgemeldet.',
   sessionExpired: 'Deine Anmeldung ist abgelaufen. Melde dich neu an, dann bringen wir dich zurück, wo du warst.',
+}
+
+/**
+ * Records the responses of `page` whose path matches `pattern`, as the stack answered them (status and body). A
+ * route a gate fulfils itself with `page.route` shows up here too, with the status the gate chose, so an assertion
+ * on a real answer names the status it expects (a 200 is never one the gate wrote).
+ */
+function recordResponses(page, pattern) {
+  const calls = []
+  page.on('response', (response) => {
+    const { pathname } = new URL(response.url())
+    if (response.request().method() === 'OPTIONS' || !pattern.test(pathname)) return
+    calls.push({ method: response.request().method(), path: pathname, status: response.status(), body: response.text().catch(() => null) })
+  })
+  return calls
+}
+
+/** The bodies of the recorded answers with this method, path and status; fails when there is none. */
+async function realAnswers(calls, method, path, status, row) {
+  const matching = calls.filter((c) => c.method === method && c.path === path && c.status === status)
+  if (matching.length === 0) fail(`${row}: the stack never answered ${method} ${path} with ${status}; it answered ${JSON.stringify(calls.filter((c) => c.path === path).map((c) => `${c.method} ${c.status}`))}`)
+  return Promise.all(matching.map((c) => c.body))
 }
 
 const byId = (page, id) => page.locator(`[data-testid="${id}"]`)
@@ -298,6 +322,7 @@ async function signedInAccount(browser, { apiOrigin, webOrigin, sql }) {
   const page = await ctx.newPage()
   guardAgainst429(page, fail, '/api/auth/')
   guardAgainst429(page, fail, '/v1/device/')
+  const authCalls = recordResponses(page, /^\/api\/auth\/(passkey\/|list-accounts$)/)
   const cdp = await ctx.newCDPSession(page)
   await cdp.send('WebAuthn.enable')
   const { authenticatorId } = await cdp.send('WebAuthn.addVirtualAuthenticator', {
@@ -352,6 +377,26 @@ async function signedInAccount(browser, { apiOrigin, webOrigin, sql }) {
     if (sql(`SELECT count(*) FROM "Passkey" WHERE "userId" = '${userId}'`) !== '0') fail('Row D: the confirmed removal must delete the passkey')
     if (Number(sql(`SELECT count(*) FROM "Session" WHERE "userId" = '${userId}'`)) !== sessionsBefore + 1) fail('Row D: confirming with the passkey must be a new sign-in (a fresh session)')
     console.log(`[${TAG}] ✅ Row D — passkey added; on an older session its removal asks first, cancel keeps it, the passkey itself confirms and it is gone`)
+
+    // The routes behind it, on what the stack answered (none of them intercepted: the failing list read of the
+    // start was answered by the gate with a 503, and is not counted here).
+    const accounts = await realAnswers(authCalls, 'GET', '/api/auth/list-accounts', 200, 'Row D')
+    if (!accounts.some((body) => Array.isArray(JSON.parse(body ?? 'null')) && JSON.parse(body).some((a) => a.providerId === 'credential'))) {
+      fail(`Row D: list-accounts must list the password account (providerId credential), got ${JSON.stringify(accounts)}`)
+    }
+    const registerOptions = await realAnswers(authCalls, 'GET', '/api/auth/passkey/generate-register-options', 200, 'Row D')
+    if (!registerOptions.some((body) => typeof JSON.parse(body ?? 'null')?.challenge === 'string')) fail('Row D: generate-register-options must answer a WebAuthn challenge')
+    await realAnswers(authCalls, 'POST', '/api/auth/passkey/verify-registration', 200, 'Row D')
+    const lists = await realAnswers(authCalls, 'GET', '/api/auth/passkey/list-user-passkeys', 200, 'Row D')
+    if (!lists.some((body) => Array.isArray(JSON.parse(body ?? 'null')) && JSON.parse(body).length === 1)) fail(`Row D: the passkey list must have held the added passkey, got ${JSON.stringify(lists)}`)
+    const authenticateOptions = await realAnswers(authCalls, 'GET', '/api/auth/passkey/generate-authenticate-options', 200, 'Row D')
+    if (!authenticateOptions.some((body) => typeof JSON.parse(body ?? 'null')?.challenge === 'string')) fail('Row D: generate-authenticate-options must answer a WebAuthn challenge')
+    await realAnswers(authCalls, 'POST', '/api/auth/passkey/verify-authentication', 200, 'Row D')
+    const refusedDeletes = await realAnswers(authCalls, 'POST', '/api/auth/passkey/delete-passkey', 403, 'Row D')
+    if (!refusedDeletes.some((body) => JSON.parse(body ?? 'null')?.code === 'FRESH_AUTH_REQUIRED')) fail(`Row D: the delete on the older session must ask for the step-up, got ${JSON.stringify(refusedDeletes)}`)
+    const deletes = await realAnswers(authCalls, 'POST', '/api/auth/passkey/delete-passkey', 200, 'Row D')
+    if (!deletes.some((body) => JSON.parse(body ?? 'null')?.status === true)) fail(`Row D: the confirmed delete must answer { status: true }, got ${JSON.stringify(deletes)}`)
+    console.log(`[${TAG}] ✅ Row D — list-accounts and the passkey register, list, authenticate and delete routes answered as the app needs`)
 
     // Row E — OAuth consent. The client registers itself before anyone approves it (ADR-0052 amendment 5).
     const registration = { application_type: 'native', client_name: 'E2E-Zustandsassistent', redirect_uris: [REDIRECT_URI], token_endpoint_auth_method: 'none', grant_types: ['authorization_code'], response_types: ['code'] }

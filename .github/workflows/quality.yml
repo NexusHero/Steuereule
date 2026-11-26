@@ -413,11 +413,14 @@ jobs:
         # this only re-checks on a new push, and only until #71/branch protection lands).
         if: '!cancelled()'
         run: node scripts/checks/adr-check.mjs
-      - name: workflow-timeouts-check — every job sets timeout-minutes (#207)
+      - name: workflow-timeouts-check — every job sets timeout-minutes (#207) and none uses a job-level always()
         if: '!cancelled()'
         run: |
           node --test scripts/checks/workflow-timeouts-check.test.mjs
           node scripts/checks/workflow-timeouts-check.mjs
+      - name: pipeline-health self-test — the weekly report's arithmetic
+        if: '!cancelled()'
+        run: node --test scripts/ci/pipeline-health.test.mjs
       - name: register-check self-test — the checker's own rules, incl. cited line ranges (#254)
         if: '!cancelled()'
         run: node --test scripts/checks/register-check.test.mjs

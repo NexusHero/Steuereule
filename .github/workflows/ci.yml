@@ -399,6 +399,16 @@ jobs:
       - name: Unpack the build
         if: matrix.stack
         run: tar xzf e2e-build.tgz
+      # A control-proof entry of the matrix (e2e/control-proofs.json): plant the regression in the API source and
+      # rebuild the API over the downloaded build, so the stack below is the mutant. The working tree of this job is
+      # thrown away with the runner; nothing of it is committed or uploaded as a build.
+      - name: Apply the mutation and rebuild the API (control proof only)
+        if: matrix.mutant
+        env:
+          MUTANT: ${{ matrix.mutant }}
+        run: |
+          node e2e/run-control-proofs.mjs --apply "$MUTANT"
+          pnpm --filter @steuereule/api build
       - uses: ./.github/actions/install-chromium
         if: matrix.stack
       - name: Boot the real server (compiled dist/, same tsx bridge as the `smoke` job)
@@ -424,7 +434,14 @@ jobs:
           curl --fail --silent --show-error --retry 30 --retry-delay 1 --retry-all-errors --retry-connrefused \
             "${WEB_ORIGIN}/"
       - name: Run the gates of the group — ${{ matrix.title }}
+        if: '!matrix.mutant'
         run: node e2e/run-gates.mjs --group "${{ matrix.group }}"
+      # Passes only when the named gate FAILS on the mutant with its expected message (ADR-0021).
+      - name: The gate must fail on the mutant — ${{ matrix.title }}
+        if: matrix.mutant
+        env:
+          MUTANT: ${{ matrix.mutant }}
+        run: node e2e/run-control-proofs.mjs --run "$MUTANT"
       # The reports some gates write (visual diffs, scan corpus, coverage gaps, navigation measurements); only the
       # group that ran the gate has files, the others upload nothing.
       - name: Upload the gate reports
@@ -457,11 +474,13 @@ jobs:
 
   # The required check keeps its name (a repository ruleset pins the name; a renamed job would wait for ever and
   # the PR would sit on "pending"). It passes when the plan, the build and every gate group passed, and it runs
-  # even when one of them failed, so it reports red instead of staying pending.
+  # even when one of them failed, so it reports red instead of staying pending. `!cancelled()`, not `always()`:
+  # a newer push cancels this run, and with `always()` the job still ran and reported the cancelled gate groups
+  # as a failure (seen on #586, run 45816324949).
   cross-origin-smoke:
     name: 'e2e: browser gates & a11y (BFSG/WCAG 2.1 AA, headless Chromium)'
     needs: [e2e-plan, e2e-build, e2e-gates]
-    if: always()
+    if: '!cancelled()'
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
@@ -747,7 +766,8 @@ jobs:
   prod-deploy-smoke:
     name: 'e2e: production compose stack + OWASP ZAP DAST (real Docker build)'
     needs: [prod-stack-smoke, prod-stack-dast]
-    if: always()
+    # As for the browser-gates aggregator above: red after a failure, not after a cancelled run.
+    if: '!cancelled()'
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:

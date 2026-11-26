@@ -191,6 +191,18 @@ async function main() {
         callbackBox.value = new URL(route.request().url())
         await route.fulfill({ status: 200, body: 'ok' })
       })
+      // What the stack answers POST /oauth2/consent (the route OauthConsentScreen calls), per decision. The screen
+      // navigates away as soon as it has the answer, and Chromium then drops the response body, so a `response`
+      // listener reads nothing. The route below passes the request through to the real stack (`route.fetch`), keeps
+      // the answer, and hands the page that same response unchanged.
+      const consentAnswers = []
+      await page.route(`${apiOrigin}/api/auth/oauth2/consent`, async (route) => {
+        const response = await route.fetch()
+        if (route.request().method() === 'POST') {
+          consentAnswers.push({ accept: route.request().postDataJSON()?.accept, status: response.status(), body: await response.json().catch(() => null) })
+        }
+        await route.fulfill({ response })
+      })
       const authorize = async () => {
         const verifier = randomBytes(32).toString('base64url')
         const challenge = createHash('sha256').update(verifier).digest('base64url')
@@ -215,6 +227,16 @@ async function main() {
       await waitForCallback(page, callbackBox)
       const code = callbackBox.value?.searchParams.get('code')
       if (!code) fail(`Row D: „Erlauben“ must redirect with a code, got ${callbackBox.value}`)
+      // The consent route itself: declining answers 200 with the redirect carrying access_denied, accepting 200 with
+      // the redirect carrying the very code the client then exchanged.
+      const declined = consentAnswers.find((a) => a.accept === false)
+      const accepted = consentAnswers.find((a) => a.accept === true)
+      if (declined?.status !== 200 || new URL(declined.body?.url ?? 'about:blank').searchParams.get('error') !== 'access_denied') {
+        fail(`Row D: POST /oauth2/consent with accept=false must answer 200 and the access_denied redirect, got ${JSON.stringify(declined)}`)
+      }
+      if (accepted?.status !== 200 || new URL(accepted.body?.url ?? 'about:blank').searchParams.get('code') !== code) {
+        fail(`Row D: POST /oauth2/consent with accept=true must answer 200 and the redirect carrying the code „${code}“, got ${JSON.stringify(accepted)}`)
+      }
       const tokenRes = await fetch(`${apiOrigin}/api/auth/oauth2/token`, {
         method: 'POST',
         headers: { 'content-type': 'application/x-www-form-urlencoded' },

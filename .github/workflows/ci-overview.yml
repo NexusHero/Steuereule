@@ -34,6 +34,11 @@ jobs:
           render() {
             PR=$(gh api "repos/$REPO/commits/$SHA/pulls" --jq '.[0].number // empty')
             [ -n "$PR" ] || { echo "No PR for $SHA."; return 0; }
+            # A newer push cancels the runs of this commit; its overview would overwrite the comment with the
+            # cancelled jobs of a commit nobody is looking at any more (seen on #588).
+            HEAD_SHA=$(gh api "repos/$REPO/pulls/$PR" --jq '.head.sha') ||
+              { echo "PR head lookup failed; skipping overview."; return 0; }
+            [ "$HEAD_SHA" = "$SHA" ] || { echo "$SHA is no longer the head of PR #$PR; skipping overview."; return 0; }
             RUNS=$(gh api "repos/$REPO/commits/$SHA/check-runs" --paginate \
               --jq '.check_runs[] | {name, status, conclusion}') ||
               { echo "check-run retrieval failed; skipping overview."; return 0; }
@@ -45,18 +50,21 @@ jobs:
             TABLE=$(printf '%s\n' "$RUNS" | jq -rs '
               [ .[] | select((.name|startswith("overview:"))|not)
                     | {cat: ((.name|split(": ")[0]) // "other"),
-                       gate: ((.name|sub("^[a-z-]+: ";""))),
+                       gate: ((.name|sub("^[a-z0-9-]+: ";""))),
                        ok: (.conclusion // "pending")} ]
               | sort_by(.cat, .gate) | group_by(.cat)
               | map("### " + .[0].cat + "\n" + (map("- "
                   + (if .ok=="success" then "✅" elif .ok=="skipped" then "⏭️"
-                     elif .ok=="neutral" then "➖" else "❌" end) + " " + .gate) | join("\n")))
+                     elif .ok=="neutral" then "➖" elif .ok=="cancelled" then "⏹️ cancelled:"
+                     else "❌" end) + " " + .gate) | join("\n")))
               | join("\n\n")')
             FAILS=$(printf '%s\n' "$RUNS" | jq -rs \
-              '[.[] | select(.conclusion!=null and (.conclusion|IN("success","skipped","neutral")|not))] | length')
+              '[.[] | select(.conclusion!=null and (.conclusion|IN("success","skipped","neutral","cancelled")|not))] | length')
+            # A cancelled job proved nothing either way: it is neither passing nor failing, and is counted apart.
+            CANCELLED=$(printf '%s\n' "$RUNS" | jq -rs '[.[] | select(.conclusion=="cancelled")] | length')
             # shellcheck disable=SC2016  # backticks are literal Markdown in the comment body, not command substitution
-            BODY=$(printf '<!-- ci-overview -->\n## CI Overview — by category\n\n_This panel groups every check by what it proves. Which of them the `main` ruleset requires is listed in `docs/ci-pipeline.md` (Required checks)._\n\n%s\n\n**Failing gates: %s** · commit `%s` · see [`docs/ci-pipeline.md`](https://github.com/%s/blob/main/docs/ci-pipeline.md) for what each gate proves and its evidence tier.\n' \
-              "$TABLE" "$FAILS" "${SHA:0:9}" "$REPO")
+            BODY=$(printf '<!-- ci-overview -->\n## CI Overview — by category\n\n_This panel groups every check by what it proves. Which of them the `main` ruleset requires is listed in `docs/ci-pipeline.md` (Required checks)._\n\n%s\n\n**Failing gates: %s** · cancelled: %s · commit `%s` · see [`docs/ci-pipeline.md`](https://github.com/%s/blob/main/docs/ci-pipeline.md) for what each gate proves and its evidence tier.\n' \
+              "$TABLE" "$FAILS" "$CANCELLED" "${SHA:0:9}" "$REPO")
             CID=$(gh api "repos/$REPO/issues/$PR/comments" --paginate \
               --jq '.[] | select(.body|startswith("<!-- ci-overview -->")) | .id' | head -1)
             if [ -n "$CID" ]; then

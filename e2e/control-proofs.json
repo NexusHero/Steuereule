@@ -1,0 +1,16 @@
+{
+  "proofs": [
+    {
+      "id": "fresh-age-default",
+      "title": "session.freshAge back to better-auth's default",
+      "mutation": {
+        "file": "apps/api/src/auth/better-auth.ts",
+        "find": "      freshAge: 0,\n",
+        "replace": ""
+      },
+      "command": "node e2e/device/device-authorization.mjs",
+      "expect": "could not list its own sessions with a session older than a day (403)",
+      "why": "ADR-0027 and #303: with better-auth's default freshAge a session older than a day is refused its own device list. The device gate ages its session and must fail here; if it passes, it no longer guards the setting."
+    }
+  ]
+}

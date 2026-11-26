@@ -105,7 +105,12 @@ export interface BetterAuthBundle {
   rateLimitStorage: ResettableRateLimitStorage
 }
 
-function buildOptions(options: CreateBetterAuthOptions & { rateLimitStorage: ResettableRateLimitStorage }): BetterAuthOptions {
+/**
+ * The product's better-auth options. Exported for one reason: the freshAge control proof
+ * (`test/acceptance/adr-0027-fresh-age-control.test.ts`) builds a second instance from the same options with
+ * `session.freshAge` left out. Production builds its instance through {@link createBetterAuth}.
+ */
+export function buildOptions(options: CreateBetterAuthOptions & { rateLimitStorage: ResettableRateLimitStorage }): BetterAuthOptions {
   const {
     prisma,
     secret,
