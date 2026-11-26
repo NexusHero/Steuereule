@@ -34,7 +34,7 @@
 import { launchBrowser, closeBrowser, newContextAtBreakpoint, guardAgainst429, authoredText } from '../harness/browser.mjs'
 import { startStack } from '../harness/stack.mjs'
 import { fail, waitForBucketHeadroom } from '../harness/rate-limit.mjs'
-import { PASSWORD, createAccount, call, answer, browserLogin } from '../harness/api-account.mjs'
+import { PASSWORD, createAccount, call, answer, browserLogin, putLstb } from '../harness/api-account.mjs'
 import { whereEmail } from '../harness/email-hash.mjs'
 import { snapshotPage } from '../harness/failure-snapshot.mjs'
 
@@ -226,6 +226,9 @@ async function main() {
     console.log(`[${TAG}] ✅ Row 4 — kopplung-art-fehler: B's „Einzelveranlagung“ is refused (403) and said; the year stays joint`)
 
     // --- Row 5 — B's printout: A prints ------------------------------------------------------------------------
+    // B's own figures belong in the joint return, so the printout of a year with open blockers leads B to the
+    // gate first (AC 6), as anyone's does. With B's LStB recorded, B's printout says that A prints it.
+    await putLstb(b.api, JOIN_YEAR, 38_000, 4_900, 7_700)
     const checkB = await call(b.api, 'GET', `/v1/steuerjahre/${JOIN_YEAR}/ausdruck/pruefung`)
     if (JSON.stringify(checkB.missing) !== JSON.stringify(['personADruckt'])) fail(`Row 5: B's printout check should be ['personADruckt'], got ${JSON.stringify(checkB.missing)}`)
     await pageB.goto(`${webOrigin}/app/steuerjahr/${JOIN_YEAR}/ausdruck`, { waitUntil: 'networkidle' })
