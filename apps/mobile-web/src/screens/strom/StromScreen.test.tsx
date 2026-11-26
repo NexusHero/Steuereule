@@ -64,6 +64,17 @@ describe('StromScreen', () => {
     expect(screen.getByTestId('strom-pause')).toBeTruthy()
   })
 
+  it('names the first step without a total while the basis is unanswered, with the total once it is saved', async () => {
+    serve({})
+    const first = renderStrom('basis', () => {})
+    expect((await screen.findByTestId('strom-position')).textContent).toBe('Schritt 1')
+    first.unmount()
+
+    serve(BASIS)
+    renderStrom('basis', () => {})
+    await waitFor(() => expect(screen.getByTestId('strom-position').textContent).toMatch(/^Schritt 1 von \d+$/))
+  })
+
   it('a married pensioner names Person B on the partner page, which saves B and leads on to the own masks first (Echtdatentest 18.11.2026)', async () => {
     serve({ ...BASIS, familienstand: 'Verheiratet', 'partner-job': 'Rente' })
     let personB: Record<string, unknown> | null = null

@@ -1895,6 +1895,7 @@
     "zurueck": "Back",
     "pause": "Continue later",
     "position": "Step {{index}} of {{total}}",
+    "positionOhneGesamt": "Step {{index}}",
     "fertigMarke": "Done",
     "fehlt": "Please fill this in – or tap “Later”.",
     "artFehlt": "Choose which of these applies.",
