@@ -118,6 +118,8 @@ The review read code. Nothing here was measured under load or tried against a de
 18. **Staging and production are separate.** `infra/gcp` takes an `environment`; a green CI on `main`
     deploys staging, production is deployed by hand through the GitHub environment `production`. The
     workload identity condition checks the environment claim.
+    > **Amended (2026-11-26, [ADR-0113](./0113-production-deploy-by-release.md)).** Production is deployed by
+    > publishing a release, not by hand.
 19. **Both Cloud SQL instances have a private address only.** The API and the migrate job reach them through
     Direct VPC egress and the Cloud SQL socket, so the VPC is now a required part of the stack and the Trivy
     exception is gone. Production gets a dedicated-core tier and regional availability; beta and staging keep
