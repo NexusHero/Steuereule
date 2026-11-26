@@ -18,11 +18,12 @@
     "check:better-auth": "node scripts/checks/better-auth-version-check.mjs"
   },
   "devDependencies": {
-    "@vitest/coverage-v8": "^2.1.8",
-    "oxlint": "^1.76.0",
-    "turbo": "^2.3.3",
+    "@vitest/coverage-v8": "^4.1.12",
+    "oxlint": "^1.95.0",
+    "turbo": "^2.11.13",
     "typescript": "^7.0.0",
-    "vitest": "^2.1.8"
+    "vite": "^7.3.8",
+    "vitest": "^4.1.12"
   },
   "pnpm": {
     "overrides": {
@@ -30,10 +31,12 @@
       "react-dom": "19.0.0",
       "react-native": "0.79.5",
       "react-i18next": "15.7.4",
-      "i18next": "24.2.3",
+      "i18next": "26.3.4",
       "@huggingface/transformers>onnxruntime-node": "-",
       "@huggingface/transformers>sharp": "-",
-      "node-forge": "1.4.2",
+      "node-forge": "1.4.4",
+      "orval>js-yaml": "4.3.2",
+      "@expo/metro-config>postcss": "^8.5.33",
       "effect": "3.22.5",
       "@fastify/static": "^10.1.12",
       "nodemailer": "^10.6.1",
@@ -44,7 +47,8 @@
       "prisma-field-encryption>zod": "^4.6.7",
       "source-map-js": "^1.2.2",
       "fastify": "^5.12.8",
-      "nanoid@>=3.0.0 <4.0.0": "^3.3.18"
+      "nanoid@>=3.0.0 <4.0.0": "^3.3.18",
+      "brace-expansion@>=5.0.0 <5.1.0": "^5.1.0"
     },
     "onlyBuiltDependencies": [
       "@bundled-es-modules/glob",

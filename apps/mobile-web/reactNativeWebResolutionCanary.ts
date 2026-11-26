@@ -14,7 +14,8 @@
 //
 // Communication is a file, not an in-memory array — deliberately, and not for style. Vite loads
 // this plugin (and this module) once, itself, to build the config; the test that reads the result
-// later runs inside vite-node's own, separate module-execution pipeline, which re-evaluates this
+// later runs inside Vitest's own, separate module-execution pipeline (Vite's module runner since
+// Vitest 4, vite-node before), which re-evaluates this
 // same source file as a *second, unrelated* module instance. An in-memory array does not bridge
 // that: it was tried first, and it silently read back empty on every run, passing regardless of
 // whether the plugin ever fired — verified directly (a `console.error` inside `resolveId` showed

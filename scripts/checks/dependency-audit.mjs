@@ -44,14 +44,6 @@ export const ALLOWLIST = [
     reason: 'Optional peer resolved from the workspace devDependency; not part of a production install.',
     expires: '2027-02-28',
   },
-  {
-    // style-dictionary turns the design tokens into files at build time (packages/tokens);
-    // nothing imports it at runtime. The fix is the 5.x major, which changes the token build.
-    name: 'style-dictionary token build',
-    pattern: /^packages__tokens>style-dictionary(>|$)/,
-    reason: 'Build-time token generation; fixed in style-dictionary 5.x, a major upgrade of the token build.',
-    expires: '2027-02-28',
-  },
 ]
 
 const BLOCKING = new Set(['high', 'critical'])

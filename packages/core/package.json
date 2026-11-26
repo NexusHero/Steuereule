@@ -19,5 +19,8 @@
     "bench": "vitest bench --run",
     "coverage": "vitest run --coverage",
     "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.5"
   }
 }

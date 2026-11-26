@@ -66,14 +66,79 @@ async function signIn(browser, webOrigin, email, breakpoint) {
   return { ctx, page }
 }
 
-async function openEule(page) {
-  await page.getByRole('tab', { name: 'Eule' }).click()
-  await page.locator('[data-testid="eule-privacy-badge"]').waitFor({ state: 'visible', timeout: 15_000 })
+const isOpeningRead = (request) => request.method() === 'GET' && new URL(request.url()).pathname.endsWith('/advisor/opening')
+const isTurn = (request) => request.method() === 'POST' && new URL(request.url()).pathname.endsWith('/advisor/stream')
+
+/**
+ * What the chat of a page is doing, read off its own requests. The owl opens an empty conversation herself when
+ * the case changed since her last opening (ADR-0067 §11): the app reads `/advisor/opening` and, when that says
+ * `shouldOpen`, starts a turn nobody typed. While any turn streams the send button is the stop button, so a
+ * message sent then is not sent. The reads, an announced opening and the running turns tell when the chat is free.
+ */
+const chats = new WeakMap()
+function watchChat(page) {
+  let chat = chats.get(page)
+  if (chat) return chat
+  chat = { readingOpening: 0, openingAnnouncedAt: null, turnsRunning: 0 }
+  page.on('request', (request) => {
+    if (isOpeningRead(request)) chat.readingOpening += 1
+    if (isTurn(request)) {
+      chat.turnsRunning += 1
+      // Any turn settles the announcement: the opening itself, or a message that got in first (the conversation
+      // is then no longer empty and the owl does not open it).
+      chat.openingAnnouncedAt = null
+    }
+  })
+  page.on('response', async (response) => {
+    if (!isOpeningRead(response.request())) return
+    const answer = await response.json().catch(() => null)
+    if (answer?.shouldOpen === true && chat.turnsRunning === 0) chat.openingAnnouncedAt = Date.now()
+    chat.readingOpening -= 1
+  })
+  const ended = (request) => {
+    if (isTurn(request)) chat.turnsRunning -= 1
+    // A read that failed gets no response event; one that got its response was counted down there.
+    if (isOpeningRead(request) && request.failure() !== null) chat.readingOpening -= 1
+  }
+  page.on('requestfinished', ended)
+  page.on('requestfailed', ended)
+  chats.set(page, chat)
+  return chat
 }
 
+/** Waits until the chat has decided about its opening, any opening it announced has run, and no turn is streaming. */
+async function chatIsFree(page, label) {
+  const chat = watchChat(page)
+  const deadline = Date.now() + 30_000
+  let freeSince = null
+  while (Date.now() < deadline) {
+    // The app opens once per conversation: a second read that says `shouldOpen` for a conversation it already
+    // opened starts nothing. An announcement no turn followed within five seconds is such a read.
+    if (chat.openingAnnouncedAt !== null && Date.now() - chat.openingAnnouncedAt > 5_000) chat.openingAnnouncedAt = null
+    const free = chat.readingOpening === 0 && chat.openingAnnouncedAt === null && chat.turnsRunning === 0
+    if (!free) freeSince = null
+    else if (freeSince === null) freeSince = Date.now()
+    // Free for a moment, not for an instant: the read of the opening follows the read of the session.
+    else if (Date.now() - freeSince >= 500) return
+    await page.waitForTimeout(50)
+  }
+  fail(`${label}: the chat did not become free within 30 s (opening being read: ${chat.readingOpening}, opening announced: ${chat.openingAnnouncedAt !== null}, turns streaming: ${chat.turnsRunning})`)
+}
+
+async function openEule(page) {
+  watchChat(page)
+  await page.getByRole('tab', { name: 'Eule' }).click()
+  await page.locator('[data-testid="eule-privacy-badge"]').waitFor({ state: 'visible', timeout: 15_000 })
+  await chatIsFree(page, 'openEule')
+}
+
+/** Sends a message and makes sure it left the browser: a click that starts no turn fails here, by name. */
 async function ask(page, text) {
+  await chatIsFree(page, `ask „${text}“`)
   await page.locator('[data-testid="advisor-chat-input"]').fill(text)
+  const sent = page.waitForRequest((request) => isTurn(request) && (request.postData() ?? '').includes(text), { timeout: 10_000 })
   await page.locator('[data-testid="advisor-chat-send"]').click()
+  await sent.catch(() => fail(`ask: the click on send did not send „${text}“ — no turn with this text left the browser`))
 }
 
 /** Every request that could write tax data: the mask PUTs and the advisor apply/undo calls. */

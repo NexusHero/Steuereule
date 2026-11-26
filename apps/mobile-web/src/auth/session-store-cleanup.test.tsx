@@ -60,9 +60,14 @@ describe('#240 — better-auth session store deferred-unmount timer vs. cleanSto
     vi.useRealTimers()
   })
 
-  it('control: without cleanStores(), the deferred destroy fires into a torn-down window', async () => {
+  // Up to better-auth 1.7.12 the deferred destroy looked the global `window` up again
+  // (`window.removeEventListener` in broadcast-channel.mjs) and threw into a torn-down window. From 1.7.27
+  // the subscription keeps the `window` it was made on (`const target = window`) and removes its listener
+  // there, so the destroy no longer reaches for the global. This pins that upstream fix: should a later
+  // version look the global up again, this test fails and the `cleanStores()` safeguard below matters again.
+  it('the deferred destroy of better-auth no longer reaches for the global window after teardown', async () => {
     vi.useFakeTimers()
-    // Mounting/unmounting is what schedules the deferred timer this test breaks against; nothing
+    // Mounting/unmounting is what schedules the deferred timer this test runs past; nothing
     // afterwards needs the store itself.
     await mountAndUnmountSessionStore()
 
@@ -77,7 +82,7 @@ describe('#240 — better-auth session store deferred-unmount timer vs. cleanSto
     const restoreWindow = tearDownWindow()
 
     try {
-      expect(() => vi.advanceTimersByTime(STORE_UNMOUNT_DELAY - 1)).toThrow(/window is not defined/)
+      expect(() => vi.advanceTimersByTime(STORE_UNMOUNT_DELAY - 1)).not.toThrow()
     } finally {
       restoreWindow()
     }

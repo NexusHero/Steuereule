@@ -5,7 +5,7 @@
 // Two things are true about these two packages that together caused task 1a's original failure:
 //
 // 1. Their `main` (CJS) build is genuine `require(...)`-based CommonJS, not a transpiled-to-CJS
-//    ESM module — and vite-node's SSR transform only rewrites `import`/`export` syntax into its
+//    ESM module — and Vite's SSR transform (run by Vitest's module runner) only rewrites `import`/`export` syntax into its
 //    own instrumented, resolver-aware form. A file with no ESM syntax to rewrite (this is one)
 //    keeps its raw `require(...)` calls, which then run through a real, unmodified Node
 //    `require` — bypassing Vite's resolver, and therefore this plugin, entirely, regardless of

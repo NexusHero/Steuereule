@@ -1,6 +1,6 @@
 import { ForbiddenException, UnauthorizedException, type ExecutionContext } from '@nestjs/common'
 import { AcceptsAssistantToken } from '../src/auth/accepts-assistant-token.js'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi, type Mock } from 'vitest'
 import { createHash, generateKeyPairSync, sign as signWith } from 'node:crypto'
 import { signGuestSession } from '../src/auth/guest-session.js'
 import {
@@ -17,7 +17,7 @@ import type { BetterAuthBundle } from '../src/auth/auth.tokens.js'
 import { createResettableRateLimitStorage } from '../src/auth/rate-limit-storage.js'
 import type { AssistantClient, BearerTokenRepository } from '../src/auth/bearer-token.repository.js'
 
-function fakeTokens(overrides: Partial<Record<keyof BearerTokenRepository, ReturnType<typeof vi.fn>>> = {}) {
+function fakeTokens(overrides: Partial<Record<keyof BearerTokenRepository, Mock>> = {}) {
   return {
     findOpaqueToken: overrides.findOpaqueToken ?? vi.fn().mockResolvedValue(null),
     findClient: overrides.findClient ?? vi.fn().mockResolvedValue(null),
@@ -54,7 +54,7 @@ function makeContext(cookies: Record<string, string | undefined>, headers: Recor
   return { context, request, setCookie, header, clearCookie }
 }
 
-function makeBetterAuthBundle(getSession: ReturnType<typeof vi.fn>): BetterAuthBundle {
+function makeBetterAuthBundle(getSession: Mock): BetterAuthBundle {
   return {
     // Only `api.getSession` is ever called by the guard — the rest of `Auth` is
     // irrelevant to this unit test, so it's deliberately left out of the fake shape.
