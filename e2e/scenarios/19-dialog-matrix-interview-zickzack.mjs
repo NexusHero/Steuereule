@@ -85,7 +85,7 @@ export async function runScenario19(browser, webOrigin) {
   await opt('familienstand', 'Geschieden oder getrennt').click()
   await field('partner-job').waitFor({ state: 'detached', timeout: 10_000 })
   await opt('familienstand', 'Ledig').click()
-  await page.locator('[data-testid="strom-position"]', { hasText: 'Schritt 1 von' }).waitFor({ state: 'visible', timeout: 10_000 })
+  await page.locator('[data-testid="strom-position"]', { hasText: 'Schritt 1' }).waitFor({ state: 'visible', timeout: 10_000 })
 
   // Complete -> the Strom continues with the wage certificate.
   await page.locator('[data-testid="strom-weiter"]').click()

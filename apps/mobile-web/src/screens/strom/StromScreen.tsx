@@ -29,6 +29,7 @@ import { PartnerPage } from './PartnerPage'
 import { stromStepTitle } from './stromTitles'
 import { effectOf } from './stromEffects'
 import {
+  isBasisDone,
   isStepOpen,
   nextOpenStep,
   slugOf,
@@ -191,9 +192,12 @@ function StepCount({ step, answers, facts }: { readonly step: StromStep; readonl
   const options = useStromOptions()
   const position = stepPosition(step, answers, facts, options)
   if (position === null) return <Text style={{ ...t.type.metaLarge, color: t.color.tinte2 }} numberOfLines={1}>{tr('strom.fertigMarke')}</Text>
+  // The basis page decides the path: until its answers are saved the plan is just this page, so the total
+  // („1 von 1“) would be a number the app does not know yet. Name the step, and the total once it is known.
+  const totalKnown = step.kind !== 'basis' || isBasisDone(answers, options)
   return (
     <Text style={{ ...t.type.metaLarge, color: t.color.tinte2 }} numberOfLines={1} testID="strom-position">
-      {tr('strom.position', { index: position.index, total: position.total })}
+      {totalKnown ? tr('strom.position', { index: position.index, total: position.total }) : tr('strom.positionOhneGesamt', { index: position.index })}
     </Text>
   )
 }

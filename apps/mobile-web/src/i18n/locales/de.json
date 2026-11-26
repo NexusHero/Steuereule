@@ -1895,6 +1895,7 @@
     "zurueck": "Zurück",
     "pause": "Später weiter",
     "position": "Schritt {{index}} von {{total}}",
+    "positionOhneGesamt": "Schritt {{index}}",
     "fertigMarke": "Fertig",
     "fehlt": "Bitte ausfüllen – oder „Später“ tippen.",
     "artFehlt": "Wähl noch aus, was davon zutrifft.",
