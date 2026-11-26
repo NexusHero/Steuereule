@@ -22,6 +22,31 @@
     "unicorn/no-array-sort": "off",
     "unicorn/no-invalid-fetch-options": "off",
     "unicorn/consistent-function-scoping": "off",
-    "eslint/no-underscore-dangle": "off"
-  }
+    "eslint/no-underscore-dangle": "off",
+
+    // One construction site for the auth client (apps/mobile-web/src/auth/auth-client.ts, #257).
+    "eslint/no-restricted-imports": [
+      "error",
+      {
+        "paths": [
+          {
+            "name": "better-auth/react",
+            "importNames": ["createAuthClient"],
+            "message": "Construct the auth client only in apps/mobile-web/src/auth/auth-client.ts; import it from there."
+          },
+          {
+            "name": "better-auth/client",
+            "importNames": ["createAuthClient"],
+            "message": "Construct the auth client only in apps/mobile-web/src/auth/auth-client.ts; import it from there."
+          }
+        ]
+      }
+    ]
+  },
+  "overrides": [
+    {
+      "files": ["apps/mobile-web/src/auth/auth-client.ts"],
+      "rules": { "eslint/no-restricted-imports": "off" }
+    }
+  ]
 }
