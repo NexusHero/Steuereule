@@ -24,6 +24,8 @@ export class PlaywrightPdfRenderer implements PdfRenderer, OnModuleInit, OnModul
   })
   private browser: Browser | undefined
   private launching: Promise<Browser> | undefined
+  /** Set once on shutdown: from then on no launch starts, and none that is in flight is left running (#290). */
+  private destroyed = false
   private activeRenders = 0
   private readonly waitQueue: Array<{ start: () => void; timer: NodeJS.Timeout }> = []
   /** Exports waiting for a Chromium slot; more are turned away at once instead of piling up in memory (ADR-0109). */
@@ -34,7 +36,7 @@ export class PlaywrightPdfRenderer implements PdfRenderer, OnModuleInit, OnModul
 
   async onModuleInit(): Promise<void> {
     try {
-      this.browser = await this.launch()
+      await this.getOrLaunch()
     } catch (error) {
       this.logger.warn(
         `Chromium did not launch at boot (PDF export will retry lazily on first use): ${String(error)}`,
@@ -43,40 +45,70 @@ export class PlaywrightPdfRenderer implements PdfRenderer, OnModuleInit, OnModul
   }
 
   async onModuleDestroy(): Promise<void> {
-    await this.browser?.close()
+    this.destroyed = true
+    const launching = this.launching
+    const launched = this.browser
+    await launched?.close()
+    // A launch still in flight lands after this method would have returned, and its browser would never be
+    // closed: wait for it and close what it yields (the one already closed above is not closed twice).
+    const late = await launching?.catch(() => undefined)
+    if (late !== undefined && late !== launched) await late.close()
+  }
+
+  private assertRunning(): void {
+    if (this.destroyed) throw new UnavailableError('EXPORT_SHUTTING_DOWN', 'Der Server wird gerade beendet. Versuch es gleich noch mal.', { retryAfterSeconds: RETRY_AFTER_SECONDS })
   }
 
   async renderPdf(html: string): Promise<Buffer> {
+    this.assertRunning()
     const browser = this.browser ?? (await this.getOrLaunch())
     await this.acquireRenderSlot()
     try {
-      // Defence in depth (API-7): the export HTML is escaped, but should a value ever slip through, it runs no
-      // script and fetches nothing. Only inline data: and blob: resources load.
-      const context = await browser.newContext({ javaScriptEnabled: false, serviceWorkers: 'block' })
-      await context.route('**/*', (route) => (isInlineResource(route.request().url()) ? route.continue() : route.abort('blockedbyclient')))
-      const page = await context.newPage()
-      let timer: NodeJS.Timeout | undefined
-      try {
-        const timeout = new Promise<never>((_, reject) => {
-          timer = setTimeout(
-            () => reject(new UnavailableError('EXPORT_RENDER_TIMEOUT', 'Der PDF-Export hat zu lange gedauert. Versuch es später noch mal.', { retryAfterSeconds: RETRY_AFTER_SECONDS })),
-            this.renderTimeoutMs,
-          )
-        })
-        const render = (async (): Promise<Buffer> => {
-          await page.setContent(html, { waitUntil: 'load', timeout: this.renderTimeoutMs })
-          return page.pdf({ format: 'A4', printBackground: true })
-        })()
-        // The losing branch must not become an unhandled rejection (closing the page rejects it).
-        render.catch(() => undefined)
-        return await Promise.race([render, timeout])
-      } finally {
-        clearTimeout(timer)
-        await page.close().catch(() => undefined)
-        await context.close().catch(() => undefined)
-      }
+      return await this.render(browser, html)
+    } catch (error) {
+      this.forgetDeadBrowser(browser)
+      throw error
     } finally {
       this.releaseRenderSlot()
+    }
+  }
+
+  /**
+   * A failed render leaves the cached handle in place when the document was bad and the browser is fine; one
+   * whose connection is gone is dropped, with the launch promise that produced it, so the next call launches
+   * a new one instead of failing on the dead handle for the life of the process (#288).
+   */
+  private forgetDeadBrowser(browser: Browser): void {
+    if (browser.isConnected() || this.browser !== browser) return
+    this.browser = undefined
+    this.launching = undefined
+  }
+
+  private async render(browser: Browser, html: string): Promise<Buffer> {
+    // Defence in depth (API-7): the export HTML is escaped, but should a value ever slip through, it runs no
+    // script and fetches nothing. Only inline data: and blob: resources load.
+    const context = await browser.newContext({ javaScriptEnabled: false, serviceWorkers: 'block' })
+    await context.route('**/*', (route) => (isInlineResource(route.request().url()) ? route.continue() : route.abort('blockedbyclient')))
+    const page = await context.newPage()
+    let timer: NodeJS.Timeout | undefined
+    try {
+      const timeout = new Promise<never>((_, reject) => {
+        timer = setTimeout(
+          () => reject(new UnavailableError('EXPORT_RENDER_TIMEOUT', 'Der PDF-Export hat zu lange gedauert. Versuch es später noch mal.', { retryAfterSeconds: RETRY_AFTER_SECONDS })),
+          this.renderTimeoutMs,
+        )
+      })
+      const render = (async (): Promise<Buffer> => {
+        await page.setContent(html, { waitUntil: 'load', timeout: this.renderTimeoutMs })
+        return page.pdf({ format: 'A4', printBackground: true })
+      })()
+      // The losing branch must not become an unhandled rejection (closing the page rejects it).
+      render.catch(() => undefined)
+      return await Promise.race([render, timeout])
+    } finally {
+      clearTimeout(timer)
+      await page.close().catch(() => undefined)
+      await context.close().catch(() => undefined)
     }
   }
 
@@ -125,6 +157,7 @@ export class PlaywrightPdfRenderer implements PdfRenderer, OnModuleInit, OnModul
   }
 
   private async getOrLaunch(): Promise<Browser> {
+    this.assertRunning()
     if (this.browser) return this.browser
     this.launching ??= this.launch().catch((error: unknown) => {
       this.launching = undefined

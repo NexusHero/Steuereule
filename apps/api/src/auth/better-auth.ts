@@ -74,6 +74,9 @@ export const SESSION_COOKIE_ATTRIBUTES = {
  * and must let a crowd of them in. A registration grants nothing, and one nobody approved is swept after a
  * week, so the limit only keeps the table from being flooded.
  */
+/** Per client address: sign-in, sign-up, change-password, change-email (#350). */
+export const CREDENTIAL_PATH_RATE_LIMIT = { window: 10, max: 5 } as const
+
 export const OAUTH_REGISTRATION_RATE_LIMIT = { window: 10 * 60, max: 100 } as const
 
 export interface CreateBetterAuthOptions {
@@ -260,6 +263,13 @@ function buildOptions(options: CreateBetterAuthOptions & { rateLimitStorage: Res
       enabled: true,
       customStorage: rateLimitStorage,
       customRules: {
+        // better-auth's own ceiling for these paths is 3 per 10 s (a prefix rule); the product ceiling is 5.
+        // The keys are wildcard/exact matches of the path after the base path, pinned by test/better-auth.test.ts (#350).
+        // `/forget-password*` and the other reset paths keep their stricter built-in rule.
+        '/sign-in/*': CREDENTIAL_PATH_RATE_LIMIT,
+        '/sign-up/*': CREDENTIAL_PATH_RATE_LIMIT,
+        '/change-password': CREDENTIAL_PATH_RATE_LIMIT,
+        '/change-email': CREDENTIAL_PATH_RATE_LIMIT,
         '/verify-password': { window: 10, max: 3 },
         '/device': { window: 60, max: 10 },
         '/oauth2/register': OAUTH_REGISTRATION_RATE_LIMIT,

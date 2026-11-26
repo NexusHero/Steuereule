@@ -92,7 +92,7 @@ export function registerReportTools(session: McpSession, deps: McpDeps): void {
 
   server.tool(
     'bescheid_abgleichen',
-    'Vergleicht einen eingetragenen Steuerbescheid mit der Erklärung in der App: je Position der Wert der App, der Wert des Bescheids und die Abweichung, dazu die Einspruchsfrist. Vorher die Werte des Bescheids in die Maske "assessment" eintragen (Positionen und assessmentDate; maske_felder zeigt sie).',
+    'Vergleicht einen eingetragenen Steuerbescheid mit der abgegebenen Erklärung (der eingefrorenen Fassung, nicht der heutigen Schätzung): je Position der Wert der Erklärung, der Wert des Bescheids, die Abweichung und was sie für sich an der Erstattung ändert, dazu die Einspruchsfrist. Vorher die Werte des Bescheids in die Maske "assessment" eintragen (Positionen und assessmentDate; maske_felder zeigt sie). Ohne abgegebene Erklärung oder ohne eingetragenen Bescheid antwortet es mit einem Hinweis.',
     { taxYear: taxYearArg() },
     async ({ taxYear }) => json(await report.compareAssessment(userId, taxYear)),
   )

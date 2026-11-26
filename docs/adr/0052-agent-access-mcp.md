@@ -426,3 +426,18 @@ Accepted, with the reason:
 - The two comparison tools keep their names (`veranlagung_vergleichen`, `veranlagungsarten_vergleichen`) and
   the advice tools their `year` argument: a rename breaks connected assistants, and both are described in the
   tool list.
+
+## Amendment 11 (2026-11-26) — `bescheid_abgleichen` compares against the submitted return (#546)
+
+The tool compared a notice with the app's live estimate. That answers a different question than the one a
+user has when the Bescheid arrives: what did the Finanzamt change from what I filed. Decision (stakeholder):
+
+- The comparison is the app's own Bescheid-Abgleich (ADR-0098 §8): the version frozen at submission
+  against the entered Bescheid, taken from `AssessmentService`, not a second diff. Each position carries its
+  difference and, for a position the Finanzamt changed on its own, the effect of that difference on the
+  refund, as the core computes it (`diffAssessment`); the API computes nothing. A multi-entry simulation
+  (`szenario_simulieren`) cannot stand in for it: the Bescheid positions (taxable income, tax) are
+  results, not mask fields an entry could set.
+- Without a submitted version the tool refuses with a hint; it does not fall back to the live estimate. The
+  same for a year with no Bescheid entered. The appeal deadline stays.
+- The Finanzamt's free text (explanations) does not flow back to the assistant (amendment 3, 5).

@@ -222,6 +222,7 @@
   "master-data -> common",
   "master-data -> prisma",
   "mcp -> advisor",
+  "mcp -> assessment",
   "mcp -> assistant-task",
   "mcp -> audit",
   "mcp -> auth",

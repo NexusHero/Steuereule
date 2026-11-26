@@ -1,6 +1,7 @@
 import type { PrismaClient } from '@prisma/client'
 import { describe, expect, it, vi } from 'vitest'
 import { createBetterAuth, OAUTH_REGISTRATION_RATE_LIMIT } from '../src/auth/better-auth.js'
+import { CLIENT_IP_HEADER } from '../src/auth/client-ip.js'
 import { SESSION_IDLE_EXPIRES_IN_SECONDS, SESSION_UPDATE_AGE_SECONDS } from '../src/auth/session-lifetime.js'
 import { resolveAppleClientId, resolveAppleClientSecret, resolveAppleSignInEnabled, resolveBetterAuthSecret, resolveBetterAuthUrl, resolveGoogleClientId, resolveGoogleClientSecret } from '../src/auth/better-auth-env.js'
 import type { EmailSender } from '../src/auth/email-sender.js'
@@ -217,6 +218,39 @@ describe('OAuth 2.1 Provider plugin (ADR-0052 §4, Issue #385)', () => {
     const rule = createBetterAuth(base).auth.options.rateLimit?.customRules?.['/oauth2/register'] as { window: number; max: number }
     expect(rule).toEqual(OAUTH_REGISTRATION_RATE_LIMIT)
     expect((rule.max * 3600) / rule.window).toBeGreaterThanOrEqual(500)
+  })
+})
+
+// #350 — better-auth's built-in ceiling for the credential paths is 3 requests per 10 s; the product ceiling is 5.
+// The assertion is on the limit applied to each path (the fifth request passes, the sixth is refused), through
+// the real handler and the real path matching of better-auth — a rule key that matches nothing leaves the
+// built-in 3 in force, and the fourth request would already be refused.
+describe('createBetterAuth — the credential paths allow five requests per ten seconds (#350)', () => {
+  const base = {
+    prisma: {} as PrismaClient,
+    secret: 'test-secret-at-least-32-characters-long!!',
+    baseUrl: 'http://localhost:3000',
+    webAppUrl: 'https://app.steuereule.de',
+    trustedOrigins: ['http://localhost:3000'],
+    emailSender: fakeEmailSender(),
+  }
+  const PATHS = ['/sign-in/email', '/sign-up/email', '/change-password', '/change-email'] as const
+
+  it.each(PATHS)('%s: the fifth request in the window is not rate limited, the sixth is', async (path) => {
+    const { auth } = createBetterAuth(base)
+    const statuses: number[] = []
+    for (let i = 0; i < 6; i += 1) {
+      const response = await auth.handler(
+        new Request(`http://localhost:3000/api/auth${path}`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json', origin: 'http://localhost:3000', [CLIENT_IP_HEADER]: '203.0.113.7' },
+          body: '{}',
+        }),
+      )
+      statuses.push(response.status)
+    }
+    expect(statuses.slice(0, 5)).not.toContain(429)
+    expect(statuses[5]).toBe(429)
   })
 })
 
