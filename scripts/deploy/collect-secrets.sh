@@ -5,7 +5,7 @@ set -e
 
 secrets=""
 for name in $REQUIRED_SECRETS $OPTIONAL_SECRETS; do
-  if [ -n "$(gcloud secrets versions list "$name" --filter=state=enabled --limit=1 --format='value(name)')" ]; then
+  if [[ -n "$(gcloud secrets versions list "$name" --filter=state=enabled --limit=1 --format='value(name)')" ]]; then
     secrets="$secrets,$name=$name:latest"
   fi
 done
@@ -17,11 +17,11 @@ for required in $REQUIRED_SECRETS; do
   esac
 done
 for required in $MIGRATE_ONLY_SECRETS; do
-  if [ -z "$(gcloud secrets versions list "$required" --filter=state=enabled --limit=1 --format='value(name)')" ]; then
+  if [[ -z "$(gcloud secrets versions list "$required" --filter=state=enabled --limit=1 --format='value(name)')" ]]; then
     missing="$missing $required"
   fi
 done
-if [ -n "$missing" ]; then
+if [[ -n "$missing" ]]; then
   echo "::error::Secrets without an enabled version:$missing — run scripts/infra/gcp-setup.sh (infra/README.md). The API refuses to start without them."
   exit 1
 fi
