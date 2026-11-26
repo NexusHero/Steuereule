@@ -18,6 +18,7 @@ import {
   confirmAnnexesIfPresent,
   downloadAndVerifyPdf,
   runStandaloneScenario,
+  waitForNetworkQuiet,
 } from './helpers/scenario-harness.mjs'
 
 export async function runScenario03(browser, webOrigin, sql, markusSession = null) {
@@ -122,7 +123,10 @@ export async function runScenario03(browser, webOrigin, sql, markusSession = nul
 
   await pageJulia.locator('[data-testid="kopplung-code"]').fill(invitationCode)
   await pageJulia.locator('[data-testid="kopplung-beitreten"]').click()
-  await pageJulia.waitForTimeout(500)
+  // The join and every save the fields above started on their own must be answered before the save below, or
+  // the response awaited there is one of theirs and not the answer to the click (a fixed pause did not ensure it:
+  // the joint printout then stayed locked on missing master data, seen on #589).
+  await waitForNetworkQuiet(pageJulia)
   // Closing the context aborts a save still in flight; Julia's birth date would then be missing and
   // the joint printout locked ("personB"). Wait for the server's answer before leaving.
   const [saved] = await Promise.all([
@@ -130,6 +134,13 @@ export async function runScenario03(browser, webOrigin, sql, markusSession = nul
     pageJulia.locator('[data-testid="stammdaten-speichern"]').click(),
   ])
   if (!saved.ok()) fail(`Scenario 03: saving Julia's Stammdaten answered HTTP ${saved.status()}`)
+  await waitForNetworkQuiet(pageJulia)
+  // Not the timing but the outcome: what the server now holds for Julia must contain what she entered here.
+  const stored = await pageJulia.context().request.get(saved.url())
+  if (!stored.ok()) fail(`Scenario 03: reading Julia's Stammdaten back answered HTTP ${stored.status()}`)
+  const masterData = await stored.json()
+  const notStored = ['geburtsdatum', 'beruf', 'familienstand', 'religion'].filter((field) => masterData[field] === null || masterData[field] === undefined)
+  if (notStored.length > 0) fail(`Scenario 03: Julia's Stammdaten were saved without ${notStored.join(', ')}; the joint printout would stay locked`)
   await ctxJulia.close()
 
   await pageMarkus.reload()
