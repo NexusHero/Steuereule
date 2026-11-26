@@ -125,11 +125,25 @@ async function main() {
 
   // --- Check 2: every cited, existing test file is actually run by a CI job ---------------
   // The pipelines are split over several workflow files (quality, security, build & e2e, load): a step in any of them counts.
-  const workflowsText = fs
-    .readdirSync(WORKFLOWS_DIR)
-    .filter((name) => name.endsWith('.yml'))
-    .map((name) => fs.readFileSync(path.join(WORKFLOWS_DIR, name), 'utf8'))
-    .join('\n')
+  // What a CI step can invoke lives in three places (ADR-0112): the workflow files, the composite actions they use,
+  // and the E2E gate list (e2e/gates.json), from which the browser-gate matrix is built — a script named there runs
+  // in CI by construction, because a group without a CI job cannot exist.
+  const gatesFile = path.join(REPO_ROOT, 'e2e/gates.json')
+  const gateCommands = fs.existsSync(gatesFile)
+    ? JSON.parse(fs.readFileSync(gatesFile, 'utf8')).gates.flatMap((gate) => gate.commands)
+    : []
+  const actionsDir = path.join(REPO_ROOT, '.github/actions')
+  const actionFiles = fs.existsSync(actionsDir)
+    ? fs.readdirSync(actionsDir).map((name) => path.join(actionsDir, name, 'action.yml')).filter((file) => fs.existsSync(file))
+    : []
+  const workflowsText = [
+    ...fs
+      .readdirSync(WORKFLOWS_DIR)
+      .filter((name) => name.endsWith('.yml'))
+      .map((name) => fs.readFileSync(path.join(WORKFLOWS_DIR, name), 'utf8')),
+    ...actionFiles.map((file) => fs.readFileSync(file, 'utf8')),
+    ...gateCommands,
+  ].join('\n')
   // `pnpm -r [--flag[=value] ...] test`: flags such as --workspace-concurrency=1 may sit between -r and the script.
   const runsPlainTest = /\bpnpm\s+-r(?:\s+--?[\w-]+(?:=\S+)?)*\s+test\b/.test(workflowsText)
   const runsIntegrationTest = /test:integration\b/.test(workflowsText)
