@@ -70,4 +70,42 @@ describe('Button', () => {
     )
     expect((screen.getByTestId('cta') as HTMLElement).style.width).toBe('auto')
   })
+
+  it('keeps_its_own_min_height_alongside_the_caller_style_and_never_lets_it_shrink', () => {
+    renderUi(
+      <Button testID="cta" style={{ marginTop: 24, minHeight: 10 }}>
+        Los
+      </Button>,
+    )
+    const el = screen.getByTestId('cta') as HTMLElement
+    expect(el.style.marginTop).toBe('24px')
+    expect(el.style.minHeight).toBe('52px')
+  })
+
+  it('lets_a_caller_raise_the_min_height', () => {
+    renderUi(<Button testID="cta" style={{ minHeight: 80 }}>Los</Button>)
+    expect((screen.getByTestId('cta') as HTMLElement).style.minHeight).toBe('80px')
+  })
+
+  it('keeps_the_disabled_dimming_when_the_caller_passes_opacity', () => {
+    renderUi(
+      <Button testID="cta" disabled style={{ opacity: 1, marginTop: 24 }}>
+        Los
+      </Button>,
+    )
+    const el = screen.getByTestId('cta') as HTMLElement
+    expect(el.style.opacity).toBe('0.4')
+    expect(el.style.marginTop).toBe('24px')
+  })
+
+  it('keeps_the_press_affordance_when_the_caller_passes_transform_or_opacity', () => {
+    renderUi(
+      <Button testID="cta" style={{ transform: [{ translateX: 0 }], shadowOpacity: 1 }}>
+        Los
+      </Button>,
+    )
+    const el = screen.getByTestId('cta')
+    fireEvent.keyDown(el, { key: ' ' })
+    expect(getComputedStyle(el).transform).toBe('translateX(3px) translateY(3px)')
+  })
 })

@@ -1,6 +1,7 @@
 import { Pressable, Text, type ViewStyle, type TextStyle, type StyleProp } from 'react-native'
 import { type ReactNode } from 'react'
 import { hapticLight } from '../lib/haptics'
+import { minTouchHeight } from '../lib/touch-target'
 import { inkOnFunke, useTheme } from '../theme/useTheme'
 
 export interface OptionProps {
@@ -11,11 +12,13 @@ export interface OptionProps {
   readonly testID?: string
 }
 
+const MIN_HEIGHT = 52
+
 export function Option({ selected = false, onPress, style, children, testID }: OptionProps) {
   const t = useTheme()
   const container: ViewStyle = {
     width: '100%',
-    minHeight: 52,
+    minHeight: MIN_HEIGHT,
     justifyContent: 'center',
     padding: t.space.s4,
     paddingRight: t.space.s6,
@@ -48,8 +51,10 @@ export function Option({ selected = false, onPress, style, children, testID }: O
       }}
       style={({ pressed }) => [
         container,
-        pressed && !selected && { borderColor: t.color.tinte },
         style,
+        // State and touch-target styles follow the caller's `style` so they always win (#178).
+        minTouchHeight(style, MIN_HEIGHT),
+        pressed && !selected && { borderColor: t.color.tinte },
       ]}
     >
       {typeof children === 'string' ? <Text style={label}>{children}</Text> : children}
