@@ -121,6 +121,15 @@ whether `API_ORIGIN`/`WEB_ORIGIN`/`DATABASE_URL` are already set:
   `e2e/cross-origin/static-server.mjs`, not a second copy of it). `stop()` tears down exactly what
   it started, in reverse order, PID/process-scoped only (never a blanket kill — #114's rule).
 
+**Ports (#114).** BOOT mode takes its ports from, in order, the `startStack({ apiPort, webPort, apiOrigin,
+webOrigin, databaseUrl })` options, the environment variables `E2E_API_PORT` (3301), `E2E_WEB_PORT` (4173) and
+`E2E_POSTGRES_PORT` (5432), then the defaults. The origins, the API's `PORT`/`BETTER_AUTH_URL`/CORS values and the
+database URL are derived from the resulting ports (`ports.mjs`, unit-tested in `ports.test.mjs`), and the docker
+Postgres is published on the same port through `POSTGRES_PORT` in `docker-compose.yml`. Two worktrees that boot at
+the same time set different values, e.g. `E2E_API_PORT=3401 E2E_WEB_PORT=4273 E2E_POSTGRES_PORT=5533 node e2e/harness/stack.mjs`.
+ATTACH mode never starts anything and is unaffected. The local developer stack (`scripts/local.sh`) has its own
+variables, listed in the top-level README.
+
 Run it standalone for a one-command local stack a contributor can click through by hand:
 
 ```

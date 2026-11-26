@@ -58,15 +58,11 @@ import { setTimeout as sleep } from 'node:timers/promises'
 import { fileURLToPath } from 'node:url'
 import { startStaticServer } from '../cross-origin/static-server.mjs'
 import { nativePostgresCommands, planPrivilege } from './native-postgres.mjs'
+import { resolveBootConfig } from './ports.mjs'
 
 const REPO_ROOT = fileURLToPath(new URL('../../', import.meta.url))
 
 const DEFAULTS = {
-  apiOrigin: 'http://localhost:3301',
-  webOrigin: 'http://localhost:4173',
-  apiPort: '3301',
-  webPort: 4173,
-  databaseUrl: 'postgres://steuereule:steuereule@localhost:5432/steuereule',
   postgresHealthTimeoutMs: 30_000,
 }
 
@@ -139,11 +135,13 @@ async function pgIsReady(databaseUrl) {
 
 /** BOOT MODE step 1 — Postgres, docker first, native fallback second. Returns a teardown fn. */
 async function startPostgres(databaseUrl) {
+  // docker-compose.yml publishes `${POSTGRES_PORT:-5432}`; the database URL's port is the one source of truth (#114).
+  const composeEnv = { ...process.env, POSTGRES_PORT: new URL(databaseUrl).port || '5432' }
   try {
-    run('docker compose -f docker-compose.yml -f docker-compose.e2e.yml up -d postgres')
+    run('docker compose -f docker-compose.yml -f docker-compose.e2e.yml up -d postgres', { env: composeEnv })
     await waitUntil(() => pgIsReady(databaseUrl), { timeoutMs: DEFAULTS.postgresHealthTimeoutMs, label: 'docker-compose postgres to become ready' })
     console.log('[stack] Postgres up via docker compose.')
-    return async () => run('docker compose -f docker-compose.yml -f docker-compose.e2e.yml down -v')
+    return async () => run('docker compose -f docker-compose.yml -f docker-compose.e2e.yml down -v', { env: composeEnv })
   } catch (dockerError) {
     console.warn(`[stack] docker compose postgres did not become healthy within ${DEFAULTS.postgresHealthTimeoutMs}ms — ` +
       `falling back to a native postgres binary (see this file's header comment). Docker error: ${dockerError.message}`)
@@ -285,15 +283,14 @@ export async function startStack(options = {}) {
   }
 
   console.log('[stack] BOOT mode — starting Postgres, the API and the exported web bundle from scratch.')
-  const apiOrigin = options.apiOrigin ?? DEFAULTS.apiOrigin
-  const webOrigin = options.webOrigin ?? DEFAULTS.webOrigin
-  const databaseUrl = options.databaseUrl ?? DEFAULTS.databaseUrl
+  // Option > E2E_API_PORT / E2E_WEB_PORT / E2E_POSTGRES_PORT > default; origins and database URL follow the ports (#114).
+  const { apiOrigin, webOrigin, databaseUrl, apiPort, webPort } = resolveBootConfig(options)
 
   const teardowns = []
   try {
     teardowns.push(await startPostgres(databaseUrl))
-    teardowns.push(await startApi({ apiOrigin, apiPort: String(options.apiPort ?? DEFAULTS.apiPort), webOrigin, databaseUrl, env: options.apiEnv ?? {} }))
-    teardowns.push(await startWeb({ apiOrigin, webOrigin, webPort: options.webPort ?? DEFAULTS.webPort }))
+    teardowns.push(await startApi({ apiOrigin, apiPort: String(apiPort), webOrigin, databaseUrl, env: options.apiEnv ?? {} }))
+    teardowns.push(await startWeb({ apiOrigin, webOrigin, webPort }))
   } catch (error) {
     // Tear down whatever DID start before propagating — a failed boot must not leak a Postgres
     // container/native process or a bound port for the next run to trip over.
