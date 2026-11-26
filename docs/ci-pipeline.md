@@ -10,8 +10,9 @@ every pull request; the nightly ones (`AI eval`, `Law watch`) do not gate PRs.
 
 ## Required checks (ruleset `main`)
 
-`main` has no classic branch protection; a repository **ruleset** (`main`, active) requires status checks by
-name. The names below are the job `name:` values exactly as they report. On 2026-11-24 the ruleset required the
+A repository **ruleset** (`main`, active, no bypass actors) requires status checks by name. A classic branch
+protection for `main` exists beside it (no force push, no deletion, conversation resolution, applies to admins); it
+lists no status checks, the ruleset does. The names below are the job `name:` values exactly as they report. On 2026-11-24 the ruleset required the
 first twenty (read with `gh api`); the last five are not required yet and must be added by a repository admin
 (H2-32). Each of them runs on every pull request, so requiring it cannot leave a PR waiting.
 
@@ -103,6 +104,30 @@ check of its own.
 | `AI eval (nightly)` | The owl against the real model — amounts vs. core, StBerG, sources, prompt-injection, PII, consistency, TTFT | `ai-eval-nightly.yml` |
 | `Law watch (nightly)` | Cited norms still match gesetze-im-internet.de | `law-watch.yml` |
 | `Pipeline health (weekly)` | Reports, from the recorded runs of 28 days: wall time of green pull-request runs per workflow, time to green per commit, failed pushes to main, jobs that failed and then passed on a rerun. A report in the job summary, not a gate | `pipeline-health.yml` |
+
+## Repository settings (read from the GitHub API on 2026-11-26)
+
+These live in GitHub, not in the repository; this is what they were set to and why. Re-read them with `gh api`
+when in doubt, this section is a snapshot.
+
+| Setting | Value | Why |
+|---|---|---|
+| Ruleset `main` | pull request required, 20 required checks, branch up to date, threads resolved, no force push, no deletion, no bypass actors | nothing reaches `main` unchecked |
+| Ruleset `release tags: immutable` (`v*`) | no update, no deletion, no bypass actors | a release tag always names the commit it was created on |
+| Ruleset `release tags: only admins create` (`v*`) | creation restricted, repository admins bypass | only an admin can start a production release |
+| Environment `production` | required reviewer, deployments only from tags `v*` | a production deploy waits for approval and cannot run from a branch |
+| Environment `staging` | deployments only from `main` | |
+| Actions | only GitHub's own actions and an allowlist of the third-party actions the workflows use; a full commit SHA is required | a new or unpinned action fails instead of running |
+| Fork pull requests | workflows wait for approval for every outside contributor | |
+| Default workflow token | read only, cannot approve pull requests | |
+| Secret scanning, push protection | on | |
+| Dependabot alerts and security updates | on; version updates in `.github/dependabot.yml` | a vulnerability published between two pull requests is reported |
+| Private vulnerability reporting | on; `SECURITY.md` says how | |
+
+A workflow that uses a new third-party action needs that action added to the allowlist (Settings, Actions,
+General) by an admin; the run fails with GitHub's own message until then. Not available on this plan and
+therefore off: secret scanning for non-provider patterns and validity checks. Required approving reviews are 0
+while the project has one maintainer.
 
 ## How the browser gates are split (ADR-0112)
 
