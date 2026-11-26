@@ -47,6 +47,24 @@ jobs:
   # whose directory does not contain the scanned files: `ignorePatterns` then stops
   # applying (ADR-0019, amendment re-measuring §5) — `.oxlintrc.json` lives at the repo
   # root specifically so it is auto-discovered.
+  # Moved here from deploy.yml (ADR-0113): deploy.yml has no pull_request trigger any more, so a pull request no longer
+  # shows two skipped deploy jobs. The name is a required-check candidate (docs/ci-pipeline.md, H2-32).
+  validate-opentofu:
+    name: 'static: opentofu validate'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: opentofu/setup-opentofu@9d84900f3238fab8cd84ce47d658d25dd008be2f # v1
+        with:
+          tofu_version: "1.8.0"
+      - name: Validate infra/gcp and infra/terraform
+        run: |
+          for dir in infra/gcp infra/terraform; do
+            (cd "$dir" && tofu init -backend=false -input=false && tofu validate)
+          done
+          tofu fmt -check -recursive infra/gcp
+
   lint:
     name: 'static: lint (oxlint)'
     needs: validate-compose
@@ -424,6 +442,9 @@ jobs:
       - name: register-check self-test — the checker's own rules, incl. cited line ranges (#254)
         if: '!cancelled()'
         run: node --test scripts/checks/register-check.test.mjs
+      - name: release guard — the decision a production deploy waits for (ADR-0113)
+        if: '!cancelled()'
+        run: node --test scripts/release/guard.test.mjs
       - name: better-auth-version-check — api and mobile-web resolve the same better-auth (#273)
         # Reads pnpm-lock.yaml only, so it needs no install; a client/server split of better-auth
         # is a protocol mismatch the type checker cannot see.
