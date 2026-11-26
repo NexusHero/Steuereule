@@ -277,9 +277,11 @@ async function guestAndMailLinks(browser, { apiOrigin, webOrigin, sql }) {
     await byId(page, 'konto-unbestaetigt').getByText(COPY.unverifiedExport, { exact: true }).click()
     await page.waitForURL((u) => u.pathname === '/app/profil/datenschutz', { timeout: 10_000 })
     sql(verifyEmailSql(email))
-    const sessionRead = page.waitForResponse((r) => r.url().includes('/api/auth/get-session') && r.ok(), { timeout: 15_000 })
-    await page.reload({ waitUntil: 'networkidle' })
-    if ((await (await sessionRead).json().catch(() => null))?.user?.emailVerified !== true) fail('Row C: the session must report the confirmed address after the reload')
+    const [sessionRead] = await Promise.all([
+      page.waitForResponse((r) => r.url().includes('/api/auth/get-session') && r.ok(), { timeout: 15_000 }),
+      page.reload({ waitUntil: 'networkidle' }),
+    ])
+    if ((await sessionRead.json().catch(() => null))?.user?.emailVerified !== true) fail('Row C: the session must report the confirmed address after the reload')
     await byId(page, 'konto-loeschen-oeffnen').waitFor({ state: 'visible', timeout: 15_000 })
     if ((await byId(page, 'konto-unbestaetigt').count()) !== 0) fail('Row C: a confirmed account must not see the deletion warning')
     console.log(`[${TAG}] ✅ Row C — an unconfirmed account sees the deletion warning with its address and date; it opens the export and goes once confirmed`)
@@ -379,9 +381,11 @@ async function signedInAccount(browser, { apiOrigin, webOrigin, sql }) {
     await page.waitForFunction(() => document.querySelector('[data-testid="oauth-lookup-fehler"]') === null, undefined, { timeout: 10_000 })
     await seeText(page, 'oauth-destination', COPY.destinationDevice, 'Row E')
     await waitEnabled(page, 'oauth-erlauben')
-    const denied = page.waitForRequest((r) => r.url().startsWith(REDIRECT_URI), { timeout: 15_000 })
-    await byId(page, 'oauth-ablehnen').click()
-    if (new URL((await denied).url()).searchParams.get('error') !== 'access_denied') fail('Row E: „Ablehnen“ must redirect with error=access_denied')
+    const [denied] = await Promise.all([
+      page.waitForRequest((r) => r.url().startsWith(REDIRECT_URI), { timeout: 15_000 }),
+      byId(page, 'oauth-ablehnen').click(),
+    ])
+    if (new URL(denied.url()).searchParams.get('error') !== 'access_denied') fail('Row E: „Ablehnen“ must redirect with error=access_denied')
 
     // A consent page that names no client cannot be approved.
     await page.goto(`${webOrigin}/oauth/consent?scope=openid`, { waitUntil: 'networkidle' })
@@ -392,9 +396,11 @@ async function signedInAccount(browser, { apiOrigin, webOrigin, sql }) {
     const verifier = await authorize('openid steuerdaten:read')
     await seeText(page, 'oauth-destination', COPY.destinationDevice, 'Row E')
     if ((await byId(page, 'oauth-keine-rechte').count()) !== 0) fail('Row E: a request for rights must not say it asks for none')
-    const approved = page.waitForRequest((r) => r.url().startsWith(REDIRECT_URI), { timeout: 15_000 })
-    await byId(page, 'oauth-erlauben').click()
-    const code = new URL((await approved).url()).searchParams.get('code')
+    const [approved] = await Promise.all([
+      page.waitForRequest((r) => r.url().startsWith(REDIRECT_URI), { timeout: 15_000 }),
+      byId(page, 'oauth-erlauben').click(),
+    ])
+    const code = new URL(approved.url()).searchParams.get('code')
     if (!code) fail('Row E: „Erlauben“ must redirect with a code')
     const tokenRes = await fetch(`${apiOrigin}/api/auth/oauth2/token`, {
       method: 'POST',
@@ -468,16 +474,20 @@ async function signedInAccount(browser, { apiOrigin, webOrigin, sql }) {
     ageSessions(sql, email)
     await waitForBucketHeadroom(DEVICE_BUCKET, 'device-pending', TAG)
     await page.goto(deviceCode.verificationUriComplete, { waitUntil: 'networkidle' })
-    const firstApprove = page.waitForResponse((r) => r.url().includes('/v1/device/approve') && r.request().method() === 'POST', { timeout: 15_000 })
-    await byId(page, 'geraet-freigeben').click()
-    if ((await firstApprove).status() !== 400) fail('Row G: an older session must be refused the approval until it confirms (400 FRESH_AUTH_REQUIRED)')
+    const [firstApprove] = await Promise.all([
+      page.waitForResponse((r) => r.url().includes('/v1/device/approve') && r.request().method() === 'POST', { timeout: 15_000 }),
+      byId(page, 'geraet-freigeben').click(),
+    ])
+    if (firstApprove.status() !== 400) fail('Row G: an older session must be refused the approval until it confirms (400 FRESH_AUTH_REQUIRED)')
     await seeText(page, 'geraet-freigeben-stepup', COPY.stepUpHeading, 'Row G')
     await expectDisabled(page, 'geraet-freigeben', true, 'Row G (step-up open)')
     await byId(page, 'geraet-freigeben-stepup-passwort').fill(PASSWORD)
     await waitForBucketHeadroom(AUTH_BUCKET, 'verify-password', TAG)
-    const secondApprove = page.waitForResponse((r) => r.url().includes('/v1/device/approve') && r.request().method() === 'POST', { timeout: 15_000 })
-    await byId(page, 'geraet-freigeben-stepup-bestaetigen').click()
-    if (!(await secondApprove).ok()) fail('Row G: after the password the approval must go through')
+    const [secondApprove] = await Promise.all([
+      page.waitForResponse((r) => r.url().includes('/v1/device/approve') && r.request().method() === 'POST', { timeout: 15_000 }),
+      byId(page, 'geraet-freigeben-stepup-bestaetigen').click(),
+    ])
+    if (!secondApprove.ok()) fail('Row G: after the password the approval must go through')
     await page.getByText(COPY.deviceApproved, { exact: true }).waitFor({ state: 'visible', timeout: 15_000 })
     console.log(`[${TAG}] ✅ Row G — an older session is asked for the password before it signs another device in, then it does`)
 
@@ -498,15 +508,21 @@ async function signedInAccount(browser, { apiOrigin, webOrigin, sql }) {
     const withNew = await apiSignIn(apiOrigin, webOrigin, email, NEW_PASSWORD)
     if (!withNew.res.ok()) fail(`Row H: the new password must sign in, got ${withNew.res.status()}`)
 
-    // The session is ended elsewhere: the next request opens the sign-in with the expiry notice. The Belege tab
-    // was not opened since the last load, so opening it mounts its list and sends that request.
+    // The session is ended elsewhere: the next request opens the sign-in with the expiry notice. The Profil root
+    // shows the tab bar (its sub-screens do not); the Belege tab was not opened since this load, so opening it
+    // mounts its list and sends that request.
+    await page.goto(`${webOrigin}/app/profil`, { waitUntil: 'networkidle' })
+    const belegeTab = page.getByRole('tab', { name: 'Belege' })
+    await belegeTab.waitFor({ state: 'visible', timeout: 15_000 })
     const revoked = await withNew.api.post('/api/auth/revoke-other-sessions', { data: {} })
     if (!revoked.ok()) fail(`Row H: revoking the other sessions answered ${revoked.status()}`)
     await withNew.api.dispose()
     await api.dispose()
-    const refused = page.waitForResponse((r) => new URL(r.url()).pathname.startsWith('/v1/') && r.status() === 401, { timeout: 20_000 })
-    await page.getByRole('tab', { name: 'Belege' }).click()
-    const refusal = await (await refused).json().catch(() => null)
+    const [refused] = await Promise.all([
+      page.waitForResponse((r) => new URL(r.url()).pathname.startsWith('/v1/') && r.status() === 401, { timeout: 20_000 }),
+      belegeTab.click(),
+    ])
+    const refusal = await refused.json().catch(() => null)
     if (refusal?.code !== 'SESSION_EXPIRED') fail(`Row H: the request of an ended session must be refused with SESSION_EXPIRED, got ${JSON.stringify(refusal)}`)
     await page.waitForURL((u) => u.pathname === '/login' && u.searchParams.has('expired'), { timeout: 20_000 })
     await seeText(page, 'anmeldung-abgelaufen', COPY.sessionExpired, 'Row H')

@@ -125,9 +125,10 @@ async function confirmStepUp(page, ids, row) {
   await expectText(page, ids.block, COPY.stepUpHeading, row)
   await page.locator(tid(ids.password)).fill(PASSWORD)
   await waitForBucketHeadroom(VERIFY_PASSWORD_BUCKET, 'verify-password', TAG)
-  const verified = page.waitForResponse((r) => r.url().endsWith('/api/auth/verify-password') && r.request().method() === 'POST', { timeout: 15_000 })
-  await page.locator(tid(ids.confirm)).click()
-  const response = await verified
+  const [response] = await Promise.all([
+    page.waitForResponse((r) => r.url().endsWith('/api/auth/verify-password') && r.request().method() === 'POST', { timeout: 15_000 }),
+    page.locator(tid(ids.confirm)).click(),
+  ])
   if (!response.ok()) fail(`${row}: the step-up password check answered ${response.status()}`)
 }
 
