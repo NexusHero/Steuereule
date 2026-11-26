@@ -1,10 +1,11 @@
 import { Inject, Injectable, Logger } from '@nestjs/common'
-import { appealDeadline, ASSESSMENT_POSITIONS, buildRecordHandles, ENTRY_RULE_CODES, fieldsOfScreen, filingTypeComparison, progressionClauseFrom, provenanceKey, QUESTIONS, SCREENS, type AdvisorEstimateReading, type Answers, type EntryStepId, type Screen } from '@steuereule/core'
+import { buildRecordHandles, ENTRY_RULE_CODES, fieldsOfScreen, filingTypeComparison, progressionClauseFrom, provenanceKey, QUESTIONS, SCREENS, type AdvisorEstimateReading, type Answers, type EntryStepId, type Screen } from '@steuereule/core'
 import { estimateReadingFrom } from '../advisor/advisor-case-digest.js'
 import { describePrintoutGap } from '../advisor/advisor-printout-gaps.js'
 import { buildPrintoutPlan } from '../advisor/advisor-printout-plan.js'
 import { effectLeftOutOfEstimate } from '../advisor/advisor-shared.js'
 import { HOUSEHOLD_AND_HEALTH_BOOSTERS } from '../config/features.js'
+import { AssessmentService } from '../assessment/assessment.service.js'
 import { ConfirmationService } from '../confirmation/confirmation.service.js'
 import { admittedEntryIds, InterviewService } from '../interview/interview.service.js'
 import { PrintoutService } from '../printout/printout.service.js'
@@ -79,6 +80,7 @@ export class McpReportService {
     @Inject(PrintoutService) private readonly printout: PrintoutService,
     @Inject(ConfirmationService) private readonly confirmation: ConfirmationService,
     @Inject(InterviewService) private readonly interview: InterviewService,
+    @Inject(AssessmentService) private readonly assessment: AssessmentService,
     @Inject(TRANSACTION_RUNNER) private readonly transactions: TransactionRunner,
   ) {}
 
@@ -290,55 +292,41 @@ export class McpReportService {
   }
 
   /**
-   * A notice beside the return (ADR-0052 amendment 3, #546): each position the assistant entered from
-   * the notice against the app's own figure, and the appeal deadline. The assistant explains the
-   * differences with the breakdown; nothing here is recomputed.
+   * A notice beside the submitted return (ADR-0052 amendment 11, #546): the very Bescheid-Abgleich of the app
+   * (ADR-0098 §8: the version frozen at submission against the Bescheid), each position with the effect of
+   * the difference on the refund, and the appeal deadline. The diff and the effects are the core's; nothing
+   * is recomputed here, and the Finanzamt's free text does not flow back (amendment 3, 5).
    */
-  async compareAssessment(userId: string, taxYear: number, today: string = new Date().toISOString().slice(0, 10)): Promise<Record<string, unknown>> {
-    const ids = ASSESSMENT_POSITIONS.map((position) => position.id)
-    const [status, noticed] = await Promise.all([
-      this.estimate.getState(userId, taxYear),
-      this.confirmation.readRawValues(userId, taxYear, [...ids.map((id) => `assessment.${id}`), 'assessment.assessmentDate']),
-    ])
-    const notice = (id: string): number | null => {
-      const raw = noticed[`assessment.${id}`]
-      return raw === null || raw === undefined || raw === '' ? null : Number(raw)
+  async compareAssessment(userId: string, taxYear: number): Promise<Record<string, unknown>> {
+    const state = await this.assessment.getState(userId, taxYear)
+    const diff = state.diff
+    if (diff === null) {
+      if (state.positions.every((position) => position.kind === 'offen')) return { ok: false, grund: 'Es ist kein Bescheid eingetragen: Trage seine Werte in die Maske "assessment" ein (maske_felder zeigt die Positionen).' }
+      return { ok: false, grund: 'Für dieses Jahr gibt es keine abgegebene Erklärung, gegen die der Bescheid verglichen werden könnte: Der Nutzer gibt die Erklärung zuerst in der App ab. Die Schätzung der App ist kein Ersatz dafür.' }
     }
-    if (ids.every((id) => notice(id) === null)) return { ok: false, grund: 'Es ist kein Bescheid eingetragen: Trage seine Werte in die Maske "assessment" ein (maske_felder zeigt die Positionen).' }
-    if (status.kind !== 'spanne') return { ok: false, grund: 'Die Schätzung der App ist noch nicht möglich; ohne sie gibt es nichts zu vergleichen.' }
-
-    const steps = status.breakdown
-    const upper = (range: { readonly to: number }) => Math.round(range.to)
-    const person = (index: number) => steps?.persons?.[index]
-    const own: Readonly<Record<string, number | undefined>> = {
-      bruttoarbeitslohnA: person(0) ? person(0)!.incomeEur + person(0)!.workExpensesEur : undefined,
-      bruttoarbeitslohnB: person(1) ? person(1)!.incomeEur + person(1)!.workExpensesEur : undefined,
-      werbungskostenA: person(0)?.workExpensesEur,
-      werbungskostenB: person(1)?.workExpensesEur,
-      vorsorgeaufwand: upper(status.provision),
-      sonderausgaben: status.specialExpenses,
-      aussergewoehnlicheBelastungen: steps?.extraordinaryBurdenEur,
-      zuVersteuerndesEinkommen: upper(status.taxableIncome),
-      festgesetzteSteuer: upper(status.incomeTax),
-      steuerermaessigung35a: steps?.householdReductionEur,
-      solidaritaetszuschlag: upper(status.solidaritaetszuschlag),
-      anrechnung: status.anrechnung,
-      erstattung: upper(status.result),
-    }
-    const positionen = ASSESSMENT_POSITIONS.flatMap((position) => {
-      const bescheidEur = notice(position.id)
-      const erklaerungEur = own[position.id]
-      if (bescheidEur === null) return []
-      return [{ position: position.id, bezeichnung: position.label, erklaerungEur: erklaerungEur ?? null, bescheidEur, abweichungEur: erklaerungEur === undefined ? null : Math.round((bescheidEur - erklaerungEur) * 100) / 100 }]
-    })
-    const date = noticed['assessment.assessmentDate']
-    const deadline = date ? appealDeadline(date, today) : null
+    const effects = new Map(diff.ownDeviations.map((deviation) => [deviation.position, deviation.refundEffect]))
+    const positionen = diff.groups.flatMap((group) =>
+      group.rows
+        .filter((row) => row.status !== 'not_read' || row.assessed !== null || row.declared !== null)
+        .map((row) => ({
+          position: row.position,
+          bezeichnung: row.label,
+          erklaerungEur: row.declared,
+          bescheidEur: row.assessed,
+          abweichungEur: row.difference,
+          status: row.status,
+          ...(effects.has(row.position) ? { wirkungAufErstattungEur: effects.get(row.position) ?? null } : {}),
+        })),
+    )
+    const frist = state.frist
     return {
       ok: true,
       taxYear,
       positionen,
-      einspruchsfrist: deadline && date ? { bescheidVom: date, endetAm: deadline.endsOn, verbleibendeTage: deadline.remainingDays, laeuft: deadline.running } : null,
-      lesehilfe: 'abweichungEur = Bescheid minus App. „erstattung“: positiv = Erstattung, negativ = Nachzahlung. Erkläre Abweichungen mit schaetzung_aufschluesseln; nenne dem Nutzer die Einspruchsfrist, wenn der Bescheid zu seinen Ungunsten abweicht.',
+      gesamtwirkungAufErstattungEur: diff.totalRefundEffect,
+      wirkungenSummierenSichNicht: diff.effectsDifferFromTotal,
+      einspruchsfrist: frist.deadlineEnd === null || frist.assessmentDate === null ? null : { bescheidVom: frist.assessmentDate, endetAm: frist.deadlineEnd, verbleibendeTage: frist.remainingDays, laeuft: frist.running },
+      lesehilfe: 'Verglichen wird die abgegebene Erklärung (eingefrorene Fassung) mit dem Bescheid, nicht die heutige Schätzung. abweichungEur = Bescheid minus Erklärung. wirkungAufErstattungEur: was die Abweichung dieser einen Position für sich an der Erstattung ändert (positiv = mehr Erstattung); die App-Berechnung, nicht deine. „erstattung“: positiv = Erstattung, negativ = Nachzahlung. Die Steuer ist nicht linear: Ist wirkungenSummierenSichNicht wahr, ergeben die Einzelwirkungen nicht die Gesamtwirkung. Nenne dem Nutzer die Einspruchsfrist, wenn der Bescheid zu seinen Ungunsten abweicht.',
     }
   }
 

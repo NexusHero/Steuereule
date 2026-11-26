@@ -6,6 +6,7 @@ import type { SimulationEntry } from '../mcp-report.service.js'
 import { dataUserFor, type McpDeps, type McpSession } from '../mcp-session.js'
 import { fieldArg, instanceArg, MIN_TAX_YEAR, maxTaxYear, personArg, screenArg, taxYearArg, valueArg } from '../tool-args.js'
 import { json, refused } from '../tool-results.js'
+import { isUserOnly, USER_ONLY_REFUSAL } from './entry-tools.js'
 
 /** Where the return stands: the years, printout pre-check, owl hints, payment link (ADR-0052 §3, §5, §8, §12). */
 export function registerStatusTools(session: McpSession, deps: McpDeps): void {
@@ -91,7 +92,7 @@ export function registerReportTools(session: McpSession, deps: McpDeps): void {
 
   server.tool(
     'bescheid_abgleichen',
-    'Vergleicht einen eingetragenen Steuerbescheid mit der Erklärung in der App: je Position der Wert der App, der Wert des Bescheids und die Abweichung, dazu die Einspruchsfrist. Vorher die Werte des Bescheids in die Maske "assessment" eintragen (Positionen und assessmentDate; maske_felder zeigt sie).',
+    'Vergleicht einen eingetragenen Steuerbescheid mit der abgegebenen Erklärung (der eingefrorenen Fassung, nicht der heutigen Schätzung): je Position der Wert der Erklärung, der Wert des Bescheids, die Abweichung und was sie für sich an der Erstattung ändert, dazu die Einspruchsfrist. Vorher die Werte des Bescheids in die Maske "assessment" eintragen (Positionen und assessmentDate; maske_felder zeigt sie). Ohne abgegebene Erklärung oder ohne eingetragenen Bescheid antwortet es mit einem Hinweis.',
     { taxYear: taxYearArg() },
     async ({ taxYear }) => json(await report.compareAssessment(userId, taxYear)),
   )
@@ -115,6 +116,8 @@ export function registerReportTools(session: McpSession, deps: McpDeps): void {
 
   /** An entry of a simulation, checked like a real one: target, value and whose data it would be. */
   async function trialEntry(taxYear: number, entry: { screen: Screen; instance?: string | undefined; field: string; value: string; person?: 'A' | 'B' | undefined }): Promise<{ ok: true; entry: SimulationEntry } | { ok: false; error: string }> {
+    // Art. 9 DSGVO (#543): what the assistant may not write, it may not try out either.
+    if (isUserOnly(entry.screen, entry.field)) return { ok: false, error: USER_ONLY_REFUSAL }
     const target = validateStageTarget(entry.screen, entry.field, true)
     if (!target.ok) return { ok: false, error: target.error }
     const checked = checkStageValue(entry.screen, entry.field, entry.value)

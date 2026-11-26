@@ -32,10 +32,10 @@ first twenty (read with `gh api`); the last five are not required yet and must b
 | `supply-chain: build, SBOM, container scan & bundle gate` | `ci.yml` | yes |
 | `e2e: smoke (real /api/auth over HTTP)` | `ci.yml` | yes |
 | `e2e: browser gates & a11y (BFSG/WCAG 2.1 AA, headless Chromium)` | `ci.yml` | yes |
-| `e2e: scenarios (shard 1/4)` | `ci.yml` | yes |
-| `e2e: scenarios (shard 2/4)` | `ci.yml` | yes |
-| `e2e: scenarios (shard 3/4)` | `ci.yml` | yes |
-| `e2e: scenarios (shard 4/4)` | `ci.yml` | yes |
+| `e2e: scenarios — employees & families` | `ci.yml` | yes |
+| `e2e: scenarios — cross-border CH` | `ci.yml` | yes |
+| `e2e: scenarios — capital, pensions & self-employed` | `ci.yml` | yes |
+| `e2e: scenarios — navigation, dialogs & chat` | `ci.yml` | yes |
 | `e2e: production compose stack + OWASP ZAP DAST (real Docker build)` | `ci.yml` | yes |
 | `e2e: scenario 09b (self-employment switch on)` | `ci.yml` | **add** |
 | `security: dependency audit (production deps)` | `security.yml` | **add** |
@@ -79,7 +79,7 @@ check of its own.
 |---|---|---|
 | `e2e: smoke (real /api/auth over HTTP)` | better-auth actually mounts on Fastify over a real socket (the `.inject()`-blind class, ADR-0012) | `ci.yml` |
 | `e2e: browser gates & a11y (BFSG/WCAG 2.1 AA)` | Key screens pass axe-core WCAG 2.1 AA + theme/keyboard navigation | `ci.yml` |
-| `e2e: scenarios (shard 1–4)` | The persona end-to-end scenarios across the app | `ci.yml` |
+| `e2e: scenarios — <group>` | The persona end-to-end scenarios, one job per group in `e2e/scenarios/scenario-groups.mjs`: employees & families (01, 06, 07, 13, 14, 16, 25), cross-border CH (02+03, 12, 15, 18, 27), capital, pensions & self-employed (04, 05, 09, 10, 11, 17, 26), navigation, dialogs & chat (08, 19–24) | `ci.yml` |
 | `e2e: scenario 09b (self-employment switch on)` | The self-employment vertical with its feature flag on (ADR-0101) | `ci.yml` |
 | `e2e: production compose stack + OWASP ZAP DAST` | Guest/registration/login/QR against a real Docker build, plus the ZAP DAST pentest | `ci.yml` |
 

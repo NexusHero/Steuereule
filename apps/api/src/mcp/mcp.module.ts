@@ -25,6 +25,7 @@ import { DeadlinesModule } from '../deadlines/deadlines.module.js'
 import { RentalModule } from '../rental/rental.module.js'
 import { AssistantTaskModule } from '../assistant-task/assistant-task.module.js'
 import { BusinessModule } from '../business/business.module.js'
+import { AssessmentModule } from '../assessment/assessment.module.js'
 import { AssistantTaskService } from '../assistant-task/assistant-task.service.js'
 import { AuditService } from '../audit/audit.service.js'
 import { BusinessService } from '../business/business.service.js'
@@ -103,6 +104,7 @@ export const mcpDepsProvider: FactoryProvider<McpDeps> = {
     RentalModule,
     AssistantTaskModule,
     BusinessModule,
+    AssessmentModule,
   ],
   controllers: [McpController],
   providers: [

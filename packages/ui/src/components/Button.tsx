@@ -1,6 +1,7 @@
 import { Pressable, Text, type ViewStyle, type TextStyle, type StyleProp } from 'react-native'
 import { type ReactNode } from 'react'
 import { hapticMedium } from '../lib/haptics'
+import { minTouchHeight } from '../lib/touch-target'
 import { inkOnFunke, useTheme } from '../theme/useTheme'
 
 export type ButtonVariant = 'primaer' | 'ghost' | 'leise' | 'nacht'
@@ -13,6 +14,8 @@ export interface ButtonProps {
   readonly children: ReactNode
   readonly testID?: string
 }
+
+const MIN_HEIGHT = 52
 
 export function Button({ variant = 'primaer', disabled = false, onPress, style, children, testID }: ButtonProps) {
   const t = useTheme()
@@ -40,7 +43,7 @@ export function Button({ variant = 'primaer', disabled = false, onPress, style, 
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    minHeight: 52,
+    minHeight: MIN_HEIGHT,
     paddingHorizontal: t.space.s5,
     backgroundColor: bg[variant],
     borderWidth: t.space.kontur,
@@ -66,11 +69,14 @@ export function Button({ variant = 'primaer', disabled = false, onPress, style, 
       }}
       style={({ pressed }) => [
         container,
+        style,
+        // Interactive-state styles come after the caller's `style` so they cannot be clobbered
+        // (#178): layout props (margin, width, …) stay the caller's, the state affordance is ours.
+        minTouchHeight(style, MIN_HEIGHT),
         disabled && { opacity: 0.4 },
         pressed && !disabled && (primary
           ? { transform: [{ translateX: 3 }, { translateY: 3 }], shadowOpacity: 0, elevation: 0 }
           : { opacity: 0.7 }),
-        style,
       ]}
     >
       {typeof children === 'string' ? <Text style={label}>{children}</Text> : children}

@@ -22,6 +22,7 @@ jobs:
   validate-compose:
     name: 'static: validate compose'
     runs-on: ubuntu-24.04
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - name: base
@@ -42,14 +43,15 @@ jobs:
   # runs before the expensive jobs. Runs `pnpm lint` (`oxlint --deny-warnings`),
   # never bare `oxlint`: a bare run exits 0 even when it reports findings
   # (measured), so the exit code has to come from a step that actually fails on
-  # findings, not be assumed. Never invoke oxlint with `--config` here — in oxlint
-  # 1.76.0 that silently disables `ignorePatterns` (ADR-0019 §5, measured: 276
-  # findings vs 0) — `.oxlintrc.json` lives at the repo root specifically so it is
-  # auto-discovered.
+  # findings, not be assumed. Never invoke oxlint with `--config` pointing at a config
+  # whose directory does not contain the scanned files: `ignorePatterns` then stops
+  # applying (ADR-0019, amendment re-measuring §5) — `.oxlintrc.json` lives at the repo
+  # root specifically so it is auto-discovered.
   lint:
     name: 'static: lint (oxlint)'
     needs: validate-compose
     runs-on: ubuntu-24.04
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
       - name: Set up pnpm
@@ -71,6 +73,7 @@ jobs:
     name: 'correctness: unit tests (no DB)'
     needs: validate-compose
     runs-on: ubuntu-24.04
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
       - name: Set up pnpm
@@ -202,6 +205,7 @@ jobs:
     needs: [test, integration]
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-24.04
+    timeout-minutes: 15
     permissions:
       contents: read
       id-token: write
@@ -258,6 +262,7 @@ jobs:
     name: 'correctness: integration (postgres)'
     needs: validate-compose
     runs-on: ubuntu-24.04
+    timeout-minutes: 30
     services:
       postgres:
         image: postgres:16
@@ -361,6 +366,7 @@ jobs:
   docs-consistency:
     name: 'static: docs consistency (register + adr)'
     runs-on: ubuntu-24.04
+    timeout-minutes: 5
     # F7 (Musti's review on #252): the only job in this pipeline that hands GITHUB_TOKEN to a
     # `fetch()` call (check 5's issue-open lookup) — with no permissions: block anywhere in
     # this workflow, that token would carry the repository's default, which can be far wider
@@ -407,10 +413,26 @@ jobs:
         # this only re-checks on a new push, and only until #71/branch protection lands).
         if: '!cancelled()'
         run: node scripts/checks/adr-check.mjs
+      - name: workflow-timeouts-check — every job sets timeout-minutes (#207)
+        if: '!cancelled()'
+        run: |
+          node --test scripts/checks/workflow-timeouts-check.test.mjs
+          node scripts/checks/workflow-timeouts-check.mjs
+      - name: register-check self-test — the checker's own rules, incl. cited line ranges (#254)
+        if: '!cancelled()'
+        run: node --test scripts/checks/register-check.test.mjs
+      - name: better-auth-version-check — api and mobile-web resolve the same better-auth (#273)
+        # Reads pnpm-lock.yaml only, so it needs no install; a client/server split of better-auth
+        # is a protocol mismatch the type checker cannot see.
+        if: '!cancelled()'
+        run: |
+          node --test scripts/checks/better-auth-version-check.test.mjs
+          node scripts/checks/better-auth-version-check.mjs
 
   vordrucke:
     name: 'static: vordrucke (form-field geometry)'
     runs-on: ubuntu-24.04
+    timeout-minutes: 10
     # The Ausdruck writes onto fixed positions of the official PDFs. A swapped template, a spec
     # that no longer resolves to the checked-in boxes, or a box that now sits next to another
     # label would print a wrong but plausible-looking return — none of that is visible to the

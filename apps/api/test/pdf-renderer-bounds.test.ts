@@ -31,7 +31,7 @@ class ScriptedRenderer extends PlaywrightPdfRenderer {
         close: () => Promise.resolve(),
       })
     }
-    return Promise.resolve({ newContext, close: () => Promise.resolve() } as unknown as Browser)
+    return Promise.resolve({ newContext, isConnected: () => true, close: () => Promise.resolve() } as unknown as Browser)
   }
 }
 

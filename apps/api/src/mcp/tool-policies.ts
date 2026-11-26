@@ -62,7 +62,7 @@ export const TOOL_POLICIES: Readonly<Record<string, ToolPolicy>> = {
   kinder_auflisten: read('Kinder auflisten'),
   kind_anlegen: write('Kind anlegen'),
   kind_entfernen: remove('Eigenes Kind entfernen'),
-  wechselkurs: read('Jahresdurchschnittskurs CHF'),
+  wechselkurs: read('Wechselkurs CHF (Jahresdurchschnitt oder BMF-Monatskurs)'),
   feld_finden: read('Feld finden'),
   vordruck_zeilen: read('Zeilen der Vordrucke'),
   fristen: read('Abgabefrist'),

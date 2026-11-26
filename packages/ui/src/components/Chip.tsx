@@ -1,5 +1,6 @@
 import { Pressable, Text, type ViewStyle, type TextStyle, type StyleProp } from 'react-native'
 import { type ReactNode } from 'react'
+import { minTouchHeight } from '../lib/touch-target'
 import { inkOnFunke, useTheme } from '../theme/useTheme'
 
 export type ChipVariant = 'standard' | 'src' | 'pro'
@@ -12,6 +13,8 @@ export interface ChipProps {
   readonly children: ReactNode
   readonly testID?: string
 }
+
+const MIN_HEIGHT = 44
 
 export function Chip({ variant = 'standard', active = false, onPress, style, children, testID }: ChipProps) {
   const t = useTheme()
@@ -34,7 +37,7 @@ export function Chip({ variant = 'standard', active = false, onPress, style, chi
     alignItems: 'center',
     gap: 6,
     // 44 pt is the smallest touch target (WCAG 2.5.5, Apple HIG) — WEB-23.
-    minHeight: 44,
+    minHeight: MIN_HEIGHT,
     paddingVertical: 4,
     paddingHorizontal: 14,
     backgroundColor: bg,
@@ -52,8 +55,10 @@ export function Chip({ variant = 'standard', active = false, onPress, style, chi
       onPress={onPress}
       style={({ pressed }) => [
         container,
-        pressed && { opacity: 0.7 },
         style,
+        // State and touch-target styles follow the caller's `style` so they always win (#178).
+        minTouchHeight(style, MIN_HEIGHT),
+        pressed && { opacity: 0.7 },
       ]}
     >
       {active ? (

@@ -1,9 +1,9 @@
 import { z } from 'zod'
-import { ANNUAL_AVERAGE_RATES, describeFieldForPrompt, fieldsOfScreen, SCREENS } from '@steuereule/core'
+import { ANNUAL_AVERAGE_RATES, describeFieldForPrompt, fieldsOfScreen, OFFICIAL_MONTHLY_CHF_PER_EUR, officialMonthlyRateOf, SCREENS } from '@steuereule/core'
 import { isAiWritable } from '../../confirmation/ai-write-policy.js'
 import { OWN_TOOL_SCREENS } from '../../ki/advisor-safety.js'
 import type { McpDeps, McpSession } from '../mcp-session.js'
-import { taxYearArg } from '../tool-args.js'
+import { monthArg, taxYearArg } from '../tool-args.js'
 import { json, refused } from '../tool-results.js'
 import { forExternalAssistant, isUserOnly } from './entry-tools.js'
 
@@ -16,13 +16,22 @@ export function registerComfortTools(session: McpSession, deps: McpDeps): void {
 
   server.tool(
     'wechselkurs',
-    'Nennt den Jahresdurchschnittskurs CHF→EUR, den die Anlage N-Gre für das Steuerjahr vorgibt (z. B. 1,065 = 100 CHF sind 106,50 €). Nimm diesen Kurs, statt einen aus dem Gedächtnis.',
-    { taxYear: taxYearArg() },
-    async ({ taxYear }) => {
+    'Nennt den Kurs CHF→EUR aus amtlicher Quelle: ohne monat den Jahresdurchschnittskurs, den die Anlage N-Gre vorgibt (z. B. 1,065 = 100 CHF sind 106,50 €), mit monat (JJJJ-MM) den amtlichen BMF-Monatskurs (Umsatzsteuer-Umrechnungskurse). Trage die Werte aus „eintragen“ ein. Nimm diesen Kurs, statt einen aus dem Gedächtnis.',
+    { taxYear: taxYearArg(), monat: monthArg('Monat JJJJ-MM im Steuerjahr, wenn der amtliche Monatskurs gefragt ist').optional() },
+    async ({ taxYear, monat }) => {
+      if (monat !== undefined) {
+        if (!monat.startsWith(`${taxYear}-`)) return refused(`OUT_OF_YEAR: ${monat} liegt nicht im Steuerjahr ${taxYear}.`)
+        const rate = officialMonthlyRateOf(monat)
+        if (rate === undefined) return refused(`NO_RATE: Für ${monat} kennt die App keinen BMF-Monatskurs.`, 'Das BMF veröffentlicht den Kurs zu Beginn des Folgemonats. Nimm bis dahin den Jahresdurchschnitt oder frag den Nutzer.')
+        // The field keeps four places (field catalog); the printed BMF value is given alongside.
+        const eurJeChf = Math.round(rate.rate * 10_000) / 10_000
+        const chfJeEur = OFFICIAL_MONTHLY_CHF_PER_EUR[taxYear]?.[Number(monat.slice(5)) - 1]
+        return json({ ok: true, taxYear, art: 'amtlich', monat, chfJeEur, eurJeChf, eintragen: { 'chLohnausweis.wechselkurs': eurJeChf.toFixed(4), 'chLohnausweis.wechselkursMonat': monat } })
+      }
       const rate = ANNUAL_AVERAGE_RATES[taxYear]
       return rate === undefined
         ? refused(`NO_RATE: Für ${taxYear} kennt die App keinen Jahresdurchschnittskurs.`, 'Frag den Nutzer nach dem Kurs aus seinem Lohnausweis oder lass das Feld chLohnausweis.wechselkurs leer.')
-        : json({ ok: true, taxYear, eurJeChf: rate, feld: 'chLohnausweis.wechselkurs' })
+        : json({ ok: true, taxYear, art: 'jahresdurchschnitt', eurJeChf: rate, feld: 'chLohnausweis.wechselkurs', eintragen: { 'chLohnausweis.wechselkurs': String(rate), 'chLohnausweis.wechselkursMonat': String(taxYear) } })
     },
   )
 

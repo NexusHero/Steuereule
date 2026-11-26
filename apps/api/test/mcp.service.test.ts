@@ -601,11 +601,35 @@ describe('McpService (ADR-0052 §3 / §5 / §8 / §12)', () => {
     expect(household.personen[0].kirchensteuerpflichtig).toBe(false)
   })
 
+  // #543: a simulation runs the same checks as a write, so it cannot be used to probe the confession either.
+  it.each([
+    ['auswirkung_simulieren', { screen: 'stammdaten', field: 'religion', value: 'RK' }],
+    ['szenario_simulieren', { eintraege: [{ screen: 'stammdaten', field: 'religion', value: 'RK' }] }],
+  ])('%s refuses the confession as user-only and simulates nothing (#543)', async (name, args) => {
+    const report = { simulateEntries: async () => { throw new Error('must not run') } }
+    const client = await connectWith({ report: report as never })
+    const res = await client.callTool({ name, arguments: { taxYear: YEAR, ...args } })
+    expect(getText(res)).toContain('USER_ONLY')
+  })
+
   describe('comfort tools (#548)', () => {
     it('wechselkurs names the annual average rate of the year', async () => {
       const client = await connectClient()
       expect(JSON.parse(getText(await client.callTool({ name: 'wechselkurs', arguments: { taxYear: 2025 } })))).toMatchObject({ ok: true, eurJeChf: 1.065 })
       expect(JSON.parse(getText(await client.callTool({ name: 'wechselkurs', arguments: { taxYear: 1999 } }))).ok).toBe(false)
+    })
+
+    it('wechselkurs names the BMF monthly rate of a month, as printed and as the field takes it', async () => {
+      const client = await connectClient()
+      expect(JSON.parse(getText(await client.callTool({ name: 'wechselkurs', arguments: { taxYear: 2025, monat: '2025-03' } })))).toMatchObject({
+        ok: true,
+        art: 'amtlich',
+        chfJeEur: 0.9548,
+        eurJeChf: 1.0473,
+        eintragen: { 'chLohnausweis.wechselkurs': '1.0473', 'chLohnausweis.wechselkursMonat': '2025-03' },
+      })
+      expect(JSON.parse(getText(await client.callTool({ name: 'wechselkurs', arguments: { taxYear: 2025, monat: '2024-03' } }))).ok).toBe(false)
+      expect(JSON.parse(getText(await client.callTool({ name: 'wechselkurs', arguments: { taxYear: 2026, monat: '2026-12' } }))).ok).toBe(false)
     })
 
     it('feld_finden finds a field by a word of its description, never the confession', async () => {

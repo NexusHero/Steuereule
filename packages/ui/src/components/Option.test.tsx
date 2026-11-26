@@ -60,4 +60,15 @@ describe('Option', () => {
 
     expect(screen.getByRole('button', { name: 'Ja' })).toBeTruthy()
   })
+
+  it('keeps_its_touch_target_and_pressed_border_over_the_caller_style', () => {
+    renderUi(
+      <Option testID="opt" style={{ marginTop: 12, minHeight: 10 }}>
+        eins
+      </Option>,
+    )
+    const el = screen.getByTestId('opt') as HTMLElement
+    expect(el.style.marginTop).toBe('12px')
+    expect(el.style.minHeight).toBe('52px')
+  })
 })

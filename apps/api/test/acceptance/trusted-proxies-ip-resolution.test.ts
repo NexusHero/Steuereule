@@ -10,6 +10,7 @@
 import type { NestFastifyApplication } from '@nestjs/platform-fastify'
 import { PrismaClient } from '@prisma/client'
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest'
+import { CREDENTIAL_PATH_RATE_LIMIT } from '../../src/auth/better-auth.js'
 import { resetRateLimiters } from '../support/reset-rate-limiters.js'
 import { fixtureClient } from '../support/database-fixture.js'
 
@@ -29,11 +30,9 @@ async function cleanUp(prisma: PrismaClient): Promise<void> {
   await prisma.user.deleteMany()
 }
 
-// better-auth's built-in special rule for /sign-in* (getDefaultSpecialRules,
-// better-auth/dist/api/rate-limiter/index.mjs) — window 10s / max 3. Not our own
-// config; asserted against here because it's the actual surface REQ-010/ADR-0013 §6
-// names as bypassable.
-const SIGN_IN_WINDOW_MAX = 3
+// The /sign-in/* ceiling: window 10s / max 5 (our customRules, #350; better-auth's built-in is 3). It is the
+// actual surface REQ-010/ADR-0013 §6 names as bypassable.
+const SIGN_IN_WINDOW_MAX = CREDENTIAL_PATH_RATE_LIMIT.max
 
 // A trusted Origin, matching CORS_ALLOWED_ORIGINS below — without it, better-auth's
 // own origin-check middleware (origin-check.mjs's `validateFormCsrf`) rejects the
@@ -121,7 +120,7 @@ describe('#241 A2/A3 — TRUSTED_PROXIES configured: the fix, proven against a s
     // A placeholder trusted-proxy CIDR (RFC 1918 private range) — deliberately NOT a
     // real ingress range (that value is #277's, itself blocked on the deployment gap
     // #292 now carries; it was written here as "a real Fly.io range" against a platform
-    // premise #246's own 2026-08-05 correction retired — ADR-049 is k3s on Hetzner) and
+    // premise #246's own 2026-08-05 correction retired — Produkt-ADR-049 is k3s on Hetzner) and
     // deliberately NOT overlapping any test IP below (TEST-NET-2/TEST-NET-3, RFC
     // 5737), so the resolver's own hop-stripping logic is what's under test, not an
     // accidental address collision.
@@ -159,7 +158,7 @@ describe('#241 A2/A3 — TRUSTED_PROXIES configured: the fix, proven against a s
     // The discriminating half, and the reason "429 appeared somewhere" alone isn't
     // enough here (measured, not assumed): a 2+-value header with NO trustedProxies
     // configured collapses onto a shared sentinel key that is equally stable across
-    // every caller, and THAT also trips 429 after the same three attempts. This used
+    // every caller, and THAT also trips 429 after the same number of attempts. This used
     // to be proven by reading better-auth's `RateLimit.key` off the (now-removed)
     // table; with better-auth's in-memory storage the equivalent proof is a fresh
     // *different* client in the same window: it must NOT be throttled. A 401 here

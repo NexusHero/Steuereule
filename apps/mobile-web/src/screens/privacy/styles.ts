@@ -12,7 +12,7 @@ export function makePrivacyStyles(t: UiTheme) {
   const help: TextStyle = { ...t.type.body, color: t.color.tinte2, textAlign: 'center' }
   const sectionTitle: TextStyle = { ...t.type.emphasis, color: t.color.tinte, marginBottom: t.space.s2 }
   const sectionBody: TextStyle = { ...t.type.small, color: t.color.tinte2, marginBottom: t.space.s4 }
-  const exportRow: ViewStyle = { marginBottom: t.space.s4 }
+  const exportSpacer: ViewStyle = { marginBottom: t.space.s4 }
   const hint: TextStyle = { ...t.type.caption, color: t.color.tinte2, marginTop: t.space.s2 }
   const successNote: TextStyle = { ...t.type.small, color: t.color.tinte, marginTop: t.space.s2 }
   const errorNote: TextStyle = { ...t.type.small, color: t.color.fehler, marginTop: t.space.s2 }
@@ -32,7 +32,7 @@ export function makePrivacyStyles(t: UiTheme) {
     help,
     sectionTitle,
     sectionBody,
-    exportRow,
+    exportSpacer,
     hint,
     successNote,
     errorNote,

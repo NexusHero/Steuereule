@@ -19,12 +19,13 @@ const computed = (from: number, to: number) => ({
 /** The Prisma runner over a client stub: the only runner the simulation trusts to roll back. */
 const rollingBack: TransactionRunner = new PrismaTransactionRunner({ $transaction: async (work) => work({}) })
 
-function service(overrides: { estimate?: unknown; printout?: unknown; confirmation?: unknown; interview?: unknown; transactions?: TransactionRunner } = {}) {
+function service(overrides: { estimate?: unknown; printout?: unknown; confirmation?: unknown; interview?: unknown; assessment?: unknown; transactions?: TransactionRunner } = {}) {
   const estimate = overrides.estimate ?? { getState: vi.fn().mockResolvedValue(computed(100, 100)) }
   const printout = overrides.printout ?? { check: vi.fn().mockResolvedValue({ missing: [] }) }
   const confirmation = overrides.confirmation ?? { overview: vi.fn().mockResolvedValue({ annexes: [] }), writeConfirmedByAdvisor: vi.fn(), readRawValues: vi.fn().mockResolvedValue({ 'stammdaten.kirchensteuerpflichtig': 'false' }) }
   const interview = overrides.interview ?? { getState: vi.fn().mockResolvedValue({ answers: {}, nextStep: { kind: 'done' }, openItems: 0 }) }
-  return new McpReportService(estimate as never, printout as never, confirmation as never, interview as never, overrides.transactions ?? rollingBack)
+  const assessment = overrides.assessment ?? { getState: vi.fn() }
+  return new McpReportService(estimate as never, printout as never, confirmation as never, interview as never, assessment as never, overrides.transactions ?? rollingBack)
 }
 
 describe('McpReportService (ADR-0052 amendment 2)', () => {
@@ -200,35 +201,75 @@ describe('McpReportService (ADR-0052 amendment 2)', () => {
     })
   })
 
-  describe('comparing a notice with the return (#546)', () => {
-    const estimate = {
-      ...computed(-3677.49, -3677.49),
-      werbungskosten: 3371,
-      provision: { from: 27029, to: 27029 },
-      specialExpenses: 3909,
-      taxableIncome: { from: 173018, to: 173018 },
-      incomeTax: { from: 53364, to: 53364 },
-      solidaritaetszuschlag: { from: 1667.49, to: 1667.49 },
-      anrechnung: 24603,
-      prepayments: 26751,
-      breakdown: { persons: [{ incomeEur: 98624, workExpensesEur: 1230, creditedTaxEur: 19771 }, { incomeEur: 114872, workExpensesEur: 2141, creditedTaxEur: 4832 }], totalIncomeEur: 213496, extraordinaryBurdenEur: 0, tariffTax: { from: 51394, to: 51394 }, householdReductionEur: 1200 },
+  describe('comparing a notice with the submitted return (#546)', () => {
+    const row = (position: string, declared: number | null, assessed: number | null, role: 'own' | 'followOn' = 'own') => ({
+      position,
+      label: position,
+      role,
+      person: null,
+      declared,
+      assessed,
+      difference: declared === null || assessed === null ? null : assessed - declared,
+      status: declared === null || assessed === null ? 'not_read' : declared === assessed ? 'same' : 'deviation',
+      explanation: 'Erläuterung des Finanzamts mit Freitext',
+      shortReason: 'kurz',
+    })
+    const diff = {
+      year: 2024,
+      filingType: 'zusammen',
+      groups: [
+        { group: 'vorsorge', rows: [row('vorsorgeaufwand', 27029, 26785)] },
+        { group: 'werbungskostenB', rows: [row('werbungskostenB', 2141, 2047)] },
+        { group: 'steuer', rows: [row('erstattung', -3677, -4060, 'followOn')] },
+      ],
+      ownDeviations: [{ ...row('vorsorgeaufwand', 27029, 26785), refundEffect: -120 }, { ...row('werbungskostenB', 2141, 2047), refundEffect: -40 }],
+      followOnChain: [],
+      totalRefundEffect: -383,
+      singleEffectsSum: -160,
+      effectsDifferFromTotal: true,
+      generalExplanations: ['Freitext'],
+      counts: { positions: 3, same: 0, deviations: 2, notRead: 0 },
     }
-    const notice = (values: Record<string, string | null>) => ({ overview: vi.fn(), writeConfirmedByAdvisor: vi.fn(), readRawValues: vi.fn().mockResolvedValue(values) })
+    const state = (over: Record<string, unknown> = {}) => ({
+      positions: [{ id: 'erstattung', kind: 'erfasst', value: -4060 }],
+      assessmentDate: '2026-10-26',
+      frist: { assessmentDate: '2026-10-26', deadlineEnd: '2026-11-26', remainingDays: 6, running: true },
+      diff,
+      ...over,
+    })
+    const compare = (assessmentState: unknown) => service({ assessment: { getState: vi.fn().mockResolvedValue(assessmentState) } }).compareAssessment('u', 2024)
 
-    it('lists each position of the notice beside the app’s figure, with the difference', async () => {
-      const result = await service({ estimate: { getState: vi.fn().mockResolvedValue(estimate) }, confirmation: notice({ 'assessment.zuVersteuerndesEinkommen': '174855', 'assessment.werbungskostenB': '2047', 'assessment.vorsorgeaufwand': '26785', 'assessment.festgesetzteSteuer': '54136', 'assessment.erstattung': '-4060', 'assessment.assessmentDate': '2026-10-26' }) }).compareAssessment('u', 2024, '2026-11-20')
+    it('takes each position from the diff against the submitted version, with the effect on the refund', async () => {
+      const result = await compare(state())
       expect(result.ok).toBe(true)
       const rows = Object.fromEntries((result.positionen as { position: string }[]).map((r) => [r.position, r]))
-      expect(rows.zuVersteuerndesEinkommen).toMatchObject({ erklaerungEur: 173018, bescheidEur: 174855, abweichungEur: 1837 })
-      expect(rows.werbungskostenB).toMatchObject({ erklaerungEur: 2141, bescheidEur: 2047, abweichungEur: -94 })
+      expect(rows.vorsorgeaufwand).toMatchObject({ erklaerungEur: 27029, bescheidEur: 26785, abweichungEur: -244, wirkungAufErstattungEur: -120 })
+      expect(rows.werbungskostenB).toMatchObject({ erklaerungEur: 2141, bescheidEur: 2047, abweichungEur: -94, wirkungAufErstattungEur: -40 })
       expect(rows.erstattung).toMatchObject({ erklaerungEur: -3677, bescheidEur: -4060, abweichungEur: -383 })
-      expect(result.einspruchsfrist).toMatchObject({ bescheidVom: '2026-10-26' })
-      expect(rows.sonderausgaben).toBeUndefined()
+      expect(rows.erstattung).not.toHaveProperty('wirkungAufErstattungEur')
+      expect(result.gesamtwirkungAufErstattungEur).toBe(-383)
+      expect(result.wirkungenSummierenSichNicht).toBe(true)
     })
 
-    it('says so when no notice is entered', async () => {
-      const result = await service({ estimate: { getState: vi.fn().mockResolvedValue(estimate) }, confirmation: notice({}) }).compareAssessment('u', 2024)
+    it('keeps the appeal deadline of the notice', async () => {
+      const result = await compare(state())
+      expect(result.einspruchsfrist).toEqual({ bescheidVom: '2026-10-26', endetAm: '2026-11-26', verbleibendeTage: 6, laeuft: true })
+    })
+
+    it('never passes the free text of the notice on (ADR-0052 amendment 3, 5)', async () => {
+      expect(JSON.stringify(await compare(state()))).not.toContain('Freitext')
+    })
+
+    it('says that no notice is entered', async () => {
+      const result = await compare(state({ diff: null, positions: [{ id: 'erstattung', kind: 'offen' }], assessmentDate: null }))
       expect(result).toMatchObject({ ok: false })
+      expect(result.grund).toContain('kein Bescheid')
+    })
+
+    it('says that there is no submitted version to compare against, instead of comparing with the live estimate', async () => {
+      const result = await compare(state({ diff: null }))
+      expect(result).toMatchObject({ ok: false })
+      expect(result.grund).toContain('abgegeben')
     })
   })
 

@@ -14,7 +14,8 @@
     "lint": "oxlint --deny-warnings",
     "gate": "pnpm -r typecheck && pnpm -r test",
     "register-check": "node scripts/checks/register-check.mjs",
-    "adr-check": "node scripts/checks/adr-check.mjs"
+    "adr-check": "node scripts/checks/adr-check.mjs",
+    "check:better-auth": "node scripts/checks/better-auth-version-check.mjs"
   },
   "devDependencies": {
     "@vitest/coverage-v8": "^2.1.8",

@@ -1,5 +1,5 @@
 # ---------------------------------------------------------------------------
-# Redis on the cluster (ADR-049 keeps Redis on-cluster; only Postgres is managed).
+# Redis on the cluster (Produkt-ADR-049 keeps Redis on-cluster; only Postgres is managed).
 # Serves BullMQ scan/OCR queues + caching (ADR-047). WHY a Deployment and not a
 # StatefulSet for now: queues can be rebuilt (jobs re-enqueue), so strict ordered
 # identity isn't required — but AOF persistence is kept so an in-flight queue survives

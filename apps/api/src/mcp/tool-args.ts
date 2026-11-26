@@ -23,6 +23,7 @@ export const instanceArg = (description: string) => z.string().trim().min(1).max
 export const fieldArg = (description = 'Der Feldbezeichner, wie maske_felder ihn nennt') => z.string().max(MAX_FIELD_LENGTH).describe(description)
 export const valueArg = (description: string) => z.string().max(MAX_VALUE_LENGTH).describe(description)
 export const receiptIdArg = () => z.string().trim().min(1).max(MAX_ID_LENGTH).describe('Die belegId eines eigenen Belegs aus belege_auflisten oder beleg_hochladen, als Herkunftsnachweis')
+export const monthArg = (description: string) => z.string().length(7).regex(/^\d{4}-(0[1-9]|1[0-2])$/).describe(description)
 export const PERSON_HINT = 'Bei Zusammenveranlagung: A der Nutzer, B Ehegatte oder Ehegattin. Pflicht in den Masken lstb, chLohnausweis, commute, rente, profil, stammdaten, sobald es Person B gibt.'
 export const personArg = (description: string = PERSON_HINT) => z.enum(['A', 'B']).describe(description)
 

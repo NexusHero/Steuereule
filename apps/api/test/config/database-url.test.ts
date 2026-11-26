@@ -56,7 +56,7 @@ describe('resolveDatabaseUrl', () => {
   // (no divergence, either way); trailing whitespace, including a trailing newline,
   // makes both SUCCEED identically. A trailing newline is the single most common
   // shape a Kubernetes Secret value arrives in (`kubectl create secret generic
-  // --from-file=` appends one, so does a YAML `|` block literal — ADR-049 confirms
+  // --from-file=` appends one, so does a YAML `|` block literal — Produkt-ADR-049 confirms
   // k3s on Hetzner as the deployment target). Rejecting it would refuse a
   // configuration proven to work end to end, for zero correctness benefit — nothing
   // is silently succeeding that shouldn't.

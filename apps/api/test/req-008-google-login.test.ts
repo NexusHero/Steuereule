@@ -1,11 +1,11 @@
 // REQ-008 ATDD acceptance test — Google social login via better-auth.
 //
 // Proves the server-side Google OAuth integration:
-//   1) better-auth's social provider for "google" is configured when credentials are provided
-//   2) The callback route /api/auth/callback/google is registered
-//   3) Google sign-in is disabled when credentials are not provided (production gate)
+//   1) with credentials, starting the Google sign-in answers a redirect to Google carrying the
+//      client id and the /api/auth/callback/google redirect URI
+//   2) without credentials, the same request answers PROVIDER_NOT_FOUND (production gate)
 //
-// This test uses Vitest + the real better-auth factory — no HTTP, no Nest — so it's
+// This test uses Vitest + the real better-auth factory and handler — no Nest, no socket — so it's
 // fast and deterministic. The cross-origin E2E test (e2e/google-auth/google-login.mjs)
 // proves the same flow over real HTTP.
 import type { PrismaClient } from '@prisma/client'
@@ -21,37 +21,57 @@ function fakePrisma(): PrismaClient {
   return {} as PrismaClient
 }
 
+/** The state better-auth stores before it sends a user to the provider; the one table the sign-in start writes. */
+function prismaStoringTheOAuthState(): PrismaClient {
+  return { verification: { create: async ({ data }: { data: Record<string, unknown> }) => ({ id: 'state-1', createdAt: new Date(), updatedAt: new Date(), ...data }) } } as unknown as PrismaClient
+}
+
+function startGoogleSignIn(auth: { handler: (request: Request) => Promise<Response> }): Promise<Response> {
+  return auth.handler(
+    new Request('http://localhost:3000/api/auth/sign-in/social', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', origin: 'http://localhost:8081' },
+      body: JSON.stringify({ provider: 'google', callbackURL: 'http://localhost:8081/' }),
+    }),
+  )
+}
+
+const base = {
+  secret: 'test-secret-at-least-32-characters-long!!',
+  baseUrl: 'http://localhost:3000',
+  webAppUrl: 'http://localhost:8081',
+  trustedOrigins: ['http://localhost:8081'],
+}
+
 describe('REQ-008 Google OAuth — ATDD acceptance', () => {
-  it('configures the Google social provider when both credentials are provided', () => {
-    const { auth } = createBetterAuth({
-      prisma: fakePrisma(),
-      secret: 'test-secret',
-      baseUrl: 'http://localhost:3000',
-      webAppUrl: 'http://localhost:8081',
-      trustedOrigins: ['http://localhost:8081'],
+  it('registers the Google provider and starts the sign-in at Google when both credentials are provided', async () => {
+    const { auth, enabledSocialProviders } = createBetterAuth({
+      ...base,
+      prisma: prismaStoringTheOAuthState(),
       emailSender: fakeEmailSender(),
       googleClientId: 'test-client-id.apps.googleusercontent.com',
       googleClientSecret: 'GOCSPX-test-secret',
     })
 
-    // The auth instance is valid — the social provider is part of its config
-    expect(typeof auth.handler).toBe('function')
-    expect(typeof auth.api.getSession).toBe('function')
+    expect(enabledSocialProviders).toEqual(['google'])
+    const response = await startGoogleSignIn(auth)
+    expect(response.status).toBe(200)
+    const { url } = (await response.json()) as { url: string }
+    const target = new URL(url)
+    expect(target.origin).toBe('https://accounts.google.com')
+    expect(target.searchParams.get('client_id')).toBe('test-client-id.apps.googleusercontent.com')
+    // The callback route better-auth hands Google is the registered /api/auth/callback/google.
+    expect(target.searchParams.get('redirect_uri')).toBe('http://localhost:3000/api/auth/callback/google')
   })
 
-  it('still creates a valid auth instance when Google credentials are omitted (Google sign-in disabled)', () => {
-    const { auth, sessionCookieName } = createBetterAuth({
-      prisma: fakePrisma(),
-      secret: 'test-secret',
-      baseUrl: 'http://localhost:3000',
-      webAppUrl: 'http://localhost:8081',
-      trustedOrigins: ['http://localhost:8081'],
-      emailSender: fakeEmailSender(),
-      // No googleClientId / googleClientSecret — provider not registered
-    })
+  it('does not register the Google provider without credentials: the sign-in start answers PROVIDER_NOT_FOUND', async () => {
+    const { auth, enabledSocialProviders, sessionCookieName } = createBetterAuth({ ...base, prisma: fakePrisma(), emailSender: fakeEmailSender() })
 
-    // Auth still works for email/password — Google is just not available
-    expect(typeof auth.handler).toBe('function')
+    expect(enabledSocialProviders).toEqual([])
+    const response = await startGoogleSignIn(auth)
+    expect(response.status).toBe(404)
+    expect(await response.json()).toMatchObject({ code: 'PROVIDER_NOT_FOUND' })
+    // Email/password is unaffected.
     expect(sessionCookieName).toBe('better-auth.session_token')
   })
 

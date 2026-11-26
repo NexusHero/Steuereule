@@ -37,6 +37,11 @@
 //   5. a test carrying `@documents-defect #NNN` is cited in the register with the same
 //      marker, and #NNN is still open — the day it closes, this goes red until re-read
 //
+// Check 1c (#254): a cited line locator (`path:NNN`, `path:NNN-MMM`, `path:A,B-C`) is
+// bounds-checked — every segment well formed, start <= end, and no line past the cited file's
+// current line count. It does not check that the range still brackets the block the citation
+// means; a range that drifts onto other, still-existing lines stays green.
+//
 // Checks 3b, 4's tier-existence rule, and 4b are all instances of the same shape (ADR-0021's
 // 2026-08-04 amendment, "break by deletion"): an existence claim ("is there a tier/citation/
 // governed-set at all?") that used to be checked only as a validity claim ("if one is there,
@@ -54,7 +59,7 @@
 
 import fs from 'node:fs'
 import path from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 import { Findings } from './lib/findings.mjs'
 import { parseTables, citationColumnIndex, statusColumnIndex, reqColumnIndex, extractCitations } from './lib/register.mjs'
 import { walk, buildBasenameIndex, resolveCitedPath } from './lib/paths.mjs'
@@ -71,6 +76,61 @@ const TEST_FILE_RE = /\.test\.tsx?$/
 const E2E_MJS_RE = /^e2e\/.*\.mjs$/
 const DESCRIBE_REQ_RE = /describe\(\s*['"`][^'"`]*?(REQ-\d{3})/g
 const DOCUMENTS_DEFECT_RE = /@documents-defect\s+#(\d+)/g
+
+/**
+ * Bounds-checks one line locator (the part after `:` in `path:NNN-MMM`) against the cited
+ * file's line count. Bounds only: it cannot tell whether the lines are still the right ones.
+ * @param {string} lineRange e.g. `112-175`, `59`, `10,20-30`
+ * @param {number} lineCount the cited file's current number of lines
+ * @returns {string[]} one message per problem; empty when the locator is in bounds
+ */
+export function lineRangeProblems(lineRange, lineCount) {
+  const problems = []
+  for (const segment of lineRange.split(',')) {
+    const m = segment.match(/^(\d+)(?:-(\d+))?$/)
+    if (!m) {
+      problems.push(`\`${segment}\` is not a line number or a \`start-end\` range`)
+      continue
+    }
+    const start = Number(m[1])
+    const end = m[2] === undefined ? start : Number(m[2])
+    if (start < 1) problems.push(`line ${start} does not exist (lines start at 1)`)
+    if (start > end) problems.push(`\`${segment}\` starts after it ends`)
+    if (Math.max(start, end) > lineCount) problems.push(`\`${segment}\` reaches past the file's last line (${lineCount})`)
+  }
+  return problems
+}
+
+/** Line count as an editor shows it: a trailing newline does not open another line. */
+export function countLines(text) {
+  if (text === '') return 0
+  const lines = text.split('\n').length
+  return text.endsWith('\n') ? lines - 1 : lines
+}
+
+/**
+ * Check 1c over every citation in the register that carries a line locator.
+ * @param {string[]} registerLines
+ * @param {(citedPath: string) => number | null} lineCountOf null for a path that does not
+ *   resolve — check 1 already reports it, so it is skipped here
+ * @returns {{check: string, message: string}[]}
+ */
+export function lineRangeFindings(registerLines, lineCountOf) {
+  const out = []
+  for (let i = 0; i < registerLines.length; i += 1) {
+    for (const citation of extractCitations(registerLines[i])) {
+      if (citation.lineRange === undefined) continue
+      for (const p of citation.paths) {
+        const lineCount = lineCountOf(p)
+        if (lineCount == null) continue
+        for (const problem of lineRangeProblems(citation.lineRange, lineCount)) {
+          out.push({ check: '1c-line-range-bounds', message: `register.md:${i + 1} cites \`${p}:${citation.lineRange}\` — ${problem}.` })
+        }
+      }
+    }
+  }
+  return out
+}
 
 async function main() {
   const findings = new Findings()
@@ -100,6 +160,18 @@ async function main() {
       }
     }
   }
+
+  // --- Check 1c: a cited line locator stays inside the cited file (#254) -------------------
+  const lineCounts = new Map()
+  const lineCountOf = (p) => {
+    const resolution = resolvedByRaw.get(p)
+    if (!resolution?.exists) return null
+    if (!lineCounts.has(resolution.resolved)) {
+      lineCounts.set(resolution.resolved, countLines(fs.readFileSync(path.join(REPO_ROOT, resolution.resolved), 'utf8')))
+    }
+    return lineCounts.get(resolution.resolved)
+  }
+  for (const { check, message } of lineRangeFindings(registerLines, lineCountOf)) findings.add(check, message)
 
   // --- Parse both tables for row-level checks (2-5) ----------------------------------------
   const tables = parseTables(registerText)
@@ -452,12 +524,14 @@ async function checkDocumentsDefect(findings, markers, rows) {
   }
 }
 
-main()
-  .then((findings) => {
-    process.exit(findings.report('register-check'))
-  })
-  .catch((err) => {
-    console.error('register-check crashed (not a finding — the check itself failed to run):')
-    console.error(err)
-    process.exit(2)
-  })
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main()
+    .then((findings) => {
+      process.exit(findings.report('register-check'))
+    })
+    .catch((err) => {
+      console.error('register-check crashed (not a finding — the check itself failed to run):')
+      console.error(err)
+      process.exit(2)
+    })
+}

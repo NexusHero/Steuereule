@@ -19,6 +19,6 @@ write_files:
         - REPLACE_ME_PUBLIC_IP_OR_DOMAIN
 
 runcmd:
-  # The official k3s install script, pinned to a stable channel (ADR-049's choice).
+  # The official k3s install script, pinned to a stable channel (Produkt-ADR-049's choice).
   # `server` = control-plane + worker in one (single-node default).
   - curl -sfL https://get.k3s.io | INSTALL_K3S_CHANNEL=stable sh -s - server
