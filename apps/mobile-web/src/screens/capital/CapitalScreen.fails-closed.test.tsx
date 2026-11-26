@@ -4,10 +4,10 @@ import { describe, expect, it } from 'vitest'
 import { screen } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import type { KapitalResponseDto } from '@steuereule/api-client'
-import { server } from '../../test-msw-server'
-import { expectFailsClosed, failEveryRequest } from '../../test-every-query-fails'
+import { server } from '../../../test/test-msw-server'
+import { expectFailsClosed, failEveryRequest } from '../../../test/test-every-query-fails'
 import { CapitalScreen } from './CapitalScreen'
-import { renderWithQuery } from '../../test-render'
+import { renderWithQuery } from '../../../test/test-render'
 
 const BASE: KapitalResponseDto = {
   kapitalertraege: { kind: 'offen' },

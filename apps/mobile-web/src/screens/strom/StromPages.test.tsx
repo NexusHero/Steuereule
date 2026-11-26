@@ -4,10 +4,10 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { screen, fireEvent, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import type { Answers } from '@steuereule/core'
-import { server } from '../../test-msw-server'
+import { server } from '../../../test/test-msw-server'
 import { AuswahlPage, BasisPage, TopicPage } from './StromPages'
 import { effectOf, forgetEffects } from './stromEffects'
-import { renderWithQuery } from '../../test-render'
+import { renderWithQuery } from '../../../test/test-render'
 
 const YEAR = 2025
 const BASIS: Answers = { job: 'Angestellt', ausland: 'Nein', kinder: 'Nein', familienstand: 'Ledig' }

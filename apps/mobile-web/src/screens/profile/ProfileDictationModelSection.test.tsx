@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { act, fireEvent, screen } from '@testing-library/react'
 import type { DictationEngine } from '../../lib/dictation/engine'
 import { ProfileDictationModelSection } from './ProfileDictationModelSection'
-import { renderInApp } from '../../test-render'
+import { renderInApp } from '../../../test/test-render'
 
 function engineWith(stored: boolean): DictationEngine {
   let cached = stored

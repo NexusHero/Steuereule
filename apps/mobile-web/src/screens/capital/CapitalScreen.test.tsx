@@ -8,8 +8,8 @@ import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import { getCockpitControllerGetCockpitSummaryQueryKey, getTaxEstimateControllerGetQueryKey, type KapitalResponseDto } from '@steuereule/api-client'
 import { CapitalScreen } from './CapitalScreen'
-import { server } from '../../test-msw-server'
-import { makeTestQueryClient, renderWithQuery } from '../../test-render'
+import { server } from '../../../test/test-msw-server'
+import { makeTestQueryClient, renderWithQuery } from '../../../test/test-render'
 
 const TAX_YEAR = 2026
 const CAPITAL_URL = `*/v1/steuerjahre/${TAX_YEAR}/kapital`

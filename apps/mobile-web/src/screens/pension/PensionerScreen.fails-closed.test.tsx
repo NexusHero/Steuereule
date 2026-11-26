@@ -4,10 +4,10 @@ import { describe, expect, it } from 'vitest'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import type { PensionResponseDto } from '@steuereule/api-client'
-import { server } from '../../test-msw-server'
-import { expectFailsClosed, failEveryRequest } from '../../test-every-query-fails'
+import { server } from '../../../test/test-msw-server'
+import { expectFailsClosed, failEveryRequest } from '../../../test/test-every-query-fails'
 import { PensionerScreen } from './PensionerScreen'
-import { renderWithQuery } from '../../test-render'
+import { renderWithQuery } from '../../../test/test-render'
 
 const UNCLEAR: PensionResponseDto = {
   kind: 'GesetzlicheRente',

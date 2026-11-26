@@ -23,8 +23,8 @@ import { http, HttpResponse } from 'msw'
 import { createAppAuthClient } from '../../auth/auth-client'
 import { AuthClientProvider } from '../../auth/AuthClientProvider'
 import { DeviceScreen } from './DeviceScreen'
-import { server } from '../../test-msw-server'
-import { renderWithQuery } from '../../test-render'
+import { server } from '../../../test/test-msw-server'
+import { renderWithQuery } from '../../../test/test-render'
 
 const BASE_URL = 'http://localhost:3000'
 

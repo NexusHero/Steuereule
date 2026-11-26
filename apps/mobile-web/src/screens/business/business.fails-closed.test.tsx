@@ -3,7 +3,7 @@
 // (Gewerbesteuer, ELSTER) and the pages without a first read (Firmenwagen, Freischalten: they only send what
 // the user enters there, nothing built from stored data) are covered by their own tests.
 import { describe, it } from 'vitest'
-import { expectFailsClosed, failEveryRequest } from '../../test-every-query-fails'
+import { expectFailsClosed, failEveryRequest } from '../../../test/test-every-query-fails'
 import { renderBusiness } from './businessTestKit'
 
 const PAGES_WITH_A_SAVE = [

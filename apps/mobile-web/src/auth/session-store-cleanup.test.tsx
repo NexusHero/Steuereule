@@ -8,7 +8,7 @@
 // client-construction site — not a lookalike store, so it's a proof of the actual traced chain
 // (nanostores' deferred UNMOUNT timer -> better-auth's `session-refresh.mjs` `cleanup()` ->
 // `broadcast-channel.mjs`'s `window.removeEventListener`), not just of nanostores in the
-// abstract. See #240 and Musti's ruling on it for the full mechanism; `../test-setup.ts` is where
+// abstract. See #240 and Musti's ruling on it for the full mechanism; `../../test/test-setup.ts` is where
 // the fix (`cleanStores()` in the shared `afterEach`) actually ships for every test file.
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanStores, STORE_UNMOUNT_DELAY, type WritableAtom } from 'nanostores'

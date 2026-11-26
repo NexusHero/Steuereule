@@ -4,8 +4,8 @@ import { describe, it, expect, vi, afterEach } from 'vitest'
 import { screen, fireEvent, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import { LstbScreen } from './LstbScreen'
-import { EMPTY_LSTB_RESPONSE, server } from '../../test-msw-server'
-import { pendingLstbScanAction } from '../../test-lstb-fixtures'
+import { EMPTY_LSTB_RESPONSE, server } from '../../../test/test-msw-server'
+import { pendingLstbScanAction } from '../../../test/test-lstb-fixtures'
 import type {
   AdvisorChatMessageDto,
   LstbExtractedFieldDto,
@@ -13,8 +13,8 @@ import type {
   ParseReceiptResponseDto,
   ReceiptResponseDto,
 } from '@steuereule/api-client'
-import { confirmAction } from '../../test-confirm'
-import { renderWithQuery } from '../../test-render'
+import { confirmAction } from '../../../test/test-confirm'
+import { renderWithQuery } from '../../../test/test-render'
 
 const { mockExtractDocumentText } = vi.hoisted(() => ({
   mockExtractDocumentText: vi.fn(),

@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen } from '@testing-library/react'
 import type { AdvisorActionProposal, AdvisorChatMessageView } from '@steuereule/core'
 import { AdvisorChatPanel } from './AdvisorChatPanel'
-import { renderInApp } from '../../test-render'
+import { renderInApp } from '../../../test/test-render'
 
 const draft = (over: Partial<AdvisorActionProposal>): AdvisorActionProposal => ({
   actionId: 'act-b',

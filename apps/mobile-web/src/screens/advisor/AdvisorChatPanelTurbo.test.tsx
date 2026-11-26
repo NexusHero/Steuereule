@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { fireEvent, screen } from '@testing-library/react'
 import type { AdvisorActionProposal } from '@steuereule/core'
 import { sendOptionsToDto } from './AdvisorChatPanel'
-import { renderAdvisorChatPanel, sendChatMessage } from '../../test-advisor'
+import { renderAdvisorChatPanel, sendChatMessage } from '../../../test/test-advisor'
 
 const APPLIED: AdvisorActionProposal = {
   actionId: 'act-1',

@@ -3,9 +3,9 @@
 import { describe, expect, it } from 'vitest'
 import { screen } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
-import { renderWithQuery } from '../../test-render'
-import { server } from '../../test-msw-server'
-import { HISTORY_RESPONSE, LESSONS_2024 } from '../../test-history-fixture'
+import { renderWithQuery } from '../../../test/test-render'
+import { server } from '../../../test/test-msw-server'
+import { HISTORY_RESPONSE, LESSONS_2024 } from '../../../test/test-history-fixture'
 import { MaskLessonHint } from './MaskLessonHint'
 
 function renderHint(node: React.ReactNode) {

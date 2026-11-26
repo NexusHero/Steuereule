@@ -5,9 +5,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen, within } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
-import { renderWithQuery } from '../../test-render'
-import { server } from '../../test-msw-server'
-import { EMPTY_HISTORY_RESPONSE, HISTORY_ALL_GROUPS_RESPONSE, HISTORY_RESPONSE } from '../../test-history-fixture'
+import { renderWithQuery } from '../../../test/test-render'
+import { server } from '../../../test/test-msw-server'
+import { EMPTY_HISTORY_RESPONSE, HISTORY_ALL_GROUPS_RESPONSE, HISTORY_RESPONSE } from '../../../test/test-history-fixture'
 import { HistoryDevelopmentScreen } from './HistoryDevelopmentScreen'
 
 const text = (id: string) => (screen.getByTestId(id).textContent ?? '').replace(/ /g, ' ')

@@ -4,8 +4,8 @@ import { describe, it, expect } from 'vitest'
 import { screen, fireEvent, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import { CatalogScreen } from './CatalogScreen'
-import { server } from '../../test-msw-server'
-import { renderWithQuery } from '../../test-render'
+import { server } from '../../../test/test-msw-server'
+import { renderWithQuery } from '../../../test/test-render'
 
 const INTERVIEW_URL = '*/v1/steuerjahre/2026/interview'
 

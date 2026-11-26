@@ -2,14 +2,14 @@ import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { NavigationContainer } from '@react-navigation/native'
 import { http, HttpResponse } from 'msw'
-import { server } from '../../test-msw-server'
+import { server } from '../../../test/test-msw-server'
 import { ShellStateProvider } from '../../navigation/ShellState'
 import { CockpitStack } from '../../navigation/CockpitStack'
 import { linking } from '../../navigation/linking'
 import { AuthClientProvider } from '../../auth/AuthClientProvider'
 import { createAppAuthClient } from '../../auth/auth-client'
 import { CockpitScreen, type CockpitScreenProps } from './CockpitScreen'
-import { renderWithQuery } from '../../test-render'
+import { renderWithQuery } from '../../../test/test-render'
 
 const TAX_YEAR = 2026
 

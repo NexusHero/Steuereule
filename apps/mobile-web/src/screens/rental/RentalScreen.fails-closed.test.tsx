@@ -5,10 +5,10 @@ import { describe, expect, it } from 'vitest'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { delay, http, HttpResponse } from 'msw'
 import type { RentalPropertyDto, RentalResponseDto } from '@steuereule/api-client'
-import { server } from '../../test-msw-server'
-import { expectFailsClosed, failEveryRequest } from '../../test-every-query-fails'
+import { server } from '../../../test/test-msw-server'
+import { expectFailsClosed, failEveryRequest } from '../../../test/test-every-query-fails'
 import { RentalScreen } from './RentalScreen'
-import { renderWithQuery } from '../../test-render'
+import { renderWithQuery } from '../../../test/test-render'
 
 const RENTAL_URL = '*/v1/steuerjahre/2026/vermietung'
 

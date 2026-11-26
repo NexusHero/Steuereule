@@ -4,8 +4,8 @@ import { describe, expect, it } from 'vitest'
 import { screen } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import type { EntryStepId } from '@steuereule/core'
-import { renderWithQuery } from '../../test-render'
-import { server } from '../../test-msw-server'
+import { renderWithQuery } from '../../../test/test-render'
+import { server } from '../../../test/test-msw-server'
 import { CatalogScreen, type CatalogScreenEntry } from './CatalogScreen'
 
 const TAX_YEAR = 2025

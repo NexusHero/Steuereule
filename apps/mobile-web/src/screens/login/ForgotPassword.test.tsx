@@ -1,11 +1,11 @@
 import { describe, it, expect } from 'vitest'
 import { screen, fireEvent, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
-import { server } from '../../test-msw-server'
+import { server } from '../../../test/test-msw-server'
 import { createAppAuthClient } from '../../auth/auth-client'
 import { AuthClientProvider } from '../../auth/AuthClientProvider'
 import { LoginScreen } from '../LoginScreen'
-import { renderWithQuery } from '../../test-render'
+import { renderWithQuery } from '../../../test/test-render'
 
 const BASE_URL = 'http://localhost:3000'
 const NEUTRAL = 'Wenn es zu dieser Adresse ein Konto gibt, haben wir dir eine E-Mail geschickt.'

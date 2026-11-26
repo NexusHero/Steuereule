@@ -9,7 +9,7 @@ import { TILES } from '../screens/cockpit/tiles'
 import { currentRoute, renderShell, signedIn } from './navigationTestKit'
 import { stubArgs } from './stubScreen'
 import { http, HttpResponse } from 'msw'
-import { server } from '../test-msw-server'
+import { server } from '../../test/test-msw-server'
 
 vi.mock('../screens/cockpit/CockpitScreen', async () => ({ CockpitScreen: (await import('./stubScreen')).stubScreen('cockpit') }))
 vi.mock('../screens/interview/InterviewScreen', async () => ({ InterviewScreen: (await import('./stubScreen')).stubScreen('interview') }))

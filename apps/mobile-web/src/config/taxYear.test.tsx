@@ -3,13 +3,13 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { act, screen, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
-import { server } from '../test-msw-server'
+import { server } from '../../test/test-msw-server'
 import { Appbar } from '../screens/cockpit/CockpitHeader'
 import { ShellStateProvider, useShellState } from '../navigation/ShellState'
 import { isSelectableYear } from '../navigation/guards'
 import { defaultTaxYear, isRunningTaxYear, runningTaxYear, selectableTaxYears, setServerRunningTaxYear } from './taxYear'
 import { useServerTaxYearSync } from './useServerTaxYearSync'
-import { renderWithQuery } from '../test-render'
+import { renderWithQuery } from '../../test/test-render'
 
 afterEach(() => {
   vi.useRealTimers()

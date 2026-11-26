@@ -5,7 +5,7 @@ import { ThemeProvider } from '@steuereule/ui'
 import type { OwlCardsDisplay } from '@steuereule/core'
 import { createAppI18n } from '../../i18n/app-i18n'
 import { OwlModeScreen } from './OwlModeScreen'
-import { renderWithQuery } from '../../test-render'
+import { renderWithQuery } from '../../../test/test-render'
 
 const CARDS_FIXTURE: readonly OwlCardsDisplay[] = [
   {

@@ -4,7 +4,7 @@
 import { describe, expect, it } from 'vitest'
 import type { HistoryDeltaDto, HistoryFigureDto, OpenItemDto, YearHistoryEntryDto, YearListItemDto } from '@steuereule/api-client'
 import { createAppI18n } from '../../i18n/app-i18n'
-import { HISTORY_RESPONSE, HISTORY_YEARS, est, fig, open } from '../../test-history-fixture'
+import { HISTORY_RESPONSE, HISTORY_YEARS, est, fig, open } from '../../../test/test-history-fixture'
 import { buildAmountChart, buildChart, effectivePerson, netFor, niceTicks, sparkPoints, workFor } from './historyChartModel'
 import {
   bounds,

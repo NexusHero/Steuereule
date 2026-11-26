@@ -4,8 +4,8 @@
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen } from '@testing-library/react'
 import type { AppealDeadlineDto, AssessmentDiffDto, AssessmentLessonDto, AssessmentOwnDeviationDto } from '@steuereule/api-client'
-import { renderInApp } from '../../test-render'
-import { DIFF_2024, LESSONS_2024 } from '../../test-history-fixture'
+import { renderInApp } from '../../../test/test-render'
+import { DIFF_2024, LESSONS_2024 } from '../../../test/test-history-fixture'
 import { AssessmentDiffView } from './AssessmentDiffView'
 
 const NBSP = /[  ]/g

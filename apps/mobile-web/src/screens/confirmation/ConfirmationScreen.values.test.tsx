@@ -4,9 +4,9 @@ import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import type { ConfirmationResponseDto } from '@steuereule/api-client'
-import { server } from '../../test-msw-server'
+import { server } from '../../../test/test-msw-server'
 import { ConfirmationScreen } from './ConfirmationScreen'
-import { renderWithQuery } from '../../test-render'
+import { renderWithQuery } from '../../../test/test-render'
 
 const URL_OVERVIEW = '*/v1/steuerjahre/2025/bestaetigung'
 

@@ -1,7 +1,7 @@
 // loadPrintout — what the download asks for and what it reports back.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { http, HttpResponse } from 'msw'
-import { server } from '../../test-msw-server'
+import { server } from '../../../test/test-msw-server'
 import { loadPrintout } from './printoutDownload'
 
 const { download } = vi.hoisted(() => ({ download: vi.fn() }))

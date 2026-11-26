@@ -2,11 +2,11 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import type { Screen } from '@steuereule/core'
-import { server } from '../../test-msw-server'
+import { server } from '../../../test/test-msw-server'
 import { writeExpertMode } from '../../lib/expertModePreference'
 import { GlassFormPreview } from './GlassFormPreview'
 import type { AcroFormPdfLoader } from './AcroFormLiveViewer'
-import { renderWithQuery } from '../../test-render'
+import { renderWithQuery } from '../../../test/test-render'
 
 function renderPreview(
   props: {

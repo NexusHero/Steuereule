@@ -4,12 +4,12 @@
 import { describe, expect, it } from 'vitest'
 import { screen } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
-import { server } from '../../test-msw-server'
-import { expectFailsClosed, failEveryRequest } from '../../test-every-query-fails'
+import { server } from '../../../test/test-msw-server'
+import { expectFailsClosed, failEveryRequest } from '../../../test/test-every-query-fails'
 import { StromScreen } from './StromScreen'
 import { PartnerPage } from './PartnerPage'
 import { useStromSave } from './useStromSave'
-import { renderHookWithQuery, renderWithQuery } from '../../test-render'
+import { renderHookWithQuery, renderWithQuery } from '../../../test/test-render'
 
 function renderStrom(slug: string) {
   return renderWithQuery(<StromScreen taxYear={2025} slug={slug} isSignedIn onGo={() => {}} onExit={() => {}} onOpenSubmission={() => {}} onGuestBasisDone={() => {}} />)

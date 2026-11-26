@@ -7,8 +7,8 @@ import { QueryClient } from '@tanstack/react-query'
 import { http, HttpResponse } from 'msw'
 import { getInterviewControllerGetInterviewQueryKey } from '@steuereule/api-client'
 import { CatalogScreen } from './CatalogScreen'
-import { server } from '../../test-msw-server'
-import { makeTestQueryClient, renderWithQuery } from '../../test-render'
+import { server } from '../../../test/test-msw-server'
+import { makeTestQueryClient, renderWithQuery } from '../../../test/test-render'
 
 const TAX_YEAR = 2026
 

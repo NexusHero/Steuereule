@@ -7,7 +7,7 @@ import { I18nextProvider } from 'react-i18next'
 import { ThemeProvider } from '@steuereule/ui'
 import type { CrossBorderYearDto, YearHistoryResponseDto } from '@steuereule/api-client'
 import { createAppI18n } from '../../i18n/app-i18n'
-import { HISTORY_ALL_GROUPS_RESPONSE } from '../../test-history-fixture'
+import { HISTORY_ALL_GROUPS_RESPONSE } from '../../../test/test-history-fixture'
 import { HistoryGroupPanel } from './HistoryGroups'
 import type { HistoryGroupTab } from './historyInsights'
 

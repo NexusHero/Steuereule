@@ -5,8 +5,8 @@
 // form view is one tap away. Short: on the mock's 2024 one phone screen, every message said once.
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen, within } from '@testing-library/react'
-import { renderInApp } from '../../test-render'
-import { DIFF_2024, HISTORY_DIFFS, LESSONS_2024 } from '../../test-history-fixture'
+import { renderInApp } from '../../../test/test-render'
+import { DIFF_2024, HISTORY_DIFFS, LESSONS_2024 } from '../../../test/test-history-fixture'
 import { AssessmentDiffView } from './AssessmentDiffView'
 
 const text = (id: string) => (screen.getByTestId(id).textContent ?? '').replace(/ /g, ' ')

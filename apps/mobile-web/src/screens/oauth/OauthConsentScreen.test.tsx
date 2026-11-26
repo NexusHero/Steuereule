@@ -2,9 +2,9 @@ import { describe, expect, it, vi } from 'vitest'
 import { screen, fireEvent, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import { OauthConsentScreen } from './OauthConsentScreen'
-import { server } from '../../test-msw-server'
-import { expectFailsClosed, failEveryRequest } from '../../test-every-query-fails'
-import { renderWithQuery } from '../../test-render'
+import { server } from '../../../test/test-msw-server'
+import { expectFailsClosed, failEveryRequest } from '../../../test/test-every-query-fails'
+import { renderWithQuery } from '../../../test/test-render'
 
 const BASE_URL = 'http://localhost:3000'
 

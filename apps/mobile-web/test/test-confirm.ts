@@ -1,5 +1,5 @@
 import { fireEvent, screen } from '@testing-library/react'
-import type { DestructiveActionId } from './confirm/destructiveActions'
+import type { DestructiveActionId } from '../src/confirm/destructiveActions'
 
 /** The confirmation dialog of `id`, or null while it is closed (WEB-37, WEB-38). */
 export function confirmDialogOf(id: DestructiveActionId): HTMLElement | null {

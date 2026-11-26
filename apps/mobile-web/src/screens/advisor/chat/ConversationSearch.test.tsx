@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen } from '@testing-library/react'
 import { ConversationSearch, type ConversationSearchProps } from './ConversationSearch'
-import { renderInApp } from '../../../test-render'
+import { renderInApp } from '../../../../test/test-render'
 
 const HITS = [
   { conversationId: 'c1', conversationTitle: null, messageId: 'm1', role: 'user' as const, snippet: 'Ich arbeite am Küchentisch', at: '2026-01-15T10:00:00.000Z' },

@@ -4,9 +4,9 @@ import { describe, it, expect, vi } from 'vitest'
 import { screen, fireEvent, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import type { LstbResponseDto } from '@steuereule/api-client'
-import { EMPTY_LSTB_RESPONSE, server } from '../../test-msw-server'
+import { EMPTY_LSTB_RESPONSE, server } from '../../../test/test-msw-server'
 import { LstbScreen, type LstbScreenProps } from './LstbScreen'
-import { renderWithQuery } from '../../test-render'
+import { renderWithQuery } from '../../../test/test-render'
 
 const LSTB_URL = '*/v1/steuerjahre/2026/lstb'
 

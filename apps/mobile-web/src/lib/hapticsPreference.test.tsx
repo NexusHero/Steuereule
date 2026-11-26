@@ -1,6 +1,6 @@
 import { describe, it, expect, afterEach, vi } from 'vitest'
 import { isHapticsEnabled, setHapticsEnabled } from '@steuereule/ui'
-import { stubStorageSetItem, assertNoStorageWrites } from '../test-storage-guard'
+import { stubStorageSetItem, assertNoStorageWrites } from '../../test/test-storage-guard'
 import {
   HAPTICS_STORAGE_KEY,
   readHapticsPreference,

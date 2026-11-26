@@ -6,8 +6,8 @@ import { screen, fireEvent, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import type { RentalPropertyDto, RentalResponseDto } from '@steuereule/api-client'
 import { RentalScreen } from './RentalScreen'
-import { server } from '../../test-msw-server'
-import { renderWithQuery } from '../../test-render'
+import { server } from '../../../test/test-msw-server'
+import { renderWithQuery } from '../../../test/test-render'
 
 /** Types a value and leaves the field — the way the mask saves (WEB-39). */
 function commit(field: HTMLElement, value: string) {

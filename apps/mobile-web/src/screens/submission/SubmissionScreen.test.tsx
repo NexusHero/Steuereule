@@ -2,12 +2,12 @@ import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen } from '@testing-library/react'
 import type { QueryClient } from '@tanstack/react-query'
 import { http, HttpResponse } from 'msw'
-import { server } from '../../test-msw-server'
+import { server } from '../../../test/test-msw-server'
 import { ShellStateProvider } from '../../navigation/ShellState'
 import { SubmissionGateProvider } from '../../navigation/SubmissionGateContext'
 import { SubmissionScreen } from './SubmissionScreen'
 import type { TileId } from '../cockpit/tiles'
-import { makeTestQueryClient, renderWithQuery } from '../../test-render'
+import { makeTestQueryClient, renderWithQuery } from '../../../test/test-render'
 
 const TAX_YEAR = 2025
 const RUNNING_YEAR = 2026

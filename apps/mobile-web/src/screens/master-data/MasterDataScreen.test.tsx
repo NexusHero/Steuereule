@@ -2,12 +2,12 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import type { LinkResponseDto, MasterDataResponseDto } from '@steuereule/api-client'
-import { server } from '../../test-msw-server'
+import { server } from '../../../test/test-msw-server'
 import { MasterDataScreen } from './MasterDataScreen'
 import { AuthClientProvider } from '../../auth/AuthClientProvider'
 import { createAppAuthClient } from '../../auth/auth-client'
-import { confirmAction } from '../../test-confirm'
-import { makeTestQueryClient, renderWithQuery } from '../../test-render'
+import { confirmAction } from '../../../test/test-confirm'
+import { makeTestQueryClient, renderWithQuery } from '../../../test/test-render'
 
 const LEER: MasterDataResponseDto = {
   geburtsdatum: null,

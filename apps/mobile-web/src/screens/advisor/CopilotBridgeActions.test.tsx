@@ -3,8 +3,8 @@ import { describe, expect, it } from 'vitest'
 import { act, render, screen, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import type { AdvisorActionProposal } from '@steuereule/core'
-import { server } from '../../test-msw-server'
-import { CopilotBridgeHarness } from '../../test-advisor'
+import { server } from '../../../test/test-msw-server'
+import { CopilotBridgeHarness } from '../../../test/test-advisor'
 import { useCopilotBridge } from './CopilotBridgeProvider'
 
 const draft = (actionId: string, screenName: AdvisorActionProposal['screen'] = 'interview'): AdvisorActionProposal => ({

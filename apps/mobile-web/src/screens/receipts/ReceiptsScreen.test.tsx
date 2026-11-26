@@ -11,12 +11,12 @@ import { http, HttpResponse } from 'msw'
 import { Text } from 'react-native'
 import { createAppI18n } from '../../i18n/app-i18n'
 import { ReceiptsScreen } from './ReceiptsScreen'
-import { server } from '../../test-msw-server'
+import { server } from '../../../test/test-msw-server'
 import { ShellStateProvider, useShellState } from '../../navigation/ShellState'
 import type { AssignmentQuestionDto, ParseReceiptResponseDto, ReceiptResponseDto } from '@steuereule/api-client'
-import { receiptInboxHandler, receiptPage } from '../../test-receipt-inbox'
-import { expectFailsClosed, failEveryRequest } from '../../test-every-query-fails'
-import { renderWithQuery } from '../../test-render'
+import { receiptInboxHandler, receiptPage } from '../../../test/test-receipt-inbox'
+import { expectFailsClosed, failEveryRequest } from '../../../test/test-every-query-fails'
+import { renderWithQuery } from '../../../test/test-render'
 
 // The device reading (PDF text layer / OCR) is the one seam replaced here: everything after it is the real pipeline.
 const { mockExtractDocumentText } = vi.hoisted(() => ({ mockExtractDocumentText: vi.fn() }))

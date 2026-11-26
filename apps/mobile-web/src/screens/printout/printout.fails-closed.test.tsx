@@ -2,13 +2,13 @@
 // mode) show a failure when every request answers 500, and nothing they offer sends a write.
 import { afterEach, describe, it, vi } from 'vitest'
 import { writeExpertMode } from '../../lib/expertModePreference'
-import { expectFailsClosed, failEveryRequest } from '../../test-every-query-fails'
-import { manualPaymentClock } from '../../test-payment-clock'
+import { expectFailsClosed, failEveryRequest } from '../../../test/test-every-query-fails'
+import { manualPaymentClock } from '../../../test/test-payment-clock'
 import { PaymentClockProvider } from '../shared/usePaymentConfirmation'
 import type { AcroFormPdfLoader } from './AcroFormLiveViewer'
 import { OfficialFormScreen } from './OfficialFormScreen'
 import { PrintoutScreen } from './PrintoutScreen'
-import { renderWithQuery } from '../../test-render'
+import { renderWithQuery } from '../../../test/test-render'
 
 const loader: AcroFormPdfLoader = {
   loadTemplate: vi.fn().mockResolvedValue({

@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import { waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
-import { server } from '../../test-msw-server'
+import { server } from '../../../test/test-msw-server'
 import { usePlausibility } from './usePlausibility'
-import { renderHookWithQuery } from '../../test-render'
+import { renderHookWithQuery } from '../../../test/test-render'
 
 const TAX_YEAR = 2026
 

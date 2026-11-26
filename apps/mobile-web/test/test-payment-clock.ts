@@ -1,5 +1,5 @@
 import { act } from '@testing-library/react'
-import type { PaymentClock } from './screens/shared/usePaymentConfirmation'
+import type { PaymentClock } from '../src/screens/shared/usePaymentConfirmation'
 
 export interface ManualPaymentClock extends PaymentClock {
   /** Runs every status poll that is scheduled now. */

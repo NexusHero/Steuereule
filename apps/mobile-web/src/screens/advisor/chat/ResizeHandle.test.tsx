@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen } from '@testing-library/react'
 import { ResizeHandle, resizedWidth } from './ResizeHandle'
 import { OWL_PANEL_WIDTHS, readOwlPanelWidth, writeOwlPanelWidth } from '../../../lib/owlSidebarPreference'
-import { renderInApp } from '../../../test-render'
+import { renderInApp } from '../../../../test/test-render'
 
 afterEach(() => globalThis.localStorage?.clear())
 

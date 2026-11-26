@@ -7,14 +7,14 @@ import { ThemeProvider } from '@steuereule/ui'
 import { http, HttpResponse } from 'msw'
 import type { Answers } from '@steuereule/core'
 import { createAppI18n } from '../../i18n/app-i18n'
-import { server } from '../../test-msw-server'
+import { server } from '../../../test/test-msw-server'
 import { downloadBusinessFile } from './businessDownload'
 import { ApiError, NetworkError } from '@steuereule/api-client'
 import { eurosToCents, germanDay, localProblem, numberAt, personParams, plainEuro, problemOf, problemText, recordAt, signedCents, signedEuro, stringAt, todayIso } from './businessKit'
 import { buildMapping, EMPTY_MAPPING, MappingForm, type MappingState } from './BankMapping'
 import { attempt, queryProblem } from './useBusiness'
 import { declaresSelfEmployment, useSelfEmploymentCapability } from './useSelfEmployment'
-import { makeTestQueryClient, renderWithQuery } from '../../test-render'
+import { makeTestQueryClient, renderWithQuery } from '../../../test/test-render'
 
 afterEach(() => vi.restoreAllMocks())
 

@@ -21,7 +21,7 @@ import { profileControllerGetProfile } from '@steuereule/api-client'
 import { createAppI18n } from './i18n/app-i18n'
 import * as failureMapping from './net/apiFailure'
 import { apiFailureMessage, classifyApiFailure, refusalError, type ApiFailureKind } from './net/apiFailure'
-import { server } from './test-msw-server'
+import { server } from '../test/test-msw-server'
 
 const SRC = join(__dirname)
 

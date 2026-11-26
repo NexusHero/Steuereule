@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { ChSalaryCertificateResponseDto } from '@steuereule/api-client'
-import { EMPTY_CH_SALARY_CERTIFICATE_RESPONSE } from '../../test-msw-server'
+import { EMPTY_CH_SALARY_CERTIFICATE_RESPONSE } from '../../../test/test-msw-server'
 import { grossComponentSum, isAdditionalGrossComponent, salaryAmountFrom, valueFromResponse, wageFieldValue } from './salaryCertificateAmounts'
 
 const WITH_GROSS: ChSalaryCertificateResponseDto = {

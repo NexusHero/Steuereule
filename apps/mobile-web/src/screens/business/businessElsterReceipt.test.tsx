@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { screen, fireEvent, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import type { AdvisorActionProposal } from '@steuereule/core'
-import { server } from '../../test-msw-server'
+import { server } from '../../../test/test-msw-server'
 import { BASE_URL, BUSINESS_ELSTER_FORMS, renderBusiness, useBusinessDefaults, useElsterForms, YEAR } from './businessTestKit'
 
 const capture = vi.fn()

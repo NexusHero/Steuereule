@@ -3,10 +3,10 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { http, HttpResponse } from 'msw'
 import type { MasterDataResponseDto } from '@steuereule/api-client'
-import { server } from '../../test-msw-server'
+import { server } from '../../../test/test-msw-server'
 import { useAcroFieldSaver } from './useAcroFieldSaver'
 import { SINGLE_COPY } from './acroFieldEditing'
-import { renderHookWithQuery } from '../../test-render'
+import { renderHookWithQuery } from '../../../test/test-render'
 
 const YEAR = 2025
 const MASTER_DATA = {

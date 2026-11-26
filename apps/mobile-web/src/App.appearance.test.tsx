@@ -3,7 +3,7 @@ import { render, screen, fireEvent } from '@testing-library/react'
 import * as RN from 'react-native'
 import { ThemeProvider } from '@steuereule/ui'
 import { http, HttpResponse } from 'msw'
-import { server } from './test-msw-server'
+import { server } from '../test/test-msw-server'
 import { APPEARANCE_STORAGE_KEY } from './lib/appearance'
 import { AppleG } from './icons/AppleG'
 

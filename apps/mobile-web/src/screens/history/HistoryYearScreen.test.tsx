@@ -6,10 +6,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen, within } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
-import { renderWithQuery } from '../../test-render'
-import { server } from '../../test-msw-server'
-import { expectFailsClosed, failEveryRequest } from '../../test-every-query-fails'
-import { HISTORY_ALL_GROUPS_RESPONSE, HISTORY_GAP_RESPONSE, HISTORY_RESPONSE } from '../../test-history-fixture'
+import { renderWithQuery } from '../../../test/test-render'
+import { server } from '../../../test/test-msw-server'
+import { expectFailsClosed, failEveryRequest } from '../../../test/test-every-query-fails'
+import { HISTORY_ALL_GROUPS_RESPONSE, HISTORY_GAP_RESPONSE, HISTORY_RESPONSE } from '../../../test/test-history-fixture'
 import { HistoryYearScreen } from './HistoryYearScreen'
 
 const text = (id: string) => (screen.getByTestId(id).textContent ?? '').replace(/ /g, ' ')

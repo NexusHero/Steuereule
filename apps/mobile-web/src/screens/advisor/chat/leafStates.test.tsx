@@ -3,7 +3,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { Text } from 'react-native'
-import { renderInApp } from '../../../test-render'
+import { renderInApp } from '../../../../test/test-render'
 import { ContextRing } from './ContextRing'
 import { ConversationSearch } from './ConversationSearch'
 import { OwlDrawer } from './OwlDrawer'

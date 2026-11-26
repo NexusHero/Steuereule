@@ -4,10 +4,10 @@ import { describe, it, expect, vi } from 'vitest'
 import { screen, fireEvent, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import type { Answers } from '@steuereule/core'
-import { server } from '../../test-msw-server'
+import { server } from '../../../test/test-msw-server'
 import { StromScreen } from './StromScreen'
 import type { StromStep } from './stromPlan'
-import { renderWithQuery } from '../../test-render'
+import { renderWithQuery } from '../../../test/test-render'
 
 const YEAR = 2025
 const BASIS: Answers = { job: 'Rente', ausland: 'Nein', kinder: 'Nein', familienstand: 'Ledig' }

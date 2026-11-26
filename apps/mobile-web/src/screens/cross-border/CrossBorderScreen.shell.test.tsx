@@ -4,8 +4,8 @@ import { describe, it, expect, vi, afterEach } from 'vitest'
 import { screen, fireEvent, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import { CrossBorderScreen } from './CrossBorderScreen'
-import { EMPTY_CH_SALARY_CERTIFICATE_RESPONSE, server } from '../../test-msw-server'
-import { renderWithQuery } from '../../test-render'
+import { EMPTY_CH_SALARY_CERTIFICATE_RESPONSE, server } from '../../../test/test-msw-server'
+import { renderWithQuery } from '../../../test/test-render'
 
 const { switchToTab, setTaxYear, extract } = vi.hoisted(() => ({ switchToTab: vi.fn(), setTaxYear: vi.fn(), extract: vi.fn() }))
 vi.mock('../../navigation/ShellState', () => ({

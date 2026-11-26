@@ -2,10 +2,10 @@ import { describe, expect, it } from 'vitest'
 import { waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import type { AdvisorActionProposal, AdvisorChatMessageView, AdvisorTwoPathsProposal } from '@steuereule/core'
-import { server } from '../../test-msw-server'
+import { server } from '../../../test/test-msw-server'
 import { extractAppliedDrafts, extractPendingDrafts, hasPersonScreenDraft, updateActionStatusInMessage } from './owlDrafts'
 import { useDraftOwners } from './useDraftOwners'
-import { renderHookWithQuery } from '../../test-render'
+import { renderHookWithQuery } from '../../../test/test-render'
 
 const draft = (actionId: string, extra: Partial<AdvisorActionProposal> = {}): AdvisorActionProposal => ({
   actionId,

@@ -6,9 +6,9 @@ import { screen, fireEvent, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import type { AssessmentResponseDto } from '@steuereule/api-client'
 import { AssessmentScreen } from './AssessmentScreen'
-import { server } from '../../test-msw-server'
-import { expectFailsClosed, failEveryRequest } from '../../test-every-query-fails'
-import { renderWithQuery } from '../../test-render'
+import { server } from '../../../test/test-msw-server'
+import { expectFailsClosed, failEveryRequest } from '../../../test/test-every-query-fails'
+import { renderWithQuery } from '../../../test/test-render'
 
 const URL_BESCHEID = '*/v1/steuerjahre/2026/bescheid'
 

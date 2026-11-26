@@ -4,14 +4,14 @@ import type { RenderResult } from '@testing-library/react'
 import { createNavigationContainerRef, getStateFromPath, NavigationContainer, type InitialState } from '@react-navigation/native'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 import { http, HttpResponse } from 'msw'
-import { server } from '../test-msw-server'
+import { server } from '../../test/test-msw-server'
 import { AuthClientProvider } from '../auth/AuthClientProvider'
 import { createAppAuthClient } from '../auth/auth-client'
 import { AppTabs } from './AppTabs'
 import { linking } from './linking'
 import { ShellStateProvider, type ShellStateProviderProps } from './ShellState'
 import type { AppTabParamList } from './routes'
-import { renderWithQuery } from '../test-render'
+import { renderWithQuery } from '../../test/test-render'
 
 export function signedIn(active = true) {
   server.use(http.get('*/api/auth/get-session', () => HttpResponse.json(active ? { user: { id: 'u1', email: 'nora@beispiel.de', name: 'Nora' }, session: { id: 's1' } } : null)))

@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen } from '@testing-library/react'
 import { LegalScreen } from './LegalScreen'
 import { operatorFromEnv, content, LEGAL_PAGES, type Operator, type LegalPage } from './texts'
-import { renderInApp } from '../../test-render'
+import { renderInApp } from '../../../test/test-render'
 
 const OPERATOR: Operator = {
   name: 'Eule GmbH',

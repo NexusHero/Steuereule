@@ -4,10 +4,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { screen, fireEvent, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import type { CockpitSummaryDto } from '@steuereule/api-client'
-import { server } from '../../test-msw-server'
+import { server } from '../../../test/test-msw-server'
 import { CockpitScreen, type CockpitScreenProps } from './CockpitScreen'
 import { rememberOpenedArea, resetEffectMemory } from './effectMemory'
-import { makeTestQueryClient, renderWithQuery } from '../../test-render'
+import { makeTestQueryClient, renderWithQuery } from '../../../test/test-render'
 
 const YEAR = 2026
 const SUMMARY: CockpitSummaryDto = { taxYear: YEAR, status: { kind: 'spanne', from: 49880, to: 50120, openItems: 0, conflicts: 0 }, openItems: 0, submission: null }

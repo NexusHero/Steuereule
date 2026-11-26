@@ -4,7 +4,7 @@
 // year with the single most urgent item (§1, alternative A).
 import { describe, expect, it } from 'vitest'
 import { createAppI18n } from '../../i18n/app-i18n'
-import { HISTORY_GAP_RESPONSE, HISTORY_RESPONSE, HISTORY_YEARS, est, fig, open } from '../../test-history-fixture'
+import { HISTORY_GAP_RESPONSE, HISTORY_RESPONSE, HISTORY_YEARS, est, fig, open } from '../../../test/test-history-fixture'
 import { buildChart, niceTicks, sparkPoints } from './historyChartModel'
 import { deltaText, deltaTone, figureText, missingSentence, signedEuro, signedFigureText } from './historyFormat'
 import { owlSentence } from './owlSentences'

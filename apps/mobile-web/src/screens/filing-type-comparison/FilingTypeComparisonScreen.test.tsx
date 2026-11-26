@@ -7,9 +7,9 @@ import { describe, it, expect } from 'vitest'
 import { screen, fireEvent } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import { FilingTypeComparisonScreen } from './FilingTypeComparisonScreen'
-import { server } from '../../test-msw-server'
+import { server } from '../../../test/test-msw-server'
 import type { FilingTypeComparisonDto } from '@steuereule/api-client'
-import { renderWithQuery } from '../../test-render'
+import { renderWithQuery } from '../../../test/test-render'
 
 const TAX_YEAR = 2026
 const COMPARISON_URL = `*/v1/steuerjahre/${TAX_YEAR}/veranlagungsartenvergleich`

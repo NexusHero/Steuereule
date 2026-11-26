@@ -2,9 +2,9 @@
 import { describe, it, expect } from 'vitest'
 import { screen, fireEvent } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
-import { server } from '../../test-msw-server'
+import { server } from '../../../test/test-msw-server'
 import { BASE_URL, renderBusiness, useBusinessDefaults } from './businessTestKit'
-import { confirmAction } from '../../test-confirm'
+import { confirmAction } from '../../../test/test-confirm'
 
 function setUp(ready: boolean, answer: Record<string, unknown> = { status: 'ok', mode: 'senden', ticket: 'TK-9', protocol: null }) {
   useBusinessDefaults()

@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import type { AdvisorActionProposal, AdvisorChatMessageView } from '@steuereule/core'
-import { renderInApp } from '../../test-render'
+import { renderInApp } from '../../../test/test-render'
 import { OwlModeScreen } from './OwlModeScreen'
 
 const NOW = '2026-11-14T10:00:00.000Z'
