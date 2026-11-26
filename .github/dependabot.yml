@@ -14,29 +14,6 @@ updates:
     groups:
       minor-and-patch:
         update-types: [minor, patch]
-    ignore:
-      # The Expo SDK fixes the versions of React, React Native and the native modules it ships with
-      # (apps/mobile-web is on Expo 53). They move together, with `expo install --fix` on an SDK upgrade, never one
-      # by one: a grouped "minor" bump took react-native from 0.79 to 0.88 and react-native-screens from 4.11 to
-      # 4.30, and the navigation tests hung. A 0.x release of React Native is a breaking release.
-      - dependency-name: react
-      - dependency-name: react-dom
-      - dependency-name: react-native
-      - dependency-name: react-native-web
-      - dependency-name: react-native-screens
-      - dependency-name: react-native-safe-area-context
-      - dependency-name: react-native-svg
-      - dependency-name: '@react-navigation/*'
-      - dependency-name: '@types/react'
-      - dependency-name: expo
-      - dependency-name: 'expo-*'
-      # Prisma 7 strips the DMMF that prisma-field-encryption reads its `/// @encrypted` annotations from
-      # (47ng/prisma-field-encryption issues 142 and 143), so field encryption at rest (REQ-003) cannot be built on
-      # it. Majors of Prisma wait until that library supports them or the encryption path is redesigned.
-      - dependency-name: prisma
-        update-types: ['version-update:semver-major']
-      - dependency-name: '@prisma/client'
-        update-types: ['version-update:semver-major']
 
   # The workflows and the composite actions under .github/actions. Actions are pinned by commit SHA (the
   # repository setting requires it); Dependabot moves the SHA and the version comment together.
