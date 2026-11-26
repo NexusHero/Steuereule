@@ -1,4 +1,5 @@
-// Ports and origins of a BOOT-mode stack (#114). Precedence: explicit option, then environment, then the default.
+// Ports and origins of a BOOT-mode stack (#114). Precedence: explicit option (a port, or the port of an explicit
+// origin / database URL), then environment, then the default.
 // Two worktrees (or two agents) can therefore boot side by side by setting E2E_API_PORT / E2E_WEB_PORT /
 // E2E_POSTGRES_PORT, and the origins, the API's PORT and the database URL always follow the ports instead of
 // each being a separate default that can disagree.
@@ -14,22 +15,32 @@ function toPort(value, label) {
   return port
 }
 
-function portOfOrigin(origin) {
-  const { port } = new URL(origin)
-  return port === '' ? undefined : Number(port)
+/** The port a URL addresses, the scheme's default when it names none. */
+function portOfUrl(url) {
+  const { port, protocol } = new URL(url)
+  if (port !== '') return Number(port)
+  return { 'http:': 80, 'https:': 443, 'postgres:': 5432, 'postgresql:': 5432 }[protocol]
 }
 
 /** `{ apiPort, webPort, postgresPort, apiOrigin, webOrigin, databaseUrl }` for a BOOT-mode run. */
 export function resolveBootConfig(options = {}, env = process.env) {
-  const pick = (explicit, envName, derived, fallback) => {
-    if (explicit !== undefined) return toPort(explicit, `option for ${envName}`)
+  // An origin or URL given as an option is as explicit as a port option: it beats the environment, so the
+  // port a service binds and the address it is probed at can never disagree.
+  const pick = (explicitPort, explicitPortName, explicitUrl, explicitUrlName, envName, fallback) => {
+    const fromUrl = explicitUrl === undefined ? undefined : portOfUrl(explicitUrl)
+    if (explicitPort !== undefined) {
+      const port = toPort(explicitPort, explicitPortName)
+      if (fromUrl !== undefined && fromUrl !== port) throw new Error(`stack.mjs: ${explicitPortName} ${port} contradicts ${explicitUrlName} ${explicitUrl}.`)
+      return port
+    }
+    if (fromUrl !== undefined) return fromUrl
     if (env[envName] !== undefined && env[envName] !== '') return toPort(env[envName], envName)
-    return derived ?? fallback
+    return fallback
   }
-  const apiPort = pick(options.apiPort, 'E2E_API_PORT', options.apiOrigin ? portOfOrigin(options.apiOrigin) : undefined, DEFAULT_PORTS.api)
-  const webPort = pick(options.webPort, 'E2E_WEB_PORT', options.webOrigin ? portOfOrigin(options.webOrigin) : undefined, DEFAULT_PORTS.web)
+  const apiPort = pick(options.apiPort, 'apiPort', options.apiOrigin, 'apiOrigin', 'E2E_API_PORT', DEFAULT_PORTS.api)
+  const webPort = pick(options.webPort, 'webPort', options.webOrigin, 'webOrigin', 'E2E_WEB_PORT', DEFAULT_PORTS.web)
   const databaseUrl = options.databaseUrl
-  const postgresPort = pick(undefined, 'E2E_POSTGRES_PORT', databaseUrl ? Number(new URL(databaseUrl).port || 5432) : undefined, DEFAULT_PORTS.postgres)
+  const postgresPort = pick(undefined, 'postgresPort', databaseUrl, 'databaseUrl', 'E2E_POSTGRES_PORT', DEFAULT_PORTS.postgres)
   return {
     apiPort,
     webPort,

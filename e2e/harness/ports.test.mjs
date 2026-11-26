@@ -39,3 +39,26 @@ test('an invalid port is refused by name', () => {
 test('an empty variable counts as unset', () => {
   assert.equal(resolveBootConfig({}, { E2E_API_PORT: '' }).apiPort, 3301)
 })
+
+// Codex review on #586: an explicit origin or database URL is an option, so its port beats the environment;
+// otherwise the service binds one port and is probed at another.
+test('an explicit origin beats the environment, and the origin and the port stay in step', () => {
+  const config = resolveBootConfig({ apiOrigin: 'http://localhost:3777', webOrigin: 'http://localhost:3778' }, { E2E_API_PORT: '4301', E2E_WEB_PORT: '5173' })
+  assert.equal(config.apiPort, 3777)
+  assert.equal(config.webPort, 3778)
+  assert.equal(config.apiOrigin, 'http://localhost:3777')
+})
+
+test('an explicit database URL beats the environment', () => {
+  const config = resolveBootConfig({ databaseUrl: 'postgres://u:p@localhost:6543/db' }, { E2E_POSTGRES_PORT: '55432' })
+  assert.equal(config.postgresPort, 6543)
+  assert.equal(config.databaseUrl, 'postgres://u:p@localhost:6543/db')
+})
+
+test('an origin without a port means the scheme default, not the environment', () => {
+  assert.equal(resolveBootConfig({ apiOrigin: 'http://localhost' }, { E2E_API_PORT: '4301' }).apiPort, 80)
+})
+
+test('a port option that contradicts the origin option is refused', () => {
+  assert.throws(() => resolveBootConfig({ apiPort: 3999, apiOrigin: 'http://localhost:3777' }, {}), /apiPort 3999 contradicts apiOrigin/)
+})
