@@ -38,7 +38,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: ./.github/actions/setup-workspace
       - name: Export web bundle & run Bundle Security + Size Budget Gate
         env:
@@ -88,7 +88,7 @@ jobs:
           exit-code: '1'
           trivyignores: .trivyignore
       - name: Upload CycloneDX SBOM artifacts (CRA /BSI TR-03183 compliance)
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: cyclonedx-sbom
           path: |
@@ -147,7 +147,7 @@ jobs:
     steps:
       # Built here rather than written out in the job env, so no connection string with
       # credentials sits in the workflow; every later step reads it from the environment.
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: ./.github/actions/setup-workspace
       - uses: ./.github/actions/prepare-database
       - name: Build the API
@@ -291,9 +291,9 @@ jobs:
     outputs:
       matrix: ${{ steps.plan.outputs.matrix }}
     steps:
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Set up Node
-        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 24
           # This job needs Node only (the gate list is read with built-ins): without this, setup-node enables the
@@ -314,7 +314,7 @@ jobs:
       # Baked into the static web export: the browser calls the API origin the group jobs boot.
       EXPO_PUBLIC_API_BASE_URL: http://localhost:3301
     steps:
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: ./.github/actions/setup-workspace
       - name: Generate Prisma Client (the API build compiles against it)
         run: pnpm --filter @steuereule/api prisma:generate
@@ -327,7 +327,7 @@ jobs:
       - name: Pack the build
         run: tar czf e2e-build.tgz apps/api/dist apps/mobile-web/dist
       - name: Upload the build for the gate groups
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: e2e-build
           path: e2e-build.tgz
@@ -387,13 +387,13 @@ jobs:
       # (scenario 09 and the dialog matrices). Scenario 09b needs a switch-on stack of its own.
       SELBSTSTAENDIGE_ENABLED: 'false'
     steps:
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: ./.github/actions/setup-workspace
       - uses: ./.github/actions/prepare-database
         if: matrix.stack
       - name: Download the build
         if: matrix.stack
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: e2e-build
       - name: Unpack the build
@@ -447,7 +447,7 @@ jobs:
       - name: Upload the gate reports
         if: always()
         continue-on-error: true
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: e2e-reports-${{ matrix.group }}
           path: |
@@ -545,7 +545,7 @@ jobs:
     steps:
       # Built here rather than written out in the job env, so no connection string with
       # credentials sits in the workflow; every later step reads it from the environment.
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: ./.github/actions/setup-workspace
       - uses: ./.github/actions/prepare-database
         with:
@@ -630,7 +630,7 @@ jobs:
     steps:
       # Built here rather than written out in the job env, so no connection string with
       # credentials sits in the workflow; every later step reads it from the environment.
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: ./.github/actions/setup-workspace
       - uses: ./.github/actions/prepare-database
         with:
@@ -701,7 +701,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: ./.github/actions/setup-workspace
       - uses: ./.github/actions/install-chromium
       - uses: ./.github/actions/boot-prod-stack
@@ -750,7 +750,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: ./.github/actions/boot-prod-stack
       - name: OWASP ZAP Baseline & OpenAPI DAST Pentest against production containers
         run: scripts/ci/zap-dast.sh
