@@ -1,7 +1,7 @@
 // REQ-013 — Profil screen (steuereule#95). Tests-first: this file is written before
 // ProfilScreen.tsx exists, mirroring the pattern OnboardingScreen.test.tsx already
 // established for the same live GET/PUT /v1/profile contract.
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach, type Mock } from 'vitest'
 import { Platform } from 'react-native'
 import { screen, fireEvent, waitFor } from '@testing-library/react'
 import { isHapticsEnabled, setHapticsEnabled } from '@steuereule/ui'
@@ -262,8 +262,8 @@ describe('ProfilScreen', () => {
     // `@react-native-async-storage/async-storage` dependency at all, so stubbing it would be a
     // vacuous control on a store nothing here can reach — the exact bug this ticket fixes, one
     // level up.
-    let localSetItem: ReturnType<typeof vi.fn>
-    let sessionSetItem: ReturnType<typeof vi.fn>
+    let localSetItem: Mock
+    let sessionSetItem: Mock
     beforeEach(() => {
       localSetItem = stubStorageSetItem('localStorage')
       sessionSetItem = stubStorageSetItem('sessionStorage')

@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from 'react'
 import { fireEvent, screen } from '@testing-library/react'
-import { vi } from 'vitest'
+import { vi, type Mock } from 'vitest'
 import type { AdvisorChatMessageView } from '@steuereule/core'
 import { AdvisorChatPanel, type AdvisorChatPanelProps } from '../src/screens/advisor/AdvisorChatPanel'
 import { CopilotBridgeProvider, type CopilotMode } from '../src/screens/advisor/CopilotBridgeProvider'
@@ -20,7 +20,7 @@ export function CopilotBridgeHarness({ children }: { readonly children: ReactNod
 }
 
 /** Renders the chat panel on its own and hands back the spy its messages go out through. For tests only. */
-export function renderAdvisorChatPanel(messages: AdvisorChatMessageView[] = [], props: Partial<AdvisorChatPanelProps> = {}) {
+export function renderAdvisorChatPanel(messages: AdvisorChatMessageView[] = [], props: Partial<AdvisorChatPanelProps> = {}): { onSendMessage: Mock } {
   const onSendMessage = vi.fn()
   renderInApp(<AdvisorChatPanel messages={messages} onSendMessage={onSendMessage} {...props} />)
   return { onSendMessage }
