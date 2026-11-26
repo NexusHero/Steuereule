@@ -20,11 +20,28 @@ Each environment is its own GCP project with its own OpenTofu state prefix and i
 (`staging`, `production`). The first stack keeps the name `beta` (prefix `steuereule/beta`, resource names
 unchanged) and serves as staging.
 
-- **staging** is deployed by hand, and after every green `Build & E2E` run on `main` once the repository variable
-  `DEPLOY_STAGING_AUTO` is `true`. Until then the automatic run skips its jobs; it shows "skipped", not "success",
-  and creates no deployment record.
-- **production** is deployed by hand only (Actions, Deploy, Run workflow, `environment = production`), bound to
-  the GitHub environment `production`, whose required reviewers must approve.
+- **staging** is deployed after every green `Build & E2E` run on `main` once the repository variable
+  `DEPLOY_STAGING_AUTO` is `true`, or by hand (Actions, Deploy, Run workflow, from `main`). Until then the automatic run
+  skips its jobs; it shows "skipped", not "success", and creates no deployment record. After its smoke test passes,
+  staging tags the API image `api:staging-ok-<commit>`.
+- **production** is deployed by publishing a GitHub Release for a tag `vX.Y.Z` (ADR-0113). The workflow `Release`
+  checks that the tag is on `main` and that CI passed on that commit, then calls `deploy.yml` for the GitHub
+  environment `production`, whose required reviewers must approve. The API image is not rebuilt: the one staging
+  ran for that commit is copied into the production registry (same digest, checked) and deployed by digest. The
+  web and website images are built per environment, because the operator details and the origins are baked in.
+  `APP_VERSION` stays the 12-character commit id of the staging build. To deploy a release again, run the `Release`
+  workflow from its tag (Actions, Release, Run workflow, choose the tag). A commit must have passed a staging
+  deploy, and its image stays promotable for 30 days.
+- **What the two stacks need for that (ADR-0113, none of it applied yet).** In the production stack nothing extra:
+  its workload identity accepts only refs `refs/tags/v*` (derived from `environment = production`). In the
+  staging stack set `image_readers = ["serviceAccount:steuereule-deployer@<production project>.iam.gserviceaccount.com"]`
+  (`terraform.tfvars.example`) so the production deployer may read the staging registry; apply the production stack
+  first, because that service account must exist. In the GitHub environment `production` set
+  `GCP_PROMOTE_FROM_REGISTRY=<region>-docker.pkg.dev/<staging project>/steuereule` (the wizard asks for the staging
+  project). Then, on GitHub: on the environment `production` required reviewers and a deployment rule for the tag
+  pattern `v*` (no branch rule), and a tag ruleset that restricts who may create `v*` tags. A tag run takes
+  `release.yml` from the tagged commit, so these settings, not the guard job, are what hold if someone tags a
+  commit with a changed workflow.
 - **Every deploy variable lives in its GitHub environment, none at repository level.** The deploy lists the
   repository-level ones and refuses to run while any exists, because a repository-level value silently fills
   in for an environment that lacks it. `GCP_ENVIRONMENT` must equal the environment's name. The one
@@ -92,13 +109,15 @@ Stripe account (test mode for staging and the beta); the operator details for th
 12. GitHub environment: the wizard creates it with deployments from `main` only, and for production with you as
     required reviewer. **If that call fails** (missing admin rights, or a private repository on a plan without
     environment reviewers), do it by hand before the first deploy: Settings, Environments, New environment;
-    Deployment branches and tags: Selected, `main`; for production: Required reviewers.
+    Deployment branches and tags: Selected, `main` (staging) or the tag pattern `v*` (production); for production:
+    Required reviewers.
 13. GitHub environment variables: `GCP_ENVIRONMENT`, `GCP_PROJECT_ID`, `GCP_REGION`, `GCP_WIF_PROVIDER`,
     `GCP_DEPLOYER_SA`, `GCP_RUNTIME_SA`, `GCP_MIGRATE_SA`, `GCP_WEB_SA`, `GCP_SQL_INSTANCE`, `GCP_KEYSTORE_SQL_INSTANCE`,
     `GCP_VPC_NETWORK`, `GCP_VPC_SUBNET`, `APP_DOMAIN`, `EMAIL_FROM`, `TRUSTED_PROXIES` and the operator details.
-14. First deploy (`gh workflow run deploy.yml --ref main -f environment=<staging|production>`): builds the three
+14. First deploy of staging (`gh workflow run deploy.yml --ref main`, which the wizard offers): builds the three
     images, backs up the database, runs the migrate job (hash phase), deploys API and web, smoke-tests them.
-    For staging the wizard then offers to set `DEPLOY_STAGING_AUTO=true`.
+    For staging the wizard then offers to set `DEPLOY_STAGING_AUTO=true`. Production has no first-deploy command:
+    deploy the commit to staging, then publish a release for it.
 15. Domain: verify it in Search Console, create the Cloud Run domain mappings for `www.` (service `steuereule-web`,
     the app), `api.` (`steuereule-api`) and the bare domain (`steuereule-website`, the marketing site, whose links
     go to `www.`), set the DNS records the wizard prints, wait for the certificates (up to about an hour).

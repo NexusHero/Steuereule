@@ -45,11 +45,24 @@ available to a repository owned by a user account.
 | `e2e: scenario 09b (self-employment switch on)` | `ci.yml` | **add** |
 | `security: dependency audit (production deps)` | `security.yml` | **add** |
 | `performance: load (many users, seeded accounts, think times)` | `load.yml` | **add** |
-| `static: opentofu validate` | `deploy.yml` (every PR since beta P1) | **add** |
+| `static: opentofu validate` | `quality.yml` (moved from `deploy.yml`, ADR-0113) | **add** |
 
 The deployment wiring (every production value reaches Cloud Run, every `workflow_run` name exists) is checked
 inside `correctness: unit tests (no DB)` (`apps/api/test/config/deployment-wiring.test.ts`), so it needs no
 check of its own.
+
+## Release (production deploy, ADR-0113)
+
+`release.yml` ("Release") runs when a GitHub Release is published for a tag `vX.Y.Z`, or by hand from a tag to deploy
+a release again. Job `release: guard (tag on main, CI green)` refuses unless the ref is a `vMAJOR.MINOR.PATCH` tag,
+its commit is on `main` and "Build & E2E" passed on exactly that commit as a push run
+(`scripts/release/guard.sh`, decision in `scripts/release/guard.mjs`, tested by `guard.test.mjs` in the job
+`static: docs consistency (register + adr)`). Job `release: deploy to production` then calls `deploy.yml` for the
+GitHub environment `production`: its reviewers approve, and the API image that staging ran for that commit
+(`api:staging-ok-<commit>`) is copied into the production registry with the same digest, not rebuilt. The web and
+website images are still built per environment. `deploy.yml` itself runs only for staging (after a green
+"Build & E2E" on main, or by hand) and for the Release workflow; it has no `pull_request` trigger, so a pull request
+shows no skipped deploy jobs.
 
 ## Categories
 
