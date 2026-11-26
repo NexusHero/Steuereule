@@ -140,6 +140,7 @@ import {
 import { startStack } from '../harness/stack.mjs'
 import { fail, waitForBucketHeadroom } from '../harness/rate-limit.mjs'
 import { verifyEmailSql } from '../harness/email-hash.mjs'
+import { compareQrPayload } from '../harness/qr-readback.mjs'
 
 // `shared: true` on AUTH_BUCKET: the sign-up/sign-in bucket is spent by every other script in the
 // `Browser gates` job (same API process, one in-memory bucket), so this process cannot read its
@@ -294,6 +295,16 @@ async function main() {
 
     await pageA.getByText(deviceCode.userCode, { exact: true }).waitFor({ state: 'visible', timeout: 5_000 })
     console.log(`[device-authorization] AC-6: Context A rendered user_code ${deviceCode.userCode}, matching the API response that minted it.`)
+
+    // #302 payload proof: the rendered symbol is a real QR code and it encodes the verification URL of the very code
+    // this page minted and polls on (not merely some URL). A screenshot of the symbol with its quiet zone is read
+    // back with jsQR. This decodes an ideal screenshot: it says nothing about error-correction margin under a real
+    // camera (that is the geometry unit test's job in QrMark.test.tsx), and its own controls are in
+    // e2e/harness/qr-readback.test.mjs (a damaged or different symbol must not pass).
+    const qrScreenshot = await pageA.locator('[data-testid="qr-mark-quiet-zone"]').screenshot()
+    const qrReadback = compareQrPayload(qrScreenshot, deviceCode.verificationUriComplete)
+    if (!qrReadback.ok) fail(`#302 QR readback: ${qrReadback.reason}.`)
+    console.log(`[device-authorization] #302: the rendered QR decodes to the minted code's verificationUriComplete (${deviceCode.verificationUriComplete}).`)
 
     const aUserAgent = await pageA.evaluate(() => navigator.userAgent)
     const expectedLabel = expectedLabelFromRealUserAgent(aUserAgent)
