@@ -25,17 +25,20 @@ the environment truths that keep getting silently re-derived, written down once.
   docker doesn't reach a healthy `pg_isready` within 30s. Both paths produce the identical
   `DATABASE_URL` shape, so nothing downstream needs to know which one ran.
 
-  **Now exercised for real, in Salih's #239 T1 re-run — with a real gap found, not yet fixed
-  here.** That session's docker daemon could not be started at all (sandboxed, `ulimit`-restricted
-  environment), and its own OS user was root — `initdb`/`pg_ctl` both refuse outright to run as
-  root ("cannot be run as root", a real, unpatched Postgres restriction, not a bug in this file).
-  GitHub's own `ubuntu-latest` runner executes as the unprivileged `runner` user, so this never
-  bites CI — but ANY root-uid environment (a root-default container image, some sandboxes) hits it
-  today with no accommodation in `startPostgres` below. Worked around **locally, out of band, not
-  committed here** (a `sudo -u postgres` detour) — see that PR's test-report comment for the exact
-  patch. Fixing this in the committed module — detect `process.getuid?.() === 0` and re-exec the
-  native-binary steps as an unprivileged user — is real, scoped follow-up work, deliberately not
-  folded into this pass so the fix can be reviewed on its own.
+  **Running as root (#264).** `initdb` and `pg_ctl` refuse to run as root (a real Postgres restriction), and
+  root-uid sandboxes are exactly where this fallback is needed. When `process.geteuid() === 0`, `stack.mjs`
+  chowns the fresh data directory to the unprivileged `postgres` account (the one the `postgresql` package
+  creates) and runs `initdb` and `pg_ctl` through `runuser -u postgres -- sh -c ...` (or `su -s /bin/sh postgres -c`
+  when `runuser` is missing). Binaries are resolved to absolute paths first, because that account may not have the
+  distribution's versioned bin directory on its PATH. A root process with no `postgres` account, or with neither
+  `runuser` nor `su`, fails with a message that says what to install or create. The decision and the command
+  strings live in `native-postgres.mjs`, unit-tested in `native-postgres.test.mjs` (run by the `static-ratchet`
+  gate group). **Not yet observed end to end:** the ticket's acceptance is a real run in a root-uid sandbox with the
+  registry blocked, and the unit tests only prove the commands that would run. Treat the fix as unproven until that
+  run has happened.
+
+  *History:* the gap was found in Salih's #239 T1 re-run (a root sandbox, docker daemon not startable), worked around
+  out of band with a `sudo -u postgres` detour.
 
   **Refined in Salih's #274 pass (2026-08-05): "the daemon could not be started" was this
   session's own gap, not a permanent one — `dockerd` DOES start as root in this class of sandbox
