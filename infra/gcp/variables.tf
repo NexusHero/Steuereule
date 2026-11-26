@@ -13,6 +13,12 @@ variable "github_environments" {
   default     = ["staging"]
 }
 
+variable "image_readers" {
+  description = "IAM members that may pull from this stack's image repository, for example [\"serviceAccount:steuereule-deployer@<production project>.iam.gserviceaccount.com\"]. Set it in the staging stack to admit the production deployer, which promotes the API image staging ran (ADR-0113). Leave empty in the production stack."
+  type        = list(string)
+  default     = []
+}
+
 variable "alert_email" {
   description = "Address that receives the monitoring alerts. Empty: no alerting resources are created."
   type        = string
