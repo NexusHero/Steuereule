@@ -52,7 +52,7 @@ function ExportFormatRow({ tr, format, label, hint, state, onPress }: ExportForm
   const t = useTheme()
   const styles = makePrivacyStyles(t)
   return (
-    <View style={styles.exportRow}>
+    <View style={styles.exportSpacer}>
       <Button variant="ghost" onPress={onPress} disabled={state === 'loading'} testID={`export-${format}`}>
         {state === 'loading' ? tr('datenschutz.export.preparing') : label}
       </Button>
