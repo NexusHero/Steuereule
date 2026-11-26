@@ -35,7 +35,7 @@ function service(options: { estimate?: (userId: string, year: number) => unknown
   const estimate = { getState: vi.fn(async (u: string, y: number) => (options.estimate ?? (() => estimateFor()))(u, y)) }
   const interview = { getState: vi.fn().mockResolvedValue({ answers: options.answers ?? { lohnersatz: 'Nein' }, nextStep: { kind: 'done' }, openItems: 0 }) }
   const confirmation = { readRawValues: vi.fn(async (_u: string, y: number, keys: readonly string[]) => (options.values ?? (() => ({})))(y, keys)) }
-  return new McpReportService(estimate as never, {} as never, confirmation as never, interview as never, passThroughTransactionRunner)
+  return new McpReportService(estimate as never, {} as never, confirmation as never, interview as never, {} as never, passThroughTransactionRunner)
 }
 
 describe('veranlagung_vergleichen: joint against separate from the case data', () => {
