@@ -98,7 +98,7 @@ export function sameStep(a: StromStep, b: StromStep): boolean {
   return slugOf(a) === slugOf(b)
 }
 
-export function isBasisDone(answers: Answers, options: InterviewOptions = {}): boolean {
+function isBasisDone(answers: Answers, options: InterviewOptions = {}): boolean {
   return nextStepFor(ENTRIES['minimal-gate'], answers, options).kind === 'done'
 }
 
