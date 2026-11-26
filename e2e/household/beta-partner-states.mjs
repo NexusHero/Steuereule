@@ -298,6 +298,8 @@ async function main() {
     console.log(`[${TAG}] ✅ Row 9 — kopplung-zustimmung-zuruecknehmen: confirmation and step-up; A sees nothing of B again`)
 
     // --- Row 10 — A's printout names the missing consent -------------------------------------------------------
+    // As in Row 5: with A's own LStB recorded the printout opens (AC 6) and names what is still missing.
+    await putLstb(a.api, CONSENT_YEAR, 46_000, 6_200, 9_300)
     const checkA = await call(a.api, 'GET', `/v1/steuerjahre/${CONSENT_YEAR}/ausdruck/pruefung`)
     if (!checkA.missing.includes('personB.zustimmung')) fail(`Row 10: A's printout check should name the missing consent, got ${JSON.stringify(checkA.missing)}`)
     await pageA.goto(`${webOrigin}/app/steuerjahr/${CONSENT_YEAR}/ausdruck`, { waitUntil: 'networkidle' })
