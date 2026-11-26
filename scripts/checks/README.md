@@ -23,7 +23,11 @@ pnpm adr-check         # node scripts/checks/adr-check.mjs
    directory components that don't match reality gets no such leniency: that's a wrong path,
    not shorthand, and is check 1, full stop (Musti's F5 review on #252 — the fallback used to
    also accept those, which meant a moved test's stale citation would pass every check that
-   resolves through it, forever).
+   resolves through it, forever). Check **1c** (#254): a citation's line locator
+   (`path:NNN`, `path:NNN-MMM`, `path:A,B-C`) is bounds-checked — each segment well formed,
+   start ≤ end, no line past the cited file's current line count. Bounds only: a range that
+   drifts onto other lines that still exist stays green. Unit tests:
+   `node --test scripts/checks/register-check.test.mjs`.
 2. every cited test file is actually run by a CI job — matched against the *real*
    `include`/`exclude` globs of every `apps/*` and `packages/*` workspace that ships its own
    `vitest.config.ts`/`vitest.integration.config.ts` (discovered, not hard-coded — Musti's F3
