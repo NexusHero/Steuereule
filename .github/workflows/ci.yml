@@ -457,11 +457,13 @@ jobs:
 
   # The required check keeps its name (a repository ruleset pins the name; a renamed job would wait for ever and
   # the PR would sit on "pending"). It passes when the plan, the build and every gate group passed, and it runs
-  # even when one of them failed, so it reports red instead of staying pending.
+  # even when one of them failed, so it reports red instead of staying pending. `!cancelled()`, not `always()`:
+  # a newer push cancels this run, and with `always()` the job still ran and reported the cancelled gate groups
+  # as a failure (seen on #586, run 45816324949).
   cross-origin-smoke:
     name: 'e2e: browser gates & a11y (BFSG/WCAG 2.1 AA, headless Chromium)'
     needs: [e2e-plan, e2e-build, e2e-gates]
-    if: always()
+    if: '!cancelled()'
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
@@ -747,7 +749,8 @@ jobs:
   prod-deploy-smoke:
     name: 'e2e: production compose stack + OWASP ZAP DAST (real Docker build)'
     needs: [prod-stack-smoke, prod-stack-dast]
-    if: always()
+    # As for the browser-gates aggregator above: red after a failure, not after a cancelled run.
+    if: '!cancelled()'
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:

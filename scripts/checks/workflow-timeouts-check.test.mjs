@@ -1,7 +1,7 @@
 // node --test scripts/checks/workflow-timeouts-check.test.mjs
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { findViolations, jobsWithoutTimeout } from './workflow-timeouts-check.mjs'
+import { findViolations, jobsRunningWhenCancelled, jobsWithoutTimeout } from './workflow-timeouts-check.mjs'
 
 const wf = (jobs) => `name: x\non: push\njobs:\n${jobs}\nenv:\n  A: b\n`
 
@@ -30,4 +30,11 @@ test('a file without jobs yields nothing', () => {
 
 test('the repository workflows all set timeout-minutes', () => {
   assert.deepEqual(findViolations(new URL('../../.github/workflows/', import.meta.url).pathname), [])
+})
+
+// A job-level `if: always()` also runs when the run was cancelled by a newer push; a job that then checks its
+// needs reports a red check for work nobody finished. `!cancelled()` runs after success and failure only.
+test('a job-level always() is reported, !cancelled() and a step-level always() are not', () => {
+  const src = wf(`  a:\n    if: always()\n    timeout-minutes: 5\n  b:\n    if: '!cancelled()'\n    timeout-minutes: 5\n  c:\n    timeout-minutes: 5\n    steps:\n      - if: always()\n        run: y\n  d:\n    if: \${{ always() && needs.a.result == 'success' }}\n    timeout-minutes: 5\n`)
+  assert.deepEqual(jobsRunningWhenCancelled(src), ['a', 'd'])
 })
