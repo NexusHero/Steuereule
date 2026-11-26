@@ -29,6 +29,7 @@ import { PartnerPage } from './PartnerPage'
 import { stromStepTitle } from './stromTitles'
 import { effectOf } from './stromEffects'
 import {
+  isBasisDone,
   isStepOpen,
   nextOpenStep,
   slugOf,
@@ -191,7 +192,7 @@ function StepCount({ step, answers, facts }: { readonly step: StromStep; readonl
   const options = useStromOptions()
   const position = stepPosition(step, answers, facts, options)
   // The first page decides the path: until it is answered the plan is just this page, and „1 von 1“ would be a guess.
-  if (step.kind === 'basis' && position?.total === 1) return <View />
+  if (step.kind === 'basis' && !isBasisDone(answers, options)) return <View />
   if (position === null) return <Text style={{ ...t.type.metaLarge, color: t.color.tinte2 }} numberOfLines={1}>{tr('strom.fertigMarke')}</Text>
   return (
     <Text style={{ ...t.type.metaLarge, color: t.color.tinte2 }} numberOfLines={1} testID="strom-position">
