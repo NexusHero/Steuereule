@@ -48,7 +48,7 @@
     "@axe-core/playwright": "^4.14.0",
     "jsqr": "1.4.0",
     "pixelmatch": "7.1.0",
-    "playwright-core": "1.56.1",
+    "playwright-core": "1.65.1",
     "pngjs": "7.0.0"
   }
 }
