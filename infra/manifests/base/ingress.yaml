@@ -7,7 +7,7 @@
 #   - The API is exposed only via this ingress (its Service is ClusterIP), so there is
 #     no public, proxy-bypassing path to the API.
 # Hosts are placeholders; the staging/prod overlays patch them to the real domains.
-# The marketing site is a separate static deploy (ADR-049) and out of scope here.
+# The marketing site is a separate static deploy (Produkt-ADR-049) and out of scope here.
 # ---------------------------------------------------------------------------
 apiVersion: networking.k8s.io/v1
 kind: Ingress

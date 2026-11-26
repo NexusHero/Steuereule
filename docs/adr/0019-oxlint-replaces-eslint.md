@@ -227,3 +227,57 @@ Either is sufficient. The earlier `@fastify/cors` ruling named the first; this o
   source this project has been removing.
 - **Biome.** A credible alternative with a similar architecture. Not evaluated in depth once the
   stakeholder ruled on oxlint; recorded so the next reader knows it was not overlooked.
+
+## Amendment — 2026-11-26 (#190): the `--config` trap, restated in the shape that reproduces
+
+Per the log's immutability rule (`docs/adr/index.md:5` — "never rewrite history"), §5 above stands
+unedited. This amendment narrows its claim to the invocation shape that reproduces it and replaces its
+numbers with ones measured today.
+
+**Context.** §5 reads as if any `--config` use makes `ignorePatterns` inert, with 276 findings via
+`--config` against 0 auto-discovered. That does not reproduce on the current tree. Salih (#168's
+control proof) saw both invocations list the same files and report 0 findings. Musti's first three
+attempts while reviewing ADR-0021 also contradicted it: a co-located config honoured the ignore list
+with or without `--config`. Only `--config` pointing **outside the scan root** linted the file that
+should have been ignored, and `**/sub/**` did not rescue it (ADR-0021, the `ignorePatterns` row and the
+note under the table).
+
+**Measured (2026-11-26, oxlint 1.76.0, the version `pnpm-lock.yaml` pins).** On this repo, run from the
+repo root and from `apps/`:
+
+```
+cwd   invocation                                              files  findings  exit
+.     oxlint --deny-warnings                                   2320         0     0
+.     oxlint --deny-warnings --config .oxlintrc.json           2320         0     0
+apps  oxlint --deny-warnings                                   1772         0     0
+apps  oxlint --deny-warnings --config ../.oxlintrc.json        1772         0     0
+```
+
+In this repo the config file sits at the repo root, every scanned path lies below it, and the ignore
+list holds either way. The 276-vs-0 gap does not appear in any of these shapes.
+
+On a fixture with the config outside the scanned tree (`cfg/.oxlintrc.json` with
+`"categories": {"correctness": "error"}` and `"ignorePatterns": ["**/sub/**"]`; `proj/good.js`; and
+`proj/sub/bad.js` containing `debugger;`), compared with the same files and config co-located in one
+directory:
+
+```
+cwd    invocation                                        files  findings
+co/    oxlint -f json                                        1         0
+co/    oxlint -f json --config .oxlintrc.json                1         0
+proj/  oxlint -f json --config ../cfg/.oxlintrc.json         2         1   (sub/bad.js)
+./     oxlint -f json --config cfg/.oxlintrc.json proj       2         1   (proj/sub/bad.js)
+```
+
+The result is the same with `"sub/**"` in place of `"**/sub/**"`.
+
+**Decision.** §5 is narrowed, not withdrawn. The trap is: **when `--config` names a config file whose
+directory does not contain the scanned files, `ignorePatterns` matches none of them**, so an ignored
+path is linted without warning. A co-located or ancestor config, auto-discovered or passed via
+`--config`, honours the ignore list. §5's 276-vs-0 numbers are not carried forward; nobody can
+reproduce them on the current tree.
+
+**Consequence.** The rule in §5 still holds as written for this repo: `.oxlintrc.json` stays at the
+repo root, the `lint` job runs `pnpm lint` without `--config`, and a change to how lint is invoked must
+prove that the ignore list still takes effect. Comments that repeat the 276-vs-0 figure (the `lint`
+job's comment in `.github/workflows/quality.yml`) carry the old number and read against this amendment.

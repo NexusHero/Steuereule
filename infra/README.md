@@ -248,8 +248,8 @@ deployt, bis Last oder Verfügbarkeit es verlangen (ADR-0053).
 
 **Slice 1: IaC-Skelett + Feinschnitt + Credential-Blöcke.** Dieses Verzeichnis ist das
 Skelett der echten Infrastruktur aus `docs/roadmap-1.0.md` (Infra-Track, D7) und den
-Research-ADRs [ADR-047](../finanzo-funke-design-system/project/research/adr/047-prisma-postgres-redis.md)
-(Datenschicht) und [ADR-049](../finanzo-funke-design-system/project/research/adr/049-deployment-k3s-hetzner.md)
+Research-ADRs [Produkt-ADR-047](../finanzo-funke-design-system/project/research/adr/047-prisma-postgres-redis.md)
+(Datenschicht) und [Produkt-ADR-049](../finanzo-funke-design-system/project/research/adr/049-deployment-k3s-hetzner.md)
 (Deployment). Es schließt die in
 [ADR-0026](../docs/adr/0026-local-production-shaped-compose-stack.md) offen benannte #292-Lücke:
 der lokale `docker-compose.prod.yml`-Stack ist der *lokale Test*-Gegenpart, **nicht** das
@@ -266,7 +266,7 @@ Rest-Tracks liegt unter `.scratch/roadmap-1.0/issues/track-06/`.
 
 | Aufgabe | Werkzeug | Warum |
 |---|---|---|
-| Cloud-Provisioning (Nodes, Netz, Firewall, LB) | **OpenTofu** (HCL, `hetznercloud/hcloud`) | ADR-049 wählt Hetzner; der first-party Provider ist reif. OpenTofu = MPL-2.0, drop-in zu Terraform (das lokal bereits installiert ist) — kein BUSL-Lizenzrisiko für ein Produkt, reversibel, da identisches HCL. Kein Pulumi/Crossplane: für „provisioniere ein Cluster" ist deklaratives HCL der Standard, keine volle GitOps-Plattform. |
+| Cloud-Provisioning (Nodes, Netz, Firewall, LB) | **OpenTofu** (HCL, `hetznercloud/hcloud`) | Produkt-ADR-049 wählt Hetzner; der first-party Provider ist reif. OpenTofu = MPL-2.0, drop-in zu Terraform (das lokal bereits installiert ist) — kein BUSL-Lizenzrisiko für ein Produkt, reversibel, da identisches HCL. Kein Pulumi/Crossplane: für „provisioniere ein Cluster" ist deklaratives HCL der Standard, keine volle GitOps-Plattform. |
 | k3s-Bootstrap | **cloud-init** (`user_data`) | k3s liefert ein offizielles Install-Script; cloud-init ist der Provider-native Weg, es einmal beim Boot zu starten. Kein Ansible/Salt — keine zweite Config-Management-Schicht für ein derzeit kleines Cluster. |
 | Eigene App-Manifeste (API/Web/Redis/Ingress) | **Kustomize** (base + staging/prod overlays) | In `kubectl` eingebaut, kein Server-Teil; base+overlay bildet „Staging und Prod als getrennte Umgebungen" direkt ab (nur Image-Tag + Origins + Hosts differieren). |
 | Cluster-Add-ons (ingress-nginx, cert-manager, sealed-secrets, Prometheus) | **Helm-Charts** (Upstream) | Die Upstream-Projekte liefern offizielle Charts; „kein Eigenbau" heißt, die zu nutzen statt selbst zu schreiben. Kustomize für *unsere* Manifeste, Helm für *deren* Charts — keine eigenen Charts. |
@@ -317,7 +317,7 @@ infra/
 | `api` (:3000) | `api` Deployment + ClusterIP Service | Nur via Ingress/Proxy erreichbar (REQ-010-Eigenschaft). |
 | `web` (:8080) | `web` Deployment + ClusterIP Service | `EXPO_PUBLIC_API_BASE_URL` ist **Build-zeit** eingebacken → pro Umgebung ein Image. |
 | Chromium-PDF | **im `api`-Image** (kein Dienst) | Siehe `apps/api/Dockerfile`; Memory-Limits bewusst gesetzt. |
-| Redis | `redis` Deployment + Service | Bleibt auf dem Cluster (ADR-049); Postgres ist das Einzige, das managed wird. |
+| Redis | `redis` Deployment + Service | Bleibt auf dem Cluster (Produkt-ADR-049); Postgres ist das Einzige, das managed wird. |
 
 ## 4. Betriebsanleitung (stoppt an der Credential-Grenze)
 
@@ -350,7 +350,7 @@ von „Skelett" zu „echt" übergehen. Nichts davon gehört ins Repo.
    (und `*.staging.`). Hetzner-DNS-API-Token, falls DNS via Hetzner läuft.
 3. **EU-Region-Entscheidung** (ADR-020, DSGVO-relevant) — `fsn1`/`nbg1` (DE) oder `hel1`
    (FI); festhalten, nicht stillschweigend defaulten.
-4. **Container-Registry** — GHCR (ADR-049): Org/Namespace `ghcr.io/steuereule/*` + Token mit
+4. **Container-Registry** — GHCR (Produkt-ADR-049): Org/Namespace `ghcr.io/steuereule/*` + Token mit
    `packages:write` für `deploy.yml`.
 5. **Managed-Postgres-Credentials** — Host, User, Passwort, Datenbankname; EU-Region, PITR
    aktiv (ADR-047: Backups/PITR/Verschlüsselung „nicht von Hand tragen").

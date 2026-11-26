@@ -121,7 +121,7 @@ describe('#241 A2/A3 — TRUSTED_PROXIES configured: the fix, proven against a s
     // A placeholder trusted-proxy CIDR (RFC 1918 private range) — deliberately NOT a
     // real ingress range (that value is #277's, itself blocked on the deployment gap
     // #292 now carries; it was written here as "a real Fly.io range" against a platform
-    // premise #246's own 2026-08-05 correction retired — ADR-049 is k3s on Hetzner) and
+    // premise #246's own 2026-08-05 correction retired — Produkt-ADR-049 is k3s on Hetzner) and
     // deliberately NOT overlapping any test IP below (TEST-NET-2/TEST-NET-3, RFC
     // 5737), so the resolver's own hop-stripping logic is what's under test, not an
     // accidental address collision.
