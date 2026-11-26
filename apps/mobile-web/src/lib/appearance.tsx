@@ -24,7 +24,7 @@ export function writeAppearancePreference(preference: AppearancePreference): voi
   }
 }
 
-export function resolveThemeMode(preference: AppearancePreference, colorScheme: ColorSchemeName): ThemeMode {
+export function resolveThemeMode(preference: AppearancePreference, colorScheme: ColorSchemeName | null | undefined): ThemeMode {
   if (preference === 'light' || preference === 'dark') return preference
   return colorScheme === 'dark' ? 'dark' : 'light'
 }

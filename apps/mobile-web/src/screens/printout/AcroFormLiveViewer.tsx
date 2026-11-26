@@ -1,6 +1,6 @@
 import { apiFetch } from '../../net/apiFetch'
 import { useEffect, useRef, useState } from 'react'
-import { Platform, Pressable, Text, TextInput, View, type TextStyle, type ViewStyle } from 'react-native'
+import { Platform, Pressable, Text, TextInput, View, type TextStyle, type ViewInstance, type ViewStyle } from 'react-native'
 import { ApiError, getApiClientBaseUrl, type LiveFormDto, type LiveFormInstanceDto } from '@steuereule/api-client'
 import type { Screen } from '@steuereule/core'
 import { useTranslation } from 'react-i18next'
@@ -120,7 +120,7 @@ export function AcroFormLiveViewer({
   const [error, setError] = useState<unknown>(null)
   const [reload, setReload] = useState(0)
   const failureMessage = useApiFailureMessage()
-  const canvasHostRef = useRef<View | null>(null)
+  const canvasHostRef = useRef<ViewInstance | null>(null)
 
   useEffect(() => {
     if (highlightedFieldId) {

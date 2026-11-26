@@ -1,5 +1,5 @@
 import { useCallback, useRef } from 'react'
-import type { NativeScrollEvent, NativeSyntheticEvent, ScrollView } from 'react-native'
+import type { NativeScrollEvent, NativeSyntheticEvent, ScrollViewInstance } from 'react-native'
 import { isNearBottom } from './chatKeys'
 
 /**
@@ -7,7 +7,7 @@ import { isNearBottom } from './chatKeys'
  * up to read, new text no longer pulls them down (#451 slice 1).
  */
 export function useStickToBottom() {
-  const ref = useRef<ScrollView>(null)
+  const ref = useRef<ScrollViewInstance>(null)
   const atBottom = useRef(true)
 
   const onScroll = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {

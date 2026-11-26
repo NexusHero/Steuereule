@@ -38,7 +38,7 @@ describe('MarkdownMessage (#451 slice 1b)', () => {
   })
 
   it('opens an official source on tap and never a javascript: link', () => {
-    const open = vi.spyOn(Linking, 'openURL').mockResolvedValue(true)
+    const open = vi.spyOn(Linking, 'openURL').mockResolvedValue(undefined)
     renderMd('[Gesetz](https://www.gesetze-im-internet.de/estg/) und [böse](javascript:alert(1))')
     fireEvent.click(screen.getByText('Gesetz'))
     expect(open).toHaveBeenCalledWith('https://www.gesetze-im-internet.de/estg/')
@@ -50,7 +50,7 @@ describe('MarkdownMessage (#451 slice 1b)', () => {
   })
 
   it('shows the host of any other link and opens it only after the user confirms', () => {
-    const open = vi.spyOn(Linking, 'openURL').mockResolvedValue(true)
+    const open = vi.spyOn(Linking, 'openURL').mockResolvedValue(undefined)
     renderMd('[Hier](https://sammler.example/pfad?a=1)')
     fireEvent.click(screen.getByText('Hier'))
     expect(open).not.toHaveBeenCalled()
@@ -62,7 +62,7 @@ describe('MarkdownMessage (#451 slice 1b)', () => {
   })
 
   it('opens nothing when the user cancels', () => {
-    const open = vi.spyOn(Linking, 'openURL').mockResolvedValue(true)
+    const open = vi.spyOn(Linking, 'openURL').mockResolvedValue(undefined)
     renderMd('[Hier](https://sammler.example/)')
     fireEvent.click(screen.getByText('Hier'))
     fireEvent.click(screen.getByTestId('md-link-cancel'))
@@ -72,7 +72,7 @@ describe('MarkdownMessage (#451 slice 1b)', () => {
   })
 
   it('renders a link with a long query as text that does nothing', () => {
-    const open = vi.spyOn(Linking, 'openURL').mockResolvedValue(true)
+    const open = vi.spyOn(Linking, 'openURL').mockResolvedValue(undefined)
     renderMd(`[Daten](https://sammler.example/?d=${'x'.repeat(300)})`)
     fireEvent.click(screen.getByText('Daten'))
     expect(open).not.toHaveBeenCalled()

@@ -5,9 +5,9 @@ import {
   Text,
   TextInput,
   View,
-  type NativeSyntheticEvent,
-  type TextInputContentSizeChangeEventData,
-  type TextInputKeyPressEventData,
+  type TextInputContentSizeChangeEvent,
+  type TextInputInstance,
+  type TextInputKeyPressEvent,
   type TextStyle,
   type ViewStyle,
 } from 'react-native'
@@ -79,7 +79,7 @@ export function ChatComposer({
   ) : null
   const platform = useMemo(() => platformOverride ?? detectChatInputPlatform(Platform.OS), [platformOverride])
   const [height, setHeight] = useState(LINE_HEIGHT)
-  const inputRef = useRef<TextInput>(null)
+  const inputRef = useRef<TextInputInstance>(null)
   const canStop = sending && onStop !== undefined
   const onWeb = Platform.OS === 'web'
 
@@ -109,8 +109,8 @@ export function ChatComposer({
     setHeight(LINE_HEIGHT)
   }
 
-  function handleKeyPress(event: NativeSyntheticEvent<TextInputKeyPressEventData>) {
-    const native = event.nativeEvent as TextInputKeyPressEventData & { shiftKey?: boolean; isComposing?: boolean }
+  function handleKeyPress(event: TextInputKeyPressEvent) {
+    const native = event.nativeEvent as TextInputKeyPressEvent['nativeEvent'] & { shiftKey?: boolean; isComposing?: boolean }
     const action = chatKeyAction({ key: native.key, shiftKey: native.shiftKey, isComposing: native.isComposing }, platform)
     if (action === 'send') {
       event.preventDefault()
@@ -144,7 +144,7 @@ export function ChatComposer({
       ref={inputRef}
       {...(onWeb
         ? {}
-        : { onContentSizeChange: (e: NativeSyntheticEvent<TextInputContentSizeChangeEventData>) => setHeight(clampComposerHeight(e.nativeEvent.contentSize.height, LINE_HEIGHT)) })}
+        : { onContentSizeChange: (e: TextInputContentSizeChangeEvent) => setHeight(clampComposerHeight(e.nativeEvent.contentSize.height, LINE_HEIGHT)) })}
       enterKeyHint={platform === 'desktop' ? 'send' : 'enter'}
       returnKeyType="default"
       autoComplete="off"
