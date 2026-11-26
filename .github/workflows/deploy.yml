@@ -1,11 +1,17 @@
-# Deployment to Google Cloud Run (ADR-0053), two environments (ADR-0109):
+# Deployment to Google Cloud Run (ADR-0053), two environments (ADR-0109, ADR-0113):
 #   staging     every green "Build & E2E" run on main, automatically, once the repository variable
-#               DEPLOY_STAGING_AUTO is "true" (scripts/infra/gcp-setup.sh sets it after the first deploy).
-#               Until then the automatic run skips its jobs: the run shows "skipped", not "success", and no
-#               deployment record is created (OPS-3).
-#   production  only by hand: Actions -> Deploy -> Run workflow -> environment "production". The job is
-#               bound to the GitHub environment "production", so required reviewers configured there
-#               must approve it, and the GCP side only accepts tokens of that environment.
+#               DEPLOY_STAGING_AUTO is "true" (scripts/infra/gcp-setup.sh sets it after the first deploy), or by hand
+#               (Actions -> Deploy -> Run workflow, from main). Until the variable is set the automatic run skips its
+#               jobs: the run shows "skipped", not "success", and no deployment record is created (OPS-3).
+#               Staging builds the API image and tags it api:staging-ok-<commit> once its smoke test has passed.
+#   production  only by publishing a GitHub Release (tag vX.Y.Z): .github/workflows/release.yml checks the tag, then
+#               calls this workflow with environment "production". It builds no API image: it promotes the one
+#               staging ran for that commit, same digest (scripts/deploy/provide-api-image.sh). The job is bound to the
+#               GitHub environment "production", so its required reviewers must approve it, and the GCP side only
+#               accepts tokens of a v* tag. The web and website images are built per environment, because the
+#               operator details and the origins are baked into them.
+# There is no pull_request trigger: the check "static: opentofu validate" lives in quality.yml, so a pull request
+# shows no skipped deploy jobs.
 # Every deploy variable lives in its GitHub environment, none at repository level: a repository-level value
 # would silently fill in for an environment that lacks it (OPS-13). The list of what the runtime needs is
 # apps/api/src/config/production-config.ts; test/config/deployment-wiring.test.ts keeps this file in step with it.
@@ -17,53 +23,28 @@ on:
     workflows: ['Build & E2E']
     types: [completed]
     branches: [main]
+  # By hand, staging only (from main). A production deploy is a re-run of the Release workflow from its tag.
   workflow_dispatch:
+  workflow_call:
     inputs:
       environment:
-        description: Where to deploy. Production asks the reviewers of the GitHub environment "production" for approval.
-        type: choice
+        description: The GitHub environment to deploy to. release.yml passes "production".
+        type: string
         required: true
-        options:
-          - staging
-          - production
-        default: staging
-  # On every pull request, so "static: opentofu validate" can be a required check (H2-32).
-  pull_request:
 
 permissions:
   contents: read
 
-# A pull-request run only validates and deploys nothing: it gets a group of its own per pull request, so it never
-# queues behind a running deploy and never displaces a pending one. Deploys of one environment run one at a time.
-concurrency:
-  group: >-
-    ${{ github.event_name == 'pull_request' && format('deploy-validate-{0}', github.ref)
-    || format('deploy-{0}', github.event_name == 'workflow_dispatch' && inputs.environment || 'staging') }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+# Deploys of one environment run one at a time: the group is on the deploy job, so it holds when this workflow is
+# called (a workflow-level group of a called workflow would collide with the group of its caller).
 
 jobs:
-  validate:
-    name: 'static: opentofu validate'
-    if: github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-      - uses: opentofu/setup-opentofu@9d84900f3238fab8cd84ce47d658d25dd008be2f # v1
-        with:
-          tofu_version: "1.8.0"
-      - name: Validate infra/gcp and infra/terraform
-        run: |
-          for dir in infra/gcp infra/terraform; do
-            (cd "$dir" && tofu init -backend=false -input=false && tofu validate)
-          done
-          tofu fmt -check -recursive infra/gcp
-
   # Runs without a GitHub environment, so `vars` holds the repository-level variables only. Any deploy
   # variable found here would fill in for an environment that lacks it; the deploy job refuses that (OPS-13).
   variable-scope:
     name: Deploy variables are environment-scoped
     if: >-
+      inputs.environment != '' ||
       github.event_name == 'workflow_dispatch' ||
       (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' &&
        github.event.workflow_run.event == 'push' &&
@@ -80,9 +61,9 @@ jobs:
           REPOSITORY_VARS: ${{ toJSON(vars) }}
           DEPLOY_VARIABLES: >-
             GCP_ENVIRONMENT GCP_PROJECT_ID GCP_REGION GCP_WIF_PROVIDER GCP_DEPLOYER_SA GCP_RUNTIME_SA GCP_MIGRATE_SA GCP_WEB_SA
-            GCP_SQL_INSTANCE GCP_KEYSTORE_SQL_INSTANCE GCP_VPC_NETWORK GCP_VPC_SUBNET APP_DOMAIN EMAIL_FROM
-            TRUSTED_PROXIES EXPO_PUBLIC_BETREIBER_NAME EXPO_PUBLIC_BETREIBER_ANSCHRIFT EXPO_PUBLIC_BETREIBER_EMAIL
-            EXPO_PUBLIC_BETREIBER_VERTRETEN EXPO_PUBLIC_BETREIBER_USTID
+            GCP_SQL_INSTANCE GCP_KEYSTORE_SQL_INSTANCE GCP_VPC_NETWORK GCP_VPC_SUBNET GCP_PROMOTE_FROM_REGISTRY
+            APP_DOMAIN EMAIL_FROM TRUSTED_PROXIES EXPO_PUBLIC_BETREIBER_NAME EXPO_PUBLIC_BETREIBER_ANSCHRIFT
+            EXPO_PUBLIC_BETREIBER_EMAIL EXPO_PUBLIC_BETREIBER_VERTRETEN EXPO_PUBLIC_BETREIBER_USTID
         run: |
           names=""
           for name in $DEPLOY_VARIABLES; do
@@ -97,6 +78,7 @@ jobs:
     needs: variable-scope
     # The same condition as variable-scope: an automatic run before DEPLOY_STAGING_AUTO skips both jobs.
     if: >-
+      inputs.environment != '' ||
       github.event_name == 'workflow_dispatch' ||
       (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' &&
        github.event.workflow_run.event == 'push' &&
@@ -105,12 +87,15 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     # Environment-level variables apply from here on (job env and steps), never at workflow level.
-    environment: ${{ github.event_name == 'workflow_dispatch' && inputs.environment || 'staging' }}
+    environment: ${{ inputs.environment || 'staging' }}
+    concurrency:
+      group: deploy-${{ inputs.environment || 'staging' }}
+      cancel-in-progress: false
     permissions:
       contents: read
       id-token: write
     env:
-      TARGET_ENV: ${{ github.event_name == 'workflow_dispatch' && inputs.environment || 'staging' }}
+      TARGET_ENV: ${{ inputs.environment || 'staging' }}
       REGION: ${{ vars.GCP_REGION }}
       PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
       APP_DOMAIN: ${{ vars.APP_DOMAIN }}
@@ -125,6 +110,8 @@ jobs:
       # network with Direct VPC egress. Only private ranges go through it.
       VPC_NETWORK: ${{ vars.GCP_VPC_NETWORK }}
       VPC_SUBNET: ${{ vars.GCP_VPC_SUBNET }}
+      # Production only: the staging registry the API image is promoted from (scripts/deploy/provide-api-image.sh).
+      PROMOTE_FROM_REGISTRY: ${{ vars.GCP_PROMOTE_FROM_REGISTRY }}
       API_SA: ${{ vars.GCP_RUNTIME_SA }}
       # The migrate job runs as its own service account: only it may read MIGRATE_DATABASE_URL, the login that
       # owns the tables (P11). The API's account cannot read that secret.
@@ -163,8 +150,17 @@ jobs:
             echo "::error::Deploy variables set at repository level: $REPOSITORY_LEVEL — move them into the GitHub environment '$TARGET_ENV' (Settings -> Environments). At repository level they silently fill in for any environment that lacks them."
             exit 1
           fi
-          if [ "$GITHUB_REF" != "refs/heads/main" ]; then
-            echo "::error::Deploys run only from main (this run is on $GITHUB_REF); the GCP side refuses other refs too."
+          # Staging deploys the tip of main, production a release tag; the GCP side refuses other refs too.
+          if [ "$TARGET_ENV" = "production" ]; then
+            case "$GITHUB_REF" in
+              refs/tags/v*) ;;
+              *)
+                echo "::error::Production deploys run only from a release tag v* (this run is on $GITHUB_REF): publish a release, or re-run the Release workflow from its tag."
+                exit 1
+                ;;
+            esac
+          elif [ "$GITHUB_REF" != "refs/heads/main" ]; then
+            echo "::error::Staging deploys run only from main (this run is on $GITHUB_REF); the GCP side refuses other refs too."
             exit 1
           fi
           missing=""
@@ -173,6 +169,10 @@ jobs:
           done
           if [ -n "$missing" ]; then
             echo "::error::Variables missing in the GitHub environment '$TARGET_ENV':$missing — run scripts/infra/gcp-setup.sh (infra/README.md)."
+            exit 1
+          fi
+          if [ "$TARGET_ENV" = "production" ] && ! jq -e '(.GCP_PROMOTE_FROM_REGISTRY // "") != ""' <<<"$ENVIRONMENT_VARS" >/dev/null; then
+            echo "::error::GCP_PROMOTE_FROM_REGISTRY is missing in the GitHub environment 'production': it names the staging registry the API image is promoted from (infra/README.md)."
             exit 1
           fi
           marker="$(jq -r '.GCP_ENVIRONMENT' <<<"$ENVIRONMENT_VARS")"
@@ -195,10 +195,10 @@ jobs:
       - name: Resolve images and origins
         run: scripts/deploy/resolve-images-and-origins.sh
 
-      - name: Build and push API image
-        run: |
-          docker build -f apps/api/Dockerfile --build-arg "APP_VERSION=$APP_VERSION" -t "$API_IMAGE" .
-          docker push "$API_IMAGE"
+      # Staging builds the API image, production promotes the one staging ran (same digest). Either way API_IMAGE
+      # is pinned by digest from here on.
+      - name: Provide the API image
+        run: scripts/deploy/provide-api-image.sh
 
       - name: Collect secrets that have a value
         run: scripts/deploy/collect-secrets.sh
@@ -271,6 +271,11 @@ jobs:
 
       - name: Post-deploy smoke test (Health + Auth Capabilities + CORS + Web)
         run: scripts/deploy/post-deploy-smoke.sh
+
+      # The only image production promotes: one that passed this smoke test on staging.
+      - name: Mark the API image as proven on staging
+        if: env.TARGET_ENV == 'staging'
+        run: scripts/deploy/mark-staging-proven.sh
 
       - name: Automatic Cloud Run Traffic Rollback (on deploy or smoke failure)
         if: failure() && steps.revisions.outcome == 'success'

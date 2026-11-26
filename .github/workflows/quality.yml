@@ -47,6 +47,24 @@ jobs:
   # whose directory does not contain the scanned files: `ignorePatterns` then stops
   # applying (ADR-0019, amendment re-measuring §5) — `.oxlintrc.json` lives at the repo
   # root specifically so it is auto-discovered.
+  # Moved here from deploy.yml (ADR-0113): deploy.yml has no pull_request trigger any more, so a pull request no longer
+  # shows two skipped deploy jobs. The name is a required-check candidate (docs/ci-pipeline.md, H2-32).
+  validate-opentofu:
+    name: 'static: opentofu validate'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: opentofu/setup-opentofu@9d84900f3238fab8cd84ce47d658d25dd008be2f # v1
+        with:
+          tofu_version: "1.8.0"
+      - name: Validate infra/gcp and infra/terraform
+        run: |
+          for dir in infra/gcp infra/terraform; do
+            (cd "$dir" && tofu init -backend=false -input=false && tofu validate)
+          done
+          tofu fmt -check -recursive infra/gcp
+
   lint:
     name: 'static: lint (oxlint)'
     needs: validate-compose
@@ -322,18 +340,12 @@ jobs:
         run: pnpm --filter @steuereule/api migrate:deploy
       - name: Prisma Schema-vs-Migrations Drift Gate (zero drift between schema.prisma and migrations/)
         run: pnpm --filter @steuereule/api exec prisma migrate diff --from-schema-datasource prisma/schema.prisma --to-schema-datamodel prisma/schema.prisma --exit-code
-      - name: Cache Playwright browsers
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+      # REQ-011/ADR-0013 §7: the export acceptance/integration suites render a real PDF-Bericht through
+      # PlaywrightPdfRenderer — a genuine Chromium launch, not a stub — so this job needs the browser the e2e jobs
+      # install, through the same action (cache, apt limited to Ubuntu's archive), from the API's `playwright-core`.
+      - uses: ./.github/actions/install-chromium
         with:
-          path: ~/.cache/ms-playwright
-          key: playwright-chromium-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
-      # REQ-011/ADR-0013 §7: the export acceptance/integration suites render a real
-      # PDF-Bericht through PlaywrightPdfRenderer — a genuine Chromium launch, not a
-      # stub — so this job needs the same browser binary the cross-origin-smoke job
-      # already installs (same command, same rationale: `playwright-core`'s
-      # registered bin is `playwright-core`, not `playwright`).
-      - name: Install Playwright's Chromium (for the REQ-011 PDF export suites)
-        run: pnpm --filter @steuereule/api exec playwright-core install chromium --with-deps
+          filter: '@steuereule/api'
       - name: Integration + acceptance tests — encryption/audit + REQ-005/006/009/010/011 (ADR-0012/ADR-0013)
         run: pnpm --filter @steuereule/api test:integration --coverage
       # The DB-backed code (Prisma repositories) is only exercised here: Sonar gets this report next to the
@@ -424,6 +436,9 @@ jobs:
       - name: register-check self-test — the checker's own rules, incl. cited line ranges (#254)
         if: '!cancelled()'
         run: node --test scripts/checks/register-check.test.mjs
+      - name: release guard — the decision a production deploy waits for (ADR-0113)
+        if: '!cancelled()'
+        run: node --test scripts/release/guard.test.mjs
       - name: better-auth-version-check — api and mobile-web resolve the same better-auth (#273)
         # Reads pnpm-lock.yaml only, so it needs no install; a client/server split of better-auth
         # is a protocol mismatch the type checker cannot see.
@@ -450,6 +465,7 @@ jobs:
           node-version: 24
           # No pnpm in this job (see docs-consistency for why the cache must be off).
           package-manager-cache: false
+      - uses: ./.github/actions/apt-ubuntu-only
       - name: Install poppler (pdftotext, pdftocairo)
         run: sudo apt-get update -qq && sudo apt-get install -y -qq --no-install-recommends poppler-utils
       - name: Vermessung — felder-<jahr>.json equals what templates + spec measure

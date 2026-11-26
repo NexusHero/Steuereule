@@ -33,6 +33,10 @@ locals {
 
   github_environment_condition = join(" || ", [for env in var.github_environments : "assertion.environment == \"${env}\""])
 
+  # Which git refs may deploy (ADR-0113): staging the tip of main, production only a release tag v*. The condition is
+  # evaluated by Google on the token GitHub signed, so it holds even if a workflow file is changed.
+  github_ref_condition = var.environment == "production" ? "assertion.ref.startsWith(\"refs/tags/v\")" : "assertion.ref == \"refs/heads/main\""
+
   services = [
     "artifactregistry.googleapis.com",
     "billingbudgets.googleapis.com",
@@ -135,6 +139,18 @@ resource "google_artifact_registry_repository" "images" {
     action = "KEEP"
     most_recent_versions {
       keep_count = 5
+    }
+  }
+
+  # An image that passed a staging deploy is tagged staging-ok-<commit> and is what a release promotes to production
+  # (ADR-0113). It stays promotable for 30 days; KEEP wins over the DELETE policy below.
+  cleanup_policies {
+    id     = "keep-proven-on-staging"
+    action = "KEEP"
+    condition {
+      tag_state    = "TAGGED"
+      tag_prefixes = ["staging-ok-"]
+      newer_than   = "2592000s"
     }
   }
 
@@ -392,6 +408,15 @@ resource "google_project_iam_member" "api_connects_to_sql" {
   member  = "serviceAccount:${google_service_account.api_runtime.email}"
 }
 
+# Who else may pull from this registry. In the staging stack: the production deployer, which promotes the API image
+# staging ran (ADR-0113). Read access only; pushing stays with the deployer of this project.
+resource "google_artifact_registry_repository_iam_member" "image_readers" {
+  for_each   = toset(var.image_readers)
+  repository = google_artifact_registry_repository.images.id
+  role       = "roles/artifactregistry.reader"
+  member     = each.value
+}
+
 resource "google_project_iam_member" "deployer" {
   for_each = toset([
     "roles/run.admin",
@@ -453,7 +478,7 @@ resource "google_iam_workload_identity_pool_provider" "github" {
     "attribute.environment" = "assertion.environment"
   }
 
-  attribute_condition = "assertion.repository == \"${var.github_repository}\" && assertion.ref == \"refs/heads/main\" && (${local.github_environment_condition})"
+  attribute_condition = "assertion.repository == \"${var.github_repository}\" && ${local.github_ref_condition} && (${local.github_environment_condition})"
 
   oidc {
     issuer_uri = "https://token.actions.githubusercontent.com"

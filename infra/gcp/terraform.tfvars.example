@@ -6,3 +6,6 @@ github_environments = ["staging"]
 alert_email         = "ops@example.org"
 api_hostname        = "api.staging.example.org"
 monthly_budget_eur  = 60
+# Staging stack only: let the production deployer pull the API image that staging ran (ADR-0113).
+# The service account exists after the production stack is applied; its name is steuereule-deployer.
+# image_readers     = ["serviceAccount:steuereule-deployer@steuereule-production.iam.gserviceaccount.com"]

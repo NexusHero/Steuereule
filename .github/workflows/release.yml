@@ -1,0 +1,48 @@
+# Production deploy by release (ADR-0113). Publishing a GitHub Release for a tag vX.Y.Z runs this workflow:
+#   guard   the tag is vMAJOR.MINOR.PATCH, its commit is on main, and "Build & E2E" passed on that commit as a push run
+#   deploy  calls deploy.yml for the GitHub environment "production": the API image staging ran is promoted unchanged,
+#           the required reviewers of the environment approve, the GCP side accepts only tokens of a v* tag
+# To deploy a release again (a failed run, a rollback to an older release): Actions -> Release -> Run workflow,
+# choosing the tag as the ref. A run on a branch is refused by the guard.
+#
+# A run triggered by a tag reads this file from the tagged commit, so the guard alone does not stop someone who may
+# push a tag on a commit with a changed workflow. What holds regardless is configured on GitHub and Google, not here:
+# required reviewers and a deployment tag rule (v*) on the environment "production", a tag ruleset limiting who may
+# create v* tags, and the OpenTofu condition of the production stack (infra/gcp/main.tf). See ADR-0113.
+name: Release
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  guard:
+    name: 'release: guard (tag on main, CI green)'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          # The whole history: the guard asks whether the tagged commit is an ancestor of origin/main.
+          fetch-depth: 0
+      - name: Tag is on main and its CI run is green
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: scripts/release/guard.sh
+
+  deploy:
+    name: 'release: deploy to production'
+    needs: guard
+    permissions:
+      contents: read
+      id-token: write
+    uses: ./.github/workflows/deploy.yml
+    with:
+      environment: production
