@@ -10,15 +10,6 @@ import { pathToFileURL } from 'node:url'
 
 export const ALLOWLIST = [
   {
-    // query-string 7 (via @react-navigation) needs decode-uri-component 0.2.x; the advisory is fixed
-    // only from 0.5.1, which is ESM-only and breaks query-string (decodeComponent is not a function).
-    // The input is the app's own URL query in the browser: a client-side CPU cost, no server path.
-    name: 'decode-uri-component 0.2 via react-navigation',
-    pattern: /^apps__mobile-web>@react-navigation\/native>@react-navigation\/core>query-string>decode-uri-component$/,
-    reason: 'No fixed version in the 0.2 line; 0.5.x breaks query-string. Revisit when react-navigation moves to a newer query-string.',
-    expires: '2027-02-28',
-  },
-  {
     // better-auth declares vitest as an optional peer; the workspace's own dev dependency satisfies
     // it, so the audit sees it. `pnpm install --prod` (the API image) does not install it.
     name: 'vitest as optional peer of better-auth',

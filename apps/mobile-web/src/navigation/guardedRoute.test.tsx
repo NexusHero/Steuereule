@@ -63,3 +63,24 @@ describe.each([
     expect(ref.getCurrentRoute()?.name).toBe('Home')
   })
 })
+
+describe('guardedStackRoute', () => {
+  it('unmounts the route a later push buries, and mounts it again when the top one leaves', async () => {
+    render(
+      <SafeAreaProvider initialMetrics={{ frame: { x: 0, y: 0, width: 390, height: 844 }, insets: { top: 0, left: 0, right: 0, bottom: 0 } }}>
+        <NavigationContainer ref={ref}>
+          <Stack.Navigator screenLayout={guardedStackRoute}>
+            <Stack.Screen name="Home" component={Home} />
+            <Stack.Screen name="Printout" component={() => <Text>Zweite</Text>} />
+          </Stack.Navigator>
+        </NavigationContainer>
+      </SafeAreaProvider>,
+    )
+    await screen.findByText('Start')
+    act(() => ref.navigate('Printout'))
+    await screen.findByText('Zweite')
+    expect(screen.queryByText('Start')).toBeNull()
+    act(() => ref.goBack())
+    await screen.findByText('Start')
+  })
+})
