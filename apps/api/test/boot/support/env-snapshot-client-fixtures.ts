@@ -105,6 +105,10 @@ export interface ClientFixtures {
   withEnvTsconfigPath: string
   /** Same, for `withoutEnvEntryPath`. */
   withoutEnvTsconfigPath: string
+  /** Compiles the with-env src copy (real and ordering-broken entry points alike) with `tsc`, the way `pnpm build`
+   *  does, and returns the emitted entry points for `node`. Lazy and cached: only the case that needs the compiled
+   *  path pays for the compile (#314). */
+  compileWithEnv(): { entryPath: string; brokenOrderingEntryPath: string }
   /** Removes every file this function created and restores whatever `apps/api/.env`
    *  looked like beforehand (present, with its original bytes, or absent). Always
    *  call from `afterAll`, even if `build()` itself threw partway through — see the
@@ -367,6 +371,7 @@ export function buildClientFixtures(): ClientFixtures {
       withoutEnvEntryPath: path.join(withoutEnvDir, 'src', 'main.ts'),
       withEnvTsconfigPath: path.join(withEnvDir, 'tsconfig.json'),
       withoutEnvTsconfigPath: path.join(withoutEnvDir, 'tsconfig.json'),
+      compileWithEnv: () => compileWithEnvOnce(withEnvDir),
       cleanup: runCleanup,
     }
   } catch (error) {
@@ -375,7 +380,37 @@ export function buildClientFixtures(): ClientFixtures {
   }
 }
 
+let compiled: { entryPath: string; brokenOrderingEntryPath: string } | undefined
+
+/** `tsc` over the fixture's own src copy, with the same flattened compilerOptions the fixture's tsconfig.json
+ *  carries (so it is faithful to `apps/api/tsconfig.json` for as long as `assertTsconfigIsFlattenable` holds),
+ *  emitting to `<fixture>/dist`. Throws with tsc's own output when it does not compile. */
+function compileWithEnvOnce(withEnvDir: string): { entryPath: string; brokenOrderingEntryPath: string } {
+  if (compiled) return compiled
+  const compileConfig = path.join(withEnvDir, 'tsconfig.compile.json')
+  writeFileSync(
+    compileConfig,
+    JSON.stringify({
+      extends: './tsconfig.json',
+      compilerOptions: { rootDir: 'src', outDir: 'dist', noEmit: false },
+      include: ['src'],
+    }),
+  )
+  try {
+    execFileSync(path.join(apiRoot, 'node_modules', '.bin', 'tsc'), ['-p', compileConfig], { cwd: withEnvDir, stdio: 'pipe' })
+  } catch (error) {
+    const out = error as { stdout?: Buffer }
+    throw new Error(`env-snapshot-client-fixtures: tsc failed on the fixture copy:\n${out.stdout?.toString() ?? String(error)}`, { cause: error })
+  }
+  compiled = {
+    entryPath: path.join(withEnvDir, 'dist', 'main.js'),
+    brokenOrderingEntryPath: path.join(withEnvDir, 'dist', 'main-broken-ordering.js'),
+  }
+  return compiled
+}
+
 function cleanup(hadRealEnv: boolean): void {
+  compiled = undefined
   rmSync(fixtureRoot, { recursive: true, force: true })
   rmSync(envPath, { force: true })
   if (hadRealEnv) {
