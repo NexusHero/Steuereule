@@ -128,3 +128,41 @@ The version of this change first pushed to `steuereule#299` justified `freshAge:
 at all), and its "nothing here loses protection it actually had" omitted `/unlink-account`
 entirely. Musti's review caught both; this ADR is the corrected record — not a comment in
 `better-auth.ts` that the next reader would only find by already being in that file.
+
+## Amendment (#303) — the better-auth routes the product calls, and the gate that visits each
+
+The ADR's own point is that a completeness claim must be searched, not recalled. #303 asked the same question of
+the *gates*: which better-auth routes does the product depend on, and does any gate visit them? The list below comes
+from `grep -rnE "authClient\.|client\.(\$fetch|passkey|signIn)|/api/auth/" apps/mobile-web/src` (tests excluded).
+"Gate" means a script that sends the request to the real booted stack, as the app does; a route that a gate only
+intercepts with `page.route` to simulate a failure is marked *intercepted only*.
+
+| Route (client call) | Caller in `apps/mobile-web/src` | Gate that sends it to the real stack |
+|---|---|---|
+| `POST /sign-up/email` (`signUp.email`) | `screens/RegistrationScreen.tsx` | `e2e/cross-origin/run.mjs` and many flow gates |
+| `POST /sign-in/email` (`signIn.email`) | `screens/LoginScreen.tsx` | `e2e/cross-origin/run.mjs` and many flow gates |
+| `POST /sign-out` (`signOut`) | `screens/profile/SignOutSection.tsx` | `e2e/cross-origin/run.mjs` |
+| `GET /get-session` (`useSession`) | `auth/useAccountSession.ts` | `e2e/cross-origin/run.mjs`, `e2e/session/return-visit.mjs`, `e2e/visibility/visibility-refetch.mjs` |
+| `GET /list-sessions` (`listSessions`) | `screens/device/useDeviceSessions.ts` | `e2e/device/device-authorization.mjs` (a cross-origin request carrying the web `Origin`; asserts the session list and its fields) and `e2e/account/beta-account-states.mjs` |
+| `POST /revoke-session` (`revokeSession`) | `screens/device/useDeviceSessions.ts` | `e2e/account/account-security.mjs` |
+| `POST /request-password-reset`, `POST /reset-password` | `screens/login/ForgotPasswordForm.tsx`, `screens/PasswordResetScreen.tsx` | `e2e/account/account-security.mjs` |
+| `POST /two-factor/enable`, `/verify-totp`, `/verify-backup-code`, `/disable` | `auth/useTwoFactor.ts` | `e2e/account/account-security.mjs` |
+| `POST /sign-in/social` (`signIn.social`) | `auth/useSocialSignIn.ts` | `e2e/account/beta-account-states.mjs` (Google host intercepted); `e2e/google-auth/google-login.mjs` is in no CI job yet (`docs/process/script-inventory.md`) |
+| `POST /verify-password` | `auth/useStepUp.ts`, `screens/oauth/OauthConsentScreen.tsx` | `e2e/account/beta-account-states.mjs`, `e2e/harness/api-account.mjs` |
+| `/passkey/*` (`passkey.addPasskey`, `/passkey/delete-passkey`, `signIn.passkey`, list) | `auth/usePasskey.ts`, `auth/StepUpOptions.tsx` | `e2e/account/beta-account-states.mjs` for the list route is *intercepted only* (failure and retry); the register and authenticate ceremonies need a WebAuthn authenticator and have **no gate** |
+| `POST /send-verification-email` | `screens/shared/EmailVerificationBanner.tsx` | **none** |
+| `GET /list-accounts` | `auth/StepUpOptions.tsx` | **none** |
+| `POST /oauth2/consent` | `screens/oauth/OauthConsentScreen.tsx` | **none** |
+
+Gaps named, not fixed here: `send-verification-email`, `list-accounts`, `oauth2/consent` and the passkey
+ceremonies. Per the exhaustive search above only `/list-sessions` and `/unlink-account` sit behind the freshness
+middleware; the product calls the first and not the second, so the freshness class itself is covered by the
+`list-sessions` row. The gaps above are other better-auth routes with their own middleware, which is #303's general
+point.
+
+**Not yet proven (to be done in CI):** the mutant proof #303 asks for. The gate must go red when `session.freshAge`
+is restored to better-auth's default and the session is aged past it. `device-authorization.mjs` asserts a real
+session list, but no run has yet shown it failing under that mutant, and by ADR-0021 the check does not count until
+it has. The run is a CI change on a throwaway branch (set `freshAge` back, age the `Session.createdAt`/`updatedAt` row
+past 24h before the call, expect red), not something this amendment claims.
+
