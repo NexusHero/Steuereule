@@ -4,6 +4,8 @@
 # a fresh, world-writable folder outside the checkout instead of the repo itself
 # (zaproxy:stable of 2026-11-17 failed with „Permission denied: /zap/wrk/zap.yaml“).
 
+set -e
+
 ZAP_WRK="$RUNNER_TEMP/zap-wrk"
 mkdir -p "$ZAP_WRK"
 cp apps/api/openapi.json "$ZAP_WRK/openapi.json"

@@ -131,7 +131,7 @@ run `if: always()`, so a ruleset that pins the name never waits for a job that n
   `e2e: OWASP ZAP DAST (real Docker build)`
 
 The set-up shared by the jobs is in `.github/actions/` (`setup-workspace`, `prepare-database`, `install-chromium`,
-`boot-prod-stack`); long shell steps live in `e2e/smoke/`, `e2e/prod-deploy/`, `scripts/ci/` and `scripts/deploy/`.
+`boot-prod-stack`); long shell steps live in `e2e/smoke/`, `e2e/prod-deploy/`, `scripts/ci/` and `scripts/deploy/` (the two deploy steps that run before the checkout stay inline).
 
 ## The accessibility and DAST caveat
 

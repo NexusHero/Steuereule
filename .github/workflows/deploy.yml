@@ -81,7 +81,14 @@ jobs:
             GCP_SQL_INSTANCE GCP_KEYSTORE_SQL_INSTANCE GCP_VPC_NETWORK GCP_VPC_SUBNET APP_DOMAIN EMAIL_FROM
             TRUSTED_PROXIES EXPO_PUBLIC_BETREIBER_NAME EXPO_PUBLIC_BETREIBER_ANSCHRIFT EXPO_PUBLIC_BETREIBER_EMAIL
             EXPO_PUBLIC_BETREIBER_VERTRETEN EXPO_PUBLIC_BETREIBER_USTID
-        run: scripts/deploy/find-repository-level-variables.sh
+        run: |
+          names=""
+          for name in $DEPLOY_VARIABLES; do
+            if jq -e --arg name "$name" 'has($name)' <<<"$REPOSITORY_VARS" >/dev/null; then
+              names="$names $name"
+            fi
+          done
+          echo "names=${names# }" >> "$GITHUB_OUTPUT"
 
   deploy:
     name: Deploy (Cloud Run)
@@ -148,7 +155,28 @@ jobs:
             GCP_ENVIRONMENT GCP_PROJECT_ID GCP_REGION GCP_WIF_PROVIDER GCP_DEPLOYER_SA GCP_RUNTIME_SA GCP_MIGRATE_SA GCP_WEB_SA
             GCP_SQL_INSTANCE GCP_KEYSTORE_SQL_INSTANCE GCP_VPC_NETWORK GCP_VPC_SUBNET APP_DOMAIN EMAIL_FROM
             TRUSTED_PROXIES EXPO_PUBLIC_BETREIBER_NAME EXPO_PUBLIC_BETREIBER_ANSCHRIFT EXPO_PUBLIC_BETREIBER_EMAIL
-        run: scripts/deploy/configuration-gate.sh
+        run: |
+          if [ -n "$REPOSITORY_LEVEL" ]; then
+            echo "::error::Deploy variables set at repository level: $REPOSITORY_LEVEL — move them into the GitHub environment '$TARGET_ENV' (Settings -> Environments). At repository level they silently fill in for any environment that lacks them."
+            exit 1
+          fi
+          if [ "$GITHUB_REF" != "refs/heads/main" ]; then
+            echo "::error::Deploys run only from main (this run is on $GITHUB_REF); the GCP side refuses other refs too."
+            exit 1
+          fi
+          missing=""
+          for name in $REQUIRED_VARIABLES; do
+            jq -e --arg name "$name" '(.[$name] // "") != ""' <<<"$ENVIRONMENT_VARS" >/dev/null || missing="$missing $name"
+          done
+          if [ -n "$missing" ]; then
+            echo "::error::Variables missing in the GitHub environment '$TARGET_ENV':$missing — run scripts/infra/gcp-setup.sh (infra/README.md)."
+            exit 1
+          fi
+          marker="$(jq -r '.GCP_ENVIRONMENT' <<<"$ENVIRONMENT_VARS")"
+          if [ "$marker" != "$TARGET_ENV" ]; then
+            echo "::error::GCP_ENVIRONMENT is '$marker' in the GitHub environment '$TARGET_ENV' — refusing to deploy values meant for another environment."
+            exit 1
+          fi
 
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
