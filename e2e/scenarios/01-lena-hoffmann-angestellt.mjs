@@ -85,6 +85,8 @@ export async function runScenario01(browser, webOrigin, sql) {
   const printBtnStep = page.locator('[data-testid="abgabe-zum-ausdruck"]')
   await printBtnStep.waitFor({ state: 'visible', timeout: 10_000 })
   if (await printBtnStep.isDisabled()) fail('Expected abgabe-zum-ausdruck enabled for Scenario 01')
+  // The master data are still empty here: the check must name what the printout lacks, never claim "Alles klar".
+  await page.locator('[data-testid="abgabe-ausdruck-offen"]').waitFor({ state: 'visible', timeout: 10_000 })
   await page.locator('[data-testid="abgabe-zurueck"]').click()
 
   await page.locator('[data-testid="cockpit-stammdaten"]').waitFor({ state: 'visible', timeout: 10_000 })
@@ -112,6 +114,8 @@ export async function runScenario01(browser, webOrigin, sql) {
 
   await page.locator('[data-testid="cockpit-ausdruck"]').click()
   await page.locator('[data-testid="abgabe-zum-ausdruck"]').waitFor({ state: 'visible', timeout: 10_000 })
+  // With the master data saved, nothing is missing any more.
+  await page.locator('[data-testid="abgabe-ausdruck-offen"]').waitFor({ state: 'detached', timeout: 10_000 })
   await page.locator('[data-testid="abgabe-zum-ausdruck"]').click()
   await page.locator('[data-testid="ausdruck-zurueck"]').waitFor({ state: 'visible', timeout: 10_000 })
 
