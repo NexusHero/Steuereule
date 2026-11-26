@@ -1,0 +1,42 @@
+# How long the pipeline takes and how often it is wrong, from the runs GitHub recorded over the last 28 days:
+# wall time of green pull-request runs per workflow, time to green per commit, failed pushes to main, and jobs
+# that failed and then passed on a rerun. The report is the job summary of this run. It only reads and reports;
+# scripts/ci/pipeline-health.mjs states what the flake count cannot see.
+name: Pipeline health (weekly)
+
+on:
+  schedule:
+    - cron: '30 4 * * 1'
+  workflow_dispatch:
+    inputs:
+      days:
+        description: How many days back to measure (1 to 90).
+        type: number
+        default: 28
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: pipeline-health
+  cancel-in-progress: true
+
+jobs:
+  report:
+    name: 'report: pipeline duration and flaky jobs'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - name: Set up Node
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: 24
+          # No install in this job: the script is plain Node (see quality.yml docs-consistency for the same opt-out).
+          package-manager-cache: false
+      - name: Measure and write the job summary
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          DAYS: ${{ inputs.days || 28 }}
+        run: node scripts/ci/pipeline-health.mjs --days "$DAYS" >> "$GITHUB_STEP_SUMMARY"

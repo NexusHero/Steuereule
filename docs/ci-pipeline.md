@@ -93,11 +93,12 @@ check of its own.
 |---|---|---|
 | `quality: sonarqube cloud` | SonarQube quality gate (issues, hotspots, coverage on new code) | `quality.yml` |
 
-### Nightly (not a PR gate)
+### Scheduled (not a PR gate)
 | Gate | Proves | Workflow |
 |---|---|---|
 | `AI eval (nightly)` | The owl against the real model — amounts vs. core, StBerG, sources, prompt-injection, PII, consistency, TTFT | `ai-eval-nightly.yml` |
 | `Law watch (nightly)` | Cited norms still match gesetze-im-internet.de | `law-watch.yml` |
+| `Pipeline health (weekly)` | Reports, from the recorded runs of 28 days: wall time of green pull-request runs per workflow, time to green per commit, failed pushes to main, jobs that failed and then passed on a rerun. A report in the job summary, not a gate | `pipeline-health.yml` |
 
 ## How the browser gates are split (ADR-0112)
 
