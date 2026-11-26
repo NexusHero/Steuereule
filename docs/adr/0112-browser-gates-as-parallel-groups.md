@@ -46,15 +46,17 @@ Other jobs repeated the same set-up block (pnpm, Node, install, Prisma, migratio
    choice of ADR-0105 on purpose: one red half no longer hides the other.
 5. **Shared set-up lives in composite actions** (`.github/actions/`): `setup-workspace`, `prepare-database`,
    `install-chromium`, `boot-prod-stack`. Long inline shell moved to scripts: `e2e/smoke/dsgvo-export.sh`,
-   `e2e/prod-deploy/pdf-export-smoke.sh`, `scripts/ci/zap-dast.sh` and `scripts/deploy/*.sh` (eight steps of the
+   `e2e/prod-deploy/pdf-export-smoke.sh`, `scripts/ci/zap-dast.sh` and `scripts/deploy/*.sh` (six steps of the
    deploy job). A script keeps the lines of its step in the same order, plus `set -e` where the step relied on
-   the Actions default shell.
+   the Actions default shell. Two deploy steps stay inline on purpose: the configuration gate and the variable-scope
+   check run before any checkout, so no script of the repository is there yet. `deployment-wiring.test.ts` fails on a
+   script step without a checkout before it and on a script without `set -e`.
 
 ## Consequences
 
 - **No test was dropped.** The 46 gate steps (49 commands) of the former job are the 46 gates of the list
   (command for command, with their `env`); the list check is the 47th. The group count is checked by the test
-  of point 1. The extraction of the 11 scripts was compared against the original steps line by line.
+  of point 1. The extraction of the 9 scripts was compared against the original steps line by line.
 - A pull request now uses more runner minutes (a fresh install and boot per group, a second Docker build) and
   less wall-clock time (the longest group instead of the sum).
 - Gates no longer share a process, so an order dependence between two gates would now show as a failure.

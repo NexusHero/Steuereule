@@ -388,16 +388,34 @@ describe('deployment wiring: every production value reaches the runtime (beta P1
   })
 })
 
-describe('deploy scripts (ADR-0112)', () => {
-  const workflow = read('.github/workflows/deploy.yml')
-  const referenced = [...workflow.matchAll(/^ *run: (scripts\/deploy\/[\w-]+\.sh)$/gm)].map((match) => match[1] ?? '')
+describe('scripts run by workflow steps (ADR-0112)', () => {
+  const workflows = ['ci.yml', 'deploy.yml'].map((name) => ({ name, text: read(`.github/workflows/${name}`) }))
+  /** Every `run: <path>.sh` step with the job it sits in and whether a checkout precedes it in that job. */
+  const scriptSteps = workflows.flatMap(({ name, text }) => {
+    const lines = text.split('\n')
+    return lines.flatMap((line, index) => {
+      const script = /^ *run: ((?:scripts|e2e)\/[\w./-]+\.sh)$/.exec(line)?.[1]
+      if (!script) return []
+      let start = index
+      while (start > 0 && !/^ {2}[\w-]+:$/.test(lines[start] ?? '')) start -= 1
+      const job = (lines[start] ?? '').trim()
+      const checkedOut = lines.slice(start, index).some((l) => /uses: actions\/checkout@/.test(l) || /uses: \.\/\.github\/actions\//.test(l))
+      return [{ workflow: name, job, script, checkedOut }]
+    })
+  })
 
   it('every script under scripts/deploy is run by a step of deploy.yml, and every referenced script exists', () => {
+    const referenced = scriptSteps.filter((s) => s.workflow === 'deploy.yml').map((s) => s.script)
     const onDisk = readdirSync(repoFile('scripts/deploy')).map((name) => `scripts/deploy/${name}`)
     expect([...referenced].sort()).toEqual([...onDisk].sort())
   })
 
-  it('a deploy script stops at the first failing command, as the default shell of the step did', () => {
-    for (const script of referenced) expect(read(script), script).toMatch(/^set -e$/m)
+  it('a script run by a step stops at the first failing command, as the default shell of the step did', () => {
+    expect(scriptSteps.length).toBeGreaterThan(0)
+    for (const { script } of scriptSteps) expect(read(script), script).toMatch(/^set -e/m)
+  })
+
+  it('a step that runs a script comes after the job checked the repository out (the script is in the repository)', () => {
+    for (const step of scriptSteps) expect(step.checkedOut, `${step.workflow} ${step.job}: ${step.script} runs before any checkout`).toBe(true)
   })
 })
