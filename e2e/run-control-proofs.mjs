@@ -56,6 +56,14 @@ export function applyMutation(source, { find, replace }) {
   return source.replace(find, () => replace)
 }
 
+/**
+ * Problems that mean the tree is not the mutant. The run step comes after `--apply`, so the pristine-source check
+ * of validateProofs does not hold there; what must hold is that the planted text is gone from the file.
+ */
+export function mutantProblems(proof, source) {
+  return occurrences(source, proof.mutation.find) === 0 ? [] : [`proof "${proof.id}": ${proof.mutation.file} is not mutated; run --apply and rebuild the API first`]
+}
+
 /** `killed`: the gate failed and said why. `survived`: the gate passed on the mutant. `failed-differently`: red for another reason. */
 export function verdict(status, output, expect) {
   if (status === 0) return 'survived'
@@ -69,20 +77,21 @@ export function proofMatrixEntries(config) {
 
 function main(argv) {
   const config = loadProofs()
-  const problems = validateProofs(config)
+  const mode = ['--check', '--apply', '--run'].find((flag) => argv.includes(flag))
+  const proof = mode === undefined || mode === '--check' ? undefined : config.proofs.find((p) => p.id === argv[argv.indexOf(mode) + 1])
+  if (mode === undefined || (mode !== '--check' && proof === undefined)) {
+    console.error(`usage: run-control-proofs.mjs --check | --apply <id> | --run <id>   (ids: ${config.proofs.map((p) => p.id).join(', ')})`)
+    return 2
+  }
+  // --check and --apply see the pristine source; --run sees the tree after --apply and checks that instead.
+  const problems = mode === '--run' ? mutantProblems(proof, fromRoot.read(proof.mutation.file)) : validateProofs(config)
   if (problems.length > 0) {
     for (const p of problems) console.error(`control-proofs.json: ${p}`)
     return 1
   }
-  if (argv.includes('--check')) {
+  if (mode === '--check') {
     console.log(`control-proofs.json ok: ${config.proofs.length} proof(s)`)
     return 0
-  }
-  const mode = ['--apply', '--run'].find((flag) => argv.includes(flag))
-  const proof = mode === undefined ? undefined : config.proofs.find((p) => p.id === argv[argv.indexOf(mode) + 1])
-  if (proof === undefined) {
-    console.error(`usage: run-control-proofs.mjs --check | --apply <id> | --run <id>   (ids: ${config.proofs.map((p) => p.id).join(', ')})`)
-    return 2
   }
   if (mode === '--apply') {
     const path = join(ROOT, proof.mutation.file)

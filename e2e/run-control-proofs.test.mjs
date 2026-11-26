@@ -1,7 +1,7 @@
 // node --test e2e/run-control-proofs.test.mjs
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { applyMutation, loadProofs, proofMatrixEntries, validateProofs, verdict } from './run-control-proofs.mjs'
+import { applyMutation, loadProofs, mutantProblems, proofMatrixEntries, validateProofs, verdict } from './run-control-proofs.mjs'
 
 const proof = (over = {}) => ({
   id: 'fresh-age-default',
@@ -59,4 +59,12 @@ test('each proof is one CI matrix entry that boots a stack and names its mutant'
   assert.deepEqual(proofMatrixEntries({ proofs: [proof()] }), [
     { group: 'control-proof-fresh-age-default', title: 'control proof: freshAge back to the default', stack: true, fake_ki: false, mutant: 'fresh-age-default' },
   ])
+})
+
+// The run step sees the tree AFTER --apply: the pristine-source validation must not run there (it did, and stopped
+// the first CI run before the gate started). What the run step must know is that the tree really is the mutant.
+test('before a run the tree must be the mutant: the mutation applied, not the pristine source', () => {
+  const pristine = 'a\n      freshAge: 0,\nb\n'
+  assert.deepEqual(mutantProblems(proof(), applyMutation(pristine, proof().mutation)), [])
+  assert.deepEqual(mutantProblems(proof(), pristine), ['proof "fresh-age-default": apps/api/src/auth/better-auth.ts is not mutated; run --apply and rebuild the API first'])
 })
