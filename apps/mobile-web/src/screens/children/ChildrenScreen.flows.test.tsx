@@ -62,6 +62,50 @@ describe('KinderScreen (connected)', () => {
     await waitFor(() => expect(calls).toContain('DELETE kind-1'))
   })
 
+  it('a refused delete that then goes through does not hold „Weiter“ back', async () => {
+    let deletes = 0
+    server.use(
+      http.get('*/v1/steuerjahre/2025/kinder', () => HttpResponse.json(listBody(deletes >= 2 ? [] : [LINA]))),
+      http.delete('*/v1/steuerjahre/2025/kinder/:id', () => {
+        deletes += 1
+        return deletes === 1 ? HttpResponse.json({}, { status: 503 }) : HttpResponse.json(listBody([]))
+      }),
+    )
+    const onDone = vi.fn()
+    renderConnected({ onDone })
+    fireEvent.click(await screen.findByLabelText(/Kind .* löschen/))
+    confirmAction('childDelete')
+    expect(await screen.findByTestId('kind-loeschen-fehler')).toBeTruthy()
+    fireEvent.click(screen.getByLabelText(/Kind .* löschen/))
+    confirmAction('childDelete')
+    await waitFor(() => expect(screen.queryByTestId('kind-loeschen-fehler')).toBeNull())
+
+    fireEvent.click(screen.getByTestId('kinder-weiter'))
+    await waitFor(() => expect(onDone).toHaveBeenCalledOnce())
+  })
+
+  it('a refused delete of one child still holds „Weiter“ once after another child was saved', async () => {
+    const PAUL: ChildItem = { ...LINA, id: 'kind-2', sequenceNumber: 2, firstName: 'Paul' }
+    server.use(
+      http.get('*/v1/steuerjahre/2025/kinder', () => HttpResponse.json(listBody([LINA, PAUL]))),
+      http.delete('*/v1/steuerjahre/2025/kinder/:id', () => HttpResponse.json({}, { status: 503 })),
+      http.put('*/v1/steuerjahre/2025/kinder/:id', () => HttpResponse.json(listBody([LINA, PAUL]))),
+    )
+    const onDone = vi.fn()
+    renderConnected({ onDone })
+    fireEvent.click(await screen.findByLabelText('Kind Lina löschen'))
+    confirmAction('childDelete')
+    expect(await screen.findByTestId('kind-loeschen-fehler')).toBeTruthy()
+    fireEvent.click(screen.getByLabelText('Kind Paul bearbeiten'))
+    fireEvent.change(screen.getByLabelText('Vorname'), { target: { value: 'Pauline' } })
+    fireEvent.click(screen.getByTestId('kind-speichern'))
+    await waitFor(() => expect(screen.queryByTestId('kind-speichern')).toBeNull())
+
+    fireEvent.click(screen.getByTestId('kinder-weiter'))
+    await waitFor(() => expect(screen.getByText(/Mindestens eine Eingabe wurde nicht gespeichert/)).toBeTruthy())
+    expect(onDone).not.toHaveBeenCalled()
+  })
+
   it('goes back and on through the pending-save guard', async () => {
     server.use(http.get('*/v1/steuerjahre/2025/kinder', () => HttpResponse.json(listBody([LINA]))))
     const onBack = vi.fn()
