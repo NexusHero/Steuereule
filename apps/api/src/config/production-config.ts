@@ -426,6 +426,7 @@ export const DEPLOY_VARIABLES: readonly DeployVariable[] = [
   { name: 'GCP_KEYSTORE_SQL_INSTANCE', need: 'required', purpose: 'OpenTofu output keystore_sql_connection_name' },
   { name: 'GCP_VPC_NETWORK', need: 'required', purpose: 'OpenTofu output vpc_network' },
   { name: 'GCP_VPC_SUBNET', need: 'required', purpose: 'OpenTofu output vpc_subnet' },
+  { name: 'GCP_PROMOTE_FROM_REGISTRY', need: 'optional', purpose: 'production only (required there): the staging registry the API image is promoted from, <region>-docker.pkg.dev/<staging project>/steuereule' },
   { name: 'APP_DOMAIN', need: 'required', purpose: 'domain without www; web on www., API on api.' },
   { name: 'EMAIL_FROM', need: 'required', purpose: 'sender address (EMAIL_FROM of the API)' },
   { name: 'TRUSTED_PROXIES', need: 'required', purpose: 'TRUSTED_PROXIES of the API; 169.254.0.0/16 for Cloud Run direct ingress' },

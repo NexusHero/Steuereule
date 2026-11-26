@@ -383,6 +383,101 @@ describe('deployment wiring: every production value reaches the runtime (beta P1
     expect(read('.github/workflows/ci-overview.yml')).not.toMatch(/pre-rename/)
   })
 
+  describe('ADR-0113: production is deployed by a release, with the image staging ran', () => {
+    const rawDeploy = read('.github/workflows/deploy.yml')
+    const release = read('.github/workflows/release.yml')
+    const provideImage = read('scripts/deploy/provide-api-image.sh')
+    const triggers = (yaml: string) => yaml.slice(yaml.indexOf('\non:'), yaml.indexOf('\npermissions:'))
+
+    it('deploy.yml runs on workflow_run, by hand and when called, never on a pull request', () => {
+      const on = triggers(rawDeploy)
+      expect(on).toMatch(/^ {2}workflow_run:/m)
+      expect(on).toMatch(/^ {2}workflow_dispatch:\s*$/m)
+      expect(on).toMatch(/^ {2}workflow_call:/m)
+      expect(on).not.toMatch(/pull_request/)
+      // A manual run can only deploy staging: there is no environment to choose.
+      expect(on).not.toMatch(/- production/)
+      expect(rawDeploy).not.toMatch(/^ {2}validate:/m)
+    })
+
+    it('"static: opentofu validate" is a job of quality.yml, which runs on every pull request', () => {
+      const quality = read('.github/workflows/quality.yml')
+      expect(quality).toMatch(/^ {4}name: 'static: opentofu validate'$/m)
+      expect(triggers(quality)).toMatch(/pull_request:/)
+    })
+
+    it('release.yml publishes to production only through a guard job, by calling deploy.yml', () => {
+      expect(triggers(release)).toMatch(/release:\n\s+types: \[published\]/)
+      expect(triggers(release)).toMatch(/workflow_dispatch:/)
+      expect(release).toMatch(/^ {2}guard:/m)
+      const deployJob = release.slice(release.indexOf('\n  deploy:'))
+      expect(deployJob).toMatch(/needs: guard/)
+      expect(deployJob).toMatch(/uses: \.\/\.github\/workflows\/deploy\.yml/)
+      expect(deployJob).toMatch(/environment: production/)
+      expect(deployJob).toMatch(/id-token: write/)
+      // The guard never gets a cloud identity or a write token.
+      const guardJob = release.slice(release.indexOf('\n  guard:'), release.indexOf('\n  deploy:'))
+      expect(guardJob).not.toMatch(/id-token|environment:|contents: write/)
+      expect(guardJob).toMatch(/fetch-depth: 0/)
+      // Nothing of the release (name, body, tag text) is written into a script.
+      expect(release).not.toMatch(/\$\{\{ *github\.event\.release/)
+    })
+
+    it('the configuration gate lets staging run from main and production from a v* tag only', () => {
+      expect(deployYml).toMatch(/refs\/tags\/v\*\) ;;/)
+      expect(deployYml).toMatch(/\[ "\$GITHUB_REF" != "refs\/heads\/main" \]/)
+      expect(deployYml).toMatch(/TARGET_ENV: \$\{\{ inputs\.environment \|\| 'staging' \}\}/)
+      expect(deployYml).toMatch(/environment: \$\{\{ inputs\.environment \|\| 'staging' \}\}/)
+      expect(deployYml).toMatch(/concurrency:\n\s+group: deploy-\$\{\{ inputs\.environment \|\| 'staging' \}\}\n\s+cancel-in-progress: false/)
+    })
+
+    it('production builds no API image: it promotes staging-ok-<commit>, compares digests and pins the digest', () => {
+      const promote = provideImage.slice(provideImage.indexOf('if [[ "$TARGET_ENV" == production ]]'), provideImage.indexOf('\nelse\n'))
+      const build = provideImage.slice(provideImage.indexOf('\nelse\n'))
+      expect(promote.length).toBeGreaterThan(0)
+      expect(promote).not.toMatch(/docker build\s/)
+      expect(promote).toMatch(/\$PROMOTE_FROM_REGISTRY\/api:staging-ok-\$APP_VERSION/)
+      expect(promote).toMatch(/this commit never passed a staging deploy/)
+      expect(promote).toMatch(/\[\[ "\$destination_digest" != "\$source_digest" \]\][\s\S]*?exit 1/)
+      expect(build).toMatch(/docker build -f apps\/api\/Dockerfile --build-arg "APP_VERSION=\$APP_VERSION"/)
+      expect(provideImage).toMatch(/echo "API_IMAGE=\$\{API_IMAGE%:"\$APP_VERSION"\}@\$digest" >> "\$GITHUB_ENV"/)
+      // Nothing else of the deploy builds the API image.
+      expect(rawDeploy).not.toMatch(/apps\/api\/Dockerfile/)
+      expect(deployYml.match(/docker build -f apps\/api\/Dockerfile/g)).toHaveLength(1)
+    })
+
+    it('staging marks the image it proved only after the smoke test, and production never does', () => {
+      const smoke = rawDeploy.indexOf('scripts/deploy/post-deploy-smoke.sh')
+      const mark = rawDeploy.indexOf('scripts/deploy/mark-staging-proven.sh')
+      expect(smoke).toBeGreaterThan(0)
+      expect(mark).toBeGreaterThan(smoke)
+      expect(rawDeploy.slice(mark - 120, mark)).toMatch(/if: env\.TARGET_ENV == 'staging'/)
+      const script = read('scripts/deploy/mark-staging-proven.sh')
+      expect(script).toMatch(/staging-ok-\$APP_VERSION/)
+      expect(script).toMatch(/\[\[ "\$TARGET_ENV" != staging \]\][\s\S]*?exit 1/)
+    })
+
+    it('the staging registry is a production-only variable that the gate requires there and the wizard sets', () => {
+      const variable = DEPLOY_VARIABLES.find((candidate) => candidate.name === 'GCP_PROMOTE_FROM_REGISTRY')
+      expect(variable?.need).toBe('optional')
+      expect(rawDeploy).toMatch(/PROMOTE_FROM_REGISTRY: \$\{\{ vars\.GCP_PROMOTE_FROM_REGISTRY \}\}/)
+      expect(rawDeploy).toMatch(/"\$TARGET_ENV" = "production" \] && ! jq -e '\(\.GCP_PROMOTE_FROM_REGISTRY/)
+      const production = wizard.slice(wizard.indexOf('if [[ "$GH_ENVIRONMENT" == production ]]; then\n  # Production deploys the API image'))
+      expect(production).toMatch(/set_var GCP_PROMOTE_FROM_REGISTRY /)
+      expect(wizard).toMatch(/-f name="\$POLICY_NAME" -f type="\$POLICY_TYPE"/)
+      expect(wizard).toMatch(/POLICY_NAME='v\*'; POLICY_TYPE=tag/)
+    })
+
+    it('OpenTofu: production accepts tokens of v* tags only, staging those of main, and the registry can admit readers', () => {
+      expect(mainTf).toMatch(/var\.environment == "production" \? "assertion\.ref\.startsWith\(\\"refs\/tags\/v\\"\)" : "assertion\.ref == \\"refs\/heads\/main\\""/)
+      expect(mainTf).toMatch(/attribute_condition = "assertion\.repository == [^\n]*\$\{local\.github_ref_condition\}/)
+      expect(mainTf).not.toMatch(/attribute_condition = [^\n]*refs\/heads\/main/)
+      expect(mainTf).toMatch(/resource "google_artifact_registry_repository_iam_member" "image_readers" \{[\s\S]*?roles\/artifactregistry\.reader/)
+      expect(variablesTf).toMatch(/variable "image_readers" \{[\s\S]*?default\s+= \[\]/)
+      expect(mainTf).toMatch(/tag_prefixes = \["staging-ok-"\]/)
+    })
+  })
+
   it('H2-35: the nightly evaluation skips its job until enabled, and fails rather than passing without its key', () => {
     const nightly = read('.github/workflows/ai-eval-nightly.yml')
     expect(nightly).toMatch(/^ {4}if: github\.event_name == 'workflow_dispatch' \|\| vars\.AI_EVAL_ENABLED == 'true'$/m)
@@ -392,7 +487,7 @@ describe('deployment wiring: every production value reaches the runtime (beta P1
 })
 
 describe('scripts run by workflow steps (ADR-0112)', () => {
-  const workflows = ['ci.yml', 'deploy.yml'].map((name) => ({ name, text: read(`.github/workflows/${name}`) }))
+  const workflows = ['ci.yml', 'deploy.yml', 'release.yml'].map((name) => ({ name, text: read(`.github/workflows/${name}`) }))
   /** Every `run: <path>.sh` step with the job it sits in and whether a checkout precedes it in that job. */
   const scriptSteps = workflows.flatMap(({ name, text }) => {
     const lines = text.split('\n')
