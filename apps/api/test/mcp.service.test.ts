@@ -619,6 +619,19 @@ describe('McpService (ADR-0052 §3 / §5 / §8 / §12)', () => {
       expect(JSON.parse(getText(await client.callTool({ name: 'wechselkurs', arguments: { taxYear: 1999 } }))).ok).toBe(false)
     })
 
+    it('wechselkurs names the BMF monthly rate of a month, as printed and as the field takes it', async () => {
+      const client = await connectClient()
+      expect(JSON.parse(getText(await client.callTool({ name: 'wechselkurs', arguments: { taxYear: 2025, monat: '2025-03' } })))).toMatchObject({
+        ok: true,
+        art: 'amtlich',
+        chfJeEur: 0.9548,
+        eurJeChf: 1.0473,
+        eintragen: { 'chLohnausweis.wechselkurs': '1.0473', 'chLohnausweis.wechselkursMonat': '2025-03' },
+      })
+      expect(JSON.parse(getText(await client.callTool({ name: 'wechselkurs', arguments: { taxYear: 2025, monat: '2024-03' } }))).ok).toBe(false)
+      expect(JSON.parse(getText(await client.callTool({ name: 'wechselkurs', arguments: { taxYear: 2026, monat: '2026-12' } }))).ok).toBe(false)
+    })
+
     it('feld_finden finds a field by a word of its description, never the confession', async () => {
       const client = await connectClient()
       const hits = JSON.parse(getText(await client.callTool({ name: 'feld_finden', arguments: { stichwort: 'Krankentaggeld' } }))).treffer
