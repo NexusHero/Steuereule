@@ -55,7 +55,7 @@ curl --fail --silent --show-error -c "$JAR" -b "$JAR" \
 http_status=$(curl --silent --show-error -b "$JAR" -o /tmp/prod-deploy-pdf-smoke.pdf \
   -D /tmp/prod-deploy-pdf-headers.txt -w '%{http_code}' \
   "http://localhost:3000/v1/account/export?format=pdf")
-if [ "$http_status" != "200" ]; then
+if [[ "$http_status" != "200" ]]; then
   echo "::error::GET /v1/account/export?format=pdf (real container) returned HTTP $http_status, expected 200 — the export never produced a document. Chromium failing to launch or render inside this image is the first thing to check (see the api container's own PlaywrightPdfRenderer log line, printed by the Container logs step below)."
   echo "First 400 bytes of the body actually returned:"
   head -c 400 /tmp/prod-deploy-pdf-smoke.pdf | cat -v
