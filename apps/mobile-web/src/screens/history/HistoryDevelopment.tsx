@@ -218,6 +218,8 @@ function Kpis({ data, metric, person, onPick }: { readonly data: YearHistoryResp
   const { t: tr } = useTranslation(APP_NS)
   const entry = kpiYear(data.years, person)
   if (entry === null) return null
+  // „Wir beide“ only means something when there is a second person; a single filer sees no person suffix.
+  const twoPeople = data.years.some((y) => y.persons.includes('B'))
   const open = tr('verlauf.nochOffenKurz')
   const tiles: { m: HistoryMetric; who: HistoryPerson; value: string; figure: HistoryFigureDto | null | undefined; series: (HistoryFigureDto | null | undefined)[] }[] = [
     { m: 'erstattung', who: 'beide', figure: entry.erstattung.amount, value: signedFigureText(entry.erstattung.amount, open), series: data.years.map((y) => y.erstattung.amount) },
@@ -233,7 +235,9 @@ function Kpis({ data, metric, person, onPick }: { readonly data: YearHistoryResp
         const delta = tile.figure?.delta
         return (
           <Pressable key={tile.m} accessibilityRole="button" accessibilityState={{ selected: active }} onPress={() => onPick(tile.m)} style={[s.kpi, active ? s.kpiActive : null]} testID={`verlauf-kpi-${tile.m}`}>
-            <Text style={s.muted}>{tr('verlauf.kpi.label', { kennzahl: tr(`verlauf.kennzahl.${tile.m}.label`), jahr: entry.year, person: tr(`verlauf.person.${tile.who}`) })}</Text>
+            <Text style={s.muted}>{twoPeople
+                ? tr('verlauf.kpi.label', { kennzahl: tr(`verlauf.kennzahl.${tile.m}.label`), jahr: entry.year, person: tr(`verlauf.person.${tile.who}`) })
+                : tr('verlauf.kpi.labelEinzeln', { kennzahl: tr(`verlauf.kennzahl.${tile.m}.label`), jahr: entry.year })}</Text>
             <Text style={s.kpiValue}>{tile.value}</Text>
             {points !== '' ? (
               <Svg width="100%" height={22} viewBox="0 0 100 22" preserveAspectRatio="none" accessibilityElementsHidden importantForAccessibility="no-hide-descendants">

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Pressable, ScrollView, View, Text, type TextStyle, type ViewStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import type { TFunction } from 'i18next'
-import { Button, useBreakpoint, useTheme, type UiTheme } from '@steuereule/ui'
+import { Button, FLOW_CONTENT_MAX_WIDTH, NARROW_CONTENT_MAX_WIDTH, useBreakpoint, useTheme, type UiTheme } from '@steuereule/ui'
 import { formatEuro, formatEuroRange, type Answers } from '@steuereule/core'
 import {
   useInterviewControllerGetInterview,
@@ -190,6 +190,8 @@ function StepCount({ step, answers, facts }: { readonly step: StromStep; readonl
   const { t: tr } = useTranslation(APP_NS)
   const options = useStromOptions()
   const position = stepPosition(step, answers, facts, options)
+  // The first page decides the path: before it is answered the total is a guess („1 von 1“), so no count yet.
+  if (step.kind === 'basis') return <View />
   if (position === null) return <Text style={{ ...t.type.metaLarge, color: t.color.tinte2 }} numberOfLines={1}>{tr('strom.fertigMarke')}</Text>
   return (
     <Text style={{ ...t.type.metaLarge, color: t.color.tinte2 }} numberOfLines={1} testID="strom-position">
@@ -200,8 +202,21 @@ function StepCount({ step, answers, facts }: { readonly step: StromStep; readonl
 
 function StepBar({ step, answers, facts, onPause }: { readonly step: StromStep; readonly answers: Answers; readonly facts: TileFacts | null; readonly onPause: () => void }) {
   const t = useTheme()
+  const bp = useBreakpoint()
+  // Same centred column as the masks below it and as the other steps' header, not the page edges.
   return (
-    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: t.space.s4, paddingTop: t.space.s2 }}>
+    <View
+      style={{
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        alignSelf: 'center',
+        width: '100%',
+        maxWidth: bp === 's' ? NARROW_CONTENT_MAX_WIDTH : FLOW_CONTENT_MAX_WIDTH,
+        paddingHorizontal: t.space.s5,
+        paddingTop: t.space.s2,
+      }}
+    >
       <StepCount step={step} answers={answers} facts={facts} />
       <PauseLink onPress={onPause} />
     </View>

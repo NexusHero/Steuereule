@@ -44,7 +44,7 @@ describe('the legal pages name the operator', () => {
   it('says honestly that the operator is not configured yet instead of inventing one', () => {
     expect(textOf(legalNotice(null))).toContain('noch nicht hinterlegt')
     expect(textOf(privacy(null))).toContain('noch nicht hinterlegt')
-    expect(textOf(terms(null))).toContain('der im Impressum genannte Anbieter')
+    expect(textOf(terms(null))).toContain('dem im Impressum genannten Anbieter')
   })
 
   it('names the controller in one line in the privacy policy and the provider in the terms', () => {

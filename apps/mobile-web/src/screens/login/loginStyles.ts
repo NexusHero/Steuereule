@@ -27,6 +27,7 @@ export function makeLoginStyles(t: UiTheme) {
     padding: t.space.s4,
     marginBottom: t.space.s4,
   }
+  const successBanner: ViewStyle = { ...outageBanner, backgroundColor: t.color.okWeich, borderColor: t.color.ok }
   const outageHeading: TextStyle = { ...t.type.button, color: t.color.tinte, marginBottom: t.space.s1 }
   const outageBody: TextStyle = { ...t.type.small, color: t.color.tinte2 }
 
@@ -42,6 +43,7 @@ export function makeLoginStyles(t: UiTheme) {
     submittingLabel,
     cta,
     outageBanner,
+    successBanner,
     outageHeading,
     outageBody,
   }

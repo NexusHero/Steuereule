@@ -1104,6 +1104,7 @@
       "einer": "Vorschlag aus deiner Postleitzahl. Vergleich ihn mit deinem letzten Steuerbescheid.",
       "mehrere": "Deine Postleitzahl teilen sich mehrere Finanzämter. Welches zuständig ist, steht auf deinem letzten Steuerbescheid."
     },
+    "datumUngueltig": "Das ist kein gültiges Datum. Bitte als TT.MM.JJJJ eintragen.",
     "ibanPruefung": {
       "incomplete": "Die IBAN ist noch nicht vollständig.",
       "valid": "Die IBAN ist gültig.",
@@ -1516,6 +1517,7 @@
     },
     "feld": {
       "placeholder": "Ganzzahlige Euro",
+      "placeholderCent": "Euro mit Cent, z. B. 123,45",
       "unklar": "Kann ich nicht lesen"
     },
     "zustand": {
@@ -3600,7 +3602,8 @@
     },
     "hinweisHaushalt": "Erstattung und Steuerquote gibt es nur gemeinsam. Angezeigt: Wir beide.",
     "kpi": {
-      "label": "{{kennzahl}} {{jahr}} · {{person}}"
+      "label": "{{kennzahl}} {{jahr}} · {{person}}",
+      "labelEinzeln": "{{kennzahl}} {{jahr}}"
     },
     "chart": {
       "a11y": "{{titel}}, Jahre {{zeitraum}}. Die Zahlen stehen in der Tabelle unter dem Diagramm.",

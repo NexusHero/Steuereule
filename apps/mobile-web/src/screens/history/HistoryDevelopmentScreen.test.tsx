@@ -223,6 +223,19 @@ describe('HistoryDevelopmentScreen — group tabs (ADR-0099 §3, §7)', () => {
 describe('HistoryDevelopmentScreen — tablet and desktop', () => {
   beforeEach(() => setViewportWidth(1280))
 
+  it('names no person on the KPI tiles when the household is one person', async () => {
+    server.use(
+      http.get('*/v1/verlauf', () =>
+        HttpResponse.json({ ...HISTORY_RESPONSE, years: HISTORY_RESPONSE.years.map((y) => ({ ...y, persons: ['A'] })) }),
+      ),
+    )
+    renderDevelopment()
+    await screen.findByTestId('verlauf-kpi-erstattung')
+    expect(text('verlauf-kpi-erstattung')).toContain('Erstattung 2025')
+    expect(text('verlauf-kpi-erstattung')).not.toContain('Wir beide')
+    expect(text('verlauf-kpi-netto')).not.toContain('Wir beide')
+  })
+
   it('shows the KPI tiles for the latest year with a value, and the person toggle in the header', async () => {
     renderDevelopment()
     await screen.findByTestId('verlauf-kpi-erstattung')

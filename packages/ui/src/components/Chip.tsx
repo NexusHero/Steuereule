@@ -28,6 +28,8 @@ export function Chip({ variant = 'standard', active = false, onPress, style, chi
 
   const container: ViewStyle = {
     alignSelf: 'flex-start',
+    // A long label wraps inside the chip instead of running past the screen edge.
+    maxWidth: '100%',
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
@@ -40,7 +42,7 @@ export function Chip({ variant = 'standard', active = false, onPress, style, chi
     borderColor: active ? t.color.tinte : variant === 'pro' ? t.color.nacht : t.color.tinte2,
     borderRadius: t.radius.pille,
   }
-  const label: TextStyle = { fontSize: t.size.s, fontWeight: t.weight.fett, color: fg }
+  const label: TextStyle = { fontSize: t.size.s, fontWeight: t.weight.fett, color: fg, flexShrink: 1 }
 
   return (
     <Pressable

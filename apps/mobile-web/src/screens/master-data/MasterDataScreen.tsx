@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
 import { Button, Card, Chip, DateInput, Feld, Input, Option, useBreakpoint, useTheme, type InputAutoComplete } from '@steuereule/ui'
 import {
-  bankNameForIban, checkIban, suggestTaxOffices, formatGermanDate, formatIban, MARITAL_STATUSES, RELIGION_KEYS } from '@steuereule/core'
+  bankNameForIban, checkIban, suggestTaxOffices, formatGermanDate, formatIban, toIsoDate, MARITAL_STATUSES, RELIGION_KEYS } from '@steuereule/core'
 import {
   getLinkControllerGetQueryKey,
   useLinkControllerGet,
@@ -131,6 +131,11 @@ export function MasterDataScreen({ onBack, taxYear, onRecordPartner }: MasterDat
         {...(field === 'geburtsdatum' ? { autoComplete: 'bday' as const } : {})}
         testID={`stammdaten-${field}`}
       />
+      {form[field].trim().length >= 8 && toIsoDate(form[field].trim()) === null ? (
+        <Text style={styles.errorNote} accessibilityLiveRegion="polite" testID={`stammdaten-${field}-ungueltig`}>
+          {t('stammdaten.datumUngueltig')}
+        </Text>
+      ) : null}
     </Feld>
   )
 

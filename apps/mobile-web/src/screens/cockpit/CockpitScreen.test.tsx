@@ -9,6 +9,8 @@ import { focusManager } from '@tanstack/react-query'
 import { http, HttpResponse } from 'msw'
 import { CockpitScreen } from './CockpitScreen'
 import type { TileDefinition } from './tiles'
+import type { StromStep } from '../strom/stromPlan'
+import { STROM_TOPICS } from '@steuereule/core'
 import { server } from '../../test-msw-server'
 import type { CockpitSummaryDto, InterviewStateDto } from '@steuereule/api-client'
 import type { FunnelPath } from '../funnel/KontoWandScreen'
@@ -83,6 +85,7 @@ function renderCockpit(opts: {
   onOpenTile?: (tile: TileDefinition, revisit: boolean) => void
   onYearChange?: (year: number) => void
   onOpenMasterData?: () => void
+  onOpenStrom?: (step: StromStep) => void
   taxYear?: number
 } = {}) {
   return renderWithQuery(
@@ -100,6 +103,7 @@ function renderCockpit(opts: {
       {...(opts.onOpenTile ? { onOpenTile: opts.onOpenTile } : {})}
       {...(opts.onYearChange ? { onYearChange: opts.onYearChange } : {})}
       {...(opts.onOpenMasterData ? { onOpenMasterData: opts.onOpenMasterData } : {})}
+      {...(opts.onOpenStrom ? { onOpenStrom: opts.onOpenStrom } : {})}
     />,
     { language: opts.lng ?? 'de' },
   )
@@ -531,6 +535,35 @@ describe('CockpitScreen — Kinder & Eulen-Modus entries', () => {
 
       fireEvent.click(screen.getByTestId('cockpit-kachel-lebenslagen'))
       expect(onOpenTile).toHaveBeenCalledWith(expect.objectContaining({ id: 'lebenslagen' }), true)
+    })
+
+    it('points the next step at the missing master data, not at an Abgabe that would stay locked', async () => {
+      mockCockpit(null)
+      mockInterview({
+        job: 'Rente', ausland: 'Nein', kinder: 'Nein', familienstand: 'Ledig', einkuenfte: 'Nein', spenden: 'Nein', 'kv-pv': 'Nein', riester: 'Nein',
+        ...Object.fromEntries(STROM_TOPICS.map((topic) => [topic.id, 'Nein'])),
+      })
+      server.use(
+        http.get('*/v1/stammdaten', () => HttpResponse.json({ missing: ['strasse', 'iban'], familienstand: 'ledig' })),
+        http.get(`*/v1/steuerjahre/${TAX_YEAR}/rente`, () =>
+          HttpResponse.json({
+            kind: 'GesetzlicheRente',
+            jahresbetrag: { kind: 'erfasst', value: 18000 },
+            rentenbeginnJahr: { kind: 'erfasst', value: 2020 },
+            alterBeiRentenbeginn: { kind: 'offen' },
+            items: [],
+            status: { kind: 'bestimmt', einnahmen: 14400, vorsorgeaufwand: 0, anrechnung: 0 },
+          }),
+        ),
+      )
+      const onOpenMasterData = vi.fn()
+      renderCockpit({ isSignedIn: true, onOpenTile: vi.fn(), onOpenSubmission: vi.fn(), onOpenMasterData, onOpenStrom: vi.fn() })
+
+      await waitFor(() => expect(screen.getByTestId('cockpit-weiter').textContent).toContain('2 fehlen'))
+      expect(screen.getByTestId('cockpit-weiter').textContent).not.toContain('Abgabe vorbereiten')
+      await act(async () => {})
+      fireEvent.click(screen.getByTestId('cockpit-weiter'))
+      expect(onOpenMasterData).toHaveBeenCalled()
     })
 
     it('renders tiles in empty state too and points cockpit-weiter to Abgabe vorbereiten when all path tiles are erledigt', async () => {

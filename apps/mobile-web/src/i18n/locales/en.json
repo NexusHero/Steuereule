@@ -1104,6 +1104,7 @@
       "einer": "Suggested from your postcode. Compare it with your last tax assessment.",
       "mehrere": "Several tax offices share your postcode. Your last tax assessment names the one responsible."
     },
+    "datumUngueltig": "That is not a valid date. Please enter it as DD.MM.YYYY.",
     "ibanPruefung": {
       "incomplete": "The IBAN is not complete yet.",
       "valid": "The IBAN is valid.",
@@ -1516,6 +1517,7 @@
     },
     "feld": {
       "placeholder": "Whole euros",
+      "placeholderCent": "Euro and cents, e.g. 123.45",
       "unklar": "I cannot read it"
     },
     "zustand": {
@@ -3600,7 +3602,8 @@
     },
     "hinweisHaushalt": "Refund and tax rate exist only together. Shown: both of us.",
     "kpi": {
-      "label": "{{kennzahl}} {{jahr}} · {{person}}"
+      "label": "{{kennzahl}} {{jahr}} · {{person}}",
+      "labelEinzeln": "{{kennzahl}} {{jahr}}"
     },
     "chart": {
       "a11y": "{{titel}}, years {{zeitraum}}. The numbers are in the table below the chart.",
