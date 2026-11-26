@@ -340,18 +340,12 @@ jobs:
         run: pnpm --filter @steuereule/api migrate:deploy
       - name: Prisma Schema-vs-Migrations Drift Gate (zero drift between schema.prisma and migrations/)
         run: pnpm --filter @steuereule/api exec prisma migrate diff --from-schema-datasource prisma/schema.prisma --to-schema-datamodel prisma/schema.prisma --exit-code
-      - name: Cache Playwright browsers
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+      # REQ-011/ADR-0013 §7: the export acceptance/integration suites render a real PDF-Bericht through
+      # PlaywrightPdfRenderer — a genuine Chromium launch, not a stub — so this job needs the browser the e2e jobs
+      # install, through the same action (cache, apt limited to Ubuntu's archive), from the API's `playwright-core`.
+      - uses: ./.github/actions/install-chromium
         with:
-          path: ~/.cache/ms-playwright
-          key: playwright-chromium-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
-      # REQ-011/ADR-0013 §7: the export acceptance/integration suites render a real
-      # PDF-Bericht through PlaywrightPdfRenderer — a genuine Chromium launch, not a
-      # stub — so this job needs the same browser binary the cross-origin-smoke job
-      # already installs (same command, same rationale: `playwright-core`'s
-      # registered bin is `playwright-core`, not `playwright`).
-      - name: Install Playwright's Chromium (for the REQ-011 PDF export suites)
-        run: pnpm --filter @steuereule/api exec playwright-core install chromium --with-deps
+          filter: '@steuereule/api'
       - name: Integration + acceptance tests — encryption/audit + REQ-005/006/009/010/011 (ADR-0012/ADR-0013)
         run: pnpm --filter @steuereule/api test:integration --coverage
       # The DB-backed code (Prisma repositories) is only exercised here: Sonar gets this report next to the
@@ -471,6 +465,7 @@ jobs:
           node-version: 24
           # No pnpm in this job (see docs-consistency for why the cache must be off).
           package-manager-cache: false
+      - uses: ./.github/actions/apt-ubuntu-only
       - name: Install poppler (pdftotext, pdftocairo)
         run: sudo apt-get update -qq && sudo apt-get install -y -qq --no-install-recommends poppler-utils
       - name: Vermessung — felder-<jahr>.json equals what templates + spec measure

@@ -1,0 +1,23 @@
+name: Keep apt to Ubuntu's own archive
+description: >-
+  `apt-get update` reads every archive configured on the runner image and fails as a whole when one of them is
+  unreachable or unsigned. The image ships third-party archives our jobs need nothing from: packages.microsoft.com
+  answered 403 on #589 and failed a gate group before any gate ran. Everything we install with apt (Chromium's
+  libraries through `playwright-core install --with-deps`, poppler) comes from Ubuntu's own archive, so the other
+  source files are set aside for the rest of the job. The runner is discarded afterwards. Needs the checkout first.
+runs:
+  using: composite
+  steps:
+    - name: Set the third-party apt sources aside
+      if: runner.os == 'Linux'
+      shell: bash
+      run: |
+        sudo mkdir -p /etc/apt/sources-set-aside
+        for source in /etc/apt/sources.list.d/*; do
+          [ -e "$source" ] || continue
+          case "$(basename "$source")" in
+            ubuntu.sources) ;;
+            *) sudo mv "$source" /etc/apt/sources-set-aside/ ;;
+          esac
+        done
+        ls /etc/apt/sources.list.d/ /etc/apt/sources-set-aside/
