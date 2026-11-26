@@ -19,8 +19,8 @@
   },
   "devDependencies": {
     "@vitest/coverage-v8": "^4.1.12",
-    "oxlint": "^1.76.0",
-    "turbo": "^2.3.3",
+    "oxlint": "^1.95.0",
+    "turbo": "^2.11.13",
     "typescript": "^7.0.0",
     "vite": "^7.3.8",
     "vitest": "^4.1.12"
