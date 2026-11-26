@@ -128,4 +128,17 @@ describe('Chip', () => {
     )
     expect((screen.getByTestId('tag') as HTMLElement).style.marginTop).toBe('12px')
   })
+
+  it('keeps_its_touch_target_and_press_dimming_over_the_caller_style', () => {
+    renderUi(
+      <Chip testID="tag" style={{ marginTop: 12, minHeight: 10, opacity: 1 }}>
+        tag
+      </Chip>,
+    )
+    const el = screen.getByTestId('tag') as HTMLElement
+    expect(el.style.marginTop).toBe('12px')
+    expect(el.style.minHeight).toBe('44px')
+    fireEvent.keyDown(el, { key: ' ' })
+    expect(getComputedStyle(el).opacity).toBe('0.7')
+  })
 })
