@@ -175,7 +175,16 @@ afterEach(() => {
   cleanStores(...pendingSessionStores)
   pendingSessionStores.length = 0
 })
-afterAll(() => server.close())
+// React must have nothing queued when this file's `window` goes away. A commit outside `act` (a query answering,
+// a timer) leaves its passive effects to the scheduler; the last test of a file can end before that task runs.
+// Up to React 19.0 the late task did nothing visible. From 19.3 it starts with `schedulerEvent = window.event`
+// (react-dom's commit, development build) and throws "window is not defined" after the teardown — an unhandled
+// error that fails the run although every test passed (seen on #603, `StromScreen.fails-closed`, in the
+// scheduler-delay run). Waiting here drains the scheduler once per file, for whichever test left work behind.
+afterAll(async () => {
+  await reactSchedulerIdle()
+  server.close()
+})
 
 // The chosen tax year, funnel path (sessionStorage), and UI preferences (localStorage) must never leak between tests.
 import { afterEach as clearStorageAfterEach } from 'vitest'
