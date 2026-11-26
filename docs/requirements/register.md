@@ -211,13 +211,13 @@ gated on changes, to [#292](https://github.com/NexusHero/Steuereule/issues/292),
   reasoning, including what this deliberately does not resolve: #75 (@steuereule/core's production
   packaging) and #246 (the real … deployment pipeline) both stay open, architecture-gated decisions."*
   (The commit says "Fly.io" there — the stale premise #246's own 2026-08-05 correction retired in
-  favour of ADR-049, k3s on Hetzner. The point holds either way.)
+  favour of Produkt-ADR-049, k3s on Hetzner. The point holds either way.)
 - **Why a successor ticket and not a reopen.** Three options were put to the stakeholder — reopen
   #246, re-point the marker at [#277](https://github.com/NexusHero/Steuereule/issues/277), or file a
   collecting successor. **He ruled: the closure of #246 stands, and #292 carries the remaining
   deployment gap** with every dependent #246 held (`WEB_APP_URL` from #238/#239, the real
   `trustedProxies` CIDRs via #277, #224's real-device preview pass, #279's liveness/readiness
-  endpoint, #278's `k8s/`-vs-ADR-049 question, and #238 task 0b's DB-IP geo database). #277 is a
+  endpoint, #278's `k8s/`-vs-Produkt-ADR-049 question, and #238 task 0b's DB-IP geo database). #277 is a
   single configuration value blocked on the deployment; it is not the gap itself, which is why the
   marker points at #292 and not at it.
 - **The gate did its job, and that is the reason this section exists.** Minutes after #246 closed,

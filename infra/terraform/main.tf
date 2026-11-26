@@ -1,6 +1,6 @@
 # ---------------------------------------------------------------------------
 # The Hetzner Cloud skeleton. Everything here is declarative and idempotent, using
-# the first-party `hetznercloud/hcloud` provider — ADR-049 already chose Hetzner; the
+# the first-party `hetznercloud/hcloud` provider — Produkt-ADR-049 already chose Hetzner; the
 # "no Eigenbau, use the standard" rule says don't hand-roll what the provider does.
 # Slice 1 ships the SHAPE; sub-ticket 06.1 turns it into real applied infra once the
 # credentials from the checklist exist.
@@ -14,7 +14,7 @@ resource "hcloud_network" "cluster" {
 
 # --- Firewall: least privilege. ---
 # Only SSH (22) for operators, 80/443 for the ingress, 6443 for the k3s API. Postgres
-# is MANAGED (ADR-047/ADR-049) — deliberately NO 5432 rule here: the managed DB is
+# is MANAGED (Produkt-ADR-047/Produkt-ADR-049) — deliberately NO 5432 rule here: the managed DB is
 # reached via its own endpoint, never a public port on the cluster node.
 resource "hcloud_firewall" "cluster" {
   name = "steuereule-k3s"
