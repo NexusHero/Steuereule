@@ -20,7 +20,7 @@
 // working Expo web dev server, and a live run additionally needs CORS (#57, owner Robin),
 // which isn't in this diff. That live run is still open — tracked as follow-up, not
 // silently declared "done" here.
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach, type Mock } from 'vitest'
 import { screen, fireEvent, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import { OnboardingScreen } from '../OnboardingScreen'
@@ -179,8 +179,8 @@ describe('REQ-012 — Onboarding vertical-join (ATDD acceptance, steuereule#53)'
     // regular globals here; `AsyncStorage` is not, because this app has no
     // `@react-native-async-storage/async-storage` dependency at all — stubbing it would be a
     // vacuous control on a store nothing here can reach, the exact bug this ticket fixes.
-    let localSetItem: ReturnType<typeof vi.fn>
-    let sessionSetItem: ReturnType<typeof vi.fn>
+    let localSetItem: Mock
+    let sessionSetItem: Mock
     beforeEach(() => {
       localSetItem = stubStorageSetItem('localStorage')
       sessionSetItem = stubStorageSetItem('sessionStorage')

@@ -1,6 +1,6 @@
 // „Für wen?“: the person created from a document is typed in (names, birth date, Steuer-ID), and the
 // buttons and the question speak of people without a name in plain words.
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi, type Mock } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { I18nextProvider } from 'react-i18next'
 import { ThemeProvider } from '@steuereule/ui'
@@ -10,7 +10,7 @@ import { DocumentAssignmentCard } from './DocumentAssignmentCard'
 
 const empty = { firstName: '', lastName: '', birthDate: '', taxId: '' }
 
-function renderCard(question: AssignmentQuestionDto, handlers: { onCreate?: ReturnType<typeof vi.fn>; onConfirmSelf?: ReturnType<typeof vi.fn> } = {}) {
+function renderCard(question: AssignmentQuestionDto, handlers: { onCreate?: Mock; onConfirmSelf?: Mock } = {}) {
   return render(
     <I18nextProvider i18n={createAppI18n('de')}>
       <ThemeProvider>

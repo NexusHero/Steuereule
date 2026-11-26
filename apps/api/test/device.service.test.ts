@@ -11,7 +11,7 @@
 //
 // No session-scope choice anywhere below — NexusHero dropped the "just for now" vs
 // "trust this device" distinction (one-tap approval, one fixed session lifetime).
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi, type Mock } from 'vitest'
 import type { BetterAuthBundle } from '../src/auth/auth.tokens.js'
 import { deviceSessionAnchor } from '../src/device/device-session-anchor.js'
 import { SESSION_ABSOLUTE_MAX_AGE_MS } from '../src/auth/session-lifetime.js'
@@ -22,7 +22,7 @@ import type { RegionResolver } from '../src/device/region/region-resolver.js'
 import { FakeDeviceCodeRepository } from './fakes/fake-device-code.repository.js'
 import { APIError } from 'better-auth'
 
-function fakeBundle(api: Record<string, ReturnType<typeof vi.fn>>): BetterAuthBundle {
+function fakeBundle(api: Record<string, Mock>): BetterAuthBundle {
   return {
     auth: { api: { getSession: vi.fn().mockResolvedValue(null), ...api } } as unknown as BetterAuthBundle['auth'],
     sessionCookieName: 'test-session',
@@ -42,9 +42,9 @@ const CANNED_CODE_RESULT = {
 
 describe('DeviceService.requestCode', () => {
   let repository: FakeDeviceCodeRepository
-  let deviceCode: ReturnType<typeof vi.fn>
+  let deviceCode: Mock
   let regionResolver: RegionResolver
-  let resolve: ReturnType<typeof vi.fn>
+  let resolve: Mock
   let service: DeviceService
 
   beforeEach(() => {
@@ -98,7 +98,7 @@ describe('DeviceService.requestCode', () => {
 
 describe('DeviceService.getPending (#238 task 2, AC-3 — match-verification)', () => {
   let repository: FakeDeviceCodeRepository
-  let deviceVerify: ReturnType<typeof vi.fn>
+  let deviceVerify: Mock
   let service: DeviceService
   const phoneHeaders = new Headers({ cookie: 'better-auth.session_token=abc' })
 
@@ -158,7 +158,7 @@ describe('DeviceService.getPending (#238 task 2, AC-3 — match-verification)', 
 
 describe('DeviceService.approve (#238 task 2, AC-5 — one tap, no scope choice)', () => {
   let repository: FakeDeviceCodeRepository
-  let deviceApprove: ReturnType<typeof vi.fn>
+  let deviceApprove: Mock
   let service: DeviceService
   const phoneHeaders = new Headers({ cookie: 'better-auth.session_token=abc' })
 
@@ -188,7 +188,7 @@ describe('DeviceService.exchangeToken (#238 task 2, AC-5)', () => {
   const CANNED_TOKEN_RESULT = { access_token: 'the-session-token', token_type: 'Bearer', expires_in: 604800, scope: '' }
   const SIGNED_SESSION_COOKIE = '__Secure-better-auth.session_token=the-session-token.signature; HttpOnly; Path=/; Max-Age=604800'
 
-  function setUp(deviceToken?: ReturnType<typeof vi.fn>) {
+  function setUp(deviceToken?: Mock) {
     const repository = new FakeDeviceCodeRepository()
     repository.seedRow({ deviceCode: 'dev-1', userCode: 'USER1', status: 'approved' })
     const mock = deviceToken ?? vi.fn().mockResolvedValue({ headers: new Headers({ 'set-cookie': SIGNED_SESSION_COOKIE }), response: CANNED_TOKEN_RESULT })
