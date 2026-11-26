@@ -3,7 +3,8 @@
 // matrix from the same file, so a gate cannot exist without running and a group cannot be forgotten.
 //
 //   node e2e/run-gates.mjs --group <group>   run every gate of the group, then report (exit 1 if any failed)
-//   node e2e/run-gates.mjs --matrix          the GitHub Actions matrix (JSON) of all groups that have gates
+//   node e2e/run-gates.mjs --matrix          the GitHub Actions matrix (JSON): every group that has gates, plus one
+//                                            entry per control proof (e2e/control-proofs.json)
 //   node e2e/run-gates.mjs --list            every gate with its group
 //   node e2e/run-gates.mjs --check           validate gates.json (exit 1 on a problem)
 //
@@ -13,6 +14,7 @@ import { existsSync, readFileSync } from 'node:fs'
 import { spawnSync } from 'node:child_process'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { loadProofs, proofMatrixEntries, validateProofs } from './run-control-proofs.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const ROOT = join(HERE, '..')
@@ -78,12 +80,20 @@ function main(argv) {
     for (const p of problems) console.error(`gates.json: ${p}`)
     return 1
   }
+  // The control proofs ride in the same job matrix (one entry each, see run-control-proofs.mjs), so a proof whose
+  // mutation no longer matches the source stops the plan job, before any stack is booted.
+  const proofs = loadProofs()
+  const proofProblems = validateProofs(proofs)
+  if (proofProblems.length > 0) {
+    for (const p of proofProblems) console.error(`control-proofs.json: ${p}`)
+    return 1
+  }
   if (argv.includes('--check')) {
-    console.log(`gates.json ok: ${config.gates.length} gates in ${Object.keys(config.groups).length} groups`)
+    console.log(`gates.json ok: ${config.gates.length} gates in ${Object.keys(config.groups).length} groups; control-proofs.json ok: ${proofs.proofs.length} proof(s)`)
     return 0
   }
   if (argv.includes('--matrix')) {
-    console.log(JSON.stringify(matrix(config)))
+    console.log(JSON.stringify({ include: [...matrix(config).include, ...proofMatrixEntries(proofs)] }))
     return 0
   }
   if (argv.includes('--list')) {

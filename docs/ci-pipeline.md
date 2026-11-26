@@ -138,6 +138,20 @@ run `if: always()`, so a ruleset that pins the name never waits for a job that n
 The set-up shared by the jobs is in `.github/actions/` (`setup-workspace`, `prepare-database`, `install-chromium`,
 `boot-prod-stack`); long shell steps live in `e2e/smoke/`, `e2e/prod-deploy/`, `scripts/ci/` and `scripts/deploy/` (the two deploy steps that run before the checkout stay inline).
 
+### Control proofs: a gate must fail on its mutant
+
+`e2e/control-proofs.json` lists planted regressions, each with the gate that must catch it and the message that gate
+must fail with (ADR-0021). Every entry runs on every pull request as one more job of the gate matrix
+(`e2e: gates — control-proof-<id>`): the job applies the mutation to the API source, rebuilds the API, boots the
+stack and runs the gate. It passes only when the gate fails with the expected message. If the gate passes on the
+mutant, or is red for another reason, the job fails. A mutation is a literal find/replace that must match its file
+exactly once; when a refactoring moves the line, `e2e: plan` fails and names the proof. To add one: an entry in
+`control-proofs.json`, nothing in the workflow.
+
+| Proof | Mutant | Gate that must fail |
+|---|---|---|
+| `fresh-age-default` | `session.freshAge: 0` removed (ADR-0027) | `e2e/device/device-authorization.mjs` |
+
 ## The accessibility and DAST caveat
 
 The **a11y (BFSG/WCAG)** gates are the `a11y` group of the browser gates and no longer share a stack with

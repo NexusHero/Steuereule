@@ -190,3 +190,19 @@ product's own options (`buildOptions`, exported for this test) with `session.fre
 `SESSION_NOT_FRESH`. A control shows the second instance serves a session that is not aged. Still open: the browser
 gate `device-authorization.mjs` has not itself been run under the mutant; the acceptance test pins the mechanism it
 relies on, not that gate's reaction to it.
+
+**Follow-up, same day (review on #588): the browser gate is now proven against the mutant on every pull request.**
+The paragraph above left one thing open, and the review named a second: `device-authorization.mjs` asked for
+`/list-sessions` seconds after sign-in, which better-auth's default `freshAge` allows as well, so the gate could not
+have caught the setting being restored. Two changes close this:
+
+- The gate ages its own `Session` row by 25 hours before the request, so it asserts what this ADR promises: a
+  session older than a day reads its device list.
+- `e2e/control-proofs.json` holds the mutant (`freshAge: 0` removed from `apps/api/src/auth/better-auth.ts`), the gate
+  that must catch it and the message it must fail with. `Build & E2E` runs it as the matrix entry
+  `e2e: gates — control-proof-fresh-age-default`: it applies the mutation, rebuilds the API, boots the stack and passes
+  only if the gate fails with that message (`e2e/run-control-proofs.mjs`). A gate that passes on the mutant, or fails
+  for another reason, turns the pull request red. The entry is part of the required check `e2e: browser gates & a11y`.
+
+This is ADR-0021's control proof as a standing check, not a recorded one-off: the proof is repeated whenever the
+gate, the setting or better-auth changes.
