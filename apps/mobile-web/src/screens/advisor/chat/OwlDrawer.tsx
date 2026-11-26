@@ -1,5 +1,5 @@
 import { useEffect, useRef, type ReactNode } from 'react'
-import { Platform, Pressable, ScrollView, StyleSheet, View, type ViewStyle } from 'react-native'
+import { Platform, Pressable, ScrollView, View, type ViewStyle } from 'react-native'
 import { useTheme, type UiTheme } from '@steuereule/ui'
 import { StrokeIcon } from '../../../icons/StrokeIcon'
 
@@ -44,10 +44,13 @@ export function OwlDrawer({ onClose, closeLabel, children, testID }: OwlDrawerPr
   )
 }
 
+// React Native 0.88 removed StyleSheet.absoluteFillObject; spelled out so it is the same on web and native.
+const ABSOLUTE_FILL: ViewStyle = { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 }
+
 function makeStyles(t: UiTheme) {
   return {
-    overlay: { ...StyleSheet.absoluteFillObject, zIndex: 100, flexDirection: 'row' } as ViewStyle,
-    backdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: t.color.nacht, opacity: 0.4 } as ViewStyle,
+    overlay: { ...ABSOLUTE_FILL, zIndex: 100, flexDirection: 'row' } as ViewStyle,
+    backdrop: { ...ABSOLUTE_FILL, backgroundColor: t.color.nacht, opacity: 0.4 } as ViewStyle,
     panel: {
       width: '86%',
       maxWidth: 320,

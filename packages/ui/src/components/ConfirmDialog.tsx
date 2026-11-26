@@ -1,5 +1,5 @@
 import { useEffect, useId, useRef } from 'react'
-import { Modal, Platform, Pressable, Text, View, type TextStyle, type ViewStyle } from 'react-native'
+import { Modal, Platform, Pressable, Text, View, type TextStyle, type ViewInstance, type ViewStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useTheme } from '../theme/useTheme'
 import { NARROW_CONTENT_MAX_WIDTH } from '../responsive/contentWidth'
@@ -37,7 +37,7 @@ export function ConfirmDialog({ title, body, confirmLabel, cancelLabel, tone = '
   const { t: tr } = useTranslation(UI_NS)
   const titleId = useId()
   const bodyId = useId()
-  const cancelRef = useRef<View | null>(null)
+  const cancelRef = useRef<ViewInstance | null>(null)
 
   useEffect(() => {
     const focusable = cancelRef.current as unknown as { focus?: () => void } | null

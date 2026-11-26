@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, type ReactNode } from 'react'
-import { Animated, KeyboardAvoidingView, PanResponder, Platform, Pressable, StyleSheet, Text, View, type TextStyle, type ViewStyle } from 'react-native'
+import { Animated, KeyboardAvoidingView, PanResponder, Platform, Pressable, Text, View, type TextStyle, type ViewInstance, type ViewStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { theme as motionTokens } from '@steuereule/tokens'
 import { useTheme } from '../theme/useTheme'
@@ -8,6 +8,8 @@ import { FLOW_CONTENT_MAX_WIDTH, WIDE_CONTENT_MAX_WIDTH } from '../responsive/co
 import { useReducedMotion } from '../motion/useReducedMotion'
 import { UI_NS } from '../i18n/resources'
 
+// React Native 0.88 removed StyleSheet.absoluteFillObject; spelled out so it is the same on web and native.
+const ABSOLUTE_FILL: ViewStyle = { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 }
 const DISMISS_DRAG_DISTANCE_PX = 120
 const COMPACT_ENTRY_OFFSET_PX = 40
 const FOCUSABLE_SELECTOR =
@@ -40,7 +42,7 @@ export function Sheet({ onClose, closeLabel, children, testID, width = 'overview
   const onCloseRef = useRef(onClose)
   onCloseRef.current = onClose
 
-  const panelRef = useRef<View | null>(null)
+  const panelRef = useRef<ViewInstance | null>(null)
   const translateY = useRef(new Animated.Value(compact && !reducedMotion ? COMPACT_ENTRY_OFFSET_PX : 0)).current
 
   useEffect(() => {
@@ -144,7 +146,7 @@ export function Sheet({ onClose, closeLabel, children, testID, width = 'overview
   )
 
   const overlayStyle: ViewStyle = {
-    ...StyleSheet.absoluteFillObject,
+    ...ABSOLUTE_FILL,
     flex: 1,
     zIndex: 100,
     justifyContent: compact ? 'flex-end' : 'center',
@@ -154,7 +156,7 @@ export function Sheet({ onClose, closeLabel, children, testID, width = 'overview
   }
 
   const backdropStyle: ViewStyle = {
-    ...StyleSheet.absoluteFillObject,
+    ...ABSOLUTE_FILL,
     backgroundColor: t.color.nacht,
     opacity: 0.5,
   }

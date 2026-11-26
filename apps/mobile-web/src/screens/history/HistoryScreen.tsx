@@ -1,5 +1,5 @@
 import { Fragment, useRef, useState, type ReactNode } from 'react'
-import { Pressable, ScrollView, Text, View, type TextStyle, type ViewStyle } from 'react-native'
+import { Pressable, ScrollView, Text, View, type ScrollViewInstance, type TextStyle, type ViewStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import type { TFunction } from 'i18next'
 import { Button, Card, useBreakpoint, useTheme, type UiTheme } from '@steuereule/ui'
@@ -51,7 +51,7 @@ function HistoryLoaded({ data, openYear, onOpenYearDetail, onOpenDevelopment, on
   const t = useTheme()
   const s = makeStyles(t)
   const { t: tr } = useTranslation(APP_NS)
-  const scroll = useRef<ScrollView>(null)
+  const scroll = useRef<ScrollViewInstance>(null)
   const timelineY = useRef(0)
   const [olderOpen, setOlderOpen] = useState(false)
   const years = data.years

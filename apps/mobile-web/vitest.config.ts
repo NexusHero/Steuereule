@@ -61,6 +61,7 @@ export default defineConfig({
       // react-native-svg ships Flow source jsdom can't parse; stub it for tests only.
       'react-native-svg': new URL('./test/stubs/react-native-svg.tsx', import.meta.url).pathname,
       'expo-clipboard': new URL('./test/stubs/expo-clipboard.ts', import.meta.url).pathname,
+      'expo-status-bar': new URL('./test/stubs/expo-status-bar.tsx', import.meta.url).pathname,
       // react-native-marked and two of its helpers put a CommonJS build in `main`; its
       // require('react-native') would bypass the alias above. Point at their ES builds — what
       // Metro picks via `module` — so react-native-web is used, as in the shipped bundle (#451).

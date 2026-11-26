@@ -10,15 +10,6 @@ import { pathToFileURL } from 'node:url'
 
 export const ALLOWLIST = [
   {
-    // pnpm audit lists the dependencies of the Expo app, which include its CLI and the Metro
-    // bundler. They run in the build job that makes the static web export; the export
-    // (and the web image) contains none of their code or node_modules.
-    name: 'Expo / React Native build tooling',
-    pattern: /^apps__mobile-web>(expo>@expo\/|expo>@react-native\/|react-native>@react-native\/|react-native>react-devtools-core)/,
-    reason: 'Build-time only: Expo CLI and Metro run in CI, the web image ships the exported bundle only.',
-    expires: '2027-02-28',
-  },
-  {
     // query-string 7 (via @react-navigation) needs decode-uri-component 0.2.x; the advisory is fixed
     // only from 0.5.1, which is ESM-only and breaks query-string (decodeComponent is not a function).
     // The input is the app's own URL query in the browser: a client-side CPU cost, no server path.

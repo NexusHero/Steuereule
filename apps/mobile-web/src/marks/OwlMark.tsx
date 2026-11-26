@@ -2,6 +2,9 @@ import { Animated, View, type StyleProp, type ViewStyle } from 'react-native'
 import { Svg, Path, Rect, Circle } from 'react-native-svg'
 import { useTheme } from '@steuereule/ui'
 
+/** Plain styles or Animated values: Animated.View accepts both (React Native 0.88 no longer lets a plain ViewStyle hold Animated values). */
+type AnimatedStyle = Animated.WithAnimatedValue<StyleProp<ViewStyle>>
+
 export interface OwlMarkProps {
   readonly size?: number
   /**
@@ -10,9 +13,9 @@ export interface OwlMarkProps {
    * follows the theme, so in "dunkel" the ink owl turns light on the dark ground.
    */
   readonly variant?: 'funke' | 'tinte'
-  readonly headStyle?: StyleProp<ViewStyle>
-  readonly glassesStyle?: StyleProp<ViewStyle>
-  readonly lidStyle?: StyleProp<ViewStyle>
+  readonly headStyle?: AnimatedStyle
+  readonly glassesStyle?: AnimatedStyle
+  readonly lidStyle?: AnimatedStyle
 }
 
 const VIEWBOX = '0 0 96 96'
