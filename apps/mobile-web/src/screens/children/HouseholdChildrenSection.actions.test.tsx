@@ -1,15 +1,13 @@
 // Household children — the remaining actions: toggling the offered children, "ja" to a duplicate
 // question, leaving the household, cancelling a deletion, the over-25 hint and the failure notice.
 import { describe, expect, it, vi } from 'vitest'
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { I18nextProvider } from 'react-i18next'
-import { ThemeProvider } from '@steuereule/ui'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import type { HouseholdPersonDto, HouseholdResponseDto } from '@steuereule/api-client'
-import { createAppI18n } from '../../i18n/app-i18n'
 import { server } from '../../test-msw-server'
 import { HouseholdChildrenSection } from './HouseholdChildrenSection'
+import { confirmAction } from '../../test-confirm'
+import { renderWithQuery } from '../../test-render'
 
 const person = (over: Partial<HouseholdPersonDto>): HouseholdPersonDto => ({
   personId: 'p1',
@@ -37,16 +35,7 @@ const household = (persons: HouseholdPersonDto[], candidates: HouseholdResponseD
 })
 
 function renderSection(onChanged = vi.fn(async () => {})) {
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
-  render(
-    <QueryClientProvider client={queryClient}>
-      <I18nextProvider i18n={createAppI18n('de')}>
-        <ThemeProvider mode="light">
-          <HouseholdChildrenSection taxYear={2026} onChanged={onChanged} />
-        </ThemeProvider>
-      </I18nextProvider>
-    </QueryClientProvider>,
-  )
+  renderWithQuery(<HouseholdChildrenSection taxYear={2026} onChanged={onChanged} />)
   return { onChanged }
 }
 
@@ -102,12 +91,16 @@ describe('HouseholdChildrenSection — actions', () => {
     expect(screen.queryByTestId('haushalt-geaendert-0')).toBeNull()
 
     fireEvent.click(screen.getByTestId('haushalt-loeschen-0'))
-    expect(screen.getByTestId('haushalt-loeschen-warnung')).toBeTruthy()
-    fireEvent.click(screen.getByTestId('haushalt-loeschen-abbrechen'))
-    expect(screen.queryByTestId('haushalt-loeschen-warnung')).toBeNull()
+    expect(screen.getByTestId('rueckfrage-householdDelete')).toBeTruthy()
+    fireEvent.click(screen.getByTestId('rueckfrage-householdDelete-cancel'))
+    expect(screen.queryByTestId('rueckfrage-householdDelete')).toBeNull()
 
+    fireEvent.click(screen.getByTestId('haushalt-nicht-mehr-dabei-0'))
+    // NM-03: leaving deletes the child's details from this year on; it asks first.
+    expect(screen.getByTestId('rueckfrage-householdLeave-body').textContent).toContain('ab 2026')
+    expect(left).toBe(0)
     await act(async () => {
-      fireEvent.click(screen.getByTestId('haushalt-nicht-mehr-dabei-0'))
+      confirmAction('householdLeave')
     })
     await waitFor(() => expect(left).toBe(1))
   })
@@ -118,7 +111,7 @@ describe('HouseholdChildrenSection — actions', () => {
     const { onChanged } = renderSection()
     fireEvent.click(await screen.findByTestId('haushalt-loeschen-0'))
     await act(async () => {
-      fireEvent.click(screen.getByTestId('haushalt-loeschen-bestaetigen'))
+      confirmAction('householdDelete')
     })
     expect(await screen.findByTestId('haushalt-fehler')).toBeTruthy()
     expect(onChanged).not.toHaveBeenCalled()

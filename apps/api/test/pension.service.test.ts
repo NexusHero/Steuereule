@@ -3,7 +3,6 @@
 // real-Postgres proof (ciphertext at rest, audit atomicity, cross-user isolation, the real fold
 // through Prisma) lives in test/acceptance/req-022-rentner.test.ts.
 import { beforeEach, describe, expect, it } from 'vitest'
-import { FakeMarkingRepository } from './fakes/fake-marking.repository.js'
 import { AuditService } from '../src/audit/audit.service.js'
 import { PensionService } from '../src/pension/pension.service.js'
 import { FakeAuditRepository } from './fakes/fake-audit.repository.js'
@@ -14,7 +13,6 @@ const USER_ID = 'user-1'
 const TAX_YEAR = 2026
 
 describe('RenteService', () => {
-  let markings: FakeMarkingRepository
   let repository: FakePensionRepository
   let interviewRepository: FakeInterviewAnswerRepository
   let auditRepository: FakeAuditRepository
@@ -24,8 +22,7 @@ describe('RenteService', () => {
     repository = new FakePensionRepository()
     interviewRepository = new FakeInterviewAnswerRepository()
     auditRepository = new FakeAuditRepository()
-    markings = new FakeMarkingRepository()
-    service = new PensionService(repository, interviewRepository, new AuditService(auditRepository), markings)
+    service = new PensionService(repository, interviewRepository, new AuditService(auditRepository))
   })
 
   describe('getState — the honest empty mask', () => {
@@ -132,14 +129,4 @@ describe('RenteService', () => {
     })
   })
 
-  it('ADR-0052 §6: a user write drops the marker of exactly that field (incl. the Rentenart)', async () => {
-    await markings.save('user-1', 2025, { key: 'rente.jahresbetrag', provenance: { kind: 'uebernahme', lastYear: 2024 }, confirmed: false, proposal: null })
-    await markings.save('user-1', 2025, { key: 'rente.rentenart', provenance: { kind: 'uebernahme', lastYear: 2024 }, confirmed: false, proposal: null })
-    await markings.save('user-1', 2025, { key: 'rente.rentenbeginnJahr', provenance: { kind: 'uebernahme', lastYear: 2024 }, confirmed: false, proposal: null })
-
-    await service.setField('user-1', 2025, 'jahresbetrag', { kind: 'erfasst', value: 12000 })
-    await service.setPensionKind('user-1', 2025, { kind: 'GesetzlicheRente' })
-
-    expect(markings.all().map((k) => k.key)).toEqual(['rente.rentenbeginnJahr'])
-  })
 })

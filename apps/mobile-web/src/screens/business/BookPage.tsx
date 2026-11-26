@@ -14,9 +14,10 @@ import {
 } from '@steuereule/api-client'
 import { Choice } from './Choice'
 import { APP_NS } from '../../i18n/resources'
-import { BusinessFrame, BusinessQueryState, Note, Section } from './BusinessFrame'
-import { eurosToCents, germanDay, personParams, plainCents, todayIso, type ApiProblem } from './businessKit'
-import { attempt, queryProblem, useRefreshBusiness } from './useBusiness'
+import { BusinessFrame, BusinessQueryState, Note, ProblemNote, Section } from './BusinessFrame'
+import { domainReasonOf, eurosToCents, germanDay, personParams, plainCents, todayIso, type ApiProblem } from './businessKit'
+import { attempt, queryProblem, useRefreshBusiness, useSingleFlight } from './useBusiness'
+import { useConfirmAction } from '../../confirm/useConfirmAction'
 import { BusinessReceiptUpload } from './BusinessReceiptUpload'
 import type { BusinessPageProps } from './BusinessScreen'
 
@@ -56,9 +57,12 @@ export function BookPage({ taxYear, person, business = 1, onBack }: BusinessPage
   const [form, setForm] = useState({ date: '', text: '', documentNumber: '', debit: '', credit: '', amount: '', taxKey: 'none' as BookingTaxKey })
   const [formError, setFormError] = useState(false)
   const [lockDate, setLockDate] = useState('')
+  const flight = useSingleFlight()
+  const confirmReverse = useConfirmAction('bookingReverse')
+  const confirmLock = useConfirmAction('bookLock')
 
   const loadProblem = queryProblem(query)
-  if (query.isPending || loadProblem !== null || query.data?.status !== 200) {
+  if (query.isPending || loadProblem !== null || query.data === undefined) {
     return (
       <BusinessFrame title={tr('business.seite.buch')} onBack={onBack}>
         <BusinessQueryState pending={query.isPending} problem={loadProblem} onRetry={() => void query.refetch()} />
@@ -67,7 +71,7 @@ export function BookPage({ taxYear, person, business = 1, onBack }: BusinessPage
   }
   const book: BookDto = query.data.data
   const chainBroken = !book.integrity.ok || problem?.code === 'BOOK_INTEGRITY_BROKEN'
-  const chainReason = problem?.code === 'BOOK_INTEGRITY_BROKEN' ? problem.message : (book.integrity.reason ?? null)
+  const chainReason = problem?.code === 'BOOK_INTEGRITY_BROKEN' ? (domainReasonOf(problem.error) ?? null) : (book.integrity.reason ?? null)
   const accountLabel = (n: string) => findAccount(book.chart, n.trim())?.label ?? null
 
   async function submit() {
@@ -118,7 +122,7 @@ export function BookPage({ taxYear, person, business = 1, onBack }: BusinessPage
           {chainReason ? <Text style={{ ...t.type.body, color: t.color.tinte }}>{chainReason}</Text> : null}
         </Section>
       ) : null}
-      {problem !== null && problem.code !== 'BOOK_INTEGRITY_BROKEN' ? <Note tone="error" testID="business-speichern-fehler">{problem.message ?? tr('business.speichernFehler')}</Note> : null}
+      {problem !== null && problem.code !== 'BOOK_INTEGRITY_BROKEN' ? <ProblemNote problem={problem} testID="business-speichern-fehler" /> : null}
 
       <Section testID="buch-liste">
         {entries.length === 0 ? <Note testID="buch-leer">{tr('business.buch.leer')}</Note> : null}
@@ -134,7 +138,7 @@ export function BookPage({ taxYear, person, business = 1, onBack }: BusinessPage
                 {[germanDay(entry.date), entry.documentNumber, entry.reversalOf !== null ? tr('business.buch.stornoZu', { nummer: entry.reversalOf }) : null, reversed ? tr('business.buch.storniert') : null].filter(Boolean).join(' · ')}
               </Text>
               {entry.reversalOf === null && !reversed ? (
-                <Button variant="ghost" onPress={() => void storno(entry)} testID={`buch-storno-${entry.number}`}>
+                <Button variant="ghost" disabled={flight.busy} onPress={() => confirmReverse.ask(() => void flight.run(() => storno(entry)), { nummer: entry.number })} testID={`buch-storno-${entry.number}`}>
                   {tr('business.buch.stornieren')}
                 </Button>
               ) : null}
@@ -175,7 +179,7 @@ export function BookPage({ taxYear, person, business = 1, onBack }: BusinessPage
             </View>
           </Feld>
           {formError ? <Note tone="error" testID="buch-formular-fehler">{tr('business.buch.formularFehler')}</Note> : null}
-          <Button onPress={() => void submit()} testID="buch-buchen">
+          <Button onPress={() => void flight.run(submit)} disabled={flight.busy} testID="buch-buchen">
             {tr('business.buch.buchen')}
           </Button>
         </Section>
@@ -194,10 +198,12 @@ export function BookPage({ taxYear, person, business = 1, onBack }: BusinessPage
         <Feld label={tr('business.buch.festBisLabel')}>
           <DateInput value={lockDate} onChange={setLockDate} min={`${taxYear}-01-01`} max={`${taxYear}-12-31`} calendarLabel={tr('datum.kalender')} accessibilityLabel={tr('business.buch.festBisLabel')} testID="buch-fest-datum" />
         </Feld>
-        <Button variant="ghost" disabled={lockDate.length !== 10} onPress={() => void lockThrough()} testID="buch-festschreiben">
+        <Button variant="ghost" disabled={lockDate.length !== 10 || flight.busy} onPress={() => (germanDateToIso(lockDate) === null ? setFormError(true) : confirmLock.ask(() => void flight.run(lockThrough), { datum: lockDate }))} testID="buch-festschreiben">
           {tr('business.buch.festschreiben')}
         </Button>
       </Section>
+      {confirmReverse.dialog}
+      {confirmLock.dialog}
     </BusinessFrame>
   )
 }

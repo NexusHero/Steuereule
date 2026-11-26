@@ -376,6 +376,10 @@ describe('App', () => {
     })
 
     it('an unmapped path falls back to Splash, not to whichever screen happened to render last', async () => {
+      // Signed out: a signed-in person opening `/` goes on to the app (WEB-6, next test). A fresh module, so no
+      // session of an earlier test is cached in the shared client (see the device-authorization block below).
+      vi.resetModules()
+      server.use(http.get(`${API_BASE_URL}/api/auth/get-session`, () => HttpResponse.json(null)))
       window.history.pushState({}, '', '/nonexistent')
       const { default: App } = await import('./App')
       render(<App />)
@@ -384,6 +388,23 @@ describe('App', () => {
       expect(screen.queryByText('Konto anlegen')).toBeNull()
       expect(screen.queryByPlaceholderText('Kim')).toBeNull()
       expect(screen.queryByText('Cockpit')).toBeNull()
+    })
+
+    it('WEB-6: a signed-in person opening / goes straight to the app, not to the sign-in form', async () => {
+      vi.resetModules()
+      server.use(
+        http.get(`${API_BASE_URL}/api/auth/get-session`, () =>
+          HttpResponse.json({
+            user: { id: 'u1', email: 'lena@beispiel.de', emailVerified: true, name: '' },
+            session: { id: 's1', createdAt: '2026-08-01T14:32:00.000Z', updatedAt: '2026-08-01T14:32:00.000Z' },
+          }),
+        ),
+      )
+      window.history.pushState({}, '', '/')
+      const { default: App } = await import('./App')
+      render(<App />)
+      expect(await screen.findByText('Cockpit')).toBeTruthy()
+      expect(screen.queryByText('Einloggen')).toBeNull()
     })
   })
 
@@ -1108,6 +1129,8 @@ describe('App', () => {
 
     it('submission gate (§ 3.5–3.6): redirects /app/steuerjahr/2025/ausdruck to Submission on conflict', async () => {
       mockSignedInSession()
+      // The Abgabe reads the unlock to choose between printout and ELSTER help; a failed read is a failed page (NC-18).
+      server.use(http.get('*/v1/steuerjahre/2025/freischaltung', () => HttpResponse.json({ status: 'offen', filingPath: 'papier' })))
 
       window.history.pushState({}, '', '/app/steuerjahr/2025/ausdruck')
       const { default: App } = await import('./App')
@@ -1119,7 +1142,7 @@ describe('App', () => {
       await waitFor(() => expect(window.location.pathname).toBe('/app/steuerjahr/2025/abgabe'))
     })
 
-    it('submission gate (§ 3.4–3.5): unconfirmed notices redirect Printout to Submission, confirming unlocks, reload resets', async () => {
+    it('submission gate (§ 3.4–3.5): unconfirmed notices redirect Printout to Submission, confirming unlocks, a reload keeps it (WEB-9)', async () => {
       mockSignedInSession()
       server.use(
         ...printoutReadyHandlers('offen'),
@@ -1141,11 +1164,12 @@ describe('App', () => {
       expect(await screen.findByText('Ausdruck 2025')).toBeTruthy()
       firstMount.unmount()
 
-      // Simulated reload: in-memory notice confirmation is gone, Printout redirects back to Submission
-      window.history.pushState({}, '', '/app/steuerjahr/2025/ausdruck')
+      // Simulated reload, as the return from Stripe is one: the confirmation survives in the tab, Printout stays.
+      window.history.pushState({}, '', '/app/steuerjahr/2025/ausdruck?zahlung=erfolg')
       render(<App />)
-      expect(await screen.findByTestId('gate-warnung-bestaetigen')).toBeTruthy()
-      expect(screen.queryByText('Ausdruck 2025')).toBeNull()
+      expect(await screen.findByText('Ausdruck 2025')).toBeTruthy()
+      expect(screen.queryByTestId('gate-warnung-bestaetigen')).toBeNull()
+      expect(window.location.search).toBe('?zahlung=erfolg')
     })
 
     it('allows Stripe payment return URL on Printout when submission gate passes', async () => {
@@ -1219,7 +1243,7 @@ describe('App', () => {
       fireEvent.click(screen.getByTestId('sheet-schliessen'))
       fireEvent.click(await screen.findByRole('tab', { name: 'Profil' }))
       await screen.findByText('Dieses Gerät')
-      fireEvent.click(screen.getByText('Abmelden'))
+      fireEvent.click(screen.getByTestId('geraet-abmelden-aktuell'))
 
       await screen.findByText('Einloggen')
       expect(window.sessionStorage.getItem('steuereule.returnTo')).toBeNull()

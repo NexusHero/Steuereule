@@ -1,6 +1,8 @@
 import { View, Text, ActivityIndicator } from 'react-native'
 import { Button, Card, Feld, Input, useTheme } from '@steuereule/ui'
+import { RETENTION } from '@steuereule/core'
 import { makePrivacyStyles } from './styles'
+import { StepUpChoices } from '../../auth/StepUpOptions'
 
 export type DeleteFlow =
   | { readonly kind: 'closed' }
@@ -11,7 +13,7 @@ export type DeleteFlow =
   | { readonly kind: 'guestBlocked' }
 
 interface DeleteSectionProps {
-  readonly tr: (key: string) => string
+  readonly tr: (key: string, options?: Readonly<Record<string, string | number>>) => string
   readonly flow: DeleteFlow
   readonly password: string
   readonly onPasswordChange: (value: string) => void
@@ -21,6 +23,8 @@ interface DeleteSectionProps {
   readonly onCancel: () => void
   readonly onConfirmDelete: () => void
   readonly onSubmitPassword: () => void
+  /** The passkey or provider confirmed it (no password): delete with the now fresh session (WEB-50). */
+  readonly onSteppedUp?: () => void
 }
 
 export function DeleteSection({
@@ -34,6 +38,7 @@ export function DeleteSection({
   onCancel,
   onConfirmDelete,
   onSubmitPassword,
+  onSteppedUp,
 }: DeleteSectionProps) {
   const t = useTheme()
   const styles = makePrivacyStyles(t)
@@ -54,7 +59,11 @@ export function DeleteSection({
       {flow.kind === 'offer' ? (
         <View>
           <Text style={styles.offerHeading}>{tr('datenschutz.delete.offer.heading')}</Text>
-          <Text style={styles.warningBody}>{tr('datenschutz.delete.offer.warning1')}</Text>
+          <Text style={styles.warningBody}>{tr('datenschutz.delete.offer.warning1', {
+            backupDays: RETENTION.databasePitrDays,
+            paymentYears: RETENTION.legalHoldPaymentYears,
+            filingYears: RETENTION.legalHoldFilingVersionYears,
+          })}</Text>
           <Text style={styles.warningBody}>{tr('datenschutz.delete.offer.warning2')}</Text>
           <View style={styles.buttonSpacer}>
             <Button variant="leise" onPress={onExportFirst} testID="konto-loeschen-erst-exportieren">
@@ -101,9 +110,12 @@ export function DeleteSection({
         <View>
           <Text style={styles.offerHeading}>{tr('datenschutz.delete.password.heading')}</Text>
           <Text style={styles.warningBody}>{tr('datenschutz.delete.password.explain')}</Text>
-          <Feld label={tr('datenschutz.delete.password.label')}>
-            <Input type="password" value={password} onChange={onPasswordChange} accessibilityLabel={tr('datenschutz.delete.password.label')} autoComplete="current-password" testID="konto-loeschen-passwort" />
-          </Feld>
+          {/* WEB-50: an account without a password confirms with its passkey or provider; the session is then fresh. */}
+          <StepUpChoices testID="konto-loeschen-ohne-passwort" onConfirmed={onSteppedUp ?? (() => undefined)}>
+            <Feld label={tr('datenschutz.delete.password.label')}>
+              <Input type="password" value={password} onChange={onPasswordChange} accessibilityLabel={tr('datenschutz.delete.password.label')} autoComplete="current-password" testID="konto-loeschen-passwort" />
+            </Feld>
+          </StepUpChoices>
           {flow.error === 'wrong' ? (
             <Text style={styles.errorNote} accessibilityRole="alert">
               {tr('datenschutz.delete.password.wrongPasswordError')}

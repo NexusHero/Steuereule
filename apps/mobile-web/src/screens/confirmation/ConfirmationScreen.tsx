@@ -3,7 +3,6 @@ import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { Button, Card, useBreakpoint, useTheme } from '@steuereule/ui'
-import { formatEuro, formatEuroCents, parseBookingDraft, toGermanDate } from '@steuereule/core'
 import {
   useConfirmationControllerConfirmAnnex,
   useConfirmationControllerDecideProposal,
@@ -15,21 +14,25 @@ import {
   type FieldProvenanceDto,
 } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
+import { useConfirmAction } from '../../confirm/useConfirmAction'
 import { makePrivacyStyles } from '../privacy/styles'
 import { ErrorState, LoadingState } from '../shared/ScreenState'
 import { triggerSaveErrorHaptic } from '../shared/saveFeedback'
+import { fieldLabelText, instanceText, valueText } from './confirmationText'
+import { classifyApiFailure, useApiFailureMessage } from '../../net/apiFailure'
 
-export type ConfirmationForm = FieldProvenanceDto['screen']
+/** The masks „Einzeln ändern“ can open. A booking has none: its draft is taken or dropped on this screen. */
+export type ConfirmationForm = Exclude<FieldProvenanceDto['screen'], 'buchung'>
 
 export interface ConfirmationScreenProps {
   readonly year: number
   readonly onBack: () => void
-  readonly onOpenScreen: (screen: ConfirmationForm) => void
+  /** Opens the mask a value lives on; `field` says which one (the interview's page). */
+  readonly onOpenScreen: (screen: ConfirmationForm, field?: string) => void
 }
 
 type Tr = ReturnType<typeof useTranslation>['t']
 
-const NO_AMOUNTS = new Set(['rente.rentenbeginnJahr', 'rente.alterBeiRentenbeginn', 'rente.rentenart', 'vermietung.baujahr'])
 
 function provenanceText(tr: Tr, h: ProvenanceDto): string {
   switch (h.kind) {
@@ -44,34 +47,8 @@ function provenanceText(tr: Tr, h: ProvenanceDto): string {
   }
 }
 
-function fieldLabel(tr: Tr, w: FieldProvenanceDto): string {
-  if (w.screen === 'buchung') return tr('bestaetigung.buchung.label')
-  if (w.screen === 'kapital' && w.field === 'kapitalertraege') return tr('kapital.feld.label')
-  if (w.screen === 'rente' && w.field === 'rentenart') return tr('bestaetigung.felder.rentenart')
-  if (w.screen === 'lstb' || w.screen === 'rente' || w.screen === 'kapital' || w.screen === 'vermietung') {
-    return tr(`${w.screen}.felder.${w.field}`, { defaultValue: w.field })
-  }
-  return w.field
-}
 
-/** A booking draft (#549) as one line: date, text, document number and the booked sum, never its JSON. */
-function bookingText(tr: Tr, value: string): string {
-  const parsed = parseBookingDraft(value)
-  if (!parsed.ok) return tr('bestaetigung.buchung.unlesbar')
-  const { date, text, documentNumber, lines } = parsed.draft
-  const sumCents = lines.filter((line) => line.side === 'debit').reduce((sum, line) => sum + line.amount, 0)
-  return tr('bestaetigung.buchung.zeile', { datum: toGermanDate(date) ?? date, text, beleg: documentNumber, summe: formatEuroCents(sumCents / 100) })
-}
 
-function valueText(tr: Tr, w: FieldProvenanceDto, value: string | null): string {
-  if (value === null) return tr('bestaetigung.leererWert')
-  if (w.screen === 'buchung') return bookingText(tr, value)
-  if (value === 'unklar') return tr('bestaetigung.unklar')
-  if (w.screen === 'rente' && w.field === 'rentenart') return tr(`rente.arten.${value}`, { defaultValue: value })
-  const amount = Number(value)
-  if (NO_AMOUNTS.has(`${w.screen}.${w.field}`) || !Number.isFinite(amount)) return value
-  return formatEuro(amount)
-}
 
 export function ConfirmationScreen({ year, onBack, onOpenScreen }: ConfirmationScreenProps) {
   const bp = useBreakpoint()
@@ -83,10 +60,14 @@ export function ConfirmationScreen({ year, onBack, onOpenScreen }: ConfirmationS
   const confirm = useConfirmationControllerConfirmAnnex()
   const decide = useConfirmationControllerDecideProposal()
   const decideTask = useConfirmationControllerDecideTask()
-  const [error, setError] = useState(false)
+  const confirmProposalDiscard = useConfirmAction('proposalDiscard')
+  const confirmTaskDiscard = useConfirmAction('taskDiscard')
+  const [error, setError] = useState<unknown>(null)
+  const [stale, setStale] = useState(false)
+  const failureMessage = useApiFailureMessage()
 
   if (overview.isPending) return <LoadingState bp={bp} label={t('bestaetigung.loading')} />
-  if (overview.data?.status !== 200) {
+  if (overview.isError || overview.data === undefined) {
     return (
       <ErrorState
         bp={bp}
@@ -101,17 +82,18 @@ export function ConfirmationScreen({ year, onBack, onOpenScreen }: ConfirmationS
   // An API of before #547 answers without tasks.
   const tasks: readonly AssistantTaskDto[] = overview.data.data.tasks ?? []
 
-  const afterChange = async (action: () => Promise<{ status: number }>) => {
-    setError(false)
+  const afterChange = async (action: () => Promise<unknown>) => {
+    setError(null)
+    setStale(false)
     try {
-      const result = await action()
-      if (result.status !== 200) {
-        triggerSaveErrorHaptic()
-        setError(true)
-      }
-    } catch {
+      // A refusal rejects with an ApiError (WEB-28); a resolved action succeeded.
+      await action()
+    } catch (failure) {
       triggerSaveErrorHaptic()
-      setError(true)
+      // A value changed after the screen was drawn (MCP-4, 409 CONFIRMATION_STALE): nothing was confirmed,
+      // the user looks again. Every other failure in the shared wording.
+      if (classifyApiFailure(failure).kind === 'conflict') setStale(true)
+      else setError(failure)
     }
     await queryClient.invalidateQueries()
   }
@@ -130,9 +112,14 @@ export function ConfirmationScreen({ year, onBack, onOpenScreen }: ConfirmationS
       ) : tasks.length === 0 ? (
         <Text style={styles.sectionBody}>{t('bestaetigung.leer')}</Text>
       ) : null}
-      {error ? (
-        <Text style={styles.hint} accessibilityLiveRegion="polite">
-          {t('bestaetigung.fehler')}
+      {error !== null ? (
+        <Text style={styles.hint} accessibilityLiveRegion="polite" accessibilityRole="alert" testID="bestaetigung-fehler">
+          {failureMessage(error, { unknown: t('bestaetigung.fehler') })}
+        </Text>
+      ) : null}
+      {stale ? (
+        <Text style={styles.hint} accessibilityLiveRegion="polite" testID="bestaetigung-veraendert">
+          {t('bestaetigung.veraendert')}
         </Text>
       ) : null}
 
@@ -159,7 +146,7 @@ export function ConfirmationScreen({ year, onBack, onOpenScreen }: ConfirmationS
                   variant="ghost"
                   disabled={decideTask.isPending}
                   testID={`aufgabe-verwerfen-${task.id}`}
-                  onPress={() => void afterChange(() => decideTask.mutateAsync({ jahr: year, id: task.id, data: { decision: 'verworfen' } }))}
+                  onPress={() => confirmTaskDiscard.ask(() => void afterChange(() => decideTask.mutateAsync({ jahr: year, id: task.id, data: { decision: 'verworfen' } })))}
                 >
                   {t('bestaetigung.aufgaben.verwerfen')}
                 </Button>
@@ -171,7 +158,11 @@ export function ConfirmationScreen({ year, onBack, onOpenScreen }: ConfirmationS
 
       {annexes.map((annex: AnnexConfirmationDto) => {
         const annexName = t(`bestaetigung.anlagen.${annex.annex}`)
-        const firstScreen = annex.values[0]?.screen
+        // Every mask the Anlage's values live on (the Hauptvordruck holds several): one way to each (H2-2, WEB-18).
+        const masks = annex.values
+          .filter((w, i, all) => all.findIndex((other) => other.screen === w.screen) === i)
+          .flatMap((w) => (w.screen === 'buchung' ? [] : [{ screen: w.screen, field: w.field }]))
+        const shown = annex.values.filter((w) => !w.confirmed).map((w) => ({ key: w.key, version: w.version, ...(w.person === 'B' ? { person: 'B' as const } : {}) }))
         return (
           <Card key={annex.annex} style={{ marginBottom: theme.space.s4 }} testID={`anlage-${annex.annex}`}>
             <Text style={styles.sectionTitle}>{annexName}</Text>
@@ -187,7 +178,8 @@ export function ConfirmationScreen({ year, onBack, onOpenScreen }: ConfirmationS
               return (
               <View key={id} style={{ gap: theme.space.s1, marginTop: theme.space.s3 }}>
                 {w.person === 'B' ? <Text style={styles.hint}>{t('bestaetigung.personB')}</Text> : null}
-                <Text style={styles.sectionBody}>{fieldLabel(t, w)}</Text>
+                {instanceText(t, w) ? <Text style={styles.hint} testID={`instanz-${id}`}>{instanceText(t, w)}</Text> : null}
+                <Text style={styles.sectionBody}>{fieldLabelText(t, w)}</Text>
                 {draftOnly ? null : (
                   <>
                     <Text style={styles.sectionTitle}>{valueText(t, w, w.value)}</Text>
@@ -218,7 +210,7 @@ export function ConfirmationScreen({ year, onBack, onOpenScreen }: ConfirmationS
                         variant="ghost"
                         disabled={decide.isPending}
                         testID={`vorschlag-verwerfen-${id}`}
-                        onPress={() => void afterChange(() => decide.mutateAsync({ jahr: year, key: w.key, data: decision('verwerfen') }))}
+                        onPress={() => confirmProposalDiscard.ask(() => void afterChange(() => decide.mutateAsync({ jahr: year, key: w.key, data: decision('verwerfen') })))}
                       >
                         {t('bestaetigung.vorschlagVerwerfen')}
                       </Button>
@@ -233,21 +225,23 @@ export function ConfirmationScreen({ year, onBack, onOpenScreen }: ConfirmationS
                 <Button
                   disabled={confirm.isPending}
                   testID={`bestaetige-${annex.annex}`}
-                  onPress={() => void afterChange(() => confirm.mutateAsync({ jahr: year, anlage: annex.annex }))}
+                  onPress={() => void afterChange(() => confirm.mutateAsync({ jahr: year, anlage: annex.annex, data: { values: shown } }))}
                 >
                   {t('bestaetigung.anlageBestaetigen', { anlage: annexName })}
                 </Button>
               ) : null}
               {/* A booking is changed by taking or dropping its draft here; there is no mask to open for it. */}
-              {firstScreen && firstScreen !== 'buchung' ? (
-                <Button variant="ghost" testID={`aendern-${annex.annex}`} onPress={() => onOpenScreen(firstScreen)}>
-                  {t('bestaetigung.einzelnAendern')}
+              {masks.map((w) => (
+                <Button key={w.screen} variant="ghost" testID={`aendern-${annex.annex}-${w.screen}`} onPress={() => onOpenScreen(w.screen, w.field)}>
+                  {masks.length === 1 ? t('bestaetigung.einzelnAendern') : t('bestaetigung.aendernIn', { maske: t(`bestaetigung.masken.${w.screen}`) })}
                 </Button>
-              ) : null}
+              ))}
             </View>
           </Card>
         )
       })}
+      {confirmProposalDiscard.dialog}
+      {confirmTaskDiscard.dialog}
     </ScrollView>
   )
 }

@@ -4,15 +4,12 @@
 // Empfehlung, zu-knapp/unbestimmt as honest no-verdict states, nicht-anwendbar naming the gate.
 // The client stays dumb: the fold and the comparison come from the server.
 import { describe, it, expect, vi } from 'vitest'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { I18nextProvider } from 'react-i18next'
-import { ThemeProvider } from '@steuereule/ui'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import { getCockpitControllerGetCockpitSummaryQueryKey, getTaxEstimateControllerGetQueryKey, type KapitalResponseDto } from '@steuereule/api-client'
-import { createAppI18n } from '../../i18n/app-i18n'
 import { CapitalScreen } from './CapitalScreen'
 import { server } from '../../test-msw-server'
+import { makeTestQueryClient, renderWithQuery } from '../../test-render'
 
 const TAX_YEAR = 2026
 const CAPITAL_URL = `*/v1/steuerjahre/${TAX_YEAR}/kapital`
@@ -47,19 +44,10 @@ const UNAMBIGUOUS_FLAT_RATE = {
   },
 }
 
-function renderCapital(onDone: () => void = () => {}, queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } }), onBack?: () => void) {
-  const i18n = createAppI18n('de')
+function renderCapital(onDone: () => void = () => {}, queryClient = makeTestQueryClient(), onBack?: () => void) {
   return {
     queryClient,
-    ...render(
-      <QueryClientProvider client={queryClient}>
-        <I18nextProvider i18n={i18n}>
-          <ThemeProvider mode="light">
-            <CapitalScreen taxYear={TAX_YEAR} onDone={onDone} {...(onBack ? { onBack } : {})} />
-          </ThemeProvider>
-        </I18nextProvider>
-      </QueryClientProvider>,
-    ),
+    ...renderWithQuery(<CapitalScreen taxYear={TAX_YEAR} onDone={onDone} {...(onBack ? { onBack } : {})} />, { client: queryClient }),
   }
 }
 

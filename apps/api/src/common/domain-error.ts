@@ -6,6 +6,7 @@ export type DomainErrorKind =
   | 'unauthenticated'
   | 'unavailable'
   | 'rate-limited'
+  | 'too-large'
 
 /** A failure of the application core, free of any transport concern; the HTTP mapping lives in DomainErrorFilter. */
 export abstract class DomainError extends Error {
@@ -50,3 +51,8 @@ export class TooManyRequestsError extends DomainError {
   readonly kind = 'rate-limited'
 }
 
+
+/** The request body is larger than this route accepts (HTTP 413): a client names the limit, never "check your input". */
+export class PayloadTooLargeError extends DomainError {
+  readonly kind = 'too-large'
+}

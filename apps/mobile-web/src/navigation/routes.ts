@@ -1,4 +1,5 @@
 import type { NavigatorScreenParams } from '@react-navigation/native'
+import { PAYMENT_RETURN_PARAM, parsePaymentReturn, type PaymentReturn, type PaymentReturnParams } from '@steuereule/core'
 import type { LegalPage } from '../screens/legal/texts'
 
 export type CatalogEntryParam =
@@ -34,8 +35,8 @@ export type CockpitStackParamList = {
   /** The Strom (ADR-0089): one address segment per step, e.g. `spenden` or `auswahl`. */
   Strom: { year: number; step: string }
   /** The self-employed area (ADR-0101): `page` is one address segment (`buch`, `bank`, `elster` ...), none is the overview. */
-  /** `zahlung` is the query parameter of the Stripe return URL (`erfolg`). */
-  Business: { year: number; page?: string; person?: 'A' | 'B'; zahlung?: string; betrieb?: string }
+  /** Reached by the Stripe return trip of the self-employment tier: carries the shared return parameter (WEB-1). */
+  Business: { year: number; page?: string; person?: 'A' | 'B'; betrieb?: string } & PaymentReturnParams
 }
 
 export const SHEET_ROUTE_NAMES: readonly (keyof CockpitStackParamList)[] = [
@@ -81,15 +82,21 @@ export type AppTabParamList = {
 
 export type RootStackParamList = {
   Splash: undefined
-  Login: { forgot?: boolean } | undefined
+  /** `bestaetigt`/`error` arrive from the e-mail verification link (WEB-5); `sozial`+`error` from a failed provider sign-in (WEB-33). */
+  Login: { forgot?: boolean; expired?: boolean; bestaetigt?: string; error?: string; sozial?: string } | undefined
   Registration: undefined
   Onboarding: undefined
   App: { start?: 'interview' } | (NavigatorScreenParams<AppTabParamList> & { start?: 'interview' }) | undefined
   Device: { user_code?: string } | undefined
   Legal: { page: LegalPage }
-  // `zahlung` is the query parameter in the Stripe return URL; it stays as the API writes it.
-  Printout: { year: string; payment?: string }
+  // Reached by the Stripe return trip: the parameter is the one the API writes (shared contract, WEB-1).
+  Printout: { year: string } & PaymentReturnParams
   Confirmation: { year: string }
   PasswordReset: { token?: string | undefined; error?: string | undefined } | undefined
   OauthConsent: { client_id?: string; scope?: string } | undefined
+}
+
+/** The outcome of the payment return trip a route was reached with, read by the shared contract (WEB-1). */
+export function paymentReturnOf(params: PaymentReturnParams | undefined): PaymentReturn | undefined {
+  return parsePaymentReturn(params?.[PAYMENT_RETURN_PARAM])
 }

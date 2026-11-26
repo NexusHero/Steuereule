@@ -9,6 +9,7 @@ import { ParsePersonPipe } from '../link/parse-person.pipe.js'
 import { LstbResponseDto } from '../lstb/dto/lstb-response.dto.js'
 import { ConfirmLstbScanDto } from './dto/confirm-lstb-scan.dto.js'
 import { LstbScanService } from './lstb-scan.service.js'
+import { UserWrite } from '../common/user-write.decorator.js'
 
 @ApiTags('lstb')
 @Controller('v1/steuerjahre')
@@ -20,6 +21,7 @@ export class LstbScanController {
   ) {}
 
   @Put(':jahr/lstb')
+  @UserWrite('lstb')
   @HttpCode(200)
   @RequiresAccount()
   @ApiParam({ name: 'jahr', type: Number, example: 2026, description: 'The tax year (Steuerjahr).' })

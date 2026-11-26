@@ -3,15 +3,19 @@
 // § 7 Abs. 4 Herkunft), POSTs new objects and PUTs whole euros. The Verkauf/möbliert gate is
 // named honestly (ADR-033). The client stays dumb: every number comes from the server.
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
-import { I18nextProvider } from 'react-i18next'
-import { ThemeProvider } from '@steuereule/ui'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { screen, fireEvent, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import { getCockpitControllerGetCockpitSummaryQueryKey, getTaxEstimateControllerGetQueryKey, type RentalResponseDto } from '@steuereule/api-client'
-import { createAppI18n } from '../../i18n/app-i18n'
 import { RentalScreen } from './RentalScreen'
 import { server } from '../../test-msw-server'
+import { confirmAction } from '../../test-confirm'
+import { makeTestQueryClient, renderWithQuery } from '../../test-render'
+
+/** Types a value and leaves the field — the way the mask saves (WEB-39). */
+function commit(field: HTMLElement, value: string) {
+  fireEvent.change(field, { target: { value } })
+  fireEvent.blur(field)
+}
 
 const TAX_YEAR = 2026
 const RENTAL_URL = `*/v1/steuerjahre/${TAX_YEAR}/vermietung`
@@ -49,19 +53,10 @@ const FULL_PROPERTY: RentalResponseDto = {
   status: { kind: 'bestimmt', einnahmen: 12000, vorsorgeaufwand: 0, anrechnung: 0, werbungskosten: 1500, depreciation: 4000, openItems: 0, conflicts: 0 },
 }
 
-function renderRental(onDone: () => void = () => {}, queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } }), onBack?: () => void) {
-  const i18n = createAppI18n('de')
+function renderRental(onDone: () => void = () => {}, queryClient = makeTestQueryClient(), onBack?: () => void) {
   return {
     queryClient,
-    ...render(
-      <QueryClientProvider client={queryClient}>
-        <I18nextProvider i18n={i18n}>
-          <ThemeProvider mode="light">
-            <RentalScreen taxYear={TAX_YEAR} onDone={onDone} {...(onBack ? { onBack } : {})} />
-          </ThemeProvider>
-        </I18nextProvider>
-      </QueryClientProvider>,
-    ),
+    ...renderWithQuery(<RentalScreen taxYear={TAX_YEAR} onDone={onDone} {...(onBack ? { onBack } : {})} />, { client: queryClient }),
   }
 }
 
@@ -146,8 +141,9 @@ describe('VermietungScreen', () => {
       }),
     )
     renderRental()
-    fireEvent.change(await screen.findByLabelText('Umlagen / Nebenkosten, die die Mieter gezahlt haben (€ im Jahr)'), { target: { value: '4200' } })
-    fireEvent.change(screen.getByLabelText('Schuldzinsen für das Objekt, ohne Tilgung (€ im Jahr)'), { target: { value: '6100' } })
+    // WEB-39: a field is saved once it is left, not on every keystroke; German thousands are read (4.200).
+    commit(await screen.findByLabelText('Umlagen / Nebenkosten, die die Mieter gezahlt haben (€ im Jahr)'), '4.200')
+    commit(screen.getByLabelText('Schuldzinsen für das Objekt, ohne Tilgung (€ im Jahr)'), '6100')
     await waitFor(() => expect(bodies).toEqual([{ umlagen: '4200' }, { schuldzinsen: '6100' }]))
     expect(screen.queryByLabelText('Dein Anteil am Objekt in % (der Rest gehört deinem Partner)')).toBeNull()
   })
@@ -185,6 +181,7 @@ describe('VermietungScreen', () => {
     fireEvent.change(screen.getByTestId('vermietung-0-erhaltung-1-datum'), { target: { value: '15.05.2026' } })
     await waitFor(() => expect(bodies.at(-1)).toEqual({ erhaltungsaufwand: [{ betrag: 800, datum: null }, { betrag: 12300, datum: '2026-05-15' }] }))
     fireEvent.click(screen.getByRole('button', { name: 'Rechnung 1 entfernen' }))
+    confirmAction('rentalRemoveRepair')
     await waitFor(() => expect(bodies.at(-1)).toEqual({ erhaltungsaufwand: [{ betrag: 12300, datum: '2026-05-15' }] }))
   })
 
@@ -198,7 +195,7 @@ describe('VermietungScreen', () => {
       }),
     )
     renderRental()
-    fireEvent.change(await screen.findByTestId('vermietung-0-plz'), { target: { value: '01067' } })
+    commit(await screen.findByTestId('vermietung-0-plz'), '01067')
     await waitFor(() => expect(bodies).toContainEqual({ plz: '01067', city: 'Dresden' }))
   })
 

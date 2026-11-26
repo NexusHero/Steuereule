@@ -1,15 +1,14 @@
 // AusdruckScreen — payment and download failures, the retry, and where each "inspect" from the
 // preview leads. The preview itself is stubbed: it is tested in GlassFormPreview.test.tsx.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { I18nextProvider } from 'react-i18next'
-import { ThemeProvider } from '@steuereule/ui'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import type { Screen } from '@steuereule/core'
-import { createAppI18n } from '../../i18n/app-i18n'
 import { server } from '../../test-msw-server'
+import { manualPaymentClock } from '../../test-payment-clock'
+import { PaymentClockProvider } from '../shared/usePaymentConfirmation'
 import { PrintoutScreen, type PrintoutScreenProps } from './PrintoutScreen'
+import { renderWithQuery } from '../../test-render'
 
 const { download } = vi.hoisted(() => ({ download: vi.fn() }))
 vi.mock('../privacy/exportDownload', () => ({ triggerBrowserDownload: download }))
@@ -60,17 +59,12 @@ function handlers() {
   }
 }
 
-function renderScreen(props: Partial<PrintoutScreenProps> = {}) {
+function renderScreen(props: Partial<PrintoutScreenProps> = {}, clock = manualPaymentClock()) {
   const h = handlers()
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
-  render(
-    <QueryClientProvider client={queryClient}>
-      <I18nextProvider i18n={createAppI18n('de')}>
-        <ThemeProvider mode="light">
-          <PrintoutScreen year={2025} {...h} {...props} />
-        </ThemeProvider>
-      </I18nextProvider>
-    </QueryClientProvider>,
+  renderWithQuery(
+    <PaymentClockProvider value={clock}>
+      <PrintoutScreen year={2025} {...h} {...props} />
+    </PaymentClockProvider>,
   )
   return h
 }
@@ -128,7 +122,8 @@ describe('AusdruckScreen — payment', () => {
     const openCheckout = vi.fn()
     renderScreen({ openCheckout })
     fireEvent.click(await screen.findByTestId('ausdruck-bezahlen'))
-    expect(await screen.findByText('Das hat nicht geklappt. Bitte versuch es noch mal.')).toBeTruthy()
+    // The shared wording (WEB-10): a server failure says so, never the server's text.
+    expect(await screen.findByText('Bei uns ist gerade etwas schiefgelaufen. Versuch es gleich noch mal.')).toBeTruthy()
     expect(openCheckout).not.toHaveBeenCalled()
   })
 
@@ -137,13 +132,13 @@ describe('AusdruckScreen — payment', () => {
     server.use(http.post('*/v1/steuerjahre/2025/ausdruck/checkout', () => HttpResponse.error()))
     renderScreen()
     fireEvent.click(await screen.findByTestId('ausdruck-bezahlen'))
-    expect(await screen.findByText('Das hat nicht geklappt. Bitte versuch es noch mal.')).toBeTruthy()
+    expect(await screen.findByText('Keine Verbindung zum Server. Prüf dein Internet und versuch es noch mal.')).toBeTruthy()
   })
 
   it('names a cancelled payment and offers to pay again', async () => {
     mock('offen')
     renderScreen({ payment: 'abbruch' })
-    expect(await screen.findByText('Die Zahlung wurde abgebrochen. Du kannst es jederzeit erneut versuchen.')).toBeTruthy()
+    expect(await screen.findByText('Die Zahlung wurde abgebrochen, es wurde nichts bezahlt. Du kannst es jederzeit erneut versuchen.')).toBeTruthy()
     expect(screen.getByTestId('ausdruck-bezahlen')).toBeTruthy()
   })
 
@@ -151,10 +146,10 @@ describe('AusdruckScreen — payment', () => {
     mock('freigeschaltet')
     renderScreen({ payment: 'abbruch' })
     await screen.findByTestId('ausdruck-herunterladen')
-    expect(screen.queryByText('Die Zahlung wurde abgebrochen. Du kannst es jederzeit erneut versuchen.')).toBeNull()
+    expect(screen.queryByText('Die Zahlung wurde abgebrochen, es wurde nichts bezahlt. Du kannst es jederzeit erneut versuchen.')).toBeNull()
   })
 
-  it('asks the server again for the payment state on "Aktualisieren"', async () => {
+  it('asks the server again for the payment state while the payment is being confirmed', async () => {
     let reads = 0
     server.use(
       http.get('*/v1/steuerjahre/2025/freischaltung', () => {
@@ -163,9 +158,13 @@ describe('AusdruckScreen — payment', () => {
       }),
       http.get('*/v1/steuerjahre/2025/ausdruck/pruefung', () => HttpResponse.json({ missing: [] })),
     )
-    renderScreen({ payment: 'erfolg' })
-    fireEvent.click(await screen.findByText('Aktualisieren'))
-    await waitFor(() => expect(reads).toBeGreaterThanOrEqual(2))
+    const clock = manualPaymentClock()
+    renderScreen({ payment: 'erfolg' }, clock)
+    await waitFor(() => expect(reads).toBe(1))
+    for (const expected of [2, 3]) {
+      clock.poll()
+      await waitFor(() => expect(reads).toBe(expected))
+    }
   })
 })
 
@@ -200,7 +199,15 @@ describe('AusdruckScreen — download', () => {
     server.use(http.get('*/v1/steuerjahre/2025/ausdruck', () => HttpResponse.error()))
     renderScreen()
     fireEvent.click(await screen.findByTestId('ausdruck-herunterladen'))
-    expect(await screen.findByText('Das hat nicht geklappt. Bitte versuch es noch mal.')).toBeTruthy()
+    expect(await screen.findByText('Keine Verbindung zum Server. Prüf dein Internet und versuch es noch mal.')).toBeTruthy()
+  })
+
+  it('names the wait of a rate-limited checkout (WEB-10)', async () => {
+    mock('offen')
+    server.use(http.post('*/v1/steuerjahre/2025/ausdruck/checkout', () => HttpResponse.json({ statusCode: 429 }, { status: 429, headers: { 'Retry-After': '30' } })))
+    renderScreen()
+    fireEvent.click(await screen.findByTestId('ausdruck-bezahlen'))
+    expect(await screen.findByText('Gerade kommen zu viele Anfragen. Versuch es in 30 Sekunden noch mal.')).toBeTruthy()
   })
 })
 

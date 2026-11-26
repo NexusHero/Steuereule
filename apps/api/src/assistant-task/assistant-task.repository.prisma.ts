@@ -43,6 +43,15 @@ export class PrismaAssistantTaskRepository implements AssistantTaskRepository {
     return toRecord(row)
   }
 
+  async withdraw(userId: string, taxYear: number, taskId: string, clientId: string): Promise<boolean> {
+    // Check and delete are one statement: only an open task of this assistant goes (H2-24).
+    const [removed] = await this.prisma.$transaction([
+      this.prisma.assistantTask.deleteMany({ where: { id: taskId, userId, taxYear, clientId, status: 'offen' } }),
+      this.prisma.taxDataAccessLog.create({ data: { userId, action: 'WRITE', resource: RESOURCE } }),
+    ])
+    return removed.count === 1
+  }
+
   async decide(userId: string, taxYear: number, taskId: string, decision: AssistantTaskDecision): Promise<AssistantTaskRecord | null> {
     const existing = await this.prisma.assistantTask.findFirst({ where: { id: taskId, userId, taxYear, status: 'offen' } })
     if (existing === null) return null

@@ -3,6 +3,7 @@ import { Text, View, type TextStyle, type ViewStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
 import {
+  apiErrorStatus,
   fetchReceiptFileBlob,
   getReceiptControllerListQueryKey,
   receiptParseControllerReassign,
@@ -17,23 +18,38 @@ import { APP_NS } from '../../i18n/resources'
 import { extractDocumentTextOnDevice } from '../../lib/documentOcr'
 import { holderTestId } from '../../lib/receipts/documentAssignment'
 import { useHolderLabel, useHolderName } from './DocumentAssignmentCard'
+import { useApiFailureMessage } from '../../net/apiFailure'
+
+export interface HouseholdPeople {
+  readonly people: AssignmentPersonDto[]
+  /** A read failed (not a 404 "none yet"): the list would silently miss Person B or the children (NR-09). */
+  readonly error: unknown
+  readonly retry: () => void
+}
 
 /** The household of a year as the assignment shows it: A, B in a joint return, the children. */
-export function useHouseholdPeople(taxYear: number): AssignmentPersonDto[] {
+export function useHouseholdPeople(taxYear: number): HouseholdPeople {
   const profile = useProfileControllerGetProfile({ query: { retry: false } })
   const link = useLinkControllerGet(taxYear, { query: { retry: false } })
   const children = useChildrenControllerList(taxYear, { query: { retry: false } })
-  const own = profile.data?.status === 200 ? ((profile.data.data as { firstName?: string | null }).firstName ?? null) : null
-  const linkData = link.data?.status === 200 ? link.data.data : null
-  const kinder = children.data?.status === 200 ? children.data.data.kinder : []
-  return [
-    { holder: 'A', name: own || null },
-    ...(linkData?.filingType === 'zusammen' && linkData.personBUserId ? [{ holder: 'B', name: linkData.personB?.firstName || null }] : []),
-    ...kinder.map((k) => ({ holder: `kind:${k.id}`, name: k.firstName || null })),
-  ]
+  const own = (profile.data?.data as { firstName?: string | null } | undefined)?.firstName ?? null
+  const linkData = link.data?.data ?? null
+  const kinder = children.data?.data.kinder ?? []
+  const failed = [profile, link, children].find((q) => q.isError && apiErrorStatus(q.error) !== 404)
+  return {
+    people: [
+      { holder: 'A', name: own || null },
+      ...(linkData?.filingType === 'zusammen' && linkData.personBUserId ? [{ holder: 'B', name: linkData.personB?.firstName || null }] : []),
+      ...kinder.map((k) => ({ holder: `kind:${k.id}`, name: k.firstName || null })),
+    ],
+    error: failed?.error ?? null,
+    retry: () => {
+      for (const q of [profile, link, children]) if (q.isError) void q.refetch()
+    },
+  }
 }
 
-type Outcome = { readonly kind: 'moved'; readonly text: string } | { readonly kind: 'failed' }
+type Outcome = { readonly kind: 'moved'; readonly text: string } | { readonly kind: 'failed'; readonly error: unknown }
 
 /**
  * „für: <Name>“ on every document (ADR-0092 §4). One tap lets the user give it to another person of the
@@ -45,7 +61,9 @@ export function ReceiptHolderSection({ receipt, taxYear }: { readonly receipt: R
   const s = makeStyles(t)
   const { t: tr } = useTranslation(APP_NS)
   const queryClient = useQueryClient()
-  const people = useHouseholdPeople(receipt.holderTaxYear ?? taxYear)
+  const household = useHouseholdPeople(receipt.holderTaxYear ?? taxYear)
+  const people = household.people
+  const failureMessage = useApiFailureMessage()
   const label = useHolderLabel()
   const name = useHolderName()
   const [picking, setPicking] = useState(false)
@@ -78,18 +96,14 @@ export function ReceiptHolderSection({ receipt, taxYear }: { readonly receipt: R
     try {
       const text = await readOnDevice()
       const res = await receiptParseControllerReassign(receipt.id, { taxYear: year, holder: to.holder, ...text })
-      if (res.status !== 200) {
-        setOutcome({ kind: 'failed' })
-        return
-      }
       const moved = tr('belegZuordnung.umgehaengt', { name: name(to), applied: res.data.applied, takenBack: res.data.takenBack })
       const waiting = res.data.waiting > 0 ? ` ${tr('belegZuordnung.umgehaengtWartet', { waiting: res.data.waiting })}` : ''
       setOutcome({ kind: 'moved', text: moved + waiting })
       setPicking(false)
       await queryClient.invalidateQueries()
       void queryClient.invalidateQueries({ queryKey: getReceiptControllerListQueryKey() })
-    } catch {
-      setOutcome({ kind: 'failed' })
+    } catch (error) {
+      setOutcome({ kind: 'failed', error })
     } finally {
       setBusy(false)
     }
@@ -103,7 +117,16 @@ export function ReceiptHolderSection({ receipt, taxYear }: { readonly receipt: R
         </Chip>
         <Text style={s.hint}>{tr('belegZuordnung.aendern')}</Text>
       </View>
-      {picking ? (
+      {picking && household.error !== null ? (
+        <View style={s.row}>
+          <Text style={s.error} accessibilityRole="alert" testID={`beleg-inhaber-ladefehler-${receipt.id}`}>
+            {failureMessage(household.error)}
+          </Text>
+          <Button variant="leise" onPress={household.retry} testID={`beleg-inhaber-erneut-${receipt.id}`}>
+            {tr('apiFehler.retry')}
+          </Button>
+        </View>
+      ) : picking ? (
         <View style={s.row}>
           {people
             .filter((p) => p.holder !== current)
@@ -117,7 +140,7 @@ export function ReceiptHolderSection({ receipt, taxYear }: { readonly receipt: R
       {busy ? <Text style={s.hint}>{tr('belegZuordnung.lesen')}</Text> : null}
       {outcome !== null ? (
         <Text style={outcome.kind === 'failed' ? s.error : s.hint} testID={`beleg-inhaber-ergebnis-${receipt.id}`}>
-          {outcome.kind === 'failed' ? tr('belegZuordnung.fehler') : outcome.text}
+          {outcome.kind === 'failed' ? failureMessage(outcome.error, { server: tr('belegZuordnung.fehler'), unknown: tr('belegZuordnung.fehler'), validation: tr('belegZuordnung.fehler') }) : outcome.text}
         </Text>
       ) : null}
     </View>

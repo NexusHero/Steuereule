@@ -11,6 +11,7 @@ import type { NestFastifyApplication } from '@nestjs/platform-fastify'
 import { PrismaClient } from '@prisma/client'
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest'
 import { resetRateLimiters } from '../support/reset-rate-limiters.js'
+import { fixtureClient } from '../support/database-fixture.js'
 
 async function bootApp(port: number): Promise<{ app: NestFastifyApplication; baseUrl: string; prisma: PrismaClient }> {
   const { buildApp } = await import('../../src/main.js')
@@ -18,7 +19,7 @@ async function bootApp(port: number): Promise<{ app: NestFastifyApplication; bas
   await app.listen(port, '127.0.0.1')
   const baseUrl = await app.getUrl()
   const { ENCRYPTED_PRISMA } = await import('../../src/prisma/encrypted-prisma.provider.js')
-  const prisma = app.get<PrismaClient>(ENCRYPTED_PRISMA)
+  const prisma = fixtureClient(app.get<PrismaClient>(ENCRYPTED_PRISMA))
   return { app, baseUrl, prisma }
 }
 

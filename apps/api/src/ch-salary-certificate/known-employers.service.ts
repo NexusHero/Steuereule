@@ -1,5 +1,7 @@
-import { Inject, Injectable } from '@nestjs/common'
+import { Inject, Injectable, Optional } from '@nestjs/common'
 import { LinkService } from '../link/link.service.js'
+import { AuditService } from '../audit/audit.service.js'
+import { appendReadAudit } from '../common/read-audit.js'
 import { CROSS_BORDER_SALARY_STATEMENT_REPOSITORY, type CrossBorderSalaryStatementRepository } from './ch-salary-certificate.repository.js'
 
 export interface KnownEmployer {
@@ -18,11 +20,14 @@ export class KnownEmployersService {
   constructor(
     @Inject(CROSS_BORDER_SALARY_STATEMENT_REPOSITORY) private readonly repository: CrossBorderSalaryStatementRepository,
     @Inject(LinkService) private readonly link: LinkService,
+    @Optional() @Inject(AuditService) private readonly audit?: AuditService,
   ) {}
 
   async list(userId: string): Promise<readonly KnownEmployer[]> {
     const partners = await this.link.recordedPartnerUserIds(userId)
     const records = await this.repository.listForUsers([userId, ...partners])
+    // Person B's certificates are read too: the row is the caller's, B's own account (if any) gets one as well.
+    if (records.length > 0) await appendReadAudit(this.audit, userId, 'arbeitgeber', [...new Set(records.map((record) => record.userId))])
     const byName = new Map<string, KnownEmployer>()
     // The latest year comes first, so its address is the one kept.
     for (const record of records) {

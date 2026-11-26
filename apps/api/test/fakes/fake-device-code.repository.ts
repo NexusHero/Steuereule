@@ -17,6 +17,8 @@ interface FakeRow {
   requestUserAgent: string | null
   requestRegion: string | null
   requestedAt: Date | null
+  userId?: string | null
+  approvedSessionCreatedAt?: Date | null
 }
 
 export class FakeDeviceCodeRepository implements DeviceCodeRepository {
@@ -67,5 +69,23 @@ export class FakeDeviceCodeRepository implements DeviceCodeRepository {
       region: row.requestRegion,
       requestedAt: row.requestedAt,
     })
+  }
+
+  /** Sessions the service anchored (API-1), by token. */
+  readonly anchoredSessions = new Map<string, { createdAt: Date; latestExpiry: Date }>()
+
+  recordApprovalAnchor(userCode: string, userId: string, sessionCreatedAt: Date): Promise<void> {
+    const row = this.rowsByUserCode.get(userCode)
+    if (row && row.status === 'pending' && row.userId === userId) row.approvedSessionCreatedAt = sessionCreatedAt
+    return Promise.resolve()
+  }
+
+  findApprovalAnchor(deviceCode: string): Promise<Date | null> {
+    return Promise.resolve(this.rowsByDeviceCode.get(deviceCode)?.approvedSessionCreatedAt ?? null)
+  }
+
+  anchorSession(sessionToken: string, createdAt: Date, latestExpiry: Date): Promise<void> {
+    this.anchoredSessions.set(sessionToken, { createdAt, latestExpiry })
+    return Promise.resolve()
   }
 }

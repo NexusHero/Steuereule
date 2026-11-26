@@ -5,13 +5,19 @@ import { PrismaModule } from '../prisma/prisma.module.js'
 import { ProfileModule } from '../profile/profile.module.js'
 import { FreshAuthChecker } from '../auth/fresh-auth.js'
 import { GuestRetentionService } from './guest-retention.service.js'
+import { LifecycleSweepService } from './lifecycle-sweep.service.js'
+import { LIFECYCLE_SWEEP_REPOSITORY } from './lifecycle-sweep.repository.js'
+import { PrismaLifecycleSweepRepository } from './lifecycle-sweep.repository.prisma.js'
 import { GUEST_ACTIVITY_REPOSITORY } from '../guest/guest-activity.repository.js'
 import { PrismaGuestActivityRepository } from '../guest/guest-activity.repository.prisma.js'
 import { STEP_UP_GRANT_REPOSITORY } from '../auth/step-up-grant.repository.js'
 import { PrismaStepUpGrantRepository } from '../auth/step-up-grant.repository.prisma.js'
 import { AccountDeletionController } from './account-deletion.controller.js'
 import { AccountExportController } from './account-export.controller.js'
+import { AccountVerificationController } from './account-verification.controller.js'
+import { AccountVerificationService } from './account-verification.service.js'
 import { KeystoreModule } from '../keystore/keystore.module.js'
+import { ReceiptStorageModule } from '../receipt/receipt-storage.module.js'
 import { PrismaAccountDeletionRepository } from './account-deletion.repository.prisma.js'
 import { ACCOUNT_DELETION_REPOSITORY } from './account-deletion.repository.js'
 import { AccountDeletionService } from './account-deletion.service.js'
@@ -24,13 +30,16 @@ import { TAX_DATA_EXPORT_REPOSITORY } from './tax-data-export.repository.js'
 import { PrismaTaxDataExportRepository } from './tax-data-export.repository.prisma.js'
 
 @Module({
-  imports: [PrismaModule, AuditModule, ProfileModule, KeystoreModule, HouseholdCoreModule],
-  controllers: [AccountDeletionController, AccountExportController],
+  imports: [PrismaModule, AuditModule, ProfileModule, KeystoreModule, HouseholdCoreModule, ReceiptStorageModule],
+  controllers: [AccountDeletionController, AccountExportController, AccountVerificationController],
   providers: [
     GuestRetentionService,
+    LifecycleSweepService,
+    { provide: LIFECYCLE_SWEEP_REPOSITORY, useClass: PrismaLifecycleSweepRepository },
     { provide: GUEST_ACTIVITY_REPOSITORY, useClass: PrismaGuestActivityRepository },
     AccountDeletionService,
     AccountExportService,
+    AccountVerificationService,
     FreshAuthChecker,
     { provide: STEP_UP_GRANT_REPOSITORY, useClass: PrismaStepUpGrantRepository },
     { provide: ACCOUNT_DELETION_REPOSITORY, useClass: PrismaAccountDeletionRepository },

@@ -195,9 +195,16 @@ export class PrismaBusinessRepository implements BusinessRepository {
     return toProfile(row)
   }
 
+  /**
+   * Profile and book of a further business go together or not at all (H2-8). The book's guard lets an empty
+   * book (no entries, log records or bank transactions) be deleted without an erasure grant; the `none` filters
+   * keep to exactly that, so a book with a record is never touched here.
+   */
   async deleteProfile(userId: string, taxYear: number, ref: BusinessRef): Promise<void> {
-    await this.prisma.businessProfile.deleteMany({ where: { userId, taxYear, ...ref } })
-    await this.prisma.ledger.deleteMany({ where: { userId, taxYear, ...ref, entries: { none: {} }, logRecords: { none: {} }, bankTransactions: { none: {} } } })
+    await this.prisma.$transaction(async (tx) => {
+      await tx.businessProfile.deleteMany({ where: { userId, taxYear, ...ref } })
+      await tx.ledger.deleteMany({ where: { userId, taxYear, ...ref, entries: { none: {} }, logRecords: { none: {} }, bankTransactions: { none: {} } } })
+    })
   }
 
   private async load(tx: Tx, book: BookRecord): Promise<LoadedBook> {

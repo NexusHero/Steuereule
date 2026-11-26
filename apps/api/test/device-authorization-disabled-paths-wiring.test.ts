@@ -39,7 +39,7 @@ describe('createBetterAuth — the real construction path (#262)', () => {
         baseUrl: 'http://localhost:3000',
         webAppUrl: 'http://localhost:8081',
         trustedOrigins: [],
-        emailSender: { sendVerificationEmail: vi.fn(), sendPasswordResetEmail: vi.fn(), sendExistingAccountNotice: vi.fn() },
+        emailSender: { sendVerificationEmail: vi.fn(), sendPasswordResetEmail: vi.fn(), sendExistingAccountNotice: vi.fn(), sendUnverifiedAccountWarning: vi.fn() },
       }),
     ).toThrow(/\/device\/revoke/)
   })

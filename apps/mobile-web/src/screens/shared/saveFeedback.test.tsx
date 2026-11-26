@@ -3,7 +3,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 const hapticWarning = vi.hoisted(() => vi.fn(async () => {}))
 vi.mock('@steuereule/ui', async (importOriginal) => ({ ...(await importOriginal<typeof import('@steuereule/ui')>()), hapticWarning }))
 
-import { SaveFailedError, triggerSaveErrorHaptic, warnOnHttpError, watchSaveResult } from './saveFeedback'
+import { ApiError } from '@steuereule/api-client'
+import { triggerSaveErrorHaptic, warnOnHttpError, watchSaveResult } from './saveFeedback'
 
 beforeEach(() => hapticWarning.mockClear())
 
@@ -28,11 +29,9 @@ describe('save feedback', () => {
     expect(hapticWarning).not.toHaveBeenCalled()
   })
 
-  it('turns an HTTP error answer into a rejection that carries the status', async () => {
-    const failure = await watchSaveResult(Promise.resolve({ status: 422 })).catch((e: unknown) => e)
-    expect(failure).toBeInstanceOf(SaveFailedError)
-    expect((failure as SaveFailedError).status).toBe(422)
-    expect((failure as SaveFailedError).message).toContain('422')
+  it('passes an HTTP error (an ApiError since WEB-28) on as it is and buzzes', async () => {
+    const refused = new ApiError(422, { message: 'nope' })
+    await expect(watchSaveResult(Promise.reject(refused))).rejects.toBe(refused)
     expect(hapticWarning).toHaveBeenCalledTimes(1)
   })
 

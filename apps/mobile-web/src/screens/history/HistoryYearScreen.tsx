@@ -4,7 +4,7 @@ import type { TFunction } from 'i18next'
 import { FLOW_CONTENT_MAX_WIDTH, Button, useBreakpoint, useTheme, type UiTheme } from '@steuereule/ui'
 import type { YearHistoryResponseDto, YearListItemDto } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
-import { SELECTABLE_TAX_YEARS } from '../../config/taxYear'
+import { selectableTaxYears } from '../../config/taxYear'
 import { BackButton } from '../shared/BackButton'
 import { AssessmentDiffView } from './AssessmentDiffView'
 import { HistoryGate, historyScreenStyles } from './HistoryGate'
@@ -64,7 +64,7 @@ function YearLoaded({ data, year, onBack, onOpenYear, onPrepareAppeal, onOpenRec
   const s = makeStyles(t)
   const { t: tr } = useTranslation(APP_NS)
   const item = data.list.find((l) => l.year === year)
-  const selectable = SELECTABLE_TAX_YEARS.includes(year)
+  const selectable = selectableTaxYears().includes(year)
 
   const back = <BackButton accessibilityLabel={tr('verlauf.zurueck')} onPress={onBack} testID="verlauf-jahr-zurueck" />
   if (item === undefined) {
@@ -73,7 +73,8 @@ function YearLoaded({ data, year, onBack, onOpenYear, onPrepareAppeal, onOpenRec
         {back}
         <View style={s.card} testID="verlauf-jahr-unbekannt">
           <Text style={s.cardTitle} accessibilityRole="header">
-            {tr('verlauf.jahr.unbekannt.titel', { jahr: year })}
+            {/* NR-21: `/app/verlauf/abc` parses to NaN — never show "NaN" as a year. */}
+            {Number.isInteger(year) ? tr('verlauf.jahr.unbekannt.titel', { jahr: year }) : tr('verlauf.jahr.unbekannt.titelOhneJahr')}
           </Text>
           <Text style={s.muted}>{tr('verlauf.jahr.unbekannt.text')}</Text>
         </View>

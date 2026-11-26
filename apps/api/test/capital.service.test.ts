@@ -4,7 +4,6 @@
 // atomicity, cross-user isolation, the real fold through Prisma) lives in
 // test/acceptance/req-025-kapital.test.ts.
 import { beforeEach, describe, expect, it } from 'vitest'
-import { FakeMarkingRepository } from './fakes/fake-marking.repository.js'
 import { AuditService } from '../src/audit/audit.service.js'
 import { CapitalService } from '../src/capital/capital.service.js'
 import { FakeAuditRepository } from './fakes/fake-audit.repository.js'
@@ -24,6 +23,9 @@ import type { CrossBorderSalaryStatementRecord } from '../src/ch-salary-certific
 import type { MasterDataRecord } from '../src/master-data/master-data.repository.js'
 import { incomeTax, soliExemptionLimits, solidaritaetszuschlag, solidaritaetszuschlagInCents, splittingTariff } from '@steuereule/core'
 import { taxCaseReaderOver } from '../src/tax-case/repository-tax-case.reader.js'
+
+/** Person B agreed to the joint year (decision 3); without it Person A's readers do not reach B. */
+const B_AGREED = new Date('2026-01-10T09:00:00Z')
 
 const USER_ID = 'user-1'
 const TAX_YEAR = 2026
@@ -45,7 +47,6 @@ const swissCertificate = (userId: string, grossChf: string, withholdingChf: stri
 })
 
 describe('KapitalService', () => {
-  let markings: FakeMarkingRepository
   let repository: FakeCapitalRepository
   let interviewRepository: FakeInterviewAnswerRepository
   let lstbRepository: FakeLstbRepository
@@ -64,14 +65,13 @@ describe('KapitalService', () => {
     lstbRepository = new FakeLstbRepository()
     taxYearRepository = new FakeTaxYearRepository()
     auditRepository = new FakeAuditRepository()
-    markings = new FakeMarkingRepository()
     ch = new FakeChSalaryCertificateRepository()
     masterData = new FakeMasterDataRepository()
     link = new FakeLinkRepository()
     pension = new FakePensionRepository()
     // The Cockpit estimate over the same records: the mask compares on its figures.
     estimates = new TaxEstimateService(taxCaseReaderOver({ wageTaxCertificate: lstbRepository, interview: interviewRepository, salaryStatement: ch, masterData, commute: NO_COMMUTE, coupling: link, children: new FakeChildRepository(), rental: new FakeRentalRepository(), pension, capital: repository }))
-    service = new CapitalService(repository, interviewRepository, taxYearRepository, new AuditService(auditRepository), markings, estimates)
+    service = new CapitalService(repository, interviewRepository, taxYearRepository, new AuditService(auditRepository), estimates)
   })
 
   describe('getState — the honest empty mask and the depot-Einordnung', () => {
@@ -200,7 +200,7 @@ describe('KapitalService', () => {
       interviewRepository.seed('a', YEAR, { ...BROKER, ...crossBorder, job: 'Angestellt', familienstand: 'Verheiratet', kinder: 'Nein', ausland: 'Ja, in die Schweiz' })
       interviewRepository.seed('b', YEAR, crossBorder)
       await masterData.save('a', { familienstand: 'verheiratet' } as MasterDataRecord)
-      await link.upsert('a', YEAR, { personBUserId: 'b', filingType: 'zusammen' })
+      await link.upsert('a', YEAR, { personBUserId: 'b', filingType: 'zusammen', personBConsentedAt: B_AGREED })
       ch.seed(swissCertificate('a', '90000', '4050'))
       ch.seed(swissCertificate('b', '60000', '2700'))
 
@@ -297,11 +297,4 @@ describe('KapitalService', () => {
     })
   })
 
-  it('ADR-0052 §6: a user write drops the marker of exactly that field', async () => {
-    await markings.save('user-1', 2025, { key: 'kapital.kapitalertraege', provenance: { kind: 'uebernahme', lastYear: 2024 }, confirmed: false, proposal: null })
-
-    await service.setField('user-1', 2025, 'kapitalertraege', { kind: 'erfasst', value: 310 })
-
-    expect(markings.all()).toEqual([])
-  })
 })

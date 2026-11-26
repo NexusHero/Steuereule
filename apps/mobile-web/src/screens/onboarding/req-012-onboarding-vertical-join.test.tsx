@@ -21,28 +21,15 @@
 // which isn't in this diff. That live run is still open — tracked as follow-up, not
 // silently declared "done" here.
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
-import { I18nextProvider } from 'react-i18next'
-import { ThemeProvider } from '@steuereule/ui'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { screen, fireEvent, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
-import { createAppI18n } from '../../i18n/app-i18n'
 import { OnboardingScreen } from '../OnboardingScreen'
 import { server } from '../../test-msw-server'
 import { stubStorageSetItem, assertNoStorageWrites } from '../../test-storage-guard'
+import { renderWithQuery } from '../../test-render'
 
 function renderOnboarding(opts: { lng?: 'de' | 'en'; onDone?: () => void } = {}) {
-  const i18n = createAppI18n(opts.lng ?? 'de')
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
-  return render(
-    <QueryClientProvider client={queryClient}>
-      <I18nextProvider i18n={i18n}>
-        <ThemeProvider mode="light">
-          <OnboardingScreen onDone={opts.onDone ?? (() => {})} />
-        </ThemeProvider>
-      </I18nextProvider>
-    </QueryClientProvider>,
-  )
+  return renderWithQuery(<OnboardingScreen onDone={opts.onDone ?? (() => {})} />, { language: opts.lng ?? 'de' })
 }
 
 async function fillNameStep(nextLabel = 'Weiter') {
@@ -115,9 +102,9 @@ describe('REQ-012 — Onboarding vertical-join (ATDD acceptance, steuereule#53)'
     server.use(http.get('*/v1/profile', () => HttpResponse.error()))
     renderOnboarding()
 
-    await screen.findByText('Das hat nicht geklappt.')
+    await screen.findByText('Das konnte nicht geladen werden.')
     expect(
-      screen.getByText('Deine Angaben konnten nicht geladen werden. Prüf die Verbindung und versuch es noch mal.'),
+      screen.getByText('Keine Verbindung zum Server. Prüf dein Internet und versuch es noch mal.'),
     ).toBeTruthy()
     // Never falls through to rendering the form on mock/default data instead.
     expect(screen.queryByPlaceholderText('Kim')).toBeNull()

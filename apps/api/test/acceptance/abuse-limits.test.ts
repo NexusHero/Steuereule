@@ -2,6 +2,7 @@
 // `buildApp()`. Loopback is the trusted proxy here, so each request can carry its own client address in
 // X-Forwarded-For: the per-address limit then never trips, and what is left to measure is the limit under test.
 import { describe, expect, it } from 'vitest'
+import { GUEST_CREATION_LIMIT } from '../../src/auth/user-context.guard.js'
 import { baseUrl, prisma, signUp, useAcceptanceServer } from '../support/acceptance-server.js'
 
 const ORIGIN = 'https://allowed.example.com'
@@ -97,16 +98,19 @@ describe('limits independent of the caller address (ADR-0106 D8/D9)', () => {
     expect((await guess('/verify-password', { password: 'a-fine-strong-password-1' }, 11)).status).toBe(429)
   })
 
-  it('D8: guests from one address may write 300 times an hour, the next write is refused', async () => {
-    const statuses: number[] = []
-    for (let i = 0; i < 301; i += 1) {
-      const response = await fetch(`${baseUrl}/v1/profile`, {
+  // One guest (one cookie) writing through an interview: the per-address write budget is what stops it.
+  it('D8: a guest from one address may write 300 times an hour, the next write is refused', async () => {
+    const write = (i: number, cookie?: string) =>
+      fetch(`${baseUrl}/v1/profile`, {
         method: 'PUT',
-        headers: { 'content-type': 'application/json', origin: ORIGIN, 'x-forwarded-for': '198.51.100.20' },
+        headers: { 'content-type': 'application/json', origin: ORIGIN, 'x-forwarded-for': '198.51.100.20', ...(cookie === undefined ? {} : { cookie }) },
         body: JSON.stringify({ firstName: `Gast${i}`, lastName: 'G' }),
       })
-      statuses.push(response.status)
-    }
+    const first = await write(0)
+    expect(first.status).toBe(200)
+    const cookie = first.headers.get('set-cookie')!.split(';')[0]!
+    const statuses = [first.status]
+    for (let i = 1; i < 301; i += 1) statuses.push((await write(i, cookie)).status)
     expect(statuses.slice(0, 300).every((status) => status === 200)).toBe(true)
     expect(statuses[300]).toBe(429)
 
@@ -117,5 +121,23 @@ describe('limits independent of the caller address (ADR-0106 D8/D9)', () => {
       body: JSON.stringify({ firstName: 'Gast', lastName: 'G' }),
     })
     expect(elsewhere.status).toBe(200)
+  })
+
+  // Writes without a guest cookie each start a new guest with data the retention sweep must erase later.
+  it('API-9: one address may start 20 new guests with data an hour, the next new guest is refused', async () => {
+    const newGuest = (i: number, address: string) =>
+      fetch(`${baseUrl}/v1/profile`, {
+        method: 'PUT',
+        headers: { 'content-type': 'application/json', origin: ORIGIN, 'x-forwarded-for': address },
+        body: JSON.stringify({ firstName: `Neu${i}`, lastName: 'G' }),
+      })
+    const statuses: number[] = []
+    for (let i = 0; i < GUEST_CREATION_LIMIT.max + 1; i += 1) statuses.push((await newGuest(i, '198.51.100.30')).status)
+    expect(statuses).toEqual([...Array<number>(GUEST_CREATION_LIMIT.max).fill(200), 429])
+    // The refused write stored nothing: exactly one profile per admitted guest.
+    expect(await prisma.profile.count()).toBe(GUEST_CREATION_LIMIT.max)
+
+    // Another address may still start a guest.
+    expect((await newGuest(99, '198.51.100.31')).status).toBe(200)
   })
 })

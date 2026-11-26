@@ -2,12 +2,15 @@ import { randomUUID } from 'node:crypto'
 import { Inject, Injectable } from '@nestjs/common'
 import { asksForEducation, isPreselectedForYear, planHouseholdMerge, type HouseholdEntry } from '@steuereule/core'
 import { AuditService } from '../audit/audit.service.js'
-import { ConflictError, InvalidInputError, NotFoundError } from '../common/domain-error.js'
+import { withSystemDatabaseAccess } from '../common/database-identity.js'
+import { ConflictError, ForbiddenError, InvalidInputError, NotFoundError } from '../common/domain-error.js'
 import { CHILD_REPOSITORY, type ChildRecord, type ChildRepository } from '../children/child.repository.js'
 import { PARTNER_COUPLING_REPOSITORY, type PartnerCouplingRepository } from '../link/link.repository.js'
+import { couplingVisibleTo } from '../link/partner-consent.js'
 import { MASTER_DATA_REPOSITORY, type MasterDataRepository } from '../master-data/master-data.repository.js'
 import { PROFILE_REPOSITORY, type ProfileRepository } from '../profile/profile.repository.js'
 import { HOUSEHOLD_REPOSITORY, type HouseholdPersonRecord, type HouseholdRepository, type MembershipRecord } from '../household-core/household.repository.js'
+import { isShadowId } from '../common/person-ids.js'
 import { HouseholdAccessService } from '../household-core/household-access.service.js'
 import { PersonSealService, type PersonFacts } from '../household-core/person-seal.service.js'
 
@@ -43,7 +46,6 @@ export interface HouseholdView {
   readonly partnerLink: { readonly validFromYear: number; readonly endedFromYear: number | null; readonly ownAccount: boolean } | null
 }
 
-const isShadow = (userId: string) => userId.startsWith('spouse_')
 
 /**
  * Household at account level (#452, ADR-0062). Expand only: the yearly Kind rows and the
@@ -86,9 +88,10 @@ export class HouseholdService {
         .map((c) => ({ entry: { key: c.id, firstName: c.firstName, lastName: c.lastName, birthDate: c.geburtsdatum }, taxYear: c.taxYear, taxId: c.taxId, childId: c.id, spouseUserId: null })),
     )
 
-    const spouseRows = (await this.links.listForPersonA(householdUserId)).filter(
-      (l) => l.filingType === 'zusammen' && l.personBUserId !== '' && !linkedSpouseYears.has(`${l.personBUserId}:${l.taxYear}`),
-    )
+    // Decision 3: a year Person B has not agreed to copies nothing of B into this household.
+    const spouseRows = (await this.links.listForPersonA(householdUserId))
+      .map((l) => couplingVisibleTo(l, householdUserId) ?? l)
+      .filter((l) => l.filingType === 'zusammen' && l.personBUserId !== '' && !linkedSpouseYears.has(`${l.personBUserId}:${l.taxYear}`))
     const spouseInputs = []
     for (const row of spouseRows) {
       const [profile, md] = await Promise.all([this.profiles.findByUserId(row.personBUserId), this.masterData.findByUserId(row.personBUserId)])
@@ -99,15 +102,18 @@ export class HouseholdService {
         taxId: profile.steuerId,
         childId: null,
         spouseUserId: row.personBUserId,
-        linkedUserId: isShadow(row.personBUserId) ? null : row.personBUserId,
+        linkedUserId: isShadowId(row.personBUserId) ? null : row.personBUserId,
       })
     }
     await this.migrateKind(householdUserId, actorUserId, 'spouse', persons, facts, spouseInputs)
 
     const link = await this.repo.findPartnerLinkByPersonA(householdUserId)
-    const ownAccount = spouseRows.find((r) => !isShadow(r.personBUserId))
+    const ownAccount = spouseRows.find((r) => !isShadowId(r.personBUserId))
     if (!link && ownAccount) {
-      await this.repo.upsertPartnerLink(householdUserId, { personBUserId: ownAccount.personBUserId, spousePersonId: null, validFromYear: ownAccount.taxYear, endedFromYear: null })
+      // Only a year B agreed to reaches here (decision 3); naming B in the link is a system path in the database.
+      await withSystemDatabaseAccess('household-link', () =>
+        this.repo.upsertPartnerLink(householdUserId, { personBUserId: ownAccount.personBUserId, spousePersonId: null, validFromYear: ownAccount.taxYear, endedFromYear: null }),
+      )
     }
   }
 
@@ -254,7 +260,7 @@ export class HouseholdService {
     await this.repo.updatePerson(personId, { leftFromYear: fromYear, updatedByUserId: userId })
     const link = await this.repo.findPartnerLinkByPersonA(owner)
     const person = await this.repo.findPerson(personId)
-    if (link && person?.kind === 'spouse') await this.repo.upsertPartnerLink(owner, { ...link, endedFromYear: fromYear })
+    if (link && person?.kind === 'spouse') await this.repo.endPartnerLink(owner, fromYear)
     await this.audit.append({ userId, action: 'WRITE', resource: 'haushalt' })
     return this.view(userId, fromYear)
   }
@@ -263,7 +269,7 @@ export class HouseholdService {
   async endPartnerLink(userId: string, fromYear: number): Promise<HouseholdView> {
     const owner = await this.householdOwner(userId, fromYear)
     const link = await this.repo.findPartnerLinkByPersonA(owner)
-    if (link) await this.repo.upsertPartnerLink(owner, { ...link, endedFromYear: fromYear })
+    if (link) await this.repo.endPartnerLink(owner, fromYear)
     for (const spouse of (await this.repo.listPersons(owner)).filter((p) => p.kind === 'spouse' && p.leftFromYear === null)) {
       await this.repo.updatePerson(spouse.id, { leftFromYear: fromYear, updatedByUserId: userId })
     }
@@ -274,6 +280,8 @@ export class HouseholdService {
   /** „Endgültig löschen“: every year's record goes, then the person's key (crypto-shredding, AC 5). */
   async deletePerson(userId: string, personId: string, taxYear: number): Promise<HouseholdView> {
     const owner = await this.householdOwner(userId, taxYear)
+    // It reaches every year, also those the linked partner never shared: only Person A may (API-3).
+    if (owner !== userId) throw new ForbiddenError('ONLY_HOUSEHOLD_OWNER_DELETES', 'Nur die Person, der der Haushalt gehört, kann jemanden endgültig löschen.')
     await this.ownedPerson(owner, personId)
     for (const m of (await this.repo.listMemberships(owner)).filter((x) => x.personId === personId)) {
       if (m.childId) await this.children.delete(owner, m.taxYear, m.childId)

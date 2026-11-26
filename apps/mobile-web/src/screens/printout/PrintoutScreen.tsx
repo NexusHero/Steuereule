@@ -4,16 +4,23 @@ import { useTranslation } from 'react-i18next'
 import { Button, Card, useBreakpoint, useTheme } from '@steuereule/ui'
 import type { Screen } from '@steuereule/core'
 import {
+  apiErrorStatus,
+  isApiError,
+  NetworkError,
   usePrintoutControllerCheckout,
   usePrintoutControllerCheck,
   useUnlockControllerStatus,
 } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
+import { useApiFailureMessage } from '../../net/apiFailure'
 import { isRunningTaxYear } from '../../config/taxYear'
 import { makePrivacyStyles } from '../privacy/styles'
 import { ErrorState, LoadingState } from '../shared/ScreenState'
+import { BetaNotice } from '../shared/BetaNotice'
+import { LegalLinks } from '../legal/LegalLinks'
 import { GlassFormPreview } from './GlassFormPreview'
 import { loadPrintout } from './printoutDownload'
+import { checkoutRefusalOf, priceText, usePaymentConfirmation } from '../shared/usePaymentConfirmation'
 
 export interface PrintoutScreenProps {
   readonly year: number
@@ -40,6 +47,9 @@ export function PrintoutScreen({ year, payment, onBack, onCompleteDetails, onCom
   const checkout = usePrintoutControllerCheckout()
   const [message, setMessage] = useState<{ kind: 'ok' | 'fehler'; text: string } | null>(null)
   const [loading, setLoading] = useState(false)
+  const failureMessage = useApiFailureMessage()
+  const unlocked = status.data === undefined ? undefined : status.data.data.status === 'freigeschaltet'
+  const { phase, recheck } = usePaymentConfirmation({ outcome: payment, unlocked, refetch: status.refetch })
 
   if (isRunningTaxYear(year)) {
     // K2: the running year has no official forms yet — name when filing opens, up front.
@@ -54,7 +64,7 @@ export function PrintoutScreen({ year, payment, onBack, onCompleteDetails, onCom
     )
   }
   if (status.isPending || check.isPending) return <LoadingState bp={bp} label={t('ausdruck.loading')} />
-  if (check.data?.status === 404) {
+  if (apiErrorStatus(check.error) === 404) {
     return (
       <ErrorState
         bp={bp}
@@ -65,12 +75,12 @@ export function PrintoutScreen({ year, payment, onBack, onCompleteDetails, onCom
       />
     )
   }
-  if (status.data?.status !== 200 || check.data?.status !== 200) {
+  if (status.isError || check.isError) {
     return (
       <ErrorState
         bp={bp}
         heading={t('ausdruck.loadError.heading')}
-        message={t('ausdruck.loadError.message')}
+        message={failureMessage(status.error ?? check.error, { offline: t('ausdruck.loadError.message') })}
         retryLabel={t('ausdruck.loadError.retry')}
         onRetry={() => {
           void status.refetch()
@@ -81,6 +91,7 @@ export function PrintoutScreen({ year, payment, onBack, onCompleteDetails, onCom
   }
 
   const unlock = status.data.data.status
+  const price = priceText(status.data.data.price)
   const missing = check.data.data.missing
   const married = missing.includes('ehegatte')
   const riester = missing.includes('riester')
@@ -95,20 +106,33 @@ export function PrintoutScreen({ year, payment, onBack, onCompleteDetails, onCom
   const personBUnconfirmed = missing.includes('unbestaetigt.personB')
   // Values too long for their box at the 10 pt the forms require (ADR-0085): named, to be shortened.
   const tooLong = missing.filter((key) => key.startsWith('zuLang.')).map((key) => key.slice('zuLang.'.length))
-  const ownWay = new Set(['ehegatte', 'riester', 'kinder', 'vermietung', 'kapital', 'grenzgaenger'])
+  // Decision 3: Person B (own account) has not agreed to this joint year; nothing of B may be read or printed.
+  const partnerConsentMissing = missing.includes('personB.zustimmung')
+  const ownWay = new Set(['ehegatte', 'riester', 'kinder', 'vermietung', 'kapital', 'grenzgaenger', 'personADruckt', 'personB.zustimmung'])
   const masterDataMissing = missing.some((key) => !ownWay.has(key) && !key.startsWith('anlage') && !key.startsWith('unbestaetigt.') && !key.startsWith('zuLang.'))
   const locked = missing.length > 0
+  // ADR-0054: Person B of a joint return never prints or pays; Person A does (WEB-15).
+  const personAPrints = missing.includes('personADruckt')
+
+  function refused(source: unknown) {
+    const refusal = checkoutRefusalOf(source)
+    if (refusal === 'already-paid') {
+      setMessage({ kind: 'ok', text: t('zahlung.schonBezahlt', { year }) })
+      void status.refetch()
+    } else if (refusal === 'pending') setMessage({ kind: 'fehler', text: t('zahlung.ausstehend', { year }) })
+    // A 429 that names its wait says it (WEB-10); without Retry-After P5's general wait text.
+    else if (refusal === 'throttled') setMessage({ kind: 'fehler', text: isApiError(source) && source.retryAfterSeconds !== undefined ? failureMessage(source) : t('zahlung.zuVieleVersuche') })
+    else setMessage({ kind: 'fehler', text: failureMessage(source, { unknown: t('ausdruck.fehler') }) })
+  }
 
   function pay() {
     setMessage(null)
     checkout.mutate(
       { jahr: year },
       {
-        onSuccess: (response) => {
-          if (response.status === 200) openCheckout(response.data.checkoutUrl)
-          else setMessage({ kind: 'fehler', text: t('ausdruck.fehler') })
-        },
-        onError: () => setMessage({ kind: 'fehler', text: t('ausdruck.fehler') }),
+        onSuccess: (response) => openCheckout(response.data.checkoutUrl),
+        // P5's refusals (already paid, pending, throttled) first; the rest in the shared wording (WEB-10).
+        onError: refused,
       },
     )
   }
@@ -118,10 +142,10 @@ export function PrintoutScreen({ year, payment, onBack, onCompleteDetails, onCom
     setMessage(null)
     try {
       const result = await loadPrintout(year, { editable })
-      setMessage(result.ok ? { kind: 'ok', text: t('ausdruck.heruntergeladen') } : { kind: 'fehler', text: t('ausdruck.fehler') })
+      setMessage(result.ok ? { kind: 'ok', text: t('ausdruck.heruntergeladen') } : { kind: 'fehler', text: failureMessage(result.error, { validation: t('ausdruck.fehler'), unknown: t('ausdruck.fehler') }) })
       if (!result.ok && result.status === 422) void check.refetch()
-    } catch {
-      setMessage({ kind: 'fehler', text: t('ausdruck.fehler') })
+    } catch (error) {
+      setMessage({ kind: 'fehler', text: failureMessage(new NetworkError(error)) })
     } finally {
       setLoading(false)
     }
@@ -171,11 +195,21 @@ export function PrintoutScreen({ year, payment, onBack, onCompleteDetails, onCom
 
       <GlassFormPreview year={year} onInspectField={handleInspectField} />
 
-      {locked ? (
+      {personAPrints ? (
+        <Card style={{ marginBottom: theme.space.s4 }} testID="ausdruck-person-a-druckt">
+          <Text style={styles.sectionTitle}>{t('ausdruckPersonB.titel')}</Text>
+          <Text style={styles.sectionBody}>{t('ausdruckPersonB.text')}</Text>
+          <Button variant="ghost" onPress={onConfirm} testID="ausdruck-person-b-bestaetigen">
+            {t('ausdruckPersonB.bestaetigen')}
+          </Button>
+        </Card>
+      ) : null}
+      {locked && !personAPrints ? (
         <Card style={{ marginBottom: theme.space.s4 }}>
           <Text style={styles.sectionTitle}>{t('ausdruck.fehlendTitel')}</Text>
           {masterDataMissing ? <Text style={styles.sectionBody}>{t('ausdruck.fehlendAngaben')}</Text> : null}
           {married ? <Text style={styles.sectionBody}>{t('ausdruck.fehlendEhegatte')}</Text> : null}
+          {partnerConsentMissing ? <Text style={styles.sectionBody} testID="ausdruck-zustimmung-person-b">{t('ausdruck.fehlendZustimmungPersonB', { jahr: year })}</Text> : null}
           {annexes.map((annex) => (
             <Text key={annex} style={styles.sectionBody}>
               {t('ausdruck.anlageNochNicht', { anlage: t(`ausdruck.anlagen.${annex}`) })}
@@ -249,27 +283,44 @@ export function PrintoutScreen({ year, payment, onBack, onCompleteDetails, onCom
         </Card>
       ) : null}
 
-      {payment === 'abbruch' && unlock !== 'freigeschaltet' ? <Text style={styles.hint}>{t('ausdruck.zahlungAbgebrochen')}</Text> : null}
-
-      {unlock === 'nicht-verfuegbar' ? <Text style={styles.sectionBody}>{t('ausdruck.nichtVerfuegbar')}</Text> : null}
-
-      {unlock === 'offen' && payment === 'erfolg' ? (
+      {phase === 'cancelled' ? (
+        <Text style={styles.hint} accessibilityLiveRegion="polite" testID="zahlung-abgebrochen">
+          {t('zahlung.abgebrochen')}
+        </Text>
+      ) : null}
+      {phase === 'paid' ? (
+        <Text style={styles.successNote} accessibilityLiveRegion="polite" testID="zahlung-bestaetigt">
+          {t('zahlung.bestaetigt', { year })}
+        </Text>
+      ) : null}
+      {phase === 'confirming' ? (
+        <Text style={styles.sectionBody} accessibilityLiveRegion="polite" testID="zahlung-wird-bestaetigt">
+          {t('zahlung.wirdBestaetigt')}
+        </Text>
+      ) : null}
+      {phase === 'timeout' ? (
         <View style={{ gap: theme.space.s3 }}>
-          <Text style={styles.sectionBody} accessibilityLiveRegion="polite">
-            {t('ausdruck.zahlungLaeuft')}
+          <Text style={styles.sectionBody} accessibilityLiveRegion="polite" testID="zahlung-zeit-ueberschritten">
+            {t('zahlung.zeitUeberschritten', { year })}
           </Text>
-          <Button variant="ghost" onPress={() => void status.refetch()}>
-            {t('ausdruck.aktualisieren')}
+          <Button variant="ghost" onPress={recheck} testID="zahlung-erneut-pruefen">
+            {t('zahlung.erneutPruefen')}
           </Button>
         </View>
       ) : null}
 
-      {unlock === 'offen' && payment !== 'erfolg' ? (
+      {unlock === 'nicht-verfuegbar' ? <Text style={styles.sectionBody}>{t('ausdruck.nichtVerfuegbar')}</Text> : null}
+
+      {unlock === 'offen' && !personAPrints ? (
         <View style={{ gap: theme.space.s2 }}>
-          <Button onPress={pay} disabled={checkout.isPending || locked} testID="ausdruck-bezahlen">
+          <Button onPress={pay} disabled={checkout.isPending || locked || phase === 'confirming'} testID="ausdruck-bezahlen">
             {t('ausdruck.freischalten')}
           </Button>
-          <Text style={styles.hint}>{t('ausdruck.freischaltenHinweis')}</Text>
+          <Text style={styles.hint} testID="ausdruck-preis">
+            {price ? t('zahlung.preis', { preis: price, year }) : t('zahlung.preisUnbekannt')}
+          </Text>
+          <BetaNotice />
+          <LegalLinks />
         </View>
       ) : null}
 
@@ -286,7 +337,7 @@ export function PrintoutScreen({ year, payment, onBack, onCompleteDetails, onCom
       ) : null}
 
       {message ? (
-        <Text style={message.kind === 'ok' ? styles.successNote : styles.errorNote} accessibilityLiveRegion="polite">
+        <Text style={message.kind === 'ok' ? styles.successNote : styles.errorNote} accessibilityLiveRegion="polite" {...(message.kind === 'fehler' ? { accessibilityRole: 'alert' as const } : {})}>
           {message.text}
         </Text>
       ) : null}

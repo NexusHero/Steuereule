@@ -774,6 +774,9 @@
               }
             }
           },
+          "400": {
+            "description": "FRESH_AUTH_REQUIRED: a new invitation code grants access to a third party and needs the step-up."
+          },
           "401": {
             "description": "Requires account."
           },
@@ -869,6 +872,75 @@
           },
           "401": {
             "description": "Requires account."
+          }
+        },
+        "tags": [
+          "kopplung"
+        ]
+      }
+    },
+    "/v1/steuerjahre/{jahr}/kopplung/zustimmung": {
+      "post": {
+        "operationId": "LinkController_consent",
+        "parameters": [
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": 2026,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Person B agrees, in B’s own app, to share this tax year with Person A.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LinkResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Requires account."
+          }
+        },
+        "tags": [
+          "kopplung"
+        ]
+      },
+      "delete": {
+        "operationId": "LinkController_withdrawConsent",
+        "parameters": [
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": 2026,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Person B takes back the consent for this tax year; Person A sees nothing of B for it from now on.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LinkResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Requires account."
+          },
+          "404": {
+            "description": "NO_CONSENT_GIVEN: the caller gave no consent for this year."
           }
         },
         "tags": [
@@ -2925,7 +2997,8 @@
         },
         "tags": [
           "selbststaendig"
-        ]
+        ],
+        "x-destructive": true
       }
     },
     "/v1/steuerjahre/{jahr}/selbststaendig/kataloge": {
@@ -3457,7 +3530,8 @@
         },
         "tags": [
           "selbststaendig"
-        ]
+        ],
+        "x-destructive": true
       }
     },
     "/v1/steuerjahre/{jahr}/selbststaendig/schnellerfassung": {
@@ -3652,7 +3726,8 @@
         },
         "tags": [
           "selbststaendig"
-        ]
+        ],
+        "x-destructive": true
       }
     },
     "/v1/steuerjahre/{jahr}/selbststaendig/bank/import": {
@@ -4015,7 +4090,8 @@
         },
         "tags": [
           "selbststaendig"
-        ]
+        ],
+        "x-destructive": true
       }
     },
     "/v1/steuerjahre/{jahr}/selbststaendig/anlagen": {
@@ -4383,7 +4459,8 @@
         },
         "tags": [
           "selbststaendig"
-        ]
+        ],
+        "x-destructive": true
       }
     },
     "/v1/steuerjahre/{jahr}/selbststaendig/anlagen/abschreibung": {
@@ -4472,7 +4549,8 @@
         },
         "tags": [
           "selbststaendig"
-        ]
+        ],
+        "x-destructive": true
       }
     },
     "/v1/steuerjahre/{jahr}/selbststaendig/abschluss": {
@@ -4634,7 +4712,8 @@
         },
         "tags": [
           "selbststaendig"
-        ]
+        ],
+        "x-destructive": true
       }
     },
     "/v1/steuerjahre/{jahr}/selbststaendig/firmenwagen": {
@@ -6142,7 +6221,8 @@
         },
         "tags": [
           "selbststaendig"
-        ]
+        ],
+        "x-destructive": true
       }
     },
     "/v1/steuerjahre/{jahr}/selbststaendig/e-bilanz/datei": {
@@ -6279,7 +6359,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Stripe Checkout at the self-employment price (STRIPE_PRICE_ID_SELBSTSTAENDIG).",
+            "description": "Stripe Checkout at the self-employment price (STRIPE_PRICE_ID_SELBSTSTAENDIG); an open session is handed out again.",
             "content": {
               "application/json": {
                 "schema": {
@@ -6310,6 +6390,19 @@
                 }
               }
             }
+          },
+          "409": {
+            "description": "ALREADY_PAID (the year is unlocked) or PAYMENT_PENDING (a payment is still being settled).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessErrorDto"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many checkout starts for this account."
           },
           "503": {
             "description": "PAYMENT_NOT_CONFIGURED or PAYMENT_TIER_NOT_CONFIGURED.",
@@ -6463,8 +6556,14 @@
           "401": {
             "description": "Guest session — this endpoint requires a signed-in account."
           },
+          "409": {
+            "description": "`ALREADY_PAID`: the year is unlocked already; `PAYMENT_PENDING`: a payment is still being settled."
+          },
           "422": {
             "description": "`fehlend`: the printout could not be delivered yet, so payment is not offered."
+          },
+          "429": {
+            "description": "Too many checkout starts for this account."
           },
           "503": {
             "description": "Payment is not configured on this environment."
@@ -6599,6 +6698,9 @@
           },
           "422": {
             "description": "`fehlend`: what the Hauptvordruck still needs; `zuLang`: a value too long for its field."
+          },
+          "429": {
+            "description": "Too many printouts for this account; the asynchronous export has its own queue."
           }
         },
         "tags": [
@@ -7848,6 +7950,9 @@
           },
           "409": {
             "description": "Too short to summarise, or an answer is still running."
+          },
+          "429": {
+            "description": "Too many summaries for this account, or the day's messages are used up."
           }
         },
         "summary": "Summarise the older part of a conversation now, before its context is full",
@@ -8316,7 +8421,8 @@
                 "anlageKap",
                 "anlageV",
                 "anlageKind",
-                "anlageEuer"
+                "anlageEuer",
+                "bescheid"
               ],
               "type": "string"
             }
@@ -8332,9 +8438,19 @@
             }
           }
         ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfirmAnnexDto"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
-            "description": "All values of the Anlage are confirmed; the remaining overview.",
+            "description": "The values of the Anlage the user was shown are confirmed; the remaining overview.",
             "content": {
               "application/json": {
                 "schema": {
@@ -8345,6 +8461,9 @@
           },
           "401": {
             "description": "Guest session — this endpoint requires a signed-in account."
+          },
+          "409": {
+            "description": "CONFIRMATION_STALE: a value changed since it was shown, or one came in; nothing was confirmed."
           }
         },
         "tags": [
@@ -8406,7 +8525,8 @@
         },
         "tags": [
           "bestaetigung"
-        ]
+        ],
+        "x-destructive": true
       }
     },
     "/v1/steuerjahre/{jahr}/bestaetigung/aufgaben/{id}": {
@@ -8463,7 +8583,8 @@
         },
         "tags": [
           "bestaetigung"
-        ]
+        ],
+        "x-destructive": true
       }
     },
     "/v1/verlauf": {
@@ -8620,6 +8741,30 @@
           },
           "404": {
             "description": "The caller has no better-auth account yet (a guest that never signed up)."
+          }
+        },
+        "tags": [
+          "account"
+        ]
+      }
+    },
+    "/v1/account/verification": {
+      "get": {
+        "operationId": "AccountVerificationController_verification",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "ADR-0030: the banner of a never-verified account shows the date no sooner than which it is deleted.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccountVerificationDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "A guest: there is no account to confirm."
           }
         },
         "tags": [
@@ -9238,7 +9383,8 @@
         },
         "tags": [
           "haushalt"
-        ]
+        ],
+        "x-destructive": true
       }
     },
     "/v1/steuerjahre/{jahr}/haushalt/partner/nicht-mehr-dabei": {
@@ -9270,7 +9416,8 @@
         },
         "tags": [
           "haushalt"
-        ]
+        ],
+        "x-destructive": true
       }
     },
     "/v1/steuerjahre/{jahr}/haushalt/personen/{personId}": {
@@ -9465,12 +9612,14 @@
           "steuerId": {
             "type": "string",
             "example": "02476291358",
-            "description": "Steuerliche Identifikationsnummer — exactly 11 digits if present. Optional since ADR-0045 (value-first funnel): omitted = not given yet, stored as null."
+            "nullable": true,
+            "description": "Steuerliche Identifikationsnummer — exactly 11 digits if present. Omitted = keep the stored value; null = clear it (ADR-0045: a profile may have none yet)."
           },
           "steuernummer": {
             "type": "string",
             "example": "18181508155",
-            "description": "Steuernummer — optional; 1-13 digits (no separators) if present."
+            "nullable": true,
+            "description": "Steuernummer — 1-13 digits (no separators) if present. Omitted = keep the stored value; null = clear it."
           }
         },
         "required": [
@@ -10083,6 +10232,18 @@
                 "$ref": "#/components/schemas/LinkPersonBDto"
               }
             ]
+          },
+          "personBConsentPending": {
+            "type": "boolean",
+            "description": "Person B (own account) has not yet agreed to share this year; until then Person A sees nothing of B for it (decision 3)."
+          },
+          "consentRequestedFromMe": {
+            "type": "boolean",
+            "description": "The caller is Person B and is asked to agree to share this year with Person A (decision 3)."
+          },
+          "consentGivenByMe": {
+            "type": "boolean",
+            "description": "The caller is Person B and has agreed to share this year; B can take it back (DELETE …/kopplung/zustimmung)."
           }
         },
         "required": [
@@ -13753,22 +13914,27 @@
               "quartal",
               "befreit"
             ],
+            "nullable": true,
             "description": "The period the office set; absent = derived from the year before."
           },
           "extension": {
             "type": "boolean",
+            "nullable": true,
             "description": "Dauerfristverlängerung (§ 46 UStDV)."
           },
           "specialPrepaymentEur": {
             "type": "number",
-            "description": "The Sondervorauszahlung as paid; absent = 1/11 of last year (§ 47 UStDV)."
+            "description": "The Sondervorauszahlung as paid; absent = 1/11 of last year (§ 47 UStDV).",
+            "nullable": true
           },
           "chooseMonthly": {
             "type": "boolean",
+            "nullable": true,
             "description": "Monthly by choice after a refund above the limit (§ 18 Abs. 2a UStG)."
           },
           "exemptFromBookkeeping": {
             "type": "boolean",
+            "nullable": true,
             "description": "Freed from keeping books by the office (§ 148 AO): Istversteuerung whatever the turnover (§ 20 Satz 1 Nr. 2 UStG)."
           }
         }
@@ -13879,23 +14045,33 @@
         "type": "object",
         "properties": {
           "financing": {
-            "$ref": "#/components/schemas/FinancingComponentsDto"
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FinancingComponentsDto"
+              }
+            ]
           },
           "otherAdditionsEur": {
             "type": "number",
-            "description": "Further additions (§ 8 Nr. 4–12 GewStG), euros."
+            "description": "Further additions (§ 8 Nr. 4–12 GewStG), euros.",
+            "nullable": true
           },
           "einheitswertEur": {
             "type": "number",
-            "description": "Einheitswert of the business land for § 9 Nr. 1 GewStG, euros."
+            "description": "Einheitswert of the business land for § 9 Nr. 1 GewStG, euros.",
+            "nullable": true
           },
           "otherDeductionsEur": {
             "type": "number",
-            "description": "Further deductions (§ 9 Nr. 2–10), euros."
+            "description": "Further deductions (§ 9 Nr. 2–10), euros.",
+            "nullable": true
           },
           "lossCarriedForwardEur": {
             "type": "number",
-            "description": "Gewerbeverlust carried forward (§ 10a GewStG), euros."
+            "description": "Gewerbeverlust carried forward (§ 10a GewStG), euros.",
+            "nullable": true
           }
         }
       },
@@ -13904,13 +14080,16 @@
         "properties": {
           "carriedForwardEur": {
             "type": "number",
-            "description": "Verbleibender Verlustvortrag of the last Feststellungsbescheid, euros."
+            "description": "Verbleibender Verlustvortrag of the last Feststellungsbescheid, euros.",
+            "nullable": true
           },
           "waiveCarryBack": {
             "type": "boolean",
+            "nullable": true,
             "description": "§ 10d Abs. 1 Satz 5: waive the Rücktrag (as a whole)."
           },
           "roomEur": {
+            "nullable": true,
             "description": "What the GdE of the year before and the second year before still offers, euros: [y−1, y−2].",
             "type": "array",
             "items": {
@@ -13919,7 +14098,8 @@
           },
           "carriedBackEur": {
             "type": "number",
-            "description": "A later year’s loss carried back into this year, euros."
+            "description": "A later year’s loss carried back into this year, euros.",
+            "nullable": true
           }
         }
       },
@@ -14306,7 +14486,7 @@
           },
           "vatPeriodFacts": {
             "nullable": true,
-            "description": "The Voranmeldung facts. Replaced as a whole.",
+            "description": "The Voranmeldung facts. Merged key by key: a key left out stays, null removes it.",
             "type": "object",
             "allOf": [
               {
@@ -14336,7 +14516,7 @@
           },
           "tradeTaxInputs": {
             "nullable": true,
-            "description": "Gewerbesteuer inputs, euros. Replaced as a whole: send the complete object.",
+            "description": "Gewerbesteuer inputs, euros. Merged key by key: a key left out stays, null removes it.",
             "type": "object",
             "allOf": [
               {
@@ -14346,7 +14526,7 @@
           },
           "lossFacts": {
             "nullable": true,
-            "description": "§ 10d facts, euros. Replaced as a whole.",
+            "description": "§ 10d facts, euros. Merged key by key: a key left out stays, null removes it.",
             "type": "object",
             "allOf": [
               {
@@ -17248,11 +17428,22 @@
             "items": {
               "$ref": "#/components/schemas/ElsterFormEntryDto"
             }
+          },
+          "unconfirmed": {
+            "example": [
+              "unbestaetigt.anlageN"
+            ],
+            "description": "Anlagen with values the user has not confirmed; the return's forms are left out until they are (MCP-24).",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           }
         },
         "required": [
           "year",
-          "forms"
+          "forms",
+          "unconfirmed"
         ]
       },
       "ElsterLineDto": {
@@ -17492,6 +17683,25 @@
           "checkoutUrl"
         ]
       },
+      "UnlockPriceDto": {
+        "type": "object",
+        "properties": {
+          "amountCents": {
+            "type": "number",
+            "example": 3499,
+            "description": "Gross amount in cents, VAT included."
+          },
+          "currency": {
+            "type": "string",
+            "example": "eur",
+            "description": "ISO 4217 currency code, lower case as Stripe writes it."
+          }
+        },
+        "required": [
+          "amountCents",
+          "currency"
+        ]
+      },
       "UnlockStatusDto": {
         "type": "object",
         "properties": {
@@ -17519,6 +17729,16 @@
               "elster-ausfuellhilfe"
             ],
             "description": "How the year is filed: the paper printout, or Mein ELSTER with the fill-in help (self-employment, ADR-0101 §16); always sent."
+          },
+          "price": {
+            "nullable": true,
+            "description": "What the checkout of this year would charge, read from the same price the checkout uses; sent while `offen`, null when it cannot be read.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/UnlockPriceDto"
+              }
+            ]
           }
         },
         "required": [
@@ -17661,10 +17881,21 @@
             "items": {
               "$ref": "#/components/schemas/LiveFormDto"
             }
+          },
+          "unconfirmed": {
+            "example": [
+              "unbestaetigt.anlageN"
+            ],
+            "description": "Anlagen with values the user has not confirmed; while there are any, no form is shown (MCP-24).",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           }
         },
         "required": [
-          "forms"
+          "forms",
+          "unconfirmed"
         ]
       },
       "CheckoutResponseDto": {
@@ -17710,8 +17941,8 @@
           },
           "error": {
             "type": "string",
-            "example": "Error during PDF synthesis",
-            "description": "Error explanation if job failed."
+            "example": "PRINTOUT_FAILED",
+            "description": "Machine code if the job failed: a DomainError code, else PRINTOUT_FAILED. Never a raw message (API-5)."
           }
         },
         "required": [
@@ -21729,6 +21960,16 @@
             "nullable": true,
             "description": "Instanz (Vermietungsobjekt, Kind) oder null."
           },
+          "instanceLabel": {
+            "type": "string",
+            "nullable": true,
+            "example": "Mia",
+            "description": "Which record the value belongs to, as the user knows it: the child’s first name, the object’s address. Null without an instance or without a name."
+          },
+          "version": {
+            "type": "string",
+            "description": "What the user is shown of this value; confirming an Anlage sends it back (MCP-4)."
+          },
           "field": {
             "type": "string",
             "example": "bruttoarbeitslohn"
@@ -21766,6 +22007,8 @@
           "key",
           "screen",
           "instance",
+          "instanceLabel",
+          "version",
           "field",
           "value",
           "provenance",
@@ -21786,7 +22029,8 @@
               "anlageKap",
               "anlageV",
               "anlageKind",
-              "anlageEuer"
+              "anlageEuer",
+              "bescheid"
             ],
             "example": "anlageN"
           },
@@ -21868,6 +22112,44 @@
         "required": [
           "annexes",
           "tasks"
+        ]
+      },
+      "ShownValueDto": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string",
+            "example": "lstb.bruttoarbeitslohn"
+          },
+          "version": {
+            "type": "string",
+            "description": "The `version` of the value as the overview gave it."
+          },
+          "person": {
+            "type": "string",
+            "enum": [
+              "B"
+            ],
+            "description": "Set for a value of Person B, as in the overview."
+          }
+        },
+        "required": [
+          "key",
+          "version"
+        ]
+      },
+      "ConfirmAnnexDto": {
+        "type": "object",
+        "properties": {
+          "values": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ShownValueDto"
+            }
+          }
+        },
+        "required": [
+          "values"
         ]
       },
       "ProposalDecisionDto": {
@@ -24321,6 +24603,37 @@
           "account"
         ]
       },
+      "RetainedHoldDto": {
+        "type": "object",
+        "properties": {
+          "resource": {
+            "type": "string",
+            "example": "unlock",
+            "description": "\"unlock\" (payments), \"filingVersion\" (submitted versions), or an operator category hold (\"profile\", \"taxData\", \"auditLog\")."
+          },
+          "count": {
+            "type": "number",
+            "example": 1
+          },
+          "until": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2035-01-01T00:00:00.000Z",
+            "description": "When the hold ends; the rows are deleted after it."
+          },
+          "reason": {
+            "type": "string",
+            "nullable": true,
+            "example": "§ 147 AO, § 257 HGB"
+          }
+        },
+        "required": [
+          "resource",
+          "count",
+          "until",
+          "reason"
+        ]
+      },
       "DeleteAccountResponseDto": {
         "type": "object",
         "properties": {
@@ -24336,12 +24649,20 @@
             "type": "number",
             "example": 0,
             "description": "Count of rows retained untouched — neither erased nor anonymised — because an active LegalHold exempted them."
+          },
+          "legalHolds": {
+            "description": "What the legal holds kept back and until when (P7); empty when nothing was held.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RetainedHoldDto"
+            }
           }
         },
         "required": [
           "deleted",
           "retainedAnonymisedAuditRows",
-          "retainedUnderLegalHold"
+          "retainedUnderLegalHold",
+          "legalHolds"
         ]
       },
       "ExportAccountDto": {
@@ -24460,6 +24781,41 @@
           "fields"
         ]
       },
+      "ExportReceiptFileDto": {
+        "type": "object",
+        "properties": {
+          "receiptId": {
+            "type": "string"
+          },
+          "fileName": {
+            "type": "string"
+          },
+          "mimeType": {
+            "type": "string",
+            "example": "application/pdf"
+          },
+          "byteLength": {
+            "type": "number"
+          },
+          "uploadedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "contentBase64": {
+            "type": "string",
+            "nullable": true,
+            "description": "The original file, base64 (JSON export only, H2-6); null in the PDF and when the file can no longer be decrypted."
+          }
+        },
+        "required": [
+          "receiptId",
+          "fileName",
+          "mimeType",
+          "byteLength",
+          "uploadedAt",
+          "contentBase64"
+        ]
+      },
       "ExportAccessLogEntryDto": {
         "type": "object",
         "properties": {
@@ -24512,6 +24868,20 @@
               "$ref": "#/components/schemas/ExportTaxDataEntryDto"
             }
           },
+          "accountData": {
+            "description": "Sessions (IP, browser), second factor status, passkeys, device logins, connected assistants with consents and token dates, legal holds (API-17). No secret is exported.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ExportTaxDataEntryDto"
+            }
+          },
+          "receiptFiles": {
+            "description": "The original receipt files; the JSON export carries their bytes.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ExportReceiptFileDto"
+            }
+          },
           "accessLog": {
             "type": "array",
             "items": {
@@ -24525,7 +24895,29 @@
           "account",
           "profile",
           "taxData",
+          "accountData",
+          "receiptFiles",
           "accessLog"
+        ]
+      },
+      "AccountVerificationDto": {
+        "type": "object",
+        "properties": {
+          "emailVerified": {
+            "type": "boolean",
+            "example": false
+          },
+          "deletionNotBefore": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "example": "2026-12-01T10:00:00.000Z",
+            "description": "For a never-verified account: no sooner than this moment the sweep deletes it (30 days after registration, 7 days after the warning; a floor, the sweep runs on traffic). Null once verified."
+          }
+        },
+        "required": [
+          "emailVerified",
+          "deletionNotBefore"
         ]
       },
       "ConnectedAssistantDto": {
@@ -24546,13 +24938,37 @@
           "lastUsed": {
             "type": "string",
             "example": "2026-11-03T19:30:00.000Z",
-            "nullable": true
+            "nullable": true,
+            "description": "The newest tool call of this assistant (audit log), or the newest token issued to it."
+          },
+          "scopes": {
+            "example": [
+              "steuerdaten:read",
+              "steuerdaten:write"
+            ],
+            "description": "The scopes the user granted.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "destinations": {
+            "example": [
+              "claude.ai"
+            ],
+            "description": "Where its access goes: the hosts (or \"localhost\", an app scheme) of its registered redirect addresses.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           }
         },
         "required": [
           "clientId",
           "name",
-          "linkedSince"
+          "linkedSince",
+          "scopes",
+          "destinations"
         ]
       },
       "RevokeAssistantResponseDto": {
@@ -24826,10 +25242,16 @@
             "type": "boolean",
             "description": "SELBSTSTAENDIGE_ENABLED (ADR-0101 §20): the self-employment path is on. Off, the interview stops „Selbstständig“ at the Gewerbe-Gate.",
             "example": true
+          },
+          "runningTaxYear": {
+            "type": "number",
+            "description": "OPS-16: the running tax year by the server clock (Europe/Berlin). The client derives the selectable years and the default year from it; ParseTaxYearPipe accepts up to this year plus one.",
+            "example": 2026
           }
         },
         "required": [
-          "selbststaendig"
+          "selbststaendig",
+          "runningTaxYear"
         ]
       },
       "ComparisonSourceDto": {

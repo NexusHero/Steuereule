@@ -1,12 +1,16 @@
 import { Controller, Delete, Get, HttpCode, Inject, NotFoundException, Param, Query, UseGuards } from '@nestjs/common'
 import { ApiOkResponse, ApiParam, ApiQuery, ApiTags, ApiUnauthorizedResponse, ApiForbiddenResponse } from '@nestjs/swagger'
+import { Throttle, ThrottlerGuard } from '@nestjs/throttler'
 import { CurrentUser } from '../auth/current-user.decorator.js'
+import { PublicRoute } from '../auth/public-route.js'
+import { OAUTH_CLIENT_INFO_THROTTLE } from '../rate-limit/rate-limit.js'
 import { ForbidAssistant } from '../auth/forbid-assistant.guard.js'
 import { RequiresAccount } from '../auth/requires-account.guard.js'
 import { UserContextGuard } from '../auth/user-context.guard.js'
 import { AssistantsService } from './assistenten.service.js'
 import {
   OauthClientInfoDto,
+  OauthClientInfoQueryDto,
   RevokeAssistantResponseDto,
   ConnectedAssistantDto,
 } from './dto/assistenten.dto.js'
@@ -44,12 +48,16 @@ export class AssistantsController {
   }
 
   @Get('oauth/client-info')
-  @ApiQuery({ name: 'clientId', type: String, example: 'client_xyz' })
+  // Public and unauthenticated (H2-17): no guest identity, a bound per address, a bounded id, no echo.
+  @PublicRoute()
+  @Throttle({ default: OAUTH_CLIENT_INFO_THROTTLE })
+  @UseGuards(ThrottlerGuard)
+  @ApiQuery({ name: 'clientId', type: String, required: true, example: 'client_xyz' })
   @ApiOkResponse({ type: OauthClientInfoDto, description: 'Public client metadata for the OAuth consent screen.' })
-  async getClientInfo(@Query('clientId') clientId: string): Promise<OauthClientInfoDto> {
-    const info = await this.service.getClientInfo(clientId)
+  async getClientInfo(@Query() query: OauthClientInfoQueryDto): Promise<OauthClientInfoDto> {
+    const info = await this.service.getClientInfo(query.clientId)
     if (!info) {
-      throw new NotFoundException(`OAuth client ${clientId} not found.`)
+      throw new NotFoundException('Diesen Assistenten gibt es nicht.')
     }
     return info
   }

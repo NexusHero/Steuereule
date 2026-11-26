@@ -13,6 +13,8 @@ export interface CockpitSheetProps {
 
 export function CockpitSheet({ navigation, children }: CockpitSheetProps) {
   const { t: tr } = useTranslation(APP_NS)
+  // WEB-40 / NM-05: the X, the backdrop, Escape and the browser's back wait for the mask's pending saves; the
+  // stack's guardedStackRoute holds the guard of this route.
 
   function close() {
     blurActiveInput()

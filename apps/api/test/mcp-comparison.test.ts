@@ -2,7 +2,10 @@
 // the year before, in the app's own figures (McpReportService), never a typed partner income.
 import { describe, expect, it, vi } from 'vitest'
 import { filingTypeComparison } from '@steuereule/core'
+import { passThroughTransactionRunner } from '../src/common/transaction-runner.js'
 import { McpReportService } from '../src/mcp/mcp-report.service.js'
+import { registerComparisonTools } from '../src/mcp/tools/comparison-tools.js'
+import { connectMcpTools } from './support/mcp-client.js'
 
 const range = (n: number) => ({ from: n, to: n })
 
@@ -32,7 +35,7 @@ function service(options: { estimate?: (userId: string, year: number) => unknown
   const estimate = { getState: vi.fn(async (u: string, y: number) => (options.estimate ?? (() => estimateFor()))(u, y)) }
   const interview = { getState: vi.fn().mockResolvedValue({ answers: options.answers ?? { lohnersatz: 'Nein' }, nextStep: { kind: 'done' }, openItems: 0 }) }
   const confirmation = { readRawValues: vi.fn(async (_u: string, y: number, keys: readonly string[]) => (options.values ?? (() => ({})))(y, keys)) }
-  return new McpReportService(estimate as never, {} as never, confirmation as never, interview as never)
+  return new McpReportService(estimate as never, {} as never, confirmation as never, interview as never, passThroughTransactionRunner)
 }
 
 describe('veranlagung_vergleichen: joint against separate from the case data', () => {
@@ -90,19 +93,8 @@ describe('vorjahr_vergleichen: this year beside the year before', () => {
 })
 
 describe('the comparison tools over MCP', () => {
-  async function connect(scopes: string[], deps: Record<string, unknown>) {
-    const { McpServer } = await import('@modelcontextprotocol/sdk/server/mcp.js')
-    const { Client } = await import('@modelcontextprotocol/sdk/client/index.js')
-    const { InMemoryTransport } = await import('@modelcontextprotocol/sdk/inMemory.js')
-    const { registerComparisonTools } = await import('../src/mcp/tools/comparison-tools.js')
-    const server = new McpServer({ name: 't', version: '1' })
-    registerComparisonTools({ server, userId: 'u', assistant: { clientId: 'c', clientName: 'Claude', scopes } }, deps as never)
-    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair()
-    await server.connect(serverTransport)
-    const client = new Client({ name: 'TestClient', version: '1.0.0' })
-    await client.connect(clientTransport)
-    return client
-  }
+  const connect = async (scopes: string[], deps: Record<string, unknown>) =>
+    (await connectMcpTools(registerComparisonTools, { userId: 'u', assistant: { clientId: 'c', clientName: 'Claude', scopes }, deps: deps as never })).client
   const text = (res: unknown) => (res as { content: { text: string }[] }).content[0]!.text
 
   it('veranlagung_vergleichen and vorjahr_vergleichen read with the read scope, audit, and count records of both years', async () => {

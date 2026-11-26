@@ -10,6 +10,7 @@
 // Zahlen sind ciphertext at rest (ADR-0008).
 import { describe, expect, it } from 'vitest'
 import { baseUrl, prisma, signUp, useAcceptanceServer } from '../support/acceptance-server.js'
+import { confirmAnnexOverHttp } from '../support/confirm-annex-over-http.js'
 
 const ALLOWED_ORIGIN = 'https://allowed.example.com'
 const TRUSTED_ORIGIN_HEADERS = { origin: ALLOWED_ORIGIN }
@@ -88,7 +89,7 @@ describe('REQ-028 — die Jahresübernahme (ADR-021), against the real server', 
       expect(cockpitBody.status.to).toBe(100000)
 
       // Anlage N bestätigen (REQ-032) → Punktwert.
-      const confirmed = await fetch(`${baseUrl}/v1/steuerjahre/${TARGET_YEAR}/bestaetigung/anlagen/anlageN`, { method: 'PUT', headers: { cookie } })
+      const confirmed = await confirmAnnexOverHttp(baseUrl, cookie, TARGET_YEAR, 'anlageN')
       expect(confirmed.status).toBe(200)
       const state = await fetch(`${baseUrl}/v1/steuerjahre/${TARGET_YEAR}/uebernahme`, { headers: { cookie } })
       expect(((await state.json()) as { markings: Array<{ confirmed: boolean }> }).markings.every((k) => k.confirmed)).toBe(true)
@@ -217,7 +218,7 @@ describe('REQ-028 — die Jahresübernahme (ADR-021), against the real server', 
 
     // Bestätigen je Anlage (REQ-032) → Punktwert.
     for (const annex of ['anlageN', 'anlageR', 'anlageKap', 'anlageV']) {
-      const confirmed = await fetch(`${baseUrl}/v1/steuerjahre/${TARGET_YEAR}/bestaetigung/anlagen/${annex}`, { method: 'PUT', headers: { cookie } })
+      const confirmed = await confirmAnnexOverHttp(baseUrl, cookie, TARGET_YEAR, annex)
       expect(confirmed.status).toBe(200)
     }
     const cockpit2 = await fetch(`${baseUrl}/v1/steuerjahre/${TARGET_YEAR}/cockpit`, { headers: { cookie } })

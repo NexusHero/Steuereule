@@ -192,6 +192,7 @@ constructor(@Inject(RECEIPT_REPOSITORY) private readonly receipts: ReceiptReposi
 | The database client and eleven further SDK groups are imported only by the files named for them. That includes `src/prisma/**` and adapter classes in `*.prisma.ts`. No file imports `ModuleRef` from `@nestjs/core` (no service locator); `Reflector` and `NestFactory` stay allowed. | `apps/api/test/architecture.test.ts` | fourteen constructed violations in the test, two of them imports of `ModuleRef` (named and namespace); each must yield exactly one finding |
 | A named exception that no longer imports its SDK is an error. | the same test | found one superfluous exception on its first run |
 | The set of *module → module* imports in `apps/api/src` equals the baseline (334 edges between 53 folders as of 2026-11-23, after ADR-0106 removed `auth → config`; 352 between 50 on 2026-11-22). | the same test, baseline `apps/api/test/architecture-module-edges.json` | a difference in either direction fails |
+| The modules of `apps/api/src` on an import cycle are exactly the 28 listed in `MODULES_ON_A_CYCLE` (one strongly connected group as of 2026-11-25); none may join it. `account` and `personal-data` are on no cycle; `personal-data` (the personal-data registry, legal holds, the erasure flag) imports only `common` and `prisma`. | the same test | a constructed three-module cycle must be found, a chain must not |
 | In the core: `math` imports nothing, `common` only `math`, `engine` never `interview`; no new direction between the folders. | `packages/core/src/architecture.test.ts` | broken with probe files on 2026-11-22 ([ADR-0102](adr/0102-ports-and-adapters-enforced-by-architecture-tests.md)) |
 | In the core: the files importing against the intended order are exactly the 23 known ones. | the same test | as above |
 | In the core: no cycle of value imports between files. | the same test | as above |
@@ -434,7 +435,7 @@ Because the API runs on up to ten instances, any state in process memory is sepa
 | Fields marked `/// @encrypted` in the Prisma schema (190 markers as of 2026-11-22) | AES-256-GCM through `prisma-field-encryption`, installed in `prisma/encrypted-prisma.provider.ts` | one application key, `PRISMA_FIELD_ENCRYPTION_KEY`; earlier keys in `PRISMA_FIELD_DECRYPTION_KEYS` stay readable |
 | Receipt files | envelope encryption in `receipt/storage/envelope-crypto.service.ts` | one key per user in the keystore |
 
-Not every field is encrypted. Plaintext are, for example, the status of a tax year, commuting distances and payment amounts. Rotating a key does not re-encrypt existing values; that happens when a value is next written.
+Not every field is encrypted. Plaintext are, for example, the status of a tax year, commuting distances and payment amounts. A new key re-encrypts a value when it is next written; `rotate:field-key` (`apps/api/scripts/rotate-field-encryption-key.ts`, procedure in `infra/README.md`) re-encrypts the rest, so the old key can be dropped.
 
 ## 8.3 The boundary to the language models
 

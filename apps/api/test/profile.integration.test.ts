@@ -28,6 +28,7 @@ import { resolveGuestSessionSecret, verifyGuestSession } from '../src/auth/guest
 import { validationExceptionFactory } from '../src/common/validation-exception-factory.js'
 import { PrismaService } from '../src/prisma/prisma.service.js'
 import { extractSessionCookie } from './support/build-test-app.js'
+import { fixtureClient } from './support/database-fixture.js'
 
 const VALID_PAYLOAD = {
   firstName: 'Anna',
@@ -96,7 +97,7 @@ describe('PROFILE /v1/profile — real Postgres', () => {
     )
     await app.init()
     await app.getHttpAdapter().getInstance().ready()
-    prisma = app.get(PrismaService)
+    prisma = fixtureClient(app.get(PrismaService))
   })
 
   afterEach(async () => {

@@ -1,14 +1,11 @@
 // „2020 oder früher ergänzen“ — the way into the Belege pipeline from the Verlauf: what is refused,
 // what the reading found on the Bescheid, and the way on to the waiting drafts.
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { I18nextProvider } from 'react-i18next'
-import { ThemeProvider } from '@steuereule/ui'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
-import { createAppI18n } from '../../i18n/app-i18n'
 import { server } from '../../test-msw-server'
 import { AssessmentUploadEntry, type AssessmentUploadEntryProps } from './AssessmentUploadEntry'
+import { renderWithQuery } from '../../test-render'
 
 const { extract } = vi.hoisted(() => ({ extract: vi.fn() }))
 vi.mock('../../lib/documentOcr', async (importOriginal) => {
@@ -33,16 +30,7 @@ function parseBody(notice: object | null) {
 }
 
 function setup(props: Partial<AssessmentUploadEntryProps> = {}) {
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-  render(
-    <QueryClientProvider client={queryClient}>
-      <I18nextProvider i18n={createAppI18n('de')}>
-        <ThemeProvider mode="light">
-          <AssessmentUploadEntry openYear={2026} title="2020 oder früher ergänzen" body="Lade einen alten Bescheid hoch." cta="Bescheid hochladen" testID="upload" {...props} />
-        </ThemeProvider>
-      </I18nextProvider>
-    </QueryClientProvider>,
-  )
+  renderWithQuery(<AssessmentUploadEntry openYear={2026} title="2020 oder früher ergänzen" body="Lade einen alten Bescheid hoch." cta="Bescheid hochladen" testID="upload" {...props} />)
 }
 
 function choose(file: File) {
@@ -66,12 +54,19 @@ describe('AssessmentUploadEntry', () => {
     expect((await screen.findByTestId('upload-fehler')).textContent).toBe('Bitte wähle eine PDF-, JPEG-, PNG- oder WebP-Datei aus.')
   })
 
-  it('says so when the document could not be stored', async () => {
+  it('says so when the document could not be stored — a 500 is our fault, not the connection (WEB-10)', async () => {
     server.use(http.post('*/v1/belege/upload', () => HttpResponse.json({ message: 'no' }, { status: 500 })))
     setup()
     choose(pdf())
-    expect((await screen.findByTestId('upload-fehler')).textContent).toBe('Der Upload hat nicht geklappt. Prüf die Verbindung und versuch es noch mal.')
+    expect((await screen.findByTestId('upload-fehler')).textContent).toBe('Bei uns ist gerade etwas schiefgelaufen. Versuch es gleich noch mal.')
     expect(screen.getByTestId('upload-cta').textContent).toBe('Bescheid hochladen')
+  })
+
+  it('names the 10 MB limit on a 413 (WEB-10)', async () => {
+    server.use(http.post('*/v1/belege/upload', () => HttpResponse.json({ statusCode: 413 }, { status: 413 })))
+    setup()
+    choose(pdf())
+    expect((await screen.findByTestId('upload-fehler')).textContent).toBe('Die Datei ist zu groß. Erlaubt sind höchstens 10 MB.')
   })
 
   it('names what the reading found on the Bescheid and leads to the waiting drafts', async () => {

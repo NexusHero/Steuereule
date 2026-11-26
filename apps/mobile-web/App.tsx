@@ -3,7 +3,7 @@ import * as RN from 'react-native'
 import { StatusBar } from 'expo-status-bar'
 import { I18nextProvider, useTranslation } from 'react-i18next'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { DarkTheme, DefaultTheme, NavigationContainer, useLinkTo } from '@react-navigation/native'
+import { DarkTheme, DefaultTheme, NavigationContainer, createNavigationContainerRef, useLinkTo } from '@react-navigation/native'
 import { createNativeStackNavigator, type NativeStackScreenProps } from '@react-navigation/native-stack'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 import { ThemeProvider, useBreakpoint, useTheme } from '@steuereule/ui'
@@ -14,12 +14,13 @@ import { createAppAuthClient } from './src/auth/auth-client'
 import { AuthClientProvider } from './src/auth/AuthClientProvider'
 import { APP_QUERY_DEFAULTS } from './src/query-client'
 import { SplashScreen } from './src/screens/SplashScreen'
-import { LoginScreen } from './src/screens/LoginScreen'
+import { ACCOUNT_REMOVED_ERROR, LoginScreen } from './src/screens/LoginScreen'
 import { RegistrationScreen } from './src/screens/RegistrationScreen'
 import { carryAssistantSignIn } from './src/auth/assistant-sign-in'
 import { OnboardingScreen } from './src/screens/OnboardingScreen'
 import { LstbScreen } from './src/screens/lstb/LstbScreen'
-import { CatalogScreen } from './src/screens/catalog/CatalogScreen'
+import { CatalogScreen, type CatalogScreenEntry } from './src/screens/catalog/CatalogScreen'
+import { locateQuestion } from '@steuereule/core'
 import { CapitalScreen } from './src/screens/capital/CapitalScreen'
 import { RentalScreen } from './src/screens/rental/RentalScreen'
 import { CrossBorderScreen } from './src/screens/cross-border/CrossBorderScreen'
@@ -35,7 +36,9 @@ import { ConfirmationScreen, type ConfirmationForm } from './src/screens/confirm
 import { PasswordResetScreen } from './src/screens/PasswordResetScreen'
 import { OauthConsentScreen } from './src/screens/oauth/OauthConsentScreen'
 import { ChildrenScreen } from './src/screens/children/ChildrenScreen'
-import { CURRENT_TAX_YEAR } from './src/config/taxYear'
+import { AssessmentScreen } from './src/screens/assessment/AssessmentScreen'
+import { runningTaxYear } from './src/config/taxYear'
+import { useServerTaxYearSync } from './src/config/useServerTaxYearSync'
 import {
   rememberPendingPath,
   rememberReturnTo,
@@ -45,15 +48,22 @@ import {
 import { CopilotBridgeProvider } from './src/screens/advisor/CopilotBridgeProvider'
 import { operatorFromEnv, LEGAL_PAGES } from './src/screens/legal/texts'
 import { useAccountSession } from './src/auth/useAccountSession'
+import { clearPendingVerification } from './src/auth/pendingVerification'
 import { followNativeAppFocus } from './src/app-focus'
 import { viewAfterInterview } from './src/screens/funnel/afterTheInterview'
-import type { RootStackParamList } from './src/navigation/routes'
+import { paymentReturnOf, type RootStackParamList } from './src/navigation/routes'
 import { formatDocumentTitle, linking } from './src/navigation/linking'
 import { ShellStateProvider, useShellState } from './src/navigation/ShellState'
 import { SubmissionGateProvider, useSubmissionGate } from './src/navigation/SubmissionGateContext'
 import { AppTabs } from './src/navigation/AppTabs'
+import { UnverifiedAccountBanner } from './src/screens/shared/UnverifiedAccountBanner'
 import { AppearanceProvider, resolveThemeMode, useAppearance } from './src/lib/appearance'
 import { syncHapticsPreferenceFromStorage } from './src/lib/hapticsPreference'
+import { resetSessionExpiry, watchForSessionExpiry } from './src/net/sessionExpiry'
+import { leaveOnSessionExpiry } from './src/navigation/sessionExpiryExit'
+import { guardedRoute } from './src/navigation/guardedRoute'
+import { warnBeforeUnloadWithUnsavedWork } from './src/navigation/unsavedWork'
+import { leaveWithoutGuards } from './src/screens/shared/leaveGuard'
 
 const i18n = createAppI18n('de')
 const queryClient = new QueryClient({ defaultOptions: APP_QUERY_DEFAULTS })
@@ -61,20 +71,44 @@ followNativeAppFocus()
 syncHapticsPreferenceFromStorage()
 
 const apiBaseUrl = process.env.EXPO_PUBLIC_API_BASE_URL ?? 'http://localhost:3000'
-configureApiClient({ baseUrl: apiBaseUrl })
+configureApiClient({ baseUrl: apiBaseUrl, onApiError: watchForSessionExpiry })
 
 const authClient = createAppAuthClient(apiBaseUrl)
 
 const RootStack = createNativeStackNavigator<RootStackParamList>()
+const rootNavigation = createNavigationContainerRef<RootStackParamList>()
+
+/** WEB-24: an expired session opens the sign-in, remembers the place and drops the signed-in state. */
+function useSessionExpiryRedirect(): void {
+  const { resetSubmissionGate } = useSubmissionGate()
+  useEffect(
+    () =>
+      leaveOnSessionExpiry({
+        currentPath: () => (RN.Platform.OS === 'web' && typeof window !== 'undefined' ? `${window.location.pathname}${window.location.search}` : null),
+        forgetSignedInState: () => {
+          resetSubmissionGate()
+          queryClient.clear()
+        },
+        openSignIn: () => {
+          // Every pending save fails with 401 now; a mask must not hold the user back (WEB-40 guard).
+          if (rootNavigation.isReady()) leaveWithoutGuards(() => rootNavigation.reset({ index: 0, routes: [{ name: 'Login', params: { expired: true } }] }))
+        },
+      }),
+    [resetSubmissionGate],
+  )
+}
 
 export default function App() {
   useEffect(() => {
     syncHapticsPreferenceFromStorage()
   }, [])
+  // WEB-40: closing or reloading the tab with a save on its way or typed input asks first.
+  useEffect(() => (RN.Platform.OS === 'web' && typeof window !== 'undefined' ? warnBeforeUnloadWithUnsavedWork(window) : undefined), [])
 
   return (
     <SafeAreaProvider>
       <QueryClientProvider client={queryClient}>
+        <ServerTaxYearSync />
         <I18nextProvider i18n={i18n}>
           <AppearanceProvider>
             <ThemeBridge>
@@ -91,6 +125,12 @@ export default function App() {
       </QueryClientProvider>
     </SafeAreaProvider>
   )
+}
+
+/** OPS-16: the running tax year follows the server's clock. */
+function ServerTaxYearSync(): null {
+  useServerTaxYearSync()
+  return null
 }
 
 function ThemeBridge({ children }: { readonly children: ReactNode }) {
@@ -144,6 +184,7 @@ function ThemedShellFrame({ children }: { readonly children: ReactNode }) {
 }
 
 function RootNavigator() {
+  useSessionExpiryRedirect()
   const t = useTheme()
   const baseNavTheme = t.mode === 'dark' ? DarkTheme : DefaultTheme
   const navTheme = {
@@ -162,13 +203,14 @@ function RootNavigator() {
 
   return (
     <NavigationContainer
+      ref={rootNavigation}
       linking={linking}
       theme={navTheme}
       documentTitle={{
         formatter: (_options, route) => formatDocumentTitle(route?.name),
       }}
     >
-      <RootStack.Navigator screenOptions={{ headerShown: false }}>
+      <RootStack.Navigator screenOptions={{ headerShown: false }} screenLayout={guardedRoute}>
         <RootStack.Screen name="Splash" component={SplashRoute} />
         <RootStack.Screen name="Login" component={LoginRoute} />
         <RootStack.Screen name="Registration" component={RegistrationRoute} />
@@ -186,14 +228,29 @@ function RootNavigator() {
 }
 
 function SplashRoute({ navigation }: NativeStackScreenProps<RootStackParamList, 'Splash'>) {
-  return <SplashScreen onAdvance={() => navigation.replace('Login')} />
+  // Someone already signed in who opens `/` goes to the app, not to the sign-in form (WEB-6).
+  const { state } = useAccountSession()
+  const signedIn = state.status === 'signed-in'
+  useEffect(() => {
+    if (signedIn) navigation.replace('App')
+  }, [signedIn, navigation])
+  return <SplashScreen onAdvance={() => navigation.replace(signedIn ? 'App' : 'Login')} />
 }
 
 function LoginRoute({ navigation, route }: NativeStackScreenProps<RootStackParamList, 'Login'>) {
   return (
     <LoginScreen
       startWithForgot={Boolean(route.params?.forgot)}
-      onDone={() => navigation.replace('App')}
+      sessionExpired={Boolean(route.params?.expired)}
+      emailVerified={route.params?.bestaetigt === '1'}
+      accountRemoved={route.params?.error === ACCOUNT_REMOVED_ERROR}
+      verificationFailed={Boolean(route.params?.error) && route.params?.error !== ACCOUNT_REMOVED_ERROR && route.params?.sozial !== '1'}
+      socialSignInFailed={Boolean(route.params?.error) && route.params?.sozial === '1'}
+      onDone={() => {
+        clearPendingVerification()
+        resetSessionExpiry()
+        navigation.replace('App')
+      }}
       onGuest={() => navigation.replace('App', { start: 'interview' })}
       onRegister={() => carryAssistantSignIn('/registrierung') || navigation.replace('Registration')}
       onLegal={(page) => navigation.navigate('Legal', { page })}
@@ -206,6 +263,7 @@ function RegistrationRoute({ navigation }: NativeStackScreenProps<RootStackParam
     <RegistrationScreen
       onDone={() => navigation.replace('Onboarding')}
       onLogin={() => carryAssistantSignIn('/login') || navigation.replace('Login')}
+      onLegal={(page) => navigation.navigate('Legal', { page })}
     />
   )
 }
@@ -240,7 +298,7 @@ function PrintoutRoute({ navigation, route }: NativeStackScreenProps<RootStackPa
   const { t: tr } = useTranslation(APP_NS)
   const year = Number(route.params?.year)
   const validYear = Number.isInteger(year)
-  const plausibility = usePlausibility(validYear ? year : CURRENT_TAX_YEAR, { enabled: validYear })
+  const plausibility = usePlausibility(validYear ? year : runningTaxYear(), { enabled: validYear })
   const { areNoticesConfirmed } = useSubmissionGate()
 
   const gateBlocked =
@@ -265,7 +323,8 @@ function PrintoutRoute({ navigation, route }: NativeStackScreenProps<RootStackPa
   if (!validYear) return null
   if (plausibility.status === 'loading') return <LoadingState bp={bp} label={tr('abgabe.loading')} />
   if (gateBlocked || plausibility.status !== 'ready') return null
-  if (view === 'stammdaten') return <MasterDataScreen onBack={() => setView('ausdruck')} />
+  // WEB-43: the master data of a printout are the return's year, never a default.
+  if (view === 'stammdaten') return <MasterDataScreen taxYear={year} onBack={() => setView('ausdruck')} />
   if (view === 'grenzgaenger') return <CrossBorderScreen taxYear={year} onDone={() => setView('ausdruck')} />
   if (view === 'kapital') return <CapitalScreen taxYear={year} onDone={() => setView('ausdruck')} onBack={() => setView('ausdruck')} />
   if (view === 'vermietung') return <RentalScreen taxYear={year} onDone={() => setView('ausdruck')} onBack={() => setView('ausdruck')} />
@@ -276,11 +335,11 @@ function PrintoutRoute({ navigation, route }: NativeStackScreenProps<RootStackPa
   if (view === 'sonderausgaben') {
     return <CatalogScreen entry="sonderausgaben" taxYear={year} revisit onDone={() => setView('ausdruck')} onBack={() => setView('ausdruck')} />
   }
-  const payment = route.params?.payment
+  const payment = paymentReturnOf(route.params)
   return (
     <PrintoutScreen
       year={year}
-      {...(payment === 'erfolg' || payment === 'abbruch' ? { payment } : {})}
+      {...(payment ? { payment } : {})}
       onBack={() => (navigation.canGoBack() ? navigation.goBack() : navigation.replace('App'))}
       onCompleteDetails={() => setView('stammdaten')}
       onCompleteRiester={() => setView('sonderausgaben')}
@@ -304,14 +363,45 @@ function PrintoutRoute({ navigation, route }: NativeStackScreenProps<RootStackPa
   )
 }
 
+/**
+ * „Einzeln ändern“ (H2-2, WEB-18): every mask a value can live on opens its own screen, and coming back returns to
+ * „Prüfen & bestätigen“. The profile is a tab of its own, so it is opened there.
+ */
+/**
+ * Compile-time lock of „Einzeln ändern“: only the profile (opened in its tab) and "nothing open" may reach the
+ * confirmation screen itself. A mask added to `ConfirmationForm` without a branch in `ConfirmationRoute` does not
+ * type-check here, instead of silently showing „Prüfen & bestätigen“ again (H2-2).
+ */
+function everyMaskHasItsScreen(_remaining: 'profil' | null): void {}
+
 function ConfirmationRoute({ navigation, route }: NativeStackScreenProps<RootStackParamList, 'Confirmation'>) {
-  const [screen, setScreen] = useState<ConfirmationForm | null>(null)
+  const [open, setOpen] = useState<{ screen: ConfirmationForm; field: string | undefined } | null>(null)
+  const screen = open?.screen ?? null
   const year = Number(route.params?.year)
   useEffect(() => {
     if (!Number.isInteger(year)) navigation.replace('App')
   }, [year, navigation])
+  useEffect(() => {
+    if (screen !== 'profil') return
+    setOpen(null)
+    navigation.navigate('App', { screen: 'Profile', params: { screen: 'ProfileHome' } })
+  }, [screen, navigation])
   if (!Number.isInteger(year)) return null
-  const back = () => setScreen(null)
+  const back = () => setOpen(null)
+  if (screen === 'stammdaten' || screen === 'kopplung') return <MasterDataScreen taxYear={year} onBack={back} />
+  if (screen === 'commute') return <WorkdaysScreen taxYear={year} onDone={back} onBack={back} />
+  if (screen === 'chLohnausweis') return <CrossBorderScreen taxYear={year} onDone={back} />
+  if (screen === 'kind') return <ChildrenScreen taxYear={year} onDone={back} onBack={back} />
+  if (screen === 'assessment') return <AssessmentScreen taxYear={year} onDone={back} onBack={back} />
+  if (screen === 'interview') {
+    // The interview is several pages; the field says which one holds the question (#488).
+    const located = open?.field ? locateQuestion(open.field) : null
+    return located ? (
+      <CatalogScreen entry={located.entry as CatalogScreenEntry} focusStep={located.step} taxYear={year} revisit onDone={back} onBack={back} />
+    ) : (
+      <CatalogScreen entry="minimal-gate" taxYear={year} revisit onDone={back} onBack={back} />
+    )
+  }
   if (screen === 'lstb') {
     return (
       <LstbScreen
@@ -325,11 +415,12 @@ function ConfirmationRoute({ navigation, route }: NativeStackScreenProps<RootSta
   if (screen === 'rente') return <PensionerScreen taxYear={year} onDone={back} onBack={back} />
   if (screen === 'kapital') return <CapitalScreen taxYear={year} onDone={back} onBack={back} />
   if (screen === 'vermietung') return <RentalScreen taxYear={year} onDone={back} onBack={back} />
+  everyMaskHasItsScreen(screen)
   return (
     <ConfirmationScreen
       year={year}
       onBack={() => (navigation.canGoBack() ? navigation.goBack() : navigation.replace('App'))}
-      onOpenScreen={setScreen}
+      onOpenScreen={(next, field) => setOpen({ screen: next, field })}
     />
   )
 }
@@ -443,7 +534,11 @@ function TabbedShell() {
       onSwitchYear={setTaxYear}
       isAuthenticated={sessionState.status === 'signed-in'}
     >
-      <AppTabs />
+      <RN.View style={{ flex: 1 }}>
+        {/* API-16 (ADR-0030): a never-verified account is told on every screen when it will be deleted. */}
+        <UnverifiedAccountBanner onOpenExport={() => linkTo('/app/profil/datenschutz')} />
+        <AppTabs />
+      </RN.View>
     </CopilotBridgeProvider>
   )
 }

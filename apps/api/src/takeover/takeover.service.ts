@@ -1,4 +1,4 @@
-import { Inject, Injectable } from '@nestjs/common'
+import { Inject, Injectable, Optional } from '@nestjs/common'
 import { ConflictError, InvalidInputError, NotFoundError } from '../common/domain-error.js'
 import { WAGE_TAX_CERTIFICATE_FIELDS, PENSION_FIELDS, RENTAL_FIELDS, provenanceKey, type Provenance, type Screen } from '@steuereule/core'
 import { ConfirmationService } from '../confirmation/confirmation.service.js'
@@ -9,6 +9,8 @@ import { PENSION_REPOSITORY, type PensionRepository } from '../pension/pension.r
 import { RENTAL_REPOSITORY, type RentalRepository } from '../rental/rental.repository.js'
 import { TAX_YEAR_ROLLOVER_REPOSITORY, type TaxYearRolloverRepository } from './year-takeover.repository.js'
 import type { RolloverResponseDto } from './dto/takeover-response.dto.js'
+import { AuditService } from '../audit/audit.service.js'
+import { appendReadAudit } from '../common/read-audit.js'
 
 export const MAX_PAST_YEARS = 4
 
@@ -27,6 +29,7 @@ export class TakeoverService {
     @Inject(CAPITAL_REPOSITORY) private readonly capitalRepository: CapitalRepository,
     @Inject(RENTAL_REPOSITORY) private readonly rentalRepository: RentalRepository,
     @Inject(TAX_YEAR_ROLLOVER_REPOSITORY) private readonly yearTakeoverRepository: TaxYearRolloverRepository,
+    @Optional() @Inject(AuditService) private readonly audit?: AuditService,
   ) {}
 
   private async markings(userId: string, taxYear: number): Promise<RolloverResponseDto> {
@@ -39,7 +42,9 @@ export class TakeoverService {
   }
 
   async getState(userId: string, taxYear: number): Promise<RolloverResponseDto> {
-    return this.markings(userId, taxYear)
+    const state = await this.markings(userId, taxYear)
+    if (state.markings.length > 0) await appendReadAudit(this.audit, userId, 'uebernahme')
+    return state
   }
 
   async takeOver(userId: string, taxYear: number, lastYear: number): Promise<RolloverResponseDto> {

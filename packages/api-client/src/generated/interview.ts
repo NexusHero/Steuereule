@@ -71,8 +71,6 @@ export type interviewControllerGetInterviewResponseError = (interviewControllerG
   headers: Headers;
 };
 
-export type interviewControllerGetInterviewResponse = (interviewControllerGetInterviewResponseSuccess | interviewControllerGetInterviewResponseError)
-
 export const getInterviewControllerGetInterviewUrl = (jahr: number,
     params?: InterviewControllerGetInterviewParams,) => {
   const normalizedParams = new URLSearchParams();
@@ -90,9 +88,9 @@ export const getInterviewControllerGetInterviewUrl = (jahr: number,
 }
 
 export const interviewControllerGetInterview = async (jahr: number,
-    params?: InterviewControllerGetInterviewParams, options?: RequestInit): Promise<interviewControllerGetInterviewResponse> => {
+    params?: InterviewControllerGetInterviewParams, options?: RequestInit): Promise<interviewControllerGetInterviewResponseSuccess> => {
 
-  return httpClient<interviewControllerGetInterviewResponse>(getInterviewControllerGetInterviewUrl(jahr,params),
+  return httpClient<interviewControllerGetInterviewResponseSuccess>(getInterviewControllerGetInterviewUrl(jahr,params),
   {
     ...options,
     method: 'GET'
@@ -210,8 +208,6 @@ export type interviewControllerPostAnswerResponseError = (interviewControllerPos
   headers: Headers;
 };
 
-export type interviewControllerPostAnswerResponse = (interviewControllerPostAnswerResponseSuccess | interviewControllerPostAnswerResponseError)
-
 export const getInterviewControllerPostAnswerUrl = (jahr: number,
     params?: InterviewControllerPostAnswerParams,) => {
   const normalizedParams = new URLSearchParams();
@@ -230,9 +226,9 @@ export const getInterviewControllerPostAnswerUrl = (jahr: number,
 
 export const interviewControllerPostAnswer = async (jahr: number,
     postAnswerDto: PostAnswerDto,
-    params?: InterviewControllerPostAnswerParams, options?: RequestInit): Promise<interviewControllerPostAnswerResponse> => {
+    params?: InterviewControllerPostAnswerParams, options?: RequestInit): Promise<interviewControllerPostAnswerResponseSuccess> => {
 
-  return httpClient<interviewControllerPostAnswerResponse>(getInterviewControllerPostAnswerUrl(jahr,params),
+  return httpClient<interviewControllerPostAnswerResponseSuccess>(getInterviewControllerPostAnswerUrl(jahr,params),
   {
     ...options,
     method: 'POST',

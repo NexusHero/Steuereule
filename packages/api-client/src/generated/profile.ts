@@ -62,8 +62,6 @@ export type profileControllerGetProfileResponseSuccess = (profileControllerGetPr
 };
 ;
 
-export type profileControllerGetProfileResponse = (profileControllerGetProfileResponseSuccess)
-
 export const getProfileControllerGetProfileUrl = () => {
 
 
@@ -72,9 +70,9 @@ export const getProfileControllerGetProfileUrl = () => {
   return `/v1/profile`
 }
 
-export const profileControllerGetProfile = async ( options?: RequestInit): Promise<profileControllerGetProfileResponse> => {
+export const profileControllerGetProfile = async ( options?: RequestInit): Promise<profileControllerGetProfileResponseSuccess> => {
 
-  return httpClient<profileControllerGetProfileResponse>(getProfileControllerGetProfileUrl(),
+  return httpClient<profileControllerGetProfileResponseSuccess>(getProfileControllerGetProfileUrl(),
   {
     ...options,
     method: 'GET'
@@ -176,8 +174,6 @@ export type profileControllerPutProfileResponseError = (profileControllerPutProf
   headers: Headers;
 };
 
-export type profileControllerPutProfileResponse = (profileControllerPutProfileResponseSuccess | profileControllerPutProfileResponseError)
-
 export const getProfileControllerPutProfileUrl = () => {
 
 
@@ -186,9 +182,9 @@ export const getProfileControllerPutProfileUrl = () => {
   return `/v1/profile`
 }
 
-export const profileControllerPutProfile = async (putProfileDto: PutProfileDto, options?: RequestInit): Promise<profileControllerPutProfileResponse> => {
+export const profileControllerPutProfile = async (putProfileDto: PutProfileDto, options?: RequestInit): Promise<profileControllerPutProfileResponseSuccess> => {
 
-  return httpClient<profileControllerPutProfileResponse>(getProfileControllerPutProfileUrl(),
+  return httpClient<profileControllerPutProfileResponseSuccess>(getProfileControllerPutProfileUrl(),
   {
     ...options,
     method: 'PUT',

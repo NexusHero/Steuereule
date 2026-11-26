@@ -4,6 +4,7 @@ import { installProviderRejectionGuard } from './ki/provider-rejections.js'
 import 'reflect-metadata'
 import fastifyCookie from '@fastify/cookie'
 import fastifyMultipart from '@fastify/multipart'
+import { MULTIPART_LIMITS } from './common/multipart-limits.js'
 import { ValidationPipe } from '@nestjs/common'
 import { NestFactory } from '@nestjs/core'
 import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fastify'
@@ -14,11 +15,15 @@ import { mountBetterAuthHandler } from './auth/mount-better-auth.js'
 import { installClientIpHeader } from './auth/client-ip.js'
 import { validationExceptionFactory } from './common/validation-exception-factory.js'
 import { assertDatabaseMigrated, assertKeystoreMigrated } from './config/assert-database-migrated.js'
+import { assertDatabaseRole } from './config/assert-database-role.js'
 import { assertDatabaseReachable } from './config/assert-database-reachable.js'
 import { assertEnvNotFileSourced } from './config/assert-env-not-file-sourced.js'
+import { assertProductionConfig } from './config/production-config.js'
 import { resolveTrustedProxies } from './config/trusted-proxies.js'
 import { resolveTraceId } from './common/request-id.js'
 import { buildCorsOptions } from './cors/build-cors-options.js'
+import { installMcpBodyLimit } from './mcp/mcp-body-limit.js'
+import { UserContextGuard } from './auth/user-context.guard.js'
 import { registerHelmet } from './security/register-helmet.js'
 
 export async function buildApp(): Promise<NestFastifyApplication> {
@@ -39,6 +44,9 @@ export async function buildApp(): Promise<NestFastifyApplication> {
   // Before every route: better-auth keys its rate limits and session IPs on the address Fastify resolved
   // (ADR-0106 D3/D4), never on a client-supplied X-Forwarded-For.
   installClientIpHeader(fastifyAdapter.getInstance())
+  // Before the routes exist: the MCP message routes take a receipt file as base64 (beta P4, decision 6).
+  // The token is checked before a large body is read, with the guard's own decision.
+  installMcpBodyLimit(fastifyAdapter.getInstance(), (request) => app.get(UserContextGuard, { strict: false }).refuseBearerBeforeBody(request))
 
   fastifyAdapter.getInstance().addHook('onSend', async (request, reply) => {
     if (request.id) {
@@ -52,13 +60,7 @@ export async function buildApp(): Promise<NestFastifyApplication> {
   app.enableShutdownHooks()
 
   await app.register(fastifyCookie)
-  await app.register(fastifyMultipart, {
-    limits: {
-      fileSize: 10 * 1024 * 1024, // 10 MB max receipt upload
-      files: 1,
-      fields: 10,
-    },
-  })
+  await app.register(fastifyMultipart, { limits: MULTIPART_LIMITS })
 
   await registerHelmet(app)
 
@@ -96,11 +98,15 @@ async function bootstrap(): Promise<void> {
   // Stop accepting and let requests in flight finish before the process ends on an unknown rejection (ADR-0109).
   installProviderRejectionGuard({ drain: () => running?.close() ?? Promise.resolve() })
   assertEnvNotFileSourced()
+  // Every production value that is missing, malformed or a known dev value, named at once (beta P1).
+  assertProductionConfig()
   assertFakeKiNotInProduction()
 
   await assertDatabaseReachable()
 
   await assertDatabaseMigrated()
+  // Production only: the login must be the runtime login, never the owner of the tables (P11).
+  await assertDatabaseRole()
   await assertKeystoreMigrated()
 
   const app = await buildApp()

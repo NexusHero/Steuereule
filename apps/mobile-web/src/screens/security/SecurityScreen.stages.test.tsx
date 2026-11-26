@@ -12,7 +12,7 @@ const mocks = vi.hoisted(() => ({
   passkey: { list: vi.fn(), add: vi.fn(), remove: vi.fn() },
   stepUp: { verifyPassword: vi.fn() },
 }))
-vi.mock('../../auth/useAccountSession', () => ({ useAccountSession: () => ({ state: mocks.session.state }) }))
+vi.mock('../../auth/useAccountSession', () => ({ useAccountSession: () => ({ state: mocks.session.state, retry: async () => {} }) }))
 vi.mock('../../auth/useTwoFactor', () => ({ useTwoFactor: () => mocks.twoFactor }))
 vi.mock('../../auth/usePasskey', () => ({ usePasskey: () => mocks.passkey }))
 vi.mock('../../auth/useStepUp', async (importOriginal) => ({ ...(await importOriginal<typeof import('../../auth/useStepUp')>()), useStepUp: () => mocks.stepUp }))
@@ -50,7 +50,14 @@ describe('SecurityScreen without an account', () => {
     expect(mocks.passkey.list).not.toHaveBeenCalled()
   })
 
-  it.each(['signed-out', 'unknown'])('says two-factor needs a real account when the session is %s', (status) => {
+  it('NR-16: an unknown session (the check failed) says so, not "only for a real account"', () => {
+    mocks.session.state = { status: 'unknown', reason: 'unreachable' }
+    renderScreen()
+    expect(screen.getByTestId('sicherheit-sitzung-unbekannt')).toBeTruthy()
+    expect(screen.queryByText(/gibt es nur für ein echtes Konto/)).toBeNull()
+  })
+
+  it.each(['signed-out'])('says two-factor needs a real account when the session is %s', (status) => {
     mocks.session.state = { status }
     const onBack = vi.fn()
     renderScreen(onBack)
@@ -161,7 +168,9 @@ describe('passkeys', () => {
     mocks.passkey.list.mockResolvedValue('Das hat nicht geklappt. Versuch es noch einmal.')
     renderScreen()
     expect(await screen.findByText('Das hat nicht geklappt. Versuch es noch einmal.')).toBeTruthy()
-    expect(screen.getByText('Wird geladen …')).toBeTruthy()
+    // NR-24: no "Wird geladen …" for ever — a retry instead.
+    expect(screen.queryByText('Wird geladen …')).toBeNull()
+    expect(screen.getByTestId('passkey-liste-erneut')).toBeTruthy()
   })
 
   it('says there are none yet, adds one, confirms and reloads the list', async () => {

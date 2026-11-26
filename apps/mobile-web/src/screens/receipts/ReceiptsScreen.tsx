@@ -14,8 +14,10 @@ import { APP_NS } from '../../i18n/resources'
 import { ReceiptPickerButton } from '../shared/ReceiptPickerButton'
 import { BusinessReceiptUpload } from '../business/BusinessReceiptUpload'
 import { detectDocumentMimeType } from '../../lib/documentOcr'
-import { LoadingState, ErrorState } from '../shared/ScreenState'
-import { triggerSaveErrorHaptic, warnOnHttpError } from '../shared/saveFeedback'
+import { LoadingState, LoadFailedState } from '../shared/ScreenState'
+import { triggerSaveErrorHaptic } from '../shared/saveFeedback'
+import { SaveFailedNotice } from '../shared/SaveFailedNotice'
+import { useApiFailureMessage } from '../../net/apiFailure'
 import { ReceiptFileModal } from './ReceiptFileModal'
 import { ReceiptHolderSection } from './ReceiptHolderSection'
 import { DocumentAssignmentCard } from './DocumentAssignmentCard'
@@ -27,7 +29,7 @@ import { canReadAgain, filledFieldsByYear, outcomeOfReceipt } from '../../lib/re
 import { useReceiptInbox } from '../../lib/receipts/useReceiptInbox'
 import { useReceiptReader, type ReceiptReader } from '../../lib/receipts/useReceiptReader'
 import { receiptFolderOfKind, toGermanDate, type ReceiptFolder } from '@steuereule/core'
-import { DEFAULT_TAX_YEAR } from '../../config/taxYear'
+import { defaultTaxYear } from '../../config/taxYear'
 import { makeStyles } from './ReceiptsScreen.styles'
 
 const KIND_LABEL_KEYS: Readonly<Record<string, string>> = {
@@ -73,7 +75,7 @@ export function ReceiptsScreen() {
   const queryClient = useQueryClient()
   const setAssignment = useReceiptControllerSetAssignment()
   const deleteReceipt = useReceiptControllerDelete()
-  const openYear = useOptionalShellTaxYear() ?? DEFAULT_TAX_YEAR
+  const openYear = useOptionalShellTaxYear() ?? defaultTaxYear()
   // Every Beleg is read after its upload (ADR-0097 §4): the reader keeps each one's progress and question.
   const reader = useReceiptReader({ taxYear: openYear })
 
@@ -82,6 +84,7 @@ export function ReceiptsScreen() {
   const [deleteErrorId, setDeleteErrorId] = useState<string | null>(null)
   const [deleteResult, setDeleteResult] = useState<string | null>(null)
   const [activeFolder, setActiveFolder] = useState<ReceiptFolderCategory>('alle')
+  const [assignError, setAssignError] = useState<unknown>(null)
   // The server filters by folder and counts over every Beleg; the screen only shows the pages it loaded.
   const query = useReceiptInbox({ folder: activeFolder === 'alle' ? undefined : activeFolder })
 
@@ -89,15 +92,7 @@ export function ReceiptsScreen() {
     return <LoadingState bp={bp} label={tr('belege.loading')} />
   }
   if (query.isError || query.data === undefined) {
-    return (
-      <ErrorState
-        bp={bp}
-        heading={tr('belege.loadError.heading')}
-        message={tr('belege.loadError.message')}
-        retryLabel={tr('belege.loadError.retry')}
-        onRetry={() => void query.refetch()}
-      />
-    )
+    return <LoadFailedState bp={bp} error={query.error} onRetry={() => void query.refetch()} />
   }
 
   const receipts = query.data.pages.flatMap((page) => page.items)
@@ -110,17 +105,17 @@ export function ReceiptsScreen() {
   const proposals = counts.proposals
 
   function assign(id: string, taxYear: number, proposalDismissed = false) {
+    setAssignError(null)
     setAssignment.mutate(
       { id, data: { taxYear, proposalDismissed } },
       {
-        onSuccess: (response) => {
-          if (response.status === 200) {
-            void queryClient.invalidateQueries({ queryKey: getReceiptControllerListQueryKey() })
-          } else {
-            warnOnHttpError(response.status)
-          }
+        onSuccess: () => void queryClient.invalidateQueries({ queryKey: getReceiptControllerListQueryKey() }),
+        // NR-08: a failed year assignment is said on screen (not only a vibration) and the list reloads.
+        onError: (error) => {
+          triggerSaveErrorHaptic()
+          setAssignError(error)
+          void queryClient.invalidateQueries({ queryKey: getReceiptControllerListQueryKey() })
         },
-        onError: triggerSaveErrorHaptic,
       },
     )
   }
@@ -131,17 +126,12 @@ export function ReceiptsScreen() {
     setDeleteResult(null)
     try {
       const response = await deleteReceipt.mutateAsync({ id, params: { takeBackValues } })
-      if (response.status === 200) {
-        setConfirmDeleteId(null)
-        if (previewReceipt?.id === id) {
-          setPreviewReceipt(null)
-        }
-        setDeleteResult(deleteResultText(receipt, takeBackValues, response.data))
-        await queryClient.invalidateQueries()
-        return
+      setConfirmDeleteId(null)
+      if (previewReceipt?.id === id) {
+        setPreviewReceipt(null)
       }
-      triggerSaveErrorHaptic()
-      setDeleteErrorId(id)
+      setDeleteResult(deleteResultText(receipt, takeBackValues, response.data))
+      await queryClient.invalidateQueries()
     } catch {
       triggerSaveErrorHaptic()
       setDeleteErrorId(id)
@@ -168,6 +158,7 @@ export function ReceiptsScreen() {
     <ScrollView contentContainerStyle={bp === 's' ? styles.screen : styles.wideScreen} testID="screen-container">
       <Appbar open={open} />
       <UploadCard reader={reader} />
+      <SaveFailedNotice visible={assignError !== null} error={assignError} />
       {deleteResult !== null ? (
         <Text style={styles.deleteResultText} accessibilityLiveRegion="polite" testID="belege-delete-ergebnis">
           {deleteResult}
@@ -261,6 +252,7 @@ function BescheidPicker({ reader }: { readonly reader: ReceiptReader }) {
   const [checking, setChecking] = useState(false)
   const [checkResult, setCheckResult] = useState<{ readonly kind: 'ok' | 'error'; readonly text: string } | null>(null)
   const isWeb = typeof document !== 'undefined'
+  const failureMessage = useApiFailureMessage()
 
   async function handleBescheidFile(file: File | undefined) {
     if (!file) return
@@ -274,9 +266,9 @@ function BescheidPicker({ reader }: { readonly reader: ReceiptReader }) {
     setChecking(true)
     try {
       const stored = await storeReceipt(file, CreateReceiptDtoKind.Steuerbescheid)
-      if (stored === null) {
+      if (!stored.ok) {
         triggerSaveErrorHaptic()
-        setCheckResult({ kind: 'error', text: tr('belege.upload.errorFailed') })
+        setCheckResult({ kind: 'error', text: failureMessage(stored.error, { offline: tr('belege.upload.errorFailed') }) })
         return
       }
       void queryClient.invalidateQueries({ queryKey: getReceiptControllerListQueryKey() })
@@ -338,7 +330,8 @@ function UploadCard({ reader }: { readonly reader: ReceiptReader }) {
   const [uploading, setUploading] = useState(false)
   const [statusMessage, setStatusMessage] = useState<{ readonly kind: 'ok' | 'error'; readonly text: string } | null>(null)
   const isWeb = typeof document !== 'undefined'
-  const uploadYear = useOptionalShellTaxYear() ?? DEFAULT_TAX_YEAR
+  const uploadYear = useOptionalShellTaxYear() ?? defaultTaxYear()
+  const failureMessage = useApiFailureMessage()
 
   async function handleFileSelected(file: File | undefined) {
     if (!file) return
@@ -354,9 +347,10 @@ function UploadCard({ reader }: { readonly reader: ReceiptReader }) {
     setUploading(true)
     const stored = await storeReceipt(file, CreateReceiptDtoKind.Sonstiges)
     setUploading(false)
-    if (stored === null) {
+    if (!stored.ok) {
+      // WEB-10: a 413 names the 10 MB limit, a 429 says when to retry, only a dropped request blames the connection.
       triggerSaveErrorHaptic()
-      setStatusMessage({ kind: 'error', text: tr('belege.upload.errorFailed') })
+      setStatusMessage({ kind: 'error', text: failureMessage(stored.error, { offline: tr('belege.upload.errorFailed') }) })
       return
     }
     setStatusMessage({ kind: 'ok', text: tr('belege.upload.success') })
@@ -367,6 +361,7 @@ function UploadCard({ reader }: { readonly reader: ReceiptReader }) {
   return (
     <Card variant="nacht" style={s.uploadCard} testID="belege-upload-card">
       <Text style={s.uploadHeading}>{tr('belege.upload.heading')}</Text>
+      <Text style={s.uploadOkText} testID="belege-upload-grenze">{tr('belege.upload.limit')}</Text>
 
       {isWeb && (
         <View style={s.uploadControls}>
@@ -382,7 +377,7 @@ function UploadCard({ reader }: { readonly reader: ReceiptReader }) {
       )}
 
       {statusMessage !== null && (
-        <Text style={statusMessage.kind === 'ok' ? s.uploadOkText : s.uploadErrText} accessibilityLiveRegion="polite">
+        <Text style={statusMessage.kind === 'ok' ? s.uploadOkText : s.uploadErrText} accessibilityLiveRegion="polite" testID="belege-upload-status">
           {statusMessage.text}
         </Text>
       )}
@@ -435,7 +430,7 @@ function ReceiptCard({
   const { t: tr } = useTranslation(APP_NS)
   const s = makeStyles(t)
   const shellYear = useOptionalShellTaxYear()
-  const holderYear = receipt.holderTaxYear ?? shellYear ?? (receipt.assignment.kind === 'zugeordnet' ? receipt.assignment.taxYear : null) ?? DEFAULT_TAX_YEAR
+  const holderYear = receipt.holderTaxYear ?? shellYear ?? (receipt.assignment.kind === 'zugeordnet' ? receipt.assignment.taxYear : null) ?? defaultTaxYear()
   const kindKey = receipt.kind === null ? undefined : KIND_LABEL_KEYS[receipt.kind]
   const kindLabel = kindKey !== undefined ? tr(kindKey) : receipt.kind === null ? tr('belege.art.generic') : receipt.kind
   const folderCategory = receiptFolderOfKind(receipt.kind)
@@ -526,6 +521,11 @@ function ReceiptCard({
             onConfirmSelf={(takeName) => void reader.confirmSelf(receipt.id, takeName)}
           />
         </View>
+      ) : null}
+      {entry?.question == null && entry?.error != null ? (
+        <Text style={s.konfliktBody} accessibilityRole="alert" testID={`receipt-${receipt.id}-lesefehler`}>
+          {entry.error}
+        </Text>
       ) : null}
       {needsYear ? <AssignmentSection receipt={receipt} onAssign={onAssign} /> : null}
       <ReceiptHolderSection receipt={receipt} taxYear={holderYear} />

@@ -3,8 +3,12 @@ import { useAuthClient } from '../../auth/AuthClientProvider'
 import { useAccountSession } from '../../auth/useAccountSession'
 import { RequestFailedError, classifyByStatus, classifyThrown } from '../../net/failure-reason'
 
+/**
+ * A row of the device list. Named by the session's id, never its token: the server hands no token to JavaScript
+ * (WEB-22) and `/revoke-session` accepts the id of one of the caller's own sessions.
+ */
 export interface DeviceSessionRow {
-  readonly token: string
+  readonly id: string
   readonly userAgent: string | null
   readonly updatedAt: string
   readonly isCurrent: boolean
@@ -16,7 +20,7 @@ export function useDeviceSessions() {
   const authClient = useAuthClient()
   const queryClient = useQueryClient()
   const { state: sessionState } = useAccountSession()
-  const currentToken = sessionState.status === 'signed-in' ? sessionState.session.session.token : undefined
+  const currentId = sessionState.status === 'signed-in' ? sessionState.session.session.id : undefined
 
   const sessionsQuery = useQuery({
     queryKey: DEVICE_SESSIONS_QUERY_KEY,
@@ -32,7 +36,7 @@ export function useDeviceSessions() {
         throw new RequestFailedError('listSessions returned an unusable body', 'unknown')
       }
       return data.map((session) => ({
-        token: session.token,
+        id: session.id,
         userAgent: session.userAgent ?? null,
         updatedAt: typeof session.updatedAt === 'string' ? session.updatedAt : new Date(session.updatedAt).toISOString(),
       }))
@@ -40,8 +44,8 @@ export function useDeviceSessions() {
   })
 
   const revokeMutation = useMutation({
-    mutationFn: async (token: string) => {
-      const { error } = await authClient.revokeSession({ token })
+    mutationFn: async (id: string) => {
+      const { error } = await authClient.revokeSession({ token: id })
       if (error) throw new Error('revokeSession failed')
     },
     onSuccess: () => {
@@ -51,7 +55,7 @@ export function useDeviceSessions() {
 
   const sessions = sessionsQuery.data?.map((session) => ({
     ...session,
-    isCurrent: currentToken === session.token,
+    isCurrent: currentId === session.id,
   }))
 
   return { sessionsQuery: { ...sessionsQuery, data: sessions }, revokeMutation }

@@ -2,6 +2,7 @@ import { Global, Module } from '@nestjs/common'
 import { APP_GUARD } from '@nestjs/core'
 import { PrismaGuestActivityRepository } from '../guest/guest-activity.repository.prisma.js'
 import { GUEST_ACTIVITY_RECORDER, GuestActivityNotes } from '../guest/guest-retention.js'
+import { systemDatabaseClient } from '../common/database-identity.js'
 import { ENCRYPTED_PRISMA, type EncryptedPrismaClient } from '../prisma/encrypted-prisma.provider.js'
 import { PrismaModule } from '../prisma/prisma.module.js'
 import { PrismaService } from '../prisma/prisma.service.js'
@@ -19,11 +20,16 @@ import { BEARER_TOKEN_REPOSITORY } from './bearer-token.repository.js'
 import { PrismaBearerTokenRepository } from './bearer-token.repository.prisma.js'
 import { AuthCapabilitiesController } from './auth-capabilities.controller.js'
 import { OAuthDiscoveryController } from './oauth-discovery.controller.js'
+import { ReceiptStorageModule } from '../receipt/receipt-storage.module.js'
+import { STORAGE_PORT, type StoragePort } from '../receipt/storage/storage.port.js'
+import { StepUpGuard } from './requires-step-up.js'
+import { STEP_UP_GRANT_REPOSITORY } from './step-up-grant.repository.js'
+import { PrismaStepUpGrantRepository } from './step-up-grant.repository.prisma.js'
 
 /** The auth wiring seam: builds the one shared better-auth instance off the existing PrismaService connection. */
 @Global()
 @Module({
-  imports: [PrismaModule],
+  imports: [PrismaModule, ReceiptStorageModule],
   controllers: [AuthCapabilitiesController, OAuthDiscoveryController],
   providers: [
     {
@@ -36,17 +42,20 @@ import { OAuthDiscoveryController } from './oauth-discovery.controller.js'
     {
       provide: BETTER_AUTH_BUNDLE,
       // The encrypted client: name, e-mail and session address are ciphertext at rest (ADR-0109).
-      inject: [ENCRYPTED_PRISMA, EMAIL_SENDER, GUEST_ACTIVITY_RECORDER],
-      useFactory: (prisma: EncryptedPrismaClient, emailSender: EmailSender, recorder: GuestActivityNotes) =>
+      inject: [ENCRYPTED_PRISMA, EMAIL_SENDER, GUEST_ACTIVITY_RECORDER, STORAGE_PORT],
+      useFactory: (prisma: EncryptedPrismaClient, emailSender: EmailSender, recorder: GuestActivityNotes, receiptFiles: StoragePort) =>
         createBetterAuth({
-          prisma,
+          // better-auth's adapter and hooks look rows up across accounts (e-mail hash, session token): a system path (P11).
+          prisma: systemDatabaseClient(prisma, 'better-auth'),
           secret: resolveBetterAuthSecret(),
           baseUrl: resolveBetterAuthUrl(),
           trustedOrigins: resolveCorsOrigins(),
           webAppUrl: resolveWebAppUrl(),
           emailSender,
           // A sign-in or sign-up is traffic too: it gives the guest sweep a chance to run (ADR-0029, ADR-0109).
-          onSweepOpportunity: () => recorder.afterTouch?.(),
+          onSweepOpportunity: () => recorder.seen(),
+          // A guest's receipt files are re-encrypted for the account at the first sign-in (API-20).
+          receiptFiles,
           googleClientId: resolveGoogleClientId(),
           googleClientSecret: resolveGoogleClientSecret(),
           appleSignInEnabled: resolveAppleSignInEnabled(),
@@ -61,7 +70,10 @@ import { OAuthDiscoveryController } from './oauth-discovery.controller.js'
     { provide: APP_GUARD, useClass: OriginCsrfGuard },
     UserContextGuard,
     RequiresAccountGuard,
+    // The step-up rule on `/v1` routes (`@RequiresStepUp`, step-up-policy.ts).
+    { provide: STEP_UP_GRANT_REPOSITORY, useClass: PrismaStepUpGrantRepository },
+    StepUpGuard,
   ],
-  exports: [GUEST_ACTIVITY_RECORDER, BETTER_AUTH_BUNDLE, EMAIL_SENDER, BEARER_TOKEN_REPOSITORY, UserContextGuard, RequiresAccountGuard, PrismaModule],
+  exports: [GUEST_ACTIVITY_RECORDER, BETTER_AUTH_BUNDLE, EMAIL_SENDER, BEARER_TOKEN_REPOSITORY, UserContextGuard, RequiresAccountGuard, STEP_UP_GRANT_REPOSITORY, StepUpGuard, PrismaModule],
 })
 export class AuthModule {}

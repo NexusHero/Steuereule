@@ -1,12 +1,14 @@
-import { Inject, Injectable } from '@nestjs/common'
+import { Inject, Injectable, Optional } from '@nestjs/common'
+import { STORAGE_PORT, type StoragePort } from '../receipt/storage/storage.port.js'
 import type { AuditLogRow } from '../audit/audit.repository.js'
 import { AuditService } from '../audit/audit.service.js'
 import { PROFILE_REPOSITORY, type ProfileRepository } from '../profile/profile.repository.js'
 import { ACCOUNT_IDENTITY_REPOSITORY, type AccountIdentityRepository } from './account-identity.repository.js'
-import type { ExportAccessLogEntry, ExportDocument } from './export/export-document.js'
+import { keepDatabaseIdentity } from '../common/database-identity.js'
+import type { ExportAccessLogEntry, ExportDocument, ExportReceiptFile } from './export/export-document.js'
 import { buildExportReportHtml } from './export/export-report-template.js'
 import { PDF_RENDERER, type PdfRenderer } from './export/pdf-renderer.js'
-import { TAX_DATA_EXPORT_REPOSITORY, type TaxDataExportRepository } from './tax-data-export.repository.js'
+import { TAX_DATA_EXPORT_REPOSITORY, type ExportReceiptFileMeta, type TaxDataExportRepository } from './tax-data-export.repository.js'
 
 /**
  * The PDF report shows the newest this-many access-log entries: it is read by a person, and thousands of table
@@ -17,7 +19,7 @@ export const PDF_ACCESS_LOG_ENTRIES = 1000
 /** Rows read from the database, and written to the response, at a time in the JSON export. */
 export const EXPORT_ACCESS_LOG_BATCH = 1000
 
-export type ExportHead = Omit<ExportDocument, 'accessLog' | 'accessLogNewestOnly'>
+export type ExportHead = Omit<ExportDocument, 'accessLog' | 'accessLogNewestOnly' | 'receiptFiles'> & { receiptFiles: ExportReceiptFile[] }
 
 const toExportEntry = (row: AuditLogRow): ExportAccessLogEntry => ({
   action: row.action,
@@ -27,11 +29,22 @@ const toExportEntry = (row: AuditLogRow): ExportAccessLogEntry => ({
 })
 
 /**
- * The export as JSON text, the access log written batch by batch. Same bytes as `JSON.stringify` of the
- * whole document (the log is its last key), but never more than one batch of the log in memory.
+ * The export as JSON text: the head, then the original receipt files one at a time, then the access log batch by
+ * batch. Same bytes as `JSON.stringify` of the whole document with `receiptFiles` and `accessLog` as its last keys,
+ * but never more than one file or one batch of the log in memory (ADR-0109).
  */
-export async function* streamExportJson(head: ExportHead, batches: AsyncIterable<AuditLogRow[]>): AsyncGenerator<string> {
-  yield `${JSON.stringify(head).slice(0, -1)},"accessLog":[`
+export async function* streamExportJson(
+  head: Omit<ExportHead, 'receiptFiles'>,
+  files: AsyncIterable<ExportReceiptFile>,
+  batches: AsyncIterable<AuditLogRow[]>,
+): AsyncGenerator<string> {
+  yield `${JSON.stringify(head).slice(0, -1)},"receiptFiles":[`
+  let firstFile = true
+  for await (const file of files) {
+    yield (firstFile ? '' : ',') + JSON.stringify(file)
+    firstFile = false
+  }
+  yield '],"accessLog":['
   let first = true
   for await (const batch of batches) {
     if (batch.length === 0) continue
@@ -50,12 +63,15 @@ export class AccountExportService {
     @Inject(AuditService) private readonly auditService: AuditService,
     @Inject(PDF_RENDERER) private readonly pdfRenderer: PdfRenderer,
     @Inject(TAX_DATA_EXPORT_REPOSITORY) private readonly taxDataExportRepository: TaxDataExportRepository,
+    /** Decrypts the original receipt files for the JSON export (H2-6); absent in tests without receipts. */
+    @Optional() @Inject(STORAGE_PORT) private readonly files?: Pick<StoragePort, 'get'>,
   ) {}
 
   async assemble(userId: string, options: { accessLogNewest?: number } = {}): Promise<ExportDocument | null> {
     const limit = options.accessLogNewest
-    const head = await this.assembleHead(userId)
-    if (!head) return null
+    const assembled = await this.assembleHead(userId)
+    if (!assembled) return null
+    const { head } = assembled
     // One more than shown, to know whether the PDF leaves entries out.
     const accessLog = await this.auditService.findOwnRows(userId, limit === undefined ? {} : { newest: limit + 1 })
     return {
@@ -67,21 +83,34 @@ export class AccountExportService {
 
   /** The complete JSON export as a stream; the access log is read in keyset batches (ADR-0109). */
   async assembleJsonStream(userId: string): Promise<{ exportedAt: string; chunks: AsyncGenerator<string> } | null> {
-    const head = await this.assembleHead(userId)
-    if (!head) return null
+    const assembled = await this.assembleHead(userId)
+    if (!assembled) return null
+    const { head, files } = assembled
     // Rows up to now: the READ entry of this export itself is written after, as before.
     const batches = this.auditService.streamOwnRows(userId, { batchSize: EXPORT_ACCESS_LOG_BATCH, before: new Date(head.exportedAt) })
-    return { exportedAt: head.exportedAt, chunks: streamExportJson(head, batches) }
+    const { receiptFiles: _listed, ...rest } = head
+    // The response pulls the chunks after the handler returned: they keep the caller's database identity (P11).
+    return { exportedAt: head.exportedAt, chunks: keepDatabaseIdentity(streamExportJson(rest, this.readFiles(files), batches)) }
   }
 
-  private async assembleHead(userId: string): Promise<ExportHead | null> {
+  /** One decrypted file at a time, so a 2 GiB account never sits in memory at once; each opened with its owner's key. */
+  private async *readFiles(files: readonly ExportReceiptFileMeta[]): AsyncGenerator<ExportReceiptFile> {
+    for (const { ownerId, ...file } of files) {
+      const stored = this.files ? await this.files.get(ownerId, file.receiptId) : null
+      yield { ...file, contentBase64: stored ? stored.buffer.toString('base64') : null }
+    }
+  }
+
+  private async assembleHead(userId: string): Promise<{ head: ExportHead; files: ExportReceiptFileMeta[] } | null> {
     const account = await this.accountIdentityRepository.findByUserId(userId)
     if (!account) return null
-    const [profileRecord, taxData] = await Promise.all([
+    const [profileRecord, taxData, accountData, receiptFiles] = await Promise.all([
       this.profileRepository.findByUserId(userId),
       this.taxDataExportRepository.findAllForUser(userId),
+      this.taxDataExportRepository.findAccountDataForUser(userId),
+      this.taxDataExportRepository.listReceiptFiles(userId),
     ])
-    return {
+    const head: ExportHead = {
       schemaVersion: '1.0',
       exportedAt: new Date().toISOString(),
       account: {
@@ -102,7 +131,10 @@ export class AccountExportService {
           }
         : null,
       taxData,
+      accountData,
+      receiptFiles: receiptFiles.map(({ ownerId: _owner, ...file }) => file),
     }
+    return { head, files: receiptFiles }
   }
 
   renderPdf(document: ExportDocument): Promise<Buffer> {

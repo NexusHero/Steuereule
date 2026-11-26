@@ -14,6 +14,7 @@ import { makeLoginStyles } from './login/loginStyles'
 import { SocialSignInSection } from './shared/SocialSignInSection'
 import { ForgotPasswordForm } from './login/ForgotPasswordForm'
 import { LegalLinks } from './legal/LegalLinks'
+import { BetaNotice } from './shared/BetaNotice'
 import type { LegalPage } from './legal/texts'
 import { MIN_PASSWORD_LENGTH } from '../auth/password-policy'
 import { isAssistantSignIn } from '../auth/assistant-sign-in'
@@ -26,7 +27,20 @@ export interface LoginScreenProps {
   readonly onLegal?: (page: LegalPage) => void
   /** Opens on the „Passwort vergessen“ form (from an expired reset link). */
   readonly startWithForgot?: boolean
+  /** The session ran out mid-work (WEB-24): say so; after signing in the app returns to that place. */
+  readonly sessionExpired?: boolean
+  /** Arrived from the verification link: the address is confirmed, now sign in (WEB-5). */
+  readonly emailVerified?: boolean
+  /** Arrived from an expired or invalid verification link (`?error=`, WEB-5). */
+  readonly verificationFailed?: boolean
+  /** A Google/Apple sign-in came back with an error (WEB-33). */
+  readonly socialSignInFailed?: boolean
+  /** Arrived from the verification link of an account that no longer exists (`?error=ACCOUNT_REMOVED`, ADR-0030 §5). */
+  readonly accountRemoved?: boolean
 }
+
+/** The `error` the API puts on a verification link whose account was removed (`removed-account-link.ts`). */
+export const ACCOUNT_REMOVED_ERROR = 'ACCOUNT_REMOVED'
 
 type Stage =
   | { readonly kind: 'form' }
@@ -34,7 +48,7 @@ type Stage =
   | { readonly kind: 'two-factor'; readonly email: string }
   | { readonly kind: 'forgot' }
 
-export function LoginScreen({ onDone, onGuest, onRegister, showDeviceQr = true, onLegal, startWithForgot = false }: LoginScreenProps) {
+export function LoginScreen({ onDone, onGuest, onRegister, showDeviceQr = true, onLegal, startWithForgot = false, sessionExpired = false, emailVerified = false, verificationFailed = false, socialSignInFailed = false, accountRemoved = false }: LoginScreenProps) {
   const t = useTheme()
   const bp = useBreakpoint()
   const { t: tr } = useTranslation(APP_NS)
@@ -114,12 +128,47 @@ export function LoginScreen({ onDone, onGuest, onRegister, showDeviceQr = true, 
 
   const formColumn = (
     <View style={bp === 's' ? undefined : styles.formColumn}>
+      <BetaNotice />
       <SocialSignInSection
         disabled={stage.kind === 'submitting'}
         onSignedIn={onDone}
         onError={setError}
         showUnknownFallback={anySurfaceUnreachable}
       />
+
+      {emailVerified && !verificationFailed ? (
+        <View style={styles.outageBanner} accessibilityRole="alert" testID="email-bestaetigt">
+          <Text style={styles.outageHeading}>{tr('login.verified.heading')}</Text>
+          <Text style={styles.outageBody}>{tr('login.verified.body')}</Text>
+        </View>
+      ) : null}
+
+      {accountRemoved ? (
+        <View style={styles.outageBanner} accessibilityRole="alert" testID="konto-entfernt">
+          <Text style={styles.outageHeading}>{tr('login.accountRemoved.heading')}</Text>
+          <Text style={styles.outageBody}>{tr('login.accountRemoved.body')}</Text>
+          {onRegister ? <Button variant="ghost" onPress={onRegister} testID="konto-entfernt-registrieren">{tr('login.accountRemoved.register')}</Button> : null}
+        </View>
+      ) : null}
+
+      {verificationFailed ? (
+        <View style={styles.outageBanner} accessibilityRole="alert" testID="email-link-abgelaufen">
+          <Text style={styles.outageHeading}>{tr('login.verifyFailed.heading')}</Text>
+          <Text style={styles.outageBody}>{tr('login.verifyFailed.body')}</Text>
+        </View>
+      ) : null}
+
+      {socialSignInFailed ? (
+        <View style={styles.outageBanner} accessibilityRole="alert" testID="sozial-anmeldung-fehlgeschlagen">
+          <Text style={styles.outageBody}>{tr('login.socialFailed')}</Text>
+        </View>
+      ) : null}
+
+      {sessionExpired ? (
+        <View style={styles.outageBanner} accessibilityRole="alert" testID="anmeldung-abgelaufen">
+          <Text style={styles.outageBody}>{tr('apiFehler.sessionExpiredBanner')}</Text>
+        </View>
+      ) : null}
 
       {apiUnreachable ? (
         <View style={styles.outageBanner} accessibilityRole="alert">

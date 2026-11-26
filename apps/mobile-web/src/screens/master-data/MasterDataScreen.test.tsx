@@ -1,13 +1,13 @@
 import { afterEach, describe, expect, it } from 'vitest'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { I18nextProvider } from 'react-i18next'
-import { ThemeProvider } from '@steuereule/ui'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import type { LinkResponseDto, MasterDataResponseDto } from '@steuereule/api-client'
-import { createAppI18n } from '../../i18n/app-i18n'
 import { server } from '../../test-msw-server'
 import { MasterDataScreen } from './MasterDataScreen'
+import { AuthClientProvider } from '../../auth/AuthClientProvider'
+import { createAppAuthClient } from '../../auth/auth-client'
+import { confirmAction } from '../../test-confirm'
+import { makeTestQueryClient, renderWithQuery } from '../../test-render'
 
 const LEER: MasterDataResponseDto = {
   geburtsdatum: null,
@@ -28,15 +28,12 @@ const LEER: MasterDataResponseDto = {
 }
 
 function renderScreen(taxYear?: number) {
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
-  render(
-    <QueryClientProvider client={queryClient}>
-      <I18nextProvider i18n={createAppI18n('de')}>
-        <ThemeProvider mode="light">
-          <MasterDataScreen onBack={() => {}} {...(taxYear ? { taxYear } : {})} />
-        </ThemeProvider>
-      </I18nextProvider>
-    </QueryClientProvider>,
+  const queryClient = makeTestQueryClient()
+  renderWithQuery(
+    <AuthClientProvider client={createAppAuthClient('http://localhost:3000')}>
+      <MasterDataScreen onBack={() => {}} taxYear={taxYear ?? 2026} />
+    </AuthClientProvider>,
+    { client: queryClient },
   )
 }
 
@@ -157,16 +154,8 @@ describe('StammdatenScreen (ADR-0050)', () => {
         http.get('*/v1/steuerjahre/:jahr/kopplung', () => HttpResponse.json(JOINT)),
       )
       const opened: string[] = []
-      const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-      render(
-        <QueryClientProvider client={queryClient}>
-          <I18nextProvider i18n={createAppI18n('de')}>
-            <ThemeProvider mode="light">
-              <MasterDataScreen onBack={() => {}} taxYear={2025} onRecordPartner={(area, name) => opened.push(`${area}:${name}`)} />
-            </ThemeProvider>
-          </I18nextProvider>
-        </QueryClientProvider>,
-      )
+      const queryClient = makeTestQueryClient()
+      renderWithQuery(<MasterDataScreen onBack={() => {}} taxYear={2025} onRecordPartner={(area, name) => opened.push(`${area}:${name}`)} />, { client: queryClient })
       fireEvent.click(await screen.findByText('Lohnsteuerbescheinigung von Bea erfassen'))
       fireEvent.click(screen.getByText('Schweizer Lohnausweis von Bea erfassen'))
       fireEvent.click(screen.getByText('Arbeitsweg von Bea erfassen'))
@@ -190,6 +179,25 @@ describe('StammdatenScreen (ADR-0050)', () => {
       expect(await screen.findByText(/Veranlagungsart 2025/)).toBeTruthy()
       fireEvent.click(screen.getByTestId('kopplung-zusammen'))
       await waitFor(() => expect(set).toEqual(['2025']))
+    })
+
+    it('a new invitation code on an older session asks for the step-up first, not an error', async () => {
+      let attempts = 0
+      server.use(
+        http.get('*/v1/stammdaten', () => HttpResponse.json(MARRIED)),
+        http.get('*/v1/steuerjahre/:jahr/kopplung', () => HttpResponse.json({ ...JOINT, invitationCode: null, invitationCodeValidUntil: null })),
+        http.put('*/v1/steuerjahre/:jahr/kopplung', () => {
+          attempts++
+          return HttpResponse.json({ code: 'FRESH_AUTH_REQUIRED', message: 'x' }, { status: 400 })
+        }),
+        http.get('*/api/auth/list-accounts', () => HttpResponse.json([{ providerId: 'credential' }])),
+        http.get('*/api/auth/passkey/list-user-passkeys', () => HttpResponse.json([])),
+      )
+      renderScreen(2025)
+      fireEvent.click(await screen.findByTestId('kopplung-einladung-erstellen'))
+      expect(await screen.findByTestId('kopplung-einladung-stepup')).toBeTruthy()
+      expect(attempts).toBe(1)
+      expect(screen.queryByTestId('kopplung-art-fehler')).toBeNull()
     })
 
     it('lets the invited partner redeem the code, and says plainly when it is unknown', async () => {
@@ -583,6 +591,7 @@ describe('StammdatenScreen small helpers (#452 slice 5)', () => {
     renderScreen(2026)
     expect((await screen.findByTestId('kopplung-verknuepft')).textContent).toContain('seit 2025')
     fireEvent.click(screen.getByTestId('kopplung-beenden'))
+    confirmAction('endPartnerLink')
     await waitFor(() => expect(ended).toBe(1))
   })
 

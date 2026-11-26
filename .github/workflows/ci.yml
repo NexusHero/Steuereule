@@ -480,9 +480,10 @@ jobs:
       - name: Cross-origin browser smoke — signup, login, get-session, PUT /v1/profile
         run: node e2e/cross-origin/run.mjs
       - name: Self-hosted OCR smoke (ADR-0060) — worker, WASM core and deu data load same-origin and read text
-        # Needs only WEB_ORIGIN: no account, no API. Injects the app's own tesseract.js build into
-        # the served origin and OCRs a rendered LStB row with the self-hosted paths; fails on any
-        # request that leaves the origin (the CDN fallback tesseract.js uses by default).
+        # Needs WEB_ORIGIN (and API_ORIGIN, which the app shell calls on load); no account. Injects the
+        # app's own tesseract.js build into the served origin and OCRs a rendered LStB row with the
+        # self-hosted paths; fails on any request to a third party (the CDN fallback tesseract.js
+        # uses by default) and on any OCR asset not served by the web origin.
         run: node e2e/ocr/self-hosted-ocr.mjs
       - name: Responsive breakpoint layout gate (ADR-0014) — real browser, s/m/l assertions
         # Shares this job's already-running API + statically-served web bundle (see the
@@ -683,6 +684,19 @@ jobs:
           if-no-files-found: ignore
       - name: Scan flows (#450 Teil 3C) — chat and Belege upload, field-by-field confirm, tab switch, reload, delete
         run: node e2e/scan-corpus/flows.mjs
+      - name: Beta account states — guest, mail links, social sign-in cancel, step-up, passkeys, password change, OAuth consent, assistants and owl consent
+        # Needs DATABASE_URL (job env) to verify and un-verify accounts and to age a session past the step-up window,
+        # and BETTER_AUTH_SECRET to sign the verification link the mail sender only logs.
+        run: node e2e/account/beta-account-states.mjs
+      - name: Beta partner states (ADR-0111 decision 3) — per-year consent with step-up, invitation, coupling, household and children failures
+        # Two real accounts (A and B). Needs DATABASE_URL (job env) to verify the sign-ups and to age a session
+        # past the step-up window, as time would.
+        run: node e2e/household/beta-partner-states.mjs
+      - name: Beta payment and printout states — payment returns, confirmation, form template, receipt limit and read failures
+        # The fake payment provider (PAYMENT_FAKE_PROVIDER, job env); a read that fails is one browser request answered 503.
+        run: node e2e/submission/beta-payment-printout-states.mjs
+      - name: Beta mask states — cockpit, catalog, LStB lines, Strom, rental share and taken-over instances fail and recover
+        run: node e2e/forms/beta-mask-states.mjs
       - name: E2E coverage ratchet (#450 5I) — testIDs and interview pairs without an E2E hit may only shrink
         run: |
           node --test scripts/checks/e2e-coverage-ratchet.test.mjs
@@ -882,6 +896,9 @@ jobs:
       # ADR-0101 §20: the default of the app. Scenario 09b walks the self-employment area end to end; the
       # shards above pin the switch off for scenario 09, so 09b gets this stack of its own (ATTACH mode).
       SELBSTSTAENDIGE_ENABLED: 'true'
+      # #450 D7: the fake payment provider (refused in production, no Stripe keys here), so 09b pays the
+      # self-employment tier through the real checkout and webhook (e2e/harness/fake-payment.mjs).
+      PAYMENT_FAKE_PROVIDER: '1'
     steps:
       # Built here rather than written out in the job env, so no connection string with
       # credentials sits in the workflow; every later step reads it from the environment.
@@ -934,6 +951,10 @@ jobs:
             "${WEB_ORIGIN}/"
       - name: Run scenario 09b
         run: node e2e/scenarios/09b-maximiliane-koch-selbststaendig.mjs
+      - name: Beta self-employment states — businesses, books, E-Bilanz and § 16 fail and recover; a lost session leads back
+        run: node e2e/forms/beta-business-states.mjs
+      - name: Beta ELSTER-help states — price, pending and paid checkout, payment time-out, unconfirmed take-over
+        run: node e2e/submission/beta-elster-states.mjs
       - name: API log (on failure)
         if: failure()
         run: cat /tmp/steuereule-api-09b.log || true
@@ -992,6 +1013,10 @@ jobs:
         run: pnpm --filter @steuereule/e2e exec playwright-core install chromium --with-deps
       - name: The one env file — copy the example verbatim (the point of #76's single-source .env)
         run: cp .env.example .env
+      - name: TLS certificate of the local inbox (mail is never sent in clear text, not even to Mailpit)
+        # The same script scripts/local.sh runs: a CA and a Mailpit certificate in .local/mail-tls, generated here
+        # and never committed. Mailpit takes SMTP only over TLS; the API verifies it against this CA (SMTP_CA_CERT).
+        run: scripts/mail-tls.sh
       - name: Build + boot the real production stack (Postgres -> migrate -> api; web independently)
         run: docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
       - name: Wait for both published origins to answer (poll, no sleep — ADR-0004)
@@ -1022,7 +1047,11 @@ jobs:
           DB_PASSWORD: steuereule
           DB_NAME: steuereule
         run: DATABASE_URL="postgresql://${DB_USER}:${DB_PASSWORD}@localhost:5432/${DB_NAME}" node e2e/prod-deploy/run.mjs
-      - name: Registration mail reached the local inbox (Mailpit, SMTP)
+      - name: Mailpit's SMTP port speaks TLS with the certificate of the local CA
+        # Fails if the port answers in clear text or with a certificate the CA did not sign for 127.0.0.1.
+        run: openssl s_client -connect 127.0.0.1:1025 -CAfile .local/mail-tls/ca/ca.pem -verify_ip 127.0.0.1 -verify_return_error -brief </dev/null
+      - name: Registration mail reached the local inbox (Mailpit, SMTP over TLS)
+        # The API has no clear-text path, so a mail in the inbox went over TLS with a verified certificate.
         run: |
           curl --fail --silent --show-error --retry 10 --retry-delay 2 --retry-all-errors \
             "http://localhost:8025/api/v1/message/latest" | grep -q 'verify-email'

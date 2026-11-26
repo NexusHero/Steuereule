@@ -15,6 +15,7 @@ import {
 } from '@steuereule/api-client'
 import { stateForAddress } from '../shared/postalCodePrefill'
 import { usePendingMutations } from '../shared/usePendingMutations'
+import { useTrackField } from '../shared/useTrackField'
 import { watchSaveResult } from '../shared/saveFeedback'
 import { type ChildInput, type ChildItem } from './childrenModel'
 
@@ -26,14 +27,20 @@ export function useChildren(taxYear: number) {
   const deleteChild = useChildrenControllerDelete()
   const masterData = useMasterDataControllerRead()
   const profile = useProfileControllerGetProfile()
-  const ownLastName = profile.data?.status === 200 ? (profile.data.data.lastName ?? '') : ''
-  const ownAddress = masterData.data?.status === 200 ? masterData.data.data : null
+  // Suggestions only (the last name of a new child, the Familienkasse): a failed read suggests nothing.
+  const ownLastName = profile.data?.data.lastName ?? ''
+  const ownAddress = masterData.data?.data ?? null
   const addressState = ownAddress?.plz ? stateForAddress(ownAddress.plz, ownAddress.wohnort ?? '') : null
-  const married = masterData.data?.status === 200 && masterData.data.data.familienstand === 'verheiratet'
+  const married = masterData.data?.data.familienstand === 'verheiratet'
+  // NM-15: without the marital status a married user would be asked the single-parent questions.
+  const maritalStatusFailed = masterData.isError
   const link = useLinkControllerGet(taxYear, { query: { enabled: married, retry: false } })
-  const partnerName = link.data?.status === 200 ? link.data.data.personB?.firstName?.trim() || undefined : undefined
+  const partnerName = link.data?.data.personB?.firstName?.trim() || undefined
   const [householdQuestions, setHouseholdQuestions] = useState(false)
-  const { track, flushThen, saveFailed } = usePendingMutations()
+  const { track, flushThen, saveFailed, clearSaveError } = usePendingMutations()
+  // WEB-12: one key per child (a new child is one too): a failed save or delete holds the leave once, and goes
+  // once the same child was saved or deleted after all; a failure of another child still stands.
+  const trackChild = useTrackField(track, clearSaveError)
 
   const invalidate = async () => {
     await Promise.all([
@@ -47,9 +54,9 @@ export function useChildren(taxYear: number) {
     const task = (async () => {
       const created = await watchSaveResult(createChild.mutateAsync({ jahr: taxYear, data }))
       await invalidate()
-      return created.status === 201 ? (created.data.kinder as readonly ChildItem[]) : undefined
+      return created.data.kinder as readonly ChildItem[]
     })()
-    track(task)
+    trackChild('child:new', task)
     return task
   }
 
@@ -57,9 +64,9 @@ export function useChildren(taxYear: number) {
     const task = (async () => {
       const updated = await watchSaveResult(updateChild.mutateAsync({ jahr: taxYear, id, data }))
       await invalidate()
-      return updated.status === 200 ? (updated.data.kinder as readonly ChildItem[]) : undefined
+      return updated.data.kinder as readonly ChildItem[]
     })()
-    track(task)
+    trackChild(`child:${id}`, task)
     return task
   }
 
@@ -68,7 +75,7 @@ export function useChildren(taxYear: number) {
       await watchSaveResult(deleteChild.mutateAsync({ jahr: taxYear, id }))
       await invalidate()
     })()
-    track(task)
+    trackChild(`child:${id}`, task)
     return task
   }
 
@@ -77,6 +84,8 @@ export function useChildren(taxYear: number) {
     ownLastName,
     addressState,
     married,
+    maritalStatusFailed,
+    masterData,
     partnerName,
     householdQuestions,
     setHouseholdQuestions,

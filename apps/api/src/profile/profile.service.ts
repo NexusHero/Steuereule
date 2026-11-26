@@ -20,12 +20,18 @@ export class ProfileService {
     return toResponseDto(record)
   }
 
+  /**
+   * Saves the name and only those identifiers the request carries (WEB-28): an absent `steuerId` /
+   * `steuernummer` keeps the stored value, an explicit `null` clears it. A client that failed to load the
+   * profile and saves just a name can no longer wipe the Steuer-ID it never saw.
+   */
   async saveProfile(userId: string, dto: PutProfileDto): Promise<ProfileResponseDto> {
+    const existing = dto.steuerId === undefined || dto.steuernummer === undefined ? await this.repository.findByUserId(userId) : null
     const record = await this.repository.upsert(userId, {
       firstName: dto.firstName.trim(),
       lastName: dto.lastName.trim(),
-      steuerId: dto.steuerId ?? null,
-      steuernummer: dto.steuernummer ?? null,
+      steuerId: dto.steuerId !== undefined ? dto.steuerId : (existing?.steuerId ?? null),
+      steuernummer: dto.steuernummer !== undefined ? dto.steuernummer : (existing?.steuernummer ?? null),
     })
     return toResponseDto(record)
   }

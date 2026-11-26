@@ -1,21 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger'
 import { Type } from 'class-transformer'
-import {
-  ArrayMaxSize,
-  ArrayMinSize,
-  IsArray,
-  IsBoolean,
-  IsIn,
-  IsNotEmpty,
-  IsObject,
-  IsOptional,
-  IsString,
-  Matches,
-  MaxLength,
-  ValidateIf,
-  ValidateNested,
-  registerDecorator,
-} from 'class-validator'
+import { ArrayMaxSize, ArrayMinSize, IsArray, IsBoolean, IsIn, IsNotEmpty, IsObject, IsOptional, IsString, Matches, MaxLength, ValidateIf, ValidateNested, registerDecorator } from 'class-validator'
 import {
   ADVISOR_DEPTHS,
   ADVISOR_MODEL_PROVIDERS,
@@ -824,6 +809,7 @@ export class ApplyBatchActionItemDto {
   @ApiProperty({ type: String, example: 'act-1730970000' })
   @IsString()
   @IsNotEmpty()
+  @MaxLength(100)
   actionId!: string
 
   @ApiPropertyOptional({

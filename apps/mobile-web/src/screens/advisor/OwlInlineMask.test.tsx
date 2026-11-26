@@ -1,10 +1,9 @@
 // #488: "Maske ansehen" on a draft of the interview opens the page the field belongs to.
 import { describe, expect, it, vi } from 'vitest'
 import { screen } from '@testing-library/react'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { http, HttpResponse } from 'msw'
 import { useTheme } from '@steuereule/ui'
-import { renderInApp } from '../../test-render'
+import { renderWithQuery } from '../../test-render'
 import { server } from '../../test-msw-server'
 import { InlineMaskView } from './OwlInlineMask'
 import { makeStyles } from './OwlModeScreen.styles'
@@ -21,11 +20,7 @@ function open(field: string, answers: Record<string, string>) {
     http.get(`*/v1/steuerjahre/${YEAR}/interview`, () => HttpResponse.json({ answers, nextStep: { kind: 'done' }, openItems: 0 }, { status: 200 })),
     http.get(`*/v1/steuerjahre/${YEAR - 1}/interview`, () => HttpResponse.json({ answers: {}, nextStep: { kind: 'done' }, openItems: 0 }, { status: 200 })),
   )
-  return renderInApp(
-    <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
-      <Mask field={field} />
-    </QueryClientProvider>,
-  )
+  return renderWithQuery(<Mask field={field} />)
 }
 
 describe('the owl workbench opens the page of the field (#488)', () => {

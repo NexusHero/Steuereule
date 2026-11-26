@@ -14,6 +14,7 @@ import {
   waitForStromStep,
   saveExchangeRate,
   runStandaloneScenario,
+  confirmStepUpIfAsked,
 } from './helpers/scenario-harness.mjs'
 
 export async function runScenario02(browser, webOrigin, _sql, { keepOpen = false } = {}) {
@@ -147,6 +148,8 @@ export async function runScenario02(browser, webOrigin, _sql, { keepOpen = false
   await pageMarkus.locator('[data-testid="stammdaten-iban"]').fill(s.markus.masterData.iban)
 
   await pageMarkus.locator('[data-testid="kopplung-zusammen"]').click()
+  // The invitation code grants a third party access: an older session confirms the password first (step-up rule).
+  await confirmStepUpIfAsked(pageMarkus, { stepUpTestId: 'kopplung-einladung-stepup', doneTestId: 'kopplung-code-anzeige', password: s.markus.password })
   await pageMarkus.locator('[data-testid="stammdaten-speichern"]').click()
   await pageMarkus.waitForTimeout(500)
 

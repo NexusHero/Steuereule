@@ -17,7 +17,7 @@ import {
 import { CurrentUser } from '../auth/current-user.decorator.js'
 import { Throttle } from '@nestjs/throttler'
 import { FastifyThrottlerGuard } from '../advisor/advisor.controller.js'
-import { InvalidInputError } from '../common/domain-error.js'
+import { InvalidInputError, PayloadTooLargeError } from '../common/domain-error.js'
 import { ReceiptService } from './receipt.service.js'
 import { UploadAdmission } from './upload-admission.js'
 import { USER_ID_KIND_REQUEST_KEY, UserContextGuard, type RequestWithUserId } from '../auth/user-context.guard.js'
@@ -170,13 +170,13 @@ export class ReceiptController {
       }
       const buffer = await part.toBuffer()
       if (part.file.truncated) {
-        throw new InvalidInputError('RECEIPT_FILE_TOO_LARGE', 'Die Datei ist größer als das erlaubte Maximum von 10 MB.')
+        throw new PayloadTooLargeError('RECEIPT_FILE_TOO_LARGE', 'Die Datei ist größer als das erlaubte Maximum von 10 MB.')
       }
       return { part, buffer }
     } catch (error) {
       if (error instanceof InvalidInputError) throw error
       if (isFileTooLargeError(error)) {
-        throw new InvalidInputError('RECEIPT_FILE_TOO_LARGE', 'Die Datei ist größer als das erlaubte Maximum von 10 MB.')
+        throw new PayloadTooLargeError('RECEIPT_FILE_TOO_LARGE', 'Die Datei ist größer als das erlaubte Maximum von 10 MB.')
       }
       throw error
     }

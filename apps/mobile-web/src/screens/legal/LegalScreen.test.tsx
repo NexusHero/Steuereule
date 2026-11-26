@@ -42,7 +42,7 @@ describe('RechtlichesScreen', () => {
 
   it('without operator data the Impressum says so honestly instead of inventing one', () => {
     renderPage('impressum', null)
-    expect(screen.getByText('Die Anbieterangaben sind auf dieser Umgebung noch nicht hinterlegt.')).toBeTruthy()
+    expect(screen.getByText('Die Anbieterangaben sind noch nicht hinterlegt.')).toBeTruthy()
   })
 
   it('links every other legal page and goes back', () => {
@@ -89,7 +89,7 @@ describe('the self-employment area (ADR-0101, on by default since 20.11.2026)', 
   const termsText = content('agb', OPERATOR).flatMap((s) => s.paragraphs).join('\n')
 
   it('names every model provider of the owl, not only Google', () => {
-    expect(privacyText).toMatch(/Anthropic \(Claude\) bzw\. OpenAI/)
+    expect(privacyText).toMatch(/Google \(Gemini, USA\), Anthropic \(Claude, USA\) und OpenAI \(GPT, USA\)/)
   })
 
   it('names the third-party data of the book, the processor role and the AVV in the terms', () => {

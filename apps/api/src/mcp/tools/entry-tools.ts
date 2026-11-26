@@ -1,22 +1,27 @@
+import { Logger } from '@nestjs/common'
+import { describeFieldForPrompt, fieldsOfScreen, PERSON_B_SCREENS, provenanceKey, type Provenance, type Screen } from '@steuereule/core'
 import { z } from 'zod'
-import { describeFieldForPrompt, fieldsOfScreen, PERSON_B_SCREENS, provenanceKey, SCREENS, type Provenance, type Screen } from '@steuereule/core'
 import { DomainError } from '../../common/domain-error.js'
 import { isAiWritable } from '../../confirmation/ai-write-policy.js'
 import { checkStageValue, OWN_TOOL_SCREENS, validateStageTarget } from '../../ki/advisor-safety.js'
-import { isOwnProvenance, provenanceOf, assertScope, json, refused, dataUserFor, type McpDeps, type McpSession } from '../mcp-session.js'
+import { dataUserFor, isOwnProvenance, isOwnReceipt, provenanceOf, type McpDeps, type McpSession } from '../mcp-session.js'
+import { boundedRecord, fieldArg, instanceArg, MAX_FIELD_LENGTH, personArg, receiptIdArg, screenArg, taxYearArg, valueArg } from '../tool-args.js'
+import { json, reasonOfError, refused } from '../tool-results.js'
 
 /**
  * The catalogue's hints are written for the in-app advisor and name its tools; the user's assistant has
- * none of them, so those references become what it should do instead.
+ * none of them, so those references become what it should do instead (also for feld_finden, H2-25).
  */
-function forExternalAssistant(description: string): string {
+export function forExternalAssistant(description: string): string {
   return description.replace('nur über `propose_two_paths` vorschlagen', 'dem Nutzer beide Wege zeigen und ihn entscheiden lassen')
 }
 
 const MAX_BATCH_FIELDS = 60
 
 /** Fields only the user enters, even through their own assistant. */
-const isUserOnly = (screen: Screen, field: string): boolean => screen === 'stammdaten' && field.trim() === 'religion'
+export const isUserOnly = (screen: Screen, field: string): boolean => screen === 'stammdaten' && field.trim() === 'religion'
+
+const logger = new Logger('McpEntryTools')
 
 /** Entering values (unconfirmed, ADR-0052 §6/§7), describing the fields, and taking an own entry back. */
 export function registerEntryTools(session: McpSession, deps: McpDeps): void {
@@ -27,7 +32,7 @@ export function registerEntryTools(session: McpSession, deps: McpDeps): void {
     ? 'USE_BOOKING_TOOL: Eine Buchung ist kein Feldwert. Lege sie mit buchung_entwerfen als Entwurf an; der Nutzer übernimmt sie in der App.'
     : 'USE_BOOKING_TOOL: Buchungen sind über diesen Zugang noch nicht möglich; der Nutzer bucht in der App.'
 
-  const PERSON_HINT = 'Bei Zusammenveranlagung: A der Nutzer, B Ehegatte oder Ehegattin. Pflicht in den Masken lstb, chLohnausweis, commute, rente, profil, stammdaten, sobald es Person B gibt.'
+  const NO_SUCH_RECEIPT = 'RECEIPT_NOT_FOUND: Diesen Beleg gibt es in diesem Konto nicht. Gib als receiptId eine belegId aus belege_auflisten oder beleg_hochladen an, oder lass sie weg.'
 
   /**
    * One entry, with the same target and value checks as the in-app advisor (unknown field, never-writable
@@ -53,12 +58,12 @@ export function registerEntryTools(session: McpSession, deps: McpDeps): void {
     const provenance: Provenance = provenanceOf(assistant, receiptId)
     try {
       const result = await deps.confirmation.write(whose.dataUserId, taxYear, key, cleanValue, provenance)
-      await deps.audit.append({ userId, action: 'WRITE', resource: 'maske_eintragen' })
       return { ok: true, key, result }
     } catch (error) {
-      // A refusal of the mask itself (no such record, a value its own rules reject) is the assistant's to fix.
+      // A refusal of the mask itself (no such record, a value its own rules reject) is the assistant's to fix;
+      // anything else is named without its inside, and in a batch the other fields still go in (MCP-7).
       if (error instanceof DomainError) return { ok: false, error: `${error.code}: ${error.message}` }
-      throw error
+      return { ok: false, error: reasonOfError(error, (message) => logger.error(`maske_eintragen: ${message}`)) }
     }
   }
 
@@ -71,16 +76,16 @@ export function registerEntryTools(session: McpSession, deps: McpDeps): void {
     'maske_eintragen',
     'Trägt einen Wert in eine Erfassungsmaske ein. Der Wert wird als unbestätigt markiert und muss vom Nutzer in der App bestätigt werden. Hat der Nutzer bereits einen Wert bestätigt, wird der neue Wert als Vorschlag hinterlegt. Für mehrere Felder einer Maske: maske_eintragen_stapel.',
     {
-      taxYear: z.number().int().describe('Das Steuerjahr (z.B. 2024 oder 2025)'),
-      screen: z.enum(SCREENS).describe('Die Erfassungsmaske (z.B. lstb, interview, kind, vermietung)'),
-      instance: z.string().optional().describe('Instanz-ID bei mehrfachen Objekten (z.B. Vermietungsobjekt oder Kind)'),
-      field: z.string().describe('Der Feldbezeichner (z.B. bruttoarbeitslohn, mieteinnahmen)'),
-      value: z.string().nullable().describe('Der einzutragende Wert als String, oder null'),
-      receiptId: z.string().optional().describe('Optionale Beleg-ID als Herkunftsnachweis'),
-      person: z.enum(['A', 'B']).optional().describe(PERSON_HINT),
+      taxYear: taxYearArg(),
+      screen: screenArg('Die Erfassungsmaske (z.B. lstb, interview, kind, vermietung); ihre Felder nennt maske_felder'),
+      instance: instanceArg('Datensatz-ID bei Masken mit mehreren Datensätzen (Kind: kinder_auflisten, Vermietung: vermietungen_auflisten)').optional(),
+      field: fieldArg('Der Feldbezeichner (z.B. bruttoarbeitslohn, mieteinnahmen), wie maske_felder ihn nennt'),
+      value: valueArg('Der einzutragende Wert als String in der Form, die maske_felder nennt, oder null zum Leeren').nullable(),
+      receiptId: receiptIdArg().optional(),
+      person: personArg().optional(),
     },
     async (entry) => {
-      assertScope(assistant, 'steuerdaten:write')
+      if (!(await isOwnReceipt(deps, userId, entry.receiptId))) return refused(NO_SUCH_RECEIPT)
       const written = await writeField(entry)
       if (!written.ok) return refused(written.error)
       return json({ schluessel: written.key, ...(entry.person === 'B' ? { person: 'B' } : {}), ergebnis: written.result, hinweis: hintFor(written.result) })
@@ -91,17 +96,17 @@ export function registerEntryTools(session: McpSession, deps: McpDeps): void {
     'maske_eintragen_stapel',
     `Trägt viele Felder einer Maske in einem Aufruf ein (höchstens ${MAX_BATCH_FIELDS}), mit denselben Regeln wie maske_eintragen. Das Ergebnis nennt je Feld „geschrieben“, „vorschlag“ (der Nutzer hat dort schon einen Wert; deiner wartet auf seine Entscheidung und zählt bis dahin nicht), „unveraendert“ oder den Grund der Ablehnung; ein abgelehntes Feld hält die übrigen nicht auf. Feldnamen und Formen vorher mit maske_felder nachsehen.`,
     {
-      taxYear: z.number().int().describe('Das Steuerjahr (z.B. 2024 oder 2025)'),
-      screen: z.enum(SCREENS).describe('Die Erfassungsmaske'),
-      instance: z.string().optional().describe('Instanz-ID bei mehrfachen Objekten (z.B. Kind)'),
-      felder: z.record(z.string(), z.string().nullable()).describe('Feldbezeichner → Wert (String oder null zum Leeren)'),
-      receiptId: z.string().optional().describe('Optionale Beleg-ID als Herkunftsnachweis für alle Felder'),
-      person: z.enum(['A', 'B']).optional().describe(PERSON_HINT),
+      taxYear: taxYearArg(),
+      screen: screenArg(),
+      instance: instanceArg('Datensatz-ID bei Masken mit mehreren Datensätzen (z.B. Kind)').optional(),
+      felder: boundedRecord(z.string().max(MAX_FIELD_LENGTH), valueArg('Wert oder null').nullable(), MAX_BATCH_FIELDS).describe(`Feldbezeichner → Wert (String oder null zum Leeren), 1 bis ${MAX_BATCH_FIELDS} Felder`),
+      receiptId: receiptIdArg().optional(),
+      person: personArg().optional(),
     },
     async ({ taxYear, screen, instance, felder, receiptId, person }) => {
-      assertScope(assistant, 'steuerdaten:write')
       const entries = Object.entries(felder)
       if (entries.length === 0 || entries.length > MAX_BATCH_FIELDS) return refused(`INVALID_ARGUMENTS: 1 bis ${MAX_BATCH_FIELDS} Felder je Aufruf.`)
+      if (!(await isOwnReceipt(deps, userId, receiptId))) return refused(NO_SUCH_RECEIPT)
       const results: Record<string, { ergebnis: string } | { fehler: string }> = {}
       // In order, one after the other: a later field may depend on an earlier one (a gate before its amount).
       for (const [field, value] of entries) {
@@ -118,11 +123,9 @@ export function registerEntryTools(session: McpSession, deps: McpDeps): void {
   server.tool(
     'maske_felder',
     'Beschreibt die Felder einer Erfassungsmaske: Name, Form des Werts und was hineingehört. Vor dem ersten Eintrag in eine Maske aufrufen, statt Feldnamen zu raten. `je_person`: bei Zusammenveranlagung `person` mitgeben; `braucht_instance`: Datensatz-ID mitgeben (Kind: kinder_auflisten).',
-    { screen: z.enum(SCREENS).describe('Die Erfassungsmaske (z.B. lstb, chLohnausweis, commute, kind, interview)') },
+    { screen: screenArg('Die Erfassungsmaske (z.B. lstb, chLohnausweis, commute, kind, interview)') },
     async ({ screen }) => {
-      assertScope(assistant, 'steuerdaten:read')
-      await deps.audit.append({ userId, action: 'READ', resource: 'maske_felder' })
-      if (OWN_TOOL_SCREENS.has(screen)) return json({ ok: false, error: bookingRefusal.replace('USE_BOOKING_TOOL: ', '') })
+      if (OWN_TOOL_SCREENS.has(screen)) return refused(bookingRefusal)
       const specs = fieldsOfScreen(screen).filter((spec) => isAiWritable(screen, spec.field, true) && !isUserOnly(screen, spec.field))
       return json({
         screen,
@@ -136,27 +139,20 @@ export function registerEntryTools(session: McpSession, deps: McpDeps): void {
   // Taking back an entry the assistant made by mistake: only its own, only while the user has not confirmed it.
   server.tool(
     'eintrag_zuruecknehmen',
-    'Nimmt einen eigenen Eintrag zurück, den du als falsch erkannt hast: Ein unbestätigter Wert, den du eingetragen hast, wird geleert; ein Vorschlag von dir auf einem bestätigten Wert wird verworfen. Werte des Nutzers oder anderer Assistenten bleiben. Danach bei Bedarf richtig neu eintragen.',
+    'Nimmt einen eigenen Eintrag zurück, den du als falsch erkannt hast: Ein unbestätigter Wert, den du eingetragen hast, wird geleert; ein Vorschlag von dir auf einem bestätigten Wert wird verworfen; ein eigener offener Buchungsentwurf (Maske "buchung", Feld "entry", instance = Entwurf) wird verworfen. Werte des Nutzers oder anderer Assistenten bleiben. Danach bei Bedarf richtig neu eintragen.',
     {
-      taxYear: z.number().int().describe('Das Steuerjahr (z.B. 2024 oder 2025)'),
-      screen: z.enum(SCREENS).describe('Die Erfassungsmaske'),
-      instance: z.string().optional().describe('Instanz-ID bei mehrfachen Objekten'),
-      field: z.string().describe('Der Feldbezeichner'),
-      person: z.enum(['A', 'B']).optional().describe('Wie bei maske_eintragen'),
+      taxYear: taxYearArg(),
+      screen: screenArg(),
+      instance: instanceArg('Datensatz-ID bei Masken mit mehreren Datensätzen; bei einer Buchung die Entwurfs-ID').optional(),
+      field: fieldArg(),
+      person: personArg('Wie bei maske_eintragen').optional(),
     },
     async ({ taxYear, screen, instance, field, person }) => {
-      assertScope(assistant, 'steuerdaten:write')
       const whose = await dataUserFor(deps.link, userId, taxYear, screen, field.trim(), person)
       if (!whose.ok) return refused(whose.error)
       const key = provenanceKey(screen, field.trim(), instance)
-      try {
-        const ergebnis = await deps.confirmation.withdrawAssistantEntry(whose.dataUserId, taxYear, key, (p) => isOwnProvenance(p, assistant))
-        await deps.audit.append({ userId, action: 'WRITE', resource: 'eintrag_zuruecknehmen' })
-        return json({ ok: true, schluessel: key, ergebnis })
-      } catch (error) {
-        const code = (error as { code?: string }).code ?? 'ERROR'
-        return refused(`${code}: ${error instanceof Error ? error.message : ''}`)
-      }
+      const ergebnis = await deps.confirmation.withdrawAssistantEntry(whose.dataUserId, taxYear, key, (p) => isOwnProvenance(p, assistant))
+      return json({ ok: true, schluessel: key, ergebnis })
     },
   )
 }

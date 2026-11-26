@@ -3,6 +3,8 @@ import type { Annex, Marking } from '@steuereule/core'
 export type ProvenanceRecord = Omit<Marking, 'value' | 'value'> & {
   readonly userId: string
   readonly taxYear: number
+  /** When the marking last changed; tells a marking someone rewrote from one left as it was. */
+  readonly updatedAt?: Date
 }
 export const PROVENANCE_REPOSITORY = Symbol('PROVENANCE_REPOSITORY')
 
@@ -12,5 +14,6 @@ export interface ProvenanceRepository {
   find(userId: string, taxYear: number, key: string): Promise<ProvenanceRecord | null>
   save(userId: string, taxYear: number, marking: Omit<Marking, 'value'>): Promise<ProvenanceRecord>
   remove(userId: string, taxYear: number, keys: readonly string[]): Promise<number>
-  confirmAnnex(userId: string, taxYears: readonly number[], annex: Annex): Promise<number>
+  /** Confirms exactly these unconfirmed markings of the Anlage (MCP-4): what the user saw, nothing written since. */
+  confirmKeys(userId: string, taxYears: readonly number[], annex: Annex, keys: readonly string[]): Promise<number>
 }

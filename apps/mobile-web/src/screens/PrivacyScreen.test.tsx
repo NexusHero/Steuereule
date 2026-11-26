@@ -4,16 +4,14 @@
 // confirm -> [password] -> success/failure per ADR-0013 §6's distinct status codes), and that
 // the corrected DSGVO copy (not the DS demo's wrong wording) is what actually renders.
 import { describe, it, expect, vi, afterEach } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
-import { I18nextProvider } from 'react-i18next'
-import { ThemeProvider } from '@steuereule/ui'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { screen, fireEvent, waitFor } from '@testing-library/react'
+import type { QueryClient } from '@tanstack/react-query'
 import { http, HttpResponse } from 'msw'
-import { createAppI18n } from '../i18n/app-i18n'
 import { createAppAuthClient, type AppAuthClient } from '../auth/auth-client'
 import { AuthClientProvider } from '../auth/AuthClientProvider'
 import { PrivacyScreen } from './PrivacyScreen'
 import { server } from '../test-msw-server'
+import { expectFailsClosed, failEveryRequest } from '../test-every-query-fails'
 
 const BASE_URL = 'http://localhost:3000'
 
@@ -22,6 +20,7 @@ vi.mock('./privacy/exportDownload', async () => {
   return { ...actual, downloadAccountExport: vi.fn() }
 })
 import { downloadAccountExport } from './privacy/exportDownload'
+import { makeTestQueryClient, renderWithQuery } from '../test-render'
 
 const mockedDownload = vi.mocked(downloadAccountExport)
 
@@ -35,24 +34,17 @@ function mockSession(session: typeof REAL_SESSION | null) {
 }
 
 function renderPrivacy(opts: { lng?: 'de' | 'en'; onBack?: () => void; onAccountDeleted?: () => void; queryClient?: QueryClient; authClient?: AppAuthClient } = {}) {
-  const i18n = createAppI18n(opts.lng ?? 'de')
   // Defaults to a fresh client per render, same as before — but a caller can pass its own,
   // already-constructed client (and reuse it across an unmount/re-mount) to prove F2: whether
   // "signed out" survives a re-mount depends on this client's session atom actually being
   // invalidated, not on component unmount timing (App.tsx constructs its auth client once,
   // outside the tree, so it stays alive across the stage change back to Login).
   const authClient = opts.authClient ?? createAppAuthClient(BASE_URL)
-  const queryClient = opts.queryClient ?? new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
-  return render(
-    <QueryClientProvider client={queryClient}>
-      <I18nextProvider i18n={i18n}>
-        <ThemeProvider mode="light">
-          <AuthClientProvider client={authClient}>
-            <PrivacyScreen onBack={opts.onBack ?? (() => {})} onAccountDeleted={opts.onAccountDeleted ?? (() => {})} />
-          </AuthClientProvider>
-        </ThemeProvider>
-      </I18nextProvider>
-    </QueryClientProvider>,
+  return renderWithQuery(
+    <AuthClientProvider client={authClient}>
+      <PrivacyScreen onBack={opts.onBack ?? (() => {})} onAccountDeleted={opts.onAccountDeleted ?? (() => {})} />
+    </AuthClientProvider>,
+    { client: opts.queryClient ?? makeTestQueryClient(), language: opts.lng ?? 'de' },
   )
 }
 
@@ -251,8 +243,9 @@ describe('DatenschutzScreen', () => {
       fireEvent.click(screen.getByText('Konto & Daten löschen'))
 
       await screen.findByText('Bevor du löschst')
-      expect(screen.getByText(/anonymisiert erhalten/)).toBeTruthy()
-      expect(screen.getByText(/Löschschutz/)).toBeTruthy()
+      expect(screen.getByText(/anonymisiert als Nachweis erhalten/)).toBeTruthy()
+      // Backup and legal-hold periods print from @steuereule/core (LEGAL-4).
+      expect(screen.getByText(/spätestens nach 7 Tagen.*Zahlungen 8 Jahre, eingereichte Fassungen 4 Jahre/)).toBeTruthy()
       // A single, explicit assertion against the actual current wording — not a `getByText(a)
       // ?? getByText(b)` "either" that can never actually fall through to `b` (`getByText`
       // throws instead of returning null on no match, per Musti's T1, F5).
@@ -313,7 +306,7 @@ describe('DatenschutzScreen', () => {
           return HttpResponse.json({ deleted: { profile: true, account: true }, retainedAnonymisedAuditRows: 2, retainedUnderLegalHold: 0 }, { status: 200 })
         }),
       )
-      const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
+      const queryClient = makeTestQueryClient()
       const clearSpy = vi.spyOn(queryClient, 'clear')
       const onAccountDeleted = vi.fn()
       mockSession(REAL_SESSION)
@@ -507,7 +500,7 @@ describe('DatenschutzScreen', () => {
       await screen.findByText('Anmeldungen & Geräte')
       expect(
         screen.getByText(
-          'Bei jeder Anmeldung speichern wir die IP-Adresse und den Gerätetyp (User-Agent) der jeweiligen Sitzung — das war schon immer so. Neu ist: Wenn du dich per QR-Code von einem neuen Gerät aus anmeldest, siehst du diese Angaben jetzt selbst — als Vergleichshilfe auf dem Bestätigungsbildschirm und in deiner eigenen Geräte-Liste in Profil, wo du jede Sitzung einzeln abmelden kannst.',
+          'Bei jeder Anmeldung speichern wir die IP-Adresse und den Gerätetyp (User-Agent) der Sitzung. Meldest du dich per QR-Code von einem neuen Gerät an, siehst du diese Angaben auf dem Bestätigungsbildschirm und in deiner Geräte-Liste im Profil, wo du jede Sitzung einzeln abmelden kannst.',
         ),
       ).toBeTruthy()
     })
@@ -532,7 +525,7 @@ describe('DatenschutzScreen', () => {
     it('renders both disclosures and the attribution in English too (ADR-0006)', async () => {
       renderPrivacy({ lng: 'en' })
       await screen.findByText('Sign-ins & devices')
-      expect(screen.getByText(/QR code, you now see that data yourself/)).toBeTruthy()
+      expect(screen.getByText(/via QR code, you see that data on the confirmation screen/)).toBeTruthy()
       expect(screen.getByText(/never leaves our infrastructure/)).toBeTruthy()
       expect(screen.getByText('Country data: DB-IP.com, licensed CC BY 4.0.')).toBeTruthy()
     })
@@ -545,5 +538,36 @@ describe('PrivacyScreen: owl consent section (ADR-0091)', () => {
     renderPrivacy()
     expect(await screen.findByText('Eule und persönliche Daten')).toBeTruthy()
     expect(await screen.findByText('Nicht erlaubt')).toBeTruthy()
+  })
+})
+
+describe('DatenschutzScreen — failures never reach a save (WEB-28, NR-20)', () => {
+  it('fails closed: every request answering 500 shows a failure and sends no write', async () => {
+    const failing = failEveryRequest()
+    renderPrivacy()
+    await expectFailsClosed(failing)
+  })
+
+  it('fails closed when signed in: the owl consent that did not load shows a failure and its switch sends nothing', async () => {
+    const failing = failEveryRequest()
+    mockSession(REAL_SESSION)
+    renderPrivacy()
+    expect(await screen.findByTestId('eulen-einwilligung-ladefehler')).toBeTruthy()
+    expect(screen.queryByText(/Wird geladen/)).toBeNull()
+    await expectFailsClosed(failing)
+  })
+
+  it('NR-20: the owl consent recovers on retry', async () => {
+    let calls = 0
+    mockSession(REAL_SESSION)
+    server.use(
+      http.get('*/v1/eulen-modus/personendaten-einwilligung', () => {
+        calls += 1
+        return calls === 1 ? HttpResponse.json({ statusCode: 500 }, { status: 500 }) : HttpResponse.json({ granted: false, grantedAt: null })
+      }),
+    )
+    renderPrivacy()
+    fireEvent.click(await screen.findByTestId('eulen-einwilligung-erneut'))
+    await waitFor(() => expect(screen.queryByTestId('eulen-einwilligung-ladefehler')).toBeNull())
   })
 })

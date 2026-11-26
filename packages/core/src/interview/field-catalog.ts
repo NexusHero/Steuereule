@@ -65,9 +65,10 @@ const MAX_AMOUNT = 999_999_999
 
 /**
  * Version of the consent text the user agreed to when personal data goes to the model (ADR-0091).
- * A new text gets a new version; a consent to an older version no longer counts.
+ * A new text gets a new version; a consent to an older version no longer counts. 2026-11-24: one consent
+ * for every model provider the API can call, all of them named (LEGAL-2).
  */
-export const OWL_PERSONAL_DATA_CONSENT_VERSION = '2026-11-14'
+export const OWL_PERSONAL_DATA_CONSENT_VERSION = '2026-11-24'
 
 /** Screens the owl writes only with the consent to personal data (identity, address, bank details, coupling; ADR-0091). */
 export const AI_FORBIDDEN_SCREENS: ReadonlySet<Screen> = new Set<Screen>(['profil', 'stammdaten', 'kopplung'])

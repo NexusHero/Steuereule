@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
-import { useDeviceControllerRequestCode, useDeviceControllerExchangeToken } from '@steuereule/api-client'
+import { isApiError, useDeviceControllerRequestCode, useDeviceControllerExchangeToken } from '@steuereule/api-client'
+import { classifyApiFailure } from '../net/apiFailure'
 
 export type DeviceQrErrorReason = 'unreachable' | 'server' | 'rate-limited'
 
@@ -36,8 +37,11 @@ function readDeviceTokenErrorCode(data: unknown): string | undefined {
   return typeof value === 'string' ? value : undefined
 }
 
-function classifyHttpFailure(httpStatus: number): DeviceQrErrorReason {
-  return httpStatus === 429 ? 'rate-limited' : 'server'
+/** A rejected request (WEB-28): an answer is `server` or `rate-limited`, no answer at all `unreachable`. */
+function reasonOf(error: unknown): DeviceQrErrorReason {
+  const failure = classifyApiFailure(error)
+  if (failure.status === undefined) return 'unreachable'
+  return failure.kind === 'rate-limited' ? 'rate-limited' : 'server'
 }
 
 export function useDeviceQrCode(onApproved: () => void, enabled: boolean): UseDeviceQrCodeResult {
@@ -68,16 +72,14 @@ export function useDeviceQrCode(onApproved: () => void, enabled: boolean): UseDe
     tokenRef.current(
       { data: { deviceCode } },
       {
-        onSuccess: (result) => {
-          const httpStatus = (result as { status: number }).status
-          if (httpStatus === 200) {
-            stopPolling()
-            setState({ kind: 'approved' })
-            setTimeout(() => onApprovedRef.current(), APPROVED_BEAT_MS)
-            return
-          }
-
-          const code = readDeviceTokenErrorCode((result as { data: unknown }).data)
+        onSuccess: () => {
+          stopPolling()
+          setState({ kind: 'approved' })
+          setTimeout(() => onApprovedRef.current(), APPROVED_BEAT_MS)
+        },
+        // RFC 8628: "still pending" and the other poll answers arrive as a 400 with an `error` code.
+        onError: (error) => {
+          const code = isApiError(error) ? readDeviceTokenErrorCode(error.body) : undefined
           switch (code) {
             case 'authorization_pending':
               schedulePoll(deviceCode, intervalSeconds)
@@ -95,12 +97,8 @@ export function useDeviceQrCode(onApproved: () => void, enabled: boolean): UseDe
               return
             default:
               stopPolling()
-              setState({ kind: 'error', reason: classifyHttpFailure(httpStatus) })
+              setState({ kind: 'error', reason: reasonOf(error) })
           }
-        },
-        onError: () => {
-          stopPolling()
-          setState({ kind: 'error', reason: 'unreachable' })
         },
       },
     )
@@ -111,10 +109,6 @@ export function useDeviceQrCode(onApproved: () => void, enabled: boolean): UseDe
     setState({ kind: 'loading' })
     mintRef.current(undefined, {
       onSuccess: (result) => {
-        if (result.status !== 201) {
-          setState({ kind: 'error', reason: classifyHttpFailure(result.status) })
-          return
-        }
         setState({
           kind: 'ready',
           userCode: result.data.userCode,
@@ -124,7 +118,7 @@ export function useDeviceQrCode(onApproved: () => void, enabled: boolean): UseDe
         })
         schedulePoll(result.data.deviceCode, result.data.interval)
       },
-      onError: () => setState({ kind: 'error', reason: 'unreachable' }),
+      onError: (error) => setState({ kind: 'error', reason: reasonOf(error) }),
     })
   }
 

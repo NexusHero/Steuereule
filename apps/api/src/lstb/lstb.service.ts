@@ -118,7 +118,6 @@ export class LstbService {
     const state = stateFromDto(dto)
     const next = setWageTaxCertificateField(data, field, state)
     await this.repository.setField(userId, taxYear, field, serializeWageTaxCertificateField(state))
-    await this.markings.remove(userId, taxYear, [provenanceKey('lstb', field)])
     return toResponse(next)
   }
 

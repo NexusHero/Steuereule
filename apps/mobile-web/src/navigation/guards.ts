@@ -1,12 +1,12 @@
 import { createElement, Fragment, useEffect, type ReactElement } from 'react'
 import type { NavigationState } from '@react-navigation/native'
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
-import { SELECTABLE_TAX_YEARS } from '../config/taxYear'
+import { selectableTaxYears } from '../config/taxYear'
 import { useShellState } from './ShellState'
 import { isSheetRouteName, type CockpitStackParamList } from './routes'
 
 export function isSelectableYear(rawYear: unknown): rawYear is number {
-  return typeof rawYear === 'number' && Number.isInteger(rawYear) && SELECTABLE_TAX_YEARS.includes(rawYear)
+  return typeof rawYear === 'number' && Number.isInteger(rawYear) && selectableTaxYears().includes(rawYear)
 }
 
 /**

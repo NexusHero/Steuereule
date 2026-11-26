@@ -1,10 +1,13 @@
+import { apiFetch } from '../../net/apiFetch'
 import { useEffect, useState } from 'react'
 import { ActivityIndicator, ScrollView, Text, View, type TextStyle, type ViewStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { Button, Card, Feld, Input, useTheme, type UiTheme } from '@steuereule/ui'
-import { useAssistantsControllerGetClientInfo, getApiClientBaseUrl } from '@steuereule/api-client'
+import { ApiError, useAssistantsControllerGetClientInfo, getApiClientBaseUrl } from '@steuereule/api-client'
+import { apiFailureMessage } from '../../net/apiFailure'
 import { APP_NS } from '../../i18n/resources'
 import { STEP_UP_REQUIRED_CODE } from '../../auth/useStepUp'
+import { StepUpChoices } from '../../auth/StepUpOptions'
 import { consentDestinations } from './consentDestination'
 
 export interface OauthConsentScreenProps {
@@ -58,17 +61,29 @@ export function OauthConsentScreen({
   const [stepUp, setStepUp] = useState<{ readonly error: string } | null>(null)
   const [password, setPassword] = useState('')
 
-  const clientName = clientInfoQuery.data?.status === 200
-    ? clientInfoQuery.data.data.name
-    : params.clientId || 'KI-Assistent'
+  // Only a looked-up client is named; the client_id of the URL is no name to show in bold (MCP-17).
+  const clientInfo = clientInfoQuery.data?.data ?? null
+  const clientKnown = clientInfo !== null
+  const clientName = clientInfo?.name ?? tr('oauthConsent.clientUnknown')
+  // Without a client to look up (no client_id), there is nothing to check either: approving stays off.
+  const noClientToCheck = !clientKnown && !clientInfoQuery.isLoading && !clientInfoQuery.isFetching && !clientInfoQuery.isError
 
   // The name is the assistant's own claim; where the approval leads is what it registered (see consentDestination).
-  const destinations = clientInfoQuery.data?.status === 200
+  const destinations = clientInfoQuery.data
     ? consentDestinations(clientInfoQuery.data.data.redirectTargets ?? [], params.oauthQuery)
     : []
   // While the lookup runs the destination is not on the screen yet, so approving waits for it: a slow
   // lookup must not let the user approve before seeing where the access goes.
-  const lookingUpClient = clientInfoQuery.isLoading
+  const lookingUpClient = clientInfoQuery.isFetching && clientInfoQuery.data === undefined
+  // MCP-17 (here only the part in this file): a lookup that failed leaves "Erlauben" off — the user would
+  // approve without seeing where the access goes.
+  const lookupFailed = clientInfoQuery.isError
+  // The destination is named once the lookup answered: with the client, or with "no such client" (404, so the
+  // address is indeed unknown), or when there is no client to look up. A running lookup, or one that could not
+  // reach the server, says nothing about it: „eine unbekannte Adresse“ would make the assistant look suspicious
+  // when the app only could not check it (the error box says that).
+  const clientMissing = clientInfoQuery.error instanceof ApiError && clientInfoQuery.error.status === 404
+  const destinationKnown = clientInfoQuery.data !== undefined || clientMissing || noClientToCheck
   const destinationLabel = (destination: string): string => {
     if (destination === 'localhost') return tr('oauthConsent.destinationDevice')
     if (destination.endsWith('://')) return tr('oauthConsent.destinationApp', { scheme: destination })
@@ -84,7 +99,7 @@ export function OauthConsentScreen({
 
     try {
       const baseUrl = getApiClientBaseUrl()
-      const response = await fetch(`${baseUrl}/api/auth/oauth2/consent`, {
+      const response = await apiFetch(`${baseUrl}/api/auth/oauth2/consent`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -106,7 +121,21 @@ export function OauthConsentScreen({
         }
       }
       if (!response.ok) {
-        throw new Error(`Consent endpoint returned ${response.status}`)
+        // NR-13: the signed query lapses after 10 minutes (400), the session may have ended (401), or the
+        // server throttles (429) — each says what to do instead of "Fehler bei der Autorisierung".
+        const refusal = new ApiError(response.status, await response.json().catch(() => null), response.headers)
+        setErrorMessage(
+          apiFailureMessage(refusal, tr, {
+            validation: tr('oauthConsent.expired'),
+            'not-found': tr('oauthConsent.expired'),
+            'account-required': tr('apiFehler.sessionExpired'),
+            forbidden: tr('oauthConsent.error'),
+            server: tr('oauthConsent.error'),
+            unknown: tr('oauthConsent.error'),
+          }),
+        )
+        setSubmitting(false)
+        return
       }
 
       const data = (await response.json()) as { redirect?: boolean; url?: string }
@@ -125,7 +154,7 @@ export function OauthConsentScreen({
     if (submitting || !password) return
     setSubmitting(true)
     try {
-      const response = await fetch(`${getApiClientBaseUrl()}/api/auth/verify-password`, {
+      const response = await apiFetch(`${getApiClientBaseUrl()}/api/auth/verify-password`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -155,7 +184,7 @@ export function OauthConsentScreen({
       <Card style={styles.card}>
         <Text style={styles.title}>{tr('oauthConsent.title')}</Text>
 
-        {clientInfoQuery.isPending && !clientInfoQuery.data ? (
+        {lookingUpClient ? (
           <View style={styles.loadingRow}>
             <ActivityIndicator size="small" color={t.color.tinte} />
             <Text style={styles.help}>{tr('oauthConsent.loading')}</Text>
@@ -166,14 +195,14 @@ export function OauthConsentScreen({
           <Text style={styles.clientHeading}>
             <Text style={styles.boldText}>{clientName}</Text> {tr('oauthConsent.requestNotice')}
           </Text>
-          {lookingUpClient ? null : (
+          {destinationKnown ? (
             <Text style={styles.clientHeading} testID="oauth-destination">
               {tr('oauthConsent.destinationLabel')}{' '}
               <Text style={styles.boldText}>
                 {destinations.length > 0 ? destinations.map(destinationLabel).join(', ') : tr('oauthConsent.destinationUnknown')}
               </Text>
             </Text>
-          )}
+          ) : null}
         </View>
 
         <View style={styles.warningBox}>
@@ -199,8 +228,11 @@ export function OauthConsentScreen({
             {scopes.includes('offline_access') ? (
               <Text style={styles.scopeItem}>✓ {tr('oauthConsent.scopeOfflineAccess')}</Text>
             ) : null}
-            {scopes.length === 0 ? (
-              <Text style={styles.scopeItem}>✓ {tr('oauthConsent.scopeSteuerdatenRead')}</Text>
+            {scopes.includes('zahllink:write') ? (
+              <Text style={styles.scopeItem}>✓ {tr('oauthConsent.scopeZahllinkWrite')}</Text>
+            ) : null}
+            {scopes.filter((scope) => scope !== 'openid').length === 0 ? (
+              <Text style={styles.scopeItem} testID="oauth-keine-rechte">{tr('oauthConsent.scopeNone')}</Text>
             ) : null}
           </View>
         </View>
@@ -209,6 +241,22 @@ export function OauthConsentScreen({
           <Text style={styles.warningHeading}>{tr('oauthConsent.drittlandHeading')}</Text>
           <Text style={styles.warningBody}>{tr('oauthConsent.drittlandNotice')}</Text>
         </View>
+
+        {lookupFailed ? (
+          <View style={styles.section} testID="oauth-lookup-fehler">
+            <Text style={styles.errorText} accessibilityRole="alert" testID="oauth-client-unbekannt">
+              {tr('oauthConsent.lookupFailed')}
+            </Text>
+            <Button variant="ghost" onPress={() => void clientInfoQuery.refetch()} testID="oauth-lookup-erneut">
+              {tr('apiFehler.retry')}
+            </Button>
+          </View>
+        ) : null}
+        {noClientToCheck ? (
+          <Text style={styles.errorText} accessibilityRole="alert" testID="oauth-client-unbekannt">
+            {tr('oauthConsent.clientLookupFailed')}
+          </Text>
+        ) : null}
 
         {errorMessage ? (
           <Text style={styles.errorText} accessibilityRole="alert">
@@ -220,19 +268,28 @@ export function OauthConsentScreen({
           <View style={styles.section} testID="oauth-stepup">
             <Text style={styles.sectionHeading}>{tr('oauthConsent.stepUpTitle')}</Text>
             <Text style={styles.help}>{tr('oauthConsent.stepUpBody')}</Text>
-            <Feld label={tr('oauthConsent.stepUpPassword')} error={stepUp.error}>
-              <Input type="password" value={password} onChange={setPassword} placeholder="••••••••" autoComplete="current-password" testID="oauth-stepup-passwort" onSubmit={() => void confirmPassword()} />
-            </Feld>
-            <Button variant="primaer" disabled={submitting || !password} onPress={() => void confirmPassword()} testID="oauth-stepup-bestaetigen">
-              {submitting ? tr('oauthConsent.processing') : tr('oauthConsent.stepUpConfirm')}
-            </Button>
+            {/* MCP-11: an account without a password confirms with its passkey or provider, without signing out. */}
+            <StepUpChoices
+              testID="oauth-stepup-ohne-passwort"
+              onConfirmed={() => {
+                setStepUp(null)
+                void handleDecision(true)
+              }}
+            >
+              <Feld label={tr('oauthConsent.stepUpPassword')} error={stepUp.error}>
+                <Input type="password" value={password} onChange={setPassword} placeholder="••••••••" autoComplete="current-password" testID="oauth-stepup-passwort" onSubmit={() => void confirmPassword()} />
+              </Feld>
+              <Button variant="primaer" disabled={submitting || !password} onPress={() => void confirmPassword()} testID="oauth-stepup-bestaetigen">
+                {submitting ? tr('oauthConsent.processing') : tr('oauthConsent.stepUpConfirm')}
+              </Button>
+            </StepUpChoices>
           </View>
         ) : null}
 
         <View style={styles.actionRow}>
           <Button
             variant="primaer"
-            disabled={submitting || lookingUpClient}
+            disabled={submitting || lookingUpClient || lookupFailed || !clientKnown}
             onPress={() => void handleDecision(true)}
             style={styles.actionBtn}
             testID="oauth-erlauben"

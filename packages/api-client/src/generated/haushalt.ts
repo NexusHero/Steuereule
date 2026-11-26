@@ -69,8 +69,6 @@ export type householdControllerGetResponseError = (householdControllerGetRespons
   headers: Headers;
 };
 
-export type householdControllerGetResponse = (householdControllerGetResponseSuccess | householdControllerGetResponseError)
-
 export const getHouseholdControllerGetUrl = (jahr: number,) => {
 
 
@@ -79,9 +77,9 @@ export const getHouseholdControllerGetUrl = (jahr: number,) => {
   return `/v1/steuerjahre/${jahr}/haushalt`
 }
 
-export const householdControllerGet = async (jahr: number, options?: RequestInit): Promise<householdControllerGetResponse> => {
+export const householdControllerGet = async (jahr: number, options?: RequestInit): Promise<householdControllerGetResponseSuccess> => {
 
-  return httpClient<householdControllerGetResponse>(getHouseholdControllerGetUrl(jahr),
+  return httpClient<householdControllerGetResponseSuccess>(getHouseholdControllerGetUrl(jahr),
   {
     ...options,
     method: 'GET'
@@ -176,8 +174,6 @@ export type householdControllerAdoptChildrenResponseSuccess = (householdControll
 };
 ;
 
-export type householdControllerAdoptChildrenResponse = (householdControllerAdoptChildrenResponseSuccess)
-
 export const getHouseholdControllerAdoptChildrenUrl = (jahr: number,) => {
 
 
@@ -187,9 +183,9 @@ export const getHouseholdControllerAdoptChildrenUrl = (jahr: number,) => {
 }
 
 export const householdControllerAdoptChildren = async (jahr: number,
-    adoptChildrenDto: AdoptChildrenDto, options?: RequestInit): Promise<householdControllerAdoptChildrenResponse> => {
+    adoptChildrenDto: AdoptChildrenDto, options?: RequestInit): Promise<householdControllerAdoptChildrenResponseSuccess> => {
 
-  return httpClient<householdControllerAdoptChildrenResponse>(getHouseholdControllerAdoptChildrenUrl(jahr),
+  return httpClient<householdControllerAdoptChildrenResponseSuccess>(getHouseholdControllerAdoptChildrenUrl(jahr),
   {
     ...options,
     method: 'POST',
@@ -254,8 +250,6 @@ export type householdControllerLeaveResponseSuccess = (householdControllerLeaveR
 };
 ;
 
-export type householdControllerLeaveResponse = (householdControllerLeaveResponseSuccess)
-
 export const getHouseholdControllerLeaveUrl = (jahr: number,
     personId: string,) => {
 
@@ -266,9 +260,9 @@ export const getHouseholdControllerLeaveUrl = (jahr: number,
 }
 
 export const householdControllerLeave = async (jahr: number,
-    personId: string, options?: RequestInit): Promise<householdControllerLeaveResponse> => {
+    personId: string, options?: RequestInit): Promise<householdControllerLeaveResponseSuccess> => {
 
-  return httpClient<householdControllerLeaveResponse>(getHouseholdControllerLeaveUrl(jahr,personId),
+  return httpClient<householdControllerLeaveResponseSuccess>(getHouseholdControllerLeaveUrl(jahr,personId),
   {
     ...options,
     method: 'POST'
@@ -333,8 +327,6 @@ export type householdControllerEndPartnerResponseSuccess = (householdControllerE
 };
 ;
 
-export type householdControllerEndPartnerResponse = (householdControllerEndPartnerResponseSuccess)
-
 export const getHouseholdControllerEndPartnerUrl = (jahr: number,) => {
 
 
@@ -343,9 +335,9 @@ export const getHouseholdControllerEndPartnerUrl = (jahr: number,) => {
   return `/v1/steuerjahre/${jahr}/haushalt/partner/nicht-mehr-dabei`
 }
 
-export const householdControllerEndPartner = async (jahr: number, options?: RequestInit): Promise<householdControllerEndPartnerResponse> => {
+export const householdControllerEndPartner = async (jahr: number, options?: RequestInit): Promise<householdControllerEndPartnerResponseSuccess> => {
 
-  return httpClient<householdControllerEndPartnerResponse>(getHouseholdControllerEndPartnerUrl(jahr),
+  return httpClient<householdControllerEndPartnerResponseSuccess>(getHouseholdControllerEndPartnerUrl(jahr),
   {
     ...options,
     method: 'POST'
@@ -410,8 +402,6 @@ export type householdControllerDeleteResponseSuccess = (householdControllerDelet
 };
 ;
 
-export type householdControllerDeleteResponse = (householdControllerDeleteResponseSuccess)
-
 export const getHouseholdControllerDeleteUrl = (jahr: number,
     personId: string,) => {
 
@@ -422,9 +412,9 @@ export const getHouseholdControllerDeleteUrl = (jahr: number,
 }
 
 export const householdControllerDelete = async (jahr: number,
-    personId: string, options?: RequestInit): Promise<householdControllerDeleteResponse> => {
+    personId: string, options?: RequestInit): Promise<householdControllerDeleteResponseSuccess> => {
 
-  return httpClient<householdControllerDeleteResponse>(getHouseholdControllerDeleteUrl(jahr,personId),
+  return httpClient<householdControllerDeleteResponseSuccess>(getHouseholdControllerDeleteUrl(jahr,personId),
   {
     ...options,
     method: 'DELETE'
@@ -489,8 +479,6 @@ export type householdControllerAnswerResponseSuccess = (householdControllerAnswe
 };
 ;
 
-export type householdControllerAnswerResponse = (householdControllerAnswerResponseSuccess)
-
 export const getHouseholdControllerAnswerUrl = (jahr: number,
     id: string,) => {
 
@@ -502,9 +490,9 @@ export const getHouseholdControllerAnswerUrl = (jahr: number,
 
 export const householdControllerAnswer = async (jahr: number,
     id: string,
-    answerCandidateDto: AnswerCandidateDto, options?: RequestInit): Promise<householdControllerAnswerResponse> => {
+    answerCandidateDto: AnswerCandidateDto, options?: RequestInit): Promise<householdControllerAnswerResponseSuccess> => {
 
-  return httpClient<householdControllerAnswerResponse>(getHouseholdControllerAnswerUrl(jahr,id),
+  return httpClient<householdControllerAnswerResponseSuccess>(getHouseholdControllerAnswerUrl(jahr,id),
   {
     ...options,
     method: 'POST',

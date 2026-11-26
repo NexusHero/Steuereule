@@ -6,9 +6,11 @@ import { InterviewScreen } from '../screens/interview/InterviewScreen'
 import { StromScreen } from '../screens/strom/StromScreen'
 import { slugOf } from '../screens/strom/stromPlan'
 import { AccountWallScreen, pathFromAnswers } from '../screens/funnel/KontoWandScreen'
+import { readPendingVerification } from '../auth/pendingVerification'
 import { useShellState } from './ShellState'
 import { RequiresAccount } from './RequiresAccount'
-import { renderActiveStackRoute, useYearGuard } from './guards'
+import { useYearGuard } from './guards'
+import { guardedStackRoute } from './guardedRoute'
 import {
   CatalogRoute,
   CrossBorderRoute,
@@ -130,6 +132,7 @@ function StromRoute({ navigation, route }: Props<'Strom'>) {
       }}
     />
   )
+  // NM-05: „Später weiter“ and the browser's back wait for the mask's pending saves (the stack's guardedStackRoute).
   // Only the basis page is open to guests; every other step needs an account (as the masks do).
   return route.params?.step === 'basis' ? screen : <RequiresAccount>{screen}</RequiresAccount>
 }
@@ -142,13 +145,14 @@ function AccountWallRoute({ navigation }: Props<'AccountWall'>) {
       onRegister={onRegister}
       onLogin={onLogin}
       onLater={() => navigation.navigate('CockpitHome', undefined, { pop: true })}
+      pendingVerificationEmail={readPendingVerification()}
     />
   )
 }
 
 export function CockpitStack() {
   return (
-    <Stack.Navigator initialRouteName="CockpitHome" screenOptions={{ headerShown: false }} screenLayout={renderActiveStackRoute}>
+    <Stack.Navigator initialRouteName="CockpitHome" screenOptions={{ headerShown: false }} screenLayout={guardedStackRoute}>
       <Stack.Screen name="CockpitHome" component={CockpitHomeRoute} />
       <Stack.Screen name="Interview" component={InterviewRoute} />
       <Stack.Screen name="Strom" component={StromRoute} getId={({ params }) => `${params.year}-${params.step}`} />

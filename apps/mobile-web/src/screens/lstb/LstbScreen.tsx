@@ -14,14 +14,15 @@ import {
 } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
 import { formatCalculation } from '../../lib/lstb/formatCalculation'
-import { wholeEurosFrom } from '../shared/wholeEuros'
-import { CURRENT_TAX_YEAR } from '../../config/taxYear'
-import { LoadingState, ErrorState } from '../shared/ScreenState'
+import { runningTaxYear } from '../../config/taxYear'
+import { LoadingState, LoadFailedState } from '../shared/ScreenState'
 import { BackButton, BackButtonSpacer } from '../shared/BackButton'
 import { screenHeaderStyles, unclearableFieldStyles } from '../shared/screenStyles'
 import { usePendingMutations } from '../shared/usePendingMutations'
 import { SaveFailedNotice } from '../shared/SaveFailedNotice'
 import { watchSaveResult } from '../shared/saveFeedback'
+import { useTrackField } from '../shared/useTrackField'
+import { wholeEurosOrUnreadable } from '../shared/amountField'
 import { OfficialFormLink } from '../printout/OfficialFormLink'
 import { FIELDS, type FieldId, type StagedFieldDraft } from './scan/lstbScanDraft'
 import { LstbScanPanel } from './scan/LstbScanPanel'
@@ -41,7 +42,7 @@ export interface LstbScreenProps {
   readonly onSwitchTaxYear?: (year: number) => void
 }
 
-export function LstbScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TAX_YEAR, partnerName, onSwitchTaxYear }: LstbScreenProps) {
+export function LstbScreen({ onDone = () => {}, onBack, taxYear = runningTaxYear(), partnerName, onSwitchTaxYear }: LstbScreenProps) {
   const params = partnerName === undefined ? undefined : ({ person: 'B' } as const)
   const expectedPerson: 'A' | 'B' = partnerName === undefined ? 'A' : 'B'
   const bp = useBreakpoint()
@@ -54,27 +55,19 @@ export function LstbScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TAX_YE
   const setField = useLstbControllerSetField()
   const scan = useLstbScan({ taxYear, person: expectedPerson })
   const stagedScan = scan.stagedScan
-  const { track, flushThen: finish, saveFailed } = usePendingMutations()
+  const { track, flushThen: finish, saveFailed, saveError, clearSaveError } = usePendingMutations()
+  const trackField = useTrackField(track, clearSaveError)
 
   if (query.isPending) {
     return <LoadingState bp={bp} label={tr('lstb.loading')} />
   }
-  if (query.isError || query.data.status !== 200) {
-    return (
-      <ErrorState
-        bp={bp}
-        heading={tr('lstb.loadError.heading')}
-        message={tr('lstb.loadError.message')}
-        retryLabel={tr('lstb.loadError.retry')}
-        onRetry={() => void query.refetch()}
-      />
-    )
-  }
+  if (query.isError) return <LoadFailedState bp={bp} error={query.error} onRetry={() => void query.refetch()} />
 
   const response = query.data.data
 
   function send(field: FieldId, data: LstbFieldDto) {
-    track(
+    trackField(
+      field,
       watchSaveResult(setField.mutateAsync({ jahr: taxYear, feld: field, data, ...(params ? { params } : {}) })).then(() => {
         void queryClient.invalidateQueries({ queryKey: getLstbControllerGetLstbQueryKey(taxYear, params) })
         void queryClient.invalidateQueries({ queryKey: getCockpitControllerGetCockpitSummaryQueryKey(taxYear) })
@@ -114,15 +107,15 @@ export function LstbScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TAX_YE
 
       <StateNotice response={response} />
 
-      <EmployerLine taxYear={taxYear} params={params} track={track} />
+      <EmployerLine taxYear={taxYear} params={params} track={(p) => trackField('arbeitgeber', p)} />
 
-      <ChurchTaxLines taxYear={taxYear} params={params} track={track} />
-      <SubsidyLine taxYear={taxYear} params={params} track={track} />
-      <SocialInsuranceLines taxYear={taxYear} params={params} track={track} />
+      <ChurchTaxLines taxYear={taxYear} params={params} track={(p) => trackField('kirchensteuer', p)} />
+      <SubsidyLine taxYear={taxYear} params={params} track={(p) => trackField('zuschuesse', p)} />
+      <SocialInsuranceLines taxYear={taxYear} params={params} track={(p) => trackField('zeilen', p)} />
 
       <OfficialFormLink screen="lstb" taxYear={taxYear} />
 
-      <SaveFailedNotice visible={saveFailed} />
+      <SaveFailedNotice visible={saveFailed || saveError !== null} error={saveError} />
       <Button onPress={() => finish(onDone)} style={styles.cta} testID="lstb-weiter">
         {tr('lstb.weiter')}
       </Button>
@@ -157,6 +150,7 @@ function LstbFieldEditor({
   const { t: tr } = useTranslation(APP_NS)
   const s = makeStyles(t)
   const [text, setText] = useState(state.kind === 'erfasst' ? String(state.value) : '')
+  const [unreadable, setUnreadable] = useState(false)
   const serverValue = state.kind === 'erfasst' ? state.value : null
 
   useEffect(() => {
@@ -166,17 +160,20 @@ function LstbFieldEditor({
   function commit() {
     // Zero-Write guarantee: never auto-PUT while a scanned LStB draft is staged
     if (stagedDraft !== null) return
-    const value = wholeEurosFrom(text)
-    if (value === null) return
+    const value = wholeEurosOrUnreadable(text)
+    // WEB-12: an amount the app cannot read is named at the field, not silently dropped.
+    setUnreadable(value === 'unreadable')
+    if (value === null || value === 'unreadable') return
     if (state.kind === 'erfasst' && state.value === value) return
     onRecorded(value)
   }
 
-  const displayedValue = stagedDraft !== null ? stagedDraft.text : state.kind === 'unklar' ? '' : text
+  // WEB-13: after „Kann ich nicht lesen“ the field shows what is typed into it (the server answer clears it).
+  const displayedValue = stagedDraft !== null ? stagedDraft.text : text
   const stagedCalculation = stagedDraft !== null ? formatCalculation(stagedDraft.calculation, (line, amount) => tr('lstb.scan.field.calculationTerm', { line, amount })) : null
 
   return (
-    <Feld label={label}>
+    <Feld label={label} {...(unreadable && stagedDraft === null ? { error: tr('betrag.unlesbar') } : {})}>
       {stagedDraft !== null && (
         <View style={s.stagedMetaRow}>
           <HerkunftsChip
@@ -214,6 +211,7 @@ function LstbFieldEditor({
               onStagedChange(next)
             } else {
               setText(next)
+              setUnreadable(false)
             }
           }}
           placeholder={tr('lstb.feld.placeholder')}
@@ -223,7 +221,15 @@ function LstbFieldEditor({
           {...(testID ? { testID } : {})}
         />
         {stagedDraft === null && (
-          <Pressable accessibilityRole="button" onPress={onUnclear} style={s.unklarButton}>
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => {
+              setText('')
+              setUnreadable(false)
+              onUnclear()
+            }}
+            style={s.unklarButton}
+          >
             <Text style={state.kind === 'unklar' ? s.unklarActive : s.unklarLabel}>{tr('lstb.feld.unklar')}</Text>
           </Pressable>
         )}

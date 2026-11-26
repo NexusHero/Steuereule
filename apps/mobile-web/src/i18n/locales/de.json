@@ -29,7 +29,6 @@
     "passwordLabel": "Passwort",
     "submit": "Einloggen",
     "submitting": "Wird geprüft …",
-    "continue": "Weiter",
     "register": "Neu hier? Konto anlegen",
     "guest": "Erstmal als Gast umschauen",
     "guestNote": "Gast-Modus: deine Angaben werden sicher verschlüsselt gespeichert.",
@@ -43,8 +42,22 @@
       "backupBody": "Gib einen der Wiederherstellungscodes ein, die du beim Einrichten erhalten hast. Jeder Code gilt nur einmal.",
       "backupLabel": "Wiederherstellungscode"
     },
+    "socialFailed": "Die Anmeldung beim Anbieter hat nicht geklappt oder wurde abgebrochen. Versuch es noch mal oder melde dich mit E-Mail und Passwort an.",
+    "verified": {
+      "heading": "E-Mail bestätigt ✓",
+      "body": "Melde dich jetzt an. Was du als Gast in diesem Browser eingegeben hast, übernehmen wir."
+    },
+    "verifyFailed": {
+      "heading": "Dieser Bestätigungslink gilt nicht mehr.",
+      "body": "Er ist abgelaufen oder wurde schon benutzt. Melde dich mit E-Mail und Passwort an – ist die Adresse noch nicht bestätigt, schicken wir dir sofort einen neuen Link."
+    },
+    "accountRemoved": {
+      "heading": "Dieses Konto gibt es nicht mehr.",
+      "body": "Die E-Mail-Adresse wurde nie bestätigt, deshalb haben wir das Konto nach 30 Tagen gelöscht (oder du hast es selbst gelöscht). Du kannst dich jederzeit neu registrieren.",
+      "register": "Neu registrieren"
+    },
     "errEmail": "Das sieht noch nicht nach einer E-Mail aus.",
-    "errPass": "Mindestens 8 Zeichen fürs Passwort.",
+    "errPass": "Das Passwort ist zu kurz. Neue Passwörter brauchen mindestens 12 Zeichen.",
     "apiUnreachable": {
       "heading": "Gerade nicht erreichbar — das liegt an uns.",
       "body": "Unsere Server antworten nicht. Deine Daten sind sicher, es ist nichts verloren.",
@@ -89,6 +102,11 @@
       "resendSending": "Wird gesendet …",
       "resendSent": "Ist raus — schau in dein Postfach.",
       "resendError": "Das hat gerade nicht geklappt. Versuch es gleich noch mal."
+    },
+    "unverifiedAccount": {
+      "heading": "Bitte bestätige deine E-Mail-Adresse.",
+      "body": "Ein Konto, das nie bestätigt wird, löschen wir: deines frühestens am {{date}}. Den Link findest du in der Mail an {{email}}.",
+      "export": "Vorher deine Daten exportieren"
     },
     "verifiedBanner": {
       "heading": "E-Mail bestätigt ✓"
@@ -138,27 +156,26 @@
     "passwordPlaceholder": "Mindestens 12 Zeichen",
     "submit": "Konto anlegen",
     "submitting": "Wird angelegt …",
-    "legalNote": "Mit dem Anlegen akzeptierst du AGB & Datenschutz.",
     "backToLogin": "Schon ein Konto? Einloggen",
     "errEmail": "Das sieht noch nicht nach einer E-Mail aus.",
     "errPass": "Mindestens 12 Zeichen fürs Passwort.",
     "success": {
       "badge": "Mail unterwegs ✓",
       "heading": "Schau in dein Postfach.",
-      "subtitle": "Wir haben eine E-Mail an {{email}} geschickt. Darin steht, wie es weitergeht.",
-      "guestNote": "Bis du bestätigt hast, machst du als Gast weiter. Nach der Bestätigung meldest du dich an, dann übernehmen wir deine Eingaben.",
       "cta": "Weiter zum Onboarding →"
+    },
+    "legal": {
+      "beforeTerms": "Mit dem Anlegen akzeptierst du die ",
+      "terms": "AGB",
+      "beforePrivacy": ". Wie wir deine Daten verarbeiten, steht in der ",
+      "privacy": "Datenschutzerklärung",
+      "after": "."
     }
   },
   "onboarding": {
     "back": "Zurück",
     "weiter": "Weiter",
     "loading": "Deine Angaben werden geladen …",
-    "loadError": {
-      "heading": "Das hat nicht geklappt.",
-      "message": "Deine Angaben konnten nicht geladen werden. Prüf die Verbindung und versuch es noch mal.",
-      "retry": "Noch mal versuchen"
-    },
     "step1": {
       "titleBefore": "Wer bist ",
       "titleMark": "du",
@@ -212,6 +229,11 @@
   },
   "funnel": {
     "kontoWand": {
+      "verify": {
+        "heading": "Bestätige deine E-Mail",
+        "body": "Wir haben dir an {{email}} einen Link geschickt. Folge ihm und melde dich danach an – deine Eingaben als Gast übernehmen wir.",
+        "login": "Bestätigt? Jetzt anmelden"
+      },
       "sticker": "Weg gefunden",
       "titleBefore": "Dein Weg: ",
       "titleAfter": "",
@@ -235,7 +257,7 @@
       "register": "Konto anlegen und weitermachen",
       "login": "Ich hab schon ein Konto",
       "later": "Später — erst mal ins Cockpit",
-      "note": "Deine Antworten wandern mit ins Konto. Bis dahin liegen sie verschlüsselt in deiner Gast-Sitzung."
+      "note": "Deine Antworten wandern mit ins Konto. Bis dahin liegen sie verschlüsselt in deiner Gast-Sitzung; änderst du {{days}} Tage lang nichts, löschen wir sie."
     }
   },
   "device": {
@@ -277,20 +299,15 @@
     }
   },
   "profil": {
-    "loading": "Dein Profil wird geladen …",
-    "loadError": {
-      "heading": "Das hat nicht geklappt.",
-      "message": "Dein Profil konnte nicht geladen werden. Prüf die Verbindung und versuch es noch mal.",
-      "retry": "Noch mal versuchen"
+    "signOut": {
+      "button": "Abmelden",
+      "busy": "Wird abgemeldet …",
+      "failed": "Das Abmelden hat nicht geklappt. Prüf die Verbindung und versuch es noch mal."
     },
+    "loading": "Dein Profil wird geladen …",
     "namePlaceholder": "Noch kein Name gespeichert",
     "emptyNote": "Noch keine Angaben gespeichert.",
     "cardLabel": "Deine Angaben",
-    "rowFirstName": "Vorname",
-    "rowLastName": "Nachname",
-    "rowSteuerId": "Steuer-ID",
-    "rowSteuerNr": "Steuernummer",
-    "steuerNrEmpty": "nicht angegeben",
     "edit": "Bearbeiten",
     "editHeading": "Angaben bearbeiten",
     "firstNameLabel": "Vorname",
@@ -367,6 +384,11 @@
       "revoke": "Trennen",
       "revoking": "Wird getrennt …",
       "revokeError": "Trennen fehlgeschlagen. Bitte erneut versuchen.",
+      "rechte": "Rechte",
+      "keineRechte": "keine",
+      "ziel": "Zugriff geht an",
+      "zielUnbekannt": "unbekannt",
+      "serverAdresseHinweis": "Diese Server-Adresse tragen Sie in Ihrem Assistenten ein, wenn Sie dort einen MCP-Server (Connector) hinzufügen:",
       "verbinden": {
         "oeffnen": "Assistent verbinden",
         "welcher": "Welchen Assistenten möchten Sie verbinden?",
@@ -390,9 +412,21 @@
     }
   },
   "sicherheit": {
+    "changePassword": {
+      "heading": "Passwort ändern",
+      "body": "Danach bist du auf allen anderen Geräten abgemeldet, und verbundene Assistenten musst du neu verbinden.",
+      "current": "Aktuelles Passwort",
+      "next": "Neues Passwort",
+      "repeat": "Neues Passwort wiederholen",
+      "submit": "Passwort ändern",
+      "done": "Passwort geändert ✓ Andere Geräte und Assistenten sind abgemeldet.",
+      "errTooShort": "Mindestens 12 Zeichen fürs neue Passwort.",
+      "errMismatch": "Die beiden neuen Passwörter stimmen nicht überein.",
+      "errWrong": "Das aktuelle Passwort stimmt nicht."
+    },
     "stepUp": {
       "title": "Passwort bestätigen",
-      "body": "Zum Schutz deines Kontos: Bestätige dein Passwort, bevor du einen Passkey hinzufügst. Meldest du dich ohne Passwort an (Google oder Passkey), melde dich ab und wieder an – danach geht es fünf Minuten lang ohne diese Frage.",
+      "body": "Zum Schutz deines Kontos: Bestätige, dass du es bist, bevor du einen Passkey hinzufügst oder entfernst – mit deinem Passwort, deinem Passkey oder einer neuen Anmeldung beim Anbieter. Danach geht es fünf Minuten lang ohne diese Frage.",
       "confirm": "Bestätigen und fortfahren",
       "wrong": "Das Passwort stimmt nicht."
     },
@@ -446,9 +480,75 @@
     "errWrongCode": "Dieser Code ist nicht richtig. Prüf die App und versuch es noch mal.",
     "errWrongPassword": "Das Passwort ist nicht richtig.",
     "errTooManyAttempts": "Zu viele Versuche. Bitte fordere einen neuen Code an.",
+    "errChallengeExpired": "Die Abfrage des zweiten Faktors ist abgelaufen. Melde dich bitte noch einmal mit E-Mail und Passwort an.",
+    "cancel": "Abbrechen",
+    "sessionUnknown": "Wir konnten gerade nicht prüfen, ob du angemeldet bist. Versuch es gleich noch mal.",
     "errLocked": "Zu viele Fehlversuche — dein Konto ist vorübergehend gesperrt. Versuch es später noch mal."
   },
   "bestaetigung": {
+    "veraendert": "Seit du die Werte gesehen hast, hat sich etwas geändert. Prüf sie bitte noch einmal.",
+    "unbenanntesFeld": "Weitere Angabe",
+    "aendernIn": "Ändern: {{maske}}",
+    "instanz": {
+      "kind": "Kind: {{name}}",
+      "kindOhne": "Kind (ohne Namen)",
+      "vermietung": "Mietobjekt: {{name}}",
+      "vermietungOhne": "Mietobjekt (ohne Adresse)",
+      "sonst": "{{name}}",
+      "sonstOhne": "Eintrag"
+    },
+    "werte": {
+      "ja": "Ja",
+      "nein": "Nein",
+      "filingType": {
+        "einzel": "Einzelveranlagung",
+        "zusammen": "Zusammenveranlagung"
+      },
+      "wochentage": {
+        "mo": "Mo",
+        "di": "Di",
+        "mi": "Mi",
+        "do": "Do",
+        "fr": "Fr",
+        "sa": "Sa",
+        "so": "So"
+      }
+    },
+    "masken": {
+      "profil": "Profil",
+      "stammdaten": "Stammdaten",
+      "kopplung": "Veranlagungsart und Partner",
+      "interview": "Interview",
+      "lstb": "Lohnsteuerbescheinigung",
+      "commute": "Arbeitsweg",
+      "chLohnausweis": "Lohnausweis Schweiz",
+      "rente": "Rente",
+      "kapital": "Kapitalerträge",
+      "vermietung": "Vermietung",
+      "kind": "Kinder",
+      "assessment": "Bescheid",
+      "buchung": "Buchung"
+    },
+    "fragen": {
+      "job": "Woher dein Geld kam",
+      "rente-selbststaendig": "Nebenbei selbstständig in der Rente",
+      "beruf": "Berufsgruppe",
+      "ausland": "Arbeit im Ausland",
+      "de-job": "Zusätzlich ein Job in Deutschland",
+      "kinder": "Kinder",
+      "familienstand": "Familienstand",
+      "partner-job": "Einkommen deines Partners",
+      "partner-ausland": "Arbeit deines Partners im Ausland",
+      "partner-de-job": "Job deines Partners in Deutschland",
+      "partner": "Partner im Haushalt",
+      "homeoffice": "Homeoffice",
+      "weg": "Entfernung zur Arbeit (km)",
+      "tage": "Arbeitstage im Jahr",
+      "ch-wohnsitz": "Wohnsitz (Grenzgänger)",
+      "gewerbe": "Hinweis zur Selbstständigkeit gelesen",
+      "ch-only": "Hinweis zur Arbeit nur im Ausland gelesen",
+      "ch-nichtrueckkehrtage": "Nichtrückkehrtage"
+    },
     "title": "Prüfen & bestätigen {{jahr}}",
     "back": "Zurück",
     "intro": "Diese Werte hast du nicht selbst eingetragen. Prüf sie je Anlage: bestätigen oder einzeln ändern. Erst danach kannst du ausdrucken und bezahlen.",
@@ -494,12 +594,14 @@
     },
     "anlagen": {
       "hauptvordruck": "Hauptvordruck (ESt 1 A)",
+      "bescheid": "Bescheid",
       "anlageN": "Anlage N",
       "anlageNGre": "Anlage N-Gre",
       "anlageR": "Anlage R",
       "anlageKap": "Anlage KAP",
       "anlageV": "Anlage V",
-      "anlageKind": "Anlage Kind"
+      "anlageKind": "Anlage Kind",
+      "anlageEuer": "Einnahmen-Überschuss-Rechnung (Anlage EÜR)"
     },
     "herkunft": {
       "nutzer": "Selbst eingetragen",
@@ -570,6 +672,7 @@
     "fehlendTitel": "Dafür fehlt noch etwas",
     "fehlendAngaben": "Ergänze zuerst deine Angaben für die Steuererklärung.",
     "fehlendEhegatte": "Leg in den Stammdaten fest, ob ihr zusammen oder einzeln veranlagt werdet.",
+    "fehlendZustimmungPersonB": "Dein Partner hat der gemeinsamen Erklärung für {{jahr}} noch nicht zugestimmt. Er stimmt in seiner eigenen App unter „Angaben für die Erklärung“ zu; bis dahin siehst du keine seiner Angaben und kannst nicht drucken.",
     "fehlendRiester": "Für deinen Riester-Vertrag fehlen noch Angaben für die Anlage AV: ob du selbst oder über deinen Ehepartner begünstigt bist, und gegebenenfalls deine beitragspflichtigen Einnahmen im Vorjahr.",
     "riesterErgaenzen": "Riester-Angaben ergänzen",
     "fehlendKinder": "Für die Anlage Kind fehlen noch Angaben zu deinen Kindern: Steuer-ID, Kindschaftsverhältnis, Familienkasse, Wohnsitz und gegebenenfalls der andere Elternteil.",
@@ -593,7 +696,307 @@
     "feldNamen": {
       "anlKind_z67Text": "Kinderbetreuung: Art und Anbieter (Anlage Kind)",
       "anlN_wegOrt": "Arbeitsort (Anlage N)",
-      "anlNGre_wegOrt": "Arbeitsort (Anlage N-Gre)"
+      "anlNGre_wegOrt": "Arbeitsort (Anlage N-Gre)",
+      "anlAgB_kz302": "Kennzahl 302 (Anlage Außergewöhnliche Belastungen)",
+      "anlAgB_kz303": "Kennzahl 303 (Anlage Außergewöhnliche Belastungen)",
+      "anlAgB_name": "Name (Anlage Außergewöhnliche Belastungen)",
+      "anlAgB_steuernummer": "Steuernummer (Anlage Außergewöhnliche Belastungen)",
+      "anlAgB_vorname": "Vorname (Anlage Außergewöhnliche Belastungen)",
+      "anlAgB_z23Text": "Zeile 23, Text (Anlage Außergewöhnliche Belastungen)",
+      "anlAv_kz100": "Kennzahl 100 (Anlage AV)",
+      "anlAv_mittelbar": "Mittelbar begünstigt (Kreuz) (Anlage AV)",
+      "anlAv_name": "Name (Anlage AV)",
+      "anlAv_steuernummer": "Steuernummer (Anlage AV)",
+      "anlAv_unmittelbar": "Unmittelbar begünstigt (Kreuz) (Anlage AV)",
+      "anlAv_vorname": "Vorname (Anlage AV)",
+      "anlHha_kz202": "Kennzahl 202 (Anlage Haushaltsnahe Aufwendungen)",
+      "anlHha_kz212": "Kennzahl 212 (Anlage Haushaltsnahe Aufwendungen)",
+      "anlHha_kz214": "Kennzahl 214 (Anlage Haushaltsnahe Aufwendungen)",
+      "anlHha_name": "Name (Anlage Haushaltsnahe Aufwendungen)",
+      "anlHha_steuernummer": "Steuernummer (Anlage Haushaltsnahe Aufwendungen)",
+      "anlHha_vorname": "Vorname (Anlage Haushaltsnahe Aufwendungen)",
+      "anlHha_z4Text": "Zeile 4, Text (Anlage Haushaltsnahe Aufwendungen)",
+      "anlHha_z5Text": "Zeile 5, Text (Anlage Haushaltsnahe Aufwendungen)",
+      "anlHha_z6Lohn": "Zeile 6, Lohnanteil (Anlage Haushaltsnahe Aufwendungen)",
+      "anlHha_z6Rechnung": "Zeile 6, Rechnungsbetrag (Anlage Haushaltsnahe Aufwendungen)",
+      "anlHha_z6Text": "Zeile 6, Text (Anlage Haushaltsnahe Aufwendungen)",
+      "anlKap_guenstigerpruefung": "Günstigerprüfung (Anlage KAP)",
+      "anlKap_kz210": "Kennzahl 210 (Anlage KAP)",
+      "anlKap_kz217": "Kennzahl 217 (Anlage KAP)",
+      "anlKap_kz218": "Kennzahl 218 (Anlage KAP)",
+      "anlKap_kz234": "Kennzahl 234 (Anlage KAP)",
+      "anlKap_kz280": "Kennzahl 280 (Anlage KAP)",
+      "anlKap_kz281": "Kennzahl 281 (Anlage KAP)",
+      "anlKap_kz282": "Kennzahl 282 (Anlage KAP)",
+      "anlKap_name": "Name (Anlage KAP)",
+      "anlKap_personA": "Person A (Kreuz) (Anlage KAP)",
+      "anlKap_personB": "Person B (Kreuz) (Anlage KAP)",
+      "anlKap_steuernummer": "Steuernummer (Anlage KAP)",
+      "anlKap_vorname": "Vorname (Anlage KAP)",
+      "anlKind_aeAdresse": "Anderer Elternteil: Anschrift (Anlage Kind)",
+      "anlKind_aeArt": "Anderer Elternteil: Art des Kindschaftsverhältnisses (Anlage Kind)",
+      "anlKind_aeBis": "Anderer Elternteil: bis (Anlage Kind)",
+      "anlKind_aeGeburtsdatum": "Anderer Elternteil: Geburtsdatum (Anlage Kind)",
+      "anlKind_aeName": "Anderer Elternteil: Name (Anlage Kind)",
+      "anlKind_aeVon": "Anderer Elternteil: von (Anlage Kind)",
+      "anlKind_familienkasse": "Familienkasse (Anlage Kind)",
+      "anlKind_geburtsdatum": "Geburtsdatum (Anlage Kind)",
+      "anlKind_idnr": "Steuer-ID (Anlage Kind)",
+      "anlKind_inlandBis": "Wohnsitz im Inland bis (Anlage Kind)",
+      "anlKind_inlandVon": "Wohnsitz im Inland von (Anlage Kind)",
+      "anlKind_kindergeld": "Kindergeld (Anlage Kind)",
+      "anlKind_kz02": "Kennzahl 02 (Anlage Kind)",
+      "anlKind_kz03": "Kennzahl 03 (Anlage Kind)",
+      "anlKind_kz05": "Kennzahl 05 (Anlage Kind)",
+      "anlKind_kz06": "Kennzahl 06 (Anlage Kind)",
+      "anlKind_kz42Bis": "Kennzahl 42 bis (Anlage Kind)",
+      "anlKind_kz42Von": "Kennzahl 42 von (Anlage Kind)",
+      "anlKind_kz44Bis": "Kennzahl 44 bis (Anlage Kind)",
+      "anlKind_kz44Von": "Kennzahl 44 von (Anlage Kind)",
+      "anlKind_kz46": "Kennzahl 46 (Anlage Kind)",
+      "anlKind_kz49": "Kennzahl 49 (Anlage Kind)",
+      "anlKind_kz51": "Kennzahl 51 (Anlage Kind)",
+      "anlKind_kz66": "Kennzahl 66 (Anlage Kind)",
+      "anlKind_kz67": "Kennzahl 67 (Anlage Kind)",
+      "anlKind_kz89": "Kennzahl 89 (Anlage Kind)",
+      "anlKind_lfdNr": "Laufende Nummer (Anlage Kind)",
+      "anlKind_nachname": "Nachname des Kindes (Anlage Kind)",
+      "anlKind_name": "Name (Anlage Kind)",
+      "anlKind_steuernummer": "Steuernummer (Anlage Kind)",
+      "anlKind_vorname": "Vorname (Anlage Kind)",
+      "anlKind_vornameEltern": "Vorname (Anlage Kind)",
+      "anlKind_z67Bis": "Zeile 67, bis (Anlage Kind)",
+      "anlKind_z67Von": "Zeile 67, von (Anlage Kind)",
+      "anlN_kz110": "Kennzahl 110 (Anlage N)",
+      "anlN_kz110Tage": "Kennzahl 110, Tage (Anlage N)",
+      "anlN_kz111": "Kennzahl 111 (Anlage N)",
+      "anlN_kz112": "Kennzahl 112 (Anlage N)",
+      "anlN_kz130Tage": "Kennzahl 130, Tage (Anlage N)",
+      "anlN_kz131": "Kennzahl 131 (Anlage N)",
+      "anlN_kz132": "Kennzahl 132 (Anlage N)",
+      "anlN_kz310": "Kennzahl 310 (Anlage N)",
+      "anlN_kz320": "Kennzahl 320 (Anlage N)",
+      "anlN_kz330": "Kennzahl 330 (Anlage N)",
+      "anlN_kz380": "Kennzahl 380 (Anlage N)",
+      "anlN_name": "Name (Anlage N)",
+      "anlN_personA": "Person A (Kreuz) (Anlage N)",
+      "anlN_personB": "Person B (Kreuz) (Anlage N)",
+      "anlN_steuernummer": "Steuernummer (Anlage N)",
+      "anlN_vorname": "Vorname (Anlage N)",
+      "anlN_weg2Art": "Zweiter Arbeitsweg: Art (Anlage N)",
+      "anlN_weg2Bis": "Zweiter Arbeitsweg: bis (Anlage N)",
+      "anlN_weg2FreieTage": "Zweiter Arbeitsweg: Urlaubs- und Krankheitstage (Anlage N)",
+      "anlN_weg2Ort": "Zweiter Arbeitsort (Anlage N)",
+      "anlN_weg2TageJeWoche": "Zweiter Arbeitsweg: Arbeitstage je Woche (Anlage N)",
+      "anlN_weg2Von": "Zweiter Arbeitsweg: von (Anlage N)",
+      "anlN_wegArt": "Arbeitsweg: Art (Anlage N)",
+      "anlN_wegBis": "Arbeitsweg: bis (Anlage N)",
+      "anlN_wegFreieTage": "Arbeitsweg: Urlaubs- und Krankheitstage (Anlage N)",
+      "anlN_wegTageJeWoche": "Arbeitsweg: Arbeitstage je Woche (Anlage N)",
+      "anlN_wegVon": "Arbeitsweg: von (Anlage N)",
+      "anlN_z53Text": "Zeile 53, Text (Anlage N)",
+      "anlN_z54Eur": "Zeile 54, Betrag (Anlage N)",
+      "anlN_z54Text": "Zeile 54, Text (Anlage N)",
+      "anlN_z62Eur": "Zeile 62, Betrag (Anlage N)",
+      "anlN_z62Text": "Zeile 62, Text (Anlage N)",
+      "anlN_z63Eur": "Zeile 63, Betrag (Anlage N)",
+      "anlN_z63Text": "Zeile 63, Text (Anlage N)",
+      "anlNGre_arbeitgeberName": "Name des Arbeitgebers (Anlage N-Gre)",
+      "anlNGre_arbeitgeberPlzOrt": "Postleitzahl und Ort des Arbeitgebers (Anlage N-Gre)",
+      "anlNGre_arbeitgeberStrasse": "Straße des Arbeitgebers (Anlage N-Gre)",
+      "anlNGre_beruf": "Beruf (Anlage N-Gre)",
+      "anlNGre_kz110Tage": "Kennzahl 110, Tage (Anlage N-Gre)",
+      "anlNGre_kz111": "Kennzahl 111 (Anlage N-Gre)",
+      "anlNGre_kz112": "Kennzahl 112 (Anlage N-Gre)",
+      "anlNGre_kz117": "Kennzahl 117 (Anlage N-Gre)",
+      "anlNGre_kz130Tage": "Kennzahl 130, Tage (Anlage N-Gre)",
+      "anlNGre_kz131": "Kennzahl 131 (Anlage N-Gre)",
+      "anlNGre_kz132": "Kennzahl 132 (Anlage N-Gre)",
+      "anlNGre_kz310": "Kennzahl 310 (Anlage N-Gre)",
+      "anlNGre_kz320": "Kennzahl 320 (Anlage N-Gre)",
+      "anlNGre_kz330": "Kennzahl 330 (Anlage N-Gre)",
+      "anlNGre_kz380": "Kennzahl 380 (Anlage N-Gre)",
+      "anlNGre_name": "Name (Anlage N-Gre)",
+      "anlNGre_personA": "Person A (Kreuz) (Anlage N-Gre)",
+      "anlNGre_personB": "Person B (Kreuz) (Anlage N-Gre)",
+      "anlNGre_steuernummer": "Steuernummer (Anlage N-Gre)",
+      "anlNGre_vorname": "Vorname (Anlage N-Gre)",
+      "anlNGre_weg2Art": "Zweiter Arbeitsweg: Art (Anlage N-Gre)",
+      "anlNGre_weg2Bis": "Zweiter Arbeitsweg: bis (Anlage N-Gre)",
+      "anlNGre_weg2FreieTage": "Zweiter Arbeitsweg: Urlaubs- und Krankheitstage (Anlage N-Gre)",
+      "anlNGre_weg2Ort": "Zweiter Arbeitsort (Anlage N-Gre)",
+      "anlNGre_weg2TageJeWoche": "Zweiter Arbeitsweg: Arbeitstage je Woche (Anlage N-Gre)",
+      "anlNGre_weg2Von": "Zweiter Arbeitsweg: von (Anlage N-Gre)",
+      "anlNGre_wegArt": "Arbeitsweg: Art (Anlage N-Gre)",
+      "anlNGre_wegBis": "Arbeitsweg: bis (Anlage N-Gre)",
+      "anlNGre_wegFreieTage": "Arbeitsweg: Urlaubs- und Krankheitstage (Anlage N-Gre)",
+      "anlNGre_wegTageJeWoche": "Arbeitsweg: Arbeitstage je Woche (Anlage N-Gre)",
+      "anlNGre_wegVon": "Arbeitsweg: von (Anlage N-Gre)",
+      "anlNGre_z10Chf": "Zeile 10, Betrag in CHF (Anlage N-Gre)",
+      "anlNGre_z10Eur": "Zeile 10, Betrag (Anlage N-Gre)",
+      "anlNGre_z15Chf": "Zeile 15, Betrag in CHF (Anlage N-Gre)",
+      "anlNGre_z15Eur": "Zeile 15, Betrag (Anlage N-Gre)",
+      "anlNGre_z18Chf": "Zeile 18, Betrag in CHF (Anlage N-Gre)",
+      "anlNGre_z18Eur": "Zeile 18, Betrag (Anlage N-Gre)",
+      "anlNGre_z19Chf": "Zeile 19, Betrag in CHF (Anlage N-Gre)",
+      "anlNGre_z19Eur": "Zeile 19, Betrag (Anlage N-Gre)",
+      "anlNGre_z20Chf": "Zeile 20, Betrag in CHF (Anlage N-Gre)",
+      "anlNGre_z20Eur": "Zeile 20, Betrag (Anlage N-Gre)",
+      "anlNGre_z23Chf": "Zeile 23, Betrag in CHF (Anlage N-Gre)",
+      "anlNGre_z23Eur": "Zeile 23, Betrag (Anlage N-Gre)",
+      "anlNGre_z25Chf": "Zeile 25, Betrag in CHF (Anlage N-Gre)",
+      "anlNGre_z25Eur": "Zeile 25, Betrag (Anlage N-Gre)",
+      "anlNGre_z48Text": "Zeile 48, Text (Anlage N-Gre)",
+      "anlNGre_z49Eur": "Zeile 49, Betrag (Anlage N-Gre)",
+      "anlNGre_z49Text": "Zeile 49, Text (Anlage N-Gre)",
+      "anlNGre_z57Eur": "Zeile 57, Betrag (Anlage N-Gre)",
+      "anlNGre_z57Text": "Zeile 57, Text (Anlage N-Gre)",
+      "anlNGre_z58Eur": "Zeile 58, Betrag (Anlage N-Gre)",
+      "anlNGre_z58Text": "Zeile 58, Text (Anlage N-Gre)",
+      "anlNGre_z6Chf": "Zeile 6, Betrag in CHF (Anlage N-Gre)",
+      "anlNGre_z6Eur": "Zeile 6, Betrag (Anlage N-Gre)",
+      "anlNGre_z75Chf": "Zeile 75, Betrag in CHF (Anlage N-Gre)",
+      "anlNGre_z75Eur": "Zeile 75, Betrag (Anlage N-Gre)",
+      "anlNGre_z76Chf": "Zeile 76, Betrag in CHF (Anlage N-Gre)",
+      "anlNGre_z76Eur": "Zeile 76, Betrag (Anlage N-Gre)",
+      "anlNGre_z77Chf": "Zeile 77, Betrag in CHF (Anlage N-Gre)",
+      "anlNGre_z77Eur": "Zeile 77, Betrag (Anlage N-Gre)",
+      "anlNGre_z78Chf": "Zeile 78, Betrag in CHF (Anlage N-Gre)",
+      "anlNGre_z78Eur": "Zeile 78, Betrag (Anlage N-Gre)",
+      "anlNGre_z79Chf": "Zeile 79, Betrag in CHF (Anlage N-Gre)",
+      "anlNGre_z79Eur": "Zeile 79, Betrag (Anlage N-Gre)",
+      "anlNGre_z80Chf": "Zeile 80, Betrag in CHF (Anlage N-Gre)",
+      "anlNGre_z80Eur": "Zeile 80, Betrag (Anlage N-Gre)",
+      "anlNGre_z81Chf": "Zeile 81, Betrag in CHF (Anlage N-Gre)",
+      "anlNGre_z81Eur": "Zeile 81, Betrag (Anlage N-Gre)",
+      "anlNGre_z82Chf": "Zeile 82, Betrag in CHF (Anlage N-Gre)",
+      "anlNGre_z82Eur": "Zeile 82, Betrag (Anlage N-Gre)",
+      "anlNGre_z83Chf": "Zeile 83, Betrag in CHF (Anlage N-Gre)",
+      "anlNGre_z83Eur": "Zeile 83, Betrag (Anlage N-Gre)",
+      "anlNGre_z84Chf": "Zeile 84, Betrag in CHF (Anlage N-Gre)",
+      "anlNGre_z84Eur": "Zeile 84, Betrag (Anlage N-Gre)",
+      "anlNGre_z85Chf": "Zeile 85, Betrag in CHF (Anlage N-Gre)",
+      "anlNGre_z85Eur": "Zeile 85, Betrag (Anlage N-Gre)",
+      "anlNGre_z86Chf": "Zeile 86, Betrag in CHF (Anlage N-Gre)",
+      "anlNGre_z86Eur": "Zeile 86, Betrag (Anlage N-Gre)",
+      "anlNGre_z87Chf": "Zeile 87, Betrag in CHF (Anlage N-Gre)",
+      "anlNGre_z87Eur": "Zeile 87, Betrag (Anlage N-Gre)",
+      "anlNGre_z88Chf": "Zeile 88, Betrag in CHF (Anlage N-Gre)",
+      "anlNGre_z88Eur": "Zeile 88, Betrag (Anlage N-Gre)",
+      "anlNGre_z8Chf": "Zeile 8, Betrag in CHF (Anlage N-Gre)",
+      "anlNGre_z8Eur": "Zeile 8, Betrag (Anlage N-Gre)",
+      "anlNGre_z95Arbeitgeber": "Zeile 95, Arbeitgeber (Anlage N-Gre)",
+      "anlNGre_z95Arbeitnehmer": "Zeile 95, Arbeitnehmer (Anlage N-Gre)",
+      "anlNGre_z96Arbeitgeber": "Zeile 96, Arbeitgeber (Anlage N-Gre)",
+      "anlNGre_z96Arbeitnehmer": "Zeile 96, Arbeitnehmer (Anlage N-Gre)",
+      "anlNGre_z97Arbeitgeber": "Zeile 97, Arbeitgeber (Anlage N-Gre)",
+      "anlNGre_z97Arbeitnehmer": "Zeile 97, Arbeitnehmer (Anlage N-Gre)",
+      "anlNGre_z98Arbeitgeber": "Zeile 98, Arbeitgeber (Anlage N-Gre)",
+      "anlNGre_z98Arbeitnehmer": "Zeile 98, Arbeitnehmer (Anlage N-Gre)",
+      "anlNGre_z9Chf": "Zeile 9, Betrag in CHF (Anlage N-Gre)",
+      "anlNGre_z9Eur": "Zeile 9, Betrag (Anlage N-Gre)",
+      "anlR_kz101": "Kennzahl 101 (Anlage R)",
+      "anlR_kz131": "Kennzahl 131 (Anlage R)",
+      "anlR_lfdNr": "Laufende Nummer (Anlage R)",
+      "anlR_name": "Name (Anlage R)",
+      "anlR_personA": "Person A (Kreuz) (Anlage R)",
+      "anlR_personB": "Person B (Kreuz) (Anlage R)",
+      "anlR_steuernummer": "Steuernummer (Anlage R)",
+      "anlR_vorname": "Vorname (Anlage R)",
+      "anlSo_name": "Name (Anlage SO)",
+      "anlSo_spenden": "Spenden (Anlage SO)",
+      "anlSo_steuernummer": "Steuernummer (Anlage SO)",
+      "anlSo_vorname": "Vorname (Anlage SO)",
+      "anlV_kz01": "Kennzahl 01 (Anlage V)",
+      "anlV_kz04": "Kennzahl 04 (Anlage V)",
+      "anlV_kz20": "Kennzahl 20 (Anlage V)",
+      "anlV_kz21": "Kennzahl 21 (Anlage V)",
+      "anlV_kz30": "Kennzahl 30 (Anlage V)",
+      "anlV_kz33": "Kennzahl 33 (Anlage V)",
+      "anlV_kz49": "Kennzahl 49 (Anlage V)",
+      "anlV_lfdNr": "Laufende Nummer (Anlage V)",
+      "anlV_name": "Name (Anlage V)",
+      "anlV_ort": "Ort (Anlage V)",
+      "anlV_plz": "Postleitzahl (Anlage V)",
+      "anlV_steuernummer": "Steuernummer (Anlage V)",
+      "anlV_strasse": "Straße (Anlage V)",
+      "anlV_ueberschuss": "Überschuss (Anlage V)",
+      "anlV_vorname": "Vorname (Anlage V)",
+      "anlV_werbungskostenSumme": "Summe der Werbungskosten (Anlage V)",
+      "anlV_wohnflaeche": "Wohnfläche (Anlage V)",
+      "anlV_z13Bezeichnung": "Zeile 13, Bezeichnung (Anlage V)",
+      "anlV_z13Miete": "Zeile 13, Miete (Anlage V)",
+      "anlV_z13Wohnflaeche": "Zeile 13, Wohnfläche (Anlage V)",
+      "anlV_z32Einnahmen": "Zeile 32, Einnahmen (Anlage V)",
+      "anlV_z33Afa": "Zeile 33, Absetzung für Abnutzung (Anlage V)",
+      "anlV_z33Linear": "Zeile 33, linear (Kreuz) (Anlage V)",
+      "anlV_z33Satz": "Zeile 33, Satz (Anlage V)",
+      "anlV_z33WieVorjahr": "Zeile 33, wie Vorjahr (Kreuz) (Anlage V)",
+      "anlV_z46Betrag": "Zeile 46, Betrag (Anlage V)",
+      "anlV_z46Text": "Zeile 46, Text (Anlage V)",
+      "anlV_z80Betrag": "Zeile 80, Betrag (Anlage V)",
+      "anlV_z80Text": "Zeile 80, Text (Anlage V)",
+      "anlVor_kz326": "Kennzahl 326 (Anlage Vorsorgeaufwand)",
+      "anlVor_kz328": "Kennzahl 328 (Anlage Vorsorgeaufwand)",
+      "anlVor_kz329": "Kennzahl 329 (Anlage Vorsorgeaufwand)",
+      "anlVor_kz333": "Kennzahl 333 (Anlage Vorsorgeaufwand)",
+      "anlVor_kz334": "Kennzahl 334 (Anlage Vorsorgeaufwand)",
+      "anlVor_kz335": "Kennzahl 335 (Anlage Vorsorgeaufwand)",
+      "anlVor_kz338": "Kennzahl 338 (Anlage Vorsorgeaufwand)",
+      "anlVor_kz339": "Kennzahl 339 (Anlage Vorsorgeaufwand)",
+      "anlVor_kz350": "Kennzahl 350 (Anlage Vorsorgeaufwand)",
+      "anlVor_kz351": "Kennzahl 351 (Anlage Vorsorgeaufwand)",
+      "anlVor_kz354": "Kennzahl 354 (Anlage Vorsorgeaufwand)",
+      "anlVor_kz426": "Kennzahl 426 (Anlage Vorsorgeaufwand)",
+      "anlVor_kz428": "Kennzahl 428 (Anlage Vorsorgeaufwand)",
+      "anlVor_kz429": "Kennzahl 429 (Anlage Vorsorgeaufwand)",
+      "anlVor_kz433": "Kennzahl 433 (Anlage Vorsorgeaufwand)",
+      "anlVor_kz434": "Kennzahl 434 (Anlage Vorsorgeaufwand)",
+      "anlVor_kz435": "Kennzahl 435 (Anlage Vorsorgeaufwand)",
+      "anlVor_kz438": "Kennzahl 438 (Anlage Vorsorgeaufwand)",
+      "anlVor_kz439": "Kennzahl 439 (Anlage Vorsorgeaufwand)",
+      "anlVor_kz450": "Kennzahl 450 (Anlage Vorsorgeaufwand)",
+      "anlVor_kz451": "Kennzahl 451 (Anlage Vorsorgeaufwand)",
+      "anlVor_kz454": "Kennzahl 454 (Anlage Vorsorgeaufwand)",
+      "anlVor_name": "Name (Anlage Vorsorgeaufwand)",
+      "anlVor_steuernummer": "Steuernummer (Anlage Vorsorgeaufwand)",
+      "anlVor_vorname": "Vorname (Anlage Vorsorgeaufwand)",
+      "est1a_beruf": "Beruf (Hauptvordruck)",
+      "est1a_berufB": "Beruf Person B (Hauptvordruck)",
+      "est1a_einkommensteuererklaerung": "Einkommensteuererklärung (Kreuz) (Hauptvordruck)",
+      "est1a_einzelveranlagung": "Einzelveranlagung (Hauptvordruck)",
+      "est1a_finanzamt": "Finanzamt (Hauptvordruck)",
+      "est1a_geburtsdatum": "Geburtsdatum (Hauptvordruck)",
+      "est1a_geburtsdatumB": "Geburtsdatum Person B (Hauptvordruck)",
+      "est1a_geschiedenSeit": "Geschieden seit (Hauptvordruck)",
+      "est1a_getrenntSeit": "Dauernd getrennt seit (Hauptvordruck)",
+      "est1a_hausnummer": "Hausnummer (Hauptvordruck)",
+      "est1a_hausnummerZusatz": "Hausnummer-Zusatz (Hauptvordruck)",
+      "est1a_ibanAusland": "IBAN (Ausland) (Hauptvordruck)",
+      "est1a_ibanInland": "IBAN (Inland) (Hauptvordruck)",
+      "est1a_idnr": "Steuer-ID (Hauptvordruck)",
+      "est1a_idnrB": "Steuer-ID Person B (Hauptvordruck)",
+      "est1a_kontoinhaberName": "Name des Kontoinhabers (Hauptvordruck)",
+      "est1a_kontoinhaberSelbst": "Kontoinhaber (Kreuz) (Hauptvordruck)",
+      "est1a_kopfSeite2": "Kopfzeile Seite 2 (Hauptvordruck)",
+      "est1a_kz120": "Kennzahl 120 (Hauptvordruck)",
+      "est1a_kz121": "Kennzahl 121 (Hauptvordruck)",
+      "est1a_kz136": "Kennzahl 136 (Hauptvordruck)",
+      "est1a_kz137": "Kennzahl 137 (Hauptvordruck)",
+      "est1a_name": "Name (Hauptvordruck)",
+      "est1a_nameB": "Name Person B (Hauptvordruck)",
+      "est1a_plz": "Postleitzahl (Hauptvordruck)",
+      "est1a_religion": "Religion (Hauptvordruck)",
+      "est1a_religionB": "Religion Person B (Hauptvordruck)",
+      "est1a_steuernummer": "Steuernummer (Hauptvordruck)",
+      "est1a_strasse": "Straße (Hauptvordruck)",
+      "est1a_telefon": "Telefon (Hauptvordruck)",
+      "est1a_verheiratetSeit": "Verheiratet seit (Hauptvordruck)",
+      "est1a_verwitwetSeit": "Verwitwet seit (Hauptvordruck)",
+      "est1a_vorname": "Vorname (Hauptvordruck)",
+      "est1a_vornameB": "Vorname Person B (Hauptvordruck)",
+      "est1a_wohnort": "Wohnort (Hauptvordruck)",
+      "est1a_zusammenveranlagung": "Zusammenveranlagung (Hauptvordruck)"
     },
     "anlageNochNicht": "Für deine {{anlage}} gibt es den Ausdruck noch nicht. Ohne sie wäre deine Erklärung unvollständig – deshalb drucken wir noch nicht.",
     "anlagen": {
@@ -616,12 +1019,8 @@
     "fehlendUnbestaetigt": "Noch nicht bestätigt: {{anlagen}}. Prüf die neuen Werte und bestätige sie – erst dann kannst du drucken.",
     "fehlendPersonB": "Die zweite Person eurer gemeinsamen Erklärung muss in der eigenen App noch Werte bestätigen.",
     "bestaetigungOeffnen": "Prüfen & bestätigen",
-    "nichtVerfuegbar": "Die Bezahlung ist auf dieser Umgebung noch nicht eingerichtet.",
+    "nichtVerfuegbar": "Die Bezahlung ist gerade nicht möglich. Bitte versuch es später noch einmal.",
     "freischalten": "Freischalten und bezahlen",
-    "freischaltenHinweis": "Einmal pro Steuerjahr. Den Preis siehst du vor der Zahlung.",
-    "zahlungLaeuft": "Deine Zahlung wird bestätigt. Das dauert meist nur Sekunden.",
-    "zahlungAbgebrochen": "Die Zahlung wurde abgebrochen. Du kannst es jederzeit erneut versuchen.",
-    "aktualisieren": "Aktualisieren",
     "herunterladen": "PDF herunterladen",
     "herunterladenBearbeitbar": "Bearbeitbare PDF herunterladen",
     "bearbeitbarHinweis": "Zum Korrigieren vor dem Druck: Die Werte stehen in Formularfeldern. Was du dort änderst, weicht von deinen Angaben in der App ab – ändere besser dort und lade neu herunter.",
@@ -635,6 +1034,9 @@
       "Belege nur beilegen, wenn ein Vordruck ausdrücklich danach fragt."
     ],
     "hinweisEdaten": "Lohnsteuer, Sozialversicherung und andere „e“-Zeilen liegen dem Finanzamt bereits vom Arbeitgeber vor und bleiben leer. Nur den Bruttoarbeitslohn (Anlage N, Zeile 5) tragen wir zur Kontrolle ein.",
+    "vorlageLadefehler": "Der Vordruck konnte nicht geladen werden.",
+    "vorlageUnbekannt": "Diesen Vordruck gibt es für dieses Jahr nicht.",
+    "vorschauLadefehler": "Ein Teil deiner Angaben konnte nicht geladen werden; die Zeilen unten sind unvollständig.",
     "glasErklaerung": {
       "zeilen": {
         "zeile": "Zeile {{zeile}}",
@@ -680,7 +1082,12 @@
           "kz335": "Ausländische Pflegeversicherung",
           "kz339": "Wahl- und Zusatzleistungen (ausländisch)"
         }
-      }
+      },
+      "titel": "🔍 Glas-Erklärung: Amtliche Formular-Vorschau",
+      "untertitel": "Sieh live, in welchem amtlichen Vordruck und welcher Zeile deine Angaben landen – inklusive Herkunft und Direktsprung in die Maske.",
+      "oeffnen": "Formularzeilen ansehen ▼",
+      "leer": "Noch keine Formularzeilen befüllt. Sobald du Angaben im Strom, in den Masken oder über die Eule machst, erscheinen sie hier.",
+      "schliessen": "Einklappen ▲"
     }
   },
   "adresssuche": {
@@ -707,11 +1114,6 @@
     "back": "Zurück",
     "intro": "Diese Angaben stehen auf Seite 1 deiner Steuererklärung. Wir speichern sie verschlüsselt.",
     "loading": "Deine Angaben werden geladen …",
-    "loadError": {
-      "heading": "Das hat nicht geklappt.",
-      "message": "Deine Angaben konnten nicht geladen werden.",
-      "retry": "Noch mal versuchen"
-    },
     "geburtsdatum": "Geburtsdatum (TT.MM.JJJJ)",
     "strasse": "Straße",
     "hausnummer": "Hausnummer",
@@ -733,11 +1135,27 @@
     "telefon": "Telefon für Rückfragen (optional)",
     "speichern": "Speichern",
     "gespeichert": "Gespeichert.",
+    "kopplungZustimmung": {
+      "frage": "Dein Partner möchte {{year}} mit dir zusammen abgeben. Erst wenn du zustimmst, sieht er deine Angaben für {{year}} (Steuer-ID, Geburtsdatum, Religion, Beruf).",
+      "zustimmen": "{{year}} zusammen abgeben – zustimmen",
+      "wartet": "Dein Partner hat {{year}} noch nicht zugestimmt. Bis dahin siehst du keine seiner Angaben für {{year}}.",
+      "gegeben": "Du hast zugestimmt, {{year}} zusammen abzugeben. Dein Partner sieht deine Angaben für {{year}}.",
+      "zuruecknehmen": "Zustimmung für {{year}} zurücknehmen"
+    },
+    "kopplungStand": {
+      "loading": "Die Veranlagungsart wird geladen …",
+      "loadError": "Die Veranlagungsart konnte nicht geladen werden. Solange wählen und übernehmen wir hier nichts.",
+      "statusLoadError": "Ob ihr als Paar verknüpft seid, konnte nicht geladen werden.",
+      "personBGespeichert": "Partner-Angaben übernommen.",
+      "personBUnveraendert": "Es gibt nichts Neues zu übernehmen.",
+      "codeUnbekannt": "Diesen Code kennen wir nicht. Prüf die Schreibweise.",
+      "einladungErstellen": "Einladungscode für deinen Partner erstellen"
+    },
+    "ungespeichertZurueck": "Deine Änderungen sind noch nicht gespeichert. Tipp „Speichern“ – oder noch einmal zurück, um sie zu verwerfen.",
     "fehlendHinweis": "Für den Ausdruck fehlen noch {{anzahl}} Angaben.",
     "vollstaendig": "Alles da für den Ausdruck.",
     "saveError": {
       "validation": "Bitte prüf deine Eingaben — z. B. Datum, Postleitzahl oder IBAN.",
-      "einwilligung": "Ohne deine Einwilligung können wir die Religion nicht speichern.",
       "network": "Speichern hat nicht geklappt. Prüf die Verbindung."
     },
     "familienstaende": {
@@ -795,9 +1213,6 @@
     "geaendertVonPartner": "geändert von deinem Partner am {{date}}",
     "nichtMehrDabei": "Ab {{year}} nicht mehr dabei",
     "loeschen": "Endgültig löschen",
-    "loeschenWarnung": "Damit verschwindet {{name}} aus allen Steuerjahren, auch aus abgeschlossenen. Das lässt sich nicht rückgängig machen.",
-    "loeschenBestaetigen": "Ja, endgültig löschen",
-    "abbrechen": "Abbrechen",
     "fehler": "Das hat nicht geklappt. Bitte versuch es noch mal.",
     "partner": {
       "verknuepftSeit": "Ihr seid seit {{year}} verknüpft. In jedem neuen Jahr bleibt die Verknüpfung, ein neuer Einladungscode ist nicht nötig.",
@@ -818,13 +1233,7 @@
   "owlPersonalData": {
     "card": {
       "title": "Darf die Eule deine persönlichen Daten verarbeiten?",
-      "body": "Damit die Eule auch Name, Steuer-ID, Geburtsdatum, Anschrift, Bankverbindung (IBAN), Familienstand, die Angaben zu Partnerin/Partner und Kindern sowie deine Religionszugehörigkeit eintragen kann, gehen diese Angaben an {{processor}}. Die Religionszugehörigkeit ist eine besondere Kategorie personenbezogener Daten (Art. 9 DSGVO); mit „Erlauben“ willigst du auch dafür ausdrücklich ein. Ohne Einwilligung macht die Eule diese Angaben unkenntlich und du trägst sie selbst in den Masken ein. Du kannst die Einwilligung jederzeit unter Profil → Datenschutz widerrufen.",
-      "processor": {
-        "google-genai": "das Sprachmodell Google Gemini (Google als Auftragsverarbeiter)",
-        "anthropic": "das Sprachmodell Claude (Anthropic als Auftragsverarbeiter)",
-        "openai": "das Sprachmodell von OpenAI (OpenAI als Auftragsverarbeiter)",
-        "other": "das Sprachmodell, das für die Eule eingerichtet ist (dessen Anbieter als Auftragsverarbeiter)"
-      },
+      "body": "Damit die Eule auch Name, Steuer-ID, Geburtsdatum, Anschrift, Bankverbindung (IBAN), Familienstand, die Angaben zu Partnerin/Partner und Kindern sowie deine Religionszugehörigkeit eintragen kann, gehen diese Angaben an das Sprachmodell, das die Antwort erzeugt. Das kann ein Modell von {{providers}} sein, je nach Einstellung, deiner Modellwahl und bei Ausfällen; die Verarbeitung kann in den USA stattfinden. Deine Einwilligung gilt für alle diese Anbieter. Die Religionszugehörigkeit ist eine besondere Kategorie personenbezogener Daten (Art. 9 DSGVO); mit „Erlauben“ willigst du auch dafür ausdrücklich ein. Ohne Einwilligung macht die Eule diese Angaben unkenntlich und du trägst sie selbst in den Masken ein. Du kannst die Einwilligung jederzeit unter Profil → Datenschutz widerrufen.",
       "allow": "Erlauben",
       "deny": "Nicht erlauben",
       "saving": "Wird gespeichert …",
@@ -838,7 +1247,7 @@
       "stateGranted": "Erlaubt seit {{date}}",
       "stateNotGranted": "Nicht erlaubt",
       "stateLoading": "Wird geladen …",
-      "body": "Wenn du es erlaubst, gehen Name, Steuer-ID, Geburtsdatum, Anschrift, IBAN, Familienstand, Angaben zu Partnerin/Partner und Kindern sowie deine Religionszugehörigkeit (besondere Kategorie, Art. 9 DSGVO) an das Sprachmodell Google Gemini (Google als Auftragsverarbeiter). Ohne Einwilligung macht die Eule diese Angaben unkenntlich und du trägst sie selbst ein.",
+      "body": "Wenn du es erlaubst, gehen Name, Steuer-ID, Geburtsdatum, Anschrift, IBAN, Familienstand, Angaben zu Partnerin/Partner und Kindern sowie deine Religionszugehörigkeit (besondere Kategorie, Art. 9 DSGVO) an das Sprachmodell, das die Antwort der Eule erzeugt: ein Modell von {{providers}}, als unsere Auftragsverarbeiter; die Verarbeitung kann in den USA stattfinden. Die Einwilligung gilt für alle diese Anbieter. Ohne Einwilligung macht die Eule diese Angaben unkenntlich und du trägst sie selbst ein.",
       "revoke": "Einwilligung widerrufen",
       "allow": "Erlauben",
       "error": "Das hat nicht geklappt. Bitte versuche es noch einmal."
@@ -861,7 +1270,7 @@
     },
     "deviceSessions": {
       "heading": "Anmeldungen & Geräte",
-      "sessionData": "Bei jeder Anmeldung speichern wir die IP-Adresse und den Gerätetyp (User-Agent) der jeweiligen Sitzung — das war schon immer so. Neu ist: Wenn du dich per QR-Code von einem neuen Gerät aus anmeldest, siehst du diese Angaben jetzt selbst — als Vergleichshilfe auf dem Bestätigungsbildschirm und in deiner eigenen Geräte-Liste in Profil, wo du jede Sitzung einzeln abmelden kannst.",
+      "sessionData": "Bei jeder Anmeldung speichern wir die IP-Adresse und den Gerätetyp (User-Agent) der Sitzung. Meldest du dich per QR-Code von einem neuen Gerät an, siehst du diese Angaben auf dem Bestätigungsbildschirm und in deiner Geräte-Liste im Profil, wo du jede Sitzung einzeln abmelden kannst.",
       "geoIp": "Für die QR-Code-Anmeldung lösen wir die IP-Adresse des anfragenden Geräts zusätzlich auf Länderebene auf (z. B. \"Deutschland\"), nie genauer — das hilft dir, eine fremde Anfrage von deiner eigenen zu unterscheiden. Diese Auflösung läuft vollständig auf unseren eigenen EU-Servern, mit einer selbst gehosteten, regelmäßig aktualisierten Datenbank; deine IP-Adresse verlässt dafür nie unsere Infrastruktur und geht an keinen externen Anbieter. Ist die Datenbank veraltet oder eine Adresse nicht zuordenbar, zeigen wir ehrlich \"Region unbekannt\" statt zu raten.",
       "geoIpAttribution": "Länderdaten: DB-IP.com, Lizenz CC BY 4.0."
     },
@@ -871,7 +1280,7 @@
     },
     "export": {
       "title": "Auskunft & Export",
-      "subtitle": "Art. 15 (Auskunft) und Art. 20 (Übertragbarkeit): lade eine vollständige Kopie deiner Daten herunter.",
+      "subtitle": "Art. 15 (Auskunft) und Art. 20 (Übertragbarkeit): lade eine Kopie deiner Daten herunter.",
       "jsonButton": "Als JSON herunterladen",
       "jsonHint": "Maschinenlesbar — zum Weitergeben oder Archivieren.",
       "pdfButton": "Als PDF-Bericht herunterladen",
@@ -889,11 +1298,11 @@
     },
     "delete": {
       "title": "Löschen",
-      "subtitle": "Art. 17: entfernt dein Profil und dein Konto endgültig von unseren Servern.",
+      "subtitle": "Art. 17: entfernt dein Profil und dein Konto von unseren Servern.",
       "openButton": "Konto & Daten löschen",
       "offer": {
         "heading": "Bevor du löschst",
-        "warning1": "Dein Profil und dein Konto werden endgültig von unseren Servern gelöscht — das lässt sich nicht rückgängig machen. Einträge deines Zugriffsprotokolls bleiben anonymisiert erhalten: Wir entfernen deine Kennung daraus, behalten die Einträge selbst aber als gesetzlich vorgeschriebenen Nachweis (Art. 30 DSGVO) — sie lassen sich danach niemandem mehr zuordnen. Daten unter gesetzlichem Löschschutz (z. B. bereits eingereichte Fassungen) bleiben ebenfalls erhalten, bis die Aufbewahrungspflicht endet.",
+        "warning1": "Dein Profil und dein Konto werden von unseren Servern gelöscht — das lässt sich nicht rückgängig machen. Aus den Datenbank-Sicherungen verschwinden die Daten spätestens nach {{backupDays}} Tagen. Einträge deines Zugriffsprotokolls bleiben anonymisiert als Nachweis erhalten: Wir entfernen deine Kennung daraus, danach lassen sie sich niemandem mehr zuordnen. Gesetzlich aufzubewahrende Daten sperren wir bis zum Ende der Frist: Zahlungen {{paymentYears}} Jahre, eingereichte Fassungen {{filingYears}} Jahre, jeweils ab Ende des Jahres.",
         "warning2": "Falls du bereits Fassungen beim Finanzamt eingereicht hast, verlierst du mit der Kontolöschung deinen Zugriff auf diese Nachweise. Exportiere sie dir vorher.",
         "exportFirstButton": "Erst als JSON exportieren (empfohlen)",
         "exportedNote": "Export gestartet.",
@@ -902,7 +1311,7 @@
       },
       "confirm": {
         "heading": "Bist du sicher?",
-        "warning": "Diesen Schritt kannst du nicht rückgängig machen. Dein Profil und dein Konto werden jetzt endgültig gelöscht.",
+        "warning": "Diesen Schritt kannst du nicht rückgängig machen. Dein Profil und dein Konto werden jetzt gelöscht.",
         "confirmButton": "Ja, endgültig löschen",
         "cancelButton": "Abbrechen",
         "genericError": "Das hat gerade nicht geklappt. Prüf die Verbindung und versuch es noch mal."
@@ -924,15 +1333,11 @@
   "interview": {
     "back": "Zurück zur Frage",
     "loading": "Deine Antworten werden geladen …",
-    "loadError": {
-      "heading": "Das hat nicht geklappt.",
-      "message": "Deine Antworten konnten nicht geladen werden. Prüf die Verbindung und versuch es noch mal.",
-      "retry": "Noch mal versuchen"
-    },
     "postError": {
       "conflict": "Deine Antwort passte nicht zum gespeicherten Stand. Wir haben deinen Fortschritt aktualisiert.",
       "invalid": "Diese Antwort wurde nicht akzeptiert. Wir haben deinen Fortschritt aktualisiert.",
-      "network": "Deine Antwort konnte nicht gespeichert werden. Prüf die Verbindung und versuch es noch mal."
+      "network": "Deine Antwort konnte nicht gespeichert werden. Prüf die Verbindung und versuch es noch mal.",
+      "failed": "Deine Antwort ist nicht gespeichert, die Frage steht deshalb noch einmal da."
     },
     "anderesJahr": "Anderes Jahr",
     "job": {
@@ -1046,7 +1451,7 @@
     },
     "gewerbe": {
       "heading": "Ehrlich: dafür sind wir noch nicht gut genug.",
-      "body1": "Selbstständige brauchen EÜR, Anlage G/S und Umsatzsteuer — das kann SteuerEule in Version 1 nicht. Halbe Steuererklärungen liefern wir nicht.",
+      "body1": "Selbstständige brauchen EÜR, Anlage G/S und Umsatzsteuer — das kann dieser Teil von SteuerEule noch nicht. Halbe Steuererklärungen liefern wir nicht.",
       "body2": "Was heute schon geht: vorbereiten. Bei „Beides“ sammeln wir deinen Angestellten-Teil komplett ein — abgegeben wird erst, wenn das Gewerbe drin ist. Eine Steuererklärung ist unteilbar.",
       "prepareEmployeePart": "Angestellten-Teil vorbereiten — Abgabe erst mit Gewerbe"
     },
@@ -1073,11 +1478,6 @@
     "headingPartner": "Lohnsteuerbescheinigung von {{name}}",
     "help": "Übertrag die drei Werte aus deiner Lohnsteuerbescheinigung — Feld für Feld, in der Reihenfolge des Papiers.",
     "loading": "Deine Lohnsteuerbescheinigung wird geladen …",
-    "loadError": {
-      "heading": "Das hat nicht geklappt.",
-      "message": "Deine Lohnsteuerbescheinigung konnte nicht geladen werden. Prüf die Verbindung und versuch es noch mal.",
-      "retry": "Noch mal versuchen"
-    },
     "felder": {
       "bruttoarbeitslohn": "Bruttoarbeitslohn (Zeile 3)",
       "lohnsteuer": "Einbehaltene Lohnsteuer (Zeile 4)",
@@ -1129,7 +1529,7 @@
     },
     "scan": {
       "heading": "Lohnsteuerbescheinigung scannen (PDF / Foto)",
-      "help": "Texterkennung läuft direkt auf deinem Gerät. Keine Steuer-ID, kein Arbeitgeber und kein Bild gehen an KI.",
+      "help": "Die Texterkennung läuft auf deinem Gerät. Fehlen danach Beträge, gehen nur die Zeilen 3, 4 und 23 bis 27 ohne Namen und Kennungen an ein Sprachmodell. Steuer-ID, Arbeitgeber und das Bild gehen an kein Sprachmodell.",
       "cta": "PDF oder Foto auswählen",
       "nativeUnsupported": "Kamera-Scan im nativen App-Build folgt separat — im Web kannst du PDF oder Foto direkt auswählen.",
       "assignedElsewhere": "Der Beleg gehört {{name}}. Seine Werte warten jetzt in der Eule auf dich, nicht in dieser Maske.",
@@ -1212,11 +1612,6 @@
     "heading": "Deine Rente",
     "help": "Übertrag die Angaben aus deiner Rentenbezugsmitteilung — Rentenart, Jahresbetrag und Rentenbeginn.",
     "loading": "Deine Rente wird geladen …",
-    "loadError": {
-      "heading": "Das hat nicht geklappt.",
-      "message": "Deine Rente konnte nicht geladen werden. Prüf die Verbindung und versuch es noch mal.",
-      "retry": "Noch mal versuchen"
-    },
     "artHeading": "Welche Rente beziehst du?",
     "arten": {
       "GesetzlicheRente": "Gesetzliche Rente",
@@ -1251,11 +1646,8 @@
     "heading": "Kapital & Depot",
     "help": "Übertrag deine Kapitalerträge aus der Jahressteuerbescheinigung deiner Bank.",
     "loading": "Deine Kapitalerträge werden geladen …",
-    "loadError": {
-      "heading": "Das hat nicht geklappt.",
-      "message": "Deine Kapitalerträge konnten nicht geladen werden. Prüf die Verbindung und versuch es noch mal.",
-      "retry": "Noch mal versuchen"
-    },
+    "inhaberLadefehler": "Ob ihr gemeinsam veranlagt werdet, konnte nicht geladen werden – deshalb fehlt hier die Frage, wem das Depot gehört.",
+    "guenstigerpruefungLadefehler": "Die Günstigerprüfung konnte nicht geladen werden.",
     "depot": {
       "deutscherBrokerOhneSteuer": "Deutsche Bank: Sie behält Abgeltungsteuer ein, sobald der Freistellungsauftrag ausgeschöpft ist. Trag unten ein, was laut Steuerbescheinigung einbehalten wurde (ggf. 0). Danach rechnen wir nach, ob die Abgeltungsteuer oder dein persönlicher Steuersatz günstiger ist.",
       "deutscherBroker": "Deine Bank hat Abgeltungsteuer einbehalten. Unten rechnen wir ehrlich nach, ob die Abgeltungsteuer oder dein persönlicher Steuersatz günstiger ist.",
@@ -1312,11 +1704,8 @@
     "heading": "Deine Vermietung",
     "help": "Erfass deine ganzjährig vermieteten Objekte — je Objekt eine Anlage V mit linearer AfA.",
     "loading": "Deine Vermietung wird geladen …",
-    "loadError": {
-      "heading": "Das hat nicht geklappt.",
-      "message": "Deine Vermietung konnte nicht geladen werden. Prüf die Verbindung und versuch es noch mal.",
-      "retry": "Noch mal versuchen"
-    },
+    "anteilLadefehler": "Ob ihr gemeinsam veranlagt werdet, konnte nicht geladen werden – deshalb fehlt hier die Frage nach deinem Anteil am Objekt.",
+    "leerenNichtMoeglich": "Leer lassen geht hier nicht, wenn schon ein Wert gespeichert ist. Trag 0 ein, wenn es nichts gab.",
     "einordnung": {
       "berechenbar": "Ganzjährig vermietete Objekte rechnen wir: je Objekt eine Anlage V, lineare AfA nach § 7 Abs. 4 EStG.",
       "verkaufOderMoebliert": "Verkauf oder möbliert-auf-Zeit bleibt in 1.0 ehrlich außen vor: Fristen und Abgrenzung rechnen wir noch nicht. Kein halbes Feature.",
@@ -1361,17 +1750,45 @@
       "hinzufuegen": "Rechnung hinzufügen",
       "leer": "Noch keine Rechnung eingetragen.",
       "eintrag": "Rechnung {{nummer}}"
-    }
+    },
+    "adresseHeading": "Objektadresse (für Anlage V)"
   },
   "fristen": {
-    "warnung": "Abgabefrist: {{frist}} (noch {{tage}} Tage). Bei Verspätung fällt ein Verspätungszuschlag an — mindestens {{mindestsatz}} pro Monat (§ 152 AO).",
+    "warnung": "Abgabefrist: {{frist}} (noch {{tage}} Tage). Gibst du zu spät ab, kann das Finanzamt einen Verspätungszuschlag festsetzen, mindestens {{mindestsatz}} je angefangenem Monat (§ 152 AO).",
     "abgelaufen": "Die Frist {{frist}} ist vorbei. Das Finanzamt kann einen Verspätungszuschlag festsetzen — ab dem {{pflichtAb}} muss es das (mindestens {{mindestsatz}} je angefangenem Monat).",
     "zuschlagPflicht": "Die Abgabefrist {{frist}} ist um {{tage}} Tage überschritten. Seit dem {{pflichtAb}} muss das Finanzamt einen Verspätungszuschlag festsetzen (§ 152 Abs. 2 AO): mindestens {{mindestsatz}} je angefangenem Monat — reich die Erklärung bald ein.",
     "freiwillig": "Freiwillige Erklärung: Du hast Zeit bis {{bis}} (31.12. des vierten Folgejahres). Je früher, desto früher kommt die Erstattung.",
-    "unklar": "Ob du abgeben musst, klären wir mit deinen Antworten. Pflicht-Frist wäre der {{frist}}."
+    "unklar": "Ob du abgeben musst, klären wir mit deinen Antworten. Pflicht-Frist wäre der {{frist}}.",
+    "ladefehler": "Deine Abgabefrist konnte nicht geladen werden."
   },
   "shared": {
     "saveFailed": "Mindestens eine Eingabe wurde nicht gespeichert. Prüf deine Verbindung und gib sie noch einmal ein – oder tipp noch einmal, um trotzdem weiterzugehen."
+  },
+  "apiFehler": {
+    "sessionExpired": "Deine Anmeldung ist abgelaufen. Melde dich neu an – danach geht es genau hier weiter.",
+    "sessionExpiredBanner": "Deine Anmeldung ist abgelaufen. Melde dich neu an, dann bringen wir dich zurück, wo du warst.",
+    "accountRequired": "Dafür brauchst du ein kostenloses Konto. Als Gast geht das nicht.",
+    "receiptParseAccountRequired": "Der Beleg ist gespeichert. Auslesen lassen kannst du ihn mit einem kostenlosen Konto – oder du trägst die Beträge selbst ein.",
+    "stepUp": "Bitte bestätige zuerst dein Passwort, dann klappt es.",
+    "forbidden": "Das darfst du hier nicht ändern.",
+    "notFound": "Das gibt es nicht mehr. Lade die Seite neu.",
+    "conflict": "Das wurde inzwischen an anderer Stelle geändert. Lade neu und prüf den aktuellen Stand.",
+    "tooLarge": "Die Datei ist zu groß. Erlaubt sind höchstens {{receiptFileSize}}.",
+    "rateLimitedSeconds": "Gerade kommen zu viele Anfragen. Versuch es in {{seconds}} Sekunden noch mal.",
+    "rateLimitedMinutes": "Gerade kommen zu viele Anfragen. Versuch es in {{minutes}} Minuten noch mal.",
+    "rateLimited": "Gerade kommen zu viele Anfragen. Versuch es in ein paar Minuten noch mal.",
+    "validation": "Bitte prüf die markierten Eingaben.",
+    "offline": "Keine Verbindung zum Server. Prüf dein Internet und versuch es noch mal.",
+    "server": "Bei uns ist gerade etwas schiefgelaufen. Versuch es gleich noch mal.",
+    "unknown": "Das hat nicht geklappt. Versuch es noch mal.",
+    "loadHeading": "Das konnte nicht geladen werden.",
+    "saveHeading": "Nicht gespeichert.",
+    "saveKept": "Deine Eingabe ist noch da.",
+    "retry": "Noch mal versuchen",
+    "signIn": "Neu anmelden",
+    "createAccount": "Konto anlegen",
+    "pendingSave": "Wird noch gespeichert …",
+    "unsavedLeave": "Eine Eingabe ist noch nicht gespeichert. Tipp noch einmal, um trotzdem zu gehen."
   },
   "katalog": {
     "fuerWen": {
@@ -1386,12 +1803,8 @@
     "einkuenfteBeantworten": "Frage jetzt beantworten",
     "back": "Zurück",
     "loading": "Wird geladen …",
-    "loadError": {
-      "heading": "Das hat nicht geklappt.",
-      "message": "Deine Angaben konnten nicht geladen werden. Prüf die Verbindung und versuch es noch mal.",
-      "retry": "Noch mal versuchen"
-    },
     "conflict": "Deine Antwort passte nicht zum gespeicherten Stand. Wir haben deinen Fortschritt aktualisiert.",
+    "antwortZurueck": "Deine Antwort ist nicht gespeichert, die Frage steht deshalb noch einmal da.",
     "progress": "Frage {{done}} von {{total}}",
     "amountPlaceholder": "Ganzzahlige Euro",
     "amountLater": "Betrag später eintragen",
@@ -1551,7 +1964,8 @@
       "geburtsdatum": "Geburtsdatum (TT.MM.JJJJ)",
       "fehlt": "Bitte Vorname und Geburtsdatum eintragen.",
       "datumFalsch": "Bitte das Geburtsdatum als TT.MM.JJJJ eintragen.",
-      "fehler": "Das hat nicht geklappt. Prüf die Verbindung und versuch es noch mal."
+      "fehler": "Das hat nicht geklappt. Prüf die Verbindung und versuch es noch mal.",
+      "ladefehler": "Die Angaben zu deinem Partner konnten nicht geladen werden."
     },
     "alleinerziehend": {
       "titel": "Alleinerziehend"
@@ -1579,6 +1993,7 @@
       "nachzahlung": "Voraussichtliche Nachzahlung",
       "ergebnis": "Voraussichtliches Ergebnis",
       "ohneSchaetzung": "Die Schätzung kommt, sobald deine Lohnangaben da sind.",
+      "schaetzungLadefehler": "Die Schätzung konnte nicht geladen werden.",
       "uebernommen": "In deine Erklärung übernommen",
       "offen": "Noch offen",
       "abgabe": "Abgabe vorbereiten",
@@ -1654,7 +2069,7 @@
     "widerspruchBody": "Mehr Urlaubs-/Krankheitstage als Werktage — prüf deine Eingaben.",
     "weiter": "Weiter",
     "loading": "Wird geladen …",
-    "speichernFehler": "Das hat nicht geklappt — deine Angaben sind noch nicht gespeichert. Versuch es noch mal.",
+    "zahlUnlesbar": "Das ist keine ganze Zahl. Bitte nur Ziffern eingeben, z. B. 30.",
     "weg": {
       "titel": "Dein Weg zur Arbeit",
       "km": "Einfache Entfernung in km",
@@ -1705,11 +2120,9 @@
     "zurKachel": "Öffnen: {{titel}}",
     "warnungenBestaetigen": "Gelesen, trotzdem weiter",
     "schrittVergleich": "Veranlagungsartenvergleich",
-    "vergleichUeberspringen": "Überspringen",
     "zusammenErfasst": "Ihr gebt gemeinsam ab (Zusammenveranlagung). So ist es in „Angaben für die Erklärung“ erfasst.",
     "vergleichOeffnen": "Mit getrennter Abgabe vergleichen",
     "vergleichSchliessen": "Vergleich schließen",
-    "schrittAusdruck": "Ausdruck",
     "zumAusdruck": "Weiter zum Ausdruck",
     "elsterHinweis": "Ein Jahr mit Selbstständigkeit gibst du über Mein ELSTER ab – wir füllen dir aus, was du dort einträgst.",
     "zurAusfuellhilfe": "Zur ELSTER-Ausfüllhilfe"
@@ -1717,11 +2130,6 @@
   "plausibilitaet": {
     "back": "Zurück",
     "loading": "Deine Prüfung wird geladen …",
-    "loadError": {
-      "heading": "Das hat nicht geklappt.",
-      "message": "Deine Prüfung konnte nicht geladen werden. Prüf die Verbindung und versuch es noch mal.",
-      "retry": "Noch mal versuchen"
-    },
     "heading": "Prüfung vor Abgabe",
     "einreichbar": "Alles klar — keine Widersprüche, nichts mehr offen.",
     "nichtEinreichbar": "Da ist noch etwas offen:",
@@ -1749,6 +2157,7 @@
   "cockpit": {
     "appbarTitle": "Steuerjahr",
     "loading": "Dein Cockpit wird geladen …",
+    "bereicheFehler": "Einige Bereiche konnten gerade nicht geladen werden. Ihr Stand ist unbekannt, nicht offen.",
     "loadError": {
       "heading": "Das hat nicht geklappt.",
       "message": "Dein Cockpit konnte nicht geladen werden. Prüf die Verbindung und versuch es noch mal.",
@@ -1769,7 +2178,7 @@
       "herkunftRechenweg_one": "{{count}} offener Posten × {{perItem}} Unsicherheit",
       "herkunftRechenweg_other": "{{count}} offene Posten × {{perItem}} Unsicherheit",
       "gatedHeading": "Ehrlich: dafür sind wir noch nicht gut genug.",
-      "gatedBody": "{{name}} kann SteuerEule in Version 1 noch nicht rechnen. Dein erfasstes Einkommen bleibt sichtbar — abgegeben wird erst, wenn alles drin ist.",
+      "gatedBody": "{{name}} kann SteuerEule noch nicht rechnen. Dein erfasstes Einkommen bleibt sichtbar — abgegeben wird erst, wenn alles drin ist.",
       "refundLater": "Die Erstattung rechnen wir in einem späteren Schritt.",
       "erstattungLabel": "Voraussichtliche Erstattung",
       "nachzahlungLabel": "Voraussichtliche Nachzahlung",
@@ -1788,7 +2197,8 @@
         "erledigt": "Erledigt",
         "keinThema": "Trifft nicht zu",
         "betragOffen": "⏳ Betrag offen",
-        "optional": "Optional"
+        "optional": "Optional",
+        "fehler": "Nicht geladen"
       },
       "hinweis": {
         "blocker": "Muss vor der Abgabe geklärt werden",
@@ -1911,6 +2321,7 @@
         "kirchgeld-unbekannt": "Kirchensteuer offen: Für dein Bundesland haben wir keine amtliche Kirchgeld-Tabelle."
       },
       "kirchensteuerKappung": "Bei hohem Einkommen kann deine Kirche die Kirchensteuer auf Antrag kappen.",
+      "ladefehler": "Die Schätzung konnte gerade nicht geladen werden.",
       "veranlagungsartOffen": "Ihr seid verheiratet: Leg in „Angaben für die Erklärung“ die Zusammenveranlagung an – dann rechnen wir für euch beide.",
       "offen_one": "Für die Schätzung fehlt noch 1 Angabe.",
       "offen_other": "Für die Schätzung fehlen noch {{count}} Angaben.",
@@ -1936,7 +2347,8 @@
         "rente": "Rentenbetrag",
         "lohnersatz-betrag": "Betrag der Lohnersatzleistungen",
         "selbststaendig": "Angaben zur Selbstständigkeit",
-        "einkommen": "Angaben zum Einkommen"
+        "einkommen": "Angaben zum Einkommen",
+        "zustimmung": "Zustimmung zur gemeinsamen Erklärung für dieses Jahr"
       },
       "grund": {
         "verheiratet": "Für Verheiratete rechnen wir die Erstattung noch nicht.",
@@ -1952,7 +2364,6 @@
     "checkVermietung": "Vermietung prüfen",
     "checkKinder": "Kinder verwalten",
     "amtlichesFormular": "Amtliches Formular ansehen",
-    "eulenModus": "Eulen-Modus",
     "berater": {
       "title": "Deine Eule berät dich",
       "body": "Sie prüft dein Steuerjahr auf Geld, das du liegen lässt, und sagt dir, was du dieses Jahr noch tun kannst.",
@@ -2039,7 +2450,8 @@
     "binIch": {
       "ja": "Ja, das bin ich",
       "nein": "Nein, jemand anderes",
-      "nameUebernehmen": "Namen in mein Profil übernehmen"
+      "nameUebernehmen": "Namen in mein Profil übernehmen",
+      "nameFehler": "Dein Name konnte nicht ins Profil übernommen werden. Der Beleg ist dir trotzdem zugeordnet – trag den Namen bitte im Profil ein."
     },
     "anlegen": {
       "alsB": "Als Person B anlegen",
@@ -2073,11 +2485,6 @@
       "laedt": "Lädt …"
     },
     "loading": "Deine Belege werden geladen …",
-    "loadError": {
-      "heading": "Das hat nicht geklappt.",
-      "message": "Deine Belege konnten nicht geladen werden. Prüf die Verbindung und versuch es noch mal.",
-      "retry": "Noch mal versuchen"
-    },
     "offen_one": "{{count}} offen",
     "offen_other": "{{count}} offen",
     "empty": {
@@ -2091,6 +2498,7 @@
       "success": "Beleg gespeichert. Er wird jetzt gelesen.",
       "errorUnsupported": "Bitte wähle eine PDF-, JPEG-, PNG- oder WebP-Datei aus.",
       "errorFailed": "Der Upload hat nicht geklappt. Prüf die Verbindung und versuch es noch mal.",
+      "limit": "PDF, JPG, PNG oder WebP, höchstens {{receiptFileSize}} je Datei.",
       "fileAttached": "Originaldatei verschlüsselt hinterlegt"
     },
     "preview": {
@@ -2377,11 +2785,7 @@
     "back": "Zurück",
     "weiter": "Weiter",
     "loading": "Deine Angaben werden geladen …",
-    "loadError": {
-      "heading": "Das hat nicht geklappt.",
-      "message": "Deine Angaben konnten nicht geladen werden. Prüf die Verbindung und versuch es noch mal.",
-      "retry": "Noch mal versuchen"
-    },
+    "antwortZurueck": "Deine Antwort ist nicht gespeichert, die Frage steht deshalb noch einmal da.",
     "interview": {
       "wohnsitz": {
         "titleBefore": "Wo wohnst ",
@@ -2472,8 +2876,55 @@
     "pflichtFehlt": "Bitte Vorname, Nachname und Geburtsdatum eintragen.",
     "datumFalsch": "Bitte das Geburtsdatum als TT.MM.JJJJ eintragen.",
     "speichernFehler": "Das Kind wurde nicht gespeichert. Prüf die Angaben und die Verbindung und versuch es noch mal.",
+    "nichtGespeichert": "Das Kind wurde nicht gespeichert.",
+    "loeschenFehler": "Das Kind wurde nicht gelöscht.",
+    "formOffen": "Das Kind ist noch nicht gespeichert. Tipp „Kind speichern“ – oder noch einmal „Weiter“, um die Eingaben zu verwerfen.",
+    "familienstandLadefehler": "Dein Familienstand konnte nicht geladen werden – deshalb fehlen hier die Fragen zum Entlastungsbetrag.",
+    "haushaltLadefehler": "Die Kinder aus dem Haushalt konnten nicht geladen werden.",
     "kinderzulageAusLohnausweis": "Dieselbe Angabe wie im Schweizer Lohnausweis („Kinder- und Familienzulagen“): Von dort entfallen {{betrag}} auf dieses Kind. Trag hier nur etwas ein, wenn es ein anderer Betrag ist.",
-    "kinderzulageHinweis": "Dieselbe Angabe wie „Kinder- und Familienzulagen“ im Schweizer Lohnausweis. Steht sie dort schon, lass das Feld leer: Der Betrag wird von dort übernommen."
+    "kinderzulageHinweis": "Dieselbe Angabe wie „Kinder- und Familienzulagen“ im Schweizer Lohnausweis. Steht sie dort schon, lass das Feld leer: Der Betrag wird von dort übernommen.",
+    "edit": "Bearbeiten",
+    "delete": "Löschen",
+    "luecke": "Für den Ausdruck fehlen noch Angaben ({{felder}}).",
+    "lueckeFeld": {
+      "steuerId": "Steuer-ID",
+      "kindschaft": "Kindschaftsverhältnis",
+      "familienkasse": "Familienkasse",
+      "wohnsitz": "Wohnsitz"
+    },
+    "editTitle": "Kind bearbeiten",
+    "addTitle": "Kind hinzufügen",
+    "geschwister": {
+      "uebernommen": "Von {{name}} übernommen. Bitte prüf die Angaben; Vorname, Geburtsdatum und Steuer-ID fehlen noch.",
+      "frage": "Gleiche Familie? Übernimm Nachname, Familienkasse, Verhältnis, Wohnsitz und anderen Elternteil von einem Geschwisterkind.",
+      "von": "Von {{name}} übernehmen"
+    },
+    "nachnameVorschlag": "Vorschlag: dein eigener Nachname. Ändere ihn, wenn das Kind anders heißt.",
+    "familienkasse": {
+      "ausAdresse": "Vorschlag aus deiner Adresse. Die Familienkasse steht auf deinem Kindergeldbescheid.",
+      "waehlen": "Tippe zum Auswählen. Die Familienkasse steht auf deinem Kindergeldbescheid."
+    },
+    "entlastungTitel": "Entlastungsbetrag für Alleinerziehende",
+    "entlastungHilfe": "Nur wenn du allein mit dem Kind lebst. Der Ausdruck beantragt ihn für das ganze Jahr; Teilzeiträume kann er noch nicht.",
+    "wenigerAngaben": "Weitere Angaben ausblenden",
+    "weitereAngaben": "Weitere Angaben (Kindergeld, Versicherung des Kindes, Schweizer Zulage)",
+    "save": "Kind speichern",
+    "zulageVon": "Die Kinderzulage kommt mit dem Lohn von",
+    "zulageVonMir": "mir",
+    "zulageVonPartner": "meinem Partner",
+    "loading": "Kinder werden geladen …",
+    "back": "Zurück",
+    "heading": "Kinder & Anlage Kind",
+    "help": "Erfasse deine Kinder für die steuerliche Berücksichtigung (Kinderfreibetrag § 32 EStG, BEA-Freibetrag und Günstigerprüfung zum Kindergeld).",
+    "entlastungFragen": "Fragen zum Entlastungsbetrag beantworten",
+    "done": "Weiter",
+    "summaryTitle": "Steuerliche Entlastung",
+    "freibetragLabel": "Kinderfreibetrag Gesamt:",
+    "kindergeldLabel": "Kindergeld Anspruch:",
+    "schweizLabel": "davon Schweizer Kinderzulage:",
+    "diffLabel": "davon Differenz-Kindergeld (DE):",
+    "verhaeltnisZuPartnerName": "Kindschaftsverhältnis zu {{name}}",
+    "verhaeltnisZuPartner": "Kindschaftsverhältnis zu deinem Partner"
   },
   "veranlagungsartenvergleich": {
     "back": "Zurück",
@@ -2501,11 +2952,13 @@
     "herkunftRegelEinzel": "§32a EStG Grundtarif + Soli §4 SolZG",
     "herkunftRegelZusammen": "§32a Abs. 5 Splitting + Soli §4 SolZG",
     "herkunftRechenweg": "zvE-Basis: {{zveA}} + {{zveB}} (Einnahmen — noch kein echtes zvE)",
-    "progressionsvorbehaltHinweis": "Ehrlich: der Progressionsvorbehalt (Lohnersatz) ist hier noch nicht berücksichtigt."
+    "progressionsvorbehaltHinweis": "Ehrlich: der Progressionsvorbehalt (Lohnersatz) ist hier noch nicht berücksichtigt.",
+    "ungueltig": "Das ist kein Betrag. Schreib ihn wie „40.000“ oder „40.000,50“.",
+    "familienstandUnbekannt": "Ob du verheiratet bist, konnte gerade nicht geladen werden. Wähl es bitte selbst aus."
   },
   "oauthConsent": {
     "stepUpTitle": "Passwort bestätigen",
-    "stepUpBody": "Zum Schutz Ihres Kontos: Bestätigen Sie Ihr Passwort, bevor Sie einen Assistenten verbinden. Melden Sie sich ohne Passwort an (Google oder Passkey), melden Sie sich ab und wieder an.",
+    "stepUpBody": "Zum Schutz Ihres Kontos: Bestätigen Sie, dass Sie es sind, bevor Sie einen Assistenten verbinden – mit Ihrem Passwort, Ihrem Passkey oder einer erneuten Anmeldung beim Anbieter.",
     "stepUpPassword": "Passwort",
     "stepUpConfirm": "Bestätigen und erlauben",
     "stepUpWrong": "Das Passwort stimmt nicht.",
@@ -2520,8 +2973,12 @@
     "scopesHeading": "Der Assistent erhält Zugriff auf:",
     "scopeSteuerdatenRead": "Steuerdaten lesen (maskiert)",
     "scopeSteuerdatenWrite": "Steuerfakten ausfüllen (bleibt unbestätigt bis zu Ihrer Prüfung)",
-    "scopeBelegeWrite": "Belege hochladen",
-    "scopeZahllinkRead": "Zahllink abrufen",
+    "scopeBelegeWrite": "Belege samt Datei hochladen (PDF oder Bild, höchstens {{receiptFileSize}}) und selbst hochgeladene wieder zurücknehmen",
+    "scopeZahllinkRead": "Zahllink anfordern: legt einen Bezahlvorgang beim Zahlungsanbieter an; bezahlen können nur Sie",
+    "scopeZahllinkWrite": "Zahllink anfordern: legt einen Bezahlvorgang beim Zahlungsanbieter an; bezahlen können nur Sie",
+    "scopeNone": "keine Rechte angefragt",
+    "clientUnknown": "Unbekannter Assistent",
+    "clientLookupFailed": "Wer diesen Zugriff anfragt, ließ sich nicht prüfen. Ohne diese Angabe können Sie die Verbindung nicht erlauben. Laden Sie die Seite neu oder starten Sie die Verbindung im Assistenten noch einmal.",
     "scopeOfflineAccess": "Verbindung bleibt bestehen, bis Sie sie unter „Verbundene Assistenten“ widerrufen",
     "drittlandHeading": "Hinweis zur Datenübertragung (Drittland)",
     "drittlandNotice": "Durch die Verbindung werden Ihre Daten an den Anbieter dieses Assistenten übermittelt. Dies kann Server in einem Drittland (z. B. USA) ohne Angemessenheitsbeschluss der EU-Kommission umfassen. Die Verarbeitung dort unterliegt den Bestimmungen des jeweiligen Anbieters.",
@@ -2529,24 +2986,19 @@
     "deny": "Ablehnen",
     "loading": "Wird geladen …",
     "processing": "Wird verarbeitet …",
+    "expired": "Diese Freigabe ist abgelaufen oder nicht mehr gültig. Starte die Verbindung in deinem Assistenten neu.",
+    "lookupFailed": "Wir konnten nicht prüfen, welcher Assistent das ist. Erlauben geht erst, wenn das klappt.",
     "error": "Fehler bei der Autorisierung. Bitte versuchen Sie es erneut."
   },
   "eule": {
     "loading": "Eulen-Modus wird geladen …",
-    "loadError": {
-      "heading": "Das hat nicht geklappt.",
-      "message": "Der Eulen-Modus konnte nicht geladen werden.",
-      "retry": "Noch mal versuchen"
-    },
     "back": "Zurück",
     "heroTitle": "Deine Eule",
     "heroBody": "Sie kennt dein Steuerjahr und sagt dir, wo Geld liegen bleibt — mit Rechtsgrundlage, damit du selbst entscheidest.",
     "optInLabel": "Eulen-Modus aktivieren (proaktive Hinweise ab 50 €, keine personenbezogenen Daten an KI)",
-    "tabFragen": "Fragen an die Eule",
-    "tabEule": "Eule fragt dich",
     "emptyTitle": "Alles geprüft. Keine offenen Fragen!",
-    "emptyHelp": "Deine Angaben sind schlüssig. Sobald neue Belege oder Gesetzesänderungen vorliegen, meldet sich die Eule wieder.",
-    "rechtsstand": "Rechtsstand: 01.01.2025 · Zuletzt geprüft: heute",
+    "emptyHelp": "Deine Angaben sind schlüssig. Kommen neue Belege oder Angaben dazu, prüft die Eule beim nächsten Öffnen erneut.",
+    "rechtsstand": "Geprüft nach den Regeln der App für dieses Steuerjahr, jedes Mal wenn du die Eule öffnest.",
     "counter": "Frage {{current}} von {{total}}",
     "sender": "Die Eule",
     "wegeTitle": "Empfohlene Vorgehensweise (StBerG-Grenze):",
@@ -2562,15 +3014,15 @@
       "title": "Eulen-Modus erfordert ein kostenloses Konto",
       "body": "Für die KI-Steuerberatung und Belegprüfung speichern wir deine Entwürfe verschlüsselt in deinem Konto. Als Gast startet hier kein KI-Abruf.",
       "register": "Konto anlegen",
-      "login": "Einloggen"
+      "login": "Einloggen",
+      "privacyBadge": "Als Gast startet hier kein Abruf eines Sprachmodells."
     },
     "workspace": {
       "topbar": {
         "title": "Die Eule",
-        "privacy": "Datenschutz",
         "privacyAria": "Datenschutz-Hinweis anzeigen",
         "privacyTitle": "So schützt die Eule deine Daten",
-        "privacyBody": "Die Eule bekommt Zahlen aus deiner Akte, zum Beispiel Bruttolohn oder Arbeitstage, aber keine Namen, Steuer-IDs oder IBANs. Solche Angaben, auch E-Mail-Adressen und Telefonnummern, werden aus deinen Nachrichten entfernt, bevor sie an den KI-Anbieter gehen. Der Chatverlauf wird verschlüsselt gespeichert. Die Eule schreibt nie selbst in deine Erklärung: Jede Änderung übernimmst du.",
+        "privacyBody": "Was du schreibst, und Zahlen aus deiner Akte, zum Beispiel Bruttolohn oder Arbeitstage, gehen an ein Sprachmodell. Ohne deine Einwilligung „Eule und persönliche Daten“ entfernen wir vorher Namen, Steuer-IDs, IBANs, E-Mail-Adressen und Telefonnummern; mit Einwilligung gehen sie mit. Der Chatverlauf wird verschlüsselt gespeichert. Ohne Turbo-Modus übernimmst du jede Änderung selbst; mit Turbo-Modus übernimmt die Eule sie und du kannst jede rückgängig machen.",
         "privacyClose": "Schließen",
         "hints_one": "{{count}} Hinweis",
         "hints_other": "{{count}} Hinweise",
@@ -2578,17 +3030,14 @@
         "hintsAria": "Hinweise und Entwürfe der Eule öffnen",
         "drafts_one": "{{count}} Entwurf",
         "drafts_other": "{{count}} Entwürfe",
-        "conversations": "Gespräche",
         "conversationsAria": "Gespräche dieses Steuerjahres anzeigen",
         "conversationsClose": "Schließen",
-        "settings": "Einstellungen",
         "settingsAria": "Einstellungen der Eule öffnen",
         "settingsTitle": "Einstellungen der Eule",
         "settingsClose": "Schließen",
         "legalStatus": "Antworten nennen die Rechtsgrundlage · Rechtsstand {{date}}",
         "panelTitle": "Werkbank",
-        "panelClose": "Werkbank schließen",
-        "chatOpen": "Chat öffnen"
+        "panelClose": "Werkbank schließen"
       },
       "draftStageTitle": "Vorbereitete Änderungen ({{count}})",
       "applyAll": "✓ {{count}} Änderungen übernehmen",
@@ -2607,25 +3056,18 @@
       "maskUnplaced": "Diese Angabe steht im Interview. Öffne dort die passende Frage.",
       "manualNotice": "Diese Maske enthält Stammdaten und ist für automatische KI-Änderungen gesperrt (Manuelle Eingabe).",
       "inspectMask": "Maske ansehen →",
-      "chatShow": "💬 Chat einblenden",
-      "chatHide": "Chat ausblenden",
-      "tabletChatOpen": "🦉 Chat",
-      "tabletChatClose": "✕ Schließen",
-      "maximize": "⤢ Maximieren",
-      "minimize": "▾ Verkleinern",
-      "dockPlaceholder": "Kurze Frage an die Eule …",
       "receiptResultTitle": "Beleg geprüft: {{fileName}}",
       "receiptBlocked": "⚠️ Sensibler Inhalt geschwärzt (Mandantengeheimnis)",
       "pauschbetragBadge": "Im Pauschbetrag (1.230 €)",
       "provenanceReceiptOwl": "📎 Beleg + Eule",
       "provenanceOwlDraft": "🦉 Eulen-Entwurf",
-      "receiptInInbox": "Das Original liegt in deinen Belegen →"
+      "receiptInInbox": "Das Original liegt in deinen Belegen →",
+      "tabDrafts": "Entwürfe & Hinweise",
+      "tabForms": "🔍 Glas-Erklärung"
     }
   },
   "advisor": {
     "dictation": {
-      "start": "🎙 Diktieren",
-      "stop": "■ Fertig",
       "startAria": "Diktat starten",
       "stopAria": "Diktat beenden und in Text umwandeln",
       "recording": "Ich höre zu … Tipp auf „Fertig“, wenn du fertig bist.",
@@ -2698,6 +3140,8 @@
         "tooLong": "Deine Nachricht ist zu lang ({{used}} von {{max}} Zeichen). Teile sie bitte auf."
       },
       "applyFailed": "Der Vorschlag konnte nicht übernommen werden. Trag den Wert bitte direkt in der Maske ein.",
+      "conflictBatch": "Ein Wert wurde zwischenzeitlich manuell geändert. Bitte prüfen oder mit neuem Stand übernehmen.",
+      "conflictSingle": "Wert wurde zwischenzeitlich manuell geändert.",
       "reconnecting": "Verbindung wird wiederhergestellt …",
       "failed": "nicht fertig geworden",
       "emptyTitle": "Womit kann die Eule helfen?",
@@ -2778,7 +3222,6 @@
       ],
       "basisMode": "Basis-Modus: Die KI ist gerade nicht erreichbar, diese Antwort stammt aus den festen Regeln der Eule.",
       "choicesCaption": "Schnellantwort wählen:",
-      "legalSourceAria": "Rechtsquelle {{paragraph}}",
       "legalSourceCloseAria": "Rechtsquelle schließen",
       "legalSourceClose": "✕ Schließen",
       "legalStatus": "Rechtsstand: {{date}}",
@@ -2807,11 +3250,6 @@
       "receiptPasteText": "Stattdessen Text einfügen",
       "receiptPrivacy": "Der Text wird auf deinem Gerät gelesen. Das Bild geht an keine KI; das Original liegt verschlüsselt in deinen Belegen.",
       "receiptNativeHint": "Kamera-Scan folgt in der App — lade im Web ein PDF oder Foto hoch.",
-      "certificateWhose": "Der Name auf diesem Lohnausweis passt zu keiner Person in deiner Erklärung. Wessen Lohnausweis ist das? Es wurde noch nichts übernommen.",
-      "letterWhose": "Der Name auf diesem Schreiben passt zu keiner Person in deiner Erklärung. Für wen ist es? Es wurde noch nichts übernommen.",
-      "certificateOwnerA": "Meiner",
-      "certificateOwnerB": "Von Person B",
-      "lstbWhose": "Der Name auf dieser Lohnsteuerbescheinigung passt zu keiner Person in deiner Erklärung. Wessen Bescheinigung ist das? Es wurde noch nichts übernommen.",
       "lstbPersonBOwnAccount": "Das ist die Lohnsteuerbescheinigung von Person B. Person B hat ein eigenes Konto und lädt sie dort hoch; hier wurde nichts übernommen.",
       "certificatePersonBOwnAccount": "Das ist der Lohnausweis von Person B. Person B hat ein eigenes Konto und lädt ihn dort hoch; hier wurde nichts übernommen.",
       "receiptProgress": {
@@ -2852,7 +3290,7 @@
       },
       "modelFailure": {
         "title": "Das Sprachmodell hat nicht geantwortet",
-        "detail": "Technisch: {{detail}}",
+        "detail": "Meldung des Anbieters: {{detail}}",
         "retry": "Noch einmal mit dem Sprachmodell versuchen"
       },
       "context": {
@@ -2982,26 +3420,8 @@
         "confirmHint": "Die Adresse stammt aus der Antwort der Eule, nicht von uns. Öffne sie nur, wenn du ihr traust.",
         "open": "Link öffnen",
         "cancel": "Abbrechen"
-      }
-    },
-    "companion": {
-      "triggerTitle": "Eule zu dieser Maske fragen",
-      "triggerHint": "Kanzlei-Begleiter öffnen ▾",
-      "sheetTitle": "Deine Eule · Direkt-Beratung an der Maske",
-      "closeAria": "Begleiter einklappen",
-      "closeButton": "Einklappen ▴",
-      "privacyNotice": "🔒 Mandantengeheimnis aktiv — Werte werden erst nach deinem Klick auf „✓ Jetzt übernehmen“ direkt in diese Maske eingetragen.",
-      "greeting": "Frag mich direkt zu diesem Formularbereich. Ich rechne dir vorab die genaue Steuerwirkung aus.",
-      "chips": {
-        "homeofficeCheck": "Homeoffice vs. Arbeitszimmer prüfen",
-        "trainingTravel": "Fortbildung & Reisekosten klären",
-        "workEquipment": "Arbeitsmittel & Laptop absetzen",
-        "healthInsuranceCh": "Krankenkasse (z. B. 4.200 CHF) eintragen",
-        "homeofficeLumpSum": "Homeoffice-Pauschale prüfen",
-        "finalReview": "Kanzlei-Endprüfung starten",
-        "priorDonations": "Spenden aus dem Vorjahr prüfen",
-        "childcareCosts": "Kinderbetreuungskosten (Kita/Hort) prüfen"
-      }
+      },
+      "privacyNotice": "Was du hier schreibst, geht an ein Sprachmodell von {{providers}}; die Verarbeitung kann in den USA stattfinden. Ohne deine Einwilligung entfernen wir vorher Namen, Steuer-ID, IBAN und ähnliche Angaben."
     }
   },
   "sheet": {
@@ -3012,11 +3432,6 @@
     "eyebrow": "Alle Steuerjahre",
     "eyebrowZeitraum": "Alle Steuerjahre · {{zeitraum}}",
     "laden": "Dein Verlauf wird geladen …",
-    "fehler": {
-      "titel": "Das hat nicht geklappt.",
-      "text": "Der Verlauf konnte nicht geladen werden. Prüf die Verbindung und versuch es noch mal.",
-      "erneut": "Noch mal versuchen"
-    },
     "gast": {
       "titel": "Der Verlauf braucht ein Konto",
       "text": "Hier stehen alle deine Steuerjahre nebeneinander: was erklärt war, was das Finanzamt festgesetzt hat und wie sich Erstattung, Werbungskosten und Netto entwickeln. Dafür muss SteuerEule deine Jahre speichern dürfen.",
@@ -3077,7 +3492,6 @@
       "fristA11y_other": "Einspruch möglich bis {{datum}}, noch {{count}} Tage.",
       "fristVorbei": "Einspruchsfrist vorbei",
       "fristVorbeiA11y": "Einspruchsfrist endete am {{datum}}.",
-      "wirkungA11y": "Wirkung auf die Erstattung: {{wert}}",
       "wirkungUnbekannt": "nicht berechenbar",
       "zeileA11y": "{{position}}: erklärt {{erklaert}}, Bescheid {{festgesetzt}}, Wirkung auf die Erstattung {{wirkung}}.",
       "wiederTage": "{{jahr}} wieder {{tage}} erklärt",
@@ -3427,6 +3841,7 @@
     "jahr": {
       "unbekannt": {
         "titel": "{{jahr}} steht nicht im Verlauf",
+        "titelOhneJahr": "Diese Adresse nennt kein Steuerjahr aus deinem Verlauf",
         "text": "Für dieses Jahr gibt es weder eine Erklärung noch einen Bescheid. Zurück im Verlauf kannst du alte Jahre mit ihrem Bescheid ergänzen."
       },
       "satz": {
@@ -3532,7 +3947,6 @@
         "rente": "Rente"
       },
       "mehr": "Deine Bereiche",
-      "nichtErfasst": "noch nicht erfasst",
       "vorauszahlungen": {
         "titel": "Nachzahlung nach Vorauszahlungen",
         "sub": "Abschlusszahlung laut Bescheid je Jahr: Erstattung über der Linie, Nachzahlung darunter.",
@@ -3640,14 +4054,12 @@
     "ja": "Ja",
     "nein": "Nein",
     "titel": "Selbstständig {{year}}",
-    "speichernFehler": "Das hat nicht geklappt. Versuch es bitte noch einmal.",
     "gesperrt": {
       "titel": "Noch nicht freigeschaltet",
       "text": "Die Selbstständigkeit ist für dieses Konto oder dieses Jahr nicht freigeschaltet. Gib im Interview „Selbstständig“ oder „Beides“ an."
     },
     "ladefehler": {
       "titel": "Das hat nicht geladen",
-      "text": "Versuch es bitte noch einmal.",
       "nochmal": "Nochmal versuchen"
     },
     "status": {
@@ -3748,7 +4160,6 @@
       "steuerschluessel": "Steuerschlüssel",
       "formularFehler": "Bitte fülle alle Felder aus, mit einem Betrag über 0.",
       "buchen": "Buchen",
-      "belegHochladen": "Beleg hochladen",
       "festschreiben": "Festschreiben",
       "festBis": "Fest bis {{datum}}",
       "nichtFest": "Noch nichts festgeschrieben.",
@@ -3889,7 +4300,8 @@
       "vorsteuer": "Vorsteuer auf die Anschaffungskosten (€)",
       "anteilUrspruenglich": "Damals abgezogen (%)",
       "anteilJahr": "Abziehbar in {{jahr}} (%)",
-      "berichtigungSpeichern": "Berichtigung speichern"
+      "berichtigungSpeichern": "Berichtigung speichern",
+      "eigeneDauer": "Eigene Nutzungsdauer"
     },
     "abschluss": {
       "euer": "Einnahmenüberschussrechnung",
@@ -3909,7 +4321,6 @@
       "vorsteuer": "Abziehbare Vorsteuer",
       "jahr": "Umsatzsteuer des Jahres",
       "vorauszahlungen": "Vorauszahlungen",
-      "saldo": "Ergebnis",
       "erstattung": "Erstattung",
       "nachzahlung": "Nachzahlung",
       "vorauszahlungenTitel": "Vorauszahlungen",
@@ -3993,8 +4404,6 @@
       "kopiert": "Kopiert",
       "kopierenA11y": "Wert kopieren: {{label}}",
       "weitere": "Weitere Zeilen ({{count}}) – leer lassen",
-      "freigeschaltet": "{{year}} ist freigeschaltet.",
-      "abgebrochen": "Freischalten abgebrochen. Du kannst es jederzeit noch einmal versuchen.",
       "gruppe": {
         "business": "Betrieb",
         "income-tax": "Einkommensteuererklärung"
@@ -4006,7 +4415,8 @@
         "exemplar": "{{number}}. Exemplar"
       },
       "spalte": "Spalte: {{column}}",
-      "keineFormulare": "Für {{year}} hat die App noch keine Werte, die du in Mein ELSTER einträgst."
+      "keineFormulare": "Für {{year}} hat die App noch keine Werte, die du in Mein ELSTER einträgst.",
+      "unbestaetigt": "Dein Assistent hat Werte eingetragen, die du noch nicht bestätigt hast. Die Formulare der Erklärung zeigt die Ausfüllhilfe erst, wenn du sie unter „Prüfen & bestätigen“ bestätigt hast."
     },
     "export": {
       "nichtFreigeschaltet": "Der Export für {{year}} ist noch nicht freigeschaltet.",
@@ -4042,7 +4452,7 @@
       "ebilanzGesendet": "An ELSTER übermittelt (Transferticket {{ticket}}).",
       "ebilanzPlausibel": "ERiC hat den Datensatz geprüft: keine Fehler.",
       "ebilanzAbgelehnt": "ELSTER hat den Datensatz abgelehnt:",
-      "ebilanzNichtEingerichtet": "Die Übermittlung ist auf diesem Server nicht eingerichtet."
+      "ebilanzNichtEingerichtet": "Die Übermittlung an ELSTER ist noch nicht freigeschaltet."
     },
     "freischalten": {
       "text": "Buchhaltung, Umsatz- und Gewerbesteuer, Ausfüllhilfe und Exporte für {{year}} sind in der Stufe für Selbstständige enthalten.",
@@ -4116,7 +4526,9 @@
       "ohneName": "Betrieb {{nummer}}",
       "neu": "+ Weiterer Betrieb",
       "name": "Wie heißt der Betrieb?",
-      "anlegen": "Betrieb anlegen"
+      "anlegen": "Betrieb anlegen",
+      "unbekannt": "Den Betrieb {{nummer}} gibt es in diesem Jahr nicht.",
+      "zumErsten": "Zum ersten Betrieb"
     },
     "kfz": {
       "hinweis": "Nutzt du ein Fahrzeug aus dem Betrieb auch privat, ist der private Anteil eine Entnahme. Die App rechnet ihn und bucht ihn auf Wunsch zum 31.12.",
@@ -4310,5 +4722,149 @@
   },
   "betrag": {
     "unlesbar": "Das ist kein Betrag. Bitte so eingeben: 948 oder 948,60."
+  },
+  "rueckfrage": {
+    "abbrechen": "Abbrechen",
+    "singleAssessment": {
+      "titel": "Einzelveranlagung für {{jahr}} wählen?",
+      "text": "Für {{jahr}} gebt ihr dann getrennte Erklärungen ab. Die Kopplung mit Person B für {{jahr}} wird gelöst: Was du für Person B erfasst hast, gehört nicht mehr zu deiner Erklärung, und ein offener Einladungscode gilt nicht mehr.",
+      "bestaetigen": "Einzelveranlagung wählen"
+    },
+    "endPartnerLink": {
+      "titel": "Verknüpfung ab {{jahr}} beenden?",
+      "text": "Ab {{jahr}} gehört dein Partner nicht mehr zu deinem Haushalt, und ihr könnt keine gemeinsame Erklärung mehr abgeben. Die Jahre davor bleiben, wie sie sind.",
+      "bestaetigen": "Verknüpfung beenden"
+    },
+    "householdLeave": {
+      "titel": "{{name}} ab {{jahr}} nicht mehr dabei?",
+      "text": "{{name}} gehört ab {{jahr}} nicht mehr zu deinem Haushalt. Die Angaben zu {{name}} ab {{jahr}} werden gelöscht; frühere Jahre bleiben.",
+      "bestaetigen": "Nicht mehr dabei"
+    },
+    "householdDelete": {
+      "titel": "{{name}} endgültig löschen?",
+      "text": "Damit verschwindet {{name}} aus allen Steuerjahren, auch aus abgeschlossenen. Das lässt sich nicht rückgängig machen.",
+      "bestaetigen": "Endgültig löschen"
+    },
+    "lstbDiscardDraft": {
+      "titel": "Gelesene Werte verwerfen?",
+      "text": "Die Werte, die die Eule aus deiner Lohnsteuerbescheinigung gelesen hat, gehen verloren. Deine gespeicherten Angaben für {{jahr}} bleiben unverändert.",
+      "bestaetigen": "Verwerfen"
+    },
+    "rentalRemoveRepair": {
+      "titel": "Erhaltungsaufwand {{nummer}} entfernen?",
+      "text": "Der Betrag und seine Verteilung werden aus diesem Objekt gelöscht und zählen nicht mehr als Werbungskosten.",
+      "bestaetigen": "Entfernen"
+    },
+    "childDelete": {
+      "titel": "{{name}} löschen?",
+      "text": "{{name}} und alle Angaben zu dem Kind werden aus {{jahr}} gelöscht: Kindergeld, Betreuungskosten und Freibeträge entfallen in deiner Erklärung.",
+      "bestaetigen": "Kind löschen"
+    },
+    "bookingReverse": {
+      "titel": "Buchung {{nummer}} stornieren?",
+      "text": "Es entsteht eine Gegenbuchung. Das ist endgültig: Buchung und Storno bleiben im Journal stehen und lassen sich nicht mehr löschen.",
+      "bestaetigen": "Endgültig stornieren"
+    },
+    "bookLock": {
+      "titel": "Bis {{datum}} festschreiben?",
+      "text": "Das ist endgültig: Buchungen bis zum {{datum}} lassen sich danach weder ändern noch stornieren, und die Festschreibung lässt sich nicht zurücknehmen.",
+      "bestaetigen": "Endgültig festschreiben"
+    },
+    "assetDispose": {
+      "titel": "Abgang von {{name}} buchen?",
+      "text": "Das Anlagegut gilt ab dem Abgangsdatum als ausgeschieden; mit der nächsten AfA-Buchung wird der Restbuchwert gebucht. Das ist endgültig: Korrigieren lässt es sich nur noch per Storno.",
+      "bestaetigen": "Abgang buchen"
+    },
+    "depreciationBook": {
+      "titel": "Abschreibungen {{jahr}} buchen?",
+      "text": "Die AfA und die Abgänge des Jahres werden ins Journal gebucht. Das ist endgültig: Eine Korrektur geht nur noch per Storno.",
+      "bestaetigen": "AfA buchen"
+    },
+    "openingBalance": {
+      "titel": "Eröffnungsbilanz {{folgejahr}} buchen?",
+      "text": "Die Schlussbilanz {{jahr}} wird als Eröffnungsbuchung in {{folgejahr}} übernommen. Das ist endgültig: Sie lässt sich nur einmal buchen und nur per Storno korrigieren.",
+      "bestaetigen": "Eröffnungsbilanz buchen"
+    },
+    "eBilanzSend": {
+      "titel": "E-Bilanz {{jahr}} an ELSTER übermitteln?",
+      "text": "Die E-Bilanz geht an dein Finanzamt. Das ist endgültig: Eine übermittelte E-Bilanz lässt sich nicht zurückholen, nur durch eine neue ersetzen.",
+      "bestaetigen": "Endgültig übermitteln"
+    },
+    "bankIgnore": {
+      "titel": "Umsatz ignorieren?",
+      "text": "Der Kontoumsatz wird nicht gebucht und verschwindet aus der offenen Liste. Ein erneuter Import holt ihn nicht zurück.",
+      "bestaetigen": "Ignorieren"
+    },
+    "shareRemove": {
+      "titel": "Beteiligung {{name}} entfernen?",
+      "text": "Die Beteiligung und ihre Zahlen aus dem Feststellungsbescheid werden gelöscht und zählen nicht mehr in deiner Erklärung.",
+      "bestaetigen": "Entfernen"
+    },
+    "proposalDiscard": {
+      "titel": "Vorschlag verwerfen?",
+      "text": "Der vorgeschlagene Wert geht verloren; dein bisheriger Wert bleibt.",
+      "bestaetigen": "Verwerfen"
+    },
+    "taskDiscard": {
+      "titel": "Aufgabe verwerfen?",
+      "text": "Die Aufgabe verschwindet aus deiner Liste.",
+      "bestaetigen": "Verwerfen"
+    },
+    "partnerConsentWithdraw": {
+      "titel": "Zustimmung für {{jahr}} zurücknehmen?",
+      "text": "Dein Partner sieht deine Angaben für {{jahr}} ab sofort nicht mehr und kann {{jahr}} nicht mehr mit deinen Zahlen zusammen abgeben. Du kannst später wieder zustimmen.",
+      "bestaetigen": "Zustimmung zurücknehmen"
+    },
+    "submissionWithdraw": {
+      "titel": "Abgabe {{jahr}} zurücknehmen?",
+      "text": "Die eingefrorene Fassung deiner abgegebenen Erklärung {{jahr}} wird gelöst, und die Erklärung gilt wieder als offen. Beim Finanzamt ändert das nichts.",
+      "bestaetigen": "Abgabe zurücknehmen"
+    },
+    "noteDelete": {
+      "titel": "Notiz löschen?",
+      "text": "Die Notiz ist danach weg; die Eule kennt sie in diesem Gespräch nicht mehr.",
+      "bestaetigen": "Löschen"
+    },
+    "assistantRevoke": {
+      "titel": "{{name}} trennen?",
+      "text": "{{name}} verliert sofort den Zugriff auf deine Steuerdaten. Zum erneuten Verbinden musst du den Zugriff neu freigeben.",
+      "bestaetigen": "Trennen"
+    }
+  },
+  "zahlung": {
+    "wirdBestaetigt": "Deine Zahlung wird bestätigt. Das dauert meist nur Sekunden – du musst nichts weiter tun.",
+    "bestaetigt": "Zahlung bestätigt: {{year}} ist freigeschaltet.",
+    "abgebrochen": "Die Zahlung wurde abgebrochen, es wurde nichts bezahlt. Du kannst es jederzeit erneut versuchen.",
+    "zeitUeberschritten": "Die Bestätigung dauert länger als üblich. Hast du bezahlt, schalten wir {{year}} frei, sobald die Zahlung bei uns eingeht. Ein zweites Mal bezahlen musst du nicht.",
+    "erneutPruefen": "Erneut prüfen",
+    "schonBezahlt": "{{year}} ist schon freigeschaltet.",
+    "ausstehend": "Deine Zahlung ist noch in Bearbeitung, etwa eine Lastschrift. Sobald sie eingeht, schalten wir {{year}} frei.",
+    "zuVieleVersuche": "Zu viele Versuche in kurzer Zeit. Bitte warte ein paar Minuten.",
+    "preis": "Preis: {{preis}} einmalig für {{year}}.",
+    "preisUnbekannt": "Den Preis zeigt dir unser Zahlungsdienst Stripe auf der nächsten Seite, bevor du bezahlst."
+  },
+  "ausdruckPersonB": {
+    "titel": "Euren Ausdruck druckt die Person, die eingeladen hat",
+    "text": "Ihr gebt eine gemeinsame Erklärung ab. Sie wird einmal gedruckt und bezahlt – von der Person, die zur Zusammenveranlagung eingeladen hat. Du zahlst hier nichts. Prüf und bestätige deine Angaben, dann kann sie drucken.",
+    "bestaetigen": "Meine Angaben prüfen & bestätigen"
+  },
+  "beta": {
+    "label": "Beta:",
+    "notice": "SteuerEule ist in der Testphase. Funktionen können sich ändern und Fehler sind möglich. Prüfe jeden Ausdruck, bevor du ihn unterschreibst und einreichst."
+  },
+  "stepUp": {
+    "heading": "Bestätige, dass du es bist",
+    "body": "Zum Schutz deines Kontos fragen wir bei diesem Schritt noch einmal nach.",
+    "password": "Passwort",
+    "confirm": "Bestätigen und fortfahren",
+    "cancel": "Abbrechen",
+    "without": "Dein Konto hat kein Passwort. Bestätige mit deinem Passkey oder melde dich beim Anbieter noch einmal an – du bleibst dabei angemeldet.",
+    "orWithout": "Oder ohne Passwort:",
+    "withPasskey": "Mit Passkey bestätigen",
+    "withProvider": {
+      "google": "Mit Google erneut anmelden",
+      "apple": "Mit Apple erneut anmelden"
+    },
+    "passkeyFailed": "Der Passkey hat nicht bestätigt. Versuch es noch mal."
   }
 }

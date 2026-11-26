@@ -2,7 +2,7 @@ import type { ArgumentsHost } from '@nestjs/common'
 import { Logger } from '@nestjs/common'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { DomainErrorFilter } from '../src/common/domain-error.filter.js'
-import { ConflictError, type DomainError, InvalidInputError, NotFoundError, UnavailableError } from '../src/common/domain-error.js'
+import { ConflictError, type DomainError, InvalidInputError, NotFoundError, PayloadTooLargeError, UnavailableError } from '../src/common/domain-error.js'
 
 function fakeHost() {
   const reply = { statusCode: 0, body: undefined as unknown }
@@ -29,6 +29,8 @@ describe('DomainErrorFilter', () => {
     [new NotFoundError('BELEG_NOT_FOUND', 'missing'), 404],
     [new ConflictError('ALREADY_TAKEN_OVER', 'twice'), 409],
     [new UnavailableError('PAYMENT_NOT_CONFIGURED', 'off'), 503],
+    // WEB-10: an oversize upload is a 413, so the client names the limit instead of "check your input".
+    [new PayloadTooLargeError('RECEIPT_FILE_TOO_LARGE', 'too big'), 413],
   ])('maps %s to HTTP %i with a stable code in the body', (error, status) => {
     vi.spyOn(Logger.prototype, 'warn').mockImplementation(() => {})
     vi.spyOn(Logger.prototype, 'error').mockImplementation(() => {})

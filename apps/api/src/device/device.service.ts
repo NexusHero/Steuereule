@@ -6,6 +6,7 @@ import { DEVICE_CODE_REPOSITORY, type DeviceCodeRepository } from './device-code
 import type { DeviceCodeResponseDto } from './dto/device-code-response.dto.js'
 import type { DevicePendingResponseDto } from './dto/device-pending-response.dto.js'
 import { REGION_RESOLVER, type RegionResolver } from './region/region-resolver.js'
+import { deviceSessionAnchor } from './device-session-anchor.js'
 
 export const DEVICE_AUTHORIZATION_CLIENT_ID = 'steuereule-web'
 
@@ -73,6 +74,9 @@ export class DeviceService {
   }
 
   async approve(userCode: string, headers: Headers): Promise<void> {
+    // The approver's sign-in time travels with the code (API-1); written first, so no exchange can come between.
+    const session = await this.betterAuth.auth.api.getSession({ headers })
+    if (session) await this.repository.recordApprovalAnchor(userCode, session.user.id, new Date(session.session.createdAt))
     try {
       await deviceAuthorizationApi(this.betterAuth.auth).deviceApprove({ headers, body: { userCode } })
     } catch (error) {
@@ -81,6 +85,8 @@ export class DeviceService {
   }
 
   async exchangeToken(deviceCode: string, headers: Headers): Promise<DeviceTokenExchangeResult> {
+    // Read before redemption: redeeming the code deletes its row.
+    const anchor = await this.repository.findApprovalAnchor(deviceCode)
     let result: Awaited<ReturnType<ReturnType<typeof deviceAuthorizationApi>['deviceToken']>>
     try {
       result = await deviceAuthorizationApi(this.betterAuth.auth).deviceToken({
@@ -95,6 +101,9 @@ export class DeviceService {
     } catch (error) {
       translateDeviceApiError(error)
     }
+
+    const { createdAt, latestExpiry } = deviceSessionAnchor(anchor)
+    await this.repository.anchorSession(result.response.access_token, createdAt, latestExpiry)
 
     const setCookies = result.headers.getSetCookie()
     if (setCookies.length === 0) {

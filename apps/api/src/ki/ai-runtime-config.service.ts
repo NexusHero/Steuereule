@@ -1,6 +1,6 @@
 import { Inject, Injectable, Optional } from '@nestjs/common'
 import { BETTER_AUTH_BUNDLE, type BetterAuthBundle } from '../auth/auth.tokens.js'
-import type { AdvisorModelProvider } from '@steuereule/core'
+import type { AdvisorModelProvider, ModelCallTier } from '@steuereule/core'
 
 /** `advisor_guard`: the small model that checks a typed question's topic first (ADR-0069). */
 export type AiTaskSlot = 'advisor_chat' | 'vision_ocr' | 'fallback' | 'advisor_guard'
@@ -55,6 +55,17 @@ export const DEFAULT_AI_TURN_LIMITS: AiTurnLimits = {
 /** Model calls a day across all users, a safety net against a bill that runs away, not a fair-use limit (ADR-0109). */
 export const DEFAULT_AI_DAILY_CALL_LIMIT = 10_000
 
+/**
+ * The share of the day's model calls, in percent, that only paid accounts may use (H2-40): once the free
+ * calls have taken the rest, a paying user's owl still asks the model instead of quietly falling back to rules.
+ */
+export const DEFAULT_AI_PAID_RESERVE_PERCENT = 30
+
+/** The calls a free account may take of `limit` per day: everything but the reserve, never below one. */
+export function freeCallLimit(limit: number, reservePercent: number): number {
+  return Math.max(1, Math.floor((limit * (100 - reservePercent)) / 100))
+}
+
 export const AI_RUNTIME_CONFIG_SERVICE = Symbol('AI_RUNTIME_CONFIG_SERVICE')
 export const AI_ENV_SOURCE = Symbol('AI_ENV_SOURCE')
 
@@ -65,9 +76,10 @@ export interface AiRuntimeConfigService {
   /**
    * Takes one model call from the day's budget across all users (ADR-0109); false once it is spent, and the
    * caller answers as if no model were configured. Counted where a turn, a summary or a document read starts,
-   * not per provider round trip. Absent: no global cap.
+   * not per provider round trip. A `free` call (the default) stops at the free share; a `paid` one may use the
+   * reserve too (H2-40). Absent: no global cap.
    */
-  takeCallBudget?(): Promise<boolean>
+  takeCallBudget?(tier?: ModelCallTier): Promise<boolean>
   /**
    * The chat slot for the model a user picked for a conversation (ADR-0096), with that provider's
    * key and the chat's own settings; null when the provider has no key, so the standard model answers.
@@ -145,12 +157,19 @@ export class EnvAiRuntimeConfigService implements AiRuntimeConfigService {
     this.env = env ?? process.env
   }
 
-  async takeCallBudget(): Promise<boolean> {
+  async takeCallBudget(tier: ModelCallTier = 'free'): Promise<boolean> {
     if (!this.shared) return true
     const limit = positiveIntOr(this.env.AI_DAILY_CALL_LIMIT, DEFAULT_AI_DAILY_CALL_LIMIT, 100_000_000)
+    const rawReserve = this.env.AI_PAID_RESERVE_PERCENT?.trim()
+    const parsedReserve = rawReserve ? Number.parseInt(rawReserve, 10) : Number.NaN
+    // 0 switches the reserve off; at most 90 %, so free accounts always keep a share.
+    const reserve = Number.isInteger(parsedReserve) && parsedReserve >= 0 ? Math.min(parsedReserve, 90) : DEFAULT_AI_PAID_RESERVE_PERCENT
     const day = new Date().toISOString().slice(0, 10)
+    const window = 24 * 60 * 60
     try {
-      return (await this.shared.rateLimitStorage.consume(`ai-calls:${day}`, { window: 24 * 60 * 60, max: limit })).allowed
+      // A free call first takes a place in the free share, so it can never reach the paid reserve.
+      if (tier !== 'paid' && !(await this.shared.rateLimitStorage.consume(`ai-calls-free:${day}`, { window, max: freeCallLimit(limit, reserve) })).allowed) return false
+      return (await this.shared.rateLimitStorage.consume(`ai-calls:${day}`, { window, max: limit })).allowed
     } catch {
       // The counter must never take the answers down with it.
       return true

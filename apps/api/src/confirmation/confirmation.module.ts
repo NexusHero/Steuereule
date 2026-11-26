@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common'
+import { APP_INTERCEPTOR } from '@nestjs/core'
 import { ASSESSMENT_REPOSITORY, type AssessmentRepository } from '../assessment/assessment.repository.js'
 import { AssessmentModule } from '../assessment/assessment.module.js'
 import { AssistantTaskModule } from '../assistant-task/assistant-task.module.js'
@@ -32,9 +33,13 @@ import { BOOKING_FIELD_ACCESS } from '../business/booking-field-access.js'
 import { ConfirmationController } from './confirmation.controller.js'
 import { ConfirmationService } from './confirmation.service.js'
 import { FIELD_ACCESS, fieldAccessFrom, type ScreenAccess } from './field-access.js'
+import { PrismaModule } from '../prisma/prisma.module.js'
+import { UserWriteMarkings } from './user-write-markings.js'
+import { UserWriteInterceptor } from './user-write.interceptor.js'
 
 @Module({
   imports: [
+    PrismaModule,
     AuditModule,
     MarkingModule,
     LstbModule,
@@ -55,6 +60,9 @@ import { FIELD_ACCESS, fieldAccessFrom, type ScreenAccess } from './field-access
   controllers: [ConfirmationController],
   providers: [
     ConfirmationService,
+    UserWriteMarkings,
+    // „The user wins“ for every user write route (`@UserWrite`), in one place (ADR-0052 §7).
+    { provide: APP_INTERCEPTOR, useClass: UserWriteInterceptor },
     {
       provide: FIELD_ACCESS,
       inject: [

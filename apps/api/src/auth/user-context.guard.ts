@@ -1,15 +1,18 @@
+import { RETENTION } from '@steuereule/core'
 import { createHash } from 'node:crypto'
 import { ForbiddenException, Inject, Injectable, Optional, UnauthorizedException, type CanActivate, type ExecutionContext } from '@nestjs/common'
 import { fromNodeHeaders } from 'better-auth/node'
 import type { FastifyReply, FastifyRequest } from 'fastify'
 import { ACCEPTS_ASSISTANT_TOKEN } from './accepts-assistant-token.js'
+import { PUBLIC_ROUTE } from './public-route.js'
 import { BETTER_AUTH_BUNDLE, type BetterAuthBundle } from './auth.tokens.js'
 import { newGuestUserId, resolveGuestSessionSecret, signGuestSession, verifyGuestSession } from './guest-session.js'
 import { BEARER_TOKEN_REPOSITORY, type BearerTokenRepository } from './bearer-token.repository.js'
 import { verifyJwsAccessToken } from 'better-auth/oauth2'
-import { authIssuer, mcpResourceUrls } from './mcp-oauth.js'
+import { authIssuer, MCP_RESOURCE_PATH, MCP_STREAMABLE_PATH, mcpBearerChallenge, mcpResourceUrls } from './mcp-oauth.js'
+import { clientDisplayName } from './oauth-client-name.js'
 import { isSessionWithinAbsoluteCap } from './session-lifetime.js'
-import { TooManyRequestsError } from '../common/domain-error.js'
+import { TooManyRequestsError, UnauthenticatedError } from '../common/domain-error.js'
 import { GUEST_ACTIVITY_RECORDER, type GuestActivityRecorder } from '../guest/guest-retention.js'
 
 type JwksFetch = Extract<Parameters<typeof verifyJwsAccessToken>[1]['jwksFetch'], () => unknown>
@@ -20,6 +23,8 @@ export const USER_ID_KIND_REQUEST_KEY = 'userIdKind'
 export const AUTH_CONTEXT_REQUEST_KEY = 'authContext'
 /** Whether the established identity's email is verified — read by `RequiresVerifiedEmailGuard` (ADR-0103). */
 export const EMAIL_VERIFIED_REQUEST_KEY = 'emailVerified'
+/** The 401 code of a session cookie that no longer verifies (WEB-24); the client sends the user to sign in. */
+export const SESSION_EXPIRED_CODE = 'SESSION_EXPIRED'
 
 export interface AssistantAuthContext {
   readonly source: 'assistent'
@@ -34,7 +39,13 @@ export interface UserAuthContext {
 
 export type AuthContext = AssistantAuthContext | UserAuthContext
 
-const COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 180
+interface AssistantIdentity {
+  readonly userId: string
+  readonly context: AssistantAuthContext
+}
+
+/** Lifetime of the guest cookie, printed in the privacy text through `RETENTION.guestCookieDays`. */
+export const COOKIE_MAX_AGE_SECONDS = RETENTION.guestCookieDays * 24 * 60 * 60
 
 /**
  * Writes by guests per client address (ADR-0106 D8). A guest needs no account, and every guest write may
@@ -42,6 +53,13 @@ const COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 180
  * this; a script filling the database does not.
  */
 export const GUEST_WRITE_LIMIT = { window: 60 * 60, max: 300 } as const
+/**
+ * New guests that store something, per address and hour (API-9). A write without a guest cookie starts a new
+ * guest with data the sweep must erase 30 days later; 300 writes an hour could each start one. With this cap
+ * an address adds at most 20 guests an hour, and one sweep run per process and hour erases up to
+ * GUEST_SWEEP_MAX_PER_RUN (500): one instance keeps up with 25 such addresses at full rate.
+ */
+export const GUEST_CREATION_LIMIT = { window: 60 * 60, max: 20 } as const
 const STATE_CHANGING_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE'])
 
 export type UserIdKind = 'session' | 'guest' | 'bearer'
@@ -68,7 +86,7 @@ export class UserContextGuard implements CanActivate {
    * connection itself is checked too: revoking deletes the consent, and that stops the token at once
    * (ADR-0052 §10). Client-credentials tokens carry no user and are refused.
    */
-  private async acceptJwtAccessToken(request: RequestWithUserId, rawToken: string): Promise<boolean> {
+  private async resolveJwtAccessToken(rawToken: string): Promise<AssistantIdentity> {
     // The bundle is typed with better-auth's base API; the jwt plugin adds getJwks at runtime.
     const auth = this.betterAuth.auth as unknown as { api: { getJwks: JwksFetch }; options: { baseURL?: unknown } }
     const baseUrl = String(auth.options.baseURL)
@@ -87,65 +105,151 @@ export class UserContextGuard implements CanActivate {
     const [client, consented] = await Promise.all([this.tokens.findClient(clientId), this.tokens.hasConsent(userId, clientId)])
     if (!client || client.disabled) throw new UnauthorizedException('OAuth client has been disabled.')
     if (!consented) throw new UnauthorizedException('Bearer token has been revoked.')
-    request[USER_ID_REQUEST_KEY] = userId
-    request[USER_ID_KIND_REQUEST_KEY] = 'bearer'
-    request[AUTH_CONTEXT_REQUEST_KEY] = {
-      source: 'assistent',
-      clientId,
-      clientName: client.name ?? 'Assistent',
-      scopes: typeof claims.scope === 'string' ? claims.scope.split(' ').filter((scope) => scope.length > 0) : [],
+    return {
+      userId,
+      context: {
+        source: 'assistent',
+        clientId,
+        clientName: clientDisplayName(client.name),
+        scopes: typeof claims.scope === 'string' ? claims.scope.split(' ').filter((scope) => scope.length > 0) : [],
+      },
     }
-    // An assistant acts for an account that completed OAuth consent; it cannot verify an email itself, so
-    // it is not subject to the verified-email gate (ADR-0103).
-    request[EMAIL_VERIFIED_REQUEST_KEY] = true
-    return true
   }
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest<RequestWithUserId>()
     const reply = context.switchToHttp().getResponse<FastifyReply>()
 
+    // A public route never creates a guest (H2-17). It runs as the signed-in user when a valid session comes with
+    // it (the consent screen of a client created in that user's profile), and anonymously otherwise.
+    const handler = typeof context.getHandler === 'function' ? context.getHandler() : undefined
+    if (handler !== undefined && Reflect.getMetadata(PUBLIC_ROUTE, handler) === true) {
+      await this.attachSessionIfValid(request)
+      return true
+    }
+
     // The guest sweep rides on any guarded request (ADR-0109); it runs at most once an hour per process.
     this.guestActivity?.seen()
 
     const authHeader = request.headers?.authorization
+    const assistantEndpoint = Reflect.getMetadata(ACCEPTS_ASSISTANT_TOKEN, context.getClass()) === true
     if (typeof authHeader === 'string' && authHeader.startsWith('Bearer ')) {
       // An assistant's token is good for the MCP endpoint only (ADR-0052 amendment 4): on any other
       // controller it would pass for the user and walk around the tools' scopes and read view.
-      if (Reflect.getMetadata(ACCEPTS_ASSISTANT_TOKEN, context.getClass()) !== true) {
+      if (!assistantEndpoint) {
         throw new ForbiddenException('Ein Assistenten-Token gilt nur am MCP-Endpunkt.')
       }
-      const rawToken = authHeader.slice(7).trim()
-      if (!rawToken) {
-        throw new UnauthorizedException('Missing bearer token.')
-      }
-      if (rawToken.split('.').length === 3) return this.acceptJwtAccessToken(request, rawToken)
-      const tokenHash = createHash('sha256').update(rawToken).digest('base64url')
-      const tokenRecord = await this.tokens.findOpaqueToken(tokenHash)
-      if (!tokenRecord || !tokenRecord.userId) {
-        throw new UnauthorizedException('Invalid bearer token.')
-      }
-      if (tokenRecord.revoked !== null) {
-        throw new UnauthorizedException('Bearer token has been revoked.')
-      }
-      if (tokenRecord.expiresAt && tokenRecord.expiresAt < new Date()) {
-        throw new UnauthorizedException('Bearer token has expired.')
-      }
-      if (tokenRecord.client.disabled) {
-        throw new UnauthorizedException('OAuth client has been disabled.')
-      }
-      request[USER_ID_REQUEST_KEY] = tokenRecord.userId
-      request[USER_ID_KIND_REQUEST_KEY] = 'bearer'
-      request[AUTH_CONTEXT_REQUEST_KEY] = {
-        source: 'assistent',
-        clientId: tokenRecord.clientId,
-        clientName: tokenRecord.client.name ?? 'Assistent',
-        scopes: [...tokenRecord.scopes],
-      }
-      request[EMAIL_VERIFIED_REQUEST_KEY] = true
-      return true
+      return this.withChallenge(request, reply, () => this.acceptBearer(request, authHeader))
     }
 
+    // The MCP endpoint takes assistant tokens only: without one it answers 401 with the pointer to the sign-in,
+    // before any cookie or guest path, so no guest identity, cookie or guest-activity row is made (MCP-9, H2-27).
+    if (assistantEndpoint) {
+      this.setChallenge(request, reply)
+      throw new UnauthorizedException('Der MCP-Endpunkt ist nur für autorisierte KI-Assistenten mit OAuth-Bearer-Token zugänglich.')
+    }
+    return this.acceptCookieOrGuest(request, reply)
+  }
+
+  /** The challenge of the MCP endpoint the request went to (RFC 6750 §3, RFC 9728 §5.1), optionally naming the error. */
+  private setChallenge(request: RequestWithUserId, reply: FastifyReply, error?: string): void {
+    reply.header('WWW-Authenticate', this.challengeFor(request, error))
+  }
+
+  private challengeFor(request: FastifyRequest, error?: string): string {
+    const path = (request.url ?? '').split('?')[0] ?? ''
+    // /mcp (Streamable HTTP) is a resource of its own; the SSE transport (/mcp/sse, /mcp/messages) is the older one.
+    const resource = path === MCP_STREAMABLE_PATH || path === `${MCP_STREAMABLE_PATH}/` ? MCP_STREAMABLE_PATH : MCP_RESOURCE_PATH
+    const challenge = mcpBearerChallenge(String(this.betterAuth.auth.options.baseURL), resource)
+    return error === undefined ? challenge : `${challenge}, error="${error}"`
+  }
+
+  /** A refused token on the MCP endpoint carries `invalid_token`, so a client refreshes or signs in again (MCP-14). */
+  private async withChallenge(request: RequestWithUserId, reply: FastifyReply, accept: () => Promise<boolean>): Promise<boolean> {
+    try {
+      return await accept()
+    } catch (error) {
+      if (error instanceof UnauthorizedException) this.setChallenge(request, reply, 'invalid_token')
+      throw error
+    }
+  }
+
+  private async acceptBearer(request: RequestWithUserId, authHeader: string): Promise<boolean> {
+    const { userId, context } = await this.resolveBearer(authHeader)
+    request[USER_ID_REQUEST_KEY] = userId
+    request[USER_ID_KIND_REQUEST_KEY] = 'bearer'
+    request[AUTH_CONTEXT_REQUEST_KEY] = context
+    // An assistant acts for an account that completed OAuth consent; it cannot verify an email itself, so
+    // it is not subject to the verified-email gate (ADR-0103).
+    request[EMAIL_VERIFIED_REQUEST_KEY] = true
+    return true
+  }
+
+  /**
+   * The one bearer decision: a JWT for the MCP endpoint or an opaque token of a client that is not disabled, of
+   * a user who still consents to that client (revoking deletes the consent and stops every token of it at once,
+   * ADR-0052 §10). Throws UnauthorizedException when the token does not pass.
+   */
+  private async resolveBearer(authHeader: string): Promise<AssistantIdentity> {
+    const rawToken = authHeader.slice(7).trim()
+    if (!rawToken) {
+      throw new UnauthorizedException('Missing bearer token.')
+    }
+    if (rawToken.split('.').length === 3) return this.resolveJwtAccessToken(rawToken)
+    const tokenHash = createHash('sha256').update(rawToken).digest('base64url')
+    const tokenRecord = await this.tokens.findOpaqueToken(tokenHash)
+    if (!tokenRecord || !tokenRecord.userId) {
+      throw new UnauthorizedException('Invalid bearer token.')
+    }
+    if (tokenRecord.revoked !== null) {
+      throw new UnauthorizedException('Bearer token has been revoked.')
+    }
+    if (tokenRecord.expiresAt && tokenRecord.expiresAt < new Date()) {
+      throw new UnauthorizedException('Bearer token has expired.')
+    }
+    if (tokenRecord.client.disabled) {
+      throw new UnauthorizedException('OAuth client has been disabled.')
+    }
+    if (!(await this.tokens.hasConsent(tokenRecord.userId, tokenRecord.clientId))) {
+      throw new UnauthorizedException('Bearer token has been revoked.')
+    }
+    return {
+      userId: tokenRecord.userId,
+      context: { source: 'assistent', clientId: tokenRecord.clientId, clientName: clientDisplayName(tokenRecord.client.name), scopes: [...tokenRecord.scopes] },
+    }
+  }
+
+  /**
+   * The bearer check of an MCP message whose body is larger than the default limit, made before Fastify reads
+   * the body (`mcp/mcp-body-limit.ts`): only a caller with a valid assistant token may make the server buffer
+   * up to 15 MB. Returns null when the token passes, else the WWW-Authenticate challenge for the 401. The guard
+   * decides the request itself again once the body is read.
+   */
+  async refuseBearerBeforeBody(request: FastifyRequest): Promise<string | null> {
+    const authHeader = request.headers.authorization
+    if (typeof authHeader !== 'string' || !authHeader.startsWith('Bearer ')) return this.challengeFor(request)
+    try {
+      await this.resolveBearer(authHeader)
+      return null
+    } catch (error) {
+      if (error instanceof UnauthorizedException) return this.challengeFor(request, 'invalid_token')
+      throw error
+    }
+  }
+
+  /** A public route's optional session: attached when valid, ignored otherwise; no guest, no cookie change, no 401. */
+  private async attachSessionIfValid(request: RequestWithUserId): Promise<void> {
+    const cookies = request.cookies as Record<string, string | undefined> | undefined
+    if (!cookies?.[this.betterAuth.sessionCookieName]) return
+    const session = await this.betterAuth.auth.api.getSession({ headers: fromNodeHeaders(request.headers) })
+    if (!session || !isSessionWithinAbsoluteCap(session.session?.createdAt)) return
+    request[USER_ID_REQUEST_KEY] = session.user.id
+    request[USER_ID_KIND_REQUEST_KEY] = 'session'
+    request[AUTH_CONTEXT_REQUEST_KEY] = { source: 'nutzer' }
+    request[EMAIL_VERIFIED_REQUEST_KEY] = session.user.emailVerified === true
+  }
+
+  private async acceptCookieOrGuest(request: RequestWithUserId, reply: FastifyReply): Promise<boolean> {
     const cookies = request.cookies as Record<string, string | undefined> | undefined
 
     if (cookies?.[this.betterAuth.sessionCookieName]) {
@@ -161,6 +265,11 @@ export class UserContextGuard implements CanActivate {
         request[EMAIL_VERIFIED_REQUEST_KEY] = session.user.emailVerified === true
         return true
       }
+      // WEB-24: a session that expired, was revoked or is past the absolute cap (ADR-0103) is refused with a
+      // 401 the client can act on, instead of letting a signed-in user's next save land in a fresh guest
+      // account. The stale cookie is cleared, so the request after this one is an ordinary guest request.
+      void reply.clearCookie(this.betterAuth.sessionCookieName, { path: '/' })
+      throw new UnauthenticatedError(SESSION_EXPIRED_CODE, 'Die Anmeldung ist abgelaufen. Bitte melde dich neu an.')
     }
 
     const secret = resolveGuestSessionSecret()
@@ -182,6 +291,12 @@ export class UserContextGuard implements CanActivate {
       const decision = await this.betterAuth.rateLimitStorage.consume(`guest-write:${request.ip ?? 'no-ip'}`, GUEST_WRITE_LIMIT)
       if (!decision.allowed) {
         throw new TooManyRequestsError('GUEST_WRITE_LIMIT', 'Zu viele Änderungen ohne Konto. Lege ein Konto an oder versuch es später noch mal.')
+      }
+      if (!verifiedUserId) {
+        const created = await this.betterAuth.rateLimitStorage.consume(`guest-new:${request.ip ?? 'no-ip'}`, GUEST_CREATION_LIMIT)
+        if (!created.allowed) {
+          throw new TooManyRequestsError('GUEST_WRITE_LIMIT', 'Zu viele Änderungen ohne Konto. Lege ein Konto an oder versuch es später noch mal.')
+        }
       }
       // The retention clock (ADR-0109): 30 days after the last write the guest's data is erased. A failed
       // note must not fail the write; the guest then simply is not swept until the next one succeeds.

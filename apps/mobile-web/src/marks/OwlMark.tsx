@@ -31,7 +31,7 @@ export function OwlMark({ size = 104, variant = 'funke', headStyle, glassesStyle
       importantForAccessibility="no-hide-descendants"
       testID={`owl-mark-${variant}`}
     >
-      <Animated.View style={[layer, headStyle]}>
+      <Animated.View style={[layer, headStyle]} testID={`owl-mark-${variant}-head-layer`}>
         <Svg width={size} height={size} viewBox={VIEWBOX}>
           <Path d="M20 36 L30 10 L41 24 Z" fill={head} />
           <Path d="M76 36 L66 10 L55 24 Z" fill={head} />
@@ -40,7 +40,7 @@ export function OwlMark({ size = 104, variant = 'funke', headStyle, glassesStyle
         </Svg>
       </Animated.View>
 
-      <Animated.View style={[layer, glassesStyle]}>
+      <Animated.View style={[layer, glassesStyle]} testID={`owl-mark-${variant}-glasses-layer`}>
         <Svg width={size} height={size} viewBox={VIEWBOX}>
           {ink ? (
             <>

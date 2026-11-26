@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger'
-import { Equals, IsOptional, IsString, MinLength } from 'class-validator'
+import { Equals, IsOptional, IsString, MaxLength, MinLength } from 'class-validator'
 
 /** `type: String`/explicit literals given on every. */
 export class DeleteAccountRequestDto {
@@ -21,5 +21,6 @@ export class DeleteAccountRequestDto {
   @IsOptional()
   @IsString()
   @MinLength(1)
+  @MaxLength(256)
   password?: string
 }

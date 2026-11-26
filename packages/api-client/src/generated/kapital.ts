@@ -71,8 +71,6 @@ export type capitalControllerGetResponseError = (capitalControllerGetResponse401
   headers: Headers;
 };
 
-export type capitalControllerGetResponse = (capitalControllerGetResponseSuccess | capitalControllerGetResponseError)
-
 export const getCapitalControllerGetUrl = (jahr: number,) => {
 
 
@@ -81,9 +79,9 @@ export const getCapitalControllerGetUrl = (jahr: number,) => {
   return `/v1/steuerjahre/${jahr}/kapital`
 }
 
-export const capitalControllerGet = async (jahr: number, options?: RequestInit): Promise<capitalControllerGetResponse> => {
+export const capitalControllerGet = async (jahr: number, options?: RequestInit): Promise<capitalControllerGetResponseSuccess> => {
 
-  return httpClient<capitalControllerGetResponse>(getCapitalControllerGetUrl(jahr),
+  return httpClient<capitalControllerGetResponseSuccess>(getCapitalControllerGetUrl(jahr),
   {
     ...options,
     method: 'GET'
@@ -185,8 +183,6 @@ export type capitalControllerSetOwnerResponseError = (capitalControllerSetOwnerR
   headers: Headers;
 };
 
-export type capitalControllerSetOwnerResponse = (capitalControllerSetOwnerResponseSuccess | capitalControllerSetOwnerResponseError)
-
 export const getCapitalControllerSetOwnerUrl = (jahr: number,) => {
 
 
@@ -196,9 +192,9 @@ export const getCapitalControllerSetOwnerUrl = (jahr: number,) => {
 }
 
 export const capitalControllerSetOwner = async (jahr: number,
-    putCapitalOwnerDto: PutCapitalOwnerDto, options?: RequestInit): Promise<capitalControllerSetOwnerResponse> => {
+    putCapitalOwnerDto: PutCapitalOwnerDto, options?: RequestInit): Promise<capitalControllerSetOwnerResponseSuccess> => {
 
-  return httpClient<capitalControllerSetOwnerResponse>(getCapitalControllerSetOwnerUrl(jahr),
+  return httpClient<capitalControllerSetOwnerResponseSuccess>(getCapitalControllerSetOwnerUrl(jahr),
   {
     ...options,
     method: 'PUT',
@@ -270,8 +266,6 @@ export type capitalControllerSetFieldResponseError = (capitalControllerSetFieldR
   headers: Headers;
 };
 
-export type capitalControllerSetFieldResponse = (capitalControllerSetFieldResponseSuccess | capitalControllerSetFieldResponseError)
-
 export const getCapitalControllerSetFieldUrl = (jahr: number,
     feld: string,) => {
 
@@ -283,9 +277,9 @@ export const getCapitalControllerSetFieldUrl = (jahr: number,
 
 export const capitalControllerSetField = async (jahr: number,
     feld: string,
-    putCapitalFieldDto: PutCapitalFieldDto, options?: RequestInit): Promise<capitalControllerSetFieldResponse> => {
+    putCapitalFieldDto: PutCapitalFieldDto, options?: RequestInit): Promise<capitalControllerSetFieldResponseSuccess> => {
 
-  return httpClient<capitalControllerSetFieldResponse>(getCapitalControllerSetFieldUrl(jahr,feld),
+  return httpClient<capitalControllerSetFieldResponseSuccess>(getCapitalControllerSetFieldUrl(jahr,feld),
   {
     ...options,
     method: 'PUT',
@@ -350,8 +344,6 @@ export type capitalControllerGetMostFavourableCheckResponseSuccess = (capitalCon
 };
 ;
 
-export type capitalControllerGetMostFavourableCheckResponse = (capitalControllerGetMostFavourableCheckResponseSuccess)
-
 export const getCapitalControllerGetMostFavourableCheckUrl = (jahr: number,
     params?: CapitalControllerGetMostFavourableCheckParams,) => {
   const normalizedParams = new URLSearchParams();
@@ -369,9 +361,9 @@ export const getCapitalControllerGetMostFavourableCheckUrl = (jahr: number,
 }
 
 export const capitalControllerGetMostFavourableCheck = async (jahr: number,
-    params?: CapitalControllerGetMostFavourableCheckParams, options?: RequestInit): Promise<capitalControllerGetMostFavourableCheckResponse> => {
+    params?: CapitalControllerGetMostFavourableCheckParams, options?: RequestInit): Promise<capitalControllerGetMostFavourableCheckResponseSuccess> => {
 
-  return httpClient<capitalControllerGetMostFavourableCheckResponse>(getCapitalControllerGetMostFavourableCheckUrl(jahr,params),
+  return httpClient<capitalControllerGetMostFavourableCheckResponseSuccess>(getCapitalControllerGetMostFavourableCheckUrl(jahr,params),
   {
     ...options,
     method: 'GET'

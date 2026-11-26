@@ -8,6 +8,7 @@ import { writeFileSync } from 'node:fs'
 import { NestFactory } from '@nestjs/core'
 import { AppModule } from '../src/app.module.js'
 import { BETTER_AUTH_BUNDLE, type BetterAuthBundle } from '../src/auth/auth.tokens.js'
+import { runAsDatabaseUser } from '../src/common/database-identity.js'
 import { ENCRYPTED_PRISMA, type EncryptedPrismaClient } from '../src/prisma/encrypted-prisma.provider.js'
 
 const USERS = Number(process.env.LOADTEST_USERS ?? 1000)
@@ -58,29 +59,32 @@ async function main(): Promise<void> {
     cookies.push(`${bundle.sessionCookieName}=${encodeURIComponent(`${session.token}.${signature}`)}`)
     // The drafts in the chat metas name these receipts, so the ids are fixed up front.
     const receiptIds = Array.from({ length: RECEIPTS_PER_USER }, () => randomUUID())
-    await prisma.receipt.createMany({
-      data: receiptIds.map((id, n) => ({
-        id,
-        userId: user.id,
-        fileName: `beleg-${n}.pdf`,
-        kind: KINDS[n % KINDS.length] ?? null,
-        taxYear: n % 3 === 0 ? null : TAX_YEAR,
-        createdAt: new Date(Date.now() - n * 3_600_000),
-      })),
-    })
-    // The session endpoint reads the history of a conversation, so the messages belong to one.
-    const conversation = await prisma.advisorConversation.create({ data: { userId: user.id, taxYear: TAX_YEAR }, select: { id: true } })
-    await prisma.advisorChatMessage.createMany({
-      data: Array.from({ length: MESSAGES_PER_USER }, (_, n) => ({
-        userId: user.id,
-        conversationId: conversation.id,
-        taxYear: TAX_YEAR,
-        role: n % 2 === 0 ? 'assistant' : 'user',
-        content: 'Hallo '.repeat(60),
-        status: 'complete',
-        metaJson: metaOf(n, receiptIds),
-        createdAt: new Date(Date.now() - (MESSAGES_PER_USER - n) * 60_000),
-      })),
+    // Each user's rows are written as that user: the row-level policies (P11) let nothing else through.
+    await runAsDatabaseUser(user.id, async () => {
+      await prisma.receipt.createMany({
+        data: receiptIds.map((id, n) => ({
+          id,
+          userId: user.id,
+          fileName: `beleg-${n}.pdf`,
+          kind: KINDS[n % KINDS.length] ?? null,
+          taxYear: n % 3 === 0 ? null : TAX_YEAR,
+          createdAt: new Date(Date.now() - n * 3_600_000),
+        })),
+      })
+      // The session endpoint reads the history of a conversation, so the messages belong to one.
+      const conversation = await prisma.advisorConversation.create({ data: { userId: user.id, taxYear: TAX_YEAR }, select: { id: true } })
+      await prisma.advisorChatMessage.createMany({
+        data: Array.from({ length: MESSAGES_PER_USER }, (_, n) => ({
+          userId: user.id,
+          conversationId: conversation.id,
+          taxYear: TAX_YEAR,
+          role: n % 2 === 0 ? 'assistant' : 'user',
+          content: 'Hallo '.repeat(60),
+          status: 'complete',
+          metaJson: metaOf(n, receiptIds),
+          createdAt: new Date(Date.now() - (MESSAGES_PER_USER - n) * 60_000),
+        })),
+      })
     })
     if (i % 100 === 99) console.log(`seeded ${i + 1}/${USERS} in ${((Date.now() - startedAt) / 1000).toFixed(0)}s`)
   }

@@ -5,6 +5,7 @@ import { Button, Input, Feld, Sticker, inkOnFunke, useTheme, useBreakpoint, type
 import { APP_NS } from '../i18n/resources'
 import { useAuthClient } from '../auth/AuthClientProvider'
 import { NEW_PASSWORD_MIN_LENGTH } from '../auth/password-policy'
+import { classifyApiFailure, refusalError } from '../net/apiFailure'
 
 export interface PasswordResetScreenProps {
   /** The one-time token from the mailed link; it only ever goes into the request body. */
@@ -54,7 +55,7 @@ export function PasswordResetScreen({ token, onDone, onRequestNew }: PasswordRes
         return
       }
       setStage('form')
-      if (authError.status === 429) setError(tr('passwortReset.reset.rateLimited'))
+      if (classifyApiFailure(refusalError(authError)).kind === 'rate-limited') setError(tr('passwortReset.reset.rateLimited'))
       else if (authError.code === 'PASSWORD_COMPROMISED') setError(tr('auth.errPasswordCompromised'))
       else if (authError.code === 'PASSWORD_TOO_SHORT') setError(tr('passwortReset.reset.errTooShort'))
       else setError(tr('auth.errGeneric'))

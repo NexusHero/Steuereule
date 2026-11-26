@@ -10,6 +10,7 @@ const HTTP_MAPPING: Record<DomainErrorKind, { status: HttpStatus; reason: string
   unauthenticated: { status: HttpStatus.UNAUTHORIZED, reason: 'Unauthorized' },
   unavailable: { status: HttpStatus.SERVICE_UNAVAILABLE, reason: 'Service Unavailable' },
   'rate-limited': { status: HttpStatus.TOO_MANY_REQUESTS, reason: 'Too Many Requests' },
+  'too-large': { status: HttpStatus.PAYLOAD_TOO_LARGE, reason: 'Payload Too Large' },
 }
 
 export interface ErrorResponseBody {

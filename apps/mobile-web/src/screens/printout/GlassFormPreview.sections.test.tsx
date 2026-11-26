@@ -1,14 +1,11 @@
 // Glas-Erklärung — every Vordruck section of a full joint return, where each value comes from, the
 // way a row leads to its mask, and the empty / collapsed / filtered states.
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
-import { I18nextProvider } from 'react-i18next'
-import { ThemeProvider } from '@steuereule/ui'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
-import { createAppI18n } from '../../i18n/app-i18n'
 import { server } from '../../test-msw-server'
 import { GlassFormPreview, type GlassFormPreviewProps } from './GlassFormPreview'
+import { renderWithQuery } from '../../test-render'
 
 const YEAR = 2025
 const BASE = `*/v1/steuerjahre/${YEAR}`
@@ -101,16 +98,7 @@ function serveFullReturn() {
 }
 
 function renderPreview(props: Partial<GlassFormPreviewProps> = {}) {
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-  render(
-    <QueryClientProvider client={queryClient}>
-      <I18nextProvider i18n={createAppI18n('de')}>
-        <ThemeProvider mode="light">
-          <GlassFormPreview year={YEAR} defaultOpen {...props} />
-        </ThemeProvider>
-      </I18nextProvider>
-    </QueryClientProvider>,
-  )
+  renderWithQuery(<GlassFormPreview year={YEAR} defaultOpen {...props} />)
 }
 
 const row = (id: string) => screen.findByTestId(`glass-row-${id}`)
@@ -299,9 +287,9 @@ describe('Glas-Erklärung — states', () => {
     await screen.findByTestId('glass-form-preview')
     expect(screen.queryByText('🔍 Glas-Erklärung: Amtliche Formular-Vorschau')).toBeNull()
     fireEvent.click(screen.getByText('📄 Original-Vordruck'))
-    expect(await screen.findByText('kein Vordruck')).toBeTruthy()
+    expect(await screen.findByTestId('acro-vorlage-fehler')).toBeTruthy()
     await waitFor(() => expect(loader.loadTemplate).toHaveBeenCalled())
     fireEvent.click(screen.getByText('📋 Strukturierte Zeilen'))
-    expect(screen.queryByText('kein Vordruck')).toBeNull()
+    expect(screen.queryByTestId('acro-vorlage-fehler')).toBeNull()
   })
 })

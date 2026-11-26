@@ -27,4 +27,6 @@ export interface AuditRepository {
    * on createdAt, id), so memory stays flat however long the log is — the complete JSON export (Art. 15/20 GDPR).
    */
   streamOwnRows(userId: string, options: { batchSize: number; before: Date }): AsyncIterable<AuditLogRow[]>
+  /** The newest row's time per source, for the given sources of one user; a source without rows is absent. */
+  lastSeenBySource(userId: string, sources: readonly string[]): Promise<Map<string, Date>>
 }

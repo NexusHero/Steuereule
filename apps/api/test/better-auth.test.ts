@@ -6,7 +6,7 @@ import { resolveAppleClientId, resolveAppleClientSecret, resolveAppleSignInEnabl
 import type { EmailSender } from '../src/auth/email-sender.js'
 
 function fakeEmailSender(): EmailSender {
-  return { sendVerificationEmail: vi.fn(), sendPasswordResetEmail: vi.fn(), sendExistingAccountNotice: vi.fn() }
+  return { sendVerificationEmail: vi.fn(), sendPasswordResetEmail: vi.fn(), sendExistingAccountNotice: vi.fn(), sendUnverifiedAccountWarning: vi.fn() }
 }
 
 describe('resolveBetterAuthSecret', () => {
@@ -255,5 +255,23 @@ describe('createBetterAuth — session-security hardening (ADR-0103)', () => {
     const trusted = createBetterAuth(base).auth.options.trustedOrigins as string[]
     expect(trusted).toContain('https://allowed.example.com')
     expect(trusted).toContain('https://app.steuereule.de')
+  })
+})
+
+describe('createBetterAuth — per-request cost (OPS-4)', () => {
+  it('signs no JWT on every session lookup: nothing reads the set-auth-jwt header', () => {
+    // UserContextGuard looks the session up on every request through auth.api.getSession. With the header on,
+    // each lookup also read the signing key from the database, decrypted it and signed an EdDSA token that
+    // the guard threw away. Assistant tokens are signed by the OAuth provider, not by this hook.
+    const auth = createBetterAuth({
+      prisma: {} as PrismaClient,
+      secret: 'test-secret',
+      baseUrl: 'http://localhost:3000',
+      webAppUrl: 'http://localhost:8081',
+      trustedOrigins: [],
+      emailSender: fakeEmailSender(),
+    }).auth
+    const jwtPlugin = (auth.options.plugins ?? []).find((plugin) => plugin.id === 'jwt') as { options?: { disableSettingJwtHeader?: boolean } } | undefined
+    expect(jwtPlugin?.options?.disableSettingJwtHeader).toBe(true)
   })
 })

@@ -62,8 +62,8 @@ export class PrintoutJobDto {
   @ApiProperty({
     type: String,
     required: false,
-    example: 'Error during PDF synthesis',
-    description: 'Error explanation if job failed.',
+    example: 'PRINTOUT_FAILED',
+    description: 'Machine code if the job failed: a DomainError code, else PRINTOUT_FAILED. Never a raw message (API-5).',
   })
   error?: string
 }
@@ -113,4 +113,7 @@ export class LiveFormDto {
 export class LiveFormValuesDto {
   @ApiProperty({ type: [LiveFormDto], description: 'The filled Vordrucke in print order; Vordrucke without values are left out.' })
   readonly forms!: readonly LiveFormDto[]
+
+  @ApiProperty({ type: [String], example: ['unbestaetigt.anlageN'], description: 'Anlagen with values the user has not confirmed; while there are any, no form is shown (MCP-24).' })
+  readonly unconfirmed!: readonly string[]
 }

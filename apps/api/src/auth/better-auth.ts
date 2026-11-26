@@ -3,7 +3,8 @@ import type { PrismaClient } from '@prisma/client'
 import { prismaAdapter } from '@better-auth/prisma-adapter'
 import { passkey } from '@better-auth/passkey'
 import { oauthProvider } from '@better-auth/oauth-provider'
-import { createAuthMiddleware } from 'better-auth/api'
+import { APIError, createAuthMiddleware } from 'better-auth/api'
+import { isAcceptableClientName, MAX_CLIENT_NAME_LENGTH } from './oauth-client-name.js'
 import { authIssuer, mcpResourceUrls } from './mcp-oauth.js'
 import { ensureMcpResource, type ResourceAdapter } from './mcp-resource-seed.js'
 import { sweepUnusedClients, type SweepAdapter } from './oauth-client-sweep.js'
@@ -12,15 +13,18 @@ import { getCookies } from 'better-auth/cookies'
 import { deviceAuthorization, haveIBeenPwned, jwt, twoFactor } from 'better-auth/plugins'
 import { hibpFailOpenPlugin } from './breach-check.js'
 import { redirectVerificationToWebApp } from './verification-link.js'
+import { removedAccountRedirect } from './removed-account-link.js'
 import { DEVICE_AUTHORIZATION_DISABLED_PATHS, assertDeviceAuthorizationDisabledPathsComplete } from './device-authorization-paths.js'
 import { deviceSessionCookiePlugin } from './device-session-cookie.js'
 import type { EmailSender } from './email-sender.js'
-import { createGuestAccountUpgradeHook } from './guest-account-upgrade.prisma.js'
+import { createGuestAccountUpgradeHook, type ReceiptFileMover } from './guest-account-upgrade.prisma.js'
 import { createResettableRateLimitStorage, type ResettableRateLimitStorage } from './rate-limit-storage.js'
 import { mergeTrustedOrigins } from './trusted-origins.js'
 import { SESSION_IDLE_EXPIRES_IN_SECONDS, SESSION_UPDATE_AGE_SECONDS } from './session-lifetime.js'
 import { forceRevokeOtherSessionsOnPasswordChange } from './force-session-rotation.js'
 import { capSessionUpdateExpiry } from './session-absolute-cap.js'
+import { withoutProviderTokens } from './provider-tokens.js'
+import { sessionListRedactionPlugin } from './session-list-redaction.js'
 import { CLIENT_IP_HEADER } from './client-ip.js'
 import { revokeOauthGrantsOnPasswordChangePlugin, stepUpPlugin } from './step-up.js'
 import { enforceAccountSignInLimit, enforceVerifyPasswordAccountLimit } from './account-sign-in-limit.js'
@@ -33,21 +37,29 @@ import {
   restrictResetLinkToWebApp,
 } from './password-reset.js'
 import { OAUTH_GRANT_MODELS } from './step-up.js'
+import { ASSISTANT_SCOPES, LEGACY_PAYMENT_SCOPE } from '../common/assistant-scopes.js'
 
 const resetMailLogger = new Logger('PasswordReset')
 const signUpMailLogger = new Logger('SignUpMail')
 
+/** Every scope the authorization server knows: sign-in, the assistant scopes of the MCP gate, refresh. */
 export const OAUTH_SCOPES = [
   'openid',
-  'steuerdaten:read',
-  'steuerdaten:write',
-  'belege:write',
-  'zahllink:read',
+  ...ASSISTANT_SCOPES,
+  // The name before beta P4. Kept so grants made with it (their refresh tokens carry it) still refresh; the MCP
+  // gate accepts it for zahllink_anfordern, and the discovery no longer offers it (DEPRECATED_OAUTH_SCOPES).
+  LEGACY_PAYMENT_SCOPE,
   // Refresh tokens for the assistant: access tokens last 15 minutes, the connection until revoked (ADR-0052 §10).
   'offline_access',
 ] as const
 
 export type OAuthScope = (typeof OAUTH_SCOPES)[number]
+
+/** Scopes still honoured but no longer offered to new clients. */
+export const DEPRECATED_OAUTH_SCOPES: readonly OAuthScope[] = [LEGACY_PAYMENT_SCOPE]
+
+/** What the protected-resource metadata offers: every scope except the deprecated ones. */
+export const ADVERTISED_OAUTH_SCOPES: readonly OAuthScope[] = OAUTH_SCOPES.filter((scope) => !DEPRECATED_OAUTH_SCOPES.includes(scope))
 
 export const SESSION_COOKIE_ATTRIBUTES = {
   httpOnly: true,
@@ -79,6 +91,8 @@ export interface CreateBetterAuthOptions {
   rateLimitStorage?: ResettableRateLimitStorage
   /** Called on a sign-in or sign-up: traffic the guest-retention sweep rides on (ADR-0109). */
   onSweepOpportunity?: () => void
+  /** Re-encrypts a guest's receipt files for the account at the takeover (API-20). */
+  receiptFiles?: ReceiptFileMover
 }
 
 export interface BetterAuthBundle {
@@ -103,6 +117,7 @@ function buildOptions(options: CreateBetterAuthOptions & { rateLimitStorage: Res
     appleClientSecret,
     rateLimitStorage,
     onSweepOpportunity,
+    receiptFiles,
   } = options
 
   const socialProviders: NonNullable<BetterAuthOptions['socialProviders']> = {}
@@ -209,11 +224,17 @@ function buildOptions(options: CreateBetterAuthOptions & { rateLimitStorage: Res
       // Passkey, assistant consent and social linking need a fresh sign-in or a re-entered password (ADR-0106 D2).
       stepUpPlugin,
       revokeOauthGrantsOnPasswordChangePlugin,
+      // The device list gets no session tokens (WEB-22).
+      sessionListRedactionPlugin,
       // The private key is stored encrypted under BETTER_AUTH_SECRET (the default): a database read alone no
       // longer lets anyone sign assistant tokens for any user (ADR-0106 D6).
       jwt({
         // One issuer for signing, the authorization-server metadata and our bearer check (ADR-0052 §2).
         jwt: { issuer: authIssuer(baseUrl) },
+        // Off: the hook signed a token on every `getSession` (one per guarded request: a key read, a decrypt,
+        // an EdDSA signature) for a `set-auth-jwt` header no client reads (OPS-4). Assistant tokens come
+        // from the OAuth provider and are not affected.
+        disableSettingJwtHeader: true,
       }),
       oauthProvider({
         scopes: [...OAUTH_SCOPES],
@@ -269,8 +290,19 @@ function buildOptions(options: CreateBetterAuthOptions & { rateLimitStorage: Res
       // first OAuth request, not via the plugin's `resources` option, which seeds while the app boots.
       before: createAuthMiddleware(async (ctx) => {
         if (ctx.path.startsWith('/oauth2/')) await Promise.all(ensureResources.map((ensure) => ensure(ctx.context.adapter as unknown as ResourceAdapter)))
-        if (ctx.path === '/oauth2/register') await sweepClients(ctx.context.adapter as unknown as SweepAdapter)
+        if (ctx.path === '/oauth2/register') {
+          // The name a client picks stands on the consent screen and every origin line: bounded (MCP-13).
+          if (!isAcceptableClientName((ctx.body as { client_name?: unknown } | undefined)?.client_name)) {
+            throw new APIError('BAD_REQUEST', { error: 'invalid_client_metadata', error_description: `client_name must be a string of at most ${MAX_CLIENT_NAME_LENGTH} characters.` })
+          }
+          await sweepClients(ctx.context.adapter as unknown as SweepAdapter)
+        }
         if (ctx.path === '/sign-in/email' || ctx.path === '/sign-up/email') onSweepOpportunity?.()
+        if (ctx.path === '/verify-email') {
+          // ADR-0030 §5: the link of a removed account says so instead of "expired".
+          const removed = await removedAccountRedirect(ctx.query ?? {}, ctx.context.secret, webAppUrl, async (email) => (await ctx.context.internalAdapter.findUserByEmail(email)) !== null)
+          if (removed) throw ctx.redirect(removed)
+        }
         await enforceAccountSignInLimit(rateLimitStorage, ctx.path, ctx.body)
         await enforcePasswordResetRequest(rateLimitStorage, ctx.path, ctx.body, webAppUrl)
         await enforceVerifyPasswordAccountLimit(rateLimitStorage, ctx)
@@ -281,9 +313,14 @@ function buildOptions(options: CreateBetterAuthOptions & { rateLimitStorage: Res
       }),
     },
     databaseHooks: {
+      // Provider tokens are not stored (API-18): every account write drops them.
+      account: {
+        create: { before: async (account) => withoutProviderTokens(account) },
+        update: { before: async (account) => withoutProviderTokens(account) },
+      },
       session: {
         create: {
-          after: createGuestAccountUpgradeHook(prisma),
+          after: createGuestAccountUpgradeHook(prisma, receiptFiles),
         },
         update: {
           // Enforce the absolute cap at the better-auth boundary too (ADR-0103 vulnerability 2): clamp every

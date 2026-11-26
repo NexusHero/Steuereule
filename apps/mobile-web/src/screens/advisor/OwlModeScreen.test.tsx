@@ -5,7 +5,7 @@ import { ThemeProvider } from '@steuereule/ui'
 import type { OwlCardsDisplay } from '@steuereule/core'
 import { createAppI18n } from '../../i18n/app-i18n'
 import { OwlModeScreen } from './OwlModeScreen'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { renderWithQuery } from '../../test-render'
 
 const CARDS_FIXTURE: readonly OwlCardsDisplay[] = [
   {
@@ -77,6 +77,8 @@ describe('EulenModusScreen', () => {
     it('opens on the chat itself: the greeting, the quick starts and the composer, with no tab to switch to', () => {
       renderScreen()
       expect(screen.getByTestId('advisor-empty-state').textContent).toContain('Womit kann die Eule helfen?')
+      // Before the first message leaves: who receives it and what is removed first (WEB-25).
+      expect(screen.getByTestId('advisor-privacy-notice').textContent).toContain('Google, Anthropic oder OpenAI')
       // Four quick starts under the centred input; the rest wait behind "Mehr …".
       expect(screen.queryByText('Fortbildung & Reisekosten klären')).toBeNull()
       fireEvent.click(screen.getByTestId('advisor-chips-more'))
@@ -286,7 +288,10 @@ describe('EulenModusScreen', () => {
       expect(screen.queryByTestId('eule-privacy-text')).toBeNull()
       fireEvent.click(screen.getByTestId('eule-privacy-badge'))
       const text = screen.getByTestId('eule-privacy-text').textContent ?? ''
-      expect(text).toContain('keine Namen, Steuer-IDs oder IBANs')
+      // True with and without the consent, and for the turbo mode (LEGAL-3).
+      expect(text).toContain('Ohne deine Einwilligung „Eule und persönliche Daten“ entfernen wir vorher Namen, Steuer-IDs, IBANs')
+      expect(text).toContain('mit Einwilligung gehen sie mit')
+      expect(text).toContain('mit Turbo-Modus übernimmt die Eule sie')
       // Honest about what does go to the provider (ADR-0032).
       expect(text).toContain('Zahlen aus deiner Akte')
       expect(text).toContain('verschlüsselt gespeichert')
@@ -352,8 +357,6 @@ describe('EulenModusScreen', () => {
     })
 
     it('renders applied actions in the workbench as a clean log with Undo and field deep-link (no redundant Apply button), plus Session Summary', async () => {
-      const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-      const i18n = createAppI18n('de')
       const appliedMessages = [
         {
           id: 'm-turbo-1',
@@ -381,15 +384,7 @@ describe('EulenModusScreen', () => {
           },
         },
       ]
-      render(
-        <QueryClientProvider client={qc}>
-          <I18nextProvider i18n={i18n}>
-            <ThemeProvider mode="light">
-              <OwlModeScreen taxYear={2025} initialCards={CARDS_FIXTURE} initialMessages={appliedMessages} />
-            </ThemeProvider>
-          </I18nextProvider>
-        </QueryClientProvider>,
-      )
+      renderWithQuery(<OwlModeScreen taxYear={2025} initialCards={CARDS_FIXTURE} initialMessages={appliedMessages} />)
 
       // 1. Session Summary button in top bar opens readable Management-Summary
       fireEvent.click(screen.getByTestId('eule-session-summary-btn'))

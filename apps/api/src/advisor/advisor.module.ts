@@ -42,15 +42,19 @@ import { RedisAdvisorRunLog } from './run/advisor-run-log.redis.js'
 import { AdvisorRunService } from './run/advisor-run.service.js'
 import { Redis } from 'ioredis'
 import { redisTlsOptions } from '../redis/redis-options.js'
+import { FIELD_ENCRYPTION_KEYS, type FieldEncryptionKeySet } from '../common/field-encryption-keys.js'
+import { UnlockModule } from '../unlock/unlock.module.js'
+import { ModelCallTiers } from './model-call-tier.js'
 
 /**
  * With REDIS_URL the run log lives in Redis Streams, so any instance can serve a re-attaching
  * client. Without it the log stays in this process: fine for one instance, tests and local work.
  */
-export function createAdvisorRunLog(env: NodeJS.ProcessEnv = process.env): AdvisorRunLog {
+export function createAdvisorRunLog(keys: FieldEncryptionKeySet, env: NodeJS.ProcessEnv = process.env): AdvisorRunLog {
   const url = env.REDIS_URL?.trim()
   if (!url) return new InMemoryAdvisorRunLog()
-  return new RedisAdvisorRunLog(new Redis(url, { maxRetriesPerRequest: 2, lazyConnect: false, ...redisTlsOptions(env) }))
+  // The events carry the chat text: sealed under a key derived from the field-encryption key (H2-9).
+  return new RedisAdvisorRunLog(new Redis(url, { maxRetriesPerRequest: 2, lazyConnect: false, ...redisTlsOptions(env) }), keys)
 }
 
 @Module({
@@ -75,6 +79,7 @@ export function createAdvisorRunLog(env: NodeJS.ProcessEnv = process.env): Advis
     TaxEstimateModule,
     AssessmentModule,
     ReceiptStorageModule,
+    UnlockModule,
   ],
   controllers: [AdvisorController],
   providers: [
@@ -87,12 +92,13 @@ export function createAdvisorRunLog(env: NodeJS.ProcessEnv = process.env): Advis
     AdvisorOpening,
     AdvisorDocumentStaging,
     AdvisorTurn,
+    ModelCallTiers,
     // Each owning module provides the rows of its mask; a new mask with rows adds its source here.
     { provide: DRAFT_RECORDS, inject: [ChildDraftRecords, RentalDraftRecords], useFactory: (...sources: DraftRecordSource[]) => draftRecordRegistry(sources) },
     AdvisorRunService,
     AdvisorModelsService,
     AdvisorModelCatalog,
-    { provide: ADVISOR_RUN_LOG, useFactory: () => createAdvisorRunLog() },
+    { provide: ADVISOR_RUN_LOG, inject: [FIELD_ENCRYPTION_KEYS], useFactory: (keys: FieldEncryptionKeySet) => createAdvisorRunLog(keys) },
     {
       provide: ADVISOR_REPOSITORY,
       useClass: PrismaAdvisorRepository,

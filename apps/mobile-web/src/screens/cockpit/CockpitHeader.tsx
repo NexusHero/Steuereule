@@ -4,16 +4,16 @@ import { Chip, useTheme } from '@steuereule/ui'
 import type { Answers } from '@steuereule/core'
 import { DeadlinesBanner } from '../deadlines/DeadlinesBanner'
 import { APP_NS } from '../../i18n/resources'
-import { SELECTABLE_TAX_YEARS, isRunningTaxYear } from '../../config/taxYear'
+import { isRunningTaxYear, selectableTaxYears, useTaxYearClock } from '../../config/taxYear'
 import { makeStyles } from './CockpitScreen.styles'
 import type { Progress } from './cockpitTypes'
-
-const SELECTABLE_YEARS = SELECTABLE_TAX_YEARS
 
 export function Appbar({ year, onYearChange, isRefreshing }: { readonly year: number; readonly onYearChange: (selectedYear: number) => void; readonly isRefreshing: boolean }) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const styles = makeStyles(t)
+  // OPS-16: the years follow the server's clock; the chips re-render when its answer arrives.
+  useTaxYearClock()
   return (
     <View style={styles.appbar}>
       <View style={styles.appbarTitleReihe}>
@@ -22,7 +22,7 @@ export function Appbar({ year, onYearChange, isRefreshing }: { readonly year: nu
       </View>
       {/* Under the title, across the full width: the years wrap into two lines at 375 px instead of five, and none is cut off. */}
       <View style={styles.jahrReihe} accessibilityLabel={tr('cockpit.jahrAuswahl')}>
-        {SELECTABLE_YEARS.map((y) => (
+        {selectableTaxYears().map((y) => (
           <Chip key={y} active={y === year} onPress={() => onYearChange(y)} testID={`jahr-${y}`}>
             {isRunningTaxYear(y) ? tr('cockpit.jahrLaeuft', { jahr: y }) : String(y)}
           </Chip>

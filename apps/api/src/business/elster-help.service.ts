@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common'
-import { NotFoundError } from '../common/domain-error.js'
+import { ConflictError, NotFoundError } from '../common/domain-error.js'
 import { AuditService } from '../audit/audit.service.js'
 import { INCOME_TAX_FORMS, LATEST_LINES_YEAR, latestLineOf, lineIdsOf, lineOf, linesPublished, type FormLine } from '../printout/fill-in-lines.js'
 import type { LiveForm, LiveFormInstance } from '../printout/live-values.js'
@@ -7,6 +7,7 @@ import { PrintoutService } from '../printout/printout.service.js'
 import { FIRST_BUSINESS, type BusinessRef } from './business.repository.js'
 import { BusinessService } from './business.service.js'
 import type { ElsterHelp, ElsterLineValue } from './views.js'
+import { PERSON_B_CONSENT_MISSING } from '../common/partner-consent-missing.js'
 
 /** The forms of the business itself, before the income-tax return (ADR-0101 §16). */
 const BUSINESS_FORMS = ['anlage-euer', 'anlage-s', 'anlage-g', 'ust-2-a', 'gewst-1-a'] as const
@@ -35,6 +36,8 @@ export interface ElsterFormEntry {
 export interface ElsterFormList {
   readonly year: number
   readonly forms: readonly ElsterFormEntry[]
+  /** The Anlagen with values the user has not confirmed (`unbestaetigt.<anlage>`): their forms are left out until then (MCP-24). */
+  readonly unconfirmed: readonly string[]
 }
 
 export interface ElsterFillInHelp extends ElsterHelp {
@@ -72,7 +75,7 @@ export class ElsterHelpService {
   async forms(userId: string, year: number, ref: BusinessRef): Promise<ElsterFormList> {
     await this.business.assertElsterOpen(userId, year)
     const businesses = await this.business.listBusinesses(userId, year, ref.person)
-    const [perBusiness, { forms, names }] = await Promise.all([
+    const [perBusiness, { forms, names, unconfirmed }] = await Promise.all([
       Promise.all(businesses.map(async (b) => ({ b, withValues: await this.business.elsterFormsWithValues(userId, year, { person: ref.person, business: b.business }) }))),
       this.printout.fillInValues(userId, year),
     ])
@@ -94,10 +97,12 @@ export class ElsterHelpService {
       }
     }
     // A loss year without any other ESt 1 A value still needs the Hauptvordruck for its § 10d line.
-    if (withValues.includes('est-1-a') && !entries.some((entry) => entry.form === 'est-1-a')) entries.push({ form: 'est-1-a', group: 'income-tax', instance: null })
-    if (withValues.includes('anlage-sonstiges')) entries.push({ form: 'anlage-sonstiges', group: 'income-tax', instance: null })
+    if (unconfirmed.length === 0) {
+      if (withValues.includes('est-1-a') && !entries.some((entry) => entry.form === 'est-1-a')) entries.push({ form: 'est-1-a', group: 'income-tax', instance: null })
+      if (withValues.includes('anlage-sonstiges')) entries.push({ form: 'anlage-sonstiges', group: 'income-tax', instance: null })
+    }
     await this.audit.append({ userId, action: 'READ', resource: 'selbststaendig' })
-    return { year, forms: entries }
+    return { year, forms: entries, unconfirmed }
   }
 
   /** One form (one copy of it): per line Zeile, Kennzahl, label and the value to type. */
@@ -110,7 +115,13 @@ export class ElsterHelpService {
     }
     const person = ref
     await this.business.assertElsterOpen(userId, year)
-    const { forms, names } = await this.printout.fillInValues(userId, year)
+    const { forms, names, unconfirmed } = await this.printout.fillInValues(userId, year)
+    if (unconfirmed.includes(PERSON_B_CONSENT_MISSING)) {
+      throw new ConflictError('PERSON_B_CONSENT_PENDING', 'Dein Partner hat der gemeinsamen Erklärung für dieses Jahr noch nicht zugestimmt. Bis dahin gibt es keine gemeinsamen Werte.', { missing: unconfirmed })
+    }
+    if (unconfirmed.length > 0) {
+      throw new ConflictError('ELSTER_UNCONFIRMED', 'Bestätige zuerst die Werte unter „Prüfen & bestätigen“: Unbestätigte Werte gehören noch nicht in die Erklärung.', { missing: unconfirmed })
+    }
     const live = forms.find((f) => f.formular === form)
     const index = live ? (instanceId === undefined ? 0 : live.instances.findIndex((copy, i) => instanceKey(copy, i) === instanceId)) : -1
     if (instanceId !== undefined && index < 0) throw new NotFoundError('ELSTER_INSTANCE_UNKNOWN', `Dieses Exemplar von „${form}“ gibt es für ${year} nicht.`)

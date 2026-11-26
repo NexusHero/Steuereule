@@ -1,17 +1,23 @@
 import { Inject, Injectable } from '@nestjs/common'
+import { systemDatabaseClient } from '../common/database-identity.js'
 import { USER_KEY_STORE, type UserKeyStore } from '../keystore/user-key-store.js'
 import { ENCRYPTED_PRISMA, type EncryptedPrismaClient } from '../prisma/encrypted-prisma.provider.js'
 import type { AccountDeletionRepository, DeleteAccountResult } from './account-deletion.repository.js'
-import { deleteAccountTransaction } from './delete-account-transaction.prisma.js'
+import { AccountVerifiedMeanwhileError, deleteAccountTransaction, householdPersonsOfDeletion } from './delete-account-transaction.prisma.js'
 
 @Injectable()
 export class PrismaAccountDeletionRepository implements AccountDeletionRepository {
-  constructor(
-    @Inject(ENCRYPTED_PRISMA) private readonly prisma: EncryptedPrismaClient,
-    @Inject(USER_KEY_STORE) private readonly keys: UserKeyStore,
-  ) {}
+  private readonly prisma: EncryptedPrismaClient
 
-  async deleteAccount(userId: string): Promise<DeleteAccountResult> {
+  constructor(
+    @Inject(ENCRYPTED_PRISMA) prisma: EncryptedPrismaClient,
+    @Inject(USER_KEY_STORE) private readonly keys: UserKeyStore,
+  ) {
+    // An erasure crosses rows of other ids (tombstones, both sides of a coupling, held rows): a system path (P11).
+    this.prisma = systemDatabaseClient(prisma, 'account-deletion')
+  }
+
+  async deleteAccount(userId: string, now: Date = new Date()): Promise<DeleteAccountResult> {
     // Crypto-shredding (ADR-0059, Art. 17 DSGVO): the receipt key lives in the keystore
     // database, so it cannot join the tax-data transaction. It is destroyed FIRST: should the
     // transaction below fail, the files are already unreadable and a retry finishes the job —
@@ -27,13 +33,30 @@ export class PrismaAccountDeletionRepository implements AccountDeletionRepositor
     // window expires. Backup retention is the compensating control for those columns; true per-user
     // field keys are the architectural follow-up if Art. 17 must reach backups for them too.
     const taxDataHeld =
-      (await this.prisma.legalHold.count({ where: { userId, resource: 'taxData', holdUntil: { gt: new Date() } } })) > 0
+      (await this.prisma.legalHold.count({ where: { userId, resource: 'taxData', holdUntil: { gt: now } } })) > 0
     if (!taxDataHeld) {
       await this.keys.destroy(userId)
-      // ADR-0062: every household person has an own key; destroying it shreds their facts.
-      const persons = await this.prisma.householdPerson.findMany({ where: { householdUserId: userId }, select: { id: true } })
+      // ADR-0062: every household person has an own key; destroying it shreds their facts — the person's
+      // household, and the copies of the person's own facts in a partner's household (API-23).
+      const persons = await this.prisma.householdPerson.findMany({ where: householdPersonsOfDeletion(userId), select: { id: true } })
       for (const person of persons) await this.keys.destroy(`household-person:${person.id}`)
     }
-    return deleteAccountTransaction(this.prisma, userId)
+    return deleteAccountTransaction(this.prisma, userId, {}, now)
+  }
+
+  async deleteUnverifiedAccount(userId: string): Promise<DeleteAccountResult | null> {
+    const persons = await this.prisma.householdPerson.findMany({ where: householdPersonsOfDeletion(userId), select: { id: true } })
+    let result: DeleteAccountResult
+    try {
+      result = await deleteAccountTransaction(this.prisma, userId, { onlyIfUnverified: true })
+    } catch (error) {
+      if (error instanceof AccountVerifiedMeanwhileError) return null
+      throw error
+    }
+    if (!result.legalHolds.some((hold) => hold.resource === 'taxData')) {
+      await this.keys.destroy(userId)
+      for (const person of persons) await this.keys.destroy(`household-person:${person.id}`)
+    }
+    return result
   }
 }

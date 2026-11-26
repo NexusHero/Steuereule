@@ -3,6 +3,8 @@ export interface AccountIdentity {
   name: string
   emailVerified: boolean
   createdAt: Date
+  /** When the ADR-0030 warning of a never-verified account went out; null before. */
+  unverifiedWarningSentAt?: Date | null
   authProviders: string[]
 }
 

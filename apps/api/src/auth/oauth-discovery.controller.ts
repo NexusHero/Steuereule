@@ -4,7 +4,7 @@ import { oauthProviderAuthServerMetadata } from '@better-auth/oauth-provider'
 import type { FastifyReply, FastifyRequest } from 'fastify'
 import { BETTER_AUTH_BUNDLE } from './auth.tokens.js'
 import type { BetterAuthBundle } from './better-auth.js'
-import { OAUTH_SCOPES } from './better-auth.js'
+import { ADVERTISED_OAUTH_SCOPES } from './better-auth.js'
 import { authIssuer, mcpResourceUrl, mcpStreamableResourceUrl } from './mcp-oauth.js'
 
 /**
@@ -36,7 +36,7 @@ export class OAuthDiscoveryController {
     return {
       resource,
       authorization_servers: [authIssuer(this.baseUrl)],
-      scopes_supported: [...OAUTH_SCOPES],
+      scopes_supported: [...ADVERTISED_OAUTH_SCOPES],
       bearer_methods_supported: ['header'],
       resource_name: 'SteuerEule',
     }

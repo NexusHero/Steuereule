@@ -15,12 +15,12 @@ export interface DraftOwners {
 export function useDraftOwners(taxYear: number, messages: readonly AdvisorChatMessageView[] | null | undefined): DraftOwners {
   const enabled = hasPersonScreenDraft(messages ?? undefined)
   const link = useLinkControllerGet(taxYear, { query: { enabled, retry: false } })
-  const linkData = link.data?.status === 200 ? link.data.data : undefined
+  const linkData = link.data?.data
   const jointReturn = linkData?.filingType === 'zusammen' && linkData.personB != null
   const profile = useProfileControllerGetProfile({ query: { enabled: enabled && jointReturn, retry: false } })
   return {
     partnerName: linkData?.personB?.firstName?.trim() || undefined,
-    ownName: profile.data?.status === 200 ? profile.data.data.firstName?.trim() || undefined : undefined,
+    ownName: profile.data?.data.firstName?.trim() || undefined,
     jointReturn,
   }
 }

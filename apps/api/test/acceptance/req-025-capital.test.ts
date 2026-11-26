@@ -13,6 +13,7 @@
 // ADMITTED_ENTRY_IDS) — the same rows the service reads in production.
 import { describe, expect, it } from 'vitest'
 import { app, baseUrl, prisma, signUp, useAcceptanceServer } from '../support/acceptance-server.js'
+import { fixtureClient } from '../support/database-fixture.js'
 
 const ALLOWED_ORIGIN = 'https://allowed.example.com'
 const TRUSTED_ORIGIN_HEADERS = { origin: ALLOWED_ORIGIN }
@@ -76,7 +77,7 @@ describe('REQ-025 — the Kapital vertical (Anlage KAP), against the real server
   /** Seed an interview answer through the production encryption seam (Segment 2 not yet admitted). */
   async function seedAnswer(userId: string, questionId: string, value: string): Promise<void> {
     const { ENCRYPTED_PRISMA } = await import('../../src/prisma/encrypted-prisma.provider.js')
-    const encrypted = app.get<{ interviewAnswer: { create: (input: { data: unknown }) => Promise<unknown> } }>(ENCRYPTED_PRISMA)
+    const encrypted = fixtureClient(app.get<{ interviewAnswer: { create: (input: { data: unknown }) => Promise<unknown> } }>(ENCRYPTED_PRISMA))
     await encrypted.interviewAnswer.create({ data: { userId, taxYear: TAX_YEAR, questionId, value } })
   }
 

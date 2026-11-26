@@ -4,17 +4,15 @@
 // generated `useCockpitControllerGetCockpitSummary` hook (@steuereule/api-client) against
 // `GET /v1/steuerjahre/{jahr}/cockpit`, with MSW mocking the wire shape.
 import { afterEach, describe, it, expect, vi } from 'vitest'
-import { render, screen, fireEvent, act, waitFor } from '@testing-library/react'
-import { I18nextProvider } from 'react-i18next'
-import { ThemeProvider } from '@steuereule/ui'
-import { QueryClient, QueryClientProvider, focusManager } from '@tanstack/react-query'
+import { screen, fireEvent, act, waitFor } from '@testing-library/react'
+import { focusManager } from '@tanstack/react-query'
 import { http, HttpResponse } from 'msw'
-import { createAppI18n } from '../../i18n/app-i18n'
 import { CockpitScreen } from './CockpitScreen'
 import type { TileDefinition } from './tiles'
 import { server } from '../../test-msw-server'
 import type { CockpitSummaryDto, InterviewStateDto } from '@steuereule/api-client'
 import type { FunnelPath } from '../funnel/KontoWandScreen'
+import { renderWithQuery } from '../../test-render'
 
 const TAX_YEAR = 2026
 const COCKPIT_URL = `*/v1/steuerjahre/${TAX_YEAR}/cockpit`
@@ -87,30 +85,23 @@ function renderCockpit(opts: {
   onOpenMasterData?: () => void
   taxYear?: number
 } = {}) {
-  const i18n = createAppI18n(opts.lng ?? 'de')
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-  return render(
-    <QueryClientProvider client={queryClient}>
-      <I18nextProvider i18n={i18n}>
-        <ThemeProvider mode="light">
-          <CockpitScreen
-            taxYear={opts.taxYear ?? TAX_YEAR}
-            {...(opts.isSignedIn !== undefined ? { isSignedIn: opts.isSignedIn } : {})}
-            onOpenInterview={opts.onOpenInterview ?? (() => {})}
-            {...(opts.onOpenKinder ? { onOpenKinder: opts.onOpenKinder } : {})}
-            {...(opts.onOpenOfficialForm ? { onOpenOfficialForm: opts.onOpenOfficialForm } : {})}
-            {...(opts.onOpenOwlMode ? { onOpenOwlMode: opts.onOpenOwlMode } : {})}
-            {...(opts.onOpenPrintout ? { onOpenPrintout: opts.onOpenPrintout } : {})}
-            {...(opts.onOpenSubmission ? { onOpenSubmission: opts.onOpenSubmission } : {})}
-            {...(opts.onOpenConfirmation ? { onOpenConfirmation: opts.onOpenConfirmation } : {})}
-            {...(opts.onContinuePath ? { onContinuePath: opts.onContinuePath } : {})}
-            {...(opts.onOpenTile ? { onOpenTile: opts.onOpenTile } : {})}
-            {...(opts.onYearChange ? { onYearChange: opts.onYearChange } : {})}
-            {...(opts.onOpenMasterData ? { onOpenMasterData: opts.onOpenMasterData } : {})}
-          />
-        </ThemeProvider>
-      </I18nextProvider>
-    </QueryClientProvider>,
+  return renderWithQuery(
+    <CockpitScreen
+      taxYear={opts.taxYear ?? TAX_YEAR}
+      {...(opts.isSignedIn !== undefined ? { isSignedIn: opts.isSignedIn } : {})}
+      onOpenInterview={opts.onOpenInterview ?? (() => {})}
+      {...(opts.onOpenKinder ? { onOpenKinder: opts.onOpenKinder } : {})}
+      {...(opts.onOpenOfficialForm ? { onOpenOfficialForm: opts.onOpenOfficialForm } : {})}
+      {...(opts.onOpenOwlMode ? { onOpenOwlMode: opts.onOpenOwlMode } : {})}
+      {...(opts.onOpenPrintout ? { onOpenPrintout: opts.onOpenPrintout } : {})}
+      {...(opts.onOpenSubmission ? { onOpenSubmission: opts.onOpenSubmission } : {})}
+      {...(opts.onOpenConfirmation ? { onOpenConfirmation: opts.onOpenConfirmation } : {})}
+      {...(opts.onContinuePath ? { onContinuePath: opts.onContinuePath } : {})}
+      {...(opts.onOpenTile ? { onOpenTile: opts.onOpenTile } : {})}
+      {...(opts.onYearChange ? { onYearChange: opts.onYearChange } : {})}
+      {...(opts.onOpenMasterData ? { onOpenMasterData: opts.onOpenMasterData } : {})}
+    />,
+    { language: opts.lng ?? 'de' },
   )
 }
 
@@ -158,7 +149,7 @@ describe('CockpitScreen', () => {
     renderCockpit()
 
     expect(await screen.findByText('Ehrlich: dafür sind wir noch nicht gut genug.')).toBeTruthy()
-    expect(screen.getByText('Gewerbe kann SteuerEule in Version 1 noch nicht rechnen. Dein erfasstes Einkommen bleibt sichtbar — abgegeben wird erst, wenn alles drin ist.')).toBeTruthy()
+    expect(screen.getByText('Gewerbe kann SteuerEule noch nicht rechnen. Dein erfasstes Einkommen bleibt sichtbar — abgegeben wird erst, wenn alles drin ist.')).toBeTruthy()
   })
 
   it('shows the plural "N Fragen offen" copy read from the API', async () => {

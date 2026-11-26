@@ -3,10 +3,11 @@ import { ScrollView, View, Text, Pressable, ActivityIndicator } from 'react-nati
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
 import { Button, Card, Feld, Input, Pill, useTheme, useBreakpoint } from '@steuereule/ui'
-import { useAccountDeletionControllerDeleteAccount } from '@steuereule/api-client'
+import { apiErrorStatus, useAccountDeletionControllerDeleteAccount } from '@steuereule/api-client'
 import { APP_NS } from '../i18n/resources'
 import { useAccountSession } from '../auth/useAccountSession'
 import { useStepUp } from '../auth/useStepUp'
+import { StepUpChoices } from '../auth/StepUpOptions'
 import { downloadAccountExport, type ExportFormat } from './privacy/exportDownload'
 import { ExportSection, type ExportButtonState } from './privacy/ExportSection'
 import { DeleteSection, type DeleteFlow } from './privacy/DeleteSection'
@@ -21,7 +22,7 @@ export interface PrivacyScreenProps {
 export function PrivacyScreen({ onBack, onAccountDeleted }: PrivacyScreenProps) {
   const bp = useBreakpoint()
   const { t } = useTranslation(APP_NS)
-  const tr = (key: string): string => t(key)
+  const tr = (key: string, options?: Readonly<Record<string, string | number>>): string => (options ? t(key, options) : t(key))
   const queryClient = useQueryClient()
   const deleteAccountMutation = useAccountDeletionControllerDeleteAccount()
 
@@ -70,16 +71,13 @@ export function PrivacyScreen({ onBack, onAccountDeleted }: PrivacyScreenProps) 
   async function submitDelete(withPassword: string | undefined) {
     setDeleteFlow({ kind: 'deleting' })
     try {
-      const result = await deleteAccountMutation.mutateAsync({
+      await deleteAccountMutation.mutateAsync({
         data: withPassword ? { confirm: true, password: withPassword } : { confirm: true },
       })
-      switch (result.status) {
-        case 200:
-          queryClient.clear()
-          await retrySession()
-          setPassword('')
-          onAccountDeleted()
-          return
+    } catch (error) {
+      // Every refusal rejects with an ApiError (WEB-28). Deletion answers 400 FRESH_AUTH_REQUIRED for a stale
+      // session (ADR-0106 D2), 401 for a wrong password, 429 when throttled, 403 for a guest.
+      switch (apiErrorStatus(error)) {
         case 400:
           setDeleteFlow({ kind: 'password' })
           return
@@ -92,15 +90,15 @@ export function PrivacyScreen({ onBack, onAccountDeleted }: PrivacyScreenProps) 
         case 403:
           setDeleteFlow({ kind: 'guestBlocked' })
           return
-        default: {
-          const exhaustiveCheck: never = result
+        default:
           setDeleteFlow({ kind: withPassword !== undefined ? 'password' : 'confirm', error: 'generic' })
-          return exhaustiveCheck
-        }
+          return
       }
-    } catch {
-      setDeleteFlow({ kind: withPassword !== undefined ? 'password' : 'confirm', error: 'generic' })
     }
+    queryClient.clear()
+    await retrySession()
+    setPassword('')
+    onAccountDeleted()
   }
 
   const styles = makePrivacyStyles(useTheme())
@@ -125,27 +123,37 @@ export function PrivacyScreen({ onBack, onAccountDeleted }: PrivacyScreenProps) 
             <Card>
               <Text style={styles.offerHeading}>{tr('datenschutz.export.stepUp.heading')}</Text>
               <Text style={styles.warningBody}>{tr('datenschutz.export.stepUp.body')}</Text>
-              <Feld label={tr('datenschutz.export.stepUp.label')}>
-                <Input
-                  type="password"
-                  value={password}
-                  onChange={setPassword}
-                  accessibilityLabel={tr('datenschutz.export.stepUp.label')}
-                  autoComplete="current-password"
-                  testID="export-stepup-passwort"
-                />
-              </Feld>
-              {exportStepUp.error ? (
-                <Text style={styles.errorNote} accessibilityRole="alert">{exportStepUp.error}</Text>
-              ) : null}
-              <Button
-                variant="ghost"
-                onPress={() => void confirmExportStepUp()}
-                disabled={exportStepUp.busy || !password}
-                testID="export-stepup-bestaetigen"
+              {/* WEB-50: without a password, the passkey or the provider confirms; then the export runs. */}
+              <StepUpChoices
+                testID="export-stepup-ohne-passwort"
+                onConfirmed={() => {
+                  const format = exportStepUp.format
+                  setExportStepUp(null)
+                  void runExport(format)
+                }}
               >
-                {tr('datenschutz.export.stepUp.confirm')}
-              </Button>
+                <Feld label={tr('datenschutz.export.stepUp.label')}>
+                  <Input
+                    type="password"
+                    value={password}
+                    onChange={setPassword}
+                    accessibilityLabel={tr('datenschutz.export.stepUp.label')}
+                    autoComplete="current-password"
+                    testID="export-stepup-passwort"
+                  />
+                </Feld>
+                {exportStepUp.error ? (
+                  <Text style={styles.errorNote} accessibilityRole="alert">{exportStepUp.error}</Text>
+                ) : null}
+                <Button
+                  variant="ghost"
+                  onPress={() => void confirmExportStepUp()}
+                  disabled={exportStepUp.busy || !password}
+                  testID="export-stepup-bestaetigen"
+                >
+                  {tr('datenschutz.export.stepUp.confirm')}
+                </Button>
+              </StepUpChoices>
               <Button
                 variant="ghost"
                 onPress={() => { setExportStepUp(null); setPassword('') }}
@@ -169,6 +177,7 @@ export function PrivacyScreen({ onBack, onAccountDeleted }: PrivacyScreenProps) 
             onCancel={() => { setDeleteFlow({ kind: 'closed' }); setPassword('') }}
             onConfirmDelete={() => void submitDelete(undefined)}
             onSubmitPassword={() => void submitDelete(password)}
+            onSteppedUp={() => void submitDelete(undefined)}
           />
         </>
       )}

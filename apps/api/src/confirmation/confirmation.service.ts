@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto'
 import { Inject, Injectable, Optional } from '@nestjs/common'
 import { ConflictError, ForbiddenError, InvalidInputError, NotFoundError } from '../common/domain-error.js'
 import {
@@ -20,6 +21,7 @@ import {
 import { AssistantTaskService } from '../assistant-task/assistant-task.service.js'
 import type { AssistantTaskDecision } from '../assistant-task/assistant-task.repository.js'
 import { AuditService } from '../audit/audit.service.js'
+import { TRANSACTION_RUNNER, type TransactionRunner } from '../common/transaction-runner.js'
 import { LinkService } from '../link/link.service.js'
 import { PROVENANCE_REPOSITORY, type ProvenanceRecord, type ProvenanceRepository } from '../marking/marking.repository.js'
 import { assertAiWritable } from './ai-write-policy.js'
@@ -27,6 +29,30 @@ import { FIELD_ACCESS, type FieldAccess, type ScreenAccess } from './field-acces
 import type { AssistantTaskDto, ConfirmationResponseDto, ProvenanceDto, FieldProvenanceDto } from './dto/confirmation.dto.js'
 
 export type WriteResult = 'geschrieben' | 'vorschlag' | 'unveraendert'
+
+/** A value as „Prüfen & bestätigen“ showed it: confirming binds to exactly these (MCP-4). */
+export interface ShownValue {
+  readonly key: string
+  readonly version: string
+  readonly person?: 'B' | undefined
+}
+
+/**
+ * What the user saw of a field: its value, where it came from and any proposal. A value the assistant wrote
+ * after the screen was drawn has another version, so the confirmation that did not show it is refused.
+ */
+export function valueVersion(dto: Pick<FieldProvenanceDto, 'key' | 'value' | 'provenance' | 'confirmed' | 'proposal'>): string {
+  return createHash('sha256').update(JSON.stringify([dto.key, dto.value, dto.provenance, dto.confirmed, dto.proposal])).digest('base64url').slice(0, 22)
+}
+
+/** Which record a field belongs to, in words the user knows (MCP-5): the child's first name, the object's address. */
+function instanceLabelOf(screen: Screen, fields: Readonly<Record<string, string | null>> | null | undefined): string | null {
+  if (!fields) return null
+  const words = (...parts: (string | null | undefined)[]) => parts.map((p) => p?.trim() ?? '').filter((p) => p !== '').join(' ')
+  if (screen === 'kind') return words(fields.firstName) || null
+  if (screen === 'vermietung') return [words(fields.strasse, fields.hausnummer), words(fields.city)].filter((p) => p !== '').join(', ') || null
+  return null
+}
 
 export function staleValueConflict(key: string, currentValue: string | null): ConflictError {
   return new ConflictError('ADVISOR_ACTION_STALE_CONFLICT', `Das Feld "${key}" wurde zwischenzeitlich manuell geändert.`, {
@@ -67,7 +93,13 @@ export class ConfirmationService {
     @Optional() @Inject(LinkService) private readonly link?: Pick<LinkService, 'spouseForAdvisor'>,
     /** The tasks the user's assistant left (#547); without the seam the overview carries none. */
     @Optional() @Inject(AssistantTaskService) private readonly tasks?: Pick<AssistantTaskService, 'listOpen' | 'decide'>,
+    /** Read, decide and write one field as a unit (MCP-16); without a runner (unit tests) the steps run as they are. */
+    @Optional() @Inject(TRANSACTION_RUNNER) private readonly transactions?: TransactionRunner,
   ) {}
+
+  private inTransaction<T>(work: () => Promise<T>): Promise<T> {
+    return this.transactions === undefined ? work() : this.transactions.run(work)
+  }
 
   /** The open tasks of the user's own account, as the Cockpit and the confirmation screen show them. */
   private async openTasks(userId: string, taxYear: number): Promise<AssistantTaskDto[]> {
@@ -125,6 +157,11 @@ export class ConfirmationService {
   async write(userId: string, taxYear: number, key: string, newValue: string | null, provenance: Provenance): Promise<WriteResult> {
     if (provenance.kind === 'nutzer') throw new Error('BestaetigungService.schreibe is for non-user writes; the masks handle user writes.')
     const a = this.address(key, taxYear)
+    // The value read, the decision and the write see one snapshot: a user write in between cannot be overwritten (MCP-16).
+    return this.inTransaction(() => this.writeDecided(userId, a, key, newValue, provenance))
+  }
+
+  private async writeDecided(userId: string, a: Address, key: string, newValue: string | null, provenance: Provenance): Promise<WriteResult> {
     const currentValue = await this.currentValue(userId, a)
     const existing = await this.repository.find(userId, a.taxYear, key)
     const decision = decideWriting({ key, existing: existing === null ? null : { ...existing, value: currentValue }, currentValue, newValue, provenance })
@@ -249,44 +286,18 @@ export class ConfirmationService {
     return this.repository.listForUserAndYears(userId, [taxYear, YEAR_INDEPENDENT])
   }
 
+  /** The markings of several tax years in one read (the MCP take-back of a receipt looks for every entry naming it). */
+  async listForYears(userId: string, taxYears: readonly number[]): Promise<ProvenanceRecord[]> {
+    return this.repository.listForUserAndYears(userId, taxYears)
+  }
+
   async missing(userId: string, taxYear: number): Promise<string[]> {
     return missingConfirmations((await this.list(userId, taxYear)).map((r) => ({ ...r, value: null })))
   }
 
   async overview(userId: string, taxYear: number): Promise<ConfirmationResponseDto> {
-    const spouse = await this.recordedSpouse(userId, taxYear)
-    const isOpen = (r: ProvenanceRecord) => !r.confirmed || r.proposal !== null
-    const open = [
-      ...(await this.list(userId, taxYear)).filter(isOpen).map((record) => ({ record, dataUserId: userId, person: undefined })),
-      ...(spouse === null ? [] : (await this.list(spouse, taxYear)).filter(isOpen).map((record) => ({ record, dataUserId: spouse, person: 'B' as const }))),
-    ]
+    const values = await this.openValues(userId, taxYear)
     const tasks = await this.openTasks(userId, taxYear)
-    if (open.length === 0) return { annexes: [], tasks }
-    await this.auditService.append({ userId, action: 'READ', resource: 'kennzeichnung' })
-
-    const read = new Map<string, Promise<Readonly<Record<string, string | null>> | null>>()
-    const values: { annex: Annex; dto: FieldProvenanceDto }[] = []
-    for (const { record: r, dataUserId, person } of open) {
-      const { screen, instance, field } = decomposeProvenanceKey(r.key)
-      const access = this.access[screen]
-      const cacheKey = `${dataUserId}|${r.taxYear}|${screen}|${instance ?? ''}`
-      if (access !== undefined && !read.has(cacheKey)) read.set(cacheKey, access.read(dataUserId, r.taxYear, instance))
-      const fields = access === undefined ? null : await read.get(cacheKey)
-      values.push({
-        annex: annexOf(r.key),
-        dto: {
-          key: r.key,
-          screen,
-          instance,
-          field,
-          value: fields?.[field] ?? null,
-          provenance: provenanceDto(r.provenance),
-          confirmed: r.confirmed,
-          proposal: r.proposal === null ? null : { value: r.proposal.value, provenance: provenanceDto(r.proposal.provenance) },
-          ...(person === undefined ? {} : { person }),
-        },
-      })
-    }
     return {
       tasks,
       annexes: ANNEXES.flatMap((annex) => {
@@ -296,12 +307,68 @@ export class ConfirmationService {
     }
   }
 
-  async confirmAnnex(userId: string, taxYear: number, annex: Annex): Promise<ConfirmationResponseDto> {
-    if (!(ANNEXES as readonly string[]).includes(annex)) throw new InvalidInputError('ANLAGE_UNKNOWN', `"${annex}" is not an Anlage.`)
-    await this.repository.confirmAnnex(userId, [taxYear, YEAR_INDEPENDENT], annex)
-    // The user confirms the Anlage for the Person B they record, as they entered her figures (ADR-0054).
+  /** Every unconfirmed value and open proposal of the user and of the Person B she records, as the screen shows them. */
+  private async openValues(userId: string, taxYear: number): Promise<{ annex: Annex; dataUserId: string; dto: FieldProvenanceDto }[]> {
     const spouse = await this.recordedSpouse(userId, taxYear)
-    if (spouse !== null) await this.repository.confirmAnnex(spouse, [taxYear, YEAR_INDEPENDENT], annex)
+    const isOpen = (r: ProvenanceRecord) => !r.confirmed || r.proposal !== null
+    const open = [
+      ...(await this.list(userId, taxYear)).filter(isOpen).map((record) => ({ record, dataUserId: userId, person: undefined })),
+      ...(spouse === null ? [] : (await this.list(spouse, taxYear)).filter(isOpen).map((record) => ({ record, dataUserId: spouse, person: 'B' as const }))),
+    ]
+    if (open.length === 0) return []
+    await this.auditService.append({ userId, action: 'READ', resource: 'kennzeichnung' })
+
+    const read = new Map<string, Promise<Readonly<Record<string, string | null>> | null>>()
+    const values: { annex: Annex; dataUserId: string; dto: FieldProvenanceDto }[] = []
+    for (const { record: r, dataUserId, person } of open) {
+      const { screen, instance, field } = decomposeProvenanceKey(r.key)
+      const access = this.access[screen]
+      const cacheKey = `${dataUserId}|${r.taxYear}|${screen}|${instance ?? ''}`
+      if (access !== undefined && !read.has(cacheKey)) read.set(cacheKey, access.read(dataUserId, r.taxYear, instance))
+      const fields = access === undefined ? null : await read.get(cacheKey)
+      const shown = {
+        key: r.key,
+        value: fields?.[field] ?? null,
+        provenance: provenanceDto(r.provenance),
+        confirmed: r.confirmed,
+        proposal: r.proposal === null ? null : { value: r.proposal.value, provenance: provenanceDto(r.proposal.provenance) },
+      }
+      values.push({
+        annex: annexOf(r.key),
+        dataUserId,
+        dto: {
+          ...shown,
+          screen,
+          instance,
+          instanceLabel: instance === null ? null : instanceLabelOf(screen, fields),
+          field,
+          version: valueVersion(shown),
+          ...(person === undefined ? {} : { person }),
+        },
+      })
+    }
+    return values
+  }
+
+  /**
+   * Confirms the unconfirmed values of an Anlage — exactly those the user was shown (MCP-4). When any of them
+   * changed since, or a value came in that the screen did not show, nothing is confirmed and the user looks again.
+   * Person B's values the user records are confirmed with hers (ADR-0054).
+   */
+  async confirmAnnex(userId: string, taxYear: number, annex: Annex, shown: readonly ShownValue[]): Promise<ConfirmationResponseDto> {
+    if (!(ANNEXES as readonly string[]).includes(annex)) throw new InvalidInputError('ANLAGE_UNKNOWN', `"${annex}" is not an Anlage.`)
+    await this.inTransaction(async () => {
+      const current = (await this.openValues(userId, taxYear)).filter((v) => v.annex === annex && !v.dto.confirmed)
+      const id = (person: 'B' | undefined, key: string) => `${person ?? 'A'}|${key}`
+      const seen = new Map(shown.map((s) => [id(s.person, s.key), s.version]))
+      if (current.length !== seen.size || current.some((v) => seen.get(id(v.dto.person, v.dto.key)) !== v.dto.version)) {
+        throw new ConflictError('CONFIRMATION_STALE', 'Seit du die Werte gesehen hast, hat sich etwas geändert. Prüf sie bitte noch einmal.')
+      }
+      for (const dataUserId of new Set(current.map((v) => v.dataUserId))) {
+        const keys = current.filter((v) => v.dataUserId === dataUserId).map((v) => v.dto.key)
+        await this.repository.confirmKeys(dataUserId, [taxYear, YEAR_INDEPENDENT], annex, keys)
+      }
+    })
     return this.overview(userId, taxYear)
   }
 

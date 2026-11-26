@@ -5,6 +5,8 @@
 // everything is scoped to the caller, ciphertext at rest and part of the Art. 15/20 export.
 import { describe, expect, it } from 'vitest'
 import { app, baseUrl, prisma, signUp, useAcceptanceServer } from '../support/acceptance-server.js'
+import { confirmAnnexOverHttp } from '../support/confirm-annex-over-http.js'
+import { asDatabaseUser } from '../support/database-fixture.js'
 
 const ALLOWED_ORIGIN = 'https://allowed.example.com'
 
@@ -97,7 +99,7 @@ describe('REQ-032 — Herkunft und Bestätigung (ADR-0052 §6/§7), against the 
     expect(lstbAfter.bruttoarbeitslohn).toEqual({ kind: 'erfasst', value: 50000 })
 
     // Confirm Anlage N → its block goes, Anlage KAP's stays.
-    expect((await put(cookie, `${YEAR}/bestaetigung/anlagen/anlageN`)).status).toBe(200)
+    expect((await confirmAnnexOverHttp(baseUrl, cookie, YEAR, 'anlageN')).status).toBe(200)
     const afterN = await missing(cookie)
     expect(afterN).not.toContain('unbestaetigt.anlageN')
     expect(afterN).toContain('unbestaetigt.anlageKap')
@@ -114,7 +116,7 @@ describe('REQ-032 — Herkunft und Bestätigung (ADR-0052 §6/§7), against the 
 
     const { TAX_DATA_EXPORT_REPOSITORY } = await import('../../src/account/tax-data-export.repository.js')
     const repository = app.get<{ findAllForUser(userId: string): Promise<{ area: string; fields: Record<string, unknown> }[]> }>(TAX_DATA_EXPORT_REPOSITORY)
-    const entries = (await repository.findAllForUser(userId)).filter((e) => e.area === 'Herkunft und Bestätigung')
+    const entries = (await asDatabaseUser(userId, repository).findAllForUser(userId)).filter((e) => e.area === 'Herkunft und Bestätigung')
     expect(entries.find((e) => e.fields.postenKey === 'lstb.bruttoarbeitslohn')?.fields).toMatchObject({
       herkunftArt: 'nutzer',
       bestaetigt: true,
@@ -141,7 +143,7 @@ describe('REQ-032 — Herkunft und Bestätigung (ADR-0052 §6/§7), against the 
     await lastYearAndOwnValue(a.cookie)
 
     expect(await overview(b.cookie)).toEqual({ annexes: [], tasks: [] })
-    expect((await put(b.cookie, `${YEAR}/bestaetigung/anlagen/anlageN`)).status).toBe(200)
+    expect((await confirmAnnexOverHttp(baseUrl, b.cookie, YEAR, 'anlageN')).status).toBe(200)
     expect((await put(b.cookie, `${YEAR}/bestaetigung/vorschlaege/lstb.bruttoarbeitslohn`, { decision: 'annehmen' })).status).toBe(404)
 
     expect(await missing(a.cookie)).toContain('unbestaetigt.anlageN')

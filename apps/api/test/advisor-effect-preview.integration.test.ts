@@ -11,6 +11,8 @@ import { ConfirmationService } from '../src/confirmation/confirmation.service.js
 import { PrismaService } from '../src/prisma/prisma.service.js'
 import { RENTAL_REPOSITORY, type RentalRepository } from '../src/rental/rental.repository.js'
 import { TaxEstimateService } from '../src/tax-estimate/tax-estimate.service.js'
+import { runAsDatabaseUser } from '../src/common/database-identity.js'
+import { fixtureClient } from './support/database-fixture.js'
 
 const YEAR = 2025
 
@@ -23,12 +25,13 @@ describe('effect preview through the real estimate', () => {
   const employee = `it-preview-${randomUUID()}`
   const blank = `it-preview-blank-${randomUUID()}`
 
-  const write = (userId: string, key: string, value: string) => confirmation.writeConfirmedByAdvisor(userId, YEAR, key, value)
+  // Each test runs as the user whose return it works on, as the owl's requests do (P11).
+  const write = (userId: string, key: string, value: string) => runAsDatabaseUser(userId, () => confirmation.writeConfirmedByAdvisor(userId, YEAR, key, value))
 
   beforeAll(async () => {
     app = await NestFactory.create<NestFastifyApplication>(AppModule, new FastifyAdapter(), { logger: false })
     await app.init()
-    prisma = app.get(PrismaService)
+    prisma = fixtureClient(app.get(PrismaService))
     advisor = advisorOf(app)
     confirmation = app.get(ConfirmationService)
     estimate = app.get(TaxEstimateService)
@@ -51,11 +54,11 @@ describe('effect preview through the real estimate', () => {
     await app.close()
   })
 
-  it('starts from a return the estimate can compute', async () => {
+  it('starts from a return the estimate can compute', () => runAsDatabaseUser(employee, async () => {
     expect((await estimate.getState(employee, YEAR)).kind).toBe('spanne')
-  })
+  }))
 
-  it('puts a donation in euros and stores nothing', async () => {
+  it('puts a donation in euros and stores nothing', () => runAsDatabaseUser(employee, async () => {
     const preview = advisor.previewEffectFor(employee, YEAR)!
     const before = await estimate.getState(employee, YEAR)
 
@@ -69,9 +72,9 @@ describe('effect preview through the real estimate', () => {
     expect(await confirmation.readRawValue(employee, YEAR, 'interview.spenden-betrag')).toBeNull()
     expect(await confirmation.readRawValue(employee, YEAR, 'interview.spenden')).toBeNull()
     expect(await estimate.getState(employee, YEAR)).toEqual(before)
-  })
+  }))
 
-  it('agrees with what the estimate says once the draft is really applied', async () => {
+  it('agrees with what the estimate says once the draft is really applied', () => runAsDatabaseUser(employee, async () => {
     const preview = advisor.previewEffectFor(employee, YEAR)!
     const effect = await preview({ screen: 'commute', instance: null, values: [['oneWayKm', '38']] })
     expect(effect.kind).toBe('computed')
@@ -81,26 +84,26 @@ describe('effect preview through the real estimate', () => {
     expect(applied.kind).toBe('spanne')
     if (effect.kind !== 'computed' || applied.kind !== 'spanne') return
     expect(Math.round((applied.result.from + applied.result.to) / 2)).toBe(effect.afterRefundEur)
-  })
+  }))
 
-  it('previews a rental object by its stored record', async () => {
+  it('previews a rental object by its stored record', () => runAsDatabaseUser(employee, async () => {
     const rental = await app.get<RentalRepository>(RENTAL_REPOSITORY).create(employee, YEAR)
     const preview = advisor.previewEffectFor(employee, YEAR)!
     const effect = await preview({ screen: 'vermietung', instance: rental.id, values: [['mieteinnahmen', '9600']] })
     expect(['computed', 'not-computable']).toContain(effect.kind)
     expect(await confirmation.readRawValue(employee, YEAR, `vermietung:${rental.id}.mieteinnahmen`)).toBeNull()
-  })
+  }))
 
-  it('names no figure while the return cannot be estimated yet', async () => {
+  it('names no figure while the return cannot be estimated yet', () => runAsDatabaseUser(blank, async () => {
     const preview = advisor.previewEffectFor(blank, YEAR)!
     const effect = await preview({ screen: 'interview', instance: null, values: [['spenden', 'Ja'], ['spenden-betrag', '1000']] })
     expect(effect).toMatchObject({ kind: 'not-computable' })
     expect(await confirmation.readRawValue(blank, YEAR, 'interview.spenden-betrag')).toBeNull()
-  })
+  }))
 
-  it('refuses to guess when the draft itself cannot be written', async () => {
+  it('refuses to guess when the draft itself cannot be written', () => runAsDatabaseUser(employee, async () => {
     const preview = advisor.previewEffectFor(employee, YEAR)!
     const effect = await preview({ screen: 'interview', instance: null, values: [['spenden-betrag', 'viel']] })
     expect(effect).toMatchObject({ kind: 'not-computable' })
-  })
+  }))
 })

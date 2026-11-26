@@ -6,6 +6,7 @@ import { ProfileResponseDto } from './dto/profile-response.dto.js'
 import { PutProfileDto } from './dto/put-profile.dto.js'
 import { ValidationErrorDto } from './dto/validation-error.dto.js'
 import { ProfileService } from './profile.service.js'
+import { UserWrite } from '../common/user-write.decorator.js'
 
 @ApiTags('profile')
 @Controller('v1/profile')
@@ -23,6 +24,7 @@ export class ProfileController {
   }
 
   @Put()
+  @UserWrite('profil')
   @ApiBody({ type: PutProfileDto })
   @ApiOkResponse({ type: ProfileResponseDto, description: 'The saved profile, echoed back.' })
   @ApiBadRequestResponse({ type: ValidationErrorDto, description: 'Payload failed server-side validation; nothing was persisted.' })

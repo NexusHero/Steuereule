@@ -11,12 +11,13 @@ import {
   getTaxEstimateControllerGetQueryKey,
 } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
-import { CURRENT_TAX_YEAR } from '../../config/taxYear'
+import { runningTaxYear } from '../../config/taxYear'
 import { QuestionScreen } from './QuestionScreen'
 import { GateScreen } from './GateScreen'
-import { type PostErrorKind } from './PostErrorNotice'
+import { type PostError } from './PostErrorNotice'
 import { clearStepAndFollowUps } from './clearStepAndFollowUps'
-import { LoadingState, ErrorState } from '../shared/ScreenState'
+import { LoadingState, LoadFailedState } from '../shared/ScreenState'
+import { classifyApiFailure, useApiFailureMessage } from '../../net/apiFailure'
 import { triggerSaveErrorHaptic } from '../shared/saveFeedback'
 import { useSelfEmploymentCapability } from '../business/useSelfEmployment'
 
@@ -42,7 +43,7 @@ export interface InterviewScreenProps {
   readonly onChangeYear?: (year: number) => void
 }
 
-export function InterviewScreen({ onDone, taxYear = CURRENT_TAX_YEAR, onChangeYear }: InterviewScreenProps) {
+export function InterviewScreen({ onDone, taxYear = runningTaxYear(), onChangeYear }: InterviewScreenProps) {
   const bp = useBreakpoint()
   const { t: tr } = useTranslation(APP_NS)
   const queryClient = useQueryClient()
@@ -52,23 +53,24 @@ export function InterviewScreen({ onDone, taxYear = CURRENT_TAX_YEAR, onChangeYe
   const options = capability.options
   const postAnswer = useInterviewControllerPostAnswer({
     mutation: {
-      onSuccess: (response) => {
-        if (response.status === 200) {
-          void queryClient.invalidateQueries({ queryKey: getCockpitControllerGetCockpitSummaryQueryKey(taxYear) })
-          void queryClient.invalidateQueries({ queryKey: getTaxEstimateControllerGetQueryKey(taxYear) })
-          void queryClient.invalidateQueries({
-            queryKey: getInterviewControllerGetInterviewQueryKey(taxYear),
-            exact: true,
-            ...(refetchOnInterviewSyncRef.current ? {} : { refetchType: 'none' }),
-          })
-        }
+      onSuccess: () => {
+        void queryClient.invalidateQueries({ queryKey: getCockpitControllerGetCockpitSummaryQueryKey(taxYear) })
+        void queryClient.invalidateQueries({ queryKey: getTaxEstimateControllerGetQueryKey(taxYear) })
+        void queryClient.invalidateQueries({
+          queryKey: getInterviewControllerGetInterviewQueryKey(taxYear),
+          exact: true,
+          ...(refetchOnInterviewSyncRef.current ? {} : { refetchType: 'none' }),
+        })
       },
     },
   })
 
   const [answers, setAnswers] = useState<Answers>({})
   const [history, setHistory] = useState<readonly StepId[]>([])
-  const [postError, setPostError] = useState<PostErrorKind | null>(null)
+  const [postError, setPostError] = useState<PostError | null>(null)
+  // NM-06: the interview moves on only once the last answer is stored, so a failure is still seen here.
+  const [pendingCount, setPendingCount] = useState(0)
+  const failureMessage = useApiFailureMessage()
   const [seeded, setSeeded] = useState(false)
   const mutationQueue = useRef<Promise<void>>(Promise.resolve())
   const refetchOnInterviewSyncRef = useRef(false)
@@ -81,7 +83,7 @@ export function InterviewScreen({ onDone, taxYear = CURRENT_TAX_YEAR, onChangeYe
   }, [])
 
   useEffect(() => {
-    if (!seeded && !capability.pending && interviewQuery.isFetchedAfterMount && interviewQuery.data?.status === 200) {
+    if (!seeded && !capability.pending && interviewQuery.isFetchedAfterMount && interviewQuery.isSuccess) {
       const loaded = interviewQuery.data.data.answers as Answers
       setAnswers(loaded)
       setHistory(walkedMinimalGateSteps(loaded, options))
@@ -92,24 +94,14 @@ export function InterviewScreen({ onDone, taxYear = CURRENT_TAX_YEAR, onChangeYe
   const current = seeded ? nextStep(answers, options) : null
 
   useEffect(() => {
-    if (current?.kind === 'done') onDone(answers)
+    if (current?.kind === 'done' && pendingCount === 0) onDone(answers)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [current?.kind])
+  }, [current?.kind, pendingCount])
 
   if (interviewQuery.isPending) {
     return <LoadingState bp={bp} label={tr('interview.loading')} />
   }
-  if (interviewQuery.isError || interviewQuery.data.status !== 200) {
-    return (
-      <ErrorState
-        bp={bp}
-        heading={tr('interview.loadError.heading')}
-        message={tr('interview.loadError.message')}
-        retryLabel={tr('interview.loadError.retry')}
-        onRetry={() => void interviewQuery.refetch()}
-      />
-    )
-  }
+  if (interviewQuery.isError) return <LoadFailedState bp={bp} error={interviewQuery.error} onRetry={() => void interviewQuery.refetch()} />
   if (!seeded || current === null) {
     return <LoadingState bp={bp} label={tr('interview.loading')} />
   }
@@ -124,25 +116,30 @@ export function InterviewScreen({ onDone, taxYear = CURRENT_TAX_YEAR, onChangeYe
     }
     setHistory((h) => [...h, stepId])
     setAnswers(nextAnswers)
+    setPendingCount((c) => c + 1)
 
     mutationQueue.current = mutationQueue.current
       .then(async () => {
         try {
-          const response = await postAnswer.mutateAsync({ jahr: taxYear, data: { questionId: stepId, value } })
-          if (response.status !== 200) {
-            triggerSaveErrorHaptic()
-            refetchOnInterviewSyncRef.current = false
-            setPostError(response.status === 409 ? 'conflict' : 'invalid')
+          await postAnswer.mutateAsync({ jahr: taxYear, data: { questionId: stepId, value } })
+        } catch (error) {
+          triggerSaveErrorHaptic()
+          refetchOnInterviewSyncRef.current = false
+          const failure = classifyApiFailure(error)
+          if (failure.kind === 'conflict' || failure.kind === 'validation') {
+            // The server and the local graph disagree: resync from a fresh GET.
+            setPostError({ kind: failure.kind === 'conflict' ? 'conflict' : 'invalid' })
             setHistory([])
             setSeeded(false)
             void interviewQuery.refetch()
+            return
           }
-        } catch {
-          triggerSaveErrorHaptic()
-          refetchOnInterviewSyncRef.current = false
           setAnswers(previousAnswers)
           setHistory(previousHistory)
-          setPostError('network')
+          // NM-07: a lost connection asks to check it; a 401, 429 or 500 says what it is.
+          setPostError(failure.kind === 'offline' ? { kind: 'network' } : { kind: 'failed', detail: failureMessage(error) })
+        } finally {
+          setPendingCount((c) => c - 1)
         }
       })
       .catch(() => {})

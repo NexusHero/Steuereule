@@ -1,25 +1,13 @@
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
-import { I18nextProvider } from 'react-i18next'
-import { ThemeProvider } from '@steuereule/ui'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { screen, fireEvent, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
-import { createAppI18n } from '../i18n/app-i18n'
 import { OnboardingScreen } from './OnboardingScreen'
 import { server } from '../test-msw-server'
+import { expectFailsClosed, failEveryRequest } from '../test-every-query-fails'
+import { renderWithQuery } from '../test-render'
 
 function renderOnboarding(opts: { lng?: 'de' | 'en'; onDone?: () => void } = {}) {
-  const i18n = createAppI18n(opts.lng ?? 'de')
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
-  return render(
-    <QueryClientProvider client={queryClient}>
-      <I18nextProvider i18n={i18n}>
-        <ThemeProvider mode="light">
-          <OnboardingScreen onDone={opts.onDone ?? (() => {})} />
-        </ThemeProvider>
-      </I18nextProvider>
-    </QueryClientProvider>,
-  )
+  return renderWithQuery(<OnboardingScreen onDone={opts.onDone ?? (() => {})} />, { language: opts.lng ?? 'de' })
 }
 
 async function fillNameStep() {
@@ -95,8 +83,8 @@ describe('OnboardingScreen', () => {
     )
     renderOnboarding()
 
-    await screen.findByText('Das hat nicht geklappt.')
-    expect(screen.getByText('Deine Angaben konnten nicht geladen werden. Prüf die Verbindung und versuch es noch mal.')).toBeTruthy()
+    await screen.findByText('Das konnte nicht geladen werden.')
+    expect(screen.getByText('Keine Verbindung zum Server. Prüf dein Internet und versuch es noch mal.')).toBeTruthy()
 
     fireEvent.click(screen.getByText('Noch mal versuchen'))
     await screen.findByText('Vorname')
@@ -248,5 +236,58 @@ describe('OnboardingScreen', () => {
     expect(bar.getAttribute('aria-valuemin')).toBe('1')
     expect(bar.getAttribute('aria-valuemax')).toBe('3')
     expect(bar.getAttribute('aria-valuenow')).toBe('2')
+  })
+})
+
+describe('OnboardingScreen — failures never reach a save (WEB-28, NR-01, NR-22)', () => {
+  const STORED = { firstName: 'Anna', lastName: 'Beispiel', steuerId: '02476291358', steuernummer: '1234567890' }
+
+  it('fails closed: every request answering 500 shows a failure and sends no write', async () => {
+    const failing = failEveryRequest()
+    renderOnboarding()
+    await expectFailsClosed(failing)
+  })
+
+  it('a 429 on the profile load is a failure state, never an empty form', async () => {
+    server.use(http.get('*/v1/profile', () => HttpResponse.json({ statusCode: 429 }, { status: 429 })))
+    renderOnboarding()
+    expect(await screen.findByTestId('fehler-zustand')).toBeTruthy()
+    expect(screen.queryByText('Vorname')).toBeNull()
+  })
+
+  it('"später" keeps the stored Steuer-ID and Steuernummer: nothing about them is sent', async () => {
+    let body: unknown
+    server.use(
+      http.get('*/v1/profile', () => HttpResponse.json(STORED)),
+      http.put('*/v1/profile', async ({ request }) => {
+        body = await request.json()
+        return HttpResponse.json(STORED)
+      }),
+    )
+    const onDone = vi.fn()
+    renderOnboarding({ onDone })
+    await screen.findByDisplayValue('Anna')
+    fireEvent.click(screen.getByText('Weiter'))
+    fireEvent.change(await screen.findByDisplayValue('02 476 291 358'), { target: { value: '1' } })
+    fireEvent.click(screen.getByText(/später/))
+    fireEvent.click(await screen.findByText(/später/))
+    fireEvent.click(await screen.findByTestId('onboarding-speichern'))
+    await waitFor(() => expect(onDone).toHaveBeenCalled())
+    expect(body).toEqual({ firstName: 'Anna', lastName: 'Beispiel' })
+  })
+
+  it('a 500 on the save says what happened, not "prüf die Steuer-ID"', async () => {
+    server.use(
+      http.get('*/v1/profile', () => HttpResponse.json(STORED)),
+      http.put('*/v1/profile', () => HttpResponse.json({ statusCode: 500 }, { status: 500 })),
+    )
+    renderOnboarding()
+    await screen.findByDisplayValue('Anna')
+    fireEvent.click(screen.getByText('Weiter'))
+    fireEvent.click(await screen.findByText('Weiter'))
+    fireEvent.click(await screen.findByText('Weiter'))
+    fireEvent.click(await screen.findByTestId('onboarding-speichern'))
+    expect(await screen.findByText('Bei uns ist gerade etwas schiefgelaufen. Versuch es gleich noch mal.')).toBeTruthy()
+    expect(screen.queryByText(/prüf die Steuer-ID/)).toBeNull()
   })
 })

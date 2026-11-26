@@ -406,3 +406,23 @@ granted; each let one that was granted access do more than intended.
    together can let through up to twice the limit within one rolling window. Each process still holds its
    own sliding window. The limits bound abuse, not billing, so this is accepted here rather than giving
    the MCP its own counter.
+
+## Amendment 10 (2026-11-25) — One gate for every tool, file upload, write scope for payment links
+
+Recorded in [ADR-0111](0111-beta-readiness.md) §"Agent access". In short: every tool passes one gate (policy,
+bounded arguments with `taxYear` 2000 to next year, audit row naming the assistant, one error shape); caps
+are counted under an advisory lock; `beleg_hochladen` uploads the file through the REST upload's checks;
+`zahllink:write` replaces `zahllink:read`, which stays accepted for existing refresh tokens; a request without
+a token gets 401 with a challenge before any guest identity exists.
+
+Accepted, with the reason:
+
+- Nothing verifies a client (amendment 8). Registration is open by the protocol; what bounds a deceptive
+  client is the consent screen (it shows the redirect target and the rights asked for), the step-up before
+  the grant, the read view without identifiers, and that every value an assistant writes stays unconfirmed.
+- `kind_anlegen` answers that a child with this first name and birth date already exists. An assistant with
+  the write right and without the read right learns that one fact about the user's own household; without
+  the answer it would create the child twice, and the user would have to find and remove the copy.
+- The two comparison tools keep their names (`veranlagung_vergleichen`, `veranlagungsarten_vergleichen`) and
+  the advice tools their `year` argument: a rename breaks connected assistants, and both are described in the
+  tool list.

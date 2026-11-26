@@ -12,11 +12,14 @@ import { PensionerScreen } from '../screens/pension/PensionerScreen'
 import { BusinessScreen, isBusinessPage, parentPage } from '../screens/business/BusinessScreen'
 import { OfficialFormScreen } from '../screens/printout/OfficialFormScreen'
 import type { Screen } from '@steuereule/core'
+import { rememberReturnTo } from '../screens/funnel/sessionMemory'
+import { useLinkControllerGet } from '@steuereule/api-client'
+import { LoadFailedState } from '../screens/shared/ScreenState'
 import { useShellState } from './ShellState'
 import { RequiresAccount } from './RequiresAccount'
 import { CockpitSheet } from './CockpitSheet'
 import { useYearGuard } from './guards'
-import type { CockpitStackParamList, PartnerAreaParam } from './routes'
+import { paymentReturnOf, type CockpitStackParamList, type PartnerAreaParam } from './routes'
 
 const PARTNER_AREAS: readonly PartnerAreaParam[] = ['lstb', 'arbeitsweg', 'schweiz', 'rente']
 
@@ -92,17 +95,34 @@ export function CockpitMasterDataRoute({ navigation, route }: Props<'CockpitMast
 
 export function PartnerRoute({ navigation, route }: Props<'Partner'>) {
   const year = useYearGuard(route.params?.year, navigation)
-  const { partner, setTaxYear } = useShellState()
+  const { partner, setPartner, setTaxYear } = useShellState()
   const rawArea = route.params?.area
   const validArea = PARTNER_AREAS.includes(rawArea) ? rawArea : null
   const activePartner = partner && validArea !== null && partner.area === validArea ? partner : null
+  // NM-12: after a reload or from a direct link the partner's name is not in memory; it is read from the
+  // year's link instead of sending the user to the Stammdaten.
+  const lookUp = year !== null && validArea !== null && activePartner === null
+  const link = useLinkControllerGet(year ?? 0, { query: { enabled: lookUp, retry: false } })
+  const stored = link.data?.data
+  const recordable = stored?.filingType === 'zusammen' && stored.personBHasOwnAccount !== true
+  const storedName = stored?.personB?.firstName?.trim() || 'deinem Partner'
 
   useEffect(() => {
-    if (year !== null && activePartner === null) {
+    if (year === null || activePartner !== null) return
+    if (validArea === null || (link.isSuccess && !recordable)) {
       navigation.replace('CockpitMasterData', { year })
+      return
     }
-  }, [year, activePartner, navigation])
+    if (link.isSuccess && recordable) setPartner({ area: validArea, name: storedName })
+  }, [year, activePartner, validArea, link.isSuccess, recordable, storedName, navigation, setPartner])
 
+  if (year !== null && lookUp && link.isError) {
+    return (
+      <CockpitSheet navigation={navigation}>
+        <LoadFailedState bp="s" error={link.error} onRetry={() => void link.refetch()} />
+      </CockpitSheet>
+    )
+  }
   if (year === null || activePartner === null) return null
   const cameFromMasterData = navigation.getState().routes.some((r) => r.name === 'CockpitMasterData')
   const closePartner = () =>
@@ -187,6 +207,11 @@ export function OfficialFormRoute({ navigation, route }: Props<'OfficialForm'>) 
 
 export function BusinessRoute({ navigation, route }: Props<'Business'>) {
   const year = useYearGuard(route.params?.year, navigation)
+  const { onLogin, onRegister } = useShellState()
+  // WEB-44: a request that answers ACCOUNT_REQUIRED offers the sign-in, and comes back to this page after it.
+  const backHere = () => {
+    if (typeof window !== 'undefined') rememberReturnTo(`${window.location.pathname}${window.location.search}`)
+  }
   if (year === null) return null
   const person = route.params?.person === 'B' ? 'B' : 'A'
   // ADR-0101 §22: which business of the person; the first unless the link names another.
@@ -201,7 +226,17 @@ export function BusinessRoute({ navigation, route }: Props<'Business'>) {
         person={person}
         business={business}
         page={page}
-        payment={route.params?.zahlung}
+        payment={paymentReturnOf(route.params)}
+        account={{
+          onSignIn: () => {
+            backHere()
+            onLogin()
+          },
+          onCreateAccount: () => {
+            backHere()
+            onRegister()
+          },
+        }}
         onOpenPage={(next) => navigation.navigate('Business', { year, ...(next ? { page: next } : {}), ...own })}
         onBack={() => {
           if (!page) return home()

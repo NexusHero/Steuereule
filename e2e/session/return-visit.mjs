@@ -491,10 +491,17 @@ async function testCloseAndReopenReLogin(apiOrigin, webOrigin, sql) {
       guardAgainst429(page, fail, '/v1/device/')
       await waitForRateLimit(DEVICE_CODE_BUCKET, 'device-code')
       await skipSplash(page, webOrigin)
-      // Splash always leads to Login today (App.tsx's own comment: no boot-time session-detection
-      // yet, REQ-009 pending) — an already-documented gap, not asserted here as new. The
-      // stakeholder's own next step is what this row actually tests: re-entering the same
-      // credentials on the screen that's actually shown.
+      // A session that survived the close goes straight to the app from `/` (WEB-6, the former REQ-009 gap):
+      // same account, no second sign-in.
+      await page.getByRole('tab', { name: COPY.profilTab }).waitFor({ state: 'visible', timeout: 10_000 })
+      const identityAfterReopen = await getSessionEmail(page, apiOrigin)
+      if (identityAfterReopen !== email) {
+        fail(`Row C (session 2): opening / after the reopen should land in the app as ${email}, get-session read ${JSON.stringify(identityAfterReopen)}.`)
+      }
+      console.log('[return-visit] Row C: session 2 — the surviving session opens the app directly, as the same account.')
+      // Re-entering the credentials is still a real path (switching accounts, a stale tab): on the sign-in page
+      // itself the screen must be honest and the sign-in clean.
+      await page.goto(`${webOrigin}/login`, { waitUntil: 'networkidle' })
       await assertLoginScreenHonest(page, apiOrigin, { expectHealthy: true, label: 'Row C (session 2, before re-login)' })
       await waitForRateLimit(AUTH_BUCKET, 'sign-in/email')
       await assertLoginSubmitHonest(page, email, TEST_PASSWORD, { expectHealthy: true, label: 'Row C (session 2, re-login)' })
@@ -691,8 +698,20 @@ async function testDeviceCodeDoesNotSurviveReload(browser, webOrigin) {
  * `svg >> nth=0`/`nth=1` are reliably head/glasses — confirmed against a real render, not assumed
  * from source (see this row's own PR evidence).
  */
+// The splash owl's two animated layers, by their own test ids (not "the first SVG on the page", which any icon
+// added above the owl would take).
 function splashOwlLayers(page) {
-  return { head: page.locator('svg').nth(0).locator('xpath=..'), glasses: page.locator('svg').nth(1).locator('xpath=..') }
+  return { head: page.locator('[data-testid="owl-mark-funke-head-layer"]').first(), glasses: page.locator('[data-testid="owl-mark-funke-glasses-layer"]').first() }
+}
+
+// The entrance runs in the first ~0.8 s after the splash mounts (head, then glasses, 380 ms each). Sampling starts
+// as soon as the owl is in the DOM, not after the network is idle: how long the app's start-up requests take must
+// not decide whether the entrance is still running when the measurement begins.
+async function openSplashForSampling(page, webOrigin) {
+  await page.goto(webOrigin, { waitUntil: 'commit' })
+  const layers = splashOwlLayers(page)
+  await layers.head.waitFor({ state: 'attached', timeout: 15_000 })
+  return layers
 }
 
 function opacityProgressed(samples) {
@@ -723,8 +742,7 @@ async function testSplashEntranceReplaysHonestly(browser, webOrigin) {
   const normalCtx = await newContextAtBreakpoint(browser, 's')
   try {
     const page = await normalCtx.newPage()
-    await page.goto(webOrigin, { waitUntil: 'networkidle' })
-    const layers = splashOwlLayers(page)
+    const layers = await openSplashForSampling(page, webOrigin)
     const [headSamples, glassesSamples] = await Promise.all([
       sampleComputedStyleOverFrames(page, layers.head, ['opacity'], 90),
       sampleComputedStyleOverFrames(page, layers.glasses, ['opacity'], 90),
@@ -743,8 +761,7 @@ async function testSplashEntranceReplaysHonestly(browser, webOrigin) {
   const reducedCtx = await newReducedMotionContext(browser, { viewport: { width: 375, height: 812 } })
   try {
     const page = await reducedCtx.newPage()
-    await page.goto(webOrigin, { waitUntil: 'networkidle' })
-    const layers = splashOwlLayers(page)
+    const layers = await openSplashForSampling(page, webOrigin)
     const [headSamples, glassesSamples] = await Promise.all([
       sampleComputedStyleOverFrames(page, layers.head, ['opacity'], 90),
       sampleComputedStyleOverFrames(page, layers.glasses, ['opacity'], 90),

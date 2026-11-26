@@ -22,20 +22,23 @@ export class PutProfileDto {
   @ApiPropertyOptional({
     type: String,
     example: '02476291358',
-    description: 'Steuerliche Identifikationsnummer — exactly 11 digits if present. Optional since ADR-0045 (value-first funnel): omitted = not given yet, stored as null.',
+    nullable: true,
+    description:
+      'Steuerliche Identifikationsnummer — exactly 11 digits if present. Omitted = keep the stored value; null = clear it (ADR-0045: a profile may have none yet).',
   })
   @IsOptional()
   @IsString()
   @IsTaxId()
-  steuerId?: string
+  steuerId?: string | null
 
   @ApiPropertyOptional({
     type: String,
     example: '18181508155',
-    description: 'Steuernummer — optional; 1-13 digits (no separators) if present.',
+    nullable: true,
+    description: 'Steuernummer — 1-13 digits (no separators) if present. Omitted = keep the stored value; null = clear it.',
   })
   @IsOptional()
   @IsString()
   @IsTaxNumber()
-  steuernummer?: string
+  steuernummer?: string | null
 }

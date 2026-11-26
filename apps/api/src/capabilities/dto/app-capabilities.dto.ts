@@ -8,4 +8,11 @@ export class AppCapabilitiesDto {
     type: Boolean,
   })
   selbststaendig!: boolean
+
+  @ApiProperty({
+    description: 'OPS-16: the running tax year by the server clock (Europe/Berlin). The client derives the selectable years and the default year from it; ParseTaxYearPipe accepts up to this year plus one.',
+    example: 2026,
+    type: Number,
+  })
+  runningTaxYear!: number
 }

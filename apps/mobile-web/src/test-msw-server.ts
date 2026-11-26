@@ -251,6 +251,8 @@ export const server = setupServer(
   // What the printout would fill: nothing by default, so the structured preview names the masks' figures.
   http.get('*/v1/steuerjahre/:jahr/ausdruck/werte', () => HttpResponse.json({ forms: [] }, { status: 200 })),
   http.get('*/v1/steuerjahre/:jahr/ausdruck/pruefung', () => HttpResponse.json({ missing: [], missingChildFields: [], hints: [] }, { status: 200 })),
+  // A year that is payable and not paid, with no price to show: the unlock page and the return trip read it.
+  http.get('*/v1/steuerjahre/:jahr/freischaltung', () => HttpResponse.json({ status: 'offen', price: null }, { status: 200 })),
   http.put('*/v1/steuerjahre/:jahr/lstb/:feld', () =>
     HttpResponse.json(EMPTY_LSTB_RESPONSE, { status: 200 }),
   ),
@@ -352,7 +354,7 @@ export const server = setupServer(
   // suite overrides it with real figures where the numbers are the point.
   getCockpitControllerGetCockpitSummaryMockHandler(null),
   // The self-employment switch off, as the vitest env pins it (ADR-0101 §20); a suite that needs it on overrides.
-  getCapabilitiesControllerGetCapabilitiesMockHandler({ selbststaendig: false }),
+  getCapabilitiesControllerGetCapabilitiesMockHandler({ selbststaendig: false, runningTaxYear: 2026 }),
   // Ticket 10 (Slice 1) — the Beleg-Posteingang: a fresh guest genuinely has no Belege yet,
   // so the default inbox is the honest empty list. Present by default so shell-level tests
   // that pass through the Belege tab don't each have to stub it; BelegeScreen's own suite

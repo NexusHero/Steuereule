@@ -16,7 +16,10 @@ import type { PrintoutService } from '../printout/printout.service.js'
 import type { ProfileRepository } from '../profile/profile.repository.js'
 import type { ReceiptService } from '../receipt/receipt.service.js'
 import type { UnlockService } from '../unlock/unlock.service.js'
-import type { McpRateLimiter } from './mcp-rate-limit.js'
+import type { KeyedLock } from '../common/keyed-lock.js'
+import type { TransactionRunner } from '../common/transaction-runner.js'
+import type { UploadAdmission } from '../receipt/upload-admission.js'
+import type { YearHistoryRepository } from '../year-history/year-history.repository.js'
 import type { McpReportService } from './mcp-report.service.js'
 
 export interface AssistantSessionInfo {
@@ -32,6 +35,9 @@ export interface McpSession {
   readonly assistant: AssistantSessionInfo
 }
 
+/** The injection token of `McpDeps`: one object gathered by `mcpDepsProvider`, so `McpService` takes it whole. */
+export const MCP_DEPS = Symbol('MCP_DEPS')
+
 /** The services the tool groups work with; optional ones switch their tools off when absent. */
 export interface McpDeps {
   readonly cockpit: CockpitService
@@ -43,8 +49,12 @@ export interface McpDeps {
   readonly profiles: ProfileRepository
   readonly masterData: MasterDataRepository
   readonly audit: AuditService
-  /** The limits of the endpoint; the checkout link has one of its own (ADR-0052 amendment 9). */
-  readonly limiter?: Pick<McpRateLimiter, 'takeCheckoutLink'> | undefined
+  /** Caps counted and filled under one lock per account and year (MCP-23, H2-20). */
+  readonly locks: KeyedLock
+  /** Check and delete of an own record in one transaction (H2-28). */
+  readonly transactions: TransactionRunner
+  /** The upload admission of the REST route: a few uploads at once per instance, one per account (ADR-0109). */
+  readonly admission: Pick<UploadAdmission, 'acquire'>
   readonly report?: McpReportService | undefined
   /** The joint return (ADR-0054): whose data a value for Person B goes to. */
   readonly link?: Pick<LinkService, 'spouseForAdvisor' | 'dataUser'> | undefined
@@ -54,9 +64,19 @@ export interface McpDeps {
   /** A rental object is a record of its own: the mask `vermietung` needs its id as `instance`. */
   readonly rentals?: Pick<RentalRepository, 'listForUserAndYear' | 'create' | 'delete'> | undefined
   /** What only the user can do in the app, left as a task (#547). */
-  readonly tasks?: Pick<AssistantTaskService, 'create' | 'listForAssistant'> | undefined
+  readonly tasks?: Pick<AssistantTaskService, 'create' | 'listForAssistant' | 'withdrawOwn'> | undefined
   /** The book of the self-employed (ADR-0101): what a booking draft is checked against (#549). */
   readonly business?: Pick<BusinessService, 'digest' | 'bookingTarget'> | undefined
+  /** The years the account holds anything for (`steuerjahre_auflisten`, MCP-10). */
+  readonly years?: Pick<YearHistoryRepository, 'yearsOf'> | undefined
+}
+
+/**
+ * Whether a receipt id names one of the caller's own receipts (H2-22): a Herkunft „aus Beleg X“ is only
+ * kept for a receipt the account holds, never for a made-up or another account's id.
+ */
+export async function isOwnReceipt(deps: Pick<McpDeps, 'receipts'>, userId: string, receiptId: string | undefined): Promise<boolean> {
+  return receiptId === undefined || (await deps.receipts.isOwnedBy(userId, receiptId))
 }
 
 /** The Herkunft an entry of this assistant carries. */
@@ -72,18 +92,6 @@ export function isOwnProvenance(provenance: Provenance | undefined, assistant: P
   if (provenance?.kind !== 'assistent') return false
   return provenance.clientId === undefined ? provenance.name === assistant.clientName : provenance.clientId === assistant.clientId
 }
-
-export function assertScope(assistant: AssistantSessionInfo, requiredScope: string): void {
-  if (!assistant.scopes.includes(requiredScope)) {
-    throw new Error(`Fehlender OAuth-Scope: ${requiredScope}. Dem Assistenten wurde diese Berechtigung nicht erteilt.`)
-  }
-}
-
-/** A tool answer as the JSON text an MCP client reads. */
-export const json = (value: unknown) => ({ content: [{ type: 'text' as const, text: JSON.stringify(value, null, 2) }] })
-
-/** A refusal the assistant can act on: `CODE: reason`, flagged as an error. */
-export const refused = (error: string) => ({ isError: true, content: [{ type: 'text' as const, text: JSON.stringify({ ok: false, error }, null, 2) }] })
 
 /**
  * Whose data an entry writes, with the in-app advisor's rules (`checkDraftPerson`): Person B only in a

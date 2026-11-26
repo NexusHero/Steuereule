@@ -5,12 +5,12 @@ const API = 'http://localhost:3000/api/auth/verify-email?token=abc'
 const WEB_APP = 'http://localhost:8080'
 
 describe('redirectVerificationToWebApp', () => {
-  it('resolves a relative callbackURL against the web app instead of the API', () => {
+  it('sends the default root callback to the sign-in page with the confirmed note (WEB-5)', () => {
     const link = `${API}&callbackURL=%2F`
 
     const result = redirectVerificationToWebApp(link, WEB_APP)
 
-    expect(new URL(result).searchParams.get('callbackURL')).toBe('http://localhost:8080/')
+    expect(new URL(result).searchParams.get('callbackURL')).toBe('http://localhost:8080/login?bestaetigt=1')
   })
 
   it('keeps a nested relative path', () => {
@@ -24,7 +24,7 @@ describe('redirectVerificationToWebApp', () => {
   it('sends a link without callbackURL to the web app root', () => {
     const result = redirectVerificationToWebApp(API, WEB_APP)
 
-    expect(new URL(result).searchParams.get('callbackURL')).toBe('http://localhost:8080/')
+    expect(new URL(result).searchParams.get('callbackURL')).toBe('http://localhost:8080/login?bestaetigt=1')
   })
 
   // ADR-0104 L2 — an off-origin callback must not be trusted; it is neutralised to the web app root.
@@ -33,7 +33,7 @@ describe('redirectVerificationToWebApp', () => {
 
     const result = redirectVerificationToWebApp(link, WEB_APP)
 
-    expect(new URL(result).searchParams.get('callbackURL')).toBe('http://localhost:8080/')
+    expect(new URL(result).searchParams.get('callbackURL')).toBe('http://localhost:8080/login?bestaetigt=1')
   })
 
   it('neutralises a protocol-relative callbackURL (//evil.com), which would otherwise resolve to http://evil.com/', () => {
@@ -41,7 +41,7 @@ describe('redirectVerificationToWebApp', () => {
 
     const result = redirectVerificationToWebApp(link, WEB_APP)
 
-    expect(new URL(result).searchParams.get('callbackURL')).toBe('http://localhost:8080/')
+    expect(new URL(result).searchParams.get('callbackURL')).toBe('http://localhost:8080/login?bestaetigt=1')
   })
 
   it('keeps an absolute callbackURL that is already on the web app origin', () => {

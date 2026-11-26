@@ -9,6 +9,7 @@ import { ParsePersonPipe } from '../link/parse-person.pipe.js'
 import { CommuteService } from './commute.service.js'
 import { WAY_FACT_FIELDS, WAY_TEXT_FIELDS, WORK_EXPENSE_AMOUNT_FIELDS, WORK_EXPENSE_NOTE_FIELDS } from './commute.repository.js'
 import { CommuteInputsDto, CommuteResponseDto } from './dto/commute.dto.js'
+import { UserWrite } from '../common/user-write.decorator.js'
 
 @ApiTags('arbeitsweg')
 @Controller('v1/steuerjahre')
@@ -30,10 +31,11 @@ export class CommuteController {
     @Param('jahr', ParseTaxYearPipe) year: number,
     @Query('person', ParsePersonPipe) person: 'A' | 'B',
   ): Promise<CommuteResponseDto> {
-    return this.service.getState(await this.link.dataUser(userId, year, person), year)
+    return this.service.getState(await this.link.dataUser(userId, year, person), year, userId)
   }
 
   @Put(':jahr/arbeitsweg')
+  @UserWrite('commute')
   @HttpCode(200)
   @RequiresAccount()
   @ApiParam({ name: 'jahr', type: Number, example: 2025 })

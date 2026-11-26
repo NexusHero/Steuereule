@@ -4,6 +4,7 @@ const api = vi.hoisted(() => ({ uploadReceiptFile: vi.fn(), fetchReceiptFileBlob
 vi.mock('@steuereule/api-client', async (importOriginal) => ({ ...(await importOriginal<typeof import('@steuereule/api-client')>()), ...api }))
 
 import { storeReceipt } from './storeReceipt'
+import { classifyApiFailure } from '../../net/apiFailure'
 import { storedReceiptFile } from './storedReceiptFile'
 import { uploadBusinessReceipt } from './uploadBusinessReceipt'
 
@@ -14,15 +15,22 @@ const file = new File(['x'], 'beleg.pdf', { type: 'application/pdf' })
 describe('storeReceipt', () => {
   it('returns the id of the stored Beleg', async () => {
     api.uploadReceiptFile.mockResolvedValue({ ok: true, data: { id: 'r1' } })
-    expect(await storeReceipt(file, 'spenden' as never)).toEqual({ id: 'r1' })
+    expect(await storeReceipt(file, 'spenden' as never)).toEqual({ ok: true, id: 'r1' })
     expect(api.uploadReceiptFile).toHaveBeenCalledWith({ file, fileName: 'beleg.pdf', kind: 'spenden' })
   })
 
-  it('answers null when the server refuses or the network fails', async () => {
-    api.uploadReceiptFile.mockResolvedValue({ ok: false })
-    expect(await storeReceipt(file, 'spenden' as never)).toBeNull()
-    api.uploadReceiptFile.mockRejectedValue(new Error('offline'))
-    expect(await storeReceipt(file, 'spenden' as never)).toBeNull()
+  it('WEB-10: a refusal carries the status, body and Retry-After as an ApiError, a dropped request as offline', async () => {
+    api.uploadReceiptFile.mockResolvedValue({ ok: false, status: 429, data: { code: 'RATE_LIMITED' }, headers: new Headers({ 'retry-after': '30' }) })
+    const refused = await storeReceipt(file, 'spenden' as never)
+    expect(refused.ok).toBe(false)
+    const error = (refused as { error: unknown }).error
+    expect(classifyApiFailure(error)).toMatchObject({ kind: 'rate-limited', retryAfterSeconds: 30 })
+
+    api.uploadReceiptFile.mockResolvedValue({ ok: false, status: 413, data: null, headers: new Headers() })
+    expect(classifyApiFailure((await storeReceipt(file, 'spenden' as never) as { error: unknown }).error).kind).toBe('too-large')
+
+    api.uploadReceiptFile.mockRejectedValue(new TypeError('Failed to fetch'))
+    expect(classifyApiFailure((await storeReceipt(file, 'spenden' as never) as { error: unknown }).error).kind).toBe('offline')
   })
 })
 
@@ -67,6 +75,8 @@ describe('uploadBusinessReceipt', () => {
     expect(await uploadBusinessReceipt('ausgabe')({ file } as never)).toMatchObject({ ok: false, status: 422, data: { code: 'x' } })
     respond(204, '')
     expect(await uploadBusinessReceipt('ausgabe')({ file } as never)).toMatchObject({ ok: false, status: 204, data: null })
+    respond(502, '<html>Bad gateway</html>')
+    expect(await uploadBusinessReceipt('ausgabe')({ file } as never)).toMatchObject({ ok: false, status: 502, data: null })
     respond(500, '')
     expect(await uploadBusinessReceipt('ausgabe')({ file } as never)).toMatchObject({ ok: false, status: 500, data: null })
   })

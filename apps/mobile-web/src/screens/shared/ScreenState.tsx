@@ -1,5 +1,8 @@
 import { ActivityIndicator, View, Text, type ViewStyle, type TextStyle } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import { Button, useTheme, type UiTheme, type Breakpoint } from '@steuereule/ui'
+import { APP_NS } from '../../i18n/resources'
+import { useApiFailureMessage } from '../../net/apiFailure'
 
 interface ScreenStateProps {
   readonly bp: Breakpoint
@@ -53,6 +56,30 @@ export function ErrorState({ bp, heading, message, retryLabel, onRetry, testID =
       <Text style={styles.help}>{message}</Text>
       {retryLabel !== undefined && onRetry !== undefined ? <Button onPress={onRetry} testID="fehler-erneut-versuchen">{retryLabel}</Button> : null}
     </View>
+  )
+}
+
+/**
+ * A query failed (WEB-28): the shared wording for why, and a retry. Never an empty or default form in its
+ * place — that is what let a save overwrite stored data with blanks.
+ */
+export function LoadFailedState({
+  bp,
+  error,
+  onRetry,
+  testID,
+}: ScreenStateProps & { readonly error: unknown; readonly onRetry: () => void; readonly testID?: string }) {
+  const { t: tr } = useTranslation(APP_NS)
+  const failureMessage = useApiFailureMessage()
+  return (
+    <ErrorState
+      bp={bp}
+      heading={tr('apiFehler.loadHeading')}
+      message={failureMessage(error)}
+      retryLabel={tr('apiFehler.retry')}
+      onRetry={onRetry}
+      {...(testID !== undefined ? { testID } : {})}
+    />
   )
 }
 

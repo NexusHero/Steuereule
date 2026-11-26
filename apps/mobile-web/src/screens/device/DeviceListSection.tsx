@@ -16,21 +16,21 @@ export function DeviceListSection({ onCurrentSessionRevoked }: DeviceListSection
   const { t: tr, i18n } = useTranslation(APP_NS)
   const styles = makeStyles(t)
   const { sessionsQuery, revokeMutation } = useDeviceSessions()
-  const [revokingToken, setRevokingToken] = useState<string | null>(null)
+  const [revokingId, setRevokingId] = useState<string | null>(null)
   const [revokeError, setRevokeError] = useState<string | null>(null)
 
   function revoke(session: DeviceSessionRow) {
     setRevokeError(null)
-    setRevokingToken(session.token)
-    revokeMutation.mutate(session.token, {
+    setRevokingId(session.id)
+    revokeMutation.mutate(session.id, {
       onSuccess: () => {
-        setRevokingToken(null)
+        setRevokingId(null)
         if (session.isCurrent) {
           onCurrentSessionRevoked()
         }
       },
       onError: () => {
-        setRevokingToken(null)
+        setRevokingId(null)
         setRevokeError(tr('profil.devices.revokeError'))
       },
     })
@@ -55,6 +55,9 @@ export function DeviceListSection({ onCurrentSessionRevoked }: DeviceListSection
         <Text style={styles.help} accessibilityRole="alert">
           {tr(`profil.devices.loadError.${reasonOf(sessionsQuery.error)}`)}
         </Text>
+        <Button variant="ghost" onPress={() => void sessionsQuery.refetch()} testID="geraete-erneut-laden">
+          {tr('apiFehler.retry')}
+        </Button>
       </Card>
     )
   }
@@ -70,9 +73,9 @@ export function DeviceListSection({ onCurrentSessionRevoked }: DeviceListSection
       {sessionsQuery.data.map((session) => {
         const { browser, os } = parseUserAgent(session.userAgent)
         const lastActive = formatRequestedAt(session.updatedAt, i18n.language)
-        const isRevoking = revokingToken === session.token && revokeMutation.isPending
+        const isRevoking = revokingId === session.id && revokeMutation.isPending
         return (
-          <View key={session.token} style={styles.deviceRow}>
+          <View key={session.id} style={styles.deviceRow} testID={session.isCurrent ? 'geraet-zeile-aktuell' : 'geraet-zeile'}>
             <View style={styles.deviceInfo}>
               <Feld label={tr('profil.devices.browser')}>
                 <Text style={styles.deviceValue}>{browser ?? tr('profil.devices.unknownBrowser')}</Text>

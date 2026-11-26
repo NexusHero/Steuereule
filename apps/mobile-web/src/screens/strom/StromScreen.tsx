@@ -11,7 +11,8 @@ import {
   type TaxEstimateDto,
 } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
-import { LoadingState, ErrorState } from '../shared/ScreenState'
+import { LoadingState, LoadFailedState } from '../shared/ScreenState'
+import { InlineLoadFailure } from '../shared/InlineLoadFailure'
 import { BackButton, BackButtonSpacer } from '../shared/BackButton'
 import { useCockpitTileFacts } from '../cockpit/CockpitTiles'
 import type { TileFacts } from '../cockpit/tiles'
@@ -73,10 +74,11 @@ function StromScreenBody({ taxYear, slug, isSignedIn, onGo, onExit, onOpenSubmis
   const options = capability.options
   const priorQuery = useInterviewControllerGetInterview(taxYear - 1, undefined, { query: { retry: false, enabled: isSignedIn } })
   const masterDataQuery = useMasterDataControllerRead({ query: { enabled: isSignedIn } })
-  const interview = interviewQuery.data?.status === 200 ? interviewQuery.data.data : null
+  const interview = interviewQuery.data?.data ?? null
   const answers = (interview?.answers ?? {}) as Answers
-  const prior = priorQuery.data?.status === 200 ? (priorQuery.data.data.answers as Answers) : {}
-  const masterData = masterDataQuery.data?.status === 200 ? masterDataQuery.data.data : null
+  // Last year's answers only offer values; a failed read offers none.
+  const prior = (priorQuery.data?.data.answers ?? {}) as Answers
+  const masterData = masterDataQuery.data?.data ?? null
   const path = interview?.nextStep.kind === 'done' ? pathFromAnswers(answers) : null
   const facts = useCockpitTileFacts(taxYear, isSignedIn, path, answers, masterData)
   const requested = stepFromSlug(slug)
@@ -112,17 +114,14 @@ function StromScreenBody({ taxYear, slug, isSignedIn, onGo, onExit, onOpenSubmis
 
   if (interviewQuery.isPending || capability.pending) return <LoadingState bp={bp} label={tr('strom.laden')} />
   if (interviewQuery.isError || interview === null) {
-    return (
-      <ErrorState
-        bp={bp}
-        heading={tr('interview.loadError.heading')}
-        message={tr('interview.loadError.message')}
-        retryLabel={tr('interview.loadError.retry')}
-        onRetry={() => void interviewQuery.refetch()}
-      />
-    )
+    return <LoadFailedState bp={bp} error={interviewQuery.error} onRetry={() => void interviewQuery.refetch()} />
   }
   if (step === null || requested === null) return <LoadingState bp={bp} label={tr('strom.laden')} />
+  // NM-15: the master data decide the plan (a married user gets the partner's steps); without them the plan
+  // would be a guess.
+  if (step.kind !== 'basis' && isSignedIn && masterDataQuery.isError) {
+    return <LoadFailedState bp={bp} error={masterDataQuery.error} onRetry={() => void masterDataQuery.refetch()} />
+  }
   if (step.kind !== 'basis' && isSignedIn && facts === null) return <LoadingState bp={bp} label={tr('strom.laden')} />
 
   const goNext = () => setAdvanceFrom(step)
@@ -282,7 +281,7 @@ function Summary({
   const styles = makeStyles(t)
   const { t: tr } = useTranslation(APP_NS)
   const estimateQuery = useTaxEstimateControllerGet(taxYear)
-  const estimate = estimateQuery.data?.status === 200 ? estimateQuery.data.data : null
+  const estimate = estimateQuery.data?.data ?? null
   const refund = refundLine(estimate, (key) => tr(key))
   const options = useStromOptions()
   const steps = facts === null ? [] : stromSteps(answers, facts, options).filter((s) => s.kind !== 'basis' && s.kind !== 'partner' && s.kind !== 'auswahl' && s.kind !== 'fertig')
@@ -293,7 +292,12 @@ function Summary({
   return (
     <View>
       <View style={styles.hero} testID="strom-fertig-erstattung">
-        <Text style={styles.heroLabel}>{refund?.label ?? tr('strom.fertig.ohneSchaetzung')}</Text>
+        {estimateQuery.isError ? (
+          // NM-15: a failed estimate is said, not shown as „the estimate comes once your wage is in“.
+          <InlineLoadFailure what={tr('strom.fertig.schaetzungLadefehler')} error={estimateQuery.error} onRetry={() => void estimateQuery.refetch()} testID="strom-schaetzung-ladefehler" />
+        ) : (
+          <Text style={styles.heroLabel}>{refund?.label ?? tr('strom.fertig.ohneSchaetzung')}</Text>
+        )}
         {refund !== null ? <Text style={styles.heroValue}>{refund.value}</Text> : null}
       </View>
       {taken.length > 0 ? (

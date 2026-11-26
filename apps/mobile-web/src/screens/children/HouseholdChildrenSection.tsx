@@ -14,7 +14,10 @@ import {
   type HouseholdResponseDto,
 } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
+import { useConfirmAction } from '../../confirm/useConfirmAction'
 import { isoToGerman } from '../master-data/masterDataMapping'
+import { useApiFailureMessage } from '../../net/apiFailure'
+import { InlineLoadFailure } from '../shared/InlineLoadFailure'
 
 export interface HouseholdChildrenSectionProps {
   readonly taxYear: number
@@ -38,10 +41,12 @@ export function HouseholdChildrenSection({ taxYear, onChanged }: HouseholdChildr
   const leave = useHouseholdControllerLeave()
   const remove = useHouseholdControllerDelete()
   const [selected, setSelected] = useState<ReadonlySet<string>>(new Set())
-  const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
-  const [failed, setFailed] = useState(false)
+  const confirmLeave = useConfirmAction('householdLeave')
+  const confirmDelete = useConfirmAction('householdDelete')
+  const [failed, setFailed] = useState<unknown>(null)
+  const failureMessage = useApiFailureMessage()
 
-  const view: HouseholdResponseDto | null = query.data?.status === 200 ? query.data.data : null
+  const view: HouseholdResponseDto | null = query.data?.data ?? null
   const children = view?.persons.filter((p) => p.kind === 'child') ?? []
   const offered = children.filter((p) => !p.inThisYear && p.selectable)
   const present = children.filter((p) => p.inThisYear)
@@ -52,16 +57,22 @@ export function HouseholdChildrenSection({ taxYear, onChanged }: HouseholdChildr
     setSelected(new Set(offeredKey.split('|').flatMap((entry) => (entry.endsWith(':1') ? [entry.slice(0, -2)] : []))))
   }, [offeredKey])
 
+  // NM-15: a household that does not load says so instead of vanishing.
+  if (query.isError) {
+    return <InlineLoadFailure what={tr('kinder.haushaltLadefehler')} error={query.error} onRetry={() => void query.refetch()} testID="haushalt-ladefehler" />
+  }
   if (!view || (offered.length === 0 && present.length === 0 && view.candidates.length === 0)) return null
 
-  async function run(task: () => Promise<{ status: number }>) {
-    setFailed(false)
-    const res = await task().catch(() => ({ status: 0 }))
-    if (res.status !== 200) {
-      setFailed(true)
+  async function run(task: () => Promise<unknown>) {
+    setFailed(null)
+    try {
+      await task()
+    } catch (error) {
+      setFailed(error)
       return
     }
     await queryClient.invalidateQueries({ queryKey: getHouseholdControllerGetQueryKey(taxYear) })
+    // WEB-42: the mask's child list follows (useChildForm re-reads the stored list when it changes).
     await onChanged()
   }
 
@@ -135,44 +146,26 @@ export function HouseholdChildrenSection({ taxYear, onChanged }: HouseholdChildr
               ) : null}
               {p.asksForEducation ? <Text style={styles.hint}>{tr('haushalt.kinder.ausbildungHinweis')}</Text> : null}
               <View style={styles.row}>
-                <Pressable accessibilityRole="button" onPress={() => void run(() => leave.mutateAsync({ jahr: taxYear, personId: p.personId }))} testID={`haushalt-nicht-mehr-dabei-${index}`}>
+                <Pressable accessibilityRole="button" onPress={() => confirmLeave.ask(() => void run(() => leave.mutateAsync({ jahr: taxYear, personId: p.personId })), { name: p.firstName, jahr: taxYear })} testID={`haushalt-nicht-mehr-dabei-${index}`}>
                   <Text style={styles.link}>{tr('haushalt.nichtMehrDabei', { year: taxYear })}</Text>
                 </Pressable>
-                <Pressable accessibilityRole="button" onPress={() => setConfirmDelete(p.personId)} testID={`haushalt-loeschen-${index}`}>
+                <Pressable accessibilityRole="button" onPress={() => confirmDelete.ask(() => void run(() => remove.mutateAsync({ jahr: taxYear, personId: p.personId })), { name: p.firstName })} testID={`haushalt-loeschen-${index}`}>
                   <Text style={styles.danger}>{tr('haushalt.loeschen')}</Text>
                 </Pressable>
               </View>
-              {confirmDelete === p.personId ? (
-                <View style={styles.warning} accessibilityRole="alert" testID="haushalt-loeschen-warnung">
-                  <Text style={styles.text}>{tr('haushalt.loeschenWarnung', { name: p.firstName })}</Text>
-                  <View style={styles.row}>
-                    <Button
-                      variant="nacht"
-                      onPress={() => {
-                        setConfirmDelete(null)
-                        void run(() => remove.mutateAsync({ jahr: taxYear, personId: p.personId }))
-                      }}
-                      style={styles.button}
-                      testID="haushalt-loeschen-bestaetigen"
-                    >
-                      {tr('haushalt.loeschenBestaetigen')}
-                    </Button>
-                    <Button variant="ghost" onPress={() => setConfirmDelete(null)} style={styles.button} testID="haushalt-loeschen-abbrechen">
-                      {tr('haushalt.abbrechen')}
-                    </Button>
-                  </View>
-                </View>
-              ) : null}
             </View>
           ))}
         </View>
       ) : null}
 
-      {failed ? (
+      {failed !== null ? (
         <Text style={styles.danger} role="alert" testID="haushalt-fehler">
-          {tr('haushalt.fehler')}
+          {/* NM-07: the reason, not one text for every status. */}
+          {failureMessage(failed, { unknown: tr('haushalt.fehler') })}
         </Text>
       ) : null}
+      {confirmLeave.dialog}
+      {confirmDelete.dialog}
     </Card>
   )
 }
@@ -187,7 +180,6 @@ function makeStyles(t: UiTheme) {
     choice: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: t.space.s2, paddingVertical: t.space.s1 } as ViewStyle,
     check: { ...t.type.emphasis, color: t.color.tinte } as TextStyle,
     present: { gap: t.space.s1, paddingVertical: t.space.s2, borderTopWidth: 1, borderTopColor: t.color.linieWeich } as ViewStyle,
-    warning: { gap: t.space.s2, padding: t.space.s3, borderRadius: t.radius.m, backgroundColor: t.color.fehlerWeich } as ViewStyle,
     button: { width: 'auto', flexGrow: 1 } as ViewStyle,
     text: { ...t.type.body, color: t.color.tinte, flexShrink: 1 } as TextStyle,
     hint: { ...t.type.caption, color: t.color.tinte2 } as TextStyle,

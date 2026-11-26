@@ -21,8 +21,15 @@ export interface Marking {
 export const SCREENS = ['profil', 'stammdaten', 'kopplung', 'interview', 'lstb', 'commute', 'chLohnausweis', 'rente', 'kapital', 'vermietung', 'kind', 'assessment', 'buchung'] as const
 export type Screen = (typeof SCREENS)[number]
 
-export const ANNEXES = ['hauptvordruck', 'anlageN', 'anlageNGre', 'anlageR', 'anlageKap', 'anlageV', 'anlageKind', 'anlageEuer'] as const
+export const ANNEXES = ['hauptvordruck', 'anlageN', 'anlageNGre', 'anlageR', 'anlageKap', 'anlageV', 'anlageKind', 'anlageEuer', 'bescheid'] as const
 export type Annex = (typeof ANNEXES)[number]
+
+/**
+ * The Bescheid is the tax office's answer, not part of the return: its values are confirmed on their own
+ * („Bescheid bestätigen“ never confirms the Hauptvordruck, and the other way round), and an unconfirmed
+ * Bescheid value never holds back printing or paying for the return.
+ */
+const NOT_PART_OF_THE_RETURN: ReadonlySet<Annex> = new Set<Annex>(['bescheid'])
 const ANNEX_PER_SCREEN: Readonly<Record<Screen, Annex>> = {
   profil: 'hauptvordruck',
   stammdaten: 'hauptvordruck',
@@ -35,7 +42,7 @@ const ANNEX_PER_SCREEN: Readonly<Record<Screen, Annex>> = {
   kapital: 'anlageKap',
   vermietung: 'anlageV',
   kind: 'anlageKind',
-  assessment: 'hauptvordruck',
+  assessment: 'bescheid',
   // A booking the owl prepared (ADR-0101 §18): it feeds the EÜR, the Anlage S/G and the Bilanz.
   buchung: 'anlageEuer',
 }
@@ -97,7 +104,7 @@ export function decideWriting({ key, existing, currentValue, newValue, provenanc
 
 export function missingConfirmations(markings: readonly Marking[]): string[] {
   const open = new Set(markings.filter((k) => !k.confirmed).map((k) => annexOf(k.key)))
-  return ANNEXES.filter((a) => open.has(a)).map((a) => `unbestaetigt.${a}`)
+  return ANNEXES.filter((a) => open.has(a) && !NOT_PART_OF_THE_RETURN.has(a)).map((a) => `unbestaetigt.${a}`)
 }
 
 export function confirmAnnex(markings: readonly Marking[], annex: Annex): Marking[] {

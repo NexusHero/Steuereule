@@ -28,12 +28,15 @@ import {
 } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
 import { MaskLessonHint } from '../history/MaskLessonHint'
-import { CURRENT_TAX_YEAR } from '../../config/taxYear'
+import { runningTaxYear } from '../../config/taxYear'
 import { BackButton, BackButtonSpacer } from '../shared/BackButton'
-import { LoadingState } from '../shared/ScreenState'
+import { LoadFailedState, LoadingState } from '../shared/ScreenState'
 import { integerFrom } from '../shared/integer'
 import { OfficialFormLink } from '../printout/OfficialFormLink'
 import { triggerSaveErrorHaptic } from '../shared/saveFeedback'
+import { SaveFailedNotice } from '../shared/SaveFailedNotice'
+import { useLeaveGuard } from '../shared/leaveGuard'
+import { wholeEurosFrom } from '../shared/wholeEuros'
 import { stateForAddress } from '../shared/postalCodePrefill'
 
 export interface WorkdaysScreenProps {
@@ -44,7 +47,7 @@ export interface WorkdaysScreenProps {
   readonly partnerName?: string
 }
 
-export function WorkdaysScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TAX_YEAR, partnerName }: WorkdaysScreenProps) {
+export function WorkdaysScreen({ onDone = () => {}, onBack, taxYear = runningTaxYear(), partnerName }: WorkdaysScreenProps) {
   const bp = useBreakpoint()
   const { t: tr } = useTranslation(APP_NS)
   const query = useCommuteControllerGet(taxYear, partnerName === undefined ? undefined : { person: 'B' })
@@ -54,9 +57,12 @@ export function WorkdaysScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TA
   const masterData = useMasterDataControllerRead({ query: { enabled: partnerName === undefined, retry: false } })
 
   if (query.isPending || priorQuery.isPending || (partnerName === undefined && masterData.isPending)) return <LoadingState bp={bp} label={tr('arbeitstage.loading')} />
-  const saved = query.data?.status === 200 ? query.data.data.inputs : null
-  const prior = priorQuery.data?.status === 200 ? priorQuery.data.data.inputs : null
-  const address = masterData.data?.status === 200 ? masterData.data.data : null
+  // WEB-3: a failed load is never an empty Mo–Fr form whose „Weiter“ would overwrite the stored commute.
+  if (query.isError) return <LoadFailedState bp={bp} error={query.error} onRetry={() => void query.refetch()} />
+  const saved = query.data.data.inputs ?? null
+  // Last year's commute and the address only offer and prefill; when they fail, nothing is offered.
+  const prior = priorQuery.data?.data.inputs ?? null
+  const address = masterData.data?.data ?? null
   const addressState = address?.plz ? stateForAddress(address.plz, address.wohnort ?? '') : null
   return (
     <WorkdaysForm
@@ -149,7 +155,7 @@ function WorkdaysForm({
     setRegionFromAddress(false)
     setPublicHolidays(String(holidaysOnWorkdays(taxYear, fresh, workdays)))
   }
-  const [error, setError] = useState(false)
+  const [error, setError] = useState<unknown>(null)
 
   function toggle(tag: IsoWeekday) {
     setWorkdays((prev) => (prev.includes(tag) ? prev.filter((x) => x !== tag) : [...prev, tag].sort((a, b) => a - b)))
@@ -164,6 +170,20 @@ function WorkdaysForm({
     publicHolidays: int(publicHolidays),
   }
   const result = workdays.length > 0 ? calculateWorkdays(input) : null
+  // WEB-12: a number the app cannot read is named at the field and blocks the save, never stored as 0 or dropped.
+  const unreadable = {
+    vacation: !wholeDaysReadable(vacation),
+    sick: !wholeDaysReadable(sick),
+    homeOffice: !wholeDaysReadable(homeOffice),
+    publicHolidays: !wholeDaysReadable(publicHolidays),
+    km: !wholeDaysReadable(km),
+    secondKm: changed && !wholeDaysReadable(secondKm),
+    bodies: !amountReadable(bodies),
+    tools: !amountReadable(tools),
+    accountFees: !amountReadable(accountFees),
+    other: !amountReadable(other),
+  }
+  const anyUnreadable = Object.values(unreadable).some(Boolean)
   const oneWayKm = integerFrom(km)
   const secondOneWayKm = changed ? integerFrom(secondKm) : null
   const datesValid = !changed || (validDate(firstUntil) && validDate(secondFrom))
@@ -237,9 +257,10 @@ function WorkdaysForm({
   const latestFormData = useRef(formData)
   latestFormData.current = formData
   const canPersist = useRef(false)
-  canPersist.current = result?.kind !== 'widerspruch' && datesValid && !travelInvalid
+  canPersist.current = result?.kind !== 'widerspruch' && datesValid && !travelInvalid && !anyUnreadable
   const blurTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const inFlight = useRef<Promise<unknown>>(Promise.resolve())
+  const inFlightCount = useRef(0)
 
   function clearBlurTimer() {
     if (blurTimer.current !== null) {
@@ -250,42 +271,73 @@ function WorkdaysForm({
 
   function persist(onSaved?: () => void, onFailed?: () => void) {
     if (!canPersist.current) return
-    setError(false)
     const run = async () => {
       const data = latestFormData.current()
       try {
-        const response = await save.mutateAsync({
+        await save.mutateAsync({
           jahr: taxYear,
           data,
           ...(partnerName === undefined ? {} : { params: { person: 'B' as const } }),
         })
-        if (response.status === 200) {
-          lastSaved.current = JSON.stringify(data)
-          const params = partnerName === undefined ? undefined : ({ person: 'B' } as const)
-          void queryClient.invalidateQueries({ queryKey: getCommuteControllerGetQueryKey(taxYear, params) })
-          void queryClient.invalidateQueries({ queryKey: getCockpitControllerGetCockpitSummaryQueryKey(taxYear) })
-          void queryClient.invalidateQueries({ queryKey: getTaxEstimateControllerGetQueryKey(taxYear) })
-          onSaved?.()
-        } else {
-          triggerSaveErrorHaptic()
-          setError(true)
-          onFailed?.()
-        }
-      } catch {
+        lastSaved.current = JSON.stringify(data)
+        lastFailed.current = false
+        if (mounted.current) setError(null)
+        const params = partnerName === undefined ? undefined : ({ person: 'B' } as const)
+        void queryClient.invalidateQueries({ queryKey: getCommuteControllerGetQueryKey(taxYear, params) })
+        void queryClient.invalidateQueries({ queryKey: getCockpitControllerGetCockpitSummaryQueryKey(taxYear) })
+        void queryClient.invalidateQueries({ queryKey: getTaxEstimateControllerGetQueryKey(taxYear) })
+        onSaved?.()
+      } catch (failure) {
         triggerSaveErrorHaptic()
-        setError(true)
+        lastFailed.current = true
+        if (mounted.current) setError(failure)
         onFailed?.()
       }
     }
-    inFlight.current = inFlight.current.then(run, run)
+    inFlightCount.current += 1
+    const counted = async () => {
+      try {
+        await run()
+      } finally {
+        inFlightCount.current -= 1
+      }
+    }
+    inFlight.current = inFlight.current.then(counted, counted)
   }
+
+  // WEB-40: closing the sheet (X, backdrop, Escape, browser back) saves what changed and waits for it; a save
+  // that failed keeps the user here once, with the reason shown.
+  const lastFailed = useRef(false)
+  const leaveWarned = useRef(false)
+  const mounted = useRef(true)
+  useEffect(() => {
+    mounted.current = true
+    return () => {
+      mounted.current = false
+    }
+  }, [])
+  function flushThen(leave: () => void) {
+    clearBlurTimer()
+    if (canPersist.current && lastSaved.current !== JSON.stringify(latestFormData.current())) persist()
+    const leaveOrStay = () => {
+      if (lastFailed.current && !leaveWarned.current) {
+        leaveWarned.current = true
+        return
+      }
+      leaveWarned.current = false
+      leave()
+    }
+    if (inFlightCount.current === 0) leaveOrStay()
+    else void inFlight.current.then(leaveOrStay)
+  }
+  useLeaveGuard(flushThen)
 
   // „Weiter“ waits only for its own save: a save started by leaving a field (the mouse-down on
   // „Weiter“ blurs the input first) must not swallow the click.
   const [moving, setMoving] = useState(false)
   function next() {
     clearBlurTimer()
-    if (result?.kind === 'widerspruch' || !datesValid || travelInvalid) return
+    if (result?.kind === 'widerspruch' || !datesValid || travelInvalid || anyUnreadable) return
     setMoving(true)
     persist(onDone, () => setMoving(false))
   }
@@ -322,7 +374,7 @@ function WorkdaysForm({
   return (
     <ScrollView contentContainerStyle={bp === 's' ? styles.screen : styles.wideScreen} testID="screen-container">
       <View style={styles.headerRow}>
-        {onBack ? <BackButton accessibilityLabel={tr('arbeitstage.back')} onPress={() => onBack()} /> : <BackButtonSpacer />}
+        {onBack ? <BackButton accessibilityLabel={tr('arbeitstage.back')} onPress={() => flushThen(onBack)} /> : <BackButtonSpacer />}
       </View>
 
       <Text style={styles.heading}>{partnerName === undefined ? tr('arbeitstage.heading') : tr('arbeitstage.headingPartner', { name: partnerName })}</Text>
@@ -355,13 +407,13 @@ function WorkdaysForm({
         ))}
       </View>
 
-      <Feld label={tr('arbeitstage.urlaub')}>
+      <Feld label={tr('arbeitstage.urlaub')} {...unreadableError(unreadable.vacation, tr('arbeitstage.zahlUnlesbar'))}>
         <Input type="numeric" mono value={vacation} onChange={setVacation} placeholder={tr('arbeitstage.daysPlaceholder')} accessibilityLabel={tr('arbeitstage.urlaub')} testID="arbeitstage-urlaub" onBlur={saveOnLeave} />
       </Feld>
-      <Feld label={tr('arbeitstage.krank')}>
+      <Feld label={tr('arbeitstage.krank')} {...unreadableError(unreadable.sick, tr('arbeitstage.zahlUnlesbar'))}>
         <Input type="numeric" mono value={sick} onChange={setSick} placeholder={tr('arbeitstage.daysPlaceholder')} accessibilityLabel={tr('arbeitstage.krank')} testID="arbeitstage-krank" onBlur={saveOnLeave} />
       </Feld>
-      <Feld label={tr('arbeitstage.homeoffice')}>
+      <Feld label={tr('arbeitstage.homeoffice')} {...unreadableError(unreadable.homeOffice, tr('arbeitstage.zahlUnlesbar'))}>
         <Input type="numeric" mono value={homeOffice} onChange={setHomeOffice} placeholder={tr('arbeitstage.daysPlaceholder')} accessibilityLabel={tr('arbeitstage.homeoffice')} testID="arbeitstage-homeoffice" onBlur={saveOnLeave} />
         <MaskLessonHint taxYear={taxYear} screen="commute" field="homeOfficeDays" person={lessonPerson} />
       </Feld>
@@ -380,7 +432,7 @@ function WorkdaysForm({
           </Text>
         ) : null}
       </Feld>
-      <Feld label={tr('arbeitstage.feiertage.anzahl')}>
+      <Feld label={tr('arbeitstage.feiertage.anzahl')} {...unreadableError(unreadable.publicHolidays, tr('arbeitstage.zahlUnlesbar'))}>
         <Input
           type="numeric"
           mono
@@ -395,7 +447,7 @@ function WorkdaysForm({
       {result !== null ? <Result result={result} /> : null}
 
       <Text style={styles.sectionLabel}>{tr('arbeitstage.weg.titel')}</Text>
-      <Feld label={tr('arbeitstage.weg.km')}>
+      <Feld label={tr('arbeitstage.weg.km')} {...unreadableError(unreadable.km, tr('arbeitstage.zahlUnlesbar'))}>
         <Input type="numeric" mono value={km} onChange={setKm} placeholder="0" accessibilityLabel={tr('arbeitstage.weg.km')} testID="arbeitstage-km" onBlur={saveOnLeave} />
         <MaskLessonHint taxYear={taxYear} screen="commute" field="oneWayKm" person={lessonPerson} />
       </Feld>
@@ -434,7 +486,7 @@ function WorkdaysForm({
             <Input type="text" mono value={secondFrom} onChange={setSecondFrom} placeholder={tr('arbeitstage.weg.wechsel.datumPlaceholder')} accessibilityLabel={tr('arbeitstage.weg.wechsel.ab')} testID="arbeitsweg-zweiter-ab" onBlur={saveOnLeave} />
           </Feld>
           {!datesValid ? <Text style={styles.widerspruchBody}>{tr('arbeitstage.weg.wechsel.datumFehler')}</Text> : null}
-          <Feld label={tr('arbeitstage.weg.km')}>
+          <Feld label={tr('arbeitstage.weg.km')} {...unreadableError(unreadable.secondKm, tr('arbeitstage.zahlUnlesbar'))}>
             <Input type="numeric" mono value={secondKm} onChange={setSecondKm} placeholder="0" accessibilityLabel={`${tr('arbeitstage.weg.wechsel.titel')}: ${tr('arbeitstage.weg.km')}`} testID="arbeitsweg-zweiter-km" onBlur={saveOnLeave} />
           </Feld>
           <ShortestRoute active={secondShortest} onToggle={() => setSecondShortest(!secondShortest)} testID="arbeitsweg-zweiter-kuerzeste" />
@@ -466,23 +518,23 @@ function WorkdaysForm({
 
       <Text style={styles.sectionLabel}>{tr('arbeitstage.weitere.titel')}</Text>
       <Text style={styles.regionHint}>{tr('arbeitstage.weitere.hilfe')}</Text>
-      <Feld label={tr('arbeitstage.weitere.arbeitsmittel')}>
+      <Feld label={tr('arbeitstage.weitere.arbeitsmittel')} {...unreadableError(unreadable.tools, tr('betrag.unlesbar'))}>
         <Input type="numeric" mono value={tools} onChange={setTools} placeholder="0" accessibilityLabel={tr('arbeitstage.weitere.arbeitsmittel')} testID="werbungskosten-arbeitsmittel" onBlur={saveOnLeave} />
         <MaskLessonHint taxYear={taxYear} screen="commute" field="workEquipmentEur" person={lessonPerson} />
       </Feld>
       <Feld label={tr('arbeitstage.weitere.arbeitsmittelArt')}>
         <Input type="text" value={toolsNote} onChange={setToolsNote} placeholder={tr('arbeitstage.weitere.arbeitsmittelArtPlaceholder')} accessibilityLabel={tr('arbeitstage.weitere.arbeitsmittelArt')} testID="werbungskosten-arbeitsmittel-art" onBlur={saveOnLeave} />
       </Feld>
-      <Feld label={tr('arbeitstage.weitere.kontofuehrung')}>
+      <Feld label={tr('arbeitstage.weitere.kontofuehrung')} {...unreadableError(unreadable.accountFees, tr('betrag.unlesbar'))}>
         <Input type="numeric" mono value={accountFees} onChange={setAccountFees} placeholder="16" accessibilityLabel={tr('arbeitstage.weitere.kontofuehrung')} testID="werbungskosten-kontofuehrung" onBlur={saveOnLeave} />
       </Feld>
-      <Feld label={tr('arbeitstage.weitere.verbaende')}>
+      <Feld label={tr('arbeitstage.weitere.verbaende')} {...unreadableError(unreadable.bodies, tr('betrag.unlesbar'))}>
         <Input type="numeric" mono value={bodies} onChange={setBodies} placeholder="0" accessibilityLabel={tr('arbeitstage.weitere.verbaende')} testID="werbungskosten-verbaende" onBlur={saveOnLeave} />
       </Feld>
       <Feld label={tr('arbeitstage.weitere.verbaendeArt')}>
         <Input type="text" value={bodiesNote} onChange={setBodiesNote} placeholder={tr('arbeitstage.weitere.verbaendeArtPlaceholder')} accessibilityLabel={tr('arbeitstage.weitere.verbaendeArt')} testID="werbungskosten-verbaende-art" onBlur={saveOnLeave} />
       </Feld>
-      <Feld label={tr('arbeitstage.weitere.sonstiges')}>
+      <Feld label={tr('arbeitstage.weitere.sonstiges')} {...unreadableError(unreadable.other, tr('betrag.unlesbar'))}>
         <Input type="numeric" mono value={other} onChange={setOther} placeholder="0" accessibilityLabel={tr('arbeitstage.weitere.sonstiges')} testID="werbungskosten-sonstiges" onBlur={saveOnLeave} />
         <MaskLessonHint taxYear={taxYear} screen="commute" field="otherWorkExpensesEur" person={lessonPerson} />
       </Feld>
@@ -490,11 +542,11 @@ function WorkdaysForm({
         <Input type="text" value={otherNote} onChange={setOtherNote} placeholder={tr('arbeitstage.weitere.sonstigesArtPlaceholder')} accessibilityLabel={tr('arbeitstage.weitere.sonstigesArt')} testID="werbungskosten-sonstiges-art" onBlur={saveOnLeave} />
       </Feld>
 
-      {error ? <Text style={styles.widerspruchBody}>{tr('arbeitstage.speichernFehler')}</Text> : null}
+      <SaveFailedNotice visible={error !== null} error={error} />
 
       <OfficialFormLink screen="commute" taxYear={taxYear} />
 
-      <Button onPress={next} disabled={moving || result?.kind === 'widerspruch' || travelInvalid} style={styles.cta} testID="arbeitstage-weiter">
+      <Button onPress={next} disabled={moving || result?.kind === 'widerspruch' || travelInvalid || anyUnreadable} style={styles.cta} testID="arbeitstage-weiter">
         {tr('arbeitstage.weiter')}
       </Button>
     </ScrollView>
@@ -582,10 +634,21 @@ function Row({ label, value }: { readonly label: string; readonly value: string 
   )
 }
 
-/** Whole euros or null for an empty field. */
+/** Whole euros (typed the German way, WEB-46) or null for an empty field; an unreadable one blocks the save. */
 function euros(s: string): number | null {
-  const digits = s.replace(/[^\d]/g, '')
-  return digits === '' ? null : Number(digits)
+  return wholeEurosFrom(s)
+}
+
+function unreadableError(unreadable: boolean, message: string): { readonly error?: string } {
+  return unreadable ? { error: message } : {}
+}
+
+function amountReadable(s: string): boolean {
+  return s.trim() === '' || wholeEurosFrom(s) !== null
+}
+
+function wholeDaysReadable(s: string): boolean {
+  return s.trim() === '' || integerFrom(s) !== null
 }
 
 function note(s: string): string | null {

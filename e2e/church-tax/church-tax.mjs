@@ -13,7 +13,7 @@ import { launchBrowser, closeBrowser, newContextAtBreakpoint, guardAgainst429 } 
 import { startStack } from '../harness/stack.mjs'
 import { fail, waitForBucketHeadroom } from '../harness/rate-limit.mjs'
 import { skipSplash, signUpOutOfBand, submitLogin } from '../harness/flows.mjs'
-import { call } from '../harness/api-account.mjs'
+import { call, chooseJointReturn } from '../harness/api-account.mjs'
 import { verifyEmailSql } from '../harness/email-hash.mjs'
 
 const AUTH_BUCKET = { windowMs: 10_000, max: 3, shared: true }
@@ -132,7 +132,7 @@ async function main() {
     await interview(anna.api, [['job', 'Angestellt'], ['ausland', 'Nein'], ['kinder', 'Nein'], ['familienstand', 'Verheiratet']])
     await masterData(anna.api, { familienstand: 'verheiratet', religion: 'EV', plz: '01067', wohnort: 'Dresden' })
     await lstb(anna.api, 30_000, 2_100, 6_100, 0)
-    const link = await call(anna.api, 'PUT', `/v1/steuerjahre/${YEAR}/kopplung`, { filingType: 'zusammen' })
+    const link = await chooseJointReturn(anna.api, YEAR, PASSWORD)
     await call(ben.api, 'POST', `/v1/steuerjahre/${YEAR}/kopplung/beitreten/${link.invitationCode}`)
     await interview(ben.api, [['job', 'Angestellt'], ['ausland', 'Nein'], ['kinder', 'Nein']])
     await masterData(ben.api, { familienstand: 'verheiratet', religion: 'VD', plz: '01067', wohnort: 'Dresden' })
@@ -151,7 +151,7 @@ async function main() {
     await lstb(carla.api, 32_000, 1_900, 6_500, 171)
     await call(carla.api, 'POST', `/v1/steuerjahre/${YEAR}/kinder`, { firstName: 'Ida', lastName: 'Kern', geburtsdatum: '2018-04-02', kinship: '1' })
     await call(carla.api, 'POST', `/v1/steuerjahre/${YEAR}/kinder`, { firstName: 'Ole', lastName: 'Kern', geburtsdatum: '2021-09-14', kinship: '1' })
-    const link4 = await call(carla.api, 'PUT', `/v1/steuerjahre/${YEAR}/kopplung`, { filingType: 'zusammen' })
+    const link4 = await chooseJointReturn(carla.api, YEAR, PASSWORD)
     await call(dirk.api, 'POST', `/v1/steuerjahre/${YEAR}/kopplung/beitreten/${link4.invitationCode}`)
     await interview(dirk.api, [['job', 'Angestellt'], ['ausland', 'Nein'], ['kinder', '2 oder mehr']])
     await masterData(dirk.api, { familienstand: 'verheiratet', religion: 'EV', plz: '10115', wohnort: 'Berlin' })

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Pressable, ScrollView, View, Text, type ViewStyle, type TextStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
@@ -20,19 +20,23 @@ import {
   type RentalRepairDto,
 } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
+import { useConfirmAction } from '../../confirm/useConfirmAction'
 import { UnclearableNumberField } from '../shared/UnclearableNumberField'
 import { screenHeaderStyles } from '../shared/screenStyles'
-import { CURRENT_TAX_YEAR } from '../../config/taxYear'
+import { runningTaxYear } from '../../config/taxYear'
 import { CatalogScreen } from '../catalog/CatalogScreen'
-import { LoadingState, ErrorState } from '../shared/ScreenState'
+import { LoadingState, LoadFailedState } from '../shared/ScreenState'
+import { InlineLoadFailure } from '../shared/InlineLoadFailure'
 import { BackButton, BackButtonSpacer } from '../shared/BackButton'
 import { usePendingMutations } from '../shared/usePendingMutations'
 import { SaveFailedNotice } from '../shared/SaveFailedNotice'
 import { watchSaveResult } from '../shared/saveFeedback'
+import { useTrackField } from '../shared/useTrackField'
 import { PostalCodeHint } from '../shared/PostalCodeHint'
 import { prefillCity } from '../shared/postalCodePrefill'
 import { AddressSearch } from '../shared/AddressSearch'
 import { wholeEurosFrom } from '../shared/wholeEuros'
+import { integerFrom } from '../shared/integer'
 
 export interface RentalScreenProps {
   readonly onDone?: () => void
@@ -40,7 +44,7 @@ export interface RentalScreenProps {
   readonly taxYear?: number
 }
 
-export function RentalScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TAX_YEAR }: RentalScreenProps) {
+export function RentalScreen({ onDone = () => {}, onBack, taxYear = runningTaxYear() }: RentalScreenProps) {
   const bp = useBreakpoint()
   const t = useTheme()
   const styles = makeStyles(t)
@@ -50,7 +54,8 @@ export function RentalScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TAX_
   const createProperty = useRentalControllerCreate()
   const setField = useRentalControllerSetField()
   const setAddress = useRentalControllerSetAddress()
-  const { track, flushThen, saveFailed } = usePendingMutations()
+  const { track, flushThen, saveFailed, saveError, clearSaveError } = usePendingMutations()
+  const trackField = useTrackField(track, clearSaveError)
 
   // The depot / the kind of letting is a catalogue answer; the mask can ask it right here.
   const [questionOpen, setQuestionOpen] = useState(false)
@@ -59,20 +64,10 @@ export function RentalScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TAX_
   if (query.isPending) {
     return <LoadingState bp={bp} label={tr('vermietung.loading')} />
   }
-  if (query.isError || query.data.status !== 200) {
-    return (
-      <ErrorState
-        bp={bp}
-        heading={tr('vermietung.loadError.heading')}
-        message={tr('vermietung.loadError.message')}
-        retryLabel={tr('vermietung.loadError.retry')}
-        onRetry={() => void query.refetch()}
-      />
-    )
-  }
+  if (query.isError) return <LoadFailedState bp={bp} error={query.error} onRetry={() => void query.refetch()} />
 
   const response = query.data.data
-  const paar = link.data?.status === 200 && link.data.data.filingType === 'zusammen'
+  const paar = link.data?.data.filingType === 'zusammen'
 
   if (questionOpen) {
     const back = () => {
@@ -89,15 +84,17 @@ export function RentalScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TAX_
   }
 
   function send(propertyId: string, field: RentalFieldId, data: RentalFieldDto) {
-    track(watchSaveResult(setField.mutateAsync({ jahr: taxYear, objektId: propertyId, feld: field, data })).then(invalidate))
+    trackField(`${propertyId}:${field}`, watchSaveResult(setField.mutateAsync({ jahr: taxYear, objektId: propertyId, feld: field, data })).then(invalidate))
   }
 
   function sendAddress(propertyId: string, data: PutRentalAddressDto) {
-    track(watchSaveResult(setAddress.mutateAsync({ jahr: taxYear, objektId: propertyId, data })).then(invalidate))
+    trackField(`${propertyId}:${Object.keys(data).sort((a, b) => a.localeCompare(b)).join(',')}`, watchSaveResult(setAddress.mutateAsync({ jahr: taxYear, objektId: propertyId, data })).then(invalidate))
   }
 
   function addProperty() {
-    track(watchSaveResult(createProperty.mutateAsync({ jahr: taxYear })).then(invalidate))
+    // NM-13: a second tap while the first is on its way does not create a second property.
+    if (createProperty.isPending) return
+    trackField('neues-objekt', watchSaveResult(createProperty.mutateAsync({ jahr: taxYear })).then(invalidate))
   }
 
   return (
@@ -126,16 +123,20 @@ export function RentalScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TAX_
           taxYear={taxYear}
         />
       ))}
+      {link.isError && response.properties.length > 0 ? (
+        // NM-15: without the link the share question would vanish silently and the property count as A's alone.
+        <InlineLoadFailure what={tr('vermietung.anteilLadefehler')} error={link.error} onRetry={() => void link.refetch()} testID="vermietung-anteil-ladefehler" />
+      ) : null}
 
       {response.classification.kind === 'verkauf-oder-moebliert' ? null : (
-        <Button variant="ghost" onPress={addProperty} style={styles.addCta} testID="objekt-hinzufuegen">
+        <Button variant="ghost" onPress={addProperty} disabled={createProperty.isPending} style={styles.addCta} testID="objekt-hinzufuegen">
           {tr('vermietung.addObjekt')}
         </Button>
       )}
 
       <StatusNotice response={response} />
 
-      <SaveFailedNotice visible={saveFailed} />
+      <SaveFailedNotice visible={saveFailed || saveError !== null} error={saveError} />
       <Button onPress={() => flushThen(onDone)} style={styles.cta} testID="vermietung-weiter">
         {tr('vermietung.weiter')}
       </Button>
@@ -162,7 +163,7 @@ function PropertyCard({
   onSend,
   onSendAddress,
   paar = false,
-  taxYear = CURRENT_TAX_YEAR,
+  taxYear = runningTaxYear(),
 }: {
   readonly paar?: boolean
   readonly taxYear?: number
@@ -177,6 +178,7 @@ function PropertyCard({
   const [cityPrefill, setCityPrefill] = useState<string | null>(null)
 
   function sendPostalCode(plz: string) {
+    // Sent once the field is left (WEB-39), not on every keystroke.
     // #451 slice 3: a one-place postal code fills an empty Ort of the property.
     const { city, prefill } = prefillCity({ plz, city: property.city ?? '', lastPrefill: cityPrefill })
     setCityPrefill(prefill)
@@ -214,44 +216,38 @@ function PropertyCard({
           }}
         />
         <Feld label="Straße & Hausnummer">
-          <Input
-            value={[property.strasse, property.hausnummer].filter(Boolean).join(' ')}
+          <DraftInput
+            stored={[property.strasse, property.hausnummer].filter(Boolean).join(' ')}
             placeholder="Musterstraße 12"
             accessibilityLabel="Straße und Hausnummer"
             autoComplete="street-address"
             testID={`vermietung-${index}-adresse`}
-            onChange={(val) => {
-              const parts = val.split(' ')
-              const h = parts.length > 1 ? parts.pop() : ''
-              const hausnummer = h ? h : undefined
-              const strasse = parts.join(' ')
-              onSendAddress?.({ strasse, ...(hausnummer ? { hausnummer } : {}) })
-            }}
+            onCommit={(val) => onSendAddress?.(streetAndNumber(val))}
           />
         </Feld>
         <View style={{ flexDirection: 'row', gap: t.space.s2 }}>
           <View style={{ flex: 1 }}>
             <Feld label="PLZ">
-              <Input
-                value={property.plz ?? ''}
+              <DraftInput
+                stored={property.plz ?? ''}
                 placeholder="10115"
                 type="numeric"
                 accessibilityLabel="Postleitzahl"
                 autoComplete="postal-code"
                 testID={`vermietung-${index}-plz`}
-                onChange={sendPostalCode}
+                onCommit={sendPostalCode}
               />
             </Feld>
           </View>
           <View style={{ flex: 2 }}>
             <Feld label="Ort">
-              <Input
-                value={property.city ?? ''}
+              <DraftInput
+                stored={property.city ?? ''}
                 placeholder="Berlin"
                 accessibilityLabel="Ort"
                 autoComplete="address-level2"
                 testID={`vermietung-${index}-ort`}
-                onChange={(city) => onSendAddress?.({ city })}
+                onCommit={(city) => onSendAddress?.({ city })}
               />
             </Feld>
           </View>
@@ -267,13 +263,13 @@ function PropertyCard({
           testIDPrefix={`vermietung-${index}`}
         />
         <Feld label="Gesamtwohnfläche (m²)">
-          <Input
-            value={property.livingArea ?? ''}
+          <DraftInput
+            stored={property.livingArea ?? ''}
             placeholder="85"
             type="numeric"
             accessibilityLabel="Gesamtwohnfläche"
             testID={`vermietung-${index}-wohnflaeche`}
-            onChange={(livingArea) => onSendAddress?.({ livingArea })}
+            onCommit={(livingArea) => onSendAddress?.({ livingArea })}
           />
         </Feld>
         {(
@@ -284,18 +280,15 @@ function PropertyCard({
             ...(paar ? ([['anteilA', 'Dein Anteil am Objekt in % (der Rest gehört deinem Partner)', '50']] as const) : []),
           ] as const
         ).map(([field, label, example]) => (
-          <Feld key={field} label={label}>
-            <Input
-              value={property[field] ?? ''}
-              placeholder={example}
-              type="numeric"
-              accessibilityLabel={label}
-              testID={`vermietung-${index}-${field}`}
-              onChange={(value) => {
-                if (/^\d+$/.test(value.trim())) onSendAddress?.({ [field]: value.trim() })
-              }}
-            />
-          </Feld>
+          <WholeNumberAttribute
+            key={field}
+            label={label}
+            stored={property[field] ?? ''}
+            example={example}
+            amount={field === 'umlagen' || field === 'schuldzinsen'}
+            testID={`vermietung-${index}-${field}`}
+            onCommit={(value) => onSendAddress?.({ [field]: value })}
+          />
         ))}
         <Feld label="Ist die Gebäude-AfA unverändert wie im Vorjahr?">
           <View style={{ flexDirection: 'row', gap: t.space.s2 }}>
@@ -373,15 +366,122 @@ function repairsOf(drafts: readonly RepairDraft[]): RentalRepairDto[] {
   })
 }
 
+function repairUnreadable(draft: RepairDraft): boolean {
+  return draft.betrag.trim() !== '' && wholeEurosFrom(draft.betrag) === null
+}
+
+/** „Am Markt 5“ → street „Am Markt“, number „5“; without a trailing number the number is cleared. */
+function streetAndNumber(text: string): PutRentalAddressDto {
+  const value = text.trim()
+  const match = /^(.*\S)\s+(\d+\s?[a-zA-Z]?(?:[-/]\d+[a-zA-Z]?)?)$/.exec(value)
+  return match ? { strasse: match[1]!, hausnummer: match[2]!.replace(/\s/g, '') } : { strasse: value, hausnummer: '' }
+}
+
+/**
+ * A text field of the property (WEB-39 / NM-04): it holds what the user types and sends it once the field is
+ * left, instead of a PUT per keystroke whose answer overwrote the field (spaces vanished, characters got lost).
+ * It follows the stored value while the user is not typing.
+ */
+function DraftInput({
+  stored,
+  onCommit,
+  ...input
+}: {
+  readonly stored: string
+  readonly onCommit: (text: string) => void
+  readonly placeholder: string
+  readonly accessibilityLabel: string
+  readonly testID: string
+  readonly type?: 'numeric'
+  readonly autoComplete?: 'street-address' | 'postal-code' | 'address-level2'
+}) {
+  const [text, setText] = useState(stored)
+  const editing = useRef(false)
+  // A new stored value (the answer to a save, a refetch) replaces the text unless the user is typing; a
+  // failed save leaves the typed text where it is.
+  useEffect(() => {
+    if (!editing.current) setText(stored)
+  }, [stored])
+  const commit = () => {
+    editing.current = false
+    if (text.trim() !== stored.trim()) onCommit(text.trim())
+  }
+  return (
+    <Input
+      {...input}
+      value={text}
+      onChange={(next) => {
+        editing.current = true
+        setText(next)
+      }}
+      onBlur={commit}
+      onSubmit={commit}
+    />
+  )
+}
+
+/** A count, share or whole-euro amount of the property; unreadable text and an emptied stored value are named. */
+function WholeNumberAttribute({
+  label,
+  stored,
+  example,
+  amount,
+  testID,
+  onCommit,
+}: {
+  readonly label: string
+  readonly stored: string
+  readonly example: string
+  readonly amount: boolean
+  readonly testID: string
+  readonly onCommit: (value: string) => void
+}) {
+  const { t: tr } = useTranslation(APP_NS)
+  const [problem, setProblem] = useState<'unlesbar' | 'leer' | null>(null)
+  return (
+    <Feld
+      label={label}
+      {...(problem === 'unlesbar' ? { error: tr(amount ? 'betrag.unlesbar' : 'arbeitstage.zahlUnlesbar') } : {})}
+      {...(problem === 'leer' ? { error: tr('vermietung.leerenNichtMoeglich') } : {})}
+    >
+      <DraftInput
+        stored={stored}
+        placeholder={example}
+        type="numeric"
+        accessibilityLabel={label}
+        testID={testID}
+        onCommit={(text) => {
+          if (text === '') {
+            // The API keeps these fields once set; an empty field would silently show the old value again.
+            setProblem(stored === '' ? null : 'leer')
+            return
+          }
+          const value = amount ? wholeEurosFrom(text) : integerFrom(text)
+          if (value === null) {
+            setProblem('unlesbar')
+            return
+          }
+          setProblem(null)
+          if (String(value) !== stored) onCommit(String(value))
+        }}
+      />
+    </Feld>
+  )
+}
+
 /** ADR-0099 §8: the Erhaltungsaufwand of the year, one line per invoice with an optional date. */
 function RepairsList({ property, index, taxYear, onSend }: { readonly property: RentalPropertyDto; readonly index: number; readonly taxYear: number; readonly onSend: (repairs: RentalRepairDto[]) => void }) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
+  const confirmRemove = useConfirmAction('rentalRemoveRepair')
   const [drafts, setDrafts] = useState<RepairDraft[]>(() => property.erhaltungsaufwand.map((r, i) => ({ key: i, betrag: String(r.betrag), datum: isoDateToGerman(r.datum ?? '') })))
   const [nextKey, setNextKey] = useState(property.erhaltungsaufwand.length)
   const stored = JSON.stringify(property.erhaltungsaufwand.map((r) => ({ betrag: r.betrag, datum: r.datum ?? null })))
 
   function commit(next: readonly RepairDraft[] = drafts) {
+    // An amount the app cannot read is named at its row; the list is not sent without it — that would delete
+    // the stored repair the user is correcting.
+    if (next.some(repairUnreadable)) return
     const repairs = repairsOf(next)
     if (JSON.stringify(repairs) !== stored) onSend(repairs)
   }
@@ -396,7 +496,7 @@ function RepairsList({ property, index, taxYear, onSend }: { readonly property: 
       {drafts.map((d, i) => (
         <View key={d.key} style={{ gap: t.space.s1, borderTopWidth: 1, borderTopColor: t.color.linieWeich, paddingTop: t.space.s2 }}>
           <Text style={{ ...t.type.labelStrong, color: t.color.tinte }}>{tr('vermietung.erhaltung.eintrag', { nummer: i + 1 })}</Text>
-          <Feld label={tr('vermietung.erhaltung.betrag')}>
+          <Feld label={tr('vermietung.erhaltung.betrag')} {...(repairUnreadable(d) ? { error: tr('betrag.unlesbar') } : {})}>
             <Input
               type="numeric"
               mono
@@ -428,11 +528,16 @@ function RepairsList({ property, index, taxYear, onSend }: { readonly property: 
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={tr('vermietung.erhaltung.entfernenA11y', { nummer: i + 1 })}
-            onPress={() => {
-              const next = drafts.filter((x) => x.key !== d.key)
-              setDrafts(next)
-              commit(next)
-            }}
+            onPress={() =>
+              confirmRemove.ask(
+                () => {
+                  const next = drafts.filter((x) => x.key !== d.key)
+                  setDrafts(next)
+                  commit(next)
+                },
+                { nummer: i + 1 },
+              )
+            }
             style={{ minHeight: 44, justifyContent: 'center', alignSelf: 'flex-start' }}
             testID={`vermietung-${index}-erhaltung-${i}-entfernen`}
           >
@@ -450,6 +555,7 @@ function RepairsList({ property, index, taxYear, onSend }: { readonly property: 
       >
         {tr('vermietung.erhaltung.hinzufuegen')}
       </Button>
+      {confirmRemove.dialog}
     </View>
   )
 }

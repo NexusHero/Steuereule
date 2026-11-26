@@ -6,17 +6,14 @@
 // flow (Grund-Auswahl) appears only when the server allows it, and there is NO „Korrigieren"
 // button after the Bescheid (ADR-009/ADR-032).
 import { describe, it, expect } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
-import { I18nextProvider } from 'react-i18next'
-import { ThemeProvider } from '@steuereule/ui'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { screen, fireEvent, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
-import { createAppI18n } from '../../i18n/app-i18n'
 import { AssessmentScreen } from './AssessmentScreen'
 import { server } from '../../test-msw-server'
 import type { AssessmentResponseDto } from '@steuereule/api-client'
 import { DIFF_2024 } from '../../test-history-fixture'
 import { emptyAssessment } from '../../test-assessment-fixture'
+import { renderWithQuery } from '../../test-render'
 
 const ASSESSMENT_URL = '*/v1/steuerjahre/2026/bescheid'
 
@@ -25,17 +22,7 @@ function mockAssessment(data: AssessmentResponseDto, status = 200) {
 }
 
 function renderAssessment() {
-  const i18n = createAppI18n('de')
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-  return render(
-    <QueryClientProvider client={queryClient}>
-      <I18nextProvider i18n={i18n}>
-        <ThemeProvider mode="light">
-          <AssessmentScreen />
-        </ThemeProvider>
-      </I18nextProvider>
-    </QueryClientProvider>,
-  )
+  return renderWithQuery(<AssessmentScreen />)
 }
 
 describe('BescheidScreen', () => {
@@ -107,7 +94,7 @@ describe('BescheidScreen', () => {
     renderAssessment()
     await screen.findByText('Dein Steuerbescheid')
     expect(screen.getByText('Einspruchsfrist')).toBeTruthy()
-    expect(screen.getByText(/Noch 31 Tage — bis 2026-04-15/)).toBeTruthy()
+    expect(screen.getByText(/Noch 31 Tage — bis 15.04.2026/)).toBeTruthy()
   })
 
   it('offers the Einspruch flow (Grund-Auswahl) only when the server allows geprüft → einspruch-eingelegt', async () => {

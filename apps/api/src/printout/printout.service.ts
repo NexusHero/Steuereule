@@ -20,11 +20,13 @@ import {
 import { waysToWork } from '../commute/ways-to-work.js'
 import type { CommuteInputs } from '../commute/commute.repository.js'
 import { AuditService } from '../audit/audit.service.js'
+import { appendReadAudit, jointPartnerOf } from '../common/read-audit.js'
 import type { CrossBorderSalaryStatementRecord } from '../ch-salary-certificate/ch-salary-certificate.repository.js'
 import { UnlockService } from '../unlock/unlock.service.js'
 import { PROVENANCE_REPOSITORY, type ProvenanceRepository } from '../marking/marking.repository.js'
 import { religionForReturn } from '../master-data/master-data.repository.js'
 import { TAX_CASE_READER, type TaxCaseReader, type TaxCaseRecords } from '../tax-case/tax-case.reader.js'
+import { PERSON_B_CONSENT_MISSING } from '../common/partner-consent-missing.js'
 import { childAllowancesEur } from '../children/swiss-allowance.js'
 import { fillInForms, lineNumbersOf } from './fill-in-lines.js'
 import { liveForms, type LiveForm, type LiveFormWithLines } from './live-values.js'
@@ -33,6 +35,7 @@ import { printoutValues, type ChildGapField, type CommuteFacts, type ChSalaryCer
 import {
   FIELD_SETS,
   FORM_ORDER,
+  findOverflows,
   forYear,
   loadAcroFormTemplateBytes,
   renderForms,
@@ -96,6 +99,17 @@ export class PrintoutService {
     return { missing: (await this.tooLong(year, values, instances)).map((id) => `zuLang.${id}`), missingChildFields, hints }
   }
 
+  /**
+   * The check as the user reads it (the endpoint), with its READ row. `check` is also run inside the
+   * checkout, the owl's case digest and the MCP tools, which keep their own audit rows.
+   */
+  async checkForUser(userId: string, year: number): Promise<PrintoutCheck> {
+    const result = await this.check(userId, year)
+    const { coupling } = await this.cases.read(userId, year, ['coupling'])
+    await appendReadAudit(this.audit, userId, 'ausdruck-pruefung', [jointPartnerOf(coupling, userId)])
+    return result
+  }
+
   /** Whether the estimate is a payment over its whole range; unknown or open counts as a possible refund. */
   private async endsInPayment(userId: string, year: number): Promise<boolean> {
     if (!this.estimate) return false
@@ -103,20 +117,23 @@ export class PrintoutService {
     return state?.kind === 'spanne' && state.result !== undefined && state.result.to < 0
   }
 
+  /** The same placement as the renderer, without rendering (API-6): this runs on every open of the check. */
   private async tooLong(year: number, values: FieldValues, instances: Record<string, readonly FieldValues[]> | undefined): Promise<string[]> {
-    try {
-      await this.render(year, values, instances, false)
-      return []
-    } catch (error) {
-      if (error instanceof OverflowError) return [...new Set(error.fields)]
-      throw error
-    }
+    const overflows = await findOverflows(FIELD_SETS[year]!, forYear(year, values), {
+      templatesDirectory: new URL(`${year}/`, this.templatesBase),
+      instances: this.instancesForYear(year, instances),
+    })
+    return [...new Set(overflows)]
+  }
+
+  private instancesForYear(year: number, instances: Record<string, readonly FieldValues[]> | undefined): Record<string, readonly FieldValues[]> | undefined {
+    return instances ? Object.fromEntries(Object.entries(instances).map(([form, list]) => [form, list.map((v) => forYear(year, v))])) : instances
   }
 
   private render(year: number, values: FieldValues, instances: Record<string, readonly FieldValues[]> | undefined, editable: boolean): Promise<Uint8Array> {
     return renderForms(FIELD_SETS[year]!, forYear(year, values), {
       templatesDirectory: new URL(`${year}/`, this.templatesBase),
-      instances: instances ? Object.fromEntries(Object.entries(instances).map(([form, list]) => [form, list.map((v) => forYear(year, v))])) : instances,
+      instances: this.instancesForYear(year, instances),
       editable,
     })
   }
@@ -125,16 +142,24 @@ export class PrintoutService {
    * The values of every printed copy for the live form view. Shown before payment: only the PDF is
    * paid (ADR-0050); the check before payment (ADR-0085) shows what is missing the same way.
    */
-  async liveValues(userId: string, year: number): Promise<{ forms: LiveFormWithLines[] }> {
+  async liveValues(
+    userId: string,
+    year: number,
+    /** The user's assistant reads its own figures line by line (`vordruck_zeilen`); the user's form view does not show unconfirmed ones. */
+    options: { readonly withUnconfirmed?: boolean } = {},
+  ): Promise<{ forms: LiveFormWithLines[]; unconfirmed: string[] }> {
     const fieldSet = FIELD_SETS[year]
     if (!fieldSet) throw new NotFoundError('VORDRUCKE_MISSING', `No Vordrucke are available for tax year ${year} yet.`)
     const { coupling: link } = await this.cases.read(userId, year, ['coupling'])
     // ADR-0054: Person A prints the couple's return; Person B has no copy of their own to show.
-    if (link?.filingType === 'zusammen' && link.personAUserId !== userId) return { forms: [] }
+    if (link?.filingType === 'zusammen' && link.personAUserId !== userId) return { forms: [], unconfirmed: [] }
+    // Unconfirmed values count as open (ADR-0052 §6, MCP-24): the form view shows none of them until the user confirmed.
+    const unconfirmed = await this.unconfirmed(userId, year, link)
+    if (unconfirmed.length > 0 && options.withUnconfirmed !== true) return { forms: [], unconfirmed }
     const { values, instances, entityIds } = await this.collectValues(userId, year)
     await this.audit.append({ userId, action: 'READ', resource: 'ausdruck-werte' })
     const forms = liveForms(year, fieldSet, values, instances, entityIds)
-    return { forms: forms.map((form) => ({ ...form, instances: form.instances.map((copy) => ({ ...copy, lines: lineNumbersOf(year, copy.values) })) })) }
+    return { forms: forms.map((form) => ({ ...form, instances: form.instances.map((copy) => ({ ...copy, lines: lineNumbersOf(year, copy.values) })) })), unconfirmed }
   }
 
   /**
@@ -142,12 +167,15 @@ export class PrintoutService {
    * facts and the same `printoutValues`, for every year the app offers, printed or not. The records
    * behind per-record copies are named so the help can tell two Anlagen Kind apart.
    */
-  async fillInValues(userId: string, year: number): Promise<{ forms: LiveForm[]; names: Readonly<Record<string, string | null>> }> {
+  async fillInValues(userId: string, year: number): Promise<{ forms: LiveForm[]; names: Readonly<Record<string, string | null>>; unconfirmed: string[] }> {
     const { coupling: link } = await this.cases.read(userId, year, ['coupling'])
     // ADR-0054: Person A files the couple's return; Person B has no return of their own to type in.
-    if (link?.filingType === 'zusammen' && link.personAUserId !== userId) return { forms: [], names: {} }
+    if (link?.filingType === 'zusammen' && link.personAUserId !== userId) return { forms: [], names: {}, unconfirmed: [] }
+    // What the user types into ELSTER is what the printout would print (MCP-24): nothing unconfirmed, as for the PDF.
+    const unconfirmed = await this.unconfirmed(userId, year, link)
+    if (unconfirmed.length > 0) return { forms: [], names: {}, unconfirmed }
     const { values, instances, entityIds, names } = await this.collectValues(userId, year)
-    return { forms: fillInForms(year, values, instances, entityIds), names }
+    return { forms: fillInForms(year, values, instances, entityIds), names, unconfirmed }
   }
 
   /** The Vordruck a field id belongs to in a tax year, or null when that year has no such field. */
@@ -188,9 +216,15 @@ export class PrintoutService {
     }
   }
 
-  private async unconfirmed(userId: string, year: number, personBUserId: string | null): Promise<string[]> {
+  /**
+   * What holds the return back before any value is shown or printed: unconfirmed assistant values of either
+   * person, and (decision 3) a joint year Person B has not agreed to, whose figures this account may not read.
+   */
+  private async unconfirmed(userId: string, year: number, link: TaxCaseRecords['coupling']): Promise<string[]> {
     const years = [year, YEAR_INDEPENDENT]
     const own = missingConfirmations((await this.markings.listForUserAndYears(userId, years)).map((k) => ({ ...k, value: null })))
+    if (link?.personBWithheld) return [...own, PERSON_B_CONSENT_MISSING]
+    const personBUserId = link?.filingType === 'zusammen' && link.personBUserId ? link.personBUserId : null
     if (personBUserId === null) return own
     const personB = missingConfirmations((await this.markings.listForUserAndYears(personBUserId, years)).map((k) => ({ ...k, value: null })))
     return personB.length > 0 ? [...own, 'unbestaetigt.personB'] : own
@@ -203,9 +237,9 @@ export class PrintoutService {
     if (link?.filingType === 'zusammen' && link.personAUserId !== userId) {
       return { values: {}, instances: {}, missing: ['personADruckt'], missingChildFields: [] }
     }
-    const values = await this.collectValues(userId, year)
-    const personBUserId = link?.filingType === 'zusammen' && link.personBUserId ? link.personBUserId : null
-    return { ...values, missing: [...values.missing, ...(await this.unconfirmed(userId, year, personBUserId))] }
+    // Independent reads, one round (OPS-4).
+    const [values, unconfirmed] = await Promise.all([this.collectValues(userId, year), this.unconfirmed(userId, year, link)])
+    return { ...values, missing: [...values.missing, ...unconfirmed] }
   }
 
   private async collectValues(userId: string, year: number) {

@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SteuerEule — Steuern? Zack, erledigt. (Beta)</title>
+<meta name="description" content="SteuerEule hilft dir, deine Einkommensteuererklärung selbst auszufüllen und auf den amtlichen Vordrucken auszudrucken. Beta-Version.">
+<link rel="icon" href="./assets/marke-tinte.svg" type="image/svg+xml">
+<style>{{styles}}</style>
+</head>
+<body>
+
+<p class="beta" role="note" data-testid="beta-hinweis"><b>Beta</b>SteuerEule ist in der Testphase. Funktionen können sich ändern und Fehler sind möglich. Prüfe jeden Ausdruck, bevor du ihn unterschreibst und einreichst.</p>
+
+<header class="nav">
+  <img src="./assets/marke-tinte.svg" width="34" height="31" alt="SteuerEule Bildmarke">
+  <span class="wort">Steuer<b>Eule</b></span>
+  <nav aria-label="Hauptnavigation">
+    <a href="#so">So funktioniert's</a>
+    <a href="#eule">Die Eule</a>
+    <a href="#daten">Datenschutz</a>
+    <a href="#preis">Preis</a>
+    <a class="cta ghost klein" href="{{app}}/login">Einloggen</a>
+  </nav>
+</header>
+
+<main>
+<section class="hero">
+  <div>
+    <h1>Steuern?<br><span class="zack">Zack,</span> erledigt.</h1>
+    <p class="sub">Belege hochladen, Fragen beantworten, Vorschläge prüfen, ausdrucken. Deine voraussichtliche Erstattung siehst du als Spanne, bevor du etwas bezahlst.</p>
+    <div class="cta-reihe">
+      <a class="cta" href="{{app}}/registrierung">Kostenlos starten</a>
+      <a class="cta ghost" href="#so">So funktioniert's</a>
+    </div>
+    <p class="hinweis">Kein Abo · Ausprobieren auch ohne Konto · Eule und Belegauslesen mit kostenlosem Konto</p>
+  </div>
+  <div class="mock" role="img" aria-label="Beispielansicht der Erstattungskarte, keine echte Berechnung">
+    <span class="sticker">Beispiel</span>
+    <div class="mock-kopf">
+      <img src="./assets/marke-funke.svg" width="40" height="40" alt="">
+      <span class="l">Voraussichtliche Erstattung</span>
+    </div>
+    <div class="zahl">1.300 – 1.600 €</div>
+    <span class="klein">Schätzung als Spanne: Was das Finanzamt festsetzt, steht erst im Bescheid.</span>
+    <div class="ai">
+      <b>Eule:</b> Deine Fahrten zur Arbeit fehlen noch. Die Entfernungspauschale kann deine Werbungskosten über den Pauschbetrag heben (§ 9 Abs. 1 Satz 3 Nr. 4 EStG).
+    </div>
+  </div>
+</section>
+
+<section class="band" id="so">
+  <div class="innen">
+    <span class="kicker">So funktioniert's</span>
+    <h2 class="titel">Drei Schritte bis zum Ausdruck.</h2>
+    <div class="raster">
+      <div class="karte">
+        <div class="nr">1</div>
+        <h3>Erfassen</h3>
+        <p>Fragen antippen, eine pro Bildschirm. Lohnsteuerbescheinigung und Belege als Foto oder PDF hochladen: Die Texterkennung läuft in deinem Browser.</p>
+      </div>
+      <div class="karte ki">
+        <div class="nr">2</div>
+        <h3>Prüfen</h3>
+        <p>Die Eule schlägt Werte vor und nennt die Rechtsgrundlage. Du entscheidest, was übernommen wird. Schaltest du den Turbo-Modus ein, übernimmt sie Änderungen selbst; jede lässt sich rückgängig machen.</p>
+      </div>
+      <div class="karte">
+        <div class="nr">3</div>
+        <h3>Ausdrucken</h3>
+        <p>SteuerEule füllt die amtlichen Papiervordrucke aus. Du druckst sie aus, unterschreibst und reichst sie selbst beim Finanzamt ein. An das Finanzamt übermittelt SteuerEule deine Erklärung nicht.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="band nacht" id="eule">
+  <div class="innen">
+    <span class="kicker">Die Eule</span>
+    <h2 class="titel">KI, die sich zu erkennen gibt.</h2>
+    <div class="raster">
+      <div class="punkt"><b>Violett heißt Eule</b><span>Vorschläge und Antworten der Eule sind violett markiert. Was du selbst eingibst, bleibt deins.</span></div>
+      <div class="punkt"><b>Vorschlag mit Grund</b><span>Vorschläge zeigen, wie sicher sich die Eule ist. „Stimmt nicht“ ist einen Tap entfernt.</span></div>
+      <div class="punkt"><b>Herkunft im Ausdruck</b><span>Tippst du im Formular auf ein Feld, siehst du, woher sein Wert kommt.</span></div>
+    </div>
+  </div>
+</section>
+
+<section class="band" id="amt">
+  <div class="innen">
+    <span class="kicker">Warum nicht einfach die vorausgefüllte Erklärung?</span>
+    <h2 class="titel">Das Amt kennt deine Fahrtkosten nicht.</h2>
+    <div class="raster zwei">
+      <div class="karte">
+        <h3>Pauschale oder echte Kosten</h3>
+        <p>Ohne weitere Angaben rechnet das Finanzamt mit dem Arbeitnehmer-Pauschbetrag von {{employeeLumpSum}} (Steuerjahr {{lumpSumYear}}). Pendeln, Homeoffice, Fortbildung, Handwerker: Das weiß nur, wer dich fragt. SteuerEule fragt.</p>
+      </div>
+      <div class="karte">
+        <h3>Bescheidprüfung kostenlos</h3>
+        <p>Kommt der Bescheid, trägst du seine Summen ein. SteuerEule vergleicht Einkünfte, Vorsorgeaufwendungen und anrechenbare Steuern mit deiner Erklärung. Legst du Einspruch ein, hältst du Grund, Datum und Ausgang fest; den Einspruch schreibst du selbst.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="band nacht" id="daten">
+  <div class="innen">
+    <span class="kicker">Datenschutz</span>
+    <h2 class="titel">Deine Daten. Deine Regeln.</h2>
+    <div class="raster">
+      <div class="punkt"><b>Wo sie liegen</b><span>Server und Datenbank laufen bei {{hostingProvider}} in der Region {{hostingRegion}} ({{hostingCountry}}). Steuerdaten speichern wir feldweise verschlüsselt (AES-256-GCM), die Verbindung läuft über TLS.</span></div>
+      <div class="punkt"><b>Wer sie sieht</b><span>Für die Eule und das Auslesen von Belegen nutzen wir Sprachmodelle von {{modelProviders}} ({{modelCountries}}). Namen, Steuer-ID, IBAN und ähnliche Angaben entfernen wir vorher, außer du erlaubst ausdrücklich, dass sie mitgehen.</span></div>
+      <div class="punkt"><b>Was du tun kannst</b><span>Mit Konto lädst du unter „Profil → Datenschutz“ eine Kopie deiner Daten herunter oder löschst dein Konto, jeweils nach einer Bestätigung. Daten im Gast-Modus löschen wir nach {{guestDataDays}} Tagen ohne Änderung.</span></div>
+    </div>
+    <div class="plaketten">
+      <span>{{hostingProvider}} · {{hostingCountry}}</span>
+      <span>AES-256-GCM</span>
+      <span>Kein Tracking</span>
+      <span>Keine Werbe-Cookies</span>
+    </div>
+  </div>
+</section>
+
+<section class="band" id="preis">
+  <div class="innen">
+    <span class="kicker">Preis</span>
+    <h2 class="titel">Kostenlos erfassen. Bezahlt wird der Ausdruck.</h2>
+    <div class="preis">
+      <div class="karte">
+        <b>Kostenlos</b>
+        <div class="p-zahl">Ohne Zahlung</div>
+        <ul>
+          <li>Interview, Belege und Eule</li>
+          <li>Erstattung als Spanne, laufend berechnet</li>
+          <li>Bescheidprüfung</li>
+          <li>Datenexport und Kontolöschung</li>
+        </ul>
+      </div>
+      <div class="karte pro">
+        <b>Freischaltung je Steuerjahr</b>
+        <div class="p-zahl">Einmalzahlung</div>
+        <ul>
+          <li>Amtlicher Formular-Ausdruck als PDF</li>
+          <li>Für Selbstständige eine eigene Stufe: Ausfüllhilfe zum Abtippen in Mein ELSTER und Exporte</li>
+          <li>Kein Abo. Den Preis siehst du auf der Bezahlseite, bevor du zahlst.</li>
+        </ul>
+      </div>
+    </div>
+    <p class="grenzen" data-testid="grenzen">Grenzen je Konto: bis {{receiptFiles}} Dateien mit zusammen {{receiptBytes}}, je Datei höchstens {{receiptFileSize}}; bis {{receipts}} Belege; {{receiptReads}} Belegauslesungen am Tag. Die Eule nimmt {{advisorPerMinute}} Nachrichten pro Minute an, je Steuerjahr führst du bis zu {{advisorConversations}} Gespräche. Für alle Nutzer zusammen gibt es ein Tageskontingent an Modellaufrufen; ist es aufgebraucht, antwortet die Eule bis zum nächsten Tag nur aus ihren Regeln und Belege werden ohne Sprachmodell gelesen.</p>
+  </div>
+</section>
+
+<section class="band">
+  <div class="innen faq">
+    <span class="kicker">Fragen</span>
+    <h2 class="titel">Kurz beantwortet.</h2>
+    <details>
+      <summary>Ersetzt SteuerEule einen Steuerberater?</summary>
+      <p>Nein. SteuerEule hilft dir, deine Erklärung selbst zu machen. Vorschläge und Schätzungen sind unverbindlich und keine Rechts- oder Steuerberatung.</p>
+    </details>
+    <details>
+      <summary>Wo liegen meine Daten?</summary>
+      <p>Auf unseren Servern bei {{hostingProvider}} in {{hostingCountry}}, auch im Gast-Modus: Dort hält ein Cookie mit einer zufälligen Kennung deine Angaben zusammen. Mit Konto exportierst oder löschst du deine Daten unter „Profil → Datenschutz“. Was wir wie lange aufbewahren, steht in der <a href="{{app}}/rechtliches/datenschutz">Datenschutzerklärung</a>.</p>
+    </details>
+    <details>
+      <summary>Was ist der amtliche Papier-Ausdruck?</summary>
+      <p>Deine Erklärung wird auf die amtlichen Vordrucke gedruckt: Hauptvordruck ESt 1 A und Anlagen wie N, R, KAP, Kind und V. Ausdrucken, unterschreiben, beim Finanzamt einreichen. Fehlt für einen Teil deiner Erklärung noch ein Vordruck, druckt SteuerEule nicht, statt eine unvollständige Erklärung zu erzeugen. Wer Gewinneinkünfte hat, muss elektronisch abgeben; dafür gibt es die Ausfüllhilfe für Mein ELSTER.</p>
+    </details>
+    <details>
+      <summary>Für wen ist SteuerEule gedacht?</summary>
+      <p>Für Angestellte, Rentnerinnen und Rentner und Grenzgänger in die Schweiz, mit Kapitalerträgen und Vermietung. Selbstständige führen in der App ein Buch (EÜR oder Bilanz) und erhalten eine Ausfüllhilfe für Mein ELSTER.</p>
+    </details>
+  </div>
+</section>
+</main>
+
+<footer>
+  <div class="innen">
+    <img src="./assets/marke-tinte.svg" width="26" height="24" alt="">
+    <b>SteuerEule</b>
+    <span>· Beta</span>
+    <nav aria-label="Rechtliches">
+      <a href="{{app}}/rechtliches/impressum">Impressum</a>
+      <a href="{{app}}/rechtliches/datenschutz">Datenschutz</a>
+      <a href="{{app}}/rechtliches/agb">AGB &amp; Widerruf</a>
+      <a href="{{app}}/rechtliches/hinweise">Hinweise</a>
+    </nav>
+    <span class="stand">Keine Steuerberatung. Diese Seite beschreibt die Beta-Version.</span>
+  </div>
+</footer>
+
+</body>
+</html>

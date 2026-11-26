@@ -7,6 +7,9 @@ import { LangGraphAdvisorEngine } from '../src/ki/langgraph-advisor.engine.js'
 import { buildAdvisorTestKit, collect, type AdvisorTestKit } from './fakes/advisor-test-kit.js'
 import { runtime, ScriptedModel } from './fakes/scripted-model.js'
 
+/** The mask's call on a session that passed the step-up (a new invitation code grants a third party access). */
+const STEPPED_UP = async (): Promise<void> => {}
+
 const USER = 'user-a'
 const YEAR = 2025
 
@@ -31,7 +34,7 @@ const commute = (oneWayKm: number) => ({ workdays: [1, 2, 3, 4, 5] as const, vac
 
 /** A joint return in which A records B's figures; B is called Gülay. */
 async function jointReturn(kit: AdvisorTestKit): Promise<string> {
-  await kit.linkService.set(USER, YEAR, { filingType: 'zusammen' })
+  await kit.linkService.set(USER, YEAR, { filingType: 'zusammen' }, new Date(), STEPPED_UP)
   await kit.linkService.updatePersonB(USER, YEAR, { firstName: 'Gülay', lastName: 'Yilmaz' })
   return kit.linkService.dataUser(USER, YEAR, 'B')
 }
@@ -178,7 +181,7 @@ describe('the owl refuses a draft for Person B where there is none to write for'
   it('when B keeps an own account, as the mask does', async () => {
     const { notStaged } = await refusedFor(
       async (kit) => {
-        const link = await kit.linkService.set(USER, YEAR, { filingType: 'zusammen' })
+        const link = await kit.linkService.set(USER, YEAR, { filingType: 'zusammen' }, new Date(), STEPPED_UP)
         await kit.linkService.joinWithCode('user-b', YEAR, link.invitationCode!)
       },
       { screen: 'lstb', field: 'bruttoarbeitslohn', newValue: '40000', label: 'Lohn Person B', person: 'B' },

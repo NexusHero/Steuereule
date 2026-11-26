@@ -1,6 +1,7 @@
-import { InvalidInputError } from '../../common/domain-error.js'
+import { InvalidInputError, PayloadTooLargeError } from '../../common/domain-error.js'
+import { PRODUCT_LIMITS } from '@steuereule/core'
 
-export const MAX_RECEIPT_FILE_BYTES = 10 * 1024 * 1024 // 10 MB
+export const MAX_RECEIPT_FILE_BYTES = PRODUCT_LIMITS.receiptFileBytes
 
 export const ALLOWED_RECEIPT_FILE_MIME_TYPES = [
   'application/pdf',
@@ -22,7 +23,7 @@ export function detectAllowedReceiptMimeType(buffer: Buffer): AllowedReceiptMime
     throw new InvalidInputError('RECEIPT_FILE_EMPTY', 'Die hochgeladene Datei ist leer.')
   }
   if (buffer.length > MAX_RECEIPT_FILE_BYTES) {
-    throw new InvalidInputError(
+    throw new PayloadTooLargeError(
       'RECEIPT_FILE_TOO_LARGE',
       'Die Datei ist größer als das erlaubte Maximum von 10 MB.',
     )

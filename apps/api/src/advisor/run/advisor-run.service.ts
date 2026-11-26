@@ -34,6 +34,7 @@ export class AdvisorRunService implements OnApplicationShutdown {
 
   /** Checks and persists synchronously (a quota error is still plain HTTP), then lets the run go. */
   async start(userId: string, taxYear: number, dto: SendAdvisorMessageDto): Promise<{ runId: string }> {
+    await this.reconcileOrphans(userId, taxYear)
     const turn = await this.turn.prepareTurn(userId, taxYear, dto)
     await this.log.open({ runId: turn.runId, userId, taxYear, assistantMessageId: turn.assistantMessageId })
     const stop = new AbortController()
@@ -87,15 +88,22 @@ export class AdvisorRunService implements OnApplicationShutdown {
     return { stopped: true }
   }
 
-  /** An answer whose run no instance knows any more (crash, deploy) can never finish: mark it failed. */
-  private async reconcileOrphans(userId: string, taxYear: number): Promise<void> {
-    const messages = await this.advisorRepo.listForUserAndYear(userId, taxYear)
-    for (const message of messages) {
-      if (message.status !== 'streaming') continue
+  /** The answers whose run no instance knows any more (crash, deploy): they can never finish. Reads only. */
+  private async orphans(userId: string, taxYear: number) {
+    const found = []
+    for (const message of await this.advisorRepo.listStreamingForUserAndYear(userId, taxYear)) {
       if (message.runId !== null && (await this.log.info(message.runId)) !== null) continue
       // Without a shared log (no Redis) an unknown run may simply live on another instance. No run
       // outlasts the turn budget, so only an answer older than that is certainly lost.
       if (!this.log.shared && Date.now() - message.createdAt.getTime() < ORPHAN_GRACE_MS) continue
+      found.push(message)
+    }
+    return found
+  }
+
+  /** Marks the orphaned answers failed. Only on a write path: a GET does not change state (H2-18). */
+  private async reconcileOrphans(userId: string, taxYear: number): Promise<void> {
+    for (const message of await this.orphans(userId, taxYear)) {
       await this.advisorRepo.finishMessage(message.id, userId, {
         content: message.content,
         meta: message.meta,
@@ -106,9 +114,15 @@ export class AdvisorRunService implements OnApplicationShutdown {
     }
   }
 
+  /** The session shows an orphaned answer as failed without writing it; the next write stores that (H2-18). */
   async getSession(userId: string, taxYear: number, conversationId?: string): Promise<AdvisorSessionResponseDto> {
-    await this.reconcileOrphans(userId, taxYear)
-    return this.advisor.getSession(userId, taxYear, conversationId)
+    const [orphans, session] = await Promise.all([this.orphans(userId, taxYear), this.advisor.getSession(userId, taxYear, conversationId)])
+    if (orphans.length === 0) return session
+    const failed = new Set(orphans.map((message) => message.id))
+    return {
+      ...session,
+      messages: session.messages.map((message) => (failed.has(message.id) ? { ...message, status: 'failed' as const, runId: undefined } : message)),
+    }
   }
 
   /** An answer that is still being written would lose the message it writes into. */
@@ -128,6 +142,7 @@ export class AdvisorRunService implements OnApplicationShutdown {
 
   async summarizeConversation(userId: string, taxYear: number, conversationId: string): Promise<AdvisorContextDto> {
     await this.refuseWhileAnswering(userId, taxYear, conversationId, 'das Gespräch zusammenfasst')
+    await this.turn.takeSummaryAllowance(userId)
     return this.conversations.summarizeConversation(userId, taxYear, conversationId)
   }
 

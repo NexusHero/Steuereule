@@ -11,7 +11,8 @@ import {
 } from '@steuereule/core'
 import { useDeadlinesControllerGetDeadlines, type DeadlinesResponseDto } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
-import { CURRENT_TAX_YEAR } from '../../config/taxYear'
+import { runningTaxYear } from '../../config/taxYear'
+import { InlineLoadFailure } from '../shared/InlineLoadFailure'
 
 function formatDate(iso: string): string {
   const [year, month, tag] = iso.split('-')
@@ -24,11 +25,16 @@ export interface DeadlinesBannerProps {
   readonly answers: Answers | null
 }
 
-export function DeadlinesBanner({ taxYear = CURRENT_TAX_YEAR, answers }: DeadlinesBannerProps) {
+export function DeadlinesBanner({ taxYear = runningTaxYear(), answers }: DeadlinesBannerProps) {
   const query = useDeadlinesControllerGetDeadlines(taxYear)
+  const { t: tr } = useTranslation(APP_NS)
 
   if (answers === null) return null
-  if (query.isPending || query.isError || query.data.status !== 200) return null
+  if (query.isPending) return null
+  // A deadline that did not load is said, never an empty space where a warning would be.
+  if (query.isError) {
+    return <InlineLoadFailure what={tr('fristen.ladefehler')} error={query.error} onRetry={() => void query.refetch()} testID="fristen-ladefehler" />
+  }
   const dto: DeadlinesResponseDto = query.data.data
   if (dto.level === 'keine') return null
 

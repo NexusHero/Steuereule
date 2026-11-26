@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger'
-import { IsNotEmpty, IsString } from 'class-validator'
+import { IsNotEmpty, IsString, MaxLength } from 'class-validator'
 
 /** Request body for `POST /v1/steuerjahre/{jahr}/interview/antworten`. */
 export class PostAnswerDto {
@@ -10,6 +10,7 @@ export class PostAnswerDto {
   })
   @IsString()
   @IsNotEmpty()
+  @MaxLength(100)
   questionId!: string
 
   @ApiProperty({
@@ -19,5 +20,6 @@ export class PostAnswerDto {
   })
   @IsString()
   @IsNotEmpty()
+  @MaxLength(2000)
   value!: string
 }

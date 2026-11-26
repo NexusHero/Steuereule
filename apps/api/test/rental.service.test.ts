@@ -3,7 +3,6 @@
 // real-Postgres proof (ciphertext at rest, audit atomicity, cross-user isolation, the real fold
 // through Prisma) lives in test/acceptance/req-026-vermietung.test.ts.
 import { beforeEach, describe, expect, it } from 'vitest'
-import { FakeMarkingRepository } from './fakes/fake-marking.repository.js'
 import { AuditService } from '../src/audit/audit.service.js'
 import { RentalService } from '../src/rental/rental.service.js'
 import { FakeAuditRepository } from './fakes/fake-audit.repository.js'
@@ -14,7 +13,6 @@ const USER_ID = 'user-1'
 const TAX_YEAR = 2026
 
 describe('VermietungService', () => {
-  let markings: FakeMarkingRepository
   let repository: FakeRentalRepository
   let interviewRepository: FakeInterviewAnswerRepository
   let auditRepository: FakeAuditRepository
@@ -24,8 +22,7 @@ describe('VermietungService', () => {
     repository = new FakeRentalRepository()
     interviewRepository = new FakeInterviewAnswerRepository()
     auditRepository = new FakeAuditRepository()
-    markings = new FakeMarkingRepository()
-    service = new RentalService(repository, interviewRepository, new AuditService(auditRepository), markings)
+    service = new RentalService(repository, interviewRepository, new AuditService(auditRepository))
   })
 
   describe('getState — the honest empty state and the Einordnung', () => {
@@ -184,13 +181,4 @@ describe('VermietungService', () => {
     })
   })
 
-  it('ADR-0052 §6: a user write drops the marker of exactly that field of that object', async () => {
-    const property = await repository.create('user-1', 2025)
-    await markings.save('user-1', 2025, { key: `vermietung:${property.id}.mieteinnahmen`, provenance: { kind: 'uebernahme', lastYear: 2024 }, confirmed: false, proposal: null })
-    await markings.save('user-1', 2025, { key: `vermietung:${property.id}.baujahr`, provenance: { kind: 'uebernahme', lastYear: 2024 }, confirmed: false, proposal: null })
-
-    await service.setField('user-1', 2025, property.id, 'mieteinnahmen', { kind: 'erfasst', value: 9000 })
-
-    expect(markings.all().map((k) => k.key)).toEqual([`vermietung:${property.id}.baujahr`])
-  })
 })

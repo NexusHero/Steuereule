@@ -69,8 +69,6 @@ export type linkControllerGetResponseError = (linkControllerGetResponse401) & {
   headers: Headers;
 };
 
-export type linkControllerGetResponse = (linkControllerGetResponseSuccess | linkControllerGetResponseError)
-
 export const getLinkControllerGetUrl = (jahr: number,) => {
 
 
@@ -79,9 +77,9 @@ export const getLinkControllerGetUrl = (jahr: number,) => {
   return `/v1/steuerjahre/${jahr}/kopplung`
 }
 
-export const linkControllerGet = async (jahr: number, options?: RequestInit): Promise<linkControllerGetResponse> => {
+export const linkControllerGet = async (jahr: number, options?: RequestInit): Promise<linkControllerGetResponseSuccess> => {
 
-  return httpClient<linkControllerGetResponse>(getLinkControllerGetUrl(jahr),
+  return httpClient<linkControllerGetResponseSuccess>(getLinkControllerGetUrl(jahr),
   {
     ...options,
     method: 'GET'
@@ -171,6 +169,11 @@ export type linkControllerSetResponse200 = {
   status: 200
 }
 
+export type linkControllerSetResponse400 = {
+  data: void
+  status: 400
+}
+
 export type linkControllerSetResponse401 = {
   data: void
   status: 401
@@ -184,11 +187,9 @@ export type linkControllerSetResponse403 = {
 export type linkControllerSetResponseSuccess = (linkControllerSetResponse200) & {
   headers: Headers;
 };
-export type linkControllerSetResponseError = (linkControllerSetResponse401 | linkControllerSetResponse403) & {
+export type linkControllerSetResponseError = (linkControllerSetResponse400 | linkControllerSetResponse401 | linkControllerSetResponse403) & {
   headers: Headers;
 };
-
-export type linkControllerSetResponse = (linkControllerSetResponseSuccess | linkControllerSetResponseError)
 
 export const getLinkControllerSetUrl = (jahr: number,) => {
 
@@ -199,9 +200,9 @@ export const getLinkControllerSetUrl = (jahr: number,) => {
 }
 
 export const linkControllerSet = async (jahr: number,
-    setLinkDto: SetLinkDto, options?: RequestInit): Promise<linkControllerSetResponse> => {
+    setLinkDto: SetLinkDto, options?: RequestInit): Promise<linkControllerSetResponseSuccess> => {
 
-  return httpClient<linkControllerSetResponse>(getLinkControllerSetUrl(jahr),
+  return httpClient<linkControllerSetResponseSuccess>(getLinkControllerSetUrl(jahr),
   {
     ...options,
     method: 'PUT',
@@ -278,8 +279,6 @@ export type linkControllerUpdatePersonBResponseError = (linkControllerUpdatePers
   headers: Headers;
 };
 
-export type linkControllerUpdatePersonBResponse = (linkControllerUpdatePersonBResponseSuccess | linkControllerUpdatePersonBResponseError)
-
 export const getLinkControllerUpdatePersonBUrl = (jahr: number,) => {
 
 
@@ -289,9 +288,9 @@ export const getLinkControllerUpdatePersonBUrl = (jahr: number,) => {
 }
 
 export const linkControllerUpdatePersonB = async (jahr: number,
-    linkPersonBDto: LinkPersonBDto, options?: RequestInit): Promise<linkControllerUpdatePersonBResponse> => {
+    linkPersonBDto: LinkPersonBDto, options?: RequestInit): Promise<linkControllerUpdatePersonBResponseSuccess> => {
 
-  return httpClient<linkControllerUpdatePersonBResponse>(getLinkControllerUpdatePersonBUrl(jahr),
+  return httpClient<linkControllerUpdatePersonBResponseSuccess>(getLinkControllerUpdatePersonBUrl(jahr),
   {
     ...options,
     method: 'PUT',
@@ -363,8 +362,6 @@ export type linkControllerJoinWithCodeResponseError = (linkControllerJoinWithCod
   headers: Headers;
 };
 
-export type linkControllerJoinWithCodeResponse = (linkControllerJoinWithCodeResponseSuccess | linkControllerJoinWithCodeResponseError)
-
 export const getLinkControllerJoinWithCodeUrl = (jahr: number,
     code: string,) => {
 
@@ -375,9 +372,9 @@ export const getLinkControllerJoinWithCodeUrl = (jahr: number,
 }
 
 export const linkControllerJoinWithCode = async (jahr: number,
-    code: string, options?: RequestInit): Promise<linkControllerJoinWithCodeResponse> => {
+    code: string, options?: RequestInit): Promise<linkControllerJoinWithCodeResponseSuccess> => {
 
-  return httpClient<linkControllerJoinWithCodeResponse>(getLinkControllerJoinWithCodeUrl(jahr,code),
+  return httpClient<linkControllerJoinWithCodeResponseSuccess>(getLinkControllerJoinWithCodeUrl(jahr,code),
   {
     ...options,
     method: 'POST'
@@ -430,5 +427,174 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
         TContext
       > => {
       return useMutation(getLinkControllerJoinWithCodeMutationOptions(options), queryClient);
+    }
+
+export type linkControllerConsentResponse200 = {
+  data: LinkResponseDto
+  status: 200
+}
+
+export type linkControllerConsentResponse401 = {
+  data: void
+  status: 401
+}
+
+export type linkControllerConsentResponseSuccess = (linkControllerConsentResponse200) & {
+  headers: Headers;
+};
+export type linkControllerConsentResponseError = (linkControllerConsentResponse401) & {
+  headers: Headers;
+};
+
+export const getLinkControllerConsentUrl = (jahr: number,) => {
+
+
+
+
+  return `/v1/steuerjahre/${jahr}/kopplung/zustimmung`
+}
+
+export const linkControllerConsent = async (jahr: number, options?: RequestInit): Promise<linkControllerConsentResponseSuccess> => {
+
+  return httpClient<linkControllerConsentResponseSuccess>(getLinkControllerConsentUrl(jahr),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getLinkControllerConsentMutationOptions = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof linkControllerConsent>>, TError,{jahr: number}, TContext>, request?: SecondParameter<typeof httpClient>}
+): UseMutationOptions<Awaited<ReturnType<typeof linkControllerConsent>>, TError,{jahr: number}, TContext> => {
+
+const mutationKey = ['linkControllerConsent'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof linkControllerConsent>>, {jahr: number}> = (props) => {
+          const {jahr} = props ?? {};
+
+          return  linkControllerConsent(jahr,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type LinkControllerConsentMutationResult = NonNullable<Awaited<ReturnType<typeof linkControllerConsent>>>
+
+    export type LinkControllerConsentMutationError = void
+
+    export const useLinkControllerConsent = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof linkControllerConsent>>, TError,{jahr: number}, TContext>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof linkControllerConsent>>,
+        TError,
+        {jahr: number},
+        TContext
+      > => {
+      return useMutation(getLinkControllerConsentMutationOptions(options), queryClient);
+    }
+
+export type linkControllerWithdrawConsentResponse200 = {
+  data: LinkResponseDto
+  status: 200
+}
+
+export type linkControllerWithdrawConsentResponse401 = {
+  data: void
+  status: 401
+}
+
+export type linkControllerWithdrawConsentResponse404 = {
+  data: void
+  status: 404
+}
+
+export type linkControllerWithdrawConsentResponseSuccess = (linkControllerWithdrawConsentResponse200) & {
+  headers: Headers;
+};
+export type linkControllerWithdrawConsentResponseError = (linkControllerWithdrawConsentResponse401 | linkControllerWithdrawConsentResponse404) & {
+  headers: Headers;
+};
+
+export const getLinkControllerWithdrawConsentUrl = (jahr: number,) => {
+
+
+
+
+  return `/v1/steuerjahre/${jahr}/kopplung/zustimmung`
+}
+
+export const linkControllerWithdrawConsent = async (jahr: number, options?: RequestInit): Promise<linkControllerWithdrawConsentResponseSuccess> => {
+
+  return httpClient<linkControllerWithdrawConsentResponseSuccess>(getLinkControllerWithdrawConsentUrl(jahr),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getLinkControllerWithdrawConsentMutationOptions = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof linkControllerWithdrawConsent>>, TError,{jahr: number}, TContext>, request?: SecondParameter<typeof httpClient>}
+): UseMutationOptions<Awaited<ReturnType<typeof linkControllerWithdrawConsent>>, TError,{jahr: number}, TContext> => {
+
+const mutationKey = ['linkControllerWithdrawConsent'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof linkControllerWithdrawConsent>>, {jahr: number}> = (props) => {
+          const {jahr} = props ?? {};
+
+          return  linkControllerWithdrawConsent(jahr,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type LinkControllerWithdrawConsentMutationResult = NonNullable<Awaited<ReturnType<typeof linkControllerWithdrawConsent>>>
+
+    export type LinkControllerWithdrawConsentMutationError = void
+
+    export const useLinkControllerWithdrawConsent = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof linkControllerWithdrawConsent>>, TError,{jahr: number}, TContext>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof linkControllerWithdrawConsent>>,
+        TError,
+        {jahr: number},
+        TContext
+      > => {
+      return useMutation(getLinkControllerWithdrawConsentMutationOptions(options), queryClient);
     }
 

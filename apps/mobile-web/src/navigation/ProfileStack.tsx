@@ -5,7 +5,7 @@ import { SecurityScreen } from '../screens/security/SecurityScreen'
 import { MasterDataScreen } from '../screens/master-data/MasterDataScreen'
 import { useShellState } from './ShellState'
 import { RequiresAccount } from './RequiresAccount'
-import { renderActiveStackRoute } from './guards'
+import { guardedStackRoute } from './guardedRoute'
 import type { ProfileStackParamList } from './routes'
 
 const Stack = createNativeStackNavigator<ProfileStackParamList>()
@@ -38,16 +38,19 @@ function SecurityRoute({ navigation }: Props<'Security'>) {
 }
 
 function ProfileMasterDataRoute({ navigation }: Props<'ProfileMasterData'>) {
+  // WEB-43: the profile opens the master data of the year selected in the app. The stack lives in the shell, so
+  // the year is always there; there is no fallback to a default year that would edit another year's data.
+  const { taxYear } = useShellState()
   return (
     <RequiresAccount>
-      <MasterDataScreen onBack={() => navigation.navigate('ProfileHome', undefined, { pop: true })} />
+      <MasterDataScreen taxYear={taxYear} onBack={() => navigation.navigate('ProfileHome', undefined, { pop: true })} />
     </RequiresAccount>
   )
 }
 
 export function ProfileStack() {
   return (
-    <Stack.Navigator initialRouteName="ProfileHome" screenOptions={{ headerShown: false }} screenLayout={renderActiveStackRoute}>
+    <Stack.Navigator initialRouteName="ProfileHome" screenOptions={{ headerShown: false }} screenLayout={guardedStackRoute}>
       <Stack.Screen name="ProfileHome" component={ProfileHomeRoute} />
       <Stack.Screen name="Privacy" component={PrivacyRoute} />
       <Stack.Screen name="Security" component={SecurityRoute} />

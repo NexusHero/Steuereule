@@ -77,8 +77,6 @@ export type printoutControllerCheckResponseError = (printoutControllerCheckRespo
   headers: Headers;
 };
 
-export type printoutControllerCheckResponse = (printoutControllerCheckResponseSuccess | printoutControllerCheckResponseError)
-
 export const getPrintoutControllerCheckUrl = (jahr: number,) => {
 
 
@@ -87,9 +85,9 @@ export const getPrintoutControllerCheckUrl = (jahr: number,) => {
   return `/v1/steuerjahre/${jahr}/ausdruck/pruefung`
 }
 
-export const printoutControllerCheck = async (jahr: number, options?: RequestInit): Promise<printoutControllerCheckResponse> => {
+export const printoutControllerCheck = async (jahr: number, options?: RequestInit): Promise<printoutControllerCheckResponseSuccess> => {
 
-  return httpClient<printoutControllerCheckResponse>(getPrintoutControllerCheckUrl(jahr),
+  return httpClient<printoutControllerCheckResponseSuccess>(getPrintoutControllerCheckUrl(jahr),
   {
     ...options,
     method: 'GET'
@@ -196,8 +194,6 @@ export type printoutControllerLiveValuesResponseError = (printoutControllerLiveV
   headers: Headers;
 };
 
-export type printoutControllerLiveValuesResponse = (printoutControllerLiveValuesResponseSuccess | printoutControllerLiveValuesResponseError)
-
 export const getPrintoutControllerLiveValuesUrl = (jahr: number,) => {
 
 
@@ -206,9 +202,9 @@ export const getPrintoutControllerLiveValuesUrl = (jahr: number,) => {
   return `/v1/steuerjahre/${jahr}/ausdruck/werte`
 }
 
-export const printoutControllerLiveValues = async (jahr: number, options?: RequestInit): Promise<printoutControllerLiveValuesResponse> => {
+export const printoutControllerLiveValues = async (jahr: number, options?: RequestInit): Promise<printoutControllerLiveValuesResponseSuccess> => {
 
-  return httpClient<printoutControllerLiveValuesResponse>(getPrintoutControllerLiveValuesUrl(jahr),
+  return httpClient<printoutControllerLiveValuesResponseSuccess>(getPrintoutControllerLiveValuesUrl(jahr),
   {
     ...options,
     method: 'GET'
@@ -303,9 +299,19 @@ export type printoutControllerCheckoutResponse401 = {
   status: 401
 }
 
+export type printoutControllerCheckoutResponse409 = {
+  data: void
+  status: 409
+}
+
 export type printoutControllerCheckoutResponse422 = {
   data: void
   status: 422
+}
+
+export type printoutControllerCheckoutResponse429 = {
+  data: void
+  status: 429
 }
 
 export type printoutControllerCheckoutResponse503 = {
@@ -316,11 +322,9 @@ export type printoutControllerCheckoutResponse503 = {
 export type printoutControllerCheckoutResponseSuccess = (printoutControllerCheckoutResponse200) & {
   headers: Headers;
 };
-export type printoutControllerCheckoutResponseError = (printoutControllerCheckoutResponse401 | printoutControllerCheckoutResponse422 | printoutControllerCheckoutResponse503) & {
+export type printoutControllerCheckoutResponseError = (printoutControllerCheckoutResponse401 | printoutControllerCheckoutResponse409 | printoutControllerCheckoutResponse422 | printoutControllerCheckoutResponse429 | printoutControllerCheckoutResponse503) & {
   headers: Headers;
 };
-
-export type printoutControllerCheckoutResponse = (printoutControllerCheckoutResponseSuccess | printoutControllerCheckoutResponseError)
 
 export const getPrintoutControllerCheckoutUrl = (jahr: number,) => {
 
@@ -330,9 +334,9 @@ export const getPrintoutControllerCheckoutUrl = (jahr: number,) => {
   return `/v1/steuerjahre/${jahr}/ausdruck/checkout`
 }
 
-export const printoutControllerCheckout = async (jahr: number, options?: RequestInit): Promise<printoutControllerCheckoutResponse> => {
+export const printoutControllerCheckout = async (jahr: number, options?: RequestInit): Promise<printoutControllerCheckoutResponseSuccess> => {
 
-  return httpClient<printoutControllerCheckoutResponse>(getPrintoutControllerCheckoutUrl(jahr),
+  return httpClient<printoutControllerCheckoutResponseSuccess>(getPrintoutControllerCheckoutUrl(jahr),
   {
     ...options,
     method: 'POST'
@@ -397,8 +401,6 @@ export type printoutControllerExportAsyncResponseSuccess = (printoutControllerEx
 };
 ;
 
-export type printoutControllerExportAsyncResponse = (printoutControllerExportAsyncResponseSuccess)
-
 export const getPrintoutControllerExportAsyncUrl = (jahr: number,
     params?: PrintoutControllerExportAsyncParams,) => {
   const normalizedParams = new URLSearchParams();
@@ -416,9 +418,9 @@ export const getPrintoutControllerExportAsyncUrl = (jahr: number,
 }
 
 export const printoutControllerExportAsync = async (jahr: number,
-    params?: PrintoutControllerExportAsyncParams, options?: RequestInit): Promise<printoutControllerExportAsyncResponse> => {
+    params?: PrintoutControllerExportAsyncParams, options?: RequestInit): Promise<printoutControllerExportAsyncResponseSuccess> => {
 
-  return httpClient<printoutControllerExportAsyncResponse>(getPrintoutControllerExportAsyncUrl(jahr,params),
+  return httpClient<printoutControllerExportAsyncResponseSuccess>(getPrintoutControllerExportAsyncUrl(jahr,params),
   {
     ...options,
     method: 'POST'
@@ -483,8 +485,6 @@ export type printoutControllerGetJobResponseSuccess = (printoutControllerGetJobR
 };
 ;
 
-export type printoutControllerGetJobResponse = (printoutControllerGetJobResponseSuccess)
-
 export const getPrintoutControllerGetJobUrl = (jahr: number,
     jobId: string,) => {
 
@@ -495,9 +495,9 @@ export const getPrintoutControllerGetJobUrl = (jahr: number,
 }
 
 export const printoutControllerGetJob = async (jahr: number,
-    jobId: string, options?: RequestInit): Promise<printoutControllerGetJobResponse> => {
+    jobId: string, options?: RequestInit): Promise<printoutControllerGetJobResponseSuccess> => {
 
-  return httpClient<printoutControllerGetJobResponse>(getPrintoutControllerGetJobUrl(jahr,jobId),
+  return httpClient<printoutControllerGetJobResponseSuccess>(getPrintoutControllerGetJobUrl(jahr,jobId),
   {
     ...options,
     method: 'GET'
@@ -613,14 +613,17 @@ export type printoutControllerPrintoutResponse422 = {
   status: 422
 }
 
+export type printoutControllerPrintoutResponse429 = {
+  data: void
+  status: 429
+}
+
 export type printoutControllerPrintoutResponseSuccess = (printoutControllerPrintoutResponse200) & {
   headers: Headers;
 };
-export type printoutControllerPrintoutResponseError = (printoutControllerPrintoutResponse401 | printoutControllerPrintoutResponse402 | printoutControllerPrintoutResponse404 | printoutControllerPrintoutResponse422) & {
+export type printoutControllerPrintoutResponseError = (printoutControllerPrintoutResponse401 | printoutControllerPrintoutResponse402 | printoutControllerPrintoutResponse404 | printoutControllerPrintoutResponse422 | printoutControllerPrintoutResponse429) & {
   headers: Headers;
 };
-
-export type printoutControllerPrintoutResponse = (printoutControllerPrintoutResponseSuccess | printoutControllerPrintoutResponseError)
 
 export const getPrintoutControllerPrintoutUrl = (jahr: number,
     params?: PrintoutControllerPrintoutParams,) => {
@@ -639,9 +642,9 @@ export const getPrintoutControllerPrintoutUrl = (jahr: number,
 }
 
 export const printoutControllerPrintout = async (jahr: number,
-    params?: PrintoutControllerPrintoutParams, options?: RequestInit): Promise<printoutControllerPrintoutResponse> => {
+    params?: PrintoutControllerPrintoutParams, options?: RequestInit): Promise<printoutControllerPrintoutResponseSuccess> => {
 
-  return httpClient<printoutControllerPrintoutResponse>(getPrintoutControllerPrintoutUrl(jahr,params),
+  return httpClient<printoutControllerPrintoutResponseSuccess>(getPrintoutControllerPrintoutUrl(jahr,params),
   {
     ...options,
     method: 'GET'

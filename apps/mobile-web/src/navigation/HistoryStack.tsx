@@ -5,7 +5,7 @@ import { HistoryYearScreen } from '../screens/history/HistoryYearScreen'
 import { HistoryDevelopmentScreen } from '../screens/history/HistoryDevelopmentScreen'
 import { HistoryDocumentsScreen } from '../screens/history/HistoryDocumentsScreen'
 import { useShellState } from './ShellState'
-import { renderActiveStackRoute } from './guards'
+import { guardedStackRoute } from './guardedRoute'
 import type { HistoryStackParamList } from './routes'
 
 const Stack = createNativeStackNavigator<HistoryStackParamList>()
@@ -84,7 +84,7 @@ function HistoryDocumentsRoute({ navigation }: Props<'HistoryDocuments'>) {
 /** The tab „Verlauf“ (ADR-0098 §1): the timeline, and one tap away a year's page, the development or the Unterlagen (ADR-0099 §9). */
 export function HistoryStack() {
   return (
-    <Stack.Navigator initialRouteName="HistoryHome" screenOptions={{ headerShown: false }} screenLayout={renderActiveStackRoute}>
+    <Stack.Navigator initialRouteName="HistoryHome" screenOptions={{ headerShown: false }} screenLayout={guardedStackRoute}>
       <Stack.Screen name="HistoryHome" component={HistoryHomeRoute} />
       <Stack.Screen name="HistoryYear" component={HistoryYearRoute} />
       <Stack.Screen name="HistoryDevelopment" component={HistoryDevelopmentRoute} />

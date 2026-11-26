@@ -3,24 +3,20 @@
 // established for the same live GET/PUT /v1/profile contract.
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { Platform } from 'react-native'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
-import { I18nextProvider } from 'react-i18next'
-import { ThemeProvider, isHapticsEnabled, setHapticsEnabled } from '@steuereule/ui'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { screen, fireEvent, waitFor } from '@testing-library/react'
+import { isHapticsEnabled, setHapticsEnabled } from '@steuereule/ui'
+import { QueryClient } from '@tanstack/react-query'
 import { http, HttpResponse } from 'msw'
 import { getProfileControllerGetProfileQueryKey } from '@steuereule/api-client'
-import { createAppI18n } from '../i18n/app-i18n'
 import { createAppAuthClient } from '../auth/auth-client'
 import { AuthClientProvider } from '../auth/AuthClientProvider'
 import { ProfileScreen } from './ProfileScreen'
 import { server, EMPTY_PROFILE_RESPONSE } from '../test-msw-server'
 import { stubStorageSetItem, assertNoStorageWrites } from '../test-storage-guard'
+import { expectFailsClosed, failEveryRequest } from '../test-every-query-fails'
+import { makeTestQueryClient, renderWithQuery } from '../test-render'
 
 const BASE_URL = 'http://localhost:3000'
-
-function makeTestQueryClient() {
-  return new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
-}
 
 function renderProfile(
   opts: {
@@ -32,24 +28,18 @@ function renderProfile(
     onSignedOut?: () => void
   } = {},
 ) {
-  const i18n = createAppI18n(opts.lng ?? 'de')
   const queryClient = opts.queryClient ?? makeTestQueryClient()
   const authClient = createAppAuthClient(BASE_URL)
-  return render(
-    <QueryClientProvider client={queryClient}>
-      <I18nextProvider i18n={i18n}>
-        <ThemeProvider mode="light">
-          <AuthClientProvider client={authClient}>
-            <ProfileScreen
-              onOpenPrivacy={opts.onOpenPrivacy ?? (() => {})}
-              onOpenSecurity={opts.onOpenSecurity ?? (() => {})}
-              {...(opts.onOpenMasterData ? { onOpenMasterData: opts.onOpenMasterData } : {})}
-              onSignedOut={opts.onSignedOut ?? (() => {})}
-            />
-          </AuthClientProvider>
-        </ThemeProvider>
-      </I18nextProvider>
-    </QueryClientProvider>,
+  return renderWithQuery(
+    <AuthClientProvider client={authClient}>
+      <ProfileScreen
+        onOpenPrivacy={opts.onOpenPrivacy ?? (() => {})}
+        onOpenSecurity={opts.onOpenSecurity ?? (() => {})}
+        {...(opts.onOpenMasterData ? { onOpenMasterData: opts.onOpenMasterData } : {})}
+        onSignedOut={opts.onSignedOut ?? (() => {})}
+      />
+    </AuthClientProvider>,
+    { client: queryClient, language: opts.lng ?? 'de' },
   )
 }
 
@@ -76,6 +66,16 @@ describe('ProfilScreen', () => {
     await screen.findByText('Anna Beispiel')
     expect(screen.getByText('02 476 291 358')).toBeTruthy()
     expect(screen.getByText('A')).toBeTruthy() // avatar initial
+  })
+
+  it('reaches the legal pages and shows the beta notice (WEB-7, WEB-20)', async () => {
+    mockSavedProfile()
+    renderProfile()
+    await screen.findByText('Anna Beispiel')
+    expect(screen.getByTestId('beta-hinweis')).toBeTruthy()
+    for (const page of ['impressum', 'datenschutz', 'agb', 'hinweise']) {
+      expect(screen.getByTestId(`rechtliches-link-${page}`).getAttribute('href')).toBe(`/rechtliches/${page}`)
+    }
   })
 
   it('shows an honest empty state for a brand-new profile (never mock data)', async () => {
@@ -120,8 +120,8 @@ describe('ProfilScreen', () => {
     )
     renderProfile()
 
-    await screen.findByText('Das hat nicht geklappt.')
-    expect(screen.getByText('Dein Profil konnte nicht geladen werden. Prüf die Verbindung und versuch es noch mal.')).toBeTruthy()
+    await screen.findByText('Das konnte nicht geladen werden.')
+    expect(screen.getByText('Keine Verbindung zum Server. Prüf dein Internet und versuch es noch mal.')).toBeTruthy()
 
     fireEvent.click(screen.getByText('Noch mal versuchen'))
     await screen.findByText('Anna Beispiel')
@@ -198,7 +198,8 @@ describe('ProfilScreen', () => {
     fireEvent.click(screen.getByText('Speichern'))
 
     await screen.findByText('Anna Neu')
-    expect(receivedBody).toEqual({ firstName: 'Anna', lastName: 'Neu', steuerId: '02476291358', steuernummer: '1234567890' })
+    // WEB-28: the identifiers were not touched, so they are not sent — the server keeps what is absent.
+    expect(receivedBody).toEqual({ firstName: 'Anna', lastName: 'Neu' })
     expect(screen.getByText('Gespeichert.')).toBeTruthy()
   })
 
@@ -417,5 +418,76 @@ describe('ProfilScreen — Haptik (Slice 7)', () => {
     renderProfile({ lng: 'en' })
     await screen.findByText('Anna Beispiel')
     expect(screen.getByText('Haptic feedback')).toBeTruthy()
+  })
+})
+
+describe('ProfilScreen — failures never reach a save (WEB-28, NR-01, NR-22, NR-18)', () => {
+  const SIGNED_IN = {
+    user: { id: 'u1', email: 'anna@beispiel.de', emailVerified: true, name: 'Anna' },
+    session: { id: 's1', token: 't1', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+  }
+
+  it.each([500, 429])('a profile load answered %i shows a failure state, not an empty profile', async (status) => {
+    server.use(http.get('*/v1/profile', () => HttpResponse.json({ statusCode: status }, { status })))
+    renderProfile()
+    expect(await screen.findByTestId('fehler-zustand')).toBeTruthy()
+    expect(screen.queryByText('Noch keine Angaben gespeichert.')).toBeNull()
+    expect(screen.queryByText('Bearbeiten')).toBeNull()
+  })
+
+  it('fails closed: every request answering 500 shows a failure and sends no write', async () => {
+    const failing = failEveryRequest()
+    renderProfile()
+    await expectFailsClosed(failing)
+  })
+
+  it('fails closed with the profile loaded: the assistants and devices that did not load send no write either', async () => {
+    const failing = failEveryRequest()
+    mockSavedProfile()
+    server.use(http.get('*/api/auth/get-session', () => HttpResponse.json(SIGNED_IN)))
+    renderProfile()
+    await screen.findByText('Anna Beispiel')
+    expect(await screen.findByTestId('assistenten-ladefehler')).toBeTruthy()
+    await expectFailsClosed(failing)
+  })
+
+  it('clearing a stored Steuer-ID sends null for it — the only way the server clears it', async () => {
+    mockSavedProfile()
+    let body: unknown
+    server.use(
+      http.put('*/v1/profile', async ({ request }) => {
+        body = await request.json()
+        return HttpResponse.json({ firstName: 'Anna', lastName: 'Beispiel', steuerId: null, steuernummer: '1234567890' })
+      }),
+    )
+    renderProfile()
+    await screen.findByText('Anna Beispiel')
+    fireEvent.click(screen.getByText('Bearbeiten'))
+    fireEvent.change(screen.getByDisplayValue('02 476 291 358'), { target: { value: '' } })
+    fireEvent.click(screen.getByText('Speichern'))
+    await screen.findByText('Gespeichert.')
+    expect(body).toEqual({ firstName: 'Anna', lastName: 'Beispiel', steuerId: null })
+  })
+
+  it.each([
+    [500, 'Bei uns ist gerade etwas schiefgelaufen. Versuch es gleich noch mal.'],
+    [429, 'Gerade kommen zu viele Anfragen. Versuch es in ein paar Minuten noch mal.'],
+  ])('a save answered %i says what happened, not "prüf die Steuer-ID"', async (status, message) => {
+    mockSavedProfile()
+    server.use(http.put('*/v1/profile', () => HttpResponse.json({ statusCode: status }, { status })))
+    renderProfile()
+    await screen.findByText('Anna Beispiel')
+    fireEvent.click(screen.getByText('Bearbeiten'))
+    fireEvent.click(screen.getByText('Speichern'))
+    expect(await screen.findByText(message)).toBeTruthy()
+    expect(screen.queryByText(/prüf die Steuer-ID/)).toBeNull()
+  })
+
+  it('a guest sees that assistants and devices need an account, not an empty list', async () => {
+    mockSavedProfile()
+    renderProfile()
+    await screen.findByText('Anna Beispiel')
+    expect(await screen.findByTestId('profil-konto-noetig')).toBeTruthy()
+    expect(screen.queryByText('Keine Assistenten verbunden.')).toBeNull()
   })
 })

@@ -25,6 +25,8 @@ describe('AssistentenController (ADR-0052 §10)', () => {
         name: 'Claude Desktop',
         linkedSince: '2026-11-01T10:00:00.000Z',
         lastUsed: null,
+        scopes: [],
+        destinations: [],
       },
     ])
   })
@@ -61,10 +63,10 @@ describe('AssistentenController (ADR-0052 §10)', () => {
     const service = new AssistantsService(fakeRepo)
     const controller = new AssistantsController(service)
 
-    const info = await controller.getClientInfo('c1')
+    const info = await controller.getClientInfo({ clientId: 'c1' })
     expect(info.name).toBe('Claude Assistant')
     expect(info.redirectTargets).toEqual([{ uri: 'https://claude.ai/api/mcp/auth_callback', destination: 'claude.ai' }])
 
-    await expect(controller.getClientInfo('nonexistent')).rejects.toThrow(NotFoundException)
+    await expect(controller.getClientInfo({ clientId: 'nonexistent' })).rejects.toThrow(NotFoundException)
   })
 })

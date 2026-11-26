@@ -13,6 +13,9 @@
 // "trust this device" distinction (one-tap approval, one fixed session lifetime).
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { BetterAuthBundle } from '../src/auth/auth.tokens.js'
+import { deviceSessionAnchor } from '../src/device/device-session-anchor.js'
+import { SESSION_ABSOLUTE_MAX_AGE_MS } from '../src/auth/session-lifetime.js'
+import { isFreshSession } from '../src/auth/step-up-policy.js'
 import { createResettableRateLimitStorage } from '../src/auth/rate-limit-storage.js'
 import { DEVICE_AUTHORIZATION_CLIENT_ID, DeviceService } from '../src/device/device.service.js'
 import type { RegionResolver } from '../src/device/region/region-resolver.js'
@@ -21,7 +24,7 @@ import { APIError } from 'better-auth'
 
 function fakeBundle(api: Record<string, ReturnType<typeof vi.fn>>): BetterAuthBundle {
   return {
-    auth: { api } as unknown as BetterAuthBundle['auth'],
+    auth: { api: { getSession: vi.fn().mockResolvedValue(null), ...api } } as unknown as BetterAuthBundle['auth'],
     sessionCookieName: 'test-session',
     enabledSocialProviders: [],
     rateLimitStorage: createResettableRateLimitStorage(),
@@ -223,5 +226,50 @@ describe('DeviceService.exchangeToken (#238 task 2, AC-5)', () => {
       status: 400,
       response: { error: 'authorization_pending', error_description: 'not yet approved' },
     })
+  })
+})
+
+// API-1: a session minted by the device flow is a copy of the approving one. It is never fresh for the step-up
+// rule, and its absolute cap (ADR-0103) runs from the approver's sign-in, not from the QR scan.
+describe('DeviceService — the device session takes over the approver’s sign-in time (API-1)', () => {
+  const CANNED_TOKEN_RESULT = { access_token: 'minted-token', token_type: 'Bearer', expires_in: 604800, scope: '' }
+  const COOKIE = 'better-auth.session_token=minted-token.sig; HttpOnly; Path=/; Max-Age=604800'
+
+  it('records the approver’s createdAt before approving, and anchors the minted session to it', async () => {
+    const approverCreatedAt = new Date(Date.now() - 20 * 24 * 60 * 60 * 1000)
+    const repository = new FakeDeviceCodeRepository()
+    repository.seedRow({ deviceCode: 'dev-1', userCode: 'USER1', status: 'pending', userId: 'phone-user' })
+    const order: string[] = []
+    const getSession = vi.fn().mockImplementation(() => {
+      order.push('session')
+      return Promise.resolve({ user: { id: 'phone-user' }, session: { id: 's1', createdAt: approverCreatedAt } })
+    })
+    const deviceApprove = vi.fn().mockImplementation(async () => {
+      order.push(`approve:${String((await repository.findApprovalAnchor('dev-1'))?.toISOString())}`)
+      return { success: true }
+    })
+    const deviceToken = vi.fn().mockResolvedValue({ headers: new Headers({ 'set-cookie': COOKIE }), response: CANNED_TOKEN_RESULT })
+    const service = new DeviceService(fakeBundle({ getSession, deviceApprove, deviceToken }), repository, { resolve: vi.fn() })
+
+    await service.approve('USER1', new Headers())
+    expect(order).toEqual(['session', `approve:${approverCreatedAt.toISOString()}`])
+
+    await service.exchangeToken('dev-1', new Headers())
+    const anchored = repository.anchoredSessions.get('minted-token')
+    expect(anchored?.createdAt.toISOString()).toBe(approverCreatedAt.toISOString())
+    expect(anchored?.latestExpiry.getTime()).toBe(approverCreatedAt.getTime() + SESSION_ABSOLUTE_MAX_AGE_MS)
+  })
+
+  it('a session minted from a freshly signed-in approver is still not fresh', () => {
+    const now = new Date()
+    const { createdAt } = deviceSessionAnchor(new Date(now.getTime() - 1000), now)
+    expect(isFreshSession(createdAt, now.getTime())).toBe(false)
+  })
+
+  it('without a recorded anchor the session is made not fresh and capped from now', () => {
+    const now = new Date()
+    const { createdAt, latestExpiry } = deviceSessionAnchor(null, now)
+    expect(isFreshSession(createdAt, now.getTime())).toBe(false)
+    expect(latestExpiry.getTime()).toBeLessThanOrEqual(now.getTime() + SESSION_ABSOLUTE_MAX_AGE_MS)
   })
 })

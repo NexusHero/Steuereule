@@ -54,7 +54,7 @@ jobs:
             FAILS=$(printf '%s\n' "$RUNS" | jq -rs \
               '[.[] | select(.conclusion!=null and (.conclusion|IN("success","skipped","neutral")|not))] | length')
             # shellcheck disable=SC2016  # backticks are literal Markdown in the comment body, not command substitution
-            BODY=$(printf '<!-- ci-overview -->\n## CI Overview — by category\n\n_The `main` ruleset requires these checks under their **pre-rename** names (#71); until it is updated to the new names, the names below are what actually reports. This panel groups every check by what it proves._\n\n%s\n\n**Failing gates: %s** · commit `%s` · see [`docs/ci-pipeline.md`](https://github.com/%s/blob/main/docs/ci-pipeline.md) for what each gate proves and its evidence tier.\n' \
+            BODY=$(printf '<!-- ci-overview -->\n## CI Overview — by category\n\n_This panel groups every check by what it proves. Which of them the `main` ruleset requires is listed in `docs/ci-pipeline.md` (Required checks)._\n\n%s\n\n**Failing gates: %s** · commit `%s` · see [`docs/ci-pipeline.md`](https://github.com/%s/blob/main/docs/ci-pipeline.md) for what each gate proves and its evidence tier.\n' \
               "$TABLE" "$FAILS" "${SHA:0:9}" "$REPO")
             CID=$(gh api "repos/$REPO/issues/$PR/comments" --paginate \
               --jq '.[] | select(.body|startswith("<!-- ci-overview -->")) | .id' | head -1)

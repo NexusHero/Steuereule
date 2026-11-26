@@ -4,9 +4,10 @@ import { useTranslation } from 'react-i18next'
 import { Button, Feld, Input, useTheme } from '@steuereule/ui'
 import { useBusinessControllerSpecialTariffs, type DisposalFactsDto, type RetainedFactsDto } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
-import { BusinessFrame, BusinessQueryState, Figure, Note, Section } from './BusinessFrame'
+import { BusinessFrame, BusinessQueryState, Figure, Note, ProblemNote, Section } from './BusinessFrame'
+import { parseGermanAmount, parseSignedGermanAmount } from '../shared/germanNumber'
 import { Choice } from './Choice'
-import { personParams, plainEuro } from './businessKit'
+import { personParams, plainEuro, problemOf } from './businessKit'
 import { queryProblem } from './useBusiness'
 import { useProfileEditor } from './useProfileEditor'
 import type { BusinessPageProps } from './BusinessScreen'
@@ -14,10 +15,10 @@ import type { BusinessPageProps } from './BusinessScreen'
 const KINDS = ['veraeusserung', 'aufgabe'] as const
 const METHODS = ['fuenftel', 'ermaessigt', 'keine'] as const
 
-const amount = (raw: string | undefined): number | null => {
+/** An amount typed the German way (WEB-46); null when empty or no amount. The capital account may be negative. */
+const amount = (raw: string | undefined, signed = false): number | null => {
   if (raw === undefined || raw.trim() === '') return null
-  const n = Number(raw.replace(/\./g, '').replace(',', '.'))
-  return Number.isFinite(n) ? n : null
+  return signed ? parseSignedGermanAmount(raw) : parseGermanAmount(raw)
 }
 
 /**
@@ -45,13 +46,13 @@ export function SpecialTariffsPage({ taxYear, person, business = 1, onBack }: Bu
   }
   const stored = editor.profile.disposalFacts
   const storedRetained = editor.profile.retainedFacts
-  const shown = (key: string, current: number | string | undefined | null) => values[key] ?? (current === undefined || current === null ? '' : String(current))
-  const computed = result.data?.status === 200 ? result.data.data : null
+  const shown = (key: string, current: number | string | undefined | null) => values[key] ?? (current === undefined || current === null ? '' : typeof current === 'number' ? String(current).replace('.', ',') : current)
+  const computed = result.data?.data ?? null
 
   async function saveDisposal() {
     const price = amount(shown('priceEur', stored?.priceEur))
     const costs = amount(shown('costsEur', stored?.costsEur)) ?? 0
-    const capital = amount(shown('capitalAccountEur', stored?.capitalAccountEur))
+    const capital = amount(shown('capitalAccountEur', stored?.capitalAccountEur), true)
     const date = shown('date', stored?.date).trim()
     if (price === null || capital === null || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return setInvalid(true)
     setInvalid(false)
@@ -89,7 +90,8 @@ export function SpecialTariffsPage({ taxYear, person, business = 1, onBack }: Bu
 
   return (
     <BusinessFrame title={tr('business.seite.sondertarife')} onBack={onBack} testID="sondertarife-seite">
-      {editor.problem !== null ? <Note tone="error">{editor.problem.message ?? tr('business.speichernFehler')}</Note> : null}
+      <ProblemNote problem={editor.problem} />
+      {result.isError ? <ProblemNote problem={problemOf(result.error)} testID="sonder-ergebnis-fehler" /> : null}
       {invalid ? <Note tone="error">{tr('business.sonder.ungueltig')}</Note> : null}
       <Section title={tr('business.sonder.aufgabe')}>
         <Note>{tr('business.sonder.aufgabeHinweis')}</Note>
@@ -116,7 +118,7 @@ export function SpecialTariffsPage({ taxYear, person, business = 1, onBack }: Bu
             </Choice>
           ))}
         </View>
-        <Button onPress={() => void saveDisposal()} testID="sonder-aufgabe-speichern">
+        <Button onPress={() => void saveDisposal()} disabled={editor.saving} testID="sonder-aufgabe-speichern">
           {tr('business.sonder.speichern')}
         </Button>
         {computed?.disposal ? (
@@ -133,7 +135,7 @@ export function SpecialTariffsPage({ taxYear, person, business = 1, onBack }: Bu
         {field('requestedEur', storedRetained?.requestedEur)}
         {field('carriedForwardEur', storedRetained?.carriedForwardEur)}
         {field('withdrawalsForRetainedTaxEur', storedRetained?.withdrawalsForRetainedTaxEur)}
-        <Button variant="ghost" onPress={() => void saveRetained()} testID="sonder-thesaurierung-speichern">
+        <Button variant="ghost" onPress={() => void saveRetained()} disabled={editor.saving} testID="sonder-thesaurierung-speichern">
           {tr('business.sonder.speichern')}
         </Button>
         {computed?.retainedOnlyBilanz ? <Note tone="warn" testID="sonder-nur-bilanz">{tr('business.sonder.nurBilanz')}</Note> : null}

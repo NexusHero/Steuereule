@@ -8,6 +8,8 @@ describe('the owl for a guest', () => {
     const onDone = vi.fn()
     renderInApp(<OwlModeScreen taxYear={2026} isGuest onDone={onDone} />)
     expect(screen.getByTestId('eule-guest-konto-wand').textContent).toContain('Konto')
+    // No promise about what a model receives where none is called (WEB-25).
+    expect(screen.getByTestId('eule-privacy-badge').textContent).toBe('Als Gast startet hier kein Abruf eines Sprachmodells.')
     expect(screen.queryByTestId('eule-guest-register-btn')).toBeNull()
     expect(screen.queryByTestId('eule-guest-login-btn')).toBeNull()
     expect(screen.queryByLabelText('Zurück')).toBeNull()

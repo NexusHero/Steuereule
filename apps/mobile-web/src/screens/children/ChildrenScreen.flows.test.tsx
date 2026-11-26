@@ -2,14 +2,12 @@
 // delete, household questions, married household), failing saves that keep the user's input,
 // the married form and the Swiss allowance payer.
 import { describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { I18nextProvider } from 'react-i18next'
-import { ThemeProvider } from '@steuereule/ui'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
-import { createAppI18n } from '../../i18n/app-i18n'
 import { server } from '../../test-msw-server'
 import { ChildrenScreen, type ChildItem } from './ChildrenScreen'
+import { confirmAction } from '../../test-confirm'
+import { renderInApp, renderWithQuery } from '../../test-render'
 
 const LINA: ChildItem = { id: 'kind-1', sequenceNumber: 1, firstName: 'Lina', lastName: 'Muster', geburtsdatum: '2016-05-12', taxId: '12345678901', childBenefitClaimEur: '3000' }
 
@@ -18,26 +16,11 @@ function listBody(kinder: ChildItem[]) {
 }
 
 function renderView(props: Partial<Parameters<typeof ChildrenScreen>[0]> = {}) {
-  return render(
-    <I18nextProvider i18n={createAppI18n('de')}>
-      <ThemeProvider mode="light">
-        <ChildrenScreen taxYear={2025} initialKinder={[LINA]} {...props} />
-      </ThemeProvider>
-    </I18nextProvider>,
-  )
+  return renderInApp(<ChildrenScreen taxYear={2025} initialKinder={[LINA]} {...props} />)
 }
 
 function renderConnected(props: Partial<Parameters<typeof ChildrenScreen>[0]> = {}) {
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
-  return render(
-    <QueryClientProvider client={queryClient}>
-      <I18nextProvider i18n={createAppI18n('de')}>
-        <ThemeProvider mode="light">
-          <ChildrenScreen taxYear={2025} {...props} />
-        </ThemeProvider>
-      </I18nextProvider>
-    </QueryClientProvider>,
-  )
+  return renderWithQuery(<ChildrenScreen taxYear={2025} {...props} />)
 }
 
 describe('KinderScreen (connected)', () => {
@@ -50,7 +33,7 @@ describe('KinderScreen (connected)', () => {
       }),
     )
     renderConnected()
-    expect(await screen.findByText('Das hat nicht geklappt.')).toBeTruthy()
+    expect(await screen.findByText('Das konnte nicht geladen werden.')).toBeTruthy()
     fireEvent.click(screen.getByText('Noch mal versuchen'))
     expect(await screen.findByText('1. Lina Muster')).toBeTruthy()
   })
@@ -75,7 +58,52 @@ describe('KinderScreen (connected)', () => {
     await waitFor(() => expect(calls).toContain('PUT kind-1 Lena'))
 
     fireEvent.click(await screen.findByLabelText(/Kind .* löschen/))
+    confirmAction('childDelete')
     await waitFor(() => expect(calls).toContain('DELETE kind-1'))
+  })
+
+  it('a refused delete that then goes through does not hold „Weiter“ back', async () => {
+    let deletes = 0
+    server.use(
+      http.get('*/v1/steuerjahre/2025/kinder', () => HttpResponse.json(listBody(deletes >= 2 ? [] : [LINA]))),
+      http.delete('*/v1/steuerjahre/2025/kinder/:id', () => {
+        deletes += 1
+        return deletes === 1 ? HttpResponse.json({}, { status: 503 }) : HttpResponse.json(listBody([]))
+      }),
+    )
+    const onDone = vi.fn()
+    renderConnected({ onDone })
+    fireEvent.click(await screen.findByLabelText(/Kind .* löschen/))
+    confirmAction('childDelete')
+    expect(await screen.findByTestId('kind-loeschen-fehler')).toBeTruthy()
+    fireEvent.click(screen.getByLabelText(/Kind .* löschen/))
+    confirmAction('childDelete')
+    await waitFor(() => expect(screen.queryByTestId('kind-loeschen-fehler')).toBeNull())
+
+    fireEvent.click(screen.getByTestId('kinder-weiter'))
+    await waitFor(() => expect(onDone).toHaveBeenCalledOnce())
+  })
+
+  it('a refused delete of one child still holds „Weiter“ once after another child was saved', async () => {
+    const PAUL: ChildItem = { ...LINA, id: 'kind-2', sequenceNumber: 2, firstName: 'Paul' }
+    server.use(
+      http.get('*/v1/steuerjahre/2025/kinder', () => HttpResponse.json(listBody([LINA, PAUL]))),
+      http.delete('*/v1/steuerjahre/2025/kinder/:id', () => HttpResponse.json({}, { status: 503 })),
+      http.put('*/v1/steuerjahre/2025/kinder/:id', () => HttpResponse.json(listBody([LINA, PAUL]))),
+    )
+    const onDone = vi.fn()
+    renderConnected({ onDone })
+    fireEvent.click(await screen.findByLabelText('Kind Lina löschen'))
+    confirmAction('childDelete')
+    expect(await screen.findByTestId('kind-loeschen-fehler')).toBeTruthy()
+    fireEvent.click(screen.getByLabelText('Kind Paul bearbeiten'))
+    fireEvent.change(screen.getByLabelText('Vorname'), { target: { value: 'Pauline' } })
+    fireEvent.click(screen.getByTestId('kind-speichern'))
+    await waitFor(() => expect(screen.queryByTestId('kind-speichern')).toBeNull())
+
+    fireEvent.click(screen.getByTestId('kinder-weiter'))
+    await waitFor(() => expect(screen.getByText(/Mindestens eine Eingabe wurde nicht gespeichert/)).toBeTruthy())
+    expect(onDone).not.toHaveBeenCalled()
   })
 
   it('goes back and on through the pending-save guard', async () => {
@@ -158,6 +186,7 @@ describe('KinderScreen — a save that fails', () => {
     const onDelete = vi.fn().mockRejectedValue(new Error('offline'))
     renderView({ onDeleteChild: onDelete })
     fireEvent.click(screen.getByLabelText('Kind Lina löschen'))
+    confirmAction('childDelete')
     await waitFor(() => expect(onDelete).toHaveBeenCalledWith('kind-1'))
     expect(screen.getByText('1. Lina Muster')).toBeTruthy()
   })
@@ -177,6 +206,7 @@ describe('KinderScreen — a save that fails', () => {
     fireEvent.click(screen.getByTestId('kind-speichern'))
     expect(await screen.findByText('1. Noah Muster')).toBeTruthy()
     fireEvent.click(screen.getByLabelText('Kind Noah löschen'))
+    confirmAction('childDelete')
     await waitFor(() => expect(screen.queryByText('1. Noah Muster')).toBeNull())
   })
 })

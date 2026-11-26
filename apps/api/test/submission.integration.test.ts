@@ -10,6 +10,7 @@ import { AppModule } from '../src/app.module.js'
 import { FILING_VERSION_REPOSITORY, type FilingVersionRepository } from '../src/assessment/filing-version.repository.js'
 import { PrismaService } from '../src/prisma/prisma.service.js'
 import { SUBMISSION_REPOSITORY, type SubmissionRepository } from '../src/submission/submission.repository.js'
+import { asDatabaseUser, fixtureClient } from './support/database-fixture.js'
 
 const USER = 'submission-integration-user'
 const YEAR = 2025
@@ -23,9 +24,10 @@ describe('PrismaSubmissionRepository — real Postgres (ADR-0098 §8)', () => {
   beforeAll(async () => {
     app = await NestFactory.create<NestFastifyApplication>(AppModule, new FastifyAdapter(), { logger: false })
     await app.init()
-    prisma = app.get(PrismaService)
-    submissions = app.get(SUBMISSION_REPOSITORY)
-    versions = app.get(FILING_VERSION_REPOSITORY)
+    prisma = fixtureClient(app.get(PrismaService))
+    // As USER's requests reach them (P11).
+    submissions = asDatabaseUser(USER, app.get(SUBMISSION_REPOSITORY))
+    versions = asDatabaseUser(USER, app.get(FILING_VERSION_REPOSITORY))
   })
 
   afterEach(async () => {
@@ -33,10 +35,26 @@ describe('PrismaSubmissionRepository — real Postgres (ADR-0098 §8)', () => {
     await prisma.filingVersion.deleteMany({ where })
     await prisma.taxYear.deleteMany({ where })
     await prisma.taxDataAccessLog.deleteMany({ where })
+    await prisma.legalHold.deleteMany({ where })
   })
 
   afterAll(async () => {
     await app.close()
+  })
+
+  it('API-24: the submitted version in force carries the legal hold; the withdrawal takes it away', async () => {
+    await prisma.taxYear.create({ data: { userId: USER, taxYear: YEAR, baseEstimate: 0, openItems: 0 } })
+    const version = { userId: USER, taxYear: YEAR, filingType: 'einzel', submittedOn: '2026-03-14', positions: { bruttoarbeitslohnA: 48_200 }, estimateAtSubmission: null } as const
+    await submissions.record(version)
+    await submissions.record({ ...version, submittedOn: '2026-04-02' })
+    const [current] = await prisma.filingVersion.findMany({ where: { userId: USER } })
+    const holds = await prisma.legalHold.findMany({ where: { userId: USER } })
+    expect(holds).toHaveLength(1)
+    expect(holds[0]).toMatchObject({ resource: 'filingVersion', resourceId: current!.id, reason: '§ 169, § 170 AO' })
+    expect(holds[0]!.holdUntil.toISOString()).toBe('2031-01-01T00:00:00.000Z')
+
+    await submissions.withdraw(USER, YEAR)
+    expect(await prisma.legalHold.count({ where: { userId: USER } })).toBe(0)
   })
 
   it('freezes the version encrypted, replaces it on a corrected return, and undoes it', async () => {

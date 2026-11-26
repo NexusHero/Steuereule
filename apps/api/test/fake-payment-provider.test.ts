@@ -33,10 +33,24 @@ describe('FakePaymentProvider', () => {
     expect(session.id).toMatch(/^fake_cs_/)
   })
 
-  it('accepts only its own signature; a paid event carries the session id', () => {
+  it('accepts only its own signature; a paid event carries the session id', async () => {
     const body = Buffer.from(JSON.stringify({ sessionId: 'fake_cs_1' }))
-    expect(provider.verifyEvent(body, FAKE_PAYMENT_SIGNATURE)).toEqual({ kind: 'bezahlt', sessionId: 'fake_cs_1', amountCents: null })
-    expect(() => provider.verifyEvent(body, 'wrong')).toThrow()
-    expect(() => provider.verifyEvent(Buffer.from('not json'), FAKE_PAYMENT_SIGNATURE)).toThrow()
+    await expect(provider.verifyEvent(body, FAKE_PAYMENT_SIGNATURE)).resolves.toEqual({ kind: 'bezahlt', sessionId: 'fake_cs_1', amountCents: null })
+    await expect(provider.verifyEvent(body, 'wrong')).rejects.toThrow()
+    await expect(provider.verifyEvent(Buffer.from('not json'), FAKE_PAYMENT_SIGNATURE)).rejects.toThrow()
+  })
+
+  it('a refund event takes the session back (API-4)', async () => {
+    const body = Buffer.from(JSON.stringify({ sessionId: 'fake_cs_1', kind: 'erstattet' }))
+    await expect(provider.verifyEvent(body, FAKE_PAYMENT_SIGNATURE)).resolves.toEqual({ kind: 'zurueckgenommen', sessionId: 'fake_cs_1', reason: { kind: 'erstattet' } })
+  })
+
+  it('reuses a session by idempotency key, keeps it open for lookup and names a test price', async () => {
+    const request = { userId: 'u', taxYear: 2026, successUrl: 'http://web/ok', cancelUrl: 'http://web/cancel', idempotencyKey: 'k1' }
+    const first = await provider.createCheckout(request)
+    await expect(provider.createCheckout(request)).resolves.toEqual(first)
+    await expect(provider.lookupCheckout(first.id)).resolves.toEqual({ state: 'open', url: 'http://web/ok' })
+    await expect(provider.lookupCheckout('fake_cs_unknown')).resolves.toEqual({ state: 'closed' })
+    await expect(provider.priceOf('standard')).resolves.toEqual({ amountCents: 3499, currency: 'eur' })
   })
 })

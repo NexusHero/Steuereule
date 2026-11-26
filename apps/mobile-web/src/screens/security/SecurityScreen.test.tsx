@@ -5,15 +5,13 @@
 // never from local state that could drift from a server-side revocation.
 import { describe, it, expect } from 'vitest'
 import { http, HttpResponse } from 'msw'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { I18nextProvider } from 'react-i18next'
-import { ThemeProvider } from '@steuereule/ui'
-import { createAppI18n } from '../../i18n/app-i18n'
+import { screen, fireEvent, waitFor } from '@testing-library/react'
 import { createAppAuthClient } from '../../auth/auth-client'
 import { AuthClientProvider } from '../../auth/AuthClientProvider'
 import { server } from '../../test-msw-server'
+import { expectFailsClosed, failEveryRequest } from '../../test-every-query-fails'
 import { SecurityScreen } from './SecurityScreen'
+import { renderWithQuery } from '../../test-render'
 
 const BASE_URL = 'http://localhost:3000'
 const TOTP_URI = 'otpauth://totp/SteuerEule:anna@example.com?secret=ABCDEFGHIJKLMNOP&issuer=SteuerEule'
@@ -34,18 +32,11 @@ function signedInSession(twoFactorEnabled: boolean) {
 }
 
 function renderSecurity() {
-  const queryClient = new QueryClient()
   const authClient = createAppAuthClient(BASE_URL)
-  return render(
-    <QueryClientProvider client={queryClient}>
-      <I18nextProvider i18n={createAppI18n('de')}>
-        <ThemeProvider mode="light">
-          <AuthClientProvider client={authClient}>
-            <SecurityScreen onBack={() => {}} />
-          </AuthClientProvider>
-        </ThemeProvider>
-      </I18nextProvider>
-    </QueryClientProvider>,
+  return renderWithQuery(
+    <AuthClientProvider client={authClient}>
+      <SecurityScreen onBack={() => {}} />
+    </AuthClientProvider>,
   )
 }
 
@@ -180,5 +171,63 @@ describe('SicherheitScreen (REQ-007)', () => {
 
     await waitFor(() => expect(optionsCalls).toBe(2))
     expect(verifiedWith).toEqual(['correct-password'])
+  })
+})
+
+describe('SicherheitScreen — failures (NR-16, NR-24, WEB-28)', () => {
+  it('NR-16: a failed session check is not "only for a real account", and can be retried', async () => {
+    let calls = 0
+    server.use(
+      http.get('*/api/auth/get-session', () => {
+        calls += 1
+        return calls === 1 ? HttpResponse.json({}, { status: 503 }) : HttpResponse.json(signedInSession(false))
+      }),
+    )
+    renderSecurity()
+    expect(await screen.findByTestId('sicherheit-sitzung-unbekannt')).toBeTruthy()
+    expect(screen.queryByText(/echtes Konto/)).toBeNull()
+    fireEvent.click(screen.getByTestId('sicherheit-sitzung-erneut'))
+    expect(await screen.findByText('Passkeys')).toBeTruthy()
+  })
+
+  it('NR-24: a passkey list that did not load offers a retry instead of "Wird geladen …" for ever', async () => {
+    let calls = 0
+    server.use(
+      http.get('*/api/auth/get-session', () => HttpResponse.json(signedInSession(false))),
+      http.get('*/api/auth/passkey/list-user-passkeys', () => {
+        calls += 1
+        return calls === 1 ? HttpResponse.json({}, { status: 500 }) : HttpResponse.json([])
+      }),
+    )
+    renderSecurity()
+    fireEvent.click(await screen.findByTestId('passkey-liste-erneut'))
+    expect(await screen.findByText('Noch keine Passkeys eingerichtet.')).toBeTruthy()
+  })
+
+  it('NR-24: the passkey password step can be cancelled', async () => {
+    server.use(
+      http.get('*/api/auth/get-session', () => HttpResponse.json(signedInSession(false))),
+      http.get('*/api/auth/passkey/list-user-passkeys', () => HttpResponse.json([])),
+      http.get('*/api/auth/passkey/generate-register-options', () => HttpResponse.json({ code: 'FRESH_AUTH_REQUIRED' }, { status: 403 })),
+    )
+    renderSecurity()
+    await screen.findByText('Passkeys')
+    fireEvent.click(screen.getByText('Passkey hinzufügen'))
+    fireEvent.click(await screen.findByTestId('passkey-passwort-abbrechen'))
+    await waitFor(() => expect(screen.queryByTestId('passkey-passwort')).toBeNull())
+  })
+
+  it('fails closed: every request answering 500 shows a failure and sends no write', async () => {
+    const failing = failEveryRequest()
+    renderSecurity()
+    await expectFailsClosed(failing)
+  })
+
+  it('fails closed when signed in: a passkey list that failed sends no write', async () => {
+    const failing = failEveryRequest()
+    server.use(http.get('*/api/auth/get-session', () => HttpResponse.json(signedInSession(false))))
+    renderSecurity()
+    await screen.findByTestId('passkey-liste-erneut')
+    await expectFailsClosed(failing)
   })
 })

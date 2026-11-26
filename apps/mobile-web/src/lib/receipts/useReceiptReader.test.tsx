@@ -1,16 +1,12 @@
 // The per-screen upload pipeline: the progress and outcome of every Beleg are kept apart, and a
 // question "Für wen?" is answered by reading the same stored file again, never by a second upload.
-import type { ReactNode } from 'react'
-import { act, renderHook, waitFor } from '@testing-library/react'
-import { I18nextProvider } from 'react-i18next'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { act, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { createAppI18n } from '../../i18n/app-i18n'
 
 const mocks = vi.hoisted(() => ({
   captureReceipt: vi.fn(),
   createHolderFromDocument: vi.fn(),
-  takeNameIntoProfile: vi.fn(async () => true),
+  takeNameIntoProfile: vi.fn(async (): Promise<'taken' | 'kept' | 'failed'> => 'taken'),
 }))
 vi.mock('./captureReceipt', () => ({ captureReceipt: mocks.captureReceipt }))
 vi.mock('./documentAssignment', async (importOriginal) => ({
@@ -20,6 +16,7 @@ vi.mock('./documentAssignment', async (importOriginal) => ({
 }))
 
 import { useReceiptReader, type ReceiptReadContext } from './useReceiptReader'
+import { makeTestQueryClient, renderHookWithQuery } from '../../test-render'
 
 const file = new File(['%PDF'], 'lstb.pdf', { type: 'application/pdf' })
 const PROCESSING = { state: 'vorschlaege', reason: null, pending: 1, applied: 0, draftsTaxYear: 2025 }
@@ -31,14 +28,9 @@ const ASKING = {
 }
 
 function setup(context?: ReceiptReadContext) {
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  const queryClient = makeTestQueryClient()
   const invalidate = vi.spyOn(queryClient, 'invalidateQueries')
-  const wrapper = ({ children }: { children: ReactNode }) => (
-    <QueryClientProvider client={queryClient}>
-      <I18nextProvider i18n={createAppI18n('de')}>{children}</I18nextProvider>
-    </QueryClientProvider>
-  )
-  const hook = renderHook(() => useReceiptReader({ taxYear: 2025, ...(context ? { context } : {}) }), { wrapper })
+  const hook = renderHookWithQuery(() => useReceiptReader({ taxYear: 2025, ...(context ? { context } : {}) }), { client: queryClient })
   return { ...hook, invalidate }
 }
 
@@ -197,5 +189,19 @@ describe('the question "Für wen?"', () => {
       await result.current.confirmSelf('a', true)
     })
     expect(mocks.takeNameIntoProfile).toHaveBeenCalledOnce()
+  })
+
+  it('WEB-32: says so when the name could not go into the profile, and still assigns the Beleg', async () => {
+    mocks.captureReceipt.mockResolvedValue(ASKING)
+    mocks.takeNameIntoProfile.mockResolvedValueOnce('failed')
+    const { result } = setup()
+    await act(async () => {
+      await result.current.read('a', file)
+    })
+    await act(async () => {
+      await result.current.confirmSelf('a', true)
+    })
+    expect(mocks.captureReceipt.mock.calls[1]![1]).toMatchObject({ holder: 'A' })
+    expect(result.current.entries['a']?.error).toBe('Dein Name konnte nicht ins Profil übernommen werden. Der Beleg ist dir trotzdem zugeordnet – trag den Namen bitte im Profil ein.')
   })
 })

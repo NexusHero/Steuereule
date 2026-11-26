@@ -3,12 +3,19 @@
 // DELETE refused, the Festschreibung only forward), the erasure path that the trigger lets through,
 // ciphertext at rest, the hash chain over the stored rows, the switch, and the self-employment tier.
 //
-// The cleanup removes only the rows of the accounts this file created (under the erasure flag), never
+// The cleanup removes only the rows of the accounts this file created (under the erasure grant), never
 // anything else in the database it runs against.
-import { describe, expect, it } from 'vitest'
+import { generateKey, getMessageKeyFingerprint, parseKeySync } from '@47ng/cloak'
+import { Prisma, PrismaClient } from '@prisma/client'
+import { afterAll, describe, expect, it } from 'vitest'
+import { resolveFieldEncryptionKey } from '../../src/prisma/field-encryption-key.js'
+import { prismaRotationStore, rotateFieldEncryption, rotationKeys } from '../../src/prisma/field-key-rotation.js'
 import { baseUrl, prisma, signUp, useAcceptanceServer } from '../support/acceptance-server.js'
 
 const ALLOWED_ORIGIN = 'https://allowed.example.com'
+/** The table owner, as the migration job connects; the server's client runs as `steuereule_app` (P11). */
+const owner = new PrismaClient()
+afterAll(() => owner.$disconnect())
 const YEAR = 2025
 const created: string[] = []
 
@@ -36,7 +43,8 @@ describe('REQ-034 — Selbstständige (ADR-0101) against the real server and dat
       if (created.length === 0) return
       const ids = created.splice(0)
       await prisma.$transaction(async (tx) => {
-        await tx.$executeRaw`SELECT set_config('steuereule.erasure', 'on', true)`
+        // The only way past the book's append-only triggers: the database's own erasure grant for these owners.
+        await tx.$executeRaw`SELECT app_rls.allow_erasure(${ids}::text[])`
         await tx.journalLine.deleteMany({ where: { userId: { in: ids } } })
         await tx.journalEntry.deleteMany({ where: { userId: { in: ids } } })
         await tx.ledgerLogRecord.deleteMany({ where: { userId: { in: ids } } })
@@ -98,7 +106,46 @@ describe('REQ-034 — Selbstständige (ADR-0101) against the real server and dat
     expect((await call(cookie, 'POST', '/buchungen', { ...sale, documentNumber: 'RE-2' })).status).toBe(400)
   })
 
-  it('account deletion removes the book despite the trigger (erasure flag), nothing of it survives', async () => {
+  // Key rotation (ADR-0008, migration 20261204090000_field_key_rotation): the trigger lets the encrypted columns of
+  // the book move to a new key under `steuereule.reencryption`, nothing else; the chain over the clear text holds.
+  it('a key rotation re-encrypts entries, lines and the log; under the rotation flag nothing else may change', async () => {
+    const { cookie, userId } = await selfEmployed('req029-rotation@example.com')
+    expect((await call(cookie, 'POST', '/buchungen', sale)).status).toBe(201)
+    const current = resolveFieldEncryptionKey(process.env).encryptionKey
+    const next = generateKey()
+    // The rotation runs as the migration login (the table owner), never as the API's runtime role.
+    const store = prismaRotationStore(owner)
+    const fingerprints = async () =>
+      (
+        await prisma.$queryRaw<{ v: string }[]>`
+          SELECT "betrag" AS v FROM "Buchungszeile" WHERE "userId" = ${userId}
+          UNION ALL SELECT "buchungstext" FROM "Buchung" WHERE "userId" = ${userId}
+          UNION ALL SELECT "inhalt" FROM "Buchungsprotokoll" WHERE "userId" = ${userId}`
+      ).map((row) => getMessageKeyFingerprint(row.v))
+
+    const forward = await rotateFieldEncryption(store, rotationKeys({ encryptionKey: next, decryptionKeys: [current] }), { ownerIds: [userId] })
+    expect(forward.every((count) => count.unknownKey === 0 && count.retired === 0)).toBe(true)
+    expect(new Set(await fingerprints())).toEqual(new Set([parseKeySync(next).fingerprint]))
+
+    const underFlag = (client: { $transaction: PrismaClient['$transaction'] }, statement: (tx: Prisma.TransactionClient) => Promise<unknown>) =>
+      client.$transaction(async (tx) => {
+        await tx.$executeRaw`SELECT set_config('steuereule.system', 'test-fixture', true), set_config('steuereule.reencryption', 'on', true)`
+        await statement(tx)
+      })
+    // Not even the owner may change a column that is not encrypted under the flag.
+    await expect(underFlag(owner, (tx) => tx.$executeRaw`UPDATE "Buchung" SET "datum" = '2025-03-02' WHERE "userId" = ${userId}`)).rejects.toThrow(/append-only/)
+    // The API's runtime role may not use the flag at all, not even for an encrypted column.
+    await expect(underFlag(prisma as never, (tx) => tx.$executeRaw`UPDATE "Buchung" SET "buchungstext" = "buchungstext" WHERE "userId" = ${userId}`)).rejects.toThrow(/append-only/)
+
+    // Back to the key the server runs with: the book reads as before and its chain verifies.
+    await rotateFieldEncryption(store, rotationKeys({ encryptionKey: current, decryptionKeys: [next] }), { ownerIds: [userId] })
+    expect(new Set(await fingerprints())).toEqual(new Set([parseKeySync(current).fingerprint]))
+    const book = (await (await call(cookie, 'GET', '/buch')).json()) as { integrity: { ok: boolean }; entries: { text: string }[] }
+    expect(book.integrity.ok).toBe(true)
+    expect(book.entries[0]?.text).toBe('Honorar Projekt A')
+  })
+
+  it('account deletion removes the book despite the trigger (erasure grant), nothing of it survives', async () => {
     const { cookie, userId } = await selfEmployed('req029-delete@example.com')
     await call(cookie, 'POST', '/buchungen', sale)
     const response = await fetch(`${baseUrl}/v1/account`, { method: 'DELETE', headers: { cookie, origin: ALLOWED_ORIGIN, 'content-type': 'application/json' }, body: JSON.stringify({ confirm: true }) })

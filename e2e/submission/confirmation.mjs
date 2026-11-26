@@ -37,10 +37,10 @@ async function main() {
     await card.waitFor({ state: 'visible', timeout: 15_000 })
 
     // Einzeln ändern: the button opens the mask behind the first value.
-    const change = page.locator('[data-testid="aendern-anlageN"]')
+    const change = page.locator('[data-testid="aendern-anlageN-lstb"]')
     await change.click()
     await page.locator('[data-testid="lstb-bruttoarbeitslohn"]').waitFor({ state: 'visible', timeout: 10_000 })
-    console.log(`[${TAG}] ✅ aendern-anlageN — opens the LStB mask`)
+    console.log(`[${TAG}] ✅ aendern-anlageN-lstb — opens the LStB mask`)
     await page.goto(`${webOrigin}/app/steuerjahr/${YEAR}/bestaetigung`, { waitUntil: 'networkidle' })
     await card.waitFor({ state: 'visible', timeout: 15_000 })
 
@@ -56,6 +56,8 @@ async function main() {
     // Dismiss another: the confirmed value stays, the proposal disappears.
     const before = await lstbValue(dismissKey)
     await page.locator(`[data-testid="vorschlag-verwerfen-${dismissKey}"]`).click()
+    // WEB-37/WEB-38: the action asks first; confirm it.
+    await page.locator('[data-testid="rueckfrage-proposalDiscard-confirm"]').click()
     await page.locator(`[data-testid="vorschlag-verwerfen-${dismissKey}"]`).waitFor({ state: 'detached', timeout: 10_000 })
     if ((await lstbValue(dismissKey)) !== before) fail('dismissing a proposal must keep the confirmed value')
     console.log(`[${TAG}] ✅ vorschlag-verwerfen — ${field(dismissKey)} kept ${before?.value ?? before}`)

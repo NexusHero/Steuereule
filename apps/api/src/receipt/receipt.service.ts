@@ -1,5 +1,5 @@
 import { Inject, Injectable, Optional } from '@nestjs/common'
-import { ISO_DATE_PATTERN, assignmentFromData, isReceiptType, receiptFolderOfKind, type ReceiptAssignment, type ReceiptFolder, type ReceiptType } from '@steuereule/core'
+import { ISO_DATE_PATTERN, PRODUCT_LIMITS, assignmentFromData, isReceiptType, receiptFolderOfKind, type ReceiptAssignment, type ReceiptFolder, type ReceiptType } from '@steuereule/core'
 import { AdvisorDocumentStaging } from '../advisor/advisor-document-staging.js'
 import type { ReceiptDraftRecord } from '../advisor/advisor.repository.js'
 import { ConflictError, InvalidInputError, NotFoundError } from '../common/domain-error.js'
@@ -17,12 +17,12 @@ import type { AssignmentDto } from './dto/assignment.dto.js'
  * What one account may store (ADR-0106 D7). Without a bound, one account stored 237 MB in 16 seconds into the
  * database's bytea storage. Several tax years of receipts stay far below it.
  */
-export const MAX_RECEIPT_FILES_PER_ACCOUNT = 2_000
-export const MAX_RECEIPT_BYTES_PER_ACCOUNT = 2 * 1024 * 1024 * 1024
+export const MAX_RECEIPT_FILES_PER_ACCOUNT = PRODUCT_LIMITS.receiptFilesPerAccount
+export const MAX_RECEIPT_BYTES_PER_ACCOUNT = PRODUCT_LIMITS.receiptBytesPerAccount
 // Beleg ROW cap (ADR-0108): the byte/file quota above bounds only stored blobs (ReceiptFile). A fileless
 // `POST /v1/belege` makes a Receipt row with no file, so it escaped every bound — an authenticated account
 // could grow rows without limit. Generous for real use (several tax years), finite against row flooding.
-export const MAX_RECEIPTS_PER_ACCOUNT = 5_000
+export const MAX_RECEIPTS_PER_ACCOUNT = PRODUCT_LIMITS.receiptsPerAccount
 
 function exceedsReceiptQuota(files: number, bytes: number): boolean {
   return files > MAX_RECEIPT_FILES_PER_ACCOUNT || bytes > MAX_RECEIPT_BYTES_PER_ACCOUNT
@@ -43,6 +43,8 @@ export interface UploadReceiptInput {
   readonly zahlungsdatum?: string | undefined
   /** A business receipt (ADR-0101 §6): `ausgabe` or `einnahme`; files the Beleg as a Geschäftsbeleg. */
   readonly direction?: string | undefined
+  /** The user's assistant that uploads it over MCP (its OAuth client id), so that it alone may take it back. */
+  readonly uploadedByClientId?: string | undefined
 }
 
 export interface DownloadedReceiptFile {
@@ -176,6 +178,11 @@ export class ReceiptService {
     return (await this.repository.findByIdForUser(userId, id)) !== null
   }
 
+  /** The caller's own Beleg as stored, or null (the MCP take-back reads who uploaded it). */
+  findOwn(userId: string, id: string): Promise<ReceiptRecord | null> {
+    return this.repository.findByIdForUser(userId, id)
+  }
+
   async list(userId: string): Promise<ReceiptResponseDto[]> {
     const rows = await this.repository.findAllForUser(userId)
     if (rows.length === 0) return []
@@ -193,12 +200,12 @@ export class ReceiptService {
     const after = query.cursor === undefined ? undefined : decodeReceiptCursor(query.cursor)
     const facts = await this.repository.listFactsForUser(userId)
     if (facts.length === 0) return { items: [], nextCursor: null, counts: countsOf([], new Map()) }
-    await this.auditService.append({ userId, action: 'READ', resource: 'beleg' })
-
+    // The audit row joins the reads: one round instead of two (OPS-4).
     const [drafts, keys, rows] = await Promise.all([
       this.draftsPerReceipt(userId),
       this.storage.listContentKeys(userId),
       this.repository.findPageForUser(userId, { limit: query.limit + 1, ...(after ? { after } : {}), ...(query.folder ? { folder: query.folder } : {}) }),
+      this.auditService.append({ userId, action: 'READ', resource: 'beleg' }),
     ])
     const page = rows.slice(0, query.limit)
     const last = page[page.length - 1]
@@ -258,6 +265,7 @@ export class ReceiptService {
       ...(direction !== undefined ? { direction } : {}),
       ...(belegdatum !== undefined ? { belegdatum } : {}),
       ...(zahlungsdatum !== undefined ? { zahlungsdatum } : {}),
+      ...(input.uploadedByClientId !== undefined ? { uploadedByClientId: input.uploadedByClientId } : {}),
     }, MAX_RECEIPTS_PER_ACCOUNT)
     if (record === null) throw receiptQuotaExceeded()
 

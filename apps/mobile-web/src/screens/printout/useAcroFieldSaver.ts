@@ -52,12 +52,14 @@ const QUERY_KEY_FOR: Readonly<Record<Target, (year: number) => readonly unknown[
   rental: getRentalControllerGetQueryKey,
 }
 
+const SAVED = 'saved' as const
+
 /** Master data is saved as a whole record; text fields of the draft are the editable ones. */
 type MasterDataTextField = Exclude<keyof MasterDataDraft, 'religion' | 'religionConsent' | 'familienstand'>
 
 /**
- * Writes one editable form field back through the endpoint its mask uses. Returns what happened;
- * only an HTTP 200 counts as stored (the generated client does not throw on 4xx/5xx).
+ * Writes one editable form field back through the endpoint its mask uses. Returns what happened; every
+ * failure rejects (WEB-28) and comes back as `failed` with its error, for the shared wording.
  */
 export function useAcroFieldSaver(context: AcroSaveContext): SaveAcroField {
   const queryClient = useQueryClient()
@@ -71,38 +73,46 @@ export function useAcroFieldSaver(context: AcroSaveContext): SaveAcroField {
   const rentalAddress = useRentalControllerSetAddress()
   const { year } = context
 
-  async function saveDirect(spec: DirectAcroEdit, value: number | null): Promise<number> {
+  async function saveDirect(spec: DirectAcroEdit, value: number | null): Promise<typeof SAVED> {
     const data = value === null ? { kind: 'offen' as const } : { kind: 'erfasst' as const, value }
     const params = spec.person === 'B' ? { params: { person: 'B' as const } } : {}
     switch (spec.endpoint) {
       case 'lstb':
-        return (await lstbSetField.mutateAsync({ jahr: year, feld: spec.field, data, ...params })).status
+        await lstbSetField.mutateAsync({ jahr: year, feld: spec.field, data, ...params })
+        return SAVED
       case 'ch':
-        return (await chSetField.mutateAsync({ jahr: year, feld: spec.field, data, ...params })).status
+        await chSetField.mutateAsync({ jahr: year, feld: spec.field, data, ...params })
+        return SAVED
       case 'kapital':
-        return (await capSetField.mutateAsync({ jahr: year, feld: spec.field, data })).status
+        await capSetField.mutateAsync({ jahr: year, feld: spec.field, data })
+        return SAVED
       case 'rente':
-        return (await pensionSetField.mutateAsync({ jahr: year, feld: spec.field, data, ...params })).status
+        await pensionSetField.mutateAsync({ jahr: year, feld: spec.field, data, ...params })
+        return SAVED
     }
   }
 
   /** null = the record this field belongs to is not loaded, so there is nothing safe to write to. */
-  async function saveText(spec: TextAcroEdit, value: string | null): Promise<number | null> {
+  async function saveText(spec: TextAcroEdit, value: string | null): Promise<typeof SAVED | null> {
     switch (spec.target) {
       case 'stammdaten': {
         if (!context.masterData) return null
         const draft = toDraft(context.masterData)
         draft[spec.field as MasterDataTextField] = value ?? ''
-        return (await masterDataSave.mutateAsync({ data: zuPutDto(draft) })).status
+        await masterDataSave.mutateAsync({ data: zuPutDto(draft) })
+        return SAVED
       }
       case 'personB':
-        return (await personBUpdate.mutateAsync({ jahr: year, data: { [spec.field]: value } })).status
+        await personBUpdate.mutateAsync({ jahr: year, data: { [spec.field]: value } })
+        return SAVED
       case 'child':
         if (!spec.entityId || value === null) return null
-        return (await childUpdate.mutateAsync({ jahr: year, id: spec.entityId, data: { [spec.field]: value } })).status
+        await childUpdate.mutateAsync({ jahr: year, id: spec.entityId, data: { [spec.field]: value } })
+        return SAVED
       case 'rental':
         if (!spec.entityId || value === null) return null
-        return (await rentalAddress.mutateAsync({ jahr: year, objektId: spec.entityId, data: { [spec.field]: value } })).status
+        await rentalAddress.mutateAsync({ jahr: year, objektId: spec.entityId, data: { [spec.field]: value } })
+        return SAVED
     }
   }
 
@@ -116,9 +126,8 @@ export function useAcroFieldSaver(context: AcroSaveContext): SaveAcroField {
       const status =
         spec.kind === 'direct' ? await saveDirect(spec, value as number | null) : await saveText(spec, value as string | null)
       if (status === null) return { kind: 'not-editable' }
-      if (status !== 200) return { kind: 'failed' }
-    } catch {
-      return { kind: 'failed' }
+    } catch (error) {
+      return { kind: 'failed', error }
     }
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: QUERY_KEY_FOR[spec.kind === 'direct' ? spec.endpoint : spec.target](year) }),

@@ -45,12 +45,22 @@ services:
       retries: 10
 
   # Local inbox for every mail the API sends (verification, password reset).
-  # Web UI: http://localhost:8025 · SMTP: localhost:1025
+  # Web UI: http://localhost:8025 · SMTP: smtps://localhost:1025 (implicit TLS only)
+  # Mail is never sent in clear text, not even here: Mailpit takes SMTP only over TLS, with a certificate for
+  # mailpit, localhost and 127.0.0.1 that `scripts/mail-tls.sh` generates into .local/mail-tls (never committed;
+  # scripts/local.sh and CI run it before the stack starts). The API trusts its CA through SMTP_CA_CERT.
+  # The web UI and its API stay plain HTTP: a test tool for reading the inbox, published on loopback only.
   mailpit:
     image: axllent/mailpit:v1.27
+    environment:
+      MP_SMTP_TLS_CERT: /tls/server.pem
+      MP_SMTP_TLS_KEY: /tls/server-key.pem
+      MP_SMTP_REQUIRE_TLS: 'true'
+    volumes:
+      - ./.local/mail-tls/server:/tls:ro
     ports:
-      - '1025:1025'
-      - '${MAILPIT_PORT:-8025}:8025'
+      - '127.0.0.1:1025:1025'
+      - '127.0.0.1:${MAILPIT_PORT:-8025}:8025'
 
 volumes:
   # Named volume so data survives `docker compose stop`/`up` (only `down -v` clears it) —

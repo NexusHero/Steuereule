@@ -37,8 +37,8 @@ export function CockpitPartnerSection({ year, partnerName, enabled, crossBorder 
   const swiss = useChSalaryCertificateControllerGet(year, { person: 'B' }, { query: { enabled: enabled && employed && crossBorder } })
   const pension = usePensionControllerGet(year, { person: 'B' }, { query: { enabled: enabled && retired } })
 
-  const lstbData = lstb.data?.status === 200 ? lstb.data.data : null
-  const commuteData = commute.data?.status === 200 ? commute.data.data : null
+  const lstbData = lstb.data?.data ?? null
+  const commuteData = commute.data?.data ?? null
   // A partner who works only in Switzerland has a Lohnausweis, no German LStB (UX review H7) — unless the
   // way to work records a change of job or a German certificate is entered (ADR-0079); while the interview
   // has not said so, both stay on offer as before.
@@ -46,8 +46,8 @@ export function CockpitPartnerSection({ year, partnerName, enabled, crossBorder 
 
   const lstbStatus = tileById('lstb').status({ path: 'angestellte', answers: {}, lstb: lstbData })
   const commuteStatus = tileById('arbeitsweg').status({ path: 'angestellte', answers: {}, commute: commuteData })
-  const swissStatus = tileById('ch').status({ path: 'ch', answers: {}, ch: swiss.data?.status === 200 ? swiss.data.data : null })
-  const pensionStatus = tileById('rente').status({ path: 'rente', answers: {}, pension: pension.data?.status === 200 ? pension.data.data : null })
+  const swissStatus = tileById('ch').status({ path: 'ch', answers: {}, ch: swiss.data?.data ?? null })
+  const pensionStatus = tileById('rente').status({ path: 'rente', answers: {}, pension: pension.data?.data ?? null })
   const lstbPending = enabled && germanCertificate && lstb.isPending
   const commutePending = enabled && commute.isPending
   const prevStatusesRef = useRef<{ year: number; lstb?: TileStatus; commute?: TileStatus }>({ year })
@@ -75,11 +75,12 @@ export function CockpitPartnerSection({ year, partnerName, enabled, crossBorder 
     }
   }, [year, lstbPending, commutePending, lstbStatus, commuteStatus])
 
-  const items: readonly { readonly area: PartnerAreaParam; readonly testId: string; readonly titleKey: string; readonly status: TileStatus }[] = [
-    ...(germanCertificate ? [{ area: 'lstb' as const, testId: 'partner-lstb', titleKey: 'cockpit.kachel.partner-lstb.titel', status: lstbStatus }] : []),
-    ...(employed ? [{ area: 'arbeitsweg' as const, testId: 'partner-arbeitsweg', titleKey: 'cockpit.kachel.partner-arbeitsweg.titel', status: commuteStatus }] : []),
-    ...(employed && crossBorder ? [{ area: 'schweiz' as const, testId: 'partner-schweiz', titleKey: 'cockpit.kachel.partner-schweiz.titel', status: swissStatus }] : []),
-    ...(retired ? [{ area: 'rente' as const, testId: 'partner-rente', titleKey: 'cockpit.kachel.partner-rente.titel', status: pensionStatus }] : []),
+  // WEB-45: a failed read of B's area is named as failed, never as „offen“.
+  const items: readonly { readonly area: PartnerAreaParam; readonly testId: string; readonly titleKey: string; readonly status: TileStatus; readonly failed: boolean }[] = [
+    ...(germanCertificate ? [{ area: 'lstb' as const, testId: 'partner-lstb', titleKey: 'cockpit.kachel.partner-lstb.titel', status: lstbStatus, failed: lstb.isError }] : []),
+    ...(employed ? [{ area: 'arbeitsweg' as const, testId: 'partner-arbeitsweg', titleKey: 'cockpit.kachel.partner-arbeitsweg.titel', status: commuteStatus, failed: commute.isError }] : []),
+    ...(employed && crossBorder ? [{ area: 'schweiz' as const, testId: 'partner-schweiz', titleKey: 'cockpit.kachel.partner-schweiz.titel', status: swissStatus, failed: swiss.isError }] : []),
+    ...(retired ? [{ area: 'rente' as const, testId: 'partner-rente', titleKey: 'cockpit.kachel.partner-rente.titel', status: pensionStatus, failed: pension.isError }] : []),
   ]
   if (items.length === 0) return null
 
@@ -90,7 +91,7 @@ export function CockpitPartnerSection({ year, partnerName, enabled, crossBorder 
       </Text>
       <View style={styles.grid}>
         {items.map((item) => {
-          const isDone = item.status === 'erledigt' && !openAreas?.has(item.area)
+          const isDone = !item.failed && item.status === 'erledigt' && !openAreas?.has(item.area)
           return (
             <Pressable
               key={item.area}
@@ -107,7 +108,7 @@ export function CockpitPartnerSection({ year, partnerName, enabled, crossBorder 
                       {isDone ? '✓' : '!'}
                     </Text>
                     <Text style={isDone ? styles.statusDone : styles.statusOpen} testID={`${item.testId}-status`}>
-                      {tr(isDone ? 'cockpit.kachel.status.erledigt' : 'cockpit.kachel.status.offen')}
+                      {tr(item.failed ? 'cockpit.kachel.status.fehler' : isDone ? 'cockpit.kachel.status.erledigt' : 'cockpit.kachel.status.offen')}
                     </Text>
                   </View>
                 </View>

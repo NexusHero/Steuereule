@@ -1,35 +1,23 @@
 // What the confirmation screen shows for each kind of value and source, and how it behaves when
 // loading or saving fails: errors are said, never swallowed.
 import { describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { I18nextProvider } from 'react-i18next'
-import { ThemeProvider } from '@steuereule/ui'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import type { ConfirmationResponseDto } from '@steuereule/api-client'
-import { createAppI18n } from '../../i18n/app-i18n'
 import { server } from '../../test-msw-server'
 import { ConfirmationScreen } from './ConfirmationScreen'
+import { renderWithQuery } from '../../test-render'
 
 const URL_OVERVIEW = '*/v1/steuerjahre/2025/bestaetigung'
 
 function renderScreen() {
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
   const onBack = vi.fn()
   const onOpenScreen = vi.fn()
-  render(
-    <QueryClientProvider client={queryClient}>
-      <I18nextProvider i18n={createAppI18n('de')}>
-        <ThemeProvider mode="light">
-          <ConfirmationScreen year={2025} onBack={onBack} onOpenScreen={onOpenScreen} />
-        </ThemeProvider>
-      </I18nextProvider>
-    </QueryClientProvider>,
-  )
+  renderWithQuery(<ConfirmationScreen year={2025} onBack={onBack} onOpenScreen={onOpenScreen} />)
   return { onBack, onOpenScreen }
 }
 
-const value = (over: object) => ({ key: 'k', screen: 'lstb', instance: null, field: 'lohnsteuer', value: '1', provenance: { kind: 'nutzer' }, confirmed: false, proposal: null, ...over })
+const value = (over: object) => ({ key: 'k', screen: 'lstb', instance: null, instanceLabel: null, version: 'v1', field: 'lohnsteuer', value: '1', provenance: { kind: 'nutzer' }, confirmed: false, proposal: null, ...over })
 const serve = (data: ConfirmationResponseDto) => server.use(http.get(URL_OVERVIEW, () => HttpResponse.json(data)))
 
 describe('ConfirmationScreen loading', () => {
@@ -100,7 +88,8 @@ describe('ConfirmationScreen values', () => {
 
     expect(await screen.findByText(/Kapitalerträge vor Abzug des Sparer-Pauschbetrags/)).toBeTruthy()
     expect(screen.getByText('1.200 €')).toBeTruthy()
-    expect(screen.getByText('firstName')).toBeTruthy()
+    expect(screen.getByText('Vorname')).toBeTruthy()
+    expect(screen.queryByText('firstName')).toBeNull()
     expect(screen.getByText('2 Werte unbestätigt')).toBeTruthy()
   })
 
@@ -142,11 +131,11 @@ describe('ConfirmationScreen failing saves', () => {
     )
     renderScreen()
     fireEvent.click(await screen.findByTestId('bestaetige-anlageN'))
-    expect(await screen.findByText('Das hat nicht geklappt. Versuch es noch mal.')).toBeTruthy()
+    expect(await screen.findByText('Bei uns ist gerade etwas schiefgelaufen. Versuch es gleich noch mal.')).toBeTruthy()
 
     ok = true
     fireEvent.click(screen.getByTestId('bestaetige-anlageN'))
-    await waitFor(() => expect(screen.queryByText('Das hat nicht geklappt. Versuch es noch mal.')).toBeNull())
+    await waitFor(() => expect(screen.queryByText('Bei uns ist gerade etwas schiefgelaufen. Versuch es gleich noch mal.')).toBeNull())
   })
 
   it('says so when the network fails while confirming', async () => {
@@ -156,7 +145,7 @@ describe('ConfirmationScreen failing saves', () => {
     )
     renderScreen()
     fireEvent.click(await screen.findByTestId('bestaetige-anlageN'))
-    expect(await screen.findByText('Das hat nicht geklappt. Versuch es noch mal.')).toBeTruthy()
+    expect(await screen.findByText('Keine Verbindung zum Server. Prüf dein Internet und versuch es noch mal.')).toBeTruthy()
   })
 })
 

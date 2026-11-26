@@ -5,6 +5,7 @@ import { CHILD_REPOSITORY, type ChildRepository } from '../children/child.reposi
 import { COMMUTE_REPOSITORY, type CommuteRepository } from '../commute/commute.repository.js'
 import { INTERVIEW_ANSWER_REPOSITORY, type InterviewAnswerRepository } from '../interview/interview-answer.repository.js'
 import { PARTNER_COUPLING_REPOSITORY, type PartnerCouplingRepository } from '../link/link.repository.js'
+import { couplingVisibleTo } from '../link/partner-consent.js'
 import { WAGE_TAX_CERTIFICATE_REPOSITORY, type WageTaxCertificateRepository } from '../lstb/lstb.repository.js'
 import { MASTER_DATA_REPOSITORY, type MasterDataRepository } from '../master-data/master-data.repository.js'
 import { PENSION_REPOSITORY, type PensionRepository } from '../pension/pension.repository.js'
@@ -42,7 +43,8 @@ function loadersOver(repositories: TaxCaseRepositories): Loaders {
     capital: (userId, year) => r.capital?.findForUserAndYear(userId, year) ?? Promise.resolve(null),
     rentals: (userId, year) => r.rental?.listForUserAndYear(userId, year) ?? Promise.resolve([]),
     children: (userId, year) => r.children?.listForUserAndYear(userId, year) ?? Promise.resolve([]),
-    coupling: (userId, year) => r.coupling?.findByUserAndYear(userId, year) ?? Promise.resolve(null),
+    // Decision 3: without Person B's consent for the year, Person A's readers get the joint year without B's id.
+    coupling: async (userId, year) => couplingVisibleTo((await r.coupling?.findByUserAndYear(userId, year)) ?? null, userId),
   }
 }
 

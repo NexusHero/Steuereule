@@ -6,6 +6,7 @@ import { startStack } from '../harness/stack.mjs'
 import { fail, waitForBucketHeadroom } from '../harness/rate-limit.mjs'
 import { skipSplash, submitLogin } from '../harness/flows.mjs'
 import { PASSWORD, createAccount, call } from '../harness/api-account.mjs'
+import { snapshotPage } from '../harness/failure-snapshot.mjs'
 
 const AUTH_BUCKET = { windowMs: 10_000, max: 3, shared: true }
 const TAG = 'hub-acceptance'
@@ -27,6 +28,8 @@ async function isEnabled(locator) {
   return locator.evaluate((el) => !el.hasAttribute('disabled') && el.getAttribute('aria-disabled') !== 'true')
 }
 
+let pageForSnapshot = null
+
 async function main() {
   const { apiOrigin, webOrigin, sql, stop } = await startStack()
   const browser = await launchBrowser()
@@ -37,6 +40,7 @@ async function main() {
 
     const ctx = await newContextAtBreakpoint(browser, 'l')
     const page = await ctx.newPage()
+    pageForSnapshot = page
     guardAgainst429(page, fail, '/api/auth/')
     await skipSplash(page, webOrigin)
     await waitForBucketHeadroom(AUTH_BUCKET, 'sign-in/email', TAG)
@@ -64,14 +68,18 @@ async function main() {
       const el = document.querySelector('[data-testid="abgabe-zum-ausdruck"]')
       return el !== null && !el.hasAttribute('disabled') && el.getAttribute('aria-disabled') !== 'true'
     }, null, { timeout: 10_000 })
-    // A new warning: Werbungskosten above the wage (a small wage with a long way to work).
-    await lstb(user.api, 2_000, 0, 0)
-    await call(user.api, 'PUT', `/v1/steuerjahre/${YEAR}/arbeitsweg`, { ...COMMUTE, oneWayKm: 60 })
+    // WEB-9: the confirmation survives a reload of the tab (and so the return from Stripe).
+    await page.reload({ waitUntil: 'networkidle' })
+    await toPrintout.waitFor({ state: 'visible', timeout: 15_000 })
+    if (!(await isEnabled(toPrintout))) fail('AC 6 / WEB-9: a confirmed warning must stay confirmed after a reload')
+    if (await confirm.isVisible()) fail('AC 6 / WEB-9: a confirmed warning must not ask again after a reload')
+    // A new kind of warning: a severance that is recorded but not part of the estimate.
+    await answer(user.api, [['abfindung', 'Ja'], ['abfindung-betrag', '3000']])
     await page.reload({ waitUntil: 'networkidle' })
     await confirm.waitFor({ state: 'visible', timeout: 15_000 })
     if (await isEnabled(toPrintout)) fail('AC 6: a new warning must lock the printout again until it is confirmed')
     await confirm.click()
-    console.log(`[${TAG}] ✅ AC 6 — warnings unlock after one confirmation; a new warning locks again`)
+    console.log(`[${TAG}] ✅ AC 6 — warnings unlock after one confirmation that survives a reload; a new warning locks again`)
 
     // AC 7 — closing a sheet saves the amount typed without leaving the field: LStB, a catalog
     // amount and the Arbeitstage form (the last two lost it before #450 Teil 4).
@@ -141,6 +149,10 @@ async function main() {
     await ctx.close()
     await user.api.dispose()
     console.log(`[${TAG}] PASS — #443 AC 1, AC 6, AC 7 and the 375 px year chips verified in the browser.`)
+  } catch (error) {
+    // Before the browser closes: what the page showed when the step failed (log and artifact).
+    if (pageForSnapshot) await snapshotPage(pageForSnapshot, TAG)
+    throw error
   } finally {
     await closeBrowser(browser)
     await stop()

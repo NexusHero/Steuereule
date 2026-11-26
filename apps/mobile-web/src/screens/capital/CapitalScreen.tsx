@@ -22,14 +22,16 @@ import { APP_NS } from '../../i18n/resources'
 import { UnclearableNumberField } from '../shared/UnclearableNumberField'
 import { screenHeaderStyles } from '../shared/screenStyles'
 import { ItemNotice } from '../shared/ItemNotice'
-import { CURRENT_TAX_YEAR } from '../../config/taxYear'
+import { runningTaxYear } from '../../config/taxYear'
 import { missingItems } from '../cockpit/estimateMissing'
 import { CatalogScreen } from '../catalog/CatalogScreen'
-import { LoadingState, ErrorState } from '../shared/ScreenState'
+import { LoadingState, LoadFailedState } from '../shared/ScreenState'
+import { InlineLoadFailure } from '../shared/InlineLoadFailure'
 import { BackButton, BackButtonSpacer } from '../shared/BackButton'
 import { usePendingMutations } from '../shared/usePendingMutations'
 import { SaveFailedNotice } from '../shared/SaveFailedNotice'
 import { watchSaveResult } from '../shared/saveFeedback'
+import { useTrackField } from '../shared/useTrackField'
 
 export interface CapitalScreenProps {
   readonly onDone?: () => void
@@ -37,7 +39,7 @@ export interface CapitalScreenProps {
   readonly taxYear?: number
 }
 
-export function CapitalScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TAX_YEAR }: CapitalScreenProps) {
+export function CapitalScreen({ onDone = () => {}, onBack, taxYear = runningTaxYear() }: CapitalScreenProps) {
   const bp = useBreakpoint()
   const t = useTheme()
   const styles = makeStyles(t)
@@ -47,8 +49,9 @@ export function CapitalScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TAX
   const setField = useCapitalControllerSetField()
   const setOwner = useCapitalControllerSetOwner()
   const link = useLinkControllerGet(taxYear)
-  const { track, flushThen, saveFailed } = usePendingMutations()
-  const joint = link.data?.status === 200 && link.data.data.filingType === 'zusammen'
+  const { track, flushThen, saveFailed, saveError, clearSaveError } = usePendingMutations()
+  const trackField = useTrackField(track, clearSaveError)
+  const joint = link.data?.data.filingType === 'zusammen'
 
   // The depot / the kind of letting is a catalogue answer; the mask can ask it right here.
   const [questionOpen, setQuestionOpen] = useState(false)
@@ -56,17 +59,7 @@ export function CapitalScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TAX
   if (query.isPending) {
     return <LoadingState bp={bp} label={tr('kapital.loading')} />
   }
-  if (query.isError || query.data.status !== 200) {
-    return (
-      <ErrorState
-        bp={bp}
-        heading={tr('kapital.loadError.heading')}
-        message={tr('kapital.loadError.message')}
-        retryLabel={tr('kapital.loadError.retry')}
-        onRetry={() => void query.refetch()}
-      />
-    )
-  }
+  if (query.isError) return <LoadFailedState bp={bp} error={query.error} onRetry={() => void query.refetch()} />
 
   const response = query.data.data
 
@@ -86,7 +79,7 @@ export function CapitalScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TAX
   }
 
   function send(field: CapitalFieldId, data: KapitalFeldDto) {
-    track(watchSaveResult(setField.mutateAsync({ jahr: taxYear, feld: field, data })).then(invalidate))
+    trackField(field, watchSaveResult(setField.mutateAsync({ jahr: taxYear, feld: field, data })).then(invalidate))
   }
 
   return (
@@ -104,6 +97,10 @@ export function CapitalScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TAX
         </Button>
       ) : null}
 
+      {link.isError ? (
+        // NM-15: without the link the owner question would vanish silently and the depot count as A's.
+        <InlineLoadFailure what={tr('kapital.inhaberLadefehler')} error={link.error} onRetry={() => void link.refetch()} testID="kapital-inhaber-ladefehler" />
+      ) : null}
       {joint ? (
         <Feld label={tr('kapital.inhaber.frage')}>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.space.s2 }}>
@@ -111,7 +108,7 @@ export function CapitalScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TAX
               <Chip
                 key={inhaber}
                 active={(response.inhaber ?? 'A') === inhaber}
-                onPress={() => track(watchSaveResult(setOwner.mutateAsync({ jahr: taxYear, data: { inhaber } })).then(invalidate))}
+                onPress={() => trackField('inhaber', watchSaveResult(setOwner.mutateAsync({ jahr: taxYear, data: { inhaber } })).then(invalidate))}
                 testID={`kapital-inhaber-${inhaber}`}
               >
                 {tr(`kapital.inhaber.${inhaber}`)}
@@ -145,7 +142,7 @@ export function CapitalScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TAX
 
       <MostFavourableCheckSection taxYear={taxYear} />
 
-      <SaveFailedNotice visible={saveFailed} />
+      <SaveFailedNotice visible={saveFailed || saveError !== null} error={saveError} />
       <Button onPress={() => flushThen(onDone)} style={styles.cta} testID="kapital-weiter">
         {tr('kapital.weiter')}
       </Button>
@@ -209,7 +206,9 @@ function MostFavourableCheckSection({ taxYear }: { readonly taxYear: number }) {
   const query = useCapitalControllerGetMostFavourableCheck(taxYear, undefined)
 
   if (query.isPending) return null
-  if (query.isError || query.data.status !== 200) return null
+  if (query.isError) {
+    return <InlineLoadFailure what={tr('kapital.guenstigerpruefungLadefehler')} error={query.error} onRetry={() => void query.refetch()} testID="guenstigerpruefung-ladefehler" />
+  }
   const dto = query.data.data
   if (dto === null) return null
 

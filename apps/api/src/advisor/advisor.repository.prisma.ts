@@ -11,6 +11,7 @@ import {
   type AdvisorMessageMeta,
   type AdvisorMessageStatus,
 } from '@steuereule/core'
+import { withSystemDatabaseAccess } from '../common/database-identity.js'
 import { ENCRYPTED_PRISMA, type EncryptedPrismaClient } from '../prisma/encrypted-prisma.provider.js'
 import {
   matchesActionId,
@@ -105,6 +106,12 @@ export class PrismaAdvisorRepository implements AdvisorRepository {
     return this.newest(this.prisma.advisorChatMessage.findMany({ where: { userId, taxYear }, orderBy: { createdAt: 'desc' }, take: MAX_HISTORY_MESSAGES }))
   }
 
+  async listStreamingForUserAndYear(userId: string, taxYear: number): Promise<AdvisorChatMessageRecord[]> {
+    // Rarely more than one row: the orphan check must not decrypt the whole year to find them (OPS-4).
+    const rows = await this.prisma.advisorChatMessage.findMany({ where: { userId, taxYear, status: 'streaming' }, orderBy: { createdAt: 'asc' } })
+    return rows.map(toRecord)
+  }
+
   async listReceiptDrafts(userId: string): Promise<ReceiptDraftRecord[]> {
     // Only the drafts' metadata column of the owl's answers: the message text is never selected.
     const rows = await this.prisma.advisorChatMessage.findMany({
@@ -116,13 +123,16 @@ export class PrismaAdvisorRepository implements AdvisorRepository {
   }
 
   async recentUsage(limit: number): Promise<AdvisorMessageUsage[]> {
-    // Only the plain usage column (tokens, timings, model): no text, no user id leaves this query.
-    const rows = await this.prisma.advisorChatMessage.findMany({
-      where: { role: 'assistant', usageJson: { not: null } },
-      orderBy: { createdAt: 'desc' },
-      take: limit,
-      select: { usageJson: true },
-    })
+    // Only the plain usage column (tokens, timings, model): no text, no user id leaves this query. The model
+    // profiles are measured over every user's answers, so the query crosses users under its own reason.
+    const rows = await withSystemDatabaseAccess('model-usage-stats', () =>
+      this.prisma.advisorChatMessage.findMany({
+        where: { role: 'assistant', usageJson: { not: null } },
+        orderBy: { createdAt: 'desc' },
+        take: limit,
+        select: { usageJson: true },
+      }),
+    )
     return rows.flatMap((row) => {
       const usage = parseJson<AdvisorMessageUsage>(row.usageJson)
       return usage ? [usage] : []
@@ -246,12 +256,19 @@ export class PrismaAdvisorRepository implements AdvisorRepository {
   }
 
   async updateNote(id: string, userId: string, text: string, author: AdvisorNoteAuthor): Promise<AdvisorNoteRecord | null> {
-    const { count } = await this.prisma.advisorNote.updateMany({ where: { id, userId }, data: { text, author, updatedAt: new Date() } })
+    // The change and its WRITE row in one transaction, as createNote does (H2-11). The callers look the note up first.
+    const [{ count }] = await this.prisma.$transaction([
+      this.prisma.advisorNote.updateMany({ where: { id, userId }, data: { text, author, updatedAt: new Date() } }),
+      this.prisma.taxDataAccessLog.create({ data: { userId, action: 'WRITE', resource: 'berater_notiz' } }),
+    ])
     return count === 1 ? this.findNote(id, userId) : null
   }
 
   async deleteNote(id: string, userId: string): Promise<boolean> {
-    const { count } = await this.prisma.advisorNote.deleteMany({ where: { id, userId } })
+    const [{ count }] = await this.prisma.$transaction([
+      this.prisma.advisorNote.deleteMany({ where: { id, userId } }),
+      this.prisma.taxDataAccessLog.create({ data: { userId, action: 'WRITE', resource: 'berater_notiz' } }),
+    ])
     return count === 1
   }
 

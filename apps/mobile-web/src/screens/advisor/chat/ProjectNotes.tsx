@@ -3,6 +3,7 @@ import { Pressable, Text, TextInput, View, type TextStyle, type ViewStyle } from
 import { useTranslation } from 'react-i18next'
 import { Button, useTheme, type UiTheme } from '@steuereule/ui'
 import { APP_NS } from '../../../i18n/resources'
+import { useConfirmAction } from '../../../confirm/useConfirmAction'
 import { makeSidePanelStyles } from './sidePanelStyles'
 
 export const NOTE_MAX_CHARS = 200
@@ -31,6 +32,7 @@ export function ProjectNotes({ notes, onAdd, onEdit, onDelete }: ProjectNotesPro
   const { t: tr } = useTranslation(APP_NS)
   const [editing, setEditing] = useState<{ readonly id: string | 'new'; readonly draft: string } | null>(null)
   const [failed, setFailed] = useState(false)
+  const confirmDelete = useConfirmAction('noteDelete')
 
   async function attempt(work: () => Promise<void>) {
     setFailed(false)
@@ -90,7 +92,7 @@ export function ProjectNotes({ notes, onAdd, onEdit, onDelete }: ProjectNotesPro
                 <Pressable accessibilityRole="button" onPress={() => setEditing({ id: note.id, draft: note.text })} style={styles.link} testID="eule-note-edit">
                   <Text style={styles.linkText}>{tr('advisor.chat.notes.edit')}</Text>
                 </Pressable>
-                <Pressable accessibilityRole="button" onPress={() => void attempt(() => onDelete(note.id))} style={styles.link} testID="eule-note-delete">
+                <Pressable accessibilityRole="button" onPress={() => confirmDelete.ask(() => void attempt(() => onDelete(note.id)))} style={styles.link} testID="eule-note-delete">
                   <Text style={styles.linkText}>{tr('advisor.chat.notes.delete')}</Text>
                 </Pressable>
               </View>
@@ -112,6 +114,7 @@ export function ProjectNotes({ notes, onAdd, onEdit, onDelete }: ProjectNotesPro
           {tr('advisor.chat.notes.failed')}
         </Text>
       ) : null}
+      {confirmDelete.dialog}
     </View>
   )
 }

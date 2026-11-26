@@ -9,6 +9,7 @@ process.env.GUEST_SESSION_SECRET = 'person-b-ch-secret'
 process.env.BETTER_AUTH_SECRET = 'person-b-ch-better-auth-secret-0123456789'
 process.env.BETTER_AUTH_URL = 'http://127.0.0.1:39993'
 import { verifyAndSignIn } from '../support/acceptance-server.js'
+import { fixtureClient } from '../support/database-fixture.js'
 const ALLOWED_ORIGIN = 'https://allowed.example.com'
 process.env.CORS_ALLOWED_ORIGINS = ALLOWED_ORIGIN
 
@@ -26,7 +27,7 @@ describe('Person B’s Swiss figures, recorded by the user', () => {
     await app.listen(0, '127.0.0.1')
     baseUrl = await app.getUrl()
     const { ENCRYPTED_PRISMA } = await import('../../src/prisma/encrypted-prisma.provider.js')
-    prisma = app.get<PrismaClient>(ENCRYPTED_PRISMA)
+    prisma = fixtureClient(app.get<PrismaClient>(ENCRYPTED_PRISMA))
     const email = `person-b-ch-${Date.now()}@example.com`
     const res = await fetch(`${baseUrl}/api/auth/sign-up/email`, {
       method: 'POST',

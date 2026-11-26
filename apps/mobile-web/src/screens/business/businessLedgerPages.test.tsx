@@ -8,6 +8,7 @@ import { findAccount } from '@steuereule/core'
 import type { BookDto, JournalEntryDto } from '@steuereule/api-client'
 import { server } from '../../test-msw-server'
 import { BASE_PROFILE, BASE_URL, CATALOGUES, EMPTY_BOOK, renderBusiness, useBusinessDefaults, useCatalogues, YEAR } from './businessTestKit'
+import { confirmAction, confirmDialogOf } from '../../test-confirm'
 
 afterEach(() => vi.restoreAllMocks())
 
@@ -151,9 +152,11 @@ describe('the book', () => {
     )
     renderBusiness('buch')
     fireEvent.click(await screen.findByTestId('buch-storno-3'))
+    confirmAction('bookingReverse')
     vi.useRealTimers()
     expect(await screen.findByTestId('business-speichern-fehler')).toBeTruthy()
-    expect(screen.getByText('Das Jahr ist festgeschrieben.')).toBeTruthy()
+    // A 403 is said in the shared wording, never the server's text (WEB-44).
+    expect(screen.getByText('Das darfst du hier nicht ändern.')).toBeTruthy()
     expect(body!.date).toBe(`${YEAR}-12-31`)
   })
 
@@ -169,6 +172,7 @@ describe('the book', () => {
     )
     renderBusiness('buch')
     fireEvent.click(await screen.findByTestId('buch-storno-3'))
+    confirmAction('bookingReverse')
     vi.useRealTimers()
     await waitFor(() => expect(body).not.toBeNull())
     expect(body!.date).toBe(`${YEAR}-06-01`)
@@ -230,6 +234,7 @@ describe('the book', () => {
     expect(screen.getByTestId('buch-festschreiben').getAttribute('aria-disabled')).toBe('true')
     fireEvent.change(date, { target: { value: '31.03.2025' } })
     fireEvent.click(screen.getByTestId('buch-festschreiben'))
+    confirmAction('bookLock')
     await waitFor(() => expect(body).toEqual({ through: '2025-03-31' }))
   })
 
@@ -239,6 +244,7 @@ describe('the book', () => {
     renderBusiness('buch')
     fireEvent.change(await screen.findByTestId('buch-fest-datum'), { target: { value: '31.03.2025' } })
     fireEvent.click(screen.getByTestId('buch-festschreiben'))
+    confirmAction('bookLock')
     expect(await screen.findByText('Schon fester.')).toBeTruthy()
   })
 
@@ -249,7 +255,9 @@ describe('the book', () => {
     renderBusiness('buch')
     fireEvent.change(await screen.findByTestId('buch-fest-datum'), { target: { value: '99.99.2025' } })
     fireEvent.click(screen.getByTestId('buch-festschreiben'))
-    await waitFor(() => expect(lock).not.toHaveBeenCalled())
+    // An unreadable date is refused before anything is asked.
+    expect(confirmDialogOf('bookLock')).toBeNull()
+    expect(lock).not.toHaveBeenCalled()
   })
 })
 
@@ -326,7 +334,9 @@ describe('the bank', () => {
     fireEvent.click(await screen.findByTestId('bank-buchen-u1'))
     expect(await screen.findByText('Schon gebucht.')).toBeTruthy()
     fireEvent.click(screen.getByTestId('bank-ignorieren-u1'))
-    expect(await screen.findByText('Server hat sich verschluckt.')).toBeTruthy()
+    confirmAction('bankIgnore')
+    // A 500 is said in the shared wording, never the server's text (WEB-44).
+    expect(await screen.findByText('Bei uns ist gerade etwas schiefgelaufen. Versuch es gleich noch mal.')).toBeTruthy()
   })
 
   it('says the file import works in the browser when it does not run on the web', async () => {
@@ -364,10 +374,12 @@ describe('the assets', () => {
     renderBusiness('anlagen')
     fireEvent.click(await screen.findByTestId('anlage-abgang-a1'))
     fireEvent.click(screen.getByTestId('anlage-abgang-buchen'))
+    expect(confirmDialogOf('assetDispose')).toBeNull()
     expect(await screen.findByText('Bitte prüfe die Angaben.')).toBeTruthy()
     fireEvent.change(screen.getByTestId('anlage-abgang-datum'), { target: { value: '30.06.2025' } })
     fireEvent.change(screen.getByTestId('anlage-abgang-erloes'), { target: { value: '300,50' } })
     fireEvent.click(screen.getByTestId('anlage-abgang-buchen'))
+    confirmAction('assetDispose')
     await waitFor(() => expect(body).toEqual({ date: '2025-06-30', proceedsCents: 30050 }))
     await waitFor(() => expect(screen.queryByTestId('anlage-abgang-buchen')).toBeNull())
   })
@@ -378,6 +390,7 @@ describe('the assets', () => {
     fireEvent.click(await screen.findByTestId('anlage-abgang-a1'))
     fireEvent.change(screen.getByTestId('anlage-abgang-datum'), { target: { value: '30.06.2025' } })
     fireEvent.click(screen.getByTestId('anlage-abgang-buchen'))
+    confirmAction('assetDispose')
     expect(await screen.findByText('Schon ausgeschieden.')).toBeTruthy()
   })
 
@@ -497,8 +510,10 @@ describe('the assets', () => {
     server.use(http.post(`${BASE_URL}/anlagen/abschreibung`, () => { calls += 1; return calls === 1 ? problem(409, 'Die AfA ist schon gebucht.') : HttpResponse.json({}, { status: 201 }) }))
     renderBusiness('anlagen')
     fireEvent.click(await screen.findByTestId('anlage-afa-buchen'))
+    confirmAction('depreciationBook')
     expect(await screen.findByText('Die AfA ist schon gebucht.')).toBeTruthy()
     fireEvent.click(screen.getByTestId('anlage-afa-buchen'))
+    confirmAction('depreciationBook')
     await waitFor(() => expect(screen.queryByText('Die AfA ist schon gebucht.')).toBeNull())
   })
 })
@@ -530,6 +545,7 @@ describe('the closing', () => {
     server.use(http.get(`${BASE_URL}/abschluss`, () => HttpResponse.json(BILANZ)), http.post(`${BASE_URL}/abschluss/eroeffnung`, () => HttpResponse.json({}, { status: 201 })))
     renderBusiness('abschluss')
     fireEvent.click(await screen.findByTestId('abschluss-eroeffnung'))
+    confirmAction('openingBalance')
     expect((await screen.findByTestId('abschluss-uebertragen')).textContent).toBe(`Eröffnungsbilanz ${YEAR + 1} gebucht.`)
   })
 
@@ -537,6 +553,7 @@ describe('the closing', () => {
     server.use(http.get(`${BASE_URL}/abschluss`, () => HttpResponse.json(BILANZ)), http.post(`${BASE_URL}/abschluss/eroeffnung`, () => new HttpResponse(null, { status: 500 })))
     renderBusiness('abschluss')
     fireEvent.click(await screen.findByTestId('abschluss-eroeffnung'))
+    confirmAction('openingBalance')
     expect(await screen.findByTestId('business-speichern-fehler')).toBeTruthy()
   })
 })

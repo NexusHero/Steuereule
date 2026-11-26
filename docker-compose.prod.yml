@@ -1,17 +1,17 @@
-# Production-shaped local stack (#76, the stakeholder's own local-testing complement to the
-# real cloud deployment — NOT that pipeline itself; it remains its own, start-gated, separate
-# ticket: #292, successor to #246, which was closed 2026-08-05 with the gap still open. Target
-# is k3s on Hetzner + managed Postgres per ADR-049; #246's own body was corrected to say so on
-# 2026-08-05, so the Fly.io framing this comment used to flag there is gone). Builds real images for the API and the exported web
+# Production-shaped local stack (#76, ADR-0026): the real API and web images on your own machine, with
+# NODE_ENV=production. It is not the cloud deployment, which runs on Google Cloud Run (ADR-0053,
+# infra/README.md). The API treats this stack as local only while every origin is localhost and it is not on
+# Cloud Run; then it accepts the synthetic values of .env.example with a warning. Builds real images for the API and the exported web
 # bundle — no more "postgres only, everything else by hand" — and wires them with the
 # SAME four env vars whose mismatch produced the stakeholder's own bug report (guest
 # browsing, registration, login and the QR code all failing identically, because the
 # browser was never actually able to reach the API — see this overlay's own `.env.example`
 # header for the single-source-of-truth reasoning).
 #
-# One command, from the repo root (copy .env.example to .env first):
+# One command, from the repo root (copy .env.example to .env first; scripts/mail-tls.sh makes the local
+# inbox's TLS certificate, scripts/local.sh runs both):
 #
-#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up --build
+#   scripts/mail-tls.sh && docker compose -f docker-compose.yml -f docker-compose.prod.yml up --build
 #
 # Frontend: http://localhost:${WEB_PORT:-8080}    API: http://localhost:${API_PORT:-3000}
 # — the exact ports the stakeholder's own local test used.
@@ -26,7 +26,10 @@ x-api-env: &api-env
   # psql) uses `localhost:5432` instead (the published port). Two different consumers,
   # two different addresses for the same database — not a duplicated source of truth, the
   # same asymmetry ADR-0010's own e2e harness already documents.
-  DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+  #
+  # The API's own login (P11): it owns no table and cannot become the owner, so row-level security holds
+  # against whoever has this URL. The `migrate` service below creates it; only that service gets the owner.
+  DATABASE_URL: postgresql://${POSTGRES_APP_USER}:${POSTGRES_APP_PASSWORD}@postgres:5432/${POSTGRES_DB}
   GUEST_SESSION_SECRET: ${GUEST_SESSION_SECRET}
   PRISMA_FIELD_ENCRYPTION_KEY: ${PRISMA_FIELD_ENCRYPTION_KEY}
   # Salt of the e-mail lookup hash (ADR-0109); must never change once accounts exist.
@@ -34,7 +37,9 @@ x-api-env: &api-env
   # Receipt-file keys live in their own database (ADR-0059). This local stack keeps it on the
   # same Postgres server for simplicity; the real deployment uses a separate Cloud SQL
   # instance with a shorter backup retention, which is what makes crypto-shredding reach backups.
-  KEYSTORE_DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}_keystore
+  # It has a login of its own, which the migrate job creates: on the server's superuser the API would own the
+  # tax-data tables too, and row-level security would mean nothing in this stack.
+  KEYSTORE_DATABASE_URL: postgresql://${POSTGRES_KEYSTORE_USER}:${POSTGRES_KEYSTORE_PASSWORD}@postgres:5432/${POSTGRES_DB}_keystore
   KEYSTORE_MASTER_KEY: ${KEYSTORE_MASTER_KEY}
   BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET}
   # The API's OWN origin — same value it listens on (PORT below), used to build absolute
@@ -49,9 +54,11 @@ x-api-env: &api-env
   # omission).
   TRUSTED_PROXIES: none
   # Local stack: every mail lands in Mailpit's inbox (http://localhost:8025), never on the
-  # internet. The real deployment sets BREVO_API_KEY + EMAIL_FROM instead.
+  # internet, and over implicit TLS: the API verifies Mailpit's certificate against the local CA
+  # of scripts/mail-tls.sh, mounted below. The real deployment sets BREVO_API_KEY + EMAIL_FROM instead.
   EMAIL_DELIVERY: smtp
-  SMTP_URL: smtp://mailpit:1025
+  SMTP_URL: smtps://mailpit:1025
+  SMTP_CA_CERT: /run/mail-tls/ca.pem
   GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
   GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
   PORT: ${API_PORT:-3000}
@@ -75,7 +82,14 @@ services:
     # migrations and exit. Plain node, no pnpm: the runtime image has the Prisma CLI and the schema but
     # not the workspace tooling, and its user cannot write to /repo.
     command: ['sh', '-c', 'cd /repo/apps/api && node scripts/migrate-deploy.mjs']
-    environment: *api-env
+    environment:
+      <<: *api-env
+      # This job is the owner of the tables (migrations, backfills); it creates the login of RUNTIME_DATABASE_URL.
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      RUNTIME_DATABASE_URL: postgresql://${POSTGRES_APP_USER}:${POSTGRES_APP_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      # The keystore's owner runs its migrations here and creates the API's keystore login.
+      KEYSTORE_DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}_keystore
+      KEYSTORE_RUNTIME_DATABASE_URL: postgresql://${POSTGRES_KEYSTORE_USER}:${POSTGRES_KEYSTORE_PASSWORD}@postgres:5432/${POSTGRES_DB}_keystore
     depends_on:
       postgres:
         condition: service_healthy
@@ -85,6 +99,9 @@ services:
       context: .
       dockerfile: apps/api/Dockerfile
     environment: *api-env
+    volumes:
+      # Only the CA certificate (SMTP_CA_CERT); Mailpit's key lives in a directory of its own.
+      - ./.local/mail-tls/ca:/run/mail-tls:ro
     ports:
       - '${API_PORT:-3000}:${API_PORT:-3000}'
     depends_on:
@@ -104,6 +121,12 @@ services:
         # Dockerfile's own comment) — API_ORIGIN, the SAME value the api service's
         # BETTER_AUTH_URL above uses, never a second, independently-typed copy.
         EXPO_PUBLIC_API_BASE_URL: ${API_ORIGIN}
+        # Operator details for the Impressum (WEB-2); empty on a local stack, set them in .env to see the real page.
+        EXPO_PUBLIC_BETREIBER_NAME: ${EXPO_PUBLIC_BETREIBER_NAME:-}
+        EXPO_PUBLIC_BETREIBER_ANSCHRIFT: ${EXPO_PUBLIC_BETREIBER_ANSCHRIFT:-}
+        EXPO_PUBLIC_BETREIBER_EMAIL: ${EXPO_PUBLIC_BETREIBER_EMAIL:-}
+        EXPO_PUBLIC_BETREIBER_VERTRETEN: ${EXPO_PUBLIC_BETREIBER_VERTRETEN:-}
+        EXPO_PUBLIC_BETREIBER_USTID: ${EXPO_PUBLIC_BETREIBER_USTID:-}
     ports:
       - '${WEB_PORT:-8080}:8080'
     depends_on:

@@ -15,10 +15,12 @@ import {
 } from '@steuereule/api-client'
 import { Choice } from './Choice'
 import { APP_NS } from '../../i18n/resources'
-import { BusinessFrame, BusinessQueryState, Figure, Note, Section } from './BusinessFrame'
-import { eurosToCents, personParams, plainCents, type ApiProblem } from './businessKit'
+import { BusinessFrame, BusinessQueryState, Figure, Note, ProblemNote, Section } from './BusinessFrame'
+import { eurosToCents, personParams, plainCents, problemOf, type ApiProblem } from './businessKit'
 import { CatalogPicker } from './CatalogPicker'
-import { attempt, queryProblem, useRefreshBusiness } from './useBusiness'
+import { attempt, queryProblem, useRefreshBusiness, useSingleFlight } from './useBusiness'
+import { useConfirmAction } from '../../confirm/useConfirmAction'
+import { parseGermanAmount } from '../shared/germanNumber'
 import type { BusinessPageProps } from './BusinessScreen'
 
 const METHODS: readonly FixedAssetInputDtoMethod[] = ['linear', 'degressive', 'elektrofahrzeug', 'gwg', 'sofort', 'building', 'building_degressive']
@@ -41,8 +43,8 @@ const EMPTY_FORM = {
 }
 /** A percentage typed by the user as a share 0–1; null when it is no number in 0–100. */
 const share = (raw: string): number | null => {
-  const n = Number(raw.replace(',', '.'))
-  return raw.trim() !== '' && Number.isFinite(n) && n >= 0 && n <= 100 ? n / 100 : null
+  const n = parseGermanAmount(raw)
+  return n !== null && n <= 100 ? n / 100 : null
 }
 const parseJson = <T,>(raw: string | null | undefined): T | null => {
   if (!raw) return null
@@ -60,7 +62,7 @@ export function AssetsPage({ taxYear, person, business = 1, onBack }: BusinessPa
   const params = personParams(person, business)
   const query = useBusinessControllerAssets(taxYear, params)
   const catalogues = useBusinessControllerCatalogues(taxYear, params)
-  const categories = catalogues.data?.status === 200 ? catalogues.data.data.assetCategories : []
+  const categories = catalogues.data?.data.assetCategories ?? []
   const create = useBusinessControllerCreateAsset()
   const dispose = useBusinessControllerDisposeAsset()
   const setFacts = useBusinessControllerSetAssetFacts()
@@ -75,9 +77,12 @@ export function AssetsPage({ taxYear, person, business = 1, onBack }: BusinessPa
   const [disposing, setDisposing] = useState<string | null>(null)
   const [disposalDate, setDisposalDate] = useState('')
   const [proceeds, setProceeds] = useState('')
+  const flight = useSingleFlight()
+  const confirmDispose = useConfirmAction('assetDispose')
+  const confirmDepreciation = useConfirmAction('depreciationBook')
 
   const loadProblem = queryProblem(query)
-  if (query.isPending || loadProblem !== null || query.data?.status !== 200) {
+  if (query.isPending || loadProblem !== null || query.data === undefined) {
     return (
       <BusinessFrame title={tr('business.seite.anlagen')} onBack={onBack}>
         <BusinessQueryState pending={query.isPending} problem={loadProblem} onRetry={() => void query.refetch()} />
@@ -88,13 +93,16 @@ export function AssetsPage({ taxYear, person, business = 1, onBack }: BusinessPa
   const records = query.data.data.records
   const totalBook = rows.reduce((sum, r) => sum + r.closingBookValue, 0)
 
-  async function run(action: () => Promise<{ readonly status: number; readonly data?: unknown }>, after?: () => void) {
-    setProblem(null)
-    const outcome = await attempt(action)
-    if (outcome.ok) {
-      after?.()
-      refresh()
-    } else setProblem(outcome.problem)
+  /** One write at a time (NC-03): a double tap creates one asset, books the AfA once. */
+  function run(action: () => Promise<unknown>, after?: () => void): Promise<void> {
+    return flight.run(async () => {
+      setProblem(null)
+      const outcome = await attempt(action)
+      if (outcome.ok) {
+        after?.()
+        refresh()
+      } else setProblem(outcome.problem)
+    })
   }
 
   function submitAsset() {
@@ -167,24 +175,25 @@ export function AssetsPage({ taxYear, person, business = 1, onBack }: BusinessPa
     )
   }
 
-  function submitDisposal(id: string) {
+  function submitDisposal(id: string, label: string) {
     const date = germanDateToIso(disposalDate)
     const cents = proceeds.trim() === '' ? undefined : eurosToCents(proceeds)
     if (date === null || cents === null) return setInvalid(true)
     setInvalid(false)
-    void run(
+    // WEB-38: a disposal is final; it asks first and says so.
+    confirmDispose.ask(() => void run(
       () => dispose.mutateAsync({ jahr: taxYear, anlageId: id, data: { date, ...(cents !== undefined ? { proceedsCents: cents } : {}) }, ...(params ? { params } : {}) }),
       () => {
         setDisposing(null)
         setDisposalDate('')
         setProceeds('')
       },
-    )
+    ), { name: label })
   }
 
   return (
     <BusinessFrame title={tr('business.seite.anlagen')} onBack={onBack} testID="anlagen-seite">
-      {problem !== null ? <Note tone="error" testID="business-speichern-fehler">{problem.message ?? tr('business.speichernFehler')}</Note> : null}
+      <ProblemNote problem={problem} testID="business-speichern-fehler" />
       <Section>
         {rows.length === 0 ? <Note testID="anlagen-leer">{tr('business.anlagen.leer')}</Note> : null}
         {rows.map((row) => (
@@ -199,7 +208,7 @@ export function AssetsPage({ taxYear, person, business = 1, onBack }: BusinessPa
                 <Feld label={tr('business.anlagen.erloes')}>
                   <Input type="numeric" mono value={proceeds} onChange={setProceeds} placeholder="0,00" accessibilityLabel={tr('business.anlagen.erloes')} testID="anlage-abgang-erloes" />
                 </Feld>
-                <Button onPress={() => submitDisposal(row.id)} testID="anlage-abgang-buchen">
+                <Button disabled={flight.busy} onPress={() => submitDisposal(row.id, row.label)} testID="anlage-abgang-buchen">
                   {tr('business.anlagen.abgangSpeichern')}
                 </Button>
               </View>
@@ -220,7 +229,7 @@ export function AssetsPage({ taxYear, person, business = 1, onBack }: BusinessPa
                 <Feld label={tr('business.anlagen.anteilJahr', { jahr: taxYear })}>
                   <Input type="numeric" mono value={correction.thisYear} onChange={(thisYear) => setCorrection((c) => ({ ...c, thisYear }))} placeholder="100" accessibilityLabel={tr('business.anlagen.anteilJahr', { jahr: taxYear })} testID="anlage-15a-jahr" />
                 </Feld>
-                <Button onPress={() => submitCorrection(row.id)} testID="anlage-15a-speichern">
+                <Button disabled={flight.busy} onPress={() => submitCorrection(row.id)} testID="anlage-15a-speichern">
                   {tr('business.anlagen.berichtigungSpeichern')}
                 </Button>
               </View>
@@ -298,6 +307,7 @@ export function AssetsPage({ taxYear, person, business = 1, onBack }: BusinessPa
                 onChange={(key) => setForm((f) => ({ ...f, category: key as FixedAssetInputDtoCategory | null }))}
                 testID="anlage-kategorie"
               />
+              {catalogues.isError ? <ProblemNote problem={problemOf(catalogues.error)} testID="anlage-katalog-fehler" /> : null}
             </Feld>
           ) : null}
           {(form.method === 'linear' || form.method === 'degressive') && form.category === null ? (
@@ -305,7 +315,7 @@ export function AssetsPage({ taxYear, person, business = 1, onBack }: BusinessPa
               <Input type="numeric" mono value={form.years} onChange={(years) => setForm((f) => ({ ...f, years }))} placeholder="5" accessibilityLabel={tr('business.anlagen.nutzungsdauer')} testID="anlage-nutzungsdauer" />
             </Feld>
           ) : null}
-          <Button onPress={submitAsset} testID="anlage-speichern">
+          <Button disabled={flight.busy} onPress={submitAsset} testID="anlage-speichern">
             {tr('business.anlagen.speichern')}
           </Button>
         </Section>
@@ -315,9 +325,11 @@ export function AssetsPage({ taxYear, person, business = 1, onBack }: BusinessPa
         </Button>
       )}
 
-      <Button style={{ marginTop: t.space.s3 }} onPress={() => void run(() => depreciate.mutateAsync({ jahr: taxYear, ...(params ? { params } : {}) }))} testID="anlage-afa-buchen">
+      <Button style={{ marginTop: t.space.s3 }} disabled={flight.busy} onPress={() => confirmDepreciation.ask(() => void run(() => depreciate.mutateAsync({ jahr: taxYear, ...(params ? { params } : {}) })), { jahr: taxYear })} testID="anlage-afa-buchen">
         {tr('business.anlagen.afaBuchen')}
       </Button>
+      {confirmDispose.dialog}
+      {confirmDepreciation.dialog}
     </BusinessFrame>
   )
 }

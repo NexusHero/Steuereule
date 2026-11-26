@@ -1,12 +1,10 @@
 import { describe, expect, it, vi } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
-import { I18nextProvider } from 'react-i18next'
-import { ThemeProvider } from '@steuereule/ui'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { screen, fireEvent, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
-import { createAppI18n } from '../../i18n/app-i18n'
 import { OauthConsentScreen } from './OauthConsentScreen'
 import { server } from '../../test-msw-server'
+import { expectFailsClosed, failEveryRequest } from '../../test-every-query-fails'
+import { renderWithQuery } from '../../test-render'
 
 const BASE_URL = 'http://localhost:3000'
 
@@ -16,19 +14,7 @@ function renderConsentScreen(props: {
   oauthQuery?: string
   onNavigate?: (url: string) => void
 }) {
-  const i18n = createAppI18n('de')
-  const queryClient = new QueryClient({
-    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
-  })
-  return render(
-    <QueryClientProvider client={queryClient}>
-      <I18nextProvider i18n={i18n}>
-        <ThemeProvider mode="light">
-          <OauthConsentScreen {...props} />
-        </ThemeProvider>
-      </I18nextProvider>
-    </QueryClientProvider>,
-  )
+  return renderWithQuery(<OauthConsentScreen {...props} />)
 }
 
 /** Mocks the client lookup and a consent endpoint that answers with a redirect; returns every consent body POSTed. */
@@ -218,4 +204,66 @@ describe('OauthConsentScreen (ADR-0052 §2 / §9 / §10)', () => {
     expect(consentBodies).toHaveLength(2)
   })
 
+})
+
+describe('OauthConsentScreen — failures say what to do (NR-13, MCP-17 in this file, WEB-28)', () => {
+  function lookupOk() {
+    server.use(http.get(`${BASE_URL}/v1/oauth/client-info`, () => HttpResponse.json({ clientId: 'claude-desktop', name: 'Claude Desktop', uri: null, icon: null })))
+  }
+
+  it('an expired approval (400 after 10 minutes) says to start the connection again', async () => {
+    lookupOk()
+    server.use(http.post(`${BASE_URL}/api/auth/oauth2/consent`, () => HttpResponse.json({ error: 'invalid_request' }, { status: 400 })))
+    renderConsentScreen({ clientId: 'claude-desktop', scope: 'steuerdaten:read', oauthQuery: 'client_id=claude-desktop&sig=x' })
+    fireEvent.click(await screen.findByText('Verbindung erlauben'))
+    expect(await screen.findByText('Diese Freigabe ist abgelaufen oder nicht mehr gültig. Starte die Verbindung in deinem Assistenten neu.')).toBeTruthy()
+  })
+
+  it('a 429 says when to try again', async () => {
+    lookupOk()
+    server.use(http.post(`${BASE_URL}/api/auth/oauth2/consent`, () => HttpResponse.json({}, { status: 429, headers: { 'Retry-After': '10' } })))
+    renderConsentScreen({ clientId: 'claude-desktop', scope: 'steuerdaten:read', oauthQuery: 'client_id=claude-desktop&sig=x' })
+    fireEvent.click(await screen.findByText('Verbindung erlauben'))
+    expect(await screen.findByText('Gerade kommen zu viele Anfragen. Versuch es in 10 Sekunden noch mal.')).toBeTruthy()
+  })
+
+  it('a failed client lookup keeps "Erlauben" off and offers a retry', async () => {
+    server.use(http.get(`${BASE_URL}/v1/oauth/client-info`, () => HttpResponse.json({}, { status: 500 })))
+    renderConsentScreen({ clientId: 'claude-desktop', scope: 'steuerdaten:read', oauthQuery: 'client_id=claude-desktop&sig=x' })
+    expect(await screen.findByTestId('oauth-lookup-fehler')).toBeTruthy()
+    expect(screen.getByTestId('oauth-erlauben').getAttribute('aria-disabled')).toBe('true')
+  })
+
+  it('a failed lookup and its retry say nothing about the destination; the answer names it', async () => {
+    let fail = true
+    let release: () => void = () => undefined
+    const held = new Promise<void>((resolve) => (release = resolve))
+    server.use(
+      http.get(`${BASE_URL}/v1/oauth/client-info`, async () => {
+        if (fail) return HttpResponse.json({}, { status: 503 })
+        await held
+        return HttpResponse.json({ clientId: 'c1', name: 'Claude', uri: null, icon: null, redirectTargets: [{ uri: 'http://127.0.0.1:9/callback', destination: 'localhost' }] })
+      }),
+    )
+    renderConsentScreen({ clientId: 'c1', scope: 'steuerdaten:read', oauthQuery: 'client_id=c1&redirect_uri=http%3A%2F%2F127.0.0.1%3A9%2Fcallback' })
+    expect(await screen.findByTestId('oauth-lookup-fehler')).toBeTruthy()
+    expect(screen.queryByTestId('oauth-destination')).toBeNull()
+    expect(screen.queryByText('eine unbekannte Adresse')).toBeNull()
+
+    fail = false
+    fireEvent.click(screen.getByTestId('oauth-lookup-erneut'))
+    await waitFor(() => expect(screen.queryByTestId('oauth-destination')).toBeNull())
+    expect(screen.queryByText('eine unbekannte Adresse')).toBeNull()
+    expect(screen.getByTestId('oauth-erlauben').getAttribute('aria-disabled')).toBe('true')
+
+    release()
+    expect(await screen.findByText('eine App auf diesem Gerät')).toBeTruthy()
+  })
+
+  it('fails closed: every request answering 500 shows a failure and grants nothing', async () => {
+    const failing = failEveryRequest()
+    renderConsentScreen({ clientId: 'claude-desktop', scope: 'steuerdaten:read', oauthQuery: 'client_id=claude-desktop&sig=x' })
+    // "Ablehnen" refuses the access and carries no stored data; it stays possible while the lookup fails.
+    await expectFailsClosed(failing, { allowWrites: [/^POST \/api\/auth\/oauth2\/consent$/] })
+  })
 })

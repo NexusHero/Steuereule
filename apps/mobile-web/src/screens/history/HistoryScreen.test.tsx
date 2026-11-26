@@ -7,10 +7,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import type { ParseReceiptResponseDto } from '@steuereule/api-client'
-import { renderInApp } from '../../test-render'
+import { renderWithQuery } from '../../test-render'
 import { server } from '../../test-msw-server'
+import { expectFailsClosed, failEveryRequest } from '../../test-every-query-fails'
 import { EMPTY_HISTORY_RESPONSE, HISTORY_GAP_RESPONSE, HISTORY_RESPONSE } from '../../test-history-fixture'
 import { HistoryScreen, type HistoryScreenProps } from './HistoryScreen'
 
@@ -30,14 +30,8 @@ function setViewportWidth(width: number) {
 }
 
 function renderHistory(props: Partial<HistoryScreenProps> = {}, language: 'de' | 'en' = 'de') {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   const handlers = { onRegister: vi.fn(), onLogin: vi.fn(), onOpenYearDetail: vi.fn(), onOpenDevelopment: vi.fn(), onOpenDrafts: vi.fn(), onOpenDocuments: vi.fn(), onStartYear: vi.fn() }
-  renderInApp(
-    <QueryClientProvider client={client}>
-      <HistoryScreen isGuest={false} openYear={2025} {...handlers} {...props} />
-    </QueryClientProvider>,
-    { language },
-  )
+  renderWithQuery(<HistoryScreen isGuest={false} openYear={2025} {...handlers} {...props} />, { language })
   return handlers
 }
 
@@ -382,5 +376,13 @@ describe('HistoryScreen — English', () => {
     expect(text('verlauf-jahr-2024')).toBe('2024+809 €Assessment · 92 € less than declared')
     expect(text('verlauf-jahr-2021')).toBe('2021+220 €assessment only')
     expect(text('verlauf-entwicklung')).toContain('See the development')
+  })
+})
+
+describe('HistoryScreen — fails closed (WEB-28)', () => {
+  it('every request answering 500 shows a failure and sends no write (FiledElsewhereQuestion, uploads)', async () => {
+    const failing = failEveryRequest()
+    renderHistory()
+    await expectFailsClosed(failing)
   })
 })

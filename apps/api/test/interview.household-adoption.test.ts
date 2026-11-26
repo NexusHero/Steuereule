@@ -10,6 +10,9 @@ import { FakeLinkRepository } from './fakes/fake-link.repository.js'
 import { FakeMasterDataRepository } from './fakes/fake-master-data.repository.js'
 import { FakeProfileRepository } from './fakes/fake-profile.repository.js'
 
+/** The mask's call on a session that passed the step-up (a new invitation code grants a third party access). */
+const STEPPED_UP = async (): Promise<void> => {}
+
 const YEAR = 2025
 
 function setup() {
@@ -74,7 +77,7 @@ describe('joining the partner\'s return after the interview set up an own one (E
     const link = new LinkService(links, new FakeProfileRepository(), new FakeMasterDataRepository(), audit)
     const service = new InterviewService(answers, audit, link)
 
-    const markus = await link.set('markus', YEAR, { filingType: 'zusammen' })
+    const markus = await link.set('markus', YEAR, { filingType: 'zusammen' }, new Date(), STEPPED_UP)
     for (const [questionId, value] of [['job', 'Angestellt'], ['ausland', 'Nein'], ['kinder', 'Nein'], ['familienstand', 'Verheiratet']] as const) {
       await service.postAnswer('julia', YEAR, { questionId, value }, 'session')
     }

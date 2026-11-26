@@ -4,16 +4,17 @@ import { describe, it, expect, vi, afterEach } from 'vitest'
 import { act, render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { I18nextProvider } from 'react-i18next'
 import { ThemeProvider } from '@steuereule/ui'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { http, HttpResponse } from 'msw'
 import type { Answers } from '@steuereule/core'
 import { createAppI18n } from '../../i18n/app-i18n'
 import { server } from '../../test-msw-server'
 import { downloadBusinessFile } from './businessDownload'
-import { eurosToCents, germanDay, numberAt, personParams, plainEuro, problemOf, recordAt, signedCents, signedEuro, stringAt, todayIso } from './businessKit'
+import { ApiError, NetworkError } from '@steuereule/api-client'
+import { eurosToCents, germanDay, localProblem, numberAt, personParams, plainEuro, problemOf, problemText, recordAt, signedCents, signedEuro, stringAt, todayIso } from './businessKit'
 import { buildMapping, EMPTY_MAPPING, MappingForm, type MappingState } from './BankMapping'
 import { attempt, queryProblem } from './useBusiness'
 import { declaresSelfEmployment, useSelfEmploymentCapability } from './useSelfEmployment'
+import { makeTestQueryClient, renderWithQuery } from '../../test-render'
 
 afterEach(() => vi.restoreAllMocks())
 
@@ -43,12 +44,13 @@ describe('the figures and answers of the area', () => {
     expect(todayIso()).toMatch(/^\d{4}-\d{2}-\d{2}$/)
   })
 
-  it('takes the reason of an error from a string or a list of messages, and none from anything else', () => {
-    expect(problemOf({ status: 409, data: { code: 'BOOK_INTEGRITY_BROKEN', message: 'Kette gebrochen.' } })).toEqual({ status: 409, code: 'BOOK_INTEGRITY_BROKEN', message: 'Kette gebrochen.' })
-    expect(problemOf({ status: 400, data: { message: ['Eins.', 'Zwei.'] } })).toEqual({ status: 400, code: null, message: 'Eins. Zwei.' })
-    expect(problemOf({ status: 500, data: null })).toEqual({ status: 500, code: null, message: null })
-    expect(problemOf({ status: 500, data: 'oops' })).toEqual({ status: 500, code: null, message: null })
-    expect(problemOf({ status: 500 })).toEqual({ status: 500, code: null, message: null })
+  it('reads the status and code of a rejection, and keeps only a domain reason of the API (a string with a code)', () => {
+    const t = createAppI18n('de').t as unknown as (key: string, options?: Record<string, unknown>) => string
+    expect(problemOf(new ApiError(409, { code: 'BOOK_INTEGRITY_BROKEN', message: 'Kette gebrochen.' }))).toMatchObject({ status: 409, code: 'BOOK_INTEGRITY_BROKEN', local: null })
+    expect(problemText(problemOf(new ApiError(400, { message: ['Eins.', 'Zwei.'] })), t)).toBe(t('apiFehler.validation'))
+    expect(problemText(problemOf(new ApiError(500, null)), t)).toBe(t('apiFehler.server'))
+    expect(problemText(problemOf(new ApiError(409, { code: 'X', message: '  ' })), t)).toBe(t('apiFehler.conflict'))
+    expect(problemOf(undefined)).toEqual({ error: undefined, status: undefined, code: null, local: null })
   })
 
   it('finds numbers, records and strings inside an untyped answer, and null where they are not', () => {
@@ -69,17 +71,33 @@ describe('the figures and answers of the area', () => {
 })
 
 describe('the first read and the writes', () => {
-  it('calls a failed request a problem without a status, and a non-200 answer by the API\'s own reason', () => {
-    expect(queryProblem({ isError: true })).toEqual({ status: 0, code: null, message: null })
-    expect(queryProblem({ isError: false, data: { status: 403, data: { code: 'X', message: 'Gesperrt.' } } })).toEqual({ status: 403, code: 'X', message: 'Gesperrt.' })
-    expect(queryProblem({ isError: false, data: { status: 200 } })).toBeNull()
+  const t = createAppI18n('de').t as unknown as (key: string, options?: Record<string, unknown>) => string
+
+  it('calls a failed read a problem with its rejection, and a read that is fine none', () => {
+    const error = new ApiError(403, { code: 'X', message: 'Gesperrt.' })
+    expect(queryProblem({ isError: true, error })).toEqual({ error, status: 403, code: 'X', local: null })
     expect(queryProblem({ isError: false })).toBeNull()
   })
 
-  it('runs a write: ok on 2xx, the API\'s reason on a refusal, a network line when it throws', async () => {
+  it('runs a write: ok when it resolves, the rejection as the problem when it fails', async () => {
     expect(await attempt(async () => ({ status: 201, data: 1 }))).toEqual({ ok: true, response: { status: 201, data: 1 } })
-    expect(await attempt(async () => ({ status: 409, data: { message: 'Fest.' } }))).toEqual({ ok: false, problem: { status: 409, code: null, message: 'Fest.' } })
-    expect(await attempt(async () => Promise.reject(new Error('offline')))).toEqual({ ok: false, problem: { status: 0, code: null, message: null } })
+    const refused = new ApiError(409, { code: 'BOOK_FRAME_FIXED', message: 'Fest.' })
+    expect(await attempt(async () => Promise.reject(refused))).toEqual({ ok: false, problem: { error: refused, status: 409, code: 'BOOK_FRAME_FIXED', local: null } })
+    const offline = new NetworkError()
+    expect(await attempt(async () => Promise.reject(offline))).toEqual({ ok: false, problem: { error: offline, status: undefined, code: null, local: null } })
+  })
+
+  it('says a domain refusal by the API\'s German reason, and everything else in the shared wording (WEB-44)', () => {
+    expect(problemText(problemOf(new ApiError(409, { code: 'BOOK_FRAME_FIXED', message: 'Fest.' })), t)).toBe('Fest.')
+    expect(problemText(problemOf(new ApiError(400, { code: 'PAYROLL_MONTH', message: 'Der Monat ist 1 bis 12.' })), t)).toBe('Der Monat ist 1 bis 12.')
+    // Never the raw English server text.
+    expect(problemText(problemOf(new ApiError(500, { statusCode: 500, message: 'Internal server error' })), t)).toBe(t('apiFehler.server'))
+    expect(problemText(problemOf(new ApiError(401, { code: 'ACCOUNT_REQUIRED', message: 'This endpoint requires a signed-in account, not a guest session.' })), t)).toBe(t('apiFehler.accountRequired'))
+    expect(problemText(problemOf(new ApiError(429, { code: 'RATE_LIMITED', message: 'Too many' })), t)).toBe(t('apiFehler.rateLimited'))
+    // A DTO 400 carries no code: the shared validation line.
+    expect(problemText(problemOf(new ApiError(400, { statusCode: 400, message: ['name must be a string'] })), t)).toBe(t('apiFehler.validation'))
+    expect(problemText(problemOf(new NetworkError()), t)).toBe(t('apiFehler.offline'))
+    expect(problemText(localProblem('Mindestens ein Betrag ist keine Zahl.'), t)).toBe('Mindestens ein Betrag ist keine Zahl.')
   })
 })
 
@@ -101,11 +119,18 @@ describe('downloading a file of the API', () => {
 
   it('keeps the reason of a refusal, also when the body is no JSON, and reports a network failure', async () => {
     server.use(http.get(`*${URL_PATH}`, () => HttpResponse.json({ statusCode: 409, code: 'BOOK_INTEGRITY_BROKEN', message: 'Kette gebrochen.' }, { status: 409 })))
-    expect(await downloadBusinessFile(URL_PATH, 'f.zip')).toEqual({ ok: false, problem: { status: 409, code: 'BOOK_INTEGRITY_BROKEN', message: 'Kette gebrochen.' } })
+    const t = createAppI18n('de').t as unknown as (key: string, options?: Record<string, unknown>) => string
+    const refused = await downloadBusinessFile(URL_PATH, 'f.zip')
+    expect(refused).toMatchObject({ ok: false, problem: { status: 409, code: 'BOOK_INTEGRITY_BROKEN' } })
+    if (!refused.ok) expect(problemText(refused.problem, t)).toBe('Kette gebrochen.')
     server.use(http.get(`*${URL_PATH}`, () => new HttpResponse('not json', { status: 503 })))
-    expect(await downloadBusinessFile(URL_PATH, 'f.zip')).toEqual({ ok: false, problem: { status: 503, code: null, message: null } })
+    const down = await downloadBusinessFile(URL_PATH, 'f.zip')
+    expect(down).toMatchObject({ ok: false, problem: { status: 503, code: null } })
+    if (!down.ok) expect(problemText(down.problem, t)).toBe(t('apiFehler.server'))
     server.use(http.get(`*${URL_PATH}`, () => HttpResponse.error()))
-    expect(await downloadBusinessFile(URL_PATH, 'f.zip')).toEqual({ ok: false, problem: { status: 0, code: null, message: null } })
+    const offline = await downloadBusinessFile(URL_PATH, 'f.zip')
+    expect(offline).toMatchObject({ ok: false, problem: { status: undefined, code: null } })
+    if (!offline.ok) expect(problemText(offline.problem, t)).toBe(t('apiFehler.offline'))
   })
 })
 
@@ -175,23 +200,15 @@ describe('the self-employment switch of the server', () => {
     expect(declaresSelfEmployment({ job: 'Angestellt' } as Answers)).toBe(false)
   })
 
-  function Probe({ client }: { client: QueryClient }) {
-    return (
-      <QueryClientProvider client={client}>
-        <Capability />
-      </QueryClientProvider>
-    )
-  }
   function Capability() {
     const c = useSelfEmploymentCapability()
     return <span data-testid="cap">{c.pending ? 'pending' : c.enabled ? 'on' : 'off'}</span>
   }
   const capabilities = (body: unknown, status = 200) => server.use(http.get('*/v1/capabilities', () => HttpResponse.json(body as object, { status })))
-  const freshClient = () => new QueryClient({ defaultOptions: { queries: { retry: false } } })
 
   it('is on when the server says so, pending until it answered', async () => {
     capabilities({ selbststaendig: true })
-    render(<Probe client={freshClient()} />)
+    renderWithQuery(<Capability />)
     expect(screen.getByTestId('cap').textContent).toBe('pending')
     await waitFor(() => expect(screen.getByTestId('cap').textContent).toBe('on'))
   })
@@ -199,21 +216,21 @@ describe('the self-employment switch of the server', () => {
   it('is on for a new user whose year has no cockpit summary yet (09b in CI, 21.11.2026)', async () => {
     server.use(http.get('*/v1/steuerjahre/2025/cockpit', () => HttpResponse.json(null)))
     capabilities({ selbststaendig: true })
-    render(<Probe client={freshClient()} />)
+    renderWithQuery(<Capability />)
     await waitFor(() => expect(screen.getByTestId('cap').textContent).toBe('on'))
   })
 
   it('is off when the read answers with an error', async () => {
     capabilities({ statusCode: 500, message: 'x' }, 500)
-    render(<Probe client={freshClient()} />)
+    renderWithQuery(<Capability />)
     await waitFor(() => expect(screen.getByTestId('cap').textContent).toBe('off'))
   })
 
   it('reads the switch from the cache at once when it is already there', async () => {
-    const client = freshClient()
+    const client = makeTestQueryClient()
     const { getCapabilitiesControllerGetCapabilitiesQueryKey } = await import('@steuereule/api-client')
     client.setQueryData(getCapabilitiesControllerGetCapabilitiesQueryKey(), { status: 200, data: { selbststaendig: true } })
-    render(<Probe client={client} />)
+    renderWithQuery(<Capability />, { client })
     expect(screen.getByTestId('cap').textContent).toBe('on')
     await act(async () => {})
   })

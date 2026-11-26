@@ -56,13 +56,20 @@ export class BusinessExportService {
 
   async procedureDoc(userId: string, year: number, ref: BusinessRef) {
     await this.context.assertOpen(userId, year)
-    const { chart, mode, profile } = await this.context.frame(userId, year, ref)
+    const frame = await this.context.frame(userId, year, ref)
+    if (frame.profile) await this.audit.append({ userId, action: 'READ', resource: 'selbststaendig' })
+    return this.procedureDocOf(year, frame)
+  }
+
+  /** The Verfahrensdokumentation from the book's frame; the save answers with it without a further READ row. */
+  private procedureDocOf(year: number, { chart, mode, profile }: Awaited<ReturnType<BusinessContext['frame']>>) {
     const stored = parseJson<Partial<Record<VerfahrensdokuPlaceholder, string>>>(profile?.procedureDoc ?? null, {})
     const values = {
       // What the app knows itself; the user's own values win.
       kontenrahmen: chart,
       gewinnermittlung: mode === 'euer' ? 'Einnahmenüberschussrechnung (§ 4 Abs. 3 EStG)' : 'Bestandsvergleich (Bilanz, § 4 Abs. 1, § 5 EStG)',
-      appVersion: process.env.APP_VERSION ?? 'aktuelle Fassung',
+      // The image sets APP_VERSION="" when it was built without the commit (compose, CI): empty is "not known" too.
+      appVersion: process.env.APP_VERSION?.trim() || 'aktuelle Fassung',
       verschluesselung: 'Feldverschlüsselung mit AES-256-GCM',
       ...(profile?.name ? { unternehmen: profile.name } : {}),
       ...(profile?.startDate ? { beginn: profile.startDate } : {}),
@@ -75,7 +82,7 @@ export class BusinessExportService {
     await this.context.assertOpen(userId, year)
     await this.repository.saveProfile(userId, year, ref, { procedureDoc: JSON.stringify(values) })
     await this.audit.append({ userId, action: 'WRITE', resource: 'selbststaendig' })
-    return this.procedureDoc(userId, year, ref)
+    return this.procedureDocOf(year, await this.context.frame(userId, year, ref))
   }
 
   /** The E-Bilanz as XBRL, not transmitted (ADR-0101 §17); `download` is gated by the tier. */

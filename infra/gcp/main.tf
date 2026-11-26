@@ -49,6 +49,9 @@ locals {
     "sts.googleapis.com",
   ]
 
+  # Mirrors apps/api/src/config/production-config.ts (the API refuses to start on a deployment without
+  # these) and REQUIRED_SECRETS / OPTIONAL_SECRETS in .github/workflows/deploy.yml;
+  # apps/api/test/config/deployment-wiring.test.ts keeps the three in step.
   required_secrets = [
     "DATABASE_URL",
     "GUEST_SESSION_SECRET",
@@ -58,22 +61,59 @@ locals {
     "KEYSTORE_MASTER_KEY",
     "BETTER_AUTH_SECRET",
     "BREVO_API_KEY",
+    # Payment is required on a deployment, so the printout never dead-ends (OPS-6, OPS-10). The price ids are
+    # not secret, but Secret Manager is the one store the deploy mounts runtime values from.
+    "STRIPE_SECRET_KEY",
+    "STRIPE_WEBHOOK_SECRET",
+    "STRIPE_PRICE_ID",
+    "STRIPE_PRICE_ID_SELBSTSTAENDIG",
+    # Shared run log and rate limiter. Without it every limit would count per instance (up to ten times
+    # the limit), so a deployment refuses to start without it (OPS-7). enable_redis below fills it; with
+    # enable_redis = false put the rediss:// URL of another Redis into this secret.
+    "REDIS_URL",
   ]
 
   optional_secrets = [
+    # Key rotation: earlier field keys and keystore master keys, still accepted for reading.
+    "PRISMA_FIELD_DECRYPTION_KEYS",
+    "KEYSTORE_MASTER_KEY_PREVIOUS",
     "GOOGLE_CLIENT_ID",
     "GOOGLE_CLIENT_SECRET",
-    "STRIPE_SECRET_KEY",
-    "STRIPE_WEBHOOK_SECRET",
+    # Apple sign-in (REQ-008) stays off until APPLE_SIGN_IN_ENABLED is set and both have a value.
+    "APPLE_CLIENT_ID",
+    "APPLE_CLIENT_SECRET",
     # The owl answers from the built-in rules until one provider key has a value (ADR-0064).
     "GEMINI_API_KEY",
+    "GOOGLE_API_KEY",
     "ANTHROPIC_API_KEY",
     "OPENAI_API_KEY",
-    # Shared run log and rate limiter. Without it the API still works: answers resume on the
-    # instance that runs them, and Cloud Run session affinity keeps a client on that instance.
-    "REDIS_URL",
+    # A key for the chosen provider, and one per model slot (chat, documents, fallback, topic guard).
+    "AI_API_KEY",
+    "AI_ADVISOR_API_KEY",
+    "AI_VISION_API_KEY",
+    "AI_FALLBACK_API_KEY",
+    "AI_GUARD_API_KEY",
+    # PIN of the operator's ELSTER certificate; read only while ELSTER_TRANSMISSION_ENABLED is on.
+    "ELSTER_CERT_PIN",
     # PEM of the Memorystore server CA; the API verifies the rediss:// connection with it.
     "REDIS_TLS_CA",
+  ]
+
+  # Row-level security (P11): the login that owns the tables. Only the migrate job reads it; the API connects
+  # with DATABASE_URL, a login the migrate job creates without ownership (apps/api/scripts/runtime-database-login.mjs).
+  migrate_only_secrets = [
+    "MIGRATE_DATABASE_URL",
+  ]
+
+  # What the migrate job mounts (.github/workflows/deploy.yml, MIGRATE_SECRETS): both logins, the keystore, and
+  # the field keys its backfills and `rotate:field-key` read and write with.
+  migrate_job_secrets = [
+    "MIGRATE_DATABASE_URL",
+    "DATABASE_URL",
+    "KEYSTORE_DATABASE_URL",
+    "PRISMA_FIELD_ENCRYPTION_KEY",
+    "PRISMA_FIELD_ENCRYPTION_HASH_SALT",
+    "PRISMA_FIELD_DECRYPTION_KEYS",
   ]
 }
 
@@ -291,7 +331,7 @@ resource "google_sql_database" "keystore" {
 }
 
 resource "google_secret_manager_secret" "app" {
-  for_each  = toset(concat(local.required_secrets, local.optional_secrets))
+  for_each  = toset(concat(local.required_secrets, local.optional_secrets, local.migrate_only_secrets))
   secret_id = each.value
 
   replication {
@@ -310,6 +350,11 @@ resource "google_service_account" "api_runtime" {
   display_name = "Steuereule API runtime"
 }
 
+resource "google_service_account" "migrate" {
+  account_id   = "steuereule-migrate"
+  display_name = "Steuereule migrate job (owner of the database schema)"
+}
+
 resource "google_service_account" "web_runtime" {
   account_id   = "steuereule-web"
   display_name = "Steuereule web runtime (no roles)"
@@ -320,11 +365,25 @@ resource "google_service_account" "deployer" {
   display_name = "Steuereule GitHub Actions deployer"
 }
 
+# The API reads every secret except the migration login: with it the API could act as the owner of the tables.
 resource "google_secret_manager_secret_iam_member" "api_reads_secrets" {
-  for_each  = google_secret_manager_secret.app
+  for_each  = { for name, secret in google_secret_manager_secret.app : name => secret if !contains(local.migrate_only_secrets, name) }
   secret_id = each.value.id
   role      = "roles/secretmanager.secretAccessor"
   member    = "serviceAccount:${google_service_account.api_runtime.email}"
+}
+
+resource "google_secret_manager_secret_iam_member" "migrate_reads_secrets" {
+  for_each  = toset(local.migrate_job_secrets)
+  secret_id = google_secret_manager_secret.app[each.value].id
+  role      = "roles/secretmanager.secretAccessor"
+  member    = "serviceAccount:${google_service_account.migrate.email}"
+}
+
+resource "google_project_iam_member" "migrate_connects_to_sql" {
+  project = var.project_id
+  role    = "roles/cloudsql.client"
+  member  = "serviceAccount:${google_service_account.migrate.email}"
 }
 
 resource "google_project_iam_member" "api_connects_to_sql" {
@@ -344,10 +403,32 @@ resource "google_project_iam_member" "deployer" {
   member  = "serviceAccount:${google_service_account.deployer.email}"
 }
 
+# The deploy takes an on-demand backup of the tax-data instance before it migrates (deploy.yml). No predefined
+# role is that narrow (roles/cloudsql.editor could also change or restart the instance), so the deployer gets
+# exactly these permissions (OPS-11): create a backup, follow the operation it starts, read the result.
+resource "google_project_iam_custom_role" "pre_deploy_backup" {
+  role_id     = "steuereulePreDeployBackup"
+  title       = "Steuereule pre-deploy backup"
+  description = "Create and read on-demand Cloud SQL backups before a migration."
+  permissions = [
+    "cloudsql.backupRuns.create",
+    "cloudsql.backupRuns.get",
+    "cloudsql.backupRuns.list",
+    "cloudsql.instances.get",
+  ]
+}
+
+resource "google_project_iam_member" "deployer_backs_up_sql" {
+  project = var.project_id
+  role    = google_project_iam_custom_role.pre_deploy_backup.id
+  member  = "serviceAccount:${google_service_account.deployer.email}"
+}
+
 resource "google_service_account_iam_member" "deployer_acts_as_runtime" {
   for_each = {
-    api = google_service_account.api_runtime.name
-    web = google_service_account.web_runtime.name
+    api     = google_service_account.api_runtime.name
+    migrate = google_service_account.migrate.name
+    web     = google_service_account.web_runtime.name
   }
   service_account_id = each.value
   role               = "roles/iam.serviceAccountUser"
@@ -415,10 +496,10 @@ resource "google_billing_budget" "monthly" {
   depends_on = [google_project_service.enabled]
 }
 
-# ── Redis for the owl's answer runs (ADR-0064, ADR-0066 §8) ──────────────────────────────────
-# On by default so production runs the code path local development runs (Redis). The smallest
-# Memorystore instance costs roughly 35 EUR a month per environment; set enable_redis = false to
-# go without it, or put the URL of another Redis into the secret REDIS_URL and leave this off.
+# ── Redis for the owl's answer runs and the rate limiter (ADR-0064, ADR-0066 §8) ─────────────
+# On by default: a deployment refuses to start without REDIS_URL (OPS-7). The smallest Memorystore
+# instance costs roughly 35 EUR a month per environment; with enable_redis = false put the rediss://
+# URL of another Redis into the secret REDIS_URL yourself.
 #
 # AUTH and TLS are on: the instance is reachable from the whole VPC, so a network position alone
 # must not be enough to read or write the answer runs.

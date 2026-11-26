@@ -262,7 +262,7 @@ export function buildAdvisorTestKit(engine?: AdvisorEnginePort, modelConnection?
     const caseDigest = new AdvisorCaseDigest(advisorRepo, confirmationService, facts, drafts, transactions, consent, linkService, wiring.printout ?? noFormsPrintout, receiptRepo, taxEstimate, business)
     const advisorEngine = wiring.engine ?? null
     const conversations = new AdvisorConversations(advisorEngine, advisorRepo, auditService, caseDigest)
-    const notes = new AdvisorProjectNotes(advisorRepo, caseDigest)
+    const notes = new AdvisorProjectNotes(advisorRepo, caseDigest, auditService)
     const opening = new AdvisorOpening(advisorRepo, caseDigest, notes, taxEstimate)
     const staging = new AdvisorDocumentStaging(advisorRepo, owlModeService, confirmationService, auditService, transactions, caseDigest, drafts, profileRepo, linkService, childRepo)
     const connection = wiring.modelConnection ?? new ModelConnectionService(runtimeConfig)

@@ -4,15 +4,12 @@
 // `useFilingTypeComparisonControllerGetComparison` hook against the endpoint, with MSW
 // mocking the wire shape (the same pattern as CockpitScreen.test.tsx).
 import { describe, it, expect } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
-import { I18nextProvider } from 'react-i18next'
-import { ThemeProvider } from '@steuereule/ui'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { screen, fireEvent } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
-import { createAppI18n } from '../../i18n/app-i18n'
 import { FilingTypeComparisonScreen } from './FilingTypeComparisonScreen'
 import { server } from '../../test-msw-server'
 import type { FilingTypeComparisonDto } from '@steuereule/api-client'
+import { renderWithQuery } from '../../test-render'
 
 const TAX_YEAR = 2026
 const COMPARISON_URL = `*/v1/steuerjahre/${TAX_YEAR}/veranlagungsartenvergleich`
@@ -50,17 +47,7 @@ function mockComparison(data: FilingTypeComparisonDto | null) {
 }
 
 function renderScreen(onDone?: () => void) {
-  const i18n = createAppI18n('de')
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-  return render(
-    <QueryClientProvider client={queryClient}>
-      <I18nextProvider i18n={i18n}>
-        <ThemeProvider mode="light">
-          <FilingTypeComparisonScreen taxYear={TAX_YEAR} {...(onDone ? { onDone } : {})} />
-        </ThemeProvider>
-      </I18nextProvider>
-    </QueryClientProvider>,
-  )
+  return renderWithQuery(<FilingTypeComparisonScreen taxYear={TAX_YEAR} {...(onDone ? { onDone } : {})} />)
 }
 
 /** Choose "Ja" (married) and type the partner income — the two M1 inputs that enable the query. */

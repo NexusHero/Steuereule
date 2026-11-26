@@ -1,11 +1,14 @@
 import { applyDecorators, Body, Controller, Get, HttpCode, Inject, Param, ParseIntPipe, Post, Put, Query, Res, UseGuards } from '@nestjs/common'
 import { ApiBody, ApiOkResponse, ApiParam, ApiQuery, ApiResponse, ApiTags, ApiUnauthorizedResponse } from '@nestjs/swagger'
+import { Throttle, ThrottlerGuard } from '@nestjs/throttler'
 import type { FastifyReply } from 'fastify'
+import { AccountThrottle, BANK_IMPORT_THROTTLE, BUSINESS_EXPORT_THROTTLE, CHECKOUT_THROTTLE, ERIC_THROTTLE, accountKeyedTracker } from '../rate-limit/rate-limit.js'
 import type { BankCsvPreset, BookingTaxKey, ProfessionAnswers, VerfahrensdokuPlaceholder } from '@steuereule/core'
 import { BANK_CSV_PRESETS, CATALOG_PROFESSIONS, FREE_ACTIVITIES, FREE_ACTIVITY_LABELS, PROFESSION_LABELS, USEFUL_LIVES, parseBookingDraft } from '@steuereule/core'
 import { InvalidInputError } from '../common/domain-error.js'
 import { toCoreMapping } from './csv-mapping.js'
 import { CurrentUser } from '../auth/current-user.decorator.js'
+import { RequiresVerifiedEmail } from '../auth/requires-verified-email.guard.js'
 import { RequiresAccount } from '../auth/requires-account.guard.js'
 import { UserContextGuard } from '../auth/user-context.guard.js'
 import { ParseTaxYearPipe } from '../common/parse-tax-year.pipe.js'
@@ -14,6 +17,7 @@ import { firstBusinessOf, type BusinessPerson, type BusinessRef } from './busine
 import { BusinessService } from './business.service.js'
 import type { LossFacts, PartnershipShare, TradeTaxInputs } from './views.js'
 import { ElsterHelpService } from './elster-help.service.js'
+import { Destructive } from '../common/destructive.decorator.js'
 import {
   AcceptBankTransactionDto,
   AssetDisposalDto,
@@ -125,6 +129,7 @@ export class BusinessController {
   }
 
   @Post(':jahr/selbststaendig/betriebe/:nummer/entfernen')
+  @Destructive()
   @HttpCode(204)
   @ApiParam({ name: 'nummer', type: Number, description: 'The business number, from 2.' })
   @RequiresAccount()
@@ -188,6 +193,7 @@ export class BusinessController {
   }
 
   @Post(':jahr/selbststaendig/buchungen/:nummer/storno')
+  @Destructive()
   @HttpCode(201)
   @RequiresAccount()
   @ApiParam({ name: 'nummer', type: Number })
@@ -216,6 +222,7 @@ export class BusinessController {
   }
 
   @Post(':jahr/selbststaendig/festschreibung')
+  @Destructive()
   @HttpCode(200)
   @RequiresAccount()
   @ApiBody({ type: LockDto })
@@ -226,6 +233,7 @@ export class BusinessController {
   }
 
   @Post(':jahr/selbststaendig/bank/import')
+  @AccountThrottle(BANK_IMPORT_THROTTLE)
   @HttpCode(201)
   @RequiresAccount()
   @ApiBody({ type: BankImportDto })
@@ -260,6 +268,7 @@ export class BusinessController {
   }
 
   @Post(':jahr/selbststaendig/bank/:umsatzId/ignorieren')
+  @Destructive()
   @HttpCode(204)
   @RequiresAccount()
   @ApiParam({ name: 'umsatzId', type: String })
@@ -296,6 +305,7 @@ export class BusinessController {
   }
 
   @Post(':jahr/selbststaendig/anlagen/:anlageId/abgang')
+  @Destructive()
   @HttpCode(200)
   @RequiresAccount()
   @ApiParam({ name: 'anlageId', type: String })
@@ -307,6 +317,7 @@ export class BusinessController {
   }
 
   @Post(':jahr/selbststaendig/anlagen/abschreibung')
+  @Destructive()
   @HttpCode(201)
   @RequiresAccount()
   @ApiOkResponse({ type: [JournalEntryDto], description: 'Books the year’s depreciation and disposals, once per asset and year.' })
@@ -323,6 +334,7 @@ export class BusinessController {
   }
 
   @Post(':jahr/selbststaendig/abschluss/eroeffnung')
+  @Destructive()
   @HttpCode(201)
   @RequiresAccount()
   @ApiOkResponse({ type: JournalEntryDto, description: 'The Eröffnungsbilanz entry posted into the next year’s book.' })
@@ -439,6 +451,7 @@ export class BusinessController {
   }
 
   @Get(':jahr/selbststaendig/export/gobd')
+  @AccountThrottle(BUSINESS_EXPORT_THROTTLE)
   @RequiresAccount()
   // The 200 is a zip; the errors stay JSON (no ApiProduces, which would type them as zip too).
   @ApiOkResponse({ description: 'Z3 data export (§ 147 Abs. 6 AO): index.xml, buchungen.csv, konten.csv, protokoll.csv.', content: { 'application/zip': { schema: { type: 'string', format: 'binary' } } } })
@@ -467,6 +480,7 @@ export class BusinessController {
   }
 
   @Get(':jahr/selbststaendig/e-bilanz')
+  @AccountThrottle(BUSINESS_EXPORT_THROTTLE)
   @RequiresAccount()
   @ApiOkResponse({ type: EBilanzDto, description: 'Preview of the XBRL data set; not transmitted (ADR-0101 §17).' })
   @Errors(409)
@@ -475,8 +489,12 @@ export class BusinessController {
   }
 
   @Post(':jahr/selbststaendig/e-bilanz/uebermittlung')
+  @Destructive()
+  @AccountThrottle(ERIC_THROTTLE)
   @HttpCode(200)
   @RequiresAccount()
+  // Sent to the tax office under the operator's certificate: a verified address, as for the return (API-13, ADR-0103 §4).
+  @RequiresVerifiedEmail()
   @ApiBody({ type: EBilanzTransmitDto })
   @ApiOkResponse({ type: EBilanzTransmissionDto, description: 'Validates or sends the E-Bilanz through the operator’s ERiC sidecar; nicht_eingerichtet names what is missing.' })
   @Errors(402, 409)
@@ -485,6 +503,7 @@ export class BusinessController {
   }
 
   @Get(':jahr/selbststaendig/e-bilanz/datei')
+  @AccountThrottle(BUSINESS_EXPORT_THROTTLE)
   @RequiresAccount()
   @ApiOkResponse({ description: 'The XBRL instance as a file (not transmitted).', content: { 'application/xml': { schema: { type: 'string' } } } })
   @Errors(402, 409)
@@ -498,7 +517,11 @@ export class BusinessController {
   @Post(':jahr/selbststaendig/checkout')
   @HttpCode(201)
   @RequiresAccount()
-  @ApiOkResponse({ type: BusinessCheckoutResponseDto, description: 'Stripe Checkout at the self-employment price (STRIPE_PRICE_ID_SELBSTSTAENDIG).' })
+  @Throttle({ default: { ...CHECKOUT_THROTTLE, getTracker: accountKeyedTracker } })
+  @UseGuards(ThrottlerGuard)
+  @ApiOkResponse({ type: BusinessCheckoutResponseDto, description: 'Stripe Checkout at the self-employment price (STRIPE_PRICE_ID_SELBSTSTAENDIG); an open session is handed out again.' })
+  @ApiResponse({ status: 409, type: BusinessErrorDto, description: 'ALREADY_PAID (the year is unlocked) or PAYMENT_PENDING (a payment is still being settled).' })
+  @ApiResponse({ status: 429, description: 'Too many checkout starts for this account.' })
   @Errors(503)
   checkout(@CurrentUser() userId: string, @Param('jahr', ParseTaxYearPipe) year: number): Promise<BusinessCheckoutResponseDto> {
     return this.unlock.startCheckout(userId, year)

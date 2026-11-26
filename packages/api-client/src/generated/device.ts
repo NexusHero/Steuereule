@@ -65,8 +65,6 @@ export type deviceControllerRequestCodeResponseSuccess = (deviceControllerReques
 };
 ;
 
-export type deviceControllerRequestCodeResponse = (deviceControllerRequestCodeResponseSuccess)
-
 export const getDeviceControllerRequestCodeUrl = () => {
 
 
@@ -75,9 +73,9 @@ export const getDeviceControllerRequestCodeUrl = () => {
   return `/v1/device/code`
 }
 
-export const deviceControllerRequestCode = async ( options?: RequestInit): Promise<deviceControllerRequestCodeResponse> => {
+export const deviceControllerRequestCode = async ( options?: RequestInit): Promise<deviceControllerRequestCodeResponseSuccess> => {
 
-  return httpClient<deviceControllerRequestCodeResponse>(getDeviceControllerRequestCodeUrl(),
+  return httpClient<deviceControllerRequestCodeResponseSuccess>(getDeviceControllerRequestCodeUrl(),
   {
     ...options,
     method: 'POST'
@@ -142,8 +140,6 @@ export type deviceControllerGetPendingResponseSuccess = (deviceControllerGetPend
 };
 ;
 
-export type deviceControllerGetPendingResponse = (deviceControllerGetPendingResponseSuccess)
-
 export const getDeviceControllerGetPendingUrl = (params: DeviceControllerGetPendingParams,) => {
   const normalizedParams = new URLSearchParams();
 
@@ -159,9 +155,9 @@ export const getDeviceControllerGetPendingUrl = (params: DeviceControllerGetPend
   return stringifiedParams.length > 0 ? `/v1/device/pending?${stringifiedParams}` : `/v1/device/pending`
 }
 
-export const deviceControllerGetPending = async (params: DeviceControllerGetPendingParams, options?: RequestInit): Promise<deviceControllerGetPendingResponse> => {
+export const deviceControllerGetPending = async (params: DeviceControllerGetPendingParams, options?: RequestInit): Promise<deviceControllerGetPendingResponseSuccess> => {
 
-  return httpClient<deviceControllerGetPendingResponse>(getDeviceControllerGetPendingUrl(params),
+  return httpClient<deviceControllerGetPendingResponseSuccess>(getDeviceControllerGetPendingUrl(params),
   {
     ...options,
     method: 'GET'
@@ -256,8 +252,6 @@ export type deviceControllerApproveResponseSuccess = (deviceControllerApproveRes
 };
 ;
 
-export type deviceControllerApproveResponse = (deviceControllerApproveResponseSuccess)
-
 export const getDeviceControllerApproveUrl = () => {
 
 
@@ -266,9 +260,9 @@ export const getDeviceControllerApproveUrl = () => {
   return `/v1/device/approve`
 }
 
-export const deviceControllerApprove = async (approveDeviceRequestDto: ApproveDeviceRequestDto, options?: RequestInit): Promise<deviceControllerApproveResponse> => {
+export const deviceControllerApprove = async (approveDeviceRequestDto: ApproveDeviceRequestDto, options?: RequestInit): Promise<deviceControllerApproveResponseSuccess> => {
 
-  return httpClient<deviceControllerApproveResponse>(getDeviceControllerApproveUrl(),
+  return httpClient<deviceControllerApproveResponseSuccess>(getDeviceControllerApproveUrl(),
   {
     ...options,
     method: 'POST',
@@ -333,8 +327,6 @@ export type deviceControllerExchangeTokenResponseSuccess = (deviceControllerExch
 };
 ;
 
-export type deviceControllerExchangeTokenResponse = (deviceControllerExchangeTokenResponseSuccess)
-
 export const getDeviceControllerExchangeTokenUrl = () => {
 
 
@@ -343,9 +335,9 @@ export const getDeviceControllerExchangeTokenUrl = () => {
   return `/v1/device/token`
 }
 
-export const deviceControllerExchangeToken = async (deviceTokenRequestDto: DeviceTokenRequestDto, options?: RequestInit): Promise<deviceControllerExchangeTokenResponse> => {
+export const deviceControllerExchangeToken = async (deviceTokenRequestDto: DeviceTokenRequestDto, options?: RequestInit): Promise<deviceControllerExchangeTokenResponseSuccess> => {
 
-  return httpClient<deviceControllerExchangeTokenResponse>(getDeviceControllerExchangeTokenUrl(),
+  return httpClient<deviceControllerExchangeTokenResponseSuccess>(getDeviceControllerExchangeTokenUrl(),
   {
     ...options,
     method: 'POST',

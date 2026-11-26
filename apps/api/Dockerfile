@@ -26,6 +26,9 @@ COPY e2e ./e2e
 RUN pnpm install --frozen-lockfile
 RUN pnpm --filter @steuereule/api prisma:generate \
   && pnpm --filter @steuereule/api build
+# Street data of the address search (ADR-0065), pinned by commit and checksum in scripts/fetch-street-data.ts,
+# with its licence manifest next to it. Baked in, so every deployment answers addresses (OPS-15).
+RUN STREET_DATA_PATH=/repo/apps/api/data/streets.csv pnpm --filter @steuereule/api streets:fetch
 # The workspace manifests alone (same paths), for the production install below.
 RUN mkdir /manifests \
   && find apps packages e2e -maxdepth 2 -name package.json -not -path '*/node_modules/*' -exec cp --parents {} /manifests \;
@@ -44,8 +47,9 @@ COPY packages/core ./packages/core
 COPY apps/api/prisma ./apps/api/prisma
 COPY apps/api/assets ./apps/api/assets
 COPY apps/api/src ./apps/api/src
-COPY apps/api/scripts/migrate-deploy.mjs apps/api/scripts/backfill-profile-name-encryption.ts apps/api/scripts/backfill-identity.ts ./apps/api/scripts/
+COPY apps/api/scripts/migrate-deploy.mjs apps/api/scripts/runtime-database-login.mjs apps/api/scripts/backfill-profile-name-encryption.ts apps/api/scripts/backfill-identity.ts apps/api/scripts/rotate-field-encryption-key.ts ./apps/api/scripts/
 COPY --from=build /repo/apps/api/dist ./apps/api/dist
+COPY --from=build /repo/apps/api/data ./apps/api/data
 
 # Install scripts of the dependencies that need them (engine binaries), then both Prisma clients (main +
 # keystore, generated into node_modules). Fails the build when the schema engine is missing, instead of the
@@ -79,6 +83,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends openssl \
      /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack /root/.cache /root/.npm
 
 ENV NODE_ENV=production
+ENV STREET_DATA_PATH=/repo/apps/api/data/streets.csv
+# The commit the image was built from, shown in the procedure documentation (H2-30). deploy.yml passes it; the API
+# refuses to start on a deployment without it.
+ARG APP_VERSION=""
+ENV APP_VERSION=${APP_VERSION}
 EXPOSE 3000
 WORKDIR /repo/apps/api
 USER node

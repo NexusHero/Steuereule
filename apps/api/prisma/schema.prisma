@@ -84,11 +84,15 @@ model TaxDataAccessLog {
   /// The resource/field-class touched, e.g. "profile". A short discriminator, never
   /// the sensitive value itself.
   resource  String
-  /// Optional actor / client source, e.g. "Assistent: Claude" for OAuth bearer token requests.
+  /// Optional actor / client source: "assistent:<clientId>" for an MCP tool call of the user's assistant.
   source    String?
   createdAt DateTime    @default(now())
 
   @@index([userId])
+  /// "Zuletzt aktiv" per connected assistant: the newest row of its source (beta P4, MCP-8).
+  @@index([userId, source, createdAt])
+  /// The retention sweep deletes rows older than RETENTION.auditLogYears (P7, H2-7).
+  @@index([createdAt])
 }
 
 enum AuditAction {
@@ -125,13 +129,17 @@ model User {
   /// after the one-code confirmation), never by this app's own controllers — the
   /// plugin owns the field exactly as it owns `twoFactor.secret`.
   twoFactorEnabled   Boolean             @default(false)
+  /// ADR-0030 §3a: when the T-7 warning about the deletion of a never-verified account was sent.
+  /// The account is deletable only 7 days after this, never on age alone. Unknown to better-auth.
+  unverifiedWarningSentAt      DateTime? @map("unbestaetigtWarnungAm")
+  /// ADR-0030 §2: when the T-1 reminder was sent.
+  unverifiedFinalWarningSentAt DateTime? @map("unbestaetigtLetzteWarnungAm")
   createdAt          DateTime            @default(now())
   updatedAt          DateTime            @updatedAt
   sessions           Session[]
   accounts           Account[]
   twoFactors         TwoFactor[]
   passkeys           Passkey[]
-  unlocks            Unlock[]
   oauthClients       OauthClient[]
   oauthConsents      OauthConsent[]
   oauthAccessTokens  OauthAccessToken[]
@@ -411,12 +419,12 @@ model DeviceCode {
   // --- Our columns (ADR-0024) — nullable, additive, never read by the plugin ---
   /// The desktop's User-Agent at `/v1/device/code` request time — match-verification
   /// evidence (AC-3) for the phone's approval screen, never the approving phone's own.
-  requestUserAgent String?
+  requestUserAgent String? /// @encrypted?mode=strict
   /// The desktop's request IP at `/v1/device/code` time — the geo-IP resolver's
   /// input (task 0b); never persisted alongside a resolved region that could outlive
   /// its own accuracy guarantee (the resolver re-derives `requestRegion` once, at
   /// write time, from this same value).
-  requestIp        String?
+  requestIp        String? /// @encrypted?mode=strict
   /// Country-level result of resolving `requestIp` (task 0b) — `null` until
   /// resolved, "unknown" (never a guess) when the address is private/unroutable or
   /// the geo-IP database is stale (ADR-0021 control). Two consumers: the phone's
@@ -425,6 +433,9 @@ model DeviceCode {
   /// When the desktop's `/v1/device/code` request was made — distinct from
   /// `expiresAt`/`lastPolledAt`, which are the plugin's own protocol timestamps.
   requestedAt      DateTime?
+  /// `createdAt` of the session that approved this code (API-1). The session `/v1/device/token` mints takes
+  /// it over, so it is never fresh for step-up and never outlives the approver's absolute cap.
+  approvedSessionCreatedAt DateTime?
 
   @@index([userId])
 }
@@ -447,9 +458,16 @@ model LegalHold {
   /// The hold is active while `holdUntil` is in the future; once past, the deletion
   /// transaction treats it as expired and proceeds normally.
   holdUntil DateTime
+  /// The one row held (P7): `Unlock.id` for resource "unlock", `FilingVersion.id` for "filingVersion".
+  /// Null holds the whole resource category ("profile", "taxData", "auditLog"), as an operator sets it.
+  resourceId String?
+  /// Why the row is held, e.g. "§ 147 AO" — the legal basis the deletion answer names.
+  reason     String?
   createdAt DateTime @default(now())
 
+  @@unique([resource, resourceId])
   @@index([userId])
+  @@index([holdUntil])
 }
 
 /// One row per uploaded receipt (ADR-007/008). Lands UNBOUND (no year): the user
@@ -512,6 +530,9 @@ model Receipt {
   draftsTaxYear     Int?         @map("entwurfSteuerjahr")
   /// A business receipt (ADR-0101 §6): "ausgabe" (an expense) or "einnahme" (an invoice the business wrote).
   direction         String?      @map("richtung")
+  /// The OAuth client id of the user's assistant that uploaded it through MCP (beta P4, H2-24): only that
+  /// assistant may take it back. Null for everything the user uploaded. An id, not a name: clear.
+  uploadedByClientId String?     @map("hochgeladenVonClient")
   createdAt         DateTime     @default(now())
   updatedAt         DateTime     @updatedAt
   file              ReceiptFile?
@@ -953,14 +974,16 @@ model Marking {
 
 /// Paid unlock of one tax year's Formular-Ausdruck (ADR-0050: Papierweg, paid on print).
 /// One row per Stripe Checkout Session; `bezahlt` is set only by the signature-verified
-/// webhook, never by the browser's return redirect. Account-only (a guest cannot pay),
-/// so it carries a real FK and cascades with the User on Art. 17 erasure — Stripe keeps
-/// the accounting record (§ 147 AO) on its side, this row is only the entitlement.
+/// webhook, never by the browser's return redirect. Account-only (a guest cannot pay).
+/// No FK to User (P7): a paid row is a Buchungsbeleg under a legal hold (§ 147 AO, § 257 HGB)
+/// and must outlive the account's deletion until the hold ends; the deletion removes every
+/// row that is not held (`personal-data-registry.ts`).
 model Unlock {
   id                      String    @id @default(uuid())
   userId                  String
   taxYear                 Int       @map("steuerjahr")
-  /// "offen" until the webhook confirms payment, then "bezahlt".
+  /// "offen" until the webhook confirms payment, then "bezahlt"; "abgelaufen" when the session closed
+  /// unpaid; "erstattet" / "angefochten" after a full refund / an opened dispute. Only "bezahlt" unlocks.
   status                  String    @default("offen")
   stripeCheckoutSessionId String    @unique
   /// Which price was paid (ADR-0101 §21): "standard" or "selbststaendig"; a year with self-employment
@@ -968,9 +991,13 @@ model Unlock {
   tier                    String    @default("standard") @map("stufe")
   amountCents             Int?      @map("betragCent")
   paidAt                  DateTime? @map("bezahltAm")
+  /// The facts the status is computed from (`unlock/unlock-lifecycle.ts`): the provider's events arrive in any
+  /// order, so each is stored once and only moves forward. A full refund; each dispute by the provider's id,
+  /// "offen" or "gewonnen" (a payment can be disputed again after a won dispute).
+  refundedAt              DateTime? @map("erstattetAm")
+  disputes                Json      @default("{}") @map("anfechtungen")
   createdAt               DateTime  @default(now())
   updatedAt               DateTime  @updatedAt
-  user                    User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, taxYear])
   @@map("Freischaltung")
@@ -1069,6 +1096,9 @@ model TaxYearLink {
   invitationCode           String?   @unique @map("einladungsCode")
   /// The invite code links two accounts; it stops working after this moment.
   invitationCodeValidUntil DateTime? @map("einladungsCodeGueltigBis")
+  /// When Person B (own account) agreed, in B's own app, to share this year with Person A (decision 3, API-3).
+  /// Null while B has not: A then sees nothing of B for this year.
+  personBConsentedAt       DateTime? @map("personBZustimmungAm")
   createdAt                DateTime  @default(now())
   updatedAt                DateTime  @updatedAt
 

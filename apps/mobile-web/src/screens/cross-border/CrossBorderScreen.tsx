@@ -2,8 +2,10 @@ import { useTranslation } from 'react-i18next'
 import { useBreakpoint } from '@steuereule/ui'
 import { ENTRIES, nextStepFor } from '@steuereule/core'
 import { APP_NS } from '../../i18n/resources'
-import { CURRENT_TAX_YEAR } from '../../config/taxYear'
-import { LoadingState, ErrorState } from '../shared/ScreenState'
+import { runningTaxYear } from '../../config/taxYear'
+import { Text } from 'react-native'
+import { useTheme } from '@steuereule/ui'
+import { LoadingState, LoadFailedState } from '../shared/ScreenState'
 import { SaveFailedNotice } from '../shared/SaveFailedNotice'
 import { useCrossBorder } from './useCrossBorder'
 import { ChInterviewStep } from './CrossBorderInterviewStep'
@@ -19,7 +21,7 @@ export interface CrossBorderScreenProps {
 
 const SEGMENT_CH = ENTRIES['segment-ch']
 
-export function CrossBorderScreen({ onDone, onBack, taxYear = CURRENT_TAX_YEAR, partnerName }: CrossBorderScreenProps) {
+export function CrossBorderScreen({ onDone, onBack, taxYear = runningTaxYear(), partnerName }: CrossBorderScreenProps) {
   const bp = useBreakpoint()
   const { t: tr } = useTranslation(APP_NS)
   const forPartner = partnerName !== undefined
@@ -40,20 +42,21 @@ export function CrossBorderScreen({ onDone, onBack, taxYear = CURRENT_TAX_YEAR, 
     onSetNGre,
     finish,
     saveFailed,
+    saveError,
+    answerError,
   } = useCrossBorder(taxYear, forPartner)
+  const theme = useTheme()
 
   if (interviewPending || salaryCertificateQuery.isPending) {
     return <LoadingState bp={bp} label={tr('grenzgaenger.loading')} />
   }
-  if (interviewFailed || salaryCertificateQuery.isError || salaryCertificateQuery.data.status !== 200) {
+  if (interviewFailed || salaryCertificateQuery.isError) {
     return (
-      <ErrorState
+      <LoadFailedState
         bp={bp}
-        heading={tr('grenzgaenger.loadError.heading')}
-        message={tr('grenzgaenger.loadError.message')}
-        retryLabel={tr('grenzgaenger.loadError.retry')}
+        error={interviewFailed ? interviewQuery.error : salaryCertificateQuery.error}
         onRetry={() => {
-          void interviewQuery.refetch()
+          if (!forPartner) void interviewQuery.refetch()
           void salaryCertificateQuery.refetch()
         }}
       />
@@ -71,19 +74,27 @@ export function CrossBorderScreen({ onDone, onBack, taxYear = CURRENT_TAX_YEAR, 
 
   if (step !== null && step.kind === 'question') {
     return (
-      <ChInterviewStep
+      <>
+        {answerError !== null ? (
+          <Text style={{ ...theme.type.small, color: theme.color.fehler, margin: theme.space.s4 }} accessibilityRole="alert" testID="ch-antwort-fehler">
+            {`${answerError} ${tr('grenzgaenger.antwortZurueck')}`}
+          </Text>
+        ) : null}
+        <SaveFailedNotice visible={forPartner && saveError !== null} error={saveError} />
+        <ChInterviewStep
         stepId={step.id}
         onAnswer={forPartner ? answerForPartner : answer}
         bp={bp}
         onBack={() => (forPartner && partnerResidence !== null ? setPartnerResidence(null) : finish(onBack ?? onDone))}
         {...(partnerName !== undefined ? { partnerName } : {})}
-      />
+        />
+      </>
     )
   }
 
   return (
     <>
-      <SaveFailedNotice visible={saveFailed} />
+      <SaveFailedNotice visible={saveFailed || saveError !== null} error={saveError} />
       <SalaryCertificateStep
         salaryCertificate={salaryCertificate}
         taxYear={taxYear}

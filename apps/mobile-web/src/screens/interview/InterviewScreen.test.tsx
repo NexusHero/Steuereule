@@ -7,10 +7,8 @@
 // with the local graph" resync path, a genuine network failure on write, and the Cockpit
 // query-invalidation side effect the GWT's closing clause depends on.
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
-import { I18nextProvider } from 'react-i18next'
-import { ThemeProvider } from '@steuereule/ui'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { screen, fireEvent, waitFor } from '@testing-library/react'
+import type { QueryClient } from '@tanstack/react-query'
 import { http, HttpResponse } from 'msw'
 import {
   getCockpitControllerGetCockpitSummaryQueryKey,
@@ -19,37 +17,27 @@ import {
   useInterviewControllerGetInterview,
   type InterviewStateDto,
 } from '@steuereule/api-client'
-import { createAppI18n } from '../../i18n/app-i18n'
 import { InterviewScreen } from './InterviewScreen'
 import { server, EMPTY_INTERVIEW_STATE } from '../../test-msw-server'
+import { makeTestQueryClient, renderWithQuery } from '../../test-render'
 
 const TAX_YEAR = 2026
 const GET_URL = `*/v1/steuerjahre/${TAX_YEAR}/interview`
 const POST_URL = `*/v1/steuerjahre/${TAX_YEAR}/interview/antworten`
 
-function makeTestQueryClient() {
-  return new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
-}
-
 function renderInterview(
   opts: { lng?: 'de' | 'en'; onDone?: () => void; queryClient?: QueryClient; taxYear?: number; onChangeYear?: (year: number) => void } = {},
 ) {
-  const i18n = createAppI18n(opts.lng ?? 'de')
   const queryClient = opts.queryClient ?? makeTestQueryClient()
   return {
     queryClient,
-    ...render(
-      <QueryClientProvider client={queryClient}>
-        <I18nextProvider i18n={i18n}>
-          <ThemeProvider mode="light">
-            <InterviewScreen
-              onDone={opts.onDone ?? (() => {})}
-              taxYear={opts.taxYear ?? TAX_YEAR}
-              {...(opts.onChangeYear ? { onChangeYear: opts.onChangeYear } : {})}
-            />
-          </ThemeProvider>
-        </I18nextProvider>
-      </QueryClientProvider>,
+    ...renderWithQuery(
+      <InterviewScreen
+        onDone={opts.onDone ?? (() => {})}
+        taxYear={opts.taxYear ?? TAX_YEAR}
+        {...(opts.onChangeYear ? { onChangeYear: opts.onChangeYear } : {})}
+      />,
+      { client: queryClient, language: opts.lng ?? 'de' },
     ),
   }
 }
@@ -126,8 +114,8 @@ describe('InterviewScreen', () => {
     )
     renderInterview()
 
-    await screen.findByText('Das hat nicht geklappt.')
-    expect(screen.getByText('Deine Antworten konnten nicht geladen werden. Prüf die Verbindung und versuch es noch mal.')).toBeTruthy()
+    await screen.findByText('Das konnte nicht geladen werden.')
+    expect(screen.getByText('Keine Verbindung zum Server. Prüf dein Internet und versuch es noch mal.')).toBeTruthy()
 
     fireEvent.click(screen.getByText('Noch mal versuchen'))
     await onJobQuestion()
@@ -136,7 +124,7 @@ describe('InterviewScreen', () => {
   it('treats a non-200 GET response as an honest error, not a silent fallthrough', async () => {
     server.use(http.get(GET_URL, () => HttpResponse.json(null, { status: 401 })))
     renderInterview()
-    expect(await screen.findByText('Das hat nicht geklappt.')).toBeTruthy()
+    expect(await screen.findByText('Das konnte nicht geladen werden.')).toBeTruthy()
   })
 
   it('re-entry: opens on the step the stored answers actually resume at, not always the job question', async () => {
@@ -293,15 +281,10 @@ describe('InterviewScreen', () => {
       return <span data-testid="observer-next-step">{kind}</span>
     }
 
-    const i18n = createAppI18n('de')
-    const interviewView = render(
-      <QueryClientProvider client={queryClient}>
-        <I18nextProvider i18n={i18n}>
-          <ThemeProvider mode="light">
-            <InterviewScreen taxYear={TAX_YEAR} onDone={() => interviewView.unmount()} />
-          </ThemeProvider>
-        </I18nextProvider>
-      </QueryClientProvider>,
+    const interviewView = renderWithQuery(
+      // The sheet closes after the render that finished the interview, not inside it.
+      <InterviewScreen taxYear={TAX_YEAR} onDone={() => setTimeout(() => interviewView.unmount(), 0)} />,
+      { client: queryClient },
     )
 
     await onMaritalStatusQuestion()
@@ -310,11 +293,7 @@ describe('InterviewScreen', () => {
     await waitFor(() => expect(screen.queryByText('Ledig')).toBeNull())
 
     // Simulate CockpitHome mounting behind the post-interview Sheet and settling its initial GET BEFORE the final POST resolves.
-    const observerView = render(
-      <QueryClientProvider client={queryClient}>
-        <CockpitBehindSheetObserver />
-      </QueryClientProvider>,
-    )
+    const observerView = renderWithQuery(<CockpitBehindSheetObserver />, { client: queryClient })
     await waitFor(() => expect(getCalls).toBeGreaterThan(callsAfterInterviewMount))
     expect(observerView.getByTestId('observer-next-step').textContent).toBe('question')
 

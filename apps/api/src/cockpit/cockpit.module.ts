@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common'
 import { PrismaModule } from '../prisma/prisma.module.js'
+import { AuditModule } from '../audit/audit.module.js'
 import { MarkingModule } from '../marking/marking.module.js'
 import { LinkModule } from '../link/link.module.js'
 import { SubmissionModule } from '../submission/submission.module.js'
@@ -10,7 +11,7 @@ import { TaxCaseModule } from '../tax-case/tax-case.module.js'
 import { TaxYearModule } from '../tax-year/tax-year.module.js'
 
 @Module({
-  imports: [PrismaModule, TaxCaseModule, MarkingModule, LinkModule, SubmissionModule, BusinessModule, TaxYearModule],
+  imports: [PrismaModule, AuditModule, TaxCaseModule, MarkingModule, LinkModule, SubmissionModule, BusinessModule, TaxYearModule],
   controllers: [CockpitController],
   providers: [CockpitService],
   exports: [CockpitService],

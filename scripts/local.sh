@@ -29,6 +29,18 @@ require_pnpm_install() {
   [[ -d node_modules ]] || { info "Abhängigkeiten installieren"; pnpm install --frozen-lockfile; }
 }
 
+# Mail goes to the local inbox over TLS only: Mailpit needs its certificate before it starts (scripts/mail-tls.sh).
+# A new certificate also needs a new Mailpit container, which loads it at start (its inbox lives in memory only).
+require_mail_tls() {
+  command -v openssl >/dev/null 2>&1 || fail "openssl fehlt (für das TLS-Zertifikat des lokalen Postfachs)."
+  local output
+  output="$(scripts/mail-tls.sh)"
+  if [[ -n "$output" ]]; then
+    info "Neues TLS-Zertifikat für das lokale Postfach"
+    "${DEV_STACK[@]}" rm --stop --force mailpit >/dev/null
+  fi
+}
+
 wait_for() {
   local url="$1" label="$2"
   info "Warte auf $label"
@@ -45,6 +57,7 @@ cmd_up() {
     cp .env.example .env
     info ".env aus .env.example angelegt"
   fi
+  require_mail_tls
   info "Stack bauen und starten (das erste Mal dauert ein paar Minuten)"
   "${PROD_STACK[@]}" up --build -d
   wait_for "http://localhost:3000/v1/health/ready" "API"
@@ -57,6 +70,7 @@ cmd_up() {
 cmd_dev() {
   require_docker
   require_pnpm_install
+  require_mail_tls
   info "Postgres, Redis und Postfach starten"
   "${DEV_STACK[@]}" up -d --wait postgres mailpit redis
   local pg_port
@@ -69,7 +83,8 @@ cmd_dev() {
   export CORS_ALLOWED_ORIGINS="http://localhost:8081"
   export WEB_APP_URL="http://localhost:8081"
   export EMAIL_DELIVERY=smtp
-  export SMTP_URL="smtp://127.0.0.1:1025"
+  export SMTP_URL="smtps://127.0.0.1:1025"
+  export SMTP_CA_CERT="$PWD/.local/mail-tls/ca/ca.pem"
   # Same path as production: Redis for the answer runs and the rate limiter. An empty REDIS_URL
   # in the environment (or .env) switches back to in-process.
   local redis_port

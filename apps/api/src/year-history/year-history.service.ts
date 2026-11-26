@@ -208,8 +208,10 @@ export class YearHistoryService {
 
   async get(userId: string, today: string = todayIso()): Promise<YearHistory> {
     const records = await this.recordsOf(userId, today)
-    const gathered = await Promise.all(records.map((r) => this.gather(userId, r)))
-    await this.audit?.append({ userId, action: 'READ', resource: 'verlauf' })
+    const [gathered] = await Promise.all([
+      Promise.all(records.map((r) => this.gather(userId, r))),
+      this.audit?.append({ userId, action: 'READ', resource: 'verlauf' }),
+    ])
 
     const byYear = new Map(gathered.map((g) => [g.year, g]))
     const history = buildYearHistory(gathered.map((g) => g.input))
@@ -291,19 +293,23 @@ export class YearHistoryService {
     const { coupling: link } = await this.cases.read(userId, year, ['coupling'])
     const filingType: 'einzel' | 'zusammen' = link?.filingType === 'zusammen' ? 'zusammen' : 'einzel'
     const spouseUserId = recordedSpouseUserId(link, userId)
+    // A year without data has, by the definition of `yearsOf`, no Bescheid, version, certificate, answer or
+    // commute of this user: reading them again found nothing, at seven queries a year (OPS-4). The partner's
+    // records are still read, they are not part of that definition.
+    const own = hasData
     const [assessmentA, versionA, assessmentB, versionB] = await Promise.all([
-      this.assessments.findForUserAndYear(userId, year),
-      this.filingVersions.findLatest(userId, year),
+      own ? this.assessments.findForUserAndYear(userId, year) : Promise.resolve(null),
+      own ? this.filingVersions.findLatest(userId, year) : Promise.resolve(null),
       spouseUserId && filingType === 'einzel' ? this.assessments.findForUserAndYear(spouseUserId, year) : Promise.resolve(null),
       spouseUserId && filingType === 'einzel' ? this.filingVersions.findLatest(spouseUserId, year) : Promise.resolve(null),
     ])
     const [recordsA, recordsB, answerRows] = await Promise.all([
-      this.personRecords(userId, year),
+      own ? this.personRecords(userId, year) : Promise.resolve<GatheredPerson>({ dataUserId: userId, lstb: null, ch: null }),
       spouseUserId ? this.personRecords(spouseUserId, year) : Promise.resolve(null),
-      this.cases.read(userId, year, ['interviewRows']).then((c) => c.interviewRows),
+      own ? this.cases.read(userId, year, ['interviewRows']).then((c) => c.interviewRows) : Promise.resolve([]),
     ])
     const [personA, personB] = await Promise.all([
-      this.personFacts(recordsA, year, versionA, 'A'),
+      this.personFacts(recordsA, year, versionA, 'A', own),
       recordsB ? this.personFacts(recordsB, year, filingType === 'zusammen' ? versionA : versionB, filingType === 'zusammen' ? 'B' : 'A') : Promise.resolve(null),
     ])
 
@@ -380,9 +386,9 @@ export class YearHistoryService {
   }
 
   /** A person's wage facts and what the declaration claims as Werbungskosten. */
-  private async personFacts(records: GatheredPerson, year: number, version: FilingVersionRecord | null, column: 'A' | 'B'): Promise<PersonYearFacts> {
+  private async personFacts(records: GatheredPerson, year: number, version: FilingVersionRecord | null, column: 'A' | 'B', hasRecords = true): Promise<PersonYearFacts> {
     const frozen = version === null ? null : partsFromPositions(version.positions, column)
-    const declaredWorkExpenses = frozen ?? (version === null ? await this.todaysWorkExpenses(records.dataUserId, year) : null)
+    const declaredWorkExpenses = frozen ?? (version === null ? (hasRecords ? await this.todaysWorkExpenses(records.dataUserId, year) : todaysWorkExpenses(year, null, [])) : null)
     return { wage: wageFacts(records.lstb, records.ch), declaredWorkExpenses }
   }
 

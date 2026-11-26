@@ -12,6 +12,7 @@ import {
   UserContextGuard,
 } from '../src/auth/user-context.guard.js'
 import { SESSION_ABSOLUTE_MAX_AGE_MS } from '../src/auth/session-lifetime.js'
+import { PUBLIC_ROUTE } from '../src/auth/public-route.js'
 import type { BetterAuthBundle } from '../src/auth/auth.tokens.js'
 import { createResettableRateLimitStorage } from '../src/auth/rate-limit-storage.js'
 import type { AssistantClient, BearerTokenRepository } from '../src/auth/bearer-token.repository.js'
@@ -35,10 +36,14 @@ class OrdinaryController {
   readonly kind = 'ordinary'
 }
 
-function makeContext(cookies: Record<string, string | undefined>, headers: Record<string, string | undefined> = {}, controller: object = McpLikeController) {
-  const request: Record<string, unknown> = { cookies, headers }
+// A bearer token is only looked at on the MCP endpoint; cookies and guests are tested on an ordinary controller,
+// because the MCP endpoint refuses every request without a token (beta P4, MCP-9).
+function makeContext(cookies: Record<string, string | undefined>, headers: Record<string, string | undefined> = {}, controller: object = headers.authorization ? McpLikeController : OrdinaryController, url = '/mcp') {
+  const request: Record<string, unknown> = { cookies, headers, url }
   const setCookie = vi.fn()
-  const reply = { setCookie }
+  const header = vi.fn()
+  const clearCookie = vi.fn()
+  const reply = { setCookie, header, clearCookie }
   const context = {
     getClass: () => controller,
     switchToHttp: () => ({
@@ -46,14 +51,14 @@ function makeContext(cookies: Record<string, string | undefined>, headers: Recor
       getResponse: () => reply,
     }),
   } as unknown as ExecutionContext
-  return { context, request, setCookie }
+  return { context, request, setCookie, header, clearCookie }
 }
 
 function makeBetterAuthBundle(getSession: ReturnType<typeof vi.fn>): BetterAuthBundle {
   return {
     // Only `api.getSession` is ever called by the guard — the rest of `Auth` is
     // irrelevant to this unit test, so it's deliberately left out of the fake shape.
-    auth: { api: { getSession } } as unknown as BetterAuthBundle['auth'],
+    auth: { api: { getSession }, options: { baseURL: 'https://api.example.test' } } as unknown as BetterAuthBundle['auth'],
     sessionCookieName: SESSION_COOKIE_NAME,
     // The guard never reads this; it belongs to the capability probe (REQ-008).
     enabledSocialProviders: [],
@@ -65,6 +70,33 @@ describe('UserContextGuard', () => {
   beforeEach(() => {
     process.env.GUEST_SESSION_SECRET = SECRET
     process.env.NODE_ENV = 'test'
+  })
+
+  // MCP-9, H2-27: an MCP client before sign-in gets the pointer to the sign-in, never a guest identity.
+  it('on the MCP endpoint answers a request without a token with 401 and WWW-Authenticate, and makes no guest', async () => {
+    const touch = vi.fn().mockResolvedValue(undefined)
+    const getSession = vi.fn()
+    const guard = new UserContextGuard(makeBetterAuthBundle(getSession), fakeTokens(), { seen: vi.fn(), touch } as never)
+    for (const [url, resource] of [['/mcp', '/mcp'], ['/mcp/messages?sessionId=x', '/mcp/sse'], ['/mcp/sse', '/mcp/sse']] as const) {
+      const { context, request, setCookie, header } = makeContext({}, {}, McpLikeController, url)
+      await expect(guard.canActivate(context)).rejects.toBeInstanceOf(UnauthorizedException)
+      expect(header).toHaveBeenCalledWith('WWW-Authenticate', `Bearer resource_metadata="https://api.example.test/.well-known/oauth-protected-resource${resource}"`)
+      expect(setCookie).not.toHaveBeenCalled()
+      expect(request[USER_ID_REQUEST_KEY]).toBeUndefined()
+    }
+    // Not even a session cookie of the user's browser makes it a user request there.
+    const withCookie = makeContext({ [SESSION_COOKIE_NAME]: 'sess' }, {}, McpLikeController)
+    await expect(guard.canActivate(withCookie.context)).rejects.toBeInstanceOf(UnauthorizedException)
+    expect(getSession).not.toHaveBeenCalled()
+    expect(touch).not.toHaveBeenCalled()
+  })
+
+  // MCP-14: an invalid or expired token on the MCP endpoint says so in the challenge, so a client refreshes.
+  it('names invalid_token in the challenge when the MCP endpoint refuses a token', async () => {
+    const guard = new UserContextGuard(makeBetterAuthBundle(vi.fn()), fakeTokens())
+    const { context, header } = makeContext({}, { authorization: 'Bearer nonexistent-token' })
+    await expect(guard.canActivate(context)).rejects.toBeInstanceOf(UnauthorizedException)
+    expect(header).toHaveBeenCalledWith('WWW-Authenticate', expect.stringContaining('error="invalid_token"'))
   })
 
   it('trusts a valid signed guest cookie and does not mint a new one (no better-auth session cookie present)', async () => {
@@ -152,39 +184,74 @@ describe('UserContextGuard', () => {
       expect(getSession).toHaveBeenCalledOnce()
     })
 
-    it('an expired/revoked session (getSession resolves null) falls through to the guest path', async () => {
+    it('WEB-24: an expired/revoked session is refused with 401 SESSION_EXPIRED and its cookie cleared, never turned into a guest', async () => {
       const getSession = vi.fn().mockResolvedValue(null)
       const guard = new UserContextGuard(makeBetterAuthBundle(getSession), fakeTokens())
-      const { context, request, setCookie } = makeContext({
+      const { context, request, setCookie, clearCookie } = makeContext({
         [SESSION_COOKIE_NAME]: 'a-revoked-session-cookie-value',
       })
 
+      await expect(guard.canActivate(context)).rejects.toMatchObject({ code: 'SESSION_EXPIRED', kind: 'unauthenticated' })
+      // A signed-in user's save must not silently land in a freshly minted guest account.
+      expect(setCookie).not.toHaveBeenCalled()
+      expect(request[USER_ID_REQUEST_KEY]).toBeUndefined()
+      expect(request[USER_ID_KIND_REQUEST_KEY]).toBeUndefined()
+      expect(clearCookie).toHaveBeenCalledWith(SESSION_COOKIE_NAME, { path: '/' })
+    })
+  })
+
+  // --- A public route (H2-17): never a guest; the signed-in user when a valid session comes with it ---
+  describe('a public route', () => {
+    const publicHandler = () => undefined
+    Reflect.defineMetadata(PUBLIC_ROUTE, true, publicHandler)
+    const publicContext = (cookies: Record<string, string | undefined>) => {
+      const made = makeContext(cookies)
+      const context = { ...(made.context as object), getHandler: () => publicHandler } as unknown as ExecutionContext
+      return { ...made, context }
+    }
+
+    it('with a valid session runs as that user, and mints no guest cookie', async () => {
+      const getSession = vi.fn().mockResolvedValue({ user: { id: 'owner-id', emailVerified: true }, session: {} })
+      const guard = new UserContextGuard(makeBetterAuthBundle(getSession), fakeTokens())
+      const { context, request, setCookie } = publicContext({ [SESSION_COOKIE_NAME]: 'sess' })
       await expect(guard.canActivate(context)).resolves.toBe(true)
-      expect(request[USER_ID_REQUEST_KEY]).not.toBe('real-account-id')
-      // No guest cookie existed either, so a fresh one is minted — the revoked
-      // session must never leave the request without *some* trusted userId.
-      expect(setCookie).toHaveBeenCalledOnce()
-      // #318 — a revoked session must fall all the way through to 'guest', never be
-      // left as (or mistaken for) 'session' — that would let @RequiresAccount() admit
-      // a caller whose session just failed to verify.
-      expect(request[USER_ID_KIND_REQUEST_KEY]).toBe('guest')
+      expect(request[USER_ID_REQUEST_KEY]).toBe('owner-id')
+      expect(setCookie).not.toHaveBeenCalled()
+    })
+
+    it('without a session stays without a user: no guest, no cookie, no session lookup', async () => {
+      const getSession = vi.fn()
+      const guard = new UserContextGuard(makeBetterAuthBundle(getSession), fakeTokens())
+      const { context, request, setCookie } = publicContext({})
+      await expect(guard.canActivate(context)).resolves.toBe(true)
+      expect(request[USER_ID_REQUEST_KEY]).toBeUndefined()
+      expect(setCookie).not.toHaveBeenCalled()
+      expect(getSession).not.toHaveBeenCalled()
+    })
+
+    it('an expired session is ignored, not answered with 401: the route is public', async () => {
+      const getSession = vi.fn().mockResolvedValue(null)
+      const guard = new UserContextGuard(makeBetterAuthBundle(getSession), fakeTokens())
+      const { context, request, clearCookie } = publicContext({ [SESSION_COOKIE_NAME]: 'expired' })
+      await expect(guard.canActivate(context)).resolves.toBe(true)
+      expect(request[USER_ID_REQUEST_KEY]).toBeUndefined()
+      expect(clearCookie).not.toHaveBeenCalled()
     })
   })
 
   // --- ADR-0103 §2: an absolute cap on session age (freshAge stays 0, ADR-0027) ---
   describe('absolute session cap', () => {
-    it('refuses a session older than the absolute cap, falling through to the guest path (never left as "session")', async () => {
+    it('refuses a session older than the absolute cap with 401 SESSION_EXPIRED (never left as "session")', async () => {
       const createdAt = new Date(Date.now() - (SESSION_ABSOLUTE_MAX_AGE_MS + 60_000))
       const getSession = vi.fn().mockResolvedValue({ user: { id: 'real-account-id', emailVerified: true }, session: { createdAt } })
       const guard = new UserContextGuard(makeBetterAuthBundle(getSession), fakeTokens())
-      const { context, request, setCookie } = makeContext({ [SESSION_COOKIE_NAME]: 'an-indefinitely-renewed-cookie' })
+      const { context, request } = makeContext({ [SESSION_COOKIE_NAME]: 'an-indefinitely-renewed-cookie' })
 
-      await expect(guard.canActivate(context)).resolves.toBe(true)
+      await expect(guard.canActivate(context)).rejects.toMatchObject({ code: 'SESSION_EXPIRED' })
       // An over-cap session must never leave the request as 'session' — that would admit a stolen,
       // forever-renewed cookie past @RequiresAccount().
-      expect(request[USER_ID_KIND_REQUEST_KEY]).toBe('guest')
-      expect(request[USER_ID_REQUEST_KEY]).not.toBe('real-account-id')
-      expect(setCookie).toHaveBeenCalledOnce()
+      expect(request[USER_ID_KIND_REQUEST_KEY]).toBeUndefined()
+      expect(request[USER_ID_REQUEST_KEY]).toBeUndefined()
     })
 
     it('accepts a session created within the cap and stashes emailVerified', async () => {
@@ -235,7 +302,7 @@ describe('UserContextGuard', () => {
         revoked: null,
         client: { clientId: 'client-1', name: 'Claude Assistant', disabled: false },
       }
-      const tokens = fakeTokens({ findOpaqueToken: vi.fn().mockResolvedValue(tokenRecord) })
+      const tokens = fakeTokens({ findOpaqueToken: vi.fn().mockResolvedValue(tokenRecord), hasConsent: vi.fn().mockResolvedValue(true) })
 
       const guard = new UserContextGuard(makeBetterAuthBundle(vi.fn()), tokens)
       const { context, request, setCookie } = makeContext({}, { authorization: `Bearer ${rawToken}` })
@@ -251,6 +318,22 @@ describe('UserContextGuard', () => {
       })
       expect(setCookie).not.toHaveBeenCalled()
       expect(tokens.findOpaqueToken).toHaveBeenCalledWith(hashed)
+    })
+
+    it('an opaque token whose consent was deleted is refused at once, like a JWT (ADR-0052 §10)', async () => {
+      const tokenRecord = {
+        userId: 'oauth-user-id',
+        clientId: 'client-1',
+        scopes: ['openid'],
+        expiresAt: new Date(Date.now() + 60_000),
+        revoked: null,
+        client: { clientId: 'client-1', name: 'Claude', disabled: false },
+      }
+      const tokens = fakeTokens({ findOpaqueToken: vi.fn().mockResolvedValue(tokenRecord), hasConsent: vi.fn().mockResolvedValue(false) })
+      const guard = new UserContextGuard(makeBetterAuthBundle(vi.fn()), tokens)
+      const { context } = makeContext({}, { authorization: 'Bearer opaque-without-consent' })
+      await expect(guard.canActivate(context)).rejects.toThrow(UnauthorizedException)
+      expect(tokens.hasConsent).toHaveBeenCalledWith('oauth-user-id', 'client-1')
     })
 
     it('an expired bearer token throws UnauthorizedException (never falls back to guest)', async () => {
@@ -395,5 +478,25 @@ describe('UserContextGuard', () => {
       const machine = new UserContextGuard(bundle(), tokensFor())
       await expect(machine.canActivate(makeContext({}, { authorization: `Bearer ${jwt({ ...valid, sub: 'client-1' })}` }).context)).rejects.toBeInstanceOf(UnauthorizedException)
     })
+  })
+})
+
+describe('UserContextGuard — new guests per address (API-9)', () => {
+  beforeEach(() => {
+    process.env.GUEST_SESSION_SECRET = SECRET
+    process.env.NODE_ENV = 'test'
+  })
+
+  it('lets one address start at most 20 guests with data an hour; a known guest keeps writing', async () => {
+    const guard = new UserContextGuard(makeBetterAuthBundle(vi.fn().mockResolvedValue(null)), fakeTokens())
+    const write = (cookies: Record<string, string | undefined>) => {
+      const { context, request } = makeContext(cookies, {}, OrdinaryController)
+      request.method = 'PUT'
+      request.ip = '198.51.100.9'
+      return guard.canActivate(context)
+    }
+    for (let i = 0; i < 20; i++) await expect(write({})).resolves.toBe(true)
+    await expect(write({})).rejects.toThrow('Zu viele Änderungen ohne Konto')
+    await expect(write({ [GUEST_SESSION_COOKIE]: signGuestSession('known-guest', SECRET) })).resolves.toBe(true)
   })
 })

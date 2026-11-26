@@ -56,8 +56,6 @@ export type capabilitiesControllerGetCapabilitiesResponseSuccess = (capabilities
 };
 ;
 
-export type capabilitiesControllerGetCapabilitiesResponse = (capabilitiesControllerGetCapabilitiesResponseSuccess)
-
 export const getCapabilitiesControllerGetCapabilitiesUrl = () => {
 
 
@@ -66,9 +64,9 @@ export const getCapabilitiesControllerGetCapabilitiesUrl = () => {
   return `/v1/capabilities`
 }
 
-export const capabilitiesControllerGetCapabilities = async ( options?: RequestInit): Promise<capabilitiesControllerGetCapabilitiesResponse> => {
+export const capabilitiesControllerGetCapabilities = async ( options?: RequestInit): Promise<capabilitiesControllerGetCapabilitiesResponseSuccess> => {
 
-  return httpClient<capabilitiesControllerGetCapabilitiesResponse>(getCapabilitiesControllerGetCapabilitiesUrl(),
+  return httpClient<capabilitiesControllerGetCapabilitiesResponseSuccess>(getCapabilitiesControllerGetCapabilitiesUrl(),
   {
     ...options,
     method: 'GET'

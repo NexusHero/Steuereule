@@ -216,7 +216,7 @@ scripts/local.sh dev
 ### Local Endpoints
 * **Web Application:** [http://localhost:8080](http://localhost:8080) (or `8081` in dev mode)
 * **REST API:** `http://localhost:3000/v1`, Swagger UI at [http://localhost:3000/docs](http://localhost:3000/docs)
-* **Mailpit (Local Email Sandbox):** [http://localhost:8025](http://localhost:8025) (catches verification emails locally; zero external network egress)
+* **Mailpit (Local Email Sandbox):** [http://localhost:8025](http://localhost:8025) (catches verification emails locally; zero external network egress). The API delivers to it over SMTP with implicit TLS only (`smtps://…:1025`), verifying a certificate from a local CA that `scripts/mail-tls.sh` generates into `.local/mail-tls` (needs `openssl`; `scripts/local.sh` runs it, the files are never committed). The web UI on 8025 stays plain HTTP and listens on loopback only.
 * **Redis:** `localhost:6379`, used by default in both modes (shared answer runs and rate limits, as in production). `REDIS_URL=` (empty) switches the API back to in-process.
 
 > [!NOTE]

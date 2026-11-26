@@ -1,18 +1,15 @@
 import { useState } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { I18nextProvider } from 'react-i18next'
-import { ThemeProvider } from '@steuereule/ui'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { http, HttpResponse } from 'msw'
 import type { AdvisorActionProposal, AdvisorChatMessageView } from '@steuereule/core'
-import { createAppI18n } from '../../i18n/app-i18n'
 import { server } from '../../test-msw-server'
 import { CockpitScreen } from '../cockpit/CockpitScreen'
 import { OwlModeScreen } from './OwlModeScreen'
 import { AdvisorChatPanel } from './AdvisorChatPanel'
 import { CopilotBridgeProvider, type CopilotMode, useCopilotBridge, useOptionalCopilotBridge } from './CopilotBridgeProvider'
 import { emptyAssessment } from '../../test-assessment-fixture'
+import { makeTestQueryClient, renderWithQuery, TestAppProviders } from '../../test-render'
 
 function setViewportWidth(width: number) {
   Object.defineProperty(document.documentElement, 'clientWidth', { value: width, configurable: true })
@@ -88,23 +85,13 @@ function BridgeHarness({
   readonly children?: React.ReactNode
 }) {
   const [mode, setMode] = useState<CopilotMode>(initialMode)
-  const i18n = createAppI18n(lng)
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  const [queryClient] = useState(makeTestQueryClient)
   return (
-    <QueryClientProvider client={queryClient}>
-      <I18nextProvider i18n={i18n}>
-        <ThemeProvider mode={dark ? 'dark' : 'light'}>
-          <CopilotBridgeProvider
-            mode={mode}
-            onModeChange={setMode}
-            taxYear={2025}
-            isAuthenticated={isAuthenticated}
-          >
-            {children}
-          </CopilotBridgeProvider>
-        </ThemeProvider>
-      </I18nextProvider>
-    </QueryClientProvider>
+    <TestAppProviders client={queryClient} language={lng} mode={dark ? 'dark' : 'light'}>
+      <CopilotBridgeProvider mode={mode} onModeChange={setMode} taxYear={2025} isAuthenticated={isAuthenticated}>
+        {children}
+      </CopilotBridgeProvider>
+    </TestAppProviders>
   )
 }
 
@@ -648,16 +635,10 @@ describe('Slice 4: CopilotBridgeProvider & 3-Breakpoint OwlMode Workspace', () =
         </div>
       )
     }
-    render(
-      <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
-        <I18nextProvider i18n={createAppI18n('de')}>
-          <ThemeProvider mode="light">
-            <CopilotBridgeProvider mode="eulen-modus" onModeChange={() => {}} taxYear={2025}>
-              <Probe />
-            </CopilotBridgeProvider>
-          </ThemeProvider>
-        </I18nextProvider>
-      </QueryClientProvider>,
+    renderWithQuery(
+      <CopilotBridgeProvider mode="eulen-modus" onModeChange={() => {}} taxYear={2025}>
+        <Probe />
+      </CopilotBridgeProvider>,
     )
     fireEvent.click(screen.getByText('refused-send'))
     await waitFor(() => expect(screen.getByTestId('refused-err').textContent).toBe(tooLong))
@@ -673,7 +654,7 @@ describe('Slice 4: CopilotBridgeProvider & 3-Breakpoint OwlMode Workspace', () =
     const modeChanges: CopilotMode[] = []
     server.use(
       http.post('*/v1/steuerjahre/2025/advisor/stream', () =>
-        HttpResponse.json({ message: 'KI-Limit erreicht' }, { status: 429 }),
+        HttpResponse.json({ code: 'ADVISOR_DAILY_LIMIT_EXCEEDED', message: 'KI-Limit erreicht' }, { status: 429 }),
       ),
       http.post('*/v1/steuerjahre/2025/advisor/actions/apply-batch', () =>
         HttpResponse.json({ message: 'Validierung fehlgeschlagen' }, { status: 422 }),
@@ -712,18 +693,10 @@ describe('Slice 4: CopilotBridgeProvider & 3-Breakpoint OwlMode Workspace', () =
       )
     }
 
-    const i18n = createAppI18n('de')
-    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-    render(
-      <QueryClientProvider client={queryClient}>
-        <I18nextProvider i18n={i18n}>
-          <ThemeProvider mode="light">
-            <CopilotBridgeProvider mode="eulen-modus" onModeChange={(m) => modeChanges.push(m)} taxYear={2025}>
-              <EdgeProbe />
-            </CopilotBridgeProvider>
-          </ThemeProvider>
-        </I18nextProvider>
-      </QueryClientProvider>,
+    renderWithQuery(
+      <CopilotBridgeProvider mode="eulen-modus" onModeChange={(m) => modeChanges.push(m)} taxYear={2025}>
+        <EdgeProbe />
+      </CopilotBridgeProvider>,
     )
 
     // 1. Stream 429 JSON error
@@ -758,7 +731,8 @@ describe('Slice 4: CopilotBridgeProvider & 3-Breakpoint OwlMode Workspace', () =
 
     // 5. Parse receipt HTTP 500 & network throws
     fireEvent.click(screen.getByText('edge-parse'))
-    await waitFor(() => expect(screen.getByTestId('edge-err').textContent).toContain('HTTP 500'))
+    // NR-06: a 500 in the shared wording, never "HTTP 500".
+    await waitFor(() => expect(screen.getByTestId('edge-err').textContent).toBe('Bei uns ist gerade etwas schiefgelaufen. Versuch es gleich noch mal.'))
 
     server.use(
       http.post('*/v1/steuerjahre/2025/advisor/stream', () => HttpResponse.error()),

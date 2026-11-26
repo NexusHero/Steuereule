@@ -1,6 +1,4 @@
 import { Injectable } from '@nestjs/common'
-import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
-import { refused } from './mcp-session.js'
 
 /**
  * How much one user's assistants may ask of the MCP endpoint (ADR-0052 amendments 6 and 9). Per user, across
@@ -15,6 +13,32 @@ export const MCP_LIMITS = { toolCallsPerMinute: 120, openSessionsPerUser: 3 } as
  * session at the payment provider; a user pays once per tax year, so a handful an hour covers every retry.
  */
 export const MCP_CHECKOUT_LINK_LIMIT = { window: 60 * 60, max: 5 } as const
+
+/**
+ * The tools that render the whole printout once nothing is missing (`ausdruck_vorpruefung`, `steuerbericht`,
+ * `pruefen`; beta P4 H2-26): a few a minute, together, instead of 120. A run checks after a batch of entries,
+ * not after every one.
+ */
+export const MCP_PRINTOUT_CHECK_LIMIT = { window: 60, max: 10 } as const
+
+/**
+ * Receipt uploads one account's assistants may make: the same budget as the REST upload route
+ * (`RECEIPT_UPLOAD_THROTTLE`, 60 per 10 minutes), which an MCP call does not pass through.
+ */
+export const MCP_RECEIPT_UPLOAD_LIMIT = { window: 10 * 60, max: 60 } as const
+
+/** The budgets a single tool can have besides the call limit; a tool names its own in `TOOL_POLICIES`. */
+export type ToolBudget = 'printout' | 'checkoutLink' | 'receiptUpload'
+
+/** Per budget: the key it is counted under (shared by all instances) and its window in seconds. */
+export const MCP_TOOL_BUDGETS: Readonly<Record<ToolBudget, { readonly key: string; readonly window: number; readonly max: number }>> = {
+  printout: { key: 'mcp-printout-check', ...MCP_PRINTOUT_CHECK_LIMIT },
+  checkoutLink: { key: 'mcp-checkout-link', ...MCP_CHECKOUT_LINK_LIMIT },
+  receiptUpload: { key: 'mcp-receipt-upload', ...MCP_RECEIPT_UPLOAD_LIMIT },
+}
+const LONGEST_BUDGET_WINDOW_MS = Math.max(...Object.values(MCP_TOOL_BUDGETS).map((rule) => rule.window)) * 1000
+
+export type Budget = { readonly ok: true } | { readonly ok: false; readonly retryAfterSeconds: number }
 
 /** A counter all instances share (the rate-limit storage of ADR-0106); it falls back to this process without Redis. */
 export interface SharedCounter {
@@ -40,7 +64,7 @@ export class McpRateLimiter {
   private readonly calls = new Map<string, number[]>()
   private readonly blocked = new Set<string>()
   private readonly sessions = new Map<string, Set<string>>()
-  private readonly checkoutLinks = new Map<string, number[]>()
+  private readonly budgets = new Map<string, number[]>()
 
   constructor(
     private readonly now: () => number = Date.now,
@@ -65,21 +89,25 @@ export class McpRateLimiter {
     return { ok: false, retryAfterSeconds: Math.max(1, decision.retryAfter ?? WINDOW_MS / 1000), first }
   }
 
-  /** Whether the account may get one more checkout link this hour; counted in this process without a shared counter. */
-  async takeCheckoutLink(userId: string): Promise<{ readonly ok: true } | { readonly ok: false; readonly retryAfterSeconds: number }> {
-    const rule = MCP_CHECKOUT_LINK_LIMIT
+  /**
+   * Whether the account may use one more of a tool budget in its window: counted in the shared counter when
+   * there is one, else in a sliding window of this process.
+   */
+  async takeBudget(budget: ToolBudget, userId: string): Promise<Budget> {
+    const { key: kind, ...rule } = MCP_TOOL_BUDGETS[budget]
     if (this.shared) {
-      const decision = await this.shared.consume(`mcp-checkout-link:${userId}`, rule)
+      const decision = await this.shared.consume(`${kind}:${userId}`, rule)
       return decision.allowed ? { ok: true } : { ok: false, retryAfterSeconds: Math.max(1, decision.retryAfter ?? rule.window) }
     }
+    const key = `${kind}:${userId}`
     const now = this.now()
-    const recent = (this.checkoutLinks.get(userId) ?? []).filter((at) => at > now - rule.window * 1000)
+    const recent = (this.budgets.get(key) ?? []).filter((at) => at > now - rule.window * 1000)
     if (recent.length >= rule.max) {
-      this.checkoutLinks.set(userId, recent)
+      this.budgets.set(key, recent)
       return { ok: false, retryAfterSeconds: Math.max(1, Math.ceil((recent[0]! + rule.window * 1000 - now) / 1000)) }
     }
     recent.push(now)
-    this.checkoutLinks.set(userId, recent)
+    this.budgets.set(key, recent)
     return { ok: true }
   }
 
@@ -124,32 +152,9 @@ export class McpRateLimiter {
         this.blocked.delete(userId)
       }
     }
-  }
-}
-
-/** The German refusal of a call over the limit. */
-export const rateLimitRefusal = (retryAfterSeconds: number, perMinute: number = MCP_LIMITS.toolCallsPerMinute) =>
-  refused(`RATE_LIMITED: Zu viele Werkzeugaufrufe (höchstens ${perMinute} je Minute). Versuch es in ${retryAfterSeconds} Sekunden wieder und fasse Einträge mit maske_eintragen_stapel zusammen.`)
-
-/**
- * Puts the limit in front of every tool registered on this server from now on: one gate where all tools pass,
- * so no tool group can forget it. The first refusal of a blocked stretch is audited (`onRefusal`); the rest
- * are not, so a client hammering the endpoint cannot turn the limit into a stream of database writes.
- */
-export function limitToolCalls(server: McpServer, limiter: McpRateLimiter, userId: string, onRefusal: (resource: string) => void | Promise<void>): void {
-  const register = server.tool.bind(server) as (...args: unknown[]) => unknown
-  const gated = (...args: unknown[]): unknown => {
-    const handler = args.at(-1)
-    if (typeof handler !== 'function') return register(...args)
-    const guarded = async (...callArgs: unknown[]) => {
-      const gate = await limiter.takeToolCallEverywhere(userId)
-      if (!gate.ok) {
-        if (gate.first) await onRefusal('mcp_rate_limited')
-        return rateLimitRefusal(gate.retryAfterSeconds, limiter.limits.toolCallsPerMinute)
-      }
-      return (handler as (...a: unknown[]) => unknown)(...callArgs)
+    // A key whose last entry is older than the longest budget window holds nothing any more.
+    for (const [key, times] of this.budgets) {
+      if ((times.at(-1) ?? 0) <= now - LONGEST_BUDGET_WINDOW_MS) this.budgets.delete(key)
     }
-    return register(...args.slice(0, -1), guarded)
   }
-  server.tool = gated as McpServer['tool']
 }

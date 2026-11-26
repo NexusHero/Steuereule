@@ -4,10 +4,11 @@ import { useTranslation } from 'react-i18next'
 import { Button, Feld, Input, useTheme } from '@steuereule/ui'
 import { useBusinessControllerBookCompanyCar, useBusinessControllerCompanyCar, type CompanyCarInputDto, type CompanyCarResultDto } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
-import { BusinessFrame, Figure, Note, Section } from './BusinessFrame'
+import { BusinessFrame, Figure, Note, ProblemNote, Section } from './BusinessFrame'
 import { Choice } from './Choice'
 import { personParams, plainEuro, type ApiProblem } from './businessKit'
-import { attempt, useRefreshBusiness } from './useBusiness'
+import { attempt, useRefreshBusiness, useSingleFlight } from './useBusiness'
+import { parseGermanAmount } from '../shared/germanNumber'
 import type { BusinessPageProps } from './BusinessScreen'
 
 const DRIVES = ['verbrenner', 'elektro', 'hybrid'] as const
@@ -18,8 +19,8 @@ type Method = (typeof METHODS)[number]
 /** Whole numbers the user typed; empty is absent, anything else invalid. */
 function whole(raw: string | undefined): number | undefined | null {
   if (raw === undefined || raw.trim() === '') return undefined
-  const n = Number(raw.replace(/\./g, '').replace(',', '.'))
-  return Number.isFinite(n) && n >= 0 ? Math.round(n) : null
+  const n = parseGermanAmount(raw)
+  return n === null ? null : Math.round(n)
 }
 
 /**
@@ -41,6 +42,7 @@ export function CompanyCarPage({ taxYear, person, business = 1, onBack }: Busine
   const [problem, setProblem] = useState<ApiProblem | null>(null)
   const [invalid, setInvalid] = useState(false)
   const [booked, setBooked] = useState(false)
+  const flight = useSingleFlight()
 
   function input(): CompanyCarInputDto | null {
     const n = (key: string) => whole(values[key])
@@ -153,13 +155,13 @@ export function CompanyCarPage({ taxYear, person, business = 1, onBack }: Busine
         {field('days')}
       </Section>
       {invalid ? <Note tone="error">{tr('business.kfz.ungueltig')}</Note> : null}
-      {problem !== null ? <Note tone="error">{problem.message ?? tr('business.speichernFehler')}</Note> : null}
-      <Button variant="ghost" onPress={() => void run('compute')} testID="kfz-berechnen">
+      <ProblemNote problem={problem} />
+      <Button variant="ghost" onPress={() => void flight.run(() => run('compute'))} disabled={flight.busy} testID="kfz-berechnen">
         {tr('business.kfz.berechnen')}
       </Button>
       {result !== null ? <CarResult result={result} /> : null}
       {result?.kind === 'berechnet' ? (
-        <Button onPress={() => void run('book')} testID="kfz-buchen">
+        <Button onPress={() => void flight.run(() => run('book'))} disabled={flight.busy} testID="kfz-buchen">
           {tr('business.kfz.buchen')}
         </Button>
       ) : null}

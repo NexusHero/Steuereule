@@ -1,3 +1,4 @@
+import type { PaymentReturn } from '@steuereule/core'
 import { useTranslation } from 'react-i18next'
 import { APP_NS } from '../../i18n/resources'
 import { BusinessHome } from './BusinessHome'
@@ -19,6 +20,7 @@ import { VatPrepaymentsPage } from './VatPrepaymentsPage'
 import { SpecialTariffsPage } from './SpecialTariffsPage'
 import { PayrollPage } from './PayrollPage'
 import type { Person } from './businessKit'
+import { BusinessAccountContext, type BusinessAccountActions } from './BusinessFrame'
 
 export const BUSINESS_PAGES = ['profil', 'buch', 'erfassung', 'bank', 'anlagen', 'abschluss', 'umsatzsteuer', 'gewerbesteuer', 'verluste', 'elster', 'export', 'freischalten', 'beruf', 'gewerbedaten', 'beteiligungen', 'firmenwagen', 'voranmeldungen', 'sondertarife', 'lohn'] as const
 export type BusinessPage = (typeof BUSINESS_PAGES)[number]
@@ -46,16 +48,26 @@ export interface BusinessPageProps {
 
 export interface BusinessScreenProps extends BusinessPageProps {
   readonly page: string | undefined
-  /** Back from the checkout of the self-employment tier: `?zahlung=erfolg` or `abbruch`. */
-  readonly payment?: string | undefined
+  /** Back from the checkout of the self-employment tier, by the shared return contract (WEB-1). */
+  readonly payment?: PaymentReturn | undefined
   /** A couple records one business per person; the area's overview switches between A and B. */
   readonly onChangePerson?: (person: Person) => void
   /** Several businesses of one person: the overview switches between them and adds one. */
   readonly onChangeBusiness?: (business: number) => void
+  /** The way to an account when a request answers ACCOUNT_REQUIRED (WEB-44). */
+  readonly account?: BusinessAccountActions
 }
 
 /** The self-employed area (ADR-0101): an overview of one phone screen, every topic on a page of its own. */
-export function BusinessScreen({ page, onChangePerson, onChangeBusiness, payment, ...props }: BusinessScreenProps) {
+export function BusinessScreen({ account, ...rest }: BusinessScreenProps) {
+  return (
+    <BusinessAccountContext.Provider value={account ?? {}}>
+      <BusinessPageSwitch {...rest} />
+    </BusinessAccountContext.Provider>
+  )
+}
+
+function BusinessPageSwitch({ page, onChangePerson, onChangeBusiness, payment, ...props }: Omit<BusinessScreenProps, 'account'>) {
   useTranslation(APP_NS)
   if (!isBusinessPage(page)) return <BusinessHome {...props} {...(onChangePerson ? { onChangePerson } : {})} {...(onChangeBusiness ? { onChangeBusiness } : {})} />
   switch (page) {

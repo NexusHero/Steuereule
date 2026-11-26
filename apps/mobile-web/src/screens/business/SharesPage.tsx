@@ -5,24 +5,27 @@ import { Button, Feld, Input, useTheme } from '@steuereule/ui'
 import type { PartnershipShareDto } from '@steuereule/api-client'
 import { Choice } from './Choice'
 import { APP_NS } from '../../i18n/resources'
-import { BusinessFrame, BusinessQueryState, Figure, Note, Section } from './BusinessFrame'
+import { BusinessFrame, BusinessQueryState, Figure, Note, ProblemNote, Section } from './BusinessFrame'
+import { parseGermanAmount, parseSignedGermanAmount } from '../shared/germanNumber'
 import { signedEuro } from './businessKit'
 import { useProfileEditor } from './useProfileEditor'
+import { useConfirmAction } from '../../confirm/useConfirmAction'
 import type { BusinessPageProps } from './BusinessScreen'
 
-const parse = (raw: string): number | undefined | null => {
+/** An amount typed the German way (WEB-46): undefined when empty, null when it is no amount. */
+const parse = (raw: string, signed = false): number | undefined | null => {
   if (raw.trim() === '') return undefined
-  const n = Number(raw.replace(',', '.'))
-  return Number.isFinite(n) ? n : null
+  return signed ? parseSignedGermanAmount(raw) : parseGermanAmount(raw)
 }
 
 /** Shares in a partnership, taken over from its Feststellungsbescheid (ADR-0101 §3): name, kind, profit, Messbetrag, trade tax. */
 export function SharesPage({ taxYear, person, business = 1, onBack }: BusinessPageProps) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
-  const { query, profile, loadProblem, save, problem } = useProfileEditor(taxYear, person, business)
+  const { query, profile, loadProblem, save, problem, saving } = useProfileEditor(taxYear, person, business)
   const [form, setForm] = useState({ name: '', kind: 'freiberuf' as PartnershipShareDto['kind'], profit: '', base: '', tax: '' })
   const [invalid, setInvalid] = useState(false)
+  const confirmRemove = useConfirmAction('shareRemove')
 
   if (query.isPending || profile === null || loadProblem !== null) {
     return (
@@ -34,25 +37,26 @@ export function SharesPage({ taxYear, person, business = 1, onBack }: BusinessPa
   const shares = profile.partnershipShares
 
   async function add() {
-    const profit = parse(form.profit)
+    if (saving) return
+    const profit = parse(form.profit, true)
     const base = parse(form.base)
     const tax = parse(form.tax)
     if (form.name.trim() === '' || profit === undefined || profit === null || base === null || tax === null) return setInvalid(true)
     setInvalid(false)
     const share: PartnershipShareDto = { name: form.name.trim(), kind: form.kind, profitEur: profit, ...(base !== undefined ? { baseAmountEur: base } : {}), ...(tax !== undefined ? { tradeTaxEur: tax } : {}) }
-    // The list is replaced whole.
+    // The list is replaced whole; while one change is on its way the buttons wait, so none builds on a stale list (NC-15).
     if (await save({ partnershipShares: [...shares, share] })) setForm({ name: '', kind: 'freiberuf', profit: '', base: '', tax: '' })
   }
 
   return (
     <BusinessFrame title={tr('business.seite.beteiligungen')} onBack={onBack} testID="beteiligungen-seite">
-      {problem !== null ? <Note tone="error" testID="business-speichern-fehler">{problem.message ?? tr('business.speichernFehler')}</Note> : null}
+      <ProblemNote problem={problem} testID="business-speichern-fehler" />
       <Section>
         {shares.length === 0 ? <Note testID="beteiligungen-leer">{tr('business.beteiligungen.leer')}</Note> : null}
         {shares.map((share, index) => (
           <View key={`${share.name}-${index}`} testID={`beteiligung-${index}`}>
             <Figure label={`${share.name} · ${tr(`business.art.${share.kind}`)}`} value={signedEuro(share.profitEur)} />
-            <Button variant="ghost" onPress={() => void save({ partnershipShares: shares.filter((_, i) => i !== index) })} testID={`beteiligung-entfernen-${index}`}>
+            <Button variant="ghost" disabled={saving} onPress={() => confirmRemove.ask(() => void save({ partnershipShares: shares.filter((_, i) => i !== index) }), { name: share.name })} testID={`beteiligung-entfernen-${index}`}>
               {tr('business.beteiligungen.entfernen')}
             </Button>
           </View>
@@ -84,10 +88,11 @@ export function SharesPage({ taxYear, person, business = 1, onBack }: BusinessPa
           </>
         ) : null}
         {invalid ? <Note tone="error">{tr('business.beteiligungen.ungueltig')}</Note> : null}
-        <Button onPress={() => void add()} testID="beteiligung-hinzufuegen">
+        <Button onPress={() => void add()} disabled={saving} testID="beteiligung-hinzufuegen">
           {tr('business.beteiligungen.hinzufuegen')}
         </Button>
       </Section>
+      {confirmRemove.dialog}
     </BusinessFrame>
   )
 }

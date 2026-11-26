@@ -502,6 +502,8 @@ async function main() {
     const repairs = async () => ((await rental())?.erhaltungsaufwand ?? []).map((r) => `${r.betrag}@${r.datum}`).join()
     await until(repairs, '12300@2025-05-15', 'the repair should be stored with its date')
     await byId('vermietung-0-erhaltung-0-entfernen').click()
+    // WEB-37/WEB-38: the action asks first; confirm it.
+    await byId('rueckfrage-rentalRemoveRepair-confirm').click()
     await until(repairs, '', 'a removed repair should leave the list')
     console.log(`[${TAG}] ✅ Masks — the employer on the LStB, the rental's purchase date and its repairs are stored`)
 
@@ -579,6 +581,8 @@ async function main() {
     if (!(await deskId(`verlauf-tabelle-${YEAR}`).innerText()).includes('abgegeben · wartet auf Bescheid')) fail('the filed year should wait for its Bescheid in the Verlauf')
     await desk.goto(`${webOrigin}/app`, { waitUntil: 'networkidle' })
     await deskId('cockpit-abgabe-zuruecknehmen').click()
+    // WEB-37/WEB-38: the action asks first; confirm it.
+    await deskId('rueckfrage-submissionWithdraw-confirm').click()
     await deskId('cockpit-abgabe-marke-status').waitFor({ state: 'visible', timeout: 15_000 })
     await deskId('cockpit-abgabe-abgegeben').waitFor({ state: 'visible', timeout: 15_000 }).catch(() => fail('after the undo the cockpit should offer the button again'))
     console.log(`[${TAG}] ✅ Cockpit — „Ich habe die Erklärung abgegeben“ marks ${YEAR} as filed, „Abgabe zurücknehmen“ undoes it`)

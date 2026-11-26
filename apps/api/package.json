@@ -18,6 +18,7 @@
     "streets:fetch": "tsx scripts/fetch-street-data.ts",
     "skills:generate": "tsx scripts/generate-skills.ts",
     "backfill:identity": "tsx scripts/backfill-identity.ts",
+    "rotate:field-key": "tsx scripts/rotate-field-encryption-key.ts",
     "laws:check": "tsx scripts/check-law-changes.ts",
     "seed:year-history": "tsx prisma/seed-year-history.ts",
     "seed:selbststaendig": "tsx prisma/seed-selbststaendig.ts"
@@ -26,6 +27,7 @@
     "seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
+    "@47ng/cloak": "1.2.0",
     "@better-auth/oauth-provider": "1.7.15",
     "@better-auth/passkey": "^1.7.15",
     "@better-auth/prisma-adapter": "1.7.15",

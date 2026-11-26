@@ -7,13 +7,13 @@ import { describe, it, expect } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { I18nextProvider } from 'react-i18next'
 import { ThemeProvider } from '@steuereule/ui'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { http, HttpResponse } from 'msw'
 import type { Answers } from '@steuereule/core'
 import { createAppI18n } from '../../i18n/app-i18n'
 import { DeadlinesBanner, Banner } from './DeadlinesBanner'
 import { server } from '../../test-msw-server'
 import type { DeadlinesResponseDto } from '@steuereule/api-client'
+import { renderWithQuery } from '../../test-render'
 
 const TAX_YEAR = 2025
 const DEADLINES_URL = `*/v1/steuerjahre/${TAX_YEAR}/fristen`
@@ -22,17 +22,7 @@ const MANDATORY: Answers = { job: 'Angestellt', ausland: 'Ja, in die Schweiz', k
 const VOLUNTARY: Answers = { job: 'Angestellt', ausland: 'Nein', kinder: 'Nein', familienstand: 'Ledig' }
 
 function renderBanner(answers: Answers | null) {
-  const i18n = createAppI18n('de')
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-  return render(
-    <QueryClientProvider client={queryClient}>
-      <I18nextProvider i18n={i18n}>
-        <ThemeProvider mode="light">
-          <DeadlinesBanner taxYear={TAX_YEAR} answers={answers} />
-        </ThemeProvider>
-      </I18nextProvider>
-    </QueryClientProvider>,
-  )
+  return renderWithQuery(<DeadlinesBanner taxYear={TAX_YEAR} answers={answers} />)
 }
 
 function renderPure(dto: DeadlinesResponseDto, answers: Answers) {

@@ -4,6 +4,7 @@ import { I18nextProvider } from 'react-i18next'
 import { ThemeProvider } from '@steuereule/ui'
 import { createAppI18n } from '../../../i18n/app-i18n'
 import { NoteChangeHints, ProjectNotes, type NoteChangeHintsProps, type ProjectNotesProps } from './ProjectNotes'
+import { confirmAction } from '../../../test-confirm'
 
 const wrap = (node: React.ReactNode) =>
   render(
@@ -59,12 +60,14 @@ describe('ProjectNotes (#481)', () => {
   it('deletes a note, and says so when that failed', async () => {
     const { onDelete } = renderNotes()
     fireEvent.click(screen.getAllByTestId('eule-note-delete')[1]!)
+    confirmAction('noteDelete')
     await waitFor(() => expect(onDelete).toHaveBeenCalledWith('n2'))
   })
 
   it('reports a change that could not be stored', async () => {
     renderNotes({ onDelete: vi.fn().mockRejectedValue(new Error('offline')) })
     fireEvent.click(screen.getAllByTestId('eule-note-delete')[0]!)
+    confirmAction('noteDelete')
     expect((await screen.findByTestId('eule-note-failed')).textContent).toContain('nicht geklappt')
   })
 })

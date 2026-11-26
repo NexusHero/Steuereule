@@ -4,13 +4,15 @@ import { useTranslation } from 'react-i18next'
 import type { TFunction } from 'i18next'
 import { Button, Chip, useTheme } from '@steuereule/ui'
 import { formatNumber } from '@steuereule/core'
-import { useBusinessControllerElster, useBusinessControllerElsterForms, type ElsterFormEntryDto, type ElsterLineDto } from '@steuereule/api-client'
+import type { PaymentReturn } from '@steuereule/core'
+import { apiErrorStatus, useBusinessControllerElster, useBusinessControllerElsterForms, useUnlockControllerStatus, type ElsterFormEntryDto, type ElsterLineDto } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
 import { copyText } from '../../lib/clipboard'
 import { BusinessFrame, BusinessQueryState, Note, Section } from './BusinessFrame'
-import { personParams } from './businessKit'
+import { personParams, problemOf } from './businessKit'
 import { queryProblem } from './useBusiness'
 import type { BusinessPageProps } from './BusinessScreen'
+import { usePaymentConfirmation, type PaymentPhase } from '../shared/usePaymentConfirmation'
 
 
 /** A chip's stable id: the form, and the copy's number where the form has several (two Anlagen Kind). */
@@ -47,24 +49,32 @@ export function valueText(value: ElsterLineDto['value']): string | null {
   return value
 }
 
+export interface ElsterPageProps extends BusinessPageProps {
+  /** Back from the checkout of the self-employment tier (the shared return contract, WEB-1). */
+  readonly payment?: PaymentReturn | undefined
+}
+
 /** The ELSTER fill-in help: per form, line by line, what to enter in Mein ELSTER, with a copy action per value. */
-export function ElsterPage({ taxYear, person, business = 1, onBack, onOpenPage, payment }: BusinessPageProps & { readonly payment?: string | undefined }) {
-  const paid = payment === 'erfolg'
+export function ElsterPage({ taxYear, person, business = 1, onBack, onOpenPage, payment }: ElsterPageProps) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const [chosen, setChosen] = useState<string | null>(null)
   const [copied, setCopied] = useState<string | null>(null)
   const list = useBusinessControllerElsterForms(taxYear, personParams(person, business))
-  const entries = list.data?.status === 200 ? list.data.data.forms : []
+  const entries = list.data?.data.forms ?? []
   const entry = entries.find((e) => entryKey(e) === chosen) ?? entries[0]
   const form = entry?.form ?? 'anlage-euer'
   const query = useBusinessControllerElster(taxYear, form, { ...personParams(person, business), ...(entry?.instance ? { instanz: entry.instance.id } : {}) }, { query: { enabled: entry !== undefined } })
   const [showRest, setShowRest] = useState(false)
+  // Only the return trip needs the unlock status: it decides between "being confirmed" and "paid" (WEB-35).
+  const status = useUnlockControllerStatus(taxYear, { query: { enabled: payment !== undefined } })
+  const unlocked = status.data === undefined ? undefined : status.data.data.status === 'freigeschaltet'
+  const { phase, recheck } = usePaymentConfirmation({ outcome: payment, unlocked, refetch: status.refetch })
   const refetchList = list.refetch
-  // Back from the checkout (`?zahlung=erfolg`): the year is paid, the help is read again.
+  // Once the payment is confirmed the help is read again: it answered 402 before.
   useEffect(() => {
-    if (paid) void refetchList()
-  }, [paid, refetchList])
+    if (phase === 'paid') void refetchList()
+  }, [phase, refetchList])
   const formName = entry ? entryLabel(entry, entries, tr) : ''
   // The API's own notes may name the form by its id; the user reads its name.
   const noteOf = (note: string | null) => (note === null ? null : note.replaceAll(form, tr(`business.elster.formular.${form}`)))
@@ -91,14 +101,17 @@ export function ElsterPage({ taxYear, person, business = 1, onBack, onOpenPage, 
         {chips('business')}
         {chips('income-tax')}
       </View>
-      {payment === 'abbruch' ? <Note testID="elster-abgebrochen">{tr('business.elster.abgebrochen')}</Note> : null}
-      {paid ? <Note testID="elster-freigeschaltet">{tr('business.elster.freigeschaltet', { year: taxYear })}</Note> : null}
+      <PaymentNote phase={phase} year={taxYear} onRecheck={recheck} />
+      {/* Unconfirmed values are no values to type in (MCP-24): the return's forms wait for „Prüfen & bestätigen“. */}
+      {(list.data?.data.unconfirmed ?? []).length > 0 ? <Note testID="elster-unbestaetigt">{tr('business.elster.unbestaetigt')}</Note> : null}
       {children}
     </BusinessFrame>
   )
 
+  // While the payment is being confirmed, the help's 402 is stale: no "not unlocked" and no second payment (WEB-35).
+  if (phase === 'confirming') return frame(null)
   // The fill-in help is part of the self-employment tier: 402 says so and leads to the checkout.
-  if (list.data?.status === 402 || query.data?.status === 402) {
+  if (apiErrorStatus(list.error) === 402 || apiErrorStatus(query.error) === 402) {
     return frame(
       <Section testID="elster-nicht-freigeschaltet">
         <Text style={{ ...t.type.body, color: t.color.tinte }}>{tr('business.elster.nichtFreigeschaltet', { year: taxYear })}</Text>
@@ -120,7 +133,7 @@ export function ElsterPage({ taxYear, person, business = 1, onBack, onOpenPage, 
   }
   if (query.isPending) return frame(<BusinessQueryState pending problem={null} onRetry={() => undefined} />)
   const problem = queryProblem(query)
-  if (problem !== null || query.data?.status !== 200) return frame(<BusinessQueryState pending={false} problem={problem ?? { status: 0, code: null, message: null }} onRetry={() => void query.refetch()} />)
+  if (problem !== null || query.data === undefined) return frame(<BusinessQueryState pending={false} problem={problem ?? problemOf(undefined)} onRetry={() => void query.refetch()} />)
 
   const help = query.data.data
   if (help.status === 'not_published') {
@@ -192,4 +205,24 @@ export function ElsterPage({ taxYear, person, business = 1, onBack, onOpenPage, 
       ) : null}
     </>,
   )
+}
+
+/** The one line about the return trip from the checkout, by phase; nothing without a return trip. */
+function PaymentNote({ phase, year, onRecheck }: { readonly phase: PaymentPhase; readonly year: number; readonly onRecheck: () => void }) {
+  const t = useTheme()
+  const { t: tr } = useTranslation(APP_NS)
+  if (phase === 'cancelled') return <Note testID="elster-abgebrochen">{tr('zahlung.abgebrochen')}</Note>
+  if (phase === 'paid') return <Note testID="elster-freigeschaltet">{tr('zahlung.bestaetigt', { year })}</Note>
+  if (phase === 'confirming') return <Note testID="elster-zahlung-wird-bestaetigt">{tr('zahlung.wirdBestaetigt')}</Note>
+  if (phase === 'timeout') {
+    return (
+      <View style={{ gap: t.space.s2 }}>
+        <Note testID="elster-zahlung-zeit-ueberschritten">{tr('zahlung.zeitUeberschritten', { year })}</Note>
+        <Button variant="ghost" onPress={onRecheck} testID="elster-zahlung-erneut-pruefen">
+          {tr('zahlung.erneutPruefen')}
+        </Button>
+      </View>
+    )
+  }
+  return null
 }

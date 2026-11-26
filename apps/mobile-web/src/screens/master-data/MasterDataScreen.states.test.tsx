@@ -2,15 +2,13 @@
 // retried, a lost connection while saving, choosing the Veranlagungsart, saving Person B and a code
 // that cannot be redeemed because the network is down.
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { I18nextProvider } from 'react-i18next'
-import { ThemeProvider } from '@steuereule/ui'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import type { LinkResponseDto, MasterDataResponseDto } from '@steuereule/api-client'
-import { createAppI18n } from '../../i18n/app-i18n'
 import { server } from '../../test-msw-server'
 import { MasterDataScreen } from './MasterDataScreen'
+import { confirmAction } from '../../test-confirm'
+import { renderWithQuery } from '../../test-render'
 
 const LEER: MasterDataResponseDto = {
   geburtsdatum: null,
@@ -31,16 +29,7 @@ const LEER: MasterDataResponseDto = {
 } as MasterDataResponseDto
 
 function renderScreen() {
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
-  render(
-    <QueryClientProvider client={queryClient}>
-      <I18nextProvider i18n={createAppI18n('de')}>
-        <ThemeProvider mode="light">
-          <MasterDataScreen onBack={() => {}} taxYear={2025} />
-        </ThemeProvider>
-      </I18nextProvider>
-    </QueryClientProvider>,
-  )
+  renderWithQuery(<MasterDataScreen onBack={() => {}} taxYear={2025} />)
 }
 
 beforeEach(() => {
@@ -56,7 +45,7 @@ describe('StammdatenScreen failures', () => {
     let healthy = false
     server.use(http.get('*/v1/stammdaten', () => (healthy ? HttpResponse.json(LEER) : HttpResponse.json(null, { status: 500 }))))
     renderScreen()
-    expect(await screen.findByText('Deine Angaben konnten nicht geladen werden.')).toBeTruthy()
+    expect(await screen.findByText('Das konnte nicht geladen werden.')).toBeTruthy()
     healthy = true
     fireEvent.click(screen.getByText('Noch mal versuchen'))
     expect(await screen.findByText('Alles da für den Ausdruck.')).toBeTruthy()
@@ -84,7 +73,8 @@ describe('the partner section', () => {
     const kinds: unknown[] = []
     server.use(
       http.get('*/v1/stammdaten', () => HttpResponse.json(LEER)),
-      http.get('*/v1/steuerjahre/:jahr/kopplung', () => HttpResponse.json(NO_LINK)),
+      // The stored link answers the reload after each choice, as the API does.
+      http.get('*/v1/steuerjahre/:jahr/kopplung', () => HttpResponse.json(kinds.length === 0 ? NO_LINK : JOINT)),
       http.put('*/v1/steuerjahre/2025/kopplung', async ({ request }) => {
         kinds.push(await request.json())
         return HttpResponse.json(JOINT)
@@ -93,7 +83,10 @@ describe('the partner section', () => {
     renderScreen()
     fireEvent.click(await screen.findByTestId('kopplung-zusammen'))
     await waitFor(() => expect(kinds).toEqual([{ filingType: 'zusammen' }]))
+    // Leaving the joint assessment asks first; the question exists once the mask shows the joint year.
+    await screen.findByTestId('personb-vorname')
     fireEvent.click(screen.getByTestId('kopplung-einzel'))
+    confirmAction('singleAssessment')
     await waitFor(() => expect(kinds[1]).toEqual({ filingType: 'einzel' }))
   })
 

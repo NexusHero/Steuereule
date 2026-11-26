@@ -15,9 +15,9 @@ import {
   type QuestionId,
 } from '@steuereule/core'
 import { APP_NS } from '../../i18n/resources'
-import { SELECTABLE_TAX_YEARS, isRunningTaxYear } from '../../config/taxYear'
+import { isRunningTaxYear, selectableTaxYears, useTaxYearClock } from '../../config/taxYear'
 import { makeInterviewStyles } from './styles'
-import { PostErrorNotice, type PostErrorKind } from './PostErrorNotice'
+import { PostErrorNotice, type PostError } from './PostErrorNotice'
 import { StepIndicator } from '../shared/StepIndicator'
 import { BackButton, BackButtonSpacer } from '../shared/BackButton'
 
@@ -115,7 +115,7 @@ interface QuestionScreenProps {
   readonly onAnswer: (value: string) => void
   readonly onBack: () => void
   readonly bp: Breakpoint
-  readonly notice: PostErrorKind | null
+  readonly notice: PostError | null
   readonly taxYear: number
   /** K2: lets the user switch the tax year from the first question; absent → no switch. */
   readonly onChangeYear?: (year: number) => void
@@ -147,7 +147,7 @@ export function QuestionScreen({ questionId, answers = {}, canGoBack, onAnswer, 
         </View>
       </View>
 
-      <PostErrorNotice kind={notice} />
+      <PostErrorNotice notice={notice} />
 
       <Text style={styles.heading}>
         {tr(`${copy.titleKey}.titleBefore`)}
@@ -171,6 +171,7 @@ function YearSwitch({ taxYear, onChangeYear }: { readonly taxYear: number; reado
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const [open, setOpen] = useState(false)
+  useTaxYearClock()
   if (!open) {
     return (
       <View style={{ alignSelf: 'flex-start', marginBottom: t.space.s3 }}>
@@ -182,7 +183,7 @@ function YearSwitch({ taxYear, onChangeYear }: { readonly taxYear: number; reado
   }
   return (
     <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.space.s2, marginBottom: t.space.s3 }} accessibilityLabel={tr('cockpit.jahrAuswahl')}>
-      {SELECTABLE_TAX_YEARS.filter((year) => year !== taxYear).map((year) => (
+      {selectableTaxYears().filter((year) => year !== taxYear).map((year) => (
         <Chip key={year} active={false} onPress={() => onChangeYear(year)} testID={`interview-jahr-${year}`}>
           {isRunningTaxYear(year) ? tr('cockpit.jahrLaeuft', { jahr: year }) : String(year)}
         </Chip>

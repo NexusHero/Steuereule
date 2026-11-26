@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { AMOUNT_LATER } from '@steuereule/core'
 import { PDFDocument } from 'pdf-lib'
 import { AuditService } from '../src/audit/audit.service.js'
@@ -7,6 +7,7 @@ import { UnlockService } from '../src/unlock/unlock.service.js'
 import type { CommuteRepository } from '../src/commute/commute.repository.js'
 import type { PaymentProvider } from '../src/unlock/payment-provider.js'
 import type { UnlockRepository } from '../src/unlock/unlock.repository.js'
+import { fixedUnlockRepository, stubPaymentProvider } from './fakes/fake-unlock.repository.js'
 import { FakeAuditRepository } from './fakes/fake-audit.repository.js'
 import { FakeCapitalRepository } from './fakes/fake-capital.repository.js'
 import { FakeChSalaryCertificateRepository } from './fakes/fake-ch-salary-certificate.repository.js'
@@ -46,15 +47,8 @@ describe('PrintoutService with AMOUNT_LATER', () => {
     await interviewRepo.write({ userId: 'u1', taxYear: 2025, questionId: 'spenden', value: 'Ja', openItems: 0 })
     await interviewRepo.write({ userId: 'u1', taxYear: 2025, questionId: 'spenden-betrag', value: AMOUNT_LATER, openItems: 0 })
 
-    const unlockRepo: UnlockRepository = {
-      isPaid: async () => true,
-      createOpenOnes: async () => {},
-      markPaid: async () => {},
-    }
-    const paymentProvider: PaymentProvider = {
-      createCheckout: async () => ({ id: 'cs_1', url: 'https://example.test' }),
-      verifyEvent: () => ({ kind: 'bezahlt', sessionId: 'cs_1', amountCents: 3900 }),
-    }
+    const unlockRepo: UnlockRepository = fixedUnlockRepository(true)
+    const paymentProvider: PaymentProvider = stubPaymentProvider('cs_1')
     const commuteRepo: CommuteRepository = {
       findForUserAndYear: async () => null,
       save: async (_u, _y, e) => e,
@@ -84,14 +78,28 @@ describe('PrintoutService check before payment (ADR-0085)', () => {
       findForUserAndYear: async () => ({ workdays: [1, 2, 3, 4, 5], vacationDays: 30, sickDays: 0, homeOfficeDays: 0, oneWayKm: 12, transport: 'pkw', workplace, publicHolidays: null, publicHolidayRegion: null }),
       save: async (_u, _y, e) => e,
     }
-    const unlockRepo: UnlockRepository = { isPaid: async () => false, createOpenOnes: async () => {}, markPaid: async () => {} }
-    const paymentProvider: PaymentProvider = { createCheckout: async () => ({ id: 'cs_2', url: 'https://example.test' }), verifyEvent: () => ({ kind: 'bezahlt', sessionId: 'cs_2', amountCents: 3900 }) }
+    const unlockRepo: UnlockRepository = fixedUnlockRepository(false)
+    const paymentProvider: PaymentProvider = stubPaymentProvider('cs_2')
     return new PrintoutService(taxCaseReaderOver({ profile: profileRepo, masterData: masterDataRepo, wageTaxCertificate: lstbRepo, pension: new FakePensionRepository(), capital: new FakeCapitalRepository(), rental: new FakeRentalRepository(), salaryStatement: new FakeChSalaryCertificateRepository(), children: new FakeChildRepository(), coupling: new FakeLinkRepository(), interview: new FakeInterviewAnswerRepository(), commute: commuteRepo }), new FakeMarkingRepository(), new UnlockService(unlockRepo, paymentProvider, 'http://localhost:8081'), new AuditService(new FakeAuditRepository()), TEMPLATES_BASE)
   }
 
   it('names a value too long for its box before the user pays', async () => {
     const service = await serviceWith('Beispielstadt-Nord, Industriegebiet Am Langen Graben, Halle 7, Tor 3, Hintereingang', 2025)
     expect((await service.check('u2', 2025)).missing).toContain('zuLang.anlN.wegOrt')
+  })
+
+  it('finds the overflow without writing a PDF: the check runs on every open of the screen (API-6)', async () => {
+    const service = await serviceWith('Beispielstadt-Nord, Industriegebiet Am Langen Graben, Halle 7, Tor 3, Hintereingang', 2025)
+    const save = vi.spyOn(PDFDocument.prototype, 'save')
+    const copyPages = vi.spyOn(PDFDocument.prototype, 'copyPages')
+    try {
+      expect((await service.check('u2', 2025)).missing).toEqual(['zuLang.anlN.wegOrt'])
+      expect(save).not.toHaveBeenCalled()
+      expect(copyPages).not.toHaveBeenCalled()
+    } finally {
+      save.mockRestore()
+      copyPages.mockRestore()
+    }
   })
 
   it('checks a 2024 return on the 2024 forms', async () => {
@@ -113,8 +121,8 @@ describe('PrintoutService check: the IBAN is only needed for a refund', () => {
     } as never)
     lstbRepo.seed({ userId: 'u3', taxYear: 2025, bruttoarbeitslohn: '42000', lohnsteuer: '6000', sozialversicherung: '8000' })
     const commuteRepo: CommuteRepository = { findForUserAndYear: async () => null, save: async (_u, _y, e) => e }
-    const unlockRepo: UnlockRepository = { isPaid: async () => false, createOpenOnes: async () => {}, markPaid: async () => {} }
-    const paymentProvider: PaymentProvider = { createCheckout: async () => ({ id: 'cs_3', url: 'https://example.test' }), verifyEvent: () => ({ kind: 'bezahlt', sessionId: 'cs_3', amountCents: 3900 }) }
+    const unlockRepo: UnlockRepository = fixedUnlockRepository(false)
+    const paymentProvider: PaymentProvider = stubPaymentProvider('cs_3')
     const estimate = { getState: async () => (result === null ? { kind: 'offen' as const } : { kind: 'spanne' as const, result }) }
     return new PrintoutService(taxCaseReaderOver({ profile: profileRepo, masterData: masterDataRepo, wageTaxCertificate: lstbRepo, pension: new FakePensionRepository(), capital: new FakeCapitalRepository(), rental: new FakeRentalRepository(), salaryStatement: new FakeChSalaryCertificateRepository(), children: new FakeChildRepository(), coupling: new FakeLinkRepository(), interview: new FakeInterviewAnswerRepository(), commute: commuteRepo }), new FakeMarkingRepository(), new UnlockService(unlockRepo, paymentProvider, 'http://localhost:8081'), new AuditService(new FakeAuditRepository()), TEMPLATES_BASE, undefined, estimate as never)
   }
@@ -131,5 +139,52 @@ describe('PrintoutService check: the IBAN is only needed for a refund', () => {
       expect(check.missing).toContain('iban')
       expect(check.hints).toEqual([])
     }
+  })
+})
+
+describe('PrintoutService: a joint year Person B has not agreed to (decision 3, API-3)', () => {
+  it('holds the return back, shows no form value and reads nothing of Person B', async () => {
+    const profileRepo = new FakeProfileRepository()
+    const masterDataRepo = new FakeMasterDataRepository()
+    const lstbRepo = new FakeLstbRepository()
+    const linkRepo = new FakeLinkRepository()
+    await profileRepo.upsert('a', { firstName: 'Anna', lastName: 'Beispiel', steuerId: '02476291358', steuernummer: '2010304050' })
+    await profileRepo.upsert('b', { firstName: 'Bernd', lastName: 'Geheim', steuerId: '65929970489', steuernummer: null })
+    await masterDataRepo.save('a', {
+      geburtsdatum: '1990-04-12', strasse: 'Musterstraße', hausnummer: '12', plz: '01067', wohnort: 'Dresden',
+      religion: 'VD', familienstand: 'verheiratet', iban: 'DE02120300000000202051', finanzamt: 'Dresden-Nord',
+    } as never)
+    lstbRepo.seed({ userId: 'a', taxYear: 2025, bruttoarbeitslohn: '42000', lohnsteuer: '6000', sozialversicherung: '8000' })
+    lstbRepo.seed({ userId: 'b', taxYear: 2025, bruttoarbeitslohn: '77777', lohnsteuer: '9000', sozialversicherung: '9000' })
+    await linkRepo.upsert('a', 2025, { personBUserId: 'b', filingType: 'zusammen', personBConsentedAt: null })
+    const readsOfB: string[] = []
+    const watched = <T extends object>(name: string, repository: T): T =>
+      new Proxy(repository, {
+        get(target, property, receiver) {
+          const value = Reflect.get(target, property, receiver) as unknown
+          if (typeof value !== 'function') return value
+          return (...args: unknown[]) => {
+            if (args[0] === 'b') readsOfB.push(`${name}.${String(property)}`)
+            return (value as (...a: unknown[]) => unknown).apply(target, args)
+          }
+        },
+      })
+    const markings = new FakeMarkingRepository()
+    const commuteRepo: CommuteRepository = { findForUserAndYear: async () => null, save: async (_u, _y, e) => e }
+    const service = new PrintoutService(
+      taxCaseReaderOver({ profile: watched('profile', profileRepo), masterData: watched('masterData', masterDataRepo), wageTaxCertificate: watched('lstb', lstbRepo), pension: watched('pension', new FakePensionRepository()), capital: new FakeCapitalRepository(), rental: new FakeRentalRepository(), salaryStatement: watched('ch', new FakeChSalaryCertificateRepository()), children: new FakeChildRepository(), coupling: linkRepo, interview: watched('interview', new FakeInterviewAnswerRepository()), commute: watched('commute', commuteRepo) }),
+      watched('markings', markings), new UnlockService(fixedUnlockRepository(false), stubPaymentProvider('cs_4'), 'http://localhost:8081'), new AuditService(new FakeAuditRepository()), TEMPLATES_BASE, undefined, { getState: async () => ({ kind: 'offen' as const }) } as never,
+    )
+
+    const check = await service.check('a', 2025)
+    expect(check.missing).toContain('personB.zustimmung')
+    expect(await service.fillInValues('a', 2025)).toEqual({ forms: [], names: {}, unconfirmed: ['personB.zustimmung'] })
+    expect((await service.liveValues('a', 2025)).forms).toEqual([])
+    expect(readsOfB).toEqual([])
+
+    // Once B agreed, B's figures belong to the joint return.
+    await linkRepo.upsert('a', 2025, { personBUserId: 'b', filingType: 'zusammen', personBConsentedAt: new Date('2026-02-01T08:00:00Z') })
+    expect((await service.check('a', 2025)).missing).not.toContain('personB.zustimmung')
+    expect(readsOfB.length).toBeGreaterThan(0)
   })
 })

@@ -1,4 +1,4 @@
-import { useAuthCapabilitiesControllerGetCapabilities } from '@steuereule/api-client'
+import { isApiError, useAuthCapabilitiesControllerGetCapabilities } from '@steuereule/api-client'
 
 export type SocialAvailability =
   | 'available'
@@ -7,18 +7,16 @@ export type SocialAvailability =
   | 'unreachable'
 
 export function useSocialSignInAvailable(provider: string): SocialAvailability {
-  const { data, isPending, isError } = useAuthCapabilitiesControllerGetCapabilities({
+  const { data, isPending, isError, error } = useAuthCapabilitiesControllerGetCapabilities({
     query: {
       staleTime: Infinity,
       retry: false,
     },
   })
 
-  if (isError) return 'unreachable'
+  // A status the server answered (a rejected ApiError) is an answer — "unknown", not "unreachable" (#336).
+  if (isError) return isApiError(error) ? 'unknown' : 'unreachable'
   if (isPending || !data) return 'unknown'
-
-  const httpStatus = (data as { status: number }).status
-  if (httpStatus !== 200) return 'unknown'
 
   return data.data.socialProviders?.includes(provider) ? 'available' : 'not-configured'
 }

@@ -11,8 +11,10 @@ import {
   type FilingTypeComparisonDto,
 } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
-import { CURRENT_TAX_YEAR } from '../../config/taxYear'
+import { runningTaxYear } from '../../config/taxYear'
 import { LoadingState, ErrorState } from '../shared/ScreenState'
+import { useApiFailureMessage } from '../../net/apiFailure'
+import { parseGermanAmount } from '../shared/germanNumber'
 import { BackButton, BackButtonSpacer } from '../shared/BackButton'
 
 export interface FilingTypeComparisonScreenProps {
@@ -27,7 +29,7 @@ export interface FilingTypeComparisonScreenProps {
 export function FilingTypeComparisonScreen({
   onBack,
   onDone,
-  taxYear = CURRENT_TAX_YEAR,
+  taxYear = runningTaxYear(),
   embedded = false,
   marriedKnown = false,
 }: FilingTypeComparisonScreenProps) {
@@ -35,22 +37,25 @@ export function FilingTypeComparisonScreen({
   const t = useTheme()
   const styles = makeStyles(t)
   const { t: tr } = useTranslation(APP_NS)
+  const failureMessage = useApiFailureMessage()
 
   // Married is known from the master data or the basis page: start there, the user can still say otherwise.
   const masterData = useMasterDataControllerRead()
   const interview = useInterviewControllerGetInterview(taxYear)
-  const knownMarried =
-    (masterData.data?.status === 200 && masterData.data.data.familienstand === 'verheiratet') ||
-    (interview.data?.status === 200 && interview.data.data.answers.familienstand === 'Verheiratet')
+  const knownMarried = masterData.data?.data.familienstand === 'verheiratet' || interview.data?.data.answers.familienstand === 'Verheiratet'
+  // C-30: when a read failed and none said „verheiratet“, the status is unknown — no answer is preselected.
+  const marriedUnknown = !knownMarried && (masterData.isError || interview.isError)
   const [choice, setMarried] = useState<boolean | null>(null)
-  const married = marriedKnown || (choice ?? knownMarried)
+  const married: boolean | null = marriedKnown ? true : (choice ?? (marriedUnknown ? null : knownMarried))
   const [zveB, setZveB] = useState('')
-  const zveBValue = Number(zveB)
-  const ready = married && zveB !== '' && Number.isFinite(zveBValue) && zveBValue >= 0
+  // WEB-46, NC-07: „40.000“ is forty thousand, „40.000,50“ is read too; what is no amount is said.
+  const zveBValue = parseGermanAmount(zveB)
+  const zveBInvalid = zveB.trim() !== '' && zveBValue === null
+  const ready = married === true && zveBValue !== null
 
   const params: FilingTypeComparisonControllerGetComparisonParams = ready
-    ? { verheiratet: married, zveB: zveBValue }
-    : { verheiratet: married }
+    ? { verheiratet: true, zveB: zveBValue }
+    : { verheiratet: married === true }
 
   const query = useFilingTypeComparisonControllerGetComparison(taxYear, params, { query: { enabled: ready } })
 
@@ -68,17 +73,21 @@ export function FilingTypeComparisonScreen({
         <>
           <Text style={styles.label}>{tr('veranlagungsartenvergleich.verheiratetLabel')}</Text>
           <View style={styles.optionRow}>
-            <Option selected={married} onPress={() => setMarried(true)} style={styles.rowOption} testID="verheiratet-ja">
+            <Option selected={married === true} onPress={() => setMarried(true)} style={styles.rowOption} testID="verheiratet-ja">
               {tr('veranlagungsartenvergleich.ja')}
             </Option>
-            <Option selected={!married} onPress={() => setMarried(false)} style={styles.rowOption} testID="verheiratet-nein">
+            <Option selected={married === false} onPress={() => setMarried(false)} style={styles.rowOption} testID="verheiratet-nein">
               {tr('veranlagungsartenvergleich.nein')}
             </Option>
           </View>
         </>
       )}
 
-      {married ? (
+      {married === null ? (
+        <Text style={styles.hinweis} accessibilityRole="alert" testID="vergleich-familienstand-unbekannt">
+          {tr('veranlagungsartenvergleich.familienstandUnbekannt')}
+        </Text>
+      ) : married ? (
         <View style={styles.inputBlock}>
           <Text style={styles.label}>{tr('veranlagungsartenvergleich.partnerEinkommenLabel')}</Text>
           <Input
@@ -90,25 +99,29 @@ export function FilingTypeComparisonScreen({
             testID="zveb-input"
             accessibilityLabel={tr('veranlagungsartenvergleich.partnerEinkommenLabel')}
           />
+          {zveBInvalid ? (
+            <Text style={styles.hinweis} accessibilityRole="alert" testID="zveb-ungueltig">
+              {tr('veranlagungsartenvergleich.ungueltig')}
+            </Text>
+          ) : null}
         </View>
       ) : (
         <Text style={styles.hinweis}>{tr('veranlagungsartenvergleich.nichtVerheiratet')}</Text>
       )}
 
       {ready && query.isPending ? <LoadingState bp={bp} label={tr('veranlagungsartenvergleich.loading')} /> : null}
-      {ready && (query.isError || query.data?.status !== 200) ? (
+      {/* NC-08: the failure only once the request failed, never beside „Lädt“. */}
+      {ready && query.isError ? (
         <ErrorState
           bp={bp}
           heading={tr('veranlagungsartenvergleich.loadError.heading')}
-          message={tr('veranlagungsartenvergleich.loadError.message')}
+          message={failureMessage(query.error, { offline: tr('veranlagungsartenvergleich.loadError.message'), server: tr('veranlagungsartenvergleich.loadError.message') })}
           retryLabel={tr('veranlagungsartenvergleich.loadError.retry')}
           onRetry={() => void query.refetch()}
         />
       ) : null}
 
-      {ready && !query.isPending && query.data?.status === 200 && query.data.data !== null ? (
-        <Result dto={query.data.data} />
-      ) : null}
+      {ready && query.isSuccess && query.data.data !== null ? <Result dto={query.data.data} /> : null}
 
       {onDone ? (
         <Button onPress={onDone} style={styles.doneCta} testID="veranlagungsartenvergleich-weiter">

@@ -8,6 +8,7 @@ import { createRequire } from 'node:module'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { PrismaClient } from '@prisma/client'
+import { keystoreLoginPlan, provisionKeystoreLogin, provisionRuntimeLogin, runtimeLoginPlan } from './runtime-database-login.mjs'
 
 function keystoreUrl(env) {
   if (env.KEYSTORE_DATABASE_URL?.trim()) return { url: env.KEYSTORE_DATABASE_URL.trim(), derived: false }
@@ -47,13 +48,49 @@ const prismaPackage = require.resolve('prisma/package.json')
 const prismaCli = path.join(path.dirname(prismaPackage), JSON.parse(readFileSync(prismaPackage, 'utf8')).bin.prisma)
 const run = (args, env) => execFileSync(process.execPath, [prismaCli, ...args], { stdio: 'inherit', env })
 
-run(['migrate', 'deploy'], process.env)
+// P11: this job connects as the migration login, the owner of the tables (`DATABASE_URL` of this job). The tables
+// are FORCEd for row-level security, so the policies bind the owner too; a data migration or backfill under a
+// non-superuser owner (Cloud SQL) would see no rows. This one job runs as the named system path `migration`
+// (`app_rls.is_system()`). The API has another login, which this job creates below (`RUNTIME_DATABASE_URL`,
+// scripts/runtime-database-login.mjs) and which owns nothing.
+function asMigration(url) {
+  if (!url) return url
+  const parsed = new URL(url.trim())
+  const option = '-c steuereule.system=migration'
+  const existing = parsed.searchParams.get('options')
+  if (existing === null) return `${url.trim()}${url.includes('?') ? '&' : '?'}options=${encodeURIComponent(option)}`
+  parsed.searchParams.set('options', `${existing} ${option}`)
+  return parsed.toString()
+}
+// Decided before anything is changed: a production run without a separate runtime login stops here.
+const runtimeLogin = runtimeLoginPlan(process.env)
+const keystoreLogin = keystoreLoginPlan(process.env)
+const migrationEnv = { ...process.env, DATABASE_URL: asMigration(process.env.DATABASE_URL) }
+
+run(['migrate', 'deploy'], migrationEnv)
+if (runtimeLogin.kind === 'provision') {
+  const owner = new PrismaClient()
+  try {
+    await provisionRuntimeLogin(owner, runtimeLogin)
+  } finally {
+    await owner.$disconnect()
+  }
+}
 const keystore = keystoreUrl(process.env)
 if (keystore.derived || sameServer(keystore.url, process.env.DATABASE_URL)) await ensureDatabaseExists(keystore.url)
 run(['migrate', 'deploy', '--schema', 'prisma/keystore/schema.prisma'], {
   ...process.env,
   KEYSTORE_DATABASE_URL: keystore.url,
 })
+// A keystore on the tax-data server gets a login of its own (the API must not reach it as the server's owner).
+if (keystoreLogin.kind === 'provision') {
+  const keystoreOwner = new PrismaClient({ datasources: { db: { url: keystore.url } } })
+  try {
+    await provisionKeystoreLogin(keystoreOwner, keystoreLogin)
+  } finally {
+    await keystoreOwner.$disconnect()
+  }
+}
 
 // ADR-0107 H3: re-encrypt any Profile name rows still in cleartext at rest. Non-strict field
 // encryption only encrypts on the next write, so pre-deployment rows need this one-time, idempotent
@@ -61,10 +98,10 @@ run(['migrate', 'deploy', '--schema', 'prisma/keystore/schema.prisma'], {
 // Invoked through tsx because it reuses the app's own key resolver (TypeScript); the production image
 // already boots with `node --import tsx` (ADR-0010a).
 const backfillScript = path.join(path.dirname(fileURLToPath(import.meta.url)), 'backfill-profile-name-encryption.ts')
-execFileSync(process.execPath, ['--import', 'tsx', backfillScript], { stdio: 'inherit', env: process.env })
+execFileSync(process.execPath, ['--import', 'tsx', backfillScript], { stdio: 'inherit', env: migrationEnv })
 
 // ADR-0109: accounts are found by `emailHash` from this release on. Filling the hash here, before the release
 // takes traffic, is what keeps existing accounts able to sign in; the addresses themselves stay plaintext
 // until `backfill-identity.ts` is run without a phase after the release. Idempotent.
 const identityBackfill = path.join(path.dirname(fileURLToPath(import.meta.url)), 'backfill-identity.ts')
-execFileSync(process.execPath, ['--import', 'tsx', identityBackfill, '--phase=hash'], { stdio: 'inherit', env: process.env })
+execFileSync(process.execPath, ['--import', 'tsx', identityBackfill, '--phase=hash'], { stdio: 'inherit', env: migrationEnv })

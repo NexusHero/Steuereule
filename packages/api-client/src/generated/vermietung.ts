@@ -69,8 +69,6 @@ export type rentalControllerGetResponseError = (rentalControllerGetResponse401) 
   headers: Headers;
 };
 
-export type rentalControllerGetResponse = (rentalControllerGetResponseSuccess | rentalControllerGetResponseError)
-
 export const getRentalControllerGetUrl = (jahr: number,) => {
 
 
@@ -79,9 +77,9 @@ export const getRentalControllerGetUrl = (jahr: number,) => {
   return `/v1/steuerjahre/${jahr}/vermietung`
 }
 
-export const rentalControllerGet = async (jahr: number, options?: RequestInit): Promise<rentalControllerGetResponse> => {
+export const rentalControllerGet = async (jahr: number, options?: RequestInit): Promise<rentalControllerGetResponseSuccess> => {
 
-  return httpClient<rentalControllerGetResponse>(getRentalControllerGetUrl(jahr),
+  return httpClient<rentalControllerGetResponseSuccess>(getRentalControllerGetUrl(jahr),
   {
     ...options,
     method: 'GET'
@@ -183,8 +181,6 @@ export type rentalControllerCreateResponseError = (rentalControllerCreateRespons
   headers: Headers;
 };
 
-export type rentalControllerCreateResponse = (rentalControllerCreateResponseSuccess | rentalControllerCreateResponseError)
-
 export const getRentalControllerCreateUrl = (jahr: number,) => {
 
 
@@ -193,9 +189,9 @@ export const getRentalControllerCreateUrl = (jahr: number,) => {
   return `/v1/steuerjahre/${jahr}/vermietung/objekte`
 }
 
-export const rentalControllerCreate = async (jahr: number, options?: RequestInit): Promise<rentalControllerCreateResponse> => {
+export const rentalControllerCreate = async (jahr: number, options?: RequestInit): Promise<rentalControllerCreateResponseSuccess> => {
 
-  return httpClient<rentalControllerCreateResponse>(getRentalControllerCreateUrl(jahr),
+  return httpClient<rentalControllerCreateResponseSuccess>(getRentalControllerCreateUrl(jahr),
   {
     ...options,
     method: 'POST'
@@ -267,8 +263,6 @@ export type rentalControllerSetFieldResponseError = (rentalControllerSetFieldRes
   headers: Headers;
 };
 
-export type rentalControllerSetFieldResponse = (rentalControllerSetFieldResponseSuccess | rentalControllerSetFieldResponseError)
-
 export const getRentalControllerSetFieldUrl = (jahr: number,
     objektId: string,
     feld: string,) => {
@@ -282,9 +276,9 @@ export const getRentalControllerSetFieldUrl = (jahr: number,
 export const rentalControllerSetField = async (jahr: number,
     objektId: string,
     feld: string,
-    putRentalFieldDto: PutRentalFieldDto, options?: RequestInit): Promise<rentalControllerSetFieldResponse> => {
+    putRentalFieldDto: PutRentalFieldDto, options?: RequestInit): Promise<rentalControllerSetFieldResponseSuccess> => {
 
-  return httpClient<rentalControllerSetFieldResponse>(getRentalControllerSetFieldUrl(jahr,objektId,feld),
+  return httpClient<rentalControllerSetFieldResponseSuccess>(getRentalControllerSetFieldUrl(jahr,objektId,feld),
   {
     ...options,
     method: 'PUT',
@@ -356,8 +350,6 @@ export type rentalControllerSetAddressResponseError = (rentalControllerSetAddres
   headers: Headers;
 };
 
-export type rentalControllerSetAddressResponse = (rentalControllerSetAddressResponseSuccess | rentalControllerSetAddressResponseError)
-
 export const getRentalControllerSetAddressUrl = (jahr: number,
     objektId: string,) => {
 
@@ -369,9 +361,9 @@ export const getRentalControllerSetAddressUrl = (jahr: number,
 
 export const rentalControllerSetAddress = async (jahr: number,
     objektId: string,
-    putRentalAddressDto: PutRentalAddressDto, options?: RequestInit): Promise<rentalControllerSetAddressResponse> => {
+    putRentalAddressDto: PutRentalAddressDto, options?: RequestInit): Promise<rentalControllerSetAddressResponseSuccess> => {
 
-  return httpClient<rentalControllerSetAddressResponse>(getRentalControllerSetAddressUrl(jahr,objektId),
+  return httpClient<rentalControllerSetAddressResponseSuccess>(getRentalControllerSetAddressUrl(jahr,objektId),
   {
     ...options,
     method: 'PUT',

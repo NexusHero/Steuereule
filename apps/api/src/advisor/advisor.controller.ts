@@ -1,3 +1,4 @@
+import { PRODUCT_LIMITS } from '@steuereule/core'
 import {
   applyDecorators,
   Body,
@@ -25,6 +26,7 @@ import {
   ApiParam,
   ApiQuery,
   ApiTags,
+  ApiTooManyRequestsResponse,
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger'
 import { Throttle, ThrottlerGuard } from '@nestjs/throttler'
@@ -62,6 +64,7 @@ import { AdvisorProjectNotes } from './advisor-project-notes.js'
 import { AdvisorTurn } from './advisor-turn.js'
 import { AdvisorModelsService } from './advisor-models.service.js'
 import { InvalidInputError } from '../common/domain-error.js'
+import { AccountThrottle, SUMMARIZE_THROTTLE } from '../rate-limit/rate-limit.js'
 import {
   AdvisorActionMutationResponseDto,
   AdvisorChatMessageDto,
@@ -218,7 +221,7 @@ export class AdvisorController {
   @HttpCode(200)
   @OwlRoute()
   @UseGuards(FastifyThrottlerGuard)
-  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @Throttle({ default: { limit: PRODUCT_LIMITS.advisorMessagesPerMinute, ttl: 60_000 } })
   @ApiBody({ type: SendAdvisorMessageDto })
   @ApiOkResponse({ type: SendAdvisorMessageResponseDto })
   @ApiUnauthorizedResponse({ description: 'Requires account.' })
@@ -445,6 +448,8 @@ export class AdvisorController {
   @Post('conversations/:conversationId/summarize')
   @HttpCode(200)
   @OwlRoute()
+  @AccountThrottle(SUMMARIZE_THROTTLE)
+  @ApiTooManyRequestsResponse({ description: 'Too many summaries for this account, or the day\'s messages are used up.' })
   @ApiOperation({ summary: 'Summarise the older part of a conversation now, before its context is full' })
   @ApiParam({ name: 'conversationId', type: String })
   @ApiOkResponse({ type: AdvisorContextDto })

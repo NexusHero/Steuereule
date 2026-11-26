@@ -1,12 +1,9 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { I18nextProvider } from 'react-i18next'
-import { ThemeProvider } from '@steuereule/ui'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
-import { createAppI18n } from '../../i18n/app-i18n'
 import { server } from '../../test-msw-server'
 import { PrintoutScreen } from './PrintoutScreen'
+import { renderWithQuery } from '../../test-render'
 
 
 function mock(status: string, missing: string[] = []) {
@@ -17,7 +14,6 @@ function mock(status: string, missing: string[] = []) {
 }
 
 function renderScreen(props: { payment?: 'erfolg' | 'abbruch'; openCheckout?: (url: string) => void; year?: number } = {}) {
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
   const onCompleteDetails = vi.fn()
   const onCompleteRiester = vi.fn()
   const onCompleteChildren = vi.fn()
@@ -25,25 +21,19 @@ function renderScreen(props: { payment?: 'erfolg' | 'abbruch'; openCheckout?: (u
   const onCompleteCapital = vi.fn()
   const onCompleteCrossBorder = vi.fn()
   const onConfirm = vi.fn()
-  render(
-    <QueryClientProvider client={queryClient}>
-      <I18nextProvider i18n={createAppI18n('de')}>
-        <ThemeProvider mode="light">
-          <PrintoutScreen
-            year={2025}
-            onBack={() => {}}
-            onCompleteDetails={onCompleteDetails}
-            onCompleteRiester={onCompleteRiester}
-            onCompleteChildren={onCompleteChildren}
-            onCompleteRental={onCompleteRental}
-            onCompleteCapital={onCompleteCapital}
-            onCompleteCrossBorder={onCompleteCrossBorder}
-            onConfirm={onConfirm}
-            {...props}
-          />
-        </ThemeProvider>
-      </I18nextProvider>
-    </QueryClientProvider>,
+  renderWithQuery(
+    <PrintoutScreen
+      year={2025}
+      onBack={() => {}}
+      onCompleteDetails={onCompleteDetails}
+      onCompleteRiester={onCompleteRiester}
+      onCompleteChildren={onCompleteChildren}
+      onCompleteRental={onCompleteRental}
+      onCompleteCapital={onCompleteCapital}
+      onCompleteCrossBorder={onCompleteCrossBorder}
+      onConfirm={onConfirm}
+      {...props}
+    />,
   )
   return { onCompleteDetails, onCompleteRiester, onCompleteChildren, onCompleteRental, onCompleteCapital, onCompleteCrossBorder, onConfirm }
 }
@@ -91,12 +81,21 @@ describe('AusdruckScreen (ADR-0050)', () => {
     await waitFor(() => expect(openCheckout).toHaveBeenCalledWith('https://checkout.stripe.com/c/pay/cs_test_1'))
   })
 
-  it('back from Stripe with "erfolg" but not yet confirmed: a waiting state, never a download', async () => {
+  it('before the payment: the beta notice and real links to terms, withdrawal and privacy policy (WEB-7, WEB-20)', async () => {
+    mock('offen')
+    renderScreen()
+    await screen.findByTestId('ausdruck-bezahlen')
+    expect(screen.getByTestId('beta-hinweis')).toBeTruthy()
+    expect(screen.getByTestId('rechtliches-link-agb').getAttribute('href')).toBe('/rechtliches/agb')
+    expect(screen.getByTestId('rechtliches-link-datenschutz').getAttribute('href')).toBe('/rechtliches/datenschutz')
+  })
+
+  it('back from Stripe with "erfolg" but not yet confirmed: a waiting state, never a download, no second payment', async () => {
     mock('offen')
     renderScreen({ payment: 'erfolg' })
-    expect(await screen.findByText('Deine Zahlung wird bestätigt. Das dauert meist nur Sekunden.')).toBeTruthy()
+    expect(await screen.findByText('Deine Zahlung wird bestätigt. Das dauert meist nur Sekunden – du musst nichts weiter tun.')).toBeTruthy()
     expect(screen.queryByTestId('ausdruck-herunterladen')).toBeNull()
-    expect(screen.queryByTestId('ausdruck-bezahlen')).toBeNull()
+    expect(screen.getByTestId('ausdruck-bezahlen').getAttribute('aria-disabled')).toBe('true')
   })
 
   it('unlocked: offers the download and the hand-in rules', async () => {
@@ -208,10 +207,10 @@ describe('AusdruckScreen (ADR-0050)', () => {
     expect(screen.queryByText(/Noch nicht bestätigt/)).toBeNull()
   })
 
-  it('payment not configured on this environment: says so, offers nothing to click', async () => {
+  it('payment not configured: says so without developer wording, offers nothing to click', async () => {
     mock('nicht-verfuegbar')
     renderScreen()
-    expect(await screen.findByText('Die Bezahlung ist auf dieser Umgebung noch nicht eingerichtet.')).toBeTruthy()
+    expect(await screen.findByText('Die Bezahlung ist gerade nicht möglich. Bitte versuch es später noch einmal.')).toBeTruthy()
     expect(screen.queryByTestId('ausdruck-bezahlen')).toBeNull()
   })
   it('names what is really missing for the Anlage Kind, not everything that could be', async () => {

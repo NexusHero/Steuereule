@@ -15,6 +15,7 @@ import { outcomeOfFailure, outcomeOfParse } from '../../lib/receipts/receiptOutc
 import { createHolderFromDocument, detailsFromDocument, takeNameIntoProfile, type NewHolderDetails } from '../../lib/receipts/documentAssignment'
 import type { ChatReceiptResult, CopilotBridgeContextValue, ParseReceiptInput } from './CopilotBridge.types'
 import { upsertReceiptResult } from './CopilotBridgeHelpers'
+import { advisorFailureText } from './chat/advisorFailureText'
 
 export interface UseCopilotBridgeReceiptsInput {
   readonly taxYear: number
@@ -57,32 +58,29 @@ export function useCopilotBridgeReceipts({ taxYear, isAuthenticated, setOpenChat
           ...(input.mimeType !== undefined ? { mimeType: input.mimeType } : {}),
           stageDraft: input.stageDraft ?? true,
         })
-        if (res.status === 200) {
-          setLastParsedReceipt(res.data)
-          const stagedId = res.data.stagedAction?.actionId
-          if (stagedId) {
-            setReceiptLinkedActionIds((prev) => {
-              const next = new Set(prev)
-              next.add(stagedId)
-              return next
-            })
-          }
-          await Promise.all([
-            queryClient.invalidateQueries({ queryKey: getAdvisorControllerGetSessionQueryKey(taxYear) }),
-            queryClient.invalidateQueries({ queryKey: getOwlModeControllerGetCardsQueryKey(taxYear) }),
-          ])
-          return res.data
+        setLastParsedReceipt(res.data)
+        const stagedId = res.data.stagedAction?.actionId
+        if (stagedId) {
+          setReceiptLinkedActionIds((prev) => {
+            const next = new Set(prev)
+            next.add(stagedId)
+            return next
+          })
         }
-        setOpenChatError(`Belegprüfung fehlgeschlagen (HTTP ${res.status}).`)
-        return null
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: getAdvisorControllerGetSessionQueryKey(taxYear) }),
+          queryClient.invalidateQueries({ queryKey: getOwlModeControllerGetCardsQueryKey(taxYear) }),
+        ])
+        return res.data
       } catch (error) {
-        setOpenChatError(error instanceof Error ? error.message : 'Belegprüfung fehlgeschlagen.')
+        // NR-06 / WEB-10: a 413 names the limit, a 429 the wait, a guest the account; never "HTTP 413".
+        setOpenChatError(advisorFailureText(error, tr, { 'account-required': tr('apiFehler.receiptParseAccountRequired') }))
         return null
       } finally {
         setParsingReceipt(false)
       }
     },
-    [isAuthenticated, queryClient, taxYear],
+    [isAuthenticated, queryClient, taxYear, tr],
   )
 
   const captureReceiptFile = useCallback(
@@ -110,8 +108,12 @@ export function useCopilotBridgeReceipts({ taxYear, isAuthenticated, setOpenChat
         if (!result.ok) {
           // The device or the server could not read it: the file's line says so, from the state the server recorded.
           putReceiptResult({ key: result.receiptId ?? again?.receiptId ?? storedReceiptId ?? file.name, fileName: file.name, outcome: outcomeOfFailure(result.failure, result.processing), asking: false })
+          // WEB-10 / WEB-11: a refused read says why (an account, a wait, a limit), not only "nicht lesbar".
+          if (result.error !== undefined) setOpenChatError(advisorFailureText(result.error, tr, { 'account-required': tr('apiFehler.receiptParseAccountRequired') }))
           return result
         }
+        // The original could not be stored (413 / 429 / quota): the reading went on, the user hears why it is not filed.
+        if (result.uploadError !== undefined) setReceiptNotice(advisorFailureText(result.uploadError, tr))
         putReceiptResult({
           key: result.receiptId ?? file.name,
           fileName: file.name,
@@ -166,7 +168,7 @@ export function useCopilotBridgeReceipts({ taxYear, isAuthenticated, setOpenChat
         setReceiptPhase(null)
       }
     },
-    [isAuthenticated, putReceiptResult, queryClient, taxYear, tr],
+    [isAuthenticated, putReceiptResult, queryClient, setOpenChatError, taxYear, tr],
   )
 
   const readStoredReceipt = useCallback(
@@ -192,10 +194,12 @@ export function useCopilotBridgeReceipts({ taxYear, isAuthenticated, setOpenChat
 
   const confirmDocumentSelf = useCallback(
     async (takeName: boolean) => {
-      if (takeName && documentQuestion !== null) await takeNameIntoProfile(documentQuestion.printed)
+      const taken = takeName && documentQuestion !== null ? await takeNameIntoProfile(documentQuestion.printed) : 'kept'
       await readAgainFor('A')
+      // WEB-32: a name that could not be written is said (the Beleg is assigned to the user all the same).
+      if (taken === 'failed') setAssignmentError(tr('belegZuordnung.binIch.nameFehler'))
     },
-    [documentQuestion, readAgainFor],
+    [documentQuestion, readAgainFor, tr],
   )
 
   const createDocumentHolder = useCallback(

@@ -1,18 +1,16 @@
 // #549, ADR-0052 amendment 6: the user's assistant drafts a booking; it waits on "Prüfen & bestätigen" as a
 // proposal and is posted only when the user takes it there. Nothing is booked by the assistant.
 import { beforeEach, describe, expect, it } from 'vitest'
-import { Client } from '@modelcontextprotocol/sdk/client/index.js'
-import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js'
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { bookingFieldAccess } from '../src/business/booking-field-access.js'
 import { AuditService } from '../src/audit/audit.service.js'
 import { ConfirmationService } from '../src/confirmation/confirmation.service.js'
 import type { FieldAccess } from '../src/confirmation/field-access.js'
-import type { AssistantSessionInfo, McpDeps } from '../src/mcp/mcp-session.js'
+import type { AssistantSessionInfo } from '../src/mcp/mcp-session.js'
 import { registerBookingTools } from '../src/mcp/tools/booking-tools.js'
 import { registerEntryTools } from '../src/mcp/tools/entry-tools.js'
 import { FakeAuditRepository } from './fakes/fake-audit.repository.js'
 import { FakeMarkingRepository } from './fakes/fake-marking.repository.js'
+import { connectMcpTools } from './support/mcp-client.js'
 
 const USER = 'user-booking'
 const YEAR = 2025
@@ -51,16 +49,14 @@ describe('booking drafts over MCP (#549)', () => {
   }
 
   async function connect(assistant: AssistantSessionInfo = CLAUDE) {
-    const server = new McpServer({ name: 'test', version: '1.0.0' })
-    const auditService = new AuditService(audit)
-    const deps = { confirmation, audit: auditService, business } as unknown as McpDeps
-    registerBookingTools({ server, userId: USER, assistant }, deps)
-    registerEntryTools({ server, userId: USER, assistant }, deps)
-    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair()
-    await server.connect(serverTransport)
-    const client = new Client({ name: 'TestClient', version: '1.0.0' })
-    await client.connect(clientTransport)
-    return client
+    const connected = await connectMcpTools(
+      (session, deps) => {
+        registerBookingTools(session, deps)
+        registerEntryTools(session, deps)
+      },
+      { userId: USER, assistant, deps: { confirmation, audit: new AuditService(audit), business: business as never } },
+    )
+    return connected.client
   }
 
   beforeEach(() => {

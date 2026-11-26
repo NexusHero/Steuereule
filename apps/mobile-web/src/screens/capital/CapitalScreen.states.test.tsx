@@ -1,15 +1,12 @@
 // The Kapital mask's remaining states: load error + retry, leaving, "unlesbar", answering the depot
 // question in place, and every verdict of the Günstigerprüfung (each with its own honest statement).
 import { describe, it, expect, vi } from 'vitest'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { I18nextProvider } from 'react-i18next'
-import { ThemeProvider } from '@steuereule/ui'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import type { KapitalResponseDto } from '@steuereule/api-client'
-import { createAppI18n } from '../../i18n/app-i18n'
 import { CapitalScreen } from './CapitalScreen'
 import { server } from '../../test-msw-server'
+import { renderWithQuery } from '../../test-render'
 
 const CAPITAL_URL = '*/v1/steuerjahre/2026/kapital'
 const GP_URL = '*/v1/steuerjahre/2026/kapital/guenstigerpruefung'
@@ -28,16 +25,7 @@ const BASE: KapitalResponseDto = {
 } as KapitalResponseDto
 
 function renderCapital(props: { onDone?: () => void; onBack?: () => void } = {}) {
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-  return render(
-    <QueryClientProvider client={queryClient}>
-      <I18nextProvider i18n={createAppI18n('de')}>
-        <ThemeProvider mode="light">
-          <CapitalScreen taxYear={2026} {...props} />
-        </ThemeProvider>
-      </I18nextProvider>
-    </QueryClientProvider>,
-  )
+  return renderWithQuery(<CapitalScreen taxYear={2026} {...props} />)
 }
 
 const mockCapital = (over: Partial<KapitalResponseDto> = {}) =>
@@ -50,7 +38,7 @@ describe('CapitalScreen states', () => {
     server.use(http.get(CAPITAL_URL, () => (healthy ? HttpResponse.json(BASE, { status: 200 }) : HttpResponse.json(null, { status: 500 }))))
     renderCapital()
 
-    expect(await screen.findByText('Das hat nicht geklappt.')).toBeTruthy()
+    expect(await screen.findByText('Das konnte nicht geladen werden.')).toBeTruthy()
     healthy = true
     fireEvent.click(screen.getByText('Noch mal versuchen'))
 

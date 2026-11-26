@@ -1,3 +1,4 @@
+import { runAnonymouslyInDatabase } from '../common/database-identity.js'
 import type { PrismaService } from '../prisma/prisma.service.js'
 import type { DatabaseReachabilityCheck } from './health.service.js'
 
@@ -44,7 +45,9 @@ export function createPooledDatabaseReachabilityCheck(
       return cached.result
     }
 
-    const result = withTimeout(prisma.$queryRaw`SELECT 1`, timeoutMs).then(() => undefined)
+    // Outside any request: no user, and no reason to pass a policy either. It runs anonymously, on purpose (a query
+    // with no identity at all is refused), and reads no table.
+    const result = withTimeout(runAnonymouslyInDatabase('readiness-probe', () => prisma.$queryRaw`SELECT 1`), timeoutMs).then(() => undefined)
     cached = { expiresAt: now + ttlMs, result }
     return result
   }

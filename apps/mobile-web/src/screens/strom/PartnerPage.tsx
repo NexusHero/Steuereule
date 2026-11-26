@@ -9,16 +9,33 @@ import { Button, Feld, Input, useTheme } from '@steuereule/ui'
 import { getLinkControllerGetQueryKey, useLinkControllerGet, useLinkControllerUpdatePersonB } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
 import { germanToIso, isoToGerman } from '../master-data/masterDataMapping'
+import { useApiFailureMessage } from '../../net/apiFailure'
+import { InlineLoadFailure } from '../shared/InlineLoadFailure'
 import { makeStyles } from './StromPages'
 
 export function PartnerPage({ taxYear, onSaved }: { readonly taxYear: number; readonly onSaved: () => void }) {
   const t = useTheme()
   const styles = makeStyles(t)
   const { t: tr } = useTranslation(APP_NS)
-  const queryClient = useQueryClient()
   const linkQuery = useLinkControllerGet(taxYear)
+  // NM-15: the fields start from what is stored — never empty fields whose save rewrites the stored name.
+  if (linkQuery.isPending) return <Text style={styles.help}>{tr('strom.laden')}</Text>
+  if (linkQuery.isError) {
+    return <InlineLoadFailure what={tr('strom.partnerSchritt.ladefehler')} error={linkQuery.error} onRetry={() => void linkQuery.refetch()} testID="strom-partner-ladefehler" />
+  }
+  return <PartnerForm taxYear={taxYear} personB={linkQuery.data.data.personB ?? null} onSaved={onSaved} />
+}
+
+type PersonB = { readonly firstName?: string | null; readonly lastName?: string | null; readonly geburtsdatum?: string | null }
+
+function PartnerForm({ taxYear, personB, onSaved }: { readonly taxYear: number; readonly personB: PersonB | null; readonly onSaved: () => void }) {
+  const t = useTheme()
+  const styles = makeStyles(t)
+  const { t: tr } = useTranslation(APP_NS)
+  const queryClient = useQueryClient()
+  const failureMessage = useApiFailureMessage()
   const updatePersonB = useLinkControllerUpdatePersonB()
-  const personB = linkQuery.data?.status === 200 ? linkQuery.data.data.personB : undefined
+  const [failure, setFailure] = useState<unknown>(null)
   const [firstName, setFirstName] = useState(personB?.firstName ?? '')
   const [lastName, setLastName] = useState(personB?.lastName ?? '')
   const [birthDate, setBirthDate] = useState(isoToGerman(personB?.geburtsdatum ?? null))
@@ -32,12 +49,15 @@ export function PartnerPage({ taxYear, onSaved }: { readonly taxYear: number; re
     updatePersonB.mutate(
       { jahr: taxYear, data: { firstName: firstName.trim(), lastName: lastName.trim() || null, geburtsdatum: germanToIso(birthDate) } },
       {
-        onSuccess: async (res) => {
-          if (res.status !== 200) return setProblem('fehler')
+        onSuccess: async () => {
           await queryClient.invalidateQueries({ queryKey: getLinkControllerGetQueryKey(taxYear) })
           onSaved()
         },
-        onError: () => setProblem('fehler'),
+        onError: (error) => {
+          // NM-07: the reason, not one text for every status.
+          setFailure(error)
+          setProblem('fehler')
+        },
       },
     )
   }
@@ -59,7 +79,7 @@ export function PartnerPage({ taxYear, onSaved }: { readonly taxYear: number; re
       </Feld>
       {problem !== null ? (
         <Text style={styles.warn} accessibilityRole="alert" testID="strom-partner-fehler">
-          {tr(`strom.partnerSchritt.${problem}`)}
+          {problem === 'fehler' && failure !== null ? `${tr('apiFehler.saveHeading')} ${failureMessage(failure)} ${tr('apiFehler.saveKept')}` : tr(`strom.partnerSchritt.${problem}`)}
         </Text>
       ) : null}
       <Button onPress={save} disabled={updatePersonB.isPending} testID="strom-weiter">

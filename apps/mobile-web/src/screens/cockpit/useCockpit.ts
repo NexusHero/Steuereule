@@ -12,7 +12,7 @@ import {
   type CockpitSummaryDto,
 } from '@steuereule/api-client'
 import type { APP_NS } from '../../i18n/resources'
-import { CURRENT_TAX_YEAR } from '../../config/taxYear'
+import { runningTaxYear } from '../../config/taxYear'
 import { pathFromAnswers } from '../funnel/KontoWandScreen'
 import { usePlausibility } from '../plausibility/usePlausibility'
 import { tileRevisitFlag, useCockpitTileFacts } from './CockpitTiles'
@@ -27,7 +27,7 @@ import type { CockpitEmptyProps, CockpitScreenProps, Next, PlausibilityFindings,
 /** What the Cockpit shows: still loading, a failed summary, no summary yet, or the loaded year. */
 export type CockpitView =
   | { readonly kind: 'pending' }
-  | { readonly kind: 'error'; readonly onRetry: () => void }
+  | { readonly kind: 'error'; readonly error: unknown; readonly onRetry: () => void }
   | { readonly kind: 'empty'; readonly shared: CockpitEmptyProps }
   | {
       readonly kind: 'loaded'
@@ -41,7 +41,7 @@ export type CockpitView =
 /** The Cockpit's reads and everything derived from them; the screen only picks the view. */
 export function useCockpit(
   {
-    taxYear = CURRENT_TAX_YEAR,
+    taxYear = runningTaxYear(),
     isSignedIn = true,
     sessionPending = false,
     onOpenInterview = () => {},
@@ -78,15 +78,15 @@ export function useCockpit(
   const confirmationQuery = useConfirmationControllerGet(year)
   const interviewQuery = useInterviewControllerGetInterview(year)
   const masterDataQuery = useMasterDataControllerRead()
-  const masterDataValue = masterDataQuery.data?.status === 200 ? masterDataQuery.data.data : null
-  const interview = interviewQuery.data?.status === 200 ? interviewQuery.data.data : null
+  const masterDataValue = masterDataQuery.data?.data ?? null
+  const interview = interviewQuery.data?.data ?? null
   const answers = (interview?.answers ?? {}) as Answers
   // H5: the deadline banner waits for the answers — whether the deadline binds depends on them.
   const deadlineAnswers = interviewQuery.isPending ? null : answers
-  const path =interview?.nextStep.kind === 'done' ? pathFromAnswers(interview.answers) : null
+  const path = interview?.nextStep.kind === 'done' ? pathFromAnswers(interview.answers) : null
   const personas = derivePersonas(answers, masterDataValue)
   const linkQuery = useLinkControllerGet(year, { query: { enabled: isSignedIn && path !== null && personas.has('verheiratet') } })
-  const linkData = linkQuery.data?.status === 200 ? linkQuery.data.data : null
+  const linkData = linkQuery.data?.data ?? null
   const isJointMarried = personas.has('verheiratet') && linkData?.filingType === 'zusammen' && !linkData.personBHasOwnAccount
   const partnerName = linkData?.personB?.firstName?.trim() || tr('cockpit.bereich.partnerFallback')
   const tileFacts = useCockpitTileFacts(year, isSignedIn, path, answers, masterDataValue)
@@ -99,8 +99,13 @@ export function useCockpit(
   if (query.isPending) {
     return { kind: 'pending' }
   }
-  if (query.isError || query.data.status !== 200) {
-    return { kind: 'error', onRetry: () => void query.refetch() }
+  if (query.isError) {
+    return { kind: 'error', error: query.error, onRetry: () => void query.refetch() }
+  }
+  // WEB-45, NC-06: without the answers the cockpit cannot tell which areas exist or what is done; a failed
+  // interview read is a failed cockpit, never a cockpit „wie neu“ whose next step points into a finished area.
+  if (interviewQuery.isError) {
+    return { kind: 'error', error: interviewQuery.error, onRetry: () => void interviewQuery.refetch() }
   }
   const summary = query.data.data
   const refresh: PullToRefresh = {
@@ -111,7 +116,7 @@ export function useCockpit(
     },
   }
   const isRefreshing = query.isFetching && !pulling
-  const missingFields = masterDataQuery.data?.status === 200 ? masterDataQuery.data.data.missing : []
+  const missingFields = masterDataQuery.data?.data.missing ?? []
   const missingDetails = missingFields.length
   const masterData: Next | null =
     // Stays reachable once complete: it is also the way back to the Veranlagungsart and the partner.
@@ -190,8 +195,8 @@ export function useCockpit(
     kind: 'loaded',
     shared,
     summary,
-    confirmation: confirmationQuery.data?.status === 200 ? confirmationQuery.data.data.annexes : null,
-    assistantTaskCount: confirmationQuery.data?.status === 200 ? (confirmationQuery.data.data.tasks ?? []).length : 0,
+    confirmation: confirmationQuery.data?.data.annexes ?? null,
+    assistantTaskCount: (confirmationQuery.data?.data.tasks ?? []).length,
     ...(onOpenConfirmation ? { onOpenConfirmation: () => onOpenConfirmation(year) } : {}),
   }
 }

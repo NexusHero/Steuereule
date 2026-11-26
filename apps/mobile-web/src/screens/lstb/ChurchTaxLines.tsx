@@ -11,8 +11,9 @@ import {
   type LstbChurchTaxDto,
 } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
-import { wholeEurosFrom } from '../shared/wholeEuros'
 import { watchSaveResult } from '../shared/saveFeedback'
+import { InlineLoadFailure } from '../shared/InlineLoadFailure'
+import { wholeEurosOrUnreadable } from '../shared/amountField'
 
 type Line = keyof LstbChurchTaxDto
 
@@ -32,7 +33,7 @@ export function ChurchTaxLines({ taxYear, params, track }: ChurchTaxLinesProps) 
   const save = useLstbControllerSetChurchTax()
 
   if (query.isPending) return <Text style={s.help}>{tr('lstb.kirchensteuer.loading')}</Text>
-  if (query.isError || query.data.status !== 200) return <Text style={s.error}>{tr('lstb.kirchensteuer.loadError')}</Text>
+  if (query.isError) return <InlineLoadFailure what={tr('lstb.kirchensteuer.loadError')} error={query.error} onRetry={() => void query.refetch()} testID="lstb-kirchensteuer-ladefehler" />
   const stored = query.data.data
 
   function commit(line: Line, value: number | null) {
@@ -65,20 +66,24 @@ export function ChurchTaxLines({ taxYear, params, track }: ChurchTaxLinesProps) 
 export function LineInput({ label, stored, onCommit, testID }: { label: string; stored: number | null; onCommit: (value: number | null) => void; testID: string }) {
   const { t: tr } = useTranslation(APP_NS)
   const [text, setText] = useState(stored === null ? '' : String(stored))
+  const [unreadable, setUnreadable] = useState(false)
   useEffect(() => setText(stored === null ? '' : String(stored)), [stored])
   const commit = () => {
-    const trimmed = text.trim()
-    if (trimmed === '') return onCommit(null)
-    const value = wholeEurosFrom(trimmed)
-    if (value !== null) onCommit(value)
+    const value = wholeEurosOrUnreadable(text)
+    // WEB-12: text the app cannot read is named at the field, never silently left unsaved.
+    setUnreadable(value === 'unreadable')
+    if (value !== 'unreadable') onCommit(value)
   }
   return (
-    <Feld label={label}>
+    <Feld label={label} {...(unreadable ? { error: tr('betrag.unlesbar') } : {})}>
       <Input
         type="numeric"
         mono
         value={text}
-        onChange={setText}
+        onChange={(next) => {
+          setText(next)
+          setUnreadable(false)
+        }}
         placeholder={tr('lstb.feld.placeholder')}
         onSubmit={commit}
         onBlur={commit}
