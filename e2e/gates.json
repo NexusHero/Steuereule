@@ -465,7 +465,9 @@
         "node --test e2e/run-gates.test.mjs",
         "node --test e2e/harness/qr-readback.test.mjs",
         "node --test e2e/harness/native-postgres.test.mjs",
-        "node --test e2e/harness/ports.test.mjs"
+        "node --test e2e/harness/ports.test.mjs",
+        "node --test e2e/scenarios/scenario-groups.test.mjs",
+        "node --test e2e/scenarios/scenario-summary.test.mjs"
       ]
     }
   ]

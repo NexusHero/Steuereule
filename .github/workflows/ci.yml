@@ -475,14 +475,25 @@ jobs:
           test "$PLAN" = success && test "$BUILD" = success && test "$GATES" = success
 
   e2e-scenarios:
-    name: 'e2e: scenarios (shard ${{ matrix.shard }})'
+    # One job per scenario group, named after what it covers (e2e/scenarios/scenario-groups.mjs; the keys and
+    # titles here must match it, scenario-groups.test.mjs checks that). The names are required checks in the
+    # main ruleset: rename a group there too.
+    name: 'e2e: scenarios — ${{ matrix.title }}'
     needs: build
     runs-on: ubuntu-24.04
     timeout-minutes: 25
     strategy:
       fail-fast: false
       matrix:
-        shard: ['1/4', '2/4', '3/4', '4/4']
+        include:
+          - group: employees-families
+            title: 'employees & families'
+          - group: cross-border-ch
+            title: 'cross-border CH'
+          - group: capital-pensions-self-employed
+            title: 'capital, pensions & self-employed'
+          - group: navigation-dialogs-chat
+            title: 'navigation, dialogs & chat'
     services:
       postgres:
         image: postgres:16
@@ -541,8 +552,8 @@ jobs:
             "${API_ORIGIN}/v1/profile"
           curl --fail --silent --show-error --retry 30 --retry-delay 1 --retry-all-errors --retry-connrefused \
             "${WEB_ORIGIN}/"
-      - name: Run E2E Scenarios Shard ${{ matrix.shard }}
-        run: node e2e/scenarios/run-all-scenarios.mjs --shard "${{ matrix.shard }}"
+      - name: Run the scenario group ${{ matrix.title }}
+        run: node e2e/scenarios/run-all-scenarios.mjs --group "${{ matrix.group }}"
       - name: API log (on failure)
         if: failure()
         run: cat /tmp/steuereule-api-shard.log || true
