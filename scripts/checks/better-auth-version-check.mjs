@@ -10,6 +10,12 @@ export const IMPORTERS = ['apps/api', 'apps/mobile-web']
 
 const isTracked = (name) => name === 'better-auth' || name.startsWith('@better-auth/')
 
+/** `1.7.15(react@19.1.0)` → `1.7.15`: the peer suffix pnpm appends is not part of the version. */
+const withoutPeerSuffix = (version) => {
+  const open = version.indexOf('(')
+  return open === -1 ? version : version.slice(0, open)
+}
+
 /**
  * The resolved version of every tracked package of one importer in a pnpm-lock.yaml (lockfile v9 layout:
  * `importers:` > importer > dependencies/devDependencies > package > `version:`). Peer suffixes are dropped.
@@ -29,7 +35,7 @@ export function resolvedVersions(lockText, importer) {
       continue
     }
     const version = /^ {8}version:\s*(\S+)/.exec(line)
-    if (version && name !== null && isTracked(name)) versions[name] = version[1].replace(/\(.*$/, '')
+    if (version && name !== null && isTracked(name)) versions[name] = withoutPeerSuffix(version[1])
   }
   return versions
 }
