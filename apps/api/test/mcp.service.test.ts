@@ -601,6 +601,17 @@ describe('McpService (ADR-0052 §3 / §5 / §8 / §12)', () => {
     expect(household.personen[0].kirchensteuerpflichtig).toBe(false)
   })
 
+  // #543: a simulation runs the same checks as a write, so it cannot be used to probe the confession either.
+  it.each([
+    ['auswirkung_simulieren', { screen: 'stammdaten', field: 'religion', value: 'RK' }],
+    ['szenario_simulieren', { eintraege: [{ screen: 'stammdaten', field: 'religion', value: 'RK' }] }],
+  ])('%s refuses the confession as user-only and simulates nothing (#543)', async (name, args) => {
+    const report = { simulateEntries: async () => { throw new Error('must not run') } }
+    const client = await connectWith({ report: report as never })
+    const res = await client.callTool({ name, arguments: { taxYear: YEAR, ...args } })
+    expect(getText(res)).toContain('USER_ONLY')
+  })
+
   describe('comfort tools (#548)', () => {
     it('wechselkurs names the annual average rate of the year', async () => {
       const client = await connectClient()
