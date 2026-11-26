@@ -253,7 +253,7 @@ preview, the loop stops learning; nothing else supplies its input.
   `security: iac scan (trivy)`, `security: dockerfile lint (hadolint)`, `security: workflow lint (actionlint)`,
   `supply-chain: build, SBOM, container scan & bundle gate`, `e2e: smoke (real /api/auth over HTTP)`, `e2e: browser
   gates & a11y`, `e2e: production compose stack + OWASP ZAP DAST`, the four `e2e: scenarios — <group>` jobs (employees & families, cross-border CH, capital, pensions & self-employed, navigation, dialogs & chat; renamed from `shard 1/4 .. 4/4` on 2026-11-26), `SonarCloud
-  Code Analysis`. The ruleset has no bypass actors, requires thread resolution, and sets 0 required approving
+  Code Analysis`. The ruleset has no bypass actors, requires thread resolution and an up-to-date branch, and sets 0 required approving
   reviews. The aggregator jobs (`e2e: browser gates & a11y`, `e2e: production compose stack + OWASP ZAP DAST`) keep
   their names because the ruleset pins the name; a renamed job would wait forever.
 - **Nobody merges around the gates.** A PR reaches `ready` only once every gate it was owed has passed
@@ -315,8 +315,9 @@ and the next person deletes it as ceremony because nothing records what it cost.
   gets **no run at all** — while the last green run stays displayed on it. The gate disappears
   exactly when the PR has drifted far enough to be dangerous, and it still looks checked. Two
   pushes to #239 went entirely unchecked this way. **`mergeable_state: dirty` means this PR has no
-  valid CI, whatever is shown.** Rebase, then read. The durable fix is branch protection's
-  *"Require branches to be up to date before merging"* — see #71.
+  valid CI, whatever is shown.** Rebase, then read. The durable fix is in place since 2026-11-26: the
+  `main` ruleset requires the branch to be up to date before merging (`strict_required_status_checks_policy`),
+  so a PR behind `main` cannot merge on checks that ran against an older base.
 
 - **After resolving a review thread, confirm the thread you meant is the one that closed.**
   `resolve_thread` keys on the thread ID alone and ignores the repo and PR number it is given, so

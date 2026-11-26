@@ -15,6 +15,10 @@ name. The names below are the job `name:` values exactly as they report. On 2026
 first twenty (read with `gh api`); the last five are not required yet and must be added by a repository admin
 (H2-32). Each of them runs on every pull request, so requiring it cannot leave a PR waiting.
 
+Since 2026-11-26 the ruleset also requires the branch to be up to date with `main` before merging: when `main`
+moves, an open pull request is updated and its checks run again against the new base. A merge queue is not
+available to a repository owned by a user account.
+
 | Check | Workflow | Required today |
 |---|---|---|
 | `static: validate compose` | `quality.yml` | yes |
