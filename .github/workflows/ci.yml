@@ -293,6 +293,9 @@ jobs:
         uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:
           node-version: 24
+          # This job needs Node only (the gate list is read with built-ins): without this, setup-node enables the
+          # pnpm cache because package.json names pnpm, and fails because pnpm is not installed here.
+          package-manager-cache: false
       - name: Validate the gate list and build the group matrix
         id: plan
         run: |
