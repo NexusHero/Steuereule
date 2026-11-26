@@ -252,7 +252,7 @@ preview, the loop stops learning; nothing else supplies its input.
   (no DB)`, `correctness: integration (postgres)`, `security: secret scan (gitleaks)`, `security: sast (semgrep)`,
   `security: iac scan (trivy)`, `security: dockerfile lint (hadolint)`, `security: workflow lint (actionlint)`,
   `supply-chain: build, SBOM, container scan & bundle gate`, `e2e: smoke (real /api/auth over HTTP)`, `e2e: browser
-  gates & a11y`, `e2e: production compose stack + OWASP ZAP DAST`, `e2e: scenarios (shard 1/4 .. 4/4)` (renamed to the four `e2e: scenarios — <group>` jobs by #586; the ruleset follows), `SonarCloud
+  gates & a11y`, `e2e: production compose stack + OWASP ZAP DAST`, the four `e2e: scenarios — <group>` jobs (employees & families, cross-border CH, capital, pensions & self-employed, navigation, dialogs & chat; renamed from `shard 1/4 .. 4/4` on 2026-11-26), `SonarCloud
   Code Analysis`. The ruleset has no bypass actors, requires thread resolution, and sets 0 required approving
   reviews. The aggregator jobs (`e2e: browser gates & a11y`, `e2e: production compose stack + OWASP ZAP DAST`) keep
   their names because the ruleset pins the name; a renamed job would wait forever.

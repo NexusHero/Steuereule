@@ -32,10 +32,10 @@ first twenty (read with `gh api`); the last five are not required yet and must b
 | `supply-chain: build, SBOM, container scan & bundle gate` | `ci.yml` | yes |
 | `e2e: smoke (real /api/auth over HTTP)` | `ci.yml` | yes |
 | `e2e: browser gates & a11y (BFSG/WCAG 2.1 AA, headless Chromium)` | `ci.yml` | yes |
-| `e2e: scenarios — employees & families` | `ci.yml` | **rename** (was `shard 1/4`) |
-| `e2e: scenarios — cross-border CH` | `ci.yml` | **rename** (was `shard 2/4`) |
-| `e2e: scenarios — capital, pensions & self-employed` | `ci.yml` | **rename** (was `shard 3/4`) |
-| `e2e: scenarios — navigation, dialogs & chat` | `ci.yml` | **rename** (was `shard 4/4`) |
+| `e2e: scenarios — employees & families` | `ci.yml` | yes |
+| `e2e: scenarios — cross-border CH` | `ci.yml` | yes |
+| `e2e: scenarios — capital, pensions & self-employed` | `ci.yml` | yes |
+| `e2e: scenarios — navigation, dialogs & chat` | `ci.yml` | yes |
 | `e2e: production compose stack + OWASP ZAP DAST (real Docker build)` | `ci.yml` | yes |
 | `e2e: scenario 09b (self-employment switch on)` | `ci.yml` | **add** |
 | `security: dependency audit (production deps)` | `security.yml` | **add** |
