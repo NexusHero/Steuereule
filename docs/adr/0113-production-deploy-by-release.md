@@ -107,3 +107,16 @@ None of the following exists yet; no deploy has been run through this pipeline.
   (`gcloud artifacts docker images describe`) and the cross-project read grant. They were checked by reading and by
   the static gates (actionlint, shellcheck, the wiring tests, the unit tests of the guard), not by a deploy.
 - Rolling back means publishing or re-running a release of an older tag whose staging image still exists (30 days).
+
+## Amendment — 2026-11-26: items 3 and 4 of the set-up are done
+
+Set in the repository settings the same day (read back from the GitHub API; `docs/ci-pipeline.md`, "Repository
+settings", lists them):
+
+- Environment `production`: one required reviewer, deployments only from tags `v*`. Environment `staging`:
+  deployments only from `main`. Self-review is allowed, because the project has one maintainer.
+- Two tag rulesets for `v*`: one blocks updating and deleting such a tag for everyone, the other restricts creating
+  one to repository admins.
+
+Still open, and still required before the first release: items 1 and 2 (OpenTofu in both stacks, the variable
+`GCP_PROMOTE_FROM_REGISTRY`) and item 5. No deploy has been run through this pipeline.

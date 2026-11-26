@@ -1,0 +1,45 @@
+# Dependabot (alerts and security updates are switched on in the repository settings). Version updates come as
+# one grouped pull request per ecosystem and week, so the pipeline (about 40 minutes per pull request) runs once
+# for them and not once per package. A security update is opened on its own, outside this schedule.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: chore(deps)
+    groups:
+      minor-and-patch:
+        update-types: [minor, patch]
+
+  # The workflows and the composite actions under .github/actions. Actions are pinned by commit SHA (the
+  # repository setting requires it); Dependabot moves the SHA and the version comment together.
+  - package-ecosystem: github-actions
+    directories:
+      - /
+      - /.github/actions/*
+    schedule:
+      interval: weekly
+      day: monday
+    commit-message:
+      prefix: ci(deps)
+    groups:
+      actions:
+        patterns: ['*']
+
+  - package-ecosystem: docker
+    directories:
+      - /apps/api
+      - /apps/mobile-web
+      - /apps/website
+    schedule:
+      interval: weekly
+      day: monday
+    commit-message:
+      prefix: chore(deps)
+    groups:
+      base-images:
+        patterns: ['*']
