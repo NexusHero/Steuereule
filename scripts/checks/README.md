@@ -242,3 +242,9 @@ landing via #251), not something this mechanises — see #221's original scope b
 checks catch a citation pointing at
 nothing, at a test nothing runs, at the wrong REQ, at a stale defect ticket, or at a duplicate
 ADR number. They do not and cannot tell you the test is a *good* test.
+
+## better-auth-version-check.mjs (#273)
+
+`pnpm check:better-auth` fails when `apps/api` and `apps/mobile-web` resolve different versions of
+`better-auth` or of a `@better-auth/*` package both use (read from `pnpm-lock.yaml`). Tests:
+`node --test scripts/checks/better-auth-version-check.test.mjs`.
