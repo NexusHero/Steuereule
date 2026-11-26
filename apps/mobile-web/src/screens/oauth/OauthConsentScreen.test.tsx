@@ -234,6 +234,32 @@ describe('OauthConsentScreen — failures say what to do (NR-13, MCP-17 in this 
     expect(screen.getByTestId('oauth-erlauben').getAttribute('aria-disabled')).toBe('true')
   })
 
+  it('a failed lookup and its retry say nothing about the destination; the answer names it', async () => {
+    let fail = true
+    let release: () => void = () => undefined
+    const held = new Promise<void>((resolve) => (release = resolve))
+    server.use(
+      http.get(`${BASE_URL}/v1/oauth/client-info`, async () => {
+        if (fail) return HttpResponse.json({}, { status: 503 })
+        await held
+        return HttpResponse.json({ clientId: 'c1', name: 'Claude', uri: null, icon: null, redirectTargets: [{ uri: 'http://127.0.0.1:9/callback', destination: 'localhost' }] })
+      }),
+    )
+    renderConsentScreen({ clientId: 'c1', scope: 'steuerdaten:read', oauthQuery: 'client_id=c1&redirect_uri=http%3A%2F%2F127.0.0.1%3A9%2Fcallback' })
+    expect(await screen.findByTestId('oauth-lookup-fehler')).toBeTruthy()
+    expect(screen.queryByTestId('oauth-destination')).toBeNull()
+    expect(screen.queryByText('eine unbekannte Adresse')).toBeNull()
+
+    fail = false
+    fireEvent.click(screen.getByTestId('oauth-lookup-erneut'))
+    await waitFor(() => expect(screen.queryByTestId('oauth-destination')).toBeNull())
+    expect(screen.queryByText('eine unbekannte Adresse')).toBeNull()
+    expect(screen.getByTestId('oauth-erlauben').getAttribute('aria-disabled')).toBe('true')
+
+    release()
+    expect(await screen.findByText('eine App auf diesem Gerät')).toBeTruthy()
+  })
+
   it('fails closed: every request answering 500 shows a failure and grants nothing', async () => {
     const failing = failEveryRequest()
     renderConsentScreen({ clientId: 'claude-desktop', scope: 'steuerdaten:read', oauthQuery: 'client_id=claude-desktop&sig=x' })

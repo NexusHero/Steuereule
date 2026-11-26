@@ -373,9 +373,11 @@ async function signedInAccount(browser, { apiOrigin, webOrigin, sql }) {
     await expectDisabled(page, 'oauth-erlauben', true, 'Row E (lookup failed)')
     await seeText(page, 'oauth-keine-rechte', COPY.scopeNone, 'Row E')
     await page.unroute(clientInfo)
+    // A failed lookup names no destination (it is not known); the retry's answer does.
+    if ((await byId(page, 'oauth-destination').count()) !== 0) fail('Row E: a failed client lookup must not name a destination')
     await byId(page, 'oauth-lookup-erneut').click()
-    await seeText(page, 'oauth-destination', COPY.destinationDevice, 'Row E')
     await page.waitForFunction(() => document.querySelector('[data-testid="oauth-lookup-fehler"]') === null, undefined, { timeout: 10_000 })
+    await seeText(page, 'oauth-destination', COPY.destinationDevice, 'Row E')
     await waitEnabled(page, 'oauth-erlauben')
     const denied = page.waitForRequest((r) => r.url().startsWith(REDIRECT_URI), { timeout: 15_000 })
     await byId(page, 'oauth-ablehnen').click()

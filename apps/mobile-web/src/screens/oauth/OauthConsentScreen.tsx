@@ -74,10 +74,16 @@ export function OauthConsentScreen({
     : []
   // While the lookup runs the destination is not on the screen yet, so approving waits for it: a slow
   // lookup must not let the user approve before seeing where the access goes.
-  const lookingUpClient = clientInfoQuery.isLoading
+  const lookingUpClient = clientInfoQuery.isFetching && clientInfoQuery.data === undefined
   // MCP-17 (here only the part in this file): a lookup that failed leaves "Erlauben" off — the user would
   // approve without seeing where the access goes.
   const lookupFailed = clientInfoQuery.isError
+  // The destination is named once the lookup answered: with the client, or with "no such client" (404, so the
+  // address is indeed unknown), or when there is no client to look up. A running lookup, or one that could not
+  // reach the server, says nothing about it: „eine unbekannte Adresse“ would make the assistant look suspicious
+  // when the app only could not check it (the error box says that).
+  const clientMissing = clientInfoQuery.error instanceof ApiError && clientInfoQuery.error.status === 404
+  const destinationKnown = clientInfoQuery.data !== undefined || clientMissing || noClientToCheck
   const destinationLabel = (destination: string): string => {
     if (destination === 'localhost') return tr('oauthConsent.destinationDevice')
     if (destination.endsWith('://')) return tr('oauthConsent.destinationApp', { scheme: destination })
@@ -178,7 +184,7 @@ export function OauthConsentScreen({
       <Card style={styles.card}>
         <Text style={styles.title}>{tr('oauthConsent.title')}</Text>
 
-        {clientInfoQuery.isPending && !clientInfoQuery.data ? (
+        {lookingUpClient ? (
           <View style={styles.loadingRow}>
             <ActivityIndicator size="small" color={t.color.tinte} />
             <Text style={styles.help}>{tr('oauthConsent.loading')}</Text>
@@ -189,14 +195,14 @@ export function OauthConsentScreen({
           <Text style={styles.clientHeading}>
             <Text style={styles.boldText}>{clientName}</Text> {tr('oauthConsent.requestNotice')}
           </Text>
-          {lookingUpClient ? null : (
+          {destinationKnown ? (
             <Text style={styles.clientHeading} testID="oauth-destination">
               {tr('oauthConsent.destinationLabel')}{' '}
               <Text style={styles.boldText}>
                 {destinations.length > 0 ? destinations.map(destinationLabel).join(', ') : tr('oauthConsent.destinationUnknown')}
               </Text>
             </Text>
-          )}
+          ) : null}
         </View>
 
         <View style={styles.warningBox}>
