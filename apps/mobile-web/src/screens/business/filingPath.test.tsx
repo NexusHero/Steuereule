@@ -3,14 +3,14 @@
 import { describe, it, expect, vi } from 'vitest'
 import { screen, fireEvent, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
-import { server } from '../../test-msw-server'
+import { server } from '../../../test/test-msw-server'
 import { ShellStateProvider } from '../../navigation/ShellState'
 import { SubmissionGateProvider } from '../../navigation/SubmissionGateContext'
 import { SubmissionScreen } from '../submission/SubmissionScreen'
 import { CockpitScreen } from '../cockpit/CockpitScreen'
 import { usePlausibility } from '../plausibility/usePlausibility'
 import { renderBusiness, useBusinessDefaults, useElsterForms, BASE_URL } from './businessTestKit'
-import { renderWithQuery } from '../../test-render'
+import { renderWithQuery } from '../../../test/test-render'
 
 const YEAR = 2025
 const ANSWERS = { job: 'Selbstständig', ausland: 'Nein', kinder: 'Nein', familienstand: 'Ledig' }

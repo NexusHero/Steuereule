@@ -7,8 +7,8 @@ import { http, HttpResponse } from 'msw'
 import { fireEvent, screen } from '@testing-library/react'
 import { createAppAuthClient } from '../auth/auth-client'
 import { AuthClientProvider } from '../auth/AuthClientProvider'
-import { server } from '../test-msw-server'
-import { renderWithQuery } from '../test-render'
+import { server } from '../../test/test-msw-server'
+import { renderWithQuery } from '../../test/test-render'
 
 const session = vi.hoisted(() => ({ state: { status: 'loading' } as unknown }))
 vi.mock('../auth/useAccountSession', () => ({ useAccountSession: () => ({ state: session.state }) }))

@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen } from '@testing-library/react'
 import type { AdvisorConnection } from '@steuereule/core'
-import { renderInApp } from '../../../test-render'
+import { renderInApp } from '../../../../test/test-render'
 import { ConnectionChip, ConnectionDetails, labelKeyOf, toneOf, type ConnectionView } from './ConnectionStatus'
 
 const model = (connection: Partial<AdvisorConnection> & Pick<AdvisorConnection, 'state'>): ConnectionView => ({

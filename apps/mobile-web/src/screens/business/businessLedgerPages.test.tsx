@@ -6,9 +6,9 @@ import { Platform } from 'react-native'
 import { http, HttpResponse } from 'msw'
 import { findAccount } from '@steuereule/core'
 import type { BookDto, JournalEntryDto } from '@steuereule/api-client'
-import { server } from '../../test-msw-server'
+import { server } from '../../../test/test-msw-server'
 import { BASE_PROFILE, BASE_URL, CATALOGUES, EMPTY_BOOK, renderBusiness, useBusinessDefaults, useCatalogues, YEAR } from './businessTestKit'
-import { confirmAction, confirmDialogOf } from '../../test-confirm'
+import { confirmAction, confirmDialogOf } from '../../../test/test-confirm'
 
 afterEach(() => vi.restoreAllMocks())
 

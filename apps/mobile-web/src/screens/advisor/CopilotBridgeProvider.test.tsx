@@ -3,13 +3,13 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import type { AdvisorActionProposal, AdvisorChatMessageView } from '@steuereule/core'
-import { server } from '../../test-msw-server'
+import { server } from '../../../test/test-msw-server'
 import { CockpitScreen } from '../cockpit/CockpitScreen'
 import { OwlModeScreen } from './OwlModeScreen'
 import { AdvisorChatPanel } from './AdvisorChatPanel'
 import { CopilotBridgeProvider, type CopilotMode, useCopilotBridge, useOptionalCopilotBridge } from './CopilotBridgeProvider'
-import { emptyAssessment } from '../../test-assessment-fixture'
-import { makeTestQueryClient, renderWithQuery, TestAppProviders } from '../../test-render'
+import { emptyAssessment } from '../../../test/test-assessment-fixture'
+import { makeTestQueryClient, renderWithQuery, TestAppProviders } from '../../../test/test-render'
 
 function setViewportWidth(width: number) {
   Object.defineProperty(document.documentElement, 'clientWidth', { value: width, configurable: true })

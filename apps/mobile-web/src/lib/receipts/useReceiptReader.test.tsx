@@ -16,7 +16,7 @@ vi.mock('./documentAssignment', async (importOriginal) => ({
 }))
 
 import { useReceiptReader, type ReceiptReadContext } from './useReceiptReader'
-import { makeTestQueryClient, renderHookWithQuery } from '../../test-render'
+import { makeTestQueryClient, renderHookWithQuery } from '../../../test/test-render'
 
 const file = new File(['%PDF'], 'lstb.pdf', { type: 'application/pdf' })
 const PROCESSING = { state: 'vorschlaege', reason: null, pending: 1, applied: 0, draftsTaxYear: 2025 }

@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { ContextRing, SummaryDivider, type ContextRingProps } from './ContextRing'
-import { renderInApp } from '../../../test-render'
+import { renderInApp } from '../../../../test/test-render'
 
 function renderRing(props: Partial<ContextRingProps> = {}) {
   return renderInApp(<ContextRing context={{ percent: 42, level: 'ok', canSummarize: true }} {...props} />)

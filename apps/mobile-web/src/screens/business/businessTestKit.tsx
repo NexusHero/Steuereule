@@ -3,9 +3,9 @@ import type { PaymentReturn } from '@steuereule/core'
 import type { RenderResult } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import type { BookDto, BusinessProfileDto, ElsterFormEntryDto } from '@steuereule/api-client'
-import { server } from '../../test-msw-server'
+import { server } from '../../../test/test-msw-server'
 import { BusinessScreen } from './BusinessScreen'
-import { renderWithQuery } from '../../test-render'
+import { renderWithQuery } from '../../../test/test-render'
 
 export const YEAR = 2025
 export const BASE_URL = `*/v1/steuerjahre/${YEAR}/selbststaendig`

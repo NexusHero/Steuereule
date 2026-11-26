@@ -3,7 +3,7 @@ import { render, renderHook, type RenderHookResult, type RenderResult } from '@t
 import { I18nextProvider } from 'react-i18next'
 import { ThemeProvider } from '@steuereule/ui'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { createAppI18n } from './i18n/app-i18n'
+import { createAppI18n } from '../src/i18n/app-i18n'
 
 export interface RenderInAppOptions {
   readonly language?: 'de' | 'en' | undefined

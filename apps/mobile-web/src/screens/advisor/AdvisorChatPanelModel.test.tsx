@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen } from '@testing-library/react'
 import type { AdvisorModelsDto } from '@steuereule/api-client'
 import { sendOptionsToDto } from './AdvisorChatPanel'
-import { renderAdvisorChatPanel, sendChatMessage } from '../../test-advisor'
+import { renderAdvisorChatPanel, sendChatMessage } from '../../../test/test-advisor'
 
 const MODELS: AdvisorModelsDto = {
   standard: { provider: 'anthropic', model: 'claude-sonnet-5-5' },

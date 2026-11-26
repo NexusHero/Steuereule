@@ -10,8 +10,8 @@ import { http, HttpResponse } from 'msw'
 import { createAppAuthClient, type AppAuthClient } from '../auth/auth-client'
 import { AuthClientProvider } from '../auth/AuthClientProvider'
 import { PrivacyScreen } from './PrivacyScreen'
-import { server } from '../test-msw-server'
-import { expectFailsClosed, failEveryRequest } from '../test-every-query-fails'
+import { server } from '../../test/test-msw-server'
+import { expectFailsClosed, failEveryRequest } from '../../test/test-every-query-fails'
 
 const BASE_URL = 'http://localhost:3000'
 
@@ -20,7 +20,7 @@ vi.mock('./privacy/exportDownload', async () => {
   return { ...actual, downloadAccountExport: vi.fn() }
 })
 import { downloadAccountExport } from './privacy/exportDownload'
-import { makeTestQueryClient, renderWithQuery } from '../test-render'
+import { makeTestQueryClient, renderWithQuery } from '../../test/test-render'
 
 const mockedDownload = vi.mocked(downloadAccountExport)
 

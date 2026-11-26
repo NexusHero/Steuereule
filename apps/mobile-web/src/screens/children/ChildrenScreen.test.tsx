@@ -1,4 +1,4 @@
-import { confirmAction } from '../../test-confirm'
+import { confirmAction } from '../../../test/test-confirm'
 import { describe, expect, it, vi } from 'vitest'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { I18nextProvider } from 'react-i18next'
@@ -7,9 +7,9 @@ import { http, HttpResponse } from 'msw'
 import { getCockpitControllerGetCockpitSummaryQueryKey, getTaxEstimateControllerGetQueryKey } from '@steuereule/api-client'
 import { CHILDCARE_PROVIDER_WIDTH_PT, fitsPrintBox } from '@steuereule/core'
 import { createAppI18n } from '../../i18n/app-i18n'
-import { server } from '../../test-msw-server'
+import { server } from '../../../test/test-msw-server'
 import { ChildrenScreen } from './ChildrenScreen'
-import { makeTestQueryClient, renderWithQuery } from '../../test-render'
+import { makeTestQueryClient, renderWithQuery } from '../../../test/test-render'
 
 const KINDER_FIXTURE = [
   {

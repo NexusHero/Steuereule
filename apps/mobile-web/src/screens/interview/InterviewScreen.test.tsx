@@ -18,8 +18,8 @@ import {
   type InterviewStateDto,
 } from '@steuereule/api-client'
 import { InterviewScreen } from './InterviewScreen'
-import { server, EMPTY_INTERVIEW_STATE } from '../../test-msw-server'
-import { makeTestQueryClient, renderWithQuery } from '../../test-render'
+import { server, EMPTY_INTERVIEW_STATE } from '../../../test/test-msw-server'
+import { makeTestQueryClient, renderWithQuery } from '../../../test/test-render'
 
 const TAX_YEAR = 2026
 const GET_URL = `*/v1/steuerjahre/${TAX_YEAR}/interview`

@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { useTheme } from '@steuereule/ui'
 import type { AdvisorActionProposal, AdvisorTwoPathsProposal } from '@steuereule/core'
-import { renderInApp } from '../../../test-render'
+import { renderInApp } from '../../../../test/test-render'
 import { makeStyles } from '../AdvisorChatPanel.styles'
 import { ActionProposalCardView, ScannedCertificateCardView, TwoPathsCardView } from './ProposalCards'
 

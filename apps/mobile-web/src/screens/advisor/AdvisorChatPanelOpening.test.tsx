@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen } from '@testing-library/react'
 import type { AdvisorChatMessageView } from '@steuereule/core'
 import { AdvisorChatPanel, type AdvisorChatPanelProps } from './AdvisorChatPanel'
-import { renderInApp } from '../../test-render'
+import { renderInApp } from '../../../test/test-render'
 
 const CHIPS = [{ label: 'Was hab ich vergessen?', testID: 'chip-forgotten' }]
 

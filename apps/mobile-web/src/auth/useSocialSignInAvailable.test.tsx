@@ -10,8 +10,8 @@ import { describe, it, expect } from 'vitest'
 import { waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import { useSocialSignInAvailable } from './useSocialSignInAvailable'
-import { server } from '../test-msw-server'
-import { renderHookWithQuery } from '../test-render'
+import { server } from '../../test/test-msw-server'
+import { renderHookWithQuery } from '../../test/test-render'
 
 const BASE_URL = 'http://localhost:3000'
 

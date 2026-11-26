@@ -4,9 +4,9 @@ import { describe, it, expect } from 'vitest'
 import { screen } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import { PlausibilityScreen } from './PlausibilityScreen'
-import { server } from '../../test-msw-server'
-import { COMPLETE_LSTB_RESPONSE } from '../../test-lstb-fixtures'
-import { renderWithQuery } from '../../test-render'
+import { server } from '../../../test/test-msw-server'
+import { COMPLETE_LSTB_RESPONSE } from '../../../test/test-lstb-fixtures'
+import { renderWithQuery } from '../../../test/test-render'
 
 const TAX_YEAR = 2026
 

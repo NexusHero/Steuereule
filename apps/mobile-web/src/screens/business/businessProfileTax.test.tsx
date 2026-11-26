@@ -4,11 +4,11 @@ import { describe, it, expect, vi, afterEach } from 'vitest'
 import { screen, fireEvent, waitFor } from '@testing-library/react'
 import { Platform } from 'react-native'
 import { http, HttpResponse, delay } from 'msw'
-import { server } from '../../test-msw-server'
+import { server } from '../../../test/test-msw-server'
 import { CheckoutPage } from './CheckoutPage'
 import { BASE_PROFILE, BASE_URL, CATALOGUES, renderBusiness, useBusinessDefaults, useCatalogues, YEAR } from './businessTestKit'
-import { confirmAction } from '../../test-confirm'
-import { renderWithQuery } from '../../test-render'
+import { confirmAction } from '../../../test/test-confirm'
+import { renderWithQuery } from '../../../test/test-render'
 
 const SMALL_OK = { eligible: true, priorYearLimitEur: 25_000, currentYearLimitEur: 100_000, crossed: null, foundingYear: false, priorYearKnown: true, turnoverEur: 0, matchesProfile: true }
 

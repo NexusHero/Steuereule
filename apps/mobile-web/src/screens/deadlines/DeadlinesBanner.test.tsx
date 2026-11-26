@@ -11,9 +11,9 @@ import { http, HttpResponse } from 'msw'
 import type { Answers } from '@steuereule/core'
 import { createAppI18n } from '../../i18n/app-i18n'
 import { DeadlinesBanner, Banner } from './DeadlinesBanner'
-import { server } from '../../test-msw-server'
+import { server } from '../../../test/test-msw-server'
 import type { DeadlinesResponseDto } from '@steuereule/api-client'
-import { renderWithQuery } from '../../test-render'
+import { renderWithQuery } from '../../../test/test-render'
 
 const TAX_YEAR = 2025
 const DEADLINES_URL = `*/v1/steuerjahre/${TAX_YEAR}/fristen`

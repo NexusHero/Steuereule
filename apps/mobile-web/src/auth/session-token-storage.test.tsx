@@ -19,7 +19,7 @@ import {
   resolveSessionTokenStorage,
   type SecureStoreLike,
 } from './session-token-storage'
-import { assertNoStorageWrites, stubStorageSetItem } from '../test-storage-guard'
+import { assertNoStorageWrites, stubStorageSetItem } from '../../test/test-storage-guard'
 
 afterEach(() => {
   vi.unstubAllGlobals()

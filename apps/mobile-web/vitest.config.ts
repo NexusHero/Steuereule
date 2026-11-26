@@ -59,8 +59,8 @@ export default defineConfig({
     alias: {
       'react-native': 'react-native-web',
       // react-native-svg ships Flow source jsdom can't parse; stub it for tests only.
-      'react-native-svg': new URL('./src/test-stubs/react-native-svg.tsx', import.meta.url).pathname,
-      'expo-clipboard': new URL('./src/test-stubs/expo-clipboard.ts', import.meta.url).pathname,
+      'react-native-svg': new URL('./test/stubs/react-native-svg.tsx', import.meta.url).pathname,
+      'expo-clipboard': new URL('./test/stubs/expo-clipboard.ts', import.meta.url).pathname,
       // react-native-marked and two of its helpers put a CommonJS build in `main`; its
       // require('react-native') would bypass the alias above. Point at their ES builds — what
       // Metro picks via `module` — so react-native-web is used, as in the shipped bundle (#451).
@@ -72,8 +72,8 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     globals: true,
-    setupFiles: ['./src/test-setup.ts'],
-    // Must stay strictly greater than the `asyncUtilTimeout` configured in test-setup.ts.
+    setupFiles: ['./test/test-setup.ts'],
+    // Must stay strictly greater than the `asyncUtilTimeout` configured in test/test-setup.ts.
     // Vitest's default is 5000ms — exactly the RTL budget — so the two expired together and
     // Vitest won the race: a slow `waitFor`/`findBy*` under `pnpm -r test`'s full parallel
     // load reported "Test timed out in 5000ms" instead of RTL's own error, which names the
@@ -81,7 +81,7 @@ export default defineConfig({
     // genuinely stuck query still fails fast (at its 5s budget) and with the better message;
     // only the contended-but-progressing case gets the extra room it needs.
     testTimeout: 15_000,
-    include: ['src/**/*.test.tsx', '*.test.tsx'],
+    include: ['src/**/*.test.tsx', 'test/**/*.test.tsx', '*.test.tsx'],
     server: {
       deps: {
         // Scoped by package directory, nothing else — see the file-level comment above. These
@@ -104,29 +104,10 @@ export default defineConfig({
       // lcov feeds SonarQube Cloud; paths relative to the repo root so Sonar can match them.
       reporter: ['text-summary', ['lcov', { projectRoot: '../..' }]],
       include: ['src/**/*.{ts,tsx}'],
-      // Derived from the house naming convention (Musti's #329 finding 3, and its correction on
-      // #330 confirming `test-`-prefixed modules in `src` are the established pattern), not
-      // hand-enumerated file-by-file: every test-only module in this tree is either
-      // `src/test-*.{ts,tsx}` (test-setup.ts, test-msw-server.ts, test-storage-guard.ts, …) or
-      // lives under `src/test-stubs/**`. A hand-maintained per-file list is exactly the shape that
-      // drifted here (and in #325, #242) — it silently stopped matching new test infrastructure the
-      // moment someone added a file and didn't also remember to update this array. The glob below
-      // matches by the convention new files already have to follow, so a future
-      // `src/test-whatever.ts` *or* `.tsx` is excluded automatically instead of requiring a second
-      // edit here.
-      //
-      // `.ts` *and* `.tsx`, not just `.ts` (#333, Musti's finding 1 — measured with two probe
-      // files: under a `.ts`-only glob, `src/test-probe-fixture.tsx` stayed in the coverage table
-      // at 0%, `src/test-probe-fixture2.ts` did not. A negative control,
-      // `src/control-not-test-prefixed.tsx`, stayed in the table too — confirming the glob excludes
-      // by the `test-` prefix rather than by swallowing the directory). A React app's next
-      // test-only module very plausibly carries JSX — this tree already has one,
-      // `src/test-stubs/react-native-svg.tsx`, excluded today only because it
-      // happens to sit under the *directory* glob rather than the naming one. `.test.ts` is
-      // deliberately left out of this exclude's reach even though the glob's `{ts,tsx}` would
-      // otherwise imply it: `include` above (`src/**/*.test.tsx`) never runs a `.test.ts` file at
-      // all, so there is nothing for that half to exclude — not drift, just not a case that exists.
-      exclude: ['src/**/*.test.tsx', 'src/test-*.{ts,tsx}', 'src/test-stubs/**', 'src/i18n/**'],
+      // Test-only modules (setup, MSW server, fixtures, stubs) live in `test/`, outside `src/`, so the
+      // coverage `include` above never sees them; only the tests inside `src/` and the generated i18n
+      // resources are left out of the measure.
+      exclude: ['src/**/*.test.tsx', 'src/i18n/**'],
       thresholds: { statements: 90, branches: 90, functions: 90, lines: 90 },
     },
   },

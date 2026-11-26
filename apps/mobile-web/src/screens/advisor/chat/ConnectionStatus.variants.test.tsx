@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { screen } from '@testing-library/react'
 import type { AdvisorConnection } from '@steuereule/core'
-import { renderInApp } from '../../../test-render'
+import { renderInApp } from '../../../../test/test-render'
 import { ConnectionChip, ConnectionDetails, toneOf, type ConnectionView } from './ConnectionStatus'
 
 const rules: ConnectionView = {

@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
-import { server } from '../test-msw-server'
+import { server } from '../../test/test-msw-server'
 import { ShellStateProvider } from '../navigation/ShellState'
 import { SubmissionGateProvider } from '../navigation/SubmissionGateContext'
 import { CockpitPartnerSection } from '../screens/cockpit/CockpitPartnerSection'
@@ -11,7 +11,7 @@ import { PlausibilityScreen } from '../screens/plausibility/PlausibilityScreen'
 import { WorkdaysScreen } from '../screens/workdays/WorkdaysScreen'
 import { CatalogScreen } from '../screens/catalog/CatalogScreen'
 import { MasterDataScreen } from '../screens/master-data/MasterDataScreen'
-import { renderWithQuery } from '../test-render'
+import { renderWithQuery } from '../../test/test-render'
 
 const hapticSpies = vi.hoisted(() => ({
   hapticSelection: vi.fn(),

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen } from '@testing-library/react'
-import { renderInApp } from '../../../test-render'
+import { renderInApp } from '../../../../test/test-render'
 import { ModelFailureNotice } from './ModelFailureNotice'
 
 describe('ModelFailureNotice (#487)', () => {

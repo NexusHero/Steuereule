@@ -3,7 +3,7 @@
 // polled) and send no write built from stored data.
 import { describe, expect, it } from 'vitest'
 import { screen } from '@testing-library/react'
-import { expectFailsClosed, expectFailureShown, failEveryRequest, pokeEverything } from '../../test-every-query-fails'
+import { expectFailsClosed, expectFailureShown, failEveryRequest, pokeEverything } from '../../../test/test-every-query-fails'
 import { renderBusiness } from './businessTestKit'
 
 describe('the payment pages of the self-employed area fail closed (WEB-28 × P5)', () => {

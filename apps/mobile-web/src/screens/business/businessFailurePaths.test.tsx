@@ -5,10 +5,10 @@
 import { describe, it, expect, vi } from 'vitest'
 import { screen, fireEvent, waitFor } from '@testing-library/react'
 import { http, HttpResponse, delay } from 'msw'
-import { server } from '../../test-msw-server'
+import { server } from '../../../test/test-msw-server'
 import { BusinessScreen } from './BusinessScreen'
 import { BASE_PROFILE, BASE_URL, EMPTY_BOOK, renderBusiness, useBusinessDefaults, YEAR } from './businessTestKit'
-import { renderWithQuery } from '../../test-render'
+import { renderWithQuery } from '../../../test/test-render'
 
 const LOSSES = { facts: {}, rules: {}, businessProfitEur: -100, year: { newLossEur: 500, carryForwardDeductedEur: 0, remainingCarryForwardEur: 0 }, carryBack: null }
 const VA = { period: 'quartal', periodSource: 'vorjahressteuer', extension: false, specialPrepaymentEur: null, periods: [], totalEur: 0, ecSalesList: { period: 'quartal', reports: [] } }

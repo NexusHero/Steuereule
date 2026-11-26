@@ -42,16 +42,16 @@ configure({
 // throwing. Full mechanism, and why the throw (not the destroy's own trivial work — a handful of
 // `Set` deletes and `removeEventListener` calls, nowhere near a 5s budget) is what actually costs
 // a later file time under `pnpm test`'s contended load: #240 and Musti's ruling on it. Control
-// proof for this exact mechanism: `./auth/session-store-cleanup.test.tsx`.
+// proof for this exact mechanism: `../src/auth/session-store-cleanup.test.tsx`.
 //
 // Wired at the ONE seam every `authClient.useSession()` consumer passes through —
-// `createAppAuthClient`, this app's single client-construction site (`./auth/auth-client.ts`'s
+// `createAppAuthClient`, this app's single client-construction site (`../src/auth/auth-client.ts`'s
 // own doc comment) — rather than into any particular screen, so it drains generically for
 // whichever component(s) use `useSession()`, not just today's one caller, `DatenschutzScreen`. No
 // product code is touched — only this shared harness module's own module graph is intercepted.
 const pendingSessionStores: WritableAtom<unknown>[] = []
-vi.mock('./auth/auth-client', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('./auth/auth-client')>()
+vi.mock('../src/auth/auth-client', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../src/auth/auth-client')>()
   return {
     ...actual,
     createAppAuthClient: (baseUrl: string) => {
@@ -66,7 +66,7 @@ vi.mock('./auth/auth-client', async (importOriginal) => {
 // jsdom implements no `ResizeObserver` at all — a missing platform API, not a product
 // dependency. `@react-navigation/elements`' `useFrameSize` (pulled in by the router, #238)
 // observes its container for frame-size tracking; without this it throws on mount before a
-// single assertion runs. The precedent is `src/test-stubs/react-native-svg.tsx` (a real
+// single assertion runs. The precedent is `test/stubs/react-native-svg.tsx` (a real
 // dependency's Flow-typed source jsdom can't parse — stubbed because there is no other way to
 // run it here at all), not the AbortSignal patch further down in this file, which fixes a
 // Node-version incompatibility in a control flow the app itself owns end to end. Nothing here
@@ -191,5 +191,5 @@ clearStorageAfterEach(() => {
 // OPS-16: the running tax year comes from the server's clock. The suite answers as a server in 2026 does,
 // so fixtures keyed by year stay stable across New Year; the clock tests set their own year.
 import { beforeEach as pinTaxYearBeforeEach } from 'vitest'
-import { setServerRunningTaxYear } from './config/taxYear'
+import { setServerRunningTaxYear } from '../src/config/taxYear'
 pinTaxYearBeforeEach(() => setServerRunningTaxYear(2026))

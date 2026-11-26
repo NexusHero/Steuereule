@@ -10,8 +10,8 @@ import { http, HttpResponse } from 'msw'
 import type { InterviewStateDto, ChSalaryCertificateResponseDto } from '@steuereule/api-client'
 import { SALARY_CERTIFICATE_FIELDS } from '@steuereule/core'
 import { CrossBorderScreen } from './CrossBorderScreen'
-import { EMPTY_CH_SALARY_CERTIFICATE_RESPONSE, server } from '../../test-msw-server'
-import { renderWithQuery } from '../../test-render'
+import { EMPTY_CH_SALARY_CERTIFICATE_RESPONSE, server } from '../../../test/test-msw-server'
+import { renderWithQuery } from '../../../test/test-render'
 
 const { mockExtractDocumentText } = vi.hoisted(() => ({ mockExtractDocumentText: vi.fn() }))
 vi.mock('../../lib/documentOcr', async (importOriginal) => {

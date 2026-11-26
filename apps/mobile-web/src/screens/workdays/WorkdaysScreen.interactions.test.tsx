@@ -4,9 +4,9 @@ import { describe, it, expect, vi } from 'vitest'
 import { screen, fireEvent, waitFor } from '@testing-library/react'
 import { weekdaysInYear } from '@steuereule/core'
 import { http, HttpResponse } from 'msw'
-import { server } from '../../test-msw-server'
+import { server } from '../../../test/test-msw-server'
 import { WorkdaysScreen, type WorkdaysScreenProps } from './WorkdaysScreen'
-import { renderWithQuery } from '../../test-render'
+import { renderWithQuery } from '../../../test/test-render'
 
 function renderWorkdays(props: WorkdaysScreenProps = {}) {
   return renderWithQuery(<WorkdaysScreen taxYear={2026} {...props} />)

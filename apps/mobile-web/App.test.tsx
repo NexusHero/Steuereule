@@ -9,8 +9,8 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
-import { server } from './src/test-msw-server'
-import { COMPLETE_LSTB_RESPONSE, pendingLstbScanAction } from './src/test-lstb-fixtures'
+import { server } from './test/test-msw-server'
+import { COMPLETE_LSTB_RESPONSE, pendingLstbScanAction } from './test/test-lstb-fixtures'
 
 const API_BASE_URL = 'http://localhost:3000'
 

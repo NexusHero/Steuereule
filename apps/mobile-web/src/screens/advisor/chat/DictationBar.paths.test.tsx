@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import { AdvisorChatPanel } from '../AdvisorChatPanel'
 import type { DictationEngine } from '../../../lib/dictation/engine'
-import { renderInApp } from '../../../test-render'
+import { renderInApp } from '../../../../test/test-render'
 
 function fakeEngine(over: Partial<DictationEngine> = {}): DictationEngine {
   return {

@@ -4,11 +4,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import type { Screen } from '@steuereule/core'
-import { server } from '../../test-msw-server'
-import { manualPaymentClock } from '../../test-payment-clock'
+import { server } from '../../../test/test-msw-server'
+import { manualPaymentClock } from '../../../test/test-payment-clock'
 import { PaymentClockProvider } from '../shared/usePaymentConfirmation'
 import { PrintoutScreen, type PrintoutScreenProps } from './PrintoutScreen'
-import { renderWithQuery } from '../../test-render'
+import { renderWithQuery } from '../../../test/test-render'
 
 const { download } = vi.hoisted(() => ({ download: vi.fn() }))
 vi.mock('../privacy/exportDownload', () => ({ triggerBrowserDownload: download }))
