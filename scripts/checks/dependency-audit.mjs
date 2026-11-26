@@ -28,15 +28,6 @@ export const ALLOWLIST = [
     expires: '2027-02-28',
   },
   {
-    // Prisma's config loader merges the project's own prisma.config; its input is the repository's file,
-    // never request data. The fix is deepmerge-ts 8, a major jump inside Prisma's pinned CLI.
-    name: 'deepmerge-ts inside the Prisma CLI',
-    // Two paths: the adapter's own prisma, and the API's (a production dependency, the image migrates with it).
-    pattern: /^apps__api>(@better-auth\/prisma-adapter>)?prisma>@prisma\/config>deepmerge-ts$/,
-    reason: 'Not reachable with request data; a forced major would change Prisma 6.19 internals. Fixed with the next Prisma upgrade.',
-    expires: '2027-02-28',
-  },
-  {
     // better-auth declares vitest as an optional peer; the workspace's own dev dependency satisfies
     // it, so the audit sees it. `pnpm install --prod` (the API image) does not install it.
     name: 'vitest as optional peer of better-auth',
