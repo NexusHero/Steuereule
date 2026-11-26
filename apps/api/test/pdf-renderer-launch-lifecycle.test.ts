@@ -46,6 +46,31 @@ function stubBrowser(): Browser {
   })
 }
 
+/** A browser whose connection and closing the test can observe and control (#288, #290). */
+function trackedBrowser(options: { failPages?: Error; diesOnFailure?: boolean } = {}): { browser: Browser; closed: () => number; setConnected: (value: boolean) => void } {
+  let connected = true
+  let closes = 0
+  const page = {
+    setContent: (): Promise<void> => {
+      if (!options.failPages) return Promise.resolve()
+      if (options.diesOnFailure) connected = false
+      return Promise.reject(options.failPages)
+    },
+    pdf: (): Promise<Buffer> => Promise.resolve(Buffer.from('%PDF-1.4 stub')),
+    close: (): Promise<void> => Promise.resolve(),
+  }
+  const browser = withContexts({
+    newPage: (): Promise<typeof page> => Promise.resolve(page),
+    close: (): Promise<void> => {
+      closes += 1
+      connected = false
+      return Promise.resolve()
+    },
+  })
+  ;(browser as unknown as { isConnected: () => boolean }).isConnected = () => connected
+  return { browser, closed: () => closes, setConnected: (value) => (connected = value) }
+}
+
 /** renderPdf opens each page in its own locked-down context (API-7); the context hands out the browser's pages. */
 function withContexts(browser: { newPage: () => Promise<unknown>; close: () => Promise<void> }): Browser {
   return {
@@ -253,5 +278,55 @@ describe('PlaywrightPdfRenderer — launch caching lifecycle (#285)', () => {
     ])
     expect(openPages).toBe(0)
     expect(maxObservedOpenPages).toBe(3)
+  })
+})
+
+describe('PlaywrightPdfRenderer — a dead browser and shutdown (#288, #290)', () => {
+  it('relaunches after a render failed because the browser died', async () => {
+    const dead = trackedBrowser({ failPages: new Error('Target page, context or browser has been closed'), diesOnFailure: true })
+    const renderer = new ScriptedLaunchRenderer((call) => Promise.resolve(call === 1 ? dead.browser : trackedBrowser().browser))
+
+    await expect(renderer.renderPdf(HTML)).rejects.toThrow(/has been closed/)
+
+    const pdf = await renderer.renderPdf(HTML)
+    expect(pdf.subarray(0, 5).toString('ascii')).toBe('%PDF-')
+    expect(renderer.launchCalls).toBe(2)
+  })
+
+  it('keeps a connected browser when the document was bad', async () => {
+    const live = trackedBrowser({ failPages: new Error('Navigation failed: malformed') })
+    const renderer = new ScriptedLaunchRenderer(() => Promise.resolve(live.browser))
+
+    await expect(renderer.renderPdf(HTML)).rejects.toThrow(/malformed/)
+    await expect(renderer.renderPdf(HTML)).rejects.toThrow(/malformed/)
+
+    expect(renderer.launchCalls).toBe(1)
+    expect(live.closed()).toBe(0)
+  })
+
+  it('a destroy during a launch closes the browser that launch yields and refuses later launches', async () => {
+    const late = trackedBrowser()
+    let release: (browser: Browser) => void = () => {}
+    const renderer = new ScriptedLaunchRenderer(() => new Promise<Browser>((resolve) => (release = resolve)))
+
+    const render = renderer.renderPdf(HTML)
+    render.catch(() => undefined)
+    const destroying = renderer.onModuleDestroy()
+    release(late.browser)
+    await destroying
+
+    expect(late.closed()).toBe(1)
+    await expect(renderer.renderPdf(HTML)).rejects.toMatchObject({ code: 'EXPORT_SHUTTING_DOWN' })
+    expect(renderer.launchCalls).toBe(1)
+  })
+
+  it('a destroy closes a launched browser exactly once', async () => {
+    const live = trackedBrowser()
+    const renderer = new ScriptedLaunchRenderer(() => Promise.resolve(live.browser))
+    await renderer.renderPdf(HTML)
+
+    await renderer.onModuleDestroy()
+
+    expect(live.closed()).toBe(1)
   })
 })
