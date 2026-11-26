@@ -14,7 +14,19 @@ import { API_PRODUCTION_SETTINGS, DEPLOY_VARIABLES, WEB_BUILD_ARGS } from '../..
 const repoFile = (path: string) => fileURLToPath(new URL(`../../../../${path}`, import.meta.url))
 const read = (path: string) => readFileSync(repoFile(path), 'utf8')
 
-const deployYml = read('.github/workflows/deploy.yml')
+/**
+ * The deploy as it runs: deploy.yml with every `run: scripts/deploy/<step>.sh` line replaced by the script's own
+ * lines (ADR-0112 moved the long shell of the steps into those files). Every assertion below is about the
+ * commands the deploy executes, so it reads them where they now live, in the order they ran inline before.
+ */
+const inlineDeployScripts = (workflow: string) =>
+  workflow.replace(/^( *)run: (scripts\/deploy\/[\w-]+\.sh)$/gm, (_line, indent: string, script: string) => {
+    const body = read(script).split('\n')
+    // the shebang is not part of what the step runs
+    return [`${indent}run: |`, ...body.slice(1).map((line) => (line === '' ? '' : `${indent}  ${line}`))].join('\n')
+  })
+
+const deployYml = inlineDeployScripts(read('.github/workflows/deploy.yml'))
 const mainTf = read('infra/gcp/main.tf')
 const variablesTf = read('infra/gcp/variables.tf')
 const apiDockerfile = read('apps/api/Dockerfile')
@@ -373,5 +385,19 @@ describe('deployment wiring: every production value reaches the runtime (beta P1
     expect(nightly).toMatch(/^ {4}if: github\.event_name == 'workflow_dispatch' \|\| vars\.AI_EVAL_ENABLED == 'true'$/m)
     expect(nightly).toMatch(/AI_EVAL_GEMINI_API_KEY is not set[\s\S]*?exit 1/)
     expect(nightly).not.toMatch(/present=false/)
+  })
+})
+
+describe('deploy scripts (ADR-0112)', () => {
+  const workflow = read('.github/workflows/deploy.yml')
+  const referenced = [...workflow.matchAll(/^ *run: (scripts\/deploy\/[\w-]+\.sh)$/gm)].map((match) => match[1] ?? '')
+
+  it('every script under scripts/deploy is run by a step of deploy.yml, and every referenced script exists', () => {
+    const onDisk = readdirSync(repoFile('scripts/deploy')).map((name) => `scripts/deploy/${name}`)
+    expect([...referenced].sort()).toEqual([...onDisk].sort())
+  })
+
+  it('a deploy script stops at the first failing command, as the default shell of the step did', () => {
+    for (const script of referenced) expect(read(script), script).toMatch(/^set -e$/m)
   })
 })

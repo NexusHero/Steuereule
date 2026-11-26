@@ -81,14 +81,7 @@ jobs:
             GCP_SQL_INSTANCE GCP_KEYSTORE_SQL_INSTANCE GCP_VPC_NETWORK GCP_VPC_SUBNET APP_DOMAIN EMAIL_FROM
             TRUSTED_PROXIES EXPO_PUBLIC_BETREIBER_NAME EXPO_PUBLIC_BETREIBER_ANSCHRIFT EXPO_PUBLIC_BETREIBER_EMAIL
             EXPO_PUBLIC_BETREIBER_VERTRETEN EXPO_PUBLIC_BETREIBER_USTID
-        run: |
-          names=""
-          for name in $DEPLOY_VARIABLES; do
-            if jq -e --arg name "$name" 'has($name)' <<<"$REPOSITORY_VARS" >/dev/null; then
-              names="$names $name"
-            fi
-          done
-          echo "names=${names# }" >> "$GITHUB_OUTPUT"
+        run: scripts/deploy/find-repository-level-variables.sh
 
   deploy:
     name: Deploy (Cloud Run)
@@ -155,28 +148,7 @@ jobs:
             GCP_ENVIRONMENT GCP_PROJECT_ID GCP_REGION GCP_WIF_PROVIDER GCP_DEPLOYER_SA GCP_RUNTIME_SA GCP_MIGRATE_SA GCP_WEB_SA
             GCP_SQL_INSTANCE GCP_KEYSTORE_SQL_INSTANCE GCP_VPC_NETWORK GCP_VPC_SUBNET APP_DOMAIN EMAIL_FROM
             TRUSTED_PROXIES EXPO_PUBLIC_BETREIBER_NAME EXPO_PUBLIC_BETREIBER_ANSCHRIFT EXPO_PUBLIC_BETREIBER_EMAIL
-        run: |
-          if [ -n "$REPOSITORY_LEVEL" ]; then
-            echo "::error::Deploy variables set at repository level: $REPOSITORY_LEVEL — move them into the GitHub environment '$TARGET_ENV' (Settings -> Environments). At repository level they silently fill in for any environment that lacks them."
-            exit 1
-          fi
-          if [ "$GITHUB_REF" != "refs/heads/main" ]; then
-            echo "::error::Deploys run only from main (this run is on $GITHUB_REF); the GCP side refuses other refs too."
-            exit 1
-          fi
-          missing=""
-          for name in $REQUIRED_VARIABLES; do
-            jq -e --arg name "$name" '(.[$name] // "") != ""' <<<"$ENVIRONMENT_VARS" >/dev/null || missing="$missing $name"
-          done
-          if [ -n "$missing" ]; then
-            echo "::error::Variables missing in the GitHub environment '$TARGET_ENV':$missing — run scripts/infra/gcp-setup.sh (infra/README.md)."
-            exit 1
-          fi
-          marker="$(jq -r '.GCP_ENVIRONMENT' <<<"$ENVIRONMENT_VARS")"
-          if [ "$marker" != "$TARGET_ENV" ]; then
-            echo "::error::GCP_ENVIRONMENT is '$marker' in the GitHub environment '$TARGET_ENV' — refusing to deploy values meant for another environment."
-            exit 1
-          fi
+        run: scripts/deploy/configuration-gate.sh
 
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
@@ -190,18 +162,7 @@ jobs:
       - uses: google-github-actions/setup-gcloud@e427ad8a34f8676edf47cf7d7925499adf3eb74f # v2
 
       - name: Resolve images and origins
-        run: |
-          registry="$REGION-docker.pkg.dev/$PROJECT_ID/steuereule"
-          tag="$(git rev-parse --short=12 HEAD)"
-          {
-            echo "APP_VERSION=$tag"
-            echo "API_IMAGE=$registry/api:$tag"
-            echo "WEB_IMAGE=$registry/web:$tag"
-            echo "WEBSITE_IMAGE=$registry/website:$tag"
-            echo "API_ORIGIN=https://api.$APP_DOMAIN"
-            echo "WEB_ORIGIN=https://www.$APP_DOMAIN"
-          } >> "$GITHUB_ENV"
-          gcloud auth configure-docker "$REGION-docker.pkg.dev" --quiet
+        run: scripts/deploy/resolve-images-and-origins.sh
 
       - name: Build and push API image
         run: |
@@ -209,39 +170,7 @@ jobs:
           docker push "$API_IMAGE"
 
       - name: Collect secrets that have a value
-        run: |
-          secrets=""
-          for name in $REQUIRED_SECRETS $OPTIONAL_SECRETS; do
-            if [ -n "$(gcloud secrets versions list "$name" --filter=state=enabled --limit=1 --format='value(name)')" ]; then
-              secrets="$secrets,$name=$name:latest"
-            fi
-          done
-          missing=""
-          for required in $REQUIRED_SECRETS; do
-            case "$secrets," in
-              *",$required="*) ;;
-              *) missing="$missing $required" ;;
-            esac
-          done
-          for required in $MIGRATE_ONLY_SECRETS; do
-            if [ -z "$(gcloud secrets versions list "$required" --filter=state=enabled --limit=1 --format='value(name)')" ]; then
-              missing="$missing $required"
-            fi
-          done
-          if [ -n "$missing" ]; then
-            echo "::error::Secrets without an enabled version:$missing — run scripts/infra/gcp-setup.sh (infra/README.md). The API refuses to start without them."
-            exit 1
-          fi
-          echo "API_SECRETS=${secrets#,}" >> "$GITHUB_ENV"
-          # The migrate job reads encrypted columns too (the backfills, `rotate:field-key`): during a key
-          # rotation it needs the retired keys the API reads with, or it would treat their ciphertext as text.
-          # In the job DATABASE_URL is the migration login (the owner of the tables); the API's own login reaches it
-          # as RUNTIME_DATABASE_URL, and the job creates that login (scripts/runtime-database-login.mjs, P11).
-          migrate="DATABASE_URL=MIGRATE_DATABASE_URL:latest,RUNTIME_DATABASE_URL=DATABASE_URL:latest,KEYSTORE_DATABASE_URL=KEYSTORE_DATABASE_URL:latest,PRISMA_FIELD_ENCRYPTION_KEY=PRISMA_FIELD_ENCRYPTION_KEY:latest,PRISMA_FIELD_ENCRYPTION_HASH_SALT=PRISMA_FIELD_ENCRYPTION_HASH_SALT:latest"
-          case "$secrets," in
-            *",PRISMA_FIELD_DECRYPTION_KEYS="*) migrate="$migrate,PRISMA_FIELD_DECRYPTION_KEYS=PRISMA_FIELD_DECRYPTION_KEYS:latest" ;;
-          esac
-          echo "MIGRATE_SECRETS=$migrate" >> "$GITHUB_ENV"
+        run: scripts/deploy/collect-secrets.sh
 
       - name: Capture current Cloud Run revisions for rollback safety
         id: revisions
@@ -260,59 +189,14 @@ jobs:
             --description="Pre-deploy backup for $APP_VERSION" \
             --quiet
 
-      # The migrate job belongs to this workflow entirely, so its secrets are set, not merged.
       - name: Run database migrations
-        run: |
-          gcloud run jobs deploy steuereule-migrate \
-            --image "$API_IMAGE" --region "$REGION" \
-            --service-account "$MIGRATE_SA" \
-            --set-cloudsql-instances "$SQL_INSTANCE,$KEYSTORE_SQL_INSTANCE" \
-            --network "$VPC_NETWORK" --subnet "$VPC_SUBNET" --vpc-egress private-ranges-only \
-            --set-secrets "$MIGRATE_SECRETS" \
-            --command sh --args="-c,cd /repo/apps/api && node scripts/migrate-deploy.mjs" \
-            --max-retries 0 --task-timeout 600s \
-            --execute-now --wait
+        run: scripts/deploy/run-migrations.sh
 
-      # ADR-0064: an owl answer keeps running after its HTTP response has ended (stop, resume, a
-      # reader that left). `--no-cpu-throttling` keeps the CPU allocated for that; with throttling
-      # the run would freeze the moment the request ends. `--session-affinity` keeps a client on
-      # the instance that holds its run while there is no shared Redis.
-      #
-      # OPS-12: --update-env-vars / --update-secrets MERGE into the service. The values below are owned by this
-      # workflow and rewritten on every deploy; anything an operator set by hand (AI_KILL_SWITCH, model choice,
-      # daily limits) survives. Remove a hand-set value with `gcloud run services update --remove-env-vars`.
-      #
-      # The list is split on "|" (gcloud's ^|^ syntax): the values hold "," (TRUSTED_PROXIES), ":" and "/" (origins)
-      # and "@" (EMAIL_FROM), so none of those can separate them. A value that held a "|" would be cut in two and
-      # set a wrong value without an error, so the step refuses it first.
       - name: Deploy API
-        run: |
-          for value in "$API_ORIGIN" "$WEB_ORIGIN" "$TRUSTED_PROXIES" "$EMAIL_FROM"; do
-            case "$value" in *'|'*) echo "::error::A deploy value contains '|', the separator of --update-env-vars: $value"; exit 1 ;; esac
-          done
-          gcloud run deploy steuereule-api \
-            --image "$API_IMAGE" --region "$REGION" \
-            --service-account "$API_SA" \
-            --add-cloudsql-instances "$SQL_INSTANCE,$KEYSTORE_SQL_INSTANCE" \
-            --update-secrets "$API_SECRETS" \
-            --update-env-vars "^|^NODE_ENV=production|BETTER_AUTH_URL=$API_ORIGIN|CORS_ALLOWED_ORIGINS=$WEB_ORIGIN|WEB_APP_URL=$WEB_ORIGIN|TRUSTED_PROXIES=$TRUSTED_PROXIES|EMAIL_FROM=$EMAIL_FROM" \
-            --cpu 1 --memory 2Gi --cpu-boost \
-            --no-cpu-throttling --session-affinity \
-            --min-instances 0 --max-instances 10 --concurrency 80 --timeout 120 \
-            --network "$VPC_NETWORK" --subnet "$VPC_SUBNET" --vpc-egress private-ranges-only \
-            --allow-unauthenticated
+        run: scripts/deploy/deploy-api.sh
 
       - name: Build and push web image
-        run: |
-          docker build -f apps/mobile-web/Dockerfile \
-            --build-arg "EXPO_PUBLIC_API_BASE_URL=$API_ORIGIN" \
-            --build-arg "EXPO_PUBLIC_BETREIBER_NAME=$EXPO_PUBLIC_BETREIBER_NAME" \
-            --build-arg "EXPO_PUBLIC_BETREIBER_ANSCHRIFT=$EXPO_PUBLIC_BETREIBER_ANSCHRIFT" \
-            --build-arg "EXPO_PUBLIC_BETREIBER_EMAIL=$EXPO_PUBLIC_BETREIBER_EMAIL" \
-            --build-arg "EXPO_PUBLIC_BETREIBER_VERTRETEN=$EXPO_PUBLIC_BETREIBER_VERTRETEN" \
-            --build-arg "EXPO_PUBLIC_BETREIBER_USTID=$EXPO_PUBLIC_BETREIBER_USTID" \
-            -t "$WEB_IMAGE" .
-          docker push "$WEB_IMAGE"
+        run: scripts/deploy/build-web-image.sh
 
       - name: Build and push website image
         run: |
@@ -355,28 +239,7 @@ jobs:
             --allow-unauthenticated
 
       - name: Post-deploy smoke test (Health + Auth Capabilities + CORS + Web)
-        run: |
-          api_url="$(gcloud run services describe steuereule-api --region "$REGION" --format='value(status.url)')"
-          web_url="$(gcloud run services describe steuereule-web --region "$REGION" --format='value(status.url)')"
-          curl -fsS --retry 5 --retry-delay 5 --retry-all-errors "$api_url/v1/health/ready"
-          curl -fsS --retry 5 --retry-delay 5 --retry-all-errors "$api_url/v1/auth/capabilities"
-          cors_headers="$(curl -fsS --retry 5 --retry-delay 5 --retry-all-errors -D - -o /dev/null -H "Origin: $WEB_ORIGIN" "$api_url/v1/auth/capabilities" | tr -d '\r')"
-          echo "$cors_headers" | grep -qi "^access-control-allow-origin: $WEB_ORIGIN$" || {
-            echo "::error::Post-deploy CORS verification failed for Origin $WEB_ORIGIN"
-            exit 1
-          }
-          web_headers="$(curl -fsS --retry 5 --retry-delay 5 --retry-all-errors -D - -o /dev/null "$web_url/" | tr -d '\r')"
-          echo "$web_headers" | grep -qi "^content-security-policy: .*frame-src 'self' blob:" || {
-            echo "::error::The web app answers without its Content-Security-Policy"
-            exit 1
-          }
-          site_url="$(gcloud run services describe steuereule-website --region "$REGION" --format='value(status.url)')"
-          site_headers="$(curl -fsS --retry 5 --retry-delay 5 --retry-all-errors -D - -o /dev/null "$site_url/" | tr -d '\r')"
-          echo "$site_headers" | grep -qi "^content-security-policy: " || {
-            echo "::error::The marketing site answers without its Content-Security-Policy"
-            exit 1
-          }
-          echo "::notice::Deployed $API_IMAGE ($APP_VERSION) → $API_ORIGIN, $WEB_IMAGE → $WEB_ORIGIN"
+        run: scripts/deploy/post-deploy-smoke.sh
 
       - name: Automatic Cloud Run Traffic Rollback (on deploy or smoke failure)
         if: failure() && steps.revisions.outcome == 'success'

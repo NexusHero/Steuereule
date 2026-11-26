@@ -99,10 +99,42 @@ check of its own.
 | `AI eval (nightly)` | The owl against the real model — amounts vs. core, StBerG, sources, prompt-injection, PII, consistency, TTFT | `ai-eval-nightly.yml` |
 | `Law watch (nightly)` | Cited norms still match gesetze-im-internet.de | `law-watch.yml` |
 
+## How the browser gates are split (ADR-0112)
+
+The 46 stack-bound E2E gates are listed in `e2e/gates.json`, each in one group. `Build & E2E` builds the API and
+the web bundle once (`e2e: build`), then runs one job per group in parallel, each on a fresh stack
+(`e2e: gates — <group>`). A group reports every failing gate, not only the first.
+
+| Group | What it holds |
+|---|---|
+| `layout` | Responsive layout, banners, dark mode, visual regression |
+| `a11y` | BFSG / WCAG 2.1 AA, both themes, keyboard |
+| `chat-and-inputs` | Owl chat experience, input aids, smart inputs, dictation, plan in chat |
+| `account-and-session` | Cross-origin sign-up, session, device QR, account security |
+| `tax-flows` | Household, church tax, real cases, forms, printout, Verlauf, S10 acceptance |
+| `navigation-and-states` | Deep links, hub, sheets, deadline banners and failure states, Belege channel |
+| `beta-states` | Beta account, partner, payment and mask states |
+| `scan-and-uploads` | Self-hosted OCR, scan corpus and flows, uploads |
+| `budgets` | Navigation efficiency, load and latency budget |
+| `static-ratchet` | E2E coverage ratchet and the gate-list check (no stack) |
+| `owl-fake-ki` | Owl mode against the scripted chat model (`AI_FAKE_KI`) |
+
+Adding a gate is one entry in `e2e/gates.json`; the matrix is built from the file, so a gate cannot exist
+without running. `node e2e/run-gates.mjs --list` shows the gates, `--group <g>` runs one group against a stack
+that is already up.
+
+The two required checks that were one job each keep their names as **aggregate jobs** that wait for the parts and
+run `if: always()`, so a ruleset that pins the name never waits for a job that no longer exists:
+
+- `e2e: browser gates & a11y (BFSG/WCAG 2.1 AA, headless Chromium)` = plan + build + every `e2e: gates — <group>`
+- `e2e: production compose stack + OWASP ZAP DAST (real Docker build)` = `e2e: production stack smoke` +
+  `e2e: OWASP ZAP DAST (real Docker build)`
+
+The set-up shared by the jobs is in `.github/actions/` (`setup-workspace`, `prepare-database`, `install-chromium`,
+`boot-prod-stack`); long shell steps live in `e2e/smoke/`, `e2e/prod-deploy/`, `scripts/ci/` and `scripts/deploy/`.
+
 ## The accessibility and DAST caveat
 
-Two high-value gates ride **inside** a host job rather than being their own check, because they need that
-job's expensive real-stack setup: the **a11y (BFSG/WCAG)** steps run inside `e2e: browser gates & a11y`, and
-the **OWASP ZAP DAST** pentest runs inside `e2e: production compose stack + OWASP ZAP DAST`. Their names now
-say so, and the CI-Overview comment lists them under their category, but splitting them into standalone checks
-would mean standing the stack up twice — deliberately not done (ADR-0105).
+The **a11y (BFSG/WCAG)** gates are the `a11y` group of the browser gates and no longer share a stack with
+unrelated gates. The **OWASP ZAP DAST** pentest is its own job on the real production containers; the Docker stack
+is built twice (smoke and DAST) on purpose (ADR-0112, replacing the choice of ADR-0105).

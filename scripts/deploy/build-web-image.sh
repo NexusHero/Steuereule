@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+# Build and push the web image.
+
+set -e
+
+docker build -f apps/mobile-web/Dockerfile \
+  --build-arg "EXPO_PUBLIC_API_BASE_URL=$API_ORIGIN" \
+  --build-arg "EXPO_PUBLIC_BETREIBER_NAME=$EXPO_PUBLIC_BETREIBER_NAME" \
+  --build-arg "EXPO_PUBLIC_BETREIBER_ANSCHRIFT=$EXPO_PUBLIC_BETREIBER_ANSCHRIFT" \
+  --build-arg "EXPO_PUBLIC_BETREIBER_EMAIL=$EXPO_PUBLIC_BETREIBER_EMAIL" \
+  --build-arg "EXPO_PUBLIC_BETREIBER_VERTRETEN=$EXPO_PUBLIC_BETREIBER_VERTRETEN" \
+  --build-arg "EXPO_PUBLIC_BETREIBER_USTID=$EXPO_PUBLIC_BETREIBER_USTID" \
+  -t "$WEB_IMAGE" .
+docker push "$WEB_IMAGE"

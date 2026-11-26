@@ -1,0 +1,15 @@
+name: Set up the workspace
+description: pnpm, Node 24 with the pnpm cache, and a frozen-lockfile install. Every job that builds or runs the app starts here (after checkout).
+runs:
+  using: composite
+  steps:
+    - name: Set up pnpm
+      uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+    - name: Set up Node
+      uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+      with:
+        node-version: 24
+        cache: pnpm
+    - name: Install dependencies
+      shell: bash
+      run: pnpm install --frozen-lockfile

@@ -1,0 +1,32 @@
+name: Prepare the database
+description: >-
+  Points DATABASE_URL at the job's Postgres service container, generates the Prisma client, applies the
+  migrations (migrate deploy, never migrate dev) and, unless switched off, runs the schema-vs-migrations
+  drift gate. Needs the checkout and setup-workspace first, and a `postgres` service on localhost:5432
+  (user, password and database `steuereule`).
+inputs:
+  drift:
+    description: Run the Prisma schema-vs-migrations drift gate (zero drift between schema.prisma and migrations/).
+    default: 'true'
+runs:
+  using: composite
+  steps:
+    # Built here rather than written out in the job env, so no connection string with credentials sits in a
+    # workflow; every later step of the job reads it from the environment.
+    - name: Database URL of the Postgres service container
+      shell: bash
+      run: echo "DATABASE_URL=postgres://${DB_USER}:${DB_PASSWORD}@localhost:5432/${DB_NAME}" >> "$GITHUB_ENV"
+      env:
+        DB_USER: steuereule
+        DB_PASSWORD: steuereule
+        DB_NAME: steuereule
+    - name: Generate Prisma Client
+      shell: bash
+      run: pnpm --filter @steuereule/api prisma:generate
+    - name: Apply migrations (migrate deploy, never migrate dev)
+      shell: bash
+      run: pnpm --filter @steuereule/api migrate:deploy
+    - name: Prisma Schema-vs-Migrations Drift Gate (zero drift between schema.prisma and migrations/)
+      if: inputs.drift == 'true'
+      shell: bash
+      run: pnpm --filter @steuereule/api exec prisma migrate diff --from-schema-datasource prisma/schema.prisma --to-schema-datamodel prisma/schema.prisma --exit-code
