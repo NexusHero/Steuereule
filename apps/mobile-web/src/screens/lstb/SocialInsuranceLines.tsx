@@ -106,7 +106,7 @@ function EuroCentsInput({ label, stored, onCommit, testID }: { label: string; st
           setText(next)
           setUnreadable(false)
         }}
-        placeholder={tr('lstb.feld.placeholder')}
+        placeholder={tr('lstb.feld.placeholderCent')}
         onSubmit={commit}
         onBlur={commit}
         accessibilityLabel={label}

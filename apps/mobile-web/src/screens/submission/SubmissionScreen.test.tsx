@@ -78,6 +78,30 @@ function renderSubmission(
 }
 
 describe('SubmissionScreen (§ 3.4)', () => {
+  it('never says everything is clear while the printout still lacks details', async () => {
+    mockCompleteLstb()
+    mockInterview({ job: 'Angestellt', ausland: 'Nein', kinder: 'Nein', familienstand: 'Ledig' })
+    server.use(
+      http.get('*/v1/steuerjahre/:jahr/ausdruck/pruefung', () =>
+        HttpResponse.json({ missing: ['strasse', 'plz', 'iban'], missingChildFields: [], hints: [] }),
+      ),
+    )
+    renderSubmission()
+
+    expect(await screen.findByTestId('abgabe-ausdruck-offen')).toBeTruthy()
+    expect(screen.getByTestId('abgabe-ausdruck-offen').textContent).toContain('3 Angaben')
+    expect(screen.queryByText('Alles klar — keine Widersprüche, nichts mehr offen.')).toBeNull()
+  })
+
+  it('says everything is clear once nothing is missing for the printout', async () => {
+    mockCompleteLstb()
+    mockInterview({ job: 'Angestellt', ausland: 'Nein', kinder: 'Nein', familienstand: 'Ledig' })
+    renderSubmission()
+
+    expect(await screen.findByText('Alles klar — keine Widersprüche, nichts mehr offen.')).toBeTruthy()
+    expect(screen.queryByTestId('abgabe-ausdruck-offen')).toBeNull()
+  })
+
   it('locks abgabe-zum-ausdruck on conflicts and navigates to the fixing tile', async () => {
     const onOpenTile = vi.fn()
     renderSubmission({ onOpenTile })

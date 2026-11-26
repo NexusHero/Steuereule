@@ -157,7 +157,7 @@ function withdrawalAddressee(operator: Operator | null): string {
 }
 
 export function terms(operator: Operator | null): readonly Section[] {
-  const provider = operator?.name ?? 'der im Impressum genannte Anbieter'
+  const provider = operator?.name ?? 'dem im Impressum genannten Anbieter'
   return [
     {
       title: '§ 1 Geltungsbereich',

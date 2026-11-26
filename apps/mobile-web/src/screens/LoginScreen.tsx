@@ -137,7 +137,7 @@ export function LoginScreen({ onDone, onGuest, onRegister, showDeviceQr = true, 
       />
 
       {emailVerified && !verificationFailed ? (
-        <View style={styles.outageBanner} accessibilityRole="alert" testID="email-bestaetigt">
+        <View style={styles.successBanner} accessibilityRole="alert" testID="email-bestaetigt">
           <Text style={styles.outageHeading}>{tr('login.verified.heading')}</Text>
           <Text style={styles.outageBody}>{tr('login.verified.body')}</Text>
         </View>

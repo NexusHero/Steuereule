@@ -150,7 +150,8 @@ function makeStyles(t: ReturnType<typeof useTheme>) {
   const pill: ViewStyle = {
     position: 'absolute',
     top: BAR_PADDING,
-    left: BAR_PADDING,
+    // The measured tab x already includes the bar padding; a second offset here pushed the pill 6 px off its tab.
+    left: 0,
     zIndex: 0,
     // The active tab is unmistakable: a lime pill with an ink contour (soft lime alone is ~1.1:1).
     backgroundColor: t.color.funke,

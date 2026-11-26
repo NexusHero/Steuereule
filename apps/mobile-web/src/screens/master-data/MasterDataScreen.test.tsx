@@ -50,6 +50,18 @@ describe('StammdatenScreen (ADR-0050)', () => {
     expect(await screen.findByText('Für den Ausdruck fehlen noch 9 Angaben.')).toBeTruthy()
   })
 
+  it('flags an impossible birth date while typing, and not a valid one', async () => {
+    server.use(http.get('*/v1/stammdaten', () => HttpResponse.json(LEER)))
+    renderScreen()
+    await screen.findByText('Für den Ausdruck fehlen noch 9 Angaben.')
+
+    input('stammdaten-geburtsdatum', '31.02.1990')
+    expect(await screen.findByTestId('stammdaten-geburtsdatum-ungueltig')).toBeTruthy()
+
+    input('stammdaten-geburtsdatum', '15.03.1990')
+    await waitFor(() => expect(screen.queryByTestId('stammdaten-geburtsdatum-ungueltig')).toBeNull())
+  })
+
   // Real-data run: without the consent nothing was saved, and leaving lost all input. Only the religion waits for it.
   it('saves the other fields without the Art. 9 consent tick and keeps only the religion back', async () => {
     const bodies: Record<string, unknown>[] = []

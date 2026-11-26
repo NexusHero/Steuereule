@@ -111,8 +111,14 @@ export function SubmissionScreen({
 
       <Card variant="default" style={styles.sectionCard}>
         <Text style={styles.sectionTitle}>{tr('abgabe.schrittPlausibilitaet')}</Text>
-        {!hasConflicts && notices.length === 0 ? (
+        {!hasConflicts && notices.length === 0 && plausibility.missingForPrintout === 0 ? (
           <Text style={styles.okText}>{tr('abgabe.plausibilitaetOk')}</Text>
+        ) : null}
+        {/* „Alles klar“ never stands while the printout still lacks details: the same count the Prüfung page shows. */}
+        {!hasConflicts && plausibility.missingForPrintout !== null && plausibility.missingForPrintout > 0 ? (
+          <Text style={styles.openText} testID="abgabe-ausdruck-offen">
+            {tr('plausibilitaet.ausdruckOffen', { count: plausibility.missingForPrintout })}
+          </Text>
         ) : null}
 
         <FindingList
@@ -252,6 +258,7 @@ function makeStyles(t: UiTheme) {
     marginBottom: t.space.s2,
   }
   const okText: TextStyle = { ...t.type.body, color: t.color.ok }
+  const openText: TextStyle = { ...t.type.body, color: t.color.warn }
   const filingTypeText: TextStyle = { ...t.type.body, color: t.color.tinte }
   const findingBlock: ViewStyle = { marginTop: t.space.s2, gap: t.space.s2 }
   const findingHeading: TextStyle = {
@@ -285,6 +292,7 @@ function makeStyles(t: UiTheme) {
     sectionCard,
     sectionTitle,
     okText,
+    openText,
     filingTypeText,
     findingBlock,
     findingHeading,

@@ -140,7 +140,10 @@ export function useCockpit(
     tileFacts === null || onOpenStrom === undefined || stromStep === null
       ? null
       : stromStep.kind === 'fertig'
-        ? { label: tr('cockpit.naechsterSchritt', { titel: tr('cockpit.abgabe.titel') }), onPress: () => submissionHandler?.(year) }
+        ? // The printout stays locked while the master data lacks details: pointing to the Abgabe then is a dead end.
+          masterData !== null && missingDetails > 0
+          ? { label: masterData.label, onPress: masterData.onPress }
+          : { label: tr('cockpit.naechsterSchritt', { titel: tr('cockpit.abgabe.titel') }), onPress: () => submissionHandler?.(year) }
         : { label: tr('cockpit.naechsterSchritt', { titel: stromStepTitle(stromStep, tr, partnerName) }), onPress: () => onOpenStrom(stromStep) }
   const next: Next | null = onOpenStrom !== undefined && tileFacts !== null ? stromNext :
     tileFacts !== null && step !== null
