@@ -9,7 +9,7 @@
 # The same image has a second role: docker-compose.prod.yml and the Cloud Run migrate job override CMD with
 # `cd /repo/apps/api && node scripts/migrate-deploy.mjs` (prisma CLI + schema + migrations are in the image).
 
-FROM node:24-bookworm-slim AS base
+FROM node:25-bookworm-slim AS base
 RUN corepack enable
 # openssl must be installed BEFORE `prisma generate`: Prisma picks the query-engine binary target from the
 # openssl it finds, and a generate without it picks debian-openssl-1.1.x while the runtime finds 3.0.x.
@@ -68,7 +68,7 @@ RUN cd node_modules/.pnpm \
 # fails here, not at the first request). Imports only; nothing connects to a database.
 RUN cd apps/api && node --import tsx --input-type=module -e "await import('@steuereule/core'); await import('@prisma-keystore/client'); await import('@fastify/cors'); await import('./dist/app.module.js'); await import('./src/auth/identity-backfill.prisma.js')"
 
-FROM node:24-bookworm-slim AS runtime
+FROM node:25-bookworm-slim AS runtime
 ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 WORKDIR /repo
 # Root-owned: `node` can read but not write the code.

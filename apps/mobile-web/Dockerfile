@@ -7,7 +7,7 @@
 # BUILD CONTEXT IS THE REPO ROOT — @steuereule/mobile-web depends on
 # @steuereule/{core,tokens,ui,api-client} (all workspace:*), so `pnpm install
 # --frozen-lockfile` needs the whole monorepo present, same reasoning as apps/api/Dockerfile.
-FROM node:24-bookworm-slim AS build
+FROM node:25-bookworm-slim AS build
 RUN corepack enable
 WORKDIR /repo
 COPY . .
@@ -55,7 +55,7 @@ RUN pnpm --filter @steuereule/mobile-web exec expo export --platform web --clear
 # already-committed, dependency-free static server (stdlib-only: node:http/fs/path), so
 # this container never carries a second, drifting web-server implementation (nginx.conf,
 # a `serve`/`http-server` package) the e2e harness knows nothing about.
-FROM node:24-bookworm-slim AS runtime
+FROM node:25-bookworm-slim AS runtime
 # The same API origin the bundle was built with, now for the Content-Security-Policy (connect-src) of
 # the static server: one build arg feeds both, they cannot drift apart.
 ARG EXPO_PUBLIC_API_BASE_URL
