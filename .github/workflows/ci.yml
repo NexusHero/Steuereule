@@ -6,9 +6,12 @@
 # All of them start in parallel on a pull request; merging waits for the required checks of every one.
 #
 # Flow:  build ──► smoke
-#              ├─► cross-origin-smoke
+#              ├─► e2e-build ──► e2e-gates (one job per group of e2e/gates.json) ──► cross-origin-smoke*
+#              │   e2e-plan ───┘
 #              ├─► e2e-scenarios / e2e-self-employed
-#              └─► prod-deploy-smoke
+#              └─► prod-stack-smoke + prod-stack-dast ──► prod-deploy-smoke*
+#
+# * aggregate jobs that keep the name of the required check (the ruleset pins check names), see docs/ci-pipeline.md.
 name: Build & E2E
 
 on:
@@ -35,15 +38,7 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
-      - name: Set up pnpm
-        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
-      - name: Set up Node
-        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
-        with:
-          node-version: 24
-          cache: pnpm
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+      - uses: ./.github/actions/setup-workspace
       - name: Export web bundle & run Bundle Security + Size Budget Gate
         env:
           EXPO_PUBLIC_API_BASE_URL: https://api.steuereule.de
@@ -150,39 +145,14 @@ jobs:
     steps:
       # Built here rather than written out in the job env, so no connection string with
       # credentials sits in the workflow; every later step reads it from the environment.
-      - name: Database URL of the Postgres service container
-        run: echo "DATABASE_URL=postgres://${DB_USER}:${DB_PASSWORD}@localhost:5432/${DB_NAME}" >> "$GITHUB_ENV"
-        env:
-          DB_USER: steuereule
-          DB_PASSWORD: steuereule
-          DB_NAME: steuereule
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
-      - name: Set up pnpm
-        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
-      - name: Set up Node
-        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
-        with:
-          node-version: 24
-          cache: pnpm
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-      - name: Generate Prisma Client
-        run: pnpm --filter @steuereule/api prisma:generate
-      - name: Apply migrations (migrate deploy, never migrate dev)
-        run: pnpm --filter @steuereule/api migrate:deploy
-      - name: Prisma Schema-vs-Migrations Drift Gate (zero drift between schema.prisma and migrations/)
-        run: pnpm --filter @steuereule/api exec prisma migrate diff --from-schema-datasource prisma/schema.prisma --to-schema-datamodel prisma/schema.prisma --exit-code
+      - uses: ./.github/actions/setup-workspace
+      - uses: ./.github/actions/prepare-database
       - name: Build the API
         run: pnpm --filter @steuereule/api build
-      - name: Cache Playwright browsers
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+      - uses: ./.github/actions/install-chromium
         with:
-          path: ~/.cache/ms-playwright
-          key: playwright-chromium-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
-      # REQ-011/ADR-0013 §7: the PDF-export smoke check below needs a real Chromium to
-      # render against — same install as the `integration` job (quality.yml), same rationale.
-      - name: Install Playwright's Chromium (for the REQ-011 PDF export smoke check)
-        run: pnpm --filter @steuereule/api exec playwright-core install chromium --with-deps
+          filter: '@steuereule/api'
       - name: Boot the real server
         # `node dist/main.js` alone cannot resolve `@steuereule/core` — it ships TS
         # source (`main: ./src/index.ts`, extensionless internal imports), so plain
@@ -232,54 +202,7 @@ jobs:
             --retry 30 --retry-delay 1 --retry-all-errors --retry-connrefused \
             http://localhost:3000/v1/steuerjahre/2026/cockpit
       - name: Smoke request — REQ-011 DSGVO export, both formats, over real HTTP
-        # Signs a real account up (cookie jar carries the resulting session), saves a
-        # Profile, then exercises both `?format=` branches of GET /v1/account/export
-        # against the compiled, listening server — proves the real PlaywrightPdfRenderer
-        # actually launches Chromium and returns real PDF bytes in this runtime shape,
-        # not just under `.inject()` (ADR-0013 §7's honest infra note: this is exactly
-        # the Chromium-in-the-runtime-image question, exercised here in CI's own image).
-        run: |
-          set -e
-          JAR=$(mktemp)
-          curl --fail --silent --show-error -c "$JAR" -b "$JAR" \
-            -H "Content-Type: application/json" -H "Origin: ${CORS_ALLOWED_ORIGINS}" \
-            -X POST http://localhost:3000/api/auth/sign-up/email \
-            -d '{"email":"ci-smoke-export@example.com","password":"a-fine-strong-password-1","name":"CI Smoke Export"}' \
-            > /dev/null
-          # Sign-up returns no session (ADR-0109): verify the address as the mail's link would, then sign in.
-          psql "$DATABASE_URL" -c "$(node e2e/harness/email-hash.mjs ci-smoke-export@example.com)"
-          curl --fail --silent --show-error -c "$JAR" -b "$JAR" \
-            -H "Content-Type: application/json" -H "Origin: ${CORS_ALLOWED_ORIGINS}" \
-            -X POST http://localhost:3000/api/auth/sign-in/email \
-            -d '{"email":"ci-smoke-export@example.com","password":"a-fine-strong-password-1"}' \
-            > /dev/null
-          curl --fail --silent --show-error -c "$JAR" -b "$JAR" \
-            -H "Content-Type: application/json" -H "Origin: ${CORS_ALLOWED_ORIGINS}" \
-            -X PUT http://localhost:3000/v1/profile \
-            -d '{"firstName":"CI","lastName":"Smoke","steuerId":"02476291358","steuernummer":"18181508155"}' \
-            > /dev/null
-
-          json_headers=$(curl --fail --silent --show-error -b "$JAR" -D - -o /tmp/steuereule-export-smoke.json \
-            "http://localhost:3000/v1/account/export?format=json")
-          echo "$json_headers" | grep -qi '^content-type: application/json' || {
-            echo "::error::GET /v1/account/export?format=json did not return application/json."
-            exit 1
-          }
-          grep -q '"schemaVersion":"1.0"' /tmp/steuereule-export-smoke.json || {
-            echo "::error::JSON export body missing the expected schemaVersion — got: $(cat /tmp/steuereule-export-smoke.json)"
-            exit 1
-          }
-
-          pdf_headers=$(curl --fail --silent --show-error -b "$JAR" -D - -o /tmp/steuereule-export-smoke.pdf \
-            "http://localhost:3000/v1/account/export?format=pdf")
-          echo "$pdf_headers" | grep -qi '^content-type: application/pdf' || {
-            echo "::error::GET /v1/account/export?format=pdf did not return application/pdf."
-            exit 1
-          }
-          head -c 5 /tmp/steuereule-export-smoke.pdf | grep -q '%PDF-' || {
-            echo "::error::PDF export body did not start with the %PDF- magic bytes — real Chromium render never happened."
-            exit 1
-          }
+        run: e2e/smoke/dsgvo-export.sh
       - name: Server log (on failure)
         if: failure()
         run: cat /tmp/steuereule-api-smoke.log || true
@@ -355,27 +278,64 @@ jobs:
   # different failure modes and must not share one red/green signal. Both ride this job rather
   # than a new one for the same reason `breakpoint-layout.mjs` does — see the header comment
   # above.
-  cross-origin-smoke:
-    # The job's `name` is the check name shown on the PR and pinned by branch protection
-    # once #71 lands — it must describe every gate this job runs, or a future regression fails a
-    # required check whose name points at the wrong subsystem. The job key stays
-    # `cross-origin-smoke` (nothing references it); only the display name changes. Renamed here,
-    # while #71 is still open (Musti's #223 ruling) — after #71 lands, a rename costs a branch
-    # protection edit plus a window where the required check doesn't exist, so this is the free
-    # window to take it in.
-    #
-    # Renamed again here (Salih) to the generic form #206's own technical ruling already proposed
-    # for this exact next addition — resolving the enumeration problem once rather than appending
-    # a fifth clause ("+ device-QR") to a string that keeps growing. This job now also runs
-    # e2e/device/device-authorization.mjs (see the new step below) — but deliberately NOT
-    # e2e/google-auth/google-login.mjs, named here rather than left silent: #206 found three real
-    # defects in that script (never advances past Splash, checks `.error` not `.status` on the
-    # social sign-in response, asserts only "not 404" on the callback), dispatched to Robin, not
-    # yet fixed. Wiring a known-broken/flaky script in would be exactly the green-theatre shape
-    # this pipeline exists to refuse — it stays unwired until #206 closes.
-    name: 'e2e: browser gates & a11y (BFSG/WCAG 2.1 AA, headless Chromium)'
+  # The browser gates, split by topic (ADR-0112). They used to be one job of 69 steps that booted one stack and
+  # ran every gate one after the other (about 40 minutes, and the first red gate hid every gate behind it).
+  # Now: plan (the groups come from e2e/gates.json) -> build once -> one job per group on a fresh stack, in
+  # parallel -> the aggregate job below, which keeps the old required check name.
+  e2e-plan:
+    name: 'e2e: plan (gate groups from e2e/gates.json)'
+    runs-on: ubuntu-24.04
+    outputs:
+      matrix: ${{ steps.plan.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - name: Set up Node
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: 24
+      - name: Validate the gate list and build the group matrix
+        id: plan
+        run: |
+          node e2e/run-gates.mjs --check
+          echo "matrix=$(node e2e/run-gates.mjs --matrix)" >> "$GITHUB_OUTPUT"
+
+  e2e-build:
+    name: 'e2e: build (API + web bundle for the gate groups)'
     needs: build
     runs-on: ubuntu-24.04
+    env:
+      # Baked into the static web export: the browser calls the API origin the group jobs boot.
+      EXPO_PUBLIC_API_BASE_URL: http://localhost:3301
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: ./.github/actions/setup-workspace
+      - name: Generate Prisma Client (the API build compiles against it)
+        run: pnpm --filter @steuereule/api prisma:generate
+      - name: Build the API
+        run: pnpm --filter @steuereule/api build
+      - name: Export the web bundle (offline/static web build, EXPO_PUBLIC_* baked in)
+        run: pnpm --filter @steuereule/mobile-web exec expo export --platform web
+      # One tarball, not two paths: upload-artifact roots a multi-path artifact at the paths' common ancestor,
+      # which would move apps/api/dist and apps/mobile-web/dist.
+      - name: Pack the build
+        run: tar czf e2e-build.tgz apps/api/dist apps/mobile-web/dist
+      - name: Upload the build for the gate groups
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: e2e-build
+          path: e2e-build.tgz
+          retention-days: 1
+          if-no-files-found: error
+
+  e2e-gates:
+    name: 'e2e: gates — ${{ matrix.group }}'
+    needs: [e2e-plan, e2e-build]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    strategy:
+      # Every group reports on its own: a red group must not cancel the others.
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.e2e-plan.outputs.matrix) }}
     services:
       postgres:
         image: postgres:16
@@ -420,330 +380,66 @@ jobs:
       # (scenario 09 and the dialog matrices). Scenario 09b needs a switch-on stack of its own.
       SELBSTSTAENDIGE_ENABLED: 'false'
     steps:
-      # Built here rather than written out in the job env, so no connection string with
-      # credentials sits in the workflow; every later step reads it from the environment.
-      - name: Database URL of the Postgres service container
-        run: echo "DATABASE_URL=postgres://${DB_USER}:${DB_PASSWORD}@localhost:5432/${DB_NAME}" >> "$GITHUB_ENV"
-        env:
-          DB_USER: steuereule
-          DB_PASSWORD: steuereule
-          DB_NAME: steuereule
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
-      - name: Set up pnpm
-        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
-      - name: Set up Node
-        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+      - uses: ./.github/actions/setup-workspace
+      - uses: ./.github/actions/prepare-database
+        if: matrix.stack
+      - name: Download the build
+        if: matrix.stack
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
-          node-version: 24
-          cache: pnpm
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-      - name: Generate Prisma Client
-        run: pnpm --filter @steuereule/api prisma:generate
-      - name: Apply migrations (migrate deploy, never migrate dev)
-        run: pnpm --filter @steuereule/api migrate:deploy
-      - name: Prisma Schema-vs-Migrations Drift Gate (zero drift between schema.prisma and migrations/)
-        run: pnpm --filter @steuereule/api exec prisma migrate diff --from-schema-datasource prisma/schema.prisma --to-schema-datamodel prisma/schema.prisma --exit-code
-      - name: Build the API
-        run: pnpm --filter @steuereule/api build
-      - name: Export the web bundle (offline/static web build, EXPO_PUBLIC_* baked in)
-        run: pnpm --filter @steuereule/mobile-web exec expo export --platform web
-      - name: Cache Playwright browsers
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
-        with:
-          path: ~/.cache/ms-playwright
-          key: playwright-chromium-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
-      - name: Install Playwright's Chromium (browser only, no OS deps re-check needed on ubuntu-latest's image)
-        # e2e only depends on `playwright-core` (the library the smoke script actually
-        # imports — no test-runner needed), whose registered bin is named
-        # `playwright-core`, not `playwright`. `pnpm exec playwright ...` resolves bins
-        # by their registered name, so it fails with "Command \"playwright\" not found"
-        # even though the package is installed (#120 CI run). `playwright-core`'s CLI
-        # ships the same `install` subcommand as the `playwright` package's CLI.
-        run: pnpm --filter @steuereule/e2e exec playwright-core install chromium --with-deps
+          name: e2e-build
+      - name: Unpack the build
+        if: matrix.stack
+        run: tar xzf e2e-build.tgz
+      - uses: ./.github/actions/install-chromium
+        if: matrix.stack
       - name: Boot the real server (compiled dist/, same tsx bridge as the `smoke` job)
+        if: matrix.stack
         working-directory: apps/api
+        env:
+          # The scripted chat model (#450 D8) — only the group that needs it; it is refused in production.
+          AI_FAKE_KI: ${{ matrix.fake_ki && '1' || '' }}
         run: |
           node --import tsx dist/main.js > /tmp/steuereule-api-cross-origin.log 2>&1 &
           echo $! > /tmp/steuereule-api-cross-origin.pid
       - name: Serve the exported web bundle on its own origin
+        if: matrix.stack
         run: |
           node e2e/cross-origin/static-server.mjs --root apps/mobile-web/dist --port 4173 --host localhost \
             > /tmp/steuereule-web-cross-origin.log 2>&1 &
           echo $! > /tmp/steuereule-web-cross-origin.pid
       - name: Wait for both origins to answer (poll, no sleep)
+        if: matrix.stack
         run: |
           curl --fail --silent --show-error --retry 30 --retry-delay 1 --retry-all-errors --retry-connrefused \
             "${API_ORIGIN}/v1/profile"
           curl --fail --silent --show-error --retry 30 --retry-delay 1 --retry-all-errors --retry-connrefused \
             "${WEB_ORIGIN}/"
-      - name: Cross-origin browser smoke — signup, login, get-session, PUT /v1/profile
-        run: node e2e/cross-origin/run.mjs
-      - name: Self-hosted OCR smoke (ADR-0060) — worker, WASM core and deu data load same-origin and read text
-        # Needs WEB_ORIGIN (and API_ORIGIN, which the app shell calls on load); no account. Injects the
-        # app's own tesseract.js build into the served origin and OCRs a rendered LStB row with the
-        # self-hosted paths; fails on any request to a third party (the CDN fallback tesseract.js
-        # uses by default) and on any OCR asset not served by the web origin.
-        run: node e2e/ocr/self-hosted-ocr.mjs
-      - name: Responsive breakpoint layout gate (ADR-0014) — real browser, s/m/l assertions
-        # Shares this job's already-running API + statically-served web bundle (see the
-        # job header comment above for why this rides here rather than its own job).
-        # Drives the app through the browser itself (a real guest sign-up + onboarding, a
-        # real account sign-up) rather than calling the API directly, so API_ORIGIN is not
-        # passed. DATABASE_URL IS read directly as of the #336 CI investigation (Salih) —
-        # this script now paces its own 3 RegistrierungScreen sign-ups against the shared
-        # no-trusted-ip sign-up/sign-in bucket (`../harness/rate-limit.mjs`, the same
-        # discipline `banner-ds-qa.mjs`/`visibility-refetch.mjs` below already follow),
-        # rather than relying on the upstream cross-origin-smoke step's own single sign-up
-        # clearing the window before this step's first call — see this file's own header.
-        # DATABASE_URL is already set at this job's env level above, read-only here.
-        run: node e2e/responsive/breakpoint-layout.mjs
-      - name: Banner DS-QA gate (#223) — verify-banner colour/token fidelity, s/m/l, both screens
-        # Only needs WEB_ORIGIN — both screens' unverified banner is reached purely by driving
-        # the real UI (sign-up through RegistrierungScreen, then sign-in with that same account
-        # through LoginScreen), no DB/API access needed.
-        run: node e2e/responsive/banner-ds-qa.mjs
-      - name: Dark-mode gate (#443 slice 6) — system dark, Sheet and Profil, „Immer hell“ survives a reload
-        # Same stack as the gates above (startStack attaches to the running API and bundle);
-        # needs DATABASE_URL (job env) to verify the out-of-band sign-up.
-        run: node e2e/responsive/dark-mode.mjs
-      - name: Chat experience gate (#451 slice 1) — Enter vs. Shift+Enter, phone dock, Stop/Escape closes the stream, reduced motion
-        # Same stack as the gates above; needs DATABASE_URL (job env) to verify the out-of-band
-        # sign-up. Holds the stream open with page.route, so it needs no language model.
-        run: node e2e/advisor/chat-experience.mjs
-      - name: Input aids gate (#451 slices 2–4) — autofill attributes, PLZ → Ort/Bundesland on the device, dictation hint
-        # Fails on any request to a host other than API_ORIGIN/WEB_ORIGIN (decision 7: the postal
-        # code never leaves the device). Needs DATABASE_URL (job env) to verify the sign-up.
-        run: node e2e/advisor/input-aids.mjs
-      - name: Smart inputs gate (ADR-0065) — IBAN mask, date field, address search on our own server, Finanzamt/Familienkasse suggestions
-        # Runs against the API booted above with STREET_DATA_PATH (job env) pointing at the street
-        # fixture. Fails on any request to a host other than API_ORIGIN/WEB_ORIGIN.
-        run: node e2e/forms/smart-inputs.mjs
-      - name: Plan-in-chat gate (#451 slice 6) — live checklist, collapse, Stop mid-plan, no write without a click
-        # The model is stubbed inside the page (controllable SSE stream); sign-in, session and the
-        # apply endpoints are the real stack. Needs DATABASE_URL (job env) to verify the sign-up.
-        run: node e2e/advisor/plan-in-chat.mjs
-      - name: Chat-first owl gate (#476, #479) — top bar and sheets, rating, clearing, line of thought, effect states, "Nicht vorbereitet", answer notices, re-attachment
-        # Real stack for sign-in, session, rating and clearing; only what a model would have to
-        # produce is stubbed (a stored answer, a dropped stream). Needs DATABASE_URL (job env).
-        run: node e2e/advisor/chat-first-layout.mjs
-      - name: Dictation gate (#451 slice 5, ADR-0061) — WebGPU gating, consent before download, pinned + checksum-verified model, no audio out
-        # Stubs only WebGPU/memory/microphone and answers Hugging Face with non-matching bytes, so
-        # it never downloads the real model. Needs DATABASE_URL (job env) to verify the sign-up.
-        run: node e2e/advisor/dictation.mjs
-      - name: Household gate (#452, ADR-0062) — migration result-neutral, new-year preselection, spouse linked once, sharing, divorce, delete
-        # Two real accounts driven through the API with their own sessions, plus the Kinder mask in
-        # the browser. Needs DATABASE_URL (job env) to verify the sign-ups.
-        run: node e2e/household/household.mjs
-      - name: Real-case additions gate (ADR-0076, ADR-0079–0086) — second way to work, Werbungskosten, childcare, annual rate, prepayments, too-long entries, „whose letter?“
-        # One account through the masks in the browser; the printout check is stubbed for the
-        # too-long case only. Needs DATABASE_URL (job env) to verify the sign-up.
-        run: node e2e/forms/real-case-additions.mjs
-      - name: Main coverage gate (21.11.2026) — assistant access, tasks, what the cockpit needs, Veranlagungsart, children's hint, child save states, Günstigerprüfung, paged Belege, stored receipts, scanned LStB lines, companion values
-        # Fresh accounts through the API and the masks in the browser; scan results and a long inbox by route
-        # mock. Needs DATABASE_URL (job env) to verify the sign-ups.
-        run: node e2e/forms/main-coverage.mjs
-      - name: Church tax gate (#450 6F, ADR-0063) — the six 6F personas, Zeile 6 in the LStB mask, cockpit hints
-        # Real accounts through the API with their own sessions; Zeile 6 typed in the browser and the
-        # cockpit hint read there. Needs DATABASE_URL (job env) to verify the sign-ups.
-        run: node e2e/church-tax/church-tax.mjs
-      - name: Visibility-refetch gate (#223) — live re-read of email verification, both screens
-        # Needs DATABASE_URL (already set in this job's env, above) to flip `emailVerified`
-        # directly — there is no mail client in this environment (#224 is the still-manual,
-        # permanently out-of-automation-scope iOS complement; see e2e/visibility/
-        # visibility-refetch.mjs's header comment). Relies on `psql` already being present on the
-        # `ubuntu-latest` runner image (no install step) — the `runner-images` catalogue for this
-        # image lists the PostgreSQL client tools as preinstalled.
-        run: node e2e/visibility/visibility-refetch.mjs
-      - name: QR device-authorization gate (#238/REQ-014, ADR-0023/0024) — real cross-device sign-in
-        # Must run after breakpoint-layout.mjs/banner-ds-qa.mjs above (its own header comment,
-        # corrected in Musti's #300 review, G1 — the real constraint, not "must be this job's
-        # literal last step"): LoginScreen's QR column mints a device-code row on every m/l-
-        # breakpoint mount, and NEITHER of those two scripts paces itself against that bucket, so
-        # they have already spent some of it before this script gets to run. This script paces
-        # itself against the real RateLimit table's live state rather than assuming a fresh
-        # bucket — which is also why its ORDER relative to the return-visit gate below doesn't
-        # matter: that script self-paces the same way, via the same shared
-        # e2e/harness/rate-limit.mjs helper, so whichever runs second just waits out whatever the
-        # first left behind. Attaches via e2e/harness/stack.mjs's ATTACH mode
-        # (API_ORIGIN/WEB_ORIGIN/DATABASE_URL already set above) — the same real Postgres/API/web
-        # bundle this job already booted.
-        #
-        # ADR-0021 control proof (Musti's #274 review, F2), confirmed: a prior commit overrode
-        # just this step's own API_ORIGIN to an unreachable port (http://localhost:19999) and
-        # watched it fail for exactly the right, named reason —
-        # "[device-authorization] FAIL — stack.mjs: timed out after 10000ms waiting for ATTACH
-        # mode's API_ORIGIN (http://localhost:19999) to answer GET /v1/profile." — while every
-        # step ABOVE this one kept passing against the job's real, unmodified API_ORIGIN
-        # (isolating the break to this step alone). A first attempt (killing the API process by
-        # its captured pid right before this step) did NOT work — the kill "succeeded" in the log
-        # but the process was never actually terminated and the script ran to a false PASS; this
-        # env-override approach is the one that's proven, reusing the exact mechanism control
-        # proof #1 already validated (a wrong API_ORIGIN making ATTACH mode's own
-        # httpReachable probe fail cleanly, by name, after its 10s timeout). See PR #274's own
-        # body for the full transcript.
-        run: node e2e/device/device-authorization.mjs
-      - name: Return-visit gate (#295's occasion, #300) — reload/close+reopen/re-login, real stack
-        # Wired here (Musti's #300 review, G1) rather than left a standing-alone draft: Row G of
-        # this script is itself a repair for #298's F10 finding (an orphaned harness instrument is
-        # unproven per ADR-0021), and an UNWIRED repair caller is the identical defect one level
-        # up — a script nothing in CI runs proves nothing to CI. Runs after device-authorization.mjs
-        # above for the simplest reason available (least risk to an already-proven step), not
-        # because the order between these two self-pacing scripts is load-bearing — see that
-        # step's own comment. Attaches via ATTACH mode exactly like every other step in this job.
-        #
-        # This gate's own header states plainly what a green run here does and does NOT prove:
-        # the app's own return-visit handling is honest when the API stays healthy; it says
-        # nothing about whether an API container itself stayed alive between two real-world
-        # sessions (#295's own, still-open, remaining half) — a claim this job's own PASS line
-        # repeats on every green run, not just in a header nobody opens.
-        run: node e2e/session/return-visit.mjs
-      - name: No-client-persistence gate (#323/#329 retroactive T1 pass) — Onboarding + Profil save, real browser
-        # #329 fixed two jsdom assertions that never intercepted (#323: vi.spyOn(window.localStorage,
-        # ...) is defeated by jsdom's own Storage Proxy) with vi.stubGlobal-backed stubs. Those stubs
-        # install PER TEST, AFTER the module under test is imported, so a write at module-IMPORT time
-        # is structurally outside what jsdom can catch — a disclosed, not a hidden, bound. This step
-        # closes that bound by observation: a real page load runs every module's top-level code before
-        # this script ever reads storage, so there is no "before the stub existed" gap to hide in.
-        # Attaches via ATTACH mode exactly like every other step in this job; self-paces against the
-        # shared no-trusted-ip sign-up/sign-in bucket the same way return-visit.mjs above does, so its
-        # order relative to that step doesn't matter for correctness.
-        run: node e2e/storage/no-client-persistence.mjs
-      - name: Cold-start session-read gate (#349/#353) — a 429/5xx/network failure on GET /get-session must not render Login
-        # Salih's task, filed the same day PR #353's fix merged (#349's own class: a genuine
-        # transport-level failure on a COLD START must render the honest "could not check" state,
-        # never LoginScreen to a phone that might genuinely be signed in). Real network-layer
-        # `page.route(...).fulfill({status:429})`/`.abort('failed')` interceptions against this
-        # job's own real API_ORIGIN/WEB_ORIGIN, not DeviceScreen.test.tsx's already-green MSW
-        # suite re-run — this file's own header records the revert-the-fix/watch-it-go-red control
-        # proof its claim rests on (ADR-0021 §5). No sign-up/sign-in/device-code call at all
-        # (`showDeviceQr={false}` on the embedded LoginScreen), so this step spends no shared
-        # rate-limit bucket and its order relative to every other step in this job is unconstrained.
-        run: node e2e/session/cold-start-session-failure.mjs
-      - name: S10 Full UI acceptance gate (4 personas, real stack, headless Chromium)
-        # Drives all 4 personas (Lena Hoffmann, Markus Brenner, Julia Brenner, Thomas & Sabine Weber)
-        # end-to-end through the real UI (Registration -> Interview -> Form masks -> Cockpit estimate
-        # -> Printout check), verifying expected PDF form field values against reference values.
-        # Attaches via ATTACH mode exactly like every other step in this job.
-        run: node e2e/scenarios/four-scenarios.mjs
-      - name: BFSG / WCAG 2.1 AA Accessibility Gate (@axe-core/playwright across key screens)
-        run: node e2e/a11y/bfsg-wcag-audit.mjs
-      - name: Deep-link matrix (#450 Teil 4, #443 AC 2/3) — every route with load, reload, back, forward; guest deep links
-        # Paces its own get-session reads against better-auth's rolling window. DATABASE_URL (job env)
-        # verifies the sign-up.
-        run: node e2e/navigation/deep-links.mjs
-      - name: Hub acceptance gate (#450 Teil 4, #443 AC 1/6/7) — tab switch keeps input, submission gate, sheet auto-save
-        run: node e2e/navigation/hub-acceptance.mjs
-      - name: Accessibility in both themes + keyboard through the sheets (#450 Teil 4)
-        run: node e2e/a11y/themes-keyboard.mjs
-      - name: Visual regression (#450 Teil 4) — 9 screens × 375/1280 px × light/dark against e2e/visual/baselines/linux
-        # Without committed Linux baselines the step records them into the artifact and passes with a notice.
-        env:
-          VISUAL_OUT: /tmp/visual-regression
-        run: node e2e/visual/visual-regression.mjs
-      - name: Upload the visual regression screenshots and diffs
+      - name: Run the gates of the group — ${{ matrix.title }}
+        run: node e2e/run-gates.mjs --group "${{ matrix.group }}"
+      # The reports some gates write (visual diffs, scan corpus, coverage gaps, navigation measurements); only the
+      # group that ran the gate has files, the others upload nothing.
+      - name: Upload the gate reports
         if: always()
-        # Diagnostics, not a gate: an outage of the artifact service must not fail the job and
-        # skip every gate after it (seen on 2026-11-11: "Failed to CreateArtifact").
         continue-on-error: true
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: visual-regression
-          path: /tmp/visual-regression
+          name: e2e-reports-${{ matrix.group }}
+          path: |
+            /tmp/visual-regression
+            /tmp/scan-corpus
+            /tmp/e2e-coverage
+            /tmp/navigation-efficiency
           if-no-files-found: ignore
-      - name: Account and security gate (#450 5A) — profile edit, 2FA (TOTP, backup code), device sign-out, OAuth consent + MCP revoke, account deletion
-        run: node e2e/account/account-security.mjs
-      - name: Confirmation screen and plausibility step (#450 5B) — proposals accept/dismiss, Anlage confirm, change, continue
-        run: node e2e/submission/confirmation.mjs
-      - name: Sheet dismissal (#450 5H) — close button, backdrop, Escape, grabber; every way saves the typed amount
-        run: node e2e/sheets/sheet-dismissal.mjs
-      - name: Deadline banners and failure states (#450 5E) — Fristen-Banner levels, 500 / offline on interview, LStB load and save
-        run: node e2e/errors/deadlines-and-faults.mjs
-      - name: Rare interview answers (#450 5G/5J) — widowed, § 24b household questions, passable gates, Schweiz residence, Berufsprofil
-        run: node e2e/interview/rare-branches.mjs
-      - name: Printout pay and download without Stripe (#450 5C) — fake payment provider, signed webhook, both PDFs
-        run: node e2e/printout/printout-unlock.mjs
-      - name: Official form and expert mode — form screen from cockpit and mask, direct save, locked computed fields, copy per child
-        run: node e2e/printout/official-form-expert.mjs
-      - name: Uploads with synthetic documents (#450 5D) — Belege upload/preview/delete, LStB scan with overwrite and year dialogs
-        run: node e2e/uploads/receipts-and-lstb-scan.mjs
-      - name: Cockpit progress and the Belege ↔ Eule channel — groups, one-tap assignment, a stored document read by the owl, the way back
-        run: node e2e/receipts/belege-owl-channel.mjs
-      - name: Verlauf tab (ADR-0098) — what is due, the years, the Bescheid-Abgleich, four key figures, upload entry, mask lessons, the Abgabe
-        run: node e2e/history/verlauf-tab.mjs
-      - name: Scan corpus metrics (#450 Teil 3B) — accuracy per variant, "falsch, aber sicher" = 0, Zero-Write, on-device, time budgets
-        run: |
-          node --test e2e/scan-corpus/measure.test.mjs
-          node e2e/scan-corpus/measure.mjs
-      - name: Upload the scan corpus report
-        if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
-        with:
-          name: scan-corpus-report
-          path: /tmp/scan-corpus
-          if-no-files-found: ignore
-      - name: Scan flows (#450 Teil 3C) — chat and Belege upload, field-by-field confirm, tab switch, reload, delete
-        run: node e2e/scan-corpus/flows.mjs
-      - name: Beta account states — guest, mail links, social sign-in cancel, step-up, passkeys, password change, OAuth consent, assistants and owl consent
-        # Needs DATABASE_URL (job env) to verify and un-verify accounts and to age a session past the step-up window,
-        # and BETTER_AUTH_SECRET to sign the verification link the mail sender only logs.
-        run: node e2e/account/beta-account-states.mjs
-      - name: Beta partner states (ADR-0111 decision 3) — per-year consent with step-up, invitation, coupling, household and children failures
-        # Two real accounts (A and B). Needs DATABASE_URL (job env) to verify the sign-ups and to age a session
-        # past the step-up window, as time would.
-        run: node e2e/household/beta-partner-states.mjs
-      - name: Beta payment and printout states — payment returns, confirmation, form template, receipt limit and read failures
-        # The fake payment provider (PAYMENT_FAKE_PROVIDER, job env); a read that fails is one browser request answered 503.
-        run: node e2e/submission/beta-payment-printout-states.mjs
-      - name: Beta mask states — cockpit, catalog, LStB lines, Strom, rental share and taken-over instances fail and recover
-        run: node e2e/forms/beta-mask-states.mjs
-      - name: E2E coverage ratchet (#450 5I) — testIDs and interview pairs without an E2E hit may only shrink
-        run: |
-          node --test scripts/checks/e2e-coverage-ratchet.test.mjs
-          pnpm --filter @steuereule/api exec node --import tsx ../../scripts/checks/e2e-coverage-ratchet.mjs
-      - name: Upload the E2E coverage gaps
-        if: always()
-        # Diagnostics, not a gate: an outage of the artifact service must not fail the job and
-        # skip every gate after it (seen on 2026-11-11: "Failed to CreateArtifact").
-        continue-on-error: true
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
-        with:
-          name: e2e-coverage-gaps
-          path: /tmp/e2e-coverage
-      - name: Navigation efficiency budgets (#450 Teil 2A, D5) — 5 personas × 4 tasks, interactions ≤ measured + 10 %
-        run: |
-          node --test e2e/navigation-efficiency/measure.test.mjs
-          node e2e/navigation-efficiency/measure.mjs
-      - name: Upload the navigation measurements
-        if: always()
-        # Diagnostics, not a gate: an outage of the artifact service must not fail the job and
-        # skip every gate after it (seen on 2026-11-11: "Failed to CreateArtifact").
-        continue-on-error: true
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
-        with:
-          name: navigation-efficiency
-          path: /tmp/navigation-efficiency
-          if-no-files-found: ignore
-      - name: Real-Session Load & Latency Budget Gate (0% error rate, p95 <= 250ms)
-        run: node scripts/loadtest/loadtest.mjs --concurrency 5 --iterations 5 --url "${API_ORIGIN}" --origin "${WEB_ORIGIN}" --max-p95 250
-      - name: Restart the API with the fake KiPort (#450 D8 — AI_FAKE_KI only outside production)
-        # Last in the job on purpose: every gate above talks to the API without the fake model.
-        working-directory: apps/api
-        run: |
-          kill "$(cat /tmp/steuereule-api-cross-origin.pid)" 2>/dev/null || true
-          AI_FAKE_KI=1 node --import tsx dist/main.js > /tmp/steuereule-api-cross-origin.log 2>&1 &
-          echo $! > /tmp/steuereule-api-cross-origin.pid
-          curl --fail --silent --show-error --retry 30 --retry-delay 1 --retry-all-errors --retry-connrefused "${API_ORIGIN}/v1/profile"
-      - name: Eulen-Modus gate with the fake KiPort (#450 1A, 5F) — no write without a click, apply/undo, Alle übernehmen, conflict, inline mask, drawer/dock, guest
-        run: node e2e/advisor/owl-mode-fake-ki.mjs
       - name: API log (on failure)
-        if: failure()
+        if: failure() && matrix.stack
         run: cat /tmp/steuereule-api-cross-origin.log || true
       - name: Web static server log (on failure)
-        if: failure()
+        if: failure() && matrix.stack
         run: cat /tmp/steuereule-web-cross-origin.log || true
       - name: Stop the servers (PID-scoped only — #114, never a blanket process kill)
-        if: always()
+        if: always() && matrix.stack
         run: |
           if [ -f /tmp/steuereule-api-cross-origin.pid ]; then
             kill "$(cat /tmp/steuereule-api-cross-origin.pid)" 2>/dev/null || true
@@ -752,9 +448,24 @@ jobs:
             kill "$(cat /tmp/steuereule-web-cross-origin.pid)" 2>/dev/null || true
           fi
 
-  # 4-Shard Parallel Playwright Acceptance & Dialog-Matrix Suite (Scenarios 01–27, including
-  # Scenario 24 DevMLOps Advisor Chat UI E2E, 25/26, the escalation cases, and 27, the real Grenzgänger case of
-  # ADR-0094 to the cent). Runs all 27 full-persona E2E scenarios on every PR.
+  # The required check keeps its name (a repository ruleset pins the name; a renamed job would wait for ever and
+  # the PR would sit on "pending"). It passes when the plan, the build and every gate group passed, and it runs
+  # even when one of them failed, so it reports red instead of staying pending.
+  cross-origin-smoke:
+    name: 'e2e: browser gates & a11y (BFSG/WCAG 2.1 AA, headless Chromium)'
+    needs: [e2e-plan, e2e-build, e2e-gates]
+    if: always()
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Plan, build and every gate group passed
+        env:
+          PLAN: ${{ needs.e2e-plan.result }}
+          BUILD: ${{ needs.e2e-build.result }}
+          GATES: ${{ needs.e2e-gates.result }}
+        run: |
+          echo "plan: $PLAN, build: $BUILD, gate groups: $GATES"
+          test "$PLAN" = success && test "$BUILD" = success && test "$GATES" = success
+
   e2e-scenarios:
     name: 'e2e: scenarios (shard ${{ matrix.shard }})'
     needs: build
@@ -796,37 +507,16 @@ jobs:
     steps:
       # Built here rather than written out in the job env, so no connection string with
       # credentials sits in the workflow; every later step reads it from the environment.
-      - name: Database URL of the Postgres service container
-        run: echo "DATABASE_URL=postgres://${DB_USER}:${DB_PASSWORD}@localhost:5432/${DB_NAME}" >> "$GITHUB_ENV"
-        env:
-          DB_USER: steuereule
-          DB_PASSWORD: steuereule
-          DB_NAME: steuereule
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
-      - name: Set up pnpm
-        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
-      - name: Set up Node
-        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+      - uses: ./.github/actions/setup-workspace
+      - uses: ./.github/actions/prepare-database
         with:
-          node-version: 24
-          cache: pnpm
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-      - name: Generate Prisma Client
-        run: pnpm --filter @steuereule/api prisma:generate
-      - name: Apply migrations (migrate deploy, never migrate dev)
-        run: pnpm --filter @steuereule/api migrate:deploy
+          drift: 'false'
       - name: Build the API
         run: pnpm --filter @steuereule/api build
       - name: Export the web bundle
         run: pnpm --filter @steuereule/mobile-web exec expo export --platform web
-      - name: Cache Playwright browsers
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
-        with:
-          path: ~/.cache/ms-playwright
-          key: playwright-chromium-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
-      - name: Install Playwright's Chromium
-        run: pnpm --filter @steuereule/e2e exec playwright-core install chromium --with-deps
+      - uses: ./.github/actions/install-chromium
       - name: Boot the real API server
         working-directory: apps/api
         run: |
@@ -902,37 +592,16 @@ jobs:
     steps:
       # Built here rather than written out in the job env, so no connection string with
       # credentials sits in the workflow; every later step reads it from the environment.
-      - name: Database URL of the Postgres service container
-        run: echo "DATABASE_URL=postgres://${DB_USER}:${DB_PASSWORD}@localhost:5432/${DB_NAME}" >> "$GITHUB_ENV"
-        env:
-          DB_USER: steuereule
-          DB_PASSWORD: steuereule
-          DB_NAME: steuereule
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
-      - name: Set up pnpm
-        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
-      - name: Set up Node
-        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+      - uses: ./.github/actions/setup-workspace
+      - uses: ./.github/actions/prepare-database
         with:
-          node-version: 24
-          cache: pnpm
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-      - name: Generate Prisma Client
-        run: pnpm --filter @steuereule/api prisma:generate
-      - name: Apply migrations (migrate deploy, never migrate dev)
-        run: pnpm --filter @steuereule/api migrate:deploy
+          drift: 'false'
       - name: Build the API
         run: pnpm --filter @steuereule/api build
       - name: Export the web bundle
         run: pnpm --filter @steuereule/mobile-web exec expo export --platform web
-      - name: Cache Playwright browsers
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
-        with:
-          path: ~/.cache/ms-playwright
-          key: playwright-chromium-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
-      - name: Install Playwright's Chromium
-        run: pnpm --filter @steuereule/e2e exec playwright-core install chromium --with-deps
+      - uses: ./.github/actions/install-chromium
       - name: Boot the real API server
         working-directory: apps/api
         run: |
@@ -988,43 +657,16 @@ jobs:
   # real, fixed ports regardless of what .env.example says, so a bundle-side break (the wrong
   # origin baked into the web image) is isolated and named, rather than the harness quietly
   # re-pointing itself at whatever the broken value was and never noticing the mismatch.
-  prod-deploy-smoke:
-    name: 'e2e: production compose stack + OWASP ZAP DAST (real Docker build)'
+  prod-stack-smoke:
+    name: 'e2e: production stack smoke (real Docker build)'
     needs: build
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
-      - name: Set up pnpm
-        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
-      - name: Set up Node
-        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
-        with:
-          node-version: 24
-          cache: pnpm
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-      - name: Cache Playwright browsers
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
-        with:
-          path: ~/.cache/ms-playwright
-          key: playwright-chromium-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
-      - name: Install Playwright's Chromium
-        run: pnpm --filter @steuereule/e2e exec playwright-core install chromium --with-deps
-      - name: The one env file — copy the example verbatim (the point of #76's single-source .env)
-        run: cp .env.example .env
-      - name: TLS certificate of the local inbox (mail is never sent in clear text, not even to Mailpit)
-        # The same script scripts/local.sh runs: a CA and a Mailpit certificate in .local/mail-tls, generated here
-        # and never committed. Mailpit takes SMTP only over TLS; the API verifies it against this CA (SMTP_CA_CERT).
-        run: scripts/mail-tls.sh
-      - name: Build + boot the real production stack (Postgres -> migrate -> api; web independently)
-        run: docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
-      - name: Wait for both published origins to answer (poll, no sleep — ADR-0004)
-        run: |
-          curl --fail --silent --show-error --retry 40 --retry-delay 2 --retry-all-errors --retry-connrefused \
-            "http://localhost:3000/v1/auth/capabilities"
-          curl --fail --silent --show-error --retry 40 --retry-delay 2 --retry-all-errors --retry-connrefused \
-            "http://localhost:8080/"
+      - uses: ./.github/actions/setup-workspace
+      - uses: ./.github/actions/install-chromium
+      - uses: ./.github/actions/boot-prod-stack
       - name: Calibrate what the smoke run is allowed to CLAIM it ran against (ADR-0021 §3)
         # run.mjs's PASS lines used to hardcode the word "containerised" — a claim about the far
         # end of an HTTP origin that an ATTACHING script cannot see, measured false on a machine
@@ -1056,107 +698,43 @@ jobs:
           curl --fail --silent --show-error --retry 10 --retry-delay 2 --retry-all-errors \
             "http://localhost:8025/api/v1/message/latest" | grep -q 'verify-email'
       - name: REQ-011 PDF export — real HTTP against the built apps/api/Dockerfile container
-        # The coordinator's own F5 follow-up: F1 (Musti's #274 review) added Chromium to
-        # apps/api/Dockerfile, but nothing had actually exercised it INSIDE the built container —
-        # e2e/prod-deploy/run.mjs only covers guest/registration/login/QR, and the `smoke`/
-        # `integration` (quality.yml) jobs' own REQ-011 checks run against the API booted directly on the
-        # runner via the tsx bridge, never through this Dockerfile. Chromium installing without
-        # error is not the same claim as Chromium launching and rendering inside THIS image's
-        # exact base layers/permissions — closing that gap here, the same way `smoke`'s own
-        # REQ-011 step already proves it for the non-containerised boot path.
-        #
-        # API_ORIGIN is hardcoded `:3000` here for the same reason the step above hardcodes it
-        # (this job's own header comment, Musti's #274 review F3) — but stated again HERE rather
-        # than inherited by proximity: the step above carries that isolation in its own `env:`
-        # block, this one does not, so a reader arriving at this step alone has nothing to read it
-        # off. Same fixed port, same deliberate independence from whatever `.env` says.
-        #
-        # ADR-0021 control proof (Musti's #274 review, F7): structurally this cannot go vacuously
-        # green — `account.module.ts` binds PDF_RENDERER unconditionally to PlaywrightPdfRenderer
-        # and `renderPdf()` has no non-Chromium path, so `%PDF-` bytes can only come out of
-        # `page.pdf()`. But that is the source-code reading of the proof, and this PR's own
-        # OpenSSL section is the argument for why that is not enough. Proven by commit A/B
-        # instead: apps/api/Dockerfile's `playwright-core install chromium` line removed, this
-        # step watched fall with its OWN error text below, then restored and watched go green —
-        # which also proves F1's fix is load-bearing rather than incidentally present. See PR
-        # #274's body for the transcript.
-        run: |
-          set -e
-          JAR=$(mktemp)
-          curl --fail --silent --show-error -c "$JAR" -b "$JAR" \
-            -H "Content-Type: application/json" -H "Origin: http://localhost:8080" \
-            -X POST http://localhost:3000/api/auth/sign-up/email \
-            -d '{"email":"prod-deploy-pdf-smoke@example.com","password":"a-fine-strong-password-1","name":"Prod Deploy PDF Smoke"}' \
-            > /dev/null
-          # Sign-up returns no session (ADR-0109): verify the address as the mail's link would, then sign in.
-          PGPASSWORD="$(sed -n 's/^POSTGRES_PASSWORD=//p' .env)" psql -h localhost -U "$(sed -n 's/^POSTGRES_USER=//p' .env)" -d "$(sed -n 's/^POSTGRES_DB=//p' .env)" -c "$(PRISMA_FIELD_ENCRYPTION_HASH_SALT="$(sed -n 's/^PRISMA_FIELD_ENCRYPTION_HASH_SALT=//p' .env)" node e2e/harness/email-hash.mjs prod-deploy-pdf-smoke@example.com)"
-          curl --fail --silent --show-error -c "$JAR" -b "$JAR" \
-            -H "Content-Type: application/json" -H "Origin: http://localhost:8080" \
-            -X POST http://localhost:3000/api/auth/sign-in/email \
-            -d '{"email":"prod-deploy-pdf-smoke@example.com","password":"a-fine-strong-password-1"}' \
-            > /dev/null
-          curl --fail --silent --show-error -c "$JAR" -b "$JAR" \
-            -H "Content-Type: application/json" -H "Origin: http://localhost:8080" \
-            -X PUT http://localhost:3000/v1/profile \
-            -d '{"firstName":"Prod","lastName":"Deploy","steuerId":"02476291358","steuernummer":"18181508155"}' \
-            > /dev/null
-          # NO --fail on THIS request, deliberately (found by this gate's own ADR-0021 control
-          # proof, run 31001786620): with --fail, the single most likely real failure — Chromium
-          # missing/unable to render, so the export 500s — aborted the step at curl under `set -e`
-          # with a bare "curl: (22) ... error: 500" / "Process completed with exit code 22", and
-          # NONE of the assertions below ever ran. The gate was red for the right reason and
-          # said none of it: an operator got an exit code, not the named cause, and the careful
-          # error text under it was unreachable in exactly the case it was written for. Take the
-          # status explicitly instead and let this step do its own diagnosis.
-          http_status=$(curl --silent --show-error -b "$JAR" -o /tmp/prod-deploy-pdf-smoke.pdf \
-            -D /tmp/prod-deploy-pdf-headers.txt -w '%{http_code}' \
-            "http://localhost:3000/v1/account/export?format=pdf")
-          if [ "$http_status" != "200" ]; then
-            echo "::error::GET /v1/account/export?format=pdf (real container) returned HTTP $http_status, expected 200 — the export never produced a document. Chromium failing to launch or render inside this image is the first thing to check (see the api container's own PlaywrightPdfRenderer log line, printed by the Container logs step below)."
-            echo "First 400 bytes of the body actually returned:"
-            head -c 400 /tmp/prod-deploy-pdf-smoke.pdf | cat -v
-            echo
-            exit 1
-          fi
-          pdf_headers=$(cat /tmp/prod-deploy-pdf-headers.txt)
-          echo "$pdf_headers" | grep -qi '^content-type: application/pdf' || {
-            echo "::error::GET /v1/account/export?format=pdf (real container) did not return application/pdf. Headers were:"
-            echo "$pdf_headers"
-            exit 1
-          }
-          # The first bytes are echoed into the failure message on purpose: this assertion goes
-          # red for the right reason but tells the next reader nothing about WHAT came back
-          # instead — an HTML error page and an empty body look identical in a bare "did not
-          # start with %PDF-". Print the head so the log names the actual body, not just its
-          # absence.
-          head -c 5 /tmp/prod-deploy-pdf-smoke.pdf | grep -q '%PDF-' || {
-            echo "::error::PDF export body (real container) did not start with the %PDF- magic bytes — Chromium never rendered inside this image."
-            echo "First 200 bytes of the body actually returned:"
-            head -c 200 /tmp/prod-deploy-pdf-smoke.pdf | cat -v
-            echo
-            echo "Body size: $(wc -c < /tmp/prod-deploy-pdf-smoke.pdf) bytes"
-            exit 1
-          }
-      - name: OWASP ZAP Baseline & OpenAPI DAST Pentest against production containers
-        # ZAP writes its config and report into /zap/wrk as its own user, which is not the runner's:
-        # a fresh, world-writable folder outside the checkout instead of the repo itself
-        # (zaproxy:stable of 2026-11-17 failed with „Permission denied: /zap/wrk/zap.yaml“).
-        run: |
-          ZAP_WRK="$RUNNER_TEMP/zap-wrk"
-          mkdir -p "$ZAP_WRK"
-          cp apps/api/openapi.json "$ZAP_WRK/openapi.json"
-          chmod -R a+rwX "$ZAP_WRK"
-          docker run --rm --network host \
-            -v "$ZAP_WRK:/zap/wrk:rw" \
-            ghcr.io/zaproxy/zaproxy:stable \
-            zap-baseline.py -t http://localhost:8080 -I -m 1
-          docker run --rm --network host \
-            -v "$ZAP_WRK:/zap/wrk:rw" \
-            ghcr.io/zaproxy/zaproxy:stable \
-            zap-api-scan.py -t /zap/wrk/openapi.json -f openapi -O http://localhost:3000 -I
+        run: e2e/prod-deploy/pdf-export-smoke.sh
       - name: Container logs (on failure)
         if: failure()
         run: docker compose -f docker-compose.yml -f docker-compose.prod.yml logs --no-color
       - name: Tear down (always — never leave a built stack/volume behind on this runner)
         if: always()
         run: docker compose -f docker-compose.yml -f docker-compose.prod.yml down -v
+
+  prod-stack-dast:
+    name: 'e2e: OWASP ZAP DAST (real Docker build)'
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: ./.github/actions/boot-prod-stack
+      - name: OWASP ZAP Baseline & OpenAPI DAST Pentest against production containers
+        run: scripts/ci/zap-dast.sh
+      - name: Container logs (on failure)
+        if: failure()
+        run: docker compose -f docker-compose.yml -f docker-compose.prod.yml logs --no-color
+      - name: Tear down (always — never leave a built stack/volume behind on this runner)
+        if: always()
+        run: docker compose -f docker-compose.yml -f docker-compose.prod.yml down -v
+
+  # The required check keeps its name: a repository ruleset pins the name, and a renamed job would wait
+  # for ever. It passes when both halves of the former single job passed.
+  prod-deploy-smoke:
+    name: 'e2e: production compose stack + OWASP ZAP DAST (real Docker build)'
+    needs: [prod-stack-smoke, prod-stack-dast]
+    if: always()
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Both halves passed
+        env:
+          SMOKE: ${{ needs.prod-stack-smoke.result }}
+          DAST: ${{ needs.prod-stack-dast.result }}
+        run: |
+          echo "production stack smoke: $SMOKE, OWASP ZAP DAST: $DAST"
+          test "$SMOKE" = success && test "$DAST" = success

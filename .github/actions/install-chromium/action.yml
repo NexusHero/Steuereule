@@ -1,0 +1,21 @@
+name: Install Playwright's Chromium
+description: >-
+  The browser only (no OS-deps re-check beyond --with-deps), cached by the lockfile. e2e only depends on
+  `playwright-core` (the library the scripts import, no test runner), whose registered bin is `playwright-core`,
+  not `playwright`: `pnpm exec playwright ...` would fail with "Command playwright not found" (#120). The CLI of
+  `playwright-core` has the same `install` subcommand.
+inputs:
+  filter:
+    description: The workspace package whose `playwright-core` installs the browser.
+    default: '@steuereule/e2e'
+runs:
+  using: composite
+  steps:
+    - name: Cache Playwright browsers
+      uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+      with:
+        path: ~/.cache/ms-playwright
+        key: playwright-chromium-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+    - name: Install Playwright's Chromium
+      shell: bash
+      run: pnpm --filter ${{ inputs.filter }} exec playwright-core install chromium --with-deps

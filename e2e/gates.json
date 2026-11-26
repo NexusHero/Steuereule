@@ -1,0 +1,469 @@
+{
+  "$comment": "Every E2E gate that runs against the booted stack, and the CI group it runs in. .github/workflows/ci.yml builds its matrix from this file (node e2e/run-gates.mjs --matrix), so a gate listed here cannot be left out of CI and a group cannot be forgotten. Add a gate = add one entry.",
+  "groups": {
+    "layout": {
+      "title": "Responsive layout, banners, dark mode and visual regression",
+      "stack": true,
+      "fakeKi": false
+    },
+    "a11y": {
+      "title": "BFSG / WCAG 2.1 AA accessibility, both themes, keyboard",
+      "stack": true,
+      "fakeKi": false
+    },
+    "chat-and-inputs": {
+      "title": "Owl chat experience, input aids, smart inputs, dictation",
+      "stack": true,
+      "fakeKi": false
+    },
+    "account-and-session": {
+      "title": "Sign-in, session, device QR, account security, cross-origin",
+      "stack": true,
+      "fakeKi": false
+    },
+    "tax-flows": {
+      "title": "Household, church tax, real cases, forms, printout, Verlauf, S10 acceptance",
+      "stack": true,
+      "fakeKi": false
+    },
+    "navigation-and-states": {
+      "title": "Deep links, hub, sheets, deadline banners and failure states, Belege channel",
+      "stack": true,
+      "fakeKi": false
+    },
+    "beta-states": {
+      "title": "Beta account, partner, payment and mask states",
+      "stack": true,
+      "fakeKi": false
+    },
+    "scan-and-uploads": {
+      "title": "Self-hosted OCR, scan corpus and flows, uploads",
+      "stack": true,
+      "fakeKi": false
+    },
+    "budgets": {
+      "title": "Navigation efficiency and load/latency budgets",
+      "stack": true,
+      "fakeKi": false
+    },
+    "static-ratchet": {
+      "title": "Static checks of the E2E suite (coverage ratchet, gate list) — no stack",
+      "stack": false,
+      "fakeKi": false
+    },
+    "owl-fake-ki": {
+      "title": "Owl mode against the fake KiPort (AI_FAKE_KI)",
+      "stack": true,
+      "fakeKi": true
+    }
+  },
+  "gates": [
+    {
+      "id": "cross-origin-run",
+      "group": "account-and-session",
+      "name": "Cross-origin browser smoke — signup, login, get-session, PUT /v1/profile",
+      "commands": [
+        "node e2e/cross-origin/run.mjs"
+      ]
+    },
+    {
+      "id": "ocr-self-hosted-ocr",
+      "group": "scan-and-uploads",
+      "name": "Self-hosted OCR smoke (ADR-0060) — worker, WASM core and deu data load same-origin and read text",
+      "commands": [
+        "node e2e/ocr/self-hosted-ocr.mjs"
+      ],
+      "why": "Needs WEB_ORIGIN (and API_ORIGIN, which the app shell calls on load); no account. Injects the app's own tesseract.js build into the served origin and OCRs a rendered LStB row with the self-hosted paths; fails on any request to a third party (the CDN fallback tesseract.js uses by default) and on any OCR asset not served by the web origin."
+    },
+    {
+      "id": "responsive-breakpoint-layout",
+      "group": "layout",
+      "name": "Responsive breakpoint layout gate (ADR-0014) — real browser, s/m/l assertions",
+      "commands": [
+        "node e2e/responsive/breakpoint-layout.mjs"
+      ],
+      "why": "Shares this job's already-running API + statically-served web bundle (see the job header comment above for why this rides here rather than its own job). Drives the app through the browser itself (a real guest sign-up + onboarding, a real account sign-up) rather than calling the API directly, so API_ORIGIN is not passed. DATABASE_URL IS read directly as of the #336 CI investigation (Salih) — this script now paces its own 3 RegistrierungScreen sign-ups against the shared no-trusted-ip sign-up/sign-in bucket (`../harness/rate-limit.mjs`, the same discipline `banner-ds-qa.mjs`/`visibility-refetch.mjs` below already follow), rather than relying on the upstream cross-origin-smoke step's own single sign-up clearing the window before this step's first call — see this file's own header. DATABASE_URL is already set at this job's env level above, read-only here."
+    },
+    {
+      "id": "responsive-banner-ds-qa",
+      "group": "layout",
+      "name": "Banner DS-QA gate (#223) — verify-banner colour/token fidelity, s/m/l, both screens",
+      "commands": [
+        "node e2e/responsive/banner-ds-qa.mjs"
+      ],
+      "why": "Only needs WEB_ORIGIN — both screens' unverified banner is reached purely by driving the real UI (sign-up through RegistrierungScreen, then sign-in with that same account through LoginScreen), no DB/API access needed."
+    },
+    {
+      "id": "responsive-dark-mode",
+      "group": "layout",
+      "name": "Dark-mode gate (#443 slice 6) — system dark, Sheet and Profil, „Immer hell“ survives a reload",
+      "commands": [
+        "node e2e/responsive/dark-mode.mjs"
+      ],
+      "why": "Same stack as the gates above (startStack attaches to the running API and bundle); needs DATABASE_URL (job env) to verify the out-of-band sign-up."
+    },
+    {
+      "id": "advisor-chat-experience",
+      "group": "chat-and-inputs",
+      "name": "Chat experience gate (#451 slice 1) — Enter vs. Shift+Enter, phone dock, Stop/Escape closes the stream, reduced motion",
+      "commands": [
+        "node e2e/advisor/chat-experience.mjs"
+      ],
+      "why": "Same stack as the gates above; needs DATABASE_URL (job env) to verify the out-of-band sign-up. Holds the stream open with page.route, so it needs no language model."
+    },
+    {
+      "id": "advisor-input-aids",
+      "group": "chat-and-inputs",
+      "name": "Input aids gate (#451 slices 2–4) — autofill attributes, PLZ → Ort/Bundesland on the device, dictation hint",
+      "commands": [
+        "node e2e/advisor/input-aids.mjs"
+      ],
+      "why": "Fails on any request to a host other than API_ORIGIN/WEB_ORIGIN (decision 7: the postal code never leaves the device). Needs DATABASE_URL (job env) to verify the sign-up."
+    },
+    {
+      "id": "forms-smart-inputs",
+      "group": "chat-and-inputs",
+      "name": "Smart inputs gate (ADR-0065) — IBAN mask, date field, address search on our own server, Finanzamt/Familienkasse suggestions",
+      "commands": [
+        "node e2e/forms/smart-inputs.mjs"
+      ],
+      "why": "Runs against the API booted above with STREET_DATA_PATH (job env) pointing at the street fixture. Fails on any request to a host other than API_ORIGIN/WEB_ORIGIN."
+    },
+    {
+      "id": "advisor-plan-in-chat",
+      "group": "chat-and-inputs",
+      "name": "Plan-in-chat gate (#451 slice 6) — live checklist, collapse, Stop mid-plan, no write without a click",
+      "commands": [
+        "node e2e/advisor/plan-in-chat.mjs"
+      ],
+      "why": "The model is stubbed inside the page (controllable SSE stream); sign-in, session and the apply endpoints are the real stack. Needs DATABASE_URL (job env) to verify the sign-up."
+    },
+    {
+      "id": "advisor-chat-first-layout",
+      "group": "chat-and-inputs",
+      "name": "Chat-first owl gate (#476,",
+      "commands": [
+        "node e2e/advisor/chat-first-layout.mjs"
+      ],
+      "why": "Real stack for sign-in, session, rating and clearing; only what a model would have to produce is stubbed (a stored answer, a dropped stream). Needs DATABASE_URL (job env)."
+    },
+    {
+      "id": "advisor-dictation",
+      "group": "chat-and-inputs",
+      "name": "Dictation gate (#451 slice 5, ADR-0061) — WebGPU gating, consent before download, pinned + checksum-verified model, no audio out",
+      "commands": [
+        "node e2e/advisor/dictation.mjs"
+      ],
+      "why": "Stubs only WebGPU/memory/microphone and answers Hugging Face with non-matching bytes, so it never downloads the real model. Needs DATABASE_URL (job env) to verify the sign-up."
+    },
+    {
+      "id": "household-household",
+      "group": "tax-flows",
+      "name": "Household gate (#452, ADR-0062) — migration result-neutral, new-year preselection, spouse linked once, sharing, divorce, delete",
+      "commands": [
+        "node e2e/household/household.mjs"
+      ],
+      "why": "Two real accounts driven through the API with their own sessions, plus the Kinder mask in the browser. Needs DATABASE_URL (job env) to verify the sign-ups."
+    },
+    {
+      "id": "forms-real-case-additions",
+      "group": "tax-flows",
+      "name": "Real-case additions gate (ADR-0076, ADR-0079–0086) — second way to work, Werbungskosten, childcare, annual rate, prepayments, too-long entries, „whose letter?“",
+      "commands": [
+        "node e2e/forms/real-case-additions.mjs"
+      ],
+      "why": "One account through the masks in the browser; the printout check is stubbed for the too-long case only. Needs DATABASE_URL (job env) to verify the sign-up."
+    },
+    {
+      "id": "forms-main-coverage",
+      "group": "tax-flows",
+      "name": "Main coverage gate (21.11.2026) — assistant access, tasks, what the cockpit needs, Veranlagungsart, children's hint, child save states, Günstigerprüfung, paged Belege, stored receipts, scanned LStB lines, companion values",
+      "commands": [
+        "node e2e/forms/main-coverage.mjs"
+      ],
+      "why": "Fresh accounts through the API and the masks in the browser; scan results and a long inbox by route mock. Needs DATABASE_URL (job env) to verify the sign-ups."
+    },
+    {
+      "id": "church-tax-church-tax",
+      "group": "tax-flows",
+      "name": "Church tax gate (#450 6F, ADR-0063) — the six 6F personas, Zeile 6 in the LStB mask, cockpit hints",
+      "commands": [
+        "node e2e/church-tax/church-tax.mjs"
+      ],
+      "why": "Real accounts through the API with their own sessions; Zeile 6 typed in the browser and the cockpit hint read there. Needs DATABASE_URL (job env) to verify the sign-ups."
+    },
+    {
+      "id": "visibility-visibility-refetch",
+      "group": "account-and-session",
+      "name": "Visibility-refetch gate (#223) — live re-read of email verification, both screens",
+      "commands": [
+        "node e2e/visibility/visibility-refetch.mjs"
+      ],
+      "why": "Needs DATABASE_URL (already set in this job's env, above) to flip `emailVerified` directly — there is no mail client in this environment (#224 is the still-manual, permanently out-of-automation-scope iOS complement; see e2e/visibility/ visibility-refetch.mjs's header comment). Relies on `psql` already being present on the `ubuntu-latest` runner image (no install step) — the `runner-images` catalogue for this image lists the PostgreSQL client tools as preinstalled."
+    },
+    {
+      "id": "device-device-authorization",
+      "group": "account-and-session",
+      "name": "QR device-authorization gate (#238/REQ-014, ADR-0023/0024) — real cross-device sign-in",
+      "commands": [
+        "node e2e/device/device-authorization.mjs"
+      ],
+      "why": "Must run after breakpoint-layout.mjs/banner-ds-qa.mjs above (its own header comment, corrected in Musti's #300 review, G1 — the real constraint, not \"must be this job's literal last step\"): LoginScreen's QR column mints a device-code row on every m/l- breakpoint mount, and NEITHER of those two scripts paces itself against that bucket, so they have already spent some of it before this script gets to run. This script paces itself against the real RateLimit table's live state rather than assuming a fresh bucket — which is also why its ORDER relative to the return-visit gate below doesn't matter: that script self-paces the same way, via the same shared e2e/harness/rate-limit.mjs helper, so whichever runs second just waits out whatever the first left behind. Attaches via e2e/harness/stack.mjs's ATTACH mode (API_ORIGIN/WEB_ORIGIN/DATABASE_URL already set above) — the same real Postgres/API/web bundle this job already booted. ADR-0021 control proof (Musti's #274 review, F2), confirmed: a prior commit overrode just this step's own API_ORIGIN to an unreachable port (http://localhost:19999) and watched it fail for exactly the right, named reason — \"[device-authorization] FAIL — stack.mjs: timed out after 10000ms waiting for ATTACH mode's API_ORIGIN (http://localhost:19999) to answer GET /v1/profile.\" — while every step ABOVE this one kept passing against the job's real, unmodified API_ORIGIN (isolating the break to this step alone). A first attempt (killing the API process by its captured pid right before this step) did NOT work — the kill \"succeeded\" in the log but the process was never actually terminated and the script ran to a false PASS; this env-override approach is the one that's proven, reusing the exact mechanism control proof #1 already validated (a wrong API_ORIGIN making ATTACH mode's own httpReachable probe fail cleanly, by name, after its 10s timeout). See PR #274's own body for the full transcript."
+    },
+    {
+      "id": "session-return-visit",
+      "group": "account-and-session",
+      "name": "Return-visit gate (#295's occasion,",
+      "commands": [
+        "node e2e/session/return-visit.mjs"
+      ],
+      "why": "Wired here (Musti's #300 review, G1) rather than left a standing-alone draft: Row G of this script is itself a repair for #298's F10 finding (an orphaned harness instrument is unproven per ADR-0021), and an UNWIRED repair caller is the identical defect one level up — a script nothing in CI runs proves nothing to CI. Runs after device-authorization.mjs above for the simplest reason available (least risk to an already-proven step), not because the order between these two self-pacing scripts is load-bearing — see that step's own comment. Attaches via ATTACH mode exactly like every other step in this job. This gate's own header states plainly what a green run here does and does NOT prove: the app's own return-visit handling is honest when the API stays healthy; it says nothing about whether an API container itself stayed alive between two real-world sessions (#295's own, still-open, remaining half) — a claim this job's own PASS line repeats on every green run, not just in a header nobody opens."
+    },
+    {
+      "id": "storage-no-client-persistence",
+      "group": "account-and-session",
+      "name": "No-client-persistence gate (#323/#329 retroactive T1 pass) — Onboarding + Profil save, real browser",
+      "commands": [
+        "node e2e/storage/no-client-persistence.mjs"
+      ],
+      "why": "#329 fixed two jsdom assertions that never intercepted (#323: vi.spyOn(window.localStorage, ...) is defeated by jsdom's own Storage Proxy) with vi.stubGlobal-backed stubs. Those stubs install PER TEST, AFTER the module under test is imported, so a write at module-IMPORT time is structurally outside what jsdom can catch — a disclosed, not a hidden, bound. This step closes that bound by observation: a real page load runs every module's top-level code before this script ever reads storage, so there is no \"before the stub existed\" gap to hide in. Attaches via ATTACH mode exactly like every other step in this job; self-paces against the shared no-trusted-ip sign-up/sign-in bucket the same way return-visit.mjs above does, so its order relative to that step doesn't matter for correctness."
+    },
+    {
+      "id": "session-cold-start-session-failure",
+      "group": "account-and-session",
+      "name": "Cold-start session-read gate (#349/#353) — a 429/5xx/network failure on GET /get-session must not render Login",
+      "commands": [
+        "node e2e/session/cold-start-session-failure.mjs"
+      ],
+      "why": "Salih's task, filed the same day PR #353's fix merged (#349's own class: a genuine transport-level failure on a COLD START must render the honest \"could not check\" state, never LoginScreen to a phone that might genuinely be signed in). Real network-layer `page.route(...).fulfill({status:429})`/`.abort('failed')` interceptions against this job's own real API_ORIGIN/WEB_ORIGIN, not DeviceScreen.test.tsx's already-green MSW suite re-run — this file's own header records the revert-the-fix/watch-it-go-red control proof its claim rests on (ADR-0021 §5). No sign-up/sign-in/device-code call at all (`showDeviceQr={false}` on the embedded LoginScreen), so this step spends no shared rate-limit bucket and its order relative to every other step in this job is unconstrained."
+    },
+    {
+      "id": "scenarios-four-scenarios",
+      "group": "tax-flows",
+      "name": "S10 Full UI acceptance gate (4 personas, real stack, headless Chromium)",
+      "commands": [
+        "node e2e/scenarios/four-scenarios.mjs"
+      ],
+      "why": "Drives all 4 personas (Lena Hoffmann, Markus Brenner, Julia Brenner, Thomas & Sabine Weber) end-to-end through the real UI (Registration -> Interview -> Form masks -> Cockpit estimate -> Printout check), verifying expected PDF form field values against reference values. Attaches via ATTACH mode exactly like every other step in this job."
+    },
+    {
+      "id": "a11y-bfsg-wcag-audit",
+      "group": "a11y",
+      "name": "BFSG / WCAG 2.1 AA Accessibility Gate (@axe-core/playwright across key screens)",
+      "commands": [
+        "node e2e/a11y/bfsg-wcag-audit.mjs"
+      ]
+    },
+    {
+      "id": "navigation-deep-links",
+      "group": "navigation-and-states",
+      "name": "Deep-link matrix (#450 Teil 4,",
+      "commands": [
+        "node e2e/navigation/deep-links.mjs"
+      ],
+      "why": "Paces its own get-session reads against better-auth's rolling window. DATABASE_URL (job env) verifies the sign-up."
+    },
+    {
+      "id": "navigation-hub-acceptance",
+      "group": "navigation-and-states",
+      "name": "Hub acceptance gate (#450 Teil 4,",
+      "commands": [
+        "node e2e/navigation/hub-acceptance.mjs"
+      ]
+    },
+    {
+      "id": "a11y-themes-keyboard",
+      "group": "a11y",
+      "name": "Accessibility in both themes + keyboard through the sheets (#450 Teil 4)",
+      "commands": [
+        "node e2e/a11y/themes-keyboard.mjs"
+      ]
+    },
+    {
+      "id": "visual-visual-regression",
+      "group": "layout",
+      "name": "Visual regression (#450 Teil 4) — 9 screens × 375/1280 px × light/dark against e2e/visual/baselines/linux",
+      "commands": [
+        "node e2e/visual/visual-regression.mjs"
+      ],
+      "env": {
+        "VISUAL_OUT": "/tmp/visual-regression"
+      },
+      "why": "Without committed Linux baselines the step records them into the artifact and passes with a notice."
+    },
+    {
+      "id": "account-account-security",
+      "group": "account-and-session",
+      "name": "Account and security gate (#450 5A) — profile edit, 2FA (TOTP, backup code), device sign-out, OAuth consent + MCP revoke, account deletion",
+      "commands": [
+        "node e2e/account/account-security.mjs"
+      ]
+    },
+    {
+      "id": "submission-confirmation",
+      "group": "tax-flows",
+      "name": "Confirmation screen and plausibility step (#450 5B) — proposals accept/dismiss, Anlage confirm, change, continue",
+      "commands": [
+        "node e2e/submission/confirmation.mjs"
+      ]
+    },
+    {
+      "id": "sheets-sheet-dismissal",
+      "group": "navigation-and-states",
+      "name": "Sheet dismissal (#450 5H) — close button, backdrop, Escape, grabber; every way saves the typed amount",
+      "commands": [
+        "node e2e/sheets/sheet-dismissal.mjs"
+      ]
+    },
+    {
+      "id": "errors-deadlines-and-faults",
+      "group": "navigation-and-states",
+      "name": "Deadline banners and failure states (#450 5E) — Fristen-Banner levels, 500 / offline on interview, LStB load and save",
+      "commands": [
+        "node e2e/errors/deadlines-and-faults.mjs"
+      ]
+    },
+    {
+      "id": "interview-rare-branches",
+      "group": "tax-flows",
+      "name": "Rare interview answers (#450 5G/5J) — widowed, § 24b household questions, passable gates, Schweiz residence, Berufsprofil",
+      "commands": [
+        "node e2e/interview/rare-branches.mjs"
+      ]
+    },
+    {
+      "id": "printout-printout-unlock",
+      "group": "tax-flows",
+      "name": "Printout pay and download without Stripe (#450 5C) — fake payment provider, signed webhook, both PDFs",
+      "commands": [
+        "node e2e/printout/printout-unlock.mjs"
+      ]
+    },
+    {
+      "id": "printout-official-form-expert",
+      "group": "tax-flows",
+      "name": "Official form and expert mode — form screen from cockpit and mask, direct save, locked computed fields, copy per child",
+      "commands": [
+        "node e2e/printout/official-form-expert.mjs"
+      ]
+    },
+    {
+      "id": "uploads-receipts-and-lstb-scan",
+      "group": "scan-and-uploads",
+      "name": "Uploads with synthetic documents (#450 5D) — Belege upload/preview/delete, LStB scan with overwrite and year dialogs",
+      "commands": [
+        "node e2e/uploads/receipts-and-lstb-scan.mjs"
+      ]
+    },
+    {
+      "id": "receipts-belege-owl-channel",
+      "group": "navigation-and-states",
+      "name": "Cockpit progress and the Belege ↔ Eule channel — groups, one-tap assignment, a stored document read by the owl, the way back",
+      "commands": [
+        "node e2e/receipts/belege-owl-channel.mjs"
+      ]
+    },
+    {
+      "id": "history-verlauf-tab",
+      "group": "tax-flows",
+      "name": "Verlauf tab (ADR-0098) — what is due, the years, the Bescheid-Abgleich, four key figures, upload entry, mask lessons, the Abgabe",
+      "commands": [
+        "node e2e/history/verlauf-tab.mjs"
+      ]
+    },
+    {
+      "id": "scan-corpus-measure.test",
+      "group": "scan-and-uploads",
+      "name": "Scan corpus metrics (#450 Teil 3B) — accuracy per variant, \"falsch, aber sicher\" = 0, Zero-Write, on-device, time budgets",
+      "commands": [
+        "node --test e2e/scan-corpus/measure.test.mjs",
+        "node e2e/scan-corpus/measure.mjs"
+      ]
+    },
+    {
+      "id": "scan-corpus-flows",
+      "group": "scan-and-uploads",
+      "name": "Scan flows (#450 Teil 3C) — chat and Belege upload, field-by-field confirm, tab switch, reload, delete",
+      "commands": [
+        "node e2e/scan-corpus/flows.mjs"
+      ]
+    },
+    {
+      "id": "account-beta-account-states",
+      "group": "beta-states",
+      "name": "Beta account states — guest, mail links, social sign-in cancel, step-up, passkeys, password change, OAuth consent, assistants and owl consent",
+      "commands": [
+        "node e2e/account/beta-account-states.mjs"
+      ],
+      "why": "Needs DATABASE_URL (job env) to verify and un-verify accounts and to age a session past the step-up window, and BETTER_AUTH_SECRET to sign the verification link the mail sender only logs."
+    },
+    {
+      "id": "household-beta-partner-states",
+      "group": "beta-states",
+      "name": "Beta partner states (ADR-0111 decision 3) — per-year consent with step-up, invitation, coupling, household and children failures",
+      "commands": [
+        "node e2e/household/beta-partner-states.mjs"
+      ],
+      "why": "Two real accounts (A and B). Needs DATABASE_URL (job env) to verify the sign-ups and to age a session past the step-up window, as time would."
+    },
+    {
+      "id": "submission-beta-payment-printout-states",
+      "group": "beta-states",
+      "name": "Beta payment and printout states — payment returns, confirmation, form template, receipt limit and read failures",
+      "commands": [
+        "node e2e/submission/beta-payment-printout-states.mjs"
+      ],
+      "why": "The fake payment provider (PAYMENT_FAKE_PROVIDER, job env); a read that fails is one browser request answered 503."
+    },
+    {
+      "id": "forms-beta-mask-states",
+      "group": "beta-states",
+      "name": "Beta mask states — cockpit, catalog, LStB lines, Strom, rental share and taken-over instances fail and recover",
+      "commands": [
+        "node e2e/forms/beta-mask-states.mjs"
+      ]
+    },
+    {
+      "id": "checks-e2e-coverage-ratchet.test",
+      "group": "static-ratchet",
+      "name": "E2E coverage ratchet (#450 5I) — testIDs and interview pairs without an E2E hit may only shrink",
+      "commands": [
+        "node --test scripts/checks/e2e-coverage-ratchet.test.mjs",
+        "pnpm --filter @steuereule/api exec node --import tsx ../../scripts/checks/e2e-coverage-ratchet.mjs"
+      ]
+    },
+    {
+      "id": "navigation-efficiency-measure.test",
+      "group": "budgets",
+      "name": "Navigation efficiency budgets (#450 Teil 2A, D5) — 5 personas × 4 tasks, interactions ≤ measured + 10 %",
+      "commands": [
+        "node --test e2e/navigation-efficiency/measure.test.mjs",
+        "node e2e/navigation-efficiency/measure.mjs"
+      ]
+    },
+    {
+      "id": "loadtest-loadtest",
+      "group": "budgets",
+      "name": "Real-Session Load & Latency Budget Gate (0% error rate, p95 <= 250ms)",
+      "commands": [
+        "node scripts/loadtest/loadtest.mjs --concurrency 5 --iterations 5 --url \"${API_ORIGIN}\" --origin \"${WEB_ORIGIN}\" --max-p95 250"
+      ]
+    },
+    {
+      "id": "advisor-owl-mode-fake-ki",
+      "group": "owl-fake-ki",
+      "name": "Eulen-Modus gate with the fake KiPort (#450 1A, 5F) — no write without a click, apply/undo, Alle übernehmen, conflict, inline mask, drawer/dock, guest",
+      "commands": [
+        "node e2e/advisor/owl-mode-fake-ki.mjs"
+      ]
+    },
+    {
+      "id": "e2e-run-gates",
+      "group": "static-ratchet",
+      "name": "E2E gate list is sound — every gate in exactly one known group, every script exists, the matrix covers every group",
+      "commands": [
+        "node --test e2e/run-gates.test.mjs"
+      ]
+    }
+  ]
+}

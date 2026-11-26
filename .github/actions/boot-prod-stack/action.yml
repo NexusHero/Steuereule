@@ -1,0 +1,27 @@
+name: Boot the production compose stack
+description: >-
+  The real production stack from the real Dockerfiles (Postgres -> migrate -> api; web independently) with the
+  one env file copied verbatim from .env.example (#76's single-source .env), the local inbox's TLS certificate,
+  and a poll until both published origins (:3000 API, :8080 web) answer. Needs the checkout. Tear down is the
+  job's own `if: always()` step, so a failed boot never leaves a built stack on the runner.
+runs:
+  using: composite
+  steps:
+    - name: The one env file — copy the example verbatim (the point of #76's single-source .env)
+      shell: bash
+      run: cp .env.example .env
+    # The same script scripts/local.sh runs: a CA and a Mailpit certificate in .local/mail-tls, generated here
+    # and never committed. Mailpit takes SMTP only over TLS; the API verifies it against this CA (SMTP_CA_CERT).
+    - name: TLS certificate of the local inbox (mail is never sent in clear text, not even to Mailpit)
+      shell: bash
+      run: scripts/mail-tls.sh
+    - name: Build + boot the real production stack (Postgres -> migrate -> api; web independently)
+      shell: bash
+      run: docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+    - name: Wait for both published origins to answer (poll, no sleep — ADR-0004)
+      shell: bash
+      run: |
+        curl --fail --silent --show-error --retry 40 --retry-delay 2 --retry-all-errors --retry-connrefused \
+          "http://localhost:3000/v1/auth/capabilities"
+        curl --fail --silent --show-error --retry 40 --retry-delay 2 --retry-all-errors --retry-connrefused \
+          "http://localhost:8080/"
