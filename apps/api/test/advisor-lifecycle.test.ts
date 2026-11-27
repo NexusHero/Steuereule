@@ -96,6 +96,20 @@ describe('AdvisorService message lifecycle (#476)', () => {
     expect((await advisorRepo.listForUserAndYear(USER, YEAR))[1]!.status).toBe('failed')
   })
 
+  it('does not deliver an empty answer: the open-steps line alone is no answer, the turn fails', async () => {
+    // Real case: the finished text came back empty and the app printed only "Noch offen: …" under it.
+    const steps = [{ text: 'Spenden erfassen', status: 'offen' as const }]
+    const engine = new ScriptedAdvisorEngine([{ event: 'plan', data: { steps } }, doneEvent({ replyText: '' })])
+    const { service, advisorRepo } = buildAdvisorTestKit(engine)
+    const events = await collect(service.streamMessage(USER, YEAR, { message: 'Hi' }))
+
+    expect(events.some((e) => e.event === 'done')).toBe(false)
+    expect(events.at(-1)).toMatchObject({ event: 'error', data: { code: 'ADVISOR_TURN_FAILED' } })
+    const stored = (await advisorRepo.listForUserAndYear(USER, YEAR))[1]!
+    expect(stored.status).toBe('failed')
+    expect(stored.content).toBe('')
+  })
+
   it('never leaves an answer streaming when the consumer walks away', async () => {
     const { service, advisorRepo } = buildAdvisorTestKit(
       new ScriptedAdvisorEngine([token('a'), token('b'), doneEvent({ replyText: 'ab' })]),

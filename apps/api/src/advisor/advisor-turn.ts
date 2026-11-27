@@ -31,6 +31,7 @@ import {
   type AdvisorEngineInfo,
   type AdvisorEnginePort,
   type AdvisorMessageMeta,
+  type AdvisorModelFailure,
   type AdvisorPlanMeta,
   type AdvisorPlanStep,
   type AdvisorStreamEvent,
@@ -516,10 +517,18 @@ export class AdvisorTurn {
           const plan = carriedPlan(turnPlan, turn.previousPlan ?? null)
           const planMeta: AdvisorPlanMeta = plan ? { plan } : {}
           const planNote = turnResult.mode === 'langgraph' && !turn.opening ? openPlanNote(plan, turnResult.replyText) : ''
+          // Field ids and tool names never reach the user, whatever the model wrote.
+          const answerText = (withoutInternalNames(guardedReply) + heldNote + gapFollowUp.text).trim()
+          // The open-steps line is the app's, not an answer: with nothing else to show, the turn failed (like any empty reply).
+          if (answerText.length === 0 && !turn.opening && !showsSomething(metaWithoutConsent, gapFollowUp.meta, offerConsent, noteChanges.length)) {
+            this.modelConnection.recordTurn(EMPTY_ANSWER_FAILURE)
+            await finish('failed', '', { modelFailure: EMPTY_ANSWER_FAILURE })
+            yield { event: 'error', data: { code: 'ADVISOR_TURN_FAILED', message: TURN_FAILED_MESSAGE, failure: EMPTY_ANSWER_FAILURE } }
+            return
+          }
           const assistant = await finish(
             'complete',
-            // Field ids and tool names never reach the user, whatever the model wrote.
-            (withoutInternalNames(guardedReply) + heldNote + gapFollowUp.text + planNote).trim(),
+            (answerText + planNote).trim(),
             {
               ...metaWithoutConsent,
               ...gapFollowUp.meta,
@@ -647,6 +656,24 @@ export class AdvisorTurn {
       appealDaysLeft: state.frist.remainingDays,
     }
   }
+}
+
+const EMPTY_ANSWER_FAILURE: AdvisorModelFailure = { reason: 'unknown', detail: 'empty answer' }
+
+/** Whether the answer carries anything the user can see besides its text: a card, a choice, a question round, a note or the consent card. */
+function showsSomething(meta: AdvisorMessageMeta, followUpMeta: AdvisorMessageMeta, offerConsent: boolean, noteChangeCount: number): boolean {
+  const all = { ...meta, ...followUpMeta }
+  return (
+    offerConsent ||
+    noteChangeCount > 0 ||
+    all.action !== undefined ||
+    (all.actions?.length ?? 0) > 0 ||
+    all.twoPaths !== undefined ||
+    (all.choices?.length ?? 0) > 0 ||
+    all.questionRound !== undefined ||
+    (all.situationSuggestions?.length ?? 0) > 0 ||
+    all.personalDataConsentRequest === true
+  )
 }
 
 /**
