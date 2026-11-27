@@ -91,4 +91,15 @@ describe('ArbeitswegService', () => {
     // 216 × (20 × 0,30 € + 50 × 0,38 €) = 5.400 €, as the acceptance fixture computes by hand.
     expect(status.commuterAllowance).toBe(5400)
   })
+
+  it('refuses an Arbeitsort longer than its form line, with a German message, and stores nothing', async () => {
+    const repository = fakeRepository()
+    const service = new CommuteService(repository)
+    const fullAddress = 'Musterfirma Beispiel Aktiengesellschaft, Beispielstrasse 155, 12345 Beispielstadt'
+
+    await expect(service.save('user-1', 2025, { ...INPUTS, workplace: fullAddress })).rejects.toMatchObject({ code: 'ARBEITSORT_ZU_LANG', message: expect.stringContaining('zu lang') })
+    await expect(service.save('user-1', 2025, { ...INPUTS, secondWorkplace: fullAddress })).rejects.toMatchObject({ code: 'ARBEITSORT_ZU_LANG' })
+    expect(repository.saved.size).toBe(0)
+    await expect(service.save('user-1', 2025, { ...INPUTS, workplace: 'Musterfirma AG, 12345 Beispielstadt' })).resolves.toBeDefined()
+  })
 })
