@@ -71,8 +71,13 @@ export function Banner({ dto, taxYear, answers }: { readonly dto: DeadlinesRespo
         </View>
       )
     case 'unklar':
-      // Before the answers say whether a return is due there is nothing to act on: no banner.
-      return null
+      // Not known yet whether a return is due: no banner and no alarm, but the date itself is said in
+      // one line. Someone who turns out to be obliged must not learn the deadline after it has passed.
+      return (
+        <Text style={styles.dateLine} testID="fristen-banner-unklar">
+          {tr('fristen.unklar', { frist })}
+        </Text>
+      )
     case 'zuschlag':
       return (
         <View style={styles.banner} testID="fristen-banner-zuschlag" accessibilityRole="alert">
@@ -112,5 +117,6 @@ function makeStyles(t: UiTheme) {
     marginBottom: t.space.s3,
   }
   const calmText: TextStyle = { ...t.type.small, color: t.color.tinte }
-  return { banner, text, calmBanner, calmText }
+  const dateLine: TextStyle = { ...t.type.small, color: t.color.tinte2, marginBottom: t.space.s3 }
+  return { banner, text, calmBanner, calmText, dateLine }
 }

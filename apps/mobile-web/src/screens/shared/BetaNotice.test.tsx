@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { screen } from '@testing-library/react'
+import { fireEvent, screen } from '@testing-library/react'
+import { useState } from 'react'
 import { renderWithQuery } from '../../../test/test-render'
 import { BetaBadge, BetaNotice } from './BetaNotice'
 
@@ -12,11 +13,17 @@ describe('the beta notice', () => {
     expect(note.textContent).toContain('Prüfe jeden Ausdruck, bevor du ihn unterschreibst und einreichst.')
   })
 
-  it('BetaBadge is the word alone: no explanation, nothing to press', () => {
-    renderWithQuery(<BetaBadge />)
-    const badge = screen.getByTestId('beta-marke')
+  it('BetaBadge shows the word alone and says whether the notice is open', () => {
+    function Held() {
+      const [open, setOpen] = useState(false)
+      return <BetaBadge open={open} onToggle={() => setOpen((o) => !o)} />
+    }
+    renderWithQuery(<Held />)
+    // The visible word is part of the name (WCAG 2.5.3).
+    const badge = screen.getByRole('button', { name: 'BETA: Hinweis zur Testphase' })
     expect(badge.textContent).toBe('BETA')
-    expect(screen.queryByRole('button')).toBeNull()
-    expect(screen.queryByTestId('beta-hinweis')).toBeNull()
+    expect(badge.getAttribute('aria-expanded')).toBe('false')
+    fireEvent.click(badge)
+    expect(badge.getAttribute('aria-expanded')).toBe('true')
   })
 })

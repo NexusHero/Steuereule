@@ -4,7 +4,7 @@
 // nothing). The dates come from the server (GET .../fristen) — the client clock plays no role. Whether
 // the deadline binds at all comes from the interview answers (Pflicht- vs. Antragsveranlagung).
 import { describe, it, expect } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import { I18nextProvider } from 'react-i18next'
 import { ThemeProvider } from '@steuereule/ui'
 import { http, HttpResponse } from 'msw'
@@ -79,14 +79,13 @@ describe('DeadlinesBanner (wired)', () => {
     expect(container.querySelector('[data-testid^="fristen-banner"]')).toBeNull()
   })
 
-  it('before any answer: no banner at all, never the surcharge alarm', async () => {
-    let asked = false
-    server.use(http.get(DEADLINES_URL, () => { asked = true; return HttpResponse.json(EXPIRED, { status: 200 }) }))
-    const { container } = renderBanner({})
+  it('before any answer: the date in one line, never the surcharge alarm', async () => {
+    server.use(http.get(DEADLINES_URL, () => HttpResponse.json(EXPIRED, { status: 200 })))
+    renderBanner({})
 
-    await waitFor(() => expect(asked).toBe(true))
-    await new Promise((resolve) => setTimeout(resolve, 20))
-    expect(container.querySelector('[data-testid^="fristen-banner"]')).toBeNull()
+    const line = await screen.findByTestId('fristen-banner-unklar')
+    expect(line.textContent).toBe('Abgabefrist, falls du abgeben musst: 31.07.2026')
+    expect(line.getAttribute('role')).toBeNull()
     expect(screen.queryByText(/Verspätungszuschlag/)).toBeNull()
   })
 })
@@ -126,9 +125,9 @@ describe('Banner (pure presentational)', () => {
     expect(screen.queryByText(/Verspätungszuschlag/)).toBeNull()
   })
 
-  it('unklar (e.g. married): nothing to act on yet, so no banner', () => {
-    const { container } = renderPure(EXPIRED, { ...VOLUNTARY, familienstand: 'Verheiratet' })
-    expect(container.querySelector('[data-testid^="fristen-banner"]')).toBeNull()
+  it('unklar (e.g. married): the date alone, in one line', () => {
+    renderPure(EXPIRED, { ...VOLUNTARY, familienstand: 'Verheiratet' })
+    expect(screen.getByTestId('fristen-banner-unklar').textContent).toBe('Abgabefrist, falls du abgeben musst: 31.07.2026')
     expect(screen.queryByText(/Verspätungszuschlag/)).toBeNull()
   })
 })

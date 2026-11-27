@@ -122,14 +122,22 @@ describe('LoginScreen', () => {
     expect(style.borderTopLeftRadius).toBe('28px')
   })
 
-  it('says BETA beside the name and nothing more: no notice paragraph, no greeting line', async () => {
+  it('says BETA beside the name and nothing more at rest: no notice paragraph, no greeting line', async () => {
     renderLogin()
     const badge = await screen.findByTestId('beta-marke')
     expect(badge.textContent).toBe('BETA')
     expect(screen.getByTestId('login-splash').parentElement).toBe(badge.parentElement)
     expect(screen.queryByTestId('beta-hinweis')).toBeNull()
-    expect(screen.queryByText(/Testphase/)).toBeNull()
     expect(screen.queryByText(/Schön, dass du/)).toBeNull()
+  })
+
+  it('opens the written-out beta notice from the mark and closes it again (WEB-20)', async () => {
+    renderLogin()
+    const badge = await screen.findByTestId('beta-marke')
+    fireEvent.click(badge)
+    expect(screen.getByTestId('beta-hinweis').textContent).toContain('Prüfe jeden Ausdruck, bevor du ihn unterschreibst und einreichst.')
+    fireEvent.click(badge)
+    expect(screen.queryByTestId('beta-hinweis')).toBeNull()
   })
 
   it('writes the name out beside the owl: one heading that reads "SteuerEule"', async () => {

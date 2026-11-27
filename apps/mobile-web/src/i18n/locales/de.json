@@ -1757,6 +1757,7 @@
     "abgelaufen": "Die Frist {{frist}} ist vorbei. Das Finanzamt kann einen Verspätungszuschlag festsetzen — ab dem {{pflichtAb}} muss es das (mindestens {{mindestsatz}} je angefangenem Monat).",
     "zuschlagPflicht": "Die Abgabefrist {{frist}} ist um {{tage}} Tage überschritten. Seit dem {{pflichtAb}} muss das Finanzamt einen Verspätungszuschlag festsetzen (§ 152 Abs. 2 AO): mindestens {{mindestsatz}} je angefangenem Monat — reich die Erklärung bald ein.",
     "freiwillig": "Freiwillige Erklärung: Du hast Zeit bis {{bis}} (31.12. des vierten Folgejahres). Je früher, desto früher kommt die Erstattung.",
+    "unklar": "Abgabefrist, falls du abgeben musst: {{frist}}",
     "ladefehler": "Deine Abgabefrist konnte nicht geladen werden."
   },
   "shared": {
@@ -4849,6 +4850,7 @@
   },
   "beta": {
     "badge": "BETA",
+    "badgeLabel": "BETA: Hinweis zur Testphase",
     "label": "Beta:",
     "notice": "SteuerEule ist in der Testphase. Funktionen können sich ändern und Fehler sind möglich. Prüfe jeden Ausdruck, bevor du ihn unterschreibst und einreichst."
   },
