@@ -84,7 +84,7 @@ describe('DeadlinesBanner (wired)', () => {
     renderBanner({})
 
     const line = await screen.findByTestId('fristen-banner-unklar')
-    expect(line.textContent).toBe('Abgabefrist, falls du abgeben musst: 31.07.2026')
+    expect(line.textContent).toBe('Abgabefrist 31.07.2026, falls du abgeben musst')
     expect(line.getAttribute('role')).toBeNull()
     expect(screen.queryByText(/Verspätungszuschlag/)).toBeNull()
   })
@@ -127,7 +127,7 @@ describe('Banner (pure presentational)', () => {
 
   it('unklar (e.g. married): the date alone, in one line', () => {
     renderPure(EXPIRED, { ...VOLUNTARY, familienstand: 'Verheiratet' })
-    expect(screen.getByTestId('fristen-banner-unklar').textContent).toBe('Abgabefrist, falls du abgeben musst: 31.07.2026')
+    expect(screen.getByTestId('fristen-banner-unklar').textContent).toBe('Abgabefrist 31.07.2026, falls du abgeben musst')
     expect(screen.queryByText(/Verspätungszuschlag/)).toBeNull()
   })
 })

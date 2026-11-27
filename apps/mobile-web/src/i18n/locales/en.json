@@ -26,7 +26,7 @@
     "submitting": "Checking …",
     "register": "New here? Create account",
     "guest": "Look around as a guest",
-    "guestNote": "Guest mode: your details are saved securely, encrypted.",
+    "guestNote": "As a guest your details are stored encrypted.",
     "twoFactor": {
       "heading": "Second factor",
       "body": "Your account ({{email}}) is protected by a second factor. Enter the code from your authenticator app.",
@@ -294,8 +294,8 @@
       "failed": "Signing out did not work. Check the connection and try again."
     },
     "loading": "Loading your profile …",
-    "namePlaceholder": "No name saved yet",
-    "emptyNote": "Nothing saved yet.",
+    "namePlaceholder": "No name on file",
+    "emptyNote": "No tax ID on file",
     "cardLabel": "Your details",
     "edit": "Edit",
     "editHeading": "Edit details",
@@ -318,10 +318,10 @@
       "network": "That didn't work just now. Check your connection and try again."
     },
     "deineDaten": {
-      "rowLabel": "How we protect your data (GDPR)"
+      "rowLabel": "Privacy"
     },
     "sicherheit": {
-      "rowLabel": "Security (two-factor)"
+      "rowLabel": "Security"
     },
     "darstellung": {
       "titel": "Appearance",
@@ -1749,7 +1749,7 @@
     "abgelaufen": "The deadline {{frist}} has passed. The tax office may set a late-filing surcharge — from {{pflichtAb}} it must (at least {{mindestsatz}} per started month).",
     "zuschlagPflicht": "The filing deadline {{frist}} passed {{tage}} days ago. Since {{pflichtAb}} the tax office must set a late-filing surcharge (§ 152 (2) AO): at least {{mindestsatz}} per started month — file soon.",
     "freiwillig": "Voluntary return: you have until {{bis}} (31 Dec of the fourth following year). The sooner you file, the sooner the refund arrives.",
-    "unklar": "Filing deadline, if you have to file: {{frist}}",
+    "unklar": "Filing deadline {{frist}}, if you have to file",
     "ladefehler": "Your filing deadline could not be loaded."
   },
   "shared": {
@@ -2351,10 +2351,10 @@
       }
     },
     "checkBescheid": "Review assessment",
-    "checkKapital": "Review capital & brokerage",
-    "checkVermietung": "Review rental property",
-    "checkKinder": "Manage children",
-    "amtlichesFormular": "View official form",
+    "checkKapital": "Capital & portfolio",
+    "checkVermietung": "Rental",
+    "checkKinder": "Children",
+    "amtlichesFormular": "Official form",
     "berater": {
       "title": "Hints from the Owl",
       "body": "Checks your tax year for unused deductions.",
@@ -2483,7 +2483,6 @@
       "message": "You can upload receipts all year round."
     },
     "upload": {
-      "heading": "Upload receipt (PDF / photo)",
       "cta": "Upload PDF or photo",
       "uploading": "Encrypting and uploading …",
       "success": "Document saved. It is being read now.",
@@ -3794,8 +3793,8 @@
       "offenMit": "in progress · {{was}}",
       "eingereicht": "filed · waiting for the assessment",
       "nurBescheid": "assessment only",
-      "weniger": "Assessment · {{betrag}} less than declared",
-      "mehr": "Assessment · {{betrag}} more than declared",
+      "weniger": "Assessment {{betrag}}",
+      "mehr": "Assessment {{betrag}}",
       "aenderungen_one": "Assessment · {{count}} change",
       "aenderungen_other": "Assessment · {{count}} changes",
       "wieErklaert": "Assessment as declared",

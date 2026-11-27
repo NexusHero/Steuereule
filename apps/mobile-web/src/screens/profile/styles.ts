@@ -29,11 +29,10 @@ export function makeProfileStyles(t: UiTheme) {
     ...t.type.subhead,
     color: inkOnFunke(t),
   }
-  const name: TextStyle = { ...t.type.emphasis, color: t.color.funke }
+  const name: TextStyle = { ...t.type.emphasis, color: t.color.tinte }
   const idLine: TextStyle = {
     ...t.type.metaLarge,
-    color: t.color.nachtText,
-    opacity: 0.8,
+    color: t.color.tinte2,
     fontVariant: ['tabular-nums'],
     marginTop: t.space.s1,
   }
@@ -50,6 +49,7 @@ export function makeProfileStyles(t: UiTheme) {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    gap: t.space.s3,
     minHeight: 52,
     paddingHorizontal: t.space.s4,
     paddingVertical: t.space.s3,

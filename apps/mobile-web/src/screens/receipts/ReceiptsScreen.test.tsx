@@ -171,7 +171,7 @@ describe('BelegeScreen', () => {
   it('renders the real encrypted PDF/photo upload card instead of a placeholder (#444)', async () => {
     mockReceipts([])
     renderReceipts()
-    await screen.findByText('Beleg hochladen (PDF / Foto)')
+    await screen.findByTestId('belege-upload-cta')
     expect(screen.getByTestId('belege-upload-card')).toBeTruthy()
     expect(screen.getByTestId('belege-upload-cta')).toBeTruthy()
     // No kind to pick any more: the reading recognises the document (ADR-0097 §4).
@@ -573,7 +573,6 @@ describe('BelegeScreen', () => {
     mockReceipts([PROPOSED, CONFLICT, ASSIGNED])
     renderReceipts({ lng: 'en' })
     expect(await screen.findByText('Receipts')).toBeTruthy()
-    expect(screen.getByText('Upload receipt (PDF / photo)')).toBeTruthy()
     expect(screen.getByText('Upload PDF or photo')).toBeTruthy()
     expect(screen.getByText('Suggestion: 2026')).toBeTruthy()
     expect(screen.getByText('Two years for this receipt — you decide.')).toBeTruthy()

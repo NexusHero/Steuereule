@@ -82,7 +82,7 @@ const COPY = {
   // single assertion in this file (every flow starts by skipping it), so it goes
   // through `COPY` more than any other string here.
   splashSkip: 'Weiter zur App',
-  guest: 'Erstmal als Gast umschauen',
+  guest: 'Als Gast ansehen',
   register: 'Neu hier? Konto anlegen',
   weiter: 'Weiter',
   firstNamePlaceholder: 'Kim',

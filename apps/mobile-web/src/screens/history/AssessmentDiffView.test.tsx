@@ -30,43 +30,46 @@ function renderYearPage2024(extra: { onPrepareAppeal?: () => void } = {}) {
   )
 }
 
+// Graphit: the sign says which way money moved; red and green stay for faults and confirmations.
+const INK = 'rgb(15, 15, 20)'
+
 describe('AssessmentDiffView — the receipt', () => {
-  it('heads with the total effect on the refund, coloured as a cost, and the refund declared → assessed under it', () => {
+  it('heads with the total effect on the refund in ink, never red, and the refund declared → assessed under it', () => {
     renderYearPage2024()
     expect(text('abgleich-wirkung')).toBe('−92 €')
     expect(label(screen.getByTestId('abgleich-wirkung'))).toBe('Wirkung auf die Erstattung insgesamt: −92 €')
-    expect(getComputedStyle(screen.getByTestId('abgleich-wirkung')).color).toBe('rgb(224, 54, 44)')
+    expect(getComputedStyle(screen.getByTestId('abgleich-wirkung')).color).toBe(INK)
     expect(text('abgleich')).toContain('Erstattung 901 → 809 €')
     // No eyebrow, no pills, no chain, no owl sentence, no lessons block, no repeated year title.
     for (const gone of ['Bescheid-Abgleich', 'Änderungen', 'daraus folgt', 'Fürs nächste Mal', 'Erläuterung im Bescheid', 'Erklärung ↔ Bescheid', 'Eule']) expect(text('abgleich')).not.toContain(gone)
     for (const id of ['abgleich-anzahl', 'abgleich-kette', 'abgleich-lehren', 'abgleich-spalten']) expect(screen.queryByTestId(id)).toBeNull()
   })
 
-  it('colours a gain as success and nothing as neutral', () => {
+  it('draws a gain in ink too, never green', () => {
     renderInApp(<AssessmentDiffView diff={{ ...DIFF_2024, totalRefundEffect: 40, effectsDifferFromTotal: false }} deadline={null} testID="gut" />)
     expect(text('gut-wirkung')).toBe('+40 €')
-    expect(getComputedStyle(screen.getByTestId('gut-wirkung')).color).toBe('rgb(31, 157, 85)')
+    expect(getComputedStyle(screen.getByTestId('gut-wirkung')).color).toBe(INK)
   })
 
-  it('lists one line per own deviation, largest effect first, like a diff: sign, label and the unsigned effect in the sign’s colour', () => {
+  it('lists one line per own deviation, largest effect first, like a diff: sign, label and the unsigned effect in ink', () => {
     renderInApp(<AssessmentDiffView diff={{ ...DIFF_2024, ownDeviations: [DIFF_2024.ownDeviations[1]!, DIFF_2024.ownDeviations[0]!] }} deadline={null} testID="abgleich" />)
     const rows = screen.getAllByTestId(/^abgleich-zeile-/)
     expect(rows.map((r) => r.getAttribute('data-testid'))).toEqual(['abgleich-zeile-homeofficeA', 'abgleich-zeile-arbeitsmittelA'])
     const home = screen.getByTestId('abgleich-zeile-homeofficeA')
     expect(readable(home).trim()).toBe('− Homeoffice-Pauschale 56 €')
     // The colour carries the sign, on the glyph and on the amount.
-    expect(getComputedStyle(within(home).getByText('−')).color).toBe('rgb(224, 54, 44)')
-    expect(getComputedStyle(within(home).getByText(/^56\s€$/)).color).toBe('rgb(224, 54, 44)')
+    expect(getComputedStyle(within(home).getByText('−')).color).toBe(INK)
+    expect(getComputedStyle(within(home).getByText(/^56\s€$/)).color).toBe(INK)
     // The declared and assessed values wait behind the tap.
     expect(text('abgleich')).not.toMatch(/1\.260|1\.080/)
   })
 
-  it('signs a gain with + in the success colour and a change without effect on the refund with ±', () => {
+  it('signs a gain with + and a change without effect on the refund with ±', () => {
     const [home, work] = DIFF_2024.ownDeviations
     renderInApp(<AssessmentDiffView diff={{ ...DIFF_2024, ownDeviations: [{ ...home!, refundEffect: 40 }, { ...work!, refundEffect: 0 }] }} deadline={null} testID="abgleich" />)
     const gain = screen.getByTestId('abgleich-zeile-homeofficeA')
     expect(readable(gain).trim()).toBe('+ Homeoffice-Pauschale 40 €')
-    expect(getComputedStyle(within(gain).getByText('+')).color).toBe('rgb(31, 157, 85)')
+    expect(getComputedStyle(within(gain).getByText('+')).color).toBe(INK)
     expect(readable(screen.getByTestId('abgleich-zeile-arbeitsmittelA')).trim()).toBe('± Arbeitsmittel 0 €')
   })
 

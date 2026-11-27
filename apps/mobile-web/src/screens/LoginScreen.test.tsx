@@ -77,7 +77,7 @@ describe('LoginScreen', () => {
   it('renders the German login by default (brand, email form, guest mode)', () => {
     renderLogin()
     expect(screen.getByText('Einloggen')).toBeTruthy()
-    expect(screen.getByText('Erstmal als Gast umschauen')).toBeTruthy()
+    expect(screen.getByText('Als Gast ansehen')).toBeTruthy()
   })
 
   it('switches to English when the locale changes (ADR-0006)', () => {
@@ -192,7 +192,7 @@ describe('LoginScreen', () => {
   it('calls onGuest from the guest chip', () => {
     const onGuest = vi.fn()
     renderLogin({ onGuest })
-    fireEvent.click(screen.getByText('Erstmal als Gast umschauen'))
+    fireEvent.click(screen.getByText('Als Gast ansehen'))
     expect(onGuest).toHaveBeenCalledOnce()
   })
 
@@ -206,7 +206,7 @@ describe('LoginScreen', () => {
   it('renders honest guest-mode copy that no longer claims device-only storage (de)', () => {
     renderLogin()
     expect(
-      screen.getByText('Gast-Modus: deine Angaben werden sicher verschlüsselt gespeichert.'),
+      screen.getByText('Als Gast werden deine Angaben verschlüsselt gespeichert.'),
     ).toBeTruthy()
     expect(screen.queryByText(/nur auf diesem Gerät/)).toBeNull()
   })
@@ -214,7 +214,7 @@ describe('LoginScreen', () => {
   it('renders honest guest-mode copy that no longer claims device-only storage (en)', () => {
     renderLogin({ lng: 'en' })
     expect(
-      screen.getByText('Guest mode: your details are saved securely, encrypted.'),
+      screen.getByText('As a guest your details are stored encrypted.'),
     ).toBeTruthy()
     expect(screen.queryByText(/this device only/)).toBeNull()
   })
@@ -1294,13 +1294,13 @@ describe('LoginScreen', () => {
     it('hides "Neu hier? Konto anlegen" and "weiter als Gast" when onGuest/onRegister are omitted', () => {
       renderLogin({ omitGuestAndRegister: true })
       expect(screen.queryByText('Neu hier? Konto anlegen')).toBeNull()
-      expect(screen.queryByText('Erstmal als Gast umschauen')).toBeNull()
+      expect(screen.queryByText('Als Gast ansehen')).toBeNull()
     })
 
     it('still shows both when onGuest/onRegister are provided — the top-level Login route is unaffected', () => {
       renderLogin()
       expect(screen.queryByText('Neu hier? Konto anlegen')).not.toBeNull()
-      expect(screen.queryByText('Erstmal als Gast umschauen')).not.toBeNull()
+      expect(screen.queryByText('Als Gast ansehen')).not.toBeNull()
     })
 
     it('never mounts the QR column when showDeviceQr is false, even at a wide breakpoint that would otherwise show it', async () => {

@@ -25,8 +25,8 @@
     "submit": "Einloggen",
     "submitting": "Wird geprüft …",
     "register": "Neu hier? Konto anlegen",
-    "guest": "Erstmal als Gast umschauen",
-    "guestNote": "Gast-Modus: deine Angaben werden sicher verschlüsselt gespeichert.",
+    "guest": "Als Gast ansehen",
+    "guestNote": "Als Gast werden deine Angaben verschlüsselt gespeichert.",
     "twoFactor": {
       "heading": "Zweiter Faktor",
       "body": "Dein Konto ({{email}}) ist mit einem zweiten Faktor geschützt. Gib den Code aus deiner Authenticator-App ein.",
@@ -294,8 +294,8 @@
       "failed": "Das Abmelden hat nicht geklappt. Prüf die Verbindung und versuch es noch einmal."
     },
     "loading": "Dein Profil wird geladen …",
-    "namePlaceholder": "Noch kein Name gespeichert",
-    "emptyNote": "Noch keine Angaben gespeichert.",
+    "namePlaceholder": "Kein Name hinterlegt",
+    "emptyNote": "Keine Steuer-ID hinterlegt",
     "cardLabel": "Deine Angaben",
     "edit": "Bearbeiten",
     "editHeading": "Angaben bearbeiten",
@@ -318,10 +318,10 @@
       "network": "Das hat nicht geklappt. Prüf die Verbindung und versuch es noch einmal."
     },
     "deineDaten": {
-      "rowLabel": "So schützen wir deine Daten (DSGVO)"
+      "rowLabel": "Datenschutz"
     },
     "sicherheit": {
-      "rowLabel": "Sicherheit (Zwei-Faktor)"
+      "rowLabel": "Sicherheit"
     },
     "darstellung": {
       "titel": "Darstellung",
@@ -1749,7 +1749,7 @@
     "abgelaufen": "Die Frist {{frist}} ist vorbei. Das Finanzamt kann einen Verspätungszuschlag festsetzen — ab dem {{pflichtAb}} muss es das (mindestens {{mindestsatz}} je angefangenem Monat).",
     "zuschlagPflicht": "Die Abgabefrist {{frist}} ist um {{tage}} Tage überschritten. Seit dem {{pflichtAb}} muss das Finanzamt einen Verspätungszuschlag festsetzen (§ 152 Abs. 2 AO): mindestens {{mindestsatz}} je angefangenem Monat — reich die Erklärung bald ein.",
     "freiwillig": "Freiwillige Erklärung: Du hast Zeit bis {{bis}} (31.12. des vierten Folgejahres). Je früher, desto früher kommt die Erstattung.",
-    "unklar": "Abgabefrist, falls du abgeben musst: {{frist}}",
+    "unklar": "Abgabefrist {{frist}}, falls du abgeben musst",
     "ladefehler": "Deine Abgabefrist konnte nicht geladen werden."
   },
   "shared": {
@@ -2351,10 +2351,10 @@
       }
     },
     "checkBescheid": "Bescheid prüfen",
-    "checkKapital": "Kapital & Depot prüfen",
-    "checkVermietung": "Vermietung prüfen",
-    "checkKinder": "Kinder verwalten",
-    "amtlichesFormular": "Amtliches Formular ansehen",
+    "checkKapital": "Kapital & Depot",
+    "checkVermietung": "Vermietung",
+    "checkKinder": "Kinder",
+    "amtlichesFormular": "Amtliches Formular",
     "berater": {
       "title": "Hinweise der Eule",
       "body": "Prüft dein Steuerjahr auf ungenutzte Abzüge.",
@@ -2483,7 +2483,6 @@
       "message": "Belege kannst du das ganze Jahr über hochladen."
     },
     "upload": {
-      "heading": "Beleg hochladen (PDF / Foto)",
       "cta": "PDF oder Foto hochladen",
       "uploading": "Wird verschlüsselt hochgeladen …",
       "success": "Beleg gespeichert. Er wird jetzt gelesen.",
@@ -3794,8 +3793,8 @@
       "offenMit": "in Arbeit · {{was}}",
       "eingereicht": "abgegeben · wartet auf Bescheid",
       "nurBescheid": "nur Bescheid",
-      "weniger": "Bescheid · {{betrag}} weniger als erklärt",
-      "mehr": "Bescheid · {{betrag}} mehr als erklärt",
+      "weniger": "Bescheid {{betrag}}",
+      "mehr": "Bescheid {{betrag}}",
       "aenderungen_one": "Bescheid · {{count}} Änderung",
       "aenderungen_other": "Bescheid · {{count}} Änderungen",
       "wieErklaert": "Bescheid wie erklärt",

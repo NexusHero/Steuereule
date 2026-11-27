@@ -80,7 +80,7 @@ describe('ProfilScreen', () => {
 
   it('shows an honest empty state for a brand-new profile (never mock data)', async () => {
     renderProfile() // default MSW handler resolves the all-null profile
-    await screen.findByText('Noch keine Angaben gespeichert.')
+    await screen.findByText('Keine Steuer-ID hinterlegt')
     expect(screen.queryByText('Anna Beispiel')).toBeNull()
   })
 
@@ -106,7 +106,7 @@ describe('ProfilScreen', () => {
     // Must self-correct to the real data once the refetch resolves, not latch onto the stale
     // cached empty snapshot.
     await screen.findByText('Anna Beispiel')
-    expect(screen.queryByText('Noch keine Angaben gespeichert.')).toBeNull()
+    expect(screen.queryByText('Keine Steuer-ID hinterlegt')).toBeNull()
   })
 
   it('shows a retryable error state when the profile fails to load, and recovers on retry', async () => {
@@ -315,7 +315,7 @@ describe('ProfilScreen', () => {
       renderProfile({ onOpenPrivacy })
       await screen.findByText('Anna Beispiel')
 
-      fireEvent.click(screen.getByText('So schützen wir deine Daten (DSGVO)'))
+      fireEvent.click(screen.getByText('Datenschutz'))
 
       expect(onOpenPrivacy).toHaveBeenCalledOnce()
     })
@@ -324,7 +324,7 @@ describe('ProfilScreen', () => {
       mockSavedProfile()
       renderProfile({ lng: 'en' })
       await screen.findByText('Anna Beispiel')
-      expect(screen.getByText('How we protect your data (GDPR)')).toBeTruthy()
+      expect(screen.getByText('Privacy')).toBeTruthy()
     })
   })
 })
@@ -431,7 +431,7 @@ describe('ProfilScreen — failures never reach a save (WEB-28, NR-01, NR-22, NR
     server.use(http.get('*/v1/profile', () => HttpResponse.json({ statusCode: status }, { status })))
     renderProfile()
     expect(await screen.findByTestId('fehler-zustand')).toBeTruthy()
-    expect(screen.queryByText('Noch keine Angaben gespeichert.')).toBeNull()
+    expect(screen.queryByText('Keine Steuer-ID hinterlegt')).toBeNull()
     expect(screen.queryByText('Bearbeiten')).toBeNull()
   })
 

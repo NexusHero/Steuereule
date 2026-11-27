@@ -1,6 +1,7 @@
 import { Text, View, type ViewStyle, type TextStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useTheme, type UiTheme } from '@steuereule/ui'
+import { Icon } from '../../icons/Icon'
 import {
   filingObligation,
   formatEuro,
@@ -74,9 +75,10 @@ export function Banner({ dto, taxYear, answers }: { readonly dto: DeadlinesRespo
       // Not known yet whether a return is due: no banner and no alarm, but the date itself is said in
       // one line. Someone who turns out to be obliged must not learn the deadline after it has passed.
       return (
-        <Text style={styles.dateLine} testID="fristen-banner-unklar">
-          {tr('fristen.unklar', { frist })}
-        </Text>
+        <View style={styles.dateRow} testID="fristen-banner-unklar">
+          <Icon name="clock" size={16} color={t.color.tinte2} />
+          <Text style={styles.dateLine}>{tr('fristen.unklar', { frist })}</Text>
+        </View>
       )
     case 'zuschlag':
       return (
@@ -117,6 +119,7 @@ function makeStyles(t: UiTheme) {
     marginBottom: t.space.s3,
   }
   const calmText: TextStyle = { ...t.type.small, color: t.color.tinte }
-  const dateLine: TextStyle = { ...t.type.small, color: t.color.tinte2, marginBottom: t.space.s3 }
-  return { banner, text, calmBanner, calmText, dateLine }
+  const dateRow: ViewStyle = { flexDirection: 'row', alignItems: 'center', gap: t.space.s2, marginBottom: t.space.s3 }
+  const dateLine: TextStyle = { ...t.type.small, color: t.color.tinte2, flexShrink: 1 }
+  return { banner, text, calmBanner, calmText, dateRow, dateLine }
 }

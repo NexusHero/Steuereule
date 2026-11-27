@@ -159,7 +159,7 @@ function makeStyles(t: UiTheme) {
   const check: ViewStyle = { width: 22, height: 22, borderRadius: 11, borderWidth: t.space.kontur, borderColor: t.color.linie, alignItems: 'center', justifyContent: 'center', marginTop: 1 }
   const checkDone: ViewStyle = { backgroundColor: t.color.okWeich, borderColor: t.color.ok }
   const checkMark: TextStyle = { ...t.type.captionStrong, color: t.color.ok }
-  const cut: TextStyle = { color: t.color.fehler }
+  const cut: TextStyle = { color: t.color.tinte, fontWeight: t.weight.schwer }
   const itemsPlain: ViewStyle = { gap: t.space.s2 }
   const line: ViewStyle = { width: '100%', maxWidth: FLOW_CONTENT_MAX_WIDTH, borderTopWidth: 1, borderTopColor: t.color.linieWeich, paddingVertical: t.space.s1 }
   const lineHead: ViewStyle = { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: t.space.s2 }

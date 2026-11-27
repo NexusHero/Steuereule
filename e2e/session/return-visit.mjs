@@ -155,7 +155,7 @@ const TEST_PASSWORD = 'Sicheres-Passwort-1!'
 const COPY = {
   ...FLOW_COPY,
   loginGoogle: 'Weiter mit Google',
-  loginGuest: 'Erstmal als Gast umschauen',
+  loginGuest: 'Als Gast ansehen',
   // The empty Cockpit's heading (CockpitEmpty) — what a fresh guest without answers sees at /app.
   cockpitEmpty: 'Noch keine Angaben.',
   // ADR-0045 (value-first funnel): a guest lands in the Minimal-Gate, then the Konto-Wand.

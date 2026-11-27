@@ -256,7 +256,7 @@ describe('historyTimeline — years and their hints', () => {
 
   it('words a Bescheid that raised the refund, one with changes only in positions, and one without a comparison', () => {
     const base: YearListItemDto = { ...item(2024), kind: 'bescheid', hasData: true, withoutAssessment: false, deadline: { ...item(2024).deadline, kind: 'einspruch', running: false } as never }
-    expect(yearStatus({ ...base, difference: 40, deviations: 0 }, entry(2024), tr)).toEqual({ text: tr('verlauf.zeile.mehr', { betrag: '40 €' }), tone: null })
+    expect(yearStatus({ ...base, difference: 40, deviations: 0 }, entry(2024), tr)).toEqual({ text: 'Bescheid +40 €', tone: 'strong' })
     expect(yearStatus({ ...base, difference: 0, deviations: 2 }, entry(2024), tr).text).toBe(tr('verlauf.zeile.aenderungen', { count: 2 }))
     expect(yearStatus({ ...base, difference: 0, deviations: 0, noDiffReason: null }, entry(2024), tr).text).toBe(tr('verlauf.zeile.wieErklaert'))
     expect(yearStatus({ ...base, difference: null, deviations: 0, noDiffReason: 'kein-abgleich' as never }, entry(2024), tr).text).toBe(tr('verlauf.zeile.ohneAbgleich'))

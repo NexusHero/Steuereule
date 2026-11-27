@@ -309,7 +309,7 @@ async function main() {
       const ctxGuest = await newContextAtBreakpoint(browser, 'l')
       const guest = await ctxGuest.newPage()
       await skipSplash(guest, webOrigin)
-      await guest.getByText('Erstmal als Gast umschauen').click()
+      await guest.getByText('Als Gast ansehen').click()
       await guest.getByText('Angestellt').waitFor({ state: 'visible', timeout: 10_000 })
       // The Strom's basis page (ADR-0089): every question at once, picked by test id, then Weiter.
       const pick = (id, value) => guest.locator(`[data-testid="interview-option-${id}-${value}"]`).click({ force: true })

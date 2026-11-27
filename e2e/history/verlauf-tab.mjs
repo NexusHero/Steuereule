@@ -180,7 +180,7 @@ async function main() {
     // One row per year, newest first: one phrase, one amount.
     const years = await page.locator('[data-testid^="verlauf-jahr-20"]').evaluateAll((els) => els.map((e) => e.getAttribute('data-testid')))
     if (years.join() !== 'verlauf-jahr-2026,verlauf-jahr-2025,verlauf-jahr-2024,verlauf-jahr-2023,verlauf-jahr-2022,verlauf-jahr-2021') fail(`the timeline should list the years newest first, it is ${years.join()}`)
-    if (!(await textOf('verlauf-jahr-2024')).includes('Bescheid · 92 € weniger als erklärt')) fail('the cut year should say how much less came back')
+    if (!(await textOf('verlauf-jahr-2024')).includes('Bescheid −92 €')) fail('the cut year should say how much less came back')
     if (!(await textOf('verlauf-jahr-2025')).includes('+1.066–1.196 €')) fail('the waiting year should show its estimate as a range')
     if (!(await textOf('verlauf-jahr-2021')).includes('nur Bescheid')) fail('a year with only its Bescheid should say so')
     if (!(await textOf('verlauf-jahr-2023')).includes('änderbar bis 31.12.2027')) fail('an assessed year should say until when it can be changed')

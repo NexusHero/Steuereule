@@ -27,6 +27,8 @@ export const ICON_PATHS = {
   coins: ['M9 4a5 5 0 100 10A5 5 0 009 4z', 'M14.5 10.2a5 5 0 11-4.3 4.3'],
   house: ['M4 11l8-7 8 7', 'M6 10v10h12V10', 'M10 20v-5h4v5'],
   child: ['M12 4a3 3 0 100 6 3 3 0 000-6z', 'M6 20a6 6 0 0112 0'],
+  // the profile's rows
+  shield: ['M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6l7-3z'],
   printer: ['M7 8V3h10v5', 'M6 8h12a2 2 0 012 2v4a2 2 0 01-2 2H6a2 2 0 01-2-2v-4a2 2 0 012-2z', 'M7 14h10v7H7v-7z'],
 } as const
 

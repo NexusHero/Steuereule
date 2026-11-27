@@ -21,23 +21,16 @@ export function makeStyles(t: UiTheme) {
     marginBottom: t.space.s3,
     paddingVertical: t.space.s3,
   }
-  const uploadHeading: TextStyle = {
-    ...t.type.meta,
-    color: t.color.funkeHell,
-    textTransform: 'uppercase',
-    letterSpacing: 0.08 * t.size.xs,
-  }
   const uploadBody: TextStyle = {
     ...t.type.small,
-    color: t.color.nachtText,
-    opacity: 0.9,
+    color: t.color.tinte2,
   }
   const uploadControls: ViewStyle = {
     gap: t.space.s2,
   }
   const uploadOkText: TextStyle = {
     ...t.type.label,
-    color: t.color.funkeHell,
+    color: t.color.tinte,
   }
   const uploadErrText: TextStyle = {
     ...t.type.label,
@@ -143,7 +136,6 @@ export function makeStyles(t: UiTheme) {
     appbar,
     appbarTitle,
     uploadCard,
-    uploadHeading,
     uploadBody,
     uploadControls,
     uploadOkText,

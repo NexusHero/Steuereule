@@ -2,7 +2,7 @@
 //
 // THE CLASS OF BUG THIS EXISTS TO CATCH: the stakeholder built a Docker setup by hand
 // (API on :3000, web on :8080) and got all four symptoms at once — no Google button,
-// "Erstmal als Gast umschauen" -> "Das hat nicht geklappt.", account creation failing,
+// "Als Gast ansehen" -> "Das hat nicht geklappt.", account creation failing,
 // no QR code. Kaan's real-stack reproduction (PR discussion, #239-adjacent) found ALL FOUR
 // are the SAME root cause wearing four faces: the browser genuinely could not reach the
 // API, so every screen hit its own honestly-implemented error state. The likely mechanism
@@ -64,7 +64,7 @@ import { resolveApiTarget } from './api-target.mjs'
 // exact strings, including the two the stakeholder himself quoted.
 const COPY = {
   splashSkip: 'Weiter zur App',
-  guest: 'Erstmal als Gast umschauen',
+  guest: 'Als Gast ansehen',
   register: 'Neu hier? Konto anlegen',
   weiter: 'Weiter',
   firstNamePlaceholder: 'Kim',
