@@ -64,7 +64,7 @@ const onJobQuestion = () => screen.findByText('Mehrfachjobs? Nimm die Hauptquell
 const onForeignQuestion = () => screen.findByText('Wer in Deutschland wohnt und in der Schweiz arbeitet, hat eigene Regeln — die gehen wir komplett mit dir durch.')
 const onKinderQuestion = () => screen.findByText('Kindergeld, Kinderfreibetrag, Betreuungskosten — was für dich günstiger ist, rechnen wir selbst aus.')
 const onMaritalStatusQuestion = () => screen.findByText('Verheiratete geben meist eine gemeinsame Erklärung ab, das spart oft Steuern. Dann fragen wir noch kurz nach deinem Partner.')
-const onBusinessGate = () => screen.findByText('Ehrlich: dafür sind wir noch nicht gut genug.')
+const onBusinessGate = () => screen.findByText('Selbstständigkeit rechnen wir noch nicht.')
 const onChOnlyGate = () => screen.findByText('Ehrlich: andere Länder können wir noch nicht.')
 
 describe('InterviewScreen', () => {
@@ -343,7 +343,7 @@ describe('InterviewScreen', () => {
       await renderOnJobQuestion()
       fireEvent.click(screen.getByText('Angestellt'))
       await onForeignQuestion()
-      expect(screen.queryByText('Ehrlich: dafür sind wir noch nicht gut genug.')).toBeNull()
+      expect(screen.queryByText('Selbstständigkeit rechnen wir noch nicht.')).toBeNull()
     })
 
     it('Rente -> ausland question directly, NOT the Gewerbe gate (ADR-034: Rente is an answer, not a branch)', async () => {
@@ -351,7 +351,7 @@ describe('InterviewScreen', () => {
       fireEvent.click(screen.getByText('Rente'))
       // UX review M3: a pensioner gets the same question asked the way that fits, not "commute for work".
       await screen.findByText('Die meisten tippen hier „Nein“. Eine Rente aus der Schweiz trägst du später bei deiner Rente ein.')
-      expect(screen.queryByText('Ehrlich: dafür sind wir noch nicht gut genug.')).toBeNull()
+      expect(screen.queryByText('Selbstständigkeit rechnen wir noch nicht.')).toBeNull()
     })
 
     it('Beides -> Gewerbe gate, WITH the "prepare employee part" option', async () => {
@@ -483,7 +483,7 @@ describe('InterviewScreen', () => {
       await onJobQuestion()
       fireEvent.click(screen.getByText('Angestellt'))
       await onForeignQuestion() // not stuck behind the old gate
-      expect(screen.queryByText('Ehrlich: dafür sind wir noch nicht gut genug.')).toBeNull()
+      expect(screen.queryByText('Selbstständigkeit rechnen wir noch nicht.')).toBeNull()
     })
 
     it('the progress step and pill move back with the screen', async () => {
@@ -540,7 +540,7 @@ describe('InterviewScreen', () => {
       renderInterview({ lng: 'en' })
       await screen.findByText('Multiple jobs? Use your main source — the rest comes later.')
       fireEvent.click(screen.getByText('Self-employed'))
-      expect(await screen.findByText("Honestly: we're not good enough for that yet.")).toBeTruthy()
+      expect(await screen.findByText("We don't calculate self-employment yet.")).toBeTruthy()
     })
   })
 

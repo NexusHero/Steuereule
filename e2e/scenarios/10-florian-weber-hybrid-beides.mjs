@@ -20,7 +20,7 @@ export async function runScenario10(browser, webOrigin) {
   // remaining questions stay open below it; Weiter acknowledges the notice with the answers.
   await waitForStromStep(page, 'basis')
   await page.locator('[data-testid="interview-option-job-Beides"]').click()
-  await waitForStromNotice(page, 'strom-hinweis-gewerbe', ['Ehrlich: dafür sind wir noch nicht gut genug.', 'Bei „Beides“ sammeln wir deinen Angestellten-Teil komplett ein'])
+  await waitForStromNotice(page, 'strom-hinweis-gewerbe', ['Selbstständigkeit rechnen wir noch nicht.', 'Bei „Beides“ sammeln wir deinen Angestellten-Teil komplett ein'])
   await answerBasis(page, { job: 'Beides', ausland: 'Nein', kinder: 'Nein', familienstand: 'Ledig' })
 
   await completeLstb(page, { grossWage: '55000', wageTax: '10500', socialSecurity: '11000' })

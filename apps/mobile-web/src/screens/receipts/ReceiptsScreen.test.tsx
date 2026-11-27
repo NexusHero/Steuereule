@@ -160,7 +160,7 @@ describe('BelegeScreen', () => {
     renderReceipts()
     await screen.findByText('Noch keine Belege.')
     expect(
-      screen.getByText('Wirf Belege übers ganze Jahr rein — hier landen sie und warten auf das richtige Steuerjahr.'),
+      screen.getByText('Belege kannst du das ganze Jahr über hochladen.'),
     ).toBeTruthy()
   })
 

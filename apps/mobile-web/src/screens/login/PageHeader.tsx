@@ -29,7 +29,6 @@ export function PageHeader({ tr, t, showDivider }: PageHeaderProps) {
         <BetaBadge open={betaOpen} onToggle={() => setBetaOpen((open) => !open)} />
       </View>
       {betaOpen ? <BetaNotice /> : null}
-      <Text style={styles.subtitle}>{tr('login.subtitle')}</Text>
       {showDivider ? <View style={styles.headerDivider} /> : null}
     </View>
   )
@@ -53,7 +52,6 @@ function makeStyles(t: UiTheme) {
     letterSpacing: -0.03 * t.size['3xl'],
     color: t.color.tinte,
   }
-  const subtitle: TextStyle = { ...t.type.body, color: t.color.tinte2, textAlign: 'center', marginBottom: t.space.s5 }
   const headerDivider: ViewStyle = { height: 2, backgroundColor: t.color.linieWeich, borderRadius: 1, marginTop: t.space.s5, marginBottom: t.space.s5, width: '100%' }
-  return { header, lockup, wordmarkRow, wordmark, subtitle, headerDivider }
+  return { header, lockup, wordmarkRow, wordmark, headerDivider }
 }

@@ -11,11 +11,9 @@
     "verlauf": "Verlauf"
   },
   "splash": {
-    "greeting": "Steuern? Zack, erledigt.",
     "skipLabel": "Weiter zur App"
   },
   "login": {
-    "subtitle": "Dein Steuerjahr wartet — weiter, wo du aufgehört hast.",
     "google": "Weiter mit Google",
     "apple": "Weiter mit Apple",
     "googleNotConfigured": "Google ist auf diesem Gerät nicht eingerichtet — die anderen Wege stehen dir offen.",
@@ -191,7 +189,7 @@
       "fieldLabel": "Steuer-Identifikationsnummer",
       "placeholder": "12 345 678 901",
       "counter": "{{count}}/11 Ziffern",
-      "confirmed": "sitzt ✓",
+      "confirmed": "gültig",
       "later": "Hab ich gerade nicht da — später im Profil"
     },
     "step3": {
@@ -204,9 +202,7 @@
       "later": "Hab ich nicht zur Hand — später"
     },
     "summary": {
-      "heading": "Zack.",
-      "badge": "vorgefüllt",
-      "intro": "Deine Maske ist vorbereitet — jede Angabe kannst du jederzeit ändern.",
+      "heading": "Deine Angaben",
       "cardLabel": "Deine Maske",
       "rowFirstName": "Vorname",
       "rowLastName": "Nachname",
@@ -314,7 +310,7 @@
     "steuerIdLabel": "Steuer-Identifikationsnummer",
     "steuerIdPlaceholder": "12 345 678 901",
     "steuerIdCounter": "{{count}}/11 Ziffern",
-    "steuerIdConfirmed": "sitzt ✓",
+    "steuerIdConfirmed": "gültig",
     "steuerNrLabel": "Steuernummer (optional)",
     "steuerNrPlaceholder": "12/345/67890",
     "save": "Speichern",
@@ -1080,7 +1076,7 @@
           "kz339": "Wahl- und Zusatzleistungen (ausländisch)"
         }
       },
-      "titel": "🔍 Glas-Erklärung: Amtliche Formular-Vorschau",
+      "titel": "Glas-Erklärung: Amtliche Formular-Vorschau",
       "untertitel": "Sieh live, in welchem amtlichen Vordruck und welcher Zeile deine Angaben landen – inklusive Herkunft und Direktsprung in die Maske.",
       "oeffnen": "Formularzeilen ansehen ▼",
       "leer": "Noch keine Formularzeilen befüllt. Sobald du Angaben im Strom, in den Masken oder über die Eule machst, erscheinen sie hier.",
@@ -1448,8 +1444,8 @@
       }
     },
     "gewerbe": {
-      "heading": "Ehrlich: dafür sind wir noch nicht gut genug.",
-      "body1": "Selbstständige brauchen EÜR, Anlage G/S und Umsatzsteuer — das kann dieser Teil von SteuerEule noch nicht. Halbe Steuererklärungen liefern wir nicht.",
+      "heading": "Selbstständigkeit rechnen wir noch nicht.",
+      "body1": "Selbstständige brauchen EÜR, Anlage G/S und Umsatzsteuer. Das kann dieser Teil von SteuerEule noch nicht.",
       "body2": "Was heute schon geht: vorbereiten. Bei „Beides“ sammeln wir deinen Angestellten-Teil komplett ein — abgegeben wird erst, wenn das Gewerbe drin ist. Eine Steuererklärung ist unteilbar.",
       "prepareEmployeePart": "Angestellten-Teil vorbereiten — Abgabe erst mit Gewerbe"
     },
@@ -2176,7 +2172,7 @@
       "herkunftRegel": "Solange Angaben offen sind, zeigen wir eine Spanne statt eines festen Betrags.",
       "herkunftRechenweg_one": "{{count}} offener Posten × {{perItem}} Unsicherheit",
       "herkunftRechenweg_other": "{{count}} offene Posten × {{perItem}} Unsicherheit",
-      "gatedHeading": "Ehrlich: dafür sind wir noch nicht gut genug.",
+      "gatedHeading": "Selbstständigkeit rechnen wir noch nicht.",
       "gatedBody": "{{name}} kann SteuerEule noch nicht rechnen. Dein erfasstes Einkommen bleibt sichtbar — abgegeben wird erst, wenn alles drin ist.",
       "refundLater": "Die Erstattung rechnen wir in einem späteren Schritt.",
       "erstattungLabel": "Voraussichtliche Erstattung",
@@ -2195,7 +2191,7 @@
         "offen": "Offen",
         "erledigt": "Erledigt",
         "keinThema": "Trifft nicht zu",
-        "betragOffen": "⏳ Betrag offen",
+        "betragOffen": "Betrag offen",
         "optional": "Optional",
         "fehler": "Nicht geladen"
       },
@@ -2386,8 +2382,8 @@
       "applied_other": "✓ {{count}} Änderungen von deiner Eule übernommen",
       "effect": "+{{betrag}} voraussichtlicher Effekt",
       "dismiss": "✕ Schließen",
-      "provenanceReceiptOwl": "📎 Beleg + Eule",
-      "provenanceOwl": "🦉 Von Eule",
+      "provenanceReceiptOwl": "Beleg + Eule",
+      "provenanceOwl": "Von Eule",
       "provenanceUser": "✓ Selbst eingetragen"
     },
     "fortschritt_one": "{{erledigt}} von {{count}} Schritt erledigt",
@@ -2488,7 +2484,7 @@
     "offen_other": "{{count}} offen",
     "empty": {
       "heading": "Noch keine Belege.",
-      "message": "Wirf Belege übers ganze Jahr rein — hier landen sie und warten auf das richtige Steuerjahr."
+      "message": "Belege kannst du das ganze Jahr über hochladen."
     },
     "upload": {
       "heading": "Beleg hochladen (PDF / Foto)",
@@ -2995,7 +2991,7 @@
     "heroTitle": "Deine Eule",
     "heroBody": "Sie kennt dein Steuerjahr und sagt dir, wo Geld liegen bleibt — mit Rechtsgrundlage, damit du selbst entscheidest.",
     "optInLabel": "Eulen-Modus aktivieren (proaktive Hinweise ab 50 €, keine personenbezogenen Daten an KI)",
-    "emptyTitle": "Alles geprüft. Keine offenen Fragen!",
+    "emptyTitle": "Keine offenen Fragen.",
     "emptyHelp": "Deine Angaben sind schlüssig. Kommen neue Belege oder Angaben dazu, prüft die Eule beim nächsten Öffnen erneut.",
     "rechtsstand": "Geprüft nach den Regeln der App für dieses Steuerjahr, jedes Mal wenn du die Eule öffnest.",
     "counter": "Frage {{current}} von {{total}}",
@@ -3047,22 +3043,22 @@
       "chooseAlternative": "Diesen Weg übernehmen",
       "alternativesHint": "Wähle einen der Wege — beide zusammen geht nicht.",
       "applying": "Wird übernommen …",
-      "conflictTitle": "⚠️ Konflikt beim Übernehmen",
+      "conflictTitle": "Konflikt beim Übernehmen",
       "forceApply": "Mit neuem Stand trotzdem übernehmen",
       "dismissConflict": "Schließen",
       "backToStage": "← Zurück zu den Eulen-Änderungen",
-      "maskFocus": "🦉 Eulen-Fokus · Prüfe deine Maske",
+      "maskFocus": "Eulen-Fokus · Prüfe deine Maske",
       "maskUnplaced": "Diese Angabe steht im Interview. Öffne dort die passende Frage.",
       "manualNotice": "Diese Maske enthält Stammdaten und ist für automatische KI-Änderungen gesperrt (Manuelle Eingabe).",
       "inspectMask": "Maske ansehen →",
       "receiptResultTitle": "Beleg geprüft: {{fileName}}",
-      "receiptBlocked": "⚠️ Sensibler Inhalt geschwärzt (Mandantengeheimnis)",
+      "receiptBlocked": "Sensibler Inhalt geschwärzt (Mandantengeheimnis)",
       "pauschbetragBadge": "Im Pauschbetrag (1.230 €)",
-      "provenanceReceiptOwl": "📎 Beleg + Eule",
-      "provenanceOwlDraft": "🦉 Eulen-Entwurf",
+      "provenanceReceiptOwl": "Beleg + Eule",
+      "provenanceOwlDraft": "Eulen-Entwurf",
       "receiptInInbox": "Das Original liegt in deinen Belegen →",
       "tabDrafts": "Entwürfe & Hinweise",
-      "tabForms": "🔍 Glas-Erklärung"
+      "tabForms": "Glas-Erklärung"
     }
   },
   "advisor": {
@@ -3206,18 +3202,10 @@
         "failed": "Der Verlauf konnte nicht geleert werden."
       },
       "thinkingPhrases": [
-        "Die Eule blättert in deiner Akte …",
-        "Die Eule rückt die Brille zurecht …",
-        "Die Eule schlägt im EStG nach …",
-        "Die Eule rechnet nach …",
-        "Die Eule sortiert deine Belege …",
-        "Die Eule prüft die Pauschalen …",
-        "Die Eule vergleicht Vorher und Nachher …",
-        "Die Eule spitzt den Bleistift …",
-        "Die Eule zählt die Arbeitstage …",
-        "Die Eule schaut, was noch fehlt …",
-        "Die Eule legt die Paragrafen bereit …",
-        "Die Eule formuliert die Antwort …"
+        "Liest deine Angaben …",
+        "Prüft die Rechtsgrundlage …",
+        "Rechnet nach …",
+        "Formuliert die Antwort …"
       ],
       "basisMode": "Basis-Modus: Die KI ist gerade nicht erreichbar, diese Antwort stammt aus den festen Regeln der Eule.",
       "choicesCaption": "Schnellantwort wählen:",

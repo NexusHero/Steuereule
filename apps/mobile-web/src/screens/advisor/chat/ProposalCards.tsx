@@ -139,7 +139,7 @@ function FieldProposalCard({
 
       {receiptLinked ? (
         <Text style={styles.receiptLinkedBadge} testID={`${testIDPrefix}-receipt-badge`}>
-          {tr('eule.workspace.provenanceReceiptOwl', '📎 Beleg + Eule')}
+          {tr('eule.workspace.provenanceReceiptOwl', 'Beleg + Eule')}
         </Text>
       ) : null}
 

@@ -37,7 +37,7 @@ describe('the self-employment switch in the interview', () => {
     await screen.findByText('Mehrfachjobs? Nimm die Hauptquelle — der Rest kommt später.')
     fireEvent.click(screen.getByText('Selbstständig'))
     await screen.findByText('Wer in Deutschland wohnt und in der Schweiz arbeitet, hat eigene Regeln — die gehen wir komplett mit dir durch.')
-    expect(screen.queryByText('Ehrlich: dafür sind wir noch nicht gut genug.')).toBeNull()
+    expect(screen.queryByText('Selbstständigkeit rechnen wir noch nicht.')).toBeNull()
   })
 
   it('„Beides“ leads on into the employee part without the gate when the switch is on', async () => {
@@ -54,7 +54,7 @@ describe('the self-employment switch in the interview', () => {
     mount(<InterviewScreen taxYear={YEAR} onDone={() => {}} />)
     await screen.findByText('Mehrfachjobs? Nimm die Hauptquelle — der Rest kommt später.')
     fireEvent.click(screen.getByText('Selbstständig'))
-    expect(await screen.findByText('Ehrlich: dafür sind wir noch nicht gut genug.')).toBeTruthy()
+    expect(await screen.findByText('Selbstständigkeit rechnen wir noch nicht.')).toBeTruthy()
   })
 })
 

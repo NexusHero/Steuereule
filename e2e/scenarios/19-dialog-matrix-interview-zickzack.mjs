@@ -47,7 +47,7 @@ export async function runScenario19(browser, webOrigin) {
 
   // 1. Job = Selbstständig -> terminal Gewerbe-Gate, nothing after it.
   await opt('job', 'Selbstständig').click()
-  await gewerbe.locator('text=Ehrlich: dafür sind wir noch nicht gut genug.').waitFor({ state: 'visible', timeout: 10_000 })
+  await gewerbe.locator('text=Selbstständigkeit rechnen wir noch nicht.').waitFor({ state: 'visible', timeout: 10_000 })
   if (await page.locator('text=Angestellten-Teil vorbereiten').isVisible()) {
     fail('[Scenario 19] Terminal Gewerbe-Gate must not show forward button for Selbstständig')
   }

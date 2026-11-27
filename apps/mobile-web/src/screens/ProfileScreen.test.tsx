@@ -238,7 +238,7 @@ describe('ProfilScreen', () => {
     fireEvent.click(screen.getByText('Bearbeiten'))
 
     expect(screen.getByText('11/11 Ziffern')).toBeTruthy()
-    expect(screen.getByText('sitzt ✓')).toBeTruthy()
+    expect(screen.getByText('gültig')).toBeTruthy()
   })
 
   it('discards edits and returns to the original values on Abbrechen', async () => {

@@ -285,7 +285,7 @@ describe('Glas-Erklärung — states', () => {
     const loader = { loadTemplate: vi.fn().mockRejectedValue(new Error('kein Vordruck')) }
     renderPreview({ hideHeading: true, acroFormLoader: loader })
     await screen.findByTestId('glass-form-preview')
-    expect(screen.queryByText('🔍 Glas-Erklärung: Amtliche Formular-Vorschau')).toBeNull()
+    expect(screen.queryByText('Glas-Erklärung: Amtliche Formular-Vorschau')).toBeNull()
     fireEvent.click(screen.getByText('📄 Original-Vordruck'))
     expect(await screen.findByTestId('acro-vorlage-fehler')).toBeTruthy()
     await waitFor(() => expect(loader.loadTemplate).toHaveBeenCalled())

@@ -81,7 +81,7 @@ function OwlModeWorkbenchBody({ owl, taxYear, onDone, onAcceptPath, styles }: Ow
           onPress={() => setWorkbenchTab('forms')}
           testID="eule-workbench-tab-forms"
         >
-          {tr('eule.workspace.tabForms', '🔍 Glas-Erklärung')}
+          {tr('eule.workspace.tabForms', 'Glas-Erklärung')}
         </Chip>
       </View>
 
@@ -105,7 +105,7 @@ function OwlModeWorkbenchBody({ owl, taxYear, onDone, onAcceptPath, styles }: Ow
               <Text style={styles.help}>{bridge.lastParsedReceipt.parsed.summary}</Text>
               {bridge.lastParsedReceipt.securityBlocked ? (
                 <Text style={styles.conflictText}>
-                  {tr('eule.workspace.receiptBlocked', '⚠️ Sensibler Inhalt geschwärzt (Mandantengeheimnis)')}
+                  {tr('eule.workspace.receiptBlocked', 'Sensibler Inhalt geschwärzt (Mandantengeheimnis)')}
                 </Text>
               ) : null}
             </Card>
@@ -113,7 +113,7 @@ function OwlModeWorkbenchBody({ owl, taxYear, onDone, onAcceptPath, styles }: Ow
 
           {bridge?.staleConflict ? (
             <Card variant="default" style={styles.conflictCard} testID="eule-stale-conflict-banner">
-              <Text style={styles.conflictTitle}>{tr('eule.workspace.conflictTitle', '⚠️ Konflikt beim Übernehmen')}</Text>
+              <Text style={styles.conflictTitle}>{tr('eule.workspace.conflictTitle', 'Konflikt beim Übernehmen')}</Text>
               <Text style={styles.conflictText}>{bridge.staleConflict.message}</Text>
               <View style={styles.conflictActions}>
                 <Button

@@ -152,7 +152,7 @@ describe('CockpitScreen', () => {
     mockCockpit({ taxYear: TAX_YEAR, status: { kind: 'gated', sum: 50000, gated: ['Gewerbe'] }, openItems: 0, submission: null })
     renderCockpit()
 
-    expect(await screen.findByText('Ehrlich: dafür sind wir noch nicht gut genug.')).toBeTruthy()
+    expect(await screen.findByText('Selbstständigkeit rechnen wir noch nicht.')).toBeTruthy()
     expect(screen.getByText('Gewerbe kann SteuerEule noch nicht rechnen. Dein erfasstes Einkommen bleibt sichtbar — abgegeben wird erst, wenn alles drin ist.')).toBeTruthy()
   })
 
@@ -523,7 +523,7 @@ describe('CockpitScreen — Kinder & Eulen-Modus entries', () => {
       expect((await screen.findByTestId('cockpit-kachel-lstb-status')).textContent).toBe('Erledigt')
       // The progress bar has a name of its own (WCAG 4.1.2, axe aria-progressbar-name).
       expect(screen.getByTestId('cockpit-fortschritt').getAttribute('aria-label')).toMatch(/von \d+ Schritten erledigt/)
-      expect(screen.getByTestId('cockpit-kachel-lebenslagen-status').textContent).toBe('⏳ Betrag offen')
+      expect(screen.getByTestId('cockpit-kachel-lebenslagen-status').textContent).toBe('Betrag offen')
       expect(screen.getByTestId('cockpit-kachel-einkuenfte-status').textContent).toBe('Offen')
 
       const nextButton = await screen.findByTestId('cockpit-weiter')

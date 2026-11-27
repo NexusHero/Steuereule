@@ -225,7 +225,7 @@ describe('REQ-012 — Onboarding vertical-join (ATDD acceptance, steuereule#53)'
     fillTaxId('12345678901')
     fireEvent.click(screen.getByText('Continue'))
     fireEvent.click(screen.getByText('Continue'))
-    await screen.findByText('Done.')
+    await screen.findByText('Your details')
 
     fireEvent.click(screen.getByText('Continue'))
 

@@ -1,6 +1,6 @@
 import { ScrollView, View, Text } from 'react-native'
 import { useTranslation } from 'react-i18next'
-import { Button, Card, Sticker, useTheme, type Breakpoint } from '@steuereule/ui'
+import { Button, Card, useTheme, type Breakpoint } from '@steuereule/ui'
 import { APP_NS } from '../../i18n/resources'
 import { makeOnboardingStyles } from './styles'
 import type { OnboardingProfile } from './profileMapping'
@@ -29,9 +29,7 @@ export function OnboardingSummary({ profile, onSubmit, onEdit, isSubmitting, sub
     <ScrollView contentContainerStyle={bp === 's' ? styles.screen : styles.wideScreen} keyboardShouldPersistTaps="handled" testID="screen-container">
       <View style={styles.summaryHeadingRow}>
         <Text style={styles.summaryHeading}>{tr('onboarding.summary.heading')}</Text>
-        <Sticker>{tr('onboarding.summary.badge')}</Sticker>
       </View>
-      <Text style={styles.help}>{tr('onboarding.summary.intro')}</Text>
 
       <Card variant="nacht">
         <Text style={styles.cardLabel}>{tr('onboarding.summary.cardLabel')}</Text>

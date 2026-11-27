@@ -30,6 +30,6 @@ describe('thinkingLabelAt (#451 decision 4)', () => {
   it('keeps the interval inside the 2–3 s window the ticket asks for', () => {
     expect(THINKING_PHRASE_INTERVAL_MS).toBeGreaterThanOrEqual(2000)
     expect(THINKING_PHRASE_INTERVAL_MS).toBeLessThanOrEqual(3000)
-    expect(THINKING_PHRASE_COUNT).toBe(12)
+    expect(THINKING_PHRASE_COUNT).toBe(4)
   })
 })

@@ -50,8 +50,8 @@ export function OwlModeDrafts({ owl, styles }: OwlModeDraftsProps) {
                   </View>
                   <Text style={styles.draftProvenance}>
                     {isReceipt
-                      ? tr('eule.workspace.provenanceReceiptOwl', '📎 Beleg + Eule')
-                      : tr('eule.workspace.provenanceOwlDraft', '🦉 Eulen-Entwurf')}
+                      ? tr('eule.workspace.provenanceReceiptOwl', 'Beleg + Eule')
+                      : tr('eule.workspace.provenanceOwlDraft', 'Eulen-Entwurf')}
                   </Text>
                   <Text style={styles.draftProvenance} testID={`draft-form-line-${draft.actionId}`}>
                     {`📄 ${formLineForField(draft.screen, draft.field).label}`}

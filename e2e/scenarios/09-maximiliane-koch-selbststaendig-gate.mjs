@@ -20,7 +20,7 @@ export async function runScenario09(browser, webOrigin) {
   await waitForStromStep(page, 'basis')
   await page.locator('[data-testid="interview-option-job-Selbstständig"]').click()
 
-  const gate = await waitForStromNotice(page, 'strom-hinweis-gewerbe', ['Ehrlich: dafür sind wir noch nicht gut genug.', 'Selbstständige brauchen EÜR, Anlage G/S und Umsatzsteuer'])
+  const gate = await waitForStromNotice(page, 'strom-hinweis-gewerbe', ['Selbstständigkeit rechnen wir noch nicht.', 'Selbstständige brauchen EÜR, Anlage G/S und Umsatzsteuer'])
 
   const forwardOption = page.locator('text=Angestellten-Teil vorbereiten')
   if ((await forwardOption.count()) > 0 && (await forwardOption.isVisible())) {

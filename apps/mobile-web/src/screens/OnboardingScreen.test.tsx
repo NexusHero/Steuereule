@@ -109,7 +109,7 @@ describe('OnboardingScreen', () => {
 
     fillTaxId('1234567890')
     expect(screen.getByText('10/11 Ziffern')).toBeTruthy()
-    expect(screen.queryByText('sitzt ✓')).toBeNull()
+    expect(screen.queryByText('gültig')).toBeNull()
     fireEvent.click(screen.getByText('Weiter'))
     // CTA stayed disabled: still on step 2.
     expect(screen.queryByText('Steht auf deinem letzten Bescheid. Keinen zur Hand? Später geht auch.')).toBeNull()
@@ -117,7 +117,7 @@ describe('OnboardingScreen', () => {
     fillTaxId('12345678901')
     expect(screen.getByDisplayValue('12 345 678 901')).toBeTruthy()
     expect(screen.getByText('11/11 Ziffern')).toBeTruthy()
-    expect(screen.getByText('sitzt ✓')).toBeTruthy()
+    expect(screen.getByText('gültig')).toBeTruthy()
     fireEvent.click(screen.getByText('Weiter'))
     expect(screen.getByText('Steht auf deinem letzten Bescheid. Keinen zur Hand? Später geht auch.')).toBeTruthy()
   })

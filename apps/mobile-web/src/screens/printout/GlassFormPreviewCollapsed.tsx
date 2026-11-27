@@ -15,7 +15,7 @@ export function GlassFormPreviewCollapsed({ onOpen }: { readonly onOpen: () => v
       <View style={styles.collapsedHeader}>
         <View style={{ flex: 1 }}>
           <Text style={styles.collapsedTitle}>
-            {tr('ausdruck.glasErklaerung.titel', '🔍 Glas-Erklärung: Amtliche Formular-Vorschau')}
+            {tr('ausdruck.glasErklaerung.titel', 'Glas-Erklärung: Amtliche Formular-Vorschau')}
           </Text>
           <Text style={styles.collapsedSubtitle}>
             {tr(

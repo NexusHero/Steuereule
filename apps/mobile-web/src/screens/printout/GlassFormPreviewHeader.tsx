@@ -29,7 +29,7 @@ export function GlassFormPreviewHeader({
       <View style={styles.titleColumn}>
         {hideHeading ? null : (
           <Text style={styles.heading}>
-            {tr('ausdruck.glasErklaerung.titel', '🔍 Glas-Erklärung: Amtliche Formular-Vorschau')}
+            {tr('ausdruck.glasErklaerung.titel', 'Glas-Erklärung: Amtliche Formular-Vorschau')}
           </Text>
         )}
         <Text style={styles.subheading}>
