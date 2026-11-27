@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef } from 'react'
+import { useMoreTopicsExpanded } from './moreTopics'
 import { Pressable, Text, View, type TextStyle, type ViewStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { Button, Card, hapticSuccess, useBreakpoint, useTheme, type UiTheme } from '@steuereule/ui'
@@ -187,7 +188,7 @@ export function CockpitTiles({
   const t = useTheme()
   const styles = makeStyles(t)
   const { t: tr } = useTranslation(APP_NS)
-  const [moreExpanded, setMoreExpanded] = useState(false)
+  const [moreExpanded, setMoreExpanded] = useMoreTopicsExpanded()
   const prevStatusesRef = useRef<{ year: number | undefined; map: Map<TileId, TileStatus> }>({
     year,
     map: new Map(),

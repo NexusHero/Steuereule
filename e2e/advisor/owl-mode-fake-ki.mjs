@@ -76,6 +76,22 @@ const isTurn = (request) => request.method() === 'POST' && new URL(request.url()
  * message sent then is not sent. The reads, an announced opening and the running turns tell when the chat is free.
  */
 const chats = new WeakMap()
+
+// The API allows ten turns a minute (`@Throttle` on POST /advisor/stream, advisor.controller.ts). Every turn that
+// leaves any page of this gate is noted here, the owl's own openings included, so `ask` can wait for room instead
+// of sending the eleventh and having it refused (429): a refused turn answers nothing, and the row waiting for
+// that answer fails for a reason that is not its subject. Nothing clears or loosens the limit.
+const TURN_LIMIT = { windowMs: 60_000, max: 10 }
+const turnsSent = []
+async function turnLimitHasRoom(label) {
+  const inWindow = () => turnsSent.filter((at) => Date.now() - at < TURN_LIMIT.windowMs)
+  const recent = inWindow()
+  if (recent.length < TURN_LIMIT.max) return
+  // Room opens when the oldest turns leave the window; wait for as many as are over.
+  const waitMs = recent[recent.length - TURN_LIMIT.max] + TURN_LIMIT.windowMs - Date.now() + 250
+  console.log(`[${TAG}] ${label}: ${recent.length}/${TURN_LIMIT.max} turns in the last minute — waiting ${waitMs}ms rather than sending into the limit.`)
+  await new Promise((resolve) => setTimeout(resolve, waitMs))
+}
 function watchChat(page) {
   let chat = chats.get(page)
   if (chat) return chat
@@ -83,6 +99,7 @@ function watchChat(page) {
   page.on('request', (request) => {
     if (isOpeningRead(request)) chat.readingOpening += 1
     if (isTurn(request)) {
+      turnsSent.push(Date.now())
       chat.turnsRunning += 1
       // Any turn settles the announcement: the opening itself, or a message that got in first (the conversation
       // is then no longer empty and the owl does not open it).
@@ -135,6 +152,7 @@ async function openEule(page) {
 /** Sends a message and makes sure it left the browser: a click that starts no turn fails here, by name. */
 async function ask(page, text) {
   await chatIsFree(page, `ask „${text}“`)
+  await turnLimitHasRoom(`ask „${text}“`)
   await page.locator('[data-testid="advisor-chat-input"]').fill(text)
   const sent = page.waitForRequest((request) => isTurn(request) && (request.postData() ?? '').includes(text), { timeout: 10_000 })
   await page.locator('[data-testid="advisor-chat-send"]').click()

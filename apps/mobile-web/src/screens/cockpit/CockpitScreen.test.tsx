@@ -620,6 +620,30 @@ describe('CockpitScreen — Kinder & Eulen-Modus entries', () => {
       expect(onOpenSubmission).toHaveBeenCalledWith(TAX_YEAR)
     })
 
+    it('keeps „Weitere Themen“ open when the first figures arrive after the user opened it', async () => {
+      // Without figures the cockpit is the empty layout, with them the loaded one: the tiles are mounted anew.
+      // What the user opened must survive that, or the section closes under their finger (seen in the
+      // navigation budget gate, scenario 05: the click was answered, then undone by the arriving summary).
+      let calls = 0
+      server.use(
+        http.get(COCKPIT_URL, () => {
+          calls += 1
+          return HttpResponse.json(calls === 1 ? null : LOADED_SUMMARY, { status: 200 })
+        }),
+      )
+      server.use(http.get(`*/v1/steuerjahre/${TAX_YEAR}/steuerschaetzung`, () => HttpResponse.json({ kind: 'offen', missing: ['lstb'] })))
+      mockInterview({ job: 'Angestellt', ausland: 'Nein', kinder: '1 Kind', familienstand: 'Ledig' })
+      renderCockpit({ isSignedIn: true, onOpenTile: vi.fn() })
+
+      fireEvent.click(await screen.findByTestId('cockpit-weitere-themen'))
+      expect(screen.getByTestId('cockpit-kachel-kapital')).toBeTruthy()
+
+      regainFocus()
+
+      await screen.findByText('Erfasstes Einkommen')
+      expect(screen.getByTestId('cockpit-kachel-kapital')).toBeTruthy()
+    })
+
     it('does not repeat topics as buttons once the tiles show them', async () => {
       mockCockpit(LOADED_SUMMARY)
       mockInterview({ job: 'Angestellt', ausland: 'Nein', kinder: '1 Kind', familienstand: 'Ledig' })
