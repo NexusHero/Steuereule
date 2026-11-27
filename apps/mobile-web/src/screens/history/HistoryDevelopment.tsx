@@ -468,7 +468,7 @@ function YearDetail({
     const n = listItem.deviations
     diffButton = (
       <Pressable accessibilityRole="button" onPress={() => onOpenDiff(year)} style={s.openDiff} testID="verlauf-detail-abgleich">
-        <Text style={s.strong}>{tr('verlauf.detail.abgleich')}</Text>
+        <Text style={[s.strong, s.openDiffLabel]}>{tr('verlauf.detail.abgleich')}</Text>
         <Text style={[s.counter, n > 0 ? s.counterBad : s.counterOk]}>{n > 0 ? tr('verlauf.detail.abweichungen', { count: n }) : tr('verlauf.detail.gleich')}</Text>
       </Pressable>
     )
@@ -572,11 +572,13 @@ function makeStyles(t: UiTheme) {
   const dataCell: TextStyle = { ...t.type.meta, color: t.color.tinte, width: 112, paddingHorizontal: t.space.s2, paddingVertical: 6, fontVariant: ['tabular-nums'] }
   const dataHead: TextStyle = { color: t.color.tinte2, fontWeight: t.weight.schwer }
   const openDiff: ViewStyle = { flexDirection: 'row', alignSelf: 'flex-start', alignItems: 'center', gap: t.space.s2, borderWidth: t.space.kontur, borderColor: controlLine(t), backgroundColor: t.color.karte, borderRadius: t.radius.pille, paddingHorizontal: t.space.s3, paddingVertical: 6, minHeight: 36, ...t.shadow.hartS }
-  const counter: TextStyle = { ...t.type.captionStrong, color: t.color.karte, borderRadius: t.radius.pille, paddingHorizontal: 7, overflow: 'hidden' }
-  const counterBad: TextStyle = { backgroundColor: t.color.fehler }
+  const openDiffLabel: TextStyle = { flexShrink: 1 }
+  const counter: TextStyle = { ...t.type.captionStrong, color: t.color.karte, borderRadius: t.radius.pille, paddingHorizontal: 7, overflow: 'hidden', flexShrink: 0 }
+  // A change by the tax office is a notice, not a fault: the quiet notice surface with its ochre edge, text in ink.
+  const counterBad: TextStyle = { backgroundColor: t.color.warnWeich, color: t.color.tinte, borderWidth: t.space.kontur, borderColor: t.color.warn }
   const counterOk: TextStyle = { backgroundColor: t.color.ok }
   return {
     ...base, section, chips, wrap, chip, chipActive, chipText, chipTextActive, kpis, kpi, kpiActive, kpiValue, raster, rasterMain, rasterSide, legend, legendItem, legendText, swatch,
-    swatchLine, tiers, tableToggle, link, dataRow, dataCell, dataHead, openDiff, counter, counterBad, counterOk,
+    swatchLine, tiers, tableToggle, link, dataRow, dataCell, dataHead, openDiff, openDiffLabel, counter, counterBad, counterOk,
   }
 }
