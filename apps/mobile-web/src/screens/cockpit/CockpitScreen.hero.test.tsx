@@ -46,12 +46,40 @@ describe('the hero result', () => {
     expect(screen.getByTestId('cockpit-erstattung-betrag').textContent).toMatch(/150.*300/)
   })
 
+  it('leads a range with its approximate middle and shows the range right under it', async () => {
+    serve()
+    estimate({ from: 856, to: 986 })
+    renderCockpit()
+    await screen.findByText('Voraussichtliche Erstattung')
+    expect(screen.getByTestId('cockpit-erstattung-mitte').textContent).toMatch(/^ca\. 921\s*€$/)
+    expect(screen.getByTestId('cockpit-erstattung-betrag').textContent).toMatch(/^856\s*–\s*986\s*€$/)
+    expect(screen.getByTestId('cockpit-erstattung').textContent).toMatch(/Voraussichtliche Erstattung.*ca\. 921.*856.*986/)
+  })
+
+  it('leads a back-payment range with its middle as a plain amount', async () => {
+    serve()
+    estimate({ from: -300, to: -100 })
+    renderCockpit()
+    await screen.findByText('Voraussichtliche Nachzahlung')
+    expect(screen.getByTestId('cockpit-erstattung-mitte').textContent).toMatch(/^ca\. 200\s*€$/)
+    expect(screen.getByTestId('cockpit-erstattung-betrag').textContent).toMatch(/^100\s*–\s*300\s*€$/)
+  })
+
+  it('names no middle when the result may go either way, nor for a point result', async () => {
+    serve()
+    estimate({ from: -150, to: 300 })
+    renderCockpit()
+    await screen.findByText('Voraussichtliches Ergebnis')
+    expect(screen.queryByTestId('cockpit-erstattung-mitte')).toBeNull()
+  })
+
   it('shows one figure for a point result', async () => {
     serve()
     estimate({ from: 500, to: 500 })
     renderCockpit()
     await screen.findByText('Voraussichtliche Erstattung')
     expect(screen.getByTestId('cockpit-erstattung-betrag').textContent).toMatch(/^500\s*€$/)
+    expect(screen.queryByTestId('cockpit-erstattung-mitte')).toBeNull()
   })
 })
 
