@@ -12,7 +12,7 @@ import { pathToFileURL } from 'node:url'
 import { PrismaClient } from '@prisma/client'
 import { resolveFieldEncryptionKey } from '../src/prisma/field-encryption-key.js'
 import { prismaRotationStore, rotateFieldEncryption, rotationKeys, type RotationCount } from '../src/prisma/field-key-rotation.js'
-import { createDatabaseAdapter } from '../src/config/database-adapter.js'
+import { createDatabaseAdapter } from '../src/common/database-adapter.js'
 
 export async function rotateFieldEncryptionKey(
   options: { check: boolean },

@@ -123,6 +123,9 @@ importers:
       '@prisma/client':
         specifier: 7.10.1
         version: 7.10.1(prisma@7.10.1(@types/node@22.20.1)(@types/react@19.2.17)(magicast@0.5.5)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(typescript@7.0.2))(typescript@7.0.2)
+      '@prisma/client-runtime-utils':
+        specifier: 7.10.1
+        version: 7.10.1
       '@prisma/generator-helper':
         specifier: 7.10.1
         version: 7.10.1

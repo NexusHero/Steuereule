@@ -23,7 +23,7 @@ import { HebesatzDirectory } from '../src/business/hebesatz.js'
 import { PrismaInterviewAnswerRepository } from '../src/interview/interview-answer.repository.prisma.js'
 import { publishEmailHashSalt, resolveFieldEncryptionKey } from '../src/prisma/field-encryption-key.js'
 import { transactionAwareClient } from '../src/prisma/transaction.js'
-import { createDatabaseAdapter } from '../src/config/database-adapter.js'
+import { createDatabaseAdapter } from '../src/common/database-adapter.js'
 
 if (process.env.NODE_ENV === 'production') {
   console.error('seed-selbststaendig is a dev seed and refuses to run with NODE_ENV=production.')

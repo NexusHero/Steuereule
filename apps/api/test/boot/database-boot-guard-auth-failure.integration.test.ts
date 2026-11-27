@@ -31,7 +31,7 @@ import { fileURLToPath } from 'node:url'
 import { PrismaClient } from '@prisma/client'
 import { describe, expect, it } from 'vitest'
 import { resolveDatabaseUrl } from '../../src/config/database-url.js'
-import { createDatabaseAdapter } from '../../src/config/database-adapter.js'
+import { createDatabaseAdapter } from '../../src/common/database-adapter.js'
 
 const apiRoot = fileURLToPath(new URL('../../', import.meta.url))
 const tsxBin = fileURLToPath(new URL('../../node_modules/.bin/tsx', import.meta.url))

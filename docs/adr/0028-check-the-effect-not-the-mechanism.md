@@ -222,3 +222,21 @@ stakeholder**, and choosing it requires demonstrating the mechanism first, not a
 - **Refuse in every environment, not just production.** Rejected as the same wrongful-rejection shape
   the earlier targets carried: it would break `cp .env.example .env` for no correctness gain, since in
   development there is no production property being traded away.
+
+## Amendment — 2026-11-27: Prisma 7 reads no `.env`; the guard stays
+
+The leak measured above came from the Prisma 6 client, which merged the schema-adjacent `apps/api/.env`
+into `process.env` at import. Prisma 7's client reads no file. `test/boot/assert-env-not-file-sourced.test.ts`
+row 5 measures that against the real entry point: with the file on disk and the guarded variables unset, the
+process stops on its missing configuration and names none of the file's values.
+
+- The guard (`assertEnvNotFileSourced`) stays. It checks the effect, a guarded value that arrived after the
+  process began, whoever caused it.
+- Its control proof no longer generates two clients. A fixture module imported by the copied `app.module.ts`
+  merges the file fill-only, as the Prisma 6 client did; rows 1, 2 and 4 run against that tree.
+- Local development: `pnpm --filter @steuereule/api start` now passes `--env-file-if-exists=.env` to Node,
+  because nothing loads `apps/api/.env` implicitly any more. The image's `CMD` does not, so production still
+  takes every value from the operator's configuration.
+- The keystore client is generated into `apps/api/node_modules/@prisma-keystore/client` and requires
+  `@prisma/client-runtime-utils` from there, so the API lists that package as a direct dependency. The row
+  "compiled with tsc, booted as the image does" fails without it.

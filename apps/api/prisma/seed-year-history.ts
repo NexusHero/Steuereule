@@ -28,7 +28,7 @@ import { PrismaClient } from '@prisma/client'
 import { schemaFieldEncryption } from '../src/prisma/field-encryption.js'
 import { employeeLumpSum, splittingTariff, incomeTax, type AssessmentPositionValues } from '@steuereule/core'
 import { publishEmailHashSalt, resolveFieldEncryptionKey } from '../src/prisma/field-encryption-key.js'
-import { createDatabaseAdapter } from '../src/config/database-adapter.js'
+import { createDatabaseAdapter } from '../src/common/database-adapter.js'
 
 if (process.env.NODE_ENV === 'production') {
   console.error('seed-year-history is a dev seed and refuses to run with NODE_ENV=production.')

@@ -14,7 +14,7 @@ import { keystoreLoginPlan, provisionKeystoreLogin, provisionRuntimeLogin, runti
 // Prisma 7 clients are built with a driver adapter. The one adapter factory of the API is TypeScript, and this script
 // is started with a plain `node` by every pipeline, so tsx is registered for that one import.
 register()
-const { createDatabaseAdapter } = await import('../src/config/database-adapter.ts')
+const { createDatabaseAdapter } = await import('../src/common/database-adapter.ts')
 
 function keystoreUrl(env) {
   if (env.KEYSTORE_DATABASE_URL?.trim()) return { url: env.KEYSTORE_DATABASE_URL.trim(), derived: false }

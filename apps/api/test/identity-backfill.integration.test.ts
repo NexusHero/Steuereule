@@ -4,7 +4,7 @@ import { schemaFieldEncryption } from '../src/prisma/field-encryption.js'
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest'
 import { backfillIdentity } from '../src/auth/identity-backfill.prisma.js'
 import { publishEmailHashSalt, resolveFieldEncryptionKey } from '../src/prisma/field-encryption-key.js'
-import { createDatabaseAdapter } from '../src/config/database-adapter.js'
+import { createDatabaseAdapter } from '../src/common/database-adapter.js'
 
 const CIPHERTEXT = /^v1\.aesgcm256\./
 

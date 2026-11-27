@@ -7,7 +7,7 @@ import { schemaFieldEncryption } from '../src/prisma/field-encryption.js'
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest'
 import { backfillProfileNameEncryption } from '../scripts/backfill-profile-name-encryption.js'
 import { resolveFieldEncryptionKey } from '../src/prisma/field-encryption-key.js'
-import { createDatabaseAdapter } from '../src/config/database-adapter.js'
+import { createDatabaseAdapter } from '../src/common/database-adapter.js'
 
 const ENVELOPE = /^v\d+\.aesgcm256\./
 

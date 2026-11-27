@@ -11,7 +11,7 @@ import { afterAll, describe, expect, it } from 'vitest'
 import { resolveFieldEncryptionKey } from '../../src/prisma/field-encryption-key.js'
 import { prismaRotationStore, rotateFieldEncryption, rotationKeys } from '../../src/prisma/field-key-rotation.js'
 import { baseUrl, prisma, signUp, useAcceptanceServer } from '../support/acceptance-server.js'
-import { createDatabaseAdapter } from '../../src/config/database-adapter.js'
+import { createDatabaseAdapter } from '../../src/common/database-adapter.js'
 
 const ALLOWED_ORIGIN = 'https://allowed.example.com'
 /** The table owner, as the migration job connects; the server's client runs as `steuereule_app` (P11). */

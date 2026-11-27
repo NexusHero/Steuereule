@@ -98,7 +98,7 @@ an error.
   extension and always passes this model. `test/prisma-encrypted-fields.test.ts` fails on any other use of
   `fieldEncryptionExtension` and pins the encrypted field set as before.
 - The key rotation, the identity backfill and the data export read the same generated model.
-- Every client is built with the driver adapter from `apps/api/src/config/database-adapter.ts`, which keeps
+- Every client is built with the driver adapter from `apps/api/src/common/database-adapter.ts`, which keeps
   the meaning of the pool parameters in `DATABASE_URL` (`connection_limit`, `pool_timeout`, `schema`).
 - The CLI's connection, schema and seed settings moved to `apps/api/prisma.config.ts` and
   `apps/api/prisma/keystore/prisma.config.ts`.

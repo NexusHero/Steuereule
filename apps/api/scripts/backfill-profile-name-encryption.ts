@@ -8,7 +8,7 @@ import { pathToFileURL } from 'node:url'
 import { PrismaClient } from '@prisma/client'
 import { schemaFieldEncryption } from '../src/prisma/field-encryption.js'
 import { resolveFieldEncryptionKey } from '../src/prisma/field-encryption-key.js'
-import { createDatabaseAdapter } from '../src/config/database-adapter.js'
+import { createDatabaseAdapter } from '../src/common/database-adapter.js'
 
 const CIPHERTEXT_ENVELOPE = /^v\d+\.aesgcm256\./
 

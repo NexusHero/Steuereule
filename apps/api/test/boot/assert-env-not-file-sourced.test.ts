@@ -1,12 +1,18 @@
-// #284 — Musti's ruling, acceptance table verbatim (comment `5208627499`):
+// #284 — Musti's ruling, acceptance table (comment `5208627499`), as it reads under Prisma 7.
 //
-// | # | Client generated              | Env supplied      | .env present | Expected                                  |
-// |---|--------------------------------|--------------------|--------------|--------------------------------------------|
-// | 1 | WITH a schema-adjacent .env    | guarded vars unset | yes          | refuses, names the vars and the file       |
-// | 2 | WITH a schema-adjacent .env    | all supplied       | yes          | starts — F6, no wrongful rejection         |
-// | 3 | WITHOUT one                    | all supplied       | yes          | starts — measured row 2, must stay passing |
-// | 4 | control proof                  | —                  | —            | move the snapshot import below             |
-// |   |                                |                    |              | ./app.module.js → case 1 goes red          |
+// Prisma 7's client reads no `.env` (row 5 measures that). Rows 1, 2 and 4 keep the guard's control proof
+// with a stand-in: a module imported by `app.module.ts` that merges the file fill-only, as the Prisma 6
+// client did. The guard does not depend on who fills the environment during start-up.
+//
+// | # | Source tree                          | Env supplied       | .env present | Expected                             |
+// |---|--------------------------------------|--------------------|--------------|--------------------------------------|
+// | 1 | a dependency merges .env at import   | guarded vars unset | yes          | refuses, names the vars and the file |
+// | 2 | a dependency merges .env at import   | all supplied       | yes          | starts — F6, no wrongful rejection   |
+// | 3 | real client                          | all supplied       | yes          | starts                               |
+// | 4 | control proof                        | —                  | —            | move the snapshot import below       |
+// |   |                                      |                    |              | ./app.module.js → case 1 goes red    |
+// | 5 | real client                          | guarded vars unset | yes          | the file is not read: the process    |
+// |   |                                      |                    |              | stops on its missing configuration   |
 //
 // "Starts" here means the same thing it means throughout this test tier (no live
 // Postgres — that positive path is CI's `smoke` job, see database-boot-guard.test.ts's
@@ -57,7 +63,7 @@ const REST_OF_LOCAL_PRODUCTION_CONFIG = {
 
 const REFUSAL_PATTERN = /Refusing to start/
 
-describe('assertEnvNotFileSourced — the real entry point, both generated-client states', () => {
+describe('assertEnvNotFileSourced — the real entry point, with and without a dependency that merges .env', () => {
   let fixtures: ClientFixtures
 
   beforeAll(() => {
@@ -69,7 +75,7 @@ describe('assertEnvNotFileSourced — the real entry point, both generated-clien
   })
 
   it(
-    'row 1 — WITH-env client, guarded vars unset, .env present → refuses, names the vars and the file',
+    'row 1 — a dependency merges .env at import, guarded vars unset → refuses, names the vars and the file',
     async () => {
       const { code, output } = await runServer(
         { NODE_ENV: 'production', TSX_TSCONFIG_PATH: fixtures.withEnvTsconfigPath },
@@ -109,7 +115,7 @@ describe('assertEnvNotFileSourced — the real entry point, both generated-clien
   )
 
   it(
-    'row 2 — WITH-env client, every guarded var explicitly supplied, .env present → starts (F6: no wrongful rejection)',
+    'row 2 — a dependency merges .env at import, every guarded var explicitly supplied → starts (F6: no wrongful rejection)',
     async () => {
       const { output } = await runServer(
         {
@@ -132,7 +138,7 @@ describe('assertEnvNotFileSourced — the real entry point, both generated-clien
   )
 
   it(
-    'row 3 — WITHOUT-env client, every guarded var explicitly supplied, .env present → starts (measured row 2 of the truth table, must stay passing)',
+    'row 3 — real client, every guarded var explicitly supplied, .env present → starts',
     async () => {
       const { output } = await runServer(
         {
@@ -147,6 +153,25 @@ describe('assertEnvNotFileSourced — the real entry point, both generated-clien
 
       expect(output).not.toMatch(REFUSAL_PATTERN)
       expect(output).toMatch(/Cannot reach the database at 127\.0\.0\.1:1/)
+    },
+    CASE_TIMEOUT_MS,
+  )
+
+  it(
+    'row 5 — real client, guarded vars unset, .env present → the file is not read',
+    async () => {
+      const { code, output } = await runServer(
+        { NODE_ENV: 'production', TSX_TSCONFIG_PATH: fixtures.withoutEnvTsconfigPath },
+        CASE_TIMEOUT_MS,
+        { entryPath: fixtures.withoutEnvEntryPath },
+      )
+
+      expect(code).not.toBe(0)
+      // Nothing arrived from the file, so this guard has nothing to report; the configuration check stops the process.
+      expect(output).not.toMatch(/were NOT set when it started/)
+      expect(output).toMatch(/the production configuration is incomplete/)
+      expect(output).toMatch(/DATABASE_URL: not set/)
+      expect(output).not.toContain('robin-284-fixture')
     },
     CASE_TIMEOUT_MS,
   )

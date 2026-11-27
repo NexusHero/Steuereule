@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { createDatabaseAdapter, parseDatabaseUrl } from '../src/config/database-adapter.js'
+import { createDatabaseAdapter, parseDatabaseUrl } from '../src/common/database-adapter.js'
 
 // Prisma 6 read the pool settings from the connection URL. Under Prisma 7 the `pg` pool behind the driver adapter
 // is configured in code; these tests pin that a URL means what it meant before.

@@ -1,6 +1,6 @@
 import { PrismaClient as KeystorePrismaClient } from '@prisma-keystore/client'
 import { Injectable, type OnModuleDestroy } from '@nestjs/common'
-import { createDatabaseAdapter } from '../config/database-adapter.js'
+import { createDatabaseAdapter } from '../common/database-adapter.js'
 import { resolveKeystoreDatabaseUrl } from './keystore-config.js'
 import type { UserKeyStore, WrappedUserKey } from './user-key-store.js'
 

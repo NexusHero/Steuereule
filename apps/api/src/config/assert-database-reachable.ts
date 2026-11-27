@@ -1,6 +1,6 @@
 import { PrismaClient } from '@prisma/client'
 import { resolveDatabaseUrl } from './database-url.js'
-import { createDatabaseAdapter } from './database-adapter.js'
+import { createDatabaseAdapter } from '../common/database-adapter.js'
 
 const PROBE_TIMEOUT_MS = 5_000
 
@@ -43,7 +43,8 @@ export async function assertDatabaseReachable(env: NodeJS.ProcessEnv = process.e
   const databaseUrl = resolveDatabaseUrl(env)
   const target = describeDatabaseTarget(databaseUrl)
 
-  const prisma = new PrismaClient({ adapter: createDatabaseAdapter(databaseUrl) })
+  // The pool gives up with the probe: its disconnect below waits for a connection attempt still in flight.
+  const prisma = new PrismaClient({ adapter: createDatabaseAdapter(databaseUrl, { connectWithinMillis: PROBE_TIMEOUT_MS }) })
   try {
     await withTimeout(prisma.$queryRaw`SELECT 1`, PROBE_TIMEOUT_MS)
   } catch (rawCause) {

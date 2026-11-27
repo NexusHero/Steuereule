@@ -9,7 +9,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { runAsDatabaseUser, withSystemDatabaseAccess } from '../src/common/database-identity.js'
 import { RUNTIME_DATABASE_ROLE, withRuntimeDatabaseRole } from '../src/config/database-url.js'
 import { transactionAwareClient } from '../src/prisma/transaction.js'
-import { createDatabaseAdapter } from '../src/config/database-adapter.js'
+import { createDatabaseAdapter } from '../src/common/database-adapter.js'
 
 const NO_PERSONAL_DATA = new Set(['OauthResource', 'OauthClientResource', 'OauthClientAssertion', 'Jwks'])
 

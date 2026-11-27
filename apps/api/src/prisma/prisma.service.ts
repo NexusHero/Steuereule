@@ -2,7 +2,7 @@ import { Injectable, OnModuleDestroy } from '@nestjs/common'
 import { PrismaClient } from '@prisma/client'
 import { withRuntimeDatabaseRole } from '../config/database-url.js'
 import { withAdaptiveDatabasePoolUrl } from '../config/runtime-capacity.js'
-import { createDatabaseAdapter } from '../config/database-adapter.js'
+import { createDatabaseAdapter } from '../common/database-adapter.js'
 
 /**
  * Thin Prisma wrapper with CPU-adaptive connection pool sizing. It connects as the runtime role, which the

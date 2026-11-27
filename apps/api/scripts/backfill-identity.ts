@@ -5,7 +5,7 @@ import { PrismaClient } from '@prisma/client'
 import { schemaFieldEncryption } from '../src/prisma/field-encryption.js'
 import { backfillIdentity, type BackfillPhase } from '../src/auth/identity-backfill.prisma.js'
 import { publishEmailHashSalt, resolveFieldEncryptionKey } from '../src/prisma/field-encryption-key.js'
-import { createDatabaseAdapter } from '../src/config/database-adapter.js'
+import { createDatabaseAdapter } from '../src/common/database-adapter.js'
 
 const phaseArg = process.argv.find((arg) => arg.startsWith('--phase='))?.slice('--phase='.length) ?? 'encrypt'
 if (phaseArg !== 'hash' && phaseArg !== 'encrypt') throw new Error(`--phase must be "hash" or "encrypt", got "${phaseArg}"`)

@@ -82,10 +82,18 @@ export function parseDatabaseUrl(databaseUrl: string, cpus: number = availablePa
   }
 }
 
-/** The driver adapter every `PrismaClient` of this API is built with: `new PrismaClient({ adapter: createDatabaseAdapter(url) })`. */
-export function createDatabaseAdapter(databaseUrl: string | undefined = process.env.DATABASE_URL): PrismaPg {
+/**
+ * The driver adapter every `PrismaClient` of this API is built with: `new PrismaClient({ adapter: createDatabaseAdapter(url) })`.
+ *
+ * `connectWithinMillis` caps how long a connection attempt may take, whatever the URL says. A caller that gives up
+ * after a fixed time needs it: `$disconnect()` ends the pool, and the pool waits for a connection attempt still in
+ * flight. Without the cap a start-up probe against a host that accepts and then stays silent would report its
+ * finding only after the URL's `connect_timeout`.
+ */
+export function createDatabaseAdapter(databaseUrl: string | undefined = process.env.DATABASE_URL, options: { readonly connectWithinMillis?: number } = {}): PrismaPg {
   // Prisma 6 failed on the first query without a URL; Prisma 7 cannot even build the client, so say it here.
   if (databaseUrl === undefined || databaseUrl.trim() === '') throw new Error('DATABASE_URL must be set.')
   const { schema, ...pool } = parseDatabaseUrl(databaseUrl)
-  return new PrismaPg(pool, schema === undefined ? undefined : { schema })
+  const connectionTimeoutMillis = options.connectWithinMillis === undefined ? pool.connectionTimeoutMillis : Math.min(pool.connectionTimeoutMillis, options.connectWithinMillis)
+  return new PrismaPg({ ...pool, connectionTimeoutMillis }, schema === undefined ? undefined : { schema })
 }

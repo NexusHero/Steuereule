@@ -11,7 +11,7 @@ import { PrismaClient } from '@prisma/client'
 import { schemaFieldEncryption } from '../../src/prisma/field-encryption.js'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { resolveFieldEncryptionKey } from '../../src/prisma/field-encryption-key.js'
-import { createDatabaseAdapter } from '../../src/config/database-adapter.js'
+import { createDatabaseAdapter } from '../../src/common/database-adapter.js'
 
 const KEY_K1 = 'k1.aesgcm256.MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY='
 const KEY_K2 = 'k1.aesgcm256.fedcba9876543210fedcba9876543210fedcba98765='

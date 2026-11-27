@@ -11,7 +11,7 @@ import { PrismaClient } from '@prisma/client'
 import { schemaFieldEncryption } from '../src/prisma/field-encryption.js'
 import { cockpitRange } from '@steuereule/core'
 import { resolveFieldEncryptionKey } from '../src/prisma/field-encryption-key.js'
-import { createDatabaseAdapter } from '../src/config/database-adapter.js'
+import { createDatabaseAdapter } from '../src/common/database-adapter.js'
 
 const basePrisma = new PrismaClient({ adapter: createDatabaseAdapter() })
 const { encryptionKey, decryptionKeys } = resolveFieldEncryptionKey()
