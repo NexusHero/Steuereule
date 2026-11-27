@@ -76,8 +76,9 @@ COPY --from=prod /repo /repo
 
 # openssl for the Prisma engines, Chromium with its system libraries for the PDF export (REQ-011), started
 # with plain node. npm and corepack leave the image: nothing here installs packages, and their bundled
-# dependencies were most of what the container scan reported.
-RUN apt-get update && apt-get install -y --no-install-recommends openssl \
+# dependencies were most of what the container scan reported. `apt-get upgrade` first: the base image can
+# lag a Debian security fix, and the container scan blocks on a HIGH as soon as its fix is published.
+RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-recommends openssl \
   && node apps/api/node_modules/playwright-core/cli.js install chromium --with-deps \
   && rm -rf /var/lib/apt/lists/* /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack \
      /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack /root/.cache /root/.npm
