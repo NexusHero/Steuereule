@@ -1,5 +1,6 @@
 import type { AssessmentPositionValues } from './assessment'
 import type { Range } from '../common/range'
+import type { EstimateBreakdown } from '../engine/tax-estimate'
 import type { EstimateChurchTax } from './church-tax'
 import { isIsoDate } from '../common/dates'
 import type { TaxYearStatus } from './tax-year-status'
@@ -52,6 +53,11 @@ export interface SubmissionEstimate {
   readonly churchTax?: EstimateChurchTax | undefined
   /** Income tax prepayments of the year (§ 37 EStG), credited like withheld wage tax. */
   readonly prepayments?: number | undefined
+  /**
+   * How the estimate came about (its own `breakdown`): the declared wage, Werbungskosten and credit are
+   * read from here, so they are the estimate's figures and not a second assembly of the same facts.
+   */
+  readonly breakdown?: Pick<EstimateBreakdown, 'persons' | 'householdReductionEur'> | undefined
 }
 
 export interface FiledPositionsInput {
@@ -91,18 +97,32 @@ const pointOf = (r: Range): number => Math.round((r.from + r.to) / 2)
 /** The return as filed, in the position ids of the Bescheid-Abgleich (ADR-0098 §8). */
 export function filedPositions(input: FiledPositionsInput): AssessmentPositionValues {
   const out: Record<string, number> = { ...declaredPersonPositions('A', input.people.A) }
-  if (input.filingType === 'zusammen' && input.people.B) Object.assign(out, declaredPersonPositions('B', input.people.B))
+  const joint = input.filingType === 'zusammen' && input.people.B !== null
+  if (joint && input.people.B) Object.assign(out, declaredPersonPositions('B', input.people.B))
   const e = input.estimate
   if (e) {
+    // The estimate counts every wage of the year and every Werbungskosten the way the tariff does (lump sum,
+    // half the Swiss accident insurance premium): where it names a person's wage, that is the declared wage.
+    const persons = (e.breakdown?.persons ?? []).slice(0, joint ? 2 : 1)
+    persons.forEach((p, i) => {
+      if (p.grossWageEur === undefined) return
+      const column = i === 0 ? 'A' : 'B'
+      out[`bruttoarbeitslohn${column}`] = p.grossWageEur
+      out[`werbungskosten${column}`] = p.workExpensesEur
+    })
+    // The Bescheid's „Anrechnung“ is the withheld wage tax; prepayments stand on their own line there.
+    const credited = e.breakdown?.persons ? persons.reduce((sum, p) => sum + (p.wageTaxEur ?? 0), 0) : e.anrechnung
+    const reduction35a = e.breakdown?.householdReductionEur ?? 0
     Object.assign(out, {
       vorsorgeaufwand: pointOf(e.provision),
       sonderausgaben: e.specialExpenses,
       zuVersteuerndesEinkommen: pointOf(e.taxableIncome),
       festgesetzteSteuer: pointOf(e.incomeTax),
       solidaritaetszuschlag: pointOf(e.solidaritaetszuschlag),
-      anrechnung: e.anrechnung + (e.prepayments ?? 0),
+      anrechnung: credited,
       erstattung: pointOf(e.result),
     })
+    if (reduction35a > 0) out.steuerermaessigung35a = reduction35a
     // Church tax is frozen only once the estimate knows it; an open church tax is not declared as 0.
     if (e.churchTax?.kind === 'spanne') out.kirchensteuer = pointOf(e.churchTax.due)
     else if (e.churchTax?.kind === 'none') out.kirchensteuer = 0

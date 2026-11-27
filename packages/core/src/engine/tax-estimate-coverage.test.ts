@@ -207,3 +207,42 @@ describe('the progression income in the breakdown (for the Günstigerprüfung of
     expect(couple.breakdown?.progressionIncomeEur).toBe(2500)
   })
 })
+
+// The Bescheid-Abgleich's declared side reads the wage and the credit off the estimate's breakdown, so
+// it cannot differ from what the estimate itself calculated (not a second, partial assembly).
+describe('the wage and the credited wage tax per person in the breakdown', () => {
+  const CROSS = { year: 2025, wageEur: 90_000, withholdingTaxEur: 4_000, retirementProvisionEur: 9_000, otherProvisionEur: 1_500, healthInsuranceEur: 3_000, commuterAllowance: 0, donations: 0 }
+
+  it('counts the German and the Swiss wage of one year together, and credits both taxes', () => {
+    const estimate = taxEstimateCrossBorder({ ...CROSS, germanWage: { gross: 20_000, wageTax: 2_500, socialSecurity: 4_000 } })
+    if (estimate.kind !== 'spanne') throw new Error('expected a range')
+    expect(estimate.breakdown?.persons?.[0]).toMatchObject({ grossWageEur: 110_000, wageTaxEur: 6_500 })
+  })
+
+  it('names the wage and the withheld tax of an employee, without the prepayments in the credit', () => {
+    const estimate = taxEstimateEmployee({ ...EMPLOYED, prepayments: { incomeTaxEur: 9_000 }, business: { selfEmployedEur: 0, tradeEur: 0 } as never })
+    if (estimate.kind !== 'spanne') throw new Error('expected a range')
+    expect(estimate.breakdown?.persons?.[0]).toMatchObject({ grossWageEur: 48_000, wageTaxEur: 7_100 })
+  })
+
+  it('names no wage for a pensioner', () => {
+    const estimate = taxEstimatePensioner({ year: 2025, grossPensionEur: 20_000, taxablePensionEur: 15_000, selfPaidKvPv: 0, donations: 0, privatelyInsured: false } as never)
+    if (estimate.kind !== 'spanne') throw new Error('expected a range')
+    expect(estimate.breakdown?.persons?.[0]?.grossWageEur).toBeUndefined()
+  })
+
+  it('names each spouse their wage and wage tax, the Soli left out of the credit', () => {
+    const estimate = estimateMarriedCouple({
+      year: 2025,
+      a: { kind: 'mixed', grossWage: 70_000, wageTax: 15_000, socialSecurity: 14_000, wageEur: 21_000, swissWithholdingEur: 940, pensionContributionsEur: 1_400, otherProvisionEur: 280, commuteAllowance: 3_000, selfPaidHealthCare: 0, soliWithheldEur: 300 },
+      b: { kind: 'employee', grossWage: 48_000, wageTax: 10_420, socialSecurity: 10_008, commuteAllowance: 550, selfPaidHealthCare: 0, soliWithheldEur: 100 },
+      children: 0,
+      childBenefit: 0,
+      rentalSurplus: 0,
+      donations: 0,
+    })
+    if (estimate.kind !== 'spanne') throw new Error('expected a range')
+    expect(estimate.breakdown?.persons?.[0]).toMatchObject({ grossWageEur: 91_000, wageTaxEur: 15_940 })
+    expect(estimate.breakdown?.persons?.[1]).toMatchObject({ grossWageEur: 48_000, wageTaxEur: 10_420 })
+  })
+})

@@ -29,7 +29,15 @@ export interface ChurchTaxInput {
  */
 export interface EstimateBreakdown {
   /** Einkünfte aus nichtselbständiger Arbeit or pension per person (A first), after Werbungskosten. */
-  readonly persons?: readonly { readonly incomeEur: number; readonly workExpensesEur: number; readonly creditedTaxEur: number }[]
+  readonly persons?: readonly {
+    readonly incomeEur: number
+    readonly workExpensesEur: number
+    readonly creditedTaxEur: number
+    /** All wages of the person (German and Swiss together) before Werbungskosten; absent for a pension or a business alone. */
+    readonly grossWageEur?: number
+    /** The wage tax and creditable Swiss withholding tax credited, without Soli and without any prepayment. */
+    readonly wageTaxEur?: number
+  }[]
   readonly rentalSurplusEur?: number
   /** Summe der Einkünfte, before losses, provision and Sonderausgaben. */
   readonly totalIncomeEur: number
@@ -219,6 +227,7 @@ export function taxEstimateEmployee(e: EmployeeEstimateInput): TaxEstimate {
     donations: e.donations,
     alreadyPaid: (taxAmount) => e.lohnsteuer - taxAmount + soli(e.lohnsteuer, e.year),
     anrechnung: e.lohnsteuer,
+    wageIncome: true,
     specialExpensesLumpSum: params.lumpSums.specialExpensesSingle,
     householdReductionEur: e.householdReductionEur,
     healthExpensesEur: e.healthExpensesEur,
@@ -255,6 +264,7 @@ export function taxEstimateCrossBorder(e: CrossBorderEstimateInput): TaxEstimate
     donations: e.donations,
     alreadyPaid: (taxAmount) => credited - taxAmount + (german ? soli(german.wageTax, e.year) : 0),
     anrechnung: credited,
+    wageIncome: true,
     specialExpensesLumpSum: params.lumpSums.specialExpensesSingle,
     householdReductionEur: e.householdReductionEur,
     healthExpensesEur: e.healthExpensesEur,
@@ -365,6 +375,7 @@ export function taxEstimateSelfEmployed(e: SelfEmployedEstimateInput): TaxEstima
     donations: e.donations,
     alreadyPaid: (taxAmount) => (wage ? wage.wageTax + soli(wage.wageTax, e.year) : 0) - taxAmount,
     anrechnung: wage?.wageTax ?? 0,
+    wageIncome: wage !== undefined,
     specialExpensesLumpSum: params.lumpSums.specialExpensesSingle,
     householdReductionEur: e.householdReductionEur,
     healthExpensesEur: e.healthExpensesEur,
@@ -398,6 +409,8 @@ function estimate(input: {
   readonly business?: BusinessIncome | undefined
   readonly losses?: LossCarry | undefined
   readonly prepayments?: Prepayments | undefined
+  /** The income is a wage (not a pension): the breakdown then names the wage and the wage tax of the person. */
+  readonly wageIncome?: boolean | undefined
 }): TaxEstimate {
   const params = getTaxYearParameters(input.year)
   const furtherChildren = Math.max(0, Math.floor(input.singleParentChildren ?? 1) - 1)
@@ -465,7 +478,7 @@ function estimate(input: {
     },
     ...(churchTax ? { churchTax } : {}),
     breakdown: {
-      persons: [{ incomeEur: otherIncome, workExpensesEur: input.werbungskosten, creditedTaxEur: input.anrechnung }],
+      persons: [{ incomeEur: otherIncome, workExpensesEur: input.werbungskosten, creditedTaxEur: input.anrechnung, ...(input.wageIncome ? { grossWageEur: input.einnahmen, wageTaxEur: input.anrechnung } : {}) }],
       totalIncomeEur: sumOfIncome,
       extraordinaryBurdenEur: deductibleBurdenEur,
       tariffTax: { from: credited.from.taxEur, to: credited.to.taxEur },
