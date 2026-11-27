@@ -270,6 +270,8 @@ async function main() {
       models: [
         { provider: 'anthropic', model: 'claude-sonnet-5-5', label: 'Claude Sonnet 5.5', depths: [{ depth: 'gruendlich', costFactor: 1, firstWordSeconds: 6, samples: 9 }, { depth: 'max', costFactor: 3, firstWordSeconds: 15, samples: 6 }] },
         { provider: 'anthropic', model: 'claude-opus-5-5', label: 'Claude Opus 5.5', depths: [{ depth: 'gruendlich', costFactor: 2, firstWordSeconds: 8, samples: 5 }, { depth: 'max', samples: 0 }] },
+        // Enough unmeasured models for the list to scroll and to offer its search.
+        ...Array.from({ length: 12 }, (_, n) => ({ provider: 'google-genai', model: `gemini-row-h-${n}`, label: `Gemini ${n} Flash`, depths: [{ depth: 'gruendlich', samples: 0 }] })),
       ],
     }
     const picks = []
@@ -287,6 +289,16 @@ async function main() {
     await page.locator('[data-testid="advisor-model-picker"]').waitFor({ state: 'visible', timeout: 15_000 })
     await page.locator('[data-testid="advisor-model-picker"]').click()
     await page.locator('[data-testid="advisor-model-menu"]').waitFor({ state: 'visible', timeout: 10_000 })
+    // The list stays inside the window and scrolls in itself: opening it must not push the input away.
+    const menuBox = await page.locator('[data-testid="advisor-model-menu"]').boundingBox()
+    const windowHeight = page.viewportSize().height
+    if (!menuBox || menuBox.y < 0 || menuBox.y + menuBox.height > windowHeight) fail(`Row H: the model list should fit the window, got ${JSON.stringify(menuBox)} in ${windowHeight}px`)
+    if (!(await page.locator('[data-testid="advisor-chat-send"]').isVisible())) fail('Row H: the input should stay where it is while the model list is open')
+    const lastModel = page.locator('[data-testid="advisor-model-option-google-genai:gemini-row-h-11"]')
+    await lastModel.scrollIntoViewIfNeeded()
+    if ((await lastModel.innerText()).trim() !== 'Gemini 11 Flash') fail('Row H: a model nobody measured should show its name and nothing else')
+    await page.locator('[data-testid="advisor-model-search"]').fill('opus 5.5')
+    await lastModel.waitFor({ state: 'detached', timeout: 10_000 }).catch(() => fail('Row H: the search should narrow the model list'))
     const opus = page.locator('[data-testid="advisor-model-option-anthropic:claude-opus-5-5"]')
     if (!(await opus.innerText()).includes('2× Kosten')) fail('Row H: the model list should say the cost relative to the standard')
     await opus.click()

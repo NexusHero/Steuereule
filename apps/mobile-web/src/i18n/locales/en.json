@@ -3382,6 +3382,8 @@
       },
       "model": {
         "aria": "Model of this conversation: {{model}}",
+        "search": "Search models",
+        "none": "No model found.",
         "standard": "{{model}} (standard)",
         "reference": "Reference for cost and wait",
         "cost": "about {{factor}}× the cost",
