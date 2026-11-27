@@ -23,6 +23,7 @@ import { HebesatzDirectory } from '../src/business/hebesatz.js'
 import { PrismaInterviewAnswerRepository } from '../src/interview/interview-answer.repository.prisma.js'
 import { publishEmailHashSalt, resolveFieldEncryptionKey } from '../src/prisma/field-encryption-key.js'
 import { transactionAwareClient } from '../src/prisma/transaction.js'
+import { runAsDatabaseUser } from '../src/common/database-identity.js'
 import { createDatabaseAdapter } from '../src/common/database-adapter.js'
 
 if (process.env.NODE_ENV === 'production') {
@@ -41,16 +42,23 @@ const basePrisma = new PrismaClient({ adapter: createDatabaseAdapter() })
 // The account is found by its e-mail hash (ADR-0109); the extension reads the salt when it is created.
 publishEmailHashSalt()
 const { encryptionKey, decryptionKeys } = resolveFieldEncryptionKey()
-const prisma = transactionAwareClient(basePrisma.$extends(schemaFieldEncryption({ encryptionKey, decryptionKeys })) as unknown as PrismaClient)
+const encrypted = basePrisma.$extends(schemaFieldEncryption({ encryptionKey, decryptionKeys })) as unknown as PrismaClient
+// The services write through the row-level-aware client, which refuses a query without an identity (P11).
+const prisma = transactionAwareClient(encrypted)
 
 const silentAudit: AuditRepository = { append: async () => undefined, findOwnRows: async () => [] } as unknown as AuditRepository
 const repository = new PrismaBusinessRepository(prisma)
 const business = composeBusinessService(repository, new PrismaInterviewAnswerRepository(prisma), new AuditService(silentAudit), new HebesatzDirectory())
 
 async function main(): Promise<void> {
-  const user = await prisma.user.findUnique({ where: { email } })
+  // Whose rows these are is not known before the account is found, so the lookup has no identity to run under.
+  const user = await encrypted.user.findUnique({ where: { email } })
   if (!user) throw new Error(`No account with the e-mail ${email}; sign up in the app first.`)
-  const userId = user.id
+  // Everything else is written as that account, the way a request of theirs would write it.
+  await runAsDatabaseUser(user.id, () => seedHousehold(user.id))
+}
+
+async function seedHousehold(userId: string): Promise<void> {
   for (const year of DEMO_YEARS) {
     await basePrisma.taxYear.upsert({
       where: { userId_taxYear: { userId, taxYear: year } },
