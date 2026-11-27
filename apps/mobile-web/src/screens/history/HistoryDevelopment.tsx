@@ -2,11 +2,11 @@ import { useState, type ReactNode } from 'react'
 import { Pressable, ScrollView, Text, View, type TextStyle, type ViewStyle } from 'react-native'
 import { Polyline, Svg } from 'react-native-svg'
 import { useTranslation } from 'react-i18next'
-import { useBreakpoint, useTheme, type UiTheme } from '@steuereule/ui'
+import { useBreakpoint, useTheme, type UiTheme, controlLine } from '@steuereule/ui'
 import type { HistoryDeltaDto, HistoryFigureDto, YearHistoryEntryDto, YearHistoryResponseDto } from '@steuereule/api-client'
 import { formatEuro } from '@steuereule/core'
 import { APP_NS } from '../../i18n/resources'
-import { HistoryChart, segmentColor } from './HistoryChart'
+import { HistoryChart, SegmentSwatch, refundBarFill } from './HistoryChart'
 import { AssessmentUploadEntry } from './AssessmentUploadEntry'
 import { PersonToggle } from './PersonToggle'
 import { buildChart, effectivePerson, netFor, sparkPoints, workFor, type SegmentKind } from './historyChartModel'
@@ -179,11 +179,11 @@ function Legend({ metric, showChange }: { readonly metric: HistoryMetric; readon
   const t = useTheme()
   const s = makeStyles(t)
   const { t: tr } = useTranslation(APP_NS)
-  const items: { key: string; swatch: ViewStyle; text: string }[] = []
+  const items: { key: string; swatch?: ViewStyle; segment?: SegmentKind; text: string }[] = []
   const segs = LEGEND[metric]
-  if (segs) for (const k of segs) items.push({ key: k, swatch: { backgroundColor: segmentColor(t, k) }, text: tr(`verlauf.segment.${k}`) })
+  if (segs) for (const k of segs) items.push({ key: k, segment: k, text: tr(`verlauf.segment.${k}`) })
   if (metric === 'erstattung') {
-    items.push({ key: 'ok', swatch: { backgroundColor: t.color.tinte }, text: tr('verlauf.legende.erstattungBescheid') })
+    items.push({ key: 'ok', swatch: { backgroundColor: refundBarFill(t, false), borderColor: refundBarFill(t, false) }, text: tr('verlauf.legende.erstattungBescheid') })
     items.push({ key: 'cut', swatch: { backgroundColor: 'transparent', borderColor: t.color.tinte2, borderStyle: 'dashed' }, text: tr('verlauf.legende.gekuerzt') })
     items.push({ key: 'est', swatch: { backgroundColor: t.color.linieWeich, borderColor: t.color.tinte2, borderStyle: 'dashed' }, text: tr('verlauf.legende.schaetzung') })
   }
@@ -197,7 +197,7 @@ function Legend({ metric, showChange }: { readonly metric: HistoryMetric; readon
     <View style={s.legend}>
       {items.map((i) => (
         <View key={i.key} style={s.legendItem}>
-          <View style={[s.swatch, i.swatch]} />
+          {i.segment === undefined ? <View style={[s.swatch, i.swatch]} /> : <SegmentSwatch kind={i.segment} />}
           <Text style={s.legendText}>{i.text}</Text>
         </View>
       ))}
@@ -258,7 +258,7 @@ function DeltaLine({ delta, unit, lowerIsBetter, testID }: { readonly delta: His
   const { t: tr } = useTranslation(APP_NS)
   const tone = deltaTone(delta, lowerIsBetter)
   return (
-    <Text style={[s.trend, tone === 'good' ? s.trendGood : tone === 'bad' ? s.trendBad : null]} testID={testID}>
+    <Text style={[s.trend, tone === 'neutral' ? null : s.trendMoved]} testID={testID}>
       {deltaText(delta, unit, tr)}
     </Text>
   )
@@ -548,7 +548,7 @@ function makeStyles(t: UiTheme) {
   const base = historyStyles(t)
   const section: ViewStyle = { gap: t.space.s3 }
   const chips: ViewStyle = { flexDirection: 'row', gap: 6, paddingVertical: 2 }
-  const chip: ViewStyle = { borderWidth: t.space.kontur, borderColor: t.color.linie, backgroundColor: t.color.karte, borderRadius: t.radius.pille, paddingHorizontal: t.space.s3, paddingVertical: 6, minHeight: 44, justifyContent: 'center' }
+  const chip: ViewStyle = { borderWidth: t.space.kontur, borderColor: controlLine(t), backgroundColor: t.color.karte, borderRadius: t.radius.pille, paddingHorizontal: t.space.s3, paddingVertical: 6, minHeight: 44, justifyContent: 'center' }
   const chipActive: ViewStyle = { backgroundColor: t.color.funke, ...t.shadow.hartS }
   const chipText: TextStyle = { ...t.type.label, color: t.color.tinte }
   const chipTextActive: TextStyle = { color: t.color.nacht }
@@ -571,7 +571,7 @@ function makeStyles(t: UiTheme) {
   const dataRow: ViewStyle = { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: t.color.linieWeich }
   const dataCell: TextStyle = { ...t.type.meta, color: t.color.tinte, width: 112, paddingHorizontal: t.space.s2, paddingVertical: 6, fontVariant: ['tabular-nums'] }
   const dataHead: TextStyle = { color: t.color.tinte2, fontWeight: t.weight.schwer }
-  const openDiff: ViewStyle = { flexDirection: 'row', alignSelf: 'flex-start', alignItems: 'center', gap: t.space.s2, borderWidth: t.space.kontur, borderColor: t.color.linie, backgroundColor: t.color.karte, borderRadius: t.radius.pille, paddingHorizontal: t.space.s3, paddingVertical: 6, minHeight: 36, ...t.shadow.hartS }
+  const openDiff: ViewStyle = { flexDirection: 'row', alignSelf: 'flex-start', alignItems: 'center', gap: t.space.s2, borderWidth: t.space.kontur, borderColor: controlLine(t), backgroundColor: t.color.karte, borderRadius: t.radius.pille, paddingHorizontal: t.space.s3, paddingVertical: 6, minHeight: 36, ...t.shadow.hartS }
   const counter: TextStyle = { ...t.type.captionStrong, color: t.color.karte, borderRadius: t.radius.pille, paddingHorizontal: 7, overflow: 'hidden' }
   const counterBad: TextStyle = { backgroundColor: t.color.fehler }
   const counterOk: TextStyle = { backgroundColor: t.color.ok }

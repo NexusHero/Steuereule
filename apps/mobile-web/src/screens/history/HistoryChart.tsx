@@ -22,26 +22,88 @@ const RIGHT = 8
 const Y0 = 28
 const BOTTOM = 8
 
-/** The colour of each part of a stacked bar: ink steps plus lime for what stays (Graphit: no red, green or violet in the plot). */
-export function segmentColor(t: UiTheme, kind: SegmentKind): string {
+/** How a mark is filled: a flat ink step, diagonal lines, crossed lines, or the card showing through. */
+export type SegmentTexture = 'solid' | 'hatch' | 'cross' | 'open'
+
+export interface SegmentPaint {
+  readonly texture: SegmentTexture
+  /** The flat colour of a solid mark; the colour of the lines of a textured one. */
+  readonly fill: string
+  /** The edge, where the fill alone would not be seen on the card. */
+  readonly outline: string | null
+}
+
+/**
+ * What each part of a stacked bar is painted with. Graphit draws money without red, green or violet,
+ * and grey steps alone cannot hold four parts apart at 3:1, so the parts differ by ink step and
+ * texture. Lime stays for what is left to the household, inside an edge that shows on white.
+ */
+export function segmentPaint(t: UiTheme, kind: SegmentKind): SegmentPaint {
   switch (kind) {
     case 'netto':
-      return t.color.funke
+      return { texture: 'solid', fill: t.color.funke, outline: t.color.tinte2 }
     case 'steuern':
-      return t.color.tinte2
+      return { texture: 'solid', fill: t.color.tinte2, outline: null }
     case 'sozialversicherung':
-      return t.color.linieWeich
+      return { texture: 'hatch', fill: t.color.tinte2, outline: t.color.tinte2 }
     case 'fahrtweg':
-      return t.color.tinte
+      return { texture: 'solid', fill: t.color.tinte, outline: null }
     case 'homeoffice':
-      return t.color.tinte2
+      return { texture: 'solid', fill: t.color.tinte2, outline: null }
     case 'arbeitsmittel':
-      return t.color.linie
+      return { texture: 'hatch', fill: t.color.tinte2, outline: t.color.tinte2 }
     case 'sonstiges':
-      return t.color.linieWeich
+      return { texture: 'open', fill: t.color.karte, outline: t.color.tinte2 }
     case 'summeLautBescheid':
-      return t.color.tinte2
+      return { texture: 'cross', fill: t.color.tinte2, outline: t.color.tinte2 }
   }
+}
+
+/** A refund or back payment bar: ink in every year, the picked year the darkest. */
+export function refundBarFill(t: UiTheme, picked: boolean): string {
+  return picked ? t.color.tinte : t.color.tinte2
+}
+
+/** The two line textures, drawn once per SVG and referenced by id. */
+function TexturePatterns({ t, hatchId, crossId }: { readonly t: UiTheme; readonly hatchId: string; readonly crossId: string }) {
+  return (
+    <>
+      <Pattern id={hatchId} width={5} height={5} patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+        <Rect width={5} height={5} fill={t.color.karte} />
+        <Line x1={0} y1={0} x2={0} y2={5} stroke={t.color.tinte2} strokeWidth={2} />
+      </Pattern>
+      <Pattern id={crossId} width={5} height={5} patternUnits="userSpaceOnUse">
+        <Rect width={5} height={5} fill={t.color.karte} />
+        <Line x1={0} y1={0} x2={5} y2={5} stroke={t.color.tinte2} strokeWidth={1} />
+        <Line x1={5} y1={0} x2={0} y2={5} stroke={t.color.tinte2} strokeWidth={1} />
+      </Pattern>
+    </>
+  )
+}
+
+function textureFill(paint: SegmentPaint, hatchId: string, crossId: string): string {
+  if (paint.texture === 'hatch') return `url(#${hatchId})`
+  if (paint.texture === 'cross') return `url(#${crossId})`
+  return paint.fill
+}
+
+const svgId = (id: string) => id.replace(/[^a-zA-Z0-9]/g, '')
+
+const SWATCH = 12
+
+/** A segment's paint as a legend swatch: the same fill, texture and edge as in the plot. */
+export function SegmentSwatch({ kind }: { readonly kind: SegmentKind }) {
+  const t = useTheme()
+  const id = svgId(useId())
+  const paint = segmentPaint(t, kind)
+  return (
+    <Svg width={SWATCH} height={SWATCH} viewBox={`0 0 ${SWATCH} ${SWATCH}`} aria-hidden>
+      <Defs>
+        <TexturePatterns t={t} hatchId={`h${id}`} crossId={`c${id}`} />
+      </Defs>
+      <Rect x={0.5} y={0.5} width={SWATCH - 1} height={SWATCH - 1} rx={2} fill={textureFill(paint, `h${id}`, `c${id}`)} stroke={paint.outline ?? paint.fill} strokeWidth={1} />
+    </Svg>
+  )
 }
 
 /**
@@ -55,7 +117,9 @@ export function HistoryChart({ model, selectedYear, onSelectYear, accessibilityL
   const s = makeStyles(t)
   const { t: tr } = useTranslation(APP_NS)
   const [width, setWidth] = useState(340)
-  const patternId = `schraffur${useId().replace(/[^a-zA-Z0-9]/g, '')}`
+  const id = svgId(useId())
+  const patternId = `schraffur${id}`
+  const crossId = `kreuz${id}`
   const n = Math.max(model.columns.length, 1)
   const x1 = width - RIGHT
   const y1 = height - BOTTOM
@@ -90,6 +154,7 @@ export function HistoryChart({ model, selectedYear, onSelectYear, accessibilityL
           if (seg.value <= 0) return null
           const h = (seg.value / span) * (y1 - Y0)
           top -= h
+          const paint = segmentPaint(t, seg.kind)
           return (
             <Rect
               key={seg.kind}
@@ -97,8 +162,9 @@ export function HistoryChart({ model, selectedYear, onSelectYear, accessibilityL
               y={top}
               width={barWidth}
               height={h}
-              fill={segmentColor(t, seg.kind)}
-              stroke={c.estimated ? t.color.tinte2 : t.color.karte}
+              fill={textureFill(paint, patternId, crossId)}
+              // A solid part is cut from its neighbour by a line in the card's colour; an estimate is dashed.
+              stroke={c.estimated ? t.color.tinte2 : (paint.outline ?? t.color.karte)}
               strokeWidth={c.estimated ? 1.5 : 1}
               {...(c.estimated ? { strokeDasharray: '3 2' } : {})}
             />
@@ -135,7 +201,7 @@ export function HistoryChart({ model, selectedYear, onSelectYear, accessibilityL
             {yd !== null && c.declared !== null && c.declared > c.value ? (
               <Rect x={left} y={yd} width={barWidth} height={yv - yd} fill="none" stroke={t.color.tinte2} strokeWidth={1.5} strokeDasharray="3 2" />
             ) : null}
-            <Rect x={left} y={barTop} width={barWidth} height={barHeight} fill={c.year === selectedYear ? t.color.tinte : t.color.linie} rx={2} />
+            <Rect x={left} y={barTop} width={barWidth} height={barHeight} fill={refundBarFill(t, c.year === selectedYear)} rx={2} />
             {/* A back payment is labelled under its bar: above the baseline it ran into the neighbouring years. */}
             {label(i, c.value < 0 ? yv + 13 : top - 6, c.label)}
             {c.cutLabel === null ? null : label(i, top - 18, c.cutLabel, t.color.tinte2, true)}
@@ -183,10 +249,7 @@ export function HistoryChart({ model, selectedYear, onSelectYear, accessibilityL
       <View onLayout={(e: LayoutChangeEvent) => setWidth(Math.max(240, Math.round(e.nativeEvent.layout.width)))}>
         <Svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} accessibilityRole="image" accessibilityLabel={accessibilityLabel} testID={`${testID}-svg`}>
           <Defs>
-            <Pattern id={patternId} width={5} height={5} patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
-              <Rect width={5} height={5} fill={t.color.karte} />
-              <Line x1={0} y1={0} x2={0} y2={5} stroke={t.color.linie} strokeWidth={2} />
-            </Pattern>
+            <TexturePatterns t={t} hatchId={patternId} crossId={crossId} />
           </Defs>
           {model.ticks.map((tick) => (
             <G key={`t${tick}`}>
