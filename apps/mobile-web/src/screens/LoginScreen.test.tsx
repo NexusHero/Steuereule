@@ -598,7 +598,7 @@ describe('LoginScreen', () => {
     // Email sign-in is unaffected — it always works, so it proves the screen rendered.
     await screen.findByPlaceholderText('du@beispiel.de')
     expect(screen.queryByText('Weiter mit Google')).toBeNull()
-    expect(await screen.findByText('Google ist auf diesem Gerät nicht eingerichtet — die anderen Wege stehen dir offen.')).toBeTruthy()
+    expect(await screen.findByText('Google ist auf diesem Gerät nicht eingerichtet.')).toBeTruthy()
     // The fallback notice takes the button's place — the divider still has content above it.
     expect(screen.queryByText('oder mit E-Mail')).not.toBeNull()
   })
@@ -1239,7 +1239,7 @@ describe('LoginScreen', () => {
       // The cap: 6 automatic retries have now happened (7 mints total). No further request
       // fires on its own, no matter how long — this is the count cap Musti's F1(b) asked for,
       // distinct from the per-retry delay cap proven above.
-      await screen.findByText('Die automatischen Versuche sind pausiert — bitte versuch es manuell noch einmal.')
+      await screen.findByText('Die automatischen Versuche sind pausiert. Versuch es selbst noch einmal.')
       await act(async () => {
         await vi.advanceTimersByTimeAsync(60_000)
       })

@@ -17,7 +17,7 @@
   "login": {
     "google": "Continue with Google",
     "apple": "Continue with Apple",
-    "googleNotConfigured": "Google isn't set up on this device — the other ways are still open to you.",
+    "googleNotConfigured": "Google isn't set up on this device.",
     "googleUnknown": "We can't tell right now whether Google is available.",
     "orEmail": "or with email",
     "emailLabel": "Email",
@@ -71,7 +71,7 @@
       "retry": "Try again",
       "rateLimited": "Too many requests just now. Try again in a few seconds.",
       "retryingAuto": "Automatically trying again …",
-      "retryExhausted": "Automatic retries are paused — please try again yourself.",
+      "retryExhausted": "Automatic retries are paused. Try again yourself.",
       "knapp": "Expires in {{time}}",
       "remaining": "{{time}} left",
       "copy": "Copy",
@@ -89,7 +89,7 @@
     "errEmailTaken": "There is already an account for this email.",
     "errEmailNotVerified": "Please confirm your email address first. We have sent you a new link.",
     "errPasswordTooShort": "That password's too short.",
-    "errPasswordCompromised": "That password has shown up in a known data breach — please choose a different one.",
+    "errPasswordCompromised": "That password is in a known data breach. Choose a different one.",
     "errGeneric": "That didn't work just now. Check your connection and try again.",
     "verifyBanner": {
       "heading": "Please verify your email.",
@@ -348,7 +348,7 @@
       "loading": "Loading devices …",
       "loadError": {
         "unreachable": "Your devices couldn't be loaded. Check your connection and try again.",
-        "refused": "Your devices couldn't be loaded — the server responded, but that didn't work. It isn't your connection.",
+        "refused": "Your devices couldn't be loaded. It isn't your connection.",
         "unknown": "Your devices couldn't be loaded. Try again."
       },
       "empty": "No other devices signed in.",
@@ -423,7 +423,7 @@
     "title": "Security",
     "back": "Back to profile",
     "loading": "Loading …",
-    "requiresAccount": "Two-factor authentication requires a real account — it is not available in guest mode.",
+    "requiresAccount": "Two-factor authentication requires an account.",
     "password": "Password",
     "busy": "Checking …",
     "enabled": "Two-factor authentication is now on.",
@@ -473,7 +473,7 @@
     "errChallengeExpired": "The second-factor check has expired. Please sign in again with your email and password.",
     "cancel": "Cancel",
     "sessionUnknown": "We could not check right now whether you are signed in. Please try again in a moment.",
-    "errLocked": "Too many failed attempts — your account is temporarily locked. Try again later."
+    "errLocked": "Too many failed attempts. Your account is temporarily locked."
   },
   "bestaetigung": {
     "veraendert": "Something changed since you saw these values. Please check them again.",
@@ -1146,7 +1146,7 @@
     "fehlendHinweis": "{{anzahl}} details still missing for the printout.",
     "vollstaendig": "Everything there for the printout.",
     "saveError": {
-      "validation": "Please check your entries — e.g. date, postcode or IBAN.",
+      "validation": "Check your entries, such as date, postcode or IBAN.",
       "network": "Saving failed. Check your connection."
     },
     "familienstaende": {
@@ -1251,7 +1251,7 @@
     "hero": {
       "kicker": "We mean it, not just fine print",
       "heading": "Your data.\nYour rules.",
-      "body": "Tax data is about the most private thing an app can touch. So here's everything — short, concrete, checkable."
+      "body": "What happens to your tax data: short, concrete, checkable."
     },
     "sessionChecking": "Checking …",
     "sessionUnknown": {
@@ -1273,7 +1273,7 @@
       "title": "Access & export",
       "subtitle": "Art. 15 (access) and Art. 20 (portability): download a copy of your data.",
       "jsonButton": "Download as JSON",
-      "jsonHint": "Machine-readable — for sharing or archiving.",
+      "jsonHint": "Machine-readable, for sharing or archiving.",
       "pdfButton": "Download as PDF report",
       "pdfHint": "For reading, printing, or filing.",
       "preparing": "Preparing …",
@@ -1523,7 +1523,7 @@
       "heading": "Scan wage tax statement (PDF / photo)",
       "help": "Text recognition runs on your device. If amounts are still missing, only lines 3, 4 and 23 to 27, without names and identifiers, go to a language model. Your tax ID, the employer and the image never go to a language model.",
       "cta": "Choose PDF or photo",
-      "nativeUnsupported": "Camera scan in the native app build follows separately — on web you can pick a PDF or photo directly.",
+      "nativeUnsupported": "On the web you can pick a PDF or photo.",
       "assignedElsewhere": "The document belongs to {{name}}. Its values now wait for you in the owl, not in this mask.",
       "progress": {
         "uploading": "Encrypting and saving receipt …",
@@ -2058,7 +2058,7 @@
       }
     },
     "widerspruch": "This doesn't add up.",
-    "widerspruchBody": "More vacation/sick days than work days — check your entries.",
+    "widerspruchBody": "More vacation and sick days than work days. Check your entries.",
     "weiter": "Continue",
     "loading": "Loading …",
     "zahlUnlesbar": "That is not a whole number. Please type digits only, e.g. 30.",
@@ -2936,7 +2936,7 @@
     "unbestimmt": "We can't say that yet.",
     "nichtVerheiratet": "Only married couples can choose between separate and joint assessment.",
     "done": "Continue to cockpit",
-    "keineEinnahmen": "No income recorded yet — there is nothing to compare.",
+    "keineEinnahmen": "No income recorded yet.",
     "einzel": "Separate assessment",
     "zusammen": "Joint assessment",
     "herkunftRegelEinzel": "§32a EStG basic tariff + Soli §4 SolZG",
@@ -2998,7 +2998,7 @@
     "beruf": {
       "summary": "Tips for: {{beruf}}",
       "change": "Change",
-      "error": "That didn’t work — your occupation is not saved yet. Please try again."
+      "error": "Your occupation is not saved yet. Try again."
     },
     "guest": {
       "title": "The Owl needs an account",
@@ -3231,7 +3231,7 @@
       "receiptFileCta": "Choose PDF or photo",
       "receiptPasteText": "Paste text instead",
       "receiptPrivacy": "The text is read on your device. The image never goes to an AI; the original is stored encrypted in your receipts.",
-      "receiptNativeHint": "Camera scan is coming to the app — upload a PDF or photo on the web.",
+      "receiptNativeHint": "On the web you can upload a PDF or photo.",
       "lstbPersonBOwnAccount": "This is Person B’s wage tax certificate. Person B has an own account and uploads it there; nothing was taken over here.",
       "certificatePersonBOwnAccount": "This is Person B’s salary certificate. Person B has an own account and uploads it there; nothing was taken over here.",
       "receiptProgress": {

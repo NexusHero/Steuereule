@@ -83,7 +83,7 @@ export function ProfessionPicker({ profession, onChoose, saving = false }: Profe
       </View>
       {failed ? (
         <Text style={styles.error} role="alert" testID="beruf-error">
-          {tr('eule.beruf.error', 'Das hat nicht geklappt — dein Beruf ist noch nicht gespeichert. Versuch es noch einmal.')}
+          {tr('eule.beruf.error', 'Dein Beruf ist noch nicht gespeichert. Versuch es noch einmal.')}
         </Text>
       ) : null}
     </Card>

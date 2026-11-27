@@ -143,7 +143,7 @@ describe('RegistrierungScreen', () => {
     fillCredentials()
     fireEvent.click(screen.getByText('Konto anlegen'))
 
-    expect(await screen.findByText('Dieses Passwort ist in einem bekannten Datenleck aufgetaucht — wähl bitte ein anderes.')).toBeTruthy()
+    expect(await screen.findByText('Dieses Passwort steht in einem bekannten Datenleck. Wähl ein anderes.')).toBeTruthy()
   })
 
   // ADR-0109 — sign-up answers a new and a taken address alike and returns no session: the success step says
@@ -255,7 +255,7 @@ describe('RegistrierungScreen', () => {
     // Email sign-in is unaffected — it always works, so it proves the screen rendered.
     await screen.findByPlaceholderText('du@beispiel.de')
     expect(screen.queryByText('Weiter mit Google')).toBeNull()
-    expect(await screen.findByText('Google ist auf diesem Gerät nicht eingerichtet — die anderen Wege stehen dir offen.')).toBeTruthy()
+    expect(await screen.findByText('Google ist auf diesem Gerät nicht eingerichtet.')).toBeTruthy()
     // The fallback notice takes the button's place — the divider still has content above it.
     expect(screen.queryByText('oder mit E-Mail')).not.toBeNull()
   })
@@ -285,6 +285,6 @@ describe('RegistrierungScreen', () => {
 
     await screen.findByPlaceholderText('du@beispiel.de')
     expect(screen.queryByText('Weiter mit Google')).toBeNull()
-    expect(screen.queryByText('Google ist auf diesem Gerät nicht eingerichtet — die anderen Wege stehen dir offen.')).toBeNull()
+    expect(screen.queryByText('Google ist auf diesem Gerät nicht eingerichtet.')).toBeNull()
   })
 })

@@ -54,14 +54,14 @@ describe('SecurityScreen without an account', () => {
     mocks.session.state = { status: 'unknown', reason: 'unreachable' }
     renderScreen()
     expect(screen.getByTestId('sicherheit-sitzung-unbekannt')).toBeTruthy()
-    expect(screen.queryByText(/gibt es nur für ein echtes Konto/)).toBeNull()
+    expect(screen.queryByText(/gibt es nur mit einem Konto/)).toBeNull()
   })
 
   it.each(['signed-out'])('says two-factor needs a real account when the session is %s', (status) => {
     mocks.session.state = { status }
     const onBack = vi.fn()
     renderScreen(onBack)
-    expect(screen.getByText(/gibt es nur für ein echtes Konto/)).toBeTruthy()
+    expect(screen.getByText(/gibt es nur mit einem Konto/)).toBeTruthy()
     fireEvent.click(screen.getByLabelText('Zurück zu Profil'))
     expect(onBack).toHaveBeenCalledOnce()
   })

@@ -170,6 +170,14 @@ describe('CockpitScreen', () => {
     expect(await screen.findByText('1 Frage offen')).toBeTruthy()
   })
 
+  it('says nothing about open questions when none is open', async () => {
+    mockCockpit({ ...LOADED_SUMMARY, openItems: 0 })
+    renderCockpit()
+
+    await screen.findByText('Erfasstes Einkommen')
+    expect(screen.queryByText('0 Fragen offen')).toBeNull()
+  })
+
   it('shows the "N Posten offen" line from the spanne', async () => {
     mockCockpit(LOADED_SUMMARY)
     renderCockpit()

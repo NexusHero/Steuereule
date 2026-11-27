@@ -58,8 +58,8 @@ export function CockpitLoaded(props: CockpitLoadedProps) {
         ) : (
           <NumericHero status={status} compact={refundFirst} byPerson={summary.byPerson} partnerName={props.partnerName} />
         )}
-        {/* Zero open questions is no news: the progress line below says where the user stands. */}
-        {hasOpenItems || progress === null ? <Text style={styles.openItems}>{tr('cockpit.hero.openItems', { count: openItems })}</Text> : null}
+        {/* Zero open questions is no news, with or without a progress line to say where the user stands. */}
+        {hasOpenItems ? <Text style={styles.openItems}>{tr('cockpit.hero.openItems', { count: openItems })}</Text> : null}
         <Refund
           year={year}
           hideRange={refundFirst}
