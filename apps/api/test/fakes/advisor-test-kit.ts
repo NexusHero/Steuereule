@@ -114,7 +114,7 @@ export interface AdvisorParts {
  */
 export type AdvisorTestFacade = Pick<AdvisorService, 'getSession' | 'setFeedback' | 'clearConversation' | 'connection' | 'openingState'> &
   Pick<AdvisorTurn, 'sendMessage' | 'prepareTurn' | 'streamMessage' | 'executeTurn'> &
-  Pick<AdvisorConversations, 'conversationFor' | 'listConversations' | 'createConversation' | 'renameConversation' | 'deleteConversation' | 'summarizeConversation' | 'searchConversations'> & {
+  Pick<AdvisorConversations, 'conversationFor' | 'listConversations' | 'createConversation' | 'renameConversation' | 'markRead' | 'deleteConversation' | 'summarizeConversation' | 'searchConversations'> & {
     readonly setConversationModel: AdvisorConversations['setChatModel']
   } & Pick<AdvisorProjectNotes, 'saveSituation' | 'listNotes' | 'createNote' | 'updateNote' | 'deleteNote' | 'undoNoteChange'> &
   Pick<AdvisorCaseDigest, 'knownNamesForScrubbing' | 'advisorHousehold' | 'loadRecordHandles' | 'buildCaseDigest' | 'previewEffectFor' | 'estimateReaderFor'> &
@@ -143,7 +143,7 @@ function facadeOf(parts: AdvisorParts): AdvisorTestFacade {
   return {
     ...bound(parts.session, 'getSession', 'setFeedback', 'clearConversation', 'connection', 'openingState'),
     ...bound(parts.turn, 'sendMessage', 'prepareTurn', 'streamMessage', 'executeTurn'),
-    ...bound(parts.conversations, 'conversationFor', 'listConversations', 'createConversation', 'renameConversation', 'deleteConversation', 'summarizeConversation', 'searchConversations'),
+    ...bound(parts.conversations, 'conversationFor', 'listConversations', 'createConversation', 'renameConversation', 'markRead', 'deleteConversation', 'summarizeConversation', 'searchConversations'),
     setConversationModel: parts.conversations.setChatModel.bind(parts.conversations),
     ...bound(parts.notes, 'saveSituation', 'listNotes', 'createNote', 'updateNote', 'deleteNote', 'undoNoteChange'),
     ...bound(parts.caseDigest, 'knownNamesForScrubbing', 'advisorHousehold', 'loadRecordHandles', 'buildCaseDigest', 'previewEffectFor', 'estimateReaderFor'),

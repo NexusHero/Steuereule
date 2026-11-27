@@ -29,6 +29,16 @@ export interface AdvisorConversationRecord {
   readonly summaryUntil: Date | null
   /** The chat model the user picked for this conversation as „provider:model“ (ADR-0096); null = the operator's. */
   readonly chatModel: string | null
+  /** When the owl last finished an answer here; null before the first one. */
+  readonly answeredAt: Date | null
+  /** When the user last had the conversation open; null if never since an answer was tracked. */
+  readonly readAt: Date | null
+}
+
+/** An answer finished after the user last looked at the conversation. */
+export function hasUnreadAnswer(conversation: Pick<AdvisorConversationRecord, 'answeredAt' | 'readAt'>): boolean {
+  if (conversation.answeredAt === null) return false
+  return conversation.readAt === null || conversation.answeredAt.getTime() > conversation.readAt.getTime()
 }
 
 export type AdvisorNoteAuthor = 'owl' | 'user'
@@ -51,6 +61,8 @@ export interface AdvisorConversationChange {
   readonly summary?: string | null
   readonly summaryUntil?: Date | null
   readonly chatModel?: string | null
+  readonly answeredAt?: Date
+  readonly readAt?: Date
 }
 
 export interface AdvisorChatMessageRecord {
@@ -240,7 +252,7 @@ export class InMemoryAdvisorRepository implements AdvisorRepository {
 
   async createConversation(userId: string, taxYear: number, title: string | null = null): Promise<AdvisorConversationRecord> {
     const at = this.now()
-    const conversation: AdvisorConversationRecord = { id: randomUUID(), userId, taxYear, title, createdAt: at, lastUsedAt: at, summary: null, summaryUntil: null, chatModel: null }
+    const conversation: AdvisorConversationRecord = { id: randomUUID(), userId, taxYear, title, createdAt: at, lastUsedAt: at, summary: null, summaryUntil: null, chatModel: null, answeredAt: null, readAt: null }
     this.conversations.push(conversation)
     return conversation
   }
@@ -253,7 +265,13 @@ export class InMemoryAdvisorRepository implements AdvisorRepository {
     const index = this.conversations.findIndex((c) => c.id === id && c.userId === userId)
     if (index === -1) return null
     // Two touches within one millisecond still need an order; the in-memory clock never repeats.
-    const updated = { ...this.conversations[index]!, ...change, ...(change.lastUsedAt ? { lastUsedAt: this.now() } : {}) }
+    const updated = {
+      ...this.conversations[index]!,
+      ...change,
+      ...(change.lastUsedAt ? { lastUsedAt: this.now() } : {}),
+      ...(change.answeredAt ? { answeredAt: this.now() } : {}),
+      ...(change.readAt ? { readAt: this.now() } : {}),
+    }
     this.conversations[index] = updated
     return updated
   }

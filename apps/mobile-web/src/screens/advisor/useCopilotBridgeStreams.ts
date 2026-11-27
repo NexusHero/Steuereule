@@ -12,6 +12,7 @@ import {
   getApiClientBaseUrl,
   getOwlModeControllerGetCardsQueryKey,
   getOwlModeControllerGetSettingQueryKey,
+  getAdvisorControllerListConversationsQueryKey,
   type SendAdvisorMessageResponseDto,
   ApiError,
 } from '@steuereule/api-client'
@@ -260,8 +261,10 @@ export function useCopilotBridgeStreams({ taxYear, isAuthenticated, onSwitchYear
           queryClient.invalidateQueries({ queryKey: getOwlModeControllerGetCardsQueryKey(taxYear) }),
         ])
         if (failed) return null
-        // The answer is there: the navigation marks the owl if the user is on another tab by now.
+        // The answer is there: the navigation marks the owl if the user is on another tab by now, and
+        // asks the server again, which keeps the mark for a later visit.
         owlAnswerArrived()
+        void queryClient.invalidateQueries({ queryKey: getAdvisorControllerListConversationsQueryKey(taxYear) })
         const finished = doneResponse as SendAdvisorMessageResponseDto | null
         if (finished?.userMessage && finished.assistantMessage) {
           return [

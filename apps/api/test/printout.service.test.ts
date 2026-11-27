@@ -20,7 +20,7 @@ import { FakeMasterDataRepository } from './fakes/fake-master-data.repository.js
 import { FakePensionRepository } from './fakes/fake-pension.repository.js'
 import { FakeProfileRepository } from './fakes/fake-profile.repository.js'
 import { FakeRentalRepository } from './fakes/fake-rental.repository.js'
-import { isSummaryPage, summaryPageCount } from './support/pdf-pages.js'
+import { formPageCount, isSummaryPage, summaryPageCount } from './support/pdf-pages.js'
 import { taxCaseReaderOver } from '../src/tax-case/repository-tax-case.reader.js'
 
 const TEMPLATES_BASE = new URL('../assets/vordrucke/', import.meta.url)
@@ -65,7 +65,7 @@ describe('PrintoutService with AMOUNT_LATER', () => {
 })
 
 describe('PrintoutService: the summary leads the paid printout', () => {
-  async function paidService(estimate: { getState: () => Promise<{ kind: string; result?: { from: number; to: number } }> } | undefined) {
+  async function paidService(estimate: { getState: () => Promise<{ kind: string; result?: { from: number; to: number } }> } | undefined, paid = true) {
     const profileRepo = new FakeProfileRepository()
     const masterDataRepo = new FakeMasterDataRepository()
     const lstbRepo = new FakeLstbRepository()
@@ -80,7 +80,7 @@ describe('PrintoutService: the summary leads the paid printout', () => {
     const service = new PrintoutService(
       taxCaseReaderOver({ profile: profileRepo, masterData: masterDataRepo, wageTaxCertificate: lstbRepo, pension: new FakePensionRepository(), capital: new FakeCapitalRepository(), rental: new FakeRentalRepository(), salaryStatement: new FakeChSalaryCertificateRepository(), children: new FakeChildRepository(), coupling: new FakeLinkRepository(), interview: new FakeInterviewAnswerRepository(), commute: commuteRepo }),
       new FakeMarkingRepository(),
-      new UnlockService(fixedUnlockRepository(true), stubPaymentProvider('cs_9'), 'http://localhost:8081'),
+      new UnlockService(fixedUnlockRepository(paid), stubPaymentProvider('cs_9'), 'http://localhost:8081'),
       new AuditService(audit),
       TEMPLATES_BASE,
       undefined,
@@ -99,6 +99,22 @@ describe('PrintoutService: the summary leads the paid printout', () => {
     // The summary is in front as a block: no Vordruck page comes before one of its pages.
     const kinds = pdf.getPageIndices().map((index) => isSummaryPage(pdf, index))
     expect(kinds.indexOf(false)).toBe(summaryPageCount(pdf))
+  })
+
+  it('comes on its own too: the same pages as in front of the printout, and no Vordruck', async () => {
+    const service = await paidService({ getState: async () => ({ kind: 'spanne', result: { from: 880, to: 950 } }) })
+    const alone = await PDFDocument.load(await service.summary('u9', 2025))
+    const printout = await PDFDocument.load(await service.create('u9', 2025))
+    expect(alone.getPageCount()).toBeGreaterThan(0)
+    expect(alone.getPageCount()).toBe(summaryPageCount(printout))
+    expect(formPageCount(alone)).toBe(0)
+  })
+
+  it('is not written on its own for a year that is not paid, nor for a year without Vordrucke', async () => {
+    const unpaid = await paidService({ getState: async () => ({ kind: 'offen' }) }, false)
+    await expect(unpaid.summary('u9', 2025)).rejects.toMatchObject({ status: 402 })
+    const paid = await paidService({ getState: async () => ({ kind: 'offen' }) })
+    await expect(paid.summary('u9', 1999)).rejects.toMatchObject({ code: 'VORDRUCKE_MISSING' })
   })
 
   it('still leads the printout when the estimate cannot be read: the forms the user paid for come either way', async () => {

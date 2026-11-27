@@ -2,9 +2,11 @@
 // left edge, on a tablet-wide one a narrow rail; the screen keeps that room free, and everything the bar
 // does (switching, hiding for a sheet) the rail does too.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { act, fireEvent, screen, waitFor } from '@testing-library/react'
+import { act, cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
 import * as ReactNative from 'react-native'
 import { SIDE_NAV_COMPACT_WIDTH, SIDE_NAV_WIDTH } from '@steuereule/ui'
+import { http, HttpResponse } from 'msw'
+import { server } from '../../test/test-msw-server'
 import { currentRoute, renderShell, signedIn } from './navigationTestKit'
 import { owlAnswerArrived, resetOwlUnread } from '../screens/advisor/owlUnread'
 
@@ -20,16 +22,20 @@ function windowWidth(width: number) {
   vi.spyOn(ReactNative, 'useWindowDimensions').mockReturnValue({ width, height: 900, scale: 1, fontScale: 1 } as ReactNative.ScaledSize)
 }
 
-const open = async (path: string) => {
-  renderShell(path)
+const openView = async (path: string) => {
+  const view = renderShell(path)
   await screen.findAllByTestId(/^stub-/)
+  return view
 }
+const open = async (path: string) => void (await openView(path))
 
 beforeEach(() => {
   signedIn()
   sessionStorage.clear()
 })
 afterEach(() => {
+  // The shell goes first: it reads the window size through the mock and listens to the owl's state.
+  cleanup()
   vi.restoreAllMocks()
   resetOwlUnread()
 })
@@ -131,6 +137,38 @@ describe.each([390, 834, 1440])('an answer of the owl that arrived elsewhere, at
     windowWidth(width)
     await open('/app/eule')
     act(() => owlAnswerArrived())
+    expect(screen.queryByTestId('tab-badge')).toBeNull()
+  })
+})
+
+// What stays unread across a reload the server keeps, per conversation: the mark is there on a fresh visit.
+describe.each([390, 1440])('an answer the server kept as unread, at %i px', (width) => {
+  const conversation = (unread: boolean) => ({ id: 'c1', title: 'Fortbildung', createdAt: '2026-11-27T10:00:00.000Z', lastUsedAt: '2026-11-27T10:00:00.000Z', answering: false, chatModel: null, unread })
+  const serve = (unread: boolean) => server.use(http.get('*/v1/steuerjahre/:jahr/advisor/conversations', () => HttpResponse.json([conversation(unread)], { status: 200 })))
+
+  it('marks the owl’s entry on a fresh visit, without an answer arriving', async () => {
+    windowWidth(width)
+    serve(true)
+    await open('/app')
+    expect(await screen.findByRole('tab', { name: 'Eule, neue Antwort' })).toBeTruthy()
+  })
+
+  it('shows no mark on the owl’s own screen, and none when nothing is unread', async () => {
+    windowWidth(width)
+    serve(true)
+    await open('/app/eule')
+    await waitFor(() => expect(currentRoute().name).toBe('Owl'))
+    expect(screen.queryByTestId('tab-badge')).toBeNull()
+  })
+
+  it('marks nothing when the server holds nothing unread, or cannot be asked', async () => {
+    windowWidth(width)
+    serve(false)
+    const first = await openView('/app')
+    expect(screen.queryByTestId('tab-badge')).toBeNull()
+    first.unmount()
+    server.use(http.get('*/v1/steuerjahre/:jahr/advisor/conversations', () => HttpResponse.json({ message: 'down' }, { status: 500 })))
+    await open('/app')
     expect(screen.queryByTestId('tab-badge')).toBeNull()
   })
 })

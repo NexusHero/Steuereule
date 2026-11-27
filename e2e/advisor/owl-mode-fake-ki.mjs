@@ -375,11 +375,35 @@ async function main() {
       const marked = away.page.getByRole('tab', { name: 'Eule, neue Antwort' })
       await marked.waitFor({ state: 'visible', timeout: 20_000 })
       if ((await marked.locator('[data-testid="tab-badge"]').count()) !== 1) fail('Row I: the marked owl entry must carry the dot')
-      await marked.click()
+      // The server keeps what is unread: after a reload nothing arrives any more, and the mark is still there.
+      await away.page.unroute((url) => /advisor\/(stream|runs)/.test(url.pathname)).catch(() => {})
+      await away.page.reload({ waitUntil: 'networkidle' })
+      await away.page.getByRole('tab', { name: 'Eule, neue Antwort' }).waitFor({ state: 'visible', timeout: 20_000 }).catch(() => fail('Row I: an unread answer should still mark the owl after a reload'))
+      await away.page.getByRole('tab', { name: 'Eule, neue Antwort' }).click()
       await away.page.locator('[data-testid="tab-badge"]').waitFor({ state: 'detached', timeout: 10_000 })
+      // Seen once, it is read for good: back in the cockpit and after another reload there is no mark.
+      await away.page.locator('[data-testid="advisor-assistant-message"]').last().waitFor({ state: 'visible', timeout: 20_000 })
+      const conversations = () => call(user.api, 'GET', `/v1/steuerjahre/${YEAR}/advisor/conversations`)
+      await until(async () => (await conversations()).every((c) => c.unread === false), 'Row I: opening the owl should store the answer as read')
+      await away.page.getByRole('tab', { name: 'Cockpit' }).click()
+      await away.page.reload({ waitUntil: 'networkidle' })
+      await away.page.locator('[data-testid="cockpit-bescheid"]').waitFor({ state: 'visible', timeout: 15_000 })
+      if ((await away.page.locator('[data-testid="tab-badge"]').count()) !== 0) fail('Row I: an answer that was read must not mark the owl again after a reload')
+
+      // An answer in a conversation other than the open one is marked in the list, until that conversation is opened.
+      await openEule(away.page)
+      // The question goes in over the API, as from another device: in the app a conversation cannot be left while it answers.
+      const [answered] = await conversations()
+      await turnLimitHasRoom('Row I: a question from another device')
+      turnsSent.push(Date.now())
+      await call(user.api, 'POST', `/v1/steuerjahre/${YEAR}/advisor/chat`, { message: 'Noch eine Frage', conversationId: answered.id })
+      const other = await call(user.api, 'POST', `/v1/steuerjahre/${YEAR}/advisor/conversations`)
+      if (other.id === answered.id) fail('Row I: a second conversation is needed to see the mark in the list')
+      await away.page.goto(`${webOrigin}/app/eule`, { waitUntil: 'networkidle' })
+      await away.page.locator('[data-testid="eule-conversation-unread"]').first().waitFor({ state: 'visible', timeout: 20_000 }).catch(() => fail(`Row I: the answered conversation should be marked „neu“ in the list while ${other.id} is open`))
       await away.ctx.close()
     }
-    console.log(`[${TAG}] ✅ Row I — an answer that arrived while the user was in the cockpit marks the owl; opening the owl reads it`)
+    console.log(`[${TAG}] ✅ Row I — an answer that arrived elsewhere marks the owl, survives a reload, is read by opening the owl, and is marked in the list`)
 
     // Row J — „Vorlesen“ under an answer hands the device's voice the answer as spoken text; a second press stops.
     // The browser's speech synthesis is the boundary: a headless browser has no voices, so the row supplies one

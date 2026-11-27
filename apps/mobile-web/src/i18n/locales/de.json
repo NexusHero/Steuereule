@@ -1013,6 +1013,8 @@
     "freischalten": "Freischalten und bezahlen",
     "herunterladen": "PDF herunterladen",
     "herunterladenBearbeitbar": "Bearbeitbare PDF herunterladen",
+    "herunterladenZusammenfassung": "Nur die Zusammenfassung",
+    "zusammenfassungHinweis": "Für deine Unterlagen, deinen Partner oder eine Beratung. Ohne Vordrucke, nicht zum Abgeben.",
     "bearbeitbarHinweis": "Zum Korrigieren vor dem Druck: Die Werte stehen in Formularfeldern. Was du dort änderst, weicht von deinen Angaben in der App ab – ändere besser dort und lade neu herunter.",
     "heruntergeladen": "Heruntergeladen.",
     "fehler": "Das hat nicht geklappt. Versuch es noch einmal.",
@@ -3346,6 +3348,7 @@
       "conversations": {
         "project": "Steuerjahr {{year}}",
         "answering": "antwortet gerade …",
+        "unread": "neu",
         "count_one": "{{count}} Gespräch",
         "count_other": "{{count}} Gespräche",
         "title": "Gespräche",

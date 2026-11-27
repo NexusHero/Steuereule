@@ -445,6 +445,20 @@ export class AdvisorController {
     return this.conversations.renameConversation(userId, year, conversationId, dto.title)
   }
 
+  @Put('conversations/:conversationId/read')
+  @OwlRoute()
+  @ApiOperation({ summary: 'The user has this conversation open: its answers so far are read' })
+  @ApiParam({ name: 'conversationId', type: String })
+  @ApiOkResponse({ type: AdvisorConversationDto })
+  @ApiNotFoundResponse({ description: 'No such conversation in this tax year.' })
+  markConversationRead(
+    @CurrentUser() userId: string,
+    @Param('jahr', ParseTaxYearPipe) year: number,
+    @Param('conversationId') conversationId: string,
+  ): Promise<AdvisorConversationDto> {
+    return this.conversations.markRead(userId, year, conversationId)
+  }
+
   @Post('conversations/:conversationId/summarize')
   @HttpCode(200)
   @OwlRoute()

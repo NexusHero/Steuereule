@@ -22,6 +22,7 @@ const COSTLY: Readonly<Record<string, { readonly effect: Effect; readonly limite
   'ReceiptParseController.parseReceipt': { effect: 'model' },
   'ReceiptParseController.reassign': { effect: 'model' },
   'PrintoutController.printout': { effect: 'pdf' },
+  'PrintoutController.summary': { effect: 'pdf' },
   'PrintoutController.exportAsync': { effect: 'pdf' },
   'PrintoutController.checkout': { effect: 'payment' },
   'AccountExportController.exportAccount': { effect: 'pdf' },
@@ -88,7 +89,7 @@ const CHEAP_ROUTES: Readonly<Record<string, { readonly why: string; readonly han
     why: 'Conversations, notes and drafts from the database; `connection` is cached per process for 60 s; no model call.',
     handlers: [
       'listModels', 'setConversationModel', 'getSession', 'runEvents', 'stopRun', 'clearConversation', 'connection', 'opening', 'search', 'saveSituation',
-      'listNotes', 'createNote', 'updateNote', 'deleteNote', 'undoNoteChange', 'listConversations', 'createConversation', 'renameConversation',
+      'listNotes', 'createNote', 'updateNote', 'deleteNote', 'undoNoteChange', 'listConversations', 'createConversation', 'renameConversation', 'markConversationRead',
       'deleteConversation', 'setFeedback', 'applyBatch', 'applyAction', 'undoAction', 'dismissAction',
     ],
   },

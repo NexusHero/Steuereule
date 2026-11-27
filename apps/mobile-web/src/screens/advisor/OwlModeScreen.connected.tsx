@@ -8,6 +8,8 @@ import { useBreakpoint } from '@steuereule/ui'
 import { PROFESSION_VALUES, type AdvisorChatMessageView, type OwlCardsDisplay, type Profession } from '@steuereule/core'
 import {
   getAdvisorControllerGetSessionQueryKey,
+  getAdvisorControllerListConversationsQueryKey,
+  useAdvisorControllerMarkConversationRead,
   getInterviewControllerGetInterviewQueryKey,
   getOwlModeControllerGetCardsQueryKey,
   getOwlModeControllerGetSettingQueryKey,
@@ -51,6 +53,7 @@ import { sendOptionsToDto } from './AdvisorChatPanel'
 /** What the client sends to open a conversation; the server replaces it with its own placeholder. */
 const OPENING_MESSAGE = 'Eröffnung'
 import { invalidateAllTaxQueries, useOptionalCopilotBridge } from './CopilotBridgeProvider'
+import { useOwlVisible } from './owlUnread'
 import { OwlModeScreenView } from './OwlModeScreen'
 import type { OwlModeScreenProps } from './OwlModeScreen'
 import type { ConnectionView } from './chat/ConnectionStatus'
@@ -71,6 +74,25 @@ export function ConnectedOwlModeScreen({ onDone = () => {}, onBack, taxYear = ru
   const conversationId = bridge ? bridge.conversationId : localConversationId
   const selectConversation = (id: string | null) => (bridge ? bridge.setConversationId(id) : setLocalConversationId(id))
   const sessionQuery = useAdvisorControllerGetSession(taxYear, conversationId ? { conversationId } : undefined, { query: { retry: false } })
+  // The conversation on screen is read: what the owl answered there no longer waits, here or on another
+  // device. Only while the owl is in view; its screen stays mounted behind the other tabs.
+  const owlVisible = useOwlVisible()
+  const markRead = useAdvisorControllerMarkConversationRead()
+  const markReadMutate = markRead.mutate
+  const openSessionData = sessionQuery.data?.data
+  const unreadOpenId = openSessionData?.conversations?.find((c) => c.id === openSessionData.conversationId)?.unread === true ? openSessionData.conversationId : null
+  useEffect(() => {
+    if (!owlVisible || unreadOpenId === null) return
+    markReadMutate(
+      { jahr: taxYear, conversationId: unreadOpenId },
+      {
+        onSuccess: () => {
+          void queryClient.invalidateQueries({ queryKey: getAdvisorControllerGetSessionQueryKey(taxYear) })
+          void queryClient.invalidateQueries({ queryKey: getAdvisorControllerListConversationsQueryKey(taxYear) })
+        },
+      },
+    )
+  }, [owlVisible, unreadOpenId, taxYear, markReadMutate, queryClient])
   const { partnerName, ownName, jointReturn } = useDraftOwners(
     taxYear,
     sessionQuery.data?.data.messages as unknown as readonly AdvisorChatMessageView[] | undefined,

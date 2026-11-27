@@ -18,7 +18,7 @@ import {
   type AdvisorModelProvider,
   PRODUCT_LIMITS,
 } from '@steuereule/core'
-import { type AdvisorChatMessageRecord, type AdvisorConversationRecord, type AdvisorNoteRecord } from './advisor.repository.js'
+import { hasUnreadAnswer, type AdvisorChatMessageRecord, type AdvisorConversationRecord, type AdvisorNoteRecord } from './advisor.repository.js'
 import type { AdvisorChatMessageDto, AdvisorContextDto, AdvisorConversationDto, AdvisorNoteDto, AdvisorProjectDto, SendAdvisorMessageDto } from './dto/advisor.dto.js'
 
 export interface ResolvedDraft {
@@ -214,6 +214,7 @@ export function toConversationDto(conversation: AdvisorConversationRecord, answe
     createdAt: conversation.createdAt.toISOString(),
     lastUsedAt: conversation.lastUsedAt.toISOString(),
     chatModel: parseChatModel(conversation.chatModel),
+    unread: hasUnreadAnswer(conversation),
   }
 }
 

@@ -4,6 +4,7 @@ import { http, HttpResponse } from 'msw'
 import { server } from '../../../test/test-msw-server'
 import { expectFailsClosed, failEveryRequest } from '../../../test/test-every-query-fails'
 import { OwlModeScreen } from './OwlModeScreen'
+import { resetOwlUnread, setOwlVisible } from './owlUnread'
 import { confirmAction } from '../../../test/test-confirm'
 import { renderWithQuery } from '../../../test/test-render'
 
@@ -437,5 +438,47 @@ describe('the connected owl screen (no copilot bridge)', () => {
     renderConnected()
     await screen.findByTestId('advisor-chat-input')
     expect(screen.queryByTestId('advisor-model-picker')).toBeNull()
+  })
+})
+
+describe('an unread answer in the conversation on screen', () => {
+  const unreadSession = () => session({ conversations: [{ ...CONVERSATIONS[0]!, unread: true }, { ...CONVERSATIONS[1]!, unread: true }] })
+  const readCalls = () => calls.filter((c) => c.method === 'PUT' && c.path === 'read')
+  const recordRead = () =>
+    server.use(
+      http.put('*/v1/steuerjahre/:jahr/advisor/conversations/:id/read', ({ params }) => {
+        calls.push({ method: 'PUT', path: 'read', body: params.id })
+        return HttpResponse.json({ ...CONVERSATIONS[0]!, unread: false }, { status: 200 })
+      }),
+    )
+  afterEach(() => resetOwlUnread())
+
+  it('is reported as read once the owl is in view, for the open conversation only', async () => {
+    recordRoutes(unreadSession())
+    recordRead()
+    setOwlVisible(true)
+    renderConnected()
+    await waitFor(() => expect(readCalls()).toHaveLength(1))
+    expect(readCalls()[0]!.body).toBe('c1')
+    // The other conversation keeps its mark in the list until it is opened.
+    expect((await screen.findAllByTestId('eule-conversation-unread')).length).toBe(1)
+  })
+
+  it('is not reported while the owl stays behind another tab', async () => {
+    recordRoutes(unreadSession())
+    recordRead()
+    renderConnected()
+    await screen.findByTestId('eule-project-sidebar')
+    expect(readCalls()).toHaveLength(0)
+  })
+
+  it('reports nothing when the open conversation holds nothing new', async () => {
+    recordRoutes()
+    recordRead()
+    setOwlVisible(true)
+    renderConnected()
+    await screen.findByTestId('eule-project-sidebar')
+    expect(readCalls()).toHaveLength(0)
+    expect(screen.queryByTestId('eule-conversation-unread')).toBeNull()
   })
 })

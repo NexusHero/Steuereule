@@ -5,6 +5,7 @@ import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fa
 import { randomUUID } from 'node:crypto'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { ADVISOR_REPOSITORY, type AdvisorRepository } from '../src/advisor/advisor.repository.js'
+import { AdvisorConversations } from '../src/advisor/advisor-conversations.js'
 import { AdvisorService } from '../src/advisor/advisor.service.js'
 import { AppModule } from '../src/app.module.js'
 import { PrismaService } from '../src/prisma/prisma.service.js'
@@ -64,6 +65,22 @@ describe('conversations in the database (#481)', () => {
     expect((await repo.findConversation(conversation.id, userId))?.title).toBe('Vermietung Musterweg')
     const [raw] = await prisma.$queryRawUnsafe<Array<{ titel: string }>>('SELECT "titel" FROM "BeraterGespraech" WHERE "id" = $1', conversation.id)
     expect(raw!.titel).not.toContain('Vermietung')
+  })
+
+  it('keeps when the owl last answered and when the user last looked, and reads unread from the two', async () => {
+    const conversation = await repo.createConversation(userId, YEAR, 'Gelesen')
+    expect(conversation.answeredAt).toBeNull()
+    expect(conversation.readAt).toBeNull()
+    const answered = new Date('2026-11-27T10:00:00.000Z')
+    await repo.updateConversation(conversation.id, userId, { answeredAt: answered })
+    expect((await repo.findConversation(conversation.id, userId))?.answeredAt).toEqual(answered)
+    const conversations = asDatabaseUser(userId, app.get(AdvisorConversations))
+    const unread = async () => (await conversations.listConversations(userId, YEAR)).find((c) => c.id === conversation.id)?.unread
+    expect(await unread()).toBe(true)
+
+    expect((await conversations.markRead(userId, YEAR, conversation.id)).unread).toBe(false)
+    expect((await repo.findConversation(conversation.id, userId))?.readAt?.getTime()).toBeGreaterThan(answered.getTime())
+    expect(await unread()).toBe(false)
   })
 
   it('keeps the chat model picked for a conversation, and the model of each answer in its usage (ADR-0096)', async () => {

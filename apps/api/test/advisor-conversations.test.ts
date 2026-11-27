@@ -147,6 +147,35 @@ describe('conversations of a tax year (#481)', () => {
     expect(renamed.title).not.toContain('DE89370400440532013000')
   })
 
+  it('marks a conversation unread once the owl has answered there, until the user has it open', async () => {
+    const { service } = build()
+    const id = (await service.getSession(USER, YEAR)).conversationId
+    const unread = async () => (await service.listConversations(USER, YEAR)).find((c) => c.id === id)?.unread
+    expect(await unread()).toBe(false)
+
+    await collect(service.streamMessage(USER, YEAR, { message: 'Was fehlt noch?', conversationId: id }))
+    expect(await unread()).toBe(true)
+
+    expect((await service.markRead(USER, YEAR, id)).unread).toBe(false)
+    expect(await unread()).toBe(false)
+
+    // The next answer waits again.
+    await collect(service.streamMessage(USER, YEAR, { message: 'Und sonst?', conversationId: id }))
+    expect(await unread()).toBe(true)
+  })
+
+  it('keeps the unread mark to the conversation that was answered, and to its owner', async () => {
+    const { service } = build()
+    const first = (await service.getSession(USER, YEAR)).conversationId
+    await collect(service.streamMessage(USER, YEAR, { message: 'Erstes', conversationId: first }))
+    const second = (await service.createConversation(USER, YEAR)).id
+    const list = await service.listConversations(USER, YEAR)
+    expect(list.find((c) => c.id === first)?.unread).toBe(true)
+    expect(list.find((c) => c.id === second)?.unread).toBe(false)
+    await expect(service.markRead('someone-else', YEAR, first)).rejects.toThrow()
+    expect((await service.listConversations(USER, YEAR)).find((c) => c.id === first)?.unread).toBe(true)
+  })
+
   it('stops at a number of conversations nobody could keep apart', async () => {
     const { service, advisorRepo } = build()
     for (let i = 0; i < MAX_CONVERSATIONS_PER_YEAR; i += 1) {

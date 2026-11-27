@@ -200,20 +200,36 @@ export class PrintoutService {
     return this.unlock.startCheckout(userId, year)
   }
 
-  async create(userId: string, year: number, { editable = false }: { editable?: boolean } = {}): Promise<Uint8Array> {
-    const fieldSet = FIELD_SETS[year]
-    if (!fieldSet) throw new NotFoundError('VORDRUCKE_MISSING', `No Vordrucke are available for tax year ${year} yet.`)
+  /**
+   * What a paid, complete return is printed from. One gate for the printout and for its summary alone:
+   * unpaid, incomplete or held back for a partner's consent, neither is written.
+   */
+  private async paidAndComplete(userId: string, year: number): Promise<Awaited<ReturnType<PrintoutService['collect']>>> {
+    if (!FIELD_SETS[year]) throw new NotFoundError('VORDRUCKE_MISSING', `No Vordrucke are available for tax year ${year} yet.`)
 
     if ((await this.unlock.status(userId, year)) !== 'freigeschaltet') {
       throw new HttpException(`Der Ausdruck für ${year} ist noch nicht freigeschaltet.`, HttpStatus.PAYMENT_REQUIRED)
     }
 
     const collected = await this.collect(userId, year)
-    const { values, instances } = collected
     const { missing } = await this.blockers(userId, year, collected.missing)
     if (missing.length > 0) {
       throw new UnprocessableEntityException({ message: 'Für den Ausdruck fehlen noch Angaben.', missing })
     }
+    return collected
+  }
+
+  /** The SteuerEule summary on its own, without the Vordrucke: for the user's files, a partner or an advisor. */
+  async summary(userId: string, year: number): Promise<Uint8Array> {
+    const collected = await this.paidAndComplete(userId, year)
+    const pdf = await this.summaryPages(userId, year, collected)
+    await this.audit.append({ userId, action: 'READ', resource: 'ausdruck' })
+    return pdf
+  }
+
+  async create(userId: string, year: number, { editable = false }: { editable?: boolean } = {}): Promise<Uint8Array> {
+    const collected = await this.paidAndComplete(userId, year)
+    const { values, instances } = collected
 
     try {
       const forms = await this.render(year, values, instances, editable)

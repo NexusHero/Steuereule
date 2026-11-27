@@ -563,6 +563,9 @@ export class AdvisorConversationDto {
 
   @ApiProperty({ type: Boolean, description: 'An answer is being written in this conversation right now; several conversations can answer at the same time (#503).' })
   answering!: boolean
+
+  @ApiProperty({ type: Boolean, description: 'An answer finished here after the user last had the conversation open: unread, on every device and after a reload.' })
+  unread!: boolean
 }
 
 export class AdvisorProjectDto {

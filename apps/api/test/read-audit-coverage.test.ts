@@ -240,7 +240,7 @@ describe('READ audit coverage (API-15)', () => {
 
   it('advisor: the conversation list', async () => {
     const { audit, reads } = trail()
-    const conversation = { id: 'c1', userId: A, taxYear: YEAR, title: null, createdAt: new Date(), lastUsedAt: new Date(), chatModel: null }
+    const conversation = { id: 'c1', userId: A, taxYear: YEAR, title: null, createdAt: new Date(), lastUsedAt: new Date(), chatModel: null, answeredAt: null, readAt: null }
     const repository = { defaultConversation: async () => conversation, listConversations: async () => [conversation] }
     await new AdvisorConversations(null, repository as never, audit, {} as never).listConversations(A, YEAR)
     expect(reads()).toEqual([{ userId: A, action: 'READ', resource: 'berater_gespraeche' }])

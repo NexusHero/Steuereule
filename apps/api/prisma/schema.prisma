@@ -1517,6 +1517,10 @@ model AdvisorConversation {
   summaryUntil DateTime?            @map("zusammengefasstBis")
   /// The chat model the user picked for this conversation, "provider:model" (ADR-0094). Null = the operator's.
   chatModel    String?              @map("modell")
+  /// When the owl last finished an answer here, and when the user last had the conversation open. An
+  /// answer newer than the last look is unread, on every device and after a reload.
+  answeredAt   DateTime?            @map("beantwortetAm")
+  readAt       DateTime?            @map("gelesenAm")
   messages     AdvisorChatMessage[]
 
   @@index([userId, taxYear, lastUsedAt])
