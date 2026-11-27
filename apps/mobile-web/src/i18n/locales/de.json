@@ -1891,8 +1891,7 @@
     "konflikt": "Das passte nicht zum gespeicherten Stand. Wir haben deine Angaben neu geladen.",
     "netzwerk": "Das konnte nicht gespeichert werden. Prüf die Verbindung und versuch es noch mal.",
     "basis": {
-      "titel": "Kurz zu dir.",
-      "hilfe": "Nur, was die weiteren Fragen bestimmt. Alles andere kommt aus deinen Belegen oder später."
+      "titel": "Kurz zu dir."
     },
     "auswahl": {
       "titel": "Was trifft {{year}} auf dich zu?",

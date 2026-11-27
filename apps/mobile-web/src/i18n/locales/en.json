@@ -1891,8 +1891,7 @@
     "konflikt": "That did not match what is saved. We reloaded your details.",
     "netzwerk": "That could not be saved. Check the connection and try again.",
     "basis": {
-      "titel": "A little about you.",
-      "hilfe": "Only what decides the next questions. Everything else comes from your documents or later."
+      "titel": "A little about you."
     },
     "auswahl": {
       "titel": "What applies to you in {{year}}?",
