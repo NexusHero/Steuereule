@@ -19,7 +19,7 @@
 </p>
 
 <p align="center">
-  <img src="images/screenshots/eule-eroeffnung.png" width="900" alt="The owl opens a new conversation with an analysis of the case: estimated refund 907–972 €, commute and home-office allowances, work expenses against the lump sum, each with its paragraph" />
+  <img src="images/screenshots/eule-eroeffnung.png" width="900" alt="The owl opens a new conversation with an analysis of the case: estimated refund 856–986 €, home-office and commute allowances with their paragraphs as chips, work expenses against the lump sum, donations as the lever still unused" />
 </p>
 <p align="center"><sub><b>The owl speaks first.</b> Open a conversation and she analyses your return before you ask. Every euro in the text comes from the deterministic engine, not the language model.</sub></p>
 
@@ -45,13 +45,13 @@ The owl is a tax advisor in a chat, built like Claude: the conversation is the m
 - **Figures from the engine, words from the model.** The estimate, the commute and home-office allowances and the work expenses are computed by [`@steuereule/core`](packages/core/) before the model is asked; they are the only amounts she may name. Every answer is checked without a model, and an opening that names an amount the app did not compute is written again.
 - **`/grill-me`.** The Berater-Interview skill asks in rounds, each with tappable answers and her recommendation; the answers become drafts the user approves.
 - **Drafts, not writes.** Everything she prepares is a draft with its computed effect on the refund; nothing reaches the return without a click (or Turbo, visible and undoable).
-- **Thinking shown.** "Nachgedacht · 36 s · 4 Schritte" opens to the steps she took and what each tool found.
+- **Thinking shown.** "Nachgedacht · 24 s · 3 Schritte" opens to the steps she took and what each tool found.
 - **Tax years as projects.** Conversations live in their year, side by side, with the household's situation and the year's notes as shared context; nothing that names a person reaches the model.
 
 | Empty chat, case unchanged | `/grill-me`: an interview round | On a phone |
 |:---:|:---:|:---:|
-| <img src="images/screenshots/eule-leer.png" width="300" alt="An empty conversation offering the last analysis and quick starts" /> | <img src="images/screenshots/eule-grill-me.png" width="300" alt="The Berater-Interview asks three questions with tappable answers and a recommendation" /> | <img src="images/screenshots/eule-handy.png" width="170" alt="The empty conversation on a phone: quick starts above the composer, the tab bar below" /> |
-| *Nothing changed since her last analysis: a link to it instead of a new one.* | *Rounds of questions with tappable answers and her recommendation.* | *Same chat, same rules, at 390 px.* |
+| <img src="images/screenshots/eule-leer.png" width="300" alt="An empty conversation offering the last analysis and quick starts" /> | <img src="images/screenshots/eule-grill-me.png" width="300" alt="The Berater-Interview asks four questions in one round, each with tappable answers" /> | <img src="images/screenshots/eule-handy.png" width="170" alt="The empty conversation on a phone: quick starts above the composer, the tab bar below" /> |
+| *Nothing changed since her last analysis: a link to it instead of a new one.* | *A round of questions with tappable answers.* | *Same chat, same rules, at 390 px.* |
 
 ---
 
