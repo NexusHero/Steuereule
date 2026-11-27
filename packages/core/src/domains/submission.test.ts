@@ -131,7 +131,7 @@ describe('filedPositions', () => {
   })
 
   it('credits the wage tax only: prepayments are no „Anrechnung“ of the Bescheid, whichever way the estimate carried them', () => {
-    const breakdown = { persons: [{ incomeEur: 46_970, workExpensesEur: 1_230, creditedTaxEur: 7_457, grossWageEur: 48_200, wageTaxEur: 7_457 }], householdReductionEur: 0 }
+    const breakdown = { persons: [{ workExpensesEur: 1_230, grossWageEur: 48_200, wageTaxEur: 7_457 }], householdReductionEur: 0 }
     // Carried inside the credit (business paths) and beside it (the other paths): the declared credit is the same.
     for (const anrechnung of [7_457 + 500, 7_457]) {
       const positions = filedPositions({
@@ -148,7 +148,7 @@ describe('filedPositions', () => {
       filingType: 'einzel',
       // The facts know only one of the two certificates; the estimate counted both.
       people: { A: person(wage(20_000, 2_500, 4_000), { fahrtweg: 400, homeoffice: 0, arbeitsmittel: 0, sonstiges: 0 }), B: null },
-      estimate: { ...ESTIMATE, breakdown: { persons: [{ incomeEur: 107_000, workExpensesEur: 3_000, creditedTaxEur: 6_500, grossWageEur: 110_000, wageTaxEur: 6_500 }], householdReductionEur: 0 } },
+      estimate: { ...ESTIMATE, breakdown: { persons: [{ workExpensesEur: 3_000, grossWageEur: 110_000, wageTaxEur: 6_500 }], householdReductionEur: 0 } },
     })
     expect(positions.bruttoarbeitslohnA).toBe(110_000)
     // The total includes what the parts do not carry: the lump sum and half the accident insurance premium.
@@ -171,8 +171,8 @@ describe('filedPositions', () => {
         ...ESTIMATE,
         breakdown: {
           persons: [
-            { incomeEur: 80_770, workExpensesEur: 1_230, creditedTaxEur: 9_990, grossWageEur: 82_000, wageTaxEur: 9_890 },
-            { incomeEur: 46_770, workExpensesEur: 1_230, creditedTaxEur: 10_520, grossWageEur: 48_000, wageTaxEur: 10_420 },
+            { workExpensesEur: 1_230, grossWageEur: 82_000, wageTaxEur: 9_890 },
+            { workExpensesEur: 1_230, grossWageEur: 48_000, wageTaxEur: 10_420 },
           ],
           householdReductionEur: 0,
         },
