@@ -54,13 +54,13 @@
     "errEmail": "Das sieht noch nicht nach einer E-Mail aus.",
     "errPass": "Das Passwort ist zu kurz. Neue Passwörter brauchen mindestens 12 Zeichen.",
     "apiUnreachable": {
-      "heading": "Gerade nicht erreichbar — das liegt an uns.",
+      "heading": "Gerade nicht erreichbar. Das liegt an uns.",
       "body": "Unsere Server antworten nicht. Deine Daten sind sicher, es ist nichts verloren.",
       "bodyRetrying": "Unsere Server antworten nicht. Deine Daten sind sicher, es ist nichts verloren. Wir versuchen es automatisch weiter."
     },
     "qr": {
       "heading": "Mit dem Handy anmelden",
-      "body": "Scanne den Code mit der Kamera deines Handys — dort bist du schon angemeldet.",
+      "body": "Scanne den Code mit deinem Handy, auf dem du angemeldet bist.",
       "accessibilityLabel": "QR-Code zum Anmelden mit dem Handy",
       "loading": "Code wird erzeugt …",
       "denied": "Anmeldung wurde nicht bestätigt.",
@@ -71,7 +71,7 @@
       "rateLimited": "Gerade zu viele Anfragen. Versuch es in ein paar Sekunden noch mal.",
       "retryingAuto": "Wir versuchen es automatisch erneut …",
       "retryExhausted": "Die automatischen Versuche sind pausiert — bitte versuch es manuell noch einmal.",
-      "knapp": "Läuft gleich ab — noch {{time}}",
+      "knapp": "Läuft ab in {{time}}",
       "remaining": "Gilt noch {{time}}",
       "copy": "Kopieren",
       "copied": "✓ Kopiert",
@@ -95,7 +95,7 @@
       "body": "Wir haben eine E-Mail an {{email}} geschickt, darin steht, wie es weitergeht. Bis du dich angemeldet hast, machst du als Gast weiter — deine Eingaben übernehmen wir dann.",
       "resend": "Mail erneut senden",
       "resendSending": "Wird gesendet …",
-      "resendSent": "Ist raus — schau in dein Postfach.",
+      "resendSent": "Gesendet. Schau in dein Postfach.",
       "resendError": "Das hat nicht geklappt. Versuch es noch einmal."
     },
     "unverifiedAccount": {
@@ -245,7 +245,7 @@
       "honest": "Eine Erstattung zeigen wir erst, wenn wir sie rechnen können.",
       "register": "Konto anlegen und weitermachen",
       "login": "Ich hab schon ein Konto",
-      "later": "Später — erst mal ins Cockpit",
+      "later": "Später, zum Cockpit",
       "note": "Deine Antworten wandern mit ins Konto. Bis dahin liegen sie verschlüsselt in deiner Gast-Sitzung; änderst du {{days}} Tage lang nichts, löschen wir sie."
     }
   },
@@ -1362,7 +1362,7 @@
       "titleBefore": "Pendelst du zum Arbeiten ins ",
       "titleMark": "Ausland",
       "titleAfter": "?",
-      "help": "Wer in Deutschland wohnt und in der Schweiz arbeitet, hat eigene Regeln — die gehen wir komplett mit dir durch.",
+      "help": "Für Grenzgänger in die Schweiz gelten eigene Regeln.",
       "options": {
         "schweiz": "Ja, in die Schweiz",
         "andereLand": "In ein anderes Land",
@@ -1379,7 +1379,7 @@
       "titleBefore": "Hast du ",
       "titleMark": "Kinder",
       "titleAfter": "?",
-      "help": "Kindergeld, Kinderfreibetrag, Betreuungskosten — was für dich günstiger ist, rechnen wir selbst aus.",
+      "help": "Kindergeld oder Kinderfreibetrag: Was günstiger ist, rechnen wir aus.",
       "options": {
         "nein": "Nein",
         "einKind": "1 Kind",
@@ -1433,7 +1433,7 @@
       "titleBefore": "Arbeitet dein Partner auch in der ",
       "titleMark": "Schweiz",
       "titleAfter": "?",
-      "help": "Dann kommt ein zweiter Schweizer Lohnausweis dazu — wir führen euch beide durch.",
+      "help": "Dann kommt ein zweiter Schweizer Lohnausweis dazu.",
       "options": {
         "schweiz": "Ja, als Grenzgänger",
         "nein": "Nein"
@@ -1466,7 +1466,7 @@
     "back": "Zurück",
     "heading": "Deine Lohnsteuerbescheinigung",
     "headingPartner": "Lohnsteuerbescheinigung von {{name}}",
-    "help": "Übertrag die drei Werte aus deiner Lohnsteuerbescheinigung — Feld für Feld, in der Reihenfolge des Papiers.",
+    "help": "Übertrag die drei Werte aus deiner Lohnsteuerbescheinigung.",
     "loading": "Deine Lohnsteuerbescheinigung wird geladen …",
     "felder": {
       "bruttoarbeitslohn": "Bruttoarbeitslohn (Zeile 3)",
@@ -1601,7 +1601,7 @@
     "partnerFor": "Rente von {{name}}.",
     "back": "Zurück",
     "heading": "Deine Rente",
-    "help": "Übertrag die Angaben aus deiner Rentenbezugsmitteilung — Rentenart, Jahresbetrag und Rentenbeginn.",
+    "help": "Übertrag Rentenart, Jahresbetrag und Rentenbeginn aus deiner Rentenbezugsmitteilung.",
     "loading": "Deine Rente wird geladen …",
     "artHeading": "Welche Rente beziehst du?",
     "arten": {
@@ -1643,7 +1643,7 @@
       "deutscherBrokerOhneSteuer": "Deutsche Bank: Sie behält Abgeltungsteuer ein, sobald der Freistellungsauftrag ausgeschöpft ist. Trag unten ein, was laut Steuerbescheinigung einbehalten wurde (ggf. 0). Danach rechnen wir nach, ob die Abgeltungsteuer oder dein persönlicher Steuersatz günstiger ist.",
       "deutscherBroker": "Deine Bank hat Abgeltungsteuer einbehalten. Unten rechnen wir ehrlich nach, ob die Abgeltungsteuer oder dein persönlicher Steuersatz günstiger ist.",
       "auslaendischerBroker": "Ausländischer Broker: Es wurde keine deutsche Steuer abgeführt. Diese Kapitalerträge musst du in Anlage KAP erklären — sie werden mit deinem persönlichen Steuersatz versteuert. Wir erfinden hier keine Abgeltungsteuer.",
-      "krypto": "Krypto bleibt in 1.0 ehrlich außen vor: Haltefristen und Anschaffungskosten rechnen wir noch nicht. Kein halbes Feature.",
+      "krypto": "Krypto rechnen wir noch nicht: Haltefristen und Anschaffungskosten fehlen.",
       "unbekannt": "Sag uns im Interview zuerst, ob dein Depot bei einem deutschen oder ausländischen Broker liegt."
     },
     "felder": {
@@ -1673,7 +1673,7 @@
       "persoenlich": "Persönlicher Steuersatz (Tarif)",
       "progressionsvorbehaltHinweis": "Der Progressionsvorbehalt (Lohnersatz) ist hier noch nicht berücksichtigt.",
       "keineAbgeltungEinbehalten": "Keine Abgeltungsteuer einbehalten — die Günstigerprüfung stellt sich hier nicht.",
-      "kryptoGegated": "Krypto bleibt 2.0 — keine Günstigerprüfung für Krypto.",
+      "kryptoGegated": "Für Krypto gibt es noch keine Günstigerprüfung.",
       "kapDepotNichtBeantwortet": "Erst die Depot-Frage im Interview beantworten — dann wissen wir, ob die Günstigerprüfung anwendbar ist.",
       "keineKapitalertraege": "Trag zuerst deine Kapitalerträge ein — dann rechnen wir den Vergleich.",
       "unterschied": "Unterschied",
@@ -1693,13 +1693,13 @@
   "vermietung": {
     "back": "Zurück",
     "heading": "Deine Vermietung",
-    "help": "Erfass deine ganzjährig vermieteten Objekte — je Objekt eine Anlage V mit linearer AfA.",
+    "help": "Je ganzjährig vermietetem Objekt eine Anlage V mit linearer AfA.",
     "loading": "Deine Vermietung wird geladen …",
     "anteilLadefehler": "Ob ihr gemeinsam veranlagt werdet, konnte nicht geladen werden – deshalb fehlt hier die Frage nach deinem Anteil am Objekt.",
     "leerenNichtMoeglich": "Leer lassen geht hier nicht, wenn schon ein Wert gespeichert ist. Trag 0 ein, wenn es nichts gab.",
     "einordnung": {
       "berechenbar": "Ganzjährig vermietete Objekte rechnen wir: je Objekt eine Anlage V, lineare AfA nach § 7 Abs. 4 EStG.",
-      "verkaufOderMoebliert": "Verkauf oder möbliert-auf-Zeit bleibt in 1.0 ehrlich außen vor: Fristen und Abgrenzung rechnen wir noch nicht. Kein halbes Feature.",
+      "verkaufOderMoebliert": "Verkauf oder möbliert-auf-Zeit rechnen wir noch nicht: Fristen und Abgrenzung fehlen.",
       "unbekannt": "Sag uns im Interview zuerst, ob du vermietest — und ob du verkauft oder möbliert-auf-Zeit vermietest."
     },
     "felder": {
@@ -1727,7 +1727,7 @@
       "werbungskosten": "Werbungskosten: {{betrag}}",
       "afa": "Lineare AfA: {{betrag}}",
       "offen": "Noch offen: {{count}} Angabe(n) — die Summen zeigen nur das Erfasste.",
-      "gated": "Verkauf oder möbliert rechnen wir in 1.0 noch nicht."
+      "gated": "Verkauf oder möbliert rechnen wir noch nicht."
     },
     "weiter": "Weiter",
     "anschaffungsdatum": "Anschaffungsdatum (Kauf)",
@@ -2009,7 +2009,7 @@
     "back": "Zurück",
     "heading": "Deine Arbeitstage",
     "headingPartner": "Arbeitstage und Arbeitsweg von {{name}}",
-    "help": "Wähl deine Arbeitstage und trag Urlaub, Krankheit und Homeoffice ein. Wir zählen aus dem echten Kalender — kein Schätzwert.",
+    "help": "Wähl deine Arbeitstage und trag Urlaub, Krankheit und Homeoffice ein. Gezählt wird nach dem Kalender.",
     "weekdays": "An welchen Tagen arbeitest du?",
     "weekdayNames": {
       "1": "Mo",
@@ -2173,7 +2173,7 @@
       "erstattungLabel": "Voraussichtliche Erstattung",
       "nachzahlungLabel": "Voraussichtliche Nachzahlung",
       "ergebnisLabel": "Voraussichtliches Ergebnis",
-      "ausgeglichen": "Weder Nachzahlung noch Erstattung — es fällt keine Steuer an.",
+      "ausgeglichen": "Weder Nachzahlung noch Erstattung: Es fällt keine Steuer an.",
       "ergebnisSpanne": "{{nachzahlung}} Nachzahlung bis {{erstattung}} Erstattung",
       "proPerson": "Du {{du}} · {{name}} {{partner}}"
     },
@@ -2534,7 +2534,7 @@
       "otherYearCancel": "Abbrechen",
       "yearInvalid": "Bitte ein Jahr mit vier Ziffern eingeben.",
       "konflikt": {
-        "heading": "Zwei Jahre für diesen Beleg — du entscheidest.",
+        "heading": "Zwei Jahre für diesen Beleg. Du entscheidest.",
         "body": "Zugeordnet: {{zugeordnet}} · Vorschlag: {{vorschlag}}. Bis das geklärt ist, zählt dieser Beleg nicht.",
         "resolve": "Vorschlag {{jahr}} übernehmen",
         "keep": "Bei {{jahr}} bleiben"
@@ -2637,7 +2637,7 @@
   "bescheid": {
     "back": "Zurück",
     "heading": "Dein Steuerbescheid",
-    "help": "Übertrag die Beträge aus deinem Steuerbescheid — Feld für Feld, wie auf dem Papier.",
+    "help": "Übertrag die Beträge aus deinem Steuerbescheid.",
     "loading": "Dein Bescheid wird geladen …",
     "loadError": {
       "heading": "Das hat nicht geklappt.",
@@ -2805,7 +2805,7 @@
     },
     "lohnausweis": {
       "title": "CH-Lohnausweis",
-      "help": "Übertrage die Ziffern Feld für Feld — wie auf dem Papier. Beträge in CHF.",
+      "help": "Übertrag die Ziffern wie auf dem Papier. Beträge in CHF.",
       "felder": {
         "lohn": "Lohn (Grundlohn)",
         "gehaltsnebenleistungen": "Gehaltsnebenleistungen",
@@ -3035,7 +3035,7 @@
       "resizeWorkbench": "Werkbank",
       "applyOne": "✓ Änderung übernehmen",
       "chooseAlternative": "Diesen Weg übernehmen",
-      "alternativesHint": "Wähle einen der Wege — beide zusammen geht nicht.",
+      "alternativesHint": "Wähle einen der Wege. Beide zusammen geht nicht.",
       "applying": "Wird übernommen …",
       "conflictTitle": "Konflikt beim Übernehmen",
       "forceApply": "Mit neuem Stand trotzdem übernehmen",

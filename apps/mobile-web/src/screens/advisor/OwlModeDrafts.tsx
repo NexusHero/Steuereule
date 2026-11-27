@@ -90,7 +90,7 @@ export function OwlModeDrafts({ owl, styles }: OwlModeDraftsProps) {
           ) : null}
           {alternativeGroups.length > 0 ? (
             <Text style={styles.help} testID="eule-batch-alternatives-hint">
-              {tr('eule.workspace.alternativesHint', 'Wähle einen der Wege — beide zusammen geht nicht.')}
+              {tr('eule.workspace.alternativesHint', 'Wähle einen der Wege. Beide zusammen geht nicht.')}
             </Text>
           ) : null}
           <Button

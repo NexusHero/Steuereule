@@ -61,8 +61,8 @@ async function renderOnJobQuestion(opts: Parameters<typeof renderInterview>[0] =
 // mis-wired branch fails loudly instead of a generic "something is on screen" assertion passing
 // by accident. `find*` (not `get*`): every screen mount now waits on the GET.
 const onJobQuestion = () => screen.findByText('Bei mehreren: die Hauptquelle.')
-const onForeignQuestion = () => screen.findByText('Wer in Deutschland wohnt und in der Schweiz arbeitet, hat eigene Regeln — die gehen wir komplett mit dir durch.')
-const onKinderQuestion = () => screen.findByText('Kindergeld, Kinderfreibetrag, Betreuungskosten — was für dich günstiger ist, rechnen wir selbst aus.')
+const onForeignQuestion = () => screen.findByText('Für Grenzgänger in die Schweiz gelten eigene Regeln.')
+const onKinderQuestion = () => screen.findByText('Kindergeld oder Kinderfreibetrag: Was günstiger ist, rechnen wir aus.')
 const onMaritalStatusQuestion = () => screen.findByText('Entscheidet, ob ihr gemeinsam abgeben könnt.')
 const onBusinessGate = () => screen.findByText('Selbstständigkeit rechnen wir noch nicht.')
 const onChOnlyGate = () => screen.findByText('Andere Länder rechnen wir noch nicht.')

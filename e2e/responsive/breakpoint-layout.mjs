@@ -101,7 +101,7 @@ const COPY = {
   nein: 'Nein',
   kinder: '2 oder mehr',
   familienstand: 'Ledig',
-  kontoWandLater: 'Später — erst mal ins Cockpit',
+  kontoWandLater: 'Später, zum Cockpit',
 }
 
 function requireEnv(name) {

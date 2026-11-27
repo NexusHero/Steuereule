@@ -121,7 +121,7 @@ describe('the Günstigerprüfung verdicts', () => {
 
   it.each([
     ['keine-abgeltung-einbehalten', 'Keine Abgeltungsteuer einbehalten — die Günstigerprüfung stellt sich hier nicht.'],
-    ['krypto-gegated', 'Krypto bleibt 2.0 — keine Günstigerprüfung für Krypto.'],
+    ['krypto-gegated', 'Für Krypto gibt es noch keine Günstigerprüfung.'],
     ['keine-kapitalertraege', 'Trag zuerst deine Kapitalerträge ein — dann rechnen wir den Vergleich.'],
     ['kap-depot-nicht-beantwortet', 'Erst die Depot-Frage im Interview beantworten — dann wissen wir, ob die Günstigerprüfung anwendbar ist.'],
   ])('names why it does not apply: %s', async (reason, expected) => {

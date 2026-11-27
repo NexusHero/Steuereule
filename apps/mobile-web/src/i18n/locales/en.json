@@ -54,13 +54,13 @@
     "errEmail": "That doesn't look like an email yet.",
     "errPass": "The password is too short. New passwords need at least 12 characters.",
     "apiUnreachable": {
-      "heading": "Not reachable right now — that's on us.",
+      "heading": "Not reachable right now. That is on us.",
       "body": "Our servers aren't answering. Your data is safe, nothing is lost.",
       "bodyRetrying": "Our servers aren't answering. Your data is safe, nothing is lost. We're automatically trying again."
     },
     "qr": {
       "heading": "Sign in with your phone",
-      "body": "Scan the code with your phone's camera — you're already signed in there.",
+      "body": "Scan the code with your phone, where you are signed in.",
       "accessibilityLabel": "QR code to sign in with your phone",
       "loading": "Generating code …",
       "denied": "Sign-in was not confirmed.",
@@ -71,7 +71,7 @@
       "rateLimited": "Too many requests just now. Try again in a few seconds.",
       "retryingAuto": "Automatically trying again …",
       "retryExhausted": "Automatic retries are paused — please try again yourself.",
-      "knapp": "Expiring soon — {{time}} left",
+      "knapp": "Expires in {{time}}",
       "remaining": "{{time}} left",
       "copy": "Copy",
       "copied": "✓ Copied",
@@ -95,7 +95,7 @@
       "body": "We sent an email to {{email}}; it says how to go on. Until you have signed in, you carry on as a guest — we then move your entries over.",
       "resend": "Resend email",
       "resendSending": "Sending …",
-      "resendSent": "Sent — check your inbox.",
+      "resendSent": "Sent. Check your inbox.",
       "resendError": "That didn't work just now. Try again in a moment."
     },
     "unverifiedAccount": {
@@ -245,7 +245,7 @@
       "honest": "We show a refund only once we can calculate it.",
       "register": "Create account and continue",
       "login": "I already have an account",
-      "later": "Later — take me to the Cockpit",
+      "later": "Later, to the cockpit",
       "note": "Your answers move into the account. Until then they are stored encrypted in your guest session; if you change nothing for {{days}} days, we delete them."
     }
   },
@@ -1362,7 +1362,7 @@
       "titleBefore": "Do you commute abroad for ",
       "titleMark": "work",
       "titleAfter": "?",
-      "help": "Living in Germany and working in Switzerland comes with its own rules — we walk you through all of them.",
+      "help": "Cross-border commuters to Switzerland have rules of their own.",
       "options": {
         "schweiz": "Yes, to Switzerland",
         "andereLand": "To another country",
@@ -1379,7 +1379,7 @@
       "titleBefore": "Do you have ",
       "titleMark": "children",
       "titleAfter": "?",
-      "help": "Child benefit, child allowance, childcare costs — we work out what is better for you.",
+      "help": "Child benefit or child allowance: we work out which is better.",
       "options": {
         "nein": "No",
         "einKind": "1 child",
@@ -1433,7 +1433,7 @@
       "titleBefore": "Does your partner work in ",
       "titleMark": "Switzerland",
       "titleAfter": " too?",
-      "help": "Then a second Swiss salary certificate comes in — we guide you both through it.",
+      "help": "Then a second Swiss salary certificate is added.",
       "options": {
         "schweiz": "Yes, as a cross-border commuter",
         "nein": "No"
@@ -1466,7 +1466,7 @@
     "back": "Back",
     "heading": "Your wage tax statement",
     "headingPartner": "Wage tax certificate of {{name}}",
-    "help": "Copy the three figures from your wage tax statement (Lohnsteuerbescheinigung) — field by field, in the paper’s own order.",
+    "help": "Copy the three values from your wage tax certificate.",
     "loading": "Loading your wage tax statement …",
     "felder": {
       "bruttoarbeitslohn": "Gross pay (line 3)",
@@ -1601,7 +1601,7 @@
     "partnerFor": "Pension of {{name}}.",
     "back": "Back",
     "heading": "Your pension",
-    "help": "Copy the figures from your pension notification (Rentenbezugsmitteilung) — pension type, annual amount and start.",
+    "help": "Copy pension type, annual amount and start from your pension statement.",
     "loading": "Loading your pension …",
     "artHeading": "Which pension do you receive?",
     "arten": {
@@ -1643,7 +1643,7 @@
       "deutscherBrokerOhneSteuer": "German bank: it withholds Abgeltungsteuer once the exemption order is used up. Enter below what the certificate shows as withheld (0 if nothing). Then we compare it with your personal tax rate.",
       "deutscherBroker": "Your bank withheld withholding tax (Abgeltungsteuer). Below we honestly compare it with your personal tax rate.",
       "auslaendischerBroker": "Foreign broker: no German tax was withheld. You must declare this income in Anlage KAP — it is taxed at your personal rate. We never invent a withholding tax here.",
-      "krypto": "Crypto honestly stays out of 1.0: holding periods and acquisition costs are not computed yet. No half feature.",
+      "krypto": "Crypto is not computed yet: holding periods and acquisition costs are missing.",
       "unbekannt": "First tell us in the interview whether your brokerage is German or foreign."
     },
     "felder": {
@@ -1673,7 +1673,7 @@
       "persoenlich": "Personal tariff",
       "progressionsvorbehaltHinweis": "The progression proviso (wage replacement benefits) is not factored in yet.",
       "keineAbgeltungEinbehalten": "No withholding tax was withheld — the comparison does not arise.",
-      "kryptoGegated": "Crypto stays 2.0 — no comparison for crypto.",
+      "kryptoGegated": "There is no most-favourable check for crypto yet.",
       "kapDepotNichtBeantwortet": "Answer the brokerage question in the interview first — then we know whether the comparison applies.",
       "keineKapitalertraege": "Enter your capital income first — then we compute the comparison.",
       "unterschied": "Difference",
@@ -1693,13 +1693,13 @@
   "vermietung": {
     "back": "Back",
     "heading": "Your rental property",
-    "help": "Enter your year-round rented objects — one Anlage V each, with linear depreciation.",
+    "help": "One Anlage V with straight-line depreciation per property let all year.",
     "loading": "Loading your rental property …",
     "anteilLadefehler": "Whether you are assessed jointly could not be loaded, so the question about your share in the property is missing here.",
     "leerenNichtMoeglich": "This field cannot be left empty once a value is saved. Enter 0 if there was nothing.",
     "einordnung": {
       "berechenbar": "Year-round rented objects we compute: one Anlage V each, linear depreciation per § 7 Abs. 4 EStG.",
-      "verkaufOderMoebliert": "Sale or furnished short-term rental honestly stays out of 1.0: deadlines and delineation are not computed yet. No half feature.",
+      "verkaufOderMoebliert": "Sale or furnished short-term rental is not computed yet: deadlines and delineation are missing.",
       "unbekannt": "First tell us in the interview whether you rent out property — and whether you sold or rent furnished short-term."
     },
     "felder": {
@@ -1727,7 +1727,7 @@
       "werbungskosten": "Income-related expenses: {{betrag}}",
       "afa": "Linear depreciation: {{betrag}}",
       "offen": "Still open: {{count}} figure(s) — the totals show only what was entered.",
-      "gated": "Sale or furnished short-term rental is not computed in 1.0."
+      "gated": "Sale or furnished short-term rental is not computed yet."
     },
     "weiter": "Continue",
     "anschaffungsdatum": "Date of purchase",
@@ -2009,7 +2009,7 @@
     "back": "Back",
     "heading": "Your work days",
     "headingPartner": "Working days and commute of {{name}}",
-    "help": "Pick your work days and enter vacation, sick and home-office days. We count from the real calendar — no estimate.",
+    "help": "Pick your working days and enter holiday, sick and home-office days. Counted from the calendar.",
     "weekdays": "Which days do you work?",
     "weekdayNames": {
       "1": "Mo",
@@ -2173,7 +2173,7 @@
       "erstattungLabel": "Expected refund",
       "nachzahlungLabel": "Expected back payment",
       "ergebnisLabel": "Expected result",
-      "ausgeglichen": "Neither a back payment nor a refund — no tax is due.",
+      "ausgeglichen": "Neither a back payment nor a refund: no tax is due.",
       "ergebnisSpanne": "{{nachzahlung}} back payment to {{erstattung}} refund",
       "proPerson": "You {{du}} · {{name}} {{partner}}"
     },
@@ -2534,7 +2534,7 @@
       "otherYearCancel": "Cancel",
       "yearInvalid": "Please enter a four-digit year.",
       "konflikt": {
-        "heading": "Two years for this receipt — you decide.",
+        "heading": "Two years for this receipt. You decide.",
         "body": "Assigned: {{zugeordnet}} · Suggestion: {{vorschlag}}. Until resolved, this receipt does not count.",
         "resolve": "Adopt suggestion {{jahr}}",
         "keep": "Keep {{jahr}}"
@@ -2637,7 +2637,7 @@
   "bescheid": {
     "back": "Back",
     "heading": "Your tax assessment",
-    "help": "Copy the figures from your tax assessment — field by field, like on the paper.",
+    "help": "Copy the amounts from your tax assessment.",
     "loading": "Loading your assessment …",
     "loadError": {
       "heading": "That didn't work.",
@@ -2805,7 +2805,7 @@
     },
     "lohnausweis": {
       "title": "CH wage statement",
-      "help": "Transcribe the boxes field by field — like on paper. Amounts in CHF.",
+      "help": "Copy the figures as on the paper. Amounts in CHF.",
       "felder": {
         "lohn": "Salary (basic)",
         "gehaltsnebenleistungen": "Salary side benefits",
@@ -3035,7 +3035,7 @@
       "resizeWorkbench": "Workbench",
       "applyOne": "✓ Apply change",
       "chooseAlternative": "Apply this option",
-      "alternativesHint": "Pick one of the options — both together is not possible.",
+      "alternativesHint": "Pick one of the ways. Both together do not work.",
       "applying": "Applying …",
       "conflictTitle": "Conflict while applying",
       "forceApply": "Apply anyway with updated state",

@@ -379,7 +379,7 @@ describe('LoginScreen', () => {
     fillCredentials()
     fireEvent.click(screen.getByText('Einloggen'))
 
-    await screen.findByText('Gerade nicht erreichbar — das liegt an uns.')
+    await screen.findByText('Gerade nicht erreichbar. Das liegt an uns.')
     expect(screen.getByText('Unsere Server antworten nicht. Deine Daten sind sicher, es ist nichts verloren.')).toBeTruthy()
     expect(screen.queryByText(/Wir versuchen es automatisch weiter/)).toBeNull()
     expect(onDone).not.toHaveBeenCalled()
@@ -400,7 +400,7 @@ describe('LoginScreen', () => {
     expect(onDone).not.toHaveBeenCalled()
     // #283 AC-B — a wrong password is a real answer, not a failure: it must never be merged
     // into (or read as) the shared-outage alert.
-    expect(screen.queryByText('Gerade nicht erreichbar — das liegt an uns.')).toBeNull()
+    expect(screen.queryByText('Gerade nicht erreichbar. Das liegt an uns.')).toBeNull()
   })
 
   // #308 — the partial case, which neither AC-A nor AC-B covered. AC-B holds when the API is
@@ -431,7 +431,7 @@ describe('LoginScreen', () => {
       // survived it. Nothing checked what the BANNER said, so the suite was blind to a screen
       // claiming "Unsere Server antworten nicht" three lines above a message that is only
       // knowable because a server answered.
-      expect(screen.queryByText('Gerade nicht erreichbar — das liegt an uns.')).toBeNull()
+      expect(screen.queryByText('Gerade nicht erreichbar. Das liegt an uns.')).toBeNull()
       expect(screen.queryByText(/Unsere Server antworten nicht/)).toBeNull()
       // The QR column still says its own honest piece — scoped to what its mint established.
       expect(screen.getByText('Code konnte nicht erzeugt werden.')).toBeTruthy()
@@ -459,7 +459,7 @@ describe('LoginScreen', () => {
       // branch (there is no "Row B" — Row B is the signed-in reload; the misnomer is mine) against a real
       // browser after five unit rounds missed it. AC-A's "(if submitted)" exists precisely
       // because the sign-in may not have happened.
-      expect(await screen.findByText('Gerade nicht erreichbar — das liegt an uns.')).toBeTruthy()
+      expect(await screen.findByText('Gerade nicht erreichbar. Das liegt an uns.')).toBeTruthy()
     })
 
     // #336 review, F11 — the discriminating scenario F10's rewrite displaced, restored.
@@ -489,7 +489,7 @@ describe('LoginScreen', () => {
       // F1/F10 — a server that ANSWERED is not evidence of a screen-wide outage, whatever it
       // answered. This is the assertion that keeps `capabilitiesUnreachable` meaning "nothing
       // answered" rather than drifting to "did not answer usefully".
-      expect(screen.queryByText('Gerade nicht erreichbar — das liegt an uns.')).toBeNull()
+      expect(screen.queryByText('Gerade nicht erreichbar. Das liegt an uns.')).toBeNull()
       expect(screen.queryByText(/Unsere Server antworten nicht/)).toBeNull()
     })
 
@@ -506,7 +506,7 @@ describe('LoginScreen', () => {
       // The QR column speaks for itself…
       expect(await screen.findByText('Code konnte nicht erzeugt werden.')).toBeTruthy()
       // …and the screen claims nothing, because the capabilities probe answered.
-      expect(screen.queryByText('Gerade nicht erreichbar — das liegt an uns.')).toBeNull()
+      expect(screen.queryByText('Gerade nicht erreichbar. Das liegt an uns.')).toBeNull()
       expect(screen.queryByText(/Unsere Server antworten nicht/)).toBeNull()
     })
 
@@ -521,7 +521,7 @@ describe('LoginScreen', () => {
       fillCredentials()
       fireEvent.click(screen.getByText('Einloggen'))
 
-      await screen.findByText('Gerade nicht erreichbar — das liegt an uns.')
+      await screen.findByText('Gerade nicht erreichbar. Das liegt an uns.')
       // One cause, one message: the field's generic error stays suppressed here, because the
       // banner genuinely subsumes it — this is the case #298 consolidated, and it is unchanged.
       expect(screen.queryByText('E-Mail oder Passwort stimmen nicht.')).toBeNull()
@@ -703,7 +703,7 @@ describe('LoginScreen', () => {
       expect(screen.getByText('Code konnte nicht erzeugt werden.')).toBeTruthy()
       // And the screen makes no claim about the API as a whole, because nothing here
       // established one — this is F1's defect, asserted so it cannot return.
-      expect(screen.queryByText('Gerade nicht erreichbar — das liegt an uns.')).toBeNull()
+      expect(screen.queryByText('Gerade nicht erreichbar. Das liegt an uns.')).toBeNull()
       expect(screen.queryByText(/Unsere Server antworten nicht/)).toBeNull()
 
       fireEvent.click(screen.getByText('Erneut versuchen'))
@@ -722,7 +722,7 @@ describe('LoginScreen', () => {
       await screen.findByText('Gerade zu viele Anfragen. Versuch es in ein paar Sekunden noch mal.')
       expect(screen.queryByLabelText('QR-Code zum Anmelden mit dem Handy')).toBeNull()
       expect(screen.queryByText('Code konnte nicht erzeugt werden.')).toBeNull()
-      expect(screen.queryByText('Gerade nicht erreichbar — das liegt an uns.')).toBeNull()
+      expect(screen.queryByText('Gerade nicht erreichbar. Das liegt an uns.')).toBeNull()
     })
 
     it("marks the code expired once its lifetime elapses, and requests a genuinely new one on request, not a stale copy", async () => {
@@ -746,7 +746,7 @@ describe('LoginScreen', () => {
       expect(screen.queryByLabelText('QR-Code zum Anmelden mit dem Handy')).toBeNull()
       // #283 AC-B — an expiry is an honest answer (a code's own lifetime ran out), never the
       // shared-outage alert.
-      expect(screen.queryByText('Gerade nicht erreichbar — das liegt an uns.')).toBeNull()
+      expect(screen.queryByText('Gerade nicht erreichbar. Das liegt an uns.')).toBeNull()
 
       fireEvent.click(screen.getByText('Neuen Code anzeigen'))
       await screen.findByLabelText('QR-Code zum Anmelden mit dem Handy')
@@ -867,7 +867,7 @@ describe('LoginScreen', () => {
         await screen.findByText('Anmeldung wurde nicht bestätigt.')
         expect(screen.queryByText('Code konnte nicht erzeugt werden.')).toBeNull()
         // #283 AC-B — a phone declining the code is a real answer, never the shared-outage alert.
-        expect(screen.queryByText('Gerade nicht erreichbar — das liegt an uns.')).toBeNull()
+        expect(screen.queryByText('Gerade nicht erreichbar. Das liegt an uns.')).toBeNull()
 
         vi.clearAllTimers()
         vi.useRealTimers()
@@ -895,7 +895,7 @@ describe('LoginScreen', () => {
         })
         expect(tokenRequests).toBe(1)
         await screen.findByText('Gerade zu viele Anfragen. Versuch es in ein paar Sekunden noch mal.')
-        expect(screen.queryByText('Gerade nicht erreichbar — das liegt an uns.')).toBeNull()
+        expect(screen.queryByText('Gerade nicht erreichbar. Das liegt an uns.')).toBeNull()
         expect(onDone).not.toHaveBeenCalled()
 
         // No further poll fires on its own — an honest error state waits for a real retry,
@@ -1023,7 +1023,7 @@ describe('LoginScreen', () => {
       fillCredentials()
       fireEvent.click(screen.getByText('Einloggen'))
 
-      await screen.findByText('Gerade nicht erreichbar — das liegt an uns.')
+      await screen.findByText('Gerade nicht erreichbar. Das liegt an uns.')
       // Exactly one — not the outage banner *plus* a separate password-field error, not a
       // second copy inside the QR column.
       expect(screen.getAllByRole('alert')).toHaveLength(1)
@@ -1272,12 +1272,12 @@ describe('LoginScreen', () => {
         await vi.advanceTimersByTimeAsync(1000)
       })
       await screen.findByText('Gilt noch 0:21')
-      expect(screen.queryByText(/Läuft gleich ab/)).toBeNull()
+      expect(screen.queryByText(/Läuft ab in/)).toBeNull()
 
       await act(async () => {
         await vi.advanceTimersByTimeAsync(1000)
       })
-      await screen.findByText('Läuft gleich ab — noch 0:20')
+      await screen.findByText('Läuft ab in 0:20')
       expect(screen.queryByText('Gilt noch 0:20')).toBeNull()
 
       vi.clearAllTimers()

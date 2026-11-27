@@ -81,7 +81,7 @@ const COPY = {
   nein: 'Nein',
   kinder: '2 oder mehr',
   familienstand: 'Ledig',
-  kontoWandLater: 'Später — erst mal ins Cockpit',
+  kontoWandLater: 'Später, zum Cockpit',
   loginEmailPlaceholder: 'du@beispiel.de',
   loginPasswordPlaceholder: '••••••••',
   loginSubmit: 'Einloggen',
@@ -92,7 +92,7 @@ const COPY = {
   errEmailNotVerified: 'Bitte bestätige zuerst deine E-Mail-Adresse. Wir haben dir einen neuen Link geschickt.',
   // The banner on the registration's success step (de.json auth.verifyBanner).
   resendLink: 'Mail erneut senden',
-  resendSent: 'Ist raus — schau in dein Postfach.',
+  resendSent: 'Gesendet. Schau in dein Postfach.',
 }
 
 // The local inbox of the compose stack (Mailpit's HTTP API; the API reaches it over SMTP with TLS).

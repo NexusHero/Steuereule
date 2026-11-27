@@ -318,7 +318,7 @@ async function main() {
       await pick('kinder', '2 oder mehr')
       await pick('familienstand', 'Ledig')
       await guest.locator('[data-testid="strom-weiter"]').click({ force: true })
-      await guest.getByText('Später — erst mal ins Cockpit').click()
+      await guest.getByText('Später, zum Cockpit').click()
       await openEuleAsGuest(guest)
       await guest.locator('[data-testid="eule-guest-konto-wand"]').waitFor({ state: 'visible', timeout: 10_000 })
       if ((await guest.locator('[data-testid="advisor-chat-input"]').count()) > 0) fail('Row G: a guest must not get the chat')

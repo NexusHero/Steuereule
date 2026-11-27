@@ -29,7 +29,7 @@
 // A NOTE ON TIMING, left visible rather than smoothed over: #298 (the LoginScreen/Registrierung
 // DS-alignment slice) merged to `main` while this PR was in review — its own AC-A directly
 // redesigns the exact failure shape #295 reported: a genuine, transport-level outage now shows
-// ONE shared banner ("Gerade nicht erreichbar — das liegt an uns."), and the Google slot and the
+// ONE shared banner ("Gerade nicht erreichbar. Das liegt an uns."), and the Google slot and the
 // QR column both DEFER to it (an honest "can't tell"/"retrying" line each) instead of each
 // raising independent prose. #295's own three original strings (a password-field `auth.errGeneric`,
 // the QR card's `"Code konnte nicht erzeugt werden."`, a silently-missing Google button) are no
@@ -163,7 +163,7 @@ const COPY = {
   nein: 'Nein',
   kinder: '2 oder mehr',
   familienstand: 'Ledig',
-  kontoWandLater: 'Später — erst mal ins Cockpit',
+  kontoWandLater: 'Später, zum Cockpit',
   // #283/#298 AC-A (landed on `main` while this file was in review, see this file's own PR
   // thread) — a genuine, transport-level API outage now shows exactly ONE shared alert, not
   // three independent messages. This directly closes the bug CLASS #295 reported (three
@@ -175,7 +175,7 @@ const COPY = {
   // same screen for a genuinely different, non-outage cause (`login.qr.error` for a QR-only
   // failure against a reachable API, `auth.errGeneric` for a Google social-sign-in failure) — see
   // this file's own header for the exact statement; neither is what this file's rows construct.
-  apiUnreachableHeading: 'Gerade nicht erreichbar — das liegt an uns.',
+  apiUnreachableHeading: 'Gerade nicht erreichbar. Das liegt an uns.',
   googleUnknown: 'Wir können gerade nicht prüfen, ob Google verfügbar ist.',
   qrRetryingAuto: 'Wir versuchen es automatisch erneut …',
   qrRetryExhausted: 'Die automatischen Versuche sind pausiert — bitte versuch es manuell noch einmal.',

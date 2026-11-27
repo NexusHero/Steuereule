@@ -36,7 +36,7 @@ describe('the self-employment switch in the interview', () => {
     mount(<InterviewScreen taxYear={YEAR} onDone={() => {}} />)
     await screen.findByText('Bei mehreren: die Hauptquelle.')
     fireEvent.click(screen.getByText('Selbstständig'))
-    await screen.findByText('Wer in Deutschland wohnt und in der Schweiz arbeitet, hat eigene Regeln — die gehen wir komplett mit dir durch.')
+    await screen.findByText('Für Grenzgänger in die Schweiz gelten eigene Regeln.')
     expect(screen.queryByText('Selbstständigkeit rechnen wir noch nicht.')).toBeNull()
   })
 
@@ -45,7 +45,7 @@ describe('the self-employment switch in the interview', () => {
     mount(<InterviewScreen taxYear={YEAR} onDone={() => {}} />)
     await screen.findByText('Bei mehreren: die Hauptquelle.')
     fireEvent.click(screen.getByText('Beides'))
-    await screen.findByText('Wer in Deutschland wohnt und in der Schweiz arbeitet, hat eigene Regeln — die gehen wir komplett mit dir durch.')
+    await screen.findByText('Für Grenzgänger in die Schweiz gelten eigene Regeln.')
     expect(screen.queryByText('Angestellten-Teil vorbereiten — Abgabe erst mit Gewerbe')).toBeNull()
   })
 

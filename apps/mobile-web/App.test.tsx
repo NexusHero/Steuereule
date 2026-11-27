@@ -94,8 +94,8 @@ async function enterAsGuestThroughInterview() {
   fireEvent.click(screen.getByTestId('strom-weiter'))
 
   // The Konto-Wand is the honest next step for a guest — "Später" reaches the Cockpit.
-  await screen.findByText('Später — erst mal ins Cockpit')
-  fireEvent.click(screen.getByText('Später — erst mal ins Cockpit'))
+  await screen.findByText('Später, zum Cockpit')
+  fireEvent.click(screen.getByText('Später, zum Cockpit'))
 }
 
 // App.tsx constructs the better-auth client once, at module top level (correct for the real
@@ -255,8 +255,8 @@ describe('App', () => {
       // ADR-0045: a guest's onDone leads to the Konto-Wand — "Später" reaches the Cockpit,
       // whose query was invalidated by the last successful write (a real re-fetch, not stale
       // memory).
-      await screen.findByText('Später — erst mal ins Cockpit')
-      fireEvent.click(screen.getByText('Später — erst mal ins Cockpit'))
+      await screen.findByText('Später, zum Cockpit')
+      fireEvent.click(screen.getByText('Später, zum Cockpit'))
       await screen.findByText('2 Fragen offen')
       expect(screen.queryByText('3 Fragen offen')).toBeNull()
     },
