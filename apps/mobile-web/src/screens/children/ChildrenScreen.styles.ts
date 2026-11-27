@@ -17,7 +17,7 @@ export function makeStyles(t: UiTheme) {
     marginBottom: t.space.s4,
     backgroundColor: t.color.karte,
     borderWidth: t.space.kontur,
-    borderColor: t.color.funke,
+    borderColor: t.color.linieWeich,
     borderRadius: t.radius.m,
   }
   const summaryTitle: TextStyle = {
@@ -69,7 +69,8 @@ export function makeStyles(t: UiTheme) {
   }
   const childActions: ViewStyle = { flexDirection: 'row', gap: t.space.s3 }
   const editButton: TextStyle = { ...t.type.small, color: t.color.tinte }
-  const gap: TextStyle = { ...t.type.small, color: t.color.fehler, marginTop: t.space.s2 }
+  // What the printout still needs is a notice, not a fault: the notice colour, not red.
+  const gap: TextStyle = { ...t.type.small, color: t.color.warn, marginTop: t.space.s2 }
   const chips: ViewStyle = { flexDirection: 'row', flexWrap: 'wrap', gap: t.space.s2 }
   const copyBox: ViewStyle = { gap: t.space.s2, marginBottom: t.space.s4 }
   const officeBox: ViewStyle = { gap: t.space.s2, marginTop: -t.space.s2, marginBottom: t.space.s3 }
