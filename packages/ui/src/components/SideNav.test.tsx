@@ -10,10 +10,10 @@ const TABS: TabItem[] = [
   { id: 'verlauf', label: 'Verlauf' },
 ]
 
-function renderRail(opts: { active?: string; onChange?: (id: string) => void; mode?: 'light' | 'dark'; compact?: boolean } = {}) {
+function renderRail(opts: { active?: string; onChange?: (id: string) => void; mode?: 'light' | 'dark'; compact?: boolean; insets?: { top: number; bottom: number; left: number } } = {}) {
   return render(
     <ThemeProvider mode={opts.mode ?? 'light'}>
-      <SideNav tabs={TABS} active={opts.active ?? 'cockpit'} onChange={opts.onChange ?? (() => {})} header={<Text>SteuerEule</Text>} compact={opts.compact ?? false} testID="rail" />
+      <SideNav tabs={TABS} active={opts.active ?? 'cockpit'} onChange={opts.onChange ?? (() => {})} header={<Text>SteuerEule</Text>} compact={opts.compact ?? false} {...(opts.insets ? { insets: opts.insets } : {})} testID="rail" />
     </ThemeProvider>,
   )
 }
@@ -64,5 +64,25 @@ describe('SideNav', () => {
   it('keeps rows at a touch-sized height', () => {
     renderRail()
     expect(Number.parseFloat(getComputedStyle(screen.getByRole('tab', { name: 'Cockpit' })).minHeight)).toBeGreaterThanOrEqual(44)
+  })
+
+  // A phone on its side is tablet-wide and barely 340 px high: five rows and the brand do not fit.
+  it('scrolls its tabs when the window is lower than the rail, so the last tab stays reachable', () => {
+    renderRail({ compact: true })
+    const scroller = screen.getByTestId('rail-liste')
+    expect(getComputedStyle(scroller).overflowY).toBe('auto')
+    expect(scroller.contains(screen.getByRole('tablist'))).toBe(true)
+    // The brand stays put above the scrolling list.
+    expect(scroller.contains(screen.getByText('SteuerEule'))).toBe(false)
+  })
+
+  it('keeps clear of a notch and the system bars: the safe area widens and pads the rail', () => {
+    renderRail({ compact: true, insets: { top: 20, bottom: 21, left: 47 } })
+    const rail = getComputedStyle(screen.getByTestId('rail'))
+    expect(rail.width).toBe(`${SIDE_NAV_COMPACT_WIDTH + 47}px`)
+    expect(sideNavWidth(true, 47)).toBe(SIDE_NAV_COMPACT_WIDTH + 47)
+    expect(Number.parseFloat(rail.paddingLeft)).toBeGreaterThanOrEqual(47)
+    expect(Number.parseFloat(rail.paddingTop)).toBeGreaterThanOrEqual(20)
+    expect(Number.parseFloat(rail.paddingBottom)).toBeGreaterThanOrEqual(21)
   })
 })

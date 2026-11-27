@@ -162,7 +162,7 @@ function AppNavigation({ state, navigation, insets }: BottomTabBarProps) {
         {compact ? null : <Text style={{ ...t.type.cardTitle, color: t.color.tinte }}>{`${tr('brand.steuer')}${tr('brand.eule')}`}</Text>}
       </View>
     )
-    return <SideNav tabs={tabs} active={activeTab} onChange={handleChange} header={brand} compact={compact} testID="app-seitennavigation" />
+    return <SideNav tabs={tabs} active={activeTab} onChange={handleChange} header={brand} compact={compact} insets={insets} testID="app-seitennavigation" />
   }
   return <TabBar tabs={tabs} active={activeTab} onChange={handleChange} bottomInset={insets.bottom} />
 }
@@ -223,7 +223,7 @@ export function AppTabs() {
             backgroundColor: t.color.grund,
             // The navigation takes its room from the screen: under it as a bar, left of it as a rail.
             paddingBottom: showsTabBar && form === 'bar' ? tabBarClearance(t, insets.bottom) : 0,
-            paddingLeft: showsTabBar && form !== 'bar' ? sideNavWidth(form === 'compact') : 0,
+            paddingLeft: showsTabBar && form !== 'bar' ? sideNavWidth(form === 'compact', insets.left) : 0,
             // Keep inactive tabs hidden in layout/focus order and jsdom visibility checks (BottomTabView
             // only toggles zIndex and aria-hidden when react-native-screens is inactive on web).
             display: navigation.isFocused() ? 'flex' : 'none',

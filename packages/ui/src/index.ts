@@ -24,7 +24,7 @@ export { Option, type OptionProps } from './components/Option'
 export { Sheet, type SheetProps } from './components/Sheet'
 export { ConfirmDialog, type ConfirmDialogProps, type ConfirmTone } from './components/ConfirmDialog'
 export { TabBar, TAB_BAR_HEIGHT, TAB_ICON_PATHS, tabBarClearance, type TabBarProps, type TabItem } from './components/TabBar'
-export { SideNav, SIDE_NAV_WIDTH, SIDE_NAV_COMPACT_WIDTH, sideNavWidth, type SideNavProps } from './components/SideNav'
+export { SideNav, SIDE_NAV_WIDTH, SIDE_NAV_COMPACT_WIDTH, sideNavWidth, type SideNavProps, type SideNavInsets } from './components/SideNav'
 
 export { Gallery } from './gallery/Gallery'
 
