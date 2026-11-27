@@ -19,6 +19,16 @@ describe('Anlage N-Gre — Arbeitslohn and the Swiss social contributions (Zeile
     expect(annexNGreAmounts({ ...INPUT, withholdingTaxChf: 9000 }).chf.z25).toBe(4500)
   })
 
+  it('deducts nothing for an answer under which the daily benefit is wage, even when an amount is stored', () => {
+    const stored = { ...INPUT, steuerfreiesKrankentaggeldChf: 3853, steuerfreiesUnfalltaggeldChf: 1000 }
+    for (const taggeldQuelle of ['lohnfortzahlung', 'kein'] as const) {
+      const { chf } = annexNGreAmounts({ ...stored, taggeldQuelle })
+      expect(chf).toMatchObject({ z9: 0, z10: 0, z15: 97600, z76: 2400 })
+    }
+    expect(annexNGreAmounts({ ...stored, taggeldQuelle: 'krankentaggeldversicherung' }).chf).toMatchObject({ z9: 3853, z10: 1000 })
+    expect(annexNGreAmounts(stored).chf).toMatchObject({ z9: 3853, z10: 1000 })
+  })
+
   it('applies the rates printed on the form to the Bemessungsgrundlage (Zeile 77)', () => {
     const { chf } = annexNGreAmounts(INPUT)
     expect(chf).toMatchObject({ z75: 100000, z76: 2400, z77: 97600, z78: 244, z79: 1074, z83: 4929 })

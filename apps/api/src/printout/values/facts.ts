@@ -101,6 +101,8 @@ export interface ChSalaryCertificateFacts {
   steuerfreiesKrankentaggeldChf: string | null
   /** Daily benefit of the accident insurance (UVG/SUVA) contained in Ziffer 8 (Zeile 10 „SUVA – Geld“, also Zeile 76). */
   steuerfreiesUnfalltaggeldChf: string | null
+  /** Where the daily benefit came from; under Lohnfortzahlung / kein nothing is deducted. Absent = not asked. */
+  taggeldQuelle?: string | null
   krankentaggeldArbeitgeberProzent: string | null
   krankentaggeldArbeitgeberChf: string | null
   nbuvArbeitgeberProzent: string | null

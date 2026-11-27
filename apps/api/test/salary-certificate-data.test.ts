@@ -56,3 +56,17 @@ describe('salary certificate record → core inputs', () => {
     expect(pension.employee).toEqual({ mandatoryChf: 2892, overMandatoryChf: 4294 })
   })
 })
+
+describe('daily benefit source → the deduction', () => {
+  const rate = annualAverageRate('2025', 1.065)
+  const withSource = (taggeldQuelle: string) => ({ ...RECORD, nGre: { ...RECORD.nGre, taggeldQuelle } })
+
+  it('deducts nothing when the employer continued the wage, although an amount is stored', () => {
+    const { chf } = annexNGreAmounts(nGreInputFromRecord(withSource('lohnfortzahlung'), rate))
+    expect(chf).toMatchObject({ z9: 0, z23: 98581 + 3853 })
+  })
+
+  it('still deducts the insurer benefit', () => {
+    expect(annexNGreAmounts(nGreInputFromRecord(withSource('krankentaggeldversicherung'), rate)).chf.z9).toBe(3853)
+  })
+})
