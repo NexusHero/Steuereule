@@ -12,6 +12,7 @@ vi.mock('../screens/cockpit/CockpitScreen', async () => ({ CockpitScreen: (await
 vi.mock('../screens/capital/CapitalScreen', async () => ({ CapitalScreen: (await import('./stubScreen')).stubScreen('capital') }))
 vi.mock('../screens/history/HistoryScreen', async () => ({ HistoryScreen: (await import('./stubScreen')).stubScreen('history') }))
 vi.mock('../screens/ProfileScreen', async () => ({ ProfileScreen: (await import('./stubScreen')).stubScreen('profile') }))
+vi.mock('../screens/PrivacyScreen', async () => ({ PrivacyScreen: (await import('./stubScreen')).stubScreen('privacy') }))
 vi.mock('../screens/advisor/OwlModeScreen', async () => ({ OwlModeScreen: (await import('./stubScreen')).stubScreen('owl') }))
 vi.mock('../screens/receipts/ReceiptsScreen', async () => ({ ReceiptsScreen: (await import('./stubScreen')).stubScreen('receipts') }))
 
@@ -80,6 +81,23 @@ describe('the shell at desktop width', () => {
     renderShell({ routes: [{ name: 'Cockpit', state: { routes: [{ name: 'CockpitHome' }, { name: 'Capital', params: { year: 2025 } }] } }] } as never)
     await screen.findByTestId('stub-capital-props')
     expect(screen.queryByTestId('app-seitennavigation')).toBeNull()
+    expect(screen.queryByRole('tablist')).toBeNull()
+  })
+
+  it.each([834, 1440])('keeps the rail beside a page below the profile at %i px, and its room free', async (width) => {
+    windowWidth(width)
+    await open('/app/profil/datenschutz')
+    expect(screen.getByTestId('stub-privacy')).toBeTruthy()
+    const rail = screen.getByTestId('app-seitennavigation')
+    expect(rail.querySelector('[role="tab"][aria-selected="true"]')?.textContent).toContain('Profil')
+    fireEvent.click(screen.getByRole('tab', { name: 'Cockpit' }))
+    await waitFor(() => expect(currentRoute().name).toBe('CockpitHome'))
+  })
+
+  it('hides the bar on a phone for a page below the profile: it would lie on the page', async () => {
+    windowWidth(390)
+    await open('/app/profil/datenschutz')
+    expect(screen.getByTestId('stub-privacy')).toBeTruthy()
     expect(screen.queryByRole('tablist')).toBeNull()
   })
 

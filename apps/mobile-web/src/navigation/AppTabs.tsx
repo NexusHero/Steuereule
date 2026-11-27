@@ -47,7 +47,26 @@ const TAB_ID_FOR_ROUTE: Readonly<Record<TabRouteName, TabId>> = {
 
 const Tab = createBottomTabNavigator<AppTabParamList>()
 
-function isTabBarVisible(state: TabNavigationState<AppTabParamList>): boolean {
+/**
+ * The form of the app's navigation per breakpoint (Graphit): the floating bar on a phone, a narrow
+ * rail (icon over label) on a tablet, the full rail with the brand on a desktop.
+ */
+type NavigationForm = 'bar' | 'compact' | 'wide'
+/**
+ * The owl is chat-first (#476): beside its own conversation list a full rail would leave the chat
+ * 60 % of a desktop window. On the owl's tab the rail therefore stays narrow at every width.
+ */
+function navigationForm(bp: ReturnType<typeof useBreakpoint>, tab: TabRouteName): NavigationForm {
+  if (bp === 's') return 'bar'
+  return bp === 'l' && tab !== 'Owl' ? 'wide' : 'compact'
+}
+
+/**
+ * Whether the navigation shows. A sheet covers the screen it opened from, so the navigation steps aside
+ * in every form. A page below the profile takes the whole phone screen, where the bar would lie on its
+ * content; beside a rail there is room for both, and the rail stays as the way back to the other tabs.
+ */
+function isTabBarVisible(state: TabNavigationState<AppTabParamList>, form: NavigationForm): boolean {
   const activeTabRoute = state.routes[state.index]
   if (activeTabRoute?.name === 'Cockpit') {
     const focusedCockpit = getFocusedRouteNameFromRoute(activeTabRoute) ?? 'CockpitHome'
@@ -55,7 +74,7 @@ function isTabBarVisible(state: TabNavigationState<AppTabParamList>): boolean {
   }
   if (activeTabRoute?.name !== 'Profile') return true
   const focusedProfile = getFocusedRouteNameFromRoute(activeTabRoute) ?? 'ProfileHome'
-  return focusedProfile === 'ProfileHome'
+  return focusedProfile === 'ProfileHome' || form !== 'bar'
 }
 
 function TabNavigatorSync({
@@ -82,19 +101,6 @@ function TabNavigatorSync({
   return <>{children}</>
 }
 
-/**
- * The form of the app's navigation per breakpoint (Graphit): the floating bar on a phone, a narrow
- * rail (icon over label) on a tablet, the full rail with the brand on a desktop.
- */
-type NavigationForm = 'bar' | 'compact' | 'wide'
-/**
- * The owl is chat-first (#476): beside its own conversation list a full rail would leave the chat
- * 60 % of a desktop window. On the owl's tab the rail therefore stays narrow at every width.
- */
-function navigationForm(bp: ReturnType<typeof useBreakpoint>, tab: TabRouteName): NavigationForm {
-  if (bp === 's') return 'bar'
-  return bp === 'l' && tab !== 'Owl' ? 'wide' : 'compact'
-}
 
 function AppNavigation({ state, navigation, insets }: BottomTabBarProps) {
   const t = useTheme()
@@ -102,10 +108,10 @@ function AppNavigation({ state, navigation, insets }: BottomTabBarProps) {
   const bp = useBreakpoint()
   const owlUnread = useOwlUnread()
 
-  if (!isTabBarVisible(state as TabNavigationState<AppTabParamList>)) return null
-
   const activeRouteName = (state.routes[state.index]?.name ?? 'Cockpit') as TabRouteName
   const form = navigationForm(bp, activeRouteName)
+  if (!isTabBarVisible(state as TabNavigationState<AppTabParamList>, form)) return null
+
   const rail = form !== 'bar'
   const activeTab = TAB_ID_FOR_ROUTE[activeRouteName]
   // The bar marks the picked tab with a lime pill, the rail with a quiet surface: the icon follows its ground.
@@ -225,7 +231,7 @@ export function AppTabs() {
       screenOptions={({ navigation, route }) => {
         const form = navigationForm(bp, route.name)
         const tabState = navigation.getState() as TabNavigationState<AppTabParamList>
-        const showsTabBar = isTabBarVisible(tabState)
+        const showsTabBar = isTabBarVisible(tabState, form)
         return {
           headerShown: false,
           sceneStyle: {
