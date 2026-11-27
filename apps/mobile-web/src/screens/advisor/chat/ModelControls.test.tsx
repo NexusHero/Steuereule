@@ -6,7 +6,7 @@ import { I18nextProvider } from 'react-i18next'
 import { ThemeProvider } from '@steuereule/ui'
 import type { AdvisorModelsDto } from '@steuereule/api-client'
 import { createAppI18n } from '../../../i18n/app-i18n'
-import { MaxToggle, ModelPicker, activeModel, depthCostText } from './ModelControls'
+import { MODEL_SEARCH_FROM, MaxToggle, ModelPicker, activeModel, depthCostText, groupModels } from './ModelControls'
 
 const MODELS: AdvisorModelsDto = {
   standard: { provider: 'anthropic', model: 'claude-sonnet-5-5' },
@@ -53,6 +53,42 @@ describe('model picker and Max (ADR-0096)', () => {
     fireEvent.click(screen.getByTestId('advisor-model-picker'))
     fireEvent.click(screen.getByTestId('advisor-model-option-anthropic:claude-sonnet-5-5'))
     expect(onPick).toHaveBeenLastCalledWith(null)
+  })
+
+  it('groups a long list by provider, filters it by name and shows a cost only where one was measured', () => {
+    const many: AdvisorModelsDto = {
+      standard: MODELS.standard,
+      models: [
+        ...MODELS.models,
+        ...Array.from({ length: MODEL_SEARCH_FROM }, (_, n) => ({ provider: 'google-genai' as const, model: `gemini-${n}`, label: `Gemini ${n} Flash`, depths: [{ depth: 'gruendlich' as const, samples: 0 }] })),
+      ],
+    }
+    expect(groupModels(many.models, '').map((g) => g.provider)).toEqual(['Anthropic', 'OpenAI', 'Google'])
+    expect(groupModels(many.models, 'opus 5.5').flatMap((g) => g.models.map((m) => m.model))).toEqual(['claude-opus-5-5'])
+
+    const onPick = vi.fn()
+    wrap(<ModelPicker models={many} picked={null} onPick={onPick} />)
+    fireEvent.click(screen.getByTestId('advisor-model-picker'))
+    expect(screen.getByTestId('advisor-model-option-google-genai:gemini-3').textContent).toBe('Gemini 3 Flash')
+    expect(screen.getByTestId('advisor-model-option-anthropic:claude-sonnet-5-5').textContent).toContain('✓')
+
+    fireEvent.change(screen.getByTestId('advisor-model-search'), { target: { value: 'opus' } })
+    expect(screen.queryByTestId('advisor-model-option-google-genai:gemini-3')).toBeNull()
+    fireEvent.change(screen.getByTestId('advisor-model-search'), { target: { value: 'gibt es nicht' } })
+    expect(screen.getByText('Kein Modell gefunden.')).toBeTruthy()
+    fireEvent.change(screen.getByTestId('advisor-model-search'), { target: { value: 'opus' } })
+    fireEvent.click(screen.getByTestId('advisor-model-option-anthropic:claude-opus-5-5'))
+    expect(onPick).toHaveBeenCalledWith({ provider: 'anthropic', model: 'claude-opus-5-5' })
+
+    // Opened again, the list starts unfiltered.
+    fireEvent.click(screen.getByTestId('advisor-model-picker'))
+    expect((screen.getByTestId('advisor-model-search') as HTMLInputElement).value).toBe('')
+  })
+
+  it('leaves the search out of a short list', () => {
+    wrap(<ModelPicker models={MODELS} picked={null} onPick={vi.fn()} />)
+    fireEvent.click(screen.getByTestId('advisor-model-picker'))
+    expect(screen.queryByTestId('advisor-model-search')).toBeNull()
   })
 
   it('offers Max only where the model can think deeper, with its cost once switched on', () => {

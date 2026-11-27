@@ -56,7 +56,9 @@ function makeStyles(t: UiTheme) {
       paddingVertical: t.space.s2,
       paddingHorizontal: t.space.s3,
       borderRadius: t.radius.m,
-      backgroundColor: t.color.funkeWeich,
+      backgroundColor: t.color.karte,
+      borderWidth: 1,
+      borderColor: t.color.linie,
     } as ViewStyle,
     summaryText: { fontFamily: t.font.text, fontSize: t.size.s, color: t.color.tinte } as TextStyle,
   }

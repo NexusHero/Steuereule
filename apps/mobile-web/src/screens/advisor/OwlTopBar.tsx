@@ -142,7 +142,7 @@ function makeStyles(t: UiTheme) {
     } as ViewStyle,
     summaryBtnText: { ...t.type.captionStrong, color: t.color.tinte } as TextStyle,
     iconHover: { backgroundColor: t.color.linieWeich } as ViewStyle,
-    iconActive: { backgroundColor: t.color.funkeWeich } as ViewStyle,
+    iconActive: { backgroundColor: t.color.linieWeich } as ViewStyle,
     badge: {
       position: 'absolute',
       top: 6,

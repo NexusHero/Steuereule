@@ -9,6 +9,16 @@ describe('chat Markdown links (#451 slice 1b)', () => {
     expect(sourceFromLink('eulequelle:nope')).toBeNull()
   })
 
+  it('draws a citation the model wrote as code as a chip, and leaves other code alone', () => {
+    expect(linkLegalSources('Pauschale (§ 4 Abs. 5 Nr. 6c EStG `[estg-4-5-6c]`) mit')).toBe(
+      'Pauschale (§ 4 Abs. 5 Nr. 6c EStG [§ 4 Abs. 5 Nr. 6c EStG](eulequelle:estg-4-5-6c)) mit',
+    )
+    expect(linkLegalSources('Schreib `x[estg-9-1]` und [estg-9-1].')).toBe('Schreib `x[estg-9-1]` und [§ 9 Abs. 1 EStG](eulequelle:estg-9-1).')
+    expect(linkLegalSources('```\n[estg-9-1] im Block\n```')).toBe('```\n[estg-9-1] im Block\n```')
+    expect(linkLegalSources('Unbekannt: `[estg-999]`.')).toBe('Unbekannt: `[estg-999]`.')
+    expect(plainTextForCopy('Nach `[estg-9-1]`.')).toBe('Nach (§ 9 Abs. 1 EStG).')
+  })
+
   describe('classifyLink', () => {
     it('lets an official source open on tap, subdomains included', () => {
       expect(classifyLink('https://www.gesetze-im-internet.de/estg/__9.html')).toEqual({

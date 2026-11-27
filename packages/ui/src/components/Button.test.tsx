@@ -9,6 +9,21 @@ describe('Button', () => {
     expect(screen.getByText('Nächster Schritt')).toBeTruthy()
   })
 
+  it('the_ink_variant_carries_no_lime_and_no_offset_shadow', () => {
+    renderUi(
+      <>
+        <Button testID="ink" variant="tinte">Senden</Button>
+        <Button testID="lime">Weiter</Button>
+      </>,
+    )
+    const ink = (screen.getByTestId('ink') as HTMLElement).style
+    const lime = (screen.getByTestId('lime') as HTMLElement).style
+    expect(ink.backgroundColor).not.toBe(lime.backgroundColor)
+    expect(ink.backgroundColor).toBe((screen.getByText('Weiter') as HTMLElement).style.color)
+    expect(ink.boxShadow).toBe('')
+    expect(lime.boxShadow).not.toBe('')
+  })
+
   it('fires_onPress_when_pressed', () => {
     const onPress = vi.fn()
     renderUi(<Button onPress={onPress}>Los</Button>)

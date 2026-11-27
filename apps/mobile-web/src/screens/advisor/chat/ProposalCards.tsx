@@ -232,6 +232,7 @@ function FieldProposalCard({
           </View>
         ) : (
           <Button
+            variant="tinte"
             onPress={() => void handleApply()}
             disabled={isBusy}
             testID={`${testIDPrefix}-apply-btn`}

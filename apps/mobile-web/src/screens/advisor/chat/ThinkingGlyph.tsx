@@ -10,7 +10,7 @@ export function ThinkingGlyph() {
   const t = useTheme()
   const styles = makeStyles(t)
   const reducedMotion = useReducedMotion()
-  return reducedMotion ? <PulsingDots styles={styles} /> : <TurningOwl ink={t.color.tinte} ground={t.color.funkeWeich} />
+  return reducedMotion ? <PulsingDots styles={styles} /> : <TurningOwl ink={t.color.tinte} ground={t.color.linieWeich} />
 }
 
 function TurningOwl({ ink, ground }: { readonly ink: string; readonly ground: string }) {

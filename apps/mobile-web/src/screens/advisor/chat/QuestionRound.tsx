@@ -80,14 +80,14 @@ export function QuestionRound({ round, onSubmit, open }: QuestionRoundProps) {
         <View style={styles.actions}>
           {hasRecommendation ? (
             <Button
-              variant="leise"
+              variant="ghost"
               onPress={() => setPicked((prev) => round.questions.map((q, i) => { const pick = recommendationOf(q); return pick !== undefined ? [pick] : prev[i]! }))}
               testID="advisor-question-take-recommended"
             >
               {tr('advisor.chat.round.takeRecommended')}
             </Button>
           ) : null}
-          <Button onPress={() => onSubmit(roundAnswersToMessage(round, picked))} disabled={!complete} testID="advisor-question-submit">
+          <Button variant="tinte" onPress={() => onSubmit(roundAnswersToMessage(round, picked))} disabled={!complete} testID="advisor-question-submit">
             {tr('advisor.chat.round.submit')}
           </Button>
         </View>
@@ -98,7 +98,7 @@ export function QuestionRound({ round, onSubmit, open }: QuestionRoundProps) {
 
 function makeStyles(t: UiTheme) {
   return {
-    box: { gap: t.space.s3, padding: t.space.s3, borderRadius: t.radius.m, borderWidth: 1, borderColor: t.color.linie, backgroundColor: t.color.funkeWeich } as ViewStyle,
+    box: { gap: t.space.s3, padding: t.space.s3, borderRadius: t.radius.m, borderWidth: 1, borderColor: t.color.linie, backgroundColor: t.color.karte } as ViewStyle,
     question: { gap: t.space.s2 } as ViewStyle,
     text: { fontFamily: t.font.text, fontWeight: t.weight.fett, fontSize: t.size.m, color: t.color.tinte } as TextStyle,
     options: { flexDirection: 'row', flexWrap: 'wrap', gap: t.space.s2 } as ViewStyle,

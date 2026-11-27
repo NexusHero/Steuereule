@@ -87,7 +87,7 @@ export function ContextRing({ context, onSummarize, busy = false }: ContextRingP
           <Text style={styles.body}>{tr(context.level === 'ok' ? 'advisor.chat.context.bodyOk' : 'advisor.chat.context.bodySoon')}</Text>
           {onSummarize ? (
             <Button
-              variant="leise"
+              variant="ghost"
               disabled={!context.canSummarize || busy || state === 'working'}
               onPress={() => void summarize()}
               testID="advisor-context-summarize"

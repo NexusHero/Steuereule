@@ -63,7 +63,7 @@ export function Situation({ text, onSave }: SituationProps) {
         testID="eule-situation-input"
       />
       <View style={styles.actions}>
-        <Button variant="leise" disabled={!changed || state === 'saving'} onPress={() => void save()} testID="eule-situation-save">
+        <Button variant="ghost" disabled={!changed || state === 'saving'} onPress={() => void save()} testID="eule-situation-save">
           {tr('advisor.chat.situation.save')}
         </Button>
         {state === 'saved' && !changed ? (

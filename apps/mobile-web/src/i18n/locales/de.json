@@ -3382,6 +3382,8 @@
       },
       "model": {
         "aria": "Modell dieses Gesprächs: {{model}}",
+        "search": "Modell suchen",
+        "none": "Kein Modell gefunden.",
         "standard": "{{model}} (Standard)",
         "reference": "Vergleichsmaßstab für Kosten und Wartezeit",
         "cost": "ca. {{factor}}× Kosten",
