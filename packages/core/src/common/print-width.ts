@@ -37,6 +37,12 @@ export function printedWidthPt(text: string, sizePt: number = PRINT_FONT_SIZE_PT
 export const CHILDCARE_PROVIDER_WIDTH_PT = 238.4 - 3
 
 /**
+ * Anlage N / N-Gre „Arbeitsort“ (first and second way to work): the narrowest box over the printable
+ * years (240.2 pt, 2023-2025), less the 3 pt the printout keeps from its left edge.
+ */
+export const WORKPLACE_WIDTH_PT = 240.2 - 3
+
+/**
  * The longest beginning of a text that fits a box of this width, for a text pasted too long: cut, never
  * dropped. Leading blanks are kept (the caller trims on save), a trailing blank does not count.
  */

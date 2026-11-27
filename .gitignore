@@ -60,3 +60,5 @@ apps/api/data/
 
 # Built from apps/api/skills at install/build/typecheck/test (scripts/generate-skills.ts).
 apps/api/src/ki/skills.generated.ts
+# Written by `prisma generate` (prisma/generators/schema-model.mjs), like the client itself.
+apps/api/src/prisma/schema-model.generated.ts

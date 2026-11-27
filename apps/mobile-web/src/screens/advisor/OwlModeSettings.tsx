@@ -28,7 +28,7 @@ export function OwlModeSettings({ owl, optInEnabled, styles, profession, onChoos
 
       {onToggleOptIn ? (
         <Option selected={optInEnabled} onPress={() => void onToggleOptIn(!optInEnabled)} testID="eulen-modus-opt-in">
-          {tr('eule.optInLabel', 'Eulen-Modus aktivieren (proaktive Hinweise ab 50 €, keine personenbezogenen Daten an KI)')}
+          {tr('eule.optInLabel', 'Eulen-Modus aktivieren (proaktive Hinweise ab 50 €)')}
         </Option>
       ) : null}
 

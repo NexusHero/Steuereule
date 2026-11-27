@@ -91,14 +91,21 @@ export class PrintoutService {
     if (!fieldSet) throw new NotFoundError('VORDRUCKE_MISSING', `No Vordrucke are available for tax year ${year} yet.`)
     const collected = await this.collect(userId, year)
     const { values, instances, missingChildFields } = collected
-    // The IBAN is only needed for a refund (real-data run): a return that ends in a payment throughout the
-    // estimate's range prints without it, and the IBAN is named as a hint.
-    const hints = collected.missing.includes('iban') && (await this.endsInPayment(userId, year)) ? ['iban'] : []
-    const missing = collected.missing.filter((code) => !hints.includes(code))
+    const { missing, hints } = await this.blockers(userId, year, collected.missing)
     // A value too long for its box (at the 10 pt the forms require) would fail only after payment: once
     // nothing else is missing, it is named here, as „zuLang.<field>“, so the user shortens it first (ADR-0085).
     if (missing.length > 0) return { missing, missingChildFields, hints }
     return { missing: (await this.tooLong(year, values, instances)).map((id) => `zuLang.${id}`), missingChildFields, hints }
+  }
+
+  /**
+   * The one rule for what stops the printout, shared by the check and the gate of the PDF so the two never
+   * disagree (real-data run: paid on a green check, then refused). The IBAN is only needed for a refund: a
+   * return that ends in a payment throughout the estimate's range prints without it, and it is a hint.
+   */
+  private async blockers(userId: string, year: number, collectedMissing: readonly string[]): Promise<{ missing: string[]; hints: string[] }> {
+    const hints = collectedMissing.includes('iban') && (await this.endsInPayment(userId, year)) ? ['iban'] : []
+    return { missing: collectedMissing.filter((code) => !hints.includes(code)), hints }
   }
 
   /**
@@ -202,7 +209,8 @@ export class PrintoutService {
     }
 
     const collected = await this.collect(userId, year)
-    const { values, instances, missing } = collected
+    const { values, instances } = collected
+    const { missing } = await this.blockers(userId, year, collected.missing)
     if (missing.length > 0) {
       throw new UnprocessableEntityException({ message: 'Für den Ausdruck fehlen noch Angaben.', missing })
     }
@@ -450,6 +458,7 @@ function chSalaryCertificateFacts(ch: CrossBorderSalaryStatementRecord | null, a
     pkArbeitgeberGesamtChf: ch.nGre.pkArbeitgeberGesamtChf,
     steuerfreiesKrankentaggeldChf: ch.nGre.steuerfreiesKrankentaggeldChf,
     steuerfreiesUnfalltaggeldChf: ch.nGre.steuerfreiesUnfalltaggeldChf,
+    taggeldQuelle: ch.nGre.taggeldQuelle,
     krankentaggeldArbeitgeberProzent: ch.nGre.krankentaggeldArbeitgeberProzent,
     krankentaggeldArbeitgeberChf: ch.nGre.krankentaggeldArbeitgeberChf,
     nbuvArbeitgeberProzent: ch.nGre.nbuvArbeitgeberProzent,

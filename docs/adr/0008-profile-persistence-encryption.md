@@ -83,3 +83,22 @@ browser (Cache Storage `steuereule-dictation-model-v1`), loaded only after conse
 user data** — only model weights and tokenizer files, each verified against a pinned SHA-256 — and
 the user removes it under „Profil → Sprachmodell löschen". No tax data, no audio and no transcript
 is ever written to any client store. See [ADR-0061](./0061-on-device-dictation-model-source.md).
+
+## Amendment — 2026-11-27: Prisma 7, the annotations come from a generated schema model
+
+Prisma 7 has no query engine and no full data model at runtime: `Prisma.dmmf` keeps a field's name, kind and
+type, but not its `///` documentation. `prisma-field-encryption` 1.6.0 reads the `@encrypted` annotations from
+that documentation. Built against the runtime model it finds none and writes every column in plaintext, without
+an error.
+
+- A generator in `apps/api/prisma/generators/schema-model.mjs` receives the complete model from `prisma generate`
+  and writes it to `apps/api/src/prisma/schema-model.generated.ts` (not checked in, like the client). It is
+  produced in the same step as the client, so it cannot drift from the schema.
+- `schemaFieldEncryption` in `apps/api/src/prisma/field-encryption.ts` is the one place that builds the
+  extension and always passes this model. `test/prisma-encrypted-fields.test.ts` fails on any other use of
+  `fieldEncryptionExtension` and pins the encrypted field set as before.
+- The key rotation, the identity backfill and the data export read the same generated model.
+- Every client is built with the driver adapter from `apps/api/src/common/database-adapter.ts`, which keeps
+  the meaning of the pool parameters in `DATABASE_URL` (`connection_limit`, `pool_timeout`, `schema`).
+- The CLI's connection, schema and seed settings moved to `apps/api/prisma.config.ts` and
+  `apps/api/prisma/keystore/prisma.config.ts`.

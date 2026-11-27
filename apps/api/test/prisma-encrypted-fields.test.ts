@@ -18,7 +18,7 @@
 // Musti's #325 ruling, aligned with ADR-0028: a check should aim at the hazard, not
 // at something upstream of it). Instead it derives the *actual* encrypted/hashed
 // field set the exact way prisma-field-encryption itself does — from `Prisma.dmmf`,
-// the same object ENCRYPTED_PRISMA's fieldEncryptionExtension() reads at runtime —
+// the same object ENCRYPTED_PRISMA's schemaFieldEncryption() reads at runtime —
 // and asserts it against a checked-in expected list below. Any unintended change to
 // the encrypted/hashed set, from this trap or any other cause, turns this red.
 //
@@ -26,9 +26,15 @@
 // `@encrypted` anywhere in a `///` doc comment on a field not in the expected list
 // below (or remove an expected entry) and this test fails; revert and it is green
 // again.
+import { readdirSync, readFileSync } from 'node:fs'
+import { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { Prisma } from '@prisma/client'
+import { SCHEMA_MODEL } from '../src/prisma/schema-model.js'
 import { analyseDMMF } from 'prisma-field-encryption/dist/dmmf.js'
 import { describe, expect, it } from 'vitest'
+
+const API_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 
 interface ExpectedField {
   model: string
@@ -340,12 +346,12 @@ const EXPECTED_CURSORS: Record<string, string> = {
   ReceiptFile: 'id',
 }
 
-describe('encrypted/hashed field set (#325) — derived from Prisma.dmmf, not comment text', () => {
+describe('encrypted/hashed field set (#325) — derived from SCHEMA_MODEL, not comment text', () => {
   // `Prisma.dmmf` is the generated client's static datamodel description — reading it
   // needs no database connection, no PrismaService, nothing but `prisma generate`
   // having run (postinstall). analyseDMMF() is the exact function
-  // encrypted-prisma.provider.ts's fieldEncryptionExtension() runs internally.
-  const analysis = analyseDMMF(Prisma.dmmf)
+  // encrypted-prisma.provider.ts's schemaFieldEncryption() runs internally.
+  const analysis = analyseDMMF(SCHEMA_MODEL)
 
   it('the encrypted-field set matches the checked-in expected list exactly', () => {
     const actual: ExpectedEncryptedField[] = Object.entries(analysis)
@@ -421,7 +427,7 @@ describe('encrypted/hashed field set (#325) — derived from Prisma.dmmf, not co
     ])
 
     const encryptedModels = new Set(EXPECTED_ENCRYPTED_FIELDS.map((f) => f.model))
-    const userScopedModels = Prisma.dmmf.datamodel.models
+    const userScopedModels = SCHEMA_MODEL.datamodel.models
       .filter((m) => m.fields.some((f) => f.name === 'userId' && f.kind === 'scalar'))
       .map((m) => m.name)
       .sort()
@@ -431,5 +437,28 @@ describe('encrypted/hashed field set (#325) — derived from Prisma.dmmf, not co
     )
 
     expect(ungoverned).toEqual([])
+  })
+})
+
+describe('the extension reads its annotations from the generated schema model (Prisma 7)', () => {
+  // Prisma 7's runtime `Prisma.dmmf` has no field documentation. An extension built without `dmmf` finds no
+  // annotation and encrypts nothing, without an error; `schemaFieldEncryption` is the one place that passes it.
+  const sources = ['src', 'test', 'scripts', 'prisma'].flatMap((dir) =>
+    readdirSync(join(API_ROOT, dir), { recursive: true, encoding: 'utf8' })
+      .filter((file) => file.endsWith('.ts') && !file.includes('node_modules'))
+      .map((file) => join(dir, file)),
+  )
+
+  it('carries the field documentation the runtime client lost', () => {
+    const email = SCHEMA_MODEL.datamodel.models.find((model) => model.name === 'User')?.fields.find((field) => field.name === 'email')
+    expect(email?.documentation).toContain('@encrypted')
+    const runtimeEmail = Prisma.dmmf.datamodel.models.find((model) => model.name === 'User')?.fields.find((field) => field.name === 'email')
+    expect(runtimeEmail).not.toHaveProperty('documentation')
+  })
+
+  it('builds the extension in one place only', () => {
+    const allowed = new Set([join('src', 'prisma', 'field-encryption.ts'), join('test', 'prisma-encrypted-fields.test.ts')])
+    const direct = sources.filter((file) => !allowed.has(file) && /\bfieldEncryptionExtension\b/.test(readFileSync(join(API_ROOT, file), 'utf8')))
+    expect(direct).toEqual([])
   })
 })

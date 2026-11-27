@@ -1,6 +1,6 @@
 import { Pressable, Text, View, type TextStyle, type ViewStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
-import { useTheme, type UiTheme } from '@steuereule/ui'
+import { useTheme, type UiTheme, controlLine } from '@steuereule/ui'
 import { APP_NS } from '../../i18n/resources'
 import type { HistoryPerson } from './historyFormat'
 
@@ -24,7 +24,7 @@ export function PersonToggle({ person, onChange }: { readonly person: HistoryPer
 }
 
 function makeStyles(t: UiTheme) {
-  const segment: ViewStyle = { flexDirection: 'row', alignSelf: 'flex-start', borderWidth: t.space.kontur, borderColor: t.color.linie, borderRadius: t.radius.pille, backgroundColor: t.color.karte, padding: 3, gap: 2 }
+  const segment: ViewStyle = { flexDirection: 'row', alignSelf: 'flex-start', borderWidth: t.space.kontur, borderColor: controlLine(t), borderRadius: t.radius.pille, backgroundColor: t.color.karte, padding: 3, gap: 2 }
   const segmentButton: ViewStyle = { borderRadius: t.radius.pille, paddingHorizontal: t.space.s3, paddingVertical: 6, minHeight: 36, justifyContent: 'center' }
   const segmentActive: ViewStyle = { backgroundColor: t.color.funke }
   const segmentText: TextStyle = { ...t.type.label, color: t.color.tinte }

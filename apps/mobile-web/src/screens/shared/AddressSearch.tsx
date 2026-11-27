@@ -135,8 +135,8 @@ function makeStyles(t: UiTheme) {
     hint: { ...t.type.small, color: t.color.tinte2, marginTop: -t.space.s2 } as TextStyle,
     list: {
       marginTop: -t.space.s2,
-      borderWidth: 2,
-      borderColor: t.color.tinte,
+      borderWidth: t.space.kontur,
+      borderColor: t.color.linie,
       borderRadius: t.radius.s,
       backgroundColor: t.color.karte,
       overflow: 'hidden',

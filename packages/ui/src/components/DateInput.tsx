@@ -1,7 +1,7 @@
 import { createElement, useRef, useState, type CSSProperties } from 'react'
 import { Platform, Pressable, Text, View, type TextStyle, type ViewStyle } from 'react-native'
 import type { InputAutoComplete } from '../lib/autoComplete'
-import { inkOnFunke, useTheme } from '../theme/useTheme'
+import { inkOnFunke, useTheme, controlLine } from '../theme/useTheme'
 import { Input } from './Input'
 
 export interface DateInputProps {
@@ -135,8 +135,8 @@ export function DateInput({ value, onChange, calendarLabel, accessibilityLabel, 
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: open ? t.color.funke : t.color.karte,
-    borderWidth: 2,
-    borderColor: t.color.tinte,
+    borderWidth: t.space.kontur,
+    borderColor: controlLine(t),
     borderRadius: t.radius.s,
   }
   const iconTone = open ? inkOnFunke(t) : t.color.tinte
@@ -146,8 +146,8 @@ export function DateInput({ value, onChange, calendarLabel, accessibilityLabel, 
     padding: t.space.s3,
     borderRadius: t.radius.m,
     backgroundColor: t.color.karte,
-    borderWidth: 2,
-    borderColor: t.color.tinte,
+    borderWidth: t.space.kontur,
+    borderColor: t.color.linie,
     ...t.shadow.hart,
     gap: t.space.s2,
   }
@@ -163,8 +163,8 @@ export function DateInput({ value, onChange, calendarLabel, accessibilityLabel, 
     height: 32,
     paddingHorizontal: 6,
     borderRadius: t.radius.s,
-    borderWidth: 1.5,
-    borderColor: t.color.tinte,
+    borderWidth: t.space.kontur,
+    borderColor: controlLine(t),
     backgroundColor: t.color.grund,
     alignItems: 'center',
     justifyContent: 'center',
@@ -211,13 +211,13 @@ export function DateInput({ value, onChange, calendarLabel, accessibilityLabel, 
     borderRadius: t.radius.s,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1.5,
+    borderWidth: t.space.kontur,
     borderColor: 'transparent',
   }
   const dayButtonSelected: ViewStyle = {
     ...dayButtonBase,
     backgroundColor: t.color.funke,
-    borderColor: t.color.tinte,
+    borderColor: controlLine(t),
   }
   const dayTextBase: TextStyle = {
     fontFamily: t.font.text,

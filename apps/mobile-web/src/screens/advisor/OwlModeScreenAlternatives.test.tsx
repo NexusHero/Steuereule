@@ -68,7 +68,7 @@ describe('the workbench never applies alternatives together (K1)', () => {
     renderScreen([TWO_PATHS])
     const batch = screen.getByTestId('eule-batch-apply-btn')
     expect(batch.getAttribute('aria-disabled') === 'true' || batch.hasAttribute('disabled')).toBe(true)
-    expect(screen.getByTestId('eule-batch-alternatives-hint').textContent).toBe('Wähle einen der Wege — beide zusammen geht nicht.')
+    expect(screen.getByTestId('eule-batch-alternatives-hint').textContent).toBe('Wähle einen der Wege. Beide zusammen geht nicht.')
   })
 
   it('applies only the path the user picks', async () => {

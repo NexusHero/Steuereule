@@ -16,6 +16,8 @@
   "dependencies": {
     "@better-auth/oauth-provider": "1.7.27",
     "@better-auth/passkey": "^1.7.27",
+    "@expo-google-fonts/geist": "0.4.2",
+    "@expo-google-fonts/geist-mono": "^0.4.3",
     "@expo/metro-runtime": "~58.0.17",
     "@huggingface/transformers": "4.3.2",
     "@react-navigation/bottom-tabs": "^7.22.0",
@@ -30,6 +32,7 @@
     "@tesseract.js-data/eng": "1.0.0",
     "better-auth": "1.7.27",
     "expo": "~58.1.0",
+    "expo-asset": "~58.0.21",
     "expo-clipboard": "~58.0.4",
     "expo-secure-store": "~58.0.3",
     "expo-status-bar": "~58.0.5",

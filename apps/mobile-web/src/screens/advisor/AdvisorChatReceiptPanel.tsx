@@ -44,7 +44,7 @@ export function AdvisorChatReceiptPanel({ chat, onAttachReceipt, onAttachReceipt
           disabled={isParsingReceipt}
           testID="advisor-receipt-file"
           inputTestID="advisor-receipt-file-input"
-          unsupportedHint={tr('advisor.chat.receiptNativeHint', 'Kamera-Scan folgt in der App — lade im Web ein PDF oder Foto hoch.')}
+          unsupportedHint={tr('advisor.chat.receiptNativeHint', 'Im Web kannst du ein PDF oder Foto hochladen.')}
         >
           {isParsingReceipt
             ? (receiptProgress ?? tr('advisor.chat.parsingReceipt', 'Beleg wird geprüft …'))

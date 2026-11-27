@@ -2,7 +2,7 @@ import { Pressable, Text, type ViewStyle, type TextStyle, type StyleProp } from 
 import { type ReactNode } from 'react'
 import { hapticMedium } from '../lib/haptics'
 import { minTouchHeight } from '../lib/touch-target'
-import { inkOnFunke, useTheme } from '../theme/useTheme'
+import { inkOnFunke, useTheme, controlLine } from '../theme/useTheme'
 
 export type ButtonVariant = 'primaer' | 'ghost' | 'leise' | 'nacht'
 
@@ -12,12 +12,14 @@ export interface ButtonProps {
   readonly onPress?: () => void
   readonly style?: StyleProp<ViewStyle>
   readonly children: ReactNode
+  /** A leading icon; decoration beside the label, which stays the button's name. */
+  readonly icon?: ReactNode
   readonly testID?: string
 }
 
 const MIN_HEIGHT = 52
 
-export function Button({ variant = 'primaer', disabled = false, onPress, style, children, testID }: ButtonProps) {
+export function Button({ variant = 'primaer', disabled = false, onPress, style, children, icon, testID }: ButtonProps) {
   const t = useTheme()
 
   const bg: Record<ButtonVariant, string> = {
@@ -31,9 +33,9 @@ export function Button({ variant = 'primaer', disabled = false, onPress, style, 
   // screen. Secondary variants sit flat, with a quiet contour (ghost) or none at all.
   const primary = variant === 'primaer'
   const border: Record<ButtonVariant, string> = {
-    primaer: t.color.tinte,
-    // tinte-2 keeps the control boundary at ≥ 3:1 (WCAG 1.4.11) while reading far quieter than ink.
-    ghost: t.color.tinte2,
+    primaer: t.color.funke,
+    // The control line keeps the boundary at ≥ 3:1 (WCAG 1.4.11) while reading far quieter than ink.
+    ghost: controlLine(t),
     leise: t.color.funkeWeich,
     nacht: t.color.nacht,
   }
@@ -43,12 +45,13 @@ export function Button({ variant = 'primaer', disabled = false, onPress, style, 
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
+    gap: t.space.s2,
     minHeight: MIN_HEIGHT,
     paddingHorizontal: t.space.s5,
     backgroundColor: bg[variant],
     borderWidth: t.space.kontur,
     borderColor: border[variant],
-    borderRadius: t.radius.pille,
+    borderRadius: t.radius.m,
     ...(primary ? t.shadow.hart : null),
   }
   const label: TextStyle = {
@@ -79,6 +82,7 @@ export function Button({ variant = 'primaer', disabled = false, onPress, style, 
           : { opacity: 0.7 }),
       ]}
     >
+      {icon}
       {typeof children === 'string' ? <Text style={label}>{children}</Text> : children}
     </Pressable>
   )

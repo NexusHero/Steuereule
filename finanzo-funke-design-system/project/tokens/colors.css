@@ -1,21 +1,23 @@
 /* ============================================================
-   Funke — Farbsystem
-   Regeln, die tragen (aus „Klar" übernommen, neu eingefärbt):
-   - --ki (Violett) ist EXKLUSIV für KI-Output reserviert.
-     Komponenten mit KI-Inhalt tragen [data-ai="true"] und
-     nutzen nur .ai-*-Klassen. Violett ist nie Deko.
-   - Semantik (ok/warn/fehler) ist sichtbar getrennt von --ki.
-   - --funke (Limette) ist die Marken-Energie: Primäraktionen,
-     Erfolgsmomente, der Erstattungs-Held.
+   Graphit — Farbsystem (Version 2.0)
+   Regeln, die tragen:
+   - Hell: weißer Grund, weiße Karten, Haarlinien. Dunkel: Graphit,
+     Karten eine Stufe heller.
+   - --funke (Limette) ist der EINZIGE Akzent: Primäraktion und
+     Auswahl. Beträge stehen in Tinte, nie in Lime, Rot oder Grün.
+   - --ki ist neutral: KI-Inhalt erkennt man an der Eule und am
+     Etikett, nicht an einer eigenen Farbe.
+   - Semantik (ok/warn/fehler) bleibt für Zustände: bestätigt,
+     Hinweis, Fehler. Nicht für Erstattung oder Nachzahlung.
    ============================================================ */
 :root {
   /* Gründe & Text */
-  --grund: #f4f2e9;
+  --grund: #ffffff;
   --karte: #ffffff;
-  --tinte: #191b12;
-  --tinte-2: #5f6353;
-  --linie: #191b12;        /* Konturen sind Tinte, 2px, mutig */
-  --linie-weich: #dedacb;  /* Trennlinien innerhalb von Karten */
+  --tinte: #0f0f14;
+  --tinte-2: #5c5c66;
+  --linie: #c6c6cc;        /* Haarlinie zwischen Flächen; Bedienelemente nehmen --tinte-2 */
+  --linie-weich: #e6e6e9;  /* Trennlinien innerhalb von Karten */
 
   /* Identität: Funke-Limette */
   --funke: #c9f229;
@@ -24,22 +26,22 @@
   --funke-tinte: #40510a;  /* lesbares Dunkel-Limett für Text auf Hell */
 
   /* Dunkler Held (Erstattungs-Karte, Kamera, inverse Flächen) */
-  --nacht: #191b12;
-  --nacht-karte: #262a1c;
-  --nacht-text: #f4f2e9;
-  --nacht-linie: #3d4230;
+  --nacht: #0f0f14;
+  --nacht-karte: #191920;
+  --nacht-text: #ededf3;
+  --nacht-linie: #2a2a31;
 
   /* KI — exklusiv. Nie außerhalb von .ai-*-Selektoren referenzieren. */
-  --ki: #7c5cff;
-  --ki-weich: #ece6ff;
-  --ki-linie: #c7b8ff;
-  --ki-tinte: #4630b8;
+  --ki: #5c5c66;
+  --ki-weich: #f3f3f5;
+  --ki-linie: #d4d4da;
+  --ki-tinte: #3a3a44;
 
   /* Semantik (deutlich getrennt vom KI-Violett) */
   --ok: #1f9d55;
   --ok-weich: #def4e2;
-  --warn: #e07b00;
-  --warn-weich: #ffeecf;
+  --warn: #8a6500;
+  --warn-weich: #f3f3f5;
   --fehler: #e0362c;
   --fehler-weich: #fde3de;
 }

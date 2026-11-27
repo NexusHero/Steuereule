@@ -12,6 +12,7 @@ import {
   gatedIncomeTypes,
   wageTaxCertificateStatus,
   openSalaryCertificateFields,
+  roundToCents,
   taxEstimateEmployee,
   taxEstimatePensioner,
   homeOfficeAllowance,
@@ -121,7 +122,7 @@ export class TaxEstimateService {
     // Abs. 2 Nr. 1 EStG); in a joint return there is one assessment, so they are asked once, of Person A.
     const prepayments = amountAnswer(answersFrom((await this.cases.read(userId, year, ['interviewRows'])).interviewRows), 'vorauszahlungen')
     if (prepayments === 0) return status
-    return { ...status, prepayments, result: { from: status.result.from + prepayments, to: status.result.to + prepayments } }
+    return { ...status, prepayments, result: { from: roundToCents(status.result.from + prepayments), to: roundToCents(status.result.to + prepayments) } }
   }
 
   private async calculate(userId: string, year: number, boostersEnabled: boolean): Promise<TaxEstimateStatus> {

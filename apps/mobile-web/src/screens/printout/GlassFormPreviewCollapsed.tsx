@@ -15,12 +15,12 @@ export function GlassFormPreviewCollapsed({ onOpen }: { readonly onOpen: () => v
       <View style={styles.collapsedHeader}>
         <View style={{ flex: 1 }}>
           <Text style={styles.collapsedTitle}>
-            {tr('ausdruck.glasErklaerung.titel', '🔍 Glas-Erklärung: Amtliche Formular-Vorschau')}
+            {tr('ausdruck.glasErklaerung.titel', 'Glas-Erklärung: Amtliche Formular-Vorschau')}
           </Text>
           <Text style={styles.collapsedSubtitle}>
             {tr(
               'ausdruck.glasErklaerung.untertitel',
-              'Sieh live, in welchem amtlichen Vordruck und welcher Zeile deine Angaben landen – inklusive Herkunft und Direktsprung in die Maske.',
+              'Zeigt, in welcher Zeile welches Vordrucks deine Angaben stehen.',
             )}
           </Text>
         </View>

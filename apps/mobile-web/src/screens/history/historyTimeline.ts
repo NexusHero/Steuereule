@@ -12,7 +12,8 @@ import { daysUntil, isLastChance } from './historyInsights'
 export interface YearStatus {
   readonly text: string
   /** Only a Bescheid that cut the refund is coloured. */
-  readonly tone: 'bad' | null
+  /** `strong`: the tax office changed the refund; the signed figure stands out by weight, never by red or green. */
+  readonly tone: 'strong' | null
 }
 
 const KIND_RANK: Readonly<Record<OpenItemDto['kind'], number>> = { einspruchsfrist: 0, 'wartet-auf-bescheid': 1, offen: 2 }
@@ -103,7 +104,7 @@ function withChangeableUntil(status: YearStatus, item: YearListItemDto, tr: TFun
   return { ...status, text: tr('verlauf.zeile.aenderbar', { stand: status.text, datum: germanDate(item.deadline.endsOn) }) }
 }
 
-/** The year's one phrase in the timeline: „in Arbeit · …“, „abgegeben · wartet auf Bescheid“, „Bescheid · 92 € weniger als erklärt“, „nur Bescheid · änderbar bis …“, „noch nicht abgegeben · bis … möglich“. */
+/** The year's one phrase in the timeline: „in Arbeit · …“, „abgegeben · wartet auf Bescheid“, „Bescheid −92 €“, „nur Bescheid · änderbar bis …“, „noch nicht abgegeben · bis … möglich“. */
 export function yearStatus(item: YearListItemDto, entry: YearHistoryEntryDto | undefined, tr: TFunction): YearStatus {
   if (!item.hasData || item.withoutAssessment) return gapStatus(item, tr)
   switch (item.kind) {
@@ -116,8 +117,8 @@ export function yearStatus(item: YearListItemDto, entry: YearHistoryEntryDto | u
     case 'eckjahr':
       return withChangeableUntil({ text: tr('verlauf.zeile.nurBescheid'), tone: null }, item, tr)
     case 'bescheid': {
-      if (item.difference !== null && item.difference < 0) return { text: tr('verlauf.zeile.weniger', { betrag: formatEuro(Math.abs(item.difference)) }), tone: 'bad' }
-      if (item.difference !== null && item.difference > 0) return { text: tr('verlauf.zeile.mehr', { betrag: formatEuro(item.difference) }), tone: null }
+      if (item.difference !== null && item.difference < 0) return { text: tr('verlauf.zeile.weniger', { betrag: signedEuro(item.difference) }), tone: 'strong' }
+      if (item.difference !== null && item.difference > 0) return { text: tr('verlauf.zeile.mehr', { betrag: signedEuro(item.difference) }), tone: 'strong' }
       if (item.deviations > 0) return { text: tr('verlauf.zeile.aenderungen', { count: item.deviations }), tone: null }
       return withChangeableUntil({ text: tr(item.noDiffReason === null ? 'verlauf.zeile.wieErklaert' : 'verlauf.zeile.ohneAbgleich'), tone: null }, item, tr)
     }

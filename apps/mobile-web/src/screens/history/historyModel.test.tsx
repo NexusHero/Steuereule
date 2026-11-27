@@ -157,12 +157,12 @@ describe('historyTimeline', () => {
   it('words each year in one plain phrase, the cut in the danger tone only', () => {
     expect(status(2026)).toEqual({ text: 'in Arbeit · 2 Lohnsteuerbescheinigungen fehlen', tone: null })
     expect(status(2025)).toEqual({ text: 'abgegeben · wartet auf Bescheid', tone: null })
-    expect(status(2024)).toEqual({ text: 'Bescheid · 92 € weniger als erklärt', tone: 'bad' })
+    expect(status(2024)).toEqual({ text: 'Bescheid −92 €', tone: 'strong' })
     // ADR-0099 §1: until when an assessed year can be changed, unless the row already names a change.
     expect(status(2023)).toEqual({ text: 'Bescheid wie erklärt · änderbar bis 31.12.2027', tone: null })
     expect(status(2021)).toEqual({ text: 'nur Bescheid', tone: null })
     expect(plain(yearStatus({ ...item(2021), deadline: { ...item(2021).deadline, endsOn: '2026-12-31', remainingDays: 43, running: true } }, undefined, tr).text)).toBe('nur Bescheid · änderbar bis 31.12.2026')
-    expect(plain(yearStatus({ ...item(2024), difference: 40 }, undefined, tr).text)).toBe('Bescheid · 40 € mehr als erklärt')
+    expect(plain(yearStatus({ ...item(2024), difference: 40 }, undefined, tr).text)).toBe('Bescheid +40 €')
     expect(yearStatus({ ...item(2024), difference: 0 }, undefined, tr).text).toBe('Bescheid · 2 Änderungen')
     expect(yearStatus({ ...item(2023), noDiffReason: 'keine-eingereichte-fassung' }, undefined, tr).text).toBe('Bescheid · ohne Abgleich · änderbar bis 31.12.2027')
   })

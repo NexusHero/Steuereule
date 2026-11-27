@@ -339,7 +339,7 @@ jobs:
       - name: Apply migrations (migrate deploy, never migrate dev)
         run: pnpm --filter @steuereule/api migrate:deploy
       - name: Prisma Schema-vs-Migrations Drift Gate (zero drift between schema.prisma and migrations/)
-        run: pnpm --filter @steuereule/api exec prisma migrate diff --from-schema-datasource prisma/schema.prisma --to-schema-datamodel prisma/schema.prisma --exit-code
+        run: pnpm --filter @steuereule/api exec prisma migrate diff --from-config-datasource --to-schema prisma/schema.prisma --exit-code
       # REQ-011/ADR-0013 §7: the export acceptance/integration suites render a real PDF-Bericht through
       # PlaywrightPdfRenderer — a genuine Chromium launch, not a stub — so this job needs the browser the e2e jobs
       # install, through the same action (cache, apt limited to Ubuntu's archive), from the API's `playwright-core`.

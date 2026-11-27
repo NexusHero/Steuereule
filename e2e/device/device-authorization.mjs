@@ -177,13 +177,13 @@ const COPY = {
 // `t.color.funke` (packages/tokens/dist/theme.ts, both light/dark themes: `#c9f229`) — the
 // primary-button fill `packages/ui/src/components/Button.tsx`'s `bg.primaer` uses, and what
 // GeraetefreigabeScreen's "Ja, das ist mein Code" button (the default `primaer` variant) is
-// painted with. `t.color.grund` (`#f4f2e9`, light theme — App.tsx mounts `ThemeProvider
+// painted with. `t.color.grund` (`#ffffff`, light theme — App.tsx mounts `ThemeProvider
 // mode="light"`) is the screen background outside any card/button. Both lifted here rather than
 // imported (this workspace's only devDependency is `playwright-core`, matching `COPY` above's
 // own lifted-not-imported convention) — confirmed against the real rendered pixel once, see this
 // file's PR record, not assumed from the source.
 const FUNKE_RGB = { r: 201, g: 242, b: 41 }
-const GRUND_RGB = { r: 244, g: 242, b: 233 }
+const GRUND_RGB = { r: 255, g: 255, b: 255 }
 const COLOUR_TOLERANCE = 4 // real screenshot encoding is exact for a flat fill; a few units of
 // slack absorbs the theoretical case of a compositor/colour-profile rounding difference without
 // widening enough to blur FUNKE_RGB and GRUND_RGB into each other (their channels differ by 40+).

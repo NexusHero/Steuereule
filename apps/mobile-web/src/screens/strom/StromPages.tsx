@@ -37,6 +37,8 @@ const LATER_ALLOWED: ReadonlySet<EntryStepId> = new Set<EntryStepId>(LATER_ALLOW
 /** Amounts that rarely change and may be taken over from last year (#452 decision 8). */
 const PRIOR_YEAR_STEPS: ReadonlySet<EntryStepId> = new Set<EntryStepId>(['spenden-betrag', 'riester-betrag'])
 
+const VISUALLY_HIDDEN: TextStyle = { position: 'absolute', width: 1, height: 1, overflow: 'hidden', opacity: 0 }
+
 export function useKatalogCopy(): FieldCopy {
   const { t: tr } = useTranslation(APP_NS)
   return {
@@ -63,7 +65,10 @@ function useBasisCopy(taxYear: number, answers: Answers): FieldCopy {
     help: (id) => {
       const copy = QUESTION_COPY[id as QuestionId]
       if (copy === undefined) return ''
-      return tr(id === 'ausland' && answers.job === 'Rente' ? 'interview.auslandRente.help' : copy.helpKey)
+      // „Kurz zu dir“ puts several questions on one page: the foreign question explains itself through
+      // its answers there, and its paragraph made the page crowded. The single-question screen keeps it.
+      if (id === 'ausland') return ''
+      return tr(copy.helpKey)
     },
     notice: (id) =>
       id === 'gewerbe'
@@ -98,8 +103,6 @@ function withoutEmpty(draft: Answers): Answers {
 // Basis: only what branches — work, Switzerland, children, marital status (and the partner's work).
 
 export function BasisPage({ taxYear, stored, onSaved }: { readonly taxYear: number; readonly stored: Answers; readonly onSaved: (answers: Answers) => void }) {
-  const t = useTheme()
-  const styles = makeStyles(t)
   const { t: tr } = useTranslation(APP_NS)
   const [draft, setDraft] = useState<Answers>(stored)
   const [missing, setMissing] = useState<ReadonlySet<EntryStepId>>(new Set())
@@ -124,10 +127,10 @@ export function BasisPage({ taxYear, stored, onSaved }: { readonly taxYear: numb
 
   return (
     <View>
-      <Text style={styles.heading} accessibilityRole="header">
+      {/* The questions are the page: its name stays for assistive tech and the tab title, not on screen. */}
+      <Text style={VISUALLY_HIDDEN} accessibilityRole="header">
         {tr('strom.basis.titel')}
       </Text>
-      <Text style={styles.help}>{tr('strom.basis.hilfe')}</Text>
       <SaveNotice result={result} />
       <StromFields steps={steps} draft={draft} onChange={(id, value) => setDraft((d) => ({ ...d, [id]: value }))} copy={copy} idPrefix="interview" missing={missing} />
       <Button onPress={() => void next()} disabled={saving} testID="strom-weiter">

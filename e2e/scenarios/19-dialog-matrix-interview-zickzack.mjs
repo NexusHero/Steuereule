@@ -47,7 +47,7 @@ export async function runScenario19(browser, webOrigin) {
 
   // 1. Job = Selbstständig -> terminal Gewerbe-Gate, nothing after it.
   await opt('job', 'Selbstständig').click()
-  await gewerbe.locator('text=Ehrlich: dafür sind wir noch nicht gut genug.').waitFor({ state: 'visible', timeout: 10_000 })
+  await gewerbe.locator('text=Selbstständigkeit rechnen wir noch nicht.').waitFor({ state: 'visible', timeout: 10_000 })
   if (await page.locator('text=Angestellten-Teil vorbereiten').isVisible()) {
     fail('[Scenario 19] Terminal Gewerbe-Gate must not show forward button for Selbstständig')
   }
@@ -66,7 +66,7 @@ export async function runScenario19(browser, webOrigin) {
 
   // 4. Ausland = In ein anderes Land -> CH-Only notice inline; Schweiz -> no notice; Nein.
   await opt('ausland', 'In ein anderes Land').click()
-  await chOnly.locator('text=Ehrlich: andere Länder können wir noch nicht.').waitFor({ state: 'visible', timeout: 10_000 })
+  await chOnly.locator('text=Andere Länder rechnen wir noch nicht.').waitFor({ state: 'visible', timeout: 10_000 })
   await field('kinder').waitFor({ state: 'visible', timeout: 10_000 })
   await opt('ausland', 'Ja, in die Schweiz').click()
   await chOnly.waitFor({ state: 'detached', timeout: 10_000 })

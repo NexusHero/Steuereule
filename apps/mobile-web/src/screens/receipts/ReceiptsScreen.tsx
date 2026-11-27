@@ -295,7 +295,7 @@ function BescheidPicker({ reader }: { readonly reader: ReceiptReader }) {
       ) : null}
       {checkResult !== null ? (
         <Text
-          style={{ ...t.type.small, color: checkResult.kind === 'ok' ? t.color.funkeHell : t.color.warn }}
+          style={{ ...t.type.small, color: checkResult.kind === 'ok' ? t.color.tinte : t.color.warn }}
           accessibilityLiveRegion="polite"
           testID="belege-bescheid-check-status"
         >
@@ -359,9 +359,7 @@ function UploadCard({ reader }: { readonly reader: ReceiptReader }) {
   }
 
   return (
-    <Card variant="nacht" style={s.uploadCard} testID="belege-upload-card">
-      <Text style={s.uploadHeading}>{tr('belege.upload.heading')}</Text>
-      <Text style={s.uploadOkText} testID="belege-upload-grenze">{tr('belege.upload.limit')}</Text>
+    <Card style={s.uploadCard} testID="belege-upload-card">
 
       {isWeb && (
         <View style={s.uploadControls}>
@@ -375,6 +373,8 @@ function UploadCard({ reader }: { readonly reader: ReceiptReader }) {
           </ReceiptPickerButton>
         </View>
       )}
+
+      <Text style={s.uploadBody} testID="belege-upload-grenze">{tr('belege.upload.limit')}</Text>
 
       {statusMessage !== null && (
         <Text style={statusMessage.kind === 'ok' ? s.uploadOkText : s.uploadErrText} accessibilityLiveRegion="polite" testID="belege-upload-status">

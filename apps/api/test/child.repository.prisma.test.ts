@@ -1,7 +1,7 @@
 // Regression (#452): since the English-naming refactor (#423) PrismaChildRepository.update wrote
 // the DATABASE column names (vorname, idnr, …) instead of the Prisma field names, so every
 // PUT /kinder/:id answered 500. This pins the keys against the Prisma model itself.
-import { Prisma } from '@prisma/client'
+import { SCHEMA_MODEL } from '../src/prisma/schema-model.js'
 import { describe, expect, it } from 'vitest'
 import { PrismaChildRepository } from '../src/children/child.repository.prisma.js'
 
@@ -31,7 +31,7 @@ describe('PrismaChildRepository.update', () => {
       otherParentName: 'Muster, Max', otherParentBirthDate: '1984-02-11', otherParentAddress: 'Musterstr. 1', otherParentKind: '1', otherParentDiedOn: null,
       registeredWithMeAllYear: true, childBenefitToMeAllYear: true, healthBasicEur: '400', careEur: '60', swissFamilyAllowanceEur: '2400',
     })
-    const modelFields = new Set(Prisma.dmmf.datamodel.models.find((m) => m.name === 'Child')!.fields.map((f) => f.name))
+    const modelFields = new Set(SCHEMA_MODEL.datamodel.models.find((m) => m.name === 'Child')!.fields.map((f) => f.name))
     const unknown = Object.keys(written).filter((key) => !modelFields.has(key))
     expect(unknown).toEqual([])
     expect(written).toMatchObject({ firstName: 'Mila Sophie', taxId: '86095742719', kinship: '1', swissFamilyAllowanceEur: '2400' })

@@ -185,7 +185,7 @@ describe('SicherheitScreen — failures (NR-16, NR-24, WEB-28)', () => {
     )
     renderSecurity()
     expect(await screen.findByTestId('sicherheit-sitzung-unbekannt')).toBeTruthy()
-    expect(screen.queryByText(/echtes Konto/)).toBeNull()
+    expect(screen.queryByText(/nur mit einem Konto/)).toBeNull()
     fireEvent.click(screen.getByTestId('sicherheit-sitzung-erneut'))
     expect(await screen.findByText('Passkeys')).toBeTruthy()
   })

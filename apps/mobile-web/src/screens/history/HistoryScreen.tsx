@@ -62,7 +62,7 @@ function HistoryLoaded({ data, openYear, onOpenYearDetail, onOpenDevelopment, on
     <AssessmentUploadEntry
       openYear={openYear}
       title={tr('verlauf.upload.titel', { jahr: (years[0]?.year ?? openYear) - 1 })}
-      body={tr(wide ? 'verlauf.upload.textLang' : 'verlauf.upload.text')}
+      body={tr('verlauf.upload.text')}
       cta={tr('verlauf.upload.cta')}
       onOpenDrafts={onOpenDrafts}
       testID="verlauf-upload"
@@ -155,7 +155,7 @@ function nowCopy(item: OpenItemDto, data: YearHistoryResponseDto, tr: TFunction)
   return { label: tr('verlauf.jetzt.label'), figure: null, headline, text, a11y: text === '' ? headline : `${headline}. ${text}`, action: 'ansehen' }
 }
 
-/** „Jetzt wichtig“ in the cockpit's dark block: only the most urgent item, the rest as one quiet line. */
+/** „Jetzt wichtig“ with the cockpit's hero styles, on a card (Graphit: ink on the card, no dark block): only the most urgent item, the rest as one quiet line. */
 function NowCard({ data, onOpen, onStart, onMore }: { readonly data: YearHistoryResponseDto; readonly onOpen: (year: number) => void; readonly onStart: (year: number) => void; readonly onMore: () => void }) {
   const t = useTheme()
   const s = makeStyles(t)
@@ -164,7 +164,7 @@ function NowCard({ data, onOpen, onStart, onMore }: { readonly data: YearHistory
   const [first, ...rest] = urgentFirst(data.openItems, data.today)
   if (first === undefined) {
     return (
-      <Card variant="nacht" style={s.hero} testID="verlauf-jetzt">
+      <Card style={s.hero} testID="verlauf-jetzt">
         <Text style={c.heroLabel}>{tr('verlauf.jetzt.label')}</Text>
         <Text style={c.gatedHeading} testID="verlauf-jetzt-erledigt">
           {tr('verlauf.jetzt.erledigt')}
@@ -175,7 +175,7 @@ function NowCard({ data, onOpen, onStart, onMore }: { readonly data: YearHistory
   }
   const copy = nowCopy(first, data, tr)
   return (
-    <Card variant="nacht" style={s.hero} testID="verlauf-jetzt">
+    <Card style={s.hero} testID="verlauf-jetzt">
       {/* One element reads as the whole statement („2024: Das Finanzamt hat 92 € gekürzt. Einspruch noch 19 Tage möglich“). */}
       <View accessible accessibilityLabel={copy.a11y} testID="verlauf-jetzt-inhalt">
         {copy.figure !== null ? (
@@ -194,7 +194,7 @@ function NowCard({ data, onOpen, onStart, onMore }: { readonly data: YearHistory
       </View>
       {copy.action === 'frage' ? (
         <View style={s.heroQuestion}>
-          <FiledElsewhereQuestion year={first.year} tone="nacht" testID="verlauf-jetzt-frage" />
+          <FiledElsewhereQuestion year={first.year} tone="hell" testID="verlauf-jetzt-frage" />
         </View>
       ) : null}
       {/* The button and the quiet line share a row, so the block stays the height of the cockpit's. */}
@@ -277,7 +277,7 @@ function YearList({ data, onPick, links }: { readonly data: YearHistoryResponseD
                 <Text style={s.rowYear}>{item.year}</Text>
                 <Text style={s.amount}>{amount}</Text>
               </View>
-              <Text style={[s.rowStatus, status.tone === 'bad' ? s.textBad : null]}>{status.text}</Text>
+              <Text style={[s.rowStatus, status.tone === 'strong' ? s.textStrong : null]}>{status.text}</Text>
             </Pressable>
             <RowQuestion item={item} heroYear={heroYear} />
             {phrase !== undefined ? <EventMarker year={item.year} phrase={phrase} /> : null}
@@ -333,7 +333,7 @@ function YearTable({ data, onPick, links }: { readonly data: YearHistoryResponse
           const status = yearStatus(item, entry, tr)
           const cells = [
             <Text style={s.rowYear}>{item.year}</Text>,
-            <Text style={[s.rowStatus, status.tone === 'bad' ? s.textBad : null]}>{status.text}</Text>,
+            <Text style={[s.rowStatus, status.tone === 'strong' ? s.textStrong : null]}>{status.text}</Text>,
             <Text style={[s.amount, s.right]}>{declaredAmount(item, entry)}</Text>,
             <Text style={[s.amount, s.right]}>{item.assessedRefund === null || !item.hasData ? '–' : signedEuro(item.assessedRefund)}</Text>,
           ]
@@ -375,11 +375,11 @@ function makeStyles(t: UiTheme) {
   const frame = historyScreenStyles(t)
   // The Card's own bottom margin would double the screen's gap.
   const hero: ViewStyle = { marginBottom: 0, gap: 0 }
-  const heroText: TextStyle = { ...t.type.small, color: t.color.nachtText, opacity: 0.85 }
+  const heroText: TextStyle = { ...t.type.small, color: t.color.tinte2 }
   const heroActions: ViewStyle = { flexDirection: 'row', alignItems: 'center', gap: t.space.s3, marginTop: t.space.s3 }
   const heroButton: ViewStyle = { width: 'auto', flexShrink: 0 }
   const heroMore: ViewStyle = { flex: 1, minHeight: 44, justifyContent: 'center' }
-  const heroMoreText: TextStyle = { ...t.type.small, color: t.color.nachtText, opacity: 0.75, textDecorationLine: 'underline' }
+  const heroMoreText: TextStyle = { ...t.type.small, color: t.color.tinte2, textDecorationLine: 'underline' }
   const list: ViewStyle = { backgroundColor: t.color.karte, borderWidth: t.space.kontur, borderColor: t.color.linie, borderRadius: t.radius.m, overflow: 'hidden' }
   const row: ViewStyle = { paddingHorizontal: t.space.s4, paddingVertical: 6, minHeight: 44, justifyContent: 'center', gap: 2 }
   const rowLine: ViewStyle = { borderTopWidth: 1, borderTopColor: t.color.linieWeich }
@@ -387,7 +387,7 @@ function makeStyles(t: UiTheme) {
   const rowYear: TextStyle = { ...t.type.itemTitle, color: t.color.tinte }
   const rowStatus: TextStyle = { ...t.type.small, color: t.color.tinte2 }
   const amount: TextStyle = { ...t.type.labelStrong, color: t.color.tinte, fontVariant: ['tabular-nums'] }
-  const textBad: TextStyle = { color: t.color.fehler }
+  const textStrong: TextStyle = { color: t.color.tinte, fontWeight: t.weight.schwer }
   const linkRow: ViewStyle = { flexDirection: 'row', alignItems: 'center', gap: t.space.s3 }
   const flex: TextStyle = { flex: 1, minWidth: 0 }
   const chevron: TextStyle = { ...t.type.bodyStrong, color: t.color.tinte }
@@ -408,7 +408,7 @@ function makeStyles(t: UiTheme) {
   const quietLink: ViewStyle = { minHeight: 44, justifyContent: 'center', alignSelf: 'flex-start' }
   const quietLinkText: TextStyle = { ...t.type.small, color: t.color.tinte2 }
   return {
-    ...base, ...frame, hero, heroText, heroActions, heroButton, heroMore, heroMoreText, list, row, rowLine, rowTop, rowYear, rowStatus, amount, textBad, linkRow, flex, chevron,
+    ...base, ...frame, hero, heroText, heroActions, heroButton, heroMore, heroMoreText, list, row, rowLine, rowTop, rowYear, rowStatus, amount, textStrong, linkRow, flex, chevron,
     tableHead, th, right, tableRow, cell, older, quietLink, quietLinkText, heroQuestion, event, eventDot, eventText, rowQuestion, links, linkSplit, tableExtra,
   }
 }

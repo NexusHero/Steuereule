@@ -54,6 +54,16 @@ describe('McpReportService (ADR-0052 amendment 2)', () => {
     expect(result).toEqual({ ok: true, beforeRefundEur: 100, afterRefundEur: 250, deltaEur: 150 })
   })
 
+  it('says so when the church tax stays open after the scenario, so a delta of 0 is not read as "no effect"', async () => {
+    // One spouse's confession alone cannot close the couple's church tax: the estimate stays "offen" until both are known.
+    const open = { ...computed(100, 100), churchTaxOpen: true }
+    const estimate = { getState: vi.fn().mockResolvedValue(open) }
+    const result = await service({ estimate }).simulateEntries('u', 2025, [{ screen: 'stammdaten', field: 'kirchensteuerpflichtig', value: 'true' }])
+    expect(result).toMatchObject({ ok: true, deltaEur: 0, hinweis: expect.stringContaining('Kirchensteuer') })
+    const closed = { getState: vi.fn().mockResolvedValueOnce(open).mockResolvedValueOnce(computed(40, 40)) }
+    expect(await service({ estimate: closed }).simulateEntries('u', 2025, [{ screen: 'stammdaten', field: 'kirchensteuerpflichtig', value: 'true' }])).not.toHaveProperty('hinweis')
+  })
+
   it('does not hand an internal error message to the external assistant', async () => {
     const confirmation = { overview: vi.fn(), writeConfirmedByAdvisor: vi.fn().mockRejectedValue(new Error('PrismaClientKnownRequestError: relation "Lstb" at db-internal:5432')) }
     const result = await service({ confirmation }).simulate('u', 2025, 'lstb', 'bruttoarbeitslohn', '50000')

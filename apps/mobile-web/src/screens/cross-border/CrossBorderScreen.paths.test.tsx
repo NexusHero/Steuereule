@@ -326,7 +326,7 @@ describe('Grenzgänger — the Lohnausweis upload fails', () => {
     renderScreen()
     await screen.findByTestId('ch-lohnausweis-upload-card')
     chooseFile(new File(['%PDF-1.4'], 'lohnausweis.pdf', { type: 'application/pdf' }))
-    await waitFor(() => expect(screen.getByTestId('ch-lohnausweis-upload-status').textContent).toBe('Der Upload hat nicht geklappt. Prüf die Verbindung und versuch es noch mal.'))
+    await waitFor(() => expect(screen.getByTestId('ch-lohnausweis-upload-status').textContent).toBe('Der Upload hat nicht geklappt. Prüf die Verbindung und versuch es noch einmal.'))
   })
 })
 

@@ -5,7 +5,7 @@ import { ApiError, getApiClientBaseUrl, type LiveFormDto, type LiveFormInstanceD
 import type { Screen } from '@steuereule/core'
 import { useTranslation } from 'react-i18next'
 import type { TFunction } from 'i18next'
-import { Card, Chip, useTheme, type UiTheme } from '@steuereule/ui'
+import { Card, Chip, useTheme, type UiTheme, controlLine } from '@steuereule/ui'
 import { APP_NS } from '../../i18n/resources'
 import { useApiFailureMessage } from '../../net/apiFailure'
 import { maskTargetForAcroField } from '../shared/formLineMapping'
@@ -261,7 +261,7 @@ export function AcroFormLiveViewer({
     <Card style={styles.card}>
       <View style={styles.toolbar}>
         <View style={styles.titleColumn}>
-          <Text style={styles.title}>{`📄 Original BMF-Vordruck (AcroForm HD) · ${activeFormMeta.title}`}</Text>
+          <Text style={styles.title}>{`Original BMF-Vordruck (AcroForm HD) · ${activeFormMeta.title}`}</Text>
           <Text style={styles.subtitle}>
             {`Seite ${pageNumber} von ${numPages} · ${annotations.length} AcroForm-Felder auf dieser Seite (${filledCountOnForm} befüllt) · ${
               onSaveAcroField ? 'Mit ✎ markierte Felder änderst du hier, die übrigen in ihrer Eingabemaske' : 'Klick ins Feld springt direkt in die Eingabemaske'
@@ -375,7 +375,7 @@ export function AcroFormLiveViewer({
                   color: t.color.tinte,
                   backgroundColor: t.color.karte,
                   borderWidth: 1,
-                  borderColor: t.color.tinte,
+                  borderColor: controlLine(t),
                   borderRadius: t.radius.s,
                   paddingHorizontal: t.space.s2,
                   paddingVertical: 4,
@@ -587,7 +587,7 @@ function makeStyles(t: UiTheme) {
     paddingVertical: 4,
     borderRadius: t.radius.s,
     borderWidth: 1,
-    borderColor: t.color.linie,
+    borderColor: controlLine(t),
     backgroundColor: t.color.grund,
   }
   const controlBtnDisabled: ViewStyle = {
@@ -618,7 +618,7 @@ function makeStyles(t: UiTheme) {
     borderRadius: t.radius.s,
     backgroundColor: t.color.funkeWeich,
     borderWidth: 1,
-    borderColor: t.color.tinte,
+    borderColor: t.color.linie,
   }
   const inspectorTitle: TextStyle = {
     ...t.type.label,

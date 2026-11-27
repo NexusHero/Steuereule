@@ -76,6 +76,22 @@ const isTurn = (request) => request.method() === 'POST' && new URL(request.url()
  * message sent then is not sent. The reads, an announced opening and the running turns tell when the chat is free.
  */
 const chats = new WeakMap()
+
+// The API allows ten turns a minute (`@Throttle` on POST /advisor/stream, advisor.controller.ts). Every turn that
+// leaves any page of this gate is noted here, the owl's own openings included, so `ask` can wait for room instead
+// of sending the eleventh and having it refused (429): a refused turn answers nothing, and the row waiting for
+// that answer fails for a reason that is not its subject. Nothing clears or loosens the limit.
+const TURN_LIMIT = { windowMs: 60_000, max: 10 }
+const turnsSent = []
+async function turnLimitHasRoom(label) {
+  const inWindow = () => turnsSent.filter((at) => Date.now() - at < TURN_LIMIT.windowMs)
+  const recent = inWindow()
+  if (recent.length < TURN_LIMIT.max) return
+  // Room opens when the oldest turns leave the window; wait for as many as are over.
+  const waitMs = recent[recent.length - TURN_LIMIT.max] + TURN_LIMIT.windowMs - Date.now() + 250
+  console.log(`[${TAG}] ${label}: ${recent.length}/${TURN_LIMIT.max} turns in the last minute — waiting ${waitMs}ms rather than sending into the limit.`)
+  await new Promise((resolve) => setTimeout(resolve, waitMs))
+}
 function watchChat(page) {
   let chat = chats.get(page)
   if (chat) return chat
@@ -83,6 +99,7 @@ function watchChat(page) {
   page.on('request', (request) => {
     if (isOpeningRead(request)) chat.readingOpening += 1
     if (isTurn(request)) {
+      turnsSent.push(Date.now())
       chat.turnsRunning += 1
       // Any turn settles the announcement: the opening itself, or a message that got in first (the conversation
       // is then no longer empty and the owl does not open it).
@@ -135,6 +152,7 @@ async function openEule(page) {
 /** Sends a message and makes sure it left the browser: a click that starts no turn fails here, by name. */
 async function ask(page, text) {
   await chatIsFree(page, `ask „${text}“`)
+  await turnLimitHasRoom(`ask „${text}“`)
   await page.locator('[data-testid="advisor-chat-input"]').fill(text)
   const sent = page.waitForRequest((request) => isTurn(request) && (request.postData() ?? '').includes(text), { timeout: 10_000 })
   await page.locator('[data-testid="advisor-chat-send"]').click()
@@ -309,7 +327,7 @@ async function main() {
       const ctxGuest = await newContextAtBreakpoint(browser, 'l')
       const guest = await ctxGuest.newPage()
       await skipSplash(guest, webOrigin)
-      await guest.getByText('Erstmal als Gast umschauen').click()
+      await guest.getByText('Als Gast ansehen').click()
       await guest.getByText('Angestellt').waitFor({ state: 'visible', timeout: 10_000 })
       // The Strom's basis page (ADR-0089): every question at once, picked by test id, then Weiter.
       const pick = (id, value) => guest.locator(`[data-testid="interview-option-${id}-${value}"]`).click({ force: true })
@@ -318,13 +336,38 @@ async function main() {
       await pick('kinder', '2 oder mehr')
       await pick('familienstand', 'Ledig')
       await guest.locator('[data-testid="strom-weiter"]').click({ force: true })
-      await guest.getByText('Später — erst mal ins Cockpit').click()
+      await guest.getByText('Später, zum Cockpit').click()
       await openEuleAsGuest(guest)
       await guest.locator('[data-testid="eule-guest-konto-wand"]').waitFor({ state: 'visible', timeout: 10_000 })
       if ((await guest.locator('[data-testid="advisor-chat-input"]').count()) > 0) fail('Row G: a guest must not get the chat')
       await ctxGuest.close()
     }
     console.log(`[${TAG}] ✅ Row G — guest sees the account prompt, no chat`)
+
+    // Row I — an answer that arrives while the user is on another tab marks the owl in the navigation.
+    {
+      const away = await signIn(browser, webOrigin, user.email, 'l')
+      await openEule(away.page)
+      // The fake owl answers at once. The turn is held until the user has left, so the answer lands elsewhere.
+      let release = () => {}
+      const userIsGone = new Promise((resolve) => (release = resolve))
+      await away.page.route((url) => /advisor\/(stream|runs)/.test(url.pathname), async (route) => {
+        if (route.request().method() === 'POST') await userIsGone
+        await route.continue()
+      })
+      await ask(away.page, 'Was fehlt noch?')
+      await away.page.getByRole('tab', { name: 'Cockpit' }).click()
+      await away.page.locator('[data-testid="cockpit-bescheid"]').waitFor({ state: 'visible', timeout: 10_000 })
+      if ((await away.page.locator('[data-testid="tab-badge"]').count()) !== 0) fail('Row I: nothing waits before the answer arrived')
+      release()
+      const marked = away.page.getByRole('tab', { name: 'Eule, neue Antwort' })
+      await marked.waitFor({ state: 'visible', timeout: 20_000 })
+      if ((await marked.locator('[data-testid="tab-badge"]').count()) !== 1) fail('Row I: the marked owl entry must carry the dot')
+      await marked.click()
+      await away.page.locator('[data-testid="tab-badge"]').waitFor({ state: 'detached', timeout: 10_000 })
+      await away.ctx.close()
+    }
+    console.log(`[${TAG}] ✅ Row I — an answer that arrived while the user was in the cockpit marks the owl; opening the owl reads it`)
 
     await user.api.dispose()
     console.log(`[${TAG}] PASS — Eulen-Modus flows with the fake KiPort verified (#450 1A, 5F).`)

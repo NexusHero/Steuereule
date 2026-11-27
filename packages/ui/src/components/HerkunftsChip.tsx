@@ -46,7 +46,7 @@ export function ProvenanceChip({ source, variant = 'default', testID }: Provenan
     paddingVertical: 2,
     paddingHorizontal: 10,
     backgroundColor,
-    borderWidth: 2,
+    borderWidth: t.space.kontur,
     borderColor,
     borderRadius: t.radius.pille,
   }
@@ -56,7 +56,7 @@ export function ProvenanceChip({ source, variant = 'default', testID }: Provenan
     marginTop: t.space.s2,
     width: 260,
     backgroundColor: t.color.karte,
-    borderWidth: 2,
+    borderWidth: t.space.kontur,
     borderColor,
     borderRadius: t.radius.s,
     padding: t.space.s3,

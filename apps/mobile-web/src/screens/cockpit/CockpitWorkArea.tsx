@@ -1,6 +1,7 @@
 import { View } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { Button, useTheme } from '@steuereule/ui'
+import { Icon, type IconName } from '../../icons/Icon'
 import { OwlAdvisorCard } from '../advisor/OwlAdvisorCard'
 import { APP_NS } from '../../i18n/resources'
 import { CockpitTiles } from './CockpitTiles'
@@ -34,9 +35,9 @@ export function SecondaryActions({
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const styles = makeStyles(t)
-  const action = (label: string, onPress: () => void, testID: string) => (
+  const action = (label: string, onPress: () => void, testID: string, icon: IconName) => (
     <View key={testID} style={styles.secondaryGridItem}>
-      <Button variant="ghost" onPress={onPress} testID={testID}>
+      <Button variant="ghost" onPress={onPress} testID={testID} icon={<Icon name={icon} />}>
         {label}
       </Button>
     </View>
@@ -46,12 +47,12 @@ export function SecondaryActions({
   const withoutTiles = tileFacts === null
   return (
     <View style={styles.secondaryGrid}>
-      {action(tr('cockpit.checkBescheid'), onOpenAssessment, 'cockpit-bescheid')}
-      {onOpenOfficialForm ? action(tr('cockpit.amtlichesFormular'), onOpenOfficialForm, 'cockpit-formular') : null}
-      {withoutTiles ? action(tr('cockpit.checkKapital'), onOpenCapital, 'cockpit-kapital') : null}
-      {withoutTiles ? action(tr('cockpit.checkVermietung'), onOpenRental, 'cockpit-vermietung') : null}
-      {withoutTiles && onOpenKinder ? action(tr('cockpit.checkKinder'), onOpenKinder, kinderTestID) : null}
-      {onOpenPrintout ? action(tr('ausdruck.cockpitCta'), onOpenPrintout, 'cockpit-ausdruck') : null}
+      {action(tr('cockpit.checkBescheid'), onOpenAssessment, 'cockpit-bescheid', 'assessment')}
+      {onOpenOfficialForm ? action(tr('cockpit.amtlichesFormular'), onOpenOfficialForm, 'cockpit-formular', 'form') : null}
+      {withoutTiles ? action(tr('cockpit.checkKapital'), onOpenCapital, 'cockpit-kapital', 'coins') : null}
+      {withoutTiles ? action(tr('cockpit.checkVermietung'), onOpenRental, 'cockpit-vermietung', 'house') : null}
+      {withoutTiles && onOpenKinder ? action(tr('cockpit.checkKinder'), onOpenKinder, kinderTestID, 'child') : null}
+      {onOpenPrintout ? action(tr('ausdruck.cockpitCta'), onOpenPrintout, 'cockpit-ausdruck', 'printer') : null}
     </View>
   )
 }

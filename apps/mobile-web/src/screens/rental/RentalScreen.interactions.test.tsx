@@ -256,14 +256,14 @@ describe('VermietungScreen — facts, status and navigation', () => {
 
     expect(await screen.findByText('Noch offen: 2 Angabe(n) fehlen.')).toBeTruthy()
     expect(screen.getByText('Noch offen: 2 Angabe(n) — die Summen zeigen nur das Erfasste.')).toBeTruthy()
-    expect(screen.getByText('Ehrlich: Verkauf oder möbliert rechnen wir in 1.0 noch nicht.')).toBeTruthy()
+    expect(screen.getByText('Verkauf oder möbliert rechnen wir noch nicht.')).toBeTruthy()
   })
 
   it('says "nothing captured yet" for an empty object and hides the gate note when the Vermietung is not gated', async () => {
     serve(response({ status: { kind: 'offen', einnahmen: 0, vorsorgeaufwand: 0, anrechnung: 0, werbungskosten: 0, depreciation: 0, openItems: 3, conflicts: 0, gated: ['Rente'] } }))
     renderRental()
     expect(await screen.findByText('Noch nichts erfasst — trag die Felder ein.')).toBeTruthy()
-    expect(screen.queryByText('Ehrlich: Verkauf oder möbliert rechnen wir in 1.0 noch nicht.')).toBeNull()
+    expect(screen.queryByText('Verkauf oder möbliert rechnen wir noch nicht.')).toBeNull()
   })
 
   it('goes back and on once nothing is pending', async () => {

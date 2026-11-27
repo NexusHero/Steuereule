@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Platform, TextInput, type TextInputProps, type TextStyle } from 'react-native'
 import { autoCompleteProps, type InputAutoComplete } from '../lib/autoComplete'
-import { useTheme } from '../theme/useTheme'
+import { useTheme, controlLine } from '../theme/useTheme'
 
 export type InputType = 'text' | 'email' | 'password' | 'numeric'
 
@@ -57,9 +57,9 @@ export function Input({
     paddingVertical: t.space.s3 - (isFocused ? 2 - t.space.kontur : 0),
     color: t.color.tinte,
     backgroundColor: t.color.karte,
-    // Quiet at rest (tinte-2 still clears 3:1 against karte), ink once focused — no shadow.
+    // Quiet at rest (the control line still clears 3:1 against karte), ink once focused — no shadow.
     borderWidth: isFocused ? 2 : t.space.kontur,
-    borderColor: isFocused ? t.color.tinte : t.color.tinte2,
+    borderColor: isFocused ? t.color.tinte : controlLine(t),
     borderRadius: t.radius.s,
     fontFamily: mono ? t.font.mono : t.font.text,
     fontSize: mono ? t.size.l : t.size.m,

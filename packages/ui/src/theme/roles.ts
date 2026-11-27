@@ -10,14 +10,14 @@ import { WIDE_CONTENT_MAX_WIDTH, FLOW_CONTENT_MAX_WIDTH, NARROW_CONTENT_MAX_WIDT
  * screen styles outside the Eule.
  */
 export type TypeRole =
-  // Display (Bricolage Grotesque) — titles and figures
+  // Display (Geist) — titles and figures
   | 'hero' // the refund figure
   | 'title' // the screen's own title, one per screen
   | 'headline' // a section heading inside a screen
   | 'subhead' // a smaller heading, e.g. a result block
   | 'cardTitle' // a card's or tile's title
   | 'itemTitle' // a small display label in a list
-  // Text (Schibsted Grotesk) — reading and controls
+  // Text (Geist) — reading and controls
   | 'emphasis' // a highlighted larger line
   | 'body'
   | 'bodyStrong'
@@ -27,7 +27,7 @@ export type TypeRole =
   | 'labelStrong'
   | 'caption'
   | 'captionStrong'
-  // Mono (Space Mono) — metadata and tabular figures
+  // Mono (Geist Mono) — metadata and tabular figures
   | 'meta' // uppercase kicker / metadata
   | 'metaLarge'
   | 'figure' // a mono value inside running layout

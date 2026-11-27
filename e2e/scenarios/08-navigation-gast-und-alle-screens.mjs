@@ -55,7 +55,7 @@ export async function runScenario08(browser, webOrigin) {
   await page.getByTestId('eule-privacy-badge').waitFor({ state: 'visible', timeout: 10_000 })
 
   await page.getByRole('tab', { name: 'Belege' }).click()
-  await page.locator('text=Beleg hochladen (PDF / Foto)').waitFor({ state: 'visible', timeout: 10_000 })
+  await page.locator('[data-testid="belege-upload-card"]').waitFor({ state: 'visible', timeout: 10_000 })
 
   await page.getByRole('tab', { name: 'Profil' }).click()
   await page.locator('text=Maximilian Mustermann').waitFor({ state: 'visible', timeout: 10_000 })
@@ -65,7 +65,7 @@ export async function runScenario08(browser, webOrigin) {
   await page.locator('[data-testid="stammdaten-zurueck"]').click()
   await page.locator('text=Maximilian Mustermann').waitFor({ state: 'visible', timeout: 10_000 })
 
-  await page.locator('text=Sicherheit (Zwei-Faktor)').click()
+  await page.locator('[data-testid="profil-sicherheit"]').click()
   const twoFaButton = page.locator('text=Zwei-Faktor aktivieren')
   await twoFaButton.waitFor({ state: 'visible', timeout: 10_000 })
   await twoFaButton.click()
@@ -73,7 +73,7 @@ export async function runScenario08(browser, webOrigin) {
   await page.locator('text=←').first().click()
   await page.locator('text=Maximilian Mustermann').waitFor({ state: 'visible', timeout: 10_000 })
 
-  await page.locator('text=So schützen wir deine Daten (DSGVO)').click()
+  await page.locator('[data-testid="profil-datenschutz"]').click()
   const exportJsonBtn = page.locator('text=Als JSON herunterladen')
   await exportJsonBtn.waitFor({ state: 'visible', timeout: 10_000 })
   await page.locator('text=Als PDF-Bericht herunterladen').waitFor({ state: 'visible', timeout: 10_000 })

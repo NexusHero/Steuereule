@@ -139,7 +139,7 @@ function FieldProposalCard({
 
       {receiptLinked ? (
         <Text style={styles.receiptLinkedBadge} testID={`${testIDPrefix}-receipt-badge`}>
-          {tr('eule.workspace.provenanceReceiptOwl', '📎 Beleg + Eule')}
+          {tr('eule.workspace.provenanceReceiptOwl', 'Beleg + Eule')}
         </Text>
       ) : null}
 
@@ -151,7 +151,7 @@ function FieldProposalCard({
         testID={`${testIDPrefix}-form-line`}
       >
         <Text style={styles.sourcePillText}>
-          {`📄 ${formLineForField(action.screen, action.field).label}`}
+          {formLineForField(action.screen, action.field).label}
         </Text>
       </Pressable>
 

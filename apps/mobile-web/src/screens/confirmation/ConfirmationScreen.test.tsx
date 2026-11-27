@@ -100,7 +100,7 @@ describe('BestaetigungScreen (REQ-032, ADR-0052 §6/§7)', () => {
 
     expect(await screen.findByText('Seit du die Werte gesehen hast, hat sich etwas geändert. Prüf sie bitte noch einmal.')).toBeTruthy()
     await waitFor(() => expect(reads).toBeGreaterThan(1))
-    expect(screen.queryByText('Das hat nicht geklappt. Versuch es noch mal.')).toBeNull()
+    expect(screen.queryByText('Das hat nicht geklappt. Versuch es noch einmal.')).toBeNull()
   })
 
   it('accepting or discarding a proposal sends the decision for exactly that field', async () => {

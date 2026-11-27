@@ -44,6 +44,6 @@ describe('useTwoFactor — refusals in words', () => {
   })
 
   it('only a request that got no answer blames the connection', async () => {
-    expect(await setup(null, true).verifyBackupCode('abc')).toBe('Das hat gerade nicht geklappt. Prüf die Verbindung und versuch es noch mal.')
+    expect(await setup(null, true).verifyBackupCode('abc')).toBe('Das hat nicht geklappt. Prüf die Verbindung und versuch es noch einmal.')
   })
 })

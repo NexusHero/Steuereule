@@ -51,6 +51,10 @@ describe('WCAG 2.1 AA text-on-surface contrast (>= 4.5:1)', () => {
       assertContrast(`${mode}: tinte on warnWeich`, c.tinte, c.warnWeich)
       assertContrast(`${mode}: tinte on fehlerWeich`, c.tinte, c.fehlerWeich)
 
+      // The notice colour is also a text colour (missing details, conflicts): it has to read on every notice surface.
+      assertContrast(`${mode}: warn on grund`, c.warn, c.grund)
+      assertContrast(`${mode}: warn on karte`, c.warn, c.karte)
+      assertContrast(`${mode}: warn on warnWeich`, c.warn, c.warnWeich)
       assertContrast(`${mode}: funkeTinte on grund`, c.funkeTinte, c.grund)
       assertContrast(`${mode}: funkeTinte on karte`, c.funkeTinte, c.karte)
       assertContrast(`${mode}: funkeTinte on funkeWeich`, c.funkeTinte, c.funkeWeich)
@@ -84,3 +88,21 @@ describe('WCAG 2.1 AA text-on-surface contrast (>= 4.5:1)', () => {
     expect(theme.dark.shadow.hart.shadowColor).not.toBe('#000000')
   })
 })
+
+// WCAG 1.4.11: the edge of a control and a mark that carries meaning need 3:1 against what they sit on.
+// `tinte2` is the control line (`controlLine` in @steuereule/ui); `linie` is a hairline between surfaces
+// and is deliberately quieter (under 2:1), so it never outlines a control on its own.
+const MIN_NON_TEXT_CONTRAST = 3
+
+describe('WCAG 2.1 AA non-text contrast (>= 3:1)', () => {
+  for (const mode of ['light', 'dark'] as const satisfies readonly ThemeMode[]) {
+    it(`${mode} mode: the control line clears 3:1 on every surface a control sits on`, () => {
+      const c = modeTokens(mode).color
+      for (const [name, surface] of Object.entries({ grund: c.grund, karte: c.karte, linieWeich: c.linieWeich, funkeWeich: c.funkeWeich, warnWeich: c.warnWeich, kiWeich: c.kiWeich })) {
+        const ratio = contrastRatio(c.tinte2, surface)
+        expect(ratio, `${mode}: control line on ${name} = ${ratio.toFixed(2)}:1`).toBeGreaterThanOrEqual(MIN_NON_TEXT_CONTRAST)
+      }
+    })
+  }
+})
+

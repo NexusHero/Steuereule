@@ -144,3 +144,11 @@ The review read code. Nothing here was measured under load or tried against a de
 - Not verified by this change: the image build, Redis over TLS against a real server, the Cloud Monitoring
   filters, upload admission over real HTTP, and the E2E scenarios on the new sign-up flow. CI confirms the
   first and the last; the others need a deployment.
+
+## Amendment — 2026-11-27: the dependency gate covers development dependencies
+
+Decision 14 audited production dependencies only (`pnpm audit --prod`). Build and test tooling runs in CI
+with the repository's secrets and on every developer's machine, so an advisory there is not harmless. The
+gate now audits every dependency of the lockfile and is named `security: dependency audit (all deps)`. The
+allowlist is empty: after the Expo 58 and Vitest 4 upgrades no accepted path was left. The mechanism (a
+reason and an expiry date per rule) stays for a case that cannot be fixed by an upgrade or an override.

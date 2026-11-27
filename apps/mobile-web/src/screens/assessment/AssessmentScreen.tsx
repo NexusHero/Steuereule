@@ -176,14 +176,14 @@ function FristBanner({ frist }: { readonly frist: AssessmentResponseDto['frist']
   const s = makeStyles(t)
   if (frist.assessmentDate === null) {
     return (
-      <Card variant="nacht">
+      <Card>
         <Text style={s.fristHeading}>{tr('bescheid.frist.nochKeinDatum')}</Text>
       </Card>
     )
   }
   const expired = (frist.remainingDays ?? 0) < 0
   return (
-    <Card variant="nacht">
+    <Card>
       <Text style={s.fristHeading}>{tr('bescheid.frist.heading')}</Text>
       {expired ? (
         <Text style={s.fristBody}>{tr('bescheid.frist.abgelaufen', { ende: frist.deadlineEnd === null ? '' : isoDateToGerman(frist.deadlineEnd) })}</Text>
@@ -432,8 +432,8 @@ function makeStyles(t: UiTheme) {
   const sectionHeading: TextStyle = { ...t.type.bodyStrong, color: t.color.tinte, marginBottom: t.space.s2 }
   const muted: TextStyle = { ...t.type.small, color: t.color.tinte2, marginBottom: t.space.s2 }
   const ok: TextStyle = { ...t.type.small, color: t.color.tinte, marginBottom: t.space.s2 }
-  const fristHeading: TextStyle = { ...t.type.meta, color: t.color.funkeHell, textTransform: 'uppercase', letterSpacing: 0.08 * t.size.xs, marginBottom: t.space.s2 }
-  const fristBody: TextStyle = { ...t.type.small, color: t.color.nachtText, opacity: 0.85 }
+  const fristHeading: TextStyle = { ...t.type.meta, color: t.color.tinte2, textTransform: 'uppercase', letterSpacing: 0.08 * t.size.xs, marginBottom: t.space.s2 }
+  const fristBody: TextStyle = { ...t.type.small, color: t.color.tinte2, }
   const deviationHead: ViewStyle = { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: t.space.s3 }
   const deviationField: TextStyle = { ...t.type.label, color: t.color.tinte }
   const deviationDelta: TextStyle = { ...t.type.figure, color: t.color.warn, fontWeight: t.weight.schwer }

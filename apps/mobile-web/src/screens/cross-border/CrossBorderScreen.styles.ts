@@ -11,7 +11,7 @@ export function makeStyles(t: UiTheme) {
     color: t.color.tinte,
     marginBottom: t.space.s2,
   }
-  const mark: TextStyle = { color: t.color.funke }
+  const mark: TextStyle = { color: t.color.tinte }
   const help: TextStyle = { ...t.type.body, color: t.color.tinte2, marginBottom: t.space.s3 }
   const sectionTitle: TextStyle = { ...t.type.cardTitle, color: t.color.tinte, marginBottom: t.space.s2 }
   const statusCard: ViewStyle = { marginTop: t.space.s4 }
@@ -21,7 +21,7 @@ export function makeStyles(t: UiTheme) {
     marginBottom: t.space.s3,
     padding: t.space.s3,
     backgroundColor: t.color.karte,
-    borderWidth: 1.5,
+    borderWidth: t.space.kontur,
     borderColor: t.color.funke,
   }
   const uploadHeaderRow: ViewStyle = {
@@ -39,7 +39,7 @@ export function makeStyles(t: UiTheme) {
     marginBottom: t.space.s4,
     padding: t.space.s3,
     backgroundColor: t.color.karte,
-    borderWidth: 1.5,
+    borderWidth: t.space.kontur,
     borderColor: t.color.warn,
   }
   const missingHeaderRow: ViewStyle = {

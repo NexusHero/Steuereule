@@ -1,3 +1,4 @@
+import { SCHEMA_MODEL, type SchemaModel } from './schema-model.js'
 import { decryptStringSync, encryptStringSync, findKeyForMessage, getMessageKeyFingerprint, parseCloakedString } from '@47ng/cloak'
 import { Prisma, type PrismaClient } from '@prisma/client'
 import { configureKeys, type KeysConfiguration } from 'prisma-field-encryption/dist/encryption.js'
@@ -12,7 +13,7 @@ import { transactionAwareClient } from './transaction.js'
 // them unreadable. This re-encrypts every value under a retired key in place.
 //
 // What is encrypted comes from the schema's own annotations, read by the same function the extension uses
-// (`analyseDMMF` over `Prisma.dmmf`), so a column that gains `/// @encrypted` is rotated without a change
+// (`analyseDMMF` over the generated schema model), so a column that gains `/// @encrypted` is rotated without a change
 // here. `test/field-key-rotation.test.ts` locks that, and that the append-only triggers let exactly these
 // columns through (`20261204090000_field_key_rotation`).
 //
@@ -31,10 +32,10 @@ export interface RotationTarget {
   readonly columns: readonly string[]
 }
 
-type DmmfModel = (typeof Prisma.dmmf.datamodel.models)[number]
+type DmmfModel = (SchemaModel["datamodel"]["models"])[number]
 
 /** Every table with an encrypted column, derived from the schema annotations the extension reads. */
-export function rotationTargets(dmmf: typeof Prisma.dmmf = Prisma.dmmf): RotationTarget[] {
+export function rotationTargets(dmmf: SchemaModel = SCHEMA_MODEL): RotationTarget[] {
   const analysis = analyseDMMF(dmmf as never)
   const targets: RotationTarget[] = []
   for (const model of dmmf.datamodel.models as readonly DmmfModel[]) {

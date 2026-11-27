@@ -26,7 +26,7 @@ export function ItemNotice({ amount, openLabel, heading, source }: ItemNoticePro
 }
 
 function makeStyles(t: UiTheme) {
-  const itemsBlock: ViewStyle = { marginVertical: t.space.s3, padding: t.space.s3, borderWidth: t.space.kontur, borderColor: t.color.tinte, borderRadius: t.radius.s }
+  const itemsBlock: ViewStyle = { marginVertical: t.space.s3, padding: t.space.s3, borderWidth: t.space.kontur, borderColor: t.color.linie, borderRadius: t.radius.s }
   const itemsHeading: TextStyle = { ...t.type.itemTitle, color: t.color.tinte, marginBottom: t.space.s1 }
   const itemAmount: TextStyle = { ...t.type.headline, color: t.color.tinte }
   const itemSource: TextStyle = { ...t.type.small, color: t.color.tinte2, marginTop: t.space.s1 }

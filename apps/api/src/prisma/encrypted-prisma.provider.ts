@@ -1,6 +1,6 @@
 import type { FactoryProvider } from '@nestjs/common'
 import { PrismaClient } from '@prisma/client'
-import { fieldEncryptionExtension } from 'prisma-field-encryption'
+import { schemaFieldEncryption } from './field-encryption.js'
 import { publishEmailHashSalt, resolveFieldEncryptionKey } from './field-encryption-key.js'
 import { PrismaService } from './prisma.service.js'
 import { transactionAwareClient } from './transaction.js'
@@ -15,7 +15,7 @@ export const encryptedPrismaProvider: FactoryProvider<EncryptedPrismaClient> = {
   useFactory: (prisma: PrismaService): EncryptedPrismaClient => {
     const { encryptionKey, decryptionKeys } = resolveFieldEncryptionKey()
     publishEmailHashSalt()
-    const extended = prisma.$extends(fieldEncryptionExtension({ encryptionKey, decryptionKeys }))
+    const extended = prisma.$extends(schemaFieldEncryption({ encryptionKey, decryptionKeys }))
     return transactionAwareClient(extended as unknown as PrismaClient)
   },
 }

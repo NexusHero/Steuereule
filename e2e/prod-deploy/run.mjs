@@ -2,7 +2,7 @@
 //
 // THE CLASS OF BUG THIS EXISTS TO CATCH: the stakeholder built a Docker setup by hand
 // (API on :3000, web on :8080) and got all four symptoms at once — no Google button,
-// "Erstmal als Gast umschauen" -> "Das hat nicht geklappt.", account creation failing,
+// "Als Gast ansehen" -> "Das hat nicht geklappt.", account creation failing,
 // no QR code. Kaan's real-stack reproduction (PR discussion, #239-adjacent) found ALL FOUR
 // are the SAME root cause wearing four faces: the browser genuinely could not reach the
 // API, so every screen hit its own honestly-implemented error state. The likely mechanism
@@ -64,13 +64,13 @@ import { resolveApiTarget } from './api-target.mjs'
 // exact strings, including the two the stakeholder himself quoted.
 const COPY = {
   splashSkip: 'Weiter zur App',
-  guest: 'Erstmal als Gast umschauen',
+  guest: 'Als Gast ansehen',
   register: 'Neu hier? Konto anlegen',
   weiter: 'Weiter',
   firstNamePlaceholder: 'Kim',
   lastNamePlaceholder: 'Yilmaz',
   steuerIdPlaceholder: '12 345 678 901',
-  steuerNrLater: 'Hab ich nicht zur Hand — später',
+  steuerNrLater: 'Später nachtragen',
   onboardingLoadErrorHeading: 'Das hat nicht geklappt.', // the stakeholder's own quoted words
   registrierungEmailPlaceholder: 'du@beispiel.de',
   registrierungPasswordPlaceholder: 'Mindestens 12 Zeichen',
@@ -81,18 +81,18 @@ const COPY = {
   nein: 'Nein',
   kinder: '2 oder mehr',
   familienstand: 'Ledig',
-  kontoWandLater: 'Später — erst mal ins Cockpit',
+  kontoWandLater: 'Später, zum Cockpit',
   loginEmailPlaceholder: 'du@beispiel.de',
   loginPasswordPlaceholder: '••••••••',
   loginSubmit: 'Einloggen',
   loginGoogleButton: 'Weiter mit Google',
   tabCockpit: 'Cockpit',
-  errGeneric: 'Das hat gerade nicht geklappt. Prüf die Verbindung und versuch es noch mal.',
+  errGeneric: 'Das hat nicht geklappt. Prüf die Verbindung und versuch es noch einmal.',
   errInvalidCredentials: 'E-Mail oder Passwort stimmen nicht.',
   errEmailNotVerified: 'Bitte bestätige zuerst deine E-Mail-Adresse. Wir haben dir einen neuen Link geschickt.',
   // The banner on the registration's success step (de.json auth.verifyBanner).
   resendLink: 'Mail erneut senden',
-  resendSent: 'Ist raus — schau in dein Postfach.',
+  resendSent: 'Gesendet. Schau in dein Postfach.',
 }
 
 // The local inbox of the compose stack (Mailpit's HTTP API; the API reaches it over SMTP with TLS).

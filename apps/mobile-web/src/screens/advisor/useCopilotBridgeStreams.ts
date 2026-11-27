@@ -19,6 +19,7 @@ import { APP_NS } from '../../i18n/resources'
 import { createFrameBatcher } from './chat/frameBatcher'
 import { apiErrorText } from './chat/apiErrorText'
 import { followRun, type RunFrame } from './chat/runStream'
+import { owlAnswerArrived } from './owlUnread'
 import { advisorFailureText } from './chat/advisorFailureText'
 import type { AbortedTurn, AdvisorPlanView, SendStreamingOptions, StreamOutcome } from './CopilotBridge.types'
 import {
@@ -259,6 +260,8 @@ export function useCopilotBridgeStreams({ taxYear, isAuthenticated, onSwitchYear
           queryClient.invalidateQueries({ queryKey: getOwlModeControllerGetCardsQueryKey(taxYear) }),
         ])
         if (failed) return null
+        // The answer is there: the navigation marks the owl if the user is on another tab by now.
+        owlAnswerArrived()
         const finished = doneResponse as SendAdvisorMessageResponseDto | null
         if (finished?.userMessage && finished.assistantMessage) {
           return [

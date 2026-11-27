@@ -12,10 +12,11 @@ import { pathToFileURL } from 'node:url'
 import { PrismaClient } from '@prisma/client'
 import { resolveFieldEncryptionKey } from '../src/prisma/field-encryption-key.js'
 import { prismaRotationStore, rotateFieldEncryption, rotationKeys, type RotationCount } from '../src/prisma/field-key-rotation.js'
+import { createDatabaseAdapter } from '../src/common/database-adapter.js'
 
 export async function rotateFieldEncryptionKey(
   options: { check: boolean },
-  prisma: PrismaClient = new PrismaClient(),
+  prisma: PrismaClient = new PrismaClient({ adapter: createDatabaseAdapter() }),
   env: NodeJS.ProcessEnv = process.env,
 ): Promise<{ counts: RotationCount[]; ok: boolean }> {
   try {

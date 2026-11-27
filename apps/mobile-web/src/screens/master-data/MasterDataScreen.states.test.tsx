@@ -117,7 +117,7 @@ describe('the partner section', () => {
     renderScreen()
     fireEvent.change(await screen.findByTestId('kopplung-code'), { target: { value: 'abc123' } })
     fireEvent.click(screen.getByTestId('kopplung-beitreten'))
-    expect(await screen.findByText('Das hat nicht geklappt. Prüf die Verbindung und versuch es noch mal.')).toBeTruthy()
+    expect(await screen.findByText('Das hat nicht geklappt. Prüf die Verbindung und versuch es noch einmal.')).toBeTruthy()
   })
 
   it('does nothing for an empty invite code', async () => {

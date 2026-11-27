@@ -31,7 +31,7 @@ export function GuestOwlGate({ onDone = () => {}, onBack, onRegister, onLogin }:
             {tr('eule.heroTitle', 'Deine Eule')}
           </Text>
           <Text style={styles.help}>
-            {tr('eule.heroBody', 'Sie kennt dein Steuerjahr und sagt dir, wo Geld liegen bleibt — mit Rechtsgrundlage, damit du selbst entscheidest.')}
+            {tr('eule.heroBody', 'Zeigt mit Rechtsgrundlage, wo du Abzüge nicht nutzt.')}
           </Text>
           <View style={styles.privacyBadge} testID="eule-privacy-badge">
             <Text style={styles.privacyBadgeText}>{tr('eule.guest.privacyBadge')}</Text>
@@ -40,11 +40,11 @@ export function GuestOwlGate({ onDone = () => {}, onBack, onRegister, onLogin }:
       </View>
 
       <Card variant="ai" style={styles.guestCard} testID="eule-guest-konto-wand">
-        <Text style={styles.guestTitle}>{tr('eule.guest.title', 'Eulen-Modus erfordert ein kostenloses Konto')}</Text>
+        <Text style={styles.guestTitle}>{tr('eule.guest.title', 'Die Eule braucht ein Konto')}</Text>
         <Text style={styles.guestBody}>
           {tr(
             'eule.guest.body',
-            'Für die KI-Steuerberatung und Belegprüfung speichern wir deine Entwürfe verschlüsselt in deinem Konto. Als Gast startet hier kein KI-Abruf.',
+            'Für Hinweise und Belegprüfung speichern wir deine Entwürfe verschlüsselt in deinem Konto.',
           )}
         </Text>
         <View style={styles.guestActions}>

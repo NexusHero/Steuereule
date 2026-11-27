@@ -76,6 +76,14 @@ describe('fixed rules in the tool round (ADR-0093)', () => {
     expect(both.update.pendingTwoPaths).toMatchObject({ safePath: { field: 'steuerfreiesUnfalltaggeldChf', newValue: '0' }, maxPath: { field: 'steuerfreiesUnfalltaggeldChf', newValue: '2250' } })
   })
 
+  it('makes no capital-income draft from the amount of an exemption order', async () => {
+    const message = 'Gemeinsames Depot, Freistellungsaufträge zusammen 2.000 €.'
+    const { drafts, answers, update } = await round([draft({ screen: 'kapital', field: 'kapitalertraege', newValue: '2000', reason: 'Erträge in Höhe des Freistellungsauftrags' })], { message })
+    expect(drafts).toHaveLength(0)
+    expect(answers[0]!.error).toContain('EXEMPTION_NOT_INCOME')
+    expect(update.rejectedDrafts).toHaveLength(0)
+  })
+
   it('stages prepayments from the amount alone and sets the gate itself', async () => {
     const { drafts } = await round([draft({ screen: 'interview', field: 'vorauszahlungen-betrag', newValue: '4.800 Euro' })])
     expect(drafts).toEqual([expect.objectContaining({ field: 'vorauszahlungen-betrag', newValue: '4800', companionFields: { 'vorauszahlungen-gate': 'Ja' } })])

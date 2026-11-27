@@ -77,7 +77,7 @@ describe('PersonalDataConsentCard (ADR-0091)', () => {
     const onGranted = vi.fn()
     renderCard(onGranted)
     fireEvent.click(await screen.findByRole('button', { name: 'Erlauben' }))
-    expect(await screen.findByText('Das hat nicht geklappt. Bitte versuche es noch einmal.')).toBeTruthy()
+    expect(await screen.findByText('Das hat nicht geklappt. Versuch es noch einmal.')).toBeTruthy()
     expect(onGranted).not.toHaveBeenCalled()
   })
 })

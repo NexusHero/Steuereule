@@ -69,7 +69,7 @@ The governing principle ([ADR-0038](adr/0038-calculation-core-and-ai-port.md)):
 | Runtime | Node.js ≥ 22 (CI and images: 24), pnpm 10 | `package.json` |
 | Monorepo | pnpm workspaces with Turborepo | `pnpm-workspace.yaml`, `turbo.json` |
 | API | NestJS 11 on Fastify 5 | `apps/api/package.json` |
-| Database | PostgreSQL through Prisma 6, 58 models | `apps/api/prisma/schema.prisma` |
+| Database | PostgreSQL through Prisma 7 (driver adapter over `pg`), 59 models | `apps/api/prisma/schema.prisma` |
 | Client | Expo 53 with React Native Web; what ships is the web app | `apps/mobile-web` |
 | Core | no npm runtime dependencies; three files use `node:crypto` | `packages/core/package.json` |
 | Static analysis | oxlint ([ADR-0019](adr/0019-oxlint-replaces-eslint.md)), `tsc --noEmit` | `.oxlintrc.json` |

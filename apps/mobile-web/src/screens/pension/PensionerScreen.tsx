@@ -1,7 +1,7 @@
 import { ScrollView, View, Text, Pressable, type ViewStyle, type TextStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
-import { Button, inkOnFunke, useTheme, useBreakpoint, type UiTheme } from '@steuereule/ui'
+import { Button, inkOnFunke, useTheme, useBreakpoint, type UiTheme, controlLine } from '@steuereule/ui'
 import {
   getCockpitControllerGetCockpitSummaryQueryKey,
   getPensionControllerGetQueryKey,
@@ -146,7 +146,7 @@ function makeStyles(t: UiTheme) {
     paddingHorizontal: t.space.s3,
     paddingVertical: t.space.s2,
     borderWidth: t.space.kontur,
-    borderColor: t.color.tinte,
+    borderColor: controlLine(t),
     borderRadius: t.radius.s,
     marginBottom: t.space.s2,
   }

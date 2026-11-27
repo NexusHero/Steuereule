@@ -29,7 +29,7 @@ export function GlassFormPreviewHeader({
       <View style={styles.titleColumn}>
         {hideHeading ? null : (
           <Text style={styles.heading}>
-            {tr('ausdruck.glasErklaerung.titel', '🔍 Glas-Erklärung: Amtliche Formular-Vorschau')}
+            {tr('ausdruck.glasErklaerung.titel', 'Glas-Erklärung: Amtliche Formular-Vorschau')}
           </Text>
         )}
         <Text style={styles.subheading}>
@@ -43,10 +43,10 @@ export function GlassFormPreviewHeader({
       </View>
       <View style={styles.filterRow}>
         <Chip active={viewMode === 'zeilen'} onPress={() => onChangeViewMode('zeilen')}>
-          📋 Strukturierte Zeilen
+          Strukturierte Zeilen
         </Chip>
         <Chip active={viewMode === 'acroform'} onPress={() => onChangeViewMode('acroform')}>
-          📄 Original-Vordruck
+          Original-Vordruck
         </Chip>
         {onCollapse ? (
           <Pressable

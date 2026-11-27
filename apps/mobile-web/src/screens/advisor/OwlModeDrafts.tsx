@@ -50,11 +50,11 @@ export function OwlModeDrafts({ owl, styles }: OwlModeDraftsProps) {
                   </View>
                   <Text style={styles.draftProvenance}>
                     {isReceipt
-                      ? tr('eule.workspace.provenanceReceiptOwl', '📎 Beleg + Eule')
-                      : tr('eule.workspace.provenanceOwlDraft', '🦉 Eulen-Entwurf')}
+                      ? tr('eule.workspace.provenanceReceiptOwl', 'Beleg + Eule')
+                      : tr('eule.workspace.provenanceOwlDraft', 'Eulen-Entwurf')}
                   </Text>
                   <Text style={styles.draftProvenance} testID={`draft-form-line-${draft.actionId}`}>
-                    {`📄 ${formLineForField(draft.screen, draft.field).label}`}
+                    {formLineForField(draft.screen, draft.field).label}
                   </Text>
                   <Text style={styles.draftDiff}>
                     {draftDiffText(draft, tr('advisor.chat.notRecorded', 'Nicht erfasst'))}
@@ -90,7 +90,7 @@ export function OwlModeDrafts({ owl, styles }: OwlModeDraftsProps) {
           ) : null}
           {alternativeGroups.length > 0 ? (
             <Text style={styles.help} testID="eule-batch-alternatives-hint">
-              {tr('eule.workspace.alternativesHint', 'Wähle einen der Wege — beide zusammen geht nicht.')}
+              {tr('eule.workspace.alternativesHint', 'Wähle einen der Wege. Beide zusammen geht nicht.')}
             </Text>
           ) : null}
           <Button
@@ -127,7 +127,7 @@ export function OwlModeDrafts({ owl, styles }: OwlModeDraftsProps) {
                   </Text>
                 </View>
                 <Text style={styles.draftProvenance} testID={`applied-form-line-${draft.actionId}`}>
-                  {`📄 ${formLineForField(draft.screen, draft.field).label}`}
+                  {formLineForField(draft.screen, draft.field).label}
                 </Text>
                 <Text style={styles.draftDiff}>
                   {draftDiffText(draft, tr('advisor.chat.notRecorded', 'Nicht erfasst'))}

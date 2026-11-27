@@ -2,6 +2,7 @@
 // schema annotations; values under a retired key move to the current one; nothing else is touched. The lock part
 // fails when a model gains an encrypted column the rotation cannot address, or when an append-only table's
 // trigger no longer lets exactly its encrypted columns change (migration 20261204090000_field_key_rotation).
+import { SCHEMA_MODEL } from '../src/prisma/schema-model.js'
 import { readdirSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -19,12 +20,12 @@ describe('the rotation covers every encrypted column (lock)', () => {
   const targets = rotationTargets()
 
   it('names every field the extension encrypts, and only those', () => {
-    const analysis = analyseDMMF(Prisma.dmmf as never)
+    const analysis = analyseDMMF(SCHEMA_MODEL as never)
     const annotated = Object.entries(analysis)
       .flatMap(([model, descriptor]) => Object.entries(descriptor.fields).filter(([, config]) => config.encrypt).map(([field]) => `${model}.${field}`))
       .sort()
     const columnOf = (model: string, field: string) => {
-      const f = Prisma.dmmf.datamodel.models.find((m) => m.name === model)!.fields.find((x) => x.name === field)!
+      const f = SCHEMA_MODEL.datamodel.models.find((m) => m.name === model)!.fields.find((x) => x.name === field)!
       return f.dbName ?? f.name
     }
     const covered = targets.flatMap((t) => t.columns.map((column) => ({ model: t.model, column })))

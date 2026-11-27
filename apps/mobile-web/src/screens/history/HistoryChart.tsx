@@ -22,26 +22,88 @@ const RIGHT = 8
 const Y0 = 28
 const BOTTOM = 8
 
-/** The colour of each part of a stacked bar, from the Funke tokens (the mock's `--steuer`, `--sv`, `--wk-*`). */
-export function segmentColor(t: UiTheme, kind: SegmentKind): string {
+/** How a mark is filled: a flat ink step, diagonal lines, crossed lines, or the card showing through. */
+export type SegmentTexture = 'solid' | 'hatch' | 'cross' | 'open'
+
+export interface SegmentPaint {
+  readonly texture: SegmentTexture
+  /** The flat colour of a solid mark; the colour of the lines of a textured one. */
+  readonly fill: string
+  /** The edge, where the fill alone would not be seen on the card. */
+  readonly outline: string | null
+}
+
+/**
+ * What each part of a stacked bar is painted with. Graphit draws money without red, green or violet,
+ * and grey steps alone cannot hold four parts apart at 3:1, so the parts differ by ink step and
+ * texture. Lime stays for what is left to the household, inside an edge that shows on white.
+ */
+export function segmentPaint(t: UiTheme, kind: SegmentKind): SegmentPaint {
   switch (kind) {
     case 'netto':
-      return t.color.funke
+      return { texture: 'solid', fill: t.color.funke, outline: t.color.tinte2 }
     case 'steuern':
-      return t.color.tinte2
+      return { texture: 'solid', fill: t.color.tinte2, outline: null }
     case 'sozialversicherung':
-      return t.color.linieWeich
+      return { texture: 'hatch', fill: t.color.tinte2, outline: t.color.tinte2 }
     case 'fahrtweg':
-      return t.color.tinte
+      return { texture: 'solid', fill: t.color.tinte, outline: null }
     case 'homeoffice':
-      return t.color.ki
+      return { texture: 'solid', fill: t.color.tinte2, outline: null }
     case 'arbeitsmittel':
-      return t.color.warn
+      return { texture: 'hatch', fill: t.color.tinte2, outline: t.color.tinte2 }
     case 'sonstiges':
-      return t.color.linieWeich
+      return { texture: 'open', fill: t.color.karte, outline: t.color.tinte2 }
     case 'summeLautBescheid':
-      return t.color.tinte2
+      return { texture: 'cross', fill: t.color.tinte2, outline: t.color.tinte2 }
   }
+}
+
+/** A refund or back payment bar: ink in every year, the picked year the darkest. */
+export function refundBarFill(t: UiTheme, picked: boolean): string {
+  return picked ? t.color.tinte : t.color.tinte2
+}
+
+/** The two line textures, drawn once per SVG and referenced by id. */
+function TexturePatterns({ t, hatchId, crossId }: { readonly t: UiTheme; readonly hatchId: string; readonly crossId: string }) {
+  return (
+    <>
+      <Pattern id={hatchId} width={5} height={5} patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+        <Rect width={5} height={5} fill={t.color.karte} />
+        <Line x1={0} y1={0} x2={0} y2={5} stroke={t.color.tinte2} strokeWidth={2} />
+      </Pattern>
+      <Pattern id={crossId} width={5} height={5} patternUnits="userSpaceOnUse">
+        <Rect width={5} height={5} fill={t.color.karte} />
+        <Line x1={0} y1={0} x2={5} y2={5} stroke={t.color.tinte2} strokeWidth={1} />
+        <Line x1={5} y1={0} x2={0} y2={5} stroke={t.color.tinte2} strokeWidth={1} />
+      </Pattern>
+    </>
+  )
+}
+
+function textureFill(paint: SegmentPaint, hatchId: string, crossId: string): string {
+  if (paint.texture === 'hatch') return `url(#${hatchId})`
+  if (paint.texture === 'cross') return `url(#${crossId})`
+  return paint.fill
+}
+
+const svgId = (id: string) => id.replace(/[^a-zA-Z0-9]/g, '')
+
+const SWATCH = 12
+
+/** A segment's paint as a legend swatch: the same fill, texture and edge as in the plot. */
+export function SegmentSwatch({ kind }: { readonly kind: SegmentKind }) {
+  const t = useTheme()
+  const id = svgId(useId())
+  const paint = segmentPaint(t, kind)
+  return (
+    <Svg width={SWATCH} height={SWATCH} viewBox={`0 0 ${SWATCH} ${SWATCH}`} aria-hidden>
+      <Defs>
+        <TexturePatterns t={t} hatchId={`h${id}`} crossId={`c${id}`} />
+      </Defs>
+      <Rect x={0.5} y={0.5} width={SWATCH - 1} height={SWATCH - 1} rx={2} fill={textureFill(paint, `h${id}`, `c${id}`)} stroke={paint.outline ?? paint.fill} strokeWidth={1} />
+    </Svg>
+  )
 }
 
 /**
@@ -55,7 +117,9 @@ export function HistoryChart({ model, selectedYear, onSelectYear, accessibilityL
   const s = makeStyles(t)
   const { t: tr } = useTranslation(APP_NS)
   const [width, setWidth] = useState(340)
-  const patternId = `schraffur${useId().replace(/[^a-zA-Z0-9]/g, '')}`
+  const id = svgId(useId())
+  const patternId = `schraffur${id}`
+  const crossId = `kreuz${id}`
   const n = Math.max(model.columns.length, 1)
   const x1 = width - RIGHT
   const y1 = height - BOTTOM
@@ -90,6 +154,7 @@ export function HistoryChart({ model, selectedYear, onSelectYear, accessibilityL
           if (seg.value <= 0) return null
           const h = (seg.value / span) * (y1 - Y0)
           top -= h
+          const paint = segmentPaint(t, seg.kind)
           return (
             <Rect
               key={seg.kind}
@@ -97,8 +162,9 @@ export function HistoryChart({ model, selectedYear, onSelectYear, accessibilityL
               y={top}
               width={barWidth}
               height={h}
-              fill={segmentColor(t, seg.kind)}
-              stroke={c.estimated ? t.color.warn : t.color.linie}
+              fill={textureFill(paint, patternId, crossId)}
+              // A solid part is cut from its neighbour by a line in the card's colour; an estimate is dashed.
+              stroke={c.estimated ? t.color.tinte2 : (paint.outline ?? t.color.karte)}
               strokeWidth={c.estimated ? 1.5 : 1}
               {...(c.estimated ? { strokeDasharray: '3 2' } : {})}
             />
@@ -108,7 +174,7 @@ export function HistoryChart({ model, selectedYear, onSelectYear, accessibilityL
         return (
           <>
             {rects}
-            {lineY === null ? null : <Line x1={slot(i) + 4} x2={slot(i) + slotWidth - 4} y1={lineY} y2={lineY} stroke={t.color.fehler} strokeWidth={2} strokeDasharray="4 3" />}
+            {lineY === null ? null : <Line x1={slot(i) + 4} x2={slot(i) + slotWidth - 4} y1={lineY} y2={lineY} stroke={t.color.tinte2} strokeWidth={1.5} strokeDasharray="4 3" />}
             {label(i, Math.min(top, lineY ?? top) - 6, c.label)}
           </>
         )
@@ -118,8 +184,8 @@ export function HistoryChart({ model, selectedYear, onSelectYear, accessibilityL
         const yh = y(Math.max(c.from, c.to))
         return (
           <>
-            <Line x1={cx(i)} x2={cx(i)} y1={base} y2={yl} stroke={t.color.warn} strokeWidth={1.5} strokeDasharray="2 3" />
-            <Rect x={left} y={yh} width={barWidth} height={Math.max(yl - yh, 3)} fill={`url(#${patternId})`} stroke={t.color.warn} strokeWidth={1.5} strokeDasharray="3 2" />
+            <Line x1={cx(i)} x2={cx(i)} y1={base} y2={yl} stroke={t.color.tinte2} strokeWidth={1.5} strokeDasharray="2 3" />
+            <Rect x={left} y={yh} width={barWidth} height={Math.max(yl - yh, 3)} fill={`url(#${patternId})`} stroke={t.color.tinte2} strokeWidth={1.5} strokeDasharray="3 2" />
             {label(i, yh - 6, c.label)}
           </>
         )
@@ -133,12 +199,12 @@ export function HistoryChart({ model, selectedYear, onSelectYear, accessibilityL
         return (
           <>
             {yd !== null && c.declared !== null && c.declared > c.value ? (
-              <Rect x={left} y={yd} width={barWidth} height={yv - yd} fill={t.color.fehlerWeich} stroke={t.color.fehler} strokeWidth={1} strokeDasharray="3 2" />
+              <Rect x={left} y={yd} width={barWidth} height={yv - yd} fill="none" stroke={t.color.tinte2} strokeWidth={1.5} strokeDasharray="3 2" />
             ) : null}
-            <Rect x={left} y={barTop} width={barWidth} height={barHeight} fill={c.value < 0 ? t.color.fehler : t.color.ok} stroke={t.color.linie} strokeWidth={1} />
+            <Rect x={left} y={barTop} width={barWidth} height={barHeight} fill={refundBarFill(t, c.year === selectedYear)} rx={2} />
             {/* A back payment is labelled under its bar: above the baseline it ran into the neighbouring years. */}
             {label(i, c.value < 0 ? yv + 13 : top - 6, c.label)}
-            {c.cutLabel === null ? null : label(i, top - 18, c.cutLabel, t.color.fehler, true)}
+            {c.cutLabel === null ? null : label(i, top - 18, c.cutLabel, t.color.tinte2, true)}
           </>
         )
       }
@@ -149,13 +215,13 @@ export function HistoryChart({ model, selectedYear, onSelectYear, accessibilityL
             {exact ? (
               <Circle cx={cx(i)} cy={y(c.from)} r={4.5} fill={t.color.tinte} />
             ) : (
-              <Rect x={cx(i) - 7} y={y(c.to) - 3} width={14} height={y(c.from) - y(c.to) + 6} rx={4} fill={`url(#${patternId})`} stroke={t.color.warn} strokeWidth={1.5} />
+              <Rect x={cx(i) - 7} y={y(c.to) - 3} width={14} height={y(c.from) - y(c.to) + 6} rx={4} fill={`url(#${patternId})`} stroke={t.color.tinte2} strokeWidth={1.5} />
             )}
             {label(i, exact ? y(c.from) + 18 : y(c.to) - 10, c.label)}
             {c.marginal === null ? null : (
               <>
-                <Circle cx={cx(i)} cy={y(c.marginal)} r={3} fill={t.color.ki} />
-                {label(i, y(c.marginal) - 8, `${Math.round(c.marginal)}%`, t.color.kiTinte)}
+                <Circle cx={cx(i)} cy={y(c.marginal)} r={3} fill={t.color.tinte2} />
+                {label(i, y(c.marginal) - 8, `${Math.round(c.marginal)}%`, t.color.tinte2)}
               </>
             )}
           </>
@@ -174,7 +240,7 @@ export function HistoryChart({ model, selectedYear, onSelectYear, accessibilityL
       lines.push(
         <Line key={`q${c.year}`} x1={cx(i - 1)} y1={y((prev.from + prev.to) / 2)} x2={cx(i)} y2={y((c.from + c.to) / 2)} stroke={t.color.tinte} strokeWidth={2} {...(c.from !== c.to || prev.from !== prev.to ? { strokeDasharray: '4 3' } : {})} />,
       )
-      if (prev.marginal !== null && c.marginal !== null) lines.push(<Line key={`m${c.year}`} x1={cx(i - 1)} y1={y(prev.marginal)} x2={cx(i)} y2={y(c.marginal)} stroke={t.color.ki} strokeWidth={1.5} />)
+      if (prev.marginal !== null && c.marginal !== null) lines.push(<Line key={`m${c.year}`} x1={cx(i - 1)} y1={y(prev.marginal)} x2={cx(i)} y2={y(c.marginal)} stroke={t.color.tinte2} strokeWidth={1.5} />)
     })
   }
 
@@ -183,10 +249,7 @@ export function HistoryChart({ model, selectedYear, onSelectYear, accessibilityL
       <View onLayout={(e: LayoutChangeEvent) => setWidth(Math.max(240, Math.round(e.nativeEvent.layout.width)))}>
         <Svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} accessibilityRole="image" accessibilityLabel={accessibilityLabel} testID={`${testID}-svg`}>
           <Defs>
-            <Pattern id={patternId} width={5} height={5} patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
-              <Rect width={5} height={5} fill={t.color.warnWeich} />
-              <Line x1={0} y1={0} x2={0} y2={5} stroke={t.color.warn} strokeWidth={2} />
-            </Pattern>
+            <TexturePatterns t={t} hatchId={patternId} crossId={crossId} />
           </Defs>
           {model.ticks.map((tick) => (
             <G key={`t${tick}`}>
@@ -197,14 +260,14 @@ export function HistoryChart({ model, selectedYear, onSelectYear, accessibilityL
             </G>
           ))}
           {model.columns.map((c, i) =>
-            c.year === selectedYear ? <Rect key={`sel${c.year}`} x={slot(i) + 2} y={Y0 - 4} width={slotWidth - 4} height={y1 - Y0 + 8} rx={8} fill={t.color.funkeWeich} /> : null,
+            c.year === selectedYear ? <Rect key={`sel${c.year}`} x={slot(i) + 2} y={Y0 - 4} width={slotWidth - 4} height={y1 - Y0 + 8} rx={8} fill={t.color.linieWeich} opacity={0.5} /> : null,
           )}
           {model.filingTypeChanges.map((change) => {
             const i = model.columns.findIndex((c) => c.year === change.year)
             if (i <= 0) return null
             return (
               // The legend names the line; the words in the plot collided with the labels above the bars.
-              <Line key={`w${change.year}`} x1={slot(i)} x2={slot(i)} y1={Y0 - 4} y2={y1} stroke={t.color.ki} strokeWidth={1.5} strokeDasharray="4 3" />
+              <Line key={`w${change.year}`} x1={slot(i)} x2={slot(i)} y1={Y0 - 4} y2={y1} stroke={t.color.tinte2} strokeWidth={1.5} strokeDasharray="4 3" />
             )
           })}
           {lines}
@@ -239,6 +302,7 @@ function makeStyles(t: UiTheme) {
   const years: ViewStyle = { flexDirection: 'row' }
   const yearButton: ViewStyle = { flex: 1, alignItems: 'center', justifyContent: 'center', minHeight: 32, borderRadius: t.radius.s }
   const yearText: TextStyle = { ...t.type.meta, color: t.color.tinte2 }
-  const yearTextActive: TextStyle = { color: t.color.tinte, fontWeight: t.weight.schwer }
+  // The lime rule under the picked year is the chart's one accent (Graphit).
+  const yearTextActive: TextStyle = { color: t.color.tinte, fontWeight: t.weight.schwer, borderBottomWidth: 3, borderBottomColor: t.color.funke }
   return { years, yearButton, yearText, yearTextActive }
 }

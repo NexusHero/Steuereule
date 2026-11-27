@@ -13,7 +13,7 @@ import {
 } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { ADVISOR_MESSAGE_MAX_CHARS } from '@steuereule/core'
-import { inkOnFunke, useTheme, type UiTheme } from '@steuereule/ui'
+import { inkOnFunke, useTheme, type UiTheme, controlLine } from '@steuereule/ui'
 import { ChatIcon } from '../../../icons/ChatIcon'
 import { APP_NS } from '../../../i18n/resources'
 import { chatKeyAction, clampComposerHeight, detectChatInputPlatform, type ChatInputPlatform } from './chatKeys'
@@ -231,7 +231,7 @@ function makeStyles(t: UiTheme, variant: 'panel' | 'dock') {
       padding: t.space.s2,
       borderRadius: t.radius.lg,
       borderWidth: 1.5,
-      borderColor: t.color.linie,
+      borderColor: controlLine(t),
       backgroundColor: t.color.karte,
     } as ViewStyle,
     input: {
