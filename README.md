@@ -50,7 +50,7 @@ The owl is a tax advisor in a chat, built like Claude: the conversation is the m
 
 | Empty chat, case unchanged | `/grill-me`: an interview round | On a phone |
 |:---:|:---:|:---:|
-| <img src="images/screenshots/eule-leer.png" width="300" alt="An empty conversation offering the last analysis and quick starts" /> | <img src="images/screenshots/eule-grill-me.png" width="300" alt="The Berater-Interview asks three questions with tappable answers and a recommendation" /> | <img src="images/screenshots/eule-handy.png" width="170" alt="The question round on a phone, answers wrapping inside the round" /> |
+| <img src="images/screenshots/eule-leer.png" width="300" alt="An empty conversation offering the last analysis and quick starts" /> | <img src="images/screenshots/eule-grill-me.png" width="300" alt="The Berater-Interview asks three questions with tappable answers and a recommendation" /> | <img src="images/screenshots/eule-handy.png" width="170" alt="The empty conversation on a phone: quick starts above the composer, the tab bar below" /> |
 | *Nothing changed since her last analysis: a link to it instead of a new one.* | *Rounds of questions with tappable answers and her recommendation.* | *Same chat, same rules, at 390 px.* |
 
 ---
@@ -84,13 +84,25 @@ Traditional tax software presents dense tabular forms without proactive guidance
 
 | Honest Refund Range Cockpit | 1-Question-per-Screen Interview | Privacy-First Onboarding |
 |:---:|:---:|:---:|
-| <img src="images/screenshots/cockpit.png" width="280" alt="Cockpit Screen" /> | <img src="images/screenshots/interview.png" width="280" alt="Interview Screen" /> | <img src="images/screenshots/onboarding.png" width="280" alt="Onboarding Screen" /> |
+| <img src="images/screenshots/cockpit.png" width="280" alt="Cockpit: the estimated refund as a range in ink on white, the income below, then what is still missing" /> | <img src="images/screenshots/interview.png" width="280" alt="Interview: where the money came from, as tappable answers" /> | <img src="images/screenshots/onboarding.png" width="280" alt="Onboarding step 1 of 3: first and last name" /> |
 | *Transparent refund range, zero ungrounded guarantees.* | *Focused, rapid quiz interface free of tax jargon.* | *Data-parsimonious, field-encrypted, GDPR-compliant.* |
 
 | Device Management | Passwordless QR Handoff | Guest Mode & Instant Login |
 |:---:|:---:|:---:|
-| <img src="images/screenshots/profil.png" width="280" alt="Profil Screen" /> | <img src="images/screenshots/geraetefreigabe.png" width="280" alt="Device Handoff Screen" /> | <img src="images/screenshots/login.png" width="280" alt="Login Screen" /> |
+| <img src="images/screenshots/profil.png" width="280" alt="Profile: the stored details, the links to privacy and security, the appearance setting" /> | <img src="images/screenshots/geraetefreigabe.png" width="280" alt="Device approval: the code of the other screen with browser, system and time, and the question whether it is yours" /> | <img src="images/screenshots/login.png" width="280" alt="Login: Google, e-mail and password, guest mode" /> |
 | *Active session overview with individual remote revoke.* | *Seamless desktop login via mobile camera verification.* | *Zero-friction guest exploration without forced signup.* |
+
+**One look at every width, light and dark.** White ground, hairlines and lime as the single accent in light mode; graphite with cards one step lighter in dark mode. Beyond the phone the tabs become a rail on the left edge.
+
+| Desktop: the rail with the brand | Tablet: the narrow rail | Dark mode |
+|:---:|:---:|:---:|
+| <img src="images/screenshots/desktop-cockpit.png" width="460" alt="The cockpit on a desktop-wide window: navigation rail with the owl and the name on the left, the refund range and the next steps in a centred column" /> | <img src="images/screenshots/tablet-entwicklung.png" width="250" alt="The development over the years on a tablet: a narrow icon rail on the left, key figures as tiles, the refund chart in ink steps" /> | <img src="images/screenshots/cockpit-dunkel.png" width="170" alt="The cockpit on a phone in dark mode: graphite ground, the refund range in light ink, the lime tab pill" /> |
+| *Same tabs, same roles, more room.* | *Icon over label; the screen keeps the width.* | *Follows the system, or fixed in the profile.* |
+
+<p align="center">
+  <img src="images/screenshots/desktop-entwicklung-dunkel.png" width="900" alt="The development over the years in dark mode on a desktop: four key figures, the chart of refunds and back payments without red or green (a back payment is the bar below the baseline, dashed means cut or estimated), the picked year underlined in lime, and the year's detail beside it" />
+</p>
+<p align="center"><sub><b>No red, no green for money.</b> A back payment is the bar below the baseline; dashed means cut by the tax office or still an estimate.</sub></p>
 
 ---
 
