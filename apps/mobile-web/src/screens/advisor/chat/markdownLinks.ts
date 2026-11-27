@@ -5,16 +5,36 @@ import { ADVISOR_LEGAL_SOURCES, type OwlSourceId } from '@steuereule/core'
 export const SOURCE_LINK_SCHEME = 'eulequelle:'
 
 const SOURCE_TAG = /\[(estg-[a-z0-9-]+|ao-355)\](?!\()/g
+/** A code span or fenced block: a run of backticks, the text, the same run again. */
+const CODE = /(`+)([\s\S]*?)\1/g
+/** A code span that holds one citation and nothing else. */
+const CITATION_ONLY = /^\s*\[(estg-[a-z0-9-]+|ao-355)\]\s*$/
+
+/**
+ * Rewrites the citations of `content`. Markdown shows a code span as it is written, so a link put into one
+ * would appear as its source text: code is left alone, except a span that is nothing but a citation, which
+ * some models write for an id. That span becomes the citation itself.
+ */
+function replaceCitations(content: string, render: (id: OwlSourceId) => string): string {
+  const cite = (whole: string, id: string): string => (ADVISOR_LEGAL_SOURCES[id as OwlSourceId] ? render(id as OwlSourceId) : whole)
+  const outsideCode = (text: string): string => text.replace(SOURCE_TAG, cite)
+  let result = ''
+  let rest = 0
+  for (const code of content.matchAll(CODE)) {
+    result += outsideCode(content.slice(rest, code.index))
+    const only = CITATION_ONLY.exec(code[2] ?? '')
+    result += only ? cite(code[0], only[1] ?? '') : code[0]
+    rest = code.index + code[0].length
+  }
+  return result + outsideCode(content.slice(rest))
+}
 
 /**
  * Turns the model's `[estg-9-1]` citations into Markdown links on our own scheme, so the renderer
  * can draw them as law chips. Unknown ids stay as they are.
  */
 export function linkLegalSources(content: string): string {
-  return content.replace(SOURCE_TAG, (whole, id: string) => {
-    const source = ADVISOR_LEGAL_SOURCES[id as OwlSourceId]
-    return source ? `[${source.paragraph}](${SOURCE_LINK_SCHEME}${id})` : whole
-  })
+  return replaceCitations(content, (id) => `[${ADVISOR_LEGAL_SOURCES[id].paragraph}](${SOURCE_LINK_SCHEME}${id})`)
 }
 
 /** The legal source a chip link points at, or null. */
@@ -77,8 +97,5 @@ export function classifyLink(href: string): LinkClass {
 
 /** What „Kopieren“ puts on the clipboard: the Markdown text, citations spelled out. */
 export function plainTextForCopy(content: string): string {
-  return content.replace(SOURCE_TAG, (whole, id: string) => {
-    const source = ADVISOR_LEGAL_SOURCES[id as OwlSourceId]
-    return source ? `(${source.paragraph})` : whole
-  })
+  return replaceCitations(content, (id) => `(${ADVISOR_LEGAL_SOURCES[id].paragraph})`)
 }
