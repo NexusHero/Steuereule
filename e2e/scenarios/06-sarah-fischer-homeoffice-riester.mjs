@@ -52,6 +52,9 @@ export async function runScenario06(browser, webOrigin) {
     state: 'visible',
     timeout: 10_000,
   })
+  // The change line (H1, below) compares against the figure the cockpit showed before the edit. The scenario
+  // waits for that figure first: clicking on before the estimate has arrived leaves nothing to compare with.
+  await page.locator('[data-testid="cockpit-erstattung"]').waitFor({ state: 'visible', timeout: 10_000 })
   await page.locator('[data-testid="cockpit-weiter"]').click()
   await fillTopic(page, 'umzug', { 'umzug-kosten': 1500 })
   await fillTopic(page, 'riester', {})
