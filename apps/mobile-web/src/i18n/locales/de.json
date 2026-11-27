@@ -1028,9 +1028,10 @@
     "fehler": "Das hat nicht geklappt. Bitte versuch es noch mal.",
     "hinweiseTitel": "So gibst du ab",
     "hinweise": [
+      "Die ersten Seiten sind die SteuerEule-Zusammenfassung mit dem erwarteten Ergebnis: für deine Unterlagen, nicht zum Abgeben.",
       "Einseitig auf weißes DIN-A4-Papier drucken, ohne Skalierung („Tatsächliche Größe“).",
-      "Den Hauptvordruck auf Seite 2 unterschreiben.",
-      "Alle Seiten abgeben, auch leere – aber nicht heften oder klammern.",
+      "Den Hauptvordruck auf seiner Seite 2 unterschreiben.",
+      "Alle Seiten der Vordrucke abgeben, auch leere – aber nicht heften oder klammern.",
       "Belege nur beilegen, wenn ein Vordruck ausdrücklich danach fragt."
     ],
     "hinweisEdaten": "Lohnsteuer, Sozialversicherung und andere „e“-Zeilen liegen dem Finanzamt bereits vom Arbeitgeber vor und bleiben leer. Nur den Bruttoarbeitslohn (Anlage N, Zeile 5) tragen wir zur Kontrolle ein.",

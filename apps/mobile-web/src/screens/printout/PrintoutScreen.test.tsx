@@ -102,7 +102,10 @@ describe('AusdruckScreen (ADR-0050)', () => {
     mock('freigeschaltet')
     renderScreen()
     expect(await screen.findByTestId('ausdruck-herunterladen')).toBeTruthy()
-    expect(screen.getByText('• Den Hauptvordruck auf Seite 2 unterschreiben.')).toBeTruthy()
+    expect(screen.getByText('• Den Hauptvordruck auf seiner Seite 2 unterschreiben.')).toBeTruthy()
+    // The summary pages lead the PDF (ADR-0114): the rules say they are not handed in, and only the forms' pages are.
+    expect(screen.getByText('• Die ersten Seiten sind die SteuerEule-Zusammenfassung mit dem erwarteten Ergebnis: für deine Unterlagen, nicht zum Abgeben.')).toBeTruthy()
+    expect(screen.getByText('• Alle Seiten der Vordrucke abgeben, auch leere – aber nicht heften oder klammern.')).toBeTruthy()
   })
 
   it('unlocked: also offers an editable PDF, named as such, requested with ?bearbeitbar=true', async () => {

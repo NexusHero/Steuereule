@@ -1028,9 +1028,10 @@
     "fehler": "That did not work. Please try again.",
     "hinweiseTitel": "How to hand it in",
     "hinweise": [
+      "The first pages are the SteuerEule summary with the expected result: for your files, not to hand in.",
       "Print single-sided on white A4 paper, without scaling (“Actual size”).",
-      "Sign the main form on page 2.",
-      "Hand in all pages, including empty ones — but do not staple or clip them.",
+      "Sign the main form on its page 2.",
+      "Hand in all pages of the forms, including empty ones — but do not staple or clip them.",
       "Only enclose receipts where a form explicitly asks for them."
     ],
     "hinweisEdaten": "Income tax, social security and other “e” lines are already reported by your employer and stay empty. Only the gross wage (Anlage N, line 5) is filled in, as a cross-check.",
