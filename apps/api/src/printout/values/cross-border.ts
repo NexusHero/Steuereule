@@ -35,7 +35,15 @@ function nbuvEmployeeChf(ch: ChSalaryCertificateFacts): number | null {
   }).split.nbuv.employeeChf
 }
 
-function nGreGap(ch: ChSalaryCertificateFacts): string | null {
+/** Whether the employer is stated on the form's address lines: the paper needs it, the amounts do not. */
+const employerAddressGiven = (ch: ChSalaryCertificateFacts): boolean => Boolean(ch.arbeitgeberName && ch.arbeitgeberStrasse && ch.arbeitgeberPlzOrt)
+
+/**
+ * What keeps the form's amounts from being computed. The employer address is deliberately not part of
+ * it: a missing address still blocks the paper printout (see `nGreValues`), but it must not blank the
+ * amounts the form view and `vordruck_zeilen` show (real-data run).
+ */
+function nGreAmountsGap(ch: ChSalaryCertificateFacts): string | null {
   if (ch.status === 'kein-grenzgaenger') return 'anlageNGreKeinGrenzgaenger'
   if (ch.specialCases) return 'anlageNGreSonderfall'
   const amounts = [ch.grossWageChf, ch.ahvContributionsChf, ch.withholdingTaxChf, ch.familienzulagenChf, ch.krankentaggeldChf, ch.pkArbeitnehmerChf, ch.pkArbeitgeberChf]
@@ -45,12 +53,12 @@ function nGreGap(ch: ChSalaryCertificateFacts): string | null {
     ch.rate !== null &&
     amounts.every((value) => integer(value) !== null) &&
     premiumClarified(integer(ch.krankentaggeldChf), ch.krankentaggeldArbeitgeberProzent, ch.krankentaggeldArbeitgeberChf) &&
-    premiumClarified(nbuvEmployeeChf(ch), ch.nbuvArbeitgeberProzent, ch.nbuvArbeitgeberChf) &&
-    Boolean(ch.arbeitgeberName && ch.arbeitgeberStrasse && ch.arbeitgeberPlzOrt)
+    premiumClarified(nbuvEmployeeChf(ch), ch.nbuvArbeitgeberProzent, ch.nbuvArbeitgeberChf)
   return complete ? null : 'grenzgaenger'
 }
 
 interface NGreResult {
+  /** Empty only while the amounts cannot be computed; with just the address missing they are all there. */
   readonly values: Fields
   readonly gap: string | null
   /** The daily accident benefit of Zeile 10 in EUR: also declared for the progression clause (Hauptvordruck Zeile 36). */
@@ -66,8 +74,11 @@ export function nGreValues(
   header: { name: string | null; firstName: string | null; beruf: string | null; steuernummer: string | null },
 ): NGreResult | null {
   if (!ch || ch.grossWageChf === null) return null
-  const gap = nGreGap(ch)
-  if (gap) return { values: {}, gap: role === 'B' && gap === 'grenzgaenger' ? 'grenzgaengerPersonB' : gap }
+  const amountsGap = nGreAmountsGap(ch)
+  // A missing employer address still keeps the paper printout back, but the amounts are shown.
+  const gap = amountsGap ?? (employerAddressGiven(ch) ? null : 'grenzgaenger')
+  const gapFor = (code: string) => (role === 'B' && code === 'grenzgaenger' ? 'grenzgaengerPersonB' : code)
+  if (amountsGap) return { values: {}, gap: gapFor(amountsGap) }
   const values: Fields = {}
   const set = (id: string, value: string | null) => {
     if (value) values[id] = value
@@ -117,8 +128,10 @@ export function nGreValues(
   set('anlNGre.arbeitgeberName', ch.arbeitgeberName)
   set('anlNGre.arbeitgeberStrasse', ch.arbeitgeberStrasse)
   set('anlNGre.arbeitgeberPlzOrt', ch.arbeitgeberPlzOrt)
-  return { values, gap: null, accidentBenefitEur: eur.z10 }
+  return { values, gap: gap && gapFor(gap), accidentBenefitEur: eur.z10 }
 }
+
+const hasAmounts = (n: NGreResult): boolean => Object.keys(n.values).length > 0
 
 /** The N-Gre section, plus each person's daily accident benefit for the Hauptvordruck (Zeile 36). */
 export interface CrossBorderSection extends Section {
@@ -145,12 +158,12 @@ export function crossBorderSection(facts: PrintoutFacts): CrossBorderSection {
     beruf: personB?.beruf ?? null,
     steuernummer: profile.steuernummer,
   })
-  if (nGreA?.gap === null && wages.a === null) addLifeSituationWorkExpenses(nGreA.values, 'anlNGre', facts.lifeSituations)
-  if (nGreB?.gap === null && wages.b === null) addLifeSituationWorkExpenses(nGreB.values, 'anlNGre', personB?.lifeSituations)
+  if (nGreA && hasAmounts(nGreA) && wages.a === null) addLifeSituationWorkExpenses(nGreA.values, 'anlNGre', facts.lifeSituations)
+  if (nGreB && hasAmounts(nGreB) && wages.b === null) addLifeSituationWorkExpenses(nGreB.values, 'anlNGre', personB?.lifeSituations)
   const missing = [nGreA, nGreB].flatMap((n) => (n?.gap ? [n.gap] : []))
   const accidentBenefitEur = { A: nGreA?.accidentBenefitEur, B: nGreB?.accidentBenefitEur }
-  const complete = [nGreA, nGreB].filter((n): n is NGreResult => n !== null && n.gap === null).map((n) => n.values)
-  if (complete.length === 1 && nGreA?.gap === null) return { values: complete[0]!, missing, accidentBenefitEur }
+  const complete = [nGreA, nGreB].filter((n): n is NGreResult => n !== null && hasAmounts(n)).map((n) => n.values)
+  if (complete.length === 1 && nGreA !== null && hasAmounts(nGreA)) return { values: complete[0]!, missing, accidentBenefitEur }
   if (complete.length > 0) return { instances: { 'anlage-n-gre': complete }, missing, accidentBenefitEur }
   return { missing, accidentBenefitEur }
 }

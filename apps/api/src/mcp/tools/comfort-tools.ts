@@ -8,7 +8,13 @@ import { json, refused } from '../tool-results.js'
 import { forExternalAssistant, isUserOnly } from './entry-tools.js'
 
 /** A line of a form the assistant may see: a Kennzahl with a plain amount, never a name, an id or an address. */
-const isAmountLine = (id: string, value: string | true): value is string => /\.kz\d+/.test(id) && typeof value === 'string' && /^-?\d{1,12}(?:[.,]\d{1,2})?$/.test(value)
+/**
+ * Kennzahl lines (anlN.kz110) and the numbered CHF/EUR/percent lines of the Anlage N-Gre (anlNGre.z9Chf:
+ * tax-free benefits, the social-contribution split Z. 75-88, the split premiums); the latter have no Kz,
+ * so a Kz-only filter hid them from the assistant (real-data run).
+ */
+const AMOUNT_LINE_ID = /\.(?:kz\d+|z\d+(?:Chf|Eur|Arbeitgeber|Arbeitnehmer)$)/
+export const isAmountLine = (id: string, value: string | true): value is string => AMOUNT_LINE_ID.test(id) && typeof value === 'string' && /^-?\d{1,12}(?:[.,]\d{1,2})?$/.test(value)
 
 /** Lookups that save the assistant guessing (#548): exchange rates, where a term belongs, what the form will say, deadlines. */
 export function registerComfortTools(session: McpSession, deps: McpDeps): void {
