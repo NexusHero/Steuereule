@@ -8,13 +8,14 @@
 // plaintext, exactly the thing encryption-at-rest is meant to prevent. TaxYear has no
 // encrypted field, so it's written through the plain client (see the loop below).
 import { PrismaClient } from '@prisma/client'
-import { fieldEncryptionExtension } from 'prisma-field-encryption'
+import { schemaFieldEncryption } from '../src/prisma/field-encryption.js'
 import { cockpitRange } from '@steuereule/core'
 import { resolveFieldEncryptionKey } from '../src/prisma/field-encryption-key.js'
+import { createDatabaseAdapter } from '../src/config/database-adapter.js'
 
-const basePrisma = new PrismaClient()
+const basePrisma = new PrismaClient({ adapter: createDatabaseAdapter() })
 const { encryptionKey, decryptionKeys } = resolveFieldEncryptionKey()
-const prisma = basePrisma.$extends(fieldEncryptionExtension({ encryptionKey, decryptionKeys }))
+const prisma = basePrisma.$extends(schemaFieldEncryption({ encryptionKey, decryptionKeys }))
 
 const SYNTHETIC_PROFILES = [
   {

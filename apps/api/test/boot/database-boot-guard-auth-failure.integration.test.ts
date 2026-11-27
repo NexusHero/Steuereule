@@ -31,6 +31,7 @@ import { fileURLToPath } from 'node:url'
 import { PrismaClient } from '@prisma/client'
 import { describe, expect, it } from 'vitest'
 import { resolveDatabaseUrl } from '../../src/config/database-url.js'
+import { createDatabaseAdapter } from '../../src/config/database-adapter.js'
 
 const apiRoot = fileURLToPath(new URL('../../', import.meta.url))
 const tsxBin = fileURLToPath(new URL('../../node_modules/.bin/tsx', import.meta.url))
@@ -77,7 +78,7 @@ describe('the real server, given a real database it cannot authenticate against'
       // correctly right now. A connection-refused or unreachable-host failure could
       // never pass this; only a target that's up and only rejecting THIS run's
       // credentials can.
-      const controlClient = new PrismaClient({ datasources: { db: { url: realDatabaseUrl } } })
+      const controlClient = new PrismaClient({ adapter: createDatabaseAdapter(realDatabaseUrl) })
       try {
         await controlClient.$queryRaw`SELECT 1`
       } catch (cause) {

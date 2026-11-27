@@ -3,6 +3,7 @@ import { PrismaClient } from '@prisma/client'
 import { resolveKeystoreDatabaseUrl } from '../keystore/keystore-config.js'
 import { resolveDatabaseUrl } from './database-url.js'
 import { disconnectQuietly, redactCause, withTimeout } from './assert-database-reachable.js'
+import { createDatabaseAdapter } from './database-adapter.js'
 
 const PROBE_TIMEOUT_MS = 5_000
 
@@ -43,7 +44,7 @@ export async function assertDatabaseMigrated(options: AssertDatabaseMigratedOpti
   const expected = options.expected ?? listExpectedMigrations()
   const createClient =
     options.createClient ??
-    ((url: string): MigrationRecordClient => new PrismaClient({ datasources: { db: { url } } }))
+    ((url: string): MigrationRecordClient => new PrismaClient({ adapter: createDatabaseAdapter(url) }))
 
   const client = createClient(databaseUrl)
   let applied: string[]

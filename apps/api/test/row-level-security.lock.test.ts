@@ -2,10 +2,10 @@
 // in the migrations, or is listed below as holding no personal data, with the reason. A model another package
 // adds without a policy goes red here. The second half lists every place that bypasses the policies, so a new
 // bypass is a visible line in review, and checks that only the Prisma layer sets the identity.
+import { SCHEMA_MODEL } from '../src/prisma/schema-model.js'
 import { readdirSync, readFileSync, statSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { Prisma } from '@prisma/client'
 import { Prisma as KeystorePrisma } from '@prisma-keystore/client'
 import { describe, expect, it } from 'vitest'
 import { PERSONAL_DATA_REGISTRY } from '../src/personal-data/personal-data-registry.js'
@@ -65,7 +65,7 @@ function policiesInPlace(migrationSql: string): Map<string, string[]> {
 }
 const disabled = tablesWith(/ALTER TABLE "([^"]+)" (?:DISABLE|NO FORCE) ROW LEVEL SECURITY/g)
 
-const models = Prisma.dmmf.datamodel.models.map((model) => ({ name: model.name, table: model.dbName ?? model.name }))
+const models = SCHEMA_MODEL.datamodel.models.map((model) => ({ name: model.name, table: model.dbName ?? model.name }))
 
 describe('row-level security covers every table with personal data', () => {
   it.each(models)('$name ($table) has a forced policy or is listed as holding no personal data', ({ name, table }) => {
@@ -98,7 +98,7 @@ describe('row-level security covers every table with personal data', () => {
   // rows carry a tax year and are owned through "userId" asks for the agreed year, not for "some agreed year".
   it('a table with a tax year lets Person A reach Person B only for the years B agreed to', () => {
     const inPlace = policiesInPlace(sql)
-    const yearTables = Prisma.dmmf.datamodel.models
+    const yearTables = SCHEMA_MODEL.datamodel.models
       .filter((model) => model.fields.some((field) => (field.dbName ?? field.name) === 'steuerjahr') && model.fields.some((field) => field.name === 'userId'))
       .map((model) => model.dbName ?? model.name)
     expect(yearTables.length).toBeGreaterThan(20)

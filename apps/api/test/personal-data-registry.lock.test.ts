@@ -2,7 +2,7 @@
 // person and its treatment by deletion, export, takeover and legal holds — or marked "no personal data" with a
 // reason. A new model nobody declared goes red here instead of outliving an erasure, missing from the export
 // or staying behind at the guest's first sign-in.
-import { Prisma } from '@prisma/client'
+import { SCHEMA_MODEL } from '../src/prisma/schema-model.js'
 import { Prisma as KeystorePrisma } from '@prisma-keystore/client'
 import { describe, expect, it } from 'vitest'
 import { DELETION_STEPS, taxDataTables } from '../src/account/delete-account-transaction.prisma.js'
@@ -10,11 +10,11 @@ import { genericDeletionEntries, PERSONAL_DATA_REGISTRY } from '../src/personal-
 import { ownerOf, personIds, shadowIdOf } from '../src/common/person-ids.js'
 
 const models = [
-  ...Prisma.dmmf.datamodel.models.map((model) => model.name),
+  ...SCHEMA_MODEL.datamodel.models.map((model) => model.name),
   ...KeystorePrisma.dmmf.datamodel.models.map((model) => `keystore.${model.name}`),
 ]
 const byModel = new Map(PERSONAL_DATA_REGISTRY.map((entry) => [entry.model, entry]))
-const fieldsOf = (name: string) => Prisma.dmmf.datamodel.models.find((model) => model.name === name)?.fields.map((field) => field.name) ?? []
+const fieldsOf = (name: string) => SCHEMA_MODEL.datamodel.models.find((model) => model.name === name)?.fields.map((field) => field.name) ?? []
 
 describe('the personal-data registry covers every model', () => {
   it.each(models)('%s is declared', (model) => {
@@ -37,7 +37,7 @@ describe('the personal-data registry covers every model', () => {
   })
 
   it('every model with a userId column is tied by userId', () => {
-    for (const model of Prisma.dmmf.datamodel.models.filter((m) => m.fields.some((f) => f.name === 'userId'))) {
+    for (const model of SCHEMA_MODEL.datamodel.models.filter((m) => m.fields.some((f) => f.name === 'userId'))) {
       expect(['userId', 'optionalUserId'], model.name).toContain(byModel.get(model.name)!.tie)
     }
   })
@@ -58,7 +58,7 @@ describe('the personal-data registry covers every model', () => {
   it('a cascade names a real parent with an onDelete: Cascade relation', () => {
     for (const entry of PERSONAL_DATA_REGISTRY.filter((e) => e.deletion.kind === 'cascade')) {
       const parent = (entry.deletion as { from: string }).from
-      const relation = Prisma.dmmf.datamodel.models
+      const relation = SCHEMA_MODEL.datamodel.models
         .find((model) => model.name === entry.model)!
         .fields.find((field) => field.type === parent && field.relationOnDelete === 'Cascade')
       expect(relation, `${entry.model} → ${parent}`).toBeDefined()
@@ -94,7 +94,7 @@ describe('the personal-data registry covers every model', () => {
   it('control proof: a paid unlock is held by row, not cascaded with the account', () => {
     expect(byModel.get('Unlock')).toMatchObject({ hold: 'row', holdResource: 'unlock', deletion: { kind: 'rowsUnlessHeld' } })
     expect(byModel.get('FilingVersion')).toMatchObject({ hold: 'row', holdResource: 'filingVersion' })
-    const unlockUser = Prisma.dmmf.datamodel.models.find((model) => model.name === 'Unlock')!.fields.find((field) => field.type === 'User')
+    const unlockUser = SCHEMA_MODEL.datamodel.models.find((model) => model.name === 'Unlock')!.fields.find((field) => field.type === 'User')
     expect(unlockUser).toBeUndefined()
   })
 })

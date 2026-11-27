@@ -45,6 +45,8 @@ RUN pnpm install --prod --frozen-lockfile --ignore-scripts --filter "@steuereule
 # src/, so the sources go along (read by tsx, like packages/core).
 COPY packages/core ./packages/core
 COPY apps/api/prisma ./apps/api/prisma
+# Prisma 7 reads the CLI's connection, schema and migration paths from this file (generate and migrate deploy).
+COPY apps/api/prisma.config.ts ./apps/api/prisma.config.ts
 COPY apps/api/assets ./apps/api/assets
 COPY apps/api/src ./apps/api/src
 COPY apps/api/scripts/migrate-deploy.mjs apps/api/scripts/runtime-database-login.mjs apps/api/scripts/backfill-profile-name-encryption.ts apps/api/scripts/backfill-identity.ts apps/api/scripts/rotate-field-encryption-key.ts ./apps/api/scripts/

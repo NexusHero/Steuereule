@@ -2,18 +2,20 @@
 // (`steuereule_app`, the role every PrismaService connection switches to) with user A's identity setting cannot
 // read or change user B's rows; without a setting it sees nothing; the system setting passes; the partner and
 // Person B shadow rules let through exactly the coupled rows. Runs against the migrated CI Postgres.
+import { SCHEMA_MODEL } from '../src/prisma/schema-model.js'
 import { randomUUID } from 'node:crypto'
 import { Prisma, PrismaClient } from '@prisma/client'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { runAsDatabaseUser, withSystemDatabaseAccess } from '../src/common/database-identity.js'
 import { RUNTIME_DATABASE_ROLE, withRuntimeDatabaseRole } from '../src/config/database-url.js'
 import { transactionAwareClient } from '../src/prisma/transaction.js'
+import { createDatabaseAdapter } from '../src/config/database-adapter.js'
 
 const NO_PERSONAL_DATA = new Set(['OauthResource', 'OauthClientResource', 'OauthClientAssertion', 'Jwks'])
 
 const url = process.env.DATABASE_URL!
-const owner = new PrismaClient()
-const runtime = new PrismaClient({ datasources: { db: { url: withRuntimeDatabaseRole(url) } } })
+const owner = new PrismaClient({ adapter: createDatabaseAdapter() })
+const runtime = new PrismaClient({ adapter: createDatabaseAdapter(withRuntimeDatabaseRole(url)) })
 
 const run = randomUUID().slice(0, 8)
 const A = `rls-a-${run}`
@@ -73,7 +75,7 @@ describe('the runtime role', () => {
       SELECT c.relname, c.relrowsecurity, c.relforcerowsecurity FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
       WHERE n.nspname = 'public' AND c.relkind = 'r'`
     const byName = new Map(tables.map((table) => [table.relname, table]))
-    for (const model of Prisma.dmmf.datamodel.models) {
+    for (const model of SCHEMA_MODEL.datamodel.models) {
       const table = byName.get(model.dbName ?? model.name)
       expect(table, model.name).toBeDefined()
       const expected = !NO_PERSONAL_DATA.has(model.name)
@@ -184,7 +186,7 @@ describe('fail closed', () => {
   })
 
   it('a transaction-local identity is gone after its transaction, also on the same connection', async () => {
-    const single = new PrismaClient({ datasources: { db: { url: `${withRuntimeDatabaseRole(url)}&connection_limit=1` } } })
+    const single = new PrismaClient({ adapter: createDatabaseAdapter(`${withRuntimeDatabaseRole(url)}&connection_limit=1`) })
     try {
       await single.$transaction([single.$executeRaw`SELECT set_config('steuereule.user_id', ${A}, true)`, single.profile.count()])
       expect(await single.profile.count({ where: { userId: A } })).toBe(0)
@@ -297,7 +299,7 @@ describe('the runtime login', () => {
     // @ts-expect-error — a plain .mjs script of the migrate job, without type declarations
     const { provisionRuntimeLogin, runtimeLoginPlan } = await import('../scripts/runtime-database-login.mjs')
     await provisionRuntimeLogin(owner, runtimeLoginPlan({ DATABASE_URL: url, RUNTIME_DATABASE_URL: loginUrl }))
-    login = new PrismaClient({ datasources: { db: { url: withRuntimeDatabaseRole(loginUrl) } } })
+    login = new PrismaClient({ adapter: createDatabaseAdapter(withRuntimeDatabaseRole(loginUrl)) })
   })
 
   afterAll(async () => {
@@ -321,7 +323,7 @@ describe('the runtime login', () => {
   })
 
   it('cannot step around the policies, with or without the role option in its URL', async () => {
-    const bare = new PrismaClient({ datasources: { db: { url: loginUrl } } })
+    const bare = new PrismaClient({ adapter: createDatabaseAdapter(loginUrl) })
     try {
       for (const client of [login, bare]) {
         await expect(client.$executeRawUnsafe('ALTER TABLE "Profile" DISABLE ROW LEVEL SECURITY')).rejects.toThrow(/must be owner/)

@@ -5,8 +5,9 @@
 // decrypted with this file's secret, and better-auth then fails every request that signs a JWT
 // (get-session, the OAuth token endpoint). A fresh key is minted on the first signature.
 import { PrismaClient } from '@prisma/client'
+import { createDatabaseAdapter } from '../../src/config/database-adapter.js'
 
-const prisma = new PrismaClient()
+const prisma = new PrismaClient({ adapter: createDatabaseAdapter() })
 try {
   await prisma.jwks.deleteMany()
 } finally {

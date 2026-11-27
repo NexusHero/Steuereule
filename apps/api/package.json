@@ -5,8 +5,8 @@
   "type": "module",
   "scripts": {
     "build": "pnpm run skills:generate && tsc -p tsconfig.json",
-    "postinstall": "prisma generate && prisma generate --schema prisma/keystore/schema.prisma && pnpm run skills:generate",
-    "prisma:generate": "prisma generate && prisma generate --schema prisma/keystore/schema.prisma",
+    "postinstall": "prisma generate && prisma generate --config prisma/keystore/prisma.config.ts && pnpm run skills:generate",
+    "prisma:generate": "prisma generate && prisma generate --config prisma/keystore/prisma.config.ts",
     "migrate:deploy": "node scripts/migrate-deploy.mjs",
     "start": "pnpm run build && node dist/main.js",
     "test": "pnpm run skills:generate && vitest run --config vitest.config.ts",
@@ -22,9 +22,6 @@
     "laws:check": "tsx scripts/check-law-changes.ts",
     "seed:year-history": "tsx prisma/seed-year-history.ts",
     "seed:selbststaendig": "tsx prisma/seed-selbststaendig.ts"
-  },
-  "prisma": {
-    "seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
     "@47ng/cloak": "1.2.0",
@@ -48,7 +45,9 @@
     "@nestjs/swagger": "^11.4.6",
     "@nestjs/throttler": "^6.8.0",
     "@opentelemetry/api": "^1.10.0",
-    "@prisma/client": "6.19.3",
+    "@prisma/adapter-pg": "7.10.1",
+    "@prisma/client": "7.10.1",
+    "@prisma/generator-helper": "7.10.1",
     "@steuereule/core": "workspace:*",
     "better-auth": "1.7.27",
     "class-transformer": "^0.5.1",
@@ -57,8 +56,9 @@
     "ioredis": "^5.11.1",
     "nodemailer": "^10.6.1",
     "pdf-lib": "1.17.1",
+    "pg": "^8.23.1",
     "playwright-core": "1.65.1",
-    "prisma": "6.19.3",
+    "prisma": "7.10.1",
     "prisma-field-encryption": "^1.6.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2",
@@ -73,6 +73,7 @@
     "@swc/core": "^1.16.22",
     "@types/node": "^22.10.5",
     "@types/nodemailer": "^8.0.2",
+    "@types/pg": "^8.20.0",
     "light-my-request": "^6.8.1",
     "typescript": "^7.0.0",
     "unplugin-swc": "^1.5.9"

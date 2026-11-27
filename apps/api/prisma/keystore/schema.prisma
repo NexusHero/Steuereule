@@ -10,7 +10,6 @@ generator keystore {
 
 datasource keystore {
   provider = "postgresql"
-  url      = env("KEYSTORE_DATABASE_URL")
 }
 
 model UserDataKey {

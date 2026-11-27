@@ -29,4 +29,4 @@ runs:
     - name: Prisma Schema-vs-Migrations Drift Gate (zero drift between schema.prisma and migrations/)
       if: inputs.drift == 'true'
       shell: bash
-      run: pnpm --filter @steuereule/api exec prisma migrate diff --from-schema-datasource prisma/schema.prisma --to-schema-datamodel prisma/schema.prisma --exit-code
+      run: pnpm --filter @steuereule/api exec prisma migrate diff --from-config-datasource --to-schema prisma/schema.prisma --exit-code

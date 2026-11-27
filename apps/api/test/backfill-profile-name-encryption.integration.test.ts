@@ -3,10 +3,11 @@
 // the one-time backfill re-encrypts such rows and is idempotent on already-encrypted ones. Real
 // Postgres (DATABASE_URL + migrations), like the other *.integration.test.ts.
 import { PrismaClient } from '@prisma/client'
-import { fieldEncryptionExtension } from 'prisma-field-encryption'
+import { schemaFieldEncryption } from '../src/prisma/field-encryption.js'
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest'
 import { backfillProfileNameEncryption } from '../scripts/backfill-profile-name-encryption.js'
 import { resolveFieldEncryptionKey } from '../src/prisma/field-encryption-key.js'
+import { createDatabaseAdapter } from '../src/config/database-adapter.js'
 
 const ENVELOPE = /^v\d+\.aesgcm256\./
 
@@ -14,7 +15,7 @@ describe('backfill: profile name encryption (ADR-0107 H3)', () => {
   let prisma: PrismaClient
 
   beforeAll(() => {
-    prisma = new PrismaClient()
+    prisma = new PrismaClient({ adapter: createDatabaseAdapter() })
   })
   afterEach(async () => {
     await prisma.$executeRawUnsafe(`DELETE FROM "Profile" WHERE "userId" LIKE 'backfill-test-%'`)
@@ -47,7 +48,7 @@ describe('backfill: profile name encryption (ADR-0107 H3)', () => {
     const before = await rawName('backfill-test-cleartext')
     expect(before.firstName).toBe('Hans') // cleartext at rest, pre-backfill
 
-    const result = await backfillProfileNameEncryption(new PrismaClient())
+    const result = await backfillProfileNameEncryption(new PrismaClient({ adapter: createDatabaseAdapter() }))
     expect(result.reEncrypted).toBeGreaterThanOrEqual(1)
 
     const after = await rawName('backfill-test-cleartext')
@@ -56,18 +57,18 @@ describe('backfill: profile name encryption (ADR-0107 H3)', () => {
 
     // Read-back through the encrypted client returns the original plaintext: the backfill encrypted the
     // name it found, under the key the application reads with.
-    const encrypted = prisma.$extends(fieldEncryptionExtension(resolveFieldEncryptionKey(process.env)))
+    const encrypted = prisma.$extends(schemaFieldEncryption(resolveFieldEncryptionKey(process.env)))
     const profile = await encrypted.profile.findFirst({ where: { userId: 'backfill-test-cleartext' } })
     expect(profile).toMatchObject({ firstName: 'Hans', lastName: 'Klartext' })
   })
 
   it('is idempotent: a second run leaves an already-encrypted row exactly as it is', async () => {
     await insertPlaintextProfile('backfill-test-idem', 'Erika', 'Doppelt')
-    await backfillProfileNameEncryption(new PrismaClient())
+    await backfillProfileNameEncryption(new PrismaClient({ adapter: createDatabaseAdapter() }))
     const first = await rawName('backfill-test-idem')
     expect(first.firstName).toMatch(ENVELOPE)
 
-    await backfillProfileNameEncryption(new PrismaClient())
+    await backfillProfileNameEncryption(new PrismaClient({ adapter: createDatabaseAdapter() }))
 
     // Every encryption draws a fresh IV, so a row written again would hold a different ciphertext. The same
     // bytes after the second run prove the row was skipped — whatever other rows the shared database holds.
@@ -76,14 +77,14 @@ describe('backfill: profile name encryption (ADR-0107 H3)', () => {
 
   it('finishes a half-migrated row: one name already encrypted, the other still in cleartext', async () => {
     await insertPlaintextProfile('backfill-test-half', 'Greta', 'Halb')
-    const encrypted = prisma.$extends(fieldEncryptionExtension(resolveFieldEncryptionKey(process.env)))
+    const encrypted = prisma.$extends(schemaFieldEncryption(resolveFieldEncryptionKey(process.env)))
     await encrypted.profile.update({ where: { userId: 'backfill-test-half' }, data: { firstName: 'Greta' } })
     await prisma.$executeRawUnsafe(`UPDATE "Profile" SET "lastName" = 'Halb' WHERE "userId" = 'backfill-test-half'`)
     const before = await rawName('backfill-test-half')
     expect(before.firstName).toMatch(ENVELOPE)
     expect(before.lastName).toBe('Halb')
 
-    await backfillProfileNameEncryption(new PrismaClient())
+    await backfillProfileNameEncryption(new PrismaClient({ adapter: createDatabaseAdapter() }))
 
     const after = await rawName('backfill-test-half')
     expect(after.firstName).toMatch(ENVELOPE)

@@ -13,7 +13,7 @@
 // app writes. Re-running is safe: a book that already has entries is left as it is (append-only).
 // Run it with the same PRISMA_FIELD_ENCRYPTION_KEY as the API. It refuses with NODE_ENV=production.
 import { PrismaClient } from '@prisma/client'
-import { fieldEncryptionExtension } from 'prisma-field-encryption'
+import { schemaFieldEncryption } from '../src/prisma/field-encryption.js'
 import { AuditService } from '../src/audit/audit.service.js'
 import type { AuditRepository } from '../src/audit/audit.repository.js'
 import { PrismaBusinessRepository } from '../src/business/business.repository.prisma.js'
@@ -23,6 +23,7 @@ import { HebesatzDirectory } from '../src/business/hebesatz.js'
 import { PrismaInterviewAnswerRepository } from '../src/interview/interview-answer.repository.prisma.js'
 import { publishEmailHashSalt, resolveFieldEncryptionKey } from '../src/prisma/field-encryption-key.js'
 import { transactionAwareClient } from '../src/prisma/transaction.js'
+import { createDatabaseAdapter } from '../src/config/database-adapter.js'
 
 if (process.env.NODE_ENV === 'production') {
   console.error('seed-selbststaendig is a dev seed and refuses to run with NODE_ENV=production.')
@@ -36,11 +37,11 @@ if (email === '') {
 // The seed writes through the path itself, which exists only with the switch on.
 process.env.SELBSTSTAENDIGE_ENABLED = 'true'
 
-const basePrisma = new PrismaClient()
+const basePrisma = new PrismaClient({ adapter: createDatabaseAdapter() })
 // The account is found by its e-mail hash (ADR-0109); the extension reads the salt when it is created.
 publishEmailHashSalt()
 const { encryptionKey, decryptionKeys } = resolveFieldEncryptionKey()
-const prisma = transactionAwareClient(basePrisma.$extends(fieldEncryptionExtension({ encryptionKey, decryptionKeys })) as unknown as PrismaClient)
+const prisma = transactionAwareClient(basePrisma.$extends(schemaFieldEncryption({ encryptionKey, decryptionKeys })) as unknown as PrismaClient)
 
 const silentAudit: AuditRepository = { append: async () => undefined, findOwnRows: async () => [] } as unknown as AuditRepository
 const repository = new PrismaBusinessRepository(prisma)

@@ -1,12 +1,13 @@
 import { PrismaClient as KeystorePrismaClient } from '@prisma-keystore/client'
 import { Injectable, type OnModuleDestroy } from '@nestjs/common'
+import { createDatabaseAdapter } from '../config/database-adapter.js'
 import { resolveKeystoreDatabaseUrl } from './keystore-config.js'
 import type { UserKeyStore, WrappedUserKey } from './user-key-store.js'
 
 /** Prisma adapter on the dedicated keystore database (prisma/keystore/schema.prisma). */
 @Injectable()
 export class PrismaUserKeyStore implements UserKeyStore, OnModuleDestroy {
-  private readonly client = new KeystorePrismaClient({ datasources: { keystore: { url: resolveKeystoreDatabaseUrl() } } })
+  private readonly client = new KeystorePrismaClient({ adapter: createDatabaseAdapter(resolveKeystoreDatabaseUrl()) })
 
   async find(userId: string): Promise<WrappedUserKey | null> {
     const row = await this.client.userDataKey.findUnique({ where: { userId } })

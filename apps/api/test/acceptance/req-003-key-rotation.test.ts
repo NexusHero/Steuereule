@@ -8,9 +8,10 @@
 //   3. Re-saving or updating a record under the rotated configuration re-encrypts the
 //      row under `k2`'s fingerprint, after which `k1` is no longer needed to read it.
 import { PrismaClient } from '@prisma/client'
-import { fieldEncryptionExtension } from 'prisma-field-encryption'
+import { schemaFieldEncryption } from '../../src/prisma/field-encryption.js'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { resolveFieldEncryptionKey } from '../../src/prisma/field-encryption-key.js'
+import { createDatabaseAdapter } from '../../src/config/database-adapter.js'
 
 const KEY_K1 = 'k1.aesgcm256.MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY='
 const KEY_K2 = 'k1.aesgcm256.fedcba9876543210fedcba9876543210fedcba98765='
@@ -20,7 +21,7 @@ describe('REQ-003 — Cryptographic field-encryption key rotation (k1 -> k2) aga
   const testUserId = `user-key-rotation-${Date.now()}`
 
   beforeAll(async () => {
-    rawPrisma = new PrismaClient()
+    rawPrisma = new PrismaClient({ adapter: createDatabaseAdapter() })
     await rawPrisma.$connect()
   })
 
@@ -48,7 +49,7 @@ describe('REQ-003 — Cryptographic field-encryption key rotation (k1 -> k2) aga
 
     // 2. Write sensitive Profile & LStB rows under KEY_K1
     const clientK1 = rawPrisma.$extends(
-      fieldEncryptionExtension({
+      schemaFieldEncryption({
         encryptionKey: k1Config.encryptionKey,
         decryptionKeys: k1Config.decryptionKeys,
       }),
@@ -84,7 +85,7 @@ describe('REQ-003 — Cryptographic field-encryption key rotation (k1 -> k2) aga
 
     // 3. Instantiate rotated client (writes with K2, can still decrypt K1)
     const clientRotated = rawPrisma.$extends(
-      fieldEncryptionExtension({
+      schemaFieldEncryption({
         encryptionKey: rotatedConfig.encryptionKey,
         decryptionKeys: rotatedConfig.decryptionKeys,
       }),
@@ -125,7 +126,7 @@ describe('REQ-003 — Cryptographic field-encryption key rotation (k1 -> k2) aga
 
     // 5. Client with ONLY K2 (K1 retired) can read the re-encrypted Profile
     const clientK2Only = rawPrisma.$extends(
-      fieldEncryptionExtension({
+      schemaFieldEncryption({
         encryptionKey: KEY_K2,
         decryptionKeys: [],
       }),

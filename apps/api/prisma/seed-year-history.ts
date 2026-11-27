@@ -25,9 +25,10 @@
 // Bescheid PDFs themselves are not seeded (a receipt needs its encrypted file); upload one to see it in
 // „Unterlagen“.
 import { PrismaClient } from '@prisma/client'
-import { fieldEncryptionExtension } from 'prisma-field-encryption'
+import { schemaFieldEncryption } from '../src/prisma/field-encryption.js'
 import { employeeLumpSum, splittingTariff, incomeTax, type AssessmentPositionValues } from '@steuereule/core'
 import { publishEmailHashSalt, resolveFieldEncryptionKey } from '../src/prisma/field-encryption-key.js'
+import { createDatabaseAdapter } from '../src/config/database-adapter.js'
 
 if (process.env.NODE_ENV === 'production') {
   console.error('seed-year-history is a dev seed and refuses to run with NODE_ENV=production.')
@@ -40,11 +41,11 @@ if (email === '') {
   process.exit(1)
 }
 
-const basePrisma = new PrismaClient()
+const basePrisma = new PrismaClient({ adapter: createDatabaseAdapter() })
 // The account is found by its e-mail hash (ADR-0109); the extension reads the salt when it is created.
 publishEmailHashSalt()
 const { encryptionKey, decryptionKeys } = resolveFieldEncryptionKey()
-const prisma = basePrisma.$extends(fieldEncryptionExtension({ encryptionKey, decryptionKeys }))
+const prisma = basePrisma.$extends(schemaFieldEncryption({ encryptionKey, decryptionKeys }))
 
 type Parts = { fahrtweg: number; homeoffice: number; arbeitsmittel: number; sonstige: number }
 type Person = { brutto: number; lst: number; sv: number; wk: Parts }
