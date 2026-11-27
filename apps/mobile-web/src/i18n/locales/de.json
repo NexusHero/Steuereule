@@ -1747,6 +1747,18 @@
     "adresseHeading": "Objektadresse (für Anlage V)"
   },
   "fristen": {
+        "kalender": "In den Kalender",
+    "kalenderA11y": "{{titel}} in den Kalender eintragen",
+    "kalenderTitel": {
+      "abgabe": "Abgabefrist Steuererklärung {{jahr}}",
+      "freiwillig": "Letzter Tag für die freiwillige Steuererklärung {{jahr}}",
+      "einspruch": "Einspruchsfrist Steuerbescheid {{jahr}}"
+    },
+    "kalenderText": {
+      "abgabe": "Letzter Tag, an dem die Steuererklärung {{jahr}} beim Finanzamt sein muss, falls du abgeben musst.",
+      "freiwillig": "Bis heute kannst du die freiwillige Steuererklärung {{jahr}} abgeben. Danach verfällt die Erstattung.",
+      "einspruch": "Letzter Tag, an dem ein Einspruch gegen den Steuerbescheid {{jahr}} beim Finanzamt sein muss (§ 355 AO)."
+    },
     "warnung": "Abgabefrist: {{frist}} (noch {{tage}} Tage). Gibst du zu spät ab, kann das Finanzamt einen Verspätungszuschlag festsetzen, mindestens {{mindestsatz}} je angefangenem Monat (§ 152 AO).",
     "abgelaufen": "Die Frist {{frist}} ist vorbei. Das Finanzamt kann einen Verspätungszuschlag festsetzen — ab dem {{pflichtAb}} muss es das (mindestens {{mindestsatz}} je angefangenem Monat).",
     "zuschlagPflicht": "Die Abgabefrist {{frist}} ist um {{tage}} Tage überschritten. Seit dem {{pflichtAb}} muss das Finanzamt einen Verspätungszuschlag festsetzen (§ 152 Abs. 2 AO): mindestens {{mindestsatz}} je angefangenem Monat — reich die Erklärung bald ein.",
@@ -3418,6 +3430,14 @@
     "schliessen": "Schließen"
   },
   "verlauf": {
+    "einspruchEntwurf": {
+      "titel": "Einspruch-Entwurf",
+      "hinweis": "Ein Muster mit den Abweichungen aus dem Abgleich. Ergänze Name, Anschrift, Steuernummer und Begründung. Ob du Einspruch einlegst, entscheidest du; das ist keine Rechtsberatung.",
+      "kopieren": "Kopieren",
+      "kopiert": "Kopiert",
+      "datei": "Als Textdatei",
+      "kopierFehler": "Kopieren hat nicht geklappt. Markiere den Text und kopiere ihn von Hand."
+    },
     "titel": "Verlauf",
     "eyebrow": "Alle Steuerjahre",
     "eyebrowZeitraum": "Alle Steuerjahre · {{zeitraum}}",

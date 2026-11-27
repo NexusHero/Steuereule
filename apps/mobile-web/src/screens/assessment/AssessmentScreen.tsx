@@ -29,6 +29,7 @@ import { useApiFailureMessage } from '../../net/apiFailure'
 import { SaveFailedNotice } from '../shared/SaveFailedNotice'
 import { usePendingMutations } from '../shared/usePendingMutations'
 import { BackButton, BackButtonSpacer } from '../shared/BackButton'
+import { CalendarEntryButton } from '../shared/CalendarEntryButton'
 import { screenHeaderStyles, unclearableFieldStyles } from '../shared/screenStyles'
 import { triggerSaveErrorHaptic } from '../shared/saveFeedback'
 import { AssessmentDiffView } from '../history/AssessmentDiffView'
@@ -120,7 +121,7 @@ export function AssessmentScreen({ onDone = () => {}, onBack, taxYear = runningT
       <Text style={styles.heading} testID="bescheid-heading">{tr('bescheid.heading')}</Text>
       <Text style={styles.help}>{tr('bescheid.help')}</Text>
 
-      <FristBanner frist={response.frist} />
+      <FristBanner frist={response.frist} year={taxYear} />
       <SaveFailedNotice visible={saves.saveError !== null} error={saves.saveError} />
 
       {FIELDS.map((field) => (
@@ -170,7 +171,7 @@ function deadlineOf(frist: AssessmentResponseDto['frist']): AppealDeadlineDto | 
   return { endsOn: frist.deadlineEnd, remainingDays: frist.remainingDays, running: frist.running ?? frist.remainingDays >= 0 }
 }
 
-function FristBanner({ frist }: { readonly frist: AssessmentResponseDto['frist'] }) {
+function FristBanner({ frist, year }: { readonly frist: AssessmentResponseDto['frist']; readonly year: number }) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const s = makeStyles(t)
@@ -190,6 +191,19 @@ function FristBanner({ frist }: { readonly frist: AssessmentResponseDto['frist']
       ) : (
         <Text style={s.fristBody}>{tr('bescheid.frist.verbleibend', { tage: frist.remainingDays, ende: frist.deadlineEnd === null ? '' : isoDateToGerman(frist.deadlineEnd) })}</Text>
       )}
+      {!expired && frist.deadlineEnd !== null ? (
+        <CalendarEntryButton
+          entry={{
+            uid: `einspruchsfrist-${year}@steuereule`,
+            day: frist.deadlineEnd,
+            title: tr('fristen.kalenderTitel.einspruch', { jahr: year }),
+            description: tr('fristen.kalenderText.einspruch', { jahr: year }),
+            remindDaysBefore: [7, 2],
+          }}
+          fileName={`steuereule-einspruchsfrist-${year}`}
+          testID="bescheid-frist-kalender"
+        />
+      ) : null}
     </Card>
   )
 }

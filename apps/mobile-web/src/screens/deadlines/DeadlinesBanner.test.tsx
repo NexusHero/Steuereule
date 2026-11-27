@@ -125,6 +125,27 @@ describe('Banner (pure presentational)', () => {
     expect(screen.queryByText(/Verspätungszuschlag/)).toBeNull()
   })
 
+  it('offers the calendar entry for a deadline that lies ahead, on the day of the deadline', () => {
+    renderPure(WARNING, MANDATORY)
+    expect(screen.getByTestId('fristen-kalender').getAttribute('aria-label')).toBe('Abgabefrist Steuererklärung 2025 in den Kalender eintragen')
+  })
+
+  it('offers it for the voluntary deadline and before any obligation is known, while the day lies ahead', () => {
+    const first = renderPure(EXPIRED, VOLUNTARY)
+    expect(screen.getByTestId('fristen-kalender').getAttribute('aria-label')).toBe('Letzter Tag für die freiwillige Steuererklärung 2025 in den Kalender eintragen')
+    first.unmount()
+    renderPure(WARNING, { ...VOLUNTARY, familienstand: 'Verheiratet' })
+    expect(screen.getByTestId('fristen-kalender')).toBeTruthy()
+  })
+
+  it('offers no calendar entry for a deadline that has passed', () => {
+    for (const [dto, answers] of [[EXPIRED, MANDATORY], [EXPIRED_MANDATORY, MANDATORY], [EXPIRED, { ...VOLUNTARY, familienstand: 'Verheiratet' }]] as const) {
+      const view = renderPure(dto, answers)
+      expect(screen.queryByTestId('fristen-kalender')).toBeNull()
+      view.unmount()
+    }
+  })
+
   it('unklar (e.g. married): the date alone, in one line', () => {
     renderPure(EXPIRED, { ...VOLUNTARY, familienstand: 'Verheiratet' })
     expect(screen.getByTestId('fristen-banner-unklar').textContent).toBe('Abgabefrist 31.07.2026, falls du abgeben musst')

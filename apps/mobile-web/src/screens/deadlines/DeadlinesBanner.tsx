@@ -14,6 +14,7 @@ import { useDeadlinesControllerGetDeadlines, type DeadlinesResponseDto } from '@
 import { APP_NS } from '../../i18n/resources'
 import { runningTaxYear } from '../../config/taxYear'
 import { InlineLoadFailure } from '../shared/InlineLoadFailure'
+import { CalendarEntryButton } from '../shared/CalendarEntryButton'
 
 function formatDate(iso: string): string {
   const [year, month, tag] = iso.split('-')
@@ -63,21 +64,37 @@ export function Banner({ dto, taxYear, answers }: { readonly dto: DeadlinesRespo
   const mindestsatz = formatEuro(dto.lateFilingSurcharge.minimumRateEur)
   const pflichtAb = formatDate(mandatoryLateFilingSurchargeFrom(taxYear))
   const variant = variantFor(dto, taxYear, answers)
+  // A deadline that still lies ahead can go into the user's calendar; one that passed is no appointment.
+  const calendarWords = {
+    abgabe: { title: tr('fristen.kalenderTitel.abgabe', { jahr: taxYear }), description: tr('fristen.kalenderText.abgabe', { jahr: taxYear }) },
+    freiwillig: { title: tr('fristen.kalenderTitel.freiwillig', { jahr: taxYear }), description: tr('fristen.kalenderText.freiwillig', { jahr: taxYear }) },
+  }
+  const calendar = (day: string, kind: 'abgabe' | 'freiwillig') => (
+    <CalendarEntryButton
+      entry={{ uid: `${kind}frist-${taxYear}@steuereule`, day, ...calendarWords[kind], remindDaysBefore: [30, 7] }}
+      fileName={`steuereule-${kind}frist-${taxYear}`}
+      testID="fristen-kalender"
+    />
+  )
 
   switch (variant) {
     case 'freiwillig':
       return (
         <View style={styles.calmBanner} testID="fristen-banner-freiwillig">
           <Text style={styles.calmText}>{tr('fristen.freiwillig', { bis: formatDate(voluntaryFilingDeadlineFor(taxYear)) })}</Text>
+          {voluntaryFilingDeadlineFor(taxYear) >= dto.today ? calendar(voluntaryFilingDeadlineFor(taxYear), 'freiwillig') : null}
         </View>
       )
     case 'unklar':
       // Not known yet whether a return is due: no banner and no alarm, but the date itself is said in
       // one line. Someone who turns out to be obliged must not learn the deadline after it has passed.
       return (
-        <View style={styles.dateRow} testID="fristen-banner-unklar">
-          <Icon name="clock" size={16} color={t.color.tinte2} />
-          <Text style={styles.dateLine}>{tr('fristen.unklar', { frist })}</Text>
+        <View testID="fristen-banner-unklar">
+          <View style={styles.dateRow}>
+            <Icon name="clock" size={16} color={t.color.tinte2} />
+            <Text style={styles.dateLine}>{tr('fristen.unklar', { frist })}</Text>
+          </View>
+          {dto.filingDeadline >= dto.today ? calendar(dto.filingDeadline, 'abgabe') : null}
         </View>
       )
     case 'zuschlag':
@@ -96,6 +113,7 @@ export function Banner({ dto, taxYear, answers }: { readonly dto: DeadlinesRespo
       return (
         <View style={styles.banner} testID="fristen-banner-warnung">
           <Text style={styles.text}>{tr('fristen.warnung', { frist, tage: dto.remainingDays, mindestsatz })}</Text>
+          {calendar(dto.filingDeadline, 'abgabe')}
         </View>
       )
   }

@@ -1747,6 +1747,18 @@
     "adresseHeading": "Property address (for Anlage V)"
   },
   "fristen": {
+        "kalender": "Add to calendar",
+    "kalenderA11y": "Add {{titel}} to the calendar",
+    "kalenderTitel": {
+      "abgabe": "Filing deadline, tax return {{jahr}}",
+      "freiwillig": "Last day for the voluntary tax return {{jahr}}",
+      "einspruch": "Objection deadline, tax assessment {{jahr}}"
+    },
+    "kalenderText": {
+      "abgabe": "Last day on which the tax return {{jahr}} must have reached the tax office, if you have to file.",
+      "freiwillig": "Today is the last day to file the voluntary tax return {{jahr}}. After it the refund lapses.",
+      "einspruch": "Last day on which an objection to the tax assessment {{jahr}} must have reached the tax office (§ 355 AO)."
+    },
     "warnung": "Filing deadline: {{frist}} ({{tage}} days left). If you file late, the tax office can set a late-filing surcharge of at least {{mindestsatz}} per month begun (§ 152 AO).",
     "abgelaufen": "The deadline {{frist}} has passed. The tax office may set a late-filing surcharge — from {{pflichtAb}} it must (at least {{mindestsatz}} per started month).",
     "zuschlagPflicht": "The filing deadline {{frist}} passed {{tage}} days ago. Since {{pflichtAb}} the tax office must set a late-filing surcharge (§ 152 (2) AO): at least {{mindestsatz}} per started month — file soon.",
@@ -3418,6 +3430,14 @@
     "schliessen": "Close"
   },
   "verlauf": {
+    "einspruchEntwurf": {
+      "titel": "Objection draft",
+      "hinweis": "A template with the differences from the comparison, in German as the tax office needs it. Add your name, address, tax number and reasons. Whether you object is your decision; this is not legal advice.",
+      "kopieren": "Copy",
+      "kopiert": "Copied",
+      "datei": "As a text file",
+      "kopierFehler": "Copying did not work. Select the text and copy it by hand."
+    },
     "titel": "History",
     "eyebrow": "All tax years",
     "eyebrowZeitraum": "All tax years · {{zeitraum}}",

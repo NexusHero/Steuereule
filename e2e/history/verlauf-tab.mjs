@@ -17,6 +17,7 @@
 //
 // Run against a running stack in ATTACH mode (API_ORIGIN, WEB_ORIGIN, DATABASE_URL set).
 import { readFileSync } from 'node:fs'
+import { readFile } from 'node:fs/promises'
 import { launchBrowser, closeBrowser, newContextAtBreakpoint, guardAgainst429 } from '../harness/browser.mjs'
 import { startStack } from '../harness/stack.mjs'
 import { fail } from '../harness/rate-limit.mjs'
@@ -219,6 +220,26 @@ async function main() {
     if (!homeRow.startsWith('−') || !homeRow.includes('Homeoffice-Pauschale') || !homeRow.includes('⚠') || !homeRow.endsWith('56 €')) fail(`the row should be one diff line, it says ${homeRow}`)
     if (homeRow.includes('180 statt 210 Tage') || homeRow.includes('1.260') || homeRow.includes('wieder')) fail(`the values and the reason should wait behind the tap, the row says ${homeRow}`)
     if (!(await textOf('verlauf-abgleich-2024-einspruch')).startsWith('Einspruch · 19 Tage')) fail('the deadline chip should name the days left')
+    // While the deadline runs the letter is one tap away: what the Bescheid took away, with both figures, to
+    // copy or to take along as a file. It starts closed, so the receipt stays one phone screen.
+    if (await byId('verlauf-abgleich-2024-einspruch-entwurf-text').count()) fail('the objection draft should start closed')
+    await byId('verlauf-abgleich-2024-einspruch-entwurf-umschalten').click()
+    const letter = await textOf('verlauf-abgleich-2024-einspruch-entwurf-text')
+    if (!letter.includes('Einspruch gegen den Einkommensteuerbescheid 2024 vom')) fail(`the draft should name the Bescheid, it says ${letter.slice(0, 200)}`)
+    if (!/- Homeoffice-Pauschale: erklärt 1\.260\s€, im Bescheid 1\.080\s€ \(Abweichung 180\s€\)/.test(letter)) fail('the draft should list the cut position with both figures')
+    if (!letter.includes('[Steuernummer]') || !letter.includes('[Begründung]')) fail('the draft should leave the tax number and the reasons to the user')
+    if (!(await textOf('verlauf-abgleich-2024-einspruch-entwurf')).includes('keine Rechtsberatung')) fail('the draft should say that it is a template, not legal advice')
+    const [letterFile] = await Promise.all([page.waitForEvent('download', { timeout: 15_000 }), byId('verlauf-abgleich-2024-einspruch-entwurf-datei').click()])
+    if (letterFile.suggestedFilename() !== 'einspruch-2024.txt') fail(`unexpected file name ${letterFile.suggestedFilename()}`)
+    // On screen the amounts carry no-break spaces as plain ones and the last line break is not shown: the words are the same.
+    const sameWords = (text) => text.replace(/\u00A0/g, ' ').trimEnd()
+    const inFile = await readFile(await letterFile.path(), 'utf8')
+    if (sameWords(inFile) !== sameWords(letter)) fail(`the file should hold the letter that is on screen, it holds ${JSON.stringify(inFile.slice(0, 300))}`)
+    await ctx.grantPermissions(['clipboard-read', 'clipboard-write'], { origin: webOrigin })
+    await byId('verlauf-abgleich-2024-einspruch-entwurf-kopieren').click()
+    await until(() => textOf('verlauf-abgleich-2024-einspruch-entwurf-kopieren'), 'Kopiert', 'the draft should confirm that it was copied')
+    if ((await page.evaluate(() => navigator.clipboard.readText())) !== inFile) fail('the clipboard should hold the same letter as the file')
+    await byId('verlauf-abgleich-2024-einspruch-entwurf-umschalten').click()
     if (await byId('verlauf-abgleich-2024-nichtlinear').count()) fail('the note on the sum should wait behind its info icon')
     await byId('verlauf-abgleich-2024-nichtlinear-umschalten').click()
     await see('verlauf-abgleich-2024-nichtlinear')
@@ -472,6 +493,11 @@ async function main() {
       return route.fulfill(json({}))
     })
     await page.goto(`${webOrigin}/app/steuerjahr/2024/bescheid`, { waitUntil: 'networkidle' })
+    // The Einspruchsfrist goes into the user's calendar as a file: the last day, all day.
+    const [deadlineFile] = await Promise.all([page.waitForEvent('download', { timeout: 15_000 }), byId('bescheid-frist-kalender').click()])
+    const deadlineEntry = await readFile(await deadlineFile.path(), 'utf8')
+    if (deadlineFile.suggestedFilename() !== 'steuereule-einspruchsfrist-2024.ics') fail(`unexpected file name ${deadlineFile.suggestedFilename()}`)
+    if (!deadlineEntry.includes('DTSTART;VALUE=DATE:20261207') || !deadlineEntry.includes('SUMMARY:Einspruchsfrist Steuerbescheid 2024')) fail(`the calendar entry should be the last day of the Einspruchsfrist: ${deadlineEntry}`)
     await byId('bescheid-einspruch-datum').fill('12.11.2026')
     await byId('bescheid-einspruch-grund-betrag-falsch').click()
     await see('bescheid-einspruch-eingelegt-am')

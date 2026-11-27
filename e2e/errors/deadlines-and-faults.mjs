@@ -6,6 +6,7 @@
 //  * Failure states: a 500 on one endpoint, and the network going away, through `page.route()` and
 //    `context.setOffline()`. Checked: the honest error state with "Erneut versuchen", the
 //    "Speichern fehlgeschlagen" notice, and that nothing typed is lost.
+import { readFile } from 'node:fs/promises'
 import { launchBrowser, closeBrowser, newContextAtBreakpoint, guardAgainst429 } from '../harness/browser.mjs'
 import { startStack } from '../harness/stack.mjs'
 import { fail } from '../harness/rate-limit.mjs'
@@ -60,6 +61,12 @@ async function main() {
     await banner('freiwillig').waitFor({ state: 'visible', timeout: 10_000 })
     if ((await banner('abgelaufen').count()) + (await banner('zuschlag').count()) !== 0) fail('no surcharge alarm for a voluntary return')
     console.log(`[${TAG}] ✅ fristen-banner-freiwillig — tax year 2025 (Abgabefrist 31.07.2026 is past), voluntary return`)
+    // The day that still lies ahead goes into the user's calendar: the last day for the voluntary return.
+    const [entry] = await Promise.all([page.waitForEvent('download', { timeout: 15_000 }), page.locator('[data-testid="fristen-kalender"]').click()])
+    const calendar = await readFile(await entry.path(), 'utf8')
+    if (entry.suggestedFilename() !== 'steuereule-freiwilligfrist-2025.ics') fail(`unexpected calendar file name ${entry.suggestedFilename()}`)
+    if (!calendar.startsWith('BEGIN:VCALENDAR') || !calendar.includes('DTSTART;VALUE=DATE:20291231') || !calendar.includes('TRIGGER:-P30D')) fail(`the calendar entry should be 31.12.2029 with a reminder: ${calendar}`)
+    console.log(`[${TAG}] ✅ fristen-kalender — ${entry.suggestedFilename()}, all day on 31.12.2029, reminder 30 days before`)
 
     // H5: YEAR is a plain single employee — a voluntary return, so the near deadline stays calm.
     await stubDeadline('warnung', 60)
