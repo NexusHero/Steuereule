@@ -1,3 +1,4 @@
+import { roundToCents } from '../common/cents'
 import { incomeTax, isSupportedIncomeTaxYear, progressionClauseTax, soliExemptionLimits, solidaritaetszuschlag } from '../math/tarif'
 import { getTaxYearParameters } from '../math/tax-parameters'
 import { applyHouseholdTaxReduction } from '../domains/household-services'
@@ -462,7 +463,7 @@ function estimate(input: {
   const prepaid = (input.prepayments?.incomeTaxEur ?? 0) + (input.prepayments?.soliEur ?? 0)
   const withBusiness = input.business !== undefined || input.losses !== undefined || input.prepayments !== undefined
   // The § 35 credit carries cents; without business facts the result stays exactly as before ADR-0101.
-  const settle = (value: number) => (withBusiness ? cents(value) : value)
+  const settle = (value: number) => (withBusiness ? roundToCents(value) : value)
   return {
     kind: 'spanne',
     werbungskosten: input.werbungskosten,
@@ -534,7 +535,6 @@ export function homeOfficeAllowance(year: number, homeOfficeDays: number): numbe
 }
 
 /** Keeps a sum of euro amounts with cents free of float noise. */
-const cents = (value: number) => Math.round(value * 100) / 100
 
 function soli(incomeTaxAmount: number, year: number): number {
   if (!isSupportedIncomeTaxYear(year)) return 0

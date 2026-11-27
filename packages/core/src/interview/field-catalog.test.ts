@@ -237,9 +237,14 @@ describe('personal data with the owl (ADR-0091)', () => {
 
 describe('identifying numbers the owl writes with consent (ADR-0091)', () => {
   it('takes a Steuer-ID as 11 digits, also written with spaces, and nothing else', () => {
-    expect(validateFieldValue('profil', 'steuerId', '12 345 678 901')).toEqual(ok('12345678901'))
+    expect(validateFieldValue('profil', 'steuerId', '86 095 742 719')).toEqual(ok('86095742719'))
     expect(validateFieldValue('kind', 'taxId', '12345678901')).toEqual(ok('12345678901'))
     expect(validateFieldValue('profil', 'steuerId', '1200').ok).toBe(false)
+  })
+
+  it('refuses a Steuer-ID of the profile whose check digit or shape is wrong (§ 139b AO), a dummy like 00000000000 too', () => {
+    for (const dummy of ['00000000000', '12345678901', '86095742718']) expect(validateFieldValue('profil', 'steuerId', dummy).ok).toBe(false)
+    expect(validateFieldValue('profil', 'steuerId', '86095742719').ok).toBe(true)
   })
 
   it('takes a Steuernummer as up to 13 digits, slashes left out', () => {

@@ -36,7 +36,7 @@ const personal = (update: Awaited<ReturnType<typeof round>>) => update.pendingAc
 
 describe('personal data in the tool round (ADR-0091)', () => {
   it('refuses a Steuer-ID without consent and marks the refusal as one the consent would open', async () => {
-    const update = await round([draft({ screen: 'profil', field: 'steuerId', newValue: '12345678901' })])
+    const update = await round([draft({ screen: 'profil', field: 'steuerId', newValue: '86095742719' })])
     expect(personal(update)).toHaveLength(0)
     expect(update.rejectedDrafts).toEqual([expect.objectContaining({ screen: 'profil', consentRequired: true })])
   })
@@ -44,14 +44,14 @@ describe('personal data in the tool round (ADR-0091)', () => {
   it('prepares the Steuer-ID, the IBAN and the joint return with consent', async () => {
     const update = await round(
       [
-        draft({ screen: 'profil', field: 'steuerId', newValue: '12345678901' }),
+        draft({ screen: 'profil', field: 'steuerId', newValue: '86095742719' }),
         draft({ screen: 'stammdaten', field: 'iban', newValue: 'DE89370400440532013000' }),
         draft({ screen: 'kopplung', field: 'filingType', newValue: 'zusammen' }),
       ],
       { personalDataConsent: true },
     )
     expect(personal(update).map((a) => `${a.screen}.${a.field}=${a.newValue}`)).toEqual([
-      'profil.steuerId=12345678901',
+      'profil.steuerId=86095742719',
       'stammdaten.iban=DE89370400440532013000',
       'kopplung.filingType=zusammen',
     ])

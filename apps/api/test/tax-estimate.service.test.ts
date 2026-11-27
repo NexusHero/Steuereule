@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { AMOUNT_LATER, UNCERTAINTY_PER_ITEM } from '@steuereule/core'
 import type { CommuteInputs, CommuteRepository } from '../src/commute/commute.repository.js'
 import type { CrossBorderSalaryStatementRecord } from '../src/ch-salary-certificate/ch-salary-certificate.repository.js'
@@ -109,6 +109,16 @@ describe('SteuerschaetzungService', () => {
 
     expect(withPrepayments.result).toEqual({ from: without.result.from + 2400, to: without.result.to + 2400 })
     expect(withPrepayments).toMatchObject({ prepayments: 2400 })
+  })
+
+  it('keeps the result in exact cents when prepayments are added to an estimate that carries cents', async () => {
+    const { interview, service } = setup()
+    interview.seed('u', 2025, { ...EMPLOYED, 'vorauszahlungen-gate': 'Ja', 'vorauszahlungen-betrag': '500' })
+    const estimate = { kind: 'spanne', result: { from: -4347.06, to: -1337.12 } }
+    vi.spyOn(service as unknown as { calculate: () => Promise<unknown> }, 'calculate').mockResolvedValue(estimate)
+
+    // -4347.06 + 500 is -3847.0600000000004 in floating point.
+    expect(range(await service.getState('u', 2025)).result).toEqual({ from: -3847.06, to: -837.12 })
   })
 
   it('ignores a prepayment amount behind a „Nein“', async () => {

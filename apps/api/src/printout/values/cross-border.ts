@@ -1,5 +1,5 @@
 // Anlage N-Gre: the Swiss wage of a Grenzgänger from the Lohnausweis, one form per commuting spouse.
-import { annexNGreAmounts, type NGreRow } from '@steuereule/core'
+import { annexNGreAmounts, isDailyBenefitSource, type DailyBenefitSource, type NGreRow } from '@steuereule/core'
 import type { ChSalaryCertificateFacts, CommuteFacts, PrintoutFacts } from './facts.js'
 import { addLifeSituationWorkExpenses } from './life-situations.js'
 import { germanWages, integer, jointPersonB, optionalNumber, type Fields, type Section } from './section.js'
@@ -13,6 +13,10 @@ function premiumClarified(employeeChf: number | null, percent: string | null, em
   const share = integer(percent)
   if (share === null) return employeeChf === 0
   return share < 100 || integer(employerChf) !== null
+}
+
+function dailyBenefitSourceOf(ch: ChSalaryCertificateFacts): DailyBenefitSource | null {
+  return isDailyBenefitSource(ch.taggeldQuelle) ? ch.taggeldQuelle : null
 }
 
 function nbuvEmployeeChf(ch: ChSalaryCertificateFacts): number | null {
@@ -30,6 +34,7 @@ function nbuvEmployeeChf(ch: ChSalaryCertificateFacts): number | null {
     pkArbeitgeberChf: 0,
     steuerfreiesKrankentaggeldChf: optionalNumber(ch.steuerfreiesKrankentaggeldChf),
     steuerfreiesUnfalltaggeldChf: optionalNumber(ch.steuerfreiesUnfalltaggeldChf),
+    taggeldQuelle: dailyBenefitSourceOf(ch),
     nbuvArbeitgeberProzent: optionalNumber(ch.nbuvArbeitgeberProzent),
     rate: ch.rate,
   }).split.nbuv.employeeChf
@@ -90,6 +95,7 @@ export function nGreValues(
     pkArbeitgeberGesamtChf: optionalNumber(ch.pkArbeitgeberGesamtChf),
     steuerfreiesKrankentaggeldChf: optionalNumber(ch.steuerfreiesKrankentaggeldChf),
     steuerfreiesUnfalltaggeldChf: optionalNumber(ch.steuerfreiesUnfalltaggeldChf),
+    taggeldQuelle: dailyBenefitSourceOf(ch),
     rate: ch.rate!,
     krankentaggeldArbeitgeberProzent: optionalNumber(ch.krankentaggeldArbeitgeberProzent),
     krankentaggeldArbeitgeberChf: optionalNumber(ch.krankentaggeldArbeitgeberChf),

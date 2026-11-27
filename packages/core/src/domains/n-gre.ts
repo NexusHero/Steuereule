@@ -1,3 +1,5 @@
+import { dailyBenefitAmountField, type DailyBenefitSource } from './daily-benefit'
+
 const AHV_IV = 0.0505
 const EO = 0.0025
 const ALV = 0.011
@@ -26,6 +28,11 @@ export interface NGreInput {
    * also Zeile 76). Tax-free like the sickness benefit, but under the progression clause (§ 32b EStG).
    */
   readonly steuerfreiesUnfalltaggeldChf?: number | undefined
+  /**
+   * Where the daily benefit in Ziffer 8 came from. Under an answer that deducts nothing (Lohnfortzahlung, kein
+   * Taggeld) a stored amount is ignored: the money is wage. Absent = a record from before the question.
+   */
+  readonly taggeldQuelle?: DailyBenefitSource | null | undefined
   readonly rate: number
   /** Employer share of the Kollektivkrankentaggeld premium in percent (0–100); absent = 0. */
   readonly krankentaggeldArbeitgeberProzent?: number | undefined
@@ -103,8 +110,10 @@ function split(employeeChf: number, percent: number | undefined, employerChfGive
 }
 
 export function annexNGreAmounts(e: NGreInput): NGreAmounts {
-  const sickPay = e.steuerfreiesKrankentaggeldChf ?? 0
-  const accidentPay = e.steuerfreiesUnfalltaggeldChf ?? 0
+  // The one place the deduction is decided, so no reader can deduct what the answer says is wage.
+  const deducts = !e.taggeldQuelle || dailyBenefitAmountField(e.taggeldQuelle) !== null
+  const sickPay = deducts ? (e.steuerfreiesKrankentaggeldChf ?? 0) : 0
+  const accidentPay = deducts ? (e.steuerfreiesUnfalltaggeldChf ?? 0) : 0
   const basis = e.grossWageChf - e.familienzulagenChf - sickPay - accidentPay
   const ahv = Math.round(basis * AHV_IV)
   const eo = Math.round(basis * EO)
