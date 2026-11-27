@@ -1,7 +1,7 @@
 import { createElement, useRef, useState, type CSSProperties } from 'react'
 import { Platform, Pressable, Text, View, type TextStyle, type ViewStyle } from 'react-native'
 import type { InputAutoComplete } from '../lib/autoComplete'
-import { inkOnFunke, useTheme } from '../theme/useTheme'
+import { inkOnFunke, useTheme, controlLine } from '../theme/useTheme'
 import { Input } from './Input'
 
 export interface DateInputProps {
@@ -136,7 +136,7 @@ export function DateInput({ value, onChange, calendarLabel, accessibilityLabel, 
     justifyContent: 'center',
     backgroundColor: open ? t.color.funke : t.color.karte,
     borderWidth: t.space.kontur,
-    borderColor: t.color.linie,
+    borderColor: controlLine(t),
     borderRadius: t.radius.s,
   }
   const iconTone = open ? inkOnFunke(t) : t.color.tinte
@@ -164,7 +164,7 @@ export function DateInput({ value, onChange, calendarLabel, accessibilityLabel, 
     paddingHorizontal: 6,
     borderRadius: t.radius.s,
     borderWidth: t.space.kontur,
-    borderColor: t.color.linie,
+    borderColor: controlLine(t),
     backgroundColor: t.color.grund,
     alignItems: 'center',
     justifyContent: 'center',
@@ -217,7 +217,7 @@ export function DateInput({ value, onChange, calendarLabel, accessibilityLabel, 
   const dayButtonSelected: ViewStyle = {
     ...dayButtonBase,
     backgroundColor: t.color.funke,
-    borderColor: t.color.linie,
+    borderColor: controlLine(t),
   }
   const dayTextBase: TextStyle = {
     fontFamily: t.font.text,

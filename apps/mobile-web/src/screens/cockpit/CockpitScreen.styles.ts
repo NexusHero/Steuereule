@@ -2,6 +2,14 @@
 import { type ViewStyle, type TextStyle } from 'react-native'
 import { type UiTheme } from '@steuereule/ui'
 
+/** The longest figure that fits the hero size on a 375 px phone ("12.345 €"); a range is longer. */
+const HERO_FIGURE_MAX_CHARS = 9
+
+/** Whether a hero figure has to step down one type role to stay on one line. */
+export function isLongHeroFigure(figure: string): boolean {
+  return figure.length > HERO_FIGURE_MAX_CHARS
+}
+
 export function makeStyles(t: UiTheme) {
   const screen: ViewStyle = t.layout.overview.narrow
   const wideScreen: ViewStyle = t.layout.overview.wide

@@ -84,3 +84,21 @@ describe('WCAG 2.1 AA text-on-surface contrast (>= 4.5:1)', () => {
     expect(theme.dark.shadow.hart.shadowColor).not.toBe('#000000')
   })
 })
+
+// WCAG 1.4.11: the edge of a control and a mark that carries meaning need 3:1 against what they sit on.
+// `tinte2` is the control line (`controlLine` in @steuereule/ui); `linie` is a hairline between surfaces
+// and is deliberately quieter (under 2:1), so it never outlines a control on its own.
+const MIN_NON_TEXT_CONTRAST = 3
+
+describe('WCAG 2.1 AA non-text contrast (>= 3:1)', () => {
+  for (const mode of ['light', 'dark'] as const satisfies readonly ThemeMode[]) {
+    it(`${mode} mode: the control line clears 3:1 on every surface a control sits on`, () => {
+      const c = modeTokens(mode).color
+      for (const [name, surface] of Object.entries({ grund: c.grund, karte: c.karte, linieWeich: c.linieWeich, funkeWeich: c.funkeWeich, warnWeich: c.warnWeich, kiWeich: c.kiWeich })) {
+        const ratio = contrastRatio(c.tinte2, surface)
+        expect(ratio, `${mode}: control line on ${name} = ${ratio.toFixed(2)}:1`).toBeGreaterThanOrEqual(MIN_NON_TEXT_CONTRAST)
+      }
+    })
+  }
+})
+

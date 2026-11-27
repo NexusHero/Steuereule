@@ -1,5 +1,6 @@
 import type { TextStyle, ViewStyle } from 'react-native'
 import type { UiTheme } from '@steuereule/ui'
+import { controlLine } from '@steuereule/ui'
 
 /** The toggle pill of the chat composer (skills, turbo) in its off and on state. */
 export function pillStyles(t: UiTheme) {
@@ -9,7 +10,7 @@ export function pillStyles(t: UiTheme) {
       paddingHorizontal: t.space.s3,
       borderRadius: t.radius.m,
       borderWidth: 1,
-      borderColor: t.color.linie,
+      borderColor: controlLine(t),
       backgroundColor: t.color.karte,
       justifyContent: 'center',
     } as ViewStyle,

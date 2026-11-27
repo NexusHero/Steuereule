@@ -3,7 +3,7 @@ import { Pressable, Text, type TextStyle, type ViewStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { NavigationContext } from '@react-navigation/native'
 import type { Screen } from '@steuereule/core'
-import { useTheme, type UiTheme } from '@steuereule/ui'
+import { useTheme, type UiTheme, controlLine } from '@steuereule/ui'
 import { APP_NS } from '../../i18n/resources'
 import { formLineForField } from '../shared/formLineMapping'
 
@@ -54,7 +54,7 @@ function makeStyles(t: UiTheme) {
     paddingHorizontal: t.space.s4,
     borderRadius: t.radius.m,
     borderWidth: t.space.kontur,
-    borderColor: t.color.linie,
+    borderColor: controlLine(t),
     backgroundColor: t.color.karte,
     marginTop: t.space.s4,
     maxWidth: '100%',

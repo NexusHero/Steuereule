@@ -27,7 +27,7 @@ export interface ProfessionPickerProps {
 /**
  * "Was machst du beruflich?" — asked where the advice lives, not in the Minimal-Gate (ADR-0045:
  * value first). One tap, coarse groups only; the owl's profession tips follow from it.
- * Facts about the user, not AI output — so ink and lime, never violet.
+ * Facts about the user, not AI output — so ink and lime.
  */
 export function ProfessionPicker({ profession, onChoose, saving = false }: ProfessionPickerProps) {
   const t = useTheme()

@@ -5,7 +5,7 @@ import { ApiError, getApiClientBaseUrl, type LiveFormDto, type LiveFormInstanceD
 import type { Screen } from '@steuereule/core'
 import { useTranslation } from 'react-i18next'
 import type { TFunction } from 'i18next'
-import { Card, Chip, useTheme, type UiTheme } from '@steuereule/ui'
+import { Card, Chip, useTheme, type UiTheme, controlLine } from '@steuereule/ui'
 import { APP_NS } from '../../i18n/resources'
 import { useApiFailureMessage } from '../../net/apiFailure'
 import { maskTargetForAcroField } from '../shared/formLineMapping'
@@ -375,7 +375,7 @@ export function AcroFormLiveViewer({
                   color: t.color.tinte,
                   backgroundColor: t.color.karte,
                   borderWidth: 1,
-                  borderColor: t.color.linie,
+                  borderColor: controlLine(t),
                   borderRadius: t.radius.s,
                   paddingHorizontal: t.space.s2,
                   paddingVertical: 4,
@@ -587,7 +587,7 @@ function makeStyles(t: UiTheme) {
     paddingVertical: 4,
     borderRadius: t.radius.s,
     borderWidth: 1,
-    borderColor: t.color.linie,
+    borderColor: controlLine(t),
     backgroundColor: t.color.grund,
   }
   const controlBtnDisabled: ViewStyle = {

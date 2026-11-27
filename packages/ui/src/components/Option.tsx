@@ -2,7 +2,7 @@ import { Pressable, Text, View, type ViewStyle, type TextStyle, type StyleProp }
 import { type ReactNode } from 'react'
 import { hapticLight } from '../lib/haptics'
 import { minTouchHeight } from '../lib/touch-target'
-import { inkOnFunke, useTheme } from '../theme/useTheme'
+import { inkOnFunke, useTheme, controlLine } from '../theme/useTheme'
 
 export interface OptionProps {
   readonly selected?: boolean
@@ -25,11 +25,11 @@ export function Option({ selected = false, onPress, style, children, icon, testI
     padding: t.space.s4,
     paddingRight: t.space.s6,
     marginBottom: t.space.s3,
-    // Quiet rows: a thin tinte-2 contour at rest (≥ 3:1, WCAG 1.4.11). The chosen one is
+    // Quiet rows: a thin control line at rest (≥ 3:1, WCAG 1.4.11). The chosen one is
     // unmistakable — full lime, ink contour and a check mark — never a soft tint alone (~1.1:1).
     backgroundColor: selected ? t.color.funke : t.color.karte,
     borderWidth: t.space.kontur,
-    borderColor: selected ? t.color.tinte : t.color.tinte2,
+    borderColor: selected ? t.color.tinte : controlLine(t),
     borderRadius: t.radius.s,
   }
   const label: TextStyle = {

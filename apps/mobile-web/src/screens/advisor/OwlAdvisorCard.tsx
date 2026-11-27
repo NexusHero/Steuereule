@@ -12,7 +12,7 @@ export interface OwlAdvisorCardProps {
 
 /**
  * The advisor up front: the owl as the face of the Berater, right under the Cockpit's next step.
- * A held card (2px ink contour, hard shadow) with the ink owl — the brand mark, never violet:
+ * A held card (2px ink contour, hard shadow) with the ink owl — the brand mark:
  * this is an invitation to advice, not AI output itself, so it carries no ki colour. Its button
  * is `leise`, so the screen keeps exactly one primary action.
  */

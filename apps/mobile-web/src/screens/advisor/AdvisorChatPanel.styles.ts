@@ -1,6 +1,6 @@
 // How the conversation looks: bubbles, cards, notices, the composer dock.
 import { type TextStyle, type ViewStyle } from 'react-native'
-import { type UiTheme } from '@steuereule/ui'
+import { type UiTheme, controlLine } from '@steuereule/ui'
 import { CHAT_COLUMN_MAX_WIDTH } from './AdvisorChatPanel'
 
 export function makeStyles(t: UiTheme) {
@@ -45,7 +45,7 @@ export function makeStyles(t: UiTheme) {
       borderRadius: t.radius.pille,
       backgroundColor: t.color.funkeWeich,
       borderWidth: 1,
-      borderColor: t.color.linie,
+      borderColor: controlLine(t),
     } as ViewStyle,
     quickChipText: {
       flexShrink: 1,
@@ -149,7 +149,7 @@ export function makeStyles(t: UiTheme) {
       borderRadius: t.radius.pille,
       backgroundColor: t.color.grund,
       borderWidth: 1,
-      borderColor: t.color.linie,
+      borderColor: controlLine(t),
     } as ViewStyle,
     choicePillText: {
       flexShrink: 1,
@@ -282,7 +282,7 @@ export function makeStyles(t: UiTheme) {
       paddingHorizontal: t.space.s2,
       borderRadius: t.radius.s,
       borderWidth: 1,
-      borderColor: t.color.linie,
+      borderColor: controlLine(t),
       backgroundColor: t.color.karte,
     } as ViewStyle,
     undoButtonText: {
@@ -304,7 +304,7 @@ export function makeStyles(t: UiTheme) {
       paddingHorizontal: t.space.s2,
       borderRadius: t.radius.s,
       borderWidth: 1,
-      borderColor: t.color.linie,
+      borderColor: controlLine(t),
       backgroundColor: t.color.karte,
     } as ViewStyle,
     inspectMaskText: {
@@ -486,7 +486,7 @@ export function makeStyles(t: UiTheme) {
       flex: 1,
       backgroundColor: t.color.karte,
       borderWidth: 1,
-      borderColor: t.color.linie,
+      borderColor: controlLine(t),
       borderRadius: t.radius.m,
       paddingHorizontal: t.space.s3,
       paddingVertical: t.space.s3,

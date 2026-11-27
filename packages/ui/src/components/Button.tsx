@@ -2,7 +2,7 @@ import { Pressable, Text, type ViewStyle, type TextStyle, type StyleProp } from 
 import { type ReactNode } from 'react'
 import { hapticMedium } from '../lib/haptics'
 import { minTouchHeight } from '../lib/touch-target'
-import { inkOnFunke, useTheme } from '../theme/useTheme'
+import { inkOnFunke, useTheme, controlLine } from '../theme/useTheme'
 
 export type ButtonVariant = 'primaer' | 'ghost' | 'leise' | 'nacht'
 
@@ -34,8 +34,8 @@ export function Button({ variant = 'primaer', disabled = false, onPress, style, 
   const primary = variant === 'primaer'
   const border: Record<ButtonVariant, string> = {
     primaer: t.color.funke,
-    // tinte-2 keeps the control boundary at ≥ 3:1 (WCAG 1.4.11) while reading far quieter than ink.
-    ghost: t.color.tinte2,
+    // The control line keeps the boundary at ≥ 3:1 (WCAG 1.4.11) while reading far quieter than ink.
+    ghost: controlLine(t),
     leise: t.color.funkeWeich,
     nacht: t.color.nacht,
   }

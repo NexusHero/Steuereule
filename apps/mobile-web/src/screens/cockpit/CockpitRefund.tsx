@@ -6,7 +6,7 @@ import { formatEuro, formatEuroRange } from '@steuereule/core'
 import { useTaxEstimateControllerGet, type TaxEstimateDto } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
 import type { MissingTarget } from './estimateMissing'
-import { makeStyles } from './CockpitScreen.styles'
+import { isLongHeroFigure, makeStyles } from './CockpitScreen.styles'
 import { dismissEffect, observeMidpoint, type Effect } from './effectMemory'
 import { effectText, estimateMissingItems, missingItemText, refundText } from './cockpitFormat'
 
@@ -96,7 +96,7 @@ export function RefundHeadline({ year, estimate }: { readonly year: number; read
     <>
       <View testID="cockpit-erstattung">
         <Text style={styles.refundLabel}>{tr(label)}</Text>
-        <Text style={value.length > 9 ? styles.heroValueLong : styles.heroValue} testID="cockpit-erstattung-betrag">{value}</Text>
+        <Text style={isLongHeroFigure(value) ? styles.heroValueLong : styles.heroValue} testID="cockpit-erstattung-betrag">{value}</Text>
         {even ? <Text style={styles.effectLine} testID="cockpit-ausgeglichen">{tr('cockpit.hero.ausgeglichen')}</Text> : null}
       </View>
       {/* Outside the statement above: its euro amount is the change, not the estimate. */}

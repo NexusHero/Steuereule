@@ -16,7 +16,7 @@
   --karte: #ffffff;
   --tinte: #0f0f14;
   --tinte-2: #5c5c66;
-  --linie: #c6c6cc;        /* Konturen sind Tinte, 2px, mutig */
+  --linie: #c6c6cc;        /* Haarlinie zwischen Flächen; Bedienelemente nehmen --tinte-2 */
   --linie-weich: #e6e6e9;  /* Trennlinien innerhalb von Karten */
 
   /* Identität: Funke-Limette */

@@ -55,7 +55,7 @@ describe('App appearance integration', () => {
 
     fireEvent.click(screen.getByTestId('profil-darstellung-hell'))
     expect(localStorage.getItem(APPEARANCE_STORAGE_KEY)).toBe('light')
-    // theme.light.color.grund === '#f4f2e9' -> rgb(255, 255, 255)
+    // theme.light.color.grund === '#ffffff' -> rgb(255, 255, 255)
     expect(document.body.style.backgroundColor).toBe('rgb(255, 255, 255)')
   })
 

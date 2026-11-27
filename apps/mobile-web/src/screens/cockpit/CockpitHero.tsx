@@ -4,7 +4,7 @@ import { HerkunftsChip, useTheme } from '@steuereule/ui'
 import { formatEuro, UNCERTAINTY_PER_ITEM } from '@steuereule/core'
 import type { CockpitStatusDto, CockpitSummaryDto } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
-import { makeStyles } from './CockpitScreen.styles'
+import { isLongHeroFigure, makeStyles } from './CockpitScreen.styles'
 import { heroDisplay } from './cockpitFormat'
 
 export function NumericHero({
@@ -29,7 +29,7 @@ export function NumericHero({
   const display = heroDisplay(status, tr('cockpit.hero.nochOffen'))
   return (
     <>
-      <Text style={compact ? styles.heroValueSmall : display.length > 9 ? styles.heroValueLong : styles.heroValue} testID="cockpit-einkommen">
+      <Text style={compact ? styles.heroValueSmall : isLongHeroFigure(display) ? styles.heroValueLong : styles.heroValue} testID="cockpit-einkommen">
         {display}
       </Text>
       {status.kind === 'spanne' && (status.openItems ?? 0) > 0 ? (

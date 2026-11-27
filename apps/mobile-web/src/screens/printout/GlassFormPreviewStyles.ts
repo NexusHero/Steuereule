@@ -1,6 +1,7 @@
 // Styles of the Glas-Erklärung preview and its sections.
 import type { TextStyle, ViewStyle } from 'react-native'
 import type { UiTheme } from '@steuereule/ui'
+import { controlLine } from '@steuereule/ui'
 
 export function makeStyles(t: UiTheme) {
   const collapsedCard: ViewStyle = {
@@ -52,7 +53,7 @@ export function makeStyles(t: UiTheme) {
     paddingVertical: t.space.s2,
     borderRadius: t.radius.pille,
     borderWidth: t.space.kontur,
-    borderColor: t.color.linie,
+    borderColor: controlLine(t),
     backgroundColor: t.color.karte,
   }
   const toggleButtonText: TextStyle = {

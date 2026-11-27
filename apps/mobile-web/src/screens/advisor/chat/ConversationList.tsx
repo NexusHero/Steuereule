@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Pressable, Text, TextInput, View, type TextStyle, type ViewStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
-import { Button, inkOnFunke, useTheme, type UiTheme } from '@steuereule/ui'
+import { Button, inkOnFunke, useTheme, type UiTheme, controlLine } from '@steuereule/ui'
 import { APP_NS } from '../../../i18n/resources'
 import { StrokeIcon } from '../../../icons/StrokeIcon'
 import { makeSidePanelStyles } from './sidePanelStyles'
@@ -262,7 +262,7 @@ function makeStyles(t: UiTheme) {
       height: 26,
       borderRadius: 13,
       borderWidth: 1.5,
-      borderColor: t.color.linie,
+      borderColor: controlLine(t),
       backgroundColor: t.color.funke,
       alignItems: 'center',
       justifyContent: 'center',
@@ -289,7 +289,7 @@ function makeStyles(t: UiTheme) {
       paddingHorizontal: t.space.s3,
       borderRadius: t.radius.s,
       borderWidth: 1,
-      borderColor: t.color.linie,
+      borderColor: controlLine(t),
       backgroundColor: t.color.karte,
       fontFamily: t.font.text,
       fontSize: t.size.s,

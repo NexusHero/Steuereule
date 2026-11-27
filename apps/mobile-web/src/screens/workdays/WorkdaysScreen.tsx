@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { ScrollView, View, Text, Pressable, type ViewStyle, type TextStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
-import { Button, Chip, Feld, Input, inkOnFunke, useTheme, useBreakpoint, type UiTheme } from '@steuereule/ui'
+import { Button, Chip, Feld, Input, inkOnFunke, useTheme, useBreakpoint, type UiTheme, controlLine } from '@steuereule/ui'
 import {
   GERMAN_DATE_PATTERN,
   GERMAN_STATES,
@@ -678,7 +678,7 @@ function makeStyles(t: UiTheme) {
     paddingHorizontal: t.space.s2,
     paddingVertical: t.space.s2,
     borderWidth: t.space.kontur,
-    borderColor: t.color.linie,
+    borderColor: controlLine(t),
     borderRadius: t.radius.s,
     alignItems: 'center',
   }

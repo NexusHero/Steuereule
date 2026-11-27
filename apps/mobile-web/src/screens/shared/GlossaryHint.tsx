@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Pressable, Text, View, type TextStyle, type ViewStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
-import { useTheme, type UiTheme } from '@steuereule/ui'
+import { useTheme, type UiTheme, controlLine } from '@steuereule/ui'
 import type { EntryStepId } from '@steuereule/core'
 import { APP_NS } from '../../i18n/resources'
 
@@ -164,7 +164,7 @@ function makeStyles(t: UiTheme) {
     paddingHorizontal: t.space.s2,
     borderRadius: t.radius.pille,
     borderWidth: 1,
-    borderColor: t.color.linie,
+    borderColor: controlLine(t),
     backgroundColor: t.color.karte,
   }
   const toggleText: TextStyle = {

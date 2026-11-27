@@ -1,7 +1,7 @@
 /* ============================================================
-   Funke — Dunkles Design
+   Graphit — Dunkles Design
    Aktivierung: <html data-theme="dunkel">. Limette bleibt Limette;
-   Tinte und Flächen tauschen. KI-Violett bleibt exklusiv KI.
+   Tinte und Flächen tauschen. KI-Inhalt bleibt neutral.
    ============================================================ */
 [data-theme="dunkel"] {
   --grund: #0f0f14;

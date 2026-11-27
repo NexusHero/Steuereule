@@ -2,7 +2,7 @@ import { useRef, useState, type ReactNode } from 'react'
 import { Animated, Easing, Pressable, Text, View, type LayoutChangeEvent, type StyleProp, type TextStyle, type ViewStyle } from 'react-native'
 import { theme as motionTokens } from '@steuereule/tokens'
 import { hapticSelection } from '../lib/haptics'
-import { inkOnFunke, useTheme } from '../theme/useTheme'
+import { inkOnFunke, useTheme, controlLine } from '../theme/useTheme'
 import { useReducedMotion } from '../motion/useReducedMotion'
 
 export const TAB_ICON_PATHS = {
@@ -155,10 +155,10 @@ function makeStyles(t: ReturnType<typeof useTheme>) {
     // The measured tab x already includes the bar padding; a second offset here pushed the pill 6 px off its tab.
     left: 0,
     zIndex: 0,
-    // The active tab is unmistakable: a lime pill with an ink contour (soft lime alone is ~1.1:1).
+    // The active tab is unmistakable: a lime pill inside a control line (lime alone is ~1.3:1 on a white bar).
     backgroundColor: t.color.funke,
     borderWidth: BAR_BORDER,
-    borderColor: t.color.linie,
+    borderColor: controlLine(t),
     borderRadius: t.radius.pille,
   }
   const tab: ViewStyle = {
@@ -175,7 +175,7 @@ function makeStyles(t: ReturnType<typeof useTheme>) {
   const tabActiveFallback: ViewStyle = {
     backgroundColor: t.color.funke,
     borderWidth: BAR_BORDER,
-    borderColor: t.color.linie,
+    borderColor: controlLine(t),
   }
   const label: TextStyle = {
     fontFamily: t.font.text,
