@@ -1,4 +1,4 @@
-import { GERMAN_DATE_PATTERN, type IsoWeekday } from '@steuereule/core'
+import { fitsPrintBox, GERMAN_DATE_PATTERN, WORKPLACE_WIDTH_PT, type IsoWeekday } from '@steuereule/core'
 import { InvalidInputError } from '../common/domain-error.js'
 import { MEANS_OF_TRANSPORT, WORK_EXPENSE_AMOUNT_FIELDS, WORK_EXPENSE_NOTE_FIELDS, type CommuteInputs, type MeansOfTransport } from './commute.repository.js'
 
@@ -59,10 +59,19 @@ const textUpTo = (maxLength: number): FieldParser => (value, field) => {
   return trimmed === '' ? null : trimmed
 }
 
-/** An address is cut to its length, not refused. */
+/**
+ * The Arbeitsort takes only what its box on Anlage N / N-Gre prints: a full address would be stored and
+ * then block the printout after payment (real-data run). Refused here, with a message the user can act on.
+ */
+export function assertWorkplaceFitsFormLine(workplace: string | null | undefined): void {
+  if (workplace == null || (workplace.trim().length <= MAX_WORKPLACE_LENGTH && fitsPrintBox(workplace.trim(), WORKPLACE_WIDTH_PT))) return
+  throw new InvalidInputError('ARBEITSORT_ZU_LANG', 'Der Arbeitsort ist zu lang für die Zeile im Formular. Bitte nur Ort oder Firma und Ort eintragen, z. B. „Lörrach“ statt der ganzen Anschrift.')
+}
+
 const parseWorkplace: FieldParser = (value) => {
   const trimmed = value === null ? '' : value.trim()
-  return trimmed === '' ? null : trimmed.slice(0, MAX_WORKPLACE_LENGTH)
+  assertWorkplaceFitsFormLine(trimmed)
+  return trimmed === '' ? null : trimmed
 }
 
 const parseGermanDate: FieldParser = (value, field) => {
