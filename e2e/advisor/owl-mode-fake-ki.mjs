@@ -344,7 +344,7 @@ async function main() {
     }
     console.log(`[${TAG}] ✅ Row G — guest sees the account prompt, no chat`)
 
-    // Row H — an answer that arrives while the user is on another tab marks the owl in the navigation.
+    // Row I — an answer that arrives while the user is on another tab marks the owl in the navigation.
     {
       const away = await signIn(browser, webOrigin, user.email, 'l')
       await openEule(away.page)
@@ -358,16 +358,16 @@ async function main() {
       await ask(away.page, 'Was fehlt noch?')
       await away.page.getByRole('tab', { name: 'Cockpit' }).click()
       await away.page.locator('[data-testid="cockpit-bescheid"]').waitFor({ state: 'visible', timeout: 10_000 })
-      if ((await away.page.locator('[data-testid="tab-badge"]').count()) !== 0) fail('Row H: nothing waits before the answer arrived')
+      if ((await away.page.locator('[data-testid="tab-badge"]').count()) !== 0) fail('Row I: nothing waits before the answer arrived')
       release()
       const marked = away.page.getByRole('tab', { name: 'Eule, neue Antwort' })
       await marked.waitFor({ state: 'visible', timeout: 20_000 })
-      if ((await marked.locator('[data-testid="tab-badge"]').count()) !== 1) fail('Row H: the marked owl entry must carry the dot')
+      if ((await marked.locator('[data-testid="tab-badge"]').count()) !== 1) fail('Row I: the marked owl entry must carry the dot')
       await marked.click()
       await away.page.locator('[data-testid="tab-badge"]').waitFor({ state: 'detached', timeout: 10_000 })
       await away.ctx.close()
     }
-    console.log(`[${TAG}] ✅ Row H — an answer that arrived while the user was in the cockpit marks the owl; opening the owl reads it`)
+    console.log(`[${TAG}] ✅ Row I — an answer that arrived while the user was in the cockpit marks the owl; opening the owl reads it`)
 
     await user.api.dispose()
     console.log(`[${TAG}] PASS — Eulen-Modus flows with the fake KiPort verified (#450 1A, 5F).`)
