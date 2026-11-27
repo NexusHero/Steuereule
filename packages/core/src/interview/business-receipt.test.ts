@@ -182,6 +182,13 @@ describe('the booking draft of a receipt', () => {
     expect(draftOf(read(), { ...income, smallBusiness: true }).draft.lines[1]).toMatchObject({ account: account('revenue_kleinunternehmer'), taxKey: 'kleinunternehmer' })
   })
 
+  it('credits income at 0 % to the tax-free revenue account, not to the 19 % one', () => {
+    // A tax-free amount on "Umsätze 19 %" lands in the VAT return's taxable base although no VAT was charged.
+    const free = draftOf(read({ vatRate: 0 }), { ...ctx, direction: 'einnahme' })
+    expect(free.draft.lines[1]).toEqual({ account: account('revenue_free'), side: 'credit', amount: 11_900, taxKey: 'steuerfrei' })
+    expect(free.notes).toContain('Ohne Umsatzsteuer: gebucht als steuerfreier Umsatz. Bitte den Grund prüfen (z. B. Ausfuhr, § 13b UStG) und das Konto anpassen.')
+  })
+
   it('books a small asset up to 250 € net as an expense, a GWG up to 800 € net, and more as a linear asset', () => {
     // 119,00 € gross = 100,00 € net: at or below 250 € net it is an immediate expense
     const small = draftOf(read({ description: 'Monitor 24 Zoll' }))

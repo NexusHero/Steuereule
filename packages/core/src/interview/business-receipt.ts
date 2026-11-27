@@ -129,7 +129,9 @@ export function bookingDraftFromReceipt(
     text: read.description,
   }
   if (context.direction === 'einnahme') {
-    const revenue: AccountConceptId = context.smallBusiness ? 'revenue_kleinunternehmer' : rate === 7 ? 'revenue_7' : 'revenue_19'
+    // 0 % is tax-free revenue: on "Umsätze 19 %" it would enter the VAT return's taxable base although no VAT was charged.
+    const revenue: AccountConceptId = context.smallBusiness ? 'revenue_kleinunternehmer' : rate === 7 ? 'revenue_7' : rate === 0 ? 'revenue_free' : 'revenue_19'
+    if (!context.smallBusiness && rate === 0) notes.push('Ohne Umsatzsteuer: gebucht als steuerfreier Umsatz. Bitte den Grund prüfen (z. B. Ausfuhr, § 13b UStG) und das Konto anpassen.')
     const taxKey: BookingTaxKey = context.smallBusiness ? 'kleinunternehmer' : rate === 7 ? 'ust7' : rate === 0 ? 'steuerfrei' : 'ust19'
     return {
       ok: true,
