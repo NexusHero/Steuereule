@@ -130,13 +130,63 @@ describe('filedPositions', () => {
     expect(positions.erstattung).toBeUndefined()
   })
 
-  it('counts prepayments as credited tax and the church tax only once it is known', () => {
+  it('credits the wage tax only: prepayments are no „Anrechnung“ of the Bescheid, whichever way the estimate carried them', () => {
+    const breakdown = { persons: [{ incomeEur: 46_970, workExpensesEur: 1_230, creditedTaxEur: 7_457, grossWageEur: 48_200, wageTaxEur: 7_457 }], householdReductionEur: 0 }
+    // Carried inside the credit (business paths) and beside it (the other paths): the declared credit is the same.
+    for (const anrechnung of [7_457 + 500, 7_457]) {
+      const positions = filedPositions({
+        filingType: 'einzel',
+        people: { A: person(wage(48_200, 7_457, 9_880), null), B: null },
+        estimate: { ...ESTIMATE, anrechnung, prepayments: 500, breakdown },
+      })
+      expect(positions.anrechnung).toBe(7_457)
+    }
+  })
+
+  it('takes the wage of German and Swiss employers together and the Werbungskosten the estimate used', () => {
+    const positions = filedPositions({
+      filingType: 'einzel',
+      // The facts know only one of the two certificates; the estimate counted both.
+      people: { A: person(wage(20_000, 2_500, 4_000), { fahrtweg: 400, homeoffice: 0, arbeitsmittel: 0, sonstiges: 0 }), B: null },
+      estimate: { ...ESTIMATE, breakdown: { persons: [{ incomeEur: 107_000, workExpensesEur: 3_000, creditedTaxEur: 6_500, grossWageEur: 110_000, wageTaxEur: 6_500 }], householdReductionEur: 0 } },
+    })
+    expect(positions.bruttoarbeitslohnA).toBe(110_000)
+    // The total includes what the parts do not carry: the lump sum and half the accident insurance premium.
+    expect(positions.werbungskostenA).toBe(3_000)
+    expect(positions.fahrtwegA).toBe(400)
+    expect(positions.anrechnung).toBe(6_500)
+  })
+
+  it('declares § 35a once the estimate let it reduce the tax, and leaves it out otherwise', () => {
+    const base = { filingType: 'einzel', people: { A: person(null, null), B: null } } as const
+    expect(filedPositions({ ...base, estimate: { ...ESTIMATE, breakdown: { persons: [], householdReductionEur: 1_200 } } }).steuerermaessigung35a).toBe(1_200)
+    expect(filedPositions({ ...base, estimate: { ...ESTIMATE, breakdown: { persons: [], householdReductionEur: 0 } } }).steuerermaessigung35a).toBeUndefined()
+  })
+
+  it('takes both spouses from the breakdown in a joint return', () => {
+    const positions = filedPositions({
+      filingType: 'zusammen',
+      people: { A: person(null, null), B: person(null, null) },
+      estimate: {
+        ...ESTIMATE,
+        breakdown: {
+          persons: [
+            { incomeEur: 80_770, workExpensesEur: 1_230, creditedTaxEur: 9_990, grossWageEur: 82_000, wageTaxEur: 9_890 },
+            { incomeEur: 46_770, workExpensesEur: 1_230, creditedTaxEur: 10_520, grossWageEur: 48_000, wageTaxEur: 10_420 },
+          ],
+          householdReductionEur: 0,
+        },
+      },
+    })
+    expect(positions).toMatchObject({ bruttoarbeitslohnA: 82_000, werbungskostenA: 1_230, bruttoarbeitslohnB: 48_000, werbungskostenB: 1_230, anrechnung: 20_310 })
+  })
+
+  it('freezes the church tax only once it is known', () => {
     const withChurch = filedPositions({
       filingType: 'einzel',
       people: { A: person(wage(48_200, 7_457, 9_880), null), B: null },
-      estimate: { ...ESTIMATE, prepayments: 500, churchTax: { kind: 'spanne', due: { from: 900, to: 1_000 }, withheld: 950, capOnApplication: false } },
+      estimate: { ...ESTIMATE, churchTax: { kind: 'spanne', due: { from: 900, to: 1_000 }, withheld: 950, capOnApplication: false } },
     })
-    expect(withChurch.anrechnung).toBe(13_479)
     expect(withChurch.kirchensteuer).toBe(950)
     const none = filedPositions({ filingType: 'einzel', people: { A: person(null, null), B: null }, estimate: { ...ESTIMATE, churchTax: { kind: 'none' } } })
     expect(none.kirchensteuer).toBe(0)

@@ -1,6 +1,7 @@
 // Fast, no-DB tier (ADR-0004): the Abgabe (ADR-0098 §8) against fakes. The user prints the forms, files
 // them himself and says so in the cockpit; the version frozen then is what the Bescheid-Abgleich compares.
 import { describe, expect, it } from 'vitest'
+import type { CrossBorderSalaryStatementRecord } from '../src/ch-salary-certificate/ch-salary-certificate.repository.js'
 import type { CommuteInputs } from '../src/commute/commute.repository.js'
 import { ConflictError, InvalidInputError, NotFoundError } from '../src/common/domain-error.js'
 import { SubmissionService } from '../src/submission/submission.service.js'
@@ -59,7 +60,7 @@ function setup() {
     setFiledElsewhere: async () => undefined,
   }
   const history = new YearHistoryService(yearRepo, assessments, versions, taxCaseReaderOver({ wageTaxCertificate: lstb, salaryStatement: ch, commute: commutes, interview, coupling: link }), estimates, emptyYearHistoryInsights(commutes))
-  return { service, submissions, versions, assessments, audit, commutes, estimates, history, link, lstb, interview }
+  return { service, submissions, versions, assessments, audit, commutes, estimates, history, link, lstb, interview, ch }
 }
 
 const bescheid = (assessments: FakeAssessmentRepository, values: Record<string, number>) =>
@@ -91,6 +92,42 @@ describe('SubmissionService.submit', () => {
     expect(audit.all()).toContainEqual(expect.objectContaining({ userId: USER, action: 'WRITE', resource: 'abgabe' }))
   })
 
+  // Synthetic figures. The frozen declared side is the estimate's own result, not a second assembly of the facts.
+  const swissCertificate = (): CrossBorderSalaryStatementRecord => ({
+    userId: USER,
+    taxYear: YEAR,
+    fields: { 'bruttolohn-total': '60000', 'ahv-beitraege': '4000', 'berufliche-vorsorge': '3000', quellensteuer: '2000' } as CrossBorderSalaryStatementRecord['fields'],
+    bemerkungen: null,
+    saeule3aChf: null,
+    krankenkasseChf: null,
+    exchangeRateMonth: '2025-12',
+    exchangeRateValue: 1,
+    exchangeRateMode: 'amtlich',
+    exchangeRateReceiptId: null,
+    nGre: { familienzulagenChf: '0', krankentaggeldChf: '0', pkArbeitnehmerChf: '3000', pkArbeitgeberChf: '3000' } as unknown as CrossBorderSalaryStatementRecord['nGre'],
+  })
+
+  it('freezes the German and the Swiss wage of one year together, the Werbungskosten the estimate used and no prepayments as credit', async () => {
+    const { service, versions, estimates, ch, interview } = setup()
+    interview.seed(USER, YEAR, { job: 'Angestellt', familienstand: 'Ledig', ausland: 'Ja, in die Schweiz', kinder: 'Nein', 'ch-wohnsitz': 'Deutschland', 'ch-nichtrueckkehrtage': '0', 'vorauszahlungen-gate': 'Ja', 'vorauszahlungen-betrag': '9000' })
+    ch.seed(swissCertificate())
+
+    await service.submit(USER, YEAR, { submittedOn: '2026-03-14' }, TODAY)
+
+    const estimate = await estimates.getState(USER, YEAR)
+    if (estimate.kind !== 'spanne') throw new Error('the fixture must be estimable')
+    const person = estimate.breakdown!.persons![0]!
+    const positions = (await versions.findLatest(USER, YEAR))!.positions
+    // The German certificate says 48.200 €, the Swiss one 60.000 CHF at the rate 1: both are declared.
+    expect(person.grossWageEur).toBe(108_200)
+    expect(positions.bruttoarbeitslohnA).toBe(person.grossWageEur)
+    expect(positions.werbungskostenA).toBe(person.workExpensesEur)
+    // Wage tax and Swiss withholding tax, not the 9.000 € prepaid.
+    expect(positions.anrechnung).toBe(person.wageTaxEur)
+    expect(positions.anrechnung).toBeLessThan(9_000 + (person.wageTaxEur ?? 0))
+    expect(estimate.prepayments).toBe(9_000)
+  })
+
   it('a second submission replaces the version (a corrected return) and says so', async () => {
     const { service, versions, commutes } = setup()
     await service.submit(USER, YEAR, { submittedOn: '2026-03-14' }, TODAY)
@@ -117,7 +154,7 @@ describe('SubmissionService.submit', () => {
 
     const version = (await versions.findLatest(USER, YEAR))!
     expect(version.filingType).toBe('zusammen')
-    expect(version.positions).toMatchObject({ bruttoarbeitslohnA: 48_200, bruttoarbeitslohnB: 41_200, arbeitsmittelB: 210, werbungskostenB: 210 })
+    expect(version.positions).toMatchObject({ bruttoarbeitslohnA: 48_200, bruttoarbeitslohnB: 41_200, arbeitsmittelB: 210, werbungskostenB: 1_230 })
   })
 
   it.each([
