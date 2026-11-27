@@ -94,6 +94,9 @@ describe('the shell at tablet width', () => {
     const rail = screen.getByTestId('app-seitennavigation')
     expect(getComputedStyle(rail).width).toBe(`${SIDE_NAV_COMPACT_WIDTH}px`)
     expect(rail.textContent).not.toContain('SteuerEule')
+    // The owl alone carries the name, as an image; never as a label on a plain group.
+    expect(screen.getByRole('img', { name: 'SteuerEule' })).toBeTruthy()
+    expect(rail.querySelector('[aria-label]:not([role])')).toBeNull()
     expect(screen.getAllByRole('tab').map((el) => el.textContent)).toEqual(['Cockpit', 'Eule', 'Belege', 'Verlauf', 'Profil'])
     const scene = screen.getByTestId('stub-cockpit-props').closest('[style*="padding-left"]') as HTMLElement
     expect(scene.style.paddingLeft).toBe(`${SIDE_NAV_COMPACT_WIDTH}px`)

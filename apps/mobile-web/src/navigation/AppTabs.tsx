@@ -155,7 +155,9 @@ function AppNavigation({ state, navigation, insets }: BottomTabBarProps) {
   if (rail) {
     const compact = form === 'compact'
     const brand = (
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space.s3 }} accessibilityLabel={`${tr('brand.steuer')}${tr('brand.eule')}`}>
+      // Without the written name the owl alone is the brand: then it is an image with that name
+      // (a label on a plain group is not allowed, WCAG 4.1.2).
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space.s3 }} {...(compact ? { role: 'img' as const, 'aria-label': `${tr('brand.steuer')}${tr('brand.eule')}` } : {})}>
         <OwlMark size={30} variant="tinte" />
         {compact ? null : <Text style={{ ...t.type.cardTitle, color: t.color.tinte }}>{`${tr('brand.steuer')}${tr('brand.eule')}`}</Text>}
       </View>
