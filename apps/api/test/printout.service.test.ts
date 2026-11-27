@@ -110,7 +110,7 @@ describe('PrintoutService check before payment (ADR-0085)', () => {
 
 // Real-data run: the printout was blocked while the IBAN was missing, also for a return with a payment.
 describe('PrintoutService check: the IBAN is only needed for a refund', () => {
-  async function serviceWithout(result: { from: number; to: number } | null) {
+  async function serviceWithout(result: { from: number; to: number } | null, unlocked = false) {
     const profileRepo = new FakeProfileRepository()
     const masterDataRepo = new FakeMasterDataRepository()
     const lstbRepo = new FakeLstbRepository()
@@ -121,7 +121,7 @@ describe('PrintoutService check: the IBAN is only needed for a refund', () => {
     } as never)
     lstbRepo.seed({ userId: 'u3', taxYear: 2025, bruttoarbeitslohn: '42000', lohnsteuer: '6000', sozialversicherung: '8000' })
     const commuteRepo: CommuteRepository = { findForUserAndYear: async () => null, save: async (_u, _y, e) => e }
-    const unlockRepo: UnlockRepository = fixedUnlockRepository(false)
+    const unlockRepo: UnlockRepository = fixedUnlockRepository(unlocked)
     const paymentProvider: PaymentProvider = stubPaymentProvider('cs_3')
     const estimate = { getState: async () => (result === null ? { kind: 'offen' as const } : { kind: 'spanne' as const, result }) }
     return new PrintoutService(taxCaseReaderOver({ profile: profileRepo, masterData: masterDataRepo, wageTaxCertificate: lstbRepo, pension: new FakePensionRepository(), capital: new FakeCapitalRepository(), rental: new FakeRentalRepository(), salaryStatement: new FakeChSalaryCertificateRepository(), children: new FakeChildRepository(), coupling: new FakeLinkRepository(), interview: new FakeInterviewAnswerRepository(), commute: commuteRepo }), new FakeMarkingRepository(), new UnlockService(unlockRepo, paymentProvider, 'http://localhost:8081'), new AuditService(new FakeAuditRepository()), TEMPLATES_BASE, undefined, estimate as never)
@@ -131,6 +131,15 @@ describe('PrintoutService check: the IBAN is only needed for a refund', () => {
     const check = await (await serviceWithout({ from: -900, to: -400 })).check('u3', 2025)
     expect(check.missing).not.toContain('iban')
     expect(check.hints).toEqual(['iban'])
+  })
+
+  it('prints the paid return without an IBAN when the estimate is a payment: the gate agrees with the check', async () => {
+    const pdf = await (await serviceWithout({ from: -900, to: -400 }, true)).create('u3', 2025)
+    expect((await PDFDocument.load(pdf)).getPageCount()).toBeGreaterThan(0)
+  })
+
+  it('refuses the paid return without an IBAN while a refund is possible', async () => {
+    await expect((await serviceWithout({ from: -200, to: 300 }, true)).create('u3', 2025)).rejects.toMatchObject({ response: { missing: ['iban'] } })
   })
 
   it('keeps it a block while a refund is possible, or the estimate is open', async () => {
