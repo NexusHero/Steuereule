@@ -138,6 +138,8 @@ export function makeStyles(t: UiTheme) {
     color: t.color.tinte,
     fontVariant: ['tabular-nums'],
   }
+  /** The range under the big approximate figure: what the figure is the middle of. */
+  const heroRange: TextStyle = { ...t.type.cardTitle, color: t.color.tinte2, fontVariant: ['tabular-nums'], marginTop: t.space.s1 }
   const effectLine: TextStyle = {
     ...t.type.label,
     color: t.color.tinte2,
@@ -224,5 +226,5 @@ export function makeStyles(t: UiTheme) {
   }
   const runningYearText: TextStyle = { ...t.type.small, color: t.color.tinte }
 
-  return { progress, progressBar, progressSegment, progressSegmentDone, progressText, runningYearNotice, runningYearText, screen, wideScreen, appbar, appbarTitleReihe: appbarTitleRow, appbarTitle, jahrReihe: yearRow, uebernahmeZeile: takeoverRow, uebernahmeZeileText: takeoverRowText, heading, help, cta, elsterHint, secondaryCta, secondaryGrid, secondaryGridItem, missingBox, missingToggleRow, missingToggleText, missingChipRow, missingChip, missingChipText, berater, hero, emptyBlock, heroLabel, refundLabel, heroValue, heroValueLong, heroValueSmall, effectLine, heroDivider, openItems, offenePosten: openItemCount, refundLater, missingEstimateRow, missingEstimateText, gatedHeading, gatedBody, euleBannerCard, euleBannerRow, euleBannerCopy, euleBannerTitle, euleBannerEffect, euleBannerProvenance, euleBannerDismissBtn, euleBannerDismissText }
+  return { progress, progressBar, progressSegment, progressSegmentDone, progressText, runningYearNotice, runningYearText, screen, wideScreen, appbar, appbarTitleReihe: appbarTitleRow, appbarTitle, jahrReihe: yearRow, uebernahmeZeile: takeoverRow, uebernahmeZeileText: takeoverRowText, heading, help, cta, elsterHint, secondaryCta, secondaryGrid, secondaryGridItem, missingBox, missingToggleRow, missingToggleText, missingChipRow, missingChip, missingChipText, berater, hero, emptyBlock, heroLabel, refundLabel, heroValue, heroValueLong, heroValueSmall, heroRange, effectLine, heroDivider, openItems, offenePosten: openItemCount, refundLater, missingEstimateRow, missingEstimateText, gatedHeading, gatedBody, euleBannerCard, euleBannerRow, euleBannerCopy, euleBannerTitle, euleBannerEffect, euleBannerProvenance, euleBannerDismissBtn, euleBannerDismissText }
 }

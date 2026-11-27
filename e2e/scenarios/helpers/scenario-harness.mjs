@@ -335,6 +335,15 @@ async function assertRefundLeadsHero(page, label) {
   if ((await page.locator('[data-testid="cockpit-erstattung-betrag"]').count()) === 0) return
   if (!/\d/.test(await page.locator('[data-testid="cockpit-erstattung-betrag"]').innerText())) fail(`[${label}] the refund headline names no figure`)
   if (!(await page.locator('[data-testid="cockpit-einkommen"]').isVisible())) fail(`[${label}] the recorded income must stay visible below the refund headline`)
+  // A range is led by its approximate middle: that figure must lie inside the range shown under it.
+  const middle = page.locator('[data-testid="cockpit-erstattung-mitte"]')
+  if ((await middle.count()) === 0) return
+  const euros = (text) => [...text.matchAll(/\d{1,3}(?:\.\d{3})*/g)].map((m) => Number(m[0].replace(/\./g, '')))
+  const [approx] = euros(await middle.innerText())
+  const range = euros(await page.locator('[data-testid="cockpit-erstattung-betrag"]').innerText())
+  if (approx === undefined || range.length !== 2 || approx < Math.min(...range) || approx > Math.max(...range)) {
+    fail(`[${label}] the big figure (${approx}) must be the middle of the range under it (${range.join('–')})`)
+  }
 }
 
 /** Asserts Cockpit estimate direction, minAmount, or exact expectedText. */

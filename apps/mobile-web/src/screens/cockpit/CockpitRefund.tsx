@@ -91,12 +91,17 @@ export function RefundHeadline({ year, estimate }: { readonly year: number; read
       : result.from >= 0 || result.to <= 0
         ? formatEuroRange(Math.min(Math.abs(result.from), Math.abs(result.to)), Math.max(Math.abs(result.from), Math.abs(result.to)))
         : tr('cockpit.hero.ergebnisSpanne', { nachzahlung: formatEuro(Math.abs(result.from)), erstattung: formatEuro(result.to) })
+  // A range on one side of zero has a middle worth one glance: the big figure, marked as approximate,
+  // with the range itself right under it. A range from back payment to refund has no such middle.
+  const oneSided = result.from !== result.to && (result.from >= 0 || result.to <= 0)
+  const middle = oneSided && midpoint !== null ? tr('cockpit.hero.mitte', { betrag: formatEuro(Math.abs(midpoint)) }) : null
   return (
-    // One element reads as the whole statement („Voraussichtliche Erstattung 483–544 €“) for screen readers and checks.
+    // One element reads as the whole statement („Voraussichtliche Erstattung ca. 514 € 483–544 €“) for screen readers and checks.
     <>
       <View testID="cockpit-erstattung">
         <Text style={styles.refundLabel}>{tr(label)}</Text>
-        <Text style={isLongHeroFigure(value) ? styles.heroValueLong : styles.heroValue} testID="cockpit-erstattung-betrag">{value}</Text>
+        {middle !== null ? <Text style={styles.heroValue} testID="cockpit-erstattung-mitte">{middle}</Text> : null}
+        <Text style={middle !== null ? styles.heroRange : isLongHeroFigure(value) ? styles.heroValueLong : styles.heroValue} testID="cockpit-erstattung-betrag">{value}</Text>
         {even ? <Text style={styles.effectLine} testID="cockpit-ausgeglichen">{tr('cockpit.hero.ausgeglichen')}</Text> : null}
       </View>
       {/* Outside the statement above: its euro amount is the change, not the estimate. */}
