@@ -50,7 +50,7 @@ The owl is a tax advisor in a chat, built like Claude: the conversation is the m
 
 | Empty chat, case unchanged | `/grill-me`: an interview round | On a phone |
 |:---:|:---:|:---:|
-| <img src="images/screenshots/eule-leer.png" width="300" alt="An empty conversation offering the last analysis and quick starts" /> | <img src="images/screenshots/eule-grill-me.png" width="300" alt="The Berater-Interview asks four questions in one round, each with tappable answers" /> | <img src="images/screenshots/eule-handy.png" width="170" alt="The empty conversation on a phone: quick starts above the composer, the tab bar below" /> |
+| <img src="images/screenshots/eule-leer.png" width="300" alt="An empty conversation offering the last analysis and quick starts" /> | <img src="images/screenshots/eule-grill-me.png" width="300" alt="The Berater-Interview asks four questions in one round, each with tappable answers; below it the app notes that the answer named an amount the app did not compute" /> | <img src="images/screenshots/eule-handy.png" width="170" alt="The empty conversation on a phone: quick starts above the composer, the tab bar below" /> |
 | *Nothing changed since her last analysis: a link to it instead of a new one.* | *A round of questions with tappable answers.* | *Same chat, same rules, at 390 px.* |
 
 ---
