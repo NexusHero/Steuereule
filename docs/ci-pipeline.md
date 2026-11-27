@@ -43,7 +43,7 @@ available to a repository owned by a user account.
 | `e2e: scenarios — navigation, dialogs & chat` | `ci.yml` | yes |
 | `e2e: production compose stack + OWASP ZAP DAST (real Docker build)` | `ci.yml` | yes |
 | `e2e: scenario 09b (self-employment switch on)` | `ci.yml` | **add** |
-| `security: dependency audit (production deps)` | `security.yml` | **add** |
+| `security: dependency audit (all deps)` | `security.yml` | **add** |
 | `performance: load (many users, seeded accounts, think times)` | `load.yml` | **add** |
 | `static: opentofu validate` | `quality.yml` (moved from `deploy.yml`, ADR-0113) | **add** |
 
@@ -86,7 +86,7 @@ shows no skipped deploy jobs.
 | `security: secret scan (gitleaks)` | No secrets committed | `security.yml` |
 | `security: sast (semgrep)` | Custom NestJS/DSGVO SAST rules (`.semgrep.yml`) | `security.yml` |
 | `security: iac scan (trivy)` | No HIGH/CRITICAL IaC misconfig (Terraform, Dockerfiles, compose, k8s) | `security.yml` |
-| `security: dependency audit (production deps)` | No high/critical advisory in production dependencies (`pnpm audit --prod`); the few accepted build-tooling paths carry a reason and an expiry date in `scripts/checks/dependency-audit.mjs` | `security.yml` |
+| `security: dependency audit (all deps)` | No high/critical advisory in any dependency of the lockfile, development ones included (`pnpm audit`); an accepted path carries a reason and an expiry date in `scripts/checks/dependency-audit.mjs` | `security.yml` |
 | `security: dockerfile lint (hadolint)` | Dockerfiles are clean (non-root, no error-level findings) | `security.yml` |
 | `security: workflow lint (actionlint)` | The workflows themselves are valid | `security.yml` |
 | `supply-chain: build, SBOM, container scan & bundle gate` | Images build non-root, CycloneDX SBOMs (CRA/BSI TR-03183), Trivy HIGH/CRITICAL container scan, web bundle security + size budget | `ci.yml` |

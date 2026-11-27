@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { evaluate } from './dependency-audit.mjs'
+import { AUDIT_ARGS, evaluate } from './dependency-audit.mjs'
 
 const advisory = (severity, ...paths) => ({
   github_advisory_id: 'GHSA-test',
@@ -37,4 +37,8 @@ test('an expired rule blocks again and is reported', () => {
   const result = evaluate(report, '2027-03-01', rule('2027-01-01'))
   assert.equal(result.blocking.length, 1)
   assert.equal(result.expired.length, 1)
+})
+
+test('development dependencies are audited too', () => {
+  assert.ok(!AUDIT_ARGS.includes('--prod') && !AUDIT_ARGS.includes('-P'))
 })
