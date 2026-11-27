@@ -54,7 +54,7 @@ function makeStyles(t: UiTheme) {
     paddingHorizontal: t.space.s4,
     borderRadius: t.radius.m,
     borderWidth: t.space.kontur,
-    borderColor: t.color.tinte,
+    borderColor: t.color.linie,
     backgroundColor: t.color.karte,
     marginTop: t.space.s4,
     maxWidth: '100%',

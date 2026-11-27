@@ -26,10 +26,11 @@ export function NumericHero({
       ? tr('cockpit.hero.herkunftRechenweg', { count: status.openItems ?? 0, perItem: formatEuro(UNCERTAINTY_PER_ITEM) })
       : undefined
   const source = calculationPath === undefined ? { rule: tr('cockpit.hero.herkunftRegel') } : { rule: tr('cockpit.hero.herkunftRegel'), calculationPath }
+  const display = heroDisplay(status, tr('cockpit.hero.nochOffen'))
   return (
     <>
-      <Text style={compact ? styles.heroValueSmall : styles.heroValue} testID="cockpit-einkommen">
-        {heroDisplay(status, tr('cockpit.hero.nochOffen'))}
+      <Text style={compact ? styles.heroValueSmall : display.length > 9 ? styles.heroValueLong : styles.heroValue} testID="cockpit-einkommen">
+        {display}
       </Text>
       {status.kind === 'spanne' && (status.openItems ?? 0) > 0 ? (
         <Text style={styles.offenePosten}>{tr('cockpit.hero.offenePosten', { count: status.openItems ?? 0 })}</Text>

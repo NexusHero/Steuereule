@@ -39,8 +39,9 @@ export function historyStyles(t: UiTheme) {
   const lineLabel: TextStyle = { ...t.type.small, color: t.color.tinte, flexShrink: 1 }
   const lineValue: TextStyle = { ...t.type.metaLarge, color: t.color.tinte, textAlign: 'right', fontVariant: ['tabular-nums'] }
   const trend: TextStyle = { ...t.type.meta, color: t.color.tinte2 }
-  const trendGood: TextStyle = { color: t.color.ok }
-  const trendBad: TextStyle = { color: t.color.fehler }
+  // The sign and the arrow say which way a figure moved; Graphit keeps red and green for faults and confirmations.
+  const trendGood: TextStyle = { color: t.color.tinte }
+  const trendBad: TextStyle = { color: t.color.tinte }
   const hint: TextStyle = { ...t.type.small, color: t.color.tinte, backgroundColor: t.color.warnWeich, borderRadius: t.radius.s, paddingHorizontal: t.space.s3, paddingVertical: 6 }
   return {
     card, cardTitle, sub, eyebrow, muted, body, strong, figure, pill, pillBescheid, pillSchaetzung, pillOffen, pillEck, pillLstb, pillAbweichung, owlBox, owlLabel, owlText,

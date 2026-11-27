@@ -21,7 +21,7 @@ export function makeStyles(t: UiTheme) {
     marginBottom: t.space.s3,
     padding: t.space.s3,
     backgroundColor: t.color.karte,
-    borderWidth: 1.5,
+    borderWidth: t.space.kontur,
     borderColor: t.color.funke,
   }
   const uploadHeaderRow: ViewStyle = {
@@ -39,7 +39,7 @@ export function makeStyles(t: UiTheme) {
     marginBottom: t.space.s4,
     padding: t.space.s3,
     backgroundColor: t.color.karte,
-    borderWidth: 1.5,
+    borderWidth: t.space.kontur,
     borderColor: t.color.warn,
   }
   const missingHeaderRow: ViewStyle = {

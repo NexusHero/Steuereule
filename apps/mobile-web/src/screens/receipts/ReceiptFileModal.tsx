@@ -132,8 +132,8 @@ export function ReceiptFileModal({ receiptId, fileName, onClose }: ReceiptFileMo
 function makeStyles(t: UiTheme) {
   const modalCard: ViewStyle = {
     marginVertical: t.space.s4,
-    borderWidth: 2,
-    borderColor: t.color.tinte,
+    borderWidth: t.space.kontur,
+    borderColor: t.color.linie,
     gap: t.space.s3,
   }
   const header: ViewStyle = {

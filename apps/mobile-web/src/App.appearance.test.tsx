@@ -27,8 +27,8 @@ describe('App appearance integration', () => {
     fireEvent.click(screen.getByLabelText('Weiter zur App'))
     await screen.findByText('Einloggen')
 
-    // theme.dark.color.grund === '#12140c' -> rgb(18, 20, 12)
-    expect(document.body.style.backgroundColor).toBe('rgb(18, 20, 12)')
+    // theme.dark.color.grund === '#0f0f14' -> rgb(15, 15, 20)
+    expect(document.body.style.backgroundColor).toBe('rgb(15, 15, 20)')
     expect(localStorage.getItem(APPEARANCE_STORAGE_KEY)).toBeNull()
   })
 
@@ -51,12 +51,12 @@ describe('App appearance integration', () => {
     render(<App />)
 
     await screen.findByText('Lena Hoffmann')
-    expect(document.body.style.backgroundColor).toBe('rgb(18, 20, 12)')
+    expect(document.body.style.backgroundColor).toBe('rgb(15, 15, 20)')
 
     fireEvent.click(screen.getByTestId('profil-darstellung-hell'))
     expect(localStorage.getItem(APPEARANCE_STORAGE_KEY)).toBe('light')
-    // theme.light.color.grund === '#f4f2e9' -> rgb(244, 242, 233)
-    expect(document.body.style.backgroundColor).toBe('rgb(244, 242, 233)')
+    // theme.light.color.grund === '#f4f2e9' -> rgb(255, 255, 255)
+    expect(document.body.style.backgroundColor).toBe('rgb(255, 255, 255)')
   })
 
   it('AppleG inherits theme.color.tinte in dark mode and honors explicit color prop', async () => {
@@ -71,7 +71,7 @@ describe('App appearance integration', () => {
     )
 
     expect(pathSpy).toHaveBeenCalledTimes(2)
-    expect(pathSpy.mock.calls[0]?.[0]).toMatchObject({ fill: '#f2f0e3' })
+    expect(pathSpy.mock.calls[0]?.[0]).toMatchObject({ fill: '#ededf3' })
     expect(pathSpy.mock.calls[0]?.[0]).not.toMatchObject({ fill: '#1d1d1f' })
     expect(pathSpy.mock.calls[1]?.[0]).toMatchObject({ fill: '#123456' })
   })

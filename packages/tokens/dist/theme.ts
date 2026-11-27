@@ -8,12 +8,12 @@ export const theme = {
     "s5": 24,
     "s6": 32,
     "s7": 48,
-    "kontur": 1.5
+    "kontur": 1
   },
   "radius": {
-    "s": 12,
-    "m": 20,
-    "lg": 28,
+    "s": 10,
+    "m": 14,
+    "lg": 20,
     "pille": 999
   },
   "size": {
@@ -27,15 +27,15 @@ export const theme = {
     "held": 52
   },
   "font": {
-    "display": "\"Bricolage Grotesque\", \"Arial Black\", sans-serif",
-    "text": "\"Schibsted Grotesk\", system-ui, sans-serif",
-    "mono": "\"Space Mono\", ui-monospace, Menlo, monospace"
+    "display": "\"Geist\", system-ui, -apple-system, \"Segoe UI\", sans-serif",
+    "text": "\"Geist\", system-ui, -apple-system, \"Segoe UI\", sans-serif",
+    "mono": "\"Geist Mono\", ui-monospace, Menlo, monospace"
   },
   "weight": {
-    "normal": "450",
-    "halb": "600",
-    "fett": "700",
-    "schwer": "700"
+    "normal": "400",
+    "halb": "500",
+    "fett": "600",
+    "schwer": "600"
   },
   "leading": {
     "eng": 1.05,
@@ -71,24 +71,24 @@ export const theme = {
   },
   "light": {
     "color": {
-      "grund": "#f4f2e9",
+      "grund": "#ffffff",
       "karte": "#ffffff",
-      "tinte": "#191b12",
-      "tinte2": "#5f6353",
-      "linie": "#191b12",
-      "linieWeich": "#dedacb",
+      "tinte": "#0f0f14",
+      "tinte2": "#5c5c66",
+      "linie": "#c6c6cc",
+      "linieWeich": "#e6e6e9",
       "funke": "#c9f229",
       "funkeHell": "#e3fa8d",
       "funkeWeich": "#f2fbd2",
       "funkeTinte": "#40510a",
-      "nacht": "#191b12",
-      "nachtKarte": "#262a1c",
-      "nachtText": "#f4f2e9",
-      "nachtLinie": "#3d4230",
-      "ki": "#7c5cff",
-      "kiWeich": "#ece6ff",
-      "kiLinie": "#c7b8ff",
-      "kiTinte": "#4630b8",
+      "nacht": "#0f0f14",
+      "nachtKarte": "#191920",
+      "nachtText": "#ededf3",
+      "nachtLinie": "#2a2a31",
+      "ki": "#5c5c66",
+      "kiWeich": "#f3f3f5",
+      "kiLinie": "#d4d4da",
+      "kiTinte": "#3a3a44",
       "ok": "#1f9d55",
       "okWeich": "#def4e2",
       "warn": "#e07b00",
@@ -98,67 +98,67 @@ export const theme = {
     },
     "shadow": {
       "hart": {
-        "shadowColor": "#191b12",
+        "shadowColor": "#0f0f14",
         "shadowOffset": {
-          "width": 3,
-          "height": 3
+          "width": 0,
+          "height": 0
         },
         "shadowOpacity": 1,
         "shadowRadius": 0,
-        "elevation": 3
+        "elevation": 0
       },
       "hartS": {
-        "shadowColor": "#191b12",
+        "shadowColor": "#0f0f14",
         "shadowOffset": {
-          "width": 2,
-          "height": 2
+          "width": 0,
+          "height": 0
         },
         "shadowOpacity": 1,
         "shadowRadius": 0,
-        "elevation": 2
+        "elevation": 0
       },
       "hartL": {
-        "shadowColor": "#191b12",
+        "shadowColor": "#0f0f14",
         "shadowOffset": {
-          "width": 5,
-          "height": 5
+          "width": 0,
+          "height": 0
         },
         "shadowOpacity": 1,
         "shadowRadius": 0,
-        "elevation": 5
+        "elevation": 0
       },
       "ki": {
-        "shadowColor": "#7c5cff",
+        "shadowColor": "#5c5c66",
         "shadowOffset": {
-          "width": 4,
-          "height": 4
+          "width": 0,
+          "height": 0
         },
         "shadowOpacity": 1,
         "shadowRadius": 0,
-        "elevation": 4
+        "elevation": 0
       }
     }
   },
   "dark": {
     "color": {
-      "grund": "#12140c",
-      "karte": "#1d2013",
-      "tinte": "#f2f0e3",
-      "tinte2": "#a9ad99",
-      "linie": "#f2f0e3",
-      "linieWeich": "#33371f",
+      "grund": "#0f0f14",
+      "karte": "#191920",
+      "tinte": "#ededf3",
+      "tinte2": "#a0a0ac",
+      "linie": "#3c3c45",
+      "linieWeich": "#27272e",
       "funke": "#c9f229",
       "funkeHell": "#e3fa8d",
-      "funkeWeich": "#2b3312",
+      "funkeWeich": "#262d10",
       "funkeTinte": "#d9f077",
-      "nacht": "#0d0f08",
-      "nachtKarte": "#1d2013",
-      "nachtText": "#f4f2e9",
-      "nachtLinie": "#313624",
-      "ki": "#7c5cff",
-      "kiWeich": "#251d4f",
-      "kiLinie": "#5a48c4",
-      "kiTinte": "#cfc4ff",
+      "nacht": "#191920",
+      "nachtKarte": "#23232b",
+      "nachtText": "#ededf3",
+      "nachtLinie": "#33333c",
+      "ki": "#5c5c66",
+      "kiWeich": "#1f1f27",
+      "kiLinie": "#3c3c45",
+      "kiTinte": "#c8c8d2",
       "ok": "#1f9d55",
       "okWeich": "#143020",
       "warn": "#e07b00",
@@ -168,44 +168,44 @@ export const theme = {
     },
     "shadow": {
       "hart": {
-        "shadowColor": "#f2f0e3",
+        "shadowColor": "#ededf3",
         "shadowOffset": {
-          "width": 3,
-          "height": 3
+          "width": 0,
+          "height": 0
         },
         "shadowOpacity": 1,
         "shadowRadius": 0,
-        "elevation": 3
+        "elevation": 0
       },
       "hartS": {
-        "shadowColor": "#f2f0e3",
+        "shadowColor": "#ededf3",
         "shadowOffset": {
-          "width": 2,
-          "height": 2
+          "width": 0,
+          "height": 0
         },
         "shadowOpacity": 1,
         "shadowRadius": 0,
-        "elevation": 2
+        "elevation": 0
       },
       "hartL": {
-        "shadowColor": "#f2f0e3",
+        "shadowColor": "#ededf3",
         "shadowOffset": {
-          "width": 5,
-          "height": 5
+          "width": 0,
+          "height": 0
         },
         "shadowOpacity": 1,
         "shadowRadius": 0,
-        "elevation": 5
+        "elevation": 0
       },
       "ki": {
-        "shadowColor": "#7c5cff",
+        "shadowColor": "#5c5c66",
         "shadowOffset": {
-          "width": 4,
-          "height": 4
+          "width": 0,
+          "height": 0
         },
         "shadowOpacity": 1,
         "shadowRadius": 0,
-        "elevation": 4
+        "elevation": 0
       }
     }
   }

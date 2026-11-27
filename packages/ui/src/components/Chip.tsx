@@ -43,7 +43,7 @@ export function Chip({ variant = 'standard', active = false, onPress, style, chi
     backgroundColor: bg,
     borderWidth: t.space.kontur,
     borderColor: active ? t.color.tinte : variant === 'pro' ? t.color.nacht : t.color.tinte2,
-    borderRadius: t.radius.pille,
+    borderRadius: t.radius.s,
   }
   const label: TextStyle = { fontSize: t.size.s, fontWeight: t.weight.fett, color: fg, flexShrink: 1 }
 

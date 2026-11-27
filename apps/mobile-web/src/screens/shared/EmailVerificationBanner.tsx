@@ -54,7 +54,7 @@ function makeStyles(t: UiTheme) {
   const verifyBanner: ViewStyle = {
     alignSelf: 'stretch',
     backgroundColor: t.color.warnWeich,
-    borderWidth: 2,
+    borderWidth: t.space.kontur,
     borderColor: t.color.warn,
     borderRadius: t.radius.s,
     padding: t.space.s4,
@@ -68,7 +68,7 @@ function makeStyles(t: UiTheme) {
   const verifiedBanner: ViewStyle = {
     alignSelf: 'stretch',
     backgroundColor: t.color.okWeich,
-    borderWidth: 2,
+    borderWidth: t.space.kontur,
     borderColor: t.color.ok,
     borderRadius: t.radius.s,
     padding: t.space.s4,

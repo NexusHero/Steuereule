@@ -3577,7 +3577,7 @@
       "erstattung": {
         "label": "Refund",
         "titel": "Refund and back payment",
-        "sub": "For the household. Red dashed: cut by the tax office."
+        "sub": "For the household. Dashed: cut by the tax office or still an estimate."
       },
       "werbungskosten": {
         "label": "Work expenses",

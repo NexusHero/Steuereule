@@ -238,7 +238,7 @@ function makeStyles(t: UiTheme) {
   }
   const conflictCard: ViewStyle = {
     marginBottom: t.space.s4,
-    borderWidth: 2,
+    borderWidth: t.space.kontur,
     borderColor: t.color.warn,
     backgroundColor: t.color.warnWeich,
     gap: t.space.s2,
@@ -259,8 +259,8 @@ function makeStyles(t: UiTheme) {
   }
   const draftBannerCard: ViewStyle = {
     marginBottom: t.space.s4,
-    borderWidth: 2,
-    borderColor: t.color.tinte,
+    borderWidth: t.space.kontur,
+    borderColor: t.color.linie,
     gap: t.space.s2,
   }
   const draftHeader: ViewStyle = {

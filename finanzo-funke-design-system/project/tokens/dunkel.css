@@ -4,24 +4,24 @@
    Tinte und Flächen tauschen. KI-Violett bleibt exklusiv KI.
    ============================================================ */
 [data-theme="dunkel"] {
-  --grund: #12140c;
-  --karte: #1d2013;
-  --tinte: #f2f0e3;
-  --tinte-2: #a9ad99;
-  --linie: #f2f0e3;
-  --linie-weich: #33371f;
+  --grund: #0f0f14;
+  --karte: #191920;
+  --tinte: #ededf3;
+  --tinte-2: #a0a0ac;
+  --linie: #3c3c45;
+  --linie-weich: #27272e;
 
-  --funke-weich: #2b3312;
+  --funke-weich: #262d10;
   --funke-tinte: #d9f077;
 
-  --nacht: #0d0f08;
-  --nacht-karte: #1d2013;
-  --nacht-text: #f4f2e9;
-  --nacht-linie: #313624;
+  --nacht: #191920;
+  --nacht-karte: #23232b;
+  --nacht-text: #ededf3;
+  --nacht-linie: #33333c;
 
-  --ki-weich: #251d4f;
-  --ki-linie: #5a48c4;
-  --ki-tinte: #cfc4ff;
+  --ki-weich: #1f1f27;
+  --ki-linie: #3c3c45;
+  --ki-tinte: #c8c8d2;
 
   --ok-weich: #143020;
   --warn-weich: #392a10;

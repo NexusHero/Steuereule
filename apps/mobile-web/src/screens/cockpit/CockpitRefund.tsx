@@ -96,7 +96,7 @@ export function RefundHeadline({ year, estimate }: { readonly year: number; read
     <>
       <View testID="cockpit-erstattung">
         <Text style={styles.refundLabel}>{tr(label)}</Text>
-        <Text style={styles.heroValue} testID="cockpit-erstattung-betrag">{value}</Text>
+        <Text style={value.length > 9 ? styles.heroValueLong : styles.heroValue} testID="cockpit-erstattung-betrag">{value}</Text>
         {even ? <Text style={styles.effectLine} testID="cockpit-ausgeglichen">{tr('cockpit.hero.ausgeglichen')}</Text> : null}
       </View>
       {/* Outside the statement above: its euro amount is the change, not the estimate. */}

@@ -678,14 +678,14 @@ function makeStyles(t: UiTheme) {
     paddingHorizontal: t.space.s2,
     paddingVertical: t.space.s2,
     borderWidth: t.space.kontur,
-    borderColor: t.color.tinte,
+    borderColor: t.color.linie,
     borderRadius: t.radius.s,
     alignItems: 'center',
   }
   const weekdayActive: ViewStyle = { backgroundColor: t.color.funke }
   const weekdayText: TextStyle = { ...t.type.small, color: t.color.tinte }
   const weekdayActiveText: TextStyle = { ...t.type.label, color: inkOnFunke(t) }
-  const resultBlock: ViewStyle = { marginTop: t.space.s4, padding: t.space.s4, backgroundColor: t.color.karte, borderWidth: t.space.kontur, borderColor: t.color.tinte, borderRadius: t.radius.s }
+  const resultBlock: ViewStyle = { marginTop: t.space.s4, padding: t.space.s4, backgroundColor: t.color.karte, borderWidth: t.space.kontur, borderColor: t.color.linie, borderRadius: t.radius.s }
   const resultRow: ViewStyle = { flexDirection: 'row', justifyContent: 'space-between', marginBottom: t.space.s2 }
   const resultLabel: TextStyle = { ...t.type.body, color: t.color.tinte2 }
   const resultValue: TextStyle = { ...t.type.figure, color: t.color.tinte, fontVariant: ['tabular-nums'] }

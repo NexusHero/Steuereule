@@ -156,7 +156,7 @@ function makeStyles(t: ReturnType<typeof useTheme>) {
     // The active tab is unmistakable: a lime pill with an ink contour (soft lime alone is ~1.1:1).
     backgroundColor: t.color.funke,
     borderWidth: BAR_BORDER,
-    borderColor: t.color.tinte,
+    borderColor: t.color.linie,
     borderRadius: t.radius.pille,
   }
   const tab: ViewStyle = {
@@ -173,7 +173,7 @@ function makeStyles(t: ReturnType<typeof useTheme>) {
   const tabActiveFallback: ViewStyle = {
     backgroundColor: t.color.funke,
     borderWidth: BAR_BORDER,
-    borderColor: t.color.tinte,
+    borderColor: t.color.linie,
   }
   const label: TextStyle = {
     fontFamily: t.font.text,

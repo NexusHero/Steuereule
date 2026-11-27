@@ -137,7 +137,7 @@ function makeStyles(t: UiTheme) {
   const contextValue: TextStyle = { ...t.type.body, color: t.color.tinte }
   const warning: ViewStyle = {
     backgroundColor: t.color.warnWeich,
-    borderWidth: 2,
+    borderWidth: t.space.kontur,
     borderColor: t.color.warn,
     borderRadius: t.radius.s,
     padding: t.space.s4,

@@ -31,7 +31,7 @@ export function Button({ variant = 'primaer', disabled = false, onPress, style, 
   // screen. Secondary variants sit flat, with a quiet contour (ghost) or none at all.
   const primary = variant === 'primaer'
   const border: Record<ButtonVariant, string> = {
-    primaer: t.color.tinte,
+    primaer: t.color.funke,
     // tinte-2 keeps the control boundary at ≥ 3:1 (WCAG 1.4.11) while reading far quieter than ink.
     ghost: t.color.tinte2,
     leise: t.color.funkeWeich,
@@ -48,7 +48,7 @@ export function Button({ variant = 'primaer', disabled = false, onPress, style, 
     backgroundColor: bg[variant],
     borderWidth: t.space.kontur,
     borderColor: border[variant],
-    borderRadius: t.radius.pille,
+    borderRadius: t.radius.m,
     ...(primary ? t.shadow.hart : null),
   }
   const label: TextStyle = {

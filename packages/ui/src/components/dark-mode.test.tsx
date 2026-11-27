@@ -8,10 +8,10 @@ import { Sticker } from './Sticker'
 import { TabBar } from './TabBar'
 
 // jsdom serializes hex colours onto CSSStyleDeclaration.color as rgb(r, g, b).
-const DARK_INK_ON_FUNKE_RGB = 'rgb(13, 15, 8)'
-const DARK_TINTE_RGB = 'rgb(242, 240, 227)'
-const DARK_TINTE2_RGB = 'rgb(169, 173, 153)'
-const LIGHT_TINTE_RGB = 'rgb(25, 27, 18)'
+const DARK_INK_ON_FUNKE_RGB = 'rgb(25, 25, 32)'
+const DARK_TINTE_RGB = 'rgb(237, 237, 243)'
+const DARK_TINTE2_RGB = 'rgb(160, 160, 172)'
+const LIGHT_TINTE_RGB = 'rgb(15, 15, 20)'
 
 describe('dark mode readability on lime (funke) surfaces', () => {
   it('uses dark ink on funke backgrounds in dark mode so text keeps >= 4.5:1 contrast', () => {

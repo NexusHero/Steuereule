@@ -375,7 +375,7 @@ export function AcroFormLiveViewer({
                   color: t.color.tinte,
                   backgroundColor: t.color.karte,
                   borderWidth: 1,
-                  borderColor: t.color.tinte,
+                  borderColor: t.color.linie,
                   borderRadius: t.radius.s,
                   paddingHorizontal: t.space.s2,
                   paddingVertical: 4,
@@ -618,7 +618,7 @@ function makeStyles(t: UiTheme) {
     borderRadius: t.radius.s,
     backgroundColor: t.color.funkeWeich,
     borderWidth: 1,
-    borderColor: t.color.tinte,
+    borderColor: t.color.linie,
   }
   const inspectorTitle: TextStyle = {
     ...t.type.label,

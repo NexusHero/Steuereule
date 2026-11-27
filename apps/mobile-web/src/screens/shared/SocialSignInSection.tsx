@@ -88,7 +88,7 @@ function makeStyles(t: UiTheme) {
     alignItems: 'center',
     justifyContent: 'center',
     gap: t.space.s2,
-    borderWidth: 1.5,
+    borderWidth: t.space.kontur,
     borderStyle: 'dashed',
     borderColor: t.color.linieWeich,
     borderRadius: t.radius.pille,

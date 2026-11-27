@@ -48,7 +48,7 @@ describe('Input', () => {
   it('renders mono/tabular-nums for tax-number fields', () => {
     renderUi(<Input value="12 345" onChange={() => {}} testID="mono" mono />)
     const el = screen.getByTestId('mono') as HTMLElement
-    expect(el.style.fontFamily).toContain('Space Mono')
+    expect(el.style.fontFamily).toContain('Geist Mono')
   })
 
   it('suppresses default browser focus outline and forwards onFocus / onBlur', () => {

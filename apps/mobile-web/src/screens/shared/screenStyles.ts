@@ -20,7 +20,7 @@ export function unclearableFieldStyles(t: UiTheme) {
     paddingHorizontal: t.space.s3,
     paddingVertical: t.space.s2,
     borderWidth: t.space.kontur,
-    borderColor: t.color.tinte,
+    borderColor: t.color.linie,
     borderRadius: t.radius.s,
   }
   const unclearLabel: TextStyle = { ...t.type.small, color: t.color.tinte2 }

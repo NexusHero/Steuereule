@@ -13,8 +13,8 @@ export function Sticker({ style, children, testID }: StickerProps) {
   const container: ViewStyle = {
     alignSelf: 'flex-start',
     backgroundColor: t.color.funke,
-    borderWidth: 2,
-    borderColor: t.color.tinte,
+    borderWidth: t.space.kontur,
+    borderColor: t.color.linie,
     borderRadius: t.radius.s,
     paddingVertical: 2,
     paddingHorizontal: 10,

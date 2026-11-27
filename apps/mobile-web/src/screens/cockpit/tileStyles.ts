@@ -25,7 +25,7 @@ export function tileStyles(t: UiTheme) {
     opacity: 0.92,
   }
   const cardActive: ViewStyle = {
-    borderColor: t.color.tinte,
+    borderColor: t.color.linie,
   }
   const tileHeaderRow: ViewStyle = {
     flexDirection: 'row',

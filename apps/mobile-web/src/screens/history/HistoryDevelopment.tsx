@@ -183,16 +183,16 @@ function Legend({ metric, showChange }: { readonly metric: HistoryMetric; readon
   const segs = LEGEND[metric]
   if (segs) for (const k of segs) items.push({ key: k, swatch: { backgroundColor: segmentColor(t, k) }, text: tr(`verlauf.segment.${k}`) })
   if (metric === 'erstattung') {
-    items.push({ key: 'ok', swatch: { backgroundColor: t.color.ok }, text: tr('verlauf.legende.erstattungBescheid') })
-    items.push({ key: 'cut', swatch: { backgroundColor: t.color.fehlerWeich, borderColor: t.color.fehler, borderStyle: 'dashed' }, text: tr('verlauf.legende.gekuerzt') })
-    items.push({ key: 'est', swatch: { backgroundColor: t.color.warnWeich, borderColor: t.color.warn, borderStyle: 'dashed' }, text: tr('verlauf.legende.schaetzung') })
+    items.push({ key: 'ok', swatch: { backgroundColor: t.color.tinte }, text: tr('verlauf.legende.erstattungBescheid') })
+    items.push({ key: 'cut', swatch: { backgroundColor: 'transparent', borderColor: t.color.tinte2, borderStyle: 'dashed' }, text: tr('verlauf.legende.gekuerzt') })
+    items.push({ key: 'est', swatch: { backgroundColor: t.color.linieWeich, borderColor: t.color.tinte2, borderStyle: 'dashed' }, text: tr('verlauf.legende.schaetzung') })
   }
-  if (metric === 'werbungskosten') items.push({ key: 'pausch', swatch: { ...s.swatchLine, borderTopColor: t.color.fehler, borderStyle: 'dashed' }, text: tr('verlauf.legende.pauschbetrag') })
+  if (metric === 'werbungskosten') items.push({ key: 'pausch', swatch: { ...s.swatchLine, borderTopColor: t.color.tinte2, borderStyle: 'dashed' }, text: tr('verlauf.legende.pauschbetrag') })
   if (metric === 'steuerquote') {
     items.push({ key: 'eff', swatch: { backgroundColor: t.color.tinte, borderRadius: 5 }, text: tr('verlauf.legende.effektiv') })
-    items.push({ key: 'grenz', swatch: { backgroundColor: t.color.ki, borderRadius: 5 }, text: tr('verlauf.legende.grenz') })
+    items.push({ key: 'grenz', swatch: { backgroundColor: t.color.tinte2, borderRadius: 5 }, text: tr('verlauf.legende.grenz') })
   }
-  if (showChange) items.push({ key: 'wechsel', swatch: { ...s.swatchLine, width: 2, height: 12, borderTopWidth: 0, borderLeftWidth: 2, borderLeftColor: t.color.ki, borderStyle: 'dashed' }, text: tr('verlauf.legende.wechsel') })
+  if (showChange) items.push({ key: 'wechsel', swatch: { ...s.swatchLine, width: 2, height: 12, borderTopWidth: 0, borderLeftWidth: 2, borderLeftColor: t.color.tinte2, borderStyle: 'dashed' }, text: tr('verlauf.legende.wechsel') })
   return (
     <View style={s.legend}>
       {items.map((i) => (

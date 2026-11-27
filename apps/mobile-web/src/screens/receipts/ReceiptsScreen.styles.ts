@@ -127,7 +127,7 @@ export function makeStyles(t: UiTheme) {
   const filledText: TextStyle = { ...t.type.small, color: t.color.tinte2, marginTop: t.space.s1 }
   const conflictBox: ViewStyle = {
     marginTop: t.space.s3,
-    borderWidth: 2,
+    borderWidth: t.space.kontur,
     borderColor: t.color.warn,
     borderRadius: t.radius.s,
     padding: t.space.s3,

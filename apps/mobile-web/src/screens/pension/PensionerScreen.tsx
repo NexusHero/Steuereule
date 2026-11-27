@@ -146,7 +146,7 @@ function makeStyles(t: UiTheme) {
     paddingHorizontal: t.space.s3,
     paddingVertical: t.space.s2,
     borderWidth: t.space.kontur,
-    borderColor: t.color.tinte,
+    borderColor: t.color.linie,
     borderRadius: t.radius.s,
     marginBottom: t.space.s2,
   }

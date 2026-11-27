@@ -52,7 +52,7 @@ export function makeStyles(t: UiTheme) {
     paddingVertical: t.space.s2,
     borderRadius: t.radius.pille,
     borderWidth: t.space.kontur,
-    borderColor: t.color.tinte,
+    borderColor: t.color.linie,
     backgroundColor: t.color.karte,
   }
   const toggleButtonText: TextStyle = {

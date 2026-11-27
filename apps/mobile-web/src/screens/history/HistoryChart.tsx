@@ -22,7 +22,7 @@ const RIGHT = 8
 const Y0 = 28
 const BOTTOM = 8
 
-/** The colour of each part of a stacked bar, from the Funke tokens (the mock's `--steuer`, `--sv`, `--wk-*`). */
+/** The colour of each part of a stacked bar: ink steps plus lime for what stays (Graphit: no red, green or violet in the plot). */
 export function segmentColor(t: UiTheme, kind: SegmentKind): string {
   switch (kind) {
     case 'netto':
@@ -34,9 +34,9 @@ export function segmentColor(t: UiTheme, kind: SegmentKind): string {
     case 'fahrtweg':
       return t.color.tinte
     case 'homeoffice':
-      return t.color.ki
+      return t.color.tinte2
     case 'arbeitsmittel':
-      return t.color.warn
+      return t.color.linie
     case 'sonstiges':
       return t.color.linieWeich
     case 'summeLautBescheid':
@@ -98,7 +98,7 @@ export function HistoryChart({ model, selectedYear, onSelectYear, accessibilityL
               width={barWidth}
               height={h}
               fill={segmentColor(t, seg.kind)}
-              stroke={c.estimated ? t.color.warn : t.color.linie}
+              stroke={c.estimated ? t.color.tinte2 : t.color.karte}
               strokeWidth={c.estimated ? 1.5 : 1}
               {...(c.estimated ? { strokeDasharray: '3 2' } : {})}
             />
@@ -108,7 +108,7 @@ export function HistoryChart({ model, selectedYear, onSelectYear, accessibilityL
         return (
           <>
             {rects}
-            {lineY === null ? null : <Line x1={slot(i) + 4} x2={slot(i) + slotWidth - 4} y1={lineY} y2={lineY} stroke={t.color.fehler} strokeWidth={2} strokeDasharray="4 3" />}
+            {lineY === null ? null : <Line x1={slot(i) + 4} x2={slot(i) + slotWidth - 4} y1={lineY} y2={lineY} stroke={t.color.tinte2} strokeWidth={1.5} strokeDasharray="4 3" />}
             {label(i, Math.min(top, lineY ?? top) - 6, c.label)}
           </>
         )
@@ -118,8 +118,8 @@ export function HistoryChart({ model, selectedYear, onSelectYear, accessibilityL
         const yh = y(Math.max(c.from, c.to))
         return (
           <>
-            <Line x1={cx(i)} x2={cx(i)} y1={base} y2={yl} stroke={t.color.warn} strokeWidth={1.5} strokeDasharray="2 3" />
-            <Rect x={left} y={yh} width={barWidth} height={Math.max(yl - yh, 3)} fill={`url(#${patternId})`} stroke={t.color.warn} strokeWidth={1.5} strokeDasharray="3 2" />
+            <Line x1={cx(i)} x2={cx(i)} y1={base} y2={yl} stroke={t.color.tinte2} strokeWidth={1.5} strokeDasharray="2 3" />
+            <Rect x={left} y={yh} width={barWidth} height={Math.max(yl - yh, 3)} fill={`url(#${patternId})`} stroke={t.color.tinte2} strokeWidth={1.5} strokeDasharray="3 2" />
             {label(i, yh - 6, c.label)}
           </>
         )
@@ -133,12 +133,12 @@ export function HistoryChart({ model, selectedYear, onSelectYear, accessibilityL
         return (
           <>
             {yd !== null && c.declared !== null && c.declared > c.value ? (
-              <Rect x={left} y={yd} width={barWidth} height={yv - yd} fill={t.color.fehlerWeich} stroke={t.color.fehler} strokeWidth={1} strokeDasharray="3 2" />
+              <Rect x={left} y={yd} width={barWidth} height={yv - yd} fill="none" stroke={t.color.tinte2} strokeWidth={1.5} strokeDasharray="3 2" />
             ) : null}
-            <Rect x={left} y={barTop} width={barWidth} height={barHeight} fill={c.value < 0 ? t.color.fehler : t.color.ok} stroke={t.color.linie} strokeWidth={1} />
+            <Rect x={left} y={barTop} width={barWidth} height={barHeight} fill={c.year === selectedYear ? t.color.tinte : t.color.linie} rx={2} />
             {/* A back payment is labelled under its bar: above the baseline it ran into the neighbouring years. */}
             {label(i, c.value < 0 ? yv + 13 : top - 6, c.label)}
-            {c.cutLabel === null ? null : label(i, top - 18, c.cutLabel, t.color.fehler, true)}
+            {c.cutLabel === null ? null : label(i, top - 18, c.cutLabel, t.color.tinte2, true)}
           </>
         )
       }
@@ -149,13 +149,13 @@ export function HistoryChart({ model, selectedYear, onSelectYear, accessibilityL
             {exact ? (
               <Circle cx={cx(i)} cy={y(c.from)} r={4.5} fill={t.color.tinte} />
             ) : (
-              <Rect x={cx(i) - 7} y={y(c.to) - 3} width={14} height={y(c.from) - y(c.to) + 6} rx={4} fill={`url(#${patternId})`} stroke={t.color.warn} strokeWidth={1.5} />
+              <Rect x={cx(i) - 7} y={y(c.to) - 3} width={14} height={y(c.from) - y(c.to) + 6} rx={4} fill={`url(#${patternId})`} stroke={t.color.tinte2} strokeWidth={1.5} />
             )}
             {label(i, exact ? y(c.from) + 18 : y(c.to) - 10, c.label)}
             {c.marginal === null ? null : (
               <>
-                <Circle cx={cx(i)} cy={y(c.marginal)} r={3} fill={t.color.ki} />
-                {label(i, y(c.marginal) - 8, `${Math.round(c.marginal)}%`, t.color.kiTinte)}
+                <Circle cx={cx(i)} cy={y(c.marginal)} r={3} fill={t.color.tinte2} />
+                {label(i, y(c.marginal) - 8, `${Math.round(c.marginal)}%`, t.color.tinte2)}
               </>
             )}
           </>
@@ -174,7 +174,7 @@ export function HistoryChart({ model, selectedYear, onSelectYear, accessibilityL
       lines.push(
         <Line key={`q${c.year}`} x1={cx(i - 1)} y1={y((prev.from + prev.to) / 2)} x2={cx(i)} y2={y((c.from + c.to) / 2)} stroke={t.color.tinte} strokeWidth={2} {...(c.from !== c.to || prev.from !== prev.to ? { strokeDasharray: '4 3' } : {})} />,
       )
-      if (prev.marginal !== null && c.marginal !== null) lines.push(<Line key={`m${c.year}`} x1={cx(i - 1)} y1={y(prev.marginal)} x2={cx(i)} y2={y(c.marginal)} stroke={t.color.ki} strokeWidth={1.5} />)
+      if (prev.marginal !== null && c.marginal !== null) lines.push(<Line key={`m${c.year}`} x1={cx(i - 1)} y1={y(prev.marginal)} x2={cx(i)} y2={y(c.marginal)} stroke={t.color.tinte2} strokeWidth={1.5} />)
     })
   }
 
@@ -184,8 +184,8 @@ export function HistoryChart({ model, selectedYear, onSelectYear, accessibilityL
         <Svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} accessibilityRole="image" accessibilityLabel={accessibilityLabel} testID={`${testID}-svg`}>
           <Defs>
             <Pattern id={patternId} width={5} height={5} patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
-              <Rect width={5} height={5} fill={t.color.warnWeich} />
-              <Line x1={0} y1={0} x2={0} y2={5} stroke={t.color.warn} strokeWidth={2} />
+              <Rect width={5} height={5} fill={t.color.karte} />
+              <Line x1={0} y1={0} x2={0} y2={5} stroke={t.color.linie} strokeWidth={2} />
             </Pattern>
           </Defs>
           {model.ticks.map((tick) => (
@@ -197,14 +197,14 @@ export function HistoryChart({ model, selectedYear, onSelectYear, accessibilityL
             </G>
           ))}
           {model.columns.map((c, i) =>
-            c.year === selectedYear ? <Rect key={`sel${c.year}`} x={slot(i) + 2} y={Y0 - 4} width={slotWidth - 4} height={y1 - Y0 + 8} rx={8} fill={t.color.funkeWeich} /> : null,
+            c.year === selectedYear ? <Rect key={`sel${c.year}`} x={slot(i) + 2} y={Y0 - 4} width={slotWidth - 4} height={y1 - Y0 + 8} rx={8} fill={t.color.linieWeich} opacity={0.5} /> : null,
           )}
           {model.filingTypeChanges.map((change) => {
             const i = model.columns.findIndex((c) => c.year === change.year)
             if (i <= 0) return null
             return (
               // The legend names the line; the words in the plot collided with the labels above the bars.
-              <Line key={`w${change.year}`} x1={slot(i)} x2={slot(i)} y1={Y0 - 4} y2={y1} stroke={t.color.ki} strokeWidth={1.5} strokeDasharray="4 3" />
+              <Line key={`w${change.year}`} x1={slot(i)} x2={slot(i)} y1={Y0 - 4} y2={y1} stroke={t.color.tinte2} strokeWidth={1.5} strokeDasharray="4 3" />
             )
           })}
           {lines}
@@ -239,6 +239,7 @@ function makeStyles(t: UiTheme) {
   const years: ViewStyle = { flexDirection: 'row' }
   const yearButton: ViewStyle = { flex: 1, alignItems: 'center', justifyContent: 'center', minHeight: 32, borderRadius: t.radius.s }
   const yearText: TextStyle = { ...t.type.meta, color: t.color.tinte2 }
-  const yearTextActive: TextStyle = { color: t.color.tinte, fontWeight: t.weight.schwer }
+  // The lime rule under the picked year is the chart's one accent (Graphit).
+  const yearTextActive: TextStyle = { color: t.color.tinte, fontWeight: t.weight.schwer, borderBottomWidth: 3, borderBottomColor: t.color.funke }
   return { years, yearButton, yearText, yearTextActive }
 }

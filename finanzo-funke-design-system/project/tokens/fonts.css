@@ -1,5 +1,5 @@
-/* Funke — Webfonts.
-   Keine Font-Binaries im Quell-Repo („Klar" nutzte den System-Stack).
-   Funke setzt bewusst auf charaktervolle Google Fonts — Substitution
-   dokumentiert in readme.md. */
-@import url("https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Schibsted+Grotesk:ital,wght@0,400..900;1,400..900&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap");
+/* Graphit — Webfonts.
+   Geist (Text und Display) und Geist Mono (Zahlen, Metadaten), beide OFL.
+   Dieses Design-System-Projekt lädt sie für die Vorschau von Google Fonts;
+   die App liefert sie aus dem eigenen Bundle aus (apps/mobile-web/src/lib/fonts.ts). */
+@import url("https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap");

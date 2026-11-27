@@ -105,63 +105,64 @@ export function makeStyles(t: UiTheme) {
   }
   // The advisor card sits right under the next step — advice up front, not at the bottom.
   const berater: ViewStyle = { marginTop: t.space.s4, width: '100%' }
+  /** The result sits on the page ground (Graphit): no panel, the figure carries the weight. */
+  const hero: ViewStyle = { paddingVertical: t.space.s4, marginBottom: t.space.s4 }
   const emptyBlock: ViewStyle = { alignItems: 'center', paddingVertical: t.space.s6 }
   const heroLabel: TextStyle = {
     ...t.type.meta,
-    color: t.color.funkeHell,
+    color: t.color.tinte2,
     textTransform: 'uppercase',
     letterSpacing: 0.08 * t.size.xs,
     marginBottom: t.space.s2,
   }
   const heroValue: TextStyle = {
-    ...t.type.title,
-    color: t.color.funke,
+    ...t.type.hero,
+    color: t.color.tinte,
     fontVariant: ['tabular-nums'],
   }
+  /** A range ("1.420–1.560 €") is too long for the hero size on a phone; it steps down one role. */
+  const heroValueLong: TextStyle = { ...heroValue, ...t.type.title }
   /** The refund headline's label, in normal case so the label and figure read as one sentence. */
   const refundLabel: TextStyle = { ...heroLabel, ...t.type.metaLarge, textTransform: 'none', letterSpacing: 0 }
   /** The income once the refund leads the hero (UX review H1): still visible, no longer the headline. */
   const heroValueSmall: TextStyle = {
     ...t.type.cardTitle,
-    color: t.color.nachtText,
+    color: t.color.tinte,
     fontVariant: ['tabular-nums'],
   }
   const effectLine: TextStyle = {
     ...t.type.label,
-    color: t.color.funkeHell,
+    color: t.color.tinte2,
     marginTop: t.space.s2,
   }
-  const heroDivider: ViewStyle = { height: 1, backgroundColor: t.color.nachtText, opacity: 0.2, marginVertical: t.space.s3 }
+  const heroDivider: ViewStyle = { height: 1, backgroundColor: t.color.linieWeich, marginVertical: t.space.s3 }
   const openItems: TextStyle = {
     ...t.type.small,
-    color: t.color.nachtText,
-    opacity: 0.75,
+    color: t.color.tinte2,
     marginTop: t.space.s2,
     marginBottom: t.space.s3,
   }
   const openItemCount: TextStyle = {
     ...t.type.small,
-    color: t.color.nachtText,
-    opacity: 0.85,
+    color: t.color.tinte2,
     marginTop: t.space.s2,
   }
   // 44 px keeps each missing detail a comfortable touch target.
   const missingEstimateRow: ViewStyle = { minHeight: 44, justifyContent: 'center' }
   const refundLater: TextStyle = {
     ...t.type.caption,
-    color: t.color.nachtText,
-    opacity: 0.6,
+    color: t.color.tinte2,
     marginTop: t.space.s2,
   }
-  const missingEstimateText: TextStyle = { ...t.type.small, color: t.color.nachtText, textDecorationLine: 'underline' }
+  const missingEstimateText: TextStyle = { ...t.type.small, color: t.color.tinte, textDecorationLine: 'underline' }
   const gatedHeading: TextStyle = {
     ...t.type.subhead,
-    color: t.color.funke,
+    color: t.color.tinte,
     marginBottom: t.space.s2,
   }
   const gatedBody: TextStyle = {
     ...t.type.body,
-    color: t.color.nachtText,
+    color: t.color.tinte,
     marginBottom: t.space.s2,
   }
   const euleBannerCard: ViewStyle = {
@@ -215,5 +216,5 @@ export function makeStyles(t: UiTheme) {
   }
   const runningYearText: TextStyle = { ...t.type.small, color: t.color.tinte }
 
-  return { progress, progressBar, progressSegment, progressSegmentDone, progressText, runningYearNotice, runningYearText, screen, wideScreen, appbar, appbarTitleReihe: appbarTitleRow, appbarTitle, jahrReihe: yearRow, uebernahmeZeile: takeoverRow, uebernahmeZeileText: takeoverRowText, heading, help, cta, elsterHint, secondaryCta, secondaryGrid, secondaryGridItem, missingBox, missingToggleRow, missingToggleText, missingChipRow, missingChip, missingChipText, berater, emptyBlock, heroLabel, refundLabel, heroValue, heroValueSmall, effectLine, heroDivider, openItems, offenePosten: openItemCount, refundLater, missingEstimateRow, missingEstimateText, gatedHeading, gatedBody, euleBannerCard, euleBannerRow, euleBannerCopy, euleBannerTitle, euleBannerEffect, euleBannerProvenance, euleBannerDismissBtn, euleBannerDismissText }
+  return { progress, progressBar, progressSegment, progressSegmentDone, progressText, runningYearNotice, runningYearText, screen, wideScreen, appbar, appbarTitleReihe: appbarTitleRow, appbarTitle, jahrReihe: yearRow, uebernahmeZeile: takeoverRow, uebernahmeZeileText: takeoverRowText, heading, help, cta, elsterHint, secondaryCta, secondaryGrid, secondaryGridItem, missingBox, missingToggleRow, missingToggleText, missingChipRow, missingChip, missingChipText, berater, hero, emptyBlock, heroLabel, refundLabel, heroValue, heroValueLong, heroValueSmall, effectLine, heroDivider, openItems, offenePosten: openItemCount, refundLater, missingEstimateRow, missingEstimateText, gatedHeading, gatedBody, euleBannerCard, euleBannerRow, euleBannerCopy, euleBannerTitle, euleBannerEffect, euleBannerProvenance, euleBannerDismissBtn, euleBannerDismissText }
 }

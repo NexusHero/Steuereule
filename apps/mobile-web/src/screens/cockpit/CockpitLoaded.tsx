@@ -1,6 +1,6 @@
 import { RefreshControl, ScrollView, View, Text } from 'react-native'
 import { useTranslation } from 'react-i18next'
-import { Button, Card, useTheme } from '@steuereule/ui'
+import { Button, useTheme } from '@steuereule/ui'
 import { useTaxEstimateControllerGet, type TaxEstimateDto, type AnnexConfirmationDto, type CockpitSummaryDto } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
 import { SubmissionMarker } from './SubmissionMarker'
@@ -45,7 +45,7 @@ export function CockpitLoaded(props: CockpitLoadedProps) {
       <YearNotices year={year} answers={deadlineAnswers} />
       <EuleBannerNotice />
       <ConfirmationNotice annexes={confirmation} taskCount={props.assistantTaskCount} status={status} {...(onOpenConfirmation ? { onOpenConfirmation } : {})} />
-      <Card variant="nacht">
+      <View style={styles.hero} testID="cockpit-hero">
         {refundFirst ? (
           <>
             <RefundHeadline year={year} estimate={estimate} />
@@ -69,7 +69,7 @@ export function CockpitLoaded(props: CockpitLoadedProps) {
             else props.onOpenTile(tileById(target.tile), tileFacts !== null && tileRevisitFlag(tileById(target.tile), tileFacts.answers))
           }}
         />
-      </Card>
+      </View>
       <ProgressLine progress={progress} />
       {next ? (
         <Button onPress={next.onPress} style={styles.cta} testID="cockpit-weiter">

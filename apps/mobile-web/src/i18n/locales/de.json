@@ -3577,7 +3577,7 @@
       "erstattung": {
         "label": "Erstattung",
         "titel": "Erstattung und Nachzahlung",
-        "sub": "Für den Haushalt. Rot gestrichelt: vom Finanzamt gekürzt."
+        "sub": "Für den Haushalt. Gestrichelt: vom Finanzamt gekürzt oder noch geschätzt."
       },
       "werbungskosten": {
         "label": "Werbungskosten",

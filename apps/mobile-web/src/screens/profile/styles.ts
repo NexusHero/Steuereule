@@ -21,7 +21,7 @@ export function makeProfileStyles(t: UiTheme) {
     borderRadius: t.radius.pille,
     backgroundColor: t.color.funke,
     borderWidth: t.space.kontur,
-    borderColor: t.color.tinte,
+    borderColor: t.color.linie,
     alignItems: 'center',
     justifyContent: 'center',
   }
