@@ -1,3 +1,4 @@
+import { roundToCents } from '../common/cents'
 import type { TaxEstimate } from './tax-estimate'
 import type { Range } from '../common/range'
 import { churchTaxMixedMarriage, churchTaxOnIncome, type ChurchMembership, type ChurchTaxAmount, type EstimateChurchTax } from '../domains/church-tax'
@@ -306,8 +307,8 @@ export function estimateMarriedCouple(input: MarriedEstimateInput): MarriedEstim
     solidaritaetszuschlag: soli,
     anrechnung: credit,
     result: {
-      from: cents(credit + prepaidSoli - incomeTax.to - soli.to + churchBalance.from),
-      to: cents(credit + prepaidSoli - incomeTax.from - soli.from + churchBalance.to),
+      from: roundToCents(credit + prepaidSoli - incomeTax.to - soli.to + churchBalance.from),
+      to: roundToCents(credit + prepaidSoli - incomeTax.from - soli.from + churchBalance.to),
     },
     childAllowanceUsed,
     churchTax,
@@ -336,9 +337,6 @@ export function estimateMarriedCouple(input: MarriedEstimateInput): MarriedEstim
       : {}),
   }
 }
-
-/** Keeps a sum of euro amounts with cents free of float noise. */
-const cents = (value: number) => Math.round(value * 100) / 100
 
 /** Church tax withheld from both spouses' wages (LStB Zeilen 6 + 7); null when a member employee has not entered it. */
 function withheldChurchTax(input: MarriedEstimateInput): number | null {
