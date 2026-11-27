@@ -140,6 +140,10 @@ describe('website build', () => {
       'kommen später',
       'ERiC',
       '/legal/',
+      // Graphit: the owl has no colour of its own, and the old claim is gone from the page.
+      'violett',
+      'Violett',
+      'Zack',
     ]) {
       expect(html, claim).not.toContain(claim)
     }
