@@ -133,19 +133,19 @@ describe('fixed rules for drafts (ADR-0093)', () => {
   })
 
   describe('an exemption order is never staged as capital income', () => {
-    const stage = (kapitalertraege: string, userWords: string) => checkDraftRules({ screen: 'kapital', values: { kapitalertraege }, tool: 'stage', others: [], userWords })
+    const stageCapital = (kapitalertraege: string, userWords: string) => checkDraftRules({ screen: 'kapital', values: { kapitalertraege }, tool: 'stage', others: [], userWords })
 
     it('refuses the amount of an exemption order as the capital income', () => {
-      const refused = stage('2000', 'Kapitalerträge: gemeinsames Depot, Freistellungsaufträge zusammen 2.000 €.')
+      const refused = stageCapital('2000', 'Kapitalerträge: gemeinsames Depot, Freistellungsaufträge zusammen 2.000 €.')
       expect(refused).toMatchObject({ ok: false, code: 'EXEMPTION_NOT_INCOME' })
       expect(!refused.ok && refused.reason).toContain('Steuerbescheinigung')
     })
 
     it('lets an amount through that the user names as income, or that is not the limit', () => {
-      expect(stage('2449', 'Freistellungsaufträge zusammen 2.000 €, Erträge 2.449 €.').ok).toBe(true)
-      expect(stage('2000', 'Freistellungsauftrag 2.000 €. Die Zinsen waren 2.000 €.').ok).toBe(true)
-      expect(stage('2682', '682 Euro über den Freistellungsaufträgen, 2.000 Euro verbraucht.').ok).toBe(true)
-      expect(stage('2000', 'Kapitalerträge hatten wir 2.000 €.').ok).toBe(true)
+      expect(stageCapital('2449', 'Freistellungsaufträge zusammen 2.000 €, Erträge 2.449 €.').ok).toBe(true)
+      expect(stageCapital('2000', 'Freistellungsauftrag 2.000 €. Die Zinsen waren 2.000 €.').ok).toBe(true)
+      expect(stageCapital('2682', '682 Euro über den Freistellungsaufträgen, 2.000 Euro verbraucht.').ok).toBe(true)
+      expect(stageCapital('2000', 'Kapitalerträge hatten wir 2.000 €.').ok).toBe(true)
     })
 
     it('says nothing without the user’s words', () => {
