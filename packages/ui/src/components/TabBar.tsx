@@ -141,9 +141,11 @@ function makeStyles(t: ReturnType<typeof useTheme>) {
     width: '100%',
     maxWidth: 440,
     gap: 2,
-    backgroundColor: t.color.karte,
+    // On the dark ground a card-coloured bar disappears; one step lighter keeps it visible at all times.
+    backgroundColor: t.mode === 'dark' ? t.color.linieWeich : t.color.karte,
     borderWidth: BAR_BORDER,
-    borderColor: t.color.linieWeich,
+    // The bar floats over content: the stronger line keeps its edge visible on the dark ground too.
+    borderColor: t.color.linie,
     borderRadius: t.radius.pille,
     padding: BAR_PADDING,
   }

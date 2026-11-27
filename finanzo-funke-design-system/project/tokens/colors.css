@@ -40,8 +40,8 @@
   /* Semantik (deutlich getrennt vom KI-Violett) */
   --ok: #1f9d55;
   --ok-weich: #def4e2;
-  --warn: #e07b00;
-  --warn-weich: #ffeecf;
+  --warn: #b5861a;
+  --warn-weich: #f3f3f5;
   --fehler: #e0362c;
   --fehler-weich: #fde3de;
 }

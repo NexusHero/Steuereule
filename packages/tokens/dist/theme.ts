@@ -91,8 +91,8 @@ export const theme = {
       "kiTinte": "#3a3a44",
       "ok": "#1f9d55",
       "okWeich": "#def4e2",
-      "warn": "#e07b00",
-      "warnWeich": "#ffeecf",
+      "warn": "#b5861a",
+      "warnWeich": "#f3f3f5",
       "fehler": "#e0362c",
       "fehlerWeich": "#fde3de"
     },
@@ -161,8 +161,8 @@ export const theme = {
       "kiTinte": "#c8c8d2",
       "ok": "#1f9d55",
       "okWeich": "#143020",
-      "warn": "#e07b00",
-      "warnWeich": "#392a10",
+      "warn": "#b5861a",
+      "warnWeich": "#1f1f27",
       "fehler": "#e96a61",
       "fehlerWeich": "#3b1512"
     },

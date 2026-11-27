@@ -20,8 +20,8 @@
   --ki-tinte: #3a3a44;
   --ok: #1f9d55;
   --ok-weich: #def4e2;
-  --warn: #e07b00;
-  --warn-weich: #ffeecf;
+  --warn: #b5861a;
+  --warn-weich: #f3f3f5;
   --fehler: #e0362c;
   --fehler-weich: #fde3de;
   --schatten-hart: 0px 0px 0 var(--tinte);
@@ -86,7 +86,7 @@
   --ki-linie: #3c3c45;
   --ki-tinte: #c8c8d2;
   --ok-weich: #143020;
-  --warn-weich: #392a10;
+  --warn-weich: #1f1f27;
   --fehler: #e96a61;
   --fehler-weich: #3b1512;
 }
