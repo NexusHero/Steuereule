@@ -90,7 +90,7 @@ const BOUNDARIES: readonly Boundary[] = [
     instead: 'Use AdvisorRunLog (advisor/run/advisor-run-log.ts), or the shared rate-limit storage (auth/rate-limit-storage.ts).',
   },
   { name: 'Playwright', packages: ['playwright-core'], allowedIn: ['account/export/pdf-renderer.playwright.ts'], instead: 'Use PdfRenderer (account/export/pdf-renderer.ts).' },
-  { name: 'pdf-lib', packages: ['pdf-lib'], allowedIn: ['printout/form-renderer.ts'], instead: 'Call renderForms (printout/form-renderer.ts).' },
+  { name: 'pdf-lib', packages: ['pdf-lib'], allowedIn: ['printout/form-renderer.ts', 'printout/summary-renderer.ts'], instead: 'Call renderForms (printout/form-renderer.ts) or renderSummary (printout/summary-renderer.ts).' },
   { name: 'OpenTelemetry', packages: ['@opentelemetry/'], allowedIn: ['telemetry/'], instead: 'Use withSpan (telemetry/tracer.ts).' },
   {
     name: 'service locator',

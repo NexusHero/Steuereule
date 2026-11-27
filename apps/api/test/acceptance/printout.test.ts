@@ -2,6 +2,7 @@
 // every gate answers honestly (guest 401, unknown year 404, unpaid 402, incomplete 422
 // naming the gaps), and a complete, paid year downloads the filled Vordrucke.
 import { PDFDocument } from 'pdf-lib'
+import { formPageCount, isSummaryPage, summaryPageCount } from '../support/pdf-pages.js'
 import { describe, expect, it } from 'vitest'
 import { baseUrl, prisma, signUp, useAcceptanceServer } from '../support/acceptance-server.js'
 
@@ -74,7 +75,10 @@ describe('Formular-Ausdruck (ADR-0050), against the real server', () => {
     expect(response.headers.get('content-type')).toContain('application/pdf')
     expect(response.headers.get('content-disposition')).toContain('steuererklaerung-2025.pdf')
     const pdf = await PDFDocument.load(new Uint8Array(await response.arrayBuffer()))
-    expect(pdf.getPageCount()).toBe(6)
+    // The SteuerEule summary leads the printout; the Vordrucke behind it are the six pages of ESt 1 A + Anlage N.
+    expect(summaryPageCount(pdf)).toBeGreaterThan(0)
+    expect(isSummaryPage(pdf, 0)).toBe(true)
+    expect(formPageCount(pdf)).toBe(6)
     expect(await prisma.taxDataAccessLog.count({ where: { userId, resource: 'ausdruck' } })).toBe(1)
   })
 
@@ -122,7 +126,7 @@ describe('Formular-Ausdruck (ADR-0050), against the real server', () => {
     await pay(userId)
 
     const pdf = await PDFDocument.load(new Uint8Array(await (await printout(cookie)).arrayBuffer()))
-    expect(pdf.getPageCount()).toBe(8)
+    expect(formPageCount(pdf)).toBe(8)
     await prisma.pension.deleteMany({ where: { userId } })
   })
 
@@ -138,7 +142,7 @@ describe('Formular-Ausdruck (ADR-0050), against the real server', () => {
     expect(await check.json()).toEqual({ missing: [], missingChildFields: [], hints: [] })
 
     const pdf = await PDFDocument.load(new Uint8Array(await (await printout(cookie)).arrayBuffer()))
-    expect(pdf.getPageCount()).toBe(6 + ANNEX_V_PAGES)
+    expect(formPageCount(pdf)).toBe(6 + ANNEX_V_PAGES)
     await prisma.rentalProperty.deleteMany({ where: { userId } })
   })
 
