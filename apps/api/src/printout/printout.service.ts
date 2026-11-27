@@ -31,6 +31,8 @@ import { childAllowancesEur } from '../children/swiss-allowance.js'
 import { fillInForms, lineNumbersOf } from './fill-in-lines.js'
 import { liveForms, type LiveForm, type LiveFormWithLines } from './live-values.js'
 import { PRINTOUT_ESTIMATE, type PrintoutEstimate } from './printout-estimate.port.js'
+import { buildPrintoutSummary } from './printout-summary.js'
+import { prependSummary, renderSummary } from './summary-renderer.js'
 import { printoutValues, type ChildGapField, type CommuteFacts, type ChSalaryCertificateFacts, type LifeSituationFacts, type PersonBFacts } from './printout-values.js'
 import {
   FIELD_SETS,
@@ -199,13 +201,15 @@ export class PrintoutService {
       throw new HttpException(`Der Ausdruck für ${year} ist noch nicht freigeschaltet.`, HttpStatus.PAYMENT_REQUIRED)
     }
 
-    const { values, instances, missing } = await this.collect(userId, year)
+    const collected = await this.collect(userId, year)
+    const { values, instances, missing } = collected
     if (missing.length > 0) {
       throw new UnprocessableEntityException({ message: 'Für den Ausdruck fehlen noch Angaben.', missing })
     }
 
     try {
-      const pdf = await this.render(year, values, instances, editable)
+      const forms = await this.render(year, values, instances, editable)
+      const pdf = await prependSummary(forms, await this.summaryPages(userId, year, collected))
       await this.audit.append({ userId, action: 'READ', resource: 'ausdruck' })
       return pdf
     } catch (error) {
@@ -214,6 +218,26 @@ export class PrintoutService {
       }
       throw error
     }
+  }
+
+  /**
+   * The SteuerEule summary that leads the paid printout: the estimate's result step by step, then what the
+   * Vordrucke behind it say, line by line. For the user's files, not part of the return.
+   */
+  private async summaryPages(userId: string, year: number, collected: Awaited<ReturnType<PrintoutService['collect']>>): Promise<Uint8Array> {
+    const estimate = this.estimate ? await this.estimate.getState(userId, year).catch(() => null) : null
+    const entityIds = 'entityIds' in collected ? collected.entityIds : {}
+    return renderSummary(
+      buildPrintoutSummary({
+        taxYear: year,
+        // The calendar day in Germany, where the return is filed.
+        createdOn: new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Berlin' }),
+        persons: 'persons' in collected ? collected.persons : [],
+        estimate,
+        forms: fillInForms(year, forYear(year, collected.values), this.instancesForYear(year, collected.instances), entityIds),
+        names: 'names' in collected ? collected.names : {},
+      }),
+    )
   }
 
   /**
@@ -401,7 +425,9 @@ export class PrintoutService {
       ...kinder.map((k) => [k.id, k.firstName ?? null] as const),
       ...rentalFacts.map((r, i) => [properties[i]!.id, r.strasse ?? r.city ?? null] as const),
     ])
-    return { ...printed, entityIds, names }
+    const fullName = (person: { firstName: string | null; lastName: string | null } | null | undefined) => [person?.firstName, person?.lastName].filter(Boolean).join(' ')
+    const persons = [fullName(profile), ...(personBFacts ? [fullName(personBFacts)] : [])].filter((name) => name !== '')
+    return { ...printed, entityIds, names, persons }
   }
 }
 

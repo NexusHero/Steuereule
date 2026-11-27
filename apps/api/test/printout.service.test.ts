@@ -20,6 +20,7 @@ import { FakeMasterDataRepository } from './fakes/fake-master-data.repository.js
 import { FakePensionRepository } from './fakes/fake-pension.repository.js'
 import { FakeProfileRepository } from './fakes/fake-profile.repository.js'
 import { FakeRentalRepository } from './fakes/fake-rental.repository.js'
+import { isSummaryPage, summaryPageCount } from './support/pdf-pages.js'
 import { taxCaseReaderOver } from '../src/tax-case/repository-tax-case.reader.js'
 
 const TEMPLATES_BASE = new URL('../assets/vordrucke/', import.meta.url)
@@ -60,6 +61,56 @@ describe('PrintoutService with AMOUNT_LATER', () => {
     const pdf = await PDFDocument.load(pdfBytes)
     const names = pdf.getForm().getFields().map((f) => f.getName())
     expect(names.some((n) => n.startsWith('anlSo.'))).toBe(false)
+  })
+})
+
+describe('PrintoutService: the summary leads the paid printout', () => {
+  async function paidService(estimate: { getState: () => Promise<{ kind: string; result?: { from: number; to: number } }> } | undefined) {
+    const profileRepo = new FakeProfileRepository()
+    const masterDataRepo = new FakeMasterDataRepository()
+    const lstbRepo = new FakeLstbRepository()
+    await profileRepo.upsert('u9', { firstName: 'Anna', lastName: 'Beispiel', steuerId: '02476291358', steuernummer: '2010304050' })
+    await masterDataRepo.save('u9', {
+      geburtsdatum: '1990-04-12', strasse: 'Musterstraße', hausnummer: '12', plz: '01067', wohnort: 'Dresden',
+      religion: 'VD', familienstand: 'ledig', iban: 'DE89370400440532013000', finanzamt: 'Dresden-Nord',
+    } as never)
+    lstbRepo.seed({ userId: 'u9', taxYear: 2025, bruttoarbeitslohn: '42000', lohnsteuer: '6000', sozialversicherung: '8000' })
+    const commuteRepo: CommuteRepository = { findForUserAndYear: async () => null, save: async (_u, _y, e) => e }
+    const audit = new FakeAuditRepository()
+    const service = new PrintoutService(
+      taxCaseReaderOver({ profile: profileRepo, masterData: masterDataRepo, wageTaxCertificate: lstbRepo, pension: new FakePensionRepository(), capital: new FakeCapitalRepository(), rental: new FakeRentalRepository(), salaryStatement: new FakeChSalaryCertificateRepository(), children: new FakeChildRepository(), coupling: new FakeLinkRepository(), interview: new FakeInterviewAnswerRepository(), commute: commuteRepo }),
+      new FakeMarkingRepository(),
+      new UnlockService(fixedUnlockRepository(true), stubPaymentProvider('cs_9'), 'http://localhost:8081'),
+      new AuditService(audit),
+      TEMPLATES_BASE,
+      undefined,
+      estimate,
+    )
+    return service
+  }
+
+  const pagesOf = async (bytes: Uint8Array) => (await PDFDocument.load(bytes)).getPageCount()
+
+  it('puts its pages in front of the Vordrucke', async () => {
+    const service = await paidService({ getState: async () => ({ kind: 'spanne', result: { from: 880, to: 950 } }) })
+    const pdf = await PDFDocument.load(await service.create('u9', 2025))
+    expect(isSummaryPage(pdf, 0)).toBe(true)
+    expect(isSummaryPage(pdf, pdf.getPageCount() - 1)).toBe(false)
+    // The summary is in front as a block: no Vordruck page comes before one of its pages.
+    const kinds = pdf.getPageIndices().map((index) => isSummaryPage(pdf, index))
+    expect(kinds.indexOf(false)).toBe(summaryPageCount(pdf))
+  })
+
+  it('still leads the printout when the estimate cannot be read: the forms the user paid for come either way', async () => {
+    const failing = await paidService({ getState: async () => Promise.reject(new Error('estimate down')) })
+    const without = await paidService(undefined)
+    expect(await pagesOf(await failing.create('u9', 2025))).toBe(await pagesOf(await without.create('u9', 2025)))
+  })
+
+  it('keeps the fields of an editable printout fillable behind its pages', async () => {
+    const service = await paidService({ getState: async () => ({ kind: 'offen' }) })
+    const pdf = await PDFDocument.load(await service.create('u9', 2025, { editable: true }))
+    expect(pdf.getForm().getFields().length).toBeGreaterThan(0)
   })
 })
 
