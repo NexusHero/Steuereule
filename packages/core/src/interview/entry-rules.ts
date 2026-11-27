@@ -33,6 +33,8 @@ export interface DraftRuleInput {
   readonly others: readonly { readonly screen: Screen; readonly values: DraftValues }[]
   /** What the draft rests on in words: the user's message of this turn and the reason the model gave. */
   readonly said?: string | undefined
+  /** Only what the user wrote (this message and the earlier ones), never the model's reason: what a draft's amount must be traceable to. */
+  readonly userWords?: string | undefined
 }
 
 export type DraftRuleCheck = { readonly ok: true } | { readonly ok: false; readonly code: string; readonly reason: string }
@@ -65,6 +67,28 @@ const NEGATION = /\bkein(?:e|en|em|er|erlei)?\b|\bnicht\b|\bnichts\b|\bnein\b|\b
 export function namesCapitalIncome(said: string): boolean {
   // A dot between digits is a thousands separator (1.600 €), not the end of a sentence.
   return said.split(/(?<!\d)\.|\.(?!\d)|[;\n!?]/).some((part) => CAPITAL_WORDS.test(part) && !NEGATION.test(part))
+}
+
+const EXEMPTION_WORDS = /freistellungsauftr|freistellungsbetrag/i
+const INCOME_WORDS = /ertr(?:ä|ae)g|zinsen|dividende|ausgesch(?:ü|ue)ttet|gutschrift|steuerbescheinigung|erzielt|erhalten|eingenommen|gewinn/i
+
+const EXEMPTION_NOT_INCOME =
+  'Der Betrag, den der Nutzer nennt, ist der Freistellungsauftrag, also die Grenze, bis zu der die Bank keine Steuer einbehält, und kein Kapitalertrag. Lege ihn nicht als kapital.kapitalertraege an. Frag nach der Steuerbescheinigung der Bank: Höhe der Kapitalerträge im Jahr (kapital.kapitalertraege), genutzter Sparer-Pauschbetrag (kapital.sparerPauschbetrag), einbehaltene Kapitalertragsteuer und Solidaritätszuschlag (auch 0).'
+
+/** Whole euros named in a text, German notation: „2.000“, „1.234,50“, „900“. */
+function eurosNamedIn(text: string): number[] {
+  return (text.match(/\d{1,3}(?:\.\d{3})+(?:,\d+)?|\d+(?:,\d+)?/g) ?? []).map((raw) => Math.round(Number(raw.replace(/\./g, '').replace(',', '.'))))
+}
+
+/**
+ * Whether the user attached this amount to an exemption order and to no income word: „Freistellungsaufträge
+ * zusammen 2.000 €“ is the limit, not what the deposit earned. A part is cut at commas and colons too, so a
+ * heading like „Kapitalerträge:“ does not turn the limit into income.
+ */
+export function amountIsOnlyAnExemptionOrder(amountEur: number, userWords: string): boolean {
+  const parts = userWords.split(/(?<!\d)[.,]|[.,](?!\d)|[;:\n!?]/)
+  const named = parts.filter((part) => eurosNamedIn(part).includes(amountEur))
+  return named.some((part) => EXEMPTION_WORDS.test(part) && !INCOME_WORDS.test(part)) && !named.some((part) => INCOME_WORDS.test(part))
 }
 
 /** The six answers as the user reads them: „…“, „…“ oder „…“. */
@@ -210,6 +234,13 @@ export function checkDraftRules(input: DraftRuleInput): DraftRuleCheck {
   // capital income was never recorded. An answer without capital income needs the user to say so.
   if (screen === 'interview' && (values.einkuenfte === 'Nein' || values.einkuenfte === 'Vermietung') && input.said !== undefined && namesCapitalIncome(input.said)) {
     return { ok: false, code: 'CONFIRMATION_REQUIRED', reason: CAPITAL_NEEDS_AMOUNT }
+  }
+  // The exemption order staged as capital income („Kapitalerträge 2.000 €“ from „Freistellungsaufträge zusammen 2.000 €“, real-data run).
+  if (screen === 'kapital' && input.userWords !== undefined && values.kapitalertraege !== undefined) {
+    const amount = Math.round(Number(values.kapitalertraege))
+    if (Number.isFinite(amount) && amount > 0 && amountIsOnlyAnExemptionOrder(amount, input.userWords)) {
+      return { ok: false, code: 'EXEMPTION_NOT_INCOME', reason: EXEMPTION_NOT_INCOME }
+    }
   }
   if (screen === 'kind' && positive(values.swissFamilyAllowanceEur) && input.others.some((other) => other.screen === 'chLohnausweis' && positive(other.values.familienzulagenChf))) {
     return { ok: false, code: 'DOUBLE_ENTRY', reason: ALLOWANCE_TWICE }
