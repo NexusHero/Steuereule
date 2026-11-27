@@ -84,12 +84,12 @@ Traditional tax software presents dense tabular forms without proactive guidance
 
 | Honest Refund Range Cockpit | 1-Question-per-Screen Interview | Privacy-First Onboarding |
 |:---:|:---:|:---:|
-| <img src="images/screenshots/cockpit.png" width="280" alt="Cockpit: the estimated refund as a range in ink on white, the income below, then what is still missing" /> | <img src="images/screenshots/interview.png" width="280" alt="Interview: where the money came from, as tappable answers" /> | <img src="images/screenshots/onboarding.png" width="280" alt="Onboarding step 1 of 3: first and last name" /> |
+| <img src="images/screenshots/cockpit.png" width="280" alt="Cockpit: the estimated refund as a range in ink on white, the income below, then what is still missing" /> | <img src="images/screenshots/interview.png" width="280" alt="Interview: where the money came from, as tappable answers with an icon each" /> | <img src="images/screenshots/onboarding.png" width="280" alt="Onboarding step 1 of 3: first and last name" /> |
 | *Transparent refund range, zero ungrounded guarantees.* | *Focused, rapid quiz interface free of tax jargon.* | *Data-parsimonious, field-encrypted, GDPR-compliant.* |
 
 | Device Management | Passwordless QR Handoff | Guest Mode & Instant Login |
 |:---:|:---:|:---:|
-| <img src="images/screenshots/profil.png" width="280" alt="Profile: the stored details, the links to privacy and security, the appearance setting" /> | <img src="images/screenshots/geraetefreigabe.png" width="280" alt="Device approval: the code of the other screen with browser, system and time, and the question whether it is yours" /> | <img src="images/screenshots/login.png" width="280" alt="Login: Google, e-mail and password, guest mode" /> |
+| <img src="images/screenshots/profil.png" width="280" alt="Profile: the stored details, the links to privacy and security, the appearance setting" /> | <img src="images/screenshots/geraetefreigabe.png" width="280" alt="Device approval: the code of the other screen with browser, system and time, and the question whether it is yours" /> | <img src="images/screenshots/login.png" width="280" alt="Login: the owl beside the written-out name, a BETA mark, Google as a round symbol, e-mail and password, guest mode" /> |
 | *Active session overview with individual remote revoke.* | *Seamless desktop login via mobile camera verification.* | *Zero-friction guest exploration without forced signup.* |
 
 **One look at every width, light and dark.** White ground, hairlines and lime as the single accent in light mode; graphite with cards one step lighter in dark mode. Beyond the phone the tabs become a rail on the left edge.

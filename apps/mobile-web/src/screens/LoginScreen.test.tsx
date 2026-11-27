@@ -113,6 +113,30 @@ describe('LoginScreen', () => {
     expect(await screen.findByText('Weiter mit Google')).toBeTruthy()
   })
 
+  it('shows the provider as a round symbol button that keeps its words as its name (Graphit)', async () => {
+    renderLogin()
+    const google = await screen.findByRole('button', { name: 'Weiter mit Google' })
+    const style = getComputedStyle(google)
+    expect(style.width).toBe('56px')
+    expect(style.height).toBe('56px')
+    expect(style.borderTopLeftRadius).toBe('28px')
+  })
+
+  it('carries the beta notice as a mark that opens the full text on a tap', async () => {
+    renderLogin()
+    const mark = await screen.findByTestId('beta-marke')
+    expect(screen.queryByText(/SteuerEule ist in der Testphase/)).toBeNull()
+    fireEvent.click(mark)
+    expect(screen.getByText(/SteuerEule ist in der Testphase/)).toBeTruthy()
+  })
+
+  it('writes the name out beside the owl: one heading that reads "SteuerEule"', async () => {
+    renderLogin()
+    const heading = await screen.findByTestId('login-splash')
+    expect(heading.getAttribute('role')).toBe('heading')
+    expect(heading.textContent).toBe('SteuerEule')
+  })
+
   it('does not render the Apple social button while the flag is off (REQ-008, no Apple Dev account / iOS build yet)', () => {
     renderLogin()
     expect(screen.queryByText(/Apple/)).toBeNull()

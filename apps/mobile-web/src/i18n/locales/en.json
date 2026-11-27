@@ -4853,6 +4853,8 @@
     "bestaetigen": "Check & confirm my details"
   },
   "beta": {
+    "badge": "BETA",
+    "badgeHint": "Beta: what does that mean?",
     "label": "Beta:",
     "notice": "SteuerEule is in testing. Features may change and errors are possible. Check every printout before you sign and file it."
   },

@@ -1,4 +1,4 @@
-import { Pressable, Text, type ViewStyle, type TextStyle, type StyleProp } from 'react-native'
+import { Pressable, Text, View, type ViewStyle, type TextStyle, type StyleProp } from 'react-native'
 import { type ReactNode } from 'react'
 import { hapticLight } from '../lib/haptics'
 import { minTouchHeight } from '../lib/touch-target'
@@ -9,12 +9,14 @@ export interface OptionProps {
   readonly onPress?: () => void
   readonly style?: StyleProp<ViewStyle>
   readonly children: ReactNode
+  /** A leading icon; decoration beside the label, which stays the option's name. */
+  readonly icon?: ReactNode
   readonly testID?: string
 }
 
 const MIN_HEIGHT = 52
 
-export function Option({ selected = false, onPress, style, children, testID }: OptionProps) {
+export function Option({ selected = false, onPress, style, children, icon, testID }: OptionProps) {
   const t = useTheme()
   const container: ViewStyle = {
     width: '100%',
@@ -37,6 +39,7 @@ export function Option({ selected = false, onPress, style, children, testID }: O
     fontSize: t.size.m,
     color: selected ? inkOnFunke(t) : t.color.tinte,
   }
+  const row: ViewStyle = { flexDirection: 'row', alignItems: 'center', gap: t.space.s3 }
   // The check sits at the row's end, so the label keeps its place when chosen.
   const mark: TextStyle = { position: 'absolute', right: t.space.s4 }
   return (
@@ -57,7 +60,14 @@ export function Option({ selected = false, onPress, style, children, testID }: O
         pressed && !selected && { borderColor: t.color.tinte },
       ]}
     >
-      {typeof children === 'string' ? <Text style={label}>{children}</Text> : children}
+      {icon === undefined ? (
+        typeof children === 'string' ? <Text style={label}>{children}</Text> : children
+      ) : (
+        <View style={row}>
+          {icon}
+          {typeof children === 'string' ? <Text style={[label, { flexShrink: 1 }]}>{children}</Text> : children}
+        </View>
+      )}
       {selected ? (
         <Text style={[label, mark]} accessibilityElementsHidden importantForAccessibility="no" aria-hidden>
           ✓

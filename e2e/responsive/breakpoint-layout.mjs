@@ -383,6 +383,31 @@ async function measureNavigationForm(page, contentElement, width, label) {
   console.log(`[breakpoint-layout] ✅ Navigation (bp=${label}) — rail at the left edge (${expected}px), screen right of it, no overflow`)
 }
 
+/**
+ * The sign-in screen carries the beta notice as a mark (`beta-marke`), not as a paragraph: closed
+ * it shows "BETA" only, a tap opens the full notice in place, a second tap closes it again.
+ */
+async function measureLoginBetaMark(browser) {
+  const context = await browser.newContext({ viewport: { width: BP.s, height: 900 } })
+  try {
+    const page = await context.newPage()
+    await skipSplash(page)
+    const mark = page.locator('[data-testid="beta-marke"]')
+    const notice = page.locator('[data-testid="beta-hinweis"]')
+    await mark.waitFor({ state: 'visible', timeout: 10_000 })
+    if ((await notice.innerText()).includes('Testphase')) fail('Login beta mark: the notice must be closed until the mark is tapped')
+    await mark.click()
+    await page.getByText('SteuerEule ist in der Testphase.', { exact: false }).waitFor({ state: 'visible', timeout: 5_000 }).catch(() => fail('Login beta mark: a tap must open the beta notice'))
+    await mark.click()
+    if ((await notice.innerText()).includes('Testphase')) fail('Login beta mark: a second tap must close the notice again')
+    const box = await mark.boundingBox()
+    if (!box || box.height < 44) fail(`Login beta mark: the mark must be a touch-sized target, is ${box?.height}px high`)
+    console.log('[breakpoint-layout] ✅ Login beta mark — closed by default, opens and closes the notice, touch-sized')
+  } finally {
+    await context.close()
+  }
+}
+
 async function measureRegistrierungSuccess(browser, width, label) {
   const context = await browser.newContext({ viewport: { width, height: 900 } })
   try {
@@ -454,6 +479,7 @@ async function main() {
     // ── #177: Button fills its parent at every breakpoint — the mandatory real-
     // layout proof (Musti's refinement, F3/F4). Each of the three target CTAs is
     // checked at s/m/l, each in its own isolated browser context. ──────────────────
+    await measureLoginBetaMark(browser)
     for (const [label, width] of Object.entries(BP)) {
       await measureCockpitLoadError(browser, width, label)
       await measureCockpitEmpty(browser, width, label)

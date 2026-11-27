@@ -12,12 +12,14 @@ export interface ButtonProps {
   readonly onPress?: () => void
   readonly style?: StyleProp<ViewStyle>
   readonly children: ReactNode
+  /** A leading icon; decoration beside the label, which stays the button's name. */
+  readonly icon?: ReactNode
   readonly testID?: string
 }
 
 const MIN_HEIGHT = 52
 
-export function Button({ variant = 'primaer', disabled = false, onPress, style, children, testID }: ButtonProps) {
+export function Button({ variant = 'primaer', disabled = false, onPress, style, children, icon, testID }: ButtonProps) {
   const t = useTheme()
 
   const bg: Record<ButtonVariant, string> = {
@@ -43,6 +45,7 @@ export function Button({ variant = 'primaer', disabled = false, onPress, style, 
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
+    gap: t.space.s2,
     minHeight: MIN_HEIGHT,
     paddingHorizontal: t.space.s5,
     backgroundColor: bg[variant],
@@ -79,6 +82,7 @@ export function Button({ variant = 'primaer', disabled = false, onPress, style, 
           : { opacity: 0.7 }),
       ]}
     >
+      {icon}
       {typeof children === 'string' ? <Text style={label}>{children}</Text> : children}
     </Pressable>
   )

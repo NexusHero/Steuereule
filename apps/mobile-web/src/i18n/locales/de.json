@@ -4853,6 +4853,8 @@
     "bestaetigen": "Meine Angaben prüfen & bestätigen"
   },
   "beta": {
+    "badge": "BETA",
+    "badgeHint": "Beta: Was heißt das?",
     "label": "Beta:",
     "notice": "SteuerEule ist in der Testphase. Funktionen können sich ändern und Fehler sind möglich. Prüfe jeden Ausdruck, bevor du ihn unterschreibst und einreichst."
   },

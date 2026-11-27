@@ -128,7 +128,7 @@ export function LoginScreen({ onDone, onGuest, onRegister, showDeviceQr = true, 
 
   const formColumn = (
     <View style={bp === 's' ? undefined : styles.formColumn}>
-      <BetaNotice />
+      <BetaNotice compact />
       <SocialSignInSection
         disabled={stage.kind === 'submitting'}
         onSignedIn={onDone}
