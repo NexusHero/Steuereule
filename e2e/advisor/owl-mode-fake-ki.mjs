@@ -381,6 +381,44 @@ async function main() {
     }
     console.log(`[${TAG}] ✅ Row I — an answer that arrived while the user was in the cockpit marks the owl; opening the owl reads it`)
 
+    // Row J — „Vorlesen“ under an answer hands the device's voice the answer as spoken text; a second press stops.
+    // The browser's speech synthesis is the boundary: a headless browser has no voices, so the row supplies one
+    // German voice and records what the app asks it to say.
+    {
+      const reader = await signIn(browser, webOrigin, user.email, 'l')
+      await reader.ctx.addInitScript(() => {
+        const heard = { spoken: [], cancelled: 0 }
+        window.__readAloud = heard
+        Object.defineProperty(window, 'speechSynthesis', {
+          configurable: true,
+          value: { speak: (u) => heard.spoken.push({ text: u.text, lang: u.lang }), cancel: () => (heard.cancelled += 1), getVoices: () => [{ lang: 'de-DE' }], addEventListener() {}, removeEventListener() {} },
+        })
+        window.SpeechSynthesisUtterance = function Utterance(text) {
+          this.text = text
+          this.addEventListener = () => {}
+        }
+      })
+      await reader.page.reload({ waitUntil: 'networkidle' })
+      await openEule(reader.page)
+      await ask(reader.page, 'Sag mir kurz Hallo')
+      const readAloud = reader.page.locator('[data-testid="advisor-message-read-aloud"]').last()
+      await readAloud.waitFor({ state: 'visible', timeout: 30_000 })
+      await readAloud.click()
+      const heard = await reader.page.evaluate(() => window.__readAloud.spoken)
+      // The app adds what is still missing to the fake owl's sentence, so the answer goes out in more than one piece.
+      const said = heard.map((piece) => piece.text).join(' ')
+      if (!said.startsWith('Ich bin die Test-Eule und antworte mit festem Text.') || heard.some((piece) => piece.lang !== 'de-DE')) fail(`Row J: the voice should get the answer in German, got ${JSON.stringify(heard)}`)
+      if (/[*#`|]|\]\(/.test(said)) fail(`Row J: the voice should get words, not Markdown: ${JSON.stringify(said)}`)
+      if (heard.some((piece) => piece.text.length > 220)) fail('Row J: no piece handed to the voice may be longer than a voice takes whole')
+      if ((await readAloud.innerText()).trim() !== 'Stopp') fail('Row J: the answer being read should offer „Stopp“')
+      const cancelledBefore = await reader.page.evaluate(() => window.__readAloud.cancelled)
+      await readAloud.click()
+      if ((await reader.page.evaluate(() => window.__readAloud.cancelled)) !== cancelledBefore + 1) fail('Row J: the second press should stop the voice')
+      if ((await readAloud.innerText()).trim() !== 'Vorlesen') fail('Row J: a stopped answer should offer „Vorlesen“ again')
+      await reader.ctx.close()
+    }
+    console.log(`[${TAG}] ✅ Row J — „Vorlesen“ gives the device's voice the answer as text, „Stopp“ ends it`)
+
     await user.api.dispose()
     console.log(`[${TAG}] PASS — Eulen-Modus flows with the fake KiPort verified (#450 1A, 5F).`)
   } catch (error) {

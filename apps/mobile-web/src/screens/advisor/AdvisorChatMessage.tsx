@@ -5,6 +5,7 @@ import { thoughtStepsOf, type AdvisorChatMessageView } from '@steuereule/core'
 import { APP_NS } from '../../i18n/resources'
 import { MarkdownMessage } from './chat/MarkdownMessage'
 import { FeedbackButtons } from './chat/FeedbackButtons'
+import { ReadAloudButton } from './chat/ReadAloudButton'
 import { ThoughtBlock } from './chat/ThoughtBlock'
 import { ModelFailureNotice } from './chat/ModelFailureNotice'
 import { PlanChecklist } from './chat/PlanChecklist'
@@ -91,6 +92,7 @@ export function AdvisorChatMessage({ msg, index, chat, panel, plan, styles }: Ad
           >
             <Text style={styles.messageActionText}>{copiedId === msg.id ? tr('advisor.chat.copied') : tr('advisor.chat.copy')}</Text>
           </Pressable>
+          <ReadAloudButton id={msg.id} content={msg.content} style={styles.messageAction} textStyle={styles.messageActionText} />
           {index === lastAssistantIndex && lastAssistantIndex > lastUserIndex && canReplace ? (
             <Pressable
               accessibilityRole="button"
