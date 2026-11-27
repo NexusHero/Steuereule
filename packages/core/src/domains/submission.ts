@@ -1,6 +1,5 @@
 import type { AssessmentPositionValues } from './assessment'
 import type { Range } from '../common/range'
-import type { EstimateBreakdown } from '../engine/tax-estimate'
 import type { EstimateChurchTax } from './church-tax'
 import { isIsoDate } from '../common/dates'
 import type { TaxYearStatus } from './tax-year-status'
@@ -57,7 +56,16 @@ export interface SubmissionEstimate {
    * How the estimate came about (its own `breakdown`): the declared wage, Werbungskosten and credit are
    * read from here, so they are the estimate's figures and not a second assembly of the same facts.
    */
-  readonly breakdown?: Pick<EstimateBreakdown, 'persons' | 'householdReductionEur'> | undefined
+  readonly breakdown?: DeclaredFromEstimate | undefined
+}
+
+/**
+ * What the declared positions take from the estimate's breakdown. Declared here, structurally, because this
+ * folder lies below the engine and must not import it; the engine's `EstimateBreakdown` satisfies it.
+ */
+export interface DeclaredFromEstimate {
+  readonly persons?: readonly { readonly workExpensesEur: number; readonly grossWageEur?: number; readonly wageTaxEur?: number }[]
+  readonly householdReductionEur?: number
 }
 
 export interface FiledPositionsInput {
