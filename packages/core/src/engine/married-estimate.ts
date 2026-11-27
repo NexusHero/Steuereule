@@ -1,3 +1,4 @@
+import { roundToCents } from '../common/cents'
 import type { TaxEstimate } from './tax-estimate'
 import type { Range } from '../common/range'
 import { churchTaxMixedMarriage, churchTaxOnIncome, type ChurchMembership, type ChurchTaxAmount, type EstimateChurchTax } from '../domains/church-tax'
@@ -148,6 +149,8 @@ interface SpouseFigures {
   readonly income: number
   readonly provision: Range
   readonly credit: number
+  /** The person's wages and the wage tax credited without Soli (Bescheid's „Anrechnung“); absent without a wage. */
+  readonly wage?: { readonly grossEur: number; readonly wageTaxEur: number }
   /** The provision lines when the caller gave them; null for a pension, which has none. */
   readonly detail: PersonProvision | null | undefined
 }
@@ -172,6 +175,7 @@ function spouseFigures(s: SpouseIncome, year: number): SpouseFigures {
         to: Math.round(s.socialSecurity * SOCIAL_SECURITY_DEDUCTIBLE.to) + s.selfPaidHealthCare,
       },
       credit: s.wageTax + (s.soliWithheldEur ?? solidaritaetszuschlag(s.wageTax, soliExemptionLimits(year as never).single)),
+      wage: { grossEur: s.grossWage, wageTaxEur: s.wageTax },
       detail: s.provision,
     }
   }
@@ -189,6 +193,7 @@ function spouseFigures(s: SpouseIncome, year: number): SpouseFigures {
         to: Math.round(s.socialSecurity * SOCIAL_SECURITY_DEDUCTIBLE.to) + s.pensionContributionsEur + other,
       },
       credit: s.wageTax + (s.soliWithheldEur ?? solidaritaetszuschlag(s.wageTax, soliExemptionLimits(year as never).single)) + s.swissWithholdingEur,
+      wage: { grossEur: s.grossWage + s.wageEur, wageTaxEur: s.wageTax + s.swissWithholdingEur },
       detail: s.provision,
     }
   }
@@ -197,6 +202,7 @@ function spouseFigures(s: SpouseIncome, year: number): SpouseFigures {
     income: s.wageEur - werbungskosten,
     provision: { from: s.pensionContributionsEur + s.selfPaidHealthCare, to: s.pensionContributionsEur + other },
     credit: s.swissWithholdingEur,
+    wage: { grossEur: s.wageEur, wageTaxEur: s.swissWithholdingEur },
     detail: s.provision,
   }
 }
@@ -306,13 +312,13 @@ export function estimateMarriedCouple(input: MarriedEstimateInput): MarriedEstim
     solidaritaetszuschlag: soli,
     anrechnung: credit,
     result: {
-      from: cents(credit + prepaidSoli - incomeTax.to - soli.to + churchBalance.from),
-      to: cents(credit + prepaidSoli - incomeTax.from - soli.from + churchBalance.to),
+      from: roundToCents(credit + prepaidSoli - incomeTax.to - soli.to + churchBalance.from),
+      to: roundToCents(credit + prepaidSoli - incomeTax.from - soli.from + churchBalance.to),
     },
     childAllowanceUsed,
     churchTax,
     breakdown: {
-      persons: spouses.map((s) => ({ incomeEur: s.income, workExpensesEur: s.werbungskosten, creditedTaxEur: s.credit })),
+      persons: spouses.map((s) => ({ incomeEur: s.income, workExpensesEur: s.werbungskosten, creditedTaxEur: s.credit, ...(s.wage ? { grossWageEur: s.wage.grossEur, wageTaxEur: s.wage.wageTaxEur } : {}) })),
       ...(input.rentalSurplus !== 0 ? { rentalSurplusEur: input.rentalSurplus } : {}),
       totalIncomeEur: income,
       ...(provisionLines ? { provision: provisionLines } : {}),
@@ -336,9 +342,6 @@ export function estimateMarriedCouple(input: MarriedEstimateInput): MarriedEstim
       : {}),
   }
 }
-
-/** Keeps a sum of euro amounts with cents free of float noise. */
-const cents = (value: number) => Math.round(value * 100) / 100
 
 /** Church tax withheld from both spouses' wages (LStB Zeilen 6 + 7); null when a member employee has not entered it. */
 function withheldChurchTax(input: MarriedEstimateInput): number | null {

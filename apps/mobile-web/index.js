@@ -4,6 +4,10 @@
 import '@expo/metro-runtime'
 import { registerRootComponent } from 'expo'
 import App from './App'
+import { installAppFonts } from './src/lib/fonts'
+
+// Graphit: Geist and Geist Mono come from the bundle; the faces must exist before the first paint.
+installAppFonts()
 
 // Entry point for both native (Expo) and web (RN-Web via Metro).
 registerRootComponent(App)

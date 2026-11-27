@@ -34,7 +34,7 @@ jobs:
           GITLEAKS_CONFIG: .gitleaks.toml
 
   dependency-audit:
-    name: 'security: dependency audit (production deps)'
+    name: 'security: dependency audit (all deps)'
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
@@ -48,8 +48,8 @@ jobs:
           # Nothing is installed here, so there is no store to cache; the post step failed on the missing path.
           package-manager-cache: false
       # `pnpm audit` reads pnpm-lock.yaml, so no install is needed. Fails on high/critical advisories
-      # in production dependencies; the few accepted paths carry a reason and an expiry date in the script.
-      - name: Audit production dependencies (high and critical block)
+      # in any dependency, development ones included; an accepted path carries a reason and an expiry date in the script.
+      - name: Audit all dependencies (high and critical block)
         run: |
           node --test scripts/checks/dependency-audit.test.mjs
           node scripts/checks/dependency-audit.mjs

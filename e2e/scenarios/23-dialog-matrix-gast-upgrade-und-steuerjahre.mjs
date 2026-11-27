@@ -40,7 +40,9 @@ export async function runScenario23(browser, webOrigin) {
   await answerBasis(page, { job: 'Angestellt', ausland: 'Ja, in die Schweiz', kinder: 'Nein', familienstand: 'Ledig' })
 
   // 3. Arrives on Konto-Wand showing "Grenzgänger CH" path -> Click "Konto anlegen und weitermachen"
-  await page.locator('text=Grenzgänger CH').waitFor({ state: 'visible', timeout: 10_000 })
+  // The wall names the path in its heading. The cockpit underneath names it too („Weiter mit deinem Weg · …“)
+  // once the guest session has loaded, so the heading is addressed, not any text on the page.
+  await page.getByRole('heading', { name: /Grenzgänger CH/ }).waitFor({ state: 'visible', timeout: 10_000 })
   const registerFromWallBtn = page.locator('text=Konto anlegen und weitermachen')
   await registerFromWallBtn.waitFor({ state: 'visible', timeout: 10_000 })
   await registerFromWallBtn.click()

@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Pressable, Text, View, type TextStyle, type ViewStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { roundAnswersToMessage, type AdvisorQuestionRound, type AdvisorRoundQuestion } from '@steuereule/core'
-import { Button, useTheme, type UiTheme } from '@steuereule/ui'
+import { Button, useTheme, type UiTheme, controlLine } from '@steuereule/ui'
 import { APP_NS } from '../../../i18n/resources'
 
 export interface QuestionRoundProps {
@@ -103,7 +103,7 @@ function makeStyles(t: UiTheme) {
     text: { fontFamily: t.font.text, fontWeight: t.weight.fett, fontSize: t.size.m, color: t.color.tinte } as TextStyle,
     options: { flexDirection: 'row', flexWrap: 'wrap', gap: t.space.s2 } as ViewStyle,
     // A long answer wraps inside the round instead of running past its edge on a phone.
-    option: { minHeight: 44, maxWidth: '100%', flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', columnGap: t.space.s2, paddingVertical: 6, paddingHorizontal: t.space.s3, borderRadius: t.radius.m, borderWidth: 1, borderColor: t.color.linie, backgroundColor: t.color.karte } as ViewStyle,
+    option: { minHeight: 44, maxWidth: '100%', flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', columnGap: t.space.s2, paddingVertical: 6, paddingHorizontal: t.space.s3, borderRadius: t.radius.m, borderWidth: 1, borderColor: controlLine(t), backgroundColor: t.color.karte } as ViewStyle,
     optionOn: { borderColor: t.color.tinte, backgroundColor: t.color.tinte } as ViewStyle,
     optionText: { flexShrink: 1, fontFamily: t.font.text, fontSize: t.size.m, color: t.color.tinte } as TextStyle,
     optionTextOn: { color: t.color.karte, fontWeight: t.weight.fett } as TextStyle,

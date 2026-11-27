@@ -79,21 +79,23 @@ async function completeOnboarding() {
  */
 async function enterAsGuestThroughInterview() {
   fireEvent.click(screen.getByLabelText('Weiter zur App'))
-  fireEvent.click(screen.getByText('Erstmal als Gast umschauen'))
+  fireEvent.click(screen.getByText('Als Gast ansehen'))
 
   // The guest lands directly on the Strom's basis page (start: 'interview', ADR-0089): every
   // branching question on one page, then one Weiter.
   await screen.findByTestId('interview-option-job-Angestellt')
   fireEvent.click(screen.getByTestId('interview-option-job-Angestellt'))
-  expect(screen.getByText('Wer in Deutschland wohnt und in der Schweiz arbeitet, hat eigene Regeln — die gehen wir komplett mit dir durch.')).toBeTruthy()
+  // The foreign question is there with its answers; on this page it carries no paragraph of its own.
+  expect(screen.getByText('In ein anderes Land')).toBeTruthy()
+  expect(screen.queryByText(/Wer in Deutschland wohnt und in der Schweiz arbeitet/)).toBeNull()
   fireEvent.click(screen.getByTestId('interview-option-ausland-Nein'))
   fireEvent.click(screen.getByTestId('interview-option-kinder-2 oder mehr'))
   fireEvent.click(screen.getByTestId('interview-option-familienstand-Ledig'))
   fireEvent.click(screen.getByTestId('strom-weiter'))
 
   // The Konto-Wand is the honest next step for a guest — "Später" reaches the Cockpit.
-  await screen.findByText('Später — erst mal ins Cockpit')
-  fireEvent.click(screen.getByText('Später — erst mal ins Cockpit'))
+  await screen.findByText('Später, zum Cockpit')
+  fireEvent.click(screen.getByText('Später, zum Cockpit'))
 }
 
 // App.tsx constructs the better-auth client once, at module top level (correct for the real
@@ -155,7 +157,7 @@ describe('App', () => {
     const { default: App } = await import('./App')
     render(<App />)
     fireEvent.click(screen.getByLabelText('Weiter zur App'))
-    fireEvent.click(screen.getByText('Erstmal als Gast umschauen'))
+    fireEvent.click(screen.getByText('Als Gast ansehen'))
     // ADR-0045: the guest lands in the Minimal-Gate (value first), not on Onboarding.
     expect(await screen.findByText('Angestellt')).toBeTruthy()
   })
@@ -223,7 +225,7 @@ describe('App', () => {
       const { default: App } = await import('./App')
       render(<App />)
       fireEvent.click(screen.getByLabelText('Weiter zur App'))
-      fireEvent.click(screen.getByText('Erstmal als Gast umschauen'))
+      fireEvent.click(screen.getByText('Als Gast ansehen'))
       // The guest lands on the basis page (ADR-0045, ADR-0089); switch to Cockpit to drive the CTA.
       await screen.findByTestId('interview-option-job-Angestellt')
       fireEvent.click(screen.getByText('Cockpit'))
@@ -253,8 +255,8 @@ describe('App', () => {
       // ADR-0045: a guest's onDone leads to the Konto-Wand — "Später" reaches the Cockpit,
       // whose query was invalidated by the last successful write (a real re-fetch, not stale
       // memory).
-      await screen.findByText('Später — erst mal ins Cockpit')
-      fireEvent.click(screen.getByText('Später — erst mal ins Cockpit'))
+      await screen.findByText('Später, zum Cockpit')
+      fireEvent.click(screen.getByText('Später, zum Cockpit'))
       await screen.findByText('2 Fragen offen')
       expect(screen.queryByText('3 Fragen offen')).toBeNull()
     },
@@ -288,7 +290,7 @@ describe('App', () => {
       fireEvent.click(screen.getByText('Profil'))
       await screen.findByText('Deine Angaben')
 
-      fireEvent.click(screen.getByText('So schützen wir deine Daten (DSGVO)'))
+      fireEvent.click(screen.getByText('Datenschutz'))
       await screen.findByText('Noch kein Konto')
       // The tab bar hides on this drill-down screen (its own back button is the way out).
       expect(screen.queryByText('Cockpit')).toBeNull()
@@ -321,7 +323,7 @@ describe('App', () => {
 
       fireEvent.click(screen.getByText('Profil'))
       await screen.findByText('Deine Angaben')
-      fireEvent.click(screen.getByText('So schützen wir deine Daten (DSGVO)'))
+      fireEvent.click(screen.getByText('Datenschutz'))
       // 15s statt Default: der DSGVO-Screen hängt unter `pnpm -r test`-Volllast (CI) hinter
       // der MSW-Antwort des Lösch-Flows; die Assertion bleibt dieselbe — ein wirklich
       // festhängender Query überschreitet auch dieses Budget (dieselbe Begründung wie das
@@ -516,7 +518,7 @@ describe('App', () => {
       await screen.findByText('Einloggen')
       expect(screen.queryByLabelText('QR-Code zum Anmelden mit dem Handy')).toBeNull()
       expect(screen.queryByText('Neu hier? Konto anlegen')).toBeNull()
-      expect(screen.queryByText('Erstmal als Gast umschauen')).toBeNull()
+      expect(screen.queryByText('Als Gast ansehen')).toBeNull()
       expect(deviceCodeRequests).toBe(0)
     })
 
@@ -620,7 +622,7 @@ describe('App', () => {
       await screen.findByText('Einloggen')
       expect(screen.queryByText('Steht dieser Code gerade auf deinem Bildschirm?')).toBeNull()
       expect(screen.queryByText('Neu hier? Konto anlegen')).toBeNull()
-      expect(screen.queryByText('Erstmal als Gast umschauen')).toBeNull()
+      expect(screen.queryByText('Als Gast ansehen')).toBeNull()
 
       fireEvent.change(screen.getByPlaceholderText('du@beispiel.de'), { target: { value: 'phone@beispiel.de' } })
       fireEvent.change(screen.getByPlaceholderText('••••••••'), { target: { value: 'geheim-123' } })
@@ -740,7 +742,7 @@ describe('App', () => {
       fireEvent.change(dobInput, { target: { value: '01.02.1990' } })
 
       fireEvent.click(screen.getByRole('tab', { name: 'Belege' }))
-      await screen.findByText('Beleg hochladen (PDF / Foto)')
+      await screen.findByTestId('belege-upload-card')
       expect(isElementDisplayed(dobInput)).toBe(false)
 
       fireEvent.click(screen.getByRole('tab', { name: 'Cockpit' }))
@@ -1025,7 +1027,8 @@ describe('App', () => {
       fireEvent.click(screen.getByText('Einloggen'))
 
       expect(await screen.findByTestId('kapital-weiter')).toBeTruthy()
-      expect(screen.getByText('Kapital & Depot')).toBeTruthy()
+      // The screen's title; the cockpit's way in underneath carries the same two words.
+      expect(screen.getAllByText('Kapital & Depot').length).toBeGreaterThan(0)
       expect(capitalYears).toContain('2025')
       await waitFor(() => expect(window.sessionStorage.getItem('steuereule.returnTo')).toBeNull())
     })
@@ -1276,7 +1279,7 @@ describe('App', () => {
       fireEvent.click(screen.getByTestId('sheet-schliessen'))
       fireEvent.click(await screen.findByRole('tab', { name: 'Profil' }))
       await screen.findByText('Deine Angaben')
-      fireEvent.click(screen.getByText('So schützen wir deine Daten (DSGVO)'))
+      fireEvent.click(screen.getByText('Datenschutz'))
       await screen.findByText('Konto & Daten löschen')
       fireEvent.click(screen.getByText('Konto & Daten löschen'))
       await screen.findByText('Weiter ohne Export')

@@ -1,5 +1,6 @@
 #!/usr/bin/env node
-// Fails on high/critical advisories in production dependencies (`pnpm audit --prod`).
+// Fails on high/critical advisories in any dependency of the lockfile (`pnpm audit`), development ones included:
+// build and test tooling runs with the repository's secrets in CI and on every developer's machine.
 //
 // An advisory is accepted only when EVERY dependency path it was found on matches a rule in
 // ALLOWLIST below. A rule has a reason and an expiry date; an expired rule fails the check, so an
@@ -8,16 +9,10 @@
 import { spawnSync } from 'node:child_process'
 import { pathToFileURL } from 'node:url'
 
-export const ALLOWLIST = [
-  {
-    // better-auth declares vitest as an optional peer; the workspace's own dev dependency satisfies
-    // it, so the audit sees it. `pnpm install --prod` (the API image) does not install it.
-    name: 'vitest as optional peer of better-auth',
-    pattern: /^apps__api>better-auth>vitest(>|$)/,
-    reason: 'Optional peer resolved from the workspace devDependency; not part of a production install.',
-    expires: '2027-02-28',
-  },
-]
+export const ALLOWLIST = []
+
+/** What `pnpm audit` is asked. No `--prod`: a development dependency is audited like any other. */
+export const AUDIT_ARGS = ['audit', '--json']
 
 const BLOCKING = new Set(['high', 'critical'])
 
@@ -46,7 +41,7 @@ export function evaluate(report, today = new Date().toISOString().slice(0, 10), 
 function main() {
   // pnpm is the repository's own package manager, found on PATH like every other command of the pipeline; the
   // arguments are fixed and no shell is involved.
-  const run = spawnSync('pnpm', ['audit', '--prod', '--json'], { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 }) // NOSONAR javascript:S4036
+  const run = spawnSync('pnpm', AUDIT_ARGS, { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 }) // NOSONAR javascript:S4036
   // pnpm exits non-zero whenever it finds anything; the JSON on stdout is the result.
   let report
   try {
@@ -66,7 +61,7 @@ function main() {
     console.error(`dependency-audit: ${blocking.length} blocking advisories, ${expired.length} expired rules.`)
     process.exit(1)
   }
-  console.log('dependency-audit: no open high/critical advisories in production dependencies.')
+  console.log('dependency-audit: no open high/critical advisories.')
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) main()

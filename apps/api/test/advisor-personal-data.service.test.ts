@@ -92,11 +92,11 @@ describe('personal data with the owl (ADR-0091)', () => {
   })
 
   it('applies a draft of the Steuer-ID with consent, and refuses it after the revocation', async () => {
-    const kit = build(answerWith([draft({ actionId: 'a-id', screen: 'profil', field: 'steuerId', newValue: '12345678901' }), draft({ actionId: 'a-name', screen: 'profil', field: 'firstName', newValue: 'Lena' })]))
+    const kit = build(answerWith([draft({ actionId: 'a-id', screen: 'profil', field: 'steuerId', newValue: '86095742719' }), draft({ actionId: 'a-name', screen: 'profil', field: 'firstName', newValue: 'Lena' })]))
     await kit.consent.set(USER, true)
-    await collect(kit.service.streamMessage(USER, YEAR, { message: 'Steuer-ID 12345678901, ich heiße Lena' }))
+    await collect(kit.service.streamMessage(USER, YEAR, { message: 'Steuer-ID 86095742719, ich heiße Lena' }))
     await kit.service.applyAction(USER, YEAR, 'a-id')
-    expect((await kit.profileRepo.findByUserId(USER))?.steuerId).toBe('12345678901')
+    expect((await kit.profileRepo.findByUserId(USER))?.steuerId).toBe('86095742719')
     await kit.consent.set(USER, false)
     await expect(kit.service.applyAction(USER, YEAR, 'a-name')).rejects.toThrow(/Einwilligung/)
   })

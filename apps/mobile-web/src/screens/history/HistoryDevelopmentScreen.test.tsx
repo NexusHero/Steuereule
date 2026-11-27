@@ -84,7 +84,7 @@ describe('HistoryDevelopmentScreen — phone', () => {
     renderDevelopment()
     await screen.findByTestId('verlauf-karte')
     const card = text('verlauf-karte')
-    expect(card).toContain('Für den Haushalt. Rot gestrichelt: vom Finanzamt gekürzt.')
+    expect(card).toContain('Für den Haushalt. Gestrichelt: vom Finanzamt gekürzt oder noch geschätzt.')
     // The legend names what the chart draws; the declared stroke is gone, so is its entry.
     expect(card).toContain('Erstattung laut Bescheidvom Finanzamt gekürztSchätzung (Spanne)Wechsel der Veranlagungsart▸')
     expect(card).not.toContain('erklärt')

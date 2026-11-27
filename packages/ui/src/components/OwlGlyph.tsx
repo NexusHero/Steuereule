@@ -16,7 +16,7 @@ export interface OwlGlyphProps {
  * Built from plain Views (no react-native-svg in @steuereule/ui) after the brand mark's geometry:
  * two ears, a rounded head, two glasses. Decorative: the surrounding chip carries the label.
  * Inside AI surfaces in ki-tinte on ki-weich; as the Eule tab icon in the tab bar's ink.
- * Never violet outside AI surfaces — the brand OwlMark stays lime/ink.
+ * AI output has no colour of its own (Graphit) — the brand OwlMark stays lime/ink.
  */
 export function OwlGlyph({ size = 16, ink, ground, style, testID = 'owl-glyph' }: OwlGlyphProps) {
   const u = size / 16

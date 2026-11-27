@@ -452,7 +452,7 @@
   "tokens": [
     {
       "name": "--grund",
-      "value": "#f4f2e9",
+      "value": "#ffffff",
       "kind": "color",
       "definedIn": "tokens/colors.css"
     },
@@ -464,25 +464,25 @@
     },
     {
       "name": "--tinte",
-      "value": "#191b12",
+      "value": "#0f0f14",
       "kind": "color",
       "definedIn": "tokens/colors.css"
     },
     {
       "name": "--tinte-2",
-      "value": "#5f6353",
+      "value": "#5c5c66",
       "kind": "color",
       "definedIn": "tokens/colors.css"
     },
     {
       "name": "--linie",
-      "value": "#191b12",
+      "value": "#c6c6cc",
       "kind": "color",
       "definedIn": "tokens/colors.css"
     },
     {
       "name": "--linie-weich",
-      "value": "#dedacb",
+      "value": "#e6e6e9",
       "kind": "color",
       "definedIn": "tokens/colors.css"
     },
@@ -512,49 +512,49 @@
     },
     {
       "name": "--nacht",
-      "value": "#191b12",
+      "value": "#0f0f14",
       "kind": "color",
       "definedIn": "tokens/colors.css"
     },
     {
       "name": "--nacht-karte",
-      "value": "#262a1c",
+      "value": "#191920",
       "kind": "color",
       "definedIn": "tokens/colors.css"
     },
     {
       "name": "--nacht-text",
-      "value": "#f4f2e9",
+      "value": "#ededf3",
       "kind": "font",
       "definedIn": "tokens/colors.css"
     },
     {
       "name": "--nacht-linie",
-      "value": "#3d4230",
+      "value": "#2a2a31",
       "kind": "color",
       "definedIn": "tokens/colors.css"
     },
     {
       "name": "--ki",
-      "value": "#7c5cff",
+      "value": "#5c5c66",
       "kind": "color",
       "definedIn": "tokens/colors.css"
     },
     {
       "name": "--ki-weich",
-      "value": "#ece6ff",
+      "value": "#f3f3f5",
       "kind": "color",
       "definedIn": "tokens/colors.css"
     },
     {
       "name": "--ki-linie",
-      "value": "#c7b8ff",
+      "value": "#d4d4da",
       "kind": "color",
       "definedIn": "tokens/colors.css"
     },
     {
       "name": "--ki-tinte",
-      "value": "#4630b8",
+      "value": "#3a3a44",
       "kind": "color",
       "definedIn": "tokens/colors.css"
     },
@@ -572,13 +572,13 @@
     },
     {
       "name": "--warn",
-      "value": "#e07b00",
+      "value": "#8a6500",
       "kind": "color",
       "definedIn": "tokens/colors.css"
     },
     {
       "name": "--warn-weich",
-      "value": "#ffeecf",
+      "value": "#f3f3f5",
       "kind": "color",
       "definedIn": "tokens/colors.css"
     },
@@ -596,49 +596,49 @@
     },
     {
       "name": "--grund",
-      "value": "#12140c",
+      "value": "#0f0f14",
       "kind": "color",
       "definedIn": "tokens/dunkel.css",
       "scope": "[data-theme=\"dunkel\"]"
     },
     {
       "name": "--karte",
-      "value": "#1d2013",
+      "value": "#191920",
       "kind": "color",
       "definedIn": "tokens/dunkel.css",
       "scope": "[data-theme=\"dunkel\"]"
     },
     {
       "name": "--tinte",
-      "value": "#f2f0e3",
+      "value": "#ededf3",
       "kind": "color",
       "definedIn": "tokens/dunkel.css",
       "scope": "[data-theme=\"dunkel\"]"
     },
     {
       "name": "--tinte-2",
-      "value": "#a9ad99",
+      "value": "#a0a0ac",
       "kind": "color",
       "definedIn": "tokens/dunkel.css",
       "scope": "[data-theme=\"dunkel\"]"
     },
     {
       "name": "--linie",
-      "value": "#f2f0e3",
+      "value": "#3c3c45",
       "kind": "color",
       "definedIn": "tokens/dunkel.css",
       "scope": "[data-theme=\"dunkel\"]"
     },
     {
       "name": "--linie-weich",
-      "value": "#33371f",
+      "value": "#27272e",
       "kind": "color",
       "definedIn": "tokens/dunkel.css",
       "scope": "[data-theme=\"dunkel\"]"
     },
     {
       "name": "--funke-weich",
-      "value": "#2b3312",
+      "value": "#262d10",
       "kind": "color",
       "definedIn": "tokens/dunkel.css",
       "scope": "[data-theme=\"dunkel\"]"
@@ -652,49 +652,49 @@
     },
     {
       "name": "--nacht",
-      "value": "#0d0f08",
+      "value": "#191920",
       "kind": "color",
       "definedIn": "tokens/dunkel.css",
       "scope": "[data-theme=\"dunkel\"]"
     },
     {
       "name": "--nacht-karte",
-      "value": "#1d2013",
+      "value": "#23232b",
       "kind": "color",
       "definedIn": "tokens/dunkel.css",
       "scope": "[data-theme=\"dunkel\"]"
     },
     {
       "name": "--nacht-text",
-      "value": "#f4f2e9",
+      "value": "#ededf3",
       "kind": "font",
       "definedIn": "tokens/dunkel.css",
       "scope": "[data-theme=\"dunkel\"]"
     },
     {
       "name": "--nacht-linie",
-      "value": "#313624",
+      "value": "#33333c",
       "kind": "color",
       "definedIn": "tokens/dunkel.css",
       "scope": "[data-theme=\"dunkel\"]"
     },
     {
       "name": "--ki-weich",
-      "value": "#251d4f",
+      "value": "#1f1f27",
       "kind": "color",
       "definedIn": "tokens/dunkel.css",
       "scope": "[data-theme=\"dunkel\"]"
     },
     {
       "name": "--ki-linie",
-      "value": "#5a48c4",
+      "value": "#3c3c45",
       "kind": "color",
       "definedIn": "tokens/dunkel.css",
       "scope": "[data-theme=\"dunkel\"]"
     },
     {
       "name": "--ki-tinte",
-      "value": "#cfc4ff",
+      "value": "#c8c8d2",
       "kind": "color",
       "definedIn": "tokens/dunkel.css",
       "scope": "[data-theme=\"dunkel\"]"
@@ -707,8 +707,15 @@
       "scope": "[data-theme=\"dunkel\"]"
     },
     {
+      "name": "--warn",
+      "value": "#b5861a",
+      "kind": "color",
+      "definedIn": "tokens/dunkel.css",
+      "scope": "[data-theme=\"dunkel\"]"
+    },
+    {
       "name": "--warn-weich",
-      "value": "#392a10",
+      "value": "#1f1f27",
       "kind": "color",
       "definedIn": "tokens/dunkel.css",
       "scope": "[data-theme=\"dunkel\"]"
@@ -729,21 +736,21 @@
     },
     {
       "name": "--schrift-display",
-      "value": "\"Bricolage Grotesque\", \"Arial Black\", sans-serif",
+      "value": "\"Geist\", system-ui, -apple-system, \"Segoe UI\", sans-serif",
       "kind": "font",
       "definedIn": "tokens/typography.css",
       "annotation": "font"
     },
     {
       "name": "--schrift-text",
-      "value": "\"Schibsted Grotesk\", system-ui, sans-serif",
+      "value": "\"Geist\", system-ui, -apple-system, \"Segoe UI\", sans-serif",
       "kind": "font",
       "definedIn": "tokens/typography.css",
       "annotation": "font"
     },
     {
       "name": "--schrift-mono",
-      "value": "\"Space Mono\", ui-monospace, Menlo, monospace",
+      "value": "\"Geist Mono\", ui-monospace, Menlo, monospace",
       "kind": "font",
       "definedIn": "tokens/typography.css",
       "annotation": "font"
@@ -798,28 +805,28 @@
     },
     {
       "name": "--gewicht-normal",
-      "value": "450",
+      "value": "400",
       "kind": "font",
       "definedIn": "tokens/typography.css",
       "annotation": "font"
     },
     {
       "name": "--gewicht-halb",
-      "value": "600",
+      "value": "500",
       "kind": "font",
       "definedIn": "tokens/typography.css",
       "annotation": "font"
     },
     {
       "name": "--gewicht-fett",
-      "value": "700",
+      "value": "600",
       "kind": "font",
       "definedIn": "tokens/typography.css",
       "annotation": "font"
     },
     {
       "name": "--gewicht-schwer",
-      "value": "700",
+      "value": "600",
       "kind": "font",
       "definedIn": "tokens/typography.css",
       "annotation": "font"
@@ -896,19 +903,19 @@
     },
     {
       "name": "--radius-s",
-      "value": "12px",
+      "value": "10px",
       "kind": "radius",
       "definedIn": "tokens/spacing.css"
     },
     {
       "name": "--radius",
-      "value": "20px",
+      "value": "14px",
       "kind": "radius",
       "definedIn": "tokens/spacing.css"
     },
     {
       "name": "--radius-lg",
-      "value": "28px",
+      "value": "20px",
       "kind": "radius",
       "definedIn": "tokens/spacing.css"
     },
@@ -920,32 +927,32 @@
     },
     {
       "name": "--kontur",
-      "value": "1.5px",
+      "value": "1px",
       "kind": "spacing",
       "definedIn": "tokens/spacing.css",
       "annotation": "spacing"
     },
     {
       "name": "--schatten-hart",
-      "value": "3px 3px 0 var(--tinte)",
+      "value": "0px 0px 0 var(--tinte)",
       "kind": "color",
       "definedIn": "tokens/effects.css"
     },
     {
       "name": "--schatten-hart-s",
-      "value": "2px 2px 0 var(--tinte)",
+      "value": "0px 0px 0 var(--tinte)",
       "kind": "color",
       "definedIn": "tokens/effects.css"
     },
     {
       "name": "--schatten-hart-l",
-      "value": "5px 5px 0 var(--tinte)",
+      "value": "0px 0px 0 var(--tinte)",
       "kind": "color",
       "definedIn": "tokens/effects.css"
     },
     {
       "name": "--schatten-ki",
-      "value": "4px 4px 0 var(--ki)",
+      "value": "0px 0px 0 var(--ki)",
       "kind": "color",
       "definedIn": "tokens/effects.css"
     },
@@ -1015,23 +1022,16 @@
   "fonts": [],
   "brandFonts": [
     {
-      "family": "Bricolage Grotesque",
+      "family": "Geist",
       "status": "ok",
       "tokens": [
-        "--schrift-display"
-      ],
-      "path": "tokens/typography.css"
-    },
-    {
-      "family": "Schibsted Grotesk",
-      "status": "ok",
-      "tokens": [
+        "--schrift-display",
         "--schrift-text"
       ],
       "path": "tokens/typography.css"
     },
     {
-      "family": "Space Mono",
+      "family": "Geist Mono",
       "status": "ok",
       "tokens": [
         "--schrift-mono"

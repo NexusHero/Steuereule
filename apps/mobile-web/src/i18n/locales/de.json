@@ -6,22 +6,18 @@
   "tabs": {
     "cockpit": "Cockpit",
     "eule": "Eule",
+    "euleUngelesen": "neue Antwort",
     "belege": "Belege",
     "profil": "Profil",
     "verlauf": "Verlauf"
   },
   "splash": {
-    "greeting": "Steuern? Zack, erledigt.",
     "skipLabel": "Weiter zur App"
   },
   "login": {
-    "greetingBefore": "Schön, dass du ",
-    "greetingMark": "da",
-    "greetingAfter": " bist.",
-    "subtitle": "Dein Steuerjahr wartet — weiter, wo du aufgehört hast.",
     "google": "Weiter mit Google",
     "apple": "Weiter mit Apple",
-    "googleNotConfigured": "Google ist auf diesem Gerät nicht eingerichtet — die anderen Wege stehen dir offen.",
+    "googleNotConfigured": "Google ist auf diesem Gerät nicht eingerichtet.",
     "googleUnknown": "Wir können gerade nicht prüfen, ob Google verfügbar ist.",
     "orEmail": "oder mit E-Mail",
     "emailLabel": "E-Mail",
@@ -30,8 +26,8 @@
     "submit": "Einloggen",
     "submitting": "Wird geprüft …",
     "register": "Neu hier? Konto anlegen",
-    "guest": "Erstmal als Gast umschauen",
-    "guestNote": "Gast-Modus: deine Angaben werden sicher verschlüsselt gespeichert.",
+    "guest": "Als Gast ansehen",
+    "guestNote": "Als Gast werden deine Angaben verschlüsselt gespeichert.",
     "twoFactor": {
       "heading": "Zweiter Faktor",
       "body": "Dein Konto ({{email}}) ist mit einem zweiten Faktor geschützt. Gib den Code aus deiner Authenticator-App ein.",
@@ -42,7 +38,7 @@
       "backupBody": "Gib einen der Wiederherstellungscodes ein, die du beim Einrichten erhalten hast. Jeder Code gilt nur einmal.",
       "backupLabel": "Wiederherstellungscode"
     },
-    "socialFailed": "Die Anmeldung beim Anbieter hat nicht geklappt oder wurde abgebrochen. Versuch es noch mal oder melde dich mit E-Mail und Passwort an.",
+    "socialFailed": "Die Anmeldung beim Anbieter hat nicht geklappt oder wurde abgebrochen. Versuch es noch einmal oder melde dich mit E-Mail und Passwort an.",
     "verified": {
       "heading": "E-Mail bestätigt ✓",
       "body": "Melde dich jetzt an. Was du als Gast in diesem Browser eingegeben hast, übernehmen wir."
@@ -59,13 +55,13 @@
     "errEmail": "Das sieht noch nicht nach einer E-Mail aus.",
     "errPass": "Das Passwort ist zu kurz. Neue Passwörter brauchen mindestens 12 Zeichen.",
     "apiUnreachable": {
-      "heading": "Gerade nicht erreichbar — das liegt an uns.",
+      "heading": "Gerade nicht erreichbar. Das liegt an uns.",
       "body": "Unsere Server antworten nicht. Deine Daten sind sicher, es ist nichts verloren.",
       "bodyRetrying": "Unsere Server antworten nicht. Deine Daten sind sicher, es ist nichts verloren. Wir versuchen es automatisch weiter."
     },
     "qr": {
       "heading": "Mit dem Handy anmelden",
-      "body": "Scanne den Code mit der Kamera deines Handys — dort bist du schon angemeldet.",
+      "body": "Scanne den Code mit deinem Handy, auf dem du angemeldet bist.",
       "accessibilityLabel": "QR-Code zum Anmelden mit dem Handy",
       "loading": "Code wird erzeugt …",
       "denied": "Anmeldung wurde nicht bestätigt.",
@@ -75,14 +71,14 @@
       "retry": "Erneut versuchen",
       "rateLimited": "Gerade zu viele Anfragen. Versuch es in ein paar Sekunden noch mal.",
       "retryingAuto": "Wir versuchen es automatisch erneut …",
-      "retryExhausted": "Die automatischen Versuche sind pausiert — bitte versuch es manuell noch einmal.",
-      "knapp": "Läuft gleich ab — noch {{time}}",
+      "retryExhausted": "Die automatischen Versuche sind pausiert. Versuch es selbst noch einmal.",
+      "knapp": "Läuft ab in {{time}}",
       "remaining": "Gilt noch {{time}}",
       "copy": "Kopieren",
       "copied": "✓ Kopiert",
       "approved": {
-        "heading": "Das war’s — du bist drin.",
-        "body": "Freigegeben über dein Telefon. Dein Steuerjahr lädt."
+        "heading": "Angemeldet.",
+        "body": "Über dein Telefon freigegeben."
       }
     },
     "forgot": "Passwort vergessen?"
@@ -93,15 +89,15 @@
     "errEmailTaken": "Für diese E-Mail gibt es schon ein Konto.",
     "errEmailNotVerified": "Bitte bestätige zuerst deine E-Mail-Adresse. Wir haben dir einen neuen Link geschickt.",
     "errPasswordTooShort": "Das Passwort ist zu kurz.",
-    "errPasswordCompromised": "Dieses Passwort ist in einem bekannten Datenleck aufgetaucht — wähl bitte ein anderes.",
-    "errGeneric": "Das hat gerade nicht geklappt. Prüf die Verbindung und versuch es noch mal.",
+    "errPasswordCompromised": "Dieses Passwort steht in einem bekannten Datenleck. Wähl ein anderes.",
+    "errGeneric": "Das hat nicht geklappt. Prüf die Verbindung und versuch es noch einmal.",
     "verifyBanner": {
       "heading": "Bitte bestätige noch deine E-Mail.",
       "body": "Wir haben eine E-Mail an {{email}} geschickt, darin steht, wie es weitergeht. Bis du dich angemeldet hast, machst du als Gast weiter — deine Eingaben übernehmen wir dann.",
       "resend": "Mail erneut senden",
       "resendSending": "Wird gesendet …",
-      "resendSent": "Ist raus — schau in dein Postfach.",
-      "resendError": "Das hat gerade nicht geklappt. Versuch es gleich noch mal."
+      "resendSent": "Gesendet. Schau in dein Postfach.",
+      "resendError": "Das hat nicht geklappt. Versuch es noch einmal."
     },
     "unverifiedAccount": {
       "heading": "Bitte bestätige deine E-Mail-Adresse.",
@@ -123,7 +119,7 @@
       "confirmationHint": "Der Link gilt nur kurz. Schau auch im Spam-Ordner nach.",
       "errEmail": "Das sieht noch nicht nach einer E-Mail aus.",
       "rateLimited": "Zu viele Anfragen. Warte ein paar Minuten und versuch es dann noch mal.",
-      "error": "Das hat gerade nicht geklappt. Prüf die Verbindung und versuch es noch mal.",
+      "error": "Das hat nicht geklappt. Prüf die Verbindung und versuch es noch einmal.",
       "back": "Zurück zum Einloggen"
     },
     "reset": {
@@ -149,7 +145,6 @@
     "titleBefore": "Leg dein ",
     "titleMark": "Konto",
     "titleAfter": " an.",
-    "subtitle": "E-Mail und Passwort — mehr braucht es nicht.",
     "emailLabel": "E-Mail",
     "emailPlaceholder": "du@beispiel.de",
     "passwordLabel": "Passwort",
@@ -160,7 +155,6 @@
     "errEmail": "Das sieht noch nicht nach einer E-Mail aus.",
     "errPass": "Mindestens 12 Zeichen fürs Passwort.",
     "success": {
-      "badge": "Mail unterwegs ✓",
       "heading": "Schau in dein Postfach.",
       "cta": "Weiter zum Onboarding →"
     },
@@ -180,7 +174,7 @@
       "titleBefore": "Wer bist ",
       "titleMark": "du",
       "titleAfter": "?",
-      "help": "Genau wie im Perso — damit beim Finanzamt alles passt.",
+      "help": "Wie im Personalausweis.",
       "firstNameLabel": "Vorname",
       "firstNamePlaceholder": "Kim",
       "lastNameLabel": "Nachname",
@@ -190,26 +184,24 @@
       "titleBefore": "Deine ",
       "titleMark": "Steuer-ID",
       "titleAfter": "",
-      "help": "11 Ziffern, lebenslang gleich — steht oben auf jedem Brief vom Finanzamt.",
+      "help": "Steht auf Briefen vom Finanzamt.",
       "fieldLabel": "Steuer-Identifikationsnummer",
       "placeholder": "12 345 678 901",
       "counter": "{{count}}/11 Ziffern",
-      "confirmed": "sitzt ✓",
-      "later": "Hab ich gerade nicht da — später im Profil"
+      "confirmed": "gültig",
+      "later": "Später im Profil nachtragen"
     },
     "step3": {
       "titleBefore": "Noch die ",
       "titleMark": "Steuernummer",
       "titleAfter": "",
-      "help": "Steht auf deinem letzten Bescheid. Keinen zur Hand? Später geht auch.",
+      "help": "Steht auf deinem letzten Bescheid.",
       "fieldLabel": "Steuernummer (optional)",
       "placeholder": "12/345/67890",
-      "later": "Hab ich nicht zur Hand — später"
+      "later": "Später nachtragen"
     },
     "summary": {
-      "heading": "Zack.",
-      "badge": "vorgefüllt",
-      "intro": "Deine Maske ist vorbereitet — jede Angabe kannst du jederzeit ändern.",
+      "heading": "Deine Angaben",
       "cardLabel": "Deine Maske",
       "rowFirstName": "Vorname",
       "rowLastName": "Nachname",
@@ -221,10 +213,10 @@
       "submitting": "Wird gespeichert …",
       "submitError": {
         "validation": "Deine Angaben konnten nicht gespeichert werden. Bitte prüf die Steuer-ID und versuch es noch mal.",
-        "network": "Das hat gerade nicht geklappt. Prüf die Verbindung und versuch es noch mal."
+        "network": "Das hat nicht geklappt. Prüf die Verbindung und versuch es noch einmal."
       },
       "changeDetails": "Angaben ändern",
-      "footerNote": "Wird sicher gespeichert — du kannst jederzeit zurückkommen."
+      "footerNote": "Wird verschlüsselt gespeichert."
     }
   },
   "funnel": {
@@ -234,7 +226,6 @@
         "body": "Wir haben dir an {{email}} einen Link geschickt. Folge ihm und melde dich danach an – deine Eingaben als Gast übernehmen wir.",
         "login": "Bestätigt? Jetzt anmelden"
       },
-      "sticker": "Weg gefunden",
       "titleBefore": "Dein Weg: ",
       "titleAfter": "",
       "pfad": {
@@ -242,7 +233,6 @@
         "rente": "Rente",
         "ch": "Grenzgänger CH"
       },
-      "help": "Mit deinen Antworten wissen wir, welche Erklärung zu dir passt. So geht es weiter:",
       "nextLabel": "Als Nächstes",
       "schritte": {
         "lstb": "Lohnsteuerbescheinigung abtippen oder scannen",
@@ -253,10 +243,10 @@
         "lohnausweis": "Schweizer Lohnausweis übernehmen",
         "nichtrueckkehrtage": "Nichtrückkehrtage zählen"
       },
-      "honest": "Eine Erstattung zeigen wir erst, wenn wir sie wirklich rechnen können — nicht vorher.",
+      "honest": "Eine Erstattung zeigen wir erst, wenn wir sie rechnen können.",
       "register": "Konto anlegen und weitermachen",
       "login": "Ich hab schon ein Konto",
-      "later": "Später — erst mal ins Cockpit",
+      "later": "Später, zum Cockpit",
       "note": "Deine Antworten wandern mit ins Konto. Bis dahin liegen sie verschlüsselt in deiner Gast-Sitzung; änderst du {{days}} Tage lang nichts, löschen wir sie."
     }
   },
@@ -302,11 +292,11 @@
     "signOut": {
       "button": "Abmelden",
       "busy": "Wird abgemeldet …",
-      "failed": "Das Abmelden hat nicht geklappt. Prüf die Verbindung und versuch es noch mal."
+      "failed": "Das Abmelden hat nicht geklappt. Prüf die Verbindung und versuch es noch einmal."
     },
     "loading": "Dein Profil wird geladen …",
-    "namePlaceholder": "Noch kein Name gespeichert",
-    "emptyNote": "Noch keine Angaben gespeichert.",
+    "namePlaceholder": "Kein Name hinterlegt",
+    "emptyNote": "Keine Steuer-ID hinterlegt",
     "cardLabel": "Deine Angaben",
     "edit": "Bearbeiten",
     "editHeading": "Angaben bearbeiten",
@@ -317,7 +307,7 @@
     "steuerIdLabel": "Steuer-Identifikationsnummer",
     "steuerIdPlaceholder": "12 345 678 901",
     "steuerIdCounter": "{{count}}/11 Ziffern",
-    "steuerIdConfirmed": "sitzt ✓",
+    "steuerIdConfirmed": "gültig",
     "steuerNrLabel": "Steuernummer (optional)",
     "steuerNrPlaceholder": "12/345/67890",
     "save": "Speichern",
@@ -326,13 +316,13 @@
     "savedNotice": "Gespeichert.",
     "saveError": {
       "validation": "Deine Angaben konnten nicht gespeichert werden. Bitte prüf die Steuer-ID und versuch es noch mal.",
-      "network": "Das hat gerade nicht geklappt. Prüf die Verbindung und versuch es noch mal."
+      "network": "Das hat nicht geklappt. Prüf die Verbindung und versuch es noch einmal."
     },
     "deineDaten": {
-      "rowLabel": "So schützen wir deine Daten (DSGVO)"
+      "rowLabel": "Datenschutz"
     },
     "sicherheit": {
-      "rowLabel": "Sicherheit (Zwei-Faktor)"
+      "rowLabel": "Sicherheit"
     },
     "darstellung": {
       "titel": "Darstellung",
@@ -358,7 +348,7 @@
       "loading": "Geräte werden geladen …",
       "loadError": {
         "unreachable": "Deine Geräte konnten nicht geladen werden. Prüf die Verbindung und versuch es noch mal.",
-        "refused": "Deine Geräte konnten nicht geladen werden — der Server hat sich gemeldet, aber das hat nicht geklappt. An deiner Verbindung liegt es nicht.",
+        "refused": "Deine Geräte konnten nicht geladen werden. An deiner Verbindung liegt es nicht.",
         "unknown": "Deine Geräte konnten nicht geladen werden. Versuch es noch mal."
       },
       "empty": "Keine weiteren Geräte angemeldet.",
@@ -375,7 +365,7 @@
     },
     "assistenten": {
       "heading": "Verbundene Assistenten",
-      "subheading": "Ihr eigener KI-Assistent (Claude, Gemini etc.) verbindet sich per MCP. Alle Einträge bleiben unbestätigt, bis Sie sie in der App prüfen.",
+      "subheading": "Dein eigener KI-Assistent (Claude, Gemini etc.) verbindet sich per MCP. Alle Einträge bleiben unbestätigt, bis du sie in der App prüfst.",
       "loading": "Assistenten werden geladen …",
       "empty": "Keine Assistenten verbunden.",
       "connectedSince": "Verbunden seit",
@@ -388,10 +378,10 @@
       "keineRechte": "keine",
       "ziel": "Zugriff geht an",
       "zielUnbekannt": "unbekannt",
-      "serverAdresseHinweis": "Diese Server-Adresse tragen Sie in Ihrem Assistenten ein, wenn Sie dort einen MCP-Server (Connector) hinzufügen:",
+      "serverAdresseHinweis": "Diese Server-Adresse trägst du in deinem Assistenten ein, wenn du dort einen MCP-Server (Connector) hinzufügst:",
       "verbinden": {
         "oeffnen": "Assistent verbinden",
-        "welcher": "Welchen Assistenten möchten Sie verbinden?",
+        "welcher": "Welchen Assistenten möchtest du verbinden?",
         "art": {
           "claude": "Claude",
           "chatgpt": "ChatGPT",
@@ -401,13 +391,13 @@
         "redirect": "Rückruf-Adresse (Redirect URI) des Assistenten",
         "anlegen": "Zugang anlegen",
         "busy": "Wird angelegt …",
-        "errName": "Bitte geben Sie dem Assistenten einen Namen.",
+        "errName": "Gib dem Assistenten einen Namen.",
         "errRedirect": "Die Rückruf-Adresse muss mit https:// beginnen oder auf diesen Rechner zeigen (http://localhost oder http://127.0.0.1).",
         "errGeneric": "Der Assistent konnte nicht angelegt werden. Bitte erneut versuchen.",
-        "fertig": "Der Zugang ist angelegt. Tragen Sie diese beiden Angaben in Ihrem Assistenten ein, wenn Sie dort einen MCP-Server (Connector) hinzufügen:",
+        "fertig": "Der Zugang ist angelegt. Trag diese beiden Angaben in deinem Assistenten ein, wenn du dort einen MCP-Server (Connector) hinzufügst:",
         "serverAdresse": "Server-Adresse",
         "clientId": "OAuth-Client-ID",
-        "fertigHinweis": "Ein Passwort oder Client-Secret gibt es nicht. Der Assistent öffnet danach diese App, und Sie geben ihm den Zugriff frei. Erst dann erscheint er hier als verbunden."
+        "fertigHinweis": "Ein Passwort oder Client-Secret gibt es nicht. Der Assistent öffnet danach diese App, und du gibst ihm den Zugriff frei. Erst dann erscheint er hier als verbunden."
       }
     }
   },
@@ -433,7 +423,7 @@
     "title": "Sicherheit",
     "back": "Zurück zu Profil",
     "loading": "Wird geladen …",
-    "requiresAccount": "Zwei-Faktor-Authentifizierung gibt es nur für ein echtes Konto — im Gast-Modus ist sie nicht verfügbar.",
+    "requiresAccount": "Zwei-Faktor-Authentifizierung gibt es nur mit einem Konto.",
     "password": "Passwort",
     "busy": "Wird geprüft …",
     "enabled": "Zwei-Faktor-Authentifizierung ist jetzt aktiv.",
@@ -483,7 +473,7 @@
     "errChallengeExpired": "Die Abfrage des zweiten Faktors ist abgelaufen. Melde dich bitte noch einmal mit E-Mail und Passwort an.",
     "cancel": "Abbrechen",
     "sessionUnknown": "Wir konnten gerade nicht prüfen, ob du angemeldet bist. Versuch es gleich noch mal.",
-    "errLocked": "Zu viele Fehlversuche — dein Konto ist vorübergehend gesperrt. Versuch es später noch mal."
+    "errLocked": "Zu viele Fehlversuche. Dein Konto ist vorübergehend gesperrt."
   },
   "bestaetigung": {
     "veraendert": "Seit du die Werte gesehen hast, hat sich etwas geändert. Prüf sie bitte noch einmal.",
@@ -576,7 +566,7 @@
     "vorschlagVerwerfen": "Verwerfen",
     "leererWert": "leer",
     "unklar": "unlesbar",
-    "fehler": "Das hat nicht geklappt. Versuch es noch mal.",
+    "fehler": "Das hat nicht geklappt. Versuch es noch einmal.",
     "aufgaben": {
       "title": "Aufgaben von deinem Assistenten",
       "intro": "Das kannst nur du erledigen. Hak ab, was erledigt ist, oder verwirf, was nicht passt.",
@@ -657,7 +647,7 @@
     },
     "title": "Ausdruck {{jahr}}",
     "back": "Zurück",
-    "intro": "Wir füllen die amtlichen Vordrucke mit deinen Angaben aus. Du druckst sie aus, unterschreibst und gibst sie bei deinem Finanzamt ab.",
+    "intro": "Amtliche Vordrucke mit deinen Angaben, zum Ausdrucken und Unterschreiben.",
     "loading": "Wird geladen …",
     "loadError": {
       "heading": "Das hat nicht geklappt.",
@@ -1025,7 +1015,7 @@
     "herunterladenBearbeitbar": "Bearbeitbare PDF herunterladen",
     "bearbeitbarHinweis": "Zum Korrigieren vor dem Druck: Die Werte stehen in Formularfeldern. Was du dort änderst, weicht von deinen Angaben in der App ab – ändere besser dort und lade neu herunter.",
     "heruntergeladen": "Heruntergeladen.",
-    "fehler": "Das hat nicht geklappt. Bitte versuch es noch mal.",
+    "fehler": "Das hat nicht geklappt. Versuch es noch einmal.",
     "hinweiseTitel": "So gibst du ab",
     "hinweise": [
       "Einseitig auf weißes DIN-A4-Papier drucken, ohne Skalierung („Tatsächliche Größe“).",
@@ -1083,8 +1073,8 @@
           "kz339": "Wahl- und Zusatzleistungen (ausländisch)"
         }
       },
-      "titel": "🔍 Glas-Erklärung: Amtliche Formular-Vorschau",
-      "untertitel": "Sieh live, in welchem amtlichen Vordruck und welcher Zeile deine Angaben landen – inklusive Herkunft und Direktsprung in die Maske.",
+      "titel": "Glas-Erklärung: Amtliche Formular-Vorschau",
+      "untertitel": "Zeigt, in welcher Zeile welches Vordrucks deine Angaben stehen.",
       "oeffnen": "Formularzeilen ansehen ▼",
       "leer": "Noch keine Formularzeilen befüllt. Sobald du Angaben im Strom, in den Masken oder über die Eule machst, erscheinen sie hier.",
       "schliessen": "Einklappen ▲"
@@ -1156,7 +1146,7 @@
     "fehlendHinweis": "Für den Ausdruck fehlen noch {{anzahl}} Angaben.",
     "vollstaendig": "Alles da für den Ausdruck.",
     "saveError": {
-      "validation": "Bitte prüf deine Eingaben — z. B. Datum, Postleitzahl oder IBAN.",
+      "validation": "Prüf deine Eingaben, etwa Datum, Postleitzahl oder IBAN.",
       "network": "Speichern hat nicht geklappt. Prüf die Verbindung."
     },
     "familienstaende": {
@@ -1214,7 +1204,7 @@
     "geaendertVonPartner": "geändert von deinem Partner am {{date}}",
     "nichtMehrDabei": "Ab {{year}} nicht mehr dabei",
     "loeschen": "Endgültig löschen",
-    "fehler": "Das hat nicht geklappt. Bitte versuch es noch mal.",
+    "fehler": "Das hat nicht geklappt. Versuch es noch einmal.",
     "partner": {
       "verknuepftSeit": "Ihr seid seit {{year}} verknüpft. In jedem neuen Jahr bleibt die Verknüpfung, ein neuer Einladungscode ist nicht nötig.",
       "beenden": "Ab {{year}} nicht mehr verknüpft",
@@ -1241,7 +1231,7 @@
       "granted": "Erlaubt. Die Eule darf deine persönlichen Daten jetzt verarbeiten.",
       "grantedContinues": "Erlaubt. Die Eule macht mit deiner letzten Nachricht weiter.",
       "continueMessage": "Ich habe dir erlaubt, meine persönlichen Daten zu verarbeiten. Bitte mach mit meiner letzten Nachricht weiter.",
-      "error": "Das hat nicht geklappt. Bitte versuche es noch einmal."
+      "error": "Das hat nicht geklappt. Versuch es noch einmal."
     },
     "section": {
       "title": "Eule und persönliche Daten",
@@ -1251,7 +1241,7 @@
       "body": "Wenn du es erlaubst, gehen Name, Steuer-ID, Geburtsdatum, Anschrift, IBAN, Familienstand, Angaben zu Partnerin/Partner und Kindern sowie deine Religionszugehörigkeit (besondere Kategorie, Art. 9 DSGVO) an das Sprachmodell, das die Antwort der Eule erzeugt: ein Modell von {{providers}}, als unsere Auftragsverarbeiter; die Verarbeitung kann in den USA stattfinden. Die Einwilligung gilt für alle diese Anbieter. Ohne Einwilligung macht die Eule diese Angaben unkenntlich und du trägst sie selbst ein.",
       "revoke": "Einwilligung widerrufen",
       "allow": "Erlauben",
-      "error": "Das hat nicht geklappt. Bitte versuche es noch einmal."
+      "error": "Das hat nicht geklappt. Versuch es noch einmal."
     }
   },
   "datenschutz": {
@@ -1261,7 +1251,7 @@
     "hero": {
       "kicker": "Ernst gemeint, nicht kleingedruckt",
       "heading": "Deine Daten.\nDeine Regeln.",
-      "body": "Steuerdaten sind das Privateste, was eine App anfassen kann. Deshalb steht hier alles — kurz, konkret, nachprüfbar."
+      "body": "Was mit deinen Steuerdaten geschieht: kurz, konkret, nachprüfbar."
     },
     "sessionChecking": "Wird geprüft …",
     "sessionUnknown": {
@@ -1283,12 +1273,12 @@
       "title": "Auskunft & Export",
       "subtitle": "Art. 15 (Auskunft) und Art. 20 (Übertragbarkeit): lade eine Kopie deiner Daten herunter.",
       "jsonButton": "Als JSON herunterladen",
-      "jsonHint": "Maschinenlesbar — zum Weitergeben oder Archivieren.",
+      "jsonHint": "Maschinenlesbar, zum Weitergeben oder Archivieren.",
       "pdfButton": "Als PDF-Bericht herunterladen",
       "pdfHint": "Zum Lesen, Ausdrucken oder Ablegen.",
       "preparing": "Wird erstellt …",
       "success": "Heruntergeladen.",
-      "error": "Der Export hat gerade nicht geklappt. Versuch es noch mal.",
+      "error": "Der Export hat nicht geklappt. Versuch es noch einmal.",
       "stepUp": {
         "heading": "Bitte bestätige dein Passwort",
         "body": "Zum Schutz deiner Daten brauchen wir dein Passwort noch einmal, bevor wir den Export erstellen.",
@@ -1315,7 +1305,7 @@
         "warning": "Diesen Schritt kannst du nicht rückgängig machen. Dein Profil und dein Konto werden jetzt gelöscht.",
         "confirmButton": "Ja, endgültig löschen",
         "cancelButton": "Abbrechen",
-        "genericError": "Das hat gerade nicht geklappt. Prüf die Verbindung und versuch es noch mal."
+        "genericError": "Das hat nicht geklappt. Prüf die Verbindung und versuch es noch einmal."
       },
       "password": {
         "heading": "Bestätige mit deinem Passwort",
@@ -1325,7 +1315,7 @@
         "cancelButton": "Abbrechen",
         "wrongPasswordError": "Das Passwort stimmt nicht. Versuch es noch mal.",
         "rateLimitedError": "Zu viele Versuche. Warte kurz und versuch es dann noch mal.",
-        "genericError": "Das hat gerade nicht geklappt. Prüf die Verbindung und versuch es noch mal."
+        "genericError": "Das hat nicht geklappt. Prüf die Verbindung und versuch es noch einmal."
       },
       "deleting": "Wird gelöscht …",
       "guestBlocked": "Für Gast-Zugänge gibt es kein Konto zum Löschen."
@@ -1345,7 +1335,7 @@
       "titleBefore": "Woher kam dein ",
       "titleMark": "Geld",
       "titleAfter": " {{taxYear}}?",
-      "help": "Mehrfachjobs? Nimm die Hauptquelle — der Rest kommt später.",
+      "help": "Bei mehreren: die Hauptquelle.",
       "options": {
         "angestellt": "Angestellt",
         "selbststaendig": "Selbstständig",
@@ -1357,7 +1347,7 @@
       "titleBefore": "Was machst du ",
       "titleMark": "beruflich",
       "titleAfter": "?",
-      "help": "Damit die Eule dir Tipps geben kann, die zu deinem Job passen. Nur die Richtung — kein Arbeitgeber, kein Titel.",
+      "help": "Für passende Hinweise der Eule. Nur die Richtung, kein Arbeitgeber.",
       "options": {
         "it": "IT & Software",
         "pflege": "Pflege & Gesundheit",
@@ -1373,7 +1363,7 @@
       "titleBefore": "Pendelst du zum Arbeiten ins ",
       "titleMark": "Ausland",
       "titleAfter": "?",
-      "help": "Wer in Deutschland wohnt und in der Schweiz arbeitet, hat eigene Regeln — die gehen wir komplett mit dir durch.",
+      "help": "Für Grenzgänger in die Schweiz gelten eigene Regeln.",
       "options": {
         "schweiz": "Ja, in die Schweiz",
         "andereLand": "In ein anderes Land",
@@ -1384,13 +1374,13 @@
       "titleBefore": "Arbeitest du neben der Rente im ",
       "titleMark": "Ausland",
       "titleAfter": "?",
-      "help": "Die meisten tippen hier „Nein“. Eine Rente aus der Schweiz trägst du später bei deiner Rente ein."
+      "help": "Eine Rente aus der Schweiz trägst du später bei der Rente ein."
     },
     "kinder": {
       "titleBefore": "Hast du ",
       "titleMark": "Kinder",
       "titleAfter": "?",
-      "help": "Kindergeld, Kinderfreibetrag, Betreuungskosten — was für dich günstiger ist, rechnen wir selbst aus.",
+      "help": "Kindergeld oder Kinderfreibetrag: Was günstiger ist, rechnen wir aus.",
       "options": {
         "nein": "Nein",
         "einKind": "1 Kind",
@@ -1401,7 +1391,7 @@
       "titleBefore": "Wie war dein ",
       "titleMark": "Familienstand",
       "titleAfter": " am 31.12.?",
-      "help": "Verheiratete geben meist eine gemeinsame Erklärung ab, das spart oft Steuern. Dann fragen wir noch kurz nach deinem Partner.",
+      "help": "Entscheidet, ob ihr gemeinsam abgeben könnt.",
       "options": {
         "ledig": "Ledig",
         "verheiratet": "Verheiratet / eingetragene Lebenspartnerschaft",
@@ -1413,7 +1403,7 @@
       "titleBefore": "Und deine ",
       "titleMark": "Ehepartnerin oder dein Ehepartner",
       "titleAfter": "?",
-      "help": "Für eure gemeinsame Erklärung. Danach zeigen wir nur, was ihr für deinen Partner wirklich braucht.",
+      "help": "Für eure gemeinsame Erklärung.",
       "options": {
         "angestellt": "Angestellt",
         "rente": "In Rente",
@@ -1444,22 +1434,22 @@
       "titleBefore": "Arbeitet dein Partner auch in der ",
       "titleMark": "Schweiz",
       "titleAfter": "?",
-      "help": "Dann kommt ein zweiter Schweizer Lohnausweis dazu — wir führen euch beide durch.",
+      "help": "Dann kommt ein zweiter Schweizer Lohnausweis dazu.",
       "options": {
         "schweiz": "Ja, als Grenzgänger",
         "nein": "Nein"
       }
     },
     "gewerbe": {
-      "heading": "Ehrlich: dafür sind wir noch nicht gut genug.",
-      "body1": "Selbstständige brauchen EÜR, Anlage G/S und Umsatzsteuer — das kann dieser Teil von SteuerEule noch nicht. Halbe Steuererklärungen liefern wir nicht.",
+      "heading": "Selbstständigkeit rechnen wir noch nicht.",
+      "body1": "Selbstständige brauchen EÜR, Anlage G/S und Umsatzsteuer. Das kann dieser Teil von SteuerEule noch nicht.",
       "body2": "Was heute schon geht: vorbereiten. Bei „Beides“ sammeln wir deinen Angestellten-Teil komplett ein — abgegeben wird erst, wenn das Gewerbe drin ist. Eine Steuererklärung ist unteilbar.",
       "prepareEmployeePart": "Angestellten-Teil vorbereiten — Abgabe erst mit Gewerbe"
     },
     "chOnly": {
-      "heading": "Ehrlich: andere Länder können wir noch nicht.",
-      "body1": "Jedes Land hat sein eigenes Abkommen mit eigenen Regeln — Österreich und Frankreich mit Grenzzonen, Luxemburg mit Bagatellgrenze. Halb gerechnet wäre falsch gerechnet.",
-      "body2": "Was heute geht: die Schweiz komplett — und dein restliches Steuerjahr sowieso. Österreich, Frankreich und Luxemburg stehen auf der Liste.",
+      "heading": "Andere Länder rechnen wir noch nicht.",
+      "body1": "Jedes Land hat sein eigenes Abkommen mit eigenen Regeln: Österreich und Frankreich mit Grenzzonen, Luxemburg mit Bagatellgrenze.",
+      "body2": "Die Schweiz und dein übriges Steuerjahr gehen heute. Österreich, Frankreich und Luxemburg folgen.",
       "continueWithoutForeign": "Ohne Auslands-Teil weitermachen"
     },
     "renteSelbststaendig": {
@@ -1477,7 +1467,7 @@
     "back": "Zurück",
     "heading": "Deine Lohnsteuerbescheinigung",
     "headingPartner": "Lohnsteuerbescheinigung von {{name}}",
-    "help": "Übertrag die drei Werte aus deiner Lohnsteuerbescheinigung — Feld für Feld, in der Reihenfolge des Papiers.",
+    "help": "Übertrag die drei Werte aus deiner Lohnsteuerbescheinigung.",
     "loading": "Deine Lohnsteuerbescheinigung wird geladen …",
     "felder": {
       "bruttoarbeitslohn": "Bruttoarbeitslohn (Zeile 3)",
@@ -1533,7 +1523,7 @@
       "heading": "Lohnsteuerbescheinigung scannen (PDF / Foto)",
       "help": "Die Texterkennung läuft auf deinem Gerät. Fehlen danach Beträge, gehen nur die Zeilen 3, 4 und 23 bis 27 ohne Namen und Kennungen an ein Sprachmodell. Steuer-ID, Arbeitgeber und das Bild gehen an kein Sprachmodell.",
       "cta": "PDF oder Foto auswählen",
-      "nativeUnsupported": "Kamera-Scan im nativen App-Build folgt separat — im Web kannst du PDF oder Foto direkt auswählen.",
+      "nativeUnsupported": "Im Web kannst du ein PDF oder Foto auswählen.",
       "assignedElsewhere": "Der Beleg gehört {{name}}. Seine Werte warten jetzt in der Eule auf dich, nicht in dieser Maske.",
       "progress": {
         "uploading": "Beleg wird verschlüsselt gespeichert …",
@@ -1612,7 +1602,7 @@
     "partnerFor": "Rente von {{name}}.",
     "back": "Zurück",
     "heading": "Deine Rente",
-    "help": "Übertrag die Angaben aus deiner Rentenbezugsmitteilung — Rentenart, Jahresbetrag und Rentenbeginn.",
+    "help": "Übertrag Rentenart, Jahresbetrag und Rentenbeginn aus deiner Rentenbezugsmitteilung.",
     "loading": "Deine Rente wird geladen …",
     "artHeading": "Welche Rente beziehst du?",
     "arten": {
@@ -1654,7 +1644,7 @@
       "deutscherBrokerOhneSteuer": "Deutsche Bank: Sie behält Abgeltungsteuer ein, sobald der Freistellungsauftrag ausgeschöpft ist. Trag unten ein, was laut Steuerbescheinigung einbehalten wurde (ggf. 0). Danach rechnen wir nach, ob die Abgeltungsteuer oder dein persönlicher Steuersatz günstiger ist.",
       "deutscherBroker": "Deine Bank hat Abgeltungsteuer einbehalten. Unten rechnen wir ehrlich nach, ob die Abgeltungsteuer oder dein persönlicher Steuersatz günstiger ist.",
       "auslaendischerBroker": "Ausländischer Broker: Es wurde keine deutsche Steuer abgeführt. Diese Kapitalerträge musst du in Anlage KAP erklären — sie werden mit deinem persönlichen Steuersatz versteuert. Wir erfinden hier keine Abgeltungsteuer.",
-      "krypto": "Krypto bleibt in 1.0 ehrlich außen vor: Haltefristen und Anschaffungskosten rechnen wir noch nicht. Kein halbes Feature.",
+      "krypto": "Krypto rechnen wir noch nicht: Haltefristen und Anschaffungskosten fehlen.",
       "unbekannt": "Sag uns im Interview zuerst, ob dein Depot bei einem deutschen oder ausländischen Broker liegt."
     },
     "felder": {
@@ -1682,9 +1672,9 @@
       "unbestimmt": "Das können wir noch nicht sagen.",
       "abgeltung": "Abgeltungsteuer (25 % + Soli)",
       "persoenlich": "Persönlicher Steuersatz (Tarif)",
-      "progressionsvorbehaltHinweis": "Ehrlich: der Progressionsvorbehalt (Lohnersatz) ist hier noch nicht berücksichtigt.",
+      "progressionsvorbehaltHinweis": "Der Progressionsvorbehalt (Lohnersatz) ist hier noch nicht berücksichtigt.",
       "keineAbgeltungEinbehalten": "Keine Abgeltungsteuer einbehalten — die Günstigerprüfung stellt sich hier nicht.",
-      "kryptoGegated": "Krypto bleibt 2.0 — keine Günstigerprüfung für Krypto.",
+      "kryptoGegated": "Für Krypto gibt es noch keine Günstigerprüfung.",
       "kapDepotNichtBeantwortet": "Erst die Depot-Frage im Interview beantworten — dann wissen wir, ob die Günstigerprüfung anwendbar ist.",
       "keineKapitalertraege": "Trag zuerst deine Kapitalerträge ein — dann rechnen wir den Vergleich.",
       "unterschied": "Unterschied",
@@ -1704,13 +1694,13 @@
   "vermietung": {
     "back": "Zurück",
     "heading": "Deine Vermietung",
-    "help": "Erfass deine ganzjährig vermieteten Objekte — je Objekt eine Anlage V mit linearer AfA.",
+    "help": "Je ganzjährig vermietetem Objekt eine Anlage V mit linearer AfA.",
     "loading": "Deine Vermietung wird geladen …",
     "anteilLadefehler": "Ob ihr gemeinsam veranlagt werdet, konnte nicht geladen werden – deshalb fehlt hier die Frage nach deinem Anteil am Objekt.",
     "leerenNichtMoeglich": "Leer lassen geht hier nicht, wenn schon ein Wert gespeichert ist. Trag 0 ein, wenn es nichts gab.",
     "einordnung": {
       "berechenbar": "Ganzjährig vermietete Objekte rechnen wir: je Objekt eine Anlage V, lineare AfA nach § 7 Abs. 4 EStG.",
-      "verkaufOderMoebliert": "Verkauf oder möbliert-auf-Zeit bleibt in 1.0 ehrlich außen vor: Fristen und Abgrenzung rechnen wir noch nicht. Kein halbes Feature.",
+      "verkaufOderMoebliert": "Verkauf oder möbliert-auf-Zeit rechnen wir noch nicht: Fristen und Abgrenzung fehlen.",
       "unbekannt": "Sag uns im Interview zuerst, ob du vermietest — und ob du verkauft oder möbliert-auf-Zeit vermietest."
     },
     "felder": {
@@ -1738,7 +1728,7 @@
       "werbungskosten": "Werbungskosten: {{betrag}}",
       "afa": "Lineare AfA: {{betrag}}",
       "offen": "Noch offen: {{count}} Angabe(n) — die Summen zeigen nur das Erfasste.",
-      "gated": "Ehrlich: Verkauf oder möbliert rechnen wir in 1.0 noch nicht."
+      "gated": "Verkauf oder möbliert rechnen wir noch nicht."
     },
     "weiter": "Weiter",
     "anschaffungsdatum": "Anschaffungsdatum (Kauf)",
@@ -1760,7 +1750,7 @@
     "abgelaufen": "Die Frist {{frist}} ist vorbei. Das Finanzamt kann einen Verspätungszuschlag festsetzen — ab dem {{pflichtAb}} muss es das (mindestens {{mindestsatz}} je angefangenem Monat).",
     "zuschlagPflicht": "Die Abgabefrist {{frist}} ist um {{tage}} Tage überschritten. Seit dem {{pflichtAb}} muss das Finanzamt einen Verspätungszuschlag festsetzen (§ 152 Abs. 2 AO): mindestens {{mindestsatz}} je angefangenem Monat — reich die Erklärung bald ein.",
     "freiwillig": "Freiwillige Erklärung: Du hast Zeit bis {{bis}} (31.12. des vierten Folgejahres). Je früher, desto früher kommt die Erstattung.",
-    "unklar": "Ob du abgeben musst, klären wir mit deinen Antworten. Pflicht-Frist wäre der {{frist}}.",
+    "unklar": "Abgabefrist {{frist}}, falls du abgeben musst",
     "ladefehler": "Deine Abgabefrist konnte nicht geladen werden."
   },
   "shared": {
@@ -1782,7 +1772,7 @@
     "validation": "Bitte prüf die markierten Eingaben.",
     "offline": "Keine Verbindung zum Server. Prüf dein Internet und versuch es noch mal.",
     "server": "Bei uns ist gerade etwas schiefgelaufen. Versuch es gleich noch mal.",
-    "unknown": "Das hat nicht geklappt. Versuch es noch mal.",
+    "unknown": "Das hat nicht geklappt. Versuch es noch einmal.",
     "loadHeading": "Das konnte nicht geladen werden.",
     "saveHeading": "Nicht gespeichert.",
     "saveKept": "Deine Eingabe ist noch da.",
@@ -1829,9 +1819,9 @@
       "kv-pv": "Zahlst du Kranken- oder Pflegeversicherung selbst – nicht über deinen Lohn (z. B. privat versichert)?",
       "einkuenfte": "Hattest du Kapitalerträge (Zinsen, Dividenden, Fonds) oder vermietest du eine Immobilie?",
       "kap-depot": "Wo liegt dein Depot? Bei mehreren: wähl, wo das meiste liegt – ausländische Depots kannst du danach ergänzen.",
-      "krypto-gate": "Ehrlich: Kryptowerte können wir noch nicht ausfüllen. Den Rest deiner Erklärung schon.",
+      "krypto-gate": "Kryptowerte können wir noch nicht ausfüllen. Den Rest deiner Erklärung schon.",
       "vermietung-art": "Wie vermietest du?",
-      "vermietung-gate": "Ehrlich: Verkäufe und möblierte Kurzzeitvermietung können wir noch nicht ausfüllen.",
+      "vermietung-gate": "Verkäufe und möblierte Kurzzeitvermietung können wir noch nicht ausfüllen.",
       "kv-pv-art": "Wie bist du versichert?",
       "kv-krankengeld": "Haben deine Krankenversicherungsbeiträge einen Anspruch auf Krankengeld?",
       "kv-pv-betrag": "Deine Beiträge zur Krankenversicherung im Jahr – nur Basisabsicherung, ohne Pflege und Zusatzleistungen (€)",
@@ -1902,8 +1892,7 @@
     "konflikt": "Das passte nicht zum gespeicherten Stand. Wir haben deine Angaben neu geladen.",
     "netzwerk": "Das konnte nicht gespeichert werden. Prüf die Verbindung und versuch es noch mal.",
     "basis": {
-      "titel": "Kurz zu dir.",
-      "hilfe": "Nur, was die weiteren Fragen bestimmt. Alles andere kommt aus deinen Belegen oder später."
+      "titel": "Kurz zu dir."
     },
     "auswahl": {
       "titel": "Was trifft {{year}} auf dich zu?",
@@ -1967,7 +1956,7 @@
       "geburtsdatum": "Geburtsdatum (TT.MM.JJJJ)",
       "fehlt": "Bitte Vorname und Geburtsdatum eintragen.",
       "datumFalsch": "Bitte das Geburtsdatum als TT.MM.JJJJ eintragen.",
-      "fehler": "Das hat nicht geklappt. Prüf die Verbindung und versuch es noch mal.",
+      "fehler": "Das hat nicht geklappt. Prüf die Verbindung und versuch es noch einmal.",
       "ladefehler": "Die Angaben zu deinem Partner konnten nicht geladen werden."
     },
     "alleinerziehend": {
@@ -2021,7 +2010,7 @@
     "back": "Zurück",
     "heading": "Deine Arbeitstage",
     "headingPartner": "Arbeitstage und Arbeitsweg von {{name}}",
-    "help": "Wähl deine Arbeitstage und trag Urlaub, Krankheit und Homeoffice ein. Wir zählen aus dem echten Kalender — kein Schätzwert.",
+    "help": "Wähl deine Arbeitstage und trag Urlaub, Krankheit und Homeoffice ein. Gezählt wird nach dem Kalender.",
     "weekdays": "An welchen Tagen arbeitest du?",
     "weekdayNames": {
       "1": "Mo",
@@ -2069,7 +2058,7 @@
       }
     },
     "widerspruch": "Das passt nicht zusammen.",
-    "widerspruchBody": "Mehr Urlaubs-/Krankheitstage als Werktage — prüf deine Eingaben.",
+    "widerspruchBody": "Mehr Urlaubs- und Krankheitstage als Werktage. Prüf deine Eingaben.",
     "weiter": "Weiter",
     "loading": "Wird geladen …",
     "zahlUnlesbar": "Das ist keine ganze Zahl. Bitte nur Ziffern eingeben, z. B. 30.",
@@ -2117,7 +2106,7 @@
     },
     "heading": "Abgabe vorbereiten",
     "schrittPlausibilitaet": "1. Prüfung vor Abgabe",
-    "plausibilitaetOk": "Alles klar — keine Widersprüche, nichts mehr offen.",
+    "plausibilitaetOk": "Keine Widersprüche, nichts offen.",
     "widerspruchBlockiert": "Diese Punkte müssen vor der Abgabe geklärt werden:",
     "hinweisPruefen": "Bitte prüfen:",
     "zurKachel": "Öffnen: {{titel}}",
@@ -2134,11 +2123,11 @@
     "back": "Zurück",
     "loading": "Deine Prüfung wird geladen …",
     "heading": "Prüfung vor Abgabe",
-    "einreichbar": "Alles klar — keine Widersprüche, nichts mehr offen.",
+    "einreichbar": "Keine Widersprüche, nichts offen.",
     "nichtEinreichbar": "Da ist noch etwas offen:",
     "stammdatenUnbekannt": "Ob deine persönlichen Angaben vollständig sind, konnten wir gerade nicht prüfen.",
     "weiterZumVergleich": "Weiter zum Veranlagungsartenvergleich",
-    "werktageNote": "Ehrlich: die Arbeitstage- und Pendlerpauschale-Prüfung folgt in einem späteren Schritt.",
+    "werktageNote": "Die Arbeitstage- und Pendlerpauschale-Prüfung folgt in einem späteren Schritt.",
     "widersprueche": "Widersprüche",
     "hinweise": "Hinweise",
     "widerspruch": {
@@ -2167,8 +2156,7 @@
       "retry": "Noch mal versuchen"
     },
     "empty": {
-      "heading": "Noch keine Angaben.",
-      "message": "Für dieses Steuerjahr liegen noch keine Angaben vor. Sobald deine Daten da sind, zeigen wir dir hier dein erfasstes Einkommen."
+      "heading": "Noch keine Angaben."
     },
     "hero": {
       "label": "Erfasstes Einkommen",
@@ -2180,13 +2168,13 @@
       "herkunftRegel": "Solange Angaben offen sind, zeigen wir eine Spanne statt eines festen Betrags.",
       "herkunftRechenweg_one": "{{count}} offener Posten × {{perItem}} Unsicherheit",
       "herkunftRechenweg_other": "{{count}} offene Posten × {{perItem}} Unsicherheit",
-      "gatedHeading": "Ehrlich: dafür sind wir noch nicht gut genug.",
+      "gatedHeading": "Selbstständigkeit rechnen wir noch nicht.",
       "gatedBody": "{{name}} kann SteuerEule noch nicht rechnen. Dein erfasstes Einkommen bleibt sichtbar — abgegeben wird erst, wenn alles drin ist.",
       "refundLater": "Die Erstattung rechnen wir in einem späteren Schritt.",
       "erstattungLabel": "Voraussichtliche Erstattung",
       "nachzahlungLabel": "Voraussichtliche Nachzahlung",
       "ergebnisLabel": "Voraussichtliches Ergebnis",
-      "ausgeglichen": "Weder Nachzahlung noch Erstattung — es fällt keine Steuer an.",
+      "ausgeglichen": "Weder Nachzahlung noch Erstattung: Es fällt keine Steuer an.",
       "ergebnisSpanne": "{{nachzahlung}} Nachzahlung bis {{erstattung}} Erstattung",
       "proPerson": "Du {{du}} · {{name}} {{partner}}"
     },
@@ -2199,7 +2187,7 @@
         "offen": "Offen",
         "erledigt": "Erledigt",
         "keinThema": "Trifft nicht zu",
-        "betragOffen": "⏳ Betrag offen",
+        "betragOffen": "Betrag offen",
         "optional": "Optional",
         "fehler": "Nicht geladen"
       },
@@ -2363,13 +2351,13 @@
       }
     },
     "checkBescheid": "Bescheid prüfen",
-    "checkKapital": "Kapital & Depot prüfen",
-    "checkVermietung": "Vermietung prüfen",
-    "checkKinder": "Kinder verwalten",
-    "amtlichesFormular": "Amtliches Formular ansehen",
+    "checkKapital": "Kapital & Depot",
+    "checkVermietung": "Vermietung",
+    "checkKinder": "Kinder",
+    "amtlichesFormular": "Amtliches Formular",
     "berater": {
-      "title": "Deine Eule berät dich",
-      "body": "Sie prüft dein Steuerjahr auf Geld, das du liegen lässt, und sagt dir, was du dieses Jahr noch tun kannst.",
+      "title": "Hinweise der Eule",
+      "body": "Prüft dein Steuerjahr auf ungenutzte Abzüge.",
       "cta": "Eule fragen"
     },
     "jahrAuswahl": "Steuerjahr wählen",
@@ -2390,8 +2378,8 @@
       "applied_other": "✓ {{count}} Änderungen von deiner Eule übernommen",
       "effect": "+{{betrag}} voraussichtlicher Effekt",
       "dismiss": "✕ Schließen",
-      "provenanceReceiptOwl": "📎 Beleg + Eule",
-      "provenanceOwl": "🦉 Von Eule",
+      "provenanceReceiptOwl": "Beleg + Eule",
+      "provenanceOwl": "Von Eule",
       "provenanceUser": "✓ Selbst eingetragen"
     },
     "fortschritt_one": "{{erledigt}} von {{count}} Schritt erledigt",
@@ -2410,7 +2398,7 @@
     },
     "abgabeMarke": {
       "titel": "Erklärung abgegeben?",
-      "text": "Hast du die Erklärung {{jahr}} ausgedruckt und beim Finanzamt abgegeben? Trag den Tag ein: Der Verlauf führt das Jahr dann als eingereicht, bis der Bescheid kommt.",
+      "text": "Trag den Tag der Abgabe ein. {{jahr}} gilt dann als eingereicht.",
       "datum": "Abgegeben am (TT.MM.JJJJ)",
       "cta": "Ich habe die Erklärung abgegeben",
       "gespeichert": "Gespeichert: Das Jahr ist eingereicht und wartet auf den Bescheid.",
@@ -2418,7 +2406,7 @@
       "datumUngueltig": "Bitte ein vollständiges Datum eintragen (TT.MM.JJJJ).",
       "datumAusserhalb": "Das Datum muss nach dem Ende von {{jahr}} liegen und darf nicht in der Zukunft sein.",
       "schonBescheid": "Für {{jahr}} ist schon ein Bescheid erfasst; die Abgabe lässt sich nicht mehr ändern.",
-      "fehler": "Das hat nicht geklappt. Prüf die Verbindung und versuch es noch mal.",
+      "fehler": "Das hat nicht geklappt. Prüf die Verbindung und versuch es noch einmal.",
       "eingereichtTitel": "Erklärung abgegeben",
       "eingereicht": "Eingereicht am {{datum}} · wartet auf Bescheid",
       "eingereichtMitBescheid": "Eingereicht am {{datum}} · Bescheid erfasst",
@@ -2469,7 +2457,7 @@
       "fehlt": "Vorname, Nachname und Geburtsdatum braucht es.",
       "speichern": "Anlegen und Beleg zuordnen",
       "abbrechen": "Abbrechen",
-      "fehler": "Das Anlegen hat nicht geklappt. Versuch es bitte noch einmal."
+      "fehler": "Das Anlegen hat nicht geklappt. Versuch es noch einmal."
     },
     "fuer": "für: {{name}}",
     "aendern": "ändern",
@@ -2478,7 +2466,7 @@
     "kombination": "Für diesen Wert ist schon etwas eingetragen. Zusätzlich (zweiter Arbeitgeber) oder ersetzen (Korrektur)? Übernimm einen der beiden Entwürfe.",
     "umgehaengt": "Der Beleg gehört jetzt {{name}}: {{applied}} Werte übernommen, {{takenBack}} bei der Person vorher zurückgenommen.",
     "umgehaengtWartet": "{{waiting}} Entwürfe warten noch auf deine Entscheidung in der Eule.",
-    "fehler": "Das Zuordnen hat nicht geklappt. Versuch es bitte noch einmal.",
+    "fehler": "Das Zuordnen hat nicht geklappt. Versuch es noch einmal.",
     "lesen": "Wird zugeordnet …"
   },
   "belege": {
@@ -2492,15 +2480,14 @@
     "offen_other": "{{count}} offen",
     "empty": {
       "heading": "Noch keine Belege.",
-      "message": "Wirf Belege übers ganze Jahr rein — hier landen sie und warten auf das richtige Steuerjahr."
+      "message": "Belege kannst du das ganze Jahr über hochladen."
     },
     "upload": {
-      "heading": "Beleg hochladen (PDF / Foto)",
       "cta": "PDF oder Foto hochladen",
       "uploading": "Wird verschlüsselt hochgeladen …",
       "success": "Beleg gespeichert. Er wird jetzt gelesen.",
       "errorUnsupported": "Bitte wähle eine PDF-, JPEG-, PNG- oder WebP-Datei aus.",
-      "errorFailed": "Der Upload hat nicht geklappt. Prüf die Verbindung und versuch es noch mal.",
+      "errorFailed": "Der Upload hat nicht geklappt. Prüf die Verbindung und versuch es noch einmal.",
       "limit": "PDF, JPG, PNG oder WebP, höchstens {{receiptFileSize}} je Datei.",
       "fileAttached": "Originaldatei verschlüsselt hinterlegt"
     },
@@ -2548,7 +2535,7 @@
       "otherYearCancel": "Abbrechen",
       "yearInvalid": "Bitte ein Jahr mit vier Ziffern eingeben.",
       "konflikt": {
-        "heading": "Zwei Jahre für diesen Beleg — du entscheidest.",
+        "heading": "Zwei Jahre für diesen Beleg. Du entscheidest.",
         "body": "Zugeordnet: {{zugeordnet}} · Vorschlag: {{vorschlag}}. Bis das geklärt ist, zählt dieser Beleg nicht.",
         "resolve": "Vorschlag {{jahr}} übernehmen",
         "keep": "Bei {{jahr}} bleiben"
@@ -2651,7 +2638,7 @@
   "bescheid": {
     "back": "Zurück",
     "heading": "Dein Steuerbescheid",
-    "help": "Übertrag die Beträge aus deinem Steuerbescheid — Feld für Feld, wie auf dem Papier.",
+    "help": "Übertrag die Beträge aus deinem Steuerbescheid.",
     "loading": "Dein Bescheid wird geladen …",
     "loadError": {
       "heading": "Das hat nicht geklappt.",
@@ -2681,7 +2668,7 @@
     "abgleich": {
       "heading": "Abgleich mit deiner Berechnung",
       "stimmt": "Alles stimmt überein ✓",
-      "unvollstaendig": "Ehrlich: deine Berechnung ist noch nicht vollständig — der Abgleich ist vorläufig.",
+      "unvollstaendig": "Deine Berechnung ist noch nicht vollständig, der Abgleich ist vorläufig.",
       "zeile": "Bescheid: {{bescheid}} · berechnet: {{berechnet}}"
     },
     "status": {
@@ -2819,7 +2806,7 @@
     },
     "lohnausweis": {
       "title": "CH-Lohnausweis",
-      "help": "Übertrage die Ziffern Feld für Feld — wie auf dem Papier. Beträge in CHF.",
+      "help": "Übertrag die Ziffern wie auf dem Papier. Beträge in CHF.",
       "felder": {
         "lohn": "Lohn (Grundlohn)",
         "gehaltsnebenleistungen": "Gehaltsnebenleistungen",
@@ -2949,13 +2936,13 @@
     "unbestimmt": "Das können wir noch nicht sagen.",
     "nichtVerheiratet": "Nur Verheiratete können zwischen Einzel- und Zusammenveranlagung wählen.",
     "done": "Weiter zum Cockpit",
-    "keineEinnahmen": "Noch kein Einkommen erfasst — es gibt nichts zu vergleichen.",
+    "keineEinnahmen": "Noch kein Einkommen erfasst.",
     "einzel": "Einzelveranlagung",
     "zusammen": "Zusammenveranlagung",
     "herkunftRegelEinzel": "§32a EStG Grundtarif + Soli §4 SolZG",
     "herkunftRegelZusammen": "§32a Abs. 5 Splitting + Soli §4 SolZG",
     "herkunftRechenweg": "zvE-Basis: {{zveA}} + {{zveB}} (Einnahmen — noch kein echtes zvE)",
-    "progressionsvorbehaltHinweis": "Ehrlich: der Progressionsvorbehalt (Lohnersatz) ist hier noch nicht berücksichtigt.",
+    "progressionsvorbehaltHinweis": "Der Progressionsvorbehalt (Lohnersatz) ist hier noch nicht berücksichtigt.",
     "ungueltig": "Das ist kein Betrag. Schreib ihn wie „40.000“ oder „40.000,50“.",
     "familienstandUnbekannt": "Ob du verheiratet bist, konnte gerade nicht geladen werden. Wähl es bitte selbst aus."
   },
@@ -2997,9 +2984,9 @@
     "loading": "Eulen-Modus wird geladen …",
     "back": "Zurück",
     "heroTitle": "Deine Eule",
-    "heroBody": "Sie kennt dein Steuerjahr und sagt dir, wo Geld liegen bleibt — mit Rechtsgrundlage, damit du selbst entscheidest.",
-    "optInLabel": "Eulen-Modus aktivieren (proaktive Hinweise ab 50 €, keine personenbezogenen Daten an KI)",
-    "emptyTitle": "Alles geprüft. Keine offenen Fragen!",
+    "heroBody": "Zeigt mit Rechtsgrundlage, wo du Abzüge nicht nutzt.",
+    "optInLabel": "Eulen-Modus aktivieren (proaktive Hinweise ab 50 €)",
+    "emptyTitle": "Keine offenen Fragen.",
     "emptyHelp": "Deine Angaben sind schlüssig. Kommen neue Belege oder Angaben dazu, prüft die Eule beim nächsten Öffnen erneut.",
     "rechtsstand": "Geprüft nach den Regeln der App für dieses Steuerjahr, jedes Mal wenn du die Eule öffnest.",
     "counter": "Frage {{current}} von {{total}}",
@@ -3011,11 +2998,11 @@
     "beruf": {
       "summary": "Tipps für: {{beruf}}",
       "change": "Ändern",
-      "error": "Das hat nicht geklappt — dein Beruf ist noch nicht gespeichert. Versuch es noch einmal."
+      "error": "Dein Beruf ist noch nicht gespeichert. Versuch es noch einmal."
     },
     "guest": {
-      "title": "Eulen-Modus erfordert ein kostenloses Konto",
-      "body": "Für die KI-Steuerberatung und Belegprüfung speichern wir deine Entwürfe verschlüsselt in deinem Konto. Als Gast startet hier kein KI-Abruf.",
+      "title": "Die Eule braucht ein Konto",
+      "body": "Für Hinweise und Belegprüfung speichern wir deine Entwürfe verschlüsselt in deinem Konto.",
       "register": "Konto anlegen",
       "login": "Einloggen",
       "privacyBadge": "Als Gast startet hier kein Abruf eines Sprachmodells."
@@ -3049,24 +3036,24 @@
       "resizeWorkbench": "Werkbank",
       "applyOne": "✓ Änderung übernehmen",
       "chooseAlternative": "Diesen Weg übernehmen",
-      "alternativesHint": "Wähle einen der Wege — beide zusammen geht nicht.",
+      "alternativesHint": "Wähle einen der Wege. Beide zusammen geht nicht.",
       "applying": "Wird übernommen …",
-      "conflictTitle": "⚠️ Konflikt beim Übernehmen",
+      "conflictTitle": "Konflikt beim Übernehmen",
       "forceApply": "Mit neuem Stand trotzdem übernehmen",
       "dismissConflict": "Schließen",
       "backToStage": "← Zurück zu den Eulen-Änderungen",
-      "maskFocus": "🦉 Eulen-Fokus · Prüfe deine Maske",
+      "maskFocus": "Eulen-Fokus · Prüfe deine Maske",
       "maskUnplaced": "Diese Angabe steht im Interview. Öffne dort die passende Frage.",
       "manualNotice": "Diese Maske enthält Stammdaten und ist für automatische KI-Änderungen gesperrt (Manuelle Eingabe).",
       "inspectMask": "Maske ansehen →",
       "receiptResultTitle": "Beleg geprüft: {{fileName}}",
-      "receiptBlocked": "⚠️ Sensibler Inhalt geschwärzt (Mandantengeheimnis)",
+      "receiptBlocked": "Sensibler Inhalt geschwärzt (Mandantengeheimnis)",
       "pauschbetragBadge": "Im Pauschbetrag (1.230 €)",
-      "provenanceReceiptOwl": "📎 Beleg + Eule",
-      "provenanceOwlDraft": "🦉 Eulen-Entwurf",
+      "provenanceReceiptOwl": "Beleg + Eule",
+      "provenanceOwlDraft": "Eulen-Entwurf",
       "receiptInInbox": "Das Original liegt in deinen Belegen →",
       "tabDrafts": "Entwürfe & Hinweise",
-      "tabForms": "🔍 Glas-Erklärung"
+      "tabForms": "Glas-Erklärung"
     }
   },
   "advisor": {
@@ -3084,7 +3071,7 @@
       "checksum": "Das geladene Sprachmodell stimmt nicht mit der geprüften Fassung überein. Der Download wurde verworfen, es wurde nichts gespeichert.",
       "downloadFailed": "Das Sprachmodell ließ sich gerade nicht laden. Bitte versuch es später noch mal.",
       "micDenied": "Ohne Zugriff aufs Mikrofon kann ich nicht zuhören. Du kannst ihn in den Browser-Einstellungen erlauben.",
-      "failed": "Das Diktat hat nicht geklappt. Bitte versuch es noch mal oder tipp deine Frage."
+      "failed": "Das Diktat hat nicht geklappt. Versuch es noch einmal oder tipp deine Frage."
     },
     "plan": {
       "heading": "Plan der Eule",
@@ -3100,7 +3087,7 @@
     "chat": {
       "sender": "Die Eule",
       "heading": "Steuer-Assistent",
-      "help": "Stelle Fragen zu deinen Werbungskosten, Freibeträgen oder Belegen. Antworten erfolgen transparent mit Angabe der Rechtsgrundlage.",
+      "help": "Fragen zu Werbungskosten, Freibeträgen oder Belegen.",
       "inputPlaceholder": "Frag deine Eule (z. B. Fortbildung, Laptop, Spenden, Endprüfung) …",
       "inputPlaceholderShort": "Frag deine Eule …",
       "sendButton": "Fragen",
@@ -3210,18 +3197,10 @@
         "failed": "Der Verlauf konnte nicht geleert werden."
       },
       "thinkingPhrases": [
-        "Die Eule blättert in deiner Akte …",
-        "Die Eule rückt die Brille zurecht …",
-        "Die Eule schlägt im EStG nach …",
-        "Die Eule rechnet nach …",
-        "Die Eule sortiert deine Belege …",
-        "Die Eule prüft die Pauschalen …",
-        "Die Eule vergleicht Vorher und Nachher …",
-        "Die Eule spitzt den Bleistift …",
-        "Die Eule zählt die Arbeitstage …",
-        "Die Eule schaut, was noch fehlt …",
-        "Die Eule legt die Paragrafen bereit …",
-        "Die Eule formuliert die Antwort …"
+        "Liest deine Angaben …",
+        "Prüft die Rechtsgrundlage …",
+        "Rechnet nach …",
+        "Formuliert die Antwort …"
       ],
       "basisMode": "Basis-Modus: Die KI ist gerade nicht erreichbar, diese Antwort stammt aus den festen Regeln der Eule.",
       "choicesCaption": "Schnellantwort wählen:",
@@ -3252,7 +3231,7 @@
       "receiptFileCta": "PDF oder Foto auswählen",
       "receiptPasteText": "Stattdessen Text einfügen",
       "receiptPrivacy": "Der Text wird auf deinem Gerät gelesen. Das Bild geht an keine KI; das Original liegt verschlüsselt in deinen Belegen.",
-      "receiptNativeHint": "Kamera-Scan folgt in der App — lade im Web ein PDF oder Foto hoch.",
+      "receiptNativeHint": "Im Web kannst du ein PDF oder Foto hochladen.",
       "lstbPersonBOwnAccount": "Das ist die Lohnsteuerbescheinigung von Person B. Person B hat ein eigenes Konto und lädt sie dort hoch; hier wurde nichts übernommen.",
       "certificatePersonBOwnAccount": "Das ist der Lohnausweis von Person B. Person B hat ein eigenes Konto und lädt ihn dort hoch; hier wurde nichts übernommen.",
       "receiptProgress": {
@@ -3304,7 +3283,7 @@
         "summarize": "Jetzt zusammenfassen",
         "working": "Fasse zusammen …",
         "tooShort": "Das Gespräch ist noch zu kurz zum Zusammenfassen.",
-        "failed": "Das Zusammenfassen hat nicht geklappt. Bitte versuch es noch einmal.",
+        "failed": "Das Zusammenfassen hat nicht geklappt. Versuch es noch einmal.",
         "divider": "Älterer Verlauf zusammengefasst",
         "dividerHelp": "Ab hier liest die Eule statt der Nachrichten darüber diese Zusammenfassung:"
       },
@@ -3337,7 +3316,7 @@
         "inputAria": "Text der Notiz",
         "save": "Speichern",
         "cancel": "Abbrechen",
-        "failed": "Das hat nicht geklappt. Bitte versuch es noch einmal.",
+        "failed": "Das hat nicht geklappt. Versuch es noch einmal.",
         "undo": "Rückgängig",
         "undone": "zurückgenommen",
         "change": {
@@ -3371,7 +3350,7 @@
         "delete": "Löschen",
         "deleteConfirm": "Gespräch mit allen Nachrichten löschen? Übernommene Werte bleiben in deiner Erklärung.",
         "cancel": "Abbrechen",
-        "failed": "Das hat nicht geklappt. Bitte versuch es noch einmal."
+        "failed": "Das hat nicht geklappt. Versuch es noch einmal."
       },
       "notices": {
         "title": "Hinweis der App zu dieser Antwort"
@@ -3437,13 +3416,13 @@
     "laden": "Dein Verlauf wird geladen …",
     "gast": {
       "titel": "Der Verlauf braucht ein Konto",
-      "text": "Hier stehen alle deine Steuerjahre nebeneinander: was erklärt war, was das Finanzamt festgesetzt hat und wie sich Erstattung, Werbungskosten und Netto entwickeln. Dafür muss SteuerEule deine Jahre speichern dürfen.",
+      "text": "Der Verlauf vergleicht deine Steuerjahre. Dafür muss SteuerEule sie speichern.",
       "registrieren": "Konto anlegen",
       "anmelden": "Anmelden"
     },
     "leer": {
       "titel": "Noch kein Steuerjahr",
-      "text": "Sobald ein Jahr eine Erklärung oder einen Bescheid hat, steht es hier. Alte Jahre kannst du mit ihrem Bescheid ergänzen."
+      "text": "Jahre mit Erklärung oder Bescheid erscheinen hier."
     },
     "nochOffenKurz": "noch offen",
     "und": "und",
@@ -3577,7 +3556,7 @@
       "erstattung": {
         "label": "Erstattung",
         "titel": "Erstattung und Nachzahlung",
-        "sub": "Für den Haushalt. Rot gestrichelt: vom Finanzamt gekürzt."
+        "sub": "Für den Haushalt. Gestrichelt: vom Finanzamt gekürzt oder noch geschätzt."
       },
       "werbungskosten": {
         "label": "Werbungskosten",
@@ -3764,8 +3743,7 @@
     },
     "upload": {
       "titel": "{{jahr}} oder früher ergänzen",
-      "text": "Alten Bescheid hochladen, wie im Belege-Tab. Die Eule liest die Eckwerte.",
-      "textLang": "Alten Bescheid hochladen, derselbe Ablauf wie im Belege-Tab. Die Eule liest die Eckwerte, sie bleiben Entwürfe, bis du sie übernimmst.",
+      "text": "Die Eule liest die Eckwerte aus dem Bescheid. Sie bleiben Entwürfe, bis du sie übernimmst.",
       "cta": "Bescheid hochladen",
       "nurWeb": "Hochladen geht in dieser Version im Browser.",
       "liest": "Die Eule liest den Bescheid …",
@@ -3815,8 +3793,8 @@
       "offenMit": "in Arbeit · {{was}}",
       "eingereicht": "abgegeben · wartet auf Bescheid",
       "nurBescheid": "nur Bescheid",
-      "weniger": "Bescheid · {{betrag}} weniger als erklärt",
-      "mehr": "Bescheid · {{betrag}} mehr als erklärt",
+      "weniger": "Bescheid {{betrag}}",
+      "mehr": "Bescheid {{betrag}}",
       "aenderungen_one": "Bescheid · {{count}} Änderung",
       "aenderungen_other": "Bescheid · {{count}} Änderungen",
       "wieErklaert": "Bescheid wie erklärt",
@@ -4853,6 +4831,8 @@
     "bestaetigen": "Meine Angaben prüfen & bestätigen"
   },
   "beta": {
+    "badge": "BETA",
+    "badgeLabel": "BETA: Hinweis zur Testphase",
     "label": "Beta:",
     "notice": "SteuerEule ist in der Testphase. Funktionen können sich ändern und Fehler sind möglich. Prüfe jeden Ausdruck, bevor du ihn unterschreibst und einreichst."
   },

@@ -1,6 +1,7 @@
 import { ScrollView, View, Text, Pressable } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { Card, Chip, useTheme, type Breakpoint } from '@steuereule/ui'
+import { Icon } from '../../icons/Icon'
 import { APP_NS } from '../../i18n/resources'
 import { makeProfileStyles } from './styles'
 import { ProfileAppearanceSection } from './ProfileAppearanceSection'
@@ -41,7 +42,7 @@ export function ProfileView({ profile, onEdit, justSaved, bp, onOpenPrivacy, onO
     <ScrollView contentContainerStyle={bp === 's' ? styles.screen : styles.wideScreen} testID="screen-container">
       <Text style={styles.heading}>{tr('profil.cardLabel')}</Text>
 
-      <Card variant="nacht" style={styles.summaryCard}>
+      <Card style={styles.summaryCard}>
         <View style={styles.summaryRow}>
           <View style={styles.avatar}>
             <Text style={styles.avatarText}>{initial}</Text>
@@ -62,20 +63,9 @@ export function ProfileView({ profile, onEdit, justSaved, bp, onOpenPrivacy, onO
 
       <Card style={styles.datenCard} testID="profil-wissensnetz-card">
         <View style={{ padding: t.space.s3, gap: t.space.s2 }}>
-          <Text style={{ ...t.type.emphasis, color: t.color.tinte }}>Steuer-Wissensnetz (Relationen)</Text>
+          <Text style={{ ...t.type.emphasis, color: t.color.tinte }}>Arbeitgeber</Text>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.space.s2 }}>
-            <View
-              style={{
-                paddingHorizontal: t.space.s2,
-                paddingVertical: t.space.s1,
-                borderRadius: t.radius.s,
-                backgroundColor: t.color.grund,
-              }}
-            >
-              <Text style={{ ...t.type.caption, color: t.color.tinte }}>
-                {`Arbeitgeber: ${employers.length} hinterlegt`}
-              </Text>
-            </View>
+            {employers.length === 0 ? <Text style={{ ...t.type.caption, color: t.color.tinte2 }}>Noch keiner hinterlegt</Text> : null}
             {employers.map((emp) => (
               <View
                 key={emp.id}
@@ -83,7 +73,7 @@ export function ProfileView({ profile, onEdit, justSaved, bp, onOpenPrivacy, onO
                   paddingHorizontal: t.space.s2,
                   paddingVertical: t.space.s1,
                   borderRadius: t.radius.s,
-                  backgroundColor: t.color.funkeHell,
+                  backgroundColor: t.color.linieWeich,
                 }}
                 testID={`profil-wissensnetz-emp-${emp.id}`}
               >
@@ -99,6 +89,7 @@ export function ProfileView({ profile, onEdit, justSaved, bp, onOpenPrivacy, onO
       {onOpenMasterData ? (
         <Card style={styles.datenCard}>
           <Pressable accessibilityRole="button" onPress={onOpenMasterData} style={styles.datenRow} testID="profil-stammdaten">
+            <Icon name="form" />
             <Text style={styles.datenRowLabel}>{tr('stammdaten.rowLabel')}</Text>
             <Text style={styles.datenRowArrow} aria-hidden={true}>→</Text>
           </Pressable>
@@ -107,6 +98,7 @@ export function ProfileView({ profile, onEdit, justSaved, bp, onOpenPrivacy, onO
 
       <Card style={styles.datenCard}>
         <Pressable accessibilityRole="button" onPress={onOpenPrivacy} style={styles.datenRow} testID="profil-datenschutz">
+          <Icon name="shield" />
           <Text style={styles.datenRowLabel}>{tr('profil.deineDaten.rowLabel')}</Text>
           <Text style={styles.datenRowArrow} aria-hidden={true}>→</Text>
         </Pressable>
@@ -114,6 +106,7 @@ export function ProfileView({ profile, onEdit, justSaved, bp, onOpenPrivacy, onO
 
       <Card style={styles.datenCard}>
         <Pressable accessibilityRole="button" onPress={onOpenSecurity} style={styles.datenRow} testID="profil-sicherheit">
+          <Icon name="lock" />
           <Text style={styles.datenRowLabel}>{tr('profil.sicherheit.rowLabel')}</Text>
           <Text style={styles.datenRowArrow} aria-hidden={true}>→</Text>
         </Pressable>

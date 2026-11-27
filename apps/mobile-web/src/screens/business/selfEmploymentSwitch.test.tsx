@@ -34,27 +34,27 @@ describe('the self-employment switch in the interview', () => {
   it('walks on from „Selbstständig“ to the next question when the switch is on', async () => {
     server.use(http.get(`*/v1/steuerjahre/${YEAR}/cockpit`, () => HttpResponse.json(summary(true))), http.get('*/v1/capabilities', () => HttpResponse.json({ selbststaendig: true })))
     mount(<InterviewScreen taxYear={YEAR} onDone={() => {}} />)
-    await screen.findByText('Mehrfachjobs? Nimm die Hauptquelle — der Rest kommt später.')
+    await screen.findByText('Bei mehreren: die Hauptquelle.')
     fireEvent.click(screen.getByText('Selbstständig'))
-    await screen.findByText('Wer in Deutschland wohnt und in der Schweiz arbeitet, hat eigene Regeln — die gehen wir komplett mit dir durch.')
-    expect(screen.queryByText('Ehrlich: dafür sind wir noch nicht gut genug.')).toBeNull()
+    await screen.findByText('Für Grenzgänger in die Schweiz gelten eigene Regeln.')
+    expect(screen.queryByText('Selbstständigkeit rechnen wir noch nicht.')).toBeNull()
   })
 
   it('„Beides“ leads on into the employee part without the gate when the switch is on', async () => {
     server.use(http.get(`*/v1/steuerjahre/${YEAR}/cockpit`, () => HttpResponse.json(summary(true))), http.get('*/v1/capabilities', () => HttpResponse.json({ selbststaendig: true })))
     mount(<InterviewScreen taxYear={YEAR} onDone={() => {}} />)
-    await screen.findByText('Mehrfachjobs? Nimm die Hauptquelle — der Rest kommt später.')
+    await screen.findByText('Bei mehreren: die Hauptquelle.')
     fireEvent.click(screen.getByText('Beides'))
-    await screen.findByText('Wer in Deutschland wohnt und in der Schweiz arbeitet, hat eigene Regeln — die gehen wir komplett mit dir durch.')
+    await screen.findByText('Für Grenzgänger in die Schweiz gelten eigene Regeln.')
     expect(screen.queryByText('Angestellten-Teil vorbereiten — Abgabe erst mit Gewerbe')).toBeNull()
   })
 
   it('still stops at the gate when the switch is off', async () => {
     server.use(http.get(`*/v1/steuerjahre/${YEAR}/cockpit`, () => HttpResponse.json(summary(false))), http.get('*/v1/capabilities', () => HttpResponse.json({ selbststaendig: false })))
     mount(<InterviewScreen taxYear={YEAR} onDone={() => {}} />)
-    await screen.findByText('Mehrfachjobs? Nimm die Hauptquelle — der Rest kommt später.')
+    await screen.findByText('Bei mehreren: die Hauptquelle.')
     fireEvent.click(screen.getByText('Selbstständig'))
-    expect(await screen.findByText('Ehrlich: dafür sind wir noch nicht gut genug.')).toBeTruthy()
+    expect(await screen.findByText('Selbstständigkeit rechnen wir noch nicht.')).toBeTruthy()
   })
 })
 

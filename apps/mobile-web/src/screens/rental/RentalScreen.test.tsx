@@ -233,7 +233,7 @@ describe('VermietungScreen', () => {
     )
     renderRental()
 
-    expect(await screen.findByText(/Verkauf oder möbliert-auf-Zeit bleibt in 1.0 ehrlich außen vor/)).toBeTruthy()
+    expect(await screen.findByText(/Verkauf oder möbliert-auf-Zeit rechnen wir noch nicht/)).toBeTruthy()
     expect(screen.queryByTestId('objekt-hinzufuegen')).toBeNull()
   })
 

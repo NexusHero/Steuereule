@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { View, Text, type TextStyle, type ViewStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { Button, Input, Option, useTheme, type UiTheme } from '@steuereule/ui'
+import { interviewOptionIcon } from '../interview/optionIcons'
 import { QUESTIONS, formatEuro, type Answers, type EntryStepId } from '@steuereule/core'
 import { APP_NS } from '../../i18n/resources'
 import { GlossaryHint } from '../shared/GlossaryHint'
@@ -62,7 +63,7 @@ export function StromFields({ steps, draft, onChange, copy, idPrefix, prior, mis
             <GlossaryHint stepId={id} />
             {decl.form.kind === 'enum' ? (
               decl.form.values.map((value) => (
-                <Option key={value} selected={draft[id] === value} onPress={() => onChange(id, value)} testID={`${idPrefix}-option-${id}-${value}`}>
+                <Option key={value} selected={draft[id] === value} onPress={() => onChange(id, value)} icon={interviewOptionIcon(id, value, draft[id] === value)} testID={`${idPrefix}-option-${id}-${value}`}>
                   {copy.option(id, value)}
                 </Option>
               ))

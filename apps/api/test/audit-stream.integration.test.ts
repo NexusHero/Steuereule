@@ -3,8 +3,9 @@
 import { PrismaClient } from '@prisma/client'
 import { afterAll, afterEach, describe, expect, it } from 'vitest'
 import { PrismaAuditRepository } from '../src/audit/audit.repository.prisma.js'
+import { createDatabaseAdapter } from '../src/common/database-adapter.js'
 
-const prisma = new PrismaClient()
+const prisma = new PrismaClient({ adapter: createDatabaseAdapter() })
 const repository = new PrismaAuditRepository(prisma)
 
 describe('PrismaAuditRepository.streamOwnRows', () => {

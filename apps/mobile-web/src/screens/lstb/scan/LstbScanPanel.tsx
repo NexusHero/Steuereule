@@ -25,7 +25,7 @@ export function LstbScanPanel({ scan, taxYear, onSwitchTaxYear }: LstbScanPanelP
 
   return (
     <>
-    <Card variant="nacht" style={styles.scanCard} testID="lstb-scan-card">
+    <Card style={styles.scanCard} testID="lstb-scan-card">
       <Text style={styles.scanHeading}>{tr('lstb.scan.heading')}</Text>
       <Text style={styles.scanBody}>{tr('lstb.scan.help')}</Text>
       <ReceiptPickerButton
@@ -223,14 +223,13 @@ function makeStyles(t: UiTheme) {
   }
   const scanHeading: TextStyle = {
     ...t.type.meta,
-    color: t.color.funkeHell,
+    color: t.color.tinte2,
     textTransform: 'uppercase',
     letterSpacing: 0.08 * t.size.xs,
   }
   const scanBody: TextStyle = {
     ...t.type.small,
-    color: t.color.nachtText,
-    opacity: 0.9,
+    color: t.color.tinte2,
   }
   const scanErrorText: TextStyle = {
     ...t.type.label,
@@ -238,7 +237,7 @@ function makeStyles(t: UiTheme) {
   }
   const conflictCard: ViewStyle = {
     marginBottom: t.space.s4,
-    borderWidth: 2,
+    borderWidth: t.space.kontur,
     borderColor: t.color.warn,
     backgroundColor: t.color.warnWeich,
     gap: t.space.s2,
@@ -259,8 +258,8 @@ function makeStyles(t: UiTheme) {
   }
   const draftBannerCard: ViewStyle = {
     marginBottom: t.space.s4,
-    borderWidth: 2,
-    borderColor: t.color.tinte,
+    borderWidth: t.space.kontur,
+    borderColor: t.color.linie,
     gap: t.space.s2,
   }
   const draftHeader: ViewStyle = {

@@ -29,7 +29,7 @@
 // A NOTE ON TIMING, left visible rather than smoothed over: #298 (the LoginScreen/Registrierung
 // DS-alignment slice) merged to `main` while this PR was in review — its own AC-A directly
 // redesigns the exact failure shape #295 reported: a genuine, transport-level outage now shows
-// ONE shared banner ("Gerade nicht erreichbar — das liegt an uns."), and the Google slot and the
+// ONE shared banner ("Gerade nicht erreichbar. Das liegt an uns."), and the Google slot and the
 // QR column both DEFER to it (an honest "can't tell"/"retrying" line each) instead of each
 // raising independent prose. #295's own three original strings (a password-field `auth.errGeneric`,
 // the QR card's `"Code konnte nicht erzeugt werden."`, a silently-missing Google button) are no
@@ -155,15 +155,17 @@ const TEST_PASSWORD = 'Sicheres-Passwort-1!'
 const COPY = {
   ...FLOW_COPY,
   loginGoogle: 'Weiter mit Google',
-  loginGuest: 'Erstmal als Gast umschauen',
+  loginGuest: 'Als Gast ansehen',
   // The empty Cockpit's heading (CockpitEmpty) — what a fresh guest without answers sees at /app.
   cockpitEmpty: 'Noch keine Angaben.',
+  // The loaded Cockpit's income headline (CockpitLoaded) — the empty Cockpit does not carry it.
+  cockpitIncome: 'Erfasstes Einkommen',
   // ADR-0045 (value-first funnel): a guest lands in the Minimal-Gate, then the Konto-Wand.
   job: 'Angestellt',
   nein: 'Nein',
   kinder: '2 oder mehr',
   familienstand: 'Ledig',
-  kontoWandLater: 'Später — erst mal ins Cockpit',
+  kontoWandLater: 'Später, zum Cockpit',
   // #283/#298 AC-A (landed on `main` while this file was in review, see this file's own PR
   // thread) — a genuine, transport-level API outage now shows exactly ONE shared alert, not
   // three independent messages. This directly closes the bug CLASS #295 reported (three
@@ -175,10 +177,10 @@ const COPY = {
   // same screen for a genuinely different, non-outage cause (`login.qr.error` for a QR-only
   // failure against a reachable API, `auth.errGeneric` for a Google social-sign-in failure) — see
   // this file's own header for the exact statement; neither is what this file's rows construct.
-  apiUnreachableHeading: 'Gerade nicht erreichbar — das liegt an uns.',
+  apiUnreachableHeading: 'Gerade nicht erreichbar. Das liegt an uns.',
   googleUnknown: 'Wir können gerade nicht prüfen, ob Google verfügbar ist.',
   qrRetryingAuto: 'Wir versuchen es automatisch erneut …',
-  qrRetryExhausted: 'Die automatischen Versuche sind pausiert — bitte versuch es manuell noch einmal.',
+  qrRetryExhausted: 'Die automatischen Versuche sind pausiert. Versuch es selbst noch einmal.',
   cockpitTab: 'Cockpit',
   cockpitEmptyHeading: 'Noch keine Angaben.',
   cockpitLoadErrorHeading: 'Das hat nicht geklappt.',
@@ -519,10 +521,14 @@ async function testCloseAndReopenReLogin(apiOrigin, webOrigin, sql) {
   }
 }
 
+/** The answered Cockpit's income headline. Only a guest whose Minimal-Gate answers are stored
+ *  sees it: a guest without answers gets the empty Cockpit, which has no headline. */
+const answeredCockpit = (page) => page.getByText(COPY.cockpitIncome, { exact: true })
+
 /** Row D — guest, same-tab reload, the guest stays honestly a guest (ADR-0007: identity only at
  *  filing). The guest's own data marker changed with ADR-0045 (value-first funnel): a guest no
  *  longer reaches Onboarding — the Minimal-Gate answers ARE the guest's own data now. Positive:
- *  a reload restores the answered Cockpit at /app ("0 Fragen offen", #443 decision 15: one URL
+ *  a reload restores the answered Cockpit at /app (its income headline, #443 decision 15: one URL
  *  per mask). Calibrated against clearing the guest cookie
  *  (negative control): that MUST produce a fresh, empty guest — the empty job question, never the
  *  answered state — otherwise the positive assertion below would pass even if the guest cookie
@@ -544,8 +550,8 @@ async function testGuestReload(browser, webOrigin) {
     await pick('familienstand', COPY.familienstand) // completes the Minimal-Gate (Familienstand, ADR-0054)
     await page.locator('[data-testid="strom-weiter"]').click()
     await page.getByText(COPY.kontoWandLater).click() // Konto-Wand -> "Später" -> Cockpit
-    await page.getByText('0 Fragen offen', { exact: true }).waitFor({ state: 'visible', timeout: 10_000 })
-    console.log('[return-visit] Row D: guest answered the Minimal-Gate, own data ("0 Fragen offen") renders in the Cockpit.')
+    await answeredCockpit(page).waitFor({ state: 'visible', timeout: 10_000 })
+    console.log('[return-visit] Row D: guest answered the Minimal-Gate, the answered Cockpit renders.')
 
     // --- positive: reload while guest ---
     await page.reload({ waitUntil: 'networkidle' })
@@ -555,11 +561,11 @@ async function testGuestReload(browser, webOrigin) {
     }
     // #443 decision 15: every mask has its own URL, so a reload restores the screen the guest was on
     // (/app → the answered Cockpit) instead of detouring through the Konto-Wand. Seeing the SAME
-    // guest's answered state ("0 Fragen offen") IS the proof the guest data survived the reload —
+    // guest's answered Cockpit (its income headline) IS the proof the guest data survived the reload —
     // a fresh guest would see the empty job question instead (negative control below).
-    await page.getByText('0 Fragen offen', { exact: true }).waitFor({ state: 'visible', timeout: 15_000 }).catch(async () => {
+    await answeredCockpit(page).waitFor({ state: 'visible', timeout: 15_000 }).catch(async () => {
       const bodyText = await page.evaluate(() => document.body.innerText.slice(0, 800))
-      fail(`Row D (positive): reloading while guest did not re-render the SAME guest's answered Cockpit ("0 Fragen offen") within 15s. Page shows: ${JSON.stringify(bodyText)}`)
+      fail(`Row D (positive): reloading while guest did not re-render the SAME guest's answered Cockpit (its income headline) within 15s. Page shows: ${JSON.stringify(bodyText)}`)
     })
     console.log('[return-visit] Row D (positive): a same-tab reload while guest restores the answered Cockpit at /app — the guest identity is honestly preserved.')
 
@@ -567,7 +573,7 @@ async function testGuestReload(browser, webOrigin) {
     await ctx.clearCookies()
     await page.reload({ waitUntil: 'networkidle' })
     await page.waitForTimeout(500)
-    const staleGuestDataStillShown = await page.getByText('0 Fragen offen', { exact: true }).isVisible({ timeout: 5_000 }).catch(() => false)
+    const staleGuestDataStillShown = await answeredCockpit(page).isVisible({ timeout: 5_000 }).catch(() => false)
     if (staleGuestDataStillShown) {
       fail(
         'Row D (control): clearing the guest cookie and reloading STILL shows the answered Cockpit — the previous guest\'s ' +

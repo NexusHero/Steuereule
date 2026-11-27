@@ -77,7 +77,7 @@ describe('LoginScreen', () => {
   it('renders the German login by default (brand, email form, guest mode)', () => {
     renderLogin()
     expect(screen.getByText('Einloggen')).toBeTruthy()
-    expect(screen.getByText('Erstmal als Gast umschauen')).toBeTruthy()
+    expect(screen.getByText('Als Gast ansehen')).toBeTruthy()
   })
 
   it('switches to English when the locale changes (ADR-0006)', () => {
@@ -92,10 +92,10 @@ describe('LoginScreen', () => {
   // standing assertion — closed here. `getByRole('heading', { level: N })` only resolves if
   // `role="heading"`/`aria-level={N}` actually reached the rendered DOM (react-native-web's
   // own forwarding, not assumed) — dropping either prop from PageHeader turns this red.
-  it('gives the wordmark and greeting real heading semantics, not just visual size (#298 F8)', () => {
+  it('gives the wordmark real heading semantics, not just visual size (#298 F8); the greeting line is gone', () => {
     renderLogin()
     expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('SteuerEule')
-    expect(screen.getByRole('heading', { level: 2 }).textContent).toBe('Schön, dass du da bist.')
+    expect(screen.queryByRole('heading', { level: 2 })).toBeNull()
   })
 
   // The wordmark is the splash: "Steuer" + the ink owl in place of the word "Eule".
@@ -111,6 +111,40 @@ describe('LoginScreen', () => {
   it('renders the Google social sign-in button (REQ-008, DS auth.html ghost variant)', async () => {
     renderLogin()
     expect(await screen.findByText('Weiter mit Google')).toBeTruthy()
+  })
+
+  it('shows the provider as a round symbol button that keeps its words as its name (Graphit)', async () => {
+    renderLogin()
+    const google = await screen.findByRole('button', { name: 'Weiter mit Google' })
+    const style = getComputedStyle(google)
+    expect(style.width).toBe('56px')
+    expect(style.height).toBe('56px')
+    expect(style.borderTopLeftRadius).toBe('28px')
+  })
+
+  it('says BETA beside the name and nothing more at rest: no notice paragraph, no greeting line', async () => {
+    renderLogin()
+    const badge = await screen.findByTestId('beta-marke')
+    expect(badge.textContent).toBe('BETA')
+    expect(screen.getByTestId('login-splash').parentElement).toBe(badge.parentElement)
+    expect(screen.queryByTestId('beta-hinweis')).toBeNull()
+    expect(screen.queryByText(/Schön, dass du/)).toBeNull()
+  })
+
+  it('opens the written-out beta notice from the mark and closes it again (WEB-20)', async () => {
+    renderLogin()
+    const badge = await screen.findByTestId('beta-marke')
+    fireEvent.click(badge)
+    expect(screen.getByTestId('beta-hinweis').textContent).toContain('Prüfe jeden Ausdruck, bevor du ihn unterschreibst und einreichst.')
+    fireEvent.click(badge)
+    expect(screen.queryByTestId('beta-hinweis')).toBeNull()
+  })
+
+  it('writes the name out beside the owl: one heading that reads "SteuerEule"', async () => {
+    renderLogin()
+    const heading = await screen.findByTestId('login-splash')
+    expect(heading.getAttribute('role')).toBe('heading')
+    expect(heading.textContent).toBe('SteuerEule')
   })
 
   it('does not render the Apple social button while the flag is off (REQ-008, no Apple Dev account / iOS build yet)', () => {
@@ -158,7 +192,7 @@ describe('LoginScreen', () => {
   it('calls onGuest from the guest chip', () => {
     const onGuest = vi.fn()
     renderLogin({ onGuest })
-    fireEvent.click(screen.getByText('Erstmal als Gast umschauen'))
+    fireEvent.click(screen.getByText('Als Gast ansehen'))
     expect(onGuest).toHaveBeenCalledOnce()
   })
 
@@ -172,7 +206,7 @@ describe('LoginScreen', () => {
   it('renders honest guest-mode copy that no longer claims device-only storage (de)', () => {
     renderLogin()
     expect(
-      screen.getByText('Gast-Modus: deine Angaben werden sicher verschlüsselt gespeichert.'),
+      screen.getByText('Als Gast werden deine Angaben verschlüsselt gespeichert.'),
     ).toBeTruthy()
     expect(screen.queryByText(/nur auf diesem Gerät/)).toBeNull()
   })
@@ -180,7 +214,7 @@ describe('LoginScreen', () => {
   it('renders honest guest-mode copy that no longer claims device-only storage (en)', () => {
     renderLogin({ lng: 'en' })
     expect(
-      screen.getByText('Guest mode: your details are saved securely, encrypted.'),
+      screen.getByText('As a guest your details are stored encrypted.'),
     ).toBeTruthy()
     expect(screen.queryByText(/this device only/)).toBeNull()
   })
@@ -345,7 +379,7 @@ describe('LoginScreen', () => {
     fillCredentials()
     fireEvent.click(screen.getByText('Einloggen'))
 
-    await screen.findByText('Gerade nicht erreichbar — das liegt an uns.')
+    await screen.findByText('Gerade nicht erreichbar. Das liegt an uns.')
     expect(screen.getByText('Unsere Server antworten nicht. Deine Daten sind sicher, es ist nichts verloren.')).toBeTruthy()
     expect(screen.queryByText(/Wir versuchen es automatisch weiter/)).toBeNull()
     expect(onDone).not.toHaveBeenCalled()
@@ -366,7 +400,7 @@ describe('LoginScreen', () => {
     expect(onDone).not.toHaveBeenCalled()
     // #283 AC-B — a wrong password is a real answer, not a failure: it must never be merged
     // into (or read as) the shared-outage alert.
-    expect(screen.queryByText('Gerade nicht erreichbar — das liegt an uns.')).toBeNull()
+    expect(screen.queryByText('Gerade nicht erreichbar. Das liegt an uns.')).toBeNull()
   })
 
   // #308 — the partial case, which neither AC-A nor AC-B covered. AC-B holds when the API is
@@ -397,7 +431,7 @@ describe('LoginScreen', () => {
       // survived it. Nothing checked what the BANNER said, so the suite was blind to a screen
       // claiming "Unsere Server antworten nicht" three lines above a message that is only
       // knowable because a server answered.
-      expect(screen.queryByText('Gerade nicht erreichbar — das liegt an uns.')).toBeNull()
+      expect(screen.queryByText('Gerade nicht erreichbar. Das liegt an uns.')).toBeNull()
       expect(screen.queryByText(/Unsere Server antworten nicht/)).toBeNull()
       // The QR column still says its own honest piece — scoped to what its mint established.
       expect(screen.getByText('Code konnte nicht erzeugt werden.')).toBeTruthy()
@@ -425,7 +459,7 @@ describe('LoginScreen', () => {
       // branch (there is no "Row B" — Row B is the signed-in reload; the misnomer is mine) against a real
       // browser after five unit rounds missed it. AC-A's "(if submitted)" exists precisely
       // because the sign-in may not have happened.
-      expect(await screen.findByText('Gerade nicht erreichbar — das liegt an uns.')).toBeTruthy()
+      expect(await screen.findByText('Gerade nicht erreichbar. Das liegt an uns.')).toBeTruthy()
     })
 
     // #336 review, F11 — the discriminating scenario F10's rewrite displaced, restored.
@@ -455,7 +489,7 @@ describe('LoginScreen', () => {
       // F1/F10 — a server that ANSWERED is not evidence of a screen-wide outage, whatever it
       // answered. This is the assertion that keeps `capabilitiesUnreachable` meaning "nothing
       // answered" rather than drifting to "did not answer usefully".
-      expect(screen.queryByText('Gerade nicht erreichbar — das liegt an uns.')).toBeNull()
+      expect(screen.queryByText('Gerade nicht erreichbar. Das liegt an uns.')).toBeNull()
       expect(screen.queryByText(/Unsere Server antworten nicht/)).toBeNull()
     })
 
@@ -472,7 +506,7 @@ describe('LoginScreen', () => {
       // The QR column speaks for itself…
       expect(await screen.findByText('Code konnte nicht erzeugt werden.')).toBeTruthy()
       // …and the screen claims nothing, because the capabilities probe answered.
-      expect(screen.queryByText('Gerade nicht erreichbar — das liegt an uns.')).toBeNull()
+      expect(screen.queryByText('Gerade nicht erreichbar. Das liegt an uns.')).toBeNull()
       expect(screen.queryByText(/Unsere Server antworten nicht/)).toBeNull()
     })
 
@@ -487,7 +521,7 @@ describe('LoginScreen', () => {
       fillCredentials()
       fireEvent.click(screen.getByText('Einloggen'))
 
-      await screen.findByText('Gerade nicht erreichbar — das liegt an uns.')
+      await screen.findByText('Gerade nicht erreichbar. Das liegt an uns.')
       // One cause, one message: the field's generic error stays suppressed here, because the
       // banner genuinely subsumes it — this is the case #298 consolidated, and it is unchanged.
       expect(screen.queryByText('E-Mail oder Passwort stimmen nicht.')).toBeNull()
@@ -539,7 +573,7 @@ describe('LoginScreen', () => {
     renderLogin()
     fireEvent.click(await screen.findByText('Weiter mit Google'))
 
-    expect(await screen.findByText('Das hat gerade nicht geklappt. Prüf die Verbindung und versuch es noch mal.')).toBeTruthy()
+    expect(await screen.findByText('Das hat nicht geklappt. Prüf die Verbindung und versuch es noch einmal.')).toBeTruthy()
   })
 
   it('shows an honest error when Google social sign-in fails (network failure)', async () => {
@@ -547,7 +581,7 @@ describe('LoginScreen', () => {
     renderLogin()
     fireEvent.click(await screen.findByText('Weiter mit Google'))
 
-    expect(await screen.findByText('Das hat gerade nicht geklappt. Prüf die Verbindung und versuch es noch mal.')).toBeTruthy()
+    expect(await screen.findByText('Das hat nicht geklappt. Prüf die Verbindung und versuch es noch einmal.')).toBeTruthy()
   })
 
   // REQ-008 — the honesty gate. Social credentials are server-side, so an unconfigured
@@ -564,7 +598,7 @@ describe('LoginScreen', () => {
     // Email sign-in is unaffected — it always works, so it proves the screen rendered.
     await screen.findByPlaceholderText('du@beispiel.de')
     expect(screen.queryByText('Weiter mit Google')).toBeNull()
-    expect(await screen.findByText('Google ist auf diesem Gerät nicht eingerichtet — die anderen Wege stehen dir offen.')).toBeTruthy()
+    expect(await screen.findByText('Google ist auf diesem Gerät nicht eingerichtet.')).toBeTruthy()
     // The fallback notice takes the button's place — the divider still has content above it.
     expect(screen.queryByText('oder mit E-Mail')).not.toBeNull()
   })
@@ -669,7 +703,7 @@ describe('LoginScreen', () => {
       expect(screen.getByText('Code konnte nicht erzeugt werden.')).toBeTruthy()
       // And the screen makes no claim about the API as a whole, because nothing here
       // established one — this is F1's defect, asserted so it cannot return.
-      expect(screen.queryByText('Gerade nicht erreichbar — das liegt an uns.')).toBeNull()
+      expect(screen.queryByText('Gerade nicht erreichbar. Das liegt an uns.')).toBeNull()
       expect(screen.queryByText(/Unsere Server antworten nicht/)).toBeNull()
 
       fireEvent.click(screen.getByText('Erneut versuchen'))
@@ -688,7 +722,7 @@ describe('LoginScreen', () => {
       await screen.findByText('Gerade zu viele Anfragen. Versuch es in ein paar Sekunden noch mal.')
       expect(screen.queryByLabelText('QR-Code zum Anmelden mit dem Handy')).toBeNull()
       expect(screen.queryByText('Code konnte nicht erzeugt werden.')).toBeNull()
-      expect(screen.queryByText('Gerade nicht erreichbar — das liegt an uns.')).toBeNull()
+      expect(screen.queryByText('Gerade nicht erreichbar. Das liegt an uns.')).toBeNull()
     })
 
     it("marks the code expired once its lifetime elapses, and requests a genuinely new one on request, not a stale copy", async () => {
@@ -712,7 +746,7 @@ describe('LoginScreen', () => {
       expect(screen.queryByLabelText('QR-Code zum Anmelden mit dem Handy')).toBeNull()
       // #283 AC-B — an expiry is an honest answer (a code's own lifetime ran out), never the
       // shared-outage alert.
-      expect(screen.queryByText('Gerade nicht erreichbar — das liegt an uns.')).toBeNull()
+      expect(screen.queryByText('Gerade nicht erreichbar. Das liegt an uns.')).toBeNull()
 
       fireEvent.click(screen.getByText('Neuen Code anzeigen'))
       await screen.findByLabelText('QR-Code zum Anmelden mit dem Handy')
@@ -760,7 +794,7 @@ describe('LoginScreen', () => {
         // in the same tick the 200 arrives.
         const onDone = vi.fn(() => {
           doneAt = Date.now()
-          confirmationShownBeforeDone = screen.queryByText('Das war’s — du bist drin.') !== null
+          confirmationShownBeforeDone = screen.queryByText('Angemeldet.') !== null
         })
         setViewportWidth(1024)
         renderLogin({ onDone })
@@ -833,7 +867,7 @@ describe('LoginScreen', () => {
         await screen.findByText('Anmeldung wurde nicht bestätigt.')
         expect(screen.queryByText('Code konnte nicht erzeugt werden.')).toBeNull()
         // #283 AC-B — a phone declining the code is a real answer, never the shared-outage alert.
-        expect(screen.queryByText('Gerade nicht erreichbar — das liegt an uns.')).toBeNull()
+        expect(screen.queryByText('Gerade nicht erreichbar. Das liegt an uns.')).toBeNull()
 
         vi.clearAllTimers()
         vi.useRealTimers()
@@ -861,7 +895,7 @@ describe('LoginScreen', () => {
         })
         expect(tokenRequests).toBe(1)
         await screen.findByText('Gerade zu viele Anfragen. Versuch es in ein paar Sekunden noch mal.')
-        expect(screen.queryByText('Gerade nicht erreichbar — das liegt an uns.')).toBeNull()
+        expect(screen.queryByText('Gerade nicht erreichbar. Das liegt an uns.')).toBeNull()
         expect(onDone).not.toHaveBeenCalled()
 
         // No further poll fires on its own — an honest error state waits for a real retry,
@@ -989,7 +1023,7 @@ describe('LoginScreen', () => {
       fillCredentials()
       fireEvent.click(screen.getByText('Einloggen'))
 
-      await screen.findByText('Gerade nicht erreichbar — das liegt an uns.')
+      await screen.findByText('Gerade nicht erreichbar. Das liegt an uns.')
       // Exactly one — not the outage banner *plus* a separate password-field error, not a
       // second copy inside the QR column.
       expect(screen.getAllByRole('alert')).toHaveLength(1)
@@ -1205,7 +1239,7 @@ describe('LoginScreen', () => {
       // The cap: 6 automatic retries have now happened (7 mints total). No further request
       // fires on its own, no matter how long — this is the count cap Musti's F1(b) asked for,
       // distinct from the per-retry delay cap proven above.
-      await screen.findByText('Die automatischen Versuche sind pausiert — bitte versuch es manuell noch einmal.')
+      await screen.findByText('Die automatischen Versuche sind pausiert. Versuch es selbst noch einmal.')
       await act(async () => {
         await vi.advanceTimersByTimeAsync(60_000)
       })
@@ -1238,12 +1272,12 @@ describe('LoginScreen', () => {
         await vi.advanceTimersByTimeAsync(1000)
       })
       await screen.findByText('Gilt noch 0:21')
-      expect(screen.queryByText(/Läuft gleich ab/)).toBeNull()
+      expect(screen.queryByText(/Läuft ab in/)).toBeNull()
 
       await act(async () => {
         await vi.advanceTimersByTimeAsync(1000)
       })
-      await screen.findByText('Läuft gleich ab — noch 0:20')
+      await screen.findByText('Läuft ab in 0:20')
       expect(screen.queryByText('Gilt noch 0:20')).toBeNull()
 
       vi.clearAllTimers()
@@ -1260,13 +1294,13 @@ describe('LoginScreen', () => {
     it('hides "Neu hier? Konto anlegen" and "weiter als Gast" when onGuest/onRegister are omitted', () => {
       renderLogin({ omitGuestAndRegister: true })
       expect(screen.queryByText('Neu hier? Konto anlegen')).toBeNull()
-      expect(screen.queryByText('Erstmal als Gast umschauen')).toBeNull()
+      expect(screen.queryByText('Als Gast ansehen')).toBeNull()
     })
 
     it('still shows both when onGuest/onRegister are provided — the top-level Login route is unaffected', () => {
       renderLogin()
       expect(screen.queryByText('Neu hier? Konto anlegen')).not.toBeNull()
-      expect(screen.queryByText('Erstmal als Gast umschauen')).not.toBeNull()
+      expect(screen.queryByText('Als Gast ansehen')).not.toBeNull()
     })
 
     it('never mounts the QR column when showDeviceQr is false, even at a wide breakpoint that would otherwise show it', async () => {

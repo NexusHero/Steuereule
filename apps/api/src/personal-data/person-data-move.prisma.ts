@@ -1,4 +1,5 @@
-import { Prisma, type PrismaClient } from '@prisma/client'
+import { SCHEMA_MODEL } from '../prisma/schema-model.js'
+import type { PrismaClient } from '@prisma/client'
 import { allowErasure } from './erasure.prisma.js'
 import { delegateName, genericDeletionEntries } from './personal-data-registry.js'
 
@@ -10,7 +11,7 @@ interface Table {
   deleteMany(args: { where: Record<string, unknown> }): Promise<{ count: number }>
 }
 
-const HAS_TAX_YEAR = new Set(Prisma.dmmf.datamodel.models.filter((model) => model.fields.some((field) => field.name === 'taxYear')).map((model) => model.name))
+const HAS_TAX_YEAR = new Set(SCHEMA_MODEL.datamodel.models.filter((model) => model.fields.some((field) => field.name === 'taxYear')).map((model) => model.name))
 
 /**
  * API-2: Person B joins A's return with an own account. What A recorded for B under the shadow id of that year

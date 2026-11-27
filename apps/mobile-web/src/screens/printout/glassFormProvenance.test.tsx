@@ -16,13 +16,13 @@ describe('formatProvenanceBadge', () => {
     expect(formatProvenanceBadge({ kind: 'uebernahme', lastYear: 2024 }, tr)).toBe('Übernahme aus 2024')
   })
 
-  it('marks an assistant value with the owl, or with the clip when it came from a receipt', () => {
-    expect(formatProvenanceBadge({ kind: 'assistent', name: 'Eule' }, tr)).toBe('🦉 Eule')
-    expect(formatProvenanceBadge({ kind: 'assistent', name: 'Eule', receiptId: 'r1' }, tr)).toBe('📎 Eule (Beleg)')
+  it('names the assistant a value came from, and says when it read it from a receipt', () => {
+    expect(formatProvenanceBadge({ kind: 'assistent', name: 'Eule' }, tr)).toBe('Eule')
+    expect(formatProvenanceBadge({ kind: 'assistent', name: 'Eule', receiptId: 'r1' }, tr)).toBe('Eule (Beleg)')
   })
 
-  it('marks a receipt value with the clip', () => {
-    expect(formatProvenanceBadge({ kind: 'beleg' }, tr)).toBe('📎 Aus Beleg')
+  it('names a receipt value in words', () => {
+    expect(formatProvenanceBadge({ kind: 'beleg' }, tr)).toBe('Aus Beleg')
   })
 })
 

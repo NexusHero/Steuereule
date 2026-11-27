@@ -1,11 +1,11 @@
 /**
  * What the thinking indicator shows (#451 decision 4): a real server step wins while it is fresh;
- * in between, friendly owl phrases rotate. The phrase texts live in i18n under
+ * in between, four plain phrases rotate. The phrase texts live in i18n under
  * `advisor.chat.thinkingPhrases.<index>`.
  */
 
 export const THINKING_PHRASE_INTERVAL_MS = 2500
-export const THINKING_PHRASE_COUNT = 12
+export const THINKING_PHRASE_COUNT = 4
 
 export type ThinkingLabel = { readonly kind: 'step'; readonly text: string } | { readonly kind: 'phrase'; readonly index: number }
 

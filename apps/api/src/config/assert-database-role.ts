@@ -1,6 +1,7 @@
 import { PrismaClient } from '@prisma/client'
 import { RUNTIME_DATABASE_ROLE, resolveDatabaseUrl } from './database-url.js'
 import { disconnectQuietly, redactCause, withTimeout } from './assert-database-reachable.js'
+import { createDatabaseAdapter } from '../common/database-adapter.js'
 
 const PROBE_TIMEOUT_MS = 5_000
 
@@ -65,7 +66,7 @@ export interface AssertDatabaseRoleOptions {
 export async function assertDatabaseRole(options: AssertDatabaseRoleOptions = {}): Promise<void> {
   const env = options.env ?? process.env
   if (env.NODE_ENV !== 'production') return
-  const createClient = options.createClient ?? ((url: string): DatabaseRoleClient => new PrismaClient({ datasources: { db: { url } } }))
+  const createClient = options.createClient ?? ((url: string): DatabaseRoleClient => new PrismaClient({ adapter: createDatabaseAdapter(url, { connectWithinMillis: PROBE_TIMEOUT_MS }) }))
   const client = createClient(resolveDatabaseUrl(env))
   let rows: DatabaseLoginFacts[]
   try {

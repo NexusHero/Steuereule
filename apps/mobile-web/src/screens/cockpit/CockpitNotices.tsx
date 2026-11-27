@@ -37,7 +37,7 @@ export function MissingMasterDataNotice({ masterData }: { readonly masterData: N
         testID="cockpit-stammdaten-details-toggle"
       >
         <Text style={styles.missingToggleText}>
-          {`⚠️ ${tr('cockpit.stammdatenFehlendToggle', { anzahl: missing.length })} ${expanded ? '▴' : '▾'}`}
+          {`${tr('cockpit.stammdatenFehlendToggle', { anzahl: missing.length })} ${expanded ? '▴' : '▾'}`}
         </Text>
       </Pressable>
       {expanded ? (
@@ -70,9 +70,9 @@ export function EuleBannerNotice() {
   const provenance = bridge.bestTileProvenance(banner.screens)
   const provenanceLabel =
     provenance === 'beleg+eule'
-      ? tr('cockpit.euleBanner.provenanceReceiptOwl', '📎 Beleg + Eule')
+      ? tr('cockpit.euleBanner.provenanceReceiptOwl', 'Beleg + Eule')
       : provenance === 'eule'
-        ? tr('cockpit.euleBanner.provenanceOwl', '🦉 Von Eule')
+        ? tr('cockpit.euleBanner.provenanceOwl', 'Von Eule')
         : provenance === 'nutzer'
           ? tr('cockpit.euleBanner.provenanceUser', '✓ Selbst eingetragen')
           : null

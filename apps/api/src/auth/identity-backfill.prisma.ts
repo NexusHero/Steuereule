@@ -1,3 +1,4 @@
+import { SCHEMA_MODEL } from '../prisma/schema-model.js'
 import { Prisma, type PrismaClient } from '@prisma/client'
 import { analyseDMMF } from 'prisma-field-encryption/dist/dmmf.js'
 import { hashString } from 'prisma-field-encryption/dist/hash.js'
@@ -23,7 +24,7 @@ const CIPHERTEXT = 'v1.aesgcm256.%'
 const BATCH = 200
 
 function emailHashOf(email: string): string {
-  const hash = analyseDMMF(Prisma.dmmf).User?.fields.email?.hash
+  const hash = analyseDMMF(SCHEMA_MODEL).User?.fields.email?.hash
   if (!hash) throw new Error('User.email carries no hash annotation in the schema.')
   return hashString(email, hash)
 }

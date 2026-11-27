@@ -42,8 +42,15 @@ export interface SimulationEntry {
 }
 
 export type SimulationResult =
-  | { readonly ok: true; readonly beforeRefundEur: number; readonly afterRefundEur: number; readonly deltaEur: number }
+  | { readonly ok: true; readonly beforeRefundEur: number; readonly afterRefundEur: number; readonly deltaEur: number; readonly hinweis?: string }
   | { readonly ok: false; readonly reason: string }
+
+/**
+ * The couple's church tax needs both spouses' confession (ADR-0063): with one still unknown it stays out of
+ * the estimate, so an entry for one spouse alone moves nothing. Said, so a 0 is not read as "no effect".
+ */
+const CHURCH_TAX_STAYS_OPEN =
+  'Die Kirchensteuer bleibt auch nach diesem Szenario offen, weil die Konfession oder Kirchensteuerpflicht einer der beiden Personen fehlt; sie fließt erst in die Schätzung, wenn beide vorliegen. Ein Unterschied von 0 € heißt deshalb nicht, dass die Angabe nichts bewirkt.'
 
 const NOT_COMPUTABLE = 'Die Wirkung lässt sich gerade nicht berechnen.'
 
@@ -361,7 +368,7 @@ export class McpReportService {
         if (before.kind === 'computed' && after.kind === 'computed') {
           const beforeRefundEur = midpoint(before.result)
           const afterRefundEur = midpoint(after.result)
-          result = { ok: true, beforeRefundEur, afterRefundEur, deltaEur: afterRefundEur - beforeRefundEur }
+          result = { ok: true, beforeRefundEur, afterRefundEur, deltaEur: afterRefundEur - beforeRefundEur, ...(after.churchTaxOpen ? { hinweis: CHURCH_TAX_STAYS_OPEN } : {}) }
         } else if (after.kind === 'computed') {
           result = { ok: false, reason: 'Mit dieser Angabe wird die Schätzung erstmals möglich; einen Unterschied zu vorher gibt es noch nicht.' }
         } else {

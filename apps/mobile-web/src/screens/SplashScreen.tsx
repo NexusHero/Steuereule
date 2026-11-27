@@ -26,7 +26,6 @@ export function SplashScreen({ onAdvance }: SplashScreenProps) {
   const headAnim = useRef(new Animated.Value(1)).current
   const glassesAnim = useRef(new Animated.Value(1)).current
   const wordAnim = useRef(new Animated.Value(1)).current
-  const greetAnim = useRef(new Animated.Value(1)).current
   const lidAnim = useRef(new Animated.Value(0)).current
   const hasPlayed = useRef(false)
 
@@ -48,7 +47,6 @@ export function SplashScreen({ onAdvance }: SplashScreenProps) {
     glassesAnim.setValue(0)
     lidAnim.setValue(0)
     wordAnim.setValue(0)
-    greetAnim.setValue(0)
     const stage = (value: Animated.Value) =>
       Animated.timing(value, { toValue: 1, duration: motionTokens.duration.auftritt, easing: feder, useNativeDriver: false })
     const blinkEasing = Easing.inOut(Easing.ease)
@@ -56,11 +54,10 @@ export function SplashScreen({ onAdvance }: SplashScreenProps) {
       stage(headAnim),
       stage(glassesAnim),
       stage(wordAnim),
-      stage(greetAnim),
       Animated.timing(lidAnim, { toValue: 1, duration: BLINK_CLOSE_MS, easing: blinkEasing, useNativeDriver: false }),
       Animated.timing(lidAnim, { toValue: 0, duration: BLINK_OPEN_MS, easing: blinkEasing, useNativeDriver: false }),
     ]).start()
-  }, [reducedMotion, headAnim, glassesAnim, lidAnim, wordAnim, greetAnim])
+  }, [reducedMotion, headAnim, glassesAnim, lidAnim, wordAnim])
 
   useEffect(() => {
     const id = setTimeout(advance, AUTO_ADVANCE_MS)
@@ -95,9 +92,6 @@ export function SplashScreen({ onAdvance }: SplashScreenProps) {
           <Text style={{ color: t.color.funke }}>{tr('brand.eule')}</Text>
         </Text>
       </Animated.View>
-      <Animated.View style={{ opacity: greetAnim }}>
-        <Text style={styles.greeting}>{tr('splash.greeting')}</Text>
-      </Animated.View>
     </Pressable>
   )
 }
@@ -116,11 +110,6 @@ function makeStyles(t: UiTheme) {
     ...t.type.subhead,
     color: t.color.nachtText,
   }
-  const greeting: TextStyle = {
-    ...t.type.body,
-    color: t.color.nachtText,
-    opacity: 0.9,
-  }
 
-  return { screen, wordmark, greeting }
+  return { screen, wordmark }
 }

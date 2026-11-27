@@ -115,7 +115,7 @@ describe('StammdatenScreen (ADR-0050)', () => {
     await screen.findByText('Für den Ausdruck fehlen noch 9 Angaben.')
     input('stammdaten-iban', 'DE00')
     fireEvent.click(screen.getByTestId('stammdaten-speichern'))
-    expect(await screen.findByText('Bitte prüf deine Eingaben — z. B. Datum, Postleitzahl oder IBAN.')).toBeTruthy()
+    expect(await screen.findByText('Prüf deine Eingaben, etwa Datum, Postleitzahl oder IBAN.')).toBeTruthy()
   })
 
   describe('Kopplung (Zusammenveranlagung)', () => {

@@ -2,7 +2,8 @@ import { useRef, useState, type ReactNode } from 'react'
 import { Animated, Easing, Pressable, Text, View, type LayoutChangeEvent, type StyleProp, type TextStyle, type ViewStyle } from 'react-native'
 import { theme as motionTokens } from '@steuereule/tokens'
 import { hapticSelection } from '../lib/haptics'
-import { inkOnFunke, useTheme } from '../theme/useTheme'
+import { inkOnFunke, useTheme, controlLine } from '../theme/useTheme'
+import { TabBadge, tabName } from './TabBadge'
 import { useReducedMotion } from '../motion/useReducedMotion'
 
 export const TAB_ICON_PATHS = {
@@ -30,6 +31,8 @@ export interface TabItem {
   readonly id: string
   readonly label: string
   readonly icon?: ReactNode
+  /** What waits behind the tab, in words ("neue Antwort"); shown as a dot and read as part of the tab's name. */
+  readonly badge?: string
 }
 
 export interface TabBarProps {
@@ -112,12 +115,14 @@ export function TabBar({ tabs, active, onChange, bottomInset = 0, style, testID 
                 onChange(tab.id)
               }}
               accessibilityRole="tab"
+              aria-label={tabName(tab.label, tab.badge)}
               accessibilityState={{ selected: an }}
               aria-current={an ? 'page' : undefined}
               style={[styles.tab, an && !activeLayout ? styles.tabActiveFallback : null]}
             >
               {tab.icon}
               <Text style={[styles.label, an ? styles.labelActive : null]}>{tab.label}</Text>
+              {tab.badge === undefined ? null : <TabBadge onAccent={an} />}
             </Pressable>
           )
         })}
@@ -141,9 +146,11 @@ function makeStyles(t: ReturnType<typeof useTheme>) {
     width: '100%',
     maxWidth: 440,
     gap: 2,
-    backgroundColor: t.color.karte,
+    // On the dark ground a card-coloured bar disappears; one step lighter keeps it visible at all times.
+    backgroundColor: t.mode === 'dark' ? t.color.linieWeich : t.color.karte,
     borderWidth: BAR_BORDER,
-    borderColor: t.color.linieWeich,
+    // The bar floats over content: the stronger line keeps its edge visible on the dark ground too.
+    borderColor: t.color.linie,
     borderRadius: t.radius.pille,
     padding: BAR_PADDING,
   }
@@ -153,10 +160,10 @@ function makeStyles(t: ReturnType<typeof useTheme>) {
     // The measured tab x already includes the bar padding; a second offset here pushed the pill 6 px off its tab.
     left: 0,
     zIndex: 0,
-    // The active tab is unmistakable: a lime pill with an ink contour (soft lime alone is ~1.1:1).
+    // The active tab is unmistakable: a lime pill inside a control line (lime alone is ~1.3:1 on a white bar).
     backgroundColor: t.color.funke,
     borderWidth: BAR_BORDER,
-    borderColor: t.color.tinte,
+    borderColor: controlLine(t),
     borderRadius: t.radius.pille,
   }
   const tab: ViewStyle = {
@@ -173,7 +180,7 @@ function makeStyles(t: ReturnType<typeof useTheme>) {
   const tabActiveFallback: ViewStyle = {
     backgroundColor: t.color.funke,
     borderWidth: BAR_BORDER,
-    borderColor: t.color.tinte,
+    borderColor: controlLine(t),
   }
   const label: TextStyle = {
     fontFamily: t.font.text,

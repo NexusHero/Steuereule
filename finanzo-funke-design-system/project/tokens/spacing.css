@@ -12,10 +12,10 @@
   --s6: 32px;
   --s7: 48px;
 
-  --radius-s: 12px;
-  --radius: 20px;
-  --radius-lg: 28px;
+  --radius-s: 10px;
+  --radius: 14px;
+  --radius-lg: 20px;
   --radius-pille: 999px;
 
-  --kontur: 1.5px; /* @kind spacing */
+  --kontur: 1px; /* @kind spacing */
 }

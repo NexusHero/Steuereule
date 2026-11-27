@@ -203,7 +203,7 @@ function Hero({ tr }: { readonly tr: (key: string) => string }) {
   const t = useTheme()
   const styles = makePrivacyStyles(t)
   return (
-    <Card variant="nacht">
+    <Card>
       <Text style={styles.heroKicker}>{tr('datenschutz.hero.kicker')}</Text>
       <Text style={styles.heroHeading}>{tr('datenschutz.hero.heading')}</Text>
       <Text style={styles.heroBody}>{tr('datenschutz.hero.body')}</Text>

@@ -82,13 +82,13 @@ const COPY = {
   // single assertion in this file (every flow starts by skipping it), so it goes
   // through `COPY` more than any other string here.
   splashSkip: 'Weiter zur App',
-  guest: 'Erstmal als Gast umschauen',
+  guest: 'Als Gast ansehen',
   register: 'Neu hier? Konto anlegen',
   weiter: 'Weiter',
   firstNamePlaceholder: 'Kim',
   lastNamePlaceholder: 'Yilmaz',
   steuerIdPlaceholder: '12 345 678 901',
-  steuerNrLater: 'Hab ich nicht zur Hand — später',
+  steuerNrLater: 'Später nachtragen',
   cockpitRetry: 'Noch mal versuchen',
   cockpitEmptyHeading: 'Noch keine Angaben.',
   cockpitAnswerQuestions: 'Fragen beantworten',
@@ -101,7 +101,7 @@ const COPY = {
   nein: 'Nein',
   kinder: '2 oder mehr',
   familienstand: 'Ledig',
-  kontoWandLater: 'Später — erst mal ins Cockpit',
+  kontoWandLater: 'Später, zum Cockpit',
 }
 
 function requireEnv(name) {
@@ -348,6 +348,60 @@ async function measureCockpitEmpty(browser, width, label) {
     await page.getByText(COPY.cockpitEmptyHeading).waitFor({ state: 'visible', timeout: 20_000 })
     const primaryButton = page.getByRole('button', { name: COPY.cockpitAnswerQuestions })
     await measureButtonFillsParent(primaryButton, `CockpitScreen Empty CTA (bp=${label})`)
+    await measureNavigationForm(page, primaryButton, width, label)
+  } finally {
+    await context.close()
+  }
+}
+
+/**
+ * Graphit beyond the phone: the tabs are a rail on the left edge (`app-seitennavigation`, full
+ * height) — 84 px wide on the `m` breakpoint (icon over label), 240 px with the brand on `l` — and the
+ * screen starts right of it. On `s` they stay the floating bar and no rail exists. Same roles at every
+ * width, so `tab` still finds them.
+ */
+const RAIL_WIDTH = { m: 84, l: 240 }
+async function measureNavigationForm(page, contentElement, width, label) {
+  const rail = page.locator('[data-testid="app-seitennavigation"]')
+  const tabs = await page.getByRole('tab').count()
+  if (tabs !== 5) fail(`Navigation (bp=${label}): expected 5 tabs, found ${tabs}`)
+  if (label === 's') {
+    if ((await rail.count()) !== 0) fail(`Navigation (bp=s): the side rail must not exist on a phone`)
+    console.log(`[breakpoint-layout] ✅ Navigation (bp=s) — floating bar, no rail`)
+    return
+  }
+  const expected = RAIL_WIDTH[label]
+  await rail.waitFor({ state: 'visible', timeout: 10_000 })
+  const box = await rail.boundingBox()
+  if (!box || Math.round(box.x) !== 0 || Math.round(box.width) !== expected || Math.round(box.height) !== 900) {
+    fail(`Navigation (bp=${label}): expected the rail at x=0, ${expected} px wide, full height; got ${JSON.stringify(box)}`)
+  }
+  const content = await contentElement.boundingBox()
+  if (!content || content.x < box.width) fail(`Navigation (bp=${label}): the screen must start right of the rail (x >= ${expected}); the CTA starts at ${content?.x}`)
+  const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)
+  if (overflow > 0) fail(`Navigation (bp=${label}): the rail must not cause horizontal overflow at ${width}px; got ${overflow}px`)
+  console.log(`[breakpoint-layout] ✅ Navigation (bp=${label}) — rail at the left edge (${expected}px), screen right of it, no overflow`)
+}
+
+/**
+ * The sign-in screen says BETA as a mark beside the name (`beta-marke`) and nothing more: no notice
+ * paragraph there (it stands written out where a decision follows: registration, profile, payment).
+ */
+async function measureLoginBetaMark(browser) {
+  const context = await browser.newContext({ viewport: { width: BP.s, height: 900 } })
+  try {
+    const page = await context.newPage()
+    await skipSplash(page)
+    const mark = page.locator('[data-testid="beta-marke"]')
+    await mark.waitFor({ state: 'visible', timeout: 10_000 })
+    if ((await mark.innerText()).trim() !== 'BETA') fail(`Login beta mark: expected the word BETA, got "${await mark.innerText()}"`)
+    if ((await page.locator('[data-testid="beta-hinweis"]').count()) !== 0) fail('Login beta mark: the sign-in screen must not carry the written-out notice')
+    const name = await page.locator('[data-testid="login-splash"]').boundingBox()
+    const box = await mark.boundingBox()
+    if (!name || !box || box.x < name.x + name.width || Math.abs(box.y + box.height / 2 - (name.y + name.height / 2)) > name.height / 2) {
+      fail(`Login beta mark: the mark must sit beside the name, on its line; name ${JSON.stringify(name)}, mark ${JSON.stringify(box)}`)
+    }
+    console.log('[breakpoint-layout] ✅ Login beta mark — BETA beside the name, no notice paragraph on sign-in')
   } finally {
     await context.close()
   }
@@ -424,6 +478,7 @@ async function main() {
     // ── #177: Button fills its parent at every breakpoint — the mandatory real-
     // layout proof (Musti's refinement, F3/F4). Each of the three target CTAs is
     // checked at s/m/l, each in its own isolated browser context. ──────────────────
+    await measureLoginBetaMark(browser)
     for (const [label, width] of Object.entries(BP)) {
       await measureCockpitLoadError(browser, width, label)
       await measureCockpitEmpty(browser, width, label)

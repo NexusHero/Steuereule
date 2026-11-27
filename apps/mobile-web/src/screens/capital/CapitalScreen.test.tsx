@@ -211,7 +211,7 @@ describe('KapitalScreen', () => {
     )
     renderCapital()
 
-    expect(await screen.findByText(/Krypto bleibt in 1.0 ehrlich außen vor/)).toBeTruthy()
+    expect(await screen.findByText(/Krypto rechnen wir noch nicht/)).toBeTruthy()
   })
 
   it('awaits in-flight PUT before calling onDone and invalidates cockpitSummary and taxEstimate', async () => {

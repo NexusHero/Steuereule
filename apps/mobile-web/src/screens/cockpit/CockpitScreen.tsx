@@ -5,6 +5,7 @@ import { useApiFailureMessage } from '../../net/apiFailure'
 import { LoadingState, ErrorState } from '../shared/ScreenState'
 import { CockpitEmpty } from './CockpitEmpty'
 import { CockpitLoaded } from './CockpitLoaded'
+import { MoreTopicsProvider } from './moreTopics'
 import { useCockpit } from './useCockpit'
 import type { CockpitScreenProps } from './cockpitTypes'
 
@@ -30,14 +31,19 @@ export function CockpitScreen(props: CockpitScreenProps) {
       />
     )
   }
-  if (view.kind === 'empty') return <CockpitEmpty {...view.shared} />
   return (
-    <CockpitLoaded
-      {...view.shared}
-      summary={view.summary}
-      confirmation={view.confirmation}
-      assistantTaskCount={view.assistantTaskCount}
-      {...(view.onOpenConfirmation ? { onOpenConfirmation: view.onOpenConfirmation } : {})}
-    />
+    <MoreTopicsProvider>
+      {view.kind === 'empty' ? (
+        <CockpitEmpty {...view.shared} />
+      ) : (
+        <CockpitLoaded
+          {...view.shared}
+          summary={view.summary}
+          confirmation={view.confirmation}
+          assistantTaskCount={view.assistantTaskCount}
+          {...(view.onOpenConfirmation ? { onOpenConfirmation: view.onOpenConfirmation } : {})}
+        />
+      )}
+    </MoreTopicsProvider>
   )
 }

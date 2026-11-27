@@ -21,7 +21,7 @@ export function makeLoginStyles(t: UiTheme) {
   const cta: ViewStyle = { marginTop: t.space.s5 }
   const outageBanner: ViewStyle = {
     backgroundColor: t.color.fehlerWeich,
-    borderWidth: 2,
+    borderWidth: t.space.kontur,
     borderColor: t.color.fehler,
     borderRadius: t.radius.s,
     padding: t.space.s4,

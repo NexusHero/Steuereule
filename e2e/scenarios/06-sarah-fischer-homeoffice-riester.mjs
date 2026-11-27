@@ -33,7 +33,7 @@ export async function runScenario06(browser, webOrigin) {
   await chooseTopics(page, ['umzug', 'riester'])
 
   // Defer the relocation costs with „Später“ (AMOUNT_LATER) -> the summary lists the move as open ->
-  // the cockpit tile shows "⏳ Betrag offen" -> „Weiter“ in the cockpit returns to it -> 1500 -> "Erledigt".
+  // the cockpit tile shows "Betrag offen" -> „Weiter“ in the cockpit returns to it -> 1500 -> "Erledigt".
   await waitForStromStep(page, 'umzug')
   // Each topic page names the form line its amounts go to.
   await page.locator('[data-testid="strom-wirkungszeile"]').waitFor({ state: 'visible', timeout: 10_000 })
@@ -48,10 +48,13 @@ export async function runScenario06(browser, webOrigin) {
   await waitForStromStep(page, 'umzug')
   await leaveStrom(page)
 
-  await page.locator('[data-testid="cockpit-kachel-lebenslagen-status"]', { hasText: '⏳ Betrag offen' }).waitFor({
+  await page.locator('[data-testid="cockpit-kachel-lebenslagen-status"]', { hasText: 'Betrag offen' }).waitFor({
     state: 'visible',
     timeout: 10_000,
   })
+  // The change line (H1, below) compares against the figure the cockpit showed before the edit. The scenario
+  // waits for that figure first: clicking on before the estimate has arrived leaves nothing to compare with.
+  await page.locator('[data-testid="cockpit-erstattung"]').waitFor({ state: 'visible', timeout: 10_000 })
   await page.locator('[data-testid="cockpit-weiter"]').click()
   await fillTopic(page, 'umzug', { 'umzug-kosten': 1500 })
   await fillTopic(page, 'riester', {})

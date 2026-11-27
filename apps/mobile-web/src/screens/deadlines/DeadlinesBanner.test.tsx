@@ -79,12 +79,13 @@ describe('DeadlinesBanner (wired)', () => {
     expect(container.querySelector('[data-testid^="fristen-banner"]')).toBeNull()
   })
 
-  it('before any answer: neutral, never the surcharge alarm', async () => {
+  it('before any answer: the date in one line, never the surcharge alarm', async () => {
     server.use(http.get(DEADLINES_URL, () => HttpResponse.json(EXPIRED, { status: 200 })))
     renderBanner({})
 
-    expect(await screen.findByTestId('fristen-banner-unklar')).toBeTruthy()
-    expect(screen.getByText('Ob du abgeben musst, klären wir mit deinen Antworten. Pflicht-Frist wäre der 31.07.2026.')).toBeTruthy()
+    const line = await screen.findByTestId('fristen-banner-unklar')
+    expect(line.textContent).toBe('Abgabefrist 31.07.2026, falls du abgeben musst')
+    expect(line.getAttribute('role')).toBeNull()
     expect(screen.queryByText(/Verspätungszuschlag/)).toBeNull()
   })
 })
@@ -124,9 +125,9 @@ describe('Banner (pure presentational)', () => {
     expect(screen.queryByText(/Verspätungszuschlag/)).toBeNull()
   })
 
-  it('unklar (e.g. married): neutral with the would-be deadline', () => {
+  it('unklar (e.g. married): the date alone, in one line', () => {
     renderPure(EXPIRED, { ...VOLUNTARY, familienstand: 'Verheiratet' })
-    expect(screen.getByTestId('fristen-banner-unklar')).toBeTruthy()
+    expect(screen.getByTestId('fristen-banner-unklar').textContent).toBe('Abgabefrist 31.07.2026, falls du abgeben musst')
     expect(screen.queryByText(/Verspätungszuschlag/)).toBeNull()
   })
 })

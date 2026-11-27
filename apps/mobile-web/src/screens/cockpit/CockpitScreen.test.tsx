@@ -152,7 +152,7 @@ describe('CockpitScreen', () => {
     mockCockpit({ taxYear: TAX_YEAR, status: { kind: 'gated', sum: 50000, gated: ['Gewerbe'] }, openItems: 0, submission: null })
     renderCockpit()
 
-    expect(await screen.findByText('Ehrlich: dafür sind wir noch nicht gut genug.')).toBeTruthy()
+    expect(await screen.findByText('Selbstständigkeit rechnen wir noch nicht.')).toBeTruthy()
     expect(screen.getByText('Gewerbe kann SteuerEule noch nicht rechnen. Dein erfasstes Einkommen bleibt sichtbar — abgegeben wird erst, wenn alles drin ist.')).toBeTruthy()
   })
 
@@ -168,6 +168,14 @@ describe('CockpitScreen', () => {
     renderCockpit()
 
     expect(await screen.findByText('1 Frage offen')).toBeTruthy()
+  })
+
+  it('says nothing about open questions when none is open', async () => {
+    mockCockpit({ ...LOADED_SUMMARY, openItems: 0 })
+    renderCockpit()
+
+    await screen.findByText('Erfasstes Einkommen')
+    expect(screen.queryByText('0 Fragen offen')).toBeNull()
   })
 
   it('shows the "N Posten offen" line from the spanne', async () => {
@@ -256,9 +264,8 @@ describe('CockpitScreen', () => {
     renderCockpit()
 
     await screen.findByText('Noch keine Angaben.')
-    expect(
-      screen.getByText('Für dieses Steuerjahr liegen noch keine Angaben vor. Sobald deine Daten da sind, zeigen wir dir hier dein erfasstes Einkommen.'),
-    ).toBeTruthy()
+    // The heading and the way in say it all: no paragraph under it.
+    expect(screen.queryByText(/Für dieses Steuerjahr liegen noch keine Angaben vor/)).toBeNull()
     expect(screen.queryByText('Erfasstes Einkommen')).toBeNull()
   })
 
@@ -453,7 +460,7 @@ describe('CockpitScreen — Kinder & Eulen-Modus entries', () => {
     renderCockpit({ onOpenOwlMode: vi.fn() })
     const card = await screen.findByTestId('cockpit-berater')
     expect(card.querySelector('[data-testid="owl-mark-tinte"]')).not.toBeNull()
-    expect(card.textContent).toContain('Deine Eule berät dich')
+    expect(card.textContent).toContain('Hinweise der Eule')
     const check = screen.getByText('Bescheid prüfen')
     expect(card.compareDocumentPosition(check) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   })
@@ -524,7 +531,7 @@ describe('CockpitScreen — Kinder & Eulen-Modus entries', () => {
       expect((await screen.findByTestId('cockpit-kachel-lstb-status')).textContent).toBe('Erledigt')
       // The progress bar has a name of its own (WCAG 4.1.2, axe aria-progressbar-name).
       expect(screen.getByTestId('cockpit-fortschritt').getAttribute('aria-label')).toMatch(/von \d+ Schritten erledigt/)
-      expect(screen.getByTestId('cockpit-kachel-lebenslagen-status').textContent).toBe('⏳ Betrag offen')
+      expect(screen.getByTestId('cockpit-kachel-lebenslagen-status').textContent).toBe('Betrag offen')
       expect(screen.getByTestId('cockpit-kachel-einkuenfte-status').textContent).toBe('Offen')
 
       const nextButton = await screen.findByTestId('cockpit-weiter')
@@ -619,6 +626,30 @@ describe('CockpitScreen — Kinder & Eulen-Modus entries', () => {
       expect(subTile.textContent).toContain('Abgeben kannst du ab Januar 2027.')
       fireEvent.click(subTile)
       expect(onOpenSubmission).toHaveBeenCalledWith(TAX_YEAR)
+    })
+
+    it('keeps „Weitere Themen“ open when the first figures arrive after the user opened it', async () => {
+      // Without figures the cockpit is the empty layout, with them the loaded one: the tiles are mounted anew.
+      // What the user opened must survive that, or the section closes under their finger (seen in the
+      // navigation budget gate, scenario 05: the click was answered, then undone by the arriving summary).
+      let calls = 0
+      server.use(
+        http.get(COCKPIT_URL, () => {
+          calls += 1
+          return HttpResponse.json(calls === 1 ? null : LOADED_SUMMARY, { status: 200 })
+        }),
+      )
+      server.use(http.get(`*/v1/steuerjahre/${TAX_YEAR}/steuerschaetzung`, () => HttpResponse.json({ kind: 'offen', missing: ['lstb'] })))
+      mockInterview({ job: 'Angestellt', ausland: 'Nein', kinder: '1 Kind', familienstand: 'Ledig' })
+      renderCockpit({ isSignedIn: true, onOpenTile: vi.fn() })
+
+      fireEvent.click(await screen.findByTestId('cockpit-weitere-themen'))
+      expect(screen.getByTestId('cockpit-kachel-kapital')).toBeTruthy()
+
+      regainFocus()
+
+      await screen.findByText('Erfasstes Einkommen')
+      expect(screen.getByTestId('cockpit-kachel-kapital')).toBeTruthy()
     })
 
     it('does not repeat topics as buttons once the tiles show them', async () => {

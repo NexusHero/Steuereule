@@ -15,7 +15,7 @@ const TAG = 'a11y-themes'
 const YEAR = 2025
 // Same exceptions as bfsg-wcag-audit.mjs: RN-Web has no <main> landmark; contrast is tested on the
 // design tokens in @steuereule/ui for both themes.
-const BODY_BACKGROUND = { light: 'rgb(244, 242, 233)', dark: 'rgb(18, 20, 12)' }
+const BODY_BACKGROUND = { light: 'rgb(255, 255, 255)', dark: 'rgb(15, 15, 20)' }
 const DISABLED_RULES = ['landmark-one-main', 'page-has-heading-one', 'region', 'color-contrast']
 
 const SCREENS = [

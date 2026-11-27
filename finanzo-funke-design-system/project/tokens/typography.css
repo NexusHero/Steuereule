@@ -1,15 +1,14 @@
 /* ============================================================
-   Funke — Typografie
-   Display: Bricolage Grotesque — laut, jung, eng gesetzt.
-   Text: Schibsted Grotesk — klar, freundlich, gut lesbar.
-   Mono: Space Mono — Zeilennummern, Regel-IDs, Metadaten.
+   Graphit — Typografie
+   Display und Text: Geist — nüchtern, ruhig, eng gesetzt.
+   Mono: Geist Mono — Beträge, Regel-IDs, Metadaten.
    Zahlen: IMMER tabular-nums (Klasse .num).
-   Skala: 12 / 14 / 16 / 18 / 24 / 28 / 34 / 52 („Funke ruhig“)
+   Gewichte: 400 / 500 / 600. Skala: 12 / 14 / 16 / 18 / 24 / 28 / 34 / 52
    ============================================================ */
 :root {
-  --schrift-display: "Bricolage Grotesque", "Arial Black", sans-serif; /* @kind font */
-  --schrift-text: "Schibsted Grotesk", system-ui, sans-serif; /* @kind font */
-  --schrift-mono: "Space Mono", ui-monospace, Menlo, monospace; /* @kind font */
+  --schrift-display: "Geist", system-ui, -apple-system, "Segoe UI", sans-serif; /* @kind font */
+  --schrift-text: "Geist", system-ui, -apple-system, "Segoe UI", sans-serif; /* @kind font */
+  --schrift-mono: "Geist Mono", ui-monospace, Menlo, monospace; /* @kind font */
 
   --text-xs: 12px;
   --text-s: 14px;
@@ -20,10 +19,10 @@
   --text-3xl: 34px;
   --text-held: 52px;   /* der Erstattungs-Held */
 
-  --gewicht-normal: 450; /* @kind font */
-  --gewicht-halb: 600; /* @kind font */
-  --gewicht-fett: 700; /* @kind font */
-  --gewicht-schwer: 700; /* @kind font */
+  --gewicht-normal: 400; /* @kind font */
+  --gewicht-halb: 500; /* @kind font */
+  --gewicht-fett: 600; /* @kind font */
+  --gewicht-schwer: 600; /* @kind font */
 
   --zeile-eng: 1.05; /* @kind font */
   --zeile-normal: 1.45; /* @kind font */

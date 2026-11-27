@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { ScrollView, View, Text, Pressable, ActivityIndicator, type ViewStyle, type TextStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
-import { Button, Input, Feld, Sticker, inkOnFunke, useTheme, useBreakpoint, type UiTheme } from '@steuereule/ui'
+import { Button, Input, Feld, inkOnFunke, useTheme, useBreakpoint, type UiTheme } from '@steuereule/ui'
 import { APP_NS } from '../i18n/resources'
 import { rememberPendingVerification } from '../auth/pendingVerification'
 import { useAuthClient } from '../auth/AuthClientProvider'
@@ -71,7 +71,6 @@ export function RegistrationScreen({ onDone, onLogin, onLegal }: RegistrationScr
   if (stage.kind === 'success') {
     return (
       <ScrollView contentContainerStyle={bp === 's' ? styles.successScreen : styles.wideSuccessScreen} keyboardShouldPersistTaps="handled" testID="screen-container">
-        <Sticker style={styles.successBadge}>{tr('registrierung.success.badge')}</Sticker>
         <Text style={styles.successHeading} role="heading" aria-level={1}>
           {tr('registrierung.success.heading')}
         </Text>
@@ -89,10 +88,9 @@ export function RegistrationScreen({ onDone, onLogin, onLegal }: RegistrationScr
       <BetaNotice />
       <Text style={styles.heading} role="heading" aria-level={1}>
         {tr('registrierung.titleBefore')}
-        <Text style={{ color: t.color.funkeTinte }}>{tr('registrierung.titleMark')}</Text>
+        <Text>{tr('registrierung.titleMark')}</Text>
         {tr('registrierung.titleAfter')}
       </Text>
-      <Text style={styles.subtitle}>{tr('registrierung.subtitle')}</Text>
 
       <SocialSignInSection disabled={stage.kind === 'submitting'} onSignedIn={onDone} onError={setError} />
 
@@ -149,13 +147,11 @@ function makeStyles(t: UiTheme) {
   const wideScreen: ViewStyle = { ...t.layout.flow.wide, justifyContent: 'center' }
   const successScreen: ViewStyle = { ...screen, alignItems: 'center' }
   const wideSuccessScreen: ViewStyle = { ...wideScreen, alignItems: 'center' }
-  const heading: TextStyle = { ...t.type.title, color: t.color.tinte, marginBottom: t.space.s2 }
-  const subtitle: TextStyle = { ...t.type.body, color: t.color.tinte2, marginBottom: t.space.s5 }
+  const heading: TextStyle = { ...t.type.title, color: t.color.tinte, marginBottom: t.space.s5 }
   const submittingRow: ViewStyle = { flexDirection: 'row', alignItems: 'center', gap: t.space.s2 }
   const submittingLabel: TextStyle = { ...t.type.button, color: inkOnFunke(t) }
   const legalNote: TextStyle = { ...t.type.caption, color: t.color.tinte2, textAlign: 'center', marginTop: t.space.s3 }
   const legalLink: TextStyle = { ...t.type.caption, color: t.color.tinte, textDecorationLine: 'underline' }
-  const successBadge: ViewStyle = { alignSelf: 'center', marginBottom: t.space.s4 }
   const successHeading: TextStyle = { ...t.type.title, color: t.color.tinte, textAlign: 'center', marginBottom: t.space.s2 }
   const successSubtitle: TextStyle = { ...t.type.body, color: t.color.tinte2, textAlign: 'center', marginBottom: t.space.s5 }
   const cta: ViewStyle = { marginTop: t.space.s3 }
@@ -168,12 +164,10 @@ function makeStyles(t: UiTheme) {
     successScreen,
     wideSuccessScreen,
     heading,
-    subtitle,
     submittingRow,
     submittingLabel,
     legalNote,
     legalLink,
-    successBadge,
     successHeading,
     successSubtitle,
     cta,

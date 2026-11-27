@@ -2,10 +2,10 @@
 // inside a transaction that is always rolled back. Every repository the trial write reaches must join it; the
 // Kopplung repository did not, so a simulated Veranlagungsart stayed — „einzel“ cut the partner link, „zusammen“
 // created a Person B. After a simulation the database is the same as before, row for row.
+import { SCHEMA_MODEL } from '../src/prisma/schema-model.js'
 import type { NestFastifyApplication } from '@nestjs/platform-fastify'
 import { NestFactory } from '@nestjs/core'
 import { FastifyAdapter } from '@nestjs/platform-fastify'
-import { Prisma } from '@prisma/client'
 import { randomUUID } from 'node:crypto'
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest'
 import { AppModule } from '../src/app.module.js'
@@ -60,7 +60,7 @@ describe('a simulation leaves the database as it was — real Postgres', () => {
   async function snapshot(userId: string): Promise<Record<string, unknown>> {
     const people = [userId, `spouse_${userId}_${YEAR}`]
     const out: Record<string, unknown> = {}
-    for (const model of Prisma.dmmf.datamodel.models) {
+    for (const model of SCHEMA_MODEL.datamodel.models) {
       const delegate = (prisma as unknown as Record<string, Delegate | undefined>)[model.name.charAt(0).toLowerCase() + model.name.slice(1)]
       if (delegate === undefined) continue
       const columns = new Set(model.fields.map((f) => f.name))

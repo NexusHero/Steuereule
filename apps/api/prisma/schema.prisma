@@ -21,9 +21,15 @@ generator client {
   provider = "prisma-client-js"
 }
 
+// Writes src/prisma/schema-model.generated.ts: the data model with field documentation, which the field
+// encryption reads and Prisma 7's runtime client no longer carries.
+generator schemaModel {
+  provider = "node ./prisma/generators/schema-model.mjs"
+  output   = "../src/prisma"
+}
+
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
 /// One row per userId (guest session or real account, ADR-0007). Plain persisted

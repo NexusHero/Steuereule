@@ -4,6 +4,7 @@
 // list: the value check on the owl's write path, the check when a draft is made, and the field
 // list in the model's prompt. A field without a line here cannot be proposed.
 import { CAPITAL_FIELDS } from '../domains/capital'
+import { checkTaxId } from '../common/steuer-id'
 import { toIsoDate } from '../common/dates'
 import { MARITAL_STATUSES, RELIGION_KEYS, isValidIban, normalizeIban } from '../common/master-data'
 import { CHILD_RELATIONSHIPS, OTHER_CHILD_RELATIONSHIPS, OTHER_PARENT_STATUSES } from '../domains/children'
@@ -25,7 +26,7 @@ export type FieldValueKind =
   /** `places`: decimal places allowed, two when not given. */
   | { readonly kind: 'decimal'; readonly min: number; readonly max: number; readonly places?: number }
   /** Digits only, between `min` and `max` of them; spaces, dots and slashes in the input are left out (Steuer-ID, Steuernummer). */
-  | { readonly kind: 'digits'; readonly min: number; readonly max: number; readonly shape: string }
+  | { readonly kind: 'digits'; readonly min: number; readonly max: number; readonly shape: string; readonly steuerIdCheck?: boolean }
   /** An IBAN: two letters, two check digits, up to 30 letters or digits; spaces are left out. */
   | { readonly kind: 'iban' }
   /** Text that has to match a pattern; `shape` says in German what it looks like. */
@@ -134,6 +135,8 @@ const bool: FieldValueKind = { kind: 'boolean' }
 const date: FieldValueKind = { kind: 'date' }
 const percent: FieldValueKind = { kind: 'decimal', min: 0, max: 100 }
 const taxId: FieldValueKind = { kind: 'digits', min: 11, max: 11, shape: 'Steuer-ID aus 11 Ziffern' }
+/** The profile's own Steuer-ID is checked with the check digit (§ 139b AO), so a dummy like 00000000000 is not stored. */
+const profileTaxId: FieldValueKind = { ...taxId, steuerIdCheck: true }
 const taxNumber: FieldValueKind = { kind: 'digits', min: 1, max: 13, shape: 'Steuernummer aus bis zu 13 Ziffern' }
 
 type Declared = Readonly<Record<string, FieldValueKind>>
@@ -144,7 +147,7 @@ const fromList = (fields: readonly string[], value: FieldValueKind): Declared =>
 const DECLARED: Readonly<Record<Screen, { readonly perInstance: boolean; readonly fields: Declared }>> = {
   profil: {
     perInstance: false,
-    fields: { firstName: text(100), lastName: text(100), steuerId: taxId, steuernummer: taxNumber },
+    fields: { firstName: text(100), lastName: text(100), steuerId: profileTaxId, steuernummer: taxNumber },
   },
   stammdaten: {
     perInstance: false,
@@ -556,7 +559,9 @@ function checkKind(kind: FieldValueKind, field: string, raw: string): FieldValue
       return kind.pattern.test(raw) ? valid(raw) : invalid(`Erlaubt ist: ${kind.shape}.`)
     case 'digits': {
       const bare = raw.replace(/[\s./-]/g, '')
-      return /^\d+$/.test(bare) && bare.length >= kind.min && bare.length <= kind.max ? valid(bare) : invalid(`Erlaubt ist: ${kind.shape}.`)
+      if (!(/^\d+$/.test(bare) && bare.length >= kind.min && bare.length <= kind.max)) return invalid(`Erlaubt ist: ${kind.shape}.`)
+      if (kind.steuerIdCheck && checkTaxId(bare) !== 'valid') return invalid('Das ist keine gültige Steuer-ID: Prüfziffer oder Aufbau stimmen nicht (11 Ziffern, nicht mit 0 beginnend).')
+      return valid(bare)
     }
     case 'iban': {
       // The same check the Stammdaten mask runs, check digits included.

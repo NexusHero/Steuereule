@@ -170,7 +170,7 @@ describe('AssessmentScreen deadline, Abgleich and status', () => {
       }),
     )
     renderScreen()
-    expect(await screen.findByText('Ehrlich: deine Berechnung ist noch nicht vollständig — der Abgleich ist vorläufig.')).toBeTruthy()
+    expect(await screen.findByText('Deine Berechnung ist noch nicht vollständig, der Abgleich ist vorläufig.')).toBeTruthy()
     expect(screen.getByText('+1.000 €')).toBeTruthy()
   })
 

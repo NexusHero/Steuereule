@@ -47,16 +47,16 @@ afterEach(() => {
 })
 
 describe('SplashScreen', () => {
-  it('renders the brand wordmark and greeting in German by default', async () => {
+  it('renders the brand wordmark alone: no claim under it', async () => {
     renderSplash()
-    expect(await screen.findByText('Steuern? Zack, erledigt.')).toBeTruthy()
-    expect(screen.getByText('Steuer')).toBeTruthy()
+    expect(await screen.findByText('Steuer')).toBeTruthy()
+    expect(screen.queryByText(/Zack/)).toBeNull()
     expect(screen.getByText('Eule')).toBeTruthy()
   })
 
   it('switches to English when the locale changes (ADR-0006)', async () => {
     renderSplash({ lng: 'en' })
-    expect(await screen.findByText('Taxes? Sorted, just like that.')).toBeTruthy()
+    expect(await screen.findByLabelText('Continue to the app')).toBeTruthy()
   })
 
   it('is one big tap target that advances immediately on tap (skip)', async () => {
@@ -93,7 +93,7 @@ describe('SplashScreen', () => {
     vi.spyOn(AccessibilityInfo, 'isReduceMotionEnabled').mockResolvedValue(true)
     const timingSpy = vi.spyOn(Animated, 'timing')
     renderSplash()
-    await screen.findByText('Steuern? Zack, erledigt.')
+    await screen.findByText('Steuer')
     expect(timingSpy).not.toHaveBeenCalled()
   })
 
@@ -107,7 +107,7 @@ describe('SplashScreen', () => {
   it('drives the eyelid layer, retracted (eyes OPEN) at rest under reduced motion', async () => {
     vi.spyOn(AccessibilityInfo, 'isReduceMotionEnabled').mockResolvedValue(true)
     renderSplash()
-    await screen.findByText('Steuern? Zack, erledigt.')
+    await screen.findByText('Steuer')
 
     const props = lastOwlMarkProps()
     expect(props?.lidStyle).toBeTruthy()

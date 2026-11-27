@@ -6,8 +6,9 @@
 // (scripts/migrate-deploy.mjs), so no pipeline can forget it.
 import { pathToFileURL } from 'node:url'
 import { PrismaClient } from '@prisma/client'
-import { fieldEncryptionExtension } from 'prisma-field-encryption'
+import { schemaFieldEncryption } from '../src/prisma/field-encryption.js'
 import { resolveFieldEncryptionKey } from '../src/prisma/field-encryption-key.js'
+import { createDatabaseAdapter } from '../src/common/database-adapter.js'
 
 const CIPHERTEXT_ENVELOPE = /^v\d+\.aesgcm256\./
 
@@ -18,10 +19,10 @@ interface RawProfileNameRow {
 }
 
 export async function backfillProfileNameEncryption(
-  prisma: PrismaClient = new PrismaClient(),
+  prisma: PrismaClient = new PrismaClient({ adapter: createDatabaseAdapter() }),
   env: NodeJS.ProcessEnv = process.env,
 ): Promise<{ scanned: number; reEncrypted: number }> {
-  const encrypted = prisma.$extends(fieldEncryptionExtension(resolveFieldEncryptionKey(env)))
+  const encrypted = prisma.$extends(schemaFieldEncryption(resolveFieldEncryptionKey(env)))
   try {
     // Raw read bypasses the extension, so we see what is actually stored (cleartext vs envelope).
     const rows = await prisma.$queryRawUnsafe<RawProfileNameRow[]>(

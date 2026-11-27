@@ -41,6 +41,8 @@ const BOUNDARIES: readonly Boundary[] = [
       'prisma/',
       'auth/auth.module.ts',
       'auth/better-auth.ts',
+      // Builds the driver adapter every client is constructed with (Prisma 7); it holds no query.
+      'common/database-adapter.ts',
       'config/assert-database-migrated.ts',
       'config/assert-database-role.ts',
       'config/assert-database-reachable.ts',

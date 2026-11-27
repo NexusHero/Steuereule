@@ -1,3 +1,4 @@
+import { SCHEMA_MODEL } from '../prisma/schema-model.js'
 import { Inject, Injectable, Optional } from '@nestjs/common'
 import { PersonSealService } from '../household-core/person-seal.service.js'
 import { Prisma } from '@prisma/client'
@@ -41,7 +42,7 @@ const OMITTED_FIELDS = new Set([
  * `@map`, so the file a person downloads (Art. 15/20 DSGVO) does not change when the code's names do.
  */
 const COLUMNS: ReadonlyMap<string, ReadonlyMap<string, string>> = new Map(
-  Prisma.dmmf.datamodel.models.map((model) => [model.name, new Map(model.fields.map((field) => [field.name, field.dbName ?? field.name]))]),
+  SCHEMA_MODEL.datamodel.models.map((model) => [model.name, new Map(model.fields.map((field) => [field.name, field.dbName ?? field.name]))]),
 )
 
 type Row = Record<string, unknown> & { taxYear?: number | null }

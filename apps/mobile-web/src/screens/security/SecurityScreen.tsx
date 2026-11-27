@@ -196,7 +196,7 @@ export function SecurityScreen({ onBack }: SecurityScreenProps) {
         </Card>
       ) : (
         <>
-          <Card variant="nacht">
+          <Card>
             <View style={styles.statusRow}>
               <Text style={styles.nachtTitle}>{tr('sicherheit.twoFactor.title')}</Text>
               <Pill>{twoFactorEnabled ? tr('sicherheit.twoFactor.on') : tr('sicherheit.twoFactor.off')}</Pill>

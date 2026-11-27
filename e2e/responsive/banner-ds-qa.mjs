@@ -125,10 +125,10 @@ const BREAKPOINTS = [
 // Must match @steuereule/tokens dist/theme.ts's `light.color` block (App.tsx hardcodes
 // `mode="light"`, so this is the only theme any real user reaches today).
 const EXPECTED = {
-  background: hexToRgb('#ffeecf'), // warnWeich
-  border: hexToRgb('#e07b00'), // warn
-  borderWidth: '2px', // t.space.kontur
-  borderRadius: '12px', // t.radius.s
+  background: hexToRgb('#f3f3f5'), // warnWeich
+  border: hexToRgb('#8a6500'), // warn
+  borderWidth: '1px', // t.space.kontur
+  borderRadius: '10px', // t.radius.s
   padding: '16px', // t.space.s4
 }
 

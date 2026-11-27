@@ -160,7 +160,7 @@ describe('BelegeScreen', () => {
     renderReceipts()
     await screen.findByText('Noch keine Belege.')
     expect(
-      screen.getByText('Wirf Belege übers ganze Jahr rein — hier landen sie und warten auf das richtige Steuerjahr.'),
+      screen.getByText('Belege kannst du das ganze Jahr über hochladen.'),
     ).toBeTruthy()
   })
 
@@ -171,7 +171,7 @@ describe('BelegeScreen', () => {
   it('renders the real encrypted PDF/photo upload card instead of a placeholder (#444)', async () => {
     mockReceipts([])
     renderReceipts()
-    await screen.findByText('Beleg hochladen (PDF / Foto)')
+    await screen.findByTestId('belege-upload-cta')
     expect(screen.getByTestId('belege-upload-card')).toBeTruthy()
     expect(screen.getByTestId('belege-upload-cta')).toBeTruthy()
     // No kind to pick any more: the reading recognises the document (ADR-0097 §4).
@@ -420,7 +420,7 @@ describe('BelegeScreen', () => {
     expect(screen.getByText('Zugeordnet: 2026')).toBeTruthy()
     // konflikt: both years visible, amber, never a silent overwrite (ADR-008)
     expect(screen.getByText('spende-drk.pdf')).toBeTruthy()
-    expect(screen.getByText('Zwei Jahre für diesen Beleg — du entscheidest.')).toBeTruthy()
+    expect(screen.getByText('Zwei Jahre für diesen Beleg. Du entscheidest.')).toBeTruthy()
     expect(screen.getByText(/Zugeordnet: 2025 · Vorschlag: 2026/)).toBeTruthy()
   })
 
@@ -486,7 +486,7 @@ describe('BelegeScreen', () => {
     fireEvent.change(screen.getByLabelText('Steuerjahr'), { target: { value: '2025' } })
     fireEvent.click(screen.getByText('Diesem Jahr zuordnen'))
 
-    await screen.findByText('Zwei Jahre für diesen Beleg — du entscheidest.')
+    await screen.findByText('Zwei Jahre für diesen Beleg. Du entscheidest.')
     expect(screen.getByText(/Zugeordnet: 2025 · Vorschlag: 2026/)).toBeTruthy()
     expect(posted).toEqual({ taxYear: 2025, proposalDismissed: false })
   })
@@ -524,7 +524,7 @@ describe('BelegeScreen', () => {
     )
     renderReceipts()
 
-    await screen.findByText('Zwei Jahre für diesen Beleg — du entscheidest.')
+    await screen.findByText('Zwei Jahre für diesen Beleg. Du entscheidest.')
     fireEvent.click(screen.getByText('Vorschlag 2026 übernehmen'))
     await screen.findByText('Zugeordnet: 2026')
     expect(posted).toEqual({ taxYear: 2026, proposalDismissed: false })
@@ -545,7 +545,7 @@ describe('BelegeScreen', () => {
     )
     renderReceipts()
 
-    await screen.findByText('Zwei Jahre für diesen Beleg — du entscheidest.')
+    await screen.findByText('Zwei Jahre für diesen Beleg. Du entscheidest.')
     fireEvent.click(screen.getByText('Bei 2025 bleiben'))
     await screen.findByText('Zugeordnet: 2025')
     expect(posted).toEqual({ taxYear: 2025, proposalDismissed: true })
@@ -573,10 +573,9 @@ describe('BelegeScreen', () => {
     mockReceipts([PROPOSED, CONFLICT, ASSIGNED])
     renderReceipts({ lng: 'en' })
     expect(await screen.findByText('Receipts')).toBeTruthy()
-    expect(screen.getByText('Upload receipt (PDF / photo)')).toBeTruthy()
     expect(screen.getByText('Upload PDF or photo')).toBeTruthy()
     expect(screen.getByText('Suggestion: 2026')).toBeTruthy()
-    expect(screen.getByText('Two years for this receipt — you decide.')).toBeTruthy()
+    expect(screen.getByText('Two years for this receipt. You decide.')).toBeTruthy()
     expect(screen.getByText('Adopt suggestion 2026')).toBeTruthy()
     expect(screen.getByText('Keep 2025')).toBeTruthy()
     expect(screen.getByText('View receipt')).toBeTruthy()

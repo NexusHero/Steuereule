@@ -627,12 +627,12 @@ function makeStyles(t: UiTheme) {
   }
   const propertyCard: ViewStyle = { marginBottom: t.space.s4 }
   const propertyHeading: TextStyle = { ...t.type.cardTitle, color: t.color.tinte, marginBottom: t.space.s3 }
-  const factsBlock: ViewStyle = { marginTop: t.space.s3, padding: t.space.s3, borderWidth: t.space.kontur, borderColor: t.color.tinte, borderRadius: t.radius.s }
+  const factsBlock: ViewStyle = { marginTop: t.space.s3, padding: t.space.s3, borderWidth: t.space.kontur, borderColor: t.color.linie, borderRadius: t.radius.s }
   const factsRow: TextStyle = { ...t.type.body, color: t.color.tinte, marginBottom: t.space.s1 }
   const factsSource: TextStyle = { ...t.type.small, color: t.color.tinte2 }
   const factsOpen: TextStyle = { ...t.type.small, color: t.color.tinte2, marginTop: t.space.s2 }
   const addCta: ViewStyle = { marginTop: t.space.s2 }
-  const statusBlock: ViewStyle = { marginTop: t.space.s4, padding: t.space.s3, borderWidth: t.space.kontur, borderColor: t.color.tinte, borderRadius: t.radius.s }
+  const statusBlock: ViewStyle = { marginTop: t.space.s4, padding: t.space.s3, borderWidth: t.space.kontur, borderColor: t.color.linie, borderRadius: t.radius.s }
   const statusHeading: TextStyle = { ...t.type.itemTitle, color: t.color.tinte, marginBottom: t.space.s2 }
   const statusLine: TextStyle = { ...t.type.body, color: t.color.tinte, marginBottom: t.space.s1 }
   const statusOpen: TextStyle = { ...t.type.small, color: t.color.tinte2, marginTop: t.space.s2 }

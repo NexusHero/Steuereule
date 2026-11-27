@@ -113,7 +113,7 @@ describe('VeranlagungsartenvergleichScreen', () => {
     await chooseMarried('0')
 
     expect(await screen.findByText('Das können wir noch nicht sagen.')).toBeTruthy()
-    expect(screen.getByText('Ehrlich: der Progressionsvorbehalt (Lohnersatz) ist hier noch nicht berücksichtigt.')).toBeTruthy()
+    expect(screen.getByText('Der Progressionsvorbehalt (Lohnersatz) ist hier noch nicht berücksichtigt.')).toBeTruthy()
   })
 
   it('reveals provenance (Herkunfts-Chips) on both numbers, consistent with the zvE-Basen', async () => {

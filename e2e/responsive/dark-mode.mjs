@@ -13,9 +13,9 @@ import { verifyEmailSql } from '../harness/email-hash.mjs'
 const AUTH_BUCKET = { windowMs: 10_000, max: 3, shared: true }
 const TEST_PASSWORD = 'Sicheres-Passwort-1!'
 
-// Must match @steuereule/tokens `theme.dark.color.grund` (#12140c) and `theme.light.color.grund` (#f4f2e9).
-const DARK_GRUND_RGB = 'rgb(18, 20, 12)'
-const LIGHT_GRUND_RGB = 'rgb(244, 242, 233)'
+// Must match @steuereule/tokens `theme.dark.color.grund` (#0f0f14) and `theme.light.color.grund` (#ffffff).
+const DARK_GRUND_RGB = 'rgb(15, 15, 20)'
+const LIGHT_GRUND_RGB = 'rgb(255, 255, 255)'
 
 async function waitForBodyBackground(page, expectedRgb, label) {
   try {

@@ -8,7 +8,13 @@ import { createRequire } from 'node:module'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { PrismaClient } from '@prisma/client'
+import { register } from 'tsx/esm/api'
 import { keystoreLoginPlan, provisionKeystoreLogin, provisionRuntimeLogin, runtimeLoginPlan } from './runtime-database-login.mjs'
+
+// Prisma 7 clients are built with a driver adapter. The one adapter factory of the API is TypeScript, and this script
+// is started with a plain `node` by every pipeline, so tsx is registered for that one import.
+register()
+const { createDatabaseAdapter } = await import('../src/common/database-adapter.ts')
 
 function keystoreUrl(env) {
   if (env.KEYSTORE_DATABASE_URL?.trim()) return { url: env.KEYSTORE_DATABASE_URL.trim(), derived: false }
@@ -32,7 +38,7 @@ function sameServer(a, b) {
 async function ensureDatabaseExists(keystore) {
   const name = decodeURIComponent(new URL(keystore).pathname.slice(1))
   if (!/^[A-Za-z0-9_]+$/.test(name)) throw new Error(`Unexpected keystore database name "${name}".`)
-  const client = new PrismaClient()
+  const client = new PrismaClient({ adapter: createDatabaseAdapter() })
   try {
     const rows = await client.$queryRaw`SELECT 1 FROM pg_database WHERE datname = ${name}`
     if (rows.length === 0) await client.$executeRawUnsafe(`CREATE DATABASE "${name}"`)
@@ -69,7 +75,7 @@ const migrationEnv = { ...process.env, DATABASE_URL: asMigration(process.env.DAT
 
 run(['migrate', 'deploy'], migrationEnv)
 if (runtimeLogin.kind === 'provision') {
-  const owner = new PrismaClient()
+  const owner = new PrismaClient({ adapter: createDatabaseAdapter() })
   try {
     await provisionRuntimeLogin(owner, runtimeLogin)
   } finally {
@@ -78,13 +84,13 @@ if (runtimeLogin.kind === 'provision') {
 }
 const keystore = keystoreUrl(process.env)
 if (keystore.derived || sameServer(keystore.url, process.env.DATABASE_URL)) await ensureDatabaseExists(keystore.url)
-run(['migrate', 'deploy', '--schema', 'prisma/keystore/schema.prisma'], {
+run(['migrate', 'deploy', '--config', 'prisma/keystore/prisma.config.ts'], {
   ...process.env,
   KEYSTORE_DATABASE_URL: keystore.url,
 })
 // A keystore on the tax-data server gets a login of its own (the API must not reach it as the server's owner).
 if (keystoreLogin.kind === 'provision') {
-  const keystoreOwner = new PrismaClient({ datasources: { db: { url: keystore.url } } })
+  const keystoreOwner = new PrismaClient({ adapter: createDatabaseAdapter(keystore.url) })
   try {
     await provisionKeystoreLogin(keystoreOwner, keystoreLogin)
   } finally {

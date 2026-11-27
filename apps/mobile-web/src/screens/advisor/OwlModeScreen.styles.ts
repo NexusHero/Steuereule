@@ -1,6 +1,6 @@
 // How the owl screen looks: top-level layout, workbench, sheets.
 import { type TextStyle, type ViewStyle } from 'react-native'
-import { WIDE_CONTENT_MAX_WIDTH, type UiTheme } from '@steuereule/ui'
+import { WIDE_CONTENT_MAX_WIDTH, type UiTheme, controlLine } from '@steuereule/ui'
 
 export function makeStyles(t: UiTheme) {
   const kiColor = t.color.tinte
@@ -40,7 +40,7 @@ export function makeStyles(t: UiTheme) {
       borderRadius: t.radius.pille,
       backgroundColor: t.color.karte,
       borderWidth: 1.5,
-      borderColor: t.color.linie,
+      borderColor: controlLine(t),
     } as ViewStyle,
     toolbarToggleText: {
       fontFamily: t.font.text,

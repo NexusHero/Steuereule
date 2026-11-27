@@ -115,7 +115,7 @@ export function InlineMaskView({
       </Pressable>
       <View style={styles.inlineMaskFocusBanner} testID="eule-inline-mask-focus-banner">
         <Text style={styles.inlineMaskFocusText}>
-          {tr('eule.workspace.maskFocus', '🦉 Eulen-Fokus · Prüfe deine Maske')}
+          {tr('eule.workspace.maskFocus', 'Eulen-Fokus · Prüfe deine Maske')}
           {field ? (
             <Text testID="eule-inline-mask-field-pill">{` · #${field}`}</Text>
           ) : null}

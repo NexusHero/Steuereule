@@ -1,9 +1,10 @@
 // ADR-0109: plaintext identity rows -> ciphertext + e-mail hash, against a real Postgres.
 import { PrismaClient } from '@prisma/client'
-import { fieldEncryptionExtension } from 'prisma-field-encryption'
+import { schemaFieldEncryption } from '../src/prisma/field-encryption.js'
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest'
 import { backfillIdentity } from '../src/auth/identity-backfill.prisma.js'
 import { publishEmailHashSalt, resolveFieldEncryptionKey } from '../src/prisma/field-encryption-key.js'
+import { createDatabaseAdapter } from '../src/common/database-adapter.js'
 
 const CIPHERTEXT = /^v1\.aesgcm256\./
 
@@ -25,8 +26,8 @@ describe('identity backfill (ADR-0109)', () => {
   beforeAll(() => {
     const { encryptionKey, decryptionKeys } = resolveFieldEncryptionKey()
     publishEmailHashSalt()
-    plain = new PrismaClient()
-    encrypted = plain.$extends(fieldEncryptionExtension({ encryptionKey, decryptionKeys })) as unknown as PrismaClient
+    plain = new PrismaClient({ adapter: createDatabaseAdapter() })
+    encrypted = plain.$extends(schemaFieldEncryption({ encryptionKey, decryptionKeys })) as unknown as PrismaClient
   })
   afterEach(async () => {
     await plain.session.deleteMany()

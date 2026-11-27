@@ -413,12 +413,19 @@ describe('ausdruckWerte', () => {
     it('missing facts block as "grenzgaenger"; cases the printout cannot cover are named', () => {
       expect(ngre({ rate: null }).missing).toEqual(['grenzgaenger'])
       expect(ngre({ pkArbeitgeberChf: null }).missing).toEqual(['grenzgaenger'])
-      expect(ngre({ arbeitgeberName: null }).missing).toEqual(['grenzgaenger'])
       expect(ngre({ specialCases: null }).missing).toEqual(['grenzgaenger'])
       expect(ngre({ status: null }).missing).toEqual(['grenzgaenger'])
       expect(ngre({ specialCases: true }).missing).toEqual(['anlageNGreSonderfall'])
       expect(ngre({ status: 'kein-grenzgaenger' }).missing).toEqual(['anlageNGreKeinGrenzgaenger'])
       expect(Object.keys(ngre({ rate: null }).values).some((id) => id.startsWith('anlNGre.'))).toBe(false)
+    })
+
+    it('a missing employer address still blocks the paper, but the form keeps its amounts', () => {
+      for (const noAddress of [{ arbeitgeberName: null }, { arbeitgeberStrasse: null }, { arbeitgeberPlzOrt: null }]) {
+        const { values, missing } = ngre(noAddress)
+        expect(missing).toEqual(['grenzgaenger'])
+        expect(values).toMatchObject({ 'anlNGre.z6Chf': '100000', 'anlNGre.z25Chf': '4500', 'anlNGre.z77Chf': '97600' })
+      }
     })
 
     it('a couple of two Grenzgänger files one return with an Anlage N-Gre for each (ADR-0054)', () => {

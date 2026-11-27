@@ -327,8 +327,9 @@ function makeStyles(t: UiTheme) {
   const struck: TextStyle = { textDecorationLine: 'line-through', color: t.color.tinte2 }
   const reason: TextStyle = { ...t.type.caption, color: t.color.tinte2 }
   const warnGlyph: TextStyle = { color: t.color.warn }
-  const textBad: TextStyle = { color: t.color.fehler }
-  const textGood: TextStyle = { color: t.color.ok }
+  // The sign says which way a figure moved; Graphit keeps red and green for faults and confirmations.
+  const textBad: TextStyle = { color: t.color.tinte }
+  const textGood: TextStyle = { color: t.color.tinte }
   const detail: ViewStyle = { gap: t.space.s1, paddingBottom: t.space.s3 }
   const quote: TextStyle = { ...t.type.small, fontStyle: 'italic', color: t.color.tinte }
   const more: ViewStyle = { minHeight: 44, justifyContent: 'center' }

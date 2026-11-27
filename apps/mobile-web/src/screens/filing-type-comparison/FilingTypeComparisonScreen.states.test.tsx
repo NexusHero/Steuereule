@@ -43,7 +43,7 @@ describe('FilingTypeComparisonScreen', () => {
     server.use(http.get(URL_COMPARISON, () => HttpResponse.json({ kind: 'nicht-anwendbar', reason: 'keine-einnahmen' })))
     renderScreen()
     married('0')
-    expect(await screen.findByText('Noch kein Einkommen erfasst — es gibt nichts zu vergleichen.')).toBeTruthy()
+    expect(await screen.findByText('Noch kein Einkommen erfasst.')).toBeTruthy()
   })
 
   it('says the comparison does not apply when the server says the user is not married', async () => {

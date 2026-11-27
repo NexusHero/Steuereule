@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Pressable, Text, TextInput, View, type TextStyle, type ViewStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
-import { Button, useTheme, type UiTheme } from '@steuereule/ui'
+import { Button, useTheme, type UiTheme, controlLine } from '@steuereule/ui'
 import { APP_NS } from '../../../i18n/resources'
 import { useConfirmAction } from '../../../confirm/useConfirmAction'
 import { makeSidePanelStyles } from './sidePanelStyles'
@@ -188,7 +188,7 @@ function makeStyles(t: UiTheme) {
       padding: t.space.s3,
       borderRadius: t.radius.m,
       borderWidth: 1,
-      borderColor: t.color.linie,
+      borderColor: controlLine(t),
       backgroundColor: t.color.grund,
       fontFamily: t.font.text,
       fontSize: t.size.s,

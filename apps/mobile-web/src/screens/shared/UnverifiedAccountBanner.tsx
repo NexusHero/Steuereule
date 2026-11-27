@@ -27,7 +27,7 @@ export function UnverifiedAccountBanner({ onOpenExport }: { readonly onOpenExpor
     <View
       accessibilityRole="alert"
       testID="konto-unbestaetigt"
-      style={{ backgroundColor: t.color.warnWeich, borderColor: t.color.warn, borderWidth: 2, borderRadius: t.radius.s, padding: t.space.s3, margin: t.space.s3 }}
+      style={{ backgroundColor: t.color.warnWeich, borderColor: t.color.warn, borderWidth: t.space.kontur, borderRadius: t.radius.s, padding: t.space.s3, margin: t.space.s3 }}
     >
       <Text style={{ ...t.type.button, color: t.color.tinte, marginBottom: t.space.s1 }}>{tr('auth.unverifiedAccount.heading')}</Text>
       <Text style={{ ...t.type.small, color: t.color.tinte2, marginBottom: t.space.s2 }}>

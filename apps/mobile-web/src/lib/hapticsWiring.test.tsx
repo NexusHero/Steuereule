@@ -262,7 +262,7 @@ describe('app haptics integration (Slice 7)', () => {
     fireEvent.change(screen.getByTestId('stammdaten-iban'), { target: { value: 'DE00' } })
     fireEvent.click(screen.getByTestId('stammdaten-speichern'))
 
-    await screen.findByText('Bitte prüf deine Eingaben — z. B. Datum, Postleitzahl oder IBAN.')
+    await screen.findByText('Prüf deine Eingaben, etwa Datum, Postleitzahl oder IBAN.')
     await waitFor(() => expect(hapticSpies.hapticWarning).toHaveBeenCalledOnce())
   })
 })

@@ -6,22 +6,18 @@
   "tabs": {
     "cockpit": "Cockpit",
     "eule": "Owl",
+    "euleUngelesen": "new answer",
     "belege": "Receipts",
     "profil": "Profile",
     "verlauf": "History"
   },
   "splash": {
-    "greeting": "Taxes? Sorted, just like that.",
     "skipLabel": "Continue to the app"
   },
   "login": {
-    "greetingBefore": "Good to see you ",
-    "greetingMark": "here",
-    "greetingAfter": ".",
-    "subtitle": "Your tax year is waiting — pick up where you left off.",
     "google": "Continue with Google",
     "apple": "Continue with Apple",
-    "googleNotConfigured": "Google isn't set up on this device — the other ways are still open to you.",
+    "googleNotConfigured": "Google isn't set up on this device.",
     "googleUnknown": "We can't tell right now whether Google is available.",
     "orEmail": "or with email",
     "emailLabel": "Email",
@@ -31,7 +27,7 @@
     "submitting": "Checking …",
     "register": "New here? Create account",
     "guest": "Look around as a guest",
-    "guestNote": "Guest mode: your details are saved securely, encrypted.",
+    "guestNote": "As a guest your details are stored encrypted.",
     "twoFactor": {
       "heading": "Second factor",
       "body": "Your account ({{email}}) is protected by a second factor. Enter the code from your authenticator app.",
@@ -59,13 +55,13 @@
     "errEmail": "That doesn't look like an email yet.",
     "errPass": "The password is too short. New passwords need at least 12 characters.",
     "apiUnreachable": {
-      "heading": "Not reachable right now — that's on us.",
+      "heading": "Not reachable right now. That is on us.",
       "body": "Our servers aren't answering. Your data is safe, nothing is lost.",
       "bodyRetrying": "Our servers aren't answering. Your data is safe, nothing is lost. We're automatically trying again."
     },
     "qr": {
       "heading": "Sign in with your phone",
-      "body": "Scan the code with your phone's camera — you're already signed in there.",
+      "body": "Scan the code with your phone, where you are signed in.",
       "accessibilityLabel": "QR code to sign in with your phone",
       "loading": "Generating code …",
       "denied": "Sign-in was not confirmed.",
@@ -75,14 +71,14 @@
       "retry": "Try again",
       "rateLimited": "Too many requests just now. Try again in a few seconds.",
       "retryingAuto": "Automatically trying again …",
-      "retryExhausted": "Automatic retries are paused — please try again yourself.",
-      "knapp": "Expiring soon — {{time}} left",
+      "retryExhausted": "Automatic retries are paused. Try again yourself.",
+      "knapp": "Expires in {{time}}",
       "remaining": "{{time}} left",
       "copy": "Copy",
       "copied": "✓ Copied",
       "approved": {
-        "heading": "That's it — you're in.",
-        "body": "Approved via your phone. Your tax year is loading."
+        "heading": "Signed in.",
+        "body": "Approved from your phone."
       }
     },
     "forgot": "Forgot your password?"
@@ -93,14 +89,14 @@
     "errEmailTaken": "There is already an account for this email.",
     "errEmailNotVerified": "Please confirm your email address first. We have sent you a new link.",
     "errPasswordTooShort": "That password's too short.",
-    "errPasswordCompromised": "That password has shown up in a known data breach — please choose a different one.",
+    "errPasswordCompromised": "That password is in a known data breach. Choose a different one.",
     "errGeneric": "That didn't work just now. Check your connection and try again.",
     "verifyBanner": {
       "heading": "Please verify your email.",
       "body": "We sent an email to {{email}}; it says how to go on. Until you have signed in, you carry on as a guest — we then move your entries over.",
       "resend": "Resend email",
       "resendSending": "Sending …",
-      "resendSent": "Sent — check your inbox.",
+      "resendSent": "Sent. Check your inbox.",
       "resendError": "That didn't work just now. Try again in a moment."
     },
     "unverifiedAccount": {
@@ -149,7 +145,6 @@
     "titleBefore": "Create your ",
     "titleMark": "account",
     "titleAfter": ".",
-    "subtitle": "Email and password — that’s all it takes.",
     "emailLabel": "Email",
     "emailPlaceholder": "you@example.com",
     "passwordLabel": "Password",
@@ -160,7 +155,6 @@
     "errEmail": "That doesn't look like an email yet.",
     "errPass": "At least 12 characters for the password.",
     "success": {
-      "badge": "Mail on its way ✓",
       "heading": "Check your inbox.",
       "cta": "Continue to onboarding →"
     },
@@ -180,7 +174,7 @@
       "titleBefore": "Who are ",
       "titleMark": "you",
       "titleAfter": "?",
-      "help": "Just like on your ID — so the form matches exactly.",
+      "help": "As on your ID card.",
       "firstNameLabel": "First name",
       "firstNamePlaceholder": "Kim",
       "lastNameLabel": "Last name",
@@ -190,26 +184,24 @@
       "titleBefore": "Your ",
       "titleMark": "Steuer-ID",
       "titleAfter": "",
-      "help": "11 digits, the same for life — printed at the top of every letter from the tax office.",
+      "help": "Printed on letters from the tax office.",
       "fieldLabel": "Steuer-Identifikationsnummer",
       "placeholder": "12 345 678 901",
       "counter": "{{count}}/11 digits",
-      "confirmed": "locked in ✓",
-      "later": "Don't have it right now — add it later in Profile"
+      "confirmed": "valid",
+      "later": "Add later in the profile"
     },
     "step3": {
       "titleBefore": "Now the ",
       "titleMark": "Steuernummer",
       "titleAfter": "",
-      "help": "It's on your last tax assessment. Don't have it handy? Later works too.",
+      "help": "Printed on your last assessment.",
       "fieldLabel": "Steuernummer (optional)",
       "placeholder": "12/345/67890",
-      "later": "Don't have it handy — later"
+      "later": "Add later"
     },
     "summary": {
-      "heading": "Done.",
-      "badge": "pre-filled",
-      "intro": "Your form is ready — you can change any detail anytime.",
+      "heading": "Your details",
       "cardLabel": "Your form",
       "rowFirstName": "First name",
       "rowLastName": "Last name",
@@ -224,7 +216,7 @@
         "network": "That didn't work just now. Check your connection and try again."
       },
       "changeDetails": "Edit details",
-      "footerNote": "Saved securely — you can come back to it any time."
+      "footerNote": "Stored encrypted."
     }
   },
   "funnel": {
@@ -234,7 +226,6 @@
         "body": "We sent a link to {{email}}. Follow it and then sign in – we keep what you entered as a guest.",
         "login": "Confirmed? Sign in now"
       },
-      "sticker": "Path found",
       "titleBefore": "Your path: ",
       "titleAfter": "",
       "pfad": {
@@ -242,7 +233,6 @@
         "rente": "Pension",
         "ch": "Swiss cross-border"
       },
-      "help": "With your answers we know which return fits you. Here is what comes next:",
       "nextLabel": "Up next",
       "schritte": {
         "lstb": "Type in or scan your Lohnsteuerbescheinigung",
@@ -253,10 +243,10 @@
         "lohnausweis": "Take over your Swiss Lohnausweis",
         "nichtrueckkehrtage": "Count your non-return days"
       },
-      "honest": "We only show a refund once we can actually calculate it — not before.",
+      "honest": "We show a refund only once we can calculate it.",
       "register": "Create account and continue",
       "login": "I already have an account",
-      "later": "Later — take me to the Cockpit",
+      "later": "Later, to the cockpit",
       "note": "Your answers move into the account. Until then they are stored encrypted in your guest session; if you change nothing for {{days}} days, we delete them."
     }
   },
@@ -305,8 +295,8 @@
       "failed": "Signing out did not work. Check the connection and try again."
     },
     "loading": "Loading your profile …",
-    "namePlaceholder": "No name saved yet",
-    "emptyNote": "Nothing saved yet.",
+    "namePlaceholder": "No name on file",
+    "emptyNote": "No tax ID on file",
     "cardLabel": "Your details",
     "edit": "Edit",
     "editHeading": "Edit details",
@@ -317,7 +307,7 @@
     "steuerIdLabel": "Steuer-Identifikationsnummer",
     "steuerIdPlaceholder": "12 345 678 901",
     "steuerIdCounter": "{{count}}/11 digits",
-    "steuerIdConfirmed": "locked in ✓",
+    "steuerIdConfirmed": "valid",
     "steuerNrLabel": "Steuernummer (optional)",
     "steuerNrPlaceholder": "12/345/67890",
     "save": "Save",
@@ -329,10 +319,10 @@
       "network": "That didn't work just now. Check your connection and try again."
     },
     "deineDaten": {
-      "rowLabel": "How we protect your data (GDPR)"
+      "rowLabel": "Privacy"
     },
     "sicherheit": {
-      "rowLabel": "Security (two-factor)"
+      "rowLabel": "Security"
     },
     "darstellung": {
       "titel": "Appearance",
@@ -358,7 +348,7 @@
       "loading": "Loading devices …",
       "loadError": {
         "unreachable": "Your devices couldn't be loaded. Check your connection and try again.",
-        "refused": "Your devices couldn't be loaded — the server responded, but that didn't work. It isn't your connection.",
+        "refused": "Your devices couldn't be loaded. It isn't your connection.",
         "unknown": "Your devices couldn't be loaded. Try again."
       },
       "empty": "No other devices signed in.",
@@ -433,7 +423,7 @@
     "title": "Security",
     "back": "Back to profile",
     "loading": "Loading …",
-    "requiresAccount": "Two-factor authentication requires a real account — it is not available in guest mode.",
+    "requiresAccount": "Two-factor authentication requires an account.",
     "password": "Password",
     "busy": "Checking …",
     "enabled": "Two-factor authentication is now on.",
@@ -483,7 +473,7 @@
     "errChallengeExpired": "The second-factor check has expired. Please sign in again with your email and password.",
     "cancel": "Cancel",
     "sessionUnknown": "We could not check right now whether you are signed in. Please try again in a moment.",
-    "errLocked": "Too many failed attempts — your account is temporarily locked. Try again later."
+    "errLocked": "Too many failed attempts. Your account is temporarily locked."
   },
   "bestaetigung": {
     "veraendert": "Something changed since you saw these values. Please check them again.",
@@ -657,7 +647,7 @@
     },
     "title": "Printout {{jahr}}",
     "back": "Back",
-    "intro": "We fill in the official forms with your details. You print them, sign and hand them in at your tax office.",
+    "intro": "Official forms with your details, to print and sign.",
     "loading": "Loading …",
     "loadError": {
       "heading": "That did not work.",
@@ -1083,8 +1073,8 @@
           "kz339": "Optional and supplementary cover (foreign)"
         }
       },
-      "titel": "🔍 Glass return: official form preview",
-      "untertitel": "See live which official form and line your details land in – with their origin and a jump straight to the form.",
+      "titel": "Glass return: official form preview",
+      "untertitel": "Shows which line of which form holds your details.",
       "oeffnen": "View form lines ▼",
       "leer": "No form lines filled yet. As soon as you enter details in the flow, the forms or via the owl, they appear here.",
       "schliessen": "Collapse ▲"
@@ -1156,7 +1146,7 @@
     "fehlendHinweis": "{{anzahl}} details still missing for the printout.",
     "vollstaendig": "Everything there for the printout.",
     "saveError": {
-      "validation": "Please check your entries — e.g. date, postcode or IBAN.",
+      "validation": "Check your entries, such as date, postcode or IBAN.",
       "network": "Saving failed. Check your connection."
     },
     "familienstaende": {
@@ -1261,7 +1251,7 @@
     "hero": {
       "kicker": "We mean it, not just fine print",
       "heading": "Your data.\nYour rules.",
-      "body": "Tax data is about the most private thing an app can touch. So here's everything — short, concrete, checkable."
+      "body": "What happens to your tax data: short, concrete, checkable."
     },
     "sessionChecking": "Checking …",
     "sessionUnknown": {
@@ -1283,7 +1273,7 @@
       "title": "Access & export",
       "subtitle": "Art. 15 (access) and Art. 20 (portability): download a copy of your data.",
       "jsonButton": "Download as JSON",
-      "jsonHint": "Machine-readable — for sharing or archiving.",
+      "jsonHint": "Machine-readable, for sharing or archiving.",
       "pdfButton": "Download as PDF report",
       "pdfHint": "For reading, printing, or filing.",
       "preparing": "Preparing …",
@@ -1345,7 +1335,7 @@
       "titleBefore": "Where did your ",
       "titleMark": "money",
       "titleAfter": " come from in {{taxYear}}?",
-      "help": "Multiple jobs? Use your main source — the rest comes later.",
+      "help": "If several: the main source.",
       "options": {
         "angestellt": "Employed",
         "selbststaendig": "Self-employed",
@@ -1357,7 +1347,7 @@
       "titleBefore": "What do you do for ",
       "titleMark": "work",
       "titleAfter": "?",
-      "help": "So the owl can give you tips that fit your job. Just the field — no employer, no title.",
+      "help": "For hints from the Owl that fit. Only the field, no employer.",
       "options": {
         "it": "IT & software",
         "pflege": "Care & health",
@@ -1373,7 +1363,7 @@
       "titleBefore": "Do you commute abroad for ",
       "titleMark": "work",
       "titleAfter": "?",
-      "help": "Living in Germany and working in Switzerland comes with its own rules — we walk you through all of them.",
+      "help": "Cross-border commuters to Switzerland have rules of their own.",
       "options": {
         "schweiz": "Yes, to Switzerland",
         "andereLand": "To another country",
@@ -1384,13 +1374,13 @@
       "titleBefore": "Do you work ",
       "titleMark": "abroad",
       "titleAfter": " besides your pension?",
-      "help": "Most people tap “No” here. A Swiss pension goes into your pension details later."
+      "help": "A pension from Switzerland goes in later, with your pension."
     },
     "kinder": {
       "titleBefore": "Do you have ",
       "titleMark": "children",
       "titleAfter": "?",
-      "help": "Child benefit, child allowance, childcare costs — we work out what is better for you.",
+      "help": "Child benefit or child allowance: we work out which is better.",
       "options": {
         "nein": "No",
         "einKind": "1 child",
@@ -1401,7 +1391,7 @@
       "titleBefore": "What was your ",
       "titleMark": "marital status",
       "titleAfter": " on 31 December?",
-      "help": "Married couples usually file one joint return, which often saves tax. Then we ask briefly about your partner.",
+      "help": "Decides whether you can file jointly.",
       "options": {
         "ledig": "Single",
         "verheiratet": "Married / registered partnership",
@@ -1413,7 +1403,7 @@
       "titleBefore": "And your ",
       "titleMark": "spouse",
       "titleAfter": "?",
-      "help": "For your joint return. Afterwards we only show what you really need for your partner.",
+      "help": "For your joint return.",
       "options": {
         "angestellt": "Employed",
         "rente": "Retired",
@@ -1444,22 +1434,22 @@
       "titleBefore": "Does your partner work in ",
       "titleMark": "Switzerland",
       "titleAfter": " too?",
-      "help": "Then a second Swiss salary certificate comes in — we guide you both through it.",
+      "help": "Then a second Swiss salary certificate is added.",
       "options": {
         "schweiz": "Yes, as a cross-border commuter",
         "nein": "No"
       }
     },
     "gewerbe": {
-      "heading": "Honestly: we're not good enough for that yet.",
-      "body1": "Self-employed returns need EÜR, Anlage G/S and VAT — this part of SteuerEule can’t do that yet. We don’t ship half tax returns.",
+      "heading": "We don't calculate self-employment yet.",
+      "body1": "Self-employed returns need EÜR, Anlage G/S and VAT. This part of SteuerEule can’t do that yet.",
       "body2": "What works today: preparing. For \"Both\" we collect your employee part completely — filing only happens once your business return is in too. A tax return is indivisible.",
       "prepareEmployeePart": "Prepare the employee part — filing waits for the business return"
     },
     "chOnly": {
-      "heading": "Honestly: we can't do other countries yet.",
-      "body1": "Every country has its own treaty with its own rules — Austria and France with border zones, Luxembourg with a minor-amount threshold. Half-computed would be wrong.",
-      "body2": "What works today: Switzerland, completely — and the rest of your tax year regardless. Austria, France and Luxembourg are on the list.",
+      "heading": "We don't calculate other countries yet.",
+      "body1": "Each country has its own treaty with its own rules: Austria and France with border zones, Luxembourg with a de minimis limit.",
+      "body2": "Switzerland and the rest of your tax year work today. Austria, France and Luxembourg will follow.",
       "continueWithoutForeign": "Continue without the foreign part"
     },
     "renteSelbststaendig": {
@@ -1477,7 +1467,7 @@
     "back": "Back",
     "heading": "Your wage tax statement",
     "headingPartner": "Wage tax certificate of {{name}}",
-    "help": "Copy the three figures from your wage tax statement (Lohnsteuerbescheinigung) — field by field, in the paper’s own order.",
+    "help": "Copy the three values from your wage tax certificate.",
     "loading": "Loading your wage tax statement …",
     "felder": {
       "bruttoarbeitslohn": "Gross pay (line 3)",
@@ -1533,7 +1523,7 @@
       "heading": "Scan wage tax statement (PDF / photo)",
       "help": "Text recognition runs on your device. If amounts are still missing, only lines 3, 4 and 23 to 27, without names and identifiers, go to a language model. Your tax ID, the employer and the image never go to a language model.",
       "cta": "Choose PDF or photo",
-      "nativeUnsupported": "Camera scan in the native app build follows separately — on web you can pick a PDF or photo directly.",
+      "nativeUnsupported": "On the web you can pick a PDF or photo.",
       "assignedElsewhere": "The document belongs to {{name}}. Its values now wait for you in the owl, not in this mask.",
       "progress": {
         "uploading": "Encrypting and saving receipt …",
@@ -1612,7 +1602,7 @@
     "partnerFor": "Pension of {{name}}.",
     "back": "Back",
     "heading": "Your pension",
-    "help": "Copy the figures from your pension notification (Rentenbezugsmitteilung) — pension type, annual amount and start.",
+    "help": "Copy pension type, annual amount and start from your pension statement.",
     "loading": "Loading your pension …",
     "artHeading": "Which pension do you receive?",
     "arten": {
@@ -1654,7 +1644,7 @@
       "deutscherBrokerOhneSteuer": "German bank: it withholds Abgeltungsteuer once the exemption order is used up. Enter below what the certificate shows as withheld (0 if nothing). Then we compare it with your personal tax rate.",
       "deutscherBroker": "Your bank withheld withholding tax (Abgeltungsteuer). Below we honestly compare it with your personal tax rate.",
       "auslaendischerBroker": "Foreign broker: no German tax was withheld. You must declare this income in Anlage KAP — it is taxed at your personal rate. We never invent a withholding tax here.",
-      "krypto": "Crypto honestly stays out of 1.0: holding periods and acquisition costs are not computed yet. No half feature.",
+      "krypto": "Crypto is not computed yet: holding periods and acquisition costs are missing.",
       "unbekannt": "First tell us in the interview whether your brokerage is German or foreign."
     },
     "felder": {
@@ -1682,9 +1672,9 @@
       "unbestimmt": "We can't say that yet.",
       "abgeltung": "Withholding tax (25 % + solidarity surcharge)",
       "persoenlich": "Personal tariff",
-      "progressionsvorbehaltHinweis": "Honestly: the progression proviso (wage replacement benefits) is not factored in yet.",
+      "progressionsvorbehaltHinweis": "The progression proviso (wage replacement benefits) is not factored in yet.",
       "keineAbgeltungEinbehalten": "No withholding tax was withheld — the comparison does not arise.",
-      "kryptoGegated": "Crypto stays 2.0 — no comparison for crypto.",
+      "kryptoGegated": "There is no most-favourable check for crypto yet.",
       "kapDepotNichtBeantwortet": "Answer the brokerage question in the interview first — then we know whether the comparison applies.",
       "keineKapitalertraege": "Enter your capital income first — then we compute the comparison.",
       "unterschied": "Difference",
@@ -1704,13 +1694,13 @@
   "vermietung": {
     "back": "Back",
     "heading": "Your rental property",
-    "help": "Enter your year-round rented objects — one Anlage V each, with linear depreciation.",
+    "help": "One Anlage V with straight-line depreciation per property let all year.",
     "loading": "Loading your rental property …",
     "anteilLadefehler": "Whether you are assessed jointly could not be loaded, so the question about your share in the property is missing here.",
     "leerenNichtMoeglich": "This field cannot be left empty once a value is saved. Enter 0 if there was nothing.",
     "einordnung": {
       "berechenbar": "Year-round rented objects we compute: one Anlage V each, linear depreciation per § 7 Abs. 4 EStG.",
-      "verkaufOderMoebliert": "Sale or furnished short-term rental honestly stays out of 1.0: deadlines and delineation are not computed yet. No half feature.",
+      "verkaufOderMoebliert": "Sale or furnished short-term rental is not computed yet: deadlines and delineation are missing.",
       "unbekannt": "First tell us in the interview whether you rent out property — and whether you sold or rent furnished short-term."
     },
     "felder": {
@@ -1738,7 +1728,7 @@
       "werbungskosten": "Income-related expenses: {{betrag}}",
       "afa": "Linear depreciation: {{betrag}}",
       "offen": "Still open: {{count}} figure(s) — the totals show only what was entered.",
-      "gated": "Honestly: sale or furnished short-term rental is not computed in 1.0."
+      "gated": "Sale or furnished short-term rental is not computed yet."
     },
     "weiter": "Continue",
     "anschaffungsdatum": "Date of purchase",
@@ -1760,7 +1750,7 @@
     "abgelaufen": "The deadline {{frist}} has passed. The tax office may set a late-filing surcharge — from {{pflichtAb}} it must (at least {{mindestsatz}} per started month).",
     "zuschlagPflicht": "The filing deadline {{frist}} passed {{tage}} days ago. Since {{pflichtAb}} the tax office must set a late-filing surcharge (§ 152 (2) AO): at least {{mindestsatz}} per started month — file soon.",
     "freiwillig": "Voluntary return: you have until {{bis}} (31 Dec of the fourth following year). The sooner you file, the sooner the refund arrives.",
-    "unklar": "Whether you have to file, we will work out from your answers. The mandatory deadline would be {{frist}}.",
+    "unklar": "Filing deadline {{frist}}, if you have to file",
     "ladefehler": "Your filing deadline could not be loaded."
   },
   "shared": {
@@ -1829,9 +1819,9 @@
       "kv-pv": "Do you pay health or long-term care insurance yourself – not through your salary (e.g. privately insured)?",
       "einkuenfte": "Did you have investment income (interest, dividends, funds) or do you let a property?",
       "kap-depot": "Where is your portfolio held? If several: pick where most of it is – foreign portfolios can be added afterwards.",
-      "krypto-gate": "Honestly: we can't fill in crypto assets yet. The rest of your return, yes.",
+      "krypto-gate": "We can't fill in crypto assets yet. The rest of your return, yes.",
       "vermietung-art": "How do you let?",
-      "vermietung-gate": "Honestly: we can't fill in sales or furnished short-term lets yet.",
+      "vermietung-gate": "We can't fill in sales or furnished short-term lets yet.",
       "kv-pv-art": "How are you insured?",
       "kv-krankengeld": "Do your health insurance contributions include a sick-pay (Krankengeld) entitlement?",
       "kv-pv-betrag": "Your health insurance contributions per year – basic cover only, without care insurance and extras (€)",
@@ -1902,8 +1892,7 @@
     "konflikt": "That did not match what is saved. We reloaded your details.",
     "netzwerk": "That could not be saved. Check the connection and try again.",
     "basis": {
-      "titel": "A little about you.",
-      "hilfe": "Only what decides the next questions. Everything else comes from your documents or later."
+      "titel": "A little about you."
     },
     "auswahl": {
       "titel": "What applies to you in {{year}}?",
@@ -2021,7 +2010,7 @@
     "back": "Back",
     "heading": "Your work days",
     "headingPartner": "Working days and commute of {{name}}",
-    "help": "Pick your work days and enter vacation, sick and home-office days. We count from the real calendar — no estimate.",
+    "help": "Pick your working days and enter holiday, sick and home-office days. Counted from the calendar.",
     "weekdays": "Which days do you work?",
     "weekdayNames": {
       "1": "Mo",
@@ -2069,7 +2058,7 @@
       }
     },
     "widerspruch": "This doesn't add up.",
-    "widerspruchBody": "More vacation/sick days than work days — check your entries.",
+    "widerspruchBody": "More vacation and sick days than work days. Check your entries.",
     "weiter": "Continue",
     "loading": "Loading …",
     "zahlUnlesbar": "That is not a whole number. Please type digits only, e.g. 30.",
@@ -2117,7 +2106,7 @@
     },
     "heading": "Prepare submission",
     "schrittPlausibilitaet": "1. Pre-filing check",
-    "plausibilitaetOk": "All clear — no contradictions, nothing left open.",
+    "plausibilitaetOk": "No contradictions, nothing open.",
     "widerspruchBlockiert": "These items must be resolved before filing:",
     "hinweisPruefen": "Please review:",
     "zurKachel": "Open: {{titel}}",
@@ -2134,11 +2123,11 @@
     "back": "Back",
     "loading": "Loading your check …",
     "heading": "Check before filing",
-    "einreichbar": "All clear — no contradictions, nothing left open.",
+    "einreichbar": "No contradictions, nothing open.",
     "nichtEinreichbar": "Something is still open:",
     "stammdatenUnbekannt": "We couldn't check right now whether your personal details are complete.",
     "weiterZumVergleich": "Continue to the assessment-type comparison",
-    "werktageNote": "Honestly: the work-days and commuting-allowance check comes in a later step.",
+    "werktageNote": "The work-days and commuting-allowance check comes in a later step.",
     "widersprueche": "Blockers",
     "hinweise": "Warnings",
     "widerspruch": {
@@ -2167,8 +2156,7 @@
       "retry": "Try again"
     },
     "empty": {
-      "heading": "No details yet.",
-      "message": "There's nothing on record for this tax year yet. Once your data is in, your recorded income shows up here."
+      "heading": "No details yet."
     },
     "hero": {
       "label": "Recorded income",
@@ -2180,13 +2168,13 @@
       "herkunftRegel": "While entries are open, we show a range instead of a fixed amount.",
       "herkunftRechenweg_one": "{{count}} open item × {{perItem}} uncertainty",
       "herkunftRechenweg_other": "{{count}} open items × {{perItem}} uncertainty",
-      "gatedHeading": "Honestly: we're not good enough for this yet.",
+      "gatedHeading": "We don't calculate self-employment yet.",
       "gatedBody": "{{name}} is something SteuerEule can’t calculate yet. Your recorded income stays visible — nothing is filed until everything is in.",
       "refundLater": "We'll calculate the refund in a later step.",
       "erstattungLabel": "Expected refund",
       "nachzahlungLabel": "Expected back payment",
       "ergebnisLabel": "Expected result",
-      "ausgeglichen": "Neither a back payment nor a refund — no tax is due.",
+      "ausgeglichen": "Neither a back payment nor a refund: no tax is due.",
       "ergebnisSpanne": "{{nachzahlung}} back payment to {{erstattung}} refund",
       "proPerson": "You {{du}} · {{name}} {{partner}}"
     },
@@ -2199,7 +2187,7 @@
         "offen": "Open",
         "erledigt": "Done",
         "keinThema": "Does not apply",
-        "betragOffen": "⏳ Amount open",
+        "betragOffen": "Amount open",
         "optional": "Optional",
         "fehler": "Not loaded"
       },
@@ -2363,13 +2351,13 @@
       }
     },
     "checkBescheid": "Review assessment",
-    "checkKapital": "Review capital & brokerage",
-    "checkVermietung": "Review rental property",
-    "checkKinder": "Manage children",
-    "amtlichesFormular": "View official form",
+    "checkKapital": "Capital & portfolio",
+    "checkVermietung": "Rental",
+    "checkKinder": "Children",
+    "amtlichesFormular": "Official form",
     "berater": {
-      "title": "Your owl advises you",
-      "body": "It checks your tax year for money you are leaving on the table and tells you what you can still do this year.",
+      "title": "Hints from the Owl",
+      "body": "Checks your tax year for unused deductions.",
       "cta": "Ask the owl"
     },
     "jahrAuswahl": "Choose tax year",
@@ -2390,8 +2378,8 @@
       "applied_other": "✓ {{count}} changes applied by your Owl",
       "effect": "+{{betrag}} expected effect",
       "dismiss": "✕ Dismiss",
-      "provenanceReceiptOwl": "📎 Receipt + Owl",
-      "provenanceOwl": "🦉 From Owl",
+      "provenanceReceiptOwl": "Receipt + Owl",
+      "provenanceOwl": "From Owl",
       "provenanceUser": "✓ Entered by you"
     },
     "fortschritt_one": "{{erledigt}} of {{count}} step done",
@@ -2410,7 +2398,7 @@
     },
     "abgabeMarke": {
       "titel": "Return filed?",
-      "text": "Did you print the {{jahr}} return and hand it in at the tax office? Enter the day: the history then shows the year as filed until the assessment arrives.",
+      "text": "Enter the day you filed. {{jahr}} then counts as filed.",
       "datum": "Filed on (DD.MM.YYYY)",
       "cta": "I have filed the return",
       "gespeichert": "Saved: the year is filed and waits for the assessment.",
@@ -2492,10 +2480,9 @@
     "offen_other": "{{count}} open",
     "empty": {
       "heading": "No receipts yet.",
-      "message": "Throw receipts in all year round — they land here and wait for the right tax year."
+      "message": "You can upload receipts all year round."
     },
     "upload": {
-      "heading": "Upload receipt (PDF / photo)",
       "cta": "Upload PDF or photo",
       "uploading": "Encrypting and uploading …",
       "success": "Document saved. It is being read now.",
@@ -2548,7 +2535,7 @@
       "otherYearCancel": "Cancel",
       "yearInvalid": "Please enter a four-digit year.",
       "konflikt": {
-        "heading": "Two years for this receipt — you decide.",
+        "heading": "Two years for this receipt. You decide.",
         "body": "Assigned: {{zugeordnet}} · Suggestion: {{vorschlag}}. Until resolved, this receipt does not count.",
         "resolve": "Adopt suggestion {{jahr}}",
         "keep": "Keep {{jahr}}"
@@ -2651,7 +2638,7 @@
   "bescheid": {
     "back": "Back",
     "heading": "Your tax assessment",
-    "help": "Copy the figures from your tax assessment — field by field, like on the paper.",
+    "help": "Copy the amounts from your tax assessment.",
     "loading": "Loading your assessment …",
     "loadError": {
       "heading": "That didn't work.",
@@ -2819,7 +2806,7 @@
     },
     "lohnausweis": {
       "title": "CH wage statement",
-      "help": "Transcribe the boxes field by field — like on paper. Amounts in CHF.",
+      "help": "Copy the figures as on the paper. Amounts in CHF.",
       "felder": {
         "lohn": "Salary (basic)",
         "gehaltsnebenleistungen": "Salary side benefits",
@@ -2949,13 +2936,13 @@
     "unbestimmt": "We can't say that yet.",
     "nichtVerheiratet": "Only married couples can choose between separate and joint assessment.",
     "done": "Continue to cockpit",
-    "keineEinnahmen": "No income recorded yet — there is nothing to compare.",
+    "keineEinnahmen": "No income recorded yet.",
     "einzel": "Separate assessment",
     "zusammen": "Joint assessment",
     "herkunftRegelEinzel": "§32a EStG basic tariff + Soli §4 SolZG",
     "herkunftRegelZusammen": "§32a §5 splitting + Soli §4 SolZG",
     "herkunftRechenweg": "zvE basis: {{zveA}} + {{zveB}} (income — not a real zvE yet)",
-    "progressionsvorbehaltHinweis": "Honestly: the progression clause (wage-replacement benefits) is not yet factored in here.",
+    "progressionsvorbehaltHinweis": "The progression clause (wage-replacement benefits) is not yet factored in here.",
     "ungueltig": "That is not an amount. Write it like “40.000” or “40.000,50”.",
     "familienstandUnbekannt": "Whether you are married could not be loaded just now. Please choose it yourself."
   },
@@ -2997,9 +2984,9 @@
     "loading": "Loading Owl Mode …",
     "back": "Back",
     "heroTitle": "Your Owl",
-    "heroBody": "She knows your tax year and tells you where money is left on the table — with legal references so you decide for yourself.",
-    "optInLabel": "Enable Owl Mode (proactive hints from €50, no personal data sent to AI)",
-    "emptyTitle": "All reviewed. No open questions!",
+    "heroBody": "Shows, with the legal basis, where you leave deductions unused.",
+    "optInLabel": "Activate Owl mode (proactive hints from €50)",
+    "emptyTitle": "No open questions.",
     "emptyHelp": "Your information is consistent. When you add receipts or details, the owl checks again the next time you open it.",
     "rechtsstand": "Checked against the app’s rules for this tax year every time you open the owl.",
     "counter": "Question {{current}} of {{total}}",
@@ -3011,11 +2998,11 @@
     "beruf": {
       "summary": "Tips for: {{beruf}}",
       "change": "Change",
-      "error": "That didn’t work — your occupation is not saved yet. Please try again."
+      "error": "Your occupation is not saved yet. Try again."
     },
     "guest": {
-      "title": "Owl Mode requires a free account",
-      "body": "For AI tax guidance and receipt analysis we store your drafts encrypted in your account. Guests do not trigger AI calls here.",
+      "title": "The Owl needs an account",
+      "body": "For hints and receipt checks we store your drafts encrypted in your account.",
       "register": "Create account",
       "login": "Sign in",
       "privacyBadge": "As a guest, no language model is called here."
@@ -3049,24 +3036,24 @@
       "resizeWorkbench": "Workbench",
       "applyOne": "✓ Apply change",
       "chooseAlternative": "Apply this option",
-      "alternativesHint": "Pick one of the options — both together is not possible.",
+      "alternativesHint": "Pick one of the ways. Both together do not work.",
       "applying": "Applying …",
-      "conflictTitle": "⚠️ Conflict while applying",
+      "conflictTitle": "Conflict while applying",
       "forceApply": "Apply anyway with updated state",
       "dismissConflict": "Close",
       "backToStage": "← Back to Owl changes",
-      "maskFocus": "🦉 Owl Focus · Review your form",
+      "maskFocus": "Owl Focus · Review your form",
       "maskUnplaced": "This entry is part of the interview. Open the matching question there.",
       "manualNotice": "This form contains master data and is locked for automatic AI edits (manual entry only).",
       "inspectMask": "Inspect form →",
       "receiptResultTitle": "Receipt checked: {{fileName}}",
-      "receiptBlocked": "⚠️ Sensitive details redacted (client privilege)",
+      "receiptBlocked": "Sensitive details redacted (client privilege)",
       "pauschbetragBadge": "Within €1,230 lump sum",
-      "provenanceReceiptOwl": "📎 Receipt + Owl",
-      "provenanceOwlDraft": "🦉 Owl draft",
+      "provenanceReceiptOwl": "Receipt + Owl",
+      "provenanceOwlDraft": "Owl draft",
       "receiptInInbox": "The original is kept in your documents →",
       "tabDrafts": "Drafts & hints",
-      "tabForms": "🔍 Glass return"
+      "tabForms": "Glass return"
     }
   },
   "advisor": {
@@ -3100,7 +3087,7 @@
     "chat": {
       "sender": "The Owl",
       "heading": "Tax Assistant",
-      "help": "Ask questions about your work expenses, allowances, or receipts. Answers are transparent with legal grounds.",
+      "help": "Questions about work expenses, allowances or receipts.",
       "inputPlaceholder": "Ask your Owl (e.g. training, laptop, donations, final review) …",
       "inputPlaceholderShort": "Ask your owl …",
       "sendButton": "Ask",
@@ -3210,18 +3197,10 @@
         "failed": "The conversation could not be cleared."
       },
       "thinkingPhrases": [
-        "The Owl is leafing through your file …",
-        "The Owl is adjusting its glasses …",
-        "The Owl is looking up the Income Tax Act …",
-        "The Owl is double-checking the numbers …",
-        "The Owl is sorting your receipts …",
-        "The Owl is checking the flat-rate allowances …",
-        "The Owl is comparing before and after …",
-        "The Owl is sharpening its pencil …",
-        "The Owl is counting working days …",
-        "The Owl is looking for what is still missing …",
-        "The Owl is lining up the sections …",
-        "The Owl is wording its answer …"
+        "Reading your details …",
+        "Checking the legal basis …",
+        "Recalculating …",
+        "Wording the answer …"
       ],
       "basisMode": "Basic mode: the AI is unavailable right now, this answer comes from the Owl’s fixed rules.",
       "choicesCaption": "Choose a quick reply:",
@@ -3252,7 +3231,7 @@
       "receiptFileCta": "Choose PDF or photo",
       "receiptPasteText": "Paste text instead",
       "receiptPrivacy": "The text is read on your device. The image never goes to an AI; the original is stored encrypted in your receipts.",
-      "receiptNativeHint": "Camera scan is coming to the app — upload a PDF or photo on the web.",
+      "receiptNativeHint": "On the web you can upload a PDF or photo.",
       "lstbPersonBOwnAccount": "This is Person B’s wage tax certificate. Person B has an own account and uploads it there; nothing was taken over here.",
       "certificatePersonBOwnAccount": "This is Person B’s salary certificate. Person B has an own account and uploads it there; nothing was taken over here.",
       "receiptProgress": {
@@ -3437,13 +3416,13 @@
     "laden": "Loading your history …",
     "gast": {
       "titel": "The history needs an account",
-      "text": "Here all your tax years sit side by side: what was declared, what the tax office assessed and how refund, work expenses and net pay develop. For that SteuerEule must be allowed to keep your years.",
+      "text": "The history compares your tax years. For that SteuerEule has to store them.",
       "registrieren": "Create account",
       "anmelden": "Sign in"
     },
     "leer": {
       "titel": "No tax year yet",
-      "text": "As soon as a year has a return or an assessment, it shows here. You can add old years with their assessment notice."
+      "text": "Years with a return or an assessment appear here."
     },
     "nochOffenKurz": "still open",
     "und": "and",
@@ -3577,7 +3556,7 @@
       "erstattung": {
         "label": "Refund",
         "titel": "Refund and back payment",
-        "sub": "For the household. Red dashed: cut by the tax office."
+        "sub": "For the household. Dashed: cut by the tax office or still an estimate."
       },
       "werbungskosten": {
         "label": "Work expenses",
@@ -3764,8 +3743,7 @@
     },
     "upload": {
       "titel": "Add {{jahr}} or earlier",
-      "text": "Upload an old assessment, as in the Receipts tab. The owl reads the key figures.",
-      "textLang": "Upload an old assessment, the same flow as in the Receipts tab. The owl reads the key figures; they stay drafts until you take them over.",
+      "text": "The Owl reads the key figures from the assessment. They stay drafts until you accept them.",
       "cta": "Upload assessment",
       "nurWeb": "In this version uploading works in the browser.",
       "liest": "The owl is reading the assessment …",
@@ -3815,8 +3793,8 @@
       "offenMit": "in progress · {{was}}",
       "eingereicht": "filed · waiting for the assessment",
       "nurBescheid": "assessment only",
-      "weniger": "Assessment · {{betrag}} less than declared",
-      "mehr": "Assessment · {{betrag}} more than declared",
+      "weniger": "Assessment {{betrag}}",
+      "mehr": "Assessment {{betrag}}",
       "aenderungen_one": "Assessment · {{count}} change",
       "aenderungen_other": "Assessment · {{count}} changes",
       "wieErklaert": "Assessment as declared",
@@ -4853,6 +4831,8 @@
     "bestaetigen": "Check & confirm my details"
   },
   "beta": {
+    "badge": "BETA",
+    "badgeLabel": "BETA: about the test phase",
     "label": "Beta:",
     "notice": "SteuerEule is in testing. Features may change and errors are possible. Check every printout before you sign and file it."
   },

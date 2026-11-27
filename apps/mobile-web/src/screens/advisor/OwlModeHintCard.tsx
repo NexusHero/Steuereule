@@ -21,7 +21,7 @@ export function OwlModeHintCard({ owl, onAcceptPath, styles }: OwlModeHintCardPr
     <>
       {cards.length === 0 ? (
         <Card style={styles.emptyCard}>
-          <Text style={styles.emptyTitle}>{tr('eule.emptyTitle', 'Alles geprüft. Keine offenen Fragen!')}</Text>
+          <Text style={styles.emptyTitle}>{tr('eule.emptyTitle', 'Keine offenen Fragen.')}</Text>
           <Text style={styles.emptyHelp}>{tr('eule.emptyHelp')}</Text>
           <Text style={styles.rechtsstand}>{tr('eule.rechtsstand')}</Text>
         </Card>
@@ -86,7 +86,7 @@ export function OwlModeHintCard({ owl, onAcceptPath, styles }: OwlModeHintCardPr
                 style={styles.clarifyButton}
                 testID="card-clarify-with-eule"
               >
-                <Text style={styles.clarifyButtonText}>Mit Eule klären 💬</Text>
+                <Text style={styles.clarifyButtonText}>Mit Eule klären</Text>
               </Pressable>
 
               {activeIndex < cards.length - 1 && (

@@ -21,7 +21,7 @@ export function Card({ variant = 'default', style, children, testID }: CardProps
   const byVariant: Record<CardVariant, ViewStyle> = {
     default: {
       backgroundColor: t.color.karte,
-      borderWidth: 1.5,
+      borderWidth: t.space.kontur,
       borderColor: t.color.linieWeich,
     },
     nacht: {
@@ -31,8 +31,8 @@ export function Card({ variant = 'default', style, children, testID }: CardProps
     },
     ai: {
       backgroundColor: t.color.funkeWeich,
-      borderWidth: 2,
-      borderColor: t.color.tinte,
+      borderWidth: t.space.kontur,
+      borderColor: t.color.linie,
       ...t.shadow.hart,
     },
   }

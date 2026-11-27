@@ -34,7 +34,7 @@ export async function run(ctx) {
   // Client-side checks name what is missing before anything is sent.
   const alert = page.getByRole('alert')
   await page.locator(tid('assistent-anlegen')).click()
-  await alert.getByText('Bitte geben Sie dem Assistenten einen Namen.').waitFor({ state: 'visible', timeout: 5_000 })
+  await alert.getByText('Gib dem Assistenten einen Namen.').waitFor({ state: 'visible', timeout: 5_000 })
     .catch(() => fail(`${ROW}: an empty name should be named before the access is created`))
   await page.locator(tid('assistent-name')).fill(CLIENT_NAME)
   await page.locator(tid('assistent-redirect')).fill('http://example.com/callback')

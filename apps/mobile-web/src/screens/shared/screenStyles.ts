@@ -1,5 +1,6 @@
 import type { TextStyle, ViewStyle } from 'react-native'
 import type { UiTheme } from '@steuereule/ui'
+import { controlLine } from '@steuereule/ui'
 
 /** Back-button row, title and help text every form screen opens with. */
 export function screenHeaderStyles(t: UiTheme) {
@@ -20,7 +21,7 @@ export function unclearableFieldStyles(t: UiTheme) {
     paddingHorizontal: t.space.s3,
     paddingVertical: t.space.s2,
     borderWidth: t.space.kontur,
-    borderColor: t.color.tinte,
+    borderColor: controlLine(t),
     borderRadius: t.radius.s,
   }
   const unclearLabel: TextStyle = { ...t.type.small, color: t.color.tinte2 }
