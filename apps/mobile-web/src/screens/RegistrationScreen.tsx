@@ -88,7 +88,7 @@ export function RegistrationScreen({ onDone, onLogin, onLegal }: RegistrationScr
       <BetaNotice />
       <Text style={styles.heading} role="heading" aria-level={1}>
         {tr('registrierung.titleBefore')}
-        <Text style={{ color: t.color.funkeTinte }}>{tr('registrierung.titleMark')}</Text>
+        <Text>{tr('registrierung.titleMark')}</Text>
         {tr('registrierung.titleAfter')}
       </Text>
 

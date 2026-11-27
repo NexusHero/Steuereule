@@ -29,7 +29,7 @@ export function makeInterviewStyles(t: UiTheme) {
   }
   const gateHeading: TextStyle = { ...heading, marginBottom: t.space.s3 }
   // "Funke ruhig": the key word is set in readable dark lime, no lime box behind it.
-  const mark: TextStyle = { color: t.color.funkeTinte }
+  const mark: TextStyle = { color: t.color.tinte }
   const help: TextStyle = {
     ...t.type.body,
     color: t.color.tinte2,

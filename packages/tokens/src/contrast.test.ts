@@ -51,6 +51,10 @@ describe('WCAG 2.1 AA text-on-surface contrast (>= 4.5:1)', () => {
       assertContrast(`${mode}: tinte on warnWeich`, c.tinte, c.warnWeich)
       assertContrast(`${mode}: tinte on fehlerWeich`, c.tinte, c.fehlerWeich)
 
+      // The notice colour is also a text colour (missing details, conflicts): it has to read on every notice surface.
+      assertContrast(`${mode}: warn on grund`, c.warn, c.grund)
+      assertContrast(`${mode}: warn on karte`, c.warn, c.karte)
+      assertContrast(`${mode}: warn on warnWeich`, c.warn, c.warnWeich)
       assertContrast(`${mode}: funkeTinte on grund`, c.funkeTinte, c.grund)
       assertContrast(`${mode}: funkeTinte on karte`, c.funkeTinte, c.karte)
       assertContrast(`${mode}: funkeTinte on funkeWeich`, c.funkeTinte, c.funkeWeich)

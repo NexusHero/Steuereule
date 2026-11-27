@@ -99,7 +99,7 @@ function makeStyles(t: UiTheme) {
     color: t.color.tinte,
     marginBottom: t.space.s1,
   }
-  const mark: TextStyle = { color: t.color.funkeTinte }
+  const mark: TextStyle = { color: t.color.tinte }
   const help: TextStyle = { fontFamily: t.font.text, fontSize: t.size.s, color: t.color.tinte2, marginBottom: t.space.s3 }
   const chips: ViewStyle = { flexDirection: 'row', flexWrap: 'wrap', gap: t.space.s2 }
   const summaryRow: ViewStyle = { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: t.space.s3, marginBottom: t.space.s4 }

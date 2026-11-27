@@ -126,7 +126,7 @@ const BREAKPOINTS = [
 // `mode="light"`, so this is the only theme any real user reaches today).
 const EXPECTED = {
   background: hexToRgb('#f3f3f5'), // warnWeich
-  border: hexToRgb('#b5861a'), // warn
+  border: hexToRgb('#8a6500'), // warn
   borderWidth: '1px', // t.space.kontur
   borderRadius: '10px', // t.radius.s
   padding: '16px', // t.space.s4

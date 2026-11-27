@@ -89,7 +89,7 @@ function makeStyles(t: UiTheme) {
     marginBottom: t.space.s5,
   }
   // "Funke ruhig": the key word is set in readable dark lime, no lime box behind it.
-  const mark: TextStyle = { color: t.color.funkeTinte }
+  const mark: TextStyle = { color: t.color.tinte }
   const help: TextStyle = { ...t.type.body, color: t.color.tinte2, marginBottom: t.space.s5 }
   const cardLabel: TextStyle = {
     ...t.type.meta,

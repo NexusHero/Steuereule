@@ -5,9 +5,9 @@ import { appbarStyles } from '../shared/screenStyles'
 export function makePrivacyStyles(t: UiTheme) {
   const screen: ViewStyle = t.layout.flow.narrow
   const wideScreen: ViewStyle = t.layout.flow.wide
-  const heroKicker: TextStyle = { ...t.type.meta, color: t.color.funkeHell, textTransform: 'uppercase', letterSpacing: 0.08 * t.size.xs }
-  const heroHeading: TextStyle = { ...t.type.headline, color: t.color.nachtText, marginTop: t.space.s2, marginBottom: t.space.s2 }
-  const heroBody: TextStyle = { ...t.type.small, color: t.color.nachtText, opacity: 0.85 }
+  const heroKicker: TextStyle = { ...t.type.meta, color: t.color.tinte2, textTransform: 'uppercase', letterSpacing: 0.08 * t.size.xs }
+  const heroHeading: TextStyle = { ...t.type.headline, color: t.color.tinte, marginTop: t.space.s2, marginBottom: t.space.s2 }
+  const heroBody: TextStyle = { ...t.type.small, color: t.color.tinte2, }
   const centerBlock: ViewStyle = { alignItems: 'center', justifyContent: 'center', paddingVertical: t.space.s6, gap: t.space.s3 }
   const help: TextStyle = { ...t.type.body, color: t.color.tinte2, textAlign: 'center' }
   const sectionTitle: TextStyle = { ...t.type.emphasis, color: t.color.tinte, marginBottom: t.space.s2 }

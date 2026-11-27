@@ -17,7 +17,7 @@ export function makeOnboardingStyles(t: UiTheme) {
     textAlign: 'center',
   }
   // "Funke ruhig": the key word is set in readable dark lime, no lime box behind it.
-  const mark: TextStyle = { color: t.color.funkeTinte }
+  const mark: TextStyle = { color: t.color.tinte }
   const help: TextStyle = {
     ...t.type.body,
     color: t.color.tinte2,
@@ -38,7 +38,7 @@ export function makeOnboardingStyles(t: UiTheme) {
   }
   const cardLabel: TextStyle = {
     ...t.type.meta,
-    color: t.color.funkeHell,
+    color: t.color.tinte2,
     textTransform: 'uppercase',
     letterSpacing: 0.08 * t.size.xs,
     marginBottom: t.space.s2,
@@ -48,11 +48,11 @@ export function makeOnboardingStyles(t: UiTheme) {
     justifyContent: 'space-between',
     gap: t.space.s3,
     borderBottomWidth: 1.5,
-    borderBottomColor: t.color.nachtKarte,
+    borderBottomColor: t.color.linieWeich,
     paddingVertical: t.space.s2,
   }
-  const summaryRowLabel: TextStyle = { ...t.type.small, color: t.color.nachtText, opacity: 0.7 }
-  const summaryRowValue: TextStyle = { ...t.type.labelStrong, color: t.color.funke }
+  const summaryRowLabel: TextStyle = { ...t.type.small, color: t.color.tinte2, }
+  const summaryRowValue: TextStyle = { ...t.type.labelStrong, color: t.color.tinte }
   const summaryRowValueMono: TextStyle = { fontFamily: t.type.figure.fontFamily, fontVariant: ['tabular-nums'] }
   const summaryEditButton: ViewStyle = { marginTop: t.space.s2 }
   const summaryFooterNote: TextStyle = { ...t.type.caption, color: t.color.tinte2, textAlign: 'center', marginTop: t.space.s3 }

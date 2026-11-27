@@ -572,7 +572,7 @@
     },
     {
       "name": "--warn",
-      "value": "#b5861a",
+      "value": "#8a6500",
       "kind": "color",
       "definedIn": "tokens/colors.css"
     },
@@ -702,6 +702,13 @@
     {
       "name": "--ok-weich",
       "value": "#143020",
+      "kind": "color",
+      "definedIn": "tokens/dunkel.css",
+      "scope": "[data-theme=\"dunkel\"]"
+    },
+    {
+      "name": "--warn",
+      "value": "#b5861a",
       "kind": "color",
       "definedIn": "tokens/dunkel.css",
       "scope": "[data-theme=\"dunkel\"]"

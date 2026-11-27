@@ -31,7 +31,7 @@ export function OnboardingSummary({ profile, onSubmit, onEdit, isSubmitting, sub
         <Text style={styles.summaryHeading}>{tr('onboarding.summary.heading')}</Text>
       </View>
 
-      <Card variant="nacht">
+      <Card>
         <Text style={styles.cardLabel}>{tr('onboarding.summary.cardLabel')}</Text>
         {rows.map(([label, value, mono]) => (
           <View key={label} style={styles.summaryRow}>

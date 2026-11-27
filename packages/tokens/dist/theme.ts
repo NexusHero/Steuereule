@@ -91,7 +91,7 @@ export const theme = {
       "kiTinte": "#3a3a44",
       "ok": "#1f9d55",
       "okWeich": "#def4e2",
-      "warn": "#b5861a",
+      "warn": "#8a6500",
       "warnWeich": "#f3f3f5",
       "fehler": "#e0362c",
       "fehlerWeich": "#fde3de"
