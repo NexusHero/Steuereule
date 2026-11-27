@@ -185,6 +185,46 @@ describe('VermietungScreen', () => {
     await waitFor(() => expect(bodies.at(-1)).toEqual({ erhaltungsaufwand: [{ betrag: 12300, datum: '2026-05-15' }] }))
   })
 
+  it('sends the removal of a repair that was added a moment ago, before the server’s answer is on screen', async () => {
+    // The list on screen stays the old one: the save of the new repair is on its way, its refetch has not landed.
+    const bodies: unknown[] = []
+    server.use(http.get(RENTAL_URL, () => HttpResponse.json(FULL_PROPERTY, { status: 200 })))
+    server.use(
+      http.put(`${RENTAL_URL}/objekte/:objektId/adresse`, async ({ request }) => {
+        bodies.push(await request.json())
+        return HttpResponse.json(FULL_PROPERTY, { status: 200 })
+      }),
+    )
+    renderRental()
+    fireEvent.click(await screen.findByTestId('vermietung-0-erhaltung-hinzufuegen'))
+    const amount = await screen.findByTestId('vermietung-0-erhaltung-0-betrag')
+    fireEvent.change(amount, { target: { value: '12300' } })
+    fireEvent.blur(amount)
+    await waitFor(() => expect(bodies).toEqual([{ erhaltungsaufwand: [{ betrag: 12300, datum: null }] }]))
+    fireEvent.click(screen.getByRole('button', { name: 'Rechnung 1 entfernen' }))
+    confirmAction('rentalRemoveRepair')
+    // Empty again is what the stale list shows too; it must be sent all the same, or the server keeps the repair.
+    await waitFor(() => expect(bodies).toEqual([{ erhaltungsaufwand: [{ betrag: 12300, datum: null }] }, { erhaltungsaufwand: [] }]))
+  })
+
+  it('sends a purchase date changed back to the stored one while the first change is on its way', async () => {
+    const bodies: unknown[] = []
+    server.use(http.get(RENTAL_URL, () => HttpResponse.json(FULL_PROPERTY, { status: 200 })))
+    server.use(
+      http.put(`${RENTAL_URL}/objekte/:objektId/adresse`, async ({ request }) => {
+        bodies.push(await request.json())
+        return HttpResponse.json(FULL_PROPERTY, { status: 200 })
+      }),
+    )
+    renderRental()
+    const date = await screen.findByTestId('vermietung-0-anschaffungsdatum')
+    fireEvent.change(date, { target: { value: '01.04.2024' } })
+    await waitFor(() => expect(bodies).toEqual([{ anschaffungsdatum: '2024-04-01' }]))
+    fireEvent.change(date, { target: { value: '' } })
+    fireEvent.blur(date)
+    await waitFor(() => expect(bodies).toEqual([{ anschaffungsdatum: '2024-04-01' }, { anschaffungsdatum: null }]))
+  })
+
   it('fills the empty Ort of the property from a one-place postal code (#451 slice 3)', async () => {
     const bodies: unknown[] = []
     server.use(http.get(RENTAL_URL, () => HttpResponse.json(FULL_PROPERTY, { status: 200 })))
