@@ -18,24 +18,55 @@ const GERMAN_SPOKEN: ReadonlyArray<readonly [RegExp, string]> = [
   [/\bca\.\s*/g, 'circa '],
   [/\bEStG\b/g, 'Einkommensteuergesetz'],
   [/\bAO\b/g, 'Abgabenordnung'],
-  [/\s*×\s*/g, ' mal '],
+  [/×/g, ' mal '],
 ]
+
+/** `[label](address)` and `![label](address)` as their label. One pass: every character is looked at a fixed number of times. */
+function linkLabels(text: string): string {
+  let out = ''
+  let at = 0
+  for (;;) {
+    const mid = text.indexOf('](', at)
+    const close = mid === -1 ? -1 : text.indexOf(')', mid)
+    // The label starts at the last opening bracket before „](“, so a bracket left open earlier stays as text.
+    const open = close === -1 ? -1 : text.lastIndexOf('[', mid)
+    if (close === -1) return out + text.slice(at)
+    if (open < at) {
+      // „](“ without a bracket that opens it: no link, keep it and look on behind it.
+      out += text.slice(at, mid + 2)
+      at = mid + 2
+      continue
+    }
+    const start = open > at && text[open - 1] === '!' ? open - 1 : open
+    out += text.slice(at, start) + text.slice(open + 1, mid)
+    at = close + 1
+  }
+}
+
+const EDGE = new Set([',', ' '])
+/** `text` without the commas and spaces at its ends. */
+function trimEdges(text: string): string {
+  let from = 0
+  let to = text.length
+  while (from < to && EDGE.has(text[from] ?? '')) from += 1
+  while (to > from && EDGE.has(text[to - 1] ?? '')) to -= 1
+  return text.slice(from, to)
+}
 
 /** One Markdown line as it is said: no markers, a full stop where the line ended without one. */
 function spokenLine(line: string): string {
-  const text = line
-    .replace(/^\s{0,3}#{1,6}\s+/, '')
-    .replace(/^\s*>\s?/, '')
-    .replace(/^\s*[-*+]\s+/, '')
-    .replace(/!?\[([^\]]*)\]\([^)]*\)/g, '$1')
+  const marked = linkLabels(line.replace(/\s+/g, ' ').trim())
+    .replace(/^#{1,6} /, '')
+    .replace(/^> ?/, '')
+    .replace(/^[-*+] /, '')
     .replace(/https?:\/\/\S+/g, '')
     .replace(/(\*\*|__|~~)/g, '')
-    .replace(/(^|[\s(])[*_](?=\S)/g, '$1')
-    .replace(/(?<=\S)[*_](?=[\s.,;:!?)]|$)/g, '')
+    .replace(/(^|[ (])[*_](?=\S)/g, '$1')
+    .replace(/(?<=\S)[*_](?=[ .,;:!?)]|$)/g, '')
     .replace(/`/g, '')
-    .replace(/\s*\|\s*/g, ', ')
-    .replace(/^[,\s]+|[,\s]+$/g, '')
-  if (text === '' || /^[-:,\s]+$/.test(text)) return ''
+  // A table row by its cells.
+  const text = trimEdges(marked.split('|').map((cell) => cell.trim()).join(', '))
+  if (text === '' || /^[-:, ]+$/.test(text)) return ''
   return /[.!?:…]$/.test(text) ? text : `${text}.`
 }
 
@@ -46,14 +77,16 @@ function spokenLine(line: string): string {
  */
 export function speechText(markdown: string, language: string): string {
   const withoutCode = markdown.replace(/(`{3,}|~{3,})[\s\S]*?\1/g, '\n')
-  const cited = withoutCode
-    .replace(CITATION, (whole, id: string) => ADVISOR_LEGAL_SOURCES[id as OwlSourceId]?.paragraph ?? whole)
-    // „(§ 9 Abs. 1 EStG § 9 Abs. 1 EStG)“: the sentence and its chip name the same paragraph.
-    .replace(/(§[^()[\]\n]*?\b(?:EStG|AO))\s+\1/g, '$1')
+  const cited = withoutCode.replace(CITATION, (whole, id: string, offset: number, all: string) => {
+    const paragraph = ADVISOR_LEGAL_SOURCES[id as OwlSourceId]?.paragraph
+    if (paragraph === undefined) return whole
+    // „(§ 9 Abs. 1 EStG [estg-9-1])“: the sentence already names the paragraph its chip stands for.
+    return all.slice(Math.max(0, offset - paragraph.length - 2), offset).trimEnd().endsWith(paragraph) ? '' : paragraph
+  })
   const lines = cited.split('\n').map(spokenLine).filter((line) => line !== '')
   let text = lines.join(' ')
   if (language.toLowerCase().startsWith('de')) for (const [pattern, spoken] of GERMAN_SPOKEN) text = text.replace(pattern, spoken)
-  return text.replace(/\s+([.,;:!?)])/g, '$1').replace(/\(\s+/g, '(').replace(/\s{2,}/g, ' ').trim()
+  return text.replace(/\s+/g, ' ').replace(/ ([.,;:!?)])/g, '$1').replace(/\( /g, '(').trim()
 }
 
 /** `text` in pieces a voice takes whole: sentences, joined while they fit, a long one cut at a space. */
