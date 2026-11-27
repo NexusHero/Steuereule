@@ -348,9 +348,39 @@ async function measureCockpitEmpty(browser, width, label) {
     await page.getByText(COPY.cockpitEmptyHeading).waitFor({ state: 'visible', timeout: 20_000 })
     const primaryButton = page.getByRole('button', { name: COPY.cockpitAnswerQuestions })
     await measureButtonFillsParent(primaryButton, `CockpitScreen Empty CTA (bp=${label})`)
+    await measureNavigationForm(page, primaryButton, width, label)
   } finally {
     await context.close()
   }
+}
+
+/**
+ * Graphit beyond the phone: the tabs are a rail on the left edge (`app-seitennavigation`, full
+ * height) — 84 px wide on the `m` breakpoint (icon over label), 240 px with the brand on `l` — and the
+ * screen starts right of it. On `s` they stay the floating bar and no rail exists. Same roles at every
+ * width, so `tab` still finds them.
+ */
+const RAIL_WIDTH = { m: 84, l: 240 }
+async function measureNavigationForm(page, contentElement, width, label) {
+  const rail = page.locator('[data-testid="app-seitennavigation"]')
+  const tabs = await page.getByRole('tab').count()
+  if (tabs !== 5) fail(`Navigation (bp=${label}): expected 5 tabs, found ${tabs}`)
+  if (label === 's') {
+    if ((await rail.count()) !== 0) fail(`Navigation (bp=s): the side rail must not exist on a phone`)
+    console.log(`[breakpoint-layout] ✅ Navigation (bp=s) — floating bar, no rail`)
+    return
+  }
+  const expected = RAIL_WIDTH[label]
+  await rail.waitFor({ state: 'visible', timeout: 10_000 })
+  const box = await rail.boundingBox()
+  if (!box || Math.round(box.x) !== 0 || Math.round(box.width) !== expected || Math.round(box.height) !== 900) {
+    fail(`Navigation (bp=${label}): expected the rail at x=0, ${expected} px wide, full height; got ${JSON.stringify(box)}`)
+  }
+  const content = await contentElement.boundingBox()
+  if (!content || content.x < box.width) fail(`Navigation (bp=${label}): the screen must start right of the rail (x >= ${expected}); the CTA starts at ${content?.x}`)
+  const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)
+  if (overflow > 0) fail(`Navigation (bp=${label}): the rail must not cause horizontal overflow at ${width}px; got ${overflow}px`)
+  console.log(`[breakpoint-layout] ✅ Navigation (bp=${label}) — rail at the left edge (${expected}px), screen right of it, no overflow`)
 }
 
 async function measureRegistrierungSuccess(browser, width, label) {

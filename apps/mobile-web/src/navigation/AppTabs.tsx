@@ -9,9 +9,11 @@ import {
   type TabNavigationState,
 } from '@react-navigation/native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { OwlGlyph, TabBar, TAB_ICON_PATHS, inkOnFunke, tabBarClearance, useBreakpoint, useTheme, type TabItem } from '@steuereule/ui'
+import { Text, View } from 'react-native'
+import { OwlGlyph, SideNav, TabBar, TAB_ICON_PATHS, inkOnFunke, sideNavWidth, tabBarClearance, useBreakpoint, useTheme, type TabItem } from '@steuereule/ui'
 import { APP_NS } from '../i18n/resources'
 import { TabIcon } from '../icons/TabIcon'
+import { OwlMark } from '../marks/OwlMark'
 import { useAccountSession } from '../auth/useAccountSession'
 import { ErrorState, LoadingState } from '../screens/shared/ScreenState'
 import { OwlModeScreen } from '../screens/advisor/OwlModeScreen'
@@ -78,22 +80,41 @@ function TabNavigatorSync({
   return <>{children}</>
 }
 
-function FloatingTabBar({ state, navigation, insets }: BottomTabBarProps) {
+/**
+ * The form of the app's navigation per breakpoint (Graphit): the floating bar on a phone, a narrow
+ * rail (icon over label) on a tablet, the full rail with the brand on a desktop.
+ */
+type NavigationForm = 'bar' | 'compact' | 'wide'
+/**
+ * The owl is chat-first (#476): beside its own conversation list a full rail would leave the chat
+ * 60 % of a desktop window. On the owl's tab the rail therefore stays narrow at every width.
+ */
+function navigationForm(bp: ReturnType<typeof useBreakpoint>, tab: TabRouteName): NavigationForm {
+  if (bp === 's') return 'bar'
+  return bp === 'l' && tab !== 'Owl' ? 'wide' : 'compact'
+}
+
+function AppNavigation({ state, navigation, insets }: BottomTabBarProps) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
+  const bp = useBreakpoint()
 
   if (!isTabBarVisible(state as TabNavigationState<AppTabParamList>)) return null
 
   const activeRouteName = (state.routes[state.index]?.name ?? 'Cockpit') as TabRouteName
+  const form = navigationForm(bp, activeRouteName)
+  const rail = form !== 'bar'
   const activeTab = TAB_ID_FOR_ROUTE[activeRouteName]
-  const iconColor = (id: TabId) => (id === activeTab ? inkOnFunke(t) : t.color.tinte2)
+  // The bar marks the picked tab with a lime pill, the rail with a quiet surface: the icon follows its ground.
+  const iconColor = (id: TabId) => (id === activeTab ? (rail ? t.color.tinte : inkOnFunke(t)) : t.color.tinte2)
+  const owlGround = activeTab === 'eule' ? (rail ? t.color.linieWeich : t.color.funke) : rail ? t.color.grund : t.color.karte
 
   const tabs: TabItem[] = [
     { id: 'cockpit', label: tr('tabs.cockpit'), icon: <TabIcon path={TAB_ICON_PATHS.cockpit} color={iconColor('cockpit')} /> },
     {
       id: 'eule',
       label: tr('tabs.eule'),
-      icon: <OwlGlyph size={22} ink={iconColor('eule')} ground={activeTab === 'eule' ? t.color.funke : t.color.karte} testID="tab-icon-eule" />,
+      icon: <OwlGlyph size={22} ink={iconColor('eule')} ground={owlGround} testID="tab-icon-eule" />,
     },
     { id: 'belege', label: tr('tabs.belege'), icon: <TabIcon path={TAB_ICON_PATHS.belege} color={iconColor('belege')} /> },
     { id: 'verlauf', label: tr('tabs.verlauf'), icon: <TabIcon path={TAB_ICON_PATHS.verlauf} color={iconColor('verlauf')} /> },
@@ -131,6 +152,16 @@ function FloatingTabBar({ state, navigation, insets }: BottomTabBarProps) {
     navigation.navigate(targetRoute.name)
   }
 
+  if (rail) {
+    const compact = form === 'compact'
+    const brand = (
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space.s3 }} accessibilityLabel={`${tr('brand.steuer')}${tr('brand.eule')}`}>
+        <OwlMark size={30} variant="tinte" />
+        {compact ? null : <Text style={{ ...t.type.cardTitle, color: t.color.tinte }}>{`${tr('brand.steuer')}${tr('brand.eule')}`}</Text>}
+      </View>
+    )
+    return <SideNav tabs={tabs} active={activeTab} onChange={handleChange} header={brand} compact={compact} testID="app-seitennavigation" />
+  }
   return <TabBar tabs={tabs} active={activeTab} onChange={handleChange} bottomInset={insets.bottom} />
 }
 
@@ -167,6 +198,7 @@ function OwlRoute({ navigation }: BottomTabScreenProps<AppTabParamList, 'Owl'>) 
 export function AppTabs() {
   const t = useTheme()
   const insets = useSafeAreaInsets()
+  const bp = useBreakpoint()
 
   return (
     <Tab.Navigator
@@ -177,8 +209,9 @@ export function AppTabs() {
           {children}
         </TabNavigatorSync>
       )}
-      tabBar={(props) => <FloatingTabBar {...props} />}
-      screenOptions={({ navigation }) => {
+      tabBar={(props) => <AppNavigation {...props} />}
+      screenOptions={({ navigation, route }) => {
+        const form = navigationForm(bp, route.name)
         const tabState = navigation.getState() as TabNavigationState<AppTabParamList>
         const showsTabBar = isTabBarVisible(tabState)
         return {
@@ -186,7 +219,9 @@ export function AppTabs() {
           sceneStyle: {
             flex: 1,
             backgroundColor: t.color.grund,
-            paddingBottom: showsTabBar ? tabBarClearance(t, insets.bottom) : 0,
+            // The navigation takes its room from the screen: under it as a bar, left of it as a rail.
+            paddingBottom: showsTabBar && form === 'bar' ? tabBarClearance(t, insets.bottom) : 0,
+            paddingLeft: showsTabBar && form !== 'bar' ? sideNavWidth(form === 'compact') : 0,
             // Keep inactive tabs hidden in layout/focus order and jsdom visibility checks (BottomTabView
             // only toggles zIndex and aria-hidden when react-native-screens is inactive on web).
             display: navigation.isFocused() ? 'flex' : 'none',

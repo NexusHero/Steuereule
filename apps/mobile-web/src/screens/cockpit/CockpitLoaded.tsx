@@ -45,7 +45,7 @@ export function CockpitLoaded(props: CockpitLoadedProps) {
       <YearNotices year={year} answers={deadlineAnswers} />
       <EuleBannerNotice />
       <ConfirmationNotice annexes={confirmation} taskCount={props.assistantTaskCount} status={status} {...(onOpenConfirmation ? { onOpenConfirmation } : {})} />
-      <View style={styles.hero} testID="cockpit-hero">
+      <View style={styles.hero}>
         {refundFirst ? (
           <>
             <RefundHeadline year={year} estimate={estimate} />
