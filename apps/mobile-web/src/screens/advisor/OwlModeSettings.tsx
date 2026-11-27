@@ -35,7 +35,7 @@ export function OwlModeSettings({ owl, optInEnabled, styles, profession, onChoos
       {onClearConversation ? (
         clearState === 'closed' ? (
           <Button
-            variant="leise"
+            variant="ghost"
             onPress={() => setClearState('confirm')}
             disabled={effectiveSending || displayedMessages.length === 0}
             testID="eule-clear-conversation-btn"

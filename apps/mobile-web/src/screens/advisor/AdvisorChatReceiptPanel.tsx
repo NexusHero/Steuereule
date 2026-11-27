@@ -108,6 +108,7 @@ export function AdvisorChatReceiptPanel({ chat, onAttachReceipt, onAttachReceipt
           />
           <View style={styles.receiptActionsRow}>
             <Button
+              variant="tinte"
               onPress={() => void handleReceiptSubmit()}
               disabled={isParsingReceipt || receiptRawText.trim().length === 0}
               style={{ flex: 1 }}
@@ -129,7 +130,7 @@ export function AdvisorChatReceiptPanel({ chat, onAttachReceipt, onAttachReceipt
         </>
       ) : null}
       {!onAttachReceipt || !(receiptTextOpen || !onAttachReceiptFile) ? (
-        <Button variant="leise" onPress={() => setReceiptOpen(false)} testID="advisor-receipt-close-btn">
+        <Button variant="ghost" onPress={() => setReceiptOpen(false)} testID="advisor-receipt-close-btn">
           {tr('advisor.chat.receiptCancel', 'Abbrechen')}
         </Button>
       ) : null}

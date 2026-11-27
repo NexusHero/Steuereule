@@ -57,7 +57,7 @@ export function ProjectNotes({ notes, onAdd, onEdit, onDelete }: ProjectNotesPro
           testID="eule-note-input"
         />
         <View style={styles.actions}>
-          <Button variant="leise" disabled={editing.draft.trim() === ''} onPress={() => void attempt(() => onSave(editing.draft.trim()))} testID="eule-note-save">
+          <Button variant="ghost" disabled={editing.draft.trim() === ''} onPress={() => void attempt(() => onSave(editing.draft.trim()))} testID="eule-note-save">
             {tr('advisor.chat.notes.save')}
           </Button>
           <Button variant="ghost" onPress={() => setEditing(null)} testID="eule-note-cancel">

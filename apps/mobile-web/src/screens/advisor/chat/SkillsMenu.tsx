@@ -92,7 +92,7 @@ function makeStyles(t: UiTheme) {
     heading: { fontFamily: t.font.text, fontWeight: t.weight.fett, fontSize: t.size.m, color: t.color.tinte } as TextStyle,
     help: { fontFamily: t.font.text, fontSize: t.size.s, color: t.color.tinte2 } as TextStyle,
     row: { gap: t.space.s1, padding: t.space.s3, borderRadius: t.radius.m, borderWidth: 1, borderColor: t.color.linie, minHeight: 44 } as ViewStyle,
-    rowOn: { borderColor: t.color.tinte, backgroundColor: t.color.funkeWeich } as ViewStyle,
+    rowOn: { borderColor: t.color.tinte, backgroundColor: t.color.linieWeich } as ViewStyle,
     name: { fontFamily: t.font.text, fontWeight: t.weight.fett, fontSize: t.size.m, color: t.color.tinte } as TextStyle,
     state: { fontFamily: t.font.text, fontSize: t.size.s, color: t.color.tinte2 } as TextStyle,
     stateOn: { color: t.color.tinte, fontWeight: t.weight.fett } as TextStyle,

@@ -97,7 +97,7 @@ export function ConnectionDetails({ view, onRecheck, rechecking }: { readonly vi
         </Text>
       ) : null}
       {checkedAt ? <Text style={{ ...body, color: t.color.tinte2 }}>{tr('advisor.chat.connection.checkedAt', { time: checkedAt })}</Text> : null}
-      <Button variant="leise" onPress={onRecheck} disabled={rechecking} testID="eule-connection-recheck">
+      <Button variant="ghost" onPress={onRecheck} disabled={rechecking} testID="eule-connection-recheck">
         {tr(rechecking ? 'advisor.chat.connection.rechecking' : 'advisor.chat.connection.recheck')}
       </Button>
     </View>

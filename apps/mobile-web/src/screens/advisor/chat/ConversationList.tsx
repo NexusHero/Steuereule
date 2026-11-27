@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Pressable, Text, TextInput, View, type TextStyle, type ViewStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
-import { Button, inkOnFunke, useTheme, type UiTheme, controlLine } from '@steuereule/ui'
+import { Button, useTheme, type UiTheme, controlLine } from '@steuereule/ui'
 import { APP_NS } from '../../../i18n/resources'
 import { StrokeIcon } from '../../../icons/StrokeIcon'
 import { makeSidePanelStyles } from './sidePanelStyles'
@@ -98,7 +98,7 @@ export function ConversationList({ conversations, activeId, canSwitch, onSelect,
     <View style={styles.list} testID="eule-conversations">
       <Pressable accessibilityRole="button" onPress={() => void onNew()} disabled={!canSwitch} style={hover(styles.action)} testID="eule-conversation-new">
         <View style={styles.newIcon}>
-          <StrokeIcon name="plus" size={14} color={inkOnFunke(t)} strokeWidth={3} />
+          <StrokeIcon name="plus" size={14} color={t.color.tinte} strokeWidth={3} />
         </View>
         <Text style={styles.actionText}>{tr('advisor.chat.conversations.new')}</Text>
       </Pressable>
@@ -161,7 +161,7 @@ export function ConversationList({ conversations, activeId, canSwitch, onSelect,
                   testID="eule-conversation-rename-input"
                 />
                 <Button
-                  variant="leise"
+                  variant="ghost"
                   disabled={state.draft.trim() === ''}
                   onPress={() => void attempt(conversation.id, () => onRename(conversation.id, state.draft.trim()))}
                   testID="eule-conversation-rename-save"
@@ -263,7 +263,7 @@ function makeStyles(t: UiTheme) {
       borderRadius: 13,
       borderWidth: 1.5,
       borderColor: controlLine(t),
-      backgroundColor: t.color.funke,
+      backgroundColor: t.color.karte,
       alignItems: 'center',
       justifyContent: 'center',
     } as ViewStyle,

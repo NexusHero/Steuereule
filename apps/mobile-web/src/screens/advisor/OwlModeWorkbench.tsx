@@ -117,6 +117,7 @@ function OwlModeWorkbenchBody({ owl, taxYear, onDone, onAcceptPath, styles }: Ow
               <Text style={styles.conflictText}>{bridge.staleConflict.message}</Text>
               <View style={styles.conflictActions}>
                 <Button
+                  variant="tinte"
                   onPress={() => void handleBatchApply(true)}
                   disabled={bridge.batchApplying}
                   style={{ flex: 1 }}

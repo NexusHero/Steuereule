@@ -40,7 +40,7 @@ export function PersonalDataConsentCard({ onGranted }: PersonalDataConsentCardPr
     marginTop: theme.space.s3,
     padding: theme.space.s3,
     borderRadius: theme.radius.m,
-    backgroundColor: theme.color.fehlerWeich,
+    backgroundColor: theme.color.warnWeich,
     borderLeftWidth: 3,
     borderLeftColor: theme.color.warn,
     gap: theme.space.s2,
@@ -79,7 +79,7 @@ export function PersonalDataConsentCard({ onGranted }: PersonalDataConsentCardPr
       <Text style={body}>{tr('owlPersonalData.card.body', { providers: modelProviderList() })}</Text>
       {failed ? <Text style={body}>{tr('owlPersonalData.card.error')}</Text> : null}
       <View style={actions}>
-        <Button variant="primaer" onPress={() => void allow()} disabled={setConsent.isPending}>
+        <Button variant="tinte" onPress={() => void allow()} disabled={setConsent.isPending}>
           {setConsent.isPending ? tr('owlPersonalData.card.saving') : tr('owlPersonalData.card.allow')}
         </Button>
         <Button variant="ghost" onPress={() => setDismissed(true)} disabled={setConsent.isPending}>

@@ -58,7 +58,7 @@ export function GuestOwlGate({ onDone = () => {}, onBack, onRegister, onLogin }:
               {tr('eule.guest.login', 'Einloggen')}
             </Button>
           ) : null}
-          <Button variant="leise" onPress={onDone} testID="eule-guest-back-btn">
+          <Button variant="ghost" onPress={onDone} testID="eule-guest-back-btn">
             {tr('eule.fertig', 'Zurück zum Cockpit')}
           </Button>
         </View>

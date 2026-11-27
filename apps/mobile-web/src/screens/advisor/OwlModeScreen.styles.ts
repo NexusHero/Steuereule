@@ -4,7 +4,7 @@ import { WIDE_CONTENT_MAX_WIDTH, type UiTheme, controlLine } from '@steuereule/u
 
 export function makeStyles(t: UiTheme) {
   const kiColor = t.color.tinte
-  const kiBg = t.color.funkeWeich
+  const kiBg = t.color.karte
 
   return {
     root: { flex: 1, minHeight: 0, backgroundColor: t.color.grund } as ViewStyle,
@@ -91,7 +91,7 @@ export function makeStyles(t: UiTheme) {
       paddingHorizontal: t.space.s3,
       paddingVertical: t.space.s2,
       borderRadius: t.radius.s,
-      backgroundColor: t.color.funkeWeich,
+      backgroundColor: t.color.karte,
       borderWidth: 1,
       borderColor: t.color.linie,
     } as ViewStyle,

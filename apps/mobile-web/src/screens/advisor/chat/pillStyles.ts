@@ -14,7 +14,7 @@ export function pillStyles(t: UiTheme) {
       backgroundColor: t.color.karte,
       justifyContent: 'center',
     } as ViewStyle,
-    pillOn: { borderColor: t.color.tinte, backgroundColor: t.color.funkeWeich } as ViewStyle,
+    pillOn: { borderColor: t.color.tinte, backgroundColor: t.color.linieWeich } as ViewStyle,
     label: { fontFamily: t.font.text, fontWeight: t.weight.fett, fontSize: t.size.s, color: t.color.tinte2 } as TextStyle,
     labelOn: { color: t.color.tinte } as TextStyle,
   }

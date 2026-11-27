@@ -16,7 +16,7 @@ export function AiChip({ style, children, testID }: AiChipProps) {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: t.color.funkeWeich,
+    backgroundColor: t.color.karte,
     borderWidth: t.space.kontur,
     borderColor: t.color.linie,
     borderRadius: t.radius.pille,
@@ -28,7 +28,7 @@ export function AiChip({ style, children, testID }: AiChipProps) {
 
   return (
     <View testID={testID} accessibilityLabel="KI" style={[container, style]}>
-      <OwlGlyph ink={t.color.tinte} ground={t.color.funkeWeich} />
+      <OwlGlyph ink={t.color.tinte} ground={t.color.karte} />
       {typeof children === 'string' ? <Text style={label}>{children}</Text> : children}
     </View>
   )

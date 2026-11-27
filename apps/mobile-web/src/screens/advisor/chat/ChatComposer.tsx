@@ -13,7 +13,7 @@ import {
 } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { ADVISOR_MESSAGE_MAX_CHARS } from '@steuereule/core'
-import { inkOnFunke, useTheme, type UiTheme, controlLine } from '@steuereule/ui'
+import { useTheme, type UiTheme, controlLine } from '@steuereule/ui'
 import { ChatIcon } from '../../../icons/ChatIcon'
 import { APP_NS } from '../../../i18n/resources'
 import { chatKeyAction, clampComposerHeight, detectChatInputPlatform, type ChatInputPlatform } from './chatKeys'
@@ -204,7 +204,7 @@ export function ChatComposer({
           style={[styles.round, styles.roundSend, cannotSend && styles.roundDisabled]}
           testID={sendTestID}
         >
-          <ChatIcon name="send" color={inkOnFunke(t)} />
+          <ChatIcon name="send" color={t.color.karte} />
         </Pressable>
       )}
       </View>
@@ -252,17 +252,15 @@ function makeStyles(t: UiTheme, variant: 'panel' | 'dock') {
       alignItems: 'center',
       justifyContent: 'center',
     } as ViewStyle,
-    roundSend: { backgroundColor: t.color.funke, borderWidth: 1.5, borderColor: t.color.tinte } as ViewStyle,
+    roundSend: { backgroundColor: t.color.tinte } as ViewStyle,
     roundStop: { backgroundColor: t.color.tinte } as ViewStyle,
     roundDisabled: { opacity: 0.4 } as ViewStyle,
     dockSend: {
       paddingHorizontal: t.space.s3,
       paddingVertical: t.space.s2,
       borderRadius: t.radius.pille,
-      backgroundColor: t.color.funke,
-      borderWidth: 1.5,
-      borderColor: t.color.tinte,
+      backgroundColor: t.color.tinte,
     } as ViewStyle,
-    dockSendText: { fontFamily: t.font.text, fontWeight: t.weight.schwer, fontSize: t.size.s, color: inkOnFunke(t) } as TextStyle,
+    dockSendText: { fontFamily: t.font.text, fontWeight: t.weight.schwer, fontSize: t.size.s, color: t.color.karte } as TextStyle,
   }
 }

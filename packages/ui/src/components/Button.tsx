@@ -4,7 +4,8 @@ import { hapticMedium } from '../lib/haptics'
 import { minTouchHeight } from '../lib/touch-target'
 import { inkOnFunke, useTheme, controlLine } from '../theme/useTheme'
 
-export type ButtonVariant = 'primaer' | 'ghost' | 'leise' | 'nacht'
+/** `tinte` is the main action of a surface that carries no accent colour (the owl chat): ink, no lime. */
+export type ButtonVariant = 'primaer' | 'ghost' | 'leise' | 'nacht' | 'tinte'
 
 export interface ButtonProps {
   readonly variant?: ButtonVariant
@@ -27,8 +28,9 @@ export function Button({ variant = 'primaer', disabled = false, onPress, style, 
     ghost: t.color.karte,
     leise: t.color.funkeWeich,
     nacht: t.color.nacht,
+    tinte: t.color.tinte,
   }
-  const fg = variant === 'nacht' ? t.color.funke : variant === 'primaer' ? inkOnFunke(t) : t.color.tinte
+  const fg = variant === 'nacht' ? t.color.funke : variant === 'primaer' ? inkOnFunke(t) : variant === 'tinte' ? t.color.karte : t.color.tinte
   // "Funke ruhig": the hard offset shadow is the primary action's mark alone — one accent per
   // screen. Secondary variants sit flat, with a quiet contour (ghost) or none at all.
   const primary = variant === 'primaer'
@@ -38,6 +40,7 @@ export function Button({ variant = 'primaer', disabled = false, onPress, style, 
     ghost: controlLine(t),
     leise: t.color.funkeWeich,
     nacht: t.color.nacht,
+    tinte: t.color.tinte,
   }
 
   const container: ViewStyle = {

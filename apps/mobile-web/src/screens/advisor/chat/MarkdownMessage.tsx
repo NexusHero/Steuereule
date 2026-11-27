@@ -109,6 +109,7 @@ function MarkdownMessageView({ content, onSelectSource, testID }: MarkdownMessag
           <Text style={styles.confirmText}>{tr('advisor.chat.link.confirmHint', 'Die Adresse stammt aus der Antwort der Eule, nicht von uns. Öffne sie nur, wenn du ihr traust.')}</Text>
           <View style={styles.confirmActions}>
             <Button
+              variant="tinte"
               onPress={() => {
                 void Linking.openURL(pending.url)
                 setPending(null)
@@ -172,7 +173,7 @@ function makeStyles(t: UiTheme) {
       paddingHorizontal: 6,
       paddingVertical: 1,
       borderRadius: t.radius.s,
-      backgroundColor: t.color.funkeWeich,
+      backgroundColor: t.color.linieWeich,
       alignSelf: 'flex-start',
     } as ViewStyle,
     chipText: { fontFamily: t.font.text, fontSize: t.size.xs, fontWeight: t.weight.fett, color: t.color.tinte } as TextStyle,

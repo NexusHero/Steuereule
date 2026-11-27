@@ -61,7 +61,7 @@ export function OwlModeDrafts({ owl, styles }: OwlModeDraftsProps) {
                   </Text>
                   {alternativeIds.has(draft.actionId) ? (
                     <Button
-                      variant="leise"
+                      variant="ghost"
                       onPress={() => void handleApplyAction(draft.actionId)}
                       disabled={bridge?.batchApplying ?? false}
                       testID={`draft-choose-${draft.actionId}`}
@@ -95,7 +95,7 @@ export function OwlModeDrafts({ owl, styles }: OwlModeDraftsProps) {
           ) : null}
           <Button
             // Quiet on purpose: the conversation is the stage, the same drafts have their own button there.
-            variant="leise"
+            variant="ghost"
             onPress={() => void handleBatchApply(false)}
             disabled={(bridge?.batchApplying ?? false) || alternativeGroups.length > 0}
             testID="eule-batch-apply-btn"
