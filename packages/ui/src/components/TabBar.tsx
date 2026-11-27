@@ -3,6 +3,7 @@ import { Animated, Easing, Pressable, Text, View, type LayoutChangeEvent, type S
 import { theme as motionTokens } from '@steuereule/tokens'
 import { hapticSelection } from '../lib/haptics'
 import { inkOnFunke, useTheme, controlLine } from '../theme/useTheme'
+import { TabBadge, tabName } from './TabBadge'
 import { useReducedMotion } from '../motion/useReducedMotion'
 
 export const TAB_ICON_PATHS = {
@@ -30,6 +31,8 @@ export interface TabItem {
   readonly id: string
   readonly label: string
   readonly icon?: ReactNode
+  /** What waits behind the tab, in words ("neue Antwort"); shown as a dot and read as part of the tab's name. */
+  readonly badge?: string
 }
 
 export interface TabBarProps {
@@ -112,12 +115,14 @@ export function TabBar({ tabs, active, onChange, bottomInset = 0, style, testID 
                 onChange(tab.id)
               }}
               accessibilityRole="tab"
+              aria-label={tabName(tab.label, tab.badge)}
               accessibilityState={{ selected: an }}
               aria-current={an ? 'page' : undefined}
               style={[styles.tab, an && !activeLayout ? styles.tabActiveFallback : null]}
             >
               {tab.icon}
               <Text style={[styles.label, an ? styles.labelActive : null]}>{tab.label}</Text>
+              {tab.badge === undefined ? null : <TabBadge onAccent={an} />}
             </Pressable>
           )
         })}

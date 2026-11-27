@@ -5,6 +5,7 @@ import { createBottomTabNavigator, type BottomTabBarProps, type BottomTabScreenP
 import {
   getFocusedRouteNameFromRoute,
   StackActions,
+  useIsFocused,
   type NavigationHelpers,
   type TabNavigationState,
 } from '@react-navigation/native'
@@ -17,6 +18,7 @@ import { OwlMark } from '../marks/OwlMark'
 import { useAccountSession } from '../auth/useAccountSession'
 import { ErrorState, LoadingState } from '../screens/shared/ScreenState'
 import { OwlModeScreen } from '../screens/advisor/OwlModeScreen'
+import { setOwlVisible, useOwlUnread } from '../screens/advisor/owlUnread'
 import { ReceiptsScreen } from '../screens/receipts/ReceiptsScreen'
 import { CockpitStack } from './CockpitStack'
 import { HistoryStack } from './HistoryStack'
@@ -98,6 +100,7 @@ function AppNavigation({ state, navigation, insets }: BottomTabBarProps) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const bp = useBreakpoint()
+  const owlUnread = useOwlUnread()
 
   if (!isTabBarVisible(state as TabNavigationState<AppTabParamList>)) return null
 
@@ -114,6 +117,7 @@ function AppNavigation({ state, navigation, insets }: BottomTabBarProps) {
     {
       id: 'eule',
       label: tr('tabs.eule'),
+      ...(owlUnread ? { badge: tr('tabs.euleUngelesen') } : {}),
       icon: <OwlGlyph size={22} ink={iconColor('eule')} ground={owlGround} testID="tab-icon-eule" />,
     },
     { id: 'belege', label: tr('tabs.belege'), icon: <TabIcon path={TAB_ICON_PATHS.belege} color={iconColor('belege')} /> },
@@ -168,6 +172,12 @@ function AppNavigation({ state, navigation, insets }: BottomTabBarProps) {
 }
 
 function OwlRoute({ navigation }: BottomTabScreenProps<AppTabParamList, 'Owl'>) {
+  // Seeing the owl reads what waited; an answer that arrives while it is on screen is not marked.
+  const focused = useIsFocused()
+  useEffect(() => {
+    setOwlVisible(focused)
+    return () => setOwlVisible(false)
+  }, [focused])
   const { taxYear, onRegister, onLogin } = useShellState()
   const { state: sessionState, retry } = useAccountSession()
   const bp = useBreakpoint()

@@ -2,10 +2,11 @@
 // left edge, on a tablet-wide one a narrow rail; the screen keeps that room free, and everything the bar
 // does (switching, hiding for a sheet) the rail does too.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import * as ReactNative from 'react-native'
 import { SIDE_NAV_COMPACT_WIDTH, SIDE_NAV_WIDTH } from '@steuereule/ui'
 import { currentRoute, renderShell, signedIn } from './navigationTestKit'
+import { owlAnswerArrived, resetOwlUnread } from '../screens/advisor/owlUnread'
 
 vi.mock('../screens/cockpit/CockpitScreen', async () => ({ CockpitScreen: (await import('./stubScreen')).stubScreen('cockpit') }))
 vi.mock('../screens/capital/CapitalScreen', async () => ({ CapitalScreen: (await import('./stubScreen')).stubScreen('capital') }))
@@ -27,7 +28,10 @@ beforeEach(() => {
   signedIn()
   sessionStorage.clear()
 })
-afterEach(() => vi.restoreAllMocks())
+afterEach(() => {
+  vi.restoreAllMocks()
+  resetOwlUnread()
+})
 
 describe('the shell at desktop width', () => {
   it('shows the tabs as a rail with the brand, not as the floating bar', async () => {
@@ -84,6 +88,32 @@ describe('the shell at desktop width', () => {
     await open('/app')
     expect(screen.queryByTestId('app-seitennavigation')).toBeNull()
     expect(screen.getByRole('tablist').getAttribute('aria-orientation')).toBeNull()
+  })
+})
+
+// The chat keeps running while the user is on another tab. When its answer arrives there, the owl's entry
+// says so, in the bar and in the rail, until the owl is opened.
+describe.each([390, 834, 1440])('an answer of the owl that arrived elsewhere, at %i px', (width) => {
+  it('marks the owl’s entry and is read by opening the owl', async () => {
+    windowWidth(width)
+    await open('/app')
+    expect(screen.queryByTestId('tab-badge')).toBeNull()
+
+    act(() => owlAnswerArrived())
+    const owl = screen.getByRole('tab', { name: 'Eule, neue Antwort' })
+    expect(owl.querySelector('[data-testid="tab-badge"]')).not.toBeNull()
+
+    fireEvent.click(owl)
+    await waitFor(() => expect(currentRoute().name).toBe('Owl'))
+    await waitFor(() => expect(screen.queryByTestId('tab-badge')).toBeNull())
+    expect(screen.getByRole('tab', { name: 'Eule' })).toBeTruthy()
+  })
+
+  it('does not mark an answer the user is watching arrive', async () => {
+    windowWidth(width)
+    await open('/app/eule')
+    act(() => owlAnswerArrived())
+    expect(screen.queryByTestId('tab-badge')).toBeNull()
   })
 })
 

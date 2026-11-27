@@ -6,6 +6,7 @@
   "tabs": {
     "cockpit": "Cockpit",
     "eule": "Eule",
+    "euleUngelesen": "neue Antwort",
     "belege": "Belege",
     "profil": "Profil",
     "verlauf": "Verlauf"

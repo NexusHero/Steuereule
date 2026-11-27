@@ -2,6 +2,7 @@ import { type ReactNode } from 'react'
 import { Pressable, ScrollView, Text, View, type TextStyle, type ViewStyle } from 'react-native'
 import { hapticSelection } from '../lib/haptics'
 import { useTheme } from '../theme/useTheme'
+import { TabBadge, tabName } from './TabBadge'
 import type { TabItem } from './TabBar'
 
 /** The rail's width; a screen next to it keeps this much free on its left. */
@@ -66,6 +67,7 @@ export function SideNav({ tabs, active, onChange, header, compact = false, inset
                   onChange(tab.id)
                 }}
                 accessibilityRole="tab"
+                aria-label={tabName(tab.label, tab.badge)}
                 accessibilityState={{ selected: on }}
                 aria-selected={on}
                 aria-current={on ? 'page' : undefined}
@@ -73,6 +75,7 @@ export function SideNav({ tabs, active, onChange, header, compact = false, inset
               >
                 {tab.icon}
                 <Text style={[s.label, on ? s.labelOn : null]}>{tab.label}</Text>
+                {tab.badge === undefined ? null : <TabBadge inline={!compact} />}
               </Pressable>
             )
           })}
