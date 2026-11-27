@@ -24,7 +24,6 @@ export function CockpitEmpty(props: CockpitEmptyProps) {
       <EuleBannerNotice />
       <View style={styles.emptyBlock}>
         <Text style={styles.heading}>{tr('cockpit.empty.heading')}</Text>
-        <Text style={styles.help}>{tr('cockpit.empty.message')}</Text>
         <ProgressLine progress={progress} />
         {next ? (
           <Button onPress={next.onPress} style={styles.cta} testID="cockpit-weiter">

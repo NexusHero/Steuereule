@@ -92,10 +92,10 @@ describe('LoginScreen', () => {
   // standing assertion — closed here. `getByRole('heading', { level: N })` only resolves if
   // `role="heading"`/`aria-level={N}` actually reached the rendered DOM (react-native-web's
   // own forwarding, not assumed) — dropping either prop from PageHeader turns this red.
-  it('gives the wordmark and greeting real heading semantics, not just visual size (#298 F8)', () => {
+  it('gives the wordmark real heading semantics, not just visual size (#298 F8); the greeting line is gone', () => {
     renderLogin()
     expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('SteuerEule')
-    expect(screen.getByRole('heading', { level: 2 }).textContent).toBe('Schön, dass du da bist.')
+    expect(screen.queryByRole('heading', { level: 2 })).toBeNull()
   })
 
   // The wordmark is the splash: "Steuer" + the ink owl in place of the word "Eule".
@@ -122,12 +122,14 @@ describe('LoginScreen', () => {
     expect(style.borderTopLeftRadius).toBe('28px')
   })
 
-  it('carries the beta notice as a mark that opens the full text on a tap', async () => {
+  it('says BETA beside the name and nothing more: no notice paragraph, no greeting line', async () => {
     renderLogin()
-    const mark = await screen.findByTestId('beta-marke')
-    expect(screen.queryByText(/SteuerEule ist in der Testphase/)).toBeNull()
-    fireEvent.click(mark)
-    expect(screen.getByText(/SteuerEule ist in der Testphase/)).toBeTruthy()
+    const badge = await screen.findByTestId('beta-marke')
+    expect(badge.textContent).toBe('BETA')
+    expect(screen.getByTestId('login-splash').parentElement).toBe(badge.parentElement)
+    expect(screen.queryByTestId('beta-hinweis')).toBeNull()
+    expect(screen.queryByText(/Testphase/)).toBeNull()
+    expect(screen.queryByText(/Schön, dass du/)).toBeNull()
   })
 
   it('writes the name out beside the owl: one heading that reads "SteuerEule"', async () => {

@@ -256,9 +256,8 @@ describe('CockpitScreen', () => {
     renderCockpit()
 
     await screen.findByText('Noch keine Angaben.')
-    expect(
-      screen.getByText('Für dieses Steuerjahr liegen noch keine Angaben vor. Sobald deine Daten da sind, zeigen wir dir hier dein erfasstes Einkommen.'),
-    ).toBeTruthy()
+    // The heading and the way in say it all: no paragraph under it.
+    expect(screen.queryByText(/Für dieses Steuerjahr liegen noch keine Angaben vor/)).toBeNull()
     expect(screen.queryByText('Erfasstes Einkommen')).toBeNull()
   })
 

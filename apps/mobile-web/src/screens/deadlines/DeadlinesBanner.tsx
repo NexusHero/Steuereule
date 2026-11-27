@@ -71,11 +71,8 @@ export function Banner({ dto, taxYear, answers }: { readonly dto: DeadlinesRespo
         </View>
       )
     case 'unklar':
-      return (
-        <View style={styles.calmBanner} testID="fristen-banner-unklar">
-          <Text style={styles.calmText}>{tr('fristen.unklar', { frist })}</Text>
-        </View>
-      )
+      // Before the answers say whether a return is due there is nothing to act on: no banner.
+      return null
     case 'zuschlag':
       return (
         <View style={styles.banner} testID="fristen-banner-zuschlag" accessibilityRole="alert">

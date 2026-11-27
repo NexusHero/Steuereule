@@ -89,7 +89,7 @@ Traditional tax software presents dense tabular forms without proactive guidance
 
 | Device Management | Passwordless QR Handoff | Guest Mode & Instant Login |
 |:---:|:---:|:---:|
-| <img src="images/screenshots/profil.png" width="280" alt="Profile: the stored details, the links to privacy and security, the appearance setting" /> | <img src="images/screenshots/geraetefreigabe.png" width="280" alt="Device approval: the code of the other screen with browser, system and time, and the question whether it is yours" /> | <img src="images/screenshots/login.png" width="280" alt="Login: the owl beside the written-out name, a BETA mark, Google as a round symbol, e-mail and password, guest mode" /> |
+| <img src="images/screenshots/profil.png" width="280" alt="Profile: the stored details, the links to privacy and security, the appearance setting" /> | <img src="images/screenshots/geraetefreigabe.png" width="280" alt="Device approval: the code of the other screen with browser, system and time, and the question whether it is yours" /> | <img src="images/screenshots/login.png" width="280" alt="Login: the owl, the written-out name and a BETA mark on one line, Google as a round symbol, e-mail and password, guest mode" /> |
 | *Active session overview with individual remote revoke.* | *Seamless desktop login via mobile camera verification.* | *Zero-friction guest exploration without forced signup.* |
 
 **One look at every width, light and dark.** White ground, hairlines and lime as the single accent in light mode; graphite with cards one step lighter in dark mode. Beyond the phone the tabs become a rail on the left edge.

@@ -384,8 +384,8 @@ async function measureNavigationForm(page, contentElement, width, label) {
 }
 
 /**
- * The sign-in screen carries the beta notice as a mark (`beta-marke`), not as a paragraph: closed
- * it shows "BETA" only, a tap opens the full notice in place, a second tap closes it again.
+ * The sign-in screen says BETA as a mark beside the name (`beta-marke`) and nothing more: no notice
+ * paragraph there (it stands written out where a decision follows: registration, profile, payment).
  */
 async function measureLoginBetaMark(browser) {
   const context = await browser.newContext({ viewport: { width: BP.s, height: 900 } })
@@ -393,16 +393,15 @@ async function measureLoginBetaMark(browser) {
     const page = await context.newPage()
     await skipSplash(page)
     const mark = page.locator('[data-testid="beta-marke"]')
-    const notice = page.locator('[data-testid="beta-hinweis"]')
     await mark.waitFor({ state: 'visible', timeout: 10_000 })
-    if ((await notice.innerText()).includes('Testphase')) fail('Login beta mark: the notice must be closed until the mark is tapped')
-    await mark.click()
-    await page.getByText('SteuerEule ist in der Testphase.', { exact: false }).waitFor({ state: 'visible', timeout: 5_000 }).catch(() => fail('Login beta mark: a tap must open the beta notice'))
-    await mark.click()
-    if ((await notice.innerText()).includes('Testphase')) fail('Login beta mark: a second tap must close the notice again')
+    if ((await mark.innerText()).trim() !== 'BETA') fail(`Login beta mark: expected the word BETA, got "${await mark.innerText()}"`)
+    if ((await page.locator('[data-testid="beta-hinweis"]').count()) !== 0) fail('Login beta mark: the sign-in screen must not carry the written-out notice')
+    const name = await page.locator('[data-testid="login-splash"]').boundingBox()
     const box = await mark.boundingBox()
-    if (!box || box.height < 44) fail(`Login beta mark: the mark must be a touch-sized target, is ${box?.height}px high`)
-    console.log('[breakpoint-layout] ✅ Login beta mark — closed by default, opens and closes the notice, touch-sized')
+    if (!name || !box || box.x < name.x + name.width || Math.abs(box.y + box.height / 2 - (name.y + name.height / 2)) > name.height / 2) {
+      fail(`Login beta mark: the mark must sit beside the name, on its line; name ${JSON.stringify(name)}, mark ${JSON.stringify(box)}`)
+    }
+    console.log('[breakpoint-layout] ✅ Login beta mark — BETA beside the name, no notice paragraph on sign-in')
   } finally {
     await context.close()
   }

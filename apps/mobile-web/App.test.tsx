@@ -85,7 +85,9 @@ async function enterAsGuestThroughInterview() {
   // branching question on one page, then one Weiter.
   await screen.findByTestId('interview-option-job-Angestellt')
   fireEvent.click(screen.getByTestId('interview-option-job-Angestellt'))
-  expect(screen.getByText('Wer in Deutschland wohnt und in der Schweiz arbeitet, hat eigene Regeln — die gehen wir komplett mit dir durch.')).toBeTruthy()
+  // The foreign question is there with its answers; on this page it carries no paragraph of its own.
+  expect(screen.getByText('In ein anderes Land')).toBeTruthy()
+  expect(screen.queryByText(/Wer in Deutschland wohnt und in der Schweiz arbeitet/)).toBeNull()
   fireEvent.click(screen.getByTestId('interview-option-ausland-Nein'))
   fireEvent.click(screen.getByTestId('interview-option-kinder-2 oder mehr'))
   fireEvent.click(screen.getByTestId('interview-option-familienstand-Ledig'))

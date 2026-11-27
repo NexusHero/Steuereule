@@ -4,7 +4,7 @@
 // nothing). The dates come from the server (GET .../fristen) — the client clock plays no role. Whether
 // the deadline binds at all comes from the interview answers (Pflicht- vs. Antragsveranlagung).
 import { describe, it, expect } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import { I18nextProvider } from 'react-i18next'
 import { ThemeProvider } from '@steuereule/ui'
 import { http, HttpResponse } from 'msw'
@@ -79,12 +79,14 @@ describe('DeadlinesBanner (wired)', () => {
     expect(container.querySelector('[data-testid^="fristen-banner"]')).toBeNull()
   })
 
-  it('before any answer: neutral, never the surcharge alarm', async () => {
-    server.use(http.get(DEADLINES_URL, () => HttpResponse.json(EXPIRED, { status: 200 })))
-    renderBanner({})
+  it('before any answer: no banner at all, never the surcharge alarm', async () => {
+    let asked = false
+    server.use(http.get(DEADLINES_URL, () => { asked = true; return HttpResponse.json(EXPIRED, { status: 200 }) }))
+    const { container } = renderBanner({})
 
-    expect(await screen.findByTestId('fristen-banner-unklar')).toBeTruthy()
-    expect(screen.getByText('Ob du abgeben musst, klären wir mit deinen Antworten. Pflicht-Frist wäre der 31.07.2026.')).toBeTruthy()
+    await waitFor(() => expect(asked).toBe(true))
+    await new Promise((resolve) => setTimeout(resolve, 20))
+    expect(container.querySelector('[data-testid^="fristen-banner"]')).toBeNull()
     expect(screen.queryByText(/Verspätungszuschlag/)).toBeNull()
   })
 })
@@ -124,9 +126,9 @@ describe('Banner (pure presentational)', () => {
     expect(screen.queryByText(/Verspätungszuschlag/)).toBeNull()
   })
 
-  it('unklar (e.g. married): neutral with the would-be deadline', () => {
-    renderPure(EXPIRED, { ...VOLUNTARY, familienstand: 'Verheiratet' })
-    expect(screen.getByTestId('fristen-banner-unklar')).toBeTruthy()
+  it('unklar (e.g. married): nothing to act on yet, so no banner', () => {
+    const { container } = renderPure(EXPIRED, { ...VOLUNTARY, familienstand: 'Verheiratet' })
+    expect(container.querySelector('[data-testid^="fristen-banner"]')).toBeNull()
     expect(screen.queryByText(/Verspätungszuschlag/)).toBeNull()
   })
 })

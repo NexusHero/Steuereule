@@ -14,7 +14,6 @@ import { makeLoginStyles } from './login/loginStyles'
 import { SocialSignInSection } from './shared/SocialSignInSection'
 import { ForgotPasswordForm } from './login/ForgotPasswordForm'
 import { LegalLinks } from './legal/LegalLinks'
-import { BetaNotice } from './shared/BetaNotice'
 import type { LegalPage } from './legal/texts'
 import { MIN_PASSWORD_LENGTH } from '../auth/password-policy'
 import { isAssistantSignIn } from '../auth/assistant-sign-in'
@@ -128,7 +127,6 @@ export function LoginScreen({ onDone, onGuest, onRegister, showDeviceQr = true, 
 
   const formColumn = (
     <View style={bp === 's' ? undefined : styles.formColumn}>
-      <BetaNotice compact />
       <SocialSignInSection
         disabled={stage.kind === 'submitting'}
         onSignedIn={onDone}

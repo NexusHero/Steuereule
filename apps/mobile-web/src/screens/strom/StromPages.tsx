@@ -63,7 +63,10 @@ function useBasisCopy(taxYear: number, answers: Answers): FieldCopy {
     help: (id) => {
       const copy = QUESTION_COPY[id as QuestionId]
       if (copy === undefined) return ''
-      return tr(id === 'ausland' && answers.job === 'Rente' ? 'interview.auslandRente.help' : copy.helpKey)
+      // „Kurz zu dir“ puts several questions on one page: the foreign question explains itself through
+      // its answers there, and its paragraph made the page crowded. The single-question screen keeps it.
+      if (id === 'ausland') return ''
+      return tr(copy.helpKey)
     },
     notice: (id) =>
       id === 'gewerbe'
