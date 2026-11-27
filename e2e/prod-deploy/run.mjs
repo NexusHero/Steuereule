@@ -70,7 +70,7 @@ const COPY = {
   firstNamePlaceholder: 'Kim',
   lastNamePlaceholder: 'Yilmaz',
   steuerIdPlaceholder: '12 345 678 901',
-  steuerNrLater: 'Hab ich nicht zur Hand — später',
+  steuerNrLater: 'Später nachtragen',
   onboardingLoadErrorHeading: 'Das hat nicht geklappt.', // the stakeholder's own quoted words
   registrierungEmailPlaceholder: 'du@beispiel.de',
   registrierungPasswordPlaceholder: 'Mindestens 12 Zeichen',
@@ -87,7 +87,7 @@ const COPY = {
   loginSubmit: 'Einloggen',
   loginGoogleButton: 'Weiter mit Google',
   tabCockpit: 'Cockpit',
-  errGeneric: 'Das hat gerade nicht geklappt. Prüf die Verbindung und versuch es noch mal.',
+  errGeneric: 'Das hat nicht geklappt. Prüf die Verbindung und versuch es noch einmal.',
   errInvalidCredentials: 'E-Mail oder Passwort stimmen nicht.',
   errEmailNotVerified: 'Bitte bestätige zuerst deine E-Mail-Adresse. Wir haben dir einen neuen Link geschickt.',
   // The banner on the registration's success step (de.json auth.verifyBanner).

@@ -151,7 +151,7 @@ function FieldProposalCard({
         testID={`${testIDPrefix}-form-line`}
       >
         <Text style={styles.sourcePillText}>
-          {`📄 ${formLineForField(action.screen, action.field).label}`}
+          {formLineForField(action.screen, action.field).label}
         </Text>
       </Pressable>
 

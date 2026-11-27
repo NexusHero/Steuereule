@@ -261,7 +261,7 @@ export function AcroFormLiveViewer({
     <Card style={styles.card}>
       <View style={styles.toolbar}>
         <View style={styles.titleColumn}>
-          <Text style={styles.title}>{`📄 Original BMF-Vordruck (AcroForm HD) · ${activeFormMeta.title}`}</Text>
+          <Text style={styles.title}>{`Original BMF-Vordruck (AcroForm HD) · ${activeFormMeta.title}`}</Text>
           <Text style={styles.subtitle}>
             {`Seite ${pageNumber} von ${numPages} · ${annotations.length} AcroForm-Felder auf dieser Seite (${filledCountOnForm} befüllt) · ${
               onSaveAcroField ? 'Mit ✎ markierte Felder änderst du hier, die übrigen in ihrer Eingabemaske' : 'Klick ins Feld springt direkt in die Eingabemaske'

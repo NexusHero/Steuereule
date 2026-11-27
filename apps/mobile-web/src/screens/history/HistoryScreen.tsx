@@ -62,7 +62,7 @@ function HistoryLoaded({ data, openYear, onOpenYearDetail, onOpenDevelopment, on
     <AssessmentUploadEntry
       openYear={openYear}
       title={tr('verlauf.upload.titel', { jahr: (years[0]?.year ?? openYear) - 1 })}
-      body={tr(wide ? 'verlauf.upload.textLang' : 'verlauf.upload.text')}
+      body={tr('verlauf.upload.text')}
       cta={tr('verlauf.upload.cta')}
       onOpenDrafts={onOpenDrafts}
       testID="verlauf-upload"

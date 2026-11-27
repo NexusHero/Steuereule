@@ -43,10 +43,10 @@ export function GlassFormPreviewHeader({
       </View>
       <View style={styles.filterRow}>
         <Chip active={viewMode === 'zeilen'} onPress={() => onChangeViewMode('zeilen')}>
-          📋 Strukturierte Zeilen
+          Strukturierte Zeilen
         </Chip>
         <Chip active={viewMode === 'acroform'} onPress={() => onChangeViewMode('acroform')}>
-          📄 Original-Vordruck
+          Original-Vordruck
         </Chip>
         {onCollapse ? (
           <Pressable

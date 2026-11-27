@@ -60,12 +60,12 @@ async function renderOnJobQuestion(opts: Parameters<typeof renderInterview>[0] =
 // entirely and names the screen just as unambiguously). Each names exactly one screen, so a
 // mis-wired branch fails loudly instead of a generic "something is on screen" assertion passing
 // by accident. `find*` (not `get*`): every screen mount now waits on the GET.
-const onJobQuestion = () => screen.findByText('Mehrfachjobs? Nimm die Hauptquelle — der Rest kommt später.')
+const onJobQuestion = () => screen.findByText('Bei mehreren: die Hauptquelle.')
 const onForeignQuestion = () => screen.findByText('Wer in Deutschland wohnt und in der Schweiz arbeitet, hat eigene Regeln — die gehen wir komplett mit dir durch.')
 const onKinderQuestion = () => screen.findByText('Kindergeld, Kinderfreibetrag, Betreuungskosten — was für dich günstiger ist, rechnen wir selbst aus.')
-const onMaritalStatusQuestion = () => screen.findByText('Verheiratete geben meist eine gemeinsame Erklärung ab, das spart oft Steuern. Dann fragen wir noch kurz nach deinem Partner.')
+const onMaritalStatusQuestion = () => screen.findByText('Entscheidet, ob ihr gemeinsam abgeben könnt.')
 const onBusinessGate = () => screen.findByText('Selbstständigkeit rechnen wir noch nicht.')
-const onChOnlyGate = () => screen.findByText('Ehrlich: andere Länder können wir noch nicht.')
+const onChOnlyGate = () => screen.findByText('Andere Länder rechnen wir noch nicht.')
 
 describe('InterviewScreen', () => {
   it('names the chosen tax year in the first question, not a fixed one', async () => {
@@ -131,7 +131,7 @@ describe('InterviewScreen', () => {
     mockInterviewState({ answers: { job: 'Angestellt', ausland: 'Nein' }, nextStep: { kind: 'question', id: 'kinder' }, openItems: 1 })
     renderInterview()
     await onKinderQuestion()
-    expect(screen.queryByText('Mehrfachjobs? Nimm die Hauptquelle — der Rest kommt später.')).toBeNull()
+    expect(screen.queryByText('Bei mehreren: die Hauptquelle.')).toBeNull()
   })
 
   it('opens on the job question — heading, help text, all four options, step 1/4', async () => {
@@ -350,7 +350,7 @@ describe('InterviewScreen', () => {
       await renderOnJobQuestion()
       fireEvent.click(screen.getByText('Rente'))
       // UX review M3: a pensioner gets the same question asked the way that fits, not "commute for work".
-      await screen.findByText('Die meisten tippen hier „Nein“. Eine Rente aus der Schweiz trägst du später bei deiner Rente ein.')
+      await screen.findByText('Eine Rente aus der Schweiz trägst du später bei der Rente ein.')
       expect(screen.queryByText('Selbstständigkeit rechnen wir noch nicht.')).toBeNull()
     })
 
@@ -408,7 +408,7 @@ describe('InterviewScreen', () => {
       fireEvent.click(screen.getByText('Ja, in die Schweiz'))
       fireEvent.click(await screen.findByTestId('interview-option-de-job-Nur in der Schweiz'))
       await onKinderQuestion()
-      expect(screen.queryByText('Ehrlich: andere Länder können wir noch nicht.')).toBeNull()
+      expect(screen.queryByText('Andere Länder rechnen wir noch nicht.')).toBeNull()
     })
 
     it('"Nein" -> kinder question directly, no gate', async () => {
@@ -532,13 +532,13 @@ describe('InterviewScreen', () => {
   describe('i18n (ADR-0006) — English switches the label, not the persisted domain value', () => {
     it('renders the job question in English', async () => {
       renderInterview({ lng: 'en' })
-      await screen.findByText('Multiple jobs? Use your main source — the rest comes later.')
+      await screen.findByText('If several: the main source.')
       expect(screen.getByText('Employed')).toBeTruthy()
     })
 
     it('answering in English still drives the same graph branch (Selbstständig -> Gewerbe gate)', async () => {
       renderInterview({ lng: 'en' })
-      await screen.findByText('Multiple jobs? Use your main source — the rest comes later.')
+      await screen.findByText('If several: the main source.')
       fireEvent.click(screen.getByText('Self-employed'))
       expect(await screen.findByText("We don't calculate self-employment yet.")).toBeTruthy()
     })

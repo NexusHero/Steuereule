@@ -573,7 +573,7 @@ describe('LoginScreen', () => {
     renderLogin()
     fireEvent.click(await screen.findByText('Weiter mit Google'))
 
-    expect(await screen.findByText('Das hat gerade nicht geklappt. Prüf die Verbindung und versuch es noch mal.')).toBeTruthy()
+    expect(await screen.findByText('Das hat nicht geklappt. Prüf die Verbindung und versuch es noch einmal.')).toBeTruthy()
   })
 
   it('shows an honest error when Google social sign-in fails (network failure)', async () => {
@@ -581,7 +581,7 @@ describe('LoginScreen', () => {
     renderLogin()
     fireEvent.click(await screen.findByText('Weiter mit Google'))
 
-    expect(await screen.findByText('Das hat gerade nicht geklappt. Prüf die Verbindung und versuch es noch mal.')).toBeTruthy()
+    expect(await screen.findByText('Das hat nicht geklappt. Prüf die Verbindung und versuch es noch einmal.')).toBeTruthy()
   })
 
   // REQ-008 — the honesty gate. Social credentials are server-side, so an unconfigured
@@ -794,7 +794,7 @@ describe('LoginScreen', () => {
         // in the same tick the 200 arrives.
         const onDone = vi.fn(() => {
           doneAt = Date.now()
-          confirmationShownBeforeDone = screen.queryByText('Das war’s — du bist drin.') !== null
+          confirmationShownBeforeDone = screen.queryByText('Angemeldet.') !== null
         })
         setViewportWidth(1024)
         renderLogin({ onDone })

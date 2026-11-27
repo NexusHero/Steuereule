@@ -224,7 +224,7 @@ describe('DatenschutzScreen', () => {
 
       fireEvent.click(screen.getByText('Als JSON herunterladen'))
 
-      expect(await screen.findByText('Der Export hat gerade nicht geklappt. Versuch es noch mal.')).toBeTruthy()
+      expect(await screen.findByText('Der Export hat nicht geklappt. Versuch es noch einmal.')).toBeTruthy()
     })
 
     it('shows an honest error on a genuine network failure during export', async () => {
@@ -233,7 +233,7 @@ describe('DatenschutzScreen', () => {
 
       fireEvent.click(screen.getByText('Als PDF-Bericht herunterladen'))
 
-      expect(await screen.findByText('Der Export hat gerade nicht geklappt. Versuch es noch mal.')).toBeTruthy()
+      expect(await screen.findByText('Der Export hat nicht geklappt. Versuch es noch einmal.')).toBeTruthy()
     })
   })
 
@@ -386,7 +386,7 @@ describe('DatenschutzScreen', () => {
 
       fireEvent.click(screen.getByText('Ja, endgültig löschen'))
 
-      expect(await screen.findByText('Das hat gerade nicht geklappt. Prüf die Verbindung und versuch es noch mal.')).toBeTruthy()
+      expect(await screen.findByText('Das hat nicht geklappt. Prüf die Verbindung und versuch es noch einmal.')).toBeTruthy()
     })
 
     it('a genuine network failure while submitting the password shows its own honest error, staying on the password step', async () => {
@@ -398,7 +398,7 @@ describe('DatenschutzScreen', () => {
       fireEvent.change(screen.getByLabelText('Passwort'), { target: { value: 'whatever' } })
       fireEvent.click(screen.getByText('Bestätigen'))
 
-      expect(await screen.findByText('Das hat gerade nicht geklappt. Prüf die Verbindung und versuch es noch mal.')).toBeTruthy()
+      expect(await screen.findByText('Das hat nicht geklappt. Prüf die Verbindung und versuch es noch einmal.')).toBeTruthy()
       expect(screen.getByText('Bestätige mit deinem Passwort')).toBeTruthy()
     })
 
@@ -413,7 +413,7 @@ describe('DatenschutzScreen', () => {
 
       fireEvent.click(screen.getByText('Ja, endgültig löschen'))
 
-      expect(await screen.findByText('Das hat gerade nicht geklappt. Prüf die Verbindung und versuch es noch mal.')).toBeTruthy()
+      expect(await screen.findByText('Das hat nicht geklappt. Prüf die Verbindung und versuch es noch einmal.')).toBeTruthy()
       // The user can act again — the confirm step's own buttons are back, not a spinner with
       // no way out.
       expect(screen.getByText('Ja, endgültig löschen')).toBeTruthy()
@@ -430,7 +430,7 @@ describe('DatenschutzScreen', () => {
       fireEvent.change(screen.getByLabelText('Passwort'), { target: { value: 'whatever' } })
       fireEvent.click(screen.getByText('Bestätigen'))
 
-      expect(await screen.findByText('Das hat gerade nicht geklappt. Prüf die Verbindung und versuch es noch mal.')).toBeTruthy()
+      expect(await screen.findByText('Das hat nicht geklappt. Prüf die Verbindung und versuch es noch einmal.')).toBeTruthy()
       expect(screen.getByText('Bestätige mit deinem Passwort')).toBeTruthy()
       expect(screen.queryByText('Wird gelöscht …')).toBeNull()
     })

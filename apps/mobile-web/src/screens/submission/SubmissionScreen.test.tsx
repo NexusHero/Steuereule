@@ -90,7 +90,7 @@ describe('SubmissionScreen (§ 3.4)', () => {
 
     expect(await screen.findByTestId('abgabe-ausdruck-offen')).toBeTruthy()
     expect(screen.getByTestId('abgabe-ausdruck-offen').textContent).toContain('3 Angaben')
-    expect(screen.queryByText('Alles klar — keine Widersprüche, nichts mehr offen.')).toBeNull()
+    expect(screen.queryByText('Keine Widersprüche, nichts offen.')).toBeNull()
   })
 
   it('says everything is clear once nothing is missing for the printout', async () => {
@@ -98,7 +98,7 @@ describe('SubmissionScreen (§ 3.4)', () => {
     mockInterview({ job: 'Angestellt', ausland: 'Nein', kinder: 'Nein', familienstand: 'Ledig' })
     renderSubmission()
 
-    expect(await screen.findByText('Alles klar — keine Widersprüche, nichts mehr offen.')).toBeTruthy()
+    expect(await screen.findByText('Keine Widersprüche, nichts offen.')).toBeTruthy()
     expect(screen.queryByTestId('abgabe-ausdruck-offen')).toBeNull()
   })
 

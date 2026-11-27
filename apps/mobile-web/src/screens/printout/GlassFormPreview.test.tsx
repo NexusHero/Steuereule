@@ -149,7 +149,7 @@ describe('GlassFormPreview („Glas-Erklärung“)', () => {
     const hoRow = screen.getByTestId('glass-row-anlageN-ho-a')
     expect(hoRow.textContent).toContain('Zeile 45 (Kz 335)')
     expect(hoRow.textContent).toMatch(/480\s*€/)
-    expect(hoRow.textContent).toContain('🦉')
+    expect(hoRow.textContent).toContain('Assistent:')
 
     // Clicking the row jumps directly to the commute mask & homeOfficeDays field
     fireEvent.click(hoRow)

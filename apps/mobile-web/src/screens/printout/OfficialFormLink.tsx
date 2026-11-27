@@ -42,7 +42,7 @@ export function OfficialFormLink({ screen, taxYear }: OfficialFormLinkProps) {
       style={styles.link}
       testID="official-form-link"
     >
-      <Text style={styles.text}>{`📄 ${tr('formular.oeffnen', { form: formLineForField(screen).form })} →`}</Text>
+      <Text style={styles.text}>{`${tr('formular.oeffnen', { form: formLineForField(screen).form })} →`}</Text>
     </Pressable>
   )
 }

@@ -39,10 +39,10 @@ describe('PlausibilitaetScreen', () => {
     )
     renderPlausibility()
 
-    expect(await screen.findByText('Alles klar — keine Widersprüche, nichts mehr offen.')).toBeTruthy()
+    expect(await screen.findByText('Keine Widersprüche, nichts offen.')).toBeTruthy()
     // ADR-0032 (ticket 15 review F3): "einreichbar" must not read as "everything was checked" —
     // the werktage/Pendlerpauschale boundary is stated on the screen, not hidden in the header.
-    expect(screen.getByText('Ehrlich: die Arbeitstage- und Pendlerpauschale-Prüfung folgt in einem späteren Schritt.')).toBeTruthy()
+    expect(screen.getByText('Die Arbeitstage- und Pendlerpauschale-Prüfung folgt in einem späteren Schritt.')).toBeTruthy()
   })
 
   // The same list the printout check blocks on (real-data run: the printout was blocked while this screen said nothing was open).
@@ -55,14 +55,14 @@ describe('PlausibilitaetScreen', () => {
     renderPlausibility()
 
     expect(await screen.findByText('Für den Ausdruck fehlen noch 3 Angaben (z. B. Adresse oder IBAN).')).toBeTruthy()
-    expect(screen.queryByText('Alles klar — keine Widersprüche, nichts mehr offen.')).toBeNull()
+    expect(screen.queryByText('Keine Widersprüche, nichts offen.')).toBeNull()
   })
 
   it('names a missing IBAN of a return with a payment as a hint only', async () => {
     server.use(completeLstb(), finishedInterview({ job: 'Angestellt' }), printoutCheck({ missing: [], hints: ['iban'] }))
     renderPlausibility()
 
-    expect(await screen.findByText('Alles klar — keine Widersprüche, nichts mehr offen.')).toBeTruthy()
+    expect(await screen.findByText('Keine Widersprüche, nichts offen.')).toBeTruthy()
     expect(screen.getByText('Eine IBAN fehlt. Für eine Nachzahlung brauchst du keine; ergibt sich doch eine Erstattung, trag sie in „Angaben für die Erklärung“ ein.')).toBeTruthy()
   })
 
@@ -85,6 +85,6 @@ describe('PlausibilitaetScreen', () => {
     renderPlausibility()
 
     expect(await screen.findByText('Mindestens ein Betrag ist noch mit „Später eintragen“ markiert.')).toBeTruthy()
-    expect(screen.getByText('Alles klar — keine Widersprüche, nichts mehr offen.')).toBeTruthy()
+    expect(screen.getByText('Keine Widersprüche, nichts offen.')).toBeTruthy()
   })
 })

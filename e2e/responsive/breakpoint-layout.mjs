@@ -88,7 +88,7 @@ const COPY = {
   firstNamePlaceholder: 'Kim',
   lastNamePlaceholder: 'Yilmaz',
   steuerIdPlaceholder: '12 345 678 901',
-  steuerNrLater: 'Hab ich nicht zur Hand — später',
+  steuerNrLater: 'Später nachtragen',
   cockpitRetry: 'Noch mal versuchen',
   cockpitEmptyHeading: 'Noch keine Angaben.',
   cockpitAnswerQuestions: 'Fragen beantworten',

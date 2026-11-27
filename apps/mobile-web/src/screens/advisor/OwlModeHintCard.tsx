@@ -86,7 +86,7 @@ export function OwlModeHintCard({ owl, onAcceptPath, styles }: OwlModeHintCardPr
                 style={styles.clarifyButton}
                 testID="card-clarify-with-eule"
               >
-                <Text style={styles.clarifyButtonText}>Mit Eule klären 💬</Text>
+                <Text style={styles.clarifyButtonText}>Mit Eule klären</Text>
               </Pressable>
 
               {activeIndex < cards.length - 1 && (

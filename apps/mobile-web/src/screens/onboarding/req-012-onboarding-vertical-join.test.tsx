@@ -164,7 +164,7 @@ describe('REQ-012 — Onboarding vertical-join (ATDD acceptance, steuereule#53)'
 
     fireEvent.click(screen.getByText('Weiter'))
 
-    await screen.findByText('Das hat gerade nicht geklappt. Prüf die Verbindung und versuch es noch mal.')
+    await screen.findByText('Das hat nicht geklappt. Prüf die Verbindung und versuch es noch einmal.')
     expect(onDone).not.toHaveBeenCalled()
     expect(screen.getByText('Deine Maske')).toBeTruthy()
   })
@@ -219,7 +219,7 @@ describe('REQ-012 — Onboarding vertical-join (ATDD acceptance, steuereule#53)'
     server.use(http.put('*/v1/profile', () => HttpResponse.error()))
     const onDone = vi.fn()
     renderOnboarding({ lng: 'en', onDone })
-    await screen.findByText('Just like on your ID — so the form matches exactly.')
+    await screen.findByText('As on your ID card.')
 
     await fillNameStep('Continue')
     fillTaxId('12345678901')

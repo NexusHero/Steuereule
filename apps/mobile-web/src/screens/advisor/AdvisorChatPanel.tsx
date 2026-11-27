@@ -118,7 +118,7 @@ export function AdvisorChatPanel({
           {greeting ??
             tr(
               'advisor.chat.help',
-              'Stelle Fragen zu deinen Werbungskosten, Freibeträgen oder Belegen. Antworten erfolgen transparent mit Angabe der Rechtsgrundlage.',
+              'Fragen zu Werbungskosten, Freibeträgen oder Belegen.',
             )}
         </Text>
       </View>

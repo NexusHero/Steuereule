@@ -650,7 +650,7 @@ function joinErrorText(error: unknown, failureMessage: (error: unknown) => strin
   const failure = classifyApiFailure(error)
   if (failure.code === 'INVITATION_CODE_EXPIRED') return 'Der Code ist abgelaufen. Bitte deinen Partner um einen neuen.'
   if (failure.code === 'INVITATION_IS_OWN') return 'Das ist dein eigener Code – den gibst du an deinen Partner weiter.'
-  if (failure.kind === 'offline') return 'Das hat nicht geklappt. Prüf die Verbindung und versuch es noch mal.'
+  if (failure.kind === 'offline') return 'Das hat nicht geklappt. Prüf die Verbindung und versuch es noch einmal.'
   // NM-02: only an unknown or malformed code is „unknown“; a 409, 429 or 500 says what it is.
   if (failure.kind === 'not-found' || failure.kind === 'validation') return unknownCode
   return failureMessage(error)

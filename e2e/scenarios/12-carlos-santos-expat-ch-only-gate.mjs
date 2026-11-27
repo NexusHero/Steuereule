@@ -21,7 +21,7 @@ export async function runScenario12(browser, webOrigin) {
   await waitForStromStep(page, 'basis')
   await page.locator('[data-testid="interview-option-job-Angestellt"]').click()
   await page.locator('[data-testid="interview-option-ausland-In ein anderes Land"]').click()
-  await waitForStromNotice(page, 'strom-hinweis-ch-only', ['Ehrlich: andere Länder können wir noch nicht.', 'Jedes Land hat sein eigenes Abkommen mit eigenen Regeln'])
+  await waitForStromNotice(page, 'strom-hinweis-ch-only', ['Andere Länder rechnen wir noch nicht.', 'Jedes Land hat sein eigenes Abkommen mit eigenen Regeln'])
   await answerBasis(page, { job: 'Angestellt', ausland: 'In ein anderes Land', kinder: 'Nein', familienstand: 'Ledig' })
 
   await completeLstbSettled(page, { grossWage: '60000', wageTax: '11000', socialSecurity: '12000' })

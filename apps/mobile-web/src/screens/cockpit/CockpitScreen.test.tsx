@@ -452,7 +452,7 @@ describe('CockpitScreen — Kinder & Eulen-Modus entries', () => {
     renderCockpit({ onOpenOwlMode: vi.fn() })
     const card = await screen.findByTestId('cockpit-berater')
     expect(card.querySelector('[data-testid="owl-mark-tinte"]')).not.toBeNull()
-    expect(card.textContent).toContain('Deine Eule berät dich')
+    expect(card.textContent).toContain('Hinweise der Eule')
     const check = screen.getByText('Bescheid prüfen')
     expect(card.compareDocumentPosition(check) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   })

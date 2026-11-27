@@ -228,7 +228,7 @@ describe('ProfilScreen', () => {
     fireEvent.click(screen.getByText('Bearbeiten'))
     fireEvent.click(screen.getByText('Speichern'))
 
-    expect(await screen.findByText('Das hat gerade nicht geklappt. Prüf die Verbindung und versuch es noch mal.')).toBeTruthy()
+    expect(await screen.findByText('Das hat nicht geklappt. Prüf die Verbindung und versuch es noch einmal.')).toBeTruthy()
   })
 
   it('shows the Steuer-ID digit counter and confirmation while editing, matching the Onboarding field pattern', async () => {

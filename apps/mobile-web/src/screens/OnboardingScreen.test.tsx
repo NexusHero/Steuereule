@@ -32,14 +32,14 @@ describe('OnboardingScreen', () => {
 
   it('renders step 1 in German by default', async () => {
     renderOnboarding()
-    await screen.findByText('Genau wie im Perso — damit beim Finanzamt alles passt.')
+    await screen.findByText('Wie im Personalausweis.')
     expect(screen.getByText('Vorname')).toBeTruthy()
     expect(screen.getByText('Nachname')).toBeTruthy()
   })
 
   it('switches to English when the locale changes (ADR-0006)', async () => {
     renderOnboarding({ lng: 'en' })
-    await screen.findByText('Just like on your ID — so the form matches exactly.')
+    await screen.findByText('As on your ID card.')
     expect(screen.getByText('First name')).toBeTruthy()
   })
 
@@ -95,12 +95,12 @@ describe('OnboardingScreen', () => {
     await screen.findByText('Vorname')
     fireEvent.click(screen.getByText('Weiter'))
     // Still on step 1: the step-2 help text must not have appeared.
-    expect(screen.queryByText('11 Ziffern, lebenslang gleich — steht oben auf jedem Brief vom Finanzamt.')).toBeNull()
+    expect(screen.queryByText('Steht auf Briefen vom Finanzamt.')).toBeNull()
 
     fireEvent.change(screen.getByPlaceholderText('Kim'), { target: { value: 'Kim' } })
     fireEvent.change(screen.getByPlaceholderText('Yilmaz'), { target: { value: 'Yilmaz' } })
     fireEvent.click(screen.getByText('Weiter'))
-    expect(screen.getByText('11 Ziffern, lebenslang gleich — steht oben auf jedem Brief vom Finanzamt.')).toBeTruthy()
+    expect(screen.getByText('Steht auf Briefen vom Finanzamt.')).toBeTruthy()
   })
 
   it('formats the Steuer-ID live, shows the running counter, and confirms at exactly 11 digits', async () => {
@@ -112,14 +112,14 @@ describe('OnboardingScreen', () => {
     expect(screen.queryByText('gültig')).toBeNull()
     fireEvent.click(screen.getByText('Weiter'))
     // CTA stayed disabled: still on step 2.
-    expect(screen.queryByText('Steht auf deinem letzten Bescheid. Keinen zur Hand? Später geht auch.')).toBeNull()
+    expect(screen.queryByText('Steht auf deinem letzten Bescheid.')).toBeNull()
 
     fillTaxId('12345678901')
     expect(screen.getByDisplayValue('12 345 678 901')).toBeTruthy()
     expect(screen.getByText('11/11 Ziffern')).toBeTruthy()
     expect(screen.getByText('gültig')).toBeTruthy()
     fireEvent.click(screen.getByText('Weiter'))
-    expect(screen.getByText('Steht auf deinem letzten Bescheid. Keinen zur Hand? Später geht auch.')).toBeTruthy()
+    expect(screen.getByText('Steht auf deinem letzten Bescheid.')).toBeTruthy()
   })
 
   it('lets the Steuernummer step be skipped via the "later" chip without entering digits', async () => {
@@ -128,7 +128,7 @@ describe('OnboardingScreen', () => {
     fillTaxId('12345678901')
     fireEvent.click(screen.getByText('Weiter'))
 
-    fireEvent.click(screen.getByText('Hab ich nicht zur Hand — später'))
+    fireEvent.click(screen.getByText('Später nachtragen'))
     expect(screen.getByText('Deine Maske')).toBeTruthy()
   })
 
@@ -201,7 +201,7 @@ describe('OnboardingScreen', () => {
 
     fireEvent.click(screen.getByText('Weiter'))
 
-    await screen.findByText('Das hat gerade nicht geklappt. Prüf die Verbindung und versuch es noch mal.')
+    await screen.findByText('Das hat nicht geklappt. Prüf die Verbindung und versuch es noch einmal.')
     expect(onDone).not.toHaveBeenCalled()
   })
 
@@ -269,8 +269,8 @@ describe('OnboardingScreen — failures never reach a save (WEB-28, NR-01, NR-22
     await screen.findByDisplayValue('Anna')
     fireEvent.click(screen.getByText('Weiter'))
     fireEvent.change(await screen.findByDisplayValue('02 476 291 358'), { target: { value: '1' } })
-    fireEvent.click(screen.getByText(/später/))
-    fireEvent.click(await screen.findByText(/später/))
+    fireEvent.click(screen.getByText('Später im Profil nachtragen'))
+    fireEvent.click(await screen.findByText('Später nachtragen'))
     fireEvent.click(await screen.findByTestId('onboarding-speichern'))
     await waitFor(() => expect(onDone).toHaveBeenCalled())
     expect(body).toEqual({ firstName: 'Anna', lastName: 'Beispiel' })

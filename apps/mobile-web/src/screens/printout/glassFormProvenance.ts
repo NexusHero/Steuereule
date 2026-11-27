@@ -18,10 +18,10 @@ export function formatProvenanceBadge(
       })
     case 'assistent':
       return provenance.receiptId
-        ? `📎 ${tr('bestaetigung.herkunft.assistentBeleg', { name: provenance.name, defaultValue: `${provenance.name} (Beleg)` })}`
-        : `🦉 ${tr('bestaetigung.herkunft.assistent', { name: provenance.name, defaultValue: provenance.name })}`
+        ? tr('bestaetigung.herkunft.assistentBeleg', { name: provenance.name, defaultValue: `${provenance.name} (Beleg)` })
+        : tr('bestaetigung.herkunft.assistent', { name: provenance.name, defaultValue: provenance.name })
     case 'beleg':
-      return `📎 ${tr('bestaetigung.herkunft.beleg', { defaultValue: 'Aus Beleg' })}`
+      return tr('bestaetigung.herkunft.beleg', { defaultValue: 'Aus Beleg' })
   }
 }
 

@@ -120,7 +120,7 @@ describe('RegistrierungScreen', () => {
     fillCredentials()
     fireEvent.click(screen.getByText('Konto anlegen'))
 
-    await screen.findByText('Das hat gerade nicht geklappt. Prüf die Verbindung und versuch es noch mal.')
+    await screen.findByText('Das hat nicht geklappt. Prüf die Verbindung und versuch es noch einmal.')
     expect(onDone).not.toHaveBeenCalled()
     expect(screen.queryByText('Schau in dein Postfach.')).toBeNull()
   })

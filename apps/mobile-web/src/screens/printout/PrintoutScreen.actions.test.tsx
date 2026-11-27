@@ -190,7 +190,7 @@ describe('AusdruckScreen — download', () => {
     )
     renderScreen()
     fireEvent.click(await screen.findByTestId('ausdruck-herunterladen'))
-    expect(await screen.findByText('Das hat nicht geklappt. Bitte versuch es noch mal.')).toBeTruthy()
+    expect(await screen.findByText('Das hat nicht geklappt. Versuch es noch einmal.')).toBeTruthy()
     await waitFor(() => expect(checks).toBeGreaterThanOrEqual(2))
   })
 

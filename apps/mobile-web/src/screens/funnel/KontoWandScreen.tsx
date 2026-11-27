@@ -1,6 +1,6 @@
 import { ScrollView, View, Text, type ViewStyle, type TextStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
-import { Button, Card, Chip, Sticker, useTheme, useBreakpoint, type UiTheme } from '@steuereule/ui'
+import { Button, Card, Chip, useTheme, useBreakpoint, type UiTheme } from '@steuereule/ui'
 import { RETENTION } from '@steuereule/core'
 import { APP_NS } from '../../i18n/resources'
 
@@ -35,13 +35,11 @@ export function AccountWallScreen({ path, onRegister, onLogin, onLater, pendingV
 
   return (
     <ScrollView contentContainerStyle={bp === 's' ? styles.screen : styles.wideScreen} testID="screen-container">
-      <Sticker>{tr('funnel.kontoWand.sticker')}</Sticker>
       <Text style={styles.heading} accessibilityRole="header">
         {tr('funnel.kontoWand.titleBefore')}
         <Text style={styles.mark}>{tr(`funnel.kontoWand.pfad.${path}`)}</Text>
         {tr('funnel.kontoWand.titleAfter')}
       </Text>
-      <Text style={styles.help}>{tr('funnel.kontoWand.help')}</Text>
 
       <Card>
         <Text style={styles.cardLabel}>{tr('funnel.kontoWand.nextLabel')}</Text>
@@ -88,7 +86,7 @@ function makeStyles(t: UiTheme) {
     ...t.type.title,
     color: t.color.tinte,
     marginTop: t.space.s4,
-    marginBottom: t.space.s2,
+    marginBottom: t.space.s5,
   }
   // "Funke ruhig": the key word is set in readable dark lime, no lime box behind it.
   const mark: TextStyle = { color: t.color.funkeTinte }

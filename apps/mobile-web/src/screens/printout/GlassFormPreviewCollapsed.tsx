@@ -20,7 +20,7 @@ export function GlassFormPreviewCollapsed({ onOpen }: { readonly onOpen: () => v
           <Text style={styles.collapsedSubtitle}>
             {tr(
               'ausdruck.glasErklaerung.untertitel',
-              'Sieh live, in welchem amtlichen Vordruck und welcher Zeile deine Angaben landen – inklusive Herkunft und Direktsprung in die Maske.',
+              'Zeigt, in welcher Zeile welches Vordrucks deine Angaben stehen.',
             )}
           </Text>
         </View>

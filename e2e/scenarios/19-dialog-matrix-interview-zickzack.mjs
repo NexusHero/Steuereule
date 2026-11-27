@@ -66,7 +66,7 @@ export async function runScenario19(browser, webOrigin) {
 
   // 4. Ausland = In ein anderes Land -> CH-Only notice inline; Schweiz -> no notice; Nein.
   await opt('ausland', 'In ein anderes Land').click()
-  await chOnly.locator('text=Ehrlich: andere Länder können wir noch nicht.').waitFor({ state: 'visible', timeout: 10_000 })
+  await chOnly.locator('text=Andere Länder rechnen wir noch nicht.').waitFor({ state: 'visible', timeout: 10_000 })
   await field('kinder').waitFor({ state: 'visible', timeout: 10_000 })
   await opt('ausland', 'Ja, in die Schweiz').click()
   await chOnly.waitFor({ state: 'detached', timeout: 10_000 })
