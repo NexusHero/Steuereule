@@ -196,8 +196,10 @@ function collectPages() {
   const [preamble, ...chapters] = splitChapters(readSource(ARCHITECTURE).replace(/^# .*\n/, ''))
   pages.push({ file: 'index.html', source: ARCHITECTURE, kind: 'start', title: 'Architecture', markdown: preamble.body })
   for (const chapter of chapters) {
-    const match = /^(\d+)\.\s+(.*)$/.exec(chapter.title)
-    if (!match) throw new Error(`${ARCHITECTURE}: chapter without a number: "${chapter.title}"`)
+    // "4. Solution strategy": the number before the first full stop, the title after it.
+    const dot = chapter.title.indexOf('.')
+    const match = dot > 0 && isDigits(chapter.title.slice(0, dot)) ? [chapter.title, chapter.title.slice(0, dot), chapter.title.slice(dot + 1).trim()] : null
+    if (!match || match[2] === '') throw new Error(`${ARCHITECTURE}: chapter without a number: "${chapter.title}"`)
     pages.push({
       file: `${twoDigits(Number(match[1]))}-${slugOf(match[2])}.html`,
       source: ARCHITECTURE,
