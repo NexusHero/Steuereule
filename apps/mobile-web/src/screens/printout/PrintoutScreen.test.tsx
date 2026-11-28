@@ -123,6 +123,28 @@ describe('AusdruckScreen (ADR-0050)', () => {
     await waitFor(() => expect(requested).toContain('/ausdruck?bearbeitbar=true'))
   })
 
+  it('unlocked: also offers the summary alone, said to be for the files and not for handing in', async () => {
+    mock('freigeschaltet')
+    let requested = ''
+    server.use(
+      http.get('*/v1/steuerjahre/2025/ausdruck/zusammenfassung', ({ request }) => {
+        requested = request.url
+        return new HttpResponse(new Uint8Array([37, 80, 68, 70]), { status: 200, headers: { 'content-type': 'application/pdf' } })
+      }),
+    )
+    renderScreen()
+    fireEvent.click(await screen.findByTestId('ausdruck-herunterladen-zusammenfassung'))
+    expect(screen.getByText('Für deine Unterlagen, deinen Partner oder eine Beratung. Ohne Vordrucke, nicht zum Abgeben.')).toBeTruthy()
+    await waitFor(() => expect(requested).toContain('/ausdruck/zusammenfassung'))
+  })
+
+  it('not unlocked: the summary alone is not offered either', async () => {
+    mock('offen')
+    renderScreen()
+    await screen.findByTestId('ausdruck-bezahlen')
+    expect(screen.queryByTestId('ausdruck-herunterladen-zusammenfassung')).toBeNull()
+  })
+
   it('missing details: names it, links to the form, and does not let you pay first', async () => {
     mock('offen', ['iban'])
     const { onCompleteDetails } = renderScreen()

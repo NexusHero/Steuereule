@@ -23,6 +23,7 @@ import { APP_NS } from '../../i18n/resources'
 import { useConfirmAction } from '../../confirm/useConfirmAction'
 import { UnclearableNumberField } from '../shared/UnclearableNumberField'
 import { screenHeaderStyles } from '../shared/screenStyles'
+import { useUnsentChange } from '../shared/unsentChange'
 import { runningTaxYear } from '../../config/taxYear'
 import { CatalogScreen } from '../catalog/CatalogScreen'
 import { LoadingState, LoadFailedState } from '../shared/ScreenState'
@@ -322,13 +323,12 @@ function AcquisitionDate({ property, index, taxYear, onSend }: { readonly proper
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const [text, setText] = useState(isoDateToGerman(property.anschaffungsdatum ?? ''))
+  const unsent = useUnsentChange()
   function commit(value: string = text) {
-    if (value.trim() === '') {
-      if (property.anschaffungsdatum !== null) onSend(null)
-      return
-    }
-    const iso = germanDateToIso(value)
-    if (iso !== null && iso !== property.anschaffungsdatum) onSend(iso)
+    const iso = value.trim() === '' ? null : germanDateToIso(value)
+    // A date the app cannot read is not sent; an emptied field clears the stored one.
+    if (iso === null && value.trim() !== '') return
+    if (unsent(property.anschaffungsdatum ?? '', iso ?? '')) onSend(iso)
   }
   return (
     <Feld label={tr('vermietung.anschaffungsdatum')}>
@@ -477,13 +477,14 @@ function RepairsList({ property, index, taxYear, onSend }: { readonly property: 
   const [drafts, setDrafts] = useState<RepairDraft[]>(() => property.erhaltungsaufwand.map((r, i) => ({ key: i, betrag: String(r.betrag), datum: isoDateToGerman(r.datum ?? '') })))
   const [nextKey, setNextKey] = useState(property.erhaltungsaufwand.length)
   const stored = JSON.stringify(property.erhaltungsaufwand.map((r) => ({ betrag: r.betrag, datum: r.datum ?? null })))
+  const unsent = useUnsentChange()
 
   function commit(next: readonly RepairDraft[] = drafts) {
     // An amount the app cannot read is named at its row; the list is not sent without it — that would delete
     // the stored repair the user is correcting.
     if (next.some(repairUnreadable)) return
     const repairs = repairsOf(next)
-    if (JSON.stringify(repairs) !== stored) onSend(repairs)
+    if (unsent(stored, JSON.stringify(repairs))) onSend(repairs)
   }
   function update(key: number, patch: Partial<Omit<RepairDraft, 'key'>>) {
     setDrafts((list) => list.map((d) => (d.key === key ? { ...d, ...patch } : d)))

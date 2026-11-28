@@ -304,6 +304,9 @@ export class AdvisorTurn {
         reasoning: reasoning.length > 0 ? reasoning : null,
         usage: usageRecord,
       })
+      // A finished answer waits to be read until the user has the conversation open (again). A stopped or
+      // failed one is no answer to come back for.
+      if (status === 'complete') await this.advisorRepo.updateConversation(turn.conversationId, userId, { answeredAt: new Date() })
       this.logger.log(
         JSON.stringify({
           msg: 'advisor_turn',

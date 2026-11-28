@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { act, renderHook } from '@testing-library/react'
-import { owlAnswerArrived, resetOwlUnread, setOwlVisible, useOwlUnread } from './owlUnread'
+import { owlAnswerArrived, resetOwlUnread, setOwlVisible, useOwlUnread, useOwlVisible } from './owlUnread'
 
 afterEach(() => resetOwlUnread())
 
@@ -34,5 +34,14 @@ describe('an unread answer of the owl', () => {
     act(() => setOwlVisible(false))
     act(() => owlAnswerArrived())
     expect(result.current).toBe(true)
+  })
+
+  it('says whether the owl is in view, to whoever marks an answer as read', () => {
+    const { result } = renderHook(() => useOwlVisible())
+    expect(result.current).toBe(false)
+    act(() => setOwlVisible(true))
+    expect(result.current).toBe(true)
+    act(() => setOwlVisible(false))
+    expect(result.current).toBe(false)
   })
 })

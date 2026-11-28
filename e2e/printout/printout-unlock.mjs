@@ -86,6 +86,14 @@ async function main() {
     if (editableFile.suggestedFilename() !== `steuererklaerung-${YEAR}-bearbeitbar.pdf`) fail(`unexpected editable file name ${editableFile.suggestedFilename()}`)
     console.log(`[${TAG}] ✅ ausdruck-herunterladen-bearbeitbar — ${editableFile.suggestedFilename()}`)
 
+    // The summary alone: the same pages that lead the printout, without the Vordrucke, so a smaller file.
+    const summary = page.locator('[data-testid="ausdruck-herunterladen-zusammenfassung"]')
+    const [summaryFile] = await Promise.all([page.waitForEvent('download', { timeout: 30_000 }), summary.click()])
+    const summaryBytes = await readFile(await summaryFile.path())
+    if (summaryFile.suggestedFilename() !== `steuereule-zusammenfassung-${YEAR}.pdf`) fail(`unexpected summary file name ${summaryFile.suggestedFilename()}`)
+    if (summaryBytes.subarray(0, 5).toString('latin1') !== '%PDF-' || summaryBytes.length >= bytes.length) fail(`the summary should be a PDF smaller than the printout (${summaryBytes.length} of ${bytes.length} bytes)`)
+    console.log(`[${TAG}] ✅ ausdruck-herunterladen-zusammenfassung — ${summaryFile.suggestedFilename()}, ${summaryBytes.length} bytes`)
+
     // API-4: a refund takes the unlock back.
     const refund = await deliverFakePaymentEvent(api, apiOrigin, sessionId, { kind: 'erstattet' })
     if (!refund.ok()) fail(`the refund event must be accepted, got ${refund.status()}`)

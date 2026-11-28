@@ -123,6 +123,24 @@ export class PrintoutController {
     return Buffer.from(pdf)
   }
 
+  @Get(':jahr/ausdruck/zusammenfassung')
+  @RequiresAccount()
+  @AccountThrottle(SYNC_PRINTOUT_THROTTLE)
+  @ApiTooManyRequestsResponse({ description: 'Too many printouts for this account.' })
+  @ApiParam({ name: 'jahr', type: Number, example: 2025 })
+  @ApiProduces('application/pdf')
+  @ApiOkResponse({ description: 'The SteuerEule summary alone (ADR-0114): the result step by step and what the Vordrucke say, without the Vordrucke.' })
+  @ApiNotFoundResponse({ description: 'No measured templates exist for this tax year.' })
+  @ApiPaymentRequiredResponse({ description: 'The Ausdruck for this tax year is not unlocked (ADR-0050).' })
+  @ApiUnprocessableEntityResponse({ description: '`fehlend`: what the return still needs before it is printed.' })
+  @ApiUnauthorizedResponse({ description: 'Guest session — this endpoint requires a signed-in account.' })
+  async summary(@CurrentUser() userId: string, @Param('jahr', ParseTaxYearPipe) year: number, @Res({ passthrough: true }) reply: FastifyReply): Promise<Buffer> {
+    const pdf = await this.service.summary(userId, year)
+    reply.header('Content-Disposition', `attachment; filename="steuereule-zusammenfassung-${year}.pdf"`)
+    reply.type('application/pdf')
+    return Buffer.from(pdf)
+  }
+
   @Get(':jahr/ausdruck')
   @RequiresAccount()
   @AccountThrottle(SYNC_PRINTOUT_THROTTLE)

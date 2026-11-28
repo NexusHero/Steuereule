@@ -92,6 +92,16 @@ export const getPrintoutControllerGetJobMockHandler = (overrideResponse?: Printo
   }, options)
 }
 
+export const getPrintoutControllerSummaryMockHandler = (overrideResponse?: void | ((info: Parameters<HttpResponseResolver<{ jahr: string }>>[0]) => Promise<void> | void), options?: RequestHandlerOptions) => {
+  return http.get<{ jahr: string }>('*/v1/steuerjahre/:jahr/ausdruck/zusammenfassung', async (info: Parameters<HttpResponseResolver<{ jahr: string }>>[0]) => {
+  if (typeof overrideResponse === 'function') {await overrideResponse(info); }
+
+    return new HttpResponse(null,
+      { status: 200
+      })
+  }, options)
+}
+
 export const getPrintoutControllerPrintoutMockHandler = (overrideResponse?: void | ((info: Parameters<HttpResponseResolver<{ jahr: string }>>[0]) => Promise<void> | void), options?: RequestHandlerOptions) => {
   return http.get<{ jahr: string }>('*/v1/steuerjahre/:jahr/ausdruck', async (info: Parameters<HttpResponseResolver<{ jahr: string }>>[0]) => {
   if (typeof overrideResponse === 'function') {await overrideResponse(info); }
@@ -107,5 +117,6 @@ export const getSteuerEuleAPIMock = () => [
   getPrintoutControllerCheckoutMockHandler(),
   getPrintoutControllerExportAsyncMockHandler(),
   getPrintoutControllerGetJobMockHandler(),
+  getPrintoutControllerSummaryMockHandler(),
   getPrintoutControllerPrintoutMockHandler()
 ]

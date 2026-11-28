@@ -19,7 +19,7 @@ import { ErrorState, LoadingState } from '../shared/ScreenState'
 import { BetaNotice } from '../shared/BetaNotice'
 import { LegalLinks } from '../legal/LegalLinks'
 import { GlassFormPreview } from './GlassFormPreview'
-import { loadPrintout } from './printoutDownload'
+import { loadPrintout, loadPrintoutSummary } from './printoutDownload'
 import { checkoutRefusalOf, priceText, usePaymentConfirmation } from '../shared/usePaymentConfirmation'
 
 export interface PrintoutScreenProps {
@@ -137,11 +137,11 @@ export function PrintoutScreen({ year, payment, onBack, onCompleteDetails, onCom
     )
   }
 
-  async function download(editable = false) {
+  async function download(what: 'vordrucke' | 'bearbeitbar' | 'zusammenfassung' = 'vordrucke') {
     setLoading(true)
     setMessage(null)
     try {
-      const result = await loadPrintout(year, { editable })
+      const result = what === 'zusammenfassung' ? await loadPrintoutSummary(year) : await loadPrintout(year, { editable: what === 'bearbeitbar' })
       setMessage(result.ok ? { kind: 'ok', text: t('ausdruck.heruntergeladen') } : { kind: 'fehler', text: failureMessage(result.error, { validation: t('ausdruck.fehler'), unknown: t('ausdruck.fehler') }) })
       if (!result.ok && result.status === 422) void check.refetch()
     } catch (error) {
@@ -329,10 +329,14 @@ export function PrintoutScreen({ year, payment, onBack, onCompleteDetails, onCom
           <Button onPress={() => void download()} disabled={loading || locked} testID="ausdruck-herunterladen">
             {t('ausdruck.herunterladen')}
           </Button>
-          <Button variant="ghost" onPress={() => void download(true)} disabled={loading || locked} testID="ausdruck-herunterladen-bearbeitbar">
+          <Button variant="ghost" onPress={() => void download('bearbeitbar')} disabled={loading || locked} testID="ausdruck-herunterladen-bearbeitbar">
             {t('ausdruck.herunterladenBearbeitbar')}
           </Button>
           <Text style={styles.hint}>{t('ausdruck.bearbeitbarHinweis')}</Text>
+          <Button variant="ghost" onPress={() => void download('zusammenfassung')} disabled={loading || locked} testID="ausdruck-herunterladen-zusammenfassung">
+            {t('ausdruck.herunterladenZusammenfassung')}
+          </Button>
+          <Text style={styles.hint}>{t('ausdruck.zusammenfassungHinweis')}</Text>
         </>
       ) : null}
 

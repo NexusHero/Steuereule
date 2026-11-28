@@ -2434,6 +2434,97 @@ export const useAdvisorControllerDeleteConversation = <TError = void,
       return useMutation(getAdvisorControllerDeleteConversationMutationOptions(options), queryClient);
     }
 
+export type advisorControllerMarkConversationReadResponse200 = {
+  data: AdvisorConversationDto
+  status: 200
+}
+
+export type advisorControllerMarkConversationReadResponse404 = {
+  data: void
+  status: 404
+}
+
+export type advisorControllerMarkConversationReadResponseSuccess = (advisorControllerMarkConversationReadResponse200) & {
+  headers: Headers;
+};
+export type advisorControllerMarkConversationReadResponseError = (advisorControllerMarkConversationReadResponse404) & {
+  headers: Headers;
+};
+
+export const getAdvisorControllerMarkConversationReadUrl = (jahr: number,
+    conversationId: string,) => {
+
+
+
+
+  return `/v1/steuerjahre/${jahr}/advisor/conversations/${conversationId}/read`
+}
+
+/**
+ * @summary The user has this conversation open: its answers so far are read
+ */
+export const advisorControllerMarkConversationRead = async (jahr: number,
+    conversationId: string, options?: Parameters<typeof httpClient>[1]): Promise<advisorControllerMarkConversationReadResponseSuccess> => {
+
+  return httpClient<advisorControllerMarkConversationReadResponseSuccess>(getAdvisorControllerMarkConversationReadUrl(jahr,conversationId),
+  {
+    ...options,
+    method: 'PUT'
+
+
+  }
+);}
+
+
+
+
+
+export const getAdvisorControllerMarkConversationReadMutationKey = () => ['advisorControllerMarkConversationRead'] as const;
+
+export const getAdvisorControllerMarkConversationReadMutationOptions = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof advisorControllerMarkConversationRead>>, TError,AdvisorControllerMarkConversationReadMutationVariables, TContext>, request?: SecondParameter<typeof httpClient>}
+): UseMutationOptions<Awaited<ReturnType<typeof advisorControllerMarkConversationRead>>, TError,AdvisorControllerMarkConversationReadMutationVariables, TContext> => {
+
+const mutationKey = getAdvisorControllerMarkConversationReadMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof advisorControllerMarkConversationRead>>, AdvisorControllerMarkConversationReadMutationVariables> = (props) => {
+          const {jahr,conversationId} = props ?? {};
+
+          return  advisorControllerMarkConversationRead(jahr,conversationId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AdvisorControllerMarkConversationReadMutationResult = NonNullable<Awaited<ReturnType<typeof advisorControllerMarkConversationRead>>>
+
+    export type AdvisorControllerMarkConversationReadMutationError = void
+    export type AdvisorControllerMarkConversationReadMutationVariables = {jahr: number;conversationId: string}
+
+    /** @summary The user has this conversation open: its answers so far are read */
+export const useAdvisorControllerMarkConversationRead = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof advisorControllerMarkConversationRead>>, TError,AdvisorControllerMarkConversationReadMutationVariables, TContext>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof advisorControllerMarkConversationRead>>,
+        TError,
+        AdvisorControllerMarkConversationReadMutationVariables,
+        TContext
+      > => {
+      return useMutation(getAdvisorControllerMarkConversationReadMutationOptions(options), queryClient);
+    }
+
 export type advisorControllerSummarizeConversationResponse200 = {
   data: AdvisorContextDto
   status: 200

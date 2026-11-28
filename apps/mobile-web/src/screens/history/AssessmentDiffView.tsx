@@ -4,10 +4,11 @@ import { useTranslation } from 'react-i18next'
 import type { TFunction } from 'i18next'
 import { FLOW_CONTENT_MAX_WIDTH, useTheme, type UiTheme } from '@steuereule/ui'
 import type { AppealDeadlineDto, AssessmentDiffDto, AssessmentDiffRowDto, AssessmentLessonDto, AssessmentOwnDeviationDto } from '@steuereule/api-client'
-import { formatEuro, formatNumber, nextYearRepeat } from '@steuereule/core'
+import { formatEuro, formatNumber, nextYearRepeat, type AppealDraftPosition } from '@steuereule/core'
 import { APP_NS } from '../../i18n/resources'
 import { germanDate, signedEuro } from './historyFormat'
 import { usePositionLabel } from './positionLabels'
+import { AppealDraftCard } from './AppealDraftCard'
 
 export interface AssessmentDiffViewProps {
   readonly diff: AssessmentDiffDto
@@ -24,6 +25,15 @@ export interface AssessmentDiffViewProps {
   /** False on the year page, whose own title already names the year. */
   readonly yearInTitle?: boolean | undefined
   readonly testID?: string | undefined
+}
+
+/** The own deviations that cost refund, as the draft lists them. The label is the German one of the Bescheid: the letter is German. */
+export function appealPositions(own: readonly AssessmentOwnDeviationDto[]): AppealDraftPosition[] {
+  return own.flatMap((d) =>
+    d.refundEffect !== null && d.refundEffect < 0 && d.declared !== null && d.assessed !== null
+      ? [{ label: d.label, declared: d.declared, assessed: d.assessed, explanation: d.explanation ?? null }]
+      : [],
+  )
 }
 
 type Tone = 'bad' | 'good' | null
@@ -149,6 +159,10 @@ export function AssessmentDiffView({ diff, deadline, submittedOn, assessmentDate
                 </View>
               ))}
             </View>
+          ) : null}
+          {/* While the Einspruchsfrist runs: the letter for what the Bescheid took away, as a draft. */}
+          {deadline?.running && assessmentDate ? (
+            <AppealDraftCard taxYear={diff.year} assessmentDate={assessmentDate} positions={appealPositions(own)} testID={`${testID}-einspruch-entwurf`} />
           ) : null}
         </>
       )}

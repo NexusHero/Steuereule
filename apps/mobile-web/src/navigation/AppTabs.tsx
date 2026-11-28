@@ -18,7 +18,8 @@ import { OwlMark } from '../marks/OwlMark'
 import { useAccountSession } from '../auth/useAccountSession'
 import { ErrorState, LoadingState } from '../screens/shared/ScreenState'
 import { OwlModeScreen } from '../screens/advisor/OwlModeScreen'
-import { setOwlVisible, useOwlUnread } from '../screens/advisor/owlUnread'
+import { setOwlVisible, useOwlUnread, useOwlVisible } from '../screens/advisor/owlUnread'
+import { useOwlUnreadOnServer } from '../screens/advisor/owlUnreadOnServer'
 import { ReceiptsScreen } from '../screens/receipts/ReceiptsScreen'
 import { CockpitStack } from './CockpitStack'
 import { HistoryStack } from './HistoryStack'
@@ -106,7 +107,14 @@ function AppNavigation({ state, navigation, insets }: BottomTabBarProps) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const bp = useBreakpoint()
-  const owlUnread = useOwlUnread()
+  // An answer waits: one that arrived on this visit while the user was elsewhere, or one the server
+  // kept from before. On the owl's own screen the mark would point at where the user already is.
+  const arrivedOnThisVisit = useOwlUnread()
+  const owlVisible = useOwlVisible()
+  const { taxYear } = useShellState()
+  const { state: account } = useAccountSession()
+  const keptByServer = useOwlUnreadOnServer(taxYear, account.status === 'signed-in')
+  const owlUnread = !owlVisible && (arrivedOnThisVisit || keptByServer)
 
   const activeRouteName = (state.routes[state.index]?.name ?? 'Cockpit') as TabRouteName
   const form = navigationForm(bp, activeRouteName)

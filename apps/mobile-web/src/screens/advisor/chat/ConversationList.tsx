@@ -14,6 +14,8 @@ export interface ConversationSummary {
   readonly lastUsedAt: string
   /** An answer is being written in it right now, on this or another device. */
   readonly answering?: boolean | undefined
+  /** An answer finished here that the user has not seen (kept by the server). */
+  readonly unread?: boolean | undefined
 }
 
 /** A tax year with its conversations: the year is the project (#503). */
@@ -187,6 +189,10 @@ export function ConversationList({ conversations, activeId, canSwitch, onSelect,
                     <Text style={styles.answering} testID="eule-conversation-answering">
                       {tr('advisor.chat.conversations.answering')}
                     </Text>
+                  ) : conversation.unread === true && !active ? (
+                    <Text style={styles.unread} testID="eule-conversation-unread">
+                      {tr('advisor.chat.conversations.unread')}
+                    </Text>
                   ) : null}
                 </Pressable>
                 <Pressable
@@ -296,6 +302,7 @@ function makeStyles(t: UiTheme) {
       color: t.color.tinte,
     } as TextStyle,
     answering: { fontFamily: t.font.text, fontWeight: t.weight.fett, fontSize: t.size.xs, color: t.color.kiTinte } as TextStyle,
+    unread: { fontFamily: t.font.text, fontWeight: t.weight.fett, fontSize: t.size.xs, color: t.color.tinte } as TextStyle,
     confirm: { flexBasis: '100%', fontFamily: t.font.text, fontSize: t.size.s, color: t.color.tinte } as TextStyle,
   }
 }

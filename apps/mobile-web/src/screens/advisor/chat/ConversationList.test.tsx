@@ -24,6 +24,13 @@ describe('ConversationList (#481)', () => {
     expect(rows[1]!.textContent).toContain('Gespräch vom 15.01.2026')
   })
 
+  it('marks a conversation that holds an unread answer, but not the one that is open', () => {
+    renderList({ conversations: conversations.map((c) => ({ ...c, unread: true })) })
+    const marks = screen.getAllByTestId('eule-conversation-unread')
+    expect(marks).toHaveLength(1)
+    expect(screen.getAllByTestId('eule-conversation-row')[1]!.textContent).toContain('neu')
+  })
+
   it('opens another conversation, not the one already open', () => {
     const { onSelect } = renderList()
     const open = screen.getAllByTestId('eule-conversation-open')

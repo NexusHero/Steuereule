@@ -48,6 +48,15 @@ its Vordruck (`fill-in-lines.ts`, ADR-0101 §16).
 - The summary repeats personal data that is on the Vordrucke anyway (names, tax number, IBAN). It
   adds no data the printout did not already contain, except the estimate's figures.
 
+## Addendum: the summary on its own (27.11.2026)
+
+`GET /v1/steuerjahre/:jahr/ausdruck/zusammenfassung` returns the summary pages without the Vordrucke,
+for the user's files, a partner or an advisor. It goes through the same gate as the printout
+(`PrintoutService.paidAndComplete`): the year must be paid, nothing the printout needs may be missing,
+and a return held back for a partner's consent is refused. It is throttled and audited like the
+printout. It stays part of what is paid for, so the alternative rejected below is unchanged: there
+is no summary before payment.
+
 ## Alternatives considered
 
 - **HTML template rendered by the Playwright PDF renderer** (as the data export does): freer

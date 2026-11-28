@@ -591,6 +591,137 @@ export function usePrintoutControllerGetJob<TData = Awaited<ReturnType<typeof pr
 
 
 
+export type printoutControllerSummaryResponse200 = {
+  data: void
+  status: 200
+}
+
+export type printoutControllerSummaryResponse401 = {
+  data: void
+  status: 401
+}
+
+export type printoutControllerSummaryResponse402 = {
+  data: void
+  status: 402
+}
+
+export type printoutControllerSummaryResponse404 = {
+  data: void
+  status: 404
+}
+
+export type printoutControllerSummaryResponse422 = {
+  data: void
+  status: 422
+}
+
+export type printoutControllerSummaryResponse429 = {
+  data: void
+  status: 429
+}
+
+export type printoutControllerSummaryResponseSuccess = (printoutControllerSummaryResponse200) & {
+  headers: Headers;
+};
+export type printoutControllerSummaryResponseError = (printoutControllerSummaryResponse401 | printoutControllerSummaryResponse402 | printoutControllerSummaryResponse404 | printoutControllerSummaryResponse422 | printoutControllerSummaryResponse429) & {
+  headers: Headers;
+};
+
+export const getPrintoutControllerSummaryUrl = (jahr: number,) => {
+
+
+
+
+  return `/v1/steuerjahre/${jahr}/ausdruck/zusammenfassung`
+}
+
+export const printoutControllerSummary = async (jahr: number, options?: Parameters<typeof httpClient>[1]): Promise<printoutControllerSummaryResponseSuccess> => {
+
+  return httpClient<printoutControllerSummaryResponseSuccess>(getPrintoutControllerSummaryUrl(jahr),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getPrintoutControllerSummaryQueryKey = (jahr: number,) => {
+    return [
+    `/v1/steuerjahre/${jahr}/ausdruck/zusammenfassung`
+    ] as const;
+    }
+
+
+export const getPrintoutControllerSummaryQueryOptions = <TData = Awaited<ReturnType<typeof printoutControllerSummary>>, TError = void>(jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof printoutControllerSummary>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getPrintoutControllerSummaryQueryKey(jahr);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof printoutControllerSummary>>> = ({ signal }) => printoutControllerSummary(jahr, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: jahr !== null && jahr !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof printoutControllerSummary>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type PrintoutControllerSummaryQueryResult = NonNullable<Awaited<ReturnType<typeof printoutControllerSummary>>>
+export type PrintoutControllerSummaryQueryError = void
+
+
+export function usePrintoutControllerSummary<TData = Awaited<ReturnType<typeof printoutControllerSummary>>, TError = void>(
+ jahr: number, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof printoutControllerSummary>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof printoutControllerSummary>>,
+          TError,
+          Awaited<ReturnType<typeof printoutControllerSummary>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function usePrintoutControllerSummary<TData = Awaited<ReturnType<typeof printoutControllerSummary>>, TError = void>(
+ jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof printoutControllerSummary>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof printoutControllerSummary>>,
+          TError,
+          Awaited<ReturnType<typeof printoutControllerSummary>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function usePrintoutControllerSummary<TData = Awaited<ReturnType<typeof printoutControllerSummary>>, TError = void>(
+ jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof printoutControllerSummary>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function usePrintoutControllerSummary<TData = Awaited<ReturnType<typeof printoutControllerSummary>>, TError = void>(
+ jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof printoutControllerSummary>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getPrintoutControllerSummaryQueryOptions(jahr,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
 export type printoutControllerPrintoutResponse200 = {
   data: void
   status: 200

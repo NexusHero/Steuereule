@@ -75,6 +75,13 @@ export class AdvisorConversations {
     return toConversationDto(updated ?? conversation)
   }
 
+  /** The user has the conversation open: what the owl answered there so far counts as read. */
+  async markRead(userId: string, taxYear: number, conversationId: string): Promise<AdvisorConversationDto> {
+    const conversation = await this.conversationFor(userId, taxYear, conversationId)
+    const updated = await this.advisorRepo.updateConversation(conversation.id, userId, { readAt: new Date() })
+    return toConversationDto(updated ?? conversation)
+  }
+
   /** Picks the chat model of a conversation (ADR-0096); null goes back to the standard model. */
   async setChatModel(userId: string, taxYear: number, conversationId: string, choice: { readonly provider: string; readonly model: string } | null): Promise<AdvisorConversationDto> {
     const conversation = await this.conversationFor(userId, taxYear, conversationId)

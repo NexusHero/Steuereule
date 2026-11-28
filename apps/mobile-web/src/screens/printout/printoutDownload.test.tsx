@@ -2,7 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { http, HttpResponse } from 'msw'
 import { server } from '../../../test/test-msw-server'
-import { loadPrintout } from './printoutDownload'
+import { loadPrintout, loadPrintoutSummary } from './printoutDownload'
 
 const { download } = vi.hoisted(() => ({ download: vi.fn() }))
 vi.mock('../privacy/exportDownload', () => ({ triggerBrowserDownload: download }))
@@ -49,5 +49,21 @@ describe('loadPrintout', () => {
   it('does not read the body of any other failure', async () => {
     server.use(http.get('*/v1/steuerjahre/2025/ausdruck', () => HttpResponse.json({ missing: ['x'] }, { status: 500 })))
     expect(await loadPrintout(2025)).toMatchObject({ ok: false, status: 500 })
+  })
+})
+
+describe('loadPrintoutSummary', () => {
+  it('downloads the summary alone under its own name', async () => {
+    server.use(http.get('*/v1/steuerjahre/2025/ausdruck/zusammenfassung', () => PDF()))
+    expect(await loadPrintoutSummary(2025)).toEqual({ ok: true, status: 200 })
+    expect(download).toHaveBeenCalledWith(expect.any(Blob), 'steuereule-zusammenfassung-2025.pdf')
+  })
+
+  it('reports the same refusals as the printout: what is missing, or that the year is not paid', async () => {
+    server.use(http.get('*/v1/steuerjahre/2025/ausdruck/zusammenfassung', () => HttpResponse.json({ missing: ['iban'] }, { status: 422 })))
+    expect(await loadPrintoutSummary(2025)).toMatchObject({ ok: false, status: 422, missing: ['iban'] })
+    server.use(http.get('*/v1/steuerjahre/2025/ausdruck/zusammenfassung', () => HttpResponse.json({ message: 'nicht freigeschaltet' }, { status: 402 })))
+    expect(await loadPrintoutSummary(2025)).toMatchObject({ ok: false, status: 402 })
+    expect(download).not.toHaveBeenCalled()
   })
 })

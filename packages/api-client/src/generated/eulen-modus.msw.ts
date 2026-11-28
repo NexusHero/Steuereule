@@ -29,6 +29,7 @@ import {
   getAdvisorControllerListConversationsResponseMock,
   getAdvisorControllerListModelsResponseMock,
   getAdvisorControllerListNotesResponseMock,
+  getAdvisorControllerMarkConversationReadResponseMock,
   getAdvisorControllerOpeningResponseMock,
   getAdvisorControllerRenameConversationResponseMock,
   getAdvisorControllerSaveSituationResponseMock,
@@ -86,7 +87,7 @@ import type {
   StopAdvisorRunResponseDto
 } from './eulen-modus.schemas';
 
-export { getReceiptParseControllerParseReceiptResponseMock, getReceiptParseControllerReassignResponseMock, getAdvisorControllerListModelsResponseMock, getAdvisorControllerSetConversationModelResponseMock, getAdvisorControllerGetSessionResponseMock, getAdvisorControllerClearConversationResponseMock, getAdvisorControllerSendMessageResponseMock, getAdvisorControllerStreamMessageResponseMock, getAdvisorControllerStopRunResponseMock, getAdvisorControllerConnectionResponseMock, getAdvisorControllerOpeningResponseMock, getAdvisorControllerSearchResponseMock, getAdvisorControllerSaveSituationResponseMock, getAdvisorControllerListNotesResponseMock, getAdvisorControllerCreateNoteResponseMock, getAdvisorControllerUpdateNoteResponseMock, getAdvisorControllerDeleteNoteResponseMock, getAdvisorControllerUndoNoteChangeResponseMock, getAdvisorControllerListConversationsResponseMock, getAdvisorControllerCreateConversationResponseMock, getAdvisorControllerRenameConversationResponseMock, getAdvisorControllerDeleteConversationResponseMock, getAdvisorControllerSummarizeConversationResponseMock, getAdvisorControllerSetFeedbackResponseMock, getAdvisorControllerApplyBatchResponseMock, getAdvisorControllerApplyActionResponseMock, getAdvisorControllerUndoActionResponseMock, getAdvisorControllerDismissActionResponseMock, getOwlModeControllerGetPersonalDataConsentResponseMock, getOwlModeControllerSetPersonalDataConsentResponseMock, getOwlModeControllerGetSettingResponseMock, getOwlModeControllerSetSettingResponseMock, getOwlModeControllerGetCardsResponseMock } from './eulen-modus.faker';
+export { getReceiptParseControllerParseReceiptResponseMock, getReceiptParseControllerReassignResponseMock, getAdvisorControllerListModelsResponseMock, getAdvisorControllerSetConversationModelResponseMock, getAdvisorControllerGetSessionResponseMock, getAdvisorControllerClearConversationResponseMock, getAdvisorControllerSendMessageResponseMock, getAdvisorControllerStreamMessageResponseMock, getAdvisorControllerStopRunResponseMock, getAdvisorControllerConnectionResponseMock, getAdvisorControllerOpeningResponseMock, getAdvisorControllerSearchResponseMock, getAdvisorControllerSaveSituationResponseMock, getAdvisorControllerListNotesResponseMock, getAdvisorControllerCreateNoteResponseMock, getAdvisorControllerUpdateNoteResponseMock, getAdvisorControllerDeleteNoteResponseMock, getAdvisorControllerUndoNoteChangeResponseMock, getAdvisorControllerListConversationsResponseMock, getAdvisorControllerCreateConversationResponseMock, getAdvisorControllerRenameConversationResponseMock, getAdvisorControllerDeleteConversationResponseMock, getAdvisorControllerMarkConversationReadResponseMock, getAdvisorControllerSummarizeConversationResponseMock, getAdvisorControllerSetFeedbackResponseMock, getAdvisorControllerApplyBatchResponseMock, getAdvisorControllerApplyActionResponseMock, getAdvisorControllerUndoActionResponseMock, getAdvisorControllerDismissActionResponseMock, getOwlModeControllerGetPersonalDataConsentResponseMock, getOwlModeControllerSetPersonalDataConsentResponseMock, getOwlModeControllerGetSettingResponseMock, getOwlModeControllerSetSettingResponseMock, getOwlModeControllerGetCardsResponseMock } from './eulen-modus.faker';
 
 
 export const getReceiptParseControllerParseReceiptMockHandler = (overrideResponse?: ParseReceiptResponseDto | ((info: Parameters<HttpResponseResolver<PathParams, ParseReceiptDto>>[0]) => Promise<ParseReceiptResponseDto> | ParseReceiptResponseDto), options?: RequestHandlerOptions) => {
@@ -363,6 +364,18 @@ export const getAdvisorControllerDeleteConversationMockHandler = (overrideRespon
   }, options)
 }
 
+export const getAdvisorControllerMarkConversationReadMockHandler = (overrideResponse?: AdvisorConversationDto | ((info: Parameters<HttpResponseResolver<{ jahr: string; conversationId: string }>>[0]) => Promise<AdvisorConversationDto> | AdvisorConversationDto), options?: RequestHandlerOptions) => {
+  return http.put<{ jahr: string; conversationId: string }>('*/v1/steuerjahre/:jahr/advisor/conversations/:conversationId/read', async (info: Parameters<HttpResponseResolver<{ jahr: string; conversationId: string }>>[0]) => {
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getAdvisorControllerMarkConversationReadResponseMock(),
+      { status: 200
+      })
+  }, options)
+}
+
 export const getAdvisorControllerSummarizeConversationMockHandler = (overrideResponse?: AdvisorContextDto | ((info: Parameters<HttpResponseResolver<{ jahr: string; conversationId: string }>>[0]) => Promise<AdvisorContextDto> | AdvisorContextDto), options?: RequestHandlerOptions) => {
   return http.post<{ jahr: string; conversationId: string }>('*/v1/steuerjahre/:jahr/advisor/conversations/:conversationId/summarize', async (info: Parameters<HttpResponseResolver<{ jahr: string; conversationId: string }>>[0]) => {
 
@@ -528,6 +541,7 @@ export const getSteuerEuleAPIMock = () => [
   getAdvisorControllerCreateConversationMockHandler(),
   getAdvisorControllerRenameConversationMockHandler(),
   getAdvisorControllerDeleteConversationMockHandler(),
+  getAdvisorControllerMarkConversationReadMockHandler(),
   getAdvisorControllerSummarizeConversationMockHandler(),
   getAdvisorControllerSetFeedbackMockHandler(),
   getAdvisorControllerApplyBatchMockHandler(),

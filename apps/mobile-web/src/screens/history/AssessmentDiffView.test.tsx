@@ -7,7 +7,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen, within } from '@testing-library/react'
 import { renderInApp } from '../../../test/test-render'
 import { DIFF_2024, HISTORY_DIFFS, LESSONS_2024 } from '../../../test/test-history-fixture'
-import { AssessmentDiffView } from './AssessmentDiffView'
+import { AssessmentDiffView, appealPositions } from './AssessmentDiffView'
 
 const text = (id: string) => (screen.getByTestId(id).textContent ?? '').replace(/ /g, ' ')
 const label = (el: Element) => (el.getAttribute('aria-label') ?? '').replace(/\u00A0/g, ' ')
@@ -240,13 +240,46 @@ describe('AssessmentDiffView — budget on a phone (the mock’s 2024)', () => {
     // Values, reasons and dates wait behind a tap.
     expect(all).not.toMatch(/1\.080|1\.260|180 statt|wieder|Eingereicht am/)
     expect(all).not.toMatch(/steht noch aus|Erscheint|Positionen geändert|Änderung/)
-    // Two rows, the deadline, the info icon and the footer row: nothing else to tap.
-    expect(screen.getAllByRole('button')).toHaveLength(5)
+    // Two rows, the deadline, the info icon, the footer row and, while the deadline runs, the closed draft.
+    expect(screen.getAllByRole('button')).toHaveLength(6)
   })
 
   it('keeps the same one line on a wide screen: the reason stays behind the tap there too', () => {
     setViewportWidth(1280)
     renderYearPage2024()
     expect(readable(screen.getByTestId('abgleich-zeile-homeofficeA')).trim()).toBe('− Homeoffice-Pauschale ⚠ 56 €')
+  })
+})
+
+describe('AssessmentDiffView — the objection draft', () => {
+  it('offers the letter while the deadline runs, closed, and opens it with what the Bescheid took away', () => {
+    renderYearPage2024()
+    expect(screen.queryByTestId('abgleich-einspruch-entwurf-text')).toBeNull()
+    fireEvent.click(screen.getByTestId('abgleich-einspruch-entwurf-umschalten'))
+    const letter = text('abgleich-einspruch-entwurf-text')
+    expect(letter).toContain('Einspruch gegen den Einkommensteuerbescheid 2024 vom')
+    for (const position of appealPositions(HISTORY_DIFFS[0]!.diff.ownDeviations)) expect(letter).toContain(`- ${position.label}: erklärt`)
+    expect(letter).toContain('[Steuernummer]')
+    expect(text('abgleich-einspruch-entwurf')).toContain('keine Rechtsberatung')
+  })
+
+  it('lists only what cost refund and has both figures', () => {
+    const [home, work] = DIFF_2024.ownDeviations
+    const positions = appealPositions([{ ...home!, refundEffect: -20 }, { ...work!, refundEffect: 15 }, { ...work!, refundEffect: null }, { ...home!, refundEffect: -5, assessed: null }])
+    expect(positions).toEqual([{ label: home!.label, declared: home!.declared, assessed: home!.assessed, explanation: home!.explanation ?? null }])
+  })
+
+  it('offers no draft once the deadline has passed, without a Bescheid date, or when nothing cost refund', () => {
+    const d = HISTORY_DIFFS[0]!
+    const gain = { ...DIFF_2024, ownDeviations: DIFF_2024.ownDeviations.map((o) => ({ ...o, refundEffect: 10 })) }
+    for (const props of [
+      { diff: d.diff, deadline: { ...RUNNING, running: false, remainingDays: -3 }, assessmentDate: d.assessmentDate },
+      { diff: d.diff, deadline: RUNNING, assessmentDate: null },
+      { diff: gain, deadline: RUNNING, assessmentDate: d.assessmentDate },
+    ]) {
+      const view = renderInApp(<AssessmentDiffView {...props} testID="ohne" />)
+      expect(screen.queryByTestId('ohne-einspruch-entwurf')).toBeNull()
+      view.unmount()
+    }
   })
 })

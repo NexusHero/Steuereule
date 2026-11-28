@@ -6657,6 +6657,45 @@
         ]
       }
     },
+    "/v1/steuerjahre/{jahr}/ausdruck/zusammenfassung": {
+      "get": {
+        "operationId": "PrintoutController_summary",
+        "parameters": [
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The SteuerEule summary alone (ADR-0114): the result step by step and what the Vordrucke say, without the Vordrucke."
+          },
+          "401": {
+            "description": "Guest session — this endpoint requires a signed-in account."
+          },
+          "402": {
+            "description": "The Ausdruck for this tax year is not unlocked (ADR-0050)."
+          },
+          "404": {
+            "description": "No measured templates exist for this tax year."
+          },
+          "422": {
+            "description": "`fehlend`: what the return still needs before it is printed."
+          },
+          "429": {
+            "description": "Too many printouts for this account."
+          }
+        },
+        "tags": [
+          "ausdruck"
+        ]
+      }
+    },
     "/v1/steuerjahre/{jahr}/ausdruck": {
       "get": {
         "operationId": "PrintoutController_printout",
@@ -7907,6 +7946,49 @@
           }
         },
         "summary": "Delete a conversation with its messages; values already applied to the return stay",
+        "tags": [
+          "eulen-modus"
+        ]
+      }
+    },
+    "/v1/steuerjahre/{jahr}/advisor/conversations/{conversationId}/read": {
+      "put": {
+        "operationId": "AdvisorController_markConversationRead",
+        "parameters": [
+          {
+            "name": "conversationId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdvisorConversationDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such conversation in this tax year."
+          }
+        },
+        "summary": "The user has this conversation open: its answers so far are read",
         "tags": [
           "eulen-modus"
         ]
@@ -21020,6 +21102,10 @@
           "answering": {
             "type": "boolean",
             "description": "An answer is being written in this conversation right now; several conversations can answer at the same time (#503)."
+          },
+          "unread": {
+            "type": "boolean",
+            "description": "An answer finished here after the user last had the conversation open: unread, on every device and after a reload."
           }
         },
         "required": [
@@ -21028,7 +21114,8 @@
           "title",
           "createdAt",
           "lastUsedAt",
-          "answering"
+          "answering",
+          "unread"
         ]
       },
       "OwlPathDto": {

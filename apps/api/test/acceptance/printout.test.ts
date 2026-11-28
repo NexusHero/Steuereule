@@ -96,6 +96,32 @@ describe('Formular-Ausdruck (ADR-0050), against the real server', () => {
     expect(form.getTextField('est1a.idnr').getText()).toMatch(/^\d{11}$/)
   })
 
+  it('the summary alone: the pages that lead the printout and no Vordruck, behind the same gates, audited', async () => {
+    const { cookie, userId } = await signUp('ausdruck-zusammenfassung@example.com')
+    const url = `${baseUrl}/v1/steuerjahre/2025/ausdruck/zusammenfassung`
+    await put(cookie, '/v1/profile', { firstName: 'Anna', lastName: 'Beispiel' })
+    await pay(userId)
+    // Paid but incomplete: refused like the printout, so a held-back return shows nothing here either.
+    expect((await fetch(url, { headers: { cookie } })).status).toBe(422)
+    await complete(cookie)
+
+    const response = await fetch(url, { headers: { cookie } })
+    expect(response.status).toBe(200)
+    expect(response.headers.get('content-type')).toContain('application/pdf')
+    expect(response.headers.get('content-disposition')).toContain('steuereule-zusammenfassung-2025.pdf')
+    const pdf = await PDFDocument.load(new Uint8Array(await response.arrayBuffer()))
+    expect(summaryPageCount(pdf)).toBe(pdf.getPageCount())
+    expect(formPageCount(pdf)).toBe(0)
+    expect(await prisma.taxDataAccessLog.count({ where: { userId, resource: 'ausdruck' } })).toBe(1)
+  })
+
+  it('the summary alone is not written for an unpaid year, nor for a guest', async () => {
+    const { cookie } = await signUp('ausdruck-zusammenfassung-unbezahlt@example.com')
+    await complete(cookie)
+    expect((await fetch(`${baseUrl}/v1/steuerjahre/2025/ausdruck/zusammenfassung`, { headers: { cookie } })).status).toBe(402)
+    expect((await fetch(`${baseUrl}/v1/steuerjahre/2025/ausdruck/zusammenfassung`)).status).toBe(401)
+  })
+
   it('unpaid: 402, nothing rendered', async () => {
     const { cookie } = await signUp('ausdruck-unbezahlt@example.com')
     await complete(cookie)

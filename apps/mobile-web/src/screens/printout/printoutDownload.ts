@@ -21,3 +21,15 @@ export async function loadPrintout(year: number, { editable = false }: { editabl
   triggerBrowserDownload(await response.blob(), `steuererklaerung-${year}${editable ? '-bearbeitbar' : ''}.pdf`)
   return { ok: true, status: response.status }
 }
+
+/** The SteuerEule summary alone, without the Vordrucke: the same gate as the printout, so the same refusals. */
+export async function loadPrintoutSummary(year: number): Promise<PrintoutResult> {
+  const response = await apiFetch(`${getApiClientBaseUrl()}/v1/steuerjahre/${year}/ausdruck/zusammenfassung`, { credentials: 'include' })
+  if (!response.ok) {
+    const body = (await response.json().catch(() => ({}))) as { missing?: string[] }
+    const missing = response.status === 422 ? body.missing : undefined
+    return { ok: false, status: response.status, ...(missing ? { missing } : {}), error: new ApiError(response.status, body, response.headers) }
+  }
+  triggerBrowserDownload(await response.blob(), `steuereule-zusammenfassung-${year}.pdf`)
+  return { ok: true, status: response.status }
+}
