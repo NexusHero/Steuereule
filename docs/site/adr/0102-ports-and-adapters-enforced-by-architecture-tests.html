@@ -1,0 +1,267 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>ADR-0102 — Ports &amp; Adapters: two architecture tests enforce the boundaries — SteuerEule</title>
+  <link rel="icon" href="../../../images/steuereule-logo.svg">
+  <link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+  <a class="skip" href="#content">Skip to the content</a>
+  <div class="shell">
+    <aside class="rail">
+      <a class="brand" href="../index.html">
+        <img src="../../../images/steuereule-logo.svg" width="36" height="36" alt="">
+        <span><strong>SteuerEule</strong><span class="eyebrow">Architecture</span></span>
+      </a>
+      <details class="menu" open>
+        <summary>Contents</summary>
+        <nav class="nav" aria-label="Site">
+        <p class="eyebrow">arc42</p>
+        <ul><li><a class="nav-item" href="../index.html"><span>Overview</span></a></li><li><a class="nav-item" href="../01-introduction-and-goals.html"><span class="nav-number">01</span><span>Introduction and goals</span></a></li><li><a class="nav-item" href="../02-constraints.html"><span class="nav-number">02</span><span>Constraints</span></a></li><li><a class="nav-item" href="../03-context-and-scope.html"><span class="nav-number">03</span><span>Context and scope</span></a></li><li><a class="nav-item" href="../04-solution-strategy.html"><span class="nav-number">04</span><span>Solution strategy</span></a></li><li><a class="nav-item" href="../05-building-block-view.html"><span class="nav-number">05</span><span>Building block view</span></a></li><li><a class="nav-item" href="../06-runtime-view.html"><span class="nav-number">06</span><span>Runtime view</span></a></li><li><a class="nav-item" href="../07-deployment-view.html"><span class="nav-number">07</span><span>Deployment view</span></a></li><li><a class="nav-item" href="../08-cross-cutting-concepts.html"><span class="nav-number">08</span><span>Cross-cutting concepts</span></a></li><li><a class="nav-item" href="../09-architecture-decisions.html"><span class="nav-number">09</span><span>Architecture decisions</span></a></li><li><a class="nav-item" href="../10-quality-and-tests.html"><span class="nav-number">10</span><span>Quality and tests</span></a></li><li><a class="nav-item" href="../11-risks-and-technical-debt.html"><span class="nav-number">11</span><span>Risks and technical debt</span></a></li><li><a class="nav-item" href="../12-glossary.html"><span class="nav-number">12</span><span>Glossary</span></a></li></ul>
+        <p class="eyebrow">Companion</p>
+        <ul><li><a class="nav-item" href="../subsystems.html"><span>Backend modules from the inside</span></a></li></ul>
+        <p class="eyebrow">Library</p>
+        <ul><li><a class="nav-item is-active" href="../decisions.html" aria-current="page"><span>Decisions</span></a></li><li><a class="nav-item" href="../documents.html"><span>Documents</span></a></li></ul>
+      </nav>
+      </details>
+      <p class="rail-foot">Architecture as of 2026-11-22<br>Built from the Markdown under <code>docs/</code></p>
+    </aside>
+    <main id="content" class="content">
+      <header class="page-head">
+        <p class="eyebrow">Decision · ADR-0102</p>
+        <h1>Ports &amp; Adapters: two architecture tests enforce the boundaries <span class="status status-ok">Accepted</span></h1>
+        <ul class="chips" aria-label="On this page"><li><a class="chip" href="#context">Context</a></li><li><a class="chip" href="#goals">Goals</a></li><li><a class="chip" href="#non-goals">Non-goals</a></li><li><a class="chip" href="#decision">Decision</a></li><li><a class="chip" href="#alternatives-considered">Alternatives considered</a></li><li><a class="chip" href="#consequences">Consequences</a></li><li><a class="chip" href="#known-limits">Known limits</a></li><li><a class="chip" href="#proof-adr-0021">Proof (ADR-0021)</a></li><li><a class="chip" href="#update-2026-11-23-the-core-cycles-are-gone">Update 2026-11-23: the core cycles are gone</a></li><li><a class="chip" href="#update-2026-11-25-module-cycles-in-the-api-are-measured">Update 2026-11-25: module cycles in the API are measured</a></li><li><a class="chip" href="#update-2026-11-28-llm-and-run-log-are-modules-of-their-own">Update 2026-11-28: <code>llm/</code> and <code>run-log/</code> are modules of their own</a></li></ul>
+      </header>
+      <article class="prose">
+<ul>
+<li><strong>Status:</strong> Accepted</li>
+<li><strong>Date:</strong> 2026-11-22</li>
+<li><strong>Deciders:</strong> NexusHero (Product Owner), SteuerEule Engineering</li>
+<li><strong>Applies to:</strong> <code>apps/api/test/architecture.test.ts</code>, <code>apps/api/test/architecture-module-edges.json</code>, <code>packages/core/src/architecture.test.ts</code>, <code>apps/api/src/llm/single-shot-model.ts</code>, <code>apps/api/src/auth/bearer-token.repository*.ts</code>, <code>apps/api/src/common/transaction-runner.ts</code>, <code>docs/architecture.md</code> §4.1</li>
+<li><strong>Builds on:</strong> ADR-0038 (deterministic core and KI port), ADR-0008 (field encryption), ADR-0021 (a control is proven by breaking it), ADR-0052 (assistant access over OAuth)</li>
+</ul>
+<h2 id="context"><a class="anchor" href="#context" aria-hidden="true" tabindex="-1">#</a>Context</h2>
+<p>SteuerEule is built as Ports &amp; Adapters (hexagonal architecture): a calculation core <code>@steuereule/core</code> without npm dependencies, application services in <code>apps/api</code>, and adapters at their edge for HTTP, the database, language models, payment and mail. Little of that was enforced. An audit on 2026-11-22 and an independent review of the first draft of this decision found:</p>
+<ol>
+<li><strong>SDK imports in feature code.</strong> Three document parsers and the owl&#39;s topic guard imported LangChain types. <code>auth/user-context.guard.ts</code> read three OAuth tables directly through <code>PrismaService</code>.</li>
+<li><strong>Ports that depended on their adapter.</strong> <code>account-deletion.repository.ts</code> imported its result type from the Prisma adapter. The <code>TransactionRunner</code> port shared a file with its Prisma implementation in <code>prisma/transaction.ts</code>, and <code>mcp-report.service.ts</code> asked <code>instanceof PrismaTransactionRunner</code>.</li>
+<li><strong>A core test that checked less than it claimed.</strong> <code>packages/core/src/architecture.test.ts</code> did not read folders recursively, so it never saw <code>domains/business/**</code> or <code>domains/ledger/**</code>. The documentation called the folders an acyclic stack <code>interview → domains → engine → math</code>. Measured, there are two folder-level cycles: <code>engine ↔ domains</code> and <code>domains ↔ interview</code>.</li>
+<li><strong>No statement about coupling between feature modules.</strong> 352 module-to-module edges between 50 folders, 16 pairs importing each other. Nothing stopped edge 353.</li>
+</ol>
+<p>None of these was a bug in behaviour. Each makes the next one cheaper, and review finds such breaches only by chance.</p>
+<h2 id="goals"><a class="anchor" href="#goals" aria-hidden="true" tabindex="-1">#</a>Goals</h2>
+<ul>
+<li>A feature module in <code>apps/api</code> cannot import the database client or an external SDK without <code>pnpm test</code> failing. That includes the detours through <code>src/prisma/**</code> and through adapter classes.</li>
+<li>Every exception is one row of a table in the test, visible in review. An exception nobody needs any more fails the test too.</li>
+<li>New coupling between feature modules and new backward imports in the core are a visible decision, not a side effect.</li>
+<li>No new tool, no runtime cost.</li>
+</ul>
+<h2 id="non-goals"><a class="anchor" href="#non-goals" aria-hidden="true" tabindex="-1">#</a>Non-goals</h2>
+<ul>
+<li><strong>Reducing the existing coupling.</strong> The 352 edges and the two folder cycles in the core stay. They are now measured and can only shrink.</li>
+<li><strong>Constraining tests.</strong> The rules apply to <code>apps/api/src/**</code> and <code>packages/core/src/**</code> without test files. Tests may build adapters and SDKs directly.</li>
+<li><strong><code>apps/mobile-web</code>.</strong> The web app has no equivalent check.</li>
+</ul>
+<h2 id="decision"><a class="anchor" href="#decision" aria-hidden="true" tabindex="-1">#</a>Decision</h2>
+<h3 id="1-sdk-boundaries-as-a-table-in-appsapitestarchitecturetestts"><a class="anchor" href="#1-sdk-boundaries-as-a-table-in-appsapitestarchitecturetestts" aria-hidden="true" tabindex="-1">#</a>1. SDK boundaries as a table in <code>apps/api/test/architecture.test.ts</code></h3>
+<p>The test reads every static and dynamic import under <code>apps/api/src</code> and checks it against a table. Each row names an SDK and the files that may import it:</p>
+<div class="table"><table>
+<thead>
+<tr>
+<th>Boundary</th>
+<th>What belongs to it</th>
+<th>Allowed in</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Database client</td>
+<td><code>@prisma/*</code>, <code>@prisma-keystore/*</code>, <code>prisma-field-encryption</code>, <code>@better-auth/prisma-adapter</code>, everything under <code>src/prisma/</code> except <code>prisma.module.ts</code></td>
+<td><code>*.prisma.ts</code>, <code>prisma/</code>, and seven infrastructure files listed by name</td>
+</tr>
+<tr>
+<td>Prisma adapters</td>
+<td>every <code>*.prisma.ts</code> file</td>
+<td><code>*.module.ts</code> (binds a port to its adapter), <code>*.prisma.ts</code>, <code>auth/better-auth.ts</code></td>
+</tr>
+<tr>
+<td>LangChain</td>
+<td><code>@langchain/*</code></td>
+<td>nine files in <code>ki/</code> and <code>llm/</code>, listed by name</td>
+</tr>
+<tr>
+<td>Stripe</td>
+<td><code>stripe</code></td>
+<td><code>unlock/stripe-payment-provider.ts</code></td>
+</tr>
+<tr>
+<td>nodemailer</td>
+<td><code>nodemailer</code></td>
+<td><code>auth/smtp-email-sender.ts</code></td>
+</tr>
+<tr>
+<td>better-auth</td>
+<td><code>better-auth</code>, <code>@better-auth/*</code></td>
+<td><code>auth/</code>, <code>device/</code></td>
+</tr>
+<tr>
+<td>MCP SDK</td>
+<td><code>@modelcontextprotocol/*</code></td>
+<td><code>mcp/</code></td>
+</tr>
+<tr>
+<td>Redis client</td>
+<td><code>ioredis</code></td>
+<td><code>run-log/run-log.redis.ts</code>, <code>advisor/run/advisor-run-log.redis.ts</code>, <code>advisor/advisor.module.ts</code></td>
+</tr>
+<tr>
+<td>Playwright</td>
+<td><code>playwright-core</code></td>
+<td><code>account/export/pdf-renderer.playwright.ts</code></td>
+</tr>
+<tr>
+<td>pdf-lib</td>
+<td><code>pdf-lib</code></td>
+<td><code>printout/form-renderer.ts</code></td>
+</tr>
+<tr>
+<td>OpenTelemetry</td>
+<td><code>@opentelemetry/*</code></td>
+<td><code>telemetry/</code></td>
+</tr>
+<tr>
+<td>Child processes</td>
+<td><code>node:child_process</code></td>
+<td><code>business/elster-transmission.ts</code></td>
+</tr>
+</tbody></table></div>
+<p>Three properties of the table:</p>
+<ul>
+<li><strong>Each boundary is checked on its own.</strong> A file that touches two boundaries needs permission in both. <code>auth/guest-account-upgrade.prisma.ts</code> is one: a Prisma adapter and a better-auth hook at once.</li>
+<li><strong>Named exceptions expire.</strong> If a file is listed but no longer imports the SDK, the test fails. The list cannot go stale.</li>
+<li><strong>LangChain is confined to named files, not to a directory.</strong> A new file in <code>ki/</code> may import LangChain only once it is in the table. The ports in <code>ki/</code> (<code>single-shot-model.ts</code>, <code>advisor-engine.token.ts</code>) are not.</li>
+</ul>
+<h3 id="2-module-coupling-as-a-ratchet"><a class="anchor" href="#2-module-coupling-as-a-ratchet" aria-hidden="true" tabindex="-1">#</a>2. Module coupling as a ratchet</h3>
+<p>The same test computes every <em>module → module</em> edge (a module is a folder directly under <code>src</code>) and compares the set with <code>apps/api/test/architecture-module-edges.json</code>. A difference in either direction fails: a new edge has to be added to the baseline on purpose, a removed one has to be struck. <code>UPDATE_ARCHITECTURE_BASELINE=1</code> rewrites the file.</p>
+<h3 id="3-the-core-test-checks-what-actually-holds"><a class="anchor" href="#3-the-core-test-checks-what-actually-holds" aria-hidden="true" tabindex="-1">#</a>3. The core test checks what actually holds</h3>
+<p><code>packages/core/src/architecture.test.ts</code> now reads recursively and checks three things:</p>
+<ul>
+<li><strong>Allowed directions</strong> between the five folders, as they exist today. <code>math</code> imports nothing, <code>common</code> only <code>math</code>, <code>engine</code> never <code>interview</code>.</li>
+<li><strong>Backward imports as a list.</strong> Against the intended order <code>interview → engine → domains → common → math</code>, 13 files in <code>domains</code> import from <code>engine</code> and 10 from <code>interview</code>. The lists live in the test and may only get shorter.</li>
+<li><strong>No cycle of value imports between files.</strong> That holds today and stays so. Type-only imports are exempt.</li>
+</ul>
+<h3 id="4-new-and-cleaned-up-ports"><a class="anchor" href="#4-new-and-cleaned-up-ports" aria-hidden="true" tabindex="-1">#</a>4. New and cleaned-up ports</h3>
+<ul>
+<li><strong><code>SingleShotModel</code></strong> (<code>llm/single-shot-model.ts</code>): one system prompt, one user message, text back, abortable with an <code>AbortSignal</code>. Four users: the parsers for receipts, the wage tax certificate and the Swiss salary certificate, and the topic guard. <code>KiModule</code> derives its factory from <code>CHAT_MODEL_FACTORY</code>, so both resolve a model slot the same way. The dependency is not optional: without a binding, Nest refuses to start.</li>
+<li><strong><code>BearerTokenRepository</code></strong> (<code>auth/bearer-token.repository.ts</code>): three lookups for the guard. The guard still makes every decision itself (expired, revoked, client disabled, no consent).</li>
+<li><strong><code>TransactionRunner</code></strong> now lives in <code>common/transaction-runner.ts</code>, apart from <code>PrismaTransactionRunner</code>. Instead of <code>instanceof</code>, the simulation asks the port for <code>rollsBack</code> and <code>isActive()</code>.</li>
+<li><strong>Ports own their types.</strong> <code>DeleteAccountResult</code> is declared in the port <code>account-deletion.repository.ts</code>.</li>
+<li><strong>Tokens without SDK baggage.</strong> <code>ADVISOR_ENGINE</code> is in <code>ki/advisor-engine.token.ts</code>, <code>assertFakeKiNotInProduction</code> in <code>llm/fake-ki-env.ts</code>. Importing them no longer loads LangChain.</li>
+<li><strong>Adapters say what they are.</strong> <code>delete-account-transaction</code> and <code>guest-account-upgrade</code> are named <code>*.prisma.ts</code>.</li>
+</ul>
+<h2 id="alternatives-considered"><a class="anchor" href="#alternatives-considered" aria-hidden="true" tabindex="-1">#</a>Alternatives considered</h2>
+<div class="table"><table>
+<thead>
+<tr>
+<th>Alternative</th>
+<th>Why not</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>oxlint <code>no-restricted-imports</code> with overrides</strong> (the first draft of this ADR)</td>
+<td>A later override replaces an earlier one&#39;s rule entirely. A file in two adapter groups cannot be expressed, and every additional SDK group has to be repeated in every other override (4 groups took 244 lines). Relative paths such as <code>../prisma/encrypted-prisma.provider.js</code> and adapter classes went unchecked. Seeing the message in the editor does not outweigh that.</td>
+</tr>
+<tr>
+<td><strong>dependency-cruiser</strong></td>
+<td>Does the same and draws graphs. It would be another tool with its own configuration language. The test is about 200 lines, runs in milliseconds in the existing suite and is written in the language of the code. If the rules grow substantially, dependency-cruiser is the next step.</td>
+</tr>
+<tr>
+<td><strong>Re-layering the core in this change</strong></td>
+<td>The backward imports involve 23 files and the calculation model <code>engine/berechnung.ts</code>, which almost every vertical uses. That is a refactoring of its own. Until then the ratchet keeps it from getting worse.</td>
+</tr>
+<tr>
+<td><strong>Review and documentation only</strong></td>
+<td>That was the state before.</td>
+</tr>
+</tbody></table></div>
+<h2 id="consequences"><a class="anchor" href="#consequences" aria-hidden="true" tabindex="-1">#</a>Consequences</h2>
+<ul>
+<li><strong>Positive:</strong> A violation fails <code>pnpm test</code> and the CI job <code>test</code>, with a message naming the file, the SDK and the port to use.</li>
+<li><strong>Positive:</strong> The documentation can call a boundary <em>checked</em> and name the test.</li>
+<li><strong>Negative:</strong> No hint in the editor. A violation shows up only when the tests run.</li>
+<li><strong>Negative:</strong> Imports are found by pattern. A path computed at runtime, for example through <code>createRequire</code>, is invisible.</li>
+<li><strong>Negative:</strong> <code>*.module.ts</code> may import any adapter class, because modules bind ports to adapters. Some modules hold more than wiring, for example <code>advisor/advisor.module.ts</code>, which chooses the Redis run log. Business logic placed there would go unnoticed.</li>
+<li><strong>Negative:</strong> Every new dependency between modules produces a line in the baseline diff. That is intended and costs one extra step.</li>
+</ul>
+<h2 id="known-limits"><a class="anchor" href="#known-limits" aria-hidden="true" tabindex="-1">#</a>Known limits</h2>
+<ul>
+<li><strong>LangChain is not behind a port; it is in nine files.</strong> The owl&#39;s prompt assembly (<code>ki/advisor-prompt.ts</code>), tool round and tool context are written in LangChain types. <code>mcp/</code> imports <code>TOOL_ARG_SCHEMAS</code> from <code>ki/advisor-tools.ts</code> and loads LangChain with it.</li>
+<li><strong><code>pdf-lib</code> has no port.</strong> <code>printout/form-renderer.ts</code> is the only file importing it, but services call <code>renderForms</code> directly.</li>
+<li><strong>DI tokens are not type-checked.</strong> <code>@Inject(TOKEN) x: Port</code> trusts the module to bind a matching adapter. A missing binding fails at start-up (<code>test/boot/build-app-stays-database-free.test.ts</code>), a wrong one only in integration tests.</li>
+</ul>
+<h2 id="proof-adr-0021"><a class="anchor" href="#proof-adr-0021" aria-hidden="true" tabindex="-1">#</a>Proof (ADR-0021)</h2>
+<p>The proof is in the repository and runs with every test run:</p>
+<ul>
+<li><code>apps/api/test/architecture.test.ts</code> feeds the same check function twelve constructed violations, one per rule, and expects exactly one finding for each. Five constructed permitted imports must yield none.</li>
+<li>The core test was broken on 2026-11-22 with four probe files: an import from <code>math</code> into <code>engine</code>, a new import from <code>domains/business</code> into <code>interview</code>, and a cycle of two files in <code>common</code>. Four of six tests went red, and green again after removal.</li>
+<li>On its first run the API test found an exception nobody needed (<code>config/database-url.ts</code> does not import Prisma). It was struck.</li>
+</ul>
+<h2 id="update-2026-11-23-the-core-cycles-are-gone"><a class="anchor" href="#update-2026-11-23-the-core-cycles-are-gone" aria-hidden="true" tabindex="-1">#</a>Update 2026-11-23: the core cycles are gone</h2>
+<p>The two folder cycles are removed. The modules <code>domains</code> used from above now sit in <code>domains</code>: the calculation model (<code>engine/berechnung.ts</code> → <code>domains/calculation.ts</code>), the assessment module, the filing-type comparison and the most-favourable check; the answer model of <code>interview/interview.ts</code> moved to <code>domains/answers.ts</code>, <code>AdvisorActionStatus</code> to <code>domains/action-status.ts</code>, and <code>Range</code> to <code>common/range.ts</code>. The backward lists are deleted. <code>ALLOWED</code> is now a strict order, <code>math → common → domains → engine → interview</code>, without exceptions.</p>
+<p>The core test gained a third rule: no year compared with a bare literal outside <code>math/tax-parameters.ts</code>. Of the 36 lines with such a comparison in the core, 35 now read named years (<code>RULE_CHANGE_YEARS</code>, <code>appliesFrom</code>) or year steps (<code>valueForYear</code>) from there; the calendar guard in <code>common/workdays.ts</code> (2000 to 2100, not a tax rule) uses two named constants in its own file. The API holds no such rule; its only year switches are demo data in <code>business/demo-household.ts</code>.</p>
+<p>Proof: constructed violations for each rule run with every test run (five upward imports, one cycle, six year comparisons, seven lines that must pass). On 2026-11-23 the rules were also broken once in real code, with an import from <code>domains/childcare.ts</code> into <code>engine</code> and a <code>year &gt;= 2025</code> in the same file: both tests went red, and green again after removal.</p>
+<h2 id="update-2026-11-25-module-cycles-in-the-api-are-measured"><a class="anchor" href="#update-2026-11-25-module-cycles-in-the-api-are-measured" aria-hidden="true" tabindex="-1">#</a>Update 2026-11-25: module cycles in the API are measured</h2>
+<p>The API test computes the strongly connected groups of the module graph. One group of 28 modules imports
+itself round in a circle; it is listed in <code>MODULES_ON_A_CYCLE</code> and can only shrink. <code>account</code> left it:
+the personal-data registry, the legal holds, the erasure flag and the move of a Person B&#39;s shadow data
+moved into the module <code>personal-data</code>, which imports only <code>common</code> and <code>prisma</code>, so <code>auth</code>, <code>business</code>,
+<code>link</code>, <code>submission</code> and <code>unlock</code> no longer import <code>account</code>. The guest takeover reaches the receipt files
+through <code>StoragePort.move</code> instead of the Postgres adapter class.</p>
+<h2 id="update-2026-11-28-llm-and-run-log-are-modules-of-their-own"><a class="anchor" href="#update-2026-11-28-llm-and-run-log-are-modules-of-their-own" aria-hidden="true" tabindex="-1">#</a>Update 2026-11-28: <code>llm/</code> and <code>run-log/</code> are modules of their own</h2>
+<p>Two parts of the owl that know nothing about tax returns moved out of <code>ki/</code> and <code>advisor/</code>, so the edge
+baseline now guards the line between them and the tax-specific code:</p>
+<ul>
+<li><strong><code>llm/</code></strong>: the chat-model factory, the single-shot port and its LangChain adapter, the slot and limit
+configuration, the model catalog, the connection check, the failure classification. It imports
+<code>common</code> and no other module. The day&#39;s call budget reads a counter through the port
+<code>ModelCallCounter</code> (<code>llm/model-call-counter.ts</code>); <code>KiModule</code> binds the shared rate-limit storage to it.
+With a direct import of <code>auth</code>, <code>llm</code> joined the module cycle, and the cycle test failed.</li>
+<li><strong><code>run-log/</code></strong>: the run log port with its in-memory and Redis adapters, generic over the event type
+and the run info. <code>advisor/run/advisor-run-log.ts</code> names the owl&#39;s types and keeps the Redis
+namespace and key purpose the log used before, so instances of two releases read each other&#39;s runs.</li>
+</ul>
+<p>The scripted model for the <code>fake</code> provider stays in <code>ki/fake-chat-model.ts</code>, because its script speaks
+the owl&#39;s tools; <code>ki/advisor-chat-model.ts</code> hands it to the factory. <code>createChatModelFromConfig</code> in
+<code>llm/</code> builds provider models only.</p>
+<p>New edges in the baseline: <code>ki -&gt; llm</code>, <code>advisor -&gt; llm</code>, <code>receipt -&gt; llm</code>, <code>lstb-scan -&gt; llm</code>,
+<code>ch-certificate-scan -&gt; llm</code>, <code>llm -&gt; common</code>, <code>advisor -&gt; run-log</code>, <code>run-log -&gt; common</code>. No edge was
+removed and no module joined the cycle.</p>
+<h3 id="the-agent-loop-and-the-contract-of-a-run-same-day"><a class="anchor" href="#the-agent-loop-and-the-contract-of-a-run-same-day" aria-hidden="true" tabindex="-1">#</a>The agent loop and the contract of a run (same day)</h3>
+<p>The loop of a tool-using model agent left the owl&#39;s engine. <code>llm/agent/agent-loop.ts</code> holds the model
+round (streaming reasoning and words, one nudge for a model that ended a round silently, answering without
+tools once the rounds or the time are spent), the tools round with its timing, the routing between them,
+following a graph stream, summing token counts, and the clock of a turn. It reads two channels of the
+graph state (<code>messages</code>, <code>toolRounds</code>); an agent spreads them into its own state and brings its prompt, its
+tools and its words. <code>ki/langgraph-advisor.engine.ts</code> is the owl on that loop: her graph state, her tool
+round, the topic guard beside the first round, the failover to the fallback slot, the answer of the fixed
+rules. The guard and the failover are still written for the owl and are not part of the loop.</p>
+<p>The types every such agent shares are in <code>packages/core/src/common/agent-run.ts</code>: <code>AgentTurnInput</code>
+(message, history, signal), <code>AgentRunEvent</code> (start, status, reasoning, tool, tool_result, token, error,
+done), <code>AgentStreamEvent&lt;Own, Message, Failure&gt;</code> for an agent with events of its own, <code>AgentTurnUsage</code>,
+<code>AgentTurnTimings</code> and <code>AgentEnginePort</code>. The owl&#39;s types are built from them
+(<code>AdvisorTurnRequest extends AgentTurnInput</code>, <code>AdvisorStreamEvent = AgentStreamEvent&lt;AdvisorOwnEvent, …&gt;</code>);
+their shape on the wire is unchanged.</p>
+<p><code>apps/api/test/agent-loop.test.ts</code> runs the loop with an agent that keeps a list and knows nothing about
+tax returns. LangChain is now in nine files; <code>llm/agent/agent-loop.ts</code> is the ninth in the boundary table.
+No module edge changed.</p>
+
+      </article>
+      <p class="back"><a href="../decisions.html">All decisions</a></p>
+      <nav class="steps" aria-label="Previous and next"><a class="step step-previous" href="0101-self-employed.html"><span class="eyebrow">Previous</span><span>ADR-0101</span></a><a class="step step-next" href="0103-session-security-hardening.html"><span class="eyebrow">Next</span><span>ADR-0103</span></a></nav>
+    </main>
+  </div>
+  <script src="../assets/site.js"></script>
+</body>
+</html>

@@ -1,0 +1,284 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>ADR-0067 — Owl: tax year as a project, several conversations, project notes, context with summary — SteuerEule</title>
+  <link rel="icon" href="../../../images/steuereule-logo.svg">
+  <link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+  <a class="skip" href="#content">Skip to the content</a>
+  <div class="shell">
+    <aside class="rail">
+      <a class="brand" href="../index.html">
+        <img src="../../../images/steuereule-logo.svg" width="36" height="36" alt="">
+        <span><strong>SteuerEule</strong><span class="eyebrow">Architecture</span></span>
+      </a>
+      <details class="menu" open>
+        <summary>Contents</summary>
+        <nav class="nav" aria-label="Site">
+        <p class="eyebrow">arc42</p>
+        <ul><li><a class="nav-item" href="../index.html"><span>Overview</span></a></li><li><a class="nav-item" href="../01-introduction-and-goals.html"><span class="nav-number">01</span><span>Introduction and goals</span></a></li><li><a class="nav-item" href="../02-constraints.html"><span class="nav-number">02</span><span>Constraints</span></a></li><li><a class="nav-item" href="../03-context-and-scope.html"><span class="nav-number">03</span><span>Context and scope</span></a></li><li><a class="nav-item" href="../04-solution-strategy.html"><span class="nav-number">04</span><span>Solution strategy</span></a></li><li><a class="nav-item" href="../05-building-block-view.html"><span class="nav-number">05</span><span>Building block view</span></a></li><li><a class="nav-item" href="../06-runtime-view.html"><span class="nav-number">06</span><span>Runtime view</span></a></li><li><a class="nav-item" href="../07-deployment-view.html"><span class="nav-number">07</span><span>Deployment view</span></a></li><li><a class="nav-item" href="../08-cross-cutting-concepts.html"><span class="nav-number">08</span><span>Cross-cutting concepts</span></a></li><li><a class="nav-item" href="../09-architecture-decisions.html"><span class="nav-number">09</span><span>Architecture decisions</span></a></li><li><a class="nav-item" href="../10-quality-and-tests.html"><span class="nav-number">10</span><span>Quality and tests</span></a></li><li><a class="nav-item" href="../11-risks-and-technical-debt.html"><span class="nav-number">11</span><span>Risks and technical debt</span></a></li><li><a class="nav-item" href="../12-glossary.html"><span class="nav-number">12</span><span>Glossary</span></a></li></ul>
+        <p class="eyebrow">Companion</p>
+        <ul><li><a class="nav-item" href="../subsystems.html"><span>Backend modules from the inside</span></a></li></ul>
+        <p class="eyebrow">Library</p>
+        <ul><li><a class="nav-item is-active" href="../decisions.html" aria-current="page"><span>Decisions</span></a></li><li><a class="nav-item" href="../documents.html"><span>Documents</span></a></li></ul>
+      </nav>
+      </details>
+      <p class="rail-foot">Architecture as of 2026-11-22<br>Built from the Markdown under <code>docs/</code></p>
+    </aside>
+    <main id="content" class="content">
+      <header class="page-head">
+        <p class="eyebrow">Decision · ADR-0067</p>
+        <h1>Owl: tax year as a project, several conversations, project notes, context with summary <span class="status status-ok">Accepted</span></h1>
+        <ul class="chips" aria-label="On this page"><li><a class="chip" href="#context">Context</a></li><li><a class="chip" href="#decision">Decision</a></li><li><a class="chip" href="#consequences">Consequences</a></li><li><a class="chip" href="#rejected">Rejected</a></li></ul>
+      </header>
+      <article class="prose">
+<ul>
+<li><strong>Status:</strong> Accepted</li>
+<li><strong>Date:</strong> 2026-11-12</li>
+<li><strong>Deciders:</strong> NexusHero (Product Owner), Steuereule Engineering</li>
+<li><strong>Applies to:</strong> Ticket #481; <code>apps/api/src/advisor/</code>, <code>apps/api/src/ki/{langgraph-advisor.engine,ai-runtime-config.service,chat-model.factory}.ts</code>, <code>packages/core/src/interview/{advisor-history,advisor-notes,ki-port}.ts</code>, <code>apps/mobile-web/src/screens/advisor/</code></li>
+<li><strong>Supplements:</strong> ADR-0038 (AI port, zero-write), ADR-0064 (answer runs), ADR-0066 (field catalog, checked answer)</li>
+<li><strong>Number:</strong> 0065 is taken by a parallel branch (address search).</li>
+</ul>
+<h2 id="context"><a class="anchor" href="#context" aria-hidden="true" tabindex="-1">#</a>Context</h2>
+<p>The owl held exactly one conversation per tax year. The history grew with every topic, answers
+became slower and less precise, and the older part silently dropped away for the model. It took
+around twelve seconds until the first word, during which the user saw nothing. The model for the solution is
+projects with several sessions: a shared state of knowledge, and beneath it any number of separate
+contexts.</p>
+<p>The decisions come from the grilling session with the Product Owner on 12 November 2026.</p>
+<h2 id="decision"><a class="anchor" href="#decision" aria-hidden="true" tabindex="-1">#</a>Decision</h2>
+<h3 id="1-the-tax-year-is-the-project"><a class="anchor" href="#1-the-tax-year-is-the-project" aria-hidden="true" tabindex="-1">#</a>1. The tax year is the project</h3>
+<p>Nobody creates a project. With the tax return of a year come the project and its first
+conversation. What all conversations of a year share:</p>
+<ul>
+<li>the state of the tax return (the case overview goes into every answer as before),</li>
+<li>the project notes (§ 3),</li>
+<li>the drafts: they belong to the tax return, not to the conversation. A draft from conversation A can
+be applied while conversation B is open, and &quot;replaced by newer draft&quot; applies across
+conversations.</li>
+</ul>
+<h3 id="2-several-conversations-each-with-its-own-context"><a class="anchor" href="#2-several-conversations-each-with-its-own-context" aria-hidden="true" tabindex="-1">#</a>2. Several conversations, each with its own context</h3>
+<p>A conversation is a separate context: the model sees only its history.</p>
+<ul>
+<li>Without a selection, the most recently used conversation opens.</li>
+<li>„Neues Gespräch“ (&quot;New conversation&quot;) reuses one that is still empty; empty ones do not pile up.</li>
+<li>The title is derived from the first question (without names and identifiers, at most 60 characters),
+without a model call. Renaming is possible.</li>
+<li>At most 50 conversations per year. The daily quota counts per user, not per conversation.</li>
+<li>Conversations and notes are private per user, also with Zusammenveranlagung (joint assessment).</li>
+<li>Quick starts run in the open conversation.</li>
+<li>The existing history of a year becomes the first conversation in the migration.</li>
+<li><del>Only one conversation answers at a time; during an answer, switching is
+locked.</del> Since ADR-0071 conversations answer concurrently; a conversation still has only one
+answer at a time.</li>
+</ul>
+<p>A search finds text in the titles and messages of all conversations of the year; upper and
+lower case and umlauts do not matter. The messages are stored encrypted in the
+database, so the server searches over the decrypted text of the one user and year
+(at most 50 conversations) instead of in the database.</p>
+<p>On wide screens, the list sits in a sidebar to the left of the chat. It starts open
+and remembers when it was collapsed. <del>On narrow screens the same content opens as a
+sheet.</del> Since section 10, it opens below 1280 px as a drawer from the left, and the search is a
+dialog.</p>
+<h3 id="3-project-notes-the-owl-writes-here-itself"><a class="anchor" href="#3-project-notes-the-owl-writes-here-itself" aria-hidden="true" tabindex="-1">#</a>3. Project notes: the owl writes here itself</h3>
+<p>What was clarified in a conversation but is not a value of the tax return („Arbeitszimmer geprüft:
+lohnt sich nicht, weil kein eigener Raum“ (&quot;Home office room checked: not worth it, because no separate room&quot;)), the owl records as a note on the tax year. Every
+conversation of the year reads the notes.</p>
+<p><strong>The owl creates, replaces and removes notes without a click.</strong> This is a deliberate exception
+to the principle from ADR-0038 that the owl writes nothing itself. It applies to notes and only to
+notes: the tax return still only changes when the user applies a draft.</p>
+<p>What makes the exception acceptable:</p>
+<ul>
+<li>Every change appears under the answer („Gemerkt: …“ (&quot;Noted: …&quot;), „Notiz aktualisiert: …“ (&quot;Note updated: …&quot;), „Notiz entfernt:
+…“ (&quot;Note removed: …&quot;)) with „Rückgängig“ (&quot;Undo&quot;). Undo restores the previous text or the removed note.</li>
+<li>All notes are visible (since section 10 behind the situation chip in the input field); the user can change or delete any of them and add their own.</li>
+<li>At most 20 notes per year with 200 characters each, one line, no personal data
+(checked when the model creates them and on saving).</li>
+<li>The model knows notes only under neutral names („Notiz 2“ (&quot;Note 2&quot;)), never under their identifier.</li>
+<li>Notes apply per tax year and do not carry over into the next year.</li>
+</ul>
+<h3 id="4-the-context-of-a-conversation-is-visible-and-is-summarized-when-it-is-full"><a class="anchor" href="#4-the-context-of-a-conversation-is-visible-and-is-summarized-when-it-is-full" aria-hidden="true" tabindex="-1">#</a>4. The context of a conversation is visible and is summarized when it is full</h3>
+<p>The model reads the most recent turns of a conversation verbatim, up to a budget of 6,000
+estimated tokens. A small ring in the input field shows how full this context is; from 80%
+it changes color.</p>
+<ul>
+<li><strong>Full:</strong> Before the next answer, the owl summarizes the older part and says so in the chat.
+The most recent turns (a quarter of the budget, at least the last question with its answer) stay
+verbatim.</li>
+<li><strong>On request:</strong> A tap on the ring shows the fill level and offers „Jetzt zusammenfassen“ (&quot;Summarize now&quot;).</li>
+<li><strong>The user keeps everything:</strong> All messages remain readable. A divider „Älterer Verlauf
+zusammengefasst“ (&quot;Older history summarized&quot;) marks the spot; the summary can be expanded there.</li>
+<li>The model writes the summary in a plain call without tools, with the
+instruction not to invent anything and to continue an earlier summary. If no
+model answers, it is produced without a model from the questions and the fate of the suggestions. A full
+conversation therefore never blocks.</li>
+</ul>
+<h3 id="5-reasoning-visible-medium-thinking-level"><a class="anchor" href="#5-reasoning-visible-medium-thinking-level" aria-hidden="true" tabindex="-1">#</a>5. Reasoning visible, medium thinking level</h3>
+<p>The reasoning (the provider&#39;s thinking summary) is on by default: a wait that
+one can watch is a shorter wait. The thinking level for Gemini is <code>medium</code>.</p>
+<p>Measured against Gemini (<code>scripts/ai-eval/latency-check.ts</code>), time to the first word of the answer:</p>
+<div class="table"><table>
+<thead>
+<tr>
+<th>Thinking level</th>
+<th>first sign of life</th>
+<th>first word</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>low</td>
+<td>2 to 3 s</td>
+<td>3 to 6 s</td>
+</tr>
+<tr>
+<td><strong>medium (default)</strong></td>
+<td>3 to 4 s</td>
+<td>6 to 9 s</td>
+</tr>
+<tr>
+<td>model chooses</td>
+<td>3 to 4 s</td>
+<td>10 to 13 s</td>
+</tr>
+<tr>
+<td>high</td>
+<td>3 to 4 s</td>
+<td>13 to 20 s</td>
+</tr>
+</tbody></table></div>
+<p>Medium is the Product Owner&#39;s decision: thoroughness over the last few seconds.
+<code>AI_ADVISOR_THINKING_LEVEL</code> and <code>AI_ADVISOR_REASONING=off</code> change it.</p>
+<h3 id="6-around-the-input-field-there-is-only-the-field"><a class="anchor" href="#6-around-the-input-field-there-is-only-the-field" aria-hidden="true" tabindex="-1">#</a>6. Around the input field there is only the field</h3>
+<p>The banner with the dictation tip has been removed. The microphone icon still appears where
+dictation is possible on the device (ADR-0061).</p>
+<h3 id="7-when-the-language-model-does-not-answer-the-owl-says-why"><a class="anchor" href="#7-when-the-language-model-does-not-answer-the-owl-says-why" aria-hidden="true" tabindex="-1">#</a>7. When the language model does not answer, the owl says why</h3>
+<p>A provider error is not a silent switch to the built-in rules and not a bare &quot;aborted&quot;.
+The API maps it to a reason (key or model rejected, quota, overloaded,
+timeout, connection, blocked, unknown) and attaches it as <code>meta.modelFailure</code> to the
+answer. The UI shows a notice beneath it with the reason, that the answer comes from fixed rules,
+and the technical detail &quot;provider · HTTP status&quot;. The provider&#39;s message texts do not leave the
+server. „Noch einmal versuchen“ (&quot;Try again&quot;) only appears where retrying can help; a rejected
+key is presented to the user as the operator&#39;s matter. The notice is in the stored
+answer and remains after reloading. If the stream breaks off in the middle of the answer, the
+error also names the reason.</p>
+<h3 id="8-turbo-the-owl-applies-by-itself-and-shows-it"><a class="anchor" href="#8-turbo-the-owl-applies-by-itself-and-shows-it" aria-hidden="true" tabindex="-1">#</a>8. Turbo: the owl applies by itself and shows it</h3>
+<p>A switch „Turbo“ at the input field (off in every new session, #491). Off, everything stays as in
+ADR-0038: the owl prepares drafts and waits for the click. On, the server applies the
+open drafts of an answer as soon as it is finished and stored, in one step, exactly like
+„Alle übernehmen“ (&quot;Apply all&quot;): with a check against intermediate changes, origin „Assistent: SteuerEule“,
+audit trail and undo.</p>
+<ul>
+<li>The cards remain visible, now as „Übernommen“ (&quot;Applied&quot;) with old and new value; above them a
+line says how many changes the owl has applied (<code>meta.turbo</code>).</li>
+<li>What does not fit (field changed in the meantime, conflict, rejected value) is not forced:
+all drafts stay open. „Zwei Wege“ (&quot;Two ways&quot;) always waits for a choice.</li>
+<li>This is the second deliberate exception to zero-write, this time at the user&#39;s request per message.</li>
+</ul>
+<h3 id="9-if-the-model-fails-a-second-one-answers-493"><a class="anchor" href="#9-if-the-model-fails-a-second-one-answers-493" aria-hidden="true" tabindex="-1">#</a>9. If the model fails, a second one answers (#493)</h3>
+<p>Every provider client retries short errors (429, 503, dropped connection) twice with a wait.
+If the call still fails before the first word has arrived, the owl asks the model of the slot
+<code>fallback</code> (<code>AI_FALLBACK_PROVIDER</code>, <code>_MODEL</code>, <code>_API_KEY</code>), once, with its own time limit. The
+reasoning then says: „Gemini antwortet nicht. Die Eule fragt Claude …“ (&quot;Gemini is not answering. The owl is asking Claude …&quot;). The result names the
+model that answered and the error of the first one (<code>primaryFailure</code>), which the connection indicator
+counts. No second model configured, or the same model with the same key, or a
+blocked question: the fixed rules answer as before, with the reason. There is no switch in the middle of an answer;
+there the abort stays honestly visible.</p>
+<h3 id="10-chat-first-addendum-13-november-2026"><a class="anchor" href="#10-chat-first-addendum-13-november-2026" aria-hidden="true" tabindex="-1">#</a>10. Chat first (addendum 13 November 2026)</h3>
+<p>Next to the sidebar, explanatory texts and search field, the chat received too little attention. The screen
+now follows the layout users know from Claude:</p>
+<ul>
+<li><strong>Sidebar only for conversations:</strong> „Neues Gespräch“, „Suchen“ (&quot;Search&quot;) with a magnifier, „Steuerjahr 2026 ▾“ (&quot;Tax year 2026 ▾&quot;)
+and one row per conversation. Rename and delete sit behind the row&#39;s &quot;…&quot;. No
+explanatory texts. The other years are in the tax year menu; another year opens with
+its most recently used conversation. Width still draggable, default 260 px.</li>
+<li><strong>Search as a dialog</strong> behind the magnifier and with Cmd/Ctrl+K, via the same server search.</li>
+<li><strong>Below 1280 px</strong> the conversations open as a drawer from the left via the icon at the top left.</li>
+<li><strong>Situation and notes</strong> are no longer in the sidebar, but behind a chip in the
+input field („Situation: …“, empty „Situation ergänzen“ (&quot;Add situation&quot;)). It opens „Was die Eule über euch weiß“ (&quot;What the owl knows about you&quot;)
+with the situation and the notes of the year.</li>
+<li><strong>Header:</strong> privacy, hints (with a number when hints or drafts are waiting) and
+settings are icons. The legal status appears as one line under the chat.</li>
+<li><strong>Empty chat:</strong> question and input field in the middle, beneath them four quick starts; the rest
+are expanded by „Mehr …“ (&quot;More …&quot;).</li>
+<li><strong>Reasoning as in Claude:</strong> a line „Nachgedacht · 8 s · 4 Schritte“ (&quot;Thought · 8 s · 4 steps&quot;), expandable to
+the steps with icon and result, beneath it the thinking summary. While the owl is
+working: „Denkt nach · 4 s“ (&quot;Thinking · 4 s&quot;) with the current step, also expandable. The steps
+are stored in structured form (<code>meta.thoughtSteps</code>: kind, tool, label, result); older
+answers with plain text lines (<code>meta.steps</code>) are still shown by the app. The result of a tool
+comes as its own event <code>tool_result</code> and is built on the server from a fixed template per
+tool, only from numbers, amounts and catalog titles: never from text of the model or the
+user, never with the reason for a rejection. The duration (<code>durationMs</code>) was already stored and
+now goes to the app with the finished answer; costs and tokens stay with operations.</li>
+</ul>
+<h3 id="11-the-owl-opens-the-conversation-addendum-13-november-2026"><a class="anchor" href="#11-the-owl-opens-the-conversation-addendum-13-november-2026" aria-hidden="true" tabindex="-1">#</a>11. The owl opens the conversation (addendum 13 November 2026)</h3>
+<p>A new conversation no longer starts empty if the app already knows something about the year. The owl
+speaks first, with the tax advisor skill and the case overview it receives in every turn anyway.
+The overview now covers everything the interview and the screens know
+(<code>furtherFacts</code>: pension, rental income totals, capital with withheld tax, side job,
+wage replacement, severance, medical costs, household-related services, deadlines), still only amounts and
+counts, never names, addresses or identifiers.</p>
+<ul>
+<li><strong>Stage without a model:</strong> The calculation core determines the stage before every model call.<ul>
+<li><code>empty</code>: nothing recorded. No opening; the chat offers „Lass uns anfangen“ (&quot;Let&#39;s get started&quot;), which starts the advisor interview.</li>
+<li><code>partial</code>: something recorded, but no income with an amount or no detail on the assessment type. The owl briefly says what it knows and asks about the gaps as a question round with tappable answers.</li>
+<li><code>ready</code>: at least one income with an amount and the assessment type. The owl analyzes freely.</li>
+</ul>
+</li>
+<li><strong>Only when something has changed:</strong> A fingerprint (FNV-1a) from the case overview, the user&#39;s own
+description and notes is attached to every opening. If it matches that of the last opening of the
+year, the new conversation stays empty and links „Letzte Analyse vom … ansehen“ (&quot;View last analysis from …&quot;).</li>
+<li><strong>Numbers from the calculation core:</strong> Before the model call, the app computes the key figures of the opening
+(result range of the estimate, distance and home office allowance from the recorded days,
+Werbungskosten (work-related expenses) against the Arbeitnehmer-Pauschbetrag (employee lump-sum allowance)). They are in the prompt as the only
+amounts the owl may name; any further one it must compute with <code>compute_income_tax</code> or
+<code>simulate_tax_delta</code>. The answer check counts the key figures as computed.</li>
+<li><strong>The check blocks:</strong> The opening is held back until it has been checked. If it names an
+amount the app has not computed, it is rewritten once, with these amounts named as
+wrong. Only a second miss appears, then with the usual notice.</li>
+<li><strong>No drafts:</strong> An opening never creates drafts, not even with Turbo. Drafts
+arise from the user&#39;s answer to the question round.</li>
+<li>An opened conversation is called „Einschätzung 2026“ (&quot;Assessment 2026&quot;) (with the tax year) until the user renames it.</li>
+<li>Technically, the opening is a turn with <code>quickAction: &#39;opening&#39;</code>. The question behind it is a
+placeholder the chat does not show (<code>meta.opening</code> on both messages); without a language model
+there is no opening.</li>
+</ul>
+<p>The results of the tools in the reasoning no longer repeat their label („Schlage im
+Steuerwissen nach: Kennzahlen je Steuerjahr“ (&quot;Looking up tax knowledge: key figures per tax year&quot;) instead of „…: Gefunden: …“ (&quot;…: Found: …&quot;)), and the thinking summary
+appears as headings and paragraphs instead of raw Markdown; the owl is asked to think in
+German.</p>
+<h2 id="consequences"><a class="anchor" href="#consequences" aria-hidden="true" tabindex="-1">#</a>Consequences</h2>
+<ul>
+<li>Deleting a conversation removes its messages and the drafts still open in it;
+applied values remain.</li>
+<li>A summary costs one model call as soon as a conversation reaches its budget.</li>
+<li>The summary is the model&#39;s only memory of the older part. What it
+leaves out, the owl no longer knows in this conversation; the tax return and the notes catch the
+essentials.</li>
+<li>Notes without a click means: the owl can also forget something the user wanted to keep.
+This is caught by the notice with &quot;Undo&quot; and the list in the sidebar.</li>
+<li>Data export and account deletion cover conversations and notes.</li>
+</ul>
+<h2 id="rejected"><a class="anchor" href="#rejected" aria-hidden="true" tabindex="-1">#</a>Rejected</h2>
+<ul>
+<li><strong>Freely creatable projects, custom instructions per project, file uploads into the project:</strong> bring
+tax users nothing; documents already exist.</li>
+<li><strong>Notes only after confirmation:</strong> The Product Owner decided in favor of autonomous writing,
+with undo as a safeguard.</li>
+<li><strong>Title worded by the model:</strong> costs a call per conversation and arrives delayed.</li>
+<li><strong>Parallel work in several conversations:</strong> no discernible need.</li>
+<li><strong>Notes across all years:</strong> outdated statements would carry over into new years.</li>
+</ul>
+
+      </article>
+      <p class="back"><a href="../decisions.html">All decisions</a></p>
+      <nav class="steps" aria-label="Previous and next"><a class="step step-previous" href="0066-owl-field-catalog-and-one-write-path.html"><span class="eyebrow">Previous</span><span>ADR-0066</span></a><a class="step step-next" href="0068-owl-skills.html"><span class="eyebrow">Next</span><span>ADR-0068</span></a></nav>
+    </main>
+  </div>
+  <script src="../assets/site.js"></script>
+</body>
+</html>

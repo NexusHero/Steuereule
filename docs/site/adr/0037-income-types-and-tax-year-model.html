@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>ADR-0037 — Income types / tax year model in packages/core (Draft) — SteuerEule</title>
+  <link rel="icon" href="../../../images/steuereule-logo.svg">
+  <link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+  <a class="skip" href="#content">Skip to the content</a>
+  <div class="shell">
+    <aside class="rail">
+      <a class="brand" href="../index.html">
+        <img src="../../../images/steuereule-logo.svg" width="36" height="36" alt="">
+        <span><strong>SteuerEule</strong><span class="eyebrow">Architecture</span></span>
+      </a>
+      <details class="menu" open>
+        <summary>Contents</summary>
+        <nav class="nav" aria-label="Site">
+        <p class="eyebrow">arc42</p>
+        <ul><li><a class="nav-item" href="../index.html"><span>Overview</span></a></li><li><a class="nav-item" href="../01-introduction-and-goals.html"><span class="nav-number">01</span><span>Introduction and goals</span></a></li><li><a class="nav-item" href="../02-constraints.html"><span class="nav-number">02</span><span>Constraints</span></a></li><li><a class="nav-item" href="../03-context-and-scope.html"><span class="nav-number">03</span><span>Context and scope</span></a></li><li><a class="nav-item" href="../04-solution-strategy.html"><span class="nav-number">04</span><span>Solution strategy</span></a></li><li><a class="nav-item" href="../05-building-block-view.html"><span class="nav-number">05</span><span>Building block view</span></a></li><li><a class="nav-item" href="../06-runtime-view.html"><span class="nav-number">06</span><span>Runtime view</span></a></li><li><a class="nav-item" href="../07-deployment-view.html"><span class="nav-number">07</span><span>Deployment view</span></a></li><li><a class="nav-item" href="../08-cross-cutting-concepts.html"><span class="nav-number">08</span><span>Cross-cutting concepts</span></a></li><li><a class="nav-item" href="../09-architecture-decisions.html"><span class="nav-number">09</span><span>Architecture decisions</span></a></li><li><a class="nav-item" href="../10-quality-and-tests.html"><span class="nav-number">10</span><span>Quality and tests</span></a></li><li><a class="nav-item" href="../11-risks-and-technical-debt.html"><span class="nav-number">11</span><span>Risks and technical debt</span></a></li><li><a class="nav-item" href="../12-glossary.html"><span class="nav-number">12</span><span>Glossary</span></a></li></ul>
+        <p class="eyebrow">Companion</p>
+        <ul><li><a class="nav-item" href="../subsystems.html"><span>Backend modules from the inside</span></a></li></ul>
+        <p class="eyebrow">Library</p>
+        <ul><li><a class="nav-item is-active" href="../decisions.html" aria-current="page"><span>Decisions</span></a></li><li><a class="nav-item" href="../documents.html"><span>Documents</span></a></li></ul>
+      </nav>
+      </details>
+      <p class="rail-foot">Architecture as of 2026-11-22<br>Built from the Markdown under <code>docs/</code></p>
+    </aside>
+    <main id="content" class="content">
+      <header class="page-head">
+        <p class="eyebrow">Decision · ADR-0037</p>
+        <h1>Income types / tax year model in <code>packages/core</code> (Draft) <span class="status status-ok">Accepted</span></h1>
+        <ul class="chips" aria-label="On this page"><li><a class="chip" href="#context">Context</a></li><li><a class="chip" href="#decision">Decision</a></li><li><a class="chip" href="#consequences">Consequences</a></li><li><a class="chip" href="#alternatives-considered">Alternatives considered</a></li></ul>
+      </header>
+      <article class="prose">
+<ul>
+<li><strong>Status:</strong> Accepted — promoted 2026-10-24 (reviewed as part of the ticket reviews; Musti)</li>
+<li><strong>Date:</strong> 2026-10-24</li>
+<li><strong>Deciders:</strong> Robin (backend, Ticket 04) — draft; promotion needs Musti review</li>
+<li><strong>Implements</strong> product ADR-006 (the tax year belongs to the person), product ADR-010 (income types
+instead of profile type), product ADR-030 (freely combinable)</li>
+<li><strong>Context tags:</strong> architecture, determinism boundary, domain model</li>
+</ul>
+<h2 id="context"><a class="anchor" href="#context" aria-hidden="true" tabindex="-1">#</a>Context</h2>
+<p>Phase 0.4 delivers the shared tax-domain core both verticals (Phase 1) plug into. The first
+half of that core is the <em>vocabulary</em>: what is an Einkunftsart (income type), and who owns a Steuerjahr (tax year).
+Product ADR-010 already decided the domain shape — a Steuerjahr has a <strong>set</strong> of
+Einkunftsarten (<code>Nichtselbstständig</code>, <code>Gewerbe</code>, <code>Vermietung</code>, <code>Kapital</code>, <code>Rente</code>,
+<code>Grenzgänger</code>), several at once, and gates <strong>add</strong> Einkunftsarten rather than retyping the
+user. Product ADR-006 decided ownership — each person owns their own Steuerjahre, and
+Zusammenveranlagung (joint assessment) <strong>couples</strong> two persons&#39; years of the same calendar year without merging
+their Belege (documents)/Posten (line items). Product ADR-030 stresses that arbitrary combinations are the normal case,
+not a corner.</p>
+<p>The existing <code>packages/core</code> already carries the interview vocabulary (<code>interview.ts</code>: <code>job</code>,
+<code>ausland</code>, <code>einkuenfte</code> as the onboarding shorthand) — the bridge between that shorthand and the
+domain truth was missing, and nothing owned the Steuerjahr concept.</p>
+<h2 id="decision"><a class="anchor" href="#decision" aria-hidden="true" tabindex="-1">#</a>Decision</h2>
+<p>Three pure, UI-free modules in <code>packages/core</code> (no I/O, ADR-0004):</p>
+<ol>
+<li><p><strong><code>einkunftsarten.ts</code></strong> — the closed <code>Einkunftsart</code> union (German tax-domain values, byte-equal
+to ADR-010&#39;s terms, not English identifiers — same reason the interview answer values are
+German), plus two derivations:</p>
+<ul>
+<li><code>einkunftsartenFromAnswers(answers)</code> — the ADR-010 bridge: onboarding answers → the declared
+Einkunftsart set. Records what the user <em>declared</em>, gated or not.</li>
+<li><code>gatedEinkunftsarten(answers)</code> — which <strong>declared</strong> Einkunftsarten 1.0 cannot compute
+(ADR-028 EÜR (cash-basis profit statement) always; ADR-032 crypto broker; ADR-033 Verkauf/möbliert (sale/furnished)). Gates only what is
+declared.</li>
+</ul>
+</li>
+<li><p><strong><code>steuerjahr.ts</code></strong> — <code>Steuerjahr</code> carries its owning <code>userId</code> (the codebase&#39;s one scoping
+key, ADR-0007/0012 — ADR-006&#39;s &quot;Person&quot; <em>is</em> this id), its <code>jahr</code>, its Einkunftsarten, and a
+<code>Veranlagung</code> coupling state (<code>einzeln</code> | <code>zusammen</code>). <code>kopple</code>/<code>entkopple</code> are the only way to
+form/dissolve a link; <code>kopple</code> throws on same-userId, different-year, or already-coupled input;
+<code>entkopple</code> dissolves only the link, never the data (ADR-006).</p>
+</li>
+</ol>
+<p>The derivation is deliberately a pure function over <code>Answers</code>, so a new interview question or a
+future Lebenslage (life situation) changes the vocabulary in ONE place, and the mapping is exhaustively tested
+(ADR-030/034 combinability cases: Grenzgänger+Kapital+Vermietung, Rente+Vermietung+Kapital).</p>
+<h2 id="consequences"><a class="anchor" href="#consequences" aria-hidden="true" tabindex="-1">#</a>Consequences</h2>
+<ul>
+<li>No &quot;Profiltyp&quot; (profile type) type exists anywhere in core — the onboarding shorthand stays in the interview
+graph, the Einkunftsarten are the domain truth (ADR-010).</li>
+<li><code>gatedEinkunftsarten</code> is what makes the calculation core&#39;s honesty cheap: the kernel takes the
+gated set as an input and names it, instead of each caller re-deriving ADR-028/032/033.</li>
+<li>The Einkunftsart string values are German domain terms persisted as-is (a future Prisma model
+can use them directly). German UI labels stay in i18n, never here.</li>
+<li><strong>Open for promotion review:</strong> whether &quot;Gewerbe&quot; (vs. &quot;Selbstständig&quot;) is the right canonical
+short form for ADR-010&#39;s &quot;Gewerbe/Selbstständig&quot;, and whether <code>Grenzgänger</code> (rather than a
+broader &quot;Ausland&quot; (abroad)) is the right name given only CH is covered (ADR-029).</li>
+</ul>
+<h2 id="alternatives-considered"><a class="anchor" href="#alternatives-considered" aria-hidden="true" tabindex="-1">#</a>Alternatives considered</h2>
+<ul>
+<li><strong>Reuse the interview answer values as Einkunftsarten 1:1.</strong> Rejected: ADR-010 names a distinct
+canonical set, and reusing the shorthand would collapse &quot;Beides&quot;/&quot;Rente&quot;/&quot;Kapitalerträge&quot; onto
+domain terms only by convention, exactly the drift ADR-0033&#39;s one-rule-instinct exists
+against.</li>
+<li><strong>Model Einkunftsarten in the API only.</strong> Rejected: web and mobile both render the cockpit
+grouped by Einkunftsart (ADR-010) — a client-side copy is the two-copies drift <code>isValidSteuerId</code>
+was created to avoid.</li>
+</ul>
+
+      </article>
+      <p class="back"><a href="../decisions.html">All decisions</a></p>
+      <nav class="steps" aria-label="Previous and next"><a class="step step-previous" href="0036-definition-of-done.html"><span class="eyebrow">Previous</span><span>ADR-0036</span></a><a class="step step-next" href="0038-calculation-core-and-ai-port.html"><span class="eyebrow">Next</span><span>ADR-0038</span></a></nav>
+    </main>
+  </div>
+  <script src="../assets/site.js"></script>
+</body>
+</html>

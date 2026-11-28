@@ -158,7 +158,7 @@ The tariff functions have a Vitest benchmark (`pnpm --filter @steuereule/core be
 
 **Ports & Adapters (hexagonal architecture), checked by tools rather than by review.**
 
-The full architecture documentation is [`docs/architecture.md`](docs/architecture.md). The same text, laid out in the app's design with one page per chapter, is under [`docs/site/`](docs/site/index.html); open `docs/site/index.html` in a browser from a checkout.
+The full architecture documentation is [`docs/architecture.md`](docs/architecture.md). The whole of `docs/` (the architecture with one page per chapter, every ADR, every other document) is laid out in the app's design under [`docs/site/`](docs/site/index.html); open `docs/site/index.html` in a browser from a checkout.
 
 - **Domain core.** [`@steuereule/core`](packages/core/) holds every tax rule as pure TypeScript with no I/O. It has no runtime dependencies, so a framework import does not even resolve. [`architecture.test.ts`](packages/core/src/architecture.test.ts) pins the allowed import directions between its folders and forbids import cycles between files.
 - **Application ring.** The services in `apps/api` depend on the core and on *ports*: an interface plus a DI token, such as `ReceiptRepository` / `RECEIPT_REPOSITORY`, `SingleShotModel`, `PaymentProvider` or `EmailSender`.

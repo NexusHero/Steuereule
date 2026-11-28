@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Decisions — SteuerEule</title>
+  <link rel="icon" href="../../images/steuereule-logo.svg">
+  <link rel="stylesheet" href="assets/site.css">
+</head>
+<body>
+  <a class="skip" href="#content">Skip to the content</a>
+  <div class="shell">
+    <aside class="rail">
+      <a class="brand" href="index.html">
+        <img src="../../images/steuereule-logo.svg" width="36" height="36" alt="">
+        <span><strong>SteuerEule</strong><span class="eyebrow">Architecture</span></span>
+      </a>
+      <details class="menu" open>
+        <summary>Contents</summary>
+        <nav class="nav" aria-label="Site">
+        <p class="eyebrow">arc42</p>
+        <ul><li><a class="nav-item" href="index.html"><span>Overview</span></a></li><li><a class="nav-item" href="01-introduction-and-goals.html"><span class="nav-number">01</span><span>Introduction and goals</span></a></li><li><a class="nav-item" href="02-constraints.html"><span class="nav-number">02</span><span>Constraints</span></a></li><li><a class="nav-item" href="03-context-and-scope.html"><span class="nav-number">03</span><span>Context and scope</span></a></li><li><a class="nav-item" href="04-solution-strategy.html"><span class="nav-number">04</span><span>Solution strategy</span></a></li><li><a class="nav-item" href="05-building-block-view.html"><span class="nav-number">05</span><span>Building block view</span></a></li><li><a class="nav-item" href="06-runtime-view.html"><span class="nav-number">06</span><span>Runtime view</span></a></li><li><a class="nav-item" href="07-deployment-view.html"><span class="nav-number">07</span><span>Deployment view</span></a></li><li><a class="nav-item" href="08-cross-cutting-concepts.html"><span class="nav-number">08</span><span>Cross-cutting concepts</span></a></li><li><a class="nav-item" href="09-architecture-decisions.html"><span class="nav-number">09</span><span>Architecture decisions</span></a></li><li><a class="nav-item" href="10-quality-and-tests.html"><span class="nav-number">10</span><span>Quality and tests</span></a></li><li><a class="nav-item" href="11-risks-and-technical-debt.html"><span class="nav-number">11</span><span>Risks and technical debt</span></a></li><li><a class="nav-item" href="12-glossary.html"><span class="nav-number">12</span><span>Glossary</span></a></li></ul>
+        <p class="eyebrow">Companion</p>
+        <ul><li><a class="nav-item" href="subsystems.html"><span>Backend modules from the inside</span></a></li></ul>
+        <p class="eyebrow">Library</p>
+        <ul><li><a class="nav-item is-active" href="decisions.html" aria-current="page"><span>Decisions</span></a></li><li><a class="nav-item" href="documents.html"><span>Documents</span></a></li></ul>
+      </nav>
+      </details>
+      <p class="rail-foot">Architecture as of 2026-11-22<br>Built from the Markdown under <code>docs/</code></p>
+    </aside>
+    <main id="content" class="content">
+      <header class="page-head">
+        <p class="eyebrow">Library · 114 decisions</p>
+        <h1>Decisions</h1>
+        <p class="lead">The architecture decision records of the engineering log, oldest first. The status is the one each record states in its own header.</p>
+      </header>
+      <article class="prose">
+        <p>How the log is kept, and how it relates to the product log: <a href="adr/index.html">Engineering ADR log (arc42)</a>. What is watched but not decided: <a href="adr/tech-radar.html">Tech Radar</a>.</p>
+        <div class="table"><table class="decisions">
+          <thead><tr><th>#</th><th>Decision</th><th>Status</th></tr></thead>
+          <tbody>
+            <tr><td class="mono">0001</td><td><a href="adr/0001-frontend-data-layer.html">Frontend data layer: TanStack Query + OpenAPI-generated typed client</a></td><td><span class="status status-ok">Accepted</span></td></tr>
+            <tr><td class="mono">0002</td><td><a href="adr/0002-i18n-layer.html">i18n layer: i18next / react-i18next, German base locale</a></td><td><span class="status status-ok">Accepted</span></td></tr>
+            <tr><td class="mono">0003</td><td><a href="adr/0003-seed-data-strategy.html">Seed/demo data: single synthetic fixture seeded at container start</a></td><td><span class="status status-ok">Accepted</span></td></tr>
+            <tr><td class="mono">0004</td><td><a href="adr/0004-testing-strategy.html">Testing strategy &amp; tooling</a></td><td><span class="status status-ok">Accepted</span></td></tr>
+            <tr><td class="mono">0005</td><td><a href="adr/0005-walking-skeleton-delivery.html">UI takeover delivered as vertical slices, walking-skeleton first</a></td><td><span class="status status-ok">Accepted</span></td></tr>
+            <tr><td class="mono">0006</td><td><a href="adr/0006-language-switcher.html">German base + English as a switchable UI locale (language switcher)</a></td><td><span class="status status-ok">Accepted</span></td></tr>
+            <tr><td class="mono">0007</td><td><a href="adr/0007-authentication.html">Authentication: Keycloak IdP + better-auth (OIDC RP), EU-resident, TLS everywhere</a></td><td><span class="status status-ok">Accepted</span></td></tr>
+            <tr><td class="mono">0008</td><td><a href="adr/0008-profile-persistence-encryption.html">Profile persistence: server-side, sensitive fields field-encrypted at rest</a></td><td><span class="status status-ok">Accepted</span></td></tr>
+            <tr><td class="mono">0009</td><td><a href="adr/0009-better-auth-as-auth-server.html">better-auth as the auth server (Keycloak dropped); supersedes ADR-0007</a></td><td><span class="status status-ok">Accepted</span></td></tr>
+            <tr><td class="mono">0010</td><td><a href="adr/0010-ci-postgres-and-boot-smoke.html">Postgres in CI: service-container for the test/smoke jobs, compose service for the local/e2e stack</a></td><td><span class="status status-ok">Accepted</span></td></tr>
+            <tr><td class="mono">0011</td><td><a href="adr/0011-cors-credentialed-cross-origin.html">CORS: strict env-driven origin allowlist with credentialed cross-origin</a></td><td><span class="status status-ok">Accepted</span></td></tr>
+            <tr><td class="mono">0012</td><td><a href="adr/0012-session-guard-coexistence-and-guest-upgrade.html">better-auth mounting, guard guest-OR-session coexistence, and the atomic guest→account upgrade</a></td><td><span class="status status-ok">Accepted</span></td></tr>
+            <tr><td class="mono">0013</td><td><a href="adr/0013-dsgvo-export-and-account-deletion.html">DSGVO data export &amp; account deletion: irrecoverable erasure reconciled with the append-only audit log</a></td><td><span class="status status-ok">Accepted</span></td></tr>
+            <tr><td class="mono">0014</td><td><a href="adr/0014-responsive-breakpoint-strategy.html">Responsive Breakpoint Strategy (Hybrid Approach)</a></td><td></td></tr>
+            <tr><td class="mono">0015</td><td><a href="adr/0015-crew-reduced-to-two-developers.html">Crew reduced from four developers to two (Ogün and Enis retired)</a></td><td><span class="status status-ok">Accepted</span></td></tr>
+            <tr><td class="mono">0016</td><td><a href="adr/0016-crew-reduced-to-four-roles.html">Product Owner and Scrum Master retired; the crew is four roles</a></td><td><span class="status status-ok">Accepted</span></td></tr>
+            <tr><td class="mono">0017</td><td><a href="adr/0017-public-draft-first-review-and-tiered-testing.html">Draft-first PRs with a public review, mandatory refinement, and risk-tiered testing</a></td><td><span class="status status-ok">Accepted</span></td></tr>
+            <tr><td class="mono">0018</td><td><a href="adr/0018-scrum-master-reinstated.html">Suhay (Scrum Master) reinstated; backlog, refinement and readiness leave the lead</a></td><td><span class="status status-ok">Accepted</span></td></tr>
+            <tr><td class="mono">0019</td><td><a href="adr/0019-oxlint-replaces-eslint.html">oxlint replaces ESLint/typescript-eslint as the static-lint gate</a></td><td><span class="status status-ok">Accepted</span></td></tr>
+            <tr><td class="mono">0020</td><td><a href="adr/0020-the-draft-pr-triggers-the-review.html">A draft PR opening triggers the review; nobody gates it</a></td><td><span class="status status-ok">Accepted</span></td></tr>
+            <tr><td class="mono">0021</td><td><a href="adr/0021-controls-are-proven-by-breaking-them.html">A control is proven by breaking it, not by watching it pass</a></td><td><span class="status status-ok">Accepted</span></td></tr>
+            <tr><td class="mono">0022</td><td><a href="adr/0022-a-push-triggers-the-re-read.html">A push to a PR with open findings triggers the re-read</a></td><td><span class="status status-ok">Accepted</span></td></tr>
+            <tr><td class="mono">0023</td><td><a href="adr/0023-routing-in-the-web-app.html">Routing in the web app: <code>@react-navigation/native</code> with a <code>linking</code> configuration</a></td><td><span class="status status-ok">Accepted</span></td></tr>
+            <tr><td class="mono">0024</td><td><a href="adr/0024-qr-device-authorization-endpoints.html">QR device authorization: our endpoints in front of better-auth&#39;s plugin</a></td><td><span class="status status-ok">Accepted</span></td></tr>
+            <tr><td class="mono">0025</td><td><a href="adr/0025-the-register-owner-can-write-the-register.html">The Requirements Register&#39;s owner can write it; the evidence is checked by CI</a></td><td><span class="status status-ok">Accepted</span></td></tr>
+            <tr><td class="mono">0026</td><td><a href="adr/0026-local-production-shaped-compose-stack.html">A local, production-shaped Docker Compose stack for the API and web bundle (#76)</a></td><td><span class="status status-ok">Accepted</span></td></tr>
+            <tr><td class="mono">0027</td><td><a href="adr/0027-session-freshness-gate-disabled.html">better-auth&#39;s session freshness gate is disabled (<code>session.freshAge: 0</code>)</a></td><td><span class="status status-ok">Accepted</span></td></tr>
+            <tr><td class="mono">0028</td><td><a href="adr/0028-check-the-effect-not-the-mechanism.html">Check the effect, not the mechanism: the pre-Prisma environment snapshot</a></td><td><span class="status status-ok">Accepted</span></td></tr>
+            <tr><td class="mono">0029</td><td><a href="adr/0029-piggybacked-batch-sweep-instead-of-a-scheduler.html">Periodic cleanup runs as a piggybacked batch sweep, not a scheduler</a></td><td><span class="status status-ok">Accepted</span></td></tr>
+            <tr><td class="mono">0030</td><td><a href="adr/0030-system-initiated-deletion-of-unverified-accounts.html">System-initiated deletion: the first erasure path no user confirms</a></td><td><span class="status status-ok">Accepted</span></td></tr>
+            <tr><td class="mono">0031</td><td><a href="adr/0031-the-interview-is-three-questions-and-a-catalog.html">Nine questions, two segments: the interview stays three, the other six arrive as the catalog&#39;s first entry</a></td><td><span class="status status-ok">Accepted</span></td></tr>
+            <tr><td class="mono">0032</td><td><a href="adr/0032-nothing-on-screen-promises-what-the-slice-does-not-deliver.html">Nothing on screen promises what the slice does not deliver</a></td><td><span class="status status-ok">Accepted</span></td></tr>
+            <tr><td class="mono">0033</td><td><a href="adr/0033-the-question-graph-lives-in-packages-core.html">The interview&#39;s question graph lives in <code>packages/core</code>, and the server validates against it</a></td><td><span class="status status-ok">Accepted</span></td></tr>
+            <tr><td class="mono">0034</td><td><a href="adr/0034-veranlagungsartenvergleich-returns-a-bounded-comparison.html">The Veranlagungsartenvergleich returns a bounded comparison, never a bare verdict — and it is not a Günstigerprüfung</a></td><td><span class="status status-ok">Accepted</span></td></tr>
+            <tr><td class="mono">0035</td><td><a href="adr/0035-foundation-consolidation.html">Foundation consolidation: framework standard instead of bespoke builds, one product instead of slices</a></td><td><span class="status status-ok">Accepted</span></td></tr>
+            <tr><td class="mono">0036</td><td><a href="adr/0036-definition-of-done.html">Definition of Done: vier Ebenen</a></td><td><span class="status status-ok">Accepted</span></td></tr>
+            <tr><td class="mono">0037</td><td><a href="adr/0037-income-types-and-tax-year-model.html">Income types / tax year model in <code>packages/core</code> (Draft)</a></td><td><span class="status status-ok">Accepted</span></td></tr>
+            <tr><td class="mono">0038</td><td><a href="adr/0038-calculation-core-and-ai-port.html">Deterministic calculation core + AI port (Draft)</a></td><td><span class="status status-ok">Accepted</span></td></tr>
+            <tr><td class="mono">0039</td><td><a href="adr/0039-tax-year-state-machine.html">Steuerjahr-Zustandsmaschine (Entwurf)</a></td><td><span class="status status-ok">Accepted</span></td></tr>
+            <tr><td class="mono">0040</td><td><a href="adr/0040-document-inbox.html">Document inbox slice (Draft)</a></td><td><span class="status status-ok">Accepted</span></td></tr>
+            <tr><td class="mono">0041</td><td><a href="adr/0041-employee-vertical-lstb.html">Employee vertical: LStB scan fallback form + on-demand catalog entries (Draft)</a></td><td><span class="status status-ok">Accepted</span></td></tr>
+            <tr><td class="mono">0042</td><td><a href="adr/0042-grenzgaenger-ch-vertical.html">Grenzgänger CH vertical: document type, CH interview entry, exchange-rate core (Draft)</a></td><td><span class="status status-ok">Accepted</span></td></tr>
+            <tr><td class="mono">0043</td><td><a href="adr/0043-veranlagungsartenvergleich-refinement.html">Veranlagungsartenvergleich refinement: Soli/KiSt folded in, the uncertainty is now only the Progressionsvorbehalt</a></td><td><span class="status status-ok">Accepted</span></td></tr>
+            <tr><td class="mono">0044</td><td><a href="adr/0044-pensioner-vertical.html">Pensioner vertical: pension type, statutory tables, Anlage R folding (Draft)</a></td><td><span class="status status-ok">Accepted</span></td></tr>
+            <tr><td class="mono">0045</td><td><a href="adr/0045-value-first-funnel.html">Value-first funnel: a guest may use the minimal gate, the Steuer-ID becomes optional, the upgrade carries interview answers along</a></td><td><span class="status status-ok">Accepted</span></td></tr>
+            <tr><td class="mono">0046</td><td><a href="adr/0046-rental-vertical.html">Rental vertical: several properties per Anlage V, straight-line AfA, sale/furnished gate (Draft)</a></td><td><span class="status status-open">Draft</span></td></tr>
+            <tr><td class="mono">0047</td><td><a href="adr/0047-deadline-warning-mode.html">Deadline/Verspätungszuschlag warning mode: filing deadline rule set, 60-day banner, no <code>verspätet</code> status (Draft)</a></td><td><span class="status status-open">Draft</span></td></tr>
+            <tr><td class="mono">0048</td><td><a href="adr/0048-capital-income-vertical.html">Capital vertical: depot classification, capital income form, § 32d Günstigerprüfung (bounded comparison) (Draft)</a></td><td><span class="status status-open">Draft</span></td></tr>
+            <tr><td class="mono">0049</td><td><a href="adr/0049-year-carry-over-m1.html">Year carry-over: source <code>uebernahme</code>, unconfirmed items count toward the range, marking layer (Draft)</a></td><td><span class="status status-open">Draft</span></td></tr>
+            <tr><td class="mono">0050</td><td><a href="adr/0050-paper-filing-instead-of-elster-in-1-0.html">1.0 files on paper: form printout instead of ELSTER, paid per tax year at printout</a></td><td><span class="status status-ok">Accepted</span></td></tr>
+            <tr><td class="mono">0051</td><td><a href="adr/0051-owl-ai-mode.html">Owl AI mode &amp; strict data protection boundary</a></td><td><span class="status status-ok">Accepted</span></td></tr>
+            <tr><td class="mono">0052</td><td><a href="adr/0052-agent-access-mcp.html">Agent access: the user&#39;s own AI assistant fills in the tax return (MCP)</a></td><td><span class="status status-ok">Accepted</span></td></tr>
+            <tr><td class="mono">0053</td><td><a href="adr/0053-beta-hosting-cloud-run.html">Beta hosting on Google Cloud Run and Cloud SQL</a></td><td><span class="status status-ok">Accepted</span></td></tr>
+            <tr><td class="mono">0054</td><td><a href="adr/0054-joint-assessment-one-return.html">Zusammenveranlagung (joint assessment): one joint tax return, Person A also enters data for Person B</a></td><td><span class="status status-ok">Accepted</span></td></tr>
+            <tr><td class="mono">0055</td><td><a href="adr/0055-zero-downtime-database-migrations-expand-contract.html">Zero-Downtime Database Migrations (Expand and Contract Pattern)</a></td><td><span class="status status-ok">Accepted</span></td></tr>
+            <tr><td class="mono">0056</td><td><a href="adr/0056-asynchronous-pdf-generation-job-queue.html">Asynchronous PDF generation &amp; job decoupling (fault isolation)</a></td><td><span class="status status-ok">Accepted</span></td></tr>
+            <tr><td class="mono">0058</td><td><a href="adr/0058-lstb-text-fallback-allowlist.html">LStB text fallback: allowlist, evidence check, never green</a></td><td><span class="status status-ok">Accepted</span></td></tr>
+            <tr><td class="mono">0059</td><td><a href="adr/0059-document-keystore-crypto-shredding.html">Separate keystore database for document keys (crypto-shredding down into the backups)</a></td><td><span class="status status-ok">Accepted</span></td></tr>
+            <tr><td class="mono">0060</td><td><a href="adr/0060-on-device-ocr-web-self-hosted.html">On-device OCR on the web, self-hosted, OCR values never green</a></td><td><span class="status status-ok">Accepted</span></td></tr>
+            <tr><td class="mono">0061</td><td><a href="adr/0061-on-device-dictation-model-source.html">Dictation stage 2: speech model from Hugging Face, pinned and verified (deviation from ADR-0060)</a></td><td><span class="status status-ok">Accepted</span></td></tr>
+            <tr><td class="mono">0062</td><td><a href="adr/0062-household-at-account-level.html">Household at account level: create spouse and children once, select them per year</a></td><td><span class="status status-ok">Accepted</span></td></tr>
+            <tr><td class="mono">0063</td><td><a href="adr/0063-church-tax-rules.html">Church tax in the estimate: rate, cap, besonderes Kirchgeld, Abgeltungsteuer</a></td><td><span class="status status-ok">Accepted</span></td></tr>
+            <tr><td class="mono">0064</td><td><a href="adr/0064-owl-chat-answer-runs-and-resumption.html">Owl chat: answer runs, detached from the connection, with resumption</a></td><td><span class="status status-ok">Accepted</span></td></tr>
+            <tr><td class="mono">0065</td><td><a href="adr/0065-address-search-via-own-server.html">Address search via our own server (deviation from #451 decisions 7 and 8)</a></td><td><span class="status status-ok">Accepted</span></td></tr>
+            <tr><td class="mono">0066</td><td><a href="adr/0066-owl-field-catalog-and-one-write-path.html">Owl: one field catalog, one value check, honest preview, checked answer</a></td><td><span class="status status-ok">Accepted</span></td></tr>
+            <tr><td class="mono">0067</td><td><a href="adr/0067-owl-projects-conversations-notes-context.html">Owl: tax year as a project, several conversations, project notes, context with summary</a></td><td><span class="status status-ok">Accepted</span></td></tr>
+            <tr><td class="mono">0068</td><td><a href="adr/0068-owl-skills.html">Owl: skills and question rounds</a></td><td><span class="status status-ok">Accepted</span></td></tr>
+            <tr><td class="mono">0069</td><td><a href="adr/0069-owl-advisor-stance-and-tax-knowledge.html">Owl: advisor stance always, tax knowledge to look up, all tax topics</a></td><td><span class="status status-ok">Accepted</span></td></tr>
+            <tr><td class="mono">0070</td><td><a href="adr/0070-owl-advises-proactively-and-knows-the-situation.html">Owl: savings plan, outlook, Bescheid check and „Unsere Situation“ (&quot;Our situation&quot;)</a></td><td><span class="status status-ok">Accepted</span></td></tr>
+            <tr><td class="mono">0071</td><td><a href="adr/0071-owl-tax-years-as-projects-concurrent-conversations.html">Owl: tax years as projects in the sidebar, conversations answer concurrently</a></td><td><span class="status status-ok">Accepted</span></td></tr>
+            <tr><td class="mono">0072</td><td><a href="adr/0072-n-gre-pension-fund-split-krankentaggeld-annual-rate.html">Anlage N-Gre: Pensionskasse split into Obligatorium and Überobligatorium, NBUV paid 100 % by the employer, tax-free Krankentaggeld, annual average rate</a></td><td><span class="status status-ok">Accepted</span></td></tr>
+            <tr><td class="mono">0073</td><td><a href="adr/0073-owl-drafts-for-person-b.html">Owl: drafts for Person B in the Zusammenveranlagung</a></td><td><span class="status status-ok">Accepted</span></td></tr>
+            <tr><td class="mono">0074</td><td><a href="adr/0074-reading-documents-swiss-lohnausweis-and-scanned-lstb.html">Reading documents: Swiss Lohnausweis and scanned Lohnsteuerbescheinigung</a></td><td><span class="status status-ok">Accepted</span></td></tr>
+            <tr><td class="mono">0075</td><td><a href="adr/0075-swiss-letters-pension-fund-and-premiums.html">Swiss letters: Pensionskasse statement and the employer&#39;s premium confirmation</a></td><td><span class="status status-ok">Accepted</span></td></tr>
+            <tr><td class="mono">0076</td><td><a href="adr/0076-more-werbungskosten-childcare-premiums.html">More Werbungskosten, childcare and the employer share of the premiums</a></td><td><span class="status status-ok">Accepted</span></td></tr>
+            <tr><td class="mono">0077</td><td><a href="adr/0077-medical-costs-and-35a-enabled.html">Medical costs (§ 33) and household-related expenses (§ 35a) enabled</a></td><td><span class="status status-ok">Accepted</span></td></tr>
+            <tr><td class="mono">0078</td><td><a href="adr/0078-reading-tradesman-invoices.html">Reading tradesman invoices (§ 35a Abs. 3 EStG)</a></td><td><span class="status status-ok">Accepted</span></td></tr>
+            <tr><td class="mono">0079</td><td><a href="adr/0079-move-year-germany-switzerland.html">Change year: German and Swiss salary in one year, two commutes</a></td><td><span class="status status-ok">Accepted</span></td></tr>
+            <tr><td class="mono">0080</td><td><a href="adr/0080-donations-and-health-insurance-statements.html">Adding up donation receipts, reading Swiss health insurance statements</a></td><td><span class="status status-ok">Accepted</span></td></tr>
+            <tr><td class="mono">0081</td><td><a href="adr/0081-advance-tax-payments.html">Advance tax payments in the estimate</a></td><td><span class="status status-ok">Accepted</span></td></tr>
+            <tr><td class="mono">0082</td><td><a href="adr/0082-owl-does-not-change-entered-values.html">The owl changes entered values only on request</a></td><td><span class="status status-ok">Accepted</span></td></tr>
+            <tr><td class="mono">0083</td><td><a href="adr/0083-lstb-without-readable-social-insurance.html">Lohnsteuerbescheinigung without readable social insurance</a></td><td><span class="status status-ok">Accepted</span></td></tr>
+            <tr><td class="mono">0084</td><td><a href="adr/0084-empty-model-response.html">An empty model response is retried and then stated openly</a></td><td><span class="status status-ok">Accepted</span></td></tr>
+            <tr><td class="mono">0085</td><td><a href="adr/0085-printout-for-2024.html">Printout for 2024, overlong entries before payment</a></td><td><span class="status status-ok">Accepted</span></td></tr>
+            <tr><td class="mono">0086</td><td><a href="adr/0086-child-health-insurance-rate-and-care-period.html">Child&#39;s health insurance without a chosen rate, care period from the Bescheid</a></td><td><span class="status status-ok">Accepted</span></td></tr>
+            <tr><td class="mono">0087</td><td><a href="adr/0087-escalation-case-two-grenzgaenger-family.html">Escalation case: two Grenzgänger with a change year, three children, medical costs</a></td><td><span class="status status-ok">Accepted</span></td></tr>
+            <tr><td class="mono">0088</td><td><a href="adr/0088-person-b-complete-and-kinderzulage.html">Entering Person B completely, Swiss Kinderzulage per child</a></td><td><span class="status status-ok">Accepted</span></td></tr>
+            <tr><td class="mono">0089</td><td><a href="adr/0089-stream-instead-of-catalogs.html">The stream: one selection instead of yes/no pages, one page per topic</a></td><td><span class="status status-ok">Accepted</span></td></tr>
+            <tr><td class="mono">0090</td><td><a href="adr/0090-real-case-findings-stream.html">Findings from the real-case run through the stream (2024/2025)</a></td><td><span class="status status-ok">Accepted</span></td></tr>
+            <tr><td class="mono">0091</td><td><a href="adr/0091-owl-personal-data-with-consent.html">The owl fills every field: personal data with consent</a></td><td><span class="status status-ok">Accepted</span></td></tr>
+            <tr><td class="mono">0092</td><td><a href="adr/0092-document-assignment.html">Document assignment: Who does a document belong to?</a></td><td><span class="status status-ok">Accepted</span></td></tr>
+            <tr><td class="mono">0093</td><td><a href="adr/0093-required-fields-and-follow-up-questions-instead-of-guessing.html">Required fields and follow-up questions instead of interpretation</a></td><td><span class="status status-ok">Accepted</span></td></tr>
+            <tr><td class="mono">0094</td><td><a href="adr/0094-estimate-calculates-like-the-assessment-notice.html">The estimate calculates like the Bescheid</a></td><td><span class="status status-ok">Accepted</span></td></tr>
+            <tr><td class="mono">0095</td><td><a href="adr/0095-reading-documents-by-position.html">Reading documents by position: reading order, 300 dpi, word boxes</a></td><td><span class="status status-ok">Accepted</span></td></tr>
+            <tr><td class="mono">0096</td><td><a href="adr/0096-selectable-model-and-thinking-depth.html">Selectable model and thinking depth (Gründlich / Max)</a></td><td><span class="status status-ok">Accepted</span></td></tr>
+            <tr><td class="mono">0097</td><td><a href="adr/0097-document-lifecycle.html">Document lifecycle: every document says what became of it</a></td><td><span class="status status-ok">Accepted</span></td></tr>
+            <tr><td class="mono">0098</td><td><a href="adr/0098-tax-history-across-the-years.html">Tax history: all years at a glance</a></td><td><span class="status status-ok">Accepted</span></td></tr>
+            <tr><td class="mono">0099</td><td><a href="adr/0099-history-hints-life-events-groups.html">History: hints, life events and groups</a></td><td><span class="status status-ok">Accepted</span></td></tr>
+            <tr><td class="mono">0100</td><td><a href="adr/0100-owl-guard-alongside-the-model-and-timings.html">The owl: guard alongside the model, timings per round, form before the question</a></td><td><span class="status status-ok">Accepted</span></td></tr>
+            <tr><td class="mono">0101</td><td><a href="adr/0101-self-employed.html">Self-employed: EÜR, bookkeeping, balance sheet, VAT and trade tax</a></td><td><span class="status status-ok">Accepted</span></td></tr>
+            <tr><td class="mono">0102</td><td><a href="adr/0102-ports-and-adapters-enforced-by-architecture-tests.html">Ports &amp; Adapters: two architecture tests enforce the boundaries</a></td><td><span class="status status-ok">Accepted</span></td></tr>
+            <tr><td class="mono">0103</td><td><a href="adr/0103-session-security-hardening.html">Session-security hardening: <code>/v1</code> CSRF, an absolute session cap, token rotation, stronger registration defaults</a></td><td><span class="status status-ok">Accepted</span></td></tr>
+            <tr><td class="mono">0104</td><td><a href="adr/0104-pentest-finding-fixes.html">Fixes for the post-hardening security-audit findings</a></td><td><span class="status status-ok">Accepted</span></td></tr>
+            <tr><td class="mono">0105</td><td><a href="adr/0105-ci-gate-taxonomy-and-transparency.html">CI gate taxonomy, <code>category: gate</code> naming, and a transparency rollup</a></td><td><span class="status status-ok">Accepted</span></td></tr>
+            <tr><td class="mono">0106</td><td><a href="adr/0106-live-pentest-fixes.html">Fixes for the live penetration test of 2026-11-23</a></td><td><span class="status status-ok">Accepted</span></td></tr>
+            <tr><td class="mono">0107</td><td><a href="adr/0107-pentest-round-3-fixes.html">Fixes for the third-round penetration test of 2026-11-23</a></td><td><span class="status status-ok">Accepted</span></td></tr>
+            <tr><td class="mono">0108</td><td><a href="adr/0108-pentest-round-4-hardening.html">Hardening from the post-merge review of the pentest fixes</a></td><td><span class="status status-ok">Accepted</span></td></tr>
+            <tr><td class="mono">0109</td><td><a href="adr/0109-security-report-hardening.html">Hardening after the security report of 2026-11-24</a></td><td><span class="status status-ok">Accepted</span></td></tr>
+            <tr><td class="mono">0110</td><td><a href="adr/0110-per-user-field-keys.html">Per-user keys for the field-encrypted columns</a></td><td><span class="status status-ok">Accepted</span></td></tr>
+            <tr><td class="mono">0111</td><td><a href="adr/0111-beta-readiness.html">Beta readiness: the findings of the completeness audit of 2026-11-24</a></td><td><span class="status status-ok">Accepted</span></td></tr>
+            <tr><td class="mono">0112</td><td><a href="adr/0112-browser-gates-as-parallel-groups.html">The browser gates run as parallel groups from one gate list</a></td><td><span class="status status-ok">Accepted</span></td></tr>
+            <tr><td class="mono">0113</td><td><a href="adr/0113-production-deploy-by-release.html">Production is deployed by publishing a release, with the API image staging ran</a></td><td><span class="status status-ok">Accepted</span></td></tr>
+            <tr><td class="mono">0114</td><td><a href="adr/0114-printout-summary.html">A SteuerEule summary leads the paid printout</a></td><td><span class="status status-ok">Accepted</span></td></tr>
+            <tr><td class="mono">0115</td><td><a href="adr/0115-owl-voice.html">The owl&#39;s voice and ear come from speech models behind a port</a></td><td><span class="status status-ok">Accepted</span></td></tr>
+          </tbody>
+        </table></div>
+      </article>
+    </main>
+  </div>
+  <script src="assets/site.js"></script>
+</body>
+</html>

@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>ADR-0080 — Adding up donation receipts, reading Swiss health insurance statements — SteuerEule</title>
+  <link rel="icon" href="../../../images/steuereule-logo.svg">
+  <link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+  <a class="skip" href="#content">Skip to the content</a>
+  <div class="shell">
+    <aside class="rail">
+      <a class="brand" href="../index.html">
+        <img src="../../../images/steuereule-logo.svg" width="36" height="36" alt="">
+        <span><strong>SteuerEule</strong><span class="eyebrow">Architecture</span></span>
+      </a>
+      <details class="menu" open>
+        <summary>Contents</summary>
+        <nav class="nav" aria-label="Site">
+        <p class="eyebrow">arc42</p>
+        <ul><li><a class="nav-item" href="../index.html"><span>Overview</span></a></li><li><a class="nav-item" href="../01-introduction-and-goals.html"><span class="nav-number">01</span><span>Introduction and goals</span></a></li><li><a class="nav-item" href="../02-constraints.html"><span class="nav-number">02</span><span>Constraints</span></a></li><li><a class="nav-item" href="../03-context-and-scope.html"><span class="nav-number">03</span><span>Context and scope</span></a></li><li><a class="nav-item" href="../04-solution-strategy.html"><span class="nav-number">04</span><span>Solution strategy</span></a></li><li><a class="nav-item" href="../05-building-block-view.html"><span class="nav-number">05</span><span>Building block view</span></a></li><li><a class="nav-item" href="../06-runtime-view.html"><span class="nav-number">06</span><span>Runtime view</span></a></li><li><a class="nav-item" href="../07-deployment-view.html"><span class="nav-number">07</span><span>Deployment view</span></a></li><li><a class="nav-item" href="../08-cross-cutting-concepts.html"><span class="nav-number">08</span><span>Cross-cutting concepts</span></a></li><li><a class="nav-item" href="../09-architecture-decisions.html"><span class="nav-number">09</span><span>Architecture decisions</span></a></li><li><a class="nav-item" href="../10-quality-and-tests.html"><span class="nav-number">10</span><span>Quality and tests</span></a></li><li><a class="nav-item" href="../11-risks-and-technical-debt.html"><span class="nav-number">11</span><span>Risks and technical debt</span></a></li><li><a class="nav-item" href="../12-glossary.html"><span class="nav-number">12</span><span>Glossary</span></a></li></ul>
+        <p class="eyebrow">Companion</p>
+        <ul><li><a class="nav-item" href="../subsystems.html"><span>Backend modules from the inside</span></a></li></ul>
+        <p class="eyebrow">Library</p>
+        <ul><li><a class="nav-item is-active" href="../decisions.html" aria-current="page"><span>Decisions</span></a></li><li><a class="nav-item" href="../documents.html"><span>Documents</span></a></li></ul>
+      </nav>
+      </details>
+      <p class="rail-foot">Architecture as of 2026-11-22<br>Built from the Markdown under <code>docs/</code></p>
+    </aside>
+    <main id="content" class="content">
+      <header class="page-head">
+        <p class="eyebrow">Decision · ADR-0080</p>
+        <h1>Adding up donation receipts, reading Swiss health insurance statements <span class="status status-ok">Accepted</span></h1>
+        <ul class="chips" aria-label="On this page"><li><a class="chip" href="#context">Context</a></li><li><a class="chip" href="#decision">Decision</a></li><li><a class="chip" href="#consequences">Consequences</a></li></ul>
+      </header>
+      <article class="prose">
+<ul>
+<li><strong>Status:</strong> Accepted</li>
+<li><strong>Date:</strong> 2026-11-13</li>
+<li><strong>Deciders:</strong> NexusHero (Product Owner), Steuereule Engineering</li>
+<li><strong>Applies to:</strong> <code>packages/core/src/domains/{donation-receipt,ch-health-statement,document-kind}.ts</code>, <code>packages/core/src/interview/{advisor,owl-mode}.ts</code>, <code>apps/api/src/receipt/parse/auto-receipt-parse.strategy.ts</code>, <code>apps/api/src/ch-certificate-scan/ch-health-statement.parse-strategy.ts</code>, <code>apps/api/src/advisor/advisor.service.ts</code></li>
+<li><strong>Builds on:</strong> ADR-0074/0075 (reading Swiss documents), ADR-0076 and ADR-0078 (documents add up)</li>
+</ul>
+<h2 id="context"><a class="anchor" href="#context" aria-hidden="true" tabindex="-1">#</a>Context</h2>
+<p>In the 2024 real case the app arrived at only a fraction of the donations: each receipt replaced the
+previous one. Simply adding them up would also have been wrong, though. One donation appeared with
+the same booking number in the joint collective receipt and in a partner&#39;s own receipt, and a third
+receipt was a duplicate copy. The statements of the Swiss health insurers were read only by the
+model, without assignment to a child or a change of insurer.</p>
+<h2 id="decision"><a class="anchor" href="#decision" aria-hidden="true" tabindex="-1">#</a>Decision</h2>
+<ol>
+<li><strong>Donations as items.</strong> A fixed reader splits a donation receipt into items: booking number, if
+printed, and always issuer, amount and year. An item counts as already counted if the booking
+number is the same or, if one side has none, issuer, amount and year are the same. New items are
+added to the total, already counted ones are not, and the owl says so. The year is the year of
+the donation, not the date of the receipt.</li>
+<li><strong>Health insurance statement as its own document type</strong> (<code>chKrankenkasse</code>). It reads the premium
+of the basic insurance per insured person, for Helsana individually per person, for SWICA for the
+whole family. The name decides where the premium belongs: to Person A, to Person B (each
+<code>krankenkasseChf</code>) or to a child (<code>healthBasicEur</code>, Anlage Kind Kz 66, in euros at the
+Lohnausweis (Swiss salary certificate) rate). If several persons match, the one with the most
+names wins; on a tie it stays open. Without an exchange rate there is no draft for the child, only
+a hint.</li>
+<li><strong>A change of insurer adds up, the same statement does not.</strong> A second insurer in the year is
+added to the first. The same statement again does not count.</li>
+<li><strong>Counted items on the draft.</strong> Each draft carries its counted items only as a hash. They stay on
+the server and never go to the client. A hash starts with a digit so that the IBAN block does not
+take it for an IBAN.</li>
+<li><strong>Legal source <code>estg-10-1-3</code></strong> (basic health insurance).</li>
+</ol>
+<h2 id="consequences"><a class="anchor" href="#consequences" aria-hidden="true" tabindex="-1">#</a>Consequences</h2>
+<ul>
+<li>2024 real case: donations as with the tax advisor, in any upload order; the health insurance
+premiums of both partners as with the tax advisor.</li>
+<li>2025 real case: donations as with the tax advisor; the receipt for 2024 lands in 2024. For health
+insurance the app counts both insurers of the year; the tax advisor claimed only the first (open
+question to him).</li>
+<li>Self-borne medical costs from the statement are mentioned by the owl only as a hint. They belong
+to the medical costs (§ 33) and are not applied automatically.</li>
+</ul>
+
+      </article>
+      <p class="back"><a href="../decisions.html">All decisions</a></p>
+      <nav class="steps" aria-label="Previous and next"><a class="step step-previous" href="0079-move-year-germany-switzerland.html"><span class="eyebrow">Previous</span><span>ADR-0079</span></a><a class="step step-next" href="0081-advance-tax-payments.html"><span class="eyebrow">Next</span><span>ADR-0081</span></a></nav>
+    </main>
+  </div>
+  <script src="../assets/site.js"></script>
+</body>
+</html>

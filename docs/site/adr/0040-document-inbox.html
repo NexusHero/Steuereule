@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>ADR-0040 — Document inbox slice (Draft) — SteuerEule</title>
+  <link rel="icon" href="../../../images/steuereule-logo.svg">
+  <link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+  <a class="skip" href="#content">Skip to the content</a>
+  <div class="shell">
+    <aside class="rail">
+      <a class="brand" href="../index.html">
+        <img src="../../../images/steuereule-logo.svg" width="36" height="36" alt="">
+        <span><strong>SteuerEule</strong><span class="eyebrow">Architecture</span></span>
+      </a>
+      <details class="menu" open>
+        <summary>Contents</summary>
+        <nav class="nav" aria-label="Site">
+        <p class="eyebrow">arc42</p>
+        <ul><li><a class="nav-item" href="../index.html"><span>Overview</span></a></li><li><a class="nav-item" href="../01-introduction-and-goals.html"><span class="nav-number">01</span><span>Introduction and goals</span></a></li><li><a class="nav-item" href="../02-constraints.html"><span class="nav-number">02</span><span>Constraints</span></a></li><li><a class="nav-item" href="../03-context-and-scope.html"><span class="nav-number">03</span><span>Context and scope</span></a></li><li><a class="nav-item" href="../04-solution-strategy.html"><span class="nav-number">04</span><span>Solution strategy</span></a></li><li><a class="nav-item" href="../05-building-block-view.html"><span class="nav-number">05</span><span>Building block view</span></a></li><li><a class="nav-item" href="../06-runtime-view.html"><span class="nav-number">06</span><span>Runtime view</span></a></li><li><a class="nav-item" href="../07-deployment-view.html"><span class="nav-number">07</span><span>Deployment view</span></a></li><li><a class="nav-item" href="../08-cross-cutting-concepts.html"><span class="nav-number">08</span><span>Cross-cutting concepts</span></a></li><li><a class="nav-item" href="../09-architecture-decisions.html"><span class="nav-number">09</span><span>Architecture decisions</span></a></li><li><a class="nav-item" href="../10-quality-and-tests.html"><span class="nav-number">10</span><span>Quality and tests</span></a></li><li><a class="nav-item" href="../11-risks-and-technical-debt.html"><span class="nav-number">11</span><span>Risks and technical debt</span></a></li><li><a class="nav-item" href="../12-glossary.html"><span class="nav-number">12</span><span>Glossary</span></a></li></ul>
+        <p class="eyebrow">Companion</p>
+        <ul><li><a class="nav-item" href="../subsystems.html"><span>Backend modules from the inside</span></a></li></ul>
+        <p class="eyebrow">Library</p>
+        <ul><li><a class="nav-item is-active" href="../decisions.html" aria-current="page"><span>Decisions</span></a></li><li><a class="nav-item" href="../documents.html"><span>Documents</span></a></li></ul>
+      </nav>
+      </details>
+      <p class="rail-foot">Architecture as of 2026-11-22<br>Built from the Markdown under <code>docs/</code></p>
+    </aside>
+    <main id="content" class="content">
+      <header class="page-head">
+        <p class="eyebrow">Decision · ADR-0040</p>
+        <h1>Document inbox slice (Draft) <span class="status status-ok">Accepted</span></h1>
+        <ul class="chips" aria-label="On this page"><li><a class="chip" href="#context">Context</a></li><li><a class="chip" href="#decision">Decision</a></li><li><a class="chip" href="#consequences">Consequences</a></li><li><a class="chip" href="#alternatives-considered">Alternatives considered</a></li></ul>
+      </header>
+      <article class="prose">
+<ul>
+<li><strong>Status:</strong> Accepted — promoted 2026-10-24 (reviewed as part of the ticket reviews; Musti)</li>
+<li><strong>Date:</strong> 2026-10-24</li>
+<li><strong>Deciders:</strong> Robin (backend, Ticket 04) — draft; promotion needs Musti review</li>
+<li><strong>Implements</strong> product ADR-007 (upload without binding to a year, assignment as a suggestion),
+product ADR-008 (line-item conflict visible instead of silent overwriting)</li>
+<li><strong>Builds on</strong> ADR-0008 (field encryption), ADR-0007/0012 (userId seam), REQ-004 (audit)</li>
+<li><strong>Context tags:</strong> architecture, receipt inbox, security, honesty principle</li>
+</ul>
+<h2 id="context"><a class="anchor" href="#context" aria-hidden="true" tabindex="-1">#</a>Context</h2>
+<p>Product ADR-007: users photograph receipts at the moment of receipt, not while filing — so a Beleg (document)
+lands <strong>unbound</strong> (no year); extraction <em>suggests</em> a year (payment date over invoice date, § 11 EStG
+Zufluss/Abfluss (inflow/outflow)) and a tap confirms. Product ADR-008: conflicting sources become a <strong>visible
+conflict</strong>, never a silent overwrite. Scan/OCR is out of scope here (ADR-036/045, later slices) —
+this slice builds the <strong>data interface</strong> only.</p>
+<h2 id="decision"><a class="anchor" href="#decision" aria-hidden="true" tabindex="-1">#</a>Decision</h2>
+<ol>
+<li><p><strong><code>packages/core/beleg.ts</code></strong> — the pure model:</p>
+<ul>
+<li><code>BelegDaten</code>: the persisted <em>facts</em> (id, userId, filename, optional invoice/payment dates,
+confirmed year).</li>
+<li><code>steuerjahrVorschlag</code>: the § 11 rule — payment date&#39;s year, else invoice date&#39;s year, else
+none; carries the <code>herkunft</code> (<code>zahlungsdatum</code>|<code>belegdatum</code>) for the &quot;Regel: Zahlungsdatum&quot; (&quot;Rule: payment date&quot;) chip.</li>
+<li><code>zuordnungAusDaten</code>: the <strong>derived</strong> state (<code>ungebunden | vorgeschlagen | zugeordnet | konflikt</code>). <code>konflikt</code> = a confirmed year contradicts the date-derived suggestion — <strong>both
+years stay visible</strong> (ADR-008).</li>
+<li><code>ordneZu</code>: the one assignment operation; it persists the year, and the conflict is <em>derived</em>
+on the next read, never a separate stored flag.</li>
+</ul>
+<p>The Zuordnung (assignment) state is <strong>derived, never stored</strong> — same instinct as TaxYear&#39;s range being
+recomputed (ADR-014/048): a stored copy of a derivable state could only drift.</p>
+</li>
+<li><p><strong><code>apps/api</code> Beleg module + Prisma migration</strong> — <code>POST /v1/belege</code> (unbound create),
+<code>GET /v1/belege</code> (inbox), <code>POST /v1/belege/:id/zuordnung</code> (the tap). Guest-compatible
+(UserContextGuard, like Profile/Cockpit — receipts are collected &quot;im Moment des Erhalts&quot; (at the moment of receipt),
+possibly pre-account; REQ-006 carries them over). The <code>Beleg</code> table stores facts; <code>dateiname</code>
+is field-encrypted at rest (ADR-0008 — filenames carry PII, joinable to Profile&#39;s Steuer-ID (tax identification number));
+dates stay clear (the suggestion rule and the <code>(userId, steuerjahr)</code> index need them without
+decrypting). WRITE/READ access is audited (REQ-004).</p>
+</li>
+</ol>
+<h2 id="consequences"><a class="anchor" href="#consequences" aria-hidden="true" tabindex="-1">#</a>Consequences</h2>
+<ul>
+<li>The conflict is honest and cheap: assigning a year that contradicts the dates <em>just works</em> and
+the derived state reports <code>konflikt</code> — nothing is silently overwritten, no extra column.</li>
+<li>The Posten-<strong>amount</strong> conflict (ADR-008&#39;s &quot;Beleg sagt 480 €, Nutzer tippt 500 €&quot; — document says 480 €, user types 500 €) lives in the
+calculation core (<code>PostenKonflikt</code>, draft 0038) because it is triggered by OCR, which is not built
+yet — this slice&#39;s Beleg table therefore stores no <code>betrag</code> column (honest: no amount to store).</li>
+<li><strong>Security posture:</strong> new persistent user data. <code>dateiname</code> field-encrypted (ADR-0008); access
+audited (REQ-004). The receipt <em>binary</em> storage is out of scope here (ADR-036/045) — when it
+lands, the storage-key field must join the encrypted set.</li>
+<li><strong>Open for promotion review:</strong> whether the &quot;conflict on the <em>year</em>&quot; is even a product-visible
+state, or whether ADR-008&#39;s conflict is exclusively the Posten-<strong>amount</strong> conflict and the year
+reassignment should simply overwrite (the slice modeled the year-conflict because the ticket
+AC lists ADR-007/008 together — a product call, not a settled law).</li>
+</ul>
+<h2 id="alternatives-considered"><a class="anchor" href="#alternatives-considered" aria-hidden="true" tabindex="-1">#</a>Alternatives considered</h2>
+<ul>
+<li><strong>Store the Zuordnung state as a column.</strong> Rejected: a derivable state is exactly what ADR-014/048
+says to recompute, never persist.</li>
+<li><strong>Require <code>@RequiresAccount()</code> (no guest).</strong> Rejected: receipts are photographed at receipt time,
+possibly before account; Profile already establishes guest-compatible sensitive persistence
+(field-encrypted, REQ-006 carries it over).</li>
+</ul>
+
+      </article>
+      <p class="back"><a href="../decisions.html">All decisions</a></p>
+      <nav class="steps" aria-label="Previous and next"><a class="step step-previous" href="0039-tax-year-state-machine.html"><span class="eyebrow">Previous</span><span>ADR-0039</span></a><a class="step step-next" href="0041-employee-vertical-lstb.html"><span class="eyebrow">Next</span><span>ADR-0041</span></a></nav>
+    </main>
+  </div>
+  <script src="../assets/site.js"></script>
+</body>
+</html>

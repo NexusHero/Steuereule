@@ -1,0 +1,266 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>ADR-0030 — System-initiated deletion: the first erasure path no user confirms — SteuerEule</title>
+  <link rel="icon" href="../../../images/steuereule-logo.svg">
+  <link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+  <a class="skip" href="#content">Skip to the content</a>
+  <div class="shell">
+    <aside class="rail">
+      <a class="brand" href="../index.html">
+        <img src="../../../images/steuereule-logo.svg" width="36" height="36" alt="">
+        <span><strong>SteuerEule</strong><span class="eyebrow">Architecture</span></span>
+      </a>
+      <details class="menu" open>
+        <summary>Contents</summary>
+        <nav class="nav" aria-label="Site">
+        <p class="eyebrow">arc42</p>
+        <ul><li><a class="nav-item" href="../index.html"><span>Overview</span></a></li><li><a class="nav-item" href="../01-introduction-and-goals.html"><span class="nav-number">01</span><span>Introduction and goals</span></a></li><li><a class="nav-item" href="../02-constraints.html"><span class="nav-number">02</span><span>Constraints</span></a></li><li><a class="nav-item" href="../03-context-and-scope.html"><span class="nav-number">03</span><span>Context and scope</span></a></li><li><a class="nav-item" href="../04-solution-strategy.html"><span class="nav-number">04</span><span>Solution strategy</span></a></li><li><a class="nav-item" href="../05-building-block-view.html"><span class="nav-number">05</span><span>Building block view</span></a></li><li><a class="nav-item" href="../06-runtime-view.html"><span class="nav-number">06</span><span>Runtime view</span></a></li><li><a class="nav-item" href="../07-deployment-view.html"><span class="nav-number">07</span><span>Deployment view</span></a></li><li><a class="nav-item" href="../08-cross-cutting-concepts.html"><span class="nav-number">08</span><span>Cross-cutting concepts</span></a></li><li><a class="nav-item" href="../09-architecture-decisions.html"><span class="nav-number">09</span><span>Architecture decisions</span></a></li><li><a class="nav-item" href="../10-quality-and-tests.html"><span class="nav-number">10</span><span>Quality and tests</span></a></li><li><a class="nav-item" href="../11-risks-and-technical-debt.html"><span class="nav-number">11</span><span>Risks and technical debt</span></a></li><li><a class="nav-item" href="../12-glossary.html"><span class="nav-number">12</span><span>Glossary</span></a></li></ul>
+        <p class="eyebrow">Companion</p>
+        <ul><li><a class="nav-item" href="../subsystems.html"><span>Backend modules from the inside</span></a></li></ul>
+        <p class="eyebrow">Library</p>
+        <ul><li><a class="nav-item is-active" href="../decisions.html" aria-current="page"><span>Decisions</span></a></li><li><a class="nav-item" href="../documents.html"><span>Documents</span></a></li></ul>
+      </nav>
+      </details>
+      <p class="rail-foot">Architecture as of 2026-11-22<br>Built from the Markdown under <code>docs/</code></p>
+    </aside>
+    <main id="content" class="content">
+      <header class="page-head">
+        <p class="eyebrow">Decision · ADR-0030</p>
+        <h1>System-initiated deletion: the first erasure path no user confirms <span class="status status-ok">Accepted</span></h1>
+        <ul class="chips" aria-label="On this page"><li><a class="chip" href="#context">Context</a></li><li><a class="chip" href="#decision">Decision</a></li><li><a class="chip" href="#consequences">Consequences</a></li><li><a class="chip" href="#alternatives-considered">Alternatives considered</a></li></ul>
+      </header>
+      <article class="prose">
+<ul>
+<li><strong>Status:</strong> Accepted</li>
+<li><strong>Date:</strong> 2026-08-07</li>
+<li><strong>Deciders:</strong> NexusHero (stakeholder — an erasure without the data subject&#39;s confirmation is not
+an engineering call); surfaced and framed by Musti (lead) in the #294 grill, where it was reported
+as a conflict with ADR-0013 rather than designed around.</li>
+<li><strong>Extends</strong> <a href="0013-dsgvo-export-and-account-deletion.html">ADR-0013</a> §3 (the atomic teardown
+transaction, reused unchanged) and §6 (<em>Trust boundary</em> — whose preconditions this path
+structurally cannot satisfy; that is the whole reason this ADR exists).</li>
+<li><strong>Builds on</strong> <a href="0029-piggybacked-batch-sweep-instead-of-a-scheduler.html">ADR-0029</a> (what runs it),
+<a href="0021-controls-are-proven-by-breaking-them.html">ADR-0021</a> (how it must be proven).</li>
+<li><strong>Context tags:</strong> dsgvo, security, auth</li>
+<li><strong>Introduced by:</strong> <code>steuereule#294</code>, from the stakeholder&#39;s own report: an unverified account can
+stay signed in forever without ever having confirmed.</li>
+</ul>
+<h2 id="context"><a class="anchor" href="#context" aria-hidden="true" tabindex="-1">#</a>Context</h2>
+<p>Everything that erases user data in this system today is something <strong>the user asked for</strong>, in a
+session, moments earlier. ADR-0013 §6 states the preconditions plainly:</p>
+<blockquote>
+<p>The destructive path additionally requires: the mandatory pre-delete export offer + the ADR-011
+Löschschutz warning + explicit confirmation + fresh-auth re-verification</p>
+</blockquote>
+<p>and §6 opens by fixing where that path lives: both endpoints sit behind <code>UserContextGuard</code>, reading
+only <code>@CurrentUser()</code> userId.</p>
+<p><strong>#294 asks for an erasure with none of those things present.</strong> A sweep has no session, no
+<code>@CurrentUser()</code>, no password to re-verify, and nobody to click a confirmation. ADR-0013&#39;s
+safeguards are not merely skipped here — they are <strong>structurally unsatisfiable</strong>, because every one
+of them is defined in terms of a user who is present, and this user is by definition absent.</p>
+<p>This is the first such path in the system. It was reported as a conflict rather than quietly worked
+around, because &quot;the ADR didn&#39;t anticipate this&quot; and &quot;the ADR doesn&#39;t apply&quot; are very different
+claims, and only the stakeholder can turn the first into the second.</p>
+<h2 id="decision"><a class="anchor" href="#decision" aria-hidden="true" tabindex="-1">#</a>Decision</h2>
+<p><strong>A system-initiated erasure is permitted for one narrowly defined population, with a different set
+of safeguards, written down here as a distinct case rather than as an exception to ADR-0013 §6.</strong></p>
+<h3 id="1-scope--exactly-one-population"><a class="anchor" href="#1-scope--exactly-one-population" aria-hidden="true" tabindex="-1">#</a>1. Scope — exactly one population</h3>
+<p>An account is eligible only when <strong>both</strong> hold:</p>
+<ul>
+<li><code>emailVerified</code> is false, and</li>
+<li><code>createdAt</code> is more than <strong>30 days</strong> ago.</li>
+</ul>
+<p>Counted from <code>createdAt</code>, deliberately <strong>not</strong> from last login: a deadline measured from last login
+would let an unverified account renew itself indefinitely by signing in, which is precisely the
+behaviour the stakeholder reported. 30 days is a product decision, not a legal threshold — DSGVO
+Art. 5(1)(e) supports that a limit must <em>exist</em>; it names no number, and this ADR does not pretend
+otherwise.</p>
+<p>Out of scope, explicitly: <strong>guest sessions</strong> (ADR-0007). A guest has no email address, so
+&quot;unverified&quot; is not a state they can occupy and no warning could ever reach them. Their lifecycle is
+a real question and a different one.</p>
+<h3 id="2-what-replaces-adr-0013-6s-safeguards"><a class="anchor" href="#2-what-replaces-adr-0013-6s-safeguards" aria-hidden="true" tabindex="-1">#</a>2. What replaces ADR-0013 §6&#39;s safeguards</h3>
+<div class="table"><table>
+<thead>
+<tr>
+<th>ADR-0013 §6 requires</th>
+<th>Available here?</th>
+<th>What stands in its place</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Fresh-auth re-verification</td>
+<td><strong>No</strong> — no session, no password</td>
+<td>Nothing. The eligibility rule itself is the only gate, which is why §1 is narrow and §4 is strict.</td>
+</tr>
+<tr>
+<td>Explicit confirmation</td>
+<td><strong>No</strong> — nobody is present</td>
+<td><strong>Advance warning</strong>, twice by email (T-7, T-1) and continuously in-app on every login while unverified.</td>
+</tr>
+<tr>
+<td>Mandatory pre-delete export offer</td>
+<td><strong>Not by email</strong> — there is no confirmed mailbox to send it to, which is the entire premise</td>
+<td>The <strong>T-7 warning carries the export offer in the banner</strong>, where the user is already authenticated and the REQ-011 export path is already reachable.</td>
+</tr>
+<tr>
+<td>ADR-011 Löschschutz warning</td>
+<td>Yes, unchanged</td>
+<td><code>deleteAccountTransaction</code> consults <code>LegalHold</code> exactly as it does on the user-initiated path — reused, not reimplemented.</td>
+</tr>
+</tbody></table></div>
+<h3 id="3-the-erasure-itself-is-not-a-new-mechanism"><a class="anchor" href="#3-the-erasure-itself-is-not-a-new-mechanism" aria-hidden="true" tabindex="-1">#</a>3. The erasure itself is not a new mechanism</h3>
+<p>It calls <strong><code>deleteAccountTransaction</code></strong> (<code>apps/api/src/account/delete-account-transaction.prisma.ts</code>)
+unchanged. That function is already exported as a raw function precisely so it can be driven without
+the HTTP/DI machinery, and it already handles LegalHold exemption, audit anonymisation, and the
+cascade — proven at acceptance tier by REQ-011&#39;s suite.</p>
+<p>There is exactly one deletion truth in this system and this path does not add a second. A sweep that
+hand-rolled <code>prisma.user.delete()</code> would be a refutation on sight.</p>
+<p><strong>No soft-delete, no suspended state.</strong> A second erasure semantics would be a second thing to prove
+for no gain the stakeholder wanted.</p>
+<h3 id="3a-eligibility-is-gated-on-the-warning-having-been-sent-not-on-age-alone"><a class="anchor" href="#3a-eligibility-is-gated-on-the-warning-having-been-sent-not-on-age-alone" aria-hidden="true" tabindex="-1">#</a>3a. Eligibility is gated on the warning having been <em>sent</em>, not on age alone</h3>
+<p><strong>This clause exists because §1 and ADR-0029 together have a hole, and it is the kind that only
+appears when the two are read side by side.</strong></p>
+<p>ADR-0029&#39;s sweep is traffic-dependent: with no traffic, no sweep runs. If the warnings are sent by
+that same sweep, then a system that sees no traffic for 40 days and then a login would, on §1&#39;s rule
+alone, delete accounts <strong>whose warning was never sent</strong> — because no sweep ever ran to send it. The
+&quot;advance warning&quot; that §2 offers as the replacement for explicit confirmation would be skipped
+entirely, and every rule above would still have been followed.</p>
+<p>So age is not sufficient. An account is deletable only when:</p>
+<ul>
+<li>§1&#39;s two conditions hold, <strong>and</strong></li>
+<li>the T-7 warning was <strong>actually recorded as sent</strong> for this account, <strong>and</strong></li>
+<li>at least 7 days have elapsed since that send.</li>
+</ul>
+<p>The deadline therefore floats: it is <code>max(createdAt + 30d, warningSentAt + 7d)</code>. That is a direct
+consequence of ADR-0029&#39;s traffic-dependence, and it is why &quot;no sooner than 30 days&quot; is the honest
+phrasing rather than a hedge.</p>
+<p>The same reasoning applies to any future variation of this mechanism: <strong>a safeguard that is
+delivered by the same run that performs the destructive act must be gated on its own completion, not
+assumed to have preceded it.</strong></p>
+<h3 id="4-the-race-is-real-and-must-be-closed-in-the-transaction"><a class="anchor" href="#4-the-race-is-real-and-must-be-closed-in-the-transaction" aria-hidden="true" tabindex="-1">#</a>4. The race is real and must be closed in the transaction</h3>
+<p>A verification click and the sweep can interleave. The check &quot;is this user still unverified?&quot; and
+the delete <strong>must sit inside the same transaction</strong>. Read-then-delete across a transaction boundary
+deletes a user who confirmed a moment earlier — the worst failure this feature can produce, and the
+easiest one to write by accident.</p>
+<h3 id="5-honesty-obligations-this-creates"><a class="anchor" href="#5-honesty-obligations-this-creates" aria-hidden="true" tabindex="-1">#</a>5. Honesty obligations this creates</h3>
+<ul>
+<li><strong>The verification link for a deleted account must not render a generic &quot;invalid token&quot;.</strong> It says
+the account was removed because it was never confirmed, and offers re-registration. The <code>Verification</code>
+rows die with the <code>User</code>, so there is genuinely nothing to verify against — but a blank failure
+would reproduce, at the far end, exactly the silent dead end this feature exists to remove.</li>
+<li><strong><code>Registrierung</code>&#39;s &quot;verify whenever you have a moment&quot; becomes untrue</strong> and moves in the same
+slice — <code>apps/mobile-web/src/i18n/resources.ts:124</code> (DE) and <code>:484</code> (EN). The identical line lives
+in the design-system reference (<code>finanzo-funke-design-system/project/ui_kits/app/Registrierung.jsx:37</code>),
+which is a stakeholder/DS question, not licence to invent replacement copy.</li>
+<li><strong>The deadline is a floor, not a date</strong> (ADR-0029): &quot;in about X days&quot;, never an appointment.</li>
+<li><strong>The privacy screen describes only user-initiated deletion today.</strong> It becomes incomplete, not
+false, and must gain the system-initiated case.</li>
+</ul>
+<h3 id="6-how-it-is-proven-adr-0021"><a class="anchor" href="#6-how-it-is-proven-adr-0021" aria-hidden="true" tabindex="-1">#</a>6. How it is proven (ADR-0021)</h3>
+<p>The clock is <strong>injected</strong>; <code>Date.now()</code> never appears in the sweeper, so &quot;30 days have passed&quot; is a
+parameter rather than a wait. Against <strong>real Postgres</strong> (ADR-0010) — the entire risk lives in a
+<code>where</code> clause and a mocked client would prove nothing.</p>
+<p>The test that matters is <strong>not</strong> &quot;an old unverified account is deleted&quot; — that stays green even if
+the query ignores <code>emailVerified</code> entirely. These must be seen red:</p>
+<div class="table"><table>
+<thead>
+<tr>
+<th>#</th>
+<th>Case</th>
+<th>Break that must turn it red</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>1</td>
+<td><strong>verified</strong> account past the deadline <strong>survives</strong></td>
+<td>drop the <code>emailVerified: false</code> clause — <strong>this is the one that catches the catastrophe</strong></td>
+</tr>
+<tr>
+<td>2</td>
+<td>unverified account <strong>inside</strong> the deadline survives</td>
+<td>widen the date comparison</td>
+</tr>
+<tr>
+<td>3</td>
+<td>exactly on the boundary</td>
+<td>pick a side and assert it, so <code>gt</code>/<code>gte</code> is visible</td>
+</tr>
+<tr>
+<td>4</td>
+<td>the warning went out <strong>before</strong> the deletion</td>
+<td>assert on the <code>EmailSender</code> double for that user</td>
+</tr>
+<tr>
+<td>5</td>
+<td>§4&#39;s race</td>
+<td>move the check outside the transaction</td>
+</tr>
+<tr>
+<td>6</td>
+<td><strong>§3a</strong>: an account 40 days old whose warning was never sent <strong>survives</strong> this run</td>
+<td>drop the <code>warningSentAt</code> gate and delete on age alone — the traffic-gap case, and the one a test written from §1 alone would miss</td>
+</tr>
+</tbody></table></div>
+<h2 id="consequences"><a class="anchor" href="#consequences" aria-hidden="true" tabindex="-1">#</a>Consequences</h2>
+<h3 id="what-this-does-not-achieve--the-part-that-must-not-be-lost"><a class="anchor" href="#what-this-does-not-achieve--the-part-that-must-not-be-lost" aria-hidden="true" tabindex="-1">#</a>What this does not achieve — the part that must not be lost</h3>
+<p><strong>The replacement safeguards do not reach the person the deletion hits hardest.</strong></p>
+<p>The in-app banner and the export offer both require the user to log in again. Someone who never
+returns sees neither. Every email warning goes to an address that was <strong>never confirmed</strong> — it may
+be a typo, someone else&#39;s address, or a mailbox nobody reads. That is, after all, the reason the
+account is being deleted.</p>
+<p>So the honest statement is: <strong>the account most likely to be erased is the account least likely to
+have been warned.</strong> The safeguards in §2 are meaningful for the user who comes back and real for the
+user who reads their mail; for the genuinely absent user they are a formality. This ADR does not
+claim otherwise, and nobody reading it later should be able to conclude that &quot;warned twice&quot; meant
+&quot;reached&quot;.</p>
+<p>Two things bound the damage rather than remove it: the population is narrow (§1), and an unverified
+account is by construction one nobody has proven ownership of.</p>
+<h3 id="the-activation-gate"><a class="anchor" href="#the-activation-gate" aria-hidden="true" tabindex="-1">#</a>The activation gate</h3>
+<p><strong>The deleting arm must not go live before a real email provider (#83) is wired.</strong> Building the
+whole lifecycle against <code>LoggingEmailSender</code> is legitimate and unblocked; <em>deleting</em> on the strength
+of a warning that only ever reached a console log is not. This is not a new gate — #83 is already
+tied to #48/REQ-011 (&quot;before any real, non-synthetic user&quot;).</p>
+<h3 id="interface-change"><a class="anchor" href="#interface-change" aria-hidden="true" tabindex="-1">#</a>Interface change</h3>
+<p><code>EmailSender</code> gains a third method for the deadline warning. Note for #83 when it lands: its own
+acceptance criterion says &quot;seam integrity — <code>EmailSender</code> interface is unchanged&quot;, which is a
+statement about the <em>provider swap</em> not changing it, not a promise that the interface is frozen.</p>
+<h2 id="alternatives-considered"><a class="anchor" href="#alternatives-considered" aria-hidden="true" tabindex="-1">#</a>Alternatives considered</h2>
+<div class="table"><table>
+<thead>
+<tr>
+<th>Option</th>
+<th>Why not</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Suspend instead of delete</td>
+<td>A second erasure semantics, a second thing to prove, and it keeps the data — which is what Art. 5(1)(e) argues against. The stakeholder ruled for hard deletion.</td>
+</tr>
+<tr>
+<td>Restrict what an unverified account may do</td>
+<td>REQ-005 is <strong>Done</strong> and specifies &quot;works immediately … without blocking basic use&quot;. Adding gates would invalidate a green requirement, so it is a REQ-005 amendment and its own slice — not a rider on this one. The consequence here is the deletion, not a degraded product.</td>
+</tr>
+<tr>
+<td>Deadline from last login</td>
+<td>Lets an unverified account renew itself forever by signing in — the reported behaviour.</td>
+</tr>
+<tr>
+<td>Email the export before deleting</td>
+<td>There is no confirmed mailbox. Sending an entire data export to an unverified address would be a worse DSGVO outcome than the deletion.</td>
+</tr>
+</tbody></table></div>
+
+      </article>
+      <p class="back"><a href="../decisions.html">All decisions</a></p>
+      <nav class="steps" aria-label="Previous and next"><a class="step step-previous" href="0029-piggybacked-batch-sweep-instead-of-a-scheduler.html"><span class="eyebrow">Previous</span><span>ADR-0029</span></a><a class="step step-next" href="0031-the-interview-is-three-questions-and-a-catalog.html"><span class="eyebrow">Next</span><span>ADR-0031</span></a></nav>
+    </main>
+  </div>
+  <script src="../assets/site.js"></script>
+</body>
+</html>

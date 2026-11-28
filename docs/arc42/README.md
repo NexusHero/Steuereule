@@ -41,8 +41,10 @@ light theme and `<name>.dark.svg` in the app's dark theme. Every source includes
 the one that fits their light or dark setting. The Ports & Adapters picture (`images/architecture-hexagon.svg`)
 is drawn by hand with the same tokens and carries both themes in one file.
 
-**The architecture site.** `docs/site/` holds `docs/architecture.md` and `docs/architecture-subsystems.md` as
-static HTML pages in the app's design, one page per chapter. It is generated, never edited by hand:
+**The documentation site.** `docs/site/` holds every Markdown document under `docs/` as a static HTML page in
+the app's design: `docs/architecture.md` as one page per chapter, each ADR and each other document as one
+page, and two overviews (Decisions, Documents). Links between documents lead to their pages; links to source
+files and pictures lead to the files in the repository. It is generated, never edited by hand:
 
 ```sh
 pnpm docs:site                               # writes docs/site/
@@ -51,6 +53,8 @@ node scripts/docs/build-site.mjs --check     # what CI runs: fails when docs/sit
 
 The generator is `scripts/docs/build-site.mjs`; its template is `scripts/docs/site/site.css` on top of
 `packages/tokens/dist/tokens.css`. The pages follow the reader's light or dark setting and need no server.
+The generator lists every link of the Markdown that points at a file which does not exist; such a link is
+mended in the Markdown, not in the page.
 
 | View | Source | Rendered |
 |------|--------|----------|

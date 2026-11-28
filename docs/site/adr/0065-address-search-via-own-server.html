@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>ADR-0065 — Address search via our own server (deviation from #451 decisions 7 and 8) — SteuerEule</title>
+  <link rel="icon" href="../../../images/steuereule-logo.svg">
+  <link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+  <a class="skip" href="#content">Skip to the content</a>
+  <div class="shell">
+    <aside class="rail">
+      <a class="brand" href="../index.html">
+        <img src="../../../images/steuereule-logo.svg" width="36" height="36" alt="">
+        <span><strong>SteuerEule</strong><span class="eyebrow">Architecture</span></span>
+      </a>
+      <details class="menu" open>
+        <summary>Contents</summary>
+        <nav class="nav" aria-label="Site">
+        <p class="eyebrow">arc42</p>
+        <ul><li><a class="nav-item" href="../index.html"><span>Overview</span></a></li><li><a class="nav-item" href="../01-introduction-and-goals.html"><span class="nav-number">01</span><span>Introduction and goals</span></a></li><li><a class="nav-item" href="../02-constraints.html"><span class="nav-number">02</span><span>Constraints</span></a></li><li><a class="nav-item" href="../03-context-and-scope.html"><span class="nav-number">03</span><span>Context and scope</span></a></li><li><a class="nav-item" href="../04-solution-strategy.html"><span class="nav-number">04</span><span>Solution strategy</span></a></li><li><a class="nav-item" href="../05-building-block-view.html"><span class="nav-number">05</span><span>Building block view</span></a></li><li><a class="nav-item" href="../06-runtime-view.html"><span class="nav-number">06</span><span>Runtime view</span></a></li><li><a class="nav-item" href="../07-deployment-view.html"><span class="nav-number">07</span><span>Deployment view</span></a></li><li><a class="nav-item" href="../08-cross-cutting-concepts.html"><span class="nav-number">08</span><span>Cross-cutting concepts</span></a></li><li><a class="nav-item" href="../09-architecture-decisions.html"><span class="nav-number">09</span><span>Architecture decisions</span></a></li><li><a class="nav-item" href="../10-quality-and-tests.html"><span class="nav-number">10</span><span>Quality and tests</span></a></li><li><a class="nav-item" href="../11-risks-and-technical-debt.html"><span class="nav-number">11</span><span>Risks and technical debt</span></a></li><li><a class="nav-item" href="../12-glossary.html"><span class="nav-number">12</span><span>Glossary</span></a></li></ul>
+        <p class="eyebrow">Companion</p>
+        <ul><li><a class="nav-item" href="../subsystems.html"><span>Backend modules from the inside</span></a></li></ul>
+        <p class="eyebrow">Library</p>
+        <ul><li><a class="nav-item is-active" href="../decisions.html" aria-current="page"><span>Decisions</span></a></li><li><a class="nav-item" href="../documents.html"><span>Documents</span></a></li></ul>
+      </nav>
+      </details>
+      <p class="rail-foot">Architecture as of 2026-11-22<br>Built from the Markdown under <code>docs/</code></p>
+    </aside>
+    <main id="content" class="content">
+      <header class="page-head">
+        <p class="eyebrow">Decision · ADR-0065</p>
+        <h1>Address search via our own server (deviation from #451 decisions 7 and 8) <span class="status status-ok">Accepted</span></h1>
+        <ul class="chips" aria-label="On this page"><li><a class="chip" href="#context">Context</a></li><li><a class="chip" href="#decision">Decision</a></li><li><a class="chip" href="#limits">Limits</a></li><li><a class="chip" href="#consequences">Consequences</a></li><li><a class="chip" href="#rejected">Rejected</a></li></ul>
+      </header>
+      <article class="prose">
+<ul>
+<li><strong>Status:</strong> Accepted</li>
+<li><strong>Date:</strong> 2026-11-11</li>
+<li><strong>Deciders:</strong> NexusHero (Product Owner), Steuereule Engineering</li>
+<li><strong>Applies to:</strong> <code>apps/api/src/address/</code>, <code>apps/api/scripts/fetch-street-data.ts</code>, <code>apps/mobile-web/src/screens/shared/AddressSearch.tsx</code>; master data, rental income (property address), children (address of the other parent)</li>
+<li><strong>Deviates from:</strong> Ticket #451 decision 7 (&quot;no outbound request&quot; for addresses) and decision 8 (address data shipped only with the app)</li>
+</ul>
+<h2 id="context"><a class="anchor" href="#context" aria-hidden="true" tabindex="-1">#</a>Context</h2>
+<p>#451 limited address entry to two aids: autofill hints for the browser and a
+postcode (PLZ) table shipped with the app. Neither leaves the device. In testing by the
+Product Owner (11 November 2026) this was not enough: browser autofill only works if an address is
+already stored in the browser, and the street is still typed entirely by hand. What is expected
+is a search like in a maps app: type a few letters, select the address.</p>
+<p>A street list for all of Germany has around 1.19 million entries (55 MB source). That is too large
+to pack into the app like the postcode table (~240 KB).</p>
+<h2 id="decision"><a class="anchor" href="#decision" aria-hidden="true" tabindex="-1">#</a>Decision</h2>
+<p><strong>The street search runs on our own server. No third party sees the input.</strong></p>
+<ol>
+<li><strong>Data:</strong> the same OpenStreetMap street list from the OpenPLZ API project (ODbL 1.0) from which
+the postcode table is already built, pinned to the same commit.
+<code>pnpm --filter @steuereule/api run streets:fetch</code> downloads it, checks the SHA-256 checksum and places
+a manifest next to it (like the geo-IP database, ADR-0024). The file is not checked in.</li>
+<li><strong>In-memory search:</strong> On startup, the API reads the file from <code>STREET_DATA_PATH</code> into a
+sorted index (measured: ~2 s load time, ~45 MB heap, response under 15 ms). No database,
+no migration.</li>
+<li><strong>Endpoint <code>POST /v1/adressen/suche</code>:</strong> POST instead of GET, so that the typed address does not end up in URLs,
+access logs or proxy caches. The request is not stored. Limited to
+120 requests per minute per account or IP.</li>
+<li><strong>Honest without data:</strong> If the file is missing, the endpoint responds <code>available: false</code>. The screen
+then says that the search is not available, and the fields are typed as before.</li>
+<li><strong>One search field above the address fields:</strong> &quot;Hauptstr. 12, Köln&quot; → selecting fills street,
+house number, postcode and city. The individual fields, browser autofill and the postcode lookup from #451 remain.</li>
+</ol>
+<h2 id="limits"><a class="anchor" href="#limits" aria-hidden="true" tabindex="-1">#</a>Limits</h2>
+<ul>
+<li><strong>No house numbers in the data.</strong> The house number is taken from the input, not checked.</li>
+<li><strong>No „Meinen Standort verwenden&quot; (&quot;Use my location&quot;).</strong> The data has no coordinates; GPS remains excluded per #451
+decision 7.</li>
+<li><strong>Spelling:</strong> The source abbreviates &quot;Straße&quot; as &quot;Str.&quot; throughout. The index writes it
+out again (&quot;Hauptstraße&quot;). A street whose official name is &quot;…str.&quot; would thus be written out
+incorrectly; the field remains editable.</li>
+<li><strong>Germany only.</strong></li>
+</ul>
+<h2 id="consequences"><a class="anchor" href="#consequences" aria-hidden="true" tabindex="-1">#</a>Consequences</h2>
+<ul>
+<li>Operations must provide the file and set <code>STREET_DATA_PATH</code> (locally this is done by
+<code>scripts/local.sh dev</code>). The API process needs around 50 MB more memory and starts ~2 s later.</li>
+<li>Annual update together with the postcode table: bump the commit in both scripts,
+adjust the checksum.</li>
+<li>The privacy policy mentions the processing of the search input on our own server
+(no storage, no third party).</li>
+</ul>
+<h2 id="rejected"><a class="anchor" href="#rejected" aria-hidden="true" tabindex="-1">#</a>Rejected</h2>
+<ul>
+<li><strong>Google Places or similar:</strong> best hit quality including house numbers, but every input goes to
+a third party.</li>
+<li><strong>Public OSM services (Photon, Nominatim):</strong> also a third party, plus usage limits.</li>
+<li><strong>Street list in the app:</strong> 55 MB source, even compressed double-digit MB in the bundle.</li>
+</ul>
+
+      </article>
+      <p class="back"><a href="../decisions.html">All decisions</a></p>
+      <nav class="steps" aria-label="Previous and next"><a class="step step-previous" href="0064-owl-chat-answer-runs-and-resumption.html"><span class="eyebrow">Previous</span><span>ADR-0064</span></a><a class="step step-next" href="0066-owl-field-catalog-and-one-write-path.html"><span class="eyebrow">Next</span><span>ADR-0066</span></a></nav>
+    </main>
+  </div>
+  <script src="../assets/site.js"></script>
+</body>
+</html>

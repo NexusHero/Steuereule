@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>ADR-0008 — Profile persistence: server-side, sensitive fields field-encrypted at rest — SteuerEule</title>
+  <link rel="icon" href="../../../images/steuereule-logo.svg">
+  <link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+  <a class="skip" href="#content">Skip to the content</a>
+  <div class="shell">
+    <aside class="rail">
+      <a class="brand" href="../index.html">
+        <img src="../../../images/steuereule-logo.svg" width="36" height="36" alt="">
+        <span><strong>SteuerEule</strong><span class="eyebrow">Architecture</span></span>
+      </a>
+      <details class="menu" open>
+        <summary>Contents</summary>
+        <nav class="nav" aria-label="Site">
+        <p class="eyebrow">arc42</p>
+        <ul><li><a class="nav-item" href="../index.html"><span>Overview</span></a></li><li><a class="nav-item" href="../01-introduction-and-goals.html"><span class="nav-number">01</span><span>Introduction and goals</span></a></li><li><a class="nav-item" href="../02-constraints.html"><span class="nav-number">02</span><span>Constraints</span></a></li><li><a class="nav-item" href="../03-context-and-scope.html"><span class="nav-number">03</span><span>Context and scope</span></a></li><li><a class="nav-item" href="../04-solution-strategy.html"><span class="nav-number">04</span><span>Solution strategy</span></a></li><li><a class="nav-item" href="../05-building-block-view.html"><span class="nav-number">05</span><span>Building block view</span></a></li><li><a class="nav-item" href="../06-runtime-view.html"><span class="nav-number">06</span><span>Runtime view</span></a></li><li><a class="nav-item" href="../07-deployment-view.html"><span class="nav-number">07</span><span>Deployment view</span></a></li><li><a class="nav-item" href="../08-cross-cutting-concepts.html"><span class="nav-number">08</span><span>Cross-cutting concepts</span></a></li><li><a class="nav-item" href="../09-architecture-decisions.html"><span class="nav-number">09</span><span>Architecture decisions</span></a></li><li><a class="nav-item" href="../10-quality-and-tests.html"><span class="nav-number">10</span><span>Quality and tests</span></a></li><li><a class="nav-item" href="../11-risks-and-technical-debt.html"><span class="nav-number">11</span><span>Risks and technical debt</span></a></li><li><a class="nav-item" href="../12-glossary.html"><span class="nav-number">12</span><span>Glossary</span></a></li></ul>
+        <p class="eyebrow">Companion</p>
+        <ul><li><a class="nav-item" href="../subsystems.html"><span>Backend modules from the inside</span></a></li></ul>
+        <p class="eyebrow">Library</p>
+        <ul><li><a class="nav-item is-active" href="../decisions.html" aria-current="page"><span>Decisions</span></a></li><li><a class="nav-item" href="../documents.html"><span>Documents</span></a></li></ul>
+      </nav>
+      </details>
+      <p class="rail-foot">Architecture as of 2026-11-22<br>Built from the Markdown under <code>docs/</code></p>
+    </aside>
+    <main id="content" class="content">
+      <header class="page-head">
+        <p class="eyebrow">Decision · ADR-0008</p>
+        <h1>Profile persistence: server-side, sensitive fields field-encrypted at rest <span class="status status-ok">Accepted</span></h1>
+        <ul class="chips" aria-label="On this page"><li><a class="chip" href="#context">Context</a></li><li><a class="chip" href="#decision">Decision</a></li><li><a class="chip" href="#consequences">Consequences</a></li><li><a class="chip" href="#alternatives-considered">Alternatives considered</a></li><li><a class="chip" href="#documented-exception-adr-0061-2026-11-10">Documented exception (ADR-0061, 2026-11-10)</a></li><li><a class="chip" href="#amendment--2026-11-27-prisma-7-the-annotations-come-from-a-generated-schema-model">Amendment — 2026-11-27: Prisma 7, the annotations come from a generated schema model</a></li></ul>
+      </header>
+      <article class="prose">
+<p><strong>Status:</strong> Accepted · 2026-07-23 · stakeholder decision (escalated by the lead during REQ Onboarding);
+<strong>refined 2026-07-23</strong> with the concrete cipher/library/key-seam decided in the auth-epic grilling
+(Slice 1, REQ-003) · relates to <a href="0009-better-auth-as-auth-server.html">ADR-0009</a></p>
+<h2 id="context"><a class="anchor" href="#context" aria-hidden="true" tabindex="-1">#</a>Context</h2>
+<p>The Onboarding flow collects a <strong>Steuer-ID</strong> (11-digit German tax identification number), a name, and
+optionally a Steuernummer. The Steuer-ID is <strong>highly sensitive personal data</strong> under the DSGVO. The
+design-system reference persists the whole profile — including the Steuer-ID — to browser
+<code>localStorage</code> (<code>funke.onboarding.profil</code>), which is plaintext data-at-rest and a leak vector. The
+lead (Musti) refused to silently port that; he kept the Onboarding slice <strong>in-memory</strong> for the ticket
+and <strong>escalated the persistence question</strong> to the stakeholder (per our governance: architecture +
+security/DSGVO decisions go to the human, captured as an ADR). The stakeholder decided.</p>
+<h2 id="decision"><a class="anchor" href="#decision" aria-hidden="true" tabindex="-1">#</a>Decision</h2>
+<ul>
+<li><strong>Profile data is persisted server-side</strong>, in our managed <strong>EU Postgres</strong> (ADR-047), via the API&#39;s
+Profile endpoints (ADR-046). <strong>No sensitive profile data is persisted on the client</strong> — the
+Onboarding screen holds values in-memory and sends them to the API over TLS; nothing goes to
+<code>localStorage</code>/AsyncStorage.</li>
+<li><strong>Sensitive fields are encrypted at rest, field-level.</strong> The <strong>Steuer-ID</strong> (and any equally
+sensitive tax identifier) is stored <strong>encrypted</strong>, not plaintext — encryption/decryption happens
+transparently at the persistence boundary, invisible to controllers and callers. Non-sensitive
+fields (e.g. name) may be stored normally. This is defence-in-depth on top of disk/DB encryption at
+rest.</li>
+<li><strong>Library &amp; cipher (refined):</strong> the field encryption is provided by <strong><code>prisma-field-encryption</code></strong>, a
+Prisma <strong>client extension</strong> driven by an <code>/// @encrypted</code> annotation on the schema field. The cipher
+is <strong>AES-256-GCM, randomized (non-deterministic)</strong> — authenticated, and with a fresh IV per write so
+identical plaintexts yield different ciphertexts. We deliberately do <strong>not</strong> use a deterministic /
+searchable (&quot;hash&quot;) mode: we never need a DB lookup or index on the Steuer-ID — <code>userId</code>-scoping is
+the only access path — so randomized is strictly safer with no functional cost.</li>
+<li><strong>Key management &amp; swap-seam (refined):</strong> the app-wide data-encryption key comes from a
+<strong>rotation-ready sealed-secret / env</strong> (<code>PRISMA_FIELD_ENCRYPTION_KEY</code>, 12-Factor III), never
+hard-coded, never in the repo. <strong>No managed KMS yet</strong> — but the key is resolved behind a <strong>swap-seam</strong>
+(a single resolver, not scattered <code>process.env</code> reads) so moving env → KMS later needs <strong>no
+re-encryption</strong> and no schema change. <code>prisma-field-encryption</code>&#39;s keychain format supports key
+rotation (new writes use the current key; old ciphertexts stay readable via retired keys) — we adopt
+that format from day one so rotation is a config change, not a migration.</li>
+<li><strong>Scope of identity</strong> stays as decided: a profile is bound to the <code>userId</code> / guest session
+(ADR-0007 phase-1 seam, now behind better-auth per ADR-0009); full identity verification is still
+only required at ELSTER submission (product ADR-027). Persisting the prefill early is a convenience,
+and it is protected accordingly.</li>
+<li><strong>Guest → account migration is a <code>userId</code> re-assign, no re-encryption.</strong> Because the key is
+<strong>app-wide</strong> (not per-user), upgrading a guest to a real account is an <strong>atomic <code>Profile.userId</code>
+re-assign</strong> (REQ-006) — the ciphertext is untouched, so there is no decrypt/re-encrypt step and no
+window where plaintext is handled.</li>
+</ul>
+<h2 id="consequences"><a class="anchor" href="#consequences" aria-hidden="true" tabindex="-1">#</a>Consequences</h2>
+<ul>
+<li>Robin&#39;s <strong>Profile model</strong> stores ciphertext for the Steuer-ID via the <code>/// @encrypted</code> annotation;
+the <code>prisma-field-encryption</code> <strong>client extension</strong> encrypts on write / decrypts on read at the
+Prisma boundary, so <code>ProfileService</code> and the controller stay unchanged (they still handle plaintext
+in memory only). The <code>steuerId</code> column type/shape is unchanged (<code>String</code>) — the migration is
+<strong>expand-only</strong> (no new column, no backfill; existing dev rows are synthetic per ADR-0003). The
+<strong>OpenAPI contract</strong> exposes plaintext fields to the authenticated owner only.</li>
+<li>The encrypted field is <strong>not indexable/queryable</strong> (randomized ciphertext) — accepted, because the
+only access path is <code>userId</code>-scoped (<code>@unique</code>), never a lookup on the Steuer-ID itself.</li>
+<li>Every read/write of this sensitive field is recorded in the <strong>immutable audit log</strong> (REQ-004), which
+logs <em>who/what/when</em> — never the plaintext value — and is surfaced to the data subject in their own
+export (REQ-011).</li>
+<li>The frontend Onboarding screen is wired to the API (the vertical slice): <code>PUT /v1/profile</code> on
+completion, <code>GET /v1/profile</code> for prefill — <strong>no mock data, no client persistence</strong> of the Steuer-ID.</li>
+<li>We carry the key-management burden (storage, rotation, access control) — tracked toward the infra
+ADR line. Losing the key must not expose the data; leaking the DB alone must not either.</li>
+<li>No real PII in non-prod: seed/test fixtures use <strong>synthetic</strong> Steuer-IDs only (ADR-0003 / §4.2).</li>
+</ul>
+<h2 id="alternatives-considered"><a class="anchor" href="#alternatives-considered" aria-hidden="true" tabindex="-1">#</a>Alternatives considered</h2>
+<ul>
+<li><strong>Plaintext <code>localStorage</code> (the DS demo)</strong> — rejected: sensitive PII at rest in the clear on the
+client.</li>
+<li><strong>In-memory only, no persistence</strong> — safe but not a real vertical slice; the prefill wouldn&#39;t
+survive, and the decision would only be deferred.</li>
+<li><strong>Persist non-sensitive fields only, Steuer-ID never at rest until submission (ADR-027-strict)</strong> —
+considered; rejected in favour of encrypted server-side persistence so the prefill works end-to-end
+while the sensitive field is still protected.</li>
+</ul>
+<h2 id="documented-exception-adr-0061-2026-11-10"><a class="anchor" href="#documented-exception-adr-0061-2026-11-10" aria-hidden="true" tabindex="-1">#</a>Documented exception (ADR-0061, 2026-11-10)</h2>
+<p>The on-device dictation model (Whisper &quot;base&quot;, ~80 MB) is the one thing the web app keeps in the
+browser (Cache Storage <code>steuereule-dictation-model-v1</code>), loaded only after consent. It holds <strong>no
+user data</strong> — only model weights and tokenizer files, each verified against a pinned SHA-256 — and
+the user removes it under „Profil → Sprachmodell löschen&quot;. No tax data, no audio and no transcript
+is ever written to any client store. See <a href="0061-on-device-dictation-model-source.html">ADR-0061</a>.</p>
+<h2 id="amendment--2026-11-27-prisma-7-the-annotations-come-from-a-generated-schema-model"><a class="anchor" href="#amendment--2026-11-27-prisma-7-the-annotations-come-from-a-generated-schema-model" aria-hidden="true" tabindex="-1">#</a>Amendment — 2026-11-27: Prisma 7, the annotations come from a generated schema model</h2>
+<p>Prisma 7 has no query engine and no full data model at runtime: <code>Prisma.dmmf</code> keeps a field&#39;s name, kind and
+type, but not its <code>///</code> documentation. <code>prisma-field-encryption</code> 1.6.0 reads the <code>@encrypted</code> annotations from
+that documentation. Built against the runtime model it finds none and writes every column in plaintext, without
+an error.</p>
+<ul>
+<li>A generator in <code>apps/api/prisma/generators/schema-model.mjs</code> receives the complete model from <code>prisma generate</code>
+and writes it to <code>apps/api/src/prisma/schema-model.generated.ts</code> (not checked in, like the client). It is
+produced in the same step as the client, so it cannot drift from the schema.</li>
+<li><code>schemaFieldEncryption</code> in <code>apps/api/src/prisma/field-encryption.ts</code> is the one place that builds the
+extension and always passes this model. <code>test/prisma-encrypted-fields.test.ts</code> fails on any other use of
+<code>fieldEncryptionExtension</code> and pins the encrypted field set as before.</li>
+<li>The key rotation, the identity backfill and the data export read the same generated model.</li>
+<li>Every client is built with the driver adapter from <code>apps/api/src/common/database-adapter.ts</code>, which keeps
+the meaning of the pool parameters in <code>DATABASE_URL</code> (<code>connection_limit</code>, <code>pool_timeout</code>, <code>schema</code>).</li>
+<li>The CLI&#39;s connection, schema and seed settings moved to <code>apps/api/prisma.config.ts</code> and
+<code>apps/api/prisma/keystore/prisma.config.ts</code>.</li>
+</ul>
+
+      </article>
+      <p class="back"><a href="../decisions.html">All decisions</a></p>
+      <nav class="steps" aria-label="Previous and next"><a class="step step-previous" href="0007-authentication.html"><span class="eyebrow">Previous</span><span>ADR-0007</span></a><a class="step step-next" href="0009-better-auth-as-auth-server.html"><span class="eyebrow">Next</span><span>ADR-0009</span></a></nav>
+    </main>
+  </div>
+  <script src="../assets/site.js"></script>
+</body>
+</html>

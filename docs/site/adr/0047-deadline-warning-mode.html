@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>ADR-0047 — Deadline/Verspätungszuschlag warning mode: filing deadline rule set, 60-day banner, no verspätet status (Draft) — SteuerEule</title>
+  <link rel="icon" href="../../../images/steuereule-logo.svg">
+  <link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+  <a class="skip" href="#content">Skip to the content</a>
+  <div class="shell">
+    <aside class="rail">
+      <a class="brand" href="../index.html">
+        <img src="../../../images/steuereule-logo.svg" width="36" height="36" alt="">
+        <span><strong>SteuerEule</strong><span class="eyebrow">Architecture</span></span>
+      </a>
+      <details class="menu" open>
+        <summary>Contents</summary>
+        <nav class="nav" aria-label="Site">
+        <p class="eyebrow">arc42</p>
+        <ul><li><a class="nav-item" href="../index.html"><span>Overview</span></a></li><li><a class="nav-item" href="../01-introduction-and-goals.html"><span class="nav-number">01</span><span>Introduction and goals</span></a></li><li><a class="nav-item" href="../02-constraints.html"><span class="nav-number">02</span><span>Constraints</span></a></li><li><a class="nav-item" href="../03-context-and-scope.html"><span class="nav-number">03</span><span>Context and scope</span></a></li><li><a class="nav-item" href="../04-solution-strategy.html"><span class="nav-number">04</span><span>Solution strategy</span></a></li><li><a class="nav-item" href="../05-building-block-view.html"><span class="nav-number">05</span><span>Building block view</span></a></li><li><a class="nav-item" href="../06-runtime-view.html"><span class="nav-number">06</span><span>Runtime view</span></a></li><li><a class="nav-item" href="../07-deployment-view.html"><span class="nav-number">07</span><span>Deployment view</span></a></li><li><a class="nav-item" href="../08-cross-cutting-concepts.html"><span class="nav-number">08</span><span>Cross-cutting concepts</span></a></li><li><a class="nav-item" href="../09-architecture-decisions.html"><span class="nav-number">09</span><span>Architecture decisions</span></a></li><li><a class="nav-item" href="../10-quality-and-tests.html"><span class="nav-number">10</span><span>Quality and tests</span></a></li><li><a class="nav-item" href="../11-risks-and-technical-debt.html"><span class="nav-number">11</span><span>Risks and technical debt</span></a></li><li><a class="nav-item" href="../12-glossary.html"><span class="nav-number">12</span><span>Glossary</span></a></li></ul>
+        <p class="eyebrow">Companion</p>
+        <ul><li><a class="nav-item" href="../subsystems.html"><span>Backend modules from the inside</span></a></li></ul>
+        <p class="eyebrow">Library</p>
+        <ul><li><a class="nav-item is-active" href="../decisions.html" aria-current="page"><span>Decisions</span></a></li><li><a class="nav-item" href="../documents.html"><span>Documents</span></a></li></ul>
+      </nav>
+      </details>
+      <p class="rail-foot">Architecture as of 2026-11-22<br>Built from the Markdown under <code>docs/</code></p>
+    </aside>
+    <main id="content" class="content">
+      <header class="page-head">
+        <p class="eyebrow">Decision · ADR-0047</p>
+        <h1>Deadline/Verspätungszuschlag warning mode: filing deadline rule set, 60-day banner, no <code>verspätet</code> status (Draft) <span class="status status-open">Draft</span></h1>
+        <ul class="chips" aria-label="On this page"><li><a class="chip" href="#context">Context</a></li><li><a class="chip" href="#decision">Decision</a></li><li><a class="chip" href="#consequences">Consequences</a></li><li><a class="chip" href="#alternatives-considered">Alternatives considered</a></li></ul>
+      </header>
+      <article class="prose">
+<ul>
+<li><strong>Status:</strong> Draft — promotion needs Musti review (ticket 10.7 review)</li>
+<li><strong>Date:</strong> 2026-10-25</li>
+<li><strong>Deciders:</strong> Suhay (agent, ticket 10.7) — draft; promotion needs Musti review</li>
+<li><strong>Implements</strong> product ADR-022 (annual rule sets: the UI shows the rules of the selected year,
+never &quot;current&quot; values), product ADR-023 (deadlines are critical → sober and precise), ADR-0039
+(a missed deadline is NOT a status: stays <code>entwurf</code> + warning banner)</li>
+<li><strong>Builds on</strong> ADR-0039 (tax year state machine), ADR-0004 (pure core), the
+date discipline of bescheid.ts (ISO yyyy-mm-dd, UTC arithmetic)</li>
+<li><strong>Context tags:</strong> architecture, fristen, verspaetungszuschlag, determinism boundary, honesty
+principle</li>
+</ul>
+<h2 id="context"><a class="anchor" href="#context" aria-hidden="true" tabindex="-1">#</a>Context</h2>
+<p>The warning mode (M6) warns <strong>from 60 days before the filing deadline</strong> about the late-filing surcharge
+(§ 152 AO). Product ADR-018/engineering ADR-0039 decided: the missed deadline is
+NOT a status of its own — the tax year stays <code>entwurf</code>, and a warning banner is added (a
+technical/temporal state must never look like a tax status). Product ADR-022
+requires annual rule sets: the filing deadline is a configuration PER YEAR, never a date derived from
+&quot;current&quot; values. Product ADR-023 requires the sober tone: what
+happened, what to do, no punchline, never blame on the user.</p>
+<h2 id="decision"><a class="anchor" href="#decision" aria-hidden="true" tabindex="-1">#</a>Decision</h2>
+<p>A pure, UI-free module <code>packages/core/src/deadlines.ts</code> (ADR-0004, no I/O), a
+read-only API module, a banner in the cockpit:</p>
+<ol>
+<li><p><strong>Filing deadline as an explicit rule set (<code>abgabefristFuer</code>)</strong> — § 149 Abs. 2 AO: 31 July of the
+following year (generally since assessment period 2018). An explicit table per year (2024 → 31.07.2025,
+2025 → 31.07.2026, 2026 → 02.08.2027, because 31.07.2027 is a Saturday, § 108 Abs. 3 AO), cited, pinned in the test — never derived from &quot;current&quot; values
+(product ADR-022). A year outside the table THROWS (throw, don&#39;t approximate —
+the same rule as tarif.ts); the retroactive years (up to 4) are added with 10.8, then
+the table grows.</p>
+</li>
+<li><p><strong>Warning mode (<code>fristenWarnung</code>)</strong> — a derived level <code>keine</code> | <code>warnung</code> | <code>abgelaufen</code>
+from whole remaining days (deadline − today, exclusive): <code>warnung</code> from 60 days (including
+the deadline day itself, 0 days), <code>abgelaufen</code> from the following day. The level is the BANNER INPUT,
+never a status (ADR-0039 — there is simply no <code>verspätet</code> value in
+steuerjahr-status.ts, so the missed deadline stays <code>entwurf</code>). The § 152 Abs. 2 AO figures
+(0.25 % per started month, at least €25) are cited constants that the banner
+states soberly (product ADR-023).</p>
+</li>
+<li><p><strong>&quot;Today&quot; belongs to the server</strong> — the core computes with ISO yyyy-mm-dd dates (UTC, locale-
+independent, the same discipline as bescheid.ts&#39;s objection deadline). The API produces &quot;today&quot;
+in Europe/Berlin (<code>heuteInBerlin</code>, injectable <code>now</code> — the midnight case is unit-tested),
+never the client clock, which the user could change.</p>
+</li>
+<li><p><strong>API (<code>Fristen</code> module) + cockpit banner</strong> — <code>GET /v1/steuerjahre/{jahr}/fristen</code> returns
+<code>{ abgabefrist, heute, stufe, verbleibendeTage, verspaetungszuschlag }</code>. No persistence,
+no audit (the deadlines are statutory facts, not user data — REQ-004 does not apply).
+An unsupported year is an honest 400 at the boundary, never the deadline of a
+neighboring year. The <code>FristenBanner</code> in the cockpit (empty AND loaded state) renders
+NOTHING on <code>keine</code> (honest absence, no permanent banner) and otherwise soberly with the deadline and
+the amount.</p>
+</li>
+</ol>
+<h2 id="consequences"><a class="anchor" href="#consequences" aria-hidden="true" tabindex="-1">#</a>Consequences</h2>
+<ul>
+<li><strong>Honest limit, named once:</strong> § 108 Abs. 3 AO (a deadline ending on Sat/Sun/public holiday moves
+to the next working day) is NOT here — the table states the calendar date of the
+regular deadline; the § 108 shift is a named follow-up (the same public-holiday limit as
+werktage.ts). The 60-day threshold is the product requirement from the ticket, not an invented one.</li>
+<li><strong>The level logic is tested core-pure</strong>; the acceptance test checks the self-consistency of the
+response (verbleibendeTage = deadline − the server&#39;s today) instead of a fixed date — the level
+honestly depends on the real server day.</li>
+<li><strong>No new tax year status, anywhere</strong> — the warning cannot touch the status flow;
+a &quot;verspätet&quot; (late) is unrepresentable (ADR-0039/ADR-0031 §4 instinct).</li>
+<li><strong>Register:</strong> REQ-027; 10.5/10.6 occupy 025/026 on the parallel branches — check for
+collisions on merge (REQ numbers are stable and never reused).</li>
+</ul>
+<h2 id="alternatives-considered"><a class="anchor" href="#alternatives-considered" aria-hidden="true" tabindex="-1">#</a>Alternatives considered</h2>
+<ul>
+<li><strong><code>verspätet</code> as a tax year status.</strong> Rejected: product ADR-018/ADR-0039 explicitly
+ruled that out — a temporal state must never look like a tax status.</li>
+<li><strong>Derive the deadline from &quot;current&quot; values (today + X).</strong> Rejected: product ADR-022 requires
+annual rule sets; a derivation drifts silently at the turn of the year and with changes in the law.</li>
+<li><strong>&quot;Today&quot; from the client.</strong> Rejected: the client clock is manipulable and time-shifted; the
+server reference date in Europe/Berlin is the one honest source.</li>
+<li><strong>The banner in its own tax year status area.</strong> Rejected: the banner is
+derived UI truth above the status, not a status itself — the separation is the control.</li>
+</ul>
+
+      </article>
+      <p class="back"><a href="../decisions.html">All decisions</a></p>
+      <nav class="steps" aria-label="Previous and next"><a class="step step-previous" href="0046-rental-vertical.html"><span class="eyebrow">Previous</span><span>ADR-0046</span></a><a class="step step-next" href="0048-capital-income-vertical.html"><span class="eyebrow">Next</span><span>ADR-0048</span></a></nav>
+    </main>
+  </div>
+  <script src="../assets/site.js"></script>
+</body>
+</html>

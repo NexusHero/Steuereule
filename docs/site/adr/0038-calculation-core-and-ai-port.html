@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>ADR-0038 — Deterministic calculation core + AI port (Draft) — SteuerEule</title>
+  <link rel="icon" href="../../../images/steuereule-logo.svg">
+  <link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+  <a class="skip" href="#content">Skip to the content</a>
+  <div class="shell">
+    <aside class="rail">
+      <a class="brand" href="../index.html">
+        <img src="../../../images/steuereule-logo.svg" width="36" height="36" alt="">
+        <span><strong>SteuerEule</strong><span class="eyebrow">Architecture</span></span>
+      </a>
+      <details class="menu" open>
+        <summary>Contents</summary>
+        <nav class="nav" aria-label="Site">
+        <p class="eyebrow">arc42</p>
+        <ul><li><a class="nav-item" href="../index.html"><span>Overview</span></a></li><li><a class="nav-item" href="../01-introduction-and-goals.html"><span class="nav-number">01</span><span>Introduction and goals</span></a></li><li><a class="nav-item" href="../02-constraints.html"><span class="nav-number">02</span><span>Constraints</span></a></li><li><a class="nav-item" href="../03-context-and-scope.html"><span class="nav-number">03</span><span>Context and scope</span></a></li><li><a class="nav-item" href="../04-solution-strategy.html"><span class="nav-number">04</span><span>Solution strategy</span></a></li><li><a class="nav-item" href="../05-building-block-view.html"><span class="nav-number">05</span><span>Building block view</span></a></li><li><a class="nav-item" href="../06-runtime-view.html"><span class="nav-number">06</span><span>Runtime view</span></a></li><li><a class="nav-item" href="../07-deployment-view.html"><span class="nav-number">07</span><span>Deployment view</span></a></li><li><a class="nav-item" href="../08-cross-cutting-concepts.html"><span class="nav-number">08</span><span>Cross-cutting concepts</span></a></li><li><a class="nav-item" href="../09-architecture-decisions.html"><span class="nav-number">09</span><span>Architecture decisions</span></a></li><li><a class="nav-item" href="../10-quality-and-tests.html"><span class="nav-number">10</span><span>Quality and tests</span></a></li><li><a class="nav-item" href="../11-risks-and-technical-debt.html"><span class="nav-number">11</span><span>Risks and technical debt</span></a></li><li><a class="nav-item" href="../12-glossary.html"><span class="nav-number">12</span><span>Glossary</span></a></li></ul>
+        <p class="eyebrow">Companion</p>
+        <ul><li><a class="nav-item" href="../subsystems.html"><span>Backend modules from the inside</span></a></li></ul>
+        <p class="eyebrow">Library</p>
+        <ul><li><a class="nav-item is-active" href="../decisions.html" aria-current="page"><span>Decisions</span></a></li><li><a class="nav-item" href="../documents.html"><span>Documents</span></a></li></ul>
+      </nav>
+      </details>
+      <p class="rail-foot">Architecture as of 2026-11-22<br>Built from the Markdown under <code>docs/</code></p>
+    </aside>
+    <main id="content" class="content">
+      <header class="page-head">
+        <p class="eyebrow">Decision · ADR-0038</p>
+        <h1>Deterministic calculation core + AI port (Draft) <span class="status status-ok">Accepted</span></h1>
+        <ul class="chips" aria-label="On this page"><li><a class="chip" href="#context">Context</a></li><li><a class="chip" href="#decision">Decision</a></li><li><a class="chip" href="#consequences">Consequences</a></li><li><a class="chip" href="#addendum-2026-11-11-fake-model-behind-the-kiport-for-ci-and-tests-450-part-1a-decision-d8">Addendum 2026-11-11: fake model behind the KiPort for CI and tests (#450 part 1A, Decision D8)</a></li><li><a class="chip" href="#alternatives-considered">Alternatives considered</a></li></ul>
+      </header>
+      <article class="prose">
+<ul>
+<li><strong>Status:</strong> Accepted — promoted 2026-10-24 (reviewed as part of the ticket reviews; Musti)</li>
+<li><strong>Date:</strong> 2026-10-24</li>
+<li><strong>Deciders:</strong> Robin (backend, Ticket 04) — draft; promotion needs Musti review</li>
+<li><strong>Implements</strong> product ADR-014 (AI suggests, never creates on its own), product ADR-015 (range,
+no point value), product ADR-048 (determinism boundary + LangChain behind a port),
+product ADR-008 (line-item conflict), product ADR-032 (honesty/gating)</li>
+<li><strong>Context tags:</strong> architecture, determinism boundary, honesty principle, AI boundary</li>
+</ul>
+<h2 id="context"><a class="anchor" href="#context" aria-hidden="true" tabindex="-1">#</a>Context</h2>
+<p>Product ADR-048 rules that <code>packages/core</code> computes deterministically and is the <strong>sole source of
+every number</strong>; the LLM never computes, it only (a) understands prepared document data, (b) suggests
+category/rule, (c) explains legal sources. The tax <em>formulas</em> (tariff, Günstigerprüfung (most-favorable-outcome check),
+Fünftelregelung (one-fifth rule), zumutbare Belastung (reasonable burden)) are explicitly later slices — this slice builds the honest
+<strong>container</strong> they will fill, so &quot;computable vs. open vs. gated&quot; is a type, not a hope
+(ADR-032: no estimation hocus-pocus).</p>
+<h2 id="decision"><a class="anchor" href="#decision" aria-hidden="true" tabindex="-1">#</a>Decision</h2>
+<ol>
+<li><p><strong><code>berechnung.ts</code></strong> — the deterministic fold:</p>
+<ul>
+<li><code>Quelle</code> (&quot;Herkunft&quot;, origin): every amount carries an origin — <code>eingabe</code>, <code>beleg</code>, <code>ki-vorschlag</code>,
+<code>regel</code>. A bare number is unrepresentable (ADR-014/015).</li>
+<li><code>Posten</code>: a settled line item (amount + origin).</li>
+<li><code>PostenKonflikt</code> (ADR-008): a Posten with conflicting sources — a <em>distinct type</em>, never a
+silent overwrite; excluded from the sum; blocks submission.</li>
+<li><code>berechne</code> → <code>Berechnungsstand</code>, a discriminated union: <code>bestimmt</code> (sum) <strong>only</strong> when nothing
+is open/conflicting/gated; otherwise <code>offen</code> naming exactly what blocks it. The <code>offen</code> summe
+is the settled Posten only — a partial truth stated as a partial truth.</li>
+<li><code>loeseKonflikt</code>: the explicit resolution (choose a source / correct the value), the only path
+from conflict back to a settled Posten.</li>
+</ul>
+</li>
+<li><p><strong><code>ki-port.ts</code></strong> — the AI boundary as a <strong>port</strong> (ADR-048 §3): <code>KiVorschlag</code> (the schema the
+LLM must answer in) and <code>KiPort</code> (a type-only interface; LangChain lives <em>behind</em> it, api-side,
+later). <code>nehmeVorschlagAn</code> is the only way a suggestion becomes a Posten, attaching the
+<code>ki-vorschlag</code> origin (ADR-014 &quot;Beleg + KI-Vorschlag, bestätigt&quot; — document + AI suggestion, confirmed).</p>
+</li>
+</ol>
+<p>The deterministic functions never take a <code>KiPort</code> — they are pure and testable with no AI
+injected. The port only ever <em>produces</em> suggestions; the core <em>consumes</em> materialized
+suggestions.</p>
+<h2 id="consequences"><a class="anchor" href="#consequences" aria-hidden="true" tabindex="-1">#</a>Consequences</h2>
+<ul>
+<li>The kernel is honest by construction: it cannot emit a point value while anything is open,
+gated, or conflicting (ADR-015/032), and it cannot represent a conflicting amount as a settled
+Posten (ADR-008).</li>
+<li>The AI wiring (LangChain) is a later slice&#39;s work — this slice fixes the contract, not the LLM.</li>
+<li><strong>Open for promotion review:</strong> the exact <code>Quelle</code> vocabulary (<code>regel</code> vs. <code>beleg</code> vs.
+<code>ki-vorschlag</code>) and whether <code>loeseKonflikt</code>&#39;s &quot;wert korrigieren → <code>eingabe</code>&quot; provenance is the
+right call — ADR-008 says &quot;die verworfene Quelle bleibt im Verlauf&quot; (the discarded source stays in the history), which this slice treats as
+the caller&#39;s persistence concern, not the core&#39;s.</li>
+</ul>
+<h2 id="addendum-2026-11-11-fake-model-behind-the-kiport-for-ci-and-tests-450-part-1a-decision-d8"><a class="anchor" href="#addendum-2026-11-11-fake-model-behind-the-kiport-for-ci-and-tests-450-part-1a-decision-d8" aria-hidden="true" tabindex="-1">#</a>Addendum 2026-11-11: fake model behind the KiPort for CI and tests (#450 part 1A, Decision D8)</h2>
+<ul>
+<li><code>apps/api/src/ki/fake-chat-model.ts</code> answers the chat from a fixed script, via keywords in the question. This produces tool calls such as <code>stage_field_draft</code>. The browser gates use it to test the app, not a model.</li>
+<li><strong>Switching on:</strong> only with <code>AI_FAKE_KI=1</code> and outside production. <code>assertFakeKiNotInProduction</code> stops the API from starting in production with the flag set. It cannot be selected as a provider name (<code>AI_ADVISOR_PROVIDER=fake</code>).</li>
+<li><strong>Calculation path:</strong> The application stays the same as with a real model, i.e. LangGraph loop, PII gate, draft instead of write. Only the model&#39;s answer is fixed.</li>
+</ul>
+<h2 id="alternatives-considered"><a class="anchor" href="#alternatives-considered" aria-hidden="true" tabindex="-1">#</a>Alternatives considered</h2>
+<ul>
+<li><strong>Let the AI write Posten directly.</strong> Rejected: product ADR-014 rules it out — numbers the user
+never saw. The <code>KiVorschlag</code> ≠ <code>Posten</code> type split makes it unrepresentable.</li>
+<li><strong>Compute a base estimate from interview answers here.</strong> Rejected: no tax formula is in scope;
+inventing one is exactly the estimation hocus-pocus ADR-032 forbids. The kernel sums <em>settled</em>
+Posten only.</li>
+</ul>
+
+      </article>
+      <p class="back"><a href="../decisions.html">All decisions</a></p>
+      <nav class="steps" aria-label="Previous and next"><a class="step step-previous" href="0037-income-types-and-tax-year-model.html"><span class="eyebrow">Previous</span><span>ADR-0037</span></a><a class="step step-next" href="0039-tax-year-state-machine.html"><span class="eyebrow">Next</span><span>ADR-0039</span></a></nav>
+    </main>
+  </div>
+  <script src="../assets/site.js"></script>
+</body>
+</html>

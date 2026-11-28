@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>package.json script inventory — which scripts have no CI job behind them — SteuerEule</title>
+  <link rel="icon" href="../../../images/steuereule-logo.svg">
+  <link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+  <a class="skip" href="#content">Skip to the content</a>
+  <div class="shell">
+    <aside class="rail">
+      <a class="brand" href="../index.html">
+        <img src="../../../images/steuereule-logo.svg" width="36" height="36" alt="">
+        <span><strong>SteuerEule</strong><span class="eyebrow">Architecture</span></span>
+      </a>
+      <details class="menu" open>
+        <summary>Contents</summary>
+        <nav class="nav" aria-label="Site">
+        <p class="eyebrow">arc42</p>
+        <ul><li><a class="nav-item" href="../index.html"><span>Overview</span></a></li><li><a class="nav-item" href="../01-introduction-and-goals.html"><span class="nav-number">01</span><span>Introduction and goals</span></a></li><li><a class="nav-item" href="../02-constraints.html"><span class="nav-number">02</span><span>Constraints</span></a></li><li><a class="nav-item" href="../03-context-and-scope.html"><span class="nav-number">03</span><span>Context and scope</span></a></li><li><a class="nav-item" href="../04-solution-strategy.html"><span class="nav-number">04</span><span>Solution strategy</span></a></li><li><a class="nav-item" href="../05-building-block-view.html"><span class="nav-number">05</span><span>Building block view</span></a></li><li><a class="nav-item" href="../06-runtime-view.html"><span class="nav-number">06</span><span>Runtime view</span></a></li><li><a class="nav-item" href="../07-deployment-view.html"><span class="nav-number">07</span><span>Deployment view</span></a></li><li><a class="nav-item" href="../08-cross-cutting-concepts.html"><span class="nav-number">08</span><span>Cross-cutting concepts</span></a></li><li><a class="nav-item" href="../09-architecture-decisions.html"><span class="nav-number">09</span><span>Architecture decisions</span></a></li><li><a class="nav-item" href="../10-quality-and-tests.html"><span class="nav-number">10</span><span>Quality and tests</span></a></li><li><a class="nav-item" href="../11-risks-and-technical-debt.html"><span class="nav-number">11</span><span>Risks and technical debt</span></a></li><li><a class="nav-item" href="../12-glossary.html"><span class="nav-number">12</span><span>Glossary</span></a></li></ul>
+        <p class="eyebrow">Companion</p>
+        <ul><li><a class="nav-item" href="../subsystems.html"><span>Backend modules from the inside</span></a></li></ul>
+        <p class="eyebrow">Library</p>
+        <ul><li><a class="nav-item" href="../decisions.html"><span>Decisions</span></a></li><li><a class="nav-item is-active" href="../documents.html" aria-current="page"><span>Documents</span></a></li></ul>
+      </nav>
+      </details>
+      <p class="rail-foot">Architecture as of 2026-11-22<br>Built from the Markdown under <code>docs/</code></p>
+    </aside>
+    <main id="content" class="content">
+      <header class="page-head">
+        <p class="eyebrow">Process</p>
+        <h1>package.json script inventory — which scripts have no CI job behind them</h1>
+        <ul class="chips" aria-label="On this page"><li><a class="chip" href="#scripts-with-no-ci-job-of-their-own">Scripts with no CI job of their own</a></li><li><a class="chip" href="#b-open-items">(b) Open items</a></li></ul>
+      </header>
+      <article class="prose">
+<p>Origin: #203 (ADR-0021&#39;s defect class: a script that looks like a gate and is not one, as <code>breakpoint-layout.mjs</code> was).
+Taken against <code>main</code> at the time of writing. A script counts as <em>CI-backed</em> when a workflow step runs it by name
+(<code>pnpm [--filter X] &lt;script&gt;</code>, <code>pnpm -r &lt;script&gt;</code>, <code>pnpm -r test --coverage</code>), runs the file it wraps, or an
+<code>e2e/gates.json</code> gate does. Everything else is below, triaged:</p>
+<ul>
+<li><strong>(a)</strong> dev/ops convenience, fine without CI</li>
+<li><strong>(b)</strong> should be gated</li>
+<li><strong>(c)</strong> dead, safe to delete</li>
+</ul>
+<p>The e2e half of this is enforced from here on: <code>e2e/run-gates.test.mjs</code> fails when a script in <code>e2e/package.json</code> is
+in no gate, no workflow step and not in its <code>NOT_IN_CI</code> list (with a reason). The root and workspace scripts are
+re-read by hand; extend the check if that drifts.</p>
+<h2 id="scripts-with-no-ci-job-of-their-own"><a class="anchor" href="#scripts-with-no-ci-job-of-their-own" aria-hidden="true" tabindex="-1">#</a>Scripts with no CI job of their own</h2>
+<div class="table"><table>
+<thead>
+<tr>
+<th>Script</th>
+<th>Triage</th>
+<th>Note</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>root <code>gate</code></td>
+<td>a</td>
+<td><code>pnpm -r typecheck &amp;&amp; pnpm -r test</code>, the local pre-push shortcut. CI runs both steps itself.</td>
+</tr>
+<tr>
+<td>root <code>build</code> (<code>turbo run build</code>)</td>
+<td>a</td>
+<td>CI builds the pieces it needs (<code>api build</code>, <code>expo export</code>). The tokens <code>dist/</code> is checked in and guarded by <code>packages/tokens/src/generated.test.ts</code>. <code>apps/website</code> <code>build</code> runs inside the Docker image build of the deploy workflow only.</td>
+</tr>
+<tr>
+<td>root <code>coverage</code>, <code>*</code> <code>coverage</code></td>
+<td>a</td>
+<td>CI runs the same thing through <code>pnpm -r test --coverage</code> (quality.yml, <code>test</code> job) with the thresholds.</td>
+</tr>
+<tr>
+<td><code>core</code> <code>test:watch</code></td>
+<td>a</td>
+<td>watch mode</td>
+</tr>
+<tr>
+<td><code>core</code> <code>bench</code></td>
+<td>a</td>
+<td>documented in README as local-only, no threshold to enforce</td>
+</tr>
+<tr>
+<td><code>api</code> <code>postinstall</code>, <code>mobile-web</code> <code>postinstall</code></td>
+<td>a</td>
+<td>run by every <code>pnpm install</code> in CI, so they are exercised implicitly</td>
+</tr>
+<tr>
+<td><code>api</code> <code>skills:generate</code></td>
+<td>a</td>
+<td>called by <code>build</code>, <code>test</code>, <code>test:integration</code>, <code>typecheck</code></td>
+</tr>
+<tr>
+<td><code>api</code> <code>start</code></td>
+<td>a</td>
+<td><code>pnpm run build &amp;&amp; node dist/main.js</code>; CI boots <code>node dist/main.js</code> itself (e2e stack, prod smoke)</td>
+</tr>
+<tr>
+<td><code>mobile-web</code> <code>start</code>, <code>web</code></td>
+<td>a</td>
+<td>Expo dev server, used by <code>scripts/local.sh</code></td>
+</tr>
+<tr>
+<td><code>mobile-web</code> <code>export:web</code></td>
+<td>a</td>
+<td>CI calls <code>expo export --platform web</code> directly (ci.yml); the script is the same command</td>
+</tr>
+<tr>
+<td><code>api</code> <code>streets:fetch</code></td>
+<td>a</td>
+<td>production data fetch, used by <code>scripts/local.sh</code> and the deploy runbook; the CI fixture never needs it</td>
+</tr>
+<tr>
+<td><code>api</code> <code>backfill:identity</code>, <code>rotate:field-key</code></td>
+<td>a</td>
+<td>operator tools run in the migrate image (infra/README.md). Their logic is unit-tested in <code>apps/api/test</code>; a run against production data cannot be a CI job.</td>
+</tr>
+<tr>
+<td><code>api</code> <code>seed:year-history</code>, <code>seed:selbststaendig</code></td>
+<td>a</td>
+<td>dev seeds, refuse <code>NODE_ENV=production</code>; type-checked by <code>tsconfig.check.json</code></td>
+</tr>
+<tr>
+<td>e2e <code>scenario:01</code> ... <code>scenario:24</code></td>
+<td>a</td>
+<td>single-scenario debugging entry points; every one of them is imported by <code>e2e/scenarios/run-all-scenarios.mjs</code>, which CI runs in four shards</td>
+</tr>
+<tr>
+<td>e2e <code>google-auth</code></td>
+<td><strong>b</strong></td>
+<td><code>e2e/google-auth/google-login.mjs</code> (REQ-008) is in no gate group and no workflow. See below.</td>
+</tr>
+</tbody></table></div>
+<p>No script is (c) today.</p>
+<h2 id="b-open-items"><a class="anchor" href="#b-open-items" aria-hidden="true" tabindex="-1">#</a>(b) Open items</h2>
+<ol>
+<li><strong><code>e2e google-auth</code></strong> (<code>e2e/google-auth/google-login.mjs</code>, REQ-008, the Google sign-in plumbing). Not wired into
+<code>e2e/gates.json</code> in this pass: the script expects the API to be booted with Google credentials (the dev-only
+fallbacks in <code>apps/api/src/auth/better-auth-env.ts</code> may be enough), and nobody has proven it green against the
+CI stack. Wire it into the <code>account-and-session</code> group once a CI run shows it passing; the exemption in
+<code>e2e/run-gates.test.mjs</code> then fails on purpose and must be removed in the same change. Needs its own ticket.</li>
+</ol>
+
+      </article>
+      <p class="back"><a href="../documents.html">All documents</a></p>
+      
+    </main>
+  </div>
+  <script src="../assets/site.js"></script>
+</body>
+</html>

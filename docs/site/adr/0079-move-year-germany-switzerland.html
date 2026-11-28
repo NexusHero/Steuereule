@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>ADR-0079 — Change year: German and Swiss salary in one year, two commutes — SteuerEule</title>
+  <link rel="icon" href="../../../images/steuereule-logo.svg">
+  <link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+  <a class="skip" href="#content">Skip to the content</a>
+  <div class="shell">
+    <aside class="rail">
+      <a class="brand" href="../index.html">
+        <img src="../../../images/steuereule-logo.svg" width="36" height="36" alt="">
+        <span><strong>SteuerEule</strong><span class="eyebrow">Architecture</span></span>
+      </a>
+      <details class="menu" open>
+        <summary>Contents</summary>
+        <nav class="nav" aria-label="Site">
+        <p class="eyebrow">arc42</p>
+        <ul><li><a class="nav-item" href="../index.html"><span>Overview</span></a></li><li><a class="nav-item" href="../01-introduction-and-goals.html"><span class="nav-number">01</span><span>Introduction and goals</span></a></li><li><a class="nav-item" href="../02-constraints.html"><span class="nav-number">02</span><span>Constraints</span></a></li><li><a class="nav-item" href="../03-context-and-scope.html"><span class="nav-number">03</span><span>Context and scope</span></a></li><li><a class="nav-item" href="../04-solution-strategy.html"><span class="nav-number">04</span><span>Solution strategy</span></a></li><li><a class="nav-item" href="../05-building-block-view.html"><span class="nav-number">05</span><span>Building block view</span></a></li><li><a class="nav-item" href="../06-runtime-view.html"><span class="nav-number">06</span><span>Runtime view</span></a></li><li><a class="nav-item" href="../07-deployment-view.html"><span class="nav-number">07</span><span>Deployment view</span></a></li><li><a class="nav-item" href="../08-cross-cutting-concepts.html"><span class="nav-number">08</span><span>Cross-cutting concepts</span></a></li><li><a class="nav-item" href="../09-architecture-decisions.html"><span class="nav-number">09</span><span>Architecture decisions</span></a></li><li><a class="nav-item" href="../10-quality-and-tests.html"><span class="nav-number">10</span><span>Quality and tests</span></a></li><li><a class="nav-item" href="../11-risks-and-technical-debt.html"><span class="nav-number">11</span><span>Risks and technical debt</span></a></li><li><a class="nav-item" href="../12-glossary.html"><span class="nav-number">12</span><span>Glossary</span></a></li></ul>
+        <p class="eyebrow">Companion</p>
+        <ul><li><a class="nav-item" href="../subsystems.html"><span>Backend modules from the inside</span></a></li></ul>
+        <p class="eyebrow">Library</p>
+        <ul><li><a class="nav-item is-active" href="../decisions.html" aria-current="page"><span>Decisions</span></a></li><li><a class="nav-item" href="../documents.html"><span>Documents</span></a></li></ul>
+      </nav>
+      </details>
+      <p class="rail-foot">Architecture as of 2026-11-22<br>Built from the Markdown under <code>docs/</code></p>
+    </aside>
+    <main id="content" class="content">
+      <header class="page-head">
+        <p class="eyebrow">Decision · ADR-0079</p>
+        <h1>Change year: German and Swiss salary in one year, two commutes <span class="status status-ok">Accepted</span></h1>
+        <ul class="chips" aria-label="On this page"><li><a class="chip" href="#context">Context</a></li><li><a class="chip" href="#decision">Decision</a></li><li><a class="chip" href="#consequences">Consequences</a></li></ul>
+      </header>
+      <article class="prose">
+<ul>
+<li><strong>Status:</strong> Accepted</li>
+<li><strong>Date:</strong> 2026-11-13</li>
+<li><strong>Deciders:</strong> NexusHero (Product Owner), Steuereule Engineering</li>
+<li><strong>Applies to:</strong> <code>packages/core/src/engine/{tax-estimate,married-estimate}.ts</code>, <code>packages/core/src/common/workdays.ts</code>, <code>packages/core/src/interview/field-catalog.ts</code>, <code>apps/api/src/tax-estimate/</code>, <code>apps/api/src/commute/</code>, <code>apps/api/src/confirmation/field-access.ts</code>, <code>apps/api/src/printout/</code>, <code>apps/mobile-web/src/screens/workdays/WorkdaysScreen.tsx</code></li>
+<li><strong>Builds on:</strong> ADR-0074 (reading the Swiss Lohnausweis), ADR-0076 (more Werbungskosten)</li>
+</ul>
+<h2 id="context"><a class="anchor" href="#context" aria-hidden="true" tabindex="-1">#</a>Context</h2>
+<p>Anyone who changes from a German to a Swiss employer during the year has both: a
+Lohnsteuerbescheinigung (wage tax certificate) (Anlage N) and a Lohnausweis (Swiss salary
+certificate) (Anlage N-Gre). In the 2024 real case the estimate computed only the Swiss part, and
+the commute applied to the whole year, although the commute to Switzerland existed for only two
+months.</p>
+<h2 id="decision"><a class="anchor" href="#decision" aria-hidden="true" tabindex="-1">#</a>Decision</h2>
+<ol>
+<li><strong>Estimate with both salaries.</strong> If a complete Lohnsteuerbescheinigung and a Lohnausweis are
+present, both salaries count. There is one employee lump sum, the German social insurance is
+added to the pension provision, and wage tax, solidarity surcharge and Swiss Quellensteuer
+(withholding tax) are credited. This applies to single persons and to spouses (type <code>mixed</code>).</li>
+<li><strong>Two commutes with a period.</strong> The first commute gets a period (<code>periodFrom</code>/<code>periodTo</code>). A
+second commute after the change has its own kilometers, its own means of transport, its own
+workplace (encrypted) and its own period. The commuting days of the year are split by the
+weekdays on which each commute existed. The app knows vacation, sickness and home office only
+for the whole year; they are therefore distributed evenly.</li>
+<li><strong>Printout.</strong> A change from Germany to Switzerland puts the first commute in the Anlage N and the
+second in the Anlage N-Gre, each with „vom/bis“ (&quot;from/to&quot;). Two commutes on the same form appear
+there as 1st and 2nd entry (Kz 110–112 and 130–132). The further Werbungskosten (work-related
+expenses) are listed with the first commute, so only once.</li>
+<li><strong>Form.</strong> The switch „Arbeitsstelle im Jahr gewechselt?“ (&quot;Changed job during the year?&quot;) opens
+the end date of the previous commute and the new commute. A half-typed date is not stored.</li>
+<li><strong>Owl.</strong> It may propose period, kilometers and means of transport of the second commute. Not the
+workplace, as with the first commute.</li>
+</ol>
+<h2 id="consequences"><a class="anchor" href="#consequences" aria-hidden="true" tabindex="-1">#</a>Consequences</h2>
+<ul>
+<li>2024 real case: the estimate now computes the German and the Swiss salary together. The new
+commute counts only for November and December, with the same number of days as with the tax
+advisor.</li>
+<li>Fixed along the way: the commute form&#39;s interface did not pass the further Werbungskosten from
+ADR-0076 on to storage. Now it passes on all fields the client sends. Missing fields leave the
+stored value in place.</li>
+<li>The split by weekdays is an approximation. Anyone who knows the exact days per commute can adjust
+the period. There is no separate days field per commute.</li>
+</ul>
+
+      </article>
+      <p class="back"><a href="../decisions.html">All decisions</a></p>
+      <nav class="steps" aria-label="Previous and next"><a class="step step-previous" href="0078-reading-tradesman-invoices.html"><span class="eyebrow">Previous</span><span>ADR-0078</span></a><a class="step step-next" href="0080-donations-and-health-insurance-statements.html"><span class="eyebrow">Next</span><span>ADR-0080</span></a></nav>
+    </main>
+  </div>
+  <script src="../assets/site.js"></script>
+</body>
+</html>

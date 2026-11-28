@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>ADR-0053 — Beta hosting on Google Cloud Run and Cloud SQL — SteuerEule</title>
+  <link rel="icon" href="../../../images/steuereule-logo.svg">
+  <link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+  <a class="skip" href="#content">Skip to the content</a>
+  <div class="shell">
+    <aside class="rail">
+      <a class="brand" href="../index.html">
+        <img src="../../../images/steuereule-logo.svg" width="36" height="36" alt="">
+        <span><strong>SteuerEule</strong><span class="eyebrow">Architecture</span></span>
+      </a>
+      <details class="menu" open>
+        <summary>Contents</summary>
+        <nav class="nav" aria-label="Site">
+        <p class="eyebrow">arc42</p>
+        <ul><li><a class="nav-item" href="../index.html"><span>Overview</span></a></li><li><a class="nav-item" href="../01-introduction-and-goals.html"><span class="nav-number">01</span><span>Introduction and goals</span></a></li><li><a class="nav-item" href="../02-constraints.html"><span class="nav-number">02</span><span>Constraints</span></a></li><li><a class="nav-item" href="../03-context-and-scope.html"><span class="nav-number">03</span><span>Context and scope</span></a></li><li><a class="nav-item" href="../04-solution-strategy.html"><span class="nav-number">04</span><span>Solution strategy</span></a></li><li><a class="nav-item" href="../05-building-block-view.html"><span class="nav-number">05</span><span>Building block view</span></a></li><li><a class="nav-item" href="../06-runtime-view.html"><span class="nav-number">06</span><span>Runtime view</span></a></li><li><a class="nav-item" href="../07-deployment-view.html"><span class="nav-number">07</span><span>Deployment view</span></a></li><li><a class="nav-item" href="../08-cross-cutting-concepts.html"><span class="nav-number">08</span><span>Cross-cutting concepts</span></a></li><li><a class="nav-item" href="../09-architecture-decisions.html"><span class="nav-number">09</span><span>Architecture decisions</span></a></li><li><a class="nav-item" href="../10-quality-and-tests.html"><span class="nav-number">10</span><span>Quality and tests</span></a></li><li><a class="nav-item" href="../11-risks-and-technical-debt.html"><span class="nav-number">11</span><span>Risks and technical debt</span></a></li><li><a class="nav-item" href="../12-glossary.html"><span class="nav-number">12</span><span>Glossary</span></a></li></ul>
+        <p class="eyebrow">Companion</p>
+        <ul><li><a class="nav-item" href="../subsystems.html"><span>Backend modules from the inside</span></a></li></ul>
+        <p class="eyebrow">Library</p>
+        <ul><li><a class="nav-item is-active" href="../decisions.html" aria-current="page"><span>Decisions</span></a></li><li><a class="nav-item" href="../documents.html"><span>Documents</span></a></li></ul>
+      </nav>
+      </details>
+      <p class="rail-foot">Architecture as of 2026-11-22<br>Built from the Markdown under <code>docs/</code></p>
+    </aside>
+    <main id="content" class="content">
+      <header class="page-head">
+        <p class="eyebrow">Decision · ADR-0053</p>
+        <h1>Beta hosting on Google Cloud Run and Cloud SQL <span class="status status-ok">Accepted</span></h1>
+        <ul class="chips" aria-label="On this page"><li><a class="chip" href="#context">Context</a></li><li><a class="chip" href="#decision">Decision</a></li><li><a class="chip" href="#consequences">Consequences</a></li><li><a class="chip" href="#alternatives">Alternatives</a></li></ul>
+      </header>
+      <article class="prose">
+<ul>
+<li><strong>Status:</strong> Accepted (stakeholder decision NexusHero, 2026-11-04)</li>
+<li><strong>Date:</strong> 2026-11-04</li>
+<li><strong>Deciders:</strong> NexusHero (stakeholder); Musti — architecture review on the PR</li>
+<li><strong>Amends:</strong> product ADR-049 (k3s on Hetzner) — applies again only once load or
+availability requires it; ADR-0026 (the local Compose stack stays the local counterpart)</li>
+</ul>
+<h2 id="context"><a class="anchor" href="#context" aria-hidden="true" tabindex="-1">#</a>Context</h2>
+<p>The beta starts with at most ten testers. The target picture from product ADR-049 (k3s cluster,
+load balancer, managed Postgres from a third-party provider) costs around €30–60 a month and
+requires us to operate the cluster, backups and updates ourselves. Infra #292 has been stuck on
+exactly this effort for weeks.</p>
+<p>Compared (net, rough, November 2026):</p>
+<div class="table"><table>
+<thead>
+<tr>
+<th></th>
+<th>Hetzner, one VM with Compose</th>
+<th>Google Cloud Run + Cloud SQL</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>First year</td>
+<td>~€95–135</td>
+<td>~€130 (the starting credit covers the first 90 days)</td>
+</tr>
+<tr>
+<td>From year 2</td>
+<td>~€95–135</td>
+<td>~€165</td>
+</tr>
+<tr>
+<td>Backups, PITR, logs, secrets</td>
+<td>self-operated</td>
+<td>managed</td>
+</tr>
+<tr>
+<td>Provider</td>
+<td>German</td>
+<td>US provider, data center in the EU</td>
+</tr>
+</tbody></table></div>
+<h2 id="decision"><a class="anchor" href="#decision" aria-hidden="true" tabindex="-1">#</a>Decision</h2>
+<p>The beta runs on Google Cloud in <strong><code>europe-west4</code></strong> (Netherlands):</p>
+<ul>
+<li><strong>Cloud Run</strong> runs two services from the existing images: <code>steuereule-api</code>
+(1 vCPU, 2 GiB because of Chromium) and <code>steuereule-web</code>. Both scale to zero, at most
+two instances.</li>
+<li><strong>Cloud Run Job</strong> <code>steuereule-migrate</code> runs <code>prisma migrate deploy</code> with the API image,
+before every API rollout — the counterpart of the <code>migrate</code> service in the Compose stack.</li>
+<li><strong>Cloud SQL</strong> Postgres 16, tier <code>db-f1-micro</code>, daily backups and PITR. The API connects
+via the Unix socket that Cloud Run provides; there are no authorized networks.</li>
+<li><strong>Secret Manager</strong> holds all secrets. OpenTofu only creates the empty secrets; the values
+are generated locally by <code>scripts/infra/gcp-setup.sh</code>, which writes them directly into them.
+This way no secret ends up in the Tofu state.</li>
+<li><strong>Artifact Registry</strong> instead of GHCR, with a cleanup rule (the last five images are kept).</li>
+<li><strong>GitHub Actions</strong> deploys via Workload Identity Federation, without a long-lived key.
+Access is restricted to <code>NexusHero/Steuereule</code>.</li>
+<li><strong>Own domain</strong> with <code>www.</code> (web) and <code>api.</code> (API) via Cloud Run domain mappings.
+The <code>*.run.app</code> addresses are on the Public Suffix List; web and API would then be two
+sites, the session cookie a third-party cookie, and Safari would block the login.
+Domain mappings are the reason for <code>europe-west4</code> instead of Frankfurt.</li>
+<li><strong>Budget alert</strong> at €20 a month.</li>
+</ul>
+<p>The Hetzner part under <code>infra/terraform</code>, <code>infra/k3s</code> and <code>infra/manifests</code> stays in place as
+the target picture for later, but is not deployed.</p>
+<h2 id="consequences"><a class="anchor" href="#consequences" aria-hidden="true" tabindex="-1">#</a>Consequences</h2>
+<ul>
+<li><strong>Cost:</strong> <del>€12–15 a month, regardless of whether one or ten testers are active; almost
+all of it is Cloud SQL. Between test rounds the instance can be stopped (</del>€2–3).</li>
+<li><strong>Cold start:</strong> After idle time the first request takes 5–10 seconds. A permanently warm
+instance would cost ~€50 a month and is not planned for the beta.</li>
+<li><strong>Data protection:</strong> Google is a US provider (CLOUD Act). This belongs in the DSFA (data
+protection impact assessment) and in the privacy policy; the AVV (data processing agreement)
+with Google must be concluded before the first real tester.</li>
+<li><strong>To check before the first rollout:</strong><ul>
+<li>that Cloud Run domain mappings are available in <code>europe-west4</code> (<code>gcloud beta run domain-mappings create</code> otherwise fails immediately; the way out would be a load balancer for ~€18);</li>
+<li>which peer address the API sees behind Cloud Run. <code>TRUSTED_PROXIES</code> is set as a
+repo variable and pre-filled with <code>169.254.0.0/16</code>; a wrong value makes all
+testers share one common rate-limit bucket (fail-closed, not fail-open).</li>
+</ul>
+</li>
+<li><strong>Deliberate deviations:</strong> <code>/v1/health/*</code> is publicly reachable because Cloud Run has no
+second, internal port (#344 only applies to a cluster). The endpoints return only
+<code>ok</code>/<code>error</code>. Redis is dropped until BullMQ queues are actually built.</li>
+<li><strong>Known risk:</strong> Cloud Run shuts down instances after idle time. A crashed
+Chromium process is not restarted today (#288); the next cold start heals that,
+a long-lived process does not.</li>
+</ul>
+<h2 id="alternatives"><a class="anchor" href="#alternatives" aria-hidden="true" tabindex="-1">#</a>Alternatives</h2>
+<ul>
+<li><strong>Hetzner, one VM with Compose:</strong> somewhat cheaper from year 2, German provider. Rejected,
+because backups, PITR, updates and monitoring would then have to be operated ourselves.</li>
+<li><strong>k3s on Hetzner (product ADR-049):</strong> too expensive and too much effort for ten testers.</li>
+<li><strong>Global External Load Balancer instead of domain mappings:</strong> allows Frankfurt, but costs
+an additional ~€18 a month. Remains the way out if the domain mappings are not available.</li>
+</ul>
+
+      </article>
+      <p class="back"><a href="../decisions.html">All decisions</a></p>
+      <nav class="steps" aria-label="Previous and next"><a class="step step-previous" href="0052-agent-access-mcp.html"><span class="eyebrow">Previous</span><span>ADR-0052</span></a><a class="step step-next" href="0054-joint-assessment-one-return.html"><span class="eyebrow">Next</span><span>ADR-0054</span></a></nav>
+    </main>
+  </div>
+  <script src="../assets/site.js"></script>
+</body>
+</html>

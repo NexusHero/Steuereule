@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>ADR-0112 — The browser gates run as parallel groups from one gate list — SteuerEule</title>
+  <link rel="icon" href="../../../images/steuereule-logo.svg">
+  <link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+  <a class="skip" href="#content">Skip to the content</a>
+  <div class="shell">
+    <aside class="rail">
+      <a class="brand" href="../index.html">
+        <img src="../../../images/steuereule-logo.svg" width="36" height="36" alt="">
+        <span><strong>SteuerEule</strong><span class="eyebrow">Architecture</span></span>
+      </a>
+      <details class="menu" open>
+        <summary>Contents</summary>
+        <nav class="nav" aria-label="Site">
+        <p class="eyebrow">arc42</p>
+        <ul><li><a class="nav-item" href="../index.html"><span>Overview</span></a></li><li><a class="nav-item" href="../01-introduction-and-goals.html"><span class="nav-number">01</span><span>Introduction and goals</span></a></li><li><a class="nav-item" href="../02-constraints.html"><span class="nav-number">02</span><span>Constraints</span></a></li><li><a class="nav-item" href="../03-context-and-scope.html"><span class="nav-number">03</span><span>Context and scope</span></a></li><li><a class="nav-item" href="../04-solution-strategy.html"><span class="nav-number">04</span><span>Solution strategy</span></a></li><li><a class="nav-item" href="../05-building-block-view.html"><span class="nav-number">05</span><span>Building block view</span></a></li><li><a class="nav-item" href="../06-runtime-view.html"><span class="nav-number">06</span><span>Runtime view</span></a></li><li><a class="nav-item" href="../07-deployment-view.html"><span class="nav-number">07</span><span>Deployment view</span></a></li><li><a class="nav-item" href="../08-cross-cutting-concepts.html"><span class="nav-number">08</span><span>Cross-cutting concepts</span></a></li><li><a class="nav-item" href="../09-architecture-decisions.html"><span class="nav-number">09</span><span>Architecture decisions</span></a></li><li><a class="nav-item" href="../10-quality-and-tests.html"><span class="nav-number">10</span><span>Quality and tests</span></a></li><li><a class="nav-item" href="../11-risks-and-technical-debt.html"><span class="nav-number">11</span><span>Risks and technical debt</span></a></li><li><a class="nav-item" href="../12-glossary.html"><span class="nav-number">12</span><span>Glossary</span></a></li></ul>
+        <p class="eyebrow">Companion</p>
+        <ul><li><a class="nav-item" href="../subsystems.html"><span>Backend modules from the inside</span></a></li></ul>
+        <p class="eyebrow">Library</p>
+        <ul><li><a class="nav-item is-active" href="../decisions.html" aria-current="page"><span>Decisions</span></a></li><li><a class="nav-item" href="../documents.html"><span>Documents</span></a></li></ul>
+      </nav>
+      </details>
+      <p class="rail-foot">Architecture as of 2026-11-22<br>Built from the Markdown under <code>docs/</code></p>
+    </aside>
+    <main id="content" class="content">
+      <header class="page-head">
+        <p class="eyebrow">Decision · ADR-0112</p>
+        <h1>The browser gates run as parallel groups from one gate list <span class="status status-ok">Accepted</span></h1>
+        <ul class="chips" aria-label="On this page"><li><a class="chip" href="#context">Context</a></li><li><a class="chip" href="#decision">Decision</a></li><li><a class="chip" href="#consequences">Consequences</a></li></ul>
+      </header>
+      <article class="prose">
+<ul>
+<li><strong>Status:</strong> Accepted</li>
+<li><strong>Date:</strong> 2026-11-26</li>
+<li><strong>Deciders:</strong> engineering.</li>
+<li><strong>Builds on</strong> <a href="0105-ci-gate-taxonomy-and-transparency.html">ADR-0105</a> (check names, required checks, the
+host-job caveat), <a href="0004-testing-strategy.html">ADR-0004</a>, <a href="0021-controls-are-proven-by-breaking-them.html">ADR-0021</a>.
+<strong>Replaces in part</strong> the &quot;accessibility and DAST caveat&quot; of ADR-0105: its reason (standing the stack up twice)
+is accepted here as a price worth paying.</li>
+<li><strong>Context tags:</strong> ci, process, e2e</li>
+</ul>
+<h2 id="context"><a class="anchor" href="#context" aria-hidden="true" tabindex="-1">#</a>Context</h2>
+<p><code>e2e: browser gates &amp; a11y</code> was one job of 69 steps. It booted one API and one static web server and ran 46 E2E
+gates one after the other, then restarted the API once with the fake chat model. Its last run took 41 minutes.
+Three things followed from that shape:</p>
+<ol>
+<li>The first red gate stopped the job, so every gate behind it did not run. A failure said &quot;something is red&quot;,
+not &quot;these three things are red&quot;.</li>
+<li>All gates shared one API process and one database, so they shared rate-limit buckets and state. The scenario
+logs show the pacing this forced (&quot;waiting … for a full quiet window&quot;).</li>
+<li>A gate was added by editing the workflow in several places; nothing checked that a script on disk was
+wired into CI at all.</li>
+</ol>
+<p>Other jobs repeated the same set-up block (pnpm, Node, install, Prisma, migrations, Chromium) and carried
+39- to 56-line <code>run:</code> blocks inline (DSGVO export smoke, PDF export smoke, ZAP) and a 152-line deploy job.</p>
+<h2 id="decision"><a class="anchor" href="#decision" aria-hidden="true" tabindex="-1">#</a>Decision</h2>
+<ol>
+<li><strong>One gate list.</strong> <code>e2e/gates.json</code> names every stack-bound E2E gate, its group and its commands.
+<code>e2e/run-gates.mjs --group &lt;g&gt;</code> runs one group and reports every failure of it, not only the first.
+<code>--matrix</code> prints the CI matrix, <code>--check</code> validates the list. <code>e2e/run-gates.test.mjs</code> (itself a gate of the
+static group) fails on a gate without a known group, a group without a gate, a script that does not exist, a
+matrix that misses a group, or a gate count that changed without this file changing with it.</li>
+<li><strong>Build once, run in groups.</strong> <code>e2e-plan</code> reads the list, <code>e2e-build</code> builds the API and the web bundle once
+and uploads them, and <code>e2e-gates</code> runs one job per group in parallel, each on a fresh stack (own API process,
+own database). The group that needs the fake chat model boots the API with <code>AI_FAKE_KI=1</code>. The group with no
+stack (the coverage ratchet and the list check) starts none.</li>
+<li><strong>Required check names stay.</strong> The ruleset <code>main</code> pins check names, and a renamed job would wait for ever. The
+old names remain as aggregate jobs that <code>needs</code> the new ones and run <code>if: always()</code>:
+<code>e2e: browser gates &amp; a11y (BFSG/WCAG 2.1 AA, headless Chromium)</code> (plan, build and every group) and
+<code>e2e: production compose stack + OWASP ZAP DAST (real Docker build)</code> (both halves below). They report red
+when a part is red and never stay pending.</li>
+<li><strong>The production stack job is split</strong> into <code>e2e: production stack smoke</code> and <code>e2e: OWASP ZAP DAST</code>. Each
+boots the real Docker stack through one shared action; the Docker build therefore runs twice. This reverses the
+choice of ADR-0105 on purpose: one red half no longer hides the other.</li>
+<li><strong>Shared set-up lives in composite actions</strong> (<code>.github/actions/</code>): <code>setup-workspace</code>, <code>prepare-database</code>,
+<code>install-chromium</code>, <code>boot-prod-stack</code>. Long inline shell moved to scripts: <code>e2e/smoke/dsgvo-export.sh</code>,
+<code>e2e/prod-deploy/pdf-export-smoke.sh</code>, <code>scripts/ci/zap-dast.sh</code> and <code>scripts/deploy/*.sh</code> (six steps of the
+deploy job). A script keeps the lines of its step in the same order, plus <code>set -e</code> where the step relied on
+the Actions default shell. Two deploy steps stay inline on purpose: the configuration gate and the variable-scope
+check run before any checkout, so no script of the repository is there yet. <code>deployment-wiring.test.ts</code> fails on a
+script step without a checkout before it and on a script without <code>set -e</code>.</li>
+</ol>
+<h2 id="consequences"><a class="anchor" href="#consequences" aria-hidden="true" tabindex="-1">#</a>Consequences</h2>
+<ul>
+<li><strong>No test was dropped.</strong> The 46 gate steps (49 commands) of the former job are the 46 gates of the list
+(command for command, with their <code>env</code>); the list check is the 47th. The group count is checked by the test
+of point 1. The extraction of the 9 scripts was compared against the original steps line by line.</li>
+<li>A pull request now uses more runner minutes (a fresh install and boot per group, a second Docker build) and
+less wall-clock time (the longest group instead of the sum).</li>
+<li>Gates no longer share a process, so an order dependence between two gates would now show as a failure.
+That is intended; such a dependence is a defect of the gate.</li>
+<li>The new per-group checks (<code>e2e: gates — &lt;group&gt;</code>) are not in the ruleset; the aggregate job is the required
+one. Adding a group needs no ruleset change.</li>
+<li>The deploy scripts do not run on a pull request. Their safety rests on <code>actionlint</code>, <code>shellcheck</code> and the
+line-by-line comparison above; the first deploy after the merge is their first run.</li>
+</ul>
+
+      </article>
+      <p class="back"><a href="../decisions.html">All decisions</a></p>
+      <nav class="steps" aria-label="Previous and next"><a class="step step-previous" href="0111-beta-readiness.html"><span class="eyebrow">Previous</span><span>ADR-0111</span></a><a class="step step-next" href="0113-production-deploy-by-release.html"><span class="eyebrow">Next</span><span>ADR-0113</span></a></nav>
+    </main>
+  </div>
+  <script src="../assets/site.js"></script>
+</body>
+</html>

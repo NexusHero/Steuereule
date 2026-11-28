@@ -1,0 +1,327 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>ADR-0027 — better-auth's session freshness gate is disabled (session.freshAge: 0) — SteuerEule</title>
+  <link rel="icon" href="../../../images/steuereule-logo.svg">
+  <link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+  <a class="skip" href="#content">Skip to the content</a>
+  <div class="shell">
+    <aside class="rail">
+      <a class="brand" href="../index.html">
+        <img src="../../../images/steuereule-logo.svg" width="36" height="36" alt="">
+        <span><strong>SteuerEule</strong><span class="eyebrow">Architecture</span></span>
+      </a>
+      <details class="menu" open>
+        <summary>Contents</summary>
+        <nav class="nav" aria-label="Site">
+        <p class="eyebrow">arc42</p>
+        <ul><li><a class="nav-item" href="../index.html"><span>Overview</span></a></li><li><a class="nav-item" href="../01-introduction-and-goals.html"><span class="nav-number">01</span><span>Introduction and goals</span></a></li><li><a class="nav-item" href="../02-constraints.html"><span class="nav-number">02</span><span>Constraints</span></a></li><li><a class="nav-item" href="../03-context-and-scope.html"><span class="nav-number">03</span><span>Context and scope</span></a></li><li><a class="nav-item" href="../04-solution-strategy.html"><span class="nav-number">04</span><span>Solution strategy</span></a></li><li><a class="nav-item" href="../05-building-block-view.html"><span class="nav-number">05</span><span>Building block view</span></a></li><li><a class="nav-item" href="../06-runtime-view.html"><span class="nav-number">06</span><span>Runtime view</span></a></li><li><a class="nav-item" href="../07-deployment-view.html"><span class="nav-number">07</span><span>Deployment view</span></a></li><li><a class="nav-item" href="../08-cross-cutting-concepts.html"><span class="nav-number">08</span><span>Cross-cutting concepts</span></a></li><li><a class="nav-item" href="../09-architecture-decisions.html"><span class="nav-number">09</span><span>Architecture decisions</span></a></li><li><a class="nav-item" href="../10-quality-and-tests.html"><span class="nav-number">10</span><span>Quality and tests</span></a></li><li><a class="nav-item" href="../11-risks-and-technical-debt.html"><span class="nav-number">11</span><span>Risks and technical debt</span></a></li><li><a class="nav-item" href="../12-glossary.html"><span class="nav-number">12</span><span>Glossary</span></a></li></ul>
+        <p class="eyebrow">Companion</p>
+        <ul><li><a class="nav-item" href="../subsystems.html"><span>Backend modules from the inside</span></a></li></ul>
+        <p class="eyebrow">Library</p>
+        <ul><li><a class="nav-item is-active" href="../decisions.html" aria-current="page"><span>Decisions</span></a></li><li><a class="nav-item" href="../documents.html"><span>Documents</span></a></li></ul>
+      </nav>
+      </details>
+      <p class="rail-foot">Architecture as of 2026-11-22<br>Built from the Markdown under <code>docs/</code></p>
+    </aside>
+    <main id="content" class="content">
+      <header class="page-head">
+        <p class="eyebrow">Decision · ADR-0027</p>
+        <h1>better-auth&#39;s session freshness gate is disabled (<code>session.freshAge: 0</code>) <span class="status status-ok">Accepted</span></h1>
+        <ul class="chips" aria-label="On this page"><li><a class="chip" href="#context">Context</a></li><li><a class="chip" href="#decision">Decision</a></li><li><a class="chip" href="#consequences">Consequences</a></li><li><a class="chip" href="#re-evaluation-triggers">Re-evaluation triggers</a></li><li><a class="chip" href="#alternatives-considered">Alternatives considered</a></li><li><a class="chip" href="#decision-history">Decision history</a></li><li><a class="chip" href="#amendment-303--the-better-auth-routes-the-product-calls-and-the-gate-that-visits-each">Amendment (#303) — the better-auth routes the product calls, and the gate that visits each</a></li></ul>
+      </header>
+      <article class="prose">
+<ul>
+<li><strong>Status:</strong> Accepted</li>
+<li><strong>Date:</strong> 2026-08-06</li>
+<li><strong>Deciders:</strong> Robin (engineering); reviewed by Musti (lead) — see <em>Decision history</em> below, this
+ADR exists because his review found the original justification wrong, not merely under-written.</li>
+<li><strong>Builds on</strong> <a href="0009-better-auth-as-auth-server.html">ADR-0009</a> (better-auth is the auth server),
+<a href="0013-dsgvo-export-and-account-deletion.html">ADR-0013</a> §6 <em>Trust boundary</em> (<code>DELETE /v1/account</code>&#39;s
+own, independent fresh-auth window), <a href="0021-controls-are-proven-by-breaking-them.html">ADR-0021</a>
+(&quot;a control is not established until it has been observed to fail&quot; — its actual Decision, not
+restated further; see <em>Context</em> below for this ADR&#39;s own, separate point about a completeness
+claim), <a href="0024-qr-device-authorization-endpoints.html">ADR-0024</a> (the precedent this ADR does <em>not</em>
+yet follow — see <em>Alternatives</em>).</li>
+<li><strong>Context tags:</strong> security, auth</li>
+<li><strong>Introduced by:</strong> <code>steuereule#299</code> (stakeholder bug report — the device list stayed empty for a
+returning, genuinely signed-in user), REQ-014</li>
+</ul>
+<h2 id="context"><a class="anchor" href="#context" aria-hidden="true" tabindex="-1">#</a>Context</h2>
+<p><code>GET /api/auth/list-sessions</code> — the real data source behind Profil&#39;s &quot;Angemeldete Geräte&quot; device
+list (<code>useDeviceSessions.ts</code>) — was 403ing <code>SESSION_NOT_FRESH</code> for any session older than
+better-auth&#39;s default <code>session.freshAge</code> (86400s/24h, <code>context/create-context.mjs:148</code>), even
+though the session was otherwise entirely valid (its own <code>expiresIn</code> default is 7 days) and every
+other endpoint touching it (<code>GET /v1/profile</code>, <code>GET /api/auth/get-session</code>) kept working. A
+returning user — the ordinary case, not an edge case — could never see their own device list again
+without a fresh sign-in.</p>
+<p><strong>A claim of completeness must itself be checked, not assumed — this ADR&#39;s own point, not a
+restatement of ADR-0021&#39;s.</strong> ADR-0021 requires a control to be observed to fail; it says nothing
+about how a list of a control&#39;s <em>consumers</em> should be established. The first version of this
+decision (see <em>Decision history</em>) named &quot;the only other consumer&quot; from memory-adjacent reading of
+the source rather than an exhaustive search, and was wrong. The fix applied here is a search, not a
+recollection:</p>
+<p><strong>The exhaustive consumer list, measured against the installed dist, not assumed.</strong> <code>grep -rn &quot;use: \[freshSessionMiddleware\]&quot; &lt;better-auth&gt;/dist --include=*.mjs</code> (better-auth 1.6.24) returns
+exactly two endpoints:</p>
+<div class="table"><table>
+<thead>
+<tr>
+<th>Endpoint</th>
+<th>Site</th>
+<th>What it does</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>GET /list-sessions</code></td>
+<td><code>dist/api/routes/session.mjs:378</code></td>
+<td>Lists the caller&#39;s own active sessions — the bug this ADR&#39;s decision fixes.</td>
+</tr>
+<tr>
+<td><code>POST /unlink-account</code></td>
+<td><code>dist/api/routes/account.mjs:229</code></td>
+<td>Unlinks a social provider (e.g., Google) from the account.</td>
+</tr>
+</tbody></table></div>
+<p><strong>A third, adjacent site that reads <code>session.freshAge</code> directly is not in that list and does not
+matter here.</strong> <code>POST /delete-user</code>&#39;s own handler body (<code>update-user.mjs:329</code>) checks
+<code>sessionConfig.freshAge</code> to decide whether a password must be supplied to delete the account
+without a fresh session — but the endpoint itself throws <code>NOT_FOUND</code> unconditionally
+(<code>update-user.mjs:288</code>) unless <code>options.user.deleteUser.enabled</code> is configured, and this app
+configures no <code>user.deleteUser</code> key at all (<code>grep -n &#39;deleteUser&#39; apps/api/src/auth/ better-auth.ts</code> → no hits). <code>/delete-user</code> is unreachable regardless of <code>freshAge</code> — this app&#39;s own
+<code>DELETE /v1/account</code> (REQ-011/ADR-0013 §6) is the real account-deletion path, and it was already
+built with its own, independent, much shorter freshness window (<code>fresh-auth.ts</code>&#39;s
+<code>ACCOUNT_DELETE_FRESH_WINDOW_MS</code>, 5 minutes) specifically because 24h is sized for &quot;routine
+sensitive-but-reversible actions&quot;, not an irreversible one.</p>
+<p><strong><code>/change-email</code> and <code>/change-password</code> do not use this gate at all.</strong> Both are gated by
+<code>sensitiveSessionMiddleware</code> — a plain &quot;the session must be valid&quot; check with no freshness
+component (<code>update-user.mjs:93</code> (<code>/change-password</code>, declared <code>:75</code>) / <code>:406</code> (<code>/change-email</code>,
+declared <code>:400</code>), confirmed directly against the dist). An earlier draft of
+this decision (PR #299&#39;s first pushed commit) misattributed <code>update-user.mjs:329</code> — the
+<code>/delete-user</code> branch above — to these two endpoints, and used that wrong citation as the load-
+bearing justification for the whole change. Corrected here; the wrong version never merged.</p>
+<h2 id="decision"><a class="anchor" href="#decision" aria-hidden="true" tabindex="-1">#</a>Decision</h2>
+<p><code>session: { freshAge: 0 }</code> in <code>apps/api/src/auth/better-auth.ts</code>, disabling the freshness check
+globally rather than raising it to some other, still-finite value (see <em>Alternatives</em> for why a
+non-zero value does not actually solve this).</p>
+<h2 id="consequences"><a class="anchor" href="#consequences" aria-hidden="true" tabindex="-1">#</a>Consequences</h2>
+<ul>
+<li><strong><code>GET /list-sessions</code> fixed</strong> — a returning user can view their device list for the full life of
+their session (7 days), without re-authenticating.</li>
+<li><strong><code>POST /unlink-account</code> loses its only protection — accepted, stated explicitly rather than left
+as an unexamined side effect.</strong> Before this change, unlinking a social provider required a
+session established within the last 24h; after, any valid, non-expired session (up to 7 days old)
+can. <code>apps/mobile-web</code> calls no such endpoint today (no &quot;disconnect Google&quot; screen exists) — but
+<code>POST /api/auth/unlink-account</code> is registered unconditionally and directly reachable through the
+mounted better-auth catch-all regardless of what our own frontend calls, and this app configures
+a real Google provider whenever <code>GOOGLE_CLIENT_ID</code>/<code>GOOGLE_CLIENT_SECRET</code> are set
+(<code>better-auth.ts</code>&#39;s <code>socialProviders</code>). <strong>Accepted because:</strong> (a) unlinking a provider is
+reversible — the account itself is not compromised, only a login method is detached, and the
+owner can re-link; (b) it still requires an already-valid session — this removes a <em>freshness</em>
+requirement, not authentication itself; (c) a non-zero <code>freshAge</code> would not have actually fixed
+the reported bug (see <em>Alternatives</em>), so the honest trade is &quot;protect this narrow, reversible,
+currently-unused action&quot; vs. &quot;leave the device list broken for every returning user&quot; — not a free
+win either way. Pinned by a test (<code>req-014-device-list-session-freshness.test.ts</code>) asserting
+unlink-account succeeds on an aged session, so a future accidental tightening has something
+concrete to break rather than this being silently re-discovered.</li>
+<li><strong><code>/delete-user</code> unaffected</strong> — already unreachable regardless of this setting (see <em>Context</em>).</li>
+<li><strong><code>/change-email</code>/<code>/change-password</code> unaffected</strong> — neither ever used this gate.</li>
+</ul>
+<h2 id="re-evaluation-triggers"><a class="anchor" href="#re-evaluation-triggers" aria-hidden="true" tabindex="-1">#</a>Re-evaluation triggers</h2>
+<ul>
+<li>If a &quot;disconnect this social provider&quot; screen is ever wired into <code>apps/mobile-web</code>, revisit: give
+it its own <code>fresh-auth.ts</code>-shaped re-verification window (mirroring <code>DELETE /v1/account</code>&#39;s
+pattern) rather than continuing to rely on <code>freshAge: 0</code>&#39;s blanket removal.</li>
+<li>If <code>user.deleteUser</code> is ever configured (switching to better-auth&#39;s own <code>/delete-user</code> instead of
+this app&#39;s bespoke <code>DELETE /v1/account</code>), re-check this decision against that endpoint&#39;s own
+freshness branch (<code>update-user.mjs:329</code>) before assuming it is still moot.</li>
+</ul>
+<h2 id="alternatives-considered"><a class="anchor" href="#alternatives-considered" aria-hidden="true" tabindex="-1">#</a>Alternatives considered</h2>
+<ul>
+<li><strong>Raise <code>freshAge</code> to some larger non-zero value instead of 0.</strong> Rejected: any finite value
+reproduces the identical bug shape for a session older than that value — it only lengthens the
+window before the same ticket reopens. better-auth&#39;s config has no per-endpoint <code>freshAge</code>, so a
+non-zero value cannot protect <code>/unlink-account</code> without eventually re-breaking <code>/list-sessions</code>
+again at some larger session age.</li>
+<li><strong>Move the device list off better-auth&#39;s own <code>/list-sessions</code> onto this app&#39;s own
+<code>/v1/device/*</code>-shaped seam behind <code>UserContextGuard</code>, leaving <code>freshAge</code> at its default.</strong> This is
+the architecturally cleaner fix, and matches the precedent ADR-0024 already set for every other
+device-authorization endpoint: our own controller sits in front of the plugin, the browser never
+calls the plugin&#39;s HTTP surface directly. It would let <code>/unlink-account</code> keep its default
+protection untouched. <strong>Not done here</strong> — it is materially more work (a new repository-backed
+endpoint plus a frontend change, and <code>apps/mobile-web</code> is not this PR&#39;s territory) than a live
+production bug justifies blocking on. This is the real long-term direction; tracked as its own
+ticket rather than silently becoming &quot;just how it&#39;s always been&quot; through this PR&#39;s shortcut.</li>
+<li><strong>A <code>hooks.before</code> matcher bypassing just this one endpoint&#39;s own declared middleware.</strong>
+better-auth&#39;s endpoint-level <code>use: [...]</code> chain runs for every invocation path (HTTP router or an
+in-process <code>auth.api.*</code> call) — there is no supported seam to skip one specific plugin-owned
+endpoint&#39;s own middleware without forking the library. Rejected as unsupported and fragile.</li>
+</ul>
+<h2 id="decision-history"><a class="anchor" href="#decision-history" aria-hidden="true" tabindex="-1">#</a>Decision history</h2>
+<p>The version of this change first pushed to <code>steuereule#299</code> justified <code>freshAge: 0</code> by citing
+<code>update-user.mjs:329</code> as &quot;the <code>/change-email</code>/<code>/change-password</code> gate&quot; — wrong on both the endpoint
+(it is <code>/delete-user</code>) and the claim (neither <code>/change-email</code> nor <code>/change-password</code> uses this gate
+at all), and its &quot;nothing here loses protection it actually had&quot; omitted <code>/unlink-account</code>
+entirely. Musti&#39;s review caught both; this ADR is the corrected record — not a comment in
+<code>better-auth.ts</code> that the next reader would only find by already being in that file.</p>
+<h2 id="amendment-303--the-better-auth-routes-the-product-calls-and-the-gate-that-visits-each"><a class="anchor" href="#amendment-303--the-better-auth-routes-the-product-calls-and-the-gate-that-visits-each" aria-hidden="true" tabindex="-1">#</a>Amendment (#303) — the better-auth routes the product calls, and the gate that visits each</h2>
+<p>The ADR&#39;s own point is that a completeness claim must be searched, not recalled. #303 asked the same question of
+the <em>gates</em>: which better-auth routes does the product depend on, and does any gate visit them? The list below comes
+from <code>grep -rnE &quot;authClient\.|client\.(\$fetch|passkey|signIn)|/api/auth/&quot; apps/mobile-web/src</code> (tests excluded).
+&quot;Gate&quot; means a script that sends the request to the real booted stack, as the app does; a route that a gate only
+intercepts with <code>page.route</code> to simulate a failure is marked <em>intercepted only</em>.</p>
+<div class="table"><table>
+<thead>
+<tr>
+<th>Route (client call)</th>
+<th>Caller in <code>apps/mobile-web/src</code></th>
+<th>Gate that sends it to the real stack</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>POST /sign-up/email</code> (<code>signUp.email</code>)</td>
+<td><code>screens/RegistrationScreen.tsx</code></td>
+<td><code>e2e/cross-origin/run.mjs</code> and many flow gates</td>
+</tr>
+<tr>
+<td><code>POST /sign-in/email</code> (<code>signIn.email</code>)</td>
+<td><code>screens/LoginScreen.tsx</code></td>
+<td><code>e2e/cross-origin/run.mjs</code> and many flow gates</td>
+</tr>
+<tr>
+<td><code>POST /sign-out</code> (<code>signOut</code>)</td>
+<td><code>screens/profile/SignOutSection.tsx</code></td>
+<td><code>e2e/cross-origin/run.mjs</code></td>
+</tr>
+<tr>
+<td><code>GET /get-session</code> (<code>useSession</code>)</td>
+<td><code>auth/useAccountSession.ts</code></td>
+<td><code>e2e/cross-origin/run.mjs</code>, <code>e2e/session/return-visit.mjs</code>, <code>e2e/visibility/visibility-refetch.mjs</code></td>
+</tr>
+<tr>
+<td><code>GET /list-sessions</code> (<code>listSessions</code>)</td>
+<td><code>screens/device/useDeviceSessions.ts</code></td>
+<td><code>e2e/device/device-authorization.mjs</code> (a cross-origin request carrying the web <code>Origin</code>; asserts the session list and its fields) and <code>e2e/account/beta-account-states.mjs</code></td>
+</tr>
+<tr>
+<td><code>POST /revoke-session</code> (<code>revokeSession</code>)</td>
+<td><code>screens/device/useDeviceSessions.ts</code></td>
+<td><code>e2e/account/account-security.mjs</code></td>
+</tr>
+<tr>
+<td><code>POST /request-password-reset</code>, <code>POST /reset-password</code></td>
+<td><code>screens/login/ForgotPasswordForm.tsx</code>, <code>screens/PasswordResetScreen.tsx</code></td>
+<td><code>e2e/account/account-security.mjs</code></td>
+</tr>
+<tr>
+<td><code>POST /two-factor/enable</code>, <code>/verify-totp</code>, <code>/verify-backup-code</code>, <code>/disable</code></td>
+<td><code>auth/useTwoFactor.ts</code></td>
+<td><code>e2e/account/account-security.mjs</code></td>
+</tr>
+<tr>
+<td><code>POST /sign-in/social</code> (<code>signIn.social</code>)</td>
+<td><code>auth/useSocialSignIn.ts</code></td>
+<td><code>e2e/account/beta-account-states.mjs</code> (Google host intercepted); <code>e2e/google-auth/google-login.mjs</code> is in no CI job yet (<code>docs/process/script-inventory.md</code>)</td>
+</tr>
+<tr>
+<td><code>POST /verify-password</code></td>
+<td><code>auth/useStepUp.ts</code>, <code>screens/oauth/OauthConsentScreen.tsx</code></td>
+<td><code>e2e/account/beta-account-states.mjs</code>, <code>e2e/harness/api-account.mjs</code></td>
+</tr>
+<tr>
+<td><code>/passkey/*</code> (<code>passkey.addPasskey</code>, <code>/passkey/delete-passkey</code>, <code>signIn.passkey</code>, list)</td>
+<td><code>auth/usePasskey.ts</code>, <code>auth/StepUpOptions.tsx</code></td>
+<td><code>e2e/account/beta-account-states.mjs</code> for the list route is <em>intercepted only</em> (failure and retry); the register and authenticate ceremonies need a WebAuthn authenticator and have <strong>no gate</strong></td>
+</tr>
+<tr>
+<td><code>POST /send-verification-email</code></td>
+<td><code>screens/shared/EmailVerificationBanner.tsx</code></td>
+<td><strong>none</strong></td>
+</tr>
+<tr>
+<td><code>GET /list-accounts</code></td>
+<td><code>auth/StepUpOptions.tsx</code></td>
+<td><strong>none</strong></td>
+</tr>
+<tr>
+<td><code>POST /oauth2/consent</code></td>
+<td><code>screens/oauth/OauthConsentScreen.tsx</code></td>
+<td><strong>none</strong></td>
+</tr>
+</tbody></table></div>
+<p>Gaps named, not fixed here: <code>send-verification-email</code>, <code>list-accounts</code>, <code>oauth2/consent</code> and the passkey
+ceremonies. Per the exhaustive search above only <code>/list-sessions</code> and <code>/unlink-account</code> sit behind the freshness
+middleware; the product calls the first and not the second, so the freshness class itself is covered by the
+<code>list-sessions</code> row. The gaps above are other better-auth routes with their own middleware, which is #303&#39;s general
+point.</p>
+<p><strong>Not yet proven (to be done in CI):</strong> the mutant proof #303 asks for. The gate must go red when <code>session.freshAge</code>
+is restored to better-auth&#39;s default and the session is aged past it. <code>device-authorization.mjs</code> asserts a real
+session list, but no run has yet shown it failing under that mutant, and by ADR-0021 the check does not count until
+it has. The run is a CI change on a throwaway branch (set <code>freshAge</code> back, age the <code>Session.createdAt</code>/<code>updatedAt</code> row
+past 24h before the call, expect red), not something this amendment claims.</p>
+<h3 id="follow-up-to-the-amendment-2026-11-26--the-named-gaps-closed-by-reading-and-extending-the-gates"><a class="anchor" href="#follow-up-to-the-amendment-2026-11-26--the-named-gaps-closed-by-reading-and-extending-the-gates" aria-hidden="true" tabindex="-1">#</a>Follow-up to the amendment (2026-11-26) — the named gaps, closed by reading and extending the gates</h3>
+<p>The table above is left as written; this paragraph corrects it. Reading <code>beta-account-states.mjs</code> and
+<code>account-security.mjs</code> again showed that two of the four &quot;gaps&quot; were walked already and only not asserted on the
+route itself. Every new assertion below is on what the booted stack answered; none intercepts the route under test.
+None of it has run in CI at the time of writing (it was written without a local stack, see the CI runs of the PR
+that carries it).</p>
+<div class="table"><table>
+<thead>
+<tr>
+<th>Route</th>
+<th>Gate and assertion</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>POST /send-verification-email</code></td>
+<td><code>e2e/prod-deploy/run.mjs</code> clicks &quot;Mail erneut senden&quot; on the registration&#39;s success step (the caller, <code>EmailVerificationBanner</code>), asserts the 200 <code>{ status: true }</code> and that a second verification mail with the verify link reaches the compose stack&#39;s Mailpit. It is the only gate stack with an inbox; the other CI stacks log the mail.</td>
+</tr>
+<tr>
+<td><code>GET /list-accounts</code></td>
+<td><code>e2e/account/beta-account-states.mjs</code> Row D: the Sicherheit screen (<code>ChangePasswordSection</code>) reads it; the answer is a 200 listing the <code>credential</code> account.</td>
+</tr>
+<tr>
+<td><code>POST /oauth2/consent</code></td>
+<td><code>e2e/account/account-security.mjs</code> Row D already walked authorize, consent and code; it now asserts the consent answers: 200 with the <code>access_denied</code> redirect for &quot;Ablehnen&quot;, 200 with the redirect carrying the code the client exchanges for &quot;Erlauben&quot;.</td>
+</tr>
+<tr>
+<td>passkey ceremonies</td>
+<td><code>beta-account-states.mjs</code> Row D already ran register and authenticate through Chromium&#39;s virtual authenticator (CDP <code>WebAuthn</code>). The relying-party id is the host of <code>BETTER_AUTH_URL</code> and the origin is the web origin, both <code>localhost</code> in the gate stacks, which WebAuthn accepts over http. It now asserts the answers of <code>generate-register-options</code>, <code>verify-registration</code>, <code>list-user-passkeys</code> (a real 200 holding the passkey), <code>generate-authenticate-options</code>, <code>verify-authentication</code>, and <code>delete-passkey</code> (403 <code>FRESH_AUTH_REQUIRED</code> on the older session, then 200).</td>
+</tr>
+</tbody></table></div>
+<p>The control proof is now a permanent test instead of a throwaway branch:
+<code>apps/api/test/acceptance/adr-0027-fresh-age-control.test.ts</code>, which runs in the CI job &quot;correctness: integration
+(postgres)&quot;. It signs a real account up, ages the session row past 24 hours, and calls <code>/list-sessions</code> on two
+instances over the same database and secret: the product&#39;s (<code>freshAge: 0</code>), which lists, and one built from the
+product&#39;s own options (<code>buildOptions</code>, exported for this test) with <code>session.freshAge</code> removed, which refuses with 403
+<code>SESSION_NOT_FRESH</code>. A control shows the second instance serves a session that is not aged. Still open: the browser
+gate <code>device-authorization.mjs</code> has not itself been run under the mutant; the acceptance test pins the mechanism it
+relies on, not that gate&#39;s reaction to it.</p>
+<p><strong>Follow-up, same day (review on #588): the browser gate is now proven against the mutant on every pull request.</strong>
+The paragraph above left one thing open, and the review named a second: <code>device-authorization.mjs</code> asked for
+<code>/list-sessions</code> seconds after sign-in, which better-auth&#39;s default <code>freshAge</code> allows as well, so the gate could not
+have caught the setting being restored. Two changes close this:</p>
+<ul>
+<li>The gate ages its own <code>Session</code> row by 25 hours before the request, so it asserts what this ADR promises: a
+session older than a day reads its device list.</li>
+<li><code>e2e/control-proofs.json</code> holds the mutant (<code>freshAge: 0</code> removed from <code>apps/api/src/auth/better-auth.ts</code>), the gate
+that must catch it and the message it must fail with. <code>Build &amp; E2E</code> runs it as the matrix entry
+<code>e2e: gates — control-proof-fresh-age-default</code>: it applies the mutation, rebuilds the API, boots the stack and passes
+only if the gate fails with that message (<code>e2e/run-control-proofs.mjs</code>). A gate that passes on the mutant, or fails
+for another reason, turns the pull request red. The entry is part of the required check <code>e2e: browser gates &amp; a11y</code>.</li>
+</ul>
+<p>This is ADR-0021&#39;s control proof as a standing check, not a recorded one-off: the proof is repeated whenever the
+gate, the setting or better-auth changes.</p>
+
+      </article>
+      <p class="back"><a href="../decisions.html">All decisions</a></p>
+      <nav class="steps" aria-label="Previous and next"><a class="step step-previous" href="0026-local-production-shaped-compose-stack.html"><span class="eyebrow">Previous</span><span>ADR-0026</span></a><a class="step step-next" href="0028-check-the-effect-not-the-mechanism.html"><span class="eyebrow">Next</span><span>ADR-0028</span></a></nav>
+    </main>
+  </div>
+  <script src="../assets/site.js"></script>
+</body>
+</html>

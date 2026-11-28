@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>ADR-0055 — Zero-Downtime Database Migrations (Expand and Contract Pattern) — SteuerEule</title>
+  <link rel="icon" href="../../../images/steuereule-logo.svg">
+  <link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+  <a class="skip" href="#content">Skip to the content</a>
+  <div class="shell">
+    <aside class="rail">
+      <a class="brand" href="../index.html">
+        <img src="../../../images/steuereule-logo.svg" width="36" height="36" alt="">
+        <span><strong>SteuerEule</strong><span class="eyebrow">Architecture</span></span>
+      </a>
+      <details class="menu" open>
+        <summary>Contents</summary>
+        <nav class="nav" aria-label="Site">
+        <p class="eyebrow">arc42</p>
+        <ul><li><a class="nav-item" href="../index.html"><span>Overview</span></a></li><li><a class="nav-item" href="../01-introduction-and-goals.html"><span class="nav-number">01</span><span>Introduction and goals</span></a></li><li><a class="nav-item" href="../02-constraints.html"><span class="nav-number">02</span><span>Constraints</span></a></li><li><a class="nav-item" href="../03-context-and-scope.html"><span class="nav-number">03</span><span>Context and scope</span></a></li><li><a class="nav-item" href="../04-solution-strategy.html"><span class="nav-number">04</span><span>Solution strategy</span></a></li><li><a class="nav-item" href="../05-building-block-view.html"><span class="nav-number">05</span><span>Building block view</span></a></li><li><a class="nav-item" href="../06-runtime-view.html"><span class="nav-number">06</span><span>Runtime view</span></a></li><li><a class="nav-item" href="../07-deployment-view.html"><span class="nav-number">07</span><span>Deployment view</span></a></li><li><a class="nav-item" href="../08-cross-cutting-concepts.html"><span class="nav-number">08</span><span>Cross-cutting concepts</span></a></li><li><a class="nav-item" href="../09-architecture-decisions.html"><span class="nav-number">09</span><span>Architecture decisions</span></a></li><li><a class="nav-item" href="../10-quality-and-tests.html"><span class="nav-number">10</span><span>Quality and tests</span></a></li><li><a class="nav-item" href="../11-risks-and-technical-debt.html"><span class="nav-number">11</span><span>Risks and technical debt</span></a></li><li><a class="nav-item" href="../12-glossary.html"><span class="nav-number">12</span><span>Glossary</span></a></li></ul>
+        <p class="eyebrow">Companion</p>
+        <ul><li><a class="nav-item" href="../subsystems.html"><span>Backend modules from the inside</span></a></li></ul>
+        <p class="eyebrow">Library</p>
+        <ul><li><a class="nav-item is-active" href="../decisions.html" aria-current="page"><span>Decisions</span></a></li><li><a class="nav-item" href="../documents.html"><span>Documents</span></a></li></ul>
+      </nav>
+      </details>
+      <p class="rail-foot">Architecture as of 2026-11-22<br>Built from the Markdown under <code>docs/</code></p>
+    </aside>
+    <main id="content" class="content">
+      <header class="page-head">
+        <p class="eyebrow">Decision · ADR-0055</p>
+        <h1>Zero-Downtime Database Migrations (Expand and Contract Pattern) <span class="status status-ok">Accepted</span></h1>
+        <ul class="chips" aria-label="On this page"><li><a class="chip" href="#context">Context</a></li><li><a class="chip" href="#decision">Decision</a></li><li><a class="chip" href="#consequences">Consequences</a></li></ul>
+      </header>
+      <article class="prose">
+<ul>
+<li><strong>Status:</strong> Accepted</li>
+<li><strong>Date:</strong> 2026-11-08</li>
+<li><strong>Deciders:</strong> Steuereule Engineering</li>
+<li><strong>Applies to:</strong> <code>apps/api/prisma/schema.prisma</code>, <code>apps/api/prisma/migrations/</code>, Google Cloud Run rollouts</li>
+</ul>
+<h2 id="context"><a class="anchor" href="#context" aria-hidden="true" tabindex="-1">#</a>Context</h2>
+<p>On Google Cloud Run (ADR-0053) and Kubernetes (product ADR-049), deployments run as rolling updates:
+while a new version is being rolled out, old container instances (revision $N$) and new instances (revision $N+1$) run side by side for several minutes against the same PostgreSQL production database.</p>
+<p>If a release runs a destructive or renaming database migration (e.g. renaming a column, dropping a column, adding NOT NULL without a default) before all old containers have stopped, running old instances crash with SQL errors (<code>column does not exist</code>). Likewise, a rollback fails if the database has already been mutated incompatibly.</p>
+<h2 id="decision"><a class="anchor" href="#decision" aria-hidden="true" tabindex="-1">#</a>Decision</h2>
+<p>All future database schema changes in <code>apps/api/prisma/</code> are mandatorily subject to the <strong>expand-and-contract pattern (parallel run)</strong> across at least two separate release cycles:</p>
+<h3 id="phase-1-expand-additive--backward-compatible"><a class="anchor" href="#phase-1-expand-additive--backward-compatible" aria-hidden="true" tabindex="-1">#</a>Phase 1: Expand (additive &amp; backward compatible)</h3>
+<ol>
+<li><strong>New columns/tables are always optional:</strong> New columns are created as <code>nullable</code> or with a safe default value.</li>
+<li><strong>No column rename in one step:</strong> A field <code>oldField</code> is never renamed via an SQL rename. Instead, <code>newField</code> is added additively.</li>
+<li><strong>Dual writing:</strong> The application layer (revision $N+1$) writes synchronously to both fields (<code>oldField</code> and <code>newField</code>), but keeps reading from <code>oldField</code>.</li>
+<li><strong>Old containers survive:</strong> Revision $N$ keeps reading and writing <code>oldField</code> undisturbed.</li>
+</ol>
+<h3 id="phase-2-read-switch--backfill"><a class="anchor" href="#phase-2-read-switch--backfill" aria-hidden="true" tabindex="-1">#</a>Phase 2: Read Switch &amp; Backfill</h3>
+<ol>
+<li><strong>Data synchronization:</strong> Existing old records are migrated idempotently (<code>UPDATE table SET newField = oldField WHERE newField IS NULL</code>).</li>
+<li><strong>Read switch:</strong> The code now reads from <code>newField</code> and keeps writing to both.</li>
+</ol>
+<h3 id="phase-3-contract-cleanup"><a class="anchor" href="#phase-3-contract-cleanup" aria-hidden="true" tabindex="-1">#</a>Phase 3: Contract (cleanup)</h3>
+<ol>
+<li><strong>Only in the following release:</strong> Once revision $N$ has been fully shut down and the stability of $N+1$ has been proven, the next deployment (revision $N+2$) drops the old field <code>oldField</code> via a migration and removes the dual-write code.</li>
+</ol>
+<h3 id="migration-practices-that-are-forbidden-outright-ci-block"><a class="anchor" href="#migration-practices-that-are-forbidden-outright-ci-block" aria-hidden="true" tabindex="-1">#</a>Migration practices that are forbidden outright (CI block)</h3>
+<ul>
+<li>❌ <strong><code>ALTER TABLE ... DROP COLUMN</code></strong> in the same release as code changes that still reference the field.</li>
+<li>❌ <strong><code>ALTER TABLE ... RENAME COLUMN</code></strong> (always destructive for old containers).</li>
+<li>❌ <strong><code>ALTER TABLE ... ADD COLUMN ... NOT NULL</code></strong> without a default value on populated tables (blocks writes while the migration runs).</li>
+</ul>
+<h2 id="consequences"><a class="anchor" href="#consequences" aria-hidden="true" tabindex="-1">#</a>Consequences</h2>
+<ul>
+<li><strong>Advantages:</strong><ul>
+<li><strong>Zero downtime:</strong> Seamless rolling deployment on Google Cloud Run without 500 spikes.</li>
+<li><strong>Rollback safety:</strong> Revision $N+1$ can be rolled back to revision $N$ at any time, because the database schema stays fully backward compatible during phase 1.</li>
+</ul>
+</li>
+<li><strong>Disadvantages:</strong><ul>
+<li>Breaking schema changes require two releases instead of a single quick shot (discipline and planning required).</li>
+</ul>
+</li>
+</ul>
+
+      </article>
+      <p class="back"><a href="../decisions.html">All decisions</a></p>
+      <nav class="steps" aria-label="Previous and next"><a class="step step-previous" href="0054-joint-assessment-one-return.html"><span class="eyebrow">Previous</span><span>ADR-0054</span></a><a class="step step-next" href="0056-asynchronous-pdf-generation-job-queue.html"><span class="eyebrow">Next</span><span>ADR-0056</span></a></nav>
+    </main>
+  </div>
+  <script src="../assets/site.js"></script>
+</body>
+</html>

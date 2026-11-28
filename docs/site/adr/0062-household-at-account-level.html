@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>ADR-0062 — Household at account level: create spouse and children once, select them per year — SteuerEule</title>
+  <link rel="icon" href="../../../images/steuereule-logo.svg">
+  <link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+  <a class="skip" href="#content">Skip to the content</a>
+  <div class="shell">
+    <aside class="rail">
+      <a class="brand" href="../index.html">
+        <img src="../../../images/steuereule-logo.svg" width="36" height="36" alt="">
+        <span><strong>SteuerEule</strong><span class="eyebrow">Architecture</span></span>
+      </a>
+      <details class="menu" open>
+        <summary>Contents</summary>
+        <nav class="nav" aria-label="Site">
+        <p class="eyebrow">arc42</p>
+        <ul><li><a class="nav-item" href="../index.html"><span>Overview</span></a></li><li><a class="nav-item" href="../01-introduction-and-goals.html"><span class="nav-number">01</span><span>Introduction and goals</span></a></li><li><a class="nav-item" href="../02-constraints.html"><span class="nav-number">02</span><span>Constraints</span></a></li><li><a class="nav-item" href="../03-context-and-scope.html"><span class="nav-number">03</span><span>Context and scope</span></a></li><li><a class="nav-item" href="../04-solution-strategy.html"><span class="nav-number">04</span><span>Solution strategy</span></a></li><li><a class="nav-item" href="../05-building-block-view.html"><span class="nav-number">05</span><span>Building block view</span></a></li><li><a class="nav-item" href="../06-runtime-view.html"><span class="nav-number">06</span><span>Runtime view</span></a></li><li><a class="nav-item" href="../07-deployment-view.html"><span class="nav-number">07</span><span>Deployment view</span></a></li><li><a class="nav-item" href="../08-cross-cutting-concepts.html"><span class="nav-number">08</span><span>Cross-cutting concepts</span></a></li><li><a class="nav-item" href="../09-architecture-decisions.html"><span class="nav-number">09</span><span>Architecture decisions</span></a></li><li><a class="nav-item" href="../10-quality-and-tests.html"><span class="nav-number">10</span><span>Quality and tests</span></a></li><li><a class="nav-item" href="../11-risks-and-technical-debt.html"><span class="nav-number">11</span><span>Risks and technical debt</span></a></li><li><a class="nav-item" href="../12-glossary.html"><span class="nav-number">12</span><span>Glossary</span></a></li></ul>
+        <p class="eyebrow">Companion</p>
+        <ul><li><a class="nav-item" href="../subsystems.html"><span>Backend modules from the inside</span></a></li></ul>
+        <p class="eyebrow">Library</p>
+        <ul><li><a class="nav-item is-active" href="../decisions.html" aria-current="page"><span>Decisions</span></a></li><li><a class="nav-item" href="../documents.html"><span>Documents</span></a></li></ul>
+      </nav>
+      </details>
+      <p class="rail-foot">Architecture as of 2026-11-22<br>Built from the Markdown under <code>docs/</code></p>
+    </aside>
+    <main id="content" class="content">
+      <header class="page-head">
+        <p class="eyebrow">Decision · ADR-0062</p>
+        <h1>Household at account level: create spouse and children once, select them per year <span class="status status-ok">Accepted</span></h1>
+        <ul class="chips" aria-label="On this page"><li><a class="chip" href="#context">Context</a></li><li><a class="chip" href="#decision">Decision</a></li><li><a class="chip" href="#consequences">Consequences</a></li></ul>
+      </header>
+      <article class="prose">
+<ul>
+<li><strong>Status:</strong> Accepted</li>
+<li><strong>Date:</strong> 2026-11-10</li>
+<li><strong>Deciders:</strong> NexusHero (Product Owner), Steuereule Engineering</li>
+<li><strong>Applies to:</strong> <code>apps/api/src/household/</code>, <code>apps/api/prisma/schema.prisma</code>, <code>packages/core/src/common/household.ts</code>, children form, master data (linking)</li>
+<li><strong>Partially supersedes:</strong> product ADR-006 (linking per tax year) and ADR-0054 §3 (invitation code per year)</li>
+<li><strong>Ticket:</strong> #452 (grilling 10.11.2026, decisions 1–12)</li>
+</ul>
+<h2 id="context"><a class="anchor" href="#context" aria-hidden="true" tabindex="-1">#</a>Context</h2>
+<p>Today the spouse and children are created anew for each tax year: <code>Kind</code> hangs off <code>userId</code> + <code>steuerjahr</code>,
+the link (<code>SteuerjahrKopplung</code>) applies for one year, a partner without an account gets a new
+placeholder <code>spouse_&lt;user&gt;_&lt;jahr&gt;</code> each year, and with an account every year needs a new invitation code. Anyone who
+comes back every year types name, date of birth and Steuer-ID (tax identification number) again.</p>
+<p>The tax calculation, the printout and the Veranlagungsartenvergleich (comparison of assessment types) read exactly these year rows.
+Their results must not change because of the switch (AC 10, all 24 scenarios).</p>
+<h2 id="decision"><a class="anchor" href="#decision" aria-hidden="true" tabindex="-1">#</a>Decision</h2>
+<h3 id="1-expand-do-not-rebuild-adr-0055-expand"><a class="anchor" href="#1-expand-do-not-rebuild-adr-0055-expand" aria-hidden="true" tabindex="-1">#</a>1. Expand, do not rebuild (ADR-0055, expand)</h3>
+<p>The year rows remain what the calculation reads: <code>Kind</code> (all fields of the Anlage Kind (child schedule)) and
+<code>SteuerjahrKopplung</code> (assessment type and Person B of the year). Next to them comes the <strong>household</strong> as the
+source for every new year. No calculation reads the household; that is why the results before and
+after the migration are identical.</p>
+<h3 id="2-new-models"><a class="anchor" href="#2-new-models" aria-hidden="true" tabindex="-1">#</a>2. New models</h3>
+<div class="table"><table>
+<thead>
+<tr>
+<th align="left">Model</th>
+<th align="left">Content</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left"><code>HouseholdPerson</code> (<code>HaushaltPerson</code>)</td>
+<td align="left">Spouse or child, once per household. Stable details (first name, last name, date of birth, Steuer-ID, for spouses the date of death) sit in an envelope, encrypted with a <strong>separate key per person</strong> in the keystore (ADR-0059, key ID <code>household-person:&lt;id&gt;</code>). <code>leftFromYear</code> = &quot;no longer included from year X&quot;. Editor and time of the last change.</td>
+</tr>
+<tr>
+<td align="left"><code>TaxYearMembership</code> (<code>HaushaltJahr</code>)</td>
+<td align="left">Person × tax year, with a reference to the year row (<code>Kind.id</code> or Person B of the link). The yearly details (Kindergeld, registered with me, KV/PV, education from 18, assessment type) stay in the year row.</td>
+</tr>
+<tr>
+<td align="left"><code>PartnerLink</code> (<code>PartnerVerknuepfung</code>)</td>
+<td align="left">Spouse link <strong>without a year</strong>: Person A, Person B (own account or household person without an account), <code>validFromYear</code>, <code>endedFromYear</code>.</td>
+</tr>
+<tr>
+<td align="left"><code>HouseholdMergeCandidate</code> (<code>HaushaltDublette</code>)</td>
+<td align="left">Two persons who are similar but not the same; the app asks once „Sind das dieselben?“ (&quot;Are these the same?&quot;).</td>
+</tr>
+</tbody></table></div>
+<p>The household belongs to Person A&#39;s account. A linked partner with their own account reads and
+writes the shared children too (decision 7); own data (wages, Steuer-ID, master data)
+each person edits only themselves. Every change to a household person logs the editor and
+time; the form shows „geändert von …, Datum“ (&quot;changed by …, date&quot;).</p>
+<h3 id="3-spouse"><a class="anchor" href="#3-spouse" aria-hidden="true" tabindex="-1">#</a>3. Spouse</h3>
+<ul>
+<li>Once created, or once linked via the invitation code, the link applies from
+<code>validFromYear</code> for all following years, until one of them ends it with &quot;no longer included from year X&quot;
+(AC 2). No more invitation code per year.</li>
+<li><strong>Change of assessment type</strong> (joint ↔ separate, Product Owner decision of
+10.11.2026): The link stays in place. The assessment type remains a per-year detail in
+<code>SteuerjahrKopplung</code>.</li>
+<li>If Person A chooses &quot;joint&quot; in a new year, the year row is filled from the link:
+with an own account, Person B directly; without an account, the placeholder of the year, pre-filled from the
+household person.</li>
+<li>A deceased spouse remains selectable in the following year (Gnadensplitting (widow&#39;s splitting), § 32a Abs. 6 Nr. 1 EStG).</li>
+</ul>
+<h3 id="4-new-tax-year"><a class="anchor" href="#4-new-tax-year" aria-hidden="true" tabindex="-1">#</a>4. New tax year</h3>
+<p>Persons with a membership in the previous year are <strong>preselected</strong> and marked „aus 2025“ (&quot;from 2025&quot;);
+one click confirms and creates the year row with the stable details. Children who are
+older than 25 in the new year are not preselected, but remain selectable. From 18 the form asks about
+education; the answer is stored, but does not change the calculation in this switch
+(AC 10) and is marked as such.</p>
+<h3 id="5-migration-repeatable-loses-nothing"><a class="anchor" href="#5-migration-repeatable-loses-nothing" aria-hidden="true" tabindex="-1">#</a>5. Migration (repeatable, loses nothing)</h3>
+<p>The stable fields are field-encrypted; an SQL migration cannot read them. That is why
+the API migrates <strong>on the first access to the household</strong>, per account, idempotently:</p>
+<ol>
+<li>All <code>Kind</code> rows and partner placeholders of the account are grouped by normalized name
+(upper/lower case, umlauts, whitespace) <strong>and</strong> date of birth. Equal → one person, every
+year row gets a membership.</li>
+<li>Similar but not equal (name distance ≤ 2 with the same date of birth, or the same name
+with a day/month difference in the date of birth) → two persons and <strong>one</strong> candidate.</li>
+<li>Year rows that are already assigned are skipped. No year row is changed or deleted.</li>
+</ol>
+<p>The grouping is a pure function in <code>packages/core</code> and is unit-tested.</p>
+<h3 id="6-removing"><a class="anchor" href="#6-removing" aria-hidden="true" tabindex="-1">#</a>6. Removing</h3>
+<ul>
+<li>&quot;No longer included from year X&quot; sets <code>leftFromYear</code>; earlier years stay unchanged (AC 5).</li>
+<li>&quot;Delete permanently&quot; deletes the person&#39;s year rows in all years, their memberships and
+their key in the keystore (crypto-shredding, ADR-0059). The form warns clearly that
+completed years are affected too.</li>
+</ul>
+<h3 id="7-what-is-not-coming"><a class="anchor" href="#7-what-is-not-coming" aria-hidden="true" tabindex="-1">#</a>7. What is not coming</h3>
+<ul>
+<li><strong>Familienkasse (family benefits office) from the Kindergeld number (decision 9):</strong> The format is officially documented
+(11 characters, <code>xxxFKxxxxxx</code>, Merkblatt Kindergeld KG 2 of the BA, retrieved on 10.11.2026). That the
+first three digits identify the Familienkasse is stated in no official source, and there is no
+official mapping list. Following the Product Owner&#39;s direction, this helper is dropped.</li>
+</ul>
+<h2 id="consequences"><a class="anchor" href="#consequences" aria-hidden="true" tabindex="-1">#</a>Consequences</h2>
+<ul>
+<li>Account deletion, the DSGVO (GDPR) export and the list of encrypted fields cover the new models.</li>
+<li>A later contract step (ADR-0055) can remove the stable fields from <code>Kind</code> once all
+accounts are migrated and the calculation reads them from the household. That is not part of #452.</li>
+<li>The regression across all 24 scenarios is the acceptance gate: same range before and after the
+migration.</li>
+</ul>
+
+      </article>
+      <p class="back"><a href="../decisions.html">All decisions</a></p>
+      <nav class="steps" aria-label="Previous and next"><a class="step step-previous" href="0061-on-device-dictation-model-source.html"><span class="eyebrow">Previous</span><span>ADR-0061</span></a><a class="step step-next" href="0063-church-tax-rules.html"><span class="eyebrow">Next</span><span>ADR-0063</span></a></nav>
+    </main>
+  </div>
+  <script src="../assets/site.js"></script>
+</body>
+</html>

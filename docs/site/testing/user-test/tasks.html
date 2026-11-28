@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Tasks — SteuerEule</title>
+  <link rel="icon" href="../../../../images/steuereule-logo.svg">
+  <link rel="stylesheet" href="../../assets/site.css">
+</head>
+<body>
+  <a class="skip" href="#content">Skip to the content</a>
+  <div class="shell">
+    <aside class="rail">
+      <a class="brand" href="../../index.html">
+        <img src="../../../../images/steuereule-logo.svg" width="36" height="36" alt="">
+        <span><strong>SteuerEule</strong><span class="eyebrow">Architecture</span></span>
+      </a>
+      <details class="menu" open>
+        <summary>Contents</summary>
+        <nav class="nav" aria-label="Site">
+        <p class="eyebrow">arc42</p>
+        <ul><li><a class="nav-item" href="../../index.html"><span>Overview</span></a></li><li><a class="nav-item" href="../../01-introduction-and-goals.html"><span class="nav-number">01</span><span>Introduction and goals</span></a></li><li><a class="nav-item" href="../../02-constraints.html"><span class="nav-number">02</span><span>Constraints</span></a></li><li><a class="nav-item" href="../../03-context-and-scope.html"><span class="nav-number">03</span><span>Context and scope</span></a></li><li><a class="nav-item" href="../../04-solution-strategy.html"><span class="nav-number">04</span><span>Solution strategy</span></a></li><li><a class="nav-item" href="../../05-building-block-view.html"><span class="nav-number">05</span><span>Building block view</span></a></li><li><a class="nav-item" href="../../06-runtime-view.html"><span class="nav-number">06</span><span>Runtime view</span></a></li><li><a class="nav-item" href="../../07-deployment-view.html"><span class="nav-number">07</span><span>Deployment view</span></a></li><li><a class="nav-item" href="../../08-cross-cutting-concepts.html"><span class="nav-number">08</span><span>Cross-cutting concepts</span></a></li><li><a class="nav-item" href="../../09-architecture-decisions.html"><span class="nav-number">09</span><span>Architecture decisions</span></a></li><li><a class="nav-item" href="../../10-quality-and-tests.html"><span class="nav-number">10</span><span>Quality and tests</span></a></li><li><a class="nav-item" href="../../11-risks-and-technical-debt.html"><span class="nav-number">11</span><span>Risks and technical debt</span></a></li><li><a class="nav-item" href="../../12-glossary.html"><span class="nav-number">12</span><span>Glossary</span></a></li></ul>
+        <p class="eyebrow">Companion</p>
+        <ul><li><a class="nav-item" href="../../subsystems.html"><span>Backend modules from the inside</span></a></li></ul>
+        <p class="eyebrow">Library</p>
+        <ul><li><a class="nav-item" href="../../decisions.html"><span>Decisions</span></a></li><li><a class="nav-item is-active" href="../../documents.html" aria-current="page"><span>Documents</span></a></li></ul>
+      </nav>
+      </details>
+      <p class="rail-foot">Architecture as of 2026-11-22<br>Built from the Markdown under <code>docs/</code></p>
+    </aside>
+    <main id="content" class="content">
+      <header class="page-head">
+        <p class="eyebrow">User tests</p>
+        <h1>Tasks</h1>
+        <ul class="chips" aria-label="On this page"><li><a class="chip" href="#test-person-lena-probe-synthetic">Test person „Lena Probe“ (synthetic)</a></li><li><a class="chip" href="#task-1--first-run">Task 1 — First run</a></li><li><a class="chip" href="#task-2--correction">Task 2 — Correction</a></li><li><a class="chip" href="#task-3--interruption">Task 3 — Interruption</a></li><li><a class="chip" href="#task-4--re-entry">Task 4 — Re-entry</a></li><li><a class="chip" href="#what-is-noted-per-task">What is noted per task</a></li></ul>
+      </header>
+      <article class="prose">
+<p>The same four tasks as in the automated measurement (#450 part 2A). Each task is on its own card, which the participant only receives once the previous one is done or abandoned. The facilitator reads the card aloud and starts the stopwatch when the participant touches the mouse. The card text stays in German for the session; the English translation below it is for the facilitator.</p>
+<p><strong>Time limit per task:</strong> 8 minutes. After that the task counts as not completed.</p>
+<h2 id="test-person-lena-probe-synthetic"><a class="anchor" href="#test-person-lena-probe-synthetic" aria-hidden="true" tabindex="-1">#</a>Test person „Lena Probe“ (synthetic)</h2>
+<div class="table"><table>
+<thead>
+<tr>
+<th align="left">Item</th>
+<th align="left">Value</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left">Tax year</td>
+<td align="left">2025</td>
+</tr>
+<tr>
+<td align="left">Occupation</td>
+<td align="left">employed, single, no children, lives in Germany</td>
+</tr>
+<tr>
+<td align="left">Lohnsteuerbescheinigung (wage tax certificate)</td>
+<td align="left">gross wages €45,000, wage tax €6,100, social security €9,200</td>
+</tr>
+<tr>
+<td align="left">Commute</td>
+<td align="left">18 km one way, car, 5 days per week, 30 vacation days, 5 sick days</td>
+</tr>
+<tr>
+<td align="left">Donations</td>
+<td align="left">€150</td>
+</tr>
+</tbody></table></div>
+<p>These values lie printed on the table as a „Lohnsteuerbescheinigung“ (template: <code>e2e/fixtures/synthetic-documents.mjs</code>, <code>syntheticLstbLines</code>).</p>
+<hr>
+<h2 id="task-1--first-run"><a class="anchor" href="#task-1--first-run" aria-hidden="true" tabindex="-1">#</a>Task 1 — First run</h2>
+<blockquote>
+<p>„Sie wollen Ihre Steuererklärung für 2025 vorbereiten. Beantworten Sie die Einstiegsfragen, tragen Sie Ihre Lohnsteuerbescheinigung und Ihren Arbeitsweg ein und gehen Sie so weit, bis die App Ihnen sagt, dass Sie die Abgabe vorbereiten können.“</p>
+<p>(English: &quot;You want to prepare your tax return for 2025. Answer the opening questions, enter your Lohnsteuerbescheinigung and your commute, and go on until the app tells you that you can prepare the submission.&quot;)</p>
+</blockquote>
+<ul>
+<li><strong>Start:</strong> signed in, empty cockpit 2025.</li>
+<li><strong>Success:</strong> the page „Abgabe vorbereiten“ (&quot;Prepare submission&quot;) is reached, the refund range is shown.</li>
+<li><strong>Count as errors:</strong> wrong amount saved, wrong answer in the interview, help from the facilitator needed.</li>
+</ul>
+<h2 id="task-2--correction"><a class="anchor" href="#task-2--correction" aria-hidden="true" tabindex="-1">#</a>Task 2 — Correction</h2>
+<blockquote>
+<p>„Ihnen fällt auf, dass auf der Lohnsteuerbescheinigung eigentlich 46.200 € Bruttoarbeitslohn stehen. Korrigieren Sie den Wert.“</p>
+<p>(English: &quot;You notice that the Lohnsteuerbescheinigung actually shows €46,200 gross wages. Correct the value.&quot;)</p>
+</blockquote>
+<ul>
+<li><strong>Start:</strong> end of task 1.</li>
+<li><strong>Success:</strong> gross wages are €46,200, all other values are unchanged.</li>
+<li><strong>Count as errors:</strong> another value changed, interview restarted, value not saved.</li>
+</ul>
+<h2 id="task-3--interruption"><a class="anchor" href="#task-3--interruption" aria-hidden="true" tabindex="-1">#</a>Task 3 — Interruption</h2>
+<blockquote>
+<p>„Sie tragen gerade Ihre Spenden ein, da fällt Ihnen ein, dass Sie den Spendenbeleg erst suchen müssen. Schauen Sie nach, wo Sie in der App Belege ablegen können, und kehren Sie dann zu den Spenden zurück. Tragen Sie 150 € ein.“</p>
+<p>(English: &quot;You are entering your donations when you remember that you first have to find the donation receipt. Look up where you can store documents in the app, and then return to the donations. Enter €150.&quot;)</p>
+</blockquote>
+<ul>
+<li><strong>Start:</strong> the facilitator opens the donations question.</li>
+<li><strong>Success:</strong> the documents area was opened, and afterwards €150 of donations are saved.</li>
+<li><strong>Count as errors:</strong> input lost, way back not found, donations saved twice or not at all.</li>
+</ul>
+<h2 id="task-4--re-entry"><a class="anchor" href="#task-4--re-entry" aria-hidden="true" tabindex="-1">#</a>Task 4 — Re-entry</h2>
+<blockquote>
+<p>„Machen Sie eine Pause: Schließen Sie das Browserfenster. Öffnen Sie die App danach wieder und machen Sie dort weiter, wo Sie aufgehört haben.“</p>
+<p>(English: &quot;Take a break: close the browser window. Then open the app again and continue where you left off.&quot;)</p>
+</blockquote>
+<ul>
+<li><strong>Start:</strong> the facilitator opens it in the middle of the commute screen, after the participant has changed the kilometers but has not clicked on.</li>
+<li><strong>Success:</strong> the participant lands back at the open step without a detour; the previously saved details are there.</li>
+<li><strong>Count as errors:</strong> details missing, participant starts from the beginning, needs help.</li>
+</ul>
+<hr>
+<h2 id="what-is-noted-per-task"><a class="anchor" href="#what-is-noted-per-task" aria-hidden="true" tabindex="-1">#</a>What is noted per task</h2>
+<div class="table"><table>
+<thead>
+<tr>
+<th align="left">Metric</th>
+<th align="left">How</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left">Time</td>
+<td align="left">stopwatch, seconds, from the start to success or abandonment</td>
+</tr>
+<tr>
+<td align="left">Success</td>
+<td align="left">yes / with help / no</td>
+</tr>
+<tr>
+<td align="left">Errors</td>
+<td align="left">number, with a keyword</td>
+</tr>
+<tr>
+<td align="left">Sticking points</td>
+<td align="left">screen and second at which the participant does not know how to continue for more than 10 seconds</td>
+</tr>
+<tr>
+<td align="left">Quotes</td>
+<td align="left">verbatim, short („Wo war das nochmal?“ / &quot;Where was that again?&quot;)</td>
+</tr>
+</tbody></table></div>
+
+      </article>
+      <p class="back"><a href="../../documents.html">All documents</a></p>
+      
+    </main>
+  </div>
+  <script src="../../assets/site.js"></script>
+</body>
+</html>
