@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { checkTaxId, isValidTaxId, isValidTaxNumber } from './steuer-id'
+import { checkTaxId, inspectTaxId, isValidTaxId, isValidTaxNumber } from './steuer-id'
 
 // Boundary table for the shape rules the Onboarding PUT /v1/profile endpoint enforces
 // server-side. This table is the single source of truth the frontend formatter (#27)
@@ -88,5 +88,60 @@ describe('checkTaxId (#452 decision 11)', () => {
     expect(checkTaxId('')).toBe('incomplete')
     expect(checkTaxId('8609574')).toBe('incomplete')
     expect(checkTaxId('86x')).toBe('invalid')
+  })
+})
+
+// #67: the „gültig“ sticker may only claim what was checked. Synthetic numbers; none is a person's Steuer-ID.
+describe('inspectTaxId', () => {
+  const VALID = ['86095742719', '47036892816', '65929970489'] as const
+
+  const withDigit = (id: string, at: number, digit: number): string => id.slice(0, at) + String(digit) + id.slice(at + 1)
+
+  it('finds a number with a correct check digit valid, with or without the spaces the form shows', () => {
+    for (const id of VALID) expect(inspectTaxId(id)).toBe('valid')
+    expect(inspectTaxId('86 095 742 719')).toBe('valid')
+  })
+
+  it.each(VALID)('rejects every single mistyped digit of %s as a failed check, at each of the 11 places', (id) => {
+    const typos = Array.from({ length: 11 }, (_unused, at) => at).flatMap((at) =>
+      Array.from({ length: 10 }, (_unused, digit) => digit)
+        .filter((digit) => String(digit) !== id[at])
+        .map((digit) => withDigit(id, at, digit)),
+    )
+    expect(typos).toHaveLength(99)
+    expect(typos.filter((typo) => inspectTaxId(typo) !== 'failed-check')).toEqual([])
+  })
+
+  it('catches two neighbouring digits in the wrong order in most cases, and not in all', () => {
+    const swapped = (id: string): string[] =>
+      Array.from({ length: 10 }, (_unused, at) => at)
+        .filter((at) => id[at] !== id[at + 1])
+        .map((at) => id.slice(0, at) + id[at + 1]! + id[at]! + id.slice(at + 2))
+
+    expect(swapped('86095742719').filter((id) => inspectTaxId(id) === 'valid')).toEqual([])
+    expect(swapped('47036892816').filter((id) => inspectTaxId(id) === 'valid')).toEqual([])
+    // The limit of ISO 7064 MOD 11,10: this swap of the first two digits yields another number that passes.
+    expect(swapped('65929970489').filter((id) => inspectTaxId(id) === 'valid')).toEqual(['56929970489'])
+  })
+
+  it('tells eleven digits that cannot be a Steuer-ID from an entry that is not eleven digits', () => {
+    expect(inspectTaxId('06095742719')).toBe('failed-check')
+    expect(inspectTaxId('12345678901')).toBe('failed-check')
+    expect(inspectTaxId('11111111111')).toBe('failed-check')
+    expect(inspectTaxId('860957427190')).toBe('malformed')
+    expect(inspectTaxId('8609574271a')).toBe('malformed')
+    expect(inspectTaxId('86x')).toBe('malformed')
+  })
+
+  it('stays quiet while the number is still being typed', () => {
+    expect(inspectTaxId('')).toBe('incomplete')
+    expect(inspectTaxId('8609574271')).toBe('incomplete')
+  })
+
+  it('checkTaxId is the same verdict without the reason', () => {
+    expect(checkTaxId('86095742719')).toBe('valid')
+    expect(checkTaxId('86095742718')).toBe('invalid')
+    expect(checkTaxId('860957427190')).toBe('invalid')
+    expect(checkTaxId('8609')).toBe('incomplete')
   })
 })

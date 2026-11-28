@@ -1188,7 +1188,8 @@
     "markiert": "taken over from {{year}} – it counts once you save. Please check the values."
   },
   "steuerIdHinweis": {
-    "ungueltig": "This tax ID cannot be right. Please check the digits on the letter from the Federal Central Tax Office."
+    "ungueltig": "This tax ID cannot be right. Please check the digits on the letter from the Federal Central Tax Office.",
+    "form": "A tax ID has exactly 11 digits, without letters or other characters."
   },
   "haushalt": {
     "kinder": {
