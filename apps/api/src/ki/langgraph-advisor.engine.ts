@@ -364,7 +364,7 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
     try {
       limits = await this.runtimeConfig.resolveLimits()
       if (!(await this.runtimeConfig.isKillSwitchActive())) {
-        slotConfig = withDepth(await this.chatSlotFor(request), request.depth)
+        slotConfig = withSpokenPace(withDepth(await this.chatSlotFor(request), request.depth), request.spoken === true && request.depth !== 'max')
         chatModel = this.resolveChatModel(slotConfig)
         // The day's model calls across all users are spent (ADR-0109): the rules answer, and say why.
         if (chatModel && slotConfig.enabled && slotConfig.provider !== 'deterministic' && slotConfig.provider !== 'fake' && !(await this.runtimeConfig.takeCallBudget?.(request.callTier ?? 'free') ?? true)) {
@@ -483,7 +483,7 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
     // it always; the plan is then asked for in words.
     const canForceTool = slotConfig.provider !== 'anthropic' || (anthropicThinksOnBudget(slotConfig.model) && slotConfig.reasoning !== 'summary')
     const caseBlock = buildCaseBlock(request.digest, request.records, request.notes, request.skill, request.task, request.assessment, request.situation, request.opening, request.interview, undefined, request.household, request.openPlan)
-    const turnContext = describeTurnContext(request.activeScreen, request.planRequired === true && !canForceTool, grayZone)
+    const turnContext = describeTurnContext(request.activeScreen, request.planRequired === true && !canForceTool, grayZone, request.spoken === true)
     const historyMessages: BaseMessage[] = (request.history ?? []).map((entry) =>
       entry.role === 'user' ? new HumanMessage(entry.content) : new AIMessage(entry.content),
     )
@@ -783,6 +783,14 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
  * Max sets the deepest level the model offers (ADR-0096); Gründlich keeps the slot as configured,
  * which is the chat's standard. A provider without a level of its own is left as it is.
  */
+/**
+ * In a spoken conversation the wait before the first word is silence (ADR-0115): the model thinks at its
+ * lowest level, where the provider offers levels. A question asked with Max keeps its depth.
+ */
+export function withSpokenPace(config: ResolvedAiSlotConfig, spoken: boolean): ResolvedAiSlotConfig {
+  return spoken && config.enabled ? { ...config, thinkingLevel: 'low' } : config
+}
+
 export function withDepth(config: ResolvedAiSlotConfig, depth: AdvisorDepth | undefined): ResolvedAiSlotConfig {
   if (depth !== 'max' || !config.enabled) return config
   if (config.provider !== 'anthropic' && config.provider !== 'google-genai' && config.provider !== 'openai') return config

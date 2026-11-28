@@ -752,6 +752,11 @@ export class SendAdvisorMessageDto {
   @IsBoolean()
   turbo?: boolean | undefined
 
+  @ApiPropertyOptional({ type: Boolean, description: 'The message was spoken and the answer is read aloud (ADR-0115): the owl answers in a few short sentences without lists or headings.' })
+  @IsOptional()
+  @IsBoolean()
+  spoken?: boolean | undefined
+
   @ApiPropertyOptional({ type: String, enum: ADVISOR_DEPTHS, description: 'Gründlich (the standard) or Max for this one message (ADR-0096).' })
   @IsOptional()
   @IsIn(ADVISOR_DEPTHS)

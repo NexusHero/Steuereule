@@ -160,11 +160,25 @@ export function describeOpenPlanForPrompt(openPlan: readonly AdvisorPlanStep[] |
  * hint of the topic guard. It stands in front of the question, not in the case: measured, a change of
  * the mask alone made the provider pay case and conversation again.
  */
-export function describeTurnContext(activeScreen: Screen | undefined, planFirst: boolean, grayZone = false): string {
+/**
+ * A spoken conversation (ADR-0115): the answer is heard, not read. Measured with the chat's usual answer, the
+ * owl spoke for almost three minutes and began with a heading.
+ */
+export const SPOKEN_HINT = [
+  'Diese Nachricht wurde gesprochen, und deine Antwort wird vorgelesen. Die Person hört zu und sieht den Text nicht.',
+  'Antworte in höchstens drei kurzen Sätzen und beginne sofort mit der Antwort, ohne Einleitung.',
+  'Keine Überschriften, Listen, Tabellen, Aufzählungszeichen oder Hervorhebungen. Sprich in ganzen Sätzen.',
+  'Nenne nur die Zahl, auf die es ankommt. Stelle höchstens eine Rückfrage, und nur eine auf einmal.',
+  'Bereitest du einen Entwurf vor, sag in einem Satz, was du vorbereitet hast; die Person bestätigt ihn im Chat.',
+  'Reicht das für die Frage nicht, gib die Kernaussage und biete an, im Chat ausführlich zu werden.',
+].join(' ')
+
+export function describeTurnContext(activeScreen: Screen | undefined, planFirst: boolean, grayZone = false, spoken = false): string {
   return [
     `Aktive Maske: ${activeScreen ?? 'cockpit'}`,
     ...(planFirst ? ['Für diese Anfrage gilt: Rufe als Erstes `plan_steps` auf, bevor du irgendetwas anderes tust.'] : []),
     ...(grayZone ? [GRAY_ZONE_HINT] : []),
+    ...(spoken ? [SPOKEN_HINT] : []),
   ].join('\n')
 }
 

@@ -68,6 +68,8 @@ export interface AdvisorTurnRequest {
   readonly opening?: AdvisorOpeningBrief | undefined
   /** The skill the user switched on for this message (#495). */
   readonly skill?: AdvisorSkillId | undefined
+  /** The message was spoken and the answer is read aloud (ADR-0115): short, in sentences, without lists. */
+  readonly spoken?: boolean | undefined
   /** Which areas of the Berater-Interview are settled for this tax year; with that skill. */
   readonly interview?: InterviewProgress | undefined
   /**

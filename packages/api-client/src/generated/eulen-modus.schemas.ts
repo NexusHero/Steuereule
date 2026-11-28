@@ -1777,6 +1777,8 @@ export interface SendAdvisorMessageDto {
   skill?: SendAdvisorMessageDtoSkill;
   /** Turbo mode: the owl applies the drafts of this answer itself instead of waiting for a click. Off by default. */
   turbo?: boolean;
+  /** The message was spoken and the answer is read aloud (ADR-0115): the owl answers in a few short sentences without lists or headings. */
+  spoken?: boolean;
   /** Gründlich (the standard) or Max for this one message (ADR-0096). */
   depth?: SendAdvisorMessageDtoDepth;
   /** Quick start that shapes the turn: forgotten_check always opens with a visible plan (#451). */

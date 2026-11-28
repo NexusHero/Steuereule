@@ -67,7 +67,7 @@ describe('the Gemini voice', () => {
     expect(url).toBe('https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash-tts:generateContent')
     expect(url).not.toContain(KEY)
     expect(init.headers['x-goog-api-key']).toBe(KEY)
-    const body = JSON.parse(init.body) as { contents: { parts: { text: string }[] }[]; generationConfig: { responseModalities: string[]; speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: string } } } } }
+    const body = JSON.parse(init.body as string) as { contents: { parts: { text: string }[] }[]; generationConfig: { responseModalities: string[]; speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: string } } } } }
     // Anything sent besides the passage would be spoken with it.
     expect(body.contents).toEqual([{ parts: [{ text: 'Rund 3.030 Euro.' }] }])
     expect(body.generationConfig.responseModalities).toEqual(['AUDIO'])
@@ -112,8 +112,8 @@ describe('the Mistral voice', () => {
     const [url, init] = vi.mocked(fetchFn).mock.calls[0]!
     expect(url).toBe('https://api.mistral.ai/v1/audio/speech')
     expect(init.headers.Authorization).toBe(`Bearer ${KEY}`)
-    expect(JSON.parse(init.body)).toEqual({ model: 'voxtral-mini-tts-3-0', input: 'Rund 3.030 Euro.', voice_id: 'voice_481', response_format: 'wav' })
-    expect(JSON.parse(vi.mocked(fetchFn).mock.calls[1]![1].body)).toMatchObject({ input: 'About 3,030 euros.', voice_id: 'voice_447' })
+    expect(JSON.parse(init.body as string)).toEqual({ model: 'voxtral-mini-tts-3-0', input: 'Rund 3.030 Euro.', voice_id: 'voice_481', response_format: 'wav' })
+    expect(JSON.parse(vi.mocked(fetchFn).mock.calls[1]![1].body as string)).toMatchObject({ input: 'About 3,030 euros.', voice_id: 'voice_447' })
   })
 
   it('hands a WAV file on unchanged and wraps bare PCM at 24 kHz', async () => {
@@ -195,13 +195,12 @@ describe('hearing an utterance', () => {
   })
 
   it('the service hears through the same limits as it speaks', async () => {
-    const wav = spoken
-    expect(await new SpeechService(new FakeSpeech()).transcribe({ wav, language: 'de' })).toBe(FAKE_HEARD_TEXT)
-    await expect(new SpeechService(new NoSpeech()).transcribe({ wav, language: 'de' })).rejects.toMatchObject({ code: 'SPEECH_UNAVAILABLE' })
+    expect(await new SpeechService(new FakeSpeech()).transcribe({ wav: spoken, language: 'de' })).toBe(FAKE_HEARD_TEXT)
+    await expect(new SpeechService(new NoSpeech()).transcribe({ wav: spoken, language: 'de' })).rejects.toMatchObject({ code: 'SPEECH_UNAVAILABLE' })
     const failing = { available: true, speak: () => Promise.reject(new Error('x')), transcribe: () => Promise.reject(new SpeechProviderError('timeout')) }
-    await expect(new SpeechService(failing).transcribe({ wav, language: 'de' })).rejects.toMatchObject({ code: 'SPEECH_FAILED' })
+    await expect(new SpeechService(failing).transcribe({ wav: spoken, language: 'de' })).rejects.toMatchObject({ code: 'SPEECH_FAILED' })
     const spent = { rateLimitStorage: { consume: async () => ({ allowed: false }) } }
-    await expect(new SpeechService(new FakeSpeech(), spent as never).transcribe({ wav, language: 'de' })).rejects.toBeInstanceOf(TooManyRequestsError)
+    await expect(new SpeechService(new FakeSpeech(), spent as never).transcribe({ wav: spoken, language: 'de' })).rejects.toBeInstanceOf(TooManyRequestsError)
   })
 })
 

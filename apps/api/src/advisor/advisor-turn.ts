@@ -417,6 +417,7 @@ export class AdvisorTurn {
         situation: (await this.notes.getSituation(userId)).text,
         ...(task === 'assessment-check' ? { assessment: await this.assessmentBrief(userId, taxYear) } : {}),
         ...(dto.skill ? { skill: dto.skill } : {}),
+        ...(dto.spoken ? { spoken: true } : {}),
         ...(dto.skill === 'berater-interview' ? { interview: await this.advisorRepo.findInterview(userId, taxYear) } : {}),
         topicCheck: turn.fromApp ? 'skip' : 'check',
         personalDataConsent: turn.personalDataConsent === true,
