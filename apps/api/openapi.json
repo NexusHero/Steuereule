@@ -9176,6 +9176,40 @@
         ]
       }
     },
+    "/v1/eulen-modus/stimme": {
+      "post": {
+        "operationId": "SpeechController_speak",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SpeakDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The passage as one WAV file."
+          },
+          "401": {
+            "description": "Requires account."
+          },
+          "429": {
+            "description": "Too many passages for this account, or the day's voice budget is spent."
+          },
+          "503": {
+            "description": "No voice is configured, or its provider did not answer."
+          }
+        },
+        "summary": "Speak one passage of an answer with the owl's voice (ADR-0115)",
+        "tags": [
+          "eulen-modus"
+        ]
+      }
+    },
     "/v1/steuerjahre/{jahr}/veranlagungsartenvergleich": {
       "get": {
         "operationId": "FilingTypeComparisonController_getComparison",
@@ -25334,11 +25368,40 @@
             "type": "number",
             "description": "OPS-16: the running tax year by the server clock (Europe/Berlin). The client derives the selectable years and the default year from it; ParseTaxYearPipe accepts up to this year plus one.",
             "example": 2026
+          },
+          "eulenStimme": {
+            "type": "boolean",
+            "description": "ADR-0115: this deployment has a voice for the owl. On, the app has answers spoken by the server; off, it reads them with the device's own voice where there is one.",
+            "example": false
           }
         },
         "required": [
           "selbststaendig",
-          "runningTaxYear"
+          "runningTaxYear",
+          "eulenStimme"
+        ]
+      },
+      "SpeakDto": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string",
+            "maxLength": 600,
+            "example": "Daraus ergibt sich eine Entfernungspauschale von rund 3.030 Euro.",
+            "description": "The passage to speak, as plain text without Markdown."
+          },
+          "language": {
+            "type": "string",
+            "enum": [
+              "de",
+              "en"
+            ],
+            "example": "de"
+          }
+        },
+        "required": [
+          "text",
+          "language"
         ]
       },
       "ComparisonSourceDto": {

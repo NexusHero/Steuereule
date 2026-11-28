@@ -15,4 +15,11 @@ export class AppCapabilitiesDto {
     type: Number,
   })
   runningTaxYear!: number
+
+  @ApiProperty({
+    description: 'ADR-0115: this deployment has a voice for the owl. On, the app has answers spoken by the server; off, it reads them with the device\'s own voice where there is one.',
+    example: false,
+    type: Boolean,
+  })
+  eulenStimme!: boolean
 }

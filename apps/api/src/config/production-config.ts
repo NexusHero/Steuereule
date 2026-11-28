@@ -332,6 +332,12 @@ export const API_PRODUCTION_SETTINGS: readonly ProductionSetting[] = [
   { name: 'AI_BASE_URL', source: 'operator', need: 'optional', format: 'https URL of an OpenAI-compatible endpoint, local stack only: refused on a deployment (ADR-0111 decision 4)', check: httpsUrl },
   { name: 'OPENAI_BASE_URL', source: 'operator', need: 'optional', format: 'https URL, read when AI_BASE_URL is unset; local stack only, refused on a deployment', check: httpsUrl },
 
+  // ── The owl's voice (ADR-0115): off until a provider is named, so a chat key alone starts no second data flow ──
+  { name: 'AI_SPEECH_PROVIDER', source: 'operator', need: 'optional', format: '"google-genai", or unset for no server voice', check: (value) => (value.toLowerCase() === 'google-genai' ? undefined : 'must be "google-genai" or unset') },
+  { name: 'AI_SPEECH_MODEL', source: 'operator', need: 'optional', format: 'model id of the voice (default gemini-3.8-flash-tts)', check: modelId },
+  { name: 'AI_SPEECH_VOICE', source: 'operator', need: 'optional', format: 'voice name of the provider (default Sulafat)', check: (value) => (/^[A-Za-z][A-Za-z0-9_-]{1,40}$/.test(value) ? undefined : 'must be a voice name of letters, digits, - and _') },
+  { name: 'AI_SPEECH_DAILY_CALL_LIMIT', source: 'operator', need: 'optional', format: 'speech calls a day across all users (default 20000)', check: wholeNumber(1, 100_000_000) },
+
   // ── Model behaviour and cost limits (ADR-0109) ─────────────────────────────────────────────
   { name: 'AI_KILL_SWITCH', source: 'operator', need: 'optional', format: 'on/off switch: on answers every model slot from the rules (default off)', check: onOff },
   { name: 'AI_DAILY_CALL_LIMIT', source: 'operator', need: 'optional', format: 'model calls a day across all users', check: wholeNumber(1, 100_000_000) },

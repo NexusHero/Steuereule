@@ -10,5 +10,7 @@ export interface AppCapabilitiesDto {
   selbststaendig: boolean;
   /** OPS-16: the running tax year by the server clock (Europe/Berlin). The client derives the selectable years and the default year from it; ParseTaxYearPipe accepts up to this year plus one. */
   runningTaxYear: number;
+  /** ADR-0115: this deployment has a voice for the owl. On, the app has answers spoken by the server; off, it reads them with the device's own voice where there is one. */
+  eulenStimme: boolean;
 }
 

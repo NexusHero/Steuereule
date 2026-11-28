@@ -40,6 +40,7 @@ import { ChildrenModule } from './children/children.module.js'
 import { LinkModule } from './link/link.module.js'
 import { HouseholdModule } from './household/household.module.js'
 import { OwlModeModule } from './owl-mode/owl-mode.module.js'
+import { SpeechModule } from './speech/speech.module.js'
 import { AdvisorModule } from './advisor/advisor.module.js'
 import { McpModule } from './mcp/mcp.module.js'
 import { BETTER_AUTH_BUNDLE, type BetterAuthBundle } from './auth/auth.tokens.js'
@@ -95,6 +96,7 @@ import { DomainErrorFilter } from './common/domain-error.filter.js'
     LinkModule,
     HouseholdModule,
     OwlModeModule,
+    SpeechModule,
     AdvisorModule,
     McpModule,
   ],

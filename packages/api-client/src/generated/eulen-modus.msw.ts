@@ -84,6 +84,7 @@ import type {
   SetAdvisorFeedbackDto,
   SetOwlSettingDto,
   SetPersonalDataConsentDto,
+  SpeakDto,
   StopAdvisorRunResponseDto
 } from './eulen-modus.schemas';
 
@@ -517,6 +518,16 @@ export const getOwlModeControllerDismissCardMockHandler = (overrideResponse?: vo
       })
   }, options)
 }
+
+export const getSpeechControllerSpeakMockHandler = (overrideResponse?: void | ((info: Parameters<HttpResponseResolver<PathParams, SpeakDto>>[0]) => Promise<void> | void), options?: RequestHandlerOptions) => {
+  return http.post<PathParams, SpeakDto>('*/v1/eulen-modus/stimme', async (info: Parameters<HttpResponseResolver<PathParams, SpeakDto>>[0]) => {
+  if (typeof overrideResponse === 'function') {await overrideResponse(info); }
+
+    return new HttpResponse(null,
+      { status: 200
+      })
+  }, options)
+}
 export const getSteuerEuleAPIMock = () => [
   getReceiptParseControllerParseReceiptMockHandler(),
   getReceiptParseControllerReassignMockHandler(),
@@ -553,5 +564,6 @@ export const getSteuerEuleAPIMock = () => [
   getOwlModeControllerGetSettingMockHandler(),
   getOwlModeControllerSetSettingMockHandler(),
   getOwlModeControllerGetCardsMockHandler(),
-  getOwlModeControllerDismissCardMockHandler()
+  getOwlModeControllerDismissCardMockHandler(),
+  getSpeechControllerSpeakMockHandler()
 ]

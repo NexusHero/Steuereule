@@ -21,6 +21,7 @@ const CONTROLLERS_WITHOUT_MASK_WRITES: Readonly<Record<string, string>> = {
   BusinessController: 'The book has no marking layer (ADR-0101): bookings are never edited, and a booking draft is decided on „Prüfen & bestätigen“.',
   AdvisorController: 'The owl writes through ConfirmationService (writeConfirmedByAdvisor / restoreByAdvisor), which sets the marking itself; the rest are chats and notes.',
   OwlModeController: 'Owl settings and consents, no tax fields.',
+  SpeechController: 'Speaks a passage of text; writes nothing.',
   ConfirmationController: 'This is the marking path itself: confirming, deciding proposals and tasks.',
   McpController: 'The user’s assistant, a non-user writer: every entry goes through ConfirmationService.write and decideWriting.',
   TakeoverController: 'The year carry-over is a non-user writer (ADR-0052 amendment 1): it goes through decideWriting.',

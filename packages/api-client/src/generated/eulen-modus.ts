@@ -60,6 +60,7 @@ import type {
   SetAdvisorFeedbackDto,
   SetOwlSettingDto,
   SetPersonalDataConsentDto,
+  SpeakDto,
   StopAdvisorRunResponseDto
 } from './eulen-modus.schemas';
 
@@ -3653,5 +3654,104 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
         TContext
       > => {
       return useMutation(getOwlModeControllerDismissCardMutationOptions(options), queryClient);
+    }
+
+export type speechControllerSpeakResponse200 = {
+  data: void
+  status: 200
+}
+
+export type speechControllerSpeakResponse401 = {
+  data: void
+  status: 401
+}
+
+export type speechControllerSpeakResponse429 = {
+  data: void
+  status: 429
+}
+
+export type speechControllerSpeakResponse503 = {
+  data: void
+  status: 503
+}
+
+export type speechControllerSpeakResponseSuccess = (speechControllerSpeakResponse200) & {
+  headers: Headers;
+};
+export type speechControllerSpeakResponseError = (speechControllerSpeakResponse401 | speechControllerSpeakResponse429 | speechControllerSpeakResponse503) & {
+  headers: Headers;
+};
+
+export const getSpeechControllerSpeakUrl = () => {
+
+
+
+
+  return `/v1/eulen-modus/stimme`
+}
+
+/**
+ * @summary Speak one passage of an answer with the owl's voice (ADR-0115)
+ */
+export const speechControllerSpeak = async (speakDto: SpeakDto, options?: Parameters<typeof httpClient>[1]): Promise<speechControllerSpeakResponseSuccess> => {
+
+  return httpClient<speechControllerSpeakResponseSuccess>(getSpeechControllerSpeakUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: getHeaders({ 'Content-Type': 'application/json' }, options?.headers),
+    body: JSON.stringify(speakDto)
+  }
+);}
+
+
+
+
+
+export const getSpeechControllerSpeakMutationKey = () => ['speechControllerSpeak'] as const;
+
+export const getSpeechControllerSpeakMutationOptions = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof speechControllerSpeak>>, TError,SpeechControllerSpeakMutationVariables, TContext>, request?: SecondParameter<typeof httpClient>}
+): UseMutationOptions<Awaited<ReturnType<typeof speechControllerSpeak>>, TError,SpeechControllerSpeakMutationVariables, TContext> => {
+
+const mutationKey = getSpeechControllerSpeakMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof speechControllerSpeak>>, SpeechControllerSpeakMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  speechControllerSpeak(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SpeechControllerSpeakMutationResult = NonNullable<Awaited<ReturnType<typeof speechControllerSpeak>>>
+    export type SpeechControllerSpeakMutationBody = SpeakDto
+    export type SpeechControllerSpeakMutationError = void
+    export type SpeechControllerSpeakMutationVariables = {data: SpeakDto}
+
+    /** @summary Speak one passage of an answer with the owl's voice (ADR-0115) */
+export const useSpeechControllerSpeak = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof speechControllerSpeak>>, TError,SpeechControllerSpeakMutationVariables, TContext>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof speechControllerSpeak>>,
+        TError,
+        SpeechControllerSpeakMutationVariables,
+        TContext
+      > => {
+      return useMutation(getSpeechControllerSpeakMutationOptions(options), queryClient);
     }
 
