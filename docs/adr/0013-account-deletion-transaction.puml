@@ -1,4 +1,5 @@
 @startuml
+!include ../diagram-style.puml
 ' ADR-0013 — DSGVO account deletion: one atomic Prisma $transaction, all-or-nothing.
 ' Source of record (diffable); exported to 0013-account-deletion-transaction.svg and
 ' referenced from the ADR — regenerate with the command in docs/arc42/README.md.

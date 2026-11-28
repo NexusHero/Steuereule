@@ -32,8 +32,14 @@ prose references the SVG so it renders everywhere. Regenerate after any edit:
 
 ```sh
 # pure-Java layout (the sources set `!pragma layout smetana`), so no Graphviz/dot needed
-java -jar plantuml.jar -tsvg docs/arc42/*.puml
+java -jar plantuml.jar -tsvg docs/arc42/*.puml docs/adr/*.puml
 ```
+
+Every diagram includes [`../diagram-style.puml`](../diagram-style.puml), which sets fonts, lines and colours
+from the app's design tokens (`packages/tokens/dist/tokens.css`, light theme). PlantUML writes fixed colours
+into the SVG, so these diagrams stay light in a dark reader. The Ports & Adapters picture
+(`images/architecture-hexagon.svg`) is drawn by hand with the same tokens and follows the reader's
+light or dark setting.
 
 | View | Source | Rendered |
 |------|--------|----------|

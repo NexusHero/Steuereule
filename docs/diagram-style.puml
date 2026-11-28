@@ -1,0 +1,67 @@
+' The look of every PlantUML diagram in docs/: the app's design tokens
+' (packages/tokens/dist/tokens.css, light theme). Include it right after @startuml:
+'   !include ../diagram-style.puml
+' PlantUML writes fixed colours into the SVG, so these diagrams stay light in a dark reader.
+skinparam shadowing false
+skinparam roundCorner 14
+skinparam defaultFontName "Geist, system-ui, -apple-system, Segoe UI, sans-serif"
+skinparam defaultFontSize 13
+skinparam defaultFontColor #0f0f14
+skinparam backgroundColor #ffffff
+skinparam ArrowColor #0f0f14
+skinparam ArrowFontColor #5c5c66
+skinparam ArrowFontSize 12
+skinparam ArrowThickness 1
+skinparam TitleFontSize 16
+skinparam TitleFontStyle bold
+skinparam TitleFontColor #0f0f14
+
+<style>
+element {
+  LineColor #0f0f14
+  LineThickness 1
+  BackgroundColor #ffffff
+  FontColor #0f0f14
+}
+title {
+  FontColor #0f0f14
+  FontSize 16
+}
+package, rectangle, frame, node, database, folder, cloud {
+  LineColor #c6c6cc
+  BackgroundColor #ffffff
+}
+component, class, activity, participant, actor, entity, control, boundary, collections, queue {
+  LineColor #0f0f14
+  BackgroundColor #ffffff
+}
+note {
+  LineColor #c6c6cc
+  BackgroundColor #f3f3f5
+  FontColor #0f0f14
+}
+activityDiagram {
+  diamond {
+    LineColor #0f0f14
+    BackgroundColor #f2fbd2
+  }
+}
+sequenceDiagram {
+  lifeLine {
+    LineColor #c6c6cc
+  }
+  group, box {
+    LineColor #c6c6cc
+    BackgroundColor #ffffff
+  }
+  groupHeader {
+    BackgroundColor #f2fbd2
+    LineColor #c6c6cc
+  }
+}
+arrow {
+  LineColor #0f0f14
+  LineThickness 1
+  FontColor #5c5c66
+}
+</style>

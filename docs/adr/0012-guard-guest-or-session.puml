@@ -1,4 +1,5 @@
 @startuml 0012-guard-guest-or-session
+!include ../diagram-style.puml
 ' ADR-0012 §2 — UserContextGuard: the single place userId is established,
 ' now accepting a verified better-auth session OR a guest token.
 title UserContextGuard — guest OR verified session (ADR-0012 §2)

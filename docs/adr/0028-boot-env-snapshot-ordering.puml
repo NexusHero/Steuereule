@@ -1,9 +1,8 @@
 @startuml 0028-boot-env-snapshot-ordering
+!include ../diagram-style.puml
 !pragma layout smetana
 title ADR-0028 — why the snapshot must be the entry point's first import
 
-skinparam shadowing false
-skinparam defaultFontName sans-serif
 skinparam sequenceMessageAlign left
 
 participant "node\n(module evaluation)" as Node
