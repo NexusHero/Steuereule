@@ -10,13 +10,13 @@ rectangle "Google Cloud · europe-west4" as GCP {
   rectangle "Cloud Run: steuereule-api\n1 vCPU · 2 GiB · 0–10 instances" as ApiSvc
   database "Cloud SQL PostgreSQL\napplication data" as Db
   database "Cloud SQL PostgreSQL\nkeystore for receipt keys" as Keys
-  database "Memorystore Redis\noptional" as Redis
+  database "Memorystore Redis\nrun log, rate limits" as Redis
   rectangle "Secret Manager" as Secrets
 }
 Browser --> WebSvc
 Browser --> ApiSvc
 ApiSvc --> Db
 ApiSvc --> Keys
-ApiSvc ..> Redis
+ApiSvc --> Redis
 ApiSvc --> Secrets
 @enduml

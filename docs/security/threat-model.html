@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Threat model — SteuerEule</title>
+  <link rel="icon" href="../../images/steuereule-logo.svg">
+  <link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+  <a class="skip" href="#content">Skip to the content</a>
+  <div class="shell">
+    <aside class="rail">
+      <a class="brand" href="../index.html">
+        <img src="../../images/steuereule-logo.svg" width="36" height="36" alt="">
+        <span><strong>SteuerEule</strong><span class="eyebrow">Architecture</span></span>
+      </a>
+      <details class="menu" open>
+        <summary>Contents</summary>
+        <nav class="nav" aria-label="Site">
+        <p class="eyebrow">arc42</p>
+        <ul><li><a class="nav-item" href="../index.html"><span>Overview</span></a></li><li><a class="nav-item" href="../01-introduction-and-goals.html"><span class="nav-number">01</span><span>Introduction and goals</span></a></li><li><a class="nav-item" href="../02-constraints.html"><span class="nav-number">02</span><span>Constraints</span></a></li><li><a class="nav-item" href="../03-context-and-scope.html"><span class="nav-number">03</span><span>Context and scope</span></a></li><li><a class="nav-item" href="../04-solution-strategy.html"><span class="nav-number">04</span><span>Solution strategy</span></a></li><li><a class="nav-item" href="../05-building-block-view.html"><span class="nav-number">05</span><span>Building block view</span></a></li><li><a class="nav-item" href="../06-runtime-view.html"><span class="nav-number">06</span><span>Runtime view</span></a></li><li><a class="nav-item" href="../07-deployment-view.html"><span class="nav-number">07</span><span>Deployment view</span></a></li><li><a class="nav-item" href="../08-cross-cutting-concepts.html"><span class="nav-number">08</span><span>Cross-cutting concepts</span></a></li><li><a class="nav-item" href="../09-architecture-decisions.html"><span class="nav-number">09</span><span>Architecture decisions</span></a></li><li><a class="nav-item" href="../10-quality-and-tests.html"><span class="nav-number">10</span><span>Quality and tests</span></a></li><li><a class="nav-item" href="../11-risks-and-technical-debt.html"><span class="nav-number">11</span><span>Risks and technical debt</span></a></li><li><a class="nav-item" href="../12-glossary.html"><span class="nav-number">12</span><span>Glossary</span></a></li></ul>
+        <p class="eyebrow">Companion</p>
+        <ul><li><a class="nav-item" href="../subsystems.html"><span>Backend modules from the inside</span></a></li></ul>
+        <p class="eyebrow">Library</p>
+        <ul><li><a class="nav-item" href="../adr/index.html"><span>Decisions</span></a></li><li><a class="nav-item is-active" href="../documents.html" aria-current="page"><span>Documents</span></a></li></ul>
+      </nav>
+      </details>
+      <p class="rail-foot">Architecture as of 2026-11-28</p>
+    </aside>
+    <main id="content" class="content">
+      <header class="page-head">
+        <p class="eyebrow">Security</p>
+        <h1>Threat model</h1>
+        <ul class="chips" aria-label="On this page"><li><a class="chip" href="#assets">1. What is protected</a></li><li><a class="chip" href="#actors">2. Who is considered</a></li><li><a class="chip" href="#boundaries">3. Boundaries</a></li><li><a class="chip" href="#threats">4. Threats and controls</a></li><li><a class="chip" href="#open">5. What is open</a></li></ul>
+      </header>
+      <article class="prose">
+<p>What is worth protecting, who might attack it, where data leaves our hands, and what stands in the way. The decisions are in the ADRs named in each row; this page puts them side by side and says what is left open.</p>
+<p>As of 2026-11-28. Every control names the ADR or the file it comes from. This page is a view over those, not a review by a third party: the last external test recorded in the decision log is the penetration test of 2026-11-23 (<a href="../adr/0107-pentest-round-3-fixes.html">ADR-0107</a>).</p>
+<h2 id="assets"><a class="anchor" href="#assets" aria-hidden="true" tabindex="-1">#</a>1. What is protected</h2>
+<div class="table"><table>
+<thead>
+<tr>
+<th align="left">Asset</th>
+<th align="left">Why it matters</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left">Tax data of a person and their household: income, tax id, bank details, children, the return itself</td>
+<td align="left">identity theft and financial harm; the tax id does not change</td>
+</tr>
+<tr>
+<td align="left">Religious affiliation</td>
+<td align="left">a special category under GDPR Art. 9; stored only with separate consent</td>
+</tr>
+<tr>
+<td align="left">Receipt files</td>
+<td align="left">scans of payslips, invoices and certificates with everything on them</td>
+</tr>
+<tr>
+<td align="left">Accounts and sessions</td>
+<td align="left">whoever holds a session reads and changes a return</td>
+</tr>
+<tr>
+<td align="left">Keys: the field-encryption key, the keystore master key, the per-user keys</td>
+<td align="left">they open what the database holds as ciphertext</td>
+</tr>
+<tr>
+<td align="left">The conversation with the owl</td>
+<td align="left">case data in prose, sent to a model provider</td>
+</tr>
+<tr>
+<td align="left">The unlock of a tax year</td>
+<td align="left">what the user paid for</td>
+</tr>
+</tbody></table></div>
+<h2 id="actors"><a class="anchor" href="#actors" aria-hidden="true" tabindex="-1">#</a>2. Who is considered</h2>
+<ul>
+<li><strong>A caller without an account</strong> who probes the API, floods it or runs up cost.</li>
+<li><strong>A signed-in user</strong> who tries to read or change another user&#39;s data.</li>
+<li><strong>A web page in the victim&#39;s browser</strong> that sends requests with the victim&#39;s cookie.</li>
+<li><strong>The user&#39;s own AI assistant</strong>, or whoever controls it, acting with a token the user granted.</li>
+<li><strong>Text that reaches a language model</strong>: a receipt or a message written to steer the model.</li>
+<li><strong>Someone with a copy of the database or of a backup.</strong></li>
+<li><strong>A dependency or a build step</strong> that was tampered with.</li>
+</ul>
+<p>Not considered here: an attacker inside Google Cloud, and a user who enters wrong figures into their own return.</p>
+<h2 id="boundaries"><a class="anchor" href="#boundaries" aria-hidden="true" tabindex="-1">#</a>3. Where data crosses a boundary</h2>
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../diagrams/trust-boundaries.dark.svg">
+  <img src="../diagrams/trust-boundaries.svg" alt="Trust boundaries: browser, assistant and any caller reach the API from the internet; the API uses the application database, the keystore, Redis and Secret Manager inside Google Cloud, and sends data to language model providers, Stripe, the mail provider and Google sign-in">
+</picture>
+<p><em>(source: <a href="../diagrams/trust-boundaries.puml"><code>trust-boundaries.puml</code></a>)</em></p>
+<p>What the API sends to each other company is listed in <a href="../03-context-and-scope.html">§3 of the architecture</a>.</p>
+<h2 id="threats"><a class="anchor" href="#threats" aria-hidden="true" tabindex="-1">#</a>4. Threats and what stands in the way</h2>
+<div class="table"><table>
+<thead>
+<tr>
+<th align="left">Threat</th>
+<th align="left">Control</th>
+<th align="left">What remains</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left"><strong>Reading another user&#39;s data</strong></td>
+<td align="left">One guard sets the user id of a request (<code>auth/user-context.guard.ts</code>). The database enforces ownership itself: row-level security with an owner policy on 55 tables (migration <code>p11_row_level_security</code>), so a query without the right user id returns nothing.</td>
+<td align="left">Paths that must look across accounts (the auth server, sweeps) use a system client; each is a place where the policy does not help.</td>
+</tr>
+<tr>
+<td align="left"><strong>A stolen or forged session</strong></td>
+<td align="left">The cookie is <code>httpOnly</code>. A session ends 30 days after it was created and after 7 days without use; a password change revokes every other session (<a href="../adr/0103-session-security-hardening.html">ADR-0103</a>).</td>
+<td align="left">The cookie is <code>SameSite=None</code>, because web app and API live on different sites; a stolen cookie works until it expires or is revoked.</td>
+</tr>
+<tr>
+<td align="left"><strong>Requests from a foreign web page (CSRF)</strong></td>
+<td align="left">Every state-changing request to <code>/v1</code> must come from an allowed origin (<code>auth/origin-csrf.guard.ts</code>, <a href="../adr/0103-session-security-hardening.html">ADR-0103</a>). The same list drives CORS.</td>
+<td align="left">A request without an <code>Origin</code> header passes, by design, for clients that are not browsers.</td>
+</tr>
+<tr>
+<td align="left"><strong>Guessing passwords</strong></td>
+<td align="left">New passwords are checked against known breaches. Sign-in and registration are rate-limited across instances (<a href="../adr/0109-security-report-hardening.html">ADR-0109</a>). Passkeys and TOTP exist.</td>
+<td align="left">A second factor is offered, not required.</td>
+</tr>
+<tr>
+<td align="left"><strong>A copy of the database or a backup</strong></td>
+<td align="left">199 columns are stored as AES-256-GCM ciphertext (architecture §8.2). Receipt files are encrypted with a key per user that lives in a separate database; deleting the key makes the file unreadable in old backups too (<a href="../adr/0059-document-keystore-crypto-shredding.html">ADR-0059</a>).</td>
+<td align="left">Not every column is encrypted: the status of a tax year, commuting distances and payment amounts are plaintext. All encrypted columns share one application key until the per-user keys of <a href="../adr/0110-per-user-field-keys.html">ADR-0110</a> are in place.</td>
+</tr>
+<tr>
+<td align="left"><strong>Keys in the wrong hands</strong></td>
+<td align="left">Keys are in Secret Manager and loaded at start. The keystore has its own instance and short backups.</td>
+<td align="left">The Redis AUTH string is part of the Terraform state, accepted in <a href="../adr/0109-security-report-hardening.html">ADR-0109</a>. Key and data are with the same cloud provider.</td>
+</tr>
+<tr>
+<td align="left"><strong>Personal data reaching a model provider</strong></td>
+<td align="left">Receipt text is scrubbed, and for two certificate types only an allowlist of rows leaves the server (<a href="../adr/0058-lstb-text-fallback-allowlist.html">ADR-0058</a>). The owl&#39;s chat masks names and identifiers; a final check aborts the call when a tax id or an IBAN is still in the text. Personal data goes to a model only with the user&#39;s consent (<a href="../adr/0091-owl-personal-data-with-consent.html">ADR-0091</a>). A kill switch turns model calls off.</td>
+<td align="left">With consent, personal data is sent. What a provider does with it is set by its terms, not by this system.</td>
+</tr>
+<tr>
+<td align="left"><strong>Text that steers the model</strong></td>
+<td align="left">A model never writes to the return: what it proposes is a draft, and only the user&#39;s confirmation writes (<a href="../adr/0066-owl-field-catalog-and-one-write-path.html">ADR-0066</a>). Amounts come from the core. A topic guard sorts typed questions (<a href="../adr/0100-owl-guard-alongside-the-model-and-timings.html">ADR-0100</a>).</td>
+<td align="left">When the guard fails, the question passes and the rule in the owl&#39;s prompt is the remaining line. A user can still be misled by a wrong explanation.</td>
+</tr>
+<tr>
+<td align="left"><strong>An assistant doing more than it was allowed</strong></td>
+<td align="left">Access is by OAuth with separate scopes for reading and writing (<a href="../adr/0052-agent-access-mcp.html">ADR-0052</a>). A token is valid at the MCP endpoint only; the user&#39;s consent is checked on every call, so a revocation takes effect at once.</td>
+<td align="left">Within its scope an assistant does what its operator tells it. Writes still arrive as drafts.</td>
+</tr>
+<tr>
+<td align="left"><strong>Flooding the API or running up cost</strong></td>
+<td align="left">Uploads are admitted, not queued; model calls have a daily cap across all users; exports, print jobs and receipt parsing have their own limits; request bodies to the auth server are capped (<a href="../adr/0109-security-report-hardening.html">ADR-0109</a>).</td>
+<td align="left">The cap on one upload per address counts per instance. A caller with many addresses is bounded only by the total for all guests.</td>
+</tr>
+<tr>
+<td align="left"><strong>A forged payment notice</strong></td>
+<td align="left">The Stripe webhook is accepted only with a valid signature (<code>unlock/stripe-payment-provider.ts</code>); a tax year is unlocked on a verified event.</td>
+<td align="left">—</td>
+</tr>
+<tr>
+<td align="left"><strong>Data kept longer than needed</strong></td>
+<td align="left">Account deletion removes the data in one transaction and destroys the keys; the access log is anonymised and kept (<a href="../adr/0013-dsgvo-export-and-account-deletion.html">ADR-0013</a>). Guest data is deleted 30 days after the last write (<a href="../adr/0109-security-report-hardening.html">ADR-0109</a>).</td>
+<td align="left">The guest sweep runs on traffic: with no requests nothing is deleted, so the promise is &quot;no sooner than 30 days&quot;.</td>
+</tr>
+<tr>
+<td align="left"><strong>Secrets or personal data in logs</strong></td>
+<td align="left">Unexpected errors are logged without body and headers (<a href="../adr/0109-security-report-hardening.html">ADR-0109</a>); token logging was removed (<a href="../adr/0104-pentest-finding-fixes.html">ADR-0104</a>). Access to tax data is recorded in <code>TaxDataAccessLog</code>.</td>
+<td align="left">—</td>
+</tr>
+<tr>
+<td align="left"><strong>A tampered dependency or build</strong></td>
+<td align="left">Every pull request is scanned for secrets, unsafe patterns and misconfiguration; container images fail on high and critical findings; workflow actions are pinned to a commit (architecture §8.6).</td>
+<td align="left">SBOMs are produced but not signed. Five findings are exempted in <code>.trivyignore</code>.</td>
+</tr>
+</tbody></table></div>
+<h2 id="open"><a class="anchor" href="#open" aria-hidden="true" tabindex="-1">#</a>5. What is open</h2>
+<ul>
+<li><strong>No alert on security events.</strong> The alerts that exist watch availability and errors (<a href="../sre/reliability-spec.html">reliability</a>); a wave of failed sign-ins or refused requests sends nothing.</li>
+<li><strong>One key for all encrypted columns</strong> until <a href="../adr/0110-per-user-field-keys.html">ADR-0110</a> is migrated.</li>
+<li><strong>Recovery has never been exercised</strong>, which includes recovering the keystore.</li>
+<li><strong>The decision log names no schedule for external tests.</strong> It records fixes after tests and reports of November 2026 (ADR-0104, ADR-0107, ADR-0109).</li>
+<li><strong>No second factor is required</strong> for an account that holds a tax return.</li>
+</ul>
+      </article>
+      <p class="back"><a href="../documents.html">All documents</a></p>
+      
+    </main>
+  </div>
+  <script src="../assets/site.js"></script>
+</body>
+</html>

@@ -1,0 +1,24 @@
+@startuml cockpit-read
+!include ../diagram-style.puml
+' docs/runtime/req-001-cockpit-read.html: reading the cockpit, REQ-001.
+hide footbox
+actor "User" as U
+participant "Expo app (Cockpit)" as App
+participant "TanStack Query" as Q
+participant "OpenAPI-typed client" as C
+participant "NestJS + Fastify" as API
+database "Postgres (seeded)" as DB
+
+note over DB : docker compose up → Prisma seed\nloads one synthetic fixture (no PII)
+U -> App : open Cockpit
+App -> Q : useCockpitSummary(steuerjahr)
+Q -> C : GET /steuerjahre/{jahr}/cockpit
+C -> API : HTTP GET (typed)
+API -> DB : query estimate range + open items
+DB --> API : rows
+API --> C : 200 CockpitSummary (OpenAPI schema)
+C --> Q : typed payload
+Q --> App : {data | isLoading | isError}
+App --> U : range (Spannen-Ticker) + "N Angaben offen"\ni18n de · tabular-nums · one primary action
+note over App : honest states —\nloading: skeleton · empty: "noch keine Angaben" · error: retry
+@enduml

@@ -27,11 +27,11 @@
         <ul><li><a class="nav-item" href="../adr/index.html"><span>Decisions</span></a></li><li><a class="nav-item is-active" href="../documents.html" aria-current="page"><span>Documents</span></a></li></ul>
       </nav>
       </details>
-      <p class="rail-foot">Architecture as of 2026-11-22</p>
+      <p class="rail-foot">Architecture as of 2026-11-28</p>
     </aside>
     <main id="content" class="content">
       <header class="page-head">
-        <p class="eyebrow">Agent prompts</p>
+        <p class="eyebrow">Archive</p>
         <h1>Batch assignment: Ticket #443 complete (Slices 1–7)</h1>
         <ul class="chips" aria-label="On this page"><li><a class="chip" href="#part-a--working-mode-applies-to-the-whole-batch">PART A — Working mode (applies to the whole batch)</a></li><li><a class="chip" href="#part-b--required-reading-before-slice-1">PART B — Required reading before Slice 1</a></li><li><a class="chip" href="#part-c--the-slices">PART C — The slices</a></li><li><a class="chip" href="#part-d--completing-the-batch">PART D — Completing the batch</a></li></ul>
       </header>
@@ -136,7 +136,7 @@ You implement <strong>all seven slices of GitHub issue #443</strong> one after a
 <li><strong>Do not let any new file grow beyond ~300 lines.</strong> Rather split it.</li>
 </ul>
 <h3 id="a6-report"><a class="anchor" href="#a6-report" aria-hidden="true" tabindex="-1">#</a>A6. Report</h3>
-<p>Write the report continuously in <code>docs/agent-prompts/443-batch-report.html</code> (one section per slice, right after the slice) and commit it with the last commit of the slice. Structure per slice:</p>
+<p>Write the report continuously in <code>docs/archive/443-batch-report.html</code> (one section per slice, right after the slice) and commit it with the last commit of the slice. Structure per slice:</p>
 <ol>
 <li><strong>Status:</strong> done / halted (with stop rule number).</li>
 <li><strong>Branch and last commit hash.</strong></li>
@@ -150,7 +150,7 @@ You implement <strong>all seven slices of GitHub issue #443</strong> one after a
 <h2 id="part-b--required-reading-before-slice-1"><a class="anchor" href="#part-b--required-reading-before-slice-1" aria-hidden="true" tabindex="-1">#</a>PART B — Required reading before Slice 1</h2>
 <ol>
 <li><code>gh issue view 443</code> in full (context, 22 decisions, slices, AC 1–12).</li>
-<li><code>docs/agent-prompts/443-slice-1-navigation.html</code> in full: this is the <strong>detailed part for Slice 1</strong>.</li>
+<li><code>docs/archive/443-slice-1-navigation.html</code> in full: this is the <strong>detailed part for Slice 1</strong>.</li>
 <li><code>apps/mobile-web/App.tsx</code>, <code>apps/mobile-web/App.test.tsx</code>.</li>
 <li><code>apps/mobile-web/src/screens/cockpit/CockpitScreen.tsx</code>.</li>
 <li><code>apps/mobile-web/src/screens/catalog/CatalogScreen.tsx</code>.</li>
@@ -161,7 +161,7 @@ You implement <strong>all seven slices of GitHub issue #443</strong> one after a
 <hr>
 <h2 id="part-c--the-slices"><a class="anchor" href="#part-c--the-slices" aria-hidden="true" tabindex="-1">#</a>PART C — The slices</h2>
 <h3 id="slice-1--navigation-tab-stacks--a-url-per-screen"><a class="anchor" href="#slice-1--navigation-tab-stacks--a-url-per-screen" aria-hidden="true" tabindex="-1">#</a>SLICE 1 — Navigation (tab stacks &amp; a URL per screen)</h3>
-<p>Carry out <strong>sections 1–7</strong> from <code>docs/agent-prompts/443-slice-1-navigation.html</code>. Its sections 8 (commits) and 9 (report) are replaced by Part A; the branch is called <code>feat/443-s1-navigation</code>.</p>
+<p>Carry out <strong>sections 1–7</strong> from <code>docs/archive/443-slice-1-navigation.html</code>. Its sections 8 (commits) and 9 (report) are replaced by Part A; the branch is called <code>feat/443-s1-navigation</code>.</p>
 <p>Afterwards there is: <code>apps/mobile-web/src/navigation/</code> with <code>routes.ts</code>, <code>linking.ts</code>, <code>ShellState.tsx</code>, <code>CockpitStack.tsx</code>, <code>ProfileStack.tsx</code>, <code>AppTabs.tsx</code>, <code>RequiresAccount.tsx</code>. All following slices build on it.</p>
 <hr>
 <h3 id="slice-2--hub-cockpit"><a class="anchor" href="#slice-2--hub-cockpit" aria-hidden="true" tabindex="-1">#</a>SLICE 2 — Hub cockpit</h3>
@@ -574,7 +574,7 @@ You implement <strong>all seven slices of GitHub issue #443</strong> one after a
 <h2 id="part-d--completing-the-batch"><a class="anchor" href="#part-d--completing-the-batch" aria-hidden="true" tabindex="-1">#</a>PART D — Completing the batch</h2>
 <p>When Slice 7 is done (or the batch was halted):</p>
 <ol>
-<li>Add a section <strong>„Gesamt“</strong> (&quot;Overall&quot;) to the report <code>docs/agent-prompts/443-batch-report.html</code>: list of the branches with the last commit hash; list of <strong>all</strong> open questions from all slices; which gate commands did not run locally.</li>
+<li>Add a section <strong>„Gesamt“</strong> (&quot;Overall&quot;) to the report <code>docs/archive/443-batch-report.html</code>: list of the branches with the last commit hash; list of <strong>all</strong> open questions from all slices; which gate commands did not run locally.</li>
 <li>Commit the report.</li>
 <li>Push nothing.</li>
 </ol>

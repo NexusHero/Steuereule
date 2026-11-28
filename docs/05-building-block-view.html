@@ -27,7 +27,7 @@
         <ul><li><a class="nav-item" href="adr/index.html"><span>Decisions</span></a></li><li><a class="nav-item" href="documents.html"><span>Documents</span></a></li></ul>
       </nav>
       </details>
-      <p class="rail-foot">Architecture as of 2026-11-22</p>
+      <p class="rail-foot">Architecture as of 2026-11-28</p>
     </aside>
     <main id="content" class="content">
       <header class="page-head">
@@ -80,7 +80,7 @@
 <td align="left">none</td>
 </tr>
 </tbody></table></div>
-<p>The API is split into 50 folders under <code>apps/api/src</code>, one per topic (<code>lstb</code>, <code>rental</code>, <code>receipt</code>, <code>advisor</code>, …) plus cross-cutting ones (<code>auth</code>, <code>prisma</code>, <code>audit</code>, <code>common</code>, <code>config</code>, <code>telemetry</code>). <a href="subsystems.html"><code>subsystems.html</code></a> shows the most important ones from the inside.</p>
+<p>The API is split into 59 folders (as of 2026-11-28) under <code>apps/api/src</code>, one per topic (<code>lstb</code>, <code>rental</code>, <code>receipt</code>, <code>advisor</code>, …) plus cross-cutting ones (<code>auth</code>, <code>prisma</code>, <code>audit</code>, <code>common</code>, <code>config</code>, <code>telemetry</code>). <a href="subsystems.html"><code>subsystems.html</code></a> shows the most important ones from the inside.</p>
 <h2 id="52-inside-the-core"><a class="anchor" href="#52-inside-the-core" aria-hidden="true" tabindex="-1">#</a>5.2 Inside the core</h2>
 <p>The five folders are layers. Each one imports only the folders below it:</p>
 <div class="table"><table>

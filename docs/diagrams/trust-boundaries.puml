@@ -1,0 +1,39 @@
+@startuml trust-boundaries
+!include ../diagram-style.puml
+!pragma layout smetana
+' docs/security/threat-model.html: who talks to whom, and where data crosses from one owner to another.
+left to right direction
+
+rectangle "Internet" as Net {
+  rectangle "Browser\nweb app" as Browser
+  rectangle "The user's AI assistant\n(MCP client)" as Assistant
+  rectangle "Any caller" as Anyone
+}
+
+rectangle "Google Cloud · europe-west4" as Cloud {
+  rectangle "API\nCloud Run" as Api
+  database "Application database\nmarked fields as ciphertext" as Db
+  database "Keystore\none key per user" as Keys
+  database "Redis\nlimits, run log" as Redis
+  rectangle "Secret Manager" as Secrets
+}
+
+rectangle "Other companies" as Third {
+  rectangle "Language model providers" as LLM
+  rectangle "Stripe" as Stripe
+  rectangle "Mail provider" as Mail
+  rectangle "Google sign-in" as Google
+}
+
+Browser --> Api
+Assistant --> Api
+Anyone --> Api
+Api --> Db
+Api --> Keys
+Api --> Redis
+Api --> Secrets
+Api --> LLM
+Api --> Stripe
+Api --> Mail
+Api --> Google
+@enduml

@@ -27,7 +27,7 @@
         <ul><li><a class="nav-item" href="adr/index.html"><span>Decisions</span></a></li><li><a class="nav-item is-active" href="documents.html" aria-current="page"><span>Documents</span></a></li></ul>
       </nav>
       </details>
-      <p class="rail-foot">Architecture as of 2026-11-22</p>
+      <p class="rail-foot">Architecture as of 2026-11-28</p>
     </aside>
     <main id="content" class="content">
       <header class="page-head">
@@ -386,6 +386,11 @@ shows no skipped deploy jobs.</p>
 <td><code>Pipeline health (weekly)</code></td>
 <td>Reports, from the recorded runs of 28 days: wall time of green pull-request runs per workflow, time to green per commit, failed pushes to main, jobs that failed and then passed on a rerun. A report in the job summary, not a gate</td>
 <td><code>pipeline-health.yml</code></td>
+</tr>
+<tr>
+<td><code>Docs site (on main)</code></td>
+<td>Publishes <code>docs/</code> and <code>images/</code> as a GitHub Pages site. Skipped until the repository variable <code>DOCS_PAGES_ENABLED</code> is <code>true</code>; gates nothing</td>
+<td><code>docs-site.yml</code></td>
 </tr>
 </tbody></table></div>
 <h2 id="repository-settings-read-from-the-github-api-on-2026-11-26"><a class="anchor" href="#repository-settings-read-from-the-github-api-on-2026-11-26" aria-hidden="true" tabindex="-1">#</a>Repository settings (read from the GitHub API on 2026-11-26)</h2>

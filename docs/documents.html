@@ -27,11 +27,11 @@
         <ul><li><a class="nav-item" href="adr/index.html"><span>Decisions</span></a></li><li><a class="nav-item is-active" href="documents.html" aria-current="page"><span>Documents</span></a></li></ul>
       </nav>
       </details>
-      <p class="rail-foot">Architecture as of 2026-11-22</p>
+      <p class="rail-foot">Architecture as of 2026-11-28</p>
     </aside>
     <main id="content" class="content">
       <header class="page-head">
-        <p class="eyebrow">Library · 38 documents</p>
+        <p class="eyebrow">Library · 39 documents</p>
         <h1>Documents</h1>
         <p class="lead">Everything under <code>docs/</code> besides the architecture and the decisions, by folder.</p>
       </header>
@@ -56,24 +56,6 @@
           <span class="eyebrow">use-cases.html</span>
           <strong>Use-Case Overview (Use Cases)</strong>
           <span class="card-lead">This document provides the functional use-case view of Steuereule.</span>
-        </a></li>
-      </ul>
-      <h2 class="section-title" id="docsagent-prompts">Agent prompts</h2>
-      <ul class="cards">
-        <li><a class="card" href="agent-prompts/443-batch-all-slices.html">
-          <span class="eyebrow">agent-prompts/443-batch-all-slices.html</span>
-          <strong>Batch assignment: Ticket #443 complete (Slices 1–7)</strong>
-          <span class="card-lead">You are working in the SteuerEule repo (pnpm monorepo, Expo + react-native-web, shipped only as a web app).</span>
-        </a></li>
-        <li><a class="card" href="agent-prompts/443-batch-report.html">
-          <span class="eyebrow">agent-prompts/443-batch-report.html</span>
-          <strong>Batch report: ticket #443 (slices 1–7)</strong>
-          <span class="card-lead">Note on the local E2E run (applies to the whole run): port 5432 on this machine is taken by an unrelated service.</span>
-        </a></li>
-        <li><a class="card" href="agent-prompts/443-slice-1-navigation.html">
-          <span class="eyebrow">agent-prompts/443-slice-1-navigation.html</span>
-          <strong>Assignment: Ticket #443, Slice 1 — Navigation (tab stacks &amp; a URL per screen)</strong>
-          <span class="card-lead">You are working in the SteuerEule repo (pnpm monorepo, Expo + react-native-web, shipped only as a web app).</span>
         </a></li>
       </ul>
       <h2 class="section-title" id="docsarc42">arc42</h2>
@@ -187,6 +169,14 @@
           <span class="card-lead">Sequence for the walking-skeleton read path (ultimate-dev-process §1.3).</span>
         </a></li>
       </ul>
+      <h2 class="section-title" id="docssecurity">Security</h2>
+      <ul class="cards">
+        <li><a class="card" href="security/threat-model.html">
+          <span class="eyebrow">security/threat-model.html</span>
+          <strong>Threat model</strong>
+          <span class="card-lead">What is worth protecting, who might attack it, where data leaves our hands, and what stands in the way.</span>
+        </a></li>
+      </ul>
       <h2 class="section-title" id="docssre">Reliability</h2>
       <ul class="cards">
         <li><a class="card" href="sre/incident-runbook.html">
@@ -206,16 +196,6 @@
           <span class="eyebrow">testing/ai-evaluation.html</span>
           <strong>Nightly AI evaluation of the owl (#450 part 1B)</strong>
           <span class="card-lead">The workflow .github/workflows/ai-eval-nightly.yml runs the owl against the real model every night (02:30 UTC, and also by hand).</span>
-        </a></li>
-        <li><a class="card" href="testing/coverage-450-part4.html">
-          <span class="eyebrow">testing/coverage-450-part4.html</span>
-          <strong>Test coverage #450 part 4: #443 features, #451 and #452</strong>
-          <span class="card-lead">As of: 11.11.2026.</span>
-        </a></li>
-        <li><a class="card" href="testing/coverage-450-part5.html">
-          <span class="eyebrow">testing/coverage-450-part5.html</span>
-          <strong>Test coverage #450 part 5: dialogs, uploads, error states</strong>
-          <span class="card-lead">As of: 11.11.2026.</span>
         </a></li>
         <li><a class="card" href="testing/navigation-before-after.html">
           <span class="eyebrow">testing/navigation-before-after.html</span>
@@ -262,6 +242,34 @@
           <span class="eyebrow">ux/2026-11-interview-review.html</span>
           <strong>UX review: interview and catalogs (November 2026)</strong>
           <span class="card-lead">State: main @ 9827de5b.</span>
+        </a></li>
+      </ul>
+      <h2 class="section-title" id="docsarchive">Archive: working material of finished work</h2>
+      <ul class="cards">
+        <li><a class="card" href="archive/443-batch-all-slices.html">
+          <span class="eyebrow">archive/443-batch-all-slices.html</span>
+          <strong>Batch assignment: Ticket #443 complete (Slices 1–7)</strong>
+          <span class="card-lead">You are working in the SteuerEule repo (pnpm monorepo, Expo + react-native-web, shipped only as a web app).</span>
+        </a></li>
+        <li><a class="card" href="archive/443-batch-report.html">
+          <span class="eyebrow">archive/443-batch-report.html</span>
+          <strong>Batch report: ticket #443 (slices 1–7)</strong>
+          <span class="card-lead">Note on the local E2E run (applies to the whole run): port 5432 on this machine is taken by an unrelated service.</span>
+        </a></li>
+        <li><a class="card" href="archive/443-slice-1-navigation.html">
+          <span class="eyebrow">archive/443-slice-1-navigation.html</span>
+          <strong>Assignment: Ticket #443, Slice 1 — Navigation (tab stacks &amp; a URL per screen)</strong>
+          <span class="card-lead">You are working in the SteuerEule repo (pnpm monorepo, Expo + react-native-web, shipped only as a web app).</span>
+        </a></li>
+        <li><a class="card" href="archive/coverage-450-part4.html">
+          <span class="eyebrow">archive/coverage-450-part4.html</span>
+          <strong>Test coverage #450 part 4: #443 features, #451 and #452</strong>
+          <span class="card-lead">As of: 11.11.2026.</span>
+        </a></li>
+        <li><a class="card" href="archive/coverage-450-part5.html">
+          <span class="eyebrow">archive/coverage-450-part5.html</span>
+          <strong>Test coverage #450 part 5: dialogs, uploads, error states</strong>
+          <span class="card-lead">As of: 11.11.2026.</span>
         </a></li>
       </ul>
     </main>

@@ -27,7 +27,7 @@
         <ul><li><a class="nav-item" href="../adr/index.html"><span>Decisions</span></a></li><li><a class="nav-item is-active" href="../documents.html" aria-current="page"><span>Documents</span></a></li></ul>
       </nav>
       </details>
-      <p class="rail-foot">Architecture as of 2026-11-22</p>
+      <p class="rail-foot">Architecture as of 2026-11-28</p>
     </aside>
     <main id="content" class="content">
       <header class="page-head">
@@ -71,7 +71,7 @@ missing secret or a Redis URL the instance cannot reach are the usual causes.</l
 signal/exit at boot (configuration)?</li>
 <li>Is the instance count high? A memory kill under load is a capacity problem, not a bug in one request.</li>
 <li>If it began after a deploy, roll back; otherwise raise the memory limit in <code>deploy.yml</code> or limit the
-concurrent PDF renders (see <code>reliability-spec.html</code> section 4.1).</li>
+concurrent PDF renders (see <code>reliability-spec.html</code>, section 3).</li>
 </ol>
 <h2 id="unhandled-errors-3-or-more-in-5-minutes"><a class="anchor" href="#unhandled-errors-3-or-more-in-5-minutes" aria-hidden="true" tabindex="-1">#</a>Unhandled errors (3 or more in 5 minutes)</h2>
 <p>Counts ERROR log lines of the Nest <code>ExceptionsHandler</code> and the better-auth wrapper. These are 500s the

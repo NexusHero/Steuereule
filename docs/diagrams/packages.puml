@@ -12,7 +12,7 @@ rectangle "packages" as Shared {
   rectangle "ui · tokens\ndesign system" as Ui
   rectangle "core\ntax rules, interview, the owl's domain logic" as Core
 }
-rectangle "apps/api\nNestJS, 50 modules" as Api
+rectangle "apps/api\nNestJS, 59 modules" as Api
 database "PostgreSQL" as Db
 
 Web --> ApiClient

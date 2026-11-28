@@ -1,0 +1,52 @@
+# Publishes the documentation (ADR-0116: HTML pages under docs/) as a GitHub Pages site, so it can be read
+# without a checkout. Off until the repository variable DOCS_PAGES_ENABLED is 'true': turning Pages on is a
+# repository setting, and a deploy to a site that does not exist would fail on every push to main.
+#
+# To switch it on: Settings → Pages → Source "GitHub Actions", then set the variable DOCS_PAGES_ENABLED to true.
+name: Docs site
+
+on:
+  push:
+    branches: [main]
+    paths: ['docs/**', 'images/**', '.github/workflows/docs-site.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: docs-site
+  cancel-in-progress: true
+
+jobs:
+  publish:
+    name: 'docs: publish the documentation site'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    if: ${{ vars.DOCS_PAGES_ENABLED == 'true' }}
+    # The token may deploy to Pages and nothing else beyond reading the repository.
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # The pages refer to pictures outside docs/ (`../images/…`), so the site keeps the repository's layout:
+      # /docs/… and /images/…, with the start page one redirect away from the root.
+      - name: Assemble the site
+        run: |
+          mkdir _site
+          cp -R docs images _site/
+          printf '%s\n' '<!doctype html><meta charset="utf-8"><title>SteuerEule — Architecture</title><meta http-equiv="refresh" content="0; url=docs/index.html"><a href="docs/index.html">SteuerEule documentation</a>' > _site/index.html
+      - uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
+      - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+        with:
+          path: _site
+      - name: Deploy
+        id: deploy
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
