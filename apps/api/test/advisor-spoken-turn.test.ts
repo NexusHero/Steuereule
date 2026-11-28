@@ -4,14 +4,14 @@ import { plainToInstance } from 'class-transformer'
 import { validate } from 'class-validator'
 import { SendAdvisorMessageDto } from '../src/advisor/dto/advisor.dto.js'
 import { describeTurnContext, SPOKEN_HINT } from '../src/ki/advisor-prompt.js'
-import type { ResolvedAiSlotConfig } from '../src/ki/ai-runtime-config.service.js'
+import type { ResolvedAiSlotConfig } from '../src/llm/ai-runtime-config.service.js'
 import { withSpokenPace } from '../src/ki/langgraph-advisor.engine.js'
 
 const CHAT: ResolvedAiSlotConfig = { slot: 'advisor_chat', enabled: true, provider: 'google-genai', model: 'gemini-3.8-flash', apiKey: 'k', thinkingLevel: 'medium', reasoning: 'summary' }
 
 describe('the turn context of a spoken message', () => {
   it('asks for a short answer in sentences, without lists or headings, and one question at most', () => {
-    const context = describeTurnContext('commute', false, false, true)
+    const context = describeTurnContext({ activeScreen: 'commute', spoken: true })
     expect(context).toContain('Aktive Maske: commute')
     expect(context).toContain(SPOKEN_HINT)
     expect(SPOKEN_HINT).toMatch(/höchstens drei kurzen Sätzen/)
@@ -20,8 +20,8 @@ describe('the turn context of a spoken message', () => {
   })
 
   it('leaves a typed message as it was', () => {
-    expect(describeTurnContext('commute', false)).toBe('Aktive Maske: commute')
-    expect(describeTurnContext('commute', false, false, false)).not.toContain(SPOKEN_HINT)
+    expect(describeTurnContext({ activeScreen: 'commute' })).toBe('Aktive Maske: commute')
+    expect(describeTurnContext({ activeScreen: 'commute', spoken: false })).not.toContain(SPOKEN_HINT)
   })
 })
 

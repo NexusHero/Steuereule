@@ -47,9 +47,9 @@ import { CHILD_REPOSITORY, type ChildRepository } from '../children/child.reposi
 import { newActionId } from '../common/action-id.js'
 import { ConflictError, DomainError, InvalidInputError, TooManyRequestsError, UnavailableError } from '../common/domain-error.js'
 import { ADVISOR_ENGINE } from '../ki/advisor-engine.token.js'
-import { AI_RUNTIME_CONFIG_SERVICE, type AiRuntimeConfigService } from '../ki/ai-runtime-config.service.js'
+import { AI_RUNTIME_CONFIG_SERVICE, type AiRuntimeConfigService } from '../llm/ai-runtime-config.service.js'
 import { PersonalDataConsentService } from '../owl-mode/personal-data-consent.service.js'
-import { ModelConnectionService } from '../ki/model-connection.service.js'
+import { ModelConnectionService } from '../llm/model-connection.service.js'
 import { LinkService } from '../link/link.service.js'
 import { OwlModeService } from '../owl-mode/owl-mode.service.js'
 import { TRANSACTION_RUNNER, type TransactionRunner } from '../common/transaction-runner.js'
@@ -67,12 +67,11 @@ import { AdvisorDrafts } from './advisor-drafts.js'
 import { AdvisorOpening, OPENING_PLACEHOLDER, openingStream } from './advisor-opening.js'
 import { draftsTakenOver, printoutFollowUp } from './advisor-printout-plan.js'
 import { AdvisorProjectNotes } from './advisor-project-notes.js'
-import { ANSWERING_WINDOW_MS, historySources, liveMessages, parseChatModel, titleFrom, toMessageDto, toPublicAction, toPublicMeta, type PreparedAdvisorTurn } from './advisor-shared.js'
+import { ANSWERING_WINDOW_MS, TURN_FAILED_MESSAGE, historySources, liveMessages, parseChatModel, titleFrom, toMessageDto, toPublicAction, toPublicMeta, type PreparedAdvisorTurn } from './advisor-shared.js'
 import type { SendAdvisorMessageDto, SendAdvisorMessageResponseDto } from './dto/advisor.dto.js'
 
 const DETERMINISTIC_ENGINE: AdvisorEngineInfo = { mode: 'deterministic_fallback', provider: 'deterministic' }
 
-const TURN_FAILED_MESSAGE = 'Die Antwort der Eule ist unterwegs abgebrochen. Bitte versuche es erneut.'
 
 /**
  * One turn of the owl: prepared while it can still fail as plain HTTP, then run to one of its final

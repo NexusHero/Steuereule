@@ -3,12 +3,12 @@ import type { BaseChatModel } from '@langchain/core/language_models/chat_models'
 import { describe, expect, it } from 'vitest'
 import type { AdvisorStreamEvent, AdvisorTurnResult } from '@steuereule/core'
 import { createResettableRateLimitStorage } from '../src/auth/rate-limit-storage.js'
-import { DEFAULT_AI_DAILY_CALL_LIMIT, DEFAULT_AI_PAID_RESERVE_PERCENT, DEFAULT_AI_TURN_LIMITS, EnvAiRuntimeConfigService, freeCallLimit, type AiRuntimeConfigService } from '../src/ki/ai-runtime-config.service.js'
+import { DEFAULT_AI_DAILY_CALL_LIMIT, DEFAULT_AI_PAID_RESERVE_PERCENT, DEFAULT_AI_TURN_LIMITS, EnvAiRuntimeConfigService, freeCallLimit, type AiRuntimeConfigService } from '../src/llm/ai-runtime-config.service.js'
 import { LangGraphAdvisorEngine } from '../src/ki/langgraph-advisor.engine.js'
 import { resolveVisionModel } from '../src/receipt/parse/document-parse-steps.js'
 import { SAMPLE_DIGEST as DIGEST } from './fixtures/sample-digest.js'
 
-const shared = () => ({ rateLimitStorage: createResettableRateLimitStorage({ redisUrl: '' }) })
+const shared = () => createResettableRateLimitStorage({ redisUrl: '' })
 
 describe('EnvAiRuntimeConfigService.takeCallBudget', () => {
   it('lets calls through until the daily limit, then refuses', async () => {

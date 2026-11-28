@@ -123,7 +123,7 @@ flowchart LR
 | :--- | :--- | :--- | :--- |
 | Stripe | payment for the printout, webhook | `unlock/stripe-payment-provider.ts` behind `PaymentProvider` | user id, tax year, price id |
 | SMTP, Brevo | confirmation and security mail | `auth/smtp-email-sender.ts`, `auth/brevo-email-sender.ts` behind `EmailSender`; without configuration a logging stand-in | e-mail address, mail text |
-| Language model providers | the owl's chat, reading aid for receipts, topic guard | `ki/chat-model.factory.ts` (LangChain) | chat history and case data; receipt text after names, addresses and identifiers have been removed. Personal data only with consent ([ADR-0091](adr/0091-owl-personal-data-with-consent.md)). |
+| Language model providers | the owl's chat, reading aid for receipts, topic guard | `llm/chat-model.factory.ts` (LangChain) | chat history and case data; receipt text after names, addresses and identifiers have been removed. Personal data only with consent ([ADR-0091](adr/0091-owl-personal-data-with-consent.md)). |
 | Google OAuth | sign-in with a Google account | `auth/better-auth.ts` | OAuth protocol data |
 | Have I Been Pwned | checks new passwords against known breaches | better-auth plugin, `auth/breach-check.ts` | part of the password hash (k-anonymity), never the password |
 | MCP clients | the user's assistant reads the return and fills drafts | `mcp/` as a driving adapter ([ADR-0052](adr/0052-agent-access-mcp.md)) | only what the user released through an OAuth scope |
@@ -152,8 +152,8 @@ Three rings and one rule: **every dependency points inward.** The core knows not
 | Ring | Where | May depend on | Must not depend on |
 | :--- | :--- | :--- | :--- |
 | **Core** | `packages/core/src/{math,common,domains,engine,interview}` | itself and `node:crypto` | npm packages, `apps/*` |
-| **Application** | `apps/api/src/<module>/`: services, guards, parse strategies and the ports (`*.repository.ts`, `common/transaction-runner.ts`, `ki/single-shot-model.ts`, `unlock/payment-provider.ts`, `auth/email-sender.ts`) | core, ports, NestJS | the database client, external SDKs |
-| **Adapters** | driving: `*.controller.ts`, `mcp/`; driven: `*.prisma.ts`, `prisma/`, the LangChain files in `ki/`, `unlock/stripe-payment-provider.ts`, `auth/smtp-email-sender.ts`, `account/export/pdf-renderer.playwright.ts`, `receipt/storage/postgres-bytea-storage.adapter.ts` | ports, core, their own SDK | the SDKs of other adapters |
+| **Application** | `apps/api/src/<module>/`: services, guards, parse strategies and the ports (`*.repository.ts`, `common/transaction-runner.ts`, `llm/single-shot-model.ts`, `unlock/payment-provider.ts`, `auth/email-sender.ts`) | core, ports, NestJS | the database client, external SDKs |
+| **Adapters** | driving: `*.controller.ts`, `mcp/`; driven: `*.prisma.ts`, `prisma/`, the LangChain files in `ki/` and `llm/`, `unlock/stripe-payment-provider.ts`, `auth/smtp-email-sender.ts`, `account/export/pdf-renderer.playwright.ts`, `receipt/storage/postgres-bytea-storage.adapter.ts` | ports, core, their own SDK | the SDKs of other adapters |
 
 The Nest modules (`*.module.ts`) are the **composition root**. Only there is a port bound to an adapter:
 
@@ -175,7 +175,7 @@ constructor(@Inject(RECEIPT_REPOSITORY) private readonly receipts: ReceiptReposi
 | Persistence per feature module (33 repositories as of 2026-11-22) | e.g. `ReceiptRepository` · `RECEIPT_REPOSITORY` | `PrismaReceiptRepository` in `*.repository.prisma.ts` | `apps/api/test/fakes/fake-*.repository.ts` |
 | A transaction across repositories | `TransactionRunner` · `TRANSACTION_RUNNER` | `PrismaTransactionRunner` | `passThroughTransactionRunner` |
 | The owl's advisory turn | `AdvisorEnginePort` (in the core) · `ADVISOR_ENGINE` | `LangGraphAdvisorEngine` | `FakeKiChatModel`, `test/fakes/scripted-model.ts` |
-| A single model call | `SingleShotModel` · `SINGLE_SHOT_MODEL_FACTORY` | `ki/langchain-single-shot.adapter.ts` | `noSingleShotModel` |
+| A single model call | `SingleShotModel` · `SINGLE_SHOT_MODEL_FACTORY` | `llm/langchain-single-shot.adapter.ts` | `noSingleShotModel` |
 | Domain-level AI capabilities | `KiPort` (in the core) · `KI_PORT` | `RagKiAdapter` | |
 | Payment | `PaymentProvider` · `PAYMENT_PROVIDER` | `StripePaymentProvider` | `FakeProvider` in `unlock.service.test.ts` |
 | E-mail | `EmailSender` · `EMAIL_SENDER` | `SmtpEmailSender`, `BrevoEmailSender` | `LoggingEmailSender` |
@@ -443,7 +443,7 @@ Not every field is encrypted. Plaintext are, for example, the status of a tax ye
 - The owl's chat contains case data. Names and identifiers are masked (`packages/core/src/common/pii-masking.ts`); personal data reaches a model only with consent ([ADR-0091](adr/0091-owl-personal-data-with-consent.md)).
 - Amounts come from the core: the estimate, lump sums and work-related expenses are computed before the model is asked. Every answer is then checked without a model.
 - A topic guard sorts every typed question first ([ADR-0100](adr/0100-owl-guard-alongside-the-model-and-timings.md)). If it fails, the question passes, and the topic rule in the owl's own prompt remains as the second line.
-- Which model works where is defined in slots (`ki/ai-runtime-config.service.ts`). A kill switch turns model calls off; the receipt readers then work with the fixed rules alone.
+- Which model works where is defined in slots (`llm/ai-runtime-config.service.ts`). A kill switch turns model calls off; the receipt readers then work with the fixed rules alone.
 
 ## 8.4 Persistence and transactions
 

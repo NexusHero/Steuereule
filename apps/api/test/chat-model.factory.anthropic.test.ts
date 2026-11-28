@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { EnvAiRuntimeConfigService } from '../src/ki/ai-runtime-config.service.js'
-import { anthropicThinksOnBudget, createChatModelFromConfig } from '../src/ki/chat-model.factory.js'
+import { EnvAiRuntimeConfigService } from '../src/llm/ai-runtime-config.service.js'
+import { anthropicThinksOnBudget, createChatModelFromConfig } from '../src/llm/chat-model.factory.js'
 
 type BuiltModel = {
   temperature?: number

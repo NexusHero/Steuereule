@@ -528,7 +528,7 @@ const AI_SLOTS = [
 ] as const
 
 /**
- * A model slot works with a provider and a key that reaches it (ki/ai-runtime-config.service.ts); the model
+ * A model slot works with a provider and a key that reaches it (llm/ai-runtime-config.service.ts); the model
  * has a default. Anything else leaves the slot answering from the rules without a word: a key no provider
  * uses, or a provider or model chosen for a slot no key reaches.
  */

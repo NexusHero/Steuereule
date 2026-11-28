@@ -1,7 +1,7 @@
 import { Inject, Injectable, Optional } from '@nestjs/common'
 import type { AdvisorConnection, AdvisorModelFailure } from '@steuereule/core'
 import { AI_RUNTIME_CONFIG_SERVICE, type AiRuntimeConfigService, type ResolvedAiSlotConfig } from './ai-runtime-config.service.js'
-import { classifyModelFailure } from './advisor-failure.js'
+import { classifyModelFailure } from './model-failure.js'
 
 export const MODEL_CONNECTION_FETCH = Symbol('MODEL_CONNECTION_FETCH')
 

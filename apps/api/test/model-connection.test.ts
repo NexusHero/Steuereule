@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
-import { DEFAULT_AI_TURN_LIMITS, type AiRuntimeConfigService, type ResolvedAiSlotConfig } from '../src/ki/ai-runtime-config.service.js'
-import { ModelConnectionService } from '../src/ki/model-connection.service.js'
+import { DEFAULT_AI_TURN_LIMITS, type AiRuntimeConfigService, type ResolvedAiSlotConfig } from '../src/llm/ai-runtime-config.service.js'
+import { ModelConnectionService } from '../src/llm/model-connection.service.js'
 
 const slot = (extra: Partial<ResolvedAiSlotConfig> = {}): ResolvedAiSlotConfig => ({ slot: 'advisor_chat', enabled: true, provider: 'google-genai', model: 'gemini-test', apiKey: 'secret-key-value', ...extra })
 const config = (resolved: ResolvedAiSlotConfig, killSwitch = false): AiRuntimeConfigService => ({

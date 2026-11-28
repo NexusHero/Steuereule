@@ -20,12 +20,12 @@ import { BaseCallbackHandler } from '@langchain/core/callbacks/base'
 import type { BaseMessage } from '@langchain/core/messages'
 import type { LLMResult } from '@langchain/core/outputs'
 import { scrubUserMessagePii, type AdvisorActionProposal, type AdvisorTurnResult } from '@steuereule/core'
-import { EnvAiRuntimeConfigService } from '../../src/ki/ai-runtime-config.service.js'
-import { createChatModelFromConfig } from '../../src/ki/chat-model.factory.js'
+import { EnvAiRuntimeConfigService } from '../../src/llm/ai-runtime-config.service.js'
+import { createAdvisorChatModel } from '../../src/ki/advisor-chat-model.js'
 import { LangGraphAdvisorEngine } from '../../src/ki/langgraph-advisor.engine.js'
 import { CASES, CONSISTENCY_RUNS, PERSONAS, type PersonaKey } from './golden.js'
 import { markdownReport, scoreCase, summarize, type CaseResult, type TurnRecord } from './scoring.js'
-import { installProviderRejectionGuard } from '../../src/ki/provider-rejections.js'
+import { installProviderRejectionGuard } from '../../src/llm/provider-rejections.js'
 
 // As in main.ts: a Gemini stream that breaks off after its turn ended must not end the run.
 installProviderRejectionGuard()
@@ -100,7 +100,7 @@ async function main(): Promise<void> {
   const spy = new SpyHandler()
   const runtime = new EnvAiRuntimeConfigService({ GEMINI_API_KEY: KEY, AI_ADVISOR_PROVIDER: 'google-genai', AI_ADVISOR_MODEL: MODEL })
   const engine = new LangGraphAdvisorEngine(runtime, (config) => {
-    const model = createChatModelFromConfig(config)
+    const model = createAdvisorChatModel(config)
     if (model) model.callbacks = [spy]
     return model
   })

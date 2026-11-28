@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { installProviderRejectionGuard, isLeftoverProviderStreamError, REJECTION_DRAIN_MS } from '../src/ki/provider-rejections.js'
+import { installProviderRejectionGuard, isLeftoverProviderStreamError, REJECTION_DRAIN_MS } from '../src/llm/provider-rejections.js'
 
 const sdkError = (message: string) => Object.assign(new Error(`[GoogleGenerativeAI Error]: ${message}`), { name: 'GoogleGenerativeAIError' })
 

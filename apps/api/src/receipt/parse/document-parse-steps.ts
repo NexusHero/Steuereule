@@ -1,9 +1,9 @@
 import { scrubDocumentTextPii, type AdvisorEngineInfo } from '@steuereule/core'
 import type { z } from 'zod'
-import type { AiRuntimeConfigService, ResolvedAiSlotConfig } from '../../ki/ai-runtime-config.service.js'
+import type { AiRuntimeConfigService, ResolvedAiSlotConfig } from '../../llm/ai-runtime-config.service.js'
 import { checkPiiFree } from '../../ki/ki.adapter.js'
-import { extractJsonObject } from '../../ki/llm-json.js'
-import type { SingleShotModel, SingleShotModelFactory, SingleShotPrompt } from '../../ki/single-shot-model.js'
+import { extractJsonObject } from '../../llm/llm-json.js'
+import type { SingleShotModel, SingleShotModelFactory, SingleShotPrompt } from '../../llm/single-shot-model.js'
 import type { ParseReceiptDto, ParseReceiptResponseDto } from '../dto/parse-receipt.dto.js'
 
 /**

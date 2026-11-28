@@ -5,9 +5,9 @@
 // the topic rule in the owl's own prompt and the attack patterns stay as the second line.
 import { Inject, Injectable, Logger } from '@nestjs/common'
 import { ADVISOR_TOPIC_CATEGORIES, parseTopicCheck, type AdvisorHistoryEntry, type AdvisorTopicOutcome } from '@steuereule/core'
-import { AI_RUNTIME_CONFIG_SERVICE, DEFAULT_GUARD_TIMEOUT_MS, type AiRuntimeConfigService } from './ai-runtime-config.service.js'
-import { extractJsonObject } from './llm-json.js'
-import { SINGLE_SHOT_MODEL_FACTORY, type SingleShotModel, type SingleShotModelFactory } from './single-shot-model.js'
+import { AI_RUNTIME_CONFIG_SERVICE, DEFAULT_GUARD_TIMEOUT_MS, type AiRuntimeConfigService } from '../llm/ai-runtime-config.service.js'
+import { extractJsonObject } from '../llm/llm-json.js'
+import { SINGLE_SHOT_MODEL_FACTORY, type SingleShotModel, type SingleShotModelFactory } from '../llm/single-shot-model.js'
 
 export const ADVISOR_TOPIC_GUARD = Symbol('ADVISOR_TOPIC_GUARD')
 

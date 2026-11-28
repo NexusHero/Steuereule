@@ -3,22 +3,16 @@
 import { HumanMessage, SystemMessage, ToolMessage, type BaseMessage, type MessageContent } from '@langchain/core/messages'
 import {
   ADVISOR_LEGAL_SOURCES,
+  type AdvisorTurnRequest,
   describeNotesForPrompt,
   describeRecordHandles,
   describeHouseholdForPrompt,
   describePrintoutPlanForPrompt,
-  type AdvisorHousehold,
   describeSituationForPrompt,
-  type AdvisorNoteHandle,
-  type AdvisorRecordHandles,
-  type AdvisorAssessmentBrief,
-  type AdvisorSkillId,
   type InterviewProgress,
   INTERVIEW_AREAS,
   upcomingTaxDates,
   interviewStanding,
-  type AdvisorTask,
-  type AdvisorOpeningBrief,
   type AdvisorPlanStep,
   type CaseDigest,
   type Screen,
@@ -173,7 +167,16 @@ export const SPOKEN_HINT = [
   'Reicht das für die Frage nicht, gib die Kernaussage und biete an, im Chat ausführlich zu werden.',
 ].join(' ')
 
-export function describeTurnContext(activeScreen: Screen | undefined, planFirst: boolean, grayZone = false, spoken = false): string {
+export interface TurnContextInput {
+  /** The mask the user is on; none counts as the cockpit. */
+  readonly activeScreen?: Screen | undefined
+  /** The plan is asked for in words, where the provider does not take a forced tool call. */
+  readonly planFirst?: boolean | undefined
+  readonly grayZone?: boolean | undefined
+  readonly spoken?: boolean | undefined
+}
+
+export function describeTurnContext({ activeScreen, planFirst = false, grayZone = false, spoken = false }: TurnContextInput = {}): string {
   return [
     `Aktive Maske: ${activeScreen ?? 'cockpit'}`,
     ...(planFirst ? ['Für diese Anfrage gilt: Rufe als Erstes `plan_steps` auf, bevor du irgendetwas anderes tust.'] : []),
@@ -182,8 +185,14 @@ export function describeTurnContext(activeScreen: Screen | undefined, planFirst:
   ].join('\n')
 }
 
+/** What the case block is built from: the turn's own fields, so the engine hands its request over as it is. */
+export type CaseBlockInput = Pick<AdvisorTurnRequest, 'digest' | 'records' | 'notes' | 'skill' | 'task' | 'assessment' | 'situation' | 'opening' | 'interview' | 'household' | 'openPlan'> & {
+  /** ISO date the upcoming tax dates are counted from; today unless a test says otherwise. */
+  readonly today?: string | undefined
+}
+
 /** The case of this user: it changes only when a value, a receipt, a note or the plan does, and is cached until then. */
-export function buildCaseBlock(digest: CaseDigest, records?: AdvisorRecordHandles, notes?: readonly AdvisorNoteHandle[], skill?: AdvisorSkillId, task?: AdvisorTask, assessment?: AdvisorAssessmentBrief, situation?: string, opening?: AdvisorOpeningBrief, interview?: InterviewProgress, today: string = new Date().toISOString().slice(0, 10), household?: AdvisorHousehold, openPlan?: readonly AdvisorPlanStep[]): string {
+export function buildCaseBlock({ digest, records, notes, skill, task, assessment, situation, opening, interview, household, openPlan, today = new Date().toISOString().slice(0, 10) }: CaseBlockInput): string {
   return [
     describeSituationForPrompt(digest, situation),
     '',
@@ -202,11 +211,6 @@ export function buildCaseBlock(digest: CaseDigest, records?: AdvisorRecordHandle
     ...(task ? ['', taskPrompt(task, digest, assessment, opening)] : []),
     ...describeOpenPlanForPrompt(openPlan),
   ].join('\n')
-}
-
-/** Case and turn context as one text: everything the model is told about this user for one answer. */
-export function buildCaseSystemPrompt(digest: CaseDigest, activeScreen: Screen | undefined, planFirst: boolean, records?: AdvisorRecordHandles, notes?: readonly AdvisorNoteHandle[], skill?: AdvisorSkillId, task?: AdvisorTask, assessment?: AdvisorAssessmentBrief, situation?: string, opening?: AdvisorOpeningBrief, grayZone = false, interview?: InterviewProgress, today: string = new Date().toISOString().slice(0, 10), household?: AdvisorHousehold, openPlan?: readonly AdvisorPlanStep[]): string {
-  return `${buildCaseBlock(digest, records, notes, skill, task, assessment, situation, opening, interview, today, household, openPlan)}\n\n${describeTurnContext(activeScreen, planFirst, grayZone)}`
 }
 
 /** The printout checklist and the Belege list go into the prompt as their own lists, not a second time inside the digest. */

@@ -2,14 +2,14 @@
 // user's, or Person B's when it names B; a name that fits nobody is asked about, never guessed.
 import { describe, expect, it } from 'vitest'
 import { AuditService } from '../src/audit/audit.service.js'
-import { DEFAULT_AI_TURN_LIMITS, type AiRuntimeConfigService } from '../src/ki/ai-runtime-config.service.js'
+import { DEFAULT_AI_TURN_LIMITS, type AiRuntimeConfigService } from '../src/llm/ai-runtime-config.service.js'
 import { LstbScanParseStrategy } from '../src/lstb-scan/lstb-scan.parse-strategy.js'
 import { LstbService } from '../src/lstb/lstb.service.js'
 import { DocumentParseRegistry } from '../src/receipt/parse/document-parse.registry.js'
 import { buildAdvisorTestKit } from './fakes/advisor-test-kit.js'
 import { FakeAuditRepository } from './fakes/fake-audit.repository.js'
 import { FakeMarkingRepository } from './fakes/fake-marking.repository.js'
-import { noSingleShotModel } from '../src/ki/single-shot-model.js'
+import { noSingleShotModel } from '../src/llm/single-shot-model.js'
 
 const USER = 'user-a'
 const YEAR = 2025

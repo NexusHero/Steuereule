@@ -29,9 +29,11 @@ import {
   type OwlSourceId,
 } from '@steuereule/core'
 import { depthSetting, type AdvisorDepth } from '@steuereule/core'
-import { AI_RUNTIME_CONFIG_SERVICE, DEFAULT_AI_TURN_LIMITS, type AiRuntimeConfigService, type AiTurnLimits, type ResolvedAiSlotConfig } from './ai-runtime-config.service.js'
-import { anthropicThinksOnBudget, CHAT_MODEL_FACTORY, createChatModelFromConfig, type ChatModelFactory } from './chat-model.factory.js'
-import { classifyModelFailure, providerName } from './advisor-failure.js'
+import { AI_RUNTIME_CONFIG_SERVICE, DEFAULT_AI_TURN_LIMITS, type AiRuntimeConfigService, type AiTurnLimits, type ResolvedAiSlotConfig } from '../llm/ai-runtime-config.service.js'
+import { anthropicThinksOnBudget, CHAT_MODEL_FACTORY, type ChatModelFactory } from '../llm/chat-model.factory.js'
+import { createAdvisorChatModel } from './advisor-chat-model.js'
+import { classifyModelFailure, providerName } from '../llm/model-failure.js'
+import { extractMessageText } from '../llm/llm-json.js'
 import { checkPiiFree } from './ki.adapter.js'
 import { buildCaseBlock, buildSystemMessage, buildTurnMessages, describeTurnContext, SUMMARY_MAX_CHARS, SUMMARY_INSTRUCTIONS, withHistoryCacheBreakpoint } from './advisor-prompt.js'
 import { buildToolSchemas, RejectedDraft, computedFiguresOf, unresolvedRejections } from './advisor-tools.js'
@@ -40,20 +42,6 @@ import { ADVISOR_TOPIC_GUARD, type AdvisorTopicGuardPort } from './advisor-topic
 export { toProviderToolSchema, buildToolSchemas, computedFiguresOf, unresolvedRejections } from './advisor-tools.js'
 export { buildCaseBlock, buildStableSystemPrompt, buildSystemMessage, buildTurnMessages, describeTurnContext, TURN_CONTEXT_HEADER, USER_MESSAGE_HEADER, userTextOf, withHistoryCacheBreakpoint } from './advisor-prompt.js'
 
-
-function extractMessageText(content: unknown): string {
-  if (typeof content === 'string') return content
-  if (!Array.isArray(content)) return ''
-  return content
-    .map((part) => {
-      if (typeof part === 'string') return part
-      if (part && typeof part === 'object' && 'text' in part && typeof (part as { text?: unknown }).text === 'string') {
-        return (part as { text: string }).text
-      }
-      return ''
-    })
-    .join('')
-}
 
 /**
  * The reasoning summary a provider attached to a chunk, in any of the shapes they use: Anthropic and
@@ -139,6 +127,45 @@ interface MutableTimings {
 
 const newTimings = (): MutableTimings => ({ roundMs: [], toolMs: 0 })
 
+/** An answer of the fixed rules, marked as theirs. */
+const rulesResult = (replyText: string, meta: AdvisorMessageMeta): AdvisorTurnResult => ({
+  replyText,
+  meta,
+  mode: 'deterministic_fallback',
+  provider: 'deterministic',
+  model: 'deterministic-fallback',
+})
+
+/** How the graph of one model turn is built. */
+interface GraphOptions {
+  readonly maxToolRounds: number
+  readonly canForceTool: boolean
+  /** From this moment (epoch ms) on, the model answers without tools. */
+  readonly answerBy?: number
+  readonly now?: () => number
+  /** Anthropic caches only marked prefixes: each round marks its newest message (see `withHistoryCacheBreakpoint`). */
+  readonly markHistoryForCache?: boolean
+  /** Filled as the graph runs: the time of each model round and of the tools. */
+  readonly timings?: MutableTimings
+  /** Awaited before any tool runs: a turn started beside the topic guard touches nothing until the verdict is in. */
+  readonly beforeTools?: (() => Promise<void>) | undefined
+}
+
+/** One turn with one model: which model, within which limits, and what happens when it fails or says nothing. */
+interface ModelRun {
+  readonly slot: ResolvedAiSlotConfig
+  readonly model: BaseChatModel
+  readonly limits: AiTurnLimits
+  /** Whether the fallback slot answers when this model fails before its first word (#493). */
+  readonly canFailOver: boolean
+  /** The guard called the question a grey zone: only its tax side is answered. */
+  readonly grayZone?: boolean
+  /** How often a turn that came back completely empty is asked again (ADR-0084). */
+  readonly emptyRetries?: number
+  /** See `GraphOptions`: holds the tools back while the topic guard is still deciding. */
+  readonly beforeTools?: (() => Promise<void>) | undefined
+}
+
 /** The model's result with the guard's verdict and the time the guard took. */
 function withGuard(result: AdvisorTurnResult, topic: AdvisorTopicOutcome, guardMs: number | undefined): AdvisorTurnResult {
   return { ...result, topic, ...(result.timings && guardMs !== undefined ? { timings: { ...result.timings, guardMs } } : {}) }
@@ -155,23 +182,13 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
     /** Without one no topic is checked: the owl's prompt rule and the attack patterns remain (ADR-0069). */
     @Optional() @Inject(ADVISOR_TOPIC_GUARD) private readonly topicGuard?: AdvisorTopicGuardPort,
   ) {
-    this.resolveChatModel = modelFactory ?? createChatModelFromConfig
+    this.resolveChatModel = modelFactory ?? createAdvisorChatModel
   }
 
   private buildCompiledGraph(
     model: BaseChatModel,
     request: AdvisorTurnRequest,
-    maxToolRounds: number,
-    canForceTool: boolean,
-    /** From this moment (epoch ms) on, the model answers without tools. */
-    answerBy: number = Number.POSITIVE_INFINITY,
-    now: () => number = Date.now,
-    /** Anthropic caches only marked prefixes: each round marks its newest message (see `withHistoryCacheBreakpoint`). */
-    markHistoryForCache = false,
-    /** Filled as the graph runs: the time of each model round and of the tools. */
-    timings: MutableTimings = newTimings(),
-    /** Awaited before any tool runs: a turn started beside the topic guard touches nothing until the verdict is in. */
-    beforeTools?: () => Promise<void>,
+    { maxToolRounds, canForceTool, answerBy = Number.POSITIVE_INFINITY, now = Date.now, markHistoryForCache = false, timings = newTimings(), beforeTools }: GraphOptions,
   ) {
     const forRound = (messages: readonly BaseMessage[]) => (markHistoryForCache ? withHistoryCacheBreakpoint(messages) : [...messages])
     const tools = buildToolSchemas()
@@ -301,14 +318,7 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
     if (turn.meta.twoPaths) {
       yield { event: 'twoPaths', data: turn.meta.twoPaths }
     }
-    const result: AdvisorTurnResult = {
-      replyText: turn.replyText,
-      meta: turn.meta,
-      mode: 'deterministic_fallback',
-      provider: 'deterministic',
-      model: 'deterministic-fallback',
-    }
-    yield { event: 'done', data: result }
+    yield { event: 'done', data: rulesResult(turn.replyText, turn.meta) }
   }
 
   /**
@@ -384,7 +394,7 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
     // No guard to wait for (a question the app itself sent, or none configured): the model answers straight away.
     if (request.topicCheck === 'skip' || !this.topicGuard) {
       const topic = await this.checkTopic(request)
-      for await (const ev of this.runModelTurn(request, slotConfig, chatModel, limits, true)) {
+      for await (const ev of this.runModelTurn(request, { slot: slotConfig, model: chatModel, limits, canFailOver: true })) {
         yield ev.event === 'done' ? { event: 'done', data: withGuard(ev.data as AdvisorTurnResult, topic, undefined) } : ev
       }
       return
@@ -411,7 +421,7 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
       }
     }
     const speculative: AdvisorTurnRequest = { ...request, signal: request.signal ? AbortSignal.any([request.signal, speculation.signal]) : speculation.signal }
-    const turn = this.runModelTurn(speculative, slotConfig, chatModel, limits, true, false, 1, beforeTools)[Symbol.asyncIterator]()
+    const turn = this.runModelTurn(speculative, { slot: slotConfig, model: chatModel, limits, canFailOver: true, beforeTools })[Symbol.asyncIterator]()
     const held: AdvisorStreamEvent[] = []
     let next: Promise<IteratorResult<AdvisorStreamEvent>> | null = turn.next()
     const decision = verdict.then(() => 'verdict' as const)
@@ -440,7 +450,7 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
         return
       }
       // A grey zone is answered with its own instruction in the case, so the turn starts again with it.
-      for await (const ev of this.runModelTurn(request, slotConfig, chatModel, limits, true, true)) {
+      for await (const ev of this.runModelTurn(request, { slot: slotConfig, model: chatModel, limits, canFailOver: true, grayZone: true })) {
         yield ev.event === 'done' ? { event: 'done', data: withGuard(ev.data as AdvisorTurnResult, topic, guardMs) } : ev
       }
       return
@@ -466,24 +476,13 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
    * One turn with one model. When that model fails before its first word, the fallback slot (a
    * model of another provider, or another model of the same one) answers instead, once (#493).
    */
-  private async *runModelTurn(
-    request: AdvisorTurnRequest,
-    slotConfig: ResolvedAiSlotConfig,
-    chatModel: BaseChatModel,
-    limits: AiTurnLimits,
-    canFailOver: boolean,
-    /** The guard called the question a grey zone: only its tax side is answered. */
-    grayZone = false,
-    /** How often a turn that came back completely empty is asked again (ADR-0084). */
-    emptyRetries = 1,
-    /** See `buildCompiledGraph`: holds the tools back while the topic guard is still deciding. */
-    beforeTools?: () => Promise<void>,
-  ): AsyncIterable<AdvisorStreamEvent> {
+  private async *runModelTurn(request: AdvisorTurnRequest, run: ModelRun): AsyncIterable<AdvisorStreamEvent> {
+    const { slot: slotConfig, model: chatModel, limits, canFailOver, grayZone = false, emptyRetries = 1, beforeTools } = run
     // Anthropic rejects a forced tool call while extended thinking is on, and its current models reject
     // it always; the plan is then asked for in words.
     const canForceTool = slotConfig.provider !== 'anthropic' || (anthropicThinksOnBudget(slotConfig.model) && slotConfig.reasoning !== 'summary')
-    const caseBlock = buildCaseBlock(request.digest, request.records, request.notes, request.skill, request.task, request.assessment, request.situation, request.opening, request.interview, undefined, request.household, request.openPlan)
-    const turnContext = describeTurnContext(request.activeScreen, request.planRequired === true && !canForceTool, grayZone, request.spoken === true)
+    const caseBlock = buildCaseBlock(request)
+    const turnContext = describeTurnContext({ activeScreen: request.activeScreen, planFirst: request.planRequired === true && !canForceTool, grayZone, spoken: request.spoken === true })
     const historyMessages: BaseMessage[] = (request.history ?? []).map((entry) =>
       entry.role === 'user' ? new HumanMessage(entry.content) : new AIMessage(entry.content),
     )
@@ -520,7 +519,7 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
 
     const timings = newTimings()
     try {
-      const graph = this.buildCompiledGraph(chatModel, request, maxToolRounds, canForceTool, answerBy, Date.now, slotConfig.provider === 'anthropic', timings, beforeTools)
+      const graph = this.buildCompiledGraph(chatModel, request, { maxToolRounds, canForceTool, answerBy, markHistoryForCache: slotConfig.provider === 'anthropic', timings, beforeTools })
       const stream = await graph.stream(
         { messages: initialMessages },
         { streamMode: ['custom', 'updates'], signal },
@@ -599,7 +598,7 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
         const next = await this.resolveFailover(slotConfig, request.depth)
         if (next) {
           yield { event: 'status', data: { text: `${providerName(slotConfig.provider)} antwortet nicht. Die Eule fragt ${providerName(next.config.provider)} …` } }
-          for await (const ev of this.runModelTurn(request, next.config, next.model, limits, false, grayZone, 1, beforeTools)) {
+          for await (const ev of this.runModelTurn(request, { ...run, slot: next.config, model: next.model, canFailOver: false, emptyRetries: 1 })) {
             yield ev.event === 'done' ? { event: 'done', data: { ...(ev.data as AdvisorTurnResult), primaryFailure: failure } } : ev
           }
           return
@@ -647,7 +646,7 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
       this.logger.warn(`advisor turn came back empty (${slotConfig.provider}/${slotConfig.model}), ${emptyRetries > 0 ? 'asking again' : 'giving up'}`)
       if (emptyRetries > 0) {
         yield { event: 'status', data: { text: 'Die Eule fragt noch einmal nach …' } }
-        yield* this.runModelTurn(request, slotConfig, chatModel, limits, canFailOver, grayZone, emptyRetries - 1, beforeTools)
+        yield* this.runModelTurn(request, { ...run, emptyRetries: emptyRetries - 1 })
         return
       }
       yield* this.emitFallbackTurn(request, undefined, { reason: 'unknown', detail: 'empty answer' })
@@ -767,13 +766,7 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
         digest: request.digest,
         actionIdFactory: request.actionIdFactory,
       })
-      return {
-        replyText: fallback.replyText,
-        meta: fallback.meta,
-        mode: 'deterministic_fallback',
-        provider: 'deterministic',
-        model: 'deterministic-fallback',
-      }
+      return rulesResult(fallback.replyText, fallback.meta)
     }
     return finalResult
   }

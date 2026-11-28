@@ -3,7 +3,7 @@ import type { BaseLanguageModelInput } from '@langchain/core/language_models/bas
 import { AIMessageChunk, type BaseMessage } from '@langchain/core/messages'
 import { ChatGenerationChunk, type ChatResult } from '@langchain/core/outputs'
 import type { Runnable } from '@langchain/core/runnables'
-import { DEFAULT_AI_TURN_LIMITS, type AiRuntimeConfigService } from '../../src/ki/ai-runtime-config.service.js'
+import { DEFAULT_AI_TURN_LIMITS, type AiRuntimeConfigService } from '../../src/llm/ai-runtime-config.service.js'
 
 /** A model that answers each round with the prepared chunks and remembers what it was shown. */
 export class ScriptedModel extends BaseChatModel {

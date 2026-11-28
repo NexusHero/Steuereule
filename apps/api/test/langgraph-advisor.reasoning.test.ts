@@ -14,8 +14,8 @@ import {
   type AiProviderKind,
   type AiRuntimeConfigService,
   type ResolvedAiSlotConfig,
-} from '../src/ki/ai-runtime-config.service.js'
-import { createChatModelFromConfig } from '../src/ki/chat-model.factory.js'
+} from '../src/llm/ai-runtime-config.service.js'
+import { createChatModelFromConfig } from '../src/llm/chat-model.factory.js'
 import {
   buildStableSystemPrompt,
   withHistoryCacheBreakpoint,
@@ -214,7 +214,7 @@ describe('system prompt built for provider-side caching (#476)', () => {
   })
 
   it('marks the rules and the case as cache breakpoints for Anthropic, the case after the rules', () => {
-    const content = buildSystemMessage('anthropic', buildCaseBlock(digest)).content as Array<Record<string, unknown>>
+    const content = buildSystemMessage('anthropic', buildCaseBlock({ digest })).content as Array<Record<string, unknown>>
     expect(content).toHaveLength(2)
     expect(content[0]).toMatchObject({ type: 'text', text: buildStableSystemPrompt(), cache_control: { type: 'ephemeral' } })
     expect(content[1]!.cache_control).toEqual({ type: 'ephemeral' })
@@ -222,8 +222,8 @@ describe('system prompt built for provider-side caching (#476)', () => {
   })
 
   it('gives the other providers one string that starts with the identical stable prefix', () => {
-    const a = buildSystemMessage('google-genai', buildCaseBlock(digest)).content as string
-    const b = buildSystemMessage('openai', buildCaseBlock({ ...digest, childrenCount: 3 })).content as string
+    const a = buildSystemMessage('google-genai', buildCaseBlock({ digest })).content as string
+    const b = buildSystemMessage('openai', buildCaseBlock({ digest: { ...digest, childrenCount: 3 } })).content as string
     const stable = buildStableSystemPrompt()
     expect(a.startsWith(stable)).toBe(true)
     expect(b.startsWith(stable)).toBe(true)
@@ -233,7 +233,7 @@ describe('system prompt built for provider-side caching (#476)', () => {
   it('keeps what holds for one answer out of the cached case: a change of the mask leaves rules, case and history a stable prefix', () => {
     const history = [new HumanMessage('Frage'), new AIMessage('Antwort')]
     const turn = (screen: 'commute' | 'interview', grayZone: boolean) =>
-      buildTurnMessages(buildSystemMessage('anthropic', buildCaseBlock(digest)), history, describeTurnContext(screen, false, grayZone), 'Noch eine')
+      buildTurnMessages(buildSystemMessage('anthropic', buildCaseBlock({ digest })), history, describeTurnContext({ activeScreen: screen, grayZone }), 'Noch eine')
     const a = turn('commute', false)
     const b = turn('interview', true)
     // Everything up to the question is identical; only the question's first block differs.

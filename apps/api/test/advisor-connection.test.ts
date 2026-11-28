@@ -1,7 +1,7 @@
 // #488: what the owl's turns find out about the model is what the connection shows.
 import { describe, expect, it } from 'vitest'
-import { DEFAULT_AI_TURN_LIMITS, type AiRuntimeConfigService } from '../src/ki/ai-runtime-config.service.js'
-import { ModelConnectionService } from '../src/ki/model-connection.service.js'
+import { DEFAULT_AI_TURN_LIMITS, type AiRuntimeConfigService } from '../src/llm/ai-runtime-config.service.js'
+import { ModelConnectionService } from '../src/llm/model-connection.service.js'
 import { buildAdvisorTestKit, collect, doneEvent, ScriptedAdvisorEngine, type ScriptStep } from './fakes/advisor-test-kit.js'
 
 const USER = 'user-connection'

@@ -28,8 +28,8 @@ import {
   EnvAiRuntimeConfigService,
   type AiRuntimeConfigService,
   type AiTurnLimits,
-} from '../src/ki/ai-runtime-config.service.js'
-import { createChatModelFromConfig } from '../src/ki/chat-model.factory.js'
+} from '../src/llm/ai-runtime-config.service.js'
+import { createChatModelFromConfig } from '../src/llm/chat-model.factory.js'
 import { LangGraphAdvisorEngine } from '../src/ki/langgraph-advisor.engine.js'
 import { SAMPLE_DIGEST as sampleDigest } from './fixtures/sample-digest.js'
 import { BEARER_TOKEN_REPOSITORY } from '../src/auth/bearer-token.repository.js'

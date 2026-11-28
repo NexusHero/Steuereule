@@ -145,7 +145,7 @@ flowchart LR
 | Draft rows | The rows a draft may create are a registry by screen behind `DRAFT_RECORDS`: `ChildDraftRecords` from `children`, `RentalDraftRecords` from `rental` (interface `DraftRecordSource` in `common/`) |
 | Core | the owl's domain logic in `packages/core/src/interview/advisor*.ts`; `scrubUserMessagePii` before every model call |
 | Ports | `ADVISOR_ENGINE` (interface `AdvisorEnginePort` in the core), `ADVISOR_TOPIC_GUARD`, `ADVISOR_REPOSITORY`, `ADVISOR_RUN_LOG`, `TRANSACTION_RUNNER` |
-| Adapters | `LangGraphAdvisorEngine` and the other LangChain files in `ki/`; `advisor/run/advisor-run-log.redis.ts` |
+| Adapters | `LangGraphAdvisorEngine` and the other LangChain files in `ki/` and `llm/`; `run-log/run-log.redis.ts` (bound for the owl in `advisor/run/advisor-run-log.redis.ts`) |
 | Tables | `AdvisorConversation`, `AdvisorChatMessage` and others prefixed `Advisor` |
 
 `advisor` is the module with the most outgoing edges (24): the owl reads and drafts in almost every feature module. The owl's tools are in `ki/tools/` (23 files as of 2026-11-22).

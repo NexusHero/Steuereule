@@ -21,8 +21,8 @@ import {
 } from '@steuereule/core'
 import { AdvisorDocumentStaging } from '../../advisor/advisor-document-staging.js'
 import { AuditService } from '../../audit/audit.service.js'
-import { AI_RUNTIME_CONFIG_SERVICE, type AiRuntimeConfigService, type ResolvedAiSlotConfig } from '../../ki/ai-runtime-config.service.js'
-import { SINGLE_SHOT_MODEL_FACTORY, type SingleShotModelFactory } from '../../ki/single-shot-model.js'
+import { AI_RUNTIME_CONFIG_SERVICE, type AiRuntimeConfigService, type ResolvedAiSlotConfig } from '../../llm/ai-runtime-config.service.js'
+import { SINGLE_SHOT_MODEL_FACTORY, type SingleShotModelFactory } from '../../llm/single-shot-model.js'
 import { checkPiiFree } from '../../ki/ki.adapter.js'
 import type { ParseReceiptDto, ParseReceiptResponseDto, ParsedReceiptDataDto } from '../dto/parse-receipt.dto.js'
 import {

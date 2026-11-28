@@ -2,11 +2,11 @@
 import { describe, expect, it } from 'vitest'
 import { AuditService } from '../src/audit/audit.service.js'
 import { ChCertificateScanParseStrategy } from '../src/ch-certificate-scan/ch-certificate-scan.parse-strategy.js'
-import { DEFAULT_AI_TURN_LIMITS, type AiRuntimeConfigService } from '../src/ki/ai-runtime-config.service.js'
+import { DEFAULT_AI_TURN_LIMITS, type AiRuntimeConfigService } from '../src/llm/ai-runtime-config.service.js'
 import { DocumentParseRegistry } from '../src/receipt/parse/document-parse.registry.js'
 import { buildAdvisorTestKit } from './fakes/advisor-test-kit.js'
 import { FakeAuditRepository } from './fakes/fake-audit.repository.js'
-import { noSingleShotModel } from '../src/ki/single-shot-model.js'
+import { noSingleShotModel } from '../src/llm/single-shot-model.js'
 
 const USER = 'user-a'
 const YEAR = 2024

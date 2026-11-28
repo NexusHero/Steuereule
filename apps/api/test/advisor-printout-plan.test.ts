@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest'
 import type { AdvisorActionProposal, AdvisorMessageMeta } from '@steuereule/core'
 import { buildPrintoutPlan, draftsTakenOver, printoutFollowUp, stagedGapKeys } from '../src/advisor/advisor-printout-plan.js'
-import { buildCaseSystemPrompt, buildStableSystemPrompt } from '../src/ki/advisor-prompt.js'
+import { buildCaseBlock, buildStableSystemPrompt } from '../src/ki/advisor-prompt.js'
 import { emptyCaseDigest } from './fakes/empty-case-digest.js'
 
 const records = { kind: [{ handle: 'Kind 1', id: 'child-1' }, { handle: 'Kind 2', id: 'child-2' }], vermietung: [] }
@@ -100,7 +100,7 @@ const DIGEST = emptyCaseDigest(
 
 describe('the checklist in the prompt', () => {
   it('stands as its own list under the case, not inside the digest', () => {
-    const text = buildCaseSystemPrompt(DIGEST, undefined, false)
+    const text = buildCaseBlock({ digest: DIGEST })
     expect(text).toContain('Ausdruck-Checkliste')
     expect(text).toContain('- Du: Liegt das Depot bei einem deutschen Broker? → `interview.kap-depot`, Pflicht; du darfst den Entwurf vorbereiten')
     expect(text).not.toContain('"printoutPlan"')

@@ -4,7 +4,7 @@
 // vitest.eval.config.ts. A failing case is a finding to look at, not a broken build.
 import { describe, expect, it } from 'vitest'
 import type { AdvisorStreamEvent, AdvisorTurnResult } from '@steuereule/core'
-import { EnvAiRuntimeConfigService } from '../../src/ki/ai-runtime-config.service.js'
+import { EnvAiRuntimeConfigService } from '../../src/llm/ai-runtime-config.service.js'
 import { LangGraphAdvisorEngine } from '../../src/ki/langgraph-advisor.engine.js'
 import { SAMPLE_DIGEST as DIGEST } from '../fixtures/sample-digest.js'
 

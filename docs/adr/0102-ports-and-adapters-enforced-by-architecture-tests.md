@@ -3,7 +3,7 @@
 - **Status:** Accepted
 - **Date:** 2026-11-22
 - **Deciders:** NexusHero (Product Owner), SteuerEule Engineering
-- **Applies to:** `apps/api/test/architecture.test.ts`, `apps/api/test/architecture-module-edges.json`, `packages/core/src/architecture.test.ts`, `apps/api/src/ki/single-shot-model.ts`, `apps/api/src/auth/bearer-token.repository*.ts`, `apps/api/src/common/transaction-runner.ts`, `docs/architecture.md` §4.1
+- **Applies to:** `apps/api/test/architecture.test.ts`, `apps/api/test/architecture-module-edges.json`, `packages/core/src/architecture.test.ts`, `apps/api/src/llm/single-shot-model.ts`, `apps/api/src/auth/bearer-token.repository*.ts`, `apps/api/src/common/transaction-runner.ts`, `docs/architecture.md` §4.1
 - **Builds on:** ADR-0038 (deterministic core and KI port), ADR-0008 (field encryption), ADR-0021 (a control is proven by breaking it), ADR-0052 (assistant access over OAuth)
 
 ## Context
@@ -45,7 +45,7 @@ The test reads every static and dynamic import under `apps/api/src` and checks i
 | nodemailer | `nodemailer` | `auth/smtp-email-sender.ts` |
 | better-auth | `better-auth`, `@better-auth/*` | `auth/`, `device/` |
 | MCP SDK | `@modelcontextprotocol/*` | `mcp/` |
-| Redis client | `ioredis` | `advisor/run/advisor-run-log.redis.ts`, `advisor/advisor.module.ts` |
+| Redis client | `ioredis` | `run-log/run-log.redis.ts`, `advisor/run/advisor-run-log.redis.ts`, `advisor/advisor.module.ts` |
 | Playwright | `playwright-core` | `account/export/pdf-renderer.playwright.ts` |
 | pdf-lib | `pdf-lib` | `printout/form-renderer.ts` |
 | OpenTelemetry | `@opentelemetry/*` | `telemetry/` |
@@ -71,11 +71,11 @@ The same test computes every *module → module* edge (a module is a folder dire
 
 ### 4. New and cleaned-up ports
 
-- **`SingleShotModel`** (`ki/single-shot-model.ts`): one system prompt, one user message, text back, abortable with an `AbortSignal`. Four users: the parsers for receipts, the wage tax certificate and the Swiss salary certificate, and the topic guard. `KiModule` derives its factory from `CHAT_MODEL_FACTORY`, so both resolve a model slot the same way. The dependency is not optional: without a binding, Nest refuses to start.
+- **`SingleShotModel`** (`llm/single-shot-model.ts`): one system prompt, one user message, text back, abortable with an `AbortSignal`. Four users: the parsers for receipts, the wage tax certificate and the Swiss salary certificate, and the topic guard. `KiModule` derives its factory from `CHAT_MODEL_FACTORY`, so both resolve a model slot the same way. The dependency is not optional: without a binding, Nest refuses to start.
 - **`BearerTokenRepository`** (`auth/bearer-token.repository.ts`): three lookups for the guard. The guard still makes every decision itself (expired, revoked, client disabled, no consent).
 - **`TransactionRunner`** now lives in `common/transaction-runner.ts`, apart from `PrismaTransactionRunner`. Instead of `instanceof`, the simulation asks the port for `rollsBack` and `isActive()`.
 - **Ports own their types.** `DeleteAccountResult` is declared in the port `account-deletion.repository.ts`.
-- **Tokens without SDK baggage.** `ADVISOR_ENGINE` is in `ki/advisor-engine.token.ts`, `assertFakeKiNotInProduction` in `ki/fake-ki-env.ts`. Importing them no longer loads LangChain.
+- **Tokens without SDK baggage.** `ADVISOR_ENGINE` is in `ki/advisor-engine.token.ts`, `assertFakeKiNotInProduction` in `llm/fake-ki-env.ts`. Importing them no longer loads LangChain.
 - **Adapters say what they are.** `delete-account-transaction` and `guest-account-upgrade` are named `*.prisma.ts`.
 
 ## Alternatives considered
@@ -127,3 +127,24 @@ moved into the module `personal-data`, which imports only `common` and `prisma`,
 `link`, `submission` and `unlock` no longer import `account`. The guest takeover reaches the receipt files
 through `StoragePort.move` instead of the Postgres adapter class.
 
+## Update 2026-11-28: `llm/` and `run-log/` are modules of their own
+
+Two parts of the owl that know nothing about tax returns moved out of `ki/` and `advisor/`, so the edge
+baseline now guards the line between them and the tax-specific code:
+
+- **`llm/`**: the chat-model factory, the single-shot port and its LangChain adapter, the slot and limit
+  configuration, the model catalog, the connection check, the failure classification. It imports
+  `common` and no other module. The day's call budget reads a counter through the port
+  `ModelCallCounter` (`llm/model-call-counter.ts`); `KiModule` binds the shared rate-limit storage to it.
+  With a direct import of `auth`, `llm` joined the module cycle, and the cycle test failed.
+- **`run-log/`**: the run log port with its in-memory and Redis adapters, generic over the event type
+  and the run info. `advisor/run/advisor-run-log.ts` names the owl's types and keeps the Redis
+  namespace and key purpose the log used before, so instances of two releases read each other's runs.
+
+The scripted model for the `fake` provider stays in `ki/fake-chat-model.ts`, because its script speaks
+the owl's tools; `ki/advisor-chat-model.ts` hands it to the factory. `createChatModelFromConfig` in
+`llm/` builds provider models only.
+
+New edges in the baseline: `ki -> llm`, `advisor -> llm`, `receipt -> llm`, `lstb-scan -> llm`,
+`ch-certificate-scan -> llm`, `llm -> common`, `advisor -> run-log`, `run-log -> common`. No edge was
+removed and no module joined the cycle.
