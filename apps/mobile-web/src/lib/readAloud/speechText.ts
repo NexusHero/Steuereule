@@ -89,9 +89,30 @@ export function speechText(markdown: string, language: string): string {
   return text.replace(/\s+/g, ' ').replace(/ ([.,;:!?)])/g, '$1').replace(/\( /g, '(').trim()
 }
 
+/**
+ * `text` cut into sentences, each with the blanks after it. A sentence ends at `.`, `!`, `?` or `:` followed by
+ * a blank; a dot after a digit ends none, so "3.030 Euro" and "am 3. Mai" stay in one piece.
+ */
+export function sentencesOf(text: string): string[] {
+  const sentences: string[] = []
+  let start = 0
+  for (let i = 0; i < text.length; i += 1) {
+    const char = text[i]!
+    if (!'.!?:'.includes(char) || !/\s/.test(text[i + 1] ?? '')) continue
+    if (char === '.' && /\d/.test(text[i - 1] ?? '')) continue
+    let end = i + 1
+    while (end < text.length && /\s/.test(text[end]!)) end += 1
+    sentences.push(text.slice(start, end))
+    start = end
+    i = end - 1
+  }
+  if (start < text.length) sentences.push(text.slice(start))
+  return sentences
+}
+
 /** `text` in pieces a voice takes whole: sentences, joined while they fit, a long one cut at a space. */
 export function speechChunks(text: string, max: number = MAX_SPOKEN_CHUNK): string[] {
-  const sentences = text.match(/[^.!?:]+[.!?:]*\s*/g) ?? []
+  const sentences = sentencesOf(text)
   const chunks: string[] = []
   let current = ''
   const flush = (): void => {

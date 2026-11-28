@@ -47,10 +47,12 @@ describe('playing the owl\'s voice in the browser', () => {
   })
 
   it('unlocks the element with silence when it is made, so audio that arrives later may play', () => {
-    const { element, revoke } = stubAudio()
+    const { element, create, revoke } = stubAudio()
     browserAudioOutput()
-    expect(element().started).toHaveLength(1)
-    expect(element().started[0]).toMatch(/^data:audio\/wav;base64,/)
+    // As a blob: the page's Content Security Policy allows media from blobs, not from a data: address.
+    const silence = create.mock.calls[0]![0] as Blob
+    expect([silence.type, silence.size]).toEqual(['audio/wav', 44])
+    expect(element().started).toEqual(['blob:1'])
     // The end of that silence is the end of no piece.
     element().fire('ended')
     expect(revoke).not.toHaveBeenCalled()
@@ -60,10 +62,11 @@ describe('playing the owl\'s voice in the browser', () => {
     const { element, revoke } = stubAudio()
     const output = browserAudioOutput()!
     const done = output.play(new Blob(['a']))
-    expect(element().started[1]).toBe('blob:1')
+    expect(element().started[1]).toBe('blob:2')
+    expect(revoke).toHaveBeenCalledWith('blob:1')
     element().fire('ended')
     await expect(done).resolves.toBeUndefined()
-    expect(revoke).toHaveBeenCalledWith('blob:1')
+    expect(revoke).toHaveBeenCalledWith('blob:2')
   })
 
   it('rejects when the device cannot play the piece or refuses to', async () => {
@@ -83,8 +86,8 @@ describe('playing the owl\'s voice in the browser', () => {
     output.stop()
     await expect(done).resolves.toBeUndefined()
     expect(element().paused).toBe(1)
-    expect(revoke).toHaveBeenCalledTimes(1)
+    expect(revoke).toHaveBeenCalledTimes(2)
     element().fire('ended')
-    expect(revoke).toHaveBeenCalledTimes(1)
+    expect(revoke).toHaveBeenCalledTimes(2)
   })
 })

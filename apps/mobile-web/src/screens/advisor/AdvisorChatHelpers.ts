@@ -10,11 +10,12 @@ export const CHAT_COLUMN_MAX_WIDTH = 760
 export const PAGE_QUICK_CHIPS = 4
 
 /** The options as request fields, without keys that are unset (the DTO forbids explicit undefined). */
-export function sendOptionsToDto(options: ChatSendOptions | undefined): { quickAction?: AdvisorQuickAction; replaceFromMessageId?: string; skill?: AdvisorSkillId; turbo?: boolean; depth?: 'max' } {
+export function sendOptionsToDto(options: ChatSendOptions | undefined): { quickAction?: AdvisorQuickAction; replaceFromMessageId?: string; skill?: AdvisorSkillId; turbo?: boolean; depth?: 'max'; spoken?: boolean } {
   return {
     ...(options?.skill ? { skill: options.skill } : {}),
     ...(options?.turbo ? { turbo: true } : {}),
     ...(options?.depth === 'max' ? { depth: 'max' as const } : {}),
+    ...(options?.spoken ? { spoken: true } : {}),
     ...(options?.quickAction ? { quickAction: options.quickAction } : {}),
     ...(options?.replaceFromMessageId ? { replaceFromMessageId: options.replaceFromMessageId } : {}),
   }

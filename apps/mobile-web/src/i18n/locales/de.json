@@ -3100,6 +3100,30 @@
         "abgebrochen": "abgebrochen"
       }
     },
+    "conversation": {
+      "openAria": "Mit der Eule sprechen",
+      "title": "Mit der Eule sprechen",
+      "notice": "Was du sagst, geht zur Erkennung an den Sprachdienst und wird dort zu Text. Wir speichern die Aufnahme nicht. Der Text steht danach wie jede Nachricht im Chat.",
+      "start": "Gespräch starten",
+      "back": "Zurück zum Chat",
+      "end": "Beenden",
+      "done": "Fertig",
+      "interrupt": "Unterbrechen",
+      "state": {
+        "starting": "Mikrofon wird geöffnet …",
+        "listening": "Hört zu",
+        "hearing": "Hört dich",
+        "understanding": "Schreibt mit …",
+        "thinking": "Denkt nach …",
+        "speaking": "Spricht"
+      },
+      "problem": {
+        "microphone": "Das Mikrofon ist nicht freigegeben. Erlaube es im Browser und starte noch einmal.",
+        "understanding": "Das habe ich nicht verstanden. Sag es bitte noch einmal.",
+        "answer": "Die Antwort ist nicht angekommen. Sag es bitte noch einmal.",
+        "voice": "Die Stimme ist gerade nicht erreichbar. Die Antwort steht im Chat."
+      }
+    },
     "chat": {
       "sender": "Die Eule",
       "heading": "Steuer-Assistent",

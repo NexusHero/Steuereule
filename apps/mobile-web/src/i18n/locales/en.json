@@ -3100,6 +3100,30 @@
         "abgebrochen": "stopped"
       }
     },
+    "conversation": {
+      "openAria": "Talk to the owl",
+      "title": "Talk to the owl",
+      "notice": "What you say goes to the speech service to be turned into text. We do not keep the recording. The text then stands in the chat like any message.",
+      "start": "Start conversation",
+      "back": "Back to the chat",
+      "end": "End",
+      "done": "Done",
+      "interrupt": "Interrupt",
+      "state": {
+        "starting": "Opening the microphone …",
+        "listening": "Listening",
+        "hearing": "Hearing you",
+        "understanding": "Writing it down …",
+        "thinking": "Thinking …",
+        "speaking": "Speaking"
+      },
+      "problem": {
+        "microphone": "The microphone is not allowed. Allow it in the browser and start again.",
+        "understanding": "I did not catch that. Please say it again.",
+        "answer": "The answer did not arrive. Please say it again.",
+        "voice": "The voice cannot be reached right now. The answer is in the chat."
+      }
+    },
     "chat": {
       "sender": "The Owl",
       "heading": "Tax Assistant",

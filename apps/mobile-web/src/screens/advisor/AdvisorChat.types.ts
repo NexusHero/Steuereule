@@ -55,6 +55,10 @@ export interface AdvisorChatPanelProps {
   readonly basisMode?: boolean | undefined
   /** Resolves `false` when the message did not reach the owl: the composer keeps the text (WEB-14). */
   readonly onSendMessage: (text: string, options?: ChatSendOptions) => Promise<boolean | void> | boolean | void
+  /** Opens the spoken conversation (ADR-0115); without it the chat offers none. */
+  readonly onOpenConversation?: (() => void) | undefined
+  /** Drawn over the chat, e.g. the spoken conversation. */
+  readonly overlay?: ReactNode | undefined
   /** On-device dictation (#451 slice 5); the browser engine unless a test passes its own. */
   readonly dictationEngine?: DictationEngine | undefined
   /** The plan of the current or last answer (#451 slice 6). */
@@ -110,6 +114,8 @@ export interface ChatSendOptions {
   readonly turbo?: boolean | undefined
   /** Max instead of Gründlich for this one message (ADR-0096). */
   readonly depth?: 'max' | undefined
+  /** The message was spoken and the answer is read aloud (ADR-0115). */
+  readonly spoken?: boolean | undefined
 }
 
 export interface AdvisorChatOpening {

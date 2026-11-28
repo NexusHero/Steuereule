@@ -48,6 +48,8 @@ export function AdvisorChatPanel({
   abortedTurn = null,
   plan = null,
   dictationEngine = browserDictationEngine,
+  onOpenConversation,
+  overlay,
   onApplyAction,
   onUndoAction,
   onDismissAction,
@@ -212,6 +214,7 @@ export function AdvisorChatPanel({
       context={context}
       onSummarize={onSummarize}
       onStop={onStop}
+      onOpenConversation={onOpenConversation}
       onAttachReceipt={onAttachReceipt}
       onAttachReceiptFile={onAttachReceiptFile}
       isSending={isSending}
@@ -250,6 +253,7 @@ export function AdvisorChatPanel({
             {footnote}
           </Text>
         ) : null}
+        {overlay}
       </View>
     )
   }

@@ -18,7 +18,7 @@ import { NARROW_COMPOSER_WIDTH, appendTranscript, slashCommandList } from './Adv
 
 type AdvisorChatComposerProps = Pick<
   AdvisorChatPanelProps,
-  'models' | 'chatModel' | 'onPickModel' | 'situationChip' | 'context' | 'onSummarize' | 'onStop' | 'onAttachReceipt' | 'onAttachReceiptFile'
+  'models' | 'chatModel' | 'onPickModel' | 'situationChip' | 'context' | 'onSummarize' | 'onStop' | 'onOpenConversation' | 'onAttachReceipt' | 'onAttachReceiptFile'
 > & {
   readonly chat: AdvisorChatState
   readonly isSending: boolean
@@ -37,6 +37,7 @@ export function AdvisorChatComposer({
   context,
   onSummarize,
   onStop,
+  onOpenConversation,
   onAttachReceipt,
   onAttachReceiptFile,
   isSending,
@@ -130,6 +131,19 @@ export function AdvisorChatComposer({
           <>
             {context ? <ContextRing context={context} onSummarize={onSummarize} busy={isSending} /> : null}
             {microphone}
+            {onOpenConversation ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={tr('advisor.conversation.openAria')}
+                accessibilityState={{ disabled: isSending }}
+                disabled={isSending}
+                onPress={onOpenConversation}
+                style={styles.attachButton}
+                testID="advisor-conversation-open"
+              >
+                <ChatIcon name="conversation" color={theme.color.tinte} />
+              </Pressable>
+            ) : null}
           </>
         }
       />

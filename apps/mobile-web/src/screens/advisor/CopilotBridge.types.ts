@@ -59,6 +59,8 @@ export interface SendStreamingOptions {
   readonly turbo?: boolean | undefined
   /** Max instead of Gründlich for this one message (ADR-0096). */
   readonly depth?: 'max' | undefined
+  /** The message was spoken and the answer is read aloud (ADR-0115). */
+  readonly spoken?: boolean | undefined
 }
 
 /** Messages on success, `null` on a failure (shown via `chatError`), `'aborted'` when the user stopped. */

@@ -59,8 +59,10 @@ describe('the plan of an answer', () => {
 describe('the body of a streamed message', () => {
   it('sends only what is set, the conversation last', () => {
     expect(streamMessageBody('Hallo', undefined, undefined, null)).toEqual({ message: 'Hallo' })
+    // Every option of a message travels with the streamed request too.
+    expect(streamMessageBody('Hallo', undefined, { spoken: true, turbo: true, depth: 'max', skill: 'grill-me' as never }, 'c1')).toEqual({ message: 'Hallo', spoken: true, turbo: true, depth: 'max', skill: 'grill-me', conversationId: 'c1' })
     const body = streamMessageBody('Hallo', 'lstb' as never, { quickAction: 'savings_plan', replaceFromMessageId: 'm1', skill: 'grill-me' as never, turbo: true, depth: 'max' }, 'c1')
-    expect(Object.keys(body)).toEqual(['message', 'activeScreen', 'quickAction', 'replaceFromMessageId', 'skill', 'turbo', 'depth', 'conversationId'])
+    expect(Object.keys(body)).toEqual(['message', 'activeScreen', 'skill', 'turbo', 'depth', 'quickAction', 'replaceFromMessageId', 'conversationId'])
     expect(body.depth).toBe('max')
   })
 })

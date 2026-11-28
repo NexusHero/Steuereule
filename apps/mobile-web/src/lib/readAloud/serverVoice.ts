@@ -22,8 +22,12 @@ interface AudioElement {
   pause(): void
 }
 
-/** The shortest valid WAV: playing it in the press unlocks the element for the audio that follows. */
-const SILENCE = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YQAAAAA='
+/**
+ * The shortest valid WAV (a header, no samples): playing it in the press unlocks the element for the audio
+ * that follows. Handed to the element as a blob: the page's Content Security Policy lets media come from
+ * itself and from blobs, not from a data: address.
+ */
+const SILENCE = Uint8Array.from([0x52, 0x49, 0x46, 0x46, 36, 0, 0, 0, 0x57, 0x41, 0x56, 0x45, 0x66, 0x6d, 0x74, 0x20, 16, 0, 0, 0, 1, 0, 1, 0, 0x40, 0x1f, 0, 0, 0x80, 0x3e, 0, 0, 2, 0, 16, 0, 0x64, 0x61, 0x74, 0x61, 0, 0, 0, 0])
 
 export function browserAudioOutput(): AudioOutput | null {
   const scope = globalThis as unknown as { Audio?: new () => AudioElement; URL?: { createObjectURL?: (blob: Blob) => string; revokeObjectURL?: (url: string) => void } }
@@ -41,7 +45,8 @@ export function browserAudioOutput(): AudioOutput | null {
   // Only the piece that is playing has a `settle`: the end of the unlocking silence or of a stopped piece is nobody's.
   element.addEventListener('ended', () => settle?.())
   element.addEventListener('error', () => settle?.(new Error('audio playback failed')))
-  element.src = SILENCE
+  current = create(new Blob([SILENCE], { type: 'audio/wav' }))
+  element.src = current
   void element.play().catch(() => undefined)
   return {
     play(audio) {

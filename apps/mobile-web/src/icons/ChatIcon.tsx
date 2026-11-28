@@ -4,6 +4,7 @@ import { Svg, Path } from 'react-native-svg'
 export const CHAT_ICON_PATHS = {
   microphone: 'M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3z M5.5 11.5a6.5 6.5 0 0 0 13 0 M12 18v3',
   send: 'M12 19V5 M6 11l6-6 6 6',
+  conversation: 'M4 10v4 M8 7v10 M12 4v16 M16 7v10 M20 10v4',
   attach: 'M20 11.5l-8.2 8.2a5 5 0 0 1-7.1-7.1l8.5-8.5a3.4 3.4 0 0 1 4.8 4.8l-8.5 8.5a1.8 1.8 0 0 1-2.5-2.5l7.8-7.8',
 } as const
 

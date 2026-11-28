@@ -1,4 +1,5 @@
-import { Pressable, Text } from 'react-native'
+import { useState } from 'react'
+import { Platform, Pressable, Text } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { LEGAL_STATUS_DATE } from '@steuereule/core'
 import { APP_NS } from '../../i18n/resources'
@@ -12,6 +13,10 @@ import type { makeStyles } from './OwlModeScreen.styles'
 import type { OwlModeScreenProps } from './OwlModeScreen'
 import type { OwlModeScreenState } from './useOwlModeScreen'
 import { formatLegalDate, situationWith } from './OwlModeHelpers'
+import { ConversationMode } from './conversation/ConversationMode'
+import { hearOnServer } from './conversation/useConversation'
+import { browserMicrophone, canRecord } from '../../lib/conversation/microphone'
+import { useOwlVoice } from '../../lib/readAloud/useOwlVoice'
 
 type OwlModeChatProps = Pick<
   OwlModeScreenProps,
@@ -69,8 +74,23 @@ export function OwlModeChat({
     handleInspectMask,
     handleAttachReceipt,
   } = owl
+  // A spoken conversation needs the owl's voice from the server and a browser that can record (ADR-0115).
+  const voice = useOwlVoice()
+  const [conversationOpen, setConversationOpen] = useState(false)
+  const canConverse = voice !== null && Platform.OS === 'web' && canRecord()
+  const lastAnswer = displayedMessages.filter((message) => message.role === 'assistant').at(-1)
   return (
     <AdvisorChatPanel
+      onOpenConversation={canConverse ? () => setConversationOpen(true) : undefined}
+      overlay={
+        conversationOpen && voice !== null ? (
+          <ConversationMode
+            deps={{ microphone: browserMicrophone, hear: hearOnServer, voice, send: (text) => handleSendChat(text, { spoken: true }), stopAnswer: bridge?.stopStreaming, language: i18n.language }}
+            answer={{ text: effectiveSending ? (bridge?.streamedText ?? '') : (lastAnswer?.content ?? ''), running: effectiveSending, answerId: lastAnswer?.id ?? null }}
+            onClose={() => setConversationOpen(false)}
+          />
+        ) : undefined
+      }
       models={models}
       chatModel={chatModel}
       onPickModel={onPickModel ? (model) => void onPickModel(model) : undefined}

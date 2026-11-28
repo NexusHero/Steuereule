@@ -1,4 +1,5 @@
 import type { AdvisorActionProposal, AdvisorChatMessageView, AdvisorThoughtStep, Screen } from '@steuereule/core'
+import { sendOptionsToDto } from './AdvisorChatHelpers'
 import type {
   AbortedTurn,
   AdvisorPlanView,
@@ -83,11 +84,9 @@ export function streamMessageBody(message: string, activeScreen: Screen | undefi
   return {
     message,
     ...(activeScreen ? { activeScreen } : {}),
-    ...(options?.quickAction ? { quickAction: options.quickAction } : {}),
-    ...(options?.replaceFromMessageId ? { replaceFromMessageId: options.replaceFromMessageId } : {}),
-    ...(options?.skill ? { skill: options.skill } : {}),
-    ...(options?.turbo ? { turbo: true } : {}),
-    ...(options?.depth === 'max' ? { depth: 'max' } : {}),
+    // The same fields as the request without streaming: an option that travelled with one and not the other
+    // (`spoken`, 28.11.2026) changed nothing in the answer.
+    ...sendOptionsToDto(options),
     ...(conversationId ? { conversationId } : {}),
   }
 }
