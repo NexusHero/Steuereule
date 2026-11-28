@@ -106,6 +106,9 @@ export interface PreparedAdvisorTurn {
   readonly opening?: { readonly marker: NonNullable<AdvisorMessageMeta['opening']>; readonly context: import('./advisor-opening.js').OpeningContext } | undefined
 }
 
+/** Said when an answer broke off on the server: by the turn itself, and by the run when the turn threw. */
+export const TURN_FAILED_MESSAGE = 'Die Antwort der Eule ist unterwegs abgebrochen. Bitte versuche es erneut.'
+
 /** More conversations in one year than anyone can keep apart are a list nobody reads. */
 /** An answer older than this that is still `streaming` is an orphan, not a running answer: it must not block its conversation. */
 export const ANSWERING_WINDOW_MS = 5 * 60_000

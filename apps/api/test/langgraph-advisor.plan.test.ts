@@ -8,8 +8,8 @@ import type { Runnable } from '@langchain/core/runnables'
 import type { BaseLanguageModelInput } from '@langchain/core/language_models/base'
 import { describe, expect, it } from 'vitest'
 import type { AdvisorStreamEvent } from '@steuereule/core'
-import { DEFAULT_AI_TURN_LIMITS, type AiRuntimeConfigService } from '../src/ki/ai-runtime-config.service.js'
-import { buildCaseBlock, buildCaseSystemPrompt, buildStableSystemPrompt, buildSystemMessage } from '../src/ki/advisor-prompt.js'
+import { DEFAULT_AI_TURN_LIMITS, type AiRuntimeConfigService } from '../src/llm/ai-runtime-config.service.js'
+import { buildCaseBlock, buildStableSystemPrompt, buildSystemMessage } from '../src/ki/advisor-prompt.js'
 import { LangGraphAdvisorEngine } from '../src/ki/langgraph-advisor.engine.js'
 import { SAMPLE_DIGEST as digest } from './fixtures/sample-digest.js'
 
@@ -161,16 +161,16 @@ describe('open steps of the last plan (the owl keeps every point of a long messa
   ]
 
   it('puts them into the case part of the prompt with the instruction to work them first and drop none', () => {
-    const prompt = buildCaseSystemPrompt(digest, undefined, false, undefined, undefined, undefined, undefined, undefined, undefined, undefined, false, undefined, '2026-03-01', undefined, open)
+    const prompt = buildCaseBlock({ digest, today: '2026-03-01', openPlan: open })
     expect(prompt).toContain('Offen aus deinem letzten Plan:')
     expect(prompt).toContain('- Krankenversicherung von Person B erfassen')
     expect(prompt).toContain('- Spenden erfassen')
     expect(prompt).toContain('`plan_steps`')
-    expect(buildCaseSystemPrompt(digest, undefined, false)).not.toContain('Offen aus deinem letzten Plan')
+    expect(buildCaseBlock({ digest })).not.toContain('Offen aus deinem letzten Plan')
   })
 
   it('leaves the cached rules byte-identical: the open plan travels in the case block behind them', () => {
-    const caseBlock = buildCaseBlock(digest, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, open)
+    const caseBlock = buildCaseBlock({ digest, openPlan: open })
     const content = buildSystemMessage('anthropic', caseBlock).content as Array<{ text: string }>
     expect(content[0]!.text).toBe(buildStableSystemPrompt())
     expect(content[1]!.text).toContain('Offen aus deinem letzten Plan:')

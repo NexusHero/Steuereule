@@ -228,9 +228,6 @@ export function ConnectedOwlModeScreen({ onDone = () => {}, onBack, taxYear = ru
       taxYear={taxYear}
       initialCards={cards}
       initialMessages={serverMessages}
-      partnerName={partnerName}
-      ownName={ownName}
-      jointReturn={jointReturn}
       optInEnabled={settingQuery.data.data.enabled}
       onToggleOptIn={reported(async (enabled: boolean) => {
         await setSetting.mutateAsync({ data: { enabled } })
@@ -248,14 +245,6 @@ export function ConnectedOwlModeScreen({ onDone = () => {}, onBack, taxYear = ru
       onChooseProfession={async (profession) => {
         await postAnswer.mutateAsync({ jahr: taxYear, data: { questionId: 'beruf', value: profession } })
         await invalidate()
-      }}
-      onRateMessage={async (messageId, rating, reason) => {
-        await setFeedbackMutation.mutateAsync({
-          jahr: taxYear,
-          messageId,
-          data: { rating, ...(reason !== undefined ? { reason } : {}) },
-        })
-        await queryClient.invalidateQueries({ queryKey: getAdvisorControllerGetSessionQueryKey(taxYear) })
       }}
       context={session?.context}
       onSummarize={async () => {
@@ -276,10 +265,6 @@ export function ConnectedOwlModeScreen({ onDone = () => {}, onBack, taxYear = ru
         await deleteNoteMutation.mutateAsync({ jahr: taxYear, noteId: id })
         await invalidate()
       }}
-      onUndoNoteChange={async (messageId, index) => {
-        await undoNoteChangeMutation.mutateAsync({ jahr: taxYear, messageId, index })
-        await invalidate()
-      }}
       situation={session ? (session.situation?.text ?? '') : undefined}
       onSaveSituation={async (text) => {
         await saveSituationMutation.mutateAsync({ jahr: taxYear, data: { text } })
@@ -298,16 +283,16 @@ export function ConnectedOwlModeScreen({ onDone = () => {}, onBack, taxYear = ru
       connection={connectionView}
       onRecheckConnection={() => connectionQuery.refetch()}
       conversations={session?.conversations}
-      models={modelsQuery.data?.data ?? null}
-      chatModel={session?.conversations?.find((c) => c.id === session.conversationId)?.chatModel ?? null}
-      onPickModel={
-        session
-          ? reported(async (model: Parameters<NonNullable<OwlModeScreenProps['onPickModel']>>[0]) => {
+      model={{
+        models: modelsQuery.data?.data ?? null,
+        chatModel: session?.conversations?.find((c) => c.id === session.conversationId)?.chatModel ?? null,
+        onPickModel: session
+          ? reported(async (model: Parameters<NonNullable<NonNullable<OwlModeScreenProps['model']>['onPickModel']>>[0]) => {
               await setConversationModelMutation.mutateAsync({ jahr: taxYear, conversationId: session.conversationId, data: model ?? { provider: null, model: null } })
               await invalidate()
             })
-          : undefined
-      }
+          : undefined,
+      }}
       onSearchConversations={searchConversations}
       activeConversationId={session?.conversationId ?? null}
       onSelectConversation={(id) => selectConversation(id)}
@@ -347,28 +332,45 @@ export function ConnectedOwlModeScreen({ onDone = () => {}, onBack, taxYear = ru
         await invalidate()
         return true
       }}
-      onApplyAction={async (actionId) => {
-        if (bridge) {
-          await bridge.applySingleAction(actionId)
-          return
-        }
-        await applyActionMutation.mutateAsync({ jahr: taxYear, actionId })
-        await invalidate()
-      }}
-      onDismissAction={reported(
-        async (actionId: string) => {
-          await dismissActionMutation.mutateAsync({ jahr: taxYear, actionId })
+      drafts={{
+        partnerName,
+        ownName,
+        jointReturn,
+        onApplyAction: async (actionId) => {
+          if (bridge) {
+            await bridge.applySingleAction(actionId)
+            return
+          }
+          await applyActionMutation.mutateAsync({ jahr: taxYear, actionId })
           await invalidate()
         },
-        { rethrow: true },
-      )}
-      onUndoAction={async (actionId) => {
-        if (bridge) {
-          await bridge.undoSingleAction(actionId)
-          return
-        }
-        await undoActionMutation.mutateAsync({ jahr: taxYear, actionId })
-        await invalidate()
+        onDismissAction: reported(
+          async (actionId: string) => {
+            await dismissActionMutation.mutateAsync({ jahr: taxYear, actionId })
+            await invalidate()
+          },
+          { rethrow: true },
+        ),
+        onUndoAction: async (actionId) => {
+          if (bridge) {
+            await bridge.undoSingleAction(actionId)
+            return
+          }
+          await undoActionMutation.mutateAsync({ jahr: taxYear, actionId })
+          await invalidate()
+        },
+        onRateMessage: async (messageId, rating, reason) => {
+          await setFeedbackMutation.mutateAsync({
+            jahr: taxYear,
+            messageId,
+            data: { rating, ...(reason !== undefined ? { reason } : {}) },
+          })
+          await queryClient.invalidateQueries({ queryKey: getAdvisorControllerGetSessionQueryKey(taxYear) })
+        },
+        onUndoNoteChange: async (messageId, index) => {
+          await undoNoteChangeMutation.mutateAsync({ jahr: taxYear, messageId, index })
+          await invalidate()
+        },
       }}
     />
     </OwlVoiceContext.Provider>

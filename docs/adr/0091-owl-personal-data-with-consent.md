@@ -163,3 +163,20 @@ The Günstigerprüfung (most-favorable comparison) calculates with the entitleme
 - `advisor-child-through-chat.test.ts` goes the path with the real LangGraph run and the script model: card, consent, child with all amounts, estimate. The same case through the children screen gives the same estimate.
 - The card may appear more often than necessary, for example when the user only mentions a child in passing. That is intended: „Nicht erlauben“ hides it, and a missing card was the more costly error.
 - **Open in the calculation core:** A child's health insurance (`healthBasicEur`, `careEur`) does not flow into the Vorsorgeaufwand (provision expenses) of the estimate. The child allowance is not reduced by months for a child born in the tax year; Kindergeld is.
+
+## Addendum (2026-11-28) — the masking is shown
+
+Without the consent the model reads a user's message masked, while the message is stored and shown
+as written. Which parts were masked was invisible. Now `maskedSpans(original, sent)`
+(`packages/core/src/common/masked-spans.ts`) aligns the two texts word by word, and the ranges that
+differ are kept in the user message's `meta.masked` as positions and stand-ins, never values. They
+are fixed when the message is sent, so a later consent does not unmark what was masked at the time.
+The chat strikes these ranges through in the user's own bubble with one line under it; a spoken
+conversation does the same in what was said (ADR-0115) and adds that the speech service heard it,
+because there the recording has left the device before the masking runs. A range the model read as
+something that says more than "taken out" (the spouse as „Person B“, a birthdate as an age) shows
+that replacement.
+
+The marking shows what the masking did. It does not show what the masking missed: a name that is
+not in the profile and has no honorific in front of it goes out as written and is not marked.
+

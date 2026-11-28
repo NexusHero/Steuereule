@@ -100,7 +100,7 @@ describe('production configuration at boot (beta P1)', () => {
   })
 
   it('decision 4: a deployment refuses a model base URL, which would reach a provider no text names', () => {
-    const ai = readFileSync(fileURLToPath(new URL('../../src/ki/ai-runtime-config.service.ts', import.meta.url)), 'utf8')
+    const ai = readFileSync(fileURLToPath(new URL('../../src/llm/ai-runtime-config.service.ts', import.meta.url)), 'utf8')
     // Every base-URL variable the model configuration reads is one the check refuses.
     const read = [...ai.matchAll(/this\.env\.([A-Z_]*BASE_URL)\b/g)].map((match) => match[1] ?? '')
     expect([...new Set(read)].sort()).toEqual([...MODEL_BASE_URL_OVERRIDES].sort())

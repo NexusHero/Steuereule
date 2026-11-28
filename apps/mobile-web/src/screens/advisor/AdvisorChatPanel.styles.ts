@@ -72,6 +72,8 @@ export function makeStyles(t: UiTheme) {
       fontSize: t.size.m,
       color: t.color.grund,
     } as TextStyle,
+    // Under the user's own bubble, on its side: what the strike-through in it means.
+    maskedNote: { ...t.type.small, color: t.color.tinte2, alignSelf: 'flex-end', maxWidth: '85%', textAlign: 'right' } as TextStyle,
     assistantBubble: {
       padding: t.space.s4,
       borderRadius: t.radius.m,

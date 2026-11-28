@@ -4,9 +4,9 @@ import { BaseChatModel } from '@langchain/core/language_models/chat_models'
 import { AIMessage, type BaseMessage } from '@langchain/core/messages'
 import type { ChatResult } from '@langchain/core/outputs'
 import { describe, expect, it } from 'vitest'
-import { EnvAiRuntimeConfigService, type ResolvedAiSlotConfig } from '../src/ki/ai-runtime-config.service.js'
+import { EnvAiRuntimeConfigService, type ResolvedAiSlotConfig } from '../src/llm/ai-runtime-config.service.js'
 import { AdvisorTopicGuard, GUARD_HISTORY_ENTRIES } from '../src/ki/advisor-topic-guard.js'
-import { singleShotFromChatModel } from '../src/ki/langchain-single-shot.adapter.js'
+import { singleShotFromChatModel } from '../src/llm/langchain-single-shot.adapter.js'
 
 class AnsweringModel extends BaseChatModel {
   public seen: BaseMessage[] = []

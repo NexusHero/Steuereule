@@ -29,7 +29,7 @@ const SALARY_DRAFT: AdvisorActionProposal = {
 
 function Card({ action }: { readonly action: AdvisorActionProposal }) {
   const styles = makeStyles(useTheme())
-  return <ActionProposalCardView action={action} onSelectSource={vi.fn()} styles={styles} />
+  return <ActionProposalCardView action={action} drafts={{}} onSelectSource={vi.fn()} styles={styles} />
 }
 
 describe('ActionProposalCardView', () => {

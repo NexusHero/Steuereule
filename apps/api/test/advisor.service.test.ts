@@ -1,7 +1,7 @@
 import type { AdvisorEnginePort } from '@steuereule/core'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { buildAdvisorTestKit, type AdvisorTestFacade, type AdvisorTestKit } from './fakes/advisor-test-kit.js'
-import { DEFAULT_AI_TURN_LIMITS } from '../src/ki/ai-runtime-config.service.js'
+import { DEFAULT_AI_TURN_LIMITS } from '../src/llm/ai-runtime-config.service.js'
 import type { TransactionRunner } from '../src/common/transaction-runner.js'
 import { InMemoryAdvisorRepository } from '../src/advisor/advisor.repository.js'
 import { ConfirmationService } from '../src/confirmation/confirmation.service.js'

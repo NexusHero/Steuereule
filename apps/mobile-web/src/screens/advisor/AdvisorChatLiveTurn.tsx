@@ -1,30 +1,24 @@
 import { Pressable, Text, View } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { AiChip, Card } from '@steuereule/ui'
-import type { AdvisorChatMessageView, AdvisorThoughtStep } from '@steuereule/core'
 import { APP_NS } from '../../i18n/resources'
 import { MarkdownMessage } from './chat/MarkdownMessage'
+import { MaskedNote, MaskedText } from './chat/MaskedText'
 import { ThoughtBlock } from './chat/ThoughtBlock'
 import { PlanChecklist } from './chat/PlanChecklist'
-import type { AbortedTurn, AdvisorPlanView } from './CopilotBridgeProvider'
+import type { AdvisorChatLiveStream } from './AdvisorChat.types'
 import type { makeStyles } from './AdvisorChatPanel.styles'
 import type { AdvisorChatState } from './useAdvisorChat'
 
 interface AdvisorChatLiveTurnProps {
   readonly chat: AdvisorChatState
-  readonly isSending: boolean
-  readonly pendingUserMessage: AdvisorChatMessageView | null
-  readonly plan: AdvisorPlanView | null
-  readonly abortedTurn: AbortedTurn | null
-  readonly streamSteps: readonly AdvisorThoughtStep[]
-  readonly streamedText: string
-  readonly streamedReasoning: string
-  readonly reconnecting: boolean
+  readonly stream: AdvisorChatLiveStream
   readonly styles: ReturnType<typeof makeStyles>
 }
 
 /** The running turn under the stored list: its question, plan, thoughts and text, or what is left after Stop. */
-export function AdvisorChatLiveTurn({ chat, isSending, pendingUserMessage, plan, abortedTurn, streamSteps, streamedText, streamedReasoning, reconnecting, styles }: AdvisorChatLiveTurnProps) {
+export function AdvisorChatLiveTurn({ chat, stream, styles }: AdvisorChatLiveTurnProps) {
+  const { isSending, pendingUserMessage, plan, abortedTurn, streamSteps, streamedText, streamedReasoning, reconnecting } = stream
   const { t: tr } = useTranslation(APP_NS)
   const { showPendingUser, lastIsStoredInterrupted, setSelectedSource, handleSubmit } = chat
   return (
@@ -32,8 +26,9 @@ export function AdvisorChatLiveTurn({ chat, isSending, pendingUserMessage, plan,
       {showPendingUser && pendingUserMessage !== null ? (
         <View style={styles.userTurn}>
           <View style={styles.userBubble} testID="advisor-user-message">
-            <Text style={styles.userBubbleText}>{pendingUserMessage.content}</Text>
+            <MaskedText text={pendingUserMessage.content} spans={pendingUserMessage.meta?.masked} style={styles.userBubbleText} />
           </View>
+          <MaskedNote spans={pendingUserMessage.meta?.masked} style={styles.maskedNote} />
         </View>
       ) : null}
 

@@ -9,6 +9,7 @@ import { useStickToBottom } from './chat/useStickToBottom'
 import { APP_NS } from '../../i18n/resources'
 import { makeStyles } from './AdvisorChatPanel.styles'
 import type { AdvisorChatPanelProps } from './AdvisorChat.types'
+import { liveStream } from './AdvisorChatHelpers'
 import { useAdvisorChat } from './useAdvisorChat'
 import { AdvisorChatMessage } from './AdvisorChatMessage'
 import { AdvisorChatLiveTurn } from './AdvisorChatLiveTurn'
@@ -17,55 +18,35 @@ import { AdvisorChatReceiptNotice, AdvisorChatReceiptPanel } from './AdvisorChat
 import { AdvisorChatLawSource } from './AdvisorChatLawSource'
 import { AdvisorChatComposer } from './AdvisorChatComposer'
 export { makeStyles } from './AdvisorChatPanel.styles'
-export type { AdvisorChatOpening, AdvisorChatPanelProps, AdvisorQuickChip, ChatSendOptions } from './AdvisorChat.types'
+export type {
+  AdvisorChatDrafts,
+  AdvisorChatModel,
+  AdvisorChatOpening,
+  AdvisorChatPanelProps,
+  AdvisorChatReceipts,
+  AdvisorChatStream,
+  AdvisorQuickChip,
+  ChatSendOptions,
+} from './AdvisorChat.types'
 export { CHAT_COLUMN_MAX_WIDTH, PAGE_QUICK_CHIPS, isOpeningPlaceholder, sendOptionsToDto } from './AdvisorChatHelpers'
 
 export function AdvisorChatPanel({
-  models,
-  chatModel,
-  onPickModel,
+  model = {},
+  stream: streamProp,
+  drafts = {},
+  receipts = {},
   greeting,
   messages: allMessages,
   quickChips = [],
   situationChip,
   footnote,
-  isSending = false,
-  streamSteps = [],
-  streamedText = '',
-  streamedReasoning = '',
-  pendingUserMessage = null,
-  reconnecting = false,
   opening,
   context,
   onSummarize,
-  onUndoNoteChange,
-  onAcceptSituationSuggestion,
-  onRateMessage,
-  chatError = null,
-  basisMode = false,
   onSendMessage,
-  onStop,
-  abortedTurn = null,
-  plan = null,
   dictationEngine = browserDictationEngine,
-  onApplyAction,
-  onUndoAction,
-  onDismissAction,
-  onInspectMask,
-  receiptLinkedActionIds,
-  partnerName,
-  ownName,
-  jointReturn,
-  onAttachReceipt,
-  onAttachReceiptFile,
-  receiptProgress = null,
-  receiptNotice = null,
-  receiptAssignment,
-  receiptResults,
-  onReceiptBatchStart,
-  receiptQueuePaused = false,
-  receiptSources,
-  isParsingReceipt = false,
+  onOpenConversation,
+  overlay,
   compact = false,
   variant = 'panel',
 }: AdvisorChatPanelProps) {
@@ -73,39 +54,18 @@ export function AdvisorChatPanel({
   const theme = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const styles = makeStyles(theme)
+  const stream = liveStream(streamProp)
+  const { isSending, chatError, basisMode } = stream
+  const { onAttachReceipt, onAttachReceiptFile } = receipts
   const chat = useAdvisorChat({
-    models,
-    chatModel,
+    model,
     allMessages,
-    isSending,
-    pendingUserMessage,
-    abortedTurn,
-    plan,
+    stream,
+    receipts,
     dictationEngine,
     onSendMessage,
-    onAttachReceipt,
-    onAttachReceiptFile,
-    onReceiptBatchStart,
-    receiptQueuePaused,
-    isParsingReceipt,
   })
   const { messages, isEmpty, receiptOpen, selectedSource, setSelectedSource } = chat
-  const answerContext = {
-    models,
-    chatModel,
-    onApplyAction,
-    onUndoAction,
-    onDismissAction,
-    onInspectMask,
-    receiptLinkedActionIds,
-    partnerName,
-    ownName,
-    jointReturn,
-    onUndoNoteChange,
-    onAcceptSituationSuggestion,
-    onRateMessage,
-    isSending,
-  }
 
   const header = (
     <>
@@ -153,23 +113,12 @@ export function AdvisorChatPanel({
       {/* Conversation History */}
       <View style={styles.messagesList}>
         {messages.flatMap((msg, index) => [
-          <AdvisorChatMessage key={msg.id} msg={msg} index={index} chat={chat} panel={answerContext} plan={plan} styles={styles} />,
+          <AdvisorChatMessage key={msg.id} msg={msg} index={index} chat={chat} drafts={drafts} model={model} stream={stream} styles={styles} />,
           // The summarised part ends here; everything above stays readable (#481).
           context?.summarizedUntilMessageId === msg.id ? <SummaryDivider key="summary-divider" summary={context.summary} /> : null,
         ])}
 
-        <AdvisorChatLiveTurn
-          chat={chat}
-          isSending={isSending}
-          pendingUserMessage={pendingUserMessage}
-          plan={plan}
-          abortedTurn={abortedTurn}
-          streamSteps={streamSteps}
-          streamedText={streamedText}
-          streamedReasoning={streamedReasoning}
-          reconnecting={reconnecting}
-          styles={styles}
-        />
+        <AdvisorChatLiveTurn chat={chat} stream={stream} styles={styles} />
       </View>
 
       {basisMode && !isSending ? (
@@ -184,18 +133,10 @@ export function AdvisorChatPanel({
         </View>
       ) : null}
       {(onAttachReceipt || onAttachReceiptFile) && receiptOpen ? (
-        <AdvisorChatReceiptPanel
-          chat={chat}
-          onAttachReceipt={onAttachReceipt}
-          onAttachReceiptFile={onAttachReceiptFile}
-          receiptProgress={receiptProgress}
-          receiptSources={receiptSources}
-          isParsingReceipt={isParsingReceipt}
-          styles={styles}
-        />
+        <AdvisorChatReceiptPanel chat={chat} receipts={receipts} styles={styles} />
       ) : null}
 
-      <AdvisorChatReceiptNotice receiptNotice={receiptNotice} receiptAssignment={receiptAssignment} receiptResults={receiptResults} styles={styles} />
+      <AdvisorChatReceiptNotice receipts={receipts} styles={styles} />
 
       {/* Interactive Law Source Popover / Modal */}
       {selectedSource ? <AdvisorChatLawSource source={selectedSource} onClose={() => setSelectedSource(null)} styles={styles} /> : null}
@@ -205,16 +146,13 @@ export function AdvisorChatPanel({
   const composer = (
     <AdvisorChatComposer
       chat={chat}
-      models={models}
-      chatModel={chatModel}
-      onPickModel={onPickModel}
+      model={model}
+      stream={stream}
+      receipts={receipts}
       situationChip={situationChip}
       context={context}
       onSummarize={onSummarize}
-      onStop={onStop}
-      onAttachReceipt={onAttachReceipt}
-      onAttachReceiptFile={onAttachReceiptFile}
-      isSending={isSending}
+      onOpenConversation={onOpenConversation}
       compact={compact}
       dictationEngine={dictationEngine}
       styles={styles}
@@ -250,6 +188,7 @@ export function AdvisorChatPanel({
             {footnote}
           </Text>
         ) : null}
+        {overlay}
       </View>
     )
   }

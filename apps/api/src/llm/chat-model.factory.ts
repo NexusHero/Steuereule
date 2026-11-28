@@ -7,7 +7,6 @@ import { DEFAULT_REASONING_BUDGET_TOKENS, type ResolvedAiSlotConfig } from './ai
 
 /** Room left for the visible answer on top of an Anthropic thinking budget. */
 const MIN_ANSWER_TOKENS = 2048
-import { FakeKiChatModel } from './fake-chat-model.js'
 
 /** Short provider hiccups (429, 503, a dropped connection) are retried with a back-off before a turn counts as failed. */
 export const CHAT_MODEL_MAX_RETRIES = 2
@@ -45,8 +44,23 @@ function createAnthropicModel(config: ResolvedAiSlotConfig, apiKey: string, temp
   return new ChatAnthropic({ ...base, ...effort, ...(config.maxTokens !== undefined ? { maxTokens: config.maxTokens } : {}) })
 }
 
-export function createChatModelFromConfig(config: ResolvedAiSlotConfig): BaseChatModel | null {
-  if (config.enabled && config.provider === 'fake') return new FakeKiChatModel()
+export interface ChatModelFactoryOptions {
+  /**
+   * The scripted stand-in for the `fake` provider (AI_FAKE_KI, #450 D8). Whoever owns the script supplies
+   * it: this module knows providers, not what an answer of the app looks like. Without one, `fake` has no model.
+   */
+  readonly fake?: (() => BaseChatModel) | undefined
+}
+
+/** The factory for a resolved slot: the provider's LangChain model, or null where the slot has none. */
+export function chatModelFactory(options: ChatModelFactoryOptions = {}): ChatModelFactory {
+  return (config) => (config.enabled && config.provider === 'fake' ? (options.fake?.() ?? null) : createProviderChatModel(config))
+}
+
+/** The models of the real providers only; `fake` yields none (see `chatModelFactory`). */
+export const createChatModelFromConfig: ChatModelFactory = (config) => createProviderChatModel(config)
+
+function createProviderChatModel(config: ResolvedAiSlotConfig): BaseChatModel | null {
   if (!config.enabled || config.provider === 'deterministic' || config.provider === 'fake' || !config.apiKey) {
     return null
   }

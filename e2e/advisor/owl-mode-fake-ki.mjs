@@ -411,6 +411,8 @@ async function main() {
     {
       const reader = await signIn(browser, webOrigin, user.email, 'l')
       const passages = []
+      const refusedByPolicy = []
+      reader.page.on('console', (message) => /Content Security Policy/.test(message.text()) && refusedByPolicy.push(message.text().slice(0, 160)))
       reader.page.on('response', async (response) => {
         if (!response.url().endsWith('/v1/eulen-modus/stimme')) return
         const body = response.request().postDataJSON()
@@ -422,7 +424,10 @@ async function main() {
         window.__played = []
         const play = HTMLMediaElement.prototype.play
         HTMLMediaElement.prototype.play = function playAndNote() {
-          if (this.src.startsWith('blob:')) this.addEventListener('ended', () => window.__played.push(this.duration), { once: true })
+          // One element plays piece after piece: an end counts for the piece that was started with this call. The
+          // silence that unlocks the element has no length and is no passage.
+          const piece = this.src
+          if (piece.startsWith('blob:')) this.addEventListener('ended', () => this.src === piece && this.duration > 0 && window.__played.push(this.duration), { once: true })
           return play.call(this)
         }
       })
@@ -435,7 +440,7 @@ async function main() {
       if ((await readAloud.innerText()).trim() !== 'Stopp') fail('Row J: the answer being read should offer „Stopp“')
       await reader.page.waitForFunction((el) => el.textContent.trim() === 'Vorlesen', await readAloud.elementHandle(), { timeout: 30_000 }).catch(() => fail('Row J: the answer should be read to its end'))
       const played = await reader.page.evaluate(() => window.__played)
-      if (played.length !== passages.length || played.some((seconds) => !(seconds > 0))) fail(`Row J: the browser should play every passage to its end, played ${JSON.stringify(played)} of ${passages.length}`)
+      if (played.length !== passages.length || played.some((seconds) => !(seconds > 0.1))) fail(`Row J: the browser should play every passage to its end, played ${JSON.stringify(played)} of ${passages.length}`)
       const said = passages.map((piece) => piece.text).join(' ')
       if (passages.length === 0 || !said.startsWith('Ich bin die Test-Eule und antworte mit festem Text.')) fail(`Row J: the voice should get the answer, got ${JSON.stringify(passages)}`)
       if (passages.some((piece) => piece.status !== 200 || piece.type !== 'audio/wav' || piece.riff !== 'RIFF')) fail(`Row J: every passage should come back as a WAV file: ${JSON.stringify(passages)}`)
@@ -443,6 +448,7 @@ async function main() {
       if (passages.some((piece) => piece.language !== 'de')) fail('Row J: a German answer should be spoken in German')
       if (/[*#`|]|\]\(/.test(said)) fail(`Row J: the voice should get words, not Markdown: ${JSON.stringify(said)}`)
       if (passages.some((piece) => piece.text.length > 220)) fail('Row J: no passage handed to the voice may be longer than a voice takes whole')
+      if (refusedByPolicy.length > 0) fail(`Row J: the page's Content Security Policy should let the voice play, it refused: ${refusedByPolicy[0]}`)
       const passagesBefore = passages.length
       await readAloud.click()
       await readAloud.click()
@@ -499,6 +505,144 @@ async function main() {
     }
     console.log(`[${TAG}] ✅ Row K — without the owl's voice the device reads the answer, and nothing is sent`)
 
+
+    // Row L — speaking with the owl (ADR-0115): the user speaks, the words go to the chat as a message, the answer
+    // is spoken, and the owl listens again. The microphone is the boundary: a headless browser has none, so the row
+    // supplies a tone it can switch on and off. Recording, the pause detection, the WAV file, the server's ear and
+    // voice (scripted by AI_FAKE_KI) and the playback are the real ones.
+    {
+      const talker = await signIn(browser, webOrigin, user.email, 'l')
+      const talk = talker.page
+      const heard = []
+      const spokenPassages = []
+      talk.on('response', async (response) => {
+        if (response.url().endsWith('/v1/eulen-modus/gehoert')) heard.push({ status: response.status(), body: await response.json().catch(() => null), type: response.request().headers()['content-type'] })
+        if (response.url().endsWith('/v1/eulen-modus/stimme')) spokenPassages.push({ status: response.status(), ...response.request().postDataJSON() })
+      })
+      await talker.ctx.addInitScript(() => {
+        const mic = { refuse: false, opened: 0, live: 0, speak: () => {} }
+        window.__mic = mic
+        window.__played = []
+        const play = HTMLMediaElement.prototype.play
+        HTMLMediaElement.prototype.play = function playAndNote() {
+          // One element plays piece after piece: an end counts for the piece that was started with this call. The
+          // silence that unlocks the element has no length and is no passage.
+          const piece = this.src
+          if (piece.startsWith('blob:')) this.addEventListener('ended', () => this.src === piece && this.duration > 0 && window.__played.push(this.duration), { once: true })
+          return play.call(this)
+        }
+        navigator.mediaDevices.getUserMedia = async () => {
+          if (mic.refuse) throw new DOMException('Permission denied', 'NotAllowedError')
+          const context = new AudioContext()
+          await context.resume()
+          const tone = context.createOscillator()
+          const volume = context.createGain()
+          volume.gain.value = 0
+          const sink = context.createMediaStreamDestination()
+          tone.connect(volume).connect(sink)
+          tone.start()
+          mic.speak = (ms) => {
+            volume.gain.value = 0.3
+            setTimeout(() => (volume.gain.value = 0), ms)
+          }
+          mic.opened += 1
+          mic.live += 1
+          for (const track of sink.stream.getTracks()) track.addEventListener('ended', () => (mic.live -= 1))
+          // The app releases the microphone by stopping its tracks; a stopped track fires no event by itself.
+          for (const track of sink.stream.getTracks()) {
+            const stopTrack = track.stop.bind(track)
+            track.stop = () => {
+              if (track.readyState === 'live') mic.live -= 1
+              stopTrack()
+            }
+          }
+          return sink.stream
+        }
+      })
+      await talk.reload({ waitUntil: 'networkidle' })
+      await openEule(talk)
+      const stateIs = (text, timeout = 30_000) =>
+        talk.waitForFunction((wanted) => document.querySelector('[data-testid="eule-gespraech-zustand"]')?.textContent?.trim() === wanted, text, { timeout }).catch(() => fail(`Row L: the conversation should say „${text}“`))
+      const captionOf = () => talk.locator('[data-testid="eule-gespraech-text"]').innerText()
+      const messagesBefore = await talk.locator('[data-testid^="advisor-message-"]').count()
+
+      await talk.locator('[data-testid="advisor-conversation-open"]').click()
+      await talk.locator('[data-testid="eule-gespraech"]').waitFor({ state: 'visible', timeout: 10_000 })
+      const notice = await talk.locator('[data-testid="eule-gespraech-hinweis"]').innerText()
+      if (!/Sprachdienst/.test(notice) || !/speichern die Aufnahme nicht/.test(notice)) fail(`Row L: before it starts the conversation should say what leaves the device, got ${JSON.stringify(notice)}`)
+      if ((await talk.evaluate(() => window.__mic.opened)) !== 0) fail('Row L: the microphone must not be opened before the user starts the conversation')
+      await talk.locator('[data-testid="eule-gespraech-start"]').click()
+      await stateIs('Hört zu')
+      await talk.locator('[data-testid="eule-gespraech-linie"]').waitFor({ state: 'visible' })
+
+      // One utterance: the tone for 0.8 s, then the pause ends it by itself.
+      await talk.evaluate(() => window.__mic.speak(800))
+      await stateIs('Hört dich', 5_000)
+      await talk.waitForFunction(() => document.querySelector('[data-testid="eule-gespraech-text"]')?.textContent?.includes('Sag mir kurz Hallo'), null, { timeout: 30_000 }).catch(() => fail('Row L: what was said should stand under the line'))
+      await talk.waitForFunction(() => document.querySelector('[data-testid="eule-gespraech-text"]')?.textContent?.startsWith('Ich bin die Test-Eule'), null, { timeout: 30_000 }).catch(() => fail('Row L: the passage the owl speaks should stand under the line'))
+      await stateIs('Hört zu')
+      if (heard.length !== 1 || heard[0].status !== 200 || heard[0].body?.text !== 'Sag mir kurz Hallo') fail(`Row L: the utterance should be written down by the server once, got ${JSON.stringify(heard)}`)
+      if (!String(heard[0].type).startsWith('multipart/form-data')) fail('Row L: the utterance should travel as a file, not as text')
+      if (spokenPassages.length === 0 || spokenPassages.some((passage) => passage.status !== 200 || passage.language !== 'de')) fail(`Row L: the answer should be spoken by the server's voice, got ${JSON.stringify(spokenPassages)}`)
+      if (!spokenPassages.map((passage) => passage.text).join(' ').startsWith('Ich bin die Test-Eule und antworte mit festem Text.')) fail(`Row L: the voice should get the answer, got ${JSON.stringify(spokenPassages)}`)
+      const played = await talk.evaluate(() => window.__played)
+      if (played.length !== spokenPassages.length || played.some((seconds) => !(seconds > 0.1))) fail(`Row L: the browser should play every passage of the answer to its end, played ${JSON.stringify(played)} of ${spokenPassages.length}`)
+
+      // A second utterance that does not pause: „Fertig“ ends it, „Unterbrechen“ stops the owl and it listens again.
+      await talk.evaluate(() => window.__mic.speak(20_000))
+      await stateIs('Hört dich', 5_000)
+      await talk.locator('[data-testid="eule-gespraech-fertig"]').click()
+      await talk.locator('[data-testid="eule-gespraech-unterbrechen"]').click({ timeout: 15_000 }).catch(() => fail('Row L: while the owl thinks or speaks the conversation should offer „Unterbrechen“'))
+      await stateIs('Hört zu', 5_000)
+      await talk.waitForTimeout(1_500)
+      if ((await captionOf()).startsWith('Ich bin die Test-Eule')) fail('Row L: an interrupted owl should not go on speaking')
+
+      // Ending gives the microphone back, and the conversation is in the chat as ordinary messages.
+      await talk.locator('[data-testid="eule-gespraech-ende"]').click()
+      await talk.locator('[data-testid="eule-gespraech"]').waitFor({ state: 'detached', timeout: 5_000 })
+      if ((await talk.evaluate(() => window.__mic.live)) !== 0) fail('Row L: ending the conversation should release the microphone')
+      const chatText = await talk.locator('[data-testid="advisor-chat-scroll"]').innerText()
+      if (!chatText.includes('Sag mir kurz Hallo') || !chatText.includes('Ich bin die Test-Eule')) fail('Row L: what was said and answered should stand in the chat')
+      if ((await talk.locator('[data-testid^="advisor-message-"]').count()) <= messagesBefore) fail('Row L: the conversation should add messages to the chat')
+
+      // A refused microphone is said in words, and nothing is recorded.
+      await talk.evaluate(() => (window.__mic.refuse = true))
+      await talk.locator('[data-testid="advisor-conversation-open"]').click()
+      await talk.locator('[data-testid="eule-gespraech-start"]').click()
+      const problem = await talk.locator('[data-testid="eule-gespraech-problem"]').innerText({ timeout: 5_000 })
+      if (!/Mikrofon ist nicht freigegeben/.test(problem)) fail(`Row L: a refused microphone should be named, got ${JSON.stringify(problem)}`)
+      await talk.locator('[data-testid="eule-gespraech-ende"]').click()
+      await talker.ctx.close()
+    }
+    console.log(`[${TAG}] ✅ Row L — speaking with the owl: an utterance becomes a message, the answer is spoken, the owl listens again`)
+
+    // Row M — what the masking takes out of a message is shown where it stands (ADR-0091): without the consent to
+    // personal data an IBAN does not go to the model, the user's own bubble strikes it through and says so, and
+    // the mark is still there after a reload, because it is kept with the message.
+    {
+      const writer = await signIn(browser, webOrigin, user.email, 'l')
+      const written = 'Meine IBAN ist DE89 3704 0044 0532 0130 00, bitte merken.'
+      const sentToStream = []
+      writer.page.on('request', (request) => /\/advisor\/(stream|messages)$/.test(new URL(request.url()).pathname) && request.method() === 'POST' && sentToStream.push(request.postDataJSON()?.message))
+      await openEule(writer.page)
+      await ask(writer.page, written)
+      const bubble = writer.page.locator('[data-testid="advisor-user-message"]').last()
+      const struck = () => bubble.locator('[data-testid="advisor-masked"]').allInnerTexts()
+      await writer.page.waitForFunction(() => document.querySelectorAll('[data-testid="advisor-masked"]').length > 0, null, { timeout: 15_000 }).catch(() => fail('Row M: an IBAN the model did not get should be struck through in the user\'s message'))
+      if ((await struck()).join('|') !== 'DE89 3704 0044 0532 0130 00') fail(`Row M: exactly the IBAN should be struck through, got ${JSON.stringify(await struck())}`)
+      if ((await bubble.innerText()).trim() !== written) fail('Row M: the message should still read as the user wrote it')
+      const drawn = await bubble.locator('[data-testid="advisor-masked"]').first().evaluate((node) => getComputedStyle(node).textDecorationLine)
+      if (!drawn.includes('line-through')) fail(`Row M: the range should be drawn struck through, it is drawn ${JSON.stringify(drawn)}`)
+      const note = await writer.page.locator('[data-testid="advisor-masked-note"]').last().innerText()
+      if (!/ging nicht an das Sprachmodell/.test(note)) fail(`Row M: the chat should say what the strike-through means, got ${JSON.stringify(note)}`)
+      if (!sentToStream.includes(written)) fail('Row M: the browser sends the message as written; the masking is the server\'s')
+      await writer.page.reload({ waitUntil: 'networkidle' })
+      await openEule(writer.page)
+      await writer.page.waitForFunction(() => document.querySelectorAll('[data-testid="advisor-masked"]').length > 0, null, { timeout: 15_000 }).catch(() => fail('Row M: the mark should survive a reload'))
+      if ((await struck()).join('|') !== 'DE89 3704 0044 0532 0130 00') fail('Row M: after a reload the same range should be struck through')
+      await writer.ctx.close()
+    }
+    console.log(`[${TAG}] ✅ Row M — an IBAN that did not go to the model is struck through in the user's message, also after a reload`)
 
     await user.api.dispose()
     console.log(`[${TAG}] PASS — Eulen-Modus flows with the fake KiPort verified (#450 1A, 5F).`)

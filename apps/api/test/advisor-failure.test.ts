@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { classifyModelFailure } from '../src/ki/advisor-failure.js'
+import { classifyModelFailure } from '../src/llm/model-failure.js'
 
 const google = (status: string, text: string) =>
   new Error(`[GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:streamGenerateContent?alt=sse: [${status}] ${text}`)

@@ -1,7 +1,7 @@
 // One round of the owl's tool calls: the loop over the model's last message that hands each call to
 // its handler in ./tools/ and collects what the turn changed. The graph in the engine only decides when a round runs.
 import { Annotation } from '@langchain/langgraph'
-import { AIMessage, ToolMessage, type BaseMessage } from '@langchain/core/messages'
+import { AIMessage, ToolMessage } from '@langchain/core/messages'
 import { type LangGraphRunnableConfig } from '@langchain/langgraph'
 import {
   ADVISOR_LEGAL_SOURCES,
@@ -16,19 +16,14 @@ import {
   type AdvisorTwoPathsProposal,
   type OwlSourceId,
 } from '@steuereule/core'
+import { AGENT_LOOP_CHANNELS } from '../llm/agent/agent-loop.js'
 import { checkStageValue, validateStageTarget } from './advisor-safety.js'
 import { TOOL_LABELS, isToolName, RejectedDraft, MAX_DRAFTS_PER_TURN } from './advisor-tools.js'
 import { createToolCallContext, toolHandlerFor, type ToolRoundTurn } from './tools/index.js'
 
 export const AdvisorGraphState = Annotation.Root({
-  messages: Annotation<BaseMessage[]>({
-    reducer: (left, right) => left.concat(right),
-    default: () => [],
-  }),
-  toolRounds: Annotation<number>({
-    reducer: (_left, right) => right,
-    default: () => 0,
-  }),
+  // The conversation and the count of tool rounds belong to the agent loop; the rest is what the owl's tools fill.
+  ...AGENT_LOOP_CHANNELS,
   /** Every draft of this answer, in the order they were made; a later one for the same field replaces the earlier. */
   pendingActions: Annotation<AdvisorActionProposal[]>({
     reducer: (_left, right) => right,

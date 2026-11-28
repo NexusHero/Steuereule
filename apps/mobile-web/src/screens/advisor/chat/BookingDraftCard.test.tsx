@@ -43,7 +43,7 @@ function action(overrides: Partial<AdvisorActionProposal> = {}, value: unknown =
 
 function Card(props: { readonly action: AdvisorActionProposal; readonly onApply?: () => void; readonly onUndo?: () => void }) {
   const styles = makeStyles(useTheme())
-  return <ActionProposalCardView action={props.action} onSelectSource={vi.fn()} styles={styles} onApply={props.onApply} onUndo={props.onUndo} />
+  return <ActionProposalCardView action={props.action} drafts={{ onApplyAction: props.onApply, onUndoAction: props.onUndo }} onSelectSource={vi.fn()} styles={styles} />
 }
 
 describe('the booking draft card', () => {

@@ -1,6 +1,6 @@
 import './config/env-snapshot.js'
-import { assertFakeKiNotInProduction } from './ki/fake-ki-env.js'
-import { installProviderRejectionGuard } from './ki/provider-rejections.js'
+import { assertFakeKiNotInProduction } from './llm/fake-ki-env.js'
+import { installProviderRejectionGuard } from './llm/provider-rejections.js'
 import 'reflect-metadata'
 import fastifyCookie from '@fastify/cookie'
 import fastifyMultipart from '@fastify/multipart'

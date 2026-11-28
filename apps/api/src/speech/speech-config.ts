@@ -7,6 +7,8 @@ export type SpeechProviderKind = SpeechProviderName | 'fake' | 'off'
 export interface SpeechConfig {
   readonly provider: SpeechProviderKind
   readonly model: string
+  /** The model that turns a recording into words. */
+  readonly transcribeModel: string
   /** The voice per language: one voice speaks every language with Gemini, one language only with Mistral. */
   readonly voices: Readonly<Record<SpeechLanguage, string>>
   readonly apiKey: string | null
@@ -15,18 +17,19 @@ export interface SpeechConfig {
 
 interface ProviderDefaults {
   readonly model: string
+  readonly transcribeModel: string
   readonly voices: Readonly<Record<SpeechLanguage, string>>
 }
 
 /** Sulafat: the warm voice chosen by ear for the owl. Heidi (voice_481): Mistral's one German preset; Margaret for English. */
 export const SPEECH_DEFAULTS: Readonly<Record<SpeechProviderName, ProviderDefaults>> = {
-  'google-genai': { model: 'gemini-3.8-flash-tts', voices: { de: 'Sulafat', en: 'Sulafat' } },
-  mistral: { model: 'voxtral-mini-tts-3-0', voices: { de: 'voice_481', en: 'voice_447' } },
+  'google-genai': { model: 'gemini-3.8-flash-tts', transcribeModel: 'gemini-3.8-flash', voices: { de: 'Sulafat', en: 'Sulafat' } },
+  mistral: { model: 'voxtral-mini-tts-3-0', transcribeModel: 'voxtral-mini-transcribe-3', voices: { de: 'voice_481', en: 'voice_447' } },
 }
 
 export const DEFAULT_SPEECH_TIMEOUT_MS = 20_000
 
-const OFF: SpeechConfig = { provider: 'off', model: '', voices: { de: '', en: '' }, apiKey: null, timeoutMs: DEFAULT_SPEECH_TIMEOUT_MS }
+const OFF: SpeechConfig = { provider: 'off', model: '', transcribeModel: '', voices: { de: '', en: '' }, apiKey: null, timeoutMs: DEFAULT_SPEECH_TIMEOUT_MS }
 
 const isOn = (raw: string | undefined): boolean => ['1', 'true', 'yes', 'on'].includes(raw?.trim().toLowerCase() ?? '')
 
@@ -56,6 +59,7 @@ export function resolveSpeechConfig(env: Readonly<Record<string, string | undefi
   return {
     provider,
     model: env.AI_SPEECH_MODEL?.trim() || defaults.model,
+    transcribeModel: env.AI_SPEECH_TRANSCRIBE_MODEL?.trim() || defaults.transcribeModel,
     // A German voice set by hand is a voice of that provider: with Gemini it speaks English too.
     voices: { de: german, en: env.AI_SPEECH_VOICE_EN?.trim() || (provider === 'google-genai' ? german : defaults.voices.en) },
     apiKey,

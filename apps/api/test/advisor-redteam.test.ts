@@ -4,7 +4,7 @@
 //   3. Daily rate-limit enforcement (`DEFAULT_AI_TURN_LIMITS.dailyMessageLimit = 50`).
 //   4. MCP Server tool scope enforcement (`steuerdaten:read` cannot invoke write/payment tools).
 import { beforeEach, describe, expect, it } from 'vitest'
-import { DEFAULT_AI_TURN_LIMITS } from '../src/ki/ai-runtime-config.service.js'
+import { DEFAULT_AI_TURN_LIMITS } from '../src/llm/ai-runtime-config.service.js'
 import { NotFoundError, TooManyRequestsError } from '../src/common/domain-error.js'
 import { checkPiiFree, validateAiProposal } from '../src/ki/ki.adapter.js'
 import { FakeInterviewAnswerRepository } from './fakes/fake-interview-answer.repository.js'

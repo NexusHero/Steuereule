@@ -12,10 +12,10 @@ import { mkdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import type { AdvisorStreamEvent, AdvisorTopicOutcome, AdvisorTurnResult, CaseDigest } from '@steuereule/core'
-import { EnvAiRuntimeConfigService } from '../../src/ki/ai-runtime-config.service.js'
+import { EnvAiRuntimeConfigService } from '../../src/llm/ai-runtime-config.service.js'
 import { AdvisorTopicGuard } from '../../src/ki/advisor-topic-guard.js'
 import { LangGraphAdvisorEngine } from '../../src/ki/langgraph-advisor.engine.js'
-import { createSingleShotModelFromConfig } from '../../src/ki/langchain-single-shot.adapter.js'
+import { createSingleShotModelFromConfig } from '../../src/llm/langchain-single-shot.adapter.js'
 
 const KEY = process.env.AI_EVAL_GEMINI_API_KEY?.trim()
 

@@ -81,7 +81,8 @@ describe('„Vorlesen“ under an answer', () => {
     vi.stubGlobal('fetch', fetchMock)
     const played: string[] = []
     vi.stubGlobal('Audio', class { src = ''; addEventListener(): void {} play(): Promise<void> { played.push(this.src); return Promise.resolve() } pause(): void {} })
-    vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:passage')
+    let made = 0
+    const create = vi.spyOn(URL, 'createObjectURL').mockImplementation(() => (++made === 1 ? 'blob:silence' : 'blob:passage'))
     vi.spyOn(URL, 'revokeObjectURL').mockReturnValue(undefined)
     show(<ReadAloudButton id="a1" content="**Ja**, nach [estg-9-1]." />, { voice: true })
     const button = screen.getByTestId('advisor-message-read-aloud')
@@ -92,8 +93,9 @@ describe('„Vorlesen“ under an answer', () => {
     expect(url).toMatch(/\/v1\/eulen-modus\/stimme$/)
     expect(init).toMatchObject({ method: 'POST', credentials: 'include' })
     expect(JSON.parse(init.body as string)).toEqual({ text: 'Ja, nach Paragraf 9 Absatz 1 Einkommensteuergesetz.', language: 'de' })
-    // The element is unlocked in the press itself, before the audio is there.
-    expect(played[0]).toMatch(/^data:audio\/wav/)
+    // The element is unlocked in the press itself, with silence, before the audio is there.
+    expect(played[0]).toBe('blob:silence')
+    expect((create.mock.calls[0]![0] as Blob).type).toBe('audio/wav')
     fireEvent.click(button)
     expect(button.textContent).toBe('Vorlesen')
     vi.restoreAllMocks()

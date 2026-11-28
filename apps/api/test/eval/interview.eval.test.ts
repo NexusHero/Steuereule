@@ -18,7 +18,7 @@ import {
   type CaseDigest,
   type InterviewProgress,
 } from '@steuereule/core'
-import { EnvAiRuntimeConfigService } from '../../src/ki/ai-runtime-config.service.js'
+import { EnvAiRuntimeConfigService } from '../../src/llm/ai-runtime-config.service.js'
 import { LangGraphAdvisorEngine } from '../../src/ki/langgraph-advisor.engine.js'
 
 const KEY = process.env.AI_EVAL_GEMINI_API_KEY?.trim()

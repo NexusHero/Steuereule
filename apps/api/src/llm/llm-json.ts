@@ -3,11 +3,10 @@ export function extractMessageText(content: unknown): string {
   if (typeof content === 'string') return content
   if (!Array.isArray(content)) return ''
   return content
-    .map((part) =>
-      part && typeof part === 'object' && 'text' in part && typeof (part as { text?: unknown }).text === 'string'
-        ? (part as { text: string }).text
-        : '',
-    )
+    .map((part) => {
+      if (typeof part === 'string') return part
+      return part && typeof part === 'object' && 'text' in part && typeof (part as { text?: unknown }).text === 'string' ? (part as { text: string }).text : ''
+    })
     .join('')
 }
 

@@ -1,8 +1,7 @@
 import { newActionId } from '../common/action-id.js'
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models'
-import { AIMessage, AIMessageChunk, HumanMessage, SystemMessage, type BaseMessage, type UsageMetadata } from '@langchain/core/messages'
-import { concat } from '@langchain/core/utils/stream'
-import { END, START, StateGraph, type LangGraphRunnableConfig } from '@langchain/langgraph'
+import { AIMessage, HumanMessage, SystemMessage, type BaseMessage } from '@langchain/core/messages'
+import { END, START, StateGraph } from '@langchain/langgraph'
 import { Inject, Injectable, Logger, Optional } from '@nestjs/common'
 import {
   checkAdvisorAnswer,
@@ -24,14 +23,18 @@ import {
   type AdvisorTopicOutcome,
   type AdvisorTurnRequest,
   type AdvisorTurnResult,
-  type AdvisorTurnUsage,
   type AdvisorTwoPathsProposal,
   type OwlSourceId,
 } from '@steuereule/core'
 import { depthSetting, type AdvisorDepth } from '@steuereule/core'
-import { AI_RUNTIME_CONFIG_SERVICE, DEFAULT_AI_TURN_LIMITS, type AiRuntimeConfigService, type AiTurnLimits, type ResolvedAiSlotConfig } from './ai-runtime-config.service.js'
-import { anthropicThinksOnBudget, CHAT_MODEL_FACTORY, createChatModelFromConfig, type ChatModelFactory } from './chat-model.factory.js'
-import { classifyModelFailure, providerName } from './advisor-failure.js'
+import { AI_RUNTIME_CONFIG_SERVICE, DEFAULT_AI_TURN_LIMITS, type AiRuntimeConfigService, type AiTurnLimits, type ResolvedAiSlotConfig } from '../llm/ai-runtime-config.service.js'
+import { anthropicThinksOnBudget, CHAT_MODEL_FACTORY, type ChatModelFactory } from '../llm/chat-model.factory.js'
+import { createAdvisorChatModel } from './advisor-chat-model.js'
+import { classifyModelFailure, providerName } from '../llm/model-failure.js'
+import { extractMessageText } from '../llm/llm-json.js'
+import { ANSWER_RESERVE_MS, createModelNode, createToolsNode, extractReasoningText, followAgentRun, lastModelText, newAgentRunProgress, newAgentTimings, openTurnBudget, sumUsage, toolsOrEnd, type AgentTimings } from '../llm/agent/agent-loop.js'
+
+export { ANSWER_RESERVE_MS, extractReasoningText }
 import { checkPiiFree } from './ki.adapter.js'
 import { buildCaseBlock, buildSystemMessage, buildTurnMessages, describeTurnContext, SUMMARY_MAX_CHARS, SUMMARY_INSTRUCTIONS, withHistoryCacheBreakpoint } from './advisor-prompt.js'
 import { buildToolSchemas, RejectedDraft, computedFiguresOf, unresolvedRejections } from './advisor-tools.js'
@@ -41,68 +44,6 @@ export { toProviderToolSchema, buildToolSchemas, computedFiguresOf, unresolvedRe
 export { buildCaseBlock, buildStableSystemPrompt, buildSystemMessage, buildTurnMessages, describeTurnContext, TURN_CONTEXT_HEADER, USER_MESSAGE_HEADER, userTextOf, withHistoryCacheBreakpoint } from './advisor-prompt.js'
 
 
-function extractMessageText(content: unknown): string {
-  if (typeof content === 'string') return content
-  if (!Array.isArray(content)) return ''
-  return content
-    .map((part) => {
-      if (typeof part === 'string') return part
-      if (part && typeof part === 'object' && 'text' in part && typeof (part as { text?: unknown }).text === 'string') {
-        return (part as { text: string }).text
-      }
-      return ''
-    })
-    .join('')
-}
-
-/**
- * The reasoning summary a provider attached to a chunk, in any of the shapes they use: Anthropic and
- * Gemini `thinking` parts, LangChain's standard `reasoning` blocks, OpenAI's summary list. Encrypted
- * or redacted reasoning has no text and yields nothing.
- */
-export function extractReasoningText(message: { content: unknown; additional_kwargs?: Record<string, unknown> | undefined }): string {
-  const fromSummary = (summary: unknown): string =>
-    Array.isArray(summary)
-      ? summary.map((item) => (item && typeof item === 'object' && typeof (item as { text?: unknown }).text === 'string' ? (item as { text: string }).text : '')).join('')
-      : ''
-
-  let text = ''
-  if (Array.isArray(message.content)) {
-    for (const part of message.content) {
-      if (!part || typeof part !== 'object') continue
-      const block = part as { type?: unknown; thinking?: unknown; reasoning?: unknown; summary?: unknown }
-      if (block.type === 'thinking' && typeof block.thinking === 'string') text += block.thinking
-      else if (block.type === 'reasoning' && typeof block.reasoning === 'string') text += block.reasoning
-      else if (block.type === 'reasoning') text += fromSummary(block.summary)
-    }
-  }
-  const kwargs = message.additional_kwargs
-  if (kwargs) {
-    const reasoning = kwargs.reasoning
-    if (reasoning && typeof reasoning === 'object') text += fromSummary((reasoning as { summary?: unknown }).summary)
-    if (typeof kwargs.reasoning_content === 'string') text += kwargs.reasoning_content
-  }
-  return text
-}
-
-function sumUsage(messages: readonly BaseMessage[]): AdvisorTurnUsage | undefined {
-  let seen = false
-  let inputTokens = 0
-  let outputTokens = 0
-  let cachedInputTokens = 0
-  let cacheWriteInputTokens = 0
-  for (const message of messages) {
-    const usage = (message as { usage_metadata?: UsageMetadata | undefined }).usage_metadata
-    if (!usage) continue
-    seen = true
-    inputTokens += usage.input_tokens ?? 0
-    outputTokens += usage.output_tokens ?? 0
-    cachedInputTokens += usage.input_token_details?.cache_read ?? 0
-    cacheWriteInputTokens += usage.input_token_details?.cache_creation ?? 0
-  }
-  return seen ? { inputTokens, outputTokens, cachedInputTokens, cacheWriteInputTokens } : undefined
-}
-
 /**
  * The savings plan and the assessment check look things up, plan, calculate and draft before they
  * answer. Seen against the real model: with the five rounds of a question the plan ended on a
@@ -110,12 +51,6 @@ function sumUsage(messages: readonly BaseMessage[]): AdvisorTurnUsage | undefine
  */
 export const TASK_TOOL_ROUNDS = 10
 export const TASK_TIMEOUT_MS = 120_000
-/**
- * Time kept back for the final answer. Once less than this is left of the turn's budget, the model
- * gets no more tools and has to answer with what it has; without it a turn that kept calling tools
- * ran into the timeout and the user got an error instead of an answer (found by the eval).
- */
-export const ANSWER_RESERVE_MS = 20_000
 /**
  * Max (ADR-0096): room for the answer after deep thinking, kept below what the Anthropic SDK still
  * allows without streaming (about 21k tokens), and the time of a task, since thinking at Max took
@@ -126,18 +61,88 @@ export const MAX_DEPTH_OUTPUT_TOKENS = 20_000
 /** Said to the model when it ended a round after tools without a word. */
 export const ANSWER_NUDGE = 'Antworte jetzt dem Nutzer in Worten auf seine Frage, mit dem, was die Werkzeuge ergeben haben (Regel mit Norm, Betrag oder Satz, nächster Schritt). Keine weiteren Werkzeuge.'
 
-/** A model turn that says nothing and asks for no tool. */
-function isEmptyEnding(message: BaseMessage): boolean {
-  const toolCalls = 'tool_calls' in message ? (message as AIMessage).tool_calls : undefined
-  return (toolCalls?.length ?? 0) === 0 && extractMessageText(message.content).trim().length === 0
+/** The answer when the model sent nothing at all in a round. */
+const SILENT_ANSWER = 'Ich habe deine Angaben geprüft, konnte aber keine Antwort erzeugen.'
+
+type OwlStateUpdate = Partial<typeof AdvisorGraphState.State>
+
+/** What the owl's tools produced in one turn, as the updates of her graph state report it. */
+interface TurnFindings {
+  pendingActions: AdvisorActionProposal[]
+  rejectedDrafts: RejectedDraft[]
+  noteChanges: AdvisorNoteChange[]
+  interviewChanges: InterviewAreaChange[]
+  consentRequested: boolean
+  pendingTwoPaths: AdvisorTwoPathsProposal | null
+  choices: string[]
+  questionRound: AdvisorQuestionRound | null
+  situationSuggestions: string[]
+  sources: OwlSourceId[]
 }
 
-interface MutableTimings {
-  roundMs: number[]
-  toolMs: number
+const newTurnFindings = (): TurnFindings => ({
+  pendingActions: [],
+  rejectedDrafts: [],
+  noteChanges: [],
+  interviewChanges: [],
+  consentRequested: false,
+  pendingTwoPaths: null,
+  choices: [],
+  questionRound: null,
+  situationSuggestions: [],
+  sources: [],
+})
+
+/** Takes one node update into the findings: lists are replaced by their newest state, sources add up, a consent request stays. */
+function noteUpdate(found: TurnFindings, update: OwlStateUpdate): void {
+  if (Array.isArray(update.pendingActions)) found.pendingActions = update.pendingActions
+  if (Array.isArray(update.rejectedDrafts)) found.rejectedDrafts = update.rejectedDrafts
+  if ('pendingTwoPaths' in update && update.pendingTwoPaths !== undefined) found.pendingTwoPaths = update.pendingTwoPaths
+  if (Array.isArray(update.choices)) found.choices = update.choices
+  if (Array.isArray(update.situationSuggestions)) found.situationSuggestions = update.situationSuggestions
+  if (update.questionRound) found.questionRound = update.questionRound
+  if (Array.isArray(update.noteChanges)) found.noteChanges = update.noteChanges
+  if (update.consentRequested === true) found.consentRequested = true
+  if (Array.isArray(update.interviewChanges)) found.interviewChanges = update.interviewChanges
+  if (Array.isArray(update.sources)) found.sources = [...new Set([...found.sources, ...update.sources])]
 }
 
-const newTimings = (): MutableTimings => ({ roundMs: [], toolMs: 0 })
+/** An answer of the fixed rules, marked as theirs. */
+const rulesResult = (replyText: string, meta: AdvisorMessageMeta): AdvisorTurnResult => ({
+  replyText,
+  meta,
+  mode: 'deterministic_fallback',
+  provider: 'deterministic',
+  model: 'deterministic-fallback',
+})
+
+/** How the graph of one model turn is built. */
+interface GraphOptions {
+  readonly maxToolRounds: number
+  readonly canForceTool: boolean
+  /** From this moment (epoch ms) on, the model answers without tools. */
+  readonly answerBy: number
+  /** Anthropic caches only marked prefixes: each round marks its newest message (see `withHistoryCacheBreakpoint`). */
+  readonly markHistoryForCache: boolean
+  readonly timings: AgentTimings
+  /** Awaited before any tool runs: a turn started beside the topic guard touches nothing until the verdict is in. */
+  readonly beforeTools?: (() => Promise<void>) | undefined
+}
+
+/** One turn with one model: which model, within which limits, and what happens when it fails or says nothing. */
+interface ModelRun {
+  readonly slot: ResolvedAiSlotConfig
+  readonly model: BaseChatModel
+  readonly limits: AiTurnLimits
+  /** Whether the fallback slot answers when this model fails before its first word (#493). */
+  readonly canFailOver: boolean
+  /** The guard called the question a grey zone: only its tax side is answered. */
+  readonly grayZone?: boolean
+  /** How often a turn that came back completely empty is asked again (ADR-0084). */
+  readonly emptyRetries?: number
+  /** See `GraphOptions`: holds the tools back while the topic guard is still deciding. */
+  readonly beforeTools?: (() => Promise<void>) | undefined
+}
 
 /** The model's result with the guard's verdict and the time the guard took. */
 function withGuard(result: AdvisorTurnResult, topic: AdvisorTopicOutcome, guardMs: number | undefined): AdvisorTurnResult {
@@ -155,120 +160,34 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
     /** Without one no topic is checked: the owl's prompt rule and the attack patterns remain (ADR-0069). */
     @Optional() @Inject(ADVISOR_TOPIC_GUARD) private readonly topicGuard?: AdvisorTopicGuardPort,
   ) {
-    this.resolveChatModel = modelFactory ?? createChatModelFromConfig
+    this.resolveChatModel = modelFactory ?? createAdvisorChatModel
   }
 
-  private buildCompiledGraph(
-    model: BaseChatModel,
-    request: AdvisorTurnRequest,
-    maxToolRounds: number,
-    canForceTool: boolean,
-    /** From this moment (epoch ms) on, the model answers without tools. */
-    answerBy: number = Number.POSITIVE_INFINITY,
-    now: () => number = Date.now,
-    /** Anthropic caches only marked prefixes: each round marks its newest message (see `withHistoryCacheBreakpoint`). */
-    markHistoryForCache = false,
-    /** Filled as the graph runs: the time of each model round and of the tools. */
-    timings: MutableTimings = newTimings(),
-    /** Awaited before any tool runs: a turn started beside the topic guard touches nothing until the verdict is in. */
-    beforeTools?: () => Promise<void>,
-  ) {
-    const forRound = (messages: readonly BaseMessage[]) => (markHistoryForCache ? withHistoryCacheBreakpoint(messages) : [...messages])
-    const tools = buildToolSchemas()
-    const bind = typeof model.bindTools === 'function' ? model.bindTools.bind(model) : null
-    const boundModel = bind ? bind([...tools]) : model
-    // The quick start „Was hab ich vergessen?“ must open with a plan (decision 17): only the first
-    // round is forced, later rounds are free to work through the steps and answer.
-    const planFirstModel = bind && request.planRequired && canForceTool ? bind([...tools], { tool_choice: 'plan_steps' }) : boundModel
-    const answerOnlyModel = bind ? bind([...tools], { tool_choice: 'none' }) : model
-    const makeActionId = request.actionIdFactory ?? (newActionId)
-
-    const agentNode = async (
-      state: typeof AdvisorGraphState.State,
-      config?: LangGraphRunnableConfig,
-    ) => {
-      let aggregated: AIMessageChunk | null = null
-      let lastFallbackMsg: AIMessage | null = null
-
-      // After the last tool round the model has to answer in words: with tools still on offer it
-      // may ask for yet another one, and the turn would end without any text.
-      // The same when the time is nearly up: an answer from what is there beats an error.
-      const mustAnswer = state.toolRounds >= maxToolRounds || (state.toolRounds > 0 && now() >= answerBy)
-      const roundModel = state.toolRounds === 0 ? planFirstModel : mustAnswer ? answerOnlyModel : boundModel
-      const roundStartedAt = now()
-      const streamOrValue = await roundModel.stream(forRound(state.messages), config)
-      for await (const chunk of streamOrValue) {
-        if (chunk instanceof AIMessageChunk) {
-          const thought = extractReasoningText(chunk)
-          if (thought.length > 0) {
-            config?.writer?.({ event: 'reasoning', data: { text: thought } } satisfies AdvisorStreamEvent)
-          }
-          const text = extractMessageText(chunk.content)
-          if (text.length > 0) {
-            config?.writer?.({ event: 'token', data: { text } } satisfies AdvisorStreamEvent)
-          }
-          aggregated = aggregated ? concat(aggregated, chunk) : chunk
-        } else {
-          lastFallbackMsg = chunk as unknown as AIMessage
-          const text = extractMessageText(lastFallbackMsg.content)
-          if (text.length > 0) {
-            config?.writer?.({ event: 'token', data: { text } } satisfies AdvisorStreamEvent)
-          }
-        }
-      }
-
-      let finalMsg: BaseMessage =
-        aggregated ??
-        lastFallbackMsg ??
-        new AIMessage('Ich habe deine Angaben geprüft, konnte aber keine Antwort erzeugen.')
-
-      // Found by the eval: Gemini sometimes ends a round with neither text nor a tool
-      // call, and the user got a stock sentence ("Ich habe deine Steuerakte geprüft.") instead of
-      // an answer. Ask once more, without tools, for the answer in words.
-      // Also in the first round: a model that says nothing at all is no better than one that went silent after tools.
-      if (isEmptyEnding(finalMsg)) {
-        const nudge = new HumanMessage(ANSWER_NUDGE)
-        let retried = null as BaseMessage | null
-        for await (const chunk of await answerOnlyModel.stream(forRound([...state.messages, nudge]), config)) {
-          const text = extractMessageText((chunk as BaseMessage).content)
-          if (text.length > 0) config?.writer?.({ event: 'token', data: { text } } satisfies AdvisorStreamEvent)
-          // A streaming model sends chunks, one that cannot stream sends the whole message once.
-          const piece = chunk as BaseMessage
-          retried = piece instanceof AIMessageChunk && retried instanceof AIMessageChunk ? concat(retried, piece) : piece
-        }
-        if (retried && extractMessageText(retried.content).trim().length > 0) finalMsg = retried
-      }
-
-      timings.roundMs.push(now() - roundStartedAt)
-      return { messages: [finalMsg] }
-    }
-
-    const toolsNode = async (state: typeof AdvisorGraphState.State, config?: LangGraphRunnableConfig) => {
-      await beforeTools?.()
-      const toolsStartedAt = now()
-      try {
-        return await runToolRound(state, config, request, makeActionId)
-      } finally {
-        timings.toolMs += now() - toolsStartedAt
-      }
-    }
-
-    const shouldContinue = (state: typeof AdvisorGraphState.State) => {
-      if (state.toolRounds >= maxToolRounds) return END
-      const last = state.messages[state.messages.length - 1]
-      const toolCalls =
-        last && 'tool_calls' in last && Array.isArray((last as AIMessage).tool_calls)
-          ? (last as AIMessage).tool_calls
-          : undefined
-      if (toolCalls && toolCalls.length > 0) return 'tools'
-      return END
-    }
-
+  /** The owl's graph on the agent loop of `llm/agent/`: her tools, her state, her words to a silent model. */
+  private buildCompiledGraph(model: BaseChatModel, request: AdvisorTurnRequest, { maxToolRounds, canForceTool, answerBy, markHistoryForCache, timings, beforeTools }: GraphOptions) {
+    const makeActionId = request.actionIdFactory ?? newActionId
+    const modelNode = createModelNode({
+      model,
+      tools: buildToolSchemas(),
+      maxToolRounds,
+      // The quick start „Was hab ich vergessen?“ must open with a plan (decision 17).
+      forceFirstTool: request.planRequired && canForceTool ? 'plan_steps' : undefined,
+      answerBy,
+      ...(markHistoryForCache ? { forRound: withHistoryCacheBreakpoint } : {}),
+      timings,
+      answerNudge: ANSWER_NUDGE,
+      silentAnswer: SILENT_ANSWER,
+    })
+    const toolsNode = createToolsNode({
+      run: (state: typeof AdvisorGraphState.State, config) => runToolRound(state, config, request, makeActionId),
+      beforeTools,
+      timings,
+    })
     return new StateGraph(AdvisorGraphState)
-      .addNode('agent', agentNode)
+      .addNode('agent', modelNode)
       .addNode('tools', toolsNode)
       .addEdge(START, 'agent')
-      .addConditionalEdges('agent', shouldContinue, ['tools', END])
+      .addConditionalEdges('agent', toolsOrEnd(maxToolRounds), ['tools', END])
       .addEdge('tools', 'agent')
       .compile()
   }
@@ -301,14 +220,7 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
     if (turn.meta.twoPaths) {
       yield { event: 'twoPaths', data: turn.meta.twoPaths }
     }
-    const result: AdvisorTurnResult = {
-      replyText: turn.replyText,
-      meta: turn.meta,
-      mode: 'deterministic_fallback',
-      provider: 'deterministic',
-      model: 'deterministic-fallback',
-    }
-    yield { event: 'done', data: result }
+    yield { event: 'done', data: rulesResult(turn.replyText, turn.meta) }
   }
 
   /**
@@ -364,7 +276,7 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
     try {
       limits = await this.runtimeConfig.resolveLimits()
       if (!(await this.runtimeConfig.isKillSwitchActive())) {
-        slotConfig = withDepth(await this.chatSlotFor(request), request.depth)
+        slotConfig = withSpokenPace(withDepth(await this.chatSlotFor(request), request.depth), request.spoken === true && request.depth !== 'max')
         chatModel = this.resolveChatModel(slotConfig)
         // The day's model calls across all users are spent (ADR-0109): the rules answer, and say why.
         if (chatModel && slotConfig.enabled && slotConfig.provider !== 'deterministic' && slotConfig.provider !== 'fake' && !(await this.runtimeConfig.takeCallBudget?.(request.callTier ?? 'free') ?? true)) {
@@ -384,7 +296,7 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
     // No guard to wait for (a question the app itself sent, or none configured): the model answers straight away.
     if (request.topicCheck === 'skip' || !this.topicGuard) {
       const topic = await this.checkTopic(request)
-      for await (const ev of this.runModelTurn(request, slotConfig, chatModel, limits, true)) {
+      for await (const ev of this.runModelTurn(request, { slot: slotConfig, model: chatModel, limits, canFailOver: true })) {
         yield ev.event === 'done' ? { event: 'done', data: withGuard(ev.data as AdvisorTurnResult, topic, undefined) } : ev
       }
       return
@@ -411,7 +323,7 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
       }
     }
     const speculative: AdvisorTurnRequest = { ...request, signal: request.signal ? AbortSignal.any([request.signal, speculation.signal]) : speculation.signal }
-    const turn = this.runModelTurn(speculative, slotConfig, chatModel, limits, true, false, 1, beforeTools)[Symbol.asyncIterator]()
+    const turn = this.runModelTurn(speculative, { slot: slotConfig, model: chatModel, limits, canFailOver: true, beforeTools })[Symbol.asyncIterator]()
     const held: AdvisorStreamEvent[] = []
     let next: Promise<IteratorResult<AdvisorStreamEvent>> | null = turn.next()
     const decision = verdict.then(() => 'verdict' as const)
@@ -440,7 +352,7 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
         return
       }
       // A grey zone is answered with its own instruction in the case, so the turn starts again with it.
-      for await (const ev of this.runModelTurn(request, slotConfig, chatModel, limits, true, true)) {
+      for await (const ev of this.runModelTurn(request, { slot: slotConfig, model: chatModel, limits, canFailOver: true, grayZone: true })) {
         yield ev.event === 'done' ? { event: 'done', data: withGuard(ev.data as AdvisorTurnResult, topic, guardMs) } : ev
       }
       return
@@ -466,45 +378,20 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
    * One turn with one model. When that model fails before its first word, the fallback slot (a
    * model of another provider, or another model of the same one) answers instead, once (#493).
    */
-  private async *runModelTurn(
-    request: AdvisorTurnRequest,
-    slotConfig: ResolvedAiSlotConfig,
-    chatModel: BaseChatModel,
-    limits: AiTurnLimits,
-    canFailOver: boolean,
-    /** The guard called the question a grey zone: only its tax side is answered. */
-    grayZone = false,
-    /** How often a turn that came back completely empty is asked again (ADR-0084). */
-    emptyRetries = 1,
-    /** See `buildCompiledGraph`: holds the tools back while the topic guard is still deciding. */
-    beforeTools?: () => Promise<void>,
-  ): AsyncIterable<AdvisorStreamEvent> {
+  private async *runModelTurn(request: AdvisorTurnRequest, run: ModelRun): AsyncIterable<AdvisorStreamEvent> {
+    const { slot: slotConfig, model: chatModel, limits, canFailOver, grayZone = false, emptyRetries = 1, beforeTools } = run
     // Anthropic rejects a forced tool call while extended thinking is on, and its current models reject
     // it always; the plan is then asked for in words.
     const canForceTool = slotConfig.provider !== 'anthropic' || (anthropicThinksOnBudget(slotConfig.model) && slotConfig.reasoning !== 'summary')
-    const caseBlock = buildCaseBlock(request.digest, request.records, request.notes, request.skill, request.task, request.assessment, request.situation, request.opening, request.interview, undefined, request.household, request.openPlan)
-    const turnContext = describeTurnContext(request.activeScreen, request.planRequired === true && !canForceTool, grayZone)
+    const caseBlock = buildCaseBlock(request)
+    const turnContext = describeTurnContext({ activeScreen: request.activeScreen, planFirst: request.planRequired === true && !canForceTool, grayZone, spoken: request.spoken === true })
     const historyMessages: BaseMessage[] = (request.history ?? []).map((entry) =>
       entry.role === 'user' ? new HumanMessage(entry.content) : new AIMessage(entry.content),
     )
     const initialMessages = buildTurnMessages(buildSystemMessage(slotConfig.provider, caseBlock, request.personalDataConsent === true), historyMessages, turnContext, request.message)
 
-    let streamedTokenCount = 0
-    let streamedText = ''
-    let reasoning = ''
-    let reasoningRound = 0
-    let lastReasoningRound = 0
-    let finalMessages: BaseMessage[] = []
-    let pendingActions: AdvisorActionProposal[] = []
-    let rejectedDrafts: RejectedDraft[] = []
-    let noteChanges: AdvisorNoteChange[] = []
-    let interviewChanges: InterviewAreaChange[] = []
-    let consentRequested = false
-    let pendingTwoPaths: AdvisorTwoPathsProposal | null = null
-    let choices: string[] = []
-    let questionRound: AdvisorQuestionRound | null = null
-    let situationSuggestions: string[] = []
-    let sources: OwlSourceId[] = []
+    const progress = newAgentRunProgress()
+    const found = newTurnFindings()
 
     // A task works through the whole case: it needs more rounds and more time than one question.
     // The interview also does several things per answer (drafts, ticking areas off, the next
@@ -512,80 +399,20 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
     const bigTurn = request.task !== undefined || request.skill === 'berater-interview'
     const budgetMs = bigTurn || request.depth === 'max' ? Math.max(limits.turnTimeoutMs, TASK_TIMEOUT_MS) : limits.turnTimeoutMs
     const maxToolRounds = bigTurn ? Math.max(limits.maxToolRounds, TASK_TOOL_ROUNDS) : limits.maxToolRounds
-    const timeout = AbortSignal.timeout(budgetMs)
-    const answerBy = Date.now() + Math.max(budgetMs - ANSWER_RESERVE_MS, budgetMs / 2)
-    const signal = request.signal ? AbortSignal.any([request.signal, timeout]) : timeout
-    const abortReason = (): 'client' | 'timeout' | null =>
-      request.signal?.aborted ? 'client' : timeout.aborted ? 'timeout' : null
+    const budget = openTurnBudget(budgetMs, request.signal)
 
-    const timings = newTimings()
+    const timings = newAgentTimings()
     try {
-      const graph = this.buildCompiledGraph(chatModel, request, maxToolRounds, canForceTool, answerBy, Date.now, slotConfig.provider === 'anthropic', timings, beforeTools)
+      const graph = this.buildCompiledGraph(chatModel, request, { maxToolRounds, canForceTool, answerBy: budget.answerBy, markHistoryForCache: slotConfig.provider === 'anthropic', timings, beforeTools })
       const stream = await graph.stream(
         { messages: initialMessages },
-        { streamMode: ['custom', 'updates'], signal },
+        { streamMode: ['custom', 'updates'], signal: budget.signal },
       )
 
-      for await (const [mode, payload] of stream) {
-        if (mode === 'custom') {
-          const ev = payload as AdvisorStreamEvent
-          if (ev.event === 'token') {
-            streamedTokenCount++
-            streamedText += ev.data.text
-          }
-          if (ev.event === 'reasoning') {
-            // Thoughts of a later model round start a new paragraph instead of running into the last one.
-            const separator = reasoning.length > 0 && reasoningRound !== lastReasoningRound ? '\n\n' : ''
-            lastReasoningRound = reasoningRound
-            reasoning += separator + ev.data.text
-            yield separator.length > 0 ? { event: 'reasoning', data: { text: separator + ev.data.text } } : ev
-            continue
-          }
-          yield ev
-          continue
-        }
-
-        if (mode === 'updates' && payload && typeof payload === 'object') {
-          const updates = payload as Record<string, Partial<typeof AdvisorGraphState.State>>
-          for (const nodeUpdate of Object.values(updates)) {
-            if (!nodeUpdate) continue
-            if (Array.isArray(nodeUpdate.messages)) {
-              finalMessages = finalMessages.concat(nodeUpdate.messages)
-              reasoningRound += 1
-            }
-            if (Array.isArray(nodeUpdate.pendingActions)) {
-              pendingActions = nodeUpdate.pendingActions
-            }
-            if (Array.isArray(nodeUpdate.rejectedDrafts)) {
-              rejectedDrafts = nodeUpdate.rejectedDrafts
-            }
-            if ('pendingTwoPaths' in nodeUpdate && nodeUpdate.pendingTwoPaths !== undefined) {
-              pendingTwoPaths = nodeUpdate.pendingTwoPaths
-            }
-            if (Array.isArray(nodeUpdate.choices)) {
-              choices = nodeUpdate.choices
-            }
-            if (Array.isArray(nodeUpdate.situationSuggestions)) {
-              situationSuggestions = nodeUpdate.situationSuggestions
-            }
-            if (nodeUpdate.questionRound) {
-              questionRound = nodeUpdate.questionRound
-            }
-            if (Array.isArray(nodeUpdate.noteChanges)) {
-              noteChanges = nodeUpdate.noteChanges
-            }
-            if (nodeUpdate.consentRequested === true) consentRequested = true
-            if (Array.isArray(nodeUpdate.interviewChanges)) {
-              interviewChanges = nodeUpdate.interviewChanges
-            }
-            if (Array.isArray(nodeUpdate.sources)) {
-              sources = [...new Set([...sources, ...nodeUpdate.sources])]
-            }
-          }
-        }
-      }
+      // Words, thoughts and messages are counted by the loop; what the tools changed in the owl's state is kept in `found`.
+      yield* followAgentRun<AdvisorStreamEvent, OwlStateUpdate>(stream, progress, (update) => noteUpdate(found, update))
     } catch (error) {
-      const aborted = abortReason()
+      const aborted = budget.abortReason()
       // A failed model call used to vanish into the fallback; operations need to see why (#476).
       if (aborted !== 'client') {
         this.logger.warn(
@@ -595,17 +422,17 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
       // Nobody is listening any more; persisting a turn for a closed connection would only cost money.
       if (aborted === 'client') return
       const failure = classifyModelFailure(error, aborted === 'timeout' ? 'timeout' : 'error', slotConfig.provider)
-      if (streamedTokenCount === 0 && canFailOver && failure.reason !== 'blocked') {
+      if (progress.streamedTokenCount === 0 && canFailOver && failure.reason !== 'blocked') {
         const next = await this.resolveFailover(slotConfig, request.depth)
         if (next) {
           yield { event: 'status', data: { text: `${providerName(slotConfig.provider)} antwortet nicht. Die Eule fragt ${providerName(next.config.provider)} …` } }
-          for await (const ev of this.runModelTurn(request, next.config, next.model, limits, false, grayZone, 1, beforeTools)) {
+          for await (const ev of this.runModelTurn(request, { ...run, slot: next.config, model: next.model, canFailOver: false, emptyRetries: 1 })) {
             yield ev.event === 'done' ? { event: 'done', data: { ...(ev.data as AdvisorTurnResult), primaryFailure: failure } } : ev
           }
           return
         }
       }
-      if (streamedTokenCount === 0) {
+      if (progress.streamedTokenCount === 0) {
         yield* this.emitFallbackTurn(request, undefined, failure)
         return
       }
@@ -621,22 +448,14 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
       return
     }
 
-    let lastAiMessage: BaseMessage | undefined
-    for (let i = finalMessages.length - 1; i >= 0; i -= 1) {
-      const candidate = finalMessages[i]
-      if (candidate instanceof AIMessage || candidate instanceof AIMessageChunk) {
-        lastAiMessage = candidate
-        break
-      }
-    }
-    const lastAiText = lastAiMessage ? extractMessageText(lastAiMessage.content) : ''
-    let replyText = (streamedText || lastAiText).trim()
+    const { pendingActions, rejectedDrafts, noteChanges, interviewChanges, consentRequested, pendingTwoPaths, choices, questionRound, situationSuggestions, sources } = found
+    let replyText = (progress.streamedText || lastModelText(progress.messages)).trim()
 
     // Found in the real case: a turn came back with nothing at all, not even after the nudge, and the stock
     // sentence below made it look answered. Ask once more; if it stays silent, say so (ADR-0084).
     const nothingAtAll =
       replyText.length === 0 &&
-      streamedTokenCount === 0 &&
+      progress.streamedTokenCount === 0 &&
       pendingActions.length === 0 &&
       pendingTwoPaths === null &&
       choices.length === 0 &&
@@ -647,7 +466,7 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
       this.logger.warn(`advisor turn came back empty (${slotConfig.provider}/${slotConfig.model}), ${emptyRetries > 0 ? 'asking again' : 'giving up'}`)
       if (emptyRetries > 0) {
         yield { event: 'status', data: { text: 'Die Eule fragt noch einmal nach …' } }
-        yield* this.runModelTurn(request, slotConfig, chatModel, limits, canFailOver, grayZone, emptyRetries - 1, beforeTools)
+        yield* this.runModelTurn(request, { ...run, emptyRetries: emptyRetries - 1 })
         return
       }
       yield* this.emitFallbackTurn(request, undefined, { reason: 'unknown', detail: 'empty answer' })
@@ -663,11 +482,11 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
           : 'Ich habe deine Steuerakte geprüft.'
     }
 
-    if (streamedTokenCount === 0 && replyText.length > 0) {
+    if (progress.streamedTokenCount === 0 && replyText.length > 0) {
       yield { event: 'token', data: { text: replyText } }
     }
 
-    const usage = sumUsage(finalMessages)
+    const usage = sumUsage(progress.messages)
     const notStaged = unresolvedRejections(rejectedDrafts, pendingActions)
     // The finished text is checked without a model; what it finds, the app says under the answer.
     const notices = checkAdvisorAnswer({
@@ -676,7 +495,7 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
       drafts: [...pendingActions, ...(pendingTwoPaths ? [pendingTwoPaths.safePath, pendingTwoPaths.maxPath] : [])],
       notStagedCount: notStaged.length,
       // The opening's figures are the app's own calculation, so naming them is backed.
-      computedFigures: [...computedFiguresOf(finalMessages), ...(request.opening?.figures.map((figure) => figure.amountEur) ?? [])],
+      computedFigures: [...computedFiguresOf(progress.messages), ...(request.opening?.figures.map((figure) => figure.amountEur) ?? [])],
     })
     const meta: AdvisorMessageMeta = {
       ...(choices.length > 0 ? { choices } : {}),
@@ -711,7 +530,7 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
       mode: 'langgraph',
       provider: slotConfig.provider,
       model: slotConfig.model,
-      ...(reasoning.trim().length > 0 ? { reasoning: reasoning.trim() } : {}),
+      ...(progress.reasoning.trim().length > 0 ? { reasoning: progress.reasoning.trim() } : {}),
       ...(usage ? { usage } : {}),
       timings,
     }
@@ -767,13 +586,7 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
         digest: request.digest,
         actionIdFactory: request.actionIdFactory,
       })
-      return {
-        replyText: fallback.replyText,
-        meta: fallback.meta,
-        mode: 'deterministic_fallback',
-        provider: 'deterministic',
-        model: 'deterministic-fallback',
-      }
+      return rulesResult(fallback.replyText, fallback.meta)
     }
     return finalResult
   }
@@ -783,6 +596,14 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
  * Max sets the deepest level the model offers (ADR-0096); Gründlich keeps the slot as configured,
  * which is the chat's standard. A provider without a level of its own is left as it is.
  */
+/**
+ * In a spoken conversation the wait before the first word is silence (ADR-0115): the model thinks at its
+ * lowest level, where the provider offers levels. A question asked with Max keeps its depth.
+ */
+export function withSpokenPace(config: ResolvedAiSlotConfig, spoken: boolean): ResolvedAiSlotConfig {
+  return spoken && config.enabled ? { ...config, thinkingLevel: 'low' } : config
+}
+
 export function withDepth(config: ResolvedAiSlotConfig, depth: AdvisorDepth | undefined): ResolvedAiSlotConfig {
   if (depth !== 'max' || !config.enabled) return config
   if (config.provider !== 'anthropic' && config.provider !== 'google-genai' && config.provider !== 'openai') return config

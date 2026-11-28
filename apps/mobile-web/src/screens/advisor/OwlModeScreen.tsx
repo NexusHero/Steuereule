@@ -1,12 +1,12 @@
 import { ScrollView, View } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useTheme } from '@steuereule/ui'
-import type { AdvisorChatModelRefDto, AdvisorModelsDto } from '@steuereule/api-client'
-import type { AdvisorChatMessageView, AdvisorFeedbackRating, AdvisorFeedbackReason, OwlCardsDisplay, Profession, Screen } from '@steuereule/core'
+import type { AdvisorChatModelRefDto } from '@steuereule/api-client'
+import type { AdvisorChatMessageView, OwlCardsDisplay, Profession, Screen } from '@steuereule/core'
 import { APP_NS } from '../../i18n/resources'
 import { runningTaxYear } from '../../config/taxYear'
 import { OwlTopBar } from './OwlTopBar'
-import type { AdvisorChatOpening, AdvisorChatPanelProps, ChatSendOptions } from './AdvisorChatPanel'
+import type { AdvisorChatDrafts, AdvisorChatModel, AdvisorChatOpening, AdvisorChatPanelProps, ChatSendOptions } from './AdvisorChatPanel'
 import type { ConversationProject, ConversationSearchHit, ConversationSummary } from './chat/ConversationList'
 import type { ProjectNote } from './chat/ProjectNotes'
 import type { ConnectionView } from './chat/ConnectionStatus'
@@ -25,6 +25,17 @@ import { OwlModeProjectPanel } from './OwlModeProjectPanel'
 import { OwlModeSheets } from './OwlModeSheets'
 export { makeStyles } from './OwlModeScreen.styles'
 
+/** The drafts the screen is given; what only the screen knows (the mask, the receipts) it adds itself. */
+export type OwlModeScreenDrafts = Pick<
+  AdvisorChatDrafts,
+  'onApplyAction' | 'onUndoAction' | 'onDismissAction' | 'partnerName' | 'ownName' | 'jointReturn' | 'onRateMessage' | 'onUndoNoteChange'
+>
+
+/** The screen waits for the pick to be stored; the chat only needs to hand it on. */
+export type OwlModeScreenModel = Omit<AdvisorChatModel, 'onPickModel'> & {
+  readonly onPickModel?: ((model: AdvisorChatModelRefDto | null) => Promise<void>) | undefined
+}
+
 export interface OwlModeScreenProps {
   readonly onDone?: () => void
   readonly onBack?: () => void
@@ -40,18 +51,11 @@ export interface OwlModeScreenProps {
   readonly onChooseProfession?: ((profession: Profession) => Promise<void> | void) | undefined
   /** Resolves `false` when the message did not reach the owl (WEB-14). */
   readonly onSendMessage?: ((text: string, options?: ChatSendOptions) => Promise<boolean | void> | boolean | void) | undefined
-  readonly onApplyAction?: ((actionId: string) => Promise<void> | void) | undefined
-  readonly onUndoAction?: ((actionId: string) => Promise<void> | void) | undefined
-  /** Refuses a pending draft (ADR-0073 Nachtrag). */
-  readonly onDismissAction?: ((actionId: string) => Promise<void> | void) | undefined
-  /** The spouse's first name, shown on drafts for Person B (ADR-0073). */
-  readonly partnerName?: string | undefined
-  readonly ownName?: string | undefined
-  readonly jointReturn?: boolean | undefined
-  /** Stores a thumbs up/down for an answer; without it the chat offers no rating. */
-  readonly onRateMessage?:
-    | ((messageId: string, rating: AdvisorFeedbackRating | null, reason?: AdvisorFeedbackReason) => Promise<void> | void)
-    | undefined
+  /**
+   * What the cards of an answer need from the caller: applying, undoing and refusing a draft
+   * (ADR-0073 Nachtrag), whose they are, the rating and the notes. The screen adds what it knows itself.
+   */
+  readonly drafts?: OwlModeScreenDrafts | undefined
   /** Deletes this year's conversation on the server; rejects when it could not. */
   readonly onClearConversation?: (() => Promise<void>) | undefined
   /** The conversations of this tax year (#481); without them the screen shows no list. */
@@ -63,11 +67,8 @@ export interface OwlModeScreenProps {
   readonly onSelectConversationInYear?: ((taxYear: number, id: string) => void) | undefined
   readonly onNewConversation?: (() => Promise<void>) | undefined
   readonly onRenameConversation?: ((id: string, title: string) => Promise<void>) | undefined
-  /** The chat models the user may pick (ADR-0096); absent hides the picker and Max. */
-  readonly models?: AdvisorModelsDto | null | undefined
-  /** The model picked for the open conversation; null = the standard model. */
-  readonly chatModel?: AdvisorChatModelRefDto | null | undefined
-  readonly onPickModel?: ((model: AdvisorChatModelRefDto | null) => Promise<void>) | undefined
+  /** The chat models the user may pick (ADR-0096), the one picked and how to pick another; absent hides the picker and Max. */
+  readonly model?: OwlModeScreenModel | undefined
   readonly onDeleteConversation?: ((id: string) => Promise<void>) | undefined
   readonly onSearchConversations?: ((query: string) => Promise<readonly ConversationSearchHit[]>) | undefined
   /** How full the context of the open conversation is (#481). */
@@ -81,7 +82,6 @@ export interface OwlModeScreenProps {
   readonly onAddNote?: ((text: string) => Promise<void>) | undefined
   readonly onEditNote?: ((id: string, text: string) => Promise<void>) | undefined
   readonly onDeleteNote?: ((id: string) => Promise<void>) | undefined
-  readonly onUndoNoteChange?: ((messageId: string, index: number) => Promise<void>) | undefined
   /** The user's own description of the household's situation; the owl reads it in every conversation (#501). */
   readonly situation?: string | undefined
   readonly onSaveSituation?: ((text: string) => Promise<void>) | undefined
@@ -119,13 +119,7 @@ export function OwlModeScreenView({
   profession,
   onChooseProfession,
   onSendMessage,
-  onApplyAction,
-  onUndoAction,
-  onDismissAction,
-  partnerName,
-  ownName,
-  jointReturn,
-  onRateMessage,
+  drafts,
   onClearConversation,
   conversations,
   activeConversationId,
@@ -134,9 +128,7 @@ export function OwlModeScreenView({
   onSelectConversationInYear,
   onNewConversation,
   onRenameConversation,
-  models,
-  chatModel,
-  onPickModel,
+  model,
   onDeleteConversation,
   onSearchConversations,
   context,
@@ -147,7 +139,6 @@ export function OwlModeScreenView({
   onAddNote,
   onEditNote,
   onDeleteNote,
-  onUndoNoteChange,
   situation,
   onSaveSituation,
   opening,
@@ -163,9 +154,7 @@ export function OwlModeScreenView({
     initialMessages,
     onDismissCard,
     onSendMessage,
-    onApplyAction,
-    onUndoAction,
-    onDismissAction,
+    drafts,
     onClearConversation,
     onSearchConversations,
     situation,
@@ -278,19 +267,13 @@ export function OwlModeScreenView({
             compact={bp === 's'}
             switchToTab={switchToTab}
             styles={styles}
-            models={models}
-            chatModel={chatModel}
-            onPickModel={onPickModel}
-            partnerName={partnerName}
-            ownName={ownName}
-            jointReturn={jointReturn}
+            model={model}
+            drafts={drafts}
             opening={opening}
             situation={situation}
             onSaveSituation={onSaveSituation}
             context={context}
             onSummarize={onSummarize}
-            onUndoNoteChange={onUndoNoteChange}
-            onRateMessage={onRateMessage}
           />
         </View>
 

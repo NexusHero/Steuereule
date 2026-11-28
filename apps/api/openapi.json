@@ -9210,6 +9210,68 @@
         ]
       }
     },
+    "/v1/eulen-modus/gehoert": {
+      "post": {
+        "operationId": "SpeechController_transcribe",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "file",
+                  "language"
+                ],
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "The utterance as a WAV file, 16-bit mono, at most 60 seconds."
+                  },
+                  "language": {
+                    "type": "string",
+                    "enum": [
+                      "de",
+                      "en"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TranscriptDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Requires account."
+          },
+          "413": {
+            "description": "The recording is longer than 60 seconds."
+          },
+          "429": {
+            "description": "Too many utterances for this account, or the day's voice budget is spent."
+          },
+          "503": {
+            "description": "No voice is configured, or its provider did not answer."
+          }
+        },
+        "summary": "The words of one recorded utterance (ADR-0115); the recording is not kept",
+        "tags": [
+          "eulen-modus"
+        ]
+      }
+    },
     "/v1/steuerjahre/{jahr}/veranlagungsartenvergleich": {
       "get": {
         "operationId": "FilingTypeComparisonController_getComparison",
@@ -19067,6 +19129,31 @@
           "sourceId"
         ]
       },
+      "MaskedSpanDto": {
+        "type": "object",
+        "properties": {
+          "start": {
+            "type": "number",
+            "example": 15,
+            "description": "First character of the range in the message as the user wrote it."
+          },
+          "end": {
+            "type": "number",
+            "example": 42,
+            "description": "One past its last character."
+          },
+          "as": {
+            "type": "string",
+            "example": "[IBAN-GESCHÜTZT]",
+            "description": "What the model read in its place."
+          }
+        },
+        "required": [
+          "start",
+          "end",
+          "as"
+        ]
+      },
       "AdvisorOpeningMarkerDto": {
         "type": "object",
         "properties": {
@@ -19592,6 +19679,13 @@
       "AdvisorMessageMetaDto": {
         "type": "object",
         "properties": {
+          "masked": {
+            "description": "On a user message: where its text was changed before the model read it, because the consent to personal data was missing (ADR-0091).",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MaskedSpanDto"
+            }
+          },
           "opening": {
             "description": "Both messages of an opening carry it; the user message is a hidden placeholder.",
             "allOf": [
@@ -21558,6 +21652,10 @@
           "turbo": {
             "type": "boolean",
             "description": "Turbo mode: the owl applies the drafts of this answer itself instead of waiting for a click. Off by default."
+          },
+          "spoken": {
+            "type": "boolean",
+            "description": "The message was spoken and the answer is read aloud (ADR-0115): the owl answers in a few short sentences without lists or headings."
           },
           "depth": {
             "type": "string",
@@ -25402,6 +25500,19 @@
         "required": [
           "text",
           "language"
+        ]
+      },
+      "TranscriptDto": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string",
+            "example": "Ich bin 38 Kilometer zur Arbeit gefahren.",
+            "description": "The words of the recording; empty when nothing was said."
+          }
+        },
+        "required": [
+          "text"
         ]
       },
       "ComparisonSourceDto": {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { MAX_SPOKEN_CHUNK, speechChunks, speechText } from './speechText'
+import { MAX_SPOKEN_CHUNK, sentencesOf, speechChunks, speechText } from './speechText'
 
 describe('an answer as text for a voice', () => {
   it('drops the Markdown markers and ends every line with a pause', () => {
@@ -45,5 +45,19 @@ describe('an answer as text for a voice', () => {
     expect(speechChunks(long).every((chunk) => chunk.length <= MAX_SPOKEN_CHUNK)).toBe(true)
     expect(speechChunks(long).join(' ')).toBe(long)
     expect(speechChunks('')).toEqual([])
+  })
+})
+
+describe('cutting text into sentences', () => {
+  it('ends a sentence at a mark that is followed by a blank, and keeps the blank with it', () => {
+    expect(sentencesOf('Eins. Zwei! Drei? Vier: fünf')).toEqual(['Eins. ', 'Zwei! ', 'Drei? ', 'Vier: ', 'fünf'])
+  })
+
+  it('keeps a figure and a date whole', () => {
+    expect(sentencesOf('Das sind 3.030 Euro. Fällig am 3. Mai.')).toEqual(['Das sind 3.030 Euro. ', 'Fällig am 3. Mai.'])
+  })
+
+  it('is nothing for no text', () => {
+    expect(sentencesOf('')).toEqual([])
   })
 })

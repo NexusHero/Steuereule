@@ -12,16 +12,15 @@ import { MaxToggle, ModelPicker } from './chat/ModelControls'
 import { DictationBar } from './chat/DictationBar'
 import { ChatIcon } from '../../icons/ChatIcon'
 import type { makeStyles } from './AdvisorChatPanel.styles'
-import type { AdvisorChatPanelProps } from './AdvisorChat.types'
+import type { AdvisorChatLiveStream, AdvisorChatModel, AdvisorChatPanelProps, AdvisorChatReceipts } from './AdvisorChat.types'
 import type { AdvisorChatState } from './useAdvisorChat'
 import { NARROW_COMPOSER_WIDTH, appendTranscript, slashCommandList } from './AdvisorChatHelpers'
 
-type AdvisorChatComposerProps = Pick<
-  AdvisorChatPanelProps,
-  'models' | 'chatModel' | 'onPickModel' | 'situationChip' | 'context' | 'onSummarize' | 'onStop' | 'onAttachReceipt' | 'onAttachReceiptFile'
-> & {
+type AdvisorChatComposerProps = Pick<AdvisorChatPanelProps, 'situationChip' | 'context' | 'onSummarize' | 'onOpenConversation'> & {
   readonly chat: AdvisorChatState
-  readonly isSending: boolean
+  readonly model: AdvisorChatModel
+  readonly stream: Pick<AdvisorChatLiveStream, 'isSending' | 'onStop'>
+  readonly receipts: Pick<AdvisorChatReceipts, 'onAttachReceipt' | 'onAttachReceiptFile'>
   readonly compact: boolean
   readonly dictationEngine: NonNullable<AdvisorChatPanelProps['dictationEngine']>
   readonly styles: ReturnType<typeof makeStyles>
@@ -30,16 +29,13 @@ type AdvisorChatComposerProps = Pick<
 /** The input with its edit banner, slash menu, switches, attach button, context ring and microphone. */
 export function AdvisorChatComposer({
   chat,
-  models,
-  chatModel,
-  onPickModel,
+  model: { models, chatModel, onPickModel },
+  stream: { isSending, onStop },
+  receipts: { onAttachReceipt, onAttachReceiptFile },
   situationChip,
   context,
   onSummarize,
-  onStop,
-  onAttachReceipt,
-  onAttachReceiptFile,
-  isSending,
+  onOpenConversation,
   compact,
   dictationEngine,
   styles,
@@ -130,6 +126,19 @@ export function AdvisorChatComposer({
           <>
             {context ? <ContextRing context={context} onSummarize={onSummarize} busy={isSending} /> : null}
             {microphone}
+            {onOpenConversation ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={tr('advisor.conversation.openAria')}
+                accessibilityState={{ disabled: isSending }}
+                disabled={isSending}
+                onPress={onOpenConversation}
+                style={styles.attachButton}
+                testID="advisor-conversation-open"
+              >
+                <ChatIcon name="conversation" color={theme.color.tinte} />
+              </Pressable>
+            ) : null}
           </>
         }
       />

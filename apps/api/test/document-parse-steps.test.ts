@@ -1,8 +1,8 @@
 // The steps the document parse strategies share (receipt/parse/document-parse-steps.ts), each on its own.
 import { describe, expect, it } from 'vitest'
 import { z } from 'zod'
-import { DEFAULT_AI_TURN_LIMITS, type AiRuntimeConfigService, type ResolvedAiSlotConfig } from '../src/ki/ai-runtime-config.service.js'
-import type { SingleShotModel, SingleShotOptions, SingleShotPrompt } from '../src/ki/single-shot-model.js'
+import { DEFAULT_AI_TURN_LIMITS, type AiRuntimeConfigService, type ResolvedAiSlotConfig } from '../src/llm/ai-runtime-config.service.js'
+import type { SingleShotModel, SingleShotOptions, SingleShotPrompt } from '../src/llm/single-shot-model.js'
 import type { ParseReceiptDto } from '../src/receipt/dto/parse-receipt.dto.js'
 import {
   DETERMINISTIC_ENGINE,

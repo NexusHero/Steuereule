@@ -3,8 +3,8 @@
 import { describe, expect, it } from 'vitest'
 import { InMemoryAdvisorRepository } from '../src/advisor/advisor.repository.js'
 import { AdvisorModelsService } from '../src/advisor/advisor-models.service.js'
-import { AdvisorModelCatalog, type CatalogFetch } from '../src/ki/advisor-model-catalog.js'
-import type { AiRuntimeConfigService, ResolvedAiSlotConfig } from '../src/ki/ai-runtime-config.service.js'
+import { AdvisorModelCatalog, type CatalogFetch } from '../src/llm/model-catalog.js'
+import type { AiRuntimeConfigService, ResolvedAiSlotConfig } from '../src/llm/ai-runtime-config.service.js'
 
 const STANDARD: ResolvedAiSlotConfig = { slot: 'advisor_chat', enabled: true, provider: 'anthropic', model: 'claude-sonnet-5-5', apiKey: 'a-key' }
 

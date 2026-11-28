@@ -1,9 +1,9 @@
 import type { AdvisorActionProposal, AdvisorChatMessageView, AdvisorThoughtStep, Screen } from '@steuereule/core'
+import { sendOptionsToDto } from './AdvisorChatHelpers'
 import type {
   AbortedTurn,
   AdvisorPlanView,
   ChatReceiptResult,
-  PlanStepView,
   SendStreamingOptions,
   StaleConflictState,
   StaleFieldConflict,
@@ -67,27 +67,14 @@ export function abortPlan(plan: AdvisorPlanView | null): AdvisorPlanView | null 
   return { finished: true, steps: plan.steps.map((s) => (s.status === 'laeuft' ? { ...s, status: 'abgebrochen' } : s)) }
 }
 
-export function parsePlanSteps(data: unknown): PlanStepView[] | null {
-  if (typeof data !== 'object' || data === null || !('steps' in data)) return null
-  const steps = (data as { steps: unknown }).steps
-  if (!Array.isArray(steps)) return null
-  return steps.flatMap((step: unknown) => {
-    if (typeof step !== 'object' || step === null) return []
-    const { text, status } = step as Record<string, unknown>
-    return typeof text === 'string' && (status === 'offen' || status === 'laeuft' || status === 'erledigt') ? [{ text, status }] : []
-  })
-}
-
 /** The body of a streamed message, without keys that are unset. */
 export function streamMessageBody(message: string, activeScreen: Screen | undefined, options: SendStreamingOptions | undefined, conversationId: string | null): Record<string, unknown> {
   return {
     message,
     ...(activeScreen ? { activeScreen } : {}),
-    ...(options?.quickAction ? { quickAction: options.quickAction } : {}),
-    ...(options?.replaceFromMessageId ? { replaceFromMessageId: options.replaceFromMessageId } : {}),
-    ...(options?.skill ? { skill: options.skill } : {}),
-    ...(options?.turbo ? { turbo: true } : {}),
-    ...(options?.depth === 'max' ? { depth: 'max' } : {}),
+    // The same fields as the request without streaming: an option that travelled with one and not the other
+    // (`spoken`, 28.11.2026) changed nothing in the answer.
+    ...sendOptionsToDto(options),
     ...(conversationId ? { conversationId } : {}),
   }
 }

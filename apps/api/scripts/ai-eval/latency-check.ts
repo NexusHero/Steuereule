@@ -6,10 +6,10 @@
 //
 // Skipped without the key. A handful of short turns, a few cents.
 import type { AdvisorStreamEvent } from '@steuereule/core'
-import { EnvAiRuntimeConfigService } from '../../src/ki/ai-runtime-config.service.js'
+import { EnvAiRuntimeConfigService } from '../../src/llm/ai-runtime-config.service.js'
 import { LangGraphAdvisorEngine } from '../../src/ki/langgraph-advisor.engine.js'
 import { PERSONAS } from './golden.js'
-import { installProviderRejectionGuard } from '../../src/ki/provider-rejections.js'
+import { installProviderRejectionGuard } from '../../src/llm/provider-rejections.js'
 
 // As in main.ts: a Gemini stream that breaks off after its turn ended must not end the run.
 installProviderRejectionGuard()

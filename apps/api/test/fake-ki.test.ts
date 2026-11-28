@@ -1,10 +1,10 @@
 // #450 Teil 1A / D8: the scripted fake model behind the KiPort — only outside production.
 import { AIMessage, HumanMessage, ToolMessage } from '@langchain/core/messages'
 import { describe, expect, it } from 'vitest'
-import { EnvAiRuntimeConfigService } from '../src/ki/ai-runtime-config.service.js'
-import { createChatModelFromConfig } from '../src/ki/chat-model.factory.js'
+import { EnvAiRuntimeConfigService } from '../src/llm/ai-runtime-config.service.js'
+import { createAdvisorChatModel } from '../src/ki/advisor-chat-model.js'
 import { FAKE_KI_DEFAULT_REPLY, FakeKiChatModel, fakeKiAnswer } from '../src/ki/fake-chat-model.js'
-import { assertFakeKiNotInProduction } from '../src/ki/fake-ki-env.js'
+import { assertFakeKiNotInProduction } from '../src/llm/fake-ki-env.js'
 import { LangGraphAdvisorEngine } from '../src/ki/langgraph-advisor.engine.js'
 import { SAMPLE_DIGEST } from './fixtures/sample-digest.js'
 
@@ -12,7 +12,7 @@ describe('fake KiPort (#450 D8)', () => {
   it('AI_FAKE_KI=1 selects the fake model for the advisor chat outside production', async () => {
     const config = await new EnvAiRuntimeConfigService({ AI_FAKE_KI: '1', NODE_ENV: 'test' }).resolveSlot('advisor_chat')
     expect(config).toMatchObject({ enabled: true, provider: 'fake' })
-    expect(createChatModelFromConfig(config)).toBeInstanceOf(FakeKiChatModel)
+    expect(createAdvisorChatModel(config)).toBeInstanceOf(FakeKiChatModel)
   })
 
   it('in production the flag selects nothing, and the API refuses to start with it', async () => {
@@ -38,7 +38,7 @@ describe('fake KiPort (#450 D8)', () => {
   })
 
   it('drives the real LangGraph engine to a pending draft — never a write', async () => {
-    const engine = new LangGraphAdvisorEngine(new EnvAiRuntimeConfigService({ AI_FAKE_KI: '1', NODE_ENV: 'test' }), createChatModelFromConfig)
+    const engine = new LangGraphAdvisorEngine(new EnvAiRuntimeConfigService({ AI_FAKE_KI: '1', NODE_ENV: 'test' }), createAdvisorChatModel)
     const events = []
     for await (const ev of engine.streamTurn({ message: 'Mein Arbeitsweg ist länger', activeScreen: 'commute', digest: SAMPLE_DIGEST, actionIdFactory: () => 'act-fake-1' })) {
       events.push(ev)

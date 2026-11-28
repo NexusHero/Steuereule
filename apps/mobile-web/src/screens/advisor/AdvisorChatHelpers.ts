@@ -1,5 +1,5 @@
 import type { AdvisorActionProposal, AdvisorChatMessageView, AdvisorQuickAction, AdvisorSkillId } from '@steuereule/core'
-import type { AdvisorQuickChip, ChatSendOptions } from './AdvisorChat.types'
+import type { AdvisorChatLiveStream, AdvisorChatStream, AdvisorQuickChip, ChatSendOptions } from './AdvisorChat.types'
 
 /** Below this width the input shows its short hint; the long one needs two lines there. */
 export const NARROW_COMPOSER_WIDTH = 560
@@ -9,12 +9,31 @@ export const CHAT_COLUMN_MAX_WIDTH = 760
 /** How many quick starts an empty page shows before "Mehr …". */
 export const PAGE_QUICK_CHIPS = 4
 
+/** The running answer with its defaults applied once, so the parts of the chat never repeat them. */
+export function liveStream(stream: AdvisorChatStream = {}): AdvisorChatLiveStream {
+  const {
+    isSending = false,
+    streamSteps = [],
+    streamedText = '',
+    streamedReasoning = '',
+    pendingUserMessage = null,
+    reconnecting = false,
+    abortedTurn = null,
+    plan = null,
+    chatError = null,
+    basisMode = false,
+    onStop,
+  } = stream
+  return { isSending, streamSteps, streamedText, streamedReasoning, pendingUserMessage, reconnecting, abortedTurn, plan, chatError, basisMode, onStop }
+}
+
 /** The options as request fields, without keys that are unset (the DTO forbids explicit undefined). */
-export function sendOptionsToDto(options: ChatSendOptions | undefined): { quickAction?: AdvisorQuickAction; replaceFromMessageId?: string; skill?: AdvisorSkillId; turbo?: boolean; depth?: 'max' } {
+export function sendOptionsToDto(options: ChatSendOptions | undefined): { quickAction?: AdvisorQuickAction; replaceFromMessageId?: string; skill?: AdvisorSkillId; turbo?: boolean; depth?: 'max'; spoken?: boolean } {
   return {
     ...(options?.skill ? { skill: options.skill } : {}),
     ...(options?.turbo ? { turbo: true } : {}),
     ...(options?.depth === 'max' ? { depth: 'max' as const } : {}),
+    ...(options?.spoken ? { spoken: true } : {}),
     ...(options?.quickAction ? { quickAction: options.quickAction } : {}),
     ...(options?.replaceFromMessageId ? { replaceFromMessageId: options.replaceFromMessageId } : {}),
   }

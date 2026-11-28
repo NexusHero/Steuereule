@@ -55,7 +55,7 @@ describe('the figures the texts print are the figures the API enforces', () => {
   })
 
   it('model providers: every provider the runtime config can resolve is named', () => {
-    const source = readFileSync(new URL('../src/ki/ai-runtime-config.service.ts', import.meta.url), 'utf8')
+    const source = readFileSync(new URL('../src/llm/ai-runtime-config.service.ts', import.meta.url), 'utf8')
     const kinds = /export type AiProviderKind = ([^\n]+)/.exec(source)![1]!
     const real = [...kinds.matchAll(/'([^']+)'/g)].map((m) => m[1]).filter((k) => k !== 'deterministic' && k !== 'fake')
     expect(real.sort()).toEqual(MODEL_PROVIDERS.map((p) => p.id).sort())

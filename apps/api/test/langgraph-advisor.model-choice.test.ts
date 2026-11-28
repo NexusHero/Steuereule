@@ -9,7 +9,7 @@ import type { Runnable } from '@langchain/core/runnables'
 import type { BaseLanguageModelInput } from '@langchain/core/language_models/base'
 import { describe, expect, it } from 'vitest'
 import type { AdvisorDepth, AdvisorModelProvider, AdvisorTurnResult } from '@steuereule/core'
-import { DEFAULT_AI_TURN_LIMITS, type AiRuntimeConfigService, type ResolvedAiSlotConfig } from '../src/ki/ai-runtime-config.service.js'
+import { DEFAULT_AI_TURN_LIMITS, type AiRuntimeConfigService, type ResolvedAiSlotConfig } from '../src/llm/ai-runtime-config.service.js'
 import { LangGraphAdvisorEngine, MAX_DEPTH_OUTPUT_TOKENS } from '../src/ki/langgraph-advisor.engine.js'
 import { SAMPLE_DIGEST as DIGEST } from './fixtures/sample-digest.js'
 

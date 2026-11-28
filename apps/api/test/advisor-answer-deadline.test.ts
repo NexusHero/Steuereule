@@ -5,7 +5,7 @@ import type { Runnable } from '@langchain/core/runnables'
 import type { BaseLanguageModelInput } from '@langchain/core/language_models/base'
 import { describe, expect, it } from 'vitest'
 import type { AdvisorTurnResult, CaseDigest } from '@steuereule/core'
-import { DEFAULT_AI_TURN_LIMITS, type AiRuntimeConfigService } from '../src/ki/ai-runtime-config.service.js'
+import { DEFAULT_AI_TURN_LIMITS, type AiRuntimeConfigService } from '../src/llm/ai-runtime-config.service.js'
 import { LangGraphAdvisorEngine } from '../src/ki/langgraph-advisor.engine.js'
 
 /** Answers every round with a tool call, slowly, unless it was bound without tools; logs how it was bound. */

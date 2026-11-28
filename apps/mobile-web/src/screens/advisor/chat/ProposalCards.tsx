@@ -7,48 +7,30 @@ import { ADVISOR_LEGAL_SOURCES, PERSON_B_SCREENS, fieldLabel, formatDraftValue, 
 import { APP_NS } from '../../../i18n/resources'
 import { formLineForField } from '../../shared/formLineMapping'
 import { makeStyles } from '../AdvisorChatPanel'
+import type { AdvisorChatDrafts } from '../AdvisorChat.types'
 import { BookingDraftCard } from './BookingDraftCard'
 
 /** A draft of the owl: one field of a mask, or (screen `buchung`, ADR-0101 §18) a booking of the self-employed. */
 export function ActionProposalCardView(props: FieldProposalCardProps) {
   if (props.action.screen === 'buchung') {
-    return <BookingDraftCard action={props.action} onApply={props.onApply} onUndo={props.onUndo} onDismiss={props.onDismiss} styles={props.styles} testIDPrefix={props.testIDPrefix} />
+    return <BookingDraftCard action={props.action} onApply={props.drafts.onApplyAction} onUndo={props.drafts.onUndoAction} onDismiss={props.drafts.onDismissAction} styles={props.styles} testIDPrefix={props.testIDPrefix} />
   }
   return <FieldProposalCard {...props} />
 }
 
 interface FieldProposalCardProps {
   readonly action: AdvisorActionProposal
-  /** The spouse's first name, for a draft that writes Person B's fields (ADR-0073). */
-  readonly partnerName?: string | undefined
-  /** The user's first name: in a joint return a card on a mask of one spouse names whose value it writes. */
-  readonly ownName?: string | undefined
-  readonly jointReturn?: boolean | undefined
-  readonly onApply?: ((actionId: string) => Promise<void> | void) | undefined
-  readonly onUndo?: ((actionId: string) => Promise<void> | void) | undefined
-  /** Refuses a pending draft (ADR-0073 Nachtrag): a draft the owl itself called wrong must not stay one tap from the return. */
-  readonly onDismiss?: ((actionId: string) => Promise<void> | void) | undefined
-  readonly onInspectMask?: ((screen: Screen, field?: string) => void) | undefined
+  /** What the card does with the draft and who it is for (partner and own name: ADR-0073, the joint return names whose value it writes). */
+  readonly drafts: Pick<AdvisorChatDrafts, 'onApplyAction' | 'onUndoAction' | 'onDismissAction' | 'onInspectMask' | 'partnerName' | 'ownName' | 'jointReturn'>
   readonly receiptLinked?: boolean | undefined
   readonly onSelectSource: (source: AdvisorLegalSource) => void
   readonly styles: ReturnType<typeof makeStyles>
   readonly testIDPrefix?: string
 }
 
-function FieldProposalCard({
-  action,
-  onApply,
-  onUndo,
-  onDismiss,
-  onInspectMask,
-  receiptLinked,
-  onSelectSource,
-  styles,
-  testIDPrefix = 'advisor-action',
-  partnerName,
-  ownName,
-  jointReturn = false,
-}: FieldProposalCardProps) {
+function FieldProposalCard({ action, drafts, receiptLinked, onSelectSource, styles, testIDPrefix = 'advisor-action' }: FieldProposalCardProps) {
+  // `onDismissAction` refuses a pending draft (ADR-0073 Nachtrag): a draft the owl itself called wrong must not stay one tap from the return.
+  const { onApplyAction: onApply, onUndoAction: onUndo, onDismissAction: onDismiss, onInspectMask, partnerName, ownName, jointReturn = false } = drafts
   const { t: tr } = useTranslation(APP_NS)
   const [busyStatus, setBusyStatus] = useState<AdvisorActionProposal['status'] | null>(null)
   const isBusy = busyStatus === action.status
@@ -278,11 +260,11 @@ function FieldProposalCard({
  */
 export function ScannedCertificateCardView({
   actions,
-  onInspectMask,
+  drafts: { onInspectMask },
   styles,
 }: {
   readonly actions: readonly AdvisorActionProposal[]
-  readonly onInspectMask?: ((screen: Screen, field?: string) => void) | undefined
+  readonly drafts: Pick<AdvisorChatDrafts, 'onInspectMask'>
   readonly styles: ReturnType<typeof makeStyles>
 }) {
   const { t: tr } = useTranslation(APP_NS)
@@ -328,56 +310,36 @@ export function ScannedCertificateCardView({
 
 export function TwoPathsCardView({
   twoPaths,
-  onApply,
-  onUndo,
-  onInspectMask,
-  receiptLinkedActionIds,
+  drafts,
   onSelectSource,
   styles,
-  partnerName,
-  ownName,
-  jointReturn,
 }: {
   readonly twoPaths: AdvisorTwoPathsProposal
-  readonly partnerName?: string | undefined
-  readonly ownName?: string | undefined
-  readonly jointReturn?: boolean | undefined
-  readonly onApply?: ((actionId: string) => Promise<void> | void) | undefined
-  readonly onUndo?: ((actionId: string) => Promise<void> | void) | undefined
-  readonly onInspectMask?: ((screen: Screen, field?: string) => void) | undefined
-  readonly receiptLinkedActionIds?: ReadonlySet<string> | undefined
+  readonly drafts: AdvisorChatDrafts
   readonly onSelectSource: (source: AdvisorLegalSource) => void
   readonly styles: ReturnType<typeof makeStyles>
 }) {
+  // The two paths are offered as a choice: they carry no discard of their own.
+  const pathDrafts = { ...drafts, onDismissAction: undefined }
   return (
     <View style={styles.twoPathsContainer} testID="advisor-two-paths-card">
       <Text style={styles.twoPathsTitle}>{twoPaths.title}</Text>
       <ActionProposalCardView
         action={twoPaths.safePath}
-        onApply={onApply}
-        onUndo={onUndo}
-        onInspectMask={onInspectMask}
-        receiptLinked={receiptLinkedActionIds?.has(twoPaths.safePath.actionId)}
+        drafts={pathDrafts}
+        receiptLinked={drafts.receiptLinkedActionIds?.has(twoPaths.safePath.actionId)}
         onSelectSource={onSelectSource}
         styles={styles}
-        partnerName={partnerName}
-        ownName={ownName}
-        jointReturn={jointReturn}
         testIDPrefix="advisor-path-safe"
       />
       <View style={styles.maxPathWrapper}>
         <Text style={styles.evidenceHintText}>{twoPaths.maxPath.evidenceHint}</Text>
         <ActionProposalCardView
           action={twoPaths.maxPath}
-          onApply={onApply}
-          onUndo={onUndo}
-          onInspectMask={onInspectMask}
-          receiptLinked={receiptLinkedActionIds?.has(twoPaths.maxPath.actionId)}
+          drafts={pathDrafts}
+          receiptLinked={drafts.receiptLinkedActionIds?.has(twoPaths.maxPath.actionId)}
           onSelectSource={onSelectSource}
           styles={styles}
-          partnerName={partnerName}
-          ownName={ownName}
-          jointReturn={jointReturn}
           testIDPrefix="advisor-path-max"
         />
       </View>

@@ -15,10 +15,10 @@
 //   4. the second turn reads the stable system prompt from the provider's cache
 //   5. the forced plan ("Was hab ich vergessen?") works with reasoning on
 import type { AdvisorStreamEvent, AdvisorTurnResult } from '@steuereule/core'
-import { EnvAiRuntimeConfigService, type AiProviderKind } from '../../src/ki/ai-runtime-config.service.js'
+import { EnvAiRuntimeConfigService, type AiProviderKind } from '../../src/llm/ai-runtime-config.service.js'
 import { LangGraphAdvisorEngine } from '../../src/ki/langgraph-advisor.engine.js'
 import { PERSONAS } from './golden.js'
-import { installProviderRejectionGuard } from '../../src/ki/provider-rejections.js'
+import { installProviderRejectionGuard } from '../../src/llm/provider-rejections.js'
 
 // As in main.ts: a Gemini stream that breaks off after its turn ended must not end the run.
 installProviderRejectionGuard()

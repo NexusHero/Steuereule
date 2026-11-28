@@ -15,7 +15,7 @@ const MODELS: AdvisorModelsDto = {
 
 describe('Max and the model at the input (ADR-0096)', () => {
   it('sends Max with one message and is off again for the next', () => {
-    const { onSendMessage } = renderAdvisorChatPanel([], { models: MODELS, chatModel: null, onPickModel: vi.fn() })
+    const { onSendMessage } = renderAdvisorChatPanel([], { model: { models: MODELS, chatModel: null, onPickModel: vi.fn() } })
     fireEvent.click(screen.getByTestId('advisor-depth-max'))
     expect(screen.getByTestId('advisor-depth-hint').textContent).toContain('3× Kosten')
     sendChatMessage('Rechne das genau nach')

@@ -5,8 +5,8 @@
 // Kinder mask does it.
 import type { AdvisorActionProposal, AdvisorMessageMeta, AdvisorStreamEvent } from '@steuereule/core'
 import { describe, expect, it } from 'vitest'
-import { EnvAiRuntimeConfigService } from '../src/ki/ai-runtime-config.service.js'
-import { createChatModelFromConfig } from '../src/ki/chat-model.factory.js'
+import { EnvAiRuntimeConfigService } from '../src/llm/ai-runtime-config.service.js'
+import { createAdvisorChatModel } from '../src/ki/advisor-chat-model.js'
 import { LangGraphAdvisorEngine } from '../src/ki/langgraph-advisor.engine.js'
 import type { MasterDataRecord } from '../src/master-data/master-data.repository.js'
 import type { TaxEstimateStatus } from '../src/tax-estimate/tax-estimate.service.js'
@@ -17,7 +17,7 @@ const YEAR = 2025
 const CHILD_MESSAGE = 'Unsere Tochter ist geboren am 9. März 2021. Kindergeld, Schweizer Kinderzulage, Kita und Krankenkasse nenne ich dir gleich.'
 
 function fakeModelKit(): AdvisorTestKit {
-  const engine = new LangGraphAdvisorEngine(new EnvAiRuntimeConfigService({ AI_FAKE_KI: '1', NODE_ENV: 'test' }), createChatModelFromConfig)
+  const engine = new LangGraphAdvisorEngine(new EnvAiRuntimeConfigService({ AI_FAKE_KI: '1', NODE_ENV: 'test' }), createAdvisorChatModel)
   return buildAdvisorTestKit(engine)
 }
 

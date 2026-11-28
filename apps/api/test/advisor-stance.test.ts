@@ -6,8 +6,8 @@ import type { Runnable } from '@langchain/core/runnables'
 import type { BaseLanguageModelInput } from '@langchain/core/language_models/base'
 import { describe, expect, it } from 'vitest'
 import type { AdvisorAssessmentBrief, AdvisorTurnRequest } from '@steuereule/core'
-import { DEFAULT_AI_TURN_LIMITS, type AiRuntimeConfigService, type ResolvedAiSlotConfig } from '../src/ki/ai-runtime-config.service.js'
-import { buildCaseSystemPrompt } from '../src/ki/advisor-prompt.js'
+import { DEFAULT_AI_TURN_LIMITS, type AiRuntimeConfigService, type ResolvedAiSlotConfig } from '../src/llm/ai-runtime-config.service.js'
+import { buildCaseBlock } from '../src/ki/advisor-prompt.js'
 import { LangGraphAdvisorEngine } from '../src/ki/langgraph-advisor.engine.js'
 import { SAMPLE_DIGEST as DIGEST } from './fixtures/sample-digest.js'
 
@@ -116,7 +116,7 @@ describe('the advisor stance is in every model call (#499, #501)', () => {
 
 describe('the situation is the start of every case prompt (#501)', () => {
   it('comes first, with the user’s own words', () => {
-    const text = buildCaseSystemPrompt(DIGEST, undefined, false, undefined, undefined, undefined, undefined, undefined, 'Wir bauen 2027 ein Haus.')
+    const text = buildCaseBlock({ digest: DIGEST, situation: 'Wir bauen 2027 ein Haus.' })
     expect(text.startsWith('Situation des Haushalts')).toBe(true)
     expect(text).toContain('Wir bauen 2027 ein Haus.')
   })
@@ -130,17 +130,17 @@ describe('the situation is the start of every case prompt (#501)', () => {
 
 describe('the figures of the tax year are in every case prompt', () => {
   it('come from the verified table, for the year of the case', () => {
-    const text = buildCaseSystemPrompt(DIGEST, undefined, false)
+    const text = buildCaseBlock({ digest: DIGEST })
     expect(text).toContain('Werte für das Steuerjahr 2025')
     expect(text).toContain('- Kindergeld je Kind/Monat: 255')
     expect(text).toContain('- Kinderbetreuung: 80 %, max. 4.800')
-    expect(buildCaseSystemPrompt({ ...DIGEST, taxYear: 2024 }, undefined, false)).toContain('- Kinderbetreuung: 2/3, max. 4.000')
+    expect(buildCaseBlock({ digest: { ...DIGEST, taxYear: 2024 } })).toContain('- Kinderbetreuung: 2/3, max. 4.000')
   })
 })
 
 describe('dates that can save or cost money', () => {
   it('are in the case prompt with today’s date, from the law only', () => {
-    const text = buildCaseSystemPrompt(DIGEST, undefined, false, undefined, undefined, undefined, undefined, undefined, undefined, undefined, false, undefined, '2026-11-13')
+    const text = buildCaseBlock({ digest: DIGEST, today: '2026-11-13' })
     expect(text).toContain('Heute ist der 13.11.2026.')
     expect(text).toContain('15.12.2026: Verlustbescheinigung')
     expect(text).toContain('31.12.2026: Letzter Tag für Zahlungen, die noch für 2026 zählen')
@@ -148,7 +148,7 @@ describe('dates that can save or cost money', () => {
 })
 
 describe('tasks of the owl (#501)', () => {
-  const prompt = (task: 'savings-plan' | 'assessment-check', assessment?: AdvisorAssessmentBrief) => buildCaseSystemPrompt(DIGEST, undefined, true, undefined, undefined, undefined, task, assessment)
+  const prompt = (task: 'savings-plan' | 'assessment-check', assessment?: AdvisorAssessmentBrief) => buildCaseBlock({ digest: DIGEST, task, assessment })
 
   it('the savings plan works through the levers the app found, in a fixed outline', () => {
     const text = prompt('savings-plan')
@@ -177,6 +177,6 @@ describe('tasks of the owl (#501)', () => {
   })
 
   it('no task, no task text', () => {
-    expect(buildCaseSystemPrompt(DIGEST, undefined, false)).not.toContain('Aufgabe für diese Antwort')
+    expect(buildCaseBlock({ digest: DIGEST })).not.toContain('Aufgabe für diese Antwort')
   })
 })

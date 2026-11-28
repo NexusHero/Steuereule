@@ -7,8 +7,8 @@ import {
   type AdvisorModelProvider,
   type AdvisorUsageSample,
 } from '@steuereule/core'
-import { AdvisorModelCatalog } from '../ki/advisor-model-catalog.js'
-import { AI_RUNTIME_CONFIG_SERVICE, type AiRuntimeConfigService } from '../ki/ai-runtime-config.service.js'
+import { AdvisorModelCatalog } from '../llm/model-catalog.js'
+import { AI_RUNTIME_CONFIG_SERVICE, type AiRuntimeConfigService } from '../llm/ai-runtime-config.service.js'
 import { ADVISOR_REPOSITORY, type AdvisorMessageUsage, type AdvisorRepository } from './advisor.repository.js'
 import type { AdvisorModelsDto } from './dto/advisor.dto.js'
 

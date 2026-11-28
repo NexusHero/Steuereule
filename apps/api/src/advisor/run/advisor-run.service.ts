@@ -3,7 +3,7 @@ import { ConflictError, NotFoundError } from '../../common/domain-error.js'
 import { ADVISOR_REPOSITORY, type AdvisorRepository } from '../advisor.repository.js'
 import { AdvisorConversations } from '../advisor-conversations.js'
 import { AdvisorService } from '../advisor.service.js'
-import type { PreparedAdvisorTurn } from '../advisor-shared.js'
+import { TURN_FAILED_MESSAGE, type PreparedAdvisorTurn } from '../advisor-shared.js'
 import { AdvisorTurn } from '../advisor-turn.js'
 import type { AdvisorContextDto, AdvisorSessionResponseDto, SendAdvisorMessageDto } from '../dto/advisor.dto.js'
 import { ADVISOR_RUN_LOG, type AdvisorRunEntry, type AdvisorRunLog } from './advisor-run-log.js'
@@ -57,7 +57,7 @@ export class AdvisorRunService implements OnApplicationShutdown {
       await this.log
         .append(turn.runId, {
           event: 'error',
-          data: { code: 'ADVISOR_TURN_FAILED', message: 'Die Antwort der Eule ist unterwegs abgebrochen. Bitte versuche es erneut.' },
+          data: { code: 'ADVISOR_TURN_FAILED', message: TURN_FAILED_MESSAGE },
         })
         .catch(() => {})
     } finally {

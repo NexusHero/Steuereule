@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { buildReceiptInbox, RECEIPT_INBOX_CAP } from '../src/advisor/advisor-receipt-inbox.js'
 import { describeReceiptInboxForPrompt } from '../src/ki/receipt-inbox-prompt.js'
 import { checkPiiFree } from '../src/ki/ki.adapter.js'
-import { buildCaseSystemPrompt } from '../src/ki/advisor-prompt.js'
+import { buildCaseBlock } from '../src/ki/advisor-prompt.js'
 import type { ReceiptRecord } from '../src/receipt/receipt.repository.js'
 import { emptyCaseDigest } from './fakes/empty-case-digest.js'
 
@@ -64,7 +64,7 @@ describe('Belege inbox for the owl', () => {
   it('puts the list and the rule for talking about it into the case prompt, once', () => {
     const inbox = buildReceiptInbox([record({ taxYear: 2025, kind: 'Krankenkasse', belegdatum: '2025-11-03' })], 2025, [])
     const digest = emptyCaseDigest({ receiptInbox: inbox })
-    const prompt = buildCaseSystemPrompt(digest, undefined, false)
+    const prompt = buildCaseBlock({ digest })
     expect(prompt).toContain('Belege im Posteingang')
     expect(prompt).toContain('Krankenkasse, Belegdatum 03.11.2025')
     expect(prompt).toContain('Behaupte nie, einen Beleg gelesen zu haben')

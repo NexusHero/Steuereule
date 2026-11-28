@@ -575,12 +575,16 @@ describe('Slice 4: CopilotBridgeProvider & 3-Breakpoint OwlMode Workspace', () =
       <BridgeHarness initialMode="eulen-modus">
         <AdvisorChatPanel
           messages={[]}
-          streamSteps={[{ kind: 'status', label: 'Schritt 1' }]}
-          streamedText="Live Antwort..."
-          isSending
-          chatError="Kurze Unterbrechung"
           onSendMessage={onSend}
-          onAttachReceipt={onAttach}
+          stream={{
+            streamSteps: [{ kind: 'status', label: 'Schritt 1' }],
+            streamedText: 'Live Antwort...',
+            isSending: true,
+            chatError: 'Kurze Unterbrechung',
+          }}
+          receipts={{
+            onAttachReceipt: onAttach,
+          }}
         />
       </BridgeHarness>,
     )
@@ -608,7 +612,7 @@ describe('Slice 4: CopilotBridgeProvider & 3-Breakpoint OwlMode Workspace', () =
 
     const panelView = render(
       <BridgeHarness initialMode="eulen-modus">
-        <AdvisorChatPanel messages={[]} isSending={false} onSendMessage={onSend} onAttachReceipt={onAttach} />
+        <AdvisorChatPanel messages={[]} onSendMessage={onSend} stream={{ isSending: false }} receipts={{ onAttachReceipt: onAttach }} />
       </BridgeHarness>,
     )
     const inputs = screen.getAllByTestId('advisor-chat-input')

@@ -4,38 +4,42 @@ import { AiChip, Card } from '@steuereule/ui'
 import { thoughtStepsOf, type AdvisorChatMessageView } from '@steuereule/core'
 import { APP_NS } from '../../i18n/resources'
 import { MarkdownMessage } from './chat/MarkdownMessage'
+import { MaskedNote, MaskedText } from './chat/MaskedText'
 import { FeedbackButtons } from './chat/FeedbackButtons'
 import { ReadAloudButton } from './chat/ReadAloudButton'
 import { ThoughtBlock } from './chat/ThoughtBlock'
 import { ModelFailureNotice } from './chat/ModelFailureNotice'
 import { PlanChecklist } from './chat/PlanChecklist'
-import type { AdvisorPlanView } from './CopilotBridgeProvider'
+import type { AdvisorChatDrafts, AdvisorChatLiveStream, AdvisorChatModel } from './AdvisorChat.types'
 import type { makeStyles } from './AdvisorChatPanel.styles'
 import type { AdvisorChatState } from './useAdvisorChat'
-import { AdvisorChatAnswerExtras, type AdvisorChatAnswerContext } from './AdvisorChatAnswerExtras'
+import { AdvisorChatAnswerExtras } from './AdvisorChatAnswerExtras'
 
 interface AdvisorChatMessageProps {
   readonly msg: AdvisorChatMessageView
   readonly index: number
   readonly chat: AdvisorChatState
-  readonly panel: AdvisorChatAnswerContext
-  readonly plan: AdvisorPlanView | null
+  readonly drafts: AdvisorChatDrafts
+  readonly model: AdvisorChatModel
+  readonly stream: AdvisorChatLiveStream
   readonly styles: ReturnType<typeof makeStyles>
 }
 
 /** One stored message: the user's turn, a stopped or failed answer, or a finished answer. */
-export function AdvisorChatMessage({ msg, index, chat, panel, plan, styles }: AdvisorChatMessageProps) {
+export function AdvisorChatMessage({ msg, index, chat, drafts, model, stream, styles }: AdvisorChatMessageProps) {
   const { t: tr } = useTranslation(APP_NS)
   const { messages, lastUserIndex, lastAssistantIndex, canReplace, editingId, startEdit, regenerate, setSelectedSource, copiedId, copyMessage, planAboveLastAnswer } = chat
   const isLast = index === messages.length - 1
-  const { onRateMessage } = panel
+  const { onRateMessage } = drafts
+  const { plan } = stream
 
   if (msg.role === 'user') {
     return (
       <View style={styles.userTurn}>
         <View style={styles.userBubble} testID="advisor-user-message">
-          <Text style={styles.userBubbleText}>{msg.content}</Text>
+          <MaskedText text={msg.content} spans={msg.meta?.masked} style={styles.userBubbleText} />
         </View>
+        <MaskedNote spans={msg.meta?.masked} style={styles.maskedNote} />
         {index === lastUserIndex && canReplace && editingId === null ? (
           <Pressable
             accessibilityRole="button"
@@ -80,7 +84,7 @@ export function AdvisorChatMessage({ msg, index, chat, panel, plan, styles }: Ad
         <ThoughtBlock reasoning={msg.reasoning} steps={thoughtStepsOf(msg.meta)} durationMs={msg.durationMs} />
         <MarkdownMessage content={msg.content} onSelectSource={setSelectedSource} />
 
-        <AdvisorChatAnswerExtras msg={msg} isLast={isLast} chat={chat} panel={panel} styles={styles} />
+        <AdvisorChatAnswerExtras msg={msg} isLast={isLast} chat={chat} drafts={drafts} model={model} stream={stream} styles={styles} />
 
         <View style={styles.messageActions}>
           <Pressable

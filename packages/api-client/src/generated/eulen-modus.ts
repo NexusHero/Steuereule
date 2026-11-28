@@ -61,7 +61,9 @@ import type {
   SetOwlSettingDto,
   SetPersonalDataConsentDto,
   SpeakDto,
-  StopAdvisorRunResponseDto
+  SpeechControllerTranscribeBody,
+  StopAdvisorRunResponseDto,
+  TranscriptDto
 } from './eulen-modus.schemas';
 
 import { httpClient } from '../http-client';
@@ -3753,5 +3755,112 @@ export const useSpeechControllerSpeak = <TError = void,
         TContext
       > => {
       return useMutation(getSpeechControllerSpeakMutationOptions(options), queryClient);
+    }
+
+export type speechControllerTranscribeResponse200 = {
+  data: TranscriptDto
+  status: 200
+}
+
+export type speechControllerTranscribeResponse401 = {
+  data: void
+  status: 401
+}
+
+export type speechControllerTranscribeResponse413 = {
+  data: void
+  status: 413
+}
+
+export type speechControllerTranscribeResponse429 = {
+  data: void
+  status: 429
+}
+
+export type speechControllerTranscribeResponse503 = {
+  data: void
+  status: 503
+}
+
+export type speechControllerTranscribeResponseSuccess = (speechControllerTranscribeResponse200) & {
+  headers: Headers;
+};
+export type speechControllerTranscribeResponseError = (speechControllerTranscribeResponse401 | speechControllerTranscribeResponse413 | speechControllerTranscribeResponse429 | speechControllerTranscribeResponse503) & {
+  headers: Headers;
+};
+
+export const getSpeechControllerTranscribeUrl = () => {
+
+
+
+
+  return `/v1/eulen-modus/gehoert`
+}
+
+/**
+ * @summary The words of one recorded utterance (ADR-0115); the recording is not kept
+ */
+export const speechControllerTranscribe = async (speechControllerTranscribeBody: SpeechControllerTranscribeBody, options?: Parameters<typeof httpClient>[1]): Promise<speechControllerTranscribeResponseSuccess> => {
+    const formData = new FormData();
+formData.append(`file`, speechControllerTranscribeBody.file);
+formData.append(`language`, speechControllerTranscribeBody.language);
+
+  return httpClient<speechControllerTranscribeResponseSuccess>(getSpeechControllerTranscribeUrl(),
+  {
+    ...options,
+    method: 'POST'
+    ,
+    body: formData
+  }
+);}
+
+
+
+
+
+export const getSpeechControllerTranscribeMutationKey = () => ['speechControllerTranscribe'] as const;
+
+export const getSpeechControllerTranscribeMutationOptions = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof speechControllerTranscribe>>, TError,SpeechControllerTranscribeMutationVariables, TContext>, request?: SecondParameter<typeof httpClient>}
+): UseMutationOptions<Awaited<ReturnType<typeof speechControllerTranscribe>>, TError,SpeechControllerTranscribeMutationVariables, TContext> => {
+
+const mutationKey = getSpeechControllerTranscribeMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof speechControllerTranscribe>>, SpeechControllerTranscribeMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  speechControllerTranscribe(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SpeechControllerTranscribeMutationResult = NonNullable<Awaited<ReturnType<typeof speechControllerTranscribe>>>
+    export type SpeechControllerTranscribeMutationBody = SpeechControllerTranscribeBody
+    export type SpeechControllerTranscribeMutationError = void
+    export type SpeechControllerTranscribeMutationVariables = {data: SpeechControllerTranscribeBody}
+
+    /** @summary The words of one recorded utterance (ADR-0115); the recording is not kept */
+export const useSpeechControllerTranscribe = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof speechControllerTranscribe>>, TError,SpeechControllerTranscribeMutationVariables, TContext>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof speechControllerTranscribe>>,
+        TError,
+        SpeechControllerTranscribeMutationVariables,
+        TContext
+      > => {
+      return useMutation(getSpeechControllerTranscribeMutationOptions(options), queryClient);
     }
 

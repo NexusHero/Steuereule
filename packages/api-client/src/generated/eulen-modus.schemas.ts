@@ -411,6 +411,15 @@ export const AdvisorChatMessageDtoRole = {
   assistant: 'assistant',
 } as const;
 
+export interface MaskedSpanDto {
+  /** First character of the range in the message as the user wrote it. */
+  start: number;
+  /** One past its last character. */
+  end: number;
+  /** What the model read in its place. */
+  as: string;
+}
+
 export type AdvisorOpeningMarkerDtoStage = typeof AdvisorOpeningMarkerDtoStage[keyof typeof AdvisorOpeningMarkerDtoStage];
 
 
@@ -763,6 +772,8 @@ export const AdvisorMessageMetaDtoSourcesItem = {
 } as const;
 
 export interface AdvisorMessageMetaDto {
+  /** On a user message: where its text was changed before the model read it, because the consent to personal data was missing (ADR-0091). */
+  masked?: MaskedSpanDto[];
   /** Both messages of an opening carry it; the user message is a hidden placeholder. */
   opening?: AdvisorOpeningMarkerDto;
   choices?: string[];
@@ -1777,6 +1788,8 @@ export interface SendAdvisorMessageDto {
   skill?: SendAdvisorMessageDtoSkill;
   /** Turbo mode: the owl applies the drafts of this answer itself instead of waiting for a click. Off by default. */
   turbo?: boolean;
+  /** The message was spoken and the answer is read aloud (ADR-0115): the owl answers in a few short sentences without lists or headings. */
+  spoken?: boolean;
   /** Gründlich (the standard) or Max for this one message (ADR-0096). */
   depth?: SendAdvisorMessageDtoDepth;
   /** Quick start that shapes the turn: forgotten_check always opens with a visible plan (#451). */
@@ -2006,6 +2019,11 @@ export interface SpeakDto {
   language: SpeakDtoLanguage;
 }
 
+export interface TranscriptDto {
+  /** The words of the recording; empty when nothing was said. */
+  text: string;
+}
+
 export type AdvisorControllerGetSessionParams = {
   /** Which conversation to load; without it the one used last. */
   conversationId?: string;
@@ -2023,5 +2041,19 @@ export type AdvisorControllerRunEventsParams = {
 export type AdvisorControllerSearchParams = {
   /** At least two characters; case and accents are ignored. */
   q: string;
+};
+
+export type SpeechControllerTranscribeBodyLanguage = typeof SpeechControllerTranscribeBodyLanguage[keyof typeof SpeechControllerTranscribeBodyLanguage];
+
+
+export const SpeechControllerTranscribeBodyLanguage = {
+  de: 'de',
+  en: 'en',
+} as const;
+
+export type SpeechControllerTranscribeBody = {
+  /** The utterance as a WAV file, 16-bit mono, at most 60 seconds. */
+  file: Blob | File;
+  language: SpeechControllerTranscribeBodyLanguage;
 };
 

@@ -74,7 +74,7 @@ describe('chat basics (#451 slice 1b)', () => {
   })
 
   it('hides regenerate and edit while an answer is running', () => {
-    renderPanel({ isSending: true })
+    renderPanel({ stream: { isSending: true } })
     expect(screen.queryByTestId('advisor-message-regenerate')).toBeNull()
     expect(screen.queryByTestId('advisor-message-edit')).toBeNull()
   })

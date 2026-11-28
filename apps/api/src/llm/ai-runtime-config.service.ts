@@ -1,5 +1,5 @@
 import { Inject, Injectable, Optional } from '@nestjs/common'
-import { BETTER_AUTH_BUNDLE, type BetterAuthBundle } from '../auth/auth.tokens.js'
+import { MODEL_CALL_COUNTER, type ModelCallCounter } from './model-call-counter.js'
 import type { AdvisorModelProvider, ModelCallTier } from '@steuereule/core'
 
 /** `advisor_guard`: the small model that checks a typed question's topic first (ADR-0069). */
@@ -152,13 +152,14 @@ export class EnvAiRuntimeConfigService implements AiRuntimeConfigService {
 
   constructor(
     @Optional() @Inject(AI_ENV_SOURCE) env?: Readonly<Record<string, string | undefined>>,
-    @Optional() @Inject(BETTER_AUTH_BUNDLE) private readonly shared?: Pick<BetterAuthBundle, 'rateLimitStorage'>,
+    /** Absent where nothing is shared (tests, a single script): the day's calls are then not capped. */
+    @Optional() @Inject(MODEL_CALL_COUNTER) private readonly callCounter?: ModelCallCounter,
   ) {
     this.env = env ?? process.env
   }
 
   async takeCallBudget(tier: ModelCallTier = 'free'): Promise<boolean> {
-    if (!this.shared) return true
+    if (!this.callCounter) return true
     const limit = positiveIntOr(this.env.AI_DAILY_CALL_LIMIT, DEFAULT_AI_DAILY_CALL_LIMIT, 100_000_000)
     const rawReserve = this.env.AI_PAID_RESERVE_PERCENT?.trim()
     const parsedReserve = rawReserve ? Number.parseInt(rawReserve, 10) : Number.NaN
@@ -168,8 +169,8 @@ export class EnvAiRuntimeConfigService implements AiRuntimeConfigService {
     const window = 24 * 60 * 60
     try {
       // A free call first takes a place in the free share, so it can never reach the paid reserve.
-      if (tier !== 'paid' && !(await this.shared.rateLimitStorage.consume(`ai-calls-free:${day}`, { window, max: freeCallLimit(limit, reserve) })).allowed) return false
-      return (await this.shared.rateLimitStorage.consume(`ai-calls:${day}`, { window, max: limit })).allowed
+      if (tier !== 'paid' && !(await this.callCounter.consume(`ai-calls-free:${day}`, { window, max: freeCallLimit(limit, reserve) })).allowed) return false
+      return (await this.callCounter.consume(`ai-calls:${day}`, { window, max: limit })).allowed
     } catch {
       // The counter must never take the answers down with it.
       return true

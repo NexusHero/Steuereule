@@ -16,3 +16,11 @@ export class SpeakDto {
   @IsIn(SPEECH_LANGUAGES)
   language!: SpeechLanguage
 }
+
+/** One utterance: 60 seconds of 16-bit mono at 16 kHz, with room for the header. */
+export const HEARD_AUDIO_MAX_BYTES = 2 * 1024 * 1024
+
+export class TranscriptDto {
+  @ApiProperty({ type: String, example: 'Ich bin 38 Kilometer zur Arbeit gefahren.', description: 'The words of the recording; empty when nothing was said.' })
+  text!: string
+}

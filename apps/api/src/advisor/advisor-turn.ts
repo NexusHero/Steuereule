@@ -22,6 +22,7 @@ import {
   preparedDraftsSentence,
   replaceNamesWith,
   scrubUserMessagePii,
+  maskedSpans,
   unchangedDraftsNote,
   withoutInternalNames,
   metaWithoutInternalNames,
@@ -46,9 +47,9 @@ import { CHILD_REPOSITORY, type ChildRepository } from '../children/child.reposi
 import { newActionId } from '../common/action-id.js'
 import { ConflictError, DomainError, InvalidInputError, TooManyRequestsError, UnavailableError } from '../common/domain-error.js'
 import { ADVISOR_ENGINE } from '../ki/advisor-engine.token.js'
-import { AI_RUNTIME_CONFIG_SERVICE, type AiRuntimeConfigService } from '../ki/ai-runtime-config.service.js'
+import { AI_RUNTIME_CONFIG_SERVICE, type AiRuntimeConfigService } from '../llm/ai-runtime-config.service.js'
 import { PersonalDataConsentService } from '../owl-mode/personal-data-consent.service.js'
-import { ModelConnectionService } from '../ki/model-connection.service.js'
+import { ModelConnectionService } from '../llm/model-connection.service.js'
 import { LinkService } from '../link/link.service.js'
 import { OwlModeService } from '../owl-mode/owl-mode.service.js'
 import { TRANSACTION_RUNNER, type TransactionRunner } from '../common/transaction-runner.js'
@@ -66,12 +67,11 @@ import { AdvisorDrafts } from './advisor-drafts.js'
 import { AdvisorOpening, OPENING_PLACEHOLDER, openingStream } from './advisor-opening.js'
 import { draftsTakenOver, printoutFollowUp } from './advisor-printout-plan.js'
 import { AdvisorProjectNotes } from './advisor-project-notes.js'
-import { ANSWERING_WINDOW_MS, historySources, liveMessages, parseChatModel, titleFrom, toMessageDto, toPublicAction, toPublicMeta, type PreparedAdvisorTurn } from './advisor-shared.js'
+import { ANSWERING_WINDOW_MS, TURN_FAILED_MESSAGE, historySources, liveMessages, parseChatModel, titleFrom, toMessageDto, toPublicAction, toPublicMeta, type PreparedAdvisorTurn } from './advisor-shared.js'
 import type { SendAdvisorMessageDto, SendAdvisorMessageResponseDto } from './dto/advisor.dto.js'
 
 const DETERMINISTIC_ENGINE: AdvisorEngineInfo = { mode: 'deterministic_fallback', provider: 'deterministic' }
 
-const TURN_FAILED_MESSAGE = 'Die Antwort der Eule ist unterwegs abgebrochen. Bitte versuche es erneut.'
 
 /**
  * One turn of the owl: prepared while it can still fail as plain HTTP, then run to one of its final
@@ -183,6 +183,9 @@ export class AdvisorTurn {
     const scrubbedUserText = consent && !isOpening ? dto.message.trim() : maskedText
     // What the masking took out tells the owl's answer to offer the consent (ADR-0091); a spouse name turned into „Person B“ does not.
     const maskedPersonalData = !consent && !isOpening && scrubUserMessagePii(dto.message.trim(), knownNames) !== dto.message.trim()
+    // Where the model reads something else than the user wrote: kept with the message, so the chat can show it
+    // as it was at the time, whatever the consent is later (ADR-0091, ADR-0115 addendum).
+    const masked = consent || isOpening ? [] : maskedSpans(dto.message.trim(), maskedText)
     const conversation = await this.conversations.conversationFor(userId, taxYear, dto.conversationId)
     // Conversations answer side by side (#503), but one conversation has one answer at a time:
     // two would write into the same history in an order nobody chose.
@@ -219,7 +222,7 @@ export class AdvisorTurn {
       // Stored and shown as the user wrote it (encrypted at rest); the model reads the history masked again
       // on every read while the consent is missing (`historySources`). Real-data run: „[MANDANT]“ in the user's own text.
       content: isOpening ? scrubbedUserText : dto.message.trim(),
-      meta: opening ? { opening: opening.marker } : null,
+      meta: opening ? { opening: opening.marker } : masked.length > 0 ? { masked } : null,
     })
     const assistantMessage = await this.advisorRepo.createMessage({
       userId,
@@ -417,6 +420,7 @@ export class AdvisorTurn {
         situation: (await this.notes.getSituation(userId)).text,
         ...(task === 'assessment-check' ? { assessment: await this.assessmentBrief(userId, taxYear) } : {}),
         ...(dto.skill ? { skill: dto.skill } : {}),
+        ...(dto.spoken ? { spoken: true } : {}),
         ...(dto.skill === 'berater-interview' ? { interview: await this.advisorRepo.findInterview(userId, taxYear) } : {}),
         topicCheck: turn.fromApp ? 'skip' : 'check',
         personalDataConsent: turn.personalDataConsent === true,

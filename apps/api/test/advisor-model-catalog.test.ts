@@ -2,7 +2,7 @@
 // from the provider itself and kept for a while. A provider that does not answer leaves its
 // standard model in the list, never an empty picker.
 import { describe, expect, it } from 'vitest'
-import { AdvisorModelCatalog, type CatalogFetch } from '../src/ki/advisor-model-catalog.js'
+import { AdvisorModelCatalog, type CatalogFetch } from '../src/llm/model-catalog.js'
 
 const ANTHROPIC = { data: [{ id: 'claude-sonnet-5-5', display_name: 'Claude Sonnet 5.5' }, { id: 'claude-opus-5-5', display_name: 'Claude Opus 5.5' }], has_more: false }
 const GOOGLE = {

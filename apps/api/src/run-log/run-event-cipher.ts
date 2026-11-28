@@ -1,18 +1,20 @@
 import { createCipheriv, createDecipheriv, hkdfSync, randomBytes } from 'node:crypto'
-import type { FieldEncryptionKeySet } from '../../common/field-encryption-keys.js'
+import type { FieldEncryptionKeySet } from '../common/field-encryption-keys.js'
 
-const INFO = 'advisor-run-log'
 const VERSION = 'v1.'
 const IV_BYTES = 12
 const TAG_BYTES = 16
 
-/** A 256-bit key for the run log, derived from a field-encryption key so the log needs no secret of its own. */
-function derive(secret: string): Buffer {
-  return Buffer.from(hkdfSync('sha256', Buffer.from(secret, 'utf8'), Buffer.alloc(0), INFO, 32))
+/**
+ * A 256-bit key for one run log, derived from a field-encryption key so the log needs no secret of its own.
+ * `purpose` separates the logs: two features never open each other's entries.
+ */
+function derive(secret: string, purpose: string): Buffer {
+  return Buffer.from(hkdfSync('sha256', Buffer.from(secret, 'utf8'), Buffer.alloc(0), purpose, 32))
 }
 
 /**
- * Seals the events of an owl run for the shared Redis run log (H2-9): AES-256-GCM under a key derived
+ * Seals the events of a run for the shared Redis run log (H2-9): AES-256-GCM under a key derived
  * (HKDF-SHA256) from the field-encryption key, with the position of the entry as associated data, so an
  * entry neither reads in clear nor opens at another place. Sealed with the current key; the rotated-out
  * keys still open what was written before a rotation (the stream lives minutes, not longer).
@@ -20,8 +22,8 @@ function derive(secret: string): Buffer {
 export class RunEventCipher {
   private readonly keys: readonly Buffer[]
 
-  constructor(keys: FieldEncryptionKeySet) {
-    this.keys = [keys.encryptionKey, ...keys.decryptionKeys].map(derive)
+  constructor(keys: FieldEncryptionKeySet, purpose: string) {
+    this.keys = [keys.encryptionKey, ...keys.decryptionKeys].map((secret) => derive(secret, purpose))
   }
 
   seal(plaintext: string, associatedData: string): string {
