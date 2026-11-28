@@ -45,6 +45,29 @@ describe('personal data with the owl (ADR-0091)', () => {
     expect((await lastAnswer(kit)).meta?.personalDataConsentRequest).toBe(true)
   })
 
+  it('keeps with the user\'s message where the model read something else, and the message itself as written', async () => {
+    const kit = build()
+    const written = 'Meine Steuer-ID ist 12345678901, die IBAN DE89 3704 0044 0532 0130 00.'
+    const events = await collect(kit.service.streamMessage(USER, YEAR, { message: written }))
+    const stored = (await kit.service.getSession(USER, YEAR)).messages.find((m) => m.role === 'user')!
+    expect(stored.content).toBe(written)
+    expect(stored.meta?.masked?.map((span) => [written.slice(span.start, span.end), span.as])).toEqual([
+      ['12345678901', '[STEUER-ID-GESCHÜTZT]'],
+      ['DE89 3704 0044 0532 0130 00', '[IBAN-GESCHÜTZT]'],
+    ])
+    // The app has the ranges as soon as the turn starts, not only when the answer is stored.
+    const start = events.find((event) => event.event === 'start') as { data: { userMessage?: { meta?: { masked?: unknown[] } | null } } } | undefined
+    expect(start?.data.userMessage?.meta?.masked).toHaveLength(2)
+    // The ranges carry positions and stand-ins, never the value.
+    expect(JSON.stringify(stored.meta)).not.toMatch(/12345678901|DE89/)
+  })
+
+  it('marks nothing in a message without personal data', async () => {
+    const kit = build()
+    await collect(kit.service.streamMessage(USER, YEAR, { message: 'Lohnt sich mein Arbeitsweg?' }))
+    expect((await kit.service.getSession(USER, YEAR)).messages.find((m) => m.role === 'user')!.meta).toBeNull()
+  })
+
   it('offers no card when nothing personal was written', async () => {
     const kit = build()
     await collect(kit.service.streamMessage(USER, YEAR, { message: 'Lohnt sich mein Arbeitsweg?' }))
@@ -81,6 +104,8 @@ describe('personal data with the owl (ADR-0091)', () => {
     await kit.consent.set(USER, true)
     await collect(kit.service.streamMessage(USER, YEAR, { message: 'Meine Steuer-ID ist 12345678901' }))
     expect(kit.engine.requests[0]!.message).toBe('Meine Steuer-ID ist 12345678901')
+    // Nothing was changed, so nothing is marked.
+    expect((await kit.service.getSession(USER, YEAR)).messages.find((m) => m.role === 'user')!.meta).toBeNull()
     expect(kit.engine.requests[0]!.personalDataConsent).toBe(true)
     expect((await lastAnswer(kit)).meta?.personalDataConsentRequest).toBeUndefined()
 

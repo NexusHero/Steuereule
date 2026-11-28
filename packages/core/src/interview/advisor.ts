@@ -1,3 +1,4 @@
+import type { MaskedSpan } from '../common/masked-spans'
 import type { PrintoutGapPlan } from './advisor-printout-plan'
 import type { OwlSourceId } from './owl-mode'
 import type { StoredTransport } from './entry-rules'
@@ -262,6 +263,11 @@ export interface AdvisorLstbScanMeta {
 }
 
 export interface AdvisorMessageMeta {
+  /**
+   * On a user message: where its text was changed before the model read it, because the consent to personal
+   * data was missing when it was sent (ADR-0091). The app shows these ranges struck through.
+   */
+  readonly masked?: readonly MaskedSpan[] | undefined
   readonly choices?: readonly string[] | undefined
   readonly action?: AdvisorActionProposal | undefined
   readonly actions?: readonly AdvisorActionProposal[] | undefined

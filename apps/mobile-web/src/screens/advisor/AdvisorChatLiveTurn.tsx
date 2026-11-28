@@ -4,6 +4,7 @@ import { AiChip, Card } from '@steuereule/ui'
 import type { AdvisorChatMessageView, AdvisorThoughtStep } from '@steuereule/core'
 import { APP_NS } from '../../i18n/resources'
 import { MarkdownMessage } from './chat/MarkdownMessage'
+import { MaskedNote, MaskedText } from './chat/MaskedText'
 import { ThoughtBlock } from './chat/ThoughtBlock'
 import { PlanChecklist } from './chat/PlanChecklist'
 import type { AbortedTurn, AdvisorPlanView } from './CopilotBridgeProvider'
@@ -32,8 +33,9 @@ export function AdvisorChatLiveTurn({ chat, isSending, pendingUserMessage, plan,
       {showPendingUser && pendingUserMessage !== null ? (
         <View style={styles.userTurn}>
           <View style={styles.userBubble} testID="advisor-user-message">
-            <Text style={styles.userBubbleText}>{pendingUserMessage.content}</Text>
+            <MaskedText text={pendingUserMessage.content} spans={pendingUserMessage.meta?.masked} style={styles.userBubbleText} />
           </View>
+          <MaskedNote spans={pendingUserMessage.meta?.masked} style={styles.maskedNote} />
         </View>
       ) : null}
 

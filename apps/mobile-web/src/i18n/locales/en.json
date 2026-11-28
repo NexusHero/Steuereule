@@ -3109,6 +3109,7 @@
       "end": "End",
       "done": "Done",
       "interrupt": "Interrupt",
+      "maskedNote": "What is struck through did not go to the owl's language model. The speech service heard it to write it down.",
       "state": {
         "starting": "Opening the microphone …",
         "listening": "Listening",
@@ -3156,6 +3157,10 @@
       "readAloudAria": "Read the owl’s answer aloud",
       "readAloudStop": "Stop",
       "readAloudStopAria": "Stop reading aloud",
+      "masked": {
+        "note": "What is struck through did not go to the language model.",
+        "aria": "not passed on: {{text}}"
+      },
       "copied": "Copied",
       "regenerate": "Regenerate",
       "regenerateAria": "Regenerate the answer",

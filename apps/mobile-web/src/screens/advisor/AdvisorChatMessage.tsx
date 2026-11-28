@@ -4,6 +4,7 @@ import { AiChip, Card } from '@steuereule/ui'
 import { thoughtStepsOf, type AdvisorChatMessageView } from '@steuereule/core'
 import { APP_NS } from '../../i18n/resources'
 import { MarkdownMessage } from './chat/MarkdownMessage'
+import { MaskedNote, MaskedText } from './chat/MaskedText'
 import { FeedbackButtons } from './chat/FeedbackButtons'
 import { ReadAloudButton } from './chat/ReadAloudButton'
 import { ThoughtBlock } from './chat/ThoughtBlock'
@@ -34,8 +35,9 @@ export function AdvisorChatMessage({ msg, index, chat, panel, plan, styles }: Ad
     return (
       <View style={styles.userTurn}>
         <View style={styles.userBubble} testID="advisor-user-message">
-          <Text style={styles.userBubbleText}>{msg.content}</Text>
+          <MaskedText text={msg.content} spans={msg.meta?.masked} style={styles.userBubbleText} />
         </View>
+        <MaskedNote spans={msg.meta?.masked} style={styles.maskedNote} />
         {index === lastUserIndex && canReplace && editingId === null ? (
           <Pressable
             accessibilityRole="button"

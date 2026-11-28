@@ -411,6 +411,15 @@ export const AdvisorChatMessageDtoRole = {
   assistant: 'assistant',
 } as const;
 
+export interface MaskedSpanDto {
+  /** First character of the range in the message as the user wrote it. */
+  start: number;
+  /** One past its last character. */
+  end: number;
+  /** What the model read in its place. */
+  as: string;
+}
+
 export type AdvisorOpeningMarkerDtoStage = typeof AdvisorOpeningMarkerDtoStage[keyof typeof AdvisorOpeningMarkerDtoStage];
 
 
@@ -763,6 +772,8 @@ export const AdvisorMessageMetaDtoSourcesItem = {
 } as const;
 
 export interface AdvisorMessageMetaDto {
+  /** On a user message: where its text was changed before the model read it, because the consent to personal data was missing (ADR-0091). */
+  masked?: MaskedSpanDto[];
   /** Both messages of an opening carry it; the user message is a hidden placeholder. */
   opening?: AdvisorOpeningMarkerDto;
   choices?: string[];

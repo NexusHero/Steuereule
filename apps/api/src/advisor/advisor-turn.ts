@@ -22,6 +22,7 @@ import {
   preparedDraftsSentence,
   replaceNamesWith,
   scrubUserMessagePii,
+  maskedSpans,
   unchangedDraftsNote,
   withoutInternalNames,
   metaWithoutInternalNames,
@@ -183,6 +184,9 @@ export class AdvisorTurn {
     const scrubbedUserText = consent && !isOpening ? dto.message.trim() : maskedText
     // What the masking took out tells the owl's answer to offer the consent (ADR-0091); a spouse name turned into „Person B“ does not.
     const maskedPersonalData = !consent && !isOpening && scrubUserMessagePii(dto.message.trim(), knownNames) !== dto.message.trim()
+    // Where the model reads something else than the user wrote: kept with the message, so the chat can show it
+    // as it was at the time, whatever the consent is later (ADR-0091, ADR-0115 addendum).
+    const masked = consent || isOpening ? [] : maskedSpans(dto.message.trim(), maskedText)
     const conversation = await this.conversations.conversationFor(userId, taxYear, dto.conversationId)
     // Conversations answer side by side (#503), but one conversation has one answer at a time:
     // two would write into the same history in an order nobody chose.
@@ -219,7 +223,7 @@ export class AdvisorTurn {
       // Stored and shown as the user wrote it (encrypted at rest); the model reads the history masked again
       // on every read while the consent is missing (`historySources`). Real-data run: „[MANDANT]“ in the user's own text.
       content: isOpening ? scrubbedUserText : dto.message.trim(),
-      meta: opening ? { opening: opening.marker } : null,
+      meta: opening ? { opening: opening.marker } : masked.length > 0 ? { masked } : null,
     })
     const assistantMessage = await this.advisorRepo.createMessage({
       userId,

@@ -616,6 +616,34 @@ async function main() {
     }
     console.log(`[${TAG}] ✅ Row L — speaking with the owl: an utterance becomes a message, the answer is spoken, the owl listens again`)
 
+    // Row M — what the masking takes out of a message is shown where it stands (ADR-0091): without the consent to
+    // personal data an IBAN does not go to the model, the user's own bubble strikes it through and says so, and
+    // the mark is still there after a reload, because it is kept with the message.
+    {
+      const writer = await signIn(browser, webOrigin, user.email, 'l')
+      const written = 'Meine IBAN ist DE89 3704 0044 0532 0130 00, bitte merken.'
+      const sentToStream = []
+      writer.page.on('request', (request) => /\/advisor\/(stream|messages)$/.test(new URL(request.url()).pathname) && request.method() === 'POST' && sentToStream.push(request.postDataJSON()?.message))
+      await openEule(writer.page)
+      await ask(writer.page, written)
+      const bubble = writer.page.locator('[data-testid="advisor-user-message"]').last()
+      const struck = () => bubble.locator('[data-testid="advisor-masked"]').allInnerTexts()
+      await writer.page.waitForFunction(() => document.querySelectorAll('[data-testid="advisor-masked"]').length > 0, null, { timeout: 15_000 }).catch(() => fail('Row M: an IBAN the model did not get should be struck through in the user\'s message'))
+      if ((await struck()).join('|') !== 'DE89 3704 0044 0532 0130 00') fail(`Row M: exactly the IBAN should be struck through, got ${JSON.stringify(await struck())}`)
+      if ((await bubble.innerText()).trim() !== written) fail('Row M: the message should still read as the user wrote it')
+      const drawn = await bubble.locator('[data-testid="advisor-masked"]').first().evaluate((node) => getComputedStyle(node).textDecorationLine)
+      if (!drawn.includes('line-through')) fail(`Row M: the range should be drawn struck through, it is drawn ${JSON.stringify(drawn)}`)
+      const note = await writer.page.locator('[data-testid="advisor-masked-note"]').last().innerText()
+      if (!/ging nicht an das Sprachmodell/.test(note)) fail(`Row M: the chat should say what the strike-through means, got ${JSON.stringify(note)}`)
+      if (!sentToStream.includes(written)) fail('Row M: the browser sends the message as written; the masking is the server\'s')
+      await writer.page.reload({ waitUntil: 'networkidle' })
+      await openEule(writer.page)
+      await writer.page.waitForFunction(() => document.querySelectorAll('[data-testid="advisor-masked"]').length > 0, null, { timeout: 15_000 }).catch(() => fail('Row M: the mark should survive a reload'))
+      if ((await struck()).join('|') !== 'DE89 3704 0044 0532 0130 00') fail('Row M: after a reload the same range should be struck through')
+      await writer.ctx.close()
+    }
+    console.log(`[${TAG}] ✅ Row M — an IBAN that did not go to the model is struck through in the user's message, also after a reload`)
+
     await user.api.dispose()
     console.log(`[${TAG}] PASS — Eulen-Modus flows with the fake KiPort verified (#450 1A, 5F).`)
   } catch (error) {

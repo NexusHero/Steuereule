@@ -10,7 +10,7 @@ import { hearOnServer } from './useConversation'
 const NO_ANSWER: AnswerUpdate = { text: '', running: false, answerId: null }
 
 /** The surface with a microphone the test drives and a chat that takes what was said. */
-function stage({ microphone = true } = {}) {
+function stage({ microphone = true, said = null as { text: string; masked?: Array<{ start: number; end: number; as: string }> } | null } = {}) {
   let level: ((value: number) => void) | null = null
   let time = 0
   const session = { take: vi.fn(async () => new Blob(['wav'])), restart: vi.fn(), close: vi.fn() }
@@ -46,7 +46,7 @@ function stage({ microphone = true } = {}) {
   function Host() {
     const [current, set] = useState(NO_ANSWER)
     setAnswer = set
-    return <ConversationMode deps={deps} answer={current} onClose={onClose} />
+    return <ConversationMode deps={deps} answer={current} said={said} onClose={onClose} />
   }
   const view = renderInApp(<Host />)
   const mic = async (value: number, ms: number): Promise<void> => {
@@ -96,6 +96,28 @@ describe('speaking with the owl', () => {
     act(() => speakers[0]?.onPassage('Das sind rund 3.030 Euro.'))
     expect(state()).toBe('Spricht')
     expect(caption()).toBe('Das sind rund 3.030 Euro.')
+  })
+
+  it('strikes through in what was said what did not go to the owl\'s model, and says the speech service heard it', async () => {
+    const heard = 'Ich bin 38 Kilometer gefahren.'
+    const { start, mic } = stage({ said: { text: heard, masked: [{ start: 8, end: 20, as: '[ADRESSE-GESCHÜTZT]' }] } })
+    await start()
+    expect(screen.queryByTestId('advisor-masked')).toBeNull()
+    await mic(0.1, 300)
+    await mic(0.001, 1_000)
+    expect(caption()).toBe(heard)
+    expect(screen.getByTestId('advisor-masked').textContent).toBe('38 Kilometer')
+    expect(screen.getByTestId('advisor-masked-note').textContent).toMatch(/Der Sprachdienst hat es zur Erkennung gehört/)
+  })
+
+  it('marks nothing when the chat\'s latest message is not what was just said', async () => {
+    const { start, mic } = stage({ said: { text: 'Eine ältere Nachricht.', masked: [{ start: 0, end: 4, as: 'x' }] } })
+    await start()
+    await mic(0.1, 300)
+    await mic(0.001, 1_000)
+    expect(caption()).toBe('Ich bin 38 Kilometer gefahren.')
+    expect(screen.queryByTestId('advisor-masked')).toBeNull()
+    expect(screen.queryByTestId('advisor-masked-note')).toBeNull()
   })
 
   it('offers „Fertig“ only while it hears, and „Unterbrechen“ only while the owl thinks or speaks', async () => {

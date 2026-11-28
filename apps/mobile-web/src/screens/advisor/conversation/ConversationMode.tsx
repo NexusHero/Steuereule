@@ -2,6 +2,8 @@ import { Text, View, type TextStyle, type ViewStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { Button, OwlGlyph, useTheme, type UiTheme } from '@steuereule/ui'
 import type { TFunction } from 'i18next'
+import type { MaskedSpan } from '@steuereule/core'
+import { MaskedNote, MaskedText } from '../chat/MaskedText'
 import { APP_NS } from '../../../i18n/resources'
 import type { AnswerUpdate, ConversationDeps, ConversationProblem, ConversationState } from '../../../lib/conversation/conversation'
 import { useConversation } from './useConversation'
@@ -11,6 +13,11 @@ export interface ConversationModeProps {
   readonly deps: ConversationDeps
   /** The chat's view of the answer to what was said. */
   readonly answer: AnswerUpdate
+  /**
+   * The user's latest message as the chat holds it, with where the model read something else (ADR-0091). Shown
+   * on the caption once it is the same text.
+   */
+  readonly said?: { readonly text: string; readonly masked?: readonly MaskedSpan[] | null | undefined } | null | undefined
   /** Back to the chat; the conversation is ended first. */
   readonly onClose: () => void
 }
@@ -52,12 +59,14 @@ function problemText(problem: ConversationProblem, tr: TFunction): string {
  * stands under it. Everything said and answered is an ordinary chat message, there when this closes.
  * It starts with a press, which is also where it says what leaves the device.
  */
-export function ConversationMode({ deps, answer, onClose }: ConversationModeProps) {
+export function ConversationMode({ deps, answer, said, onClose }: ConversationModeProps) {
   const t = useTheme()
   const styles = makeStyles(t)
   const { t: tr } = useTranslation(APP_NS)
   const { snapshot, conversation } = useConversation(deps, answer)
   const { state, level, caption, captionBy, problem } = snapshot
+  // Only for the very words that stand there: the ranges are positions in that text.
+  const masked = captionBy === 'user' && said?.text === caption ? said.masked : undefined
   const close = (): void => {
     conversation.stop()
     onClose()
@@ -100,9 +109,10 @@ export function ConversationMode({ deps, answer, onClose }: ConversationModeProp
         <Text style={styles.state} aria-live="polite" testID="eule-gespraech-zustand">
           {stateText(state, tr)}
         </Text>
-        <Text style={[styles.caption, captionBy === 'user' && styles.captionUser]} testID="eule-gespraech-text">
-          {caption}
-        </Text>
+        <View testID="eule-gespraech-text">
+          <MaskedText text={caption} spans={masked} style={[styles.caption, captionBy === 'user' && styles.captionUser]} />
+        </View>
+        <MaskedNote spans={masked} style={styles.notice} conversation />
         {problem ? (
           <Text style={styles.problem} role="alert" testID="eule-gespraech-problem">
             {problemText(problem, tr)}

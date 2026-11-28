@@ -87,6 +87,10 @@ speech endpoint, so a conversation answered by Claude needs another provider for
 15. **It starts with a press that says what leaves the device.** The microphone is opened only
     after „Gespräch starten“, under the sentence that what is said goes to the speech service.
 
+16. **What did not go to the chat model is struck through in what was said** (ADR-0091, addendum).
+    The note under it says that the speech service heard it: the masking runs after the
+    transcription, before the chat model.
+
 ## Consequences
 
 - With the voice on, the text of every answer a user has read aloud goes to the speech provider.

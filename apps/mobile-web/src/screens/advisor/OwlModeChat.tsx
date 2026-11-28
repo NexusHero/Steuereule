@@ -79,6 +79,8 @@ export function OwlModeChat({
   const [conversationOpen, setConversationOpen] = useState(false)
   const canConverse = voice !== null && Platform.OS === 'web' && canRecord()
   const lastAnswer = displayedMessages.filter((message) => message.role === 'assistant').at(-1)
+  // The message of the running turn is known before it is stored: its masking shows while the owl still thinks.
+  const lastSaid = bridge?.pendingUserMessage ?? displayedMessages.filter((message) => message.role === 'user').at(-1)
   return (
     <AdvisorChatPanel
       onOpenConversation={canConverse ? () => setConversationOpen(true) : undefined}
@@ -87,6 +89,7 @@ export function OwlModeChat({
           <ConversationMode
             deps={{ microphone: browserMicrophone, hear: hearOnServer, voice, send: (text) => handleSendChat(text, { spoken: true }), stopAnswer: bridge?.stopStreaming, language: i18n.language }}
             answer={{ text: effectiveSending ? (bridge?.streamedText ?? '') : (lastAnswer?.content ?? ''), running: effectiveSending, answerId: lastAnswer?.id ?? null }}
+            said={lastSaid ? { text: lastSaid.content, masked: lastSaid.meta?.masked } : null}
             onClose={() => setConversationOpen(false)}
           />
         ) : undefined

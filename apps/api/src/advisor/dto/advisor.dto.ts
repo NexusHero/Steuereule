@@ -34,6 +34,7 @@ import {
   type AdvisorNoteChange,
   type AdvisorNoteChangeKind,
   type AdvisorMessageMeta,
+  type MaskedSpan,
   type AdvisorNotStaged,
   type AdvisorQuestionRound,
   type AdvisorQuestionKind,
@@ -410,7 +411,21 @@ export class AdvisorOpeningStateDto {
   lastOpening!: AdvisorOpeningLastDto | null
 }
 
+export class MaskedSpanDto implements MaskedSpan {
+  @ApiProperty({ type: Number, example: 15, description: 'First character of the range in the message as the user wrote it.' })
+  start!: number
+
+  @ApiProperty({ type: Number, example: 42, description: 'One past its last character.' })
+  end!: number
+
+  @ApiProperty({ type: String, example: '[IBAN-GESCHÜTZT]', description: 'What the model read in its place.' })
+  as!: string
+}
+
 export class AdvisorMessageMetaDto implements AdvisorMessageMeta {
+  @ApiPropertyOptional({ type: () => [MaskedSpanDto], description: 'On a user message: where its text was changed before the model read it, because the consent to personal data was missing (ADR-0091).' })
+  masked?: readonly MaskedSpanDto[] | undefined
+
   @ApiPropertyOptional({ type: () => AdvisorOpeningMarkerDto, description: 'Both messages of an opening carry it; the user message is a hidden placeholder.' })
   opening?: AdvisorOpeningMarkerDto | undefined
 

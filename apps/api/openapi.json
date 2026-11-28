@@ -19129,6 +19129,31 @@
           "sourceId"
         ]
       },
+      "MaskedSpanDto": {
+        "type": "object",
+        "properties": {
+          "start": {
+            "type": "number",
+            "example": 15,
+            "description": "First character of the range in the message as the user wrote it."
+          },
+          "end": {
+            "type": "number",
+            "example": 42,
+            "description": "One past its last character."
+          },
+          "as": {
+            "type": "string",
+            "example": "[IBAN-GESCHÜTZT]",
+            "description": "What the model read in its place."
+          }
+        },
+        "required": [
+          "start",
+          "end",
+          "as"
+        ]
+      },
       "AdvisorOpeningMarkerDto": {
         "type": "object",
         "properties": {
@@ -19654,6 +19679,13 @@
       "AdvisorMessageMetaDto": {
         "type": "object",
         "properties": {
+          "masked": {
+            "description": "On a user message: where its text was changed before the model read it, because the consent to personal data was missing (ADR-0091).",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MaskedSpanDto"
+            }
+          },
           "opening": {
             "description": "Both messages of an opening carry it; the user message is a hidden placeholder.",
             "allOf": [

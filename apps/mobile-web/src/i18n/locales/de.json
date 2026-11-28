@@ -3109,6 +3109,7 @@
       "end": "Beenden",
       "done": "Fertig",
       "interrupt": "Unterbrechen",
+      "maskedNote": "Durchgestrichenes ging nicht an das Sprachmodell der Eule. Der Sprachdienst hat es zur Erkennung gehört.",
       "state": {
         "starting": "Mikrofon wird geöffnet …",
         "listening": "Hört zu",
@@ -3156,6 +3157,10 @@
       "readAloudAria": "Antwort der Eule vorlesen",
       "readAloudStop": "Stopp",
       "readAloudStopAria": "Vorlesen beenden",
+      "masked": {
+        "note": "Durchgestrichenes ging nicht an das Sprachmodell.",
+        "aria": "nicht weitergegeben: {{text}}"
+      },
       "copied": "Kopiert",
       "regenerate": "Neu generieren",
       "regenerateAria": "Antwort neu generieren",
