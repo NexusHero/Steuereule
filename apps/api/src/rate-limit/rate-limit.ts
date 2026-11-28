@@ -54,6 +54,12 @@ export const ERIC_THROTTLE = { ttl: 10 * 60_000, limit: 10 } as const
 export const SUMMARIZE_THROTTLE = { ttl: 10 * 60_000, limit: 10 } as const
 
 /**
+ * The owl's voice asks a speech model once per passage (ADR-0115): an answer is some ten passages, so this is
+ * a dozen answers read in ten minutes, far above listening and far below a free speech service.
+ */
+export const SPEECH_THROTTLE = { ttl: 10 * 60_000, limit: 150 } as const
+
+/**
  * A per-account limit on the shared throttler storage (ADR-0109 §1). The class's UserContextGuard runs first, so
  * the account is known; a guest counts by address.
  */

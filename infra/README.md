@@ -197,6 +197,11 @@ and the API refuses to start with a value it would otherwise ignore.
   `OPENAI_BASE_URL` (both local stack only: refused on a deployment, ADR-0111 decision 4), `AI_KILL_SWITCH`, `AI_DAILY_CALL_LIMIT`, `AI_PAID_RESERVE_PERCENT`, `AI_DAILY_MESSAGE_LIMIT`,
   `AI_TURN_TIMEOUT_MS`, `AI_MAX_TOOL_ROUNDS`, `AI_GUARD_TIMEOUT_MS`, `AI_TEMPERATURE`, `AI_ADVISOR_REASONING`,
   `AI_ADVISOR_REASONING_BUDGET`, `AI_ADVISOR_THINKING_LEVEL`. The keys of the model slots are optional secrets.
+- The owl's voice (ADR-0115): `AI_SPEECH_PROVIDER` (`google-genai` or `mistral`; unset: no server voice,
+  the app reads with the device's voice), `AI_SPEECH_MODEL`, `AI_SPEECH_VOICE`, `AI_SPEECH_VOICE_EN`,
+  `AI_SPEECH_DAILY_CALL_LIMIT`. The speech provider is independent of the chat model; `mistral` reads the optional
+  secret `MISTRAL_API_KEY`. Naming a provider sends the text of
+  answers a user has read aloud to that provider; it belongs in the privacy notice before it is switched on.
 - Upload and parse limits: `PARSE_DAILY_LIMIT`, `UPLOAD_MAX_IN_FLIGHT`, `GUEST_UPLOAD_BYTES_PER_DAY`,
   `GUEST_UPLOAD_BYTES_PER_DAY_TOTAL`.
 - Sign-in and e-mail: `APPLE_SIGN_IN_ENABLED` (with the secrets `APPLE_CLIENT_ID`, `APPLE_CLIENT_SECRET`),

@@ -41,6 +41,7 @@ const SENSITIVE: Readonly<Record<string, { readonly action: SensitiveAction; rea
 const ORDINARY_CONTROLLERS: Readonly<Record<string, string>> = {
   AccountVerificationController: 'Reads whether the caller’s own address is confirmed and the deletion floor (ADR-0030).',
   AddressController: 'Street search.',
+  SpeechController: 'Turns text the caller sends into audio (ADR-0115): it reads nothing of the account and changes nothing.',
   AdvisorController: 'The caller’s own conversations; the model providers get text only under the owl consent, which is not access for a third party to the account.',
   AssessmentController: 'The caller’s own Bescheid.',
   AuthCapabilitiesController: 'Static.',

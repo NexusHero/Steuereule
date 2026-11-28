@@ -405,11 +405,66 @@ async function main() {
     }
     console.log(`[${TAG}] ✅ Row I — an answer that arrived elsewhere marks the owl, survives a reload, is read by opening the owl, and is marked in the list`)
 
-    // Row J — „Vorlesen“ under an answer hands the device's voice the answer as spoken text; a second press stops.
-    // The browser's speech synthesis is the boundary: a headless browser has no voices, so the row supplies one
-    // German voice and records what the app asks it to say.
+    // Row J — „Vorlesen“ under an answer has the owl's voice speak it (ADR-0115): the app sends the answer as
+    // spoken text, passage by passage, the server answers audio, and the browser plays it to its end. The stack
+    // runs the scripted voice (AI_FAKE_KI), a short tone per passage.
     {
       const reader = await signIn(browser, webOrigin, user.email, 'l')
+      const passages = []
+      reader.page.on('response', async (response) => {
+        if (!response.url().endsWith('/v1/eulen-modus/stimme')) return
+        const body = response.request().postDataJSON()
+        const bytes = response.ok() ? await response.body().catch(() => null) : null
+        passages.push({ status: response.status(), type: response.headers()['content-type'], cache: response.headers()['cache-control'], riff: bytes?.subarray(0, 4).toString('latin1'), ...body })
+      })
+      // What the browser really played to its end: the length of every piece of audio that came from the server.
+      await reader.ctx.addInitScript(() => {
+        window.__played = []
+        const play = HTMLMediaElement.prototype.play
+        HTMLMediaElement.prototype.play = function playAndNote() {
+          if (this.src.startsWith('blob:')) this.addEventListener('ended', () => window.__played.push(this.duration), { once: true })
+          return play.call(this)
+        }
+      })
+      await reader.page.reload({ waitUntil: 'networkidle' })
+      await openEule(reader.page)
+      await ask(reader.page, 'Sag mir kurz Hallo')
+      const readAloud = reader.page.locator('[data-testid="advisor-message-read-aloud"]').last()
+      await readAloud.waitFor({ state: 'visible', timeout: 30_000 })
+      await readAloud.click()
+      if ((await readAloud.innerText()).trim() !== 'Stopp') fail('Row J: the answer being read should offer „Stopp“')
+      await reader.page.waitForFunction((el) => el.textContent.trim() === 'Vorlesen', await readAloud.elementHandle(), { timeout: 30_000 }).catch(() => fail('Row J: the answer should be read to its end'))
+      const played = await reader.page.evaluate(() => window.__played)
+      if (played.length !== passages.length || played.some((seconds) => !(seconds > 0))) fail(`Row J: the browser should play every passage to its end, played ${JSON.stringify(played)} of ${passages.length}`)
+      const said = passages.map((piece) => piece.text).join(' ')
+      if (passages.length === 0 || !said.startsWith('Ich bin die Test-Eule und antworte mit festem Text.')) fail(`Row J: the voice should get the answer, got ${JSON.stringify(passages)}`)
+      if (passages.some((piece) => piece.status !== 200 || piece.type !== 'audio/wav' || piece.riff !== 'RIFF')) fail(`Row J: every passage should come back as a WAV file: ${JSON.stringify(passages)}`)
+      if (passages.some((piece) => piece.cache !== 'no-store')) fail('Row J: spoken answer text must not be kept by a cache')
+      if (passages.some((piece) => piece.language !== 'de')) fail('Row J: a German answer should be spoken in German')
+      if (/[*#`|]|\]\(/.test(said)) fail(`Row J: the voice should get words, not Markdown: ${JSON.stringify(said)}`)
+      if (passages.some((piece) => piece.text.length > 220)) fail('Row J: no passage handed to the voice may be longer than a voice takes whole')
+      const passagesBefore = passages.length
+      await readAloud.click()
+      await readAloud.click()
+      if ((await readAloud.innerText()).trim() !== 'Vorlesen') fail('Row J: a stopped answer should offer „Vorlesen“ again')
+      await reader.page.waitForTimeout(1_500)
+      if (passages.length > passagesBefore + 2) fail('Row J: a stopped answer should not go on fetching its passages')
+      await reader.ctx.close()
+    }
+    console.log(`[${TAG}] ✅ Row J — „Vorlesen“ has the owl's voice speak the answer to its end, „Stopp“ ends it`)
+
+    // Row K — a deployment without the owl's voice: „Vorlesen“ hands the device's own voice the answer as spoken
+    // text; a second press stops. The stack under test has a voice, so the row answers the capabilities as such a
+    // deployment would. The browser's speech synthesis is the boundary: a headless browser has no voices, so the
+    // row supplies one German voice and records what the app asks it to say.
+    {
+      const reader = await signIn(browser, webOrigin, user.email, 'l')
+      const asked = []
+      reader.page.on('request', (request) => request.url().endsWith('/v1/eulen-modus/stimme') && asked.push(request.url()))
+      await reader.ctx.route('**/v1/capabilities', async (route) => {
+        const response = await route.fetch()
+        await route.fulfill({ response, json: { ...(await response.json()), eulenStimme: false } })
+      })
       await reader.ctx.addInitScript(() => {
         const heard = { spoken: [], cancelled: 0 }
         window.__readAloud = heard
@@ -431,17 +486,19 @@ async function main() {
       const heard = await reader.page.evaluate(() => window.__readAloud.spoken)
       // The app adds what is still missing to the fake owl's sentence, so the answer goes out in more than one piece.
       const said = heard.map((piece) => piece.text).join(' ')
-      if (!said.startsWith('Ich bin die Test-Eule und antworte mit festem Text.') || heard.some((piece) => piece.lang !== 'de-DE')) fail(`Row J: the voice should get the answer in German, got ${JSON.stringify(heard)}`)
-      if (/[*#`|]|\]\(/.test(said)) fail(`Row J: the voice should get words, not Markdown: ${JSON.stringify(said)}`)
-      if (heard.some((piece) => piece.text.length > 220)) fail('Row J: no piece handed to the voice may be longer than a voice takes whole')
-      if ((await readAloud.innerText()).trim() !== 'Stopp') fail('Row J: the answer being read should offer „Stopp“')
+      if (!said.startsWith('Ich bin die Test-Eule und antworte mit festem Text.') || heard.some((piece) => piece.lang !== 'de-DE')) fail(`Row K: the voice should get the answer in German, got ${JSON.stringify(heard)}`)
+      if (/[*#`|]|\]\(/.test(said)) fail(`Row K: the voice should get words, not Markdown: ${JSON.stringify(said)}`)
+      if (heard.some((piece) => piece.text.length > 220)) fail('Row K: no piece handed to the voice may be longer than a voice takes whole')
+      if ((await readAloud.innerText()).trim() !== 'Stopp') fail('Row K: the answer being read should offer „Stopp“')
       const cancelledBefore = await reader.page.evaluate(() => window.__readAloud.cancelled)
       await readAloud.click()
-      if ((await reader.page.evaluate(() => window.__readAloud.cancelled)) !== cancelledBefore + 1) fail('Row J: the second press should stop the voice')
-      if ((await readAloud.innerText()).trim() !== 'Vorlesen') fail('Row J: a stopped answer should offer „Vorlesen“ again')
+      if ((await reader.page.evaluate(() => window.__readAloud.cancelled)) !== cancelledBefore + 1) fail('Row K: the second press should stop the voice')
+      if ((await readAloud.innerText()).trim() !== 'Vorlesen') fail('Row K: a stopped answer should offer „Vorlesen“ again')
+      if (asked.length > 0) fail('Row K: without the owl\'s voice nothing may be sent to the voice route')
       await reader.ctx.close()
     }
-    console.log(`[${TAG}] ✅ Row J — „Vorlesen“ gives the device's voice the answer as text, „Stopp“ ends it`)
+    console.log(`[${TAG}] ✅ Row K — without the owl's voice the device reads the answer, and nothing is sent`)
+
 
     await user.api.dispose()
     console.log(`[${TAG}] PASS — Eulen-Modus flows with the fake KiPort verified (#450 1A, 5F).`)

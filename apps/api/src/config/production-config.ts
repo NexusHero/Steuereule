@@ -198,6 +198,11 @@ function providerKey(value: string): string | undefined {
   return /(\.\.\.|…)$/.test(value) ? 'ends in an ellipsis: a placeholder from the documentation, not a key' : undefined
 }
 
+/** A provider's voice: a name (Sulafat) or an id (voice_481). */
+function voiceName(value: string): string | undefined {
+  return /^[A-Za-z][A-Za-z0-9_-]{1,40}$/.test(value) ? undefined : 'must be a voice name of letters, digits, - and _'
+}
+
 function modelId(value: string): string | undefined {
   return /^\S+$/.test(value) ? undefined : 'contains white space'
 }
@@ -313,6 +318,7 @@ export const API_PRODUCTION_SETTINGS: readonly ProductionSetting[] = [
   { name: 'GOOGLE_API_KEY', source: 'secret-manager', need: 'optional', format: 'provider API key, read when GEMINI_API_KEY is unset', check: providerKey, secret: true, knownDevValues: EXAMPLE_PROVIDER_KEYS },
   { name: 'ANTHROPIC_API_KEY', source: 'secret-manager', need: 'optional', format: 'provider API key', check: providerKey, secret: true, knownDevValues: EXAMPLE_PROVIDER_KEYS },
   { name: 'OPENAI_API_KEY', source: 'secret-manager', need: 'optional', format: 'provider API key', check: providerKey, secret: true, knownDevValues: EXAMPLE_PROVIDER_KEYS },
+  { name: 'MISTRAL_API_KEY', source: 'secret-manager', need: 'optional', format: "provider API key of the owl's voice; read while AI_SPEECH_PROVIDER is mistral (ADR-0115)", check: providerKey, secret: true, knownDevValues: EXAMPLE_PROVIDER_KEYS },
   { name: 'AI_API_KEY', source: 'secret-manager', need: 'optional', format: 'API key for the chosen provider when it has none of its own; needs AI_ADVISOR_PROVIDER', check: providerKey, secret: true, knownDevValues: EXAMPLE_PROVIDER_KEYS },
 
   // ── Model slots: chat, document reading, fallback, topic guard. Each takes its own provider, model and key;
@@ -331,6 +337,13 @@ export const API_PRODUCTION_SETTINGS: readonly ProductionSetting[] = [
   { name: 'AI_GUARD_API_KEY', source: 'secret-manager', need: 'optional', format: 'API key of the topic guard slot', check: providerKey, secret: true, knownDevValues: EXAMPLE_PROVIDER_KEYS },
   { name: 'AI_BASE_URL', source: 'operator', need: 'optional', format: 'https URL of an OpenAI-compatible endpoint, local stack only: refused on a deployment (ADR-0111 decision 4)', check: httpsUrl },
   { name: 'OPENAI_BASE_URL', source: 'operator', need: 'optional', format: 'https URL, read when AI_BASE_URL is unset; local stack only, refused on a deployment', check: httpsUrl },
+
+  // ── The owl's voice (ADR-0115): off until a provider is named, so a chat key alone starts no second data flow ──
+  { name: 'AI_SPEECH_PROVIDER', source: 'operator', need: 'optional', format: '"google-genai" or "mistral", or unset for no server voice', check: oneOf('google-genai', 'mistral') },
+  { name: 'AI_SPEECH_MODEL', source: 'operator', need: 'optional', format: 'model id of the voice (default: the provider default)', check: modelId },
+  { name: 'AI_SPEECH_VOICE', source: 'operator', need: 'optional', format: "the provider's voice for German (default Sulafat with google-genai, voice_481 with mistral)", check: voiceName },
+  { name: 'AI_SPEECH_VOICE_EN', source: 'operator', need: 'optional', format: "the provider's voice for English (default: the German voice with google-genai, voice_447 with mistral)", check: voiceName },
+  { name: 'AI_SPEECH_DAILY_CALL_LIMIT', source: 'operator', need: 'optional', format: 'speech calls a day across all users (default 20000)', check: wholeNumber(1, 100_000_000) },
 
   // ── Model behaviour and cost limits (ADR-0109) ─────────────────────────────────────────────
   { name: 'AI_KILL_SWITCH', source: 'operator', need: 'optional', format: 'on/off switch: on answers every model slot from the rules (default off)', check: onOff },

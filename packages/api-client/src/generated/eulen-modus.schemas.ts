@@ -1989,6 +1989,23 @@ export interface OwlCardsResponseDto {
   legalStatus: string;
 }
 
+export type SpeakDtoLanguage = typeof SpeakDtoLanguage[keyof typeof SpeakDtoLanguage];
+
+
+export const SpeakDtoLanguage = {
+  de: 'de',
+  en: 'en',
+} as const;
+
+export interface SpeakDto {
+  /**
+     * The passage to speak, as plain text without Markdown.
+     * @maxLength 600
+     */
+  text: string;
+  language: SpeakDtoLanguage;
+}
+
 export type AdvisorControllerGetSessionParams = {
   /** Which conversation to load; without it the one used last. */
   conversationId?: string;

@@ -23,7 +23,7 @@ describe('GET /v1/capabilities', () => {
     ;({ app } = await buildTestApp())
     const response = await app.inject({ method: 'GET', url: '/v1/capabilities' })
     expect(response.statusCode).toBe(200)
-    expect(response.json()).toEqual({ selbststaendig: true, runningTaxYear: runningTaxYear() })
+    expect(response.json()).toEqual({ selbststaendig: true, runningTaxYear: runningTaxYear(), eulenStimme: expect.any(Boolean) })
   })
 
   it('reports the switch off', async () => {

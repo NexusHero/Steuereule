@@ -1,8 +1,10 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { I18nextProvider } from 'react-i18next'
 import { createAppI18n } from '../../../i18n/app-i18n'
 import { resetReadAloud } from '../../../lib/readAloud/readAloud'
+import { apiServerVoice } from '../../../lib/readAloud/serverVoice'
+import { OwlVoiceContext } from '../../../lib/readAloud/useOwlVoice'
 import { ReadAloudButton } from './ReadAloudButton'
 
 interface Spoken {
@@ -17,7 +19,14 @@ function stubSpeech(voices: Array<{ lang: string }>) {
   return { spoken, cancel }
 }
 
-const show = (node: React.ReactNode) => render(<I18nextProvider i18n={createAppI18n('de')}>{node}</I18nextProvider>)
+/** `voice`: the screen has the owl's voice from the server (ADR-0115). */
+function show(node: React.ReactNode, { voice = false } = {}) {
+  return render(
+    <I18nextProvider i18n={createAppI18n('de')}>
+      <OwlVoiceContext.Provider value={voice ? apiServerVoice : null}>{node}</OwlVoiceContext.Provider>
+    </I18nextProvider>,
+  )
+}
 
 afterEach(() => {
   resetReadAloud()
@@ -65,5 +74,28 @@ describe('„Vorlesen“ under an answer', () => {
     vi.unstubAllGlobals()
     show(<ReadAloudButton id="a1" content="Eins." />)
     expect(screen.queryByTestId('advisor-message-read-aloud')).toBeNull()
+  })
+
+  it('with the owl\'s voice it is there without any voice on the device, and asks the server for the spoken text', async () => {
+    const fetchMock = vi.fn(async (_url: string, _init: RequestInit) => new Response(new Blob(['RIFF']), { status: 200, headers: { 'Content-Type': 'audio/wav' } }))
+    vi.stubGlobal('fetch', fetchMock)
+    const played: string[] = []
+    vi.stubGlobal('Audio', class { src = ''; addEventListener(): void {} play(): Promise<void> { played.push(this.src); return Promise.resolve() } pause(): void {} })
+    vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:passage')
+    vi.spyOn(URL, 'revokeObjectURL').mockReturnValue(undefined)
+    show(<ReadAloudButton id="a1" content="**Ja**, nach [estg-9-1]." />, { voice: true })
+    const button = screen.getByTestId('advisor-message-read-aloud')
+    fireEvent.click(button)
+    expect(button.textContent).toBe('Stopp')
+    await waitFor(() => expect(played).toContain('blob:passage'))
+    const [url, init] = fetchMock.mock.calls[0]!
+    expect(url).toMatch(/\/v1\/eulen-modus\/stimme$/)
+    expect(init).toMatchObject({ method: 'POST', credentials: 'include' })
+    expect(JSON.parse(init.body as string)).toEqual({ text: 'Ja, nach Paragraf 9 Absatz 1 Einkommensteuergesetz.', language: 'de' })
+    // The element is unlocked in the press itself, before the audio is there.
+    expect(played[0]).toMatch(/^data:audio\/wav/)
+    fireEvent.click(button)
+    expect(button.textContent).toBe('Vorlesen')
+    vi.restoreAllMocks()
   })
 })
