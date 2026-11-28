@@ -98,6 +98,16 @@ async function main() {
       await page.locator('[data-testid="profil-bearbeiten"]').click()
       await page.locator('[data-testid="profil-vorname"]').fill('Ada')
       await page.locator('[data-testid="profil-nachname"]').fill('Lovelace')
+      // #67: the Steuer-ID field says when eleven digits cannot be a Steuer-ID, and says nothing about a number
+      // with a correct check digit. The field goes back to what it held, so the row saves the name alone.
+      const taxIdField = page.locator('[data-testid="profil-steuer-id"]')
+      const taxIdHint = page.locator('[data-testid="profil-steuerid-hinweis"]')
+      const storedTaxId = await taxIdField.inputValue()
+      await taxIdField.fill('86095742718')
+      await taxIdHint.waitFor({ state: 'visible', timeout: 10_000 })
+      await taxIdField.fill('86095742719')
+      await taxIdHint.waitFor({ state: 'detached', timeout: 10_000 })
+      await taxIdField.fill(storedTaxId)
       await page.locator('[data-testid="profil-speichern"]').click()
       await page.locator('[data-testid="profil-gespeichert"]').waitFor({ state: 'visible', timeout: 10_000 })
       await page.reload({ waitUntil: 'networkidle' })

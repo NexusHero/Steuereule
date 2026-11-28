@@ -65,8 +65,17 @@ export async function runScenario23(browser, webOrigin) {
   await page.locator('[data-testid="onboarding-nachname"]').fill('Gastupgrade')
   await page.locator('[data-testid="onboarding-weiter"]').click()
 
-  await page.locator('[data-testid="onboarding-steuerid"]').waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator('[data-testid="onboarding-steuerid"]').fill('04452397686')
+  const taxIdField = page.locator('[data-testid="onboarding-steuerid"]')
+  const taxIdHint = page.locator('[data-testid="onboarding-steuerid-hinweis"]')
+  await taxIdField.waitFor({ state: 'visible', timeout: 10_000 })
+  // #67: eleven digits that cannot be a Steuer-ID (a leading 0) get the hint, a number with a correct check
+  // digit gets none, and the hint never stops the step: the scenario goes on with the first number.
+  await taxIdField.fill('04452397686')
+  await taxIdHint.waitFor({ state: 'visible', timeout: 10_000 })
+  await taxIdField.fill('86095742719')
+  await taxIdHint.waitFor({ state: 'detached', timeout: 10_000 })
+  await taxIdField.fill('04452397686')
+  await taxIdHint.waitFor({ state: 'visible', timeout: 10_000 })
   await page.locator('[data-testid="onboarding-weiter"]').click()
   await page.locator('[data-testid="onboarding-weiter"]').click()
 

@@ -231,14 +231,20 @@ describe('ProfilScreen', () => {
     expect(await screen.findByText('Das hat nicht geklappt. Prüf die Verbindung und versuch es noch einmal.')).toBeTruthy()
   })
 
-  it('shows the Steuer-ID digit counter and confirmation while editing, matching the Onboarding field pattern', async () => {
+  it('shows the Steuer-ID digit counter while editing and says „gültig“ only for a number that passes the check (#67)', async () => {
     mockSavedProfile()
     renderProfile()
     await screen.findByText('Anna Beispiel')
     fireEvent.click(screen.getByText('Bearbeiten'))
 
+    // The stored test number has eleven digits and begins with 0: complete, and not a Steuer-ID.
     expect(screen.getByText('11/11 Ziffern')).toBeTruthy()
+    expect(screen.queryByText('gültig')).toBeNull()
+    expect(screen.getByTestId('profil-steuerid-hinweis').textContent).toBe('Diese Steuer-ID kann so nicht stimmen. Prüf bitte die Ziffern auf dem Brief vom Bundeszentralamt für Steuern.')
+
+    fireEvent.change(screen.getByTestId('profil-steuer-id'), { target: { value: '86095742719' } })
     expect(screen.getByText('gültig')).toBeTruthy()
+    expect(screen.queryByTestId('profil-steuerid-hinweis')).toBeNull()
   })
 
   it('discards edits and returns to the original values on Abbrechen', async () => {
