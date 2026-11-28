@@ -133,7 +133,7 @@ boot-ordering invariant are detailed in [`docs/arc42/README.md`](../arc42/README
 | 0112 | The browser gates run as parallel groups from one gate list (build once, a fresh stack per group, aggregate jobs keep the required check names, production stack split into smoke and DAST, shared set-up as composite actions, long shell as scripts) | Accepted |
 | 0113 | Production is deployed by publishing a release, with the API image staging ran (release guard, same-digest promotion, tag-restricted workload identity, `static: opentofu validate` moved to quality.yml) | Accepted |
 | 0114 | A SteuerEule summary leads the paid printout (result step by step from the estimate, then every printed value with its Zeile; pdf-lib, no second calculation, not part of the return) | Accepted |
-| 0115 | The owl's voice comes from a speech model behind a port (`SpeechPort`, Mistral and Gemini adapters independent of the chat model, off until `AI_SPEECH_PROVIDER` is set, one text-in route with its own limits, device voice as fallback) | Accepted |
+| 0115 | The owl's voice and ear come from speech models behind a port (`SpeechPort`, Mistral and Gemini adapters independent of the chat model, off until `AI_SPEECH_PROVIDER` is set, one text-in route with its own limits, device voice as fallback; addendum: the spoken conversation as a cascade with short spoken answers) | Accepted |
 
 See also the [Tech Radar](./tech-radar.md).
 

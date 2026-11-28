@@ -1,9 +1,9 @@
-# ADR-0115 — The owl's voice comes from a speech model behind a port
+# ADR-0115 — The owl's voice and ear come from speech models behind a port
 
 - **Status:** Accepted
 - **Date:** 2026-11-28
 - **Deciders:** NexusHero (Product Owner), Steuereule Engineering
-- **Applies to:** `apps/api/src/speech/`, `apps/api/src/capabilities/`, `apps/mobile-web/src/lib/readAloud/`
+- **Applies to:** `apps/api/src/speech/`, `apps/api/src/capabilities/`, `apps/mobile-web/src/lib/readAloud/`, `apps/mobile-web/src/lib/conversation/`, `apps/mobile-web/src/screens/advisor/conversation/`
 - **Builds on:** ADR-0038 (the model sits behind a port), ADR-0109 (cost limits on costly routes), ADR-0111 (production configuration is declared)
 
 ## Context
@@ -53,6 +53,40 @@ speech endpoint, so a conversation answered by Claude needs another provider for
    (`AI_SPEECH_MODEL`, `AI_SPEECH_VOICE`, `AI_SPEECH_VOICE_EN`). The request carries the passage and nothing
    else: a style line in front of it was spoken with it (checked by transcribing the audio).
 
+## Addendum (2026-11-28) — the spoken conversation
+
+8. **Hearing.** `SpeechPort.transcribe({ wav, language })` answers the words of one utterance.
+   `POST /v1/eulen-modus/gehoert` takes it as a multipart WAV file (16-bit mono, at most 2 MB, about
+   60 seconds), with its own throttle (120 in ten minutes) and the daily counter of the voice. The
+   recording is not kept. Gemini gets the recording next to an order to write it down and not to
+   act on it; Mistral gets it at its transcription endpoint.
+9. **Silence never reaches a model.** Asked to write down two seconds of silence, Gemini answered
+   "Hallo, guten Morgen." `SpeechService` checks the samples first (`hasSound`: three 50 ms frames
+   above -40 dBFS) and answers an empty text.
+10. **A cascade, not a speech-to-speech model.** Utterance → words → an ordinary chat message →
+    answer → voice. The owl's tools, the tax core, the topic guard and the model the user picked all
+    stay in the path, and everything said is a stored chat message. The price is latency: each step
+    waits for the one before.
+11. **The course of a conversation is one framework-free state machine**
+    (`lib/conversation/conversation.ts`): off → starting → listening ⇄ hearing → understanding →
+    thinking → speaking → listening. An utterance ends after 0.9 s of quiet (`voiceActivity.ts`) or
+    with „Fertig“. The answer is spoken while it is written: its first sentence alone, then passages
+    of at most 220 characters. Only the owl's own written words are spoken; notes the app appends
+    to the stored answer stay in the chat.
+12. **Interrupting is a press.** While the owl speaks the microphone is not evaluated, because it
+    would hear the owl's own voice. „Unterbrechen“ stops the voice and the answer.
+13. **Spoken answers are short.** A spoken message carries `spoken: true`. The turn context then
+    asks for at most three short sentences without lists or headings and one question at most, and
+    the model thinks at its lowest level (`withSpokenPace`), unless the message asked for Max.
+    Measured with Gemini 3.8 Flash: without it the owl spoke for almost three minutes and began
+    after 22 seconds; with it, two sentences, the first after 11 to 18 seconds.
+14. **The picture is a line.** Straight at rest; the two lighter greys follow the microphone, all
+    three follow the voice (from the loudness of the WAV file that plays), one bump travels while
+    the owl thinks. No accent colour. With reduced motion the line stands still and the state is
+    written under it, as it always is.
+15. **It starts with a press that says what leaves the device.** The microphone is opened only
+    after „Gespräch starten“, under the sentence that what is said goes to the speech service.
+
 ## Consequences
 
 - With the voice on, the text of every answer a user has read aloud goes to the speech provider.
@@ -67,8 +101,14 @@ speech endpoint, so a conversation answered by Claude needs another provider for
   Gemini's.
 - Audio is sent as uncompressed WAV, about 48 kB per second at 24 kHz. A passage is a few hundred
   kilobytes. A compressed format would need an encoder on the server.
+- A spoken conversation is slower than one with a speech-to-speech model: measured, 3 to 4 seconds
+  until the words stand on screen (0.9 s pause, then the transcription) and 11 to 18 seconds until
+  the first spoken word, most of it the chat model. Streaming transcription and a streamed voice
+  would shorten the first and the last step; the wait for the chat model stays.
+- Not checked on a real microphone, on Safari or on a phone: the gate and the measurements fed the
+  browser a synthetic microphone. Echo, room noise and the pause threshold need a hearing test.
 - The speech model is not streamed: a passage plays once it is complete. The wait before the first
   word is the time the provider needs for the first passage, measured at 1.9 to 3.8 seconds for
   passages of 3 to 139 characters (seven calls, 28.11.2026).
-- Dictation and the spoken conversation are not part of this decision. They add
-  `transcribe` to the port and their own routes.
+- Dictation through the server is not built. The composer's microphone still writes down on the
+  device (ADR-0061).
